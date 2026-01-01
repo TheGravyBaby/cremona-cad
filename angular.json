@@ -6,7 +6,7 @@
   },
   "newProjectRoot": "projects",
   "projects": {
-    "cromona-cad": {
+    "cremona-cad": {
       "projectType": "application",
       "schematics": {},
       "root": "",
@@ -56,10 +56,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "cromona-cad:build:production"
+              "buildTarget": "cremona-cad:build:production"
             },
             "development": {
-              "buildTarget": "cromona-cad:build:development"
+              "buildTarget": "cremona-cad:build:development"
             }
           },
           "defaultConfiguration": "development"

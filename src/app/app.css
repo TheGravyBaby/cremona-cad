@@ -1,0 +1,32 @@
+.app {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.top {
+  flex: 0 0 48px;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.main {
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+  /* allows children to scroll properly */
+}
+
+.canvas {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: #fafafa;
+  /* margin: 12px;
+  border: 1px solid #b8b8b8; */
+}
+
+.sidebar {
+  flex: 0 0 360px;
+  border-left: 1px solid #e5e5e5;
+  background: white;
+}

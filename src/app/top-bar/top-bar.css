@@ -1,0 +1,23 @@
+.bar {
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+    margin: 0px;
+    gap: 12px;
+    background-color: goldenrod;
+}
+
+.left {
+    font-weight: 600;
+}
+
+.right {
+    display: flex;
+    gap: 8px;
+}
+
+button {
+    padding: 6px 10px;
+}
