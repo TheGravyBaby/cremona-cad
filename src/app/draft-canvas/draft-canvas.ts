@@ -8,8 +8,6 @@ import {
 import * as d3 from 'd3';
 import { FormsModule } from '@angular/forms';
 import { Input } from '@angular/core';
-import { widthFromRatio } from '../helpers/helpers';
-import { DraftState } from '../models/draftState';
 
 @Component({
   selector: 'app-draft-canvas',
@@ -20,15 +18,18 @@ import { DraftState } from '../models/draftState';
 })
 
 export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
+  private initialized = false;
+  
   @ViewChild('host', { static: true }) host!: ElementRef<HTMLDivElement>;
   
   @Input()
-   set draft(value: DraftState) {
-    this.draftState = value
+    set draftFunctions(value: Array<(arg: any) => void>) {
+    this.draftFuncs = value
     this.draw();
+    console.log("Saw the event")
   }
 
-  public pxPerMm = 10;
+  public pxPerMm = 1;
   public showGrid = true;
   public showAxes = true;
 
@@ -36,11 +37,12 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private gRoot!: d3.Selection<SVGGElement, unknown, null, undefined>;
   private gUI!: d3.Selection<SVGGElement, unknown, null, undefined>;
   private resizeObs?: ResizeObserver;
-  private draftState?: DraftState;
+  private draftFuncs: Array<(arg: any) => void> = [];
+
 
   private offsetMmX?: number;
   private offsetMmY?: number;
-  private defaultPxPerMm = 10;
+  private defaultPxPerMm = 20;
 
   // drag state
   private isDragging = false;
@@ -61,20 +63,20 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.draw();
     this.resizeObs = new ResizeObserver(() => this.draw());
     this.resizeObs.observe(el);
+
+    this.initialized = true;
   }
 
   ngOnDestroy(): void {
     this.resizeObs?.disconnect();
   }
 
-  initDefaultCamera(mmW: number, mmH: number) {
-    // match your current initial framing
-    this.offsetMmX = -mmW / 2;
-    this.offsetMmY = -mmH * 0.8;
-    this.defaultPxPerMm = this.pxPerMm;
-  }
 
+  // render canvas
   draw(): void {
+    if (!this.initialized)
+      return
+
     this.gRoot.selectAll('*').remove();
     this.gUI.selectAll('*').remove();
 
@@ -85,15 +87,14 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     const mmH = pxH / this.pxPerMm;
 
     if (this.offsetMmX === undefined || this.offsetMmY === undefined) {
-      this.offsetMmX = -mmW / 2;
-      this.offsetMmY = -mmH * .8;
+      this.initDefaultCamera(mmW, mmH)
     }
 
     // Camera window (top-left in world mm coords)
     const leftBound = this.offsetMmX;
-    const rightBound = leftBound + mmW;
+    const rightBound = leftBound! + mmW;
     const topBound = this.offsetMmY;
-    const bottomBound = mmH + topBound;
+    const bottomBound = mmH + topBound!;
 
     this.canvas.attr('viewBox', `${leftBound} ${topBound} ${mmW} ${mmH}`);
     this.gRoot.attr('transform', 'scale(1,-1)');
@@ -108,33 +109,10 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.showAxes && this.drawAxisLabels(cv);
     this.showGrid && this.drawDots(cv, '#b4b4b4ff');
 
-    this.draftState && this.drawCurrentDraft(this.draftState);
-   
+    this.draftFuncs.map(f => {
+      f(this.gRoot)
+    })
   }
-
-  drawCurrentDraft(draft: DraftState): void {
-    this.drawRect(draft);
-  }
-
-  drawRect(draft: DraftState): void {
-    const h = Math.max(1, draft.heightMm);
-    const w = widthFromRatio(h, draft.ratioHeight, draft.ratioWidth);
-
-    const xLeft = -w / 2;
-    const yTop = h; // above x-axis
-    const yHeight = h;
-
-    this.gRoot.append('rect')
-      .attr('x', xLeft)
-      .attr('y', 0)
-      .attr('width', w)
-      .attr('height', yHeight)
-      .attr('fill', 'none')
-      .attr('stroke', '#222')
-      .attr('stroke-width', 2)
-      .attr('vector-effect', 'non-scaling-stroke');
-  }
-
 
   drawAxis(cv: any): void {
     const lineColor = '#adadadff';
@@ -249,7 +227,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   drawDots(cv: any, dotColor: string): void {
     let xMax = Math.max(Math.abs(cv.rightBound), Math.abs(cv.leftBound));
     let yMax = Math.max(Math.abs(cv.topBound), Math.abs(cv.bottomBound));
-    let dotSpacing = 10;
+    let dotSpacing = 50;
 
     const dots: Array<{ x: number; y: number }> = [];
 
@@ -288,8 +266,14 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
 
 
-
   // camera controls
+  initDefaultCamera(mmW: number, mmH: number) {
+    // match your current initial framing
+    this.offsetMmX = -mmW / 2;
+    this.offsetMmY = -mmH * 0.8;
+    this.defaultPxPerMm = this.pxPerMm;
+  }
+
   onPointerDown = (event: PointerEvent) => {
     // left mouse / primary touch only
     if (event.button !== 0) return;
@@ -342,27 +326,10 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
     const oldPxPerMm = this.pxPerMm;
 
-    if (delta < 0 && this.pxPerMm <= 20) this.pxPerMm *= 1.1;
-    else if (delta > 0 && this.pxPerMm >= 4) this.pxPerMm /= 1.1;
+    if (delta < 0) this.pxPerMm *= 1.1;
+    else if (delta > 0) this.pxPerMm /= 1.1;
 
-    // Optional: keep zoom centered on current view center (not mouse yet)
-    // Maintain center mm position while changing scale:
-    const el = this.host.nativeElement;
-    const pxW = Math.max(1, el.clientWidth);
-    const pxH = Math.max(1, el.clientHeight);
-
-    const oldMmW = pxW / oldPxPerMm;
-    const oldMmH = pxH / oldPxPerMm;
-    const yAxis = this.offsetMmX! + oldMmW / 2;
-    const xAxis = this.offsetMmY! + oldMmH / 2;
-
-    const newMmW = pxW / this.pxPerMm;
-    const newMmH = pxH / this.pxPerMm;
-
-    this.offsetMmX = yAxis - newMmW / 2;
-    this.offsetMmY = xAxis - newMmH / 2;
-
-    this.draw();
+    this.applyZoom(this.pxPerMm)
   };
 
   resetView(): void {
@@ -391,12 +358,10 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   }
 
   zoomIn(): void {
-    if (this.pxPerMm >= 20) return;
     this.applyZoom(this.pxPerMm * 1.1);
   }
 
   zoomOut(): void {
-    if (this.pxPerMm <= 4) return;
     this.applyZoom(this.pxPerMm / 1.1);
   }
 

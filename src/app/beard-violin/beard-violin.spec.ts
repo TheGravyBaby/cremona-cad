@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { Sidebar } from './sidebar';
+import { BeardViolinComponent } from './beard-violin';
 
 describe('Sidebar', () => {
-  let component: Sidebar;
-  let fixture: ComponentFixture<Sidebar>;
+  let component: BeardViolinComponent;
+  let fixture: ComponentFixture<BeardViolinComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [Sidebar]
+      imports: [BeardViolinComponent]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(Sidebar);
+    fixture = TestBed.createComponent(BeardViolinComponent);
     component = fixture.componentInstance;
     await fixture.whenStable();
   });

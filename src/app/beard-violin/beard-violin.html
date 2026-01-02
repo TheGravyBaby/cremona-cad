@@ -1,0 +1,18 @@
+<div class="panel">
+  <details open>
+    <summary>Base</summary>
+    <label>
+      Height (mm)
+      <input type="number" step="1" [(ngModel)]="recipeState.heightMm" (input)="changeBase()" />
+    </label>
+
+    <label>
+      Height : Width ratio
+      <div class="ratio">
+        <input type="number" step="1" min="1" [(ngModel)]="recipeState.ratioHeight" (input)="changeBase()" />
+        <span>:</span>
+        <input type="number" step="1" min="1" [(ngModel)]="recipeState.ratioWidth" (input)="changeBase()" />
+      </div>
+    </label>
+  </details>
+</div>
