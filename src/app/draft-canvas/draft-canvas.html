@@ -7,26 +7,27 @@
     (pointerleave)="onPointerUp($event)"
   ></div>
 
-  <div class="ui-controls">
-    <!-- mock controls for now -->
-    <div class="left">
-      <button type="button" class="btn">Reset</button>
-      <button type="button" class="btn">Fit</button>
-      <div class="sep"></div>
-      <button type="button" class="btn">−</button>
-      <div class="readout">Zoom</div>
-      <button type="button" class="btn">+</button>
-    </div>
+ <div class="ui-controls">
+  <div class="left">
+    <button type="button" class="btn" (click)="resetView()">Reset</button>
+    <button type="button" class="btn" (click)="fitView()">Fit</button>
 
-    <div class="right">
-      <label class="chk">
-        <input type="checkbox" />
-        Grid
-      </label>
-      <label class="chk">
-        <input type="checkbox" checked />
-        Axes
-      </label>
-    </div>
+    <div class="sep"></div>
+
+    <button type="button" class="btn" (click)="zoomOut()">−</button>
+    <div class="readout">Zoom: {{ pxPerMm.toFixed(1) }} px/mm</div>
+    <button type="button" class="btn" (click)="zoomIn()">+</button>
+  </div>
+
+  <div class="right">
+    <label class="chk">
+      <input type="checkbox" [(ngModel)]="showGrid" (change)="draw()" />
+      Grid
+    </label>
+    <label class="chk">
+      <input type="checkbox" [(ngModel)]="showAxes" (change)="draw()" />
+      Axes
+    </label>
   </div>
 </div>
+
