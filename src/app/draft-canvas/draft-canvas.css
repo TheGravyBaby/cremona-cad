@@ -1,5 +1,71 @@
-unselectable-text {
-  -webkit-user-select: none; /* Safari */
-  -ms-user-select: none;     /* IE 10+ and Edge */
-  user-select: none;         /* Standard syntax */
+.canvas-shell {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.host {
+  flex: 1 1 auto;
+  min-height: 0;
+  cursor: grab;
+  /* border: #444 1px solid; */
+
+}
+.host.dragging { cursor: grabbing; }
+
+svg { 
+  display: block; 
+}
+
+.ui-controls {
+  flex: 0 0 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 10px;
+  border-top: 1px solid #d3d3d3;
+  background: #ededed;
+  font-size: 12px;
+  color: #444;
+}
+
+.left, .right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn {
+  padding: 6px 10px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.readout {
+  padding: 6px 10px;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+.sep {
+  width: 1px;
+  height: 18px;
+  background: #e5e5e5;
+}
+
+.chk {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  background: #fafafa;
+  user-select: none;
 }

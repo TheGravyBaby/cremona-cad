@@ -1,1 +1,32 @@
-<div #host class="host"></div>
+<div class="canvas-shell">
+  <div #host class="host"
+    (wheel)="onScrollWheel($event)"
+    (pointerdown)="onPointerDown($event)"
+    (pointermove)="onPointerMove($event)"
+    (pointerup)="onPointerUp($event)"
+    (pointerleave)="onPointerUp($event)"
+  ></div>
+
+  <div class="ui-controls">
+    <!-- mock controls for now -->
+    <div class="left">
+      <button type="button" class="btn">Reset</button>
+      <button type="button" class="btn">Fit</button>
+      <div class="sep"></div>
+      <button type="button" class="btn">−</button>
+      <div class="readout">Zoom</div>
+      <button type="button" class="btn">+</button>
+    </div>
+
+    <div class="right">
+      <label class="chk">
+        <input type="checkbox" />
+        Grid
+      </label>
+      <label class="chk">
+        <input type="checkbox" checked />
+        Axes
+      </label>
+    </div>
+  </div>
+</div>

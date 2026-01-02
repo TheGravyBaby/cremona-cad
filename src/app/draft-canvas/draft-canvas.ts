@@ -10,21 +10,10 @@ import * as d3 from 'd3';
 @Component({
   selector: 'app-draft-canvas',
   standalone: true,
-  template: `
-    <div #host class="host"
-      (wheel)="onScrollWheel($event)"
-      (pointerdown)="onPointerDown($event)"
-      (pointermove)="onPointerMove($event)"
-      (pointerup)="onPointerUp($event)"
-      (pointerleave)="onPointerUp($event)"
-    ></div>
-  `,
-  styles: [`
-    .host { width: 100%; height: 100%; cursor: grab; }
-    .host.dragging { cursor: grabbing; }
-    svg { display: block; }
-  `],
+  templateUrl: './draft-canvas.html',
+  styleUrls: ['./draft-canvas.css'],
 })
+
 export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   @ViewChild('host', { static: true }) host!: ElementRef<HTMLDivElement>;
 
@@ -124,27 +113,35 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       .attr('stroke', lineColor)
       .attr('stroke-width', 2)
       .attr('vector-effect', 'non-scaling-stroke')
-
-    this.gRoot.append('rect')
-      .attr('x', 0)
-      .attr('y', 0)
-      .attr('width', 10)
-      .attr('height', 10)
-      .attr('fill', 'none')
-      .attr('stroke', '#000000ff')
-      .attr('stroke-width', 1)
-      .attr('vector-effect', 'non-scaling-stroke');
   }
 
   drawAxisLabels(cv: any): void {
-    const fontSizePx = 24 / this.pxPerMm; // keep roughly constant in pixels
+    const fontSizePx = 20 / this.pxPerMm; // keep roughly constant in pixels
+    const xBelow = (cv.bottomBound > 0 && cv.topBound > 0)
+    const xAbove = (cv.bottomBound < 0 && cv.topBound < 0)
+    const yLeft = (cv.leftBound < 0 && cv.rightBound < 0)
+    const yRight = (cv.leftBound > 0 && cv.rightBound > 0)
+
+    let renderXAxisAt = null;
+    let renderYAxisAt = null;
+
+    if (xBelow) renderXAxisAt = cv.topBound;
+    else if (xAbove) renderXAxisAt = cv.bottomBound;
+
+    if (yLeft) renderYAxisAt = cv.rightBound;
+    else if (yRight) renderYAxisAt = cv.leftBound;
+
+    let invertXText = renderXAxisAt > 0;
+    let invertYText = renderYAxisAt < 0;
+    if (invertXText) renderXAxisAt += 20 / this.pxPerMm;
+    if (invertYText) renderYAxisAt -= 80 / this.pxPerMm;
 
     // X axis label (to the right)
     if (cv.rightBound > 0) {
       this.gUI
         .append('text')
         .attr('x', cv.rightBound)
-        .attr('y', - 1 / this.pxPerMm)
+        .attr('y', renderXAxisAt || - 1 / this.pxPerMm)
         .attr('text-anchor', 'end')
         .attr('dominant-baseline', 'ideographic')
         .attr('fill', '#666')
@@ -159,7 +156,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       this.gUI
         .append('text')
         .attr('x', cv.leftBound)
-        .attr('y', - 1 / this.pxPerMm)
+        .attr('y', renderXAxisAt || - 1 / this.pxPerMm)
         .attr('text-anchor', 'start')
         .attr('dominant-baseline', 'ideographic')
         .attr('fill', '#666')
@@ -170,10 +167,10 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     }
 
     // Y axis label (bottom)
-    if (cv.bottomBound > 0) {
+    if (cv.topBound < 0) {
       this.gUI
         .append('text')
-        .attr('x', 0 + 1 / this.pxPerMm)
+        .attr('x', renderYAxisAt || 0 + 2 / this.pxPerMm)
         .attr('y', cv.topBound + 20 / this.pxPerMm)
         .attr('text-anchor', 'start')
         .attr('dominant-baseline', 'auto')
@@ -185,10 +182,10 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     }
 
     // Y axis label (top)
-    if (cv.topBound < 0) {
+    if (cv.bottomBound > 0) {
       this.gUI
         .append('text')
-        .attr('x', 0 + 1 / this.pxPerMm)
+        .attr('x', renderYAxisAt || 0 + 2 / this.pxPerMm)
         .attr('y', cv.bottomBound - 20 / this.pxPerMm)
         .attr('text-anchor', 'start')
         .attr('dominant-baseline', 'hanging')
@@ -216,12 +213,12 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
         if (cv.leftBound <= x && x <= cv.rightBound)
           dots.push({ x: x, y: y });
         if (cv.leftBound <= -x && -x <= cv.rightBound)
-          dots.push({ x: -x, y: y }); 
+          dots.push({ x: -x, y: y });
         if (cv.leftBound <= x && x <= cv.rightBound)
-          dots.push({ x: x, y: -y }); 
+          dots.push({ x: x, y: -y });
         if (cv.leftBound <= -x && -x <= cv.rightBound)
           dots.push({ x: -x, y: -y });
-        
+
       }
     }
 
@@ -266,8 +263,11 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     const dxMm = dxPx / this.pxPerMm;
     const dyMm = dyPx / this.pxPerMm;
 
+    // console.log('Offsets before drag:', this.offsetMmX, this.offsetMmY);
+
     this.offsetMmX -= dxMm;
     this.offsetMmY -= dyMm;
+
 
     this.draw();
   };
