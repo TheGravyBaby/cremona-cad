@@ -7,6 +7,9 @@ import {
 } from '@angular/core';
 import * as d3 from 'd3';
 import { FormsModule } from '@angular/forms';
+import { Input } from '@angular/core';
+import { widthFromRatio } from '../helpers/helpers';
+import { DraftState } from '../models/draftState';
 
 @Component({
   selector: 'app-draft-canvas',
@@ -18,6 +21,12 @@ import { FormsModule } from '@angular/forms';
 
 export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   @ViewChild('host', { static: true }) host!: ElementRef<HTMLDivElement>;
+  
+  @Input()
+   set draft(value: DraftState) {
+    this.draftState = value
+    this.draw();
+  }
 
   public pxPerMm = 10;
   public showGrid = true;
@@ -27,6 +36,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private gRoot!: d3.Selection<SVGGElement, unknown, null, undefined>;
   private gUI!: d3.Selection<SVGGElement, unknown, null, undefined>;
   private resizeObs?: ResizeObserver;
+  private draftState?: DraftState;
 
   private offsetMmX?: number;
   private offsetMmY?: number;
@@ -57,7 +67,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.resizeObs?.disconnect();
   }
 
-  private initDefaultCamera(mmW: number, mmH: number) {
+  initDefaultCamera(mmW: number, mmH: number) {
     // match your current initial framing
     this.offsetMmX = -mmW / 2;
     this.offsetMmY = -mmH * 0.8;
@@ -92,12 +102,39 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       leftBound, rightBound, topBound, bottomBound, mmW, mmH
     };
 
-    console.log(cv)
+    // console.log(cv)
 
     this.showAxes && this.drawAxis(cv);
     this.showAxes && this.drawAxisLabels(cv);
     this.showGrid && this.drawDots(cv, '#b4b4b4ff');
+
+    this.draftState && this.drawCurrentDraft(this.draftState);
+   
   }
+
+  drawCurrentDraft(draft: DraftState): void {
+    this.drawRect(draft);
+  }
+
+  drawRect(draft: DraftState): void {
+    const h = Math.max(1, draft.heightMm);
+    const w = widthFromRatio(h, draft.ratioHeight, draft.ratioWidth);
+
+    const xLeft = -w / 2;
+    const yTop = h; // above x-axis
+    const yHeight = h;
+
+    this.gRoot.append('rect')
+      .attr('x', xLeft)
+      .attr('y', 0)
+      .attr('width', w)
+      .attr('height', yHeight)
+      .attr('fill', 'none')
+      .attr('stroke', '#222')
+      .attr('stroke-width', 2)
+      .attr('vector-effect', 'non-scaling-stroke');
+  }
+
 
   drawAxis(cv: any): void {
     const lineColor = '#adadadff';
@@ -219,7 +256,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     // build symmetric dots around the *view center* in world coords
     for (let x = 0; x <= xMax; x += dotSpacing) {
       for (let y = 0; y <= yMax; y += dotSpacing) {
-        if ( this.showAxes && (x === 0 || y === 0)) continue;
+        if (this.showAxes && (x === 0 || y === 0)) continue;
 
         if (cv.leftBound <= x && x <= cv.rightBound)
           dots.push({ x: x, y: y });
@@ -247,6 +284,10 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       .attr('r', dotR)
       .attr('fill', dotColor);
   }
+
+
+
+
 
   // camera controls
   onPointerDown = (event: PointerEvent) => {
@@ -324,63 +365,63 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.draw();
   };
 
-  public resetView(): void {
-  const el = this.host.nativeElement;
-  const pxW = Math.max(1, el.clientWidth);
-  const pxH = Math.max(1, el.clientHeight);
-  const mmW = pxW / this.defaultPxPerMm;
-  const mmH = pxH / this.defaultPxPerMm;
+  resetView(): void {
+    const el = this.host.nativeElement;
+    const pxW = Math.max(1, el.clientWidth);
+    const pxH = Math.max(1, el.clientHeight);
+    const mmW = pxW / this.defaultPxPerMm;
+    const mmH = pxH / this.defaultPxPerMm;
 
-  // reset zoom first
-  this.pxPerMm = this.defaultPxPerMm;
+    // reset zoom first
+    this.pxPerMm = this.defaultPxPerMm;
 
-  // ensure defaults exist
-  if (this.offsetMmX === undefined || this.offsetMmY === undefined) {
-    this.initDefaultCamera(mmW, mmH);
+    // ensure defaults exist
+    if (this.offsetMmX === undefined || this.offsetMmY === undefined) {
+      this.initDefaultCamera(mmW, mmH);
+    }
+
+    this.offsetMmX = this.offsetMmX!;
+    this.offsetMmY = this.offsetMmY!;
+    this.draw();
   }
 
-  this.offsetMmX = this.offsetMmX!;
-  this.offsetMmY = this.offsetMmY!;
-  this.draw();
-}
+  fitView(): void {
+    // placeholder for later “fit to violin outline”
+    this.resetView();
+  }
 
-public fitView(): void {
-  // placeholder for later “fit to violin outline”
-  this.resetView();
-}
+  zoomIn(): void {
+    if (this.pxPerMm >= 20) return;
+    this.applyZoom(this.pxPerMm * 1.1);
+  }
 
-public zoomIn(): void {
-  if (this.pxPerMm >= 20) return;
-  this.applyZoom(this.pxPerMm * 1.1);
-}
+  zoomOut(): void {
+    if (this.pxPerMm <= 4) return;
+    this.applyZoom(this.pxPerMm / 1.1);
+  }
 
-public zoomOut(): void {
-  if (this.pxPerMm <= 4) return;
-  this.applyZoom(this.pxPerMm / 1.1);
-}
+  applyZoom(newPxPerMm: number): void {
+    const el = this.host.nativeElement;
+    const pxW = Math.max(1, el.clientWidth);
+    const pxH = Math.max(1, el.clientHeight);
 
-private applyZoom(newPxPerMm: number): void {
-  const el = this.host.nativeElement;
-  const pxW = Math.max(1, el.clientWidth);
-  const pxH = Math.max(1, el.clientHeight);
+    const oldPxPerMm = this.pxPerMm;
 
-  const oldPxPerMm = this.pxPerMm;
+    // keep zoom centered on view center (your current wheel behavior)
+    const oldMmW = pxW / oldPxPerMm;
+    const oldMmH = pxH / oldPxPerMm;
 
-  // keep zoom centered on view center (your current wheel behavior)
-  const oldMmW = pxW / oldPxPerMm;
-  const oldMmH = pxH / oldPxPerMm;
+    const centerX = this.offsetMmX! + oldMmW / 2;
+    const centerY = this.offsetMmY! + oldMmH / 2;
 
-  const centerX = this.offsetMmX! + oldMmW / 2;
-  const centerY = this.offsetMmY! + oldMmH / 2;
+    this.pxPerMm = newPxPerMm;
 
-  this.pxPerMm = newPxPerMm;
+    const newMmW = pxW / this.pxPerMm;
+    const newMmH = pxH / this.pxPerMm;
 
-  const newMmW = pxW / this.pxPerMm;
-  const newMmH = pxH / this.pxPerMm;
+    this.offsetMmX = centerX - newMmW / 2;
+    this.offsetMmY = centerY - newMmH / 2;
 
-  this.offsetMmX = centerX - newMmW / 2;
-  this.offsetMmY = centerY - newMmH / 2;
-
-  this.draw();
-}
+    this.draw();
+  }
 }

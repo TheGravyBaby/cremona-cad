@@ -1,29 +1,18 @@
 <div class="panel">
-      <details open>
-        <summary>Base</summary>
-        <div class="section">
-          <label>
-            Body length (mm)
-            <input type="number" [(ngModel)]="bodyLengthMm" />
-          </label>
-           <label>
-            Height to Width Ratio
-            <input type="number" step="0.001" [(ngModel)]="heightToWidth" />
-          </label>
-        </div>
-      </details>
+  <details open>
+    <summary>Base</summary>
+    <label>
+      Height (mm)
+      <input type="number" step="1" [(ngModel)]="draft.heightMm" (input)="emit()" />
+    </label>
 
-      <details>
-        <summary>Bouts</summary>
-        <div class="section">
-          <div class="hint">Placeholder fields</div>
-        </div>
-      </details>
-
-      <details>
-        <summary>C-bouts / corners</summary>
-        <div class="section">
-          <div class="hint">Later</div>
-        </div>
-      </details>
-    </div>
+    <label>
+      Height : Width ratio
+      <div class="ratio">
+        <input type="number" step="1" min="1" [(ngModel)]="draft.ratioHeight" (input)="emit()" />
+        <span>:</span>
+        <input type="number" step="1" min="1" [(ngModel)]="draft.ratioWidth" (input)="emit()" />
+      </div>
+    </label>
+  </details>
+</div>

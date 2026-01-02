@@ -1,16 +1,20 @@
-import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { DraftState } from '../models/draftState';
 
 @Component({
   selector: 'app-sidebar',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [FormsModule],
   templateUrl: './sidebar.html',
-  styleUrls: ['./sidebar.css'],
+    styleUrls: ['./sidebar.css'],
 })
 
 export class SidebarComponent {
-  bodyLengthMm = 356;
-  heightToWidth = 5/7
+  @Input() draft!: DraftState;
+  @Output() draftChange = new EventEmitter<DraftState>();
+
+  emit(): void {
+    this.draftChange.emit({ ...this.draft });
+  }
 }

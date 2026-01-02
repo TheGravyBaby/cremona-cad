@@ -1,44 +1,53 @@
+.panel {
+    height: 100%;
+    overflow: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: #eaeaea;
+    border-left: 1px solid #d3d3d3;
+}
 
- .panel {
-     height: 100%;
-     overflow: auto;
-     padding: 12px;
-     display: flex;
-     flex-direction: column;
-     gap: 10px;
-     background: #dcdcdc;
- }
+details {
+    border: 1px solid #d3d3d3;
+    border-radius: 8px;
+    padding: 8px 10px;
+    color: #444;
+    font-size: 16px;
 
- details {
-     border: 1px solid #b8b8b8;
-     border-radius: 8px;
-     padding: 8px 10px;
- }
+}   
 
- summary {
-     cursor: pointer;
-     font-weight: 600;
- }
+summary {
+    cursor: pointer;
+    font-weight: 600;
+    padding: 0px 0px 8px 0px
+}
 
- .section {
-     margin-top: 10px;
-     display: flex;
-     flex-direction: column;
-     gap: 10px;
- }
+.section {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
 
- label {
-     display: flex;
-     flex-direction: column;
-     gap: 6px;
-     font-size: 13px;
- }
+label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 13px;
+}
 
- input {
-     padding: 6px 8px;
- }
+input {
+    padding: 6px 8px;
+    border: 1px solid #d3d3d3;
 
- .hint {
-     font-size: 12px;
-     opacity: 0.7;
- }
+}
+
+.hint {
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+.ratio { display: flex; align-items: center; gap: 8px; }
+.ratio input { width: 90px; }
