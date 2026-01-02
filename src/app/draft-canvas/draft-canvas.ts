@@ -30,12 +30,14 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
   private canvas!: d3.Selection<SVGSVGElement, unknown, null, undefined>;
   private gRoot!: d3.Selection<SVGGElement, unknown, null, undefined>;
+  private gUI!: d3.Selection<SVGGElement, unknown, null, undefined>;
   private resizeObs?: ResizeObserver;
   private pxPerMm = 10;
 
   // camera (top-left of viewBox in mm-space)
-  private offsetMmX = 0;
-  private offsetMmY = 0;
+  // getting around compiler but these are numbers
+  private offsetMmX: any = undefined;
+  private offsetMmY: any = undefined;
 
   // drag state
   private isDragging = false;
@@ -51,6 +53,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       .attr('height', '100%');
 
     this.gRoot = this.canvas.append('g').attr('class', 'root');
+    this.gUI = this.canvas.append('g').attr('class', 'ui');
 
     this.draw();
     this.resizeObs = new ResizeObserver(() => this.draw());
@@ -61,54 +64,164 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.resizeObs?.disconnect();
   }
 
-  private draw(): void {
+  draw(): void {
+    this.gRoot.selectAll('*').remove();
+    this.gUI.selectAll('*').remove();
+
     const el = this.host.nativeElement;
     const pxW = Math.max(1, el.clientWidth);
     const pxH = Math.max(1, el.clientHeight);
-
     const mmW = pxW / this.pxPerMm;
     const mmH = pxH / this.pxPerMm;
 
-    const spacing = 10; // mm
-    const marginPx = 12;
-    const marginMm = marginPx / this.pxPerMm;
-    const leftBound = this.offsetMmX - marginMm;
-    const topBound = this.offsetMmY - marginMm;
-    const rightBound = mmW + 2 * marginMm;
-    const bottomBound = mmH + 2 * marginMm;
+    if (this.offsetMmX === undefined || this.offsetMmY === undefined) {
+      this.offsetMmX = -mmW / 2;
+      this.offsetMmY = -mmH * .8;
+    }
 
-    // Center of *current view* in world mm coords
-    const yAxis = mmW / 2;
-    const xAxis = mmH / 2;
+    // Camera window (top-left in world mm coords)
+    const leftBound = this.offsetMmX;
+    const rightBound = leftBound + mmW;
+    const topBound = this.offsetMmY;
+    const bottomBound = mmH + topBound;
 
-    const cv = { el, pxW, pxH, mmW, mmH, xAxis, yAxis, spacing, marginPx, marginMm, topBound, leftBound, rightBound, bottomBound };
+    this.canvas.attr('viewBox', `${leftBound} ${topBound} ${mmW} ${mmH}`);
+    this.gRoot.attr('transform', 'scale(1,-1)');
 
-    // console.log(cv)
+    const cv = {
+      leftBound, rightBound, topBound, bottomBound, mmW, mmH
+    };
 
-    this.gRoot.selectAll('*').remove();
+    console.log(cv)
 
-    // ViewBox is the camera window in mm coords
-    this.canvas.attr(
-      'viewBox',
-      `${leftBound} ${topBound} ${rightBound} ${bottomBound}`
-    );
-
-    this.drawCanvas(cv);
-    this.drawDots(cv, '#b4b4b4ff');
+    this.drawAxis(cv);
     this.drawAxisLabels(cv);
+    this.drawDots(cv, '#b4b4b4ff');
+  }
+
+  drawAxis(cv: any): void {
+    const lineColor = '#adadadff';
+
+    // crosshair centerlines of the view
+    // y axis
+    this.gRoot
+      .append('line')
+      .attr('x1', 0)
+      .attr('y1', -cv.topBound)
+      .attr('x2', 0)
+      .attr('y2', -cv.bottomBound)
+      .attr('stroke', lineColor)
+      .attr('stroke-width', 2)
+      .attr('vector-effect', 'non-scaling-stroke')
+
+    // x axis
+    this.gRoot
+      .append('line')
+      .attr('x1', cv.leftBound)
+      .attr('y1', 0)
+      .attr('x2', cv.rightBound)
+      .attr('y2', 0)
+      .attr('stroke', lineColor)
+      .attr('stroke-width', 2)
+      .attr('vector-effect', 'non-scaling-stroke')
+
+    this.gRoot.append('rect')
+      .attr('x', 0)
+      .attr('y', 0)
+      .attr('width', 10)
+      .attr('height', 10)
+      .attr('fill', 'none')
+      .attr('stroke', '#000000ff')
+      .attr('stroke-width', 1)
+      .attr('vector-effect', 'non-scaling-stroke');
+  }
+
+  drawAxisLabels(cv: any): void {
+    const fontSizePx = 24 / this.pxPerMm; // keep roughly constant in pixels
+
+    // X axis label (to the right)
+    if (cv.rightBound > 0) {
+      this.gUI
+        .append('text')
+        .attr('x', cv.rightBound)
+        .attr('y', - 1 / this.pxPerMm)
+        .attr('text-anchor', 'end')
+        .attr('dominant-baseline', 'ideographic')
+        .attr('fill', '#666')
+        .attr('font-size', fontSizePx)
+        .attr('vector-effect', 'non-scaling-stroke')
+        .text(`${Math.round(cv.rightBound)} mm`)
+        .style("user-select", "none")
+    }
+
+    // X axis label (to the left)
+    if (cv.leftBound < 0) {
+      this.gUI
+        .append('text')
+        .attr('x', cv.leftBound)
+        .attr('y', - 1 / this.pxPerMm)
+        .attr('text-anchor', 'start')
+        .attr('dominant-baseline', 'ideographic')
+        .attr('fill', '#666')
+        .attr('font-size', fontSizePx)
+        .attr('vector-effect', 'non-scaling-stroke')
+        .text(`${Math.round(cv.leftBound)} mm`)
+        .style("user-select", "none")
+    }
+
+    // Y axis label (bottom)
+    if (cv.bottomBound > 0) {
+      this.gUI
+        .append('text')
+        .attr('x', 0 + 1 / this.pxPerMm)
+        .attr('y', cv.topBound + 20 / this.pxPerMm)
+        .attr('text-anchor', 'start')
+        .attr('dominant-baseline', 'auto')
+        .attr('fill', '#666')
+        .attr('font-size', fontSizePx)
+        .attr('vector-effect', 'non-scaling-stroke')
+        .text(`${Math.round(-cv.topBound)} mm`)
+        .style("user-select", "none")
+    }
+
+    // Y axis label (top)
+    if (cv.topBound < 0) {
+      this.gUI
+        .append('text')
+        .attr('x', 0 + 1 / this.pxPerMm)
+        .attr('y', cv.bottomBound - 20 / this.pxPerMm)
+        .attr('text-anchor', 'start')
+        .attr('dominant-baseline', 'hanging')
+        .attr('fill', '#666')
+        .attr('font-size', fontSizePx)
+        .attr('vector-effect', 'non-scaling-stroke')
+        .text(`${Math.round(-cv.bottomBound)} mm`)
+        .style("user-select", "none");
+    }
+
   }
 
   drawDots(cv: any, dotColor: string): void {
+    let xMax = Math.max(Math.abs(cv.rightBound), Math.abs(cv.leftBound));
+    let yMax = Math.max(Math.abs(cv.topBound), Math.abs(cv.bottomBound));
+    let dotSpacing = 10;
+
     const dots: Array<{ x: number; y: number }> = [];
 
     // build symmetric dots around the *view center* in world coords
-    for (let x = cv.yAxis; x <= cv.yAxis + cv.mmW; x += cv.spacing) {
-      for (let y = cv.xAxis; y <= cv.xAxis + cv.mmH; y += cv.spacing) {
-        if (x === cv.yAxis || y === cv.xAxis) continue;
-        dots.push({ x, y });
-        dots.push({ x: cv.yAxis - (x - cv.yAxis), y });
-        dots.push({ x, y: cv.xAxis - (y - cv.xAxis) });
-        dots.push({ x: cv.yAxis - (x - cv.yAxis), y: cv.xAxis - (y - cv.xAxis) });
+    for (let x = 0; x <= xMax; x += dotSpacing) {
+      for (let y = 0; y <= yMax; y += dotSpacing) {
+        if (x === 0 || y === 0) continue;
+
+        if (cv.leftBound <= x && x <= cv.rightBound)
+          dots.push({ x: x, y: y });
+        if (cv.leftBound <= -x && -x <= cv.rightBound)
+          dots.push({ x: -x, y: y }); 
+        if (cv.leftBound <= x && x <= cv.rightBound)
+          dots.push({ x: x, y: -y }); 
+        if (cv.leftBound <= -x && -x <= cv.rightBound)
+          dots.push({ x: -x, y: -y });
+        
       }
     }
 
@@ -126,120 +239,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       .attr('r', dotR)
       .attr('fill', dotColor);
   }
-
-  drawCanvas(cv: any): void {
-    const lineColor = '#c0c0c0ff';
-
-    // "paper" rect in world coords covering the *current view* (not global paper yet)
-    this.gRoot
-      .append('rect')
-      .attr('x', this.offsetMmX)
-      .attr('y', this.offsetMmY)
-      .attr('width', cv.mmW)
-      .attr('height', cv.mmH)
-      .attr('fill', '#fbfbfb')
-      .attr('stroke', lineColor)
-      .attr('stroke-width', 1)
-      .attr('vector-effect', 'non-scaling-stroke')
-      .style("user-select", "none");
-
-    // crosshair centerlines of the view
-    this.gRoot
-      .append('line')
-      .attr('x1', cv.yAxis)
-      .attr('y1', this.offsetMmY)
-      .attr('x2', cv.yAxis)
-      .attr('y2', this.offsetMmY + cv.mmH)
-      .attr('stroke', lineColor)
-      .attr('stroke-width', 1)
-      .attr('vector-effect', 'non-scaling-stroke')
-      .style("user-select", "none")
-
-    this.gRoot
-      .append('line')
-      .attr('x1', this.offsetMmX)
-      .attr('y1', cv.xAxis)
-      .attr('x2', this.offsetMmX + cv.mmW)
-      .attr('y2', cv.xAxis)
-      .attr('stroke', lineColor)
-      .attr('stroke-width', 1)
-      .attr('vector-effect', 'non-scaling-stroke')
-      .style("user-select", "none")
-  }
-
-  drawAxisLabels(cv: any): void {
-    const labelOffsetMm = 0.5; // spacing from axis (in mm)
-    const fontSizePx = .2 * this.pxPerMm; // keep roughly constant in pixels
-
-    let rightXBound = Math.round(cv.mmW / 2 + this.offsetMmX)
-    let leftXBound = Math.round(cv.mmW / 2 - this.offsetMmX)
-    let topYBound = Math.round(cv.mmW / 2 - this.offsetMmY)
-    let bottomYBound = Math.round(cv.mmH / 2 + this.offsetMmY)
-
-    // X axis label (to the right)
-    if (rightXBound > 0) {
-    this.gRoot
-      .append('text')
-      .attr('x', this.offsetMmX + cv.mmW - labelOffsetMm)
-      .attr('y', cv.xAxis - labelOffsetMm)
-      .attr('text-anchor', 'end')
-      .attr('dominant-baseline', 'ideographic')
-      .attr('fill', '#666')
-      .attr('font-size', fontSizePx)
-      .attr('vector-effect', 'non-scaling-stroke')
-      .text(`${rightXBound} mm`)
-      .style("user-select", "none")
-
-    }
-
-    // X axis label (to the left)
-    if (leftXBound > 0) {
-      this.gRoot
-        .append('text')
-        .attr('x', this.offsetMmX + labelOffsetMm)
-        .attr('y', cv.xAxis - labelOffsetMm)
-        .attr('text-anchor', 'start')
-        .attr('dominant-baseline', 'ideographic')
-        .attr('fill', '#666')
-        .attr('font-size', fontSizePx)
-        .attr('vector-effect', 'non-scaling-stroke')
-        .text(`${leftXBound} mm`)     
-        .style("user-select", "none")
-    }
-
-    // Y axis label (bottom)
-    if (bottomYBound > 0) {
-      this.gRoot
-        .append('text')
-        .attr('x', cv.yAxis + labelOffsetMm)
-        .attr('y', this.offsetMmY + cv.mmH - labelOffsetMm)
-        .attr('text-anchor', 'start')
-        .attr('dominant-baseline', 'auto')
-        .attr('fill', '#666')
-        .attr('font-size', fontSizePx)
-        .attr('vector-effect', 'non-scaling-stroke')
-        .text(`${bottomYBound} mm`)
-        .style("user-select", "none")
-    }
-
-
-    // Y axis label (top)
-    if (topYBound > 0) {
-    this.gRoot
-      .append('text')
-      .attr('x', cv.yAxis + labelOffsetMm)
-      .attr('y', this.offsetMmY + labelOffsetMm + fontSizePx / this.pxPerMm)
-      .attr('text-anchor', 'start')
-      .attr('dominant-baseline', 'hanging')
-      .attr('fill', '#666')
-      .attr('font-size', fontSizePx)
-      .attr('vector-effect', 'non-scaling-stroke')
-      .text(`${topYBound} mm`)
-      .style("user-select", "none");
-    }
-
-  }
-
 
   // camera controls
   onPointerDown = (event: PointerEvent) => {
