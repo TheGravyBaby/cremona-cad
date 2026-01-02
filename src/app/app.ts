@@ -10,9 +10,12 @@ import { FormsModule } from '@angular/forms';
   imports: [TopBarComponent, BeardViolinComponent, DraftCanvasComponent, FormsModule],
   template: `
     <div class="app">
-      <app-top-bar class="top"></app-top-bar>
+      <app-top-bar class="top"
+        (recipeChange)="selectedRecipe = $event"></app-top-bar>
       <div class="main">
-        <app-draft-canvas class="canvas" [draftFunctions]="draftArgs"></app-draft-canvas>
+        <app-draft-canvas class="canvas" 
+          [draftFunctions]="draftArgs">
+        </app-draft-canvas>
         <app-beard-violin class="sidebar"
           (draftChange)="draftArgs = $event">
         </app-beard-violin>
@@ -24,4 +27,5 @@ import { FormsModule } from '@angular/forms';
 
 export class App {
    draftArgs: Array<(arg: any) => void> = []
+   selectedRecipe: string = 'beard'
 }

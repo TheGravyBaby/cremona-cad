@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, EventEmitter, Output } from '@angular/core';
 
 @Component({
   selector: 'app-top-bar',
@@ -6,4 +6,11 @@ import { Component } from '@angular/core';
   templateUrl: './top-bar.html',
   styleUrls: ['./top-bar.css'],
 })
-export class TopBarComponent {}
+export class TopBarComponent {
+  @Output() recipeChange = new EventEmitter<string>();
+
+  onSelectChange(event?: any) {
+    console.log(event.target.value)
+    this.recipeChange.emit(event.target.value)
+  } 
+}

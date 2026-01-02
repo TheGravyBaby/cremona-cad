@@ -2,7 +2,12 @@
     <div class="left">CREMONA CAD</div>
 
     <div class="right">
-        <button type="button">Load Preset</button>
-        <button type="button">Export SVG</button>
+        <!-- <button type="button">Load Preset</button>
+        <button type="button">Export SVG</button> -->
+
+        <select (change)="onSelectChange($event)">
+            <option>Beard</option>
+            <option>Denis</option>
+        </select>
     </div>
 </div>
