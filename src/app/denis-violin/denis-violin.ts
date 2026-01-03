@@ -2,6 +2,7 @@ import { Component, EventEmitter, Output } from '@angular/core';
 import { widthFromRatio } from '../helpers/helpers';
 import { RecipeInterface } from '../models/recipe';
 import { FormsModule } from '@angular/forms';
+import { RecipeComponentBase } from '../recipe-base/recipe-base';
 
 @Component({
   selector: 'app-denis-violin',
@@ -10,17 +11,16 @@ import { FormsModule } from '@angular/forms';
   styleUrls: ['../sidebar.css', './denis-violin.css']
 })
 
-export class DenisViolin {
-  @Output() draftChange = new EventEmitter<Array<(arg: any) => void>>();
+export class DenisViolin extends RecipeComponentBase{
 
-  public denisRecipe: RecipeInterface = {
-    name: 'Beard-Violin-Recipe',
+  override d: RecipeInterface = {
+    recipeName: 'Denis-Violin',
+    fileName: "defaultDenis",
     version: ".1",
-    data: {
+    draftData: {
       heightMm: 356,
     },
     calcs: {}
-
   }
 
   ngOnInit() {
@@ -33,8 +33,8 @@ export class DenisViolin {
   }
 
   drawBoundingBoxes = (g: any): void => {
-    const h = Math.max(1, this.denisRecipe.data.heightMm);
-    const w = widthFromRatio(h, this.denisRecipe.data.ratioHeight, this.denisRecipe.data.ratioWidth);
+    const h = Math.max(1, this.d.draftData.heightMm);
+    const w = widthFromRatio(h, this.d.draftData.ratioHeight, this.d.draftData.ratioWidth);
     const xLeft = -w / 2;
 
     // bounding rect (above x-axis)

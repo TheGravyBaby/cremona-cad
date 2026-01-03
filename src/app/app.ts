@@ -3,22 +3,36 @@ import { TopBarComponent } from './top-bar/top-bar';
 import { BeardViolinComponent } from './beard-violin/beard-violin';
 import { DraftCanvasComponent } from './draft-canvas/draft-canvas';
 import { FormsModule } from '@angular/forms';
+import { DenisViolin } from "./denis-violin/denis-violin";
+import { RecipeInterface } from './models/recipe';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [TopBarComponent, BeardViolinComponent, DraftCanvasComponent, FormsModule],
+  imports: [TopBarComponent, BeardViolinComponent, DraftCanvasComponent, FormsModule, DenisViolin],
   template: `
     <div class="app">
       <app-top-bar class="top"
-        (recipeChange)="selectedRecipe = $event"></app-top-bar>
+        (recipeChange)="selectedRecipe = $event"
+        (loadFile)="loadFile($event)"></app-top-bar>
       <div class="main">
         <app-draft-canvas class="canvas" 
-          [draftFunctions]="draftArgs">
+          [draftFunctions]="draftArgs">   
         </app-draft-canvas>
-        <app-beard-violin class="sidebar"
-          (draftChange)="draftArgs = $event">
-        </app-beard-violin>
+        @if (selectedRecipe == "Beard") 
+        {
+          <app-beard-violin class="sidebar"
+            (draftChange)="draftArgs = $event"
+            [loadFile]="loadedFileData">
+          </app-beard-violin>
+        }
+        @if (selectedRecipe == "Denis") {
+          <app-denis-violin class="sidebar"
+            (draftChange)="draftArgs = $event"
+            [loadFile]="loadedFileData"
+            >
+          </app-denis-violin>
+        }
       </div>
     </div>
   `,
@@ -26,6 +40,12 @@ import { FormsModule } from '@angular/forms';
 })
 
 export class App {
-   draftArgs: Array<(arg: any) => void> = []
-   selectedRecipe: string = 'beard'
+  draftArgs: Array<(arg: any) => void> = []
+  selectedRecipe: string = 'Beard'
+  loadedFileData: RecipeInterface | undefined = undefined
+  loadFile(data: RecipeInterface) {
+    if (data.recipeName == 'beard'){
+      this.selectedRecipe = 'beard'
+    }  
+  }
 }

@@ -22,8 +22,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   
   @ViewChild('host', { static: true }) host!: ElementRef<HTMLDivElement>;
   
-  @Input()
-    set draftFunctions(value: Array<(arg: any) => void>) {
+  @Input() set draftFunctions(value: Array<(arg: any) => void>) {
     this.draftFuncs = value
     this.draw();
     console.log("Saw the event")

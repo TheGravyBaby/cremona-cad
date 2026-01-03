@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { widthFromRatio } from '../helpers/helpers';
 import { RecipeInterface } from '../models/recipe';
+import { RecipeComponentBase } from '../recipe-base/recipe-base';
 
 @Component({
   selector: 'app-beard-violin',
@@ -11,13 +12,13 @@ import { RecipeInterface } from '../models/recipe';
   styleUrls: ['../sidebar.css', './beard-violin.css'],
 })
 
-export class BeardViolinComponent {
-  @Output() draftChange = new EventEmitter<Array<(arg: any) => void>>();
-
-  public beardRecipe: RecipeInterface = {
-    name: 'Beard-Violin-Recipe',
+export class BeardViolinComponent extends RecipeComponentBase{
+ 
+  override d: RecipeInterface = {
+    recipeName: 'Beard-Violin',
+    fileName: "defaultBeard",
     version: ".1",
-    data: {
+    draftData: {
       heightMm: 356,
       ratioHeight: 7,
       ratioWidth: 4,
@@ -37,8 +38,8 @@ export class BeardViolinComponent {
   }
 
   drawBoundingBoxes = (g: any): void => {
-    const h = Math.max(1, this.beardRecipe.data.heightMm);
-    const w = widthFromRatio(h, this.beardRecipe.data.ratioHeight, this.beardRecipe.data.ratioWidth);
+    const h = Math.max(1, this.d.draftData.heightMm);
+    const w = widthFromRatio(h, this.d.draftData.ratioHeight, this.d.draftData.ratioWidth);
     const xLeft = -w / 2;
 
     // bounding rect (above x-axis)
@@ -62,7 +63,7 @@ export class BeardViolinComponent {
       .attr('opacity', 0.25);
 
     // top square using reduction
-    const upperBoutW = this.beardRecipe.data.upperBoutReduction <= 0 ? w : w - w * (1 / this.beardRecipe.data.upperBoutReduction);
+    const upperBoutW = this.d.draftData.upperBoutReduction <= 0 ? w : w - w * (1 / this.d.draftData.upperBoutReduction);
     const upperBoutLeft = -upperBoutW / 2;
 
     g.append('rect')

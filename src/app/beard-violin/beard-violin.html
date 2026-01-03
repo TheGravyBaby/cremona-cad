@@ -3,15 +3,15 @@
     <summary>Base</summary>
     <label>
       Height (mm)
-      <input type="number" step="1" [(ngModel)]="beardRecipe.data.heightMm" (input)="changeBase()" />
+      <input type="number" step="1" [(ngModel)]="d.draftData.heightMm" (input)="changeBase()" />
     </label>
     <br>
     <label>
       Height : Width ratio
       <div class="ratio">
-        <input type="number" step="1" min="1" [(ngModel)]="beardRecipe.data.ratioHeight" (input)="changeBase()" />
+        <input type="number" step="1" min="1" [(ngModel)]="d.draftData.ratioHeight" (input)="changeBase()" />
         <span>:</span>
-        <input type="number" step="1" min="1" [(ngModel)]="beardRecipe.data.ratioWidth" (input)="changeBase()" />
+        <input type="number" step="1" min="1" [(ngModel)]="d.draftData.ratioWidth" (input)="changeBase()" />
       </div>
     </label>
 
@@ -21,7 +21,7 @@
       <div class="ratio">
         1
         <span>:</span>
-        <input type="number" step="1" min="1" [(ngModel)]="beardRecipe.data.upperBoutReduction" (input)="changeBase()" />
+        <input type="number" step="1" min="1" [(ngModel)]="d.draftData.upperBoutReduction" (input)="changeBase()" />
       </div>
     </label>
   </details>
