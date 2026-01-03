@@ -15,7 +15,7 @@ import { RecipeComponentBase } from '../recipe-base/recipe-base';
 export class BeardViolinComponent extends RecipeComponentBase{
  
   override d: RecipeInterface = {
-    recipeName: 'Beard-Violin',
+    recipeName: 'Beard Violin',
     fileName: "defaultBeard",
     version: ".1",
     draftData: {
@@ -25,19 +25,18 @@ export class BeardViolinComponent extends RecipeComponentBase{
       upperBoutReduction: 6,
     },
     calcs: {}
-
   }
 
   ngOnInit() {
-    this.draftChange.emit([this.drawBoundingBoxes]);
+    this.draftChange.emit([this.firstRender]);
   }
 
   changeBase(): void {
     console.log("Fired Event")
-    this.draftChange.emit([this.drawBoundingBoxes]);
+    this.draftChange.emit([this.firstRender]);
   }
 
-  drawBoundingBoxes = (g: any): void => {
+  override firstRender = (g: any): void => {
     const h = Math.max(1, this.d.draftData.heightMm);
     const w = widthFromRatio(h, this.d.draftData.ratioHeight, this.d.draftData.ratioWidth);
     const xLeft = -w / 2;

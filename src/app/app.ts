@@ -12,21 +12,24 @@ import { RecipeInterface } from './models/recipe';
   imports: [TopBarComponent, BeardViolinComponent, DraftCanvasComponent, FormsModule, DenisViolin],
   template: `
     <div class="app">
-      <app-top-bar class="top"
-        (recipeChange)="selectedRecipe = $event"
-        (loadFile)="loadFile($event)"></app-top-bar>
+     <app-top-bar class="top"
+      [selectedRecipe]="selectedRecipe"
+      (recipeChange)="selectedRecipe = $event"
+      (loadFile)="loadFile($event)">
+    </app-top-bar>
+
       <div class="main">
         <app-draft-canvas class="canvas" 
           [draftFunctions]="draftArgs">   
         </app-draft-canvas>
-        @if (selectedRecipe == "Beard") 
+        @if (selectedRecipe == "Beard Violin") 
         {
           <app-beard-violin class="sidebar"
             (draftChange)="draftArgs = $event"
             [loadFile]="loadedFileData">
           </app-beard-violin>
         }
-        @if (selectedRecipe == "Denis") {
+        @if (selectedRecipe == "Denis Violin") {
           <app-denis-violin class="sidebar"
             (draftChange)="draftArgs = $event"
             [loadFile]="loadedFileData"
@@ -40,12 +43,17 @@ import { RecipeInterface } from './models/recipe';
 })
 
 export class App {
-  draftArgs: Array<(arg: any) => void> = []
-  selectedRecipe: string = 'Beard'
-  loadedFileData: RecipeInterface | undefined = undefined
+  draftArgs: Array<(arg: any) => void> = [];
+  selectedRecipe: string = 'Beard Violin';
+  loadedFileData: RecipeInterface | undefined = undefined;
+
   loadFile(data: RecipeInterface) {
-    if (data.recipeName == 'beard'){
-      this.selectedRecipe = 'beard'
-    }  
+    this.loadedFileData = data;
+
+    // Optional: if you want the app to switch to whatever the file says
+    // (but only if it's a known recipe)
+    const name = (data.recipeName ?? '').toLowerCase();
+    if (name === 'beard') this.selectedRecipe = 'Beard Violin';
+    if (name === 'denis') this.selectedRecipe = 'Denis Violin';
   }
 }

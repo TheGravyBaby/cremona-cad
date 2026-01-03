@@ -12,8 +12,10 @@ import { RecipeInterface } from '../models/recipe';
 export class RecipeComponentBase {
     @Output() draftChange = new EventEmitter<Array<(arg: any) => void>>();
     @Input() set loadFile(file: RecipeInterface | undefined) {
-        if (file) 
+        if (file) {
           this.d = file;
+          this.draftChange.emit([this.firstRender]);
+        }
     }
     d: RecipeInterface = {
         recipeName: "",
@@ -21,6 +23,10 @@ export class RecipeComponentBase {
         version: "",
         draftData: undefined,
         calcs: undefined
+    }
+
+    firstRender(canvas: any) {
+
     }
     
 }

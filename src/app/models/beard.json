@@ -1,0 +1,12 @@
+{
+    "recipeName": "Beard Violin",
+    "fileName": "beardFile",
+    "version": ".1",
+    "draftData": {
+      "heightMm": 400,
+      "ratioHeight": 8,
+      "ratioWidth": 3,
+      "upperBoutReduction": 6
+    },
+    "calcs": {}
+}
