@@ -1,142 +1,58 @@
 .bar {
   --paper: #fbf3df;
-  --paper2: #f1e2bf;
-  --ink: #1f1a12;     /* strong contrast */
-  --muted: rgba(31, 26, 18, 0.72);
-  --gold: #a87412;
-  --gold2: #caa24a;
+  --paper2: #f2e2bd;
+  --ink: #1f1a12;
+  --gold: #b8923c;
 
   display: flex;
   align-items: center;
   justify-content: space-between;
 
-  padding: 6px 12px;           /* not chunky */
-  background: linear-gradient(180deg, var(--paper) 0%, var(--paper2) 100%);
+  height: 44px;
+  padding: 0 12px;
+
+  background: linear-gradient(180deg, var(--paper), var(--paper2));
+  border-bottom: 1px solid rgba(184, 146, 60, 0.35);
+
   color: var(--ink);
-
-  border-bottom: 1px solid rgba(168, 116, 18, 0.28);
 }
 
-.left {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
+.title {
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  font-size: 13px;
 }
 
-.brand-row {
+.controls {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.mark {
-  width: 22px;
-  height: 22px;
-  display: grid;
-  place-items: center;
-
-  border-radius: 8px;
-  border: 1px solid rgba(168, 116, 18, 0.35);
-  background: rgba(202, 162, 74, 0.18);
-  color: rgba(168, 116, 18, 0.95);
-}
-
-.mark-icon {
-  width: 14px;
-  height: 14px;
-}
-
-.brand {
-  font-weight: 800;
-  letter-spacing: 0.10em;
-  font-size: 13px;
-}
-
-.tag {
-  font-size: 11px;
-  color: var(--muted);
-}
-
-.orn {
-  width: 110px;
-  height: 1px;
-  margin-left: 4px;
-  background: linear-gradient(
-    90deg,
-    rgba(168, 116, 18, 0.00),
-    rgba(168, 116, 18, 0.50),
-    rgba(202, 162, 74, 0.70),
-    rgba(168, 116, 18, 0.50),
-    rgba(168, 116, 18, 0.00)
-  );
-  position: relative;
-}
-
-.orn::after {
-  content: "❦";
-  position: absolute;
-  top: -10px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 14px;
-  color: rgba(168, 116, 18, 0.9);
-}
-
-/* RIGHT SIDE: 2-row grid to keep everything aligned */
-.right {
-  display: grid;
-  grid-template-rows: auto auto;
-  row-gap: 3px;
-}
-
-.labels,
-.controls {
-  display: grid;
-  grid-template-columns: auto auto;
-  column-gap: 10px;
-  align-items: center;
-  justify-content: end;
-}
-
-.label,
-.label-spacer {
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(31, 26, 18, 0.78);
-}
-
-.label-spacer {
-  /* keeps “Load file” column aligned with labeled dropdown */
-  visibility: hidden;
-}
-
 .btn,
 .select {
-  height: 30px;                 /* same height -> crisp alignment */
+  height: 28px;
   padding: 0 10px;
-  border-radius: 10px;
-  border: 1px solid rgba(168, 116, 18, 0.38);
+
+  font-size: 13px;
   color: var(--ink);
+
+  border-radius: 8px;
+  border: 1px solid rgba(184, 146, 60, 0.45);
+  background: rgba(255, 255, 255, 0.65);
 }
 
 .btn {
-  background: rgba(202, 162, 74, 0.18);
   cursor: pointer;
 }
 
-.btn:hover {
-  background: rgba(202, 162, 74, 0.26);
+.btn:hover,
+.select:hover {
+  background: rgba(255, 255, 255, 0.85);
 }
 
 .select {
-  background: rgba(255, 255, 255, 0.65);
   outline: none;
-}
-
-.select:focus {
-  border-color: rgba(168, 116, 18, 0.75);
-  box-shadow: 0 0 0 2px rgba(168, 116, 18, 0.18);
 }
 
 .file {

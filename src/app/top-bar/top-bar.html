@@ -1,40 +1,21 @@
 <div class="bar">
-  <div class="left">
-   <!-- <span class="mark" aria-hidden="true">
-    <img
-        src="public/fhole.jpg"
-        alt=""
-        class="mark-image"
+  <div class="title">CREMONA CAD</div>
+
+  <div class="controls">
+    <button class="btn" (click)="onSaveClick()">Save</button>
+    <button class="btn" (click)="triggerFilePick()">Load</button>
+
+    <select class="select" (change)="onSelectChange($event)">
+      <option [selected]="selectedRecipe === 'Beard'">Beard Violin</option>
+      <option [selected]="selectedRecipe === 'Denis'">Denis Violin</option>
+    </select>
+
+    <input
+      #fileInput
+      class="file"
+      type="file"
+      accept=".json,application/json"
+      (change)="onFilePicked($event)"
     />
-    </span> -->
-    <div class="brand-row">
-      <div class="brand">CREMONA CAD</div>
-    </div>
-  </div>
-
-  <div class="right">
-    <!-- labels row -->
-    <div class="labels">
-      <div class="label-spacer"></div>
-      <label class="label">Recipe selector</label>
-    </div>
-
-    <!-- controls row -->
-    <div class="controls">
-      <button type="button" class="btn" (click)="triggerFilePick()">Load file</button>
-
-      <select class="select" (change)="onSelectChange($event)">
-        <option [selected]="selectedRecipe === 'Beard Violin'">Beard Violin</option>
-        <option [selected]="selectedRecipe === 'Denis Violin'">Denis Violin</option>
-      </select>
-
-      <input
-        #fileInput
-        class="file"
-        type="file"
-        accept=".json,application/json"
-        (change)="onFilePicked($event)"
-      />
-    </div>
   </div>
 </div>

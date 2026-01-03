@@ -7,7 +7,7 @@ import { RecipeComponentBase } from '../recipe-base/recipe-base';
 @Component({
   selector: 'app-beard-violin',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, RecipeComponentBase],
   templateUrl: './beard-violin.html',
   styleUrls: ['../sidebar.css', './beard-violin.css'],
 })

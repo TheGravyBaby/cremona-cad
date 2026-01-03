@@ -15,7 +15,8 @@ import { RecipeInterface } from './models/recipe';
      <app-top-bar class="top"
       [selectedRecipe]="selectedRecipe"
       (recipeChange)="selectedRecipe = $event"
-      (loadFile)="loadFile($event)">
+      (loadFile)="loadFile($event)"
+        (saveFile)="requestSave()">
     </app-top-bar>
 
       <div class="main">
@@ -26,13 +27,16 @@ import { RecipeInterface } from './models/recipe';
         {
           <app-beard-violin class="sidebar"
             (draftChange)="draftArgs = $event"
-            [loadFile]="loadedFileData">
+            [loadFile]="loadedFileData"
+            [saveTick]="saveTick">
+
           </app-beard-violin>
         }
         @if (selectedRecipe == "Denis Violin") {
           <app-denis-violin class="sidebar"
             (draftChange)="draftArgs = $event"
             [loadFile]="loadedFileData"
+            [saveTick]="saveTick"
             >
           </app-denis-violin>
         }
@@ -46,6 +50,8 @@ export class App {
   draftArgs: Array<(arg: any) => void> = [];
   selectedRecipe: string = 'Beard Violin';
   loadedFileData: RecipeInterface | undefined = undefined;
+  saveTick = 0;
+
 
   loadFile(data: RecipeInterface) {
     this.loadedFileData = data;
@@ -55,5 +61,9 @@ export class App {
     const name = (data.recipeName ?? '').toLowerCase();
     if (name === 'beard') this.selectedRecipe = 'Beard Violin';
     if (name === 'denis') this.selectedRecipe = 'Denis Violin';
+  }
+
+  requestSave() {
+    this.saveTick++;
   }
 }
