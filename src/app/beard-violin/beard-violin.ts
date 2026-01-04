@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { solveForQyByCompassLength, widthFromRatio } from '../helpers/helpers';
+import { dist, widthFromRatio } from '../helpers/helpers';
 import { RecipeInterface } from '../models/recipe';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { arcPathFrom3Points } from '../helpers/helpers';
@@ -101,16 +101,16 @@ export class BeardViolinComponent extends RecipeComponentBase {
     // w = 2 * lowerBoutRadii + lowerGapDist
     // lowerBoutRadii = lowerGapDist *  lowerRadiiPart / lowerGapPart
     // w = 2 * LBR + LBR * lgp/lrp = LBR (2 + lgp/lrp)
-    let r = w / ( 2+ this.d.ratios.lowerGapPart / this.d.ratios.lowerRadiiPart)
+    let r = w / (2 + this.d.ratios.lowerGapPart / this.d.ratios.lowerRadiiPart)
     let gap = Math.abs(w - 2 * r)
-    let Cx = w/2 - r
+    let Cx = w / 2 - r
     let Cy = r
 
     const L = this.d.ratios.lowerJoinRatio * h; // now a COMPASS LENGTH ratio
     let Qy = 0
     let Qx = 0;
     try {
-      Qy = solveForQyByCompassLength({ h, targetLen: L, Cx, Cy, r });
+      Qy = this.solveForQyByCompassLength({ h, targetLen: L, Cx, Cy, r });
     }
     catch (e) {
       console.log("Error: " + e)
@@ -128,7 +128,7 @@ export class BeardViolinComponent extends RecipeComponentBase {
     // r^2 = (y- Cy)^2 + (x-Cx)^2, in this case we want to solve for 
     // y = Cy ± sqrt(r^2 - (x - Cx)^2)
     // we don't need the function but why not
-    let circofX = (x: number) => Cy + Math.sqrt(r*r - Math.pow(x - Cx, 2));
+    let circofX = (x: number) => Cy + Math.sqrt(r * r - Math.pow(x - Cx, 2));
 
     // now let us solve for the points we intercept 
     // (m*x + h)^2 = Cy ± sqrt(r^2 - (x - Cx)^2)
@@ -136,19 +136,19 @@ export class BeardViolinComponent extends RecipeComponentBase {
     // m^2*x^2 - x^2 + 2mxh  + -2*Cx*x =  Cx^2 - h^2 
     // (m+1)x^2   +   2(mh-Cx)x    -   (Cx^2 - h^2)  = 0
     // ax^2      +   bx                +   c             = 0
-    const a = m*m + 1;
+    const a = m * m + 1;
     const b = 2 * (m * (Qy - Cy) - Cx);
-    const c = (Qy - Cy)**2 + Cx**2 - r*r;  
-    let quadraticEqPlus  = (a: number, b: number, c: number) => (-b + Math.sqrt(b*b - 4*a*c)) / (2*a)
-    let quadraticEqMinus = (a: number, b: number, c: number) => (-b - Math.sqrt(b*b - 4*a*c)) / (2*a)
+    const c = (Qy - Cy) ** 2 + Cx ** 2 - r * r;
+    let quadraticEqPlus = (a: number, b: number, c: number) => (-b + Math.sqrt(b * b - 4 * a * c)) / (2 * a)
+    let quadraticEqMinus = (a: number, b: number, c: number) => (-b - Math.sqrt(b * b - 4 * a * c)) / (2 * a)
 
     // great now we have out intersection points, I just happen to know its plus in this case
-    let Px = quadraticEqPlus(a,b,c)
-    let Py = yofX(Px)    
+    let Px = quadraticEqPlus(a, b, c)
+    let Py = yofX(Px)
 
     // we now need to calculate an offset, because the joining arc will currently go into 
     // the -y axis, and we don't want to extend the size of our violin
-    let compassDist = Math.sqrt(Math.pow((Qx-Px), 2) + Math.pow((Qy - Py),2) )
+    let compassDist = dist({ x: Qx, y: Qy },{ x: Px, y: Py }) 
 
     // the center of our vesici, in the model thus far, are one radii above x=0
     // lets find the difference between r and compass dist, this is our offset
@@ -158,12 +158,12 @@ export class BeardViolinComponent extends RecipeComponentBase {
     Qy += yOffset
     Cy += yOffset
 
-    let xMax = w/2
+    let xMax = w / 2
 
     // now lets define our paths
-    let bottomBoutJoin = arcPathFrom3Points({x: Qx, y: Qy}, {x: -Px, y: Py}, {x: Px, y: Py})
-    let leftBout = arcPathFrom3Points({x: -Cx, y: Cy}, {x: -xMax, y: Cy}, {x: -Px, y: Py})
-    let rightBout = arcPathFrom3Points({x: Cx, y: Cy}, {x: xMax, y: Cy}, {x: Px, y: Py}, {clockwise: false})
+    let bottomBoutJoin = arcPathFrom3Points({ x: Qx, y: Qy }, { x: -Px, y: Py }, { x: Px, y: Py })
+    let leftBout = arcPathFrom3Points({ x: -Cx, y: Cy }, { x: -xMax, y: Cy }, { x: -Px, y: Py })
+    let rightBout = arcPathFrom3Points({ x: Cx, y: Cy }, { x: xMax, y: Cy }, { x: Px, y: Py }, { clockwise: false })
 
     // vesecai
     g.append('circle')
@@ -174,7 +174,7 @@ export class BeardViolinComponent extends RecipeComponentBase {
       .attr('fill', 'none')
       .attr('stroke-width', 2)
       .attr('vector-effect', 'non-scaling-stroke');
-     g.append('circle')
+    g.append('circle')
       .attr('cx', Cx)
       .attr('cy', Cy)
       .attr('r', 1)
@@ -182,9 +182,9 @@ export class BeardViolinComponent extends RecipeComponentBase {
       .attr('fill', 'none')
       .attr('stroke-width', 2)
       .attr('vector-effect', 'non-scaling-stroke');
-    
+
     // mirror vesecai
-     g.append('circle')
+    g.append('circle')
       .attr('cx', - Cx)
       .attr('cy', Cy)
       .attr('r', r)
@@ -230,7 +230,7 @@ export class BeardViolinComponent extends RecipeComponentBase {
       .attr('stroke-width', 2)
       .attr('vector-effect', 'non-scaling-stroke')
       .attr('opacity', 0.25);
-      
+
     g.append("path")
       .attr("d", bottomBoutJoin)
       .attr("fill", "none")
@@ -248,5 +248,84 @@ export class BeardViolinComponent extends RecipeComponentBase {
       .attr("stroke-width", 2);
   }
 
+  solveForQyByCompassLength(opts: {
+    h: number;
+    targetLen: number;   // L = ratio * h
+    Cx: number;
+    Cy: number;
+    r: number;
+    pickRoot?: "plus" | "minus";
+  }) {
+    const { h, targetLen, Cx, Cy, r } = opts;
+
+    const compassDistForQy = (Qy: number) => {
+      const Qx = 0;
+      const m = (Cy - Qy) / (Cx - Qx); // Cx should be > 0
+      const yofX = (x: number) => m * x + Qy;
+
+      // Line-circle intersection quadratic 
+      const a = m * m + 1;
+      const b = 2 * (m * (Qy - Cy) - Cx);
+      const c = (Qy - Cy) ** 2 + Cx ** 2 - r * r;
+
+      const disc = b * b - 4 * a * c;
+      if (disc < 0) return NaN;
+
+      const sqrtDisc = Math.sqrt(disc);
+      const xPlus = (-b + sqrtDisc) / (2 * a);
+      const xMinus = (-b - sqrtDisc) / (2 * a);
+
+      // Choose the intersection on the right side of the right circle.
+      // Usually that means "the larger x" (but keep it explicit).
+      const Px = Math.max(xPlus, xMinus);
+      const Py = yofX(Px);
+
+      return dist({ x: Qx, y: Qy }, { x: Px, y: Py });
+    };
+
+    // Bracket the root
+    // You can tune these bounds based on your geometry.
+    let lo = 0;
+    let hi = h;
+
+    let fLo = compassDistForQy(lo) - targetLen;
+    let fHi = compassDistForQy(hi) - targetLen;
+
+    // If we failed to bracket (can happen with weird ratios), expand search a bit.
+    if (!Number.isFinite(fLo) || !Number.isFinite(fHi) || fLo * fHi > 0) {
+      lo = -h;
+      hi = 2 * h;
+      fLo = compassDistForQy(lo) - targetLen;
+      fHi = compassDistForQy(hi) - targetLen;
+    }
+
+    if (!Number.isFinite(fLo) || !Number.isFinite(fHi) || fLo * fHi > 0) {
+      throw new Error("Could not bracket a solution for Qy (compass length target may be impossible).");
+    }
+
+    // Bisection
+    for (let i = 0; i < 40; i++) {
+      const mid = (lo + hi) / 2;
+      const fMid = compassDistForQy(mid) - targetLen;
+
+      if (!Number.isFinite(fMid)) {
+        // Nudge if we hit a NaN region
+        hi = mid;
+        continue;
+      }
+
+      if (Math.abs(fMid) < 1e-6) return mid;
+
+      if (fLo * fMid <= 0) {
+        hi = mid;
+        fHi = fMid;
+      } else {
+        lo = mid;
+        fLo = fMid;
+      }
+    }
+
+    return (lo + hi) / 2;
+  }
 
 }
