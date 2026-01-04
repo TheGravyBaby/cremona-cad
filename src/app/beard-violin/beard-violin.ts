@@ -1,9 +1,10 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { dist, widthFromRatio } from '../helpers/helpers';
 import { RecipeInterface } from '../models/recipe';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { arcPathFrom3Points } from '../helpers/helpers';
+import { Pt } from '../models/types';
 
 @Component({
   selector: 'app-beard-violin',
@@ -22,22 +23,23 @@ export class BeardViolinComponent extends RecipeComponentBase {
     version: ".1",
     ratios: {
       heightMm: 356,
-      ratioHeight: 7,
-      ratioWidth: 4,
-      upperBoutReduction: 6,
-      lowerRadiiPart: 10,
-      lowerGapPart: 10,
-      lowerJoinRatio: .75,
+      heightPart: 7,
+      widthPart: 4,
+      upperBoutReductionDenom: 6,
+      lowerRadiiPart: 1,
+      lowerGapPart: 1,
+      lowerJoinRatioNum: 2,
+      lowerJoinRatioDen: 3,
       upperRadiiPart: 1,
       upperGrapPart: 1,
     },
     calcs: {}
   }
 
-  override firstRender = (g: any): void => {
+  override firstRender = (g: any, ui: any): void => {
     // this.renderBounds(g)
-    this.renderBoutBounds(g)
-    this.renderLowerVesica(g)
+    this.renderBoutBounds(g, ui)
+    this.renderLowerVesica(g, ui)
   }
 
   changeBase(): void {
@@ -48,7 +50,7 @@ export class BeardViolinComponent extends RecipeComponentBase {
     this.draftChange.emit([this.renderBoutBounds, this.renderLowerVesica]);
   }
 
-  renderBounds = (g: any): void => {
+  renderBounds = (g: any, ui: any): void => {
     const h = Math.max(1, this.d.ratios.heightMm);
     const w = widthFromRatio(h, this.d.ratios.ratioHeight, this.d.ratios.ratioWidth);
     const xLeft = -w / 2;
@@ -65,9 +67,9 @@ export class BeardViolinComponent extends RecipeComponentBase {
       .attr('vector-effect', 'non-scaling-stroke');
   }
 
-  renderBoutBounds = (g: any) => {
+  renderBoutBounds = (g: any, ui: any) => {
     const h = Math.max(1, this.d.ratios.heightMm);
-    const w = widthFromRatio(h, this.d.ratios.ratioHeight, this.d.ratios.ratioWidth);
+    const w = widthFromRatio(h, this.d.ratios.heightPart, this.d.ratios.widthPart);
     const xLeft = -w / 2;
 
     // bottom square
@@ -80,7 +82,7 @@ export class BeardViolinComponent extends RecipeComponentBase {
       .attr('opacity', 0.25);
 
     // top square using reduction
-    const upperBoutW = this.d.ratios.upperBoutReduction <= 0 ? w : w - w * (1 / this.d.ratios.upperBoutReduction);
+    const upperBoutW = this.d.ratios.upperBoutReductionDenom <= 0 ? w : w - w * (1 / this.d.ratios.upperBoutReductionDenom);
     const upperBoutLeft = -upperBoutW / 2;
 
     g.append('rect')
@@ -93,9 +95,9 @@ export class BeardViolinComponent extends RecipeComponentBase {
 
   }
 
-  renderLowerVesica = (g: any): void => {
+  renderLowerVesica = (g: any, ui: any): void => {
     const h = Math.max(1, this.d.ratios.heightMm);
-    const w = widthFromRatio(h, this.d.ratios.ratioHeight, this.d.ratios.ratioWidth);
+    const w = widthFromRatio(h, this.d.ratios.heightPart, this.d.ratios.widthPart);
 
     // we need to define two circles that will be bounded inside our bout
     // w = 2 * lowerBoutRadii + lowerGapDist
@@ -106,7 +108,7 @@ export class BeardViolinComponent extends RecipeComponentBase {
     let Cx = w / 2 - r
     let Cy = r
 
-    const L = this.d.ratios.lowerJoinRatio * h; // now a COMPASS LENGTH ratio
+    const L = (this.d.ratios.lowerJoinRatioNum / this.d.ratios.lowerJoinRatioDen) * h; // now a COMPASS LENGTH ratio
     let Qy = 0
     let Qx = 0;
     try {
@@ -246,6 +248,14 @@ export class BeardViolinComponent extends RecipeComponentBase {
       .attr("fill", "none")
       .attr("stroke", "red")
       .attr("stroke-width", 2);
+
+    this.renderBoxLine(g, ui, {x: w*.7, y: 0}, {x: w*.7, y: L}, this.d.ratios.lowerJoinRatioNum, "blue", "green", false)
+    this.renderBoxLine(g, ui, {x: w*.8, y: 0}, {x: w*.8, y: h}, this.d.ratios.lowerJoinRatioDen, "blue", "green", true)
+    this.drawDashedLine(g, {x: 3*w, y: L}, {x: -3*w, y: L})
+
+    let vesicaiRatios = [this.d.ratios.lowerRadiiPart, this.d.ratios.lowerGapPart, this.d.ratios.lowerRadiiPart]
+    this.renderBoxLine(g, ui, {x: -xMax, y: -50}, {x: xMax, y: -50}, vesicaiRatios, "blue", "green", true, {labelMode: "segmentWeight"})
+
   }
 
   solveForQyByCompassLength(opts: {

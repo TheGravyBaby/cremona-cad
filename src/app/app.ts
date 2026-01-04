@@ -47,7 +47,7 @@ import { RecipeInterface } from './models/recipe';
 })
 
 export class App {
-  draftArgs: Array<(arg: any) => void> = [];
+  draftArgs: Array<(g: any, ui: any) => void> = [];
   selectedRecipe: string = 'Beard Violin';
   loadedFileData: RecipeInterface | undefined = undefined;
   saveTick = 0;

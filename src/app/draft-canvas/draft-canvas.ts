@@ -22,7 +22,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   
   @ViewChild('host', { static: true }) host!: ElementRef<HTMLDivElement>;
   
-  @Input() set draftFunctions(value: Array<(arg: any) => void>) {
+  @Input() set draftFunctions(value: Array<(canvas: any, uiCan: any) => void>) {
     this.draftFuncs = value
     this.draw();
     console.log("Saw the event")
@@ -36,7 +36,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private gRoot!: d3.Selection<SVGGElement, unknown, null, undefined>;
   private gUI!: d3.Selection<SVGGElement, unknown, null, undefined>;
   private resizeObs?: ResizeObserver;
-  private draftFuncs: Array<(arg: any) => void> = [];
+  private draftFuncs: Array<(canvas: any, uiCan: any) => void> = [];
 
 
   private offsetMmX?: number;
@@ -109,7 +109,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.showGrid && this.drawDots(cv, '#b4b4b4ff');
 
     this.draftFuncs.map(f => {
-      f(this.gRoot)
+      f(this.gRoot, this.gUI)
     })
   }
 
