@@ -17,14 +17,10 @@ export class DenisViolin extends RecipeComponentBase{
     recipeName: 'Denis-Violin',
     fileName: "defaultDenis",
     version: ".1",
-    draftData: {
+    ratios: {
       heightMm: 356,
     },
     calcs: {}
-  }
-
-  ngOnInit() {
-    this.draftChange.emit([this.drawBoundingBoxes]);
   }
 
   changeBase(): void {
@@ -33,8 +29,8 @@ export class DenisViolin extends RecipeComponentBase{
   }
 
   drawBoundingBoxes = (g: any): void => {
-    const h = Math.max(1, this.d.draftData.heightMm);
-    const w = widthFromRatio(h, this.d.draftData.ratioHeight, this.d.draftData.ratioWidth);
+    const h = Math.max(1, this.d.ratios.heightMm);
+    const w = widthFromRatio(h, this.d.ratios.ratioHeight, this.d.ratios.ratioWidth);
     const xLeft = -w / 2;
 
     // bounding rect (above x-axis)

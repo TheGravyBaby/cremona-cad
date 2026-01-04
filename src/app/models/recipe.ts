@@ -2,6 +2,6 @@ export interface RecipeInterface {
     recipeName: string;
     fileName: string;
     version: string;
-    draftData: any;
+    ratios: any;
     calcs: any; 
 }

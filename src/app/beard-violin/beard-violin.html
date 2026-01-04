@@ -1,18 +1,18 @@
 <div class="panel">
   
-  <details open>
+  <details [open]="openPanel === 'base'" (toggle)="onToggle('base', $event)">
     <summary>Base</summary>
     <label>
       Height (mm)
-      <input type="number" step="1" [(ngModel)]="d.draftData.heightMm" (input)="changeBase()" />
+      <input type="number" step="1" [(ngModel)]="d.ratios.heightMm" (input)="changeBase()" />
     </label>
     <br>
     <label>
-      Height : Width ratio
+      Height : Width Ratio
       <div class="ratio">
-        <input type="number" step="1" min="1" [(ngModel)]="d.draftData.ratioHeight" (input)="changeBase()" />
+        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.ratioHeight" (input)="changeBase()" />
         <span>:</span>
-        <input type="number" step="1" min="1" [(ngModel)]="d.draftData.ratioWidth" (input)="changeBase()" />
+        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.ratioWidth" (input)="changeBase()" />
       </div>
     </label>
 
@@ -22,8 +22,28 @@
       <div class="ratio">
         1
         <span>:</span>
-        <input type="number" step="1" min="1" [(ngModel)]="d.draftData.upperBoutReduction" (input)="changeBase()" />
+        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.upperBoutReduction" (input)="changeBase()" />
       </div>
     </label>
+  </details>
+
+  <details [open]="openPanel === 'lowerBout'" (toggle)="onToggle('lowerBout', $event)">
+    <summary>Lower Bout</summary>
+    <label>
+    Lower Vesica Radius : Distance Ratio
+    <div class="ratio">
+        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.lowerRadiiPart" (input)="changeVesica()" />
+        <span>:</span>
+        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.lowerGapPart" (input)="changeVesica()" />
+      </div>
+    </label>
+
+    <label>
+      Lower Bout Angle
+      <input type="number" step=".1" [(ngModel)]="d.ratios.lowerJoinAngle" (input)="changeVesica()" />
+    </label>
+
+    <br>
+
   </details>
 </div>

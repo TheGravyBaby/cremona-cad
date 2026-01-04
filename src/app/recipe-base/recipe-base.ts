@@ -26,13 +26,16 @@ export class RecipeComponentBase {
     }
   }
 
-
   d: RecipeInterface = {
     recipeName: "",
     fileName: "tst",
     version: "",
-    draftData: undefined,
+    ratios: undefined,
     calcs: undefined
+  }
+
+  ngOnInit() {
+    this.draftChange.emit([this.firstRender]);
   }
 
   firstRender(canvas: any) {
@@ -54,5 +57,17 @@ export class RecipeComponentBase {
 
     URL.revokeObjectURL(url);
   }
+
+  openPanel: string = "base";
+
+  onToggle(panel: string, event: Event) {
+    const details = event.target as HTMLDetailsElement;
+    if (details.open) {
+      this.openPanel = panel;
+    }
+  }
+
+
+
 
 }

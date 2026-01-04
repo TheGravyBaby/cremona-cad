@@ -2,7 +2,7 @@
     "recipeName": "Beard Violin",
     "fileName": "beard-messiah",
     "version": ".1",
-    "draftData": {
+    "ratios": {
       "heightMm": 356,
       "ratioHeight": 7,
       "ratioWidth": 4,
