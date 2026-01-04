@@ -147,6 +147,12 @@ export class BeardViolinComponent extends RecipeComponentBase {
     let py = Py(t) + yOff
 
 
+    // now lets define our paths
+    let leftBoutJoin = arcPathFrom3Points({x: -Cx, y: Cy + yOff}, {x: -w/2, y: Cy + yOff}, {x: -qx, y: qy})
+    let bottomBoutJoin = arcPathFrom3Points({x: 0, y: py}, {x: -qx, y: qy}, {x: qx, y: qy})
+    let rightBoutJoin = arcPathFrom3Points({x: Cx, y: Cy + yOff}, {x: qx, y: qy}, {x: w/2, y: Cy + yOff})
+
+
     // vesecai
     g.append('circle')
       .attr('cx', Cx)
@@ -159,7 +165,7 @@ export class BeardViolinComponent extends RecipeComponentBase {
      g.append('circle')
       .attr('cx', Cx)
       .attr('cy', Cy + yOff)
-      .attr('r', 1)
+      .attr('r', 2)
       .attr('stroke', 'blue')
       .attr('fill', 'none')
       .attr('stroke-width', 2)
@@ -177,7 +183,7 @@ export class BeardViolinComponent extends RecipeComponentBase {
     g.append('circle')
       .attr('cx', -Cx)
       .attr('cy', Cy + yOff)
-      .attr('r', 1)
+      .attr('r', 2)
       .attr('stroke', 'blue')
       .attr('fill', 'none')
       .attr('stroke-width', 2)
@@ -185,50 +191,64 @@ export class BeardViolinComponent extends RecipeComponentBase {
 
 
     // joining arc compass
-    g.append('circle')
-      .attr('cx', qx)
-      .attr('cy', qy)
-      .attr('r', 1)
-      .attr('stroke', 'red')
-      .attr('fill', 'none')
-      .attr('stroke-width', 5)
-      .attr('vector-effect', 'non-scaling-stroke');
-    g.append('circle')
-      .attr('cx', -qx)
-      .attr('cy', qy)
-      .attr('r', 1)
-      .attr('stroke', 'red')
-      .attr('fill', 'none')
-      .attr('stroke-width', 5)
-      .attr('vector-effect', 'non-scaling-stroke');
-    g.append('circle')
-      .attr('cx', 0)
-      .attr('cy', py)
-      .attr('r', 1)
-      .attr('stroke', 'red')
-      .attr('fill', 'none')
-      .attr('stroke-width', 5)
-      .attr('vector-effect', 'non-scaling-stroke');
+    // g.append('circle')
+    //   .attr('cx', qx)
+    //   .attr('cy', qy)
+    //   .attr('r', 1)
+    //   .attr('stroke', 'blue')
+    //   .attr('fill', 'none')
+    //   .attr('stroke-width', 2)
+    //   .attr('vector-effect', 'non-scaling-stroke')
+    // g.append('circle')
+    //   .attr('cx', -qx)
+    //   .attr('cy', qy)
+    //   .attr('r', 1)
+    //   .attr('stroke', 'blue')
+    //   .attr('fill', 'none')
+    //   .attr('stroke-width', 2)
+    //   .attr('vector-effect', 'non-scaling-stroke')
+    // g.append('circle')
+    //   .attr('cx', 0)
+    //   .attr('cy', py)
+    //   .attr('r', 2)
+    //   .attr('stroke', 'blue')
+    //   .attr('fill', 'none')
+    //   .attr('stroke-width', 2)
+    //   .attr('vector-effect', 'non-scaling-stroke')
+
+
     g.append("line")
       .attr("x1", 0)
       .attr("y1", py)
       .attr("x2", qx)
       .attr("y2", qy)
-      .attr("stroke", "red")
+      .attr("stroke", "blue")
       .attr('stroke-width', 2)
-      .attr('vector-effect', 'non-scaling-stroke');
+      .attr('vector-effect', 'non-scaling-stroke')
+      .attr('opacity', 0.25);
     g.append("line")
       .attr("x1", 0)
       .attr("y1", py)
       .attr("x2", -qx)
       .attr("y2", qy)
-      .attr("stroke", "red")
+      .attr("stroke", "blue")
       .attr('stroke-width', 2)
-      .attr('vector-effect', 'non-scaling-stroke');
+      .attr('vector-effect', 'non-scaling-stroke')
+      .attr('opacity', 0.25);
 
 
     g.append("path")
-      .attr("d", arcPathFrom3Points({x: 0, y: py}, {x: -qx, y: qy}, {x: qx, y: qy}, { clockwise: true }))
+      .attr("d", bottomBoutJoin)
+      .attr("fill", "none")
+      .attr("stroke", "red")
+      .attr("stroke-width", 2);
+    g.append("path")
+      .attr("d", leftBoutJoin)
+      .attr("fill", "none")
+      .attr("stroke", "red")
+      .attr("stroke-width", 2);
+    g.append("path")
+      .attr("d", rightBoutJoin)
       .attr("fill", "none")
       .attr("stroke", "red")
       .attr("stroke-width", 2);
