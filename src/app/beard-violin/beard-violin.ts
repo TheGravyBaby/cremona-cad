@@ -153,10 +153,10 @@ export class BeardViolinComponent extends RecipeComponentBase {
 
     let xMax = w/2
 
-    // // now lets define our paths
+    // now lets define our paths
     let bottomBoutJoin = arcPathFrom3Points({x: Qx, y: Qy}, {x: -Px, y: Py}, {x: Px, y: Py})
-    let leftBoutJoin = arcPathFrom3Points({x: -Cx, y: Cy}, {x: -xMax, y: Cy}, {x: -Px, y: Py})
-    let rightBoutJoin = arcPathFrom3Points({x: Cx, y: Cy}, {x: xMax, y: Cy}, {x: Px, y: Py}, {clockwise: false})
+    let leftBout = arcPathFrom3Points({x: -Cx, y: Cy}, {x: -xMax, y: Cy}, {x: -Px, y: Py})
+    let rightBout = arcPathFrom3Points({x: Cx, y: Cy}, {x: xMax, y: Cy}, {x: Px, y: Py}, {clockwise: false})
 
     // vesecai
     g.append('circle')
@@ -230,12 +230,12 @@ export class BeardViolinComponent extends RecipeComponentBase {
       .attr("stroke", "red")
       .attr("stroke-width", 2);
     g.append("path")
-      .attr("d", leftBoutJoin)
+      .attr("d", leftBout)
       .attr("fill", "none")
       .attr("stroke", "red")
       .attr("stroke-width", 2);
     g.append("path")
-      .attr("d", rightBoutJoin)
+      .attr("d", rightBout)
       .attr("fill", "none")
       .attr("stroke", "red")
       .attr("stroke-width", 2);
