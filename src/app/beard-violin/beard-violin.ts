@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { widthFromRatio } from '../helpers/helpers';
 import { RecipeInterface } from '../models/recipe';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
+import { arcPathFrom3Points } from '../helpers/helpers';
 
 @Component({
   selector: 'app-beard-violin',
@@ -24,8 +25,8 @@ export class BeardViolinComponent extends RecipeComponentBase {
       ratioHeight: 7,
       ratioWidth: 4,
       upperBoutReduction: 6,
-      lowerRadiiPart: 5,
-      lowerGapPart: 4,
+      lowerRadiiPart: 10,
+      lowerGapPart: 10,
       lowerJoinAngle: 7/4 * Math.PI,
       upperRadiiPart: 1,
       upperGrapPart: 1,
@@ -95,7 +96,9 @@ export class BeardViolinComponent extends RecipeComponentBase {
   renderLowerVesica = (g: any): void => {
     const h = Math.max(1, this.d.ratios.heightMm);
     const w = widthFromRatio(h, this.d.ratios.ratioHeight, this.d.ratios.ratioWidth);
+    let t = this.d.ratios.lowerJoinAngle
 
+    // we need to define two circles that will be bounded inside our bout
     // w = 2 * lowerBoutRadii + lowerGapDist
     // lowerBoutRadii = lowerGapDist *  lowerRadiiPart / lowerGapPart
     // thus
@@ -107,6 +110,7 @@ export class BeardViolinComponent extends RecipeComponentBase {
     let Cy = r
 
     // now we want to create a joining arc
+    // this was traditionally done with a compass
     // we can start by just getting a line going 
     // we'll define a point Q along the circle at some angle theta, lets pick one for example
     let QxofT = (t: number) =>  Math.cos(t) * r + Cx
@@ -122,16 +126,31 @@ export class BeardViolinComponent extends RecipeComponentBase {
 
     // now we want to define a point P where our line from Q to C intercepts the Y axis
     // x will always be 0, thats helpful, now we can just get a function y of theta
-    let yofTheta = (t: number) => yofX(0,t)
+    // we can now define the points for our compass
+    let Py = (t: number) => ( (Cy - QyofT(t))/(Cx - QxofT(t)) ) * -QxofT(t) + QyofT(t)
+    let Qx = (t: number) => QxofT(t)
+    let Qy = (t: number) => QyofT(t)
 
-    let t = this.d.ratios.lowerJoinAngle
-    let Py = yofTheta(t)
-    let Qx = QxofT(t)
-    let Qy = QyofT(t)
+    // the arc being drawn will go below x=0, so to keep our distances correct, we need to correct our bouts
+    // lets start by calculating the compass distance
+    let compassDist = (t: number ) => Math.sqrt(Math.pow((Qx(t)-0), 2) + Math.pow((Qy(t) - Py(t)),2) )
 
+    // the center of our vesici, in the model thus far, are one radii above x=0
+    // lets find the difference between r and compass dist, this is our offset
+    let yOffset = (t: number) => compassDist(t) - Py(t)
+
+    // great now lets define some fixed values instead of functions
+
+    let yOff = yOffset(t)
+    let qx = Qx(t)
+    let qy = Qy(t) + yOff
+    let py = Py(t) + yOff
+
+
+    // vesecai
     g.append('circle')
       .attr('cx', Cx)
-      .attr('cy', Cy)
+      .attr('cy', Cy + yOff)
       .attr('r', r)
       .attr('stroke', 'blue')
       .attr('fill', 'none')
@@ -139,17 +158,17 @@ export class BeardViolinComponent extends RecipeComponentBase {
       .attr('vector-effect', 'non-scaling-stroke');
      g.append('circle')
       .attr('cx', Cx)
-      .attr('cy', r)
+      .attr('cy', Cy + yOff)
       .attr('r', 1)
       .attr('stroke', 'blue')
       .attr('fill', 'none')
       .attr('stroke-width', 2)
       .attr('vector-effect', 'non-scaling-stroke');
     
-    // mirror circle
+    // mirror vesecai
      g.append('circle')
       .attr('cx', - Cx)
-      .attr('cy', Cy)
+      .attr('cy', Cy + yOff)
       .attr('r', r)
       .attr('stroke', 'blue')
       .attr('fill', 'none')
@@ -157,7 +176,7 @@ export class BeardViolinComponent extends RecipeComponentBase {
       .attr('vector-effect', 'non-scaling-stroke');
     g.append('circle')
       .attr('cx', -Cx)
-      .attr('cy', Cy)
+      .attr('cy', Cy + yOff)
       .attr('r', 1)
       .attr('stroke', 'blue')
       .attr('fill', 'none')
@@ -165,46 +184,54 @@ export class BeardViolinComponent extends RecipeComponentBase {
       .attr('vector-effect', 'non-scaling-stroke');
 
 
+    // joining arc compass
     g.append('circle')
-      .attr('cx', Qx)
-      .attr('cy', Qy)
+      .attr('cx', qx)
+      .attr('cy', qy)
       .attr('r', 1)
       .attr('stroke', 'red')
       .attr('fill', 'none')
       .attr('stroke-width', 5)
       .attr('vector-effect', 'non-scaling-stroke');
-    // g.append('circle')
-    //   .attr('cx', -Qx)
-    //   .attr('cy', Qy)
-    //   .attr('r', 1)
-    //   .attr('stroke', 'red')
-    //   .attr('fill', 'none')
-    //   .attr('stroke-width', 5)
-    //   .attr('vector-effect', 'non-scaling-stroke');
     g.append('circle')
-      .attr('cx', 0)
-      .attr('cy', Py)
+      .attr('cx', -qx)
+      .attr('cy', qy)
       .attr('r', 1)
       .attr('stroke', 'red')
       .attr('fill', 'none')
       .attr('stroke-width', 5)
-    //   .attr('vector-effect', 'non-scaling-stroke');
-    // g.append("line")
-    //   .attr("x1", 0)
-    //   .attr("y1", Q)
-    //   .attr("x2", Qx)
-    //   .attr("y2", Qy)
-    //   .attr("stroke", "red")
-    //   .attr('stroke-width', 2)
-    //   .attr('vector-effect', 'non-scaling-stroke');
-    // g.append("line")
-    //   .attr("x1", 0)
-    //   .attr("y1", yofTheta)
-    //   .attr("x2", -Qx)
-    //   .attr("y2", Qy)
-    //   .attr("stroke", "red")
-    //   .attr('stroke-width', 2)
-    //   .attr('vector-effect', 'non-scaling-stroke');
+      .attr('vector-effect', 'non-scaling-stroke');
+    g.append('circle')
+      .attr('cx', 0)
+      .attr('cy', py)
+      .attr('r', 1)
+      .attr('stroke', 'red')
+      .attr('fill', 'none')
+      .attr('stroke-width', 5)
+      .attr('vector-effect', 'non-scaling-stroke');
+    g.append("line")
+      .attr("x1", 0)
+      .attr("y1", py)
+      .attr("x2", qx)
+      .attr("y2", qy)
+      .attr("stroke", "red")
+      .attr('stroke-width', 2)
+      .attr('vector-effect', 'non-scaling-stroke');
+    g.append("line")
+      .attr("x1", 0)
+      .attr("y1", py)
+      .attr("x2", -qx)
+      .attr("y2", qy)
+      .attr("stroke", "red")
+      .attr('stroke-width', 2)
+      .attr('vector-effect', 'non-scaling-stroke');
+
+
+    g.append("path")
+      .attr("d", arcPathFrom3Points({x: 0, y: py}, {x: -qx, y: qy}, {x: qx, y: qy}, { clockwise: true }))
+      .attr("fill", "none")
+      .attr("stroke", "red")
+      .attr("stroke-width", 2);
   }
 
 
