@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { widthFromRatio } from '../helpers/helpers';
+import { solveForQyByCompassLength, widthFromRatio } from '../helpers/helpers';
 import { RecipeInterface } from '../models/recipe';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { arcPathFrom3Points } from '../helpers/helpers';
@@ -106,9 +106,16 @@ export class BeardViolinComponent extends RecipeComponentBase {
     let Cx = w/2 - r
     let Cy = r
 
-    // Q will be a point on the y axis from which we will draw our joining arc
-    let Qy = this.d.ratios.lowerJoinRatio * h
-    let Qx = 0
+    const L = this.d.ratios.lowerJoinRatio * h; // now a COMPASS LENGTH ratio
+    let Qy = 0
+    let Qx = 0;
+    try {
+      Qy = solveForQyByCompassLength({ h, targetLen: L, Cx, Cy, r });
+    }
+    catch (e) {
+      console.log("Error: " + e)
+      Qy = L
+    }
 
     // lets define a line between our point Q 
     // and the midpoint of our right most circle
