@@ -27,7 +27,7 @@ export class BeardViolinComponent extends RecipeComponentBase {
       upperBoutReduction: 6,
       lowerRadiiPart: 10,
       lowerGapPart: 10,
-      lowerJoinAngle: 7/4 * Math.PI,
+      lowerJoinRatio: .75,
       upperRadiiPart: 1,
       upperGrapPart: 1,
     },
@@ -96,67 +96,72 @@ export class BeardViolinComponent extends RecipeComponentBase {
   renderLowerVesica = (g: any): void => {
     const h = Math.max(1, this.d.ratios.heightMm);
     const w = widthFromRatio(h, this.d.ratios.ratioHeight, this.d.ratios.ratioWidth);
-    let t = this.d.ratios.lowerJoinAngle
 
     // we need to define two circles that will be bounded inside our bout
     // w = 2 * lowerBoutRadii + lowerGapDist
     // lowerBoutRadii = lowerGapDist *  lowerRadiiPart / lowerGapPart
-    // thus
     // w = 2 * LBR + LBR * lgp/lrp = LBR (2 + lgp/lrp)
-    // thus
     let r = w / ( 2+ this.d.ratios.lowerGapPart / this.d.ratios.lowerRadiiPart)
     let gap = Math.abs(w - 2 * r)
     let Cx = w/2 - r
     let Cy = r
 
-    // now we want to create a joining arc
-    // this was traditionally done with a compass
-    // we can start by just getting a line going 
-    // we'll define a point Q along the circle at some angle theta, lets pick one for example
-    let QxofT = (t: number) =>  Math.cos(t) * r + Cx
-    let QyofT = (t: number ) => Math.sin(t) * r + r
+    // Q will be a point on the y axis from which we will draw our joining arc
+    let Qy = this.d.ratios.lowerJoinRatio * h
+    let Qx = 0
 
-    // we now want a perpendicular line, thus a line between Q and C
-    // equation of a line between two points is 
-    // y- y1 = m (x-x1) where m is the slope defined as (y2-y1/ x2-x1)
-    // thus
-    // y = (y2-y1/ x2-x1) * (x-x1) + y1, or in our terms
-    // y = (Cy-Qy/ Cx-Qx) * (x-Qx) + Qy
-    let yofX = (x: number, t: number) => ( (Cy - QyofT(t))/(Cx - QxofT(t)) ) * (x-QxofT(t)) + QyofT(t)
+    // lets define a line between our point Q 
+    // and the midpoint of our right most circle
+    // y = mx + b
+    // slope is 
+    const m = (Cy - Qy) / (Cx - Qx); // Qx = 0
+    const yofX = (x: number) => m * x + Qy;
 
-    // now we want to define a point P where our line from Q to C intercepts the Y axis
-    // x will always be 0, thats helpful, now we can just get a function y of theta
-    // we can now define the points for our compass
-    let Py = (t: number) => ( (Cy - QyofT(t))/(Cx - QxofT(t)) ) * -QxofT(t) + QyofT(t)
-    let Qx = (t: number) => QxofT(t)
-    let Qy = (t: number) => QyofT(t)
+    // now we want to find the intersection point on our right most circle
+    // r^2 = (y- Cy)^2 + (x-Cx)^2, in this case we want to solve for 
+    // y = Cy ± sqrt(r^2 - (x - Cx)^2)
+    // we don't need the function but why not
+    let circofX = (x: number) => Cy + Math.sqrt(r*r - Math.pow(x - Cx, 2));
 
-    // the arc being drawn will go below x=0, so to keep our distances correct, we need to correct our bouts
-    // lets start by calculating the compass distance
-    let compassDist = (t: number ) => Math.sqrt(Math.pow((Qx(t)-0), 2) + Math.pow((Qy(t) - Py(t)),2) )
+    // now let us solve for the points we intercept 
+    // (m*x + h)^2 = Cy ± sqrt(r^2 - (x - Cx)^2)
+    // m^2*x^2 + 2mxh + h^2 = x^2 - 2*Cx*x + Cx^2
+    // m^2*x^2 - x^2 + 2mxh  + -2*Cx*x =  Cx^2 - h^2 
+    // (m+1)x^2   +   2(mh-Cx)x    -   (Cx^2 - h^2)  = 0
+    // ax^2      +   bx                +   c             = 0
+    const a = m*m + 1;
+    const b = 2 * (m * (Qy - Cy) - Cx);
+    const c = (Qy - Cy)**2 + Cx**2 - r*r;  
+    let quadraticEqPlus  = (a: number, b: number, c: number) => (-b + Math.sqrt(b*b - 4*a*c)) / (2*a)
+    let quadraticEqMinus = (a: number, b: number, c: number) => (-b - Math.sqrt(b*b - 4*a*c)) / (2*a)
+
+    // great now we have out intersection points, I just happen to know its plus in this case
+    let Px = quadraticEqPlus(a,b,c)
+    let Py = yofX(Px)    
+
+    // we now need to calculate an offset, because the joining arc will currently go into 
+    // the -y axis, and we don't want to extend the size of our violin
+    let compassDist = Math.sqrt(Math.pow((Qx-Px), 2) + Math.pow((Qy - Py),2) )
 
     // the center of our vesici, in the model thus far, are one radii above x=0
     // lets find the difference between r and compass dist, this is our offset
-    let yOffset = (t: number) => compassDist(t) - Py(t)
+    let yOffset = compassDist - Qy
 
-    // great now lets define some fixed values instead of functions
+    Py += yOffset
+    Qy += yOffset
+    Cy += yOffset
 
-    let yOff = yOffset(t)
-    let qx = Qx(t)
-    let qy = Qy(t) + yOff
-    let py = Py(t) + yOff
+    let xMax = w/2
 
-
-    // now lets define our paths
-    let leftBoutJoin = arcPathFrom3Points({x: -Cx, y: Cy + yOff}, {x: -w/2, y: Cy + yOff}, {x: -qx, y: qy})
-    let bottomBoutJoin = arcPathFrom3Points({x: 0, y: py}, {x: -qx, y: qy}, {x: qx, y: qy})
-    let rightBoutJoin = arcPathFrom3Points({x: Cx, y: Cy + yOff}, {x: qx, y: qy}, {x: w/2, y: Cy + yOff})
-
+    // // now lets define our paths
+    let bottomBoutJoin = arcPathFrom3Points({x: Qx, y: Qy}, {x: -Px, y: Py}, {x: Px, y: Py})
+    let leftBoutJoin = arcPathFrom3Points({x: -Cx, y: Cy}, {x: -xMax, y: Cy}, {x: -Px, y: Py})
+    let rightBoutJoin = arcPathFrom3Points({x: Cx, y: Cy}, {x: xMax, y: Cy}, {x: Px, y: Py}, {clockwise: false})
 
     // vesecai
     g.append('circle')
       .attr('cx', Cx)
-      .attr('cy', Cy + yOff)
+      .attr('cy', Cy)
       .attr('r', r)
       .attr('stroke', 'blue')
       .attr('fill', 'none')
@@ -164,8 +169,8 @@ export class BeardViolinComponent extends RecipeComponentBase {
       .attr('vector-effect', 'non-scaling-stroke');
      g.append('circle')
       .attr('cx', Cx)
-      .attr('cy', Cy + yOff)
-      .attr('r', 2)
+      .attr('cy', Cy)
+      .attr('r', 1)
       .attr('stroke', 'blue')
       .attr('fill', 'none')
       .attr('stroke-width', 2)
@@ -174,7 +179,7 @@ export class BeardViolinComponent extends RecipeComponentBase {
     // mirror vesecai
      g.append('circle')
       .attr('cx', - Cx)
-      .attr('cy', Cy + yOff)
+      .attr('cy', Cy)
       .attr('r', r)
       .attr('stroke', 'blue')
       .attr('fill', 'none')
@@ -182,8 +187,8 @@ export class BeardViolinComponent extends RecipeComponentBase {
       .attr('vector-effect', 'non-scaling-stroke');
     g.append('circle')
       .attr('cx', -Cx)
-      .attr('cy', Cy + yOff)
-      .attr('r', 2)
+      .attr('cy', Cy)
+      .attr('r', 1)
       .attr('stroke', 'blue')
       .attr('fill', 'none')
       .attr('stroke-width', 2)
@@ -191,52 +196,34 @@ export class BeardViolinComponent extends RecipeComponentBase {
 
 
     // joining arc compass
-    // g.append('circle')
-    //   .attr('cx', qx)
-    //   .attr('cy', qy)
-    //   .attr('r', 1)
-    //   .attr('stroke', 'blue')
-    //   .attr('fill', 'none')
-    //   .attr('stroke-width', 2)
-    //   .attr('vector-effect', 'non-scaling-stroke')
-    // g.append('circle')
-    //   .attr('cx', -qx)
-    //   .attr('cy', qy)
-    //   .attr('r', 1)
-    //   .attr('stroke', 'blue')
-    //   .attr('fill', 'none')
-    //   .attr('stroke-width', 2)
-    //   .attr('vector-effect', 'non-scaling-stroke')
-    // g.append('circle')
-    //   .attr('cx', 0)
-    //   .attr('cy', py)
-    //   .attr('r', 2)
-    //   .attr('stroke', 'blue')
-    //   .attr('fill', 'none')
-    //   .attr('stroke-width', 2)
-    //   .attr('vector-effect', 'non-scaling-stroke')
-
+    g.append('circle')
+      .attr('cx', Qx)
+      .attr('cy', Qy)
+      .attr('r', 1)
+      .attr('stroke', 'blue')
+      .attr('fill', 'none')
+      .attr('stroke-width', 2)
+      .attr('vector-effect', 'non-scaling-stroke')
 
     g.append("line")
-      .attr("x1", 0)
-      .attr("y1", py)
-      .attr("x2", qx)
-      .attr("y2", qy)
+      .attr("x1", Qx)
+      .attr("y1", Qy)
+      .attr("x2", Px)
+      .attr("y2", Py)
       .attr("stroke", "blue")
       .attr('stroke-width', 2)
       .attr('vector-effect', 'non-scaling-stroke')
       .attr('opacity', 0.25);
     g.append("line")
-      .attr("x1", 0)
-      .attr("y1", py)
-      .attr("x2", -qx)
-      .attr("y2", qy)
+      .attr("x1", Qx)
+      .attr("y1", Qy)
+      .attr("x2", -Px)
+      .attr("y2", Py)
       .attr("stroke", "blue")
       .attr('stroke-width', 2)
       .attr('vector-effect', 'non-scaling-stroke')
       .attr('opacity', 0.25);
-
-
+      
     g.append("path")
       .attr("d", bottomBoutJoin)
       .attr("fill", "none")

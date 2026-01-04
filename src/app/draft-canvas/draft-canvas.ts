@@ -28,7 +28,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     console.log("Saw the event")
   }
 
-  public pxPerMm = 1;
+  public pxPerMm = 2;
   public showGrid = true;
   public showAxes = true;
 
@@ -41,7 +41,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
   private offsetMmX?: number;
   private offsetMmY?: number;
-  private defaultPxPerMm = 20;
+  private defaultPxPerMm = 2;
 
   // drag state
   private isDragging = false;
@@ -269,7 +269,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   initDefaultCamera(mmW: number, mmH: number) {
     // match your current initial framing
     this.offsetMmX = -mmW / 2;
-    this.offsetMmY = -mmH * 0.8;
+    this.offsetMmY = -mmH * .95;
     this.defaultPxPerMm = this.pxPerMm;
   }
 
