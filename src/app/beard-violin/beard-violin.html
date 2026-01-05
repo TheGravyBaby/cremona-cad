@@ -78,8 +78,20 @@
         <input type="number" step="1" min="1" [(ngModel)]="d.ratios.upperJoinRatioDen" (input)="changeUpperVesica()" />
       </div>
     </label>
-
     <br>
-
   </details>
+
+  <details [open]="openPanel === 'centerBouts'" (toggle)="onToggle('centerBouts', $event)">
+    <summary>Center Bouts</summary>
+    <label>
+      Waist Center : Body Ratio
+      <div class="ratio">
+        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.waistCenterNum" (input)="changeCenterBouts()" />
+        <span>:</span>
+        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.waistCenterDen" (input)="changeCenterBouts()" />
+      </div>
+    </label>
+  </details>
+
+
 </div>

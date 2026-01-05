@@ -229,7 +229,7 @@ export class RecipeComponentBase {
     }
   }
 
-  drawDashedLine(
+  renderDashLine(
     g: any,
     start: { x: number; y: number },
     end: { x: number; y: number },

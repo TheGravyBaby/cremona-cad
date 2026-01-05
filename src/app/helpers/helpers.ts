@@ -1,12 +1,5 @@
 import { Pt, Fraction } from "../models/types";
 
-export function widthFromRatio(heightMm: number, ratioHeight: number, ratioWidth: number): number {
-  const h = Math.max(1, heightMm);
-  const a = Math.max(1, ratioHeight);
-  const b = Math.max(1, ratioWidth);
-  return h * (b / a);
-}
-
 export function polarAngle(c: Pt, p: Pt) {
   return Math.atan2(p.y - c.y, p.x - c.x);
 }
@@ -14,6 +7,81 @@ export function polarAngle(c: Pt, p: Pt) {
 export function dist(a: Pt, b: Pt) {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
+
+export function pointOnCircle(C: Pt, r: number, θ: number): Pt {
+  return {
+    x: C.x + r * Math.cos(θ),
+    y: C.y + r * Math.sin(θ),
+  };
+}
+
+export function projectToCircle(C: Pt, r: number, P: Pt): Pt {
+  const θ = angleFromCenter(C, P);
+  return pointOnCircle(C, r, θ);
+}
+
+export function circleCircleIntersections(
+  C1: Pt, r1: number,
+  C2: Pt, r2: number
+): Pt[] {
+  const d = dist(C1, C2);
+  if (d > r1 + r2 || d < Math.abs(r1 - r2) || d === 0) return [];
+
+  const a = (r1*r1 - r2*r2 + d*d) / (2*d);
+  const h = Math.sqrt(r1*r1 - a*a);
+
+  const xm = C1.x + a * (C2.x - C1.x) / d;
+  const ym = C1.y + a * (C2.y - C1.y) / d;
+
+  const rx = -(C2.y - C1.y) * (h / d);
+  const ry =  (C2.x - C1.x) * (h / d);
+
+  return [
+    { x: xm + rx, y: ym + ry },
+    { x: xm - rx, y: ym - ry },
+  ];
+}
+
+export function arcLengthToAngle(r: number, L: number): number {
+  return L / r;
+}
+
+export function angleToArcLength(r: number, θ: number): number {
+  return r * θ;
+}
+
+export function bisectAngles(θ1: number, θ2: number): number {
+  return θ1 + (θ2 - θ1) / 2;
+}
+
+export function circleTangentAngle(θ: number): number {
+  return θ + Math.PI / 2;
+}
+
+export function lineCircleIntersection(
+  P1: Pt, P2: Pt,
+  C: Pt, r: number
+): Pt[] {
+  const dx = P2.x - P1.x;
+  const dy = P2.y - P1.y;
+
+  const fx = P1.x - C.x;
+  const fy = P1.y - C.y;
+
+  const a = dx*dx + dy*dy;
+  const b = 2 * (fx*dx + fy*dy);
+  const c = fx*fx + fy*fy - r*r;
+
+  const disc = b*b - 4*a*c;
+  if (disc < 0) return [];
+
+  const s = Math.sqrt(disc);
+  return [
+    { x: P1.x + (-b + s)/(2*a) * dx, y: P1.y + (-b + s)/(2*a) * dy },
+    { x: P1.x + (-b - s)/(2*a) * dx, y: P1.y + (-b - s)/(2*a) * dy },
+  ];
+}
+
 
 export function arcPathFrom3Points(
   c: Pt,
@@ -54,6 +122,9 @@ export function arcPathFrom3Points(
   return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArcFlag} ${sweepFlag} ${endOnCircle.x} ${endOnCircle.y}`;
 }
 
+export function angleFromCenter(C: Pt, P: Pt): number {
+  return Math.atan2(P.y - C.y, P.x - C.x);
+}
 
 export function safeFraction(n: number, d: number):
   { ok: true; value: Fraction } | { ok: false; error: string } {

@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { dist, widthFromRatio } from '../helpers/helpers';
+import { dist, pointOnCircle } from '../helpers/helpers';
 import { RecipeInterface } from '../models/recipe';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { arcPathFrom3Points } from '../helpers/helpers';
@@ -25,14 +25,19 @@ export class BeardViolinComponent extends RecipeComponentBase {
       heightPart: 7,
       widthPart: 4,
       upperBoutReductionDenom: 6,
+
       lowerRadiiPart: 1,
       lowerGapPart: 1,
       lowerJoinRatioNum: 2,
       lowerJoinRatioDen: 3,
+
       upperRadiiPart: 1,
       upperGapPart: 1,
       upperJoinRatioNum: 2,
       upperJoinRatioDen: 3,
+
+      waistCenterNum: 11,
+      waistCenterDen: 20
     },
     paths: []
   }
@@ -54,6 +59,7 @@ export class BeardViolinComponent extends RecipeComponentBase {
       if (panel === 'upperBout') this.changeUpperVesica();
       else if (panel === 'base') this.changeBase();
       else if (panel === 'lowerBout') this.changeLowerVesica();
+      else if (panel == 'centerBouts') this.changeCenterBouts();
     } else {
       // closed -> don't switch panels (prevents "weird" behavior)
       // optional: if you want to forbid closing the active one, re-open it:
@@ -75,9 +81,14 @@ export class BeardViolinComponent extends RecipeComponentBase {
     ]);
   }
 
+  changeCenterBouts(): void {
+     this.draftChange.emit([this.renderBoutBounds, this.renderCenterBout, this.renderPaths(this.d.paths)
+    ]);
+  }
+
   renderBounds = (g: any, ui: any): void => {
     const h = Math.max(1, this.d.ratios.heightMm);
-    const w = widthFromRatio(h, this.d.ratios.heightPart, this.d.ratios.widthPart);
+    const w = h * this.d.ratios.widthPart / this.d.ratios.heightPart;
     const xLeft = -w / 2;
 
     // bounding rect (above x-axis)
@@ -94,7 +105,7 @@ export class BeardViolinComponent extends RecipeComponentBase {
 
   renderBoutBounds = (g: any, ui: any) => {
     const h = Math.max(1, this.d.ratios.heightMm);
-    const w = widthFromRatio(h, this.d.ratios.heightPart, this.d.ratios.widthPart);
+    const w = h * this.d.ratios.widthPart / this.d.ratios.heightPart;
     const xLeft = -w / 2;
 
     // bottom square
@@ -121,7 +132,7 @@ export class BeardViolinComponent extends RecipeComponentBase {
 
   renderLowerVesica = (g: any, ui: any): void => {
     const h = Math.max(1, this.d.ratios.heightMm);
-    const w = widthFromRatio(h, this.d.ratios.heightPart, this.d.ratios.widthPart);
+    const w = h * this.d.ratios.widthPart / this.d.ratios.heightPart;
 
     // we need to define two circles that will be bounded inside our bout
     // w = 2 * lowerBoutRadii + lowerGapDist
@@ -186,10 +197,13 @@ export class BeardViolinComponent extends RecipeComponentBase {
 
     let xMax = w / 2
 
+    let leftCirclePeak = pointOnCircle({x: -Cx, y: Cy}, r, Math.PI* 7/8)
+    let rightCirclePeak = pointOnCircle({x: Cx, y: Cy}, r, Math.PI* 1/8)
+
     // now lets define our paths
     let lowerBoutJoin = arcPathFrom3Points({ x: Qx, y: Qy }, { x: -Px, y: Py }, { x: Px, y: Py })
-    let lowerBoutLeft = arcPathFrom3Points({ x: -Cx, y: Cy }, { x: -xMax, y: Cy }, { x: -Px, y: Py })
-    let lowerBoutRight = arcPathFrom3Points({ x: Cx, y: Cy }, { x: xMax, y: Cy }, { x: Px, y: Py }, { clockwise: false })
+    let lowerBoutLeft = arcPathFrom3Points({ x: -Cx, y: Cy }, leftCirclePeak, { x: -Px, y: Py })
+    let lowerBoutRight = arcPathFrom3Points({ x: Cx, y: Cy }, rightCirclePeak, { x: Px, y: Py }, { clockwise: false })
 
     let paths = [
       { name: 'lowerBoutJoin', d: lowerBoutJoin },
@@ -267,7 +281,7 @@ export class BeardViolinComponent extends RecipeComponentBase {
 
     this.renderBoxLine(g, ui, { x: w * .7, y: 0 }, { x: w * .7, y: L }, this.d.ratios.lowerJoinRatioNum, "blue", "lightblue", false)
     this.renderBoxLine(g, ui, { x: w * .8, y: 0 }, { x: w * .8, y: h }, this.d.ratios.lowerJoinRatioDen, "blue", "lightblue", true)
-    this.drawDashedLine(g, { x: 3 * w, y: L }, { x: -3 * w, y: L })
+    this.renderDashLine(g, { x: 3 * w, y: L }, { x: -3 * w, y: L })
 
     let vesicaiRatios = [this.d.ratios.lowerRadiiPart, this.d.ratios.lowerGapPart, this.d.ratios.lowerRadiiPart]
     this.renderBoxLine(g, ui, { x: -xMax, y: -25 }, { x: xMax, y: -25 }, vesicaiRatios, "blue", "lightblue", true, { labelMode: "segmentWeight" })
@@ -276,7 +290,7 @@ export class BeardViolinComponent extends RecipeComponentBase {
 
   renderUpperVesica = (g: any, ui: any): void => {
     const h = Math.max(1, this.d.ratios.heightMm);
-    const w = widthFromRatio(h, this.d.ratios.heightPart, this.d.ratios.widthPart);
+    const w = h * this.d.ratios.widthPart / this.d.ratios.heightPart;
     const upW = this.d.ratios.upperBoutReductionDenom <= 0 ? w : w - w * (1 / this.d.ratios.upperBoutReductionDenom);
 
     // we need to define two circles that will be bounded inside our bout
@@ -296,7 +310,7 @@ export class BeardViolinComponent extends RecipeComponentBase {
     }
     catch (e) {
       console.log("Error: " + e)
-      Qy = L
+      Qy = h - L
     }
 
     const m = (Cy - Qy) / (Cx - Qx); // Qx = 0
@@ -317,10 +331,13 @@ export class BeardViolinComponent extends RecipeComponentBase {
 
     let xMax = upW / 2
 
+    let leftCirclePeak = pointOnCircle({x: -Cx, y: Cy}, r, Math.PI* 9/8)
+    let rightCirclePeak = pointOnCircle({x: Cx, y: Cy}, r, Math.PI* 15/8)
+
     // now lets define our paths
     let upperBoutJoin  = arcPathFrom3Points({ x: Qx, y: Qy }, { x: Px, y: Py }, { x: -Px, y: Py })
-    let  upperBoutLeft = arcPathFrom3Points({ x: -Cx, y: Cy }, { x: -xMax, y: Cy }, { x: -Px, y: Py }, {clockwise: false})
-    let upperBoutRight = arcPathFrom3Points({ x: Cx, y: Cy }, { x: xMax, y: Cy }, { x: Px, y: Py })
+    let  upperBoutLeft = arcPathFrom3Points({ x: -Cx, y: Cy }, leftCirclePeak, { x: -Px, y: Py }, {clockwise: false})
+    let upperBoutRight = arcPathFrom3Points({ x: Cx, y: Cy }, rightCirclePeak, { x: Px, y: Py })
 
     let paths = [
       { name: 'upperBoutJoin', d: upperBoutJoin },
@@ -399,10 +416,20 @@ export class BeardViolinComponent extends RecipeComponentBase {
 
     this.renderBoxLine(g, ui, { x: w * .7, y: h-L }, { x: w * .7, y: h }, this.d.ratios.upperJoinRatioNum, "green", "lightgreen", false)
     this.renderBoxLine(g, ui, { x: w * .8, y: 0 }, { x: w * .8, y: h }, this.d.ratios.upperJoinRatioDen, "green", "lightgreen", true)
-    this.drawDashedLine(g, { x: 3 * w, y: h-L }, { x: -3 * w, y: h-L })
+    this.renderDashLine(g, { x: 3 * w, y: h-L }, { x: -3 * w, y: h-L })
 
     let vesicaiRatios = [this.d.ratios.upperRadiiPart, this.d.ratios.upperGapPart, this.d.ratios.upperRadiiPart]
     this.renderBoxLine(g, ui, { x: -xMax, y: h + 25 }, { x: xMax, y: h + 25 }, vesicaiRatios, "lightgreen", "green", true, { labelMode: "segmentWeight" })
+
+  }
+
+  renderCenterBout = (g: any, ui: any): void => {
+    const h = Math.max(1, this.d.ratios.heightMm);
+    let waistHeight = h * this.d.ratios.waistCenterNum / this.d.ratios.waistCenterDen 
+
+    this.renderDashLine(g, { x: -1000, y: waistHeight }, { x: 1000, y: waistHeight })
+
+
 
   }
 

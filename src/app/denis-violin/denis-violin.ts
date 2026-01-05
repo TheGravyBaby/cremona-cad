@@ -1,5 +1,4 @@
-import { Component, EventEmitter, Output } from '@angular/core';
-import { widthFromRatio } from '../helpers/helpers';
+import { Component } from '@angular/core';
 import { RecipeInterface } from '../models/recipe';
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
@@ -30,7 +29,7 @@ export class DenisViolin extends RecipeComponentBase{
 
   drawBoundingBoxes = (g: any): void => {
     const h = Math.max(1, this.d.ratios.heightMm);
-    const w = widthFromRatio(h, this.d.ratios.ratioHeight, this.d.ratios.ratioWidth);
+    const w = h * this.d.ratios.heightPart / this.d.ratios.widthPart;
     const xLeft = -w / 2;
 
     // bounding rect (above x-axis)
