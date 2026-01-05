@@ -3,5 +3,5 @@ export interface RecipeInterface {
     fileName: string;
     version: string;
     ratios: any;
-    calcs: any; 
+    paths: any; 
 }

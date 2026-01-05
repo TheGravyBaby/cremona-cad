@@ -28,7 +28,10 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     console.log("Saw the event")
   }
 
-  public pxPerMm = 2;
+  private defaultPxPerMm = 1;
+  public pxPerMm = 1;
+  private offsetMmX?: number = -350;
+  private offsetMmY?: number = -400;
   public showGrid = true;
   public showAxes = true;
 
@@ -38,10 +41,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private resizeObs?: ResizeObserver;
   private draftFuncs: Array<(canvas: any, uiCan: any) => void> = [];
 
-
-  private offsetMmX?: number;
-  private offsetMmY?: number;
-  private defaultPxPerMm = 2;
 
   // drag state
   private isDragging = false;
@@ -84,10 +83,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     const pxH = Math.max(1, el.clientHeight);
     const mmW = pxW / this.pxPerMm;
     const mmH = pxH / this.pxPerMm;
-
-    if (this.offsetMmX === undefined || this.offsetMmY === undefined) {
-      this.initDefaultCamera(mmW, mmH)
-    }
 
     // Camera window (top-left in world mm coords)
     const leftBound = this.offsetMmX;
@@ -262,17 +257,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       .attr('fill', dotColor);
   }
 
-
-
-
-  // camera controls
-  initDefaultCamera(mmW: number, mmH: number) {
-    // match your current initial framing
-    this.offsetMmX = -mmW / 2;
-    this.offsetMmY = -mmH * .95;
-    this.defaultPxPerMm = this.pxPerMm;
-  }
-
   onPointerDown = (event: PointerEvent) => {
     // left mouse / primary touch only
     if (event.button !== 0) return;
@@ -340,14 +324,8 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
     // reset zoom first
     this.pxPerMm = this.defaultPxPerMm;
-
-    // ensure defaults exist
-    if (this.offsetMmX === undefined || this.offsetMmY === undefined) {
-      this.initDefaultCamera(mmW, mmH);
-    }
-
-    this.offsetMmX = this.offsetMmX!;
-    this.offsetMmY = this.offsetMmY!;
+    this.offsetMmX = 0;
+    this.offsetMmY = 0;
     this.draw();
   }
 

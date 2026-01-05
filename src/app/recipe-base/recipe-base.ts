@@ -32,7 +32,7 @@ export class RecipeComponentBase {
     fileName: "tst",
     version: "",
     ratios: undefined,
-    calcs: undefined
+    paths: undefined
   }
 
   ngOnInit() {

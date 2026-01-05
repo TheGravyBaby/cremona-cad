@@ -4,7 +4,6 @@ import { dist, widthFromRatio } from '../helpers/helpers';
 import { RecipeInterface } from '../models/recipe';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { arcPathFrom3Points } from '../helpers/helpers';
-import { Pt } from '../models/types';
 
 @Component({
   selector: 'app-beard-violin',
@@ -15,7 +14,7 @@ import { Pt } from '../models/types';
 })
 
 export class BeardViolinComponent extends RecipeComponentBase {
-  override openPanel = 'lowerBout'
+  override openPanel = 'upperBout'
 
   override d: RecipeInterface = {
     recipeName: 'Beard Violin',
@@ -31,28 +30,52 @@ export class BeardViolinComponent extends RecipeComponentBase {
       lowerJoinRatioNum: 2,
       lowerJoinRatioDen: 3,
       upperRadiiPart: 1,
-      upperGrapPart: 1,
+      upperGapPart: 1,
     },
-    calcs: {}
+    paths: []
   }
 
   override firstRender = (g: any, ui: any): void => {
-    // this.renderBounds(g)
+    this.renderBounds(g, ui)
     this.renderBoutBounds(g, ui)
-    this.renderLowerVesica(g, ui)
+    // this.renderLowerVesica(g, ui)
+  }
+
+  override onToggle(panel: string, ev: Event) {
+    const details = ev.target as HTMLDetailsElement;
+
+    if (details.open) {
+      // opened -> make it the active panel and render it
+      this.openPanel = panel;
+
+      // render the last opened panel
+      if (panel === 'upperBout') this.changeUpperVesica();
+      else if (panel === 'base') this.changeBase();
+      else if (panel === 'lowerBout') this.changeLowerVesica();
+    } else {
+      // closed -> don't switch panels (prevents "weird" behavior)
+      // optional: if you want to forbid closing the active one, re-open it:
+      // if (this.openPanel === panel) queueMicrotask(() => (details.open = true));
+    }
   }
 
   changeBase(): void {
     this.draftChange.emit([this.firstRender]);
   }
 
-  changeVesica(): void {
-    this.draftChange.emit([this.renderBoutBounds, this.renderLowerVesica]);
+  changeLowerVesica(): void {
+    this.draftChange.emit([this.renderBoutBounds, this.renderLowerVesica, this.renderAllPaths(this.d.paths)
+    ]);
+  }
+
+  changeUpperVesica(): void {
+    this.draftChange.emit([this.renderBoutBounds, this.renderUpperVesica, this.renderAllPaths(this.d.paths)
+    ]);
   }
 
   renderBounds = (g: any, ui: any): void => {
     const h = Math.max(1, this.d.ratios.heightMm);
-    const w = widthFromRatio(h, this.d.ratios.ratioHeight, this.d.ratios.ratioWidth);
+    const w = widthFromRatio(h, this.d.ratios.heightPart, this.d.ratios.widthPart);
     const xLeft = -w / 2;
 
     // bounding rect (above x-axis)
@@ -92,7 +115,6 @@ export class BeardViolinComponent extends RecipeComponentBase {
       .attr('height', upperBoutW)
       .attr('fill', 'green')
       .attr('opacity', 0.25);
-
   }
 
   renderLowerVesica = (g: any, ui: any): void => {
@@ -150,7 +172,7 @@ export class BeardViolinComponent extends RecipeComponentBase {
 
     // we now need to calculate an offset, because the joining arc will currently go into 
     // the -y axis, and we don't want to extend the size of our violin
-    let compassDist = dist({ x: Qx, y: Qy },{ x: Px, y: Py }) 
+    let compassDist = dist({ x: Qx, y: Qy }, { x: Px, y: Py })
 
     // the center of our vesici, in the model thus far, are one radii above x=0
     // lets find the difference between r and compass dist, this is our offset
@@ -166,6 +188,14 @@ export class BeardViolinComponent extends RecipeComponentBase {
     let bottomBoutJoin = arcPathFrom3Points({ x: Qx, y: Qy }, { x: -Px, y: Py }, { x: Px, y: Py })
     let leftBout = arcPathFrom3Points({ x: -Cx, y: Cy }, { x: -xMax, y: Cy }, { x: -Px, y: Py })
     let rightBout = arcPathFrom3Points({ x: Cx, y: Cy }, { x: xMax, y: Cy }, { x: Px, y: Py }, { clockwise: false })
+
+    let paths = [
+      { name: 'bottomBoutJoin', d: bottomBoutJoin },
+      { name: 'leftLowerBout', d: leftBout },
+      { name: 'rightLowerBout', d: rightBout }
+    ];
+
+    this.addPaths(paths)
 
     // vesecai
     g.append('circle')
@@ -233,29 +263,171 @@ export class BeardViolinComponent extends RecipeComponentBase {
       .attr('vector-effect', 'non-scaling-stroke')
       .attr('opacity', 0.25);
 
-    g.append("path")
-      .attr("d", bottomBoutJoin)
-      .attr("fill", "none")
-      .attr("stroke", "red")
-      .attr("stroke-width", 2);
-    g.append("path")
-      .attr("d", leftBout)
-      .attr("fill", "none")
-      .attr("stroke", "red")
-      .attr("stroke-width", 2);
-    g.append("path")
-      .attr("d", rightBout)
-      .attr("fill", "none")
-      .attr("stroke", "red")
-      .attr("stroke-width", 2);
-
-    this.renderBoxLine(g, ui, {x: w*.7, y: 0}, {x: w*.7, y: L}, this.d.ratios.lowerJoinRatioNum, "blue", "green", false)
-    this.renderBoxLine(g, ui, {x: w*.8, y: 0}, {x: w*.8, y: h}, this.d.ratios.lowerJoinRatioDen, "blue", "green", true)
-    this.drawDashedLine(g, {x: 3*w, y: L}, {x: -3*w, y: L})
+    this.renderBoxLine(g, ui, { x: w * .7, y: 0 }, { x: w * .7, y: L }, this.d.ratios.lowerJoinRatioNum, "blue", "green", false)
+    this.renderBoxLine(g, ui, { x: w * .8, y: 0 }, { x: w * .8, y: h }, this.d.ratios.lowerJoinRatioDen, "blue", "green", true)
+    this.drawDashedLine(g, { x: 3 * w, y: L }, { x: -3 * w, y: L })
 
     let vesicaiRatios = [this.d.ratios.lowerRadiiPart, this.d.ratios.lowerGapPart, this.d.ratios.lowerRadiiPart]
-    this.renderBoxLine(g, ui, {x: -xMax, y: -50}, {x: xMax, y: -50}, vesicaiRatios, "blue", "green", true, {labelMode: "segmentWeight"})
+    this.renderBoxLine(g, ui, { x: -xMax, y: -25 }, { x: xMax, y: -25 }, vesicaiRatios, "blue", "green", true, { labelMode: "segmentWeight" })
 
+  }
+
+  renderUpperVesica = (g: any, ui: any): void => {
+    const h = Math.max(1, this.d.ratios.heightMm);
+    const w = widthFromRatio(h, this.d.ratios.heightPart, this.d.ratios.widthPart);
+    const upW = this.d.ratios.upperBoutReductionDenom <= 0 ? w : w - w * (1 / this.d.ratios.upperBoutReductionDenom);
+
+    // we need to define two circles that will be bounded inside our bout
+    // w = 2 * lowerBoutRadii + lowerGapDist
+    // lowerBoutRadii = lowerGapDist *  lowerRadiiPart / lowerGapPart
+    // w = 2 * LBR + LBR * lgp/lrp = LBR (2 + lgp/lrp)
+    let r = upW / (2 + this.d.ratios.upperGapPart / this.d.ratios.lowerRadiiPart)
+    let gap = Math.abs(w - 2 * r)
+    let Cx = upW / 2 - r
+    let Cy = h - r
+
+    const L = (this.d.ratios.lowerJoinRatioNum / this.d.ratios.lowerJoinRatioDen) * h; // now a COMPASS LENGTH ratio
+    let Qy = 0
+    let Qx = 0;
+    try {
+      Qy = this.solveForQyByCompassLength({ h, targetLen: L, Cx, Cy, r });
+    }
+    catch (e) {
+      console.log("Error: " + e)
+      Qy = L
+    }
+
+    const m = (Cy - Qy) / (Cx - Qx); // Qx = 0
+    const yofX = (x: number) => m * x + Qy;
+    let circofX = (x: number) => Cy + Math.sqrt(r * r - Math.pow(x - Cx, 2));
+    const a = m * m + 1;
+    const b = 2 * (m * (Qy - Cy) - Cx);
+    const c = (Qy - Cy) ** 2 + Cx ** 2 - r * r;
+    let quadraticEqPlus = (a: number, b: number, c: number) => (-b + Math.sqrt(b * b - 4 * a * c)) / (2 * a)
+    let quadraticEqMinus = (a: number, b: number, c: number) => (-b - Math.sqrt(b * b - 4 * a * c)) / (2 * a)
+    let Px = quadraticEqPlus(a, b, c)
+    let Py = yofX(Px)
+    let compassDist = dist({ x: Qx, y: Qy }, { x: Px, y: Py })
+    let yOffset = compassDist - Qy
+    // Py += yOffset
+    // Qy += yOffset
+    // Cy += yOffset
+
+    let xMax = w / 2
+
+    // now lets define our paths
+    let bottomBoutJoin = arcPathFrom3Points({ x: Qx, y: Qy }, { x: -Px, y: Py }, { x: Px, y: Py })
+    let leftBout = arcPathFrom3Points({ x: -Cx, y: Cy }, { x: -xMax, y: Cy }, { x: -Px, y: Py })
+    let rightBout = arcPathFrom3Points({ x: Cx, y: Cy }, { x: xMax, y: Cy }, { x: Px, y: Py }, { clockwise: false })
+
+    // vesecai
+    g.append('circle')
+      .attr('cx', Cx)
+      .attr('cy', Cy)
+      .attr('r', r)
+      .attr('stroke', 'green')
+      .attr('fill', 'none')
+      .attr('stroke-width', 2)
+      .attr('vector-effect', 'non-scaling-stroke');
+    g.append('circle')
+      .attr('cx', Cx)
+      .attr('cy', Cy)
+      .attr('r', 1)
+      .attr('stroke', 'green')
+      .attr('fill', 'none')
+      .attr('stroke-width', 2)
+      .attr('vector-effect', 'non-scaling-stroke');
+
+    // mirror vesecai
+    g.append('circle')
+      .attr('cx', - Cx)
+      .attr('cy', Cy)
+      .attr('r', r)
+      .attr('stroke', 'green')
+      .attr('fill', 'none')
+      .attr('stroke-width', 2)
+      .attr('vector-effect', 'non-scaling-stroke');
+    g.append('circle')
+      .attr('cx', -Cx)
+      .attr('cy', Cy)
+      .attr('r', 1)
+      .attr('stroke', 'green')
+      .attr('fill', 'none')
+      .attr('stroke-width', 2)
+      .attr('vector-effect', 'non-scaling-stroke');
+
+
+    // joining arc compass
+    // g.append('circle')
+    //   .attr('cx', Qx)
+    //   .attr('cy', Qy)
+    //   .attr('r', 1)
+    //   .attr('stroke', 'blue')
+    //   .attr('fill', 'none')
+    //   .attr('stroke-width', 2)
+    //   .attr('vector-effect', 'non-scaling-stroke')
+
+    // g.append("line")
+    //   .attr("x1", Qx)
+    //   .attr("y1", Qy)
+    //   .attr("x2", Px)
+    //   .attr("y2", Py)
+    //   .attr("stroke", "blue")
+    //   .attr('stroke-width', 2)
+    //   .attr('vector-effect', 'non-scaling-stroke')
+    //   .attr('opacity', 0.25);
+    // g.append("line")
+    //   .attr("x1", Qx)
+    //   .attr("y1", Qy)
+    //   .attr("x2", -Px)
+    //   .attr("y2", Py)
+    //   .attr("stroke", "blue")
+    //   .attr('stroke-width', 2)
+    //   .attr('vector-effect', 'non-scaling-stroke')
+    //   .attr('opacity', 0.25);
+
+    // g.append("path")
+    //   .attr("d", bottomBoutJoin)
+    //   .attr("fill", "none")
+    //   .attr("stroke", "red")
+    //   .attr("stroke-width", 2);
+    // g.append("path")
+    //   .attr("d", leftBout)
+    //   .attr("fill", "none")
+    //   .attr("stroke", "red")
+    //   .attr("stroke-width", 2);
+    // g.append("path")
+    //   .attr("d", rightBout)
+    //   .attr("fill", "none")
+    //   .attr("stroke", "red")
+    //   .attr("stroke-width", 2);
+
+    // this.renderBoxLine(g, ui, { x: w * .7, y: 0 }, { x: w * .7, y: L }, this.d.ratios.lowerJoinRatioNum, "blue", "green", false)
+    // this.renderBoxLine(g, ui, { x: w * .8, y: 0 }, { x: w * .8, y: h }, this.d.ratios.lowerJoinRatioDen, "blue", "green", true)
+    // this.drawDashedLine(g, { x: 3 * w, y: L }, { x: -3 * w, y: L })
+
+    // let vesicaiRatios = [this.d.ratios.lowerRadiiPart, this.d.ratios.lowerGapPart, this.d.ratios.lowerRadiiPart]
+    // this.renderBoxLine(g, ui, { x: -xMax, y: -25 }, { x: xMax, y: -25 }, vesicaiRatios, "blue", "green", true, { labelMode: "segmentWeight" })
+
+  }
+
+  renderAllPaths = (paths: Array<{ d: string }>) => (g: any, ui: any) => {
+    paths.forEach(p => {
+      g.append("path")
+        .attr("d", p.d)
+        .attr("fill", "none")
+        .attr("stroke", "red")
+        .attr("stroke-width", 2);
+    });
+  };
+
+  addPaths(calcs: {name: string, d: string}[]) {
+    this.d.paths = this.d.paths || [];
+    for (const entry of calcs) {
+      const idx = this.d.paths.findIndex((c: any) => c.name === entry.name);
+      if (idx === -1) this.d.paths.push(entry);
+      else this.d.paths[idx] = entry;
+    }
   }
 
   solveForQyByCompassLength(opts: {
