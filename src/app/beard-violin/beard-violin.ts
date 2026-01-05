@@ -31,6 +31,8 @@ export class BeardViolinComponent extends RecipeComponentBase {
       lowerJoinRatioDen: 3,
       upperRadiiPart: 1,
       upperGapPart: 1,
+      upperJoinRatioNum: 2,
+      upperJoinRatioDen: 3,
     },
     paths: []
   }
@@ -64,12 +66,12 @@ export class BeardViolinComponent extends RecipeComponentBase {
   }
 
   changeLowerVesica(): void {
-    this.draftChange.emit([this.renderBoutBounds, this.renderLowerVesica, this.renderAllPaths(this.d.paths)
+    this.draftChange.emit([this.renderBoutBounds, this.renderLowerVesica, this.renderPaths(this.d.paths)
     ]);
   }
 
   changeUpperVesica(): void {
-    this.draftChange.emit([this.renderBoutBounds, this.renderUpperVesica, this.renderAllPaths(this.d.paths)
+    this.draftChange.emit([this.renderBoutBounds, this.renderUpperVesica, this.renderPaths(this.d.paths)
     ]);
   }
 
@@ -185,14 +187,14 @@ export class BeardViolinComponent extends RecipeComponentBase {
     let xMax = w / 2
 
     // now lets define our paths
-    let bottomBoutJoin = arcPathFrom3Points({ x: Qx, y: Qy }, { x: -Px, y: Py }, { x: Px, y: Py })
-    let leftBout = arcPathFrom3Points({ x: -Cx, y: Cy }, { x: -xMax, y: Cy }, { x: -Px, y: Py })
-    let rightBout = arcPathFrom3Points({ x: Cx, y: Cy }, { x: xMax, y: Cy }, { x: Px, y: Py }, { clockwise: false })
+    let lowerBoutJoin = arcPathFrom3Points({ x: Qx, y: Qy }, { x: -Px, y: Py }, { x: Px, y: Py })
+    let lowerBoutLeft = arcPathFrom3Points({ x: -Cx, y: Cy }, { x: -xMax, y: Cy }, { x: -Px, y: Py })
+    let lowerBoutRight = arcPathFrom3Points({ x: Cx, y: Cy }, { x: xMax, y: Cy }, { x: Px, y: Py }, { clockwise: false })
 
     let paths = [
-      { name: 'bottomBoutJoin', d: bottomBoutJoin },
-      { name: 'leftLowerBout', d: leftBout },
-      { name: 'rightLowerBout', d: rightBout }
+      { name: 'lowerBoutJoin', d: lowerBoutJoin },
+      { name: 'lowerBoutLeft', d: lowerBoutLeft },
+      { name: 'lowerBoutRight', d: lowerBoutRight }
     ];
 
     this.addPaths(paths)
@@ -263,12 +265,12 @@ export class BeardViolinComponent extends RecipeComponentBase {
       .attr('vector-effect', 'non-scaling-stroke')
       .attr('opacity', 0.25);
 
-    this.renderBoxLine(g, ui, { x: w * .7, y: 0 }, { x: w * .7, y: L }, this.d.ratios.lowerJoinRatioNum, "blue", "green", false)
-    this.renderBoxLine(g, ui, { x: w * .8, y: 0 }, { x: w * .8, y: h }, this.d.ratios.lowerJoinRatioDen, "blue", "green", true)
+    this.renderBoxLine(g, ui, { x: w * .7, y: 0 }, { x: w * .7, y: L }, this.d.ratios.lowerJoinRatioNum, "blue", "lightblue", false)
+    this.renderBoxLine(g, ui, { x: w * .8, y: 0 }, { x: w * .8, y: h }, this.d.ratios.lowerJoinRatioDen, "blue", "lightblue", true)
     this.drawDashedLine(g, { x: 3 * w, y: L }, { x: -3 * w, y: L })
 
     let vesicaiRatios = [this.d.ratios.lowerRadiiPart, this.d.ratios.lowerGapPart, this.d.ratios.lowerRadiiPart]
-    this.renderBoxLine(g, ui, { x: -xMax, y: -25 }, { x: xMax, y: -25 }, vesicaiRatios, "blue", "green", true, { labelMode: "segmentWeight" })
+    this.renderBoxLine(g, ui, { x: -xMax, y: -25 }, { x: xMax, y: -25 }, vesicaiRatios, "blue", "lightblue", true, { labelMode: "segmentWeight" })
 
   }
 
@@ -281,12 +283,12 @@ export class BeardViolinComponent extends RecipeComponentBase {
     // w = 2 * lowerBoutRadii + lowerGapDist
     // lowerBoutRadii = lowerGapDist *  lowerRadiiPart / lowerGapPart
     // w = 2 * LBR + LBR * lgp/lrp = LBR (2 + lgp/lrp)
-    let r = upW / (2 + this.d.ratios.upperGapPart / this.d.ratios.lowerRadiiPart)
+    let r = upW / (2 + this.d.ratios.upperGapPart / this.d.ratios.upperRadiiPart)
     let gap = Math.abs(w - 2 * r)
     let Cx = upW / 2 - r
     let Cy = h - r
 
-    const L = (this.d.ratios.lowerJoinRatioNum / this.d.ratios.lowerJoinRatioDen) * h; // now a COMPASS LENGTH ratio
+    const L = (this.d.ratios.upperJoinRatioNum / this.d.ratios.upperJoinRatioDen) * h; // now a COMPASS LENGTH ratio
     let Qy = 0
     let Qx = 0;
     try {
@@ -308,17 +310,26 @@ export class BeardViolinComponent extends RecipeComponentBase {
     let Px = quadraticEqPlus(a, b, c)
     let Py = yofX(Px)
     let compassDist = dist({ x: Qx, y: Qy }, { x: Px, y: Py })
-    let yOffset = compassDist - Qy
-    // Py += yOffset
-    // Qy += yOffset
-    // Cy += yOffset
+    let yOffset = (h-Qy) - compassDist
+    Py += yOffset
+    Qy += yOffset
+    Cy += yOffset
 
-    let xMax = w / 2
+    let xMax = upW / 2
 
     // now lets define our paths
-    let bottomBoutJoin = arcPathFrom3Points({ x: Qx, y: Qy }, { x: -Px, y: Py }, { x: Px, y: Py })
-    let leftBout = arcPathFrom3Points({ x: -Cx, y: Cy }, { x: -xMax, y: Cy }, { x: -Px, y: Py })
-    let rightBout = arcPathFrom3Points({ x: Cx, y: Cy }, { x: xMax, y: Cy }, { x: Px, y: Py }, { clockwise: false })
+    let upperBoutJoin  = arcPathFrom3Points({ x: Qx, y: Qy }, { x: Px, y: Py }, { x: -Px, y: Py })
+    let  upperBoutLeft = arcPathFrom3Points({ x: -Cx, y: Cy }, { x: -xMax, y: Cy }, { x: -Px, y: Py }, {clockwise: false})
+    let upperBoutRight = arcPathFrom3Points({ x: Cx, y: Cy }, { x: xMax, y: Cy }, { x: Px, y: Py })
+
+    let paths = [
+      { name: 'upperBoutJoin', d: upperBoutJoin },
+      { name: 'upperBoutLeft', d: upperBoutLeft },
+      { name: 'upperBoutRight', d: upperBoutRight }
+    ];
+
+    this.addPaths(paths)
+
 
     // vesecai
     g.append('circle')
@@ -358,76 +369,41 @@ export class BeardViolinComponent extends RecipeComponentBase {
 
 
     // joining arc compass
-    // g.append('circle')
-    //   .attr('cx', Qx)
-    //   .attr('cy', Qy)
-    //   .attr('r', 1)
-    //   .attr('stroke', 'blue')
-    //   .attr('fill', 'none')
-    //   .attr('stroke-width', 2)
-    //   .attr('vector-effect', 'non-scaling-stroke')
+    g.append('circle')
+      .attr('cx', Qx)
+      .attr('cy', Qy)
+      .attr('r', 1)
+      .attr('stroke', 'green')
+      .attr('fill', 'none')
+      .attr('stroke-width', 2)
+      .attr('vector-effect', 'non-scaling-stroke')
+    g.append("line")
+      .attr("x1", Qx)
+      .attr("y1", Qy)
+      .attr("x2", Px)
+      .attr("y2", Py)
+      .attr("stroke", "green")
+      .attr('stroke-width', 2)
+      .attr('vector-effect', 'non-scaling-stroke')
+      .attr('opacity', 0.25);
+    g.append("line")
+      .attr("x1", Qx)
+      .attr("y1", Qy)
+      .attr("x2", -Px)
+      .attr("y2", Py)
+      .attr("stroke", "green")
+      .attr('stroke-width', 2)
+      .attr('vector-effect', 'non-scaling-stroke')
+      .attr('opacity', 0.25);
 
-    // g.append("line")
-    //   .attr("x1", Qx)
-    //   .attr("y1", Qy)
-    //   .attr("x2", Px)
-    //   .attr("y2", Py)
-    //   .attr("stroke", "blue")
-    //   .attr('stroke-width', 2)
-    //   .attr('vector-effect', 'non-scaling-stroke')
-    //   .attr('opacity', 0.25);
-    // g.append("line")
-    //   .attr("x1", Qx)
-    //   .attr("y1", Qy)
-    //   .attr("x2", -Px)
-    //   .attr("y2", Py)
-    //   .attr("stroke", "blue")
-    //   .attr('stroke-width', 2)
-    //   .attr('vector-effect', 'non-scaling-stroke')
-    //   .attr('opacity', 0.25);
 
-    // g.append("path")
-    //   .attr("d", bottomBoutJoin)
-    //   .attr("fill", "none")
-    //   .attr("stroke", "red")
-    //   .attr("stroke-width", 2);
-    // g.append("path")
-    //   .attr("d", leftBout)
-    //   .attr("fill", "none")
-    //   .attr("stroke", "red")
-    //   .attr("stroke-width", 2);
-    // g.append("path")
-    //   .attr("d", rightBout)
-    //   .attr("fill", "none")
-    //   .attr("stroke", "red")
-    //   .attr("stroke-width", 2);
+    this.renderBoxLine(g, ui, { x: w * .7, y: h-L }, { x: w * .7, y: h }, this.d.ratios.upperJoinRatioNum, "green", "lightgreen", false)
+    this.renderBoxLine(g, ui, { x: w * .8, y: 0 }, { x: w * .8, y: h }, this.d.ratios.upperJoinRatioDen, "green", "lightgreen", true)
+    this.drawDashedLine(g, { x: 3 * w, y: h-L }, { x: -3 * w, y: h-L })
 
-    // this.renderBoxLine(g, ui, { x: w * .7, y: 0 }, { x: w * .7, y: L }, this.d.ratios.lowerJoinRatioNum, "blue", "green", false)
-    // this.renderBoxLine(g, ui, { x: w * .8, y: 0 }, { x: w * .8, y: h }, this.d.ratios.lowerJoinRatioDen, "blue", "green", true)
-    // this.drawDashedLine(g, { x: 3 * w, y: L }, { x: -3 * w, y: L })
+    let vesicaiRatios = [this.d.ratios.upperRadiiPart, this.d.ratios.upperGapPart, this.d.ratios.upperRadiiPart]
+    this.renderBoxLine(g, ui, { x: -xMax, y: h + 25 }, { x: xMax, y: h + 25 }, vesicaiRatios, "lightgreen", "green", true, { labelMode: "segmentWeight" })
 
-    // let vesicaiRatios = [this.d.ratios.lowerRadiiPart, this.d.ratios.lowerGapPart, this.d.ratios.lowerRadiiPart]
-    // this.renderBoxLine(g, ui, { x: -xMax, y: -25 }, { x: xMax, y: -25 }, vesicaiRatios, "blue", "green", true, { labelMode: "segmentWeight" })
-
-  }
-
-  renderAllPaths = (paths: Array<{ d: string }>) => (g: any, ui: any) => {
-    paths.forEach(p => {
-      g.append("path")
-        .attr("d", p.d)
-        .attr("fill", "none")
-        .attr("stroke", "red")
-        .attr("stroke-width", 2);
-    });
-  };
-
-  addPaths(calcs: {name: string, d: string}[]) {
-    this.d.paths = this.d.paths || [];
-    for (const entry of calcs) {
-      const idx = this.d.paths.findIndex((c: any) => c.name === entry.name);
-      if (idx === -1) this.d.paths.push(entry);
-      else this.d.paths[idx] = entry;
-    }
   }
 
   solveForQyByCompassLength(opts: {

@@ -248,6 +248,25 @@ export class RecipeComponentBase {
       .attr("vector-effect", "non-scaling-stroke");
   }
 
+  addPaths(calcs: {name: string, d: string}[]) {
+    this.d.paths = this.d.paths || [];
+    for (const entry of calcs) {
+      const idx = this.d.paths.findIndex((c: any) => c.name === entry.name);
+      if (idx === -1) this.d.paths.push(entry);
+      else this.d.paths[idx] = entry;
+    }
+  }
+
+  renderPaths = (paths: Array<{ d: string }>) => (g: any, ui: any) => {
+    paths.forEach(p => {
+      g.append("path")
+        .attr("d", p.d)
+        .attr("fill", "none")
+        .attr("stroke", "red")
+        .attr("stroke-width", 2);
+    });
+  };
+
 
 
 
