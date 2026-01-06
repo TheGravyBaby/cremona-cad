@@ -15,7 +15,7 @@ import { Circle, Pt } from '../models/types';
 })
 
 export class BeardViolinComponent extends RecipeComponentBase {
-  override openPanel = 'base'
+  override openPanel = 'cornerPlacement'
 
   override d: RecipeInterface = {
     recipeName: 'Beard Violin',
@@ -23,27 +23,31 @@ export class BeardViolinComponent extends RecipeComponentBase {
     version: ".1",
     ratios: {
       heightMm: 356,
+
       heightPart: 7,
       widthPart: 4,
+
       upperBoutWidthNum: 7,
       upperBoutWidthDen: 9,
 
       lowerRadiiPart: 1,
       lowerGapPart: 1,
+
       lowerJoinRatioNum: 2,
       lowerJoinRatioDen: 3,
 
       upperRadiiPart: 2, 
       upperGapPart: 1,
+
       upperJoinRatioNum: 1,
       upperJoinRatioDen: 3,
 
-      waistCenterNum: 11,
-      waistCenterDen: 20,
       centerSectionNum: 1,
       centerSectionDen: 3,
+
       upperCornerPart: 0,
       lowerCornerPart: 1,
+
       centerSectionParts: 5
 
     },
@@ -71,7 +75,7 @@ export class BeardViolinComponent extends RecipeComponentBase {
       if (panel === 'upperBout') this.changeUpperVesica();
       else if (panel === 'base') this.changeBase();
       else if (panel === 'lowerBout') this.changeLowerVesica();
-      else if (panel == 'centerBouts') this.changeCenterBouts();
+      else if (panel == 'cornerPlacement') this.changeCenterBouts();
     } else {
       // closed -> don't switch panels (prevents "weird" behavior)
       // optional: if you want to forbid closing the active one, re-open it:
@@ -92,7 +96,7 @@ export class BeardViolinComponent extends RecipeComponentBase {
   }
 
   changeCenterBouts(): void {
-     this.draftChange.emit([this.renderBoutBounds, this.renderLowerVesica(false), this.renderUpperVesica(false), this.renderCorners(true)]);
+     this.draftChange.emit([this.renderBoutBounds, this.renderLowerVesica(false), this.renderUpperVesica(false), this.renderCornerPositions(true)]);
   }
 
   renderBounds = (g: any, ui: any): void => {
@@ -262,7 +266,7 @@ export class BeardViolinComponent extends RecipeComponentBase {
 
   }
 
-  renderCorners = (guides: boolean = false) => (g: any, ui: any): void => {
+  renderCornerPositions = (guides: boolean = false) => (g: any, ui: any): void => {
     this.centerBoutError = ""
     let upperRightBoutEndPt = this.d.calcs.find((c: { name: string; }) => c.name == "upperRightBoutEndPt").d as Pt
     let upperLeftBoutEndPt = this.d.calcs.find((c: { name: string; }) => c.name == "upperLeftBoutEndPt").d as Pt
@@ -278,7 +282,6 @@ export class BeardViolinComponent extends RecipeComponentBase {
     let w = h * this.d.ratios.widthPart / this.d.ratios.heightPart;
     let upperW = w * this.d.ratios.upperBoutWidthNum / this.d.ratios.upperBoutWidthDen;
     let waistHeight = (((h - upperW) - w) / 2) + w // this is midway between the upper and lower bout squares
-
 
     let centerSectionStart = h * (this.d.ratios.centerSectionNum ) / this.d.ratios.centerSectionDen
     let centerSectionEnd =  h * (this.d.ratios.centerSectionNum +1) / this.d.ratios.centerSectionDen
@@ -298,8 +301,8 @@ export class BeardViolinComponent extends RecipeComponentBase {
         this.renderDashLine({ x: -1000, y: lowerCornerHeight }, { x: 1000, y: lowerCornerHeight }, "blue")(g,ui)
     }
 
-    let lowerRightUpperCircle: Circle = {x: lowerLeftBoutEndPt.x, y: lowerLeftBoutEndPt.y, r: w}
-    let lowerRightCorner: Pt = lineCircleIntersection({ x: -1000, y: lowerCornerHeight }, { x: 1000, y: lowerCornerHeight },lowerRightUpperCircle)[0]
+    let lowerRightGuideCircle: Circle = {x: lowerLeftBoutEndPt.x, y: lowerLeftBoutEndPt.y, r: w}
+    let lowerRightCorner: Pt = lineCircleIntersection({ x: -1000, y: lowerCornerHeight }, { x: 1000, y: lowerCornerHeight },lowerRightGuideCircle)[0]
     let lowerRightArc = arcPathFrom3Points({x: lowerLeftBoutEndPt.x, y: lowerLeftBoutEndPt.y}, {x: lowerRightBoutEndPt.x, y: lowerRightBoutEndPt.y}, lowerRightCorner)
 
     let boutArcCenter = intersectLines(
@@ -309,8 +312,8 @@ export class BeardViolinComponent extends RecipeComponentBase {
       {x: 1000, y: waistHeight }
     )
 
-    let upperRightUpperCircle: Circle = {x: upperLeftBoutEndPt.x, y: upperLeftBoutEndPt.y, r: upperW}
-    let upperRightCorner: Pt = lineCircleIntersection({ x: -1000, y: upperCornerHeight }, { x: 1000, y: upperCornerHeight },upperRightUpperCircle)[0]
+    let upperRightGuideCircle: Circle = {x: upperLeftBoutEndPt.x, y: upperLeftBoutEndPt.y, r: upperW}
+    let upperRightCorner: Pt = lineCircleIntersection({ x: -1000, y: upperCornerHeight }, { x: 1000, y: upperCornerHeight },upperRightGuideCircle)[0]
     let upperRightArc = arcPathFrom3Points({x: upperLeftBoutEndPt.x, y: upperLeftBoutEndPt.y}, {x: upperRightBoutEndPt.x, y: upperRightBoutEndPt.y}, upperRightCorner, {clockwise: false})
 
     // mirror the two arcs we just made accross the y axis
@@ -318,35 +321,50 @@ export class BeardViolinComponent extends RecipeComponentBase {
     let upperLeftCorner = {x: -upperRightCorner.x, y: upperRightCorner.y}
     let lowerLeftArc = arcPathFrom3Points({x: lowerRightBoutEndPt.x, y: lowerRightBoutEndPt.y}, {x: - lowerRightBoutEndPt.x, y: lowerRightBoutEndPt.y}, lowerLeftCorner, {clockwise:false})
     let upperLeftArc = arcPathFrom3Points({x: upperRightBoutEndPt.x, y: upperRightBoutEndPt.y}, {x: - upperRightBoutEndPt.x, y: upperRightBoutEndPt.y}, upperLeftCorner)
-   
-    this.renderLine(upperRightCorner, boutArcCenter!, "grey")(g,ui)
-    this.renderLine({x: 0, y: lowerRightBoutEndPt.y}, boutArcCenter!, "grey")(g,ui)
-
-    this.renderPath(lowerLeftArc, "orange")(g,ui)
-    this.renderPath(lowerRightArc, "orange")(g,ui)
-    this.renderPath(upperLeftArc, "orange")(g,ui)
-    this.renderPath(upperRightArc, "orange")(g,ui)
 
     this.renderCrosshair(lowerRightCorner, "red")(g,ui)
     this.renderCrosshair(lowerLeftCorner, "red")(g,ui)
     this.renderCrosshair(upperRightCorner, "red")(g,ui)
     this.renderCrosshair(upperLeftCorner, "red")(g,ui)
 
+    if (guides) {
+      this.renderPath(lowerLeftArc, "orange")(g,ui)
+      this.renderPath(lowerRightArc, "orange")(g,ui)
+      this.renderPath(upperLeftArc, "orange")(g,ui)
+      this.renderPath(upperRightArc, "orange")(g,ui)
+
+      this.renderLine(lowerLeftBoutEndPt, lowerRightCorner, "orange")(g,ui)
+      this.renderLine(lowerLeftBoutEndPt, lowerRightBoutEndPt, "orange")(g,ui)
+
+      this.renderLine(upperLeftBoutEndPt, upperRightCorner, "orange")(g,ui)
+      this.renderLine(upperLeftBoutEndPt, upperRightBoutEndPt, "orange")(g,ui)
+    }
+
+    this.addCalcs([
+      {name: "upperRightCorner", d: upperRightCorner},
+      {name: "upperRightCorner", d: upperRightCorner},
+      {name: "upperRightCorner", d: upperRightCorner},
+      {name: "upperRightCorner", d: upperRightCorner},
+    ])
+
     // let greatCircleR = dist(boutArcCenter!, upperRightCorner)
     // let greatCirlceRight: Circle = {x: boutArcCenter!.x, y: boutArcCenter!.y, r: greatCircleR}
     // this.renderCircle(greatCirlceRight, "orange")(g, ui)
 
-    let cornerRadius = w/8
-    let lowerRightVesica = this.d.calcs.find((c: { name: string; }) => c.name == "lowerRightVesica").d as Circle
-    let upperRightVesica = this.d.calcs.find((c: { name: string; }) => c.name == "upperRightVesica").d as Circle
+    // let cornerRadius = w/8
+    // let lowerRightVesica = this.d.calcs.find((c: { name: string; }) => c.name == "lowerRightVesica").d as Circle
+    // let upperRightVesica = this.d.calcs.find((c: { name: string; }) => c.name == "upperRightVesica").d as Circle
 
+    // let lowerRightCornerCircle = interceptCirclesAndPoint(lowerRightVesica, lowerRightCorner, cornerRadius)![1]
+    // let upperRightCornerCircle = interceptCirclesAndPoint(upperRightVesica, upperRightCorner, cornerRadius)![0]
 
-    let lowerRightCornerCircle = interceptCirclesAndPoint(lowerRightVesica, lowerRightCorner, cornerRadius)![1]
-    let upperRightCornerCircle = interceptCirclesAndPoint(upperRightVesica, upperRightCorner, cornerRadius)![0]
+    // this.renderCircle(lowerRightCornerCircle!, "blue")(g,ui)
+    // this.renderCircle(upperRightCornerCircle!, "green")(g,ui)
+  }
 
-    this.renderCircle(lowerRightCornerCircle!, "blue")(g,ui)
-    this.renderCircle(upperRightCornerCircle!, "green")(g,ui)
-
+  renderOuterCorners = (guides: boolean = false) => (g: any, ui: any): void => {
 
   }
+
+
 }

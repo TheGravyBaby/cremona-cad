@@ -27,8 +27,6 @@
     </label>
   </details>
 
-
-
   <details [open]="openPanel === 'lowerBout'" (toggle)="onToggle('lowerBout', $event)">
     <summary>Lower Bout</summary>
 
@@ -62,9 +60,6 @@
     <br>
   </details>
 
-
-
-
   <details [open]="openPanel === 'upperBout'" (toggle)="onToggle('upperBout', $event)">
     <summary>Upper Bout</summary>
     <label>
@@ -96,16 +91,53 @@
     }
   </details>
 
-  <details [open]="openPanel === 'centerBouts'" (toggle)="onToggle('centerBouts', $event)">
+  <details [open]="openPanel === 'cornerPlacement'" (toggle)="onToggle('cornerPlacement', $event)">
     <summary>Corner Placement</summary>
-    <!-- <label>
-      Waist Center : Body Ratio
+    <label>
+      Center Section : Height 
       <div class="ratio">
-        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.waistCenterNum" (input)="changeCenterBouts()" />
+        <input type="number" step="1" min="0" [(ngModel)]="d.ratios.centerSectionNum" (input)="changeCenterBouts()" />
         <span>:</span>
-        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.waistCenterDen" (input)="changeCenterBouts()" />
+        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.centerSectionDen" (input)="changeCenterBouts()" />
       </div>
-    </label> -->
+    </label>
+    
+    <br>
+
+     <label>
+      Upper Corner Section : Center Section 
+      <div class="ratio">
+        <input type="number" step="1" min="0" [(ngModel)]="d.ratios.upperCornerPart" (input)="changeCenterBouts()" />
+        <span>:</span>
+        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.centerSectionParts" (input)="changeCenterBouts()" />
+      </div>
+    </label>
+
+    <br>
+
+     <label>
+      Lower Corner Section : Center Section 
+      <div class="ratio">
+        <input type="number" step="1" min="0" [(ngModel)]="d.ratios.lowerCornerPart" (input)="changeCenterBouts()" />
+        <span>:</span>
+        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.centerSectionParts" (input)="changeCenterBouts()" />
+      </div>
+    </label>
+
+
+     <!-- Error message -->
+    @if (centerBoutError !== '') {
+    <div class="calc-error">
+      {{ lowerBoutError }}
+    </div>
+    }
+
+  </details>
+
+
+  <details [open]="openPanel === 'outerCorners'" (toggle)="onToggle('outerCorners', $event)">
+    <summary>Corner Placement</summary>
+    
 
     <label>
       Center Section : Height 

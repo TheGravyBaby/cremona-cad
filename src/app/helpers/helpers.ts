@@ -58,8 +58,7 @@ export function circleTangentAngle(θ: number): number {
   return θ + Math.PI / 2;
 }
 
-
-function solveCoordOnCircleInset(
+export function solveCoordOnCircleInset(
   C: Circle,
   knownAxis: Axis,     // which coordinate you already know: "x" or "y"
   knownValue: number,  // Px or Py
@@ -141,7 +140,6 @@ export function intersectLines(A: Pt, B: Pt, C: Pt, D: Pt): Pt | null {
 
   return { x: px, y: py };
 }
-
 
 export function arcPathFrom3Points(
   c: Pt,
