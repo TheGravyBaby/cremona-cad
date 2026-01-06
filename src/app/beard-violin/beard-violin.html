@@ -29,30 +29,46 @@
 
 
 
-  <details [open]="openPanel === 'lowerBout'" (toggle)="onToggle('lowerBout', $event);">
-    <summary>Lower Bout</summary>
-    <label>
-      Vesica Radius : Distance Ratio
-      <div class="ratio">
-        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.lowerRadiiPart" (input)="changeLowerVesica()" />
-        <span>:</span>
-        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.lowerGapPart" (input)="changeLowerVesica()" />
-      </div>
-    </label>
+<details [open]="openPanel === 'lowerBout'" (toggle)="onToggle('lowerBout', $event)">
+  <summary>Lower Bout</summary>
 
-    <br>
+  <label>
+    Vesica Radius : Gap Ratio
+    <div class="ratio">
+      <input type="number" step="1" min="1"
+        [(ngModel)]="d.ratios.lowerRadiiPart"
+        (input)="changeLowerVesica()" />
+      <span>:</span>
+      <input type="number" step="1" min="1"
+        [(ngModel)]="d.ratios.lowerGapPart"
+        (input)="changeLowerVesica()" />
+    </div>
+  </label>
 
-    <label>
-      Join Arc Length : Height Ratio
-      <div class="ratio">
-        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.lowerJoinRatioNum" (input)="changeLowerVesica()" />
-        <span>:</span>
-        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.lowerJoinRatioDen" (input)="changeLowerVesica()" />
-      </div>
-    </label>
+  <br>
 
-    <br>
-  </details>
+  <label>
+    Join Arc Length : Height Ratio
+    <div class="ratio">
+      <input type="number" step="1" min="1"
+        [(ngModel)]="d.ratios.lowerJoinRatioNum"
+        (input)="changeLowerVesica()" />
+      <span>:</span>
+      <input type="number" step="1" min="1"
+        [(ngModel)]="d.ratios.lowerJoinRatioDen"
+        (input)="changeLowerVesica()" />
+    </div>
+  </label>
+
+  <!-- Error message -->
+   @if (lowerBoutError !== '') {
+    <div class="calc-error">
+      {{ lowerBoutError }}
+    </div>
+   }
+
+  <br>
+</details>
 
 
 
@@ -79,6 +95,13 @@
       </div>
     </label>
     <br>
+
+    <!-- Error message -->
+    @if (upperBoutError !== '') {
+      <div class="calc-error">
+        {{ upperBoutError }}
+      </div>
+    }
   </details>
 
   <details [open]="openPanel === 'centerBouts'" (toggle)="onToggle('centerBouts', $event)">
@@ -91,6 +114,7 @@
         <input type="number" step="1" min="1" [(ngModel)]="d.ratios.waistCenterDen" (input)="changeCenterBouts()" />
       </div>
     </label>
+
   </details>
 
 

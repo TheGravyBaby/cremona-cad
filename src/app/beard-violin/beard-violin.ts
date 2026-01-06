@@ -1,9 +1,10 @@
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { dist, pointOnCircle } from '../helpers/helpers';
+import { dist, lineCircleIntersection, pointOnCircle, solveYOnCircleInset } from '../helpers/helpers';
 import { RecipeInterface } from '../models/recipe';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { arcPathFrom3Points } from '../helpers/helpers';
+import { Circle } from '../models/types';
 
 @Component({
   selector: 'app-beard-violin',
@@ -14,7 +15,7 @@ import { arcPathFrom3Points } from '../helpers/helpers';
 })
 
 export class BeardViolinComponent extends RecipeComponentBase {
-  override openPanel = 'upperBout'
+  override openPanel = 'base'
 
   override d: RecipeInterface = {
     recipeName: 'Beard Violin',
@@ -39,8 +40,11 @@ export class BeardViolinComponent extends RecipeComponentBase {
       waistCenterNum: 11,
       waistCenterDen: 20
     },
-    paths: []
+    calcs: []
   }
+
+  lowerBoutError = ""
+  upperBoutError = ""
 
   override firstRender = (g: any, ui: any): void => {
     this.renderBounds(g, ui)
@@ -72,18 +76,15 @@ export class BeardViolinComponent extends RecipeComponentBase {
   }
 
   changeLowerVesica(): void {
-    this.draftChange.emit([this.renderBoutBounds, this.renderLowerVesica, this.renderPaths(this.d.paths)
-    ]);
+    this.draftChange.emit([this.renderBoutBounds, this.renderLowerVesica(true), this.renderUpperVesica(false)])
   }
 
   changeUpperVesica(): void {
-    this.draftChange.emit([this.renderBoutBounds, this.renderUpperVesica, this.renderPaths(this.d.paths)
-    ]);
+    this.draftChange.emit([this.renderBoutBounds, this.renderLowerVesica(false), this.renderUpperVesica(true)]);
   }
 
   changeCenterBouts(): void {
-     this.draftChange.emit([this.renderBoutBounds, this.renderCenterBout, this.renderPaths(this.d.paths)
-    ]);
+     this.draftChange.emit([this.renderBoutBounds, this.renderLowerVesica(false), this.renderUpperVesica(false), this.renderCenterBout(true)]);
   }
 
   renderBounds = (g: any, ui: any): void => {
@@ -108,7 +109,10 @@ export class BeardViolinComponent extends RecipeComponentBase {
     const w = h * this.d.ratios.widthPart / this.d.ratios.heightPart;
     const xLeft = -w / 2;
 
-    // bottom square
+    // top square using reduction
+    const upperBoutW = this.d.ratios.upperBoutReductionDenom <= 0 ? w : w - w * (1 / this.d.ratios.upperBoutReductionDenom);
+    const upperBoutLeft = -upperBoutW / 2;
+
     g.append('rect')
       .attr('x', xLeft)
       .attr('y', 0)
@@ -116,11 +120,6 @@ export class BeardViolinComponent extends RecipeComponentBase {
       .attr('height', w)
       .attr('fill', 'blue')
       .attr('opacity', 0.25);
-
-    // top square using reduction
-    const upperBoutW = this.d.ratios.upperBoutReductionDenom <= 0 ? w : w - w * (1 / this.d.ratios.upperBoutReductionDenom);
-    const upperBoutLeft = -upperBoutW / 2;
-
     g.append('rect')
       .attr('x', upperBoutLeft)
       .attr('y', h - upperBoutW)
@@ -130,307 +129,102 @@ export class BeardViolinComponent extends RecipeComponentBase {
       .attr('opacity', 0.25);
   }
 
-  renderLowerVesica = (g: any, ui: any): void => {
+  renderLowerVesica = (guides: boolean = false) => (g: any, ui: any) => {
     const h = Math.max(1, this.d.ratios.heightMm);
     const w = h * this.d.ratios.widthPart / this.d.ratios.heightPart;
 
-    // we need to define two circles that will be bounded inside our bout
-    // w = 2 * lowerBoutRadii + lowerGapDist
-    // lowerBoutRadii = lowerGapDist *  lowerRadiiPart / lowerGapPart
-    // w = 2 * LBR + LBR * lgp/lrp = LBR (2 + lgp/lrp)
-    let r = w / (2 + this.d.ratios.lowerGapPart / this.d.ratios.lowerRadiiPart)
-    let gap = Math.abs(w - 2 * r)
-    let Cx = w / 2 - r
-    let Cy = r
+    // this is the arc of our compass for the joining angle
+    let Cy = h * this.d.ratios.lowerJoinRatioNum / this.d.ratios.lowerJoinRatioDen
+    let C: Circle = {x: 0, y: Cy, r: Cy}  
 
-    const L = (this.d.ratios.lowerJoinRatioNum / this.d.ratios.lowerJoinRatioDen) * h; // now a COMPASS LENGTH ratio
-    let Qy = 0
-    let Qx = 0;
+    // right vesica
+    let Vr = w / (2 + this.d.ratios.lowerGapPart / this.d.ratios.lowerRadiiPart)
+    let Vx = w / 2 - Vr
+    let Vy;
     try {
-      Qy = this.solveForQyByCompassLength({ h, targetLen: L, Cx, Cy, r });
+      Vy = solveYOnCircleInset(C, Vx, Vr, false)
     }
-    catch (e) {
-      console.log("Error: " + e)
-      Qy = L
+    catch {
+      this.lowerBoutError = "Join arc length too small"
+      return;
+    }
+    let VR: Circle = {x: Vx, y: Vy, r: Vr} 
+    let VL: Circle = {x: -Vx, y: Vy, r: Vr} 
+    
+    // line Cy to center of vesica, find intersections, I know its [0] but one normally checks
+    let intR = lineCircleIntersection(C, VR, VR)[0]
+    let intL = {x: - intR.x, y: intR.y}
+    let joinPath = arcPathFrom3Points(C, intL, intR)
+
+    this.renderCircle(VR, "blue")(g,ui)
+    this.renderCircle(VL, "blue")(g,ui)
+    this.renderPath(joinPath, "red")(g,ui)
+
+    if (guides) {
+      this.renderLine(C, intR, "blue")(g,ui)
+      this.renderLine(C, intL, "blue")(g,ui)
+      this.renderBoxLine({ x: w * .7, y: 0 }, { x: w * .7, y: Cy }, this.d.ratios.lowerJoinRatioNum, "blue", "lightblue", false)(g,ui)
+      this.renderBoxLine({ x: w * .8, y: 0 }, { x: w * .8, y: h }, this.d.ratios.lowerJoinRatioDen, "blue", "lightblue", true)(g,ui)
+      this.renderDashLine({ x: 3 * w, y: Cy }, { x: -3 * w, y: Cy })(g, ui)
+
+      let vesicaiRatios = [this.d.ratios.lowerRadiiPart, this.d.ratios.lowerGapPart, this.d.ratios.lowerRadiiPart]
+      this.renderBoxLine({ x: -w/2, y: -25 }, { x: w/2, y: -25 }, vesicaiRatios, "blue", "lightblue", true, { labelMode: "segmentWeight" })(g,ui)
     }
 
-    // lets define a line between our point Q 
-    // and the midpoint of our right most circle
-    // y = mx + b
-    // slope is 
-    const m = (Cy - Qy) / (Cx - Qx); // Qx = 0
-    const yofX = (x: number) => m * x + Qy;
-
-    // now we want to find the intersection point on our right most circle
-    // r^2 = (y- Cy)^2 + (x-Cx)^2, in this case we want to solve for 
-    // y = Cy ± sqrt(r^2 - (x - Cx)^2)
-    // we don't need the function but why not
-    let circofX = (x: number) => Cy + Math.sqrt(r * r - Math.pow(x - Cx, 2));
-
-    // now let us solve for the points we intercept 
-    // (m*x + h)^2 = Cy ± sqrt(r^2 - (x - Cx)^2)
-    // m^2*x^2 + 2mxh + h^2 = x^2 - 2*Cx*x + Cx^2
-    // m^2*x^2 - x^2 + 2mxh  + -2*Cx*x =  Cx^2 - h^2 
-    // (m+1)x^2   +   2(mh-Cx)x    -   (Cx^2 - h^2)  = 0
-    // ax^2      +   bx                +   c             = 0
-    const a = m * m + 1;
-    const b = 2 * (m * (Qy - Cy) - Cx);
-    const c = (Qy - Cy) ** 2 + Cx ** 2 - r * r;
-    let quadraticEqPlus = (a: number, b: number, c: number) => (-b + Math.sqrt(b * b - 4 * a * c)) / (2 * a)
-    let quadraticEqMinus = (a: number, b: number, c: number) => (-b - Math.sqrt(b * b - 4 * a * c)) / (2 * a)
-
-    // great now we have out intersection points, I just happen to know its plus in this case
-    let Px = quadraticEqPlus(a, b, c)
-    let Py = yofX(Px)
-
-    // we now need to calculate an offset, because the joining arc will currently go into 
-    // the -y axis, and we don't want to extend the size of our violin
-    let compassDist = dist({ x: Qx, y: Qy }, { x: Px, y: Py })
-
-    // the center of our vesici, in the model thus far, are one radii above x=0
-    // lets find the difference between r and compass dist, this is our offset
-    let yOffset = compassDist - Qy
-
-    Py += yOffset
-    Qy += yOffset
-    Cy += yOffset
-
-    let xMax = w / 2
-
-    let leftCirclePeak = pointOnCircle({x: -Cx, y: Cy}, r, Math.PI* 7/8)
-    let rightCirclePeak = pointOnCircle({x: Cx, y: Cy}, r, Math.PI* 1/8)
-
-    // now lets define our paths
-    let lowerBoutJoin = arcPathFrom3Points({ x: Qx, y: Qy }, { x: -Px, y: Py }, { x: Px, y: Py })
-    let lowerBoutLeft = arcPathFrom3Points({ x: -Cx, y: Cy }, leftCirclePeak, { x: -Px, y: Py })
-    let lowerBoutRight = arcPathFrom3Points({ x: Cx, y: Cy }, rightCirclePeak, { x: Px, y: Py }, { clockwise: false })
-
-    let paths = [
-      { name: 'lowerBoutJoin', d: lowerBoutJoin },
-      { name: 'lowerBoutLeft', d: lowerBoutLeft },
-      { name: 'lowerBoutRight', d: lowerBoutRight }
-    ];
-
-    this.addPaths(paths)
-
-    // vesecai
-    g.append('circle')
-      .attr('cx', Cx)
-      .attr('cy', Cy)
-      .attr('r', r)
-      .attr('stroke', 'blue')
-      .attr('fill', 'none')
-      .attr('stroke-width', 2)
-      .attr('vector-effect', 'non-scaling-stroke');
-    g.append('circle')
-      .attr('cx', Cx)
-      .attr('cy', Cy)
-      .attr('r', 1)
-      .attr('stroke', 'blue')
-      .attr('fill', 'none')
-      .attr('stroke-width', 2)
-      .attr('vector-effect', 'non-scaling-stroke');
-
-    // mirror vesecai
-    g.append('circle')
-      .attr('cx', - Cx)
-      .attr('cy', Cy)
-      .attr('r', r)
-      .attr('stroke', 'blue')
-      .attr('fill', 'none')
-      .attr('stroke-width', 2)
-      .attr('vector-effect', 'non-scaling-stroke');
-    g.append('circle')
-      .attr('cx', -Cx)
-      .attr('cy', Cy)
-      .attr('r', 1)
-      .attr('stroke', 'blue')
-      .attr('fill', 'none')
-      .attr('stroke-width', 2)
-      .attr('vector-effect', 'non-scaling-stroke');
-
-
-    // joining arc compass
-    g.append('circle')
-      .attr('cx', Qx)
-      .attr('cy', Qy)
-      .attr('r', 1)
-      .attr('stroke', 'blue')
-      .attr('fill', 'none')
-      .attr('stroke-width', 2)
-      .attr('vector-effect', 'non-scaling-stroke')
-
-    g.append("line")
-      .attr("x1", Qx)
-      .attr("y1", Qy)
-      .attr("x2", Px)
-      .attr("y2", Py)
-      .attr("stroke", "blue")
-      .attr('stroke-width', 2)
-      .attr('vector-effect', 'non-scaling-stroke')
-      .attr('opacity', 0.25);
-    g.append("line")
-      .attr("x1", Qx)
-      .attr("y1", Qy)
-      .attr("x2", -Px)
-      .attr("y2", Py)
-      .attr("stroke", "blue")
-      .attr('stroke-width', 2)
-      .attr('vector-effect', 'non-scaling-stroke')
-      .attr('opacity', 0.25);
-
-    this.renderBoxLine(g, ui, { x: w * .7, y: 0 }, { x: w * .7, y: L }, this.d.ratios.lowerJoinRatioNum, "blue", "lightblue", false)
-    this.renderBoxLine(g, ui, { x: w * .8, y: 0 }, { x: w * .8, y: h }, this.d.ratios.lowerJoinRatioDen, "blue", "lightblue", true)
-    this.renderDashLine(g, { x: 3 * w, y: L }, { x: -3 * w, y: L })
-
-    let vesicaiRatios = [this.d.ratios.lowerRadiiPart, this.d.ratios.lowerGapPart, this.d.ratios.lowerRadiiPart]
-    this.renderBoxLine(g, ui, { x: -xMax, y: -25 }, { x: xMax, y: -25 }, vesicaiRatios, "blue", "lightblue", true, { labelMode: "segmentWeight" })
 
   }
 
-  renderUpperVesica = (g: any, ui: any): void => {
+  renderUpperVesica = (guides: boolean = false) => (g: any, ui: any) => {
     const h = Math.max(1, this.d.ratios.heightMm);
-    const w = h * this.d.ratios.widthPart / this.d.ratios.heightPart;
-    const upW = this.d.ratios.upperBoutReductionDenom <= 0 ? w : w - w * (1 / this.d.ratios.upperBoutReductionDenom);
+    let w = h * this.d.ratios.widthPart / this.d.ratios.heightPart;
+    w = this.d.ratios.upperBoutReductionDenom <= 0 ? w : w - w * (1 / this.d.ratios.upperBoutReductionDenom);
 
-    // we need to define two circles that will be bounded inside our bout
-    // w = 2 * lowerBoutRadii + lowerGapDist
-    // lowerBoutRadii = lowerGapDist *  lowerRadiiPart / lowerGapPart
-    // w = 2 * LBR + LBR * lgp/lrp = LBR (2 + lgp/lrp)
-    let r = upW / (2 + this.d.ratios.upperGapPart / this.d.ratios.upperRadiiPart)
-    let gap = Math.abs(w - 2 * r)
-    let Cx = upW / 2 - r
-    let Cy = h - r
+    // this is the arc of our compass for the joining angle
+    let Cy = h - h * this.d.ratios.upperJoinRatioNum / this.d.ratios.upperJoinRatioDen
+    let C: Circle = {x: 0, y: Cy, r: h - Cy}  
 
-    const L = (this.d.ratios.upperJoinRatioNum / this.d.ratios.upperJoinRatioDen) * h; // now a COMPASS LENGTH ratio
-    let Qy = 0
-    let Qx = 0;
+    // right vesica
+    let Vr = w / (2 + this.d.ratios.upperGapPart / this.d.ratios.upperRadiiPart)
+    let Vx = w / 2 - Vr
+    let Vy;
     try {
-      Qy = this.solveForQyByCompassLength({ h, targetLen: L, Cx, Cy, r });
+      Vy = solveYOnCircleInset(C, Vx, Vr, true)
     }
-    catch (e) {
-      console.log("Error: " + e)
-      Qy = h - L
+    catch {
+      this.upperBoutError = "Join arc length too small"
+      return;
     }
+    let VR: Circle = {x: Vx, y: Vy, r: Vr} 
+    let VL: Circle = {x: -Vx, y: Vy, r: Vr} 
+    
+    // line Cy to center of vesica, find intersections, I know its [0] but one normally checks
+    let intR = lineCircleIntersection(C, VR, VR)[0]
+    let intL = {x: - intR.x, y: intR.y}
+    let joinPath = arcPathFrom3Points(C, intR, intL)
 
-    const m = (Cy - Qy) / (Cx - Qx); // Qx = 0
-    const yofX = (x: number) => m * x + Qy;
-    let circofX = (x: number) => Cy + Math.sqrt(r * r - Math.pow(x - Cx, 2));
-    const a = m * m + 1;
-    const b = 2 * (m * (Qy - Cy) - Cx);
-    const c = (Qy - Cy) ** 2 + Cx ** 2 - r * r;
-    let quadraticEqPlus = (a: number, b: number, c: number) => (-b + Math.sqrt(b * b - 4 * a * c)) / (2 * a)
-    let quadraticEqMinus = (a: number, b: number, c: number) => (-b - Math.sqrt(b * b - 4 * a * c)) / (2 * a)
-    let Px = quadraticEqPlus(a, b, c)
-    let Py = yofX(Px)
-    let compassDist = dist({ x: Qx, y: Qy }, { x: Px, y: Py })
-    let yOffset = (h-Qy) - compassDist
-    Py += yOffset
-    Qy += yOffset
-    Cy += yOffset
+    this.renderCircle(VR, "green")(g,ui)
+    this.renderCircle(VL, "green")(g,ui)
+    this.renderPath(joinPath, "red")(g,ui)
 
-    let xMax = upW / 2
+    if (guides) {
+      this.renderLine(C, intR, "green")(g,ui)
+      this.renderLine(C, intL, "green")(g,ui)
+      this.renderBoxLine({ x: w * .7, y: h }, { x: w * .7, y: Cy }, this.d.ratios.lowerJoinRatioNum, "green", "lightgreen", false)(g,ui)
+      this.renderBoxLine({ x: w * .8, y: 0 }, { x: w * .8, y: h }, this.d.ratios.lowerJoinRatioDen, "green", "lightgreen", true)(g,ui)
+      this.renderDashLine({ x: 3 * w, y: Cy }, { x: -3 * w, y: Cy })(g, ui)
 
-    let leftCirclePeak = pointOnCircle({x: -Cx, y: Cy}, r, Math.PI* 9/8)
-    let rightCirclePeak = pointOnCircle({x: Cx, y: Cy}, r, Math.PI* 15/8)
-
-    // now lets define our paths
-    let upperBoutJoin  = arcPathFrom3Points({ x: Qx, y: Qy }, { x: Px, y: Py }, { x: -Px, y: Py })
-    let  upperBoutLeft = arcPathFrom3Points({ x: -Cx, y: Cy }, leftCirclePeak, { x: -Px, y: Py }, {clockwise: false})
-    let upperBoutRight = arcPathFrom3Points({ x: Cx, y: Cy }, rightCirclePeak, { x: Px, y: Py })
-
-    let paths = [
-      { name: 'upperBoutJoin', d: upperBoutJoin },
-      { name: 'upperBoutLeft', d: upperBoutLeft },
-      { name: 'upperBoutRight', d: upperBoutRight }
-    ];
-
-    this.addPaths(paths)
-
-
-    // vesecai
-    g.append('circle')
-      .attr('cx', Cx)
-      .attr('cy', Cy)
-      .attr('r', r)
-      .attr('stroke', 'green')
-      .attr('fill', 'none')
-      .attr('stroke-width', 2)
-      .attr('vector-effect', 'non-scaling-stroke');
-    g.append('circle')
-      .attr('cx', Cx)
-      .attr('cy', Cy)
-      .attr('r', 1)
-      .attr('stroke', 'green')
-      .attr('fill', 'none')
-      .attr('stroke-width', 2)
-      .attr('vector-effect', 'non-scaling-stroke');
-
-    // mirror vesecai
-    g.append('circle')
-      .attr('cx', - Cx)
-      .attr('cy', Cy)
-      .attr('r', r)
-      .attr('stroke', 'green')
-      .attr('fill', 'none')
-      .attr('stroke-width', 2)
-      .attr('vector-effect', 'non-scaling-stroke');
-    g.append('circle')
-      .attr('cx', -Cx)
-      .attr('cy', Cy)
-      .attr('r', 1)
-      .attr('stroke', 'green')
-      .attr('fill', 'none')
-      .attr('stroke-width', 2)
-      .attr('vector-effect', 'non-scaling-stroke');
-
-
-    // joining arc compass
-    g.append('circle')
-      .attr('cx', Qx)
-      .attr('cy', Qy)
-      .attr('r', 1)
-      .attr('stroke', 'green')
-      .attr('fill', 'none')
-      .attr('stroke-width', 2)
-      .attr('vector-effect', 'non-scaling-stroke')
-    g.append("line")
-      .attr("x1", Qx)
-      .attr("y1", Qy)
-      .attr("x2", Px)
-      .attr("y2", Py)
-      .attr("stroke", "green")
-      .attr('stroke-width', 2)
-      .attr('vector-effect', 'non-scaling-stroke')
-      .attr('opacity', 0.25);
-    g.append("line")
-      .attr("x1", Qx)
-      .attr("y1", Qy)
-      .attr("x2", -Px)
-      .attr("y2", Py)
-      .attr("stroke", "green")
-      .attr('stroke-width', 2)
-      .attr('vector-effect', 'non-scaling-stroke')
-      .attr('opacity', 0.25);
-
-
-    this.renderBoxLine(g, ui, { x: w * .7, y: h-L }, { x: w * .7, y: h }, this.d.ratios.upperJoinRatioNum, "green", "lightgreen", false)
-    this.renderBoxLine(g, ui, { x: w * .8, y: 0 }, { x: w * .8, y: h }, this.d.ratios.upperJoinRatioDen, "green", "lightgreen", true)
-    this.renderDashLine(g, { x: 3 * w, y: h-L }, { x: -3 * w, y: h-L })
-
-    let vesicaiRatios = [this.d.ratios.upperRadiiPart, this.d.ratios.upperGapPart, this.d.ratios.upperRadiiPart]
-    this.renderBoxLine(g, ui, { x: -xMax, y: h + 25 }, { x: xMax, y: h + 25 }, vesicaiRatios, "lightgreen", "green", true, { labelMode: "segmentWeight" })
-
+      let vesicaiRatios = [this.d.ratios.lowerRadiiPart, this.d.ratios.lowerGapPart, this.d.ratios.lowerRadiiPart]
+      this.renderBoxLine({ x: -w/2, y: h +25 }, { x: w/2, y: h + 25 }, vesicaiRatios, "green", "lightgreen", true, { labelMode: "segmentWeight" })(g,ui)
+    }
   }
 
-  renderCenterBout = (g: any, ui: any): void => {
+  renderCenterBout = (guides: boolean = false) => (g: any, ui: any): void => {
     const h = Math.max(1, this.d.ratios.heightMm);
     let waistHeight = h * this.d.ratios.waistCenterNum / this.d.ratios.waistCenterDen 
 
-    this.renderDashLine(g, { x: -1000, y: waistHeight }, { x: 1000, y: waistHeight })
-
-
-
+    if (guides) {
+      this.renderDashLine({ x: -1000, y: waistHeight }, { x: 1000, y: waistHeight })(g,ui)
+    }
   }
 
   solveForQyByCompassLength(opts: {

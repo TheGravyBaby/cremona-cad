@@ -30,8 +30,8 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
   private defaultPxPerMm = 1;
   public pxPerMm = 1;
-  private offsetMmX?: number = -350;
-  private offsetMmY?: number = -400;
+  private offsetMmX?: number = -400;
+  private offsetMmY?: number = -600;
   public showGrid = true;
   public showAxes = true;
 

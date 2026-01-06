@@ -1,4 +1,4 @@
-import { Pt, Fraction } from "../models/types";
+import { Pt, Fraction, Circle, Axis } from "../models/types";
 
 export function polarAngle(c: Pt, p: Pt) {
   return Math.atan2(p.y - c.y, p.x - c.x);
@@ -8,27 +8,27 @@ export function dist(a: Pt, b: Pt) {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
-export function pointOnCircle(C: Pt, r: number, θ: number): Pt {
+export function pointOnCircle(C: Circle,  θ: number): Pt {
   return {
-    x: C.x + r * Math.cos(θ),
-    y: C.y + r * Math.sin(θ),
+    x: C.x + C.r * Math.cos(θ),
+    y: C.y + C.r * Math.sin(θ),
   };
 }
 
-export function projectToCircle(C: Pt, r: number, P: Pt): Pt {
+export function projectToCircle(C: Circle, P: Pt): Pt {
   const θ = angleFromCenter(C, P);
-  return pointOnCircle(C, r, θ);
+  return pointOnCircle(C, θ);
 }
 
 export function circleCircleIntersections(
-  C1: Pt, r1: number,
-  C2: Pt, r2: number
+  C1: Circle,
+  C2: Circle
 ): Pt[] {
   const d = dist(C1, C2);
-  if (d > r1 + r2 || d < Math.abs(r1 - r2) || d === 0) return [];
+  if (d > C1.r + C2.r || d < Math.abs(C1.r - C2.r) || d === 0) return [];
 
-  const a = (r1*r1 - r2*r2 + d*d) / (2*d);
-  const h = Math.sqrt(r1*r1 - a*a);
+  const a = (C1.r*C1.r - C2.r*C2.r + d*d) / (2*d);
+  const h = Math.sqrt(C1.r*C1.r - a*a);
 
   const xm = C1.x + a * (C2.x - C1.x) / d;
   const ym = C1.y + a * (C2.y - C1.y) / d;
@@ -58,9 +58,50 @@ export function circleTangentAngle(θ: number): number {
   return θ + Math.PI / 2;
 }
 
+
+
+function solveCoordOnCircleInset(
+  C: Circle,
+  knownAxis: Axis,     // which coordinate you already know: "x" or "y"
+  knownValue: number,  // Px or Py
+  inset: number,       // distance from outer circle inward (R)
+  upperOrRight = true  // choose +sqrt (top if solving y, right if solving x)
+): number {
+  const rPrime = C.r - inset;
+  if (rPrime < 0) throw new Error("No solution: inset larger than radius");
+
+  const Cknown = knownAxis === "x" ? C.x : C.y;
+  const d = knownValue - Cknown;
+
+  const under = rPrime * rPrime - d * d;
+  if (under < 0) throw new Error("No real solution: knownValue out of range");
+
+  const s = Math.sqrt(under);
+  const Cunknown = knownAxis === "x" ? C.y : C.x; // solving the other coordinate
+  return upperOrRight ? Cunknown + s : Cunknown - s;
+}
+
+export function solveYOnCircleInset(
+  C: Circle,
+  Px: number, inset: number,
+  upper = true
+): number {
+  return solveCoordOnCircleInset(C, "x", Px, inset, upper);
+}
+
+export function solveXOnCircleInset(
+  C: Circle,
+  Py: number, inset: number,
+  right = true
+): number {
+  return solveCoordOnCircleInset(C, "y", Py, inset, right);
+}
+
+
+
 export function lineCircleIntersection(
   P1: Pt, P2: Pt,
-  C: Pt, r: number
+  C: Circle
 ): Pt[] {
   const dx = P2.x - P1.x;
   const dy = P2.y - P1.y;
@@ -70,7 +111,7 @@ export function lineCircleIntersection(
 
   const a = dx*dx + dy*dy;
   const b = 2 * (fx*dx + fy*dy);
-  const c = fx*fx + fy*fy - r*r;
+  const c = fx*fx + fy*fy - C.r*C.r;
 
   const disc = b*b - 4*a*c;
   if (disc < 0) return [];

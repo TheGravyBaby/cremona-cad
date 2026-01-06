@@ -19,7 +19,7 @@ export class DenisViolin extends RecipeComponentBase{
     ratios: {
       heightMm: 356,
     },
-    paths: {}
+    calcs: {}
   }
 
   changeBase(): void {

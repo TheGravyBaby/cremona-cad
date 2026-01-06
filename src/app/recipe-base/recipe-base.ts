@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { Output, EventEmitter, Input } from "@angular/core";
 import { RecipeInterface } from '../models/recipe';
-import { Pt } from '../models/types';
+import { Circle, Pt } from '../models/types';
 
 @Component({
   selector: 'app-recipe-base',
@@ -32,7 +32,7 @@ export class RecipeComponentBase {
     fileName: "tst",
     version: "",
     ratios: undefined,
-    paths: undefined
+    calcs: undefined
   }
 
   ngOnInit() {
@@ -71,9 +71,7 @@ export class RecipeComponentBase {
   // partsOrSegments:
   // - number => equal parts
   // - number[] => segment weights (e.g. [3,4,3])
-  renderBoxLine(
-    g: any,
-    ui: any,
+  renderBoxLine = (
     start: Pt,
     end: Pt,
     partsOrSegments: number | number[],
@@ -87,7 +85,7 @@ export class RecipeComponentBase {
       labelMode?: "segmentIndex" | "segmentWeight";
       labelOffset?: number;        // multiplier of thickness
     }
-  ) {
+  ) => (g: any, ui: any) => {
     const thickness = opts?.thickness ?? 10;
     const outlineOn = opts?.outline ?? true;
     const tickMode = opts?.tickMode ?? "boundaries";
@@ -229,14 +227,13 @@ export class RecipeComponentBase {
     }
   }
 
-  renderDashLine(
-    g: any,
+  renderDashLine = (
     start: { x: number; y: number },
     end: { x: number; y: number },
     color = "black",
     width = 1,
     dash = "4,4"
-  ) {
+  ) => (g: any, ui: any) => {
     g.append("line")
       .attr("x1", start.x)
       .attr("y1", start.y)
@@ -249,23 +246,65 @@ export class RecipeComponentBase {
   }
 
   addPaths(calcs: {name: string, d: string}[]) {
-    this.d.paths = this.d.paths || [];
+    this.d.calcs = this.d.calcs || [];
     for (const entry of calcs) {
-      const idx = this.d.paths.findIndex((c: any) => c.name === entry.name);
-      if (idx === -1) this.d.paths.push(entry);
-      else this.d.paths[idx] = entry;
+      const idx = this.d.calcs.findIndex((c: any) => c.name === entry.name);
+      if (idx === -1) this.d.calcs.push(entry);
+      else this.d.calcs[idx] = entry;
     }
   }
 
-  renderPaths = (paths: Array<{ d: string }>) => (g: any, ui: any) => {
+  renderPaths = (paths: Array<{ d: string }>, color: string) => (g: any, ui: any) => {
     paths.forEach(p => {
-      g.append("path")
-        .attr("d", p.d)
-        .attr("fill", "none")
-        .attr("stroke", "red")
-        .attr("stroke-width", 2);
+      this.renderPath(p.d, color)
     });
   };
+
+  renderPath = (path: string, color: string) => (g: any, ui: any) => {
+      g.append("path")
+        .attr("d", path)
+        .attr("fill", "none")
+        .attr("stroke", color)
+        .attr("stroke-width", 2);
+  };
+
+  renderCircle = (C: Circle, color: string) => (g: any, ui: any) => {
+     g.append('circle')
+      .attr('cx', C.x)
+      .attr('cy', C.y)
+      .attr('r', C.r)
+      .attr('stroke', color)
+      .attr('fill', 'none')
+      .attr('stroke-width', 2)
+      .attr('vector-effect', 'non-scaling-stroke');
+  }
+
+  renderLine = (P: Pt, Q: Pt, color: string) => (g: any, ui: any) => {
+    g.append("line")
+      .attr("x1", Q.x)
+      .attr("y1", Q.y)
+      .attr("x2", P.x)
+      .attr("y2", P.y)
+      .attr("stroke", color)
+      .attr('stroke-width', 2)
+      .attr('vector-effect', 'non-scaling-stroke')
+      .attr('opacity', 0.25);
+  }
+  
+  renderRectangle = (P: Pt, w: number, h: number, fill: string, stroke: string) => (g: any, ui: any) => { 
+     g.append('rect')
+      .attr('x', P.x)
+      .attr('y', P.y)
+      .attr('width', w)
+      .attr('height', h)
+      .attr('fill', fill)
+      .attr('stroke', stroke)
+      .attr('stroke-width', 2)
+      .attr('vector-effect', 'non-scaling-stroke')
+      .attr('opacity', 0.25);
+  }
+
+ 
 
 
 
