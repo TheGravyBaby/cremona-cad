@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { dist, intersectLines, lineCircleIntersection, pointOnCircle, solveYOnCircleInset } from '../helpers/helpers';
+import { dist, interceptCirclesAndPoint, intersectLines, lineCircleIntersection, pointOnCircle, solveYOnCircleInset } from '../helpers/helpers';
 import { RecipeInterface } from '../models/recipe';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { arcPathFrom3Points } from '../helpers/helpers';
@@ -190,7 +190,13 @@ export class BeardViolinComponent extends RecipeComponentBase {
       this.renderCircle(vr, "blue")(g, ui)
     }
 
-    this.addCalcs([{name: "lowerRightBoutEndPt", d: {x: w/2, y: VR.y}}, {name: "lowerLeftBoutEndPt", d: {x: -w/2, y: VL.y}}])
+    this.addCalcs([
+      {name: "lowerRightBoutEndPt", d: {x: w/2, y: VR.y}}, 
+      {name: "lowerLeftBoutEndPt", d: {x: -w/2, y: VL.y}},
+      {name: "lowerRightVesica", d: VR},
+      {name: "lowerLeftVesica", d: VL}
+    
+    ])
   }
 
   renderUpperVesica = (guides: boolean = false) => (g: any, ui: any) => {
@@ -247,7 +253,12 @@ export class BeardViolinComponent extends RecipeComponentBase {
       this.renderCircle(vr, "green")(g, ui)
     }
 
-    this.addCalcs([{name: "upperRightBoutEndPt", d: {x: w/2, y: VR.y}}, {name: "upperLeftBoutEndPt", d: {x: -w/2, y: VL.y}}])
+    this.addCalcs([
+      {name: "upperRightBoutEndPt", d: {x: w/2, y: VR.y}}, 
+      {name: "upperLeftBoutEndPt", d: {x: -w/2, y: VL.y}},
+      {name: "upperRightVesica", d: VR},
+      {name: "upperLeftVesica", d: VL}
+    ])
 
   }
 
@@ -324,6 +335,18 @@ export class BeardViolinComponent extends RecipeComponentBase {
     // let greatCircleR = dist(boutArcCenter!, upperRightCorner)
     // let greatCirlceRight: Circle = {x: boutArcCenter!.x, y: boutArcCenter!.y, r: greatCircleR}
     // this.renderCircle(greatCirlceRight, "orange")(g, ui)
+
+    let cornerRadius = w/8
+    let lowerRightVesica = this.d.calcs.find((c: { name: string; }) => c.name == "lowerRightVesica").d as Circle
+    let upperRightVesica = this.d.calcs.find((c: { name: string; }) => c.name == "upperRightVesica").d as Circle
+
+
+    let lowerRightCornerCircle = interceptCirclesAndPoint(lowerRightVesica, lowerRightCorner, cornerRadius)![1]
+    let upperRightCornerCircle = interceptCirclesAndPoint(upperRightVesica, upperRightCorner, cornerRadius)![0]
+
+    this.renderCircle(lowerRightCornerCircle!, "blue")(g,ui)
+    this.renderCircle(upperRightCornerCircle!, "green")(g,ui)
+
 
   }
 }

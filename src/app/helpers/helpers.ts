@@ -201,3 +201,78 @@ export function safeFraction(n: number, d: number):
 
   return { ok: true, value: { n, d } };
 }
+
+export function interceptCirclesAndPoint(U: Circle, P: Pt, Ur: number): Circle[] {
+  if (Ur <= 0) throw new Error("Ur must be > 0");
+  const Qx = U.x, Qy = U.y, Qr = U.r;
+  if (Qr < 0) throw new Error("Q.r must be >= 0");
+
+  const solutions: Pt[] = [];
+
+  // helper: intersect circle (center A, radius ra) with (center B, radius rb)
+  function circleCircle(A: Pt, ra: number, B: Pt, rb: number): Pt[] {
+    const dx = B.x - A.x;
+    const dy = B.y - A.y;
+    const d = Math.hypot(dx, dy);
+
+    // no / infinite solutions
+    if (d === 0) return [];
+
+    if (d > ra + rb) return [];
+    if (d < Math.abs(ra - rb)) return [];
+
+    const a = (ra * ra - rb * rb + d * d) / (2 * d);
+    const h2 = ra * ra - a * a;
+    const h = Math.sqrt(Math.max(0, h2));
+
+    const xm = A.x + (a * dx) / d;
+    const ym = A.y + (a * dy) / d;
+
+    const rx = (-dy / d) * h;
+    const ry = ( dx / d) * h;
+
+    // one solution if tangent (h==0), two otherwise
+    if (h === 0) return [{ x: xm, y: ym }];
+    return [
+      { x: xm + rx, y: ym + ry },
+      { x: xm - rx, y: ym - ry },
+    ];
+  }
+
+  const Pcenter: Pt = { x: P.x, y: P.y };
+  const Qcenter: Pt = { x: Qx, y: Qy };
+
+  // Try external tangency first: |C - Q| = Qr + Ur
+  solutions.push(...circleCircle(Pcenter, Ur, Qcenter, Qr + Ur));
+
+  // Then internal tangency if it makes sense: |C - Q| = |Qr - Ur|
+  const internalRadius = Math.abs(Qr - Ur);
+  if (internalRadius > 0) {
+    solutions.push(...circleCircle(Pcenter, Ur, Qcenter, internalRadius));
+  }
+
+  if (solutions.length === 0) {
+    throw new Error("No solution: cannot make radius Ur circle through P tangent to Q");
+  }
+
+  // Deterministic pick:
+  // choose the solution that is "closest" to the existing U center (stabilizes UI),
+  // tie-break by higher y then higher x.
+  const target: Pt = { x: U.x, y: U.y };
+  solutions.sort((a, b) => {
+    const da = (a.x - target.x) ** 2 + (a.y - target.y) ** 2;
+    const db = (b.x - target.x) ** 2 + (b.y - target.y) ** 2;
+    if (da !== db) return da - db;
+    if (a.y !== b.y) return b.y - a.y;
+    return b.x - a.x;
+  });
+
+  const C = solutions[0];
+  const D = solutions[1];
+  let result: Circle[] =  [
+    { x: C.x, y: C.y, r: Ur }, 
+    { x: D.x, y: D.y, r: Ur }
+  ];
+
+  return result;
+}
