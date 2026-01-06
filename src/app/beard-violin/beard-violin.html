@@ -4,15 +4,15 @@
     <summary>Base</summary>
     <label>
       Height (mm)
-      <input type="number" step="1" [(ngModel)]="d.ratios.heightMm" (input)="changeBase()" />
+      <input type="number" step="1" [(ngModel)]="d.params.h" (input)="changeBase()" />
     </label>
     <br>
     <label>
       Height : Width Ratio
       <div class="ratio">
-        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.heightPart" (input)="changeBase()" />
+        <input type="number" step="1" min="1" [(ngModel)]="d.params.htoW.n" (input)="changeBase()" />
         <span>:</span>
-        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.widthPart" (input)="changeBase()" />
+        <input type="number" step="1" min="1" [(ngModel)]="d.params.htoW.d" (input)="changeBase()" />
       </div>
     </label>
 
@@ -20,9 +20,9 @@
     <label>
       Upper Bout : Lower Bout Ratio
       <div class="ratio">
-        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.upperBoutWidthNum" (input)="changeBase()" />
+        <input type="number" step="1" min="1" [(ngModel)]="d.params.hiToLowW.n" (input)="changeBase()" />
         <span>:</span>
-        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.upperBoutWidthDen" (input)="changeBase()" />
+        <input type="number" step="1" min="1" [(ngModel)]="d.params.hiToLowW.d" (input)="changeBase()" />
       </div>
     </label>
   </details>
@@ -33,9 +33,9 @@
     <label>
       Vesica Radius : Gap Ratio
       <div class="ratio">
-        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.lowerRadiiPart" (input)="changeLowerVesica()" />
+        <input type="number" step="1" min="1" [(ngModel)]="d.params.lowVesRadToGap.n" (input)="changeLowerVesica()" />
         <span>:</span>
-        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.lowerGapPart" (input)="changeLowerVesica()" />
+        <input type="number" step="1" min="1" [(ngModel)]="d.params.lowVesRadToGap.d" (input)="changeLowerVesica()" />
       </div>
     </label>
 
@@ -44,9 +44,9 @@
     <label>
       Join Arc Length : Height Ratio
       <div class="ratio">
-        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.lowerJoinRatioNum" (input)="changeLowerVesica()" />
+        <input type="number" step="1" min="1" [(ngModel)]="d.params.lowJoinArcToH.n" (input)="changeLowerVesica()" />
         <span>:</span>
-        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.lowerJoinRatioDen" (input)="changeLowerVesica()" />
+        <input type="number" step="1" min="1" [(ngModel)]="d.params.lowJoinArcToH.d" (input)="changeLowerVesica()" />
       </div>
     </label>
 
@@ -65,9 +65,9 @@
     <label>
       Vesica Radius : Distance Ratio
       <div class="ratio">
-        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.upperRadiiPart" (input)="changeUpperVesica()" />
+        <input type="number" step="1" min="1" [(ngModel)]="d.params.hiVesRadToGap.n" (input)="changeUpperVesica()" />
         <span>:</span>
-        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.upperGapPart" (input)="changeUpperVesica()" />
+        <input type="number" step="1" min="1" [(ngModel)]="d.params.hiVesRadToGap.d" (input)="changeUpperVesica()" />
       </div>
     </label>
 
@@ -76,9 +76,9 @@
     <label>
       Join Arc Length : Height Ratio
       <div class="ratio">
-        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.upperJoinRatioNum" (input)="changeUpperVesica()" />
+        <input type="number" step="1" min="1" [(ngModel)]="d.params.hiJoinArcToH.n" (input)="changeUpperVesica()" />
         <span>:</span>
-        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.upperJoinRatioDen" (input)="changeUpperVesica()" />
+        <input type="number" step="1" min="1" [(ngModel)]="d.params.hiJoinArcToH.d" (input)="changeUpperVesica()" />
       </div>
     </label>
     <br>
@@ -94,39 +94,39 @@
   <details [open]="openPanel === 'cornerPlacement'" (toggle)="onToggle('cornerPlacement', $event)">
     <summary>Corner Placement</summary>
     <label>
-      Center Section : Height 
+      Center Section : Height
       <div class="ratio">
-        <input type="number" step="1" min="0" [(ngModel)]="d.ratios.centerSectionNum" (input)="changeCenterBouts()" />
+        <input type="number" step="1" min="0" [(ngModel)]="d.params.cenSecToH.n" (input)="changeCenterBouts()" />
         <span>:</span>
-        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.centerSectionDen" (input)="changeCenterBouts()" />
-      </div>
-    </label>
-    
-    <br>
-
-     <label>
-      Upper Corner Section : Center Section 
-      <div class="ratio">
-        <input type="number" step="1" min="0" [(ngModel)]="d.ratios.upperCornerPart" (input)="changeCenterBouts()" />
-        <span>:</span>
-        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.centerSectionParts" (input)="changeCenterBouts()" />
+        <input type="number" step="1" min="1" [(ngModel)]="d.params.cenSecToH.d" (input)="changeCenterBouts()" />
       </div>
     </label>
 
     <br>
 
-     <label>
-      Lower Corner Section : Center Section 
+    <label>
+      Upper Corner Section : Center Section
       <div class="ratio">
-        <input type="number" step="1" min="0" [(ngModel)]="d.ratios.lowerCornerPart" (input)="changeCenterBouts()" />
+        <input type="number" step="1" min="0" [(ngModel)]="d.params.hiCornPart" (input)="changeCenterBouts()" />
         <span>:</span>
-        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.centerSectionParts" (input)="changeCenterBouts()" />
+        <input type="number" step="1" min="1" [(ngModel)]="d.params.cenSecParts" (input)="changeCenterBouts()" />
+      </div>
+    </label>
+
+    <br>
+
+    <label>
+      Lower Corner Section : Center Section
+      <div class="ratio">
+        <input type="number" step="1" min="0" [(ngModel)]="d.params.lowCornPart" (input)="changeCenterBouts()" />
+        <span>:</span>
+        <input type="number" step="1" min="1" [(ngModel)]="d.params.cenSecParts" (input)="changeCenterBouts()" />
       </div>
     </label>
 
 
-     <!-- Error message -->
-    @if (centerBoutError !== '') {
+    <!-- Error message -->
+    @if (cornerPlacementError !== '') {
     <div class="calc-error">
       {{ lowerBoutError }}
     </div>
@@ -137,42 +137,35 @@
 
   <details [open]="openPanel === 'outerCorners'" (toggle)="onToggle('outerCorners', $event)">
     <summary>Corner Placement</summary>
-    
+
 
     <label>
-      Center Section : Height 
+      Lower Outside Corner Radii : Low Width
       <div class="ratio">
-        <input type="number" step="1" min="0" [(ngModel)]="d.ratios.centerSectionNum" (input)="changeCenterBouts()" />
+        <input type="number" step="1" min="0" [(ngModel)]="d.params.lowOutCornerRadiToW.n"
+          (input)="changeCenterBouts()" />
         <span>:</span>
-        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.centerSectionDen" (input)="changeCenterBouts()" />
-      </div>
-    </label>
-    
-    <br>
-
-     <label>
-      Upper Corner Section : Center Section 
-      <div class="ratio">
-        <input type="number" step="1" min="0" [(ngModel)]="d.ratios.upperCornerPart" (input)="changeCenterBouts()" />
-        <span>:</span>
-        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.centerSectionParts" (input)="changeCenterBouts()" />
+        <input type="number" step="1" min="1" [(ngModel)]="d.params.lowOutCornerRadiToW.d"
+          (input)="changeCenterBouts()" />
       </div>
     </label>
 
     <br>
 
-     <label>
-      Lower Corner Section : Center Section 
+    <label>
+      Lower Outside Corner Radii : Low Width
       <div class="ratio">
-        <input type="number" step="1" min="0" [(ngModel)]="d.ratios.lowerCornerPart" (input)="changeCenterBouts()" />
+        <input type="number" step="1" min="0" [(ngModel)]="d.params.hiOutCornerRadiToW" (input)="changeCenterBouts()" />
         <span>:</span>
-        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.centerSectionParts" (input)="changeCenterBouts()" />
+        <input type="number" step="1" min="1" [(ngModel)]="d.params.hiOutCornerRadiToW" (input)="changeCenterBouts()" />
       </div>
     </label>
 
+    <br>
 
-     <!-- Error message -->
-    @if (centerBoutError !== '') {
+
+    <!-- Error message -->
+    @if (outerCornerError !== '') {
     <div class="calc-error">
       {{ lowerBoutError }}
     </div>

@@ -16,7 +16,7 @@ export class DenisViolin extends RecipeComponentBase{
     recipeName: 'Denis-Violin',
     fileName: "defaultDenis",
     version: ".1",
-    ratios: {
+    params: {
       heightMm: 356,
     },
     calcs: {}
@@ -28,8 +28,8 @@ export class DenisViolin extends RecipeComponentBase{
   }
 
   drawBoundingBoxes = (g: any): void => {
-    const h = Math.max(1, this.d.ratios.heightMm);
-    const w = h * this.d.ratios.heightPart / this.d.ratios.widthPart;
+    const h = Math.max(1, this.d.params.heightMm);
+    const w = h * this.d.params.heightPart / this.d.params.widthPart;
     const xLeft = -w / 2;
 
     // bounding rect (above x-axis)

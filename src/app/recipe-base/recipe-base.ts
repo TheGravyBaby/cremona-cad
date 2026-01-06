@@ -31,7 +31,7 @@ export class RecipeComponentBase {
     recipeName: "",
     fileName: "tst",
     version: "",
-    ratios: undefined,
+    params: undefined,
     calcs: undefined
   }
 
