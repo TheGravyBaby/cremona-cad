@@ -22,19 +22,28 @@ export function projectToCircle(C: Circle, P: Pt): Pt {
 
 export function circleCircleIntersections(
   C1: Circle,
-  C2: Circle
+  C2: Circle,
+  approx: boolean = true // or default false if you prefer
 ): Pt[] {
   const d = dist(C1, C2);
-  if (d > C1.r + C2.r || d < Math.abs(C1.r - C2.r) || d === 0) return [];
 
-  const a = (C1.r*C1.r - C2.r*C2.r + d*d) / (2*d);
-  const h = Math.sqrt(C1.r*C1.r - a*a);
+  // tight, scale-aware tolerance (tweak 1e-12 -> 1e-11 if you still see misses)
+  const scale = Math.max(1, C1.r, C2.r, d);
+  const eps = approx ? 1e-12 * scale : 0;
 
-  const xm = C1.x + a * (C2.x - C1.x) / d;
-  const ym = C1.y + a * (C2.y - C1.y) / d;
+  // Only change: allow near-intersection by relaxing the bounds slightly
+  if (d > C1.r + C2.r + eps) return [];
+  if (d < Math.abs(C1.r - C2.r) - eps) return [];
+  if (d <= eps) return [];
 
-  const rx = -(C2.y - C1.y) * (h / d);
-  const ry =  (C2.x - C1.x) * (h / d);
+  const a = (C1.r * C1.r - C2.r * C2.r + d * d) / (2 * d);
+  const h = Math.sqrt(Math.abs(C1.r * C1.r - a * a));
+
+  const xm = C1.x + (a * (C2.x - C1.x)) / d;
+  const ym = C1.y + (a * (C2.y - C1.y)) / d;
+
+  const rx = -((C2.y - C1.y) * (h / d));
+  const ry =  ((C2.x - C1.x) * (h / d));
 
   return [
     { x: xm + rx, y: ym + ry },
@@ -179,6 +188,86 @@ export function arcPathFrom3Points(
 
   return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArcFlag} ${sweepFlag} ${endOnCircle.x} ${endOnCircle.y}`;
 }
+
+/**
+ * SVG arc path on circle C, centered at angle theta (radians),
+ * spanning arc-length s (same units as r).
+ *
+ * Example: s = Math.PI * r draws a half-circle centered on theta.
+ */
+export function arcPathByArcLengthAboutTheta(
+  C: Circle,
+  theta: number,
+  s: number,
+  opts?: {
+    radians?: boolean;      // if false, theta is degrees
+    moveTo?: boolean;       // include "M" + "A" (default true). If false, returns only the "A" command.
+    sweep?: 1 | 0;          // 1 = clockwise, 0 = counterclockwise (default 1)
+  }
+): string {
+  const radians = opts?.radians ?? true;
+  const moveTo = opts?.moveTo ?? true;
+  const sweep = opts?.sweep ?? 1;
+
+  const t = radians ? theta : (theta * Math.PI) / 180;
+
+  // Convert arc length to angular span
+  if (C.r === 0) return "";
+  const dTheta = s / C.r; // radians
+  const a0 = t - dTheta / 2;
+  const a1 = t + dTheta / 2;
+
+  const x0 = C.x + C.r * Math.cos(a0);
+  const y0 = C.y + C.r * Math.sin(a0);
+  const x1 = C.x + C.r * Math.cos(a1);
+  const y1 = C.y + C.r * Math.sin(a1);
+
+  // SVG large-arc-flag: 1 if arc span > 180°
+  const largeArc = Math.abs(dTheta) > Math.PI ? 1 : 0;
+
+  const A = `A ${C.r} ${C.r} 0 ${largeArc} ${sweep} ${x1} ${y1}`;
+  return moveTo ? `M ${x0} ${y0} ${A}` : A;
+}
+
+/**
+ * SVG arc path on circle C,
+ * centered at angle `theta`,
+ * spanning angular width `delta` (radians).
+ */
+export function arcPathByAngleAboutTheta(
+  C: Circle,
+  theta: number,
+  delta: number,
+  opts?: {
+    radians?: boolean;    // if false, inputs are degrees
+    moveTo?: boolean;     // include "M" command (default true)
+    sweep?: 1 | 0;        // 1 = clockwise, 0 = counterclockwise
+  }
+): string {
+  const radians = opts?.radians ?? true;
+  const moveTo = opts?.moveTo ?? true;
+  const sweep = opts?.sweep ?? 1;
+
+  const t = radians ? theta : (theta * Math.PI) / 180;
+  const d = radians ? delta : (delta * Math.PI) / 180;
+
+  if (C.r === 0 || d === 0) return "";
+
+  const a0 = t - d / 2;
+  const a1 = t + d / 2;
+
+  const x0 = C.x + C.r * Math.cos(a0);
+  const y0 = C.y + C.r * Math.sin(a0);
+  const x1 = C.x + C.r * Math.cos(a1);
+  const y1 = C.y + C.r * Math.sin(a1);
+
+  const largeArc = Math.abs(d) > Math.PI ? 1 : 0;
+
+  const A = `A ${C.r} ${C.r} 0 ${largeArc} ${sweep} ${x1} ${y1}`;
+  return moveTo ? `M ${x0} ${y0} ${A}` : A;
+}
+
+
 
 export function angleFromCenter(C: Pt, P: Pt): number {
   return Math.atan2(P.y - C.y, P.x - C.x);

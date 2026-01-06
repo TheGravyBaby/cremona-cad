@@ -134,15 +134,14 @@
 
   </details>
 
-
   <details [open]="openPanel === 'outerCorners'" (toggle)="onToggle('outerCorners', $event)">
-    <summary>Corner Placement</summary>
+    <summary>Outer Corner Radius</summary>
     <label>
       Upper Outside Corner Radii : High Width
       <div class="ratio">
-        <input type="number" step="1" min="0" [(ngModel)]="d.params.hiOutCornerRadiToHiW.n" (input)="changeOuterCorners()" />
+        <input type="number" step="1" min="0" [(ngModel)]="d.params.hiOutCornerRadToHiW.n" (input)="changeOuterCorners()" />
         <span>:</span>
-        <input type="number" step="1" min="1" [(ngModel)]="d.params.hiOutCornerRadiToHiW.d" (input)="changeOuterCorners()" />
+        <input type="number" step="1" min="1" [(ngModel)]="d.params.hiOutCornerRadToHiW.d" (input)="changeOuterCorners()" />
       </div>
     </label>
 
@@ -151,10 +150,10 @@
      <label>
       Lower Outside Corner Radii : Low Width
       <div class="ratio">
-        <input type="number" step="1" min="0" [(ngModel)]="d.params.lowOutCornerRadiToW.n"
+        <input type="number" step="1" min="0" [(ngModel)]="d.params.lowOutCornerRadToW.n"
           (input)="changeOuterCorners()" />
         <span>:</span>
-        <input type="number" step="1" min="1" [(ngModel)]="d.params.lowOutCornerRadiToW.d"
+        <input type="number" step="1" min="1" [(ngModel)]="d.params.lowOutCornerRadToW.d"
           (input)="changeOuterCorners()" />
       </div>
     </label>
@@ -170,5 +169,63 @@
 
   </details>
 
+
+  <details [open]="openPanel === 'innerBouts'" (toggle)="onToggle('innerBouts', $event)">
+    <summary>Inner Bouts</summary>
+
+    <label>
+      Waist Width : Total Width
+      <div class="ratio">
+        <input type="number" step="1" min="0" [(ngModel)]="d.params.waistWidthToW.n" (input)="changeInnerBouts()" />
+        <span>:</span>
+        <input type="number" step="1" min="1" [(ngModel)]="d.params.waistWidthToW.d" (input)="changeInnerBouts()" />
+      </div>
+    </label>
+
+    <br>
+
+    <label>
+      Inner Bout Arc : Total Width
+      <div class="ratio">
+        <input type="number" step="1" min="0" [(ngModel)]="d.params.waistArcRadToW.n" (input)="changeInnerBouts()" />
+        <span>:</span>
+        <input type="number" step="1" min="1" [(ngModel)]="d.params.waistArcRadToW.d" (input)="changeInnerBouts()" />
+      </div>
+    </label>
+
+    <br>
+
+    <label>
+      Upper Inside Corner Radii : High Width
+      <div class="ratio">
+        <input type="number" step="1" min="0" [(ngModel)]="d.params.lowInnerCornerRadToW.n" (input)="changeInnerBouts()" />
+        <span>:</span>
+        <input type="number" step="1" min="1" [(ngModel)]="d.params.hiInnerCornerRadToW.d" (input)="changeInnerBouts()" />
+      </div>
+    </label>
+
+    <br>
+
+     <label>
+      Lower Inside Corner Radii : Low Width
+      <div class="ratio">
+        <input type="number" step="1" min="0" [(ngModel)]="d.params.lowInnerCornerRadToW.n"
+          (input)="changeInnerBouts()" />
+        <span>:</span>
+        <input type="number" step="1" min="1" [(ngModel)]="d.params.lowInnerCornerRadToW.d"
+          (input)="changeInnerBouts()" />
+      </div>
+    </label>
+
+
+
+    <!-- Error message -->
+    @if (outerCornerError !== '') {
+    <div class="calc-error">
+      {{ lowerBoutError }}
+    </div>
+    }
+
+  </details>
 
 </div>

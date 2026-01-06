@@ -69,7 +69,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.resizeObs?.disconnect();
   }
 
-
   // render canvas
   draw(): void {
     if (!this.initialized)
