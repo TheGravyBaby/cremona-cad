@@ -40,7 +40,7 @@ interface BeardViolinRecipe extends RecipeInterface {
 })
 
 export class BeardViolinComponent extends RecipeComponentBase {
-  override openPanel = 'innerBouts'
+  override openPanel = 'finalRender'
 
   override d: BeardViolinRecipe = {
     recipeName: 'Beard Violin',
@@ -63,7 +63,7 @@ export class BeardViolinComponent extends RecipeComponentBase {
       waistWidthToW: { n: 1, d: 2 },
       waistArcRadToW: { n: 1, d: 2 },
       lowInnerCornerRadToW: { n: 1, d: 8 },
-      hiInnerCornerRadToW: { n: 1, d: 8 }
+      hiInnerCornerRadToW: { n: 1, d: 12 }
     },
     calcs: []
   }
@@ -73,6 +73,7 @@ export class BeardViolinComponent extends RecipeComponentBase {
   cornerPlacementError = ""
   outerCornerError = ""
   innerBoutError = ""
+  showAllArcs = false
 
 
   override firstRender = (g: any, ui: any): void => {
@@ -94,6 +95,7 @@ export class BeardViolinComponent extends RecipeComponentBase {
       else if (panel == 'cornerPlacement') this.changeCornerPosition();
       else if (panel == 'outerCorners') this.changeOuterCorners();
       else if (panel == 'innerBouts') this.changeInnerBouts();
+      else if (panel == 'finalRender') this.changeFinalRender();
     } else {
       // closed -> don't switch panels (prevents "weird" behavior)
       // optional: if you want to forbid closing the active one, re-open it:
@@ -114,15 +116,26 @@ export class BeardViolinComponent extends RecipeComponentBase {
   }
 
   changeCornerPosition(): void {
-    this.draftChange.emit([this.renderBoutBounds, this.renderLowerVesica(false), this.renderUpperVesica(false), this.renderCornerPositions(true)]);
+    this.draftChange.emit([this.renderBoutBounds, this.renderLowerVesica(false), this.renderUpperVesica(false), this.renderCornerPositions(true, true)]);
   }
 
   changeOuterCorners(): void {
-    this.draftChange.emit([this.renderBoutBounds, this.renderLowerVesica(false), this.renderUpperVesica(false), this.renderCornerPositions(false), this.renderOuterCorners(true)]);
+    this.draftChange.emit([this.renderBoutBounds, this.renderLowerVesica(false), this.renderUpperVesica(false), this.renderCornerPositions(false, true), this.renderOuterCorners(true)]);
   }
 
   changeInnerBouts(): void {
     this.draftChange.emit([this.renderBoutBounds, this.renderLowerVesica(false, false), this.renderUpperVesica(false, false), this.renderCornerPositions(false), this.renderOuterCorners(false), this.renderInnerBout(true)]);
+  }
+
+  changeFinalRender(): void {
+    this.draftChange.emit([
+      this.renderLowerVesica(false, false),
+      this.renderUpperVesica(false,false),
+      this.renderCornerPositions(false),
+      this.renderOuterCorners(false),
+      this.renderInnerBout(false),
+      this.finalRender()
+    ]);
   }
 
   renderBounds = (g: any, ui: any): void => {
@@ -227,7 +240,8 @@ export class BeardViolinComponent extends RecipeComponentBase {
       { name: "lowerRightBoutEndPt", d: { x: w / 2, y: VR.y } },
       { name: "lowerLeftBoutEndPt", d: { x: -w / 2, y: VL.y } },
       { name: "lowerRightVesica", d: VR },
-      { name: "lowerLeftVesica", d: VL }
+      { name: "lowerLeftVesica", d: VL },
+      { name: "lowerJoinArc", d: C}
     ])
   }
 
@@ -292,12 +306,13 @@ export class BeardViolinComponent extends RecipeComponentBase {
       { name: "upperRightBoutEndPt", d: { x: w / 2, y: VR.y } },
       { name: "upperLeftBoutEndPt", d: { x: -w / 2, y: VL.y } },
       { name: "upperRightVesica", d: VR },
-      { name: "upperLeftVesica", d: VL }
+      { name: "upperLeftVesica", d: VL },
+      { name: "upperJoinArc", d: C}
     ])
 
   }
 
-  renderCornerPositions = (guides: boolean = false) => (g: any, ui: any): void => {
+  renderCornerPositions = (guides: boolean = false, cornerCrosshairs: boolean = false) => (g: any, ui: any): void => {
     this.cornerPlacementError = ""
     let upperRightBoutEndPt = this.d.calcs.find((c: { name: string; }) => c.name == "upperRightBoutEndPt").d as Pt
     let upperLeftBoutEndPt = this.d.calcs.find((c: { name: string; }) => c.name == "upperLeftBoutEndPt").d as Pt
@@ -345,10 +360,12 @@ export class BeardViolinComponent extends RecipeComponentBase {
     let lowerLeftArc = arcPathFrom3Points({ x: lowerRightBoutEndPt.x, y: lowerRightBoutEndPt.y }, { x: - lowerRightBoutEndPt.x, y: lowerRightBoutEndPt.y }, lowerLeftCorner, { clockwise: false })
     let upperLeftArc = arcPathFrom3Points({ x: upperRightBoutEndPt.x, y: upperRightBoutEndPt.y }, { x: - upperRightBoutEndPt.x, y: upperRightBoutEndPt.y }, upperLeftCorner)
 
-    this.renderCrosshair(lowerRightCorner, "red")(g, ui)
-    this.renderCrosshair(lowerLeftCorner, "red")(g, ui)
-    this.renderCrosshair(upperRightCorner, "red")(g, ui)
-    this.renderCrosshair(upperLeftCorner, "red")(g, ui)
+    if (cornerCrosshairs) {
+      this.renderCrosshair(lowerRightCorner, "red")(g, ui)
+      this.renderCrosshair(lowerLeftCorner, "red")(g, ui)
+      this.renderCrosshair(upperRightCorner, "red")(g, ui)
+      this.renderCrosshair(upperLeftCorner, "red")(g, ui)
+    }
 
     if (guides) {
       this.renderPath(lowerLeftArc, "orange")(g, ui)
@@ -424,7 +441,6 @@ export class BeardViolinComponent extends RecipeComponentBase {
     this.renderPath(upperRightCornerArc, "red")(g, ui);
     this.renderPath(upperRightBoutArc, "red")(g, ui);
 
-
     // ---------- LEFT (mirrored) ----------
     let lowerLeftCorner = this.d.calcs.find(c => c.name == "lowerLeftCorner")!.d as Pt
     let upperLeftCorner = this.d.calcs.find(c => c.name == "upperLeftCorner")!.d as Pt
@@ -447,6 +463,12 @@ export class BeardViolinComponent extends RecipeComponentBase {
     this.renderPath(arcPathFrom3Points(upperLeftCornerCircle, upperLeftCorner, upperLeftIntersectPt), "red")(g, ui)
     this.renderPath(arcPathFrom3Points(upperLeftVesica, upperLeftBoutEndPt, upperLeftIntersectPt), "red")(g, ui)
 
+    this.addCalcs([
+      {name: "upperOuterRightCornerCircle", d: upperRightCornerCircle },
+      {name: "lowerOuterRightCornerCircle", d: lowerRightCornerCircle },
+      {name: "lowerOuterLeftCornerCircle", d: upperLeftCornerCircle },
+      {name: "lowerOuterLeftCornerCircle", d: lowerLeftCornerCircle },
+    ])
     
 
   }
@@ -516,8 +538,40 @@ renderInnerBout = (guides: boolean = false) => (g: any, ui: any): void => {
   this.renderPath(lowerCornerToB, "red")(gMirror, ui);
   this.renderPath(alongB, "red")(gMirror, ui);
   this.renderPath(upperBToCorner, "red")(gMirror, ui);
+
+  this.addCalcs([
+     {name: "waistCircle", d: B },
+     {name: "upperRightInnerCornerCircle", d: upperInnerCornerCircle },
+     {name: "lowerRightInnerCornerCircle", d: lowerInnerCornerCircle }, 
+  ])
 }
 
+finalRender = () => (g: any, ui: any): void => {
+  let lowerRightVesica = this.d.calcs.find((c: { name: string; }) => c.name == "lowerRightVesica").d as Circle
+  let lowwerJoinArc = this.d.calcs.find((c: { name: string; }) => c.name == "lowerJoinArc").d as Circle
+  let upperRightVesica = this.d.calcs.find((c: { name: string; }) => c.name == "upperRightVesica").d as Circle
+  let upperJoinArc = this.d.calcs.find((c: { name: string; }) => c.name == "upperJoinArc").d as Circle
+  
+  let upperRightCornerCircle = this.d.calcs.find((c: { name: string; }) => c.name == "upperOuterRightCornerCircle").d as Circle
+  let lowerRightCornerCircle = this.d.calcs.find((c: { name: string; }) => c.name == "lowerOuterRightCornerCircle").d as Circle
 
+  let waistCircle = this.d.calcs.find((c: { name: string; }) => c.name == "waistCircle").d as Circle
+  let upperRightInnerCornerCircle = this.d.calcs.find((c: { name: string; }) => c.name == "upperRightInnerCornerCircle").d as Circle
+  let lowerRightInnerCornerCircle = this.d.calcs.find((c: { name: string; }) => c.name == "lowerRightInnerCornerCircle").d as Circle
+
+  if (this.showAllArcs) {
+    this.renderCircle(lowerRightVesica, "blue")(g, ui);
+    this.renderCircle(lowwerJoinArc, "blue")(g, ui);
+    this.renderCircle(upperRightVesica, "green")(g, ui);
+    this.renderCircle(upperJoinArc, "green")(g, ui);
+    this.renderCircle(upperRightCornerCircle, "purple")(g, ui);
+    this.renderCircle(lowerRightCornerCircle, "purple")(g, ui);
+    this.renderCircle(waistCircle, "orange")(g, ui);
+    this.renderCircle(upperRightInnerCornerCircle, "brown")(g, ui);
+    this.renderCircle(lowerRightInnerCornerCircle, "brown")(g, ui);
+  }
+
+
+}
 
 }
