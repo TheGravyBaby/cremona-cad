@@ -96,9 +96,9 @@
     <label>
       Center Section : Height
       <div class="ratio">
-        <input type="number" step="1" min="0" [(ngModel)]="d.params.cenSecToH.n" (input)="changeCenterBouts()" />
+        <input type="number" step="1" min="0" [(ngModel)]="d.params.cenSecToH.n" (input)="changeCornerPosition()" />
         <span>:</span>
-        <input type="number" step="1" min="1" [(ngModel)]="d.params.cenSecToH.d" (input)="changeCenterBouts()" />
+        <input type="number" step="1" min="1" [(ngModel)]="d.params.cenSecToH.d" (input)="changeCornerPosition()" />
       </div>
     </label>
 
@@ -107,9 +107,9 @@
     <label>
       Upper Corner Section : Center Section
       <div class="ratio">
-        <input type="number" step="1" min="0" [(ngModel)]="d.params.hiCornPart" (input)="changeCenterBouts()" />
+        <input type="number" step="1" min="0" [(ngModel)]="d.params.hiCornPart" (input)="changeCornerPosition()" />
         <span>:</span>
-        <input type="number" step="1" min="1" [(ngModel)]="d.params.cenSecParts" (input)="changeCenterBouts()" />
+        <input type="number" step="1" min="1" [(ngModel)]="d.params.cenSecParts" (input)="changeCornerPosition()" />
       </div>
     </label>
 
@@ -118,9 +118,9 @@
     <label>
       Lower Corner Section : Center Section
       <div class="ratio">
-        <input type="number" step="1" min="0" [(ngModel)]="d.params.lowCornPart" (input)="changeCenterBouts()" />
+        <input type="number" step="1" min="0" [(ngModel)]="d.params.lowCornPart" (input)="changeCornerPosition()" />
         <span>:</span>
-        <input type="number" step="1" min="1" [(ngModel)]="d.params.cenSecParts" (input)="changeCenterBouts()" />
+        <input type="number" step="1" min="1" [(ngModel)]="d.params.cenSecParts" (input)="changeCornerPosition()" />
       </div>
     </label>
 
@@ -137,31 +137,28 @@
 
   <details [open]="openPanel === 'outerCorners'" (toggle)="onToggle('outerCorners', $event)">
     <summary>Corner Placement</summary>
-
-
     <label>
+      Upper Outside Corner Radii : High Width
+      <div class="ratio">
+        <input type="number" step="1" min="0" [(ngModel)]="d.params.hiOutCornerRadiToHiW.n" (input)="changeOuterCorners()" />
+        <span>:</span>
+        <input type="number" step="1" min="1" [(ngModel)]="d.params.hiOutCornerRadiToHiW.d" (input)="changeOuterCorners()" />
+      </div>
+    </label>
+
+    <br>
+
+     <label>
       Lower Outside Corner Radii : Low Width
       <div class="ratio">
         <input type="number" step="1" min="0" [(ngModel)]="d.params.lowOutCornerRadiToW.n"
-          (input)="changeCenterBouts()" />
+          (input)="changeOuterCorners()" />
         <span>:</span>
         <input type="number" step="1" min="1" [(ngModel)]="d.params.lowOutCornerRadiToW.d"
-          (input)="changeCenterBouts()" />
+          (input)="changeOuterCorners()" />
       </div>
     </label>
 
-    <br>
-
-    <label>
-      Lower Outside Corner Radii : Low Width
-      <div class="ratio">
-        <input type="number" step="1" min="0" [(ngModel)]="d.params.hiOutCornerRadiToW" (input)="changeCenterBouts()" />
-        <span>:</span>
-        <input type="number" step="1" min="1" [(ngModel)]="d.params.hiOutCornerRadiToW" (input)="changeCenterBouts()" />
-      </div>
-    </label>
-
-    <br>
 
 
     <!-- Error message -->
