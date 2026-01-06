@@ -8,7 +8,7 @@
     </label>
     <br>
     <label>
-      Height : Width Ratio  
+      Height : Width Ratio
       <div class="ratio">
         <input type="number" step="1" min="1" [(ngModel)]="d.ratios.heightPart" (input)="changeBase()" />
         <span>:</span>
@@ -18,62 +18,54 @@
 
     <br>
     <label>
-      Upper Bout Reduction Part
+      Upper Bout : Lower Bout Ratio
       <div class="ratio">
-        1
+        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.upperBoutWidthNum" (input)="changeBase()" />
         <span>:</span>
-        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.upperBoutReductionDenom" (input)="changeBase()" />
+        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.upperBoutWidthDen" (input)="changeBase()" />
       </div>
     </label>
   </details>
 
 
 
-<details [open]="openPanel === 'lowerBout'" (toggle)="onToggle('lowerBout', $event)">
-  <summary>Lower Bout</summary>
+  <details [open]="openPanel === 'lowerBout'" (toggle)="onToggle('lowerBout', $event)">
+    <summary>Lower Bout</summary>
 
-  <label>
-    Vesica Radius : Gap Ratio
-    <div class="ratio">
-      <input type="number" step="1" min="1"
-        [(ngModel)]="d.ratios.lowerRadiiPart"
-        (input)="changeLowerVesica()" />
-      <span>:</span>
-      <input type="number" step="1" min="1"
-        [(ngModel)]="d.ratios.lowerGapPart"
-        (input)="changeLowerVesica()" />
-    </div>
-  </label>
+    <label>
+      Vesica Radius : Gap Ratio
+      <div class="ratio">
+        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.lowerRadiiPart" (input)="changeLowerVesica()" />
+        <span>:</span>
+        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.lowerGapPart" (input)="changeLowerVesica()" />
+      </div>
+    </label>
 
-  <br>
+    <br>
 
-  <label>
-    Join Arc Length : Height Ratio
-    <div class="ratio">
-      <input type="number" step="1" min="1"
-        [(ngModel)]="d.ratios.lowerJoinRatioNum"
-        (input)="changeLowerVesica()" />
-      <span>:</span>
-      <input type="number" step="1" min="1"
-        [(ngModel)]="d.ratios.lowerJoinRatioDen"
-        (input)="changeLowerVesica()" />
-    </div>
-  </label>
+    <label>
+      Join Arc Length : Height Ratio
+      <div class="ratio">
+        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.lowerJoinRatioNum" (input)="changeLowerVesica()" />
+        <span>:</span>
+        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.lowerJoinRatioDen" (input)="changeLowerVesica()" />
+      </div>
+    </label>
 
-  <!-- Error message -->
-   @if (lowerBoutError !== '') {
+    <!-- Error message -->
+    @if (lowerBoutError !== '') {
     <div class="calc-error">
       {{ lowerBoutError }}
     </div>
-   }
+    }
 
-  <br>
-</details>
+    <br>
+  </details>
 
 
 
-  
-   <details [open]="openPanel === 'upperBout'" (toggle)="onToggle('upperBout', $event)">
+
+  <details [open]="openPanel === 'upperBout'" (toggle)="onToggle('upperBout', $event)">
     <summary>Upper Bout</summary>
     <label>
       Vesica Radius : Distance Ratio
@@ -98,22 +90,61 @@
 
     <!-- Error message -->
     @if (upperBoutError !== '') {
-      <div class="calc-error">
-        {{ upperBoutError }}
-      </div>
+    <div class="calc-error">
+      {{ upperBoutError }}
+    </div>
     }
   </details>
 
   <details [open]="openPanel === 'centerBouts'" (toggle)="onToggle('centerBouts', $event)">
-    <summary>Center Bouts</summary>
-    <label>
+    <summary>Corner Placement</summary>
+    <!-- <label>
       Waist Center : Body Ratio
       <div class="ratio">
         <input type="number" step="1" min="1" [(ngModel)]="d.ratios.waistCenterNum" (input)="changeCenterBouts()" />
         <span>:</span>
         <input type="number" step="1" min="1" [(ngModel)]="d.ratios.waistCenterDen" (input)="changeCenterBouts()" />
       </div>
+    </label> -->
+
+    <label>
+      Center Section : Height 
+      <div class="ratio">
+        <input type="number" step="1" min="0" [(ngModel)]="d.ratios.centerSectionNum" (input)="changeCenterBouts()" />
+        <span>:</span>
+        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.centerSectionDen" (input)="changeCenterBouts()" />
+      </div>
     </label>
+    
+    <br>
+
+     <label>
+      Upper Corner Section : Center Section 
+      <div class="ratio">
+        <input type="number" step="1" min="0" [(ngModel)]="d.ratios.upperCornerPart" (input)="changeCenterBouts()" />
+        <span>:</span>
+        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.centerSectionParts" (input)="changeCenterBouts()" />
+      </div>
+    </label>
+
+    <br>
+
+     <label>
+      Lower Corner Section : Center Section 
+      <div class="ratio">
+        <input type="number" step="1" min="0" [(ngModel)]="d.ratios.lowerCornerPart" (input)="changeCenterBouts()" />
+        <span>:</span>
+        <input type="number" step="1" min="1" [(ngModel)]="d.ratios.centerSectionParts" (input)="changeCenterBouts()" />
+      </div>
+    </label>
+
+
+     <!-- Error message -->
+    @if (centerBoutError !== '') {
+    <div class="calc-error">
+      {{ lowerBoutError }}
+    </div>
+    }
 
   </details>
 

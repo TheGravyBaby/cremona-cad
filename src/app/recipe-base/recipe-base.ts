@@ -245,7 +245,7 @@ export class RecipeComponentBase {
       .attr("vector-effect", "non-scaling-stroke");
   }
 
-  addPaths(calcs: {name: string, d: string}[]) {
+  addCalcs(calcs: { name: string, d: any }[]) {
     this.d.calcs = this.d.calcs || [];
     for (const entry of calcs) {
       const idx = this.d.calcs.findIndex((c: any) => c.name === entry.name);
@@ -261,15 +261,15 @@ export class RecipeComponentBase {
   };
 
   renderPath = (path: string, color: string) => (g: any, ui: any) => {
-      g.append("path")
-        .attr("d", path)
-        .attr("fill", "none")
-        .attr("stroke", color)
-        .attr("stroke-width", 2);
+    g.append("path")
+      .attr("d", path)
+      .attr("fill", "none")
+      .attr("stroke", color)
+      .attr("stroke-width", 2);
   };
 
   renderCircle = (C: Circle, color: string) => (g: any, ui: any) => {
-     g.append('circle')
+    g.append('circle')
       .attr('cx', C.x)
       .attr('cy', C.y)
       .attr('r', C.r)
@@ -279,7 +279,7 @@ export class RecipeComponentBase {
       .attr('vector-effect', 'non-scaling-stroke');
   }
 
-  renderLine = (P: Pt, Q: Pt, color: string) => (g: any, ui: any) => {
+  renderLine = (P: Pt, Q: Pt, color: string, opacity: boolean = true) => (g: any, ui: any) => {
     g.append("line")
       .attr("x1", Q.x)
       .attr("y1", Q.y)
@@ -288,11 +288,11 @@ export class RecipeComponentBase {
       .attr("stroke", color)
       .attr('stroke-width', 2)
       .attr('vector-effect', 'non-scaling-stroke')
-      .attr('opacity', 0.25);
+      .attr('opacity', opacity ? 0.25 : 1);
   }
-  
-  renderRectangle = (P: Pt, w: number, h: number, fill: string, stroke: string) => (g: any, ui: any) => { 
-     g.append('rect')
+
+  renderRectangle = (P: Pt, w: number, h: number, fill: string, stroke: string) => (g: any, ui: any) => {
+    g.append('rect')
       .attr('x', P.x)
       .attr('y', P.y)
       .attr('width', w)
@@ -304,7 +304,156 @@ export class RecipeComponentBase {
       .attr('opacity', 0.25);
   }
 
- 
+  // 1) Crosshair point marker (+ optional dot)
+  renderCrosshair = (
+    P: Pt,
+    color: string,
+    size: number = 3,          // half-length of crosshair arms in px
+    strokeWidth: number = 2,
+    opacity: number = 1,
+    showDot: boolean = false,
+    dotR: number = 2
+  ) => (g: any, ui: any) => {
+    const grp = g.append("g")
+      .attr("class", "draft-crosshair")
+      .attr("transform", `translate(${P.x},${P.y})`)
+      .attr("opacity", opacity);
+
+    // horizontal arm
+    grp.append("line")
+      .attr("x1", -size).attr("y1", 0)
+      .attr("x2", size).attr("y2", 0)
+      .attr("stroke", color)
+      .attr("stroke-width", strokeWidth)
+      .attr("vector-effect", "non-scaling-stroke");
+
+    // vertical arm
+    grp.append("line")
+      .attr("x1", 0).attr("y1", -size)
+      .attr("x2", 0).attr("y2", size)
+      .attr("stroke", color)
+      .attr("stroke-width", strokeWidth)
+      .attr("vector-effect", "non-scaling-stroke");
+
+    if (showDot) {
+      grp.append("circle")
+        .attr("cx", 0).attr("cy", 0).attr("r", dotR)
+        .attr("fill", color)
+        .attr("vector-effect", "non-scaling-stroke");
+    }
+  };
+
+  // 2) Labeled point (uses crosshair under the hood)
+  renderPointLabel = (
+    P: Pt,
+    label: string,
+    color: string,
+    offset: Pt = { x: 10, y: -10 },
+    fontSize: number = 12,
+    bg: boolean = true
+  ) => (g: any, ui: any) => {
+    // marker
+    this.renderCrosshair(P, color, 7, 2, 1, true, 2)(g, ui);
+
+    const grp = g.append("g")
+      .attr("class", "draft-point-label")
+      .attr("transform", `translate(${P.x + offset.x},${P.y + offset.y})`);
+
+    if (bg) {
+      // crude background "pill" without measuring text: good enough for drafting UI
+      grp.append("rect")
+        .attr("x", -4).attr("y", -fontSize)
+        .attr("width", Math.max(22, label.length * (fontSize * 0.62)))
+        .attr("height", fontSize + 6)
+        .attr("rx", 4).attr("ry", 4)
+        .attr("fill", "black")
+        .attr("opacity", 0.35);
+    }
+
+    grp.append("text")
+      .text(label)
+      .attr("x", 0)
+      .attr("y", 0)
+      .attr("fill", color)
+      .attr("font-size", fontSize)
+      .attr("dominant-baseline", "alphabetic")
+      .attr("vector-effect", "non-scaling-stroke");
+  };
+
+  // 3) Dashed construction line (for guides)
+  renderDashedLine = (
+    P: Pt,
+    Q: Pt,
+    color: string,
+    dash: string = "6 6",
+    strokeWidth: number = 2,
+    opacity: number = 0.5
+  ) => (g: any, ui: any) => {
+    g.append("line")
+      .attr("x1", Q.x).attr("y1", Q.y)
+      .attr("x2", P.x).attr("y2", P.y)
+      .attr("stroke", color)
+      .attr("stroke-width", strokeWidth)
+      .attr("stroke-dasharray", dash)
+      .attr("opacity", opacity)
+      .attr("vector-effect", "non-scaling-stroke");
+  };
+
+  // 4) Measurement between two points: end ticks + label at midpoint
+  renderMeasure = (
+    P: Pt,
+    Q: Pt,
+    label: string,
+    color: string,
+    tickSize: number = 6,
+    fontSize: number = 12,
+    offset: number = -10 // offset label along the normal
+  ) => (g: any, ui: any) => {
+    const dx = Q.x - P.x;
+    const dy = Q.y - P.y;
+    const len = Math.hypot(dx, dy) || 1;
+
+    // unit direction + normal
+    const ux = dx / len, uy = dy / len;
+    const nx = -uy, ny = ux;
+
+    // main line
+    g.append("line")
+      .attr("x1", P.x).attr("y1", P.y)
+      .attr("x2", Q.x).attr("y2", Q.y)
+      .attr("stroke", color)
+      .attr("stroke-width", 2)
+      .attr("vector-effect", "non-scaling-stroke")
+      .attr("opacity", 0.75);
+
+    // ticks at ends (perpendicular)
+    const tick = (A: Pt) => {
+      g.append("line")
+        .attr("x1", A.x + nx * tickSize).attr("y1", A.y + ny * tickSize)
+        .attr("x2", A.x - nx * tickSize).attr("y2", A.y - ny * tickSize)
+        .attr("stroke", color)
+        .attr("stroke-width", 2)
+        .attr("vector-effect", "non-scaling-stroke");
+    };
+    tick(P); tick(Q);
+
+    // label at midpoint, nudged along normal
+    const mx = (P.x + Q.x) / 2 + nx * offset;
+    const my = (P.y + Q.y) / 2 + ny * offset;
+
+    g.append("text")
+      .text(label)
+      .attr("x", mx)
+      .attr("y", my)
+      .attr("fill", color)
+      .attr("font-size", fontSize)
+      .attr("text-anchor", "middle")
+      .attr("dominant-baseline", "central")
+      .attr("vector-effect", "non-scaling-stroke");
+  };
+
+
+
 
 
 

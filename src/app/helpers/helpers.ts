@@ -59,7 +59,6 @@ export function circleTangentAngle(θ: number): number {
 }
 
 
-
 function solveCoordOnCircleInset(
   C: Circle,
   knownAxis: Axis,     // which coordinate you already know: "x" or "y"
@@ -97,8 +96,6 @@ export function solveXOnCircleInset(
   return solveCoordOnCircleInset(C, "y", Py, inset, right);
 }
 
-
-
 export function lineCircleIntersection(
   P1: Pt, P2: Pt,
   C: Circle
@@ -121,6 +118,28 @@ export function lineCircleIntersection(
     { x: P1.x + (-b + s)/(2*a) * dx, y: P1.y + (-b + s)/(2*a) * dy },
     { x: P1.x + (-b - s)/(2*a) * dx, y: P1.y + (-b - s)/(2*a) * dy },
   ];
+}
+
+export function intersectLines(A: Pt, B: Pt, C: Pt, D: Pt): Pt | null {
+  const x1 = A.x, y1 = A.y;
+  const x2 = B.x, y2 = B.y;
+  const x3 = C.x, y3 = C.y;
+  const x4 = D.x, y4 = D.y;
+
+  const denom = (x1 - x2) * (y3 - y4) -
+                (y1 - y2) * (x3 - x4);
+
+  if (denom === 0) return null; // parallel or coincident
+
+  const px =
+    ((x1*y2 - y1*x2) * (x3 - x4) -
+     (x1 - x2) * (x3*y4 - y3*x4)) / denom;
+
+  const py =
+    ((x1*y2 - y1*x2) * (y3 - y4) -
+     (y1 - y2) * (x3*y4 - y3*x4)) / denom;
+
+  return { x: px, y: py };
 }
 
 
