@@ -1,10 +1,11 @@
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { arcPathByAngleAboutTheta, arcPathByArcLengthAboutTheta, circleCircleIntersections, interceptCirclesAndPoint, intersectLines, lineCircleIntersection, pointOnCircle, solveYOnCircleInset } from '../helpers/helpers';
+import { arcPathByAngleAboutTheta, arcPathByArcLengthAboutTheta, circleCircleIntersections, interceptCirclesAndPoint, intersectLines, lineCircleIntersection, pointOnCircle, solveYOnCircleInset } from '../helpers/draftMath';
 import { RecipeInterface } from '../models/recipe';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
-import { arcPathFrom3Points } from '../helpers/helpers';
+import { arcPathFrom3Points } from '../helpers/draftMath';
 import { Circle, Fraction, Pt } from '../models/types';
+import { renderCircle, renderPath, renderLine, renderBoxLine, renderCrosshair, renderDashLine } from '../helpers/renderFuncs';
 
 
 interface BeardViolinParams {
@@ -51,19 +52,20 @@ export class BeardViolinComponent extends RecipeComponentBase {
       htoW: { n: 7, d: 4 },
       hiToLowW: { n: 8, d: 10 },
       hiJoinArcToH: { n: 3, d: 7 },
-      hiVesRadToGap: { n: 2, d: 1 },
+      hiVesRadToGap: { n: 5, d: 2 },
       lowJoinArcToH: { n: 2, d: 3 },
-      lowVesRadToGap: { n: 1, d: 1 },
+      lowVesRadToGap: { n: 3, d: 2 },
+
       cenSecToH: { n: 1, d: 3 },
       cenSecParts: 5,
       hiCornPart: 0,
       lowCornPart: 1,
-      hiOutCornerRadToHiW: { n: 1, d: 8 },
-      lowOutCornerRadToW: { n: 1, d: 8 },
-      waistWidthToW: { n: 1, d: 2 },
-      waistArcRadToW: { n: 1, d: 3 },
+      hiOutCornerRadToHiW: { n: 1, d: 12 },
+      lowOutCornerRadToW: { n: 1, d: 4 },
+      waistWidthToW: { n: 7, d: 13 },
+      waistArcRadToW: { n: 3, d: 8 },
       hiInnerCornerRadToW: { n: 1, d: 12 },
-      lowInnerCornerRadToW: { n: 1, d: 8 }
+      lowInnerCornerRadToW: { n: 1, d: 12 }
     },
     calcs: []
   }
@@ -107,24 +109,51 @@ export class BeardViolinComponent extends RecipeComponentBase {
     this.draftChange.emit([this.firstRender]);
   }
 
-  changeLowerVesica(): void {
-    this.draftChange.emit([this.renderBoutBounds, this.renderLowerVesica(true)])
-  }
 
   changeUpperVesica(): void {
-    this.draftChange.emit([this.renderBoutBounds, this.renderLowerVesica(false), this.renderUpperVesica(true)]);
+    this.draftChange.emit([
+      this.renderBoutBounds, 
+      this.renderUpperVesica(true)
+    ]);
+  }
+
+  changeLowerVesica(): void {
+    this.draftChange.emit([
+      this.renderBoutBounds,
+      this.renderUpperVesica(),
+      this.renderLowerVesica(true)
+    ])
   }
 
   changeCornerPosition(): void {
-    this.draftChange.emit([this.renderBoutBounds, this.renderLowerVesica(false), this.renderUpperVesica(false), this.renderCornerPositions(true, true)]);
+    this.draftChange.emit([
+      this.renderBoutBounds, 
+      this.renderLowerVesica(false), 
+      this.renderUpperVesica(false), 
+      this.renderCornerPositions(true, true)
+    ]);
   }
 
   changeOuterCorners(): void {
-    this.draftChange.emit([this.renderBoutBounds, this.renderLowerVesica(false), this.renderUpperVesica(false), this.renderCornerPositions(false, true), this.renderOuterCorners(true)]);
+    this.draftChange.emit([
+      this.renderBoutBounds, 
+      this.renderLowerVesica(false), 
+      this.renderUpperVesica(false), 
+      this.renderCornerPositions(false, true), 
+      this.renderOuterCorners(true)
+
+    ]);
   }
 
   changeInnerBouts(): void {
-    this.draftChange.emit([this.renderBoutBounds, this.renderLowerVesica(false, false), this.renderUpperVesica(false, false), this.renderCornerPositions(false), this.renderOuterCorners(false), this.renderInnerBout(true)]);
+    this.draftChange.emit([
+      this.renderBoutBounds, 
+      this.renderLowerVesica(false, false), 
+      this.renderUpperVesica(false, false), 
+      this.renderCornerPositions(false), 
+      this.renderOuterCorners(false), 
+      this.renderInnerBout(true)
+    ]);
   }
 
   changeFinalRender(): void {
@@ -211,29 +240,29 @@ export class BeardViolinComponent extends RecipeComponentBase {
     let rightBout = arcPathFrom3Points(VR, intR, { x: w / 2, y: VR.y })
 
      if (vesica) {
-      this.renderCircle(VR, "blue")(g, ui)
-      this.renderCircle(VL, "blue")(g, ui)
+      renderCircle(VR, "blue")(g, ui)
+      renderCircle(VL, "blue")(g, ui)
     }
 
-    this.renderPath(joinPath, "red")(g, ui)
-    this.renderPath(leftBout, "red")(g, ui)
-    this.renderPath(rightBout, "red")(g, ui)
+    renderPath(joinPath, "red")(g, ui)
+    renderPath(leftBout, "red")(g, ui)
+    renderPath(rightBout, "red")(g, ui)
 
     if (guides) {
-      this.renderLine(C, intR, "blue")(g, ui)
-      this.renderLine(C, intL, "blue")(g, ui)
-      this.renderBoxLine({ x: w * .7, y: 0 }, { x: w * .7, y: Cy }, this.d.params.lowJoinArcToH.n, "blue", "lightblue", false)(g, ui)
-      this.renderBoxLine({ x: w * .8, y: 0 }, { x: w * .8, y: h }, this.d.params.lowJoinArcToH.d, "blue", "lightblue", true)(g, ui)
-      this.renderDashLine({ x: 3 * w, y: Cy }, { x: -3 * w, y: Cy })(g, ui)
+      renderLine(C, intR, "blue")(g, ui)
+      renderLine(C, intL, "blue")(g, ui)
+      renderBoxLine({ x: w * .7, y: 0 }, { x: w * .7, y: Cy }, this.d.params.lowJoinArcToH.n, "blue", "lightblue", false)(g, ui)
+      renderBoxLine({ x: w * .8, y: 0 }, { x: w * .8, y: h }, this.d.params.lowJoinArcToH.d, "blue", "lightblue", true)(g, ui)
+      renderDashLine({ x: 3 * w, y: Cy }, { x: -3 * w, y: Cy })(g, ui)
 
       let vesicaiRatios = [this.d.params.lowVesRadToGap.n, this.d.params.lowVesRadToGap.d, this.d.params.lowVesRadToGap.n]
-      this.renderBoxLine({ x: -w / 2, y: -25 }, { x: w / 2, y: -25 }, vesicaiRatios, "blue", "lightblue", true, { labelMode: "segmentWeight" })(g, ui)
+      renderBoxLine({ x: -w / 2, y: -25 }, { x: w / 2, y: -25 }, vesicaiRatios, "blue", "lightblue", true, { labelMode: "segmentWeight" })(g, ui)
 
       // little Circle to indicate our vesica centers
       let vl: Circle = { x: VR.x, y: VR.y, r: 1 }
       let vr: Circle = { x: VL.x, y: VL.y, r: 1 }
-      this.renderCircle(vl, "blue")(g, ui)
-      this.renderCircle(vr, "blue")(g, ui)
+      renderCircle(vl, "blue")(g, ui)
+      renderCircle(vr, "blue")(g, ui)
     }
 
     this.addCalcs([
@@ -277,29 +306,29 @@ export class BeardViolinComponent extends RecipeComponentBase {
     let rightBout = arcPathFrom3Points(VR, { x: w / 2, y: VR.y }, intR)
 
     if (vesica) {
-      this.renderCircle(VR, "green")(g, ui)
-      this.renderCircle(VL, "green")(g, ui)
+      renderCircle(VR, "green")(g, ui)
+      renderCircle(VL, "green")(g, ui)
     }
 
-    this.renderPath(joinPath, "red")(g, ui)
-    this.renderPath(leftBout, "red")(g, ui)
-    this.renderPath(rightBout, "red")(g, ui)
+    renderPath(joinPath, "red")(g, ui)
+    renderPath(leftBout, "red")(g, ui)
+    renderPath(rightBout, "red")(g, ui)
 
     if (guides) {
-      this.renderLine(C, intR, "green")(g, ui)
-      this.renderLine(C, intL, "green")(g, ui)
-      this.renderBoxLine({ x: w * .7, y: h }, { x: w * .7, y: Cy }, this.d.params.hiJoinArcToH.n, "green", "lightgreen", false)(g, ui)
-      this.renderBoxLine({ x: w * .8, y: 0 }, { x: w * .8, y: h }, this.d.params.hiJoinArcToH.d, "green", "lightgreen", true)(g, ui)
-      this.renderDashLine({ x: 3 * w, y: Cy }, { x: -3 * w, y: Cy })(g, ui)
+      renderLine(C, intR, "green")(g, ui)
+      renderLine(C, intL, "green")(g, ui)
+      renderBoxLine({ x: w * .7, y: h }, { x: w * .7, y: Cy }, this.d.params.hiJoinArcToH.n, "green", "lightgreen", false)(g, ui)
+      renderBoxLine({ x: w * .8, y: 0 }, { x: w * .8, y: h }, this.d.params.hiJoinArcToH.d, "green", "lightgreen", true)(g, ui)
+      renderDashLine({ x: 3 * w, y: Cy }, { x: -3 * w, y: Cy })(g, ui)
 
       let vesicaiRatios = [this.d.params.hiVesRadToGap.n, this.d.params.hiVesRadToGap.d, this.d.params.hiVesRadToGap.n]
-      this.renderBoxLine({ x: -w / 2, y: h + 25 }, { x: w / 2, y: h + 25 }, vesicaiRatios, "green", "lightgreen", true, { labelMode: "segmentWeight" })(g, ui)
+      renderBoxLine({ x: -w / 2, y: h + 25 }, { x: w / 2, y: h + 25 }, vesicaiRatios, "green", "lightgreen", true, { labelMode: "segmentWeight" })(g, ui)
 
       // little Circle to indicate our vesica centers
       let vl: Circle = { x: VR.x, y: VR.y, r: 1 }
       let vr: Circle = { x: VL.x, y: VL.y, r: 1 }
-      this.renderCircle(vl, "green")(g, ui)
-      this.renderCircle(vr, "green")(g, ui)
+      renderCircle(vl, "green")(g, ui)
+      renderCircle(vr, "green")(g, ui)
     }
 
     this.addCalcs([
@@ -335,14 +364,14 @@ export class BeardViolinComponent extends RecipeComponentBase {
     let lowerCornerHeight = centerSectionStart + centerSectionDivision * this.d.params.lowCornPart
 
     if (guides) {
-      this.renderBoxLine({ x: w, y: 0 }, { x: w, y: h }, this.d.params.cenSecToH.d, "blue", "green", true)(g, ui)
-      this.renderBoxLine(
+      renderBoxLine({ x: w, y: 0 }, { x: w, y: h }, this.d.params.cenSecToH.d, "blue", "green", true)(g, ui)
+      renderBoxLine(
         { x: w * .9, y: centerSectionStart },
         { x: w * .9, y: centerSectionEnd },
         this.d.params.cenSecParts, "blue", "green", true)(g, ui)
 
-      this.renderDashLine({ x: -1000, y: upperCornerHeight }, { x: 1000, y: upperCornerHeight }, "green")(g, ui)
-      this.renderDashLine({ x: -1000, y: lowerCornerHeight }, { x: 1000, y: lowerCornerHeight }, "blue")(g, ui)
+      renderDashLine({ x: -1000, y: upperCornerHeight }, { x: 1000, y: upperCornerHeight }, "green")(g, ui)
+      renderDashLine({ x: -1000, y: lowerCornerHeight }, { x: 1000, y: lowerCornerHeight }, "blue")(g, ui)
     }
 
     let lowerRightGuideCircle: Circle = { x: lowerLeftBoutEndPt.x, y: lowerLeftBoutEndPt.y, r: w }
@@ -361,23 +390,23 @@ export class BeardViolinComponent extends RecipeComponentBase {
     let upperLeftArc = arcPathFrom3Points({ x: upperRightBoutEndPt.x, y: upperRightBoutEndPt.y }, { x: - upperRightBoutEndPt.x, y: upperRightBoutEndPt.y }, upperLeftCorner)
 
     if (cornerCrosshairs) {
-      this.renderCrosshair(lowerRightCorner, "red")(g, ui)
-      this.renderCrosshair(lowerLeftCorner, "red")(g, ui)
-      this.renderCrosshair(upperRightCorner, "red")(g, ui)
-      this.renderCrosshair(upperLeftCorner, "red")(g, ui)
+      renderCrosshair(lowerRightCorner, "red")(g, ui)
+      renderCrosshair(lowerLeftCorner, "red")(g, ui)
+      renderCrosshair(upperRightCorner, "red")(g, ui)
+      renderCrosshair(upperLeftCorner, "red")(g, ui)
     }
 
     if (guides) {
-      this.renderPath(lowerLeftArc, "orange")(g, ui)
-      this.renderPath(lowerRightArc, "orange")(g, ui)
-      this.renderPath(upperLeftArc, "orange")(g, ui)
-      this.renderPath(upperRightArc, "orange")(g, ui)
+      renderPath(lowerLeftArc, "orange")(g, ui)
+      renderPath(lowerRightArc, "orange")(g, ui)
+      renderPath(upperLeftArc, "orange")(g, ui)
+      renderPath(upperRightArc, "orange")(g, ui)
 
-      this.renderLine(lowerLeftBoutEndPt, lowerRightCorner, "orange")(g, ui)
-      this.renderLine(lowerLeftBoutEndPt, lowerRightBoutEndPt, "orange")(g, ui)
+      renderLine(lowerLeftBoutEndPt, lowerRightCorner, "orange")(g, ui)
+      renderLine(lowerLeftBoutEndPt, lowerRightBoutEndPt, "orange")(g, ui)
 
-      this.renderLine(upperLeftBoutEndPt, upperRightCorner, "orange")(g, ui)
-      this.renderLine(upperLeftBoutEndPt, upperRightBoutEndPt, "orange")(g, ui)
+      renderLine(upperLeftBoutEndPt, upperRightCorner, "orange")(g, ui)
+      renderLine(upperLeftBoutEndPt, upperRightBoutEndPt, "orange")(g, ui)
     }
 
     this.addCalcs([
@@ -416,19 +445,19 @@ export class BeardViolinComponent extends RecipeComponentBase {
       // guiding arcs that determine outer corner circle placement
       let lowerGuidingCircle = {...lowerRightCorner, r: lowerRightCornerCircle.r}
       let lowerGuidePath = arcPathByAngleAboutTheta(lowerGuidingCircle, 0 * Math.PI, 2/3 * Math.PI)
-      this.renderPath(lowerGuidePath, "orange")(g, ui);
-      this.renderLine(lowerRightCorner, lowerRightCornerCircle, "orange", false)(g, ui);
+      renderPath(lowerGuidePath, "orange")(g, ui);
+      renderLine(lowerRightCorner, lowerRightCornerCircle, "orange", false)(g, ui);
 
       // guiding arcs that determine outer corner circle placement
       let upperGuidingCircle = {...upperRightCorner, r: upperRightCornerCircle.r}
       let upperGuidePath = arcPathByAngleAboutTheta(upperGuidingCircle, 0 * Math.PI, 2/3 * Math.PI)
-      this.renderPath(upperGuidePath, "orange")(g, ui);
-      this.renderLine(upperRightCorner, upperRightCornerCircle, "orange", false)(g, ui);
+      renderPath(upperGuidePath, "orange")(g, ui);
+      renderLine(upperRightCorner, upperRightCornerCircle, "orange", false)(g, ui);
 
-      this.renderCircle(lowerRightCornerCircle, "blue")(g, ui)
-      this.renderCircle({...lowerRightCornerCircle, r: 1}, "blue")(g, ui)
-      this.renderCircle(upperRightCornerCircle, "green")(g, ui)
-      this.renderCircle({...upperRightCornerCircle, r: 1}, "green")(g, ui)
+      renderCircle(lowerRightCornerCircle, "blue")(g, ui)
+      renderCircle({...lowerRightCornerCircle, r: 1}, "blue")(g, ui)
+      renderCircle(upperRightCornerCircle, "green")(g, ui)
+      renderCircle({...upperRightCornerCircle, r: 1}, "green")(g, ui)
     }
 
     let lowerRightCornerArc = arcPathFrom3Points(lowerRightCornerCircle, lowerRightCorner, lowerRightIntersectPt);
@@ -436,10 +465,10 @@ export class BeardViolinComponent extends RecipeComponentBase {
     let upperRightCornerArc = arcPathFrom3Points(upperRightCornerCircle, upperRightCorner, upperRightIntersectPt, { clockwise: false });
     let upperRightBoutArc = arcPathFrom3Points(upperRightVesica, upperRightBoutEndPt, upperRightIntersectPt, { clockwise: false });
 
-    this.renderPath(lowerRightCornerArc, "red")(g, ui);
-    this.renderPath(lowerRightBoutArc, "red")(g, ui);
-    this.renderPath(upperRightCornerArc, "red")(g, ui);
-    this.renderPath(upperRightBoutArc, "red")(g, ui);
+    renderPath(lowerRightCornerArc, "red")(g, ui);
+    renderPath(lowerRightBoutArc, "red")(g, ui);
+    renderPath(upperRightCornerArc, "red")(g, ui);
+    renderPath(upperRightBoutArc, "red")(g, ui);
 
     // ---------- LEFT (mirrored) ----------
     let lowerLeftCorner = this.d.calcs.find(c => c.name == "lowerLeftCorner")!.d as Pt
@@ -458,10 +487,10 @@ export class BeardViolinComponent extends RecipeComponentBase {
 
     let upperLeftIntersectPt = circleCircleIntersections(upperLeftCornerCircle, upperLeftVesica)[1]
 
-    this.renderPath(arcPathFrom3Points(lowerLeftCornerCircle, lowerLeftCorner, lowerLeftIntersectPt, { clockwise: false }), "red")(g, ui)
-    this.renderPath(arcPathFrom3Points(lowerLeftVesica, lowerLeftBoutEndPt, lowerLeftIntersectPt, { clockwise: false }),"red")(g, ui)
-    this.renderPath(arcPathFrom3Points(upperLeftCornerCircle, upperLeftCorner, upperLeftIntersectPt), "red")(g, ui)
-    this.renderPath(arcPathFrom3Points(upperLeftVesica, upperLeftBoutEndPt, upperLeftIntersectPt), "red")(g, ui)
+    renderPath(arcPathFrom3Points(lowerLeftCornerCircle, lowerLeftCorner, lowerLeftIntersectPt, { clockwise: false }), "red")(g, ui)
+    renderPath(arcPathFrom3Points(lowerLeftVesica, lowerLeftBoutEndPt, lowerLeftIntersectPt, { clockwise: false }),"red")(g, ui)
+    renderPath(arcPathFrom3Points(upperLeftCornerCircle, upperLeftCorner, upperLeftIntersectPt), "red")(g, ui)
+    renderPath(arcPathFrom3Points(upperLeftVesica, upperLeftBoutEndPt, upperLeftIntersectPt), "red")(g, ui)
 
     this.addCalcs([
       {name: "upperOuterRightCornerCircle", d: upperRightCornerCircle },
@@ -515,29 +544,29 @@ renderInnerBout = (guides: boolean = false) => (g: any, ui: any): void => {
   const upperBToCorner = arcPathFrom3Points(upperInnerCornerCircle, upperOnB, upperRightCorner, { clockwise: false });
 
   if (guides) {
-    this.renderDashLine({ x: -1000, y: waistHeight }, { x: 1000, y: waistHeight }, "orange")(g, ui);
-    this.renderBoxLine({ x: -waistWidth / 2, y: h + 25 }, { x: waistWidth / 2, y: h + 25 }, this.d.params.waistWidthToW.n, "orange", "lightOrange", true)(g, ui);
-    this.renderBoxLine({ x: -w / 2, y: h + 50 }, { x: w / 2, y: h + 50 }, this.d.params.waistWidthToW.d, "coral", "orange", true)(g, ui);
-    this.renderDashLine({ x: -waistWidth / 2, y: 1000 }, { x: -waistWidth / 2, y: -1000 }, "orange")(g, ui);
-    this.renderDashLine({ x: waistWidth / 2, y: 1000 }, { x: waistWidth / 2, y: -1000 }, "orange")(g, ui);
-    this.renderCrosshair(waistDeepestPoint, "orange")(g, ui);
-    this.renderCircle(B, "orange")(g, ui);
-    this.renderCrosshair(B, "orange")(g, ui);
+    renderDashLine({ x: -1000, y: waistHeight }, { x: 1000, y: waistHeight }, "orange")(g, ui);
+    renderBoxLine({ x: -waistWidth / 2, y: h + 25 }, { x: waistWidth / 2, y: h + 25 }, this.d.params.waistWidthToW.n, "orange", "lightOrange", true)(g, ui);
+    renderBoxLine({ x: -w / 2, y: h + 50 }, { x: w / 2, y: h + 50 }, this.d.params.waistWidthToW.d, "coral", "orange", true)(g, ui);
+    renderDashLine({ x: -waistWidth / 2, y: 1000 }, { x: -waistWidth / 2, y: -1000 }, "orange")(g, ui);
+    renderDashLine({ x: waistWidth / 2, y: 1000 }, { x: waistWidth / 2, y: -1000 }, "orange")(g, ui);
+    renderCrosshair(waistDeepestPoint, "orange")(g, ui);
+    renderCircle(B, "orange")(g, ui);
+    renderCrosshair(B, "orange")(g, ui);
 
-    this.renderCircle(lowerInnerCornerCircle, "blue")(g, ui);
-    this.renderCircle(upperInnerCornerCircle, "green")(g, ui);
+    renderCircle(lowerInnerCornerCircle, "blue")(g, ui);
+    renderCircle(upperInnerCornerCircle, "green")(g, ui);
   }
 
    // render RIGHT
-  this.renderPath(lowerCornerToB, "red")(g, ui);
-  this.renderPath(alongB, "red")(g, ui);
-  this.renderPath(upperBToCorner, "red")(g, ui);
+  renderPath(lowerCornerToB, "red")(g, ui);
+  renderPath(alongB, "red")(g, ui);
+  renderPath(upperBToCorner, "red")(g, ui);
 
   // render LEFT by mirroring the rendered geometry (x -> -x about centerline)
   const gMirror = g.append("g").attr("transform", "scale(-1,1)");
-  this.renderPath(lowerCornerToB, "red")(gMirror, ui);
-  this.renderPath(alongB, "red")(gMirror, ui);
-  this.renderPath(upperBToCorner, "red")(gMirror, ui);
+  renderPath(lowerCornerToB, "red")(gMirror, ui);
+  renderPath(alongB, "red")(gMirror, ui);
+  renderPath(upperBToCorner, "red")(gMirror, ui);
 
   this.addCalcs([
      {name: "waistCircle", d: B },
@@ -560,20 +589,20 @@ finalRender = () => (g: any, ui: any): void => {
   let lowerRightInnerCornerCircle = this.d.calcs.find((c: { name: string; }) => c.name == "lowerRightInnerCornerCircle").d as Circle
 
   if (this.showAllArcs) {
-    this.renderCircle(lowerRightVesica, "blue")(g, ui);
-    this.renderCircle(lowwerJoinArc, "blue")(g, ui);
-    this.renderCircle(upperRightVesica, "green")(g, ui);
-    this.renderCircle(upperJoinArc, "green")(g, ui);
-    this.renderCircle(upperRightCornerCircle, "purple")(g, ui);
-    this.renderCircle(lowerRightCornerCircle, "purple")(g, ui);
-    this.renderCircle(waistCircle, "orange")(g, ui);
-    this.renderCircle(upperRightInnerCornerCircle, "brown")(g, ui);
-    this.renderCircle(lowerRightInnerCornerCircle, "brown")(g, ui);
+    renderCircle(lowerRightVesica, "blue")(g, ui);
+    renderCircle(lowwerJoinArc, "blue")(g, ui);
+    renderCircle(upperRightVesica, "green")(g, ui);
+    renderCircle(upperJoinArc, "green")(g, ui);
+    renderCircle(upperRightCornerCircle, "purple")(g, ui);
+    renderCircle(lowerRightCornerCircle, "purple")(g, ui);
+    renderCircle(waistCircle, "orange")(g, ui);
+    renderCircle(upperRightInnerCornerCircle, "brown")(g, ui);
+    renderCircle(lowerRightInnerCornerCircle, "brown")(g, ui);
   }
 
-  // this.renderDashLine({x: -1000, y: 351}, {x: 1000, y: 351}, "grey")(g, ui)
-  // this.renderDashLine({x: 203/2, y: 1000}, {x: 203/2, y: -1000}, "grey")(g, ui)
-  // this.renderDashLine({x: -203/2, y: 1000}, {x: -203/2, y: -1000}, "grey")(g, ui)
+  // renderDashLine({x: -1000, y: 351}, {x: 1000, y: 351}, "grey")(g, ui)
+  // renderDashLine({x: 203/2, y: 1000}, {x: 203/2, y: -1000}, "grey")(g, ui)
+  // renderDashLine({x: -203/2, y: 1000}, {x: -203/2, y: -1000}, "grey")(g, ui)
 }
 
 }

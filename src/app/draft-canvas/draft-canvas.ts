@@ -98,8 +98,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       leftBound, rightBound, topBound, bottomBound, mmW, mmH
     };
 
-    // console.log(cv)
-
     this.showAxes && this.drawAxis(cv);
     this.showAxes && this.drawAxisLabels(cv);
     this.showGrid && this.drawDots(cv, '#b4b4b4ff');

@@ -1,7 +1,7 @@
 <div class="panel">
 
   <details [open]="openPanel === 'base'" (toggle)="onToggle('base', $event);">
-    <summary>Base</summary>
+    <summary>Sizing</summary>
     <label>
       Height (mm)
       <input type="number" step="1" [(ngModel)]="d.params.h" (input)="changeBase()" />
@@ -25,6 +25,37 @@
         <input type="number" step="1" min="1" [(ngModel)]="d.params.hiToLowW.d" (input)="changeBase()" />
       </div>
     </label>
+  </details>
+
+  <details [open]="openPanel === 'upperBout'" (toggle)="onToggle('upperBout', $event)">
+    <summary>Upper Bout</summary>
+    <label>
+      Vesica Radius : Distance Ratio
+      <div class="ratio">
+        <input type="number" step="1" min="1" [(ngModel)]="d.params.hiVesRadToGap.n" (input)="changeUpperVesica()" />
+        <span>:</span>
+        <input type="number" step="1" min="1" [(ngModel)]="d.params.hiVesRadToGap.d" (input)="changeUpperVesica()" />
+      </div>
+    </label>
+
+    <br>
+
+    <label>
+      Join Arc Length : Height Ratio
+      <div class="ratio">
+        <input type="number" step="1" min="1" [(ngModel)]="d.params.hiJoinArcToH.n" (input)="changeUpperVesica()" />
+        <span>:</span>
+        <input type="number" step="1" min="1" [(ngModel)]="d.params.hiJoinArcToH.d" (input)="changeUpperVesica()" />
+      </div>
+    </label>
+    <br>
+
+    <!-- Error message -->
+    @if (upperBoutError !== '') {
+    <div class="calc-error">
+      {{ upperBoutError }}
+    </div>
+    }
   </details>
 
   <details [open]="openPanel === 'lowerBout'" (toggle)="onToggle('lowerBout', $event)">
@@ -58,37 +89,6 @@
     }
 
     <br>
-  </details>
-
-  <details [open]="openPanel === 'upperBout'" (toggle)="onToggle('upperBout', $event)">
-    <summary>Upper Bout</summary>
-    <label>
-      Vesica Radius : Distance Ratio
-      <div class="ratio">
-        <input type="number" step="1" min="1" [(ngModel)]="d.params.hiVesRadToGap.n" (input)="changeUpperVesica()" />
-        <span>:</span>
-        <input type="number" step="1" min="1" [(ngModel)]="d.params.hiVesRadToGap.d" (input)="changeUpperVesica()" />
-      </div>
-    </label>
-
-    <br>
-
-    <label>
-      Join Arc Length : Height Ratio
-      <div class="ratio">
-        <input type="number" step="1" min="1" [(ngModel)]="d.params.hiJoinArcToH.n" (input)="changeUpperVesica()" />
-        <span>:</span>
-        <input type="number" step="1" min="1" [(ngModel)]="d.params.hiJoinArcToH.d" (input)="changeUpperVesica()" />
-      </div>
-    </label>
-    <br>
-
-    <!-- Error message -->
-    @if (upperBoutError !== '') {
-    <div class="calc-error">
-      {{ upperBoutError }}
-    </div>
-    }
   </details>
 
   <details [open]="openPanel === 'cornerPlacement'" (toggle)="onToggle('cornerPlacement', $event)">
