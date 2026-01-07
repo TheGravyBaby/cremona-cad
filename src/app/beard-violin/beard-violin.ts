@@ -8,7 +8,7 @@ import { Circle, Fraction, Pt } from '../models/types';
 
 
 interface BeardViolinParams {
-  h: 356, // in mm, the only numerical measurement in this system
+  h: number, // in mm, the only numerical measurement in this system
   htoW: Fraction,
   hiToLowW: Fraction,
   lowJoinArcToH: Fraction,
@@ -40,28 +40,28 @@ interface BeardViolinRecipe extends RecipeInterface {
 })
 
 export class BeardViolinComponent extends RecipeComponentBase {
-  override openPanel = 'finalRender'
+  override openPanel = 'base'
 
   override d: BeardViolinRecipe = {
     recipeName: 'Beard Violin',
     fileName: "defaultBeard",
     version: ".1",
     params: {
-      h: 356,
+      h: 351,
       htoW: { n: 7, d: 4 },
-      hiToLowW: { n: 7, d: 9 },
+      hiToLowW: { n: 8, d: 10 },
+      hiJoinArcToH: { n: 3, d: 7 },
+      hiVesRadToGap: { n: 2, d: 1 },
       lowJoinArcToH: { n: 2, d: 3 },
       lowVesRadToGap: { n: 1, d: 1 },
-      hiJoinArcToH: { n: 1, d: 3 },
-      hiVesRadToGap: { n: 2, d: 1 },
       cenSecToH: { n: 1, d: 3 },
       cenSecParts: 5,
       hiCornPart: 0,
       lowCornPart: 1,
-      lowOutCornerRadToW: { n: 1, d: 8 },
       hiOutCornerRadToHiW: { n: 1, d: 8 },
+      lowOutCornerRadToW: { n: 1, d: 8 },
       waistWidthToW: { n: 1, d: 2 },
-      waistArcRadToW: { n: 1, d: 2 },
+      waistArcRadToW: { n: 1, d: 3 },
       lowInnerCornerRadToW: { n: 1, d: 8 },
       hiInnerCornerRadToW: { n: 1, d: 12 }
     },
@@ -571,7 +571,9 @@ finalRender = () => (g: any, ui: any): void => {
     this.renderCircle(lowerRightInnerCornerCircle, "brown")(g, ui);
   }
 
-
+  // this.renderDashLine({x: -1000, y: 351}, {x: 1000, y: 351}, "grey")(g, ui)
+  // this.renderDashLine({x: 203/2, y: 1000}, {x: 203/2, y: -1000}, "grey")(g, ui)
+  // this.renderDashLine({x: -203/2, y: 1000}, {x: -203/2, y: -1000}, "grey")(g, ui)
 }
 
 }

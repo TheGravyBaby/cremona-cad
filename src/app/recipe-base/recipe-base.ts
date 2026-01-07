@@ -265,7 +265,7 @@ export class RecipeComponentBase {
       .attr("d", path)
       .attr("fill", "none")
       .attr("stroke", color)
-      .attr("stroke-width", 2);
+      .attr("stroke-width", 1);
   };
 
   renderCircle = (C: Circle, color: string) => (g: any, ui: any) => {

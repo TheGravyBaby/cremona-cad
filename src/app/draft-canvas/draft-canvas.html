@@ -24,10 +24,17 @@
       <input type="checkbox" [(ngModel)]="showGrid" (change)="draw()" />
       Grid
     </label>
+
     <label class="chk">
       <input type="checkbox" [(ngModel)]="showAxes" (change)="draw()" />
       Axes
     </label>
+
+    <label class="chk">
+      <input type="checkbox" [(ngModel)]="showReferenceImage" (change)="renderReferenceImage()" />
+      Show Reference Image
+    </label>
+
   </div>
 </div>
 
