@@ -62,8 +62,8 @@ export class BeardViolinComponent extends RecipeComponentBase {
       lowOutCornerRadToW: { n: 1, d: 8 },
       waistWidthToW: { n: 1, d: 2 },
       waistArcRadToW: { n: 1, d: 3 },
-      lowInnerCornerRadToW: { n: 1, d: 8 },
-      hiInnerCornerRadToW: { n: 1, d: 12 }
+      hiInnerCornerRadToW: { n: 1, d: 12 },
+      lowInnerCornerRadToW: { n: 1, d: 8 }
     },
     calcs: []
   }
