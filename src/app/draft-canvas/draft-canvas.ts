@@ -8,7 +8,7 @@ import {
 import * as d3 from 'd3';
 import { FormsModule } from '@angular/forms';
 import { Input } from '@angular/core';
-import { RefImageFit } from '../models/types';
+import { Pt, ReferenceImage } from '../models/types';
 
 @Component({
   selector: 'app-draft-canvas',
@@ -26,9 +26,13 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   @Input() set draftFunctions(value: Array<(canvas: any, uiCan: any) => void>) {
     this.draftFuncs = value
     this.draw();
-    console.log("Saw the event")
   }
 
+  @Input() set referenceImageParams(value: typeof this.referenceImage) {
+    this.referenceImage = value;
+    this.draw();
+  }
+  
   private defaultPxPerMm = 2.5;
   public pxPerMm = 2.5;
   private offsetMmX?: number = -200;
@@ -42,12 +46,21 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private gUI!: d3.Selection<SVGGElement, unknown, null, undefined>;
   private resizeObs?: ResizeObserver;
   private draftFuncs: Array<(canvas: any, uiCan: any) => void> = [];
-
+  private referenceImage: ReferenceImage = {
+    "href": "/DelGesuBaltic.png",
+    "xlink:href": "/DelGesuBaltic.png",
+    "x": -399,
+    "y": 10,
+    "width": 800,
+    "height": 589,
+  }
 
   // drag state
   private isDragging = false;
   private lastPxX = 0;
   private lastPxY = 0;
+
+  // private currentImageBounds: {a: Pt, b: Pt, c: Pt, d: Pt} = {}
 
   ngAfterViewInit(): void {
     const el = this.host.nativeElement;
@@ -101,8 +114,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.showAxes && this.drawAxis(cv);
     this.showAxes && this.drawAxisLabels(cv);
     this.showGrid && this.drawDots(cv, '#b4b4b4ff');
-
-    this.renderReferenceImage()
+    this.showReferenceImage && this.drawReferenceImage()
 
 
     this.draftFuncs.map(f => {
@@ -259,6 +271,25 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       .attr('fill', dotColor);
   }
 
+  drawReferenceImage = () => {
+    // manually setting it for now
+    const img = this.gRoot.append("image")
+      .attr("class", "reference-image")
+      .attr("href", this.referenceImage.href)
+      .attr("xlink:href", this.referenceImage.href)
+      .attr("transform", `translate(0 ${this.referenceImage.height}) scale(1 -1)`)
+      .attr("x", this.referenceImage.x)
+      .attr("y", this.referenceImage.y)
+      .attr("width", this.referenceImage.width)
+      .attr("height", this.referenceImage.height)
+      .attr("opacity", .25)
+      .attr("preserveAspectRatio", "xMidYMid meet");
+
+    img.lower();
+  };
+
+
+  // camera controls
   onPointerDown = (event: PointerEvent) => {
     // left mouse / primary touch only
     if (event.button !== 0) return;
@@ -368,31 +399,4 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
     this.draw();
   }
-
-  renderReferenceImage = () => {
-    if (!this.showReferenceImage) {
-      this.gRoot.selectAll("image.reference-image").remove();
-      return;
-    }
-
-    this.gRoot.selectAll("image.reference-image").remove();
-
-    const h = 589; // same as your image height
-
-    // manually setting it for now
-    const img = this.gRoot.append("image")
-      .attr("class", "reference-image")
-      .attr("href", "/DelGesuBaltic.png")
-      .attr("xlink:href", "/DelGesuBaltic.png")
-      .attr("transform", `translate(0 ${h}) scale(1 -1)`)
-      .attr("x", -399)
-      .attr("y", 10)
-      .attr("width", 800)
-      .attr("height", h)
-      .attr("opacity", .25)
-      .attr("preserveAspectRatio", "xMidYMid meet")
-      ;
-
-    img.lower();
-  };
 }
