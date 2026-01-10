@@ -1,10 +1,9 @@
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { arcPathByAngleAboutTheta, arcPathByArcLengthAboutTheta, circleCircleIntersections, interceptCirclesAndPoint, intersectLines, lineCircleIntersection, pointOnCircle, solveYOnCircleInset } from '../helpers/draftMath';
-import { RecipeInterface } from '../models/recipe';
+import { arcPathByAngleAboutTheta, circleCircleIntersections, interceptCirclesAndPoint, intersectLines, lineCircleIntersection, pointOnCircle, solveYOnCircleInset } from '../helpers/draftMath';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { arcPathFrom3Points } from '../helpers/draftMath';
-import { Circle, Fraction, Pt } from '../models/types';
+import { Circle, Fraction, Pt, RecipeInterface } from '../models/types';
 import { renderCircle, renderPath, renderLine, renderBoxLine, renderCrosshair, renderDashLine } from '../helpers/renderFuncs';
 
 

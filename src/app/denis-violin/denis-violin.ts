@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
-import { RecipeInterface } from '../models/recipe';
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
+import { RecipeInterface } from '../models/types';
 
 @Component({
   selector: 'app-denis-violin',

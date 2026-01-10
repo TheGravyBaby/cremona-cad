@@ -1,7 +1,6 @@
 import { Component } from '@angular/core';
 import { Output, EventEmitter, Input } from "@angular/core";
-import { RecipeInterface } from '../models/recipe';
-import { Circle, Pt } from '../models/types';
+import { RecipeInterface } from '../models/types';
 
 @Component({
   selector: 'app-recipe-base',

@@ -1,4 +1,9 @@
 <div class="canvas-shell">
+  <label class="file-upload">
+  Reference Image
+  <input type="file" accept="image/*" (change)="onReferenceFileSelected($event)" />
+</label>
+
   <div #host class="host"
     (wheel)="onScrollWheel($event)"
     (pointerdown)="onPointerDown($event)"

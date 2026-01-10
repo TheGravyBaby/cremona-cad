@@ -1,5 +1,5 @@
 import { Component, EventEmitter, Output, Input, ViewChild, ElementRef } from '@angular/core';
-import { RecipeInterface } from '../models/recipe';
+import { RecipeInterface } from '../models/types';
 
 @Component({
   selector: 'app-top-bar',

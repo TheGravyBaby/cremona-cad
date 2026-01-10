@@ -4,7 +4,7 @@ import { BeardViolinComponent } from './beard-violin/beard-violin';
 import { DraftCanvasComponent } from './draft-canvas/draft-canvas';
 import { FormsModule } from '@angular/forms';
 import { DenisViolin } from "./denis-violin/denis-violin";
-import { RecipeInterface } from './models/recipe';
+import { RecipeInterface } from './models/types';
 
 @Component({
   selector: 'app-root',

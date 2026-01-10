@@ -28,15 +28,16 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.draw();
   }
 
-  @Input() set referenceImageParams(value: typeof this.referenceImage) {
+  @Input() set referenceImageParams(value: ReferenceImage | null | undefined) {
+    if (!value) return;
     this.referenceImage = value;
     this.draw();
   }
-  
-  private defaultPxPerMm = 2.5;
-  public pxPerMm = 2.5;
-  private offsetMmX?: number = -200;
-  private offsetMmY?: number = -450;
+
+  private defaultPxPerMm = 1.5;
+  public pxPerMm = 1.5;
+  private offsetMmX?: number = -360;
+  private offsetMmY?: number = -400;
   public showGrid = true;
   public showAxes = true;
   public showReferenceImage = true;
@@ -272,21 +273,25 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   }
 
   drawReferenceImage = () => {
-    // manually setting it for now
+    if (!this.referenceImage?.href) return;
+
+    const { href, x, y, width, height } = this.referenceImage;
+
     const img = this.gRoot.append("image")
       .attr("class", "reference-image")
-      .attr("href", this.referenceImage.href)
-      .attr("xlink:href", this.referenceImage.href)
-      .attr("transform", `translate(0 ${this.referenceImage.height}) scale(1 -1)`)
-      .attr("x", this.referenceImage.x)
-      .attr("y", this.referenceImage.y)
-      .attr("width", this.referenceImage.width)
-      .attr("height", this.referenceImage.height)
-      .attr("opacity", .25)
+      .attr("href", href)
+      .attr("xlink:href", href) // harmless; optional in modern SVG
+      .attr("transform", `translate(0 ${height}) scale(1 -1)`)
+      .attr("x", x)
+      .attr("y", y)
+      .attr("width", width)
+      .attr("height", height)
+      .attr("opacity", 0.25)
       .attr("preserveAspectRatio", "xMidYMid meet");
 
     img.lower();
   };
+
 
 
   // camera controls
@@ -399,4 +404,59 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
     this.draw();
   }
+
+  // reference image controls
+  async onReferenceFileSelected(evt: Event): Promise<void> {
+    const input = evt.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    const dataUrl = await this.readFileAsDataUrl(file);
+
+    // Load it once to get natural dimensions
+    const { w, h } = await this.getImageSize(dataUrl);
+
+    // Simple, predictable default:
+    // - size in "mm units" = natural px (same as your current approach)
+    // - place centered on X, start near Y=0
+    const width = w;
+    const height = h;
+
+    this.referenceImage = {
+      href: dataUrl,
+      "xlink:href": dataUrl,
+      x: -width / 2,
+      y: 0,
+      width,
+      height,
+    };
+
+    // Optional: auto-enable showing it when user uploads
+    this.showReferenceImage = true;
+
+    this.draw();
+
+    // optional: allow re-uploading same file by clearing the input
+    input.value = '';
+  }
+
+  private readFileAsDataUrl(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+  }
+
+  private getImageSize(dataUrl: string): Promise<{ w: number; h: number }> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
+  }
+
+
 }
