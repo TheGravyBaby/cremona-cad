@@ -373,7 +373,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     }
 
     // camera pan (middle mouse always; primary when not interacting with reference image)
-    if (isMiddle) {
+    if (isMiddle || isPrimary) {
       this.isDragging = true;
       this.host.nativeElement.classList.add('dragging');
       this.host.nativeElement.setPointerCapture(event.pointerId);
