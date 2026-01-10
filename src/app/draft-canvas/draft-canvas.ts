@@ -52,10 +52,10 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   referenceImage: ReferenceImage = {
     "href": "/DelGesuBaltic.png",
     "xlink:href": "/DelGesuBaltic.png",
-    "x": -399,
-    "y": -10,
-    "width": 513,
-    "height": 1410,
+    "x": -108,
+    "y": -12,
+    "width": 216,
+    "height": 593,
   }
 
   // drag state
@@ -126,8 +126,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.showGrid && this.drawDots(cv, '#b4b4b4ff');
     this.showReferenceImage && this.drawReferenceImage()
     this.referenceModeEnabled && this.showReferenceImage && this.drawReferenceImageControls();
-
-
 
     this.draftFuncs.map(f => {
       f(this.gRoot, this.gUI)
@@ -333,7 +331,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     }
 
     // camera pan (middle mouse always; primary when not interacting with reference image)
-    if (isMiddle || isPrimary) {
+    if (isMiddle) {
       this.isDragging = true;
       this.host.nativeElement.classList.add('dragging');
       this.host.nativeElement.setPointerCapture(event.pointerId);

@@ -10,8 +10,8 @@
 
 .align-popup {
   position: absolute;
-  top: -220px;
-  right: 0px;
+  top: -190px;
+  right: -5px;
   margin-top: 6px;
   background: #fff;
   border: 1px solid #ccc;
@@ -47,11 +47,9 @@
 .host {
   flex: 1 1 auto;
   min-height: 0;
-  cursor: grab;
   /* border: #444 1px solid; */
 
 }
-.host.dragging { cursor: grabbing; }
 
 svg { 
   display: block; 
