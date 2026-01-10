@@ -391,6 +391,74 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     }
   };
 
+  onKeyDown = (event: KeyboardEvent) => {
+    if (!this.referenceModeEnabled) return;
+    if (!this.showReferenceImage) return;
+    if (!this.referenceImage?.href) return;
+
+    const stepMm = 1;
+    const scaleStep = 1.05;
+    let dx = 0;
+    let dy = 0;
+    let scale: number | null = null;
+
+    switch (event.key) {
+      case 'ArrowUp':
+        if (event.ctrlKey) scale = scaleStep; // scale up
+        else dy += stepMm; // Y-up world
+        break;
+      case 'ArrowDown':
+        if (event.ctrlKey) scale = 1 / scaleStep; // scale down
+        else dy -= stepMm;
+        break;
+      case 'ArrowLeft':
+        dx -= stepMm;
+        break;
+      case 'ArrowRight':
+        dx += stepMm;
+        break;
+      default:
+        return;
+    }
+
+    if (scale !== null) {
+      const img = this.referenceImage;
+      const minMm = 1;
+      const cx = img.x + img.width / 2;
+      const cy = img.y + img.height / 2;
+
+      let newW = Math.max(minMm, img.width * scale);
+      let newH = Math.max(minMm, img.height * scale);
+
+      // keep aspect ratio on scale; uses current aspect if available
+      const aspect = Math.abs(img.width / img.height) || 1;
+      newH = Math.max(minMm, newW / aspect);
+
+      const newX = cx - newW / 2;
+      const newY = cy - newH / 2;
+
+      this.referenceImage = {
+        ...img,
+        x: newX,
+        y: newY,
+        width: newW,
+        height: newH,
+      };
+    } else {
+      this.referenceImage = {
+        ...this.referenceImage,
+        x: this.referenceImage.x + dx,
+        y: this.referenceImage.y + dy,
+      };
+    }
+
+    this.referenceImageChange.emit(this.referenceImage);
+    this.draw();
+
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
   private startDrag(pt: Pt): void {
     if (!this.referenceImage) return;
     this.isInteracting = true;
@@ -477,6 +545,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.alignPopupOpen = this.referenceModeEnabled;
     const img = this.referenceImage;
     if (img && img.height) this.refAspect = Math.abs(img.width / img.height) || 1;
+    this.draw();
   }
 
   closeAlignPopup(): void {
@@ -782,7 +851,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       .attr('width', img.width)
       .attr('height', img.height)
       .attr('fill', 'none')
-      .attr('stroke', '#666')
+      .attr('stroke', '#bb1212ff')
       .attr('stroke-width', 2 / this.pxPerMm)
       .attr('vector-effect', 'non-scaling-stroke')
       .style('pointer-events', 'none');
@@ -800,7 +869,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       .attr('cy', d => d.y)
       .attr('r', r)
       .attr('fill', '#fff')
-      .attr('stroke', '#111')
+      .attr('stroke', '#bb1212ff')
       .attr('stroke-width', 2 / this.pxPerMm)
       .attr('vector-effect', 'non-scaling-stroke')
       .style('pointer-events', 'none');

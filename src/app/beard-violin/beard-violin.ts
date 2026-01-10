@@ -45,7 +45,7 @@ export class BeardViolinComponent extends RecipeComponentBase {
 
   override d: BeardViolinRecipe = {
     recipeName: 'Beard Violin',
-    fileName: "defaultBeard",
+    fileName: "Beard-Baltic",
     version: ".1",
     params: {
       h: 351,

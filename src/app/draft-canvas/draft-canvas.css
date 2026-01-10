@@ -10,7 +10,7 @@
 
 .align-popup {
   position: absolute;
-  top: -190px;
+  top: 35px;
   right: -5px;
   margin-top: 6px;
   background: #fff;
@@ -55,6 +55,51 @@ svg {
   display: block; 
 }
 
+.ui-controls-top {
+  flex: 0 0 44px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 0 12px;
+  border-bottom: 1px solid #d3d3d3;
+  background: #eaeaea;
+  font-size: 12px;
+  color: #444;
+}
+
+.file-upload {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid #d7d7d7;
+  border-radius: 8px;
+  background: #fff;
+  color: #2a2a2a;
+  cursor: pointer;
+  transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+}
+
+.file-upload input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.file-upload:hover {
+  border-color: #c6c6c6;
+  background: #f8f8f8;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.file-upload:active {
+  background: #f1f1f1;
+}
+
+
 .ui-controls {
   flex: 0 0 44px;
   display: flex;
@@ -75,12 +120,25 @@ svg {
 }
 
 .btn {
-  padding: 6px 10px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  background: #fff;
+  padding: 4px 10px;
+  border: 1px solid #d1d5da;
+  border-radius: 7px;
+  background: linear-gradient(180deg, #ffffff 0%, #f7f7f7 100%);
   cursor: pointer;
-  line-height: 1;
+  line-height: 1.2;
+  font-size: 12px;
+  color: #1f2d3d;
+  transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+}
+
+.btn:hover {
+  border-color: #c4c9d0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.btn:active {
+  background: #f1f1f1;
+  border-color: #b7bcc3;
 }
 
 .readout {
