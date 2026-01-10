@@ -1,4 +1,4 @@
-<div class="canvas-shell">
+<div class="canvas-shell" [class.dark-mode]="isDarkMode">
 
     <div class="ui-controls-top">
       <label class="file-upload">
@@ -48,6 +48,8 @@
 
   <div class="ui-controls">
     <div class="left">
+      <!-- <button type="button" class="btn" (click)="darkMode()">Dark Mode</button> -->
+
       <button type="button" class="btn" (click)="fitCamera()">Fit</button>
 
       <div class="sep"></div>

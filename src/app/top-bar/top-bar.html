@@ -2,14 +2,14 @@
   <div class="title">CREMONA CAD</div>
 
   <div class="controls">
-    <button class="btn" (click)="onSaveClick()">Save</button>
-    <button class="btn" (click)="triggerFilePick()">Load</button>
-
+    Select Recipe: 
     <select class="select" (change)="onSelectChange($event)">
       <option [selected]="selectedRecipe === 'Beard'">Beard Violin</option>
       <option [selected]="selectedRecipe === 'Denis'">Denis Violin</option>
     </select>
 
+    <button class="btn" (click)="onSaveClick()">Save</button>
+    <button class="btn" (click)="triggerFilePick()">Load</button>
     <input
       #fileInput
       class="file"

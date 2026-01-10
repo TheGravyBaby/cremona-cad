@@ -63,7 +63,7 @@ svg {
   gap: 10px;
   padding: 0 12px;
   border-bottom: 1px solid #d3d3d3;
-  background: #eaeaea;
+  /* background: #eaeaea; */
   font-size: 12px;
   color: #444;
 }
@@ -108,7 +108,7 @@ svg {
   gap: 12px;
   padding: 0 10px;
   border-top: 1px solid #d3d3d3;
-  background: #eaeaea;
+  /* background: #eaeaea; */
   font-size: 12px;
   color: #444;
 }
@@ -163,4 +163,99 @@ svg {
   border-radius: 8px;
   background: #fafafa;
   user-select: none;
+}
+/* Dark mode styles */
+.canvas-shell.dark-mode {
+  background-color: #1e1e1e;
+  color: #e0e0e0;
+}
+
+.canvas-shell.dark-mode .host {
+  background-color: #2d2d2d;
+}
+
+.canvas-shell.dark-mode .ui-controls-top {
+  border-bottom-color: #444;
+  background-color: #252525;
+  color: #e0e0e0;
+}
+
+.canvas-shell.dark-mode .file-upload {
+  background: #3a3a3a;
+  color: #e0e0e0;
+  border-color: #555;
+}
+
+.canvas-shell.dark-mode .file-upload:hover {
+  background: #454545;
+  border-color: #666;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.canvas-shell.dark-mode .file-upload:active {
+  background: #3a3a3a;
+}
+
+.canvas-shell.dark-mode .ui-controls {
+  border-top-color: #444;
+  background-color: #252525;
+  color: #e0e0e0;
+}
+
+.canvas-shell.dark-mode .btn {
+  background: linear-gradient(180deg, #3a3a3a 0%, #2f2f2f 100%);
+  border-color: #555;
+  color: #e0e0e0;
+}
+
+.canvas-shell.dark-mode .btn:hover {
+  border-color: #666;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.canvas-shell.dark-mode .btn:active {
+  background: #353535;
+  border-color: #666;
+}
+
+.canvas-shell.dark-mode .btn.active {
+  background: #1a47b5;
+  color: #fff;
+}
+
+.canvas-shell.dark-mode .readout {
+  border-color: #444;
+  background: #3a3a3a;
+  color: #e0e0e0;
+}
+
+.canvas-shell.dark-mode .sep {
+  background: #444;
+}
+
+.canvas-shell.dark-mode .chk {
+  border-color: #444;
+  background: #3a3a3a;
+  color: #e0e0e0;
+}
+
+.canvas-shell.dark-mode .align-popup {
+  background: #3a3a3a;
+  border-color: #555;
+  color: #e0e0e0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.canvas-shell.dark-mode .align-popup input[type="number"] {
+  background: #2f2f2f;
+  color: #e0e0e0;
+  border-color: #555;
+}
+
+.canvas-shell.dark-mode input[type="checkbox"] {
+  accent-color: #3163da;
+}
+
+svg.dark-mode {
+  background-color: #2d2d2d;
 }

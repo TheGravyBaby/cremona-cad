@@ -48,6 +48,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   public showGrid = true;
   public showAxes = true;
   public showReferenceImage = true;
+  public isDarkMode = false;
 
   private canvas!: d3.Selection<SVGSVGElement, unknown, null, undefined>;
   private gRoot!: d3.Selection<SVGGElement, unknown, null, undefined>;
@@ -606,6 +607,10 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
   zoomOut(): void {
     this.applyZoom(this.pxPerMm / 1.1);
+  }
+
+  darkMode(): void {
+    this.isDarkMode = !this.isDarkMode;
   }
 
   applyZoom(newPxPerMm: number): void {
