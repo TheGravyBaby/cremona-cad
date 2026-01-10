@@ -90,7 +90,7 @@ export class BeardViolinComponent extends RecipeComponentBase {
       this.openPanel = panel;
 
       // render the last opened panel
-      if (panel === 'base') this.changeBaseMeasurements();
+      if (panel === 'base') this.changeBaseRatios();
       else if (panel === 'bouts') this.changeBouts();
       else if (panel === 'upperBout') this.changeUpperVesica();
       else if (panel === 'lowerBout') this.changeLowerVesica();

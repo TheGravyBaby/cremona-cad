@@ -1,3 +1,42 @@
+.align-controls {
+  position: relative;
+  display: inline-block;
+}
+
+.btn.active {
+  background: #3163da;
+  color: #fff;
+}
+
+.align-popup {
+  position: absolute;
+  top: -220px;
+  right: 0px;
+  margin-top: 6px;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  padding: 10px;
+  z-index: 10;
+  min-width: 220px;
+}
+
+.align-popup .row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 6px 0;
+}
+
+.align-popup input[type="number"] {
+  width: 110px;
+}
+
+.align-popup .actions {
+  justify-content: flex-end;
+}
 .canvas-shell {
   height: 100%;
   display: flex;

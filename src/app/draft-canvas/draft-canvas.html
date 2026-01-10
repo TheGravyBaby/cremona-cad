@@ -31,10 +31,44 @@
       </label>
 
       <label class="chk">
-
         <input type="checkbox" [(ngModel)]="showReferenceImage" (change)="draw()" />
         Reference
       </label>
+
+      <div class="align-controls">
+        <button type="button" class="btn" [class.active]="referenceModeEnabled" (click)="toggleAlignPopup()">
+          Align Reference
+        </button>
+        @if(referenceModeEnabled) {
+          <div class="align-popup">
+            <div class="row">
+              <label>X (mm)</label>
+              <input type="number" [ngModel]="referenceImage?.x" (ngModelChange)="onRefParamChange('x', $event)" />
+            </div>
+            <div class="row">
+              <label>Y (mm)</label>
+              <input type="number" [ngModel]="referenceImage?.y" (ngModelChange)="onRefParamChange('y', $event)" />
+            </div>
+            <div class="row">
+              <label>Width (mm)</label>
+              <input type="number" [ngModel]="referenceImage?.width" (ngModelChange)="onRefParamChange('width', $event)" />
+            </div>
+            <div class="row">
+              <label>Height (mm)</label>
+              <input type="number" [ngModel]="referenceImage?.height" (ngModelChange)="onRefParamChange('height', $event)" />
+            </div>
+            <div class="row">
+              <label class="chk">
+                <input type="checkbox" [(ngModel)]="lockAspect" />
+                Lock aspect
+              </label>
+            </div>
+            <div class="row actions">
+              <button type="button" class="btn" (click)="closeAlignPopup()">Close</button>
+            </div>
+          </div>
+          }
+      </div>
 
     </div>
   </div>
