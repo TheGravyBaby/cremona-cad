@@ -1,46 +1,40 @@
 <div class="canvas-shell">
   <label class="file-upload">
-  Reference Image
-  <input type="file" accept="image/*" (change)="onReferenceFileSelected($event)" />
-</label>
+    Reference Image
+    <input type="file" accept="image/*" (change)="onReferenceFileSelected($event)" />
+  </label>
 
-  <div #host class="host"
-    (wheel)="onScrollWheel($event)"
-    (pointerdown)="onPointerDown($event)"
-    (pointermove)="onPointerMove($event)"
-    (pointerup)="onPointerUp($event)"
-    (pointerleave)="onPointerUp($event)"
-  ></div>
+  <div #host class="host" (wheel)="onScrollWheel($event)" (pointerdown)="onPointerDown($event)"
+    (pointermove)="onPointerMove($event)" (pointerup)="onPointerUp($event)" (pointerleave)="onPointerUp($event)"></div>
 
- <div class="ui-controls">
-  <div class="left">
-    <button type="button" class="btn" (click)="resetView()">Reset</button>
-    <button type="button" class="btn" (click)="fitView()">Fit</button>
+  <div class="ui-controls">
+    <div class="left">
+      <button type="button" class="btn" (click)="resetView()">Reset</button>
+      <button type="button" class="btn" (click)="fitView()">Fit</button>
 
-    <div class="sep"></div>
+      <div class="sep"></div>
 
-    <button type="button" class="btn" (click)="zoomOut()">−</button>
-    <div class="readout">Zoom: {{ pxPerMm.toFixed(1) }} px/mm</div>
-    <button type="button" class="btn" (click)="zoomIn()">+</button>
+      <button type="button" class="btn" (click)="zoomOut()">−</button>
+      <div class="readout">Zoom: {{ pxPerMm.toFixed(1) }} px/mm</div>
+      <button type="button" class="btn" (click)="zoomIn()">+</button>
+    </div>
+
+    <div class="right">
+      <label class="chk">
+        <input type="checkbox" [(ngModel)]="showGrid" (change)="draw()" />
+        Grid
+      </label>
+
+      <label class="chk">
+        <input type="checkbox" [(ngModel)]="showAxes" (change)="draw()" />
+        Axes
+      </label>
+
+      <label class="chk">
+
+        <input type="checkbox" [(ngModel)]="showReferenceImage" (change)="draw()" />
+        Reference
+      </label>
+
+    </div>
   </div>
-
-  <div class="right">
-    <label class="chk">
-      <input type="checkbox" [(ngModel)]="showGrid" (change)="draw()" />
-      Grid
-    </label>
-
-    <label class="chk">
-      <input type="checkbox" [(ngModel)]="showAxes" (change)="draw()" />
-      Axes
-    </label>
-
-    <label class="chk">
-
-      <input type="checkbox" [(ngModel)]="showReferenceImage" (change)="draw()" />
-      Show Reference Image
-    </label>
-
-  </div>
-</div>
-

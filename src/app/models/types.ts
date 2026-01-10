@@ -18,4 +18,5 @@ export interface RecipeInterface {
     version: string;
     params: any;
     calcs: any; 
+    referenceImage?: ReferenceImage;
 }

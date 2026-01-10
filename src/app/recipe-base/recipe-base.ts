@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { Output, EventEmitter, Input } from "@angular/core";
-import { RecipeInterface } from '../models/types';
+import { RecipeInterface, ReferenceImage } from '../models/types';
 
 @Component({
   selector: 'app-recipe-base',
@@ -16,6 +16,11 @@ export class RecipeComponentBase {
       this.d = file;
       this.draftChange.emit([this.firstRender]);
     }
+  }
+  @Input() set referenceImageParams(img: ReferenceImage | null | undefined) {
+    this.d.params = this.d.params || {};
+    if (img) this.d.referenceImage = img;
+    else delete this.d.referenceImage;
   }
   private _saveTick = 0;
 
@@ -75,6 +80,12 @@ export class RecipeComponentBase {
       if (idx === -1) this.d.calcs.push(entry);
       else this.d.calcs[idx] = entry;
     }
+  }
+
+  onReferenceImageChange(img: ReferenceImage | null) {
+    this.d.params = this.d.params || {};
+    if (img) this.d.referenceImage = img;
+    else delete this.d.referenceImage;
   }
 
 }

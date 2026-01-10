@@ -2,7 +2,9 @@ import {
   AfterViewInit,
   Component,
   ElementRef,
+  EventEmitter,
   OnDestroy,
+  Output,
   ViewChild,
 } from '@angular/core';
 import * as d3 from 'd3';
@@ -22,17 +24,18 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private initialized = false;
 
   @ViewChild('host', { static: true }) host!: ElementRef<HTMLDivElement>;
-
+  @Output() referenceImageChange = new EventEmitter<ReferenceImage | null>();
   @Input() set draftFunctions(value: Array<(canvas: any, uiCan: any) => void>) {
     this.draftFuncs = value
     this.draw();
   }
-
   @Input() set referenceImageParams(value: ReferenceImage | null | undefined) {
     if (!value) return;
     this.referenceImage = value;
+    this.referenceImageChange.emit(this.referenceImage);
     this.draw();
   }
+  
 
   private defaultPxPerMm = 1.5;
   public pxPerMm = 1.5;
@@ -77,6 +80,8 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.draw();
     this.resizeObs = new ResizeObserver(() => this.draw());
     this.resizeObs.observe(el);
+    this.referenceImageChange.emit(this.referenceImage);    // sets our default gesu
+
 
     this.initialized = true;
   }
@@ -431,6 +436,9 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       height,
     };
 
+    this.referenceImageChange.emit(this.referenceImage);
+
+
     // Optional: auto-enable showing it when user uploads
     this.showReferenceImage = true;
 
@@ -456,6 +464,12 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       img.onerror = reject;
       img.src = dataUrl;
     });
+  }
+
+  clearReferenceImage(): void {
+    this.referenceImage = undefined as any; // or make it nullable
+    this.referenceImageChange.emit(null);
+    this.draw();
   }
 
 

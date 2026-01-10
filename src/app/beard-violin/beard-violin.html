@@ -1,31 +1,50 @@
 <div class="panel">
 
   <details [open]="openPanel === 'base'" (toggle)="onToggle('base', $event);">
-    <summary>Sizing</summary>
+    <summary>Base</summary>
     <label>
-      Height (mm)
-      <input type="number" step="1" [(ngModel)]="d.params.h" (input)="changeBase()" />
+      File Name
+    <input type="string" [(ngModel)]="d.fileName"/>
     </label>
     <br>
+
     <label>
-      Height : Width Ratio
+      Height : Width mm
       <div class="ratio">
-        <input type="number" step="1" min="1" [(ngModel)]="d.params.htoW.n" (input)="changeBase()" />
+        <input type="number" step="1" min="1" [(ngModel)]="d.params.h" (input)="changeBaseMeasurements()" />
         <span>:</span>
-        <input type="number" step="1" min="1" [(ngModel)]="d.params.htoW.d" (input)="changeBase()" />
+        <input type="number" step="1" min="1" [(ngModel)]="d.params.w" (input)="changeBaseMeasurements()" />
       </div>
     </label>
 
     <br>
+
+    <label>
+      Height : Width Ratio
+      <div class="ratio">
+        <input type="number" step="1" min="1" [(ngModel)]="d.params.htoW.n" (input)="changeBaseRatios()" />
+        <span>:</span>
+        <input type="number" step="1" min="1" [(ngModel)]="d.params.htoW.d" (input)="changeBaseRatios()" />
+      </div>
+    </label>
+
+  
+  </details>
+
+
+  <details [open]="openPanel === 'bouts'" (toggle)="onToggle('bouts', $event)">
+    <summary>Bout Sizing</summary>
+    <br>
     <label>
       Upper Bout : Lower Bout Ratio
       <div class="ratio">
-        <input type="number" step="1" min="1" [(ngModel)]="d.params.hiToLowW.n" (input)="changeBase()" />
+        <input type="number" step="1" min="1" [(ngModel)]="d.params.hiToLowW.n" (input)="changeBouts()" />
         <span>:</span>
-        <input type="number" step="1" min="1" [(ngModel)]="d.params.hiToLowW.d" (input)="changeBase()" />
+        <input type="number" step="1" min="1" [(ngModel)]="d.params.hiToLowW.d" (input)="changeBouts()" />
       </div>
     </label>
   </details>
+
 
   <details [open]="openPanel === 'upperBout'" (toggle)="onToggle('upperBout', $event)">
     <summary>Upper Bout</summary>
@@ -181,7 +200,7 @@
         <span>:</span>
         <input type="number" step="1" min="1" [(ngModel)]="d.params.waistWidthToW.d" (input)="changeInnerBouts()" />
       </div>
-  </label>
+    </label>
 
     <label>
       Inner Bout Arc : Total Width
@@ -229,18 +248,14 @@
 
   </details>
 
-<details [open]="openPanel === 'finalRender'" (toggle)="onToggle('finalRender', $event)">
-  <summary>Final Render</summary>
+  <details [open]="openPanel === 'finalRender'" (toggle)="onToggle('finalRender', $event)">
+    <summary>Final Render</summary>
 
-  <label class="toggle">
-    <input
-      type="checkbox"
-      [(ngModel)]="showAllArcs"
-      (change)="changeFinalRender()"
-    />
-    <span>Show all construction arcs</span>
-  </label>
-</details>
+    <label class="toggle">
+      <input type="checkbox" [(ngModel)]="showAllArcs" (change)="changeFinalRender()" />
+      <span>Show all construction arcs</span>
+    </label>
+  </details>
 
 
 </div>
