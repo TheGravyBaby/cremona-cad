@@ -114,7 +114,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     const boundsHeight = maxY - minY;
 
     // Add padding (10% on each side)
-    const padding = 0.1;
+    const padding = 0.2;
     const paddedWidth = boundsWidth * (1 + padding * 2);
     const paddedHeight = boundsHeight * (1 + padding * 2);
 
