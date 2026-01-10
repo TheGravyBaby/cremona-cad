@@ -35,8 +35,13 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.referenceImageChange.emit(this.referenceImage);
     this.draw();
   }
+  @Input() set setCameraBounds(bounds: {pt1: Pt, pt2: Pt} | null) {
+    let firstSet = !this.bounds;
+    this.bounds = bounds;
+    if (bounds && firstSet)
+      this.fitCamera();
+  }
 
-  private defaultPxPerMm = 1.5;
   public pxPerMm = 1.5;
   private offsetMmX?: number = -360;
   private offsetMmY?: number = -400;
@@ -67,6 +72,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   public alignPopupOpen = false;
   public lockAspect = true;
   private refAspect = 1;
+  private bounds: {pt1: Pt, pt2: Pt} | null = null;
 
   // private currentImageBounds: {a: Pt, b: Pt, c: Pt, d: Pt} = {}
 
@@ -81,17 +87,52 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.gRoot = this.canvas.append('g').attr('class', 'root');
     this.gUI = this.canvas.append('g').attr('class', 'ui');
 
-    this.draw();
     this.resizeObs = new ResizeObserver(() => this.draw());
     this.resizeObs.observe(el);
     this.referenceImageChange.emit(this.referenceImage);    // sets our default gesu
-
-
     this.initialized = true;
   }
 
   ngOnDestroy(): void {
     this.resizeObs?.disconnect();
+  }
+
+  fitCamera(draw: boolean = true): void {
+    if (!this.bounds) return;
+
+    const el = this.host.nativeElement;
+    const pxW = Math.max(1, el.clientWidth);
+    const pxH = Math.max(1, el.clientHeight);
+
+    // Calculate bounds in world coords
+    const minX = Math.min(this.bounds!.pt1.x, this.bounds!.pt2.x);
+    const maxX = Math.max(this.bounds!.pt1.x, this.bounds!.pt2.x);
+    const minY = Math.min(-this.bounds!.pt1.y, -this.bounds!.pt2.y);
+    const maxY = Math.max(-this.bounds!.pt1.y, -this.bounds!.pt2.y);
+
+    const boundsWidth = maxX - minX;
+    const boundsHeight = maxY - minY;
+
+    // Add padding (10% on each side)
+    const padding = 0.1;
+    const paddedWidth = boundsWidth * (1 + padding * 2);
+    const paddedHeight = boundsHeight * (1 + padding * 2);
+
+    // Fit to view with correct aspect ratio
+    const zoomX = pxW / paddedWidth;
+    const zoomY = pxH / paddedHeight;
+    this.pxPerMm = Math.min(zoomX, zoomY);
+
+    // Center the bounds in view
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+    const mmW = pxW / this.pxPerMm;
+    const mmH = pxH / this.pxPerMm;
+
+    this.offsetMmX = centerX - mmW / 2;
+    this.offsetMmY = centerY - mmH / 2;
+
+    draw && this.draw();
   }
 
   // render canvas
@@ -519,25 +560,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
     this.applyZoom(this.pxPerMm)
   };
-
-  resetView(): void {
-    const el = this.host.nativeElement;
-    const pxW = Math.max(1, el.clientWidth);
-    const pxH = Math.max(1, el.clientHeight);
-    const mmW = pxW / this.defaultPxPerMm;
-    const mmH = pxH / this.defaultPxPerMm;
-
-    // reset zoom first
-    this.pxPerMm = this.defaultPxPerMm;
-    this.offsetMmX = 0;
-    this.offsetMmY = 0;
-    this.draw();
-  }
-
-  fitView(): void {
-    // placeholder for later “fit to violin outline”
-    this.resetView();
-  }
 
   // UI: Align Reference popup controls
   toggleAlignPopup(): void {

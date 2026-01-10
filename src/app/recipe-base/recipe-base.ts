@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { Output, EventEmitter, Input } from "@angular/core";
-import { RecipeInterface, ReferenceImage } from '../models/types';
+import { Pt, RecipeInterface, ReferenceImage } from '../models/types';
 
 @Component({
   selector: 'app-recipe-base',
@@ -11,6 +11,9 @@ import { RecipeInterface, ReferenceImage } from '../models/types';
 
 export class RecipeComponentBase {
   @Output() draftChange = new EventEmitter<Array<(g: any, ui: any) => void>>();
+  @Output() setBounds = new EventEmitter<{pt1: Pt, pt2: Pt}>();
+
+
   @Input() set loadFile(file: RecipeInterface | undefined) {
     if (file) {
       this.d = file;

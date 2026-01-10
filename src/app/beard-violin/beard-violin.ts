@@ -79,7 +79,8 @@ export class BeardViolinComponent extends RecipeComponentBase {
   showAllArcs = false
 
   override firstRender = (g: any, ui: any): void => {
-    this.renderBounds(g, ui)
+    this.renderBounds(g, ui);
+    this.setBounds.emit({ pt1: { x: -this.d.params.w / 2, y: 0 }, pt2: { x: this.d.params.w / 2, y: this.d.params.h } });
   }
 
   override onToggle(panel: string, ev: Event) {
@@ -112,6 +113,7 @@ export class BeardViolinComponent extends RecipeComponentBase {
   changeBaseMeasurements(): void {
     const ratio = this.d.params.h / this.d.params.w;
     this.d.params.htoW.d = Math.round((this.d.params.htoW.n / ratio) * 100) / 100;
+    this.setBounds.emit({ pt1: { x: -this.d.params.w / 2, y: 0 }, pt2: { x: this.d.params.w / 2, y: this.d.params.h } });
     this.draftChange.emit([this.renderBounds]);
   }
 
@@ -119,6 +121,7 @@ export class BeardViolinComponent extends RecipeComponentBase {
     const h = this.d.params.h;
     const w = h * this.d.params.htoW.d / this.d.params.htoW.n;
     this.d.params.w = Math.round(w);
+    this.setBounds.emit({ pt1: { x: -this.d.params.w / 2, y: 0 }, pt2: { x: this.d.params.w / 2, y: this.d.params.h } });
     this.draftChange.emit([this.renderBounds]);
   }
 

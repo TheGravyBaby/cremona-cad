@@ -5,6 +5,7 @@ import { DraftCanvasComponent } from './draft-canvas/draft-canvas';
 import { FormsModule } from '@angular/forms';
 import { DenisViolin } from "./denis-violin/denis-violin";
 import { RecipeInterface, ReferenceImage } from './models/types';
+import { Pt } from './models/types';
 
 @Component({
   selector: 'app-root',
@@ -23,12 +24,14 @@ import { RecipeInterface, ReferenceImage } from './models/types';
         <app-draft-canvas class="canvas" 
           [draftFunctions]="draftArgs"
           [referenceImageParams]="referenceImage"
+          [setCameraBounds]="bounds"
           (referenceImageChange)="onReferenceImageChange($event)">
         </app-draft-canvas>
 
         @if (selectedRecipe == "Beard Violin") {
          <app-beard-violin class="sidebar"
           (draftChange)="draftArgs = $event"
+          (setBounds)="bounds=$event"
           [loadFile]="loadedFileData"
           [saveTick]="saveTick"
           [referenceImageParams]="referenceImage">
@@ -38,6 +41,7 @@ import { RecipeInterface, ReferenceImage } from './models/types';
         @if (selectedRecipe == "Denis Violin") {
         <app-denis-violin class="sidebar"
           (draftChange)="draftArgs = $event"
+          (setBounds)="bounds=$event"
           [loadFile]="loadedFileData"
           [saveTick]="saveTick"
           [referenceImageParams]="referenceImage">
@@ -54,6 +58,7 @@ export class App {
   selectedRecipe: string = 'Beard Violin';
   loadedFileData: RecipeInterface | undefined = undefined;
   saveTick = 0;
+  bounds: {pt1: Pt, pt2: Pt} | null = null;
 
   referenceImage: ReferenceImage | null = null;
 
