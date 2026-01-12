@@ -70,7 +70,7 @@ export class App {
     this.loadedFileData = data;
 
     // pull reference image out of loaded file (if present)
-    this.referenceImage = data?.params?.referenceImage ?? null;
+    this.referenceImage = data?.referenceImage ?? null;
 
     const name = (data.recipeName ?? '').toLowerCase();
     if (name === 'beard') this.selectedRecipe = 'Beard Violin';

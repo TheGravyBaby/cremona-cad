@@ -190,7 +190,7 @@ export const renderCircle = (C: Circle, color: string) => (g: any, ui: any) => {
         .attr('r', C.r)
         .attr('stroke', color)
         .attr('fill', 'none')
-        .attr('stroke-width', 2)
+        .attr('stroke-width', 1)
         .attr('vector-effect', 'non-scaling-stroke');
 }
 
@@ -201,7 +201,7 @@ export const renderLine = (P: Pt, Q: Pt, color: string, opacity: boolean = true)
         .attr("x2", P.x)
         .attr("y2", P.y)
         .attr("stroke", color)
-        .attr('stroke-width', 2)
+        .attr('stroke-width', 1)
         .attr('vector-effect', 'non-scaling-stroke')
         .attr('opacity', opacity ? 0.25 : 1);
 }
@@ -214,7 +214,7 @@ export const renderRectangle = (P: Pt, w: number, h: number, fill: string, strok
         .attr('height', h)
         .attr('fill', fill)
         .attr('stroke', stroke)
-        .attr('stroke-width', 2)
+        .attr('stroke-width', 1)
         .attr('vector-effect', 'non-scaling-stroke')
         .attr('opacity', 0.25);
 }
@@ -337,7 +337,7 @@ export const renderMeasure = (
         .attr("x1", P.x).attr("y1", P.y)
         .attr("x2", Q.x).attr("y2", Q.y)
         .attr("stroke", color)
-        .attr("stroke-width", 2)
+        .attr("stroke-width", 1)
         .attr("vector-effect", "non-scaling-stroke")
         .attr("opacity", 0.75);
 

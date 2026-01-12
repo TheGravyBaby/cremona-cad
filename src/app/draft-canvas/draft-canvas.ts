@@ -524,32 +524,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.draw();
   }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   onScrollWheel = (event: WheelEvent) => {
     event.preventDefault();
     const delta = event.deltaY;
@@ -699,27 +673,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.referenceImageChange.emit(null);
     this.draw();
   }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
   // handle + interaction state
   private activeHandle: 'nw' | 'ne' | 'sw' | 'se' | null = null;
