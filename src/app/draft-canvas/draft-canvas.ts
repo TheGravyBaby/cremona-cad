@@ -64,6 +64,8 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     "height": 593,
   }
 
+  private oldReferenceImageParams?: ReferenceImage;
+
   // drag state
   private isDragging = false;
   private lastPxX = 0;
@@ -501,7 +503,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     event.stopPropagation();
   };
 
-  private startDrag(pt: Pt): void {
+  startDrag(pt: Pt): void {
     if (!this.referenceImage) return;
     this.isInteracting = true;
     this.activeHandle = null;
@@ -509,7 +511,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.startImage = { ...this.referenceImage };
   }
 
-  private updateDrag(pt: Pt): void {
+  updateDrag(pt: Pt): void {
     if (!this.referenceImage || !this.startImage || !this.dragStartPt) return;
 
     const dx = pt.x - this.dragStartPt.x;
@@ -523,6 +525,32 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
     this.draw();
   }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   onScrollWheel = (event: WheelEvent) => {
     event.preventDefault();
@@ -540,6 +568,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   toggleAlignPopup(): void {
     this.referenceModeEnabled = !this.referenceModeEnabled;
     this.alignPopupOpen = this.referenceModeEnabled;
+    this.oldReferenceImageParams = this.referenceImage
     const img = this.referenceImage;
     if (img && img.height) this.refAspect = Math.abs(img.width / img.height) || 1;
     this.draw();
@@ -581,10 +610,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
   zoomOut(): void {
     this.applyZoom(this.pxPerMm / 1.1);
-  }
-
-  darkMode(): void {
-    this.isDarkMode = !this.isDarkMode;
   }
 
   applyZoom(newPxPerMm: number): void {
@@ -640,7 +665,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
     this.referenceImageChange.emit(this.referenceImage);
 
-
     // Optional: auto-enable showing it when user uploads
     this.showReferenceImage = true;
 
@@ -672,6 +696,14 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.referenceImage = undefined as any; // or make it nullable
     this.referenceImageChange.emit(null);
     this.draw();
+  }
+
+  resetReferenceImage(): void {
+    if (this.oldReferenceImageParams) {
+      this.referenceImage = { ...this.oldReferenceImageParams };
+      this.referenceImageChange.emit(this.referenceImage);
+      this.draw();
+    }
   }
 
   // handle + interaction state
