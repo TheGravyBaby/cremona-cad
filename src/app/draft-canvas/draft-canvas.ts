@@ -11,6 +11,8 @@ import * as d3 from 'd3';
 import { FormsModule } from '@angular/forms';
 import { Input } from '@angular/core';
 import { Pt, ReferenceImage } from '../models/types';
+import { Camera } from './camera';
+import { ReferenceImageController } from './reference-image-controller';
 
 @Component({
   selector: 'app-draft-canvas',
@@ -35,26 +37,43 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.referenceImageChange.emit(this.referenceImage);
     this.draw();
   }
-  @Input() set setCameraBounds(bounds: {pt1: Pt, pt2: Pt} | null) {
+  @Input() set setCameraBounds(bounds: { pt1: Pt, pt2: Pt } | null) {
     let firstSet = !this.bounds;
     this.bounds = bounds;
     if (bounds && firstSet)
       this.fitCamera();
   }
 
-  public pxPerMm = 1.5;
-  private offsetMmX?: number = -360;
-  private offsetMmY?: number = -400;
-  public showGrid = true;
-  public showAxes = true;
-  public showReferenceImage = true;
-  public isDarkMode = false;
-
   private canvas!: d3.Selection<SVGSVGElement, unknown, null, undefined>;
   private gRoot!: d3.Selection<SVGGElement, unknown, null, undefined>;
   private gUI!: d3.Selection<SVGGElement, unknown, null, undefined>;
   private resizeObs?: ResizeObserver;
   private draftFuncs: Array<(canvas: any, uiCan: any) => void> = [];
+  private camera = new Camera();
+  private refController!: ReferenceImageController;
+
+  // expose pxPerMm for the template/readouts while keeping camera as source of truth
+  public get pxPerMm() {
+    return this.camera.pxPerMm;
+  }
+  public set pxPerMm(v: number) {
+    this.camera.pxPerMm = v;
+  }
+
+  private lastPxX = 0;
+  private lastPxY = 0;
+  public showGrid = true;
+  public showAxes = true;
+  public showReferenceImage = true;
+  public isDarkMode = false;
+  private isDragging = false;
+  public referenceModeEnabled = false; // UI toggle ("Align Reference")
+  public alignPopupOpen = false;
+  public lockAspect = true;
+  private refAspect = 1;
+  private bounds: { pt1: Pt, pt2: Pt } | null = null;
+  private oldReferenceImageParams?: ReferenceImage;
+
   referenceImage: ReferenceImage = {
     "href": "/DelGesuBaltic.png",
     "xlink:href": "/DelGesuBaltic.png",
@@ -63,21 +82,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     "width": 216,
     "height": 593,
   }
-
-  private oldReferenceImageParams?: ReferenceImage;
-
-  // drag state
-  private isDragging = false;
-  private lastPxX = 0;
-  private lastPxY = 0;
-
-  public referenceModeEnabled = false; // UI toggle ("Align Reference")
-  public alignPopupOpen = false;
-  public lockAspect = true;
-  private refAspect = 1;
-  private bounds: {pt1: Pt, pt2: Pt} | null = null;
-
-  // private currentImageBounds: {a: Pt, b: Pt, c: Pt, d: Pt} = {}
 
   ngAfterViewInit(): void {
     const el = this.host.nativeElement;
@@ -92,6 +96,12 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
     this.resizeObs = new ResizeObserver(() => this.draw());
     this.resizeObs.observe(el);
+    // wire reference image controller (keeps component in sync via callback)
+    this.refController = new ReferenceImageController(this.referenceImage, (img) => {
+      this.referenceImage = img as any;
+      this.referenceImageChange.emit(this.referenceImage ?? null);
+    });
+
     this.referenceImageChange.emit(this.referenceImage);    // sets our default gesu
     this.initialized = true;
   }
@@ -102,43 +112,14 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
   fitCamera(draw: boolean = true): void {
     if (!this.bounds) return;
-
     const el = this.host.nativeElement;
     const pxW = Math.max(1, el.clientWidth);
     const pxH = Math.max(1, el.clientHeight);
 
-    // Calculate bounds in world coords
-    const minX = Math.min(this.bounds!.pt1.x, this.bounds!.pt2.x);
-    const maxX = Math.max(this.bounds!.pt1.x, this.bounds!.pt2.x);
-    const minY = Math.min(-this.bounds!.pt1.y, -this.bounds!.pt2.y);
-    const maxY = Math.max(-this.bounds!.pt1.y, -this.bounds!.pt2.y);
-
-    const boundsWidth = maxX - minX;
-    const boundsHeight = maxY - minY;
-
-    // Add padding (10% on each side)
-    const padding = 0.2;
-    const paddedWidth = boundsWidth * (1 + padding * 2);
-    const paddedHeight = boundsHeight * (1 + padding * 2);
-
-    // Fit to view with correct aspect ratio
-    const zoomX = pxW / paddedWidth;
-    const zoomY = pxH / paddedHeight;
-    this.pxPerMm = Math.min(zoomX, zoomY);
-
-    // Center the bounds in view
-    const centerX = (minX + maxX) / 2;
-    const centerY = (minY + maxY) / 2;
-    const mmW = pxW / this.pxPerMm;
-    const mmH = pxH / this.pxPerMm;
-
-    this.offsetMmX = centerX - mmW / 2;
-    this.offsetMmY = centerY - mmH / 2;
-
+    this.camera.fitToBounds(this.bounds, pxW, pxH);
     draw && this.draw();
   }
 
-  // render canvas
   draw(): void {
     if (!this.initialized)
       return
@@ -149,14 +130,16 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     const el = this.host.nativeElement;
     const pxW = Math.max(1, el.clientWidth);
     const pxH = Math.max(1, el.clientHeight);
-    const mmW = pxW / this.pxPerMm;
-    const mmH = pxH / this.pxPerMm;
+
+    const vb = this.camera.getViewBox(pxW, pxH);
+    const mmW = vb.mmW;
+    const mmH = vb.mmH;
 
     // Camera window (top-left in world mm coords)
-    const leftBound = this.offsetMmX;
-    const rightBound = leftBound! + mmW;
-    const topBound = this.offsetMmY;
-    const bottomBound = mmH + topBound!;
+    const leftBound = vb.leftBound;
+    const rightBound = vb.rightBound;
+    const topBound = vb.topBound;
+    const bottomBound = vb.bottomBound;
 
     this.canvas.attr('viewBox', `${leftBound} ${topBound} ${mmW} ${mmH}`);
     this.gRoot.attr('transform', 'scale(1,-1)');
@@ -168,8 +151,8 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.showAxes && this.drawAxis(cv);
     this.showAxes && this.drawAxisLabels(cv);
     this.showGrid && this.drawDots(cv, '#b4b4b4ff');
-    this.showReferenceImage && this.drawReferenceImage()
-    this.referenceModeEnabled && this.showReferenceImage && this.drawReferenceImageControls();
+    this.showReferenceImage && this.refController.drawImage(this.gRoot)
+    this.referenceModeEnabled && this.showReferenceImage && this.refController.drawControls(this.gRoot, this.pxPerMm);
 
     this.draftFuncs.map(f => {
       f(this.gRoot, this.gUI)
@@ -325,28 +308,8 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       .attr('fill', dotColor);
   }
 
-  drawReferenceImage = () => {
-    if (!this.referenceImage?.href) return;
-
-    const { href, x, y, width, height } = this.referenceImage;
-
-    const img = this.gRoot.append("image")
-      .attr("class", "reference-image")
-      .attr("href", href)
-      .attr("xlink:href", href) // harmless; optional in modern SVG
-      .attr("transform", `translate(0 ${height}) scale(1 -1)`)
-      .attr("x", x)
-      .attr("y", -y)
-      .attr("width", width)
-      .attr("height", height)
-      .attr("opacity", 0.25)
-      .attr("preserveAspectRatio", "xMidYMid meet");
-
-    img.lower();
-  };
-
-  // unified pointer controls: camera pan + reference image drag/scale
-  onPointerDown = (event: PointerEvent) => {
+  // camera controls
+  onPointerDown(event: PointerEvent) {
     // record last pixel position for potential camera pan
     this.lastPxX = event.clientX;
     this.lastPxY = event.clientY;
@@ -358,16 +321,16 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
     if (canRefOps && isPrimary) {
       const pt = this.worldFromPointer(event);
-      const h = this.hitTestHandle(pt, this.referenceImage);
+      const h = this.refController.hitTestHandle(pt, this.pxPerMm);
 
       if (h) {
-        this.startScale(pt, h);
+        this.refController.startScale(pt, h);
         this.host.nativeElement.setPointerCapture(event.pointerId);
         return;
       }
 
-      if (this.pointInImage(pt, this.referenceImage)) {
-        this.startDrag(pt);
+      if (this.refController.pointInImage(pt)) {
+        this.refController.startDrag(pt);
         this.host.nativeElement.setPointerCapture(event.pointerId);
         return;
       }
@@ -384,11 +347,9 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
   onPointerMove = (event: PointerEvent) => {
     // reference-image interaction takes precedence
-    if (this.isInteracting) {
-      if (!this.referenceImage || !this.startImage) return;
+    if (this.refController.isInteracting) {
       const pt = this.worldFromPointer(event);
-      if (this.activeHandle) this.updateScale(pt);
-      else this.updateDrag(pt);
+      this.refController.onPointerMove(pt);
       event.preventDefault();
       return;
     }
@@ -402,23 +363,15 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.lastPxX = event.clientX;
     this.lastPxY = event.clientY;
 
-    const dxMm = dxPx / this.pxPerMm;
-    const dyMm = dyPx / this.pxPerMm;
-
-    this.offsetMmX! -= dxMm;
-    this.offsetMmY! -= dyMm;
-
+    // delegate pan to camera (it converts px -> mm internally)
+    this.camera.panByPx(dxPx, dyPx);
     this.draw();
   };
 
   onPointerUp = (event: PointerEvent) => {
     // end reference-image interaction if active
-    if (this.isInteracting) {
-      this.isInteracting = false;
-      this.activeHandle = null;
-      this.dragStartPt = undefined;
-      this.anchorPt = undefined;
-      this.startImage = undefined;
+    if (this.refController.isInteracting) {
+      this.refController.endInteraction();
       this.referenceImageChange.emit(this.referenceImage ?? null);
     }
 
@@ -436,121 +389,16 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   };
 
   onKeyDown = (event: KeyboardEvent) => {
-    if (!this.referenceModeEnabled) return;
-    if (!this.showReferenceImage) return;
-    if (!this.referenceImage?.href) return;
-
-    const stepMm = 1;
-    const scaleStep = 1.05;
-    let dx = 0;
-    let dy = 0;
-    let scale: number | null = null;
-
-    switch (event.key) {
-      case 'ArrowUp':
-        if (event.ctrlKey) scale = scaleStep; // scale up
-        else dy += stepMm; // Y-up world
-        break;
-      case 'ArrowDown':
-        if (event.ctrlKey) scale = 1 / scaleStep; // scale down
-        else dy -= stepMm;
-        break;
-      case 'ArrowLeft':
-        dx -= stepMm;
-        break;
-      case 'ArrowRight':
-        dx += stepMm;
-        break;
-      default:
-        return;
+    // delegate keyboard handling for reference image to controller
+    if (this.referenceModeEnabled && this.showReferenceImage && this.referenceImage?.href) {
+      const handled = this.refController.handleKeyboard(event, this.lockAspect, this.refAspect);
+      if (handled) {
+        this.draw();
+        event.preventDefault();
+        event.stopPropagation();
+      }
     }
-
-    if (scale !== null) {
-      const img = this.referenceImage;
-      const minMm = 1;
-      const cx = img.x + img.width / 2;
-      const cy = img.y + img.height / 2;
-
-      let newW = Math.max(minMm, img.width * scale);
-      let newH = Math.max(minMm, img.height * scale);
-
-      // keep aspect ratio on scale; uses current aspect if available
-      const aspect = Math.abs(img.width / img.height) || 1;
-      newH = Math.max(minMm, newW / aspect);
-
-      const newX = cx - newW / 2;
-      const newY = cy - newH / 2;
-
-      this.referenceImage = {
-        ...img,
-        x: newX,
-        y: newY,
-        width: newW,
-        height: newH,
-      };
-    } else {
-      this.referenceImage = {
-        ...this.referenceImage,
-        x: this.referenceImage.x + dx,
-        y: this.referenceImage.y + dy,
-      };
-    }
-
-    this.referenceImageChange.emit(this.referenceImage);
-    this.draw();
-
-    event.preventDefault();
-    event.stopPropagation();
   };
-
-  startDrag(pt: Pt): void {
-    if (!this.referenceImage) return;
-    this.isInteracting = true;
-    this.activeHandle = null;
-    this.dragStartPt = pt;
-    this.startImage = { ...this.referenceImage };
-  }
-
-  updateDrag(pt: Pt): void {
-    if (!this.referenceImage || !this.startImage || !this.dragStartPt) return;
-
-    const dx = pt.x - this.dragStartPt.x;
-    const dy = pt.y - this.dragStartPt.y;
-
-    this.referenceImage = {
-      ...this.referenceImage,
-      x: this.startImage.x + dx,
-      y: this.startImage.y + dy,
-    };
-
-    this.draw();
-  }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
   onScrollWheel = (event: WheelEvent) => {
     event.preventDefault();
@@ -563,6 +411,25 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
     this.applyZoom(this.pxPerMm)
   };
+
+  zoomIn(): void {
+    this.applyZoom(this.pxPerMm * 1.1);
+  }
+
+  zoomOut(): void {
+    this.applyZoom(this.pxPerMm / 1.1);
+  }
+
+  applyZoom(newPxPerMm: number): void {
+    const el = this.host.nativeElement;
+    const pxW = Math.max(1, el.clientWidth);
+    const pxH = Math.max(1, el.clientHeight);
+
+    // delegate to camera (keeps zoom centered)
+    this.camera.applyZoom(newPxPerMm, pxW, pxH);
+    this.draw();
+  }
+
 
   // UI: Align Reference popup controls
   toggleAlignPopup(): void {
@@ -604,39 +471,14 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.draw();
   }
 
-  zoomIn(): void {
-    this.applyZoom(this.pxPerMm * 1.1);
+  startDragRefImage(pt: Pt): void {
+    this.refController.startDrag(pt);
   }
 
-  zoomOut(): void {
-    this.applyZoom(this.pxPerMm / 1.1);
-  }
-
-  applyZoom(newPxPerMm: number): void {
-    const el = this.host.nativeElement;
-    const pxW = Math.max(1, el.clientWidth);
-    const pxH = Math.max(1, el.clientHeight);
-
-    const oldPxPerMm = this.pxPerMm;
-
-    // keep zoom centered on view center (your current wheel behavior)
-    const oldMmW = pxW / oldPxPerMm;
-    const oldMmH = pxH / oldPxPerMm;
-
-    const centerX = this.offsetMmX! + oldMmW / 2;
-    const centerY = this.offsetMmY! + oldMmH / 2;
-
-    this.pxPerMm = newPxPerMm;
-
-    const newMmW = pxW / this.pxPerMm;
-    const newMmH = pxH / this.pxPerMm;
-
-    this.offsetMmX = centerX - newMmW / 2;
-    this.offsetMmY = centerY - newMmH / 2;
-
+  updateDragRefImage(pt: Pt): void {
+    this.refController.updateDrag(pt);
     this.draw();
   }
-
 
   clearReferenceImage(): void {
     this.referenceImage = undefined as any; // or make it nullable
@@ -652,185 +494,10 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  // handle + interaction state
-  private activeHandle: 'nw' | 'ne' | 'sw' | 'se' | null = null;
-  private dragStartPt?: Pt;
-  private startImage?: ReferenceImage;
-  private anchorPt?: Pt;
-  private isInteracting = false;
-
-  // tuning
-  private handlePx = 12;   // corner handle radius in screen px
-  private hitSlopPx = 10;  // extra hit area in px
-
-
-  private worldFromPointer(e: PointerEvent): Pt {
+  worldFromPointer(e: PointerEvent): Pt {
     // d3.pointer gives SVG user units (your viewBox units)
     const [sx, sy] = d3.pointer(e, this.gRoot.node() as any);
     // Your world is Y-up because gRoot is scale(1,-1)
     return { x: sx, y: sy };
   }
-
-  private handleRmm(): number {
-    return this.handlePx / this.pxPerMm;
-  }
-
-  private hitSlopMm(): number {
-    return this.hitSlopPx / this.pxPerMm;
-  }
-
-  private imageBounds(img: ReferenceImage) {
-    const x0 = Math.min(img.x, img.x + img.width);
-    const x1 = Math.max(img.x, img.x + img.width);
-    const y0 = Math.min(img.y, img.y + img.height);
-    const y1 = Math.max(img.y, img.y + img.height);
-    return { x0, x1, y0, y1 };
-  }
-
-  private pointInImage(pt: Pt, img: ReferenceImage): boolean {
-    const b = this.imageBounds(img);
-    const s = this.hitSlopMm();
-    return pt.x >= b.x0 - s && pt.x <= b.x1 + s && pt.y >= b.y0 - s && pt.y <= b.y1 + s;
-  }
-
-  private cornerPts(img: ReferenceImage) {
-    const x0 = img.x;
-    const y0 = img.y;
-    const x1 = img.x + img.width;
-    const y1 = img.y + img.height;
-
-    return {
-      sw: { x: x0, y: y0 },
-      se: { x: x1, y: y0 },
-      nw: { x: x0, y: y1 },
-      ne: { x: x1, y: y1 },
-    };
-  }
-
-  private hitTestHandle(pt: Pt, img: ReferenceImage): 'nw' | 'ne' | 'sw' | 'se' | null {
-    const corners = this.cornerPts(img);
-    const r = this.handleRmm() + this.hitSlopMm();
-
-    const dist2 = (a: Pt, b: Pt) => {
-      const dx = a.x - b.x;
-      const dy = a.y - b.y;
-      return dx * dx + dy * dy;
-    };
-
-    const r2 = r * r;
-
-    // Check handles first; prioritize nearer if multiple overlap
-    let best: { h: any; d2: number } | null = null;
-    (['nw', 'ne', 'sw', 'se'] as const).forEach(h => {
-      const d2 = dist2(pt, corners[h]);
-      if (d2 <= r2 && (!best || d2 < best.d2)) best = { h, d2 };
-    });
-
-    return (best?.h ?? null);
-  }
-
-  private startScale(pt: Pt, handle: 'nw' | 'ne' | 'sw' | 'se'): void {
-    if (!this.referenceImage) return;
-    this.isInteracting = true;
-    this.activeHandle = handle;
-    this.dragStartPt = pt;
-    this.startImage = { ...this.referenceImage };
-
-    // anchor is opposite corner
-    const corners = this.cornerPts(this.startImage);
-    const anchorKey =
-      handle === 'nw' ? 'se' :
-        handle === 'ne' ? 'sw' :
-          handle === 'sw' ? 'ne' : 'nw';
-
-    this.anchorPt = corners[anchorKey];
-  }
-
-  private updateScale(pt: Pt): void {
-    if (!this.referenceImage || !this.startImage || !this.anchorPt || !this.activeHandle) return;
-
-    const startW = this.startImage.width;
-    const startH = this.startImage.height;
-
-    // Keep aspect ratio based on starting image
-    const aspect = Math.abs(startW / startH) || 1;
-
-    // vector from anchor to pointer
-    const dx = pt.x - this.anchorPt.x;
-    const dy = pt.y - this.anchorPt.y;
-
-    let targetW = Math.abs(dx);
-    let targetH = Math.abs(dy);
-
-    // maintain aspect ratio, constrain by whichever axis is limiting
-    if (targetW / Math.max(targetH, 1e-6) > aspect) {
-      // width too big relative to height; clamp width by height
-      targetW = targetH * aspect;
-    } else {
-      // height too big relative to width; clamp height by width
-      targetH = targetW / aspect;
-    }
-
-    // minimum size so it can't collapse to nothing
-    const minMm = 10;
-    targetW = Math.max(minMm, targetW);
-    targetH = Math.max(minMm, targetH);
-
-    // Recompute x,y so anchor stays fixed
-    // Determine whether anchor is west/east and south/north relative to new rect
-    const anchorIsWest = (this.activeHandle === 'ne' || this.activeHandle === 'se'); // handle on east => anchor west
-    const anchorIsSouth = (this.activeHandle === 'ne' || this.activeHandle === 'nw'); // handle on north => anchor south
-
-    const newX = anchorIsWest ? this.anchorPt.x : this.anchorPt.x - targetW;
-    const newY = anchorIsSouth ? this.anchorPt.y : this.anchorPt.y - targetH;
-
-    this.referenceImage = {
-      ...this.referenceImage,
-      x: newX,
-      y: newY,
-      width: targetW,
-      height: targetH,
-    };
-
-    this.draw();
-  }
-
-  private drawReferenceImageControls(): void {
-    if (!this.referenceImage?.href) return;
-
-    const img = this.referenceImage;
-    const corners = this.cornerPts(img);
-    const r = this.handleRmm();
-
-    // bounding box
-    this.gRoot.append('rect')
-      .attr('x', img.x)
-      .attr('y', img.y)
-      .attr('width', img.width)
-      .attr('height', img.height)
-      .attr('fill', 'none')
-      .attr('stroke', '#bb1212ff')
-      .attr('stroke-width', 2 / this.pxPerMm)
-      .attr('vector-effect', 'non-scaling-stroke')
-      .style('pointer-events', 'none');
-
-    // corner handles
-    const handles = (['nw', 'ne', 'sw', 'se'] as const).map(h => ({ h, ...corners[h] }));
-
-    this.gRoot.append('g')
-      .attr('class', 'ref-handles')
-      .selectAll('circle')
-      .data(handles)
-      .enter()
-      .append('circle')
-      .attr('cx', d => d.x)
-      .attr('cy', d => d.y)
-      .attr('r', r)
-      .attr('fill', '#fff')
-      .attr('stroke', '#bb1212ff')
-      .attr('stroke-width', 2 / this.pxPerMm)
-      .attr('vector-effect', 'non-scaling-stroke')
-      .style('pointer-events', 'none');
-  }
-
 }
