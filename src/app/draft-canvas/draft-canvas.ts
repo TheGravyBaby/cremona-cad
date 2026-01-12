@@ -110,16 +110,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.resizeObs?.disconnect();
   }
 
-  fitCamera(draw: boolean = true): void {
-    if (!this.bounds) return;
-    const el = this.host.nativeElement;
-    const pxW = Math.max(1, el.clientWidth);
-    const pxH = Math.max(1, el.clientHeight);
-
-    this.camera.fitToBounds(this.bounds, pxW, pxH);
-    draw && this.draw();
-  }
-
   draw(): void {
     if (!this.initialized)
       return
@@ -421,6 +411,15 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     // delegate to camera (keeps zoom centered)
     this.camera.applyZoom(newPxPerMm, pxW, pxH);
     this.draw();
+  }
+
+  fitCamera(): void {
+    if (!this.bounds) return;
+    const el = this.host.nativeElement;
+    const pxW = Math.max(1, el.clientWidth);
+    const pxH = Math.max(1, el.clientHeight);
+
+    this.camera.fitToBounds(this.bounds, pxW, pxH);
   }
 
 
