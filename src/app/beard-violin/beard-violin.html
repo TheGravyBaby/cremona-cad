@@ -6,7 +6,13 @@
       File Name
     <input type="string" [(ngModel)]="d.fileName"/>
     </label>
-    <br>
+
+     <label class="file-upload">
+      Upload Reference Image
+      <input type="file" accept="image/*" (change)="onReferenceFileSelected($event)" />
+    </label>
+    <br><br>
+
 
     <label>
       Height : Width mm

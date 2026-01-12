@@ -10,9 +10,8 @@
 
 .align-popup {
   position: absolute;
-  top: 35px;
-  right: -5px;
-  margin-top: 6px;
+  top: -200px;
+  right: 0px;
   background: #fff;
   border: 1px solid #ccc;
   border-radius: 6px;
@@ -66,37 +65,6 @@ svg {
   /* background: #eaeaea; */
   font-size: 12px;
   color: #444;
-}
-
-.file-upload {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  border: 1px solid #d7d7d7;
-  border-radius: 8px;
-  background: #fff;
-  color: #2a2a2a;
-  cursor: pointer;
-  transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
-}
-
-.file-upload input[type="file"] {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  cursor: pointer;
-}
-
-.file-upload:hover {
-  border-color: #c6c6c6;
-  background: #f8f8f8;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-}
-
-.file-upload:active {
-  background: #f1f1f1;
 }
 
 

@@ -623,7 +623,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     const oldMmW = pxW / oldPxPerMm;
     const oldMmH = pxH / oldPxPerMm;
 
-    const centerX = this.offsetMmX! + oldMmW / 2;
+    const centerX = (this.offsetMmX! + oldMmW) / 2;
     const centerY = this.offsetMmY! + oldMmH / 2;
 
     this.pxPerMm = newPxPerMm;
@@ -637,60 +637,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.draw();
   }
 
-  // reference image controls
-  async onReferenceFileSelected(evt: Event): Promise<void> {
-    const input = evt.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file) return;
-
-    const dataUrl = await this.readFileAsDataUrl(file);
-
-    // Load it once to get natural dimensions
-    const { w, h } = await this.getImageSize(dataUrl);
-
-    // Simple, predictable default:
-    // - size in "mm units" = natural px (same as your current approach)
-    // - place centered on X, start near Y=0
-    const width = w;
-    const height = h;
-
-    this.referenceImage = {
-      href: dataUrl,
-      "xlink:href": dataUrl,
-      x: -width / 2,
-      y: 0,
-      width,
-      height,
-    };
-
-    this.referenceImageChange.emit(this.referenceImage);
-
-    // Optional: auto-enable showing it when user uploads
-    this.showReferenceImage = true;
-
-    this.draw();
-
-    // optional: allow re-uploading same file by clearing the input
-    input.value = '';
-  }
-
-  private readFileAsDataUrl(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result));
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(file);
-    });
-  }
-
-  private getImageSize(dataUrl: string): Promise<{ w: number; h: number }> {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
-      img.onerror = reject;
-      img.src = dataUrl;
-    });
-  }
 
   clearReferenceImage(): void {
     this.referenceImage = undefined as any; // or make it nullable
