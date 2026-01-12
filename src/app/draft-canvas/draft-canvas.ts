@@ -413,6 +413,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.draw();
   }
 
+
   fitCamera(): void {
     if (!this.bounds) return;
     const el = this.host.nativeElement;
@@ -467,6 +468,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     if (this.oldReferenceImageParams) {
       this.referenceImage = { ...this.oldReferenceImageParams };
       this.referenceImageChange.emit(this.referenceImage);
+      this.refController.setImage(this.referenceImage);
       this.draw();
     }
   }
