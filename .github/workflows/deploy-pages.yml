@@ -33,7 +33,7 @@ jobs:
       - name: Build
         run: |
           REPO_NAME="${{ github.event.repository.name }}"
-          npx ng build --configuration production --base-href "/${REPO_NAME}/"
+          npx ng build --configuration production
 
       # Upload the Angular output folder as the Pages artifact
       - name: Upload artifact
