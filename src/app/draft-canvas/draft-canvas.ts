@@ -351,6 +351,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       const pt = this.worldFromPointer(event);
       this.refController.onPointerMove(pt);
       event.preventDefault();
+      this.draw();
       return;
     }
 
@@ -468,21 +469,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
     this.referenceImage = next;
     this.referenceImageChange.emit(this.referenceImage);
-    this.draw();
-  }
-
-  startDragRefImage(pt: Pt): void {
-    this.refController.startDrag(pt);
-  }
-
-  updateDragRefImage(pt: Pt): void {
-    this.refController.updateDrag(pt);
-    this.draw();
-  }
-
-  clearReferenceImage(): void {
-    this.referenceImage = undefined as any; // or make it nullable
-    this.referenceImageChange.emit(null);
     this.draw();
   }
 
