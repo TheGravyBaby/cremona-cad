@@ -308,7 +308,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       .attr('fill', dotColor);
   }
 
-  // camera controls
+  // UI controls
   onPointerDown(event: PointerEvent) {
     // record last pixel position for potential camera pan
     this.lastPxX = event.clientX;
@@ -412,14 +412,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
     this.applyZoom(this.pxPerMm)
   };
-
-  zoomIn(): void {
-    this.applyZoom(this.pxPerMm * 1.1);
-  }
-
-  zoomOut(): void {
-    this.applyZoom(this.pxPerMm / 1.1);
-  }
 
   applyZoom(newPxPerMm: number): void {
     const el = this.host.nativeElement;
