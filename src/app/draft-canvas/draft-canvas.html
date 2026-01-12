@@ -1,48 +1,4 @@
 <div class="canvas-shell" [class.dark-mode]="isDarkMode">
-
-    <div class="ui-controls-top">
-      <label class="file-upload">
-        Reference Image
-        <input type="file" accept="image/*" (change)="onReferenceFileSelected($event)" />
-      </label>
-
-       <div class="align-controls">
-        <button type="button" class="btn" [class.active]="referenceModeEnabled" (click)="toggleAlignPopup()">
-          Align Reference
-        </button>
-        @if(referenceModeEnabled) {
-          <div class="align-popup">
-            <div class="row">
-              <label>X (mm)</label>
-              <input type="number" [ngModel]="referenceImage?.x" (ngModelChange)="onRefParamChange('x', $event)" />
-            </div>
-            <div class="row">
-              <label>Y (mm)</label>
-              <input type="number" [ngModel]="referenceImage?.y" (ngModelChange)="onRefParamChange('y', $event)" />
-            </div>
-            <div class="row">
-              <label>Width (mm)</label>
-              <input type="number" [ngModel]="referenceImage?.width" (ngModelChange)="onRefParamChange('width', $event)" />
-            </div>
-            <div class="row">
-              <label>Height (mm)</label>
-              <input type="number" [ngModel]="referenceImage?.height" (ngModelChange)="onRefParamChange('height', $event)" />
-            </div>
-            <div class="row">
-              <label class="chk">
-                <input type="checkbox" [(ngModel)]="lockAspect" />
-                Lock aspect
-              </label>
-              <button type="button" class="btn" (click)="resetReferenceImage()">Reset</button>
-            </div>
-          </div>
-          }
-      </div>
-    </div>
-
-
-
-
   <div #host class="host" tabindex="0" aria-label="Draft canvas" (wheel)="onScrollWheel($event)"
     (pointerdown)="onPointerDown($event)" (pointermove)="onPointerMove($event)" (pointerup)="onPointerUp($event)"
     (pointerleave)="onPointerUp($event)" (keydown)="onKeyDown($event)"></div>
@@ -75,8 +31,40 @@
         <input type="checkbox" [(ngModel)]="showReferenceImage" (change)="draw()" />
         Reference
       </label>
-
-     
+      <div class="align-controls">
+        <button type="button" class="btn" [class.active]="referenceModeEnabled" (click)="toggleAlignPopup()">
+          Align Reference
+        </button>
+        @if(referenceModeEnabled) {
+        <div class="align-popup">
+          <div class="row">
+            <label>X (mm)</label>
+            <input type="number" [ngModel]="referenceImage?.x" (ngModelChange)="onRefParamChange('x', $event)" />
+          </div>
+          <div class="row">
+            <label>Y (mm)</label>
+            <input type="number" [ngModel]="referenceImage?.y" (ngModelChange)="onRefParamChange('y', $event)" />
+          </div>
+          <div class="row">
+            <label>Width (mm)</label>
+            <input type="number" [ngModel]="referenceImage?.width"
+              (ngModelChange)="onRefParamChange('width', $event)" />
+          </div>
+          <div class="row">
+            <label>Height (mm)</label>
+            <input type="number" [ngModel]="referenceImage?.height"
+              (ngModelChange)="onRefParamChange('height', $event)" />
+          </div>
+          <div class="row">
+            <label class="chk">
+              <input type="checkbox" [(ngModel)]="lockAspect" />
+              Lock aspect
+            </label>
+            <button type="button" class="btn" (click)="resetReferenceImage()">Reset</button>
+          </div>
+        </div>
+        }
+      </div>
 
     </div>
   </div>

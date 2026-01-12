@@ -25,7 +25,7 @@ import { Pt } from './models/types';
           [draftFunctions]="draftArgs"
           [referenceImageParams]="referenceImage"
           [setCameraBounds]="bounds"
-          (referenceImageChange)="onReferenceImageChange($event)">
+          >
         </app-draft-canvas>
 
         @if (selectedRecipe == "Beard Violin") {
@@ -34,7 +34,8 @@ import { Pt } from './models/types';
           (setBounds)="bounds=$event"
           [loadFile]="loadedFileData"
           [saveTick]="saveTick"
-          [referenceImageParams]="referenceImage">
+          [referenceImageParams]="referenceImage"
+          (referenceImageChange)="onReferenceImageChange($event)">
         </app-beard-violin>
 
         }
@@ -44,7 +45,8 @@ import { Pt } from './models/types';
           (setBounds)="bounds=$event"
           [loadFile]="loadedFileData"
           [saveTick]="saveTick"
-          [referenceImageParams]="referenceImage">
+          [referenceImageParams]="referenceImage"
+          (referenceImageChange)="onReferenceImageChange($event)">
         </app-denis-violin>
         }
       </div>
