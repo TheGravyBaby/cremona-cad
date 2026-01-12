@@ -623,7 +623,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     const oldMmW = pxW / oldPxPerMm;
     const oldMmH = pxH / oldPxPerMm;
 
-    const centerX = (this.offsetMmX! + oldMmW) / 2;
+    const centerX = this.offsetMmX! + oldMmW / 2;
     const centerY = this.offsetMmY! + oldMmH / 2;
 
     this.pxPerMm = newPxPerMm;
