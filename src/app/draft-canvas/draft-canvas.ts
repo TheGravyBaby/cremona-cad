@@ -77,10 +77,10 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   referenceImage: ReferenceImage = {
     "href": "/DelGesuBaltic.png",
     "xlink:href": "/DelGesuBaltic.png",
-    "x": -108,
-    "y": -12,
-    "width": 216,
-    "height": 593,
+    "x": -107,
+    "y": -11.7,
+    "width": 214,
+    "height": 587,
   }
 
   ngAfterViewInit(): void {

@@ -50,6 +50,9 @@ input {
 }
 
 .ratio { display: flex; align-items: center; gap: 8px; }
+
+.textBoxInput { display: flex; align-items: center; gap: 8px; }
+
 .ratio input { width: 90px; }
 
 .calc-error {

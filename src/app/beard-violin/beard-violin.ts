@@ -48,8 +48,8 @@ export class BeardViolinComponent extends RecipeComponentBase {
     fileName: "Beard-Baltic",
     version: ".1",
     params: {
-      h: 351,
-      w: 200,
+      h: 348,
+      w: 203,
       htoW: { n: 7, d: 4 },
       hiToLowW: { n: 8, d: 10 },
       hiJoinArcToH: { n: 3, d: 7 },

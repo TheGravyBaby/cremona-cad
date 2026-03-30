@@ -6,11 +6,12 @@ import { FormsModule } from '@angular/forms';
 import { DenisViolin } from "./denis-violin/denis-violin";
 import { RecipeInterface, ReferenceImage } from './models/types';
 import { Pt } from './models/types';
+import { KellyViolin } from './kelly-violin/kelly-violin';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [TopBarComponent, BeardViolinComponent, DraftCanvasComponent, FormsModule, DenisViolin],
+  imports: [TopBarComponent, BeardViolinComponent, DraftCanvasComponent, FormsModule, DenisViolin, KellyViolin],
   template: `
     <div class="app">
      <app-top-bar class="top"
@@ -27,6 +28,17 @@ import { Pt } from './models/types';
           [setCameraBounds]="bounds"
           >
         </app-draft-canvas>
+
+        @if (selectedRecipe == "Kelly Violin") {
+         <app-kelly-violin class="sidebar"
+          (draftChange)="draftArgs = $event"
+          (setBounds)="bounds=$event"
+          [loadFile]="loadedFileData"
+          [saveTick]="saveTick"
+          [referenceImageParams]="referenceImage"
+          (referenceImageChange)="onReferenceImageChange($event)">
+        </app-kelly-violin>
+        }
 
         @if (selectedRecipe == "Beard Violin") {
          <app-beard-violin class="sidebar"
@@ -48,6 +60,7 @@ import { Pt } from './models/types';
           [referenceImageParams]="referenceImage"
           (referenceImageChange)="onReferenceImageChange($event)">
         </app-denis-violin>
+
         }
       </div>
     </div>
@@ -57,7 +70,7 @@ import { Pt } from './models/types';
 
 export class App {
   draftArgs: Array<(g: any, ui: any) => void> = [];
-  selectedRecipe: string = 'Beard Violin';
+  selectedRecipe: string = 'Kelly Violin';
   loadedFileData: RecipeInterface | undefined = undefined;
   saveTick = 0;
   bounds: {pt1: Pt, pt2: Pt} | null = null;
@@ -75,6 +88,7 @@ export class App {
     this.referenceImage = data?.referenceImage ?? null;
 
     const name = (data.recipeName ?? '').toLowerCase();
+    if (name === 'kelly') this.selectedRecipe = 'Kelly Violin';
     if (name === 'beard') this.selectedRecipe = 'Beard Violin';
     if (name === 'denis') this.selectedRecipe = 'Denis Violin';
   }
