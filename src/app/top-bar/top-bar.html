@@ -4,6 +4,7 @@
   <div class="controls">
     Select Recipe: 
     <select class="select" (change)="onSelectChange($event)">
+      <option [selected]="selectedRecipe === 'Kelly'">Kelly Violin</option>
       <option [selected]="selectedRecipe === 'Beard'">Beard Violin</option>
       <option [selected]="selectedRecipe === 'Denis'">Denis Violin</option>
     </select>

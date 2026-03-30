@@ -1,5 +1,54 @@
 import { Pt, Circle } from "../models/types";
 
+export const renderDistanceMeasurementLine = (P: Pt, Q: Pt, label: string, color: string) => (g: any, ui: any) => {
+    const dx = Q.x - P.x;
+    const dy = Q.y - P.y;
+    const len = Math.hypot(dx, dy) || 1;
+
+    // unit direction + normal
+    const ux = dx / len, uy = dy / len;
+    const nx = -uy, ny = ux;
+
+    // main line
+    g.append("line")
+        .attr("x1", P.x).attr("y1", P.y)
+        .attr("x2", Q.x).attr("y2", Q.y)
+        .attr("stroke", color)
+        .attr("stroke-width", 1)
+        .attr("vector-effect", "non-scaling-stroke")
+        .attr("opacity", 0.75);
+
+    // ticks at ends (perpendicular)
+    const tickSize = 4;
+    const tick = (A: Pt) => {
+        g.append("line")
+            .attr("x1", A.x + nx * tickSize).attr("y1", A.y + ny * tickSize)
+            .attr("x2", A.x - nx * tickSize).attr("y2", A.y - ny * tickSize)
+            .attr("stroke", color)
+            .attr("stroke-width", 2)
+            .attr("vector-effect", "non-scaling-stroke");
+    };
+    tick(P); tick(Q);
+
+    // label at midpoint, nudged along normal
+    const mx = (P.x + Q.x) / 2 + nx * -10;
+    const my = (P.y + Q.y) / 2 + ny * -10;
+    
+    
+    if (label) {
+        ui.append("text")
+            .text(label)
+            .attr("x", mx)
+            .attr("y", -my)
+            .attr("fill", color)
+            .attr("font-size", 12)
+            .attr("text-anchor", "middle")
+            .attr("dominant-baseline", "central");
+        }
+
+   
+};
+
 // - number[] => segment weights (e.g. [3,4,3])
 export const renderBoxLine = (
     start: Pt,
