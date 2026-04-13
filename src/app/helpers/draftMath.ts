@@ -363,3 +363,26 @@ export function interceptCirclesAndPoint(U: Circle, P: Pt, Ur: number): Circle[]
 
   return result;
 }
+
+
+// good math provided here
+// https://www.reddit.com/r/Geometry/comments/1k6slsb/how_do_i_create_this_orange_arc_so_that_it_is/
+export function findJoiningCircleFromCircleAndPoint(U: Circle, P: Pt): Circle {
+
+  const x = U.x - P.x;
+  const y = Math.abs(U.y - P.y);
+
+  // R=(x2+y2-r2)/(2(y-r))
+  let Cr = (x*x + y*y - U.r*U.r) / (2 * (y - U.r));
+  let Cx = P.x
+  let CyPlus = P.y + Cr;
+  let CyMinus = P.y - Cr
+
+  // use the Cy value closest to the center of U
+  let CyPlusDist = dist(U, {x: Cx, y: CyPlus});
+  let CyMinusDist = dist(U, {x: Cx, y: CyMinus});
+  
+  let Cy = CyPlusDist < CyMinusDist ? CyPlus : CyMinus;
+
+  return { x: Cx, y: Cy, r: Cr };
+}

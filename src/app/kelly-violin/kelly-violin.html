@@ -31,7 +31,7 @@
     </details>
 
     <details [open]="openPanel === 'mainBouts'" (toggle)="onToggle('mainBouts', $event)">
-        <summary>Four Major Bout Circles</summary>
+        <summary>Major Bout Circles</summary>
 
         <label>
             Upper Bout Width : Height (mm)
@@ -68,10 +68,33 @@
 
         Show Inset Guides 
         <input type="checkbox" [(ngModel)]="showInsetGuides" (change)="changeMainBouts()" />
-
-    
-
-
     </details>
+
+    <details [open]="openPanel === 'minorBouts'" (toggle)="onToggle('minorBouts', $event)">
+        <summary>Minor Bout Circles</summary>
+
+        <label>
+            Upper Vesaci Radius (mm)
+            <div class="ratio">
+                <input type="number" step="1" min="1" [(ngModel)]="d.params.upperVesaciRadius" (input)="changeMinorBouts()" />
+            </div>
+        </label>
+
+        <br>
+
+        <label>
+            Lower Vesaci Radius (mm)
+            <div class="ratio">
+                <input type="number" step="1" min="1" [(ngModel)]="d.params.lowerVesaciRadius" (input)="changeMinorBouts()" />
+            </div>
+        </label>
+
+        Show Reference Circles
+        <input type="checkbox" [(ngModel)]="showCircles" (change)="changeMinorBouts()" />
+        
+
+  
+    </details>
+
 
 </div>
