@@ -27,12 +27,12 @@ export class KellyViolin extends RecipeComponentBase {
       w: 203,
       inset: 4,
       upperBoutWidth: 156,
-      upperBoutCenter: 283,
+      upperBoutCenter: 284,
       lowerBoutWidth: 195,
-      lowerBoutCenter: 73,
-      centerBoutRadius: 80.5,
+      lowerBoutCenter: 70,
+      centerBoutRadius: 85,
       upperVesaciRadius: 57,
-      lowerVesaciRadius: 66,
+      lowerVesaciRadius: 62
     },
     shapes: {
       upperBout: {} as Circle,
@@ -115,6 +115,7 @@ export class KellyViolin extends RecipeComponentBase {
   }
 
   changeMainBouts() {
+    this.showCircles = true;
     this.draftChange.emit([this.renderBounds, this.renderMainBouts(true)]);
   }
 
