@@ -30,35 +30,48 @@
         </label>
     </details>
 
-    <details [open]="openPanel === 'centerBouts'" (toggle)="onToggle('centerBouts', $event)">
-        <summary>Bout Circles</summary>
-        
+    <details [open]="openPanel === 'mainBouts'" (toggle)="onToggle('mainBouts', $event)">
+        <summary>Four Major Bout Circles</summary>
+
         <label>
-            Center Bout Width (mm)
-            <div class="textBoxInput">
-                <input type="number" step="1" min="1" [(ngModel)]="d.params.centerBoutWidth"
-                    (input)="changeCenterBout()" />
+            Upper Bout Width : Height (mm)
+            <div class="ratio">
+                <input type="number" step="1" min="1" [(ngModel)]="d.params.upperBoutWidth" (input)="changeMainBouts()" />
+                <span>:</span>
+                <input type="number" step="1" min="0" [(ngModel)]="d.params.upperBoutCenter" (input)="changeMainBouts()" />
+
+            </div>
+        </label>
+
+        <br>
+
+         <label> 
+            Center Bout Radius (mm)
+            <div class="ratio">
+                <input type="number" step="1" min="1" [(ngModel)]="d.params.centerBoutRadius" (input)="changeMainBouts()" />
             </div>
         </label>
 
         <br>
 
         <label> 
-            Center Bout Height (mm)
-            <div class="textBoxInput">
-                <input type="number" step="1" min="0" [(ngModel)]="d.params.centerBoutHeight"
-                    (input)="changeCenterBout()" />
+            Lower Bout Width : Height (mm)
+            <div class="ratio">
+                <input type="number" step="1" min="1" [(ngModel)]="d.params.lowerBoutWidth" (input)="changeMainBouts()" />
+                <span>:</span>
+                <input type="number" step="1" min="0" [(ngModel)]="d.params.lowerBoutCenter" (input)="changeMainBouts()" />
+
             </div>
         </label>
 
         <br>
 
-        <label>
-            Center Bout Radius (mm)
-            <div class="textBoxInput">
-                <input type="number" step="1" min="1" [(ngModel)]="d.params.centerBoutRadius" (input)="changeCenterBout()" />
-            </div>
-        </label>
+        Show Inset Guides 
+        <input type="checkbox" [(ngModel)]="showInsetGuides" (change)="changeMainBouts()" />
+
+    
+
+
     </details>
 
 </div>

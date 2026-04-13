@@ -1,8 +1,8 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { Circle } from '../models/types';
-import { renderCircle, renderDashLine, renderDistanceMeasurementLine } from '../helpers/renderFuncs';
+import { renderCircle, renderDashedLine, renderDashLine, renderDistanceMeasurementLine } from '../helpers/renderFuncs';
 
 @Component({
   selector: 'app-kelly-violin',
@@ -11,27 +11,29 @@ import { renderCircle, renderDashLine, renderDistanceMeasurementLine } from '../
   styleUrls: ['../sidebar.css', './kelly-violin.css']
 })
 
-export class KellyViolin extends RecipeComponentBase { 
+export class KellyViolin extends RecipeComponentBase {
+
+  showInsetGuides = true;
 
   override d = {
     recipeName: 'Kelly Violin',
     fileName: "Kelly-Baltic",
     version: ".1",
     params: {
-      h: 351,
+      h: 348,
       w: 203,
       inset: 4,
-      centerBoutWidth: 100,
-      centerBoutHeight: 194,
-      centerBoutRadius: 75,
-      upperBoutWidth: 164,
-      lowerBoutWidth: 203,
-
-      
+      upperBoutWidth: 156,
+      upperBoutCenter: 283,
+      lowerBoutWidth: 195,
+      lowerBoutCenter: 72,
+      centerBoutRadius: 80.5,
     },
     shapes: {
-      centerBoutLeft: {x: 0, y: 0, r: 0} as Circle,
-      centerBoutRight: {x: 0, y: 0, r: 0} as Circle
+      upperBout: { x: 0, y: 0, r: 0 } as Circle,
+      lowerBout: { x: 0, y: 0, r: 0 } as Circle,
+      centerBoutLeft: { x: 0, y: 0, r: 0 } as Circle,
+      centerBoutRight: { x: 0, y: 0, r: 0 } as Circle
     },
 
     calcs: []
@@ -54,7 +56,7 @@ export class KellyViolin extends RecipeComponentBase {
 
 
       if (panel === 'base') this.changeBaseMeasurements();
-      else if (panel === 'centerBouts') this.changeCenterBout();
+      else if (panel === 'mainBouts') this.changeMainBouts();
       else {
         // closed -> check if any panel is still open
         const anyOpen = Array.from(document.querySelectorAll('details')).some(d => d.open);
@@ -72,25 +74,76 @@ export class KellyViolin extends RecipeComponentBase {
     this.draftChange.emit([this.renderBounds]);
   }
 
-  changeCenterBout() {
-    this.draftChange.emit([this.renderCenterBouts]);
-    
+  changeMainBouts() {
+    this.draftChange.emit([this.renderBounds, this.renderMainBouts]);
   }
 
-  renderCenterBouts = (g: any, ui: any): void => {
-    let leftCircleCenter = -this.d.params.centerBoutWidth / 2 - this.d.params.centerBoutRadius;
-    let rightCircleCenter = this.d.params.centerBoutWidth / 2 + this.d.params.centerBoutRadius;
 
-    this.d.shapes.centerBoutLeft = { x: leftCircleCenter, y: this.d.params.centerBoutHeight, r: this.d.params.centerBoutRadius };
-    this.d.shapes.centerBoutRight = { x: rightCircleCenter, y: this.d.params.centerBoutHeight, r: this.d.params.centerBoutRadius };
+  renderMainBouts = (g: any, ui: any): void => {
+    this.d.shapes.upperBout = { x: 0, y: this.d.params.upperBoutCenter, r: this.d.params.upperBoutWidth / 2 };
+    this.d.shapes.lowerBout = { x: 0, y: this.d.params.lowerBoutCenter, r: this.d.params.lowerBoutWidth / 2 };
 
+    renderCircle(this.d.shapes.upperBout, "red")(g, ui);
+    renderDashedLine({ x: -1000, y: this.d.params.upperBoutCenter }, { x: 1000, y: this.d.params.upperBoutCenter }, "red")(g, ui);
+    renderCircle(this.d.shapes.lowerBout, "black")(g, ui);
+    renderDashedLine({ x: -1000, y: this.d.params.lowerBoutCenter }, { x: 1000, y: this.d.params.lowerBoutCenter }, "black")(g, ui);
 
-    renderDistanceMeasurementLine({ x: - this.d.params.centerBoutWidth / 2, y: this.d.params.centerBoutHeight }, { x: this.d.params.centerBoutWidth / 2, y: this.d.params.centerBoutHeight }, this.d.params.centerBoutWidth.toString() + " mm", "blue")(g, ui);
-    renderDashLine({x: -1000, y: this.d.params.centerBoutHeight}, {x: 1000, y: this.d.params.centerBoutHeight}, "blue")(g, ui);
+    // defining some terms, L is lower bout circle, U is upper bout circle, C is center bout circle
+    // our goal is to find x,y coordinates of the center of C
+    // we can do this using the law of cosines, c^2 = a^2 + b^2 - 2ab*cos(theta)
+
+    //    U
+    //    |\
+    //    | \ 
+    //    |  \  a
+    //    |   \ 
+    //    |    \ 
+    //  b |     \ 
+    //    |     / C 
+    //    |    /   
+    //    |   /       
+    //    |t /  c      
+    //    | /
+    //    L    
+
+    let Ul = this.d.params.upperBoutCenter - this.d.params.lowerBoutCenter; // vertical distance between centers of U and L
+    let Uc = this.d.params.centerBoutRadius + this.d.params.upperBoutWidth / 2; // distance from center of U to edge of C
+    let Lc = this.d.params.centerBoutRadius + this.d.params.lowerBoutWidth / 2; // distance from center of L to edge of C
+
+    // using law of cosines to find angle t
+    let cosT = (Ul * Ul + Uc * Uc - Lc * Lc) / (2 * Ul * Uc);
+    let t = Math.acos(cosT);
+
+    // now we can find the coordinates of the center of C
+    let Cx = Uc * Math.sin(t);
+    let Cy = this.d.params.upperBoutCenter - Uc * Math.cos(t);
+
+    this.d.shapes.centerBoutLeft = { x: -Cx, y: Cy, r: this.d.params.centerBoutRadius };
+    this.d.shapes.centerBoutRight = { x: Cx, y: Cy, r: this.d.params.centerBoutRadius };
+
     renderCircle(this.d.shapes.centerBoutLeft, "blue")(g, ui);
     renderCircle(this.d.shapes.centerBoutRight, "blue")(g, ui);
-  
+
+    // render a blue dashed line at the center of the bouts
+    renderDashedLine({ x: -1000, y: Cy }, { x: 1000, y: Cy }, "blue")(g, ui);
+
+    let waistWidth = (this.d.shapes.centerBoutRight.x - this.d.params.centerBoutRadius) * 2;
+
+
+    if (this.showInsetGuides) {
+      let inset = this.d.params.inset;
+      let insetWaist = waistWidth + 2 * inset;
+      let insetLowerBout = this.d.params.lowerBoutWidth  + 2 * inset;
+      let insetUpperBout = this.d.params.upperBoutWidth  + 2 * inset;
+
+      renderDistanceMeasurementLine({ x: -insetWaist / 2, y: Cy }, { x: insetWaist / 2, y: Cy }, insetWaist.toFixed(1) + " mm", "blue")(g, ui);
+      renderDistanceMeasurementLine({ x: -insetLowerBout / 2, y: this.d.params.lowerBoutCenter }, { x: insetLowerBout / 2, y: this.d.params.lowerBoutCenter }, insetLowerBout.toFixed(1) + " mm", "black")(g, ui);
+      renderDistanceMeasurementLine({ x: -insetUpperBout / 2, y: this.d.params.upperBoutCenter }, { x: insetUpperBout / 2, y: this.d.params.upperBoutCenter }, insetUpperBout.toFixed(1) + " mm", "red")(g, ui);
+    }
+
+
   }
+
 
 
   // render functions
