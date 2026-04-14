@@ -37,7 +37,11 @@ export class KellyViolin extends RecipeComponentBase {
       lowerCornerGuideYIntercept: 51,
       lowerCornerGuideXOffset: 0,
       upperCornerGuideYIntercept: 278,
-      upperCornerGuideXOffset: 0
+      upperCornerGuideXOffset: 0,
+      upperTopCornerCircleRadius: 20,
+      upperBottomCornerCircleRadius: 20,
+      lowerTopCornerCircleRadius: 20,
+      lowerBottomCornerCircleRadius: 20,
     },
     shapes: {
       upperBout: {} as Circle,
@@ -108,6 +112,7 @@ export class KellyViolin extends RecipeComponentBase {
       else if (panel === 'mainBouts') this.changeMainBouts();
       else if (panel === 'minorBouts') this.changeMinorBouts();
       else if (panel === 'cornerPlacement') this.changeCornerPlacement();
+      else if (panel ==='cornerCircles') this.changeCornerCircles()
       else {
         // closed -> check if any panel is still open
         const anyOpen = Array.from(document.querySelectorAll('details')).some(d => d.open);
@@ -131,13 +136,18 @@ export class KellyViolin extends RecipeComponentBase {
   }
 
   changeMinorBouts() {
-    this.draftChange.emit([this.renderBounds, this.renderMainBouts(false), this.renderMinorBouts]);
+    this.draftChange.emit([this.renderBounds, this.renderMainBouts(false), this.renderMinorBouts(true)]);
   }
 
   changeCornerPlacement() {
     this.showCircles = false;
-    this.draftChange.emit([this.renderBounds, this.renderMainBouts(false), this.renderMinorBouts, this.renderCornerPlacements]);
+    this.draftChange.emit([this.renderMainBouts(false), this.renderMinorBouts(true), this.renderCornerPlacements(true)]);
 
+  }
+
+  changeCornerCircles() {
+      this.showCircles = false;
+      this.draftChange.emit([this.renderMainBouts(false), this.renderMinorBouts(true), this.renderCornerPlacements(false), this.renderCornerCircles]);
   }
 
 
@@ -219,7 +229,7 @@ export class KellyViolin extends RecipeComponentBase {
     }
   }
 
-  renderMinorBouts = (g: any, ui: any): void => {
+  renderMinorBouts = (guides: boolean = true) => (g: any, ui: any): void => {
     let lowerRightVesica = {x: this.d.params.lowerBoutRadius - this.d.params.lowerVesaciRadius, y: this.d.params.lowerBoutCenter, r: this.d.params.lowerVesaciRadius};
     let lowerLeftVesica = {x: -this.d.params.lowerBoutRadius + this.d.params.lowerVesaciRadius, y: this.d.params.lowerBoutCenter, r: this.d.params.lowerVesaciRadius};
     let upperRightVesica = {x: this.d.params.upperBoutRadius - this.d.params.upperVesaciRadius, y: this.d.params.upperBoutCenter, r: this.d.params.upperVesaciRadius};
@@ -265,52 +275,105 @@ export class KellyViolin extends RecipeComponentBase {
       renderCircle(lowerLeftVesica, "green")(g, ui);
       renderCircle(lowerJoiningCircle, "green")(g, ui);
     }
-    
-    this.renderPaths(g, ui);
+
+    if (guides)
+      this.renderPaths(g, ui);
   }
 
-  renderCornerPlacements = (g: any, ui: any): void => {
+  renderCornerPlacements = (guides: boolean = true) => (g: any, ui: any): void => {
     let rightTargetCircle: Circle = {x: this.d.shapes.centerBoutRight.x, y: this.d.shapes.centerBoutRight.y, r: this.d.params.cornerTargetRadius};
     let leftTargetCircle: Circle = {x: this.d.shapes.centerBoutLeft.x, y: this.d.shapes.centerBoutLeft.y, r: this.d.params.cornerTargetRadius};
     
     let lowerRightCornerTarget: Circle = {x: rightTargetCircle.x + this.d.params.lowerCornerGuideXOffset, y: rightTargetCircle.y, r: rightTargetCircle.r};
     let lowerLeftCornerTarget: Circle = {x: leftTargetCircle.x - this.d.params.lowerCornerGuideXOffset, y: leftTargetCircle.y, r: leftTargetCircle.r};
-
-    renderCircle(rightTargetCircle, "purple")(g, ui);
-    renderCircle(leftTargetCircle, "purple")(g, ui);
-    renderCircle(this.d.shapes.centerBoutRight, "blue")(g, ui);
-    renderCircle(this.d.shapes.centerBoutLeft, "blue")(g, ui);
-    renderCrosshair(this.d.shapes.centerBoutRight, "blue")(g, ui);
-    renderCrosshair(this.d.shapes.centerBoutLeft, "blue")(g, ui);
-
-    renderCrosshair(this.d.shapes.lowerRightVesaci, "green")(g, ui);
-    renderCrosshair(this.d.shapes.lowerLeftVesaci, "green")(g, ui);
-    renderCrosshair(this.d.shapes.lowerBout,"green")(g, ui);
-    renderCrosshair(this.d.shapes.upperBout,"red")(g, ui);
-    renderCrosshair(this.d.shapes.upperRightVesaci,"red")(g, ui);
-    renderCrosshair(this.d.shapes.upperLeftVesaci,"red")(g, ui);
-
-    renderDashLine({x: 0 , y: this.d.params.lowerCornerGuideYIntercept}, lowerRightCornerTarget, "purple", 1, "4,4", true)(g, ui);
-    renderDashLine({x: 0 , y: this.d.params.lowerCornerGuideYIntercept}, lowerLeftCornerTarget, "purple", 1, "4,4", true)(g, ui);
-    renderDashLine(this.d.shapes.centerBoutLeft, this.d.shapes.centerBoutRight, "blue", 1, "4,4", true)(g, ui);
-
-
     let lowerRightCorner = lineCircleIntersection({x: 0 , y: this.d.params.lowerCornerGuideYIntercept}, lowerRightCornerTarget, rightTargetCircle)[1];
     let lowerLeftCorner = lineCircleIntersection({x: 0 , y: this.d.params.lowerCornerGuideYIntercept}, lowerLeftCornerTarget, leftTargetCircle)[1];
-    renderCrosshair(lowerRightCorner, "purple")(g, ui);
-    renderCrosshair(lowerLeftCorner, "purple")(g, ui);
-
-
     let upperRightCornerTarget: Circle = {x: rightTargetCircle.x + this.d.params.upperCornerGuideXOffset, y: rightTargetCircle.y, r: rightTargetCircle.r};
     let upperLeftCornerTarget: Circle = {x: leftTargetCircle.x - this.d.params.upperCornerGuideXOffset, y: leftTargetCircle.y, r: leftTargetCircle.r};
-
-    renderDashLine({x: 0 , y: this.d.params.upperCornerGuideYIntercept}, upperRightCornerTarget, "purple", 1, "4,4", true)(g, ui);
-    renderDashLine({x: 0 , y: this.d.params.upperCornerGuideYIntercept}, upperLeftCornerTarget, "purple", 1, "4,4", true)(g, ui);
-
     let upperRightCorner = lineCircleIntersection({x: 0 , y: this.d.params.upperCornerGuideYIntercept}, upperRightCornerTarget, rightTargetCircle)[1];
     let upperLeftCorner = lineCircleIntersection({x: 0 , y: this.d.params.upperCornerGuideYIntercept}, upperLeftCornerTarget, leftTargetCircle)[1];
-    renderCrosshair(upperRightCorner, "purple")(g, ui);
-    renderCrosshair(upperLeftCorner, "purple")(g, ui);
+    
+    this.d.intersectionPoints.corners = {
+      lowerRight: lowerRightCorner,
+      lowerLeft: lowerLeftCorner,
+      upperRight: upperRightCorner,
+      upperLeft: upperLeftCorner
+    }
+
+    if (guides) {
+      renderCircle(rightTargetCircle, "purple")(g, ui);
+      renderCircle(leftTargetCircle, "purple")(g, ui);
+      renderCircle(this.d.shapes.centerBoutRight, "blue")(g, ui);
+      renderCircle(this.d.shapes.centerBoutLeft, "blue")(g, ui);
+      renderCrosshair(this.d.shapes.centerBoutRight, "blue")(g, ui);
+      renderCrosshair(this.d.shapes.centerBoutLeft, "blue")(g, ui);
+
+      renderCrosshair(this.d.shapes.lowerRightVesaci, "green")(g, ui);
+      renderCrosshair(this.d.shapes.lowerLeftVesaci, "green")(g, ui);
+      renderCrosshair(this.d.shapes.lowerBout,"green")(g, ui);
+      renderCrosshair(this.d.shapes.upperBout,"red")(g, ui);
+      renderCrosshair(this.d.shapes.upperRightVesaci,"red")(g, ui);
+      renderCrosshair(this.d.shapes.upperLeftVesaci,"red")(g, ui);
+
+      renderDashLine({x: 0 , y: this.d.params.lowerCornerGuideYIntercept}, lowerRightCornerTarget, "purple", 1, "4,4", true)(g, ui);
+      renderDashLine({x: 0 , y: this.d.params.lowerCornerGuideYIntercept}, lowerLeftCornerTarget, "purple", 1, "4,4", true)(g, ui);
+      renderDashLine(this.d.shapes.centerBoutLeft, this.d.shapes.centerBoutRight, "blue", 1, "4,4", true)(g, ui);
+
+      renderCrosshair(lowerRightCorner, "purple")(g, ui);
+      renderCrosshair(lowerLeftCorner, "purple")(g, ui);
+
+      renderDashLine({x: 0 , y: this.d.params.upperCornerGuideYIntercept}, upperRightCornerTarget, "purple", 1, "4,4", true)(g, ui);
+      renderDashLine({x: 0 , y: this.d.params.upperCornerGuideYIntercept}, upperLeftCornerTarget, "purple", 1, "4,4", true)(g, ui);
+
+      renderCrosshair(upperRightCorner, "purple")(g, ui);
+      renderCrosshair(upperLeftCorner, "purple")(g, ui);
+    }
+  }
+
+  renderCornerCircles = (g: any, ui: any): void => {
+    let lowerTopRightCornerCircle = interceptCirclesAndPoint(this.d.shapes.centerBoutRight, this.d.intersectionPoints.corners.lowerRight, this.d.params.lowerTopCornerCircleRadius)
+      .sort((a, b) => b.y - a.y)[0];
+    let lowerBottomRightCornerCircle = interceptCirclesAndPoint(this.d.shapes.lowerBout, this.d.intersectionPoints.corners.lowerRight, this.d.params.lowerBottomCornerCircleRadius)
+      .sort((a, b) => b.y - a.y)[1];
+    let lowerTopLeftCornerCircle = interceptCirclesAndPoint(this.d.shapes.centerBoutLeft, this.d.intersectionPoints.corners.lowerLeft, this.d.params.lowerTopCornerCircleRadius)
+      .sort((a, b) => b.y - a.y)[0];
+    let lowerBottomLeftCornerCircle = interceptCirclesAndPoint(this.d.shapes.lowerBout, this.d.intersectionPoints.corners.lowerLeft, this.d.params.lowerBottomCornerCircleRadius)
+      .sort((a, b) => b.y - a.y)[1];
+    
+    let upperTopRightCornerCircle = interceptCirclesAndPoint(this.d.shapes.upperBout, this.d.intersectionPoints.corners.upperRight, this.d.params.upperTopCornerCircleRadius)
+      .sort((a, b) => b.y - a.y)[0];
+    let upperBottomRightCornerCircle = interceptCirclesAndPoint(this.d.shapes.centerBoutRight, this.d.intersectionPoints.corners.upperRight, this.d.params.upperBottomCornerCircleRadius)
+      .sort((a, b) => b.y - a.y)[1];
+    let upperTopLeftCornerCircle = interceptCirclesAndPoint(this.d.shapes.upperBout, this.d.intersectionPoints.corners.upperLeft, this.d.params.upperTopCornerCircleRadius)
+      .sort((a, b) => b.y - a.y)[0];
+    let upperBottomLeftCornerCircle = interceptCirclesAndPoint(this.d.shapes.centerBoutLeft, this.d.intersectionPoints.corners.upperLeft, this.d.params.upperBottomCornerCircleRadius)
+      .sort((a, b) => b.y - a.y)[1];
+
+
+    renderCircle(lowerTopRightCornerCircle, "purple")(g, ui);
+    renderCircle(lowerBottomRightCornerCircle, "purple")(g, ui);
+    renderCircle(lowerTopLeftCornerCircle, "purple")(g, ui);
+    renderCircle(lowerBottomLeftCornerCircle, "purple")(g, ui);
+    renderCircle(upperTopRightCornerCircle, "purple")(g, ui);
+    renderCircle(upperBottomRightCornerCircle, "purple")(g, ui);
+    renderCircle(upperTopLeftCornerCircle, "purple")(g, ui);
+    renderCircle(upperBottomLeftCornerCircle, "purple")(g, ui);
+
+    renderCrosshair(this.d.intersectionPoints.corners.lowerRight, "purple")(g, ui);
+    renderCrosshair(this.d.intersectionPoints.corners.lowerLeft, "purple")(g, ui);
+    renderCrosshair(this.d.intersectionPoints.corners.upperRight, "purple")(g, ui);
+    renderCrosshair(this.d.intersectionPoints.corners.upperLeft, "purple")(g, ui);
+
+    // this.d.shapes.lowerRightCornerC1 = lowerTopRightCornerCircle;
+    // this.d.shapes.lowerRightCornerC2 = lowerBottomRightCornerCircle;
+    // this.d.shapes.lowerLeftCornerC1 = lowerTopLeftCornerCircle;
+    // this.d.shapes.lowerLeftCornerC2 = lowerBottomLeftCornerCircle;
+    // this.d.shapes.upperRightCornerC1 = upperTopRightCornerCircle;
+    // this.d.shapes.upperRightCornerC2 = upperBottomRightCornerCircle;
+    // this.d.shapes.upperLeftCornerC1 = upperTopLeftCornerCircle;
+    // this.d.shapes.upperLeftCornerC2 = upperBottomLeftCornerCircle;
+
+    // this.renderPaths(g, ui);
 
   }
 

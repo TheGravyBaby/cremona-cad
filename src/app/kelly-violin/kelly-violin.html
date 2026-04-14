@@ -134,7 +134,33 @@
 
             </div>
         </label>
+
     </details>
 
+    <details [open]="openPanel === 'cornerCircles'" (toggle)="onToggle('cornerCircles', $event)">
+        <summary>Corner Circles</summary>
+
+        <label>
+            Upper Corner Top Radius : Bottom Radius (mm)
+            <div class="ratio">
+                <input type="number" step="1" min="1" [(ngModel)]="d.params.upperTopCornerCircleRadius" (input)="changeCornerCircles()" />
+                <span>:</span>
+                <input type="number" step="1" min="1" [(ngModel)]="d.params.upperBottomCornerCircleRadius" (input)="changeCornerCircles()" />
+            </div>
+        </label>
+
+        <br>
+
+        <label>
+            Lower Corner Top Radius : Bottom Radius (mm)
+            <div class="ratio">
+                <input type="number" step="1" min="1" [(ngModel)]="d.params.lowerTopCornerCircleRadius" (input)="changeCornerCircles()" />
+                <span>:</span>
+                <input type="number" step="1" min="1" [(ngModel)]="d.params.lowerBottomCornerCircleRadius" (input)="changeCornerCircles()" />
+            </div>
+        </label>
+
+
+    </details>  
 
 </div>
