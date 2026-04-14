@@ -1,4 +1,4 @@
-import { Pt, Fraction, Circle, Axis } from "../models/types";
+import { Pt, Fraction, Circle, Axis, Line } from "../models/types";
 
 export function polarAngle(c: Pt, p: Pt) {
   return Math.atan2(p.y - c.y, p.x - c.x);
@@ -386,3 +386,16 @@ export function findJoiningCircleFromCircleAndPoint(U: Circle, P: Pt): Circle {
 
   return { x: Cx, y: Cy, r: Cr };
 }
+
+
+export function lineFromTwoPoints(A: Pt, B: Pt): Line {
+  let m = (B.y - A.y) / (B.x - A.x);
+
+  // find y intercept 
+  // y = mx + b 
+  let b = A.y - m * A.x;
+
+  return { m, b: b };
+}
+
+ 

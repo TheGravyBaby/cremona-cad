@@ -34,9 +34,9 @@
         <summary>Major Bout Circles</summary>
 
         <label>
-            Upper Bout Width : Height (mm)
+            Upper Bout Radius : Height (mm)
             <div class="ratio">
-                <input type="number" step="1" min="1" [(ngModel)]="d.params.upperBoutWidth" (input)="changeMainBouts()" />
+                <input type="number" step="1" min="1" [(ngModel)]="d.params.upperBoutRadius" (input)="changeMainBouts()" />
                 <span>:</span>
                 <input type="number" step="1" min="0" [(ngModel)]="d.params.upperBoutCenter" (input)="changeMainBouts()" />
 
@@ -55,9 +55,9 @@
         <br>
 
         <label> 
-            Lower Bout Width : Height (mm)
+            Lower Bout Radius : Height (mm)
             <div class="ratio">
-                <input type="number" step="1" min="1" [(ngModel)]="d.params.lowerBoutWidth" (input)="changeMainBouts()" />
+                <input type="number" step="1" min="1" [(ngModel)]="d.params.lowerBoutRadius" (input)="changeMainBouts()" />
                 <span>:</span>
                 <input type="number" step="1" min="0" [(ngModel)]="d.params.lowerBoutCenter" (input)="changeMainBouts()" />
 
@@ -94,6 +94,46 @@
         
 
   
+    </details>
+
+    <details [open]="openPanel === 'cornerPlacement'" (toggle)="onToggle('cornerPlacement', $event)">
+        <summary>Corner Placement</summary>
+
+        <label>
+            Center Bout Target Radius (mm)
+            <div class="ratio">
+                <input type="number" step="1" min="1" [(ngModel)]="d.params.cornerTargetRadius" (input)="changeCornerPlacement()" />
+            </div>
+        </label>
+
+        <br>
+
+        <label>
+            Upper Corner Guide Y-Intercept : X-Offset (mm)
+            <div class="ratio">
+                <input type="number" step="1" [(ngModel)]="d.params.upperCornerGuideYIntercept" (input)="changeCornerPlacement()" />
+                <span>:</span>
+                <input type="number" step="1" [(ngModel)]="d.params.upperCornerGuideXOffset" (input)="changeCornerPlacement()" />
+                <button class="btn" >V</button>
+                <button class="btn" >Y</button>
+                <button class="btn" >X</button>
+            </div>
+        </label>
+
+        <br>  
+
+        <label>
+            Lower Corner Guide Y-Intercept : X-Offset (mm)
+            <div class="ratio">
+                <input type="number" step="1" [(ngModel)]="d.params.lowerCornerGuideYIntercept" (input)="changeCornerPlacement()" />
+                <span>:</span>
+                <input type="number" step="1" [(ngModel)]="d.params.lowerCornerGuideXOffset" (input)="changeCornerPlacement()" />
+                <button class="btn" >V</button>
+                <button class="btn" >Y</button>
+                <button class="btn" >X</button>
+
+            </div>
+        </label>
     </details>
 
 

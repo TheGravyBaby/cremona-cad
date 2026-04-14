@@ -1,4 +1,4 @@
-import { Pt, Circle } from "../models/types";
+import { Pt, Circle, Line } from "../models/types";
 
 export const renderDistanceMeasurementLine = (P: Pt, Q: Pt, label: string, color: string) => (g: any, ui: any) => {
     const dx = Q.x - P.x;
@@ -211,13 +211,56 @@ export const renderDashLine = (
     end: { x: number; y: number },
     color = "black",
     width = 1,
-    dash = "4,4"
+    dash = "4,4",
+    long = false
 ) => (g: any, ui: any) => {
+
+    if (long) {
+        // extend line far beyond start and end points, 5000mm should be enough
+        const dx = end.x - start.x;
+        const dy = end.y - start.y;
+        const len = Math.sqrt(dx * dx + dy * dy);
+        if (len > 1e-6) {
+            const ux = dx / len;
+            const uy = dy / len;
+            start.x -= ux * 500;
+            start.y -= uy * 500;
+            end.x += ux * 500;
+            end.y += uy * 500;
+        }
+    }
+
+
     g.append("line")
         .attr("x1", start.x)
         .attr("y1", start.y)
         .attr("x2", end.x)
         .attr("y2", end.y)
+        .attr("stroke", color)
+        .attr("stroke-width", width)
+        .attr("stroke-dasharray", dash)
+        .attr("vector-effect", "non-scaling-stroke");
+}
+
+export const renderDashLineMxB = (line: Line,  
+    color = "black",
+    width = 1,
+    dash = "4,4", 
+) => (g: any, ui: any) => {
+    // pick start and end points that are very large along the line
+    const starty = line.m * (-3000) + line.b;
+    const endy = line.m * 3000 + line.b;
+    const startx = (-3000 - line.b) / line.m;
+    const endx = (3000 - line.b) / line.m;
+
+    const startPt = { x: startx, y: starty };
+    const endPt = { x: endx, y: endy };
+
+    g.append("line")
+        .attr("x1", startPt.x)
+        .attr("y1", startPt.y)
+        .attr("x2", endPt.x)
+        .attr("y2", endPt.y)
         .attr("stroke", color)
         .attr("stroke-width", width)
         .attr("stroke-dasharray", dash)

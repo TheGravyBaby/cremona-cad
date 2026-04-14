@@ -1,9 +1,9 @@
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
-import { Circle } from '../models/types';
-import { renderCircle, renderDashedLine, renderDashLine, renderDistanceMeasurementLine, renderPath } from '../helpers/renderFuncs';
-import { arcPathFrom3Points, circleCircleIntersections, findJoiningCircleFromCircleAndPoint } from '../helpers/draftMath';
+import { Circle, Pt } from '../models/types';
+import { renderCircle, renderCrosshair, renderDashedLine, renderDashLine, renderDashLineMxB, renderDistanceMeasurementLine, renderPath } from '../helpers/renderFuncs';
+import { arcPathFrom3Points, circleCircleIntersections, findJoiningCircleFromCircleAndPoint, interceptCirclesAndPoint, lineCircleIntersection, lineFromTwoPoints } from '../helpers/draftMath';
 import { arc } from 'd3';
 
 @Component({
@@ -26,13 +26,18 @@ export class KellyViolin extends RecipeComponentBase {
       h: 348,
       w: 203,
       inset: 4,
-      upperBoutWidth: 156,
+      upperBoutRadius: 78,
       upperBoutCenter: 284,
-      lowerBoutWidth: 195,
+      lowerBoutRadius: 97.5,
       lowerBoutCenter: 70,
       centerBoutRadius: 85,
       upperVesaciRadius: 57,
-      lowerVesaciRadius: 62
+      lowerVesaciRadius: 62,
+      cornerTargetRadius: 74,
+      lowerCornerGuideYIntercept: 51,
+      lowerCornerGuideXOffset: 0,
+      upperCornerGuideYIntercept: 278,
+      upperCornerGuideXOffset: 0
     },
     shapes: {
       upperBout: {} as Circle,
@@ -54,7 +59,6 @@ export class KellyViolin extends RecipeComponentBase {
       upperLeftCornerC2: null as Circle | null,
       upperRightCornerC1: null as Circle | null,
       upperRightCornerC2: null as Circle | null,
-
     },
     intersectionPoints: {
       majorBouts: {
@@ -72,6 +76,12 @@ export class KellyViolin extends RecipeComponentBase {
         upperRightVesicaLower: {} as any,
         upperLeftVesicaUpper: {} as any,
         upperLeftVesicaLower: {} as any
+      },
+      corners: {
+        lowerRight: null as Pt | null,
+        lowerLeft: null as Pt | null,
+        upperRight: null as Pt | null,
+        upperLeft: null as Pt | null,
       }
     },
 
@@ -97,6 +107,7 @@ export class KellyViolin extends RecipeComponentBase {
       if (panel === 'base') this.changeBaseMeasurements();
       else if (panel === 'mainBouts') this.changeMainBouts();
       else if (panel === 'minorBouts') this.changeMinorBouts();
+      else if (panel === 'cornerPlacement') this.changeCornerPlacement();
       else {
         // closed -> check if any panel is still open
         const anyOpen = Array.from(document.querySelectorAll('details')).some(d => d.open);
@@ -123,10 +134,16 @@ export class KellyViolin extends RecipeComponentBase {
     this.draftChange.emit([this.renderBounds, this.renderMainBouts(false), this.renderMinorBouts]);
   }
 
+  changeCornerPlacement() {
+    this.showCircles = false;
+    this.draftChange.emit([this.renderBounds, this.renderMainBouts(false), this.renderMinorBouts, this.renderCornerPlacements]);
+
+  }
+
 
   renderMainBouts = (guides: boolean) => (g: any, ui: any): void => {
-    this.d.shapes.upperBout = { x: 0, y: this.d.params.upperBoutCenter, r: this.d.params.upperBoutWidth / 2 };
-    this.d.shapes.lowerBout = { x: 0, y: this.d.params.lowerBoutCenter, r: this.d.params.lowerBoutWidth / 2 };
+    this.d.shapes.upperBout = { x: 0, y: this.d.params.upperBoutCenter, r: this.d.params.upperBoutRadius };
+    this.d.shapes.lowerBout = { x: 0, y: this.d.params.lowerBoutCenter, r: this.d.params.lowerBoutRadius };
 
     // defining some terms, L is lower bout circle, U is upper bout circle, C is center bout circle
     // our goal is to find x,y coordinates of the center of C
@@ -147,8 +164,8 @@ export class KellyViolin extends RecipeComponentBase {
     //    L    
 
     let Ul = this.d.params.upperBoutCenter - this.d.params.lowerBoutCenter; // vertical distance between centers of U and L
-    let Uc = this.d.params.centerBoutRadius + this.d.params.upperBoutWidth / 2; // distance from center of U to edge of C
-    let Lc = this.d.params.centerBoutRadius + this.d.params.lowerBoutWidth / 2; // distance from center of L to edge of C
+    let Uc = this.d.params.centerBoutRadius + this.d.params.upperBoutRadius; // distance from center of U to edge of C
+    let Lc = this.d.params.centerBoutRadius + this.d.params.lowerBoutRadius // distance from center of L to edge of C
 
     // using law of cosines to find angle t
     let cosT = (Ul * Ul + Uc * Uc - Lc * Lc) / (2 * Ul * Uc);
@@ -193,8 +210,8 @@ export class KellyViolin extends RecipeComponentBase {
     if (this.showInsetGuides && guides) {
       let inset = this.d.params.inset;
       let insetWaist = waistWidth + 2 * inset;
-      let insetLowerBout = this.d.params.lowerBoutWidth  + 2 * inset;
-      let insetUpperBout = this.d.params.upperBoutWidth  + 2 * inset;
+      let insetLowerBout = this.d.params.lowerBoutRadius*2  + 2 * inset;
+      let insetUpperBout = this.d.params.upperBoutRadius*2  + 2 * inset;
 
       renderDistanceMeasurementLine({ x: -insetWaist / 2, y: Cy }, { x: insetWaist / 2, y: Cy }, insetWaist.toFixed(1) + " mm", "blue")(g, ui);
       renderDistanceMeasurementLine({ x: -insetLowerBout / 2, y: this.d.params.lowerBoutCenter }, { x: insetLowerBout / 2, y: this.d.params.lowerBoutCenter }, insetLowerBout.toFixed(1) + " mm", "black")(g, ui);
@@ -203,10 +220,10 @@ export class KellyViolin extends RecipeComponentBase {
   }
 
   renderMinorBouts = (g: any, ui: any): void => {
-    let lowerRightVesica = {x: this.d.params.lowerBoutWidth/2 - this.d.params.lowerVesaciRadius, y: this.d.params.lowerBoutCenter, r: this.d.params.lowerVesaciRadius};
-    let lowerLeftVesica = {x: -this.d.params.lowerBoutWidth/2 + this.d.params.lowerVesaciRadius, y: this.d.params.lowerBoutCenter, r: this.d.params.lowerVesaciRadius};
-    let upperRightVesica = {x: this.d.params.upperBoutWidth/2 - this.d.params.upperVesaciRadius, y: this.d.params.upperBoutCenter, r: this.d.params.upperVesaciRadius};
-    let upperLeftVesica = {x: -this.d.params.upperBoutWidth/2 + this.d.params.upperVesaciRadius, y: this.d.params.upperBoutCenter, r: this.d.params.upperVesaciRadius};
+    let lowerRightVesica = {x: this.d.params.lowerBoutRadius - this.d.params.lowerVesaciRadius, y: this.d.params.lowerBoutCenter, r: this.d.params.lowerVesaciRadius};
+    let lowerLeftVesica = {x: -this.d.params.lowerBoutRadius + this.d.params.lowerVesaciRadius, y: this.d.params.lowerBoutCenter, r: this.d.params.lowerVesaciRadius};
+    let upperRightVesica = {x: this.d.params.upperBoutRadius - this.d.params.upperVesaciRadius, y: this.d.params.upperBoutCenter, r: this.d.params.upperVesaciRadius};
+    let upperLeftVesica = {x: -this.d.params.upperBoutRadius + this.d.params.upperVesaciRadius, y: this.d.params.upperBoutCenter, r: this.d.params.upperVesaciRadius};
     let upperJoiningCircle = findJoiningCircleFromCircleAndPoint(upperRightVesica, {x: 0, y: this.d.params.h - this.d.params.inset})
     let lowerJoiningCircle = findJoiningCircleFromCircleAndPoint(lowerRightVesica, {x: 0, y: this.d.params.inset})
 
@@ -252,8 +269,52 @@ export class KellyViolin extends RecipeComponentBase {
     this.renderPaths(g, ui);
   }
 
-  renderPaths = (g: any, ui: any): void => {
+  renderCornerPlacements = (g: any, ui: any): void => {
+    let rightTargetCircle: Circle = {x: this.d.shapes.centerBoutRight.x, y: this.d.shapes.centerBoutRight.y, r: this.d.params.cornerTargetRadius};
+    let leftTargetCircle: Circle = {x: this.d.shapes.centerBoutLeft.x, y: this.d.shapes.centerBoutLeft.y, r: this.d.params.cornerTargetRadius};
+    
+    let lowerRightCornerTarget: Circle = {x: rightTargetCircle.x + this.d.params.lowerCornerGuideXOffset, y: rightTargetCircle.y, r: rightTargetCircle.r};
+    let lowerLeftCornerTarget: Circle = {x: leftTargetCircle.x - this.d.params.lowerCornerGuideXOffset, y: leftTargetCircle.y, r: leftTargetCircle.r};
 
+    renderCircle(rightTargetCircle, "purple")(g, ui);
+    renderCircle(leftTargetCircle, "purple")(g, ui);
+    renderCircle(this.d.shapes.centerBoutRight, "blue")(g, ui);
+    renderCircle(this.d.shapes.centerBoutLeft, "blue")(g, ui);
+    renderCrosshair(this.d.shapes.centerBoutRight, "blue")(g, ui);
+    renderCrosshair(this.d.shapes.centerBoutLeft, "blue")(g, ui);
+
+    renderCrosshair(this.d.shapes.lowerRightVesaci, "green")(g, ui);
+    renderCrosshair(this.d.shapes.lowerLeftVesaci, "green")(g, ui);
+    renderCrosshair(this.d.shapes.lowerBout,"green")(g, ui);
+    renderCrosshair(this.d.shapes.upperBout,"red")(g, ui);
+    renderCrosshair(this.d.shapes.upperRightVesaci,"red")(g, ui);
+    renderCrosshair(this.d.shapes.upperLeftVesaci,"red")(g, ui);
+
+    renderDashLine({x: 0 , y: this.d.params.lowerCornerGuideYIntercept}, lowerRightCornerTarget, "purple", 1, "4,4", true)(g, ui);
+    renderDashLine({x: 0 , y: this.d.params.lowerCornerGuideYIntercept}, lowerLeftCornerTarget, "purple", 1, "4,4", true)(g, ui);
+    renderDashLine(this.d.shapes.centerBoutLeft, this.d.shapes.centerBoutRight, "blue", 1, "4,4", true)(g, ui);
+
+
+    let lowerRightCorner = lineCircleIntersection({x: 0 , y: this.d.params.lowerCornerGuideYIntercept}, lowerRightCornerTarget, rightTargetCircle)[1];
+    let lowerLeftCorner = lineCircleIntersection({x: 0 , y: this.d.params.lowerCornerGuideYIntercept}, lowerLeftCornerTarget, leftTargetCircle)[1];
+    renderCrosshair(lowerRightCorner, "purple")(g, ui);
+    renderCrosshair(lowerLeftCorner, "purple")(g, ui);
+
+
+    let upperRightCornerTarget: Circle = {x: rightTargetCircle.x + this.d.params.upperCornerGuideXOffset, y: rightTargetCircle.y, r: rightTargetCircle.r};
+    let upperLeftCornerTarget: Circle = {x: leftTargetCircle.x - this.d.params.upperCornerGuideXOffset, y: leftTargetCircle.y, r: leftTargetCircle.r};
+
+    renderDashLine({x: 0 , y: this.d.params.upperCornerGuideYIntercept}, upperRightCornerTarget, "purple", 1, "4,4", true)(g, ui);
+    renderDashLine({x: 0 , y: this.d.params.upperCornerGuideYIntercept}, upperLeftCornerTarget, "purple", 1, "4,4", true)(g, ui);
+
+    let upperRightCorner = lineCircleIntersection({x: 0 , y: this.d.params.upperCornerGuideYIntercept}, upperRightCornerTarget, rightTargetCircle)[1];
+    let upperLeftCorner = lineCircleIntersection({x: 0 , y: this.d.params.upperCornerGuideYIntercept}, upperLeftCornerTarget, leftTargetCircle)[1];
+    renderCrosshair(upperRightCorner, "purple")(g, ui);
+    renderCrosshair(upperLeftCorner, "purple")(g, ui);
+
+  }
+
+  renderPaths = (g: any, ui: any): void => {
     let paths = []
 
     if (this.d.shapes.lowerLeftCornerC1) {
