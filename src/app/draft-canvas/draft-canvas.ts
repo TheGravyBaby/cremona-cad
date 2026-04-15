@@ -34,6 +34,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   @Input() set referenceImageParams(value: ReferenceImage | null | undefined) {
     if (!value) return;
     this.referenceImage = value;
+    this.refController.setImage(this.referenceImage);
     this.referenceImageChange.emit(this.referenceImage);
     this.draw();
   }
