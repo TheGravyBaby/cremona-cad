@@ -39,10 +39,10 @@ export class KellyViolin extends RecipeComponentBase {
       lowerCornerGuideXOffset: 0,
       upperCornerGuideYIntercept: 278,
       upperCornerGuideXOffset: 0,
-      upperTopCornerCircleRadius: 20,
+      upperTopCornerCircleRadius: 24,
       upperBottomCornerCircleRadius: 20,
       lowerTopCornerCircleRadius: 20,
-      lowerBottomCornerCircleRadius: 20,
+      lowerBottomCornerCircleRadius: 24,
     },
     shapes: {
       upperBout: {} as Circle,
