@@ -214,6 +214,10 @@ export const renderDashLine = (
     dash = "4,4",
     long = false
 ) => (g: any, ui: any) => {
+    // deep copy the start and end arguments to prevent mutating the caller's data when extending the line
+    start = { x: start.x, y: start.y };
+    end = { x: end.x, y: end.y };
+
 
     if (long) {
         // extend line far beyond start and end points, 5000mm should be enough

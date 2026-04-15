@@ -1,6 +1,6 @@
 <div class="panel">
     <details [open]="openPanel === 'base'" (toggle)="onToggle('base', $event);">
-        <summary>Base</summary>
+        <summary>Base Measurements</summary>
         <label>
             File Name
             <input type="string" [(ngModel)]="d.fileName" />
@@ -8,7 +8,7 @@
 
         <label class="file-upload">
             Upload Reference Image
-            <input type="file" accept="image/*" (change)="onReferenceFileSelected($event)" />
+            <input type="file" accept="image/*" (appchange)="onReferenceFileSelected($event)" />
         </label>
         <br><br>
         <label>
@@ -66,8 +66,12 @@
 
         <br>
 
-        Show Inset Guides 
-        <input type="checkbox" [(ngModel)]="showInsetGuides" (change)="changeMainBouts()" />
+        <input type="checkbox" [(ngModel)]="showGuideLines" (change)="changeMainBouts()" /> Show Inset Guides 
+        <!-- <br>
+        <input type="checkbox" [(ngModel)]="showModuleCircles" (change)="changeMainBouts()" /> Show Module Circles
+        <br>
+        <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeMainBouts()" /> Show All Circles -->
+
     </details>
 
     <details [open]="openPanel === 'minorBouts'" (toggle)="onToggle('minorBouts', $event)">
@@ -89,11 +93,10 @@
             </div>
         </label>
 
-        Show Reference Circles
-        <input type="checkbox" [(ngModel)]="showCircles" (change)="changeMinorBouts()" />
-        
-
-  
+        <br>
+        <input type="checkbox" [(ngModel)]="showModuleCircles" (change)="changeMinorBouts()" /> Show Module Circles
+        <br>
+        <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeMinorBouts()" /> Show All Circles
     </details>
 
     <details [open]="openPanel === 'cornerPlacement'" (toggle)="onToggle('cornerPlacement', $event)">
@@ -114,9 +117,6 @@
                 <input type="number" step="1" [(ngModel)]="d.params.upperCornerGuideYIntercept" (input)="changeCornerPlacement()" />
                 <span>:</span>
                 <input type="number" step="1" [(ngModel)]="d.params.upperCornerGuideXOffset" (input)="changeCornerPlacement()" />
-                <button class="btn" >V</button>
-                <button class="btn" >Y</button>
-                <button class="btn" >X</button>
             </div>
         </label>
 
@@ -128,12 +128,15 @@
                 <input type="number" step="1" [(ngModel)]="d.params.lowerCornerGuideYIntercept" (input)="changeCornerPlacement()" />
                 <span>:</span>
                 <input type="number" step="1" [(ngModel)]="d.params.lowerCornerGuideXOffset" (input)="changeCornerPlacement()" />
-                <button class="btn" >V</button>
-                <button class="btn" >Y</button>
-                <button class="btn" >X</button>
-
             </div>
         </label>
+
+        <br>
+        <input type="checkbox" [(ngModel)]="showGuideLines" (change)="changeCornerPlacement()" /> Show Guides Lines
+        <br>
+        <input type="checkbox" [(ngModel)]="showModuleCircles" (change)="changeCornerPlacement()" /> Show Module Circles
+        <br>
+        <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeCornerPlacement()" /> Show All Circles
 
     </details>
 
@@ -160,6 +163,12 @@
             </div>
         </label>
 
+        <br>
+        <input type="checkbox" [(ngModel)]="showGuideLines" (change)="changeCornerCircles()" /> Show Corner Guides
+        <br>
+        <input type="checkbox" [(ngModel)]="showModuleCircles" (change)="changeCornerCircles()" /> Show Module Circles
+        <br>
+        <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeCornerCircles()" /> Show All Circles
 
     </details>  
 

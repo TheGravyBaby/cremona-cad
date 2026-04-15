@@ -25,6 +25,7 @@ import { KellyViolin } from './kelly-violin/kelly-violin';
         <app-draft-canvas class="canvas" 
           [draftFunctions]="draftArgs"
           [referenceImageParams]="referenceImage"
+          (referenceImageChange)="onReferenceImageChange($event)"
           [setCameraBounds]="bounds"
           >
         </app-draft-canvas>
