@@ -56,12 +56,12 @@ export class Camera {
   }
 
   applyZoom(newPxPerMm: number, pxW: number, pxH: number) {
-    console.log('Applying zoom', { newPxPerMm, pxW, pxH });
-    console.log('Current camera state', {
-      pxPerMm: this.pxPerMm,
-      offsetX: this.offsetX,
-      offsetY: this.offsetY,
-    });
+    // console.log('Applying zoom', { newPxPerMm, pxW, pxH });
+    // console.log('Current camera state', {
+    //   pxPerMm: this.pxPerMm,
+    //   offsetX: this.offsetX,
+    //   offsetY: this.offsetY,
+    // });
 
     const oldPxPerMm = this.pxPerMm;
     if (!isFinite(newPxPerMm) || newPxPerMm <= 0) return;
@@ -80,7 +80,7 @@ export class Camera {
     this.offsetX = centerX - newMmW / 2;
     this.offsetY = centerY - newMmH / 2;
 
-    console.log('Updated camera state', { pxPerMm: this.pxPerMm, offsetX: this.offsetX, offsetY: this.offsetY });
+    // console.log('Updated camera state', { pxPerMm: this.pxPerMm, offsetX: this.offsetX, offsetY: this.offsetY });
   }
 
   panByPx(dxPx: number, dyPx: number) {
