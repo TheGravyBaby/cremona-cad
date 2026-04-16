@@ -396,12 +396,9 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     event.preventDefault();
     const delta = event.deltaY;
 
-    const oldPxPerMm = this.pxPerMm;
-
-    if (delta < 0) this.pxPerMm *= 1.1;
-    else if (delta > 0) this.pxPerMm /= 1.1;
-
-    this.applyZoom(this.pxPerMm)
+    if (delta < 0) this.applyZoom(this.pxPerMm* 1.1)
+    else if (delta > 0) this.applyZoom(this.pxPerMm / 1.1)
+    
   };
 
   applyZoom(newPxPerMm: number): void {
