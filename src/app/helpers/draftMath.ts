@@ -1,4 +1,13 @@
-import { Pt, Fraction, Circle, Axis, Line } from "../models/types";
+import { Pt, Fraction, Circle, Axis, Line, Rectangle } from "../models/types";
+import * as polygonClipping from 'polygon-clipping';
+import { svgPathProperties } from 'svg-path-properties';
+
+const polygonClipper: {
+  difference: (
+    subjectGeom: [number, number][][][] | [number, number][][][][],
+    ...clipGeoms: ([number, number][][][] | [number, number][][][][])[]
+  ) => [number, number][][][][];
+} = ((polygonClipping as any).default ?? polygonClipping) as any;
 
 export function polarAngle(c: Pt, p: Pt) {
   return Math.atan2(p.y - c.y, p.x - c.x);
@@ -191,6 +200,234 @@ export function arcPathFrom3Points(
 
 export function linePathFrom2Points(P1: Pt, P2: Pt): string {
   return `M ${P1.x} ${P1.y} L ${P2.x} ${P2.y}`;
+}
+
+export function concatSvgPaths(path1: string, path2: string): string {
+  const num = `([\\d.eE+\\-]+)`;
+  const moveRe = new RegExp(`^\\s*M\\s+${num}\\s+${num}\\s+(.*)$`);
+  const arcRe = new RegExp(`^A\\s+${num}\\s+${num}\\s+${num}\\s+([01])\\s+([01])\\s+${num}\\s+${num}\\s*$`);
+  const lineRe = new RegExp(`^L\\s+${num}\\s+${num}\\s*$`);
+
+  const almostEqual = (a: number, b: number, eps: number = 1e-6) => Math.abs(a - b) <= eps;
+  const samePoint = (a: Pt, b: Pt) => almostEqual(a.x, b.x) && almostEqual(a.y, b.y);
+
+  const parsePath = (path: string) => {
+    const trimmed = path.trim();
+    const moveMatch = trimmed.match(moveRe);
+    if (!moveMatch) {
+      throw new Error(`Unsupported path format: ${path}`);
+    }
+
+    const start: Pt = { x: Number(moveMatch[1]), y: Number(moveMatch[2]) };
+    const body = moveMatch[3].trim();
+    const commands = body.match(/[AL][^AL]*/g)?.map(c => c.trim()) ?? [];
+
+    if (commands.length === 0) {
+      throw new Error(`Unsupported segment body: ${body}`);
+    }
+
+    let end: Pt = { ...start };
+    let singleType: 'arc' | 'line' | null = null;
+    let singleArcMeta: {
+      rx: number;
+      ry: number;
+      xAxisRotation: number;
+      largeArcFlag: number;
+      sweepFlag: number;
+    } | null = null;
+
+    for (const command of commands) {
+      const arcMatch = command.match(arcRe);
+      if (arcMatch) {
+        end = { x: Number(arcMatch[6]), y: Number(arcMatch[7]) };
+        if (commands.length === 1) {
+          singleType = 'arc';
+          singleArcMeta = {
+            rx: Number(arcMatch[1]),
+            ry: Number(arcMatch[2]),
+            xAxisRotation: Number(arcMatch[3]),
+            largeArcFlag: Number(arcMatch[4]),
+            sweepFlag: Number(arcMatch[5]),
+          };
+        }
+        continue;
+      }
+
+      const lineMatch = command.match(lineRe);
+      if (lineMatch) {
+        end = { x: Number(lineMatch[1]), y: Number(lineMatch[2]) };
+        if (commands.length === 1) {
+          singleType = 'line';
+        }
+        continue;
+      }
+
+      throw new Error(`Unsupported segment body: ${body}`);
+    }
+
+    return {
+      start,
+      end,
+      body,
+      full: trimmed,
+      singleType,
+      singleArcMeta,
+    };
+  };
+
+  const reverseSegment = (path: string): string => {
+    const seg = parsePath(path);
+
+    if (!seg.singleType) {
+      throw new Error('Path reversal is only supported for single-segment paths.');
+    }
+
+    if (seg.singleType === 'arc' && seg.singleArcMeta) {
+      const reversedSweepFlag = seg.singleArcMeta.sweepFlag === 1 ? 0 : 1;
+      return `M ${seg.end.x} ${seg.end.y} A ${seg.singleArcMeta.rx} ${seg.singleArcMeta.ry} ${seg.singleArcMeta.xAxisRotation} ${seg.singleArcMeta.largeArcFlag} ${reversedSweepFlag} ${seg.start.x} ${seg.start.y}`;
+    }
+
+    return `M ${seg.end.x} ${seg.end.y} L ${seg.start.x} ${seg.start.y}`;
+  };
+
+  const p1 = parsePath(path1);
+  const p2 = parsePath(path2);
+
+  if (samePoint(p1.end, p2.start)) {
+    return `${p1.full} ${p2.body}`;
+  }
+
+  if (samePoint(p2.end, p1.start)) {
+    return `${p2.full} ${p1.body}`;
+  }
+
+  if (samePoint(p1.start, p2.start)) {
+    return concatSvgPaths(reverseSegment(path1), path2);
+  }
+
+  if (samePoint(p1.end, p2.end)) {
+    return concatSvgPaths(path1, reverseSegment(path2));
+  }
+
+  throw new Error('Paths do not share a common endpoint.');
+}
+
+/**
+ * Orders and joins a set of connected SVG segments into one path string.
+ *
+ * It greedily finds the next segment that can connect to either end of the
+ * current chain and stitches with `concatSvgPaths`.
+ */
+export function unifyConnectedSvgPaths(paths: string[]): string {
+  if (paths.length === 0) return '';
+
+  let unified = paths[0].trim();
+  const remaining = paths.slice(1);
+
+  while (remaining.length > 0) {
+    let stitched = false;
+
+    for (let i = 0; i < remaining.length; i++) {
+      const candidate = remaining[i];
+
+      try {
+        unified = concatSvgPaths(unified, candidate);
+        remaining.splice(i, 1);
+        stitched = true;
+        break;
+      } catch {
+        // try prepend direction
+      }
+
+      try {
+        unified = concatSvgPaths(candidate, unified);
+        remaining.splice(i, 1);
+        stitched = true;
+        break;
+      } catch {
+        // candidate did not connect in either direction
+      }
+    }
+
+    if (!stitched) {
+      throw new Error(`Could not connect all paths into one chain. Remaining segments: ${remaining.length}`);
+    }
+  }
+
+  return unified;
+}
+
+export function pathFromRect(R: Rectangle): string {
+  const { Pt1, Pt2 } = R;
+  return `M ${Pt1.x} ${Pt1.y} L ${Pt2.x} ${Pt1.y} L ${Pt2.x} ${Pt2.y} L ${Pt1.x} ${Pt2.y} Z`;
+}
+
+export function differenceFromTwoPaths(path1: string, path2: string): string {
+  type Pair = [number, number];
+  type Ring = Pair[];
+  type Polygon = Ring[];
+  type MultiPolygon = Polygon[];
+
+  const pathToRing = (path: string): Ring => {
+    const props = new svgPathProperties(path);
+    const totalLength = props.getTotalLength();
+
+    if (!Number.isFinite(totalLength) || totalLength <= 0) {
+      throw new Error('Path has no measurable length.');
+    }
+
+    let distancePerSample = .1; // lower numbers are more accurate
+    const steps = Math.max(128, Math.min(4096, Math.ceil(totalLength / distancePerSample)));
+    const pts: Pair[] = [];
+
+    for (let i = 0; i < steps; i++) {
+      const d = (i / steps) * totalLength;
+      const p = props.getPointAtLength(d);
+      pts.push([p.x, p.y]);
+    }
+
+    // Remove consecutive duplicates (numerical noise can produce them).
+    const deduped = pts.filter((p, i, arr) => {
+      if (i === 0) return true;
+      const prev = arr[i - 1];
+      return Math.hypot(p[0] - prev[0], p[1] - prev[1]) > 1e-9;
+    });
+
+    if (deduped.length < 3) {
+      throw new Error('Path sampling produced fewer than 3 unique points.');
+    }
+
+    return deduped;
+  };
+
+  const ringToPath = (ring: Ring): string => {
+    if (!ring.length) return '';
+    const [first, ...rest] = ring;
+    const head = `M ${first[0]} ${first[1]}`;
+    const tail = rest.map(p => `L ${p[0]} ${p[1]}`).join(' ');
+    return `${head}${tail ? ' ' + tail : ''} Z`;
+  };
+
+  const ring1 = pathToRing(path1);
+  const ring2 = pathToRing(path2);
+
+  // polygon-clipping expects MultiPolygon coordinates:
+  // MultiPolygon -> Polygon[] -> Ring[] -> Point[]
+  const subject: MultiPolygon = [[ring1]];
+  const clip: MultiPolygon = [[ring2]];
+
+  const diff = polygonClipper.difference(subject, clip) as unknown as MultiPolygon | null;
+  if (!diff || diff.length === 0) return '';
+
+  const subpaths: string[] = [];
+  for (const polygon of diff) {
+    for (const ring of polygon) {
+      const path = ringToPath(ring);
+      if (path) subpaths.push(path);
+    }
+  }
+
+  return subpaths.join(' ');
 }
 
 /**
