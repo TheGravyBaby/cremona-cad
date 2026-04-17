@@ -1,4 +1,4 @@
-import { Pt, Circle, Line } from "../models/types";
+import { Pt, Circle, Line, Rectangle } from "../models/types";
 
 export const renderDistanceMeasurementLine = (P: Pt, Q: Pt, label: string, color: string) => (g: any, ui: any) => {
     const dx = Q.x - P.x;
@@ -271,12 +271,14 @@ export const renderDashLineMxB = (line: Line,
         .attr("vector-effect", "non-scaling-stroke");
 }
 
-export const renderPath = (path: string, color: string) => (g: any, ui: any) => {
+export const renderPath = (path: string, color: string, strokeWidth: number = 2, opacity: number = 1) => (g: any, ui: any) => {
     g.append("path")
         .attr("d", path)
         .attr("fill", "none")
         .attr("stroke", color)
-        .attr("stroke-width", 1);
+        .attr("stroke-width", strokeWidth)
+        .attr("opacity", opacity)
+        .attr('vector-effect', 'non-scaling-stroke');;
 };
 
 export const renderCircle = (C: Circle, color: string) => (g: any, ui: any) => {
@@ -300,19 +302,6 @@ export const renderLine = (P: Pt, Q: Pt, color: string, opacity: boolean = true)
         .attr('stroke-width', 1)
         .attr('vector-effect', 'non-scaling-stroke')
         .attr('opacity', opacity ? 0.25 : 1);
-}
-
-export const renderRectangle = (P: Pt, w: number, h: number, fill: string, stroke: string) => (g: any, ui: any) => {
-    g.append('rect')
-        .attr('x', P.x)
-        .attr('y', P.y)
-        .attr('width', w)
-        .attr('height', h)
-        .attr('fill', fill)
-        .attr('stroke', stroke)
-        .attr('stroke-width', 1)
-        .attr('vector-effect', 'non-scaling-stroke')
-        .attr('opacity', 0.25);
 }
 
 // 1) Crosshair point marker (+ optional dot)
@@ -462,3 +451,39 @@ export const renderMeasure = (
         .attr("dominant-baseline", "central")
         .attr("vector-effect", "non-scaling-stroke");
 };
+
+
+export const renderRectFromPt = (P1: Pt, P2: Pt , fill: string, stroke: string) => (g: any, ui: any) => {
+    const x = Math.min(P1.x, P2.x);
+    const y = Math.min(P1.y, P2.y);
+    const w = Math.abs(P2.x - P1.x);
+    const h = Math.abs(P2.y - P1.y);
+    g.append('rect')
+        .attr('x', x)
+        .attr('y', y)
+        .attr('width', w)
+        .attr('height', h)
+        .attr('fill', fill)
+        .attr('stroke', stroke)
+        .attr('stroke-width', 1)
+        .attr('vector-effect', 'non-scaling-stroke')
+        .attr('opacity', 0.25);
+}
+
+export const renderRect = (rect: Rectangle, color: string, fill: string = "none") => (g: any, ui: any) => {
+    const x = Math.min(rect.Pt1.x, rect.Pt2.x);
+    const y = Math.min(rect.Pt1.y, rect.Pt2.y);
+    const w = Math.abs(rect.Pt2.x - rect.Pt1.x);
+    const h = Math.abs(rect.Pt2.y - rect.Pt1.y);
+
+    g.append("rect")
+        .attr("x", x)
+        .attr("y", y)
+        .attr("width", w)
+        .attr("height", h)
+        .attr("fill", fill)
+        .attr("stroke", color)
+        .attr("stroke-width", 1)
+        .attr("vector-effect", "non-scaling-stroke");
+}
+

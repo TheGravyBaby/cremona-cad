@@ -172,4 +172,19 @@
 
     </details>  
 
+    <!-- <details [open]="openPanel === 'topOutline'">
+        <summary>Top Outline</summary>
+    </details> -->
+
+    <details [open]="openPanel === 'mouldPattern'" (toggle)="onToggle('mouldPattern', $event)">
+        <summary>Mould Pattern</summary> 
+       
+        <br>
+        <input type="checkbox" [(ngModel)]="d.params.boutIntersect" (change)="changeMouldPattern()" /> Bout Intersect
+        <br>
+        <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeMouldPattern()" /> Show All Circles
+
+
+    </details>
+    
 </div>
