@@ -1,10 +1,10 @@
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
-import { Circle, Pt } from '../models/types';
-import { renderCircle, renderCrosshair, renderDashedLine, renderDashLine, renderDashLineMxB, renderDistanceMeasurementLine, renderPath } from '../helpers/renderFuncs';
-import { arcPathFrom3Points, circleCircleIntersections, findJoiningCircleFromCircleAndPoint, interceptCirclesAndPoint, lineCircleIntersection, lineFromTwoPoints } from '../helpers/draftMath';
-import { arc } from 'd3';
+import { Circle, Pt, Rectangle } from '../models/types';
+import { renderCircle, renderCrosshair, renderDashedLine, renderDashLine, renderDashLineMxB, renderDistanceMeasurementLine, renderPath, renderRect, renderRectFromPt } from '../helpers/renderFuncs';
+import { arcPathFrom3Points, circleCircleIntersections, findJoiningCircleFromCircleAndPoint, interceptCirclesAndPoint, lineCircleIntersection, lineFromTwoPoints, linePathFrom2Points } from '../helpers/draftMath';
+import { line } from 'd3';
 
 @Component({
   selector: 'app-kelly-violin',
@@ -43,6 +43,7 @@ export class KellyViolin extends RecipeComponentBase {
       upperBottomCornerCircleRadius: 20,
       lowerTopCornerCircleRadius: 20,
       lowerBottomCornerCircleRadius: 24,
+      boutIntersect: false,
     },
     shapes: {
       upperBout: {} as Circle,
@@ -65,7 +66,7 @@ export class KellyViolin extends RecipeComponentBase {
       upperRightCornerC1: null as Circle | null,
       upperRightCornerC2: null as Circle | null,
     },
-    intersectionPoints: {
+    intersects: {
       majorBouts: {
         upperRight: {} as any,
         upperLeft: {} as any,
@@ -96,6 +97,20 @@ export class KellyViolin extends RecipeComponentBase {
         upperLeftCornerBottomBodyIntersection: null as Pt | null,
         upperRightCornerTopBodyIntersection: null as Pt | null,
         upperRightCornerBottomBodyIntersection: null as Pt | null,
+      },
+      blocks: {
+        lowerLeftBlockP1: { x: 0, y: 0 } as Pt,
+        lowerLeftBlockP2: { x: 0, y: 0 } as Pt,
+        lowerLeftBlockP3: { x: 0, y: 0 } as Pt,
+        lowerRightBlockP1: { x: 0, y: 0 } as Pt,
+        lowerRightBlockP2: { x: 0, y: 0 } as Pt,
+        lowerRightBlockP3 : { x: 0, y: 0 } as Pt,
+        upperRightBlockP1: { x: 0, y: 0 } as Pt,
+        upperRightBlockP2: { x: 0, y: 0 } as Pt,
+        upperRightBlockP3: { x: 0, y: 0 } as Pt,
+        upperLeftBlockP1: { x: 0, y: 0 } as Pt,
+        upperLeftBlockP2: { x: 0, y: 0 } as Pt,
+        upperLeftBlockP3: { x: 0, y: 0 } as Pt,
       }
     },
     calcs: []
@@ -107,6 +122,8 @@ export class KellyViolin extends RecipeComponentBase {
   override firstRender = (g: any, ui: any): void => {
     this.renderBounds(g, ui);
     this.setBounds.emit({ pt1: { x: -this.d.params.w / 2, y: 0 }, pt2: { x: this.d.params.w / 2, y: this.d.params.h } });
+
+    
   }
 
   override onToggle(panel: string, ev: Event) {
@@ -122,6 +139,8 @@ export class KellyViolin extends RecipeComponentBase {
       else if (panel === 'minorBouts') this.changeMinorBouts();
       else if (panel === 'cornerPlacement') this.changeCornerPlacement();
       else if (panel ==='cornerCircles') this.changeCornerCircles()
+      else if (panel === 'mouldPattern') this.changeMouldPattern();
+      
       else {
         // closed -> check if any panel is still open
         const anyOpen = Array.from(document.querySelectorAll('details')).some(d => d.open);
@@ -159,6 +178,12 @@ export class KellyViolin extends RecipeComponentBase {
   changeCornerCircles() {
     this.calculateAll();
     this.draftChange.emit([this.renderMainBouts(false), this.renderMinorBouts(false), this.renderCornerPlacements(false), this.renderCornerCircles(true), this.renderPaths]);
+  }
+
+  changeMouldPattern() {
+      this.calculateAll();
+      this.draftChange.emit([this.renderMainBouts(false), this.renderMinorBouts(false), this.renderCornerPlacements(false), this.renderCornerCircles(false), this.renderBlocks(true), this.renderPathsWithBlocks]); 
+
   }
 
   renderBounds = (g: any, ui: any): void => {
@@ -249,19 +274,16 @@ export class KellyViolin extends RecipeComponentBase {
       renderCrosshair(this.d.shapes.upperRightVesaci,"red")(g, ui);
       renderCrosshair(this.d.shapes.upperLeftVesaci,"red")(g, ui);
 
-      renderDashLine({x: 0 , y: this.d.params.lowerCornerGuideYIntercept}, this.d.intersectionPoints.corners.lowerRight, "purple", 1, "4,4", true)(g, ui);
-      renderDashLine({x: 0 , y: this.d.params.lowerCornerGuideYIntercept}, this.d.intersectionPoints.corners.lowerLeft, "purple", 1, "4,4", true)(g, ui);
+      renderDashLine({x: 0 , y: this.d.params.lowerCornerGuideYIntercept}, this.d.intersects.corners.lowerRight, "purple", 1, "4,4", true)(g, ui);
+      renderDashLine({x: 0 , y: this.d.params.lowerCornerGuideYIntercept}, this.d.intersects.corners.lowerLeft, "purple", 1, "4,4", true)(g, ui);
     
-      renderDashLine({x: 0 , y: this.d.params.upperCornerGuideYIntercept}, this.d.intersectionPoints.corners.upperRight, "purple", 1, "4,4", true)(g, ui);
-      renderDashLine({x: 0 , y: this.d.params.upperCornerGuideYIntercept}, this.d.intersectionPoints.corners.upperLeft, "purple", 1, "4,4", true)(g, ui);
+      renderDashLine({x: 0 , y: this.d.params.upperCornerGuideYIntercept}, this.d.intersects.corners.upperRight, "purple", 1, "4,4", true)(g, ui);
+      renderDashLine({x: 0 , y: this.d.params.upperCornerGuideYIntercept}, this.d.intersects.corners.upperLeft, "purple", 1, "4,4", true)(g, ui);
 
-    }
-
-    if (currentModule) {
-      renderCrosshair(this.d.intersectionPoints.corners.lowerRight, "purple")(g, ui);
-      renderCrosshair(this.d.intersectionPoints.corners.lowerLeft, "purple")(g, ui);
-      renderCrosshair(this.d.intersectionPoints.corners.upperRight, "purple")(g, ui);
-      renderCrosshair(this.d.intersectionPoints.corners.upperLeft, "purple")(g, ui);
+      renderCrosshair(this.d.intersects.corners.lowerRight, "purple")(g, ui);
+      renderCrosshair(this.d.intersects.corners.lowerLeft, "purple")(g, ui);
+      renderCrosshair(this.d.intersects.corners.upperRight, "purple")(g, ui);
+      renderCrosshair(this.d.intersects.corners.upperLeft, "purple")(g, ui);
     }
     
   }
@@ -276,88 +298,170 @@ export class KellyViolin extends RecipeComponentBase {
       renderCircle(this.d.shapes.upperRightCornerC2, "purple")(g, ui);
       renderCircle(this.d.shapes.upperLeftCornerC1, "purple")(g, ui);
       renderCircle(this.d.shapes.upperLeftCornerC2, "purple")(g, ui);
-
-      renderCrosshair(this.d.intersectionPoints.corners.lowerRight, "purple")(g, ui);
-      renderCrosshair(this.d.intersectionPoints.corners.lowerLeft, "purple")(g, ui);
-      renderCrosshair(this.d.intersectionPoints.corners.upperRight, "purple")(g, ui);
-      renderCrosshair(this.d.intersectionPoints.corners.upperLeft, "purple")(g, ui);
     }
 
     if (currentModule && this.showGuideLines) {
-      renderDashLine({x: 0 , y: this.d.params.lowerCornerGuideYIntercept}, this.d.intersectionPoints.corners.lowerRight, "purple", 1, "4,4", true)(g, ui);
-      renderDashLine({x: 0 , y: this.d.params.lowerCornerGuideYIntercept}, this.d.intersectionPoints.corners.lowerLeft, "purple", 1, "4,4", true)(g, ui);
-      renderDashLine({x: 0 , y: this.d.params.upperCornerGuideYIntercept}, this.d.intersectionPoints.corners.upperRight, "purple", 1, "4,4", true)(g, ui);
-      renderDashLine({x: 0 , y: this.d.params.upperCornerGuideYIntercept}, this.d.intersectionPoints.corners.upperLeft, "purple", 1, "4,4", true)(g, ui);
+      renderDashLine({x: 0 , y: this.d.params.lowerCornerGuideYIntercept}, this.d.intersects.corners.lowerRight, "purple", 1, "4,4", true)(g, ui);
+      renderDashLine({x: 0 , y: this.d.params.lowerCornerGuideYIntercept}, this.d.intersects.corners.lowerLeft, "purple", 1, "4,4", true)(g, ui);
+      renderDashLine({x: 0 , y: this.d.params.upperCornerGuideYIntercept}, this.d.intersects.corners.upperRight, "purple", 1, "4,4", true)(g, ui);
+      renderDashLine({x: 0 , y: this.d.params.upperCornerGuideYIntercept}, this.d.intersects.corners.upperLeft, "purple", 1, "4,4", true)(g, ui);
 
     }
   }
 
+  renderBlocks = (currentModule: boolean) => (g: any, ui: any): void => {
+
+      if (currentModule && this.showGuideLines) {
+        renderDashLine(this.d.intersects.corners.lowerLeft, this.d.intersects.corners.lowerRight, "purple", 1, "4,4", true)(g, ui);
+
+      }
+  }
+
   renderPaths = (g: any, ui: any): void => {
     let paths = []
-    let cornersCalculated = this.d.shapes.lowerLeftCornerC1 && this.d.intersectionPoints.corners.lowerLeftCornerBottomBodyIntersection
+    let cornersCalculated = this.d.shapes.lowerLeftCornerC1 && this.d.intersects.corners.lowerLeftCornerBottomBodyIntersection
 
 
     if (cornersCalculated) {
-      let lbc1 = arcPathFrom3Points(this.d.shapes.lowerLeftCornerC2, this.d.intersectionPoints.corners.lowerLeftCornerBottomBodyIntersection, this.d.intersectionPoints.corners.lowerLeft)
-      let lbc2 = arcPathFrom3Points(this.d.shapes.lowerBout, this.d.intersectionPoints.corners.lowerLeftCornerBottomBodyIntersection, this.d.intersectionPoints.minorBouts.lowerLeftVesicaUpper)
-      let lbc3 = arcPathFrom3Points(this.d.shapes.lowerLeftCornerC1, this.d.intersectionPoints.corners.lowerLeft, this.d.intersectionPoints.corners.lowerLeftCornerTopBodyIntersection)
+      let lbc1 = arcPathFrom3Points(this.d.shapes.lowerLeftCornerC2, this.d.intersects.corners.lowerLeftCornerBottomBodyIntersection, this.d.intersects.corners.lowerLeft)
+      let lbc2 = arcPathFrom3Points(this.d.shapes.lowerBout, this.d.intersects.corners.lowerLeftCornerBottomBodyIntersection, this.d.intersects.minorBouts.lowerLeftVesicaUpper)
+      let lbc3 = arcPathFrom3Points(this.d.shapes.lowerLeftCornerC1, this.d.intersects.corners.lowerLeft, this.d.intersects.corners.lowerLeftCornerTopBodyIntersection)
       
       paths.push(lbc1, lbc2, lbc3);
     }
     else {
-      let l1 = arcPathFrom3Points(this.d.shapes.lowerBout, this.d.intersectionPoints.majorBouts.lowerLeft, this.d.intersectionPoints.minorBouts.lowerLeftVesicaUpper)
-      let l5 = arcPathFrom3Points(this.d.shapes.lowerBout, this.d.intersectionPoints.minorBouts.lowerRightVesicaUpper, this.d.intersectionPoints.majorBouts.lowerRight)
+      let l1 = arcPathFrom3Points(this.d.shapes.lowerBout, this.d.intersects.majorBouts.lowerLeft, this.d.intersects.minorBouts.lowerLeftVesicaUpper)
+      let l5 = arcPathFrom3Points(this.d.shapes.lowerBout, this.d.intersects.minorBouts.lowerRightVesicaUpper, this.d.intersects.majorBouts.lowerRight)
       paths.push(l1, l5);
     }
 
-    let l2 = arcPathFrom3Points(this.d.shapes.lowerLeftVesaci, this.d.intersectionPoints.minorBouts.lowerLeftVesicaUpper, this.d.intersectionPoints.minorBouts.lowerLeftVesicaLower)
-    let l3 = arcPathFrom3Points(this.d.shapes.lowerJoiningCircle, this.d.intersectionPoints.minorBouts.lowerLeftVesicaLower, this.d.intersectionPoints.minorBouts.lowerRightVesicaLower)
-    let l4 = arcPathFrom3Points(this.d.shapes.lowerRightVesaci, this.d.intersectionPoints.minorBouts.lowerRightVesicaLower, this.d.intersectionPoints.minorBouts.lowerRightVesicaUpper)
+    let l2 = arcPathFrom3Points(this.d.shapes.lowerLeftVesaci, this.d.intersects.minorBouts.lowerLeftVesicaUpper, this.d.intersects.minorBouts.lowerLeftVesicaLower)
+    let l3 = arcPathFrom3Points(this.d.shapes.lowerJoiningCircle, this.d.intersects.minorBouts.lowerLeftVesicaLower, this.d.intersects.minorBouts.lowerRightVesicaLower)
+    let l4 = arcPathFrom3Points(this.d.shapes.lowerRightVesaci, this.d.intersects.minorBouts.lowerRightVesicaLower, this.d.intersects.minorBouts.lowerRightVesicaUpper)
     paths.push(l2, l3, l4);
 
-
-
     if (cornersCalculated) {
-      let rbc1 = arcPathFrom3Points(this.d.shapes.lowerRightCornerC2, this.d.intersectionPoints.corners.lowerRight, this.d.intersectionPoints.corners.lowerRightCornerBottomBodyIntersection)
-      let rbc2 = arcPathFrom3Points(this.d.shapes.lowerBout, this.d.intersectionPoints.minorBouts.lowerRightVesicaUpper, this.d.intersectionPoints.corners.lowerRightCornerBottomBodyIntersection)
-      let rbc3 = arcPathFrom3Points(this.d.shapes.lowerRightCornerC1, this.d.intersectionPoints.corners.lowerRightCornerTopBodyIntersection, this.d.intersectionPoints.corners.lowerRight)
+      let rbc1 = arcPathFrom3Points(this.d.shapes.lowerRightCornerC2, this.d.intersects.corners.lowerRight, this.d.intersects.corners.lowerRightCornerBottomBodyIntersection)
+      let rbc2 = arcPathFrom3Points(this.d.shapes.lowerBout, this.d.intersects.minorBouts.lowerRightVesicaUpper, this.d.intersects.corners.lowerRightCornerBottomBodyIntersection)
+      let rbc3 = arcPathFrom3Points(this.d.shapes.lowerRightCornerC1, this.d.intersects.corners.lowerRightCornerTopBodyIntersection, this.d.intersects.corners.lowerRight)
       
-      let ruc1 = arcPathFrom3Points(this.d.shapes.upperRightCornerC2, this.d.intersectionPoints.corners.upperRight, this.d.intersectionPoints.corners.upperRightCornerBottomBodyIntersection)
-      let luc1 = arcPathFrom3Points(this.d.shapes.upperLeftCornerC2, this.d.intersectionPoints.corners.upperLeftCornerBottomBodyIntersection, this.d.intersectionPoints.corners.upperLeft)
+      let ruc1 = arcPathFrom3Points(this.d.shapes.upperRightCornerC2, this.d.intersects.corners.upperRight, this.d.intersects.corners.upperRightCornerBottomBodyIntersection)
+      let luc1 = arcPathFrom3Points(this.d.shapes.upperLeftCornerC2, this.d.intersects.corners.upperLeftCornerBottomBodyIntersection, this.d.intersects.corners.upperLeft)
 
-      let c1 = arcPathFrom3Points(this.d.shapes.centerBoutRight, this.d.intersectionPoints.corners.upperRightCornerBottomBodyIntersection, this.d.intersectionPoints.corners.lowerRightCornerTopBodyIntersection)
-      let c2 = arcPathFrom3Points(this.d.shapes.centerBoutLeft, this.d.intersectionPoints.corners.lowerLeftCornerTopBodyIntersection, this.d.intersectionPoints.corners.upperLeftCornerBottomBodyIntersection)
+      let c1 = arcPathFrom3Points(this.d.shapes.centerBoutRight, this.d.intersects.corners.upperRightCornerBottomBodyIntersection, this.d.intersects.corners.lowerRightCornerTopBodyIntersection)
+      let c2 = arcPathFrom3Points(this.d.shapes.centerBoutLeft, this.d.intersects.corners.lowerLeftCornerTopBodyIntersection, this.d.intersects.corners.upperLeftCornerBottomBodyIntersection)
 
       paths.push(rbc1, rbc2, rbc3, ruc1, luc1, c1, c2);
     }
     else {
-      let c1 = arcPathFrom3Points(this.d.shapes.centerBoutLeft, this.d.intersectionPoints.majorBouts.lowerLeft, this.d.intersectionPoints.majorBouts.upperLeft)
-      let c2 = arcPathFrom3Points(this.d.shapes.centerBoutRight, this.d.intersectionPoints.majorBouts.upperRight, this.d.intersectionPoints.majorBouts.lowerRight)
+      let c1 = arcPathFrom3Points(this.d.shapes.centerBoutLeft, this.d.intersects.majorBouts.lowerLeft, this.d.intersects.majorBouts.upperLeft)
+      let c2 = arcPathFrom3Points(this.d.shapes.centerBoutRight, this.d.intersects.majorBouts.upperRight, this.d.intersects.majorBouts.lowerRight)
       paths.push(c1, c2);
     }
 
     if (cornersCalculated) {
-      let rtc1 = arcPathFrom3Points(this.d.shapes.upperRightCornerC1, this.d.intersectionPoints.corners.upperRightCornerTopBodyIntersection, this.d.intersectionPoints.corners.upperRight)
-      let rtc2 = arcPathFrom3Points(this.d.shapes.upperBout, this.d.intersectionPoints.corners.upperRightCornerTopBodyIntersection, this.d.intersectionPoints.minorBouts.upperRightVesicaLower)
-
-      
-      let luc1 = arcPathFrom3Points(this.d.shapes.upperLeftCornerC1, this.d.intersectionPoints.corners.upperLeft, this.d.intersectionPoints.corners.upperLeftCornerTopBodyIntersection)
-      let luc2 = arcPathFrom3Points(this.d.shapes.upperBout, this.d.intersectionPoints.minorBouts.upperLeftVesicaLower, this.d.intersectionPoints.corners.upperLeftCornerTopBodyIntersection)
-
+      let rtc1 = arcPathFrom3Points(this.d.shapes.upperRightCornerC1, this.d.intersects.corners.upperRightCornerTopBodyIntersection, this.d.intersects.corners.upperRight)
+      let rtc2 = arcPathFrom3Points(this.d.shapes.upperBout, this.d.intersects.corners.upperRightCornerTopBodyIntersection, this.d.intersects.minorBouts.upperRightVesicaLower)
+      let luc1 = arcPathFrom3Points(this.d.shapes.upperLeftCornerC1, this.d.intersects.corners.upperLeft, this.d.intersects.corners.upperLeftCornerTopBodyIntersection)
+      let luc2 = arcPathFrom3Points(this.d.shapes.upperBout, this.d.intersects.minorBouts.upperLeftVesicaLower, this.d.intersects.corners.upperLeftCornerTopBodyIntersection)
 
       paths.push(rtc1, rtc2, luc1, luc2);
     }
     else {
-      let u1 = arcPathFrom3Points(this.d.shapes.upperBout, this.d.intersectionPoints.majorBouts.upperRight, this.d.intersectionPoints.minorBouts.upperRightVesicaLower)
-      let u5 = arcPathFrom3Points(this.d.shapes.upperBout, this.d.intersectionPoints.minorBouts.upperLeftVesicaLower, this.d.intersectionPoints.majorBouts.upperLeft)
+      let u1 = arcPathFrom3Points(this.d.shapes.upperBout, this.d.intersects.majorBouts.upperRight, this.d.intersects.minorBouts.upperRightVesicaLower)
+      let u5 = arcPathFrom3Points(this.d.shapes.upperBout, this.d.intersects.minorBouts.upperLeftVesicaLower, this.d.intersects.majorBouts.upperLeft)
       paths.push(u1, u5);
     }
 
-    let u2 = arcPathFrom3Points(this.d.shapes.upperRightVesaci, this.d.intersectionPoints.minorBouts.upperRightVesicaLower, this.d.intersectionPoints.minorBouts.upperRightVesicaUpper)
-    let u3 = arcPathFrom3Points(this.d.shapes.upperJoiningCircle, this.d.intersectionPoints.minorBouts.upperRightVesicaUpper, this.d.intersectionPoints.minorBouts.upperLeftVesicaUpper)
-    let u4 = arcPathFrom3Points(this.d.shapes.upperLeftVesaci, this.d.intersectionPoints.minorBouts.upperLeftVesicaUpper, this.d.intersectionPoints.minorBouts.upperLeftVesicaLower)
+    let u2 = arcPathFrom3Points(this.d.shapes.upperRightVesaci, this.d.intersects.minorBouts.upperRightVesicaLower, this.d.intersects.minorBouts.upperRightVesicaUpper)
+    let u3 = arcPathFrom3Points(this.d.shapes.upperJoiningCircle, this.d.intersects.minorBouts.upperRightVesicaUpper, this.d.intersects.minorBouts.upperLeftVesicaUpper)
+    let u4 = arcPathFrom3Points(this.d.shapes.upperLeftVesaci, this.d.intersects.minorBouts.upperLeftVesicaUpper, this.d.intersects.minorBouts.upperLeftVesicaLower)
 
     paths.push(u2, u3, u4);
+
+    let pathObj = {name: "innerTrace", paths: paths};
+
+    let existingIndex = this.d.calcs.findIndex(c => c.name === "innerTrace"); 
+    if (existingIndex !== -1) {
+      this.d.calcs[existingIndex] = pathObj;
+    } else {
+      this.d.calcs.push(pathObj);
+    }
+
+
+    for (let path of paths) {
+      renderPath(path, "red")(g, ui);
+    }
+  }
+
+  renderPathsWithBlocks = (g: any, ui: any): void => {
+    let paths = []
+
+    let lbc2 = arcPathFrom3Points(this.d.shapes.lowerBout, this.d.intersects.corners.lowerLeftCornerBottomBodyIntersection, this.d.intersects.minorBouts.lowerLeftVesicaUpper)
+      paths.push(lbc2);
+
+    let l2 = arcPathFrom3Points(this.d.shapes.lowerLeftVesaci, this.d.intersects.minorBouts.lowerLeftVesicaUpper, this.d.intersects.minorBouts.lowerLeftVesicaLower)
+    let l3 = arcPathFrom3Points(this.d.shapes.lowerJoiningCircle, this.d.intersects.minorBouts.lowerLeftVesicaLower, this.d.intersects.minorBouts.lowerRightVesicaLower)
+    let l4 = arcPathFrom3Points(this.d.shapes.lowerRightVesaci, this.d.intersects.minorBouts.lowerRightVesicaLower, this.d.intersects.minorBouts.lowerRightVesicaUpper)
+      paths.push(l2, l3, l4);
+
+    let rbc2 = arcPathFrom3Points(this.d.shapes.lowerBout, this.d.intersects.minorBouts.lowerRightVesicaUpper, this.d.intersects.corners.lowerRightCornerBottomBodyIntersection)
+
+    let c1 = arcPathFrom3Points(this.d.shapes.centerBoutRight, this.d.intersects.corners.upperRightCornerBottomBodyIntersection, this.d.intersects.corners.lowerRightCornerTopBodyIntersection)
+    let c2 = arcPathFrom3Points(this.d.shapes.centerBoutLeft, this.d.intersects.corners.lowerLeftCornerTopBodyIntersection, this.d.intersects.corners.upperLeftCornerBottomBodyIntersection)
+      paths.push(rbc2, c1, c2);
+
+    let rtc2 = arcPathFrom3Points(this.d.shapes.upperBout, this.d.intersects.corners.upperRightCornerTopBodyIntersection, this.d.intersects.minorBouts.upperRightVesicaLower)
+    let luc2 = arcPathFrom3Points(this.d.shapes.upperBout, this.d.intersects.minorBouts.upperLeftVesicaLower, this.d.intersects.corners.upperLeftCornerTopBodyIntersection)
+      paths.push(rtc2, luc2);
+
+    let u2 = arcPathFrom3Points(this.d.shapes.upperRightVesaci, this.d.intersects.minorBouts.upperRightVesicaLower, this.d.intersects.minorBouts.upperRightVesicaUpper)
+    let u3 = arcPathFrom3Points(this.d.shapes.upperJoiningCircle, this.d.intersects.minorBouts.upperRightVesicaUpper, this.d.intersects.minorBouts.upperLeftVesicaUpper)
+    let u4 = arcPathFrom3Points(this.d.shapes.upperLeftVesaci, this.d.intersects.minorBouts.upperLeftVesicaUpper, this.d.intersects.minorBouts.upperLeftVesicaLower)
+      paths.push(u2, u3, u4);
+
+
+    let lowerLeftBlock1 = linePathFrom2Points(this.d.intersects.blocks.lowerLeftBlockP1, this.d.intersects.blocks.lowerLeftBlockP2)
+    let lowerLeftBlock2 = linePathFrom2Points(this.d.intersects.blocks.lowerLeftBlockP2, this.d.intersects.blocks.lowerLeftBlockP3)
+
+    let lowerRightBlock1 = linePathFrom2Points(this.d.intersects.blocks.lowerRightBlockP1, this.d.intersects.blocks.lowerRightBlockP2)
+    let lowerRightBlock2 = linePathFrom2Points(this.d.intersects.blocks.lowerRightBlockP2, this.d.intersects.blocks.lowerRightBlockP3)
+
+    let upperRightBlock1 = linePathFrom2Points(this.d.intersects.blocks.upperRightBlockP1, this.d.intersects.blocks.upperRightBlockP2)
+    let upperRightBlock2 = linePathFrom2Points(this.d.intersects.blocks.upperRightBlockP2, this.d.intersects.blocks.upperRightBlockP3)
+
+    let upperLeftBlock1 = linePathFrom2Points(this.d.intersects.blocks.upperLeftBlockP1, this.d.intersects.blocks.upperLeftBlockP2)
+    let upperLeftBlock2 = linePathFrom2Points(this.d.intersects.blocks.upperLeftBlockP2, this.d.intersects.blocks.upperLeftBlockP3)
+
+    paths.push(lowerLeftBlock1, lowerLeftBlock2, lowerRightBlock1, lowerRightBlock2, upperRightBlock1, upperRightBlock2, upperLeftBlock1, upperLeftBlock2);
+
+    if (!this.d.params.boutIntersect) {
+      let lowerLeftCboutArc = arcPathFrom3Points(this.d.shapes.lowerLeftCornerC1, this.d.intersects.blocks.lowerLeftBlockP1, this.d.intersects.corners.lowerLeftCornerTopBodyIntersection)
+      let lowerLeftLowerBoutArc = arcPathFrom3Points(this.d.shapes.lowerLeftCornerC2, this.d.intersects.corners.lowerLeftCornerBottomBodyIntersection, this.d.intersects.blocks.lowerLeftBlockP3)
+        paths.push(lowerLeftCboutArc, lowerLeftLowerBoutArc);
+
+      let lowerRightCBoutArc = arcPathFrom3Points(this.d.shapes.lowerRightCornerC1, this.d.intersects.corners.lowerRightCornerTopBodyIntersection, this.d.intersects.blocks.lowerRightBlockP1)
+      let lowerRightLowerBoutArc = arcPathFrom3Points(this.d.shapes.lowerRightCornerC2, this.d.intersects.blocks.lowerRightBlockP3, this.d.intersects.corners.lowerRightCornerBottomBodyIntersection)
+        paths.push(lowerRightCBoutArc, lowerRightLowerBoutArc);
+
+      let upperRightCBoutArc = arcPathFrom3Points(this.d.shapes.upperRightCornerC1, this.d.intersects.corners.upperRightCornerTopBodyIntersection, this.d.intersects.blocks.upperRightBlockP3)
+      let upperRightUpperBoutArc = arcPathFrom3Points(this.d.shapes.upperRightCornerC2, this.d.intersects.blocks.upperRightBlockP1, this.d.intersects.corners.upperRightCornerBottomBodyIntersection)
+        paths.push(upperRightCBoutArc,upperRightUpperBoutArc);
+
+      let upperLeftCBoutArc = arcPathFrom3Points(this.d.shapes.upperLeftCornerC1, this.d.intersects.blocks.upperLeftBlockP3, this.d.intersects.corners.upperLeftCornerTopBodyIntersection)
+      let upperLeftUpperBoutArc = arcPathFrom3Points(this.d.shapes.upperLeftCornerC2, this.d.intersects.corners.upperLeftCornerBottomBodyIntersection, this.d.intersects.blocks.upperLeftBlockP1)
+        paths.push(upperLeftCBoutArc, upperLeftUpperBoutArc);
+    }
+   
+
+    let pathObj = {name: "mouldTrace", paths: paths};
+
+    let existingIndex = this.d.calcs.findIndex(c => c.name === "mouldTrace"); 
+    if (existingIndex !== -1) {
+      this.d.calcs[existingIndex] = pathObj;
+    } else {
+      this.d.calcs.push(pathObj);
+    }
 
 
     for (let path of paths) {
@@ -410,7 +514,7 @@ export class KellyViolin extends RecipeComponentBase {
       let lowerRight = circleCircleIntersections(this.d.shapes.lowerBout, this.d.shapes.centerBoutRight)[0];
       let lowerLeft = circleCircleIntersections(this.d.shapes.lowerBout, this.d.shapes.centerBoutLeft)[0];
 
-      this.d.intersectionPoints.majorBouts = {
+      this.d.intersects.majorBouts = {
         upperRight,
         upperLeft,
         lowerRight,
@@ -444,7 +548,7 @@ export class KellyViolin extends RecipeComponentBase {
       let upperLeftVesicaLower = circleCircleIntersections(upperLeftVesica, this.d.shapes.upperBout)[0];
       let upperLeftVesicaUpper = circleCircleIntersections(upperLeftVesica, upperJoiningCircle)[0];
 
-      this.d.intersectionPoints.minorBouts = {
+      this.d.intersects.minorBouts = {
         lowerRightVesicaUpper,
         lowerRightVesicaLower,
         lowerLeftVesicaUpper,
@@ -470,33 +574,33 @@ export class KellyViolin extends RecipeComponentBase {
       let upperRightCorner = lineCircleIntersection({x: 0 , y: this.d.params.upperCornerGuideYIntercept}, upperRightCornerTarget, rightTargetCircle)[1];
       let upperLeftCorner = lineCircleIntersection({x: 0 , y: this.d.params.upperCornerGuideYIntercept}, upperLeftCornerTarget, leftTargetCircle)[1];
       
-      this.d.intersectionPoints.corners.lowerRight = lowerRightCorner;
-      this.d.intersectionPoints.corners.lowerLeft = lowerLeftCorner;
-      this.d.intersectionPoints.corners.upperRight = upperRightCorner;
-      this.d.intersectionPoints.corners.upperLeft = upperLeftCorner;
+      this.d.intersects.corners.lowerRight = lowerRightCorner;
+      this.d.intersects.corners.lowerLeft = lowerLeftCorner;
+      this.d.intersects.corners.upperRight = upperRightCorner;
+      this.d.intersects.corners.upperLeft = upperLeftCorner;
     }
 
     // corner cirlces
     if (this.d.params.upperTopCornerCircleRadius && this.d.params.upperBottomCornerCircleRadius && this.d.params.lowerTopCornerCircleRadius && this.d.params.lowerBottomCornerCircleRadius) {
-       let lowerTopRightCornerCircle = interceptCirclesAndPoint(this.d.shapes.centerBoutRight, this.d.intersectionPoints.corners.lowerRight, this.d.params.lowerTopCornerCircleRadius)
+       let lowerTopRightCornerCircle = interceptCirclesAndPoint(this.d.shapes.centerBoutRight, this.d.intersects.corners.lowerRight, this.d.params.lowerTopCornerCircleRadius)
         .sort((a, b) => b.y - a.y)[0];
-      let lowerBottomRightCornerCircle = interceptCirclesAndPoint(this.d.shapes.lowerBout, this.d.intersectionPoints.corners.lowerRight, this.d.params.lowerBottomCornerCircleRadius)
+      let lowerBottomRightCornerCircle = interceptCirclesAndPoint(this.d.shapes.lowerBout, this.d.intersects.corners.lowerRight, this.d.params.lowerBottomCornerCircleRadius)
         .sort((a, b) => b.y - a.y)[1];
-      let lowerTopLeftCornerCircle = interceptCirclesAndPoint(this.d.shapes.centerBoutLeft, this.d.intersectionPoints.corners.lowerLeft, this.d.params.lowerTopCornerCircleRadius)
+      let lowerTopLeftCornerCircle = interceptCirclesAndPoint(this.d.shapes.centerBoutLeft, this.d.intersects.corners.lowerLeft, this.d.params.lowerTopCornerCircleRadius)
         .sort((a, b) => b.y - a.y)[0];
-      let lowerBottomLeftCornerCircle = interceptCirclesAndPoint(this.d.shapes.lowerBout, this.d.intersectionPoints.corners.lowerLeft, this.d.params.lowerBottomCornerCircleRadius)
+      let lowerBottomLeftCornerCircle = interceptCirclesAndPoint(this.d.shapes.lowerBout, this.d.intersects.corners.lowerLeft, this.d.params.lowerBottomCornerCircleRadius)
         .sort((a, b) => b.y - a.y)[1];
       
-      let upperTopRightCornerCircle = interceptCirclesAndPoint(this.d.shapes.upperBout, this.d.intersectionPoints.corners.upperRight, this.d.params.upperTopCornerCircleRadius)
+      let upperTopRightCornerCircle = interceptCirclesAndPoint(this.d.shapes.upperBout, this.d.intersects.corners.upperRight, this.d.params.upperTopCornerCircleRadius)
         .sort((a, b) => b.y - a.y)[0];
-      let upperBottomRightCornerCircle = interceptCirclesAndPoint(this.d.shapes.centerBoutRight, this.d.intersectionPoints.corners.upperRight, this.d.params.upperBottomCornerCircleRadius)
+      let upperBottomRightCornerCircle = interceptCirclesAndPoint(this.d.shapes.centerBoutRight, this.d.intersects.corners.upperRight, this.d.params.upperBottomCornerCircleRadius)
         .sort((a, b) => b.y - a.y)[1];
-      let upperTopLeftCornerCircle = interceptCirclesAndPoint(this.d.shapes.upperBout, this.d.intersectionPoints.corners.upperLeft, this.d.params.upperTopCornerCircleRadius)
+      let upperTopLeftCornerCircle = interceptCirclesAndPoint(this.d.shapes.upperBout, this.d.intersects.corners.upperLeft, this.d.params.upperTopCornerCircleRadius)
         .sort((a, b) => b.y - a.y)[0];
-      let upperBottomLeftCornerCircle = interceptCirclesAndPoint(this.d.shapes.centerBoutLeft, this.d.intersectionPoints.corners.upperLeft, this.d.params.upperBottomCornerCircleRadius)
+      let upperBottomLeftCornerCircle = interceptCirclesAndPoint(this.d.shapes.centerBoutLeft, this.d.intersects.corners.upperLeft, this.d.params.upperBottomCornerCircleRadius)
         .sort((a, b) => b.y - a.y)[1];
 
-         this.d.shapes.lowerLeftCornerC1 = lowerTopLeftCornerCircle;
+        this.d.shapes.lowerLeftCornerC1 = lowerTopLeftCornerCircle;
         this.d.shapes.lowerLeftCornerC2 = lowerBottomLeftCornerCircle;
         this.d.shapes.lowerRightCornerC1 = lowerTopRightCornerCircle;
         this.d.shapes.lowerRightCornerC2 = lowerBottomRightCornerCircle;
@@ -514,15 +618,86 @@ export class KellyViolin extends RecipeComponentBase {
         let upperRightCornerTopBodyIntersection = circleCircleIntersections(upperTopRightCornerCircle, this.d.shapes.upperBout)[0];
         let upperRightCornerBottomBodyIntersection = circleCircleIntersections(upperBottomRightCornerCircle, this.d.shapes.centerBoutRight)[1];
 
-        this.d.intersectionPoints.corners.lowerLeftCornerTopBodyIntersection = lowerLeftCornerTopBodyIntersection;
-        this.d.intersectionPoints.corners.lowerLeftCornerBottomBodyIntersection = lowerLeftCornerBottomBodyIntersection;
-        this.d.intersectionPoints.corners.lowerRightCornerTopBodyIntersection = lowerRightCornerTopBodyIntersection;
-        this.d.intersectionPoints.corners.lowerRightCornerBottomBodyIntersection = lowerRightCornerBottomBodyIntersection;
-        this.d.intersectionPoints.corners.upperLeftCornerTopBodyIntersection = upperLeftCornerTopBodyIntersection;
-        this.d.intersectionPoints.corners.upperLeftCornerBottomBodyIntersection = upperLeftCornerBottomBodyIntersection;
-        this.d.intersectionPoints.corners.upperRightCornerTopBodyIntersection = upperRightCornerTopBodyIntersection;
-        this.d.intersectionPoints.corners.upperRightCornerBottomBodyIntersection = upperRightCornerBottomBodyIntersection;
+        this.d.intersects.corners.lowerLeftCornerTopBodyIntersection = lowerLeftCornerTopBodyIntersection;
+        this.d.intersects.corners.lowerLeftCornerBottomBodyIntersection = lowerLeftCornerBottomBodyIntersection;
+        this.d.intersects.corners.lowerRightCornerTopBodyIntersection = lowerRightCornerTopBodyIntersection;
+        this.d.intersects.corners.lowerRightCornerBottomBodyIntersection = lowerRightCornerBottomBodyIntersection;
+        this.d.intersects.corners.upperLeftCornerTopBodyIntersection = upperLeftCornerTopBodyIntersection;
+        this.d.intersects.corners.upperLeftCornerBottomBodyIntersection = upperLeftCornerBottomBodyIntersection;
+        this.d.intersects.corners.upperRightCornerTopBodyIntersection = upperRightCornerTopBodyIntersection;
+        this.d.intersects.corners.upperRightCornerBottomBodyIntersection = upperRightCornerBottomBodyIntersection;
     }
+
+    if (this.d.params.boutIntersect) {
+      // P3 will always be agains the C bouts
+      let lowerLeftBlockP1 = this.d.intersects.corners.lowerLeftCornerTopBodyIntersection!;
+      let lowerLeftBlockP2 = new Pt(this.d.intersects.corners.lowerLeftCornerTopBodyIntersection!.x, this.d.intersects.corners.lowerLeftCornerBottomBodyIntersection!.y);
+      let lowerLeftBlockP3 = this.d.intersects.corners.lowerLeftCornerBottomBodyIntersection!;
+
+      let lowerRightBlockP1 = this.d.intersects.corners.lowerRightCornerTopBodyIntersection!; 
+      let lowerRightBlockP2 = new Pt(this.d.intersects.corners.lowerRightCornerTopBodyIntersection!.x, this.d.intersects.corners.lowerRightCornerBottomBodyIntersection!.y);
+      let lowerRightBlockP3 = this.d.intersects.corners.lowerRightCornerBottomBodyIntersection!;
+
+      let upperRightBlockP1 = this.d.intersects.corners.upperRightCornerBottomBodyIntersection!;
+      let upperRightBlockP2 = new Pt(this.d.intersects.corners.upperRightCornerBottomBodyIntersection!.x, this.d.intersects.corners.upperRightCornerTopBodyIntersection!.y);
+      let upperRightBlockP3 = this.d.intersects.corners.upperRightCornerTopBodyIntersection!;
+
+      let upperLeftBlockP3 = this.d.intersects.corners.upperLeftCornerBottomBodyIntersection!;
+      let upperLeftBlockP2 = new Pt(this.d.intersects.corners.upperLeftCornerBottomBodyIntersection!.x, this.d.intersects.corners.upperLeftCornerTopBodyIntersection!.y);
+      let upperLeftBlockP1 = this.d.intersects.corners.upperLeftCornerTopBodyIntersection!;
+    
+      this.d.intersects.blocks = {
+        lowerLeftBlockP1,
+        lowerLeftBlockP2,
+        lowerLeftBlockP3,
+        lowerRightBlockP1,
+        lowerRightBlockP2,
+        lowerRightBlockP3,
+        upperRightBlockP1,
+        upperRightBlockP2,
+        upperRightBlockP3,
+        upperLeftBlockP1,
+        upperLeftBlockP2,
+        upperLeftBlockP3
+      }
+    }
+    else {
+      let lowerLeftBlockP1 = lineCircleIntersection(this.d.intersects.corners.lowerLeft, this.d.intersects.corners.lowerRight, this.d.shapes.lowerLeftCornerC1)[0]
+      let lowerLeftBlockP3 = lineCircleIntersection(this.d.intersects.corners.lowerLeft, new Pt(this.d.intersects.corners.lowerLeft.x, 0), this.d.shapes.lowerLeftCornerC2)[0]
+      let lowerLeftBlockP2 = new Pt(lowerLeftBlockP1.x, lowerLeftBlockP3.y)
+
+      let lowerRightBlockP1 = lineCircleIntersection(this.d.intersects.corners.lowerRight, this.d.intersects.corners.lowerLeft, this.d.shapes.lowerRightCornerC1)[0]
+      let lowerRightBlockP3 = lineCircleIntersection(this.d.intersects.corners.lowerRight, new Pt(this.d.intersects.corners.lowerRight.x, 0), this.d.shapes.lowerRightCornerC2)[0]
+      let lowerRightBlockP2 = new Pt(lowerRightBlockP1.x, lowerRightBlockP3.y)
+
+      let upperRightBlockP1 = lineCircleIntersection(this.d.intersects.corners.upperRight, this.d.intersects.corners.upperLeft, this.d.shapes.upperRightCornerC2)[0]
+      let upperRightBlockP3 = lineCircleIntersection(this.d.intersects.corners.upperRight, new Pt(this.d.intersects.corners.upperRight.x, this.d.params.h), this.d.shapes.upperRightCornerC1)[0]
+      let upperRightBlockP2 = new Pt(upperRightBlockP1.x, upperRightBlockP3.y)
+
+      let upperLeftBlockP1 = lineCircleIntersection(this.d.intersects.corners.upperLeft, this.d.intersects.corners.upperRight, this.d.shapes.upperLeftCornerC2)[0]
+      let upperLeftBlockP3 = lineCircleIntersection(this.d.intersects.corners.upperLeft, new Pt(this.d.intersects.corners.upperLeft.x, this.d.params.h), this.d.shapes.upperLeftCornerC1)[0]
+      let upperLeftBlockP2 = new Pt(upperLeftBlockP1.x, upperLeftBlockP3.y)
+
+
+
+       this.d.intersects.blocks = {
+        lowerLeftBlockP1,
+        lowerLeftBlockP2,
+        lowerLeftBlockP3,
+        lowerRightBlockP1,
+        lowerRightBlockP2,
+        lowerRightBlockP3,
+        upperRightBlockP1,
+        upperRightBlockP2,
+        upperRightBlockP3,
+        upperLeftBlockP1,
+        upperLeftBlockP2,
+        upperLeftBlockP3
+      }
+
+    }
+
+
   }
 
 }

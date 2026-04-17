@@ -189,6 +189,10 @@ export function arcPathFrom3Points(
   return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArcFlag} ${sweepFlag} ${endOnCircle.x} ${endOnCircle.y}`;
 }
 
+export function linePathFrom2Points(P1: Pt, P2: Pt): string {
+  return `M ${P1.x} ${P1.y} L ${P2.x} ${P2.y}`;
+}
+
 /**
  * SVG arc path on circle C, centered at angle theta (radians),
  * spanning arc-length s (same units as r).
