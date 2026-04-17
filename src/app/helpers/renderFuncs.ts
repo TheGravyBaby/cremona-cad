@@ -487,3 +487,21 @@ export const renderRect = (rect: Rectangle, color: string, fill: string = "none"
         .attr("vector-effect", "non-scaling-stroke");
 }
 
+export const renderRectRoundedCorners = (rect: Rectangle, r: number, color: string, fill: string = "none", strokeWidth: number = 1) => (g: any, ui: any) => {
+    const x = Math.min(rect.Pt1.x, rect.Pt2.x);
+    const y = Math.min(rect.Pt1.y, rect.Pt2.y);
+    const w = Math.abs(rect.Pt2.x - rect.Pt1.x);
+    const h = Math.abs(rect.Pt2.y - rect.Pt1.y);
+
+    g.append("rect")
+        .attr("x", x)
+        .attr("y", y)
+        .attr("width", w)
+        .attr("height", h)
+        .attr("rx", r)
+        .attr("ry", r)
+        .attr("fill", fill)
+        .attr("stroke", color)
+        .attr("stroke-width", strokeWidth)
+        .attr("vector-effect", "non-scaling-stroke");
+}   

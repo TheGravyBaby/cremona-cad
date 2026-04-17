@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { Circle, Pt, Rectangle } from '../models/types';
-import { renderCircle, renderCrosshair, renderDashedLine, renderDashLine, renderDistanceMeasurementLine, renderPath, renderRect } from '../helpers/renderFuncs';
+import { renderCircle, renderCrosshair, renderDashedLine, renderDashLine, renderDistanceMeasurementLine, renderPath, renderRect, renderRectRoundedCorners } from '../helpers/renderFuncs';
 import { arcPathFrom3Points, circleCircleIntersections, differenceFromTwoPaths, findJoiningCircleFromCircleAndPoint,  interceptCirclesAndPoint, lineCircleIntersection, pathFromRect, unifyConnectedSvgPaths } from '../helpers/draftMath';
 
 @Component({
@@ -334,6 +334,24 @@ export class KellyViolin extends RecipeComponentBase {
       // renderDashLine(this.d.intersects.corners.upperRight, new Pt(this.d.intersects.corners.upperRight.x, 0), "purple", 1, "4,4", true)(g, ui);
       // renderDashLine(this.d.intersects.corners.upperLeft, new Pt(this.d.intersects.corners.upperLeft.x, 0), "purple", 1, "4,4", true)(g, ui);
     }
+
+    let lowerBlockClampingCutoutP1 = new Pt(this.d.shapes.lowerBlock.Pt1.x * 1.2, this.d.shapes.lowerBlock.Pt2.y + 10);
+    let lowerBlockClampingCutoutP2 = new Pt(this.d.shapes.lowerBlock.Pt2.x * 1.2, this.d.shapes.lowerBlock.Pt2.y + 30);
+
+    let upperBlockClampingCutoutP1 = new Pt(lowerBlockClampingCutoutP1.x, this.d.shapes.upperBlock.Pt2.y -10);
+    let upperBlockClampingCutoutP2 = new Pt(lowerBlockClampingCutoutP2.x, this.d.shapes.upperBlock.Pt2.y -30);
+
+    let leftCornerBlockClampingCutoutP1 = new Pt(lowerBlockClampingCutoutP1.x, lowerBlockClampingCutoutP2.y + 10);
+    let leftCornerBlockClampingCutoutP2 = new Pt(lowerBlockClampingCutoutP1.x + 20, upperBlockClampingCutoutP2.y  - 10);
+
+    let rightCornerBlockClampingCutoutP1 = new Pt(lowerBlockClampingCutoutP2.x, lowerBlockClampingCutoutP2.y + 10);
+    let rightCornerBlockClampingCutoutP2 = new Pt(lowerBlockClampingCutoutP2.x + -20, upperBlockClampingCutoutP2.y  - 10);
+
+    renderRectRoundedCorners({ Pt1: lowerBlockClampingCutoutP1, Pt2: lowerBlockClampingCutoutP2 }, 2, "green", "none", 2)(g, ui);
+    renderRectRoundedCorners({ Pt1: upperBlockClampingCutoutP1, Pt2: upperBlockClampingCutoutP2 }, 2, "green", "none", 2)(g, ui);
+    renderRectRoundedCorners({ Pt1: leftCornerBlockClampingCutoutP1, Pt2: leftCornerBlockClampingCutoutP2 }, 2, "green", "none", 2)(g, ui);
+    renderRectRoundedCorners({ Pt1: rightCornerBlockClampingCutoutP1, Pt2: rightCornerBlockClampingCutoutP2 }, 2, "green", "none", 2)(g, ui);
+
   }
 
   renderMainPath = (g: any, ui: any): void => {
