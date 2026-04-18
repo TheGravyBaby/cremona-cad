@@ -335,17 +335,19 @@ export class KellyViolin extends RecipeComponentBase {
       // renderDashLine(this.d.intersects.corners.upperLeft, new Pt(this.d.intersects.corners.upperLeft.x, 0), "purple", 1, "4,4", true)(g, ui);
     }
 
-    let lowerBlockClampingCutoutP1 = new Pt(this.d.shapes.lowerBlock.Pt1.x * 1.2, this.d.shapes.lowerBlock.Pt2.y + 10);
-    let lowerBlockClampingCutoutP2 = new Pt(this.d.shapes.lowerBlock.Pt2.x * 1.2, this.d.shapes.lowerBlock.Pt2.y + 30);
+    let blockInset = 30
+    let clampChanelWidth = blockInset + 20
 
-    let upperBlockClampingCutoutP1 = new Pt(lowerBlockClampingCutoutP1.x, this.d.shapes.upperBlock.Pt2.y -10);
-    let upperBlockClampingCutoutP2 = new Pt(lowerBlockClampingCutoutP2.x, this.d.shapes.upperBlock.Pt2.y -30);
+    let lowerBlockClampingCutoutP1 = new Pt(this.d.shapes.lowerBlock.Pt1.x * 1.2, this.d.shapes.lowerBlock.Pt2.y + blockInset);
+    let lowerBlockClampingCutoutP2 = new Pt(this.d.shapes.lowerBlock.Pt2.x * 1.2, this.d.shapes.lowerBlock.Pt2.y + clampChanelWidth);
 
-    let leftCornerBlockClampingCutoutP1 = new Pt(lowerBlockClampingCutoutP1.x, lowerBlockClampingCutoutP2.y + 10);
-    let leftCornerBlockClampingCutoutP2 = new Pt(lowerBlockClampingCutoutP1.x + 20, upperBlockClampingCutoutP2.y  - 10);
+    let upperBlockClampingCutoutP1 = new Pt(lowerBlockClampingCutoutP1.x, this.d.shapes.upperBlock.Pt2.y -blockInset);
+    let upperBlockClampingCutoutP2 = new Pt(lowerBlockClampingCutoutP2.x, this.d.shapes.upperBlock.Pt2.y -clampChanelWidth);
 
-    let rightCornerBlockClampingCutoutP1 = new Pt(lowerBlockClampingCutoutP2.x, lowerBlockClampingCutoutP2.y + 10);
-    let rightCornerBlockClampingCutoutP2 = new Pt(lowerBlockClampingCutoutP2.x + -20, upperBlockClampingCutoutP2.y  - 10);
+    let leftCornerBlockClampingCutoutP1 = new Pt(lowerBlockClampingCutoutP1.x, lowerBlockClampingCutoutP2.y + blockInset);
+    let leftCornerBlockClampingCutoutP2 = new Pt(lowerBlockClampingCutoutP1.x + 20, upperBlockClampingCutoutP2.y  - blockInset);
+    let rightCornerBlockClampingCutoutP1 = new Pt(lowerBlockClampingCutoutP2.x, lowerBlockClampingCutoutP2.y + blockInset);
+    let rightCornerBlockClampingCutoutP2 = new Pt(lowerBlockClampingCutoutP2.x + -20, upperBlockClampingCutoutP2.y  - blockInset);
 
     renderRectRoundedCorners({ Pt1: lowerBlockClampingCutoutP1, Pt2: lowerBlockClampingCutoutP2 }, 2, "green", "none", 2)(g, ui);
     renderRectRoundedCorners({ Pt1: upperBlockClampingCutoutP1, Pt2: upperBlockClampingCutoutP2 }, 2, "green", "none", 2)(g, ui);
