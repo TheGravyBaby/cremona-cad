@@ -386,7 +386,7 @@ export function pathFromCircle(C: Circle): string {
   return `M ${x - r} ${y} A ${r} ${r} 0 0 0 ${x + r} ${y} A ${r} ${r} 0 0 0 ${x - r} ${y} Z`;
 }
 
-export function differenceFromTwoPaths(path1: string, path2: string): string {
+export function differenceFromTwoPaths(path1: string, path2: string, distancePerSample = 0.5): string {
   type Pair = [number, number];
   type Ring = Pair[];
   type Polygon = Ring[];
@@ -400,7 +400,7 @@ export function differenceFromTwoPaths(path1: string, path2: string): string {
       throw new Error('Path has no measurable length.');
     }
 
-    let distancePerSample = .1; // lower numbers are more accurate
+    let distancePerSample = .5; // lower numbers are more accurate
     const steps = Math.max(128, Math.min(4096, Math.ceil(totalLength / distancePerSample)));
     const pts: Pair[] = [];
 

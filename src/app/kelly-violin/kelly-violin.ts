@@ -671,17 +671,19 @@ export class KellyViolin extends RecipeComponentBase {
     }
   }
 
-  calculateMouldPath = () => {
+  calculateMouldPath = (useHighAccuracy = false) => {
     this.calculateMainPathsUnified();
     let pathObj = this.d.calcs.find(c => c.name === "unifiedTrace").paths[0];
     if (!pathObj) return;
 
-    let mouldPath = differenceFromTwoPaths(pathObj, pathFromRect(this.d.shapes.lowerLeftBlock));
-    mouldPath = differenceFromTwoPaths(mouldPath, pathFromRect(this.d.shapes.lowerRightBlock));
-    mouldPath = differenceFromTwoPaths(mouldPath, pathFromRect(this.d.shapes.upperRightBlock));
-    mouldPath = differenceFromTwoPaths(mouldPath, pathFromRect(this.d.shapes.upperLeftBlock));
-    mouldPath = differenceFromTwoPaths(mouldPath, pathFromRect(this.d.shapes.lowerBlock));
-    mouldPath = differenceFromTwoPaths(mouldPath, pathFromRect(this.d.shapes.upperBlock));
+    let renderDensity = useHighAccuracy ? 0.1 : 1;
+
+    let mouldPath = differenceFromTwoPaths(pathObj, pathFromRect(this.d.shapes.lowerLeftBlock), renderDensity);
+    mouldPath = differenceFromTwoPaths(mouldPath, pathFromRect(this.d.shapes.lowerRightBlock), renderDensity);
+    mouldPath = differenceFromTwoPaths(mouldPath, pathFromRect(this.d.shapes.upperRightBlock), renderDensity);
+    mouldPath = differenceFromTwoPaths(mouldPath, pathFromRect(this.d.shapes.upperLeftBlock), renderDensity);
+    mouldPath = differenceFromTwoPaths(mouldPath, pathFromRect(this.d.shapes.lowerBlock), renderDensity);
+    mouldPath = differenceFromTwoPaths(mouldPath, pathFromRect(this.d.shapes.upperBlock), renderDensity);
 
     let bitRadius = this.d.params.bitDiameter ? this.d.params.bitDiameter / 2 : 0;
    
@@ -742,6 +744,7 @@ export class KellyViolin extends RecipeComponentBase {
   }
 
   downloadMouldPath = (): void => {
+    this.calculateMouldPath(true); // we want to recalc with high accuracy for the download to ensure the best possible quality for CNC cutting.
     const pathObj = this.d.calcs.find(c => c.name === 'mouldPath');
     if (!pathObj) return;
 
