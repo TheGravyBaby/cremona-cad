@@ -202,6 +202,10 @@ export function linePathFrom2Points(P1: Pt, P2: Pt): string {
   return `M ${P1.x} ${P1.y} L ${P2.x} ${P2.y}`;
 }
 
+export function combinePathStrings(paths: string[]): string {
+  return paths.map(p => p.trim()).join(' ');
+}
+
 export function concatSvgPaths(path1: string, path2: string): string {
   const num = `([\\d.eE+\\-]+)`;
   const moveRe = new RegExp(`^\\s*M\\s+${num}\\s+${num}\\s+(.*)$`);
@@ -362,6 +366,26 @@ export function pathFromRect(R: Rectangle): string {
   return `M ${Pt1.x} ${Pt1.y} L ${Pt2.x} ${Pt1.y} L ${Pt2.x} ${Pt2.y} L ${Pt1.x} ${Pt2.y} Z`;
 }
 
+export function pathFromRoundedRect(R: Rectangle, r: number): string {
+  const { Pt1, Pt2 } = R;
+  const width = Math.abs(Pt2.x - Pt1.x);
+  const height = Math.abs(Pt2.y - Pt1.y);
+  const radius = Math.min(r, width / 2, height / 2);
+
+  const x1 = Math.min(Pt1.x, Pt2.x);
+  const y1 = Math.min(Pt1.y, Pt2.y);
+  const x2 = Math.max(Pt1.x, Pt2.x);
+  const y2 = Math.max(Pt1.y, Pt2.y);
+
+  return `M ${x1 + radius} ${y1} L ${x2 - radius} ${y1} Q ${x2} ${y1} ${x2} ${y1 + radius} L ${x2} ${y2 - radius} Q ${x2} ${y2} ${x2 - radius} ${y2} L ${x1 + radius} ${y2} Q ${x1} ${y2} ${x1} ${y2 - radius} L ${x1} ${y1 + radius} Q ${x1} ${y1} ${x1 + radius} ${y1} Z`;
+}
+
+export function pathFromCircle(C: Circle): string {
+  const { x, y, r } = C;
+  // Draw a circle using two semicircular arcs
+  return `M ${x - r} ${y} A ${r} ${r} 0 0 0 ${x + r} ${y} A ${r} ${r} 0 0 0 ${x - r} ${y} Z`;
+}
+
 export function differenceFromTwoPaths(path1: string, path2: string): string {
   type Pair = [number, number];
   type Ring = Pair[];
@@ -507,8 +531,6 @@ export function arcPathByAngleAboutTheta(
   const A = `A ${C.r} ${C.r} 0 ${largeArc} ${sweep} ${x1} ${y1}`;
   return moveTo ? `M ${x0} ${y0} ${A}` : A;
 }
-
-
 
 export function angleFromCenter(C: Pt, P: Pt): number {
   return Math.atan2(P.y - C.y, P.x - C.x);
