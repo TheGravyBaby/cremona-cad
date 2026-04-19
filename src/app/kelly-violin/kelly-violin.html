@@ -217,11 +217,18 @@
 
         <br>
 
-        <input type="checkbox" [(ngModel)]="showGuideLines" (change)="changeMouldPattern()" /> Show Corner Guides
+        <input type="checkbox" [(ngModel)]="showGuideLines" (change)="changeMouldPattern(false)" /> Show Corner Guides
         <br>
-        <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeMouldPattern()" /> Show All Circles
+        <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeMouldPattern(false)" /> Show All Circles
 
         <br><br>
+
+        Bit Diameter (mm)
+        <div class="ratio">
+            <input type="number" step=".1" min="0" [(ngModel)]="d.params.bitDiameter" (input)="changeMouldPattern()" />
+        </div>
+
+          <br>
         <a (click)="downloadMouldPath()" class="file-upload">Download Mould Path</a>
 
 

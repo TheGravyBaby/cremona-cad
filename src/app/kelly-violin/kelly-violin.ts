@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { Circle, Pt, Rectangle } from '../models/types';
 import { renderCircle, renderCrosshair, renderDashedLine, renderDashLine, renderDistanceMeasurementLine, renderPath, renderRect, renderRectRoundedCorners } from '../helpers/renderFuncs';
-import { arcPathFrom3Points, circleCircleIntersections, differenceFromTwoPaths, findJoiningCircleFromCircleAndPoint,  interceptCirclesAndPoint, lineCircleIntersection, pathFromRect, unifyConnectedSvgPaths } from '../helpers/draftMath';
+import { arcPathFrom3Points, circleCircleIntersections, combinePathStrings, differenceFromTwoPaths, findJoiningCircleFromCircleAndPoint,  interceptCirclesAndPoint, lineCircleIntersection, pathFromCircle, pathFromRect, pathFromRoundedRect, unifyConnectedSvgPaths } from '../helpers/draftMath';
 
 @Component({
   selector: 'app-kelly-violin',
@@ -49,6 +49,7 @@ export class KellyViolin extends RecipeComponentBase {
       lowerBlockWidth: 60,
       upperBlockHeight: 20,
       upperBlockWidth: 40,
+      bitDiameter: 6.35,
     },
     shapes: {
       upperBout: {} as Circle,
@@ -77,6 +78,11 @@ export class KellyViolin extends RecipeComponentBase {
       upperLeftBlock: null as Rectangle | null,
       lowerBlock: null as Rectangle | null,
       upperBlock: null as Rectangle | null,
+
+      upperClampCutout: null as Rectangle | null,
+      lowerClampCutout: null as Rectangle | null,
+      leftClampCutout: null as Rectangle | null,
+      rightClampCutout: null as Rectangle | null,
     },
     intersects: {
       majorBouts: {
@@ -190,10 +196,10 @@ export class KellyViolin extends RecipeComponentBase {
     this.draftChange.emit([this.renderMainBouts(false), this.renderMinorBouts(false), this.renderCornerPlacements(false), this.renderCornerCircles(true), this.renderMainPath]);
   }
 
-  changeMouldPattern() {
-    this.calculateAll();
+  changeMouldPattern(calcChange = true) {
+    calcChange && this.calculateAll();
+    calcChange && this.calculateMouldPath();
     this.draftChange.emit([this.renderMainBouts(false), this.renderMinorBouts(false), this.renderCornerPlacements(false), this.renderCornerCircles(false), this.renderBlocks(true), this.renderMainPathWithBlocks]);
-
   }
 
   renderBounds = (g: any, ui: any): void => {
@@ -335,24 +341,20 @@ export class KellyViolin extends RecipeComponentBase {
       // renderDashLine(this.d.intersects.corners.upperLeft, new Pt(this.d.intersects.corners.upperLeft.x, 0), "purple", 1, "4,4", true)(g, ui);
     }
 
-    let blockInset = 30
-    let clampChanelWidth = blockInset + 20
+    // renderRectRoundedCorners(lowerBlockClampingCutout, this.cncBitRadius, "green", "none", 2)(g, ui);
+    // renderRectRoundedCorners(upperBlockClampingCutout, this.cncBitRadius, "green", "none", 2)(g, ui);
+    // renderRectRoundedCorners(leftCornerBlockClampingCutout, this.cncBitRadius, "green", "none", 2)(g, ui);
+    // renderRectRoundedCorners(rightCornerBlockClampingCutout, this.cncBitRadius, "green", "none", 2)(g, ui);
 
-    let lowerBlockClampingCutoutP1 = new Pt(this.d.shapes.lowerBlock.Pt1.x * 1.2, this.d.shapes.lowerBlock.Pt2.y + blockInset);
-    let lowerBlockClampingCutoutP2 = new Pt(this.d.shapes.lowerBlock.Pt2.x * 1.2, this.d.shapes.lowerBlock.Pt2.y + clampChanelWidth);
+    // renderCircle(lowerLeftBlockCornerCircle, "red")(g, ui);
+    // renderCircle(lowerRightBlockCornerCircle, "red")(g, ui);
+    // renderCircle(upperLeftBlockCornerCircle, "red")(g, ui);
+    // renderCircle(upperRightBlockCornerCircle, "red")(g, ui);
+    // renderCircle(lowerBlockCornerCircle1, "red")(g, ui);
+    // renderCircle(lowerBlockCornerCircle2, "red")(g, ui);
+    // renderCircle(upperBlockCornerCircle1, "red")(g, ui);
+    // renderCircle(upperBlockCornerCircle2, "red")(g, ui);
 
-    let upperBlockClampingCutoutP1 = new Pt(lowerBlockClampingCutoutP1.x, this.d.shapes.upperBlock.Pt2.y -blockInset);
-    let upperBlockClampingCutoutP2 = new Pt(lowerBlockClampingCutoutP2.x, this.d.shapes.upperBlock.Pt2.y -clampChanelWidth);
-
-    let leftCornerBlockClampingCutoutP1 = new Pt(lowerBlockClampingCutoutP1.x, lowerBlockClampingCutoutP2.y + blockInset);
-    let leftCornerBlockClampingCutoutP2 = new Pt(lowerBlockClampingCutoutP1.x + 20, upperBlockClampingCutoutP2.y  - blockInset);
-    let rightCornerBlockClampingCutoutP1 = new Pt(lowerBlockClampingCutoutP2.x, lowerBlockClampingCutoutP2.y + blockInset);
-    let rightCornerBlockClampingCutoutP2 = new Pt(lowerBlockClampingCutoutP2.x + -20, upperBlockClampingCutoutP2.y  - blockInset);
-
-    renderRectRoundedCorners({ Pt1: lowerBlockClampingCutoutP1, Pt2: lowerBlockClampingCutoutP2 }, 2, "green", "none", 2)(g, ui);
-    renderRectRoundedCorners({ Pt1: upperBlockClampingCutoutP1, Pt2: upperBlockClampingCutoutP2 }, 2, "green", "none", 2)(g, ui);
-    renderRectRoundedCorners({ Pt1: leftCornerBlockClampingCutoutP1, Pt2: leftCornerBlockClampingCutoutP2 }, 2, "green", "none", 2)(g, ui);
-    renderRectRoundedCorners({ Pt1: rightCornerBlockClampingCutoutP1, Pt2: rightCornerBlockClampingCutoutP2 }, 2, "green", "none", 2)(g, ui);
 
   }
 
@@ -536,6 +538,7 @@ export class KellyViolin extends RecipeComponentBase {
       this.d.intersects.corners.upperRightCornerBottomBodyIntersection = upperRightCornerBottomBodyIntersection;
     }
 
+    // block work
     let pad = this.d.params.cornerBlockPadding;
     let lowerRightBlock = new Rectangle(new Pt(this.d.intersects.corners.lowerRight.x + pad, this.d.intersects.corners.lowerRight.y + pad), new Pt(this.d.intersects.corners.lowerRight.x - (this.d.params.cornerBlockWidth - pad), this.d.intersects.corners.lowerRight.y - (this.d.params.cornerBlockHeight - pad)));
     let lowerLeftBlock = new Rectangle(new Pt(this.d.intersects.corners.lowerLeft.x - pad, this.d.intersects.corners.lowerLeft.y + pad), new Pt(this.d.intersects.corners.lowerLeft.x + (this.d.params.cornerBlockWidth - pad), this.d.intersects.corners.lowerLeft.y - (this.d.params.cornerBlockHeight - pad)));
@@ -558,9 +561,26 @@ export class KellyViolin extends RecipeComponentBase {
     this.d.shapes.lowerBlock = lowerBlock;
     this.d.shapes.upperBlock = upperBlock;
 
+    // clamping cutouts
+    let blockInset = 20;
+    let clampChanelWidth =  25;
+
+    let lowerBlockClampingCutoutP1 = new Pt(this.d.shapes.lowerBlock.Pt1.x * 1.2, this.d.shapes.lowerBlock.Pt2.y + blockInset);
+    let lowerBlockClampingCutoutP2 = new Pt(this.d.shapes.lowerBlock.Pt2.x * 1.2, this.d.shapes.lowerBlock.Pt2.y + blockInset + clampChanelWidth);
+    let upperBlockClampingCutoutP1 = new Pt(lowerBlockClampingCutoutP1.x, this.d.shapes.upperBlock.Pt2.y - blockInset);
+    let upperBlockClampingCutoutP2 = new Pt(lowerBlockClampingCutoutP2.x, this.d.shapes.upperBlock.Pt2.y - (blockInset + clampChanelWidth));
+
+    let leftCornerBlockClampingCutoutP1 = new Pt(lowerBlockClampingCutoutP1.x, lowerBlockClampingCutoutP2.y + blockInset);
+    let leftCornerBlockClampingCutoutP2 = new Pt(lowerBlockClampingCutoutP1.x + clampChanelWidth, upperBlockClampingCutoutP2.y - blockInset);
+    let rightCornerBlockClampingCutoutP1 = new Pt(lowerBlockClampingCutoutP2.x, lowerBlockClampingCutoutP2.y + blockInset);
+    let rightCornerBlockClampingCutoutP2 = new Pt(lowerBlockClampingCutoutP2.x - clampChanelWidth, upperBlockClampingCutoutP2.y - blockInset);
+
+    this.d.shapes.lowerClampCutout = { Pt1: lowerBlockClampingCutoutP1, Pt2: lowerBlockClampingCutoutP2 };
+    this.d.shapes.upperClampCutout = { Pt1: upperBlockClampingCutoutP1, Pt2: upperBlockClampingCutoutP2 };
+    this.d.shapes.leftClampCutout = { Pt1: leftCornerBlockClampingCutoutP1, Pt2: leftCornerBlockClampingCutoutP2 };
+    this.d.shapes.rightClampCutout = { Pt1: rightCornerBlockClampingCutoutP1, Pt2: rightCornerBlockClampingCutoutP2 };
+
     this.calculateMainPath();
-    this.calculateMainPathsUnified();
-    this.calculateMouldPath();
   }
 
   calculateMainPath = (): void => {
@@ -652,6 +672,7 @@ export class KellyViolin extends RecipeComponentBase {
   }
 
   calculateMouldPath = () => {
+    this.calculateMainPathsUnified();
     let pathObj = this.d.calcs.find(c => c.name === "unifiedTrace").paths[0];
     if (!pathObj) return;
 
@@ -662,7 +683,39 @@ export class KellyViolin extends RecipeComponentBase {
     mouldPath = differenceFromTwoPaths(mouldPath, pathFromRect(this.d.shapes.lowerBlock));
     mouldPath = differenceFromTwoPaths(mouldPath, pathFromRect(this.d.shapes.upperBlock));
 
-    let mouldPathObj = { name: "mouldPath", paths: [mouldPath] };
+    let bitRadius = this.d.params.bitDiameter ? this.d.params.bitDiameter / 2 : 0;
+   
+    if (bitRadius > 0) {
+      let tolerance = .5
+      let bitOffset = (bitRadius * Math.sqrt(2) / 2) - tolerance;
+      // because the CNC bit can't do perfect 90 degree corners, we need to add circles to the corners of the blocks to ensure that the bit can fit in there
+      const lowerLeftBlockCornerCircle = { x: this.d.shapes.lowerLeftBlock.Pt2.x - bitOffset, y: this.d.shapes.lowerLeftBlock.Pt2.y + bitOffset, r: bitRadius };
+      const lowerRightBlockCornerCircle = { x: this.d.shapes.lowerRightBlock.Pt2.x + bitOffset, y: this.d.shapes.lowerRightBlock.Pt2.y + bitOffset, r: bitRadius };
+      const upperLeftBlockCornerCircle = { x: this.d.shapes.upperLeftBlock.Pt2.x - bitOffset, y: this.d.shapes.upperLeftBlock.Pt2.y - bitOffset, r: bitRadius };
+      const upperRightBlockCornerCircle = { x: this.d.shapes.upperRightBlock.Pt2.x + bitOffset, y: this.d.shapes.upperRightBlock.Pt2.y - bitOffset, r: bitRadius };
+      const lowerBlockCornerCircle1 = { x: this.d.shapes.lowerBlock.Pt2.x - bitOffset, y: this.d.shapes.lowerBlock.Pt2.y - bitOffset, r: bitRadius };
+      const lowerBlockCornerCircle2 = { x: this.d.shapes.lowerBlock.Pt1.x + bitOffset, y: this.d.shapes.lowerBlock.Pt2.y - bitOffset, r: bitRadius };
+      const upperBlockCornerCircle1 = { x: this.d.shapes.upperBlock.Pt2.x - bitOffset, y: this.d.shapes.upperBlock.Pt2.y + bitOffset, r: bitRadius };
+      const upperBlockCornerCircle2 = { x: this.d.shapes.upperBlock.Pt1.x + bitOffset, y: this.d.shapes.upperBlock.Pt2.y + bitOffset, r: bitRadius };
+
+      // now we need to subtract the circles from the path as well
+      mouldPath = differenceFromTwoPaths(mouldPath, pathFromCircle(lowerLeftBlockCornerCircle));
+      mouldPath = differenceFromTwoPaths(mouldPath, pathFromCircle(lowerRightBlockCornerCircle));
+      mouldPath = differenceFromTwoPaths(mouldPath, pathFromCircle(upperLeftBlockCornerCircle));
+      mouldPath = differenceFromTwoPaths(mouldPath, pathFromCircle(upperRightBlockCornerCircle));
+      mouldPath = differenceFromTwoPaths(mouldPath, pathFromCircle(lowerBlockCornerCircle1));
+      mouldPath = differenceFromTwoPaths(mouldPath, pathFromCircle(lowerBlockCornerCircle2));
+      mouldPath = differenceFromTwoPaths(mouldPath, pathFromCircle(upperBlockCornerCircle1));
+      mouldPath = differenceFromTwoPaths(mouldPath, pathFromCircle(upperBlockCornerCircle2));
+    }
+
+    let lowerCutoutPath = pathFromRoundedRect(this.d.shapes.lowerClampCutout, bitRadius);
+    let upperCutoutPath = pathFromRoundedRect(this.d.shapes.upperClampCutout, bitRadius);
+    let leftCutoutPath = pathFromRoundedRect(this.d.shapes.leftClampCutout, bitRadius);
+    let rightCutoutPath = pathFromRoundedRect(this.d.shapes.rightClampCutout, bitRadius);
+
+    
+    let mouldPathObj = { name: "mouldPath", paths: [mouldPath, lowerCutoutPath, upperCutoutPath, leftCutoutPath, rightCutoutPath] };
     let existingIndex = this.d.calcs.findIndex(c => c.name === "mouldPath");
     if (existingIndex !== -1) {
       this.d.calcs[existingIndex] = mouldPathObj;
@@ -692,8 +745,9 @@ export class KellyViolin extends RecipeComponentBase {
     const pathObj = this.d.calcs.find(c => c.name === 'mouldPath');
     if (!pathObj) return;
 
+    let allPaths = combinePathStrings(pathObj.paths);
 
-    const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-this.d.params.w / 2} 0 ${this.d.params.w} ${this.d.params.h}"><g transform="translate(0 ${this.d.params.h}) scale(1 -1)"><path d="${pathObj.paths[0]}" fill="none" stroke="black"/></g></svg>`;
+    const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-this.d.params.w / 2} 0 ${this.d.params.w} ${this.d.params.h}"><g transform="translate(0 ${this.d.params.h}) scale(1 -1)"><path d="${allPaths}" fill="none" stroke="black"/></g></svg>`;
     const blob = new Blob([svgContent], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
 
