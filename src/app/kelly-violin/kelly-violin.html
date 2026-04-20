@@ -182,57 +182,6 @@
         <summary>Top Outline</summary>
     </details> -->
 
-    <details [open]="openPanel === 'mouldPattern'" (toggle)="onToggle('mouldPattern', $event)">
-        <summary>Mould Pattern</summary> 
-
-         Upper Block H : W (mm)
-        <div class="ratio">
-            <input type="number" step="1" min="0" [(ngModel)]="d.params.upperBlockHeight" (input)="changeMouldPattern()" />
-            <span>:</span>
-            <input type="number" step="1" min="0" [(ngModel)]="d.params.upperBlockWidth" (input)="changeMouldPattern()" />
-        </div>
-        
-        <br><br>
-
-        Corner Block H : W (mm)
-        <div class="ratio">
-            <input type="number" step="1" min="0" [(ngModel)]="d.params.cornerBlockHeight" (input)="changeMouldPattern()" />
-            <span>:</span>
-            <input type="number" step="1" min="0" [(ngModel)]="d.params.cornerBlockWidth" (input)="changeMouldPattern()" />
-        </div>          
-        <br>
-        Corner Block Padding (mm)
-        <div class="ratio">                                 
-            <input type="number" step="1" min="0" [(ngModel)]="d.params.cornerBlockPadding" (input)="changeMouldPattern()" />
-        </div>
-
-        <br><br>
-
-        Lower Block H : W (mm)
-        <div class="ratio">
-            <input type="number" step="1" min="0" [(ngModel)]="d.params.lowerBlockHeight" (input)="changeMouldPattern()" />
-            <span>:</span>
-            <input type="number" step="1" min="0" [(ngModel)]="d.params.lowerBlockWidth" (input)="changeMouldPattern()" />
-        </div> 
-
-        <br>
-
-        <input type="checkbox" [(ngModel)]="showGuideLines" (change)="changeMouldPattern(false)" /> Show Blocks
-        <br>
-        <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeMouldPattern(false)" /> Show All Circles
-
-        <br><br>
-
-        Bit Diameter (mm)
-        <div class="ratio">
-            <input type="number" step=".1" min="0" [(ngModel)]="d.params.bitDiameter" (input)="changeMouldPattern()" />
-        </div>
-
-          <br>
-        <a (click)="downloadMouldPath()" class="file-upload">Download Mould Path</a>
-
-
-    </details>
 
     <details [open]="openPanel == 'topAndBottom'" (toggle)="onToggle('topAndBottom', $event)">
         <summary>Top Trace</summary>
@@ -304,6 +253,76 @@
          <a (click)="downloadSegmentedPaths()" class="file-upload">Download Segmented Paths</a>
 
          <a (click)="downloadUnifiedPath()" class="file-upload">Download Unified Path</a> -->
+
+    </details>
+
+    <details [open]="openPanel === 'mouldPattern'" (toggle)="onToggle('mouldPattern', $event)">
+        <summary>Mould Pattern</summary> 
+
+         Upper Block H : W (mm)
+        <div class="ratio">
+            <input type="number" step="1" min="0" [(ngModel)]="d.params.upperBlockHeight" (input)="changeMouldPattern()" />
+            <span>:</span>
+            <input type="number" step="1" min="0" [(ngModel)]="d.params.upperBlockWidth" (input)="changeMouldPattern()" />
+        </div>
+        
+        <br><br>
+
+        Corner Block H : W (mm)
+        <div class="ratio">
+            <input type="number" step="1" min="0" [(ngModel)]="d.params.cornerBlockHeight" (input)="changeMouldPattern()" />
+            <span>:</span>
+            <input type="number" step="1" min="0" [(ngModel)]="d.params.cornerBlockWidth" (input)="changeMouldPattern()" />
+        </div>          
+        <br>
+        Corner Block Padding (mm)
+        <div class="ratio">                                 
+            <input type="number" step="1" min="0" [(ngModel)]="d.params.cornerBlockPadding" (input)="changeMouldPattern()" />
+        </div>
+
+        <br><br>
+
+        Lower Block H : W (mm)
+        <div class="ratio">
+            <input type="number" step="1" min="0" [(ngModel)]="d.params.lowerBlockHeight" (input)="changeMouldPattern()" />
+            <span>:</span>
+            <input type="number" step="1" min="0" [(ngModel)]="d.params.lowerBlockWidth" (input)="changeMouldPattern()" />
+        </div> 
+
+
+        <br><br>
+
+        Bit Diameter (mm)
+        <div class="ratio">
+            <input type="number" step=".1" min="0" [(ngModel)]="d.params.bitDiameter" (input)="changeMouldPattern()" />
+        </div>
+
+                <br>
+
+        <input type="checkbox" [(ngModel)]="showGuideLines" (change)="changeMouldPattern(false)" /> Show Blocks
+        <br>
+        <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeMouldPattern(false)" /> Show All Circles
+
+
+    </details>
+
+    <details [open]="openPanel === 'export'" (toggle)="onToggle('export', $event)">
+        <summary>Export</summary>
+        <br>
+        <a (click)="downloadOuterPath()" class="file-upload">Download Outer Path</a> 
+        <input type="checkbox" [(ngModel)]="viewOuterPathExport" (change)="renderExports()" /> View
+        <br><br>
+        <a (click)="downloadInnerPath()" class="file-upload">Download Inner Path</a>
+        <input type="checkbox" [(ngModel)]="viewInnerPathExport" (change)="renderExports()" /> View
+        <br><br>
+        <a (click)="downloadMouldPath()" class="file-upload">Download Mould</a>
+        <input type="checkbox" [(ngModel)]="viewMouldExport" (change)="renderExports()" /> View
+        <br><br>
+        <a class="file-upload">Download Blocks</a> 
+        <input type="checkbox" (change)="renderExports()" /> View (WIP)
+        <br><br>
+        <a class="file-upload">Download Clamps</a>
+        <input type="checkbox" (change)="renderExports()" /> View (WIP)
 
     </details>
     
