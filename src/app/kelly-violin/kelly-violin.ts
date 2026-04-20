@@ -2,8 +2,9 @@ import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { Circle, Pt, Rectangle } from '../models/types';
-import { renderCircle, renderCrosshair, renderDashedLine, renderDashLine, renderDistanceMeasurementLine, renderPath, renderRect, renderRectRoundedCorners } from '../helpers/renderFuncs';
-import { arcPathFrom3Points, circleCircleIntersections, combinePathStrings, differenceFromTwoPaths, findJoiningCircleFromCircleAndPoint,  interceptCirclesAndPoint, lineCircleIntersection, pathFromCircle, pathFromRect, pathFromRoundedRect, unifyConnectedSvgPaths } from '../helpers/draftMath';
+import { renderCircle, renderCrosshair, renderDashedLine, renderDashLine, renderDistanceMeasurementLine, renderLine, renderPath, renderRect, renderRectRoundedCorners } from '../helpers/renderFuncs';
+import { arcPathFrom3Points, calculateOffset, circleCircleIntersections, combinePathStrings, differenceFromTwoPaths, dist, findClosestPointOnPathToCircle, findJoiningCircleFromCircleAndPoint,  inscribeCircleWithinCircle,  interceptCirclesAndPoint, interceptPathAndCircle, lineCircleIntersection, pathFromCircle, pathFromLine, pathFromRect, pathFromRoundedRect, pointOnCircle, unifyConnectedSvgPaths } from '../helpers/draftMath';
+import { arc, path } from 'd3';
 
 @Component({
   selector: 'app-kelly-violin',
@@ -17,6 +18,7 @@ export class KellyViolin extends RecipeComponentBase {
   showGuideLines = true;
   showAllCircles = true;
   showModuleCircles = false;
+  override openPanel = 'topAndBottom';
 
   override d = {
     recipeName: 'Kelly Violin',
@@ -26,6 +28,8 @@ export class KellyViolin extends RecipeComponentBase {
       h: 348,
       w: 203,
       inset: 4,
+      bitDiameter: 6.35,
+
       upperBoutRadius: 78,
       upperBoutCenter: 284,
       lowerBoutRadius: 97.5,
@@ -33,15 +37,18 @@ export class KellyViolin extends RecipeComponentBase {
       centerBoutRadius: 85,
       upperVesaciRadius: 57,
       lowerVesaciRadius: 62,
+
       cornerTargetRadius: 74,
       lowerCornerGuideYIntercept: 51,
       lowerCornerGuideXOffset: 0,
       upperCornerGuideYIntercept: 278,
       upperCornerGuideXOffset: 0,
+
       upperTopCornerCircleRadius: 24,
       upperBottomCornerCircleRadius: 20,
       lowerTopCornerCircleRadius: 20,
       lowerBottomCornerCircleRadius: 24,
+
       cornerBlockHeight: 24,
       cornerBlockWidth: 20,
       cornerBlockPadding: 8,
@@ -49,7 +56,20 @@ export class KellyViolin extends RecipeComponentBase {
       lowerBlockWidth: 60,
       upperBlockHeight: 20,
       upperBlockWidth: 40,
-      bitDiameter: 6.35,
+
+      lowerTopCornerDubCircleRadius: 10,
+      lowerTopCornerDubCircleTheta: -70,
+      lowerBottomCornerDubCircleRadius: 10,
+      lowerBottomCornerDubCircleTheta: 165,
+      lowerTopCornerDubCircleCutoffTheta: 300,
+      lowerBottomCornerDubCircleCutoffTheta: 135,
+
+      upperTopCornerDubCircleRadius: 10,
+      upperTopCornerDubCircleTheta: 200,
+      upperBottomCornerDubCircleRadius: 10,
+      upperBottomCornerDubCircleTheta: 105,
+      upperTopCornerDubCircleCutoffTheta: 225,
+      upperBottomCornerDubCircleCutoffTheta: 70
     },
     shapes: {
       upperBout: {} as Circle,
@@ -83,6 +103,16 @@ export class KellyViolin extends RecipeComponentBase {
       lowerClampCutout: null as Rectangle | null,
       leftClampCutout: null as Rectangle | null,
       rightClampCutout: null as Rectangle | null,
+
+      lowerRightCornerDoubleC1: null as Circle | null,
+      lowerRightCornerDoubleC2: null as Circle | null,
+      lowerLeftCornerDoubleC1: null as Circle | null,
+      lowerLeftCornerDoubleC2: null as Circle | null,
+
+      upperRightCornerDoubleC1: null as Circle | null,
+      upperRightCornerDoubleC2: null as Circle | null,
+      upperLeftCornerDoubleC1: null as Circle | null,
+      upperLeftCornerDoubleC2: null as Circle | null,
     },
     intersects: {
       majorBouts: {
@@ -156,6 +186,7 @@ export class KellyViolin extends RecipeComponentBase {
       else if (panel === 'cornerPlacement') this.changeCornerPlacement();
       else if (panel === 'cornerCircles') this.changeCornerCircles()
       else if (panel === 'mouldPattern') this.changeMouldPattern();
+      else if (panel=== 'topAndBottom')  this.changeTopAndBottom();
 
       else {
         // closed -> check if any panel is still open
@@ -200,6 +231,13 @@ export class KellyViolin extends RecipeComponentBase {
     calcChange && this.calculateAll();
     calcChange && this.calculateMouldPath();
     this.draftChange.emit([this.renderMainBouts(false), this.renderMinorBouts(false), this.renderCornerPlacements(false), this.renderCornerCircles(false), this.renderBlocks(true), this.renderMainPathWithBlocks]);
+  }
+
+  changeTopAndBottom() {
+      this.calculateAll();
+      this.calculateMainPathsSegmented();
+      this.calculateOffsetPathsSegments();
+      this.draftChange.emit([this.renderFinalCorners(true), this.renderMainPath, this.renderSegmentedPaths]);
   }
 
   renderBounds = (g: any, ui: any): void => {
@@ -333,30 +371,154 @@ export class KellyViolin extends RecipeComponentBase {
 
       renderRect(this.d.shapes.lowerBlock, "blue")(g, ui);
       renderRect(this.d.shapes.upperBlock, "blue")(g, ui);
-
-      // renderDashLine(this.d.intersects.corners.upperLeft, this.d.intersects.corners.upperRight, "purple", 1, "4,4", true)(g, ui);
-      // renderDashLine(this.d.intersects.corners.lowerLeft, new Pt(this.d.intersects.corners.lowerLeft.x, 0), "blue", 1, "4,4", true)(g, ui);
-      // renderDashLine(this.d.intersects.corners.lowerRight, new Pt(this.d.intersects.corners.lowerRight.x, 0), "blue", 1, "4,4", true)(g, ui);
-      // renderDashLine(this.d.intersects.corners.upperRight, new Pt(this.d.intersects.corners.upperRight.x, 0), "purple", 1, "4,4", true)(g, ui);
-      // renderDashLine(this.d.intersects.corners.upperLeft, new Pt(this.d.intersects.corners.upperLeft.x, 0), "purple", 1, "4,4", true)(g, ui);
     }
-
-    // renderRectRoundedCorners(lowerBlockClampingCutout, this.cncBitRadius, "green", "none", 2)(g, ui);
-    // renderRectRoundedCorners(upperBlockClampingCutout, this.cncBitRadius, "green", "none", 2)(g, ui);
-    // renderRectRoundedCorners(leftCornerBlockClampingCutout, this.cncBitRadius, "green", "none", 2)(g, ui);
-    // renderRectRoundedCorners(rightCornerBlockClampingCutout, this.cncBitRadius, "green", "none", 2)(g, ui);
-
-    // renderCircle(lowerLeftBlockCornerCircle, "red")(g, ui);
-    // renderCircle(lowerRightBlockCornerCircle, "red")(g, ui);
-    // renderCircle(upperLeftBlockCornerCircle, "red")(g, ui);
-    // renderCircle(upperRightBlockCornerCircle, "red")(g, ui);
-    // renderCircle(lowerBlockCornerCircle1, "red")(g, ui);
-    // renderCircle(lowerBlockCornerCircle2, "red")(g, ui);
-    // renderCircle(upperBlockCornerCircle1, "red")(g, ui);
-    // renderCircle(upperBlockCornerCircle2, "red")(g, ui);
-
-
   }
+
+  renderFinalCorners = (currentModule: boolean) => (g: any, ui: any): void => {
+    let paths = this.d.calcs.find(c => c.name === "offsetSegmentedTrace")?.paths;
+
+    let lowerRightC1Offset: Circle = {...this.d.shapes.lowerRightCornerC1, r: this.d.shapes.lowerRightCornerC1.r - this.d.params.inset};
+    let lowerRightC2Offset: Circle = {...this.d.shapes.lowerRightCornerC2, r: this.d.shapes.lowerRightCornerC2.r - this.d.params.inset};
+    let C1ClosestPoint = findClosestPointOnPathToCircle(paths[1], lowerRightC1Offset);
+    let C2ClosestPoint = findClosestPointOnPathToCircle(paths[0], lowerRightC2Offset);
+    let C1Dist = dist(C1ClosestPoint, lowerRightC1Offset);
+    let C2Dist = dist(C2ClosestPoint, lowerRightC2Offset);
+        lowerRightC1Offset.r = C1Dist;
+        lowerRightC2Offset.r = C2Dist;
+
+    let rad1 = this.d.params.lowerTopCornerDubCircleTheta * Math.PI / 180;
+    let rad2 = this.d.params.lowerBottomCornerDubCircleTheta * Math.PI / 180;
+    let cutoffRad1 = this.d.params.lowerTopCornerDubCircleCutoffTheta * Math.PI / 180;
+    let cutoffRad2 = this.d.params.lowerBottomCornerDubCircleCutoffTheta * Math.PI / 180;
+
+    this.d.shapes.lowerRightCornerDoubleC1 = inscribeCircleWithinCircle(lowerRightC1Offset, this.d.params.lowerTopCornerDubCircleRadius, rad1);
+    this.d.shapes.lowerRightCornerDoubleC2 = inscribeCircleWithinCircle(lowerRightC2Offset, this.d.params.lowerBottomCornerDubCircleRadius, rad2);
+
+    let lowerRightC1Intercept = pointOnCircle(lowerRightC1Offset, rad1);
+    let lowerRightC2Intercept = pointOnCircle(lowerRightC2Offset, rad2);
+
+    let lowerRightCutoff1 = pointOnCircle(this.d.shapes.lowerRightCornerDoubleC1, cutoffRad1);
+    let lowerRightCutoff2 = pointOnCircle(this.d.shapes.lowerRightCornerDoubleC2, cutoffRad2);
+
+    if (currentModule && this.showGuideLines) {
+      renderCircle(lowerRightC1Offset, "blue")(g, ui);
+      renderCircle(lowerRightC2Offset, "blue")(g, ui);
+      renderCircle(this.d.shapes.lowerRightCornerDoubleC1, "purple")(g, ui);
+      renderCircle(this.d.shapes.lowerRightCornerDoubleC2, "purple")(g, ui);
+      renderLine(lowerRightCutoff1, lowerRightCutoff2, "purple")(g, ui);
+     }
+   
+    let path1 = arcPathFrom3Points(lowerRightC2Offset, lowerRightC2Intercept, C2ClosestPoint);
+    let path2 = arcPathFrom3Points(this.d.shapes.lowerRightCornerDoubleC2, lowerRightCutoff2, lowerRightC2Intercept);
+    let path3 = pathFromLine(lowerRightCutoff1, lowerRightCutoff2);
+    let path4 = arcPathFrom3Points(this.d.shapes.lowerRightCornerDoubleC1, lowerRightC1Intercept, lowerRightCutoff1);
+    let path5 = arcPathFrom3Points(lowerRightC1Offset, C1ClosestPoint, lowerRightC1Intercept);
+    renderPath(path1, "purple")(g, ui);
+    renderPath(path2, "purple")(g, ui);
+    renderPath(path3, "purple")(g, ui);
+    renderPath(path4, "purple")(g, ui);
+    renderPath(path5, "purple")(g, ui);
+
+
+
+    let lowerLeftC1Offset: Circle = {...this.d.shapes.lowerLeftCornerC1, r: C1Dist};
+    let lowerLeftC2Offset: Circle = {...this.d.shapes.lowerLeftCornerC2, r: C2Dist};
+    this.d.shapes.lowerLeftCornerDoubleC1 = inscribeCircleWithinCircle(lowerLeftC1Offset, this.d.params.lowerTopCornerDubCircleRadius, Math.PI - rad1);
+    this.d.shapes.lowerLeftCornerDoubleC2 = inscribeCircleWithinCircle(lowerLeftC2Offset, this.d.params.lowerBottomCornerDubCircleRadius, Math.PI - rad2);
+    let lowerLeftC1Intercept = pointOnCircle(lowerLeftC1Offset, Math.PI - rad1);
+    let lowerLeftC2Intercept = pointOnCircle(lowerLeftC2Offset, Math.PI - rad2);
+    let lowerLeftCutoff1 = pointOnCircle(this.d.shapes.lowerLeftCornerDoubleC1, Math.PI - cutoffRad1);
+    let lowerLeftCutoff2 = pointOnCircle(this.d.shapes.lowerLeftCornerDoubleC2, Math.PI - cutoffRad2);
+    if (currentModule && this.showGuideLines) {
+      renderCircle(lowerLeftC1Offset, "blue")(g, ui);
+      renderCircle(lowerLeftC2Offset, "blue")(g, ui);
+      renderCircle(this.d.shapes.lowerLeftCornerDoubleC1, "purple")(g, ui);
+      renderCircle(this.d.shapes.lowerLeftCornerDoubleC2, "purple")(g, ui);
+      renderLine(lowerLeftCutoff1, lowerLeftCutoff2, "purple")(g, ui);
+     }
+    let path6 = arcPathFrom3Points(lowerLeftC2Offset, lowerLeftC2Intercept, findClosestPointOnPathToCircle(paths[0], lowerLeftC2Offset), {clockwise: false})
+    let path7 = arcPathFrom3Points(this.d.shapes.lowerLeftCornerDoubleC2, lowerLeftCutoff2, lowerLeftC2Intercept, {clockwise: false});
+    let path8 = pathFromLine(lowerLeftCutoff1, lowerLeftCutoff2);
+    let path9 = arcPathFrom3Points(this.d.shapes.lowerLeftCornerDoubleC1, lowerLeftC1Intercept, lowerLeftCutoff1, {clockwise: false});
+    let path10 = arcPathFrom3Points(lowerLeftC1Offset, findClosestPointOnPathToCircle(paths[3], lowerLeftC1Offset), lowerLeftC1Intercept, {clockwise: false});
+    renderPath(path6, "purple")(g, ui);
+    renderPath(path7, "purple")(g, ui);
+    renderPath(path8, "purple")(g, ui);
+    renderPath(path9, "purple")(g, ui);
+    renderPath(path10, "purple")(g, ui);
+
+
+    let upperRightC1Offset: Circle = {...this.d.shapes.upperRightCornerC1, r: this.d.shapes.upperRightCornerC1.r - this.d.params.inset};
+    let upperRightC2Offset: Circle = {...this.d.shapes.upperRightCornerC2, r: this.d.shapes.upperRightCornerC2.r - this.d.params.inset};
+    let upperRightC1ClosestPoint = findClosestPointOnPathToCircle(paths[2], upperRightC1Offset);
+    let upperRightC2ClosestPoint = findClosestPointOnPathToCircle(paths[1], upperRightC2Offset);
+    let upperRightC1Dist = dist(upperRightC1ClosestPoint, upperRightC1Offset);
+    let upperRightC2Dist = dist(upperRightC2ClosestPoint, upperRightC2Offset);
+        upperRightC1Offset.r = upperRightC1Dist;
+        upperRightC2Offset.r = upperRightC2Dist;
+    
+    let rad3 = this.d.params.upperTopCornerDubCircleTheta * Math.PI / 180;
+    let rad4 = this.d.params.upperBottomCornerDubCircleTheta * Math.PI / 180;
+    let cutoffRad3 = this.d.params.upperTopCornerDubCircleCutoffTheta * Math.PI / 180;
+    let cutoffRad4 = this.d.params.upperBottomCornerDubCircleCutoffTheta * Math.PI / 180;
+
+    this.d.shapes.upperRightCornerDoubleC1 = inscribeCircleWithinCircle(upperRightC1Offset, this.d.params.upperTopCornerDubCircleRadius, rad3);
+    this.d.shapes.upperRightCornerDoubleC2 = inscribeCircleWithinCircle(upperRightC2Offset, this.d.params.upperBottomCornerDubCircleRadius, rad4);
+    let upperRightC1Intercept = pointOnCircle(upperRightC1Offset, rad3);
+    let upperRightC2Intercept = pointOnCircle(upperRightC2Offset, rad4);
+    let upperRightCutoff1 = pointOnCircle(this.d.shapes.upperRightCornerDoubleC1, cutoffRad3);
+    let upperRightCutoff2 = pointOnCircle(this.d.shapes.upperRightCornerDoubleC2, cutoffRad4);
+    if (currentModule && this.showGuideLines) {
+      renderCircle(upperRightC1Offset, "blue")(g, ui);
+      renderCircle(upperRightC2Offset, "blue")(g, ui);
+      renderCircle(this.d.shapes.upperRightCornerDoubleC1, "purple")(g, ui);
+      renderCircle(this.d.shapes.upperRightCornerDoubleC2, "purple")(g, ui);
+      renderLine(upperRightCutoff1, upperRightCutoff2, "purple")(g, ui);
+     }
+    
+    let path11 = arcPathFrom3Points(upperRightC2Offset, upperRightC2Intercept, upperRightC2ClosestPoint);
+    let path12 = arcPathFrom3Points(this.d.shapes.upperRightCornerDoubleC2, upperRightCutoff2, upperRightC2Intercept);
+    let path13 = pathFromLine(upperRightCutoff1, upperRightCutoff2);
+    let path14 = arcPathFrom3Points(this.d.shapes.upperRightCornerDoubleC1, upperRightC1Intercept, upperRightCutoff1);
+    let path15 = arcPathFrom3Points(upperRightC1Offset, upperRightC1ClosestPoint, upperRightC1Intercept);
+    renderPath(path11, "purple")(g, ui); 
+    renderPath(path12, "purple")(g, ui);
+    renderPath(path13, "purple")(g, ui);
+    renderPath(path14, "purple")(g, ui);
+    renderPath(path15, "purple")(g, ui);
+
+
+
+    let upperLeftC1Offset: Circle = { ...this.d.shapes.upperLeftCornerC1, r: upperRightC1Dist };
+    let upperLeftC2Offset: Circle = { ...this.d.shapes.upperLeftCornerC2, r: upperRightC2Dist };
+    this.d.shapes.upperLeftCornerDoubleC1 = inscribeCircleWithinCircle(upperLeftC1Offset, this.d.params.upperTopCornerDubCircleRadius, Math.PI - rad3);
+    this.d.shapes.upperLeftCornerDoubleC2 = inscribeCircleWithinCircle(upperLeftC2Offset, this.d.params.upperBottomCornerDubCircleRadius, Math.PI - rad4);
+    let upperLeftC1Intercept = pointOnCircle(upperLeftC1Offset, Math.PI - rad3);
+    let upperLeftC2Intercept = pointOnCircle(upperLeftC2Offset, Math.PI - rad4);
+    let upperLeftCutoff1 = pointOnCircle(this.d.shapes.upperLeftCornerDoubleC1, Math.PI - cutoffRad3);
+    let upperLeftCutoff2 = pointOnCircle(this.d.shapes.upperLeftCornerDoubleC2, Math.PI - cutoffRad4);
+    if (currentModule && this.showGuideLines) {
+      renderCircle(upperLeftC1Offset, "blue")(g, ui);
+      renderCircle(upperLeftC2Offset, "blue")(g, ui);
+      renderCircle(this.d.shapes.upperLeftCornerDoubleC1, "purple")(g, ui);
+      renderCircle(this.d.shapes.upperLeftCornerDoubleC2, "purple")(g, ui);
+      renderLine(upperLeftCutoff1, upperLeftCutoff2, "purple")(g, ui);
+     }
+    
+    let path16 = arcPathFrom3Points(upperLeftC2Offset, upperLeftC2Intercept, findClosestPointOnPathToCircle(paths[3], upperLeftC2Offset), {clockwise: false});
+    let path17 = arcPathFrom3Points(this.d.shapes.upperLeftCornerDoubleC2, upperLeftCutoff2, upperLeftC2Intercept, {clockwise: false});
+    let path18 = pathFromLine(upperLeftCutoff1, upperLeftCutoff2);
+    let path19 = arcPathFrom3Points(this.d.shapes.upperLeftCornerDoubleC1, upperLeftC1Intercept, upperLeftCutoff1, {clockwise: false});
+    let path20 = arcPathFrom3Points(upperLeftC1Offset, findClosestPointOnPathToCircle(paths[2], upperLeftC1Offset), upperLeftC1Intercept, {clockwise: false});
+    renderPath(path16, "purple")(g, ui);
+    renderPath(path17, "purple")(g, ui);
+    renderPath(path18, "purple")(g, ui);
+    renderPath(path19, "purple")(g, ui);
+    renderPath(path20, "purple")(g, ui);
+  }
+
+
+
 
   renderMainPath = (g: any, ui: any): void => {
     let pathObj = this.d.calcs.find(c => c.name === "innerTrace");
@@ -376,6 +538,13 @@ export class KellyViolin extends RecipeComponentBase {
     let mouldPath = this.d.calcs.find(c => c.name === "mouldPath");
     if (mouldPath) {
       mouldPath.paths.forEach((p: any) => renderPath(p, "green", 2, 0.7)(g, ui));
+    }
+  }
+
+  renderSegmentedPaths = (g: any, ui: any): void => {
+    let pathObj = this.d.calcs.find(c => c.name === "offsetSegmentedTrace");
+    if (pathObj) {
+      pathObj.paths.forEach((p: any) => renderPath(p, "blue", 2)(g, ui));
     }
   }
 
@@ -591,9 +760,8 @@ export class KellyViolin extends RecipeComponentBase {
     if (cornersCalculated) {
       let lbc1 = arcPathFrom3Points(this.d.shapes.lowerLeftCornerC2, this.d.intersects.corners.lowerLeftCornerBottomBodyIntersection, this.d.intersects.corners.lowerLeft)
       let lbc2 = arcPathFrom3Points(this.d.shapes.lowerBout, this.d.intersects.corners.lowerLeftCornerBottomBodyIntersection, this.d.intersects.minorBouts.lowerLeftVesicaUpper)
-      let lbc3 = arcPathFrom3Points(this.d.shapes.lowerLeftCornerC1, this.d.intersects.corners.lowerLeft, this.d.intersects.corners.lowerLeftCornerTopBodyIntersection)
 
-      paths.push(lbc1, lbc2, lbc3);
+      paths.push(lbc1, lbc2);
     }
     else {
       let l1 = arcPathFrom3Points(this.d.shapes.lowerBout, this.d.intersects.majorBouts.lowerLeft, this.d.intersects.minorBouts.lowerLeftVesicaUpper)
@@ -607,17 +775,13 @@ export class KellyViolin extends RecipeComponentBase {
     paths.push(l2, l3, l4);
 
     if (cornersCalculated) {
-      let rbc1 = arcPathFrom3Points(this.d.shapes.lowerRightCornerC2, this.d.intersects.corners.lowerRight, this.d.intersects.corners.lowerRightCornerBottomBodyIntersection)
-      let rbc2 = arcPathFrom3Points(this.d.shapes.lowerBout, this.d.intersects.minorBouts.lowerRightVesicaUpper, this.d.intersects.corners.lowerRightCornerBottomBodyIntersection)
+      let rbc1 = arcPathFrom3Points(this.d.shapes.lowerBout, this.d.intersects.minorBouts.lowerRightVesicaUpper, this.d.intersects.corners.lowerRightCornerBottomBodyIntersection)
+      let rbc2 = arcPathFrom3Points(this.d.shapes.lowerRightCornerC2, this.d.intersects.corners.lowerRight, this.d.intersects.corners.lowerRightCornerBottomBodyIntersection)
       let rbc3 = arcPathFrom3Points(this.d.shapes.lowerRightCornerC1, this.d.intersects.corners.lowerRightCornerTopBodyIntersection, this.d.intersects.corners.lowerRight)
-
       let ruc1 = arcPathFrom3Points(this.d.shapes.upperRightCornerC2, this.d.intersects.corners.upperRight, this.d.intersects.corners.upperRightCornerBottomBodyIntersection)
-      let luc1 = arcPathFrom3Points(this.d.shapes.upperLeftCornerC2, this.d.intersects.corners.upperLeftCornerBottomBodyIntersection, this.d.intersects.corners.upperLeft)
-
       let c1 = arcPathFrom3Points(this.d.shapes.centerBoutRight, this.d.intersects.corners.upperRightCornerBottomBodyIntersection, this.d.intersects.corners.lowerRightCornerTopBodyIntersection)
-      let c2 = arcPathFrom3Points(this.d.shapes.centerBoutLeft, this.d.intersects.corners.lowerLeftCornerTopBodyIntersection, this.d.intersects.corners.upperLeftCornerBottomBodyIntersection)
 
-      paths.push(rbc1, rbc2, rbc3, ruc1, luc1, c1, c2);
+      paths.push(rbc1, rbc2, rbc3, c1, ruc1 );
     }
     else {
       let c1 = arcPathFrom3Points(this.d.shapes.centerBoutLeft, this.d.intersects.majorBouts.lowerLeft, this.d.intersects.majorBouts.upperLeft)
@@ -628,10 +792,8 @@ export class KellyViolin extends RecipeComponentBase {
     if (cornersCalculated) {
       let rtc1 = arcPathFrom3Points(this.d.shapes.upperRightCornerC1, this.d.intersects.corners.upperRightCornerTopBodyIntersection, this.d.intersects.corners.upperRight)
       let rtc2 = arcPathFrom3Points(this.d.shapes.upperBout, this.d.intersects.corners.upperRightCornerTopBodyIntersection, this.d.intersects.minorBouts.upperRightVesicaLower)
-      let luc1 = arcPathFrom3Points(this.d.shapes.upperLeftCornerC1, this.d.intersects.corners.upperLeft, this.d.intersects.corners.upperLeftCornerTopBodyIntersection)
-      let luc2 = arcPathFrom3Points(this.d.shapes.upperBout, this.d.intersects.minorBouts.upperLeftVesicaLower, this.d.intersects.corners.upperLeftCornerTopBodyIntersection)
 
-      paths.push(rtc1, rtc2, luc1, luc2);
+      paths.push(rtc1, rtc2);
     }
     else {
       let u1 = arcPathFrom3Points(this.d.shapes.upperBout, this.d.intersects.majorBouts.upperRight, this.d.intersects.minorBouts.upperRightVesicaLower)
@@ -642,8 +804,17 @@ export class KellyViolin extends RecipeComponentBase {
     let u2 = arcPathFrom3Points(this.d.shapes.upperRightVesaci, this.d.intersects.minorBouts.upperRightVesicaLower, this.d.intersects.minorBouts.upperRightVesicaUpper)
     let u3 = arcPathFrom3Points(this.d.shapes.upperJoiningCircle, this.d.intersects.minorBouts.upperRightVesicaUpper, this.d.intersects.minorBouts.upperLeftVesicaUpper)
     let u4 = arcPathFrom3Points(this.d.shapes.upperLeftVesaci, this.d.intersects.minorBouts.upperLeftVesicaUpper, this.d.intersects.minorBouts.upperLeftVesicaLower)
-
     paths.push(u2, u3, u4);
+
+
+    if (cornersCalculated) {
+      let luc1 = arcPathFrom3Points(this.d.shapes.upperBout, this.d.intersects.minorBouts.upperLeftVesicaLower, this.d.intersects.corners.upperLeftCornerTopBodyIntersection)
+      let luc2 = arcPathFrom3Points(this.d.shapes.upperLeftCornerC1, this.d.intersects.corners.upperLeft, this.d.intersects.corners.upperLeftCornerTopBodyIntersection)
+      let lbc3 = arcPathFrom3Points(this.d.shapes.lowerLeftCornerC1, this.d.intersects.corners.lowerLeft, this.d.intersects.corners.lowerLeftCornerTopBodyIntersection)
+      let c2 = arcPathFrom3Points(this.d.shapes.centerBoutLeft, this.d.intersects.corners.lowerLeftCornerTopBodyIntersection, this.d.intersects.corners.upperLeftCornerBottomBodyIntersection)
+      let luc3 = arcPathFrom3Points(this.d.shapes.upperLeftCornerC2, this.d.intersects.corners.upperLeftCornerBottomBodyIntersection, this.d.intersects.corners.upperLeft)
+      paths.push(luc1, luc2, luc3, lbc3, c2);
+    }
 
     let pathObj = { name: "innerTrace", paths: paths };
 
@@ -670,6 +841,70 @@ export class KellyViolin extends RecipeComponentBase {
       this.d.calcs.push(pathObj);
     }
   }
+
+  calculateMainPathsSegmented = (): void => {
+    let paths = this.d.calcs.find(c => c.name === "innerTrace")?.paths;
+    if (!paths) return;
+
+    let lowerBoutPartial = paths.slice(1, 6)
+    let rightCenterBoutPartial = paths.slice(8, 9)
+    let upperCenterBoutPartial = paths.slice(11, 16)
+    let upperBoutPartial = paths.slice(19, 20)
+
+    let lowerBout = paths.slice(1, 7);
+    let rightCenterBout = paths.slice(7, 10);
+    let upperCenterBout = paths.slice(10, 17);
+    let upperBout = paths.slice(17, 20);
+
+    // now unify each of these segments 
+    let lowerBoutPartialUnified = unifyConnectedSvgPaths(lowerBoutPartial);
+    let rightCenterBoutPartialUnified = unifyConnectedSvgPaths(rightCenterBoutPartial);
+    let upperCenterBoutPartialUnified = unifyConnectedSvgPaths(upperCenterBoutPartial);
+    let upperBoutPartialUnified = unifyConnectedSvgPaths(upperBoutPartial);
+
+    let lowerBoutUnified = unifyConnectedSvgPaths(lowerBout);
+    let rightCenterBoutUnified = unifyConnectedSvgPaths(rightCenterBout);
+    let upperCenterBoutUnified = unifyConnectedSvgPaths(upperCenterBout);
+    let upperBoutUnified = unifyConnectedSvgPaths(upperBout);
+
+    let partialPathObj = { name: "segmentedPartialTrace", paths: [lowerBoutPartialUnified, rightCenterBoutPartialUnified, upperCenterBoutPartialUnified, upperBoutPartialUnified] };
+    
+    let existingIndex = this.d.calcs.findIndex(c => c.name === "segmentedTrace");
+    if (existingIndex !== -1) {
+      this.d.calcs[existingIndex] = partialPathObj;
+    } else {
+      this.d.calcs.push(partialPathObj);
+    }
+
+    let pathObj = { name: "segmentedTrace", paths: [lowerBoutUnified, rightCenterBoutUnified, upperCenterBoutUnified, upperBoutUnified] };
+    if (existingIndex !== -1) {
+      this.d.calcs[existingIndex] = pathObj;
+    } else {
+      this.d.calcs.push(pathObj);
+    }
+  }
+
+  calculateOffsetPathsSegments = (): void => {
+    let segmentedPaths = this.d.calcs.find(c => c.name === "segmentedPartialTrace");
+    if (segmentedPaths) {
+      let paths = []
+      let offset1 = calculateOffset(segmentedPaths.paths[0], this.d.params.inset)
+      let offset2 = calculateOffset(segmentedPaths.paths[1], -this.d.params.inset)
+      let offset3 = calculateOffset(segmentedPaths.paths[2], this.d.params.inset)
+      let offset4 = calculateOffset(segmentedPaths.paths[3], -this.d.params.inset)
+
+      paths.push(offset1, offset2, offset3, offset4);
+      
+      let pathObj = { name: "offsetSegmentedTrace", paths: paths };
+      let existingIndex = this.d.calcs.findIndex(c => c.name === "offsetSegmentedTrace");
+      if (existingIndex !== -1) {
+        this.d.calcs[existingIndex] = pathObj;
+      } else {
+        this.d.calcs.push(pathObj);
+      }
+    }
+  }
+
 
   calculateMouldPath = (useHighAccuracy = false) => {
     this.calculateMainPathsUnified();
@@ -727,6 +962,7 @@ export class KellyViolin extends RecipeComponentBase {
   }
 
   downloadUnifiedPath = (): void => {
+    this.calculateMainPathsUnified();
     const pathObj = this.d.calcs.find(c => c.name === 'unifiedTrace');
     if (!pathObj) return;
 
@@ -757,6 +993,24 @@ export class KellyViolin extends RecipeComponentBase {
     const link = document.createElement('a');
     link.href = url;
     link.download = 'mould_path.svg';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url); 
+  }
+
+  downloadSegmentedPaths = (): void => {
+    this.calculateMainPathsSegmented();
+    const pathObj = this.d.calcs.find(c => c.name === 'segmentedTrace');
+    if (!pathObj) return;
+
+    const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-this.d.params.w / 2} 0 ${this.d.params.w} ${this.d.params.h}"><g transform="translate(0 ${this.d.params.h}) scale(1 -1)"><path d="${pathObj.paths[0]}" fill="none" stroke="red"/><path d="${pathObj.paths[1]}" fill="none" stroke="blue"/><path d="${pathObj.paths[2]}" fill="none" stroke="green"/><path d="${pathObj.paths[3]}" fill="none" stroke="orange"/></g></svg>`;
+    const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'segmented_paths.svg';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
