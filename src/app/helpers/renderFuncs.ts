@@ -292,7 +292,7 @@ export const renderCircle = (C: Circle, color: string) => (g: any, ui: any) => {
         .attr('vector-effect', 'non-scaling-stroke');
 }
 
-export const renderLine = (P: Pt, Q: Pt, color: string, opacity: boolean = true) => (g: any, ui: any) => {
+export const renderLine = (P: Pt, Q: Pt, color: string, opacity: boolean = false) => (g: any, ui: any) => {
     g.append("line")
         .attr("x1", Q.x)
         .attr("y1", Q.y)

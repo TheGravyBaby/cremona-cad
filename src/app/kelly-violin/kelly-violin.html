@@ -217,7 +217,7 @@
 
         <br>
 
-        <input type="checkbox" [(ngModel)]="showGuideLines" (change)="changeMouldPattern(false)" /> Show Corner Guides
+        <input type="checkbox" [(ngModel)]="showGuideLines" (change)="changeMouldPattern(false)" /> Show Blocks
         <br>
         <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeMouldPattern(false)" /> Show All Circles
 
@@ -231,6 +231,79 @@
           <br>
         <a (click)="downloadMouldPath()" class="file-upload">Download Mould Path</a>
 
+
+    </details>
+
+    <details [open]="openPanel == 'topAndBottom'" (toggle)="onToggle('topAndBottom', $event)">
+        <summary>Top Trace</summary>
+
+        <label>Upper Corner Top Circle Radius : Theta (mm, degrees)</label>
+        <div class="ratio">
+            <input type="number" step="1" min="0" [(ngModel)]="d.params.upperTopCornerDubCircleRadius" (input)="changeTopAndBottom()" />
+            <span>:</span>
+            <input type="number" step="5" min="0" [(ngModel)]="d.params.upperTopCornerDubCircleTheta" (input)="changeTopAndBottom()" />
+        </div>
+        <br>
+        <label>
+            Upper Corner Bottom Circle Radius : Theta (mm, degrees)
+            <div class="ratio">
+                <input type="number" step="1" min="0" [(ngModel)]="d.params.upperBottomCornerDubCircleRadius" (input)="changeTopAndBottom()" />
+                <span>:</span>
+                <input type="number" step="5" min="0" [(ngModel)]="d.params.upperBottomCornerDubCircleTheta" (input)="changeTopAndBottom()" />
+            </div>
+        </label>
+        <br>
+        <label>
+            Upper Corner Cuttoff C1 Theta : C2 Theta (degrees)
+            <div class="ratio">
+                <input type="number" step="5" min="0" [(ngModel)]="d.params.upperTopCornerDubCircleCutoffTheta" (input)="changeTopAndBottom()" />
+                <span>:</span>
+                <input type="number" step="5" min="0" [(ngModel)]="d.params.upperBottomCornerDubCircleCutoffTheta" (input)="changeTopAndBottom()" />
+            </div>
+        </label>
+
+        <br><br>
+        
+        <label>
+            Lower Corner Top Circle Radius : Theta (mm, degrees)
+            <div class="ratio">
+                <input type="number" step="1" min="0" [(ngModel)]="d.params.lowerTopCornerDubCircleRadius" (input)="changeTopAndBottom()" />
+                <span>:</span>
+                <input type="number" step="5" min="0" [(ngModel)]="d.params.lowerTopCornerDubCircleTheta" (input)="changeTopAndBottom()" />
+            </div>
+        </label>
+
+        <br>
+
+        <label>
+            Lower Corner Bottom Circle Radius : Theta (mm, degrees)
+            <div class="ratio">
+                <input type="number" step="1" min="0" [(ngModel)]="d.params.lowerBottomCornerDubCircleRadius" (input)="changeTopAndBottom()" />
+                <span>:</span>
+                <input type="number" step="5" min="0" [(ngModel)]="d.params.lowerBottomCornerDubCircleTheta" (input)="changeTopAndBottom()" />
+            </div>
+        </label>
+
+        <br>
+
+        <label>
+            Lower Corner Cuttoff C1 Theta : C2 Theta (degrees)
+            <div class="ratio">
+                <input type="number" step="5" min="0" [(ngModel)]="d.params.lowerTopCornerDubCircleCutoffTheta" (input)="changeTopAndBottom()" />
+                <span>:</span>
+                <input type="number" step="5" min="0" [(ngModel)]="d.params.lowerBottomCornerDubCircleCutoffTheta" (input)="changeTopAndBottom()" />
+            </div>
+        </label>
+
+         <br>
+        <input type="checkbox" [(ngModel)]="showGuideLines" (change)="changeTopAndBottom()" /> Show Guide Circles
+
+
+    
+         <!-- <br><br>
+         <a (click)="downloadSegmentedPaths()" class="file-upload">Download Segmented Paths</a>
+
+         <a (click)="downloadUnifiedPath()" class="file-upload">Download Unified Path</a> -->
 
     </details>
     
