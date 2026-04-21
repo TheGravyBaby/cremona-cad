@@ -50,7 +50,12 @@ export class RecipeComponentBase implements AfterViewInit {
     const saved = sessionStorage.getItem('recipeData');
     if (saved) {
       try {
-        this.d = JSON.parse(saved);
+        let recipeData = JSON.parse(saved);
+        if (this.d.recipeName == recipeData.recipeName) {
+          this.d = recipeData;
+        } else {
+          console.warn('Saved recipe does not match current recipe. Ignoring saved data.');
+        }
       } catch (e) {
         console.error('Failed to load from sessionStorage', e);
       }
