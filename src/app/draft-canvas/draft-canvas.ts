@@ -24,6 +24,13 @@ import { ReferenceImageController } from './reference-image-controller';
 
 export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private initialized = false;
+  private canvas!: d3.Selection<SVGSVGElement, unknown, null, undefined>;
+  private gRoot!: d3.Selection<SVGGElement, unknown, null, undefined>;
+  private gUI!: d3.Selection<SVGGElement, unknown, null, undefined>;
+  private resizeObs?: ResizeObserver;
+  private draftFuncs: Array<(canvas: any, uiCan: any) => void> = [];
+  private camera = new Camera();
+  private refController: ReferenceImageController;
 
   @ViewChild('host', { static: true }) host!: ElementRef<HTMLDivElement>;
   @Output() referenceImageChange = new EventEmitter<ReferenceImage | null>();
@@ -34,8 +41,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   @Input() set referenceImageParams(value: ReferenceImage | null | undefined) {
     if (!value) return;
     this.referenceImage = value;
-    this.refController.setImage(this.referenceImage);
-    this.referenceImageChange.emit(this.referenceImage);
+    this.refController?.setImage(this.referenceImage);
     this.draw();
   }
   @Input() set setCameraBounds(bounds: { pt1: Pt, pt2: Pt } | null) {
@@ -44,15 +50,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     if (bounds && firstSet)
       this.fitCamera();
   }
-
-  private canvas!: d3.Selection<SVGSVGElement, unknown, null, undefined>;
-  private gRoot!: d3.Selection<SVGGElement, unknown, null, undefined>;
-  private gUI!: d3.Selection<SVGGElement, unknown, null, undefined>;
-  private resizeObs?: ResizeObserver;
-  private draftFuncs: Array<(canvas: any, uiCan: any) => void> = [];
-  private camera = new Camera();
-  private refController!: ReferenceImageController;
-
   // expose pxPerMm for the template/readouts while keeping camera as source of truth
   public get pxPerMm() {
     return this.camera.pxPerMm;
