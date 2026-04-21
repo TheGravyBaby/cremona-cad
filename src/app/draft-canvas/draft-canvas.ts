@@ -417,7 +417,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     const el = this.host.nativeElement;
     const pxW = Math.max(1, el.clientWidth);
     const pxH = Math.max(1, el.clientHeight);
-
+    this.refController.setImage(this.referenceImage);
     this.camera.fitToBounds(this.bounds, pxW, pxH);
   }
 

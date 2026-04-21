@@ -13,7 +13,7 @@ import { arcPathFrom3Points, calculateOffset, circleCircleIntersections, combine
 })
 
 export class KellyViolin extends RecipeComponentBase {
-  override openPanel = 'topAndBottom';
+  override openPanel = 'base';
 
   showGuideLines = true;
   showAllCircles = true;
@@ -229,7 +229,12 @@ export class KellyViolin extends RecipeComponentBase {
   }
 
   changeMainBouts() {
-    this.calculateAll();
+    try {
+      this.calculateAll();
+    }
+    catch {
+      
+    }
     this.draftChange.emit([this.renderBounds, this.renderMainBouts(true)]);
   }
 
