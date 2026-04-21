@@ -1,11 +1,21 @@
 import { Circle, Pt, Rectangle } from '../models/types';
 
+export interface KellyViolinData {
+	recipeName: string;
+	fileName: string;
+	version: string;
+	params: KellyParams;
+	shapes: KellyShapes;
+	intersects: KellyIntersects;
+	paths: KellyCalcEntry[];
+}
+
 export class KellyViolinRecipe implements KellyViolinData {
 	recipeName: string;
 	fileName: string;
 	version: string;
 	params: KellyParams;
-	shapes: Partial<KellyShapes>;
+	shapes: KellyShapes;
 	intersects: KellyIntersects;
 	paths: KellyCalcEntry[];
 
@@ -30,7 +40,7 @@ export class KellyViolinRecipe implements KellyViolinData {
 }
 
 function createKellyShapes(): KellyShapes {
-	return {
+	let shapes: KellyShapes = {
 		upperBout: null,
 		lowerBout: null,
 		centerBoutLeft: null,
@@ -83,11 +93,13 @@ function createKellyShapes(): KellyShapes {
 		upperRightCutoff2: null,
 		upperLeftCutoff1: null,
 		upperLeftCutoff2: null,
-	};
+	}
+
+    return shapes;
 }
 
 function createKellyIntersects(): KellyIntersects {
-	return {
+	let intersects: KellyIntersects = {
 		majorBouts: {
 			upperRight: new Pt(0, 0),
 			upperLeft: new Pt(0, 0),
@@ -133,6 +145,8 @@ function createKellyIntersects(): KellyIntersects {
 			upperLeftBlockP3: new Pt(0, 0),
 		}
 	};
+
+    return intersects;
 }
 
 export const KELLY_DEFAULT_PARAMS: KellyParams = {
@@ -375,16 +389,6 @@ export interface KellyIntersects {
 export interface KellyCalcEntry {
 	name: string;
 	paths: string[];
-}
-
-export interface KellyViolinData {
-	recipeName: string;
-	fileName: string;
-	version: string;
-	params: KellyParams;
-	shapes: Partial<KellyShapes>;
-	intersects: Partial<KellyIntersects>;
-	paths: KellyCalcEntry[];
 }
 
 export type KellyParamOverrides = Partial<KellyParams>;
