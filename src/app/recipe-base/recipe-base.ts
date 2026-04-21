@@ -1,4 +1,4 @@
-import { Component, output } from '@angular/core';
+import { AfterViewInit, Component, output } from '@angular/core';
 import { Output, EventEmitter, Input } from "@angular/core";
 import { Pt, RecipeInterface, ReferenceImage } from '../models/types';
 
@@ -9,7 +9,7 @@ import { Pt, RecipeInterface, ReferenceImage } from '../models/types';
   styleUrl: './recipe-base.css',
 })
 
-export class RecipeComponentBase {
+export class RecipeComponentBase implements AfterViewInit {
   @Output() draftChange = new EventEmitter<Array<(g: any, ui: any) => void>>();
   @Output() setBounds = new EventEmitter<{pt1: Pt, pt2: Pt}>();
   @Output() referenceImageChange = new EventEmitter<ReferenceImage | null>();
@@ -61,7 +61,12 @@ export class RecipeComponentBase {
         console.error('Failed to load from sessionStorage', e);
       }
     }
-    this.draftChange.emit([this.firstRender]);
+  }
+
+  ngAfterViewInit() {
+    queueMicrotask(() => {
+      this.draftChange.emit([this.firstRender]);
+    });
   }
 
   ngOnDestroy() {
