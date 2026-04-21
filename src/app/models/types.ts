@@ -21,6 +21,6 @@ export interface RecipeInterface {
     fileName: string;
     version: string;
     params: any;
-    calcs: any; 
+    paths: any; 
     referenceImage?: ReferenceImage;
 }

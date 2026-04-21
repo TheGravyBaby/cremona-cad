@@ -24,7 +24,6 @@ export class RecipeComponentBase {
     this.d.params = this.d.params || {};
     if (img) this.d.referenceImage = img;
     else delete this.d.referenceImage;
-    // sessionStorage.setItem('recipeData', JSON.stringify(this.d));
   }
 
   private _saveTick = 0;
@@ -35,13 +34,19 @@ export class RecipeComponentBase {
       this.saveToDisk();
     }
   }
+  
+  @Input() set newFile(v: boolean) {
+    if (v) {
+      this.d.params = { d: {} };
+    }
+  }
 
   d: RecipeInterface = {
     recipeName: "",
     fileName: "tst",
     version: "",
     params: undefined,
-    calcs: undefined
+    paths: undefined
   }
 
   openPanel: string = "base";
@@ -91,11 +96,11 @@ export class RecipeComponentBase {
   }
 
   addCalcs(calcs: { name: string, d: any }[]) {
-    this.d.calcs = this.d.calcs || [];
+    this.d.paths = this.d.paths || [];
     for (const entry of calcs) {
-      const idx = this.d.calcs.findIndex((c: any) => c.name === entry.name);
-      if (idx === -1) this.d.calcs.push(entry);
-      else this.d.calcs[idx] = entry;
+      const idx = this.d.paths.findIndex((c: any) => c.name === entry.name);
+      if (idx === -1) this.d.paths.push(entry);
+      else this.d.paths[idx] = entry;
     }
   }
 

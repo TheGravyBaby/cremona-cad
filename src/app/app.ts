@@ -18,7 +18,8 @@ import { KellyViolin } from './kelly-violin/kelly-violin';
       [selectedRecipe]="selectedRecipe"
       (recipeChange)="selectedRecipe = $event"
       (loadFile)="loadFile($event)"
-        (saveFile)="requestSave()">
+      (saveFile)="requestSave()"
+      (newFile)="newFile()">
     </app-top-bar>
 
       <div class="main">
@@ -81,6 +82,10 @@ export class App {
 
   onReferenceImageChange(img: ReferenceImage | null) {
     this.referenceImage = img;
+  }
+
+  newFile() {
+
   }
 
   loadFile(data: RecipeInterface) {

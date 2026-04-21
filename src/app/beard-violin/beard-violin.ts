@@ -68,7 +68,7 @@ export class BeardViolinComponent extends RecipeComponentBase {
       hiInnerCornerRadToW: { n: 1, d: 12 },
       lowInnerCornerRadToW: { n: 1, d: 12 }
     },
-    calcs: []
+    paths: []
   }
 
   lowerBoutError = ""
@@ -362,10 +362,10 @@ export class BeardViolinComponent extends RecipeComponentBase {
 
   renderCornerPositions = (guides: boolean = false, cornerCrosshairs: boolean = false) => (g: any, ui: any): void => {
     this.cornerPlacementError = ""
-    let upperRightBoutEndPt = this.d.calcs.find((c: { name: string; }) => c.name == "upperRightBoutEndPt").d as Pt
-    let upperLeftBoutEndPt = this.d.calcs.find((c: { name: string; }) => c.name == "upperLeftBoutEndPt").d as Pt
-    let lowerRightBoutEndPt = this.d.calcs.find((c: { name: string; }) => c.name == "lowerRightBoutEndPt").d as Pt
-    let lowerLeftBoutEndPt = this.d.calcs.find((c: { name: string; }) => c.name == "lowerLeftBoutEndPt").d as Pt
+    let upperRightBoutEndPt = this.d.paths.find((c: { name: string; }) => c.name == "upperRightBoutEndPt").d as Pt
+    let upperLeftBoutEndPt = this.d.paths.find((c: { name: string; }) => c.name == "upperLeftBoutEndPt").d as Pt
+    let lowerRightBoutEndPt = this.d.paths.find((c: { name: string; }) => c.name == "lowerRightBoutEndPt").d as Pt
+    let lowerLeftBoutEndPt = this.d.paths.find((c: { name: string; }) => c.name == "lowerLeftBoutEndPt").d as Pt
 
     if (!upperRightBoutEndPt || !upperLeftBoutEndPt || !lowerRightBoutEndPt || !lowerLeftBoutEndPt) {
       this.cornerPlacementError = "Upper and Lower bouts must be defined..."
@@ -437,12 +437,12 @@ export class BeardViolinComponent extends RecipeComponentBase {
   }
 
   renderOuterCorners = (guides: boolean = false) => (g: any, ui: any): void => {
-    let lowerRightCorner = this.d.calcs.find(c => c.name == "lowerRightCorner")!.d as Pt
-    let upperRightCorner = this.d.calcs.find(c => c.name == "upperRightCorner")!.d as Pt
-    let lowerRightVesica = this.d.calcs.find(c => c.name == "lowerRightVesica")!.d as Circle
-    let upperRightVesica = this.d.calcs.find(c => c.name == "upperRightVesica")!.d as Circle
-    let lowerRightBoutEndPt = this.d.calcs.find(c => c.name == "lowerRightBoutEndPt")!.d as Pt
-    let upperRightBoutEndPt = this.d.calcs.find(c => c.name == "upperRightBoutEndPt")!.d as Pt
+    let lowerRightCorner = this.d.paths.find(c => c.name == "lowerRightCorner")!.d as Pt
+    let upperRightCorner = this.d.paths.find(c => c.name == "upperRightCorner")!.d as Pt
+    let lowerRightVesica = this.d.paths.find(c => c.name == "lowerRightVesica")!.d as Circle
+    let upperRightVesica = this.d.paths.find(c => c.name == "upperRightVesica")!.d as Circle
+    let lowerRightBoutEndPt = this.d.paths.find(c => c.name == "lowerRightBoutEndPt")!.d as Pt
+    let upperRightBoutEndPt = this.d.paths.find(c => c.name == "upperRightBoutEndPt")!.d as Pt
 
     const h = this.d.params.h;
     const w = h * this.d.params.htoW.d / this.d.params.htoW.n;
@@ -490,12 +490,12 @@ export class BeardViolinComponent extends RecipeComponentBase {
     renderPath(upperRightBoutArc, "red")(g, ui);
 
     // ---------- LEFT (mirrored) ----------
-    let lowerLeftCorner = this.d.calcs.find(c => c.name == "lowerLeftCorner")!.d as Pt
-    let upperLeftCorner = this.d.calcs.find(c => c.name == "upperLeftCorner")!.d as Pt
-    let lowerLeftVesica = this.d.calcs.find(c => c.name == "lowerLeftVesica")!.d as Circle
-    let upperLeftVesica = this.d.calcs.find(c => c.name == "upperLeftVesica")!.d as Circle
-    let lowerLeftBoutEndPt = this.d.calcs.find(c => c.name == "lowerLeftBoutEndPt")!.d as Pt
-    let upperLeftBoutEndPt = this.d.calcs.find(c => c.name == "upperLeftBoutEndPt")!.d as Pt
+    let lowerLeftCorner = this.d.paths.find(c => c.name == "lowerLeftCorner")!.d as Pt
+    let upperLeftCorner = this.d.paths.find(c => c.name == "upperLeftCorner")!.d as Pt
+    let lowerLeftVesica = this.d.paths.find(c => c.name == "lowerLeftVesica")!.d as Circle
+    let upperLeftVesica = this.d.paths.find(c => c.name == "upperLeftVesica")!.d as Circle
+    let lowerLeftBoutEndPt = this.d.paths.find(c => c.name == "lowerLeftBoutEndPt")!.d as Pt
+    let upperLeftBoutEndPt = this.d.paths.find(c => c.name == "upperLeftBoutEndPt")!.d as Pt
 
     let lowerLeftCornerCircle = interceptCirclesAndPoint(lowerLeftVesica, lowerLeftCorner, lowerCornerRadius)
       .reduce((a: Circle, b: Circle) => a.y < b.y ? a : b) // lower circle
@@ -528,8 +528,8 @@ export class BeardViolinComponent extends RecipeComponentBase {
     const waistHeight = (((h - upperW) - w) / 2) + w;
     const waistWidth = w * this.d.params.waistWidthToW.n / this.d.params.waistWidthToW.d;
 
-    const lowerRightCorner = this.d.calcs.find(c => c.name == "lowerRightCorner")!.d as Pt;
-    const upperRightCorner = this.d.calcs.find(c => c.name == "upperRightCorner")!.d as Pt;
+    const lowerRightCorner = this.d.paths.find(c => c.name == "lowerRightCorner")!.d as Pt;
+    const upperRightCorner = this.d.paths.find(c => c.name == "upperRightCorner")!.d as Pt;
 
     const waistDeepestPoint = intersectLines(
       { x: -1000, y: waistHeight }, { x: 1000, y: waistHeight },
@@ -595,17 +595,17 @@ export class BeardViolinComponent extends RecipeComponentBase {
   }
 
   finalRender = () => (g: any, ui: any): void => {
-    let lowerRightVesica = this.d.calcs.find((c: { name: string; }) => c.name == "lowerRightVesica").d as Circle
-    let lowwerJoinArc = this.d.calcs.find((c: { name: string; }) => c.name == "lowerJoinArc").d as Circle
-    let upperRightVesica = this.d.calcs.find((c: { name: string; }) => c.name == "upperRightVesica").d as Circle
-    let upperJoinArc = this.d.calcs.find((c: { name: string; }) => c.name == "upperJoinArc").d as Circle
+    let lowerRightVesica = this.d.paths.find((c: { name: string; }) => c.name == "lowerRightVesica").d as Circle
+    let lowwerJoinArc = this.d.paths.find((c: { name: string; }) => c.name == "lowerJoinArc").d as Circle
+    let upperRightVesica = this.d.paths.find((c: { name: string; }) => c.name == "upperRightVesica").d as Circle
+    let upperJoinArc = this.d.paths.find((c: { name: string; }) => c.name == "upperJoinArc").d as Circle
 
-    let upperRightCornerCircle = this.d.calcs.find((c: { name: string; }) => c.name == "upperOuterRightCornerCircle").d as Circle
-    let lowerRightCornerCircle = this.d.calcs.find((c: { name: string; }) => c.name == "lowerOuterRightCornerCircle").d as Circle
+    let upperRightCornerCircle = this.d.paths.find((c: { name: string; }) => c.name == "upperOuterRightCornerCircle").d as Circle
+    let lowerRightCornerCircle = this.d.paths.find((c: { name: string; }) => c.name == "lowerOuterRightCornerCircle").d as Circle
 
-    let waistCircle = this.d.calcs.find((c: { name: string; }) => c.name == "waistCircle").d as Circle
-    let upperRightInnerCornerCircle = this.d.calcs.find((c: { name: string; }) => c.name == "upperRightInnerCornerCircle").d as Circle
-    let lowerRightInnerCornerCircle = this.d.calcs.find((c: { name: string; }) => c.name == "lowerRightInnerCornerCircle").d as Circle
+    let waistCircle = this.d.paths.find((c: { name: string; }) => c.name == "waistCircle").d as Circle
+    let upperRightInnerCornerCircle = this.d.paths.find((c: { name: string; }) => c.name == "upperRightInnerCornerCircle").d as Circle
+    let lowerRightInnerCornerCircle = this.d.paths.find((c: { name: string; }) => c.name == "lowerRightInnerCornerCircle").d as Circle
 
     if (this.showAllArcs) {
       renderCircle(lowerRightVesica, "blue")(g, ui);

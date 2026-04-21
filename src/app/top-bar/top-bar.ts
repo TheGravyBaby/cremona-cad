@@ -10,9 +10,14 @@ import { RecipeInterface } from '../models/types';
 export class TopBarComponent {
   @Input() selectedRecipe: string = 'Beard';
   @Output() recipeChange = new EventEmitter<string>();
+  @Output() newFile = new EventEmitter<void>();
   @Output() loadFile = new EventEmitter<RecipeInterface>();
   @Output() saveFile = new EventEmitter<void>();
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
+
+  onNewClick() {
+    this.newFile.emit();
+  }
 
   onSaveClick() {
     this.saveFile.emit();

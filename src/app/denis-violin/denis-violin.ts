@@ -19,7 +19,7 @@ export class DenisViolin extends RecipeComponentBase{
     params: {
       heightMm: 356,
     },
-    calcs: {}
+    paths: {}
   }
 
   changeBase(): void {
