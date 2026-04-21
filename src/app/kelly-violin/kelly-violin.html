@@ -14,9 +14,9 @@
         <label>
             Height : Width (mm)
             <div class="ratio">
-                <input type="number" step="1" min="1" [(ngModel)]="d.params.h" (input)="changeBaseMeasurements()" />
+                <input type="number" step="1" min="1" [(ngModel)]="d.params.height" (input)="changeBaseMeasurements()" />
                 <span>:</span>
-                <input type="number" step="1" min="1" [(ngModel)]="d.params.w" (input)="changeBaseMeasurements()" />
+                <input type="number" step="1" min="1" [(ngModel)]="d.params.width" (input)="changeBaseMeasurements()" />
             </div>
         </label>
         <br>
@@ -36,9 +36,9 @@
         <label>
             Upper Bout Radius : Height (mm)
             <div class="ratio">
-                <input type="number" step="1" min="1" [(ngModel)]="d.params.upperBoutRadius" (input)="changeMainBouts()" />
+                <input type="number" step="1" min="1" [(ngModel)]="d.params.boutUpR" (input)="changeMainBouts()" />
                 <span>:</span>
-                <input type="number" step="1" min="0" [(ngModel)]="d.params.upperBoutCenter" (input)="changeMainBouts()" />
+                <input type="number" step="1" min="0" [(ngModel)]="d.params.boutUpY" (input)="changeMainBouts()" />
 
             </div>
         </label>
@@ -48,7 +48,7 @@
          <label> 
             Center Bout Radius (mm)
             <div class="ratio">
-                <input type="number" step="1" min="1" [(ngModel)]="d.params.centerBoutRadius" (input)="changeMainBouts()" />
+                <input type="number" step="1" min="1" [(ngModel)]="d.params.boutCenR" (input)="changeMainBouts()" />
             </div>
         </label>
 
@@ -57,9 +57,9 @@
         <label> 
             Lower Bout Radius : Height (mm)
             <div class="ratio">
-                <input type="number" step="1" min="1" [(ngModel)]="d.params.lowerBoutRadius" (input)="changeMainBouts()" />
+                <input type="number" step="1" min="1" [(ngModel)]="d.params.boutLowR" (input)="changeMainBouts()" />
                 <span>:</span>
-                <input type="number" step="1" min="0" [(ngModel)]="d.params.lowerBoutCenter" (input)="changeMainBouts()" />
+                <input type="number" step="1" min="0" [(ngModel)]="d.params.boutLowY" (input)="changeMainBouts()" />
 
             </div>
         </label>
@@ -80,7 +80,7 @@
         <label>
             Upper Vesaci Radius (mm)
             <div class="ratio">
-                <input type="number" step="1" min="1" [(ngModel)]="d.params.upperVesaciRadius" (input)="changeMinorBouts()" />
+                <input type="number" step="1" min="1" [(ngModel)]="d.params.vesaciUpR" (input)="changeMinorBouts()" />
             </div>
         </label>
 
@@ -89,7 +89,7 @@
         <label>
             Lower Vesaci Radius (mm)
             <div class="ratio">
-                <input type="number" step="1" min="1" [(ngModel)]="d.params.lowerVesaciRadius" (input)="changeMinorBouts()" />
+                <input type="number" step="1" min="1" [(ngModel)]="d.params.vesaciLowR" (input)="changeMinorBouts()" />
             </div>
         </label>
 
@@ -105,7 +105,7 @@
         <label>
             Center Bout Target Radius (mm)
             <div class="ratio">
-                <input type="number" step="1" min="1" [(ngModel)]="d.params.cornerTargetRadius" (input)="changeCornerPlacement()" />
+                <input type="number" step="1" min="1" [(ngModel)]="d.params.cornerR" (input)="changeCornerPlacement()" />
             </div>
         </label>
 
@@ -114,9 +114,9 @@
         <label>
             Upper Corner Guide Y-Intercept : X-Offset (mm)
             <div class="ratio">
-                <input type="number" step="1" [(ngModel)]="d.params.upperCornerGuideYIntercept" (input)="changeCornerPlacement()" />
+                <input type="number" step="1" [(ngModel)]="d.params.cornerGuideUpY" (input)="changeCornerPlacement()" />
                 <span>:</span>
-                <input type="number" step="1" [(ngModel)]="d.params.upperCornerGuideXOffset" (input)="changeCornerPlacement()" />
+                <input type="number" step="1" [(ngModel)]="d.params.cornerGuideUpXOff" (input)="changeCornerPlacement()" />
             </div>
         </label>
 
@@ -125,9 +125,9 @@
         <label>
             Lower Corner Guide Y-Intercept : X-Offset (mm)
             <div class="ratio">
-                <input type="number" step="1" [(ngModel)]="d.params.lowerCornerGuideYIntercept" (input)="changeCornerPlacement()" />
+                <input type="number" step="1" [(ngModel)]="d.params.cornerGuideLowY" (input)="changeCornerPlacement()" />
                 <span>:</span>
-                <input type="number" step="1" [(ngModel)]="d.params.lowerCornerGuideXOffset" (input)="changeCornerPlacement()" />
+                <input type="number" step="1" [(ngModel)]="d.params.cornerGuideLowXOff" (input)="changeCornerPlacement()" />
             </div>
         </label>
 
@@ -146,9 +146,9 @@
         <label>
             Upper Corner Top Radius : Bottom Radius (mm)
             <div class="ratio">
-                <input type="number" step="1" min="1" [(ngModel)]="d.params.upperTopCornerCircleRadius" (input)="changeCornerCircles()" />
+                <input type="number" step="1" min="1" [(ngModel)]="d.params.cornerCircUpBoutR" (input)="changeCornerCircles()" />
                 <span>:</span>
-                <input type="number" step="1" min="1" [(ngModel)]="d.params.upperBottomCornerCircleRadius" (input)="changeCornerCircles()" />
+                <input type="number" step="1" min="1" [(ngModel)]="d.params.cornerCircUpCBoutR" (input)="changeCornerCircles()" />
             </div>
         </label>
 
@@ -157,9 +157,9 @@
         <label>
             Lower Corner Top Radius : Bottom Radius (mm)
             <div class="ratio">
-                <input type="number" step="1" min="1" [(ngModel)]="d.params.lowerTopCornerCircleRadius" (input)="changeCornerCircles()" />
+                <input type="number" step="1" min="1" [(ngModel)]="d.params.cornerCircLowCBoutR" (input)="changeCornerCircles()" />
                 <span>:</span>
-                <input type="number" step="1" min="1" [(ngModel)]="d.params.lowerBottomCornerCircleRadius" (input)="changeCornerCircles()" />
+                <input type="number" step="1" min="1" [(ngModel)]="d.params.cornerCircLowBoutR" (input)="changeCornerCircles()" />
             </div>
         </label>
 
@@ -188,26 +188,26 @@
 
         <label>Upper Corner Top Circle Radius : Theta (mm, degrees)</label>
         <div class="ratio">
-            <input type="number" step="1" min="0" [(ngModel)]="d.params.upperTopCornerDubCircleRadius" (input)="changeTopAndBottom()" />
+            <input type="number" step="1" min="0" [(ngModel)]="d.params.cornerCircDubUpBoutR" (input)="changeTopAndBottom()" />
             <span>:</span>
-            <input type="number" step="5" min="0" [(ngModel)]="d.params.upperTopCornerDubCircleTheta" (input)="changeTopAndBottom()" />
+            <input type="number" step="5" min="0" [(ngModel)]="d.params.cornerCircDubUpBoutTheta" (input)="changeTopAndBottom()" />
         </div>
         <br>
         <label>
             Upper Corner Bottom Circle Radius : Theta (mm, degrees)
             <div class="ratio">
-                <input type="number" step="1" min="0" [(ngModel)]="d.params.upperBottomCornerDubCircleRadius" (input)="changeTopAndBottom()" />
+                <input type="number" step="1" min="0" [(ngModel)]="d.params.cornerCircDubUpCBoutR" (input)="changeTopAndBottom()" />
                 <span>:</span>
-                <input type="number" step="5" min="0" [(ngModel)]="d.params.upperBottomCornerDubCircleTheta" (input)="changeTopAndBottom()" />
+                <input type="number" step="5" min="0" [(ngModel)]="d.params.cornerCircDubUpCBoutTheta" (input)="changeTopAndBottom()" />
             </div>
         </label>
         <br>
         <label>
             Upper Corner Cuttoff C1 Theta : C2 Theta (degrees)
             <div class="ratio">
-                <input type="number" step="5" min="0" [(ngModel)]="d.params.upperTopCornerDubCircleCutoffTheta" (input)="changeTopAndBottom()" />
+                <input type="number" step="5" min="0" [(ngModel)]="d.params.cornerCircDubUpBoutCutoffTheta" (input)="changeTopAndBottom()" />
                 <span>:</span>
-                <input type="number" step="5" min="0" [(ngModel)]="d.params.upperBottomCornerDubCircleCutoffTheta" (input)="changeTopAndBottom()" />
+                <input type="number" step="5" min="0" [(ngModel)]="d.params.cornerCircleDubUpCBoutCutoffTheta" (input)="changeTopAndBottom()" />
             </div>
         </label>
 
@@ -216,9 +216,9 @@
         <label>
             Lower Corner Top Circle Radius : Theta (mm, degrees)
             <div class="ratio">
-                <input type="number" step="1" min="0" [(ngModel)]="d.params.lowerTopCornerDubCircleRadius" (input)="changeTopAndBottom()" />
+                <input type="number" step="1" min="0" [(ngModel)]="d.params.cornerCircDubLowCBoutR" (input)="changeTopAndBottom()" />
                 <span>:</span>
-                <input type="number" step="5" min="0" [(ngModel)]="d.params.lowerTopCornerDubCircleTheta" (input)="changeTopAndBottom()" />
+                <input type="number" step="5" min="0" [(ngModel)]="d.params.cornerCircDubLowCBoutTheta" (input)="changeTopAndBottom()" />
             </div>
         </label>
 
@@ -227,9 +227,9 @@
         <label>
             Lower Corner Bottom Circle Radius : Theta (mm, degrees)
             <div class="ratio">
-                <input type="number" step="1" min="0" [(ngModel)]="d.params.lowerBottomCornerDubCircleRadius" (input)="changeTopAndBottom()" />
+                <input type="number" step="1" min="0" [(ngModel)]="d.params.cornerCircDubLowBoutR" (input)="changeTopAndBottom()" />
                 <span>:</span>
-                <input type="number" step="5" min="0" [(ngModel)]="d.params.lowerBottomCornerDubCircleTheta" (input)="changeTopAndBottom()" />
+                <input type="number" step="5" min="0" [(ngModel)]="d.params.cornerCircDubLowBoutTheta" (input)="changeTopAndBottom()" />
             </div>
         </label>
 
@@ -238,9 +238,9 @@
         <label>
             Lower Corner Cuttoff C1 Theta : C2 Theta (degrees)
             <div class="ratio">
-                <input type="number" step="5" min="0" [(ngModel)]="d.params.lowerTopCornerDubCircleCutoffTheta" (input)="changeTopAndBottom()" />
+                <input type="number" step="5" min="0" [(ngModel)]="d.params.cornerCircleDubLowCBoutTheta" (input)="changeTopAndBottom()" />
                 <span>:</span>
-                <input type="number" step="5" min="0" [(ngModel)]="d.params.lowerBottomCornerDubCircleCutoffTheta" (input)="changeTopAndBottom()" />
+                <input type="number" step="5" min="0" [(ngModel)]="d.params.cornerCircleDubLowBoutTheta" (input)="changeTopAndBottom()" />
             </div>
         </label>
 
@@ -254,32 +254,32 @@
 
          Upper Block H : W (mm)
         <div class="ratio">
-            <input type="number" step="1" min="0" [(ngModel)]="d.params.upperBlockHeight" (input)="changeMouldPattern()" />
+            <input type="number" step="1" min="0" [(ngModel)]="d.params.blockUpH" (input)="changeMouldPattern()" />
             <span>:</span>
-            <input type="number" step="1" min="0" [(ngModel)]="d.params.upperBlockWidth" (input)="changeMouldPattern()" />
+            <input type="number" step="1" min="0" [(ngModel)]="d.params.blockUpW" (input)="changeMouldPattern()" />
         </div>
         
         <br><br>
 
         Corner Block H : W (mm)
         <div class="ratio">
-            <input type="number" step="1" min="0" [(ngModel)]="d.params.cornerBlockHeight" (input)="changeMouldPattern()" />
+            <input type="number" step="1" min="0" [(ngModel)]="d.params.blockCornerH" (input)="changeMouldPattern()" />
             <span>:</span>
-            <input type="number" step="1" min="0" [(ngModel)]="d.params.cornerBlockWidth" (input)="changeMouldPattern()" />
+            <input type="number" step="1" min="0" [(ngModel)]="d.params.blockCornerW" (input)="changeMouldPattern()" />
         </div>          
         <br>
         Corner Block Padding (mm)
         <div class="ratio">                                 
-            <input type="number" step="1" min="0" [(ngModel)]="d.params.cornerBlockPadding" (input)="changeMouldPattern()" />
+            <input type="number" step="1" min="0" [(ngModel)]="d.params.blockCornerPad" (input)="changeMouldPattern()" />
         </div>
 
         <br><br>
 
         Lower Block H : W (mm)
         <div class="ratio">
-            <input type="number" step="1" min="0" [(ngModel)]="d.params.lowerBlockHeight" (input)="changeMouldPattern()" />
+            <input type="number" step="1" min="0" [(ngModel)]="d.params.blockLowH" (input)="changeMouldPattern()" />
             <span>:</span>
-            <input type="number" step="1" min="0" [(ngModel)]="d.params.lowerBlockWidth" (input)="changeMouldPattern()" />
+            <input type="number" step="1" min="0" [(ngModel)]="d.params.blowLowW" (input)="changeMouldPattern()" />
         </div> 
 
 
