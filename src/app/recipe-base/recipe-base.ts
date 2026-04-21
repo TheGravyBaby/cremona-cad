@@ -35,12 +35,6 @@ export class RecipeComponentBase implements AfterViewInit {
     }
   }
   
-  @Input() set newFile(v: boolean) {
-    if (v) {
-      this.d.params = { d: {} };
-    }
-  }
-
   d: RecipeInterface = {
     recipeName: "",
     fileName: "tst",

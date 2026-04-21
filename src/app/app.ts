@@ -37,6 +37,7 @@ import { KellyViolin } from './kelly-violin/kelly-violin';
           (setBounds)="bounds=$event"
           [loadFile]="loadedFileData"
           [saveTick]="saveTick"
+          [newFile]="newFileFlag"
           [referenceImageParams]="referenceImage"
           (referenceImageChange)="onReferenceImageChange($event)">
         </app-kelly-violin>
@@ -81,11 +82,15 @@ export class App {
   referenceImage: ReferenceImage | null = this.sessionData ? JSON.parse(this.sessionData).referenceImage ?? null : null;
 
   onReferenceImageChange(img: ReferenceImage | null) {
-    this.referenceImage = img;
+    queueMicrotask(() => {
+      this.referenceImage = img;
+    });
   }
 
-  newFile() {
+  newFileFlag = false;
 
+  newFile() {
+    this.newFileFlag = !this.newFileFlag;
   }
 
   loadFile(data: RecipeInterface) {

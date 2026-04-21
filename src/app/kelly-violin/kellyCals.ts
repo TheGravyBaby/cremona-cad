@@ -44,22 +44,22 @@ function requireCorners(data: KellyViolinData): {
 }
 
 export function calculatePrimaryOutline(data: KellyViolinData): void {
-	if (data.params.upperBoutCenter && data.params.lowerBoutCenter && data.params.upperBoutRadius && data.params.lowerBoutRadius && data.params.centerBoutRadius) {
-		data.shapes.upperBout = { x: 0, y: data.params.upperBoutCenter, r: data.params.upperBoutRadius };
-		data.shapes.lowerBout = { x: 0, y: data.params.lowerBoutCenter, r: data.params.lowerBoutRadius };
+	if (data.params.boutUpY && data.params.boutLowY && data.params.boutUpR && data.params.boutLowR && data.params.boutCenR) {
+		data.shapes.upperBout = { x: 0, y: data.params.boutUpY, r: data.params.boutUpR };
+		data.shapes.lowerBout = { x: 0, y: data.params.boutLowY, r: data.params.boutLowR };
 
-		const upperLowerDelta = data.params.upperBoutCenter - data.params.lowerBoutCenter;
-		const upperCenterDistance = data.params.centerBoutRadius + data.params.upperBoutRadius;
-		const lowerCenterDistance = data.params.centerBoutRadius + data.params.lowerBoutRadius;
+		const upperLowerDelta = data.params.boutUpY - data.params.boutLowY;
+		const upperCenterDistance = data.params.boutCenR + data.params.boutUpR;
+		const lowerCenterDistance = data.params.boutCenR + data.params.boutLowR;
 
 		const cosTheta = (upperLowerDelta * upperLowerDelta + upperCenterDistance * upperCenterDistance - lowerCenterDistance * lowerCenterDistance) / (2 * upperLowerDelta * upperCenterDistance);
 		const theta = Math.acos(cosTheta);
 
 		const centerX = upperCenterDistance * Math.sin(theta);
-		const centerY = data.params.upperBoutCenter - upperCenterDistance * Math.cos(theta);
+		const centerY = data.params.boutUpY - upperCenterDistance * Math.cos(theta);
 
-		data.shapes.centerBoutLeft = { x: -centerX, y: centerY, r: data.params.centerBoutRadius };
-		data.shapes.centerBoutRight = { x: centerX, y: centerY, r: data.params.centerBoutRadius };
+		data.shapes.centerBoutLeft = { x: -centerX, y: centerY, r: data.params.boutCenR };
+		data.shapes.centerBoutRight = { x: centerX, y: centerY, r: data.params.boutCenR };
 
 		const upperRight = circleCircleIntersections(data.shapes.upperBout, data.shapes.centerBoutRight)[0];
 		const upperLeft = circleCircleIntersections(data.shapes.upperBout, data.shapes.centerBoutLeft)[0];
@@ -69,12 +69,12 @@ export function calculatePrimaryOutline(data: KellyViolinData): void {
 		data.intersects.majorBouts = { upperRight, upperLeft, lowerRight, lowerLeft };
 	}
 
-	if (data.params.lowerBoutRadius && data.params.lowerVesaciRadius && data.params.upperBoutRadius && data.params.upperVesaciRadius) {
-		const lowerRightVesica = { x: data.params.lowerBoutRadius - data.params.lowerVesaciRadius, y: data.params.lowerBoutCenter, r: data.params.lowerVesaciRadius };
-		const lowerLeftVesica = { x: -data.params.lowerBoutRadius + data.params.lowerVesaciRadius, y: data.params.lowerBoutCenter, r: data.params.lowerVesaciRadius };
-		const upperRightVesica = { x: data.params.upperBoutRadius - data.params.upperVesaciRadius, y: data.params.upperBoutCenter, r: data.params.upperVesaciRadius };
-		const upperLeftVesica = { x: -data.params.upperBoutRadius + data.params.upperVesaciRadius, y: data.params.upperBoutCenter, r: data.params.upperVesaciRadius };
-		const upperJoiningCircle = findJoiningCircleFromCircleAndPoint(upperRightVesica, { x: 0, y: data.params.h - data.params.inset });
+	if (data.params.boutLowR && data.params.vesaciLowR && data.params.boutUpR && data.params.vesaciUpR) {
+		const lowerRightVesica = { x: data.params.boutLowR - data.params.vesaciLowR, y: data.params.boutLowY, r: data.params.vesaciLowR };
+		const lowerLeftVesica = { x: -data.params.boutLowR + data.params.vesaciLowR, y: data.params.boutLowY, r: data.params.vesaciLowR };
+		const upperRightVesica = { x: data.params.boutUpR - data.params.vesaciUpR, y: data.params.boutUpY, r: data.params.vesaciUpR };
+		const upperLeftVesica = { x: -data.params.boutUpR + data.params.vesaciUpR, y: data.params.boutUpY, r: data.params.vesaciUpR };
+		const upperJoiningCircle = findJoiningCircleFromCircleAndPoint(upperRightVesica, { x: 0, y: data.params.height - data.params.inset });
 		const lowerJoiningCircle = findJoiningCircleFromCircleAndPoint(lowerRightVesica, { x: 0, y: data.params.inset });
 
 		data.shapes.lowerRightVesaci = lowerRightVesica;
@@ -96,31 +96,31 @@ export function calculatePrimaryOutline(data: KellyViolinData): void {
 		};
 	}
 
-	if (data.params.cornerTargetRadius && data.params.upperCornerGuideYIntercept) {
-		const rightTargetCircle: Circle = { x: data.shapes.centerBoutRight.x, y: data.shapes.centerBoutRight.y, r: data.params.cornerTargetRadius };
-		const leftTargetCircle: Circle = { x: data.shapes.centerBoutLeft.x, y: data.shapes.centerBoutLeft.y, r: data.params.cornerTargetRadius };
+	if (data.params.cornerR && data.params.cornerGuideUpY) {
+		const rightTargetCircle: Circle = { x: data.shapes.centerBoutRight.x, y: data.shapes.centerBoutRight.y, r: data.params.cornerR };
+		const leftTargetCircle: Circle = { x: data.shapes.centerBoutLeft.x, y: data.shapes.centerBoutLeft.y, r: data.params.cornerR };
 
-		const lowerRightCornerTarget: Circle = { x: rightTargetCircle.x + data.params.lowerCornerGuideXOffset, y: rightTargetCircle.y, r: rightTargetCircle.r };
-		const lowerLeftCornerTarget: Circle = { x: leftTargetCircle.x - data.params.lowerCornerGuideXOffset, y: leftTargetCircle.y, r: leftTargetCircle.r };
-		const upperRightCornerTarget: Circle = { x: rightTargetCircle.x + data.params.upperCornerGuideXOffset, y: rightTargetCircle.y, r: rightTargetCircle.r };
-		const upperLeftCornerTarget: Circle = { x: leftTargetCircle.x - data.params.upperCornerGuideXOffset, y: leftTargetCircle.y, r: leftTargetCircle.r };
+		const lowerRightCornerTarget: Circle = { x: rightTargetCircle.x + data.params.cornerGuideLowXOff, y: rightTargetCircle.y, r: rightTargetCircle.r };
+		const lowerLeftCornerTarget: Circle = { x: leftTargetCircle.x - data.params.cornerGuideLowXOff, y: leftTargetCircle.y, r: leftTargetCircle.r };
+		const upperRightCornerTarget: Circle = { x: rightTargetCircle.x + data.params.cornerGuideUpXOff, y: rightTargetCircle.y, r: rightTargetCircle.r };
+		const upperLeftCornerTarget: Circle = { x: leftTargetCircle.x - data.params.cornerGuideUpXOff, y: leftTargetCircle.y, r: leftTargetCircle.r };
 
-		data.intersects.corners.lowerRight = lineCircleIntersection({ x: 0, y: data.params.lowerCornerGuideYIntercept }, lowerRightCornerTarget, rightTargetCircle)[1];
-		data.intersects.corners.lowerLeft = lineCircleIntersection({ x: 0, y: data.params.lowerCornerGuideYIntercept }, lowerLeftCornerTarget, leftTargetCircle)[1];
-		data.intersects.corners.upperRight = lineCircleIntersection({ x: 0, y: data.params.upperCornerGuideYIntercept }, upperRightCornerTarget, rightTargetCircle)[1];
-		data.intersects.corners.upperLeft = lineCircleIntersection({ x: 0, y: data.params.upperCornerGuideYIntercept }, upperLeftCornerTarget, leftTargetCircle)[1];
+		data.intersects.corners.lowerRight = lineCircleIntersection({ x: 0, y: data.params.cornerGuideLowY }, lowerRightCornerTarget, rightTargetCircle)[1];
+		data.intersects.corners.lowerLeft = lineCircleIntersection({ x: 0, y: data.params.cornerGuideLowY }, lowerLeftCornerTarget, leftTargetCircle)[1];
+		data.intersects.corners.upperRight = lineCircleIntersection({ x: 0, y: data.params.cornerGuideUpY }, upperRightCornerTarget, rightTargetCircle)[1];
+		data.intersects.corners.upperLeft = lineCircleIntersection({ x: 0, y: data.params.cornerGuideUpY }, upperLeftCornerTarget, leftTargetCircle)[1];
 	}
 
 	const corners = requireCorners(data);
-	if (corners && data.params.upperTopCornerCircleRadius && data.params.upperBottomCornerCircleRadius && data.params.lowerTopCornerCircleRadius && data.params.lowerBottomCornerCircleRadius) {
-		const lowerTopRightCornerCircle = interceptCirclesAndPoint(data.shapes.centerBoutRight, corners.lowerRight, data.params.lowerTopCornerCircleRadius).sort((a, b) => b.y - a.y)[0];
-		const lowerBottomRightCornerCircle = interceptCirclesAndPoint(data.shapes.lowerBout, corners.lowerRight, data.params.lowerBottomCornerCircleRadius).sort((a, b) => b.y - a.y)[1];
-		const lowerTopLeftCornerCircle = interceptCirclesAndPoint(data.shapes.centerBoutLeft, corners.lowerLeft, data.params.lowerTopCornerCircleRadius).sort((a, b) => b.y - a.y)[0];
-		const lowerBottomLeftCornerCircle = interceptCirclesAndPoint(data.shapes.lowerBout, corners.lowerLeft, data.params.lowerBottomCornerCircleRadius).sort((a, b) => b.y - a.y)[1];
-		const upperTopRightCornerCircle = interceptCirclesAndPoint(data.shapes.upperBout, corners.upperRight, data.params.upperTopCornerCircleRadius).sort((a, b) => b.y - a.y)[0];
-		const upperBottomRightCornerCircle = interceptCirclesAndPoint(data.shapes.centerBoutRight, corners.upperRight, data.params.upperBottomCornerCircleRadius).sort((a, b) => b.y - a.y)[1];
-		const upperTopLeftCornerCircle = interceptCirclesAndPoint(data.shapes.upperBout, corners.upperLeft, data.params.upperTopCornerCircleRadius).sort((a, b) => b.y - a.y)[0];
-		const upperBottomLeftCornerCircle = interceptCirclesAndPoint(data.shapes.centerBoutLeft, corners.upperLeft, data.params.upperBottomCornerCircleRadius).sort((a, b) => b.y - a.y)[1];
+	if (corners && data.params.cornerCircUpBoutR && data.params.cornerCircUpCBoutR && data.params.cornerCircLowCBoutR && data.params.cornerCircLowBoutR) {
+		const lowerTopRightCornerCircle = interceptCirclesAndPoint(data.shapes.centerBoutRight, corners.lowerRight, data.params.cornerCircLowCBoutR).sort((a, b) => b.y - a.y)[0];
+		const lowerBottomRightCornerCircle = interceptCirclesAndPoint(data.shapes.lowerBout, corners.lowerRight, data.params.cornerCircLowBoutR).sort((a, b) => b.y - a.y)[1];
+		const lowerTopLeftCornerCircle = interceptCirclesAndPoint(data.shapes.centerBoutLeft, corners.lowerLeft, data.params.cornerCircLowCBoutR).sort((a, b) => b.y - a.y)[0];
+		const lowerBottomLeftCornerCircle = interceptCirclesAndPoint(data.shapes.lowerBout, corners.lowerLeft, data.params.cornerCircLowBoutR).sort((a, b) => b.y - a.y)[1];
+		const upperTopRightCornerCircle = interceptCirclesAndPoint(data.shapes.upperBout, corners.upperRight, data.params.cornerCircUpBoutR).sort((a, b) => b.y - a.y)[0];
+		const upperBottomRightCornerCircle = interceptCirclesAndPoint(data.shapes.centerBoutRight, corners.upperRight, data.params.cornerCircUpCBoutR).sort((a, b) => b.y - a.y)[1];
+		const upperTopLeftCornerCircle = interceptCirclesAndPoint(data.shapes.upperBout, corners.upperLeft, data.params.cornerCircUpBoutR).sort((a, b) => b.y - a.y)[0];
+		const upperBottomLeftCornerCircle = interceptCirclesAndPoint(data.shapes.centerBoutLeft, corners.upperLeft, data.params.cornerCircUpCBoutR).sort((a, b) => b.y - a.y)[1];
 
 		data.shapes.lowerLeftCornerC1 = lowerTopLeftCornerCircle;
 		data.shapes.lowerLeftCornerC2 = lowerBottomLeftCornerCircle;
@@ -142,18 +142,18 @@ export function calculatePrimaryOutline(data: KellyViolinData): void {
 	}
 
 	if (corners) {
-		const pad = data.params.cornerBlockPadding;
-		data.shapes.lowerRightBlock = new Rectangle(new Pt(corners.lowerRight.x + pad, corners.lowerRight.y + pad), new Pt(corners.lowerRight.x - (data.params.cornerBlockWidth - pad), corners.lowerRight.y - (data.params.cornerBlockHeight - pad)));
-		data.shapes.lowerLeftBlock = new Rectangle(new Pt(corners.lowerLeft.x - pad, corners.lowerLeft.y + pad), new Pt(corners.lowerLeft.x + (data.params.cornerBlockWidth - pad), corners.lowerLeft.y - (data.params.cornerBlockHeight - pad)));
-		data.shapes.upperRightBlock = new Rectangle(new Pt(corners.upperRight.x + pad, corners.upperRight.y - pad), new Pt(corners.upperRight.x - (data.params.cornerBlockWidth - pad), corners.upperRight.y + (data.params.cornerBlockHeight - pad)));
-		data.shapes.upperLeftBlock = new Rectangle(new Pt(corners.upperLeft.x - pad, corners.upperLeft.y - pad), new Pt(corners.upperLeft.x + (data.params.cornerBlockWidth - pad), corners.upperLeft.y + (data.params.cornerBlockHeight - pad)));
+		const pad = data.params.blockCornerPad;
+		data.shapes.lowerRightBlock = new Rectangle(new Pt(corners.lowerRight.x + pad, corners.lowerRight.y + pad), new Pt(corners.lowerRight.x - (data.params.blockCornerW - pad), corners.lowerRight.y - (data.params.blockCornerH - pad)));
+		data.shapes.lowerLeftBlock = new Rectangle(new Pt(corners.lowerLeft.x - pad, corners.lowerLeft.y + pad), new Pt(corners.lowerLeft.x + (data.params.blockCornerW - pad), corners.lowerLeft.y - (data.params.blockCornerH - pad)));
+		data.shapes.upperRightBlock = new Rectangle(new Pt(corners.upperRight.x + pad, corners.upperRight.y - pad), new Pt(corners.upperRight.x - (data.params.blockCornerW - pad), corners.upperRight.y + (data.params.blockCornerH - pad)));
+		data.shapes.upperLeftBlock = new Rectangle(new Pt(corners.upperLeft.x - pad, corners.upperLeft.y - pad), new Pt(corners.upperLeft.x + (data.params.blockCornerW - pad), corners.upperLeft.y + (data.params.blockCornerH - pad)));
 
-		const lowerBlockP1 = new Pt(-0.5 * data.params.lowerBlockWidth, data.params.inset);
-		const lowerBlockP2 = new Pt(0.5 * data.params.lowerBlockWidth, lowerBlockP1.y + data.params.lowerBlockHeight);
+		const lowerBlockP1 = new Pt(-0.5 * data.params.blowLowW, data.params.inset);
+		const lowerBlockP2 = new Pt(0.5 * data.params.blowLowW, lowerBlockP1.y + data.params.blockLowH);
 		data.shapes.lowerBlock = new Rectangle(lowerBlockP1, lowerBlockP2);
 
-		const upperBlockP1 = new Pt(-0.5 * data.params.upperBlockWidth, data.params.h - data.params.inset);
-		const upperBlockP2 = new Pt(0.5 * data.params.upperBlockWidth, upperBlockP1.y - data.params.upperBlockHeight);
+		const upperBlockP1 = new Pt(-0.5 * data.params.blockUpW, data.params.height - data.params.inset);
+		const upperBlockP2 = new Pt(0.5 * data.params.blockUpW, upperBlockP1.y - data.params.blockUpH);
 		data.shapes.upperBlock = new Rectangle(upperBlockP1, upperBlockP2);
 
 		const blockInset = 20;
@@ -336,13 +336,13 @@ export function calculateTopPath(data: KellyViolinData): void {
 	data.shapes.lowerRightC1Offset.r = lowerRightC1Dist;
 	data.shapes.lowerRightC2Offset.r = lowerRightC2Dist;
 
-	const lowerTopTheta = data.params.lowerTopCornerDubCircleTheta * Math.PI / 180;
-	const lowerBottomTheta = data.params.lowerBottomCornerDubCircleTheta * Math.PI / 180;
-	const lowerTopCutoffTheta = data.params.lowerTopCornerDubCircleCutoffTheta * Math.PI / 180;
-	const lowerBottomCutoffTheta = data.params.lowerBottomCornerDubCircleCutoffTheta * Math.PI / 180;
+	const lowerTopTheta = data.params.cornerCircDubLowCBoutTheta * Math.PI / 180;
+	const lowerBottomTheta = data.params.cornerCircDubLowBoutTheta * Math.PI / 180;
+	const lowerTopCutoffTheta = data.params.cornerCircleDubLowCBoutTheta * Math.PI / 180;
+	const lowerBottomCutoffTheta = data.params.cornerCircleDubLowBoutTheta * Math.PI / 180;
 
-	data.shapes.lowerRightCornerDoubleC1 = inscribeCircleWithinCircle(data.shapes.lowerRightC1Offset, data.params.lowerTopCornerDubCircleRadius, lowerTopTheta);
-	data.shapes.lowerRightCornerDoubleC2 = inscribeCircleWithinCircle(data.shapes.lowerRightC2Offset, data.params.lowerBottomCornerDubCircleRadius, lowerBottomTheta);
+	data.shapes.lowerRightCornerDoubleC1 = inscribeCircleWithinCircle(data.shapes.lowerRightC1Offset, data.params.cornerCircDubLowCBoutR, lowerTopTheta);
+	data.shapes.lowerRightCornerDoubleC2 = inscribeCircleWithinCircle(data.shapes.lowerRightC2Offset, data.params.cornerCircDubLowBoutR, lowerBottomTheta);
 
 	const lowerRightC1Intercept = pointOnCircle(data.shapes.lowerRightC1Offset, lowerTopTheta);
 	const lowerRightC2Intercept = pointOnCircle(data.shapes.lowerRightC2Offset, lowerBottomTheta);
@@ -359,8 +359,8 @@ export function calculateTopPath(data: KellyViolinData): void {
 
 	data.shapes.lowerLeftC1Offset = { ...lowerLeftCornerC1, r: lowerRightC1Dist };
 	data.shapes.lowerLeftC2Offset = { ...lowerLeftCornerC2, r: lowerRightC2Dist };
-	data.shapes.lowerLeftCornerDoubleC1 = inscribeCircleWithinCircle(data.shapes.lowerLeftC1Offset, data.params.lowerTopCornerDubCircleRadius, Math.PI - lowerTopTheta);
-	data.shapes.lowerLeftCornerDoubleC2 = inscribeCircleWithinCircle(data.shapes.lowerLeftC2Offset, data.params.lowerBottomCornerDubCircleRadius, Math.PI - lowerBottomTheta);
+	data.shapes.lowerLeftCornerDoubleC1 = inscribeCircleWithinCircle(data.shapes.lowerLeftC1Offset, data.params.cornerCircDubLowCBoutR, Math.PI - lowerTopTheta);
+	data.shapes.lowerLeftCornerDoubleC2 = inscribeCircleWithinCircle(data.shapes.lowerLeftC2Offset, data.params.cornerCircDubLowBoutR, Math.PI - lowerBottomTheta);
 
 	const lowerLeftC1Intercept = pointOnCircle(data.shapes.lowerLeftC1Offset, Math.PI - lowerTopTheta);
 	const lowerLeftC2Intercept = pointOnCircle(data.shapes.lowerLeftC2Offset, Math.PI - lowerBottomTheta);
@@ -385,13 +385,13 @@ export function calculateTopPath(data: KellyViolinData): void {
 	data.shapes.upperRightC1Offset.r = upperRightC1Dist;
 	data.shapes.upperRightC2Offset.r = upperRightC2Dist;
 
-	const upperTopTheta = data.params.upperTopCornerDubCircleTheta * Math.PI / 180;
-	const upperBottomTheta = data.params.upperBottomCornerDubCircleTheta * Math.PI / 180;
-	const upperTopCutoffTheta = data.params.upperTopCornerDubCircleCutoffTheta * Math.PI / 180;
-	const upperBottomCutoffTheta = data.params.upperBottomCornerDubCircleCutoffTheta * Math.PI / 180;
+	const upperTopTheta = data.params.cornerCircDubUpBoutTheta * Math.PI / 180;
+	const upperBottomTheta = data.params.cornerCircDubUpCBoutTheta * Math.PI / 180;
+	const upperTopCutoffTheta = data.params.cornerCircDubUpBoutCutoffTheta * Math.PI / 180;
+	const upperBottomCutoffTheta = data.params.cornerCircleDubUpCBoutCutoffTheta * Math.PI / 180;
 
-	data.shapes.upperRightCornerDoubleC1 = inscribeCircleWithinCircle(data.shapes.upperRightC1Offset, data.params.upperTopCornerDubCircleRadius, upperTopTheta);
-	data.shapes.upperRightCornerDoubleC2 = inscribeCircleWithinCircle(data.shapes.upperRightC2Offset, data.params.upperBottomCornerDubCircleRadius, upperBottomTheta);
+	data.shapes.upperRightCornerDoubleC1 = inscribeCircleWithinCircle(data.shapes.upperRightC1Offset, data.params.cornerCircDubUpBoutR, upperTopTheta);
+	data.shapes.upperRightCornerDoubleC2 = inscribeCircleWithinCircle(data.shapes.upperRightC2Offset, data.params.cornerCircDubUpCBoutR, upperBottomTheta);
 
 	const upperRightC1Intercept = pointOnCircle(data.shapes.upperRightC1Offset, upperTopTheta);
 	const upperRightC2Intercept = pointOnCircle(data.shapes.upperRightC2Offset, upperBottomTheta);
@@ -408,8 +408,8 @@ export function calculateTopPath(data: KellyViolinData): void {
 
 	data.shapes.upperLeftC1Offset = { ...upperLeftCornerC1, r: upperRightC1Dist };
 	data.shapes.upperLeftC2Offset = { ...upperLeftCornerC2, r: upperRightC2Dist };
-	data.shapes.upperLeftCornerDoubleC1 = inscribeCircleWithinCircle(data.shapes.upperLeftC1Offset, data.params.upperTopCornerDubCircleRadius, Math.PI - upperTopTheta);
-	data.shapes.upperLeftCornerDoubleC2 = inscribeCircleWithinCircle(data.shapes.upperLeftC2Offset, data.params.upperBottomCornerDubCircleRadius, Math.PI - upperBottomTheta);
+	data.shapes.upperLeftCornerDoubleC1 = inscribeCircleWithinCircle(data.shapes.upperLeftC1Offset, data.params.cornerCircDubUpBoutR, Math.PI - upperTopTheta);
+	data.shapes.upperLeftCornerDoubleC2 = inscribeCircleWithinCircle(data.shapes.upperLeftC2Offset, data.params.cornerCircDubUpCBoutR, Math.PI - upperBottomTheta);
 
 	const upperLeftC1Intercept = pointOnCircle(data.shapes.upperLeftC1Offset, Math.PI - upperTopTheta);
 	const upperLeftC2Intercept = pointOnCircle(data.shapes.upperLeftC2Offset, Math.PI - upperBottomTheta);

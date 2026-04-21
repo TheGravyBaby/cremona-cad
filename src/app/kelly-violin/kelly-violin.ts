@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, Input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { Circle, Pt, Rectangle } from '../models/types';
@@ -15,8 +15,9 @@ import { calculatePrimaryOutline, calculateMainPathsSegmented, calculateMainPath
 })
 
 export class KellyViolin extends RecipeComponentBase {
-  
+
   override openPanel = 'base';
+  override d: KellyViolinData = new KellyViolinRecipe();
 
   showGuideLines = true;
   showAllCircles = true;
@@ -27,13 +28,23 @@ export class KellyViolin extends RecipeComponentBase {
   viewSegmentedOuter = false;
   viewSegmentedInnerPartial = false;
   
-  override d: KellyViolinData = new KellyViolinRecipe();
+  @Input() set newFile(v: boolean) {
+    if (v) {
+        let data = new KellyViolinRecipe()
+        data.newFile()
+        this.d = data;
+        this.draftChange.emit([this.firstRender]);
+        // sessionStorage.setItem('recipeData', JSON.stringify(this.d));
+        this.referenceImageChange.emit(null);
+      }
+  }
+    
 
   insetTooltip = "Inset is the distance from the outer edge of the bounding box to inner edge. It can be used to create a margin for the outline of the violin.";
 
   override firstRender = (g: any, ui: any): void => {
     this.renderBounds(g, ui);
-    this.setBounds.emit({ pt1: { x: -this.d.params.w / 2, y: 0 }, pt2: { x: this.d.params.w / 2, y: this.d.params.h } });
+    this.setBounds.emit({ pt1: { x: -this.d.params.width / 2, y: 0 }, pt2: { x: this.d.params.width / 2, y: this.d.params.height } });
   }
 
   override onToggle(panel: string, ev: Event) {
@@ -66,9 +77,9 @@ export class KellyViolin extends RecipeComponentBase {
   }
 
   changeBaseMeasurements(): void {
-    const ratio = this.d.params.h / this.d.params.w;
-    this.setBounds.emit({ pt1: { x: -this.d.params.w / 2, y: 0 }, pt2: { x: this.d.params.w / 2, y: this.d.params.h } });
-    calculatePrimaryOutline(this.d);
+    const ratio = this.d.params.height / this.d.params.width;
+    this.setBounds.emit({ pt1: { x: -this.d.params.width / 2, y: 0 }, pt2: { x: this.d.params.width / 2, y: this.d.params.height } });
+    // calculatePrimaryOutline(this.d);
     this.draftChange.emit([this.renderBounds]);
     sessionStorage.setItem('recipeData', JSON.stringify(this.d));
   }
@@ -136,8 +147,8 @@ export class KellyViolin extends RecipeComponentBase {
   }
 
   renderBounds = (g: any, ui: any): void => {
-    const h = this.d.params.h;
-    const w = this.d.params.w;
+    const h = this.d.params.height;
+    const w = this.d.params.width;
     const inset = this.d.params.inset;
     const xLeft = -w / 2;
 
@@ -174,18 +185,18 @@ export class KellyViolin extends RecipeComponentBase {
     }
 
     if (currentModule && this.showGuideLines) {
-      let waistWidth = (this.d.shapes.centerBoutRight.x - this.d.params.centerBoutRadius) * 2;
+      let waistWidth = (this.d.shapes.centerBoutRight.x - this.d.params.boutCenR) * 2;
       let inset = this.d.params.inset;
       let insetWaist = waistWidth + 2 * inset;
-      let insetLowerBout = this.d.params.lowerBoutRadius * 2 + 2 * inset;
-      let insetUpperBout = this.d.params.upperBoutRadius * 2 + 2 * inset;
+      let insetLowerBout = this.d.params.boutLowR * 2 + 2 * inset;
+      let insetUpperBout = this.d.params.boutUpR * 2 + 2 * inset;
 
       renderDistanceMeasurementLine({ x: -insetWaist / 2, y: this.d.shapes.centerBoutLeft.y }, { x: insetWaist / 2, y: this.d.shapes.centerBoutLeft.y }, insetWaist.toFixed(1) + " mm", "blue")(g, ui);
-      renderDistanceMeasurementLine({ x: -insetLowerBout / 2, y: this.d.params.lowerBoutCenter }, { x: insetLowerBout / 2, y: this.d.params.lowerBoutCenter }, insetLowerBout.toFixed(1) + " mm", "black")(g, ui);
-      renderDistanceMeasurementLine({ x: -insetUpperBout / 2, y: this.d.params.upperBoutCenter }, { x: insetUpperBout / 2, y: this.d.params.upperBoutCenter }, insetUpperBout.toFixed(1) + " mm", "red")(g, ui);
+      renderDistanceMeasurementLine({ x: -insetLowerBout / 2, y: this.d.params.boutLowY }, { x: insetLowerBout / 2, y: this.d.params.boutLowY }, insetLowerBout.toFixed(1) + " mm", "black")(g, ui);
+      renderDistanceMeasurementLine({ x: -insetUpperBout / 2, y: this.d.params.boutUpY }, { x: insetUpperBout / 2, y: this.d.params.boutUpY }, insetUpperBout.toFixed(1) + " mm", "red")(g, ui);
       renderDashedLine({ x: -1000, y: this.d.shapes.centerBoutLeft.y }, { x: 1000, y: this.d.shapes.centerBoutLeft.y }, "blue")(g, ui);
-      renderDashedLine({ x: -1000, y: this.d.params.lowerBoutCenter }, { x: 1000, y: this.d.params.lowerBoutCenter }, "black")(g, ui);
-      renderDashedLine({ x: -1000, y: this.d.params.upperBoutCenter }, { x: 1000, y: this.d.params.upperBoutCenter }, "red")(g, ui);
+      renderDashedLine({ x: -1000, y: this.d.params.boutLowY }, { x: 1000, y: this.d.params.boutLowY }, "black")(g, ui);
+      renderDashedLine({ x: -1000, y: this.d.params.boutUpY }, { x: 1000, y: this.d.params.boutUpY }, "red")(g, ui);
     }
   }
 
@@ -201,8 +212,8 @@ export class KellyViolin extends RecipeComponentBase {
   }
 
   renderCornerPlacements = (currentModule: boolean = true) => (g: any, ui: any): void => {
-    let rightTargetCircle: Circle = { x: this.d.shapes.centerBoutRight.x, y: this.d.shapes.centerBoutRight.y, r: this.d.params.cornerTargetRadius };
-    let leftTargetCircle: Circle = { x: this.d.shapes.centerBoutLeft.x, y: this.d.shapes.centerBoutLeft.y, r: this.d.params.cornerTargetRadius };
+    let rightTargetCircle: Circle = { x: this.d.shapes.centerBoutRight.x, y: this.d.shapes.centerBoutRight.y, r: this.d.params.cornerR };
+    let leftTargetCircle: Circle = { x: this.d.shapes.centerBoutLeft.x, y: this.d.shapes.centerBoutLeft.y, r: this.d.params.cornerR };
 
     if ((currentModule && this.showModuleCircles) || this.showAllCircles) {
       renderCircle(rightTargetCircle, "purple")(g, ui);
@@ -223,11 +234,11 @@ export class KellyViolin extends RecipeComponentBase {
       renderCrosshair(this.d.shapes.upperRightVesaci, "red")(g, ui);
       renderCrosshair(this.d.shapes.upperLeftVesaci, "red")(g, ui);
 
-      renderDashLine({ x: 0, y: this.d.params.lowerCornerGuideYIntercept }, this.d.intersects.corners.lowerRight, "purple", 1, "4,4", true)(g, ui);
-      renderDashLine({ x: 0, y: this.d.params.lowerCornerGuideYIntercept }, this.d.intersects.corners.lowerLeft, "purple", 1, "4,4", true)(g, ui);
+      renderDashLine({ x: 0, y: this.d.params.cornerGuideLowY }, this.d.intersects.corners.lowerRight, "purple", 1, "4,4", true)(g, ui);
+      renderDashLine({ x: 0, y: this.d.params.cornerGuideLowY }, this.d.intersects.corners.lowerLeft, "purple", 1, "4,4", true)(g, ui);
 
-      renderDashLine({ x: 0, y: this.d.params.upperCornerGuideYIntercept }, this.d.intersects.corners.upperRight, "purple", 1, "4,4", true)(g, ui);
-      renderDashLine({ x: 0, y: this.d.params.upperCornerGuideYIntercept }, this.d.intersects.corners.upperLeft, "purple", 1, "4,4", true)(g, ui);
+      renderDashLine({ x: 0, y: this.d.params.cornerGuideUpY }, this.d.intersects.corners.upperRight, "purple", 1, "4,4", true)(g, ui);
+      renderDashLine({ x: 0, y: this.d.params.cornerGuideUpY }, this.d.intersects.corners.upperLeft, "purple", 1, "4,4", true)(g, ui);
 
       renderCrosshair(this.d.intersects.corners.lowerRight, "purple")(g, ui);
       renderCrosshair(this.d.intersects.corners.lowerLeft, "purple")(g, ui);
@@ -250,10 +261,10 @@ export class KellyViolin extends RecipeComponentBase {
     }
 
     if (currentModule && this.showGuideLines) {
-      renderDashLine({ x: 0, y: this.d.params.lowerCornerGuideYIntercept }, this.d.intersects.corners.lowerRight, "purple", 1, "4,4", true)(g, ui);
-      renderDashLine({ x: 0, y: this.d.params.lowerCornerGuideYIntercept }, this.d.intersects.corners.lowerLeft, "purple", 1, "4,4", true)(g, ui);
-      renderDashLine({ x: 0, y: this.d.params.upperCornerGuideYIntercept }, this.d.intersects.corners.upperRight, "purple", 1, "4,4", true)(g, ui);
-      renderDashLine({ x: 0, y: this.d.params.upperCornerGuideYIntercept }, this.d.intersects.corners.upperLeft, "purple", 1, "4,4", true)(g, ui);
+      renderDashLine({ x: 0, y: this.d.params.cornerGuideLowY }, this.d.intersects.corners.lowerRight, "purple", 1, "4,4", true)(g, ui);
+      renderDashLine({ x: 0, y: this.d.params.cornerGuideLowY }, this.d.intersects.corners.lowerLeft, "purple", 1, "4,4", true)(g, ui);
+      renderDashLine({ x: 0, y: this.d.params.cornerGuideUpY }, this.d.intersects.corners.upperRight, "purple", 1, "4,4", true)(g, ui);
+      renderDashLine({ x: 0, y: this.d.params.cornerGuideUpY }, this.d.intersects.corners.upperLeft, "purple", 1, "4,4", true)(g, ui);
     }
   }
 
@@ -336,7 +347,7 @@ export class KellyViolin extends RecipeComponentBase {
     const pathObj = this.d.paths.find(c => c.name === 'innerPathUnified');
     if (!pathObj) return;
 
-    const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-this.d.params.w / 2} 0 ${this.d.params.w} ${this.d.params.h}"><g transform="translate(0 ${this.d.params.h}) scale(1 -1)"><path d="${pathObj.paths[0]}" fill="none" stroke="black"/></g></svg>`;
+    const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-this.d.params.width / 2} 0 ${this.d.params.width} ${this.d.params.height}"><g transform="translate(0 ${this.d.params.height}) scale(1 -1)"><path d="${pathObj.paths[0]}" fill="none" stroke="black"/></g></svg>`;
     const blob = new Blob([svgContent], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
 
@@ -356,7 +367,7 @@ export class KellyViolin extends RecipeComponentBase {
 
     let allPaths = combinePathStrings(pathObj.paths);
 
-    const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-this.d.params.w / 2} 0 ${this.d.params.w} ${this.d.params.h}"><g transform="translate(0 ${this.d.params.h}) scale(1 -1)"><path d="${allPaths}" fill="none" stroke="black"/></g></svg>`;
+    const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-this.d.params.width / 2} 0 ${this.d.params.width} ${this.d.params.height}"><g transform="translate(0 ${this.d.params.height}) scale(1 -1)"><path d="${allPaths}" fill="none" stroke="black"/></g></svg>`;
     const blob = new Blob([svgContent], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
 
@@ -374,7 +385,7 @@ export class KellyViolin extends RecipeComponentBase {
     const pathObj = this.d.paths.find(c => c.name === 'segmentedPartialPath');
     if (!pathObj) return;
 
-    const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-this.d.params.w / 2} 0 ${this.d.params.w} ${this.d.params.h}"><g transform="translate(0 ${this.d.params.h}) scale(1 -1)">
+    const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-this.d.params.width / 2} 0 ${this.d.params.width} ${this.d.params.height}"><g transform="translate(0 ${this.d.params.height}) scale(1 -1)">
     <path d="${pathObj.paths[0]}" fill="none" stroke="red"/><path d="${pathObj.paths[1]}" fill="none" stroke="blue"/><path d="${pathObj.paths[2]}" fill="none" stroke="green"/><path d="${pathObj.paths[3]}" fill="none" stroke="orange"/>
     
     </g></svg>`;
@@ -396,7 +407,7 @@ export class KellyViolin extends RecipeComponentBase {
     const pathObj = this.d.paths.find(c => c.name === 'offsetSegmentedPath');
     if (!pathObj) return;
 
-    const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-this.d.params.w / 2} 0 ${this.d.params.w} ${this.d.params.h}"><g transform="translate(0 ${this.d.params.h}) scale(1 -1)">
+    const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-this.d.params.width / 2} 0 ${this.d.params.width} ${this.d.params.height}"><g transform="translate(0 ${this.d.params.height}) scale(1 -1)">
     <path d="${pathObj.paths[0]}" fill="none" stroke="red"/><path d="${pathObj.paths[1]}" fill="none" stroke="blue"/><path d="${pathObj.paths[2]}" fill="none" stroke="green"/><path d="${pathObj.paths[3]}" fill="none" stroke="orange"/>
     
     </g></svg>`;
@@ -421,7 +432,7 @@ export class KellyViolin extends RecipeComponentBase {
     // let paths = combinePathStrings(pathObj?.paths);
     if (!pathObj) return;
 
-    const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-this.d.params.w / 2} 0 ${this.d.params.w} ${this.d.params.h}"><g transform="translate(0 ${this.d.params.h}) scale(1 -1)">
+    const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-this.d.params.width / 2} 0 ${this.d.params.width} ${this.d.params.height}"><g transform="translate(0 ${this.d.params.height}) scale(1 -1)">
       <path d="${pathObj.paths[0]}" fill="none" stroke="black"/>
       <path d="${pathObj.paths[1]}" fill="none" stroke="red"/>
       <path d="${pathObj.paths[2]}" fill="none" stroke="blue"/>
