@@ -229,12 +229,7 @@ export class KellyViolin extends RecipeComponentBase {
   }
 
   changeMainBouts() {
-    try {
-      this.calculateAll();
-    }
-    catch {
-      
-    }
+    this.calculateAll();
     this.draftChange.emit([this.renderBounds, this.renderMainBouts(true)]);
   }
 
@@ -270,6 +265,7 @@ export class KellyViolin extends RecipeComponentBase {
 
   renderExports() {
     this.calculateAll();
+    this.calculateMouldPath();
     this.calculateMainPathsSegmented();
     this.calculateOffsetPathsSegments();
     this.calculateTopPath();
