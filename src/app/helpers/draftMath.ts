@@ -889,7 +889,6 @@ export function interceptCirclesAndPoint(U: Circle, P: Pt, Ur: number): Circle[]
   return result;
 }
 
-
 // good math provided here
 // https://www.reddit.com/r/Geometry/comments/1k6slsb/how_do_i_create_this_orange_arc_so_that_it_is/
 export function findJoiningCircleFromCircleAndPoint(U: Circle, P: Pt): Circle {

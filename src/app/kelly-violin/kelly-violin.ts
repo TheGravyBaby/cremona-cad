@@ -18,10 +18,12 @@ export class KellyViolin extends RecipeComponentBase {
   showGuideLines = true;
   showAllCircles = true;
   showModuleCircles = false;
-  viewOuterPathExport = false;
+  viewOuterPathExport = true;
   viewInnerPathExport = false;
   viewMouldExport = false;
-
+  viewSegmentedOuter = false;
+  viewSegmentedInnerPartial = false;
+  
   override d = {
     recipeName: 'Kelly Violin',
     fileName: "Kelly-Baltic",
@@ -187,7 +189,6 @@ export class KellyViolin extends RecipeComponentBase {
 
   insetTooltip = "Inset is the distance from the outer edge of the bounding box to inner edge. It can be used to create a margin for the outline of the violin.";
 
-
   override firstRender = (g: any, ui: any): void => {
     this.renderBounds(g, ui);
     this.setBounds.emit({ pt1: { x: -this.d.params.w / 2, y: 0 }, pt2: { x: this.d.params.w / 2, y: this.d.params.h } });
@@ -219,6 +220,7 @@ export class KellyViolin extends RecipeComponentBase {
         }
       }
     }
+
   }
 
   changeBaseMeasurements(): void {
@@ -226,33 +228,38 @@ export class KellyViolin extends RecipeComponentBase {
     this.setBounds.emit({ pt1: { x: -this.d.params.w / 2, y: 0 }, pt2: { x: this.d.params.w / 2, y: this.d.params.h } });
     this.calculateAll();
     this.draftChange.emit([this.renderBounds]);
+    sessionStorage.setItem('recipeData', JSON.stringify(this.d));
   }
 
   changeMainBouts() {
     this.calculateAll();
     this.draftChange.emit([this.renderBounds, this.renderMainBouts(true)]);
+    sessionStorage.setItem('recipeData', JSON.stringify(this.d));
   }
 
   changeMinorBouts() {
     this.calculateAll();
     this.draftChange.emit([this.renderBounds, this.renderMainBouts(false), this.renderMinorBouts(true), this.renderMainPath]);
+    sessionStorage.setItem('recipeData', JSON.stringify(this.d));
   }
 
   changeCornerPlacement() {
     this.calculateAll();
     this.draftChange.emit([this.renderMainBouts(false), this.renderMinorBouts(false), this.renderCornerPlacements(true), this.renderMainPath]);
-
+    sessionStorage.setItem('recipeData', JSON.stringify(this.d));
   }
 
   changeCornerCircles() {
     this.calculateAll();
     this.draftChange.emit([this.renderMainBouts(false), this.renderMinorBouts(false), this.renderCornerPlacements(false), this.renderCornerCircles(true), this.renderMainPath]);
+    sessionStorage.setItem('recipeData', JSON.stringify(this.d));
   }
 
   changeMouldPattern(calcChange = true) {
     calcChange && this.calculateAll();
     calcChange && this.calculateMouldPath();
     this.draftChange.emit([this.renderMainBouts(false), this.renderMinorBouts(false), this.renderCornerPlacements(false), this.renderCornerCircles(false), this.renderBlocks(true), this.renderMainPathWithBlocks]);
+    sessionStorage.setItem('recipeData', JSON.stringify(this.d));
   }
 
   changeTopAndBottom() {
@@ -261,6 +268,7 @@ export class KellyViolin extends RecipeComponentBase {
     this.calculateOffsetPathsSegments();
     this.calculateTopPath();
     this.draftChange.emit([this.renderFinalCorners(true), this.renderMainPath, this.renderTopPath]);
+    sessionStorage.setItem('recipeData', JSON.stringify(this.d));
   }
 
   renderExports() {
@@ -274,6 +282,9 @@ export class KellyViolin extends RecipeComponentBase {
     this.viewOuterPathExport && emitArray.push(this.renderTopPath);
     this.viewInnerPathExport && emitArray.push(this.renderMainPath);
     this.viewMouldExport && emitArray.push(this.renderMainPathWithBlocks);
+    
+    this.viewSegmentedOuter && emitArray.push(renderPath(this.d.calcs.find(c => c.name === "offsetSegmentedPath")?.paths || [], "purple"));
+    this.viewSegmentedInnerPartial && emitArray.push(renderPath(this.d.calcs.find(c => c.name === "innerPath")?.paths || [], "orange"));
 
     this.draftChange.emit(emitArray);
 
@@ -462,7 +473,7 @@ export class KellyViolin extends RecipeComponentBase {
   }
 
   renderTopPath = (g: any, ui: any): void => {
-    let pathObj = this.d.calcs.find(c => c.name === "outerTrace");
+    let pathObj = this.d.calcs.find(c => c.name === "outerPath");
     if (pathObj) {
       pathObj.paths.forEach((p: any) => renderPath(p, "blue", 2)(g, ui));
     }
@@ -771,7 +782,7 @@ export class KellyViolin extends RecipeComponentBase {
     let upperCenterBoutPartial = paths.slice(11, 16)
     let upperBoutPartial = paths.slice(19, 20)
 
-    let lowerBout = paths.slice(1, 7);
+    let lowerBout = paths.slice(0, 7);
     let rightCenterBout = paths.slice(7, 10);
     let upperCenterBout = paths.slice(10, 17);
     let upperBout = paths.slice(17, 20);
@@ -787,9 +798,9 @@ export class KellyViolin extends RecipeComponentBase {
     let upperCenterBoutUnified = unifyConnectedSvgPaths(upperCenterBout);
     let upperBoutUnified = unifyConnectedSvgPaths(upperBout);
 
-    let partialPathObj = { name: "segmentedPartialTrace", paths: [lowerBoutPartialUnified, rightCenterBoutPartialUnified, upperCenterBoutPartialUnified, upperBoutPartialUnified] };
+    let partialPathObj = { name: "segmentedPartialPath", paths: [lowerBoutPartialUnified, rightCenterBoutPartialUnified, upperCenterBoutPartialUnified, upperBoutPartialUnified] };
 
-    let existingIndex = this.d.calcs.findIndex(c => c.name === "segmentedTrace");
+    let existingIndex = this.d.calcs.findIndex(c => c.name === "segmentedPartialPath");
     if (existingIndex !== -1) {
       this.d.calcs[existingIndex] = partialPathObj;
     } else {
@@ -805,7 +816,7 @@ export class KellyViolin extends RecipeComponentBase {
   }
 
   calculateOffsetPathsSegments = (): void => {
-    let segmentedPaths = this.d.calcs.find(c => c.name === "segmentedPartialTrace");
+    let segmentedPaths = this.d.calcs.find(c => c.name === "segmentedPartialPath");
     if (segmentedPaths) {
       let paths = []
       let offset1 = calculateOffset(segmentedPaths.paths[0], this.d.params.inset)
@@ -815,8 +826,8 @@ export class KellyViolin extends RecipeComponentBase {
 
       paths.push(offset1, offset2, offset3, offset4);
 
-      let pathObj = { name: "offsetSegmentedTrace", paths: paths };
-      let existingIndex = this.d.calcs.findIndex(c => c.name === "offsetSegmentedTrace");
+      let pathObj = { name: "offsetSegmentedPath", paths: paths };
+      let existingIndex = this.d.calcs.findIndex(c => c.name === "offsetSegmentedPath");
       if (existingIndex !== -1) {
         this.d.calcs[existingIndex] = pathObj;
       } else {
@@ -826,7 +837,7 @@ export class KellyViolin extends RecipeComponentBase {
   }
 
   calculateTopPath = (): void => {
-    let paths = this.d.calcs.find(c => c.name === "offsetSegmentedTrace")?.paths;
+    let paths = this.d.calcs.find(c => c.name === "offsetSegmentedPath")?.paths;
     this.d.shapes.lowerRightC1Offset = { ...this.d.shapes.lowerRightCornerC1, r: this.d.shapes.lowerRightCornerC1.r - this.d.params.inset };
     this.d.shapes.lowerRightC2Offset = { ...this.d.shapes.lowerRightCornerC2, r: this.d.shapes.lowerRightCornerC2.r - this.d.params.inset };
     let C1ClosestPoint = findClosestPointOnPathToCircle(paths[1], this.d.shapes.lowerRightC1Offset);
@@ -920,16 +931,15 @@ export class KellyViolin extends RecipeComponentBase {
     // let unifiedPaths = concatSvgPaths(paths[0], lowerRightCornerPath);
     // let pathObj = { name: "unifiedOffsetTrace", paths: [unifiedPaths, lowerRightCornerPath] };
 
-    let pathObj = { name: "outerTrace", paths: [...paths, upperRightCornerPath, upperLeftCornerPath, lowerRightCornerPath, lowerLeftCornerPath] };
+    let pathObj = { name: "outerPath", paths: [...paths, upperRightCornerPath, upperLeftCornerPath, lowerRightCornerPath, lowerLeftCornerPath] };
 
-    let existingIndex = this.d.calcs.findIndex(c => c.name === "outerTrace");
+    let existingIndex = this.d.calcs.findIndex(c => c.name === "outerPath");
     if (existingIndex !== -1) {
       this.d.calcs[existingIndex] = pathObj;
     } else {
       this.d.calcs.push(pathObj);
     }
   }
-
 
   calculateMouldPath = (useHighAccuracy = false) => {
     this.calculateMainPathsUnified();
@@ -1024,9 +1034,30 @@ export class KellyViolin extends RecipeComponentBase {
     URL.revokeObjectURL(url);
   }
 
+  downloadInnerSegmentedPaths = (): void => {
+    this.calculateMainPathsSegmented();
+    const pathObj = this.d.calcs.find(c => c.name === 'segmentedPartialPath');
+    if (!pathObj) return;
+
+    const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-this.d.params.w / 2} 0 ${this.d.params.w} ${this.d.params.h}"><g transform="translate(0 ${this.d.params.h}) scale(1 -1)">
+    <path d="${pathObj.paths[0]}" fill="none" stroke="red"/><path d="${pathObj.paths[1]}" fill="none" stroke="blue"/><path d="${pathObj.paths[2]}" fill="none" stroke="green"/><path d="${pathObj.paths[3]}" fill="none" stroke="orange"/>
+    
+    </g></svg>`;
+    const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'segmented_paths.svg';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
   downloadOuterSegmentedPaths = (): void => {
     this.calculateMainPathsSegmented();
-    const pathObj = this.d.calcs.find(c => c.name === 'offsetSegmentedTrace');
+    const pathObj = this.d.calcs.find(c => c.name === 'offsetSegmentedPath');
     if (!pathObj) return;
 
     const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-this.d.params.w / 2} 0 ${this.d.params.w} ${this.d.params.h}"><g transform="translate(0 ${this.d.params.h}) scale(1 -1)">
@@ -1047,7 +1078,7 @@ export class KellyViolin extends RecipeComponentBase {
 
   downloadOuterPath = (): void => {
     this.calculateMainPathsUnified();
-    const pathObj = this.d.calcs.find(c => c.name === 'outerTrace');
+    const pathObj = this.d.calcs.find(c => c.name === 'outerPath');
     // let paths = combinePathStrings(pathObj?.paths);
     if (!pathObj) return;
 
