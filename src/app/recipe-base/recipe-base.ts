@@ -24,6 +24,7 @@ export class RecipeComponentBase {
     this.d.params = this.d.params || {};
     if (img) this.d.referenceImage = img;
     else delete this.d.referenceImage;
+    // sessionStorage.setItem('recipeData', JSON.stringify(this.d));
   }
 
   private _saveTick = 0;
@@ -47,7 +48,19 @@ export class RecipeComponentBase {
 
 
   ngOnInit() {
+    const saved = sessionStorage.getItem('recipeData');
+    if (saved) {
+      try {
+        this.d = JSON.parse(saved);
+      } catch (e) {
+        console.error('Failed to load from sessionStorage', e);
+      }
+    }
     this.draftChange.emit([this.firstRender]);
+  }
+
+  ngOnDestroy() {
+    sessionStorage.setItem('recipeData', JSON.stringify(this.d));
   }
 
   firstRender(canvas: any, ui: any) {
@@ -90,6 +103,8 @@ export class RecipeComponentBase {
     this.d.params = this.d.params || {};
     if (img) this.d.referenceImage = img;
     else delete this.d.referenceImage;
+
+    sessionStorage.setItem('recipeData', JSON.stringify(this.d));
   }
 
     // reference image controls
@@ -118,6 +133,7 @@ export class RecipeComponentBase {
       height,
     };
 
+    sessionStorage.setItem('recipeData', JSON.stringify(this.d));
     this.referenceImageChange.emit(this.d.referenceImage);
 
     // // Optional: auto-enable showing it when user uploads
@@ -127,6 +143,8 @@ export class RecipeComponentBase {
 
     // optional: allow re-uploading same file by clearing the input
     input.value = '';
+
+    sessionStorage.setItem('recipeData', JSON.stringify(this.d));
   }
 
     private readFileAsDataUrl(file: File): Promise<string> {

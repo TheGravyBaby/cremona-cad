@@ -247,13 +247,6 @@
          <br>
         <input type="checkbox" [(ngModel)]="showGuideLines" (change)="changeTopAndBottom()" /> Show Guide Circles
 
-
-    
-         <!-- <br><br>
-         <a (click)="downloadSegmentedPaths()" class="file-upload">Download Segmented Paths</a>
-
-         <a (click)="downloadUnifiedPath()" class="file-upload">Download Unified Path</a> -->
-
     </details>
 
     <details [open]="openPanel === 'mouldPattern'" (toggle)="onToggle('mouldPattern', $event)">
@@ -324,6 +317,13 @@
         <a class="file-upload">Download Clamps</a>
         <input type="checkbox" (change)="renderExports()" /> View (WIP)
 
+
+        <!-- <br><br><br><br><br>
+         <a (click)="downloadOuterSegmentedPaths()" class="file-upload">Download Outer Segmented Paths</a>
+        <input type="checkbox" [(ngModel)]="viewSegmentedOuter" (change)="renderExports()" /> View 
+        <br>
+        <a (click)="downloadInnerSegmentedPaths()" class="file-upload">Download Inner Segmented Paths</a>
+        <input type="checkbox" [(ngModel)]="viewSegmentedInnerPartial" (change)="renderExports()" /> View -->
     </details>
     
 </div>

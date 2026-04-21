@@ -75,8 +75,9 @@ export class App {
   loadedFileData: RecipeInterface | undefined = undefined;
   saveTick = 0;
   bounds: {pt1: Pt, pt2: Pt} | null = null;
+  sessionData = sessionStorage.getItem('recipeData');
 
-  referenceImage: ReferenceImage | null = null;
+  referenceImage: ReferenceImage | null = this.sessionData ? JSON.parse(this.sessionData).referenceImage ?? null : null;
 
   onReferenceImageChange(img: ReferenceImage | null) {
     this.referenceImage = img;
@@ -84,6 +85,9 @@ export class App {
 
   loadFile(data: RecipeInterface) {
     this.loadedFileData = data;
+    sessionStorage.setItem('recipeData', JSON.stringify(this.loadedFileData));
+    this.referenceImage = data.referenceImage ?? null;
+
 
     // pull reference image out of loaded file (if present)
     this.referenceImage = data?.referenceImage ?? null;
