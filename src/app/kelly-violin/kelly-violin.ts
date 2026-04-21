@@ -5,7 +5,7 @@ import { Circle, Pt, Rectangle } from '../models/types';
 import { renderCircle, renderCrosshair, renderDashedLine, renderDashLine, renderDistanceMeasurementLine, renderLine, renderPath, renderRect } from '../helpers/renderFuncs';
 import { combinePathStrings } from '../helpers/draftMath';
 import { KellyViolinData, KellyViolinRecipe } from './kellyTypes';
-import { calculateAll, calculateMainPathsSegmented, calculateMainPathsUnified, calculateMouldPath, calculateOffsetPathsSegments, calculateTopPath } from './kellyCals';
+import { calculatePrimaryOutline, calculateMainPathsSegmented, calculateMainPathsUnified, calculateMouldPath, calculateOffsetPathsSegments, calculateTopPath } from './kellyCals';
 
 @Component({
   selector: 'app-kelly-violin',
@@ -68,44 +68,44 @@ export class KellyViolin extends RecipeComponentBase {
   changeBaseMeasurements(): void {
     const ratio = this.d.params.h / this.d.params.w;
     this.setBounds.emit({ pt1: { x: -this.d.params.w / 2, y: 0 }, pt2: { x: this.d.params.w / 2, y: this.d.params.h } });
-    calculateAll(this.d);
+    calculatePrimaryOutline(this.d);
     this.draftChange.emit([this.renderBounds]);
     sessionStorage.setItem('recipeData', JSON.stringify(this.d));
   }
 
   changeMainBouts() {
-    calculateAll(this.d);
+    calculatePrimaryOutline(this.d);
     this.draftChange.emit([this.renderBounds, this.renderMainBouts(true)]);
     sessionStorage.setItem('recipeData', JSON.stringify(this.d));
   }
 
   changeMinorBouts() {
-    calculateAll(this.d);
-    this.draftChange.emit([this.renderBounds, this.renderMainBouts(false), this.renderMinorBouts(true), this.renderMainPath]);
+    calculatePrimaryOutline(this.d);
+    this.draftChange.emit([this.renderBounds, this.renderMainBouts(false), this.renderMinorBouts(true), this.renderMainPathCornerless]);
     sessionStorage.setItem('recipeData', JSON.stringify(this.d));
   }
 
   changeCornerPlacement() {
-    calculateAll(this.d);
-    this.draftChange.emit([this.renderMainBouts(false), this.renderMinorBouts(false), this.renderCornerPlacements(true), this.renderMainPath]);
+    calculatePrimaryOutline(this.d);
+    this.draftChange.emit([this.renderMainBouts(false), this.renderMinorBouts(false), this.renderCornerPlacements(true), this.renderMainPathCornerless]);
     sessionStorage.setItem('recipeData', JSON.stringify(this.d));
   }
 
   changeCornerCircles() {
-    calculateAll(this.d);
+    calculatePrimaryOutline(this.d);
     this.draftChange.emit([this.renderMainBouts(false), this.renderMinorBouts(false), this.renderCornerPlacements(false), this.renderCornerCircles(true), this.renderMainPath]);
     sessionStorage.setItem('recipeData', JSON.stringify(this.d));
   }
 
   changeMouldPattern(calcChange = true) {
-    calcChange && calculateAll(this.d);
+    calcChange && calculatePrimaryOutline(this.d);
     calcChange && calculateMouldPath(this.d);
     this.draftChange.emit([this.renderMainBouts(false), this.renderMinorBouts(false), this.renderCornerPlacements(false), this.renderCornerCircles(false), this.renderBlocks(true), this.renderMainPathWithBlocks]);
     sessionStorage.setItem('recipeData', JSON.stringify(this.d));
   }
 
   changeTopAndBottom() {
-    calculateAll(this.d);
+    calculatePrimaryOutline(this.d);
     calculateMainPathsSegmented(this.d);
     calculateOffsetPathsSegments(this.d);
     calculateTopPath(this.d);
@@ -114,7 +114,7 @@ export class KellyViolin extends RecipeComponentBase {
   }
 
   renderExports() {
-    calculateAll(this.d);
+    calculatePrimaryOutline(this.d);
     calculateMouldPath(this.d);
     calculateMainPathsSegmented(this.d);
     calculateOffsetPathsSegments(this.d);
@@ -298,6 +298,13 @@ export class KellyViolin extends RecipeComponentBase {
 
   renderMainPath = (g: any, ui: any): void => {
     let pathObj = this.d.paths.find(c => c.name === "innerPath");
+    if (pathObj) {
+      pathObj.paths.forEach((p: any) => renderPath(p, "red")(g, ui));
+    }
+  }
+
+  renderMainPathCornerless = (g: any, ui: any): void => {
+    let pathObj = this.d.paths.find(c => c.name === "innerPathCornerless");
     if (pathObj) {
       pathObj.paths.forEach((p: any) => renderPath(p, "red")(g, ui));
     }

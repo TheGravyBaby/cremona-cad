@@ -6,7 +6,7 @@ export class KellyViolinRecipe implements KellyViolinData {
 	version: string;
 	params: KellyParams;
 	shapes: Partial<KellyShapes>;
-	intersects: Partial<KellyIntersects>;
+	intersects: KellyIntersects;
 	paths: KellyCalcEntry[];
 
 	constructor(fileName = 'Kelly-Baltic', params: KellyParamOverrides = {}) {
@@ -15,18 +15,124 @@ export class KellyViolinRecipe implements KellyViolinData {
 		this.version = '.1';
 
 		this.params = { ...KELLY_DEFAULT_PARAMS, ...params };
-		this.shapes = {};
-		this.intersects = {};
+		this.shapes = createKellyShapes();
+		this.intersects = createKellyIntersects();
 
 		this.paths = [];
 	}
 
 	newFile(params: KellyParamOverrides = {}) {
 		this.params = { ...KELLY_BLANK_PARAMS, ...params };
-		this.shapes = {};
-		this.intersects = {};
+		this.shapes = createKellyShapes();
+		this.intersects = createKellyIntersects();
 		this.paths = [];
 	}
+}
+
+function createKellyShapes(): KellyShapes {
+	return {
+		upperBout: null,
+		lowerBout: null,
+		centerBoutLeft: null,
+		centerBoutRight: null,
+		lowerRightVesaci: null,
+		lowerLeftVesaci: null,
+		upperRightVesaci: null,
+		upperLeftVesaci: null,
+		upperJoiningCircle: null,
+		lowerJoiningCircle: null,
+		lowerLeftCornerC1: null,
+		lowerLeftCornerC2: null,
+		lowerRightCornerC1: null,
+		lowerRightCornerC2: null,
+		upperLeftCornerC1: null,
+		upperLeftCornerC2: null,
+		upperRightCornerC1: null,
+		upperRightCornerC2: null,
+		lowerLeftBlock: null,
+		lowerRightBlock: null,
+		upperRightBlock: null,
+		upperLeftBlock: null,
+		lowerBlock: null,
+		upperBlock: null,
+		upperClampCutout: null,
+		lowerClampCutout: null,
+		leftClampCutout: null,
+		rightClampCutout: null,
+		lowerRightC1Offset: null,
+		lowerRightC2Offset: null,
+		lowerRightCornerDoubleC1: null,
+		lowerRightCornerDoubleC2: null,
+		lowerLeftC1Offset: null,
+		lowerLeftC2Offset: null,
+		lowerLeftCornerDoubleC1: null,
+		lowerLeftCornerDoubleC2: null,
+		upperRightC1Offset: null,
+		upperRightC2Offset: null,
+		upperRightCornerDoubleC1: null,
+		upperRightCornerDoubleC2: null,
+		upperLeftC1Offset: null,
+		upperLeftC2Offset: null,
+		upperLeftCornerDoubleC1: null,
+		upperLeftCornerDoubleC2: null,
+		lowerRightCutoff1: null,
+		lowerRightCutoff2: null,
+		lowerLeftCutoff1: null,
+		lowerLeftCutoff2: null,
+		upperRightCutoff1: null,
+		upperRightCutoff2: null,
+		upperLeftCutoff1: null,
+		upperLeftCutoff2: null,
+	};
+}
+
+function createKellyIntersects(): KellyIntersects {
+	return {
+		majorBouts: {
+			upperRight: new Pt(0, 0),
+			upperLeft: new Pt(0, 0),
+			lowerRight: new Pt(0, 0),
+			lowerLeft: new Pt(0, 0)
+		},
+		minorBouts: {
+			lowerRightVesicaUpper: new Pt(0, 0),
+			lowerRightVesicaLower: new Pt(0, 0),
+			lowerLeftVesicaUpper: new Pt(0, 0),
+			lowerLeftVesicaLower: new Pt(0, 0),
+			upperRightVesicaUpper: new Pt(0, 0),
+			upperRightVesicaLower: new Pt(0, 0),
+			upperLeftVesicaUpper: new Pt(0, 0),
+			upperLeftVesicaLower: new Pt(0, 0)
+		},
+		corners: {
+			lowerRight: null,
+			lowerLeft: null,
+			upperRight: null,
+			upperLeft: null,
+			lowerLeftCornerTopBodyIntersection: null,
+			lowerLeftCornerBottomBodyIntersection: null,
+			lowerRightCornerTopBodyIntersection: null,
+			lowerRightCornerBottomBodyIntersection: null,
+			upperLeftCornerTopBodyIntersection: null,
+			upperLeftCornerBottomBodyIntersection: null,
+			upperRightCornerTopBodyIntersection: null,
+			upperRightCornerBottomBodyIntersection: null,
+		},
+		blocks: {
+			lowerLeftBlockP1: new Pt(0, 0),
+			lowerLeftBlockP2: new Pt(0, 0),
+			lowerLeftBlockP3: new Pt(0, 0),
+			lowerRightBlockP1: new Pt(0, 0),
+			lowerRightBlockP2: new Pt(0, 0),
+			lowerRightBlockP3: new Pt(0, 0),
+			upperRightBlockP1: new Pt(0, 0),
+			upperRightBlockP2: new Pt(0, 0),
+			upperRightBlockP3: new Pt(0, 0),
+			upperLeftBlockP1: new Pt(0, 0),
+			upperLeftBlockP2: new Pt(0, 0),
+			upperLeftBlockP3: new Pt(0, 0),
+		}
+	};
 }
 
 export const KELLY_DEFAULT_PARAMS: KellyParams = {
