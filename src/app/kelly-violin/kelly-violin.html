@@ -30,7 +30,7 @@
         </label>
     </details>
 
-    <details [open]="openPanel === 'mainBouts'" (toggle)="onToggle('mainBouts', $event)">
+    <details [open]="openPanel === 'mainBouts'" (toggle)="onToggle('mainBouts', $event)" [class.panel-disabled]="!isPanelEnabled('mainBouts')" [attr.aria-disabled]="!isPanelEnabled('mainBouts')">
         <summary>Major Bout Circles</summary>
 
         <label>
@@ -74,7 +74,7 @@
 
     </details>
 
-    <details [open]="openPanel === 'minorBouts'" (toggle)="onToggle('minorBouts', $event)">
+    <details [open]="openPanel === 'minorBouts'" (toggle)="onToggle('minorBouts', $event)" [class.panel-disabled]="!isPanelEnabled('minorBouts')" [attr.aria-disabled]="!isPanelEnabled('minorBouts')">
         <summary>Minor Bout Circles</summary>
 
         <label>
@@ -99,7 +99,7 @@
         <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeMinorBouts()" /> Show All Circles
     </details>
 
-    <details [open]="openPanel === 'cornerPlacement'" (toggle)="onToggle('cornerPlacement', $event)">
+    <details [open]="openPanel === 'cornerPlacement'" (toggle)="onToggle('cornerPlacement', $event)" [class.panel-disabled]="!isPanelEnabled('cornerPlacement')" [attr.aria-disabled]="!isPanelEnabled('cornerPlacement')">
         <summary>Corner Placement</summary>
 
         <label>
@@ -140,7 +140,7 @@
 
     </details>
 
-    <details [open]="openPanel === 'cornerCircles'" (toggle)="onToggle('cornerCircles', $event)">
+    <details [open]="openPanel === 'cornerCircles'" (toggle)="onToggle('cornerCircles', $event)" [class.panel-disabled]="!isPanelEnabled('cornerCircles')" [attr.aria-disabled]="!isPanelEnabled('cornerCircles')">
         <summary>Corner Circles</summary>
 
         <label>
@@ -170,86 +170,88 @@
         <br>
         <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeCornerCircles()" /> Show All Circles
 
-        <!-- <br>
-        <button>
-            <a (click)="downloadUnifiedPath()" class="button">Download Unified Path</a>
-        </button> -->
-
-
     </details>  
 
-    <!-- <details [open]="openPanel === 'topOutline'">
-        <summary>Top Outline</summary>
-    </details> -->
 
 
-    <details [open]="openPanel == 'topAndBottom'" (toggle)="onToggle('topAndBottom', $event)">
+    <details [open]="openPanel == 'topAndBottom'" (toggle)="onToggle('topAndBottom', $event)" [class.panel-disabled]="!isPanelEnabled('topAndBottom')" [attr.aria-disabled]="!isPanelEnabled('topAndBottom')">
         <summary>Top Trace</summary>
 
-        <label>Upper Corner Top Circle Radius : Theta (mm, degrees)</label>
-        <div class="ratio">
-            <input type="number" step="1" min="0" [(ngModel)]="d.params.cornerCircDubUpBoutR" (input)="changeTopAndBottom()" />
-            <span>:</span>
-            <input type="number" step="5" min="0" [(ngModel)]="d.params.cornerCircDubUpBoutTheta" (input)="changeTopAndBottom()" />
+        <div class="top-trace">
+            <section class="top-trace-group">
+                <div class="top-trace-group-title">Upper Corner</div>
+
+                <label class="top-trace-label">Top Circle Radius : Theta <span>(mm, degrees)</span></label>
+                <div class="ratio top-trace-row">
+                    <input class="trace-input" type="number" step="1" min="0" [(ngModel)]="d.params.cornerCircDubUpBoutR" (input)="changeTopAndBottom()" [style.border-color]="cornerColors.upperTop.inner" />
+                    <span>:</span>
+                    <input class="trace-input" type="number" step="5" min="0" [(ngModel)]="d.params.cornerCircDubUpBoutTheta" (input)="changeTopAndBottom()" [style.border-color]="cornerColors.upperTop.outer" />
+                </div>
+
+                <label class="top-trace-label">Bottom Circle Radius : Theta <span>(mm, degrees)</span></label>
+                <div class="ratio top-trace-row">
+                    <input class="trace-input" type="number" step="1" min="0" [(ngModel)]="d.params.cornerCircDubUpCBoutR" (input)="changeTopAndBottom()" [style.border-color]="cornerColors.upperBottom.inner" />
+                    <span>:</span>
+                    <input class="trace-input" type="number" step="5" min="0" [(ngModel)]="d.params.cornerCircDubUpCBoutTheta" (input)="changeTopAndBottom()" [style.border-color]="cornerColors.upperBottom.outer" />
+                </div>
+
+                <label class="top-trace-label">Cutoff C1 Theta : C2 Theta <span>(degrees)</span></label>
+                <div class="ratio top-trace-row">
+                    <input class="trace-input" type="number" step="5" min="0" [(ngModel)]="d.params.cornerCircDubUpBoutCutoffTheta" (input)="changeTopAndBottom()" [style.border-color]="cornerColors.upperTop.inner" />
+                    <span>:</span>
+                    <input class="trace-input" type="number" step="5" min="0" [(ngModel)]="d.params.cornerCircleDubUpCBoutCutoffTheta" (input)="changeTopAndBottom()" [style.border-color]="cornerColors.upperBottom.inner" />
+                </div>
+            </section>
+
+            <section class="top-trace-group">
+                <div class="top-trace-group-title">Lower Corner</div>
+
+                <label class="top-trace-label">Top Circle Radius : Theta <span>(mm, degrees)</span></label>
+                <div class="ratio top-trace-row">
+                    <input class="trace-input" type="number" step="1" min="0" [(ngModel)]="d.params.cornerCircDubLowCBoutR" (input)="changeTopAndBottom()" [style.border-color]="cornerColors.lowerTop.inner" />
+                    <span>:</span>
+                    <input class="trace-input" type="number" step="5" min="0" [(ngModel)]="d.params.cornerCircDubLowCBoutTheta" (input)="changeTopAndBottom()" [style.border-color]="cornerColors.lowerTop.outer" />
+                </div>
+
+                <label class="top-trace-label">Bottom Circle Radius : Theta <span>(mm, degrees)</span></label>
+                <div class="ratio top-trace-row">
+                    <input class="trace-input" type="number" step="1" min="0" [(ngModel)]="d.params.cornerCircDubLowBoutR" (input)="changeTopAndBottom()" [style.border-color]="cornerColors.lowerBottom.inner" />
+                    <span>:</span>
+                    <input class="trace-input" type="number" step="5" min="0" [(ngModel)]="d.params.cornerCircDubLowBoutTheta" (input)="changeTopAndBottom()" [style.border-color]="cornerColors.lowerBottom.outer" />
+                </div>
+
+                <label class="top-trace-label">Cutoff C1 Theta : C2 Theta <span>(degrees)</span></label>
+                <div class="ratio top-trace-row">
+                    <input class="trace-input" type="number" step="5" min="0" [(ngModel)]="d.params.cornerCircleDubLowCBoutTheta" (input)="changeTopAndBottom()" [style.border-color]="cornerColors.lowerTop.inner" />
+                    <span>:</span>
+                    <input class="trace-input" type="number" step="5" min="0" [(ngModel)]="d.params.cornerCircleDubLowBoutTheta" (input)="changeTopAndBottom()" [style.border-color]="cornerColors.lowerBottom.inner" />
+                </div>
+            </section>
+
+            <div class="top-trace-controls">
+                <label class="trace-toggle">
+                    <input type="checkbox" [(ngModel)]="showOuterCircles" (change)="changeTopAndBottom()" />
+                    <span>Show Outer Circles</span>
+                </label>
+                <label class="trace-toggle trace-toggle-child">
+                    <input type="checkbox" [(ngModel)]="showAngleIndicators" (change)="changeTopAndBottom()" [disabled]="!showOuterCircles" />
+                    <span>Show Double Circle Angle</span>
+                </label>
+
+                <label class="trace-toggle">
+                    <input type="checkbox" [(ngModel)]="showInnerCircles" (change)="changeTopAndBottom()" />
+                    <span>Show Inner Circles</span>
+                </label>
+                <label class="trace-toggle trace-toggle-child">
+                    <input type="checkbox" [(ngModel)]="showCutoffIndicators" (change)="changeTopAndBottom()" [disabled]="!showInnerCircles" />
+                    <span>Show Cutoff Angles</span>
+                </label>
+            </div>
         </div>
-        <br>
-        <label>
-            Upper Corner Bottom Circle Radius : Theta (mm, degrees)
-            <div class="ratio">
-                <input type="number" step="1" min="0" [(ngModel)]="d.params.cornerCircDubUpCBoutR" (input)="changeTopAndBottom()" />
-                <span>:</span>
-                <input type="number" step="5" min="0" [(ngModel)]="d.params.cornerCircDubUpCBoutTheta" (input)="changeTopAndBottom()" />
-            </div>
-        </label>
-        <br>
-        <label>
-            Upper Corner Cuttoff C1 Theta : C2 Theta (degrees)
-            <div class="ratio">
-                <input type="number" step="5" min="0" [(ngModel)]="d.params.cornerCircDubUpBoutCutoffTheta" (input)="changeTopAndBottom()" />
-                <span>:</span>
-                <input type="number" step="5" min="0" [(ngModel)]="d.params.cornerCircleDubUpCBoutCutoffTheta" (input)="changeTopAndBottom()" />
-            </div>
-        </label>
-
-        <br><br>
-        
-        <label>
-            Lower Corner Top Circle Radius : Theta (mm, degrees)
-            <div class="ratio">
-                <input type="number" step="1" min="0" [(ngModel)]="d.params.cornerCircDubLowCBoutR" (input)="changeTopAndBottom()" />
-                <span>:</span>
-                <input type="number" step="5" min="0" [(ngModel)]="d.params.cornerCircDubLowCBoutTheta" (input)="changeTopAndBottom()" />
-            </div>
-        </label>
-
-        <br>
-
-        <label>
-            Lower Corner Bottom Circle Radius : Theta (mm, degrees)
-            <div class="ratio">
-                <input type="number" step="1" min="0" [(ngModel)]="d.params.cornerCircDubLowBoutR" (input)="changeTopAndBottom()" />
-                <span>:</span>
-                <input type="number" step="5" min="0" [(ngModel)]="d.params.cornerCircDubLowBoutTheta" (input)="changeTopAndBottom()" />
-            </div>
-        </label>
-
-        <br>
-
-        <label>
-            Lower Corner Cuttoff C1 Theta : C2 Theta (degrees)
-            <div class="ratio">
-                <input type="number" step="5" min="0" [(ngModel)]="d.params.cornerCircleDubLowCBoutTheta" (input)="changeTopAndBottom()" />
-                <span>:</span>
-                <input type="number" step="5" min="0" [(ngModel)]="d.params.cornerCircleDubLowBoutTheta" (input)="changeTopAndBottom()" />
-            </div>
-        </label>
-
-         <br>
-        <input type="checkbox" [(ngModel)]="showGuideLines" (change)="changeTopAndBottom()" /> Show Guide Circles
 
     </details>
 
-    <details [open]="openPanel === 'mouldPattern'" (toggle)="onToggle('mouldPattern', $event)">
+    <details [open]="openPanel === 'mouldPattern'" (toggle)="onToggle('mouldPattern', $event)" [class.panel-disabled]="!isPanelEnabled('mouldPattern')" [attr.aria-disabled]="!isPanelEnabled('mouldPattern')">
         <summary>Mould Pattern</summary> 
 
          Upper Block H : W (mm)
@@ -290,7 +292,7 @@
             <input type="number" step=".1" min="0" [(ngModel)]="d.params.bitDiameter" (input)="changeMouldPattern()" />
         </div>
 
-                <br>
+        <br>
 
         <input type="checkbox" [(ngModel)]="showGuideLines" (change)="changeMouldPattern(false)" /> Show Blocks
         <br>
@@ -299,7 +301,7 @@
 
     </details>
 
-    <details [open]="openPanel === 'export'" (toggle)="onToggle('export', $event)">
+    <details [open]="openPanel === 'export'" (toggle)="onToggle('export', $event)" [class.panel-disabled]="!isPanelEnabled('export')" [attr.aria-disabled]="!isPanelEnabled('export')">
         <summary>Export</summary>
         <br>
         <a (click)="downloadOuterPath()" class="file-upload">Download Outer Path</a> 

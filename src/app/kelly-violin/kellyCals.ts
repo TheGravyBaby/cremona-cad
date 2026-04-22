@@ -16,34 +16,168 @@ import {
 	pathFromRoundedRect,
 	pointOnCircle,
 	unifyConnectedSvgPaths,
+	yInterceptFromTwoPoints,
 } from '../helpers/draftMath';
 import { KellyCalcEntry, KellyViolinData } from './kellyTypes';
 
-function upsertCalc(data: KellyViolinData, calc: KellyCalcEntry): void {
-	const existingIndex = data.paths.findIndex(c => c.name === calc.name);
-	if (existingIndex !== -1) {
-		data.paths[existingIndex] = calc;
-		return;
+export function initializeMainBouts(d: KellyViolinData) {
+	if (
+		d.params.boutUpR == 0 &&
+		d.params.boutUpY == 0 &&
+		d.params.boutCenR == 0 &&
+		d.params.boutLowR == 0 &&
+		d.params.boutLowY == 0
+	) {
+		d.params.boutLowR = Math.round((d.params.width / 2 - d.params.inset));
+		d.params.boutLowY = Math.round((d.params.boutLowR * d.ratios.boutLowYToLBR));
+		d.params.boutUpR = Math.round((d.params.boutLowR * d.ratios.boutUpToLBR));
+		d.params.boutUpY = Math.round((d.params.boutLowR * d.ratios.boutUpYToLBR));
+		d.params.boutCenR = Math.round((d.params.boutLowR * d.ratios.boutCToLBR));
+	}
+	else {
+		d.ratios.boutLowYToLBR = d.params.boutLowY / d.params.boutLowR;
+		d.ratios.boutUpToLBR = d.params.boutUpR / d.params.boutLowR;
+		d.ratios.boutUpYToLBR = d.params.boutUpY / d.params.boutLowR;
+		d.ratios.boutCToLBR = d.params.boutCenR / d.params.boutLowR;
 	}
 
-	data.paths.push(calc);
 }
 
-function requireCorners(data: KellyViolinData): {
-	lowerRight: Pt;
-	lowerLeft: Pt;
-	upperRight: Pt;
-	upperLeft: Pt;
-} | null {
-	const { lowerRight, lowerLeft, upperRight, upperLeft } = data.intersects.corners;
-	if (!lowerRight || !lowerLeft || !upperRight || !upperLeft) {
-		return null;
+
+export function initializeMinorBouts(d: KellyViolinData) {
+	if (
+		d.params.vesaciLowR == 0 &&
+		d.params.vesaciUpR == 0
+	) {
+		d.params.vesaciUpR = Math.round(d.params.boutLowR * d.ratios.vesicaUpRToLBR)
+		d.params.vesaciLowR = Math.round(d.params.boutLowR * d.ratios.vesicaLowRToLBR)
+	}
+	else {
+		d.ratios.vesicaUpRToLBR = d.params.vesaciUpR / d.params.boutLowR;
+		d.ratios.vesicaLowRToLBR = d.params.vesaciLowR / d.params.boutLowR;
+	}
+}
+
+
+export function initializeCornerPlacement(d: KellyViolinData) {
+	if (
+		d.params.cornerR == 0 &&
+		d.params.cornerGuideLowY == 0 &&
+		d.params.cornerGuideUpY == 0
+	) {
+		d.params.cornerR = Math.round(d.params.boutCenR * d.ratios.cornerRToCBR);
+		d.params.cornerGuideUpY = d.params.boutUpY;
+		d.params.cornerGuideLowY = Math.round(yInterceptFromTwoPoints(d.shapes.centerBoutRight, d.shapes.lowerRightVesaci));
+	}
+	else {
+		d.ratios.cornerRToCBR = d.params.cornerR / d.params.boutCenR;
+	}
+}
+
+
+export function initializeCornerCircles(d: KellyViolinData) {
+	if (
+		d.params.cornerCircUpBoutR == 0 &&
+		d.params.cornerCircUpCBoutR == 0 &&
+		d.params.cornerCircLowCBoutR == 0 &&
+		d.params.cornerCircLowBoutR == 0
+	) {
+		d.params.cornerCircUpBoutR = Math.round(d.params.boutLowR * d.ratios.cornerCircUpBoutRToLBR);
+		d.params.cornerCircUpCBoutR = Math.round(d.params.boutLowR * d.ratios.cornerCircUpCBoutRToLBR);
+		d.params.cornerCircLowCBoutR = Math.round(d.params.boutLowR * d.ratios.cornerCircLowCBoutRToLBR);
+		d.params.cornerCircLowBoutR = Math.round(d.params.boutLowR * d.ratios.cornerCircLowBoutRToLBR);
+	}
+	else {
+		d.ratios.cornerCircUpBoutRToLBR = d.params.cornerCircUpBoutR / d.params.boutLowR;
+		d.ratios.cornerCircUpCBoutRToLBR = d.params.cornerCircUpCBoutR / d.params.boutLowR;
+		d.ratios.cornerCircLowCBoutRToLBR = d.params.cornerCircLowCBoutR / d.params.boutLowR;
+		d.ratios.cornerCircLowBoutRToLBR = d.params.cornerCircLowBoutR / d.params.boutLowR;
+	}
+}
+
+
+export function initializeTopAndBottomTrace(d: KellyViolinData) {
+	if (
+		d.params.cornerCircDubUpBoutR == 0 &&
+		d.params.cornerCircDubUpCBoutR == 0 &&
+		d.params.cornerCircDubLowCBoutR == 0 &&
+		d.params.cornerCircDubLowBoutR == 0 &&
+		d.params.cornerCircDubUpBoutTheta == 0 &&
+		d.params.cornerCircDubUpCBoutTheta == 0 &&
+		d.params.cornerCircDubLowCBoutTheta == 0 &&
+		d.params.cornerCircDubLowBoutTheta == 0 &&
+		d.params.cornerCircDubUpBoutCutoffTheta == 0 &&
+		d.params.cornerCircleDubUpCBoutCutoffTheta == 0 &&
+		d.params.cornerCircleDubLowCBoutTheta == 0 &&
+		d.params.cornerCircleDubLowBoutTheta == 0
+	) {
+		d.params.cornerCircDubUpBoutR = Math.round(d.params.cornerCircUpBoutR * d.ratios.cornerCircDubUpBoutRRatio);
+		d.params.cornerCircDubUpCBoutR = Math.round(d.params.cornerCircUpCBoutR * d.ratios.cornerCircDubUpCBoutRRatio);
+		d.params.cornerCircDubLowCBoutR = Math.round(d.params.cornerCircLowCBoutR * d.ratios.cornerCircDubLowCboutRRatio);
+		d.params.cornerCircDubLowBoutR = Math.round(d.params.cornerCircLowBoutR * d.ratios.cornerCircDubLowBoutRRatio);
+
+		d.params.cornerCircDubUpBoutTheta = d.ratios.topTraceUpperBoutTheta;
+		d.params.cornerCircDubUpCBoutTheta = d.ratios.topTraceUpperCBoutTheta;
+		d.params.cornerCircDubLowCBoutTheta = d.ratios.topTraceLowerCBoutTheta;
+		d.params.cornerCircDubLowBoutTheta = d.ratios.topTraceLowerBoutTheta;
+		d.params.cornerCircDubUpBoutCutoffTheta = d.ratios.topTraceUpperBoutCutoffTheta;
+		d.params.cornerCircleDubUpCBoutCutoffTheta = d.ratios.topTraceUpperCBoutCutoffTheta;
+		d.params.cornerCircleDubLowCBoutTheta = d.ratios.topTraceLowerCBoutCutoffTheta;
+		d.params.cornerCircleDubLowBoutTheta = d.ratios.topTraceLowerBoutCutoffTheta;
+	}
+	else {
+		d.ratios.cornerCircDubUpBoutRRatio = d.params.cornerCircDubUpBoutR / d.params.cornerCircUpBoutR;
+		d.ratios.cornerCircDubUpCBoutRRatio = d.params.cornerCircDubUpCBoutR / d.params.cornerCircUpCBoutR;
+		d.ratios.cornerCircDubLowCboutRRatio = d.params.cornerCircDubLowCBoutR / d.params.cornerCircLowCBoutR;
+		d.ratios.cornerCircDubLowBoutRRatio = d.params.cornerCircDubLowBoutR / d.params.cornerCircLowBoutR;
+		d.ratios.topTraceUpperBoutTheta = d.params.cornerCircDubUpBoutTheta;
+		d.ratios.topTraceUpperCBoutTheta = d.params.cornerCircDubUpCBoutTheta;
+		d.ratios.topTraceLowerCBoutTheta = d.params.cornerCircDubLowCBoutTheta;
+		d.ratios.topTraceLowerBoutTheta = d.params.cornerCircDubLowBoutTheta;
+		d.ratios.topTraceUpperBoutCutoffTheta = d.params.cornerCircDubUpBoutCutoffTheta;
+		d.ratios.topTraceUpperCBoutCutoffTheta = d.params.cornerCircleDubUpCBoutCutoffTheta;
+		d.ratios.topTraceLowerCBoutCutoffTheta = d.params.cornerCircleDubLowCBoutTheta;
+		d.ratios.topTraceLowerBoutCutoffTheta = d.params.cornerCircleDubLowBoutTheta;
+	}
+}
+
+
+export function initializeBlocks(d: KellyViolinData) {
+	const width = d.params.width;
+
+	if (
+		d.params.blockCornerH == 0 &&
+		d.params.blockCornerW == 0 &&
+		d.params.blockCornerPad == 0
+	) {
+		d.params.blockCornerW = Math.round(width * 0.10);
+		d.params.blockCornerH = Math.round(width * 0.12);
+		d.params.blockCornerPad = Math.round(width * 0.04);
 	}
 
-	return { lowerRight, lowerLeft, upperRight, upperLeft };
+	if (
+		d.params.blockLowH == 0 &&
+		d.params.blowLowW == 0
+	) {
+		d.params.blockLowH = Math.round(width * 0.10);
+		d.params.blowLowW = Math.round(width * 0.30);
+	}
+
+	if (
+		d.params.blockUpH == 0 &&
+		d.params.blockUpW == 0
+	) {
+		d.params.blockUpH = Math.round(width * 0.10);
+		d.params.blockUpW = Math.round(width * 0.20);
+	}
+
+	if (d.params.bitDiameter == 0) {
+		d.params.bitDiameter = 6.35;
+	}
 }
 
-export function calculatePrimaryOutline(data: KellyViolinData): void {
+
+export function calculatePrimaryShapes(data: KellyViolinData): void {
 	if (data.params.boutUpY && data.params.boutLowY && data.params.boutUpR && data.params.boutLowR && data.params.boutCenR) {
 		data.shapes.upperBout = { x: 0, y: data.params.boutUpY, r: data.params.boutUpR };
 		data.shapes.lowerBout = { x: 0, y: data.params.boutLowY, r: data.params.boutLowR };
@@ -174,76 +308,77 @@ export function calculatePrimaryOutline(data: KellyViolinData): void {
 		data.shapes.rightClampCutout = { Pt1: rightCornerBlockClampingCutoutP1, Pt2: rightCornerBlockClampingCutoutP2 };
 	}
 
-	calculateMainPath(data);
+	// an easy check is just to see if the vesaci have
+	data.shapes.lowerLeftVesaci && calculateMainPath(data);
 }
 
 export function calculateMainPath(data: KellyViolinData): void {
 	const pathsCorners: string[] = [];
-    const pathsCornerless: string[] = [];
+	const pathsCornerless: string[] = [];
 	const cornersCalculated = !!(data.shapes.lowerLeftCornerC1 && data.intersects.corners.lowerLeftCornerBottomBodyIntersection);
 
 	if (cornersCalculated) {
-        let pc1 = arcPathFrom3Points(data.shapes.lowerLeftCornerC2!, data.intersects.corners.lowerLeftCornerBottomBodyIntersection!, data.intersects.corners.lowerLeft!)
-        let pc2 = arcPathFrom3Points(data.shapes.lowerBout, data.intersects.corners.lowerLeftCornerBottomBodyIntersection!, data.intersects.minorBouts.lowerLeftVesicaUpper)
+		let pc1 = arcPathFrom3Points(data.shapes.lowerLeftCornerC2!, data.intersects.corners.lowerLeftCornerBottomBodyIntersection!, data.intersects.corners.lowerLeft!)
+		let pc2 = arcPathFrom3Points(data.shapes.lowerBout, data.intersects.corners.lowerLeftCornerBottomBodyIntersection!, data.intersects.minorBouts.lowerLeftVesicaUpper)
 		pathsCorners.push(pc1, pc2);
-	} 
+	}
 
-    let p1 = arcPathFrom3Points(data.shapes.lowerBout, data.intersects.majorBouts.lowerLeft, data.intersects.minorBouts.lowerLeftVesicaUpper);
-    let p2 = arcPathFrom3Points(data.shapes.centerBoutLeft, data.intersects.majorBouts.lowerLeft, data.intersects.majorBouts.upperLeft);
-    pathsCornerless.push(p1, p2);
-    
-        
-    let p3 = arcPathFrom3Points(data.shapes.lowerLeftVesaci, data.intersects.minorBouts.lowerLeftVesicaUpper, data.intersects.minorBouts.lowerLeftVesicaLower)
-    let p4 = arcPathFrom3Points(data.shapes.lowerJoiningCircle, data.intersects.minorBouts.lowerLeftVesicaLower, data.intersects.minorBouts.lowerRightVesicaLower)
-    let p5 = arcPathFrom3Points(data.shapes.lowerRightVesaci, data.intersects.minorBouts.lowerRightVesicaLower, data.intersects.minorBouts.lowerRightVesicaUpper)
-    pathsCorners.push(p3, p4, p5);
-    pathsCornerless.push(p3, p4, p5);
+	let p1 = arcPathFrom3Points(data.shapes.lowerBout, data.intersects.majorBouts.lowerLeft, data.intersects.minorBouts.lowerLeftVesicaUpper);
+	let p2 = arcPathFrom3Points(data.shapes.centerBoutLeft, data.intersects.majorBouts.lowerLeft, data.intersects.majorBouts.upperLeft);
+	pathsCornerless.push(p1, p2);
 
-    if (cornersCalculated) {
-        let pc3 = arcPathFrom3Points(data.shapes.lowerBout, data.intersects.minorBouts.lowerRightVesicaUpper, data.intersects.corners.lowerRightCornerBottomBodyIntersection!);
-        let pc4 = arcPathFrom3Points(data.shapes.lowerRightCornerC2!, data.intersects.corners.lowerRight!, data.intersects.corners.lowerRightCornerBottomBodyIntersection!);
-        let pc5 = arcPathFrom3Points(data.shapes.lowerRightCornerC1!, data.intersects.corners.lowerRightCornerTopBodyIntersection!, data.intersects.corners.lowerRight!);
-        let pc6 = arcPathFrom3Points(data.shapes.centerBoutRight, data.intersects.corners.upperRightCornerBottomBodyIntersection!, data.intersects.corners.lowerRightCornerTopBodyIntersection!);
-        let pc7 = arcPathFrom3Points(data.shapes.upperRightCornerC2!, data.intersects.corners.upperRight!, data.intersects.corners.upperRightCornerBottomBodyIntersection!);
-        pathsCorners.push(pc3, pc4, pc5, pc6, pc7);
-    } 
-    
-    let p55 = arcPathFrom3Points(data.shapes.lowerBout, data.intersects.minorBouts.lowerRightVesicaUpper, data.intersects.majorBouts.lowerRight)
-    let p6 = arcPathFrom3Points(data.shapes.centerBoutLeft, data.intersects.majorBouts.lowerLeft, data.intersects.majorBouts.upperLeft);
-    let p7 = arcPathFrom3Points(data.shapes.centerBoutRight, data.intersects.majorBouts.upperRight, data.intersects.majorBouts.lowerRight);
-    pathsCornerless.push(p55, p6, p7);
-    
+
+	let p3 = arcPathFrom3Points(data.shapes.lowerLeftVesaci, data.intersects.minorBouts.lowerLeftVesicaUpper, data.intersects.minorBouts.lowerLeftVesicaLower)
+	let p4 = arcPathFrom3Points(data.shapes.lowerJoiningCircle, data.intersects.minorBouts.lowerLeftVesicaLower, data.intersects.minorBouts.lowerRightVesicaLower)
+	let p5 = arcPathFrom3Points(data.shapes.lowerRightVesaci, data.intersects.minorBouts.lowerRightVesicaLower, data.intersects.minorBouts.lowerRightVesicaUpper)
+	pathsCorners.push(p3, p4, p5);
+	pathsCornerless.push(p3, p4, p5);
 
 	if (cornersCalculated) {
-        let pc8 = arcPathFrom3Points(data.shapes.upperRightCornerC1!, data.intersects.corners.upperRightCornerTopBodyIntersection!, data.intersects.corners.upperRight!);
-        let pc9 = arcPathFrom3Points(data.shapes.upperBout, data.intersects.corners.upperRightCornerTopBodyIntersection!, data.intersects.minorBouts.upperRightVesicaLower);
-        pathsCorners.push(pc8, pc9);
-	} 
+		let pc3 = arcPathFrom3Points(data.shapes.lowerBout, data.intersects.minorBouts.lowerRightVesicaUpper, data.intersects.corners.lowerRightCornerBottomBodyIntersection!);
+		let pc4 = arcPathFrom3Points(data.shapes.lowerRightCornerC2!, data.intersects.corners.lowerRight!, data.intersects.corners.lowerRightCornerBottomBodyIntersection!);
+		let pc5 = arcPathFrom3Points(data.shapes.lowerRightCornerC1!, data.intersects.corners.lowerRightCornerTopBodyIntersection!, data.intersects.corners.lowerRight!);
+		let pc6 = arcPathFrom3Points(data.shapes.centerBoutRight, data.intersects.corners.upperRightCornerBottomBodyIntersection!, data.intersects.corners.lowerRightCornerTopBodyIntersection!);
+		let pc7 = arcPathFrom3Points(data.shapes.upperRightCornerC2!, data.intersects.corners.upperRight!, data.intersects.corners.upperRightCornerBottomBodyIntersection!);
+		pathsCorners.push(pc3, pc4, pc5, pc6, pc7);
+	}
 
-    let p8 = arcPathFrom3Points(data.shapes.upperBout, data.intersects.majorBouts.upperRight, data.intersects.minorBouts.upperRightVesicaLower)
-    let p9 = arcPathFrom3Points(data.shapes.upperBout, data.intersects.minorBouts.upperLeftVesicaLower, data.intersects.majorBouts.upperLeft)
-    pathsCornerless.push(p8, p9);
+	let p55 = arcPathFrom3Points(data.shapes.lowerBout, data.intersects.minorBouts.lowerRightVesicaUpper, data.intersects.majorBouts.lowerRight)
+	let p6 = arcPathFrom3Points(data.shapes.centerBoutLeft, data.intersects.majorBouts.lowerLeft, data.intersects.majorBouts.upperLeft);
+	let p7 = arcPathFrom3Points(data.shapes.centerBoutRight, data.intersects.majorBouts.upperRight, data.intersects.majorBouts.lowerRight);
+	pathsCornerless.push(p55, p6, p7);
+
+
+	if (cornersCalculated) {
+		let pc8 = arcPathFrom3Points(data.shapes.upperRightCornerC1!, data.intersects.corners.upperRightCornerTopBodyIntersection!, data.intersects.corners.upperRight!);
+		let pc9 = arcPathFrom3Points(data.shapes.upperBout, data.intersects.corners.upperRightCornerTopBodyIntersection!, data.intersects.minorBouts.upperRightVesicaLower);
+		pathsCorners.push(pc8, pc9);
+	}
+
+	let p8 = arcPathFrom3Points(data.shapes.upperBout, data.intersects.majorBouts.upperRight, data.intersects.minorBouts.upperRightVesicaLower)
+	let p9 = arcPathFrom3Points(data.shapes.upperBout, data.intersects.minorBouts.upperLeftVesicaLower, data.intersects.majorBouts.upperLeft)
+	pathsCornerless.push(p8, p9);
 
 
 	let p10 = arcPathFrom3Points(data.shapes.upperRightVesaci, data.intersects.minorBouts.upperRightVesicaLower, data.intersects.minorBouts.upperRightVesicaUpper)
 	let p11 = arcPathFrom3Points(data.shapes.upperJoiningCircle, data.intersects.minorBouts.upperRightVesicaUpper, data.intersects.minorBouts.upperLeftVesicaUpper)
 	let p12 = arcPathFrom3Points(data.shapes.upperLeftVesaci, data.intersects.minorBouts.upperLeftVesicaUpper, data.intersects.minorBouts.upperLeftVesicaLower)
-    pathsCorners.push(p10, p11, p12);
-    pathsCornerless.push(p10, p11, p12);
-	
+	pathsCorners.push(p10, p11, p12);
+	pathsCornerless.push(p10, p11, p12);
+
 
 	if (cornersCalculated) {
-	    let pc10 = 	arcPathFrom3Points(data.shapes.upperBout, data.intersects.minorBouts.upperLeftVesicaLower, data.intersects.corners.upperLeftCornerTopBodyIntersection!)
-		let pc11 =	arcPathFrom3Points(data.shapes.upperLeftCornerC1!, data.intersects.corners.upperLeft!, data.intersects.corners.upperLeftCornerTopBodyIntersection!)
-		let pc12 =	arcPathFrom3Points(data.shapes.upperLeftCornerC2!, data.intersects.corners.upperLeftCornerBottomBodyIntersection!, data.intersects.corners.upperLeft!)
-		let pc13 =  arcPathFrom3Points(data.shapes.lowerLeftCornerC1!, data.intersects.corners.lowerLeft!, data.intersects.corners.lowerLeftCornerTopBodyIntersection!)
-		let pc14 = 	arcPathFrom3Points(data.shapes.centerBoutLeft, data.intersects.corners.lowerLeftCornerTopBodyIntersection!, data.intersects.corners.upperLeftCornerBottomBodyIntersection!)
+		let pc10 = arcPathFrom3Points(data.shapes.upperBout, data.intersects.minorBouts.upperLeftVesicaLower, data.intersects.corners.upperLeftCornerTopBodyIntersection!)
+		let pc11 = arcPathFrom3Points(data.shapes.upperLeftCornerC1!, data.intersects.corners.upperLeft!, data.intersects.corners.upperLeftCornerTopBodyIntersection!)
+		let pc12 = arcPathFrom3Points(data.shapes.upperLeftCornerC2!, data.intersects.corners.upperLeftCornerBottomBodyIntersection!, data.intersects.corners.upperLeft!)
+		let pc13 = arcPathFrom3Points(data.shapes.lowerLeftCornerC1!, data.intersects.corners.lowerLeft!, data.intersects.corners.lowerLeftCornerTopBodyIntersection!)
+		let pc14 = arcPathFrom3Points(data.shapes.centerBoutLeft, data.intersects.corners.lowerLeftCornerTopBodyIntersection!, data.intersects.corners.upperLeftCornerBottomBodyIntersection!)
 
-        pathsCorners.push(pc10, pc11, pc12, pc13, pc14);	
+		pathsCorners.push(pc10, pc11, pc12, pc13, pc14);
 	}
 
 	upsertCalc(data, { name: 'innerPath', paths: pathsCorners });
-    upsertCalc(data, { name: 'innerPathCornerless', paths: pathsCornerless });
+	upsertCalc(data, { name: 'innerPathCornerless', paths: pathsCornerless });
 }
 
 export function calculateMainPathsUnified(data: KellyViolinData): void {
@@ -492,4 +627,28 @@ export function calculateMouldPath(data: KellyViolinData, useHighAccuracy = fals
 			pathFromRoundedRect(rightClampCutout, bitRadius),
 		],
 	});
+}
+
+function upsertCalc(data: KellyViolinData, calc: KellyCalcEntry): void {
+	const existingIndex = data.paths.findIndex(c => c.name === calc.name);
+	if (existingIndex !== -1) {
+		data.paths[existingIndex] = calc;
+		return;
+	}
+
+	data.paths.push(calc);
+}
+
+function requireCorners(data: KellyViolinData): {
+	lowerRight: Pt;
+	lowerLeft: Pt;
+	upperRight: Pt;
+	upperLeft: Pt;
+} | null {
+	const { lowerRight, lowerLeft, upperRight, upperLeft } = data.intersects.corners;
+	if (!lowerRight || !lowerLeft || !upperRight || !upperLeft) {
+		return null;
+	}
+
+	return { lowerRight, lowerLeft, upperRight, upperLeft };
 }

@@ -487,6 +487,101 @@ export const renderRect = (rect: Rectangle, color: string, fill: string = "none"
         .attr("vector-effect", "non-scaling-stroke");
 }
 
+/**
+ * Renders an angle indicator on a circle showing the angle (theta) at which
+ * an inner circle is inscribed within the outer circle.
+ *
+ * Draws:
+ *   • A short reference ray from the center toward 0° (right)
+ *   • An arc sweep from 0° to theta, radius = ~40% of the outer circle radius
+ *   • A radial line from the center to the contact/tangent point on the circle edge
+ *   • A dot at the contact point
+ *   • A label at the midpoint of the arc showing the angle in degrees
+ */
+export const renderCircleAngleIndicator = (
+    outerCircle: Circle,
+    thetaDeg: number,
+    color: string,
+    label?: string
+) => (g: any, ui: any) => {
+    const thetaRad = thetaDeg * Math.PI / 180;
+    const cx = outerCircle.x;
+    const cy = outerCircle.y;
+    const R = outerCircle.r;
+    const arcR = R * 0.1;   // radius of the angle-indicator arc
+
+    // Contact point where the inner circle is tangent to the outer circle
+    const contactX = cx + R * Math.cos(thetaRad);
+    const contactY = cy + R * Math.sin(thetaRad);
+
+    // Reference ray endpoint (toward 0° / east)
+    const refX = cx + arcR;
+    const refY = cy;
+
+    // Arc endpoint at theta
+    const arcEndX = cx + arcR * Math.cos(thetaRad);
+    const arcEndY = cy + arcR * Math.sin(thetaRad);
+
+    // Determine large-arc and sweep flags (SVG arc notation)
+    const absDeg = ((thetaDeg % 360) + 360) % 360;
+    const largeArc = absDeg > 180 ? 1 : 0;
+    // thetaRad > 0 means counter-clockwise in math convention → sweep-flag 1 in SVG (positive direction)
+    const sweep = thetaRad >= 0 ? 1 : 0;
+
+    // Radial line from center to contact point
+    g.append("line")
+        .attr("x1", cx).attr("y1", cy)
+        .attr("x2", contactX).attr("y2", contactY)
+        .attr("stroke", color)
+        .attr("stroke-width", 1)
+        .attr("stroke-dasharray", "3,3")
+        .attr("opacity", 0.8)
+        .attr("vector-effect", "non-scaling-stroke");
+
+    // Reference ray (0° direction)
+    g.append("line")
+        .attr("x1", cx).attr("y1", cy)
+        .attr("x2", refX).attr("y2", refY)
+        .attr("stroke", color)
+        .attr("stroke-width", 1)
+        .attr("stroke-dasharray", "3,3")
+        .attr("opacity", 0.5)
+        .attr("vector-effect", "non-scaling-stroke");
+
+    // Arc sweep
+    g.append("path")
+        .attr("d", `M ${refX},${refY} A ${arcR},${arcR} 0 ${largeArc},${sweep} ${arcEndX},${arcEndY}`)
+        .attr("fill", "none")
+        .attr("stroke", color)
+        .attr("stroke-width", 1.5)
+        .attr("opacity", 0.85)
+        .attr("vector-effect", "non-scaling-stroke");
+
+    // Dot at the contact point
+    g.append("circle")
+        .attr("cx", contactX).attr("cy", contactY).attr("r", .5)
+        .attr("fill", color)
+        .attr("vector-effect", "non-scaling-stroke");
+
+    // Label at the arc midpoint (half the angle)
+    const midTheta = thetaRad / 2;
+    const labelR = arcR * 2.5;
+    const lx = cx + labelR * Math.cos(midTheta);
+    const ly = cy + labelR * Math.sin(midTheta);
+    const displayLabel = label ?? `${thetaDeg}°`;
+
+    ui.append("text")
+        .text(displayLabel)
+        .attr("x", lx)
+        .attr("y", -ly)      // ui layer has y flipped
+        .attr("fill", color)
+        .attr("font-size", 4)
+        .attr("font-weight", "bold")
+        .attr("text-anchor", "middle")
+        .attr("dominant-baseline", "central")
+        .style("user-select", "none");
+};
+
 export const renderRectRoundedCorners = (rect: Rectangle, r: number, color: string, fill: string = "none", strokeWidth: number = 1) => (g: any, ui: any) => {
     const x = Math.min(rect.Pt1.x, rect.Pt2.x);
     const y = Math.min(rect.Pt1.y, rect.Pt2.y);

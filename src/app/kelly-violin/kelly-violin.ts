@@ -2,10 +2,10 @@ import { Component, Input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { Circle, Pt, Rectangle } from '../models/types';
-import { renderCircle, renderCrosshair, renderDashedLine, renderDashLine, renderDistanceMeasurementLine, renderLine, renderPath, renderRect } from '../helpers/renderFuncs';
+import { renderCircle, renderCircleAngleIndicator, renderCrosshair, renderDashedLine, renderDashLine, renderDistanceMeasurementLine, renderLine, renderPath, renderRect } from '../helpers/renderFuncs';
 import { combinePathStrings } from '../helpers/draftMath';
 import { KellyViolinData, KellyViolinRecipe } from './kellyTypes';
-import { calculatePrimaryOutline, calculateMainPathsSegmented, calculateMainPathsUnified, calculateMouldPath, calculateOffsetPathsSegments, calculateTopPath } from './kellyCals';
+import { calculatePrimaryShapes, calculateMainPathsSegmented, calculateMainPathsUnified, calculateMouldPath, calculateOffsetPathsSegments, calculateTopPath, initializeMainBouts, initializeMinorBouts, initializeCornerPlacement, initializeCornerCircles, initializeTopAndBottomTrace, initializeBlocks } from './kellyCals';
 
 @Component({
   selector: 'app-kelly-violin',
@@ -22,14 +22,29 @@ export class KellyViolin extends RecipeComponentBase {
   showGuideLines = true;
   showAllCircles = true;
   showModuleCircles = false;
+  showOuterCircles = true;
+  showInnerCircles = true;
+  showAngleIndicators = true;
+  showCutoffIndicators = false;
   viewOuterPathExport = true;
   viewInnerPathExport = false;
   viewMouldExport = false;
   viewSegmentedOuter = false;
   viewSegmentedInnerPartial = false;
+
+  readonly cornerColors = {
+    lowerTop: { outer: 'deepskyblue', inner: 'navy' },
+    lowerBottom: { outer: 'limegreen', inner: 'darkgreen' },
+    upperTop: { outer: 'orangered', inner: 'maroon' },
+    upperBottom: { outer: 'gold', inner: 'saddlebrown' },
+  };
+
+  insetTooltip = "Inset is the distance from the outer edge of the bounding box to inner edge. It can be used to create a margin for the outline of the violin.";
+
   
   @Input() set newFile(v: boolean) {
     if (v) {
+        this.openPanel = 'base'
         let data = new KellyViolinRecipe()
         data.newFile()
         this.d = data;
@@ -40,15 +55,69 @@ export class KellyViolin extends RecipeComponentBase {
   }
     
 
-  insetTooltip = "Inset is the distance from the outer edge of the bounding box to inner edge. It can be used to create a margin for the outline of the violin.";
-
   override firstRender = (g: any, ui: any): void => {
     this.renderBounds(g, ui);
     this.setBounds.emit({ pt1: { x: -this.d.params.width / 2, y: 0 }, pt2: { x: this.d.params.width / 2, y: this.d.params.height } });
   }
 
+  isPanelEnabled(panel: string): boolean {
+    switch (panel) {
+      case 'base':
+        return true;
+      case 'mainBouts':
+        return this.hasBaseMeasurements();
+      case 'minorBouts':
+        return this.hasMajorBouts();
+      case 'cornerPlacement':
+        return this.hasMinorBouts();
+      case 'cornerCircles':
+        return this.hasCornerPlacement();
+      case 'topAndBottom':
+        return this.hasCornerCircles();
+      case 'mouldPattern':
+        return this.hasCornerPlacement();
+      case 'export':
+        return this.hasCornerCircles();
+      default:
+        return true;
+    }
+  }
+
+  private hasBaseMeasurements(): boolean {
+    return this.d.params.width > 0 && this.d.params.height > 0 && this.d.params.inset >= 0;
+  }
+
+  private hasMajorBouts(): boolean {
+    const p = this.d.params;
+    return p.boutUpR > 0 && p.boutUpY > 0 && p.boutCenR > 0 && p.boutLowR > 0 && p.boutLowY > 0;
+  }
+
+  private hasMinorBouts(): boolean {
+    return this.hasMajorBouts() && this.d.params.vesaciUpR > 0 && this.d.params.vesaciLowR > 0;
+  }
+
+  private hasCornerPlacement(): boolean {
+    return this.hasMinorBouts() && this.d.params.cornerR > 0 && this.d.params.cornerGuideUpY > 0 && this.d.params.cornerGuideLowY > 0;
+  }
+
+  private hasCornerCircles(): boolean {
+    const p = this.d.params;
+    return this.hasCornerPlacement()
+      && p.cornerCircUpBoutR > 0
+      && p.cornerCircUpCBoutR > 0
+      && p.cornerCircLowCBoutR > 0
+      && p.cornerCircLowBoutR > 0;
+  }
+
   override onToggle(panel: string, ev: Event) {
     const details = ev.target as HTMLDetailsElement;
+
+    if (!this.isPanelEnabled(panel)) {
+      details.open = false;
+      if (this.openPanel === panel) this.openPanel = '';
+      return;
+    }
+
     this.showModuleCircles = true;
     this.showAllCircles = false;
 
@@ -59,9 +128,9 @@ export class KellyViolin extends RecipeComponentBase {
       else if (panel === 'mainBouts') this.changeMainBouts();
       else if (panel === 'minorBouts') this.changeMinorBouts();
       else if (panel === 'cornerPlacement') this.changeCornerPlacement();
-      else if (panel === 'cornerCircles') this.changeCornerCircles()
-      else if (panel === 'mouldPattern') this.changeMouldPattern();
+      else if (panel === 'cornerCircles') this.changeCornerCircles();
       else if (panel === 'topAndBottom') this.changeTopAndBottom();
+      else if (panel === 'mouldPattern') this.changeMouldPattern();
       else if (panel === 'export') this.renderExports();
 
       else {
@@ -76,6 +145,7 @@ export class KellyViolin extends RecipeComponentBase {
 
   }
 
+
   changeBaseMeasurements(): void {
     const ratio = this.d.params.height / this.d.params.width;
     this.setBounds.emit({ pt1: { x: -this.d.params.width / 2, y: 0 }, pt2: { x: this.d.params.width / 2, y: this.d.params.height } });
@@ -85,38 +155,37 @@ export class KellyViolin extends RecipeComponentBase {
   }
 
   changeMainBouts() {
-    calculatePrimaryOutline(this.d);
+    initializeMainBouts(this.d)
+    calculatePrimaryShapes(this.d);
     this.draftChange.emit([this.renderBounds, this.renderMainBouts(true)]);
     sessionStorage.setItem('recipeData', JSON.stringify(this.d));
   }
 
   changeMinorBouts() {
-    calculatePrimaryOutline(this.d);
+    initializeMinorBouts(this.d)
+    calculatePrimaryShapes(this.d);
     this.draftChange.emit([this.renderBounds, this.renderMainBouts(false), this.renderMinorBouts(true), this.renderMainPathCornerless]);
     sessionStorage.setItem('recipeData', JSON.stringify(this.d));
   }
 
   changeCornerPlacement() {
-    calculatePrimaryOutline(this.d);
+    initializeCornerPlacement(this.d);
+    calculatePrimaryShapes(this.d);
+    // this.draftChange.emit([renderCircle(this.d.shapes.lowerBout, "blue"), renderCrosshair(this.d.intersects.corners.lowerRight, "purple")]);
     this.draftChange.emit([this.renderMainBouts(false), this.renderMinorBouts(false), this.renderCornerPlacements(true), this.renderMainPathCornerless]);
     sessionStorage.setItem('recipeData', JSON.stringify(this.d));
   }
 
   changeCornerCircles() {
-    calculatePrimaryOutline(this.d);
+    initializeCornerCircles(this.d);
+    calculatePrimaryShapes(this.d);
     this.draftChange.emit([this.renderMainBouts(false), this.renderMinorBouts(false), this.renderCornerPlacements(false), this.renderCornerCircles(true), this.renderMainPath]);
     sessionStorage.setItem('recipeData', JSON.stringify(this.d));
   }
 
-  changeMouldPattern(calcChange = true) {
-    calcChange && calculatePrimaryOutline(this.d);
-    calcChange && calculateMouldPath(this.d);
-    this.draftChange.emit([this.renderMainBouts(false), this.renderMinorBouts(false), this.renderCornerPlacements(false), this.renderCornerCircles(false), this.renderBlocks(true), this.renderMainPathWithBlocks]);
-    sessionStorage.setItem('recipeData', JSON.stringify(this.d));
-  }
-
   changeTopAndBottom() {
-    calculatePrimaryOutline(this.d);
+    initializeTopAndBottomTrace(this.d);
+    calculatePrimaryShapes(this.d);
     calculateMainPathsSegmented(this.d);
     calculateOffsetPathsSegments(this.d);
     calculateTopPath(this.d);
@@ -124,8 +193,16 @@ export class KellyViolin extends RecipeComponentBase {
     sessionStorage.setItem('recipeData', JSON.stringify(this.d));
   }
 
+  changeMouldPattern(calcChange = true) {
+    calcChange && initializeBlocks(this.d);
+    calcChange && calculatePrimaryShapes(this.d);
+    calcChange && calculateMouldPath(this.d);
+    this.draftChange.emit([this.renderMainBouts(false), this.renderMinorBouts(false), this.renderCornerPlacements(false), this.renderCornerCircles(false), this.renderBlocks(true), this.renderMainPathWithBlocks]);
+    sessionStorage.setItem('recipeData', JSON.stringify(this.d));
+  }
+
   renderExports() {
-    calculatePrimaryOutline(this.d);
+    calculatePrimaryShapes(this.d);
     calculateMouldPath(this.d);
     calculateMainPathsSegmented(this.d);
     calculateOffsetPathsSegments(this.d);
@@ -281,28 +358,79 @@ export class KellyViolin extends RecipeComponentBase {
   }
 
   renderFinalCorners = (currentModule: boolean) => (g: any, ui: any): void => {
+    const clrLowerTop = this.cornerColors.lowerTop.outer;
+    const clrLowerBottom = this.cornerColors.lowerBottom.outer;
+    const clrUpperTop = this.cornerColors.upperTop.outer;
+    const clrUpperBottom = this.cornerColors.upperBottom.outer;
 
-    if (currentModule && this.showGuideLines) {
-      renderCircle(this.d.shapes.lowerRightC1Offset, "blue")(g, ui);
-      renderCircle(this.d.shapes.lowerRightC2Offset, "blue")(g, ui);
-      renderCircle(this.d.shapes.lowerRightCornerDoubleC1, "purple")(g, ui);
-      renderCircle(this.d.shapes.lowerRightCornerDoubleC2, "purple")(g, ui);
+    const clrLowerTopInner = this.cornerColors.lowerTop.inner;
+    const clrLowerBottomInner = this.cornerColors.lowerBottom.inner;
+    const clrUpperTopInner = this.cornerColors.upperTop.inner;
+    const clrUpperBottomInner = this.cornerColors.upperBottom.inner;
 
-      renderCircle(this.d.shapes.lowerLeftC1Offset, "blue")(g, ui);
-      renderCircle(this.d.shapes.lowerLeftC2Offset, "blue")(g, ui);
-      renderCircle(this.d.shapes.lowerLeftCornerDoubleC1, "purple")(g, ui);
-      renderCircle(this.d.shapes.lowerLeftCornerDoubleC2, "purple")(g, ui);
+    if (!currentModule) return;
 
-      renderCircle(this.d.shapes.upperRightC1Offset, "blue")(g, ui);
-      renderCircle(this.d.shapes.upperRightC2Offset, "blue")(g, ui);
-      renderCircle(this.d.shapes.upperRightCornerDoubleC1, "purple")(g, ui);
-      renderCircle(this.d.shapes.upperRightCornerDoubleC2, "purple")(g, ui);
+    const showOuter = this.showOuterCircles;
+    const showInner = this.showInnerCircles;
+    const showOuterAngles = showOuter && this.showAngleIndicators;
+    const showInnerAngles = showInner && this.showCutoffIndicators;
 
-      renderCircle(this.d.shapes.upperLeftC1Offset, "blue")(g, ui);
-      renderCircle(this.d.shapes.upperLeftC2Offset, "blue")(g, ui);
-      renderCircle(this.d.shapes.upperLeftCornerDoubleC1, "purple")(g, ui);
-      renderCircle(this.d.shapes.upperLeftCornerDoubleC2, "purple")(g, ui);
-      renderLine(this.d.shapes.upperLeftCutoff1, this.d.shapes.upperLeftCutoff2, "purple")(g, ui);
+    if (showOuter) {
+      renderCircle(this.d.shapes.lowerRightC1Offset, clrLowerTop)(g, ui);
+      renderCircle(this.d.shapes.lowerRightC2Offset, clrLowerBottom)(g, ui);
+
+      renderCircle(this.d.shapes.lowerLeftC1Offset, clrLowerTop)(g, ui);
+      renderCircle(this.d.shapes.lowerLeftC2Offset, clrLowerBottom)(g, ui);
+
+      renderCircle(this.d.shapes.upperRightC1Offset, clrUpperTop)(g, ui);
+      renderCircle(this.d.shapes.upperRightC2Offset, clrUpperBottom)(g, ui);
+
+      renderCircle(this.d.shapes.upperLeftC1Offset, clrUpperTop)(g, ui);
+      renderCircle(this.d.shapes.upperLeftC2Offset, clrUpperBottom)(g, ui);
+    }
+
+    if (showInner) {
+      renderCircle(this.d.shapes.lowerRightCornerDoubleC1, clrLowerTopInner)(g, ui);
+      renderCircle(this.d.shapes.lowerRightCornerDoubleC2, clrLowerBottomInner)(g, ui);
+
+      renderCircle(this.d.shapes.lowerLeftCornerDoubleC1, clrLowerTopInner)(g, ui);
+      renderCircle(this.d.shapes.lowerLeftCornerDoubleC2, clrLowerBottomInner)(g, ui);
+
+      renderCircle(this.d.shapes.upperRightCornerDoubleC1, clrUpperTopInner)(g, ui);
+      renderCircle(this.d.shapes.upperRightCornerDoubleC2, clrUpperBottomInner)(g, ui);
+
+      renderCircle(this.d.shapes.upperLeftCornerDoubleC1, clrUpperTopInner)(g, ui);
+      renderCircle(this.d.shapes.upperLeftCornerDoubleC2, clrUpperBottomInner)(g, ui);
+
+      renderLine(this.d.shapes.upperLeftCutoff1, this.d.shapes.upperLeftCutoff2, clrUpperBottomInner)(g, ui);
+    }
+
+    if (showOuterAngles) {
+      if (this.d.shapes.lowerRightC1Offset) renderCircleAngleIndicator(this.d.shapes.lowerRightC1Offset, this.d.params.cornerCircDubLowCBoutTheta, clrLowerTop)(g, ui);
+      if (this.d.shapes.lowerRightC2Offset) renderCircleAngleIndicator(this.d.shapes.lowerRightC2Offset, this.d.params.cornerCircDubLowBoutTheta, clrLowerBottom)(g, ui);
+
+      if (this.d.shapes.lowerLeftC1Offset) renderCircleAngleIndicator(this.d.shapes.lowerLeftC1Offset, 180 - this.d.params.cornerCircDubLowCBoutTheta, clrLowerTop)(g, ui);
+      if (this.d.shapes.lowerLeftC2Offset) renderCircleAngleIndicator(this.d.shapes.lowerLeftC2Offset, 180 - this.d.params.cornerCircDubLowBoutTheta, clrLowerBottom)(g, ui);
+
+      if (this.d.shapes.upperRightC1Offset) renderCircleAngleIndicator(this.d.shapes.upperRightC1Offset, this.d.params.cornerCircDubUpBoutTheta, clrUpperTop)(g, ui);
+      if (this.d.shapes.upperRightC2Offset) renderCircleAngleIndicator(this.d.shapes.upperRightC2Offset, this.d.params.cornerCircDubUpCBoutTheta, clrUpperBottom)(g, ui);
+
+      if (this.d.shapes.upperLeftC1Offset) renderCircleAngleIndicator(this.d.shapes.upperLeftC1Offset, 180 - this.d.params.cornerCircDubUpBoutTheta, clrUpperTop)(g, ui);
+      if (this.d.shapes.upperLeftC2Offset) renderCircleAngleIndicator(this.d.shapes.upperLeftC2Offset, 180 - this.d.params.cornerCircDubUpCBoutTheta, clrUpperBottom)(g, ui);
+    }
+
+    if (showInnerAngles) {
+      if (this.d.shapes.lowerRightCornerDoubleC1) renderCircleAngleIndicator(this.d.shapes.lowerRightCornerDoubleC1, this.d.params.cornerCircleDubLowCBoutTheta, clrLowerTopInner)(g, ui);
+      if (this.d.shapes.lowerRightCornerDoubleC2) renderCircleAngleIndicator(this.d.shapes.lowerRightCornerDoubleC2, this.d.params.cornerCircleDubLowBoutTheta, clrLowerBottomInner)(g, ui);
+
+      if (this.d.shapes.lowerLeftCornerDoubleC1) renderCircleAngleIndicator(this.d.shapes.lowerLeftCornerDoubleC1, 180 - this.d.params.cornerCircleDubLowCBoutTheta, clrLowerTopInner)(g, ui);
+      if (this.d.shapes.lowerLeftCornerDoubleC2) renderCircleAngleIndicator(this.d.shapes.lowerLeftCornerDoubleC2, 180 - this.d.params.cornerCircleDubLowBoutTheta, clrLowerBottomInner)(g, ui);
+
+      if (this.d.shapes.upperRightCornerDoubleC1) renderCircleAngleIndicator(this.d.shapes.upperRightCornerDoubleC1, this.d.params.cornerCircDubUpBoutCutoffTheta, clrUpperTopInner)(g, ui);
+      if (this.d.shapes.upperRightCornerDoubleC2) renderCircleAngleIndicator(this.d.shapes.upperRightCornerDoubleC2, this.d.params.cornerCircleDubUpCBoutCutoffTheta, clrUpperBottomInner)(g, ui);
+
+      if (this.d.shapes.upperLeftCornerDoubleC1) renderCircleAngleIndicator(this.d.shapes.upperLeftCornerDoubleC1, 180 - this.d.params.cornerCircDubUpBoutCutoffTheta, clrUpperTopInner)(g, ui);
+      if (this.d.shapes.upperLeftCornerDoubleC2) renderCircleAngleIndicator(this.d.shapes.upperLeftCornerDoubleC2, 180 - this.d.params.cornerCircleDubUpCBoutCutoffTheta, clrUpperBottomInner)(g, ui);
     }
 
   }
