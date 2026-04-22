@@ -22,10 +22,10 @@ export class KellyViolin extends RecipeComponentBase {
   showGuideLines = true;
   showAllCircles = true;
   showModuleCircles = false;
-  showOuterCircles = true;
+  showOuterCircles = false;
   showInnerCircles = true;
   showAngleIndicators = true;
-  showCutoffIndicators = false;
+  showCutoffIndicators = true;
   viewOuterPathExport = true;
   viewInnerPathExport = false;
   viewMouldExport = false;
@@ -35,25 +35,29 @@ export class KellyViolin extends RecipeComponentBase {
   readonly colors = {
     upperBout: '#4D8660',
     upperBoutOff: '#6DA077',
-    lowerBout: '#4D74A8',
-    lowerBoutOff: '#6D90BF',
+    upperBoutOff2: '#97a49aff',
+
+    centerBoutUp: '#C24B2E',
+    centerBoutUpOff: '#E08A6B',
+    centerBoutUpOff2:'#dea793ff',
     centerBout: '#A97645',
     centerBoutOff: '#BC9368',
+    centerBoutOff2: '#bdab99ff',
+    centerBoutLow: '#B8873A',
+    centerBoutLowOff: '#D6AA5F',
+    centerBoutLowOff2: '#d2bb93ff',
+
+    lowerBout: '#4D74A8',
+    lowerBoutOff: '#7ba4dbff',
+    lowerBoutOff2: '#a6bcd9ff',
+
     innerTrace: '#a47272ff',
-    outerTrace:'#bf8080ff',
+    outerTrace: '#bf8080ff',
     mouldTrace: '#83947fff',
   }
 
-  readonly cornerColors = {
-    upperTop: { outer: this.colors.upperBout, inner: '#3D7452' },
-    upperBottom: { outer: this.colors.upperBoutOff, inner: '#5B8A66' },
-    lowerTop: { outer: this.colors.lowerBoutOff, inner: '#5F80AD' },
-    lowerBottom: { outer: this.colors.lowerBout, inner: '#3D6498' },
-  };
-
   insetTooltip = "Inset is the distance from the outer edge of the bounding box to inner edge. It can be used to create a margin for the outline of the violin.";
 
-  
   @Input() set newFile(v: boolean) {
     if (v) {
         this.openPanel = 'base'
@@ -87,9 +91,9 @@ export class KellyViolin extends RecipeComponentBase {
       case 'topAndBottom':
         return this.hasCornerCircles();
       case 'mouldPattern':
-        return this.hasCornerPlacement();
-      case 'export':
         return this.hasCornerCircles();
+      case 'export':
+        return this.hasTopAndBottom() && this.hasMouldPattern();
       default:
         return true;
     }
@@ -119,6 +123,14 @@ export class KellyViolin extends RecipeComponentBase {
       && p.cornerCircUpCBoutR > 0
       && p.cornerCircLowCBoutR > 0
       && p.cornerCircLowBoutR > 0;
+  }
+
+  private hasTopAndBottom(): boolean {
+    return this.hasCornerCircles() && this.d.params.cornerCircDubLowBoutR > 0;
+  }
+
+  private hasMouldPattern(): boolean {
+    return this.hasTopAndBottom() && this.d.params.blockCornerH > 0;
   }
 
   override onToggle(panel: string, ev: Event) {
@@ -214,6 +226,7 @@ export class KellyViolin extends RecipeComponentBase {
 
   renderExports() {
     calculatePrimaryShapes(this.d);
+    initializeBlocks(this.d)
     calculateMouldPath(this.d);
     calculateMainPathsSegmented(this.d);
     calculateOffsetPathsSegments(this.d);
@@ -344,16 +357,15 @@ export class KellyViolin extends RecipeComponentBase {
 
   renderCornerCircles = (currentModule: boolean) => (g: any, ui: any): void => {
     if ((currentModule && this.showModuleCircles) || this.showAllCircles) {
-      renderCircle(this.d.shapes.lowerLeftCornerC1, this.cornerColors.lowerTop.outer)(g, ui);
-      renderCircle(this.d.shapes.lowerRightCornerC1, this.cornerColors.lowerTop.outer)(g, ui);
-      renderCircle(this.d.shapes.lowerRightCornerC2, this.cornerColors.lowerBottom.outer)(g, ui);
-      renderCircle(this.d.shapes.lowerLeftCornerC2, this.cornerColors.lowerBottom.outer)(g, ui);
+      renderCircle(this.d.shapes.upperRightCornerC1, this.colors.upperBout)(g, ui);      
+      renderCircle(this.d.shapes.upperLeftCornerC1, this.colors.upperBout)(g, ui);
+      renderCircle(this.d.shapes.upperRightCornerC2, this.colors.centerBoutUp)(g, ui);
+      renderCircle(this.d.shapes.upperLeftCornerC2, this.colors.centerBoutUp)(g, ui);
+      renderCircle(this.d.shapes.lowerLeftCornerC1, this.colors.centerBoutLow)(g, ui);
+      renderCircle(this.d.shapes.lowerRightCornerC1, this.colors.centerBoutLow)(g, ui);
+      renderCircle(this.d.shapes.lowerRightCornerC2, this.colors.lowerBout)(g, ui);
+      renderCircle(this.d.shapes.lowerLeftCornerC2, this.colors.lowerBout)(g, ui);
 
-
-      renderCircle(this.d.shapes.upperRightCornerC1, this.cornerColors.upperTop.outer)(g, ui);      
-      renderCircle(this.d.shapes.upperLeftCornerC1, this.cornerColors.upperTop.outer)(g, ui);
-      renderCircle(this.d.shapes.upperRightCornerC2, this.cornerColors.upperBottom.outer)(g, ui);
-      renderCircle(this.d.shapes.upperLeftCornerC2, this.cornerColors.upperBottom.outer)(g, ui);
     }
 
     if (currentModule && this.showGuideLines) {
@@ -377,16 +389,6 @@ export class KellyViolin extends RecipeComponentBase {
   }
 
   renderFinalCorners = (currentModule: boolean) => (g: any, ui: any): void => {
-    const clrLowerTop = this.cornerColors.lowerTop.outer;
-    const clrLowerBottom = this.cornerColors.lowerBottom.outer;
-    const clrUpperTop = this.cornerColors.upperTop.outer;
-    const clrUpperBottom = this.cornerColors.upperBottom.outer;
-
-    const clrLowerTopInner = this.cornerColors.lowerTop.inner;
-    const clrLowerBottomInner = this.cornerColors.lowerBottom.inner;
-    const clrUpperTopInner = this.cornerColors.upperTop.inner;
-    const clrUpperBottomInner = this.cornerColors.upperBottom.inner;
-
     if (!currentModule) return;
 
     const showOuter = this.showOuterCircles;
@@ -395,61 +397,54 @@ export class KellyViolin extends RecipeComponentBase {
     const showInnerAngles = showInner && this.showCutoffIndicators;
 
     if (showOuter) {
-      renderCircle(this.d.shapes.lowerRightC1Offset, clrLowerTop)(g, ui);
-      renderCircle(this.d.shapes.lowerRightC2Offset, clrLowerBottom)(g, ui);
+      renderCircle(this.d.shapes.lowerRightC1Offset, "grey")(g, ui);
+      renderCircle(this.d.shapes.lowerRightC2Offset, "grey")(g, ui);
 
-      renderCircle(this.d.shapes.lowerLeftC1Offset, clrLowerTop)(g, ui);
-      renderCircle(this.d.shapes.lowerLeftC2Offset, clrLowerBottom)(g, ui);
+      renderCircle(this.d.shapes.lowerLeftC1Offset, "grey")(g, ui);
+      renderCircle(this.d.shapes.lowerLeftC2Offset, "grey")(g, ui);
 
-      renderCircle(this.d.shapes.upperRightC1Offset, clrUpperTop)(g, ui);
-      renderCircle(this.d.shapes.upperRightC2Offset, clrUpperBottom)(g, ui);
+      renderCircle(this.d.shapes.upperRightC1Offset, "grey")(g, ui);
+      renderCircle(this.d.shapes.upperRightC2Offset, "grey")(g, ui);
 
-      renderCircle(this.d.shapes.upperLeftC1Offset, clrUpperTop)(g, ui);
-      renderCircle(this.d.shapes.upperLeftC2Offset, clrUpperBottom)(g, ui);
-    }
-
-    if (showInner) {
-      renderCircle(this.d.shapes.lowerRightCornerDoubleC1, clrLowerTopInner)(g, ui);
-      renderCircle(this.d.shapes.lowerRightCornerDoubleC2, clrLowerBottomInner)(g, ui);
-
-      renderCircle(this.d.shapes.lowerLeftCornerDoubleC1, clrLowerTopInner)(g, ui);
-      renderCircle(this.d.shapes.lowerLeftCornerDoubleC2, clrLowerBottomInner)(g, ui);
-
-      renderCircle(this.d.shapes.upperRightCornerDoubleC1, clrUpperTopInner)(g, ui);
-      renderCircle(this.d.shapes.upperRightCornerDoubleC2, clrUpperBottomInner)(g, ui);
-
-      renderCircle(this.d.shapes.upperLeftCornerDoubleC1, clrUpperTopInner)(g, ui);
-      renderCircle(this.d.shapes.upperLeftCornerDoubleC2, clrUpperBottomInner)(g, ui);
-
-      renderLine(this.d.shapes.upperLeftCutoff1, this.d.shapes.upperLeftCutoff2, clrUpperBottomInner)(g, ui);
+      renderCircle(this.d.shapes.upperLeftC1Offset, "grey")(g, ui);
+      renderCircle(this.d.shapes.upperLeftC2Offset, "grey")(g, ui);
     }
 
     if (showOuterAngles) {
-      if (this.d.shapes.lowerRightC1Offset) renderCircleAngleIndicator(this.d.shapes.lowerRightC1Offset, this.d.params.cornerCircDubLowCBoutTheta, clrLowerTop)(g, ui);
-      if (this.d.shapes.lowerRightC2Offset) renderCircleAngleIndicator(this.d.shapes.lowerRightC2Offset, this.d.params.cornerCircDubLowBoutTheta, clrLowerBottom)(g, ui);
+      if (this.d.shapes.upperRightC1Offset) renderCircleAngleIndicator(this.d.shapes.upperRightC1Offset, this.d.params.cornerCircDubUpBoutTheta, this.colors.upperBoutOff2)(g, ui);
+      if (this.d.shapes.upperRightC2Offset) renderCircleAngleIndicator(this.d.shapes.upperRightC2Offset, this.d.params.cornerCircDubUpCBoutTheta, this.colors.centerBoutUpOff2)(g, ui);
+      if (this.d.shapes.upperLeftC1Offset) renderCircleAngleIndicator(this.d.shapes.upperLeftC1Offset, 180 - this.d.params.cornerCircDubUpBoutTheta, this.colors.upperBoutOff2)(g, ui);
+      if (this.d.shapes.upperLeftC2Offset) renderCircleAngleIndicator(this.d.shapes.upperLeftC2Offset, 180 - this.d.params.cornerCircDubUpCBoutTheta, this.colors.centerBoutUpOff2)(g, ui);
+    
+      if (this.d.shapes.lowerRightC1Offset) renderCircleAngleIndicator(this.d.shapes.lowerRightC1Offset, this.d.params.cornerCircDubLowCBoutTheta, this.colors.centerBoutLowOff2)(g, ui);
+      if (this.d.shapes.lowerRightC2Offset) renderCircleAngleIndicator(this.d.shapes.lowerRightC2Offset, this.d.params.cornerCircDubLowBoutTheta, this.colors.lowerBoutOff2)(g, ui);
+      if (this.d.shapes.lowerLeftC1Offset) renderCircleAngleIndicator(this.d.shapes.lowerLeftC1Offset, 180 - this.d.params.cornerCircDubLowCBoutTheta, this.colors.centerBoutLowOff2)(g, ui);
+      if (this.d.shapes.lowerLeftC2Offset) renderCircleAngleIndicator(this.d.shapes.lowerLeftC2Offset, 180 - this.d.params.cornerCircDubLowBoutTheta, this.colors.lowerBoutOff2)(g, ui);
+    }
 
-      if (this.d.shapes.lowerLeftC1Offset) renderCircleAngleIndicator(this.d.shapes.lowerLeftC1Offset, 180 - this.d.params.cornerCircDubLowCBoutTheta, clrLowerTop)(g, ui);
-      if (this.d.shapes.lowerLeftC2Offset) renderCircleAngleIndicator(this.d.shapes.lowerLeftC2Offset, 180 - this.d.params.cornerCircDubLowBoutTheta, clrLowerBottom)(g, ui);
 
-      if (this.d.shapes.upperRightC1Offset) renderCircleAngleIndicator(this.d.shapes.upperRightC1Offset, this.d.params.cornerCircDubUpBoutTheta, clrUpperTop)(g, ui);
-      if (this.d.shapes.upperRightC2Offset) renderCircleAngleIndicator(this.d.shapes.upperRightC2Offset, this.d.params.cornerCircDubUpCBoutTheta, clrUpperBottom)(g, ui);
+    if (showInner) {
+      renderCircle(this.d.shapes.upperRightCornerDoubleC1, this.colors.upperBout)(g, ui);
+      renderCircle(this.d.shapes.upperRightCornerDoubleC2, this.colors.centerBoutUp)(g, ui);
+      renderCircle(this.d.shapes.upperLeftCornerDoubleC1, this.colors.upperBout)(g, ui);
+      renderCircle(this.d.shapes.upperLeftCornerDoubleC2, this.colors.centerBoutUp)(g, ui);
 
-      if (this.d.shapes.upperLeftC1Offset) renderCircleAngleIndicator(this.d.shapes.upperLeftC1Offset, 180 - this.d.params.cornerCircDubUpBoutTheta, clrUpperTop)(g, ui);
-      if (this.d.shapes.upperLeftC2Offset) renderCircleAngleIndicator(this.d.shapes.upperLeftC2Offset, 180 - this.d.params.cornerCircDubUpCBoutTheta, clrUpperBottom)(g, ui);
+      renderCircle(this.d.shapes.lowerRightCornerDoubleC1, this.colors.centerBoutLow)(g, ui);
+      renderCircle(this.d.shapes.lowerRightCornerDoubleC2, this.colors.lowerBout)(g, ui);
+      renderCircle(this.d.shapes.lowerLeftCornerDoubleC1, this.colors.centerBoutLow)(g, ui);
+      renderCircle(this.d.shapes.lowerLeftCornerDoubleC2, this.colors.lowerBout)(g, ui);
     }
 
     if (showInnerAngles) {
-      if (this.d.shapes.lowerRightCornerDoubleC1) renderCircleAngleIndicator(this.d.shapes.lowerRightCornerDoubleC1, this.d.params.cornerCircleDubLowCBoutTheta, clrLowerTopInner)(g, ui);
-      if (this.d.shapes.lowerRightCornerDoubleC2) renderCircleAngleIndicator(this.d.shapes.lowerRightCornerDoubleC2, this.d.params.cornerCircleDubLowBoutTheta, clrLowerBottomInner)(g, ui);
+      if (this.d.shapes.upperRightCornerDoubleC1) renderCircleAngleIndicator(this.d.shapes.upperRightCornerDoubleC1, this.d.params.cornerCircDubUpBoutCutoffTheta, this.colors.upperBout)(g, ui);
+      if (this.d.shapes.upperRightCornerDoubleC2) renderCircleAngleIndicator(this.d.shapes.upperRightCornerDoubleC2, this.d.params.cornerCircleDubUpCBoutCutoffTheta, this.colors.centerBoutUp)(g, ui);
+      if (this.d.shapes.upperLeftCornerDoubleC1) renderCircleAngleIndicator(this.d.shapes.upperLeftCornerDoubleC1, 180 - this.d.params.cornerCircDubUpBoutCutoffTheta, this.colors.upperBout)(g, ui);
+      if (this.d.shapes.upperLeftCornerDoubleC2) renderCircleAngleIndicator(this.d.shapes.upperLeftCornerDoubleC2, 180 - this.d.params.cornerCircleDubUpCBoutCutoffTheta, this.colors.centerBoutUp)(g, ui);
 
-      if (this.d.shapes.lowerLeftCornerDoubleC1) renderCircleAngleIndicator(this.d.shapes.lowerLeftCornerDoubleC1, 180 - this.d.params.cornerCircleDubLowCBoutTheta, clrLowerTopInner)(g, ui);
-      if (this.d.shapes.lowerLeftCornerDoubleC2) renderCircleAngleIndicator(this.d.shapes.lowerLeftCornerDoubleC2, 180 - this.d.params.cornerCircleDubLowBoutTheta, clrLowerBottomInner)(g, ui);
-
-      if (this.d.shapes.upperRightCornerDoubleC1) renderCircleAngleIndicator(this.d.shapes.upperRightCornerDoubleC1, this.d.params.cornerCircDubUpBoutCutoffTheta, clrUpperTopInner)(g, ui);
-      if (this.d.shapes.upperRightCornerDoubleC2) renderCircleAngleIndicator(this.d.shapes.upperRightCornerDoubleC2, this.d.params.cornerCircleDubUpCBoutCutoffTheta, clrUpperBottomInner)(g, ui);
-
-      if (this.d.shapes.upperLeftCornerDoubleC1) renderCircleAngleIndicator(this.d.shapes.upperLeftCornerDoubleC1, 180 - this.d.params.cornerCircDubUpBoutCutoffTheta, clrUpperTopInner)(g, ui);
-      if (this.d.shapes.upperLeftCornerDoubleC2) renderCircleAngleIndicator(this.d.shapes.upperLeftCornerDoubleC2, 180 - this.d.params.cornerCircleDubUpCBoutCutoffTheta, clrUpperBottomInner)(g, ui);
+      if (this.d.shapes.lowerRightCornerDoubleC1) renderCircleAngleIndicator(this.d.shapes.lowerRightCornerDoubleC1, this.d.params.cornerCircleDubLowCBoutTheta, this.colors.centerBoutLow)(g, ui);
+      if (this.d.shapes.lowerRightCornerDoubleC2) renderCircleAngleIndicator(this.d.shapes.lowerRightCornerDoubleC2, this.d.params.cornerCircleDubLowBoutTheta, this.colors.lowerBout)(g, ui);
+      if (this.d.shapes.lowerLeftCornerDoubleC1) renderCircleAngleIndicator(this.d.shapes.lowerLeftCornerDoubleC1, 180 - this.d.params.cornerCircleDubLowCBoutTheta, this.colors.centerBoutLow)(g, ui);
+      if (this.d.shapes.lowerLeftCornerDoubleC2) renderCircleAngleIndicator(this.d.shapes.lowerLeftCornerDoubleC2, 180 - this.d.params.cornerCircleDubLowBoutTheta, this.colors.lowerBout)(g, ui);
     }
 
   }

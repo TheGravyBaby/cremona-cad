@@ -67,7 +67,9 @@ export function initializeCornerPlacement(d: KellyViolinData) {
 	) {
 		d.params.cornerR = Math.round(d.params.boutCenR * d.ratios.cornerRToCBR);
 		d.params.cornerGuideUpY = d.params.boutUpY;
-		d.params.cornerGuideLowY = Math.round(yInterceptFromTwoPoints(d.shapes.centerBoutRight, d.shapes.lowerRightVesaci));
+		// d.params.cornerGuideLowY = Math.round(yInterceptFromTwoPoints(d.shapes.centerBoutRight, d.shapes.lowerRightVesaci));
+		d.params.cornerGuideLowY = d.params.boutLowY
+
 	}
 	else {
 		d.ratios.cornerRToCBR = d.params.cornerR / d.params.boutCenR;

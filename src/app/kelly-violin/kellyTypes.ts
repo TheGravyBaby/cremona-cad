@@ -46,8 +46,8 @@ const KELLY_DEFAULT_RATIOS: KellyRatios = {
 	vesicaLowRToLBR: 2/3,
 	cornerRToCBR: 5/6,
 	cornerCircUpBoutRToLBR: 1/4,
-	cornerCircUpCBoutRToLBR: 1/4 * 4/5,
-	cornerCircLowCBoutRToLBR: 1/4,
+	cornerCircUpCBoutRToLBR: 1/4 * 3/4,
+	cornerCircLowCBoutRToLBR: 1/4 * 3/4,
 	cornerCircLowBoutRToLBR: 1/4,
 
 	cornerCircDubUpBoutRRatio: 3/5,
@@ -55,15 +55,15 @@ const KELLY_DEFAULT_RATIOS: KellyRatios = {
 	cornerCircDubLowCboutRRatio: 3/5,
 	cornerCircDubLowBoutRRatio: 3/5,
 
-	topTraceUpperBoutTheta: 195,
-	topTraceUpperCBoutTheta: 110,
+	topTraceUpperBoutTheta: 180,
+	topTraceUpperCBoutTheta: 90,
 	topTraceUpperBoutCutoffTheta: 225,
-	topTraceUpperCBoutCutoffTheta: 55,
+	topTraceUpperCBoutCutoffTheta: 60,
 
 	topTraceLowerCBoutTheta: 270,
-	topTraceLowerBoutTheta: 175,
-	topTraceLowerCBoutCutoffTheta: 305,
-	topTraceLowerBoutCutoffTheta: 140,
+	topTraceLowerBoutTheta: 180,
+	topTraceLowerCBoutCutoffTheta: 310,
+	topTraceLowerBoutCutoffTheta: 145,
 }
 
 export class KellyViolinRecipe implements KellyViolinData {

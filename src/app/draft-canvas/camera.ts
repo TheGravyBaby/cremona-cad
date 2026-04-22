@@ -37,7 +37,7 @@ export class Camera {
     const boundsWidth = maxX - minX;
     const boundsHeight = maxY - minY;
 
-    const padding = 0.2; // 10% on each side => 20% total
+    const padding = 0.05; 
     const paddedWidth = boundsWidth * (1 + padding * 2);
     const paddedHeight = boundsHeight * (1 + padding * 2);
 
@@ -81,6 +81,29 @@ export class Camera {
     this.offsetY = centerY - newMmH / 2;
 
     // console.log('Updated camera state', { pxPerMm: this.pxPerMm, offsetX: this.offsetX, offsetY: this.offsetY });
+  }
+
+  /**
+   * Zoom while keeping an arbitrary world-space anchor point fixed in screen space.
+   * This lets us zoom into the location the user double-clicked.
+   */
+  applyZoomAt(anchor: Pt, newPxPerMm: number, pxW: number, pxH: number) {
+    const oldPxPerMm = this.pxPerMm;
+    if (!isFinite(newPxPerMm) || newPxPerMm <= 0) return;
+
+    // If pxPerMm didn't change, nothing to do
+    if (Math.abs(newPxPerMm - oldPxPerMm) < 1e-12) return;
+
+    // Keep the anchor world point mapping to the same screen pixel.
+    // Screen px of a world-x is (anchor.x - offsetX) * pxPerMm.
+    // Solve for new offsetX so that (anchor.x - offsetX_new) * newPxPerMm == (anchor.x - offsetX_old) * oldPxPerMm
+    const oldOffsetX = this.offsetX;
+    const oldOffsetY = this.offsetY;
+
+    this.pxPerMm = newPxPerMm;
+
+    this.offsetX = anchor.x - ((anchor.x - oldOffsetX) * oldPxPerMm) / newPxPerMm;
+    this.offsetY = anchor.y - ((anchor.y - oldOffsetY) * oldPxPerMm) / newPxPerMm;
   }
 
   panByPx(dxPx: number, dyPx: number) {

@@ -529,10 +529,30 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  worldFromPointer(e: PointerEvent): Pt {
+  worldFromPointer(e: PointerEvent | MouseEvent): Pt {
     // d3.pointer gives SVG user units (your viewBox units)
-    const [sx, sy] = d3.pointer(e, this.gRoot.node() as any);
+    const [sx, sy] = d3.pointer(e as any, this.gRoot.node() as any);
     // Your world is Y-up because gRoot is scale(1,-1)
     return { x: sx, y: sy };
+  }
+
+  onDoubleClick(event: MouseEvent): void {
+    // double-click zooms in at the clicked point; hold Shift/Ctrl/Alt/Meta to zoom out
+    event.preventDefault();
+
+    const pt = this.worldFromPointer(event);
+    const el = this.host.nativeElement;
+    const pxW = Math.max(1, el.clientWidth);
+    const pxH = Math.max(1, el.clientHeight);
+
+    const zoomInFactor = 2;
+    const zoomFactor = (event.shiftKey || event.ctrlKey || event.metaKey || event.altKey) ? (1 / zoomInFactor) : zoomInFactor;
+
+    const newPxPerMm = this.pxPerMm * zoomFactor;
+
+    pt.y = -pt.y; // account for Y-up
+
+    this.camera.applyZoomAt(pt, newPxPerMm, pxW, pxH);
+    this.draw();
   }
 }
