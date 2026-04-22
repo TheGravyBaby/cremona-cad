@@ -247,7 +247,7 @@ export class KellyViolin extends RecipeComponentBase {
       .attr('width', w)
       .attr('height', h)
       .attr('fill', 'none')
-      .attr('stroke', 'black')
+      .attr('stroke', 'grey')
       .attr('stroke-width', 1)
       .attr('vector-effect', 'non-scaling-stroke');
 
