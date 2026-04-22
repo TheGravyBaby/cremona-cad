@@ -18,9 +18,10 @@
 }
 
 .top-trace-group {
-  border: 1px solid #e4e4e4;
-  border-radius: 8px;
-  background: #fafafa;
+  border: 1px solid var(--ui-border-soft);
+  border-radius: 10px;
+  background: var(--ui-bg-section);
+  box-shadow: var(--ui-shadow-soft);
   padding: 9px;
   display: flex;
   flex-direction: column;
@@ -37,7 +38,7 @@
   font-weight: 900;
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  color: #4a4a4a;
+  color: var(--ui-text-primary);
   margin-bottom: 2px;
 }
 
@@ -46,18 +47,18 @@
   font-weight: 700;
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  color: #4a4a4a;
+  color: var(--ui-text-secondary);
   margin-bottom: 2px;
 }
 
 .top-trace-label {
   display: block;
   font-size: 14px;
-  color: #444;
+  color: var(--ui-text-primary);
 }
 
 .top-trace-label span {
-  color: #777;
+  color: var(--ui-text-secondary);
   font-size: 12px;
 }
 
@@ -77,7 +78,7 @@
 
 
 .top-trace-row > span {
-  color: #888;
+  color: var(--ui-text-secondary);
   font-weight: 600;
   margin-top: -1px;
   display: inline;
@@ -85,26 +86,31 @@
 
 .trace-input {
   width: 84px;
-  height: 28px;
-  padding: 3px 7px;
+  min-height: 30px;
+  height: 30px;
+  padding: 4px 8px;
   border-width: 1px;
   border-style: solid;
-  border-radius: 6px;
-  background: #fff;
+  border-color: var(--ui-border-strong);
+  border-radius: 8px;
+  background: var(--ui-bg-panel);
+  color: var(--ui-text-primary);
   font-size: 15px;
-  line-height: 1.1;
+  line-height: 1.2;
   text-align: left;
   box-sizing: border-box;
+  transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
 }
 
 .trace-input:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.06);
+  border-color: var(--ui-focus-border);
+  box-shadow: 0 0 0 3px var(--ui-focus-ring);
 }
 
 .top-trace-controls {
   margin-top: 2px;
-  border-top: 1px solid #e4e4e4;
+  border-top: 1px solid var(--ui-border-soft);
   padding-top: 9px;
   display: flex;
   flex-direction: column;
@@ -120,7 +126,7 @@
   width: 100%;
   gap: 7px;
   font-size: 14px;
-  color: #333;
+  color: var(--ui-text-primary);
 }
 
 .trace-toggle input[type="checkbox"] {
@@ -131,12 +137,12 @@
 .trace-toggle-child {
   margin-left: 20px;
   font-size: 13px;
-  color: #555;
+  color: var(--ui-text-secondary);
 }
 
 .mould-pattern-group {
   border-width: 2px;
-  background: #fff;
+  background: var(--ui-bg-panel);
 }
 
 .export-row {

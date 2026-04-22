@@ -33,22 +33,22 @@ export class KellyViolin extends RecipeComponentBase {
   viewSegmentedInnerPartial = false;
 
   readonly colors = {
-    upperBout: 'green',
-    upperBoutOff: 'mediumseagreen',
-    lowerBout: 'blue',
-    lowerBoutOff: 'cornflowerblue',
-    centerBout: 'darkorange',
-    centerBoutOff: 'orange',
+    upperBout: '#4D8660',
+    upperBoutOff: '#6DA077',
+    lowerBout: '#4D74A8',
+    lowerBoutOff: '#6D90BF',
+    centerBout: '#A97645',
+    centerBoutOff: '#BC9368',
     innerTrace: '#a47272ff',
     outerTrace:'#bf8080ff',
     mouldTrace: '#83947fff',
   }
 
   readonly cornerColors = {
-    upperTop: { outer: this.colors.upperBout, inner: '#1f7a1f' },
-    upperBottom: { outer: this.colors.upperBoutOff, inner: '#2f8f62' },
-    lowerTop: { outer: this.colors.lowerBoutOff, inner: '#3a64b8' },
-    lowerBottom: { outer: this.colors.lowerBout, inner: '#1f4fb8' },
+    upperTop: { outer: this.colors.upperBout, inner: '#3D7452' },
+    upperBottom: { outer: this.colors.upperBoutOff, inner: '#5B8A66' },
+    lowerTop: { outer: this.colors.lowerBoutOff, inner: '#5F80AD' },
+    lowerBottom: { outer: this.colors.lowerBout, inner: '#3D6498' },
   };
 
   insetTooltip = "Inset is the distance from the outer edge of the bounding box to inner edge. It can be used to create a margin for the outline of the violin.";

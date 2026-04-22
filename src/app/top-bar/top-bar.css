@@ -1,8 +1,8 @@
 .bar {
-  --paper: #fbf3df;
-  --paper2: #f2e2bd;
-  --ink: #1f1a12;
-  --gold: #b8923c;
+  --paper: var(--ui-topbar-grad-1);
+  --paper2: var(--ui-topbar-grad-2);
+  --ink: var(--ui-text-primary);
+  --gold: #6f8fb8;
 
   display: flex;
   align-items: center;
@@ -12,7 +12,7 @@
   padding: 0 12px;
 
   background: linear-gradient(180deg, var(--paper), var(--paper2));
-  border-bottom: 1px solid rgba(184, 146, 60, 0.35);
+  border-bottom: 1px solid var(--ui-topbar-border);
 
   color: var(--ink);
 }
@@ -38,8 +38,8 @@
   color: var(--ink);
 
   border-radius: 8px;
-  border: 1px solid rgba(184, 146, 60, 0.45);
-  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid var(--ui-topbar-control-border);
+  background: var(--ui-topbar-control-bg);
 }
 
 .btn {
@@ -48,7 +48,7 @@
 
 .btn:hover,
 .select:hover {
-  background: rgba(255, 255, 255, 0.85);
+  background: var(--ui-topbar-control-bg-hover);
 }
 
 .select {

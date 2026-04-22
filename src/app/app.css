@@ -3,11 +3,12 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: var(--ui-bg-app);
 }
 
 .top {
   flex: 0 0 48px;
-  border-bottom: 0px solid #e5e5e5;
+  border-bottom: 1px solid var(--ui-border-soft);
 }
 
 .main {
@@ -20,13 +21,13 @@
 .canvas {
   flex: 1 1 auto;
   min-width: 0;
-  background: #fafafa;
+  background: var(--ui-bg-canvas);
   /* margin: 12px;
   border: 1px solid #b8b8b8; */
 }
 
 .sidebar {
   flex: 0 0 360px;
-  border-left: 1px solid #e5e5e5;
-  background: white;
+  border-left: 1px solid var(--ui-border-soft);
+  background: var(--ui-bg-sidebar);
 }

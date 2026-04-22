@@ -5,23 +5,33 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    /* background: #eaeaea; */
-    border-left: 1px solid #d3d3d3;
+  background: var(--ui-bg-app);
+  border-left: 1px solid var(--ui-border-soft);
 }
 
 details {
-    border: 1px solid #d3d3d3;
-    border-radius: 8px;
-    padding: 8px 10px;
-    color: #444;
+  border: 1px solid var(--ui-border-soft);
+  border-radius: 10px;
+  padding: 8px 10px;
+  color: var(--ui-text-primary);
+  background: var(--ui-bg-section);
+  box-shadow: var(--ui-shadow-soft);
   font-size: 17px;
+  transition: border-color 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
 
+}
+
+details[open] {
+  border-color: var(--ui-border-strong);
+  background: var(--ui-bg-section-open);
+  box-shadow: var(--ui-shadow-open);
 }   
 
 summary {
     cursor: pointer;
     font-weight: 600;
-    padding: 0px 0px 4px 0px
+  color: var(--ui-text-primary);
+  padding: 0px 0px 4px 0px
 }
 
 .section {
@@ -35,18 +45,32 @@ label {
     display: flex;
     flex-direction: column;
     gap: 6px;
-  font-size: 14px;
+    color: var(--ui-text-primary);
+    font-size: 14px;
 }
 
 input {
-    padding: 6px 8px;
-    border: 1px solid #d3d3d3;
-  font-size: 15px;
+    min-height: 30px;
+    padding: 6px 9px;
+    border: 1px solid var(--ui-border-strong);
+    border-radius: 8px;
+    background: var(--ui-bg-panel);
+    color: var(--ui-text-primary);
+    font-size: 15px;
+    line-height: 1.2;
+    transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
 
 }
 
+input:focus-visible {
+    outline: none;
+    border-color: var(--ui-focus-border);
+    box-shadow: 0 0 0 3px var(--ui-focus-ring);
+}
+
 .hint {
-  font-size: 13px;
+    color: var(--ui-text-secondary);
+    font-size: 13px;
     opacity: 0.7;
 }
 
@@ -85,10 +109,10 @@ input {
   align-items: center;
   gap: 8px;
   padding: 6px 10px;
-  border: 1px solid #d7d7d7;
+  border: 1px solid var(--ui-border-strong);
   border-radius: 8px;
-  background: #fff;
-  color: #2a2a2a;
+  background: var(--ui-bg-panel);
+  color: var(--ui-text-primary);
   font-size: 14px;
   cursor: pointer;
   transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
@@ -102,11 +126,11 @@ input {
 }
 
 .file-upload:hover {
-  border-color: #c6c6c6;
-  background: #f8f8f8;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  border-color: var(--ui-canvas-btn-border-hover);
+  background: var(--ui-control-bg-hover);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.32);
 }
 
 .file-upload:active {
-  background: #f1f1f1;
+  background: var(--ui-control-bg-active);
 }
