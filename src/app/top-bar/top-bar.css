@@ -23,6 +23,12 @@
   font-size: 13px;
 }
 
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .controls {
   display: flex;
   align-items: center;
@@ -49,6 +55,22 @@
 .btn:hover,
 .select:hover {
   background: var(--ui-topbar-control-bg-hover);
+}
+
+.btn.active {
+  border-color: color-mix(in srgb, var(--ui-accent) 70%, #ffffff 30%);
+  background: color-mix(in srgb, var(--ui-accent) 28%, var(--ui-topbar-control-bg) 72%);
+}
+
+.icon-btn {
+  width: 28px;
+  min-width: 28px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  line-height: 1;
 }
 
 .select {

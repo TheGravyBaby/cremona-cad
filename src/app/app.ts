@@ -1,4 +1,5 @@
-import { Component } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
+import { Component, inject } from '@angular/core';
 import { TopBarComponent } from './top-bar/top-bar';
 import { BeardViolinComponent } from './beard-violin/beard-violin';
 import { DraftCanvasComponent } from './draft-canvas/draft-canvas';
@@ -16,7 +17,9 @@ import { KellyViolin } from './kelly-violin/kelly-violin';
     <div class="app">
      <app-top-bar class="top"
       [selectedRecipe]="selectedRecipe"
+      [nightMode]="nightMode"
       (recipeChange)="selectedRecipe = $event"
+      (nightModeChange)="onNightModeChange($event)"
       (loadFile)="loadFile($event)"
       (saveFile)="requestSave()"
       (newFile)="newFile()">
@@ -72,6 +75,8 @@ import { KellyViolin } from './kelly-violin/kelly-violin';
 })
 
 export class App {
+  private readonly doc = inject(DOCUMENT);
+
   draftArgs: Array<(g: any, ui: any) => void> = [];
   selectedRecipe: string = 'Kelly Violin';
   loadedFileData: RecipeInterface | undefined = undefined;
@@ -88,6 +93,24 @@ export class App {
     "height": 587,
   }
 ;
+
+  nightMode = true;
+
+  constructor() {
+    const savedTheme = localStorage.getItem('themeMode');
+    this.nightMode = savedTheme !== 'day';
+    this.applyThemeClass();
+  }
+
+  onNightModeChange(enabled: boolean) {
+    this.nightMode = enabled;
+    localStorage.setItem('themeMode', enabled ? 'night' : 'day');
+    this.applyThemeClass();
+  }
+
+  private applyThemeClass() {
+    this.doc.documentElement.classList.toggle('day-mode', !this.nightMode);
+  }
 
   onReferenceImageChange(img: ReferenceImage | null) {
     queueMicrotask(() => {

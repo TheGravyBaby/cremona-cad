@@ -1,5 +1,15 @@
 <div class="bar">
-  <div class="title">CREMONA CAD</div>
+  <div class="brand">
+    <div class="title">CREMONA CAD</div>
+    <button
+      class="btn icon-btn"
+      [class.active]="nightMode"
+      (click)="onNightModeToggle()"
+      [attr.aria-pressed]="nightMode"
+      [attr.aria-label]="nightMode ? 'Switch to day mode' : 'Switch to night mode'">
+      {{ nightMode ? '☾' : '☀' }}
+    </button>
+  </div>
 
   <div class="controls">
     Select Recipe: 
