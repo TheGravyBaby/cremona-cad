@@ -1,46 +1,89 @@
 /* You can add global styles to this file, and also import other style files */
 :root {
-  --ui-bg-app: #161c25;
-  --ui-bg-canvas: #1a212c;
-  --ui-bg-sidebar: #1e2631;
-  --ui-bg-panel: #252d39;
-  --ui-bg-section: #2a3341;
-  --ui-bg-section-open: #303a4a;
-  --ui-bg-surface: #2b3544;
-  --ui-bg-surface-2: #1f2733;
-  --ui-bg-elevated: #293342;
+  --ui-bg-app: #1e1e1e;
+  --ui-bg-canvas: #1e1e1e;
+  --ui-bg-sidebar: #252526;
+  --ui-bg-panel: #2d2d30;
+  --ui-bg-section: #2a2a2d;
+  --ui-bg-section-open: #313135;
+  --ui-bg-surface: #2b2b2f;
+  --ui-bg-surface-2: #252526;
+  --ui-bg-elevated: #333337;
 
-  --ui-border-soft: #3a4659;
-  --ui-border-strong: #4a5a72;
-  --ui-border-elevated: #46556b;
+  --ui-border-soft: #3c3c3c;
+  --ui-border-strong: #4a4a4a;
+  --ui-border-elevated: #505050;
 
-  --ui-text-primary: #e4eaf3;
-  --ui-text-secondary: #b3bfce;
-  --ui-text-muted: #c7d1de;
+  --ui-text-primary: #d4d4d4;
+  --ui-text-secondary: #a9a9a9;
+  --ui-text-muted: #b8b8b8;
 
-  --ui-focus-border: #7f9fd6;
-  --ui-focus-ring: rgba(112, 148, 220, 0.3);
-  --ui-accent: #3163da;
+  --ui-focus-border: #569cd6;
+  --ui-focus-ring: rgba(86, 156, 214, 0.26);
+  --ui-accent: #0e639c;
 
   --ui-shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.28);
   --ui-shadow-open: 0 3px 10px rgba(0, 0, 0, 0.35);
   --ui-shadow-pop: 0 2px 8px rgba(0, 0, 0, 0.35);
 
   --ui-control-bg: var(--ui-bg-panel);
-  --ui-control-bg-hover: #2d3746;
-  --ui-control-bg-active: #26303d;
+  --ui-control-bg-hover: #35353a;
+  --ui-control-bg-active: #2a2a2f;
 
-  --ui-topbar-grad-1: #2b3442;
-  --ui-topbar-grad-2: #232b36;
-  --ui-topbar-border: rgba(111, 143, 184, 0.4);
-  --ui-topbar-control-border: rgba(111, 143, 184, 0.5);
-  --ui-topbar-control-bg: rgba(20, 28, 38, 0.65);
-  --ui-topbar-control-bg-hover: rgba(32, 43, 58, 0.95);
+  --ui-topbar-grad-1: #252526;
+  --ui-topbar-grad-2: #2d2d30;
+  --ui-topbar-border: rgba(80, 80, 80, 0.75);
+  --ui-topbar-control-border: rgba(96, 96, 96, 0.9);
+  --ui-topbar-control-bg: rgba(45, 45, 48, 0.95);
+  --ui-topbar-control-bg-hover: rgba(58, 58, 62, 1);
 
-  --ui-canvas-btn-bg-start: #2e3848;
-  --ui-canvas-btn-bg-end: #27303f;
-  --ui-canvas-btn-bg-active: #252f3e;
-  --ui-canvas-btn-border-hover: #5f7492;
+  --ui-canvas-btn-bg-start: #3a3a3f;
+  --ui-canvas-btn-bg-end: #2f2f33;
+  --ui-canvas-btn-bg-active: #2a2a2f;
+  --ui-canvas-btn-border-hover: #6a6a72;
+}
+
+:root.day-mode {
+  --ui-bg-app: #f4f6f9;
+  --ui-bg-canvas: #eef2f7;
+  --ui-bg-sidebar: #f7f9fc;
+  --ui-bg-panel: #ffffff;
+  --ui-bg-section: #fbfcfe;
+  --ui-bg-section-open: #ffffff;
+  --ui-bg-surface: #f4f7fb;
+  --ui-bg-surface-2: #eef3f9;
+  --ui-bg-elevated: #ffffff;
+
+  --ui-border-soft: #d9e0ea;
+  --ui-border-strong: #c5cfdd;
+  --ui-border-elevated: #c8d3e3;
+
+  --ui-text-primary: #273142;
+  --ui-text-secondary: #526077;
+  --ui-text-muted: #4c5b72;
+
+  --ui-focus-border: #6f8fc6;
+  --ui-focus-ring: rgba(79, 120, 200, 0.22);
+
+  --ui-shadow-soft: 0 1px 2px rgba(15, 23, 42, 0.08);
+  --ui-shadow-open: 0 3px 10px rgba(15, 23, 42, 0.12);
+  --ui-shadow-pop: 0 4px 14px rgba(15, 23, 42, 0.16);
+
+  --ui-control-bg: #ffffff;
+  --ui-control-bg-hover: #f2f6fc;
+  --ui-control-bg-active: #e8eef7;
+
+  --ui-topbar-grad-1: #f7edcf;
+  --ui-topbar-grad-2: #e8d9ab;
+  --ui-topbar-border: rgba(171, 135, 52, 0.35);
+  --ui-topbar-control-border: rgba(160, 126, 48, 0.5);
+  --ui-topbar-control-bg: rgba(255, 249, 233, 0.88);
+  --ui-topbar-control-bg-hover: rgba(255, 253, 244, 1);
+
+  --ui-canvas-btn-bg-start: #ffffff;
+  --ui-canvas-btn-bg-end: #f1f5fb;
+  --ui-canvas-btn-bg-active: #e8eef8;
+  --ui-canvas-btn-border-hover: #8ea4c7;
 }
 
 body {

@@ -9,10 +9,12 @@ import { RecipeInterface } from '../models/types';
 })
 export class TopBarComponent {
   @Input() selectedRecipe: string = 'Beard';
+  @Input() nightMode = true;
   @Output() recipeChange = new EventEmitter<string>();
   @Output() newFile = new EventEmitter<void>();
   @Output() loadFile = new EventEmitter<RecipeInterface>();
   @Output() saveFile = new EventEmitter<void>();
+  @Output() nightModeChange = new EventEmitter<boolean>();
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
 
   onNewClick() {
@@ -26,6 +28,10 @@ export class TopBarComponent {
   onSelectChange(event: Event) {
     const value = (event.target as HTMLSelectElement).value;
     this.recipeChange.emit(value);
+  }
+
+  onNightModeToggle() {
+    this.nightModeChange.emit(!this.nightMode);
   }
 
   triggerFilePick() {
