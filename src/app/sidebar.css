@@ -50,7 +50,7 @@ label {
 }
 
 input {
-    min-height: 30px;
+    min-height: 15px;
     padding: 6px 9px;
     border: 1px solid var(--ui-border-strong);
     border-radius: 8px;

@@ -504,6 +504,9 @@ export const renderCircleAngleIndicator = (
     color: string,
     label?: string
 ) => (g: any, ui: any) => {
+    // normalize angle to [0, 360)
+    thetaDeg = ((thetaDeg % 360) + 360) % 360;
+
     const thetaRad = thetaDeg * Math.PI / 180;
     const cx = outerCircle.x;
     const cy = outerCircle.y;
@@ -553,7 +556,7 @@ export const renderCircleAngleIndicator = (
         .attr("d", `M ${refX},${refY} A ${arcR},${arcR} 0 ${largeArc},${sweep} ${arcEndX},${arcEndY}`)
         .attr("fill", "none")
         .attr("stroke", color)
-        .attr("stroke-width", 1.5)
+        .attr("stroke-width", 1)
         .attr("opacity", 0.85)
         .attr("vector-effect", "non-scaling-stroke");
 
@@ -564,10 +567,10 @@ export const renderCircleAngleIndicator = (
         .attr("vector-effect", "non-scaling-stroke");
 
     // Label at the arc midpoint (half the angle)
-    const midTheta = thetaRad / 2;
-    const labelR = arcR * 2.5;
-    const lx = cx + labelR * Math.cos(midTheta);
-    const ly = cy + labelR * Math.sin(midTheta);
+    const textAngle = thetaRad  - Math.PI;
+    const labelR = arcR * 4;
+    const lx = cx + labelR * Math.cos(textAngle);
+    const ly = cy + labelR * Math.sin(textAngle);
     const displayLabel = label ?? `${thetaDeg}°`;
 
     ui.append("text")
@@ -575,7 +578,7 @@ export const renderCircleAngleIndicator = (
         .attr("x", lx)
         .attr("y", -ly)      // ui layer has y flipped
         .attr("fill", color)
-        .attr("font-size", 4)
+        .attr("font-size", 3)
         .attr("font-weight", "bold")
         .attr("text-anchor", "middle")
         .attr("dominant-baseline", "central")
@@ -600,3 +603,54 @@ export const renderRectRoundedCorners = (rect: Rectangle, r: number, color: stri
         .attr("stroke-width", strokeWidth)
         .attr("vector-effect", "non-scaling-stroke");
 }   
+
+export function greyOutColor(color: string, degree: number): string {
+    // clamp degree to [0,1]
+    degree = Math.max(0, Math.min(1, Number.isFinite(degree) ? degree : 0.5));
+
+    const s = color.trim();
+
+    // helpers
+    const clamp = (v: number) => Math.max(0, Math.min(255, Math.round(v)));
+    const toHex = (v: number) => clamp(v).toString(16).padStart(2, "0");
+
+    // parse hex (#rgb or #rrggbb)
+    const hexShort = /^#([0-9a-f]{3})$/i.exec(s);
+    const hexLong = /^#([0-9a-f]{6})$/i.exec(s);
+    if (hexShort || hexLong) {
+        let r: number, g: number, b: number, a = 1;
+        if (hexShort) {
+            const [r1, g1, b1] = hexShort[1].split("");
+            r = parseInt(r1 + r1, 16);
+            g = parseInt(g1 + g1, 16);
+            b = parseInt(b1 + b1, 16);
+        } else {
+            r = parseInt(hexLong![1].substr(0, 2), 16);
+            g = parseInt(hexLong![1].substr(2, 2), 16);
+            b = parseInt(hexLong![1].substr(4, 2), 16);
+        }
+        const lum = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+        const nr = clamp(r * (1 - degree) + lum * degree);
+        const ng = clamp(g * (1 - degree) + lum * degree);
+        const nb = clamp(b * (1 - degree) + lum * degree);
+        // preserve hex output when fully opaque
+        return `#${toHex(nr)}${toHex(ng)}${toHex(nb)}`;
+    }
+
+    // parse rgb/rgba()
+    const rgbMatch = /^rgba?\(\s*([0-9]{1,3})\s*,\s*([0-9]{1,3})\s*,\s*([0-9]{1,3})(?:\s*,\s*(0|1|0?\.\d+))?\s*\)$/i.exec(s);
+    if (rgbMatch) {
+        const r = clamp(Number(rgbMatch[1]));
+        const g = clamp(Number(rgbMatch[2]));
+        const b = clamp(Number(rgbMatch[3]));
+        const a = rgbMatch[4] !== undefined ? Math.max(0, Math.min(1, parseFloat(rgbMatch[4]))) : 1;
+        const lum = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+        const nr = clamp(r * (1 - degree) + lum * degree);
+        const ng = clamp(g * (1 - degree) + lum * degree);
+        const nb = clamp(b * (1 - degree) + lum * degree);
+        return a === 1 ? `rgb(${nr}, ${ng}, ${nb})` : `rgba(${nr}, ${ng}, ${nb}, ${a})`;
+    }
+
+    // fallback: unable to parse, return original color
+    return color;
+}
