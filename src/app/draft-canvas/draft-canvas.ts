@@ -102,9 +102,22 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.resizeObs = new ResizeObserver(() => this.draw());
     this.resizeObs.observe(el);
     // wire reference image controller (keeps component in sync via callback)
-    this.refController = new ReferenceImageController(this.referenceImage, (img) => {
-      this.referenceImage = img as any;
-      this.referenceImageChange.emit(this.referenceImage ?? null);
+    this.refController = new ReferenceImageController(
+      this.referenceImage,
+      (img) => {
+        this.referenceImage = img as any;
+        this.referenceImageChange.emit(this.referenceImage ?? null);
+      },
+      () => this.draw()
+    );
+
+    // White suppression tuning for reference images (dark mode friendly)
+    // Adjust these values in code as desired.
+    this.refController.setWhiteSuppressionOptions({
+      enabled: true,
+      threshold: 0.9,
+      softness: 0.08,
+      saturationGate: 0.18,
     });
 
     this.loadDisplayPreferences();

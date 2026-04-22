@@ -5,6 +5,13 @@ export class ReferenceImageController {
   public isInteracting = false;
   public activeHandle: 'nw' | 'ne' | 'sw' | 'se' | null = null;
 
+  // White suppression tuning (code-controlled; no UI slider needed)
+  // Raise threshold to affect fewer pixels. Increase softness for gentler fade.
+  private whiteSuppressionEnabled = true;
+  private whiteSuppressionThreshold = 0.9;
+  private whiteSuppressionSoftness = 0.08;
+  private whiteSuppressionSaturationGate = 0.18;
+
   private dragStartPt?: Pt;
   private startImage?: ReferenceImage;
   private anchorPt?: Pt;
@@ -13,10 +20,14 @@ export class ReferenceImageController {
   private hitSlopPx = 10; // screen px
 
   private onChange: (img?: ReferenceImage) => void;
+  private onVisualChange: () => void;
+  private processedHrefCache = new Map<string, string>();
+  private processingFilterKeys = new Set<string>();
 
-  constructor(img?: ReferenceImage, onChange?: (img?: ReferenceImage) => void) {
+  constructor(img?: ReferenceImage, onChange?: (img?: ReferenceImage) => void, onVisualChange?: () => void) {
     this.image = img;
     this.onChange = onChange || (() => {});
+    this.onVisualChange = onVisualChange || (() => {});
   }
 
   getImage() {
@@ -26,6 +37,19 @@ export class ReferenceImageController {
   setImage(img?: ReferenceImage) {
     this.image = img;
     this.onChange(img);
+  }
+
+  setWhiteSuppressionOptions(options: {
+    enabled?: boolean;
+    threshold?: number;
+    softness?: number;
+    saturationGate?: number;
+  }) {
+    if (typeof options.enabled === 'boolean') this.whiteSuppressionEnabled = options.enabled;
+    if (typeof options.threshold === 'number') this.whiteSuppressionThreshold = Math.max(0, Math.min(1, options.threshold));
+    if (typeof options.softness === 'number') this.whiteSuppressionSoftness = Math.max(0.0001, Math.min(1, options.softness));
+    if (typeof options.saturationGate === 'number') this.whiteSuppressionSaturationGate = Math.max(0, Math.min(1, options.saturationGate));
+    this.onVisualChange();
   }
 
   clear() {
@@ -177,11 +201,12 @@ export class ReferenceImageController {
   drawImage(gRoot: any) {
     if (!this.image?.href) return;
     const { href, x, y, width, height } = this.image;
+    const filteredHref = this.resolveFilteredHref(href);
 
     const img = gRoot.append('image')
       .attr('class', 'reference-image')
-      .attr('href', href)
-      .attr('xlink:href', href)
+      .attr('href', filteredHref)
+      .attr('xlink:href', filteredHref)
       .attr('transform', `translate(0 ${height}) scale(1 -1)`)
       .attr('x', x)
       .attr('y', -y)
@@ -191,6 +216,105 @@ export class ReferenceImageController {
       .attr('preserveAspectRatio', 'xMidYMid meet');
 
     img.lower();
+  }
+
+  private resolveFilteredHref(href: string): string {
+    if (!this.whiteSuppressionEnabled) return href;
+
+    const key = this.buildFilterKey(href);
+    const cached = this.processedHrefCache.get(key);
+    if (cached) return cached;
+
+    if (!this.processingFilterKeys.has(key)) {
+      this.processingFilterKeys.add(key);
+      this.generateWhiteSuppressedHref(href)
+        .then((result) => {
+          if (result) {
+            this.processedHrefCache.set(key, result);
+            this.onVisualChange();
+          }
+        })
+        .finally(() => {
+          this.processingFilterKeys.delete(key);
+        });
+    }
+
+    return href;
+  }
+
+  private buildFilterKey(href: string): string {
+    return [
+      href,
+      this.whiteSuppressionEnabled,
+      this.whiteSuppressionThreshold.toFixed(4),
+      this.whiteSuppressionSoftness.toFixed(4),
+      this.whiteSuppressionSaturationGate.toFixed(4)
+    ].join('|');
+  }
+
+  private async generateWhiteSuppressedHref(href: string): Promise<string | undefined> {
+    try {
+      const img = await this.loadImage(href);
+      const width = img.naturalWidth || img.width;
+      const height = img.naturalHeight || img.height;
+      if (!width || !height) return undefined;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx) return undefined;
+
+      ctx.drawImage(img, 0, 0);
+
+      const imageData = ctx.getImageData(0, 0, width, height);
+      const data = imageData.data;
+
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i] / 255;
+        const g = data[i + 1] / 255;
+        const b = data[i + 2] / 255;
+
+        const maxC = Math.max(r, g, b);
+        const minC = Math.min(r, g, b);
+        const saturation = maxC <= 1e-6 ? 0 : (maxC - minC) / maxC;
+        if (saturation > this.whiteSuppressionSaturationGate) continue;
+
+        const whiteness = 1 - Math.max(Math.abs(1 - r), Math.abs(1 - g), Math.abs(1 - b));
+        const fade = this.smoothstep(
+          this.whiteSuppressionThreshold,
+          this.whiteSuppressionThreshold + this.whiteSuppressionSoftness,
+          whiteness
+        );
+
+        const alpha = data[i + 3] / 255;
+        const nextAlpha = alpha * (1 - fade);
+        data[i + 3] = Math.max(0, Math.min(255, Math.round(nextAlpha * 255)));
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+      return canvas.toDataURL('image/png');
+    } catch {
+      return undefined;
+    }
+  }
+
+  private loadImage(src: string): Promise<HTMLImageElement> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      if (!src.startsWith('data:')) {
+        img.crossOrigin = 'anonymous';
+      }
+      img.onload = () => resolve(img);
+      img.onerror = (e) => reject(e);
+      img.src = src;
+    });
+  }
+
+  private smoothstep(edge0: number, edge1: number, x: number): number {
+    const t = Math.max(0, Math.min(1, (x - edge0) / Math.max(1e-6, edge1 - edge0)));
+    return t * t * (3 - 2 * t);
   }
 
   drawControls(gRoot: any, pxPerMm: number) {
