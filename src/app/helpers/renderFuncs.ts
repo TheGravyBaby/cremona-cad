@@ -470,7 +470,7 @@ export const renderRectFromPt = (P1: Pt, P2: Pt , fill: string, stroke: string) 
         .attr('opacity', 0.25);
 }
 
-export const renderRect = (rect: Rectangle, color: string, fill: string = "none") => (g: any, ui: any) => {
+export const renderRect = (rect: Rectangle, color: string, fill: string = "none", strokeWidth: number = 1) => (g: any, ui: any) => {
     const x = Math.min(rect.Pt1.x, rect.Pt2.x);
     const y = Math.min(rect.Pt1.y, rect.Pt2.y);
     const w = Math.abs(rect.Pt2.x - rect.Pt1.x);
@@ -483,7 +483,7 @@ export const renderRect = (rect: Rectangle, color: string, fill: string = "none"
         .attr("height", h)
         .attr("fill", fill)
         .attr("stroke", color)
-        .attr("stroke-width", 1)
+        .attr("stroke-width", strokeWidth)
         .attr("vector-effect", "non-scaling-stroke");
 }
 
