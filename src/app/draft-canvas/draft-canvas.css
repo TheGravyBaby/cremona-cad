@@ -4,7 +4,7 @@
 }
 
 .btn.active {
-  background: #3163da;
+  background: var(--ui-accent);
   color: #fff;
 }
 
@@ -12,13 +12,14 @@
   position: absolute;
   top: -200px;
   right: 0px;
-  background: #fff;
-  border: 1px solid #ccc;
+  background: var(--ui-bg-elevated);
+  border: 1px solid var(--ui-border-elevated);
   border-radius: 6px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  box-shadow: var(--ui-shadow-pop);
   padding: 10px;
   z-index: 10;
   min-width: 220px;
+  color: var(--ui-text-primary);
 }
 
 .align-popup .row {
@@ -61,10 +62,11 @@ svg {
   justify-content: flex-end;
   gap: 10px;
   padding: 0 12px;
-  border-bottom: 1px solid #d3d3d3;
+  border-bottom: 1px solid var(--ui-border-soft);
+  background: var(--ui-bg-surface-2);
   /* background: #eaeaea; */
   font-size: 12px;
-  color: #444;
+  color: var(--ui-text-muted);
 }
 
 
@@ -75,10 +77,11 @@ svg {
   justify-content: space-between;
   gap: 12px;
   padding: 0 10px;
-  border-top: 1px solid #d3d3d3;
+  border-top: 1px solid var(--ui-border-soft);
+  background: var(--ui-bg-surface-2);
   /* background: #eaeaea; */
   font-size: 12px;
-  color: #444;
+  color: var(--ui-text-muted);
 }
 
 .left, .right {
@@ -89,37 +92,38 @@ svg {
 
 .btn {
   padding: 4px 10px;
-  border: 1px solid #d1d5da;
+  border: 1px solid var(--ui-border-strong);
   border-radius: 7px;
-  background: linear-gradient(180deg, #ffffff 0%, #f7f7f7 100%);
+  background: linear-gradient(180deg, var(--ui-canvas-btn-bg-start) 0%, var(--ui-canvas-btn-bg-end) 100%);
   cursor: pointer;
   line-height: 1.2;
   font-size: 12px;
-  color: #1f2d3d;
+  color: var(--ui-text-primary);
   transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
 }
 
 .btn:hover {
-  border-color: #c4c9d0;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  border-color: var(--ui-canvas-btn-border-hover);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }
 
 .btn:active {
-  background: #f1f1f1;
-  border-color: #b7bcc3;
+  background: var(--ui-canvas-btn-bg-active);
+  border-color: var(--ui-canvas-btn-border-hover);
 }
 
 .readout {
   padding: 6px 10px;
-  border: 1px solid #eee;
+  border: 1px solid var(--ui-border-elevated);
   border-radius: 8px;
-  background: #fafafa;
+  background: var(--ui-bg-surface);
+  color: var(--ui-text-primary);
 }
 
 .sep {
   width: 1px;
   height: 18px;
-  background: #e5e5e5;
+  background: var(--ui-border-elevated);
 }
 
 .chk {
@@ -127,9 +131,10 @@ svg {
   align-items: center;
   gap: 6px;
   padding: 6px 8px;
-  border: 1px solid #eee;
+  border: 1px solid var(--ui-border-elevated);
   border-radius: 8px;
-  background: #fafafa;
+  background: var(--ui-bg-surface);
+  color: var(--ui-text-primary);
   user-select: none;
 }
 /* Dark mode styles */
@@ -187,7 +192,7 @@ svg {
 }
 
 .canvas-shell.dark-mode .btn.active {
-  background: #1a47b5;
+  background: var(--ui-accent);
   color: #fff;
 }
 
@@ -221,7 +226,7 @@ svg {
 }
 
 .canvas-shell.dark-mode input[type="checkbox"] {
-  accent-color: #3163da;
+  accent-color: var(--ui-accent);
 }
 
 svg.dark-mode {
