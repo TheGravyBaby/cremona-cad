@@ -2,7 +2,7 @@ import { Component, Input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { Circle, Pt, Rectangle } from '../models/types';
-import { renderCircle, renderCircleAngleIndicator, renderCrosshair, renderDashedLine, renderDashLine, renderDistanceMeasurementLine, renderLine, renderPath, renderRect } from '../helpers/renderFuncs';
+import { greyOut, renderCircle, renderCircleAngleIndicator, renderCrosshair, renderDashedLine, renderDashLine, renderDistanceMeasurementLine, renderLine, renderPath, renderRect } from '../helpers/renderFuncs';
 import { combinePathStrings } from '../helpers/draftMath';
 import { KellyViolinData, KellyViolinRecipe } from './kellyTypes';
 import { calculatePrimaryShapes, calculateMainPathsSegmented, calculateMainPathsUnified, calculateMouldPath, calculateOffsetPathsSegments, calculateTopPath, initializeMainBouts, initializeMinorBouts, initializeCornerPlacement, initializeCornerCircles, initializeTopAndBottomTrace, initializeBlocks } from './kellyCals';
@@ -32,25 +32,25 @@ export class KellyViolin extends RecipeComponentBase {
   viewSegmentedOuter = false;
   viewSegmentedInnerPartial = false;
 
+
+  offFactor = .4;
+  off2Factor = .6;
   readonly colors = {
     upperBout: '#4D8660',
-    upperBoutOff: '#6DA077',
-    upperBoutOff2: '#97a49aff',
-
+    upperBoutOff:  greyOut('#4D8660', this.offFactor), // '#6DA077',
+    upperBoutOff2: greyOut('#4D8660', this.off2Factor), // '#97a49aff',
     centerBoutUp: '#C24B2E',
-    centerBoutUpOff: '#E08A6B',
-    centerBoutUpOff2:'#dea793ff',
+    centerBoutUpOff: greyOut('#C24B2E', this.offFactor), //'#E08A6B',
+    centerBoutUpOff2: greyOut('#C24B2E', this.off2Factor), //'#dea793ff',
     centerBout: '#A97645',
-    centerBoutOff: '#BC9368',
-    centerBoutOff2: '#bdab99ff',
+    centerBoutOff: greyOut('#A97645', this.offFactor), //'#BC9368',
+    centerBoutOff2: greyOut('#A97645', this.off2Factor), //'#bdab99ff',
     centerBoutLow: '#B8873A',
-    centerBoutLowOff: '#D6AA5F',
-    centerBoutLowOff2: '#d2bb93ff',
-
+    centerBoutLowOff: greyOut('#B8873A', this.offFactor), //'#D6AA5F',
+    centerBoutLowOff2: greyOut('#B8873A', this.off2Factor), //'#d2bb93ff',
     lowerBout: '#4D74A8',
-    lowerBoutOff: '#7ba4dbff',
-    lowerBoutOff2: '#a6bcd9ff',
-
+    lowerBoutOff: greyOut('#4D74A8', this.offFactor), //'#7ba4dbff',
+    lowerBoutOff2: greyOut('#4D74A8', this.off2Factor), //'#a6bcd9ff',
     innerTrace: '#a47272ff',
     outerTrace: '#bf8080ff',
     mouldTrace: '#83947fff',
@@ -397,17 +397,15 @@ export class KellyViolin extends RecipeComponentBase {
     const showInnerAngles = showInner && this.showCutoffIndicators;
 
     if (showOuter) {
-      renderCircle(this.d.shapes.lowerRightC1Offset, "grey")(g, ui);
-      renderCircle(this.d.shapes.lowerRightC2Offset, "grey")(g, ui);
+      renderCircle(this.d.shapes.upperRightC1Offset, this.colors.upperBoutOff2)(g, ui);
+      renderCircle(this.d.shapes.upperRightC2Offset, this.colors.centerBoutUpOff2)(g, ui);
+      renderCircle(this.d.shapes.upperLeftC1Offset, this.colors.upperBoutOff2)(g, ui);
+      renderCircle(this.d.shapes.upperLeftC2Offset, this.colors.centerBoutUpOff2)(g, ui);
 
-      renderCircle(this.d.shapes.lowerLeftC1Offset, "grey")(g, ui);
-      renderCircle(this.d.shapes.lowerLeftC2Offset, "grey")(g, ui);
-
-      renderCircle(this.d.shapes.upperRightC1Offset, "grey")(g, ui);
-      renderCircle(this.d.shapes.upperRightC2Offset, "grey")(g, ui);
-
-      renderCircle(this.d.shapes.upperLeftC1Offset, "grey")(g, ui);
-      renderCircle(this.d.shapes.upperLeftC2Offset, "grey")(g, ui);
+      renderCircle(this.d.shapes.lowerRightC1Offset, this.colors.centerBoutLowOff2)(g, ui);
+      renderCircle(this.d.shapes.lowerRightC2Offset, this.colors.lowerBoutOff2)(g, ui);
+      renderCircle(this.d.shapes.lowerLeftC1Offset, this.colors.centerBoutLowOff2)(g, ui);
+      renderCircle(this.d.shapes.lowerLeftC2Offset, this.colors.lowerBoutOff2)(g, ui);
     }
 
     if (showOuterAngles) {

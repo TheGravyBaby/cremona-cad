@@ -604,7 +604,7 @@ export const renderRectRoundedCorners = (rect: Rectangle, r: number, color: stri
         .attr("vector-effect", "non-scaling-stroke");
 }   
 
-export function greyOutColor(color: string, degree: number): string {
+export function greyOut(color: string, degree: number): string {
     // clamp degree to [0,1]
     degree = Math.max(0, Math.min(1, Number.isFinite(degree) ? degree : 0.5));
 
