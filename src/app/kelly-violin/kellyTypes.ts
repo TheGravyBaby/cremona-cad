@@ -8,6 +8,62 @@ export interface KellyViolinData {
 	shapes: KellyShapes;
 	intersects: KellyIntersects;
 	paths: KellyCalcEntry[];
+	ratios: KellyRatios;
+}
+
+export interface KellyRatios {
+	boutLowYToLBR: number;
+	boutUpToLBR: number;
+	boutUpYToLBR: number;
+	boutCToLBR: number;
+	vesicaUpRToLBR: number;
+	vesicaLowRToLBR: number;
+	cornerRToCBR: number;
+	cornerCircUpBoutRToLBR: number;
+	cornerCircUpCBoutRToLBR: number;
+	cornerCircLowCBoutRToLBR: number;
+	cornerCircLowBoutRToLBR: number;
+	cornerCircDubUpBoutRRatio: number;
+	cornerCircDubUpCBoutRRatio: number;
+	cornerCircDubLowCboutRRatio: number;
+	cornerCircDubLowBoutRRatio: number;
+	topTraceUpperBoutTheta: number;
+	topTraceUpperCBoutTheta: number;
+	topTraceLowerCBoutTheta: number;
+	topTraceLowerBoutTheta: number;
+	topTraceUpperBoutCutoffTheta: number;
+	topTraceUpperCBoutCutoffTheta: number;
+	topTraceLowerCBoutCutoffTheta: number;
+	topTraceLowerBoutCutoffTheta: number;
+}
+
+const KELLY_DEFAULT_RATIOS: KellyRatios = {
+	boutUpYToLBR: 2.9,	// kind of arbitray
+	boutLowYToLBR: 3/4,
+	boutUpToLBR: 4/5,
+	boutCToLBR: 4/5,
+	vesicaUpRToLBR: 2/3,
+	vesicaLowRToLBR: 2/3,
+	cornerRToCBR: 5/6,
+	cornerCircUpBoutRToLBR: 1/4,
+	cornerCircUpCBoutRToLBR: 1/4 * 4/5,
+	cornerCircLowCBoutRToLBR: 1/4,
+	cornerCircLowBoutRToLBR: 1/4,
+
+	cornerCircDubUpBoutRRatio: 3/5,
+	cornerCircDubUpCBoutRRatio: 3/5,
+	cornerCircDubLowCboutRRatio: 3/5,
+	cornerCircDubLowBoutRRatio: 3/5,
+
+	topTraceUpperBoutTheta: 195,
+	topTraceUpperCBoutTheta: 110,
+	topTraceUpperBoutCutoffTheta: 225,
+	topTraceUpperCBoutCutoffTheta: 55,
+
+	topTraceLowerCBoutTheta: 270,
+	topTraceLowerBoutTheta: 175,
+	topTraceLowerCBoutCutoffTheta: 305,
+	topTraceLowerBoutCutoffTheta: 140,
 }
 
 export class KellyViolinRecipe implements KellyViolinData {
@@ -18,6 +74,7 @@ export class KellyViolinRecipe implements KellyViolinData {
 	shapes: KellyShapes;
 	intersects: KellyIntersects;
 	paths: KellyCalcEntry[];
+	ratios: KellyRatios;
 
 	constructor(fileName = 'Kelly-Baltic', params: KellyParamOverrides = {}) {
 		this.recipeName = 'Kelly Violin';
@@ -27,11 +84,13 @@ export class KellyViolinRecipe implements KellyViolinData {
 		this.params = { ...KELLY_DEFAULT_PARAMS, ...params };
 		this.shapes = createKellyShapes();
 		this.intersects = createKellyIntersects();
+		this.ratios = {...KELLY_DEFAULT_RATIOS}
 
 		this.paths = [];
 	}
 
 	newFile(params: KellyParamOverrides = {}) {
+		this.fileName = 'New Fiddle'
 		this.params = { ...KELLY_BLANK_PARAMS, ...params };
 		this.shapes = createKellyShapes();
 		this.intersects = createKellyIntersects();
@@ -195,7 +254,7 @@ export const KELLY_BLANK_PARAMS: KellyParams = {
 	...KELLY_DEFAULT_PARAMS,
 	height: 350,
 	width: 200,
-	inset: 0,
+	inset: 4,
 	bitDiameter: 0,
 	boutUpR: 0,
 	boutUpY: 0,

@@ -79,7 +79,15 @@ export class App {
   bounds: {pt1: Pt, pt2: Pt} | null = null;
   sessionData = sessionStorage.getItem('recipeData');
 
-  referenceImage: ReferenceImage | null = this.sessionData ? JSON.parse(this.sessionData).referenceImage ?? null : null;
+  referenceImage: ReferenceImage | null = this.sessionData ? JSON.parse(this.sessionData).referenceImage ?? null : {
+    "href": "/DelGesuBaltic.png",
+    "xlink:href": "/DelGesuBaltic.png",
+    "x": -107,
+    "y": -11.7,
+    "width": 214,
+    "height": 587,
+  }
+;
 
   onReferenceImageChange(img: ReferenceImage | null) {
     queueMicrotask(() => {

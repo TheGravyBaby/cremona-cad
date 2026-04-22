@@ -39,7 +39,13 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.draw();
   }
   @Input() set referenceImageParams(value: ReferenceImage | null | undefined) {
-    if (!value) return;
+    if (value === undefined) return;
+    if (value === null) {
+      this.referenceImage = null as any;
+      this.refController?.setImage(null as any);
+      this.draw();
+      return;
+    }
     this.referenceImage = value;
     this.refController?.setImage(this.referenceImage);
     this.draw();
@@ -100,7 +106,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       this.referenceImageChange.emit(this.referenceImage ?? null);
     });
 
-    this.referenceImageChange.emit(this.referenceImage);    // sets our default gesu
     this.initialized = true;
   }
 

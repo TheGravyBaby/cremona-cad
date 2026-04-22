@@ -17,6 +17,7 @@ export function dist(a: Pt, b: Pt) {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
+
 export function pointOnCircle(C: Circle,  θ: number): Pt {
   return {
     x: C.x + C.r * Math.cos(θ),
@@ -27,6 +28,12 @@ export function pointOnCircle(C: Circle,  θ: number): Pt {
 export function projectToCircle(C: Circle, P: Pt): Pt {
   const θ = angleFromCenter(C, P);
   return pointOnCircle(C, θ);
+}
+
+export function yInterceptFromTwoPoints(P1: Pt, P2: Pt): number | null {
+  if (P1.x === P2.x) return null; // vertical line, no y-intercept
+  const m = (P2.y - P1.y) / (P2.x - P1.x);
+  return P1.y - m * P1.x;
 }
 
 export function circleCircleIntersections(
