@@ -32,11 +32,23 @@ export class KellyViolin extends RecipeComponentBase {
   viewSegmentedOuter = false;
   viewSegmentedInnerPartial = false;
 
+  readonly colors = {
+    upperBout: 'green',
+    upperBoutOff: 'mediumseagreen',
+    lowerBout: 'blue',
+    lowerBoutOff: 'cornflowerblue',
+    centerBout: 'darkorange',
+    centerBoutOff: 'orange',
+    innerTrace: '#a47272ff',
+    outerTrace:'#bf8080ff',
+    mouldTrace: '#83947fff',
+  }
+
   readonly cornerColors = {
-    lowerTop: { outer: 'deepskyblue', inner: 'navy' },
-    lowerBottom: { outer: 'limegreen', inner: 'darkgreen' },
-    upperTop: { outer: 'orangered', inner: 'maroon' },
-    upperBottom: { outer: 'gold', inner: 'saddlebrown' },
+    upperTop: { outer: this.colors.upperBout, inner: '#1f7a1f' },
+    upperBottom: { outer: this.colors.upperBoutOff, inner: '#2f8f62' },
+    lowerTop: { outer: this.colors.lowerBoutOff, inner: '#3a64b8' },
+    lowerBottom: { outer: this.colors.lowerBout, inner: '#1f4fb8' },
   };
 
   insetTooltip = "Inset is the distance from the outer edge of the bounding box to inner edge. It can be used to create a margin for the outline of the violin.";
@@ -236,7 +248,7 @@ export class KellyViolin extends RecipeComponentBase {
       .attr('width', w)
       .attr('height', h)
       .attr('fill', 'none')
-      .attr('stroke', '#222')
+      .attr('stroke', 'black')
       .attr('stroke-width', 1)
       .attr('vector-effect', 'non-scaling-stroke');
 
@@ -247,7 +259,7 @@ export class KellyViolin extends RecipeComponentBase {
       .attr('width', w - 2 * inset)
       .attr('height', h - 2 * inset)
       .attr('fill', 'none')
-      .attr('stroke', '#f00')
+      .attr('stroke', 'grey')
       .attr('stroke-width', 1)
       .attr('vector-effect', 'non-scaling-stroke');
 
@@ -255,10 +267,10 @@ export class KellyViolin extends RecipeComponentBase {
 
   renderMainBouts = (currentModule: boolean) => (g: any, ui: any): void => {
     if ((currentModule && this.showModuleCircles) || this.showAllCircles) {
-      renderCircle(this.d.shapes.upperBout, "red")(g, ui);
-      renderCircle(this.d.shapes.lowerBout, "black")(g, ui);
-      renderCircle(this.d.shapes.centerBoutLeft, "blue")(g, ui);
-      renderCircle(this.d.shapes.centerBoutRight, "blue")(g, ui);
+      renderCircle(this.d.shapes.upperBout, this.colors.upperBout)(g, ui);
+      renderCircle(this.d.shapes.lowerBout, this.colors.lowerBout)(g, ui);
+      renderCircle(this.d.shapes.centerBoutLeft, this.colors.centerBout)(g, ui);
+      renderCircle(this.d.shapes.centerBoutRight, this.colors.centerBout)(g, ui);
     }
 
     if (currentModule && this.showGuideLines) {
@@ -268,23 +280,23 @@ export class KellyViolin extends RecipeComponentBase {
       let insetLowerBout = this.d.params.boutLowR * 2 + 2 * inset;
       let insetUpperBout = this.d.params.boutUpR * 2 + 2 * inset;
 
-      renderDistanceMeasurementLine({ x: -insetWaist / 2, y: this.d.shapes.centerBoutLeft.y }, { x: insetWaist / 2, y: this.d.shapes.centerBoutLeft.y }, insetWaist.toFixed(1) + " mm", "blue")(g, ui);
-      renderDistanceMeasurementLine({ x: -insetLowerBout / 2, y: this.d.params.boutLowY }, { x: insetLowerBout / 2, y: this.d.params.boutLowY }, insetLowerBout.toFixed(1) + " mm", "black")(g, ui);
-      renderDistanceMeasurementLine({ x: -insetUpperBout / 2, y: this.d.params.boutUpY }, { x: insetUpperBout / 2, y: this.d.params.boutUpY }, insetUpperBout.toFixed(1) + " mm", "red")(g, ui);
-      renderDashedLine({ x: -1000, y: this.d.shapes.centerBoutLeft.y }, { x: 1000, y: this.d.shapes.centerBoutLeft.y }, "blue")(g, ui);
-      renderDashedLine({ x: -1000, y: this.d.params.boutLowY }, { x: 1000, y: this.d.params.boutLowY }, "black")(g, ui);
-      renderDashedLine({ x: -1000, y: this.d.params.boutUpY }, { x: 1000, y: this.d.params.boutUpY }, "red")(g, ui);
+      renderDistanceMeasurementLine({ x: -insetWaist / 2, y: this.d.shapes.centerBoutLeft.y }, { x: insetWaist / 2, y: this.d.shapes.centerBoutLeft.y }, insetWaist.toFixed(1) + " mm", this.colors.centerBout)(g, ui);
+      renderDistanceMeasurementLine({ x: -insetLowerBout / 2, y: this.d.params.boutLowY }, { x: insetLowerBout / 2, y: this.d.params.boutLowY }, insetLowerBout.toFixed(1) + " mm", this.colors.lowerBout)(g, ui);
+      renderDistanceMeasurementLine({ x: -insetUpperBout / 2, y: this.d.params.boutUpY }, { x: insetUpperBout / 2, y: this.d.params.boutUpY }, insetUpperBout.toFixed(1) + " mm", this.colors.upperBout)(g, ui);
+      renderDashedLine({ x: -1000, y: this.d.shapes.centerBoutLeft.y }, { x: 1000, y: this.d.shapes.centerBoutLeft.y }, this.colors.centerBout)(g, ui);
+      renderDashedLine({ x: -1000, y: this.d.params.boutLowY }, { x: 1000, y: this.d.params.boutLowY }, this.colors.lowerBout)(g, ui);
+      renderDashedLine({ x: -1000, y: this.d.params.boutUpY }, { x: 1000, y: this.d.params.boutUpY }, this.colors.upperBout)(g, ui);
     }
   }
 
   renderMinorBouts = (currentModule: boolean) => (g: any, ui: any): void => {
     if ((currentModule && this.showModuleCircles) || this.showAllCircles) {
-      renderCircle(this.d.shapes.upperRightVesaci, "orange")(g, ui);
-      renderCircle(this.d.shapes.upperLeftVesaci, "orange")(g, ui);
-      renderCircle(this.d.shapes.upperJoiningCircle, "orange")(g, ui);
-      renderCircle(this.d.shapes.lowerRightVesaci, "green")(g, ui);
-      renderCircle(this.d.shapes.lowerLeftVesaci, "green")(g, ui);
-      renderCircle(this.d.shapes.lowerJoiningCircle, "green")(g, ui);
+      renderCircle(this.d.shapes.upperRightVesaci, this.colors.upperBoutOff)(g, ui);
+      renderCircle(this.d.shapes.upperLeftVesaci, this.colors.upperBoutOff)(g, ui);
+      renderCircle(this.d.shapes.upperJoiningCircle, this.colors.upperBoutOff)(g, ui);
+      renderCircle(this.d.shapes.lowerRightVesaci, this.colors.lowerBoutOff)(g, ui);
+      renderCircle(this.d.shapes.lowerLeftVesaci, this.colors.lowerBoutOff)(g, ui);
+      renderCircle(this.d.shapes.lowerJoiningCircle, this.colors.lowerBoutOff)(g, ui);
     }
   }
 
@@ -293,67 +305,75 @@ export class KellyViolin extends RecipeComponentBase {
     let leftTargetCircle: Circle = { x: this.d.shapes.centerBoutLeft.x, y: this.d.shapes.centerBoutLeft.y, r: this.d.params.cornerR };
 
     if ((currentModule && this.showModuleCircles) || this.showAllCircles) {
-      renderCircle(rightTargetCircle, "purple")(g, ui);
-      renderCircle(leftTargetCircle, "purple")(g, ui);
-      renderCircle(this.d.shapes.centerBoutRight, "blue")(g, ui);
-      renderCircle(this.d.shapes.centerBoutLeft, "blue")(g, ui);
+      renderCircle(rightTargetCircle, this.colors.centerBoutOff)(g, ui);
+      renderCircle(leftTargetCircle, this.colors.centerBoutOff)(g, ui);
+      renderCircle(this.d.shapes.centerBoutRight, this.colors.centerBout)(g, ui);
+      renderCircle(this.d.shapes.centerBoutLeft, this.colors.centerBout)(g, ui);
     }
 
     if (currentModule && this.showGuideLines) {
-      renderCrosshair(this.d.shapes.centerBoutRight, "blue")(g, ui);
-      renderCrosshair(this.d.shapes.centerBoutLeft, "blue")(g, ui);
-      renderDashLine(this.d.shapes.centerBoutLeft, this.d.shapes.centerBoutRight, "blue", 1, "4,4", true)(g, ui);
+      renderCrosshair(this.d.shapes.centerBoutRight, this.colors.centerBout)(g, ui);
+      renderCrosshair(this.d.shapes.centerBoutLeft, this.colors.centerBout)(g, ui);
+      renderDashLine(this.d.shapes.centerBoutLeft, this.d.shapes.centerBoutRight, this.colors.centerBout, 1, "4,4", true)(g, ui);
 
-      renderCrosshair(this.d.shapes.lowerRightVesaci, "green")(g, ui);
-      renderCrosshair(this.d.shapes.lowerLeftVesaci, "green")(g, ui);
-      renderCrosshair(this.d.shapes.lowerBout, "green")(g, ui);
-      renderCrosshair(this.d.shapes.upperBout, "red")(g, ui);
-      renderCrosshair(this.d.shapes.upperRightVesaci, "red")(g, ui);
-      renderCrosshair(this.d.shapes.upperLeftVesaci, "red")(g, ui);
+      renderCrosshair(this.d.shapes.lowerRightVesaci, this.colors.lowerBout)(g, ui);
+      renderCrosshair(this.d.shapes.lowerLeftVesaci, this.colors.lowerBout)(g, ui);
+      renderCrosshair(this.d.shapes.lowerBout, this.colors.lowerBout)(g, ui);
+      renderCrosshair(this.d.shapes.upperBout, this.colors.upperBout)(g, ui);
+      renderCrosshair(this.d.shapes.upperRightVesaci, this.colors.upperBout)(g, ui);
+      renderCrosshair(this.d.shapes.upperLeftVesaci, this.colors.upperBout)(g, ui);
+      renderDashLine({ x: 0, y: this.d.params.cornerGuideLowY }, this.d.intersects.corners.lowerRight, this.colors.lowerBout, 1, "4,4", true)(g, ui);
+      renderDashLine({ x: 0, y: this.d.params.cornerGuideLowY }, this.d.intersects.corners.lowerLeft, this.colors.lowerBout, 1, "4,4", true)(g, ui);
 
-      renderDashLine({ x: 0, y: this.d.params.cornerGuideLowY }, this.d.intersects.corners.lowerRight, "purple", 1, "4,4", true)(g, ui);
-      renderDashLine({ x: 0, y: this.d.params.cornerGuideLowY }, this.d.intersects.corners.lowerLeft, "purple", 1, "4,4", true)(g, ui);
+      renderDashLine({ x: 0, y: this.d.params.cornerGuideUpY }, this.d.intersects.corners.upperRight, this.colors.upperBout, 1, "4,4", true)(g, ui);
+      renderDashLine({ x: 0, y: this.d.params.cornerGuideUpY }, this.d.intersects.corners.upperLeft, this.colors.upperBout, 1, "4,4", true)(g, ui);
+      renderCrosshair(this.d.intersects.corners.lowerRight, this.colors.lowerBout)(g, ui);
+      renderCrosshair(this.d.intersects.corners.lowerLeft, this.colors.lowerBout)(g, ui);
+      renderCrosshair(this.d.intersects.corners.upperRight, this.colors.upperBout)(g, ui);
+      renderCrosshair(this.d.intersects.corners.upperLeft, this.colors.upperBout)(g, ui);
 
-      renderDashLine({ x: 0, y: this.d.params.cornerGuideUpY }, this.d.intersects.corners.upperRight, "purple", 1, "4,4", true)(g, ui);
-      renderDashLine({ x: 0, y: this.d.params.cornerGuideUpY }, this.d.intersects.corners.upperLeft, "purple", 1, "4,4", true)(g, ui);
+      let targetCircleDiff = this.d.params.boutCenR - this.d.params.cornerR;
 
-      renderCrosshair(this.d.intersects.corners.lowerRight, "purple")(g, ui);
-      renderCrosshair(this.d.intersects.corners.lowerLeft, "purple")(g, ui);
-      renderCrosshair(this.d.intersects.corners.upperRight, "purple")(g, ui);
-      renderCrosshair(this.d.intersects.corners.upperLeft, "purple")(g, ui);
+      renderCrosshair({...this.d.shapes.centerBoutRight, x: this.d.shapes.centerBoutRight.x + targetCircleDiff}, this.colors.centerBout)(g, ui);
+      renderCrosshair({...this.d.shapes.centerBoutRight, x: this.d.shapes.centerBoutRight.x - targetCircleDiff}, this.colors.centerBout)(g, ui);
+      renderCrosshair({...this.d.shapes.centerBoutLeft, x: this.d.shapes.centerBoutLeft.x + targetCircleDiff}, this.colors.centerBout)(g, ui);
+      renderCrosshair({...this.d.shapes.centerBoutLeft, x: this.d.shapes.centerBoutLeft.x - targetCircleDiff}, this.colors.centerBout)(g, ui);
+
     }
 
   }
 
   renderCornerCircles = (currentModule: boolean) => (g: any, ui: any): void => {
     if ((currentModule && this.showModuleCircles) || this.showAllCircles) {
-      renderCircle(this.d.shapes.lowerLeftCornerC1, "purple")(g, ui);
-      renderCircle(this.d.shapes.lowerLeftCornerC2, "purple")(g, ui);
-      renderCircle(this.d.shapes.lowerRightCornerC1, "purple")(g, ui);
-      renderCircle(this.d.shapes.lowerRightCornerC2, "purple")(g, ui);
-      renderCircle(this.d.shapes.upperRightCornerC1, "purple")(g, ui);
-      renderCircle(this.d.shapes.upperRightCornerC2, "purple")(g, ui);
-      renderCircle(this.d.shapes.upperLeftCornerC1, "purple")(g, ui);
-      renderCircle(this.d.shapes.upperLeftCornerC2, "purple")(g, ui);
+      renderCircle(this.d.shapes.lowerLeftCornerC1, this.cornerColors.lowerTop.outer)(g, ui);
+      renderCircle(this.d.shapes.lowerRightCornerC1, this.cornerColors.lowerTop.outer)(g, ui);
+      renderCircle(this.d.shapes.lowerRightCornerC2, this.cornerColors.lowerBottom.outer)(g, ui);
+      renderCircle(this.d.shapes.lowerLeftCornerC2, this.cornerColors.lowerBottom.outer)(g, ui);
+
+
+      renderCircle(this.d.shapes.upperRightCornerC1, this.cornerColors.upperTop.outer)(g, ui);      
+      renderCircle(this.d.shapes.upperLeftCornerC1, this.cornerColors.upperTop.outer)(g, ui);
+      renderCircle(this.d.shapes.upperRightCornerC2, this.cornerColors.upperBottom.outer)(g, ui);
+      renderCircle(this.d.shapes.upperLeftCornerC2, this.cornerColors.upperBottom.outer)(g, ui);
     }
 
     if (currentModule && this.showGuideLines) {
-      renderDashLine({ x: 0, y: this.d.params.cornerGuideLowY }, this.d.intersects.corners.lowerRight, "purple", 1, "4,4", true)(g, ui);
-      renderDashLine({ x: 0, y: this.d.params.cornerGuideLowY }, this.d.intersects.corners.lowerLeft, "purple", 1, "4,4", true)(g, ui);
-      renderDashLine({ x: 0, y: this.d.params.cornerGuideUpY }, this.d.intersects.corners.upperRight, "purple", 1, "4,4", true)(g, ui);
-      renderDashLine({ x: 0, y: this.d.params.cornerGuideUpY }, this.d.intersects.corners.upperLeft, "purple", 1, "4,4", true)(g, ui);
+      renderDashLine({ x: 0, y: this.d.params.cornerGuideLowY }, this.d.intersects.corners.lowerRight, this.colors.lowerBoutOff, 1, "4,4", true)(g, ui);
+      renderDashLine({ x: 0, y: this.d.params.cornerGuideLowY }, this.d.intersects.corners.lowerLeft, this.colors.lowerBoutOff, 1, "4,4", true)(g, ui);
+      renderDashLine({ x: 0, y: this.d.params.cornerGuideUpY }, this.d.intersects.corners.upperRight, this.colors.upperBoutOff, 1, "4,4", true)(g, ui);
+      renderDashLine({ x: 0, y: this.d.params.cornerGuideUpY }, this.d.intersects.corners.upperLeft, this.colors.upperBoutOff, 1, "4,4", true)(g, ui);
     }
   }
 
   renderBlocks = (currentModule: boolean) => (g: any, ui: any): void => {
     if (currentModule && this.showGuideLines) {
-      renderRect(this.d.shapes.lowerLeftBlock, "blue")(g, ui);
-      renderRect(this.d.shapes.upperLeftBlock, "blue")(g, ui);
-      renderRect(this.d.shapes.upperRightBlock, "blue")(g, ui);
-      renderRect(this.d.shapes.lowerRightBlock, "blue")(g, ui);
+      renderRect(this.d.shapes.lowerLeftBlock, this.colors.centerBout, 'none', 2)(g, ui);
+      renderRect(this.d.shapes.upperLeftBlock, this.colors.centerBout, 'none', 2)(g, ui);
+      renderRect(this.d.shapes.upperRightBlock, this.colors.centerBout, 'none', 2)(g, ui);
+      renderRect(this.d.shapes.lowerRightBlock, this.colors.centerBout, 'none', 2)(g, ui);
 
-      renderRect(this.d.shapes.lowerBlock, "blue")(g, ui);
-      renderRect(this.d.shapes.upperBlock, "blue")(g, ui);
+      renderRect(this.d.shapes.lowerBlock, this.colors.lowerBout, 'none', 2)(g, ui);
+      renderRect(this.d.shapes.upperBlock, this.colors.upperBout, 'none', 2)(g, ui);
     }
   }
 
@@ -438,35 +458,35 @@ export class KellyViolin extends RecipeComponentBase {
   renderMainPath = (g: any, ui: any): void => {
     let pathObj = this.d.paths.find(c => c.name === "innerPath");
     if (pathObj) {
-      pathObj.paths.forEach((p: any) => renderPath(p, "red")(g, ui));
+      pathObj.paths.forEach((p: any) => renderPath(p, this.colors.innerTrace)(g, ui));
     }
   }
 
   renderMainPathCornerless = (g: any, ui: any): void => {
     let pathObj = this.d.paths.find(c => c.name === "innerPathCornerless");
     if (pathObj) {
-      pathObj.paths.forEach((p: any) => renderPath(p, "red")(g, ui));
+      pathObj.paths.forEach((p: any) => renderPath(p, this.colors.innerTrace)(g, ui));
     }
   }
 
   renderUnifiedPath = (g: any, ui: any): void => {
     let pathObj = this.d.paths.find(c => c.name === "unifiedTrace");
     if (pathObj) {
-      pathObj.paths.forEach((p: any) => renderPath(p, "blue", 2, 0.7)(g, ui));
+      pathObj.paths.forEach((p: any) => renderPath(p, this.colors.innerTrace, 2, 0.7)(g, ui));
     }
   }
 
   renderMainPathWithBlocks = (g: any, ui: any): void => {
     let mouldPath = this.d.paths.find(c => c.name === "mouldPath");
     if (mouldPath) {
-      mouldPath.paths.forEach((p: any) => renderPath(p, "green", 2, 0.7)(g, ui));
+      mouldPath.paths.forEach((p: any) => renderPath(p, this.colors.mouldTrace, 2, 0.7)(g, ui));
     }
   }
 
   renderTopPath = (g: any, ui: any): void => {
     let pathObj = this.d.paths.find(c => c.name === "outerPath");
     if (pathObj) {
-      pathObj.paths.forEach((p: any) => renderPath(p, "blue", 2)(g, ui));
+      pathObj.paths.forEach((p: any) => renderPath(p, this.colors.outerTrace, 2)(g, ui));
     }
   }
 

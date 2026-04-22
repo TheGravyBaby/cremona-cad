@@ -32,8 +32,17 @@
   width: 100%;
 }
 
+.section-title {
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #4a4a4a;
+  margin-bottom: 2px;
+}
+
 .top-trace-group-title {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.03em;
   text-transform: uppercase;
@@ -42,14 +51,14 @@
 }
 
 .top-trace-label {
-  font-size: 12px;
+  display: block;
+  font-size: 14px;
   color: #444;
-  gap: 4px;
 }
 
 .top-trace-label span {
   color: #777;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .top-trace-row {
@@ -58,25 +67,31 @@
   width: 100%;
 }
 
-.top-trace-label {
-  align-items: flex-start;
+.top-trace-label > span {
+  display: inline;
 }
+
+.top-trace-label > .top-trace-row {
+  margin-top: 6px;
+}
+
 
 .top-trace-row > span {
   color: #888;
   font-weight: 600;
   margin-top: -1px;
+  display: inline;
 }
 
 .trace-input {
-  width: 78px;
+  width: 84px;
   height: 28px;
   padding: 3px 7px;
   border-width: 1px;
   border-style: solid;
   border-radius: 6px;
   background: #fff;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.1;
   text-align: left;
   box-sizing: border-box;
@@ -104,7 +119,7 @@
   justify-content: flex-start;
   width: 100%;
   gap: 7px;
-  font-size: 13px;
+  font-size: 14px;
   color: #333;
 }
 
@@ -115,6 +130,25 @@
 
 .trace-toggle-child {
   margin-left: 20px;
-  font-size: 12.5px;
+  font-size: 13px;
   color: #555;
+}
+
+.mould-pattern-group {
+  border-width: 2px;
+  background: #fff;
+}
+
+.export-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.export-view-toggle {
+  width: auto;
+  margin-left: auto;
+  white-space: nowrap;
 }
