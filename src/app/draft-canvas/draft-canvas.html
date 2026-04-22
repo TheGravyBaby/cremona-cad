@@ -18,17 +18,17 @@
 
     <div class="right">
       <label class="chk">
-        <input type="checkbox" [(ngModel)]="showGrid" (change)="draw()" />
+        <input type="checkbox" [(ngModel)]="showGrid" (change)="onDisplayPreferenceChange()" />
         Grid
       </label>
 
       <label class="chk">
-        <input type="checkbox" [(ngModel)]="showAxes" (change)="draw()" />
+        <input type="checkbox" [(ngModel)]="showAxes" (change)="onDisplayPreferenceChange()" />
         Axes
       </label>
 
       <label class="chk">
-        <input type="checkbox" [(ngModel)]="showReferenceImage" (change)="draw()" />
+        <input type="checkbox" [(ngModel)]="showReferenceImage" (change)="onDisplayPreferenceChange()" />
         Reference
       </label>
       <div class="align-controls">

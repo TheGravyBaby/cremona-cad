@@ -23,6 +23,7 @@ import { ReferenceImageController } from './reference-image-controller';
 })
 
 export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
+  private static readonly DISPLAY_PREFS_KEY = 'draft-canvas-display-preferences';
   private initialized = false;
   private canvas!: d3.Selection<SVGSVGElement, unknown, null, undefined>;
   private gRoot!: d3.Selection<SVGGElement, unknown, null, undefined>;
@@ -106,7 +107,10 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       this.referenceImageChange.emit(this.referenceImage ?? null);
     });
 
+    this.loadDisplayPreferences();
+
     this.initialized = true;
+    this.draw();
   }
 
   ngOnDestroy(): void {
@@ -150,6 +154,45 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.draftFuncs.map(f => {
       f(this.gRoot, this.gUI)
     })
+  }
+
+  private loadDisplayPreferences(): void {
+    try {
+      const raw = sessionStorage.getItem(DraftCanvasComponent.DISPLAY_PREFS_KEY);
+      if (!raw) return;
+
+      const parsed = JSON.parse(raw) as {
+        showGrid?: boolean;
+        showAxes?: boolean;
+        showReferenceImage?: boolean;
+      };
+
+      if (typeof parsed.showGrid === 'boolean') this.showGrid = parsed.showGrid;
+      if (typeof parsed.showAxes === 'boolean') this.showAxes = parsed.showAxes;
+      if (typeof parsed.showReferenceImage === 'boolean') this.showReferenceImage = parsed.showReferenceImage;
+    } catch {
+      // ignore malformed/blocked sessionStorage
+    }
+  }
+
+  private persistDisplayPreferences(): void {
+    try {
+      sessionStorage.setItem(
+        DraftCanvasComponent.DISPLAY_PREFS_KEY,
+        JSON.stringify({
+          showGrid: this.showGrid,
+          showAxes: this.showAxes,
+          showReferenceImage: this.showReferenceImage,
+        })
+      );
+    } catch {
+      // ignore storage errors
+    }
+  }
+
+  onDisplayPreferenceChange(): void {
+    this.persistDisplayPreferences();
+    this.draw();
   }
 
   drawAxis(cv: any): void {
