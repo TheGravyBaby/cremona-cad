@@ -545,7 +545,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     const pxW = Math.max(1, el.clientWidth);
     const pxH = Math.max(1, el.clientHeight);
 
-    const zoomInFactor = 2;
+    const zoomInFactor = 1.75;
     const zoomFactor = (event.shiftKey || event.ctrlKey || event.metaKey || event.altKey) ? (1 / zoomInFactor) : zoomInFactor;
 
     const newPxPerMm = this.pxPerMm * zoomFactor;

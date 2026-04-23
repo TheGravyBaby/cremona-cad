@@ -3,7 +3,7 @@
     <!-- show only the most recent 3 messages as toasts -->
     <div *ngFor="let m of messages | slice:0:3" class="toast" [attr.data-severity]="m.severity">
       <div class="msg">
-        <strong *ngIf="m.title">{{m.title}}</strong>
+        <strong *ngIf="m.title">{{m.title}}</strong><br>
         <span>{{m.message}}</span>
       </div>
       <button class="dismiss" (click)="dismiss(m.id)">✕</button>

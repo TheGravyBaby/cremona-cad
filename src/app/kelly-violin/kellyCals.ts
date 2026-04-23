@@ -19,7 +19,7 @@ import {
 	yInterceptFromTwoPoints,
 } from '../helpers/draftMath';
 import { KellyCalcEntry, KellyViolinData } from './kellyTypes';
-import { emitGlobal } from '../shared/message-emitter';
+import { emitGlobal, warn } from '../shared/message-emitter';
 
 export function initializeMainBouts(d: KellyViolinData) {
 	if (
@@ -188,12 +188,7 @@ export function calculatePrimaryShapes(data: KellyViolinData): void {
 
 	if (data.params.vesaciUpR > 66) {
 		// emit a warning to the global message center (non-throwing by default)
-		emitGlobal({
-			severity: 'warn',
-			title: 'Upper Vesecai Radius',
-			message: `vesaciUpR is large (${data.params.vesaciUpR} mm). Consider reducing for stability.`,
-			autoDismiss: 8000,
-		});
+		warn('Upper vesaci radius too large.', 'Upper Vesaci Warning');
 	}
 
 
