@@ -29,20 +29,22 @@ export function initializeMainBouts(d: KellyViolinData) {
 		d.params.boutLowY == 0
 	) {
 		d.params.boutLowR = Math.round((d.params.width / 2 - d.params.inset)); // critical value
-
-		d.params.boutLowY = Math.round((d.params.boutLowR * d.ratios.boutLowYToLBR));
-		d.params.boutUpY = Math.round((d.params.boutLowR * d.ratios.boutUpYToLBR));
 		d.params.boutUpR = Math.round((d.params.boutLowR * d.ratios.boutUpToLBR));
+
+
+		d.params.boutLowY = d.params.inset + Math.round((d.params.boutLowR * d.ratios.boutLowYToLBR));
+		d.params.boutUpY = d.params.height - d.params.inset - Math.round((d.params.boutUpR * d.ratios.boutUpYToUBR));
 		d.params.boutCenR = Math.round((d.params.boutLowR * d.ratios.boutCToLBR));
 	}
 	else {
-		d.ratios.boutLowYToLBR = d.params.boutLowY / d.params.boutLowR;
+		d.ratios.boutLowYToLBR = (d.params.boutLowY - d.params.inset) / d.params.boutLowR;
+		d.ratios.boutUpYToUBR = (d.params.boutUpY - d.params.height + d.params.inset) / -d.params.boutUpR;
+
 		d.ratios.boutUpToLBR = d.params.boutUpR / d.params.boutLowR;
-		d.ratios.boutUpYToLBR = d.params.boutUpY / d.params.boutLowR;
 		d.ratios.boutCToLBR = d.params.boutCenR / d.params.boutLowR;
 	}
 
-	console.log(d.ratios.boutUpYToLBR, d.ratios.boutLowYToLBR)
+	console.log(d.ratios.boutUpYToUBR, d.ratios.boutLowYToLBR)
 }
 
 

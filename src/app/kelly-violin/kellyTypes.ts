@@ -12,12 +12,12 @@ export interface KellyViolinData {
 }
 
 export interface KellyRatios {
+	boutUpYToUBR: number;
 	boutLowYToLBR: number;
+	vesicaLowRToLBR: number;
 	boutUpToLBR: number;
-	boutUpYToLBR: number;
 	boutCToLBR: number;
 	vesicaUpRToLBR: number;
-	vesicaLowRToLBR: number;
 	cornerRToCBR: number;
 	cornerCircUpBoutRToLBR: number;
 	cornerCircUpCBoutRToLBR: number;
@@ -38,8 +38,8 @@ export interface KellyRatios {
 }
 
 const KELLY_DEFAULT_RATIOS: KellyRatios = {
-	boutUpYToLBR: 2.9,	// amati number
-	boutLowYToLBR: .75, // amati number
+	boutUpYToUBR: 7/8,	// a bit arbitrary, but usually works
+	boutLowYToLBR: 7/10,
 	boutUpToLBR: 4/5,
 	boutCToLBR: 4/5,
 	vesicaUpRToLBR: 2/3,
