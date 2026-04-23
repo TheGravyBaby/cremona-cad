@@ -1,8 +1,9 @@
 import { Component, Input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { error } from '../shared/message-emitter';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { Circle } from '../models/types';
-import { greyOut, renderCircle, renderCircleAngleIndicator, renderCrosshair, renderDashedLine, renderDashLine, renderDistanceMeasurementLine,  renderPath, renderRect } from '../helpers/renderFuncs';
+import { greyOut, renderCircle, renderCircleAngleIndicator, renderCrosshair, renderDashedLine, renderDashLine, renderDistanceMeasurementLine, renderPath, renderRect } from '../helpers/renderFuncs';
 import { combinePathStrings } from '../helpers/draftMath';
 import { KellyViolinData, KellyViolinRecipe } from './kellyTypes';
 import { calculatePrimaryShapes, calculateMainPathsSegmented, calculateMainPathsUnified, calculateMouldPath, calculateOffsetPathsSegments, calculateTopPath, initializeMainBouts, initializeMinorBouts, initializeCornerPlacement, initializeCornerCircles, initializeTopAndBottomTrace, initializeBlocks, normalizeDegrees } from './kellyCals';
@@ -37,7 +38,7 @@ export class KellyViolin extends RecipeComponentBase {
   off2Factor = .6;
   readonly colors = {
     upperBout: '#4D8660',
-    upperBoutOff:  greyOut('#4D8660', this.offFactor), // '#6DA077',
+    upperBoutOff: greyOut('#4D8660', this.offFactor), // '#6DA077',
     upperBoutOff2: greyOut('#4D8660', this.off2Factor), // '#97a49aff',
     centerBoutUp: '#C24B2E',
     centerBoutUpOff: greyOut('#C24B2E', this.offFactor), //'#E08A6B',
@@ -58,18 +59,41 @@ export class KellyViolin extends RecipeComponentBase {
 
   insetTooltip = "Inset is the distance from the outer edge of the bounding box to inner edge. It can be used to create a margin for the outline of the violin.";
 
+  private readonly errorMessages = [
+    "Stradivari never had this problem...",
+    "A circle walked into a bar and nothing intersected...",
+    "These are not the curves you're looking for...",
+    "It's gonna be okay...",
+    "Back to the drafting board...",
+    "Perhaps we should just use paper...",
+    "Surely you can't expect the math to be perfect every time...",
+
+  ];
+  private errorIndex = 0;
+
+  private safeRun(fn: () => void): void {
+    try {
+      fn();
+    } catch (e: any) {
+      const msg = this.errorMessages[this.errorIndex % this.errorMessages.length];
+      this.errorIndex++;
+      error(msg, 'Error :[');
+      console.error(e)
+    }
+  }
+
   @Input() set newFile(v: boolean) {
     if (v) {
-        this.openPanel = 'base'
-        let data = new KellyViolinRecipe()
-        data.newFile()
-        this.d = data;
-        this.draftChange.emit([this.firstRender]);
-        // sessionStorage.setItem('recipeData', JSON.stringify(this.d));
-        this.referenceImageChange.emit(null);
-      }
+      this.openPanel = 'base'
+      let data = new KellyViolinRecipe()
+      data.newFile()
+      this.d = data;
+      this.draftChange.emit([this.firstRender]);
+      // sessionStorage.setItem('recipeData', JSON.stringify(this.d));
+      this.referenceImageChange.emit(null);
+    }
   }
-    
+
 
   override firstRender = (g: any, ui: any): void => {
     this.renderBounds(g, ui);
@@ -171,89 +195,104 @@ export class KellyViolin extends RecipeComponentBase {
 
 
   changeBaseMeasurements(): void {
-    const ratio = this.d.params.height / this.d.params.width;
-    this.setBounds.emit({ pt1: { x: -this.d.params.width / 2, y: 0 }, pt2: { x: this.d.params.width / 2, y: this.d.params.height } });
-    this.draftChange.emit([this.renderBounds]);
-    sessionStorage.setItem('recipeData', JSON.stringify(this.d));
+    this.safeRun(() => {
+      const ratio = this.d.params.height / this.d.params.width;
+      this.setBounds.emit({ pt1: { x: -this.d.params.width / 2, y: 0 }, pt2: { x: this.d.params.width / 2, y: this.d.params.height } });
+      this.draftChange.emit([this.renderBounds]);
+      sessionStorage.setItem('recipeData', JSON.stringify(this.d));
+    });
   }
 
   changeMainBouts() {
-    initializeMainBouts(this.d)
-    calculatePrimaryShapes(this.d);
-    this.draftChange.emit([this.renderBounds, this.renderMainBouts(true)]);
-    sessionStorage.setItem('recipeData', JSON.stringify(this.d));
+    this.safeRun(() => {
+      initializeMainBouts(this.d)
+      calculatePrimaryShapes(this.d);
+      this.draftChange.emit([this.renderBounds, this.renderMainBouts(true)]);
+      sessionStorage.setItem('recipeData', JSON.stringify(this.d));
+    });
   }
 
   changeMinorBouts() {
-    initializeMinorBouts(this.d)
-    calculatePrimaryShapes(this.d);
-    this.draftChange.emit([this.renderBounds, this.renderMainBouts(false), this.renderMinorBouts(true), this.renderMainPathCornerless]);
-    sessionStorage.setItem('recipeData', JSON.stringify(this.d));
+    this.safeRun(() => {
+      initializeMinorBouts(this.d)
+      calculatePrimaryShapes(this.d);
+      this.draftChange.emit([this.renderBounds, this.renderMainBouts(false), this.renderMinorBouts(true), this.renderMainPathCornerless]);
+      sessionStorage.setItem('recipeData', JSON.stringify(this.d));
+    });
   }
 
   changeCornerPlacement() {
-    initializeCornerPlacement(this.d);
-    calculatePrimaryShapes(this.d);
-    // this.draftChange.emit([renderCircle(this.d.shapes.lowerBout, "blue"), renderCrosshair(this.d.intersects.corners.lowerRight, "purple")]);
-    this.draftChange.emit([this.renderMainBouts(false), this.renderMinorBouts(false), this.renderCornerPlacements(true), this.renderMainPathCornerless]);
-    sessionStorage.setItem('recipeData', JSON.stringify(this.d));
+    this.safeRun(() => {
+      initializeCornerPlacement(this.d);
+      calculatePrimaryShapes(this.d);
+      // this.draftChange.emit([renderCircle(this.d.shapes.lowerBout, "blue"), renderCrosshair(this.d.intersects.corners.lowerRight, "purple")]);
+      this.draftChange.emit([this.renderMainBouts(false), this.renderMinorBouts(false), this.renderCornerPlacements(true), this.renderMainPathCornerless]);
+      sessionStorage.setItem('recipeData', JSON.stringify(this.d));
+    });
   }
 
   changeCornerCircles() {
-    initializeCornerCircles(this.d);
-    calculatePrimaryShapes(this.d);
-    this.draftChange.emit([this.renderMainBouts(false), this.renderMinorBouts(false), this.renderCornerPlacements(false), this.renderCornerCircles(true), this.renderMainPath]);
-    sessionStorage.setItem('recipeData', JSON.stringify(this.d));
+    this.safeRun(() => {
+      initializeCornerCircles(this.d);
+      calculatePrimaryShapes(this.d);
+      this.draftChange.emit([this.renderMainBouts(false), this.renderMinorBouts(false), this.renderCornerPlacements(false), this.renderCornerCircles(true), this.renderMainPath]);
+      sessionStorage.setItem('recipeData', JSON.stringify(this.d));
+    });
   }
 
   changeTopAndBottom() {
-    this.d.params.cornerCircDubUpBoutTheta = normalizeDegrees(this.d.params.cornerCircDubUpBoutTheta);
-    this.d.params.cornerCircDubUpCBoutTheta = normalizeDegrees(this.d.params.cornerCircDubUpCBoutTheta);
-    this.d.params.cornerCircDubLowCBoutTheta = normalizeDegrees(this.d.params.cornerCircDubLowCBoutTheta);
-    this.d.params.cornerCircDubLowBoutTheta = normalizeDegrees(this.d.params.cornerCircDubLowBoutTheta);
-    this.d.params.cornerCircDubUpBoutCutoffTheta = normalizeDegrees(this.d.params.cornerCircDubUpBoutCutoffTheta);
-    this.d.params.cornerCircleDubUpCBoutCutoffTheta = normalizeDegrees(this.d.params.cornerCircleDubUpCBoutCutoffTheta);
-    this.d.params.cornerCircleDubLowCBoutTheta = normalizeDegrees(this.d.params.cornerCircleDubLowCBoutTheta);
-    this.d.params.cornerCircleDubLowBoutTheta = normalizeDegrees(this.d.params.cornerCircleDubLowBoutTheta);
+    this.safeRun(() => {
+      this.d.params.cornerCircDubUpBoutTheta = normalizeDegrees(this.d.params.cornerCircDubUpBoutTheta);
+      this.d.params.cornerCircDubUpCBoutTheta = normalizeDegrees(this.d.params.cornerCircDubUpCBoutTheta);
+      this.d.params.cornerCircDubLowCBoutTheta = normalizeDegrees(this.d.params.cornerCircDubLowCBoutTheta);
+      this.d.params.cornerCircDubLowBoutTheta = normalizeDegrees(this.d.params.cornerCircDubLowBoutTheta);
+      this.d.params.cornerCircDubUpBoutCutoffTheta = normalizeDegrees(this.d.params.cornerCircDubUpBoutCutoffTheta);
+      this.d.params.cornerCircleDubUpCBoutCutoffTheta = normalizeDegrees(this.d.params.cornerCircleDubUpCBoutCutoffTheta);
+      this.d.params.cornerCircleDubLowCBoutTheta = normalizeDegrees(this.d.params.cornerCircleDubLowCBoutTheta);
+      this.d.params.cornerCircleDubLowBoutTheta = normalizeDegrees(this.d.params.cornerCircleDubLowBoutTheta);
 
-    initializeTopAndBottomTrace(this.d);
-    calculatePrimaryShapes(this.d);
-    calculateMainPathsSegmented(this.d);
-    calculateOffsetPathsSegments(this.d);
-    calculateTopPath(this.d);
-    this.draftChange.emit([this.renderFinalCorners(true), this.renderMainPath, this.renderTopPath]);
-    sessionStorage.setItem('recipeData', JSON.stringify(this.d));
+      initializeTopAndBottomTrace(this.d);
+      calculatePrimaryShapes(this.d);
+      calculateMainPathsSegmented(this.d);
+      calculateOffsetPathsSegments(this.d);
+      calculateTopPath(this.d);
+      this.draftChange.emit([this.renderFinalCorners(true), this.renderMainPath, this.renderTopPath]);
+      sessionStorage.setItem('recipeData', JSON.stringify(this.d));
+    });
   }
 
   changeMouldPattern(calcChange = true) {
-    calcChange && initializeBlocks(this.d);
-    calcChange && calculatePrimaryShapes(this.d);
-    calcChange && calculateMouldPath(this.d);
-    this.draftChange.emit([this.renderMainBouts(false), this.renderMinorBouts(false), this.renderCornerPlacements(false), this.renderCornerCircles(false), this.renderBlocks(true), this.renderMainPathWithBlocks]);
-    sessionStorage.setItem('recipeData', JSON.stringify(this.d));
+    this.safeRun(() => {
+      calcChange && initializeBlocks(this.d);
+      calcChange && calculatePrimaryShapes(this.d);
+      calcChange && calculateMouldPath(this.d);
+      this.draftChange.emit([this.renderMainBouts(false), this.renderMinorBouts(false), this.renderCornerPlacements(false), this.renderCornerCircles(false), this.renderBlocks(true), this.renderMainPathWithBlocks]);
+      sessionStorage.setItem('recipeData', JSON.stringify(this.d));
+    });
   }
 
   renderExports() {
-    calculatePrimaryShapes(this.d);
-    initializeBlocks(this.d)
-    calculateMouldPath(this.d);
-    calculateMainPathsSegmented(this.d);
-    calculateOffsetPathsSegments(this.d);
-    calculateTopPath(this.d);
-    let emitArray = [];
-    this.viewOuterPathExport && emitArray.push(this.renderTopPath);
-    this.viewInnerPathExport && emitArray.push(this.renderMainPath);
-    this.viewMouldExport && emitArray.push(this.renderMainPathWithBlocks);
+    this.safeRun(() => {
+      calculatePrimaryShapes(this.d);
+      initializeBlocks(this.d)
+      calculateMouldPath(this.d);
+      calculateMainPathsSegmented(this.d);
+      calculateOffsetPathsSegments(this.d);
+      calculateTopPath(this.d);
+      let emitArray = [];
+      this.viewOuterPathExport && emitArray.push(this.renderTopPath);
+      this.viewInnerPathExport && emitArray.push(this.renderMainPath);
+      this.viewMouldExport && emitArray.push(this.renderMainPathWithBlocks);
 
-    this.viewSegmentedOuter && emitArray.push((g: any, ui: any) => {
-      this.d.paths.find(c => c.name === 'offsetSegmentedPath')?.paths.forEach(p => renderPath(p, 'purple')(g, ui));
+      this.viewSegmentedOuter && emitArray.push((g: any, ui: any) => {
+        this.d.paths.find(c => c.name === 'offsetSegmentedPath')?.paths.forEach(p => renderPath(p, 'purple')(g, ui));
+      });
+      this.viewSegmentedInnerPartial && emitArray.push((g: any, ui: any) => {
+        this.d.paths.find(c => c.name === 'innerPath')?.paths.forEach(p => renderPath(p, 'orange')(g, ui));
+      });
+
+      this.draftChange.emit(emitArray);
     });
-    this.viewSegmentedInnerPartial && emitArray.push((g: any, ui: any) => {
-      this.d.paths.find(c => c.name === 'innerPath')?.paths.forEach(p => renderPath(p, 'orange')(g, ui));
-    });
-
-    this.draftChange.emit(emitArray);
-
   }
 
   renderBounds = (g: any, ui: any): void => {
@@ -355,10 +394,10 @@ export class KellyViolin extends RecipeComponentBase {
 
       let targetCircleDiff = this.d.params.boutCenR - this.d.params.cornerR;
 
-      renderCrosshair({...this.d.shapes.centerBoutRight, x: this.d.shapes.centerBoutRight.x + targetCircleDiff}, this.colors.centerBout)(g, ui);
-      renderCrosshair({...this.d.shapes.centerBoutRight, x: this.d.shapes.centerBoutRight.x - targetCircleDiff}, this.colors.centerBout)(g, ui);
-      renderCrosshair({...this.d.shapes.centerBoutLeft, x: this.d.shapes.centerBoutLeft.x + targetCircleDiff}, this.colors.centerBout)(g, ui);
-      renderCrosshair({...this.d.shapes.centerBoutLeft, x: this.d.shapes.centerBoutLeft.x - targetCircleDiff}, this.colors.centerBout)(g, ui);
+      renderCrosshair({ ...this.d.shapes.centerBoutRight, x: this.d.shapes.centerBoutRight.x + targetCircleDiff }, this.colors.centerBout)(g, ui);
+      renderCrosshair({ ...this.d.shapes.centerBoutRight, x: this.d.shapes.centerBoutRight.x - targetCircleDiff }, this.colors.centerBout)(g, ui);
+      renderCrosshair({ ...this.d.shapes.centerBoutLeft, x: this.d.shapes.centerBoutLeft.x + targetCircleDiff }, this.colors.centerBout)(g, ui);
+      renderCrosshair({ ...this.d.shapes.centerBoutLeft, x: this.d.shapes.centerBoutLeft.x - targetCircleDiff }, this.colors.centerBout)(g, ui);
 
     }
 
@@ -366,7 +405,7 @@ export class KellyViolin extends RecipeComponentBase {
 
   renderCornerCircles = (currentModule: boolean) => (g: any, ui: any): void => {
     if ((currentModule && this.showModuleCircles) || this.showAllCircles) {
-      renderCircle(this.d.shapes.upperRightCornerC1, this.colors.upperBout)(g, ui);      
+      renderCircle(this.d.shapes.upperRightCornerC1, this.colors.upperBout)(g, ui);
       renderCircle(this.d.shapes.upperLeftCornerC1, this.colors.upperBout)(g, ui);
       renderCircle(this.d.shapes.upperRightCornerC2, this.colors.centerBoutUp)(g, ui);
       renderCircle(this.d.shapes.upperLeftCornerC2, this.colors.centerBoutUp)(g, ui);
@@ -422,7 +461,7 @@ export class KellyViolin extends RecipeComponentBase {
       if (this.d.shapes.upperRightC2Offset) renderCircleAngleIndicator(this.d.shapes.upperRightC2Offset, this.d.params.cornerCircDubUpCBoutTheta, this.colors.centerBoutUpOff2)(g, ui);
       if (this.d.shapes.upperLeftC1Offset) renderCircleAngleIndicator(this.d.shapes.upperLeftC1Offset, 180 - this.d.params.cornerCircDubUpBoutTheta, this.colors.upperBoutOff2)(g, ui);
       if (this.d.shapes.upperLeftC2Offset) renderCircleAngleIndicator(this.d.shapes.upperLeftC2Offset, 180 - this.d.params.cornerCircDubUpCBoutTheta, this.colors.centerBoutUpOff2)(g, ui);
-    
+
       if (this.d.shapes.lowerRightC1Offset) renderCircleAngleIndicator(this.d.shapes.lowerRightC1Offset, this.d.params.cornerCircDubLowCBoutTheta, this.colors.centerBoutLowOff2)(g, ui);
       if (this.d.shapes.lowerRightC2Offset) renderCircleAngleIndicator(this.d.shapes.lowerRightC2Offset, this.d.params.cornerCircDubLowBoutTheta, this.colors.lowerBoutOff2)(g, ui);
       if (this.d.shapes.lowerLeftC1Offset) renderCircleAngleIndicator(this.d.shapes.lowerLeftC1Offset, 180 - this.d.params.cornerCircDubLowCBoutTheta, this.colors.centerBoutLowOff2)(g, ui);
@@ -492,96 +531,105 @@ export class KellyViolin extends RecipeComponentBase {
   }
 
   downloadInnerPath = (): void => {
-    calculateMainPathsUnified(this.d);
-    const pathObj = this.d.paths.find(c => c.name === 'innerPathUnified');
-    if (!pathObj) return;
+    this.safeRun(() => {
+      calculateMainPathsUnified(this.d);
+      const pathObj = this.d.paths.find(c => c.name === 'innerPathUnified');
+      if (!pathObj) return;
 
-    const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-this.d.params.width / 2} 0 ${this.d.params.width} ${this.d.params.height}"><g transform="translate(0 ${this.d.params.height}) scale(1 -1)"><path d="${pathObj.paths[0]}" fill="none" stroke="black"/></g></svg>`;
-    const blob = new Blob([svgContent], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
+      const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-this.d.params.width / 2} 0 ${this.d.params.width} ${this.d.params.height}"><g transform="translate(0 ${this.d.params.height}) scale(1 -1)"><path d="${pathObj.paths[0]}" fill="none" stroke="black"/></g></svg>`;
+      const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
 
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'unified_path.svg';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'unified_path.svg';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    });
   }
 
   downloadMouldPath = (): void => {
-    calculateMouldPath(this.d);
-    const pathObj = this.d.paths.find(c => c.name === 'mouldPath');
-    if (!pathObj) return;
+    this.safeRun(() => {
+      calculateMouldPath(this.d);
+      const pathObj = this.d.paths.find(c => c.name === 'mouldPath');
+      if (!pathObj) return;
 
-    let allPaths = combinePathStrings(pathObj.paths);
+      let allPaths = combinePathStrings(pathObj.paths);
 
-    const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-this.d.params.width / 2} 0 ${this.d.params.width} ${this.d.params.height}"><g transform="translate(0 ${this.d.params.height}) scale(1 -1)"><path d="${allPaths}" fill="none" stroke="black"/></g></svg>`;
-    const blob = new Blob([svgContent], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
+      const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-this.d.params.width / 2} 0 ${this.d.params.width} ${this.d.params.height}"><g transform="translate(0 ${this.d.params.height}) scale(1 -1)"><path d="${allPaths}" fill="none" stroke="black"/></g></svg>`;
+      const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
 
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'mould_path.svg';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'mould_path.svg';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    });
   }
 
   downloadInnerSegmentedPaths = (): void => {
-    calculateMainPathsSegmented(this.d);
-    const pathObj = this.d.paths.find(c => c.name === 'segmentedPartialPath');
-    if (!pathObj) return;
+    this.safeRun(() => {
+      calculateMainPathsSegmented(this.d);
+      const pathObj = this.d.paths.find(c => c.name === 'segmentedPartialPath');
+      if (!pathObj) return;
 
-    const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-this.d.params.width / 2} 0 ${this.d.params.width} ${this.d.params.height}"><g transform="translate(0 ${this.d.params.height}) scale(1 -1)">
+      const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-this.d.params.width / 2} 0 ${this.d.params.width} ${this.d.params.height}"><g transform="translate(0 ${this.d.params.height}) scale(1 -1)">
     <path d="${pathObj.paths[0]}" fill="none" stroke="red"/><path d="${pathObj.paths[1]}" fill="none" stroke="blue"/><path d="${pathObj.paths[2]}" fill="none" stroke="green"/><path d="${pathObj.paths[3]}" fill="none" stroke="orange"/>
     
     </g></svg>`;
-    const blob = new Blob([svgContent], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
+      const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
 
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'segmented_paths.svg';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'segmented_paths.svg';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    });
   }
 
   downloadOuterSegmentedPaths = (): void => {
-    calculateMainPathsSegmented(this.d);
-    calculateOffsetPathsSegments(this.d);
-    const pathObj = this.d.paths.find(c => c.name === 'offsetSegmentedPath');
-    if (!pathObj) return;
+    this.safeRun(() => {
+      calculateMainPathsSegmented(this.d);
+      calculateOffsetPathsSegments(this.d);
+      const pathObj = this.d.paths.find(c => c.name === 'offsetSegmentedPath');
+      if (!pathObj) return;
 
-    const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-this.d.params.width / 2} 0 ${this.d.params.width} ${this.d.params.height}"><g transform="translate(0 ${this.d.params.height}) scale(1 -1)">
+      const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-this.d.params.width / 2} 0 ${this.d.params.width} ${this.d.params.height}"><g transform="translate(0 ${this.d.params.height}) scale(1 -1)">
     <path d="${pathObj.paths[0]}" fill="none" stroke="red"/><path d="${pathObj.paths[1]}" fill="none" stroke="blue"/><path d="${pathObj.paths[2]}" fill="none" stroke="green"/><path d="${pathObj.paths[3]}" fill="none" stroke="orange"/>
     
     </g></svg>`;
-    const blob = new Blob([svgContent], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
+      const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
 
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'segmented_paths.svg';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'segmented_paths.svg';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    });
   }
 
   downloadOuterPath = (): void => {
-    calculateMainPathsUnified(this.d);
-    calculateMainPathsSegmented(this.d);
-    calculateOffsetPathsSegments(this.d);
-    calculateTopPath(this.d);
-    const pathObj = this.d.paths.find(c => c.name === 'outerPath');
-    // let paths = combinePathStrings(pathObj?.paths);
-    if (!pathObj) return;
+    this.safeRun(() => {
+      calculateMainPathsUnified(this.d);
+      calculateMainPathsSegmented(this.d);
+      calculateOffsetPathsSegments(this.d);
+      calculateTopPath(this.d);
+      const pathObj = this.d.paths.find(c => c.name === 'outerPath');
+      // let paths = combinePathStrings(pathObj?.paths);
+      if (!pathObj) return;
 
-    const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-this.d.params.width / 2} 0 ${this.d.params.width} ${this.d.params.height}"><g transform="translate(0 ${this.d.params.height}) scale(1 -1)">
+      const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-this.d.params.width / 2} 0 ${this.d.params.width} ${this.d.params.height}"><g transform="translate(0 ${this.d.params.height}) scale(1 -1)">
       <path d="${pathObj.paths[0]}" fill="none" stroke="black"/>
       <path d="${pathObj.paths[1]}" fill="none" stroke="red"/>
       <path d="${pathObj.paths[2]}" fill="none" stroke="blue"/>
@@ -591,16 +639,17 @@ export class KellyViolin extends RecipeComponentBase {
       <path d="${pathObj.paths[6]}" fill="none" stroke="purple"/>
       <path d="${pathObj.paths[7]}" fill="none" stroke="purple"/>
     </g></svg>`;
-    const blob = new Blob([svgContent], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
+      const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
 
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'unified_path.svg';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'unified_path.svg';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    });
   }
 
 }

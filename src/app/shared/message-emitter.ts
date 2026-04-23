@@ -18,7 +18,6 @@ export const emitGlobal = (m: any) => {
 
 // Convenience wrapper used by non-Angular helpers to emit a Message object
 export const message = (m: UserMessage) => emitGlobal(m);
-
-export const messageError = (msg: string, title?: string) => emitGlobal({ severity: 'error', message: msg, title, autoDismiss: false });
-export const messageWarn = (msg: string, title?: string) => emitGlobal({ severity: 'warn', message: msg, title, autoDismiss: 6000 });
-export const messageInfo = (msg: string, title?: string) => emitGlobal({ severity: 'info', message: msg, title, autoDismiss: 4000 });
+export const error = (msg: string, title?: string) => emitGlobal({ severity: 'error', message: msg, title, autoDismiss: false });
+export const warn = (msg: string, title?: string) => emitGlobal({ severity: 'warn', message: msg, title, autoDismiss: 6000 });
+export const info = (msg: string, title?: string) => emitGlobal({ severity: 'info', message: msg, title, autoDismiss: 4000 });
