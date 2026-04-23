@@ -185,13 +185,6 @@ export function initializeBlocks(d: KellyViolinData) {
 
 
 export function calculatePrimaryShapes(data: KellyViolinData): void {
-
-	if (data.params.vesaciUpR > 66) {
-		// emit a warning to the global message center (non-throwing by default)
-		warn('Upper vesaci radius too large.', 'Upper Vesaci Warning');
-	}
-
-
 	if (data.params.boutUpY && data.params.boutLowY && data.params.boutUpR && data.params.boutLowR && data.params.boutCenR) {
 		data.shapes.upperBout = { x: 0, y: data.params.boutUpY, r: data.params.boutUpR };
 		data.shapes.lowerBout = { x: 0, y: data.params.boutLowY, r: data.params.boutLowR };

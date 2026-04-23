@@ -6,11 +6,6 @@
   background: var(--ui-bg-app);
 }
 
-.top {
-  flex: 0 0 48px;
-  border-bottom: 1px solid var(--ui-border-soft);
-}
-
 .main {
   flex: 1 1 auto;
   display: flex;
