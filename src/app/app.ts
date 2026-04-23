@@ -1,5 +1,7 @@
 import { DOCUMENT } from '@angular/common';
 import { Component, inject } from '@angular/core';
+import { setGlobalEmitter } from './shared/message-emitter';
+import { MessageService } from './shared/message.service';
 import { TopBarComponent } from './top-bar/top-bar';
 import { BeardViolinComponent } from './beard-violin/beard-violin';
 import { DraftCanvasComponent } from './draft-canvas/draft-canvas';
@@ -8,11 +10,12 @@ import { DenisViolin } from "./denis-violin/denis-violin";
 import { RecipeInterface, ReferenceImage } from './models/types';
 import { Pt } from './models/types';
 import { KellyViolin } from './kelly-violin/kelly-violin';
+import { MessageCenterComponent } from './shared/message-center.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [TopBarComponent, BeardViolinComponent, DraftCanvasComponent, FormsModule, DenisViolin, KellyViolin],
+  imports: [TopBarComponent, BeardViolinComponent, DraftCanvasComponent, FormsModule, DenisViolin, KellyViolin, MessageCenterComponent],
   template: `
     <div class="app">
      <app-top-bar class="top"
@@ -69,6 +72,7 @@ import { KellyViolin } from './kelly-violin/kelly-violin';
 
         }
       </div>
+      <app-message-center></app-message-center>
     </div>
   `,
   styleUrl: './app.css',
@@ -76,6 +80,8 @@ import { KellyViolin } from './kelly-violin/kelly-violin';
 
 export class App {
   private readonly doc = inject(DOCUMENT);
+  // inject MessageService via Angular's injector
+  private messageService = inject(MessageService);
 
   draftArgs: Array<(g: any, ui: any) => void> = [];
   selectedRecipe: string = 'Kelly Violin';
@@ -100,6 +106,9 @@ export class App {
     const savedTheme = localStorage.getItem('themeMode');
     this.nightMode = savedTheme !== 'day';
     this.applyThemeClass();
+
+    // wire global emitter to MessageService
+    setGlobalEmitter((m) => this.messageService.emit(m));
   }
 
   onNightModeChange(enabled: boolean) {
