@@ -28,10 +28,11 @@ export function initializeMainBouts(d: KellyViolinData) {
 		d.params.boutLowR == 0 &&
 		d.params.boutLowY == 0
 	) {
-		d.params.boutLowR = Math.round((d.params.width / 2 - d.params.inset));
+		d.params.boutLowR = Math.round((d.params.width / 2 - d.params.inset)); // critical value
+
 		d.params.boutLowY = Math.round((d.params.boutLowR * d.ratios.boutLowYToLBR));
-		d.params.boutUpR = Math.round((d.params.boutLowR * d.ratios.boutUpToLBR));
 		d.params.boutUpY = Math.round((d.params.boutLowR * d.ratios.boutUpYToLBR));
+		d.params.boutUpR = Math.round((d.params.boutLowR * d.ratios.boutUpToLBR));
 		d.params.boutCenR = Math.round((d.params.boutLowR * d.ratios.boutCToLBR));
 	}
 	else {
@@ -41,6 +42,7 @@ export function initializeMainBouts(d: KellyViolinData) {
 		d.ratios.boutCToLBR = d.params.boutCenR / d.params.boutLowR;
 	}
 
+	console.log(d.ratios.boutUpYToLBR, d.ratios.boutLowYToLBR)
 }
 
 
@@ -653,4 +655,28 @@ function requireCorners(data: KellyViolinData): {
 	}
 
 	return { lowerRight, lowerLeft, upperRight, upperLeft };
+}
+
+export function normalizeRadians(angle: number): number {
+	while (angle < 0) {
+		angle += 2 * Math.PI;
+	}
+
+	while (angle >= 2 * Math.PI) {
+		angle -= 2 * Math.PI;
+	}
+
+	return angle;
+}
+
+export function normalizeDegrees(angle: number): number {
+	while (angle < 0) {
+		angle += 360;
+	}
+
+	while (angle >= 360) {
+		angle -= 360;
+	}
+
+	return angle;
 }

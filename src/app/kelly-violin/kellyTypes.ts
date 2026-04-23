@@ -38,8 +38,8 @@ export interface KellyRatios {
 }
 
 const KELLY_DEFAULT_RATIOS: KellyRatios = {
-	boutUpYToLBR: 2.9,	// kind of arbitray
-	boutLowYToLBR: 3/4,
+	boutUpYToLBR: 2.9,	// amati number
+	boutLowYToLBR: .75, // amati number
 	boutUpToLBR: 4/5,
 	boutCToLBR: 4/5,
 	vesicaUpRToLBR: 2/3,
