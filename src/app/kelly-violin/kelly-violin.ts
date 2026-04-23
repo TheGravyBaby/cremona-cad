@@ -67,7 +67,6 @@ export class KellyViolin extends RecipeComponentBase {
     "Back to the drafting board...",
     "Perhaps we should just use paper...",
     "Surely you can't expect the math to be perfect every time...",
-
   ];
   private errorIndex = 0;
 
@@ -89,7 +88,6 @@ export class KellyViolin extends RecipeComponentBase {
       data.newFile()
       this.d = data;
       this.draftChange.emit([this.firstRender]);
-      // sessionStorage.setItem('recipeData', JSON.stringify(this.d));
       this.referenceImageChange.emit(null);
     }
   }

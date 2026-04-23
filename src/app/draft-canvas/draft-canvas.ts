@@ -67,8 +67,8 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
   private lastPxX = 0;
   private lastPxY = 0;
-  public showGrid = true;
-  public showAxes = true;
+  public showGrid = false;
+  public showAxes = false;
   public showReferenceImage = true;
   public isDarkMode = false;
   private isDragging = false;
