@@ -504,8 +504,6 @@ export const renderCircleAngleIndicator = (
     color: string,
     label?: string
 ) => (g: any, ui: any) => {
-    // normalize angle to [0, 360)
-    thetaDeg = ((thetaDeg % 360) + 360) % 360;
 
     const thetaRad = thetaDeg * Math.PI / 180;
     const cx = outerCircle.x;

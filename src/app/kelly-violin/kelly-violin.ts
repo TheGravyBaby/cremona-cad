@@ -1,11 +1,11 @@
 import { Component, Input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
-import { Circle, Pt, Rectangle } from '../models/types';
-import { greyOut, renderCircle, renderCircleAngleIndicator, renderCrosshair, renderDashedLine, renderDashLine, renderDistanceMeasurementLine, renderLine, renderPath, renderRect } from '../helpers/renderFuncs';
+import { Circle } from '../models/types';
+import { greyOut, renderCircle, renderCircleAngleIndicator, renderCrosshair, renderDashedLine, renderDashLine, renderDistanceMeasurementLine,  renderPath, renderRect } from '../helpers/renderFuncs';
 import { combinePathStrings } from '../helpers/draftMath';
 import { KellyViolinData, KellyViolinRecipe } from './kellyTypes';
-import { calculatePrimaryShapes, calculateMainPathsSegmented, calculateMainPathsUnified, calculateMouldPath, calculateOffsetPathsSegments, calculateTopPath, initializeMainBouts, initializeMinorBouts, initializeCornerPlacement, initializeCornerCircles, initializeTopAndBottomTrace, initializeBlocks } from './kellyCals';
+import { calculatePrimaryShapes, calculateMainPathsSegmented, calculateMainPathsUnified, calculateMouldPath, calculateOffsetPathsSegments, calculateTopPath, initializeMainBouts, initializeMinorBouts, initializeCornerPlacement, initializeCornerCircles, initializeTopAndBottomTrace, initializeBlocks, normalizeDegrees } from './kellyCals';
 
 @Component({
   selector: 'app-kelly-violin',
@@ -52,7 +52,7 @@ export class KellyViolin extends RecipeComponentBase {
     lowerBoutOff: greyOut('#4D74A8', this.offFactor), //'#7ba4dbff',
     lowerBoutOff2: greyOut('#4D74A8', this.off2Factor), //'#a6bcd9ff',
     innerTrace: '#a47272ff',
-    outerTrace: '#bf8080ff',
+    outerTrace: '#b37f7fff',
     mouldTrace: '#83947fff',
   }
 
@@ -207,6 +207,15 @@ export class KellyViolin extends RecipeComponentBase {
   }
 
   changeTopAndBottom() {
+    this.d.params.cornerCircDubUpBoutTheta = normalizeDegrees(this.d.params.cornerCircDubUpBoutTheta);
+    this.d.params.cornerCircDubUpCBoutTheta = normalizeDegrees(this.d.params.cornerCircDubUpCBoutTheta);
+    this.d.params.cornerCircDubLowCBoutTheta = normalizeDegrees(this.d.params.cornerCircDubLowCBoutTheta);
+    this.d.params.cornerCircDubLowBoutTheta = normalizeDegrees(this.d.params.cornerCircDubLowBoutTheta);
+    this.d.params.cornerCircDubUpBoutCutoffTheta = normalizeDegrees(this.d.params.cornerCircDubUpBoutCutoffTheta);
+    this.d.params.cornerCircleDubUpCBoutCutoffTheta = normalizeDegrees(this.d.params.cornerCircleDubUpCBoutCutoffTheta);
+    this.d.params.cornerCircleDubLowCBoutTheta = normalizeDegrees(this.d.params.cornerCircleDubLowCBoutTheta);
+    this.d.params.cornerCircleDubLowBoutTheta = normalizeDegrees(this.d.params.cornerCircleDubLowBoutTheta);
+
     initializeTopAndBottomTrace(this.d);
     calculatePrimaryShapes(this.d);
     calculateMainPathsSegmented(this.d);

@@ -150,39 +150,41 @@
     <details [open]="openPanel === 'cornerCircles'" (toggle)="onToggle('cornerCircles', $event)" [class.panel-disabled]="!isPanelEnabled('cornerCircles')" [attr.aria-disabled]="!isPanelEnabled('cornerCircles')">
         <summary class="section-title">Corner Circles</summary>
 
-        <label class="top-trace-label">
-            Upper Corner Top Radius <span>(mm)</span>
-            <div class="ratio top-trace-row">
-                <input class="trace-input" type="number" step="1" min="1" [(ngModel)]="d.params.cornerCircUpBoutR" (input)="changeCornerCircles()" [style.border-color]="colors.upperBout" />
-            </div>
-        </label>
+        <section class="ui-group">
+            <div class="ui-group-title">Upper Corner</div>
+            <label class="top-trace-label">
+                Upper Corner Top Radius <span>(mm)</span>
+                <div class="ratio top-trace-row">
+                    <input class="trace-input" type="number" step="1" min="1" [(ngModel)]="d.params.cornerCircUpBoutR"
+                        (input)="changeCornerCircles()" [style.border-color]="colors.upperBout" />
+                </div>
+            </label>
+            <label class="top-trace-label">
+                Upper Corner Bottom Radius <span>(mm)</span>
+                <div class="ratio top-trace-row">
+                    <input class="trace-input" type="number" step="1" min="1" [(ngModel)]="d.params.cornerCircUpCBoutR"
+                        (input)="changeCornerCircles()" [style.border-color]="colors.centerBoutUp" />
+                </div>
+            </label>
+        </section>
 
-        <br>
-
-        <label class="top-trace-label">
-            Upper Corner Bottom Radius <span>(mm)</span>
-            <div class="ratio top-trace-row">
-                <input class="trace-input" type="number" step="1" min="1" [(ngModel)]="d.params.cornerCircUpCBoutR" (input)="changeCornerCircles()" [style.border-color]="colors.centerBoutUp" />
-            </div>
-        </label>
-
-        <br>
-
-        <label class="top-trace-label">
-            Lower Corner Top Radius <span>(mm)</span>
-            <div class="ratio top-trace-row">
-                <input class="trace-input" type="number" step="1" min="1" [(ngModel)]="d.params.cornerCircLowCBoutR" (input)="changeCornerCircles()" [style.border-color]="colors.centerBoutLow" />
-            </div>
-        </label>
-
-        <br>
-
-        <label class="top-trace-label">
-            Lower Corner Bottom Radius <span>(mm)</span>
-            <div class="ratio top-trace-row">
-                <input class="trace-input" type="number" step="1" min="1" [(ngModel)]="d.params.cornerCircLowBoutR" (input)="changeCornerCircles()" [style.border-color]="colors.lowerBout" />
-            </div>
-        </label>
+        <section class="ui-group">
+            <div class="ui-group-title">Lower Corner</div>
+            <label class="top-trace-label">
+                Lower Corner Top Radius <span>(mm)</span>
+                <div class="ratio top-trace-row">
+                    <input class="trace-input" type="number" step="1" min="1" [(ngModel)]="d.params.cornerCircLowCBoutR"
+                        (input)="changeCornerCircles()" [style.border-color]="colors.centerBoutLow" />
+                </div>
+            </label>        
+            <label class="top-trace-label">
+                Lower Corner Bottom Radius <span>(mm)</span>
+                <div class="ratio top-trace-row">
+                    <input class="trace-input" type="number" step="1" min="1" [(ngModel)]="d.params.cornerCircLowBoutR"
+                        (input)="changeCornerCircles()" [style.border-color]="colors.lowerBout" />
+                </div>
+            </label>
+        </section>
 
         <br>
         <div class="trace-toggle">
@@ -204,45 +206,45 @@
         <summary class="section-title">Top Trace</summary>
 
         <div class="top-trace">
-            <section class="top-trace-group">
-                <div class="top-trace-group-title">Upper Corner</div>
+            <section class="ui-group">
+                <div class="ui-group-title">Upper Corner</div>
 
                 <label class="top-trace-label">Top Circle Radius : Theta <span>(mm, degrees)</span></label>
                 <div class="ratio top-trace-row">
                     <input class="trace-input" type="number" step="1" min="0" [(ngModel)]="d.params.cornerCircDubUpBoutR" (input)="changeTopAndBottom()" [style.border-color]="colors.upperBout" />
                     <span>:</span>
-                    <input class="trace-input" type="number" step="5" min="0" [(ngModel)]="d.params.cornerCircDubUpBoutCutoffTheta" (input)="changeTopAndBottom()" [style.border-color]="colors.upperBoutOff" />
-                    @if(showOuterCircles){<input class="trace-input" type="number" step="5" min="0" [(ngModel)]="d.params.cornerCircDubUpBoutTheta" (input)="changeTopAndBottom()" [style.border-color]="colors.upperBoutOff2" />}
+                    <input class="trace-input" type="number" step="5"  [(ngModel)]="d.params.cornerCircDubUpBoutCutoffTheta" (input)="changeTopAndBottom()" [style.border-color]="colors.upperBoutOff" />
+                    @if(showOuterCircles){<input class="trace-input" type="number" step="5"  [(ngModel)]="d.params.cornerCircDubUpBoutTheta" (input)="changeTopAndBottom()" [style.border-color]="colors.upperBoutOff2" />}
                 </div>
 
                 <label class="top-trace-label">Bottom Circle Radius : Theta <span>(mm, degrees)</span></label>
                 <div class="ratio top-trace-row">
                     <input class="trace-input" type="number" step="1" min="0" [(ngModel)]="d.params.cornerCircDubUpCBoutR" (input)="changeTopAndBottom()" [style.border-color]="colors.centerBoutUp" />
                     <span>:</span>
-                    <input class="trace-input" type="number" step="5" min="0" [(ngModel)]="d.params.cornerCircleDubUpCBoutCutoffTheta" (input)="changeTopAndBottom()" [style.border-color]="colors.centerBoutUpOff" />
-                    @if(showOuterCircles){<input class="trace-input" type="number" step="5" min="0" [(ngModel)]="d.params.cornerCircDubUpCBoutTheta" (input)="changeTopAndBottom()" [style.border-color]="colors.centerBoutUpOff2" />}
+                    <input class="trace-input" type="number" step="5" [(ngModel)]="d.params.cornerCircleDubUpCBoutCutoffTheta" (input)="changeTopAndBottom()" [style.border-color]="colors.centerBoutUpOff" />
+                    @if(showOuterCircles){<input class="trace-input" type="number" step="5"  [(ngModel)]="d.params.cornerCircDubUpCBoutTheta" (input)="changeTopAndBottom()" [style.border-color]="colors.centerBoutUpOff2" />}
 
                 </div>
             </section>
 
-            <section class="top-trace-group">
-                <div class="top-trace-group-title">Lower Corner</div>
+            <section class="ui-group">
+                <div class="ui-group-title">Lower Corner</div>
 
                 <label class="top-trace-label">Top Circle Radius : Theta <span>(mm, degrees)</span></label>
                 <div class="ratio top-trace-row">
                     <input class="trace-input" type="number" step="1" min="0" [(ngModel)]="d.params.cornerCircDubLowCBoutR" (input)="changeTopAndBottom()" [style.border-color]="colors.centerBoutLow" />
                     <span>:</span>
-                    <input class="trace-input" type="number" step="5" min="0" [(ngModel)]="d.params.cornerCircleDubLowCBoutTheta" (input)="changeTopAndBottom()" [style.border-color]="colors.centerBoutLowOff" />
-                    @if(showOuterCircles){<input class="trace-input" type="number" step="5" min="0" [(ngModel)]="d.params.cornerCircDubLowCBoutTheta" (input)="changeTopAndBottom()" [style.border-color]="colors.centerBoutLowOff2" />} 
+                    <input class="trace-input" type="number" step="5"  [(ngModel)]="d.params.cornerCircleDubLowCBoutTheta" (input)="changeTopAndBottom()" [style.border-color]="colors.centerBoutLowOff" />
+                    @if(showOuterCircles){<input class="trace-input" type="number" step="5" [(ngModel)]="d.params.cornerCircDubLowCBoutTheta" (input)="changeTopAndBottom()" [style.border-color]="colors.centerBoutLowOff2" />} 
 
                 </div>
 
                 <label class="top-trace-label">Bottom Circle Radius : Theta <span>(mm, degrees)</span></label>
                 <div class="ratio top-trace-row">
-                    <input class="trace-input" type="number" step="1" min="0" [(ngModel)]="d.params.cornerCircDubLowBoutR" (input)="changeTopAndBottom()" [style.border-color]="colors.lowerBout" />
+                    <input class="trace-input" type="number" step="1" min="0"[(ngModel)]="d.params.cornerCircDubLowBoutR" (input)="changeTopAndBottom()" [style.border-color]="colors.lowerBout" />
                     <span>:</span>
-                    <input class="trace-input" type="number" step="5" min="0" [(ngModel)]="d.params.cornerCircleDubLowBoutTheta" (input)="changeTopAndBottom()" [style.border-color]="colors.lowerBoutOff" />
-                    @if (showOuterCircles){<input class="trace-input" type="number" step="5" min="0" [(ngModel)]="d.params.cornerCircDubLowBoutTheta" (input)="changeTopAndBottom()" [style.border-color]="colors.lowerBoutOff2" />}  
+                    <input class="trace-input" type="number" step="5" [(ngModel)]="d.params.cornerCircleDubLowBoutTheta" (input)="changeTopAndBottom()" [style.border-color]="colors.lowerBoutOff" />
+                    @if (showOuterCircles){<input class="trace-input" type="number" step="5" [(ngModel)]="d.params.cornerCircDubLowBoutTheta" (input)="changeTopAndBottom()" [style.border-color]="colors.lowerBoutOff2" />}  
 
                 </div>
             </section>  
@@ -273,8 +275,8 @@
         <summary class="section-title">Mould Pattern</summary>
 
         <div class="top-trace mould-pattern-groups">
-            <section class="top-trace-group mould-pattern-group" [style.border-color]="colors.upperBoutOff">
-                <div class="top-trace-group-title">Upper Block</div>
+            <section class="ui-group mould-pattern-group" [style.border-color]="colors.upperBoutOff">
+                <div class="ui-group-title">Upper Block</div>
                 <label class="top-trace-label">Height : Width <span>(mm)</span></label>
                 <div class="ratio top-trace-row">
                     <input class="trace-input" type="number" step="1" min="0" [(ngModel)]="d.params.blockUpH" (input)="changeMouldPattern()" />
@@ -283,8 +285,8 @@
                 </div>
             </section>
 
-            <section class="top-trace-group mould-pattern-group" [style.border-color]="colors.centerBoutOff">
-                <div class="top-trace-group-title">Corner Block</div>
+            <section class="ui-group mould-pattern-group" [style.border-color]="colors.centerBoutOff">
+                <div class="ui-group-title">Corner Block</div>
                 <label class="top-trace-label">Height : Width <span>(mm)</span></label>
                 <div class="ratio top-trace-row">
                     <input class="trace-input" type="number" step="1" min="0" [(ngModel)]="d.params.blockCornerH" (input)="changeMouldPattern()" />
@@ -298,8 +300,8 @@
                 </div>
             </section>
 
-            <section class="top-trace-group mould-pattern-group" [style.border-color]="colors.lowerBoutOff">
-                <div class="top-trace-group-title">Lower Block</div>
+            <section class="ui-group mould-pattern-group" [style.border-color]="colors.lowerBoutOff">
+                <div class="ui-group-title">Lower Block</div>
                 <label class="top-trace-label">Height : Width <span>(mm)</span></label>
                 <div class="ratio top-trace-row">
                     <input class="trace-input" type="number" step="1" min="0" [(ngModel)]="d.params.blockLowH" (input)="changeMouldPattern()" />
@@ -334,8 +336,8 @@
         <summary class="section-title">Export</summary>
 
         <div class="top-trace">
-            <section class="top-trace-group">
-                <div class="top-trace-group-title">Available Exports</div>
+            <section class="ui-group">
+                <div class="ui-group-title">Available Exports</div>
 
                 <div class="export-row">
                     <a (click)="downloadOuterPath()" class="file-upload">Download Outer Path</a>
@@ -362,8 +364,8 @@
                 </div>
             </section>
 
-            <section class="top-trace-group">
-                <div class="top-trace-group-title">Planned Exports</div>
+            <section class="ui-group">
+                <div class="ui-group-title">Planned Exports</div>
 
                 <div class="export-row">
                     <a class="file-upload">Download Blocks</a>
