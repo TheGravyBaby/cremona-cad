@@ -25,12 +25,10 @@ export function clampParam(
 ): boolean {
     const val = params[key] as number;
     if (val < min || val > max) {
-        setTimeout(() => {
-            const clamped = Math.min(Math.max(val, min), max);
-            (params[key] as number) = clamped;
-            if (val < min && tooSmallMsg) error(tooSmallMsg, 'Invalid Value');
-            if (val > max && tooBigMsg) error(tooBigMsg, 'Invalid Value');
-        });
+        const clamped = Math.min(Math.max(val, min), max);
+        (params[key] as number) = clamped;
+        if (val < min && tooSmallMsg) error(tooSmallMsg, 'Invalid Value');
+        if (val > max && tooBigMsg) error(tooBigMsg, 'Invalid Value');
         return true;
     }
     return false;

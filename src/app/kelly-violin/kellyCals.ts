@@ -18,10 +18,9 @@ import {
 	pathFromRoundedRect,
 	pointOnCircle,
 	unifyConnectedSvgPaths,
-	yInterceptFromTwoPoints,
 } from '../helpers/draftMath';
 import { KellyCalcEntry, KellyViolinData } from './kellyTypes';
-import { emitGlobal, warn } from '../shared/message-emitter';
+import { error, warn } from '../shared/message-emitter';
 
 export function initializeMainBouts(d: KellyViolinData) {
 	if (
@@ -46,8 +45,6 @@ export function initializeMainBouts(d: KellyViolinData) {
 		d.ratios.boutUpToLBR = d.params.boutUpR / d.params.boutLowR;
 		d.ratios.boutCToLBR = d.params.boutCenR / d.params.boutLowR;
 	}
-
-	console.log(d.ratios.boutUpYToUBR, d.ratios.boutLowYToLBR)
 }
 
 
@@ -242,12 +239,22 @@ export function calculatePrimaryShapes(data: KellyViolinData): void {
 	}
 
 	if (data.params.boutLowR && data.params.vesaciLowR && data.params.boutUpR && data.params.vesaciUpR) {
-		const lowerRightVesica = { x: data.params.boutLowR - data.params.vesaciLowR, y: data.params.boutLowY, r: data.params.vesaciLowR };
-		const lowerLeftVesica = { x: -data.params.boutLowR + data.params.vesaciLowR, y: data.params.boutLowY, r: data.params.vesaciLowR };
-		const upperRightVesica = { x: data.params.boutUpR - data.params.vesaciUpR, y: data.params.boutUpY, r: data.params.vesaciUpR };
-		const upperLeftVesica = { x: -data.params.boutUpR + data.params.vesaciUpR, y: data.params.boutUpY, r: data.params.vesaciUpR };
-		const upperJoiningCircle = findJoiningCircleFromCircleAndPoint(upperRightVesica, { x: 0, y: data.params.height - data.params.inset });
-		const lowerJoiningCircle = findJoiningCircleFromCircleAndPoint(lowerRightVesica, { x: 0, y: data.params.inset });
+		let lowerRightVesica = { x: data.params.boutLowR - data.params.vesaciLowR, y: data.params.boutLowY, r: data.params.vesaciLowR };
+		let lowerLeftVesica = { x: -data.params.boutLowR + data.params.vesaciLowR, y: data.params.boutLowY, r: data.params.vesaciLowR };
+		let upperRightVesica = { x: data.params.boutUpR - data.params.vesaciUpR, y: data.params.boutUpY, r: data.params.vesaciUpR };
+		let upperLeftVesica = { x: -data.params.boutUpR + data.params.vesaciUpR, y: data.params.boutUpY, r: data.params.vesaciUpR };
+		let upperJoiningCircle = findJoiningCircleFromCircleAndPoint(upperRightVesica, { x: 0, y: data.params.height - data.params.inset });
+		let lowerJoiningCircle = findJoiningCircleFromCircleAndPoint(lowerRightVesica, { x: 0, y: data.params.inset });
+
+
+		if (upperJoiningCircle.r == Infinity) {
+			error(`Upper vesica can't connect to upper bout with current parameters. They are likely too large`, "Upper Vesica Limit");	
+			return;		
+		}
+		if (lowerJoiningCircle.r == Infinity) {
+			error(`Lower vesica can't connect to lower bout with current parameters. They are likely too large`, "Lower Vesica Limit");
+			return;
+		}
 
 		data.shapes.lowerRightVesaci = lowerRightVesica;
 		data.shapes.lowerLeftVesaci = lowerLeftVesica;
@@ -346,8 +353,7 @@ export function calculatePrimaryShapes(data: KellyViolinData): void {
 		data.shapes.rightClampCutout = { Pt1: rightCornerBlockClampingCutoutP1, Pt2: rightCornerBlockClampingCutoutP2 };
 	}
 
-	// an easy check is just to see if the vesaci have
-	data.shapes.lowerLeftVesaci && calculateMainPath(data);
+	calculateMainPath(data);
 }
 
 export function calculateMainPath(data: KellyViolinData): void {

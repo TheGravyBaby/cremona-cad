@@ -1,4 +1,4 @@
-import { Component, HostListener, Input } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, Input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { error, warn } from '../shared/message-emitter';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
@@ -18,8 +18,25 @@ import { clampParam, safeRun } from '../helpers/validators';
 
 export class KellyViolin extends RecipeComponentBase {
 
+  constructor(private readonly cdr: ChangeDetectorRef) {
+    super();
+  }
+
   private _debounceTimer: ReturnType<typeof setTimeout> | null = null;
   private _skipDebounce = false;
+  private _destroyed = false;
+
+  private refreshBoundInputs(): void {
+    queueMicrotask(() => {
+      if (this._destroyed) return;
+      this.d.params = { ...this.d.params };
+      this.cdr.detectChanges();
+    });
+  }
+
+  syncCorrectedValues(): void {
+    this.refreshBoundInputs();
+  }
 
   @HostListener('keydown', ['$event'])
   onHostKeyDown(e: KeyboardEvent) {
@@ -36,13 +53,24 @@ export class KellyViolin extends RecipeComponentBase {
     if (this._skipDebounce) {
       this._skipDebounce = false;
       fn();
+      this.refreshBoundInputs();
       return;
     }
     if (this._debounceTimer !== null) clearTimeout(this._debounceTimer);
     this._debounceTimer = setTimeout(() => {
       this._debounceTimer = null;
       fn();
+      this.refreshBoundInputs();
     }, delay);
+  }
+
+  override ngOnDestroy(): void {
+    this._destroyed = true;
+    if (this._debounceTimer !== null) {
+      clearTimeout(this._debounceTimer);
+      this._debounceTimer = null;
+    }
+    super.ngOnDestroy();
   }
 
   private clamp(key: keyof typeof this.d.params, min: number, max = Infinity, tooSmallMsg?: string, tooBigMsg?: string): void {
@@ -253,6 +281,10 @@ export class KellyViolin extends RecipeComponentBase {
         warn(`Lower bout won't fit within the current height. Adjusting height to ${this.d.params.height}mm.`, "Lower Bout Limit");
       }
 
+      if (this.d.params.width > (Math.max(this.d.params.boutLowR, this.d.params.boutUpR) + this.d.params.inset) * 2) {
+        this.d.params.width = (Math.max(this.d.params.boutLowR, this.d.params.boutUpR) + this.d.params.inset) * 2;
+        warn(`Width adjusted to meet widest bout. New width: ${this.d.params.width}mm.`, "Width Limit");
+      }
 
       calculateMainBouts(this.d);
       this.draftChange.emit([this.renderBounds, this.renderMainBouts(true)]);
