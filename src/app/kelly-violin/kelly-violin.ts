@@ -270,18 +270,21 @@ export class KellyViolin extends RecipeComponentBase {
 
       let upBoutDiff = (this.d.params.height - this.d.params.inset) - (this.d.params.boutUpY + this.d.params.boutUpR)
       let lowBoutDiff = (this.d.params.boutLowY - this.d.params.boutLowR) - this.d.params.inset
-      if (upBoutDiff > -2) {
-        this.d.params.height -= Math.abs(upBoutDiff);
+      if (upBoutDiff > 0) {
+        this.d.params.height -= Math.abs(upBoutDiff) + 1;
         warn(`Upper bout won't fit within the current height. Adjusting height to ${this.d.params.height}mm.`, "Upper Bout Limit");
       }
-      if (lowBoutDiff > -2) {
-        this.d.params.height -= lowBoutDiff
-        this.d.params.boutLowY -= lowBoutDiff;
-        this.d.params.boutUpY -= lowBoutDiff;
+      if (lowBoutDiff > 0) {
+        this.d.params.height -= lowBoutDiff + 1
+        this.d.params.boutLowY -= lowBoutDiff + 1;
+        this.d.params.boutUpY -= lowBoutDiff + 1;
         warn(`Lower bout won't fit within the current height. Adjusting height to ${this.d.params.height}mm.`, "Lower Bout Limit");
       }
 
-      if (this.d.params.width > (Math.max(this.d.params.boutLowR, this.d.params.boutUpR) + this.d.params.inset) * 2) {
+      if (
+        this.d.params.width > (Math.max(this.d.params.boutLowR, this.d.params.boutUpR) + this.d.params.inset) * 2
+        || this.d.params.width < (Math.max(this.d.params.boutLowR, this.d.params.boutUpR) + this.d.params.inset) * 2
+    ) {
         this.d.params.width = (Math.max(this.d.params.boutLowR, this.d.params.boutUpR) + this.d.params.inset) * 2;
         warn(`Width adjusted to meet widest bout. New width: ${this.d.params.width}mm.`, "Width Limit");
       }
@@ -306,30 +309,30 @@ export class KellyViolin extends RecipeComponentBase {
 
       let vesaciUpDiff = (this.d.params.height - this.d.params.inset) - (this.d.params.boutUpY + this.d.params.vesaciUpR)
       let upBoutDiff = (this.d.params.height - this.d.params.inset) - (this.d.params.boutUpY + this.d.params.boutUpR)
-      if (vesaciUpDiff < 2) {
+      if (vesaciUpDiff < 0) {
         let limitedDiff = Math.abs(vesaciUpDiff);
         limitedDiff > 0 && (this.d.params.height += limitedDiff);
         warn(`Upper vesaci won't fit within the current height. Adjusting height to ${this.d.params.height}mm.`, "Upper Vesaci Limit");
       }
-      else if (upBoutDiff > 2) {
-        this.d.params.height -= upBoutDiff
+      else if (upBoutDiff > 0) {
+        this.d.params.height -= upBoutDiff + 1
         warn(`Upper bout won't fit within the current height. Adjusting height to ${this.d.params.height}mm.`, "Upper Vesaci Limit");
       }
 
       let vesicaLowDiff = this.d.params.boutLowY - this.d.params.inset - this.d.params.vesaciLowR
       let lowBoutDiff = (this.d.params.boutLowY - this.d.params.boutLowR) - this.d.params.inset
 
-      if (vesicaLowDiff < -1) {
+      if (vesicaLowDiff < 0) {
         let limitedDiffLow = Math.abs(vesicaLowDiff);
-        limitedDiffLow > 0 && (this.d.params.height += limitedDiffLow);
-        limitedDiffLow > 0 && (this.d.params.boutLowY += limitedDiffLow);
-        limitedDiffLow > 0 && (this.d.params.boutUpY += limitedDiffLow);
+        limitedDiffLow > 0 && (this.d.params.height += limitedDiffLow + 1);
+        limitedDiffLow > 0 && (this.d.params.boutLowY += limitedDiffLow + 1);
+        limitedDiffLow > 0 && (this.d.params.boutUpY += limitedDiffLow + 1);
         limitedDiffLow > 0 && warn(`Lower vesaci won't fit within the current height. Adjusting height to ${this.d.params.height}mm.`, "Lower Vesaci Limit");
       }
-      else if (lowBoutDiff > -2) {
-        this.d.params.height -= lowBoutDiff
-        this.d.params.boutLowY -= lowBoutDiff;
-        this.d.params.boutUpY -= lowBoutDiff;
+      else if (lowBoutDiff > 0) {
+        this.d.params.height -= lowBoutDiff + 1
+        this.d.params.boutLowY -= lowBoutDiff + 1;
+        this.d.params.boutUpY -= lowBoutDiff + 1;
         warn(`Lower bout won't fit within the current height. Adjusting height to ${this.d.params.height}mm.`, "Lower Vesaci Limit");
       }
 
