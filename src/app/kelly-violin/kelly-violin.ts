@@ -93,7 +93,8 @@ export class KellyViolin extends RecipeComponentBase {
   viewSegmentedOuter = false;
   viewSegmentedInnerPartial = false;
 
-  userConfirmedHeight = 0;
+  upperVLimit = Math.round(this.d.params.boutUpR * .9)
+  lowerVLimit = Math.round(this.d.params.boutLowR * .9)
 
 
   offFactor = .4;
@@ -244,7 +245,6 @@ export class KellyViolin extends RecipeComponentBase {
         "An inset of 10mm is already generous — reset to 10mm.");
       this.setBounds.emit({ pt1: { x: -this.d.params.width / 2, y: 0 }, pt2: { x: this.d.params.width / 2, y: this.d.params.height } });
       this.draftChange.emit([this.renderBounds]);
-      this.userConfirmedHeight = this.d.params.height;
       sessionStorage.setItem('recipeData', JSON.stringify(this.d));
     }));
   }
@@ -295,9 +295,10 @@ export class KellyViolin extends RecipeComponentBase {
     }));
   }
 
-  upperVLimit = Math.round(this.d.params.boutUpR * .9)
-  lowerVLimit = Math.round(this.d.params.boutLowR * .9)
   changeMinorBouts() {
+    // gotta update these as the UI changes
+    this.upperVLimit = Math.round(this.d.params.boutUpR * .9)
+    this.lowerVLimit = Math.round(this.d.params.boutLowR * .9)
     this.debounce(() => safeRun(() => {
       initializeMinorBouts(this.d)
       this.clamp('vesaciUpR', 1, this.upperVLimit,
