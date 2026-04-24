@@ -311,7 +311,7 @@ export class KellyViolin extends RecipeComponentBase {
       let vesaciUpDiff = (this.d.params.height - this.d.params.inset) - (this.d.params.boutUpY + this.d.params.vesaciUpR)
       let upBoutDiff = (this.d.params.height - this.d.params.inset) - (this.d.params.boutUpY + this.d.params.boutUpR)
       if (vesaciUpDiff < 2) {
-        let limitedDiff = Math.abs(Math.max(vesaciUpDiff, 2));
+        let limitedDiff = Math.max(Math.abs(vesaciUpDiff), 2);
         (this.d.params.height += limitedDiff);
         warn(`Upper vesaci won't fit within the current height. Adjusting height to ${this.d.params.height}mm.`, "Upper Vesaci Limit");
       }
@@ -324,7 +324,7 @@ export class KellyViolin extends RecipeComponentBase {
       let lowBoutDiff = (this.d.params.boutLowY - this.d.params.boutLowR) - this.d.params.inset
 
       if (vesicaLowDiff < 2) {
-        let limitedDiffLow = Math.abs(Math.max(vesicaLowDiff, 2));
+        let limitedDiffLow = Math.max(Math.abs(vesicaLowDiff), 2);
         limitedDiffLow > 0 && (this.d.params.height += limitedDiffLow);
         limitedDiffLow > 0 && (this.d.params.boutLowY += limitedDiffLow);
         limitedDiffLow > 0 && (this.d.params.boutUpY += limitedDiffLow);
