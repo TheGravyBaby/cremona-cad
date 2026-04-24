@@ -1,6 +1,8 @@
 import { Circle, Pt, Rectangle } from '../models/types';
 import {
 	arcPathFrom3Points,
+	arcPathWithHighestPoint,
+	arcPathWithLowestPoint,
 	calculateOffset,
 	circleCircleIntersections,
 	differenceFromTwoPaths,
@@ -55,6 +57,9 @@ export function initializeMinorBouts(d: KellyViolinData) {
 		d.params.vesaciUpR == 0
 	) {
 		d.params.vesaciUpR = Math.round(d.params.boutLowR * d.ratios.vesicaUpRToLBR)
+		if (d.params.vesaciUpR >= d.params.boutUpR * .9) {
+			d.params.vesaciUpR = d.params.boutUpR * d.ratios.vesicaUpRToLBR
+		}
 		d.params.vesaciLowR = Math.round(d.params.boutLowR * d.ratios.vesicaLowRToLBR)
 	}
 	else {
@@ -183,6 +188,32 @@ export function initializeBlocks(d: KellyViolinData) {
 	}
 }
 
+export function calculateMainBouts(data: KellyViolinData): void {
+	if (data.params.boutUpY && data.params.boutLowY && data.params.boutUpR && data.params.boutLowR && data.params.boutCenR) {
+		data.shapes.upperBout = { x: 0, y: data.params.boutUpY, r: data.params.boutUpR };
+		data.shapes.lowerBout = { x: 0, y: data.params.boutLowY, r: data.params.boutLowR };
+
+		const upperLowerDelta = data.params.boutUpY - data.params.boutLowY;
+		const upperCenterDistance = data.params.boutCenR + data.params.boutUpR;
+		const lowerCenterDistance = data.params.boutCenR + data.params.boutLowR;
+
+		const cosTheta = (upperLowerDelta * upperLowerDelta + upperCenterDistance * upperCenterDistance - lowerCenterDistance * lowerCenterDistance) / (2 * upperLowerDelta * upperCenterDistance);
+		const theta = Math.acos(cosTheta);
+
+		const centerX = upperCenterDistance * Math.sin(theta);
+		const centerY = data.params.boutUpY - upperCenterDistance * Math.cos(theta);
+
+		data.shapes.centerBoutLeft = { x: -centerX, y: centerY, r: data.params.boutCenR };
+		data.shapes.centerBoutRight = { x: centerX, y: centerY, r: data.params.boutCenR };
+
+		const upperRight = circleCircleIntersections(data.shapes.upperBout, data.shapes.centerBoutRight)[0];
+		const upperLeft = circleCircleIntersections(data.shapes.upperBout, data.shapes.centerBoutLeft)[0];
+		const lowerRight = circleCircleIntersections(data.shapes.lowerBout, data.shapes.centerBoutRight)[0];
+		const lowerLeft = circleCircleIntersections(data.shapes.lowerBout, data.shapes.centerBoutLeft)[0];
+
+		data.intersects.majorBouts = { upperRight, upperLeft, lowerRight, lowerLeft };
+	}
+}
 
 export function calculatePrimaryShapes(data: KellyViolinData): void {
 	if (data.params.boutUpY && data.params.boutLowY && data.params.boutUpR && data.params.boutLowR && data.params.boutCenR) {
@@ -334,9 +365,8 @@ export function calculateMainPath(data: KellyViolinData): void {
 	let p2 = arcPathFrom3Points(data.shapes.centerBoutLeft, data.intersects.majorBouts.lowerLeft, data.intersects.majorBouts.upperLeft);
 	pathsCornerless.push(p1, p2);
 
-
 	let p3 = arcPathFrom3Points(data.shapes.lowerLeftVesaci, data.intersects.minorBouts.lowerLeftVesicaUpper, data.intersects.minorBouts.lowerLeftVesicaLower)
-	let p4 = arcPathFrom3Points(data.shapes.lowerJoiningCircle, data.intersects.minorBouts.lowerLeftVesicaLower, data.intersects.minorBouts.lowerRightVesicaLower)
+	let p4 = arcPathWithLowestPoint(data.shapes.lowerJoiningCircle, data.intersects.minorBouts.lowerLeftVesicaLower, data.intersects.minorBouts.lowerRightVesicaLower)
 	let p5 = arcPathFrom3Points(data.shapes.lowerRightVesaci, data.intersects.minorBouts.lowerRightVesicaLower, data.intersects.minorBouts.lowerRightVesicaUpper)
 	pathsCorners.push(p3, p4, p5);
 	pathsCornerless.push(p3, p4, p5);
@@ -368,7 +398,7 @@ export function calculateMainPath(data: KellyViolinData): void {
 
 
 	let p10 = arcPathFrom3Points(data.shapes.upperRightVesaci, data.intersects.minorBouts.upperRightVesicaLower, data.intersects.minorBouts.upperRightVesicaUpper)
-	let p11 = arcPathFrom3Points(data.shapes.upperJoiningCircle, data.intersects.minorBouts.upperRightVesicaUpper, data.intersects.minorBouts.upperLeftVesicaUpper)
+	let p11 = arcPathWithHighestPoint(data.shapes.upperJoiningCircle, data.intersects.minorBouts.upperRightVesicaUpper, data.intersects.minorBouts.upperLeftVesicaUpper)
 	let p12 = arcPathFrom3Points(data.shapes.upperLeftVesaci, data.intersects.minorBouts.upperLeftVesicaUpper, data.intersects.minorBouts.upperLeftVesicaLower)
 	pathsCorners.push(p10, p11, p12);
 	pathsCornerless.push(p10, p11, p12);
@@ -510,11 +540,11 @@ export function calculateTopPath(data: KellyViolinData): void {
 	data.shapes.lowerLeftCutoff2 = pointOnCircle(data.shapes.lowerLeftCornerDoubleC2, Math.PI - lowerBottomCutoffTheta);
 
 	const lowerLeftCornerPath = unifyConnectedSvgPaths([
-		arcPathFrom3Points(data.shapes.lowerLeftC2Offset, lowerLeftC2Intercept, findClosestPointOnPathToCircle(paths[0], data.shapes.lowerLeftC2Offset), { clockwise: false }),
-		arcPathFrom3Points(data.shapes.lowerLeftCornerDoubleC2, data.shapes.lowerLeftCutoff2, lowerLeftC2Intercept, { clockwise: false }),
+		arcPathFrom3Points(data.shapes.lowerLeftC2Offset, lowerLeftC2Intercept, findClosestPointOnPathToCircle(paths[0], data.shapes.lowerLeftC2Offset)),
+		arcPathFrom3Points(data.shapes.lowerLeftCornerDoubleC2, data.shapes.lowerLeftCutoff2, lowerLeftC2Intercept),
 		pathFromLine(data.shapes.lowerLeftCutoff1, data.shapes.lowerLeftCutoff2),
-		arcPathFrom3Points(data.shapes.lowerLeftCornerDoubleC1, lowerLeftC1Intercept, data.shapes.lowerLeftCutoff1, { clockwise: false }),
-		arcPathFrom3Points(data.shapes.lowerLeftC1Offset, findClosestPointOnPathToCircle(paths[3], data.shapes.lowerLeftC1Offset), lowerLeftC1Intercept, { clockwise: false }),
+		arcPathFrom3Points(data.shapes.lowerLeftCornerDoubleC1, lowerLeftC1Intercept, data.shapes.lowerLeftCutoff1),
+		arcPathFrom3Points(data.shapes.lowerLeftC1Offset, findClosestPointOnPathToCircle(paths[3], data.shapes.lowerLeftC1Offset), lowerLeftC1Intercept),
 	]);
 
 	data.shapes.upperRightC1Offset = { ...upperRightCornerC1, r: upperRightCornerC1.r - data.params.inset };
@@ -559,11 +589,11 @@ export function calculateTopPath(data: KellyViolinData): void {
 	data.shapes.upperLeftCutoff2 = pointOnCircle(data.shapes.upperLeftCornerDoubleC2, Math.PI - upperBottomCutoffTheta);
 
 	const upperLeftCornerPath = unifyConnectedSvgPaths([
-		arcPathFrom3Points(data.shapes.upperLeftC2Offset, upperLeftC2Intercept, findClosestPointOnPathToCircle(paths[3], data.shapes.upperLeftC2Offset), { clockwise: false }),
-		arcPathFrom3Points(data.shapes.upperLeftCornerDoubleC2, data.shapes.upperLeftCutoff2, upperLeftC2Intercept, { clockwise: false }),
+		arcPathFrom3Points(data.shapes.upperLeftC2Offset, upperLeftC2Intercept, findClosestPointOnPathToCircle(paths[3], data.shapes.upperLeftC2Offset)),
+		arcPathFrom3Points(data.shapes.upperLeftCornerDoubleC2, data.shapes.upperLeftCutoff2, upperLeftC2Intercept),
 		pathFromLine(data.shapes.upperLeftCutoff1, data.shapes.upperLeftCutoff2),
-		arcPathFrom3Points(data.shapes.upperLeftCornerDoubleC1, upperLeftC1Intercept, data.shapes.upperLeftCutoff1, { clockwise: false }),
-		arcPathFrom3Points(data.shapes.upperLeftC1Offset, findClosestPointOnPathToCircle(paths[2], data.shapes.upperLeftC1Offset), upperLeftC1Intercept, { clockwise: false }),
+		arcPathFrom3Points(data.shapes.upperLeftCornerDoubleC1, upperLeftC1Intercept, data.shapes.upperLeftCutoff1),
+		arcPathFrom3Points(data.shapes.upperLeftC1Offset, findClosestPointOnPathToCircle(paths[2], data.shapes.upperLeftC1Offset), upperLeftC1Intercept),
 	]);
 
 	upsertCalc(data, {

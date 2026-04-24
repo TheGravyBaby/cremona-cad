@@ -170,12 +170,12 @@ export function arcPathFrom3Points(
   c: Pt,
   start: Pt,
   end: Pt,
-  opts?: { clockwise?: boolean; useLargeArc?: boolean }
 ) {
+  const TWO_PI = Math.PI * 2;
   const r = Math.hypot(start.x - c.x, start.y - c.y);
+  if (!Number.isFinite(r) || r === 0) return `M ${start.x} ${start.y}`;
 
-  // If your points are slightly off-radius, you can either trust start radius (compass)
-  // or clamp end onto the circle:
+  // Clamp end onto the circle defined by start to avoid tiny radius mismatches
   const endOnCircle = (() => {
     const ex = end.x - c.x, ey = end.y - c.y;
     const len = Math.hypot(ex, ey) || 1;
@@ -187,20 +187,72 @@ export function arcPathFrom3Points(
 
   // Normalize delta to [0, 2π)
   let delta = a1 - a0;
-  while (delta < 0) delta += Math.PI * 2;
-  while (delta >= Math.PI * 2) delta -= Math.PI * 2;
+  delta = ((delta % TWO_PI) + TWO_PI) % TWO_PI;
 
-  // Decide sweep + large-arc:
-  // sweepFlag: 1 = "positive-angle direction" in SVG's coordinate system (y down), which appears clockwise.
-  const clockwise = opts?.clockwise ?? true;
+  // Always pick the shorter arc: if delta <= π use the "positive" sweep (sweepFlag = 1),
+  // otherwise use the opposite direction (sweepFlag = 0) and span 2π - delta.
+  const usePositiveSweep = delta <= Math.PI;
+  const sweepFlag = usePositiveSweep ? 1 : 0;
+  const largeArcFlag = 0; // shorter arc never requires large-arc-flag
 
-  // For a given direction, choose largeArc based on delta
-  // (if clockwise, the swept angle is delta; if counterclockwise, it's 2π - delta)
-  const swept = clockwise ? delta : (Math.PI * 2 - delta);
-  const largeArc = opts?.useLargeArc ?? (swept > Math.PI);
+  return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArcFlag} ${sweepFlag} ${endOnCircle.x} ${endOnCircle.y}`;
+}
 
-  const sweepFlag = clockwise ? 1 : 0;
-  const largeArcFlag = largeArc ? 1 : 0;
+/**
+ * Returns the arc (from start to end on the circle centred at c) that
+ * passes through or over the **lowest** point of the circle (maximum y in
+ * SVG coordinates, where y increases downward).
+ */
+export function arcPathWithLowestPoint(c: Pt, start: Pt, end: Pt): string {
+  // in the limited cases I have to use this, the peak of the curve
+  // ironically is not what gets caught :P
+  return arcPathSelectingYExtreme(c, start, end, false);
+}
+
+/**
+ * Returns the arc (from start to end on the circle centred at c) that
+ * passes through or over the **highest** point of the circle (minimum y in
+ * SVG coordinates, where y increases downward).
+ */
+export function arcPathWithHighestPoint(c: Pt, start: Pt, end: Pt): string {
+  // in the limited cases I have to use this, the peak of the curve
+  // ironically is not what gets caught :P
+  return arcPathSelectingYExtreme(c, start, end, true);
+}
+
+function arcPathSelectingYExtreme(c: Pt, start: Pt, end: Pt, pickLowest: boolean): string {
+  const TWO_PI = Math.PI * 2;
+  const r = Math.hypot(start.x - c.x, start.y - c.y);
+  if (!Number.isFinite(r) || r === 0) return `M ${start.x} ${start.y}`;
+
+  // Clamp end onto the circle to avoid radius mismatches
+  const endOnCircle = (() => {
+    const ex = end.x - c.x, ey = end.y - c.y;
+    const len = Math.hypot(ex, ey) || 1;
+    return { x: c.x + (ex / len) * r, y: c.y + (ey / len) * r };
+  })();
+
+  const a0 = polarAngle(c, start);
+  const a1 = polarAngle(c, endOnCircle);
+
+  // delta: how far the positive-sweep arc (sweepFlag=1, clockwise on screen) travels
+  let delta = a1 - a0;
+  delta = ((delta % TWO_PI) + TWO_PI) % TWO_PI;
+
+  // Extreme angle we want the arc to contain:
+  //   lowest  point (max y in SVG) → angle = +π/2
+  //   highest point (min y in SVG) → angle = -π/2
+  const aTarget = pickLowest ? Math.PI / 2 : -Math.PI / 2;
+
+  // Normalise aTarget relative to a0 into [0, 2π)
+  const normalised = ((aTarget - a0) % TWO_PI + TWO_PI) % TWO_PI;
+
+  // The positive-sweep arc covers normalised angles in [0, delta].
+  // If the extreme angle falls in that range, use sweepFlag=1; otherwise 0.
+  const targetInPositiveSweep = normalised <= delta;
+  const sweepFlag = targetInPositiveSweep ? 1 : 0;
+  const arcSpan = targetInPositiveSweep ? delta : TWO_PI - delta;
+  const largeArcFlag = arcSpan > Math.PI ? 1 : 0;
 
   return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArcFlag} ${sweepFlag} ${endOnCircle.x} ${endOnCircle.y}`;
 }

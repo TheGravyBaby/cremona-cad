@@ -1,12 +1,13 @@
-import { Component, Input } from '@angular/core';
+import { Component, HostListener, Input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { error } from '../shared/message-emitter';
+import { error, warn } from '../shared/message-emitter';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { Circle } from '../models/types';
 import { greyOut, renderCircle, renderCircleAngleIndicator, renderCrosshair, renderDashedLine, renderDashLine, renderDistanceMeasurementLine, renderPath, renderRect } from '../helpers/renderFuncs';
 import { combinePathStrings } from '../helpers/draftMath';
 import { KellyViolinData, KellyViolinRecipe } from './kellyTypes';
-import { calculatePrimaryShapes, calculateMainPathsSegmented, calculateMainPathsUnified, calculateMouldPath, calculateOffsetPathsSegments, calculateTopPath, initializeMainBouts, initializeMinorBouts, initializeCornerPlacement, initializeCornerCircles, initializeTopAndBottomTrace, initializeBlocks, normalizeDegrees } from './kellyCals';
+import { calculatePrimaryShapes, calculateMainPathsSegmented, calculateMainPathsUnified, calculateMouldPath, calculateOffsetPathsSegments, calculateTopPath, initializeMainBouts, initializeMinorBouts, initializeCornerPlacement, initializeCornerCircles, initializeTopAndBottomTrace, initializeBlocks, normalizeDegrees, calculateMainBouts } from './kellyCals';
+import { clampParam, safeRun } from '../helpers/validators';
 
 @Component({
   selector: 'app-kelly-violin',
@@ -16,6 +17,37 @@ import { calculatePrimaryShapes, calculateMainPathsSegmented, calculateMainPaths
 })
 
 export class KellyViolin extends RecipeComponentBase {
+
+  private _debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private _skipDebounce = false;
+
+  @HostListener('keydown', ['$event'])
+  onHostKeyDown(e: KeyboardEvent) {
+    this._skipDebounce = e.key === 'ArrowUp' || e.key === 'ArrowDown';
+  }
+
+  @HostListener('mousedown', ['$event'])
+  onHostMouseDown(e: MouseEvent) {
+    const target = e.target as HTMLInputElement;
+    this._skipDebounce = target.tagName === 'INPUT' && target.type === 'number';
+  }
+
+  private debounce(fn: () => void, delay = 1000): void {
+    if (this._skipDebounce) {
+      this._skipDebounce = false;
+      fn();
+      return;
+    }
+    if (this._debounceTimer !== null) clearTimeout(this._debounceTimer);
+    this._debounceTimer = setTimeout(() => {
+      this._debounceTimer = null;
+      fn();
+    }, delay);
+  }
+
+  private clamp(key: keyof typeof this.d.params, min: number, max = Infinity, tooSmallMsg?: string, tooBigMsg?: string): void {
+    clampParam(this.d.params, key, min, max, tooSmallMsg, tooBigMsg);
+  }
 
   override openPanel = 'base';
   override d: KellyViolinData = new KellyViolinRecipe();
@@ -32,6 +64,8 @@ export class KellyViolin extends RecipeComponentBase {
   viewMouldExport = false;
   viewSegmentedOuter = false;
   viewSegmentedInnerPartial = false;
+
+  userConfirmedHeight = 0;
 
 
   offFactor = .4;
@@ -59,28 +93,6 @@ export class KellyViolin extends RecipeComponentBase {
 
   insetTooltip = "Inset is the distance from the outer edge of the bounding box to inner edge. It can be used to create a margin for the outline of the violin.";
 
-  private readonly errorMessages = [
-    "Stradivari never had this problem...",
-    "A circle walked into a bar and nothing intersected...",
-    "These are not the curves you're looking for...",
-    "It's gonna be okay...",
-    "Back to the drafting board...",
-    "Perhaps we should just use paper...",
-    "Surely you can't expect the math to be perfect every time...",
-  ];
-  private errorIndex = 0;
-
-  private safeRun(fn: () => void): void {
-    try {
-      fn();
-    } catch (e: any) {
-      const msg = this.errorMessages[this.errorIndex % this.errorMessages.length];
-      this.errorIndex++;
-      error(msg, 'Error :[');
-      console.error(e)
-    }
-  }
-
   @Input() set newFile(v: boolean) {
     if (v) {
       this.openPanel = 'base'
@@ -91,7 +103,6 @@ export class KellyViolin extends RecipeComponentBase {
       this.referenceImageChange.emit(null);
     }
   }
-
 
   override firstRender = (g: any, ui: any): void => {
     this.renderBounds(g, ui);
@@ -156,6 +167,7 @@ export class KellyViolin extends RecipeComponentBase {
   }
 
   override onToggle(panel: string, ev: Event) {
+    this._skipDebounce = true;
     const details = ev.target as HTMLDetailsElement;
 
     if (!this.isPanelEnabled(panel)) {
@@ -188,58 +200,133 @@ export class KellyViolin extends RecipeComponentBase {
         }
       }
     }
-
   }
 
 
   changeBaseMeasurements(): void {
-    this.safeRun(() => {
-      const ratio = this.d.params.height / this.d.params.width;
+    this.debounce(() => safeRun(() => {
+      this.clamp('width', 10, 1000,
+        "Even a 1/32 violin is wider than that  — width reset to 10mm.",
+        "Wider than an upright bass? Let's be reasonable — width reset to 1000mm.");
+      this.clamp('height', 100, 3800,
+        "Trying to make the worlds smallest violin?— height reset to 100mm.",
+        "An octobase is only 3800mm body length. Are you designing furniture? Height reset to 3800mm.");
+      this.clamp('inset', 1, 10,
+        "Inset must be at least 1mm — reset to 1mm.",
+        "An inset of 10mm is already generous — reset to 10mm.");
       this.setBounds.emit({ pt1: { x: -this.d.params.width / 2, y: 0 }, pt2: { x: this.d.params.width / 2, y: this.d.params.height } });
       this.draftChange.emit([this.renderBounds]);
+      this.userConfirmedHeight = this.d.params.height;
       sessionStorage.setItem('recipeData', JSON.stringify(this.d));
-    });
+    }));
   }
 
   changeMainBouts() {
-    this.safeRun(() => {
+    this.debounce(() => safeRun(() => {
       initializeMainBouts(this.d)
-      calculatePrimaryShapes(this.d);
+      this.clamp('boutUpR', 5, 1000,
+        "An upper bout that narrow? Even a pochette is bigger — reset to 5mm.",
+        "That upper bout is wider than the whole violin body. Settle down — reset to 1000mm");
+      this.clamp('boutLowR', 5, 1000,
+        "Lower bout radius too small — reset to 5mm.",
+        "A lower bout that wide would need its own zip code — reset to 1000mm.");
+      this.clamp('boutCenR', 5, 1000,
+        "Center bout radius too small — reset to 5mm.",
+        "A center bout that large? That's not a waist, that's a barrel — reset to 1000mm.");
+      this.clamp('boutUpY', 1, 3800,
+        "Upper bout Y must be at least 1mm — reset to 1mm.",
+        "Upper bout Y exceeds the max body length — reset to 3800mm.");
+      this.clamp('boutLowY', 1, 3800,
+        "Lower bout Y must be at least 1mm — reset to 1mm.",
+        "Lower bout Y exceeds the max body length — reset to 3800mm.");
+
+      let upBoutDiff = (this.d.params.height - this.d.params.inset) - (this.d.params.boutUpY + this.d.params.boutUpR)
+      let lowBoutDiff = (this.d.params.boutLowY - this.d.params.boutLowR) - this.d.params.inset
+      if (upBoutDiff > -2) {
+        this.d.params.height -= Math.abs(upBoutDiff);
+        warn(`Upper bout won't fit within the current height. Adjusting height to ${this.d.params.height}mm.`, "Upper Bout Limit");
+      }
+      if (lowBoutDiff > -2) {
+        this.d.params.height -= lowBoutDiff
+        this.d.params.boutLowY -= lowBoutDiff;
+        this.d.params.boutUpY -= lowBoutDiff;
+        warn(`Lower bout won't fit within the current height. Adjusting height to ${this.d.params.height}mm.`, "Lower Bout Limit");
+      }
+
+
+      calculateMainBouts(this.d);
       this.draftChange.emit([this.renderBounds, this.renderMainBouts(true)]);
       sessionStorage.setItem('recipeData', JSON.stringify(this.d));
-    });
+    }));
   }
 
+  upperVLimit = Math.round(this.d.params.boutUpR * .9)
+  lowerVLimit = Math.round(this.d.params.boutLowR * .9)
   changeMinorBouts() {
-    this.safeRun(() => {
+    this.debounce(() => safeRun(() => {
       initializeMinorBouts(this.d)
+      this.clamp('vesaciUpR', 1, this.upperVLimit,
+        "Upper vesaci radius must be at least 1mm — reset to 1mm.",
+        `Upper vesaci must be smaller than the upper bout (reset to ${this.upperVLimit}mm).`);
+      this.clamp('vesaciLowR', 1, this.lowerVLimit,
+        "Lower vesaci radius must be at least 1mm — reset to 1mm.",
+        `Lower vesaci must be smaller than the lower bout (reset to ${this.lowerVLimit}mm).`);
+
+      let vesaciUpDiff = (this.d.params.height - this.d.params.inset) - (this.d.params.boutUpY + this.d.params.vesaciUpR)
+      let upBoutDiff = (this.d.params.height - this.d.params.inset) - (this.d.params.boutUpY + this.d.params.boutUpR)
+      if (vesaciUpDiff < 2) {
+        let limitedDiff = Math.abs(vesaciUpDiff);
+        limitedDiff > 0 && (this.d.params.height += limitedDiff);
+        warn(`Upper vesaci won't fit within the current height. Adjusting height to ${this.d.params.height}mm.`, "Upper Vesaci Limit");
+      }
+      else if (upBoutDiff > 2) {
+        this.d.params.height -= upBoutDiff
+        warn(`Upper bout won't fit within the current height. Adjusting height to ${this.d.params.height}mm.`, "Upper Vesaci Limit");
+      }
+
+      let vesicaLowDiff = this.d.params.boutLowY - this.d.params.inset - this.d.params.vesaciLowR
+      let lowBoutDiff = (this.d.params.boutLowY - this.d.params.boutLowR) - this.d.params.inset
+
+      if (vesicaLowDiff < -1) {
+        let limitedDiffLow = Math.abs(vesicaLowDiff);
+        limitedDiffLow > 0 && (this.d.params.height += limitedDiffLow);
+        limitedDiffLow > 0 && (this.d.params.boutLowY += limitedDiffLow);
+        limitedDiffLow > 0 && (this.d.params.boutUpY += limitedDiffLow);
+        limitedDiffLow > 0 && warn(`Lower vesaci won't fit within the current height. Adjusting height to ${this.d.params.height}mm.`, "Lower Vesaci Limit");
+      }
+      else if (lowBoutDiff > -2) {
+        this.d.params.height -= lowBoutDiff
+        this.d.params.boutLowY -= lowBoutDiff;
+        this.d.params.boutUpY -= lowBoutDiff;
+        warn(`Lower bout won't fit within the current height. Adjusting height to ${this.d.params.height}mm.`, "Lower Vesaci Limit");
+      }
+
       calculatePrimaryShapes(this.d);
       this.draftChange.emit([this.renderBounds, this.renderMainBouts(false), this.renderMinorBouts(true), this.renderMainPathCornerless]);
       sessionStorage.setItem('recipeData', JSON.stringify(this.d));
-    });
+    }));
   }
 
   changeCornerPlacement() {
-    this.safeRun(() => {
+    this.debounce(() => safeRun(() => {
       initializeCornerPlacement(this.d);
       calculatePrimaryShapes(this.d);
-      // this.draftChange.emit([renderCircle(this.d.shapes.lowerBout, "blue"), renderCrosshair(this.d.intersects.corners.lowerRight, "purple")]);
       this.draftChange.emit([this.renderMainBouts(false), this.renderMinorBouts(false), this.renderCornerPlacements(true), this.renderMainPathCornerless]);
       sessionStorage.setItem('recipeData', JSON.stringify(this.d));
-    });
+    }));
   }
 
   changeCornerCircles() {
-    this.safeRun(() => {
+    this.debounce(() => safeRun(() => {
       initializeCornerCircles(this.d);
       calculatePrimaryShapes(this.d);
       this.draftChange.emit([this.renderMainBouts(false), this.renderMinorBouts(false), this.renderCornerPlacements(false), this.renderCornerCircles(true), this.renderMainPath]);
       sessionStorage.setItem('recipeData', JSON.stringify(this.d));
-    });
+    }));
   }
 
   changeTopAndBottom() {
-    this.safeRun(() => {
+    this.debounce(() => safeRun(() => {
       this.d.params.cornerCircDubUpBoutTheta = normalizeDegrees(this.d.params.cornerCircDubUpBoutTheta);
       this.d.params.cornerCircDubUpCBoutTheta = normalizeDegrees(this.d.params.cornerCircDubUpCBoutTheta);
       this.d.params.cornerCircDubLowCBoutTheta = normalizeDegrees(this.d.params.cornerCircDubLowCBoutTheta);
@@ -256,21 +343,21 @@ export class KellyViolin extends RecipeComponentBase {
       calculateTopPath(this.d);
       this.draftChange.emit([this.renderFinalCorners(true), this.renderMainPath, this.renderTopPath]);
       sessionStorage.setItem('recipeData', JSON.stringify(this.d));
-    });
+    }));
   }
 
   changeMouldPattern(calcChange = true) {
-    this.safeRun(() => {
+    this.debounce(() => safeRun(() => {
       calcChange && initializeBlocks(this.d);
       calcChange && calculatePrimaryShapes(this.d);
       calcChange && calculateMouldPath(this.d);
       this.draftChange.emit([this.renderMainBouts(false), this.renderMinorBouts(false), this.renderCornerPlacements(false), this.renderCornerCircles(false), this.renderBlocks(true), this.renderMainPathWithBlocks]);
       sessionStorage.setItem('recipeData', JSON.stringify(this.d));
-    });
+    }));
   }
 
   renderExports() {
-    this.safeRun(() => {
+    safeRun(() => {
       calculatePrimaryShapes(this.d);
       initializeBlocks(this.d)
       calculateMouldPath(this.d);
@@ -529,7 +616,7 @@ export class KellyViolin extends RecipeComponentBase {
   }
 
   downloadInnerPath = (): void => {
-    this.safeRun(() => {
+    safeRun(() => {
       calculateMainPathsUnified(this.d);
       const pathObj = this.d.paths.find(c => c.name === 'innerPathUnified');
       if (!pathObj) return;
@@ -549,7 +636,7 @@ export class KellyViolin extends RecipeComponentBase {
   }
 
   downloadMouldPath = (): void => {
-    this.safeRun(() => {
+    safeRun(() => {
       calculateMouldPath(this.d);
       const pathObj = this.d.paths.find(c => c.name === 'mouldPath');
       if (!pathObj) return;
@@ -571,7 +658,7 @@ export class KellyViolin extends RecipeComponentBase {
   }
 
   downloadInnerSegmentedPaths = (): void => {
-    this.safeRun(() => {
+    safeRun(() => {
       calculateMainPathsSegmented(this.d);
       const pathObj = this.d.paths.find(c => c.name === 'segmentedPartialPath');
       if (!pathObj) return;
@@ -594,7 +681,7 @@ export class KellyViolin extends RecipeComponentBase {
   }
 
   downloadOuterSegmentedPaths = (): void => {
-    this.safeRun(() => {
+    safeRun(() => {
       calculateMainPathsSegmented(this.d);
       calculateOffsetPathsSegments(this.d);
       const pathObj = this.d.paths.find(c => c.name === 'offsetSegmentedPath');
@@ -618,7 +705,7 @@ export class KellyViolin extends RecipeComponentBase {
   }
 
   downloadOuterPath = (): void => {
-    this.safeRun(() => {
+    safeRun(() => {
       calculateMainPathsUnified(this.d);
       calculateMainPathsSegmented(this.d);
       calculateOffsetPathsSegments(this.d);

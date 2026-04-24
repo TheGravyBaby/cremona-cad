@@ -285,7 +285,7 @@ export const renderCircle = (C: Circle, color: string) => (g: any, ui: any) => {
     g.append('circle')
         .attr('cx', C.x)
         .attr('cy', C.y)
-        .attr('r', C.r)
+        .attr('r', Math.abs(C.r))
         .attr('stroke', color)
         .attr('fill', 'none')
         .attr('stroke-width', 1)

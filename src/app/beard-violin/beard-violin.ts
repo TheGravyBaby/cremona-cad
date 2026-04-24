@@ -400,12 +400,12 @@ export class BeardViolinComponent extends RecipeComponentBase {
 
     let upperRightGuideCircle: Circle = { x: upperLeftBoutEndPt.x, y: upperLeftBoutEndPt.y, r: upperW }
     let upperRightCorner: Pt = lineCircleIntersection({ x: -1000, y: upperCornerHeight }, { x: 1000, y: upperCornerHeight }, upperRightGuideCircle)[0]
-    let upperRightArc = arcPathFrom3Points({ x: upperLeftBoutEndPt.x, y: upperLeftBoutEndPt.y }, { x: upperRightBoutEndPt.x, y: upperRightBoutEndPt.y }, upperRightCorner, { clockwise: false })
+    let upperRightArc = arcPathFrom3Points({ x: upperLeftBoutEndPt.x, y: upperLeftBoutEndPt.y }, { x: upperRightBoutEndPt.x, y: upperRightBoutEndPt.y }, upperRightCorner)
 
     // mirror the two arcs we just made accross the y axis
     let lowerLeftCorner = { x: -lowerRightCorner.x, y: lowerRightCorner.y }
     let upperLeftCorner = { x: -upperRightCorner.x, y: upperRightCorner.y }
-    let lowerLeftArc = arcPathFrom3Points({ x: lowerRightBoutEndPt.x, y: lowerRightBoutEndPt.y }, { x: - lowerRightBoutEndPt.x, y: lowerRightBoutEndPt.y }, lowerLeftCorner, { clockwise: false })
+    let lowerLeftArc = arcPathFrom3Points({ x: lowerRightBoutEndPt.x, y: lowerRightBoutEndPt.y }, { x: - lowerRightBoutEndPt.x, y: lowerRightBoutEndPt.y }, lowerLeftCorner)
     let upperLeftArc = arcPathFrom3Points({ x: upperRightBoutEndPt.x, y: upperRightBoutEndPt.y }, { x: - upperRightBoutEndPt.x, y: upperRightBoutEndPt.y }, upperLeftCorner)
 
     if (cornerCrosshairs) {
@@ -481,8 +481,8 @@ export class BeardViolinComponent extends RecipeComponentBase {
 
     let lowerRightCornerArc = arcPathFrom3Points(lowerRightCornerCircle, lowerRightCorner, lowerRightIntersectPt);
     let lowerRightBoutArc = arcPathFrom3Points(lowerRightVesica, lowerRightBoutEndPt, lowerRightIntersectPt);
-    let upperRightCornerArc = arcPathFrom3Points(upperRightCornerCircle, upperRightCorner, upperRightIntersectPt, { clockwise: false });
-    let upperRightBoutArc = arcPathFrom3Points(upperRightVesica, upperRightBoutEndPt, upperRightIntersectPt, { clockwise: false });
+    let upperRightCornerArc = arcPathFrom3Points(upperRightCornerCircle, upperRightCorner, upperRightIntersectPt);
+    let upperRightBoutArc = arcPathFrom3Points(upperRightVesica, upperRightBoutEndPt, upperRightIntersectPt);
 
     renderPath(lowerRightCornerArc, "red")(g, ui);
     renderPath(lowerRightBoutArc, "red")(g, ui);
@@ -506,8 +506,8 @@ export class BeardViolinComponent extends RecipeComponentBase {
 
     let upperLeftIntersectPt = circleCircleIntersections(upperLeftCornerCircle, upperLeftVesica)[1]
 
-    renderPath(arcPathFrom3Points(lowerLeftCornerCircle, lowerLeftCorner, lowerLeftIntersectPt, { clockwise: false }), "red")(g, ui)
-    renderPath(arcPathFrom3Points(lowerLeftVesica, lowerLeftBoutEndPt, lowerLeftIntersectPt, { clockwise: false }), "red")(g, ui)
+    renderPath(arcPathFrom3Points(lowerLeftCornerCircle, lowerLeftCorner, lowerLeftIntersectPt), "red")(g, ui)
+    renderPath(arcPathFrom3Points(lowerLeftVesica, lowerLeftBoutEndPt, lowerLeftIntersectPt), "red")(g, ui)
     renderPath(arcPathFrom3Points(upperLeftCornerCircle, upperLeftCorner, upperLeftIntersectPt), "red")(g, ui)
     renderPath(arcPathFrom3Points(upperLeftVesica, upperLeftBoutEndPt, upperLeftIntersectPt), "red")(g, ui)
 
@@ -558,9 +558,9 @@ export class BeardViolinComponent extends RecipeComponentBase {
     const upperOnB = pickRightMost(circleCircleIntersections(upperInnerCornerCircle, B));
 
     // --- three arcs: lower corner -> B, along B, then B -> upper corner ---
-    const lowerCornerToB = arcPathFrom3Points(lowerInnerCornerCircle, lowerRightCorner, lowerOnB, { clockwise: false });
-    const alongB = arcPathFrom3Points(B, lowerOnB, upperOnB, { clockwise: false });
-    const upperBToCorner = arcPathFrom3Points(upperInnerCornerCircle, upperOnB, upperRightCorner, { clockwise: false });
+    const lowerCornerToB = arcPathFrom3Points(lowerInnerCornerCircle, lowerRightCorner, lowerOnB);
+    const alongB = arcPathFrom3Points(B, lowerOnB, upperOnB);
+    const upperBToCorner = arcPathFrom3Points(upperInnerCornerCircle, upperOnB, upperRightCorner);
 
     if (guides) {
       renderDashLine({ x: -1000, y: waistHeight }, { x: 1000, y: waistHeight }, "orange")(g, ui);
