@@ -17,10 +17,16 @@
   color: var(--ink);
 }
 
-.title {
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  font-size: 13px;
+.title img {
+  height: 28px;
+  width: auto;
+  margin: 0 4px;
+  display: block;
+  filter: invert(1);
+}
+
+:host-context(.day-mode) .title img {
+  filter: none;
 }
 
 .brand {

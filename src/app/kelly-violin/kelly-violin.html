@@ -22,7 +22,7 @@
         <label class="top-trace-label">
             Edge Inset <span>(mm)</span>
             <div class="ratio top-trace-row">
-                <input class="trace-input" type="number" step=".1" min="0" [(ngModel)]="d.params.inset" (input)="changeBaseMeasurements()" />
+                <input class="trace-input" type="number" step=".1" min="1" [(ngModel)]="d.params.inset" (input)="changeBaseMeasurements()" />
                 <span class="info-icon" [title]="insetTooltip">ⓘ</span>
             </div>
         </label>
@@ -76,7 +76,7 @@
         <label class="top-trace-label">
             Upper Vesaci Radius <span>(mm)</span>
             <div class="ratio top-trace-row">
-                <input class="trace-input" type="number" step="1" min="1" [(ngModel)]="d.params.vesaciUpR" (input)="changeMinorBouts()" [style.border-color]="colors.upperBoutOff"/>
+                <input class="trace-input" type="number" step="1" min="1" [max]="upperVLimit" [(ngModel)]="d.params.vesaciUpR" (input)="changeMinorBouts()" [style.border-color]="colors.upperBoutOff"/>
             </div>
         </label>
 
@@ -85,7 +85,7 @@
         <label class="top-trace-label">
             Lower Vesaci Radius <span>(mm)</span>
             <div class="ratio top-trace-row">
-                <input class="trace-input" type="number" step="1" min="1" [(ngModel)]="d.params.vesaciLowR" (input)="changeMinorBouts()" [style.border-color]="colors.lowerBoutOff" />
+                <input class="trace-input" type="number" step="1" min="1" [max]="lowerVLimit" [(ngModel)]="d.params.vesaciLowR" (input)="changeMinorBouts()" [style.border-color]="colors.lowerBoutOff" />
             </div>
         </label>
 
@@ -392,6 +392,5 @@
         <br>
         <a (click)="downloadInnerSegmentedPaths()" class="file-upload">Download Inner Segmented Paths</a>
         <input type="checkbox" [(ngModel)]="viewSegmentedInnerPartial" (change)="renderExports()" /> View -->
-    </details>
-    
+    </details>   
 </div>
