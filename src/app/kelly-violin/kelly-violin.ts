@@ -46,7 +46,7 @@ export class KellyViolin extends RecipeComponentBase {
   @HostListener('mousedown', ['$event'])
   onHostMouseDown(e: MouseEvent) {
     const target = e.target as HTMLInputElement;
-    this._skipDebounce = target.tagName === 'INPUT' && target.type === 'number';
+    this._skipDebounce = target.tagName == 'INPUT' || target.type == 'number';
   }
 
   private debounce(fn: () => void, delay = 1000): void {
