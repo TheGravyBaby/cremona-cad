@@ -323,7 +323,7 @@ export class KellyViolin extends RecipeComponentBase {
       let vesicaLowDiff = this.d.params.boutLowY - this.d.params.inset - this.d.params.vesaciLowR
       let lowBoutDiff = (this.d.params.boutLowY - this.d.params.boutLowR) - this.d.params.inset
 
-      if (vesicaLowDiff < -2) {
+      if (vesicaLowDiff < 2) {
         let limitedDiffLow = Math.abs(Math.max(vesicaLowDiff, 2));
         limitedDiffLow > 0 && (this.d.params.height += limitedDiffLow);
         limitedDiffLow > 0 && (this.d.params.boutLowY += limitedDiffLow);
