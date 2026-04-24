@@ -55,7 +55,7 @@ export function initializeMinorBouts(d: KellyViolinData) {
 	) {
 		d.params.vesaciUpR = Math.round(d.params.boutLowR * d.ratios.vesicaUpRToLBR)
 		if (d.params.vesaciUpR >= d.params.boutUpR * .9) {
-			d.params.vesaciUpR = d.params.boutUpR * d.ratios.vesicaUpRToLBR
+			d.params.vesaciUpR = d.params.boutUpR * .8
 		}
 		d.params.vesaciLowR = Math.round(d.params.boutLowR * d.ratios.vesicaLowRToLBR)
 	}

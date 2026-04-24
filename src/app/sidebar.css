@@ -4,7 +4,7 @@
     padding: 12px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 4px;
   background: var(--ui-bg-app);
   border-left: 1px solid var(--ui-border-soft);
 }
@@ -12,11 +12,11 @@
 details {
   border: 1px solid var(--ui-border-soft);
   border-radius: 10px;
-  padding: 8px 10px;
+  padding: 2px 10px;
   color: var(--ui-text-primary);
   background: var(--ui-bg-section);
   box-shadow: var(--ui-shadow-soft);
-  font-size: 17px;
+  font-size: 14px;
   transition: border-color 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
 
 }
@@ -31,7 +31,7 @@ summary {
     cursor: pointer;
     font-weight: 600;
   color: var(--ui-text-primary);
-  padding: 0px 0px 4px 0px
+  padding: 2px;
 }
 
 .section {
