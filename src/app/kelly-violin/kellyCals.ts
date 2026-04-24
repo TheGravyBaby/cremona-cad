@@ -53,14 +53,11 @@ export function initializeMinorBouts(d: KellyViolinData) {
 		d.params.vesaciLowR == 0 &&
 		d.params.vesaciUpR == 0
 	) {
-		d.params.vesaciUpR = Math.round(d.params.boutLowR * d.ratios.vesicaUpRToLBR)
-		if (d.params.vesaciUpR >= d.params.boutUpR * .9) {
-			d.params.vesaciUpR = d.params.boutUpR * .8
-		}
+		d.params.vesaciUpR = Math.round(d.params.boutUpR * d.ratios.vesicaUpRToUBR)
 		d.params.vesaciLowR = Math.round(d.params.boutLowR * d.ratios.vesicaLowRToLBR)
 	}
 	else {
-		d.ratios.vesicaUpRToLBR = d.params.vesaciUpR / d.params.boutLowR;
+		d.ratios.vesicaUpRToUBR = d.params.vesaciUpR / d.params.boutUpR;
 		d.ratios.vesicaLowRToLBR = d.params.vesaciLowR / d.params.boutLowR;
 	}
 }

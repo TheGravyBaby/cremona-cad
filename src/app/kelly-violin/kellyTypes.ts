@@ -17,7 +17,7 @@ export interface KellyRatios {
 	vesicaLowRToLBR: number;
 	boutUpToLBR: number;
 	boutCToLBR: number;
-	vesicaUpRToLBR: number;
+	vesicaUpRToUBR: number;
 	cornerRToCBR: number;
 	cornerCircUpBoutRToLBR: number;
 	cornerCircUpCBoutRToLBR: number;
@@ -42,7 +42,7 @@ const KELLY_DEFAULT_RATIOS: KellyRatios = {
 	boutLowYToLBR: 7/10,
 	boutUpToLBR: 4/5,
 	boutCToLBR: 4/5,
-	vesicaUpRToLBR: 2/3,
+	vesicaUpRToUBR: 2/3,
 	vesicaLowRToLBR: 2/3,
 	cornerRToCBR: 5/6,
 	cornerCircUpBoutRToLBR: 1/4,
