@@ -9,6 +9,12 @@ export interface KellyViolinData {
 	intersects: KellyIntersects;
 	paths: KellyCalcEntry[];
 	ratios: KellyRatios;
+	options: KellyOptions;
+}
+
+export interface KellyOptions {
+	lockUpperJoinArc: boolean;
+	lockLowerJoinArc: boolean;
 }
 
 export interface KellyRatios {
@@ -75,6 +81,7 @@ export class KellyViolinRecipe implements KellyViolinData {
 	intersects: KellyIntersects;
 	paths: KellyCalcEntry[];
 	ratios: KellyRatios;
+	options: KellyOptions;
 
 	constructor(fileName = 'Kelly-Baltic', params: KellyParamOverrides = {}) {
 		this.recipeName = 'Kelly Violin';
@@ -87,6 +94,10 @@ export class KellyViolinRecipe implements KellyViolinData {
 		this.ratios = {...KELLY_DEFAULT_RATIOS}
 
 		this.paths = [];
+		this.options = {
+			lockUpperJoinArc: true,
+			lockLowerJoinArc: true
+		}
 	}
 
 	newFile(params: KellyParamOverrides = {}) {
@@ -95,6 +106,10 @@ export class KellyViolinRecipe implements KellyViolinData {
 		this.shapes = createKellyShapes();
 		this.intersects = createKellyIntersects();
 		this.paths = [];
+		this.options = {
+			lockUpperJoinArc: true,
+			lockLowerJoinArc: true
+		}
 	}
 }
 
@@ -219,7 +234,9 @@ export const KELLY_DEFAULT_PARAMS: KellyParams = {
 	boutLowY: 70,
 	boutCenR: 85,
 	vesaciUpR: 57,
+	joinArcUpR: null,
 	vesaciLowR: 62,
+	joinArcLowR: null,
 	cornerR: 74,
 	cornerGuideLowY: 51,
 	cornerGuideLowXOff: 0,
@@ -262,7 +279,9 @@ export const KELLY_BLANK_PARAMS: KellyParams = {
 	boutLowY: 0,
 	boutCenR: 0,
 	vesaciUpR: 0,
+	joinArcUpR: null,
 	vesaciLowR: 0,
+	joinArcLowR: null,
 	cornerR: 0,
 	cornerGuideLowY: 0,
 	cornerGuideLowXOff: 0,
@@ -304,7 +323,9 @@ export interface KellyParams {
 	boutLowY: number;
 	boutCenR: number;
 	vesaciUpR: number;
+	joinArcUpR: number | null;
 	vesaciLowR: number;
+	joinArcLowR: number | null;
 	cornerR: number;
 	cornerGuideLowY: number;
 	cornerGuideLowXOff: number;

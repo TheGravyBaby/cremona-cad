@@ -6,27 +6,22 @@
   opacity: 0.55;
   pointer-events: none;
 }
-
+s
 .panel-disabled summary {
   cursor: not-allowed;
 }
 
-.top-trace {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
 .ui-group {
-  border: 1px solid var(--ui-border-soft);
+  border: 2px solid var(--ui-border-soft);
   border-radius: 10px;
   background: var(--ui-bg-section);
   box-shadow: var(--ui-shadow-soft);
-  padding: 9px;
+  padding: 8px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 7px;
+  margin-bottom: 5px;
 }
 
 .ui-group > .ratio {
@@ -51,40 +46,40 @@
   margin-bottom: 2px;
 }
 
-.top-trace-label {
+.section-label {
   display: block;
   font-size: 14px;
   color: var(--ui-text-primary);
 }
 
-.top-trace-label span {
+.section-label span {
   color: var(--ui-text-secondary);
   font-size: 12px;
 }
 
-.top-trace-row {
+.basic-row {
   gap: 6px;
   justify-content: flex-start;
   width: 100%;
 }
 
-.top-trace-label > span {
+.section-label > span {
   display: inline;
 }
 
-.top-trace-label > .top-trace-row {
+.section-label > .basic-row {
   margin-top: 6px;
 }
 
 
-.top-trace-row > span {
+.basic-row > span {
   color: var(--ui-text-secondary);
   font-weight: 600;
   margin-top: -1px;
   display: inline;
 }
 
-.trace-input {
+.basic-input {
   width: 84px;
   min-height: 30px;
   height: 30px;
@@ -102,23 +97,14 @@
   transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
 }
 
-.trace-input:focus {
+.basic-input:focus {
   outline: none;
   border-color: var(--ui-focus-border);
   box-shadow: 0 0 0 3px var(--ui-focus-ring);
 }
 
-.top-trace-controls {
-  margin-top: 2px;
-  border-top: 1px solid var(--ui-border-soft);
-  padding-top: 9px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-}
 
-.trace-toggle {
+.toggle {
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -129,21 +115,17 @@
   color: var(--ui-text-primary);
 }
 
-.trace-toggle input[type="checkbox"] {
+.toggle input[type="checkbox"] {
   width: 14px;
   height: 14px;
 }
 
-.trace-toggle-child {
+.toggle-child {
   margin-left: 20px;
   font-size: 13px;
   color: var(--ui-text-secondary);
 }
 
-.mould-pattern-group {
-  border-width: 2px;
-  background: var(--ui-bg-panel);
-}
 
 .export-row {
   width: 100%;

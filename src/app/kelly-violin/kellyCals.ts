@@ -9,6 +9,7 @@ import {
 	dist,
 	findClosestPointOnPathToCircle,
 	findJoiningCircleFromCircleAndPoint,
+	findJoiningCircleOfKnownRadius,
 	inscribeCircleWithinCircle,
 	interceptCirclesAndPoint,
 	lineCircleIntersection,
@@ -240,16 +241,31 @@ export function calculatePrimaryShapes(data: KellyViolinData): void {
 		let lowerLeftVesica = { x: -data.params.boutLowR + data.params.vesaciLowR, y: data.params.boutLowY, r: data.params.vesaciLowR };
 		let upperRightVesica = { x: data.params.boutUpR - data.params.vesaciUpR, y: data.params.boutUpY, r: data.params.vesaciUpR };
 		let upperLeftVesica = { x: -data.params.boutUpR + data.params.vesaciUpR, y: data.params.boutUpY, r: data.params.vesaciUpR };
-		let upperJoiningCircle = findJoiningCircleFromCircleAndPoint(upperRightVesica, { x: 0, y: data.params.height - data.params.inset });
-		let lowerJoiningCircle = findJoiningCircleFromCircleAndPoint(lowerRightVesica, { x: 0, y: data.params.inset });
+		
+		let upperJoiningCircle ;
+		if (data.options.lockUpperJoinArc) {
+			upperJoiningCircle = findJoiningCircleFromCircleAndPoint(upperRightVesica, { x: 0, y: data.params.height - data.params.inset });
+		}
+		else {
+			data.params.joinArcUpR = data.params.joinArcUpR ?? data.params.height
+			upperJoiningCircle = findJoiningCircleOfKnownRadius(upperRightVesica, data.params.joinArcUpR)
+		}
 
+		let lowerJoiningCircle;
+		if (data.options.lockLowerJoinArc) {
+			lowerJoiningCircle = findJoiningCircleFromCircleAndPoint(lowerRightVesica, { x: 0, y: data.params.inset });
+		}
+		else {
+			data.params.joinArcLowR = data.params.joinArcLowR ?? data.params.height
+			lowerJoiningCircle = findJoiningCircleOfKnownRadius(lowerRightVesica, data.params.joinArcLowR, false)
+		}
 
 		if (upperJoiningCircle.r == Infinity) {
-			error(`Upper vesica can't connect to upper bout with current parameters. They are likely too large`, "Upper Vesica Limit");	
+			error(`Upper vesaci won't fit within the current height. Either decrease their radius or unlock the upper join arc.`, "Upper Vesica Limit");	
 			return;		
 		}
 		if (lowerJoiningCircle.r == Infinity) {
-			error(`Lower vesica can't connect to lower bout with current parameters. They are likely too large`, "Lower Vesica Limit");
+			error(`Lower vesaci won't fit within the current height. Either decrease their radius or unlock the lower join arc.`, "Lower Vesica Limit");
 			return;
 		}
 

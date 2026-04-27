@@ -150,7 +150,7 @@ export class KellyViolin extends RecipeComponentBase {
         return this.hasMinorBouts();
       case 'cornerCircles':
         return this.hasCornerPlacement();
-      case 'topAndBottom':
+      case 'outerTrace':
         return this.hasCornerCircles();
       case 'mouldPattern':
         return this.hasCornerCircles();
@@ -216,7 +216,7 @@ export class KellyViolin extends RecipeComponentBase {
       else if (panel === 'minorBouts') this.changeMinorBouts();
       else if (panel === 'cornerPlacement') this.changeCornerPlacement();
       else if (panel === 'cornerCircles') this.changeCornerCircles();
-      else if (panel === 'topAndBottom') this.changeTopAndBottom();
+      else if (panel === 'outerTrace') this.changeOuterTrace();
       else if (panel === 'mouldPattern') this.changeMouldPattern();
       else if (panel === 'export') this.renderExports();
 
@@ -268,19 +268,6 @@ export class KellyViolin extends RecipeComponentBase {
         "Lower bout Y must be at least 1mm — reset to 1mm.",
         "Lower bout Y exceeds the max body length — reset to 3800mm.");
 
-      let upBoutDiff = (this.d.params.height - this.d.params.inset) - (this.d.params.boutUpY + this.d.params.boutUpR)
-      let lowBoutDiff = (this.d.params.boutLowY - this.d.params.boutLowR) - this.d.params.inset
-      if (upBoutDiff > -2) {
-        this.d.params.height -= Math.abs(upBoutDiff);
-        warn(`Upper bout won't fit within the current height. Adjusting height to ${this.d.params.height}mm.`, "Upper Bout Limit");
-      }
-      if (lowBoutDiff > -2) {
-        this.d.params.height -= lowBoutDiff
-        this.d.params.boutLowY -= lowBoutDiff;
-        this.d.params.boutUpY -= lowBoutDiff;
-        warn(`Lower bout won't fit within the current height. Adjusting height to ${this.d.params.height}mm.`, "Lower Bout Limit");
-      }
-
       if (
         this.d.params.width > (Math.max(this.d.params.boutLowR, this.d.params.boutUpR) + this.d.params.inset) * 2
         || this.d.params.width < (Math.max(this.d.params.boutLowR, this.d.params.boutUpR) + this.d.params.inset) * 2
@@ -309,34 +296,18 @@ export class KellyViolin extends RecipeComponentBase {
         `Lower vesaci must be smaller than the lower bout (reset to ${this.lowerVLimit}mm).`);
 
       let vesaciUpDiff = (this.d.params.height - this.d.params.inset) - (this.d.params.boutUpY + this.d.params.vesaciUpR)
-      let upBoutDiff = (this.d.params.height - this.d.params.inset) - (this.d.params.boutUpY + this.d.params.boutUpR)
-      if (vesaciUpDiff < 2) {
-        let limitedDiff = Math.max(Math.abs(vesaciUpDiff), 2);
-        (this.d.params.height += limitedDiff);
-        warn(`Upper vesaci won't fit within the current height. Adjusting height to ${this.d.params.height}mm.`, "Upper Vesaci Limit");
+      if (this.d.options.lockUpperJoinArc &&  vesaciUpDiff < 0) {
+        error(`Upper vesaci won't fit within the current height. Either decrease their radius or unlock the upper join arc.`, "Upper Vesaci Limit");
+        return
       }
-      else if (upBoutDiff > 2) {
-        this.d.params.height -= upBoutDiff
-        warn(`Upper bout won't fit within the current height. Adjusting height to ${this.d.params.height}mm.`, "Upper Vesaci Limit");
-      }
-
+      
       let vesicaLowDiff = this.d.params.boutLowY - this.d.params.inset - this.d.params.vesaciLowR
-      let lowBoutDiff = (this.d.params.boutLowY - this.d.params.boutLowR) - this.d.params.inset
 
-      if (vesicaLowDiff < 2) {
-        let limitedDiffLow = Math.max(Math.abs(vesicaLowDiff), 2);
-        limitedDiffLow > 0 && (this.d.params.height += limitedDiffLow);
-        limitedDiffLow > 0 && (this.d.params.boutLowY += limitedDiffLow);
-        limitedDiffLow > 0 && (this.d.params.boutUpY += limitedDiffLow);
-        limitedDiffLow > 0 && warn(`Lower vesaci won't fit within the current height. Adjusting height to ${this.d.params.height}mm.`, "Lower Vesaci Limit");
+      if (this.d.options.lockLowerJoinArc && vesicaLowDiff < 0) {
+        error(`Lower vesaci won't fit within the current height. Either decrease their radius or unlock the lower join arc.`, "Lower Vesaci Limit");
+        return
       }
-      else if (lowBoutDiff > -2) {
-        this.d.params.height -= lowBoutDiff
-        this.d.params.boutLowY -= lowBoutDiff;
-        this.d.params.boutUpY -= lowBoutDiff;
-        warn(`Lower bout won't fit within the current height. Adjusting height to ${this.d.params.height}mm.`, "Lower Vesaci Limit");
-      }
-
+      
       calculatePrimaryShapes(this.d);
       this.draftChange.emit([this.renderBounds, this.renderMainBouts(false), this.renderMinorBouts(true), this.renderMainPathCornerless]);
       sessionStorage.setItem('recipeData', JSON.stringify(this.d));
@@ -361,8 +332,12 @@ export class KellyViolin extends RecipeComponentBase {
     }));
   }
 
-  changeTopAndBottom() {
+  changeOuterTrace() {
     this.debounce(() => safeRun(() => {
+      this.clamp('inset', 1, 10,
+        "Inset must be at least 1mm — reset to 1mm.",
+        "An inset of 10mm is already generous — reset to 10mm.");
+
       this.d.params.cornerCircDubUpBoutTheta = normalizeDegrees(this.d.params.cornerCircDubUpBoutTheta);
       this.d.params.cornerCircDubUpCBoutTheta = normalizeDegrees(this.d.params.cornerCircDubUpCBoutTheta);
       this.d.params.cornerCircDubLowCBoutTheta = normalizeDegrees(this.d.params.cornerCircDubLowCBoutTheta);
@@ -472,13 +447,32 @@ export class KellyViolin extends RecipeComponentBase {
 
   renderMinorBouts = (currentModule: boolean) => (g: any, ui: any): void => {
     if ((currentModule && this.showModuleCircles) || this.showAllCircles) {
-      renderCircle(this.d.shapes.upperRightVesaci, this.colors.upperBoutOff)(g, ui);
-      renderCircle(this.d.shapes.upperLeftVesaci, this.colors.upperBoutOff)(g, ui);
-      renderCircle(this.d.shapes.upperJoiningCircle, this.colors.upperBoutOff)(g, ui);
-      renderCircle(this.d.shapes.lowerRightVesaci, this.colors.lowerBoutOff)(g, ui);
-      renderCircle(this.d.shapes.lowerLeftVesaci, this.colors.lowerBoutOff)(g, ui);
-      renderCircle(this.d.shapes.lowerJoiningCircle, this.colors.lowerBoutOff)(g, ui);
+      renderCircle(this.d.shapes.upperRightVesaci, this.colors.upperBout)(g, ui);
+      renderCircle(this.d.shapes.upperLeftVesaci, this.colors.upperBout)(g, ui);
+      renderCircle(this.d.shapes.lowerRightVesaci, this.colors.lowerBout)(g, ui);
+      renderCircle(this.d.shapes.lowerLeftVesaci, this.colors.lowerBout)(g, ui);
     }
+
+    if (this.showAllCircles) {
+      renderCircle(this.d.shapes.upperJoiningCircle, this.colors.upperBoutOff2)(g, ui);
+      renderCircle(this.d.shapes.lowerJoiningCircle, this.colors.lowerBoutOff2)(g, ui);
+    }
+
+    if (currentModule && this.showGuideLines) {
+      renderDashLine(this.d.shapes.upperJoiningCircle, this.d.intersects.minorBouts.upperLeftVesicaUpper, this.colors.upperBoutOff2)(g,ui)
+      renderDashLine(this.d.shapes.upperJoiningCircle, this.d.intersects.minorBouts.upperRightVesicaUpper, this.colors.upperBoutOff2)(g,ui)
+      renderCrosshair(this.d.shapes.upperJoiningCircle, this.colors.upperBoutOff2)(g, ui);
+
+      renderDashLine(this.d.shapes.lowerJoiningCircle, this.d.intersects.minorBouts.lowerLeftVesicaLower, this.colors.lowerBoutOff2)(g,ui)
+      renderDashLine(this.d.shapes.lowerJoiningCircle, this.d.intersects.minorBouts.lowerRightVesicaLower, this.colors.lowerBoutOff2)(g,ui)
+      renderCrosshair(this.d.shapes.lowerJoiningCircle, this.colors.lowerBoutOff2)(g, ui);
+      
+      renderCrosshair(this.d.shapes.upperLeftVesaci, this.colors.upperBout)(g, ui);
+      renderCrosshair(this.d.shapes.upperRightVesaci, this.colors.upperBout)(g, ui);
+      renderCrosshair(this.d.shapes.lowerLeftVesaci, this.colors.lowerBout)(g, ui);
+      renderCrosshair(this.d.shapes.lowerRightVesaci, this.colors.lowerBout)(g, ui);
+    }
+
   }
 
   renderCornerPlacements = (currentModule: boolean = true) => (g: any, ui: any): void => {

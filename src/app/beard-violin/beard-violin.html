@@ -16,7 +16,7 @@
 
     <label>
       Height : Width mm
-      <div class="ratio">
+      <div class="input-group">
         <input type="number" step="1" min="1" [(ngModel)]="d.params.h" (input)="changeBaseMeasurements()" />
         <span>:</span>
         <input type="number" step="1" min="1" [(ngModel)]="d.params.w" (input)="changeBaseMeasurements()" />
@@ -27,7 +27,7 @@
 
     <label>
       Height : Width Ratio
-      <div class="ratio">
+      <div class="input-group">
         <input type="number" step="1" min="1" [(ngModel)]="d.params.htoW.n" (input)="changeBaseRatios()" />
         <span>:</span>
         <input type="number" step="1" min="1" [(ngModel)]="d.params.htoW.d" (input)="changeBaseRatios()" />
@@ -42,7 +42,7 @@
     <summary>Bout Sizing</summary>
     <label>
       Upper Bout : Lower Bout Ratio
-      <div class="ratio">
+      <div class="input-group">
         <input type="number" step="1" min="1" [(ngModel)]="d.params.hiToLowW.n" (input)="changeBouts()" />
         <span>:</span>
         <input type="number" step="1" min="1" [(ngModel)]="d.params.hiToLowW.d" (input)="changeBouts()" />
@@ -55,7 +55,7 @@
     <summary>Upper Bout</summary>
     <label>
       Vesica Radius : Distance Ratio
-      <div class="ratio">
+      <div class="input-group">
         <input type="number" step="1" min="1" [(ngModel)]="d.params.hiVesRadToGap.n" (input)="changeUpperVesica()" />
         <span>:</span>
         <input type="number" step="1" min="1" [(ngModel)]="d.params.hiVesRadToGap.d" (input)="changeUpperVesica()" />
@@ -66,7 +66,7 @@
 
     <label>
       Join Arc Length : Height Ratio
-      <div class="ratio">
+      <div class="input-group">
         <input type="number" step="1" min="1" [(ngModel)]="d.params.hiJoinArcToH.n" (input)="changeUpperVesica()" />
         <span>:</span>
         <input type="number" step="1" min="1" [(ngModel)]="d.params.hiJoinArcToH.d" (input)="changeUpperVesica()" />
@@ -87,7 +87,7 @@
 
     <label>
       Vesica Radius : Gap Ratio
-      <div class="ratio">
+      <div class="input-group">
         <input type="number" step="1" min="1" [(ngModel)]="d.params.lowVesRadToGap.n" (input)="changeLowerVesica()" />
         <span>:</span>
         <input type="number" step="1" min="1" [(ngModel)]="d.params.lowVesRadToGap.d" (input)="changeLowerVesica()" />
@@ -98,7 +98,7 @@
 
     <label>
       Join Arc Length : Height Ratio
-      <div class="ratio">
+      <div class="input-group">
         <input type="number" step="1" min="1" [(ngModel)]="d.params.lowJoinArcToH.n" (input)="changeLowerVesica()" />
         <span>:</span>
         <input type="number" step="1" min="1" [(ngModel)]="d.params.lowJoinArcToH.d" (input)="changeLowerVesica()" />
@@ -119,7 +119,7 @@
     <summary>Corner Placement</summary>
     <label>
       Center Section : Height
-      <div class="ratio">
+      <div class="input-group">
         <input type="number" step="1" min="0" [(ngModel)]="d.params.cenSecToH.n" (input)="changeCornerPosition()" />
         <span>:</span>
         <input type="number" step="1" min="1" [(ngModel)]="d.params.cenSecToH.d" (input)="changeCornerPosition()" />
@@ -130,7 +130,7 @@
 
     <label>
       Upper Corner Section : Center Section
-      <div class="ratio">
+      <div class="input-group">
         <input type="number" step="1" min="0" [(ngModel)]="d.params.hiCornPart" (input)="changeCornerPosition()" />
         <span>:</span>
         <input type="number" step="1" min="1" [(ngModel)]="d.params.cenSecParts" (input)="changeCornerPosition()" />
@@ -141,7 +141,7 @@
 
     <label>
       Lower Corner Section : Center Section
-      <div class="ratio">
+      <div class="input-group">
         <input type="number" step="1" min="0" [(ngModel)]="d.params.lowCornPart" (input)="changeCornerPosition()" />
         <span>:</span>
         <input type="number" step="1" min="1" [(ngModel)]="d.params.cenSecParts" (input)="changeCornerPosition()" />
@@ -162,7 +162,7 @@
     <summary>Outer Corner Radius</summary>
     <label>
       Upper Outside Corner Radii : High Width
-      <div class="ratio">
+      <div class="input-group">
         <input type="number" step="1" min="0" [(ngModel)]="d.params.hiOutCornerRadToHiW.n"
           (input)="changeOuterCorners()" />
         <span>:</span>
@@ -175,7 +175,7 @@
 
     <label>
       Lower Outside Corner Radii : Low Width
-      <div class="ratio">
+      <div class="input-group">
         <input type="number" step="1" min="0" [(ngModel)]="d.params.lowOutCornerRadToW.n"
           (input)="changeOuterCorners()" />
         <span>:</span>
@@ -200,7 +200,7 @@
 
     <label>
       Waist Width : Total Width
-      <div class="ratio">
+      <div class="input-group">
         <input type="number" step="1" min="0" [(ngModel)]="d.params.waistWidthToW.n" (input)="changeInnerBouts()" />
         <span>:</span>
         <input type="number" step="1" min="1" [(ngModel)]="d.params.waistWidthToW.d" (input)="changeInnerBouts()" />
@@ -209,7 +209,7 @@
 
     <label>
       Inner Bout Arc : Total Width
-      <div class="ratio">
+      <div class="input-group">
         <input type="number" step="1" min="0" [(ngModel)]="d.params.waistArcRadToW.n" (input)="changeInnerBouts()" />
         <span>:</span>
         <input type="number" step="1" min="1" [(ngModel)]="d.params.waistArcRadToW.d" (input)="changeInnerBouts()" />
@@ -220,7 +220,7 @@
 
     <label>
       Upper Inside Corner Radii : High Width
-      <div class="ratio">
+      <div class="input-group">
         <input type="number" step="1" min="0" [(ngModel)]="d.params.hiInnerCornerRadToW.n"
           (input)="changeInnerBouts()" />
         <span>:</span>
@@ -233,7 +233,7 @@
 
     <label>
       Lower Inside Corner Radii : Low Width
-      <div class="ratio">
+      <div class="input-group">
         <input type="number" step="1" min="0" [(ngModel)]="d.params.lowInnerCornerRadToW.n"
           (input)="changeInnerBouts()" />
         <span>:</span>
