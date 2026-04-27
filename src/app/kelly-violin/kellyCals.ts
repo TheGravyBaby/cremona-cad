@@ -247,8 +247,8 @@ export function calculatePrimaryShapes(data: KellyViolinData): void {
 		let lowerLeftVesica = { x: -data.params.boutLowR + data.params.vesaciLowR, y: data.params.boutLowY, r: data.params.vesaciLowR };
 		let upperRightVesica = { x: data.params.boutUpR - data.params.vesaciUpR, y: data.params.boutUpY, r: data.params.vesaciUpR };
 		let upperLeftVesica = { x: -data.params.boutUpR + data.params.vesaciUpR, y: data.params.boutUpY, r: data.params.vesaciUpR };
-		
-		let upperJoiningCircle ;
+
+		let upperJoiningCircle;
 		if (data.options.lockUpperJoinArc) {
 			upperJoiningCircle = findJoiningCircleFromCircleAndPoint(upperRightVesica, { x: 0, y: data.params.height - data.params.inset });
 		}
@@ -267,8 +267,8 @@ export function calculatePrimaryShapes(data: KellyViolinData): void {
 		}
 
 		if (upperJoiningCircle.r == Infinity) {
-			error(`Upper vesaci won't fit within the current height. Either decrease their radius or unlock the upper join arc.`, "Upper Vesica Limit");	
-			return;		
+			error(`Upper vesaci won't fit within the current height. Either decrease their radius or unlock the upper join arc.`, "Upper Vesica Limit");
+			return;
 		}
 		if (lowerJoiningCircle.r == Infinity) {
 			error(`Lower vesaci won't fit within the current height. Either decrease their radius or unlock the lower join arc.`, "Lower Vesica Limit");
@@ -594,40 +594,45 @@ export function calculateTopPath(data: KellyViolinData): void {
 	});
 }
 
-export function calculateMouldPath(data: KellyViolinData, useHighAccuracy = false): void {
+export function calculateMouldPath(data: KellyViolinData, useHighAccuracy = false, skipDiff = false): void {
 	calculateMainPathsUnified(data);
 
-		let corners = data.intersects.corners
+	const bitRadius = data.params.bitDiameter ? data.params.bitDiameter / 2 : 0;
+	let corners = data.intersects.corners
 
-		data.shapes.lowerRightBlock = new Rectangle(new Pt(corners.lowerRight.x + data.params.blockCornerLowPad, corners.lowerRight.y + data.params.blockCornerLowPad), new Pt(corners.lowerRight.x - (data.params.blockCornerLowW - data.params.blockCornerLowPad), corners.lowerRight.y - (data.params.blockCornerLowH - data.params.blockCornerLowPad)));
-		data.shapes.lowerLeftBlock = new Rectangle(new Pt(corners.lowerLeft.x - data.params.blockCornerLowPad, corners.lowerLeft.y + data.params.blockCornerLowPad), new Pt(corners.lowerLeft.x + (data.params.blockCornerLowW - data.params.blockCornerLowPad), corners.lowerLeft.y - (data.params.blockCornerLowH - data.params.blockCornerLowPad)));
-		data.shapes.upperRightBlock = new Rectangle(new Pt(corners.upperRight.x + data.params.blockCornerUpPad, corners.upperRight.y - data.params.blockCornerUpPad), new Pt(corners.upperRight.x - (data.params.blockCornerUpW - data.params.blockCornerUpPad), corners.upperRight.y + (data.params.blockCornerUpH - data.params.blockCornerUpPad)));
-		data.shapes.upperLeftBlock = new Rectangle(new Pt(corners.upperLeft.x - data.params.blockCornerUpPad, corners.upperLeft.y - data.params.blockCornerUpPad), new Pt(corners.upperLeft.x + (data.params.blockCornerUpW - data.params.blockCornerUpPad), corners.upperLeft.y + (data.params.blockCornerUpH - data.params.blockCornerUpPad)));
+	data.shapes.lowerRightBlock = new Rectangle(new Pt(corners.lowerRight.x + data.params.blockCornerLowPad, corners.lowerRight.y + data.params.blockCornerLowPad), new Pt(corners.lowerRight.x - (data.params.blockCornerLowW - data.params.blockCornerLowPad), corners.lowerRight.y - (data.params.blockCornerLowH - data.params.blockCornerLowPad)));
+	data.shapes.lowerLeftBlock = new Rectangle(new Pt(corners.lowerLeft.x - data.params.blockCornerLowPad, corners.lowerLeft.y + data.params.blockCornerLowPad), new Pt(corners.lowerLeft.x + (data.params.blockCornerLowW - data.params.blockCornerLowPad), corners.lowerLeft.y - (data.params.blockCornerLowH - data.params.blockCornerLowPad)));
+	data.shapes.upperRightBlock = new Rectangle(new Pt(corners.upperRight.x + data.params.blockCornerUpPad, corners.upperRight.y - data.params.blockCornerUpPad), new Pt(corners.upperRight.x - (data.params.blockCornerUpW - data.params.blockCornerUpPad), corners.upperRight.y + (data.params.blockCornerUpH - data.params.blockCornerUpPad)));
+	data.shapes.upperLeftBlock = new Rectangle(new Pt(corners.upperLeft.x - data.params.blockCornerUpPad, corners.upperLeft.y - data.params.blockCornerUpPad), new Pt(corners.upperLeft.x + (data.params.blockCornerUpW - data.params.blockCornerUpPad), corners.upperLeft.y + (data.params.blockCornerUpH - data.params.blockCornerUpPad)));
 
-		const lowerBlockP1 = new Pt(-0.5 * data.params.blowLowW, data.params.inset);
-		const lowerBlockP2 = new Pt(0.5 * data.params.blowLowW, lowerBlockP1.y + data.params.blockLowH);
-		data.shapes.lowerBlock = new Rectangle(lowerBlockP1, lowerBlockP2);
+	let highpoint = pointOnCircle(data.shapes.upperJoiningCircle, 1 / 2 * Math.PI)
+	let lowPoint = pointOnCircle(data.shapes.lowerJoiningCircle, 3 / 2 * Math.PI)
 
-		const upperBlockP1 = new Pt(-0.5 * data.params.blockUpW, data.params.height - data.params.inset);
-		const upperBlockP2 = new Pt(0.5 * data.params.blockUpW, upperBlockP1.y - data.params.blockUpH);
-		data.shapes.upperBlock = new Rectangle(upperBlockP1, upperBlockP2);
+	const lowerBlockP1 = new Pt(-0.5 * data.params.blowLowW, lowPoint.y);
+	const lowerBlockP2 = new Pt(0.5 * data.params.blowLowW, lowerBlockP1.y + data.params.blockLowH);
+	data.shapes.lowerBlock = new Rectangle(lowerBlockP1, lowerBlockP2);
 
-		const blockInset = 20;
-		const clampChannelWidth = 25;
+	const upperBlockP1 = new Pt(-0.5 * data.params.blockUpW, highpoint.y);
+	const upperBlockP2 = new Pt(0.5 * data.params.blockUpW, upperBlockP1.y - data.params.blockUpH);
+	data.shapes.upperBlock = new Rectangle(upperBlockP1, upperBlockP2);
 
-		const lowerBlockClampingCutoutP1 = new Pt(data.shapes.lowerBlock.Pt1.x * 1.2, data.shapes.lowerBlock.Pt2.y + blockInset);
-		const lowerBlockClampingCutoutP2 = new Pt(data.shapes.lowerBlock.Pt2.x * 1.2, data.shapes.lowerBlock.Pt2.y + blockInset + clampChannelWidth);
-		const upperBlockClampingCutoutP1 = new Pt(lowerBlockClampingCutoutP1.x, data.shapes.upperBlock.Pt2.y - blockInset);
-		const upperBlockClampingCutoutP2 = new Pt(lowerBlockClampingCutoutP2.x, data.shapes.upperBlock.Pt2.y - (blockInset + clampChannelWidth));
-		const leftCornerBlockClampingCutoutP1 = new Pt(lowerBlockClampingCutoutP1.x, lowerBlockClampingCutoutP2.y + blockInset);
-		const leftCornerBlockClampingCutoutP2 = new Pt(lowerBlockClampingCutoutP1.x + clampChannelWidth, upperBlockClampingCutoutP2.y - blockInset);
-		const rightCornerBlockClampingCutoutP1 = new Pt(lowerBlockClampingCutoutP2.x, lowerBlockClampingCutoutP2.y + blockInset);
-		const rightCornerBlockClampingCutoutP2 = new Pt(lowerBlockClampingCutoutP2.x - clampChannelWidth, upperBlockClampingCutoutP2.y - blockInset);
+	const blockInset = 20;
+	const clampChannelWidth = data.params.clampChannelWidth;
+	const clampWidest = Math.max(Math.abs(data.shapes.lowerBlock.Pt1.x), Math.abs(data.shapes.upperBlock.Pt1.x));
 
-		data.shapes.lowerClampCutout = { Pt1: lowerBlockClampingCutoutP1, Pt2: lowerBlockClampingCutoutP2 };
-		data.shapes.upperClampCutout = { Pt1: upperBlockClampingCutoutP1, Pt2: upperBlockClampingCutoutP2 };
-		data.shapes.leftClampCutout = { Pt1: leftCornerBlockClampingCutoutP1, Pt2: leftCornerBlockClampingCutoutP2 };
-		data.shapes.rightClampCutout = { Pt1: rightCornerBlockClampingCutoutP1, Pt2: rightCornerBlockClampingCutoutP2 };
+	const lowerBlockClampingCutoutP1 = new Pt(clampWidest * 1.2, data.shapes.lowerBlock.Pt2.y + blockInset);
+	const lowerBlockClampingCutoutP2 = new Pt(clampWidest * -1.2, data.shapes.lowerBlock.Pt2.y + blockInset + clampChannelWidth);
+	const upperBlockClampingCutoutP1 = new Pt(lowerBlockClampingCutoutP1.x, data.shapes.upperBlock.Pt2.y - blockInset);
+	const upperBlockClampingCutoutP2 = new Pt(lowerBlockClampingCutoutP2.x, data.shapes.upperBlock.Pt2.y - (blockInset + clampChannelWidth));
+	const leftCornerBlockClampingCutoutP1 = new Pt(lowerBlockClampingCutoutP1.x, lowerBlockClampingCutoutP2.y + blockInset);
+	const leftCornerBlockClampingCutoutP2 = new Pt(lowerBlockClampingCutoutP1.x - clampChannelWidth, upperBlockClampingCutoutP2.y - blockInset);
+	const rightCornerBlockClampingCutoutP1 = new Pt(lowerBlockClampingCutoutP2.x, lowerBlockClampingCutoutP2.y + blockInset);
+	const rightCornerBlockClampingCutoutP2 = new Pt(lowerBlockClampingCutoutP2.x + clampChannelWidth, upperBlockClampingCutoutP2.y - blockInset);
+
+	data.shapes.lowerClampCutout = { Pt1: lowerBlockClampingCutoutP1, Pt2: lowerBlockClampingCutoutP2 };
+	data.shapes.upperClampCutout = { Pt1: upperBlockClampingCutoutP1, Pt2: upperBlockClampingCutoutP2 };
+	data.shapes.leftClampCutout = { Pt1: leftCornerBlockClampingCutoutP1, Pt2: leftCornerBlockClampingCutoutP2 };
+	data.shapes.rightClampCutout = { Pt1: rightCornerBlockClampingCutoutP1, Pt2: rightCornerBlockClampingCutoutP2 };
 
 	const pathObj = data.paths.find(c => c.name === 'innerPathUnified')?.paths[0];
 	const {
@@ -647,6 +652,22 @@ export function calculateMouldPath(data: KellyViolinData, useHighAccuracy = fals
 		return;
 	}
 
+	if (skipDiff) {
+		const oldMouldPaths = data.paths.find(c => c.name === 'mouldPath')?.paths || [];
+		upsertCalc(data, {
+			name: 'mouldPath',
+			paths: [
+				oldMouldPaths[0],
+				pathFromRoundedRect(lowerClampCutout, bitRadius),
+				pathFromRoundedRect(upperClampCutout, bitRadius),
+				pathFromRoundedRect(leftClampCutout, bitRadius),
+				pathFromRoundedRect(rightClampCutout, bitRadius),
+			],
+		});
+		return;
+
+	}
+
 	const renderDensity = useHighAccuracy ? 0.1 : 1;
 	let mouldPath = differenceFromTwoPaths(pathObj, pathFromRect(lowerLeftBlock), renderDensity);
 	mouldPath = differenceFromTwoPaths(mouldPath, pathFromRect(lowerRightBlock), renderDensity);
@@ -655,7 +676,6 @@ export function calculateMouldPath(data: KellyViolinData, useHighAccuracy = fals
 	mouldPath = differenceFromTwoPaths(mouldPath, pathFromRect(lowerBlock), renderDensity);
 	mouldPath = differenceFromTwoPaths(mouldPath, pathFromRect(upperBlock), renderDensity);
 
-	const bitRadius = data.params.bitDiameter ? data.params.bitDiameter / 2 : 0;
 	if (bitRadius > 0) {
 		const tolerance = 0.5;
 		const bitOffset = (bitRadius * Math.sqrt(2) / 2) - tolerance;
