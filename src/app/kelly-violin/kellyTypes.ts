@@ -246,9 +246,12 @@ export const KELLY_DEFAULT_PARAMS: KellyParams = {
 	cornerCircUpCBoutR: 20,
 	cornerCircLowCBoutR: 20,
 	cornerCircLowBoutR: 24,
-	blockCornerH: 24,
-	blockCornerW: 20,
-	blockCornerPad: 8,
+	blockCornerUpH: 24,
+	blockCornerUpW: 20,
+	blockCornerUpPad: 8,
+	blockCornerLowH: 24,
+	blockCornerLowW: 20,
+	blockCornerLowPad: 8,
 	blockLowH: 20,
 	blowLowW: 60,
 	blockUpH: 20,
@@ -291,9 +294,12 @@ export const KELLY_BLANK_PARAMS: KellyParams = {
 	cornerCircUpCBoutR: 0,
 	cornerCircLowCBoutR: 0,
 	cornerCircLowBoutR: 0,
-	blockCornerH: 0,
-	blockCornerW: 0,
-	blockCornerPad: 0,
+	blockCornerUpH: 24,
+	blockCornerUpW: 20,
+	blockCornerUpPad: 8,
+	blockCornerLowH: 24,
+	blockCornerLowW: 20,
+	blockCornerLowPad: 8,
 	blockLowH: 0,
 	blowLowW: 0,
 	blockUpH: 0,
@@ -335,9 +341,12 @@ export interface KellyParams {
 	cornerCircUpCBoutR: number;
 	cornerCircLowCBoutR: number;
 	cornerCircLowBoutR: number;
-	blockCornerH: number;
-	blockCornerW: number;
-	blockCornerPad: number;
+	blockCornerUpH: number;
+	blockCornerUpW: number;
+	blockCornerUpPad: number;
+	blockCornerLowH: number;
+	blockCornerLowW: number;
+	blockCornerLowPad: number;
 	blockLowH: number;
 	blowLowW: number;
 	blockUpH: number;

@@ -153,13 +153,19 @@ export function initializeBlocks(d: KellyViolinData) {
 	const width = d.params.width;
 
 	if (
-		d.params.blockCornerH == 0 &&
-		d.params.blockCornerW == 0 &&
-		d.params.blockCornerPad == 0
+		d.params.blockCornerUpH == 0 &&
+		d.params.blockCornerUpW == 0 &&
+		d.params.blockCornerUpPad == 0 &&
+		d.params.blockCornerLowH == 0 &&
+		d.params.blockCornerLowW == 0 &&
+		d.params.blockCornerLowPad == 0
 	) {
-		d.params.blockCornerW = Math.round(width * 0.10);
-		d.params.blockCornerH = Math.round(width * 0.12);
-		d.params.blockCornerPad = Math.round(width * 0.04);
+		d.params.blockCornerUpW = Math.round(width * 0.10);
+		d.params.blockCornerUpH = Math.round(width * 0.12);
+		d.params.blockCornerUpPad = Math.round(width * 0.04);
+		d.params.blockCornerLowW = Math.round(width * 0.12);
+		d.params.blockCornerLowH = Math.round(width * 0.14);
+		d.params.blockCornerLowPad = Math.round(width * 0.04);
 	}
 
 	if (
@@ -247,7 +253,7 @@ export function calculatePrimaryShapes(data: KellyViolinData): void {
 			upperJoiningCircle = findJoiningCircleFromCircleAndPoint(upperRightVesica, { x: 0, y: data.params.height - data.params.inset });
 		}
 		else {
-			data.params.joinArcUpR = data.params.joinArcUpR ?? data.params.height
+			data.params.joinArcUpR = data.params.joinArcUpR ?? data.params.height / 2
 			upperJoiningCircle = findJoiningCircleOfKnownRadius(upperRightVesica, data.params.joinArcUpR)
 		}
 
@@ -256,7 +262,7 @@ export function calculatePrimaryShapes(data: KellyViolinData): void {
 			lowerJoiningCircle = findJoiningCircleFromCircleAndPoint(lowerRightVesica, { x: 0, y: data.params.inset });
 		}
 		else {
-			data.params.joinArcLowR = data.params.joinArcLowR ?? data.params.height
+			data.params.joinArcLowR = data.params.joinArcLowR ?? data.params.height / 2
 			lowerJoiningCircle = findJoiningCircleOfKnownRadius(lowerRightVesica, data.params.joinArcLowR, false)
 		}
 
@@ -331,39 +337,6 @@ export function calculatePrimaryShapes(data: KellyViolinData): void {
 		data.intersects.corners.upperLeftCornerBottomBodyIntersection = circleCircleIntersections(upperBottomLeftCornerCircle, data.shapes.centerBoutLeft)[1];
 		data.intersects.corners.upperRightCornerTopBodyIntersection = circleCircleIntersections(upperTopRightCornerCircle, data.shapes.upperBout)[0];
 		data.intersects.corners.upperRightCornerBottomBodyIntersection = circleCircleIntersections(upperBottomRightCornerCircle, data.shapes.centerBoutRight)[1];
-	}
-
-	if (corners) {
-		const pad = data.params.blockCornerPad;
-		data.shapes.lowerRightBlock = new Rectangle(new Pt(corners.lowerRight.x + pad, corners.lowerRight.y + pad), new Pt(corners.lowerRight.x - (data.params.blockCornerW - pad), corners.lowerRight.y - (data.params.blockCornerH - pad)));
-		data.shapes.lowerLeftBlock = new Rectangle(new Pt(corners.lowerLeft.x - pad, corners.lowerLeft.y + pad), new Pt(corners.lowerLeft.x + (data.params.blockCornerW - pad), corners.lowerLeft.y - (data.params.blockCornerH - pad)));
-		data.shapes.upperRightBlock = new Rectangle(new Pt(corners.upperRight.x + pad, corners.upperRight.y - pad), new Pt(corners.upperRight.x - (data.params.blockCornerW - pad), corners.upperRight.y + (data.params.blockCornerH - pad)));
-		data.shapes.upperLeftBlock = new Rectangle(new Pt(corners.upperLeft.x - pad, corners.upperLeft.y - pad), new Pt(corners.upperLeft.x + (data.params.blockCornerW - pad), corners.upperLeft.y + (data.params.blockCornerH - pad)));
-
-		const lowerBlockP1 = new Pt(-0.5 * data.params.blowLowW, data.params.inset);
-		const lowerBlockP2 = new Pt(0.5 * data.params.blowLowW, lowerBlockP1.y + data.params.blockLowH);
-		data.shapes.lowerBlock = new Rectangle(lowerBlockP1, lowerBlockP2);
-
-		const upperBlockP1 = new Pt(-0.5 * data.params.blockUpW, data.params.height - data.params.inset);
-		const upperBlockP2 = new Pt(0.5 * data.params.blockUpW, upperBlockP1.y - data.params.blockUpH);
-		data.shapes.upperBlock = new Rectangle(upperBlockP1, upperBlockP2);
-
-		const blockInset = 20;
-		const clampChannelWidth = 25;
-
-		const lowerBlockClampingCutoutP1 = new Pt(data.shapes.lowerBlock.Pt1.x * 1.2, data.shapes.lowerBlock.Pt2.y + blockInset);
-		const lowerBlockClampingCutoutP2 = new Pt(data.shapes.lowerBlock.Pt2.x * 1.2, data.shapes.lowerBlock.Pt2.y + blockInset + clampChannelWidth);
-		const upperBlockClampingCutoutP1 = new Pt(lowerBlockClampingCutoutP1.x, data.shapes.upperBlock.Pt2.y - blockInset);
-		const upperBlockClampingCutoutP2 = new Pt(lowerBlockClampingCutoutP2.x, data.shapes.upperBlock.Pt2.y - (blockInset + clampChannelWidth));
-		const leftCornerBlockClampingCutoutP1 = new Pt(lowerBlockClampingCutoutP1.x, lowerBlockClampingCutoutP2.y + blockInset);
-		const leftCornerBlockClampingCutoutP2 = new Pt(lowerBlockClampingCutoutP1.x + clampChannelWidth, upperBlockClampingCutoutP2.y - blockInset);
-		const rightCornerBlockClampingCutoutP1 = new Pt(lowerBlockClampingCutoutP2.x, lowerBlockClampingCutoutP2.y + blockInset);
-		const rightCornerBlockClampingCutoutP2 = new Pt(lowerBlockClampingCutoutP2.x - clampChannelWidth, upperBlockClampingCutoutP2.y - blockInset);
-
-		data.shapes.lowerClampCutout = { Pt1: lowerBlockClampingCutoutP1, Pt2: lowerBlockClampingCutoutP2 };
-		data.shapes.upperClampCutout = { Pt1: upperBlockClampingCutoutP1, Pt2: upperBlockClampingCutoutP2 };
-		data.shapes.leftClampCutout = { Pt1: leftCornerBlockClampingCutoutP1, Pt2: leftCornerBlockClampingCutoutP2 };
-		data.shapes.rightClampCutout = { Pt1: rightCornerBlockClampingCutoutP1, Pt2: rightCornerBlockClampingCutoutP2 };
 	}
 
 	calculateMainPath(data);
@@ -623,6 +596,38 @@ export function calculateTopPath(data: KellyViolinData): void {
 
 export function calculateMouldPath(data: KellyViolinData, useHighAccuracy = false): void {
 	calculateMainPathsUnified(data);
+
+		let corners = data.intersects.corners
+
+		data.shapes.lowerRightBlock = new Rectangle(new Pt(corners.lowerRight.x + data.params.blockCornerLowPad, corners.lowerRight.y + data.params.blockCornerLowPad), new Pt(corners.lowerRight.x - (data.params.blockCornerLowW - data.params.blockCornerLowPad), corners.lowerRight.y - (data.params.blockCornerLowH - data.params.blockCornerLowPad)));
+		data.shapes.lowerLeftBlock = new Rectangle(new Pt(corners.lowerLeft.x - data.params.blockCornerLowPad, corners.lowerLeft.y + data.params.blockCornerLowPad), new Pt(corners.lowerLeft.x + (data.params.blockCornerLowW - data.params.blockCornerLowPad), corners.lowerLeft.y - (data.params.blockCornerLowH - data.params.blockCornerLowPad)));
+		data.shapes.upperRightBlock = new Rectangle(new Pt(corners.upperRight.x + data.params.blockCornerUpPad, corners.upperRight.y - data.params.blockCornerUpPad), new Pt(corners.upperRight.x - (data.params.blockCornerUpW - data.params.blockCornerUpPad), corners.upperRight.y + (data.params.blockCornerUpH - data.params.blockCornerUpPad)));
+		data.shapes.upperLeftBlock = new Rectangle(new Pt(corners.upperLeft.x - data.params.blockCornerUpPad, corners.upperLeft.y - data.params.blockCornerUpPad), new Pt(corners.upperLeft.x + (data.params.blockCornerUpW - data.params.blockCornerUpPad), corners.upperLeft.y + (data.params.blockCornerUpH - data.params.blockCornerUpPad)));
+
+		const lowerBlockP1 = new Pt(-0.5 * data.params.blowLowW, data.params.inset);
+		const lowerBlockP2 = new Pt(0.5 * data.params.blowLowW, lowerBlockP1.y + data.params.blockLowH);
+		data.shapes.lowerBlock = new Rectangle(lowerBlockP1, lowerBlockP2);
+
+		const upperBlockP1 = new Pt(-0.5 * data.params.blockUpW, data.params.height - data.params.inset);
+		const upperBlockP2 = new Pt(0.5 * data.params.blockUpW, upperBlockP1.y - data.params.blockUpH);
+		data.shapes.upperBlock = new Rectangle(upperBlockP1, upperBlockP2);
+
+		const blockInset = 20;
+		const clampChannelWidth = 25;
+
+		const lowerBlockClampingCutoutP1 = new Pt(data.shapes.lowerBlock.Pt1.x * 1.2, data.shapes.lowerBlock.Pt2.y + blockInset);
+		const lowerBlockClampingCutoutP2 = new Pt(data.shapes.lowerBlock.Pt2.x * 1.2, data.shapes.lowerBlock.Pt2.y + blockInset + clampChannelWidth);
+		const upperBlockClampingCutoutP1 = new Pt(lowerBlockClampingCutoutP1.x, data.shapes.upperBlock.Pt2.y - blockInset);
+		const upperBlockClampingCutoutP2 = new Pt(lowerBlockClampingCutoutP2.x, data.shapes.upperBlock.Pt2.y - (blockInset + clampChannelWidth));
+		const leftCornerBlockClampingCutoutP1 = new Pt(lowerBlockClampingCutoutP1.x, lowerBlockClampingCutoutP2.y + blockInset);
+		const leftCornerBlockClampingCutoutP2 = new Pt(lowerBlockClampingCutoutP1.x + clampChannelWidth, upperBlockClampingCutoutP2.y - blockInset);
+		const rightCornerBlockClampingCutoutP1 = new Pt(lowerBlockClampingCutoutP2.x, lowerBlockClampingCutoutP2.y + blockInset);
+		const rightCornerBlockClampingCutoutP2 = new Pt(lowerBlockClampingCutoutP2.x - clampChannelWidth, upperBlockClampingCutoutP2.y - blockInset);
+
+		data.shapes.lowerClampCutout = { Pt1: lowerBlockClampingCutoutP1, Pt2: lowerBlockClampingCutoutP2 };
+		data.shapes.upperClampCutout = { Pt1: upperBlockClampingCutoutP1, Pt2: upperBlockClampingCutoutP2 };
+		data.shapes.leftClampCutout = { Pt1: leftCornerBlockClampingCutoutP1, Pt2: leftCornerBlockClampingCutoutP2 };
+		data.shapes.rightClampCutout = { Pt1: rightCornerBlockClampingCutoutP1, Pt2: rightCornerBlockClampingCutoutP2 };
 
 	const pathObj = data.paths.find(c => c.name === 'innerPathUnified')?.paths[0];
 	const {

@@ -974,17 +974,16 @@ export function findJoiningCircleOfKnownRadius(U: Circle, R: number, max: boolea
   //        C(0, Cy)
   //        | \
   //        |  \
-  // Cy-Uy  |   \ C.r - U.r
-  //  (b)   |    \
+  // C.r- b |   \ C.r - U.r
+  //        |    \
   //        |-----\ (U.x, U.y)
-  //        |  x   \ U.r
+  //     b  |  x   \ U.r
   //        |       
-  //        P 
-  //        (0, Cy-R)
+  //        P(0, Cy-C.r)
 
   // the length b is the defined by the "cutoff" from the center of U
   // we make a right triangle above with two known sides, meaning we can solve the other
-  // (C.r-U.r)^2 = (C.y-U.y)^2 + x^2 
+  // (C.r-U.r)^2 = (C.r-b)^2 + x^2 
 
   let RadDiff = R - U.r
   let bPlus = R + Math.sqrt(RadDiff*RadDiff - U.x*U.x);

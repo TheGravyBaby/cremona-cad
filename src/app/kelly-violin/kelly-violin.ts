@@ -1,10 +1,10 @@
 import { ChangeDetectorRef, Component, HostListener, Input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { error, warn } from '../shared/message-emitter';
+import { error, info, warn } from '../shared/message-emitter';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { Circle } from '../models/types';
 import { greyOut, renderCircle, renderCircleAngleIndicator, renderCrosshair, renderDashedLine, renderDashLine, renderDistanceMeasurementLine, renderPath, renderRect } from '../helpers/renderFuncs';
-import { combinePathStrings } from '../helpers/draftMath';
+import { combinePathStrings, pointOnCircle } from '../helpers/draftMath';
 import { KellyViolinData, KellyViolinRecipe } from './kellyTypes';
 import { calculatePrimaryShapes, calculateMainPathsSegmented, calculateMainPathsUnified, calculateMouldPath, calculateOffsetPathsSegments, calculateTopPath, initializeMainBouts, initializeMinorBouts, initializeCornerPlacement, initializeCornerCircles, initializeTopAndBottomTrace, initializeBlocks, normalizeDegrees, calculateMainBouts } from './kellyCals';
 import { clampParam, safeRun } from '../helpers/validators';
@@ -88,7 +88,7 @@ export class KellyViolin extends RecipeComponentBase {
   showAngleIndicators = true;
   showCutoffIndicators = true;
   viewOuterPathExport = true;
-  viewInnerPathExport = false;
+  viewInnerPath = false;
   viewMouldExport = false;
   viewSegmentedOuter = false;
   viewSegmentedInnerPartial = false;
@@ -117,7 +117,7 @@ export class KellyViolin extends RecipeComponentBase {
     lowerBoutOff2: greyOut('#4D74A8', this.off2Factor), //'#a6bcd9ff',
     innerTrace: '#a47272ff',
     outerTrace: '#b37f7fff',
-    mouldTrace: '#83947fff',
+    mouldTrace: '#81887eff',
   }
 
   insetTooltip = "Inset is the distance from the outer edge of the bounding box to inner edge. It can be used to create a margin for the outline of the violin.";
@@ -192,7 +192,7 @@ export class KellyViolin extends RecipeComponentBase {
   }
 
   private hasMouldPattern(): boolean {
-    return this.hasTopAndBottom() && this.d.params.blockCornerH > 0;
+    return this.hasTopAndBottom() && this.d.params.blockCornerUpH > 0;
   }
 
   override onToggle(panel: string, ev: Event) {
@@ -377,7 +377,7 @@ export class KellyViolin extends RecipeComponentBase {
       calculateTopPath(this.d);
       let emitArray = [];
       this.viewOuterPathExport && emitArray.push(this.renderTopPath);
-      this.viewInnerPathExport && emitArray.push(this.renderMainPath);
+      this.viewInnerPath && emitArray.push(this.renderMainPath);
       this.viewMouldExport && emitArray.push(this.renderMainPathWithBlocks);
 
       this.viewSegmentedOuter && emitArray.push((g: any, ui: any) => {
@@ -541,13 +541,16 @@ export class KellyViolin extends RecipeComponentBase {
 
   renderBlocks = (currentModule: boolean) => (g: any, ui: any): void => {
     if (currentModule && this.showGuideLines) {
-      renderRect(this.d.shapes.lowerLeftBlock, this.colors.centerBout, 'none', 2)(g, ui);
-      renderRect(this.d.shapes.upperLeftBlock, this.colors.centerBout, 'none', 2)(g, ui);
-      renderRect(this.d.shapes.upperRightBlock, this.colors.centerBout, 'none', 2)(g, ui);
-      renderRect(this.d.shapes.lowerRightBlock, this.colors.centerBout, 'none', 2)(g, ui);
+      renderRect(this.d.shapes.upperRightBlock, this.colors.centerBoutUp, 'none', 2)(g, ui);
+      renderRect(this.d.shapes.upperLeftBlock, this.colors.centerBoutUp, 'none', 2)(g, ui);
+      renderRect(this.d.shapes.lowerRightBlock, this.colors.centerBoutLow, 'none', 2)(g, ui);
+      renderRect(this.d.shapes.lowerLeftBlock, this.colors.centerBoutLow, 'none', 2)(g, ui);
 
       renderRect(this.d.shapes.lowerBlock, this.colors.lowerBout, 'none', 2)(g, ui);
       renderRect(this.d.shapes.upperBlock, this.colors.upperBout, 'none', 2)(g, ui);
+
+      if (currentModule && this.viewInnerPath)
+        this.renderMainPath(g, ui);
     }
   }
 
@@ -732,6 +735,21 @@ export class KellyViolin extends RecipeComponentBase {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     });
+  }
+
+  tareMeasurements = (): void => {
+    let highpoint = pointOnCircle(this.d.shapes.upperJoiningCircle, 1/2 * Math.PI)
+    let lowPoint = pointOnCircle(this.d.shapes.lowerJoiningCircle, 3/2 * Math.PI)
+
+    let yDiff = Math.round((highpoint.y - lowPoint.y) * 10) / 10;
+    let yOffset = Math.round((this.d.params.inset - lowPoint.y) * 10) / 10;
+
+   
+    this.d.params.boutUpY += yOffset
+    this.d.params.boutLowY += yOffset
+    this.d.params.height = yDiff + this.d.params.inset * 2
+
+    info(`Base Measurements Tared. Height: ${this.d.params.height}mm`, "Base Measurements Tared");
   }
 
   downloadOuterPath = (): void => {
