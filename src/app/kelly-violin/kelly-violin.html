@@ -118,7 +118,6 @@
             }
         </section>
         <section class="ui-group">
-
             <div class="toggle">
                 <input type="checkbox" [(ngModel)]="showGuideLines" (change)="changeMinorBouts()" />
                 <span>Show Guide Lines</span>
@@ -131,6 +130,10 @@
                 <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeMinorBouts()" />
                 <span>Show All Circles</span>
             </div>
+            <button type="button" class="file-upload" (click)="tareMeasurements(); changeMinorBouts()">
+                Tare Base Measurements
+            </button>
+
         </section>
     </details>
     
@@ -282,15 +285,6 @@
         </section>  
 
         <section class="ui-group">
-            <label class="section-label">
-                Edge Inset <span>(mm)</span>
-                <div class="input-group basic-row">
-                    <input class="basic-input" type="number" step=".1" min="1" [(ngModel)]="d.params.inset" (input)="changeOuterTrace()" />
-                    <span class="info-icon" [title]="insetTooltip">ⓘ</span>
-                </div>
-            </label>
-        </section>
-        <section class="ui-group">
 
             <label class="toggle">
                 <input type="checkbox" [(ngModel)]="showInnerCircles" (change)="changeOuterTrace()" />
@@ -311,8 +305,6 @@
                 <span>Show Double Circle Angle</span>
             </label>
         </section>
-
-
     </details>
 
     <details [open]="openPanel === 'mouldPattern'" (toggle)="onToggle('mouldPattern', $event)" [class.panel-disabled]="!isPanelEnabled('mouldPattern')" [attr.aria-disabled]="!isPanelEnabled('mouldPattern')">
@@ -329,19 +321,30 @@
                 </div>
             </section>
             
-            <section class="ui-group" [style.border-color]="colors.centerBoutOff">
-                <div class="ui-group-title">Corner Block</div>
-                <label class="section-label">Height : Width <span>(mm)</span></label>
+            <section class="ui-group" [style.border-color]="colors.centerBoutUp">
+                <div class="ui-group-title">Upper Corner Block</div>
+                <label class="section-label">Height : Width : Pad <span>(mm)</span></label>
                 <div class="input-group basic-row">
-                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blockCornerH" (input)="changeMouldPattern()" />
+                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blockCornerUpH" (input)="changeMouldPattern()" />
                     <span>:</span>
-                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blockCornerW" (input)="changeMouldPattern()" />
+                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blockCornerUpW" (input)="changeMouldPattern()" />
+                    <span>:</span>
+                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blockCornerUpPad" (input)="changeMouldPattern()" />
+
+                </div>
+            </section>
+
+            <section [style.border-color]="colors.centerBoutLow" class="ui-group">
+                <div class="ui-group-title">Lower Corner Block</div>
+                <label class="section-label">Height : Width : Pad <span>(mm)</span></label>
+                <div class="input-group basic-row">
+                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blockCornerLowH" (input)="changeMouldPattern()" />
+                    <span>:</span>
+                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blockCornerLowW" (input)="changeMouldPattern()" />
+                    <span>:</span>
+                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blockCornerLowPad" (input)="changeMouldPattern()" />
                 </div>
 
-                <label class="section-label">Padding <span>(mm)</span></label>
-                <div class="input-group basic-row">
-                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blockCornerPad" (input)="changeMouldPattern()" />
-                </div>
             </section>
 
             <section class="ui-group " [style.border-color]="colors.lowerBoutOff">
@@ -367,6 +370,10 @@
                 <input type="checkbox" [(ngModel)]="showGuideLines" (change)="changeMouldPattern(false)" />
                 <span>Show Blocks</span>
             </div>
+             <label class="toggle">
+                <input type="checkbox" [(ngModel)]="viewInnerPath"  (change)="changeMouldPattern(false)" />
+                <span>Show Inner Path</span>
+            </label>
             <div class="toggle">
                 <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeMouldPattern(false)" />
                 <span>Show All Circles</span>
@@ -392,7 +399,7 @@
                 <div class="export-row">
                     <a (click)="downloadInnerPath()" class="file-upload">Download Inner Path</a>
                     <label class="toggle export-view-toggle">
-                        <input type="checkbox" [(ngModel)]="viewInnerPathExport" (change)="renderExports()" />
+                        <input type="checkbox" [(ngModel)]="viewInnerPath" (change)="renderExports()" />
                         <span>View</span>
                     </label>
                 </div>
