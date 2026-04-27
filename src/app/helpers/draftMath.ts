@@ -970,6 +970,30 @@ export function findJoiningCircleFromCircleAndPoint(U: Circle, P: Pt): Circle {
   return { x: Cx, y: Cy, r: Cr };
 }
 
+export function findJoiningCircleOfKnownRadius(U: Circle, R: number, max: boolean = true): Circle {
+  //        C(0, Cy)
+  //        | \
+  //        |  \
+  // Cy-Uy  |   \ C.r - U.r
+  //  (b)   |    \
+  //        |-----\ (U.x, U.y)
+  //        |  x   \ U.r
+  //        |       
+  //        P 
+  //        (0, Cy-R)
+
+  // the length b is the defined by the "cutoff" from the center of U
+  // we make a right triangle above with two known sides, meaning we can solve the other
+  // (C.r-U.r)^2 = (C.y-U.y)^2 + x^2 
+
+  let RadDiff = R - U.r
+  let bPlus = R + Math.sqrt(RadDiff*RadDiff - U.x*U.x);
+  let bMinus = R - Math.sqrt(RadDiff*RadDiff - U.x*U.x);
+  let b = max ? Math.max(bPlus, bMinus) : Math.min(bPlus, bMinus);
+  let Cy = U.y - b + R;
+
+  return { x: 0, y: Cy, r: R };
+}
 
 export function lineFromTwoPoints(A: Pt, B: Pt): Line {
   let m = (B.y - A.y) / (B.x - A.x);

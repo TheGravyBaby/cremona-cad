@@ -18,6 +18,7 @@ details {
   box-shadow: var(--ui-shadow-soft);
   font-size: 14px;
   transition: border-color 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
+  padding: 4px
 
 }
 
@@ -74,11 +75,16 @@ input:focus-visible {
     opacity: 0.7;
 }
 
-.ratio { display: flex; align-items: center; gap: 8px; }
+.input-group {
+   display: flex; 
+   align-items: center; 
+   gap: 8px; 
+   margin-bottom: 8px;
+  }
 
 .textBoxInput { display: flex; align-items: center; gap: 8px; }
 
-.ratio input { width: 90px; }
+.input-group input { width: 90px; }
 
 .calc-error {
   margin-top: 8px;
@@ -94,7 +100,6 @@ input:focus-visible {
   display:flex;
   align-items:center;
   gap:.5rem;
-  margin-top:.5rem;
   user-select:none;
 }
 
