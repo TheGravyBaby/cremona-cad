@@ -359,13 +359,19 @@
         </div>
 
         <section class="ui-group">
-            <div class="ui-group-title">Tooling & Display</div>
+            <label class="section-label">Clamp Channel Width <span>(mm)</span>
+                <div class="input-group basic-row">
+                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.clampChannelWidth" (input)="changeMouldPattern(true, true)" />
+                </div>
+            </label>
             <label class="section-label">Bit Diameter <span>(mm)</span>
                 <div class="input-group basic-row">
                     <input class="basic-input" type="number" step=".1" min="0" [(ngModel)]="d.params.bitDiameter" (input)="changeMouldPattern()" />
                 </div>
             </label>
+        </section>`
 
+        <section class="ui-group">
             <div class="toggle">
                 <input type="checkbox" [(ngModel)]="showGuideLines" (change)="changeMouldPattern(false)" />
                 <span>Show Blocks</span>

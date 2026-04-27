@@ -97,7 +97,7 @@ export class KellyViolin extends RecipeComponentBase {
   lowerVLimit = Math.round(this.d.params.boutLowR * .9)
 
 
-  offFactor = .4;
+  offFactor = .5;
   off2Factor = .6;
   readonly colors = {
     upperBout: '#4D8660',
@@ -357,11 +357,11 @@ export class KellyViolin extends RecipeComponentBase {
     }));
   }
 
-  changeMouldPattern(calcChange = true) {
+  changeMouldPattern(calcChange = true, skipDiff = false) {
     this.debounce(() => safeRun(() => {
       calcChange && initializeBlocks(this.d);
       calcChange && calculatePrimaryShapes(this.d);
-      calcChange && calculateMouldPath(this.d);
+      calcChange && calculateMouldPath(this.d, false, skipDiff);
       this.draftChange.emit([this.renderMainBouts(false), this.renderMinorBouts(false), this.renderCornerPlacements(false), this.renderCornerCircles(false), this.renderBlocks(true), this.renderMainPathWithBlocks]);
       sessionStorage.setItem('recipeData', JSON.stringify(this.d));
     }));
@@ -447,10 +447,10 @@ export class KellyViolin extends RecipeComponentBase {
 
   renderMinorBouts = (currentModule: boolean) => (g: any, ui: any): void => {
     if ((currentModule && this.showModuleCircles) || this.showAllCircles) {
-      renderCircle(this.d.shapes.upperRightVesaci, this.colors.upperBout)(g, ui);
-      renderCircle(this.d.shapes.upperLeftVesaci, this.colors.upperBout)(g, ui);
-      renderCircle(this.d.shapes.lowerRightVesaci, this.colors.lowerBout)(g, ui);
-      renderCircle(this.d.shapes.lowerLeftVesaci, this.colors.lowerBout)(g, ui);
+      renderCircle(this.d.shapes.upperRightVesaci, this.colors.upperBoutOff)(g, ui);
+      renderCircle(this.d.shapes.upperLeftVesaci, this.colors.upperBoutOff)(g, ui);
+      renderCircle(this.d.shapes.lowerRightVesaci, this.colors.lowerBoutOff)(g, ui);
+      renderCircle(this.d.shapes.lowerLeftVesaci, this.colors.lowerBoutOff)(g, ui);
     }
 
     if (this.showAllCircles) {
@@ -467,8 +467,8 @@ export class KellyViolin extends RecipeComponentBase {
       renderDashLine(this.d.shapes.lowerJoiningCircle, this.d.intersects.minorBouts.lowerRightVesicaLower, this.colors.lowerBoutOff2)(g,ui)
       renderCrosshair(this.d.shapes.lowerJoiningCircle, this.colors.lowerBoutOff2)(g, ui);
       
-      renderCrosshair(this.d.shapes.upperLeftVesaci, this.colors.upperBout)(g, ui);
-      renderCrosshair(this.d.shapes.upperRightVesaci, this.colors.upperBout)(g, ui);
+      renderCrosshair(this.d.shapes.upperLeftVesaci, this.colors.upperBoutOff)(g, ui);
+      renderCrosshair(this.d.shapes.upperRightVesaci, this.colors.upperBoutOff)(g, ui);
       renderCrosshair(this.d.shapes.lowerLeftVesaci, this.colors.lowerBout)(g, ui);
       renderCrosshair(this.d.shapes.lowerRightVesaci, this.colors.lowerBout)(g, ui);
     }

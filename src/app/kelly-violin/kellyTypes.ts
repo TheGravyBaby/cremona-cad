@@ -256,6 +256,7 @@ export const KELLY_DEFAULT_PARAMS: KellyParams = {
 	blowLowW: 60,
 	blockUpH: 20,
 	blockUpW: 40,
+	clampChannelWidth: 25,
 	cornerCircDubLowCBoutR: 10,
 	cornerCircDubLowCBoutTheta: -70,
 	cornerCircDubLowBoutR: 10,
@@ -304,6 +305,7 @@ export const KELLY_BLANK_PARAMS: KellyParams = {
 	blowLowW: 0,
 	blockUpH: 0,
 	blockUpW: 0,
+	clampChannelWidth: 25,
 	cornerCircDubLowCBoutR: 0,
 	cornerCircDubLowCBoutTheta: 0,
 	cornerCircDubLowBoutR: 0,
@@ -351,6 +353,7 @@ export interface KellyParams {
 	blowLowW: number;
 	blockUpH: number;
 	blockUpW: number;
+	clampChannelWidth: number;
 	cornerCircDubLowCBoutR: number;
 	cornerCircDubLowCBoutTheta: number;
 	cornerCircDubLowBoutR: number;
