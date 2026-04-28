@@ -857,6 +857,14 @@ export function angleFromCenter(C: Pt, P: Pt): number {
   return Math.atan2(P.y - C.y, P.x - C.x);
 }
 
+export function offsetCircleRadius(C: Circle, offset: number): Circle {
+  const newR = C.r + offset;
+  if (newR < 0) {
+    throw new Error('Offset cannot be so negative that it produces a circle with negative radius.');
+  }
+  return { x: C.x, y: C.y, r: newR };
+}
+
 export function safeFraction(n: number, d: number):
   { ok: true; value: Fraction } | { ok: false; error: string } {
 
