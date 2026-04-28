@@ -1,28 +1,32 @@
 <div class="panel">
-    <section class="panel-nav" aria-label="Sidebar section navigation">
-        <label class="ui-group-title">Section Select</label>
-        <div class="panel-nav-controls">
-            <button type="button" class="panel-nav-btn" (click)="stepPanel(-1)" title="Previous section"
-                aria-label="Go to previous section" [disabled]="!canStepPanel(-1)">
-                Back
-            </button>
-            <select id="panel-selector" class="panel-select" [ngModel]="openPanel"
-                (ngModelChange)="onPanelSelect($event)">
-                @for (panel of panelOrder; track panel.id) {
-                <option [value]="panel.id" [disabled]="!isPanelEnabled(panel.id)">
-                    {{ panel.label }}@if (!isPanelEnabled(panel.id)) { (Locked) }
-                </option>
-                }
-            </select>
-            <button type="button" class="panel-nav-btn" (click)="stepPanel(1)" title="Next section"
-                aria-label="Go to next section" [disabled]="!canStepPanel(1)">
-                Next
-            </button>
-        </div>
-    </section>
+    <div class="panel-nav-wrap">
+        <section class="panel-nav" aria-label="Sidebar section navigation">
+            <label class="ui-group-title">Section Select</label>
+            <div class="panel-nav-controls">
+                <button type="button" class="panel-nav-btn" (click)="stepPanel(-1)" title="Previous section"
+                    aria-label="Go to previous section" [disabled]="!canStepPanel(-1)">
+                    Back
+                </button>
+                <select id="panel-selector" class="panel-select" [ngModel]="openPanel"
+                    (ngModelChange)="onPanelSelect($event)">
+                    @for (panel of panelOrder; track panel.id) {
+                    <option [value]="panel.id" [disabled]="!isPanelEnabled(panel.id)">
+                        {{ panel.label }}@if (!isPanelEnabled(panel.id)) { (Locked) }
+                    </option>
+                    }
+                </select>
+                <button type="button" class="panel-nav-btn" (click)="stepPanel(1)" title="Next section"
+                    aria-label="Go to next section" [disabled]="!canStepPanel(1)">
+                    Next
+                </button>
+            </div>
+        </section>
+    </div>
+
+    <div class="panel-content">
 
     @if (openPanel === 'base') {
-    <section class="ui-group">
+    <section class="ui-group ">
         <div class="ui-group-title">File Properties</div>
         <label>
             File Name
@@ -493,4 +497,5 @@
     </section>
 
     }
+</div>
 </div>
