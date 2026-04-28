@@ -44,8 +44,8 @@ export interface KellyRatios {
 }
 
 const KELLY_DEFAULT_RATIOS: KellyRatios = {
-	boutUpYToUBR: 7/8,	// a bit arbitrary, but usually works
-	boutLowYToLBR: 7/10,
+	boutUpYToUBR: 3/4,	// a bit arbitrary, but usually works
+	boutLowYToLBR: 3/4,
 	boutUpToLBR: 4/5,
 	boutCToLBR: 4/5,
 	vesicaUpRToUBR: 2/3,
@@ -253,10 +253,10 @@ export const KELLY_DEFAULT_PARAMS: KellyParams = {
 	blockCornerLowW: 20,
 	blockCornerLowPad: 8,
 	blockLowH: 20,
-	blowLowW: 60,
+	blowLowW: 55,
 	blockUpH: 20,
 	blockUpW: 40,
-	clampChannelWidth: 25,
+	clampChannelWidth: 22,
 	cornerCircDubLowCBoutR: 10,
 	cornerCircDubLowCBoutTheta: -70,
 	cornerCircDubLowBoutR: 10,
@@ -301,11 +301,11 @@ export const KELLY_BLANK_PARAMS: KellyParams = {
 	blockCornerLowH: 24,
 	blockCornerLowW: 20,
 	blockCornerLowPad: 8,
-	blockLowH: 0,
-	blowLowW: 0,
-	blockUpH: 0,
-	blockUpW: 0,
-	clampChannelWidth: 25,
+	blockLowH: 20,
+	blowLowW: 55,
+	blockUpH: 20,
+	blockUpW: 40,
+	clampChannelWidth: 22,
 	cornerCircDubLowCBoutR: 0,
 	cornerCircDubLowCBoutTheta: 0,
 	cornerCircDubLowBoutR: 0,

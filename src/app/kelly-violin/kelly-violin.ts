@@ -18,6 +18,17 @@ import { clampParam, safeRun } from '../helpers/validators';
 
 export class KellyViolin extends RecipeComponentBase {
 
+  readonly panelOrder = [
+    { id: 'base', label: 'Base Measurements' },
+    { id: 'mainBouts', label: 'Major Bout Circles' },
+    { id: 'minorBouts', label: 'Minor Bout Circles' },
+    { id: 'cornerPlacement', label: 'Corner Placement' },
+    { id: 'cornerCircles', label: 'Corner Circles' },
+    { id: 'outerTrace', label: 'Outer Trace' },
+    { id: 'mouldPattern', label: 'Mould Pattern' },
+    { id: 'export', label: 'Export' },
+  ] as const;
+
   constructor(private readonly cdr: ChangeDetectorRef) {
     super();
   }
@@ -161,6 +172,42 @@ export class KellyViolin extends RecipeComponentBase {
     }
   }
 
+  onPanelSelect(panel: string): void {
+    if (!panel || !this.isPanelEnabled(panel)) return;
+    this.activatePanel(panel);
+  }
+
+  stepPanel(direction: 1 | -1 | number): void {
+    const enabledPanels: string[] = this.panelOrder
+      .filter(panel => this.isPanelEnabled(panel.id))
+      .map(panel => panel.id);
+
+    if (!enabledPanels.length) return;
+
+    const current = enabledPanels.includes(this.openPanel) ? this.openPanel : enabledPanels[0];
+    const currentIndex = enabledPanels.indexOf(current);
+    const delta = direction >= 0 ? 1 : -1;
+    const nextIndex = (currentIndex + delta + enabledPanels.length) % enabledPanels.length;
+    this.activatePanel(enabledPanels[nextIndex]);
+  }
+
+  private activatePanel(panel: string): void {
+    if (!this.isPanelEnabled(panel)) return;
+
+    this.openPanel = panel;
+    this.showModuleCircles = true;
+    this.showAllCircles = false;
+
+    if (panel === 'base') this.changeBaseMeasurements();
+    else if (panel === 'mainBouts') this.changeMainBouts();
+    else if (panel === 'minorBouts') this.changeMinorBouts();
+    else if (panel === 'cornerPlacement') this.changeCornerPlacement();
+    else if (panel === 'cornerCircles') this.changeCornerCircles();
+    else if (panel === 'outerTrace') this.changeOuterTrace();
+    else if (panel === 'mouldPattern') this.changeMouldPattern();
+    else if (panel === 'export') this.renderExports();
+  }
+
   private hasBaseMeasurements(): boolean {
     return this.d.params.width > 0 && this.d.params.height > 0 && this.d.params.inset >= 0;
   }
@@ -194,43 +241,6 @@ export class KellyViolin extends RecipeComponentBase {
   private hasMouldPattern(): boolean {
     return this.hasTopAndBottom() && this.d.params.blockCornerUpH > 0;
   }
-
-  override onToggle(panel: string, ev: Event) {
-    this._skipDebounce = true;
-    const details = ev.target as HTMLDetailsElement;
-
-    if (!this.isPanelEnabled(panel)) {
-      details.open = false;
-      if (this.openPanel === panel) this.openPanel = '';
-      return;
-    }
-
-    this.showModuleCircles = true;
-    this.showAllCircles = false;
-
-    if (details.open) {
-      // opened -> make it the active panel and render it
-      this.openPanel = panel;
-      if (panel === 'base') this.changeBaseMeasurements();
-      else if (panel === 'mainBouts') this.changeMainBouts();
-      else if (panel === 'minorBouts') this.changeMinorBouts();
-      else if (panel === 'cornerPlacement') this.changeCornerPlacement();
-      else if (panel === 'cornerCircles') this.changeCornerCircles();
-      else if (panel === 'outerTrace') this.changeOuterTrace();
-      else if (panel === 'mouldPattern') this.changeMouldPattern();
-      else if (panel === 'export') this.renderExports();
-
-      else {
-        // closed -> check if any panel is still open
-        const anyOpen = Array.from(document.querySelectorAll('details')).some(d => d.open);
-        if (!anyOpen) {
-          this.openPanel = '';
-          this.draftChange.emit([]);
-        }
-      }
-    }
-  }
-
 
   changeBaseMeasurements(): void {
     this.debounce(() => safeRun(() => {
@@ -548,10 +558,10 @@ export class KellyViolin extends RecipeComponentBase {
 
       renderRect(this.d.shapes.lowerBlock, this.colors.lowerBout, 'none', 2)(g, ui);
       renderRect(this.d.shapes.upperBlock, this.colors.upperBout, 'none', 2)(g, ui);
-
-      if (currentModule && this.viewInnerPath)
-        this.renderMainPath(g, ui);
     }
+
+    if (currentModule && this.viewInnerPath)
+      this.renderMainPath(g, ui);
   }
 
   renderFinalCorners = (currentModule: boolean) => (g: any, ui: any): void => {

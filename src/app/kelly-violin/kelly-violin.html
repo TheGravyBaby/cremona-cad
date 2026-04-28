@@ -1,6 +1,26 @@
 <div class="panel">
-    <details [open]="openPanel === 'base'" (toggle)="onToggle('base', $event)" [class.panel-disabled]="!isPanelEnabled('base')" [attr.aria-disabled]="!isPanelEnabled('base')">
-        <summary class="section-title">Base Measurements</summary>
+    <section class="panel-nav" aria-label="Sidebar section navigation">
+        <label class="panel-nav-label" for="panel-selector">Section</label>
+        <div class="panel-nav-controls">
+            <button type="button" class="panel-nav-btn" (click)="stepPanel(-1)" title="Previous section" aria-label="Go to previous section">
+                ‹
+            </button>
+            <select id="panel-selector" class="panel-select" [ngModel]="openPanel" (ngModelChange)="onPanelSelect($event)">
+                @for (panel of panelOrder; track panel.id) {
+                    <option [value]="panel.id" [disabled]="!isPanelEnabled(panel.id)">
+                        {{ panel.label }}@if (!isPanelEnabled(panel.id)) { (Locked) }
+                    </option>
+                }
+            </select>
+            <button type="button" class="panel-nav-btn" (click)="stepPanel(1)" title="Next section" aria-label="Go to next section">
+                ›
+            </button>
+        </div>
+    </section>
+
+    @if (openPanel === 'base') {
+    <section class="panel-section" aria-label="Base Measurements">
+        <h3 class="section-title">Base Measurements</h3>
         <section class="ui-group">
             <label>
                 File Name
@@ -29,10 +49,12 @@
                 </div>
             </label>
         </section>
-    </details>
+    </section>
+    }
 
-    <details [open]="openPanel === 'mainBouts'" (toggle)="onToggle('mainBouts', $event)" [class.panel-disabled]="!isPanelEnabled('mainBouts')" [attr.aria-disabled]="!isPanelEnabled('mainBouts')">
-        <summary class="section-title">Major Bout Circles</summary>
+    @if (openPanel === 'mainBouts') {
+    <section class="panel-section" aria-label="Major Bout Circles">
+        <h3 class="section-title">Major Bout Circles</h3>
 
         <section class="ui-group">
             <label class="section-label">
@@ -68,10 +90,12 @@
                 <span>Show Inset Guides </span>
             </div>
         </section>
-    </details>
+    </section>
+    }
 
-    <details [open]="openPanel === 'minorBouts'" (toggle)="onToggle('minorBouts', $event)" [class.panel-disabled]="!isPanelEnabled('minorBouts')" [attr.aria-disabled]="!isPanelEnabled('minorBouts')">
-        <summary class="section-title">Minor Bout Circles</summary>
+    @if (openPanel === 'minorBouts') {
+    <section class="panel-section" aria-label="Minor Bout Circles">
+        <h3 class="section-title">Minor Bout Circles</h3>
 
         <section class="ui-group">
             <div class="ui-group-title">Upper Bout</div>
@@ -135,10 +159,12 @@
             </button>
 
         </section>
-    </details>
+    </section>
+    }
     
-    <details [open]="openPanel === 'cornerPlacement'" (toggle)="onToggle('cornerPlacement', $event)" [class.panel-disabled]="!isPanelEnabled('cornerPlacement')" [attr.aria-disabled]="!isPanelEnabled('cornerPlacement')">
-        <summary class="section-title">Corner Placement</summary>
+    @if (openPanel === 'cornerPlacement') {
+    <section class="panel-section" aria-label="Corner Placement">
+        <h3 class="section-title">Corner Placement</h3>
 
         <section class="ui-group">
             <label class="section-label">
@@ -181,10 +207,12 @@
             </div>
         </section>
 
-    </details>
+    </section>
+    }
 
-    <details [open]="openPanel === 'cornerCircles'" (toggle)="onToggle('cornerCircles', $event)" [class.panel-disabled]="!isPanelEnabled('cornerCircles')" [attr.aria-disabled]="!isPanelEnabled('cornerCircles')">
-        <summary class="section-title">Corner Circles</summary>
+    @if (openPanel === 'cornerCircles') {
+    <section class="panel-section" aria-label="Corner Circles">
+        <h3 class="section-title">Corner Circles</h3>
 
         <section class="ui-group">
             <div class="ui-group-title">Upper Corner</div>
@@ -237,10 +265,12 @@
             </div>
         </section>
 
-    </details>  
+    </section>
+    }
 
-    <details [open]="openPanel == 'outerTrace'" (toggle)="onToggle('outerTrace', $event)" [class.panel-disabled]="!isPanelEnabled('outerTrace')" [attr.aria-disabled]="!isPanelEnabled('outerTrace')">
-        <summary class="section-title">Outer Trace</summary>
+    @if (openPanel === 'outerTrace') {
+    <section class="panel-section" aria-label="Outer Trace">
+        <h3 class="section-title">Outer Trace</h3>
 
         <section class="ui-group">
             <div class="ui-group-title">Upper Corner</div>
@@ -305,10 +335,12 @@
                 <span>Show Double Circle Angle</span>
             </label>
         </section>
-    </details>
+    </section>
+    }
 
-    <details [open]="openPanel === 'mouldPattern'" (toggle)="onToggle('mouldPattern', $event)" [class.panel-disabled]="!isPanelEnabled('mouldPattern')" [attr.aria-disabled]="!isPanelEnabled('mouldPattern')">
-        <summary class="section-title">Mould Pattern</summary>
+    @if (openPanel === 'mouldPattern') {
+    <section class="panel-section" aria-label="Mould Pattern">
+        <h3 class="section-title">Mould Pattern</h3>
 
         <div class="mould-pattern-groups">
             <section class="ui-group" [style.border-color]="colors.upperBoutOff">
@@ -369,7 +401,7 @@
                     <input class="basic-input" type="number" step=".1" min="0" [(ngModel)]="d.params.bitDiameter" (input)="changeMouldPattern()" />
                 </div>
             </label>
-        </section>`
+        </section>
 
         <section class="ui-group">
             <div class="toggle">
@@ -386,10 +418,12 @@
             </div>
         </section>
 
-    </details>
+    </section>
+    }
 
-    <details [open]="openPanel === 'export'" (toggle)="onToggle('export', $event)" [class.panel-disabled]="!isPanelEnabled('export')" [attr.aria-disabled]="!isPanelEnabled('export')">
-        <summary class="section-title">Export</summary>
+    @if (openPanel === 'export') {
+    <section class="panel-section" aria-label="Export">
+        <h3 class="section-title">Export</h3>
 
             <section class="ui-group">
                 <div class="ui-group-title">Available Exports</div>
@@ -446,5 +480,6 @@
         <br>
         <a (click)="downloadInnerSegmentedPaths()" class="file-upload">Download Inner Segmented Paths</a>
         <input type="checkbox" [(ngModel)]="viewSegmentedInnerPartial" (change)="renderExports()" /> View -->
-    </details>   
+    </section>
+    }
 </div>
