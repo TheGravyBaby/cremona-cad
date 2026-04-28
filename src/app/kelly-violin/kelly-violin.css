@@ -2,6 +2,87 @@
   display: block;
 }
 
+.panel-section {
+  border: 1px solid var(--ui-border-soft);
+  border-radius: 10px;
+  padding: 6px 10px;
+  color: var(--ui-text-primary);
+  background: var(--ui-bg-section);
+  box-shadow: var(--ui-shadow-soft);
+}
+
+.panel-nav {
+  border: 1px solid var(--ui-border-soft);
+  border-radius: 10px;
+  background: var(--ui-bg-section);
+  box-shadow: var(--ui-shadow-soft);
+  padding: 8px;
+  margin-bottom: 8px;
+}
+
+.panel-nav-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--ui-text-secondary);
+  margin-bottom: 6px;
+}
+
+.panel-nav-controls {
+  display: grid;
+  grid-template-columns: 28px 1fr 28px;
+  align-items: center;
+  gap: 6px;
+}
+
+.panel-select {
+  min-height: 30px;
+  height: 30px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 8px;
+  background: var(--ui-bg-panel);
+  color: var(--ui-text-primary);
+  font-size: 13px;
+  line-height: 1.2;
+  padding: 3px 8px;
+}
+
+.panel-select:focus-visible {
+  outline: none;
+  border-color: var(--ui-focus-border);
+  box-shadow: 0 0 0 3px var(--ui-focus-ring);
+}
+
+.panel-nav-btn {
+  min-height: 30px;
+  height: 30px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 8px;
+  background: var(--ui-control-bg);
+  color: var(--ui-text-primary);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+}
+
+.panel-nav-btn:hover {
+  border-color: var(--ui-canvas-btn-border-hover);
+  background: var(--ui-control-bg-hover);
+}
+
+.panel-nav-btn:active {
+  background: var(--ui-control-bg-active);
+}
+
+.panel-nav-btn:focus-visible {
+  outline: none;
+  border-color: var(--ui-focus-border);
+  box-shadow: 0 0 0 3px var(--ui-focus-ring);
+}
+
 .panel-disabled {
   opacity: 0.55;
   pointer-events: none;
@@ -34,7 +115,7 @@ s
   letter-spacing: 0.03em;
   text-transform: uppercase;
   color: var(--ui-text-primary);
-  margin-bottom: 2px;
+  margin: 0 0 4px;
 }
 
 .ui-group-title {
