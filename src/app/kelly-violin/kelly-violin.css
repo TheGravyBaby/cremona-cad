@@ -31,8 +31,9 @@
 }
 
 .panel-nav-controls {
+  padding-top: 6px;
   display: grid;
-  grid-template-columns: 28px 1fr 28px;
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
   align-items: center;
   gap: 6px;
 }
@@ -57,13 +58,17 @@
 
 .panel-nav-btn {
   min-height: 30px;
+  min-width: 56px;
   height: 30px;
+  padding: 0 10px;
   border: 1px solid var(--ui-border-strong);
   border-radius: 8px;
   background: var(--ui-control-bg);
   color: var(--ui-text-primary);
-  font-size: 16px;
-  line-height: 1;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
   cursor: pointer;
   transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
 }
@@ -73,8 +78,27 @@
   background: var(--ui-control-bg-hover);
 }
 
+.panel-nav-btn-emphasis:hover {
+  border-color: var(--ui-focus-border);
+  background: var(--ui-control-bg-hover);
+}
+
 .panel-nav-btn:active {
   background: var(--ui-control-bg-active);
+}
+
+.panel-nav-btn:disabled {
+  cursor: not-allowed;
+  color: var(--ui-text-secondary);
+  border-color: var(--ui-border-soft);
+  background: var(--ui-bg-surface-2);
+  box-shadow: none;
+  opacity: 0.65;
+}
+
+.panel-nav-btn-emphasis:disabled {
+  color: var(--ui-text-secondary);
+  border-color: var(--ui-border-soft);
 }
 
 .panel-nav-btn:focus-visible {
@@ -86,10 +110,6 @@
 .panel-disabled {
   opacity: 0.55;
   pointer-events: none;
-}
-s
-.panel-disabled summary {
-  cursor: not-allowed;
 }
 
 .ui-group {

@@ -8,6 +8,9 @@ import { combinePathStrings, pointOnCircle } from '../helpers/draftMath';
 import { KellyViolinData, KellyViolinRecipe } from './kellyTypes';
 import { calculatePrimaryShapes, calculateMainPathsSegmented, calculateMainPathsUnified, calculateMouldPath, calculateOffsetPathsSegments, calculateTopPath, initializeMainBouts, initializeMinorBouts, initializeCornerPlacement, initializeCornerCircles, initializeTopAndBottomTrace, initializeBlocks, normalizeDegrees, calculateMainBouts } from './kellyCals';
 import { clampParam, safeRun } from '../helpers/validators';
+import { DebounceController } from '../helpers/debounce-controller';
+import { PanelFlow } from '../helpers/panel-flow';
+import { buildMirroredSvg, downloadSvgFile } from '../helpers/svg-export';
 
 @Component({
   selector: 'app-kelly-violin',
@@ -17,6 +20,8 @@ import { clampParam, safeRun } from '../helpers/validators';
 })
 
 export class KellyViolin extends RecipeComponentBase {
+
+  // ===== Static config =====
 
   readonly panelOrder = [
     { id: 'base', label: 'Base Measurements' },
@@ -29,64 +34,29 @@ export class KellyViolin extends RecipeComponentBase {
     { id: 'export', label: 'Export' },
   ] as const;
 
+  // ===== Constructor =====
+
   constructor(private readonly cdr: ChangeDetectorRef) {
     super();
   }
 
-  private _debounceTimer: ReturnType<typeof setTimeout> | null = null;
-  private _skipDebounce = false;
+  // ===== Infrastructure / controllers =====
+  
   private _destroyed = false;
+  private readonly debounceController = new DebounceController(() => this.refreshBoundInputs());
+  private readonly panelFlow = new PanelFlow<string>(this.panelOrder, (panel) => this.canOpenPanel(panel));
+  private readonly panelActivationHandlers: Record<string, () => void> = {
+    base: () => this.changeBaseMeasurements(),
+    mainBouts: () => this.changeMainBouts(),
+    minorBouts: () => this.changeMinorBouts(),
+    cornerPlacement: () => this.changeCornerPlacement(),
+    cornerCircles: () => this.changeCornerCircles(),
+    outerTrace: () => this.changeOuterTrace(),
+    mouldPattern: () => this.changeMouldPattern(),
+    export: () => this.changeExports(),
+  };
 
-  private refreshBoundInputs(): void {
-    queueMicrotask(() => {
-      if (this._destroyed) return;
-      this.d.params = { ...this.d.params };
-      this.cdr.detectChanges();
-    });
-  }
-
-  syncCorrectedValues(): void {
-    this.refreshBoundInputs();
-  }
-
-  @HostListener('keydown', ['$event'])
-  onHostKeyDown(e: KeyboardEvent) {
-    this._skipDebounce = e.key === 'ArrowUp' || e.key === 'ArrowDown';
-  }
-
-  @HostListener('mousedown', ['$event'])
-  onHostMouseDown(e: MouseEvent) {
-    const target = e.target as HTMLInputElement;
-    this._skipDebounce = target.tagName == 'INPUT' || target.type == 'number';
-  }
-
-  private debounce(fn: () => void, delay = 1000): void {
-    if (this._skipDebounce) {
-      this._skipDebounce = false;
-      fn();
-      this.refreshBoundInputs();
-      return;
-    }
-    if (this._debounceTimer !== null) clearTimeout(this._debounceTimer);
-    this._debounceTimer = setTimeout(() => {
-      this._debounceTimer = null;
-      fn();
-      this.refreshBoundInputs();
-    }, delay);
-  }
-
-  override ngOnDestroy(): void {
-    this._destroyed = true;
-    if (this._debounceTimer !== null) {
-      clearTimeout(this._debounceTimer);
-      this._debounceTimer = null;
-    }
-    super.ngOnDestroy();
-  }
-
-  private clamp(key: keyof typeof this.d.params, min: number, max = Infinity, tooSmallMsg?: string, tooBigMsg?: string): void {
-    clampParam(this.d.params, key, min, max, tooSmallMsg, tooBigMsg);
-  }
+  // ===== Component state =====
 
   override openPanel = 'base';
   override d: KellyViolinData = new KellyViolinRecipe();
@@ -107,9 +77,9 @@ export class KellyViolin extends RecipeComponentBase {
   upperVLimit = Math.round(this.d.params.boutUpR * .9)
   lowerVLimit = Math.round(this.d.params.boutLowR * .9)
 
-
   offFactor = .5;
   off2Factor = .6;
+  private readonly segmentedExportColors = ['red', 'blue', 'green', 'orange'] as const;
   readonly colors = {
     upperBout: '#4D8660',
     upperBoutOff: greyOut('#4D8660', this.offFactor), // '#6DA077',
@@ -133,6 +103,8 @@ export class KellyViolin extends RecipeComponentBase {
 
   insetTooltip = "Inset is the distance from the outer edge of the bounding box to inner edge. It can be used to create a margin for the outline of the violin.";
 
+  // ===== Inputs & lifecycle =====
+
   @Input() set newFile(v: boolean) {
     if (v) {
       this.openPanel = 'base'
@@ -149,7 +121,62 @@ export class KellyViolin extends RecipeComponentBase {
     this.setBounds.emit({ pt1: { x: -this.d.params.width / 2, y: 0 }, pt2: { x: this.d.params.width / 2, y: this.d.params.height } });
   }
 
+  override ngOnDestroy(): void {
+    this._destroyed = true;
+    this.debounceController.destroy();
+    super.ngOnDestroy();
+  }
+
+  // ===== UI event handlers & panel controls =====
+
+  @HostListener('keydown', ['$event'])
+  onHostKeyDown(e: KeyboardEvent) {
+    this.debounceController.markImmediateFromKey(e);
+  }
+
+  @HostListener('mousedown', ['$event'])
+  onHostMouseDown(e: MouseEvent) {
+    this.debounceController.markImmediateFromMouse(e);
+  }
+
+  syncCorrectedValues(): void {
+    this.refreshBoundInputs();
+  }
+
   isPanelEnabled(panel: string): boolean {
+    return this.panelFlow.isEnabled(panel);
+  }
+
+  onPanelSelect(panel: string): void {
+    if (!panel) return;
+    const selected = this.panelFlow.select(panel);
+    if (!selected) return;
+    this.activatePanel(selected);
+  }
+
+  canStepPanel(direction: 1 | -1 | number): boolean {
+    return this.panelFlow.canStep(this.openPanel, direction);
+  }
+
+  stepPanel(direction: 1 | -1 | number): void {
+    const nextPanel = this.panelFlow.step(this.openPanel, direction);
+    if (!nextPanel) return;
+    this.activatePanel(nextPanel);
+  }
+
+  // ===== Panel gating / navigation internals =====
+
+  private activatePanel(panel: string): void {
+    if (!this.isPanelEnabled(panel)) return;
+
+    this.openPanel = panel;
+    this.showModuleCircles = true;
+    this.showAllCircles = false;
+
+    this.panelActivationHandlers[panel]?.();
+  }
+
+  private canOpenPanel(panel: string): boolean {
     switch (panel) {
       case 'base':
         return true;
@@ -166,46 +193,10 @@ export class KellyViolin extends RecipeComponentBase {
       case 'mouldPattern':
         return this.hasCornerCircles();
       case 'export':
-        return this.hasTopAndBottom() && this.hasMouldPattern();
+        return this.hasOuterTrace() && this.hasMouldPattern();
       default:
         return true;
     }
-  }
-
-  onPanelSelect(panel: string): void {
-    if (!panel || !this.isPanelEnabled(panel)) return;
-    this.activatePanel(panel);
-  }
-
-  stepPanel(direction: 1 | -1 | number): void {
-    const enabledPanels: string[] = this.panelOrder
-      .filter(panel => this.isPanelEnabled(panel.id))
-      .map(panel => panel.id);
-
-    if (!enabledPanels.length) return;
-
-    const current = enabledPanels.includes(this.openPanel) ? this.openPanel : enabledPanels[0];
-    const currentIndex = enabledPanels.indexOf(current);
-    const delta = direction >= 0 ? 1 : -1;
-    const nextIndex = (currentIndex + delta + enabledPanels.length) % enabledPanels.length;
-    this.activatePanel(enabledPanels[nextIndex]);
-  }
-
-  private activatePanel(panel: string): void {
-    if (!this.isPanelEnabled(panel)) return;
-
-    this.openPanel = panel;
-    this.showModuleCircles = true;
-    this.showAllCircles = false;
-
-    if (panel === 'base') this.changeBaseMeasurements();
-    else if (panel === 'mainBouts') this.changeMainBouts();
-    else if (panel === 'minorBouts') this.changeMinorBouts();
-    else if (panel === 'cornerPlacement') this.changeCornerPlacement();
-    else if (panel === 'cornerCircles') this.changeCornerCircles();
-    else if (panel === 'outerTrace') this.changeOuterTrace();
-    else if (panel === 'mouldPattern') this.changeMouldPattern();
-    else if (panel === 'export') this.renderExports();
   }
 
   private hasBaseMeasurements(): boolean {
@@ -234,13 +225,33 @@ export class KellyViolin extends RecipeComponentBase {
       && p.cornerCircLowBoutR > 0;
   }
 
-  private hasTopAndBottom(): boolean {
+  private hasOuterTrace(): boolean {
     return this.hasCornerCircles() && this.d.params.cornerCircDubLowBoutR > 0;
   }
 
   private hasMouldPattern(): boolean {
-    return this.hasTopAndBottom() && this.d.params.blockCornerUpH > 0;
+    return this.hasOuterTrace() && this.d.params.blockCornerUpH > 0;
   }
+
+  // ===== Shared helpers =====
+
+  private refreshBoundInputs(): void {
+    queueMicrotask(() => {
+      if (this._destroyed) return;
+      this.d.params = { ...this.d.params };
+      this.cdr.detectChanges();
+    });
+  }
+
+  private debounce(fn: () => void, delay = 1000): void {
+    this.debounceController.run(fn, delay);
+  }
+
+  private clamp(key: keyof typeof this.d.params, min: number, max = Infinity, tooSmallMsg?: string, tooBigMsg?: string): void {
+    clampParam(this.d.params, key, min, max, tooSmallMsg, tooBigMsg);
+  }
+
+  // ===== Change pipeline / orchestration =====
 
   changeBaseMeasurements(): void {
     this.debounce(() => safeRun(() => {
@@ -278,11 +289,9 @@ export class KellyViolin extends RecipeComponentBase {
         "Lower bout Y must be at least 1mm — reset to 1mm.",
         "Lower bout Y exceeds the max body length — reset to 3800mm.");
 
-      if (
-        this.d.params.width > (Math.max(this.d.params.boutLowR, this.d.params.boutUpR) + this.d.params.inset) * 2
-        || this.d.params.width < (Math.max(this.d.params.boutLowR, this.d.params.boutUpR) + this.d.params.inset) * 2
-    ) {
-        this.d.params.width = (Math.max(this.d.params.boutLowR, this.d.params.boutUpR) + this.d.params.inset) * 2;
+      const targetWidth = (Math.max(this.d.params.boutLowR, this.d.params.boutUpR) + this.d.params.inset) * 2;
+      if (this.d.params.width !== targetWidth) {
+        this.d.params.width = targetWidth;
         warn(`Width adjusted to meet widest bout. New width: ${this.d.params.width}mm.`, "Width Limit");
       }
 
@@ -377,7 +386,7 @@ export class KellyViolin extends RecipeComponentBase {
     }));
   }
 
-  renderExports() {
+  changeExports() {
     safeRun(() => {
       calculatePrimaryShapes(this.d);
       initializeBlocks(this.d)
@@ -400,6 +409,23 @@ export class KellyViolin extends RecipeComponentBase {
       this.draftChange.emit(emitArray);
     });
   }
+
+  tareMeasurements = (): void => {
+    let highpoint = pointOnCircle(this.d.shapes.upperJoiningCircle, 1/2 * Math.PI)
+    let lowPoint = pointOnCircle(this.d.shapes.lowerJoiningCircle, 3/2 * Math.PI)
+
+    let yDiff = Math.round((highpoint.y - lowPoint.y) * 10) / 10;
+    let yOffset = Math.round((this.d.params.inset - lowPoint.y) * 10) / 10;
+
+  
+    this.d.params.boutUpY += yOffset
+    this.d.params.boutLowY += yOffset
+    this.d.params.height = yDiff + this.d.params.inset * 2
+
+    info(`Base Measurements Tared. Height: ${this.d.params.height}mm`, "Base Measurements Tared");
+  }
+
+  // ===== Render callbacks =====
 
   renderBounds = (g: any, ui: any): void => {
     const h = this.d.params.height;
@@ -658,23 +684,18 @@ export class KellyViolin extends RecipeComponentBase {
     }
   }
 
+  // ===== SVG export/download actions =====
+
   downloadInnerPath = (): void => {
     safeRun(() => {
       calculateMainPathsUnified(this.d);
       const pathObj = this.d.paths.find(c => c.name === 'innerPathUnified');
       if (!pathObj) return;
 
-      const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-this.d.params.width / 2} 0 ${this.d.params.width} ${this.d.params.height}"><g transform="translate(0 ${this.d.params.height}) scale(1 -1)"><path d="${pathObj.paths[0]}" fill="none" stroke="black"/></g></svg>`;
-      const blob = new Blob([svgContent], { type: 'image/svg+xml' });
-      const url = URL.createObjectURL(blob);
-
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'unified_path.svg';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      const svgContent = buildMirroredSvg(this.d.params.width, this.d.params.height, [
+        { d: pathObj.paths[0], stroke: 'black', fill: 'none' }
+      ]);
+      downloadSvgFile('unified_path.svg', svgContent);
     });
   }
 
@@ -684,19 +705,12 @@ export class KellyViolin extends RecipeComponentBase {
       const pathObj = this.d.paths.find(c => c.name === 'mouldPath');
       if (!pathObj) return;
 
-      let allPaths = combinePathStrings(pathObj.paths);
+  const allPaths = combinePathStrings(pathObj.paths);
 
-      const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-this.d.params.width / 2} 0 ${this.d.params.width} ${this.d.params.height}"><g transform="translate(0 ${this.d.params.height}) scale(1 -1)"><path d="${allPaths}" fill="none" stroke="black"/></g></svg>`;
-      const blob = new Blob([svgContent], { type: 'image/svg+xml' });
-      const url = URL.createObjectURL(blob);
-
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'mould_path.svg';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      const svgContent = buildMirroredSvg(this.d.params.width, this.d.params.height, [
+        { d: allPaths, stroke: 'black', fill: 'none' }
+      ]);
+      downloadSvgFile(`${this.d.fileName}_mould_path.svg`, svgContent);
     });
   }
 
@@ -706,20 +720,12 @@ export class KellyViolin extends RecipeComponentBase {
       const pathObj = this.d.paths.find(c => c.name === 'segmentedPartialPath');
       if (!pathObj) return;
 
-      const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-this.d.params.width / 2} 0 ${this.d.params.width} ${this.d.params.height}"><g transform="translate(0 ${this.d.params.height}) scale(1 -1)">
-    <path d="${pathObj.paths[0]}" fill="none" stroke="red"/><path d="${pathObj.paths[1]}" fill="none" stroke="blue"/><path d="${pathObj.paths[2]}" fill="none" stroke="green"/><path d="${pathObj.paths[3]}" fill="none" stroke="orange"/>
-    
-    </g></svg>`;
-      const blob = new Blob([svgContent], { type: 'image/svg+xml' });
-      const url = URL.createObjectURL(blob);
-
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'segmented_paths.svg';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      const svgContent = buildMirroredSvg(
+        this.d.params.width,
+        this.d.params.height,
+        pathObj.paths.map((d, i) => ({ d, stroke: this.segmentedExportColors[i] ?? 'black', fill: 'none' }))
+      );
+      downloadSvgFile(`${this.d.fileName}_segmented_paths.svg`, svgContent);
     });
   }
 
@@ -730,69 +736,28 @@ export class KellyViolin extends RecipeComponentBase {
       const pathObj = this.d.paths.find(c => c.name === 'offsetSegmentedPath');
       if (!pathObj) return;
 
-      const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-this.d.params.width / 2} 0 ${this.d.params.width} ${this.d.params.height}"><g transform="translate(0 ${this.d.params.height}) scale(1 -1)">
-    <path d="${pathObj.paths[0]}" fill="none" stroke="red"/><path d="${pathObj.paths[1]}" fill="none" stroke="blue"/><path d="${pathObj.paths[2]}" fill="none" stroke="green"/><path d="${pathObj.paths[3]}" fill="none" stroke="orange"/>
-    
-    </g></svg>`;
-      const blob = new Blob([svgContent], { type: 'image/svg+xml' });
-      const url = URL.createObjectURL(blob);
-
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'segmented_paths.svg';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      const svgContent = buildMirroredSvg(
+        this.d.params.width,
+        this.d.params.height,
+        pathObj.paths.map((d, i) => ({ d, stroke: this.segmentedExportColors[i] ?? 'black', fill: 'none' }))
+      );
+      downloadSvgFile(`${this.d.fileName}_outer_segmented_paths.svg`, svgContent);
     });
-  }
-
-  tareMeasurements = (): void => {
-    let highpoint = pointOnCircle(this.d.shapes.upperJoiningCircle, 1/2 * Math.PI)
-    let lowPoint = pointOnCircle(this.d.shapes.lowerJoiningCircle, 3/2 * Math.PI)
-
-    let yDiff = Math.round((highpoint.y - lowPoint.y) * 10) / 10;
-    let yOffset = Math.round((this.d.params.inset - lowPoint.y) * 10) / 10;
-
-   
-    this.d.params.boutUpY += yOffset
-    this.d.params.boutLowY += yOffset
-    this.d.params.height = yDiff + this.d.params.inset * 2
-
-    info(`Base Measurements Tared. Height: ${this.d.params.height}mm`, "Base Measurements Tared");
   }
 
   downloadOuterPath = (): void => {
     safeRun(() => {
-      calculateMainPathsUnified(this.d);
       calculateMainPathsSegmented(this.d);
       calculateOffsetPathsSegments(this.d);
       calculateTopPath(this.d);
       const pathObj = this.d.paths.find(c => c.name === 'outerPath');
-      // let paths = combinePathStrings(pathObj?.paths);
       if (!pathObj) return;
+      const outerPath = combinePathStrings(pathObj.paths);
 
-      const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-this.d.params.width / 2} 0 ${this.d.params.width} ${this.d.params.height}"><g transform="translate(0 ${this.d.params.height}) scale(1 -1)">
-      <path d="${pathObj.paths[0]}" fill="none" stroke="black"/>
-      <path d="${pathObj.paths[1]}" fill="none" stroke="red"/>
-      <path d="${pathObj.paths[2]}" fill="none" stroke="blue"/>
-      <path d="${pathObj.paths[3]}" fill="none" stroke="green"/>
-      <path d="${pathObj.paths[4]}" fill="none" stroke="orange"/>
-      <path d="${pathObj.paths[5]}" fill="none" stroke="purple"/>
-      <path d="${pathObj.paths[6]}" fill="none" stroke="purple"/>
-      <path d="${pathObj.paths[7]}" fill="none" stroke="purple"/>
-    </g></svg>`;
-      const blob = new Blob([svgContent], { type: 'image/svg+xml' });
-      const url = URL.createObjectURL(blob);
-
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'unified_path.svg';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      const svgContent = buildMirroredSvg(this.d.params.width, this.d.params.height, [
+        { d: outerPath, stroke: 'black', fill: 'none' }
+      ]);
+      downloadSvgFile(`${this.d.fileName}_outer_path.svg`, svgContent);
     });
   }
-
 }

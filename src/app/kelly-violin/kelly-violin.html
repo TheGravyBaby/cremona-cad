@@ -1,485 +1,496 @@
 <div class="panel">
     <section class="panel-nav" aria-label="Sidebar section navigation">
-        <label class="panel-nav-label" for="panel-selector">Section</label>
+        <label class="ui-group-title">Section Select</label>
         <div class="panel-nav-controls">
-            <button type="button" class="panel-nav-btn" (click)="stepPanel(-1)" title="Previous section" aria-label="Go to previous section">
-                ‹
+            <button type="button" class="panel-nav-btn" (click)="stepPanel(-1)" title="Previous section"
+                aria-label="Go to previous section" [disabled]="!canStepPanel(-1)">
+                Back
             </button>
-            <select id="panel-selector" class="panel-select" [ngModel]="openPanel" (ngModelChange)="onPanelSelect($event)">
+            <select id="panel-selector" class="panel-select" [ngModel]="openPanel"
+                (ngModelChange)="onPanelSelect($event)">
                 @for (panel of panelOrder; track panel.id) {
-                    <option [value]="panel.id" [disabled]="!isPanelEnabled(panel.id)">
-                        {{ panel.label }}@if (!isPanelEnabled(panel.id)) { (Locked) }
-                    </option>
+                <option [value]="panel.id" [disabled]="!isPanelEnabled(panel.id)">
+                    {{ panel.label }}@if (!isPanelEnabled(panel.id)) { (Locked) }
+                </option>
                 }
             </select>
-            <button type="button" class="panel-nav-btn" (click)="stepPanel(1)" title="Next section" aria-label="Go to next section">
-                ›
+            <button type="button" class="panel-nav-btn" (click)="stepPanel(1)" title="Next section"
+                aria-label="Go to next section" [disabled]="!canStepPanel(1)">
+                Next
             </button>
         </div>
     </section>
 
     @if (openPanel === 'base') {
-    <section class="panel-section" aria-label="Base Measurements">
-        <h3 class="section-title">Base Measurements</h3>
-        <section class="ui-group">
-            <label>
-                File Name
-                <input type="text" [(ngModel)]="d.fileName" />
-            </label>
+    <section class="ui-group">
+        <div class="ui-group-title">File Properties</div>
+        <label>
+            File Name
+            <input type="text" [(ngModel)]="d.fileName" />
+        </label>
+        <label class="file-upload">
+            Upload Reference Image
+            <input type="file" accept="image/*" (change)="onReferenceFileSelected($event)" />
+        </label>
+    </section>
 
-            <label class="file-upload">
-                Upload Reference Image
-                <input type="file" accept="image/*" (change)="onReferenceFileSelected($event)" />
-            </label>
-            <br>
+    <section class="ui-group">
+        <div class="ui-group-title">Primary Dimensions</div>
+        <label class="section-label">Height : Width <span>(mm)</span>
+            <div class="input-group basic-row">
+                <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="d.params.height"
+                    (input)="changeBaseMeasurements()" />
+                <span>:</span>
+                <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="d.params.width"
+                    (input)="changeBaseMeasurements()" />
+            </div>
+        </label>
 
-            <label class="section-label">Height : Width <span>(mm)</span>
-                <div class="input-group basic-row">
-                    <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="d.params.height" (input)="changeBaseMeasurements()" />
-                    <span>:</span>
-                    <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="d.params.width" (input)="changeBaseMeasurements()" />
-                </div>
-            </label>
-
-            <label class="section-label">
-                Edge Inset <span>(mm)</span>
-                <div class="input-group basic-row">
-                    <input class="basic-input" type="number" step=".1" min="1" [(ngModel)]="d.params.inset" (input)="changeBaseMeasurements()" />
-                    <span class="info-icon" [title]="insetTooltip">ⓘ</span>
-                </div>
-            </label>
-        </section>
+        <label class="section-label">
+            Edge Inset <span>(mm)</span>
+            <div class="input-group basic-row">
+                <input class="basic-input" type="number" step=".1" min="1" [(ngModel)]="d.params.inset"
+                    (input)="changeBaseMeasurements()" />
+                <span class="info-icon" [title]="insetTooltip">ⓘ</span>
+            </div>
+        </label>
     </section>
     }
 
     @if (openPanel === 'mainBouts') {
-    <section class="panel-section" aria-label="Major Bout Circles">
-        <h3 class="section-title">Major Bout Circles</h3>
+    <section class="ui-group">
+        <div class="ui-group-title">Four Circles</div>
 
-        <section class="ui-group">
-            <label class="section-label">
-                Upper Bout Radius : Height <span> (mm)</span>
-                <div class="input-group basic-row">
-                    <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="d.params.boutUpR" (input)="changeMainBouts()" [style.border-color]="colors.upperBout"/>
-                    <span>:</span>
-                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.boutUpY" (input)="changeMainBouts()" [style.border-color]="colors.upperBout"/>
+        <label class="section-label">
+            Upper Bout Radius : Height <span> (mm)</span>
+            <div class="input-group basic-row">
+                <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="d.params.boutUpR"
+                    (input)="changeMainBouts()" [style.border-color]="colors.upperBout" />
+                <span>:</span>
+                <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.boutUpY"
+                    (input)="changeMainBouts()" [style.border-color]="colors.upperBout" />
 
-                </div>
-            </label>
-
-             <label class="section-label"> 
-                Center Bout Radius <span> (mm)</span>
-                <div class="input-group basic-row">
-                    <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="d.params.boutCenR" (input)="changeMainBouts()" [style.border-color]="colors.centerBout"/>
-                </div>
-            </label>
-
-            <label class="section-label"> 
-                Lower Bout Radius : Height <span> (mm)</span>
-                <div class="input-group basic-row">
-                    <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="d.params.boutLowR" (input)="changeMainBouts()" [style.border-color]="colors.lowerBout"/>
-                    <span>:</span>
-                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.boutLowY" (input)="changeMainBouts()" [style.border-color]="colors.lowerBout"/>
-
-                </div>
-            </label>
-        </section>
-        <section class="ui-group">
-            <div class="toggle">
-                <input type="checkbox" [(ngModel)]="showGuideLines" (change)="changeMainBouts()" /> 
-                <span>Show Inset Guides </span>
             </div>
-        </section>
+        </label>
+
+        <label class="section-label">
+            Center Bout Radius <span> (mm)</span>
+            <div class="input-group basic-row">
+                <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="d.params.boutCenR"
+                    (input)="changeMainBouts()" [style.border-color]="colors.centerBout" />
+            </div>
+        </label>
+
+        <label class="section-label">
+            Lower Bout Radius : Height <span> (mm)</span>
+            <div class="input-group basic-row">
+                <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="d.params.boutLowR"
+                    (input)="changeMainBouts()" [style.border-color]="colors.lowerBout" />
+                <span>:</span>
+                <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.boutLowY"
+                    (input)="changeMainBouts()" [style.border-color]="colors.lowerBout" />
+
+            </div>
+        </label>
+    </section>
+    <section class="ui-group">
+        <div class="toggle">
+            <input type="checkbox" [(ngModel)]="showGuideLines" (change)="changeMainBouts()" />
+            <span>Show Inset Guides </span>
+        </div>
     </section>
     }
 
     @if (openPanel === 'minorBouts') {
-    <section class="panel-section" aria-label="Minor Bout Circles">
-        <h3 class="section-title">Minor Bout Circles</h3>
-
-        <section class="ui-group">
-            <div class="ui-group-title">Upper Bout</div>
-            <label class="section-label">
-                Vesaci Radius <span>(mm)</span>
-                <div class="input-group basic-row">
-                    <input class="basic-input" type="number" step="1" min="1" [max]="upperVLimit" [(ngModel)]="d.params.vesaciUpR" (input)="changeMinorBouts()" [style.border-color]="colors.upperBout"/>
-                    <div class="toggle">
-                        <input type="checkbox" [(ngModel)]="d.options.lockUpperJoinArc" (change)="changeMinorBouts()" />
-                        <span>Lock Join Arc To Bounds</span>
-                    </div>
+    <section class="ui-group">
+        <div class="ui-group-title">Upper Bout</div>
+        <label class="section-label">
+            Vesaci Radius <span>(mm)</span>
+            <div class="input-group basic-row">
+                <input class="basic-input" type="number" step="1" min="1" [max]="upperVLimit"
+                    [(ngModel)]="d.params.vesaciUpR" (input)="changeMinorBouts()"
+                    [style.border-color]="colors.upperBout" />
+                <div class="toggle">
+                    <input type="checkbox" [(ngModel)]="d.options.lockUpperJoinArc" (change)="changeMinorBouts()" />
+                    <span>Lock Join Arc To Bounds</span>
                 </div>
-            </label>
-            @if (!d.options.lockUpperJoinArc) {
-            <label class="section-label">
-                Join Arc Radius <span>(mm)</span>
-                <div class="input-group basic-row">
-                    <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="d.params.joinArcUpR"
-                        (input)="changeMinorBouts()" [style.border-color]="colors.upperBout" />
-                </div>
-            </label>
-            }
-        </section>
-        <section class="ui-group">
+            </div>
+        </label>
+        @if (!d.options.lockUpperJoinArc) {
+        <label class="section-label">
+            Join Arc Radius <span>(mm)</span>
+            <div class="input-group basic-row">
+                <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="d.params.joinArcUpR"
+                    (input)="changeMinorBouts()" [style.border-color]="colors.upperBout" />
+            </div>
+        </label>
+        }
+    </section>
+    <section class="ui-group">
         <div class="ui-group-title">Lower Bout</div>
-            <label class="section-label">
-                Vesaci Radius <span>(mm)</span>
-                <div class="input-group basic-row">
-                    <input class="basic-input" type="number" step="1" min="1" [max]="lowerVLimit" [(ngModel)]="d.params.vesaciLowR" (input)="changeMinorBouts()" [style.border-color]="colors.lowerBoutOff" />
-                    <div class="toggle">
-                        <input type="checkbox"[(ngModel)]="d.options.lockLowerJoinArc" (change) = "changeMinorBouts()"/>
-                        <span>Lock Join Arc To Bounds</span>
-                    </div>
-                </div>     
-            </label>
-            @if (!d.options.lockLowerJoinArc) {
-            <label class="section-label">
-                Join Arc Radius <span>(mm)</span>
-                <div class="input-group basic-row">
-                    <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="d.params.joinArcLowR"
-                        (input)="changeMinorBouts()" [style.border-color]="colors.lowerBoutOff" />
+        <label class="section-label">
+            Vesaci Radius <span>(mm)</span>
+            <div class="input-group basic-row">
+                <input class="basic-input" type="number" step="1" min="1" [max]="lowerVLimit"
+                    [(ngModel)]="d.params.vesaciLowR" (input)="changeMinorBouts()"
+                    [style.border-color]="colors.lowerBoutOff" />
+                <div class="toggle">
+                    <input type="checkbox" [(ngModel)]="d.options.lockLowerJoinArc" (change)="changeMinorBouts()" />
+                    <span>Lock Join Arc To Bounds</span>
                 </div>
-            </label>
-            }
-        </section>
-        <section class="ui-group">
-            <div class="toggle">
-                <input type="checkbox" [(ngModel)]="showGuideLines" (change)="changeMinorBouts()" />
-                <span>Show Guide Lines</span>
             </div>
-            <div class="toggle">
-                <input type="checkbox" [(ngModel)]="showModuleCircles" (change)="changeMinorBouts()" />
-                <span>Show Module Circles</span>
+        </label>
+        @if (!d.options.lockLowerJoinArc) {
+        <label class="section-label">
+            Join Arc Radius <span>(mm)</span>
+            <div class="input-group basic-row">
+                <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="d.params.joinArcLowR"
+                    (input)="changeMinorBouts()" [style.border-color]="colors.lowerBoutOff" />
             </div>
-            <div class="toggle">
-                <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeMinorBouts()" />
-                <span>Show All Circles</span>
-            </div>
-            <button type="button" class="file-upload" (click)="tareMeasurements(); changeMinorBouts()">
-                Tare Base Measurements
-            </button>
+        </label>
+        }
+    </section>
+    <section class="ui-group">
+        <div class="toggle">
+            <input type="checkbox" [(ngModel)]="showGuideLines" (change)="changeMinorBouts()" />
+            <span>Show Guide Lines</span>
+        </div>
+        <div class="toggle">
+            <input type="checkbox" [(ngModel)]="showModuleCircles" (change)="changeMinorBouts()" />
+            <span>Show Module Circles</span>
+        </div>
+        <div class="toggle">
+            <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeMinorBouts()" />
+            <span>Show All Circles</span>
+        </div>
+        <button type="button" class="file-upload" (click)="tareMeasurements(); changeMinorBouts()">
+            Tare Base Measurements
+        </button>
 
-        </section>
     </section>
     }
-    
+
     @if (openPanel === 'cornerPlacement') {
-    <section class="panel-section" aria-label="Corner Placement">
-        <h3 class="section-title">Corner Placement</h3>
+    <section class="ui-group">
+        <div class="ui-group-title">Corner Placement</div>
 
-        <section class="ui-group">
-            <label class="section-label">
-                Upper Corner Guide Y-Intercept : X-Offset <span>(mm)</span>
-                <div class="input-group basic-row">
-                    <input class="basic-input" type="number" step="1" [(ngModel)]="d.params.cornerGuideUpY" (input)="changeCornerPlacement()" [style.border-color]="colors.upperBoutOff" />
-                    <span>:</span>
-                    <input class="basic-input" type="number" step="1" [(ngModel)]="d.params.cornerGuideUpXOff" (input)="changeCornerPlacement()" [style.border-color]="colors.upperBoutOff" />
-                </div>
-            </label>
-
-            <label class="section-label">
-                Center Bout Target Radius <span>(mm)</span>
-                <div class="input-group basic-row">
-                    <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="d.params.cornerR" (input)="changeCornerPlacement()" [style.border-color]="colors.centerBoutOff" />
-                </div>
-            </label>
-
-            <label class="section-label">
-                Lower Corner Guide Y-Intercept : X-Offset <span>(mm)</span>
-                <div class="input-group basic-row">
-                    <input class="basic-input" type="number" step="1" [(ngModel)]="d.params.cornerGuideLowY" (input)="changeCornerPlacement()" [style.border-color]="colors.lowerBoutOff" />
-                    <span>:</span>
-                    <input class="basic-input" type="number" step="1" [(ngModel)]="d.params.cornerGuideLowXOff" (input)="changeCornerPlacement()" [style.border-color]="colors.lowerBoutOff" />
-                </div>
-            </label>
-        </section>
-        <section class="ui-group">
-            <div class="toggle">
-                <input type="checkbox" [(ngModel)]="showGuideLines" (change)="changeCornerPlacement()" />
-                <span>Show Guide Lines</span>
+        <label class="section-label">
+            Upper Corner Guide Y-Intercept : X-Offset <span>(mm)</span>
+            <div class="input-group basic-row">
+                <input class="basic-input" type="number" step="1" [(ngModel)]="d.params.cornerGuideUpY"
+                    (input)="changeCornerPlacement()" [style.border-color]="colors.upperBoutOff" />
+                <span>:</span>
+                <input class="basic-input" type="number" step="1" [(ngModel)]="d.params.cornerGuideUpXOff"
+                    (input)="changeCornerPlacement()" [style.border-color]="colors.upperBoutOff" />
             </div>
-            <div class="toggle">
-                <input type="checkbox" [(ngModel)]="showModuleCircles" (change)="changeCornerPlacement()" />
-                <span>Show Module Circles</span>
-            </div>
-            <div class="toggle">
-                <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeCornerPlacement()" />
-                <span>Show All Circles</span>
-            </div>
-        </section>
+        </label>
 
+        <label class="section-label">
+            Center Bout Target Radius <span>(mm)</span>
+            <div class="input-group basic-row">
+                <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="d.params.cornerR"
+                    (input)="changeCornerPlacement()" [style.border-color]="colors.centerBoutOff" />
+            </div>
+        </label>
+
+        <label class="section-label">
+            Lower Corner Guide Y-Intercept : X-Offset <span>(mm)</span>
+            <div class="input-group basic-row">
+                <input class="basic-input" type="number" step="1" [(ngModel)]="d.params.cornerGuideLowY"
+                    (input)="changeCornerPlacement()" [style.border-color]="colors.lowerBoutOff" />
+                <span>:</span>
+                <input class="basic-input" type="number" step="1" [(ngModel)]="d.params.cornerGuideLowXOff"
+                    (input)="changeCornerPlacement()" [style.border-color]="colors.lowerBoutOff" />
+            </div>
+        </label>
+    </section>
+    <section class="ui-group">
+        <div class="toggle">
+            <input type="checkbox" [(ngModel)]="showGuideLines" (change)="changeCornerPlacement()" />
+            <span>Show Guide Lines</span>
+        </div>
+        <div class="toggle">
+            <input type="checkbox" [(ngModel)]="showModuleCircles" (change)="changeCornerPlacement()" />
+            <span>Show Module Circles</span>
+        </div>
+        <div class="toggle">
+            <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeCornerPlacement()" />
+            <span>Show All Circles</span>
+        </div>
     </section>
     }
 
     @if (openPanel === 'cornerCircles') {
-    <section class="panel-section" aria-label="Corner Circles">
-        <h3 class="section-title">Corner Circles</h3>
-
-        <section class="ui-group">
-            <div class="ui-group-title">Upper Corner</div>
-            <label class="section-label">
-                Upper Corner Top Radius <span>(mm)</span>
-                <div class="input-group basic-row">
-                    <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="d.params.cornerCircUpBoutR"
-                        (input)="changeCornerCircles()" [style.border-color]="colors.upperBout" />
-                </div>
-            </label>
-            <label class="section-label">
-                Upper Corner Bottom Radius <span>(mm)</span>
-                <div class="input-group basic-row">
-                    <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="d.params.cornerCircUpCBoutR"
-                        (input)="changeCornerCircles()" [style.border-color]="colors.centerBoutUp" />
-                </div>
-            </label>
-        </section>
-
-        <section class="ui-group">
-            <div class="ui-group-title">Lower Corner</div>
-            <label class="section-label">
-                Lower Corner Top Radius <span>(mm)</span>
-                <div class="input-group basic-row">
-                    <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="d.params.cornerCircLowCBoutR"
-                        (input)="changeCornerCircles()" [style.border-color]="colors.centerBoutLow" />
-                </div>
-            </label>        
-            <label class="section-label">
-                Lower Corner Bottom Radius <span>(mm)</span>
-                <div class="input-group basic-row">
-                    <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="d.params.cornerCircLowBoutR"
-                        (input)="changeCornerCircles()" [style.border-color]="colors.lowerBout" />
-                </div>
-            </label>
-        </section>
-
-        <section class="ui-group">
-            <div class="toggle">
-                <input type="checkbox" [(ngModel)]="showGuideLines" (change)="changeCornerCircles()" />
-                <span>Show Corner Guides</span>
+    <section class="ui-group">
+        <div class="ui-group-title">Upper Corner</div>
+        <label class="section-label">
+            Upper Corner Top Radius <span>(mm)</span>
+            <div class="input-group basic-row">
+                <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="d.params.cornerCircUpBoutR"
+                    (input)="changeCornerCircles()" [style.border-color]="colors.upperBout" />
             </div>
-            <div class="toggle">
-                <input type="checkbox" [(ngModel)]="showModuleCircles" (change)="changeCornerCircles()" />
-                <span>Show Module Circles</span>
+        </label>
+        <label class="section-label">
+            Upper Corner Bottom Radius <span>(mm)</span>
+            <div class="input-group basic-row">
+                <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="d.params.cornerCircUpCBoutR"
+                    (input)="changeCornerCircles()" [style.border-color]="colors.centerBoutUp" />
             </div>
-            <div class="toggle">
-                <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeCornerCircles()" />
-                <span>Show All Circles</span>
-            </div>
-        </section>
+        </label>
+    </section>
 
+    <section class="ui-group">
+        <div class="ui-group-title">Lower Corner</div>
+        <label class="section-label">
+            Lower Corner Top Radius <span>(mm)</span>
+            <div class="input-group basic-row">
+                <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="d.params.cornerCircLowCBoutR"
+                    (input)="changeCornerCircles()" [style.border-color]="colors.centerBoutLow" />
+            </div>
+        </label>
+        <label class="section-label">
+            Lower Corner Bottom Radius <span>(mm)</span>
+            <div class="input-group basic-row">
+                <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="d.params.cornerCircLowBoutR"
+                    (input)="changeCornerCircles()" [style.border-color]="colors.lowerBout" />
+            </div>
+        </label>
+    </section>
+
+    <section class="ui-group">
+        <div class="toggle">
+            <input type="checkbox" [(ngModel)]="showGuideLines" (change)="changeCornerCircles()" />
+            <span>Show Corner Guides</span>
+        </div>
+        <div class="toggle">
+            <input type="checkbox" [(ngModel)]="showModuleCircles" (change)="changeCornerCircles()" />
+            <span>Show Module Circles</span>
+        </div>
+        <div class="toggle">
+            <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeCornerCircles()" />
+            <span>Show All Circles</span>
+        </div>
     </section>
     }
 
     @if (openPanel === 'outerTrace') {
-    <section class="panel-section" aria-label="Outer Trace">
-        <h3 class="section-title">Outer Trace</h3>
+    <section class="ui-group">
+        <div class="ui-group-title">Upper Corner</div>
 
-        <section class="ui-group">
-            <div class="ui-group-title">Upper Corner</div>
+        <label class="section-label">Top Circle Radius : Theta <span>(mm, degrees)</span></label>
+        <div class="input-group basic-row">
+            <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.cornerCircDubUpBoutR"
+                (input)="changeOuterTrace()" [style.border-color]="colors.upperBout" />
+            <span>:</span>
+            <input class="basic-input" type="number" step="5" [(ngModel)]="d.params.cornerCircDubUpBoutCutoffTheta"
+                (input)="changeOuterTrace()" [style.border-color]="colors.upperBoutOff" />
+            @if(showOuterCircles){<input class="basic-input" type="number" step="5"
+                [(ngModel)]="d.params.cornerCircDubUpBoutTheta" (input)="changeOuterTrace()"
+                [style.border-color]="colors.upperBoutOff2" />}
+        </div>
 
-            <label class="section-label">Top Circle Radius : Theta <span>(mm, degrees)</span></label>
-            <div class="input-group basic-row">
-                <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.cornerCircDubUpBoutR" (input)="changeOuterTrace()" [style.border-color]="colors.upperBout" />
-                <span>:</span>
-                <input class="basic-input" type="number" step="5"  [(ngModel)]="d.params.cornerCircDubUpBoutCutoffTheta" (input)="changeOuterTrace()" [style.border-color]="colors.upperBoutOff" />
-                @if(showOuterCircles){<input class="basic-input" type="number" step="5"  [(ngModel)]="d.params.cornerCircDubUpBoutTheta" (input)="changeOuterTrace()" [style.border-color]="colors.upperBoutOff2" />}
-            </div>
+        <label class="section-label">Bottom Circle Radius : Theta <span>(mm, degrees)</span></label>
+        <div class="input-group basic-row">
+            <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.cornerCircDubUpCBoutR"
+                (input)="changeOuterTrace()" [style.border-color]="colors.centerBoutUp" />
+            <span>:</span>
+            <input class="basic-input" type="number" step="5" [(ngModel)]="d.params.cornerCircleDubUpCBoutCutoffTheta"
+                (input)="changeOuterTrace()" [style.border-color]="colors.centerBoutUpOff" />
+            @if(showOuterCircles){<input class="basic-input" type="number" step="5"
+                [(ngModel)]="d.params.cornerCircDubUpCBoutTheta" (input)="changeOuterTrace()"
+                [style.border-color]="colors.centerBoutUpOff2" />}
 
-            <label class="section-label">Bottom Circle Radius : Theta <span>(mm, degrees)</span></label>
-            <div class="input-group basic-row">
-                <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.cornerCircDubUpCBoutR" (input)="changeOuterTrace()" [style.border-color]="colors.centerBoutUp" />
-                <span>:</span>
-                <input class="basic-input" type="number" step="5" [(ngModel)]="d.params.cornerCircleDubUpCBoutCutoffTheta" (input)="changeOuterTrace()" [style.border-color]="colors.centerBoutUpOff" />
-                @if(showOuterCircles){<input class="basic-input" type="number" step="5"  [(ngModel)]="d.params.cornerCircDubUpCBoutTheta" (input)="changeOuterTrace()" [style.border-color]="colors.centerBoutUpOff2" />}
+        </div>
+    </section>
 
-            </div>
-        </section>
+    <section class="ui-group">
+        <div class="ui-group-title">Lower Corner</div>
 
-        <section class="ui-group">
-            <div class="ui-group-title">Lower Corner</div>
+        <label class="section-label">Top Circle Radius : Theta <span>(mm, degrees)</span></label>
+        <div class="input-group basic-row">
+            <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.cornerCircDubLowCBoutR"
+                (input)="changeOuterTrace()" [style.border-color]="colors.centerBoutLow" />
+            <span>:</span>
+            <input class="basic-input" type="number" step="5" [(ngModel)]="d.params.cornerCircleDubLowCBoutTheta"
+                (input)="changeOuterTrace()" [style.border-color]="colors.centerBoutLowOff" />
+            @if(showOuterCircles){<input class="basic-input" type="number" step="5"
+                [(ngModel)]="d.params.cornerCircDubLowCBoutTheta" (input)="changeOuterTrace()"
+                [style.border-color]="colors.centerBoutLowOff2" />}
 
-            <label class="section-label">Top Circle Radius : Theta <span>(mm, degrees)</span></label>
-            <div class="input-group basic-row">
-                <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.cornerCircDubLowCBoutR" (input)="changeOuterTrace()" [style.border-color]="colors.centerBoutLow" />
-                <span>:</span>
-                <input class="basic-input" type="number" step="5"  [(ngModel)]="d.params.cornerCircleDubLowCBoutTheta" (input)="changeOuterTrace()" [style.border-color]="colors.centerBoutLowOff" />
-                @if(showOuterCircles){<input class="basic-input" type="number" step="5" [(ngModel)]="d.params.cornerCircDubLowCBoutTheta" (input)="changeOuterTrace()" [style.border-color]="colors.centerBoutLowOff2" />} 
+        </div>
 
-            </div>
+        <label class="section-label">Bottom Circle Radius : Theta <span>(mm, degrees)</span></label>
+        <div class="input-group basic-row">
+            <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.cornerCircDubLowBoutR"
+                (input)="changeOuterTrace()" [style.border-color]="colors.lowerBout" />
+            <span>:</span>
+            <input class="basic-input" type="number" step="5" [(ngModel)]="d.params.cornerCircleDubLowBoutTheta"
+                (input)="changeOuterTrace()" [style.border-color]="colors.lowerBoutOff" />
+            @if (showOuterCircles){<input class="basic-input" type="number" step="5"
+                [(ngModel)]="d.params.cornerCircDubLowBoutTheta" (input)="changeOuterTrace()"
+                [style.border-color]="colors.lowerBoutOff2" />}
+        </div>
+    </section>
 
-            <label class="section-label">Bottom Circle Radius : Theta <span>(mm, degrees)</span></label>
-            <div class="input-group basic-row">
-                <input class="basic-input" type="number" step="1" min="0"[(ngModel)]="d.params.cornerCircDubLowBoutR" (input)="changeOuterTrace()" [style.border-color]="colors.lowerBout" />
-                <span>:</span>
-                <input class="basic-input" type="number" step="5" [(ngModel)]="d.params.cornerCircleDubLowBoutTheta" (input)="changeOuterTrace()" [style.border-color]="colors.lowerBoutOff" />
-                @if (showOuterCircles){<input class="basic-input" type="number" step="5" [(ngModel)]="d.params.cornerCircDubLowBoutTheta" (input)="changeOuterTrace()" [style.border-color]="colors.lowerBoutOff2" />}  
-            </div>
-        </section>  
+    <section class="ui-group">
 
-        <section class="ui-group">
-
-            <label class="toggle">
-                <input type="checkbox" [(ngModel)]="showInnerCircles" (change)="changeOuterTrace()" />
-                <span>Show Inner Circles</span>
-            </label>
-            <label class="toggle toggle-child">
-                <input type="checkbox" [(ngModel)]="showCutoffIndicators" (change)="changeOuterTrace()"
-                    [disabled]="!showInnerCircles" />
-                <span>Show Cutoff Angles</span>
-            </label>
-            <label class="toggle">
-                <input type="checkbox" [(ngModel)]="showOuterCircles" (change)="changeOuterTrace()" />
-                <span>Show Outer Circles</span>
-            </label>
-            <label class="toggle toggle-child">
-                <input type="checkbox" [(ngModel)]="showAngleIndicators" (change)="changeOuterTrace()"
-                    [disabled]="!showOuterCircles" />
-                <span>Show Double Circle Angle</span>
-            </label>
-        </section>
+        <label class="toggle">
+            <input type="checkbox" [(ngModel)]="showInnerCircles" (change)="changeOuterTrace()" />
+            <span>Show Inner Circles</span>
+        </label>
+        <label class="toggle toggle-child">
+            <input type="checkbox" [(ngModel)]="showCutoffIndicators" (change)="changeOuterTrace()"
+                [disabled]="!showInnerCircles" />
+            <span>Show Cutoff Angles</span>
+        </label>
+        <label class="toggle">
+            <input type="checkbox" [(ngModel)]="showOuterCircles" (change)="changeOuterTrace()" />
+            <span>Show Outer Circles</span>
+        </label>
+        <label class="toggle toggle-child">
+            <input type="checkbox" [(ngModel)]="showAngleIndicators" (change)="changeOuterTrace()"
+                [disabled]="!showOuterCircles" />
+            <span>Show Double Circle Angle</span>
+        </label>
     </section>
     }
 
     @if (openPanel === 'mouldPattern') {
-    <section class="panel-section" aria-label="Mould Pattern">
-        <h3 class="section-title">Mould Pattern</h3>
+    <div class="mould-pattern-groups">
+        <section class="ui-group" [style.border-color]="colors.upperBoutOff">
+            <div class="ui-group-title">Upper Block</div>
+            <label class="section-label">Height : Width <span>(mm)</span></label>
+            <div class="input-group basic-row">
+                <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blockUpH"
+                    (input)="changeMouldPattern()" />
+                <span>:</span>
+                <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blockUpW"
+                    (input)="changeMouldPattern()" />
+            </div>
+        </section>
 
-        <div class="mould-pattern-groups">
-            <section class="ui-group" [style.border-color]="colors.upperBoutOff">
-                <div class="ui-group-title">Upper Block</div>
-                <label class="section-label">Height : Width <span>(mm)</span></label>
-                <div class="input-group basic-row">
-                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blockUpH" (input)="changeMouldPattern()" />
-                    <span>:</span>
-                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blockUpW" (input)="changeMouldPattern()" />
-                </div>
-            </section>
-            
-            <section class="ui-group" [style.border-color]="colors.centerBoutUp">
-                <div class="ui-group-title">Upper Corner Block</div>
-                <label class="section-label">Height : Width : Pad <span>(mm)</span></label>
-                <div class="input-group basic-row">
-                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blockCornerUpH" (input)="changeMouldPattern()" />
-                    <span>:</span>
-                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blockCornerUpW" (input)="changeMouldPattern()" />
-                    <span>:</span>
-                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blockCornerUpPad" (input)="changeMouldPattern()" />
+        <section class="ui-group" [style.border-color]="colors.centerBoutUp">
+            <div class="ui-group-title">Upper Corner Block</div>
+            <label class="section-label">Height : Width : Pad <span>(mm)</span></label>
+            <div class="input-group basic-row">
+                <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blockCornerUpH"
+                    (input)="changeMouldPattern()" />
+                <span>:</span>
+                <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blockCornerUpW"
+                    (input)="changeMouldPattern()" />
+                <span>:</span>
+                <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blockCornerUpPad"
+                    (input)="changeMouldPattern()" />
 
-                </div>
-            </section>
+            </div>
+        </section>
 
-            <section [style.border-color]="colors.centerBoutLow" class="ui-group">
-                <div class="ui-group-title">Lower Corner Block</div>
-                <label class="section-label">Height : Width : Pad <span>(mm)</span></label>
-                <div class="input-group basic-row">
-                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blockCornerLowH" (input)="changeMouldPattern()" />
-                    <span>:</span>
-                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blockCornerLowW" (input)="changeMouldPattern()" />
-                    <span>:</span>
-                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blockCornerLowPad" (input)="changeMouldPattern()" />
-                </div>
+        <section [style.border-color]="colors.centerBoutLow" class="ui-group">
+            <div class="ui-group-title">Lower Corner Block</div>
+            <label class="section-label">Height : Width : Pad <span>(mm)</span></label>
+            <div class="input-group basic-row">
+                <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blockCornerLowH"
+                    (input)="changeMouldPattern()" />
+                <span>:</span>
+                <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blockCornerLowW"
+                    (input)="changeMouldPattern()" />
+                <span>:</span>
+                <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blockCornerLowPad"
+                    (input)="changeMouldPattern()" />
+            </div>
 
-            </section>
+        </section>
 
-            <section class="ui-group " [style.border-color]="colors.lowerBoutOff">
-                <div class="ui-group-title">Lower Block</div>
-                <label class="section-label">Height : Width <span>(mm)</span></label>
-                <div class="input-group basic-row">
-                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blockLowH" (input)="changeMouldPattern()" />
-                    <span>:</span>
-                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blowLowW" (input)="changeMouldPattern()" />
-                </div>
-            </section>
+        <section class="ui-group " [style.border-color]="colors.lowerBoutOff">
+            <div class="ui-group-title">Lower Block</div>
+            <label class="section-label">Height : Width <span>(mm)</span></label>
+            <div class="input-group basic-row">
+                <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blockLowH"
+                    (input)="changeMouldPattern()" />
+                <span>:</span>
+                <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blowLowW"
+                    (input)="changeMouldPattern()" />
+            </div>
+        </section>
+    </div>
+
+    <section class="ui-group">
+        <label class="section-label">Clamp Channel Width : Bit Diameter <span>(mm)</span>
+            <div class="input-group basic-row">
+                <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.clampChannelWidth"
+                    (input)="changeMouldPattern(true, true)" />
+                <span>:</span>
+                <input class="basic-input" type="number" step=".1" min="0" [(ngModel)]="d.params.bitDiameter"
+                    (input)="changeMouldPattern()" />
+
+            </div>
+        </label>
+    </section>
+
+    <section class="ui-group">
+        <div class="toggle">
+            <input type="checkbox" [(ngModel)]="showGuideLines" (change)="changeMouldPattern(false)" />
+            <span>Show Blocks</span>
         </div>
-
-        <section class="ui-group">
-            <label class="section-label">Clamp Channel Width <span>(mm)</span>
-                <div class="input-group basic-row">
-                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.clampChannelWidth" (input)="changeMouldPattern(true, true)" />
-                </div>
-            </label>
-            <label class="section-label">Bit Diameter <span>(mm)</span>
-                <div class="input-group basic-row">
-                    <input class="basic-input" type="number" step=".1" min="0" [(ngModel)]="d.params.bitDiameter" (input)="changeMouldPattern()" />
-                </div>
-            </label>
-        </section>
-
-        <section class="ui-group">
-            <div class="toggle">
-                <input type="checkbox" [(ngModel)]="showGuideLines" (change)="changeMouldPattern(false)" />
-                <span>Show Blocks</span>
-            </div>
-             <label class="toggle">
-                <input type="checkbox" [(ngModel)]="viewInnerPath"  (change)="changeMouldPattern(false)" />
-                <span>Show Inner Path</span>
-            </label>
-            <div class="toggle">
-                <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeMouldPattern(false)" />
-                <span>Show All Circles</span>
-            </div>
-        </section>
-
+        <label class="toggle">
+            <input type="checkbox" [(ngModel)]="viewInnerPath" (change)="changeMouldPattern(false)" />
+            <span>Show Inner Path</span>
+        </label>
+        <div class="toggle">
+            <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeMouldPattern(false)" />
+            <span>Show All Circles</span>
+        </div>
     </section>
     }
 
     @if (openPanel === 'export') {
-    <section class="panel-section" aria-label="Export">
-        <h3 class="section-title">Export</h3>
+    <section class="ui-group">
+        <div class="ui-group-title">Available Exports</div>
 
-            <section class="ui-group">
-                <div class="ui-group-title">Available Exports</div>
+        <div class="export-row">
+            <a (click)="downloadOuterPath()" class="file-upload">Download Outer Path</a>
+            <label class="toggle export-view-toggle">
+                <input type="checkbox" [(ngModel)]="viewOuterPathExport" (change)="changeExports()" />
+                <span>View</span>
+            </label>
+        </div>
 
-                <div class="export-row">
-                    <a (click)="downloadOuterPath()" class="file-upload">Download Outer Path</a>
-                    <label class="toggle export-view-toggle">
-                        <input type="checkbox" [(ngModel)]="viewOuterPathExport" (change)="renderExports()" />
-                        <span>View</span>
-                    </label>
-                </div>
+        <div class="export-row">
+            <a (click)="downloadInnerPath()" class="file-upload">Download Inner Path</a>
+            <label class="toggle export-view-toggle">
+                <input type="checkbox" [(ngModel)]="viewInnerPath" (change)="changeExports()" />
+                <span>View</span>
+            </label>
+        </div>
 
-                <div class="export-row">
-                    <a (click)="downloadInnerPath()" class="file-upload">Download Inner Path</a>
-                    <label class="toggle export-view-toggle">
-                        <input type="checkbox" [(ngModel)]="viewInnerPath" (change)="renderExports()" />
-                        <span>View</span>
-                    </label>
-                </div>
-
-                <div class="export-row">
-                    <a (click)="downloadMouldPath()" class="file-upload">Download Mould</a>
-                    <label class="toggle export-view-toggle">
-                        <input type="checkbox" [(ngModel)]="viewMouldExport" (change)="renderExports()" />
-                        <span>View</span>
-                    </label>
-                </div>
-            </section>
-
-            <section class="ui-group">
-                <div class="ui-group-title">Planned Exports</div>
-
-                <div class="export-row">
-                    <a class="file-upload">Download Blocks</a>
-                    <label class="toggle export-view-toggle">
-                        <input type="checkbox" (change)="renderExports()" />
-                        <span>View (WIP)</span>
-                    </label>
-                </div>
-
-                <div class="export-row">
-                    <a class="file-upload">Download Clamps</a>
-                    <label class="toggle export-view-toggle">
-                        <input type="checkbox" (change)="renderExports()" />
-                        <span>View (WIP)</span>
-                    </label>
-                </div>
-            </section>
-
-
-        <!-- <br><br><br><br><br>
-         <a (click)="downloadOuterSegmentedPaths()" class="file-upload">Download Outer Segmented Paths</a>
-        <input type="checkbox" [(ngModel)]="viewSegmentedOuter" (change)="renderExports()" /> View 
-        <br>
-        <a (click)="downloadInnerSegmentedPaths()" class="file-upload">Download Inner Segmented Paths</a>
-        <input type="checkbox" [(ngModel)]="viewSegmentedInnerPartial" (change)="renderExports()" /> View -->
+        <div class="export-row">
+            <a (click)="downloadMouldPath()" class="file-upload">Download Mould</a>
+            <label class="toggle export-view-toggle">
+                <input type="checkbox" [(ngModel)]="viewMouldExport" (change)="changeExports()" />
+                <span>View</span>
+            </label>
+        </div>
     </section>
+
+    <section class="ui-group">
+        <div class="ui-group-title">Planned Exports</div>
+
+        <div class="export-row">
+            <a class="file-upload">Download Blocks</a>
+            <label class="toggle export-view-toggle">
+                <input type="checkbox" (change)="changeExports()" />
+                <span>View (WIP)</span>
+            </label>
+        </div>
+
+        <div class="export-row">
+            <a class="file-upload">Download Clamps</a>
+            <label class="toggle export-view-toggle">
+                <input type="checkbox" (change)="changeExports()" />
+                <span>View (WIP)</span>
+            </label>
+        </div>
+    </section>
+
     }
 </div>
