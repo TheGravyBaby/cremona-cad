@@ -50,7 +50,7 @@ export class PanelFlow<T extends string = string> {
 
     const panel = this.getCurrent(currentPanel) ?? enabledPanels[0];
     const index = enabledPanels.indexOf(panel);
-    const total = enabledPanels.length;
+    const total = this.panelOrder.length;
     const percent = total <= 1 ? 100 : (index / (total - 1)) * 100;
 
     return {

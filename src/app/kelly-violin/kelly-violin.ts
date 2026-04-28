@@ -3,8 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { error, info, warn } from '../shared/message-emitter';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { Circle } from '../models/types';
-import { greyOut, renderCircle, renderCircleAngleIndicator, renderCrosshair, renderDashedLine, renderDashLine, renderDistanceMeasurementLine, renderPath, renderRect } from '../helpers/renderFuncs';
-import { combinePathStrings, pointOnCircle } from '../helpers/draftMath';
+import { greyOut, renderCircle, renderCircleAngleIndicator, renderCrosshair, renderDashedLine, renderDashLine, renderDistanceMeasurementLine, renderLine, renderPath, renderRect } from '../helpers/renderFuncs';
+import { arcPathFrom3Points, circleCircleIntersections, combinePathStrings, offsetCircleRadius, pathFromLine, pointOnCircle, polarAngle } from '../helpers/draftMath';
 import { KellyViolinData, KellyViolinRecipe } from './kellyTypes';
 import { calculatePrimaryShapes, calculateMainPathsSegmented, calculateMainPathsUnified, calculateMouldPath, calculateOffsetPathsSegments, calculateTopPath, initializeMainBouts, initializeMinorBouts, initializeCornerPlacement, initializeCornerCircles, initializeTopAndBottomTrace, initializeBlocks, normalizeDegrees, calculateMainBouts } from './kellyCals';
 import { clampParam, safeRun } from '../helpers/validators';
@@ -502,11 +502,14 @@ export class KellyViolin extends RecipeComponentBase {
     }
 
     if (this.showAllCircles) {
-      renderCircle(this.d.shapes.upperJoiningCircle, this.colors.upperBoutOff2)(g, ui);
-      renderCircle(this.d.shapes.lowerJoiningCircle, this.colors.lowerBoutOff2)(g, ui);
+      !this.d.options.useViolNeck && renderCircle(this.d.shapes.upperJoiningCircle, this.colors.upperBoutOff2)(g, ui);
+      !this.d.options.useViolNeck && renderCircle(this.d.shapes.lowerJoiningCircle, this.colors.lowerBoutOff2)(g, ui);
+
+      this.d.options.useViolNeck && renderCircle(this.d.shapes.violLeftNeckCircle, this.colors.upperBoutOff)(g, ui);
+      this.d.options.useViolNeck && renderCircle(this.d.shapes.violRightNeckCircle, this.colors.upperBoutOff)(g, ui);
     }
 
-    if (currentModule && this.showGuideLines) {
+    if (!this.d.options.useViolNeck && currentModule && this.showGuideLines) {
       renderDashLine(this.d.shapes.upperJoiningCircle, this.d.intersects.minorBouts.upperLeftVesicaUpper, this.colors.upperBoutOff2)(g,ui)
       renderDashLine(this.d.shapes.upperJoiningCircle, this.d.intersects.minorBouts.upperRightVesicaUpper, this.colors.upperBoutOff2)(g,ui)
       renderCrosshair(this.d.shapes.upperJoiningCircle, this.colors.upperBoutOff2)(g, ui);
@@ -521,6 +524,10 @@ export class KellyViolin extends RecipeComponentBase {
       renderCrosshair(this.d.shapes.lowerRightVesaci, this.colors.lowerBout)(g, ui);
     }
 
+    if (this.d.options.useViolNeck && currentModule && this.showGuideLines) {
+      renderCircle(this.d.shapes.violLeftNeckCircle, this.colors.upperBoutOff)(g, ui);
+      renderCircle(this.d.shapes.violRightNeckCircle, this.colors.upperBoutOff)(g, ui);
+    }
   }
 
   renderCornerPlacements = (currentModule: boolean = true) => (g: any, ui: any): void => {

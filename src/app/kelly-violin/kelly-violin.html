@@ -119,12 +119,13 @@
                     [(ngModel)]="d.params.vesaciUpR" (input)="changeMinorBouts()"
                     [style.border-color]="colors.upperBout" />
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="d.options.lockUpperJoinArc" (change)="changeMinorBouts()" />
+                    <input type="checkbox" [(ngModel)]="d.options.lockUpperJoinArc" (change)="changeMinorBouts()"
+                        [disabled]="d.options.useViolNeck" />
                     <span>Lock Join Arc To Bounds</span>
                 </div>
             </div>
         </label>
-        @if (!d.options.lockUpperJoinArc) {
+        @if (!d.options.lockUpperJoinArc && !d.options.useViolNeck) {
         <label class="section-label">
             Join Arc Radius <span>(mm)</span>
             <div class="input-group basic-row">
@@ -133,6 +134,34 @@
             </div>
         </label>
         }
+        
+        <div class="toggle">
+            <input type="checkbox" [(ngModel)]="d.options.useViolNeck" (change)="changeMinorBouts()" />
+            <span>Use Viol Neck</span>
+        </div>
+        @if (d.options.useViolNeck) {
+            <br>
+            <label class="section-label">
+                Neck Height : Width <span>(mm)</span>
+                <div class="input-group basic-row">
+                    <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="d.params.violNeckH"
+                        (input)="changeMinorBouts()" [style.border-color]="colors.upperBoutOff2" />
+                    <span>:</span>
+                    <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="d.params.violNeckW"
+                        (input)="changeMinorBouts()" [style.border-color]="colors.upperBoutOff2" />
+                </div>
+            </label>
+            <label class="section-label">
+                Neck Radius <span>(mm)</span>
+                <div class="input-group basic-row">
+                    <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="d.params.violNeckR"
+                        (input)="changeMinorBouts()" [style.border-color]="colors.upperBoutOff2" />
+                </div>
+            </label>
+            }
+
+
+       
     </section>
     <section class="ui-group">
         <div class="ui-group-title">Lower Bout</div>

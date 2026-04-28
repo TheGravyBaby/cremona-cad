@@ -13,11 +13,13 @@ import {
 	inscribeCircleWithinCircle,
 	interceptCirclesAndPoint,
 	lineCircleIntersection,
+	offsetCircleRadius,
 	pathFromCircle,
 	pathFromLine,
 	pathFromRect,
 	pathFromRoundedRect,
 	pointOnCircle,
+	polarAngle,
 	unifyConnectedSvgPaths,
 } from '../helpers/draftMath';
 import { KellyCalcEntry, KellyViolinData } from './kellyTypes';
@@ -282,16 +284,42 @@ export function calculatePrimaryShapes(data: KellyViolinData): void {
 		data.shapes.upperJoiningCircle = upperJoiningCircle;
 		data.shapes.lowerJoiningCircle = lowerJoiningCircle;
 
-		data.intersects.minorBouts = {
-			lowerRightVesicaUpper: circleCircleIntersections(lowerRightVesica, data.shapes.lowerBout)[0],
-			lowerRightVesicaLower: circleCircleIntersections(lowerRightVesica, lowerJoiningCircle)[0],
-			lowerLeftVesicaUpper: circleCircleIntersections(lowerLeftVesica, data.shapes.lowerBout)[0],
-			lowerLeftVesicaLower: circleCircleIntersections(lowerLeftVesica, lowerJoiningCircle)[0],
-			upperRightVesicaUpper: circleCircleIntersections(upperRightVesica, upperJoiningCircle)[0],
-			upperRightVesicaLower: circleCircleIntersections(upperRightVesica, data.shapes.upperBout)[0],
-			upperLeftVesicaUpper: circleCircleIntersections(upperLeftVesica, upperJoiningCircle)[0],
-			upperLeftVesicaLower: circleCircleIntersections(upperLeftVesica, data.shapes.upperBout)[0],
-		};
+		if (data.options.useViolNeck) {
+			data.params.violNeckR = Math.round(data.params.violNeckR ?? data.params.boutUpR / 3);
+			data.params.violNeckH = Math.round(data.params.violNeckH ?? data.params.boutUpR / 3);
+			data.params.violNeckW = Math.round(data.params.violNeckW ?? data.params.boutUpR / 3);
+
+			let violNeckTopLeft = { x: -data.params.violNeckW / 2, y: data.params.boutUpY + data.params.vesaciUpR + data.params.violNeckH }
+			let violNeckTopRight = { x: data.params.violNeckW / 2, y: data.params.boutUpY + data.params.vesaciUpR + data.params.violNeckH }
+
+			let violLeftCircle = interceptCirclesAndPoint(data.shapes.upperLeftVesaci, violNeckTopLeft, data.params.violNeckR).sort((a, b) => b.x - a.x)[1];
+			let violRightCircle = interceptCirclesAndPoint(data.shapes.upperRightVesaci, violNeckTopRight, data.params.violNeckR).sort((a, b) => b.x - a.x)[0];
+
+			if (!violLeftCircle || !violRightCircle) {
+				error(`Viol neck won't fit with the current upper vesaci. Either decrease the neck radius or height, or increase the upper vesaci radius.`, "Viol Neck Limit");
+				return;
+			}
+
+			let violNeckBodyLeft = circleCircleIntersections(violLeftCircle, data.shapes.upperLeftVesaci)[0];
+			let violNeckBodyRight = circleCircleIntersections(violRightCircle, data.shapes.upperRightVesaci)[0];
+
+			data.shapes.violLeftNeckCircle = violLeftCircle;
+			data.shapes.violRightNeckCircle = violRightCircle;
+			data.intersects.minorBouts.violNeckTopLeft = violNeckTopLeft;
+			data.intersects.minorBouts.violNeckTopRight = violNeckTopRight;
+			data.intersects.minorBouts.violNeckBodyLeft = violNeckBodyLeft;
+			data.intersects.minorBouts.violNeckBodyRight = violNeckBodyRight;
+		}
+
+		data.intersects.minorBouts.lowerRightVesicaUpper = circleCircleIntersections(lowerRightVesica, data.shapes.lowerBout)[0];
+		data.intersects.minorBouts.lowerRightVesicaLower = circleCircleIntersections(lowerRightVesica, lowerJoiningCircle)[0];
+		data.intersects.minorBouts.lowerLeftVesicaUpper = circleCircleIntersections(lowerLeftVesica, data.shapes.lowerBout)[0];
+		data.intersects.minorBouts.lowerLeftVesicaLower = circleCircleIntersections(lowerLeftVesica, lowerJoiningCircle)[0];
+		data.intersects.minorBouts.upperRightVesicaUpper = circleCircleIntersections(upperRightVesica, upperJoiningCircle)[0];
+		data.intersects.minorBouts.upperRightVesicaLower = circleCircleIntersections(upperRightVesica, data.shapes.upperBout)[0];
+		data.intersects.minorBouts.upperLeftVesicaUpper = circleCircleIntersections(upperLeftVesica, upperJoiningCircle)[0];
+		data.intersects.minorBouts.upperLeftVesicaLower = circleCircleIntersections(upperLeftVesica, data.shapes.upperBout)[0];
+
 	}
 
 	if (data.params.cornerR && data.params.cornerGuideUpY) {
@@ -392,6 +420,39 @@ export function calculateMainPath(data: KellyViolinData): void {
 	let p10 = arcPathFrom3Points(data.shapes.upperRightVesaci, data.intersects.minorBouts.upperRightVesicaLower, data.intersects.minorBouts.upperRightVesicaUpper)
 	let p11 = arcPathWithHighestPoint(data.shapes.upperJoiningCircle, data.intersects.minorBouts.upperRightVesicaUpper, data.intersects.minorBouts.upperLeftVesicaUpper)
 	let p12 = arcPathFrom3Points(data.shapes.upperLeftVesaci, data.intersects.minorBouts.upperLeftVesicaUpper, data.intersects.minorBouts.upperLeftVesicaLower)
+
+	if (data.options.useViolNeck) {
+		p10 = arcPathFrom3Points(data.shapes.upperRightVesaci, data.intersects.minorBouts.upperRightVesicaLower, data.intersects.minorBouts.violNeckBodyRight)
+
+		let p11_1 = arcPathFrom3Points(data.shapes.violRightNeckCircle, data.intersects.minorBouts.violNeckBodyRight, data.intersects.minorBouts.violNeckTopRight)
+		
+		let roundoverValue = 2
+		let leftViolCircleTheta = polarAngle(data.shapes.violLeftNeckCircle, data.intersects.minorBouts.violNeckTopLeft);
+		let rightViolCircleTheta = polarAngle(data.shapes.violRightNeckCircle, data.intersects.minorBouts.violNeckTopRight);
+		let leftOffsetCircle = offsetCircleRadius(data.shapes.violLeftNeckCircle, roundoverValue)
+		let rightOffsetCircle = offsetCircleRadius(data.shapes.violRightNeckCircle, roundoverValue)
+		let roundoverLeftCenter = pointOnCircle(leftOffsetCircle, leftViolCircleTheta);
+		let roundoverRightRight = pointOnCircle(rightOffsetCircle, rightViolCircleTheta);
+
+		let roundoverLeftCircle = { x: roundoverLeftCenter.x, y: roundoverLeftCenter.y, r: roundoverValue }
+		let roundoverRightCircle = { x: roundoverRightRight.x, y: roundoverRightRight.y, r: roundoverValue }
+
+		let roundoverLeftIntersection = circleCircleIntersections(roundoverLeftCircle, data.shapes.violLeftNeckCircle)[0];
+		let roundoverRightIntersection = circleCircleIntersections(roundoverRightCircle, data.shapes.violRightNeckCircle)[0];
+		let roundoverTopLeft = pointOnCircle(roundoverLeftCircle, Math.PI/ 2)
+		let roundoverTopRight = pointOnCircle(roundoverRightCircle, Math.PI / 2)
+		
+		let p11_21 = arcPathFrom3Points(roundoverRightCircle, roundoverRightIntersection, roundoverTopRight)
+		let p11_22 = arcPathFrom3Points({ x: 0, y: data.params.boutUpY }, roundoverTopRight, roundoverTopLeft)
+		let p11_23 = arcPathFrom3Points(roundoverLeftCircle, roundoverLeftIntersection, roundoverTopLeft)
+		let p11_3 = arcPathFrom3Points(data.shapes.violLeftNeckCircle, data.intersects.minorBouts.violNeckTopLeft, data.intersects.minorBouts.violNeckBodyLeft)
+		
+		p11 = unifyConnectedSvgPaths([p11_1, p11_21, p11_22, p11_23, p11_3]);
+
+
+		p12 = arcPathFrom3Points(data.shapes.upperLeftVesaci, data.intersects.minorBouts.violNeckBodyLeft, data.intersects.minorBouts.upperLeftVesicaLower)
+	}
+
 	pathsCorners.push(p10, p11, p12);
 	pathsCornerless.push(p10, p11, p12);
 
@@ -605,12 +666,20 @@ export function calculateMouldPath(data: KellyViolinData, useHighAccuracy = fals
 	data.shapes.upperRightBlock = new Rectangle(new Pt(corners.upperRight.x + data.params.blockCornerUpPad, corners.upperRight.y - data.params.blockCornerUpPad), new Pt(corners.upperRight.x - (data.params.blockCornerUpW - data.params.blockCornerUpPad), corners.upperRight.y + (data.params.blockCornerUpH - data.params.blockCornerUpPad)));
 	data.shapes.upperLeftBlock = new Rectangle(new Pt(corners.upperLeft.x - data.params.blockCornerUpPad, corners.upperLeft.y - data.params.blockCornerUpPad), new Pt(corners.upperLeft.x + (data.params.blockCornerUpW - data.params.blockCornerUpPad), corners.upperLeft.y + (data.params.blockCornerUpH - data.params.blockCornerUpPad)));
 
-	let highpoint = pointOnCircle(data.shapes.upperJoiningCircle, 1 / 2 * Math.PI)
+	// we need to add a little bit of space to break out of the mould at the neck
+	// might refactor later
+	let violHighpoint = {...data.intersects.minorBouts.violNeckTopLeft, y:  data.intersects.minorBouts.violNeckTopLeft.y + 2}
+	let highpoint = data.options.useViolNeck ? violHighpoint: pointOnCircle(data.shapes.upperJoiningCircle, 1 / 2 * Math.PI)
 	let lowPoint = pointOnCircle(data.shapes.lowerJoiningCircle, 3 / 2 * Math.PI)
 
 	const lowerBlockP1 = new Pt(-0.5 * data.params.blowLowW, lowPoint.y);
 	const lowerBlockP2 = new Pt(0.5 * data.params.blowLowW, lowerBlockP1.y + data.params.blockLowH);
 	data.shapes.lowerBlock = new Rectangle(lowerBlockP1, lowerBlockP2);
+
+	if (data.options.useViolNeck && data.params.blockUpW <= data.params.violNeckW) {
+		warn('Upper Block Width must be larger than Viol Neck Width.', "Viol Neck Width");
+		data.params.blockUpW = data.params.violNeckW + 2;
+	}
 
 	const upperBlockP1 = new Pt(-0.5 * data.params.blockUpW, highpoint.y);
 	const upperBlockP2 = new Pt(0.5 * data.params.blockUpW, upperBlockP1.y - data.params.blockUpH);
@@ -669,34 +738,50 @@ export function calculateMouldPath(data: KellyViolinData, useHighAccuracy = fals
 	}
 
 	const renderDensity = useHighAccuracy ? 0.1 : 1;
-	let mouldPath = differenceFromTwoPaths(pathObj, pathFromRect(lowerLeftBlock), renderDensity);
-	mouldPath = differenceFromTwoPaths(mouldPath, pathFromRect(lowerRightBlock), renderDensity);
-	mouldPath = differenceFromTwoPaths(mouldPath, pathFromRect(upperRightBlock), renderDensity);
-	mouldPath = differenceFromTwoPaths(mouldPath, pathFromRect(upperLeftBlock), renderDensity);
-	mouldPath = differenceFromTwoPaths(mouldPath, pathFromRect(lowerBlock), renderDensity);
-	mouldPath = differenceFromTwoPaths(mouldPath, pathFromRect(upperBlock), renderDensity);
 
-	if (bitRadius > 0) {
-		const tolerance = 0.5;
-		const bitOffset = (bitRadius * Math.sqrt(2) / 2) - tolerance;
-		const lowerLeftBlockCornerCircle = { x: lowerLeftBlock.Pt2.x - bitOffset, y: lowerLeftBlock.Pt2.y + bitOffset, r: bitRadius };
-		const lowerRightBlockCornerCircle = { x: lowerRightBlock.Pt2.x + bitOffset, y: lowerRightBlock.Pt2.y + bitOffset, r: bitRadius };
-		const upperLeftBlockCornerCircle = { x: upperLeftBlock.Pt2.x - bitOffset, y: upperLeftBlock.Pt2.y - bitOffset, r: bitRadius };
-		const upperRightBlockCornerCircle = { x: upperRightBlock.Pt2.x + bitOffset, y: upperRightBlock.Pt2.y - bitOffset, r: bitRadius };
-		const lowerBlockCornerCircle1 = { x: lowerBlock.Pt2.x - bitOffset, y: lowerBlock.Pt2.y - bitOffset, r: bitRadius };
-		const lowerBlockCornerCircle2 = { x: lowerBlock.Pt1.x + bitOffset, y: lowerBlock.Pt2.y - bitOffset, r: bitRadius };
-		const upperBlockCornerCircle1 = { x: upperBlock.Pt2.x - bitOffset, y: upperBlock.Pt2.y + bitOffset, r: bitRadius };
-		const upperBlockCornerCircle2 = { x: upperBlock.Pt1.x + bitOffset, y: upperBlock.Pt2.y + bitOffset, r: bitRadius };
+    const subtractMany = (sourcePath: string, cutouts: string[], density: number): string => {
+        return cutouts.reduce((acc, cutout) => differenceFromTwoPaths(acc, cutout, density), sourcePath);
+    };
 
-		mouldPath = differenceFromTwoPaths(mouldPath, pathFromCircle(lowerLeftBlockCornerCircle));
-		mouldPath = differenceFromTwoPaths(mouldPath, pathFromCircle(lowerRightBlockCornerCircle));
-		mouldPath = differenceFromTwoPaths(mouldPath, pathFromCircle(upperLeftBlockCornerCircle));
-		mouldPath = differenceFromTwoPaths(mouldPath, pathFromCircle(upperRightBlockCornerCircle));
-		mouldPath = differenceFromTwoPaths(mouldPath, pathFromCircle(lowerBlockCornerCircle1));
-		mouldPath = differenceFromTwoPaths(mouldPath, pathFromCircle(lowerBlockCornerCircle2));
-		mouldPath = differenceFromTwoPaths(mouldPath, pathFromCircle(upperBlockCornerCircle1));
-		mouldPath = differenceFromTwoPaths(mouldPath, pathFromCircle(upperBlockCornerCircle2));
-	}
+    const blockCutouts = [
+        pathFromRect(lowerLeftBlock),
+        pathFromRect(lowerRightBlock),
+        pathFromRect(upperRightBlock),
+        pathFromRect(upperLeftBlock),
+        pathFromRect(lowerBlock),
+        pathFromRect(upperBlock),
+    ];
+
+    let mouldPath: string;
+    try {
+        mouldPath = subtractMany(pathObj, blockCutouts, renderDensity);
+
+        if (bitRadius > 0) {
+            const tolerance = 0.5;
+            const bitOffset = (bitRadius * Math.sqrt(2) / 2) - tolerance;
+
+            const circleCutouts = [
+                pathFromCircle({ x: lowerLeftBlock.Pt2.x - bitOffset, y: lowerLeftBlock.Pt2.y + bitOffset, r: bitRadius }),
+                pathFromCircle({ x: lowerRightBlock.Pt2.x + bitOffset, y: lowerRightBlock.Pt2.y + bitOffset, r: bitRadius }),
+                pathFromCircle({ x: upperLeftBlock.Pt2.x - bitOffset, y: upperLeftBlock.Pt2.y - bitOffset, r: bitRadius }),
+                pathFromCircle({ x: upperRightBlock.Pt2.x + bitOffset, y: upperRightBlock.Pt2.y - bitOffset, r: bitRadius }),
+                pathFromCircle({ x: lowerBlock.Pt2.x - bitOffset, y: lowerBlock.Pt2.y - bitOffset, r: bitRadius }),
+                pathFromCircle({ x: lowerBlock.Pt1.x + bitOffset, y: lowerBlock.Pt2.y - bitOffset, r: bitRadius }),
+				pathFromCircle({ x: upperBlock.Pt2.x - bitOffset, y: upperBlock.Pt2.y + bitOffset, r: bitRadius }),
+                pathFromCircle({ x: upperBlock.Pt1.x + bitOffset, y: upperBlock.Pt2.y + bitOffset, r: bitRadius }),
+         
+            ];
+
+            // IMPORTANT: pass renderDensity here too
+            mouldPath = subtractMany(mouldPath, circleCutouts, renderDensity);
+        }
+
+    } catch (e) {
+        // Fallback for RangeError: Maximum call stack size exceeded
+        const fallbackDensity = Math.max(1, renderDensity * 2);
+        warn(`Mould boolean diff overflow at density ${renderDensity}; retrying at ${fallbackDensity}.`, 'Mould Diff Fallback');
+        mouldPath = subtractMany(pathObj, blockCutouts, fallbackDensity);
+    }
 
 	upsertCalc(data, {
 		name: 'mouldPath',

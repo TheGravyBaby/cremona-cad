@@ -11,7 +11,13 @@ export class DebounceController {
 
   markImmediateFromMouse(event: MouseEvent): void {
     const target = event.target as HTMLInputElement | null;
-    this.skipDebounce = !!target && (target.tagName === 'INPUT' || target.type === 'number' || target.type === 'button'
+    this.skipDebounce = !!target && 
+    (
+      target.tagName === 'INPUT' 
+      || target.type === 'number' 
+      || target.type === 'button' 
+      || target.tagName === 'SELECT' 
+      || target.tagName === 'SECTION'
     );
   }
 

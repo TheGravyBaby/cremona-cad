@@ -15,6 +15,7 @@ export interface KellyViolinData {
 export interface KellyOptions {
 	lockUpperJoinArc: boolean;
 	lockLowerJoinArc: boolean;
+	useViolNeck: boolean;
 }
 
 export interface KellyRatios {
@@ -83,7 +84,7 @@ export class KellyViolinRecipe implements KellyViolinData {
 	ratios: KellyRatios;
 	options: KellyOptions;
 
-	constructor(fileName = 'Kelly-Baltic', params: KellyParamOverrides = {}) {
+	constructor(fileName = 'DelGesu_Baltic', params: KellyParamOverrides = {}) {
 		this.recipeName = 'Kelly Violin';
 		this.fileName = fileName;
 		this.version = '.1';
@@ -96,7 +97,8 @@ export class KellyViolinRecipe implements KellyViolinData {
 		this.paths = [];
 		this.options = {
 			lockUpperJoinArc: true,
-			lockLowerJoinArc: true
+			lockLowerJoinArc: true,
+			useViolNeck: false
 		}
 	}
 
@@ -108,7 +110,8 @@ export class KellyViolinRecipe implements KellyViolinData {
 		this.paths = [];
 		this.options = {
 			lockUpperJoinArc: true,
-			lockLowerJoinArc: true
+			lockLowerJoinArc: true,
+			useViolNeck: false
 		}
 	}
 }
@@ -237,6 +240,9 @@ export const KELLY_DEFAULT_PARAMS: KellyParams = {
 	joinArcUpR: null,
 	vesaciLowR: 62,
 	joinArcLowR: null,
+	violNeckR: null,
+	violNeckH: null,
+	violNeckW: null,
 	cornerR: 74,
 	cornerGuideLowY: 51,
 	cornerGuideLowXOff: 0,
@@ -286,6 +292,9 @@ export const KELLY_BLANK_PARAMS: KellyParams = {
 	joinArcUpR: null,
 	vesaciLowR: 0,
 	joinArcLowR: null,
+	violNeckR: null,
+	violNeckH: null,
+	violNeckW: null,
 	cornerR: 0,
 	cornerGuideLowY: 0,
 	cornerGuideLowXOff: 0,
@@ -334,6 +343,9 @@ export interface KellyParams {
 	joinArcUpR: number | null;
 	vesaciLowR: number;
 	joinArcLowR: number | null;
+	violNeckR: number | null;
+	violNeckH: number | null;
+	violNeckW: number | null;
 	cornerR: number;
 	cornerGuideLowY: number;
 	cornerGuideLowXOff: number;
@@ -421,6 +433,8 @@ export interface KellyShapes {
 	upperRightCutoff2: Pt | null;
 	upperLeftCutoff1: Pt | null;
 	upperLeftCutoff2: Pt | null;
+	violLeftNeckCircle?: Circle | null;
+	violRightNeckCircle?: Circle | null;
 }
 
 export interface KellyMajorBoutIntersects {
@@ -439,6 +453,10 @@ export interface KellyMinorBoutIntersects {
 	upperRightVesicaLower: Pt;
 	upperLeftVesicaUpper: Pt;
 	upperLeftVesicaLower: Pt;
+	violNeckTopLeft?: Pt;
+	violNeckTopRight?: Pt;
+	violNeckBodyLeft?: Pt;
+	violNeckBodyRight?: Pt;
 }
 
 export interface KellyCornerIntersects {
