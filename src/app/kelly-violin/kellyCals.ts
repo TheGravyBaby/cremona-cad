@@ -668,7 +668,7 @@ export function calculateMouldPath(data: KellyViolinData, useHighAccuracy = fals
 
 	// we need to add a little bit of space to break out of the mould at the neck
 	// might refactor later
-	let violHighpoint = {...data.intersects.minorBouts.violNeckTopLeft, y:  data.intersects.minorBouts.violNeckTopLeft.y + 2}
+	let violHighpoint = {...data.intersects.minorBouts.violNeckTopLeft, y:  data.intersects.minorBouts.violNeckTopLeft.y + 3}
 	let highpoint = data.options.useViolNeck ? violHighpoint: pointOnCircle(data.shapes.upperJoiningCircle, 1 / 2 * Math.PI)
 	let lowPoint = pointOnCircle(data.shapes.lowerJoiningCircle, 3 / 2 * Math.PI)
 
