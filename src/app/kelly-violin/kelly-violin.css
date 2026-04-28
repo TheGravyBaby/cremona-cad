@@ -28,7 +28,6 @@
   background: var(--ui-bg-section);
   box-shadow: var(--ui-shadow-soft);
   padding: 8px;
-  padding-bottom: 16px;
   margin-bottom: 0;
 }
 
@@ -48,6 +47,26 @@
   grid-template-columns: max-content minmax(0, 1fr) max-content;
   align-items: center;
   gap: 6px;
+}
+
+.panel-progress {
+  position: relative;
+  margin-top: 8px;
+  height: 2px;
+  width: 100%;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ui-text-secondary) 18%, transparent);
+  overflow: hidden;
+}
+
+.panel-progress-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  height: 100%;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--ui-focus-border) 38%, var(--ui-text-secondary));
+  opacity: 0.75;
+  transition: width 180ms ease;
 }
 
 .panel-select {

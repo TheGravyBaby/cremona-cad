@@ -20,6 +20,10 @@
                     Next
                 </button>
             </div>
+            <div class="panel-progress" role="progressbar" aria-label="Section progress" aria-valuemin="1"
+                [attr.aria-valuemax]="panelProgressMax" [attr.aria-valuenow]="panelProgressNow">
+                <div class="panel-progress-fill" [style.width.%]="panelProgressPercent"></div>
+            </div>
         </section>
     </div>
 

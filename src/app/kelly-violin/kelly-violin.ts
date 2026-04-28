@@ -164,6 +164,18 @@ export class KellyViolin extends RecipeComponentBase {
     this.activatePanel(nextPanel);
   }
 
+  get panelProgressMax(): number {
+    return this.panelFlow.getProgress(this.openPanel).total;
+  }
+
+  get panelProgressNow(): number {
+    return this.panelFlow.getProgress(this.openPanel).current;
+  }
+
+  get panelProgressPercent(): number {
+    return this.panelFlow.getProgress(this.openPanel).percent;
+  }
+
   // ===== Panel gating / navigation internals =====
 
   private activatePanel(panel: string): void {
