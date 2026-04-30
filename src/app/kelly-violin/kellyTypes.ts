@@ -3,6 +3,7 @@ import { Circle, Pt, Rectangle } from '../models/types';
 export interface KellyViolinData {
 	recipeName: string;
 	fileName: string;
+	description?: string;
 	version: string;
 	params: KellyParams;
 	shapes: KellyShapes;

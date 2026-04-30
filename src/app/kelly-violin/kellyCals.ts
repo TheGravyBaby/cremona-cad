@@ -426,7 +426,7 @@ export function calculateMainPath(data: KellyViolinData): void {
 
 		let p11_1 = arcPathFrom3Points(data.shapes.violRightNeckCircle, data.intersects.minorBouts.violNeckBodyRight, data.intersects.minorBouts.violNeckTopRight)
 		
-		let roundoverValue = 2
+		let roundoverValue = 3
 		let leftViolCircleTheta = polarAngle(data.shapes.violLeftNeckCircle, data.intersects.minorBouts.violNeckTopLeft);
 		let rightViolCircleTheta = polarAngle(data.shapes.violRightNeckCircle, data.intersects.minorBouts.violNeckTopRight);
 		let leftOffsetCircle = offsetCircleRadius(data.shapes.violLeftNeckCircle, roundoverValue)
@@ -443,11 +443,15 @@ export function calculateMainPath(data: KellyViolinData): void {
 		let roundoverTopRight = pointOnCircle(roundoverRightCircle, Math.PI / 2)
 		
 		let p11_21 = arcPathFrom3Points(roundoverRightCircle, roundoverRightIntersection, roundoverTopRight)
-		let p11_22 = arcPathFrom3Points({ x: 0, y: data.params.boutUpY }, roundoverTopRight, roundoverTopLeft)
+		let p11_22 = arcPathFrom3Points({ x: 0, y: 0 }, roundoverTopRight, roundoverTopLeft)
 		let p11_23 = arcPathFrom3Points(roundoverLeftCircle, roundoverLeftIntersection, roundoverTopLeft)
+		
+
 		let p11_3 = arcPathFrom3Points(data.shapes.violLeftNeckCircle, data.intersects.minorBouts.violNeckTopLeft, data.intersects.minorBouts.violNeckBodyLeft)
 		
 		p11 = unifyConnectedSvgPaths([p11_1, p11_21, p11_22, p11_23, p11_3]);
+		// p11 = unifyConnectedSvgPaths([p11_1, dangIt, p11_3]);
+
 
 
 		p12 = arcPathFrom3Points(data.shapes.upperLeftVesaci, data.intersects.minorBouts.violNeckBodyLeft, data.intersects.minorBouts.upperLeftVesicaLower)
@@ -665,10 +669,10 @@ export function calculateMouldPath(data: KellyViolinData, useHighAccuracy = fals
 	data.shapes.lowerLeftBlock = new Rectangle(new Pt(corners.lowerLeft.x - data.params.blockCornerLowPad, corners.lowerLeft.y + data.params.blockCornerLowPad), new Pt(corners.lowerLeft.x + (data.params.blockCornerLowW - data.params.blockCornerLowPad), corners.lowerLeft.y - (data.params.blockCornerLowH - data.params.blockCornerLowPad)));
 	data.shapes.upperRightBlock = new Rectangle(new Pt(corners.upperRight.x + data.params.blockCornerUpPad, corners.upperRight.y - data.params.blockCornerUpPad), new Pt(corners.upperRight.x - (data.params.blockCornerUpW - data.params.blockCornerUpPad), corners.upperRight.y + (data.params.blockCornerUpH - data.params.blockCornerUpPad)));
 	data.shapes.upperLeftBlock = new Rectangle(new Pt(corners.upperLeft.x - data.params.blockCornerUpPad, corners.upperLeft.y - data.params.blockCornerUpPad), new Pt(corners.upperLeft.x + (data.params.blockCornerUpW - data.params.blockCornerUpPad), corners.upperLeft.y + (data.params.blockCornerUpH - data.params.blockCornerUpPad)));
-
+	
 	// we need to add a little bit of space to break out of the mould at the neck
 	// might refactor later
-	let violHighpoint = {...data.intersects.minorBouts.violNeckTopLeft, y:  data.intersects.minorBouts.violNeckTopLeft.y + 3}
+	let violHighpoint = data.options.useViolNeck && {...data.intersects.minorBouts.violNeckTopLeft, y:  data.intersects.minorBouts.violNeckTopLeft.y + 10}
 	let highpoint = data.options.useViolNeck ? violHighpoint: pointOnCircle(data.shapes.upperJoiningCircle, 1 / 2 * Math.PI)
 	let lowPoint = pointOnCircle(data.shapes.lowerJoiningCircle, 3 / 2 * Math.PI)
 
