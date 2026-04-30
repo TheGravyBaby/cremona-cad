@@ -42,6 +42,16 @@
             <textarea class="description-textarea" rows="4" maxlength="100" [(ngModel)]="d.description"></textarea>
         </label>
 
+        <label>
+            Load Template
+            <select [ngModel]="selectedTemplateKey" (ngModelChange)="loadTemplate($event)">
+                <option value="">— select a template —</option>
+                @for (t of templates; track t.key) {
+                <option [value]="t.key">{{ t.label }}</option>
+                }
+            </select>
+        </label>
+
         <label class="file-upload">
             Upload Reference Image
             <input type="file" accept="image/*" (change)="onReferenceFileSelected($event)" />
