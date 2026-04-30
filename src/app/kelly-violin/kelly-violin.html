@@ -36,6 +36,12 @@
             File Name
             <input type="text" [(ngModel)]="d.fileName" />
         </label>
+
+        <label>
+            Description
+            <textarea class="description-textarea" rows="4" maxlength="100" [(ngModel)]="d.description"></textarea>
+        </label>
+
         <label class="file-upload">
             Upload Reference Image
             <input type="file" accept="image/*" (change)="onReferenceFileSelected($event)" />

@@ -246,6 +246,27 @@
   box-shadow: 0 0 0 3px var(--ui-focus-ring);
 }
 
+.description-textarea {
+  width: 100%;
+  min-height: 84px;
+  padding: 8px 9px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 8px;
+  background: var(--ui-bg-panel);
+  color: var(--ui-text-primary);
+  font-size: 14px;
+  line-height: 1.35;
+  box-sizing: border-box;
+  resize: none;
+  transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+}
+
+.description-textarea:focus-visible {
+  outline: none;
+  border-color: var(--ui-focus-border);
+  box-shadow: 0 0 0 3px var(--ui-focus-ring);
+}
+
 
 .toggle {
   display: flex;

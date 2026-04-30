@@ -113,12 +113,27 @@ export class KellyViolin extends RecipeComponentBase {
       this.d = data;
       this.draftChange.emit([this.firstRender]);
       this.referenceImageChange.emit(null);
+
+      // if we have the data to render the paths, lets do so on init
+      this.hasMajorBouts() && this.hasMinorBouts() && calculatePrimaryShapes(this.d);
+      this.hasCornerCircles() && calculateMainPathsSegmented(this.d);
+      this.hasCornerCircles() && calculateOffsetPathsSegments(this.d);
+      this.hasOuterTrace() && calculateTopPath(this.d);
     }
   }
 
   override firstRender = (g: any, ui: any): void => {
-    this.renderBounds(g, ui);
     this.setBounds.emit({ pt1: { x: -this.d.params.width / 2, y: 0 }, pt2: { x: this.d.params.width / 2, y: this.d.params.height } });
+    
+    // if we have the data to render the paths, lets do so on init
+    this.hasMajorBouts() && this.hasMinorBouts() && calculatePrimaryShapes(this.d);
+    this.hasCornerCircles() && calculateMainPathsSegmented(this.d);
+    this.hasCornerCircles() && calculateOffsetPathsSegments(this.d);
+    this.hasOuterTrace() && calculateTopPath(this.d);
+
+    this.renderBounds(g, ui);
+    this.hasCornerCircles() && this.renderMainPath(g, ui);
+    this.hasOuterTrace() && this.renderTopPath(g, ui);
   }
 
   override ngOnDestroy(): void {
@@ -277,9 +292,13 @@ export class KellyViolin extends RecipeComponentBase {
         "Inset must be at least 1mm — reset to 1mm.",
         "An inset of 10mm is already generous — reset to 10mm.");
       this.setBounds.emit({ pt1: { x: -this.d.params.width / 2, y: 0 }, pt2: { x: this.d.params.width / 2, y: this.d.params.height } });
+      
+      
       this.draftChange.emit([this.renderBounds]);
       sessionStorage.setItem('recipeData', JSON.stringify(this.d));
     }));
+
+   
   }
 
   changeMainBouts() {
@@ -400,12 +419,6 @@ export class KellyViolin extends RecipeComponentBase {
 
   changeExports() {
     safeRun(() => {
-      calculatePrimaryShapes(this.d);
-      initializeBlocks(this.d)
-      calculateMouldPath(this.d);
-      calculateMainPathsSegmented(this.d);
-      calculateOffsetPathsSegments(this.d);
-      calculateTopPath(this.d);
       let emitArray = [];
       this.viewOuterPathExport && emitArray.push(this.renderTopPath);
       this.viewInnerPath && emitArray.push(this.renderMainPath);
