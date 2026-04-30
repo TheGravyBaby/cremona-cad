@@ -70,6 +70,35 @@ input:focus-visible {
     box-shadow: 0 0 0 3px var(--ui-focus-ring);
 }
 
+select {
+    min-height: 15px;
+    padding: 6px 9px;
+    border: 1px solid var(--ui-border-strong);
+    border-radius: 8px;
+    background: var(--ui-bg-panel);
+    color: var(--ui-text-primary);
+    font-size: 15px;
+    line-height: 1.2;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23888' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 28px;
+    cursor: pointer;
+    transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+}
+
+select:focus-visible {
+    outline: none;
+    border-color: var(--ui-focus-border);
+    box-shadow: 0 0 0 3px var(--ui-focus-ring);
+}
+
+select option {
+    background: var(--ui-bg-panel);
+    color: var(--ui-text-primary);
+}
+
 .hint {
     color: var(--ui-text-secondary);
     font-size: 13px;

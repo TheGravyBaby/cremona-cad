@@ -77,6 +77,11 @@ export class RecipeComponentBase implements AfterViewInit {
 
   private saveToDisk() {
     const safeName = (this.d.fileName?.trim() || 'untitled') + (this.d.fileName?.endsWith('.json') ? '' : '.json');
+    const limitedJson = {
+      ...this.d,
+      paths: []
+      
+    }
     const json = JSON.stringify(this.d, null, 2);
 
     const blob = new Blob([json], { type: 'application/json' });
@@ -157,12 +162,12 @@ export class RecipeComponentBase implements AfterViewInit {
   }
 
     private readFileAsDataUrl(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result));
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(file);
-    });
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+      });
   }
 
   private getImageSize(dataUrl: string): Promise<{ w: number; h: number }> {

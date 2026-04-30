@@ -5,7 +5,7 @@ import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { Circle } from '../models/types';
 import { greyOut, renderCircle, renderCircleAngleIndicator, renderCrosshair, renderDashedLine, renderDashLine, renderDistanceMeasurementLine, renderLine, renderPath, renderRect } from '../helpers/renderFuncs';
 import { arcPathFrom3Points, circleCircleIntersections, combinePathStrings, offsetCircleRadius, pathFromLine, pointOnCircle, polarAngle } from '../helpers/draftMath';
-import { KellyViolinData, KellyViolinRecipe } from './kellyTypes';
+import { KellyTemplate, KellyViolinData, KellyViolinRecipe, KELLY_TEMPLATES } from './kellyTypes';
 import { calculatePrimaryShapes, calculateMainPathsSegmented, calculateMainPathsUnified, calculateMouldPath, calculateOffsetPathsSegments, calculateTopPath, initializeMainBouts, initializeMinorBouts, initializeCornerPlacement, initializeCornerCircles, initializeTopAndBottomTrace, initializeBlocks, normalizeDegrees, calculateMainBouts } from './kellyCals';
 import { clampParam, safeRun } from '../helpers/validators';
 import { DebounceController } from '../helpers/debounce-controller';
@@ -58,8 +58,23 @@ export class KellyViolin extends RecipeComponentBase {
 
   // ===== Component state =====
 
+  readonly templates: KellyTemplate[] = KELLY_TEMPLATES;
   override openPanel = 'base';
-  override d: KellyViolinData = new KellyViolinRecipe();
+  override d: KellyViolinData = { ...KELLY_TEMPLATES[1] };
+
+  get selectedTemplateKey(): string {
+    const current = JSON.stringify(this.d.params);
+    return this.templates.find(t => JSON.stringify(t.params) === current)?.key ?? '';
+  }
+
+  loadTemplate(key: string): void {
+    if (!key) return;
+    const template = this.templates.find(t => t.key === key);
+    if (!template) return;
+    this.loadFile = template;
+    this.referenceImageChange.emit(template.referenceImage ?? null);
+    sessionStorage.setItem('recipeData', JSON.stringify(this.d));
+  }
 
   showGuideLines = true;
   showAllCircles = true;
@@ -109,7 +124,6 @@ export class KellyViolin extends RecipeComponentBase {
     if (v) {
       this.openPanel = 'base'
       let data = new KellyViolinRecipe()
-      data.newFile()
       this.d = data;
       this.draftChange.emit([this.firstRender]);
       this.referenceImageChange.emit(null);
@@ -297,8 +311,6 @@ export class KellyViolin extends RecipeComponentBase {
       this.draftChange.emit([this.renderBounds]);
       sessionStorage.setItem('recipeData', JSON.stringify(this.d));
     }));
-
-   
   }
 
   changeMainBouts() {
