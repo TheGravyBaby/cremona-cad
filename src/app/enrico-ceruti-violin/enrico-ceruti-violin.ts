@@ -1,8 +1,8 @@
 import { ChangeDetectorRef, Component, HostListener, Input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
-import { RecipeInterface } from '../models/types';
-import { renderLine} from '../helpers/renderFuncs';
+import { RecipeInterface, Rectangle } from '../models/types';
+import { renderLine, renderRect} from '../helpers/renderFuncs';
 import { clampParam, safeRun } from '../helpers/validators';
 
 // =====================================================
@@ -26,13 +26,6 @@ export interface EnricoCerutiTemplate {
   referenceImage?: any;
 }
 
-export interface EnricoCerutiData extends RecipeInterface {
-  params: EnricoCerutiParams;
-  options: {
-    showGuideLines: boolean;
-  };
-}
-
 // =====================================================
 // Default template
 // =====================================================
@@ -40,14 +33,22 @@ export interface EnricoCerutiData extends RecipeInterface {
 export const CERUTI_TEMPLATES: EnricoCerutiTemplate[] = [
   {
     key: 'ceruti-default',
-    label: 'Ceruti Default',
+    label: 'Strad Goetz',
     recipeName: 'enrico-ceruti-violin',
-    fileName: 'ceruti-default',
+    fileName: 'Strad Goetz',
     version: '0.1',
     description: 'Starting point based on Enrico Ceruti proportions.',
+    referenceImage: {
+        "href": "/StradGoetz.jpg",
+        "xlink:href": "/StradGoetz.jpg",
+        "x": -158.7095239572227,
+        "y": -196.6448444843292,
+        "width": 319,
+        "height": 779,
+    },
     params: {
-      height: 356,
-      width: 208,
+      height: 362,
+	  width: 201,
     },
     paths: [],
   },
@@ -84,9 +85,8 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
 
   readonly templates: EnricoCerutiTemplate[] = CERUTI_TEMPLATES;
   override openPanel = 'base';
-  override d: EnricoCerutiData = {
+  override d: EnricoCerutiTemplate = {
     ...CERUTI_TEMPLATES[0],
-    options: { showGuideLines: true },
   };
 
   showGuideLines = true;
@@ -112,7 +112,6 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     if (v) {
       this.d = {
         ...CERUTI_TEMPLATES[0],
-        options: { showGuideLines: true },
       };
       this.openPanel = 'base';
       this.draftChange.emit([this.firstRender]);
@@ -125,6 +124,12 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       pt2: { x:  this.d.params.width / 2, y: this.d.params.height },
     });
     this.renderBounds(g, ui);
+
+    let recipeData = sessionStorage.getItem('recipeData');
+    if (!recipeData) {
+        let selectedTemplate = this.templates.find(t => t.key === this.selectedTemplateKey) ?? this.templates[0];
+        this.referenceImageChange.emit(selectedTemplate.referenceImage ?? null);
+    }
   };
 
   override ngOnDestroy(): void {
@@ -147,7 +152,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
 
   override getActivationHandlers(): Record<string, () => void> {
     return {
-      base:       () => this.changeBaseMeasurements(),
+      base: () => this.changeBaseMeasurements(),
     };
   }
 
@@ -200,15 +205,10 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
   }
 
   renderBounds = (g: any, ui: any): void => {
-    const p = this.d.params;
-    const hw = p.width / 2;
-    // bounding box
-    renderLine({ x: -hw, y: 0 }, { x: hw, y: 0 }, '#555')(g, ui);
-    renderLine({ x: -hw, y: p.height }, { x: hw, y: p.height }, '#555')(g, ui);
-    renderLine({ x: -hw, y: 0 }, { x: -hw, y: p.height }, '#555')(g, ui);
-    renderLine({ x:  hw, y: 0 }, { x:  hw, y: p.height }, '#555')(g, ui);
-    // center axis
-    renderLine({ x: 0, y: 0 }, { x: 0, y: p.height }, '#444')(g, ui);
+    const h = this.d.params.height;
+    const hw = this.d.params.width / 2;
+    let rect = new Rectangle({x: -hw, y: 0}, {x: hw, y: h});
+    renderRect(rect, "grey")(g, ui);
   };
 
 }
