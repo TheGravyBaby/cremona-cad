@@ -1,12 +1,26 @@
 <div class="message-center">
   <div class="toasts">
     <!-- show only the most recent 3 messages as toasts -->
-    <div *ngFor="let m of messages | slice:0:3" class="toast" [attr.data-severity]="m.severity">
+    <div *ngFor="let m of messages | slice:0:3; trackBy: trackByMessageId" class="toast" [attr.data-severity]="m.severity">
       <div class="msg">
         <strong *ngIf="m.title">{{m.title}}</strong><br>
         <span>{{m.message}}</span>
       </div>
-      <button class="dismiss" (click)="dismiss(m.id)">✕</button>
+      <button class="dismiss" (click)="dismiss(m.id)" aria-label="Dismiss message">
+        <svg *ngIf="hasCountdown(m)" class="dismiss-ring" viewBox="0 0 20 20" aria-hidden="true">
+          <circle class="dismiss-ring-track" cx="10" cy="10" [attr.r]="ringRadius"></circle>
+          <circle
+            class="dismiss-ring-progress"
+            cx="10"
+            cy="10"
+            [attr.r]="ringRadius"
+            [attr.stroke-dasharray]="ringCircumference"
+            (animationend)="onCountdownAnimationEnd(m)"
+            [ngStyle]="countdownAnimationStyle(m)">
+          </circle>
+        </svg>
+        <span class="dismiss-icon">✕</span>
+      </button>
     </div>
   </div>
 </div>

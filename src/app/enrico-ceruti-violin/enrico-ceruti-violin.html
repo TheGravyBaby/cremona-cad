@@ -1,3 +1,10 @@
+<!-- for reference to copy
+ <div class="input-group basic-row field-row" role="group">
+    <label class='field-cell'>
+    </label>
+</div> 
+-->
+
 <div class="panel">
     <div class="panel-nav-wrap">
         <section class="panel-nav" aria-label="Sidebar section navigation">
@@ -28,52 +35,186 @@
     </div>
 
     <div class="panel-content">
+        @if (openPanel === 'base') {
+        <section class="ui-group">
+            <div class="ui-group-title">File Properties</div>
+            <label>
+                File Name
+                <input type="text" class="textarea" [(ngModel)]="d.fileName" />
+            </label>
 
-    @if (openPanel === 'base') {
-    <section class="ui-group">
-        <div class="ui-group-title">File Properties</div>
-        <label>
-            File Name
-            <input type="text" [(ngModel)]="d.fileName" />
-        </label>
+            <label>
+                Description
+                <textarea class="description-textarea" rows="4" maxlength="100" [(ngModel)]="d.description"></textarea>
+            </label>
 
-        <label>
-            Description
-            <textarea class="description-textarea" rows="4" maxlength="100"></textarea>
-        </label>
+            <label>
+                Load Template
+                <select [ngModel]="selectedTemplateKey" (ngModelChange)="loadTemplate($event)">
+                    <option value="">— select a template —</option>
+                    @for (t of templates; track t.key) {
+                    <option [value]="t.key">{{ t.label }}</option>
+                    }
+                </select>
+            </label>
 
-        <label>
-            Load Template
-            <select [ngModel]="selectedTemplateKey" (ngModelChange)="loadTemplate($event)">
-                <option value="">— select a template —</option>
-                @for (t of templates; track t.key) {
-                <option [value]="t.key">{{ t.label }}</option>
-                }
-            </select>
-        </label>
-
-        <label class="file-upload">
-            Upload Reference Image
-            <input type="file" accept="image/*" (change)="onReferenceFileSelected($event)" />
-        </label>
-    </section>
-
-    <section class="ui-group">
-        <div class="ui-group-title">Primary Dimensions</div>
-
-        <label class="section-label">
-            Height : Width <span>(mm)</span>
-            <div class="input-group basic-row">
-                <input class="basic-input" type="number" step="1" min="1"
-                    [(ngModel)]="d.params.height" (input)="changeBaseMeasurements()" />
-                <span>×</span>
-                <input class="basic-input" type="number" step="1" min="1"
-                    [(ngModel)]="d.params.width" (input)="changeBaseMeasurements()" />
+            <div class="input-group basic-row field-row" role="group">
+                <label class="file-upload">
+                    Upload Reference Image
+                    <input type="file" accept="image/*" (change)="onReferenceFileSelected($event)" />
+                </label>
+                <button type="button" class="info-icon" (click)="onInfoClick('referenceImage')" title="More information"
+                    aria-label="Information">ⓘ</button>
             </div>
-        </label>
-    </section>
-    }
+        </section>
 
+        <section class="ui-group">
+            <div class="ui-group-title">Primary Dimensions</div>
 
+            <div class="input-group basic-row field-row" role="group">
+                <label class="field-cell">
+                    <span class="field-title">Height <span class="unit-label">mm</span></span>
+                    <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="d.params.height"
+                        (input)="changeBaseMeasurements()" />
+                </label>
+                <span class="field-separator" aria-hidden="true"></span>
+                <label class="field-cell">
+                    <span class="field-title">Width <span class="unit-label">mm</span></span>
+                    <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="d.params.width"
+                        (input)="changeBaseMeasurements()" />
+                </label>
+                <span class="field-separator" aria-hidden="true"></span>
+                <label class="field-cell" s>
+                    <span class="field-title">H to W</span>
+                    <div class="basic-display" aria-label="Height to width ratio value">{{
+                        nearestFraction(d.params.ratios.HtoW) }}</div>
+                </label>
+                <button type="button" class="info-icon" (click)="onInfoClick('dimensions')" title="More information"
+                    aria-label="Information">ⓘ</button>
+            </div>
+
+            <div class="input-group basic-row field-row" role="group">
+                <label class="field-cell">
+                    <span class="field-title">Overhang <span class="unit-label">mm</span></span>
+                    <input class="basic-input" type="number" step="0.1" min="0" [(ngModel)]="d.params.overhang"
+                        (input)="changeBaseMeasurements()" />
+                </label>
+                <span class="field-separator" aria-hidden="true"></span>
+                <label class="field-cell">
+                    <span class="field-title">Ribs <span class="unit-label">mm</span></span>
+                    <input class="basic-input" type="number" step="0.1" min="0" [(ngModel)]="d.params.rib"
+                        (input)="changeBaseMeasurements()" />
+                </label>
+                <span class="field-separator" aria-hidden="true"></span>
+                <label class="field-cell">
+                    <span class="field-title">Inset<span class="unit-label">mm</span></span>
+                    <div class="basic-display" aria-label="Inset">{{ (d.params.overhang + d.params.rib) }}</div>
+                </label>
+                <button type="button" class="info-icon" (click)="onInfoClick('inset')" title="More information"
+                    aria-label="Information">ⓘ</button>
+
+            </div>
+        </section>
+        }
+        @if (openPanel === 'mainBouts') {
+        <section class="ui-group">
+            <div class="ui-group-title">Upper Bout</div>
+            <div class="ui-group">
+                <div class="input-group basic-row field-row" role="group">
+                    <label class="field-cell">
+                        <span class="field-title">Total Width <span class="unit-label">mm</span></span>
+                        <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="d.params.bouts.UBW"
+                            (input)="changeMainBouts()" />
+                    </label>
+                    <!-- empty cell for spacing -->
+                    <label class="field-cell"></label>
+                    <label class="field-cell">
+                        <span class="field-title">UB to LB</span>
+                        <div class="basic-display" aria-label="Upper bout to lower bout ratio value">{{
+                            nearestFraction(d.params.ratios.UBtoLB) }}</div>
+                    </label>
+                </div>
+            </div>
+            <div class="ui-group">
+                <div class="input-group basic-row field-row" role="group">
+                    <label class='field-cell'>
+                        <span class="field-title">U0 - Join Arc Radius <span class="unit-label">mm</span></span>
+                        <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="d.params.bouts.U0.r"
+                            (input)="changeMainBouts()" />
+                    </label>
+                    <label class="field-cell"></label>
+                    <label class='field-cell'>
+                        <span class="field-title">U0 to H</span>
+                        <div class="basic-display" aria-label="Lower bout to height ratio value">{{
+                            nearestFraction(d.params.ratios.U0toH) }}</div>
+                    </label>
+                </div>
+                <div class="input-group basic-row field-row" role="group">
+                    <label class='field-cell'>
+                        <span class="field-title">U1 - Vesecai Radius <span class="unit-label">mm</span></span>
+                        <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="d.params.bouts.U1.r"
+                            (input)="changeMainBouts()" />
+                    </label>
+                    <label class="field-cell"></label>
+                    <label class='field-cell'>
+                        <span class="field-title">U1 to UBW</span>
+                        <div class="basic-display" aria-label="Lower bout to height ratio value">{{
+                            nearestFraction(d.params.ratios.U1toUBW) }}</div>
+                    </label>
+                </div>
+            </div>
+
+        </section>
+
+        <section class="ui-group">
+            <div class="ui-group-title">Lower Bout</div>
+            <div class="ui-group">
+                <div class="input-group basic-row field-row" role="group">
+                    <label class='field-cell'>
+                        <span class="field-title">L1 - Vesecai Radius <span class="unit-label">mm</span></span>
+                        <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="d.params.bouts.L1.r"
+                            (input)="changeMainBouts()" />
+                    </label>
+                    <label class="field-cell"></label>
+                    <label class='field-cell'>
+                        <span class="field-title">L1 to LBW</span>
+                        <div class="basic-display" aria-label="Lower bout to width ratio value">{{
+                            nearestFraction(d.params.ratios.L1toLBW) }}</div>
+                    </label>
+                </div>
+
+                <div class="input-group basic-row field-row" role="group">
+                    <label class='field-cell'>
+                        <span class="field-title">L0 - Join Arc Radius <span class="unit-label">mm</span></span>
+                        <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="d.params.bouts.L0.r"
+                            (input)="changeMainBouts()" />
+                    </label>
+                    <label class="field-cell"></label>
+                    <label class='field-cell'>
+                        <span class="field-title">L0 to H</span>
+                        <div class="basic-display" aria-label="Lower bout to height ratio value">{{
+                            nearestFraction(d.params.ratios.L0toH) }}</div>
+                    </label>
+                </div>
+            </div>
+            <div class="ui-group">
+                <div class="input-group basic-row field-row" role="group">
+                    <label class="field-cell">
+                        <span class="field-title">Total Width <span class="unit-label">mm</span></span>
+                        <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="d.params.bouts.LBW"
+                            (input)="changeMainBouts()" />
+                    </label>
+                    <!-- empty cell for spacing -->
+                    <label class="field-cell"></label>
+                    <label class="field-cell">
+                        <span class="field-title">LB to H</span>
+                        <div class="basic-display" aria-label="Lower bout to height ratio value">{{
+                            nearestFraction(d.params.ratios.LBtoH) }}</div>
+                    </label>
+                </div>
+            </div>
+        </section>
+
+        }
     </div>
 </div>

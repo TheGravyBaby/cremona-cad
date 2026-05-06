@@ -176,10 +176,6 @@ select option {
   background: var(--ui-control-bg-active);
 }
 
-/* =====================================================
-   Shared panel-nav / UI-group system
-   (used by kelly-violin, enrico-ceruti-violin, etc.)
-   ===================================================== */
 
 .panel-section {
   border: 1px solid var(--ui-border-soft);
@@ -384,6 +380,47 @@ select option {
   width: 100%;
 }
 
+.field-row {
+  align-items: flex-end;
+}
+
+.field-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 84px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ui-text-secondary);
+}
+
+.field-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-start;
+  width: 100%;
+  gap: 3px;
+  white-space: nowrap;
+  text-align: left;
+  padding-left: 5%;
+}
+
+.unit-label {
+  font-size: 11px;
+  color: color-mix(in srgb, var(--ui-text-secondary) 72%, transparent);
+}
+
+.field-cell > .basic-input {
+  width: 100%;
+}
+
+.field-separator {
+  color: var(--ui-text-secondary);
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
 .section-label > span {
   display: inline;
 }
@@ -392,7 +429,7 @@ select option {
   margin-top: 6px;
 }
 
-.basic-row > span {
+.basic-row > span:not(.field-separator) {
   color: var(--ui-text-secondary);
   font-weight: 600;
   margin-top: -1px;
@@ -423,8 +460,28 @@ select option {
   box-shadow: 0 0 0 3px var(--ui-focus-ring);
 }
 
-.description-textarea {
+.basic-display {
   width: 100%;
+  min-height: 30px;
+  height: 30px;
+  padding: 4px 8px;
+  background: var(--ui-bg-surface);
+  color: var(--ui-text-secondary);
+  font-size: 20px;
+  font-style: italic;
+  line-height: 1.2;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.textarea {
+   width: 290px;
+}
+
+.description-textarea {
+  width: 310px;
   min-height: 84px;
   padding: 8px 9px;
   border: 1px solid var(--ui-border-strong);
@@ -438,10 +495,29 @@ select option {
   transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
 }
 
-.description-textarea:focus-visible {
-  outline: none;
-  border-color: var(--ui-focus-border);
-  box-shadow: 0 0 0 3px var(--ui-focus-ring);
+/* Info icon styles for light and dark mode */
+.info-icon {
+    width: 30px;
+    height: 30px;
+    background: var(--ui-bg-surface);
+    color: var(--ui-text-primary);
+    border: none;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    cursor: pointer;
+    transition: background 120ms ease;
+    padding-left: 0px;
+}
+
+.info-icon:hover {
+    background: var(--ui-bg-surface-hover);
+}
+
+.info-icon:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--ui-focus-ring);
 }
 
 .toggle-child {

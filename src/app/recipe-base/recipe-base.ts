@@ -68,6 +68,7 @@ export abstract class RecipeComponentBase implements AfterViewInit {
 
   protected initializePanelFlow(panelOrder: readonly PanelDefinition<string>[]): void {
     this.panelFlow = new PanelFlow<string>(panelOrder, (panel) => this.canOpenPanel(panel));
+    this.panelFlow.refreshEnabledPanels();
   }
 
   protected abstract canOpenPanel(panel: string): boolean;
@@ -80,6 +81,7 @@ export abstract class RecipeComponentBase implements AfterViewInit {
 
   protected onPanelSelect(panel: string): void {
     if (!panel || !this.panelFlow) return;
+    this.panelFlow.refreshEnabledPanels();
     const selected = this.panelFlow.select(panel);
     if (!selected) return;
     this.activatePanel(selected);
@@ -91,6 +93,7 @@ export abstract class RecipeComponentBase implements AfterViewInit {
 
   protected stepPanel(direction: 1 | -1 | number): void {
     if (!this.panelFlow) return;
+    this.panelFlow.refreshEnabledPanels();
     const nextPanel = this.panelFlow.step(this.openPanel, direction);
     if (!nextPanel) return;
     this.activatePanel(nextPanel);
