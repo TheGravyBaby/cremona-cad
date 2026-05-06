@@ -12,19 +12,27 @@ export type PanelProgress<T extends string = string> = {
 };
 
 export class PanelFlow<T extends string = string> {
+  private enabledPanels: T[] = [];
+
   constructor(
     private readonly panelOrder: readonly PanelDefinition<T>[],
     private readonly isPanelEnabled: (panelId: T) => boolean
-  ) {}
+  ) {
+    this.refreshEnabledPanels();
+  }
+
+  refreshEnabledPanels(): void {
+    this.enabledPanels = this.panelOrder
+      .filter(panel => this.isPanelEnabled(panel.id))
+      .map(panel => panel.id);
+  }
 
   isEnabled(panelId: T): boolean {
-    return this.isPanelEnabled(panelId);
+    return this.enabledPanels.includes(panelId);
   }
 
   getEnabledPanels(): T[] {
-    return this.panelOrder
-      .filter(panel => this.isPanelEnabled(panel.id))
-      .map(panel => panel.id);
+    return [...this.enabledPanels];
   }
 
   getCurrent(currentPanel: T): T | null {

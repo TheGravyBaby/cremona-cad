@@ -17,7 +17,6 @@ export function dist(a: Pt, b: Pt) {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
-
 export function pointOnCircle(C: Circle,  θ: number): Pt {
   return {
     x: C.x + C.r * Math.cos(θ),
@@ -198,29 +197,7 @@ export function arcPathFrom3Points(
   return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArcFlag} ${sweepFlag} ${endOnCircle.x} ${endOnCircle.y}`;
 }
 
-/**
- * Returns the arc (from start to end on the circle centred at c) that
- * passes through or over the **lowest** point of the circle (maximum y in
- * SVG coordinates, where y increases downward).
- */
-export function arcPathWithLowestPoint(c: Pt, start: Pt, end: Pt): string {
-  // in the limited cases I have to use this, the peak of the curve
-  // ironically is not what gets caught :P
-  return arcPathSelectingYExtreme(c, start, end, false);
-}
-
-/**
- * Returns the arc (from start to end on the circle centred at c) that
- * passes through or over the **highest** point of the circle (minimum y in
- * SVG coordinates, where y increases downward).
- */
-export function arcPathWithHighestPoint(c: Pt, start: Pt, end: Pt): string {
-  // in the limited cases I have to use this, the peak of the curve
-  // ironically is not what gets caught :P
-  return arcPathSelectingYExtreme(c, start, end, true);
-}
-
-function arcPathSelectingYExtreme(c: Pt, start: Pt, end: Pt, pickLowest: boolean): string {
+export function arcPathSelectingYExtreme(c: Pt, start: Pt, end: Pt, pickLowest: boolean): string {
   const TWO_PI = Math.PI * 2;
   const r = Math.hypot(start.x - c.x, start.y - c.y);
   if (!Number.isFinite(r) || r === 0) return `M ${start.x} ${start.y}`;

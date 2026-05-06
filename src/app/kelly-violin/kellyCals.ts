@@ -1,8 +1,7 @@
 import { Circle, Pt, Rectangle } from '../models/types';
 import {
 	arcPathFrom3Points,
-	arcPathWithHighestPoint,
-	arcPathWithLowestPoint,
+	arcPathSelectingYExtreme,
 	calculateOffset,
 	circleCircleIntersections,
 	differenceFromTwoPaths,
@@ -386,7 +385,7 @@ export function calculateMainPath(data: KellyViolinData): void {
 	pathsCornerless.push(p1, p2);
 
 	let p3 = arcPathFrom3Points(data.shapes.lowerLeftVesaci, data.intersects.minorBouts.lowerLeftVesicaUpper, data.intersects.minorBouts.lowerLeftVesicaLower)
-	let p4 = arcPathWithLowestPoint(data.shapes.lowerJoiningCircle, data.intersects.minorBouts.lowerLeftVesicaLower, data.intersects.minorBouts.lowerRightVesicaLower)
+	let p4 = arcPathSelectingYExtreme(data.shapes.lowerJoiningCircle, data.intersects.minorBouts.lowerLeftVesicaLower, data.intersects.minorBouts.lowerRightVesicaLower, false)
 	let p5 = arcPathFrom3Points(data.shapes.lowerRightVesaci, data.intersects.minorBouts.lowerRightVesicaLower, data.intersects.minorBouts.lowerRightVesicaUpper)
 	pathsCorners.push(p3, p4, p5);
 	pathsCornerless.push(p3, p4, p5);
@@ -418,7 +417,7 @@ export function calculateMainPath(data: KellyViolinData): void {
 
 
 	let p10 = arcPathFrom3Points(data.shapes.upperRightVesaci, data.intersects.minorBouts.upperRightVesicaLower, data.intersects.minorBouts.upperRightVesicaUpper)
-	let p11 = arcPathWithHighestPoint(data.shapes.upperJoiningCircle, data.intersects.minorBouts.upperRightVesicaUpper, data.intersects.minorBouts.upperLeftVesicaUpper)
+	let p11 = arcPathSelectingYExtreme(data.shapes.upperJoiningCircle, data.intersects.minorBouts.upperRightVesicaUpper, data.intersects.minorBouts.upperLeftVesicaUpper, true)
 	let p12 = arcPathFrom3Points(data.shapes.upperLeftVesaci, data.intersects.minorBouts.upperLeftVesicaUpper, data.intersects.minorBouts.upperLeftVesicaLower)
 
 	if (data.options.useViolNeck) {

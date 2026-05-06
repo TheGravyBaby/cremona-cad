@@ -124,7 +124,13 @@ export class KellyViolin extends RecipeComponentBase {
 
   override firstRender = (g: any, ui: any): void => {
     this.setBounds.emit({ pt1: { x: -this.d.params.width / 2, y: 0 }, pt2: { x: this.d.params.width / 2, y: this.d.params.height } });
-    
+
+    let recipeData = sessionStorage.getItem('recipeData');
+    if (!recipeData) {
+        let selectedTemplate = this.templates.find(t => t.key === this.selectedTemplateKey) ?? this.templates[0];
+        this.referenceImageChange.emit(selectedTemplate.referenceImage ?? null);
+    }
+
     // if we have the data to render the paths, lets do so on init
     this.hasMajorBouts() && this.hasMinorBouts() && calculatePrimaryShapes(this.d);
     this.hasCornerCircles() && calculateMainPathsSegmented(this.d);
