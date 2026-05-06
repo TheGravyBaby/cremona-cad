@@ -6,7 +6,6 @@ import { TopBarComponent } from './top-bar/top-bar';
 import { BeardViolinComponent } from './beard-violin/beard-violin';
 import { DraftCanvasComponent } from './draft-canvas/draft-canvas';
 import { FormsModule } from '@angular/forms';
-import { DenisViolin } from "./denis-violin/denis-violin";
 import { RecipeInterface, ReferenceImage } from './models/types';
 import { Pt } from './models/types';
 import { KellyViolin } from './kelly-violin/kelly-violin';
@@ -15,7 +14,7 @@ import { MessageCenterComponent } from './shared/message-center.component';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [TopBarComponent, BeardViolinComponent, DraftCanvasComponent, FormsModule, DenisViolin, KellyViolin, MessageCenterComponent],
+  imports: [TopBarComponent, BeardViolinComponent, DraftCanvasComponent, FormsModule, KellyViolin, MessageCenterComponent],
   template: `
     <div class="app">
      <app-top-bar class="top"
@@ -58,19 +57,8 @@ import { MessageCenterComponent } from './shared/message-center.component';
           [referenceImageParams]="referenceImage"
           (referenceImageChange)="onReferenceImageChange($event)">
         </app-beard-violin>
-
         }
-        @if (selectedRecipe == "Denis Violin") {
-        <app-denis-violin class="sidebar"
-          (draftChange)="draftArgs = $event"
-          (setBounds)="bounds=$event"
-          [loadFile]="loadedFileData"
-          [saveTick]="saveTick"
-          [referenceImageParams]="referenceImage"
-          (referenceImageChange)="onReferenceImageChange($event)">
-        </app-denis-violin>
 
-        }
       </div>
       <app-message-center></app-message-center>
     </div>
