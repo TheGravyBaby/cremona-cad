@@ -78,6 +78,24 @@ export class BeardViolinComponent extends RecipeComponentBase {
   innerBoutError = ""
   showAllArcs = false
 
+  override getActivationHandlers(): Record<string, () => void> {
+    return {
+      'base': () => this.changeBaseRatios(),
+      'bouts': () => this.changeBouts(),
+      'upperBout': () => this.changeUpperVesica(),
+      'lowerBout': () => this.changeLowerVesica(),
+      'cornerPlacement': () => this.changeCornerPosition(),
+      'outerCorners': () => this.changeOuterCorners(),
+      'innerBouts': () => this.changeInnerBouts(),
+      'finalRender': () => this.changeFinalRender(),
+    };
+  }
+
+  override canOpenPanel(panel: string): boolean {
+    // BeardViolin doesn't have gating, all panels are always enabled
+    return true;
+  }
+
   override firstRender = (g: any, ui: any): void => {
     this.renderBounds(g, ui);
     this.setBounds.emit({ pt1: { x: -this.d.params.w / 2, y: 0 }, pt2: { x: this.d.params.w / 2, y: this.d.params.h } });

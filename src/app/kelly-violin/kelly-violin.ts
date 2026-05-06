@@ -9,7 +9,6 @@ import { KellyTemplate, KellyViolinData, KellyViolinRecipe, KELLY_TEMPLATES } fr
 import { calculatePrimaryShapes, calculateMainPathsSegmented, calculateMainPathsUnified, calculateMouldPath, calculateOffsetPathsSegments, calculateTopPath, initializeMainBouts, initializeMinorBouts, initializeCornerPlacement, initializeCornerCircles, initializeTopAndBottomTrace, initializeBlocks, normalizeDegrees, calculateMainBouts } from './kellyCals';
 import { clampParam, safeRun } from '../helpers/validators';
 import { DebounceController } from '../helpers/debounce-controller';
-import { PanelFlow } from '../helpers/panel-flow';
 import { buildMirroredSvg, downloadSvgFile } from '../helpers/svg-export';
 
 @Component({
@@ -23,7 +22,7 @@ export class KellyViolin extends RecipeComponentBase {
 
   // ===== Static config =====
 
-  readonly panelOrder = [
+  protected readonly panelOrder = [
     { id: 'base', label: 'Base Measurements' },
     { id: 'mainBouts', label: 'Major Bout Circles' },
     { id: 'minorBouts', label: 'Minor Bout Circles' },
@@ -38,23 +37,13 @@ export class KellyViolin extends RecipeComponentBase {
 
   constructor(private readonly cdr: ChangeDetectorRef) {
     super();
+    this.initializePanelFlow(this.panelOrder);
   }
 
   // ===== Infrastructure / controllers =====
   
   private _destroyed = false;
   private readonly debounceController = new DebounceController(() => this.refreshBoundInputs());
-  private readonly panelFlow = new PanelFlow<string>(this.panelOrder, (panel) => this.canOpenPanel(panel));
-  private readonly panelActivationHandlers: Record<string, () => void> = {
-    base: () => this.changeBaseMeasurements(),
-    mainBouts: () => this.changeMainBouts(),
-    minorBouts: () => this.changeMinorBouts(),
-    cornerPlacement: () => this.changeCornerPlacement(),
-    cornerCircles: () => this.changeCornerCircles(),
-    outerTrace: () => this.changeOuterTrace(),
-    mouldPattern: () => this.changeMouldPattern(),
-    export: () => this.changeExports(),
-  };
 
   // ===== Component state =====
 
@@ -172,52 +161,29 @@ export class KellyViolin extends RecipeComponentBase {
     this.refreshBoundInputs();
   }
 
-  isPanelEnabled(panel: string): boolean {
-    return this.panelFlow.isEnabled(panel);
+  override getActivationHandlers(): Record<string, () => void> {
+    return {
+      base: () => this.changeBaseMeasurements(),
+      mainBouts: () => this.changeMainBouts(),
+      minorBouts: () => this.changeMinorBouts(),
+      cornerPlacement: () => this.changeCornerPlacement(),
+      cornerCircles: () => this.changeCornerCircles(),
+      outerTrace: () => this.changeOuterTrace(),
+      mouldPattern: () => this.changeMouldPattern(),
+      export: () => this.changeExports(),
+    };
   }
 
-  onPanelSelect(panel: string): void {
-    if (!panel) return;
-    const selected = this.panelFlow.select(panel);
-    if (!selected) return;
-    this.activatePanel(selected);
-  }
-
-  canStepPanel(direction: 1 | -1 | number): boolean {
-    return this.panelFlow.canStep(this.openPanel, direction);
-  }
-
-  stepPanel(direction: 1 | -1 | number): void {
-    const nextPanel = this.panelFlow.step(this.openPanel, direction);
-    if (!nextPanel) return;
-    this.activatePanel(nextPanel);
-  }
-
-  get panelProgressMax(): number {
-    return this.panelFlow.getProgress(this.openPanel).total;
-  }
-
-  get panelProgressNow(): number {
-    return this.panelFlow.getProgress(this.openPanel).current;
-  }
-
-  get panelProgressPercent(): number {
-    return this.panelFlow.getProgress(this.openPanel).percent;
-  }
-
-  // ===== Panel gating / navigation internals =====
-
-  private activatePanel(panel: string): void {
+  protected override activatePanel(panel: string): void {
     if (!this.isPanelEnabled(panel)) return;
-
     this.openPanel = panel;
     this.showModuleCircles = true;
     this.showAllCircles = false;
-
-    this.panelActivationHandlers[panel]?.();
+    const handlers = this.getActivationHandlers();
+    handlers[panel]?.();
   }
 
-  private canOpenPanel(panel: string): boolean {
+  override canOpenPanel(panel: string): boolean {
     switch (panel) {
       case 'base':
         return true;

@@ -1,6 +1,7 @@
 import { AfterViewInit, Component, output } from '@angular/core';
 import { Output, EventEmitter, Input } from "@angular/core";
 import { Pt, RecipeInterface, ReferenceImage } from '../models/types';
+import { PanelFlow, PanelDefinition } from '../helpers/panel-flow';
 
 @Component({
   selector: 'app-recipe-base',
@@ -9,7 +10,7 @@ import { Pt, RecipeInterface, ReferenceImage } from '../models/types';
   styleUrl: './recipe-base.css',
 })
 
-export class RecipeComponentBase implements AfterViewInit {
+export abstract class RecipeComponentBase implements AfterViewInit {
   @Output() draftChange = new EventEmitter<Array<(g: any, ui: any) => void>>();
   @Output() setBounds = new EventEmitter<{pt1: Pt, pt2: Pt}>();
   @Output() referenceImageChange = new EventEmitter<ReferenceImage | null>();
@@ -44,6 +45,58 @@ export class RecipeComponentBase implements AfterViewInit {
   }
 
   openPanel: string = "base";
+
+  // ===== Panel navigation system =====
+  protected panelFlow: PanelFlow<string> | null = null;
+
+  protected initializePanelFlow(panelOrder: readonly PanelDefinition<string>[]): void {
+    this.panelFlow = new PanelFlow<string>(panelOrder, (panel) => this.canOpenPanel(panel));
+  }
+
+  protected abstract canOpenPanel(panel: string): boolean;
+
+  protected abstract getActivationHandlers(): Record<string, () => void>;
+
+  protected isPanelEnabled(panel: string): boolean {
+    return this.panelFlow?.isEnabled(panel) ?? false;
+  }
+
+  protected onPanelSelect(panel: string): void {
+    if (!panel || !this.panelFlow) return;
+    const selected = this.panelFlow.select(panel);
+    if (!selected) return;
+    this.activatePanel(selected);
+  }
+
+  protected canStepPanel(direction: 1 | -1 | number): boolean {
+    return this.panelFlow?.canStep(this.openPanel, direction) ?? false;
+  }
+
+  protected stepPanel(direction: 1 | -1 | number): void {
+    if (!this.panelFlow) return;
+    const nextPanel = this.panelFlow.step(this.openPanel, direction);
+    if (!nextPanel) return;
+    this.activatePanel(nextPanel);
+  }
+
+  protected get panelProgressMax(): number {
+    return this.panelFlow?.getProgress(this.openPanel).total ?? 1;
+  }
+
+  protected get panelProgressNow(): number {
+    return this.panelFlow?.getProgress(this.openPanel).current ?? 1;
+  }
+
+  protected get panelProgressPercent(): number {
+    return this.panelFlow?.getProgress(this.openPanel).percent ?? 100;
+  }
+
+  protected activatePanel(panel: string): void {
+    if (!this.isPanelEnabled(panel)) return;
+    this.openPanel = panel;
+    const handlers = this.getActivationHandlers();
+    handlers[panel]?.();
+  }
 
 
   ngOnInit() {
