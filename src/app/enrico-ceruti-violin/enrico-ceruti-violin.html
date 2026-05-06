@@ -1,0 +1,79 @@
+<div class="panel">
+    <div class="panel-nav-wrap">
+        <section class="panel-nav" aria-label="Sidebar section navigation">
+            <label class="ui-group-title">Section Select</label>
+            <div class="panel-nav-controls">
+                <button type="button" class="panel-nav-btn" (click)="stepPanel(-1)" title="Previous section"
+                    aria-label="Go to previous section" [disabled]="!canStepPanel(-1)">
+                    Back
+                </button>
+                <select id="panel-selector" class="panel-select" [ngModel]="openPanel"
+                    (ngModelChange)="onPanelSelect($event)">
+                    @for (panel of panelOrder; track panel.id) {
+                    <option [value]="panel.id" [disabled]="!isPanelEnabled(panel.id)">
+                        {{ panel.label }}@if (!isPanelEnabled(panel.id)) { (Locked) }
+                    </option>
+                    }
+                </select>
+                <button type="button" class="panel-nav-btn" (click)="stepPanel(1)" title="Next section"
+                    aria-label="Go to next section" [disabled]="!canStepPanel(1)">
+                    Next
+                </button>
+            </div>
+            <div class="panel-progress" role="progressbar" aria-label="Section progress" aria-valuemin="1"
+                [attr.aria-valuemax]="panelProgressMax" [attr.aria-valuenow]="panelProgressNow">
+                <div class="panel-progress-fill" [style.width.%]="panelProgressPercent"></div>
+            </div>
+        </section>
+    </div>
+
+    <div class="panel-content">
+
+    @if (openPanel === 'base') {
+    <section class="ui-group">
+        <div class="ui-group-title">File Properties</div>
+        <label>
+            File Name
+            <input type="text" [(ngModel)]="d.fileName" />
+        </label>
+
+        <label>
+            Description
+            <textarea class="description-textarea" rows="4" maxlength="100"></textarea>
+        </label>
+
+        <label>
+            Load Template
+            <select [ngModel]="selectedTemplateKey" (ngModelChange)="loadTemplate($event)">
+                <option value="">— select a template —</option>
+                @for (t of templates; track t.key) {
+                <option [value]="t.key">{{ t.label }}</option>
+                }
+            </select>
+        </label>
+
+        <label class="file-upload">
+            Upload Reference Image
+            <input type="file" accept="image/*" (change)="onReferenceFileSelected($event)" />
+        </label>
+    </section>
+
+    <section class="ui-group">
+        <div class="ui-group-title">Primary Dimensions</div>
+
+        <label class="section-label">
+            Height : Width <span>(mm)</span>
+            <div class="input-group basic-row">
+                <input class="basic-input" type="number" step="1" min="1"
+                    [(ngModel)]="d.params.height" (input)="changeBaseMeasurements()" />
+                <span>×</span>
+                <input class="basic-input" type="number" step="1" min="1"
+                    [(ngModel)]="d.params.width" (input)="changeBaseMeasurements()" />
+            </div>
+        </label>
+    </section>
+    }
+
+
+    </div>
+</div>

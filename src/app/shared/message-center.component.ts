@@ -1,12 +1,12 @@
 import { Component, OnDestroy } from '@angular/core';
 import { Subscription, timer } from 'rxjs';
 import { MessageService, Message } from './message.service';
-import { CommonModule, DatePipe, JsonPipe } from '@angular/common';
+import { CommonModule} from '@angular/common';
 
 @Component({
   selector: 'app-message-center',
   standalone: true,
-  imports: [CommonModule, DatePipe, JsonPipe],
+  imports: [CommonModule],
   templateUrl: './message-center.component.html',
   styleUrls: ['./message-center.component.css']
 })

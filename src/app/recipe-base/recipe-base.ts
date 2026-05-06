@@ -2,6 +2,7 @@ import { AfterViewInit, Component, output } from '@angular/core';
 import { Output, EventEmitter, Input } from "@angular/core";
 import { Pt, RecipeInterface, ReferenceImage } from '../models/types';
 import { PanelFlow, PanelDefinition } from '../helpers/panel-flow';
+import { DebounceController } from '../helpers/debounce-controller';
 
 @Component({
   selector: 'app-recipe-base',
@@ -45,6 +46,22 @@ export abstract class RecipeComponentBase implements AfterViewInit {
   }
 
   openPanel: string = "base";
+
+  // ===== Lifecycle & resource management =====
+  protected _destroyed = false;
+  protected debounceController?: DebounceController;
+
+  protected initializeDebounce(callback: () => void): void {
+    this.debounceController = new DebounceController(callback);
+  }
+
+  protected debounce(fn: () => void, delay = 1000): void {
+    this.debounceController?.run(fn, delay);
+  }
+
+  protected refreshBoundInputs(): void {
+    // Override in subclasses if needed (e.g., for change detection)
+  }
 
   // ===== Panel navigation system =====
   protected panelFlow: PanelFlow<string> | null = null;
@@ -122,6 +139,8 @@ export abstract class RecipeComponentBase implements AfterViewInit {
   }
 
   ngOnDestroy() {
+    this._destroyed = true;
+    this.debounceController?.destroy();
     sessionStorage.setItem('recipeData', JSON.stringify(this.d));
   }
 
