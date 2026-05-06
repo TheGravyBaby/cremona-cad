@@ -8,7 +8,6 @@ import { arcPathFrom3Points, circleCircleIntersections, combinePathStrings, offs
 import { KellyTemplate, KellyViolinData, KellyViolinRecipe, KELLY_TEMPLATES } from './kellyTypes';
 import { calculatePrimaryShapes, calculateMainPathsSegmented, calculateMainPathsUnified, calculateMouldPath, calculateOffsetPathsSegments, calculateTopPath, initializeMainBouts, initializeMinorBouts, initializeCornerPlacement, initializeCornerCircles, initializeTopAndBottomTrace, initializeBlocks, normalizeDegrees, calculateMainBouts } from './kellyCals';
 import { clampParam, safeRun } from '../helpers/validators';
-import { DebounceController } from '../helpers/debounce-controller';
 import { buildMirroredSvg, downloadSvgFile } from '../helpers/svg-export';
 
 @Component({
@@ -38,12 +37,10 @@ export class KellyViolin extends RecipeComponentBase {
   constructor(private readonly cdr: ChangeDetectorRef) {
     super();
     this.initializePanelFlow(this.panelOrder);
+    this.initializeDebounce(() => this.refreshBoundInputs());
   }
 
   // ===== Infrastructure / controllers =====
-  
-  private _destroyed = false;
-  private readonly debounceController = new DebounceController(() => this.refreshBoundInputs());
 
   // ===== Component state =====
 
@@ -140,8 +137,6 @@ export class KellyViolin extends RecipeComponentBase {
   }
 
   override ngOnDestroy(): void {
-    this._destroyed = true;
-    this.debounceController.destroy();
     super.ngOnDestroy();
   }
 
@@ -149,12 +144,12 @@ export class KellyViolin extends RecipeComponentBase {
 
   @HostListener('keydown', ['$event'])
   onHostKeyDown(e: KeyboardEvent) {
-    this.debounceController.markImmediateFromKey(e);
+    this.debounceController?.markImmediateFromKey(e);
   }
 
   @HostListener('mousedown', ['$event'])
   onHostMouseDown(e: MouseEvent) {
-    this.debounceController.markImmediateFromMouse(e);
+    this.debounceController?.markImmediateFromMouse(e);
   }
 
   syncCorrectedValues(): void {
@@ -242,7 +237,7 @@ export class KellyViolin extends RecipeComponentBase {
 
   // ===== Shared helpers =====
 
-  private refreshBoundInputs(): void {
+  protected override refreshBoundInputs(): void {
     queueMicrotask(() => {
       if (this._destroyed) return;
       this.d.params = { ...this.d.params };
@@ -250,11 +245,7 @@ export class KellyViolin extends RecipeComponentBase {
     });
   }
 
-  private debounce(fn: () => void, delay = 1000): void {
-    this.debounceController.run(fn, delay);
-  }
-
-  private clamp(key: keyof typeof this.d.params, min: number, max = Infinity, tooSmallMsg?: string, tooBigMsg?: string): void {
+  protected clamp(key: keyof typeof this.d.params, min: number, max = Infinity, tooSmallMsg?: string, tooBigMsg?: string): void {
     clampParam(this.d.params, key, min, max, tooSmallMsg, tooBigMsg);
   }
 

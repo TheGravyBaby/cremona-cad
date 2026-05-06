@@ -9,12 +9,13 @@ import { FormsModule } from '@angular/forms';
 import { RecipeInterface, ReferenceImage } from './models/types';
 import { Pt } from './models/types';
 import { KellyViolin } from './kelly-violin/kelly-violin';
+import { EnricoCerutiViolin } from './enrico-ceruti-violin/enrico-ceruti-violin';
 import { MessageCenterComponent } from './shared/message-center.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [TopBarComponent, BeardViolinComponent, DraftCanvasComponent, FormsModule, KellyViolin, MessageCenterComponent],
+  imports: [TopBarComponent, BeardViolinComponent, DraftCanvasComponent, FormsModule, KellyViolin, EnricoCerutiViolin, MessageCenterComponent],
   template: `
     <div class="app">
      <app-top-bar class="top"
@@ -48,6 +49,18 @@ import { MessageCenterComponent } from './shared/message-center.component';
         </app-kelly-violin>
         }
 
+        @if (selectedRecipe == "Enrico Ceruti Violin") {
+         <app-enrico-ceruti-violin class="sidebar"
+          (draftChange)="draftArgs = $event"
+          (setBounds)="bounds=$event"
+          [loadFile]="loadedFileData"
+          [saveTick]="saveTick"
+          [newFile]="newFileFlag"
+          [referenceImageParams]="referenceImage"
+          (referenceImageChange)="onReferenceImageChange($event)">
+        </app-enrico-ceruti-violin>
+        }
+
         @if (selectedRecipe == "Beard Violin") {
          <app-beard-violin class="sidebar"
           (draftChange)="draftArgs = $event"
@@ -72,7 +85,7 @@ export class App {
   private messageService = inject(MessageService);
 
   draftArgs: Array<(g: any, ui: any) => void> = [];
-  selectedRecipe: string = 'Kelly Violin';
+  selectedRecipe: string = 'Enrico Ceruti Violin';
   loadedFileData: RecipeInterface | undefined = undefined;
   saveTick = 0;
   bounds: {pt1: Pt, pt2: Pt} | null = null;
@@ -125,7 +138,7 @@ export class App {
     const name = (data.recipeName ?? '').toLowerCase();
     if (name === 'kelly') this.selectedRecipe = 'Kelly Violin';
     if (name === 'beard') this.selectedRecipe = 'Beard Violin';
-    if (name === 'denis') this.selectedRecipe = 'Denis Violin';
+    if (name === 'ceruti') this.selectedRecipe = 'Enrico Ceruti Violin';
   }
 
   requestSave() {
