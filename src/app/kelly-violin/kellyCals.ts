@@ -1,8 +1,8 @@
 import { Circle, Pt, Rectangle } from '../models/types';
 import {
+	angleFromCenter,
 	arcPathFrom3Points,
-	arcPathSelectingYExtreme,
-	calculateOffset,
+	calculateOffsetAlongPath,
 	circleCircleIntersections,
 	differenceFromTwoPaths,
 	dist,
@@ -18,7 +18,6 @@ import {
 	pathFromRect,
 	pathFromRoundedRect,
 	pointOnCircle,
-	polarAngle,
 	unifyConnectedSvgPaths,
 } from '../helpers/draftMath';
 import { KellyCalcEntry, KellyViolinData } from './kellyTypes';
@@ -385,7 +384,7 @@ export function calculateMainPath(data: KellyViolinData): void {
 	pathsCornerless.push(p1, p2);
 
 	let p3 = arcPathFrom3Points(data.shapes.lowerLeftVesaci, data.intersects.minorBouts.lowerLeftVesicaUpper, data.intersects.minorBouts.lowerLeftVesicaLower)
-	let p4 = arcPathSelectingYExtreme(data.shapes.lowerJoiningCircle, data.intersects.minorBouts.lowerLeftVesicaLower, data.intersects.minorBouts.lowerRightVesicaLower, false)
+	let p4 = arcPathFrom3Points(data.shapes.lowerJoiningCircle, data.intersects.minorBouts.lowerLeftVesicaLower, data.intersects.minorBouts.lowerRightVesicaLower, true)
 	let p5 = arcPathFrom3Points(data.shapes.lowerRightVesaci, data.intersects.minorBouts.lowerRightVesicaLower, data.intersects.minorBouts.lowerRightVesicaUpper)
 	pathsCorners.push(p3, p4, p5);
 	pathsCornerless.push(p3, p4, p5);
@@ -417,7 +416,7 @@ export function calculateMainPath(data: KellyViolinData): void {
 
 
 	let p10 = arcPathFrom3Points(data.shapes.upperRightVesaci, data.intersects.minorBouts.upperRightVesicaLower, data.intersects.minorBouts.upperRightVesicaUpper)
-	let p11 = arcPathSelectingYExtreme(data.shapes.upperJoiningCircle, data.intersects.minorBouts.upperRightVesicaUpper, data.intersects.minorBouts.upperLeftVesicaUpper, true)
+	let p11 = arcPathFrom3Points(data.shapes.upperJoiningCircle, data.intersects.minorBouts.upperRightVesicaUpper, data.intersects.minorBouts.upperLeftVesicaUpper, false)
 	let p12 = arcPathFrom3Points(data.shapes.upperLeftVesaci, data.intersects.minorBouts.upperLeftVesicaUpper, data.intersects.minorBouts.upperLeftVesicaLower)
 
 	if (data.options.useViolNeck) {
@@ -426,8 +425,8 @@ export function calculateMainPath(data: KellyViolinData): void {
 		let p11_1 = arcPathFrom3Points(data.shapes.violRightNeckCircle, data.intersects.minorBouts.violNeckBodyRight, data.intersects.minorBouts.violNeckTopRight)
 		
 		let roundoverValue = 3
-		let leftViolCircleTheta = polarAngle(data.shapes.violLeftNeckCircle, data.intersects.minorBouts.violNeckTopLeft);
-		let rightViolCircleTheta = polarAngle(data.shapes.violRightNeckCircle, data.intersects.minorBouts.violNeckTopRight);
+		let leftViolCircleTheta = angleFromCenter(data.shapes.violLeftNeckCircle, data.intersects.minorBouts.violNeckTopLeft);
+		let rightViolCircleTheta = angleFromCenter(data.shapes.violRightNeckCircle, data.intersects.minorBouts.violNeckTopRight);
 		let leftOffsetCircle = offsetCircleRadius(data.shapes.violLeftNeckCircle, roundoverValue)
 		let rightOffsetCircle = offsetCircleRadius(data.shapes.violRightNeckCircle, roundoverValue)
 		let roundoverLeftCenter = pointOnCircle(leftOffsetCircle, leftViolCircleTheta);
@@ -529,10 +528,10 @@ export function calculateOffsetPathsSegments(data: KellyViolinData): void {
 	upsertCalc(data, {
 		name: 'offsetSegmentedPath',
 		paths: [
-			calculateOffset(segmentedPaths.paths[0], data.params.inset),
-			calculateOffset(segmentedPaths.paths[1], -data.params.inset),
-			calculateOffset(segmentedPaths.paths[2], data.params.inset),
-			calculateOffset(segmentedPaths.paths[3], -data.params.inset),
+			calculateOffsetAlongPath(segmentedPaths.paths[0], data.params.inset),
+			calculateOffsetAlongPath(segmentedPaths.paths[1], -data.params.inset),
+			calculateOffsetAlongPath(segmentedPaths.paths[2], data.params.inset),
+			calculateOffsetAlongPath(segmentedPaths.paths[3], -data.params.inset),
 		],
 	});
 }

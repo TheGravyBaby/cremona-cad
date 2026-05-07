@@ -1,20 +1,14 @@
-import { Pt, Fraction, Circle, Axis, Line, Rectangle } from "../models/types";
+import { Pt, Fraction, Circle, Axis, Line, Rectangle, Arc } from "../models/types";
 import * as polygonClipping from 'polygon-clipping';
 import { svgPathProperties } from 'svg-path-properties';
 
-const polygonClipper: {
-  difference: (
-    subjectGeom: [number, number][][][] | [number, number][][][][],
-    ...clipGeoms: ([number, number][][][] | [number, number][][][][])[]
-  ) => [number, number][][][][];
-} = ((polygonClipping as any).default ?? polygonClipping) as any;
-
-export function polarAngle(c: Pt, p: Pt) {
-  return Math.atan2(p.y - c.y, p.x - c.x);
-}
-
+// ======= Simple Geometry =======
 export function dist(a: Pt, b: Pt) {
   return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+export function flipAngleAboutYAxis(theta: number): number {
+  return (Math.PI - theta + 2 * Math.PI) % (2 * Math.PI);
 }
 
 export function pointOnCircle(C: Circle,  θ: number): Pt {
@@ -24,9 +18,26 @@ export function pointOnCircle(C: Circle,  θ: number): Pt {
   };
 }
 
-export function projectToCircle(C: Circle, P: Pt): Pt {
-  const θ = angleFromCenter(C, P);
-  return pointOnCircle(C, θ);
+export function intersectLines(A: Pt, B: Pt, C: Pt, D: Pt): Pt | null {
+  const x1 = A.x, y1 = A.y;
+  const x2 = B.x, y2 = B.y;
+  const x3 = C.x, y3 = C.y;
+  const x4 = D.x, y4 = D.y;
+
+  const denom = (x1 - x2) * (y3 - y4) -
+                (y1 - y2) * (x3 - x4);
+
+  if (denom === 0) return null; // parallel or coincident
+
+  const px =
+    ((x1*y2 - y1*x2) * (x3 - x4) -
+     (x1 - x2) * (x3*y4 - y3*x4)) / denom;
+
+  const py =
+    ((x1*y2 - y1*x2) * (y3 - y4) -
+     (y1 - y2) * (x3*y4 - y3*x4)) / denom;
+
+  return { x: px, y: py };
 }
 
 export function yInterceptFromTwoPoints(P1: Pt, P2: Pt): number | null {
@@ -35,11 +46,63 @@ export function yInterceptFromTwoPoints(P1: Pt, P2: Pt): number | null {
   return P1.y - m * P1.x;
 }
 
-export function circleCircleIntersections(
-  C1: Circle,
-  C2: Circle,
-  approx: boolean = true // or default false if you prefer
-): Pt[] {
+export function lineCircleIntersection(P1: Pt, P2: Pt, C: Circle): Pt[] {
+  const dx = P2.x - P1.x;
+  const dy = P2.y - P1.y;
+
+  const fx = P1.x - C.x;
+  const fy = P1.y - C.y;
+
+  const a = dx*dx + dy*dy;
+  const b = 2 * (fx*dx + fy*dy);
+  const c = fx*fx + fy*fy - C.r*C.r;
+
+  const disc = b*b - 4*a*c;
+  if (disc < 0) return [];
+
+  const s = Math.sqrt(disc);
+  return [
+    { x: P1.x + (-b + s)/(2*a) * dx, y: P1.y + (-b + s)/(2*a) * dy },
+    { x: P1.x + (-b - s)/(2*a) * dx, y: P1.y + (-b - s)/(2*a) * dy },
+  ];
+}
+
+export function lineFromTwoPoints(A: Pt, B: Pt): Line {
+  let m = (B.y - A.y) / (B.x - A.x);
+
+  // find y intercept 
+  // y = mx + b 
+  let b = A.y - m * A.x;
+
+  return { m, b: b };
+}
+
+export function angleFromCenter(C: Pt, P: Pt): number {
+  return Math.atan2(P.y - C.y, P.x - C.x);
+}
+
+export function offsetCircleRadius(C: Circle, offset: number): Circle {
+  const newR = C.r + offset;
+  if (newR < 0) {
+    throw new Error('Offset cannot be so negative that it produces a circle with negative radius.');
+  }
+  return { x: C.x, y: C.y, r: newR };
+}
+
+export function flipArcAboutY(arc: Arc): Arc {
+  let mirroredArc = new Circle(-arc.C.x, arc.C.y, arc.C.r);
+  let mirroredU1Arc = new Arc(mirroredArc, flipAngleAboutYAxis(arc.start), flipAngleAboutYAxis(arc.end));
+  return mirroredU1Arc;
+}
+
+export function flipCircleAboutY(C: Circle): Circle { 
+  return { x: -C.x, y: C.y, r: C.r };
+}
+
+
+
+// ======  Complex Geometry ======
+export function circleCircleIntersections(C1: Circle, C2: Circle, approx: boolean = true): Pt[] {
   const d = dist(C1, C2);
 
   // tight, scale-aware tolerance (tweak 1e-12 -> 1e-11 if you still see misses)
@@ -66,796 +129,24 @@ export function circleCircleIntersections(
   ];
 }
 
-export function arcLengthToAngle(r: number, L: number): number {
-  return L / r;
-}
-
-export function angleToArcLength(r: number, θ: number): number {
-  return r * θ;
-}
-
-export function bisectAngles(θ1: number, θ2: number): number {
-  return θ1 + (θ2 - θ1) / 2;
-}
-
-export function circleTangentAngle(θ: number): number {
-  return θ + Math.PI / 2;
-}
-
-export function solveCoordOnCircleInset(
-  C: Circle,
-  knownAxis: Axis,     // which coordinate you already know: "x" or "y"
-  knownValue: number,  // Px or Py
-  inset: number,       // distance from outer circle inward (R)
-  upperOrRight = true  // choose +sqrt (top if solving y, right if solving x)
-): number {
-  const rPrime = C.r - inset;
+// imagine a large outer circle, with a smaller inner circle
+// where the inner circle intersects the outer circle at a single tangent point
+// now, imagine that the inner circle also has a defined x or y coordinate that it must hit
+// we want to solve the position of the inner circle given these conditions 
+// vibe code I admit it X_X
+export function solveInscribedCircleAlongAxis(C: Circle, r: number, ax: Axis, value: number, pos = true): number {
+  const rPrime = C.r - r;
   if (rPrime < 0) throw new Error("No solution: inset larger than radius");
 
-  const Cknown = knownAxis === "x" ? C.x : C.y;
-  const d = knownValue - Cknown;
+  const Cknown = ax === "x" ? C.x : C.y;
+  const d = value - Cknown;
 
   const under = rPrime * rPrime - d * d;
   if (under < 0) throw new Error("No real solution: knownValue out of range");
 
   const s = Math.sqrt(under);
-  const Cunknown = knownAxis === "x" ? C.y : C.x; // solving the other coordinate
-  return upperOrRight ? Cunknown + s : Cunknown - s;
-}
-
-export function solveYOnCircleInset(
-  C: Circle,
-  Px: number, inset: number,
-  upper = true
-): number {
-  return solveCoordOnCircleInset(C, "x", Px, inset, upper);
-}
-
-export function solveXOnCircleInset(
-  C: Circle,
-  Py: number, inset: number,
-  right = true
-): number {
-  return solveCoordOnCircleInset(C, "y", Py, inset, right);
-}
-
-export function lineCircleIntersection(
-  P1: Pt, P2: Pt,
-  C: Circle
-): Pt[] {
-  const dx = P2.x - P1.x;
-  const dy = P2.y - P1.y;
-
-  const fx = P1.x - C.x;
-  const fy = P1.y - C.y;
-
-  const a = dx*dx + dy*dy;
-  const b = 2 * (fx*dx + fy*dy);
-  const c = fx*fx + fy*fy - C.r*C.r;
-
-  const disc = b*b - 4*a*c;
-  if (disc < 0) return [];
-
-  const s = Math.sqrt(disc);
-  return [
-    { x: P1.x + (-b + s)/(2*a) * dx, y: P1.y + (-b + s)/(2*a) * dy },
-    { x: P1.x + (-b - s)/(2*a) * dx, y: P1.y + (-b - s)/(2*a) * dy },
-  ];
-}
-
-export function intersectLines(A: Pt, B: Pt, C: Pt, D: Pt): Pt | null {
-  const x1 = A.x, y1 = A.y;
-  const x2 = B.x, y2 = B.y;
-  const x3 = C.x, y3 = C.y;
-  const x4 = D.x, y4 = D.y;
-
-  const denom = (x1 - x2) * (y3 - y4) -
-                (y1 - y2) * (x3 - x4);
-
-  if (denom === 0) return null; // parallel or coincident
-
-  const px =
-    ((x1*y2 - y1*x2) * (x3 - x4) -
-     (x1 - x2) * (x3*y4 - y3*x4)) / denom;
-
-  const py =
-    ((x1*y2 - y1*x2) * (y3 - y4) -
-     (y1 - y2) * (x3*y4 - y3*x4)) / denom;
-
-  return { x: px, y: py };
-}
-
-export function arcPathFrom3Points(
-  c: Pt,
-  start: Pt,
-  end: Pt,
-) {
-  const TWO_PI = Math.PI * 2;
-  const r = Math.hypot(start.x - c.x, start.y - c.y);
-  if (!Number.isFinite(r) || r === 0) return `M ${start.x} ${start.y}`;
-
-  // Clamp end onto the circle defined by start to avoid tiny radius mismatches
-  const endOnCircle = (() => {
-    const ex = end.x - c.x, ey = end.y - c.y;
-    const len = Math.hypot(ex, ey) || 1;
-    return { x: c.x + (ex / len) * r, y: c.y + (ey / len) * r };
-  })();
-
-  const a0 = polarAngle(c, start);
-  const a1 = polarAngle(c, endOnCircle);
-
-  // Normalize delta to [0, 2π)
-  let delta = a1 - a0;
-  delta = ((delta % TWO_PI) + TWO_PI) % TWO_PI;
-
-  // Always pick the shorter arc: if delta <= π use the "positive" sweep (sweepFlag = 1),
-  // otherwise use the opposite direction (sweepFlag = 0) and span 2π - delta.
-  const usePositiveSweep = delta <= Math.PI;
-  const sweepFlag = usePositiveSweep ? 1 : 0;
-  const largeArcFlag = 0; // shorter arc never requires large-arc-flag
-
-  return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArcFlag} ${sweepFlag} ${endOnCircle.x} ${endOnCircle.y}`;
-}
-
-export function arcPathSelectingYExtreme(c: Pt, start: Pt, end: Pt, pickLowest: boolean): string {
-  const TWO_PI = Math.PI * 2;
-  const r = Math.hypot(start.x - c.x, start.y - c.y);
-  if (!Number.isFinite(r) || r === 0) return `M ${start.x} ${start.y}`;
-
-  // Clamp end onto the circle to avoid radius mismatches
-  const endOnCircle = (() => {
-    const ex = end.x - c.x, ey = end.y - c.y;
-    const len = Math.hypot(ex, ey) || 1;
-    return { x: c.x + (ex / len) * r, y: c.y + (ey / len) * r };
-  })();
-
-  const a0 = polarAngle(c, start);
-  const a1 = polarAngle(c, endOnCircle);
-
-  // delta: how far the positive-sweep arc (sweepFlag=1, clockwise on screen) travels
-  let delta = a1 - a0;
-  delta = ((delta % TWO_PI) + TWO_PI) % TWO_PI;
-
-  // Extreme angle we want the arc to contain:
-  //   lowest  point (max y in SVG) → angle = +π/2
-  //   highest point (min y in SVG) → angle = -π/2
-  const aTarget = pickLowest ? Math.PI / 2 : -Math.PI / 2;
-
-  // Normalise aTarget relative to a0 into [0, 2π)
-  const normalised = ((aTarget - a0) % TWO_PI + TWO_PI) % TWO_PI;
-
-  // The positive-sweep arc covers normalised angles in [0, delta].
-  // If the extreme angle falls in that range, use sweepFlag=1; otherwise 0.
-  const targetInPositiveSweep = normalised <= delta;
-  const sweepFlag = targetInPositiveSweep ? 1 : 0;
-  const arcSpan = targetInPositiveSweep ? delta : TWO_PI - delta;
-  const largeArcFlag = arcSpan > Math.PI ? 1 : 0;
-
-  return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArcFlag} ${sweepFlag} ${endOnCircle.x} ${endOnCircle.y}`;
-}
-
-export function linePathFrom2Points(P1: Pt, P2: Pt): string {
-  return `M ${P1.x} ${P1.y} L ${P2.x} ${P2.y}`;
-}
-
-export function combinePathStrings(paths: string[]): string {
-  return paths.map(p => p.trim()).join(' ');
-}
-
-export function concatSvgPaths(path1: string, path2: string): string {
-  const num = `([\\d.eE+\\-]+)`;
-  const moveRe = new RegExp(`^\\s*M\\s+${num}\\s+${num}\\s+(.*)$`);
-  const arcRe = new RegExp(`^A\\s+${num}\\s+${num}\\s+${num}\\s+([01])\\s+([01])\\s+${num}\\s+${num}\\s*$`);
-  const lineRe = new RegExp(`^L\\s+${num}\\s+${num}\\s*$`);
-
-  const almostEqual = (a: number, b: number, eps: number = 1e-6) => Math.abs(a - b) <= eps;
-  const samePoint = (a: Pt, b: Pt) => almostEqual(a.x, b.x) && almostEqual(a.y, b.y);
-
-  const parsePath = (path: string) => {
-    const trimmed = path.trim();
-    const moveMatch = trimmed.match(moveRe);
-    if (!moveMatch) {
-      throw new Error(`Unsupported path format: ${path}`);
-    }
-
-    const start: Pt = { x: Number(moveMatch[1]), y: Number(moveMatch[2]) };
-    const body = moveMatch[3].trim();
-    const commands = body.match(/[AL][^AL]*/g)?.map(c => c.trim()) ?? [];
-
-    if (commands.length === 0) {
-      throw new Error(`Unsupported segment body: ${body}`);
-    }
-
-    let end: Pt = { ...start };
-    let singleType: 'arc' | 'line' | null = null;
-    let singleArcMeta: {
-      rx: number;
-      ry: number;
-      xAxisRotation: number;
-      largeArcFlag: number;
-      sweepFlag: number;
-    } | null = null;
-
-    for (const command of commands) {
-      const arcMatch = command.match(arcRe);
-      if (arcMatch) {
-        end = { x: Number(arcMatch[6]), y: Number(arcMatch[7]) };
-        if (commands.length === 1) {
-          singleType = 'arc';
-          singleArcMeta = {
-            rx: Number(arcMatch[1]),
-            ry: Number(arcMatch[2]),
-            xAxisRotation: Number(arcMatch[3]),
-            largeArcFlag: Number(arcMatch[4]),
-            sweepFlag: Number(arcMatch[5]),
-          };
-        }
-        continue;
-      }
-
-      const lineMatch = command.match(lineRe);
-      if (lineMatch) {
-        end = { x: Number(lineMatch[1]), y: Number(lineMatch[2]) };
-        if (commands.length === 1) {
-          singleType = 'line';
-        }
-        continue;
-      }
-
-      throw new Error(`Unsupported segment body: ${body}`);
-    }
-
-    return {
-      start,
-      end,
-      body,
-      full: trimmed,
-      singleType,
-      singleArcMeta,
-    };
-  };
-
-  const reverseSegment = (path: string): string => {
-    const seg = parsePath(path);
-
-    if (!seg.singleType) {
-      throw new Error('Path reversal is only supported for single-segment paths.');
-    }
-
-    if (seg.singleType === 'arc' && seg.singleArcMeta) {
-      const reversedSweepFlag = seg.singleArcMeta.sweepFlag === 1 ? 0 : 1;
-      return `M ${seg.end.x} ${seg.end.y} A ${seg.singleArcMeta.rx} ${seg.singleArcMeta.ry} ${seg.singleArcMeta.xAxisRotation} ${seg.singleArcMeta.largeArcFlag} ${reversedSweepFlag} ${seg.start.x} ${seg.start.y}`;
-    }
-
-    return `M ${seg.end.x} ${seg.end.y} L ${seg.start.x} ${seg.start.y}`;
-  };
-
-  const p1 = parsePath(path1);
-  const p2 = parsePath(path2);
-
-  if (samePoint(p1.end, p2.start)) {
-    return `${p1.full} ${p2.body}`;
-  }
-
-  if (samePoint(p2.end, p1.start)) {
-    return `${p2.full} ${p1.body}`;
-  }
-
-  if (samePoint(p1.start, p2.start)) {
-    return concatSvgPaths(reverseSegment(path1), path2);
-  }
-
-  if (samePoint(p1.end, p2.end)) {
-    return concatSvgPaths(path1, reverseSegment(path2));
-  }
-
-  throw new Error('Paths do not share a common endpoint.');
-}
-
-/**
- * Orders and joins a set of connected SVG segments into one path string.
- *
- * It greedily finds the next segment that can connect to either end of the
- * current chain and stitches with `concatSvgPaths`.
- */
-export function unifyConnectedSvgPaths(paths: string[]): string {
-  if (paths.length === 0) return '';
-
-  let unified = paths[0].trim();
-  const remaining = paths.slice(1);
-
-  while (remaining.length > 0) {
-    let stitched = false;
-
-    for (let i = 0; i < remaining.length; i++) {
-      const candidate = remaining[i];
-
-      try {
-        unified = concatSvgPaths(unified, candidate);
-        remaining.splice(i, 1);
-        stitched = true;
-        break;
-      } catch {
-        // try prepend direction
-      }
-
-      try {
-        unified = concatSvgPaths(candidate, unified);
-        remaining.splice(i, 1);
-        stitched = true;
-        break;
-      } catch {
-        // candidate did not connect in either direction
-      }
-    }
-
-    if (!stitched) {
-      throw new Error(`Could not connect all paths into one chain. Remaining segments: ${remaining.length}`);
-    }
-  }
-
-  return unified;
-}
-
-export function pathFromRect(R: Rectangle): string {
-  const { Pt1, Pt2 } = R;
-  return `M ${Pt1.x} ${Pt1.y} L ${Pt2.x} ${Pt1.y} L ${Pt2.x} ${Pt2.y} L ${Pt1.x} ${Pt2.y} Z`;
-}
-
-export function pathFromRoundedRect(R: Rectangle, r: number): string {
-  const { Pt1, Pt2 } = R;
-  const width = Math.abs(Pt2.x - Pt1.x);
-  const height = Math.abs(Pt2.y - Pt1.y);
-  const radius = Math.min(r, width / 2, height / 2);
-
-  const x1 = Math.min(Pt1.x, Pt2.x);
-  const y1 = Math.min(Pt1.y, Pt2.y);
-  const x2 = Math.max(Pt1.x, Pt2.x);
-  const y2 = Math.max(Pt1.y, Pt2.y);
-
-  return `M ${x1 + radius} ${y1} L ${x2 - radius} ${y1} Q ${x2} ${y1} ${x2} ${y1 + radius} L ${x2} ${y2 - radius} Q ${x2} ${y2} ${x2 - radius} ${y2} L ${x1 + radius} ${y2} Q ${x1} ${y2} ${x1} ${y2 - radius} L ${x1} ${y1 + radius} Q ${x1} ${y1} ${x1 + radius} ${y1} Z`;
-}
-
-export function pathFromCircle(C: Circle): string {
-  const { x, y, r } = C;
-  // Draw a circle using two semicircular arcs
-  return `M ${x - r} ${y} A ${r} ${r} 0 0 0 ${x + r} ${y} A ${r} ${r} 0 0 0 ${x - r} ${y} Z`;
-}
-
-export function pathFromLine(Pt1: Pt, Pt2: Pt): string {
-  return `M ${Pt1.x} ${Pt1.y} L ${Pt2.x} ${Pt2.y}`;
-}
-
-export function differenceFromTwoPaths(path1: string, path2: string, distancePerSample = 0.5): string {
-  type Pair = [number, number];
-  type Ring = Pair[];
-  type Polygon = Ring[];
-  type MultiPolygon = Polygon[];
-
-  const pathToRing = (path: string): Ring => {
-    const props = new svgPathProperties(path);
-    const totalLength = props.getTotalLength();
-
-    if (!Number.isFinite(totalLength) || totalLength <= 0) {
-      throw new Error('Path has no measurable length.');
-    }
-
-    let distancePerSample = .5; // lower numbers are more accurate
-    const steps = Math.max(128, Math.min(4096, Math.ceil(totalLength / distancePerSample)));
-    const pts: Pair[] = [];
-
-    for (let i = 0; i < steps; i++) {
-      const d = (i / steps) * totalLength;
-      const p = props.getPointAtLength(d);
-      pts.push([p.x, p.y]);
-    }
-
-    // Remove consecutive duplicates (numerical noise can produce them).
-    const deduped = pts.filter((p, i, arr) => {
-      if (i === 0) return true;
-      const prev = arr[i - 1];
-      return Math.hypot(p[0] - prev[0], p[1] - prev[1]) > 1e-9;
-    });
-
-    if (deduped.length < 3) {
-      throw new Error('Path sampling produced fewer than 3 unique points.');
-    }
-
-    return deduped;
-  };
-
-  const ringToPath = (ring: Ring): string => {
-    if (!ring.length) return '';
-    const [first, ...rest] = ring;
-    const head = `M ${first[0]} ${first[1]}`;
-    const tail = rest.map(p => `L ${p[0]} ${p[1]}`).join(' ');
-    return `${head}${tail ? ' ' + tail : ''} Z`;
-  };
-
-  const ring1 = pathToRing(path1);
-  const ring2 = pathToRing(path2);
-
-  // polygon-clipping expects MultiPolygon coordinates:
-  // MultiPolygon -> Polygon[] -> Ring[] -> Point[]
-  const subject: MultiPolygon = [[ring1]];
-  const clip: MultiPolygon = [[ring2]];
-
-  const diff = polygonClipper.difference(subject, clip) as unknown as MultiPolygon | null;
-  if (!diff || diff.length === 0) return '';
-
-  const subpaths: string[] = [];
-  for (const polygon of diff) {
-    for (const ring of polygon) {
-      const path = ringToPath(ring);
-      if (path) subpaths.push(path);
-    }
-  }
-
-  return subpaths.join(' ');
-}
-
-export function calculateOffset(path: string, offsetDist: number): string {
-  if (!path.trim() || !Number.isFinite(offsetDist)) return '';
-
-  const props = new svgPathProperties(path);
-  const totalLength = props.getTotalLength();
-
-  if (!Number.isFinite(totalLength) || totalLength <= 0) {
-    return '';
-  }
-
-  const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
-  const tolerance = 1e-6;
-  const spacing = clamp(Math.max(Math.abs(offsetDist) / 3, 0.5), 0.5, 2);
-  const stepCount = clamp(Math.ceil(totalLength / spacing), 64, 4096);
-
-  const samplePathPoint = (distance: number): Pt => {
-    const p = props.getPointAtLength(clamp(distance, 0, totalLength));
-    return { x: p.x, y: p.y };
-  };
-
-  const sampledPoints: Pt[] = [];
-  for (let i = 0; i < stepCount; i++) {
-    const distance = (i / stepCount) * totalLength;
-    sampledPoints.push(samplePathPoint(distance));
-  }
-
-  const start = samplePathPoint(0);
-  const end = samplePathPoint(totalLength);
-  const isClosed = /z\s*$/i.test(path.trim()) || dist(start, end) <= spacing;
-
-  const signedArea = (points: Pt[]): number => {
-    if (points.length < 3) return 0;
-    let area = 0;
-    for (let i = 0; i < points.length; i++) {
-      const current = points[i];
-      const next = points[(i + 1) % points.length];
-      area += current.x * next.y - next.x * current.y;
-    }
-    return area / 2;
-  };
-
-  const orientation = isClosed ? Math.sign(signedArea(sampledPoints)) || 1 : 1;
-  const normalSign = isClosed && orientation > 0 ? -1 : 1;
-
-  const getUnitTangent = (distance: number): Pt => {
-    const tangent = props.getTangentAtLength(clamp(distance, 0, totalLength));
-    let tx = tangent.x;
-    let ty = tangent.y;
-    let length = Math.hypot(tx, ty);
-
-    if (length <= tolerance) {
-      const delta = Math.min(1, totalLength / 1000 || 1);
-      const p0 = samplePathPoint(distance - delta);
-      const p1 = samplePathPoint(distance + delta);
-      tx = p1.x - p0.x;
-      ty = p1.y - p0.y;
-      length = Math.hypot(tx, ty);
-    }
-
-    if (length <= tolerance) {
-      return { x: 1, y: 0 };
-    }
-
-    return { x: tx / length, y: ty / length };
-  };
-
-  const offsetPoints: Pt[] = [];
-  const limit = isClosed ? stepCount : stepCount + 1;
-  for (let i = 0; i < limit; i++) {
-    const distance = (i / stepCount) * totalLength;
-    const point = samplePathPoint(distance);
-    const tangent = getUnitTangent(distance);
-    const normal = {
-      x: normalSign * -tangent.y,
-      y: normalSign * tangent.x,
-    };
-
-    offsetPoints.push({
-      x: point.x + normal.x * offsetDist,
-      y: point.y + normal.y * offsetDist,
-    });
-  }
-
-  const deduped = offsetPoints.filter((point, index, points) => {
-    if (index === 0) return true;
-    return dist(point, points[index - 1]) > tolerance;
-  });
-
-  if (deduped.length < 2) {
-    return '';
-  }
-
-  const first = deduped[0];
-  const pathParts = [`M ${first.x} ${first.y}`];
-  for (let i = 1; i < deduped.length; i++) {
-    const point = deduped[i];
-    pathParts.push(`L ${point.x} ${point.y}`);
-  }
-
-  if (isClosed && dist(deduped[0], deduped[deduped.length - 1]) > tolerance) {
-    pathParts.push('Z');
-  }
-
-  return pathParts.join(' ');
-}
-
-/**
- * Finds all intersection points between an SVG path and a circle.
- *
- * Samples the path at fine intervals, detects sign changes in
- * (distance_to_center - radius), then binary-searches each crossing
- * to a precise point.
- */
-export function interceptPathAndCircle(path: string, c: Circle): Pt[] {
-  if (!path.trim()) return [];
-
-  const props = new svgPathProperties(path);
-  const totalLength = props.getTotalLength();
-  if (!Number.isFinite(totalLength) || totalLength <= 0) return [];
-
-  // Sample spacing: fine enough to catch crossings but not wasteful
-  const sampleSpacing = Math.max(0.25, c.r / 50);
-  const stepCount = Math.ceil(totalLength / sampleSpacing);
-
-  // signed distance: negative inside circle, positive outside
-  const signedDist = (d: number): number => {
-    const p = props.getPointAtLength(d);
-    return Math.hypot(p.x - c.x, p.y - c.y) - c.r;
-  };
-
-  // Binary search for the precise crossing between two distances
-  const bisect = (dA: number, dB: number, tolerance = 1e-4): Pt => {
-    let lo = dA, hi = dB;
-    for (let i = 0; i < 52; i++) {
-      const mid = (lo + hi) / 2;
-      if (hi - lo < tolerance) break;
-      if (Math.sign(signedDist(lo)) === Math.sign(signedDist(mid))) {
-        lo = mid;
-      } else {
-        hi = mid;
-      }
-    }
-    const p = props.getPointAtLength((lo + hi) / 2);
-    return { x: p.x, y: p.y };
-  };
-
-  const intersections: Pt[] = [];
-  let prevSign = Math.sign(signedDist(0));
-
-  for (let i = 1; i <= stepCount; i++) {
-    const d = Math.min((i / stepCount) * totalLength, totalLength);
-    const currSign = Math.sign(signedDist(d));
-
-    if (prevSign !== 0 && currSign !== 0 && prevSign !== currSign) {
-      const prevD = Math.min(((i - 1) / stepCount) * totalLength, totalLength);
-      intersections.push(bisect(prevD, d));
-    }
-
-    prevSign = currSign;
-  }
-
-  return intersections;
-}
-
-/**
- * Finds the point on an SVG path that is closest to the boundary of a circle
- * (i.e. minimises |dist(point, center) - radius|).
- *
- * Returns the path point, its arc-length position, and the actual distance
- * from that point to the circle center — so the caller can snap the radius
- * to that distance for a clean intersection.
- */
-export function findClosestPointOnPathToCircle(
-  path: string,
-  c: Circle
-):  Pt | null {
-  if (!path.trim()) return null;
-
-  const props = new svgPathProperties(path);
-  const totalLength = props.getTotalLength();
-  if (!Number.isFinite(totalLength) || totalLength <= 0) return null;
-
-  // Coarse pass: sample at ~0.5 mm intervals
-  const coarseSpacing = Math.max(0.5, c.r / 100);
-  const coarseSteps = Math.ceil(totalLength / coarseSpacing);
-
-  let bestArcLen = 0;
-  let bestDistToBoundary = Infinity;
-
-  for (let i = 0; i <= coarseSteps; i++) {
-    const d = Math.min((i / coarseSteps) * totalLength, totalLength);
-    const p = props.getPointAtLength(d);
-    const distToBoundary = Math.abs(Math.hypot(p.x - c.x, p.y - c.y) - c.r);
-    if (distToBoundary < bestDistToBoundary) {
-      bestDistToBoundary = distToBoundary;
-      bestArcLen = d;
-    }
-  }
-
-  // Fine pass: golden-section search in a window around the coarse best
-  const window = coarseSpacing * 2;
-  let lo = Math.max(0, bestArcLen - window);
-  let hi = Math.min(totalLength, bestArcLen + window);
-  const phi = (Math.sqrt(5) - 1) / 2;
-
-  for (let i = 0; i < 60; i++) {
-    if (hi - lo < 1e-6) break;
-    const m1 = hi - phi * (hi - lo);
-    const m2 = lo + phi * (hi - lo);
-    const p1 = props.getPointAtLength(m1);
-    const p2 = props.getPointAtLength(m2);
-    const f1 = Math.abs(Math.hypot(p1.x - c.x, p1.y - c.y) - c.r);
-    const f2 = Math.abs(Math.hypot(p2.x - c.x, p2.y - c.y) - c.r);
-    if (f1 < f2) { hi = m2; } else { lo = m1; }
-  }
-
-  const finalArcLen = (lo + hi) / 2;
-  const finalPt = props.getPointAtLength(finalArcLen);
-
-  return  { x: finalPt.x, y: finalPt.y }
-}
-
-/**
- * Trims an SVG path to a given arc-length, returning only the portion
- * from the start up to that distance.
- */
-export function trimPathToArcLength(path: string, arcLength: number): string {
-  if (!path.trim()) return '';
-
-  const props = new svgPathProperties(path);
-  const totalLength = props.getTotalLength();
-  if (!Number.isFinite(totalLength) || totalLength <= 0) return '';
-
-  const clampedLength = Math.min(Math.max(arcLength, 0), totalLength);
-  const spacing = 0.5;
-  const stepCount = Math.max(2, Math.ceil(clampedLength / spacing));
-
-  const pts: Pt[] = [];
-  for (let i = 0; i <= stepCount; i++) {
-    const d = (i / stepCount) * clampedLength;
-    const p = props.getPointAtLength(d);
-    pts.push({ x: p.x, y: p.y });
-  }
-
-  const deduped = pts.filter((p, i, arr) => {
-    if (i === 0) return true;
-    return dist(p, arr[i - 1]) > 1e-6;
-  });
-
-  if (deduped.length < 2) return '';
-
-  const parts = [`M ${deduped[0].x} ${deduped[0].y}`];
-  for (let i = 1; i < deduped.length; i++) {
-    parts.push(`L ${deduped[i].x} ${deduped[i].y}`);
-  }
-  return parts.join(' ');
-}
-
-/**
- * SVG arc path on circle C, centered at angle theta (radians),
- * spanning arc-length s (same units as r).
- *
- * Example: s = Math.PI * r draws a half-circle centered on theta.
- */
-export function arcPathByArcLengthAboutTheta(
-  C: Circle,
-  theta: number,
-  s: number,
-  opts?: {
-    radians?: boolean;      // if false, theta is degrees
-    moveTo?: boolean;       // include "M" + "A" (default true). If false, returns only the "A" command.
-    sweep?: 1 | 0;          // 1 = clockwise, 0 = counterclockwise (default 1)
-  }
-): string {
-  const radians = opts?.radians ?? true;
-  const moveTo = opts?.moveTo ?? true;
-  const sweep = opts?.sweep ?? 1;
-
-  const t = radians ? theta : (theta * Math.PI) / 180;
-
-  // Convert arc length to angular span
-  if (C.r === 0) return "";
-  const dTheta = s / C.r; // radians
-  const a0 = t - dTheta / 2;
-  const a1 = t + dTheta / 2;
-
-  const x0 = C.x + C.r * Math.cos(a0);
-  const y0 = C.y + C.r * Math.sin(a0);
-  const x1 = C.x + C.r * Math.cos(a1);
-  const y1 = C.y + C.r * Math.sin(a1);
-
-  // SVG large-arc-flag: 1 if arc span > 180°
-  const largeArc = Math.abs(dTheta) > Math.PI ? 1 : 0;
-
-  const A = `A ${C.r} ${C.r} 0 ${largeArc} ${sweep} ${x1} ${y1}`;
-  return moveTo ? `M ${x0} ${y0} ${A}` : A;
-}
-
-/**
- * SVG arc path on circle C,
- * centered at angle `theta`,
- * spanning angular width `delta` (radians).
- */
-export function arcPathByAngleAboutTheta(
-  C: Circle,
-  theta: number,
-  delta: number,
-  opts?: {
-    radians?: boolean;    // if false, inputs are degrees
-    moveTo?: boolean;     // include "M" command (default true)
-    sweep?: 1 | 0;        // 1 = clockwise, 0 = counterclockwise
-  }
-): string {
-  const radians = opts?.radians ?? true;
-  const moveTo = opts?.moveTo ?? true;
-  const sweep = opts?.sweep ?? 1;
-
-  const t = radians ? theta : (theta * Math.PI) / 180;
-  const d = radians ? delta : (delta * Math.PI) / 180;
-
-  if (C.r === 0 || d === 0) return "";
-
-  const a0 = t - d / 2;
-  const a1 = t + d / 2;
-
-  const x0 = C.x + C.r * Math.cos(a0);
-  const y0 = C.y + C.r * Math.sin(a0);
-  const x1 = C.x + C.r * Math.cos(a1);
-  const y1 = C.y + C.r * Math.sin(a1);
-
-  const largeArc = Math.abs(d) > Math.PI ? 1 : 0;
-
-  const A = `A ${C.r} ${C.r} 0 ${largeArc} ${sweep} ${x1} ${y1}`;
-  return moveTo ? `M ${x0} ${y0} ${A}` : A;
-}
-
-export function angleFromCenter(C: Pt, P: Pt): number {
-  return Math.atan2(P.y - C.y, P.x - C.x);
-}
-
-export function offsetCircleRadius(C: Circle, offset: number): Circle {
-  const newR = C.r + offset;
-  if (newR < 0) {
-    throw new Error('Offset cannot be so negative that it produces a circle with negative radius.');
-  }
-  return { x: C.x, y: C.y, r: newR };
-}
-
-export function safeFraction(n: number, d: number):
-  { ok: true; value: Fraction } | { ok: false; error: string } {
-
-  if (!Number.isFinite(n) || !Number.isFinite(d)) return { ok: false, error: 'Ratios must be numbers.' };
-
-  // If you want integers only:
-  if (!Number.isInteger(n) || !Number.isInteger(d)) return { ok: false, error: 'Ratio parts must be whole numbers.' };
-
-  if (n <= 0 || d <= 0) return { ok: false, error: 'Ratio parts must be > 0.' };
-
-  // Optional: clamp silly values (prevents “1:999999” footguns)
-  if (n > 10_000 || d > 10_000) return { ok: false, error: 'Ratio parts are too large.' };
-
-  return { ok: true, value: { n, d } };
+  const Cunknown = ax === "x" ? C.y : C.x; // solving the other coordinate
+  return pos ? Cunknown + s : Cunknown - s;
 }
 
 export function interceptCirclesAndPoint(U: Circle, P: Pt, Ur: number): Circle[] {
@@ -979,16 +270,6 @@ export function findJoiningCircleOfKnownRadius(U: Circle, R: number, max: boolea
   return { x: 0, y: Cy, r: R };
 }
 
-export function lineFromTwoPoints(A: Pt, B: Pt): Line {
-  let m = (B.y - A.y) / (B.x - A.x);
-
-  // find y intercept 
-  // y = mx + b 
-  let b = A.y - m * A.x;
-
-  return { m, b: b };
-}
-
 export function inscribeCircleWithinCircle(outerCirle: Circle, innerCircleRadius: number, angle: number): Circle {
   const target = pointOnCircle(outerCirle, angle);
   const distToTarget = dist(target, outerCirle);
@@ -997,4 +278,512 @@ export function inscribeCircleWithinCircle(outerCirle: Circle, innerCircleRadius
   let innerCircle = { x: centerForNewCircle.x, y: centerForNewCircle.y, r: innerCircleRadius };
   return innerCircle;
 
+}
+
+
+// =========== PATH HELPERS ==============
+const polygonClipper: {
+  difference: (
+    subjectGeom: [number, number][][][] | [number, number][][][][],
+    ...clipGeoms: ([number, number][][][] | [number, number][][][][])[]
+  ) => [number, number][][][][];
+} = ((polygonClipping as any).default ?? polygonClipping) as any;
+
+export function pathFromCircle(C: Circle): string {
+  const { x, y, r } = C;
+  // Draw a circle using two semicircular arcs
+  return `M ${x - r} ${y} A ${r} ${r} 0 0 0 ${x + r} ${y} A ${r} ${r} 0 0 0 ${x - r} ${y} Z`;
+}
+
+export function pathFromLine(Pt1: Pt, Pt2: Pt): string {
+  return `M ${Pt1.x} ${Pt1.y} L ${Pt2.x} ${Pt2.y}`;
+}
+
+export function pathFromRect(R: Rectangle): string {
+  const { Pt1, Pt2 } = R;
+  return `M ${Pt1.x} ${Pt1.y} L ${Pt2.x} ${Pt1.y} L ${Pt2.x} ${Pt2.y} L ${Pt1.x} ${Pt2.y} Z`;
+}
+
+export function arcPathFrom3Points(c: Pt, start: Pt, end: Pt, pickHigherArc?: boolean): string {
+  const TWO_PI = Math.PI * 2;
+  const r = Math.hypot(start.x - c.x, start.y - c.y);
+  if (!Number.isFinite(r) || r === 0) return `M ${start.x} ${start.y}`;
+
+  // Clamp end onto the circle defined by start to avoid tiny radius mismatches
+  const endOnCircle = (() => {
+    const ex = end.x - c.x, ey = end.y - c.y;
+    const len = Math.hypot(ex, ey) || 1;
+    return { x: c.x + (ex / len) * r, y: c.y + (ey / len) * r };
+  })();
+
+  const a0 = angleFromCenter(c, start);
+  const a1 = angleFromCenter(c, endOnCircle);
+
+  // Normalize delta to [0, 2π)
+  let delta = a1 - a0;
+  delta = ((delta % TWO_PI) + TWO_PI) % TWO_PI;
+
+  // Optional y-extreme selector:
+  //  - true  -> force arc through the highest point (min y, angle -π/2)
+  //  - false -> force arc through the lowest point  (max y, angle +π/2)
+  //  - undefined -> keep previous behavior and pick the shorter arc
+  if (pickHigherArc === undefined) {
+    const usePositiveSweep = delta <= Math.PI;
+    const sweepFlag = usePositiveSweep ? 1 : 0;
+    const largeArcFlag = 0; // shorter arc never requires large-arc-flag
+    return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArcFlag} ${sweepFlag} ${endOnCircle.x} ${endOnCircle.y}`;
+  }
+
+  const aTarget = pickHigherArc ? -Math.PI / 2 : Math.PI / 2;
+  const normalised = ((aTarget - a0) % TWO_PI + TWO_PI) % TWO_PI;
+  const targetInPositiveSweep = normalised <= delta;
+  const sweepFlag = targetInPositiveSweep ? 1 : 0;
+  const arcSpan = targetInPositiveSweep ? delta : TWO_PI - delta;
+  const largeArcFlag = arcSpan > Math.PI ? 1 : 0;
+
+  return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArcFlag} ${sweepFlag} ${endOnCircle.x} ${endOnCircle.y}`;
+}
+
+export function linePathFrom2Points(P1: Pt, P2: Pt): string {
+  return `M ${P1.x} ${P1.y} L ${P2.x} ${P2.y}`;
+}
+
+export function pathFromRoundedRect(R: Rectangle, r: number): string {
+  const { Pt1, Pt2 } = R;
+  const width = Math.abs(Pt2.x - Pt1.x);
+  const height = Math.abs(Pt2.y - Pt1.y);
+  const radius = Math.min(r, width / 2, height / 2);
+
+  const x1 = Math.min(Pt1.x, Pt2.x);
+  const y1 = Math.min(Pt1.y, Pt2.y);
+  const x2 = Math.max(Pt1.x, Pt2.x);
+  const y2 = Math.max(Pt1.y, Pt2.y);
+
+  return `M ${x1 + radius} ${y1} L ${x2 - radius} ${y1} Q ${x2} ${y1} ${x2} ${y1 + radius} L ${x2} ${y2 - radius} Q ${x2} ${y2} ${x2 - radius} ${y2} L ${x1 + radius} ${y2} Q ${x1} ${y2} ${x1} ${y2 - radius} L ${x1} ${y1 + radius} Q ${x1} ${y1} ${x1 + radius} ${y1} Z`;
+}
+
+
+// ====== PATH COMBINATIONS ======
+export function combinePathStrings(paths: string[]): string {
+  return paths.map(p => p.trim()).join(' ');
+}
+
+export function unifyTwoConnectedPaths(path1: string, path2: string): string {
+  const num = `([\\d.eE+\\-]+)`;
+  const moveRe = new RegExp(`^\\s*M\\s+${num}\\s+${num}\\s+(.*)$`);
+  const arcRe = new RegExp(`^A\\s+${num}\\s+${num}\\s+${num}\\s+([01])\\s+([01])\\s+${num}\\s+${num}\\s*$`);
+  const lineRe = new RegExp(`^L\\s+${num}\\s+${num}\\s*$`);
+
+  const almostEqual = (a: number, b: number, eps: number = 1e-6) => Math.abs(a - b) <= eps;
+  const samePoint = (a: Pt, b: Pt) => almostEqual(a.x, b.x) && almostEqual(a.y, b.y);
+
+  const parsePath = (path: string) => {
+    const trimmed = path.trim();
+    const moveMatch = trimmed.match(moveRe);
+    if (!moveMatch) {
+      throw new Error(`Unsupported path format: ${path}`);
+    }
+
+    const start: Pt = { x: Number(moveMatch[1]), y: Number(moveMatch[2]) };
+    const body = moveMatch[3].trim();
+    const commands = body.match(/[AL][^AL]*/g)?.map(c => c.trim()) ?? [];
+
+    if (commands.length === 0) {
+      throw new Error(`Unsupported segment body: ${body}`);
+    }
+
+    let end: Pt = { ...start };
+    let singleType: 'arc' | 'line' | null = null;
+    let singleArcMeta: {
+      rx: number;
+      ry: number;
+      xAxisRotation: number;
+      largeArcFlag: number;
+      sweepFlag: number;
+    } | null = null;
+
+    for (const command of commands) {
+      const arcMatch = command.match(arcRe);
+      if (arcMatch) {
+        end = { x: Number(arcMatch[6]), y: Number(arcMatch[7]) };
+        if (commands.length === 1) {
+          singleType = 'arc';
+          singleArcMeta = {
+            rx: Number(arcMatch[1]),
+            ry: Number(arcMatch[2]),
+            xAxisRotation: Number(arcMatch[3]),
+            largeArcFlag: Number(arcMatch[4]),
+            sweepFlag: Number(arcMatch[5]),
+          };
+        }
+        continue;
+      }
+
+      const lineMatch = command.match(lineRe);
+      if (lineMatch) {
+        end = { x: Number(lineMatch[1]), y: Number(lineMatch[2]) };
+        if (commands.length === 1) {
+          singleType = 'line';
+        }
+        continue;
+      }
+
+      throw new Error(`Unsupported segment body: ${body}`);
+    }
+
+    return {
+      start,
+      end,
+      body,
+      full: trimmed,
+      singleType,
+      singleArcMeta,
+    };
+  };
+
+  const reverseSegment = (path: string): string => {
+    const seg = parsePath(path);
+
+    if (!seg.singleType) {
+      throw new Error('Path reversal is only supported for single-segment paths.');
+    }
+
+    if (seg.singleType === 'arc' && seg.singleArcMeta) {
+      const reversedSweepFlag = seg.singleArcMeta.sweepFlag === 1 ? 0 : 1;
+      return `M ${seg.end.x} ${seg.end.y} A ${seg.singleArcMeta.rx} ${seg.singleArcMeta.ry} ${seg.singleArcMeta.xAxisRotation} ${seg.singleArcMeta.largeArcFlag} ${reversedSweepFlag} ${seg.start.x} ${seg.start.y}`;
+    }
+
+    return `M ${seg.end.x} ${seg.end.y} L ${seg.start.x} ${seg.start.y}`;
+  };
+
+  const p1 = parsePath(path1);
+  const p2 = parsePath(path2);
+
+  if (samePoint(p1.end, p2.start)) {
+    return `${p1.full} ${p2.body}`;
+  }
+
+  if (samePoint(p2.end, p1.start)) {
+    return `${p2.full} ${p1.body}`;
+  }
+
+  if (samePoint(p1.start, p2.start)) {
+    return unifyTwoConnectedPaths(reverseSegment(path1), path2);
+  }
+
+  if (samePoint(p1.end, p2.end)) {
+    return unifyTwoConnectedPaths(path1, reverseSegment(path2));
+  }
+
+  throw new Error('Paths do not share a common endpoint.');
+}
+
+/**
+ * Orders and joins a set of connected SVG segments into one path string.
+ *
+ * It greedily finds the next segment that can connect to either end of the
+ * current chain and stitches with `concatSvgPaths`.
+ */
+export function unifyConnectedSvgPaths(paths: string[]): string {
+  if (paths.length === 0) return '';
+
+  let unified = paths[0].trim();
+  const remaining = paths.slice(1);
+
+  while (remaining.length > 0) {
+    let stitched = false;
+
+    for (let i = 0; i < remaining.length; i++) {
+      const candidate = remaining[i];
+
+      try {
+        unified = unifyTwoConnectedPaths(unified, candidate);
+        remaining.splice(i, 1);
+        stitched = true;
+        break;
+      } catch {
+        // try prepend direction
+      }
+
+      try {
+        unified = unifyTwoConnectedPaths(candidate, unified);
+        remaining.splice(i, 1);
+        stitched = true;
+        break;
+      } catch {
+        // candidate did not connect in either direction
+      }
+    }
+
+    if (!stitched) {
+      throw new Error(`Could not connect all paths into one chain. Remaining segments: ${remaining.length}`);
+    }
+  }
+
+  return unified;
+}
+
+export function differenceFromTwoPaths(path1: string, path2: string, distancePerSample = 0.5): string {
+  type Pair = [number, number];
+  type Ring = Pair[];
+  type Polygon = Ring[];
+  type MultiPolygon = Polygon[];
+
+  const pathToRing = (path: string): Ring => {
+    const props = new svgPathProperties(path);
+    const totalLength = props.getTotalLength();
+
+    if (!Number.isFinite(totalLength) || totalLength <= 0) {
+      throw new Error('Path has no measurable length.');
+    }
+
+    let distancePerSample = .5; // lower numbers are more accurate
+    const steps = Math.max(128, Math.min(4096, Math.ceil(totalLength / distancePerSample)));
+    const pts: Pair[] = [];
+
+    for (let i = 0; i < steps; i++) {
+      const d = (i / steps) * totalLength;
+      const p = props.getPointAtLength(d);
+      pts.push([p.x, p.y]);
+    }
+
+    // Remove consecutive duplicates (numerical noise can produce them).
+    const deduped = pts.filter((p, i, arr) => {
+      if (i === 0) return true;
+      const prev = arr[i - 1];
+      return Math.hypot(p[0] - prev[0], p[1] - prev[1]) > 1e-9;
+    });
+
+    if (deduped.length < 3) {
+      throw new Error('Path sampling produced fewer than 3 unique points.');
+    }
+
+    return deduped;
+  };
+
+  const ringToPath = (ring: Ring): string => {
+    if (!ring.length) return '';
+    const [first, ...rest] = ring;
+    const head = `M ${first[0]} ${first[1]}`;
+    const tail = rest.map(p => `L ${p[0]} ${p[1]}`).join(' ');
+    return `${head}${tail ? ' ' + tail : ''} Z`;
+  };
+
+  const ring1 = pathToRing(path1);
+  const ring2 = pathToRing(path2);
+
+  // polygon-clipping expects MultiPolygon coordinates:
+  // MultiPolygon -> Polygon[] -> Ring[] -> Point[]
+  const subject: MultiPolygon = [[ring1]];
+  const clip: MultiPolygon = [[ring2]];
+
+  const diff = polygonClipper.difference(subject, clip) as unknown as MultiPolygon | null;
+  if (!diff || diff.length === 0) return '';
+
+  const subpaths: string[] = [];
+  for (const polygon of diff) {
+    for (const ring of polygon) {
+      const path = ringToPath(ring);
+      if (path) subpaths.push(path);
+    }
+  }
+
+  return subpaths.join(' ');
+}
+
+export function calculateOffsetAlongPath(path: string, offsetDist: number): string {
+  if (!path.trim() || !Number.isFinite(offsetDist)) return '';
+
+  const props = new svgPathProperties(path);
+  const totalLength = props.getTotalLength();
+
+  if (!Number.isFinite(totalLength) || totalLength <= 0) {
+    return '';
+  }
+
+  const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+  const tolerance = 1e-6;
+  const spacing = clamp(Math.max(Math.abs(offsetDist) / 3, 0.5), 0.5, 2);
+  const stepCount = clamp(Math.ceil(totalLength / spacing), 64, 4096);
+
+  const samplePathPoint = (distance: number): Pt => {
+    const p = props.getPointAtLength(clamp(distance, 0, totalLength));
+    return { x: p.x, y: p.y };
+  };
+
+  const sampledPoints: Pt[] = [];
+  for (let i = 0; i < stepCount; i++) {
+    const distance = (i / stepCount) * totalLength;
+    sampledPoints.push(samplePathPoint(distance));
+  }
+
+  const start = samplePathPoint(0);
+  const end = samplePathPoint(totalLength);
+  const isClosed = /z\s*$/i.test(path.trim()) || dist(start, end) <= spacing;
+
+  const signedArea = (points: Pt[]): number => {
+    if (points.length < 3) return 0;
+    let area = 0;
+    for (let i = 0; i < points.length; i++) {
+      const current = points[i];
+      const next = points[(i + 1) % points.length];
+      area += current.x * next.y - next.x * current.y;
+    }
+    return area / 2;
+  };
+
+  const orientation = isClosed ? Math.sign(signedArea(sampledPoints)) || 1 : 1;
+  const normalSign = isClosed && orientation > 0 ? -1 : 1;
+
+  const getUnitTangent = (distance: number): Pt => {
+    const tangent = props.getTangentAtLength(clamp(distance, 0, totalLength));
+    let tx = tangent.x;
+    let ty = tangent.y;
+    let length = Math.hypot(tx, ty);
+
+    if (length <= tolerance) {
+      const delta = Math.min(1, totalLength / 1000 || 1);
+      const p0 = samplePathPoint(distance - delta);
+      const p1 = samplePathPoint(distance + delta);
+      tx = p1.x - p0.x;
+      ty = p1.y - p0.y;
+      length = Math.hypot(tx, ty);
+    }
+
+    if (length <= tolerance) {
+      return { x: 1, y: 0 };
+    }
+
+    return { x: tx / length, y: ty / length };
+  };
+
+  const offsetPoints: Pt[] = [];
+  const limit = isClosed ? stepCount : stepCount + 1;
+  for (let i = 0; i < limit; i++) {
+    const distance = (i / stepCount) * totalLength;
+    const point = samplePathPoint(distance);
+    const tangent = getUnitTangent(distance);
+    const normal = {
+      x: normalSign * -tangent.y,
+      y: normalSign * tangent.x,
+    };
+
+    offsetPoints.push({
+      x: point.x + normal.x * offsetDist,
+      y: point.y + normal.y * offsetDist,
+    });
+  }
+
+  const deduped = offsetPoints.filter((point, index, points) => {
+    if (index === 0) return true;
+    return dist(point, points[index - 1]) > tolerance;
+  });
+
+  if (deduped.length < 2) {
+    return '';
+  }
+
+  const first = deduped[0];
+  const pathParts = [`M ${first.x} ${first.y}`];
+  for (let i = 1; i < deduped.length; i++) {
+    const point = deduped[i];
+    pathParts.push(`L ${point.x} ${point.y}`);
+  }
+
+  if (isClosed && dist(deduped[0], deduped[deduped.length - 1]) > tolerance) {
+    pathParts.push('Z');
+  }
+
+  return pathParts.join(' ');
+}
+
+/**
+ * Finds the point on an SVG path that is closest to the boundary of a circle
+ * (i.e. minimises |dist(point, center) - radius|).
+ *
+ * Returns the path point, its arc-length position, and the actual distance
+ * from that point to the circle center — so the caller can snap the radius
+ * to that distance for a clean intersection.
+ */
+export function findClosestPointOnPathToCircle(
+  path: string,
+  c: Circle
+):  Pt | null {
+  if (!path.trim()) return null;
+
+  const props = new svgPathProperties(path);
+  const totalLength = props.getTotalLength();
+  if (!Number.isFinite(totalLength) || totalLength <= 0) return null;
+
+  // Coarse pass: sample at ~0.5 mm intervals
+  const coarseSpacing = Math.max(0.5, c.r / 100);
+  const coarseSteps = Math.ceil(totalLength / coarseSpacing);
+
+  let bestArcLen = 0;
+  let bestDistToBoundary = Infinity;
+
+  for (let i = 0; i <= coarseSteps; i++) {
+    const d = Math.min((i / coarseSteps) * totalLength, totalLength);
+    const p = props.getPointAtLength(d);
+    const distToBoundary = Math.abs(Math.hypot(p.x - c.x, p.y - c.y) - c.r);
+    if (distToBoundary < bestDistToBoundary) {
+      bestDistToBoundary = distToBoundary;
+      bestArcLen = d;
+    }
+  }
+
+  // Fine pass: golden-section search in a window around the coarse best
+  const window = coarseSpacing * 2;
+  let lo = Math.max(0, bestArcLen - window);
+  let hi = Math.min(totalLength, bestArcLen + window);
+  const phi = (Math.sqrt(5) - 1) / 2;
+
+  for (let i = 0; i < 60; i++) {
+    if (hi - lo < 1e-6) break;
+    const m1 = hi - phi * (hi - lo);
+    const m2 = lo + phi * (hi - lo);
+    const p1 = props.getPointAtLength(m1);
+    const p2 = props.getPointAtLength(m2);
+    const f1 = Math.abs(Math.hypot(p1.x - c.x, p1.y - c.y) - c.r);
+    const f2 = Math.abs(Math.hypot(p2.x - c.x, p2.y - c.y) - c.r);
+    if (f1 < f2) { hi = m2; } else { lo = m1; }
+  }
+
+  const finalArcLen = (lo + hi) / 2;
+  const finalPt = props.getPointAtLength(finalArcLen);
+
+  return  { x: finalPt.x, y: finalPt.y }
+}
+
+export function arcPathByAngleAboutTheta(
+  C: Circle,
+  theta: number,
+  delta: number,
+  opts?: {
+    radians?: boolean;    // if false, inputs are degrees
+    moveTo?: boolean;     // include "M" command (default true)
+    sweep?: 1 | 0;        // 1 = clockwise, 0 = counterclockwise
+  }
+): string {
+  const radians = opts?.radians ?? true;
+  const moveTo = opts?.moveTo ?? true;
+  const sweep = opts?.sweep ?? 1;
+
+  const t = radians ? theta : (theta * Math.PI) / 180;
+  const d = radians ? delta : (delta * Math.PI) / 180;
+
+  if (C.r === 0 || d === 0) return "";
+
+  const a0 = t - d / 2;
+  const a1 = t + d / 2;
+
+  const x0 = C.x + C.r * Math.cos(a0);
+  const y0 = C.y + C.r * Math.sin(a0);
+  const x1 = C.x + C.r * Math.cos(a1);
+  const y1 = C.y + C.r * Math.sin(a1);
+
+  const largeArc = Math.abs(d) > Math.PI ? 1 : 0;
+
+  const A = `A ${C.r} ${C.r} 0 ${largeArc} ${sweep} ${x1} ${y1}`;
+  return moveTo ? `M ${x0} ${y0} ${A}` : A;
 }

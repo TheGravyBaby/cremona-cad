@@ -1,4 +1,5 @@
-import { Pt, Circle, Line, Rectangle } from "../models/types";
+import { Pt, Circle, Line, Rectangle, Arc } from "../models/types";
+import { pointOnCircle } from "./draftMath";
 
 export const renderDistanceMeasurementLine = (P: Pt, Q: Pt, label: string, color: string) => (g: any, ui: any) => {
     const dx = Q.x - P.x;
@@ -355,9 +356,10 @@ export const renderPointLabel = (
     // marker
     renderCrosshair(P, color, 7, 2, 1, true, 2)(g, ui);
 
-    const grp = g.append("g")
+    // draw label in UI layer (y is flipped there) so text remains rightside up
+    const grp = ui.append("g")
         .attr("class", "draft-point-label")
-        .attr("transform", `translate(${P.x + offset.x},${P.y + offset.y})`);
+        .attr("transform", `translate(${P.x + offset.x},${-(P.y + offset.y)})`);
 
     if (bg) {
         // crude background "pill" without measuring text: good enough for drafting UI
@@ -602,6 +604,59 @@ export const renderRectRoundedCorners = (rect: Rectangle, r: number, color: stri
         .attr("stroke-width", strokeWidth)
         .attr("vector-effect", "non-scaling-stroke");
 }   
+
+export const renderArcFromArc = (arc: Arc, color: string, fill: string = "none", strokeWidth: number = 1, longArc = false) => (g: any, ui: any) => {
+    const TWO_PI = Math.PI * 2;
+    const cx = arc.C.x;
+    const cy = arc.C.y;
+    const r = Math.abs(arc.C.r);
+
+    if (!Number.isFinite(r) || r <= 1e-9) return;
+
+    const normalize = (a: number) => ((a % TWO_PI) + TWO_PI) % TWO_PI;
+    const start = normalize(arc.start);
+    const end = normalize(arc.end);
+
+    const deltaCCW = normalize(end - start);
+    if (deltaCCW <= 1e-9) return;
+
+    // Default behavior: draw shorter arc.
+    // If longArc=true, draw the complementary (longer) arc instead.
+    const useCCW = longArc ? deltaCCW > Math.PI : deltaCCW <= Math.PI;
+    const span = useCCW ? deltaCCW : TWO_PI - deltaCCW;
+    const largeArcFlag = span > Math.PI ? 1 : 0;
+    const sweepFlag = useCCW ? 1 : 0;
+
+    const sx = cx + r * Math.cos(start);
+    const sy = cy + r * Math.sin(start);
+    const ex = cx + r * Math.cos(end);
+    const ey = cy + r * Math.sin(end);
+
+    g.append("path")
+        .attr("d", `M ${sx},${sy} A ${r},${r} 0 ${largeArcFlag},${sweepFlag} ${ex},${ey}`)
+        .attr("fill", fill)
+        .attr("stroke", color)
+        .attr("stroke-width", strokeWidth)
+        .attr("vector-effect", "non-scaling-stroke");
+}
+
+// this just has some display features that will help the user understand what is going on
+export const renderArcFromArcFancy = (arc: Arc, color: string, label?: string, colorOff?: string) => (g: any, ui: any) => {
+    let start: Pt = pointOnCircle(arc.C, arc.start);
+    let end: Pt = pointOnCircle(arc.C, arc.end);
+
+    // main arc
+    renderArcFromArc(arc, color, "none", 2, false)(g, ui);
+    renderDashLine(arc.C, start, colorOff ?? color)(g, ui);
+    renderDashLine(arc.C, end, colorOff ?? color)(g, ui);
+
+    if (label) {
+        renderPointLabel(arc.C, label, color)(g, ui);
+    }
+    else{
+        renderCrosshair(arc.C, color)(g, ui);
+    }
+}
 
 export function greyOut(color: string, degree: number): string {
     // clamp degree to [0,1]

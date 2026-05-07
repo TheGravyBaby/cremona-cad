@@ -119,12 +119,11 @@
         @if (openPanel === 'mainBouts') {
         <section class="ui-group">
             <div class="ui-group-title">Upper Bout</div>
-            <div class="ui-group">
                 <div class="input-group basic-row field-row" role="group">
                     <label class="field-cell">
                         <span class="field-title">Total Width <span class="unit-label">mm</span></span>
                         <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="d.params.bouts.UBW"
-                            (input)="changeMainBouts()" />
+                            (input)="changeMainBouts()"/>
                     </label>
                     <!-- empty cell for spacing -->
                     <label class="field-cell"></label>
@@ -134,13 +133,12 @@
                             nearestFraction(d.params.ratios.UBtoLB) }}</div>
                     </label>
                 </div>
-            </div>
-            <div class="ui-group">
+
                 <div class="input-group basic-row field-row" role="group">
                     <label class='field-cell'>
                         <span class="field-title">U0 - Join Arc Radius <span class="unit-label">mm</span></span>
                         <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="d.params.bouts.U0.r"
-                            (input)="changeMainBouts()" />
+                            (input)="changeMainBouts()" [style.borderColor]="colors.upperBout"/>
                     </label>
                     <label class="field-cell"></label>
                     <label class='field-cell'>
@@ -153,7 +151,7 @@
                     <label class='field-cell'>
                         <span class="field-title">U1 - Vesecai Radius <span class="unit-label">mm</span></span>
                         <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="d.params.bouts.U1.r"
-                            (input)="changeMainBouts()" />
+                            (input)="changeMainBouts()" [style.borderColor]="colors.upperBoutOff"/>
                     </label>
                     <label class="field-cell"></label>
                     <label class='field-cell'>
@@ -162,42 +160,10 @@
                             nearestFraction(d.params.ratios.U1toUBW) }}</div>
                     </label>
                 </div>
-            </div>
-
         </section>
 
         <section class="ui-group">
             <div class="ui-group-title">Lower Bout</div>
-            <div class="ui-group">
-                <div class="input-group basic-row field-row" role="group">
-                    <label class='field-cell'>
-                        <span class="field-title">L1 - Vesecai Radius <span class="unit-label">mm</span></span>
-                        <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="d.params.bouts.L1.r"
-                            (input)="changeMainBouts()" />
-                    </label>
-                    <label class="field-cell"></label>
-                    <label class='field-cell'>
-                        <span class="field-title">L1 to LBW</span>
-                        <div class="basic-display" aria-label="Lower bout to width ratio value">{{
-                            nearestFraction(d.params.ratios.L1toLBW) }}</div>
-                    </label>
-                </div>
-
-                <div class="input-group basic-row field-row" role="group">
-                    <label class='field-cell'>
-                        <span class="field-title">L0 - Join Arc Radius <span class="unit-label">mm</span></span>
-                        <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="d.params.bouts.L0.r"
-                            (input)="changeMainBouts()" />
-                    </label>
-                    <label class="field-cell"></label>
-                    <label class='field-cell'>
-                        <span class="field-title">L0 to H</span>
-                        <div class="basic-display" aria-label="Lower bout to height ratio value">{{
-                            nearestFraction(d.params.ratios.L0toH) }}</div>
-                    </label>
-                </div>
-            </div>
-            <div class="ui-group">
                 <div class="input-group basic-row field-row" role="group">
                     <label class="field-cell">
                         <span class="field-title">Total Width <span class="unit-label">mm</span></span>
@@ -212,9 +178,113 @@
                             nearestFraction(d.params.ratios.LBtoH) }}</div>
                     </label>
                 </div>
+
+                <div class="input-group basic-row field-row" role="group">
+                    <label class='field-cell'>
+                        <span class="field-title">L1 - Vesecai Radius <span class="unit-label">mm</span></span>
+                        <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="d.params.bouts.L1.r"
+                            (input)="changeMainBouts()" [style.borderColor]="colors.lowerBoutOff"/>
+                    </label>
+                    <label class="field-cell"></label>
+                    <label class='field-cell'>
+                        <span class="field-title">L1 to LBW</span>
+                        <div class="basic-display" aria-label="Lower bout to width ratio value">{{
+                            nearestFraction(d.params.ratios.L1toLBW) }}</div>
+                    </label>
+                </div>
+
+                <div class="input-group basic-row field-row" role="group">
+                    <label class='field-cell'>
+                        <span class="field-title">L0 - Join Arc Radius <span class="unit-label">mm</span></span>
+                        <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="d.params.bouts.L0.r"
+                            (input)="changeMainBouts()" [style.borderColor]="colors.lowerBout"/>
+                    </label>
+                    <label class="field-cell"></label>
+                    <label class='field-cell'>
+                        <span class="field-title">L0 to H</span>
+                        <div class="basic-display" aria-label="Lower bout to height ratio value">{{
+                            nearestFraction(d.params.ratios.L0toH) }}</div>
+                    </label>
+                </div>
+        </section>
+
+        <section class="ui-group">
+            <div class="input-group basic-row field-row" role="group">
+                <div class="toggle">
+                    <input type="checkbox" [(ngModel)]="showModuleArcs" (change)="changeMainBouts()" /><span>Show Module Arcs </span>
+                </div>
+                <div class="toggle">
+                    <input type="checkbox" [(ngModel)]="showModuleCircles" (change)="changeMainBouts()" /><span>Show Module Circles </span>
+                </div>
             </div>
         </section>
 
+
+        }
+        @if (openPanel === 'corners') {
+        <section class="ui-group">
+            <div class="ui-group-title">Upper Corner</div>
+
+            <div class="input-group basic-row field-row" role="group">
+                <label class="field-cell">
+                    <span class="field-title">Upper Corner X <span class="unit-label">mm</span></span>
+                    <input type="number" class="basic-input" step="1" [(ngModel)]="d.params.bouts.UC!.x"
+                        (input)="changeCorners()" />
+                </label>
+                <span class="field-separator" aria-hidden="true"></span>
+                <label class="field-cell">
+                    <span class="field-title">Upper Corner Y <span class="unit-label">mm</span></span>
+                    <input type="number" class="basic-input" step="1" [(ngModel)]="d.params.bouts.UC!.y"
+                        (input)="changeCorners()" />
+                </label>
+            </div>
+
+            <div class="input-group basic-row field-row" role="group">
+                <label class="field-cell">
+                    <span class="field-title">U2 Radius <span class="unit-label">mm</span></span>
+                    <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.U2!.r"
+                        (input)="changeCorners()" />
+                </label>
+                <span class="field-separator" aria-hidden="true"></span>
+                <label class="field-cell">
+                    <span class="field-title">U3 Radius <span class="unit-label">mm</span></span>
+                    <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.U3!.r"
+                        (input)="changeCorners()" />
+                </label>
+            </div>
+        </section>
+
+        <section class="ui-group">
+            <div class="ui-group-title">Lower Corner</div>
+
+            <div class="input-group basic-row field-row" role="group">
+                <label class="field-cell">
+                    <span class="field-title">Lower Corner X <span class="unit-label">mm</span></span>
+                    <input type="number" class="basic-input" step="1" [(ngModel)]="d.params.bouts.LC!.x"
+                        (input)="changeCorners()" />
+                </label>
+                <span class="field-separator" aria-hidden="true"></span>
+                <label class="field-cell">
+                    <span class="field-title">Lower Corner Y <span class="unit-label">mm</span></span>
+                    <input type="number" class="basic-input" step="1" [(ngModel)]="d.params.bouts.LC!.y"
+                        (input)="changeCorners()" />
+                </label>
+            </div>
+
+            <div class="input-group basic-row field-row" role="group">
+                <label class="field-cell">
+                    <span class="field-title">L2 Radius <span class="unit-label">mm</span></span>
+                    <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.L2!.r"
+                        (input)="changeCorners()" />
+                </label>
+                <span class="field-separator" aria-hidden="true"></span>
+                <label class="field-cell">
+                    <span class="field-title">L3 Radius <span class="unit-label">mm</span></span>
+                    <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.L3!.r"
+                        (input)="changeCorners()" />
+                </label>
+            </div>
+        </section>
         }
     </div>
 </div>

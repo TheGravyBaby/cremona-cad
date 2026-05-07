@@ -1,4 +1,4 @@
-import { Circle, Rectangle } from "../models/types";
+import { Arc, Circle, Pt, Rectangle } from "../models/types";
 
 export interface EnricoCerutiParams {
   height: number;
@@ -20,6 +20,8 @@ export interface EnricoCerutiParams {
       L2: Circle | null;
       L1: Circle | null;
       L0: Circle | null;
+    UC: Pt | null;
+    LC: Pt | null;
   },
   outerCorners: {
     U31: Circle | null;
@@ -45,6 +47,23 @@ export interface EnricoCerutiParams {
     height: number;
     V0: Circle | null;
   },
+  arcs: {
+    inner: {
+      V0?:Arc;
+      U0?:Arc;
+      U1?:Arc;
+      U2?:Arc;
+      U3?:Arc;
+      CB?:Arc;
+      CU?:Arc;
+      C0?:Arc;
+      CL?:Arc;
+      L3?:Arc;
+      L1?:Arc;
+      L2?:Arc;
+      L0?:Arc;
+    };
+  };
   ratios?: {
     HtoW: number;
     UBtoLB: number;
@@ -60,7 +79,10 @@ export interface EnricoCerutiParams {
       L1toLBW: number;
       L2toLBW: number;
       L3toLBW: number;
-
+    UCYtoH: number;
+    UCXtoUBW: number;
+    LCYtoH: number;
+    LCXtoLBW: number;
   };
 }
 
@@ -96,7 +118,7 @@ export const CERUTI_TEMPLATES: EnricoCerutiTemplate[] = [
       ratios: {
         HtoW: 7 / 4,
         UBtoLB: 4 / 5,
-          U0toH: 3/5,
+          U0toH: 2/5,
           U1toUBW: 2/5,
           U2toUBW: 2/5,
           U3toUBW: 0,
@@ -107,7 +129,11 @@ export const CERUTI_TEMPLATES: EnricoCerutiTemplate[] = [
           L0toH: 3/5,
           L1toLBW: 2/5,
           L2toLBW: 2/5,
-          L3toLBW: 0
+          L3toLBW: 0,
+        UCYtoH: 6/15,
+        UCXtoUBW: 4/5,
+        LCYtoH: 2/3,
+        LCXtoLBW: 4/5,
       },
       bouts: {
         UBW: undefined,
@@ -123,7 +149,12 @@ export const CERUTI_TEMPLATES: EnricoCerutiTemplate[] = [
           L3: undefined,
           L2: undefined,
           L1: undefined,
-          L0: undefined
+          L0: undefined,
+        UC: undefined,
+        LC: undefined,
+      },
+      arcs: {
+        inner: {}
       },
       outerCorners: {
         U31: undefined,
