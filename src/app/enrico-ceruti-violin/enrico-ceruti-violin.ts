@@ -1,12 +1,12 @@
 import { ChangeDetectorRef, Component, HostListener, Input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
-import { Circle, Rectangle } from '../models/types';
-import { greyOut, renderCircle, renderRect } from '../helpers/renderFuncs';
+import { Arc, Circle, Rectangle } from '../models/types';
+import { greyOut, renderArcFromArc, renderArcFromArcFancy, renderCircle, renderRect } from '../helpers/renderFuncs';
 import { clampParam, safeRun } from '../helpers/validators';
 import { EnricoCerutiTemplate, CERUTI_TEMPLATES, EnricoCerutiParams } from './ceruti-types';
 import { dimensionInfo, insetInfo, referenceInfo } from './ceruti-helpers';
-import { solveYOnCircleInset } from '../helpers/draftMath';
+import { angleFromCenter, circleCircleIntersections, flipAngleAboutYAxis, flipArcAboutY, flipCircleAboutY, solveInscribedCircleAlongAxis } from '../helpers/draftMath';
 
 @Component({
   selector: 'app-enrico-ceruti-violin',
@@ -21,11 +21,12 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
   protected readonly panelOrder = [
     { id: 'base', label: 'Base Measurements' },
     { id: 'mainBouts', label: 'Main Bouts' },
+    { id: 'corners', label: 'Corners' },
     { id: 'export', label: 'Export' },
   ] as const;
 
-  offFactor = .5;
-  off2Factor = .6;
+  offFactor = .7;
+  off2Factor = .9;
   colors = {
     upperBout: '#4D8660',
     upperBoutOff: greyOut('#4D8660', this.offFactor), // '#6DA077',
@@ -63,8 +64,10 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     ...CERUTI_TEMPLATES[0],
   };
 
-  showGuideLines = true;
-  showAllCircles = true;
+  showModuleArcs = true;
+  showModuleCircles = false;
+  showAllArcs = false;
+  showAllCircles = false;
 
   get selectedTemplateKey(): string {
     const current = JSON.stringify(this.d.params);
@@ -128,6 +131,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     return {
       base: () => this.changeBaseMeasurements(),
       mainBouts: () => this.changeMainBouts(),
+      corners: () => this.changeCorners(),
     };
   }
 
@@ -135,6 +139,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     switch (panel) {
       case 'base': return true;
       case 'mainBouts': return this.hasBaseMeasurements();
+      case 'corners': return this.hasMainBouts();
       default: return false;
     }
   }
@@ -144,6 +149,11 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
   private hasBaseMeasurements(): boolean {
     const p = this.d.params;
     return p.width > 0 && p.height > 0 // && p.inset >= 0;
+  }
+
+  private hasMainBouts(): boolean {
+    const b = this.d.params.bouts;
+    return !!(b.U0 && b.U1 && b.L0 && b.L1);
   }
 
   // ===== Shared helpers =====
@@ -202,58 +212,113 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     renderRect(insetRect, "grey")(g, ui);
   };
 
-
   changeMainBouts(): void {
     this.debounce(() => safeRun(() => {
-      let p = this.d.params;
-      // in this situation we need to initialize the bouts
-      if (!p.bouts.U0) {
-        let inset = p.overhang + p.rib;
-
-        p.bouts.LBW = p.width - 2 * inset;
-        p.bouts.UBW = Math.round(p.bouts.LBW * p.ratios.UBtoLB); 
-
-        let U0R = Math.round((p.height - 2 * inset) * p.ratios.U0toH);
-          p.bouts.U0 = new Circle(0, U0R, U0R);
-        let U1R = Math.round(p.bouts.UBW * p.ratios.U1toUBW);
-          p.bouts.U1 = new Circle(0, p.bouts.UBW - U1R, U1R);
-
-        let L0R = Math.round((p.height - 2 * inset) * p.ratios.L0toH);
-          p.bouts.L0 = new Circle(0, inset + L0R, L0R);
-        let L1R = Math.round(p.bouts.LBW * p.ratios.L1toLBW);
-          p.bouts.L1 = new Circle(0, L1R, L1R);
-      }
-
       this.calculateMainBouts();
-
-      this.draftChange.emit([this.renderBounds, this.renderMainBouts]);
-
+      this.draftChange.emit([this.renderBounds, this.renderMainBouts(true)]);
     }));
   }
 
   calculateMainBouts(): void {
     let p = this.d.params;
     let inset = p.overhang + p.rib;
-    
+
+    // initialize bouts if not already done
+    if (!p.bouts.U0) {
+      let inset = p.overhang + p.rib;
+
+      p.bouts.LBW = p.width - 2 * inset;
+      p.bouts.UBW = Math.round(p.bouts.LBW * p.ratios.UBtoLB);
+
+      let U0R = Math.round((p.height - 2 * inset) * p.ratios.U0toH);
+      p.bouts.U0 = new Circle(0, U0R, U0R);
+      let U1R = Math.round(p.bouts.UBW * p.ratios.U1toUBW);
+      p.bouts.U1 = new Circle(0, p.bouts.UBW - U1R, U1R);
+
+      let L0R = Math.round((p.height - 2 * inset) * p.ratios.L0toH);
+      p.bouts.L0 = new Circle(0, inset + L0R, L0R);
+      let L1R = Math.round(p.bouts.LBW * p.ratios.L1toLBW);
+      p.bouts.L1 = new Circle(0, L1R, L1R);
+    }
+
+    // recalcuate display ratios
+    p.ratios.UBtoLB = p.bouts.UBW / p.bouts.LBW;
+    p.ratios.U0toH = p.bouts.U0.r / (p.height - 2 * inset);
+    p.ratios.U1toUBW = p.bouts.U1.r / p.bouts.UBW;
+    p.ratios.L0toH = p.bouts.L0.r / (p.height - 2 * inset);
+    p.ratios.L1toLBW = p.bouts.L1.r / p.bouts.LBW;
+
     p.bouts.U0.y = p.height - inset - p.bouts.U0.r;
     p.bouts.L0.y = inset + p.bouts.L0.r;
-    
-    p.bouts.U1.x = p.bouts.UBW/2- p.bouts.U1.r;
-    p.bouts.U1.y = solveYOnCircleInset(p.bouts.U0, p.bouts.U1.x, p.bouts.U1.r, true);
+    p.bouts.U1.x = p.bouts.UBW / 2 - p.bouts.U1.r;
+    p.bouts.U1.y = solveInscribedCircleAlongAxis(p.bouts.U0, p.bouts.U1.r, "x", p.bouts.U1.x, true);
+    p.bouts.L1.x = p.bouts.LBW / 2 - p.bouts.L1.r;
+    p.bouts.L1.y = solveInscribedCircleAlongAxis(p.bouts.L0, p.bouts.L1.r, "x", p.bouts.L1.x, false);
 
-    p.bouts.L1.x = p.bouts.LBW/2 - p.bouts.L1.r;
-    p.bouts.L1.y = solveYOnCircleInset(p.bouts.L0, p.bouts.L1.x, p.bouts.L1.r, false);
+    let upperIntersect = circleCircleIntersections(p.bouts.U0, p.bouts.U1);
+    let U0Angle = angleFromCenter(p.bouts.U0, upperIntersect[0]);
+    let U1Angle = angleFromCenter(p.bouts.U1, upperIntersect[0]);
+    
+    p.arcs.inner.U0 = new Arc(p.bouts.U0, 1/2 * Math.PI, U0Angle);
+    p.arcs.inner.U1 = new Arc(p.bouts.U1, U1Angle, 0)
+    
+    let lowerIntersect = circleCircleIntersections(p.bouts.L0, p.bouts.L1);
+    let L0Angle = angleFromCenter(p.bouts.L0, lowerIntersect[0]);
+    let L1Angle = angleFromCenter(p.bouts.L1, lowerIntersect[0]);
+    
+    p.arcs.inner.L0 = new Arc(p.bouts.L0, 3/2 * Math.PI, L0Angle);
+    p.arcs.inner.L1 = new Arc(p.bouts.L1, L1Angle, 0); 
   }
 
-  renderMainBouts = (g:any, ui:any): void => {
+  renderMainBouts = (currentModule: boolean) => (g: any, ui: any): void => {
     let p = this.d.params;
 
-    renderCircle(p.bouts.U0!, this.colors.upperBout)(g, ui);
-    renderCircle(p.bouts.L0!, this.colors.lowerBout)(g, ui);
-    renderCircle(p.bouts.U1!, this.colors.centerBoutUp)(g, ui);
-    renderCircle(p.bouts.L1!, this.colors.centerBoutLow)(g, ui);
+    let wideTopArc = new Arc(p.bouts.U0, flipAngleAboutYAxis(p.arcs.inner.U0.end), p.arcs.inner.U0.end);
+    let wideBottomArc = new Arc(p.bouts.L0, flipAngleAboutYAxis(p.arcs.inner.L0.end), p.arcs.inner.L0.end);
+    let mirroredU1Arc = flipArcAboutY(p.arcs.inner.U1);
+    let mirroredL1Arc = flipArcAboutY(p.arcs.inner.L1);
+
+    if ((currentModule && this.showModuleArcs) || this.showAllArcs) {
+      renderArcFromArcFancy(wideTopArc, this.colors.upperBout)(g, ui);
+      renderArcFromArcFancy(p.arcs.inner.U1, this.colors.upperBoutOff)(g, ui);
+      renderArcFromArcFancy(mirroredU1Arc, this.colors.upperBoutOff)(g, ui);
+      renderArcFromArcFancy(wideBottomArc, this.colors.lowerBout)(g, ui);
+      renderArcFromArcFancy(p.arcs.inner.L1, this.colors.lowerBoutOff)(g, ui);
+      renderArcFromArcFancy(mirroredL1Arc, this.colors.lowerBoutOff)(g, ui);
+    }
+
+    if ((currentModule && this.showModuleCircles) || this.showAllCircles) {
+      let mirrorU1 = flipCircleAboutY(p.bouts.U1);
+      let mirrorL1 = flipCircleAboutY(p.bouts.L1);
+      renderCircle(p.bouts.U0!, this.colors.upperBout)(g, ui);
+      renderCircle(p.bouts.U1!, this.colors.upperBoutOff)(g, ui);
+      renderCircle(mirrorU1, this.colors.upperBoutOff)(g, ui);
+      renderCircle(p.bouts.L1!, this.colors.lowerBoutOff)(g, ui);
+      renderCircle(mirrorL1, this.colors.lowerBoutOff)(g, ui);
+      renderCircle(p.bouts.L0!, this.colors.lowerBout)(g, ui);
+    }
   }
 
+  changeCorners(): void {
+    this.debounce(() => safeRun(() => {
+      this.calculateCorners();
+      this.draftChange.emit([this.renderBounds, this.renderMainBouts(false)]);
+    }));
+  }
+
+  calculateCorners(): void {
+    const p = this.d.params;
+
+    // Placeholder initialization only.
+    // Intentionally no corner geometry calculations here.
+    if (!p.bouts.UC) p.bouts.UC = { x: 0, y: 0 };
+    if (!p.bouts.LC) p.bouts.LC = { x: 0, y: 0 };
+
+    if (!p.bouts.U2) p.bouts.U2 = new Circle(0, 0, 0);
+    if (!p.bouts.U3) p.bouts.U3 = new Circle(0, 0, 0);
+    if (!p.bouts.L2) p.bouts.L2 = new Circle(0, 0, 0);
+    if (!p.bouts.L3) p.bouts.L3 = new Circle(0, 0, 0);
+  }
 
   // === UI helpers ===
   nearestFraction(value: number, maxNumerator: number = 21, maxDenominator: number = 16): string {

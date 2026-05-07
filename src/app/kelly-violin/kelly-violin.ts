@@ -4,7 +4,7 @@ import { error, info, warn } from '../shared/message-emitter';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { Circle } from '../models/types';
 import { greyOut, renderCircle, renderCircleAngleIndicator, renderCrosshair, renderDashedLine, renderDashLine, renderDistanceMeasurementLine, renderLine, renderPath, renderRect } from '../helpers/renderFuncs';
-import { arcPathFrom3Points, circleCircleIntersections, combinePathStrings, offsetCircleRadius, pathFromLine, pointOnCircle, polarAngle } from '../helpers/draftMath';
+import {  combinePathStrings, pointOnCircle } from '../helpers/draftMath';
 import { KellyTemplate, KellyViolinData, KellyViolinRecipe, KELLY_TEMPLATES } from './kellyTypes';
 import { calculatePrimaryShapes, calculateMainPathsSegmented, calculateMainPathsUnified, calculateMouldPath, calculateOffsetPathsSegments, calculateTopPath, initializeMainBouts, initializeMinorBouts, initializeCornerPlacement, initializeCornerCircles, initializeTopAndBottomTrace, initializeBlocks, normalizeDegrees, calculateMainBouts } from './kellyCals';
 import { clampParam, safeRun } from '../helpers/validators';

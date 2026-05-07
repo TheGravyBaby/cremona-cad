@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { arcPathByAngleAboutTheta, circleCircleIntersections, interceptCirclesAndPoint, intersectLines, lineCircleIntersection, pointOnCircle, solveYOnCircleInset } from '../helpers/draftMath';
+import { arcPathByAngleAboutTheta, circleCircleIntersections, interceptCirclesAndPoint, intersectLines, lineCircleIntersection, solveInscribedCircleAlongAxis} from '../helpers/draftMath';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { arcPathFrom3Points } from '../helpers/draftMath';
 import { Circle, Fraction, Pt, RecipeInterface } from '../models/types';
@@ -260,7 +260,7 @@ export class BeardViolinComponent extends RecipeComponentBase {
     let Vx = w / 2 - Vr
     let Vy;
     try {
-      Vy = solveYOnCircleInset(C, Vx, Vr, false)
+      Vy = solveInscribedCircleAlongAxis(C, Vr, "x", Vx, false)
     }
     catch {
       this.lowerBoutError = "Join arc length too small"
@@ -326,7 +326,7 @@ export class BeardViolinComponent extends RecipeComponentBase {
     let Vx = w / 2 - Vr
     let Vy;
     try {
-      Vy = solveYOnCircleInset(C, Vx, Vr, true)
+      Vy = solveInscribedCircleAlongAxis(C, Vr, "x", Vx, true)
     }
     catch {
       this.upperBoutError = "Join arc length too small"
