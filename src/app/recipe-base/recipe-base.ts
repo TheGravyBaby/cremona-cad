@@ -254,4 +254,35 @@ export abstract class RecipeComponentBase implements AfterViewInit {
     });
   }
 
+  nearestFraction(value: number, maxNumerator: number = 21, maxDenominator: number = 16): string {
+    const denominatorLimit = Math.max(1, Math.floor(maxDenominator));
+    const numeratorLimit = Math.max(1, Math.floor(maxNumerator));
+
+    let bestNumerator = Math.round(value);
+    bestNumerator = Math.max(-numeratorLimit, Math.min(numeratorLimit, bestNumerator));
+
+    let bestDenominator = 1;
+    let smallestError = Math.abs(value - bestNumerator / bestDenominator);
+
+    for (let denominator = 1; denominator <= denominatorLimit; denominator++) {
+      const idealNumerator = Math.round(value * denominator);
+      const numerator = Math.max(-numeratorLimit, Math.min(numeratorLimit, idealNumerator));
+      const error = Math.abs(value - numerator / denominator);
+
+      if (error < smallestError) {
+        bestNumerator = numerator;
+        bestDenominator = denominator;
+        smallestError = error;
+      }
+    }
+
+    const fraction = `${bestNumerator}/${bestDenominator}`;
+    const isExact = smallestError < 0.001;
+    const isVeryClose = smallestError < 0.01;
+
+    if (isExact) return fraction;
+    if (isVeryClose) return `≈ ${fraction}`;
+    return `~ ${fraction}`; // rough approximation
+  }
+
 }
