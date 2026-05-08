@@ -58,11 +58,11 @@ export interface EnricoCerutiParams {
     U0toH: number;
     U1toUBW: number;
     U2toUBW: number;
-    U3toUBW: number;
+    U3toLBW: number;
     CBWtoLBW: number;
     C0toLBW: number;
     C0YtoH: number;
-    CUtoUBW: number;
+    CUtoLBW: number;
     CLtoLBW: number;
     LBtoH: number;
     L0toH: number;
@@ -95,21 +95,25 @@ const DefaultParams: EnricoCerutiParams = {
   rib: 1,
   ratios: {
     HtoW: 7 / 4,
+    
     UBtoLB: 4 / 5,
     U0toH: 1 / 3,
-    U1toUBW: 2 / 3,
+    U1toUBW: 1 / 3,
     U2toUBW: 1 / 2,
-    U3toUBW: 1 / 8,
+    U3toLBW: 1 / 8,
+    
     CBWtoLBW: 1 / 2,
     C0YtoH: 9 / 16,
-    C0toLBW: 2/ 5,
-    CUtoUBW: 1 / 8,
+    C0toLBW: 2 / 5,
+    CUtoLBW: 1 / 12,
     CLtoLBW: 1 / 8,
+    
     LBtoH: 4 / 7,
     L0toH: 1 / 2,
-    L1toLBW: 2 / 3,
+    L1toLBW: 1 / 3,
     L2toLBW: 1 / 2,
     L3toLBW: 1 / 8,
+    
     UCYtoH: 2 / 3,
     UCXtoUBW: 11/12,
     LCYtoH: 6 / 15,
