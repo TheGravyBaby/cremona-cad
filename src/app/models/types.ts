@@ -3,7 +3,27 @@ export class Circle { x: number; y: number; r: number; constructor(x: number, y:
 export class Line { m: number; b: number; constructor(m: number, b: number) { this.m = m; this.b = b; } }
 export class Rectangle { Pt1: Pt; Pt2: Pt; constructor(Pt1: Pt, Pt2: Pt) { this.Pt1 = Pt1; this.Pt2 = Pt2; } }
 export class Fraction { n: number; d: number; constructor(n: number, d: number) { this.n = n; this.d = d; } }
-export class Arc {C: Circle; start: number; end: number; constructor(C: Circle, start: number, end: number) { this.C = C; this.start = start; this.end = end; } }
+
+export class Arc extends Circle { 
+  start: number; 
+  end: number; 
+
+  constructor(x:number, y:number, r:number, start?: number, end?: number){
+    super(x, y, r);
+    this.start = start ?? 0;
+    this.end = end ?? Math.PI*2;
+  };
+}
+
+export function arcFromCircle(circle: Circle, start?: number, end?: number): Arc {
+  return new Arc(circle.x, circle.y, circle.r, start, end);
+}
+
+export function arcFromCircleAndPoints(circle: Circle, startPt: Pt, endPt: Pt): Arc {
+  let startAngle = Math.atan2(startPt.y - circle.y, startPt.x - circle.x);
+  let endAngle = Math.atan2(endPt.y - circle.y, endPt.x - circle.x);
+  return new Arc(circle.x, circle.y, circle.r, startAngle, endAngle);
+}
 
 export type Axis = "x" | "y";
 export type RefImageFit = "fit" | "cover" | "stretch";

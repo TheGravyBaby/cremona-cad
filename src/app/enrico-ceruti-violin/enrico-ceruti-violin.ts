@@ -1,12 +1,12 @@
 import { ChangeDetectorRef, Component, HostListener, Input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
-import { Arc, Circle, Rectangle } from '../models/types';
-import { greyOut, renderArcFromArc, renderArcFromArcFancy, renderCircle, renderRect } from '../helpers/renderFuncs';
+import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Rectangle } from '../models/types';
+import { greyOut, renderArcFromArc, renderArcFromArcFancy, renderCircle, renderCrosshair, renderDashLine, renderDistanceMeasurementLine, renderRect } from '../helpers/renderFuncs';
 import { clampParam, safeRun } from '../helpers/validators';
 import { EnricoCerutiTemplate, CERUTI_TEMPLATES, EnricoCerutiParams } from './ceruti-types';
 import { dimensionInfo, insetInfo, referenceInfo } from './ceruti-helpers';
-import { angleFromCenter, circleCircleIntersections, flipAngleAboutYAxis, flipArcAboutY, flipCircleAboutY, solveInscribedCircleAlongAxis } from '../helpers/draftMath';
+import { angleFromCenter, circleCircleIntersections, flipAngleAboutYAxis, flipArcAboutY, flipCircleAboutY, interceptCirclesAndPoint, solveInscribedCircleAlongAxis } from '../helpers/draftMath';
 
 @Component({
   selector: 'app-enrico-ceruti-violin',
@@ -22,6 +22,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     { id: 'base', label: 'Base Measurements' },
     { id: 'mainBouts', label: 'Main Bouts' },
     { id: 'corners', label: 'Corners' },
+    { id: 'centerBout', label: 'Center Bout' },
     { id: 'export', label: 'Export' },
   ] as const;
 
@@ -64,10 +65,10 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     ...CERUTI_TEMPLATES[0],
   };
 
-  showModuleArcs = true;
-  showModuleCircles = false;
-  showAllArcs = false;
-  showAllCircles = false;
+  showModuleArcs: boolean = true;
+  showModuleCircles: boolean = false;
+  showAllArcs: boolean = false;
+  showAllCircles: boolean = false;
 
   get selectedTemplateKey(): string {
     const current = JSON.stringify(this.d.params);
@@ -131,6 +132,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     return {
       base: () => this.changeBaseMeasurements(),
       mainBouts: () => this.changeMainBouts(),
+      centerBout: () => this.changeCenterBout(),
       corners: () => this.changeCorners(),
     };
   }
@@ -140,6 +142,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       case 'base': return true;
       case 'mainBouts': return this.hasBaseMeasurements();
       case 'corners': return this.hasMainBouts();
+      case 'centerBout': return this.hasCorners();
       default: return false;
     }
   }
@@ -154,6 +157,11 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
   private hasMainBouts(): boolean {
     const b = this.d.params.bouts;
     return !!(b.U0 && b.U1 && b.L0 && b.L1);
+  }
+
+  private hasCorners(): boolean {
+    const b = this.d.params.bouts;
+    return !!(b.UC && b.LC);
   }
 
   // ===== Shared helpers =====
@@ -215,6 +223,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
   changeMainBouts(): void {
     this.debounce(() => safeRun(() => {
       this.calculateMainBouts();
+      this.panelFlow?.refreshEnabledPanels();
       this.draftChange.emit([this.renderBounds, this.renderMainBouts(true)]);
     }));
   }
@@ -231,22 +240,22 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       p.bouts.UBW = Math.round(p.bouts.LBW * p.ratios.UBtoLB);
 
       let U0R = Math.round((p.height - 2 * inset) * p.ratios.U0toH);
-      p.bouts.U0 = new Circle(0, U0R, U0R);
-      let U1R = Math.round(p.bouts.UBW * p.ratios.U1toUBW);
-      p.bouts.U1 = new Circle(0, p.bouts.UBW - U1R, U1R);
+      p.bouts.U0 = new Arc(0, U0R, U0R);
+      let U1R = Math.round(p.bouts.UBW * p.ratios.U1toUBW / 2);
+      p.bouts.U1 = new Arc(0, p.bouts.UBW - U1R, U1R);
 
       let L0R = Math.round((p.height - 2 * inset) * p.ratios.L0toH);
-      p.bouts.L0 = new Circle(0, inset + L0R, L0R);
-      let L1R = Math.round(p.bouts.LBW * p.ratios.L1toLBW);
-      p.bouts.L1 = new Circle(0, L1R, L1R);
+      p.bouts.L0 = new Arc(0, inset + L0R, L0R);
+      let L1R = Math.round(p.bouts.LBW * p.ratios.L1toLBW / 2);
+      p.bouts.L1 = new Arc(0, L1R, L1R);
     }
 
     // recalcuate display ratios
     p.ratios.UBtoLB = p.bouts.UBW / p.bouts.LBW;
     p.ratios.U0toH = p.bouts.U0.r / (p.height - 2 * inset);
-    p.ratios.U1toUBW = p.bouts.U1.r / p.bouts.UBW;
+    p.ratios.U1toUBW = 2 * p.bouts.U1.r / p.bouts.UBW;
     p.ratios.L0toH = p.bouts.L0.r / (p.height - 2 * inset);
-    p.ratios.L1toLBW = p.bouts.L1.r / p.bouts.LBW;
+    p.ratios.L1toLBW = 2 * p.bouts.L1.r / p.bouts.LBW;
 
     p.bouts.U0.y = p.height - inset - p.bouts.U0.r;
     p.bouts.L0.y = inset + p.bouts.L0.r;
@@ -258,66 +267,235 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     let upperIntersect = circleCircleIntersections(p.bouts.U0, p.bouts.U1);
     let U0Angle = angleFromCenter(p.bouts.U0, upperIntersect[0]);
     let U1Angle = angleFromCenter(p.bouts.U1, upperIntersect[0]);
-    
-    p.arcs.inner.U0 = new Arc(p.bouts.U0, 1/2 * Math.PI, U0Angle);
-    p.arcs.inner.U1 = new Arc(p.bouts.U1, U1Angle, 0)
-    
+
+    p.bouts.U0 = arcFromCircle(p.bouts.U0, 1 / 2 * Math.PI, U0Angle);
+    p.bouts.U1 = arcFromCircle(p.bouts.U1, U1Angle, 0);
+
     let lowerIntersect = circleCircleIntersections(p.bouts.L0, p.bouts.L1);
     let L0Angle = angleFromCenter(p.bouts.L0, lowerIntersect[0]);
     let L1Angle = angleFromCenter(p.bouts.L1, lowerIntersect[0]);
-    
-    p.arcs.inner.L0 = new Arc(p.bouts.L0, 3/2 * Math.PI, L0Angle);
-    p.arcs.inner.L1 = new Arc(p.bouts.L1, L1Angle, 0); 
+
+    p.bouts.L0 = arcFromCircle(p.bouts.L0, 3 / 2 * Math.PI, L0Angle);
+    p.bouts.L1 = arcFromCircle(p.bouts.L1, L1Angle, 0);
   }
 
   renderMainBouts = (currentModule: boolean) => (g: any, ui: any): void => {
     let p = this.d.params;
 
-    let wideTopArc = new Arc(p.bouts.U0, flipAngleAboutYAxis(p.arcs.inner.U0.end), p.arcs.inner.U0.end);
-    let wideBottomArc = new Arc(p.bouts.L0, flipAngleAboutYAxis(p.arcs.inner.L0.end), p.arcs.inner.L0.end);
-    let mirroredU1Arc = flipArcAboutY(p.arcs.inner.U1);
-    let mirroredL1Arc = flipArcAboutY(p.arcs.inner.L1);
+    let wideTopArc = arcFromCircle(p.bouts.U0, flipAngleAboutYAxis(p.bouts.U0.end), p.bouts.U0.end);
+    let wideBottomArc = arcFromCircle(p.bouts.L0, flipAngleAboutYAxis(p.bouts.L0.end), p.bouts.L0.end);
+    let mirroredU1Arc = flipArcAboutY(p.bouts.U1);
+    let mirroredL1Arc = flipArcAboutY(p.bouts.L1);
 
     if ((currentModule && this.showModuleArcs) || this.showAllArcs) {
       renderArcFromArcFancy(wideTopArc, this.colors.upperBout)(g, ui);
-      renderArcFromArcFancy(p.arcs.inner.U1, this.colors.upperBoutOff)(g, ui);
+      renderArcFromArcFancy(p.bouts.U1, this.colors.upperBoutOff)(g, ui);
       renderArcFromArcFancy(mirroredU1Arc, this.colors.upperBoutOff)(g, ui);
       renderArcFromArcFancy(wideBottomArc, this.colors.lowerBout)(g, ui);
-      renderArcFromArcFancy(p.arcs.inner.L1, this.colors.lowerBoutOff)(g, ui);
+      renderArcFromArcFancy(p.bouts.L1, this.colors.lowerBoutOff)(g, ui);
       renderArcFromArcFancy(mirroredL1Arc, this.colors.lowerBoutOff)(g, ui);
+    }
+    else {
+      renderArcFromArc(wideTopArc, this.colors.upperBout)(g, ui);
+      renderArcFromArc(p.bouts.U1, this.colors.upperBout)(g, ui);
+      renderArcFromArc(mirroredU1Arc, this.colors.upperBout)(g, ui);
+      renderArcFromArc(wideBottomArc, this.colors.lowerBout)(g, ui);
+      renderArcFromArc(p.bouts.L1, this.colors.lowerBout)(g, ui);
+      renderArcFromArc(mirroredL1Arc, this.colors.lowerBout)(g, ui);
     }
 
     if ((currentModule && this.showModuleCircles) || this.showAllCircles) {
       let mirrorU1 = flipCircleAboutY(p.bouts.U1);
       let mirrorL1 = flipCircleAboutY(p.bouts.L1);
       renderCircle(p.bouts.U0!, this.colors.upperBout)(g, ui);
-      renderCircle(p.bouts.U1!, this.colors.upperBoutOff)(g, ui);
-      renderCircle(mirrorU1, this.colors.upperBoutOff)(g, ui);
-      renderCircle(p.bouts.L1!, this.colors.lowerBoutOff)(g, ui);
-      renderCircle(mirrorL1, this.colors.lowerBoutOff)(g, ui);
+      renderCircle(p.bouts.U1!, this.colors.upperBout)(g, ui);
+      renderCircle(mirrorU1, this.colors.upperBout)(g, ui);
+      renderCircle(p.bouts.L1!, this.colors.lowerBout)(g, ui);
+      renderCircle(mirrorL1, this.colors.lowerBout)(g, ui);
       renderCircle(p.bouts.L0!, this.colors.lowerBout)(g, ui);
     }
+
   }
 
   changeCorners(): void {
     this.debounce(() => safeRun(() => {
       this.calculateCorners();
-      this.draftChange.emit([this.renderBounds, this.renderMainBouts(false)]);
+      this.panelFlow?.refreshEnabledPanels();
+      this.draftChange.emit([
+        this.renderBounds,
+        this.renderMainBouts(false),
+        this.renderCorners(true),
+      ]);
     }));
   }
 
   calculateCorners(): void {
-    const p = this.d.params;
+    let p = this.d.params;
 
     // Placeholder initialization only.
     // Intentionally no corner geometry calculations here.
-    if (!p.bouts.UC) p.bouts.UC = { x: 0, y: 0 };
-    if (!p.bouts.LC) p.bouts.LC = { x: 0, y: 0 };
+    if (!p.bouts.UC) {
+      p.bouts.UC = { x: Math.round(p.bouts.UBW / 2 * p.ratios.UCXtoUBW), y: Math.round(p.height * p.ratios.UCYtoH) };
+      p.bouts.LC = { x: Math.round(p.bouts.LBW / 2 * p.ratios.LCXtoLBW), y: Math.round(p.height * p.ratios.LCYtoH) };
+    }
 
-    if (!p.bouts.U2) p.bouts.U2 = new Circle(0, 0, 0);
-    if (!p.bouts.U3) p.bouts.U3 = new Circle(0, 0, 0);
-    if (!p.bouts.L2) p.bouts.L2 = new Circle(0, 0, 0);
-    if (!p.bouts.L3) p.bouts.L3 = new Circle(0, 0, 0);
+    let U2R = p.bouts.U2?.r ?? Math.round(p.bouts.UBW * p.ratios.U2toUBW);
+    p.bouts.U2 = new Arc(p.bouts.UBW / 2 - U2R, p.bouts.U1.y, U2R);
+    let L2R = p.bouts.L2?.r ?? Math.round(p.bouts.LBW * p.ratios.L2toLBW);
+    p.bouts.L2 = new Arc(p.bouts.LBW / 2 - L2R, p.bouts.L1.y, L2R);
+
+    let U3R = p.bouts.U3?.r ?? Math.round(p.bouts.UBW * p.ratios.U3toUBW);
+    p.bouts.U3 = arcFromCircle(interceptCirclesAndPoint(p.bouts.U2, p.bouts.UC, U3R).sort((a, b) => a.y - b.y)[1]);
+
+    let L3R = p.bouts.L3?.r ?? Math.round(p.bouts.LBW * p.ratios.L3toLBW);
+    p.bouts.L3 = arcFromCircle(interceptCirclesAndPoint(p.bouts.L2, p.bouts.LC, L3R).sort((a, b) => a.y - b.y)[0]);
+
+    let UIntersect = circleCircleIntersections(p.bouts.U2, p.bouts.U3).sort((a, b) => a.y - b.y)[1];
+    let U2Angle = angleFromCenter(p.bouts.U2, UIntersect);
+    p.bouts.U2 = arcFromCircle(p.bouts.U2, 0, U2Angle);
+    p.bouts.U3 = arcFromCircleAndPoints(p.bouts.U3, UIntersect, p.bouts.UC);
+
+    let LIntersect = circleCircleIntersections(p.bouts.L2, p.bouts.L3).sort((a, b) => a.y - b.y)[0];
+    let L2Angle = angleFromCenter(p.bouts.L2, LIntersect);
+    p.bouts.L2 = arcFromCircle(p.bouts.L2, 0, L2Angle);
+    p.bouts.L3 = arcFromCircleAndPoints(p.bouts.L3, LIntersect, p.bouts.LC);
+
+    // recalculate display ratios
+    p.ratios.U2toUBW = p.bouts.U2.r / p.bouts.UBW;
+    p.ratios.U3toUBW = p.bouts.U3.r / p.bouts.UBW;
+    p.ratios.L2toLBW = p.bouts.L2.r / p.bouts.LBW;
+    p.ratios.L3toLBW = p.bouts.L3.r / p.bouts.LBW;
+  }
+
+  renderCorners = (currentModule: boolean) => (g: any, ui: any): void => {
+    let p = this.d.params;
+
+    if ((currentModule && this.showModuleArcs) || this.showAllArcs) {
+      renderCrosshair(p.bouts.UC!, this.colors.centerBoutUp)(g, ui);
+      renderCrosshair(p.bouts.LC!, this.colors.centerBoutLow)(g, ui);
+      renderCrosshair({ x: -p.bouts.UC!.x, y: p.bouts.UC!.y }, this.colors.centerBoutUp)(g, ui);
+      renderCrosshair({ x: -p.bouts.LC!.x, y: p.bouts.LC!.y }, this.colors.centerBoutLow)(g, ui);
+
+      renderArcFromArcFancy(p.bouts.L2!, this.colors.lowerBoutOff)(g, ui);
+      renderArcFromArcFancy(p.bouts.L3!, this.colors.centerBoutLowOff)(g, ui);
+      renderArcFromArcFancy(flipArcAboutY(p.bouts.L2!), this.colors.lowerBoutOff)(g, ui);
+      renderArcFromArcFancy(flipArcAboutY(p.bouts.L3!), this.colors.centerBoutLowOff)(g, ui);
+
+      renderArcFromArcFancy(p.bouts.U2!, this.colors.upperBoutOff)(g, ui);
+      renderArcFromArcFancy(p.bouts.U3!, this.colors.centerBoutUpOff)(g, ui);
+      renderArcFromArcFancy(flipArcAboutY(p.bouts.U2!), this.colors.upperBoutOff)(g, ui);
+      renderArcFromArcFancy(flipArcAboutY(p.bouts.U3!), this.colors.centerBoutUpOff)(g, ui);
+    }
+    else {
+      renderArcFromArc(p.bouts.L2!, this.colors.lowerBout)(g, ui);
+      renderArcFromArc(p.bouts.L3!, this.colors.lowerBout)(g, ui);
+      renderArcFromArc(flipArcAboutY(p.bouts.L2!), this.colors.lowerBout)(g, ui);
+      renderArcFromArc(flipArcAboutY(p.bouts.L3!), this.colors.lowerBout)(g, ui);
+
+      renderArcFromArc(p.bouts.U2!, this.colors.upperBout)(g, ui);
+      renderArcFromArc(p.bouts.U3!, this.colors.upperBout)(g, ui);
+      renderArcFromArc(flipArcAboutY(p.bouts.U2!), this.colors.upperBout)(g, ui);
+      renderArcFromArc(flipArcAboutY(p.bouts.U3!), this.colors.upperBout)(g, ui);
+    }
+
+    if ((currentModule && this.showModuleCircles) || this.showAllCircles) {
+      renderCircle(p.bouts.L2!, this.colors.lowerBoutOff)(g, ui);
+      renderCircle(p.bouts.L3!, this.colors.lowerBoutOff)(g, ui);
+      renderCircle(flipCircleAboutY(p.bouts.L2!), this.colors.lowerBoutOff)(g, ui);
+      renderCircle(flipCircleAboutY(p.bouts.L3!), this.colors.lowerBoutOff)(g, ui);
+      renderCircle(p.bouts.U2!, this.colors.upperBoutOff)(g, ui);
+      renderCircle(p.bouts.U3!, this.colors.upperBoutOff)(g, ui);
+      renderCircle(flipCircleAboutY(p.bouts.U2!), this.colors.upperBoutOff)(g, ui);
+      renderCircle(flipCircleAboutY(p.bouts.U3!), this.colors.upperBoutOff)(g, ui);
+    }
+
+  }
+
+
+  changeCenterBout(): void {
+    this.debounce(() => safeRun(() => {
+      this.calculateCenterBout1();
+      this.calculateCenterBout2();
+      this.panelFlow?.refreshEnabledPanels();
+      this.draftChange.emit([
+        this.renderBounds,
+        this.renderMainBouts(false),
+        this.renderCorners(false),
+        this.renderCenterBout(true),
+      ]);
+      sessionStorage.setItem('recipeData', JSON.stringify(this.d));
+    }));
+  }
+
+  calculateCenterBout1(): void {
+    let p = this.d.params;
+    p.bouts.CBW = p.bouts.CBW ?? Math.round(p.bouts.LBW * p.ratios.CBWtoLBW);
+
+    let c0Radius = p.bouts.C0?.r ?? Math.round(p.bouts.LBW / 2 * p.ratios.C0toLBW);
+    let c0Y = p.bouts.C0?.y ?? Math.round(p.height * p.ratios.C0YtoLBW);
+    p.bouts.C0 = new Arc(p.bouts.CBW / 2 + c0Radius, c0Y, c0Radius);
+
+    // let cuRadius = p.bouts.CU?.r ?? Math.round((p.bouts.UBW * p.ratios.CUtoUBW));
+    // let clRadius = p.bouts.CL?.r ?? Math.round((p.bouts.LBW * p.ratios.CLtoLBW));
+
+    // p.bouts.CU = new Arc(0,0,cuRadius)
+    // p.bouts.CL = new Arc(0,0,clRadius)
+  }
+  
+  calculateCenterBout2(): void {
+    let p = this.d.params;
+
+    let cuRadius = p.bouts.CU?.r ?? Math.round((p.bouts.UBW * p.ratios.CUtoUBW));
+    let clRadius = p.bouts.CL?.r ?? Math.round((p.bouts.LBW * p.ratios.CLtoLBW));
+
+    let CU = interceptCirclesAndPoint(p.bouts.C0, p.bouts.UC!, cuRadius).sort((a, b) => b.y - a.y)[1];
+    let CL = interceptCirclesAndPoint(p.bouts.C0, p.bouts.LC!, clRadius).sort((a, b) => a.y - b.y)[1];
+    let CUIntercept = circleCircleIntersections(p.bouts.C0, CU).sort((a, b) => b.y - a.y)[0];
+    let CLIntercept = circleCircleIntersections(p.bouts.C0, CL).sort((a, b) => a.y - b.y)[1];
+
+    p.bouts.CU = arcFromCircleAndPoints(CU, CUIntercept, p.bouts.UC);
+    p.bouts.CL = arcFromCircleAndPoints(CL, CLIntercept, p.bouts.LC);
+    p.bouts.C0 = arcFromCircleAndPoints(p.bouts.C0, CUIntercept, CLIntercept);
+
+    // recalculate display ratios
+    p.ratios.CBWtoLBW = p.bouts.CBW / p.bouts.LBW;
+    p.ratios.C0toLBW = p.bouts.C0.r / p.bouts.LBW;
+    p.ratios.C0YtoLBW = p.bouts.C0.y / p.height;
+    p.ratios.CUtoUBW = CU.r / p.bouts.UBW;
+    p.ratios.CLtoLBW = CL.r / p.bouts.LBW;
+
+  }
+
+  renderCenterBout = (currentModule: boolean) => (g: any, ui: any): void => {
+    let p = this.d.params;
+
+    // if (!p.bouts.C0 || !p.bouts.CU || !p.bouts.CL) return;
+
+    if ((currentModule && this.showModuleArcs) || this.showAllArcs) {
+      renderArcFromArcFancy(p.bouts.CU, this.colors.centerBoutUp)(g, ui);
+      renderArcFromArcFancy(p.bouts.CL, this.colors.centerBoutLow)(g, ui);
+      renderArcFromArcFancy(p.bouts.C0, this.colors.centerBout)(g, ui);
+      renderArcFromArcFancy(flipArcAboutY(p.bouts.CU), this.colors.centerBoutUp)(g, ui);
+      renderArcFromArcFancy(flipArcAboutY(p.bouts.CL), this.colors.centerBoutLow)(g, ui);
+      renderArcFromArcFancy(flipArcAboutY(p.bouts.C0), this.colors.centerBout)(g, ui);
+    } 
+    else {
+      renderArcFromArc(p.bouts.CU, this.colors.centerBout)(g, ui);
+      renderArcFromArc(p.bouts.CL, this.colors.centerBout)(g, ui);
+      renderArcFromArc(p.bouts.C0, this.colors.centerBout)(g, ui);
+      renderArcFromArc(flipArcAboutY(p.bouts.CU), this.colors.centerBout)(g, ui);
+      renderArcFromArc(flipArcAboutY(p.bouts.CL), this.colors.centerBout)(g, ui);
+      renderArcFromArc(flipArcAboutY(p.bouts.C0), this.colors.centerBout)(g, ui);
+    }
+
+    if ((currentModule && this.showModuleCircles) || this.showAllCircles) {
+      renderCircle(p.bouts.C0, this.colors.centerBout)(g, ui);
+      renderCircle(p.bouts.CU, this.colors.centerBoutUp)(g, ui);
+      renderCircle(p.bouts.CL, this.colors.centerBoutLow)(g, ui);
+      renderCircle(flipCircleAboutY(p.bouts.CU), this.colors.centerBoutUp)(g, ui);
+      renderCircle(flipCircleAboutY(p.bouts.CL), this.colors.centerBoutLow)(g, ui);
+      renderCircle(flipCircleAboutY(p.bouts.C0), this.colors.centerBout)(g, ui);
+    }
   }
 
   // === UI helpers ===

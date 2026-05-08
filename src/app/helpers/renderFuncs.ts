@@ -607,9 +607,9 @@ export const renderRectRoundedCorners = (rect: Rectangle, r: number, color: stri
 
 export const renderArcFromArc = (arc: Arc, color: string, fill: string = "none", strokeWidth: number = 1, longArc = false) => (g: any, ui: any) => {
     const TWO_PI = Math.PI * 2;
-    const cx = arc.C.x;
-    const cy = arc.C.y;
-    const r = Math.abs(arc.C.r);
+    const cx = arc.x;
+    const cy = arc.y;
+    const r = Math.abs(arc.r);
 
     if (!Number.isFinite(r) || r <= 1e-9) return;
 
@@ -642,19 +642,19 @@ export const renderArcFromArc = (arc: Arc, color: string, fill: string = "none",
 
 // this just has some display features that will help the user understand what is going on
 export const renderArcFromArcFancy = (arc: Arc, color: string, label?: string, colorOff?: string) => (g: any, ui: any) => {
-    let start: Pt = pointOnCircle(arc.C, arc.start);
-    let end: Pt = pointOnCircle(arc.C, arc.end);
+    let start: Pt = pointOnCircle(arc, arc.start);
+    let end: Pt = pointOnCircle(arc, arc.end);
 
     // main arc
     renderArcFromArc(arc, color, "none", 2, false)(g, ui);
-    renderDashLine(arc.C, start, colorOff ?? color)(g, ui);
-    renderDashLine(arc.C, end, colorOff ?? color)(g, ui);
+    renderDashLine(arc, start, colorOff ?? color)(g, ui);
+    renderDashLine(arc, end, colorOff ?? color)(g, ui);
 
     if (label) {
-        renderPointLabel(arc.C, label, color)(g, ui);
+        renderPointLabel(arc, label, color)(g, ui);
     }
     else{
-        renderCrosshair(arc.C, color)(g, ui);
+        renderCrosshair(arc, color)(g, ui);
     }
 }
 

@@ -1,4 +1,4 @@
-import { Pt, Fraction, Circle, Axis, Line, Rectangle, Arc } from "../models/types";
+import { Pt, Fraction, Circle, Axis, Line, Rectangle, Arc, arcFromCircle } from "../models/types";
 import * as polygonClipping from 'polygon-clipping';
 import { svgPathProperties } from 'svg-path-properties';
 
@@ -90,15 +90,14 @@ export function offsetCircleRadius(C: Circle, offset: number): Circle {
 }
 
 export function flipArcAboutY(arc: Arc): Arc {
-  let mirroredArc = new Circle(-arc.C.x, arc.C.y, arc.C.r);
-  let mirroredU1Arc = new Arc(mirroredArc, flipAngleAboutYAxis(arc.start), flipAngleAboutYAxis(arc.end));
+  let mirroredArc = new Circle(-arc.x, arc.y, arc.r);
+  let mirroredU1Arc = arcFromCircle(mirroredArc, flipAngleAboutYAxis(arc.start), flipAngleAboutYAxis(arc.end));
   return mirroredU1Arc;
 }
 
 export function flipCircleAboutY(C: Circle): Circle { 
   return { x: -C.x, y: C.y, r: C.r };
 }
-
 
 
 // ======  Complex Geometry ======
