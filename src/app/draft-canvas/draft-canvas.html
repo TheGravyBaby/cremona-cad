@@ -56,6 +56,11 @@
               (ngModelChange)="onRefParamChange('height', $event)" />
           </div>
           <div class="row">
+            <label>Rotation (°)</label>
+            <input type="number" step="0.1" [ngModel]="referenceImage?.rotationDeg ?? 0"
+              (ngModelChange)="onRefParamChange('rotationDeg', $event)" />
+          </div>
+          <div class="row">
             <label class="chk">
               <input type="checkbox" [(ngModel)]="lockAspect" />
               Lock aspect

@@ -29,25 +29,36 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
 
   offFactor = .5;
   off2Factor = .8;
-  colors = {
+  private readonly colorPalette = {
     upperBout: '#4D8660',
-    upperBoutOff: greyOut('#4D8660', this.offFactor), // '#6DA077',
-    upperBoutOff2: greyOut('#4D8660', this.off2Factor), // '#97a49aff',
     centerBoutUp: '#C24B2E',
-    centerBoutUpOff: greyOut('#C24B2E', this.offFactor), //'#E08A6B',
-    centerBoutUpOff2: greyOut('#C24B2E', this.off2Factor), //'#dea793ff',
     centerBout: '#A97645',
-    centerBoutOff: greyOut('#A97645', this.offFactor), //'#BC9368',
-    centerBoutOff2: greyOut('#A97645', this.off2Factor), //'#bdab99ff',
     centerBoutLow: '#ad9267ff',
-    centerBoutLowOff: greyOut('#ad9267ff', this.offFactor), //'#D6AA5F',
-    centerBoutLowOff2: greyOut('#ad9267ff', this.off2Factor), //'#d2bb93ff',
     lowerBout: '#4D74A8',
-    lowerBoutOff: greyOut('#4D74A8', this.offFactor), //'#7ba4dbff',
-    lowerBoutOff2: greyOut('#4D74A8', this.off2Factor), //'#a6bcd9ff',
     innerTrace: '#a47272ff',
     outerTrace: '#b37f7fff',
     mouldTrace: '#81887eff',
+  } as const;
+
+  colors = {
+    upperBout: this.colorPalette.upperBout,
+    upperBoutOff: greyOut(this.colorPalette.upperBout, this.offFactor),
+    upperBoutOff2: greyOut(this.colorPalette.upperBout, this.off2Factor),
+    centerBoutUp: this.colorPalette.centerBoutUp,
+    centerBoutUpOff: greyOut(this.colorPalette.centerBoutUp, this.offFactor),
+    centerBoutUpOff2: greyOut(this.colorPalette.centerBoutUp, this.off2Factor),
+    centerBout: this.colorPalette.centerBout,
+    centerBoutOff: greyOut(this.colorPalette.centerBout, this.offFactor),
+    centerBoutOff2: greyOut(this.colorPalette.centerBout, this.off2Factor),
+    centerBoutLow: this.colorPalette.centerBoutLow,
+    centerBoutLowOff: greyOut(this.colorPalette.centerBoutLow, this.offFactor),
+    centerBoutLowOff2: greyOut(this.colorPalette.centerBoutLow, this.off2Factor),
+    lowerBout: this.colorPalette.lowerBout,
+    lowerBoutOff: greyOut(this.colorPalette.lowerBout, this.offFactor),
+    lowerBoutOff2: greyOut(this.colorPalette.lowerBout, this.off2Factor),
+    innerTrace: this.colorPalette.innerTrace,
+    outerTrace: this.colorPalette.outerTrace,
+    mouldTrace: this.colorPalette.mouldTrace,
   }
 
   // ===== Constructor =====
@@ -82,7 +93,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     const template = this.templates.find(t => t.key === key);
     if (!template) return;
     this.loadFile = template;
-    this.referenceImageChange.emit(template.referenceImage ?? null);
+    this.referenceImageChange.emit(this.d.referenceImage ?? null);
     sessionStorage.setItem('recipeData', JSON.stringify(this.d));
   }
 
@@ -94,7 +105,9 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
         ...CERUTI_TEMPLATES[0],
       };
       this.openPanel = 'base';
+      this.referenceImageChange.emit(this.d.referenceImage ?? null);
       this.draftChange.emit([this.firstRender]);
+
     }
   }
 
@@ -358,7 +371,9 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
   renderCenterBout = (currentModule: boolean) => (g: any, ui: any): void => {
     let p = this.d.params;
 
-    // if (!p.bouts.C0 || !p.bouts.CU || !p.bouts.CL) return;
+    if (currentModule && this.showModuleArcs){
+      renderDashedLine({x:-1000, y: p.bouts.C0.y}, {x:1000, y: p.bouts.C0.y}, this.colors.centerBoutOff2)(g, ui);
+    }
 
     if ((currentModule && this.showModuleArcs) || this.showAllArcs) {
       renderArcFromArcFancy(p.bouts.CU, this.colors.centerBoutUp)(g, ui);
@@ -367,7 +382,6 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       renderArcFromArcFancy(flipArcAboutY(p.bouts.CU), this.colors.centerBoutUp)(g, ui);
       renderArcFromArcFancy(flipArcAboutY(p.bouts.CL), this.colors.centerBoutLow)(g, ui);
       renderArcFromArcFancy(flipArcAboutY(p.bouts.C0), this.colors.centerBout)(g, ui);
-      renderDashedLine({x:-1000, y: p.bouts.C0.y}, {x:1000, y: p.bouts.C0.y}, this.colors.centerBoutOff2)(g, ui);
     } 
     else {
       renderArcFromArc(p.bouts.CU, this.colors.innerTrace)(g, ui);
