@@ -431,8 +431,8 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     let p = this.d.params;
     p.bouts.CBW = p.bouts.CBW ?? Math.round(p.bouts.LBW * p.ratios.CBWtoLBW);
 
-    let c0Radius = p.bouts.C0?.r ?? Math.round(p.bouts.LBW / 2 * p.ratios.C0toLBW);
-    let c0Y = p.bouts.C0?.y ?? Math.round(p.height * p.ratios.C0YtoLBW);
+    let c0Radius = p.bouts.C0?.r ?? Math.round(p.bouts.LBW * p.ratios.C0toLBW);
+    let c0Y = p.bouts.C0?.y ?? Math.round(p.height * p.ratios.C0YtoH);
     p.bouts.C0 = new Arc(p.bouts.CBW / 2 + c0Radius, c0Y, c0Radius);
 
     // let cuRadius = p.bouts.CU?.r ?? Math.round((p.bouts.UBW * p.ratios.CUtoUBW));
@@ -460,7 +460,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     // recalculate display ratios
     p.ratios.CBWtoLBW = p.bouts.CBW / p.bouts.LBW;
     p.ratios.C0toLBW = p.bouts.C0.r / p.bouts.LBW;
-    p.ratios.C0YtoLBW = p.bouts.C0.y / p.height;
+    p.ratios.C0YtoH = p.bouts.C0.y / p.height;
     p.ratios.CUtoUBW = CU.r / p.bouts.UBW;
     p.ratios.CLtoLBW = CL.r / p.bouts.LBW;
 

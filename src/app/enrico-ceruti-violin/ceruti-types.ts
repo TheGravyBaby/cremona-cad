@@ -61,7 +61,7 @@ export interface EnricoCerutiParams {
     U3toUBW: number;
     CBWtoLBW: number;
     C0toLBW: number;
-    C0YtoLBW: number;
+    C0YtoH: number;
     CUtoUBW: number;
     CLtoLBW: number;
     LBtoH: number;
@@ -101,8 +101,8 @@ const DefaultParams: EnricoCerutiParams = {
     U2toUBW: 1 / 2,
     U3toUBW: 1 / 8,
     CBWtoLBW: 1 / 2,
-    C0YtoLBW: 4 / 5,
-    C0toLBW: 4 / 5,
+    C0YtoH: 9 / 16,
+    C0toLBW: 2/ 5,
     CUtoUBW: 1 / 8,
     CLtoLBW: 1 / 8,
     LBtoH: 4 / 7,
@@ -111,7 +111,7 @@ const DefaultParams: EnricoCerutiParams = {
     L2toLBW: 1 / 2,
     L3toLBW: 1 / 8,
     UCYtoH: 2 / 3,
-    UCXtoUBW: 11 / 12,
+    UCXtoUBW: 11/12,
     LCYtoH: 6 / 15,
     LCXtoLBW: 7 / 8,
   },
@@ -172,77 +172,7 @@ export const CERUTI_TEMPLATES: EnricoCerutiTemplate[] = [
     fileName: 'NewFiddle',
     description: 'A blank template to start from...',
     version: '0.1',
-    params: {
-      height: 350,
-      width: 200,
-      overhang: 3,
-      rib: 1,
-      ratios: {
-        HtoW: 7 / 4,
-        UBtoLB: 4 / 5,
-        U0toH: 1 / 3,
-        U1toUBW: 2 / 3,
-        U2toUBW: 1 / 2,
-        U3toUBW: 1 / 8,
-        CBWtoLBW: 1 / 2,
-        C0YtoLBW: 4 / 5,
-        C0toLBW: 4 / 5,
-        CUtoUBW: 1 / 8,
-        CLtoLBW: 1 / 8,
-        LBtoH: 4 / 7,
-        L0toH: 1 / 2,
-        L1toLBW: 2 / 3,
-        L2toLBW: 1 / 2,
-        L3toLBW: 1 / 8,
-        UCYtoH: 2 / 3,
-        UCXtoUBW: 11 / 12,
-        LCYtoH: 6 / 15,
-        LCXtoLBW: 7 / 8,
-      },
-      bouts: {
-        UBW: undefined,
-        U0: undefined,
-        U1: undefined,
-        U2: undefined,
-        U3: undefined,
-        CBW: undefined,
-        CU: undefined,
-        C0: undefined,
-        CL: undefined,
-        LBW: undefined,
-        L3: undefined,
-        L2: undefined,
-        L1: undefined,
-        L0: undefined,
-        UC: undefined,
-        LC: undefined,
-      },
-      outerCorners: {
-        U31: undefined,
-        U31Cutoff: 0,
-        U31Orbit: 0,
-        CU1: undefined,
-        CU1Cutoff: 0,
-        CU1Orbit: 0,
-        CL1: undefined,
-        CL1Cutoff: 0,
-        CL1Orbit: 0,
-        L31: undefined,
-        L31Cutoff: 0,
-        L31Orbit: 0
-      },
-      blocks: {
-        U: undefined,
-        CU: undefined,
-        CL: undefined,
-        L: undefined
-      },
-      options: {
-        useViolNeck: false,
-        useViolCornerUC: false,
-        useViolCornerLC: false,
-      }
-    },
+    params: DefaultParams,
     paths: [],
     referenceImage: {
       "href": "",
