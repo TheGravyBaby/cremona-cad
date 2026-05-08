@@ -2,7 +2,7 @@ import { ChangeDetectorRef, Component, HostListener, Input } from '@angular/core
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Rectangle } from '../models/types';
-import { greyOut, renderArcFromArc, renderArcFromArcFancy, renderCircle, renderCrosshair, renderDashLine, renderDistanceMeasurementLine, renderRect } from '../helpers/renderFuncs';
+import { greyOut, renderArcFromArc, renderArcFromArcFancy, renderCircle, renderCrosshair, renderDashedLine, renderDashLine, renderDistanceMeasurementLine, renderLine, renderRect } from '../helpers/renderFuncs';
 import { clampParam, safeRun } from '../helpers/validators';
 import { EnricoCerutiTemplate, CERUTI_TEMPLATES, EnricoCerutiParams } from './ceruti-types';
 import { dimensionInfo, insetInfo, referenceInfo } from './ceruti-helpers';
@@ -26,8 +26,8 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     { id: 'export', label: 'Export' },
   ] as const;
 
-  offFactor = .7;
-  off2Factor = .9;
+  offFactor = .5;
+  off2Factor = .8;
   colors = {
     upperBout: '#4D8660',
     upperBoutOff: greyOut('#4D8660', this.offFactor), // '#6DA077',
@@ -38,9 +38,9 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     centerBout: '#A97645',
     centerBoutOff: greyOut('#A97645', this.offFactor), //'#BC9368',
     centerBoutOff2: greyOut('#A97645', this.off2Factor), //'#bdab99ff',
-    centerBoutLow: '#B8873A',
-    centerBoutLowOff: greyOut('#B8873A', this.offFactor), //'#D6AA5F',
-    centerBoutLowOff2: greyOut('#B8873A', this.off2Factor), //'#d2bb93ff',
+    centerBoutLow: '#c19550ff',
+    centerBoutLowOff: greyOut('#c19550ff', this.offFactor), //'#D6AA5F',
+    centerBoutLowOff2: greyOut('#c19550ff', this.off2Factor), //'#d2bb93ff',
     lowerBout: '#4D74A8',
     lowerBoutOff: greyOut('#4D74A8', this.offFactor), //'#7ba4dbff',
     lowerBoutOff2: greyOut('#4D74A8', this.off2Factor), //'#a6bcd9ff',
@@ -69,6 +69,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
   showModuleCircles: boolean = false;
   showAllArcs: boolean = false;
   showAllCircles: boolean = false;
+  showBoundingBoxes: boolean = true;
 
   get selectedTemplateKey(): string {
     const current = JSON.stringify(this.d.params);
@@ -101,7 +102,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       pt1: { x: -this.d.params.width / 2, y: 0 },
       pt2: { x: this.d.params.width / 2, y: this.d.params.height },
     });
-    this.renderBounds(g, ui);
+    this.renderBounds(true)(g, ui);
 
     let recipeData = sessionStorage.getItem('recipeData');
     if (!recipeData) {
@@ -205,63 +206,74 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
         pt1: { x: -this.d.params.width / 2, y: 0 },
         pt2: { x: this.d.params.width / 2, y: this.d.params.height },
       });
-      this.draftChange.emit([this.renderBounds]);
+      this.draftChange.emit([this.renderBounds(true)]);
       sessionStorage.setItem('recipeData', JSON.stringify(this.d));
     }));
   }
 
-  renderBounds = (g: any, ui: any): void => {
+  renderBounds = (current: boolean) => (g: any, ui: any): void => {
     const h = this.d.params.height;
     const hw = this.d.params.width / 2;
     const inset = this.d.params.overhang + this.d.params.rib;
     let outerRect = new Rectangle({ x: -hw, y: 0 }, { x: hw, y: h });
     let insetRect = new Rectangle({ x: -hw + inset, y: inset }, { x: hw - inset, y: h - inset });
-    renderRect(outerRect, "grey")(g, ui);
-    renderRect(insetRect, "grey")(g, ui);
+
+    if (current || this.showBoundingBoxes) {
+      renderRect(outerRect, "grey")(g, ui);
+      renderRect(insetRect, "grey")(g, ui);
+    }
   };
 
   changeMainBouts(): void {
     this.debounce(() => safeRun(() => {
       this.calculateMainBouts();
       this.panelFlow?.refreshEnabledPanels();
-      this.draftChange.emit([this.renderBounds, this.renderMainBouts(true)]);
+      this.draftChange.emit([this.renderBounds(false), this.renderMainBouts(true)]);
     }));
   }
 
   calculateMainBouts(): void {
     let p = this.d.params;
     let inset = p.overhang + p.rib;
-
+  
     // initialize bouts if not already done
     if (!p.bouts.U0) {
       let inset = p.overhang + p.rib;
 
-      p.bouts.LBW = p.width - 2 * inset;
+      p.bouts.LBW = p.width;
       p.bouts.UBW = Math.round(p.bouts.LBW * p.ratios.UBtoLB);
+      
+      let UBWI = p.bouts.UBW - 2 * inset;
+      let LBWI = p.bouts.LBW - 2 * inset;
+      let HI = p.height - 2 * inset;
 
-      let U0R = Math.round((p.height - 2 * inset) * p.ratios.U0toH);
+      let U0R = Math.round(HI * p.ratios.U0toH * 10) / 10;
       p.bouts.U0 = new Arc(0, U0R, U0R);
-      let U1R = Math.round(p.bouts.UBW * p.ratios.U1toUBW / 2);
-      p.bouts.U1 = new Arc(0, p.bouts.UBW - U1R, U1R);
+      let U1R = Math.round(UBWI * p.ratios.U1toUBW  * 10) / 10;
+      p.bouts.U1 = new Arc(0, UBWI - U1R, U1R);
 
-      let L0R = Math.round((p.height - 2 * inset) * p.ratios.L0toH);
+      let L0R = Math.round(HI * p.ratios.L0toH * 10) / 10;
       p.bouts.L0 = new Arc(0, inset + L0R, L0R);
-      let L1R = Math.round(p.bouts.LBW * p.ratios.L1toLBW / 2);
+      let L1R = Math.round(LBWI * p.ratios.L1toLBW  * 10) / 10;
       p.bouts.L1 = new Arc(0, L1R, L1R);
     }
 
+    let UBWI = p.bouts.UBW - 2 * inset;
+    let LBWI = p.bouts.LBW - 2 * inset;
+    let HI = p.height - 2 * inset;
+
     // recalcuate display ratios
     p.ratios.UBtoLB = p.bouts.UBW / p.bouts.LBW;
-    p.ratios.U0toH = p.bouts.U0.r / (p.height - 2 * inset);
-    p.ratios.U1toUBW = 2 * p.bouts.U1.r / p.bouts.UBW;
-    p.ratios.L0toH = p.bouts.L0.r / (p.height - 2 * inset);
-    p.ratios.L1toLBW = 2 * p.bouts.L1.r / p.bouts.LBW;
+    p.ratios.U0toH = p.bouts.U0.r / HI;
+    p.ratios.U1toUBW =  p.bouts.U1.r / UBWI;
+    p.ratios.L0toH = p.bouts.L0.r / HI;
+    p.ratios.L1toLBW = p.bouts.L1.r / LBWI;
 
     p.bouts.U0.y = p.height - inset - p.bouts.U0.r;
     p.bouts.L0.y = inset + p.bouts.L0.r;
-    p.bouts.U1.x = p.bouts.UBW / 2 - p.bouts.U1.r;
+    p.bouts.U1.x = p.bouts.UBW / 2 - p.bouts.U1.r - inset;
     p.bouts.U1.y = solveInscribedCircleAlongAxis(p.bouts.U0, p.bouts.U1.r, "x", p.bouts.U1.x, true);
-    p.bouts.L1.x = p.bouts.LBW / 2 - p.bouts.L1.r;
+    p.bouts.L1.x = p.bouts.LBW / 2 - p.bouts.L1.r - inset;
     p.bouts.L1.y = solveInscribedCircleAlongAxis(p.bouts.L0, p.bouts.L1.r, "x", p.bouts.L1.x, false);
 
     let upperIntersect = circleCircleIntersections(p.bouts.U0, p.bouts.U1);
@@ -281,6 +293,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
 
   renderMainBouts = (currentModule: boolean) => (g: any, ui: any): void => {
     let p = this.d.params;
+    let inset = p.overhang + p.rib;
 
     let wideTopArc = arcFromCircle(p.bouts.U0, flipAngleAboutYAxis(p.bouts.U0.end), p.bouts.U0.end);
     let wideBottomArc = arcFromCircle(p.bouts.L0, flipAngleAboutYAxis(p.bouts.L0.end), p.bouts.L0.end);
@@ -315,6 +328,17 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       renderCircle(p.bouts.L0!, this.colors.lowerBout)(g, ui);
     }
 
+    let lowerBoutSquare = new Rectangle({ x: -p.bouts.LBW / 2, y: 0}, { x: p.bouts.LBW / 2, y:  p.bouts.LBW});
+    let upperBoutSquare = new Rectangle({ x: -p.bouts.UBW / 2, y: p.height - p.bouts.UBW}, { x: p.bouts.UBW / 2, y:  p.height});
+
+    if (this.showBoundingBoxes) {
+      renderRect(lowerBoutSquare, this.colors.lowerBoutOff)(g, ui);
+      renderLine({ x: -p.bouts.LBW / 2 + inset, y: 0 }, { x: - p.bouts.LBW / 2 + inset, y: p.bouts.LBW }, this.colors.lowerBoutOff)(g, ui);
+      renderLine({ x: p.bouts.LBW / 2 - inset, y: 0 }, { x: p.bouts.LBW / 2 - inset, y: p.bouts.LBW }, this.colors.lowerBoutOff)(g, ui);
+      renderRect(upperBoutSquare, this.colors.upperBoutOff)(g, ui);
+      renderLine({ x: -p.bouts.UBW / 2 + inset, y: p.height - p.bouts.UBW }, { x: - p.bouts.UBW / 2 + inset, y: p.height }, this.colors.upperBoutOff)(g, ui);
+      renderLine({ x: p.bouts.UBW / 2 - inset, y: p.height - p.bouts.UBW }, { x: p.bouts.UBW / 2 - inset, y: p.height }, this.colors.upperBoutOff)(g, ui);
+    }
   }
 
   changeCorners(): void {
@@ -322,7 +346,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       this.calculateCorners();
       this.panelFlow?.refreshEnabledPanels();
       this.draftChange.emit([
-        this.renderBounds,
+        this.renderBounds(false),
         this.renderMainBouts(false),
         this.renderCorners(true),
       ]);
@@ -331,6 +355,10 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
 
   calculateCorners(): void {
     let p = this.d.params;
+    let inset = p.overhang + p.rib;
+    let UBWI = p.bouts.UBW - 2 * inset;
+    let LBWI = p.bouts.LBW - 2 * inset;
+    let HI = p.height - 2 * inset;
 
     // Placeholder initialization only.
     // Intentionally no corner geometry calculations here.
@@ -339,15 +367,15 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       p.bouts.LC = { x: Math.round(p.bouts.LBW / 2 * p.ratios.LCXtoLBW), y: Math.round(p.height * p.ratios.LCYtoH) };
     }
 
-    let U2R = p.bouts.U2?.r ?? Math.round(p.bouts.UBW * p.ratios.U2toUBW);
-    p.bouts.U2 = new Arc(p.bouts.UBW / 2 - U2R, p.bouts.U1.y, U2R);
-    let L2R = p.bouts.L2?.r ?? Math.round(p.bouts.LBW * p.ratios.L2toLBW);
-    p.bouts.L2 = new Arc(p.bouts.LBW / 2 - L2R, p.bouts.L1.y, L2R);
+    let U2R = p.bouts.U2?.r ?? Math.round(UBWI * p.ratios.U2toUBW) ;
+    p.bouts.U2 = new Arc(p.bouts.UBW / 2 - U2R - inset, p.bouts.U1.y, U2R);
+    let L2R = p.bouts.L2?.r ?? Math.round(LBWI * p.ratios.L2toLBW);
+    p.bouts.L2 = new Arc(p.bouts.LBW / 2 - L2R - inset, p.bouts.L1.y, L2R);
 
-    let U3R = p.bouts.U3?.r ?? Math.round(p.bouts.UBW * p.ratios.U3toUBW);
+    let U3R = p.bouts.U3?.r ?? Math.round(LBWI * p.ratios.U3toLBW);
     p.bouts.U3 = arcFromCircle(interceptCirclesAndPoint(p.bouts.U2, p.bouts.UC, U3R).sort((a, b) => a.y - b.y)[1]);
 
-    let L3R = p.bouts.L3?.r ?? Math.round(p.bouts.LBW * p.ratios.L3toLBW);
+    let L3R = p.bouts.L3?.r ?? Math.round(LBWI * p.ratios.L3toLBW);
     p.bouts.L3 = arcFromCircle(interceptCirclesAndPoint(p.bouts.L2, p.bouts.LC, L3R).sort((a, b) => a.y - b.y)[0]);
 
     let UIntersect = circleCircleIntersections(p.bouts.U2, p.bouts.U3).sort((a, b) => a.y - b.y)[1];
@@ -361,10 +389,10 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     p.bouts.L3 = arcFromCircleAndPoints(p.bouts.L3, LIntersect, p.bouts.LC);
 
     // recalculate display ratios
-    p.ratios.U2toUBW = p.bouts.U2.r / p.bouts.UBW;
-    p.ratios.U3toUBW = p.bouts.U3.r / p.bouts.UBW;
-    p.ratios.L2toLBW = p.bouts.L2.r / p.bouts.LBW;
-    p.ratios.L3toLBW = p.bouts.L3.r / p.bouts.LBW;
+    p.ratios.U2toUBW = p.bouts.U2.r / UBWI;
+    p.ratios.U3toLBW = p.bouts.U3.r / LBWI;
+    p.ratios.L2toLBW = p.bouts.L2.r / LBWI;
+    p.ratios.L3toLBW = p.bouts.L3.r / LBWI;
   }
 
   renderCorners = (currentModule: boolean) => (g: any, ui: any): void => {
@@ -376,15 +404,15 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       renderCrosshair({ x: -p.bouts.UC!.x, y: p.bouts.UC!.y }, this.colors.centerBoutUp)(g, ui);
       renderCrosshair({ x: -p.bouts.LC!.x, y: p.bouts.LC!.y }, this.colors.centerBoutLow)(g, ui);
 
-      renderArcFromArcFancy(p.bouts.L2!, this.colors.lowerBoutOff)(g, ui);
-      renderArcFromArcFancy(p.bouts.L3!, this.colors.centerBoutLowOff)(g, ui);
-      renderArcFromArcFancy(flipArcAboutY(p.bouts.L2!), this.colors.lowerBoutOff)(g, ui);
-      renderArcFromArcFancy(flipArcAboutY(p.bouts.L3!), this.colors.centerBoutLowOff)(g, ui);
+      renderArcFromArcFancy(p.bouts.L2!, this.colors.lowerBoutOff2)(g, ui);
+      renderArcFromArcFancy(p.bouts.L3!, this.colors.centerBoutLowOff2)(g, ui);
+      renderArcFromArcFancy(flipArcAboutY(p.bouts.L2!), this.colors.lowerBoutOff2)(g, ui);
+      renderArcFromArcFancy(flipArcAboutY(p.bouts.L3!), this.colors.centerBoutLowOff2)(g, ui);
 
-      renderArcFromArcFancy(p.bouts.U2!, this.colors.upperBoutOff)(g, ui);
-      renderArcFromArcFancy(p.bouts.U3!, this.colors.centerBoutUpOff)(g, ui);
-      renderArcFromArcFancy(flipArcAboutY(p.bouts.U2!), this.colors.upperBoutOff)(g, ui);
-      renderArcFromArcFancy(flipArcAboutY(p.bouts.U3!), this.colors.centerBoutUpOff)(g, ui);
+      renderArcFromArcFancy(p.bouts.U2!, this.colors.upperBoutOff2)(g, ui);
+      renderArcFromArcFancy(p.bouts.U3!, this.colors.centerBoutUpOff2)(g, ui);
+      renderArcFromArcFancy(flipArcAboutY(p.bouts.U2!), this.colors.upperBoutOff2)(g, ui);
+      renderArcFromArcFancy(flipArcAboutY(p.bouts.U3!), this.colors.centerBoutUpOff2)(g, ui);
     }
     else {
       renderArcFromArc(p.bouts.L2!, this.colors.lowerBout)(g, ui);
@@ -414,11 +442,10 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
 
   changeCenterBout(): void {
     this.debounce(() => safeRun(() => {
-      this.calculateCenterBout1();
-      this.calculateCenterBout2();
+      this.calculateCenterBout();
       this.panelFlow?.refreshEnabledPanels();
       this.draftChange.emit([
-        this.renderBounds,
+        this.renderBounds(false),
         this.renderMainBouts(false),
         this.renderCorners(false),
         this.renderCenterBout(true),
@@ -427,26 +454,22 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     }));
   }
 
-  calculateCenterBout1(): void {
+  calculateCenterBout(): void {
     let p = this.d.params;
+    let inset = p.overhang + p.rib;
+    let UBWI = p.bouts.UBW - 2 * inset;
+    let LBWI = p.bouts.LBW - 2 * inset;
+    let HI = p.height - 2 * inset;
+
     p.bouts.CBW = p.bouts.CBW ?? Math.round(p.bouts.LBW * p.ratios.CBWtoLBW);
 
-    let c0Radius = p.bouts.C0?.r ?? Math.round(p.bouts.LBW * p.ratios.C0toLBW);
-    let c0Y = p.bouts.C0?.y ?? Math.round(p.height * p.ratios.C0YtoH);
-    p.bouts.C0 = new Arc(p.bouts.CBW / 2 + c0Radius, c0Y, c0Radius);
+    let c0Radius = p.bouts.C0?.r ?? Math.round(LBWI * p.ratios.C0toLBW);
+    let boutMid = ((p.height - p.bouts.UBW) - p.bouts.LBW)/2 + p.bouts.LBW
+    let c0Y = p.bouts.C0?.y ?? boutMid;
+    p.bouts.C0 = new Arc(p.bouts.CBW / 2 - inset + c0Radius, c0Y, c0Radius);
 
-    // let cuRadius = p.bouts.CU?.r ?? Math.round((p.bouts.UBW * p.ratios.CUtoUBW));
-    // let clRadius = p.bouts.CL?.r ?? Math.round((p.bouts.LBW * p.ratios.CLtoLBW));
-
-    // p.bouts.CU = new Arc(0,0,cuRadius)
-    // p.bouts.CL = new Arc(0,0,clRadius)
-  }
-  
-  calculateCenterBout2(): void {
-    let p = this.d.params;
-
-    let cuRadius = p.bouts.CU?.r ?? Math.round((p.bouts.UBW * p.ratios.CUtoUBW));
-    let clRadius = p.bouts.CL?.r ?? Math.round((p.bouts.LBW * p.ratios.CLtoLBW));
+    let cuRadius = p.bouts.CU?.r ?? Math.round((LBWI * p.ratios.CUtoLBW));
+    let clRadius = p.bouts.CL?.r ?? Math.round((LBWI * p.ratios.CLtoLBW));
 
     let CU = interceptCirclesAndPoint(p.bouts.C0, p.bouts.UC!, cuRadius).sort((a, b) => b.y - a.y)[1];
     let CL = interceptCirclesAndPoint(p.bouts.C0, p.bouts.LC!, clRadius).sort((a, b) => a.y - b.y)[1];
@@ -459,10 +482,10 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
 
     // recalculate display ratios
     p.ratios.CBWtoLBW = p.bouts.CBW / p.bouts.LBW;
-    p.ratios.C0toLBW = p.bouts.C0.r / p.bouts.LBW;
-    p.ratios.C0YtoH = p.bouts.C0.y / p.height;
-    p.ratios.CUtoUBW = CU.r / p.bouts.UBW;
-    p.ratios.CLtoLBW = CL.r / p.bouts.LBW;
+    p.ratios.C0toLBW = p.bouts.C0.r / LBWI;
+    p.ratios.C0YtoH = p.bouts.C0.y / HI;
+    p.ratios.CUtoLBW = CU.r / LBWI;
+    p.ratios.CLtoLBW = CL.r / LBWI;
 
   }
 
@@ -496,6 +519,16 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       renderCircle(flipCircleAboutY(p.bouts.CL), this.colors.centerBoutLow)(g, ui);
       renderCircle(flipCircleAboutY(p.bouts.C0), this.colors.centerBout)(g, ui);
     }
+
+    // render a long dashed line at the center bout Y value
+    renderDashedLine({x:-1000, y: p.bouts.C0.y}, {x:1000, y: p.bouts.C0.y}, this.colors.centerBoutOff2)(g, ui);
+
+    // // render a measurement line along the center bout Y value, with text showing CBW
+    // renderDistanceMeasurementLine(
+    //   { x: -p.bouts.CBW / 2, y: p.bouts.C0.y },
+    //   { x: p.bouts.CBW / 2, y: p.bouts.C0.y },
+    //   `${p.bouts.CBW}mm`, this.colors.centerBoutOff2
+    // )(g, ui);
   }
 
   // === UI helpers ===

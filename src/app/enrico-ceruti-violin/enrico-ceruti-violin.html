@@ -213,32 +213,38 @@
         </section>
 
         <section class="ui-group">
+            <div class="ui-group-title">Viol Neck</div>
+            <div class="toggle">
+                <input type="checkbox" [(ngModel)]="d.params.options.useViolNeck" (change)="changeMainBouts()" /><span>Use Viol Neck </span>
+            </div>
+        </section>
+
+        <section class="ui-group">
             <div class="input-group basic-row field-row" role="group">
                 <div class="toggle">
                     <input type="checkbox" [(ngModel)]="showModuleArcs" (change)="changeMainBouts()" /><span>Show Module
                         Arcs </span>
                 </div>
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showModuleCircles" (change)="changeMainBouts()" /><span>Show
-                        Module Circles </span>
-                </div>
-            </div>
-            <div class="input-group basic-row field-row" role="group">
-                <div class="toggle">
                     <input type="checkbox" [(ngModel)]="showAllArcs" (change)="changeMainBouts()" /><span>Show All Arcs
                     </span>
+                </div>
+               
+            </div>
+            <div class="input-group basic-row field-row" role="group">
+               <div class="toggle">
+                    <input type="checkbox" [(ngModel)]="showModuleCircles" (change)="changeMainBouts()" /><span>Show
+                        Module Circles </span>
                 </div>
                 <div class="toggle">
                     <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeMainBouts()" /><span>Show All
                         Circles </span>
                 </div>
             </div>
-        </section>
-
-        <section class="ui-group">
-            <div class="ui-group-title">Viol Neck</div>
-            <div class="toggle">
-                <input type="checkbox" [(ngModel)]="d.params.options.useViolNeck" (change)="changeMainBouts()" /><span>Use Viol Neck </span>
+            <div class="input-group basic-row field-row" role="group">
+                <div class="toggle">
+                    <input type="checkbox" [(ngModel)]="showBoundingBoxes" (change)="changeMainBouts()" /><span>Show Bounding Boxes </span>
+                </div>
             </div>
         </section>
         }
@@ -249,13 +255,13 @@
              <div class="input-group basic-row field-row" role="group">
                 <label class="field-cell">
                     <span class="field-title">X <span class="unit-label">mm</span></span>
-                    <input type="number" class="basic-input" step="1" [(ngModel)]="d.params.bouts.UC.x"
+                    <input type="number" class="basic-input" step=".25" [(ngModel)]="d.params.bouts.UC.x"
                         (input)="changeCorners()" [style.borderColor]="colors.centerBoutUp"/>
                 </label>
                 <span class="field-separator" aria-hidden="true"></span>
                 <label class="field-cell">
                     <span class="field-title">Y <span class="unit-label">mm</span></span>
-                    <input type="number" class="basic-input" step="1" [(ngModel)]="d.params.bouts.UC.y"
+                    <input type="number" class="basic-input" step=".25" [(ngModel)]="d.params.bouts.UC.y"
                         (input)="changeCorners()"  [style.borderColor]="colors.centerBoutUp"/>
                 </label>
             </div>
@@ -279,9 +285,9 @@
                             (input)="changeCorners()"  [style.borderColor]="colors.centerBoutUpOff"/>
                     </label>
                     <label class="field-cell">
-                        <span class="field-title">U3 to UBW</span>
+                        <span class="field-title">U3 to LBW</span>
                         <div class="basic-display" aria-label="Upper bout to width ratio value">{{
-                            nearestFraction(d.params.ratios.U3toUBW) }}</div>
+                            nearestFraction(d.params.ratios.U3toLBW) }}</div>
                     </label>
                 </div>
             </div>
@@ -297,13 +303,13 @@
             <div class="input-group basic-row field-row" role="group">
                 <label class="field-cell">
                     <span class="field-title">X <span class="unit-label">mm</span></span>
-                    <input type="number" class="basic-input" step="1" [(ngModel)]="d.params.bouts.LC.x"
+                    <input type="number" class="basic-input" step=".25" [(ngModel)]="d.params.bouts.LC.x"
                         (input)="changeCorners()" [style.borderColor]="colors.centerBoutLow"/>
                 </label>
                 <span class="field-separator" aria-hidden="true"></span>
                 <label class="field-cell">
                     <span class="field-title">Y <span class="unit-label">mm</span></span>
-                    <input type="number" class="basic-input" step="1" [(ngModel)]="d.params.bouts.LC.y"
+                    <input type="number" class="basic-input" step=".25" [(ngModel)]="d.params.bouts.LC.y"
                         (input)="changeCorners()" [style.borderColor]="colors.centerBoutLow" />
                 </label>
             </div>
@@ -344,18 +350,28 @@
         <section class="ui-group">
             <div class="input-group basic-row field-row" role="group">
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showModuleArcs" (change)="changeCorners()" /><span>Show Module Arcs </span>
+                    <input type="checkbox" [(ngModel)]="showModuleArcs" (change)="changeCorners()" /><span>Show Module
+                        Arcs </span>
                 </div>
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showModuleCircles" (change)="changeCorners()" /><span>Show Module Circles </span>
+                    <input type="checkbox" [(ngModel)]="showAllArcs" (change)="changeCorners()" /><span>Show All Arcs
+                    </span>
+                </div>
+               
+            </div>
+            <div class="input-group basic-row field-row" role="group">
+               <div class="toggle">
+                    <input type="checkbox" [(ngModel)]="showModuleCircles" (change)="changeCorners()" /><span>Show
+                        Module Circles </span>
+                </div>
+                <div class="toggle">
+                    <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeCorners()" /><span>Show All
+                        Circles </span>
                 </div>
             </div>
             <div class="input-group basic-row field-row" role="group">
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showAllArcs" (change)="changeCorners()" /><span>Show All Arcs </span>
-                </div>
-                <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeCorners()" /><span>Show All Circles </span>
+                    <input type="checkbox" [(ngModel)]="showBoundingBoxes" (change)="changeCorners()" /><span>Show Bounding Boxes </span>
                 </div>
             </div>
         </section>
@@ -388,9 +404,9 @@
                     </label>
                     <label class="field-cell"></label>
                     <label class="field-cell">
-                        <span class="field-title">CU to UBW</span>
-                        <div class="basic-display" aria-label="Upper center bout radius to upper bout width ratio value">{{
-                            nearestFraction(d.params.ratios.CUtoUBW) }}</div>
+                        <span class="field-title">CU to LBW</span>
+                        <div class="basic-display" aria-label="Upper center bout radius to lower bout width ratio value">{{
+                            nearestFraction(d.params.ratios.CUtoLBW) }}</div>
                     </label>
                 </div>
 
@@ -424,21 +440,31 @@
             </div>
         </section>
 
-        <section class="ui-group">
+       <section class="ui-group">
             <div class="input-group basic-row field-row" role="group">
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showModuleArcs" (change)="changeCenterBout()" /><span>Show Module Arcs </span>
+                    <input type="checkbox" [(ngModel)]="showModuleArcs" (change)="changeCenterBout()" /><span>Show Module
+                        Arcs </span>
                 </div>
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showModuleCircles" (change)="changeCenterBout()" /><span>Show Module Circles </span>
+                    <input type="checkbox" [(ngModel)]="showAllArcs" (change)="changeCenterBout()" /><span>Show All Arcs
+                    </span>
+                </div>
+               
+            </div>
+            <div class="input-group basic-row field-row" role="group">
+               <div class="toggle">
+                    <input type="checkbox" [(ngModel)]="showModuleCircles" (change)="changeCenterBout()" /><span>Show
+                        Module Circles </span>
+                </div>
+                <div class="toggle">
+                    <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeCenterBout()" /><span>Show All
+                        Circles </span>
                 </div>
             </div>
             <div class="input-group basic-row field-row" role="group">
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showAllArcs" (change)="changeCenterBout()" /><span>Show All Arcs </span>
-                </div>
-                <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeCenterBout()" /><span>Show All Circles </span>
+                    <input type="checkbox" [(ngModel)]="showBoundingBoxes" (change)="changeCenterBout()" /><span>Show Bounding Boxes </span>
                 </div>
             </div>
         </section>
