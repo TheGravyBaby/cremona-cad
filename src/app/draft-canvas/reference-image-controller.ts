@@ -72,12 +72,41 @@ export class ReferenceImageController {
     return { x0, x1, y0, y1 };
   }
 
+  private normalizeRotationDeg(deg: number): number {
+    const v = deg % 360;
+    return v < 0 ? v + 360 : v;
+  }
+
+  private getRotationDeg(img?: ReferenceImage): number {
+    return this.normalizeRotationDeg(img?.rotationDeg ?? 0);
+  }
+
+  private imageCenter(img: ReferenceImage): Pt {
+    return {
+      x: img.x + img.width / 2,
+      y: img.y + img.height / 2,
+    };
+  }
+
+  private rotatePoint(p: Pt, center: Pt, deg: number): Pt {
+    const rad = deg * Math.PI / 180;
+    const c = Math.cos(rad);
+    const s = Math.sin(rad);
+    const dx = p.x - center.x;
+    const dy = p.y - center.y;
+    return {
+      x: center.x + (dx * c - dy * s),
+      y: center.y + (dx * s + dy * c),
+    };
+  }
+
   pointInImage(pt: Pt): boolean {
     if (!this.image) return false;
+    const rotationDeg = this.getRotationDeg(this.image);
+    const center = this.imageCenter(this.image);
+    const unrotPt = this.rotatePoint(pt, center, -rotationDeg);
     const b = this.imageBounds(this.image);
-    // caller must pass current pxPerMm when using hitTestHandle; pointInImage used when we already have pxPerMm
-    // but here we treat hitSlop as zero; caller can use hitTestHandle instead for slop-aware checks.
-    return pt.x >= b.x0 && pt.x <= b.x1 && pt.y >= b.y0 && pt.y <= b.y1;
+    return unrotPt.x >= b.x0 && unrotPt.x <= b.x1 && unrotPt.y >= b.y0 && unrotPt.y <= b.y1;
   }
 
   cornerPts(img?: ReferenceImage) {
@@ -87,11 +116,19 @@ export class ReferenceImageController {
     const y0 = I.y;
     const x1 = I.x + I.width;
     const y1 = I.y + I.height;
+    const center = this.imageCenter(I);
+    const rotationDeg = this.getRotationDeg(I);
+
+    const sw = this.rotatePoint({ x: x0, y: y0 }, center, rotationDeg);
+    const se = this.rotatePoint({ x: x1, y: y0 }, center, rotationDeg);
+    const nw = this.rotatePoint({ x: x0, y: y1 }, center, rotationDeg);
+    const ne = this.rotatePoint({ x: x1, y: y1 }, center, rotationDeg);
+
     return {
-      sw: { x: x0, y: y0 },
-      se: { x: x1, y: y0 },
-      nw: { x: x0, y: y1 },
-      ne: { x: x1, y: y1 },
+      sw,
+      se,
+      nw,
+      ne,
     };
   }
 
@@ -151,12 +188,17 @@ export class ReferenceImageController {
   updateScale(pt: Pt) {
     if (!this.image || !this.startImage || !this.anchorPt || !this.activeHandle) return;
 
+    const rotationDeg = this.getRotationDeg(this.startImage);
+    const center = this.imageCenter(this.startImage);
+    const localPt = this.rotatePoint(pt, center, -rotationDeg);
+    const localAnchor = this.rotatePoint(this.anchorPt, center, -rotationDeg);
+
     const startW = this.startImage.width;
     const startH = this.startImage.height;
     const aspect = Math.abs(startW / startH) || 1;
 
-    const dx = pt.x - this.anchorPt.x;
-    const dy = pt.y - this.anchorPt.y;
+    const dx = localPt.x - localAnchor.x;
+    const dy = localPt.y - localAnchor.y;
 
     let targetW = Math.abs(dx);
     let targetH = Math.abs(dy);
@@ -174,10 +216,10 @@ export class ReferenceImageController {
     const anchorIsWest = (this.activeHandle === 'ne' || this.activeHandle === 'se');
     const anchorIsSouth = (this.activeHandle === 'ne' || this.activeHandle === 'nw');
 
-    const newX = anchorIsWest ? this.anchorPt.x : this.anchorPt.x - targetW;
-    const newY = anchorIsSouth ? this.anchorPt.y : this.anchorPt.y - targetH;
+    const newX = anchorIsWest ? localAnchor.x : localAnchor.x - targetW;
+    const newY = anchorIsSouth ? localAnchor.y : localAnchor.y - targetH;
 
-    this.image = { ...this.image, x: newX, y: newY, width: targetW, height: targetH };
+    this.image = { ...this.image, x: newX, y: newY, width: targetW, height: targetH, rotationDeg };
     this.onChange(this.image);
   }
 
@@ -201,9 +243,15 @@ export class ReferenceImageController {
   drawImage(gRoot: any) {
     if (!this.image?.href) return;
     const { href, x, y, width, height } = this.image;
+    const rotationDeg = this.getRotationDeg(this.image);
+    const center = this.imageCenter(this.image);
     const filteredHref = this.resolveFilteredHref(href);
 
-    const img = gRoot.append('image')
+    const imgGroup = gRoot.append('g')
+      .attr('class', 'reference-image-group')
+      .attr('transform', `rotate(${rotationDeg} ${center.x} ${center.y})`);
+
+    const img = imgGroup.append('image')
       .attr('class', 'reference-image')
       .attr('href', filteredHref)
       .attr('xlink:href', filteredHref)
@@ -323,11 +371,8 @@ export class ReferenceImageController {
     const corners = this.cornerPts(img);
     const r = this.handleRmm(pxPerMm);
 
-    gRoot.append('rect')
-      .attr('x', img.x)
-      .attr('y', img.y)
-      .attr('width', img.width)
-      .attr('height', img.height)
+    gRoot.append('path')
+      .attr('d', `M ${corners.sw.x} ${corners.sw.y} L ${corners.se.x} ${corners.se.y} L ${corners.ne.x} ${corners.ne.y} L ${corners.nw.x} ${corners.nw.y} Z`)
       .attr('fill', 'none')
       .attr('stroke', '#bb1212ff')
       .attr('stroke-width', 2 / pxPerMm)
@@ -360,6 +405,8 @@ export class ReferenceImageController {
 
     if (key === 'x' || key === 'y') {
       (next as any)[key] = v;
+    } else if (key === 'rotationDeg') {
+      next.rotationDeg = this.normalizeRotationDeg(v);
     } else if (key === 'width') {
       next.width = Math.max(minMm, v);
       if (lockAspect) next.height = Math.max(minMm, Math.round(next.width / (refAspect || 1)));
@@ -377,9 +424,11 @@ export class ReferenceImageController {
 
     const stepMm = 1;
     const scaleStep = 1.05;
+    const rotationStepDeg = 1;
     let dx = 0;
     let dy = 0;
     let scale: number | null = null;
+    let rotateDeg = 0;
 
     switch (event.key) {
       case 'ArrowUp':
@@ -391,10 +440,12 @@ export class ReferenceImageController {
         else dy -= stepMm;
         break;
       case 'ArrowLeft':
-        dx -= stepMm;
+        if (event.ctrlKey) rotateDeg -= rotationStepDeg;
+        else dx -= stepMm;
         break;
       case 'ArrowRight':
-        dx += stepMm;
+        if (event.ctrlKey) rotateDeg += rotationStepDeg;
+        else dx += stepMm;
         break;
       default:
         return false;
@@ -415,6 +466,11 @@ export class ReferenceImageController {
       const newY = cy - newH / 2;
 
       this.image = { ...img, x: newX, y: newY, width: newW, height: newH };
+    } else if (rotateDeg !== 0) {
+      this.image = {
+        ...this.image,
+        rotationDeg: this.normalizeRotationDeg((this.image.rotationDeg ?? 0) + rotateDeg),
+      };
     } else {
       this.image = { ...this.image, x: this.image.x + dx, y: this.image.y + dy };
     }

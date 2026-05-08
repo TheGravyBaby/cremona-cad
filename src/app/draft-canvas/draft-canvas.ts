@@ -86,6 +86,12 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     "y": 0,
     "width": 0,
     "height": 0,
+    "rotationDeg": 0,
+  }
+
+  private normalizeRotationDeg(deg: number): number {
+    const v = deg % 360;
+    return v < 0 ? v + 360 : v;
   }
 
   ngAfterViewInit(): void {
@@ -503,6 +509,8 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
     if (key === 'x' || key === 'y') {
       (next as any)[key] = v;
+    } else if (key === 'rotationDeg') {
+      next.rotationDeg = this.normalizeRotationDeg(v);
     } else if (key === 'width') {
       next.width = Math.max(minMm, v);
       if (this.lockAspect) {

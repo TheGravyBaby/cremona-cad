@@ -33,6 +33,7 @@ export type ReferenceImage = {
   y: number;
   width: number;
   height: number;
+  rotationDeg?: number;
   "xlink:href"?: string;
   href: string;
 }
