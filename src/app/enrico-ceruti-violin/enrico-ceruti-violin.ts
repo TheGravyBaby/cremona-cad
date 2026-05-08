@@ -501,6 +501,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       renderArcFromArcFancy(flipArcAboutY(p.bouts.CU), this.colors.centerBoutUp)(g, ui);
       renderArcFromArcFancy(flipArcAboutY(p.bouts.CL), this.colors.centerBoutLow)(g, ui);
       renderArcFromArcFancy(flipArcAboutY(p.bouts.C0), this.colors.centerBout)(g, ui);
+      renderDashedLine({x:-1000, y: p.bouts.C0.y}, {x:1000, y: p.bouts.C0.y}, this.colors.centerBoutOff2)(g, ui);
     } 
     else {
       renderArcFromArc(p.bouts.CU, this.colors.centerBout)(g, ui);
@@ -518,17 +519,13 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       renderCircle(flipCircleAboutY(p.bouts.CU), this.colors.centerBoutUp)(g, ui);
       renderCircle(flipCircleAboutY(p.bouts.CL), this.colors.centerBoutLow)(g, ui);
       renderCircle(flipCircleAboutY(p.bouts.C0), this.colors.centerBout)(g, ui);
+
+      // renderDistanceMeasurementLine(
+      //   { x: -p.bouts.CBW / 2, y: p.bouts.C0.y },
+      //   { x: p.bouts.CBW / 2, y: p.bouts.C0.y },
+      //   `${p.bouts.CBW}mm`, this.colors.centerBoutOff2
+      // )(g, ui);
     }
-
-    // render a long dashed line at the center bout Y value
-    renderDashedLine({x:-1000, y: p.bouts.C0.y}, {x:1000, y: p.bouts.C0.y}, this.colors.centerBoutOff2)(g, ui);
-
-    // // render a measurement line along the center bout Y value, with text showing CBW
-    // renderDistanceMeasurementLine(
-    //   { x: -p.bouts.CBW / 2, y: p.bouts.C0.y },
-    //   { x: p.bouts.CBW / 2, y: p.bouts.C0.y },
-    //   `${p.bouts.CBW}mm`, this.colors.centerBoutOff2
-    // )(g, ui);
   }
 
   // === UI helpers ===
