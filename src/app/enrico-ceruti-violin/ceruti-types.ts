@@ -104,7 +104,7 @@ const DefaultParams: EnricoCerutiParams = {
     
     CBWtoLBW: 1 / 2,
     C0YtoH: 9 / 16,
-    C0toLBW: 2 / 5,
+    C0toLBW: 3/8,
     CUtoLBW: 1 / 12,
     CLtoLBW: 1 / 8,
     

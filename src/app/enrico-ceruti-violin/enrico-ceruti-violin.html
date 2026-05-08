@@ -256,13 +256,13 @@
                 <label class="field-cell">
                     <span class="field-title">X <span class="unit-label">mm</span></span>
                     <input type="number" class="basic-input" step=".25" [(ngModel)]="d.params.bouts.UC.x"
-                        (input)="changeCorners()" [style.borderColor]="colors.centerBoutUp"/>
+                        (input)="changeCorners()" [style.borderColor]="colors.centerBoutUpOff"/>
                 </label>
                 <span class="field-separator" aria-hidden="true"></span>
                 <label class="field-cell">
                     <span class="field-title">Y <span class="unit-label">mm</span></span>
                     <input type="number" class="basic-input" step=".25" [(ngModel)]="d.params.bouts.UC.y"
-                        (input)="changeCorners()"  [style.borderColor]="colors.centerBoutUp"/>
+                        (input)="changeCorners()"  [style.borderColor]="colors.centerBoutUpOff"/>
                 </label>
             </div>
             <div class="ui-group">
@@ -270,19 +270,25 @@
                     <label class="field-cell">
                         <span class="field-title">U2 Radius <span class="unit-label">mm</span></span>
                         <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.U2.r"
-                            (input)="changeCorners()"  [style.borderColor]="colors.upperBoutOff"/>
+                            (input)="changeCorners()"  [style.borderColor]="colors.upperBout"/>
+                    </label>
+                    <label class="field-cell">
+                        <span class="field-title">U2 Height <span class="unit-label">mm</span></span>
+                        <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.U2.y"
+                            (input)="changeCorners()" [style.borderColor]="colors.upperBout"/>
                     </label>
                     <label class="field-cell">
                         <span class="field-title">U2 to UBW</span>
                         <div class="basic-display" aria-label="Upper bout to width ratio value">{{
                             nearestFraction(d.params.ratios.U2toUBW) }}</div>
                     </label>
+       
                 </div>
                 <div class="input-group basic-row field-row" role="group">
                     <label class="field-cell">
                         <span class="field-title">U3 Radius <span class="unit-label">mm</span></span>
                         <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.U3.r"
-                            (input)="changeCorners()"  [style.borderColor]="colors.centerBoutUpOff"/>
+                            (input)="changeCorners()"  [style.borderColor]="colors.centerBoutUp"/>
                     </label>
                     <label class="field-cell">
                         <span class="field-title">U3 to LBW</span>
@@ -304,13 +310,13 @@
                 <label class="field-cell">
                     <span class="field-title">X <span class="unit-label">mm</span></span>
                     <input type="number" class="basic-input" step=".25" [(ngModel)]="d.params.bouts.LC.x"
-                        (input)="changeCorners()" [style.borderColor]="colors.centerBoutLow"/>
+                        (input)="changeCorners()" [style.borderColor]="colors.centerBoutLowOff"/>
                 </label>
                 <span class="field-separator" aria-hidden="true"></span>
                 <label class="field-cell">
                     <span class="field-title">Y <span class="unit-label">mm</span></span>
                     <input type="number" class="basic-input" step=".25" [(ngModel)]="d.params.bouts.LC.y"
-                        (input)="changeCorners()" [style.borderColor]="colors.centerBoutLow" />
+                        (input)="changeCorners()" [style.borderColor]="colors.centerBoutLowOff" />
                 </label>
             </div>
 
@@ -319,7 +325,12 @@
                 <label class="field-cell">
                     <span class="field-title">L2 Radius <span class="unit-label">mm</span></span>
                     <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.L2.r"
-                        (input)="changeCorners()" [style.borderColor]="colors.lowerBoutOff"/>
+                        (input)="changeCorners()" [style.borderColor]="colors.lowerBout"/>
+                </label>
+                <label class="field-cell">
+                    <span class="field-title">L2 Height <span class="unit-label">mm</span></span>
+                    <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.L2.y"
+                        (input)="changeCorners()" [style.borderColor]="colors.lowerBout"/>
                 </label>
                 <label class="field-cell">
                     <span class="field-title">L2 to LBW</span>
@@ -332,7 +343,7 @@
                 <label class="field-cell">
                     <span class="field-title">L3 Radius <span class="unit-label">mm</span></span>
                     <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.L3.r"
-                        (input)="changeCorners()" [style.borderColor]="colors.centerBoutLowOff"/>
+                        (input)="changeCorners()" [style.borderColor]="colors.centerBoutLow"/>
                 </label>
                 <label class="field-cell">
                     <span class="field-title">L3 to LBW</span>
@@ -421,7 +432,11 @@
                         <input type="number" class="basic-input" step="1" [(ngModel)]="d.params.bouts.C0.y"
                             (input)="changeCenterBout()" [style.borderColor]="colors.centerBout" />
                     </label>
-                    <label class="field-cell"></label>
+                    <label class="field-cell">
+                        <span class="field-title">C0 to LBW</span>
+                        <div class="basic-display" aria-label="Center bout radius to lower bout width ratio value">{{
+                            nearestFraction(d.params.ratios.C0toLBW) }}</div>
+                    </label>
                 </div>
 
                 <div class="input-group basic-row field-row" role="group">
