@@ -27,14 +27,17 @@ type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 
 type AxisGridPreferences = {
   showGrid: boolean;
-  showXAxis: boolean;
-  showYAxis: boolean;
+  showAxes: boolean;
+  showGridX: boolean;
+  showGridY: boolean;
   gridStepX: number;
   gridStepY: number;
 };
 
 type PersistedAxisGridPreferences = Partial<AxisGridPreferences> & {
   showAxes?: boolean;
+  showXAxis?: boolean;
+  showYAxis?: boolean;
 };
 
 class AxisGridController {
@@ -42,8 +45,9 @@ class AxisGridController {
 
   private preferences: AxisGridPreferences = {
     showGrid: false,
-    showXAxis: false,
-    showYAxis: false,
+    showAxes: false,
+    showGridX: true,
+    showGridY: true,
     gridStepX: 50,
     gridStepY: 50,
   };
@@ -57,12 +61,16 @@ class AxisGridController {
     return this.preferences.showGrid;
   }
 
-  get showXAxis(): boolean {
-    return this.preferences.showXAxis;
+  get showAxes(): boolean {
+    return this.preferences.showAxes;
   }
 
-  get showYAxis(): boolean {
-    return this.preferences.showYAxis;
+  get showGridX(): boolean {
+    return this.preferences.showGridX;
+  }
+
+  get showGridY(): boolean {
+    return this.preferences.showGridY;
   }
 
   get gridStepX(): number {
@@ -82,8 +90,13 @@ class AxisGridController {
 
       this.preferences = {
         showGrid: typeof parsed.showGrid === 'boolean' ? parsed.showGrid : this.preferences.showGrid,
-        showXAxis: this.resolveAxisPreference(parsed.showXAxis, parsed.showAxes, this.preferences.showXAxis),
-        showYAxis: this.resolveAxisPreference(parsed.showYAxis, parsed.showAxes, this.preferences.showYAxis),
+        showAxes: this.resolveAxisPreference(parsed.showAxes, parsed.showXAxis, this.preferences.showAxes),
+        showGridX: typeof parsed.showGridX === 'boolean'
+          ? parsed.showGridX
+          : this.resolveAxisPreference(parsed.showXAxis, parsed.showAxes, this.preferences.showGridX),
+        showGridY: typeof parsed.showGridY === 'boolean'
+          ? parsed.showGridY
+          : this.resolveAxisPreference(parsed.showYAxis, parsed.showAxes, this.preferences.showGridY),
         gridStepX: this.sanitizeStep(parsed.gridStepX, this.preferences.gridStepX),
         gridStepY: this.sanitizeStep(parsed.gridStepY, this.preferences.gridStepY),
       };
@@ -95,8 +108,9 @@ class AxisGridController {
   updatePreferences(next: Partial<AxisGridPreferences>): void {
     this.preferences = {
       showGrid: typeof next.showGrid === 'boolean' ? next.showGrid : this.preferences.showGrid,
-      showXAxis: typeof next.showXAxis === 'boolean' ? next.showXAxis : this.preferences.showXAxis,
-      showYAxis: typeof next.showYAxis === 'boolean' ? next.showYAxis : this.preferences.showYAxis,
+      showAxes: typeof next.showAxes === 'boolean' ? next.showAxes : this.preferences.showAxes,
+      showGridX: typeof next.showGridX === 'boolean' ? next.showGridX : this.preferences.showGridX,
+      showGridY: typeof next.showGridY === 'boolean' ? next.showGridY : this.preferences.showGridY,
       gridStepX: next.gridStepX !== undefined ? this.sanitizeStep(next.gridStepX, this.preferences.gridStepX) : this.preferences.gridStepX,
       gridStepY: next.gridStepY !== undefined ? this.sanitizeStep(next.gridStepY, this.preferences.gridStepY) : this.preferences.gridStepY,
     };
@@ -107,7 +121,7 @@ class AxisGridController {
 
   draw(gRoot: RootGroup, gUI: RootGroup, cv: CanvasViewport, pxPerMm: number): void {
     if (this.showGrid) this.drawGrid(gRoot, cv);
-    if (this.showXAxis || this.showYAxis) {
+    if (this.showAxes) {
       this.drawAxes(gRoot, cv);
       this.drawAxisLabels(gUI, cv, pxPerMm);
     }
@@ -142,7 +156,7 @@ class AxisGridController {
   private drawAxes(gRoot: RootGroup, cv: CanvasViewport): void {
     const lineColor = '#adadadff';
 
-    if (this.showYAxis) {
+    if (this.showAxes) {
       gRoot
         .append('line')
         .attr('x1', 0)
@@ -154,7 +168,7 @@ class AxisGridController {
         .attr('vector-effect', 'non-scaling-stroke');
     }
 
-    if (this.showXAxis) {
+    if (this.showAxes) {
       gRoot
         .append('line')
         .attr('x1', cv.leftBound)
@@ -189,7 +203,7 @@ class AxisGridController {
     if (renderXAxisAt !== null && renderXAxisAt > 0) xLabelY += 20 / pxPerMm;
     if (renderYAxisAt !== null && renderYAxisAt < 0) yLabelX -= 80 / pxPerMm;
 
-    if (this.showXAxis && cv.rightBound > 0) {
+    if (this.showAxes && cv.rightBound > 0) {
       gUI
         .append('text')
         .attr('x', cv.rightBound)
@@ -203,7 +217,7 @@ class AxisGridController {
         .style('user-select', 'none');
     }
 
-    if (this.showXAxis && cv.leftBound < 0) {
+    if (this.showAxes && cv.leftBound < 0) {
       gUI
         .append('text')
         .attr('x', cv.leftBound)
@@ -217,7 +231,7 @@ class AxisGridController {
         .style('user-select', 'none');
     }
 
-    if (this.showYAxis && cv.topBound < 0) {
+    if (this.showAxes && cv.topBound < 0) {
       gUI
         .append('text')
         .attr('x', yLabelX)
@@ -231,7 +245,7 @@ class AxisGridController {
         .style('user-select', 'none');
     }
 
-    if (this.showYAxis && cv.bottomBound > 0) {
+    if (this.showAxes && cv.bottomBound > 0) {
       gUI
         .append('text')
         .attr('x', yLabelX)
@@ -249,7 +263,8 @@ class AxisGridController {
   private drawGrid(gRoot: RootGroup, cv: CanvasViewport, gridColor: string = '#85858543'): void {
 
     for (let y = 0; y <= -cv.topBound; y += this.gridStepY) {
-      if (y === 0 && this.showXAxis) continue; 
+      if (!this.showGridY) continue;
+      if (y === 0 && this.showAxes) continue; 
       gRoot
         .append('line')
         .attr('x1', cv.leftBound)
@@ -261,7 +276,8 @@ class AxisGridController {
         .attr('vector-effect', 'non-scaling-stroke')
     }
     for (let y = -this.gridStepY; y >= -cv.bottomBound; y -= this.gridStepY) {
-      if (y === 0 && this.showXAxis) continue; 
+      if (!this.showGridY) continue;
+      if (y === 0 && this.showAxes) continue; 
  
       gRoot        
         .append('line')
@@ -275,7 +291,8 @@ class AxisGridController {
     }
 
     for (let x = -this.gridStepX; x <= cv.rightBound; x += this.gridStepX) {
-      if (x === 0 && this.showYAxis) continue; 
+      if (!this.showGridX) continue;
+      if (x === 0 && this.showAxes) continue; 
 
       gRoot
       .append('line')
@@ -288,7 +305,8 @@ class AxisGridController {
       .attr('vector-effect', 'non-scaling-stroke')
     }
     for (let x = -this.gridStepX; x >= cv.leftBound; x -= this.gridStepX) {
-      if (x === 0 && this.showYAxis) continue;
+      if (!this.showGridX) continue;
+      if (x === 0 && this.showAxes) continue;
       gRoot        
       .append('line')
       .attr('x1', x)
@@ -385,20 +403,28 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.axisGrid.updatePreferences({ showGrid: value });
   }
 
-  public get showXAxis(): boolean {
-    return this.axisGrid.showXAxis;
+  public get showAxes(): boolean {
+    return this.axisGrid.showAxes;
   }
 
-  public set showXAxis(value: boolean) {
-    this.axisGrid.updatePreferences({ showXAxis: value });
+  public set showAxes(value: boolean) {
+    this.axisGrid.updatePreferences({ showAxes: value });
   }
 
-  public get showYAxis(): boolean {
-    return this.axisGrid.showYAxis;
+  public get showGridX(): boolean {
+    return this.axisGrid.showGridX;
   }
 
-  public set showYAxis(value: boolean) {
-    this.axisGrid.updatePreferences({ showYAxis: value });
+  public set showGridX(value: boolean) {
+    this.axisGrid.updatePreferences({ showGridX: value });
+  }
+
+  public get showGridY(): boolean {
+    return this.axisGrid.showGridY;
+  }
+
+  public set showGridY(value: boolean) {
+    this.axisGrid.updatePreferences({ showGridY: value });
   }
 
   public get gridStepX(): number {
