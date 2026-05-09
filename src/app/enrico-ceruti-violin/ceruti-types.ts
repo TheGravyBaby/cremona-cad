@@ -95,25 +95,25 @@ const DefaultParams: EnricoCerutiParams = {
   rib: 1,
   ratios: {
     HtoW: 7 / 4,
-    
+
     UBtoLB: 4 / 5,
     U0toH: 1 / 3,
     U1toUBW: 1 / 3,
     U2toUBW: 1 / 2,
     U3toLBW: 1 / 8,
-    
+
     CBWtoLBW: 1 / 2,
     C0YtoH: 9 / 16,
-    C0toLBW: 3/8,
+    C0toLBW: 3 / 8,
     CUtoLBW: 1 / 12,
     CLtoLBW: 1 / 8,
-    
+
     LBtoH: 4 / 7,
     L0toH: 1 / 2,
     L1toLBW: 1 / 3,
     L2toLBW: 1 / 2,
     L3toLBW: 1 / 8,
-    
+
     UCYtoH: 2 / 3,
     UCXtoUBW: 7 / 8,
     LCYtoH: 6 / 15,
@@ -336,95 +336,95 @@ const stradGoetzParams: EnricoCerutiParams = {
     "LCXtoLBW": 0.875
   },
   "bouts": {
-    "UBW": 160,
-    "U0": {
-      "x": 0,
-      "y": 239,
-      "r": 117,
-      "start": 1.5707963267948966,
-      "end": 1.3576475739242813
-    },
-    "U1": {
-      "x": 11,
-      "y": 289.82322303829227,
-      "r": 65,
-      "start": 1.3576475923680302,
-      "end": -0.11962158517573697
-    },
-    "U2": {
-      "x": -23.749885384158425,
-      "y": 294,
-      "r": 100,
-      "start": -0.11962156442651989,
-      "end": -0.34871636265320916
-    },
-    "U3": {
-      "x": 95.60624988420405,
-      "y": 250.60515037702797,
-      "r": 27,
-      "start": 2.7928762012205564,
-      "end": -2.6347995503560626
-    },
-    "CBW": 100,
-    "CU": {
-      "x": 66.45522067005395,
-      "y": 222.49148834220384,
-      "r": 16,
-      "start": 2.7504859905840764,
-      "end": 1.2169070256968206
-    },
-    "C0": {
-      "x": 121,
-      "y": 200,
-      "r": 75,
-      "start": 2.750486056895119,
-      "end": -2.5237749168168118
-    },
-    "CL": {
-      "x": 79.427631573594,
-      "y": 170.45785750120416,
-      "r": 24,
-      "start": -2.5237749550299546,
-      "end": -1.3578417180548068
-    },
-    "LBW": 200,
-    "L3": {
-      "x": 114.16858263196957,
-      "y": 135.00937013289158,
-      "r": 32,
-      "start": -2.6712427684315543,
-      "end": 2.7575117260374333
-    },
-    "L2": {
-      "x": 0.0681313761345308,
-      "y": 77,
-      "r": 96,
-      "start": 0.07536778482209223,
-      "end": 0.4703498851582388
-    },
-    "L1": {
-      "x": 24,
-      "y": 78.80711487461186,
-      "r": 72,
-      "start": -1.3379281485368144,
-      "end": 0.07536778482209223
-    },
-    "L0": {
-      "x": 0,
-      "y": 180,
-      "r": 176,
-      "start": 4.71238898038469,
-      "end": -1.3379281485368142
-    },
-    "UC": {
-      "x": 72,
-      "y": 237.5
-    },
-    "LC": {
-      "x": 84.5,
-      "y": 147
-    }
+  "UBW": 160,
+  "U0": {
+    "x": 0,
+    "y": 239,
+    "r": 117,
+    "start": 1.5707963267948966,
+    "end": 1.3576475739242813
   },
+  "U1": {
+    "x": 11,
+    "y": 289.82322303829227,
+    "r": 65,
+    "start": 1.3576475923680302,
+    "end": 0
+  },
+  "U2": {
+    "x": -23.749885384158425,
+    "y": 294,
+    "r": 100,
+    "start": -0.11962156442651989,
+    "end": -0.34871636265320916
+  },
+  "U3": {
+    "x": 95.60624988420405,
+    "y": 250.60515037702797,
+    "r": 27,
+    "start": 2.7928762012205564,
+    "end": -2.6347995503560626
+  },
+  "CBW": 100,
+  "CU": {
+    "x": 66.45522067005395,
+    "y": 222.49148834220384,
+    "r": 16,
+    "start": 2.7504859905840764,
+    "end": 1.2169070256968206
+  },
+  "C0": {
+    "x": 121,
+    "y": 200,
+    "r": 75,
+    "start": 2.750486056895119,
+    "end": -2.5237749168168118
+  },
+  "CL": {
+    "x": 79.427631573594,
+    "y": 170.45785750120416,
+    "r": 24,
+    "start": -2.5237749550299546,
+    "end": -1.3578417180548068
+  },
+  "LBW": 200,
+  "L3": {
+    "x": 113.80703487630812,
+    "y": 134.15096475377004,
+    "r": 32,
+    "start": -2.639511516686113,
+    "end": 2.7284032638025835
+  },
+  "L2": {
+    "x": 13,
+    "y": 78.80711487461186,
+    "r": 83,
+    "start": 0,
+    "end": 0.5020811369036803
+  },
+  "L1": {
+    "x": 24,
+    "y": 78.80711487461186,
+    "r": 72,
+    "start": -1.3379281485368144,
+    "end": 0
+  },
+  "L0": {
+    "x": 0,
+    "y": 180,
+    "r": 176,
+    "start": 4.71238898038469,
+    "end": -1.3379281485368142
+  },
+  "UC": {
+    "x": 72,
+    "y": 237.5
+  },
+  "LC": {
+    "x": 84.5,
+    "y": 147
+  }
+},
   "outerCorners": {
     "U31": null,
     "U31Cutoff": 0,
@@ -474,7 +474,7 @@ export const CERUTI_TEMPLATES: EnricoCerutiTemplate[] = [
       "width": 0,
       "height": 0,
     },
-  }, 
+  },
   {
     key: 'ceruti-drawing',
     label: 'Ceruti Drawing',
@@ -482,7 +482,7 @@ export const CERUTI_TEMPLATES: EnricoCerutiTemplate[] = [
     fileName: 'Ceruti Original',
     version: '0.1',
     description: 'From the Ceruti workshop drawing C. 1820',
-    params : CerutiParams,
+    params: CerutiParams,
     paths: [],
     referenceImage: {
       "href": "/CerutiDrawing.png",
@@ -494,7 +494,7 @@ export const CERUTI_TEMPLATES: EnricoCerutiTemplate[] = [
       "rotationDeg": 0.4
     },
   },
- 
+
   {
     key: 'strad-goetz',
     label: 'Strad Goetz',
@@ -509,8 +509,27 @@ export const CERUTI_TEMPLATES: EnricoCerutiTemplate[] = [
       "y": -196.6448444843292,
       "width": 319,
       "height": 779,
+      "rotationDeg": 359.5
     },
     params: stradGoetzParams,
     paths: [],
   },
+  {
+      key: "ravatinMans",
+      label: "Cello - Ravatin - Mans",
+      recipeName: 'enrico-ceruti-violin',
+      fileName: 'Ravatin Mans Cello',
+      version: '0.1',
+      description: '',
+      referenceImage: {
+        "href": "/Ravatin_Mans.jpg",
+        "xlink:href": "/Ravatin_Mans.jpg",
+        "x": -272.160400390625,
+        "y": -58.821990966796875,
+        "width": 541,
+        "height": 1262,
+      },
+      params : DefaultParams,
+      paths: []
+    },
 ];

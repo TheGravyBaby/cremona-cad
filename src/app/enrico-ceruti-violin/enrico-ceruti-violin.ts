@@ -309,6 +309,16 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     }));
   }
 
+  setU2toU1(): void {
+    this.d.params.bouts.U2 = new Arc(this.d.params.bouts.U1!.x, this.d.params.bouts.U1!.y, this.d.params.bouts.U1!.r);
+    this.changeCorners();
+  }
+
+  setL2toL1(): void {
+    this.d.params.bouts.L2 = new Arc(this.d.params.bouts.L1!.x, this.d.params.bouts.L1!.y, this.d.params.bouts.L1!.r);
+    this.changeCorners();
+  }
+
   renderCorners = (currentModule: boolean) => (g: any, ui: any): void => {
     let p = this.d.params;
 

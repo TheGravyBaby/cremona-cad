@@ -74,9 +74,15 @@ export function calculateCorners(p: EnricoCerutiParams): void {
 
     let U2R = p.bouts.U2?.r ?? Math.round(UBWI * p.ratios.U2toUBW);
     let U2Y = p.bouts.U2?.y ?? p.bouts.U1.y;
-    let U2X; 
 
-    if (U2Y == p.bouts.U1.y){
+    let U1U2Match = false
+    if (p.bouts.U2?.r ==p.bouts.U1.r && p.bouts.U2?.y == p.bouts.U1.y && p.bouts.U2?.x == p.bouts.U1.x) {
+        // this is a special case where the user has set U2 to be the same as U1, 
+        // which causes the math below to break since we won't have two distinct circles to intersect
+        U1U2Match = true;
+         p.bouts.U1.end = 0
+    }
+    else if (U2Y == p.bouts.U1.y){
         p.bouts.U2 = new Arc(p.bouts.UBW / 2 - U2R - inset, U2Y, U2R);
     }
     else {
@@ -91,8 +97,13 @@ export function calculateCorners(p: EnricoCerutiParams): void {
     
     let L2R = p.bouts.L2?.r ?? Math.round(LBWI * p.ratios.L2toLBW);
     let L2Y = p.bouts.L2?.y ?? p.bouts.L1.y;
-    let L2X;
-    
+    let L2U1Match = false
+    if (p.bouts.L2?.r ==p.bouts.L1.r && p.bouts.L2?.y == p.bouts.L1.y && p.bouts.L2?.x == p.bouts.L1.x) {
+        // this is a special case where the user has set L2 to be the same as L1,
+        // which causes the math below to break since we won't have two distinct circles to intersect
+        L2U1Match = true;
+        p.bouts.L1.end = 0
+    }
     if (L2Y == p.bouts.L1.y){       
         p.bouts.L2 = new Arc(p.bouts.LBW / 2 - L2R - inset, L2Y, L2R);
     }
@@ -114,18 +125,26 @@ export function calculateCorners(p: EnricoCerutiParams): void {
     let U2Intersect = circleCircleIntersections(p.bouts.U2, p.bouts.U3).sort((a, b) => a.y - b.y);
     let U2Angle = angleFromCenter(p.bouts.U2, U2Intersect[1]);
     let U2StartAngle = angleFromCenter(p.bouts.U2, p.bouts.U1);
-    let newU1Intersect = circleCircleIntersections(p.bouts.U1, p.bouts.U2).sort((a, b) => a.y - b.y);
-    let U1EndAngle = angleFromCenter(p.bouts.U1, newU1Intersect[0]); // we might have to recalculate the angle if we altered the Y height of
-    p.bouts.U1.end = U1EndAngle
+
+    if (!U1U2Match) {
+        let newU1Intersect = circleCircleIntersections(p.bouts.U1, p.bouts.U2).sort((a, b) => a.y - b.y);
+        let U1EndAngle = angleFromCenter(p.bouts.U1, newU1Intersect[0]); // we might have to recalculate the angle if we altered the Y height of
+        p.bouts.U1.end = U1EndAngle
+    }
     p.bouts.U2 = arcFromCircle(p.bouts.U2, U2StartAngle, U2Angle);
     p.bouts.U3 = arcFromCircleAndPoints(p.bouts.U3, U2Intersect[1], p.bouts.UC);
+
 
     let L2Intersect = circleCircleIntersections(p.bouts.L2, p.bouts.L3).sort((a, b) => a.y - b.y)[0];
     let L2Angle = angleFromCenter(p.bouts.L2, L2Intersect);
     let L2StartAngle = angleFromCenter(p.bouts.L2, p.bouts.L1);
-    let newL1Intersect = circleCircleIntersections(p.bouts.L1, p.bouts.L2).sort((a, b) => a.y - b.y)[0];
-    let L1EndAngle = angleFromCenter(p.bouts.L1, newL1Intersect);
-    p.bouts.L1.end = L1EndAngle // we might have to recalculate the angle if we altered the Y height of
+
+    if (!L2U1Match) {
+        let newL1Intersect = circleCircleIntersections(p.bouts.L1, p.bouts.L2).sort((a, b) => a.y - b.y)[0];
+        let L1EndAngle = angleFromCenter(p.bouts.L1, newL1Intersect);
+        p.bouts.L1.end = L1EndAngle // we might have to recalculate the angle if we altered the Y height of
+    }
+
     p.bouts.L2 = arcFromCircle(p.bouts.L2, L2StartAngle, L2Angle);
     p.bouts.L3 = arcFromCircleAndPoints(p.bouts.L3, L2Intersect, p.bouts.LC);
 

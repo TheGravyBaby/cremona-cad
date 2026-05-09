@@ -24,7 +24,7 @@
       </label>
       <div class="align-controls">
         <button type="button" class="btn" [class.active]="referenceModeEnabled" (click)="toggleAlignPopup()">
-          Align Reference
+          Reference
         </button>
         @if(referenceModeEnabled) {
         <div class="align-popup">
@@ -63,7 +63,7 @@
       </div>
        <div class="axis-controls">
         <button type="button" class="btn" [class.active]="axisPopupOpen" (click)="toggleAxisPopup()">
-          Grid Settings
+          Axis
         </button>
         @if(axisPopupOpen) {
         <div class="axis-popup">
