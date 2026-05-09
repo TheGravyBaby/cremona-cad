@@ -156,7 +156,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     const rightBound = vb.rightBound;
     const topBound = vb.topBound;
     const bottomBound = vb.bottomBound;
-
     this.canvas.attr('viewBox', `${leftBound} ${topBound} ${mmW} ${mmH}`);
     this.gRoot.attr('transform', 'scale(1,-1)');
 
@@ -166,7 +165,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
     this.showAxes && this.drawAxis(cv);
     this.showAxes && this.drawAxisLabels(cv);
-    this.showGrid && this.drawDots(cv, '#b4b4b4ff');
+    this.showGrid && this.drawGrid(cv, '#515151ff');
     this.showReferenceImage && this.refController.drawImage(this.gRoot)
     this.referenceModeEnabled && this.showReferenceImage && this.refController.drawControls(this.gRoot, this.pxPerMm);
 
@@ -324,43 +323,55 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
   }
 
-  drawDots(cv: any, dotColor: string): void {
-    let xMax = Math.max(Math.abs(cv.rightBound), Math.abs(cv.leftBound));
-    let yMax = Math.max(Math.abs(cv.topBound), Math.abs(cv.bottomBound));
-    let dotSpacing = 50;
+  drawGrid(cv: any, gridColor: string = "#4e4e4eff"): void {
+    let yScale = 50
+    let xScale = 50
 
-    const dots: Array<{ x: number; y: number }> = [];
-
-    // build symmetric dots around the *view center* in world coords
-    for (let x = 0; x <= xMax; x += dotSpacing) {
-      for (let y = 0; y <= yMax; y += dotSpacing) {
-        if (this.showAxes && (x === 0 || y === 0)) continue;
-
-        if (cv.leftBound <= x && x <= cv.rightBound)
-          dots.push({ x: x, y: y });
-        if (cv.leftBound <= -x && -x <= cv.rightBound)
-          dots.push({ x: -x, y: y });
-        if (cv.leftBound <= x && x <= cv.rightBound)
-          dots.push({ x: x, y: -y });
-        if (cv.leftBound <= -x && -x <= cv.rightBound)
-          dots.push({ x: -x, y: -y });
-
-      }
+    for (let y = yScale; y <= -cv.topBound; y += yScale) {
+      this.gRoot
+        .append('line')
+        .attr('x1', cv.leftBound)
+        .attr('y1', y )
+        .attr('x2', cv.rightBound)
+        .attr('y2', y )
+        .attr('stroke', gridColor)
+        .attr('stroke-width', 2)
+        .attr('vector-effect', 'non-scaling-stroke')
+    }
+    for (let y = -yScale; y >= -cv.bottomBound; y -= 50) { 
+      this.gRoot        
+        .append('line')
+        .attr('x1', cv.leftBound)
+        .attr('y1', y )
+        .attr('x2', cv.rightBound)
+        .attr('y2', y )
+        .attr('stroke', gridColor)
+        .attr('stroke-width', 2)
+        .attr('vector-effect', 'non-scaling-stroke')
     }
 
-    const dotR = 2 / this.pxPerMm; // keep roughly constant in pixels
-
-    this.gRoot
-      .append('g')
-      .attr('class', 'grid-dots')
-      .selectAll('circle')
-      .data(dots)
-      .enter()
-      .append('circle')
-      .attr('cx', d => d.x)
-      .attr('cy', d => d.y)
-      .attr('r', dotR)
-      .attr('fill', dotColor);
+    for (let x = xScale; x <= cv.rightBound; x += xScale) {
+      this.gRoot
+      .append('line')
+      .attr('x1', x)
+      .attr('y1', -cv.topBound)
+      .attr('x2', x)
+      .attr('y2', -cv.bottomBound)
+      .attr('stroke', gridColor)
+      .attr('stroke-width', 2)
+      .attr('vector-effect', 'non-scaling-stroke')
+    }
+    for (let x = -xScale; x >= cv.leftBound; x -= xScale) {
+      this.gRoot        
+      .append('line')
+      .attr('x1', x)
+      .attr('y1', -cv.topBound)
+      .attr('x2', x)
+      .attr('y2', -cv.bottomBound)
+      .attr('stroke', gridColor)
+      .attr('stroke-width', 2)
+      .attr('vector-effect', 'non-scaling-stroke')
+    }
   }
 
   // UI controls
@@ -509,7 +520,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
     if (key === 'x' || key === 'y') {
       (next as any)[key] = v;
-    } else if (key === 'rotationDeg') {
+      } else if (key === 'rotationDeg') {
       next.rotationDeg = this.normalizeRotationDeg(v);
     } else if (key === 'width') {
       next.width = Math.max(minMm, v);
