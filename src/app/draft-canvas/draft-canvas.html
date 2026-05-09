@@ -17,38 +17,7 @@
     </div>
 
     <div class="right">
-      <label class="chk">
-        <input type="checkbox" [ngModel]="showGrid" (ngModelChange)="showGrid = $event" />
-        Grid
-      </label>
-
-      <div class="axis-controls">
-        <button type="button" class="btn" [class.active]="axisPopupOpen" (click)="toggleAxisPopup()">
-          Grid Settings
-          </button>
-          @if(axisPopupOpen) {
-          <div class="axis-popup">
-            <div class="row">
-              <label>X Step (mm)</label>
-              <input type="number" min="0.1" step="0.1" [ngModel]="gridStepX" (ngModelChange)="gridStepX = $event" />
-            </div>
-            <div class="row">
-              <label>Y Step (mm)</label>
-              <input type="number" min="0.1" step="0.1" [ngModel]="gridStepY" (ngModelChange)="gridStepY = $event" />
-            </div>
-            <label class="chk">
-              <input type="checkbox" [ngModel]="showXAxis" (ngModelChange)="showXAxis = $event" />
-              X Axis
-            </label>
-          
-            <label class="chk">
-              <input type="checkbox" [ngModel]="showYAxis" (ngModelChange)="showYAxis = $event" />
-              Y Axis
-            </label>
-          </div>
-          }
-      </div>
-
+  
       <label class="chk">
         <input type="checkbox" [(ngModel)]="showReferenceImage" (change)="onDisplayPreferenceChange()" />
         Reference
@@ -89,6 +58,35 @@
             </label>
             <button type="button" class="btn" (click)="resetReferenceImage()">Reset</button>
           </div>
+        </div>
+        }
+      </div>
+       <div class="axis-controls">
+        <button type="button" class="btn" [class.active]="axisPopupOpen" (click)="toggleAxisPopup()">
+          Grid Settings
+        </button>
+        @if(axisPopupOpen) {
+        <div class="axis-popup">
+          <div class="row">
+            <label>X Step (mm)</label>
+            <input type="number" min="0.1" step="0.1" [ngModel]="gridStepX" (ngModelChange)="gridStepX = $event" />
+          </div>
+          <div class="row">
+            <label>Y Step (mm)</label>
+            <input type="number" min="0.1" step="0.1" [ngModel]="gridStepY" (ngModelChange)="gridStepY = $event" />
+          </div>
+          <label class="chk">
+          <input type="checkbox" [ngModel]="showAxes" (ngModelChange)="showAxes = $event" />
+            Axis
+          </label>
+          <label class="chk">
+            <input type="checkbox" [ngModel]="showGridX" (ngModelChange)="showGridX = $event" />
+            X Lines
+          </label>
+          <label class="chk">
+            <input type="checkbox" [ngModel]="showGridY" (ngModelChange)="showGridY = $event" />
+            Y Lines
+          </label>
         </div>
         }
       </div>
