@@ -14,6 +14,294 @@ import { Pt, ReferenceImage } from '../models/types';
 import { Camera } from './camera';
 import { ReferenceImageController } from './reference-image-controller';
 
+type CanvasViewport = {
+  leftBound: number;
+  rightBound: number;
+  topBound: number;
+  bottomBound: number;
+  mmW: number;
+  mmH: number;
+};
+
+type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
+
+type AxisGridPreferences = {
+  showGrid: boolean;
+  showXAxis: boolean;
+  showYAxis: boolean;
+  gridStepX: number;
+  gridStepY: number;
+};
+
+type PersistedAxisGridPreferences = Partial<AxisGridPreferences> & {
+  showAxes?: boolean;
+};
+
+class AxisGridController {
+  private static readonly MIN_GRID_STEP_MM = 0.1;
+
+  private preferences: AxisGridPreferences = {
+    showGrid: false,
+    showXAxis: false,
+    showYAxis: false,
+    gridStepX: 50,
+    gridStepY: 50,
+  };
+
+  constructor(
+    private readonly storageKey: string,
+    private readonly onVisualChange: () => void = () => { },
+  ) { }
+
+  get showGrid(): boolean {
+    return this.preferences.showGrid;
+  }
+
+  get showXAxis(): boolean {
+    return this.preferences.showXAxis;
+  }
+
+  get showYAxis(): boolean {
+    return this.preferences.showYAxis;
+  }
+
+  get gridStepX(): number {
+    return this.preferences.gridStepX;
+  }
+
+  get gridStepY(): number {
+    return this.preferences.gridStepY;
+  }
+
+  loadPreferences(): void {
+    try {
+      const raw = sessionStorage.getItem(this.storageKey);
+      if (!raw) return;
+
+      const parsed = JSON.parse(raw) as PersistedAxisGridPreferences;
+
+      this.preferences = {
+        showGrid: typeof parsed.showGrid === 'boolean' ? parsed.showGrid : this.preferences.showGrid,
+        showXAxis: this.resolveAxisPreference(parsed.showXAxis, parsed.showAxes, this.preferences.showXAxis),
+        showYAxis: this.resolveAxisPreference(parsed.showYAxis, parsed.showAxes, this.preferences.showYAxis),
+        gridStepX: this.sanitizeStep(parsed.gridStepX, this.preferences.gridStepX),
+        gridStepY: this.sanitizeStep(parsed.gridStepY, this.preferences.gridStepY),
+      };
+    } catch {
+      // ignore malformed/blocked sessionStorage
+    }
+  }
+
+  updatePreferences(next: Partial<AxisGridPreferences>): void {
+    this.preferences = {
+      showGrid: typeof next.showGrid === 'boolean' ? next.showGrid : this.preferences.showGrid,
+      showXAxis: typeof next.showXAxis === 'boolean' ? next.showXAxis : this.preferences.showXAxis,
+      showYAxis: typeof next.showYAxis === 'boolean' ? next.showYAxis : this.preferences.showYAxis,
+      gridStepX: next.gridStepX !== undefined ? this.sanitizeStep(next.gridStepX, this.preferences.gridStepX) : this.preferences.gridStepX,
+      gridStepY: next.gridStepY !== undefined ? this.sanitizeStep(next.gridStepY, this.preferences.gridStepY) : this.preferences.gridStepY,
+    };
+
+    this.persistPreferences();
+    this.onVisualChange();
+  }
+
+  draw(gRoot: RootGroup, gUI: RootGroup, cv: CanvasViewport, pxPerMm: number): void {
+    if (this.showGrid) this.drawGrid(gRoot, cv);
+    if (this.showXAxis || this.showYAxis) {
+      this.drawAxes(gRoot, cv);
+      this.drawAxisLabels(gUI, cv, pxPerMm);
+    }
+  }
+
+  private resolveAxisPreference(value: boolean | undefined, legacyValue: boolean | undefined, fallback: boolean): boolean {
+    if (typeof value === 'boolean') return value;
+    if (typeof legacyValue === 'boolean') return legacyValue;
+    return fallback;
+  }
+
+  private sanitizeStep(value: number | undefined, fallback: number): number {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return fallback;
+    return Math.max(AxisGridController.MIN_GRID_STEP_MM, Math.abs(parsed));
+  }
+
+  private persistPreferences(): void {
+    try {
+      const existingRaw = sessionStorage.getItem(this.storageKey);
+      const existing = existingRaw ? JSON.parse(existingRaw) as Record<string, unknown> : {};
+
+      sessionStorage.setItem(this.storageKey, JSON.stringify({
+        ...existing,
+        ...this.preferences,
+      }));
+    } catch {
+      // ignore storage errors
+    }
+  }
+
+  private drawAxes(gRoot: RootGroup, cv: CanvasViewport): void {
+    const lineColor = '#adadadff';
+
+    if (this.showYAxis) {
+      gRoot
+        .append('line')
+        .attr('x1', 0)
+        .attr('y1', -cv.topBound)
+        .attr('x2', 0)
+        .attr('y2', -cv.bottomBound)
+        .attr('stroke', lineColor)
+        .attr('stroke-width', 2)
+        .attr('vector-effect', 'non-scaling-stroke');
+    }
+
+    if (this.showXAxis) {
+      gRoot
+        .append('line')
+        .attr('x1', cv.leftBound)
+        .attr('y1', 0)
+        .attr('x2', cv.rightBound)
+        .attr('y2', 0)
+        .attr('stroke', lineColor)
+        .attr('stroke-width', 2)
+        .attr('vector-effect', 'non-scaling-stroke');
+    }
+  }
+
+  private drawAxisLabels(gUI: RootGroup, cv: CanvasViewport, pxPerMm: number): void {
+    const fontSizePx = 20 / pxPerMm;
+    const xBelow = (cv.bottomBound > 0 && cv.topBound > 0);
+    const xAbove = (cv.bottomBound < 0 && cv.topBound < 0);
+    const yLeft = (cv.leftBound < 0 && cv.rightBound < 0);
+    const yRight = (cv.leftBound > 0 && cv.rightBound > 0);
+
+    let renderXAxisAt: number | null = null;
+    let renderYAxisAt: number | null = null;
+
+    if (xBelow) renderXAxisAt = cv.topBound;
+    else if (xAbove) renderXAxisAt = cv.bottomBound;
+
+    if (yLeft) renderYAxisAt = cv.rightBound;
+    else if (yRight) renderYAxisAt = cv.leftBound;
+
+    let xLabelY = renderXAxisAt ?? (-1 / pxPerMm);
+    let yLabelX = renderYAxisAt ?? (2 / pxPerMm);
+
+    if (renderXAxisAt !== null && renderXAxisAt > 0) xLabelY += 20 / pxPerMm;
+    if (renderYAxisAt !== null && renderYAxisAt < 0) yLabelX -= 80 / pxPerMm;
+
+    if (this.showXAxis && cv.rightBound > 0) {
+      gUI
+        .append('text')
+        .attr('x', cv.rightBound)
+        .attr('y', xLabelY)
+        .attr('text-anchor', 'end')
+        .attr('dominant-baseline', 'ideographic')
+        .attr('fill', '#666')
+        .attr('font-size', fontSizePx)
+        .attr('vector-effect', 'non-scaling-stroke')
+        .text(`${Math.round(cv.rightBound)} mm`)
+        .style('user-select', 'none');
+    }
+
+    if (this.showXAxis && cv.leftBound < 0) {
+      gUI
+        .append('text')
+        .attr('x', cv.leftBound)
+        .attr('y', xLabelY)
+        .attr('text-anchor', 'start')
+        .attr('dominant-baseline', 'ideographic')
+        .attr('fill', '#666')
+        .attr('font-size', fontSizePx)
+        .attr('vector-effect', 'non-scaling-stroke')
+        .text(`${Math.round(cv.leftBound)} mm`)
+        .style('user-select', 'none');
+    }
+
+    if (this.showYAxis && cv.topBound < 0) {
+      gUI
+        .append('text')
+        .attr('x', yLabelX)
+        .attr('y', cv.topBound + 20 / pxPerMm)
+        .attr('text-anchor', 'start')
+        .attr('dominant-baseline', 'auto')
+        .attr('fill', '#666')
+        .attr('font-size', fontSizePx)
+        .attr('vector-effect', 'non-scaling-stroke')
+        .text(`${Math.round(-cv.topBound)} mm`)
+        .style('user-select', 'none');
+    }
+
+    if (this.showYAxis && cv.bottomBound > 0) {
+      gUI
+        .append('text')
+        .attr('x', yLabelX)
+        .attr('y', cv.bottomBound - 20 / pxPerMm)
+        .attr('text-anchor', 'start')
+        .attr('dominant-baseline', 'hanging')
+        .attr('fill', '#666')
+        .attr('font-size', fontSizePx)
+        .attr('vector-effect', 'non-scaling-stroke')
+        .text(`${Math.round(-cv.bottomBound)} mm`)
+        .style('user-select', 'none');
+    }
+  }
+
+  private drawGrid(gRoot: RootGroup, cv: CanvasViewport, gridColor: string = '#85858543'): void {
+
+    for (let y = 0; y <= -cv.topBound; y += this.gridStepY) {
+      if (y === 0 && this.showXAxis) continue; 
+      gRoot
+        .append('line')
+        .attr('x1', cv.leftBound)
+        .attr('y1', y )
+        .attr('x2', cv.rightBound)
+        .attr('y2', y )
+        .attr('stroke', gridColor)
+        .attr('stroke-width', 2)
+        .attr('vector-effect', 'non-scaling-stroke')
+    }
+    for (let y = -this.gridStepY; y >= -cv.bottomBound; y -= this.gridStepY) {
+      if (y === 0 && this.showXAxis) continue; 
+ 
+      gRoot        
+        .append('line')
+        .attr('x1', cv.leftBound)
+        .attr('y1', y )
+        .attr('x2', cv.rightBound)
+        .attr('y2', y )
+        .attr('stroke', gridColor)
+        .attr('stroke-width', 2)
+        .attr('vector-effect', 'non-scaling-stroke')
+    }
+
+    for (let x = -this.gridStepX; x <= cv.rightBound; x += this.gridStepX) {
+      if (x === 0 && this.showYAxis) continue; 
+
+      gRoot
+      .append('line')
+      .attr('x1', x)
+      .attr('y1', -cv.topBound)
+      .attr('x2', x)
+      .attr('y2', -cv.bottomBound)
+      .attr('stroke', gridColor)
+      .attr('stroke-width', 2)
+      .attr('vector-effect', 'non-scaling-stroke')
+    }
+    for (let x = -this.gridStepX; x >= cv.leftBound; x -= this.gridStepX) {
+      if (x === 0 && this.showYAxis) continue;
+      gRoot        
+      .append('line')
+      .attr('x1', x)
+      .attr('y1', -cv.topBound)
+      .attr('x2', x)
+      .attr('y2', -cv.bottomBound)
+      .attr('stroke', gridColor)
+      .attr('stroke-width', 2)
+      .attr('vector-effect', 'non-scaling-stroke')
+    }
+  }
+}
+
 @Component({
   selector: 'app-draft-canvas',
   standalone: true,
@@ -31,6 +319,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private resizeObs?: ResizeObserver;
   private draftFuncs: Array<(canvas: any, uiCan: any) => void> = [];
   private camera = new Camera();
+  private axisGrid = new AxisGridController(DraftCanvasComponent.DISPLAY_PREFS_KEY, () => this.draw());
   private refController: ReferenceImageController;
 
   @ViewChild('host', { static: true }) host!: ElementRef<HTMLDivElement>;
@@ -67,11 +356,10 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
   private lastPxX = 0;
   private lastPxY = 0;
-  public showGrid = false;
-  public showAxes = false;
   public showReferenceImage = true;
   public isDarkMode = false;
   private isDragging = false;
+  public axisPopupOpen = false;
   public referenceModeEnabled = false; // UI toggle ("Align Reference")
   public alignPopupOpen = false;
   public lockAspect = true;
@@ -87,6 +375,46 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     "width": 0,
     "height": 0,
     "rotationDeg": 0,
+  }
+
+  public get showGrid(): boolean {
+    return this.axisGrid.showGrid;
+  }
+
+  public set showGrid(value: boolean) {
+    this.axisGrid.updatePreferences({ showGrid: value });
+  }
+
+  public get showXAxis(): boolean {
+    return this.axisGrid.showXAxis;
+  }
+
+  public set showXAxis(value: boolean) {
+    this.axisGrid.updatePreferences({ showXAxis: value });
+  }
+
+  public get showYAxis(): boolean {
+    return this.axisGrid.showYAxis;
+  }
+
+  public set showYAxis(value: boolean) {
+    this.axisGrid.updatePreferences({ showYAxis: value });
+  }
+
+  public get gridStepX(): number {
+    return this.axisGrid.gridStepX;
+  }
+
+  public set gridStepX(value: number) {
+    this.axisGrid.updatePreferences({ gridStepX: value });
+  }
+
+  public get gridStepY(): number {
+    return this.axisGrid.gridStepY;
+  }
+
+  public set gridStepY(value: number) {
+    this.axisGrid.updatePreferences({ gridStepY: value });
   }
 
   private normalizeRotationDeg(deg: number): number {
@@ -126,7 +454,8 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       saturationGate: 0.18,
     });
 
-    this.loadDisplayPreferences();
+    this.axisGrid.loadPreferences();
+    this.loadReferenceImagePreference();
 
     this.initialized = true;
     this.draw();
@@ -163,9 +492,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       leftBound, rightBound, topBound, bottomBound, mmW, mmH
     };
 
-    this.showAxes && this.drawAxis(cv);
-    this.showAxes && this.drawAxisLabels(cv);
-    this.showGrid && this.drawGrid(cv, '#515151ff');
+    this.axisGrid.draw(this.gRoot, this.gUI, cv, this.pxPerMm);
     this.showReferenceImage && this.refController.drawImage(this.gRoot)
     this.referenceModeEnabled && this.showReferenceImage && this.refController.drawControls(this.gRoot, this.pxPerMm);
 
@@ -174,203 +501,38 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     })
   }
 
-  private loadDisplayPreferences(): void {
+  onDisplayPreferenceChange(): void {
     try {
-      const raw = sessionStorage.getItem(DraftCanvasComponent.DISPLAY_PREFS_KEY);
-      if (!raw) return;
+      const existingRaw = sessionStorage.getItem(DraftCanvasComponent.DISPLAY_PREFS_KEY);
+      const existing = existingRaw ? JSON.parse(existingRaw) as Record<string, unknown> : {};
 
-      const parsed = JSON.parse(raw) as {
-        showGrid?: boolean;
-        showAxes?: boolean;
-        showReferenceImage?: boolean;
-      };
-
-      if (typeof parsed.showGrid === 'boolean') this.showGrid = parsed.showGrid;
-      if (typeof parsed.showAxes === 'boolean') this.showAxes = parsed.showAxes;
-      if (typeof parsed.showReferenceImage === 'boolean') this.showReferenceImage = parsed.showReferenceImage;
-    } catch {
-      // ignore malformed/blocked sessionStorage
-    }
-  }
-
-  private persistDisplayPreferences(): void {
-    try {
       sessionStorage.setItem(
         DraftCanvasComponent.DISPLAY_PREFS_KEY,
         JSON.stringify({
-          showGrid: this.showGrid,
-          showAxes: this.showAxes,
+          ...existing,
           showReferenceImage: this.showReferenceImage,
         })
       );
     } catch {
       // ignore storage errors
     }
-  }
-
-  onDisplayPreferenceChange(): void {
-    this.persistDisplayPreferences();
     this.draw();
   }
 
-  drawAxis(cv: any): void {
-    const lineColor = '#adadadff';
+  private loadReferenceImagePreference(): void {
+    try {
+      const raw = sessionStorage.getItem(DraftCanvasComponent.DISPLAY_PREFS_KEY);
+      if (!raw) return;
 
-    // crosshair centerlines of the view
-    // y axis
-    this.gRoot
-      .append('line')
-      .attr('x1', 0)
-      .attr('y1', -cv.topBound)
-      .attr('x2', 0)
-      .attr('y2', -cv.bottomBound)
-      .attr('stroke', lineColor)
-      .attr('stroke-width', 2)
-      .attr('vector-effect', 'non-scaling-stroke')
+      const parsed = JSON.parse(raw) as {
+        showReferenceImage?: boolean;
+      };
 
-    // x axis
-    this.gRoot
-      .append('line')
-      .attr('x1', cv.leftBound)
-      .attr('y1', 0)
-      .attr('x2', cv.rightBound)
-      .attr('y2', 0)
-      .attr('stroke', lineColor)
-      .attr('stroke-width', 2)
-      .attr('vector-effect', 'non-scaling-stroke')
-  }
-
-  drawAxisLabels(cv: any): void {
-    const fontSizePx = 20 / this.pxPerMm; // keep roughly constant in pixels
-    const xBelow = (cv.bottomBound > 0 && cv.topBound > 0)
-    const xAbove = (cv.bottomBound < 0 && cv.topBound < 0)
-    const yLeft = (cv.leftBound < 0 && cv.rightBound < 0)
-    const yRight = (cv.leftBound > 0 && cv.rightBound > 0)
-
-    let renderXAxisAt = null;
-    let renderYAxisAt = null;
-
-    if (xBelow) renderXAxisAt = cv.topBound;
-    else if (xAbove) renderXAxisAt = cv.bottomBound;
-
-    if (yLeft) renderYAxisAt = cv.rightBound;
-    else if (yRight) renderYAxisAt = cv.leftBound;
-
-    let invertXText = renderXAxisAt > 0;
-    let invertYText = renderYAxisAt < 0;
-    if (invertXText) renderXAxisAt += 20 / this.pxPerMm;
-    if (invertYText) renderYAxisAt -= 80 / this.pxPerMm;
-
-    // X axis label (to the right)
-    if (cv.rightBound > 0) {
-      this.gUI
-        .append('text')
-        .attr('x', cv.rightBound)
-        .attr('y', renderXAxisAt || - 1 / this.pxPerMm)
-        .attr('text-anchor', 'end')
-        .attr('dominant-baseline', 'ideographic')
-        .attr('fill', '#666')
-        .attr('font-size', fontSizePx)
-        .attr('vector-effect', 'non-scaling-stroke')
-        .text(`${Math.round(cv.rightBound)} mm`)
-        .style("user-select", "none")
-    }
-
-    // X axis label (to the left)
-    if (cv.leftBound < 0) {
-      this.gUI
-        .append('text')
-        .attr('x', cv.leftBound)
-        .attr('y', renderXAxisAt || - 1 / this.pxPerMm)
-        .attr('text-anchor', 'start')
-        .attr('dominant-baseline', 'ideographic')
-        .attr('fill', '#666')
-        .attr('font-size', fontSizePx)
-        .attr('vector-effect', 'non-scaling-stroke')
-        .text(`${Math.round(cv.leftBound)} mm`)
-        .style("user-select", "none")
-    }
-
-    // Y axis label (bottom)
-    if (cv.topBound < 0) {
-      this.gUI
-        .append('text')
-        .attr('x', renderYAxisAt || 0 + 2 / this.pxPerMm)
-        .attr('y', cv.topBound + 20 / this.pxPerMm)
-        .attr('text-anchor', 'start')
-        .attr('dominant-baseline', 'auto')
-        .attr('fill', '#666')
-        .attr('font-size', fontSizePx)
-        .attr('vector-effect', 'non-scaling-stroke')
-        .text(`${Math.round(-cv.topBound)} mm`)
-        .style("user-select", "none")
-    }
-
-    // Y axis label (top)
-    if (cv.bottomBound > 0) {
-      this.gUI
-        .append('text')
-        .attr('x', renderYAxisAt || 0 + 2 / this.pxPerMm)
-        .attr('y', cv.bottomBound - 20 / this.pxPerMm)
-        .attr('text-anchor', 'start')
-        .attr('dominant-baseline', 'hanging')
-        .attr('fill', '#666')
-        .attr('font-size', fontSizePx)
-        .attr('vector-effect', 'non-scaling-stroke')
-        .text(`${Math.round(-cv.bottomBound)} mm`)
-        .style("user-select", "none");
-    }
-
-  }
-
-  drawGrid(cv: any, gridColor: string = "#4e4e4eff"): void {
-    let yScale = 50
-    let xScale = 50
-
-    for (let y = yScale; y <= -cv.topBound; y += yScale) {
-      this.gRoot
-        .append('line')
-        .attr('x1', cv.leftBound)
-        .attr('y1', y )
-        .attr('x2', cv.rightBound)
-        .attr('y2', y )
-        .attr('stroke', gridColor)
-        .attr('stroke-width', 2)
-        .attr('vector-effect', 'non-scaling-stroke')
-    }
-    for (let y = -yScale; y >= -cv.bottomBound; y -= 50) { 
-      this.gRoot        
-        .append('line')
-        .attr('x1', cv.leftBound)
-        .attr('y1', y )
-        .attr('x2', cv.rightBound)
-        .attr('y2', y )
-        .attr('stroke', gridColor)
-        .attr('stroke-width', 2)
-        .attr('vector-effect', 'non-scaling-stroke')
-    }
-
-    for (let x = xScale; x <= cv.rightBound; x += xScale) {
-      this.gRoot
-      .append('line')
-      .attr('x1', x)
-      .attr('y1', -cv.topBound)
-      .attr('x2', x)
-      .attr('y2', -cv.bottomBound)
-      .attr('stroke', gridColor)
-      .attr('stroke-width', 2)
-      .attr('vector-effect', 'non-scaling-stroke')
-    }
-    for (let x = -xScale; x >= cv.leftBound; x -= xScale) {
-      this.gRoot        
-      .append('line')
-      .attr('x1', x)
-      .attr('y1', -cv.topBound)
-      .attr('x2', x)
-      .attr('y2', -cv.bottomBound)
-      .attr('stroke', gridColor)
-      .attr('stroke-width', 2)
-      .attr('vector-effect', 'non-scaling-stroke')
+      if (typeof parsed.showReferenceImage === 'boolean') {
+        this.showReferenceImage = parsed.showReferenceImage;
+      }
+    } catch {
+      // ignore malformed/blocked sessionStorage
     }
   }
 
@@ -509,6 +671,10 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
   closeAlignPopup(): void {
     this.alignPopupOpen = false;
+  }
+
+  toggleAxisPopup(): void {
+    this.axisPopupOpen = !this.axisPopupOpen;
   }
 
   onRefParamChange(key: keyof ReferenceImage, val: number): void {

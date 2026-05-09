@@ -1,4 +1,5 @@
-.align-controls {
+.align-controls,
+.axis-controls {
   position: relative;
   display: inline-block;
 }
@@ -8,9 +9,9 @@
   color: #fff;
 }
 
-.align-popup {
+.align-popup,
+.axis-popup {
   position: absolute;
-  top: -200px;
   right: 0px;
   background: var(--ui-bg-elevated);
   border: 1px solid var(--ui-border-elevated);
@@ -22,7 +23,17 @@
   color: var(--ui-text-primary);
 }
 
-.align-popup .row {
+.align-popup {
+  top: -225px;
+}
+
+.axis-popup {
+  top: -170px;
+  min-width: 180px;
+}
+
+.align-popup .row,
+.axis-popup .row {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -30,8 +41,13 @@
   margin: 6px 0;
 }
 
-.align-popup input[type="number"] {
+.align-popup input[type="number"],
+.axis-popup input[type="number"] {
   width: 110px;
+}
+
+.axis-popup input[type="number"] {
+  width: 90px;
 }
 
 .align-popup .actions {
@@ -212,14 +228,16 @@ svg {
   color: #e0e0e0;
 }
 
-.canvas-shell.dark-mode .align-popup {
+.canvas-shell.dark-mode .align-popup,
+.canvas-shell.dark-mode .axis-popup {
   background: #3a3a3a;
   border-color: #555;
   color: #e0e0e0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-.canvas-shell.dark-mode .align-popup input[type="number"] {
+.canvas-shell.dark-mode .align-popup input[type="number"],
+.canvas-shell.dark-mode .axis-popup input[type="number"] {
   background: #2f2f2f;
   color: #e0e0e0;
   border-color: #555;
