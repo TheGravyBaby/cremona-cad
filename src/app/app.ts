@@ -43,7 +43,7 @@ import { MessageCenterComponent } from './shared/message-center.component';
           (setBounds)="bounds=$event"
           [loadFile]="loadedFileData"
           [saveTick]="saveTick"
-          [newFile]="newFileFlag"
+          [newFile]="newFileTick"
           [referenceImageParams]="referenceImage"
           (referenceImageChange)="onReferenceImageChange($event)">
         </app-kelly-violin>
@@ -55,7 +55,7 @@ import { MessageCenterComponent } from './shared/message-center.component';
           (setBounds)="bounds=$event"
           [loadFile]="loadedFileData"
           [saveTick]="saveTick"
-          [newFile]="newFileFlag"
+          [newFile]="newFileTick"
           [referenceImageParams]="referenceImage"
           (referenceImageChange)="onReferenceImageChange($event)">
         </app-enrico-ceruti-violin>
@@ -120,10 +120,10 @@ export class App {
     });
   }
 
-  newFileFlag = false;
+  newFileTick = 0;
 
   newFile() {
-    this.newFileFlag = !this.newFileFlag;
+    this.newFileTick += 1;
   }
 
   loadFile(data: RecipeInterface) {

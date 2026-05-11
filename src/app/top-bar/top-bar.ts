@@ -11,14 +11,14 @@ export class TopBarComponent {
   @Input() selectedRecipe: string = 'Beard';
   @Input() nightMode = true;
   @Output() recipeChange = new EventEmitter<string>();
-  @Output() newFile = new EventEmitter<void>();
+  @Output() newFile = new EventEmitter<boolean>();
   @Output() loadFile = new EventEmitter<RecipeInterface>();
   @Output() saveFile = new EventEmitter<void>();
   @Output() nightModeChange = new EventEmitter<boolean>();
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
 
   onNewClick() {
-    this.newFile.emit();
+    this.newFile.emit(true);
   }
 
   onSaveClick() {

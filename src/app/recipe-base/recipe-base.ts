@@ -4,6 +4,12 @@ import { Pt, RecipeInterface, ReferenceImage } from '../models/types';
 import { PanelFlow, PanelDefinition } from '../helpers/panel-flow';
 import { DebounceController } from '../helpers/debounce-controller';
 
+export interface NamedConstant {
+  label: string;
+  value: number;
+  tolerance?: number;
+}
+
 @Component({
   selector: 'app-recipe-base',
   imports: [],
@@ -12,6 +18,13 @@ import { DebounceController } from '../helpers/debounce-controller';
 })
 
 export abstract class RecipeComponentBase implements AfterViewInit {
+  static readonly DEFAULT_NAMED_CONSTANTS: readonly NamedConstant[] = [
+    // { label: 'π', value: Math.PI },
+    { label: 'φ', value: (1 + Math.sqrt(5)) / 2 },
+    { label: '√2', value: Math.SQRT2 },
+    { label: '√3', value: Math.sqrt(3) },
+  ];
+
   @Output() draftChange = new EventEmitter<Array<(g: any, ui: any) => void>>();
   @Output() setBounds = new EventEmitter<{pt1: Pt, pt2: Pt}>();
   @Output() referenceImageChange = new EventEmitter<ReferenceImage | null>();
@@ -254,7 +267,12 @@ export abstract class RecipeComponentBase implements AfterViewInit {
     });
   }
 
-  nearestFraction(value: number, maxNumerator: number = 21, maxDenominator: number = 16): string {
+  nearestFraction(
+    value: number,
+    maxNumerator: number = 21,
+    maxDenominator: number = 16,
+    namedConstants: ReadonlyArray<NamedConstant> = RecipeComponentBase.DEFAULT_NAMED_CONSTANTS,
+  ): string {
     const denominatorLimit = Math.max(1, Math.floor(maxDenominator));
     const numeratorLimit = Math.max(1, Math.floor(maxNumerator));
 
@@ -279,6 +297,57 @@ export abstract class RecipeComponentBase implements AfterViewInit {
     const fraction = `${bestNumerator}/${bestDenominator}`;
     const isExact = smallestError < 0.001;
     const isVeryClose = smallestError < 0.01;
+
+    const defaultConstantTolerance = 0.005;
+    type NamedMatch = { expression: string; error: number; tolerance: number };
+    const namedCandidates: NamedMatch[] = [];
+
+    const usableConstants = namedConstants.filter(
+      (constant) => Number.isFinite(constant.value) && !!constant.label?.trim() && constant.value !== 0,
+    );
+
+    for (const constant of usableConstants) {
+      const label = constant.label.trim();
+      const constantTolerance = constant.tolerance ?? defaultConstantTolerance;
+
+      // value ≈ constant
+      namedCandidates.push({
+        expression: label,
+        error: Math.abs(value - constant.value),
+        tolerance: constantTolerance,
+      });
+
+      // value ≈ integer / constant
+      for (let numerator = -numeratorLimit; numerator <= numeratorLimit; numerator++) {
+        const approx = numerator / constant.value;
+        namedCandidates.push({
+          expression: `${numerator}/${label}`,
+          error: Math.abs(value - approx),
+          tolerance: constantTolerance,
+        });
+      }
+
+      // value ≈ constant / integer
+      for (let denominator = 1; denominator <= denominatorLimit; denominator++) {
+        const approx = constant.value / denominator;
+        namedCandidates.push({
+          expression: `${label}/${denominator}`,
+          error: Math.abs(value - approx),
+          tolerance: constantTolerance,
+        });
+      }
+    }
+
+    const nearestNamedMatch = namedCandidates.sort((a, b) => a.error - b.error)[0];
+    const maybeNamedTag = nearestNamedMatch && nearestNamedMatch.error <= nearestNamedMatch.tolerance
+      ? nearestNamedMatch.expression
+      : '';
+
+    if (maybeNamedTag) {
+      if (nearestNamedMatch.error < 0.001) return maybeNamedTag;
+      if (nearestNamedMatch.error < 0.01) return `≈ ${maybeNamedTag}`;
+      return `~ ${maybeNamedTag}`;
+    }
 
     if (isExact) return fraction;
     if (isVeryClose) return `≈ ${fraction}`;

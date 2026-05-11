@@ -103,23 +103,25 @@ export class KellyViolin extends RecipeComponentBase {
   }
 
   insetTooltip = "Inset is the distance from the outer edge of the bounding box to inner edge. It can be used to create a margin for the outline of the violin.";
+  private lastNewFileTick = 0;
 
   // ===== Inputs & lifecycle =====
 
-  @Input() set newFile(v: boolean) {
-    if (v) {
-      this.openPanel = 'base'
-      let data = new KellyViolinRecipe()
-      this.d = data;
-      this.draftChange.emit([this.firstRender]);
-      this.referenceImageChange.emit(null);
+  @Input() set newFile(v: number) {
+    if (v <= 0 || v === this.lastNewFileTick) return;
+    this.lastNewFileTick = v;
 
-      // if we have the data to render the paths, lets do so on init
-      this.hasMajorBouts() && this.hasMinorBouts() && calculatePrimaryShapes(this.d);
-      this.hasCornerCircles() && calculateMainPathsSegmented(this.d);
-      this.hasCornerCircles() && calculateOffsetPathsSegments(this.d);
-      this.hasOuterTrace() && calculateTopPath(this.d);
-    }
+    this.openPanel = 'base'
+    let data = new KellyViolinRecipe()
+    this.d = data;
+    this.draftChange.emit([this.firstRender]);
+    this.referenceImageChange.emit(null);
+
+    // if we have the data to render the paths, lets do so on init
+    this.hasMajorBouts() && this.hasMinorBouts() && calculatePrimaryShapes(this.d);
+    this.hasCornerCircles() && calculateMainPathsSegmented(this.d);
+    this.hasCornerCircles() && calculateOffsetPathsSegments(this.d);
+    this.hasOuterTrace() && calculateTopPath(this.d);
   }
 
   override firstRender = (g: any, ui: any): void => {
