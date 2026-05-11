@@ -342,8 +342,17 @@ export abstract class RecipeComponentBase implements AfterViewInit {
     const maybeNamedTag = nearestNamedMatch && nearestNamedMatch.error <= nearestNamedMatch.tolerance
       ? nearestNamedMatch.expression
       : '';
+    const absoluteImprovement = nearestNamedMatch ? (smallestError - nearestNamedMatch.error) : 0;
+    const relativeImprovement = nearestNamedMatch && smallestError > 0
+      ? absoluteImprovement / smallestError
+      : 0;
 
-    if (maybeNamedTag) {
+    // Require a meaningful improvement over the fraction to prefer the named constant, to avoid cluttering with named tags that are only slightly better than a simple fraction
+    const isNamedBetterThanFraction = !!nearestNamedMatch
+      && absoluteImprovement > 0.002
+      && relativeImprovement > 0.25;
+
+    if (maybeNamedTag && isNamedBetterThanFraction) {
       if (nearestNamedMatch.error < 0.001) return maybeNamedTag;
       if (nearestNamedMatch.error < 0.01) return `≈ ${maybeNamedTag}`;
       return `~ ${maybeNamedTag}`;
