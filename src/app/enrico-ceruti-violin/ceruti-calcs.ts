@@ -16,12 +16,12 @@ export function calculateMainBouts(p: EnricoCerutiParams): void {
       let LBWI = p.bouts.LBW - 2 * inset;
       let HI = p.height - 2 * inset;
 
-      let U0R = Math.round(HI * p.ratios.U0toH * 10) / 10;
+      let U0R = Math.round(UBWI * p.ratios.U0toUBW * 10) / 10;
       p.bouts.U0 = new Arc(0, U0R, U0R);
       let U1R = Math.round(UBWI * p.ratios.U1toUBW  * 10) / 10;
       p.bouts.U1 = new Arc(0, UBWI - U1R, U1R);
 
-      let L0R = Math.round(HI * p.ratios.L0toH * 10) / 10;
+      let L0R = Math.round(LBWI * p.ratios.L0toLBW * 10) / 10;
       p.bouts.L0 = new Arc(0, inset + L0R, L0R);
       let L1R = Math.round(LBWI * p.ratios.L1toLBW  * 10) / 10;
       p.bouts.L1 = new Arc(0, L1R, L1R);
@@ -33,9 +33,11 @@ export function calculateMainBouts(p: EnricoCerutiParams): void {
 
     // recalcuate display ratios
     p.ratios.UBtoLB = p.bouts.UBW / p.bouts.LBW;
-    p.ratios.U0toH = p.bouts.U0.r / HI;
+    p.ratios.U0toUBW = p.bouts.U0.r / UBWI;
     p.ratios.U1toUBW =  p.bouts.U1.r / UBWI;
-    p.ratios.L0toH = p.bouts.L0.r / HI;
+    
+    p.ratios.LBtoH = p.bouts.LBW / p.height;
+    p.ratios.L0toLBW = p.bouts.L0.r / LBWI;
     p.ratios.L1toLBW = p.bouts.L1.r / LBWI;
 
     p.bouts.U0.y = p.height - inset - p.bouts.U0.r;

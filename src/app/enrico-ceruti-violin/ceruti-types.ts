@@ -55,7 +55,7 @@ export interface EnricoCerutiParams {
   ratios: {
     HtoW: number;
     UBtoLB: number;
-    U0toH: number;
+    U0toUBW: number;
     U1toUBW: number;
     U2toUBW: number;
     U3toLBW: number;
@@ -65,7 +65,7 @@ export interface EnricoCerutiParams {
     CUtoLBW: number;
     CLtoLBW: number;
     LBtoH: number;
-    L0toH: number;
+    L0toLBW: number;
     L1toLBW: number;
     L2toLBW: number;
     L3toLBW: number;
@@ -97,7 +97,7 @@ const DefaultParams: EnricoCerutiParams = {
     HtoW: 7 / 4,
 
     UBtoLB: 4 / 5,
-    U0toH: 1 / 3,
+    U0toUBW: 4 / 5,
     U1toUBW: 1 / 3,
     U2toUBW: 1 / 2,
     U3toLBW: 1 / 8,
@@ -109,7 +109,7 @@ const DefaultParams: EnricoCerutiParams = {
     CLtoLBW: 1 / 8,
 
     LBtoH: 4 / 7,
-    L0toH: 1 / 2,
+    L0toLBW: 1,
     L1toLBW: 1 / 3,
     L2toLBW: 1 / 2,
     L3toLBW: 1 / 8,
@@ -172,7 +172,7 @@ const CerutiParams: EnricoCerutiParams = {
   "ratios": {
     "HtoW": 1.68,
     "UBtoLB": 0.745,
-    "U0toH": 0.31097560975609756,
+    "U0toUBW": 0.31097560975609756,
     "U1toUBW": 0.2907801418439716,
     "U2toUBW": 0.46099290780141844,
     "U3toLBW": 0.125,
@@ -182,7 +182,7 @@ const CerutiParams: EnricoCerutiParams = {
     "CUtoLBW": 0.052083333333333336,
     "CLtoLBW": 0.10416666666666667,
     "LBtoH": 0.5714285714285714,
-    "L0toH": 0.5,
+    "L0toLBW": 0.5,
     "L1toLBW": 0.3333333333333333,
     "L2toLBW": 0.59375,
     "L3toLBW": 0.13020833333333334,
@@ -316,7 +316,7 @@ const stradGoetzParams: EnricoCerutiParams = {
   "ratios": {
     "HtoW": 1.8,
     "UBtoLB": 0.8,
-    "U0toH": 0.33238636363636365,
+    "U0toUBW": 0.33238636363636365,
     "U1toUBW": 0.4276315789473684,
     "U2toUBW": 0.6578947368421053,
     "U3toLBW": 0.140625,
@@ -326,7 +326,7 @@ const stradGoetzParams: EnricoCerutiParams = {
     "CUtoLBW": 0.08333333333333333,
     "CLtoLBW": 0.125,
     "LBtoH": 0.5714285714285714,
-    "L0toH": 0.5,
+    "L0toLBW": 0.5,
     "L1toLBW": 0.375,
     "L2toLBW": 0.5,
     "L3toLBW": 0.16666666666666666,

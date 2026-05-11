@@ -82,6 +82,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
   showAllArcs: boolean = false;
   showAllCircles: boolean = false;
   showBoundingBoxes: boolean = true;
+  private lastNewFileTick = 0;
 
   get selectedTemplateKey(): string {
     const current = JSON.stringify(this.d.params);
@@ -99,16 +100,22 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
 
   // ===== Inputs & lifecycle =====
 
-  @Input() set newFile(v: boolean) {
-    if (v) {
-      this.d = {
-        ...CERUTI_TEMPLATES[0],
-      };
-      this.openPanel = 'base';
-      this.referenceImageChange.emit(this.d.referenceImage ?? null);
-      this.draftChange.emit([this.firstRender]);
+  @Input() set newFile(v: number) {
+    if (v <= 0 || v === this.lastNewFileTick) return;
+    this.lastNewFileTick = v;
 
-    }
+    this.d = JSON.parse(JSON.stringify(CERUTI_TEMPLATES[0])) as EnricoCerutiTemplate;
+
+    this.openPanel = 'base';
+
+    this.setBounds.emit({
+      pt1: { x: -this.d.params.width / 2, y: 0 },
+      pt2: { x: this.d.params.width / 2, y: this.d.params.height },
+    });
+    this.referenceImageChange.emit(this.d.referenceImage ?? null);
+    this.draftChange.emit([this.firstRender]);
+  
+    sessionStorage.setItem('recipeData', JSON.stringify(this.d));
   }
 
   override firstRender = (g: any, ui: any): void => {
