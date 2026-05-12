@@ -22,7 +22,6 @@ export abstract class RecipeComponentBase implements AfterViewInit {
     // { label: 'π', value: Math.PI },
     { label: 'φ', value: (1 + Math.sqrt(5)) / 2 },
     { label: '√2', value: Math.SQRT2 },
-    { label: '√3', value: Math.sqrt(3) },
   ];
 
   @Output() draftChange = new EventEmitter<Array<(g: any, ui: any) => void>>();

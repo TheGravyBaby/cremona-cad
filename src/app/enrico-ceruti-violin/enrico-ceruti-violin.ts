@@ -1,13 +1,14 @@
 import { ChangeDetectorRef, Component, HostListener, Input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
-import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Rectangle } from '../models/types';
+import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Pt, Rectangle } from '../models/types';
 import { greyOut, renderArcFromArc, renderArcFromArcFancy, renderCircle, renderCrosshair, renderDashedLine, renderDashLine, renderDistanceMeasurementLine, renderLine, renderRect } from '../helpers/renderFuncs';
 import { clampParam, safeRun } from '../helpers/validators';
 import { EnricoCerutiTemplate, CERUTI_TEMPLATES, EnricoCerutiParams } from './ceruti-types';
 import { dimensionInfo, insetInfo, referenceInfo } from './ceruti-helpers';
-import { angleFromCenter, circleCircleIntersections, flipAngleAboutYAxis, flipArcAboutY, flipCircleAboutY, interceptCirclesAndPoint, solveInscribedCircleAlongAxis } from '../helpers/draftMath';
+import { angleFromCenter, circleCircleIntersections, dist, flipAngleAboutYAxis, flipArcAboutY, flipCircleAboutY, interceptCirclesAndPoint, lineFromTwoPoints, pointOnCircle, solveInscribedCircleAlongAxis } from '../helpers/draftMath';
 import { calculateCenterBout, calculateCorners, calculateMainBouts } from './ceruti-calcs';
+import { error } from '../shared/message-emitter';
 
 @Component({
   selector: 'app-enrico-ceruti-violin',
@@ -114,7 +115,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     });
     this.referenceImageChange.emit(this.d.referenceImage ?? null);
     this.draftChange.emit([this.firstRender]);
-  
+
     sessionStorage.setItem('recipeData', JSON.stringify(this.d));
   }
 
@@ -264,7 +265,19 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     let mirroredL1Arc = flipArcAboutY(p.bouts.L1);
 
     if ((currentModule && this.showModuleArcs) || this.showAllArcs) {
-      renderArcFromArcFancy(wideTopArc, this.colors.upperBout)(g, ui);
+      if (this.d.params.options.useViolNeck) {
+        let mirrorV0 = flipArcAboutY(p.viol.V0);
+        renderArcFromArcFancy(p.viol.V0, this.colors.upperBout)(g, ui);
+        renderArcFromArcFancy(mirrorV0, this.colors.upperBout)(g, ui);
+        let mirrorU0 = flipArcAboutY(p.bouts.U0);
+        renderArcFromArcFancy(p.bouts.U0, this.colors.upperBout)(g, ui);
+        renderArcFromArcFancy(mirrorU0, this.colors.upperBout)(g, ui);
+
+        // renderDistanceMeasurementLine(new Pt(0, p.height - inset), new Pt(0, p.viol.V0.y), p.viol.height.toFixed(1) + "mm", this.colors.upperBout)(g, ui);
+      }
+      else
+        renderArcFromArcFancy(wideTopArc, this.colors.upperBout)(g, ui);
+
       renderArcFromArcFancy(p.bouts.U1, this.colors.upperBoutOff)(g, ui);
       renderArcFromArcFancy(mirroredU1Arc, this.colors.upperBoutOff)(g, ui);
       renderArcFromArcFancy(wideBottomArc, this.colors.lowerBout)(g, ui);
@@ -272,7 +285,18 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       renderArcFromArcFancy(mirroredL1Arc, this.colors.lowerBoutOff)(g, ui);
     }
     else {
-      renderArcFromArc(wideTopArc, this.colors.innerTrace)(g, ui);
+      if (this.d.params.options.useViolNeck) {
+        let mirrorV0 = flipArcAboutY(p.viol.V0);
+        renderArcFromArc(p.viol.V0, this.colors.innerTrace)(g, ui);
+        renderArcFromArc(mirrorV0, this.colors.innerTrace)(g, ui);
+
+        let mirrorU0 = flipArcAboutY(p.bouts.U0);
+        renderArcFromArc(p.bouts.U0, this.colors.innerTrace)(g, ui);
+        renderArcFromArc(mirrorU0, this.colors.innerTrace)(g, ui);
+      }
+      else
+        renderArcFromArc(wideTopArc, this.colors.innerTrace)(g, ui);
+
       renderArcFromArc(p.bouts.U1, this.colors.innerTrace)(g, ui);
       renderArcFromArc(mirroredU1Arc, this.colors.innerTrace)(g, ui);
       renderArcFromArc(wideBottomArc, this.colors.innerTrace)(g, ui);
@@ -281,6 +305,8 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     }
 
     if ((currentModule && this.showModuleCircles) || this.showAllCircles) {
+
+
       let mirrorU1 = flipCircleAboutY(p.bouts.U1);
       let mirrorL1 = flipCircleAboutY(p.bouts.L1);
       renderCircle(p.bouts.U0!, this.colors.upperBout)(g, ui);
@@ -291,8 +317,8 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       renderCircle(p.bouts.L0!, this.colors.lowerBout)(g, ui);
     }
 
-    let lowerBoutSquare = new Rectangle({ x: -p.bouts.LBW / 2, y: 0}, { x: p.bouts.LBW / 2, y:  p.bouts.LBW});
-    let upperBoutSquare = new Rectangle({ x: -p.bouts.UBW / 2, y: p.height - p.bouts.UBW}, { x: p.bouts.UBW / 2, y:  p.height});
+    let lowerBoutSquare = new Rectangle({ x: -p.bouts.LBW / 2, y: 0 }, { x: p.bouts.LBW / 2, y: p.bouts.LBW });
+    let upperBoutSquare = new Rectangle({ x: -p.bouts.UBW / 2, y: p.height - p.bouts.UBW }, { x: p.bouts.UBW / 2, y: p.height });
 
     if (this.showBoundingBoxes) {
       renderRect(lowerBoutSquare, this.colors.lowerBoutOff)(g, ui);
@@ -335,26 +361,36 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       renderCrosshair({ x: -p.bouts.UC!.x, y: p.bouts.UC!.y }, this.colors.centerBoutUpOff)(g, ui);
       renderCrosshair({ x: -p.bouts.LC!.x, y: p.bouts.LC!.y }, this.colors.centerBoutUpOff)(g, ui);
 
-      renderArcFromArcFancy(p.bouts.L2!, this.colors.lowerBoutOff)(g, ui);
-      renderArcFromArcFancy(p.bouts.L3!, this.colors.centerBoutLow)(g, ui);
-      renderArcFromArcFancy(flipArcAboutY(p.bouts.L2!), this.colors.lowerBoutOff)(g, ui);
-      renderArcFromArcFancy(flipArcAboutY(p.bouts.L3!), this.colors.centerBoutLow)(g, ui);
+      !p.options.useViolCornerLC && renderArcFromArcFancy(p.bouts.L2!, this.colors.lowerBoutOff)(g, ui);
+      !p.options.useViolCornerLC && renderArcFromArcFancy(p.bouts.L3!, this.colors.centerBoutLow)(g, ui);
+      !p.options.useViolCornerLC && renderArcFromArcFancy(flipArcAboutY(p.bouts.L2!), this.colors.lowerBoutOff)(g, ui);
+      !p.options.useViolCornerLC && renderArcFromArcFancy(flipArcAboutY(p.bouts.L3!), this.colors.centerBoutLow)(g, ui);
+      p.options.useViolCornerLC && renderArcFromArcFancy(p.bouts.L4, this.colors.lowerBoutOff)(g, ui);
+      p.options.useViolCornerLC && renderArcFromArcFancy(flipArcAboutY(p.bouts.L4), this.colors.lowerBoutOff)(g, ui);
 
-      renderArcFromArcFancy(p.bouts.U2!, this.colors.upperBoutOff)(g, ui);
-      renderArcFromArcFancy(p.bouts.U3!, this.colors.centerBoutUp)(g, ui);
-      renderArcFromArcFancy(flipArcAboutY(p.bouts.U2!), this.colors.upperBoutOff)(g, ui);
-      renderArcFromArcFancy(flipArcAboutY(p.bouts.U3!), this.colors.centerBoutUp)(g, ui);
+
+      !p.options.useViolCornerUC && renderArcFromArcFancy(p.bouts.U2!, this.colors.upperBoutOff)(g, ui);
+      !p.options.useViolCornerUC && renderArcFromArcFancy(p.bouts.U3!, this.colors.centerBoutUp)(g, ui);
+      !p.options.useViolCornerUC && renderArcFromArcFancy(flipArcAboutY(p.bouts.U2!), this.colors.upperBoutOff)(g, ui);
+      !p.options.useViolCornerUC && renderArcFromArcFancy(flipArcAboutY(p.bouts.U3!), this.colors.centerBoutUp)(g, ui);
+      p.options.useViolCornerUC && renderArcFromArcFancy(p.bouts.U4, this.colors.upperBoutOff)(g, ui);
+      p.options.useViolCornerUC && renderArcFromArcFancy(flipArcAboutY(p.bouts.U4), this.colors.upperBoutOff)(g, ui);
     }
     else {
-      renderArcFromArc(p.bouts.L2!, this.colors.innerTrace)(g, ui);
-      renderArcFromArc(p.bouts.L3!, this.colors.innerTrace)(g, ui);
-      renderArcFromArc(flipArcAboutY(p.bouts.L2!), this.colors.innerTrace)(g, ui);
-      renderArcFromArc(flipArcAboutY(p.bouts.L3!), this.colors.innerTrace)(g, ui);
+      !p.options.useViolCornerLC && renderArcFromArc(p.bouts.L2!, this.colors.innerTrace)(g, ui);
+      !p.options.useViolCornerLC && renderArcFromArc(p.bouts.L3!, this.colors.innerTrace)(g, ui);
+      !p.options.useViolCornerLC && renderArcFromArc(flipArcAboutY(p.bouts.L2!), this.colors.innerTrace)(g, ui);
+      !p.options.useViolCornerLC && renderArcFromArc(flipArcAboutY(p.bouts.L3!), this.colors.innerTrace)(g, ui);
+      p.options.useViolCornerLC && renderArcFromArc(p.bouts.L4, this.colors.innerTrace)(g, ui);
+      p.options.useViolCornerLC && renderArcFromArc(flipArcAboutY(p.bouts.L4), this.colors.innerTrace)(g, ui);
 
-      renderArcFromArc(p.bouts.U2!, this.colors.innerTrace)(g, ui);
-      renderArcFromArc(p.bouts.U3!, this.colors.innerTrace)(g, ui);
-      renderArcFromArc(flipArcAboutY(p.bouts.U2!), this.colors.innerTrace)(g, ui);
-      renderArcFromArc(flipArcAboutY(p.bouts.U3!), this.colors.innerTrace)(g, ui);
+
+      !p.options.useViolCornerUC && renderArcFromArc(p.bouts.U2!, this.colors.innerTrace)(g, ui);
+      !p.options.useViolCornerUC && renderArcFromArc(p.bouts.U3!, this.colors.innerTrace)(g, ui);
+      !p.options.useViolCornerUC && renderArcFromArc(flipArcAboutY(p.bouts.U2!), this.colors.innerTrace)(g, ui);
+      !p.options.useViolCornerUC && renderArcFromArc(flipArcAboutY(p.bouts.U3!), this.colors.innerTrace)(g, ui);
+      p.options.useViolCornerUC && renderArcFromArc(p.bouts.U4, this.colors.innerTrace)(g, ui);
+      p.options.useViolCornerUC && renderArcFromArc(flipArcAboutY(p.bouts.U4), this.colors.innerTrace)(g, ui);
     }
 
     if ((currentModule && this.showModuleCircles) || this.showAllCircles) {
@@ -371,9 +407,9 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
   }
 
 
-  changeCenterBout(): void {
+  changeCenterBout(solveC0?: boolean): void {
     this.debounce(() => safeRun(() => {
-      calculateCenterBout(this.d.params);
+      calculateCenterBout(this.d.params, solveC0);
       this.panelFlow?.refreshEnabledPanels();
       this.draftChange.emit([
         this.renderBounds(false),
@@ -388,8 +424,8 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
   renderCenterBout = (currentModule: boolean) => (g: any, ui: any): void => {
     let p = this.d.params;
 
-    if (currentModule && this.showModuleArcs){
-      renderDashedLine({x:-1000, y: p.bouts.C0.y}, {x:1000, y: p.bouts.C0.y}, this.colors.centerBoutOff2)(g, ui);
+    if (currentModule && this.showModuleArcs) {
+      renderDashedLine({ x: -1000, y: p.bouts.C0.y }, { x: 1000, y: p.bouts.C0.y }, this.colors.centerBoutOff2)(g, ui);
     }
 
     if ((currentModule && this.showModuleArcs) || this.showAllArcs) {
@@ -399,7 +435,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       renderArcFromArcFancy(flipArcAboutY(p.bouts.CU), this.colors.centerBoutUp)(g, ui);
       renderArcFromArcFancy(flipArcAboutY(p.bouts.CL), this.colors.centerBoutLow)(g, ui);
       renderArcFromArcFancy(flipArcAboutY(p.bouts.C0), this.colors.centerBout)(g, ui);
-    } 
+    }
     else {
       renderArcFromArc(p.bouts.CU, this.colors.innerTrace)(g, ui);
       renderArcFromArc(p.bouts.CL, this.colors.innerTrace)(g, ui);

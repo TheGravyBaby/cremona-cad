@@ -1,30 +1,31 @@
-import { solveInscribedCircleAlongAxis, circleCircleIntersections, angleFromCenter, interceptCirclesAndPoint } from "../helpers/draftMath";
-import { Arc, arcFromCircle, arcFromCircleAndPoints } from "../models/types";
+import { solveInscribedCircleAlongAxis, circleCircleIntersections, angleFromCenter, interceptCirclesAndPoint, dist, lineFromTwoPoints, pointOnCircle } from "../helpers/draftMath";
+import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle } from "../models/types";
+import { error } from "../shared/message-emitter";
 import { EnricoCerutiParams } from "./ceruti-types";
-  
+
 export function calculateMainBouts(p: EnricoCerutiParams): void {
     let inset = p.overhang + p.rib;
-  
+
     // initialize bouts if not already done
     if (!p.bouts.U0) {
-      let inset = p.overhang + p.rib;
+        let inset = p.overhang + p.rib;
 
-      p.bouts.LBW = p.width;
-      p.bouts.UBW = Math.round(p.bouts.LBW * p.ratios.UBtoLB);
-      
-      let UBWI = p.bouts.UBW - 2 * inset;
-      let LBWI = p.bouts.LBW - 2 * inset;
-      let HI = p.height - 2 * inset;
+        p.bouts.LBW = p.width;
+        p.bouts.UBW = Math.round(p.bouts.LBW * p.ratios.UBtoLB);
 
-      let U0R = Math.round(UBWI * p.ratios.U0toUBW * 10) / 10;
-      p.bouts.U0 = new Arc(0, U0R, U0R);
-      let U1R = Math.round(UBWI * p.ratios.U1toUBW  * 10) / 10;
-      p.bouts.U1 = new Arc(0, UBWI - U1R, U1R);
+        let UBWI = p.bouts.UBW - 2 * inset;
+        let LBWI = p.bouts.LBW - 2 * inset;
+        let HI = p.height - 2 * inset;
 
-      let L0R = Math.round(LBWI * p.ratios.L0toLBW * 10) / 10;
-      p.bouts.L0 = new Arc(0, inset + L0R, L0R);
-      let L1R = Math.round(LBWI * p.ratios.L1toLBW  * 10) / 10;
-      p.bouts.L1 = new Arc(0, L1R, L1R);
+        let U0R = Math.round(UBWI * p.ratios.U0toUBW * 10) / 10;
+        p.bouts.U0 = new Arc(0, U0R, U0R);
+        let U1R = Math.round(UBWI * p.ratios.U1toUBW * 10) / 10;
+        p.bouts.U1 = new Arc(0, UBWI - U1R, U1R);
+
+        let L0R = Math.round(LBWI * p.ratios.L0toLBW * 10) / 10;
+        p.bouts.L0 = new Arc(0, inset + L0R, L0R);
+        let L1R = Math.round(LBWI * p.ratios.L1toLBW * 10) / 10;
+        p.bouts.L1 = new Arc(0, L1R, L1R);
     }
 
     let UBWI = p.bouts.UBW - 2 * inset;
@@ -34,8 +35,8 @@ export function calculateMainBouts(p: EnricoCerutiParams): void {
     // recalcuate display ratios
     p.ratios.UBtoLB = p.bouts.UBW / p.bouts.LBW;
     p.ratios.U0toUBW = p.bouts.U0.r / UBWI;
-    p.ratios.U1toUBW =  p.bouts.U1.r / UBWI;
-    
+    p.ratios.U1toUBW = p.bouts.U1.r / UBWI;
+
     p.ratios.LBtoH = p.bouts.LBW / p.height;
     p.ratios.L0toLBW = p.bouts.L0.r / LBWI;
     p.ratios.L1toLBW = p.bouts.L1.r / LBWI;
@@ -60,9 +61,36 @@ export function calculateMainBouts(p: EnricoCerutiParams): void {
 
     p.bouts.L0 = arcFromCircle(p.bouts.L0, 3 / 2 * Math.PI, L0Angle);
     p.bouts.L1 = arcFromCircle(p.bouts.L1, L1Angle, 0);
-  }
 
+    if (p.options.useViolNeck) {
+        let Vr = p.viol?.V0?.r ?? p.bouts.UBW / 5
+        let x = p.viol?.width ? p.viol?.width / 2 : p.bouts.UBW / 10
 
+        let Vx = Vr + x
+        let c = Vr + p.bouts.U0.r
+        let Vy = Math.sqrt(c * c - Vx * Vx) - p.bouts.U0.r 
+        Vy += (p.bouts.U0.y + p.bouts.U0.r)
+
+        if (p.viol && p.viol.width) {
+            p.viol.V0 = new Arc(Vx, Vy, Vr)
+        }
+        else {
+            p.viol = {
+                V0: new Arc(Vx, Vy, Vr),
+                width: 2 * x
+            }
+        }
+
+        let V0intersect = circleCircleIntersections(p.bouts.U0, p.viol.V0)[0];
+        let V0Angle = angleFromCenter(p.viol.V0, V0intersect);
+        let U0Angle = angleFromCenter(p.bouts.U0, V0intersect);
+
+        p.bouts.U0.start = U0Angle;
+        p.viol.V0.start = V0Angle
+        p.viol.V0.end = Math.PI
+    }
+
+}
 
 export function calculateCorners(p: EnricoCerutiParams): void {
     let inset = p.overhang + p.rib;
@@ -78,42 +106,41 @@ export function calculateCorners(p: EnricoCerutiParams): void {
     let U2Y = p.bouts.U2?.y ?? p.bouts.U1.y;
 
     let U1U2Match = false
-    if (p.bouts.U2?.r ==p.bouts.U1.r && p.bouts.U2?.y == p.bouts.U1.y && p.bouts.U2?.x == p.bouts.U1.x) {
+    if (p.bouts.U2?.r == p.bouts.U1.r && p.bouts.U2?.y == p.bouts.U1.y && p.bouts.U2?.x == p.bouts.U1.x) {
         // this is a special case where the user has set U2 to be the same as U1, 
         // which causes the math below to break since we won't have two distinct circles to intersect
         U1U2Match = true;
-         p.bouts.U1.end = 0
+        p.bouts.U1.end = 0
     }
-    else if (U2Y == p.bouts.U1.y){
+    else if (U2Y == p.bouts.U1.y) {
         p.bouts.U2 = new Arc(p.bouts.UBW / 2 - U2R - inset, U2Y, U2R);
     }
     else {
-        let c = p.bouts.U2.r -p.bouts.U1.r;
+        let c = p.bouts.U2.r - p.bouts.U1.r;
         let b = p.bouts.U2.y - p.bouts.U1.y
-        let U2xPlus = p.bouts.U1.x + Math.sqrt(c*c - b*b) 
-        let U2xMinus = p.bouts.U1.x - Math.sqrt(c*c - b*b)
+        let U2xPlus = p.bouts.U1.x + Math.sqrt(c * c - b * b)
+        let U2xMinus = p.bouts.U1.x - Math.sqrt(c * c - b * b)
 
         p.bouts.U2.x = Math.min(U2xPlus, U2xMinus);
     }
-    
-    
+
     let L2R = p.bouts.L2?.r ?? Math.round(LBWI * p.ratios.L2toLBW);
     let L2Y = p.bouts.L2?.y ?? p.bouts.L1.y;
     let L2U1Match = false
-    if (p.bouts.L2?.r ==p.bouts.L1.r && p.bouts.L2?.y == p.bouts.L1.y && p.bouts.L2?.x == p.bouts.L1.x) {
+    if (p.bouts.L2?.r == p.bouts.L1.r && p.bouts.L2?.y == p.bouts.L1.y && p.bouts.L2?.x == p.bouts.L1.x) {
         // this is a special case where the user has set L2 to be the same as L1,
         // which causes the math below to break since we won't have two distinct circles to intersect
         L2U1Match = true;
         p.bouts.L1.end = 0
     }
-    if (L2Y == p.bouts.L1.y){       
+    if (L2Y == p.bouts.L1.y) {
         p.bouts.L2 = new Arc(p.bouts.LBW / 2 - L2R - inset, L2Y, L2R);
     }
     else {
-        let c = p.bouts.L2.r -p.bouts.L1.r;
+        let c = p.bouts.L2.r - p.bouts.L1.r;
         let b = p.bouts.L2.y - p.bouts.L1.y
-        let L2xPlus = p.bouts.L1.x + Math.sqrt(c*c - b*b) 
-        let L2xMinus = p.bouts.L1.x - Math.sqrt(c*c - b*b)
+        let L2xPlus = p.bouts.L1.x + Math.sqrt(c * c - b * b)
+        let L2xMinus = p.bouts.L1.x - Math.sqrt(c * c - b * b)
 
         p.bouts.L2.x = Math.min(L2xPlus, L2xMinus);
     }
@@ -150,6 +177,27 @@ export function calculateCorners(p: EnricoCerutiParams): void {
     p.bouts.L2 = arcFromCircle(p.bouts.L2, L2StartAngle, L2Angle);
     p.bouts.L3 = arcFromCircleAndPoints(p.bouts.L3, L2Intersect, p.bouts.LC);
 
+    // viol corner calcs
+    if (p.options.useViolCornerLC) {
+        let L1EndPt = pointOnCircle(p.bouts.L1!, p.bouts.L1.end);
+        let a = p.bouts.LC.y - L1EndPt.y
+        let b = L1EndPt.x - p.bouts.LC.x
+        let L4r = (a * a + b * b) / (2 * b)
+
+        let l4 = new Circle(L1EndPt.x - L4r, L1EndPt.y, L4r);
+        p.bouts.L4 = arcFromCircleAndPoints(l4, L1EndPt, p.bouts.LC);
+    }
+
+    if (p.options.useViolCornerUC) {
+        let U1EndPt = pointOnCircle(p.bouts.U1!, p.bouts.U1.end);
+        let a = p.bouts.UC.y - U1EndPt.y
+        let b = U1EndPt.x - p.bouts.UC.x
+        let U4r = (a * a + b * b) / (2 * b)
+
+        let u4 = new Circle(U1EndPt.x - U4r, U1EndPt.y, U4r);
+        p.bouts.U4 = arcFromCircleAndPoints(u4, U1EndPt, p.bouts.UC);
+    }
+
     // recalculate display ratios
     p.ratios.U2toUBW = p.bouts.U2.r / UBWI;
     p.ratios.U3toLBW = p.bouts.U3.r / LBWI;
@@ -157,18 +205,70 @@ export function calculateCorners(p: EnricoCerutiParams): void {
     p.ratios.L3toLBW = p.bouts.L3.r / LBWI;
 }
 
-export function calculateCenterBout(p: EnricoCerutiParams): void {
+let lastWorkingC0: Arc | null = null;
+export function calculateCenterBout(p: EnricoCerutiParams, solveC0?: boolean): void {
     let inset = p.overhang + p.rib;
     let UBWI = p.bouts.UBW - 2 * inset;
     let LBWI = p.bouts.LBW - 2 * inset;
     let HI = p.height - 2 * inset;
 
+    if (solveC0 !== undefined)
+        p.options.useKellyC0 = solveC0; // if solveC0 is passed in, then we want to toggle whether C0 is fixed or not, and remember on future calcs 
+
     p.bouts.CBW = p.bouts.CBW ?? Math.round(p.bouts.LBW * p.ratios.CBWtoLBW);
 
-    let c0Radius = p.bouts.C0?.r ?? Math.round(LBWI * p.ratios.C0toLBW);
-    let boutMid = ((p.height - p.bouts.UBW) - p.bouts.LBW)/2 + p.bouts.LBW
-    let c0Y = p.bouts.C0?.y ?? boutMid;
-    p.bouts.C0 = new Arc(p.bouts.CBW / 2 - inset + c0Radius, c0Y, c0Radius);
+    if (p.options.useKellyC0) {
+        try {
+            let UtoL = dist(p.bouts.U2!, p.bouts.L2!);  // these joining circles are the ones that must intercept with C0, modified kelly theory
+            let UtoC = p.bouts.U2.r + p.bouts.C0.r;
+            let LtoC = p.bouts.L2.r + p.bouts.C0.r;
+
+            let theta = Math.acos((UtoL * UtoL + UtoC * UtoC - LtoC * LtoC) / (2 * UtoL * UtoC));  // angle off U2 to C0, but with the Y axis as the line from U2 to L2
+
+            // now we need to begin converting this to the proper coordinate space
+            // first, the above theta needs to be referenced added to 3/2 pi, as it is pointing down
+            theta = theta + 3 * Math.PI / 2; // angle from U2 to C0, with the line from U2 to L2 as reference
+
+            // now we need to convert the angle to the standard xy plane
+            let lineFromU2toL2 = lineFromTwoPoints(p.bouts.U2!, p.bouts.L2!);
+            if (lineFromU2toL2.m !== Infinity && lineFromU2toL2.m !== -Infinity) {
+                let angleFromU2toL2 = Math.atan(lineFromU2toL2.m); // angle of the line from U2 to L2, with the standard xy plane as reference
+                let diffFromYAxis = Math.PI / 2 - angleFromU2toL2; // angle from the line U2 to L2, to the Y axis
+                theta = theta - diffFromYAxis; // angle from U2 to C0, with the standard xy plane as reference
+            }
+
+            // cos(finalAngle) = o / r = (C0.x - U2.x) / (C0.r + U2.r)
+            // sin(finalAngle) = a / r = (U2.y - C0.y) / (C0.r + U2.r)
+            p.bouts.C0.x = p.bouts.U2.x + Math.cos(theta) * UtoC;
+            p.bouts.C0.y = p.bouts.U2.y + Math.sin(theta) * UtoC;
+
+            // if the above calculations result in a C0 that doesn't intersect with L2, then we have an impossible C0 and should throw an error
+            let C0toL2 = dist(p.bouts.C0, p.bouts.L2!);
+            let C0toU2 = dist(p.bouts.C0, p.bouts.U2!);
+            if (C0toL2 > p.bouts.C0.r + p.bouts.L2.r + 1 || C0toU2 > p.bouts.C0.r + p.bouts.U2.r + 1) 
+                throw new Error("Given the radii of C0, L2 and U2, there is no condition where C0 can be fit. Likely, you can increase the radius of C0 and try again.")
+
+            // makes sense to recalculate center bout width here
+            p.bouts.CBW = (p.bouts.C0.x - p.bouts.C0.r + inset) * 2;
+            lastWorkingC0 = JSON.parse(JSON.stringify(p.bouts.C0));
+        }
+        catch (e) {
+            p.options.useKellyC0 = false; // if we fail to solve for C0 using the kelly method, we should turn it off so that the user can still get a valid C0 by adjusting the main bouts and corners
+            error("Given the radii of C0, L2 and U2, there is no condition where C0 can be fit. Likely, you can increase the radius of C0 and try again.", "Failed to fit C0.");
+            if (lastWorkingC0) 
+                p.bouts.C0 = JSON.parse(JSON.stringify(lastWorkingC0));
+
+            return calculateCenterBout(p, false); // recalculate with Kelly method disabled
+        }
+    }
+
+    if (!p.options.useKellyC0) {
+        let c0Radius = p.bouts.C0?.r ?? Math.round(LBWI * p.ratios.C0toLBW);
+        let boutMid = ((p.height - p.bouts.UBW) - p.bouts.LBW) / 2 + p.bouts.LBW
+        let c0Y = p.bouts.C0?.y ?? boutMid;
+        p.bouts.C0 = new Arc(p.bouts.CBW / 2 - inset + c0Radius, c0Y, c0Radius);
+        lastWorkingC0 = JSON.parse(JSON.stringify(p.bouts.C0));
+    }
 
     let cuRadius = p.bouts.CU?.r ?? Math.round((LBWI * p.ratios.CUtoLBW));
     let clRadius = p.bouts.CL?.r ?? Math.round((LBWI * p.ratios.CLtoLBW));
@@ -189,4 +289,4 @@ export function calculateCenterBout(p: EnricoCerutiParams): void {
     p.ratios.CUtoLBW = CU.r / LBWI;
     p.ratios.CLtoLBW = CL.r / LBWI;
 
-  }
+}

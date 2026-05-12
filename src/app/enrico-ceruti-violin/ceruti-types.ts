@@ -11,11 +11,13 @@ export interface EnricoCerutiParams {
     U1: Arc | null;
     U2: Arc | null;
     U3: Arc | null;
+    U4?: Arc | null;
     CBW: number | null;
     CU: Arc | null;
     C0: Arc | null;
     CL: Arc | null;
     LBW: number | null;
+    L4?: Arc | null;
     L3: Arc | null;
     L2: Arc | null;
     L1: Arc | null;
@@ -43,14 +45,15 @@ export interface EnricoCerutiParams {
     CL: Rectangle | null;
     L: Rectangle | null;
   },
-  viol?: {
-    height: number;
-    V0: Circle | null;
+  viol: {
+    width: number | null;
+    V0: Arc | null;
   },
   options: {
     useViolNeck: boolean,
     useViolCornerUC: boolean,
     useViolCornerLC: boolean,
+    useKellyC0: boolean // four circles based theory of clean intersection along center bout
   },
   ratios: {
     HtoW: number;
@@ -97,7 +100,7 @@ const DefaultParams: EnricoCerutiParams = {
     HtoW: 7 / 4,
 
     UBtoLB: 4 / 5,
-    U0toUBW: 4 / 5,
+    U0toUBW: 5 / 8,
     U1toUBW: 1 / 3,
     U2toUBW: 1 / 2,
     U3toLBW: 1 / 8,
@@ -109,15 +112,15 @@ const DefaultParams: EnricoCerutiParams = {
     CLtoLBW: 1 / 8,
 
     LBtoH: 4 / 7,
-    L0toLBW: 1,
+    L0toLBW: 7 / 8,
     L1toLBW: 1 / 3,
     L2toLBW: 1 / 2,
     L3toLBW: 1 / 8,
 
     UCYtoH: 2 / 3,
-    UCXtoUBW: 7 / 8,
+    UCXtoUBW: 8 / 9,
     LCYtoH: 6 / 15,
-    LCXtoLBW: 7 / 8,
+    LCXtoLBW: 8 / 9,
   },
   bouts: {
     UBW: undefined,
@@ -125,17 +128,23 @@ const DefaultParams: EnricoCerutiParams = {
     U1: undefined,
     U2: undefined,
     U3: undefined,
+    U4: undefined,
     CBW: undefined,
     CU: undefined,
     C0: undefined,
     CL: undefined,
     LBW: undefined,
+    L4: undefined,
     L3: undefined,
     L2: undefined,
     L1: undefined,
     L0: undefined,
     UC: undefined,
     LC: undefined,
+  },
+  viol: {
+    width: null,
+    V0: null
   },
   outerCorners: {
     U31: undefined,
@@ -161,10 +170,12 @@ const DefaultParams: EnricoCerutiParams = {
     useViolNeck: false,
     useViolCornerUC: false,
     useViolCornerLC: false,
+    useKellyC0: false // four circles based theory of clean intersection along center bout
   }
 }
 
 const CerutiParams: EnricoCerutiParams = {
+  ...DefaultParams,
   "height": 336,
   "width": 200,
   "overhang": 3,
@@ -304,11 +315,13 @@ const CerutiParams: EnricoCerutiParams = {
   "options": {
     "useViolNeck": false,
     "useViolCornerUC": false,
-    "useViolCornerLC": false
+    "useViolCornerLC": false,
+    "useKellyC0": false // four circles based theory of clean intersection along center bout
   }
 }
 
 const stradGoetzParams: EnricoCerutiParams = {
+    ...DefaultParams,
   "height": 360,
   "width": 200,
   "overhang": 3,
@@ -448,7 +461,9 @@ const stradGoetzParams: EnricoCerutiParams = {
   "options": {
     "useViolNeck": false,
     "useViolCornerUC": false,
-    "useViolCornerLC": false
+    "useViolCornerLC": false,
+    "useKellyC0": false // four circles based theory of clean intersection along center bout
+
   }
 }
 
