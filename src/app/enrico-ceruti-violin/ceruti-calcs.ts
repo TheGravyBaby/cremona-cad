@@ -1,4 +1,4 @@
-import { solveInscribedCircleAlongAxis, circleCircleIntersections, angleFromCenter, interceptCirclesAndPoint, dist, lineFromTwoPoints, pointOnCircle } from "../helpers/draftMath";
+import { solveInscribedCircleAlongAxis, circleCircleIntersections, angleFromCenter, interceptCirclesAndPoint, dist, lineFromTwoPoints, pointOnCircle, offsetCircleRadius, offsetArcRadius } from "../helpers/draftMath";
 import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle } from "../models/types";
 import { error } from "../shared/message-emitter";
 import { EnricoCerutiParams } from "./ceruti-types";
@@ -289,4 +289,108 @@ export function calculateCenterBout(p: EnricoCerutiParams, solveC0?: boolean): v
     p.ratios.CUtoLBW = CU.r / LBWI;
     p.ratios.CLtoLBW = CL.r / LBWI;
 
+}
+
+
+export type ArcGroup = {lowerBout: Arc[], centerBout: Arc[], upperBout: Arc[], allArcs: Arc[]}
+export function defineInnerArcs(p: EnricoCerutiParams): ArcGroup {
+    let lowerBout = [];
+        lowerBout.push(p.bouts.L0)
+        lowerBout.push(p.bouts.L1)
+        lowerBout.push(p.bouts.L2)
+        lowerBout.push(p.bouts.L3)
+        lowerBout.push(p.bouts.L4);
+
+    let centerBout = [];
+        centerBout.push(p.bouts.C0);
+        centerBout.push(p.bouts.CL);
+        centerBout.push(p.bouts.CU);
+
+    let upperBout = [];
+        upperBout.push(p.bouts.U0);
+        upperBout.push(p.bouts.U1);
+        upperBout.push(p.bouts.U2)
+        upperBout.push(p.bouts.U3)
+        upperBout.push(p.bouts.U4);
+        upperBout.push(p.viol.V0!);
+
+    let fullPath = [];
+    fullPath.push(lowerBout[0], lowerBout[1]);
+    if (p.options.useViolCornerLC) {
+        fullPath.push(lowerBout[4]);
+    } else {
+        fullPath.push(lowerBout[2]);
+        fullPath.push(lowerBout[3]);
+    }
+    fullPath.push(...centerBout);
+
+    if (p.options.useViolCornerUC) {
+        fullPath.push(upperBout[4]);
+    } else {
+        fullPath.push(upperBout[3]);
+        fullPath.push(upperBout[2]);
+    }
+    fullPath.push(upperBout[1]);
+    fullPath.push(upperBout[0]);
+    if (p.options.useViolNeck)
+        fullPath.push(upperBout[5]);
+
+    return {
+        lowerBout: lowerBout,
+        centerBout: centerBout,
+        upperBout: upperBout,
+        allArcs: fullPath
+    }
+
+}
+
+export function defineOuterArcs(p: EnricoCerutiParams, arcs: ArcGroup): ArcGroup {
+    let inset = p.overhang + p.rib;
+    arcs = JSON.parse(JSON.stringify(arcs)) as ArcGroup; // deep copy so we don't mutate the original arcs
+
+    arcs.lowerBout[0] = offsetArcRadius(arcs.lowerBout[0], inset);
+    arcs.lowerBout[1] = offsetArcRadius(arcs.lowerBout[1], inset);
+    arcs.lowerBout[2] = offsetArcRadius(arcs.lowerBout[2], inset);
+    arcs.lowerBout[3] = offsetArcRadius(arcs.lowerBout[3], -inset);
+    arcs.lowerBout[4] = arcs.lowerBout[4] ? offsetArcRadius(arcs.lowerBout[4], inset) : null;
+
+
+    arcs.centerBout[0] = offsetArcRadius(arcs.centerBout[0], -inset);
+    arcs.centerBout[1] = offsetArcRadius(arcs.centerBout[1], -inset);
+    arcs.centerBout[2] = offsetArcRadius(arcs.centerBout[2], -inset);
+
+    arcs.upperBout[4] = arcs.upperBout[4] ? offsetArcRadius(arcs.upperBout[4], inset) : null;
+    arcs.upperBout[3] = offsetArcRadius(arcs.upperBout[3], -inset);
+    arcs.upperBout[2] = offsetArcRadius(arcs.upperBout[2], inset);
+    arcs.upperBout[1] = offsetArcRadius(arcs.upperBout[1], inset);
+    arcs.upperBout[0] = offsetArcRadius(arcs.upperBout[0], inset);
+    arcs.upperBout[5] = arcs.upperBout[5] ? offsetArcRadius(arcs.upperBout[5], -inset) : null;
+
+    let fullPath = [];
+        fullPath.push(arcs.lowerBout[0], arcs.lowerBout[1]);
+        if (p.options.useViolCornerLC) {
+            fullPath.push(arcs.lowerBout[4]);
+        } else {
+            fullPath.push(arcs.lowerBout[2]);
+            fullPath.push(arcs.lowerBout[3]);
+        }
+        fullPath.push(...arcs.centerBout);
+
+        if (p.options.useViolCornerUC) {
+            fullPath.push(arcs.upperBout[4]);
+        } else {
+            fullPath.push(arcs.upperBout[3]);
+            fullPath.push(arcs.upperBout[2]);
+        }
+        fullPath.push(arcs.upperBout[1]);
+        fullPath.push(arcs.upperBout[0]);
+        if (p.options.useViolNeck)
+            fullPath.push(arcs.upperBout[5]);
+
+    return {
+        lowerBout: arcs.lowerBout,
+        centerBout: arcs.centerBout,
+        upperBout: arcs.upperBout,
+        allArcs: fullPath
+    }
 }

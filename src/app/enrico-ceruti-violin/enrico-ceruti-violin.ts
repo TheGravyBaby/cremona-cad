@@ -7,7 +7,7 @@ import { clampParam, safeRun } from '../helpers/validators';
 import { EnricoCerutiTemplate, CERUTI_TEMPLATES, EnricoCerutiParams } from './ceruti-types';
 import { dimensionInfo, insetInfo, referenceInfo } from './ceruti-helpers';
 import { angleFromCenter, circleCircleIntersections, dist, flipAngleAboutYAxis, flipArcAboutY, flipCircleAboutY, interceptCirclesAndPoint, lineFromTwoPoints, pointOnCircle, solveInscribedCircleAlongAxis } from '../helpers/draftMath';
-import { calculateCenterBout, calculateCorners, calculateMainBouts } from './ceruti-calcs';
+import { calculateCenterBout, calculateCorners, calculateMainBouts, defineInnerArcs, defineOuterArcs } from './ceruti-calcs';
 import { error } from '../shared/message-emitter';
 
 @Component({
@@ -25,6 +25,8 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     { id: 'mainBouts', label: 'Main Bouts' },
     { id: 'corners', label: 'Corners' },
     { id: 'centerBout', label: 'Center Bout' },
+    { id: 'outerTrace', label: 'Outer Trace'},
+    { id: 'mould', label: 'Mould'},
     { id: 'export', label: 'Export' },
   ] as const;
 
@@ -37,7 +39,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     centerBoutLow: '#ad9267ff',
     lowerBout: '#4D74A8',
     innerTrace: '#a47272ff',
-    outerTrace: '#b37f7fff',
+    outerTrace: '#3692d8ff',
     mouldTrace: '#81887eff',
   } as const;
 
@@ -73,7 +75,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
   // ===== Component state =====
 
   readonly templates: EnricoCerutiTemplate[] = CERUTI_TEMPLATES;
-  override openPanel = 'base';
+  override openPanel = 'outerTrace';
   override d: EnricoCerutiTemplate = {
     ...CERUTI_TEMPLATES[0],
   };
@@ -131,6 +133,9 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       let selectedTemplate = this.templates.find(t => t.key === this.selectedTemplateKey) ?? this.templates[0];
       this.referenceImageChange.emit(selectedTemplate.referenceImage ?? null);
     }
+
+    const handlers = this.getActivationHandlers();
+    handlers[this.openPanel]?.();
   };
 
   override ngOnDestroy(): void {
@@ -157,6 +162,8 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       mainBouts: () => this.changeMainBouts(),
       centerBout: () => this.changeCenterBout(),
       corners: () => this.changeCorners(),
+      outerTrace: () => this.changeOuterTrace(),
+      // mould: () => this.changeMould(),
     };
   }
 
@@ -166,6 +173,8 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       case 'mainBouts': return this.hasBaseMeasurements();
       case 'corners': return this.hasMainBouts();
       case 'centerBout': return this.hasCorners();
+      case 'outerTrace': return this.hasCenterBout();
+      // case 'mould': return this.hasOuterTrace();
       default: return false;
     }
   }
@@ -185,6 +194,11 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
   private hasCorners(): boolean {
     const b = this.d.params.bouts;
     return !!(b.UC && b.LC);
+  }
+
+  private hasCenterBout(): boolean {
+    const b = this.d.params.bouts;
+    return !!(b.C0);
   }
 
   // ===== Shared helpers =====
@@ -461,4 +475,33 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     }
   }
 
+  changeOuterTrace(): void {
+    this.debounce(() => safeRun(() => {
+      // No calculations to do, just need to re-render with new parameters
+      this.draftChange.emit([
+        this.renderBounds(false),
+        this.renderMainBouts(false),
+        this.renderCorners(false),
+        this.renderCenterBout(false),
+        this.renderOuterTrace(true),
+      ]);
+      sessionStorage.setItem('recipeData', JSON.stringify(this.d));
+    }));
+  }
+
+  renderOuterTrace = (currentModule: boolean) => (g: any, ui: any): void => {
+    let p = this.d.params;
+
+    let arcs = defineInnerArcs(p);
+    let outerArcs = defineOuterArcs(p, arcs);
+    
+    if ((currentModule && this.showModuleArcs) || this.showAllArcs) {
+      arcs.allArcs.forEach(arc => renderArcFromArc(arc, this.colors.innerTrace)(g, ui));
+      arcs.allArcs.forEach(arc => renderArcFromArc(flipArcAboutY(arc), this.colors.innerTrace)(g, ui));
+    }
+
+    outerArcs.allArcs.forEach(arc => renderArcFromArc(arc, this.colors.outerTrace)(g, ui));
+    outerArcs.allArcs.forEach(arc => renderArcFromArc(flipArcAboutY(arc), this.colors.outerTrace)(g, ui));
+   
+  }
 }

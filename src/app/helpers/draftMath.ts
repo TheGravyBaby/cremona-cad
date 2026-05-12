@@ -89,6 +89,14 @@ export function offsetCircleRadius(C: Circle, offset: number): Circle {
   return { x: C.x, y: C.y, r: newR };
 }
 
+export function offsetArcRadius(arc: Arc, offset: number): Arc {
+  const newR = arc.r + offset;
+  if (newR < 0) 
+    throw new Error('Offset cannot be so negative that it produces an arc with negative radius.');
+
+  return { x: arc.x, y: arc.y, r: newR, start: arc.start, end: arc.end };
+}
+
 export function flipArcAboutY(arc: Arc): Arc {
   let mirroredArc = new Circle(-arc.x, arc.y, arc.r);
   let mirroredU1Arc = arcFromCircle(mirroredArc, flipAngleAboutYAxis(arc.start), flipAngleAboutYAxis(arc.end));
