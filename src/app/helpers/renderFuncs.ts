@@ -282,7 +282,7 @@ export const renderPath = (path: string, color: string, strokeWidth: number = 2,
         .attr('vector-effect', 'non-scaling-stroke');;
 };
 
-export const renderCircle = (C: Circle, color: string) => (g: any, ui: any) => {
+export const renderCircle = (C: Circle, color: string, mirrorY?: boolean) => (g: any, ui: any) => {
     g.append('circle')
         .attr('cx', C.x)
         .attr('cy', C.y)
@@ -291,6 +291,17 @@ export const renderCircle = (C: Circle, color: string) => (g: any, ui: any) => {
         .attr('fill', 'none')
         .attr('stroke-width', 1)
         .attr('vector-effect', 'non-scaling-stroke');
+
+    if (mirrorY) {
+        g.append('circle')
+            .attr('cx', -C.x)
+            .attr('cy', C.y)
+            .attr('r', Math.abs(C.r))
+            .attr('stroke', color)
+            .attr('fill', 'none')
+            .attr('stroke-width', 1)
+            .attr('vector-effect', 'non-scaling-stroke');
+    }
 }
 
 export const renderLine = (P: Pt, Q: Pt, color: string, opacity: boolean = false) => (g: any, ui: any) => {
@@ -605,7 +616,7 @@ export const renderRectRoundedCorners = (rect: Rectangle, r: number, color: stri
         .attr("vector-effect", "non-scaling-stroke");
 }   
 
-export const renderArcFromArc = (arc: Arc, color: string, fill: string = "none", strokeWidth: number = 1, longArc = false) => (g: any, ui: any) => {
+export const renderArcFromArc = (arc: Arc, color: string, strokeWidth: number = 1, longArc = false) => (g: any, ui: any) => {
     const TWO_PI = Math.PI * 2;
     const cx = arc.x;
     const cy = arc.y;
@@ -634,28 +645,23 @@ export const renderArcFromArc = (arc: Arc, color: string, fill: string = "none",
 
     g.append("path")
         .attr("d", `M ${sx},${sy} A ${r},${r} 0 ${largeArcFlag},${sweepFlag} ${ex},${ey}`)
-        .attr("fill", fill)
         .attr("stroke", color)
         .attr("stroke-width", strokeWidth)
+        .attr("fill", "none")
         .attr("vector-effect", "non-scaling-stroke");
 }
 
 // this just has some display features that will help the user understand what is going on
-export const renderArcFromArcFancy = (arc: Arc, color: string, label?: string, colorOff?: string) => (g: any, ui: any) => {
+export const renderArcFromArcFancy = (arc: Arc, color: string) => (g: any, ui: any) => {
     let start: Pt = pointOnCircle(arc, arc.start);
     let end: Pt = pointOnCircle(arc, arc.end);
 
     // main arc
-    renderArcFromArc(arc, color, "none", 2, false)(g, ui);
-    renderDashLine(arc, start, colorOff ?? color)(g, ui);
-    renderDashLine(arc, end, colorOff ?? color)(g, ui);
+    renderArcFromArc(arc, color, 2, false)(g, ui);
+    renderDashLine(arc, start, color)(g, ui);
+    renderDashLine(arc, end, color)(g, ui);
+    renderCrosshair(arc, color)(g, ui);
 
-    if (label) {
-        renderPointLabel(arc, label, color)(g, ui);
-    }
-    else{
-        renderCrosshair(arc, color)(g, ui);
-    }
 }
 
 export function greyOut(color: string, degree: number): string {

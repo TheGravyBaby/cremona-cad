@@ -131,13 +131,18 @@ export abstract class RecipeComponentBase implements AfterViewInit {
   }
 
 
-  ngOnInit() {
+ ngOnInit() {
     const saved = sessionStorage.getItem('recipeData');
     if (saved) {
       try {
         let recipeData = JSON.parse(saved);
         if (this.d.recipeName == recipeData.recipeName) {
           this.d = recipeData;
+          this.panelFlow?.refreshEnabledPanels();
+          // Restore the last open panel if it's still enabled
+          if (recipeData.openPanel && this.isPanelEnabled(recipeData.openPanel)) {
+            this.openPanel = recipeData.openPanel;
+          }
         } else {
           console.warn('Saved recipe does not match current recipe. Ignoring saved data.');
         }
@@ -156,7 +161,7 @@ export abstract class RecipeComponentBase implements AfterViewInit {
   ngOnDestroy() {
     this._destroyed = true;
     this.debounceController?.destroy();
-    sessionStorage.setItem('recipeData', JSON.stringify(this.d));
+    sessionStorage.setItem('recipeData', JSON.stringify({ ...this.d, openPanel: this.openPanel }));
   }
 
   firstRender(canvas: any, ui: any) {
