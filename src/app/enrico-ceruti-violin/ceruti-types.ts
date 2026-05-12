@@ -148,17 +148,17 @@ const DefaultParams: EnricoCerutiParams = {
   },
   outerCorners: {
     U31: undefined,
-    U31Cutoff: 0,
-    U31Orbit: 0,
+    U31Cutoff: null,
+    U31Orbit: null,
     CU1: undefined,
-    CU1Cutoff: 0,
-    CU1Orbit: 0,
+    CU1Cutoff: null,
+    CU1Orbit: null,
     CL1: undefined,
-    CL1Cutoff: 0,
-    CL1Orbit: 0,
+    CL1Cutoff: null,
+    CL1Orbit: null,
     L31: undefined,
-    L31Cutoff: 0,
-    L31Orbit: 0
+    L31Cutoff: null,
+    L31Orbit: null
   },
   blocks: {
     U: undefined,

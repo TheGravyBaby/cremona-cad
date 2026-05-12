@@ -2,12 +2,12 @@ import { ChangeDetectorRef, Component, HostListener, Input } from '@angular/core
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Pt, Rectangle } from '../models/types';
-import { greyOut, renderArcFromArc, renderArcFromArcFancy, renderCircle, renderCrosshair, renderDashedLine, renderDashLine, renderDistanceMeasurementLine, renderLine, renderRect } from '../helpers/renderFuncs';
+import { greyOut, renderArcFromArc, renderArcFromArcFancy, renderCircle, renderCircleAngleIndicator, renderCrosshair, renderDashedLine, renderDashLine, renderDistanceMeasurementLine, renderLine, renderRect } from '../helpers/renderFuncs';
 import { clampParam, safeRun } from '../helpers/validators';
 import { EnricoCerutiTemplate, CERUTI_TEMPLATES, EnricoCerutiParams } from './ceruti-types';
 import { dimensionInfo, insetInfo, referenceInfo } from './ceruti-helpers';
-import { angleFromCenter, circleCircleIntersections, dist, flipAngleAboutYAxis, flipArcAboutY, flipCircleAboutY, interceptCirclesAndPoint, lineFromTwoPoints, pointOnCircle, solveInscribedCircleAlongAxis } from '../helpers/draftMath';
-import { calculateCenterBout, calculateCorners, calculateMainBouts, defineInnerArcs, defineOuterArcs } from './ceruti-calcs';
+import { angleFromCenter, circleCircleIntersections, dist, flipAngleAboutYAxis, flipArcAboutY, flipCircleAboutY, interceptCirclesAndPoint, lineFromTwoPoints, offsetCircleRadius, pointOnCircle, solveInscribedCircleAlongAxis } from '../helpers/draftMath';
+import { calculateCenterBout, calculateCorners, calculateMainBouts, calculateOuterCorners, defineInnerArcs, defineOuterArcs } from './ceruti-calcs';
 import { error } from '../shared/message-emitter';
 
 @Component({
@@ -85,6 +85,8 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
   showAllArcs: boolean = false;
   showAllCircles: boolean = false;
   showBoundingBoxes: boolean = true;
+  showOuterCircles: boolean = true;
+
   private lastNewFileTick = 0;
 
   get selectedTemplateKey(): string {
@@ -420,7 +422,6 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
 
   }
 
-
   changeCenterBout(solveC0?: boolean): void {
     this.debounce(() => safeRun(() => {
       calculateCenterBout(this.d.params, solveC0);
@@ -477,12 +478,12 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
 
   changeOuterTrace(): void {
     this.debounce(() => safeRun(() => {
-      // No calculations to do, just need to re-render with new parameters
+      calculateOuterCorners(this.d.params);
       this.draftChange.emit([
-        this.renderBounds(false),
-        this.renderMainBouts(false),
-        this.renderCorners(false),
-        this.renderCenterBout(false),
+        // this.renderBounds(false),
+        // this.renderMainBouts(false),
+        // this.renderCorners(false),
+        // this.renderCenterBout(false),
         this.renderOuterTrace(true),
       ]);
       sessionStorage.setItem('recipeData', JSON.stringify(this.d));
@@ -491,6 +492,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
 
   renderOuterTrace = (currentModule: boolean) => (g: any, ui: any): void => {
     let p = this.d.params;
+    let inset = p.overhang + p.rib;
 
     let arcs = defineInnerArcs(p);
     let outerArcs = defineOuterArcs(p, arcs);
@@ -502,6 +504,23 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
 
     outerArcs.allArcs.forEach(arc => renderArcFromArc(arc, this.colors.outerTrace)(g, ui));
     outerArcs.allArcs.forEach(arc => renderArcFromArc(flipArcAboutY(arc), this.colors.outerTrace)(g, ui));
-   
+
+
+    renderCircle(p.outerCorners.U31, this.colors.upperBout)(g, ui);
+    renderCircle(p.outerCorners.CU1, this.colors.centerBoutUp)(g, ui);
+    renderCircle(p.outerCorners.CL1, this.colors.centerBoutLow)(g, ui);
+    renderCircle(p.outerCorners.L31, this.colors.lowerBout)(g, ui);
+
+    renderCircleAngleIndicator(p.outerCorners.U31, p.outerCorners.U31Cutoff, this.colors.upperBout)(g, ui);
+    renderCircleAngleIndicator(p.outerCorners.CU1, p.outerCorners.CU1Cutoff, this.colors.centerBoutUp)(g, ui);
+    renderCircleAngleIndicator(p.outerCorners.CL1, p.outerCorners.CL1Cutoff, this.colors.centerBoutLow)(g, ui);
+    renderCircleAngleIndicator(p.outerCorners.L31, p.outerCorners.L31Cutoff, this.colors.lowerBout)(g, ui);
+
+    renderCircle(offsetCircleRadius(p.bouts.U3, -inset), this.colors.upperBoutOff2)(g, ui);
+    renderCircle(offsetCircleRadius(p.bouts.CU, -inset), this.colors.centerBoutUpOff2)(g, ui);
+    renderCircle(offsetCircleRadius(p.bouts.CL, -inset), this.colors.centerBoutLowOff2)(g, ui);
+    renderCircle(offsetCircleRadius(p.bouts.L3, -inset), this.colors.lowerBoutOff2)(g, ui);
+
+
   }
 }
