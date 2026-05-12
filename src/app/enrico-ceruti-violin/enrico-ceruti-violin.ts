@@ -75,7 +75,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
   // ===== Component state =====
 
   readonly templates: EnricoCerutiTemplate[] = CERUTI_TEMPLATES;
-  override openPanel = 'outerTrace';
+  override openPanel = 'base';
   override d: EnricoCerutiTemplate = {
     ...CERUTI_TEMPLATES[0],
   };
