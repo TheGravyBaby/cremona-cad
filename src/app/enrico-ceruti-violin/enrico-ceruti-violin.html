@@ -609,11 +609,86 @@
         @if (openPanel === 'outerTrace') {
         <section class="ui-group">
             <div class="ui-group-title">Upper Corner</div>
-
+            <div class="ui-group">
+                <div class="input-group basic-row field-row" role="group">
+                    <label class="field-cell">
+                        <span class="field-title">Radius <span class="unit-label">mm</span></span>
+                        <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.outerCorners.U31.r"
+                            (input)="changeOuterTrace()" [style.borderColor]="colors.upperBout" />
+                    </label>
+                    <label class="field-cell">
+                        <span class="field-title">Cutoff <span class="unit-label">deg</span></span>
+                        <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.outerCorners.U31Cutoff"
+                            (input)="changeOuterTrace()" [style.borderColor]="colors.upperBoutOff" />
+                    </label>
+                    <label class="field-cell">
+                        <span class="field-title">Orbit <span class="unit-label">deg</span></span>
+                        <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.outerCorners.U31Orbit"
+                            (input)="changeOuterTrace()" [style.borderColor]="colors.upperBoutOff2" />
+                    </label>
+                </div>
+            </div>
+             <div class="ui-group">
+                <div class="input-group basic-row field-row" role="group">
+                    <label class="field-cell">
+                        <span class="field-title">Radius <span class="unit-label">mm</span></span>
+                        <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.outerCorners.CU1.r"
+                            (input)="changeOuterTrace()" [style.borderColor]="colors.centerBoutUp" />
+                    </label>
+                    <label class="field-cell">
+                        <span class="field-title">Angle <span class="unit-label">deg</span></span>
+                        <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.outerCorners.CU1Cutoff"
+                            (input)="changeOuterTrace()" [style.borderColor]="colors.centerBoutUpOff" />
+                    </label>
+                    <label class="field-cell">
+                        <span class="field-title">Orbit <span class="unit-label">deg</span></span>
+                        <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.outerCorners.CU1Orbit"
+                            (input)="changeOuterTrace()" [style.borderColor]="colors.centerBoutUpOff2" />
+                    </label>
+                </div>
+            </div>
         </section>
-
+        
         <section class="ui-group">
             <div class="ui-group-title">Lower Corner</div>
+            <div class="ui-group">
+                <div class="input-group basic-row field-row" role="group">
+                    <label class="field-cell">
+                        <span class="field-title">Radius <span class="unit-label">mm</span></span>
+                        <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.outerCorners.L31.r"
+                            (input)="changeOuterTrace()" [style.borderColor]="colors.lowerBout" />
+                    </label>
+                    <label class="field-cell">
+                        <span class="field-title">Angle <span class="unit-label">deg</span></span>
+                        <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.outerCorners.L31Cutoff"
+                            (input)="changeOuterTrace()" [style.borderColor]="colors.lowerBoutOff" />
+                    </label>
+                    <label class="field-cell">
+                        <span class="field-title">Orbit <span class="unit-label">deg</span></span>
+                        <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.outerCorners.L31Orbit"
+                            (input)="changeOuterTrace()" [style.borderColor]="colors.lowerBoutOff2" />
+                    </label>
+                </div>
+            </div>
+            <div class="ui-group">
+                <div class="input-group basic-row field-row" role="group">
+                    <label class="field-cell">
+                        <span class="field-title">Radius <span class="unit-label">mm</span></span>
+                        <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.outerCorners.CL1.r"
+                            (input)="changeOuterTrace()" [style.borderColor]="colors.centerBoutLow" />
+                    </label>
+                    <label class="field-cell">
+                        <span class="field-title">Angle <span class="unit-label">deg</span></span>
+                        <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.outerCorners.CL1Cutoff"
+                            (input)="changeOuterTrace()" [style.borderColor]="colors.centerBoutLowOff" />
+                    </label>
+                    <label class="field-cell">
+                        <span class="field-title">Orbit <span class="unit-label">deg</span></span>
+                        <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.outerCorners.CL1Orbit"
+                            (input)="changeOuterTrace()" [style.borderColor]="colors.centerBoutLowOff2" />
+                    </label>
+                </div>
+            </div>
         </section>
 
         <section class="ui-group">
