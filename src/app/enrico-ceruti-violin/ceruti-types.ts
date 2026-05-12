@@ -26,18 +26,14 @@ export interface EnricoCerutiParams {
     LC: Pt | null;
   },
   outerCorners: {
-    U31: Circle | null;
-    U31Cutoff: number | null;
-    U31Orbit: number | null
-    CU1: Circle | null;
-    CU1Cutoff: number | null;
-    CU1Orbit: number | null;
-    CL1: Circle | null;
-    CL1Cutoff: number | null;
-    CL1Orbit: number | null;
-    L31: Circle | null;
-    L31Cutoff: number | null;
-    L31Orbit: number | null;
+    U31 : Arc | null,
+    U32: Arc | null,
+    CU1: Arc | null,
+    CU2: Arc | null,
+    CL1: Arc | null,
+    CL2: Arc | null,
+    L31: Arc | null,
+    L32: Arc | null
   },
   blocks: {
     U: Rectangle | null;
@@ -53,7 +49,11 @@ export interface EnricoCerutiParams {
     useViolNeck: boolean,
     useViolCornerUC: boolean,
     useViolCornerLC: boolean,
-    useKellyC0: boolean // four circles based theory of clean intersection along center bout
+    useKellyC0: boolean // four circles based theory of clean intersection along center bout,
+    U31DoubleArc: boolean;
+    CU1DoubleArc: boolean;
+    CL1DoubleArc: boolean;
+    L31DoubleArc: boolean;
   },
   ratios: {
     HtoW: number;
@@ -147,18 +147,14 @@ const DefaultParams: EnricoCerutiParams = {
     V0: null
   },
   outerCorners: {
-    U31: undefined,
-    U31Cutoff: null,
-    U31Orbit: null,
-    CU1: undefined,
-    CU1Cutoff: null,
-    CU1Orbit: null,
-    CL1: undefined,
-    CL1Cutoff: null,
-    CL1Orbit: null,
-    L31: undefined,
-    L31Cutoff: null,
-    L31Orbit: null
+    U31: null,
+    U32: null,
+    CU1: null,
+    CU2: null,
+    CL1: null,
+    CL2: null,
+    L31: null,
+    L32: null
   },
   blocks: {
     U: undefined,
@@ -170,7 +166,11 @@ const DefaultParams: EnricoCerutiParams = {
     useViolNeck: false,
     useViolCornerUC: false,
     useViolCornerLC: false,
-    useKellyC0: false // four circles based theory of clean intersection along center bout
+    useKellyC0: false, // four circles based theory of clean intersection along center bout
+    U31DoubleArc: false,
+    CU1DoubleArc: false,
+    CL1DoubleArc: false,
+    L31DoubleArc: false
   }
 }
 
@@ -209,28 +209,36 @@ const CerutiParams: EnricoCerutiParams = {
       "y": 230,
       "r": 102,
       "start": 1.5707963267948966,
-      "end": 1.0660258656771382
+      "end": 1.0660258656771382,
+      "diff": null,
+      "diffDeg": null
     },
     "U1": {
       "x": 29.5,
       "y": 283.3924151916731,
       "r": 41,
       "start": 1.0660258934983402,
-      "end": 0.643106105043117
+      "end": 0.643106105043117,
+      "diff": null,
+      "diffDeg": null
     },
     "U2": {
       "x": 10.294313733935518,
       "y": 269,
       "r": 65,
       "start": 0.6431061251871714,
-      "end": -0.42699431479044336
+      "end": -0.42699431479044336,
+      "diff": null,
+      "diffDeg": null
     },
     "U3": {
       "x": 91.30341453479278,
       "y": 232.14181790380124,
       "r": 24,
       "start": 2.7145982618543343,
-      "end": -2.599037666215535
+      "end": -2.599037666215535,
+      "diff": null,
+      "diffDeg": null
     },
     "CBW": 100,
     "CU": {
@@ -238,21 +246,27 @@ const CerutiParams: EnricoCerutiParams = {
       "y": 211.22903187452746,
       "r": 10,
       "start": 2.550027026827887,
-      "end": 1.0199785824686358
+      "end": 1.0199785824686358,
+      "diff": null,
+      "diffDeg": null
     },
     "C0": {
       "x": 112,
       "y": 180,
       "r": 66,
       "start": 2.5500270268278884,
-      "end": -2.5214301384136877
+      "end": -2.5214301384136877,
+      "diff": null,
+      "diffDeg": null
     },
     "CL": {
       "x": 74.5659351313468,
       "y": 153.26629865863194,
       "r": 20,
       "start": -2.5214301384136877,
-      "end": -1.121642722952846
+      "end": -1.121642722952846,
+      "diff": null,
+      "diffDeg": null
     },
     "LBW": 200,
     "L3": {
@@ -260,28 +274,36 @@ const CerutiParams: EnricoCerutiParams = {
       "y": 125.11992660332129,
       "r": 25,
       "start": -2.63765529602085,
-      "end": 2.7243918584702493
+      "end": 2.7243918584702493,
+      "diff": null,
+      "diffDeg": null
     },
     "L2": {
       "x": -15.6149759728548,
       "y": 58,
       "r": 114,
       "start": 0.31011159985061604,
-      "end": 0.5039373575689428
+      "end": 0.5039373575689428,
+      "diff": null,
+      "diffDeg": null
     },
     "L1": {
       "x": 32,
       "y": 73.25824574138392,
       "r": 64,
       "start": -1.2450668395002666,
-      "end": 0.3101115740410476
+      "end": 0.3101115740410476,
+      "diff": null,
+      "diffDeg": null
     },
     "L0": {
       "x": 0,
       "y": 168,
       "r": 164,
       "start": 4.71238898038469,
-      "end": -1.2450668395002664
+      "end": -1.2450668395002664,
+      "diff": null,
+      "diffDeg": null
     },
     "UC": {
       "x": 70.75,
@@ -291,20 +313,6 @@ const CerutiParams: EnricoCerutiParams = {
       "x": 83.25,
       "y": 135.25
     }
-  },
-  "outerCorners": {
-    "U31": null,
-    "U31Cutoff": 0,
-    "U31Orbit": 0,
-    "CU1": null,
-    "CU1Cutoff": 0,
-    "CU1Orbit": 0,
-    "CL1": null,
-    "CL1Cutoff": 0,
-    "CL1Orbit": 0,
-    "L31": null,
-    "L31Cutoff": 0,
-    "L31Orbit": 0
   },
   "blocks": {
     U: null,
@@ -316,7 +324,11 @@ const CerutiParams: EnricoCerutiParams = {
     "useViolNeck": false,
     "useViolCornerUC": false,
     "useViolCornerLC": false,
-    "useKellyC0": false // four circles based theory of clean intersection along center bout
+    "useKellyC0": false, // four circles based theory of clean intersection along center bout
+    "U31DoubleArc": false,
+    "CU1DoubleArc": false,
+    "CL1DoubleArc": false,
+    "L31DoubleArc": false
   }
 }
 
@@ -355,28 +367,36 @@ const stradGoetzParams: EnricoCerutiParams = {
     "y": 239,
     "r": 117,
     "start": 1.5707963267948966,
-    "end": 1.3576475739242813
+    "end": 1.3576475739242813,
+    "diff": null,
+    "diffDeg": null
   },
   "U1": {
     "x": 11,
     "y": 289.82322303829227,
     "r": 65,
     "start": 1.3576475923680302,
-    "end": 0
+    "end": 0,
+      "diff": null,
+      "diffDeg": null
   },
   "U2": {
     "x": -23.749885384158425,
     "y": 294,
     "r": 100,
     "start": -0.11962156442651989,
-    "end": -0.34871636265320916
+    "end": -0.34871636265320916,
+      "diff": null,
+      "diffDeg": null
   },
   "U3": {
     "x": 95.60624988420405,
     "y": 250.60515037702797,
     "r": 27,
     "start": 2.7928762012205564,
-    "end": -2.6347995503560626
+    "end": -2.6347995503560626,
+      "diff": null,
+      "diffDeg": null
   },
   "CBW": 100,
   "CU": {
@@ -384,21 +404,27 @@ const stradGoetzParams: EnricoCerutiParams = {
     "y": 222.49148834220384,
     "r": 16,
     "start": 2.7504859905840764,
-    "end": 1.2169070256968206
+    "end": 1.2169070256968206,
+      "diff": null,
+      "diffDeg": null
   },
   "C0": {
     "x": 121,
     "y": 200,
     "r": 75,
     "start": 2.750486056895119,
-    "end": -2.5237749168168118
+    "end": -2.5237749168168118,
+      "diff": null,
+      "diffDeg": null
   },
   "CL": {
     "x": 79.427631573594,
     "y": 170.45785750120416,
     "r": 24,
     "start": -2.5237749550299546,
-    "end": -1.3578417180548068
+    "end": -1.3578417180548068,
+      "diff": null,
+      "diffDeg": null
   },
   "LBW": 200,
   "L3": {
@@ -406,28 +432,36 @@ const stradGoetzParams: EnricoCerutiParams = {
     "y": 134.15096475377004,
     "r": 32,
     "start": -2.639511516686113,
-    "end": 2.7284032638025835
+    "end": 2.7284032638025835,
+      "diff": null,
+      "diffDeg": null
   },
   "L2": {
     "x": 13,
     "y": 78.80711487461186,
     "r": 83,
     "start": 0,
-    "end": 0.5020811369036803
+    "end": 0.5020811369036803,
+      "diff": null,
+      "diffDeg": null
   },
   "L1": {
     "x": 24,
     "y": 78.80711487461186,
     "r": 72,
     "start": -1.3379281485368144,
-    "end": 0
+    "end": 0,
+      "diff": null,
+      "diffDeg": null
   },
   "L0": {
     "x": 0,
     "y": 180,
     "r": 176,
     "start": 4.71238898038469,
-    "end": -1.3379281485368142
+    "end": -1.3379281485368142,
+      "diff": null,
+      "diffDeg": null
   },
   "UC": {
     "x": 72,
@@ -438,20 +472,6 @@ const stradGoetzParams: EnricoCerutiParams = {
     "y": 147
   }
 },
-  "outerCorners": {
-    "U31": null,
-    "U31Cutoff": 0,
-    "U31Orbit": 0,
-    "CU1": null,
-    "CU1Cutoff": 0,
-    "CU1Orbit": 0,
-    "CL1": null,
-    "CL1Cutoff": 0,
-    "CL1Orbit": 0,
-    "L31": null,
-    "L31Cutoff": 0,
-    "L31Orbit": 0
-  },
   "blocks": {
     U: null,
     CU: null,
@@ -462,7 +482,11 @@ const stradGoetzParams: EnricoCerutiParams = {
     "useViolNeck": false,
     "useViolCornerUC": false,
     "useViolCornerLC": false,
-    "useKellyC0": false // four circles based theory of clean intersection along center bout
+    "useKellyC0": false, // four circles based theory of clean intersection along center bout
+    "U31DoubleArc": false,
+    "CU1DoubleArc": false,
+    "CL1DoubleArc": false,
+    "L31DoubleArc": false
 
   }
 }

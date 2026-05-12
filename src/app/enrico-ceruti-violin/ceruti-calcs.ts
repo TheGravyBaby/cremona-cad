@@ -372,14 +372,14 @@ export function defineOuterArcs(p: EnricoCerutiParams, arcs: ArcGroup): ArcGroup
             fullPath.push(arcs.lowerBout[4]);
         } else {
             fullPath.push(arcs.lowerBout[2]);
-            fullPath.push(arcs.lowerBout[3]);
+            // fullPath.push(arcs.lowerBout[3]);
         }
-        fullPath.push(...arcs.centerBout);
+        fullPath.push(arcs.centerBout[0]);
 
         if (p.options.useViolCornerUC) {
             fullPath.push(arcs.upperBout[4]);
         } else {
-            fullPath.push(arcs.upperBout[3]);
+            // fullPath.push(arcs.upperBout[3]);
             fullPath.push(arcs.upperBout[2]);
         }
         fullPath.push(arcs.upperBout[1]);
@@ -398,27 +398,32 @@ export function defineOuterArcs(p: EnricoCerutiParams, arcs: ArcGroup): ArcGroup
 export function calculateOuterCorners(p: EnricoCerutiParams): void {
     let inset = p.overhang + p.rib;
 
-    // initalize the possibly undefined values
-    p.outerCorners.U31 = p.outerCorners.U31 ?? offsetCircleRadius(p.bouts.U3, -inset);
-    p.outerCorners.CU1 = p.outerCorners.CU1 ?? offsetCircleRadius(p.bouts.CU, -inset);
-    p.outerCorners.CL1 = p.outerCorners.CL1 ?? offsetCircleRadius(p.bouts.CL, -inset);
-    p.outerCorners.L31 = p.outerCorners.L31 ?? offsetCircleRadius(p.bouts.L3, -inset);
+    // // initalize the possibly undefined values
+    p.outerCorners.U31 = p.outerCorners.U31 ?? offsetArcRadius(p.bouts.U3, -inset);
+    p.outerCorners.CU1 = p.outerCorners.CU1 ?? offsetArcRadius(p.bouts.CU, -inset);
+    p.outerCorners.CL1 = p.outerCorners.CL1 ?? offsetArcRadius(p.bouts.CL, -inset);
+    p.outerCorners.L31 = p.outerCorners.L31 ?? offsetArcRadius(p.bouts.L3, -inset);
+
+    p.outerCorners.U31.end =  p.outerCorners.U31.start + p.outerCorners.U31.diffDeg * Math.PI / 180;
+    p.outerCorners.CU1.end =  p.outerCorners.CU1.start - p.outerCorners.CU1.diffDeg * Math.PI / 180;
+    p.outerCorners.CL1.end = p.outerCorners.CL1.start + p.outerCorners.CL1.diffDeg * Math.PI / 180;
+    p.outerCorners.L31.end =  p.outerCorners.L31.start - p.outerCorners.L31.diffDeg * Math.PI / 180;
     
-    p.outerCorners.U31Orbit = p.outerCorners.U31Orbit ?? 180
-    p.outerCorners.CU1Orbit = p.outerCorners.CU1Orbit ?? 90
-    p.outerCorners.CL1Orbit = p.outerCorners.CL1Orbit ?? 270
-    p.outerCorners.L31Orbit = p.outerCorners.L31Orbit ?? 180
+    // p.outerCorners.U31Orbit = p.outerCorners.U31Orbit ?? 180
+    // p.outerCorners.CU1Orbit = p.outerCorners.CU1Orbit ?? 90
+    // p.outerCorners.CL1Orbit = p.outerCorners.CL1Orbit ?? 270
+    // p.outerCorners.L31Orbit = p.outerCorners.L31Orbit ?? 180
 
-    p.outerCorners.U31Cutoff = p.outerCorners.U31Cutoff ?? 215
-    p.outerCorners.CU1Cutoff = p.outerCorners.CU1Cutoff ?? 60
-    p.outerCorners.CL1Cutoff = p.outerCorners.CL1Cutoff ?? 300
-    p.outerCorners.L31Cutoff = p.outerCorners.L31Cutoff ?? 135
+    // p.outerCorners.U31Cutoff = p.outerCorners.U31Cutoff ?? 215
+    // p.outerCorners.CU1Cutoff = p.outerCorners.CU1Cutoff ?? 60
+    // p.outerCorners.CL1Cutoff = p.outerCorners.CL1Cutoff ?? 300
+    // p.outerCorners.L31Cutoff = p.outerCorners.L31Cutoff ?? 135
 
 
-    // now inscribe the corner circles
-    p.outerCorners.U31 = inscribeCircleWithinCircle(offsetCircleRadius(p.bouts.U3, -inset), p.outerCorners.U31.r, p.outerCorners.U31Orbit * Math.PI/180);
-    p.outerCorners.CU1 = inscribeCircleWithinCircle(offsetCircleRadius(p.bouts.CU, -inset), p.outerCorners.CU1.r, p.outerCorners.CU1Orbit * Math.PI/180);
-    p.outerCorners.CL1 = inscribeCircleWithinCircle(offsetCircleRadius(p.bouts.CL, -inset), p.outerCorners.CL1.r, p.outerCorners.CL1Orbit * Math.PI/180);
-    p.outerCorners.L31 = inscribeCircleWithinCircle(offsetCircleRadius(p.bouts.L3, -inset), p.outerCorners.L31.r, p.outerCorners.L31Orbit * Math.PI/180);
+    // // now inscribe the corner circles
+    // p.outerCorners.U31 = inscribeCircleWithinCircle(offsetCircleRadius(p.bouts.U3, -inset), p.outerCorners.U31.r, p.outerCorners.U31Orbit * Math.PI/180);
+    // p.outerCorners.CU1 = inscribeCircleWithinCircle(offsetCircleRadius(p.bouts.CU, -inset), p.outerCorners.CU1.r, p.outerCorners.CU1Orbit * Math.PI/180);
+    // p.outerCorners.CL1 = inscribeCircleWithinCircle(offsetCircleRadius(p.bouts.CL, -inset), p.outerCorners.CL1.r, p.outerCorners.CL1Orbit * Math.PI/180);
+    // p.outerCorners.L31 = inscribeCircleWithinCircle(offsetCircleRadius(p.bouts.L3, -inset), p.outerCorners.L31.r, p.outerCorners.L31Orbit * Math.PI/180);
 
 }

@@ -94,7 +94,8 @@ export function offsetArcRadius(arc: Arc, offset: number): Arc {
   if (newR < 0) 
     throw new Error('Offset cannot be so negative that it produces an arc with negative radius.');
 
-  return { x: arc.x, y: arc.y, r: newR, start: arc.start, end: arc.end };
+  let C = new Circle(arc.x, arc.y, newR);
+  return arcFromCircle(C, arc.start, arc.end);
 }
 
 export function flipArcAboutY(arc: Arc): Arc {
