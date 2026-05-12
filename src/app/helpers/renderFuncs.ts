@@ -320,7 +320,7 @@ export const renderLine = (P: Pt, Q: Pt, color: string, opacity: boolean = false
 export const renderCrosshair = (
     P: Pt,
     color: string,
-    size: number = 3,          // half-length of crosshair arms in px
+    size: number = 2,          // half-length of crosshair arms in px
     strokeWidth: number = 2,
     opacity: number = 1,
     showDot: boolean = false,

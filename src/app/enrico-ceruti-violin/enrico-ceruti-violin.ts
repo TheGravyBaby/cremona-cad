@@ -39,7 +39,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     centerBoutLow: '#ad9267ff',
     lowerBout: '#4D74A8',
     innerTrace: '#a47272ff',
-    outerTrace: '#3692d8ff',
+    outerTrace: '#60b2f2ff',
     mouldTrace: '#81887eff',
   } as const;
 
@@ -371,12 +371,14 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
   renderCorners = (currentModule: boolean) => (g: any, ui: any): void => {
     let p = this.d.params;
 
-    if ((currentModule && this.showModuleArcs) || this.showAllArcs) {
+    if (currentModule && this.showModuleArcs) {
       renderCrosshair(p.bouts.UC!, this.colors.centerBoutUpOff)(g, ui);
       renderCrosshair(p.bouts.LC!, this.colors.centerBoutLowOff)(g, ui);
       renderCrosshair({ x: -p.bouts.UC!.x, y: p.bouts.UC!.y }, this.colors.centerBoutUpOff)(g, ui);
-      renderCrosshair({ x: -p.bouts.LC!.x, y: p.bouts.LC!.y }, this.colors.centerBoutUpOff)(g, ui);
+      renderCrosshair({ x: -p.bouts.LC!.x, y: p.bouts.LC!.y }, this.colors.centerBoutLowOff)(g, ui);
+    }
 
+    if ((currentModule && this.showModuleArcs) || this.showAllArcs) {
       !p.options.useViolCornerLC && renderArcFromArcFancy(p.bouts.L2!, this.colors.lowerBoutOff)(g, ui);
       !p.options.useViolCornerLC && renderArcFromArcFancy(p.bouts.L3!, this.colors.centerBoutLow)(g, ui);
       !p.options.useViolCornerLC && renderArcFromArcFancy(flipArcAboutY(p.bouts.L2!), this.colors.lowerBoutOff)(g, ui);
@@ -505,21 +507,31 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     outerArcs.allArcs.forEach(arc => renderArcFromArc(arc, this.colors.outerTrace)(g, ui));
     outerArcs.allArcs.forEach(arc => renderArcFromArc(flipArcAboutY(arc), this.colors.outerTrace)(g, ui));
 
+    if (currentModule) {
+      p.bouts.U3.r -inset != p.outerCorners.U31.r && renderCircle(offsetCircleRadius(p.bouts.U3, -inset), this.colors.upperBoutOff2)(g, ui);
+      p.bouts.CU.r -inset != p.outerCorners.CU1.r && renderCircle(offsetCircleRadius(p.bouts.CU, -inset), this.colors.centerBoutUpOff2)(g, ui);
+      p.bouts.CL.r -inset != p.outerCorners.CL1.r && renderCircle(offsetCircleRadius(p.bouts.CL, -inset), this.colors.centerBoutLowOff2)(g, ui);
+      p.bouts.L3.r -inset != p.outerCorners.L31.r && renderCircle(offsetCircleRadius(p.bouts.L3, -inset), this.colors.lowerBoutOff2)(g, ui);
+    }
 
-    renderCircle(p.outerCorners.U31, this.colors.upperBout)(g, ui);
-    renderCircle(p.outerCorners.CU1, this.colors.centerBoutUp)(g, ui);
-    renderCircle(p.outerCorners.CL1, this.colors.centerBoutLow)(g, ui);
-    renderCircle(p.outerCorners.L31, this.colors.lowerBout)(g, ui);
 
-    renderCircleAngleIndicator(p.outerCorners.U31, p.outerCorners.U31Cutoff, this.colors.upperBout)(g, ui);
-    renderCircleAngleIndicator(p.outerCorners.CU1, p.outerCorners.CU1Cutoff, this.colors.centerBoutUp)(g, ui);
-    renderCircleAngleIndicator(p.outerCorners.CL1, p.outerCorners.CL1Cutoff, this.colors.centerBoutLow)(g, ui);
-    renderCircleAngleIndicator(p.outerCorners.L31, p.outerCorners.L31Cutoff, this.colors.lowerBout)(g, ui);
+    renderArcFromArcFancy(p.outerCorners.U31, this.colors.upperBout)(g, ui);
+    renderArcFromArcFancy(p.outerCorners.CU1, this.colors.centerBoutUp)(g, ui);
+    renderArcFromArcFancy(p.outerCorners.CL1, this.colors.centerBoutLow)(g, ui);
+    renderArcFromArcFancy(p.outerCorners.L31, this.colors.lowerBout)(g, ui);
 
-    renderCircle(offsetCircleRadius(p.bouts.U3, -inset), this.colors.upperBoutOff2)(g, ui);
-    renderCircle(offsetCircleRadius(p.bouts.CU, -inset), this.colors.centerBoutUpOff2)(g, ui);
-    renderCircle(offsetCircleRadius(p.bouts.CL, -inset), this.colors.centerBoutLowOff2)(g, ui);
-    renderCircle(offsetCircleRadius(p.bouts.L3, -inset), this.colors.lowerBoutOff2)(g, ui);
+
+    // renderCircle(p.outerCorners.U31, this.colors.upperBout)(g, ui);
+    // renderCircle(p.outerCorners.CU1, this.colors.centerBoutUp)(g, ui);
+    // renderCircle(p.outerCorners.CL1, this.colors.centerBoutLow)(g, ui);
+    // renderCircle(p.outerCorners.L31, this.colors.lowerBout)(g, ui);
+
+    // renderCircleAngleIndicator(p.outerCorners.U31, p.outerCorners.U31Cutoff, this.colors.upperBout)(g, ui);
+    // renderCircleAngleIndicator(p.outerCorners.CU1, p.outerCorners.CU1Cutoff, this.colors.centerBoutUp)(g, ui);
+    // renderCircleAngleIndicator(p.outerCorners.CL1, p.outerCorners.CL1Cutoff, this.colors.centerBoutLow)(g, ui);
+    // renderCircleAngleIndicator(p.outerCorners.L31, p.outerCorners.L31Cutoff, this.colors.lowerBout)(g, ui);
+
+
 
 
   }
