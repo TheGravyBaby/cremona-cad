@@ -36,6 +36,11 @@ export function arcFromCircleAndPoints(circle: Circle, startPt: Pt, endPt: Pt): 
   return new Arc(circle.x, circle.y, circle.r, startAngle, endAngle);
 }
 
+export function increaseArcAngle(arc: Arc, angleIncreaseDeg: number): Arc {
+  let angleIncreaseRad = angleIncreaseDeg * Math.PI / 180;
+  return new Arc(arc.x, arc.y, arc.r, arc.start, arc.end + angleIncreaseRad);
+}
+
 export type Axis = "x" | "y";
 export type RefImageFit = "fit" | "cover" | "stretch";
 export type ReferenceImage = {
