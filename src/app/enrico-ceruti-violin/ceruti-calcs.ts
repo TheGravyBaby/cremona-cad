@@ -340,6 +340,7 @@ export function calculateOuterCorners(p: EnricoCerutiParams): void {
         let radDiffL3 = p.outerCorners.L32.diffDeg * Math.PI / 180;
         p.outerCorners.L32 = arcFromCircle(inscribeCircleWithinCircle(p.outerCorners.L31, p.outerCorners.L32.r, p.outerCorners.L31.end), p.outerCorners.L31.end, p.outerCorners.L31.end - radDiffL3);
     }
+
 }
 
 export function defineInnerArcs(p: EnricoCerutiParams): Arc[] {
@@ -372,7 +373,7 @@ export function defineOuterArcsNoCorners(p: EnricoCerutiParams, offset?: number)
     let fullPath = [];
     fullPath.push(offsetArcRadius(p.bouts.L0, offset), offsetArcRadius(p.bouts.L1, offset));
     if (p.options.useViolCornerLC) {
-        fullPath.push(offsetArcRadius(p.bouts.L4, offset));
+        // fullPath.push(offsetArcRadius(p.bouts.L4, offset));
     } else {
         fullPath.push(offsetArcRadius(p.bouts.L2, offset));
         // fullPath.push(offsetArcRadius(p.bouts.L3, -inset));
@@ -385,7 +386,7 @@ export function defineOuterArcsNoCorners(p: EnricoCerutiParams, offset?: number)
     );
 
     if (p.options.useViolCornerUC) {
-        fullPath.push(offsetArcRadius(p.bouts.U4, offset));
+        // fullPath.push(offsetArcRadius(p.bouts.U4, offset));
     } else {
         // fullPath.push(offsetArcRadius(p.bouts.U3, -inset));
         fullPath.push(offsetArcRadius(p.bouts.U2, offset));
@@ -393,7 +394,7 @@ export function defineOuterArcsNoCorners(p: EnricoCerutiParams, offset?: number)
     fullPath.push(offsetArcRadius(p.bouts.U1, offset));
     fullPath.push(offsetArcRadius(p.bouts.U0, offset));
     if (p.options.useViolNeck)
-        fullPath.push(offsetArcRadius(p.viol?.V0!, offset));
+        fullPath.push(offsetArcRadius(p.viol?.V0!, -offset));
 
 
     return fullPath;
@@ -416,8 +417,19 @@ export function defineOuterPath(p: EnricoCerutiParams, offset?: number): string[
     let mirroredArcs = arcs.map(arc => flipArcAboutY(arc));
     arcs = arcs.concat(mirroredArcs);
 
-    if (p.options.useViolCornerUC) {
+    let paths: string[] = [];
 
+    if (p.options.useViolCornerUC) {
+        let U4Offset = offsetArcRadius(p.bouts.U4!, offset);
+        let intersects = circleCircleIntersections(U4Offset, p.outerCorners.CU1);
+        let U4Angle = angleFromCenter(U4Offset, intersects[0])
+        let CU1Angle = angleFromCenter(p.outerCorners.CU1, intersects[0])
+        U4Offset.end = U4Angle
+        p.outerCorners.CU1.end = CU1Angle
+        arcs.push(U4Offset);
+        arcs.push(flipArcAboutY(U4Offset));
+        arcs.push(p.outerCorners.CU1);
+        arcs.push(flipArcAboutY(p.outerCorners.CU1));
     }
     else {
         arcs.push(p.outerCorners.U31);
@@ -428,9 +440,44 @@ export function defineOuterPath(p: EnricoCerutiParams, offset?: number): string[
         arcs.push(flipArcAboutY(p.outerCorners.CU1));
         p.options.CU1DoubleArc && arcs.push(p.outerCorners.CU2);
         p.options.CU1DoubleArc && arcs.push(flipArcAboutY(p.outerCorners.CU2));
+
+        // render the lines from the ends of each corners
+        if (p.options.U31DoubleArc && p.options.CU1DoubleArc) {
+            let U32End = pointOnCircle(p.outerCorners.U32, p.outerCorners.U32.end)
+            let CU2End = pointOnCircle(p.outerCorners.CU2, p.outerCorners.CU2.end)
+            paths.push(pathFromLine(U32End, CU2End));
+            paths.push(pathFromLine(flipPointAboutY(U32End), flipPointAboutY(CU2End)));
+        }
+        else if (p.options.U31DoubleArc) {
+            let U32End = pointOnCircle(p.outerCorners.U32, p.outerCorners.U32.end)
+            let CU1End = pointOnCircle(p.outerCorners.CU1, p.outerCorners.CU1.end)
+            paths.push(pathFromLine(U32End, CU1End));
+            paths.push(pathFromLine(flipPointAboutY(U32End), flipPointAboutY(CU1End)));
+        }
+        else if (p.options.CU1DoubleArc) {
+            let U31End = pointOnCircle(p.outerCorners.U31, p.outerCorners.U31.end)
+            let CU2End = pointOnCircle(p.outerCorners.CU2, p.outerCorners.CU2.end)
+            paths.push(pathFromLine(U31End, CU2End));
+            paths.push(pathFromLine(flipPointAboutY(U31End), flipPointAboutY(CU2End)));
+        }
+        else {
+            let U31End = pointOnCircle(p.outerCorners.U31, p.outerCorners.U31.end)
+            let CU1End = pointOnCircle(p.outerCorners.CU1, p.outerCorners.CU1.end)
+            paths.push(pathFromLine(U31End, CU1End));
+            paths.push(pathFromLine(flipPointAboutY(U31End), flipPointAboutY(CU1End)));
+        }
     }
     if (p.options.useViolCornerLC) {
-
+        let L4Offset = offsetArcRadius(p.bouts.L4!, offset);
+        let intersects = circleCircleIntersections(L4Offset, p.outerCorners.CL1);
+        let L4Angle = angleFromCenter(L4Offset, intersects[1])
+        let CL1Angle = angleFromCenter(p.outerCorners.CL1, intersects[1])
+        L4Offset.end = L4Angle
+        p.outerCorners.CL1.end = CL1Angle
+        arcs.push(L4Offset);
+        arcs.push(flipArcAboutY(L4Offset));
+        arcs.push(p.outerCorners.CL1);
+        arcs.push(flipArcAboutY(p.outerCorners.CL1));
     }
     else {
         arcs.push(p.outerCorners.CL1);
@@ -441,59 +488,34 @@ export function defineOuterPath(p: EnricoCerutiParams, offset?: number): string[
         arcs.push(flipArcAboutY(p.outerCorners.L31));
         p.options.L31DoubleArc && arcs.push(p.outerCorners.L32);
         p.options.L31DoubleArc && arcs.push(flipArcAboutY(p.outerCorners.L32));
+
+        if (p.options.CL1DoubleArc && p.options.L31DoubleArc) {
+            let CL2End = pointOnCircle(p.outerCorners.CL2, p.outerCorners.CL2.end)
+            let L32End = pointOnCircle(p.outerCorners.L32, p.outerCorners.L32.end)
+            paths.push(pathFromLine(CL2End, L32End));
+            paths.push(pathFromLine(flipPointAboutY(CL2End), flipPointAboutY(L32End)));
+        }
+        else if (p.options.CL1DoubleArc) {
+            let CL2End = pointOnCircle(p.outerCorners.CL2, p.outerCorners.CL2.end)
+            let L31End = pointOnCircle(p.outerCorners.L31, p.outerCorners.L31.end)
+            paths.push(pathFromLine(CL2End, L31End));
+            paths.push(pathFromLine(flipPointAboutY(CL2End), flipPointAboutY(L31End)));
+        }
+        else if (p.options.L31DoubleArc) {
+            let CL1End = pointOnCircle(p.outerCorners.CL1, p.outerCorners.CL1.end)
+            let L32End = pointOnCircle(p.outerCorners.L32, p.outerCorners.L32.end)
+            paths.push(pathFromLine(CL1End, L32End));
+            paths.push(pathFromLine(flipPointAboutY(CL1End), flipPointAboutY(L32End)));
+        }
+        else {
+            let CL1End = pointOnCircle(p.outerCorners.CL1, p.outerCorners.CL1.end)
+            let L31End = pointOnCircle(p.outerCorners.L31, p.outerCorners.L31.end)
+            paths.push(pathFromLine(CL1End, L31End));
+            paths.push(pathFromLine(flipPointAboutY(CL1End), flipPointAboutY(L31End)));
+        }
     }
 
-    let paths: string[] = arcs.map(arc => pathFromArc(arc));
-
-    // render the lines from the ends of each corners
-    if (p.options.U31DoubleArc && p.options.CU1DoubleArc) {
-        let U32End = pointOnCircle(p.outerCorners.U32, p.outerCorners.U32.end)
-        let CU2End = pointOnCircle(p.outerCorners.CU2, p.outerCorners.CU2.end)
-        paths.push(pathFromLine(U32End, CU2End));
-        paths.push(pathFromLine(flipPointAboutY(U32End), flipPointAboutY(CU2End)));
-    }
-    else if (p.options.U31DoubleArc) {
-        let U32End = pointOnCircle(p.outerCorners.U32, p.outerCorners.U32.end)
-        let CU1End = pointOnCircle(p.outerCorners.CU1, p.outerCorners.CU1.end)
-        paths.push(pathFromLine(U32End, CU1End));
-        paths.push(pathFromLine(flipPointAboutY(U32End), flipPointAboutY(CU1End)));
-    }
-    else if (p.options.CU1DoubleArc) {
-        let U31End = pointOnCircle(p.outerCorners.U31, p.outerCorners.U31.end)
-        let CU2End = pointOnCircle(p.outerCorners.CU2, p.outerCorners.CU2.end)
-        paths.push(pathFromLine(U31End, CU2End));
-        paths.push(pathFromLine(flipPointAboutY(U31End), flipPointAboutY(CU2End)));
-    }
-    else {
-        let U31End = pointOnCircle(p.outerCorners.U31, p.outerCorners.U31.end)
-        let CU1End = pointOnCircle(p.outerCorners.CU1, p.outerCorners.CU1.end)
-        paths.push(pathFromLine(U31End, CU1End));
-        paths.push(pathFromLine(flipPointAboutY(U31End), flipPointAboutY(CU1End)));
-    }
-    if (p.options.CL1DoubleArc && p.options.L31DoubleArc) {
-        let CL2End = pointOnCircle(p.outerCorners.CL2, p.outerCorners.CL2.end)
-        let L32End = pointOnCircle(p.outerCorners.L32, p.outerCorners.L32.end)
-        paths.push(pathFromLine(CL2End, L32End));
-        paths.push(pathFromLine(flipPointAboutY(CL2End), flipPointAboutY(L32End)));
-    }
-    else if (p.options.CL1DoubleArc) {
-        let CL2End = pointOnCircle(p.outerCorners.CL2, p.outerCorners.CL2.end)
-        let L31End = pointOnCircle(p.outerCorners.L31, p.outerCorners.L31.end)
-        paths.push(pathFromLine(CL2End, L31End));
-        paths.push(pathFromLine(flipPointAboutY(CL2End), flipPointAboutY(L31End)));
-    }
-    else if (p.options.L31DoubleArc) {
-        let CL1End = pointOnCircle(p.outerCorners.CL1, p.outerCorners.CL1.end)
-        let L32End = pointOnCircle(p.outerCorners.L32, p.outerCorners.L32.end)
-        paths.push(pathFromLine(CL1End, L32End));
-        paths.push(pathFromLine(flipPointAboutY(CL1End), flipPointAboutY(L32End)));
-    }
-    else {
-        let CL1End = pointOnCircle(p.outerCorners.CL1, p.outerCorners.CL1.end)
-        let L31End = pointOnCircle(p.outerCorners.L31, p.outerCorners.L31.end)
-        paths.push(pathFromLine(CL1End, L31End));
-        paths.push(pathFromLine(flipPointAboutY(CL1End), flipPointAboutY(L31End)));
-    }
+    paths.push(...arcs.map(arc => pathFromArc(arc)));
 
     return paths;
 }
