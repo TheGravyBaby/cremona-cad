@@ -304,7 +304,7 @@ export function calculateOuterCorners(p: EnricoCerutiParams): void {
     // we want to increase the angle by the default corners a little bit
     if (!initialized) {
         // p.outerCorners.U31 = increaseArcAngle(p.outerCorners.U31, 5);
-        p.outerCorners.CU1 = increaseArcAngle(p.outerCorners.CU1, -12);
+        p.outerCorners.CU1 = increaseArcAngle(p.outerCorners.CU1, -15);
         p.outerCorners.CL1 = increaseArcAngle(p.outerCorners.CL1, 12);
         // p.outerCorners.L31 = increaseArcAngle(p.outerCorners.L31, -5);
     }
