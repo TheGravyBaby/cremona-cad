@@ -58,7 +58,7 @@ class AxisGridController {
   ) { }
 
   get showGrid(): boolean {
-    return this.preferences.showGrid;
+    return true //this.preferences.showGrid;
   }
 
   get showAxes(): boolean {
