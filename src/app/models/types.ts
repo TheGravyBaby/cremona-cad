@@ -1,7 +1,9 @@
 export class Pt { x: number; y: number; constructor(x: number, y: number) { this.x = x; this.y = y; } };
 export class Circle { x: number; y: number; r: number; constructor(x: number, y: number, r: number) { this.x = x; this.y = y; this.r = r; } }
 export class Line { m: number; b: number; constructor(m: number, b: number) { this.m = m; this.b = b; } }
-export class Rectangle { Pt1: Pt; Pt2: Pt; constructor(Pt1: Pt, Pt2: Pt) { this.Pt1 = Pt1; this.Pt2 = Pt2; } }
+export class Rectangle { Pt1: Pt; Pt2: Pt; height: number | null; width: number | null;
+  constructor(Pt1: Pt, Pt2: Pt) { this.Pt1 = Pt1; this.Pt2 = Pt2; this.height = Math.abs(Pt2.y - Pt1.y); this.width = Math.abs(Pt2.x - Pt1.x); } 
+}
 export class Fraction { n: number; d: number; constructor(n: number, d: number) { this.n = n; this.d = d; } }
 
 export class Arc extends Circle { 

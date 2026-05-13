@@ -700,10 +700,10 @@ export function calculateMouldPath(data: KellyViolinData, useHighAccuracy = fals
 	const rightCornerBlockClampingCutoutP1 = new Pt(lowerBlockClampingCutoutP2.x, lowerBlockClampingCutoutP2.y + blockInset);
 	const rightCornerBlockClampingCutoutP2 = new Pt(lowerBlockClampingCutoutP2.x + clampChannelWidth, upperBlockClampingCutoutP2.y - blockInset);
 
-	data.shapes.lowerClampCutout = { Pt1: lowerBlockClampingCutoutP1, Pt2: lowerBlockClampingCutoutP2 };
-	data.shapes.upperClampCutout = { Pt1: upperBlockClampingCutoutP1, Pt2: upperBlockClampingCutoutP2 };
-	data.shapes.leftClampCutout = { Pt1: leftCornerBlockClampingCutoutP1, Pt2: leftCornerBlockClampingCutoutP2 };
-	data.shapes.rightClampCutout = { Pt1: rightCornerBlockClampingCutoutP1, Pt2: rightCornerBlockClampingCutoutP2 };
+	data.shapes.lowerClampCutout = new Rectangle(lowerBlockClampingCutoutP1, lowerBlockClampingCutoutP2);
+	data.shapes.upperClampCutout = new Rectangle(upperBlockClampingCutoutP1, upperBlockClampingCutoutP2);
+	data.shapes.leftClampCutout = new Rectangle(leftCornerBlockClampingCutoutP1, leftCornerBlockClampingCutoutP2);
+	data.shapes.rightClampCutout = new Rectangle(rightCornerBlockClampingCutoutP1, rightCornerBlockClampingCutoutP2);
 
 	const pathObj = data.paths.find(c => c.name === 'innerPathUnified')?.paths[0];
 	const {
