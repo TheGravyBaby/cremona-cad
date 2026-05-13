@@ -2,12 +2,12 @@ import { ChangeDetectorRef, Component, HostListener, Input } from '@angular/core
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Pt, Rectangle } from '../models/types';
-import { greyOut, renderArcFromArc, renderArcFromArcFancy, renderCircle, renderCircleAngleIndicator, renderCrosshair, renderDashedLine, renderDashLine, renderDistanceMeasurementLine, renderLine, renderRect } from '../helpers/renderFuncs';
+import { greyOut, renderArcFromArc, renderArcFromArcFancy, renderCircle, renderCircleAngleIndicator, renderCrosshair, renderDashedLine, renderDashLine, renderDistanceMeasurementLine, renderLine, renderPath, renderRect } from '../helpers/renderFuncs';
 import { clampParam, safeRun } from '../helpers/validators';
 import { EnricoCerutiTemplate, CERUTI_TEMPLATES, EnricoCerutiParams } from './ceruti-types';
 import { dimensionInfo, insetInfo, referenceInfo } from './ceruti-helpers';
 import { angleFromCenter, circleCircleIntersections, dist, flipAngleAboutYAxis, flipArcAboutY, flipCircleAboutY, interceptCirclesAndPoint, lineFromTwoPoints, offsetCircleRadius, pointOnCircle, solveInscribedCircleAlongAxis } from '../helpers/draftMath';
-import { calculateCenterBout, calculateCorners, calculateMainBouts, calculateOuterCorners, defineInnerArcs, defineOuterArcs } from './ceruti-calcs';
+import { calculateCenterBout, calculateCorners, calculateMainBouts, calculateOuterCorners, defineInnerArcs, defineInnerPath, defineOuterArcsNoCorners, defineOuterPath } from './ceruti-calcs';
 import { error } from '../shared/message-emitter';
 
 @Component({
@@ -260,6 +260,19 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       renderRect(outerRect, "grey")(g, ui);
       renderRect(insetRect, "grey")(g, ui);
     }
+
+    let p = this.d.params;
+    let lowerBoutSquare = new Rectangle({ x: -p.bouts.LBW / 2, y: 0 }, { x: p.bouts.LBW / 2, y: p.bouts.LBW });
+    let upperBoutSquare = new Rectangle({ x: -p.bouts.UBW / 2, y: p.height - p.bouts.UBW }, { x: p.bouts.UBW / 2, y: p.height });
+
+    if (this.showBoundingBoxes && p.bouts.LBW) {
+      renderRect(lowerBoutSquare, this.colors.lowerBoutOff)(g, ui);
+      renderLine({ x: -p.bouts.LBW / 2 + inset, y: 0 }, { x: - p.bouts.LBW / 2 + inset, y: p.bouts.LBW }, this.colors.lowerBoutOff)(g, ui);
+      renderLine({ x: p.bouts.LBW / 2 - inset, y: 0 }, { x: p.bouts.LBW / 2 - inset, y: p.bouts.LBW }, this.colors.lowerBoutOff)(g, ui);
+      renderRect(upperBoutSquare, this.colors.upperBoutOff)(g, ui);
+      renderLine({ x: -p.bouts.UBW / 2 + inset, y: p.height - p.bouts.UBW }, { x: - p.bouts.UBW / 2 + inset, y: p.height }, this.colors.upperBoutOff)(g, ui);
+      renderLine({ x: p.bouts.UBW / 2 - inset, y: p.height - p.bouts.UBW }, { x: p.bouts.UBW / 2 - inset, y: p.height }, this.colors.upperBoutOff)(g, ui);
+    }
   };
 
   changeMainBouts(): void {
@@ -331,18 +344,6 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       renderCircle(p.bouts.L1!, this.colors.lowerBout)(g, ui);
       renderCircle(mirrorL1, this.colors.lowerBout)(g, ui);
       renderCircle(p.bouts.L0!, this.colors.lowerBout)(g, ui);
-    }
-
-    let lowerBoutSquare = new Rectangle({ x: -p.bouts.LBW / 2, y: 0 }, { x: p.bouts.LBW / 2, y: p.bouts.LBW });
-    let upperBoutSquare = new Rectangle({ x: -p.bouts.UBW / 2, y: p.height - p.bouts.UBW }, { x: p.bouts.UBW / 2, y: p.height });
-
-    if (this.showBoundingBoxes) {
-      renderRect(lowerBoutSquare, this.colors.lowerBoutOff)(g, ui);
-      renderLine({ x: -p.bouts.LBW / 2 + inset, y: 0 }, { x: - p.bouts.LBW / 2 + inset, y: p.bouts.LBW }, this.colors.lowerBoutOff)(g, ui);
-      renderLine({ x: p.bouts.LBW / 2 - inset, y: 0 }, { x: p.bouts.LBW / 2 - inset, y: p.bouts.LBW }, this.colors.lowerBoutOff)(g, ui);
-      renderRect(upperBoutSquare, this.colors.upperBoutOff)(g, ui);
-      renderLine({ x: -p.bouts.UBW / 2 + inset, y: p.height - p.bouts.UBW }, { x: - p.bouts.UBW / 2 + inset, y: p.height }, this.colors.upperBoutOff)(g, ui);
-      renderLine({ x: p.bouts.UBW / 2 - inset, y: p.height - p.bouts.UBW }, { x: p.bouts.UBW / 2 - inset, y: p.height }, this.colors.upperBoutOff)(g, ui);
     }
   }
 
@@ -482,10 +483,9 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     this.debounce(() => safeRun(() => {
       calculateOuterCorners(this.d.params);
       this.draftChange.emit([
-        // this.renderBounds(false),
-        // this.renderMainBouts(false),
-        // this.renderCorners(false),
-        // this.renderCenterBout(false),
+        this.renderMainBouts(false),
+        this.renderCorners(false),
+        this.renderCenterBout(false),
         this.renderOuterTrace(true),
       ]);
       sessionStorage.setItem('recipeData', JSON.stringify(this.d));
@@ -494,44 +494,74 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
 
   renderOuterTrace = (currentModule: boolean) => (g: any, ui: any): void => {
     let p = this.d.params;
-    let inset = p.overhang + p.rib;
-
-    let arcs = defineInnerArcs(p);
-    let outerArcs = defineOuterArcs(p, arcs);
     
     if ((currentModule && this.showModuleArcs) || this.showAllArcs) {
-      arcs.allArcs.forEach(arc => renderArcFromArc(arc, this.colors.innerTrace)(g, ui));
-      arcs.allArcs.forEach(arc => renderArcFromArc(flipArcAboutY(arc), this.colors.innerTrace)(g, ui));
+      // primary arcs + their mirrors
+      renderArcFromArcFancy(p.outerCorners.U31, this.colors.upperBout)(g, ui);
+      renderArcFromArcFancy(flipArcAboutY(p.outerCorners.U31), this.colors.upperBout)(g, ui);
+
+      renderArcFromArcFancy(p.outerCorners.CU1, this.colors.centerBoutUp)(g, ui);
+      renderArcFromArcFancy(flipArcAboutY(p.outerCorners.CU1), this.colors.centerBoutUp)(g, ui);
+
+      renderArcFromArcFancy(p.outerCorners.CL1, this.colors.centerBoutLow)(g, ui);
+      renderArcFromArcFancy(flipArcAboutY(p.outerCorners.CL1), this.colors.centerBoutLow)(g, ui);
+
+      renderArcFromArcFancy(p.outerCorners.L31, this.colors.lowerBout)(g, ui);
+      renderArcFromArcFancy(flipArcAboutY(p.outerCorners.L31), this.colors.lowerBout)(g, ui);
+
+      // optional double arcs + their mirrors
+      if (p.options.U31DoubleArc) {
+      renderArcFromArcFancy(p.outerCorners.U32, this.colors.upperBoutOff)(g, ui);
+      renderArcFromArcFancy(flipArcAboutY(p.outerCorners.U32), this.colors.upperBoutOff)(g, ui);
+      }
+      if (p.options.CU1DoubleArc) {
+      renderArcFromArcFancy(p.outerCorners.CU2, this.colors.centerBoutUpOff)(g, ui);
+      renderArcFromArcFancy(flipArcAboutY(p.outerCorners.CU2), this.colors.centerBoutUpOff)(g, ui);
+      } 
+      if (p.options.CL1DoubleArc) {
+      renderArcFromArcFancy(p.outerCorners.CL2, this.colors.centerBoutLowOff)(g, ui);
+      renderArcFromArcFancy(flipArcAboutY(p.outerCorners.CL2), this.colors.centerBoutLowOff)(g, ui);
+      }
+      if (p.options.L31DoubleArc) {
+      renderArcFromArcFancy(p.outerCorners.L32, this.colors.lowerBoutOff)(g, ui);
+      renderArcFromArcFancy(flipArcAboutY(p.outerCorners.L32), this.colors.lowerBoutOff)(g, ui);
+      }
     }
 
-    outerArcs.allArcs.forEach(arc => renderArcFromArc(arc, this.colors.outerTrace)(g, ui));
-    outerArcs.allArcs.forEach(arc => renderArcFromArc(flipArcAboutY(arc), this.colors.outerTrace)(g, ui));
+    if ((currentModule && this.showModuleCircles) || this.showAllCircles) {
+      renderCircle(p.outerCorners.U31, this.colors.upperBout)(g, ui);
+      renderCircle(flipCircleAboutY(p.outerCorners.U31), this.colors.upperBout)(g, ui);
 
-    if (currentModule) {
-      p.bouts.U3.r -inset != p.outerCorners.U31.r && renderCircle(offsetCircleRadius(p.bouts.U3, -inset), this.colors.upperBoutOff2)(g, ui);
-      p.bouts.CU.r -inset != p.outerCorners.CU1.r && renderCircle(offsetCircleRadius(p.bouts.CU, -inset), this.colors.centerBoutUpOff2)(g, ui);
-      p.bouts.CL.r -inset != p.outerCorners.CL1.r && renderCircle(offsetCircleRadius(p.bouts.CL, -inset), this.colors.centerBoutLowOff2)(g, ui);
-      p.bouts.L3.r -inset != p.outerCorners.L31.r && renderCircle(offsetCircleRadius(p.bouts.L3, -inset), this.colors.lowerBoutOff2)(g, ui);
+      renderCircle(p.outerCorners.CU1, this.colors.centerBoutUp)(g, ui);
+      renderCircle(flipCircleAboutY(p.outerCorners.CU1), this.colors.centerBoutUp)(g, ui);
+
+      renderCircle(p.outerCorners.CL1, this.colors.centerBoutLow)(g, ui);
+      renderCircle(flipCircleAboutY(p.outerCorners.CL1), this.colors.centerBoutLow)(g, ui);
+
+      renderCircle(p.outerCorners.L31, this.colors.lowerBout)(g, ui);
+      renderCircle(flipCircleAboutY(p.outerCorners.L31), this.colors.lowerBout)(g, ui);
+
+      if (p.options.U31DoubleArc) {
+      renderCircle(p.outerCorners.U32, this.colors.upperBoutOff)(g, ui);
+      renderCircle(flipCircleAboutY(p.outerCorners.U32), this.colors.upperBoutOff)(g, ui);
+      }
+      if (p.options.CU1DoubleArc) {
+      renderCircle(p.outerCorners.CU2, this.colors.centerBoutUpOff)(g, ui);
+      renderCircle(flipCircleAboutY(p.outerCorners.CU2), this.colors.centerBoutUpOff)(g, ui);
+      }
+      if (p.options.CL1DoubleArc) {
+      renderCircle(p.outerCorners.CL2, this.colors.centerBoutLowOff)(g, ui);
+      renderCircle(flipCircleAboutY(p.outerCorners.CL2), this.colors.centerBoutLowOff)(g, ui);
+      }
+      if (p.options.L31DoubleArc) {
+      renderCircle(p.outerCorners.L32, this.colors.lowerBoutOff)(g, ui);
+      renderCircle(flipCircleAboutY(p.outerCorners.L32), this.colors.lowerBoutOff)(g, ui);
+      }
     }
-
-
-    renderArcFromArcFancy(p.outerCorners.U31, this.colors.upperBout)(g, ui);
-    renderArcFromArcFancy(p.outerCorners.CU1, this.colors.centerBoutUp)(g, ui);
-    renderArcFromArcFancy(p.outerCorners.CL1, this.colors.centerBoutLow)(g, ui);
-    renderArcFromArcFancy(p.outerCorners.L31, this.colors.lowerBout)(g, ui);
-
-
-    // renderCircle(p.outerCorners.U31, this.colors.upperBout)(g, ui);
-    // renderCircle(p.outerCorners.CU1, this.colors.centerBoutUp)(g, ui);
-    // renderCircle(p.outerCorners.CL1, this.colors.centerBoutLow)(g, ui);
-    // renderCircle(p.outerCorners.L31, this.colors.lowerBout)(g, ui);
-
-    // renderCircleAngleIndicator(p.outerCorners.U31, p.outerCorners.U31Cutoff, this.colors.upperBout)(g, ui);
-    // renderCircleAngleIndicator(p.outerCorners.CU1, p.outerCorners.CU1Cutoff, this.colors.centerBoutUp)(g, ui);
-    // renderCircleAngleIndicator(p.outerCorners.CL1, p.outerCorners.CL1Cutoff, this.colors.centerBoutLow)(g, ui);
-    // renderCircleAngleIndicator(p.outerCorners.L31, p.outerCorners.L31Cutoff, this.colors.lowerBout)(g, ui);
-
-
+    else {
+      let outerPath = defineOuterPath(p);
+      outerPath.forEach(arc => renderPath(arc, this.colors.innerTrace, 1)(g, ui));
+    }
 
 
   }

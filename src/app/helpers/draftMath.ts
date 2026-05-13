@@ -312,6 +312,18 @@ export function pathFromRect(R: Rectangle): string {
   return `M ${Pt1.x} ${Pt1.y} L ${Pt2.x} ${Pt1.y} L ${Pt2.x} ${Pt2.y} L ${Pt1.x} ${Pt2.y} Z`;
 }
 
+export function pathFromArc(arc: Arc): string {
+  const startPt = pointOnCircle(arc, arc.start);
+  const endPt = pointOnCircle(arc, arc.end);
+
+  const TWO_PI = Math.PI * 2;
+  const normalizedPositiveDiff = ((arc.end - arc.start) % TWO_PI + TWO_PI) % TWO_PI;
+  const largeArcFlag = 0; // always use the shorter (minor) arc
+  const sweepFlag = normalizedPositiveDiff <= Math.PI ? 1 : 0;
+
+  return `M ${startPt.x} ${startPt.y} A ${arc.r} ${arc.r} 0 ${largeArcFlag} ${sweepFlag} ${endPt.x} ${endPt.y}`;
+}
+
 export function arcPathFrom3Points(c: Pt, start: Pt, end: Pt, pickHigherArc?: boolean): string {
   const TWO_PI = Math.PI * 2;
   const r = Math.hypot(start.x - c.x, start.y - c.y);
@@ -370,6 +382,13 @@ export function pathFromRoundedRect(R: Rectangle, r: number): string {
   return `M ${x1 + radius} ${y1} L ${x2 - radius} ${y1} Q ${x2} ${y1} ${x2} ${y1 + radius} L ${x2} ${y2 - radius} Q ${x2} ${y2} ${x2 - radius} ${y2} L ${x1 + radius} ${y2} Q ${x1} ${y2} ${x1} ${y2 - radius} L ${x1} ${y1 + radius} Q ${x1} ${y1} ${x1 + radius} ${y1} Z`;
 }
 
+export function flipPointAboutY(P: Pt): Pt {
+  return { x: -P.x, y: P.y };
+}
+
+export function flipLineAboutYAxis(P1: Pt, P2: Pt): string {
+  return `M ${-P1.x} ${P1.y} L ${-P2.x} ${P2.y}`;
+}
 
 // ====== PATH COMBINATIONS ======
 export function combinePathStrings(paths: string[]): string {
