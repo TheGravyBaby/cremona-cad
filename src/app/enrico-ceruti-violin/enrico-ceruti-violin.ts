@@ -86,6 +86,22 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
   showAllCircles: boolean = false;
   showBoundingBoxes: boolean = true;
   showOuterCircles: boolean = true;
+  viewInnerPath: boolean = false;
+
+  mouldSettings = {
+    blockUpH: 0,
+    blockUpW: 0,
+    blockCornerUpH: 0,
+    blockCornerUpW: 0,
+    blockCornerUpPad: 0,
+    blockCornerLowH: 0,
+    blockCornerLowW: 0,
+    blockCornerLowPad: 0,
+    blockLowH: 0,
+    blockLowW: 0,
+    clampChannelWidth: 0,
+    bitDiameter: 0,
+  };
 
   private lastNewFileTick = 0;
 
@@ -165,7 +181,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       centerBout: () => this.changeCenterBout(),
       corners: () => this.changeCorners(),
       outerTrace: () => this.changeOuterTrace(),
-      // mould: () => this.changeMould(),
+      mould: () => this.changeMould(),
     };
   }
 
@@ -176,7 +192,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       case 'corners': return this.hasMainBouts();
       case 'centerBout': return this.hasCorners();
       case 'outerTrace': return this.hasCenterBout();
-      // case 'mould': return this.hasOuterTrace();
+      case 'mould': return this.hasOuterTrace();
       default: return false;
     }
   }
@@ -201,6 +217,11 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
   private hasCenterBout(): boolean {
     const b = this.d.params.bouts;
     return !!(b.C0);
+  }
+
+  private hasOuterTrace(): boolean {
+    const o = this.d.params.outerCorners;
+    return !!(o.U31 || o.CU1 || o.CL1 || o.L31);
   }
 
   // ===== Shared helpers =====
@@ -492,8 +513,23 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     }));
   }
 
+  changeMould(): void {
+    this.debounce(() => safeRun(() => {
+      this.draftChange.emit([
+        this.renderMainBouts(false),
+        this.renderCorners(false),
+        this.renderCenterBout(false),
+        this.renderOuterTrace(false),
+        this.renderMould(true),
+      ]);
+      sessionStorage.setItem('recipeData', JSON.stringify(this.d));
+    }));
+  }
+
   renderOuterTrace = (currentModule: boolean) => (g: any, ui: any): void => {
     let p = this.d.params;
+     let outerPath = defineOuterPath(p);
+    outerPath.forEach(arc => renderPath(arc, this.colors.innerTrace, 1)(g, ui));
 
     if ((currentModule && this.showModuleArcs) || this.showAllArcs) {
       // primary arcs + their mirrors
@@ -557,9 +593,12 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
         !p.options.useViolCornerLC && renderCircle(flipCircleAboutY(p.outerCorners.L32), this.colors.lowerBoutOff)(g, ui);
       }
     }
-    else {
-      let outerPath = defineOuterPath(p);
-      outerPath.forEach(arc => renderPath(arc, this.colors.innerTrace, 1)(g, ui));
-    }
   }
+
+  renderMould = (_currentModule: boolean) => (g: any, ui: any): void => {
+    if (!this.viewInnerPath) return;
+
+    const innerPath = defineInnerPath(this.d.params);
+    innerPath.forEach(path => renderPath(path, this.colors.mouldTrace, 1.2)(g, ui));
+  };
 }
