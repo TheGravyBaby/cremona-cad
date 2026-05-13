@@ -609,7 +609,8 @@
         @if (openPanel === 'outerTrace') {
         <section class="ui-group">
             <div class="ui-group-title">Upper Corner</div>
-            <div class="ui-group">
+            @if (!d.params.options.useViolCornerUC) {
+                 <div class="ui-group">
                 <div class="input-group basic-row field-row" role="group">
                     <label class="field-cell">
                         <span class="field-title">U3.1 Angle<span class="unit-label">deg</span></span>
@@ -673,10 +674,23 @@
                 }
                 
             </div>
+            }
+            @else {
+                <div class="ui-group" [style.opacity]="0.9">
+                    <div class="input-group basic-row field-row" role="group">
+                        <div class="basic-display" aria-live="polite">
+                            Viol corner selected — nothing to configure here.
+                        </div>
+                    </div>
+                </div>
+            }
+           
         </section>
 
         <section class="ui-group">
             <div class="ui-group-title">Lower Corner</div>
+
+            @if(!d.params.options.useViolCornerLC) {
 
             <div class="ui-group">
                 <div class="input-group basic-row field-row" role="group">
@@ -712,6 +726,7 @@
                 }
 
             </div>
+            
 
             <div class="ui-group">
                 <div class="input-group basic-row field-row" role="group">
@@ -743,6 +758,16 @@
                 </div>
                 }
             </div>
+            }
+            @else {
+                <div class="ui-group" [style.opacity]="0.9">
+                    <div class="input-group basic-row field-row" role="group">
+                        <div class="basic-display" aria-live="polite">
+                            Viol corner selected — nothing to configure here.
+                        </div>
+                    </div>
+                </div>
+            }
 
         </section>
 
@@ -767,12 +792,6 @@
                 <div class="toggle">
                     <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeOuterTrace()" /><span>Show All
                         Circles </span>
-                </div>
-            </div>
-            <div class="input-group basic-row field-row" role="group">
-                <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showBoundingBoxes" (change)="changeOuterTrace()" /><span>Show
-                        Bounding Boxes </span>
                 </div>
             </div>
         </section>
