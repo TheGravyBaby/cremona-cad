@@ -37,9 +37,13 @@ export interface EnricoCerutiParams {
   },
   blocks: {
     U: Rectangle | null;
+    UPad: number | null;
     CU: Rectangle | null;
+    CUPad: number | null;
     CL: Rectangle | null;
+    CLPad: number | null;
     L: Rectangle | null;
+    LPad: number | null;
   },
   viol: {
     width: number | null;
@@ -158,9 +162,13 @@ const DefaultParams: EnricoCerutiParams = {
   },
   blocks: {
     U: undefined,
+    UPad: undefined,
     CU: undefined,
+    CUPad: undefined,
     CL: undefined,
-    L: undefined
+    CLPad: undefined,
+    L: undefined,
+    LPad: undefined
   },
   options: {
     useViolNeck: false,
@@ -313,12 +321,6 @@ const CerutiParams: EnricoCerutiParams = {
       "x": 83.25,
       "y": 135.25
     }
-  },
-  "blocks": {
-    U: null,
-    CU: null,
-    CL: null,
-    L: null
   },
   "options": {
     "useViolNeck": false,
@@ -474,9 +476,13 @@ const stradGoetzParams: EnricoCerutiParams = {
 },
   "blocks": {
     U: null,
+    UPad: null,
     CU: null,
+    CUPad: null,
     CL: null,
-    L: null
+    CLPad: null,
+    L: null,
+    LPad: null
   },
   "options": {
     "useViolNeck": false,
