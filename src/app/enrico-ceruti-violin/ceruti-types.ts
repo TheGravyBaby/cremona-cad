@@ -5,6 +5,8 @@ export interface EnricoCerutiParams {
   width: number;
   overhang: number;
   rib: number;
+  bitDiameter: number;
+  clampChannelWidth: number;
   bouts: {
     UBW: number | null;
     U0: Arc | null;
@@ -22,8 +24,8 @@ export interface EnricoCerutiParams {
     L2: Arc | null;
     L1: Arc | null;
     L0: Arc | null;
-    UC: Pt | null;
-    LC: Pt | null;
+    UCr: Pt | null;
+    LCr: Pt | null;
   },
   outerCorners: {
     U31 : Arc | null,
@@ -37,13 +39,11 @@ export interface EnricoCerutiParams {
   },
   blocks: {
     U: Rectangle | null;
-    UPad: number | null;
     CU: Rectangle | null;
     CUPad: number | null;
     CL: Rectangle | null;
     CLPad: number | null;
     L: Rectangle | null;
-    LPad: number | null;
   },
   viol: {
     width: number | null;
@@ -100,6 +100,8 @@ const DefaultParams: EnricoCerutiParams = {
   width: 200,
   overhang: 3,
   rib: 1,
+  bitDiameter: 6.35,
+  clampChannelWidth: 5,
   ratios: {
     HtoW: 7 / 4,
 
@@ -143,8 +145,8 @@ const DefaultParams: EnricoCerutiParams = {
     L2: undefined,
     L1: undefined,
     L0: undefined,
-    UC: undefined,
-    LC: undefined,
+    UCr: undefined,
+    LCr: undefined,
   },
   viol: {
     width: null,
@@ -162,13 +164,11 @@ const DefaultParams: EnricoCerutiParams = {
   },
   blocks: {
     U: undefined,
-    UPad: undefined,
     CU: undefined,
     CUPad: undefined,
     CL: undefined,
     CLPad: undefined,
     L: undefined,
-    LPad: undefined
   },
   options: {
     useViolNeck: false,
@@ -313,11 +313,11 @@ const CerutiParams: EnricoCerutiParams = {
       "diff": null,
       "diffDeg": null
     },
-    "UC": {
+    "UCr": {
       "x": 70.75,
       "y": 219.75
     },
-    "LC": {
+    "LCr": {
       "x": 83.25,
       "y": 135.25
     }
@@ -465,24 +465,22 @@ const stradGoetzParams: EnricoCerutiParams = {
       "diff": null,
       "diffDeg": null
   },
-  "UC": {
+  "UCr": {
     "x": 72,
     "y": 237.5
   },
-  "LC": {
+  "LCr": {
     "x": 84.5,
     "y": 147
   }
 },
   "blocks": {
     U: null,
-    UPad: null,
     CU: null,
     CUPad: null,
     CL: null,
     CLPad: null,
     L: null,
-    LPad: null
   },
   "options": {
     "useViolNeck": false,

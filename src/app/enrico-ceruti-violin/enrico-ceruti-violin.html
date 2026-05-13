@@ -275,13 +275,13 @@
             <div class="input-group basic-row field-row" role="group">
                 <label class="field-cell">
                     <span class="field-title">X <span class="unit-label">mm</span></span>
-                    <input type="number" class="basic-input" step=".25" [(ngModel)]="d.params.bouts.UC.x"
+                    <input type="number" class="basic-input" step=".25" [(ngModel)]="d.params.bouts.UCr.x"
                         (input)="changeCorners()" [style.borderColor]="colors.centerBoutUpOff" />
                 </label>
                 <span class="field-separator" aria-hidden="true"></span>
                 <label class="field-cell">
                     <span class="field-title">Y <span class="unit-label">mm</span></span>
-                    <input type="number" class="basic-input" step=".25" [(ngModel)]="d.params.bouts.UC.y"
+                    <input type="number" class="basic-input" step=".25" [(ngModel)]="d.params.bouts.UCr.y"
                         (input)="changeCorners()" [style.borderColor]="colors.centerBoutUpOff" />
                 </label>
             </div>
@@ -371,13 +371,13 @@
             <div class="input-group basic-row field-row" role="group">
                 <label class="field-cell">
                     <span class="field-title">X <span class="unit-label">mm</span></span>
-                    <input type="number" class="basic-input" step=".25" [(ngModel)]="d.params.bouts.LC.x"
+                    <input type="number" class="basic-input" step=".25" [(ngModel)]="d.params.bouts.LCr.x"
                         (input)="changeCorners()" [style.borderColor]="colors.centerBoutLowOff" />
                 </label>
                 <span class="field-separator" aria-hidden="true"></span>
                 <label class="field-cell">
                     <span class="field-title">Y <span class="unit-label">mm</span></span>
-                    <input type="number" class="basic-input" step=".25" [(ngModel)]="d.params.bouts.LC.y"
+                    <input type="number" class="basic-input" step=".25" [(ngModel)]="d.params.bouts.LCr.y"
                         (input)="changeCorners()" [style.borderColor]="colors.centerBoutLowOff" />
                 </label>
             </div>
@@ -798,90 +798,159 @@
         }
 
         @if (openPanel === 'mould') {
-        <div class="mould-pattern-groups">
-            <section class="ui-group" [style.border-color]="colors.upperBoutOff">
-                <div class="ui-group-title">Upper Block</div>
-                <label class="section-label">Height : Width <span>(mm)</span></label>
-                <div class="input-group basic-row">
-                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="mouldSettings.blockUpH"
+        <section class="ui-group" [style.border-color]="colors.upperBoutOff">
+            <div class="ui-group-title">Upper Block</div>
+            <div class="input-group basic-row field-row" role="group">
+                <label class="field-cell">
+                    <span class="field-title">Height <span class="unit-label">mm</span></span>
+                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blocks.U.height"
                         (input)="changeMould()" />
-                    <span>:</span>
-                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="mouldSettings.blockUpW"
+                </label>
+                <span class="field-separator" aria-hidden="true"></span>
+                <label class="field-cell">
+                    <span class="field-title">Width <span class="unit-label">mm</span></span>
+                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blocks.U.width"
                         (input)="changeMould()" />
-                </div>
-            </section>
+                </label>
+            </div>
+        </section>
 
-            <section class="ui-group" [style.border-color]="colors.centerBoutUp">
-                <div class="ui-group-title">Upper Corner Block</div>
-                <label class="section-label">Height : Width : Pad <span>(mm)</span></label>
-                <div class="input-group basic-row">
+        <section class="ui-group" [style.border-color]="colors.centerBoutUp">
+            <div class="ui-group-title">Upper Corner Block</div>
+            <div class="input-group basic-row field-row" role="group">
+                <label class="field-cell">
+                    <span class="field-title">Height <span class="unit-label">mm</span></span>
                     <input class="basic-input" type="number" step="1" min="0"
-                        [(ngModel)]="mouldSettings.blockCornerUpH" (input)="changeMould()" />
-                    <span>:</span>
+                        [(ngModel)]="d.params.blocks.CU.height" (input)="changeMould()" />
+                </label>
+                <span class="field-separator" aria-hidden="true"></span>
+                <label class="field-cell">
+                    <span class="field-title">Width <span class="unit-label">mm</span></span>
                     <input class="basic-input" type="number" step="1" min="0"
-                        [(ngModel)]="mouldSettings.blockCornerUpW" (input)="changeMould()" />
-                    <span>:</span>
+                        [(ngModel)]="d.params.blocks.CU.width" (input)="changeMould()" />
+                </label>
+                <span class="field-separator" aria-hidden="true"></span>
+                <label class="field-cell">
+                    <span class="field-title">Pad <span class="unit-label">mm</span></span>
                     <input class="basic-input" type="number" step="1" min="0"
-                        [(ngModel)]="mouldSettings.blockCornerUpPad" (input)="changeMould()" />
-                </div>
-            </section>
+                        [(ngModel)]="d.params.blocks.CUPad" (input)="changeMould()" />
+                </label>
+            </div>
+        </section>
 
-            <section [style.border-color]="colors.centerBoutLow" class="ui-group">
-                <div class="ui-group-title">Lower Corner Block</div>
-                <label class="section-label">Height : Width : Pad <span>(mm)</span></label>
-                <div class="input-group basic-row">
+        <section class="ui-group" [style.border-color]="colors.centerBoutLow">
+            <div class="ui-group-title">Lower Corner Block</div>
+            <div class="input-group basic-row field-row" role="group">
+                <label class="field-cell">
+                    <span class="field-title">Height <span class="unit-label">mm</span></span>
                     <input class="basic-input" type="number" step="1" min="0"
-                        [(ngModel)]="mouldSettings.blockCornerLowH" (input)="changeMould()" />
-                    <span>:</span>
+                        [(ngModel)]="d.params.blocks.CL.height" (input)="changeMould()" />
+                </label>
+                <span class="field-separator" aria-hidden="true"></span>
+                <label class="field-cell">
+                    <span class="field-title">Width <span class="unit-label">mm</span></span>
                     <input class="basic-input" type="number" step="1" min="0"
-                        [(ngModel)]="mouldSettings.blockCornerLowW" (input)="changeMould()" />
-                    <span>:</span>
+                        [(ngModel)]="d.params.blocks.CL.width" (input)="changeMould()" />
+                </label>
+                <span class="field-separator" aria-hidden="true"></span>
+                <label class="field-cell">
+                    <span class="field-title">Pad <span class="unit-label">mm</span></span>
                     <input class="basic-input" type="number" step="1" min="0"
-                        [(ngModel)]="mouldSettings.blockCornerLowPad" (input)="changeMould()" />
-                </div>
+                        [(ngModel)]="d.params.blocks.CLPad" (input)="changeMould()" />
+                </label>
+            </div>
+        </section>
 
-            </section>
-
-            <section class="ui-group " [style.border-color]="colors.lowerBoutOff">
-                <div class="ui-group-title">Lower Block</div>
-                <label class="section-label">Height : Width <span>(mm)</span></label>
-                <div class="input-group basic-row">
-                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="mouldSettings.blockLowH"
+        <section class="ui-group" [style.border-color]="colors.lowerBoutOff">
+            <div class="ui-group-title">Lower Block</div>
+            <div class="input-group basic-row field-row" role="group">
+                <label class="field-cell">
+                    <span class="field-title">Height <span class="unit-label">mm</span></span>
+                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blocks.L.height"
                         (input)="changeMould()" />
-                    <span>:</span>
-                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="mouldSettings.blockLowW"
+                </label>
+                <span class="field-separator" aria-hidden="true"></span>
+                <label class="field-cell">
+                    <span class="field-title">Width <span class="unit-label">mm</span></span>
+                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blocks.L.width"
                         (input)="changeMould()" />
-                </div>
-            </section>
-        </div>
+                </label>
+            </div>
+        </section>
 
         <section class="ui-group">
-            <label class="section-label">Clamp Channel Width : Bit Diameter <span>(mm)</span>
-                <div class="input-group basic-row">
-                    <input class="basic-input" type="number" step="1" min="0"
-                        [(ngModel)]="mouldSettings.clampChannelWidth" (input)="changeMould()" />
-                    <span>:</span>
-                    <input class="basic-input" type="number" step=".1" min="0" [(ngModel)]="mouldSettings.bitDiameter"
+            <!-- <div class="ui-group-title">Clamp Channel</div> -->
+            <div class="input-group basic-row field-row" role="group">
+                <label class="field-cell">
+                    <span class="field-title">Bit Diameter <span class="unit-label">mm</span></span>
+                    <input class="basic-input" type="number" step=".1" min="0" [(ngModel)]="d.params.bitDiameter"
                         (input)="changeMould()" />
-
-                </div>
-            </label>
+                </label>
+            </div>
+            <div class="input-group basic-row field-row" role="group">
+                <label class="field-cell" [style.opacity]="simpleClampBox ? 0.5 : 1" [style.pointerEvents]="simpleClampBox ? 'none' : 'auto'">
+                    <span class="field-title">Channel Depth <span class="unit-label">mm</span></span>
+                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.clampChannelWidth"
+                        (input)="changeMould()" [disabled]="simpleClampBox" />
+                </label>
+            </div>
+            <div class="toggle">
+                <input type="checkbox" [(ngModel)]="simpleClampBox" (change)="changeMould()" />
+                <span>Use Simple Clamp Box</span>
+            </div>
         </section>
 
         <section class="ui-group">
-            <div class="toggle">
-                <input type="checkbox" [(ngModel)]="showBoundingBoxes" (change)="changeMould()" />
-                <span>Show Blocks</span>
-            </div>
-            <label class="toggle">
-                <input type="checkbox" [(ngModel)]="viewInnerPath" (change)="changeMould()" />
-                <span>Show Inner Path</span>
-            </label>
-            <div class="toggle">
-                <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeMould()" />
-                <span>Show All Circles</span>
+            <div class="input-group basic-row field-row" role="group">
+                <div class="toggle">
+                    <input type="checkbox" [(ngModel)]="showBlocks" (change)="changeMould()" />
+                    <span>Show Blocks</span>
+                </div>
+                <div class="toggle">
+                    <input type="checkbox" [(ngModel)]="showInnerPath" (change)="changeMould()" />
+                    <span>Show Inner Path</span>
+                </div>
             </div>
         </section>
+        }
+
+        @if (openPanel === 'export') {
+        <section class="ui-group">
+            <div class="ui-group-title">Inner Trace</div>
+            <p class="export-description">The inner body outline used for the mould and rib bending.</p>
+            <div class="input-group basic-row field-row" role="group">
+                <button type="button" class="export-btn" (click)="previewExport('innerTrace')">Preview</button>
+                <button type="button" class="export-btn export-btn--primary" (click)="downloadExport('innerTrace')">Download SVG</button>
+            </div>
+        </section>
+
+        <section class="ui-group">
+            <div class="ui-group-title">Outer Trace</div>
+            <p class="export-description">The outer body outline including overhang.</p>
+            <div class="input-group basic-row field-row" role="group">
+                <button type="button" class="export-btn" (click)="previewExport('outerTrace')">Preview</button>
+                <button type="button" class="export-btn export-btn--primary" (click)="downloadExport('outerTrace')">Download SVG</button>
+            </div>
+        </section>
+
+        <section class="ui-group">
+            <div class="ui-group-title">Mould Path</div>
+            <p class="export-description">The CNC mould path with clamp channels and block cutouts.</p>
+            <div class="input-group basic-row field-row" role="group">
+                <button type="button" class="export-btn" (click)="previewExport('mould')">Preview</button>
+                <button type="button" class="export-btn export-btn--primary" (click)="downloadExport('mould')">Download SVG</button>
+            </div>
+        </section>
+
+        <section class="ui-group">
+            <div class="ui-group-title">Block Templates</div>
+            <p class="export-description">Individual block templates for upper, corner, and lower blocks. <em>(Coming soon)</em></p>
+            <div class="input-group basic-row field-row" role="group">
+                <button type="button" class="export-btn" disabled>Preview</button>
+                <button type="button" class="export-btn export-btn--primary" disabled>Download SVG</button>
+            </div>
+        </section>
+
         }
     </div>
 </div>

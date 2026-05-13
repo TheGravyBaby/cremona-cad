@@ -6,13 +6,17 @@ import { greyOut, renderArcFromArc, renderArcFromArcFancy, renderCircle, renderC
 import { clampParam, safeRun } from '../helpers/validators';
 import { EnricoCerutiTemplate, CERUTI_TEMPLATES, EnricoCerutiParams } from './ceruti-types';
 import { dimensionInfo, insetInfo, referenceInfo } from './ceruti-helpers';
-import { angleFromCenter, circleCircleIntersections, dist, flipAngleAboutYAxis, flipArcAboutY, flipCircleAboutY, interceptCirclesAndPoint, lineFromTwoPoints, offsetCircleRadius, pointOnCircle, solveInscribedCircleAlongAxis } from '../helpers/draftMath';
-import { calculateCenterBout, calculateCorners, calculateMainBouts, calculateOuterCorners, defineInnerArcs, defineInnerPath, defineOuterArcsNoCorners, defineOuterPath } from './ceruti-calcs';
+import { angleFromCenter, circleCircleIntersections, dist, flipAngleAboutYAxis, flipArcAboutY, flipCircleAboutY, flipPointAboutY, flipRectAboutY, interceptCirclesAndPoint, lineFromTwoPoints, offsetCircleRadius, pointOnCircle, solveInscribedCircleAlongAxis } from '../helpers/draftMath';
+import { calculateCenterBout, calculateCorners, calculateMainBouts, calculateMould, calculateOuterCorners, defineInnerArcs, defineInnerPath, defineOuterArcsNoCorners, defineOuterPath } from './ceruti-calcs';
 import { error } from '../shared/message-emitter';
+import { buildMirroredSvg, downloadSvgFile } from '../helpers/svg-export';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { calculateMouldPath } from '../kelly-violin/kellyCals';
 
 @Component({
   selector: 'app-enrico-ceruti-violin',
   imports: [FormsModule],
+  // DomSanitizer injected via constructor
   templateUrl: './enrico-ceruti-violin.html',
   styleUrls: ['../sidebar.css', './enrico-ceruti-violin.css'],
 })
@@ -66,7 +70,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
 
   // ===== Constructor =====
 
-  constructor(private readonly cdr: ChangeDetectorRef) {
+  constructor(private readonly cdr: ChangeDetectorRef, private readonly sanitizer: DomSanitizer) {
     super();
     this.initializePanelFlow(this.panelOrder);
     this.initializeDebounce(() => this.refreshBoundInputs());
@@ -84,24 +88,14 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
   showModuleCircles: boolean = false;
   showAllArcs: boolean = false;
   showAllCircles: boolean = false;
-  showBoundingBoxes: boolean = true;
+  showBoundingBoxes: boolean = false;
   showOuterCircles: boolean = true;
-  viewInnerPath: boolean = false;
-
-  mouldSettings = {
-    blockUpH: 0,
-    blockUpW: 0,
-    blockCornerUpH: 0,
-    blockCornerUpW: 0,
-    blockCornerUpPad: 0,
-    blockCornerLowH: 0,
-    blockCornerLowW: 0,
-    blockCornerLowPad: 0,
-    blockLowH: 0,
-    blockLowW: 0,
-    clampChannelWidth: 0,
-    bitDiameter: 0,
-  };
+  showInnerPath: boolean = false;
+  showBlocks: boolean = true;
+  simpleClampBox: boolean = false;
+  exportSimpleClampBox: boolean = false;
+  exportPreview: SafeHtml | null = null;
+  exportPreviewLabel: string = '';
 
   private lastNewFileTick = 0;
 
@@ -182,6 +176,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       corners: () => this.changeCorners(),
       outerTrace: () => this.changeOuterTrace(),
       mould: () => this.changeMould(),
+      export: () => { this.previewExport('outerTrace'); },
     };
   }
 
@@ -192,7 +187,8 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       case 'corners': return this.hasMainBouts();
       case 'centerBout': return this.hasCorners();
       case 'outerTrace': return this.hasCenterBout();
-      case 'mould': return this.hasOuterTrace();
+      case 'mould': return this.hasCenterBout();
+      case 'export': return this.hasCenterBout();
       default: return false;
     }
   }
@@ -211,7 +207,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
 
   private hasCorners(): boolean {
     const b = this.d.params.bouts;
-    return !!(b.UC && b.LC);
+    return !!(b.UCr && b.LCr);
   }
 
   private hasCenterBout(): boolean {
@@ -343,6 +339,9 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
         let mirrorU0 = flipArcAboutY(p.bouts.U0);
         renderArcFromArc(p.bouts.U0, this.colors.innerTrace)(g, ui);
         renderArcFromArc(mirrorU0, this.colors.innerTrace)(g, ui);
+
+         let EndPt = pointOnCircle(p.viol?.V0!, p.viol?.V0.end ?? 0);
+         renderLine(EndPt, flipPointAboutY(EndPt), this.colors.innerTrace)(g, ui);
       }
       else
         renderArcFromArc(wideTopArc, this.colors.innerTrace)(g, ui);
@@ -355,8 +354,6 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     }
 
     if ((currentModule && this.showModuleCircles) || this.showAllCircles) {
-
-
       let mirrorU1 = flipCircleAboutY(p.bouts.U1);
       let mirrorL1 = flipCircleAboutY(p.bouts.L1);
       renderCircle(p.bouts.U0!, this.colors.upperBout)(g, ui);
@@ -394,10 +391,10 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     let p = this.d.params;
 
     if (currentModule && this.showModuleArcs) {
-      renderCrosshair(p.bouts.UC!, this.colors.centerBoutUpOff)(g, ui);
-      renderCrosshair(p.bouts.LC!, this.colors.centerBoutLowOff)(g, ui);
-      renderCrosshair({ x: -p.bouts.UC!.x, y: p.bouts.UC!.y }, this.colors.centerBoutUpOff)(g, ui);
-      renderCrosshair({ x: -p.bouts.LC!.x, y: p.bouts.LC!.y }, this.colors.centerBoutLowOff)(g, ui);
+      renderCrosshair(p.bouts.UCr!, this.colors.centerBoutUpOff)(g, ui);
+      renderCrosshair(p.bouts.LCr!, this.colors.centerBoutLowOff)(g, ui);
+      renderCrosshair({ x: -p.bouts.UCr!.x, y: p.bouts.UCr!.y }, this.colors.centerBoutUpOff)(g, ui);
+      renderCrosshair({ x: -p.bouts.LCr!.x, y: p.bouts.LCr!.y }, this.colors.centerBoutLowOff)(g, ui);
     }
 
     if ((currentModule && this.showModuleArcs) || this.showAllArcs) {
@@ -513,23 +510,10 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     }));
   }
 
-  changeMould(): void {
-    this.debounce(() => safeRun(() => {
-      this.draftChange.emit([
-        this.renderMainBouts(false),
-        this.renderCorners(false),
-        this.renderCenterBout(false),
-        this.renderOuterTrace(false),
-        this.renderMould(true),
-      ]);
-      sessionStorage.setItem('recipeData', JSON.stringify(this.d));
-    }));
-  }
-
   renderOuterTrace = (currentModule: boolean) => (g: any, ui: any): void => {
     let p = this.d.params;
-     let outerPath = defineOuterPath(p);
-    outerPath.forEach(arc => renderPath(arc, this.colors.innerTrace, 1)(g, ui));
+    let outerPath = defineOuterPath(p);
+    renderPath(outerPath, this.colors.innerTrace, 1)(g, ui);
 
     if ((currentModule && this.showModuleArcs) || this.showAllArcs) {
       // primary arcs + their mirrors
@@ -595,10 +579,84 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     }
   }
 
-  renderMould = (_currentModule: boolean) => (g: any, ui: any): void => {
-    if (!this.viewInnerPath) return;
+  // ===== Export =====
 
-    const innerPath = defineInnerPath(this.d.params);
-    innerPath.forEach(path => renderPath(path, this.colors.mouldTrace, 1.2)(g, ui));
+  previewExport(type: 'innerTrace' | 'outerTrace' | 'mould'): void {
+    const p = this.d.params;
+
+    switch (type) {
+      case 'innerTrace': {
+        const d = defineInnerPath(p);
+        this.draftChange.emit([renderPath(d, this.colors.innerTrace, 1)]);
+        break;
+      }
+      case 'outerTrace': {
+        const path = defineOuterPath(p);
+        this.draftChange.emit([
+          renderPath(path, this.colors.outerTrace, 1),
+        ]);
+        break;
+      }
+      case 'mould': {
+        const d = calculateMould(p, true, this.exportSimpleClampBox);
+        this.draftChange.emit([renderPath(d, this.colors.mouldTrace, 1.5)]);
+        break;
+      }
+    }
+  }
+
+  downloadExport(type: 'innerTrace' | 'outerTrace' | 'mould'): void {
+    const p = this.d.params;
+    const baseName = this.d.fileName?.trim() || 'ceruti-violin';
+    const strokeMap: Record<string, string> = {
+      innerTrace: this.colorPalette.innerTrace,
+      outerTrace: this.colorPalette.outerTrace,
+      mould: this.colorPalette.mouldTrace,
+    };
+
+    let pathD: string;
+    switch (type) {
+      case 'innerTrace':
+        pathD = defineInnerPath(p);
+        break;
+      case 'outerTrace':
+        pathD = defineOuterPath(p);
+        break;
+      case 'mould':
+        pathD = calculateMould(p, false, this.exportSimpleClampBox);
+        break;
+    }
+
+    const svg = buildMirroredSvg(p.width, p.height, [{ d: pathD!, stroke: "black", fill: 'none' }]);
+    downloadSvgFile(`${baseName}-${type}.svg`, svg);
+  }
+
+
+  changeMould(): void {
+    this.debounce(() => safeRun(() => {
+
+      let mouldPath = calculateMould(this.d.params, false, this.simpleClampBox);
+      let innerPath = defineInnerPath(this.d.params);
+      this.draftChange.emit([
+        this.renderMould(true, mouldPath, innerPath),
+      ]);
+      sessionStorage.setItem('recipeData', JSON.stringify(this.d));
+    }));
+  }
+
+
+  renderMould = (_currentModule: boolean, mouldPath: string, innerPath: string) => (g: any, ui: any): void => {
+    this.showInnerPath && renderPath(innerPath, this.colors.innerTrace, 1.2)(g, ui);
+    renderPath(mouldPath, this.colors.mouldTrace, 1.5)(g, ui);
+
+    if (this.showBlocks) {
+      renderRect(this.d.params.blocks.U, this.colors.upperBout)(g, ui);
+      renderRect(this.d.params.blocks.CU, this.colors.centerBoutUp)(g, ui);
+      renderRect(flipRectAboutY(this.d.params.blocks.CU), this.colors.centerBoutUp)(g, ui);
+      renderRect(this.d.params.blocks.CL, this.colors.centerBoutLow)(g, ui);
+      renderRect(flipRectAboutY(this.d.params.blocks.CL), this.colors.centerBoutLow)(g, ui);
+      renderRect(this.d.params.blocks.L, this.colors.lowerBout)(g, ui);
+    }
+
   };
 }

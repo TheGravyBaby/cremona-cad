@@ -67,6 +67,7 @@ export function lineCircleIntersection(P1: Pt, P2: Pt, C: Circle): Pt[] {
   ];
 }
 
+
 export function lineFromTwoPoints(A: Pt, B: Pt): Line {
   let m = (B.y - A.y) / (B.x - A.x);
 
@@ -96,6 +97,13 @@ export function offsetArcRadius(arc: Arc, offset: number): Arc {
 
   let C = new Circle(arc.x, arc.y, newR);
   return arcFromCircle(C, arc.start, arc.end);
+}
+
+export function redefineArcCircle(arc: Arc, c: Circle, offset?: number): Arc {
+  if (offset !== undefined) {
+    c = offsetCircleRadius(c, offset);
+  }
+  return arcFromCircle(c, arc.start, arc.end);
 }
 
 export function flipArcAboutY(arc: Arc): Arc {
@@ -386,9 +394,17 @@ export function flipPointAboutY(P: Pt): Pt {
   return { x: -P.x, y: P.y };
 }
 
+export function flipRectAboutY(R: Rectangle): Rectangle {
+  const flippedPt1 = flipPointAboutY(R.Pt1);
+  const flippedPt2 = flipPointAboutY(R.Pt2);
+  return new Rectangle(flippedPt1, flippedPt2);
+}
+
 export function flipLineAboutYAxis(P1: Pt, P2: Pt): string {
   return `M ${-P1.x} ${P1.y} L ${-P2.x} ${P2.y}`;
 }
+
+
 
 // ====== PATH COMBINATIONS ======
 export function combinePathStrings(paths: string[]): string {

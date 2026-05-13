@@ -46,8 +46,8 @@ class AxisGridController {
   private preferences: AxisGridPreferences = {
     showGrid: false,
     showAxes: false,
-    showGridX: true,
-    showGridY: true,
+    showGridX: false,
+    showGridY: false,
     gridStepX: 50,
     gridStepY: 50,
   };
