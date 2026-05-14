@@ -34,6 +34,18 @@ export class TopBarComponent {
     this.nightModeChange.emit(!this.nightMode);
   }
 
+  aboutOpen = false;
+  activeTab: 'about' | 'tutorial' | 'author' | '' = 'about';
+
+  openAbout() {
+    this.aboutOpen = true;
+    this.activeTab = 'about';
+  }
+
+  closeAbout() {
+    this.aboutOpen = false;
+  }
+
   triggerFilePick() {
     this.fileInput.nativeElement.click();
   }

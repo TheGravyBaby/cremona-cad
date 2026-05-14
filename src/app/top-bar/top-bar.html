@@ -31,5 +31,115 @@
       accept=".json,application/json"
       (change)="onFilePicked($event)"
     />
+
+    <button class="btn about-btn" (click)="openAbout()" aria-label="About Cremona CAD">?</button>
   </div>
+
 </div>
+
+<!-- About / Tutorial Modal -->
+@if (aboutOpen) {
+  <div class="modal-backdrop" (click)="closeAbout()" role="dialog" aria-modal="true" aria-label="About Cremona CAD">
+    <div class="modal" (click)="$event.stopPropagation()">
+
+      <div class="modal-header">
+        <div class="modal-tabs">
+          <button class="tab-btn" [class.active]="activeTab === 'about'" (click)="activeTab = 'about'">Cremona Cad</button>
+          <button class="tab-btn" [class.active]="activeTab === 'tutorial'" (click)="activeTab = 'tutorial'">Tutorial</button>
+          <button class="tab-btn" [class.active]="activeTab === 'author'" (click)="activeTab = 'author'">About The Author</button>
+        </div>
+        <button class="modal-close" (click)="closeAbout()" aria-label="Close">✕</button>
+      </div>
+
+      <div class="modal-body">
+
+        @if (activeTab === 'about') {
+          <section class="about-section">
+            <h2>Cremona CAD</h2>
+            <p>
+              Cremona CAD is a parametric drafting tool for luthiers. It generates precise, geometrically-accurate
+              violin outlines and internal templates based on historical and modern making traditions.
+              All drawing happens in the browser — no installation, no cloud account.
+            </p>
+
+            <h3>Available Recipes</h3>
+            <ul>
+              <li><strong>Enrico Ceruti Violin</strong> — proportions derived from the Cremonese master's surviving instruments.</li>
+              <li><strong>Kelly Violin</strong> — a contemporary American workshop model.</li>
+              <li><strong>Beard Violin</strong> — a traditional pattern used in craft-school instruction.</li>
+            </ul>
+
+            <h3>Files</h3>
+            <p>
+              Projects are saved as plain <code>.json</code> files. Use <em>Save</em> to export the current
+              recipe parameters and <em>Load</em> to restore a previous session. Files are recipe-specific;
+              a Ceruti file cannot be loaded into the Kelly recipe.
+            </p>
+
+            <h3>Reference Images</h3>
+            <p>
+              Any recipe panel lets you overlay a reference photograph or scan on the draft canvas.
+              Use the opacity and transform controls inside the recipe sidebar to align it with the generated draft.
+            </p>
+
+            <h3>Night / Day Mode</h3>
+            <p>Toggle the ☾ / ☀ button in the top-left to switch between dark and light themes. Your preference is saved automatically.</p>
+          </section>
+        }
+
+        @if (activeTab === 'tutorial') {
+          <section class="tutorial-section">
+            <h2>Getting Started</h2>
+
+            <ol class="tutorial-steps">
+              <li>
+                <span class="step-label">Pick a recipe</span>
+                <p>A <em>recipe</em> is a set of proportional rules that describes a particular violin model.
+                The active recipe is shown in the sidebar on the right.</p>
+              </li>
+              <li>
+                <span class="step-label">Adjust the parameters</span>
+                <p>Each recipe exposes sliders and numeric inputs that control everything from body length to
+                upper/lower bout widths and corner placement. The draft canvas updates in real time.</p>
+              </li>
+              <li>
+                <span class="step-label">Navigate the canvas</span>
+                <p>
+                  <strong>Scroll</strong> to zoom in and out.<br />
+                  <strong>Middle-click drag</strong> (or <strong>right-click drag</strong>) to pan.<br />
+                  The draft is always centered on load.
+                </p>
+              </li>
+              <li>
+                <span class="step-label">Overlay a reference image</span>
+                <p>In the recipe sidebar, locate the <em>Reference Image</em> section. Upload any image (scan,
+                photo, PDF export) and use the transform controls to scale and position it behind the draft lines.</p>
+              </li>
+              <li>
+                <span class="step-label">Save your work</span>
+                <p>Click <strong>Save</strong> in the top bar to download a <code>.json</code> snapshot of all
+                current parameters. Click <strong>Load</strong> to restore it in a future session.</p>
+              </li>
+              <li>
+                <span class="step-label">Start fresh</span>
+                <p>Click <strong>New</strong> to reset all parameters to the recipe defaults.</p>
+              </li>
+            </ol>
+
+            <h3>Tips</h3>
+            <ul class="tips-list">
+              <li>The canvas updates continuously; there is no "Apply" step.</li>
+              <li>Save often — the browser does not auto-save between sessions.</li>
+              <li>Day/Night mode preference persists across sessions via <code>localStorage</code>.</li>
+            </ul>
+          </section>
+        }
+        @if (activeTab === 'author') {
+
+        }
+
+      </div>
+    </div>
+  </div>
+}
+
