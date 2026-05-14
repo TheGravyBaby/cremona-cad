@@ -106,16 +106,16 @@ export function calculateCorners(p: EnricoCerutiParams): void {
     let U2Y = p.bouts.U2?.y ?? p.bouts.U1.y;
 
     let U1U2Match = false
+    let allowHeightFlex = false; // this is a fiddly feature that might be cool one day, needs more work for now
+
+
     if (p.bouts.U2?.r == p.bouts.U1.r && p.bouts.U2?.y == p.bouts.U1.y && p.bouts.U2?.x == p.bouts.U1.x) {
         // this is a special case where the user has set U2 to be the same as U1, 
         // which causes the math below to break since we won't have two distinct circles to intersect
         U1U2Match = true;
         p.bouts.U1.end = 0
     }
-    else if (U2Y == p.bouts.U1.y) {
-        p.bouts.U2 = new Arc(p.bouts.UBW / 2 - U2R - inset, U2Y, U2R);
-    }
-    else {
+    else if (allowHeightFlex && U2Y != p.bouts.U1.y) {
         let c = p.bouts.U2.r - p.bouts.U1.r;
         let b = p.bouts.U2.y - p.bouts.U1.y
         let U2xPlus = p.bouts.U1.x + Math.sqrt(c * c - b * b)
@@ -123,6 +123,13 @@ export function calculateCorners(p: EnricoCerutiParams): void {
 
         p.bouts.U2.x = Math.min(U2xPlus, U2xMinus);
     }
+    else if (allowHeightFlex){
+        p.bouts.U2 = new Arc(p.bouts.UBW / 2 - U2R - inset, U2Y, U2R);
+    }
+    else {
+        p.bouts.U2 = new Arc(p.bouts.UBW / 2 - U2R - inset, p.bouts.U1.y, U2R);
+    }
+
 
     let L2R = p.bouts.L2?.r ?? Math.round(LBWI * p.ratios.L2toLBW);
     let L2Y = p.bouts.L2?.y ?? p.bouts.L1.y;
@@ -133,16 +140,19 @@ export function calculateCorners(p: EnricoCerutiParams): void {
         L2U1Match = true;
         p.bouts.L1.end = 0
     }
-    if (L2Y == p.bouts.L1.y) {
-        p.bouts.L2 = new Arc(p.bouts.LBW / 2 - L2R - inset, L2Y, L2R);
-    }
-    else {
+    else if (allowHeightFlex && L2Y != p.bouts.L1.y) {
         let c = p.bouts.L2.r - p.bouts.L1.r;
         let b = p.bouts.L2.y - p.bouts.L1.y
         let L2xPlus = p.bouts.L1.x + Math.sqrt(c * c - b * b)
         let L2xMinus = p.bouts.L1.x - Math.sqrt(c * c - b * b)
 
         p.bouts.L2.x = Math.min(L2xPlus, L2xMinus);
+    }
+    else if (allowHeightFlex) {
+        p.bouts.L2 = new Arc(p.bouts.LBW / 2 - L2R - inset, L2Y, L2R);
+    }
+    else {
+        p.bouts.L2 = new Arc(p.bouts.LBW / 2 - L2R - inset, p.bouts.L1.y, L2R);
     }
 
     let U3R = p.bouts.U3?.r ?? Math.round(LBWI * p.ratios.U3toLBW);
@@ -791,13 +801,11 @@ export function defineOuterPath(p: EnricoCerutiParams, offset?: number, button =
 
             paths.push(pathFromLine(EndPtOffset, flipPointAboutY(EndPtOffset)))
             paths.push(pathFromLine(flipPointAboutY(EndPtOffset), flipPointAboutY(EndPt)))
-            }
+        }
 
     }
-
-    // let path = unifyConnectedSvgPaths(paths);
     
-    let path = combinePathStrings([...paths, ...buttonPaths]);
+    let path = unifyConnectedSvgPaths([...paths, ...buttonPaths]);
     return path;
 }
 
