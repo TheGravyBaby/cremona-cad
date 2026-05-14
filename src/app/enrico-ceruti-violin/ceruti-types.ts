@@ -7,6 +7,7 @@ export interface EnricoCerutiParams {
   rib: number;
   bitDiameter: number;
   clampChannelWidth: number;
+  button: Rectangle | null,
   bouts: {
     UBW: number | null;
     U0: Arc | null;
@@ -152,6 +153,7 @@ const DefaultParams: EnricoCerutiParams = {
     width: null,
     V0: null
   },
+  button: null,
   outerCorners: {
     U31: null,
     U32: null,

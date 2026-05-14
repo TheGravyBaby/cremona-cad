@@ -1,17 +1,15 @@
 import { ChangeDetectorRef, Component, HostListener, Input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
-import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Pt, Rectangle } from '../models/types';
-import { greyOut, renderArcFromArc, renderArcFromArcFancy, renderCircle, renderCircleAngleIndicator, renderCrosshair, renderDashedLine, renderDashLine, renderDistanceMeasurementLine, renderLine, renderPath, renderRect } from '../helpers/renderFuncs';
+import { Arc, arcFromCircle,  Rectangle } from '../models/types';
+import { greyOut, renderArcFromArc, renderArcFromArcFancy, renderCircle,  renderCrosshair, renderDashedLine,   renderLine, renderPath, renderRect } from '../helpers/renderFuncs';
 import { clampParam, safeRun } from '../helpers/validators';
 import { EnricoCerutiTemplate, CERUTI_TEMPLATES, EnricoCerutiParams } from './ceruti-types';
 import { dimensionInfo, insetInfo, referenceInfo } from './ceruti-helpers';
-import { angleFromCenter, circleCircleIntersections, combinePathStrings, differenceFromTwoPaths, dist, flipAngleAboutYAxis, flipArcAboutY, flipCircleAboutY, flipPointAboutY, flipRectAboutY, interceptCirclesAndPoint, intersectionFromTwoPaths, lineFromTwoPoints, offsetCircleRadius, pathFromRect, pointOnCircle, solveInscribedCircleAlongAxis } from '../helpers/draftMath';
-import { calculateCenterBout, calculateCornerBlocks, calculateCorners, calculateMainBouts, calculateMould, calculateOuterCorners, defineInnerArcs, defineInnerPath, defineOuterArcsNoCorners, defineOuterPath } from './ceruti-calcs';
-import { error } from '../shared/message-emitter';
+import { combinePathStrings, flipAngleAboutYAxis, flipArcAboutY, flipCircleAboutY, flipPointAboutY, flipRectAboutY, pointOnCircle, } from '../helpers/draftMath';
+import { calculateCenterBout, calculateCornerBlocks, calculateCorners, calculateMainBouts, calculateMould, calculateOuterCorners,  defineInnerPath, defineOuterPath } from './ceruti-calcs';
 import { buildMirroredSvg, downloadSvgFile, downloadSvgAsPdf, downloadFullPlanPdf, PdfPage } from '../helpers/svg-export';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { calculateMouldPath } from '../kelly-violin/kellyCals';
 
 @Component({
   selector: 'app-enrico-ceruti-violin',
@@ -512,7 +510,8 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
 
   renderOuterTrace = (currentModule: boolean) => (g: any, ui: any): void => {
     let p = this.d.params;
-    let outerPath = defineOuterPath(p);
+    let offset = p.overhang + p.rib;
+    let outerPath = defineOuterPath(p, offset, true);
     renderPath(outerPath, this.colors.innerTrace, 1)(g, ui);
 
     if ((currentModule && this.showModuleArcs) || this.showAllArcs) {
@@ -611,7 +610,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
 
   // ===== Export =====
 
-  previewExport(type: 'innerTrace' | 'outerTrace' | 'mould' | 'blocks'): void {
+  previewExport(type: 'innerTrace' | 'outerTrace'  | 'back' | 'mould' | 'blocks'): void {
     const p = this.d.params;
 
     switch (type) {
@@ -621,7 +620,14 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
         break;
       }
       case 'outerTrace': {
-        const path = defineOuterPath(p);
+        const path = combinePathStrings([defineOuterPath(p), defineInnerPath(p)]);
+        this.draftChange.emit([
+          renderPath(path, this.colors.outerTrace, 1),
+        ]);
+        break;
+      }
+      case 'back': {
+        const path = combinePathStrings([defineOuterPath(p, p.overhang + p.rib, true), defineInnerPath(p)]);
         this.draftChange.emit([
           renderPath(path, this.colors.outerTrace, 1),
         ]);
@@ -642,8 +648,9 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     }
   }
 
-  downloadExport(type: 'innerTrace' | 'outerTrace' | 'mould' | 'blocks'): void {
+  downloadExport(type: 'innerTrace' | 'outerTrace' | 'mould' | 'blocks' | 'back'): void {
     const p = this.d.params;
+    const offset = p.overhang + p.rib;
     const baseName = this.d.fileName?.trim() || 'ceruti-violin';
     const strokeMap: Record<string, string> = {
       innerTrace: this.colorPalette.innerTrace,
@@ -657,7 +664,10 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
         pathD = defineInnerPath(p);
         break;
       case 'outerTrace':
-        pathD = defineOuterPath(p);
+        pathD = combinePathStrings([defineOuterPath(p), defineInnerPath(p)]);
+        break;
+      case 'back':
+        pathD = combinePathStrings([defineOuterPath(p, offset, true), defineInnerPath(p)]);
         break;
       case 'mould':
         pathD = calculateMould(p, false, this.exportSimpleClampBox);
@@ -671,7 +681,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     downloadSvgFile(`${baseName}-${type}.svg`, svg);
   }
 
-  downloadPdf(type: 'innerTrace' | 'outerTrace' | 'mould' | 'blocks'): void {
+  downloadPdf(type: 'innerTrace' | 'outerTrace' | 'back' | 'mould' | 'blocks'): void {
     const p = this.d.params;
     const baseName = this.d.fileName?.trim() || 'ceruti-violin';
     const sheetLabels: Record<string, string> = {
@@ -680,13 +690,20 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       mould: 'Mould Path',
     };
 
+    let height = p.height + 3 * p.button.height;
+    if (p.options.useViolNeck) 
+      height = pointOnCircle(p.viol.V0, 0).y + 4 * p.button.height;
+
     let pathD: string;
     switch (type) {
       case 'innerTrace':
         pathD = defineInnerPath(p);
         break;
       case 'outerTrace':
-        pathD = defineOuterPath(p);
+        pathD = combinePathStrings([defineOuterPath(p), defineInnerPath(p)]);
+        break;
+      case 'back':
+        pathD = combinePathStrings([defineOuterPath(p, p.overhang + p.rib, true), defineInnerPath(p)]);
         break;
       case 'mould':
         pathD = calculateMould(p, false, this.exportSimpleClampBox);
@@ -700,7 +717,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     downloadSvgAsPdf(
       `${baseName}-${type}.pdf`,
       p.width,
-      p.height,
+      height,
       [{ d: pathD!, stroke: 'black', fill: 'none' }],
       {
         fileName: baseName,
@@ -714,6 +731,9 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     const p = this.d.params;
     const baseName = this.d.fileName?.trim() || 'ceruti-violin';
     const description = this.d.description ?? '';
+    let height = p.height + 3 * p.button.height;
+    if (p.options.useViolNeck) 
+      height = pointOnCircle(p.viol.V0, 0).y + 4 * p.button.height;
 
     const pages: PdfPage[] = [
       {
@@ -721,23 +741,31 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
         fileName: baseName,
         description,
         width: p.width,
-        height: p.height,
+        height: height,
         paths: [{ d: defineInnerPath(p), stroke: 'black', fill: 'none' }],
       },
       {
-        label: 'Outer Trace',
+        label: 'Top',
         fileName: baseName,
         description,
         width: p.width,
-        height: p.height,
-        paths: [{ d: defineOuterPath(p), stroke: 'black', fill: 'none' }],
+        height: height,
+        paths: [{ d: defineOuterPath(p), stroke: 'black', fill: 'none' }, { d: defineInnerPath(p), stroke: 'black', fill: 'none' }],
+      },
+      {
+        label: 'Back',
+        fileName: baseName,
+        description,
+        width: p.width,
+        height: height,
+        paths: [{ d: defineOuterPath(p, p.overhang + p.rib, true), stroke: 'black', fill: 'none' }, { d: defineInnerPath(p), stroke: 'black', fill: 'none' }],
       },
       {
         label: 'Mould Path',
         fileName: baseName,
         description,
         width: p.width,
-        height: p.height,
+        height: height,
         paths: [{ d: calculateMould(p, false, this.exportSimpleClampBox), stroke: 'black', fill: 'none' }],
       },
       {
@@ -745,7 +773,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
         fileName: baseName,
         description,
         width: p.width,
-        height: p.height,
+        height: height,
         paths: calculateCornerBlocks(p, defineInnerPath(p)).map((block: string) => ({ d: block, stroke: 'black', fill: 'none' })),
       }
     ];
