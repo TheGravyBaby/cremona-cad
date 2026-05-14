@@ -31,9 +31,11 @@
     "@angular/router": "^21.0.0",
     "@types/d3": "^7.4.3",
     "d3": "^7.9.0",
+    "jspdf": "^4.2.1",
     "polygon-clipping": "^0.15.7",
     "rxjs": "~7.8.0",
     "svg-path-properties": "^2.0.2",
+    "svg2pdf.js": "^2.7.0",
     "tslib": "^2.3.0"
   },
   "devDependencies": {

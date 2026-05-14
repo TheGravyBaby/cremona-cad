@@ -6,10 +6,10 @@ import { greyOut, renderArcFromArc, renderArcFromArcFancy, renderCircle, renderC
 import { clampParam, safeRun } from '../helpers/validators';
 import { EnricoCerutiTemplate, CERUTI_TEMPLATES, EnricoCerutiParams } from './ceruti-types';
 import { dimensionInfo, insetInfo, referenceInfo } from './ceruti-helpers';
-import { angleFromCenter, circleCircleIntersections, dist, flipAngleAboutYAxis, flipArcAboutY, flipCircleAboutY, flipPointAboutY, flipRectAboutY, interceptCirclesAndPoint, lineFromTwoPoints, offsetCircleRadius, pointOnCircle, solveInscribedCircleAlongAxis } from '../helpers/draftMath';
-import { calculateCenterBout, calculateCorners, calculateMainBouts, calculateMould, calculateOuterCorners, defineInnerArcs, defineInnerPath, defineOuterArcsNoCorners, defineOuterPath } from './ceruti-calcs';
+import { angleFromCenter, circleCircleIntersections, combinePathStrings, differenceFromTwoPaths, dist, flipAngleAboutYAxis, flipArcAboutY, flipCircleAboutY, flipPointAboutY, flipRectAboutY, interceptCirclesAndPoint, intersectionFromTwoPaths, lineFromTwoPoints, offsetCircleRadius, pathFromRect, pointOnCircle, solveInscribedCircleAlongAxis } from '../helpers/draftMath';
+import { calculateCenterBout, calculateCornerBlocks, calculateCorners, calculateMainBouts, calculateMould, calculateOuterCorners, defineInnerArcs, defineInnerPath, defineOuterArcsNoCorners, defineOuterPath } from './ceruti-calcs';
 import { error } from '../shared/message-emitter';
-import { buildMirroredSvg, downloadSvgFile } from '../helpers/svg-export';
+import { buildMirroredSvg, downloadSvgFile, downloadSvgAsPdf, downloadFullPlanPdf, PdfPage } from '../helpers/svg-export';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { calculateMouldPath } from '../kelly-violin/kellyCals';
 
@@ -579,64 +579,12 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     }
   }
 
-  // ===== Export =====
-
-  previewExport(type: 'innerTrace' | 'outerTrace' | 'mould'): void {
-    const p = this.d.params;
-
-    switch (type) {
-      case 'innerTrace': {
-        const d = defineInnerPath(p);
-        this.draftChange.emit([renderPath(d, this.colors.innerTrace, 1)]);
-        break;
-      }
-      case 'outerTrace': {
-        const path = defineOuterPath(p);
-        this.draftChange.emit([
-          renderPath(path, this.colors.outerTrace, 1),
-        ]);
-        break;
-      }
-      case 'mould': {
-        const d = calculateMould(p, true, this.exportSimpleClampBox);
-        this.draftChange.emit([renderPath(d, this.colors.mouldTrace, 1.5)]);
-        break;
-      }
-    }
-  }
-
-  downloadExport(type: 'innerTrace' | 'outerTrace' | 'mould'): void {
-    const p = this.d.params;
-    const baseName = this.d.fileName?.trim() || 'ceruti-violin';
-    const strokeMap: Record<string, string> = {
-      innerTrace: this.colorPalette.innerTrace,
-      outerTrace: this.colorPalette.outerTrace,
-      mould: this.colorPalette.mouldTrace,
-    };
-
-    let pathD: string;
-    switch (type) {
-      case 'innerTrace':
-        pathD = defineInnerPath(p);
-        break;
-      case 'outerTrace':
-        pathD = defineOuterPath(p);
-        break;
-      case 'mould':
-        pathD = calculateMould(p, false, this.exportSimpleClampBox);
-        break;
-    }
-
-    const svg = buildMirroredSvg(p.width, p.height, [{ d: pathD!, stroke: "black", fill: 'none' }]);
-    downloadSvgFile(`${baseName}-${type}.svg`, svg);
-  }
-
-
   changeMould(): void {
     this.debounce(() => safeRun(() => {
 
       let mouldPath = calculateMould(this.d.params, false, this.simpleClampBox);
       let innerPath = defineInnerPath(this.d.params);
+      // let cornerBlocks = calculateCornerBlocks(this.d.params, innerPath);
       this.draftChange.emit([
         this.renderMould(true, mouldPath, innerPath),
       ]);
@@ -659,4 +607,150 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     }
 
   };
+
+
+  // ===== Export =====
+
+  previewExport(type: 'innerTrace' | 'outerTrace' | 'mould' | 'blocks'): void {
+    const p = this.d.params;
+
+    switch (type) {
+      case 'innerTrace': {
+        const d = defineInnerPath(p);
+        this.draftChange.emit([renderPath(d, this.colors.innerTrace, 1)]);
+        break;
+      }
+      case 'outerTrace': {
+        const path = defineOuterPath(p);
+        this.draftChange.emit([
+          renderPath(path, this.colors.outerTrace, 1),
+        ]);
+        break;
+      }
+      case 'mould': {
+        const d = calculateMould(p, true, this.exportSimpleClampBox);
+        this.draftChange.emit([renderPath(d, this.colors.mouldTrace, 1.5)]);
+        break;
+      }
+      case 'blocks': {
+        const d = calculateCornerBlocks(p, defineInnerPath(p));
+        let renders = d.map((block: string) => renderPath(block, this.colors.mouldTrace));
+        this.draftChange.emit(renders);
+        break;
+      }
+
+    }
+  }
+
+  downloadExport(type: 'innerTrace' | 'outerTrace' | 'mould' | 'blocks'): void {
+    const p = this.d.params;
+    const baseName = this.d.fileName?.trim() || 'ceruti-violin';
+    const strokeMap: Record<string, string> = {
+      innerTrace: this.colorPalette.innerTrace,
+      outerTrace: this.colorPalette.outerTrace,
+      mould: this.colorPalette.mouldTrace,
+    };
+
+    let pathD: string;
+    switch (type) {
+      case 'innerTrace':
+        pathD = defineInnerPath(p);
+        break;
+      case 'outerTrace':
+        pathD = defineOuterPath(p);
+        break;
+      case 'mould':
+        pathD = calculateMould(p, false, this.exportSimpleClampBox);
+        break;
+      case 'blocks':
+        pathD = combinePathStrings(calculateCornerBlocks(p, defineInnerPath(p)));
+        break;
+    }
+
+    const svg = buildMirroredSvg(p.width, p.height, [{ d: pathD!, stroke: "black", fill: 'none' }]);
+    downloadSvgFile(`${baseName}-${type}.svg`, svg);
+  }
+
+  downloadPdf(type: 'innerTrace' | 'outerTrace' | 'mould' | 'blocks'): void {
+    const p = this.d.params;
+    const baseName = this.d.fileName?.trim() || 'ceruti-violin';
+    const sheetLabels: Record<string, string> = {
+      innerTrace: 'Inner Trace',
+      outerTrace: 'Outer Trace',
+      mould: 'Mould Path',
+    };
+
+    let pathD: string;
+    switch (type) {
+      case 'innerTrace':
+        pathD = defineInnerPath(p);
+        break;
+      case 'outerTrace':
+        pathD = defineOuterPath(p);
+        break;
+      case 'mould':
+        pathD = calculateMould(p, false, this.exportSimpleClampBox);
+        break;
+      case 'blocks':
+        pathD = combinePathStrings(calculateCornerBlocks(p, defineInnerPath(p)));
+        break;
+      
+    }
+
+    downloadSvgAsPdf(
+      `${baseName}-${type}.pdf`,
+      p.width,
+      p.height,
+      [{ d: pathD!, stroke: 'black', fill: 'none' }],
+      {
+        fileName: baseName,
+        description: this.d.description ?? '',
+        sheetLabel: sheetLabels[type],
+      }
+    );
+  }
+
+  downloadFullPlan(): void {
+    const p = this.d.params;
+    const baseName = this.d.fileName?.trim() || 'ceruti-violin';
+    const description = this.d.description ?? '';
+
+    const pages: PdfPage[] = [
+      {
+        label: 'Inner Trace',
+        fileName: baseName,
+        description,
+        width: p.width,
+        height: p.height,
+        paths: [{ d: defineInnerPath(p), stroke: 'black', fill: 'none' }],
+      },
+      {
+        label: 'Outer Trace',
+        fileName: baseName,
+        description,
+        width: p.width,
+        height: p.height,
+        paths: [{ d: defineOuterPath(p), stroke: 'black', fill: 'none' }],
+      },
+      {
+        label: 'Mould Path',
+        fileName: baseName,
+        description,
+        width: p.width,
+        height: p.height,
+        paths: [{ d: calculateMould(p, false, this.exportSimpleClampBox), stroke: 'black', fill: 'none' }],
+      },
+      {
+        label: 'Blocks',
+        fileName: baseName,
+        description,
+        width: p.width,
+        height: p.height,
+        paths: calculateCornerBlocks(p, defineInnerPath(p)).map((block: string) => ({ d: block, stroke: 'black', fill: 'none' })),
+      }
+    ];
+
+    downloadFullPlanPdf(`${baseName}-full-plan.pdf`, pages);
+  }
+
 }

@@ -920,7 +920,8 @@
             <p class="export-description">The inner body outline used for the mould and rib bending.</p>
             <div class="input-group basic-row field-row" role="group">
                 <button type="button" class="export-btn" (click)="previewExport('innerTrace')">Preview</button>
-                <button type="button" class="export-btn export-btn--primary" (click)="downloadExport('innerTrace')">Download SVG</button>
+                <button type="button" class="export-btn export-btn--primary" (click)="downloadExport('innerTrace')">SVG</button>
+                <button type="button" class="export-btn export-btn--primary" (click)="downloadPdf('innerTrace')">PDF</button>
             </div>
         </section>
 
@@ -929,7 +930,8 @@
             <p class="export-description">The outer body outline including overhang.</p>
             <div class="input-group basic-row field-row" role="group">
                 <button type="button" class="export-btn" (click)="previewExport('outerTrace')">Preview</button>
-                <button type="button" class="export-btn export-btn--primary" (click)="downloadExport('outerTrace')">Download SVG</button>
+                <button type="button" class="export-btn export-btn--primary" (click)="downloadExport('outerTrace')">SVG</button>
+                <button type="button" class="export-btn export-btn--primary" (click)="downloadPdf('outerTrace')">PDF</button>
             </div>
         </section>
 
@@ -938,19 +940,28 @@
             <p class="export-description">The CNC mould path with clamp channels and block cutouts.</p>
             <div class="input-group basic-row field-row" role="group">
                 <button type="button" class="export-btn" (click)="previewExport('mould')">Preview</button>
-                <button type="button" class="export-btn export-btn--primary" (click)="downloadExport('mould')">Download SVG</button>
+                <button type="button" class="export-btn export-btn--primary" (click)="downloadExport('mould')">SVG</button>
+                <button type="button" class="export-btn export-btn--primary" (click)="downloadPdf('mould')">PDF</button>
             </div>
         </section>
 
         <section class="ui-group">
             <div class="ui-group-title">Block Templates</div>
-            <p class="export-description">Individual block templates for upper, corner, and lower blocks. <em>(Coming soon)</em></p>
+            <p class="export-description">Individual block templates for upper, corner, and lower blocks.></p>
             <div class="input-group basic-row field-row" role="group">
-                <button type="button" class="export-btn" disabled>Preview</button>
-                <button type="button" class="export-btn export-btn--primary" disabled>Download SVG</button>
+                <button type="button" class="export-btn" (click)="previewExport('blocks')">Preview</button>
+                <button type="button" class="export-btn export-btn--primary" (click)="downloadExport('blocks')">SVG</button>
+                <button type="button" class="export-btn export-btn--primary" (click)="downloadPdf('blocks')">PDF</button>
             </div>
         </section>
 
+        <section class="ui-group">
+            <div class="ui-group-title">Full Plan</div>
+            <p class="export-description">All pages combined into a single true-scale PDF — inner trace, outer trace, and mould path.</p>
+            <div class="input-group basic-row field-row" role="group">
+                <button type="button" class="export-btn export-btn--primary export-btn--full" (click)="downloadFullPlan()">Download Full Plan PDF</button>
+            </div>
+        </section>
         }
     </div>
 </div>

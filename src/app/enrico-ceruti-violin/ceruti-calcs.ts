@@ -1,4 +1,4 @@
-import { solveInscribedCircleAlongAxis, circleCircleIntersections, angleFromCenter, interceptCirclesAndPoint, dist, lineFromTwoPoints, pointOnCircle, offsetCircleRadius, offsetArcRadius, inscribeCircleWithinCircle, pathFromArc, pathFromLine, flipArcAboutY, flipPointAboutY, unifyConnectedSvgPaths, pathFromRoundedRect, flipRectAboutY, pathFromCircle, pathFromRect, combinePathStrings, differenceFromTwoPaths, lineCircleIntersection, redefineArcCircle } from "../helpers/draftMath";
+import { solveInscribedCircleAlongAxis, circleCircleIntersections, angleFromCenter, interceptCirclesAndPoint, dist, lineFromTwoPoints, pointOnCircle, offsetCircleRadius, offsetArcRadius, inscribeCircleWithinCircle, pathFromArc, pathFromLine, flipArcAboutY, flipPointAboutY, unifyConnectedSvgPaths, pathFromRoundedRect, flipRectAboutY, pathFromCircle, pathFromRect, combinePathStrings, differenceFromTwoPaths, lineCircleIntersection, redefineArcCircle, intersectionFromTwoPaths, translatePath } from "../helpers/draftMath";
 import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, increaseArcAngle, Pt, Rectangle } from "../models/types";
 import { error } from "../shared/message-emitter";
 import { EnricoCerutiParams } from "./ceruti-types";
@@ -384,8 +384,6 @@ export function calculateMould(p: EnricoCerutiParams, useHighAccuracy = false, s
         }
     }
 
-   
-
     // now we cut out the blocks from the path
     let innerPath = defineInnerPath(p);
 
@@ -429,7 +427,6 @@ export function calculateMould(p: EnricoCerutiParams, useHighAccuracy = false, s
     for (let cutoutPath of cutoutPaths) {
         mouldPath = differenceFromTwoPaths(mouldPath, cutoutPath, renderDensity);
     }
-
    
     let clampBox: string[]
     if (simpleClampBox) {
@@ -511,9 +508,57 @@ export function calculateMould(p: EnricoCerutiParams, useHighAccuracy = false, s
 
     }
 
-
     return combinePathStrings([...clampBox, mouldPath]);
+}
 
+export function calculateCornerBlocks(p: EnricoCerutiParams, innerPath: string, padding = 5): string[] {
+    const rectMinX = (r: Rectangle) => Math.min(r.Pt1.x, r.Pt2.x);
+    const rectMinY = (r: Rectangle) => Math.min(r.Pt1.y, r.Pt2.y);
+
+    // Total width of a row including inter-piece padding.
+    const rowWidth = (items: Array<{ rect: Rectangle }>) =>
+        items.reduce((sum, { rect }) => sum + rect.width, 0) + padding * (items.length - 1);
+
+    // Helper: place a row of items horizontally centered on x=0 at the given yOffset.
+    const layoutRow = (items: Array<{ rect: Rectangle; path: string }>, yOffset: number): string[] => {
+        let xCursor = -rowWidth(items) / 2;
+        return items.map(({ rect, path }) => {
+            const dx = xCursor - rectMinX(rect);
+            const dy = yOffset - rectMinY(rect);
+            const translated = translatePath(path, dx, dy);
+            xCursor += rect.width + padding;
+            return translated;
+        });
+    };
+
+    // Build clipped paths paired with their bounding rectangles.
+    const cuRect   = p.blocks.CU;
+    const cuMirror = flipRectAboutY(p.blocks.CU);
+    const clRect   = p.blocks.CL;
+    const clMirror = flipRectAboutY(p.blocks.CL);
+
+    const rowUpper        = [{ rect: p.blocks.U,  path: intersectionFromTwoPaths(pathFromRect(p.blocks.U), innerPath) }];
+    const rowUpperCorners = [
+        { rect: cuMirror, path: intersectionFromTwoPaths(pathFromRect(cuMirror), innerPath) },
+        { rect: cuRect,   path: intersectionFromTwoPaths(pathFromRect(cuRect), innerPath) },
+    ];
+    const rowLowerCorners = [
+        { rect: clMirror, path: intersectionFromTwoPaths(pathFromRect(clMirror), innerPath) },
+        { rect: clRect,   path: intersectionFromTwoPaths(pathFromRect(clRect), innerPath) },
+    ];
+    const rowLower        = [{ rect: p.blocks.L,  path: intersectionFromTwoPaths(pathFromRect(p.blocks.L), innerPath) }];
+
+    // Stack rows top-to-bottom, advancing yCursor by each row's tallest piece.
+    const rowHeight = (items: Array<{ rect: Rectangle }>) => Math.max(...items.map(({ rect }) => rect.height));
+
+    let yCursor = 0;
+    const r3 = layoutRow(rowLower,        yCursor); yCursor += rowHeight(rowUpper)        + padding;
+    const r1 = layoutRow(rowUpperCorners, yCursor); yCursor += rowHeight(rowUpperCorners) + padding;
+    const r2 = layoutRow(rowLowerCorners, yCursor); yCursor += rowHeight(rowLowerCorners) + padding;
+    const r0 = layoutRow(rowUpper,        yCursor); 
+
+
+    return [...r0, ...r2, ...r1, ...r3];
 }
 
 export function defineInnerArcs(p: EnricoCerutiParams): Arc[] {
@@ -709,5 +754,6 @@ export function defineOuterPath(p: EnricoCerutiParams, offset?: number): string 
     }
 
     let path = unifyConnectedSvgPaths(paths);
+    // let path = combinePathStrings(paths);
     return path;
 }
