@@ -624,7 +624,7 @@
                 </label>
                 <label class="field-cell">
                     <span class="field-title">Height <span class="unit-label">mm</span></span>
-                    <input type="number" class="basic-input" step="1" [(ngModel)]="d.params.button.height"
+                    <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.button.height"
                         (input)="changeOuterTrace()" />
                 </label>
             </div>
@@ -639,7 +639,7 @@
                         <span class="field-title">U3.1 Angle<span class="unit-label">deg</span></span>
                         <input type="number" class="basic-input" step="1" min="0"
                             [(ngModel)]="d.params.outerCorners.U31.diffDeg" (input)="changeOuterTrace()"
-                            [style.borderColor]="colors.upperBout" />
+                            [style.borderColor]="colors.centerBoutUpOff" />
                     </label>
                     <div class="toggle">
                         <input type="checkbox" [(ngModel)]="d.params.options.U31DoubleArc"
@@ -653,13 +653,13 @@
                         <span class="field-title">U3.2 Angle <span class="unit-label">deg</span></span>
                         <input type="number" class="basic-input" step="1" min="0"
                             [(ngModel)]="d.params.outerCorners.U32.diffDeg" (input)="changeOuterTrace()"
-                            [style.borderColor]="colors.upperBoutOff" />
+                            [style.borderColor]="colors.centerBoutUpOff2" />
                     </label>
                     <label class="field-cell">
                         <span class="field-title">U3.2 Radius <span class="unit-label">mm</span></span>
                         <input type="number" class="basic-input" step="1" min="0"
                             [(ngModel)]="d.params.outerCorners.U32.r" (input)="changeOuterTrace()"
-                            [style.borderColor]="colors.upperBoutOff" />
+                            [style.borderColor]="colors.centerBoutUpOff2" />
                     </label>
                 </div>
                 }
@@ -685,13 +685,13 @@
                         <span class="field-title">U3.2 Angle <span class="unit-label">deg</span></span>
                         <input type="number" class="basic-input" step="1" min="0"
                             [(ngModel)]="d.params.outerCorners.CU2.diffDeg" (input)="changeOuterTrace()"
-                            [style.borderColor]="colors.centerBoutUpOff" />
+                            [style.borderColor]="colors.centerBoutUpOff2" />
                     </label>
                     <label class="field-cell">
                         <span class="field-title">U3.2 Radius <span class="unit-label">mm</span></span>
                         <input type="number" class="basic-input" step="1" min="0"
                             [(ngModel)]="d.params.outerCorners.CU2.r" (input)="changeOuterTrace()"
-                            [style.borderColor]="colors.centerBoutUpOff" />
+                            [style.borderColor]="colors.centerBoutUpOff2" />
                     </label>
                 </div>
                 }
@@ -737,13 +737,13 @@
                         <span class="field-title">CL.2 Angle <span class="unit-label">deg</span></span>
                         <input type="number" class="basic-input" step="1" min="0"
                             [(ngModel)]="d.params.outerCorners.CL2.diffDeg" (input)="changeOuterTrace()"
-                            [style.borderColor]="colors.centerBoutLowOff" />
+                            [style.borderColor]="colors.centerBoutLowOff2" />
                     </label>
                     <label class="field-cell">
                         <span class="field-title">CL.2 Radius <span class="unit-label">mm</span></span>
                         <input type="number" class="basic-input" step="1" min="0"
                             [(ngModel)]="d.params.outerCorners.CL2.r" (input)="changeOuterTrace()"
-                            [style.borderColor]="colors.centerBoutLowOff" />
+                            [style.borderColor]="colors.centerBoutLowOff2" />
                     </label>
                 </div>
                 }
@@ -757,7 +757,7 @@
                         <span class="field-title">L3.1 Angle<span class="unit-label">deg</span></span>
                         <input type="number" class="basic-input" step="1" min="0"
                             [(ngModel)]="d.params.outerCorners.L31.diffDeg" (input)="changeOuterTrace()"
-                            [style.borderColor]="colors.lowerBout" />
+                            [style.borderColor]="colors.centerBoutLowOff" />
                     </label>
                     <div class="toggle">
                         <input type="checkbox" [(ngModel)]="d.params.options.L31DoubleArc"
@@ -770,13 +770,13 @@
                         <span class="field-title">L3.2 Angle <span class="unit-label">deg</span></span>
                         <input type="number" class="basic-input" step="1" min="0"
                             [(ngModel)]="d.params.outerCorners.L32.diffDeg" (input)="changeOuterTrace()"
-                            [style.borderColor]="colors.lowerBoutOff" />
+                            [style.borderColor]="colors.centerBoutLowOff2" />
                     </label>
                     <label class="field-cell">
                         <span class="field-title">L3.2 Radius <span class="unit-label">mm</span></span>
                         <input type="number" class="basic-input" step="1" min="0"
                             [(ngModel)]="d.params.outerCorners.L32.r" (input)="changeOuterTrace()"
-                            [style.borderColor]="colors.lowerBoutOff" />
+                            [style.borderColor]="colors.centerBoutLowOff2" />
                     </label>
                 </div>
                 }

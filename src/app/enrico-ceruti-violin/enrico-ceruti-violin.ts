@@ -38,7 +38,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     upperBout: '#4D8660',
     centerBoutUp: '#C24B2E',
     centerBout: '#A97645',
-    centerBoutLow: '#ad9267ff',
+    centerBoutLow: '#b6a25fff',
     lowerBout: '#4D74A8',
     innerTrace: '#a47272ff',
     outerTrace: '#60b2f2ff',
@@ -56,8 +56,8 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     centerBoutOff: greyOut(this.colorPalette.centerBout, this.offFactor),
     centerBoutOff2: greyOut(this.colorPalette.centerBout, this.off2Factor),
     centerBoutLow: this.colorPalette.centerBoutLow,
-    centerBoutLowOff: greyOut(this.colorPalette.centerBoutLow, this.offFactor),
-    centerBoutLowOff2: greyOut(this.colorPalette.centerBoutLow, this.off2Factor),
+    centerBoutLowOff: '#91845bff', //greyOut(this.colorPalette.centerBoutLow, this.offFactor),
+    centerBoutLowOff2: '#9b937bff', //greyOut(this.colorPalette.centerBoutLow, 4),
     lowerBout: this.colorPalette.lowerBout,
     lowerBoutOff: greyOut(this.colorPalette.lowerBout, this.offFactor),
     lowerBoutOff2: greyOut(this.colorPalette.lowerBout, this.off2Factor),
@@ -516,8 +516,8 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
 
     if ((currentModule && this.showModuleArcs) || this.showAllArcs) {
       // primary arcs + their mirrors
-      !p.options.useViolCornerUC && renderArcFromArcFancy(p.outerCorners.U31, this.colors.upperBout)(g, ui);
-      !p.options.useViolCornerUC && renderArcFromArcFancy(flipArcAboutY(p.outerCorners.U31), this.colors.upperBout)(g, ui);
+      !p.options.useViolCornerUC && renderArcFromArcFancy(p.outerCorners.U31, this.colors.centerBoutUpOff)(g, ui);
+      !p.options.useViolCornerUC && renderArcFromArcFancy(flipArcAboutY(p.outerCorners.U31), this.colors.centerBoutUpOff)(g, ui);
 
       !p.options.useViolCornerUC && renderArcFromArcFancy(p.outerCorners.CU1, this.colors.centerBoutUp)(g, ui);
       !p.options.useViolCornerUC && renderArcFromArcFancy(flipArcAboutY(p.outerCorners.CU1), this.colors.centerBoutUp)(g, ui);
@@ -525,55 +525,55 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       !p.options.useViolCornerLC && renderArcFromArcFancy(p.outerCorners.CL1, this.colors.centerBoutLow)(g, ui);
       !p.options.useViolCornerLC && renderArcFromArcFancy(flipArcAboutY(p.outerCorners.CL1), this.colors.centerBoutLow)(g, ui);
 
-      !p.options.useViolCornerLC && renderArcFromArcFancy(p.outerCorners.L31, this.colors.lowerBout)(g, ui);
-      !p.options.useViolCornerLC && renderArcFromArcFancy(flipArcAboutY(p.outerCorners.L31), this.colors.lowerBout)(g, ui);
+      !p.options.useViolCornerLC && renderArcFromArcFancy(p.outerCorners.L31, this.colors.centerBoutLowOff)(g, ui);
+      !p.options.useViolCornerLC && renderArcFromArcFancy(flipArcAboutY(p.outerCorners.L31), this.colors.centerBoutLowOff)(g, ui);
 
       // optional double arcs + their mirrors
       if (p.options.U31DoubleArc) {
-        !p.options.useViolCornerUC && renderArcFromArcFancy(p.outerCorners.U32, this.colors.upperBoutOff)(g, ui);
-        !p.options.useViolCornerUC && renderArcFromArcFancy(flipArcAboutY(p.outerCorners.U32), this.colors.upperBoutOff)(g, ui);
+        !p.options.useViolCornerUC && renderArcFromArcFancy(p.outerCorners.U32, this.colors.centerBoutUpOff2)(g, ui);
+        !p.options.useViolCornerUC && renderArcFromArcFancy(flipArcAboutY(p.outerCorners.U32), this.colors.centerBoutUpOff2)(g, ui);
       }
       if (p.options.CU1DoubleArc) {
-        !p.options.useViolCornerUC && renderArcFromArcFancy(p.outerCorners.CU2, this.colors.centerBoutUpOff)(g, ui);
-        !p.options.useViolCornerUC && renderArcFromArcFancy(flipArcAboutY(p.outerCorners.CU2), this.colors.centerBoutUpOff)(g, ui);
+        !p.options.useViolCornerUC && renderArcFromArcFancy(p.outerCorners.CU2, this.colors.centerBoutUpOff2)(g, ui);
+        !p.options.useViolCornerUC && renderArcFromArcFancy(flipArcAboutY(p.outerCorners.CU2), this.colors.centerBoutUpOff2)(g, ui);
       }
       if (p.options.CL1DoubleArc) {
-        !p.options.useViolCornerLC && renderArcFromArcFancy(p.outerCorners.CL2, this.colors.centerBoutLowOff)(g, ui);
-        !p.options.useViolCornerLC && renderArcFromArcFancy(flipArcAboutY(p.outerCorners.CL2), this.colors.centerBoutLowOff)(g, ui);
+        !p.options.useViolCornerLC && renderArcFromArcFancy(p.outerCorners.CL2, this.colors.centerBoutLowOff2)(g, ui);
+        !p.options.useViolCornerLC && renderArcFromArcFancy(flipArcAboutY(p.outerCorners.CL2), this.colors.centerBoutLowOff2)(g, ui);
       }
       if (p.options.L31DoubleArc) {
-        !p.options.useViolCornerLC && renderArcFromArcFancy(p.outerCorners.L32, this.colors.lowerBoutOff)(g, ui);
-        !p.options.useViolCornerLC && renderArcFromArcFancy(flipArcAboutY(p.outerCorners.L32), this.colors.lowerBoutOff)(g, ui);
+        !p.options.useViolCornerLC && renderArcFromArcFancy(p.outerCorners.L32, this.colors.centerBoutLowOff2)(g, ui);
+        !p.options.useViolCornerLC && renderArcFromArcFancy(flipArcAboutY(p.outerCorners.L32), this.colors.centerBoutLowOff2)(g, ui);
       }
     }
 
     if ((currentModule && this.showModuleCircles) || this.showAllCircles) {
-      !p.options.useViolCornerUC && renderCircle(p.outerCorners.U31, this.colors.upperBout)(g, ui);
-      !p.options.useViolCornerUC && renderCircle(flipCircleAboutY(p.outerCorners.U31), this.colors.upperBout)(g, ui);
+      !p.options.useViolCornerUC && renderCircle(p.outerCorners.U31, this.colors.centerBoutUpOff)(g, ui);
+      !p.options.useViolCornerUC && renderCircle(flipCircleAboutY(p.outerCorners.U31), this.colors.centerBoutUpOff)(g, ui);
 
       !p.options.useViolCornerUC && renderCircle(p.outerCorners.CU1, this.colors.centerBoutUp)(g, ui);
       !p.options.useViolCornerUC && renderCircle(flipCircleAboutY(p.outerCorners.CU1), this.colors.centerBoutUp)(g, ui);
       !p.options.useViolCornerLC && renderCircle(p.outerCorners.CL1, this.colors.centerBoutLow)(g, ui);
       !p.options.useViolCornerLC && renderCircle(flipCircleAboutY(p.outerCorners.CL1), this.colors.centerBoutLow)(g, ui);
 
-      !p.options.useViolCornerLC && renderCircle(p.outerCorners.L31, this.colors.lowerBout)(g, ui);
-      !p.options.useViolCornerLC && renderCircle(flipCircleAboutY(p.outerCorners.L31), this.colors.lowerBout)(g, ui);
+      !p.options.useViolCornerLC && renderCircle(p.outerCorners.L31, this.colors.centerBoutLowOff)(g, ui);
+      !p.options.useViolCornerLC && renderCircle(flipCircleAboutY(p.outerCorners.L31), this.colors.centerBoutLowOff)(g, ui);
 
       if (p.options.U31DoubleArc) {
-        !p.options.useViolCornerUC && renderCircle(p.outerCorners.U32, this.colors.upperBoutOff)(g, ui);
-        !p.options.useViolCornerUC && renderCircle(flipCircleAboutY(p.outerCorners.U32), this.colors.upperBoutOff)(g, ui);
+        !p.options.useViolCornerUC && renderCircle(p.outerCorners.U32, this.colors.centerBoutUpOff2)(g, ui);
+        !p.options.useViolCornerUC && renderCircle(flipCircleAboutY(p.outerCorners.U32), this.colors.centerBoutUpOff2)(g, ui);
       }
       if (p.options.CU1DoubleArc) {
-        !p.options.useViolCornerUC && renderCircle(p.outerCorners.CU2, this.colors.centerBoutUpOff)(g, ui);
-        !p.options.useViolCornerUC && renderCircle(flipCircleAboutY(p.outerCorners.CU2), this.colors.centerBoutUpOff)(g, ui);
+        !p.options.useViolCornerUC && renderCircle(p.outerCorners.CU2, this.colors.centerBoutUpOff2)(g, ui);
+        !p.options.useViolCornerUC && renderCircle(flipCircleAboutY(p.outerCorners.CU2), this.colors.centerBoutUpOff2)(g, ui);
       }
       if (p.options.CL1DoubleArc) {
-        !p.options.useViolCornerLC && renderCircle(p.outerCorners.CL2, this.colors.centerBoutLowOff)(g, ui);
-        !p.options.useViolCornerLC && renderCircle(flipCircleAboutY(p.outerCorners.CL2), this.colors.centerBoutLowOff)(g, ui);
+        !p.options.useViolCornerLC && renderCircle(p.outerCorners.CL2, this.colors.centerBoutLowOff2)(g, ui);
+        !p.options.useViolCornerLC && renderCircle(flipCircleAboutY(p.outerCorners.CL2), this.colors.centerBoutLowOff2)(g, ui);
       }
       if (p.options.L31DoubleArc) {
-        !p.options.useViolCornerLC && renderCircle(p.outerCorners.L32, this.colors.lowerBoutOff)(g, ui);
-        !p.options.useViolCornerLC && renderCircle(flipCircleAboutY(p.outerCorners.L32), this.colors.lowerBoutOff)(g, ui);
+        !p.options.useViolCornerLC && renderCircle(p.outerCorners.L32, this.colors.centerBoutLowOff2)(g, ui);
+        !p.options.useViolCornerLC && renderCircle(flipCircleAboutY(p.outerCorners.L32), this.colors.centerBoutLowOff2)(g, ui);
       }
     }
   }
@@ -690,9 +690,10 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       mould: 'Mould Path',
     };
 
-    let height = p.height + 3 * p.button.height;
+    let height = p.height + 2 * p.button.height + p.button.width/2;
+    let inset = p.overhang + p.rib;
     if (p.options.useViolNeck) 
-      height = pointOnCircle(p.viol.V0, 0).y + 4 * p.button.height;
+      height = pointOnCircle(p.viol.V0, 0).y +  2 * p.button.height + p.button.width/2 + inset;
 
     let pathD: string;
     switch (type) {
@@ -731,9 +732,10 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     const p = this.d.params;
     const baseName = this.d.fileName?.trim() || 'ceruti-violin';
     const description = this.d.description ?? '';
-    let height = p.height + 3 * p.button.height;
+    let height = p.height + 2 * p.button.height + p.button.width/2;
+    let inset = p.overhang + p.rib;
     if (p.options.useViolNeck) 
-      height = pointOnCircle(p.viol.V0, 0).y + 4 * p.button.height;
+      height = pointOnCircle(p.viol.V0, 0).y +  2 * p.button.height + p.button.width/2 + inset;
 
     const pages: PdfPage[] = [
       {

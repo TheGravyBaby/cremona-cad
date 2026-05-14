@@ -12,7 +12,7 @@
 
 details {
   border: 1px solid var(--ui-border-soft);
-  border-radius: 8px;
+  border-radius: 6px;
   padding: 4px 10px;
   color: var(--ui-text-primary);
   background: var(--ui-bg-section);
@@ -51,7 +51,7 @@ input, select {
   min-height: 15px;
   padding: 6px 9px;
   border: 1px solid var(--ui-border-strong);
-  border-radius: 8px;
+  border-radius: 6px;
   background: var(--ui-bg-panel);
   color: var(--ui-text-primary);
   font-size: 15px;
@@ -122,7 +122,7 @@ select {
   gap: 8px;
   padding: 6px 10px;
   border: 1px solid var(--ui-border-strong);
-  border-radius: 8px;
+  border-radius: 6px;
   background: var(--ui-bg-panel);
   color: var(--ui-text-primary);
   font-size: 14px;
@@ -138,7 +138,7 @@ select {
 
 .panel-section {
   border: 1px solid var(--ui-border-soft);
-  border-radius: 8px;
+  border-radius: 6px;
   padding: 6px 10px;
   color: var(--ui-text-primary);
   background: var(--ui-bg-section);
@@ -156,7 +156,7 @@ select {
 
 .panel-nav {
   border: 1px solid var(--ui-border-soft);
-  border-radius: 8px;
+  border-radius: 6px;
   background: var(--ui-bg-section);
   padding: 8px;
 }
@@ -200,7 +200,7 @@ select {
 .panel-select {
   height: 30px;
   border: 1px solid var(--ui-border-strong);
-  border-radius: 8px;
+  border-radius: 6px;
   background: var(--ui-bg-panel);
   color: var(--ui-text-primary);
   font-size: 13px;
@@ -218,7 +218,7 @@ select {
   min-width: 56px;
   padding: 0 10px;
   border: 1px solid var(--ui-border-strong);
-  border-radius: 8px;
+  border-radius: 6px;
   background: var(--ui-control-bg);
   color: var(--ui-text-primary);
   font-size: 12px;
@@ -259,7 +259,7 @@ select {
 
 .ui-group {
   border: 2px solid var(--ui-border-soft);
-  border-radius: 8px;
+  border-radius: 6px;
   background: var(--ui-bg-section);
   padding: 8px;
   margin-bottom: 8px;
