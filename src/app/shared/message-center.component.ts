@@ -13,15 +13,21 @@ import { CommonModule} from '@angular/common';
 export class MessageCenterComponent implements OnDestroy {
   messages: Message[] = [];
   private sub: Subscription;
-  private dismissTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   readonly ringRadius = 8;
   readonly ringCircumference = 2 * Math.PI * this.ringRadius;
 
+  // Cached once per message so the [ngStyle] binding stays stable across
+  // change-detection cycles (a changing style object restarts the CSS animation).
+  private animationStyleCache = new Map<string, Record<string, string>>();
+
   constructor(private ms: MessageService) {
     this.sub = this.ms.messages$.subscribe(msgs => {
       this.messages = msgs;
-      this.syncDismissTimers(msgs);
+      const activeIds = new Set(msgs.map(m => m.id));
+      this.animationStyleCache.forEach((_, id) => {
+        if (!activeIds.has(id)) this.animationStyleCache.delete(id);
+      });
     });
   }
 
@@ -32,79 +38,34 @@ export class MessageCenterComponent implements OnDestroy {
   countdownAnimationStyle(m: Message): Record<string, string> {
     if (!this.hasCountdown(m)) return {};
 
-    const duration = m.autoDismiss as number;
-    const elapsed = Math.max(0, Date.now() - m.timestamp);
-    const clampedElapsed = Math.min(elapsed, duration);
+    if (this.animationStyleCache.has(m.id)) {
+      return this.animationStyleCache.get(m.id)!;
+    }
 
-    return {
+    const duration = m.autoDismiss as number;
+    const elapsed = Math.max(0, Math.min(Date.now() - m.timestamp, duration));
+    const style = {
       'animation-duration': `${duration}ms`,
-      'animation-delay': `-${clampedElapsed}ms`,
+      'animation-delay': `-${elapsed}ms`,
     };
+    this.animationStyleCache.set(m.id, style);
+    return style;
   }
 
   trackByMessageId(_: number, m: Message): string {
     return m.id;
   }
 
+  // The CSS animationend event is the single source of truth for auto-dismiss.
   onCountdownAnimationEnd(m: Message): void {
-    if (!this.hasCountdown(m)) return;
-    this.cancelDismissTimer(m.id);
     this.ms.clear(m.id);
   }
 
-  private syncDismissTimers(msgs: Message[]): void {
-    const activeIds = new Set(msgs.map(m => m.id));
-
-    this.dismissTimers.forEach((timeoutId, id) => {
-      if (!activeIds.has(id)) {
-        this.cancelDismissTimer(id, timeoutId);
-      }
-    });
-
-    msgs.forEach(m => {
-      if (!this.hasCountdown(m) || this.dismissTimers.has(m.id)) return;
-
-      const duration = m.autoDismiss as number;
-      const elapsed = Date.now() - m.timestamp;
-      const remaining = Math.max(0, duration - elapsed);
-
-      if (remaining <= 0) {
-        this.cancelDismissTimer(m.id);
-        this.ms.clear(m.id);
-        return;
-      }
-
-      const timeoutId = setTimeout(() => {
-        this.dismissTimers.delete(m.id);
-        this.ms.clear(m.id);
-      }, remaining);
-
-      this.dismissTimers.set(m.id, timeoutId);
-    });
-  }
-
-  private cancelDismissTimer(id: string, timeoutId?: ReturnType<typeof setTimeout>): void {
-    const resolvedTimeout = timeoutId ?? this.dismissTimers.get(id);
-    if (resolvedTimeout) clearTimeout(resolvedTimeout);
-    this.dismissTimers.delete(id);
-  }
-
-  private clearAllTimers(): void {
-    this.dismissTimers.forEach(timeoutId => clearTimeout(timeoutId));
-    this.dismissTimers.clear();
-  }
-
-  dismiss(id: string) {
-    this.cancelDismissTimer(id);
+  dismiss(id: string): void {
     this.ms.clear(id);
-  }
-
-  clearAll() {
-    this.ms.clear();
   }
 
   ngOnDestroy(): void {
     this.sub.unsubscribe();
-    this.clearAllTimers();
   }
 }

@@ -15,7 +15,7 @@
   right: 0px;
   background: var(--ui-bg-elevated);
   border: 1px solid var(--ui-border-elevated);
-  border-radius: 6px;
+  border-radius: 4px;
   box-shadow: var(--ui-shadow-pop);
   padding: 10px;
   z-index: 10;
@@ -109,7 +109,7 @@ svg {
 .btn {
   padding: 4px 10px;
   border: 1px solid var(--ui-border-strong);
-  border-radius: 7px;
+  border-radius: 4px;
   background: linear-gradient(180deg, var(--ui-canvas-btn-bg-start) 0%, var(--ui-canvas-btn-bg-end) 100%);
   cursor: pointer;
   line-height: 1.2;
@@ -131,7 +131,7 @@ svg {
 .readout {
   padding: 6px 10px;
   border: 1px solid var(--ui-border-elevated);
-  border-radius: 8px;
+  border-radius: 4px;
   background: var(--ui-bg-surface);
   color: var(--ui-text-primary);
 }
@@ -148,7 +148,7 @@ svg {
   gap: 6px;
   padding: 6px 8px;
   border: 1px solid var(--ui-border-elevated);
-  border-radius: 8px;
+  border-radius: 4px;
   background: var(--ui-bg-surface);
   color: var(--ui-text-primary);
   user-select: none;
