@@ -607,6 +607,22 @@
         }
 
         @if (openPanel === 'outerTrace') {
+        <section class = 'ui-group'>
+            <div class="ui-group-title">Button</div>
+            <div class="input-group basic-row field-row" role="group">
+                <label class="field-cell">
+                    <span class="field-title">Width <span class="unit-label">mm</span></span>
+                    <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.button.width"
+                        (input)="changeOuterTrace()" />
+                </label>
+                <label class="field-cell">
+                    <span class="field-title">Height <span class="unit-label">mm</span></span>
+                    <input type="number" class="basic-input" step="1" [(ngModel)]="d.params.button.height"
+                        (input)="changeOuterTrace()" />
+                </label>
+            </div>
+        </section>
+
         <section class="ui-group">
             <div class="ui-group-title">Upper Corner</div>
             @if (!d.params.options.useViolCornerUC) {
@@ -926,12 +942,22 @@
         </section>
 
         <section class="ui-group">
-            <div class="ui-group-title">Outer Trace</div>
+            <div class="ui-group-title">Top Trace</div>
             <p class="export-description">The outer body outline including overhang.</p>
             <div class="input-group basic-row field-row" role="group">
                 <button type="button" class="export-btn" (click)="previewExport('outerTrace')">Preview</button>
                 <button type="button" class="export-btn export-btn--primary" (click)="downloadExport('outerTrace')">SVG</button>
                 <button type="button" class="export-btn export-btn--primary" (click)="downloadPdf('outerTrace')">PDF</button>
+            </div>
+        </section>
+
+        <section class="ui-group">
+            <div class="ui-group-title">Back Trace</div>
+            <p class="export-description">The outer body outline including overhang and button.</p>
+            <div class="input-group basic-row field-row" role="group">
+                <button type="button" class="export-btn" (click)="previewExport('back')">Preview</button>
+                <button type="button" class="export-btn export-btn--primary" (click)="downloadExport('back')">SVG</button>
+                <button type="button" class="export-btn export-btn--primary" (click)="downloadPdf('back')">PDF</button>
             </div>
         </section>
 

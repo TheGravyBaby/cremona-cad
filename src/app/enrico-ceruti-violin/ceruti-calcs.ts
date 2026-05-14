@@ -343,6 +343,7 @@ export function calculateOuterCorners(p: EnricoCerutiParams): void {
     }
 }
 
+
 export function calculateMould(p: EnricoCerutiParams, useHighAccuracy = false, simpleClampBox = false): string {
     let blocksInitialized = p.blocks.CU != null;
     let inset = p.overhang + p.rib;
@@ -553,8 +554,8 @@ export function calculateCornerBlocks(p: EnricoCerutiParams, innerPath: string, 
 
     let yCursor = 0;
     const r3 = layoutRow(rowLower,        yCursor); yCursor += rowHeight(rowUpper)        + padding;
-    const r1 = layoutRow(rowUpperCorners, yCursor); yCursor += rowHeight(rowUpperCorners) + padding;
     const r2 = layoutRow(rowLowerCorners, yCursor); yCursor += rowHeight(rowLowerCorners) + padding;
+    const r1 = layoutRow(rowUpperCorners, yCursor); yCursor += rowHeight(rowUpperCorners) + padding;
     const r0 = layoutRow(rowUpper,        yCursor); 
 
 
@@ -634,10 +635,30 @@ export function defineInnerPath(p: EnricoCerutiParams): string {
     return path;
 }
 
-export function defineOuterPath(p: EnricoCerutiParams, offset?: number): string {
+export function defineOuterPath(p: EnricoCerutiParams, offset?: number, button = false): string {
     offset = offset ?? p.overhang + p.rib;
-
     let arcs = defineOuterArcsNoCorners(p, offset);
+
+    let U0ForButton = offsetArcRadius(p.bouts.U0, offset);
+    let buttonPaths: string[] = [];
+    if (button && !p.options.useViolNeck) {
+        p.button = p.button ?? new Rectangle(new Pt(-10, p.height - offset), new Pt(10, p.height - offset + 5));
+        let U0Intersect = lineCircleIntersection(new Pt(p.button.width / 2, p.height), new Pt(p.button.width / 2, 0), U0ForButton).sort((a, b) => a.y - b.y)[1]; // long vertical line
+        buttonPaths.push(pathFromLine(U0Intersect, {...U0Intersect , y: U0Intersect.y + p.button.height}));
+        buttonPaths.push(pathFromLine(flipPointAboutY(U0Intersect), flipPointAboutY({...U0Intersect , y: U0Intersect.y + p.button.height})));
+        let buttonCircle = {y: U0Intersect.y + p.button.height, x: 0, r: p.button.width / 2};
+        let buttonArc = arcFromCircle(buttonCircle, 0, Math.PI)
+
+        buttonPaths.push(pathFromArc(buttonArc));
+
+        // we need to edit U0 as well
+        // TODO, perhaps vesica if the join is weird?
+        // U0 should be the final arc
+        let U0Angle = angleFromCenter(U0ForButton, U0Intersect);
+        arcs[arcs.length - 1].start = U0Angle
+    }
+
+
     let mirroredArcs = arcs.map(arc => flipArcAboutY(arc));
     arcs = arcs.concat(mirroredArcs);
 
@@ -742,18 +763,41 @@ export function defineOuterPath(p: EnricoCerutiParams, offset?: number): string 
     paths.push(...arcs.map(arc => pathFromArc(arc)));
 
      if (p.options.useViolNeck) {
-        let offsetV0 = offsetArcRadius(p.viol?.V0!, - offset);
-        let EndPt = pointOnCircle(offsetV0, offsetV0.end ?? 0);
-        let EndPtOffset = {...EndPt, y: EndPt.y + offset} // we need to offset the end point so that the line doesn't intersect with the arc, but rather is tangent to it, which is more manufacturable
-        // we need to make small risers for the offset
-        paths.push(pathFromLine(EndPt, EndPtOffset))
+        if (button) {
+            let offsetV0 = offsetArcRadius(p.viol?.V0!, - offset);
+            let EndPt = pointOnCircle(offsetV0, offsetV0.end ?? 0);
+            let EndPtOffset = {...EndPt, y: EndPt.y + offset} // we need to offset the end point so that the line doesn't intersect with the arc, but rather is tangent to it, which is more manufacturable
+            paths.push(pathFromLine(EndPt, EndPtOffset))
+            paths.push(pathFromLine(flipPointAboutY(EndPtOffset), flipPointAboutY(EndPt)))
 
-        paths.push(pathFromLine(EndPtOffset, flipPointAboutY(EndPtOffset)))
-        paths.push(pathFromLine(flipPointAboutY(EndPtOffset), flipPointAboutY(EndPt)))
+            p.button = p.button ?? new Rectangle(new Pt(10, EndPtOffset.y), new Pt(-10, EndPtOffset.y + 5));
+            buttonPaths.push(pathFromLine({x: p.button.width / 2, y: EndPtOffset.y}, {x: p.button.width / 2, y: EndPtOffset.y + p.button.height}));
+            buttonPaths.push(pathFromLine({x: -p.button.width / 2, y: EndPtOffset.y}, {x: -p.button.width / 2, y: EndPtOffset.y + p.button.height}));
+
+            let buttonCircle = {y: EndPtOffset.y + p.button.height, x: 0, r: p.button.width / 2};
+            let buttonArc = arcFromCircle(buttonCircle, 0, Math.PI)
+            buttonPaths.push(pathFromArc(buttonArc));
+
+            paths.push(pathFromLine(EndPtOffset, {x: p.button.width / 2, y: EndPtOffset.y}))
+            paths.push(pathFromLine(flipPointAboutY(EndPtOffset), {x: -p.button.width / 2, y: EndPtOffset.y}))
+
+        }
+        else {
+            let offsetV0 = offsetArcRadius(p.viol?.V0!, - offset);
+            let EndPt = pointOnCircle(offsetV0, offsetV0.end ?? 0);
+            let EndPtOffset = {...EndPt, y: EndPt.y + offset} // we need to offset the end point so that the line doesn't intersect with the arc, but rather is tangent to it, which is more manufacturable
+            // we need to make small risers for the offset
+            paths.push(pathFromLine(EndPt, EndPtOffset))
+
+            paths.push(pathFromLine(EndPtOffset, flipPointAboutY(EndPtOffset)))
+            paths.push(pathFromLine(flipPointAboutY(EndPtOffset), flipPointAboutY(EndPt)))
+            }
 
     }
 
-    let path = unifyConnectedSvgPaths(paths);
-    // let path = combinePathStrings(paths);
+    // let path = unifyConnectedSvgPaths(paths);
+    
+    let path = combinePathStrings([...paths, ...buttonPaths]);
     return path;
 }
+
