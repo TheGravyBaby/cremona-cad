@@ -294,9 +294,9 @@
                             (input)="changeCorners()" [style.borderColor]="colors.upperBout" />
                     </label>
                     <label class="field-cell">
-                        <span class="field-title">U2 Height <span class="unit-label">mm</span></span>
+                        <!-- <span class="field-title">U2 Height <span class="unit-label">mm</span></span>
                         <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.U2.y"
-                            (input)="changeCorners()" [style.borderColor]="colors.upperBout" />
+                            (input)="changeCorners()" [style.borderColor]="colors.upperBout" /> -->
                     </label>
                     <label class="field-cell">
                         <span class="field-title">U2 to UBW</span>
@@ -305,7 +305,7 @@
                     </label>
                 </div>
                 <div class="input-group basic-row field-row" role="group">
-                    <button type="button" class="basic-input" (click)="setU2toU1();">U2 to U1</button>
+                    <button type="button" class="export-btn" (click)="setU2toU1();">U2 to U1</button>
                 </div>
                 <div class="input-group basic-row field-row" role="group">
                     <label class="field-cell">
@@ -313,6 +313,7 @@
                         <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.U3.r"
                             (input)="changeCorners()" [style.borderColor]="colors.centerBoutUp" />
                     </label>
+                    <label class="field-cell"> </label>
                     <label class="field-cell">
                         <span class="field-title">U3 to LBW</span>
                         <div class="basic-display" aria-label="Upper bout to width ratio value">{{
@@ -330,9 +331,9 @@
                             (input)="changeCorners()" disabled [style.borderColor]="colors.upperBout" />
                     </label>
                     <label class="field-cell">
-                        <span class="field-title">U2 Height <span class="unit-label">mm</span></span>
+                        <!-- <span class="field-title">U2 Height <span class="unit-label">mm</span></span>
                         <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.U2.y"
-                            (input)="changeCorners()" disabled [style.borderColor]="colors.upperBout" />
+                            (input)="changeCorners()" disabled [style.borderColor]="colors.upperBout" /> -->
                     </label>
                     <label class="field-cell">
                         <span class="field-title">U2 to UBW</span>
@@ -341,7 +342,7 @@
                     </label>
                 </div>
                 <div class="input-group basic-row field-row" role="group">
-                    <button type="button" class="basic-input" (click)="setU2toU1();" disabled>U2 to U1</button>
+                      <button type="button" class="export-btn" (click)="setU2toU1();" disabled>U2 to U1</button>
                 </div>
                 <div class="input-group basic-row field-row" role="group">
                     <label class="field-cell">
@@ -349,6 +350,8 @@
                         <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.U3.r"
                             (input)="changeCorners()" disabled [style.borderColor]="colors.centerBoutUp" />
                     </label>
+                    <label class="field-cell"> </label>
+
                     <label class="field-cell">
                         <span class="field-title">U3 to LBW</span>
                         <div class="basic-display" aria-label="Upper bout to width ratio value">{{
@@ -391,9 +394,9 @@
                             (input)="changeCorners()" [style.borderColor]="colors.lowerBout" />
                     </label>
                     <label class="field-cell">
-                        <span class="field-title">L2 Height <span class="unit-label">mm</span></span>
+                        <!-- <span class="field-title">L2 Height <span class="unit-label">mm</span></span>
                         <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.L2.y"
-                            (input)="changeCorners()" [style.borderColor]="colors.lowerBout" />
+                            (input)="changeCorners()" [style.borderColor]="colors.lowerBout" /> -->
                     </label>
                     <label class="field-cell">
                         <span class="field-title">L2 to LBW</span>
@@ -403,7 +406,7 @@
                 </div>
 
                 <div class="input-group basic-row field-row" role="group">
-                    <button type="button" class="basic-input" (click)="setL2toL1();">L2 to L1</button>
+                      <button type="button" class="export-btn" (click)="setL2toL1();">L2 to L1</button>
                 </div>
 
 
@@ -413,6 +416,8 @@
                         <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.L3.r"
                             (input)="changeCorners()" [style.borderColor]="colors.centerBoutLow" />
                     </label>
+                    <label class="field-cell"> </label>
+
                     <label class="field-cell">
                         <span class="field-title">L3 to LBW</span>
                         <div class="basic-display" aria-label="Lower bout to width ratio value">{{
@@ -442,7 +447,7 @@
                 </div>
 
                 <div class="input-group basic-row field-row" role="group">
-                    <button type="button" class="basic-input" (click)="setL2toL1();" disabled>L2 to L1</button>
+                     <button type="button" class="export-btn" (click)="setL2toL1();" disabled>L2 to L1</button>
                 </div>
 
 
@@ -452,6 +457,8 @@
                         <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.L3.r"
                             (input)="changeCorners()" disabled [style.borderColor]="colors.centerBoutLow" />
                     </label>
+                    <label class="field-cell"> </label>
+
                     <label class="field-cell">
                         <span class="field-title">L3 to LBW</span>
                         <div class="basic-display" aria-label="Lower bout to width ratio value">{{
@@ -607,7 +614,7 @@
         }
 
         @if (openPanel === 'outerTrace') {
-        <section class = 'ui-group'>
+        <section class='ui-group'>
             <div class="ui-group-title">Button</div>
             <div class="input-group basic-row field-row" role="group">
                 <label class="field-cell">
@@ -626,7 +633,7 @@
         <section class="ui-group">
             <div class="ui-group-title">Upper Corner</div>
             @if (!d.params.options.useViolCornerUC) {
-                 <div class="ui-group">
+            <div class="ui-group">
                 <div class="input-group basic-row field-row" role="group">
                     <label class="field-cell">
                         <span class="field-title">U3.1 Angle<span class="unit-label">deg</span></span>
@@ -688,19 +695,19 @@
                     </label>
                 </div>
                 }
-                
+
             </div>
             }
             @else {
-                <div class="ui-group" [style.opacity]="0.9">
-                    <div class="input-group basic-row field-row" role="group">
-                        <div class="basic-display" aria-live="polite">
-                            Viol corner selected — nothing to configure here.
-                        </div>
+            <div class="ui-group" [style.opacity]="0.9">
+                <div class="input-group basic-row field-row" role="group">
+                    <div class="basic-display" aria-live="polite">
+                        Viol corner selected — nothing to configure here.
                     </div>
                 </div>
+            </div>
             }
-           
+
         </section>
 
         <section class="ui-group">
@@ -742,7 +749,7 @@
                 }
 
             </div>
-            
+
 
             <div class="ui-group">
                 <div class="input-group basic-row field-row" role="group">
@@ -776,13 +783,13 @@
             </div>
             }
             @else {
-                <div class="ui-group" [style.opacity]="0.9">
-                    <div class="input-group basic-row field-row" role="group">
-                        <div class="basic-display" aria-live="polite">
-                            Viol corner selected — nothing to configure here.
-                        </div>
+            <div class="ui-group" [style.opacity]="0.9">
+                <div class="input-group basic-row field-row" role="group">
+                    <div class="basic-display" aria-live="polite">
+                        Viol corner selected — nothing to configure here.
                     </div>
                 </div>
+            </div>
             }
 
         </section>
@@ -836,20 +843,20 @@
             <div class="input-group basic-row field-row" role="group">
                 <label class="field-cell">
                     <span class="field-title">Height <span class="unit-label">mm</span></span>
-                    <input class="basic-input" type="number" step="1" min="0"
-                        [(ngModel)]="d.params.blocks.CU.height" (input)="changeMould()" />
+                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blocks.CU.height"
+                        (input)="changeMould()" />
                 </label>
                 <span class="field-separator" aria-hidden="true"></span>
                 <label class="field-cell">
                     <span class="field-title">Width <span class="unit-label">mm</span></span>
-                    <input class="basic-input" type="number" step="1" min="0"
-                        [(ngModel)]="d.params.blocks.CU.width" (input)="changeMould()" />
+                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blocks.CU.width"
+                        (input)="changeMould()" />
                 </label>
                 <span class="field-separator" aria-hidden="true"></span>
                 <label class="field-cell">
                     <span class="field-title">Pad <span class="unit-label">mm</span></span>
-                    <input class="basic-input" type="number" step="1" min="0"
-                        [(ngModel)]="d.params.blocks.CUPad" (input)="changeMould()" />
+                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blocks.CUPad"
+                        (input)="changeMould()" />
                 </label>
             </div>
         </section>
@@ -859,20 +866,20 @@
             <div class="input-group basic-row field-row" role="group">
                 <label class="field-cell">
                     <span class="field-title">Height <span class="unit-label">mm</span></span>
-                    <input class="basic-input" type="number" step="1" min="0"
-                        [(ngModel)]="d.params.blocks.CL.height" (input)="changeMould()" />
+                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blocks.CL.height"
+                        (input)="changeMould()" />
                 </label>
                 <span class="field-separator" aria-hidden="true"></span>
                 <label class="field-cell">
                     <span class="field-title">Width <span class="unit-label">mm</span></span>
-                    <input class="basic-input" type="number" step="1" min="0"
-                        [(ngModel)]="d.params.blocks.CL.width" (input)="changeMould()" />
+                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blocks.CL.width"
+                        (input)="changeMould()" />
                 </label>
                 <span class="field-separator" aria-hidden="true"></span>
                 <label class="field-cell">
                     <span class="field-title">Pad <span class="unit-label">mm</span></span>
-                    <input class="basic-input" type="number" step="1" min="0"
-                        [(ngModel)]="d.params.blocks.CLPad" (input)="changeMould()" />
+                    <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blocks.CLPad"
+                        (input)="changeMould()" />
                 </label>
             </div>
         </section>
@@ -904,7 +911,8 @@
                 </label>
             </div>
             <div class="input-group basic-row field-row" role="group">
-                <label class="field-cell" [style.opacity]="simpleClampBox ? 0.5 : 1" [style.pointerEvents]="simpleClampBox ? 'none' : 'auto'">
+                <label class="field-cell" [style.opacity]="simpleClampBox ? 0.5 : 1"
+                    [style.pointerEvents]="simpleClampBox ? 'none' : 'auto'">
                     <span class="field-title">Channel Depth <span class="unit-label">mm</span></span>
                     <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.clampChannelWidth"
                         (input)="changeMould()" [disabled]="simpleClampBox" />
@@ -936,8 +944,10 @@
             <p class="export-description">The inner body outline used for the mould and rib bending.</p>
             <div class="input-group basic-row field-row" role="group">
                 <button type="button" class="export-btn" (click)="previewExport('innerTrace')">Preview</button>
-                <button type="button" class="export-btn export-btn--primary" (click)="downloadExport('innerTrace')">SVG</button>
-                <button type="button" class="export-btn export-btn--primary" (click)="downloadPdf('innerTrace')">PDF</button>
+                <button type="button" class="export-btn export-btn--primary"
+                    (click)="downloadExport('innerTrace')">SVG</button>
+                <button type="button" class="export-btn export-btn--primary"
+                    (click)="downloadPdf('innerTrace')">PDF</button>
             </div>
         </section>
 
@@ -946,8 +956,10 @@
             <p class="export-description">The outer body outline including overhang.</p>
             <div class="input-group basic-row field-row" role="group">
                 <button type="button" class="export-btn" (click)="previewExport('outerTrace')">Preview</button>
-                <button type="button" class="export-btn export-btn--primary" (click)="downloadExport('outerTrace')">SVG</button>
-                <button type="button" class="export-btn export-btn--primary" (click)="downloadPdf('outerTrace')">PDF</button>
+                <button type="button" class="export-btn export-btn--primary"
+                    (click)="downloadExport('outerTrace')">SVG</button>
+                <button type="button" class="export-btn export-btn--primary"
+                    (click)="downloadPdf('outerTrace')">PDF</button>
             </div>
         </section>
 
@@ -956,7 +968,8 @@
             <p class="export-description">The outer body outline including overhang and button.</p>
             <div class="input-group basic-row field-row" role="group">
                 <button type="button" class="export-btn" (click)="previewExport('back')">Preview</button>
-                <button type="button" class="export-btn export-btn--primary" (click)="downloadExport('back')">SVG</button>
+                <button type="button" class="export-btn export-btn--primary"
+                    (click)="downloadExport('back')">SVG</button>
                 <button type="button" class="export-btn export-btn--primary" (click)="downloadPdf('back')">PDF</button>
             </div>
         </section>
@@ -966,7 +979,8 @@
             <p class="export-description">The CNC mould path with clamp channels and block cutouts.</p>
             <div class="input-group basic-row field-row" role="group">
                 <button type="button" class="export-btn" (click)="previewExport('mould')">Preview</button>
-                <button type="button" class="export-btn export-btn--primary" (click)="downloadExport('mould')">SVG</button>
+                <button type="button" class="export-btn export-btn--primary"
+                    (click)="downloadExport('mould')">SVG</button>
                 <button type="button" class="export-btn export-btn--primary" (click)="downloadPdf('mould')">PDF</button>
             </div>
         </section>
@@ -976,16 +990,20 @@
             <p class="export-description">Individual block templates for upper, corner, and lower blocks.></p>
             <div class="input-group basic-row field-row" role="group">
                 <button type="button" class="export-btn" (click)="previewExport('blocks')">Preview</button>
-                <button type="button" class="export-btn export-btn--primary" (click)="downloadExport('blocks')">SVG</button>
-                <button type="button" class="export-btn export-btn--primary" (click)="downloadPdf('blocks')">PDF</button>
+                <button type="button" class="export-btn export-btn--primary"
+                    (click)="downloadExport('blocks')">SVG</button>
+                <button type="button" class="export-btn export-btn--primary"
+                    (click)="downloadPdf('blocks')">PDF</button>
             </div>
         </section>
 
         <section class="ui-group">
             <div class="ui-group-title">Full Plan</div>
-            <p class="export-description">All pages combined into a single true-scale PDF — inner trace, outer trace, and mould path.</p>
+            <p class="export-description">All pages combined into a single true-scale PDF — inner trace, outer trace,
+                and mould path.</p>
             <div class="input-group basic-row field-row" role="group">
-                <button type="button" class="export-btn export-btn--primary export-btn--full" (click)="downloadFullPlan()">Download Full Plan PDF</button>
+                <button type="button" class="export-btn export-btn--primary export-btn--full"
+                    (click)="downloadFullPlan()">Download Full Plan PDF</button>
             </div>
         </section>
         }
