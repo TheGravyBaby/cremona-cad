@@ -14,24 +14,22 @@ export interface Message {
 
 type MessageInput = Partial<Omit<Message, 'id' | 'timestamp'>> | string;
 
+function newId(): string {
+  return String(Date.now()) + Math.random().toString(36).slice(2, 8);
+}
+
 function makeMessage(input: MessageInput): Message {
   if (typeof input === 'string') {
-    return {
-      id: String(Date.now()) + Math.random().toString(36).slice(2, 8),
-      severity: 'info',
-      message: input,
-      timestamp: Date.now(),
-      autoDismiss: 4000,
-    };
+    return { id: newId(), severity: 'info', message: input, timestamp: Date.now(), autoDismiss: 4000 };
   }
 
   return {
-    id: (input as any).id ?? String(Date.now()) + Math.random().toString(36).slice(2, 8),
-    severity: (input as any).severity ?? 'info',
-    title: (input as any).title,
-    message: (input as any).message ?? '',
+    id: newId(),
+    severity: input.severity ?? 'info',
+    title: input.title,
+    message: input.message ?? '',
     timestamp: Date.now(),
-    autoDismiss: (input as any).autoDismiss ?? 4000,
+    autoDismiss: input.autoDismiss ?? 4000,
   };
 }
 
@@ -56,9 +54,9 @@ export class MessageService {
     this.messagesSubject.next(this._messages);
   }
 
-  error(input: MessageInput) { this.emit(typeof input === 'string' ? { message: input, severity: 'error' } : { ...(input as object), severity: 'error' }); }
-  warn(input: MessageInput) { this.emit(typeof input === 'string' ? { message: input, severity: 'warn' } : { ...(input as object), severity: 'warn' }); }
-  info(input: MessageInput) { this.emit(typeof input === 'string' ? { message: input, severity: 'info' } : { ...(input as object), severity: 'info' }); }
+  error(input: MessageInput) { this.emit(typeof input === 'string' ? { message: input, severity: 'error' } : { ...input, severity: 'error' }); }
+  warn(input: MessageInput)  { this.emit(typeof input === 'string' ? { message: input, severity: 'warn'  } : { ...input, severity: 'warn'  }); }
+  info(input: MessageInput)  { this.emit(typeof input === 'string' ? { message: input, severity: 'info'  } : { ...input, severity: 'info'  }); }
 
   // clear one or all
   clear(id?: string) {

@@ -49,7 +49,7 @@
   font-size: 13px;
   color: var(--ink);
 
-  border-radius: 8px;
+  border-radius: 4px;
   border: 1px solid var(--ui-topbar-control-border);
   background: var(--ui-topbar-control-bg);
 }
