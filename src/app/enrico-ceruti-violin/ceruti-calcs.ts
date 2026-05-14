@@ -296,10 +296,10 @@ export function calculateOuterCorners(p: EnricoCerutiParams): void {
 
     // initalize the possibly undefined values
     let initialized = p.outerCorners.U31 != null
-    p.outerCorners.U31 = p.outerCorners.U31 ? redefineArcCircle(p.bouts.U3, p.bouts.U3, -inset) : offsetArcRadius(p.bouts.U3, -inset); // user might have redefined bouts
-    p.outerCorners.CU1 = p.outerCorners.CU1 ? redefineArcCircle(p.bouts.CU, p.bouts.CU, -inset) : offsetArcRadius(p.bouts.CU, -inset);
-    p.outerCorners.CL1 = p.outerCorners.CL1 ? redefineArcCircle(p.bouts.CL, p.bouts.CL, -inset) : offsetArcRadius(p.bouts.CL, -inset);
-    p.outerCorners.L31 = p.outerCorners.L31 ? redefineArcCircle(p.bouts.L3, p.bouts.L3, -inset) : offsetArcRadius(p.bouts.L3, -inset);
+    p.outerCorners.U31 = p.outerCorners.U31 ? redefineArcCircle(p.outerCorners.U31, p.bouts.U3, -inset) : offsetArcRadius(p.bouts.U3, -inset); // user might have redefined bouts
+    p.outerCorners.CU1 = p.outerCorners.CU1 ? redefineArcCircle(p.outerCorners.CU1, p.bouts.CU, -inset) : offsetArcRadius(p.bouts.CU, -inset);
+    p.outerCorners.CL1 = p.outerCorners.CL1 ? redefineArcCircle(p.outerCorners.CL1, p.bouts.CL, -inset) : offsetArcRadius(p.bouts.CL, -inset);
+    p.outerCorners.L31 = p.outerCorners.L31 ? redefineArcCircle(p.outerCorners.L31, p.bouts.L3, -inset) : offsetArcRadius(p.bouts.L3, -inset);
 
 
     // we want to increase the angle by the default corners a little bit

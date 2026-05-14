@@ -99,11 +99,20 @@ export function offsetArcRadius(arc: Arc, offset: number): Arc {
   return arcFromCircle(C, arc.start, arc.end);
 }
 
-export function redefineArcCircle(arc: Arc, c: Circle, offset?: number): Arc {
+
+// this function exists because when defining outer corner arcs
+// the user might change the inner trace corner circle
+// which effects the outer circle
+// in those situations we need to recalculate that outer circle position and its start position
+// but we will keep the user 
+export function redefineArcCircle(arc: Arc, c: Arc, offset?: number): Arc {
   if (offset !== undefined) {
-    c = offsetCircleRadius(c, offset);
+    c = offsetArcRadius(c, offset);
   }
-  return arcFromCircle(c, arc.start, arc.end);
+
+  let RadDiff = arc.diffDeg * Math.PI / 180;
+
+  return arcFromCircle(c, c.start, c.start + RadDiff);
 }
 
 export function flipArcAboutY(arc: Arc): Arc {
