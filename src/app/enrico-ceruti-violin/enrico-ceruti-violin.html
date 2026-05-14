@@ -953,7 +953,7 @@
 
         <section class="ui-group">
             <div class="ui-group-title">Top Trace</div>
-            <p class="export-description">The outer body outline including overhang.</p>
+            <p class="export-description">Top of the instrument.</p>
             <div class="input-group basic-row field-row" role="group">
                 <button type="button" class="export-btn" (click)="previewExport('outerTrace')">Preview</button>
                 <button type="button" class="export-btn export-btn--primary"
@@ -965,7 +965,7 @@
 
         <section class="ui-group">
             <div class="ui-group-title">Back Trace</div>
-            <p class="export-description">The outer body outline including overhang and button.</p>
+            <p class="export-description">The back of the instrument, with button.</p>
             <div class="input-group basic-row field-row" role="group">
                 <button type="button" class="export-btn" (click)="previewExport('back')">Preview</button>
                 <button type="button" class="export-btn export-btn--primary"
@@ -975,8 +975,8 @@
         </section>
 
         <section class="ui-group">
-            <div class="ui-group-title">Mould Path</div>
-            <p class="export-description">The CNC mould path with clamp channels and block cutouts.</p>
+            <div class="ui-group-title">Mould</div>
+            <p class="export-description">The mould use to create the rib structure.</p>
             <div class="input-group basic-row field-row" role="group">
                 <button type="button" class="export-btn" (click)="previewExport('mould')">Preview</button>
                 <button type="button" class="export-btn export-btn--primary"
@@ -987,7 +987,7 @@
 
         <section class="ui-group">
             <div class="ui-group-title">Block Templates</div>
-            <p class="export-description">Individual block templates for upper, corner, and lower blocks.></p>
+            <p class="export-description">Individual block templates.</p>
             <div class="input-group basic-row field-row" role="group">
                 <button type="button" class="export-btn" (click)="previewExport('blocks')">Preview</button>
                 <button type="button" class="export-btn export-btn--primary"
@@ -999,8 +999,7 @@
 
         <section class="ui-group">
             <div class="ui-group-title">Full Plan</div>
-            <p class="export-description">All pages combined into a single true-scale PDF — inner trace, outer trace,
-                and mould path.</p>
+            <p class="export-description">All pages combined into a single true-scale PDF.</p>
             <div class="input-group basic-row field-row" role="group">
                 <button type="button" class="export-btn export-btn--primary export-btn--full"
                     (click)="downloadFullPlan()">Download Full Plan PDF</button>
