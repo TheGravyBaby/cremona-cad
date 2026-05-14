@@ -41,6 +41,13 @@
   background: var(--accent-hover, #2a6080);
 }
 
+.export-btn--full {
+  width: 100%;
+  justify-content: center;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
 .export-preview-wrap {
   overflow: auto;
   border: 1px solid var(--border-color, #444);

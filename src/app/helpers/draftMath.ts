@@ -303,6 +303,10 @@ const polygonClipper: {
     subjectGeom: [number, number][][][] | [number, number][][][][],
     ...clipGeoms: ([number, number][][][] | [number, number][][][][])[]
   ) => [number, number][][][][];
+  intersection: (
+    subjectGeom: [number, number][][][] | [number, number][][][][],
+    ...clipGeoms: ([number, number][][][] | [number, number][][][][])[]
+  ) => [number, number][][][][];
 } = ((polygonClipping as any).default ?? polygonClipping) as any;
 
 export function pathFromCircle(C: Circle): string {
@@ -404,6 +408,37 @@ export function flipLineAboutYAxis(P1: Pt, P2: Pt): string {
   return `M ${-P1.x} ${P1.y} L ${-P2.x} ${P2.y}`;
 }
 
+/**
+ * Translates all coordinates in an absolute SVG path string by (dx, dy).
+ * Supports M, L, A, Q, and Z commands.
+ */
+export function translatePath(path: string, dx: number, dy: number): string {
+  if (dx === 0 && dy === 0) return path;
+  return path.replace(/([A-Za-z])([^A-Za-z]*)/g, (_, cmd: string, args: string) => {
+    const nums = args.trim().split(/[\s,]+/).filter((s: string) => s.length > 0).map(Number);
+    switch (cmd.toUpperCase()) {
+      case 'M':
+      case 'L':
+        for (let i = 0; i < nums.length; i += 2) { nums[i] += dx; nums[i + 1] += dy; }
+        break;
+      case 'A':
+        // A rx ry x-rotation large-arc-flag sweep-flag x y  (7 params per segment)
+        for (let i = 0; i < nums.length; i += 7) { nums[i + 5] += dx; nums[i + 6] += dy; }
+        break;
+      case 'Q':
+        // Q x1 y1 x y  (4 params per segment)
+        for (let i = 0; i < nums.length; i += 4) {
+          nums[i] += dx; nums[i + 1] += dy;
+          nums[i + 2] += dx; nums[i + 3] += dy;
+        }
+        break;
+      case 'Z':
+        return cmd;
+    }
+    return cmd + ' ' + nums.join(' ');
+  });
+}
+
 
 
 // ====== PATH COMBINATIONS ======
@@ -417,7 +452,7 @@ export function unifyTwoConnectedPaths(path1: string, path2: string): string {
   const arcRe = new RegExp(`^A\\s+${num}\\s+${num}\\s+${num}\\s+([01])\\s+([01])\\s+${num}\\s+${num}\\s*$`);
   const lineRe = new RegExp(`^L\\s+${num}\\s+${num}\\s*$`);
 
-  const almostEqual = (a: number, b: number, eps: number = 1e-6) => Math.abs(a - b) <= eps;
+  const almostEqual = (a: number, b: number, eps: number = 1e-4) => Math.abs(a - b) <= eps;
   const samePoint = (a: Pt, b: Pt) => almostEqual(a.x, b.x) && almostEqual(a.y, b.y);
 
   const parsePath = (path: string) => {
@@ -502,12 +537,23 @@ export function unifyTwoConnectedPaths(path1: string, path2: string): string {
   const p1 = parsePath(path1);
   const p2 = parsePath(path2);
 
+  // Snaps p2's body so its leading coordinates match p1.end exactly,
+  // eliminating any sub-threshold floating point gap.
+  const snapBody = (body: string, from: Pt, to: Pt): string => {
+    if (almostEqual(from.x, to.x) && almostEqual(from.y, to.y)) return body;
+    // Replace only the very first pair of numbers in the body (the start of the first command)
+    return body.replace(
+      /^([AL]\s+(?:[\d.eE+\-]+\s+){0,5})([\d.eE+\-]+)\s+([\d.eE+\-]+)/,
+      (_m, prefix, _x, _y) => `${prefix}${to.x} ${to.y}`
+    );
+  };
+
   if (samePoint(p1.end, p2.start)) {
-    return `${p1.full} ${p2.body}`;
+    return `${p1.full} ${snapBody(p2.body, p2.start, p1.end)}`;
   }
 
   if (samePoint(p2.end, p1.start)) {
-    return `${p2.full} ${p1.body}`;
+    return `${p2.full} ${snapBody(p1.body, p1.start, p2.end)}`;
   }
 
   if (samePoint(p1.start, p2.start)) {
@@ -531,7 +577,7 @@ export function unifyConnectedSvgPaths(paths: string[]): string {
   if (paths.length === 0) return '';
 
   let unified = paths[0].trim();
-  const remaining = paths.slice(1);
+  let remaining = paths.slice(1);
 
   while (remaining.length > 0) {
     let stitched = false;
@@ -558,8 +604,26 @@ export function unifyConnectedSvgPaths(paths: string[]): string {
       }
     }
 
+    let debug = true
     if (!stitched) {
-      throw new Error(`Could not connect all paths into one chain. Remaining segments: ${remaining.length}`);
+      if (!debug) {
+        throw new Error("Could not unify all paths. Remaining paths do not share endpoints.");
+      }
+
+      console.log("Error: Could not unify all paths. Returning combined string without unification.");
+      console.log("Remaining paths end points:");
+      remaining.forEach((path, index) => {
+        const props = new svgPathProperties(path);
+        const totalLength = props.getTotalLength();
+        const startPt = props.getPointAtLength(0);
+        const endPt = props.getPointAtLength(totalLength);
+        console.log(`  Path ${index}: start (${startPt.x}, ${startPt.y}), end (${endPt.x}, ${endPt.y})`);
+      });
+
+      let remainingPathsDeepCopy = [...remaining];
+      remaining = [];
+      unified = combinePathStrings([unified, ...remainingPathsDeepCopy]);
+            
     }
   }
 
@@ -625,6 +689,71 @@ export function differenceFromTwoPaths(path1: string, path2: string, distancePer
 
   const subpaths: string[] = [];
   for (const polygon of diff) {
+    for (const ring of polygon) {
+      const path = ringToPath(ring);
+      if (path) subpaths.push(path);
+    }
+  }
+
+  return subpaths.join(' ');
+}
+
+export function intersectionFromTwoPaths(path1: string, path2: string): string {
+  type Pair = [number, number];
+  type Ring = Pair[];
+  type Polygon = Ring[];
+  type MultiPolygon = Polygon[];
+
+  const pathToRing = (path: string): Ring => {
+    const props = new svgPathProperties(path);
+    const totalLength = props.getTotalLength();
+
+    if (!Number.isFinite(totalLength) || totalLength <= 0) {
+      throw new Error('Path has no measurable length.');
+    }
+
+    const distancePerSample = 0.5;
+    const steps = Math.max(128, Math.min(4096, Math.ceil(totalLength / distancePerSample)));
+    const pts: Pair[] = [];
+
+    for (let i = 0; i < steps; i++) {
+      const d = (i / steps) * totalLength;
+      const p = props.getPointAtLength(d);
+      pts.push([p.x, p.y]);
+    }
+
+    const deduped = pts.filter((p, i, arr) => {
+      if (i === 0) return true;
+      const prev = arr[i - 1];
+      return Math.hypot(p[0] - prev[0], p[1] - prev[1]) > 1e-9;
+    });
+
+    if (deduped.length < 3) {
+      throw new Error('Path sampling produced fewer than 3 unique points.');
+    }
+
+    return deduped;
+  };
+
+  const ringToPath = (ring: Ring): string => {
+    if (!ring.length) return '';
+    const [first, ...rest] = ring;
+    const head = `M ${first[0]} ${first[1]}`;
+    const tail = rest.map(p => `L ${p[0]} ${p[1]}`).join(' ');
+    return `${head}${tail ? ' ' + tail : ''} Z`;
+  };
+
+  const ring1 = pathToRing(path1);
+  const ring2 = pathToRing(path2);
+
+  const subject: MultiPolygon = [[ring1]];
+  const clip: MultiPolygon = [[ring2]];
+
+  const result = polygonClipper.intersection(subject, clip) as unknown as MultiPolygon | null;
+  if (!result || result.length === 0) return '';
+
+  const subpaths: string[] = [];
+  for (const polygon of result) {
     for (const ring of polygon) {
       const path = ringToPath(ring);
       if (path) subpaths.push(path);
