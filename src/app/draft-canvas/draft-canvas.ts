@@ -360,9 +360,12 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   }
   @Input() set setCameraBounds(bounds: { pt1: Pt, pt2: Pt } | null) {
     let firstSet = !this.bounds;
+    let oldBounds = JSON.parse(JSON.stringify(this.bounds));
     this.bounds = bounds;
-    if (bounds && firstSet)
+    if (bounds && firstSet || bounds != oldBounds) {
       this.fitCamera();
+      this.draw();
+    }
   }
   // expose pxPerMm for the template/readouts while keeping camera as source of truth
   public get pxPerMm() {
@@ -738,6 +741,53 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       this.refController.setImage(this.referenceImage);
       this.draw();
     }
+  }
+
+  async onReferenceFileSelected(evt: Event): Promise<void> {
+    const input = evt.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    const dataUrl = await this.readFileAsDataUrl(file);
+    const { w, h } = await this.getImageSize(dataUrl);
+
+    const img: ReferenceImage = {
+      href: dataUrl,
+      'xlink:href': dataUrl,
+      x: -w / 2,
+      y: 0,
+      width: w,
+      height: h,
+      rotationDeg: 0,
+    };
+
+    this.oldReferenceImageParams = { ...img };
+    this.refAspect = w / h || 1;
+    this.referenceImage = img;
+    this.refController.setImage(img);
+    this.referenceImageChange.emit(img);
+    this.showReferenceImage = true;
+    this.draw();
+
+    input.value = '';
+  }
+
+  private readFileAsDataUrl(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+  }
+
+  private getImageSize(dataUrl: string): Promise<{ w: number; h: number }> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
   }
 
   worldFromPointer(e: PointerEvent | MouseEvent): Pt {

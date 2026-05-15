@@ -78,9 +78,7 @@ export interface EnricoCerutiParams {
     L2toLBW: number;
     L3toLBW: number;
     UCYtoH: number;
-    UCXtoUBW: number;
     LCYtoH: number;
-    LCXtoLBW: number;
   };
 }
 
@@ -125,9 +123,7 @@ const DefaultParams: EnricoCerutiParams = {
     L3toLBW: 1 / 8,
 
     UCYtoH: 2 / 3,
-    UCXtoUBW: 7 / 8,
     LCYtoH: 6 / 15,
-    LCXtoLBW: 7 / 8,
   },
   bouts: {
     UBW: undefined,
@@ -208,9 +204,7 @@ const CerutiParams: EnricoCerutiParams = {
     "L2toLBW": 0.59375,
     "L3toLBW": 0.13020833333333334,
     "UCYtoH": 0.6666666666666666,
-    "UCXtoUBW": 0.9166666666666666,
     "LCYtoH": 0.4,
-    "LCXtoLBW": 0.875
   },
   "bouts": {
     "UBW": 149,
@@ -360,9 +354,7 @@ const stradGoetzParams: EnricoCerutiParams = {
     "L2toLBW": 0.5,
     "L3toLBW": 0.16666666666666666,
     "UCYtoH": 0.6666666666666666,
-    "UCXtoUBW": 0.875,
     "LCYtoH": 0.4,
-    "LCXtoLBW": 0.875
   },
   "bouts": {
   "UBW": 160,
@@ -505,7 +497,7 @@ export const CERUTI_TEMPLATES: EnricoCerutiTemplate[] = [
   {
     key: 'ceruti-new',
     label: 'New Fiddle',
-    recipeName: 'Enrico Ceruti Violin',
+    recipeName: 'enrico-ceruti-violin',
     fileName: 'NewFiddle',
     description: 'A blank template to start from...',
     version: '0.1',
@@ -523,7 +515,7 @@ export const CERUTI_TEMPLATES: EnricoCerutiTemplate[] = [
   {
     key: 'ceruti-drawing',
     label: 'Ceruti Drawing',
-    recipeName: 'Enrico Ceruti Violin',
+    recipeName: 'enrico-ceruti-violin',
     fileName: 'Ceruti Original',
     version: '0.1',
     description: 'From the Ceruti workshop drawing C. 1820',

@@ -41,7 +41,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     centerBoutLow: '#b6a25fff',
     lowerBout: '#4D74A8',
     innerTrace: '#a47272ff',
-    outerTrace: '#60b2f2ff',
+    outerTrace: '#727fa4ff',
     mouldTrace: '#81887eff',
   } as const;
 
@@ -132,20 +132,24 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
   }
 
   override firstRender = (g: any, ui: any): void => {
-    this.setBounds.emit({
-      pt1: { x: -this.d.params.width / 2, y: 0 },
-      pt2: { x: this.d.params.width / 2, y: this.d.params.height },
-    });
-    this.renderBounds(true)(g, ui);
-
     let recipeData = sessionStorage.getItem('recipeData');
     if (!recipeData) {
       let selectedTemplate = this.templates.find(t => t.key === this.selectedTemplateKey) ?? this.templates[0];
       this.referenceImageChange.emit(selectedTemplate.referenceImage ?? null);
     }
+    else {
+      // check to see if the recipe loaded from session storage matches a template
+      this.d = JSON.parse(recipeData) as EnricoCerutiTemplate;
+    }
 
     const handlers = this.getActivationHandlers();
     handlers[this.openPanel]?.();
+
+    this.setBounds.emit({
+      pt1: { x: -this.d.params.width / 2, y: 0 },
+      pt2: { x: this.d.params.width / 2, y: this.d.params.height },
+    });
+    this.renderBounds(true)(g, ui);
   };
 
   override ngOnDestroy(): void {
@@ -292,10 +296,22 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
 
   changeMainBouts(): void {
     this.debounce(() => safeRun(() => {
-      calculateMainBouts(this.d.params);
+      let p = this.d.params
+      let inset = p.overhang + p.rib;
+      calculateMainBouts(p);
+
+      if (p.options.useViolNeck) {
+        let height = pointOnCircle(p.viol.V0, 0).y + inset;
+        this.setBounds.emit({
+          pt1: { x: -p.width / 2, y: 0 },
+          pt2: { x: p.width / 2, y: height },
+        });
+      }
+
       this.panelFlow?.refreshEnabledPanels();
       this.draftChange.emit([this.renderBounds(false), this.renderMainBouts(true)]);
     }));
+    sessionStorage.setItem('recipeData', JSON.stringify(this.d));
   }
 
 
@@ -373,6 +389,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
         this.renderCorners(true),
       ]);
     }));
+    sessionStorage.setItem('recipeData', JSON.stringify(this.d));
   }
 
   setU2toU1(): void {
@@ -389,10 +406,10 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     let p = this.d.params;
 
     if (currentModule && this.showModuleArcs) {
-      renderCrosshair(p.bouts.UCr!, this.colors.centerBoutUpOff)(g, ui);
-      renderCrosshair(p.bouts.LCr!, this.colors.centerBoutLowOff)(g, ui);
-      renderCrosshair({ x: -p.bouts.UCr!.x, y: p.bouts.UCr!.y }, this.colors.centerBoutUpOff)(g, ui);
-      renderCrosshair({ x: -p.bouts.LCr!.x, y: p.bouts.LCr!.y }, this.colors.centerBoutLowOff)(g, ui);
+      renderCrosshair(p.bouts.UCr!, this.colors.centerBoutUpOff2)(g, ui);
+      renderCrosshair(p.bouts.LCr!, this.colors.centerBoutLowOff2)(g, ui);
+      renderCrosshair({ x: -p.bouts.UCr!.x, y: p.bouts.UCr!.y }, this.colors.centerBoutUpOff2)(g, ui);
+      renderCrosshair({ x: -p.bouts.LCr!.x, y: p.bouts.LCr!.y }, this.colors.centerBoutLowOff2)(g, ui);
     }
 
     if ((currentModule && this.showModuleArcs) || this.showAllArcs) {
@@ -443,6 +460,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
 
   changeCenterBout(solveC0?: boolean): void {
     this.debounce(() => safeRun(() => {
+      calculateCorners(this.d.params);
       calculateCenterBout(this.d.params, solveC0);
       this.panelFlow?.refreshEnabledPanels();
       this.draftChange.emit([
@@ -458,17 +476,27 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
   renderCenterBout = (currentModule: boolean) => (g: any, ui: any): void => {
     let p = this.d.params;
 
-    if (currentModule && this.showModuleArcs) {
+    if (currentModule && this.showBoundingBoxes) {
       renderDashedLine({ x: -1000, y: p.bouts.C0.y }, { x: 1000, y: p.bouts.C0.y }, this.colors.centerBoutOff2)(g, ui);
+      renderCrosshair(p.bouts.UCr!, this.colors.centerBoutUpOff2)(g, ui);
+      renderCrosshair(p.bouts.LCr!, this.colors.centerBoutLowOff2)(g, ui);
+      renderCrosshair({ x: -p.bouts.UCr!.x, y: p.bouts.UCr!.y }, this.colors.centerBoutUpOff2)(g, ui);
+      renderCrosshair({ x: -p.bouts.LCr!.x, y: p.bouts.LCr!.y }, this.colors.centerBoutLowOff2)(g, ui);
+    
     }
 
     if ((currentModule && this.showModuleArcs) || this.showAllArcs) {
-      renderArcFromArcFancy(p.bouts.CU, this.colors.centerBoutUp)(g, ui);
-      renderArcFromArcFancy(p.bouts.CL, this.colors.centerBoutLow)(g, ui);
+      renderArcFromArcFancy(p.bouts.CU, this.colors.centerBoutUpOff)(g, ui);
+      renderArcFromArcFancy(p.bouts.CL, this.colors.centerBoutLowOff)(g, ui);
       renderArcFromArcFancy(p.bouts.C0, this.colors.centerBout)(g, ui);
-      renderArcFromArcFancy(flipArcAboutY(p.bouts.CU), this.colors.centerBoutUp)(g, ui);
+      renderArcFromArcFancy(flipArcAboutY(p.bouts.CU), this.colors.centerBoutUpOff)(g, ui);
       renderArcFromArcFancy(flipArcAboutY(p.bouts.CL), this.colors.centerBoutLow)(g, ui);
       renderArcFromArcFancy(flipArcAboutY(p.bouts.C0), this.colors.centerBout)(g, ui);
+
+      !p.options.useViolCornerLC && renderArcFromArcFancy(p.bouts.L3!, this.colors.centerBoutLow)(g, ui);
+      !p.options.useViolCornerLC && renderArcFromArcFancy(flipArcAboutY(p.bouts.L3!), this.colors.centerBoutLow)(g, ui);
+      !p.options.useViolCornerUC && renderArcFromArcFancy(p.bouts.U3!, this.colors.centerBoutUp)(g, ui);
+      !p.options.useViolCornerUC && renderArcFromArcFancy(flipArcAboutY(p.bouts.U3!), this.colors.centerBoutUp)(g, ui);
     }
     else {
       renderArcFromArc(p.bouts.CU, this.colors.innerTrace)(g, ui);
@@ -481,11 +509,16 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
 
     if ((currentModule && this.showModuleCircles) || this.showAllCircles) {
       renderCircle(p.bouts.C0, this.colors.centerBout)(g, ui);
-      renderCircle(p.bouts.CU, this.colors.centerBoutUp)(g, ui);
-      renderCircle(p.bouts.CL, this.colors.centerBoutLow)(g, ui);
-      renderCircle(flipCircleAboutY(p.bouts.CU), this.colors.centerBoutUp)(g, ui);
-      renderCircle(flipCircleAboutY(p.bouts.CL), this.colors.centerBoutLow)(g, ui);
+      renderCircle(p.bouts.CU, this.colors.centerBoutUpOff)(g, ui);
+      renderCircle(p.bouts.CL, this.colors.centerBoutLowOff)(g, ui);
+      renderCircle(flipCircleAboutY(p.bouts.CU), this.colors.centerBoutUpOff)(g, ui);
+      renderCircle(flipCircleAboutY(p.bouts.CL), this.colors.centerBoutLowOff)(g, ui);
       renderCircle(flipCircleAboutY(p.bouts.C0), this.colors.centerBout)(g, ui);
+
+      !p.options.useViolCornerLC && renderCircle(p.bouts.L3!, this.colors.centerBoutLow)(g, ui);
+      !p.options.useViolCornerLC && renderCircle(flipArcAboutY(p.bouts.L3!), this.colors.centerBoutLow)(g, ui);
+      !p.options.useViolCornerUC && renderCircle(p.bouts.U3!, this.colors.centerBoutUp)(g, ui);
+      !p.options.useViolCornerUC && renderCircle(flipArcAboutY(p.bouts.U3!), this.colors.centerBoutUp)(g, ui);
 
       // renderDistanceMeasurementLine(
       //   { x: -p.bouts.CBW / 2, y: p.bouts.C0.y },
@@ -707,7 +740,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
         pathD = combinePathStrings([defineOuterPath(p, p.overhang + p.rib, true), defineInnerPath(p)]);
         break;
       case 'mould':
-        pathD = calculateMould(p, false, this.exportSimpleClampBox);
+        pathD = calculateMould(p, true, this.exportSimpleClampBox);
         break;
       case 'blocks':
         pathD = combinePathStrings(calculateCornerBlocks(p, defineInnerPath(p)));
@@ -768,7 +801,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
         description,
         width: p.width,
         height: height,
-        paths: [{ d: calculateMould(p, false, this.exportSimpleClampBox), stroke: 'black', fill: 'none' }],
+        paths: [{ d: calculateMould(p, true, this.exportSimpleClampBox), stroke: 'black', fill: 'none' }],
       },
       {
         label: 'Blocks',

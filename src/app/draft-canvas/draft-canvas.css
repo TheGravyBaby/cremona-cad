@@ -24,11 +24,11 @@
 }
 
 .align-popup {
-  top: -225px;
+  bottom: 40px;
 }
 
 .axis-popup {
-  top: -200px;
+  bottom: 40px;
   min-width: 180px;
 }
 
