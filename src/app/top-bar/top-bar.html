@@ -60,16 +60,15 @@
           </div>
         </figure>
         <p>
-          CremonaCad is a free and open source application for designing violin family instruments!
+          CremonaCad is a <strong>free and open source</strong> application for designing violin family instruments!
         </p>
         <p>
           Rather than a static trace, or a complex list of coordinates,
-          CremonaCad defines instruments using a simple system of intersecting arcs.
+          CremonaCad defines instruments using a simple system of <strong>intersecting arcs</strong>.
           These patterns are historically informed by the drafting document found in
-          the workshop of Enrico Ceruti, as well as the significant research of David Beard, Kevin Kelly and François
-          Denis.
+          the workshop of <strong>Enrico Ceruti</strong>, as well as the research of
+          <strong>David Beard</strong>, <strong>Kevin Kelly</strong>, and <strong>François Denis</strong>.
         </p>
-
         <p>
           Upload a historical instrument and use it as a reference,
           or go off the rails and create something totally unique! :D
@@ -79,25 +78,24 @@
           These patterns can be exported either as PDFs for traditional hand-making,
           or as SVGs for computer assisted fabrication.
         </p>
-
       </section>
       }
 
       @if (activeTab === 'tutorial') {
       <section class="tutorial-section">
+        <h2>Tutorial</h2>
+
         <h3>Overview</h3>
         <p>CremonaCad uses input controls on the right side of the screen to draw your instrument on the canvas in real
           time. The process is defined by a series of sections which build upon one another, drawing each part of the
           instrument step by step. Once all the sections are complete, you can generate moulds and templates for
           construction.</p>
         <ul class="tips-list">
-          <li>The canvas comes with pan and zoom controls to allow precise visualiztion of your design.</li>
-          <li>Reference images can be loaded and scaled using the 'Reference' controls on the bottom right of the
-            canvas.</li>
-          <li>The 'Axis" controls on the bottom right of the canvas allow for custom grid settings.</li>
-          <li>Files can be saved and loaded using the 'File' menu at the top right of the screen.</li>
+          <li>The canvas comes with pan and zoom controls to allow precise visualization of your design.</li>
+          <li>Reference images can be loaded and scaled using the <code>Reference</code> controls on the bottom right of the canvas.</li>
+          <li>The <code>Axis</code> controls on the bottom right of the canvas allow for custom grid settings.</li>
+          <li>Files can be saved and loaded using the <code>New</code> <code>Save</code> and <code>Load</code> buttons at the top right of the screen.</li>
         </ul>
-
 
         <h3>Base Measurements</h3>
         <p>This section sets the primary dimensions of the instrument, the setting of a reference image, as well as
@@ -105,12 +103,12 @@
         <ul class="tips-list">
           <li>CremonaCad comes with a set of predefined templates from historical instruments. Select one to study, or
             create a new design.</li>
-          <li>Use the 'Upload Reference Image' button to add your own images to aid in your design process.</li>
+          <li>Use the <code>Upload Reference Image</code> button to add your own images to aid in your design process.</li>
           <li>Use the primary dimensions section to define the height and width of your instrument. This is also useful
             for scaling your reference image.</li>
-          <li>For many measurements, ratios will be displayed to the right of the metric value. Many cremonese
+          <li>For many measurements, <strong>ratios</strong> will be displayed to the right of the metric value. Many Cremonese
             instruments use simple integer ratios which define their arc segments.</li>
-          <li>Define rib and overhang values to create a total inset value. This inset will bond the 'inner path' of the
+          <li>Define rib and overhang values to create a total <strong>inset</strong> value. This inset will bound the inner path of the
             instrument.</li>
         </ul>
 
@@ -118,40 +116,40 @@
         <p>The main bouts define the upper and lower sections of the instrument's body. These will be the first arc
           segments you create.</p>
         <ul class="tips-list">
-          <li>The join arcs U0 and L0 (Upper and Lower) are used to connect the 'Veisca' arc U1 and L1.</li>
-          <li>Each bout has a width measurent which sets the total outer width of the instrument including the inset.
+          <li>The join arcs <code>U0</code> and <code>L0</code> (Upper and Lower) are used to connect the Vesica arcs <code>U1</code> and <code>L1</code>.</li>
+          <li>Each bout has a width measurement which sets the total outer width of the instrument including the inset.
             These width values are often provided in online measurements of historical instruments, and are helpful in
             guiding your design.</li>
-          <li>Use the 'Viol Neck' option to add a viola da gamba-style upper extension. These are of course common on
-            double bass</li>
+          <li>Use the <code>Viol Neck</code> option to add a viola da gamba-style upper extension. These are of course common on
+            double bass.</li>
         </ul>
 
         <h3>Corners</h3>
         <p>This section defines both the position of the corners and the arc segments that connect them to the main
-          bouts. </p>
+          bouts.</p>
         <ul class="tips-list">
           <li>XY controls exist for each corner placement. In general I have tried to avoid cartesian coordinates, but
             this allows for precise adjustments.</li>
-          <li>The 'Use Viol Corner' options allows for the creation of Viol style corners, which only have one
-            connecting Arc.</li>
+          <li>The <code>Use Viol Corner</code> option allows for the creation of viol-style corners, which only have one
+            connecting arc.</li>
         </ul>
 
         <h3>Center Bout</h3>
         <p>The center bout is the narrowest section of the instrument, connecting the upper and lower bouts.</p>
         <ul class="tips-list">
-          <li>The Center Bout Width defines the total outer width at the narrowest point. When adjusting the C0 circle,
+          <li>The <strong>Center Bout Width</strong> defines the total outer width at the narrowest point. When adjusting the <code>C0</code> circle,
             this width will remain constant.</li>
-          <li>The 'Fit C0 to Bouts' option automatically calculates C0 to cleanly intersect U2 and L2. This is based off
-            of Kevin Kellys four circle method, while still allowing for manual adjustments.</li>
+          <li>The <code>Fit C0 to Bouts</code> option automatically calculates <code>C0</code> to cleanly intersect <code>U2</code> and <code>L2</code>. This is based off
+            of Kevin Kelly's four-circle method, while still allowing for manual adjustments.</li>
         </ul>
 
         <h3>Outer Path</h3>
         <p>The outer path section defines the button and corner arcs that complete the outline of the instrument.</p>
         <ul class="tips-list">
-          <li>Each corner is defined by at least two corner arcs and respective "cutoff" angles. The cutoff values
-            angles define points at which a line is drawn accross the outer corners</li>
-          <li>Some violins employ more elaborate corners with "double arcs" which you may employ on any corner.</li>
-          <li>The button is a small half circle segment that is usually found on the backs of violin family instruments.
+          <li>Each corner is defined by at least two corner arcs and respective <strong>cutoff angles</strong>. The cutoff values
+            define points at which a line is drawn across the outer corners.</li>
+          <li>Some violins employ more elaborate corners with <strong>double arcs</strong>, which you may employ on any corner.</li>
+          <li>The <strong>button</strong> is a small half-circle segment that is usually found on the backs of violin family instruments.
             You can define its dimensions here.</li>
         </ul>
 
@@ -159,11 +157,11 @@
         <p>The mould section defines the internal blocks and templates used to construct the instrument. These blocks
           form the wooden structure around which the ribs are bent and glued.</p>
         <ul class="tips-list">
-          <li>Four blocks are defined: Upper, Upper Corner, Lower Corner, and Lower. Each block has height and width
+          <li>Four blocks are defined: <strong>Upper</strong>, <strong>Upper Corner</strong>, <strong>Lower Corner</strong>, and <strong>Lower</strong>. Each block has height and width
             dimensions.</li>
-          <li>Corner block 'Pad' values add extra material at each corner point. This can help with finding the optimal
+          <li>Corner block <strong>Pad</strong> values add extra material at each corner point. This can help with finding the optimal
             placing of the block against the mould.</li>
-          <li>If the mould is to be cut on the CNC, the 'Bit Diameter' controls prevent issues with right angles at
+          <li>If the mould is to be cut on a CNC, the <code>Bit Diameter</code> value prevent issues with right angles at
             critical glue points.</li>
           <li>The default mould has clamping channels parallel to the edges. However, a simple box cutout can be
             specified as well.</li>
@@ -171,7 +169,7 @@
 
         <h3>Export</h3>
         <p>Once your design is complete, you can export various templates and patterns for construction. CremonaCad
-          generates both SVG and PDF files suitable for hand-making or computer-assisted fabrication.</p>
+          generates both <strong>SVG</strong> and <strong>PDF</strong> files.</p>
       </section>
       }
 
@@ -180,21 +178,23 @@
       <section class="author-section">
         <h2>About The Project</h2>
         <p>
-          Hi my name is Andrew Argraves, a software engineer, cellist, and aspiring lutheir living in New Haven, CT!
-
-          CremonaCad is a passion project initially developed as a tool to better understand the geomety of violin
-          family instruments. However, as the project has developed over many months of late night coding, I am begining
-          to see its potential as a design aid and educational tool for the maker community at large.
-
-          I intend to keep developing CremonaCad for some time, and hope to eventually add features for arching
-          templates, f-holes, and neck design. I believe strongly in open source software and community collaberation.
-          If you are interested in collaberating on CremonaCad, feel free to reach out to me at
-
-          andrewargraves@gmail.combined
-
-          Thanks, and happy drafting!
+          Hello there! y name is <strong>Andrew Argraves</strong>, a software engineer, cellist, and aspiring luthier living in New Haven, CT!
         </p>
-
+        <p>
+          CremonaCad is a passion project initially developed as a tool to better understand the geometry of violin
+          family instruments. However, as the project has developed over many months of late-night coding, I am beginning
+          to see its potential as a design aid and educational tool for the maker community at large.
+        </p>
+        <p>
+          I intend to keep developing CremonaCad for some time, and hope to eventually add features for arching
+          templates, f-holes, and neck design. 
+        </p>
+        <p>I believe strongly in open source software and community collaboration. If you are interested in collaborating on CremonaCad, feel free to reach out:</p>
+        <div class="author-contact">
+          <span class="contact-icon">✉</span>
+          <a class="contact-link" href="mailto:andrewargraves@gmail.com">andrewargraves@gmail.com</a>
+        </div>
+        <p class="author-sign-off">Thanks, and happy drafting!</p>
       </section>
       }
 
