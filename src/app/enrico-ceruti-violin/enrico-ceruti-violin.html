@@ -241,29 +241,24 @@
         <section class="ui-group">
             <div class="input-group basic-row field-row" role="group">
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showModuleArcs" (change)="changeMainBouts()" /><span>Show Module
-                        Arcs </span>
+                    <input type="checkbox" [(ngModel)]="showModuleArcs" (change)="changeMainBouts()" /><span>Show Module Arcs </span>
                 </div>
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showAllArcs" (change)="changeMainBouts()" /><span>Show All Arcs
-                    </span>
+                    <input type="checkbox" [(ngModel)]="showAllArcs" (change)="changeMainBouts()" /><span>Show All Arcs</span>
                 </div>
 
             </div>
             <div class="input-group basic-row field-row" role="group">
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showModuleCircles" (change)="changeMainBouts()" /><span>Show
-                        Module Circles </span>
+                    <input type="checkbox" [(ngModel)]="showModuleCircles" (change)="changeMainBouts()" /><span>Show Module Circles </span>
                 </div>
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeMainBouts()" /><span>Show All
-                        Circles </span>
+                    <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeMainBouts()" /><span>Show All Circles </span>
                 </div>
             </div>
             <div class="input-group basic-row field-row" role="group">
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showBoundingBoxes" (change)="changeMainBouts()" /><span>Show
-                        Bounding Boxes </span>
+                    <input type="checkbox" [(ngModel)]="showBoundingBoxes" (change)="changeMainBouts()" /><span>Show Module Guides</span>
                 </div>
             </div>
         </section>
@@ -271,32 +266,37 @@
 
         @if (openPanel === 'corners') {
         <section class="ui-group">
-            <div class="ui-group-title">Upper Corner</div>
+            <div class="ui-group-title">Upper Bout</div>
+            @if (!d.params.options.useViolCornerUC) {
             <div class="input-group basic-row field-row" role="group">
                 <label class="field-cell">
-                    <span class="field-title">X <span class="unit-label">mm</span></span>
-                    <input type="number" class="basic-input" step=".25" [(ngModel)]="d.params.bouts.UCr.x"
-                        (input)="changeCorners()" [style.borderColor]="colors.centerBoutUpOff" />
+                    <span class="field-title">U2 Radius <span class="unit-label">mm</span></span>
+                    <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.U2.r"
+                        (input)="changeCorners()" [style.borderColor]="colors.upperBout" />
                 </label>
-                <span class="field-separator" aria-hidden="true"></span>
                 <label class="field-cell">
-                    <span class="field-title">Y <span class="unit-label">mm</span></span>
-                    <input type="number" class="basic-input" step=".25" [(ngModel)]="d.params.bouts.UCr.y"
-                        (input)="changeCorners()" [style.borderColor]="colors.centerBoutUpOff" />
+                    <span class="field-title"> <span class="unit-label"></span></span>
+                    <button type="button" class="recipe-btn" (click)="setU2toU1();">U2 to U1</button>
+                </label>
+                <label class="field-cell">
+                    <span class="field-title">U2 to UBW</span>
+                    <div class="basic-display" aria-label="Upper bout to width ratio value">{{
+                        nearestFraction(d.params.ratios.U2toUBW) }}</div>
                 </label>
             </div>
-            @if (!d.params.options.useViolCornerUC) {
-            <div class="ui-group">
+
+            }
+            @else {
+            <div [style.opacity]="0.5" [style.pointerEvents]="'none'">
                 <div class="input-group basic-row field-row" role="group">
                     <label class="field-cell">
                         <span class="field-title">U2 Radius <span class="unit-label">mm</span></span>
                         <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.U2.r"
-                            (input)="changeCorners()" [style.borderColor]="colors.upperBout" />
+                            (input)="changeCorners()" disabled [style.borderColor]="colors.upperBout" />
                     </label>
                     <label class="field-cell">
-                        <!-- <span class="field-title">U2 Height <span class="unit-label">mm</span></span>
-                        <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.U2.y"
-                            (input)="changeCorners()" [style.borderColor]="colors.upperBout" /> -->
+                        <span class="field-title"> <span class="unit-label"></span></span>
+                        <button type="button" class="recipe-btn" (click)="setU2toU1();">U2 to U1</button>
                     </label>
                     <label class="field-cell">
                         <span class="field-title">U2 to UBW</span>
@@ -304,9 +304,28 @@
                             nearestFraction(d.params.ratios.U2toUBW) }}</div>
                     </label>
                 </div>
-                <div class="input-group basic-row field-row" role="group">
-                    <button type="button" class="export-btn" (click)="setU2toU1();">U2 to U1</button>
-                </div>
+                
+            </div>
+            }
+        </section>
+
+        <section class="ui-group">
+            <div class="ui-group-title">Upper Corner</div>
+            <div class="input-group basic-row field-row" role="group">
+                <label class="field-cell">
+                    <span class="field-title">X <span class="unit-label">mm</span></span>
+                    <input type="number" class="basic-input" step=".25" [(ngModel)]="d.params.bouts.UCr.x"
+                        (input)="changeCorners()" [style.borderColor]="colors.centerBoutUpOff2" />
+                </label>
+                <span class="field-separator" aria-hidden="true"></span>
+                <label class="field-cell">
+                    <span class="field-title">Y <span class="unit-label">mm</span></span>
+                    <input type="number" class="basic-input" step=".25" [(ngModel)]="d.params.bouts.UCr.y"
+                        (input)="changeCorners()" [style.borderColor]="colors.centerBoutUpOff2" />
+                </label>
+            </div>
+            @if (!d.params.options.useViolCornerUC) {
+            <div class="ui-group">
                 <div class="input-group basic-row field-row" role="group">
                     <label class="field-cell">
                         <span class="field-title">U3 Radius <span class="unit-label">mm</span></span>
@@ -323,45 +342,24 @@
             </div>
             }
             @else {
-            <div class="ui-group" [style.opacity]="0.5" [style.pointerEvents]="'none'">
-                <div class="input-group basic-row field-row" role="group">
-                    <label class="field-cell">
-                        <span class="field-title">U2 Radius <span class="unit-label">mm</span></span>
-                        <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.U2.r"
-                            (input)="changeCorners()" disabled [style.borderColor]="colors.upperBout" />
-                    </label>
-                    <label class="field-cell">
-                        <!-- <span class="field-title">U2 Height <span class="unit-label">mm</span></span>
-                        <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.U2.y"
-                            (input)="changeCorners()" disabled [style.borderColor]="colors.upperBout" /> -->
-                    </label>
-                    <label class="field-cell">
-                        <span class="field-title">U2 to UBW</span>
-                        <div class="basic-display" aria-label="Upper bout to width ratio value">{{
-                            nearestFraction(d.params.ratios.U2toUBW) }}</div>
-                    </label>
-                </div>
-                <div class="input-group basic-row field-row" role="group">
-                      <button type="button" class="export-btn" (click)="setU2toU1();" disabled>U2 to U1</button>
-                </div>
-                <div class="input-group basic-row field-row" role="group">
-                    <label class="field-cell">
-                        <span class="field-title">U3 Radius <span class="unit-label">mm</span></span>
-                        <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.U3.r"
-                            (input)="changeCorners()" disabled [style.borderColor]="colors.centerBoutUp" />
-                    </label>
-                    <label class="field-cell"> </label>
-
-                    <label class="field-cell">
-                        <span class="field-title">U3 to LBW</span>
-                        <div class="basic-display" aria-label="Upper bout to width ratio value">{{
-                            nearestFraction(d.params.ratios.U3toLBW) }}</div>
-                    </label>
+            <div class="ui-group">
+                <div [style.opacity]="0.5" [style.pointerEvents]="'none'">
+                    <div class="input-group basic-row field-row" role="group">
+                        <label class="field-cell">
+                            <span class="field-title">U3 Radius <span class="unit-label">mm</span></span>
+                            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.U3.r"
+                                (input)="changeCorners()" disabled [style.borderColor]="colors.centerBoutUp" />
+                        </label>
+                        <label class="field-cell"> </label>
+                        <label class="field-cell">
+                            <span class="field-title">U3 to LBW</span>
+                            <div class="basic-display" aria-label="Upper bout to width ratio value">{{
+                                nearestFraction(d.params.ratios.U3toLBW) }}</div>
+                        </label>
+                    </div>
                 </div>
             </div>
             }
-
-
             <div class="toggle">
                 <input type="checkbox" [(ngModel)]="d.params.options.useViolCornerUC"
                     (change)="changeCorners()" /><span>Use Viol Corner</span>
@@ -370,46 +368,21 @@
 
         <section class="ui-group">
             <div class="ui-group-title">Lower Corner</div>
-
             <div class="input-group basic-row field-row" role="group">
                 <label class="field-cell">
                     <span class="field-title">X <span class="unit-label">mm</span></span>
                     <input type="number" class="basic-input" step=".25" [(ngModel)]="d.params.bouts.LCr.x"
-                        (input)="changeCorners()" [style.borderColor]="colors.centerBoutLowOff" />
+                        (input)="changeCorners()" [style.borderColor]="colors.centerBoutLowOff2" />
                 </label>
                 <span class="field-separator" aria-hidden="true"></span>
                 <label class="field-cell">
                     <span class="field-title">Y <span class="unit-label">mm</span></span>
                     <input type="number" class="basic-input" step=".25" [(ngModel)]="d.params.bouts.LCr.y"
-                        (input)="changeCorners()" [style.borderColor]="colors.centerBoutLowOff" />
+                        (input)="changeCorners()" [style.borderColor]="colors.centerBoutLowOff2" />
                 </label>
             </div>
-
             @if (!d.params.options.useViolCornerLC) {
             <div class="ui-group">
-                <div class="input-group basic-row field-row" role="group">
-                    <label class="field-cell">
-                        <span class="field-title">L2 Radius <span class="unit-label">mm</span></span>
-                        <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.L2.r"
-                            (input)="changeCorners()" [style.borderColor]="colors.lowerBout" />
-                    </label>
-                    <label class="field-cell">
-                        <!-- <span class="field-title">L2 Height <span class="unit-label">mm</span></span>
-                        <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.L2.y"
-                            (input)="changeCorners()" [style.borderColor]="colors.lowerBout" /> -->
-                    </label>
-                    <label class="field-cell">
-                        <span class="field-title">L2 to LBW</span>
-                        <div class="basic-display" aria-label="Lower bout to width ratio value">{{
-                            nearestFraction(d.params.ratios.L2toLBW) }}</div>
-                    </label>
-                </div>
-
-                <div class="input-group basic-row field-row" role="group">
-                      <button type="button" class="export-btn" (click)="setL2toL1();">L2 to L1</button>
-                </div>
-
-
                 <div class="input-group basic-row field-row" role="group">
                     <label class="field-cell">
                         <span class="field-title">L3 Radius <span class="unit-label">mm</span></span>
@@ -417,7 +390,6 @@
                             (input)="changeCorners()" [style.borderColor]="colors.centerBoutLow" />
                     </label>
                     <label class="field-cell"> </label>
-
                     <label class="field-cell">
                         <span class="field-title">L3 to LBW</span>
                         <div class="basic-display" aria-label="Lower bout to width ratio value">{{
@@ -427,47 +399,24 @@
             </div>
             }
             @else {
-            <div class="ui-group" [style.opacity]="0.5" [style.pointerEvents]="'none'">
-                <div class="input-group basic-row field-row" role="group">
-                    <label class="field-cell">
-                        <span class="field-title">L2 Radius <span class="unit-label">mm</span></span>
-                        <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.L2.r"
-                            (input)="changeCorners()" disabled [style.borderColor]="colors.lowerBout" />
-                    </label>
-                    <label class="field-cell">
-                        <span class="field-title">L2 Height <span class="unit-label">mm</span></span>
-                        <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.L2.y"
-                            (input)="changeCorners()" disabled [style.borderColor]="colors.lowerBout" />
-                    </label>
-                    <label class="field-cell">
-                        <span class="field-title">L2 to LBW</span>
-                        <div class="basic-display" aria-label="Lower bout to width ratio value">{{
-                            nearestFraction(d.params.ratios.L2toLBW) }}</div>
-                    </label>
-                </div>
-
-                <div class="input-group basic-row field-row" role="group">
-                     <button type="button" class="export-btn" (click)="setL2toL1();" disabled>L2 to L1</button>
-                </div>
-
-
-                <div class="input-group basic-row field-row" role="group">
-                    <label class="field-cell">
-                        <span class="field-title">L3 Radius <span class="unit-label">mm</span></span>
-                        <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.L3.r"
-                            (input)="changeCorners()" disabled [style.borderColor]="colors.centerBoutLow" />
-                    </label>
-                    <label class="field-cell"> </label>
-
-                    <label class="field-cell">
-                        <span class="field-title">L3 to LBW</span>
-                        <div class="basic-display" aria-label="Lower bout to width ratio value">{{
-                            nearestFraction(d.params.ratios.L3toLBW) }}</div>
-                    </label>
+            <div class="ui-group">
+                <div [style.opacity]="0.5" [style.pointerEvents]="'none'">
+                    <div class="input-group basic-row field-row" role="group">
+                        <label class="field-cell">
+                            <span class="field-title">L3 Radius <span class="unit-label">mm</span></span>
+                            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.L3.r"
+                                (input)="changeCorners()" disabled [style.borderColor]="colors.centerBoutLow" />
+                        </label>
+                        <label class="field-cell"> </label>
+                        <label class="field-cell">
+                            <span class="field-title">L3 to LBW</span>
+                            <div class="basic-display" aria-label="Lower bout to width ratio value">{{
+                                nearestFraction(d.params.ratios.L3toLBW) }}</div>
+                        </label>
+                    </div>
                 </div>
             </div>
             }
-
             <div class="toggle">
                 <input type="checkbox" [(ngModel)]="d.params.options.useViolCornerLC"
                     (change)="changeCorners()" /><span>Use Viol Corner</span>
@@ -475,31 +424,70 @@
         </section>
 
         <section class="ui-group">
+            <div class="ui-group-title">Lower Bout</div>
+            @if (!d.params.options.useViolCornerLC) {
+            <div class="input-group basic-row field-row" role="group">
+                <label class="field-cell">
+                    <span class="field-title">L2 Radius <span class="unit-label">mm</span></span>
+                    <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.L2.r"
+                        (input)="changeCorners()" [style.borderColor]="colors.lowerBout" />
+                </label>
+                <label class="field-cell">
+                    <span class="field-title"> <span class="unit-label"></span></span>
+                    <button type="button" class="recipe-btn" (click)="setL2toL1();">L2 to L1</button>
+                </label>
+                <label class="field-cell">
+                    <span class="field-title">L2 to LBW</span>
+                    <div class="basic-display" aria-label="Lower bout to width ratio value">{{
+                        nearestFraction(d.params.ratios.L2toLBW) }}</div>
+                </label>
+            </div>
+
+            }
+            @else {
+            <div [style.opacity]="0.5" [style.pointerEvents]="'none'">
+                <div class="input-group basic-row field-row" role="group">
+                    <label class="field-cell">
+                        <span class="field-title">L2 Radius <span class="unit-label">mm</span></span>
+                        <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.L2.r"
+                            (input)="changeCorners()" disabled [style.borderColor]="colors.lowerBout" />
+                    </label>
+                     <label class="field-cell">
+                        <span class="field-title"> <span class="unit-label"></span></span>
+                        <button type="button" class="recipe-btn" (click)="setL2toL1();">L2 to L1</button>
+                    </label>
+                    <label class="field-cell">
+                        <span class="field-title">L2 to LBW</span>
+                        <div class="basic-display" aria-label="Lower bout to width ratio value">{{
+                            nearestFraction(d.params.ratios.L2toLBW) }}</div>
+                    </label>
+                </div>
+                
+            </div>
+            }
+        </section>
+
+        <section class="ui-group">
             <div class="input-group basic-row field-row" role="group">
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showModuleArcs" (change)="changeCorners()" /><span>Show Module
-                        Arcs </span>
+                    <input type="checkbox" [(ngModel)]="showModuleArcs" (change)="changeCorners()" /><span>Show Module Arcs </span>
                 </div>
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showAllArcs" (change)="changeCorners()" /><span>Show All Arcs
-                    </span>
+                    <input type="checkbox" [(ngModel)]="showAllArcs" (change)="changeCorners()" /><span>Show All Arcs  </span>
                 </div>
 
             </div>
             <div class="input-group basic-row field-row" role="group">
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showModuleCircles" (change)="changeCorners()" /><span>Show
-                        Module Circles </span>
+                    <input type="checkbox" [(ngModel)]="showModuleCircles" (change)="changeCorners()" /><span>Show Module Circles </span>
                 </div>
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeCorners()" /><span>Show All
-                        Circles </span>
+                    <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeCorners()" /><span>Show All Circles </span>
                 </div>
             </div>
             <div class="input-group basic-row field-row" role="group">
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showBoundingBoxes" (change)="changeCorners()" /><span>Show
-                        Bounding Boxes </span>
+                    <input type="checkbox" [(ngModel)]="showBoundingBoxes" (change)="changeCorners()" /><span>Show Module Guides</span>
                 </div>
             </div>
         </section>
@@ -507,8 +495,93 @@
 
         @if (openPanel === 'centerBout') {
         <section class="ui-group">
-            <div class="ui-group-title">Center Bout</div>
+            <div class="ui-group-title">Upper Corner</div>
+            <div class="input-group basic-row field-row" role="group">
+                <label class="field-cell">
+                    <span class="field-title">X <span class="unit-label">mm</span></span>
+                    <input type="number" class="basic-input" step=".25" [(ngModel)]="d.params.bouts.UCr.x"
+                        (input)="changeCenterBout()" [style.borderColor]="colors.centerBoutUpOff2" />
+                </label>
+                <span class="field-separator" aria-hidden="true"></span>
+                <label class="field-cell">
+                    <span class="field-title">Y <span class="unit-label">mm</span></span>
+                    <input type="number" class="basic-input" step=".25" [(ngModel)]="d.params.bouts.UCr.y"
+                        (input)="changeCenterBout()" [style.borderColor]="colors.centerBoutUpOff2" />
+                </label>
+            </div>
+            @if (!d.params.options.useViolCornerUC) {
+            <div class="ui-group">
+                <div class="input-group basic-row field-row" role="group">
+                    <label class="field-cell">
+                        <span class="field-title">U3 Radius <span class="unit-label">mm</span></span>
+                        <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.U3.r"
+                            (input)="changeCenterBout()" [style.borderColor]="colors.centerBoutUp" />
+                    </label>
+                    <label class="field-cell"> </label>
+                    <label class="field-cell">
+                        <span class="field-title">U3 to LBW</span>
+                        <div class="basic-display" aria-label="Upper bout to width ratio value">{{
+                            nearestFraction(d.params.ratios.U3toLBW) }}</div>
+                    </label>
+                </div>
+                <div class="input-group basic-row field-row" role="group">
+                    <label class="field-cell">
+                        <span class="field-title">CU Radius <span class="unit-label">mm</span></span>
+                        <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.CU.r"
+                            (input)="changeCenterBout()" [style.borderColor]="colors.centerBoutUpOff" />
+                    </label>
+                    <label class="field-cell"></label>
+                    <label class="field-cell">
+                        <span class="field-title">CU to LBW</span>
+                        <div class="basic-display"
+                            aria-label="Upper center bout radius to lower bout width ratio value">{{
+                            nearestFraction(d.params.ratios.CUtoLBW) }}</div>
+                    </label>
+                </div>
+            </div>
+            }
+            @else {
+            <div class="ui-group">
+                <div [style.opacity]="0.5" [style.pointerEvents]="'none'">
+                    <div class="input-group basic-row field-row" role="group">
+                        <label class="field-cell">
+                            <span class="field-title">U3 Radius <span class="unit-label">mm</span></span>
+                            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.U3.r"
+                                (input)="changeCenterBout()" disabled [style.borderColor]="colors.centerBoutUp" />
+                        </label>
+                        <label class="field-cell"> </label>
+                        <label class="field-cell">
+                            <span class="field-title">U3 to LBW</span>
+                            <div class="basic-display" aria-label="Upper bout to width ratio value">{{
+                                nearestFraction(d.params.ratios.U3toLBW) }}</div>
+                        </label>
+                    </div>
+                </div>
+                <div class="input-group basic-row field-row" role="group">
+                    <label class="field-cell">
+                        <span class="field-title">CU Radius <span class="unit-label">mm</span></span>
+                        <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.CU.r"
+                            (input)="changeCenterBout()" [style.borderColor]="colors.centerBoutUpOff" />
+                    </label>
+                    <label class="field-cell"></label>
+                    <label class="field-cell">
+                        <span class="field-title">CU to LBW</span>
+                        <div class="basic-display"
+                            aria-label="Upper center bout radius to lower bout width ratio value">{{
+                            nearestFraction(d.params.ratios.CUtoLBW) }}</div>
+                    </label>
+                </div>
+            </div>
+            }
 
+            <div class="toggle">
+                <input type="checkbox" [(ngModel)]="d.params.options.useViolCornerUC"
+                    (change)="changeCenterBout()" /><span>Use Viol Corner</span>
+            </div>
+        </section>
+
+        <section class="ui-group">
+            <div class="ui-group-title">Center Bout</div>
             <div class="input-group basic-row field-row" role="group">
                 <label class="field-cell">
                     <span class="field-title">Total Width <span class="unit-label">mm</span></span>
@@ -522,24 +595,7 @@
                         nearestFraction(d.params.ratios.CBWtoLBW) }}</div>
                 </label>
             </div>
-
             <div class="ui-group">
-                <div class="input-group basic-row field-row" role="group">
-                    <label class="field-cell">
-                        <span class="field-title">CU Radius <span class="unit-label">mm</span></span>
-                        <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.CU.r"
-                            (input)="changeCenterBout()" [style.borderColor]="colors.centerBoutUp" />
-                    </label>
-                    <label class="field-cell"></label>
-                    <label class="field-cell">
-                        <span class="field-title">CU to LBW</span>
-                        <div class="basic-display"
-                            aria-label="Upper center bout radius to lower bout width ratio value">{{
-                            nearestFraction(d.params.ratios.CUtoLBW) }}</div>
-                    </label>
-                </div>
-
-
                 <div class="input-group basic-row field-row" role="group">
                     <label class="field-cell">
                         <span class="field-title">C0 Radius <span class="unit-label">mm</span></span>
@@ -557,13 +613,61 @@
                             nearestFraction(d.params.ratios.C0toLBW) }}</div>
                     </label>
                 </div>
+            </div>
+            <div class="toggle">
+                <input type="checkbox" [(ngModel)]="d.params.options.useKellyC0"
+                    (change)="changeCenterBout()" /><span>Fit C0 to Bouts</span>
+            </div>
+        </section>
 
-                <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="d.params.options.useKellyC0"
-                        (change)="changeCenterBout()" /><span>Fit C0 to Bouts</span>
+        <section class="ui-group">
+            <div class="ui-group-title">Lower Corner</div>
+            <div class="input-group basic-row field-row" role="group">
+                <label class="field-cell">
+                    <span class="field-title">X <span class="unit-label">mm</span></span>
+                    <input type="number" class="basic-input" step=".25" [(ngModel)]="d.params.bouts.LCr.x"
+                        (input)="changeCenterBout()" [style.borderColor]="colors.centerBoutLowOff2" />
+                </label>
+                <span class="field-separator" aria-hidden="true"></span>
+                <label class="field-cell">
+                    <span class="field-title">Y <span class="unit-label">mm</span></span>
+                    <input type="number" class="basic-input" step=".25" [(ngModel)]="d.params.bouts.LCr.y"
+                        (input)="changeCenterBout()" [style.borderColor]="colors.centerBoutLowOff2" />
+                </label>
+            </div>
+            @if (!d.params.options.useViolCornerLC) {
+            <div class="ui-group">
+                <div class="input-group basic-row field-row" role="group">
+                    <label class="field-cell">
+                        <span class="field-title">CL Radius <span class="unit-label">mm</span></span>
+                        <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.CL.r"
+                            (input)="changeCenterBout()" [style.borderColor]="colors.centerBoutLowOff" />
+                    </label>
+                    <label class="field-cell"></label>
+                    <label class="field-cell">
+                        <span class="field-title">CL to LBW</span>
+                        <div class="basic-display"
+                            aria-label="Lower center bout radius to lower bout width ratio value">{{
+                            nearestFraction(d.params.ratios.CLtoLBW) }}</div>
+                    </label>
                 </div>
-                <br>
-
+                <div class="input-group basic-row field-row" role="group">
+                    <label class="field-cell">
+                        <span class="field-title">L3 Radius <span class="unit-label">mm</span></span>
+                        <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.L3.r"
+                            (input)="changeCenterBout()" [style.borderColor]="colors.centerBoutLow" />
+                    </label>
+                    <label class="field-cell"> </label>
+                    <label class="field-cell">
+                        <span class="field-title">L3 to LBW</span>
+                        <div class="basic-display" aria-label="Lower bout to width ratio value">{{
+                            nearestFraction(d.params.ratios.L3toLBW) }}</div>
+                    </label>
+                </div>
+            </div>
+            }
+            @else {
+            <div class="ui-group">
                 <div class="input-group basic-row field-row" role="group">
                     <label class="field-cell">
                         <span class="field-title">CL Radius <span class="unit-label">mm</span></span>
@@ -578,36 +682,51 @@
                             nearestFraction(d.params.ratios.CLtoLBW) }}</div>
                     </label>
                 </div>
+                <div [style.opacity]="0.5" [style.pointerEvents]="'none'">
+                    <div class="input-group basic-row field-row" role="group">
+                        <label class="field-cell">
+                            <span class="field-title">L3 Radius <span class="unit-label">mm</span></span>
+                            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.L3.r"
+                                (input)="changeCenterBout()" disabled [style.borderColor]="colors.centerBoutLowOff" />
+                        </label>
+                        <label class="field-cell"> </label>
+                        <label class="field-cell">
+                            <span class="field-title">L3 to LBW</span>
+                            <div class="basic-display" aria-label="Lower bout to width ratio value">{{
+                                nearestFraction(d.params.ratios.L3toLBW) }}</div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            }
+
+            <div class="toggle">
+                <input type="checkbox" [(ngModel)]="d.params.options.useViolCornerLC"
+                    (change)="changeCenterBout()" /><span>Use Viol Corner</span>
             </div>
         </section>
 
         <section class="ui-group">
             <div class="input-group basic-row field-row" role="group">
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showModuleArcs" (change)="changeCenterBout()" /><span>Show
-                        Module
-                        Arcs </span>
+                    <input type="checkbox" [(ngModel)]="showModuleArcs" (change)="changeCenterBout()" /><span>Show Module Arcs </span>
                 </div>
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showAllArcs" (change)="changeCenterBout()" /><span>Show All Arcs
-                    </span>
+                    <input type="checkbox" [(ngModel)]="showAllArcs" (change)="changeCenterBout()" /><span>Show All Arcs</span>
                 </div>
 
             </div>
             <div class="input-group basic-row field-row" role="group">
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showModuleCircles" (change)="changeCenterBout()" /><span>Show
-                        Module Circles </span>
+                    <input type="checkbox" [(ngModel)]="showModuleCircles" (change)="changeCenterBout()" /><span>Show Module Circles </span>
                 </div>
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeCenterBout()" /><span>Show All
-                        Circles </span>
+                    <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeCenterBout()" /><span>Show All Circles </span>
                 </div>
             </div>
             <div class="input-group basic-row field-row" role="group">
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showBoundingBoxes" (change)="changeCenterBout()" /><span>Show
-                        Bounding Boxes </span>
+                    <input type="checkbox" [(ngModel)]="showBoundingBoxes" (change)="changeCenterBout()" /><span>Show Module Guides</span>
                 </div>
             </div>
         </section>
@@ -797,24 +916,19 @@
         <section class="ui-group">
             <div class="input-group basic-row field-row" role="group">
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showModuleArcs" (change)="changeOuterTrace()" /><span>Show
-                        Module
-                        Arcs </span>
+                    <input type="checkbox" [(ngModel)]="showModuleArcs" (change)="changeOuterTrace()" /><span>Show Module Arcs </span>
                 </div>
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showAllArcs" (change)="changeOuterTrace()" /><span>Show All Arcs
-                    </span>
+                    <input type="checkbox" [(ngModel)]="showAllArcs" (change)="changeOuterTrace()" /><span>Show All Arcs</span>
                 </div>
 
             </div>
             <div class="input-group basic-row field-row" role="group">
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showModuleCircles" (change)="changeOuterTrace()" /><span>Show
-                        Module Circles </span>
+                    <input type="checkbox" [(ngModel)]="showModuleCircles" (change)="changeOuterTrace()" /><span>Show Module Circles </span>
                 </div>
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeOuterTrace()" /><span>Show All
-                        Circles </span>
+                    <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeOuterTrace()" /><span>Show All Circles </span>
                 </div>
             </div>
         </section>
@@ -943,10 +1057,10 @@
             <div class="ui-group-title">Inner Trace</div>
             <p class="export-description">The inner body outline used for the mould and rib bending.</p>
             <div class="input-group basic-row field-row" role="group">
-                <button type="button" class="export-btn" (click)="previewExport('innerTrace')">Preview</button>
-                <button type="button" class="export-btn export-btn--primary"
+                <button type="button" class="recipe-btn" (click)="previewExport('innerTrace')">Preview</button>
+                <button type="button" class="recipe-btn recipe-btn--primary"
                     (click)="downloadExport('innerTrace')">SVG</button>
-                <button type="button" class="export-btn export-btn--primary"
+                <button type="button" class="recipe-btn recipe-btn--primary"
                     (click)="downloadPdf('innerTrace')">PDF</button>
             </div>
         </section>
@@ -955,10 +1069,10 @@
             <div class="ui-group-title">Top Trace</div>
             <p class="export-description">Top of the instrument.</p>
             <div class="input-group basic-row field-row" role="group">
-                <button type="button" class="export-btn" (click)="previewExport('outerTrace')">Preview</button>
-                <button type="button" class="export-btn export-btn--primary"
+                <button type="button" class="recipe-btn" (click)="previewExport('outerTrace')">Preview</button>
+                <button type="button" class="recipe-btn recipe-btn--primary"
                     (click)="downloadExport('outerTrace')">SVG</button>
-                <button type="button" class="export-btn export-btn--primary"
+                <button type="button" class="recipe-btn recipe-btn--primary"
                     (click)="downloadPdf('outerTrace')">PDF</button>
             </div>
         </section>
@@ -967,10 +1081,10 @@
             <div class="ui-group-title">Back Trace</div>
             <p class="export-description">The back of the instrument, with button.</p>
             <div class="input-group basic-row field-row" role="group">
-                <button type="button" class="export-btn" (click)="previewExport('back')">Preview</button>
-                <button type="button" class="export-btn export-btn--primary"
+                <button type="button" class="recipe-btn" (click)="previewExport('back')">Preview</button>
+                <button type="button" class="recipe-btn recipe-btn--primary"
                     (click)="downloadExport('back')">SVG</button>
-                <button type="button" class="export-btn export-btn--primary" (click)="downloadPdf('back')">PDF</button>
+                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('back')">PDF</button>
             </div>
         </section>
 
@@ -978,10 +1092,10 @@
             <div class="ui-group-title">Mould</div>
             <p class="export-description">The mould use to create the rib structure.</p>
             <div class="input-group basic-row field-row" role="group">
-                <button type="button" class="export-btn" (click)="previewExport('mould')">Preview</button>
-                <button type="button" class="export-btn export-btn--primary"
+                <button type="button" class="recipe-btn" (click)="previewExport('mould')">Preview</button>
+                <button type="button" class="recipe-btn recipe-btn--primary"
                     (click)="downloadExport('mould')">SVG</button>
-                <button type="button" class="export-btn export-btn--primary" (click)="downloadPdf('mould')">PDF</button>
+                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('mould')">PDF</button>
             </div>
         </section>
 
@@ -989,10 +1103,10 @@
             <div class="ui-group-title">Block Templates</div>
             <p class="export-description">Individual block templates.</p>
             <div class="input-group basic-row field-row" role="group">
-                <button type="button" class="export-btn" (click)="previewExport('blocks')">Preview</button>
-                <button type="button" class="export-btn export-btn--primary"
+                <button type="button" class="recipe-btn" (click)="previewExport('blocks')">Preview</button>
+                <button type="button" class="recipe-btn recipe-btn--primary"
                     (click)="downloadExport('blocks')">SVG</button>
-                <button type="button" class="export-btn export-btn--primary"
+                <button type="button" class="recipe-btn recipe-btn--primary"
                     (click)="downloadPdf('blocks')">PDF</button>
             </div>
         </section>
@@ -1001,7 +1115,7 @@
             <div class="ui-group-title">Full Plan</div>
             <p class="export-description">All pages combined into a single true-scale PDF.</p>
             <div class="input-group basic-row field-row" role="group">
-                <button type="button" class="export-btn export-btn--primary export-btn--full"
+                <button type="button" class="recipe-btn recipe-btn--primary recipe-btn--full"
                     (click)="downloadFullPlan()">Download Full Plan PDF</button>
             </div>
         </section>

@@ -49,7 +49,7 @@ import { MessageCenterComponent } from './shared/message-center.component';
         </app-kelly-violin>
         }
 
-        @if (selectedRecipe == "Enrico Ceruti Violin") {
+        @if (selectedRecipe == "enrico-ceruti-violin") {
          <app-enrico-ceruti-violin class="sidebar"
           (draftChange)="draftArgs = $event"
           (setBounds)="bounds=$event"
@@ -85,7 +85,7 @@ export class App {
   private messageService = inject(MessageService);
 
   draftArgs: Array<(g: any, ui: any) => void> = [];
-  selectedRecipe: string = 'Enrico Ceruti Violin';
+  selectedRecipe: string = 'enrico-ceruti-violin';
   loadedFileData: RecipeInterface | undefined = undefined;
   saveTick = 0;
   bounds: {pt1: Pt, pt2: Pt} | null = null;
@@ -138,7 +138,7 @@ export class App {
     const name = (data.recipeName ?? '').toLowerCase();
     if (name === 'kelly') this.selectedRecipe = 'Kelly Violin';
     if (name === 'beard') this.selectedRecipe = 'Beard Violin';
-    if (name === 'ceruti') this.selectedRecipe = 'Enrico Ceruti Violin';
+    if (name === 'ceruti') this.selectedRecipe = 'enrico-ceruti-violin';
   }
 
   requestSave() {

@@ -1,5 +1,5 @@
-import { solveInscribedCircleAlongAxis, circleCircleIntersections, angleFromCenter, interceptCirclesAndPoint, dist, lineFromTwoPoints, pointOnCircle, offsetCircleRadius, offsetArcRadius, inscribeCircleWithinCircle, pathFromArc, pathFromLine, flipArcAboutY, flipPointAboutY, unifyConnectedSvgPaths, pathFromRoundedRect, flipRectAboutY, pathFromCircle, pathFromRect, combinePathStrings, differenceFromTwoPaths, lineCircleIntersection, redefineArcCircle, intersectionFromTwoPaths, translatePath } from "../helpers/draftMath";
-import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, increaseArcAngle, Pt, Rectangle } from "../models/types";
+import { solveInscribedCircleAlongAxis, circleCircleIntersections, angleFromCenter, interceptCirclesAndPoint, dist, lineFromTwoPoints, pointOnCircle, offsetCircleRadius, offsetArcRadius, inscribeCircleWithinCircle, pathFromArc, pathFromLine, flipArcAboutY, flipPointAboutY, unifyConnectedSvgPaths, pathFromRoundedRect, flipRectAboutY, pathFromCircle, pathFromRect, combinePathStrings, differenceFromTwoPaths, lineCircleIntersection, redefineArcCircle, intersectionFromTwoPaths, translatePath, flipCircleAboutY } from "../helpers/draftMath";
+import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, increaseArcAngle, Line, Pt, Rectangle } from "../models/types";
 import { error } from "../shared/message-emitter";
 import { EnricoCerutiParams } from "./ceruti-types";
 
@@ -98,8 +98,24 @@ export function calculateCorners(p: EnricoCerutiParams): void {
     let LBWI = p.bouts.LBW - 2 * inset;
 
     if (!p.bouts.UCr) {
-        p.bouts.UCr = { x: Math.round(p.bouts.UBW / 2 * p.ratios.UCXtoUBW), y: Math.round(p.height * p.ratios.UCYtoH) };
-        p.bouts.LCr = { x: Math.round(p.bouts.LBW / 2 * p.ratios.LCXtoLBW), y: Math.round(p.height * p.ratios.LCYtoH) };
+        // we set a line at the ratio height of the body, then draw a guide circle from the bout to that line
+        // the intersection defines the "default" corner position, courtesy of David Beard
+        let lgPt = new Pt(-p.bouts.LBW / 2, p.bouts.L1.y);
+        let lgC = new Circle(lgPt.x, lgPt.y, p.bouts.LBW) 
+        let lgH = p.height * p.ratios.LCYtoH
+        let LCr = lineCircleIntersection({x:0, y:lgH}, {x:100, y:lgH}, lgC).sort((a, b) => a.x - b.x)[1] 
+        p.bouts.LCr = new Pt(LCr.x, LCr.y);
+
+        let ugPt = new Pt(-p.bouts.UBW / 2, p.bouts.U1.y);
+        let ugC = new Circle(ugPt.x, ugPt.y, p.bouts.UBW)
+        let ugH = p.height * p.ratios.UCYtoH
+        let UCr = lineCircleIntersection({x:0, y:ugH}, {x:100, y:ugH}, ugC).sort((a, b) => a.x - b.x)[1]
+        p.bouts.UCr = new Pt(UCr.x, UCr.y);
+
+        p.bouts.UCr.x = Math.round(p.bouts.UCr.x * 10) / 10
+        p.bouts.UCr.y = Math.round(p.bouts.UCr.y * 10) / 10
+        p.bouts.LCr.x = Math.round(p.bouts.LCr.x * 10) / 10
+        p.bouts.UCr.y = Math.round(p.bouts.UCr.y * 10) / 10
     }
 
     let U2R = p.bouts.U2?.r ?? Math.round(UBWI * p.ratios.U2toUBW);
@@ -213,6 +229,8 @@ export function calculateCorners(p: EnricoCerutiParams): void {
     p.ratios.U3toLBW = p.bouts.U3.r / LBWI;
     p.ratios.L2toLBW = p.bouts.L2.r / LBWI;
     p.ratios.L3toLBW = p.bouts.L3.r / LBWI;
+    p.ratios.UCYtoH = p.bouts.UCr.y / p.height;
+    p.ratios.LCYtoH = p.bouts.LCr.y / p.height;
 }
 
 let lastWorkingC0: Arc | null = null;
@@ -315,8 +333,8 @@ export function calculateOuterCorners(p: EnricoCerutiParams): void {
     // we want to increase the angle by the default corners a little bit
     if (!initialized) {
         // p.outerCorners.U31 = increaseArcAngle(p.outerCorners.U31, 5);
-        p.outerCorners.CU1 = increaseArcAngle(p.outerCorners.CU1, -15);
-        p.outerCorners.CL1 = increaseArcAngle(p.outerCorners.CL1, 12);
+        p.outerCorners.CU1 = increaseArcAngle(p.outerCorners.CU1, -10);
+        p.outerCorners.CL1 = increaseArcAngle(p.outerCorners.CL1, 10);
         // p.outerCorners.L31 = increaseArcAngle(p.outerCorners.L31, -5);
     }
 
@@ -368,13 +386,50 @@ export function calculateMould(p: EnricoCerutiParams, useHighAccuracy = false, s
 
         if (isViolin) {
             let pad = 2
-            let blockSize = 20
+            let blockHeight = 20
+            let blockWidth = 12
             p.blocks.U = new Rectangle(new Pt(-20, p.height - inset - 20), new Pt(20, p.height - inset))
-            p.blocks.CU = new Rectangle(new Pt(p.bouts.UCr.x + pad, p.bouts.UCr.y - pad), new Pt(p.bouts.UCr.x + pad - blockSize, p.bouts.UCr.y - pad + blockSize));
+            p.blocks.CU = new Rectangle(new Pt(p.bouts.UCr.x + pad, p.bouts.UCr.y - pad), new Pt(p.bouts.UCr.x + pad - blockWidth, p.bouts.UCr.y - pad + blockHeight));
             p.blocks.CUPad = pad
-            p.blocks.CL = new Rectangle(new Pt(p.bouts.LCr.x + pad, p.bouts.LCr.y + pad), new Pt(p.bouts.LCr.x + pad - blockSize, p.bouts.LCr.y + pad - blockSize));
+            p.blocks.CL = new Rectangle(new Pt(p.bouts.LCr.x + pad, p.bouts.LCr.y + pad), new Pt(p.bouts.LCr.x + pad - blockWidth, p.bouts.LCr.y + pad - blockHeight));
             p.blocks.CLPad = pad
             p.blocks.L = new Rectangle(new Pt(-20, inset), new Pt(20, inset + 20));
+        }
+
+        if (isViola) {
+            let pad = 3
+            let blockHeight = 30
+            let blockWidth = 18
+            p.blocks.U = new Rectangle(new Pt(-25, p.height - inset - 25), new Pt(25, p.height - inset))
+            p.blocks.CU = new Rectangle(new Pt(p.bouts.UCr.x + pad, p.bouts.UCr.y - pad), new Pt(p.bouts.UCr.x + pad - blockWidth, p.bouts.UCr.y - pad + blockHeight));
+            p.blocks.CUPad = pad
+            p.blocks.CL = new Rectangle(new Pt(p.bouts.LCr.x + pad, p.bouts.LCr.y + pad), new Pt(p.bouts.LCr.x + pad - blockWidth, p.bouts.LCr.y + pad - blockHeight));
+            p.blocks.CLPad = pad
+            p.blocks.L = new Rectangle(new Pt(-25, inset), new Pt(25, inset + 25));
+        }
+
+        if (isCello) {
+            let pad = 5
+            let blockHeight = 40
+            let blockWidth = 24
+            p.blocks.U = new Rectangle(new Pt(-45, p.height - inset - 45), new Pt(45, p.height - inset))
+            p.blocks.CU = new Rectangle(new Pt(p.bouts.UCr.x + pad, p.bouts.UCr.y - pad), new Pt(p.bouts.UCr.x + pad - blockWidth, p.bouts.UCr.y - pad + blockHeight));
+            p.blocks.CUPad = pad
+            p.blocks.CL = new Rectangle(new Pt(p.bouts.LCr.x + pad, p.bouts.LCr.y + pad), new Pt(p.bouts.LCr.x + pad - blockWidth, p.bouts.LCr.y + pad - blockHeight));
+            p.blocks.CLPad = pad
+            p.blocks.L = new Rectangle(new Pt(-45, inset), new Pt(45, inset + 45));
+        }
+
+        if (isBass) {
+            let pad = 8
+            let blockHeight = 50
+            let blockWidth = 30
+            p.blocks.U = new Rectangle(new Pt(-70, p.height - inset - 70), new Pt(70, p.height - inset))
+            p.blocks.CU = new Rectangle(new Pt(p.bouts.UCr.x + pad, p.bouts.UCr.y - pad), new Pt(p.bouts.UCr.x + pad - blockWidth, p.bouts.UCr.y - pad + blockHeight));
+            p.blocks.CUPad = pad
+            p.blocks.CL = new Rectangle(new Pt(p.bouts.LCr.x + pad, p.bouts.LCr.y + pad), new Pt(p.bouts.LCr.x + pad - blockWidth, p.bouts.LCr.y + pad - blockHeight));
+            p.blocks.CLPad = pad
+            p.blocks.L = new Rectangle(new Pt(-70, inset), new Pt(70, inset + 70));
         }
 
         if (p.options.useViolNeck) {

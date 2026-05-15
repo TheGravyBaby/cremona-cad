@@ -17,11 +17,7 @@
     </div>
 
     <div class="right">
-  
-      <label class="chk">
-        <input type="checkbox" [(ngModel)]="showReferenceImage" (change)="onDisplayPreferenceChange()" />
-        Reference
-      </label>
+
       <div class="align-controls">
         <button type="button" class="btn" [class.active]="referenceModeEnabled" (click)="toggleAlignPopup()">
           Reference
@@ -57,11 +53,22 @@
               Lock aspect
             </label>
             <button type="button" class="btn" (click)="resetReferenceImage()">Reset</button>
+
+          </div>
+          <div class="row">
+            <input #refFileInput type="file" accept="image/*" style="display:none"
+              (change)="onReferenceFileSelected($event)" />
+            <label class="chk">
+              <input type="checkbox" [(ngModel)]="showReferenceImage" (change)="onDisplayPreferenceChange()" />
+              View Image
+            </label>
+            <button type="button" class="btn" (click)="refFileInput.click()">Upload</button>
+
           </div>
         </div>
         }
       </div>
-       <div class="axis-controls">
+      <div class="axis-controls">
         <button type="button" class="btn" [class.active]="axisPopupOpen" (click)="toggleAxisPopup()">
           Axis
         </button>
@@ -76,7 +83,7 @@
             <input type="number" min="0.1" step="0.1" [ngModel]="gridStepY" (ngModelChange)="gridStepY = $event" />
           </div>
           <label class="chk">
-          <input type="checkbox" [ngModel]="showAxes" (ngModelChange)="showAxes = $event" />
+            <input type="checkbox" [ngModel]="showAxes" (ngModelChange)="showAxes = $event" />
             Axis
           </label>
           <label class="chk">

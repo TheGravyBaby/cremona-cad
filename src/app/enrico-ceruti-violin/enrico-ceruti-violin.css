@@ -11,37 +11,41 @@
   line-height: 1.4;
 }
 
-.export-btn {
-  padding: 6px 14px;
-  border: 1px solid var(--border-color, #555);
+.recipe-btn {
+  padding: 4px 8px;
+  height: 30px;
+  box-sizing: border-box;
+  width: 100%;
+  border: 1px solid var(--ui-border-strong);
   border-radius: 4px;
-  background: var(--input-bg, #2a2a2a);
-  color: var(--text-primary, #ddd);
+  background: var(--ui-bg-panel);
+  color: var(--ui-text-primary);
   cursor: pointer;
   font-size: 0.875rem;
-  transition: background 0.15s;
+  transition: background 0.15s, border-color 0.15s;
 }
 
-.export-btn:hover:not(:disabled) {
-  background: var(--hover-bg, #3a3a3a);
+.recipe-btn:hover:not(:disabled) {
+  background: var(--ui-control-bg-hover);
+  border-color: var(--ui-border-elevated);
 }
 
-.export-btn:disabled {
+.recipe-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
-.export-btn--primary {
-  background: var(--accent-bg, #1e4d6b);
-  border-color: var(--accent-border, #2e6d9b);
+.recipe-btn--primary {
+  background: var(--ui-accent);
+  border-color: var(--ui-focus-border);
   color: #fff;
 }
 
-.export-btn--primary:hover:not(:disabled) {
-  background: var(--accent-hover, #2a6080);
+.recipe-btn--primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ui-accent) 85%, #fff);
 }
 
-.export-btn--full {
+.recipe-btn--full {
   width: 100%;
   justify-content: center;
   font-weight: 600;
