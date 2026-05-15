@@ -125,9 +125,9 @@ const DefaultParams: EnricoCerutiParams = {
     L3toLBW: 1 / 8,
 
     UCYtoH: 2 / 3,
-    UCXtoUBW: 8 / 9,
+    UCXtoUBW: 7 / 8,
     LCYtoH: 6 / 15,
-    LCXtoLBW: 8 / 9,
+    LCXtoLBW: 7 / 8,
   },
   bouts: {
     UBW: undefined,

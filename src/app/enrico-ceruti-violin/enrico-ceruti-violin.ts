@@ -27,7 +27,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     { id: 'mainBouts', label: 'Main Bouts' },
     { id: 'corners', label: 'Corners' },
     { id: 'centerBout', label: 'Center Bout' },
-    { id: 'outerTrace', label: 'Outer Trace' },
+    { id: 'outerTrace', label: 'Outer Path' },
     { id: 'mould', label: 'Mould' },
     { id: 'export', label: 'Export' },
   ] as const;

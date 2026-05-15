@@ -17,6 +17,33 @@ export class TopBarComponent {
   @Output() nightModeChange = new EventEmitter<boolean>();
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
 
+  // Image gallery properties
+  images = [
+    {
+      src: 'CerutiDrawing.png',
+      alt: '',
+      caption: 'A drawing from the Cremonese workshop of Enrico Ceruti, early 19th century.'
+    },
+    {
+      src: 'CC_Drawing.png',
+      alt: '',
+      caption: 'A CremonaCad drawing using the similar arc segments.'
+    }
+  ];
+  currentImageIndex = 0;
+
+  nextImage() {
+    this.currentImageIndex = (this.currentImageIndex + 1) % this.images.length;
+  }
+
+  previousImage() {
+    this.currentImageIndex = (this.currentImageIndex - 1 + this.images.length) % this.images.length;
+  }
+
+  get currentImage() {
+    return this.images[this.currentImageIndex];
+  }
+
   onNewClick() {
     this.newFile.emit(true);
   }
