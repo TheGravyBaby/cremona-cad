@@ -294,19 +294,22 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     }
   };
 
+  oldViolNeckValue = this.d.params.options.useViolNeck;
   changeMainBouts(): void {
     this.debounce(() => safeRun(() => {
       let p = this.d.params
       let inset = p.overhang + p.rib;
       calculateMainBouts(p);
 
-      if (p.options.useViolNeck) {
+      if (p.options.useViolNeck && p.options.useViolNeck !== this.oldViolNeckValue) {
         let height = pointOnCircle(p.viol.V0, 0).y + inset;
         this.setBounds.emit({
           pt1: { x: -p.width / 2, y: 0 },
           pt2: { x: p.width / 2, y: height },
         });
+        this.oldViolNeckValue = true;
       }
+      this.oldViolNeckValue = p.options.useViolNeck;
 
       this.panelFlow?.refreshEnabledPanels();
       this.draftChange.emit([this.renderBounds(false), this.renderMainBouts(true)]);
