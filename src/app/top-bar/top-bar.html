@@ -3,12 +3,8 @@
     <div class="title">
       <img src="CremonaCadLogo.svg" alt="Cremona CAD" />
     </div>
-    <button
-      class="btn icon-btn"
-      [class.active]="nightMode"
-      (click)="onNightModeToggle()"
-      [attr.aria-pressed]="nightMode"
-      [attr.aria-label]="nightMode ? 'Switch to day mode' : 'Switch to night mode'">
+    <button class="btn icon-btn" [class.active]="nightMode" (click)="onNightModeToggle()"
+      [attr.aria-pressed]="nightMode" [attr.aria-label]="nightMode ? 'Switch to day mode' : 'Switch to night mode'">
       {{ nightMode ? '☾' : '☀' }}
     </button>
   </div>
@@ -24,13 +20,7 @@
     <button class="btn" (click)="onNewClick()">New</button>
     <button class="btn" (click)="onSaveClick()">Save</button>
     <button class="btn" (click)="triggerFilePick()">Load</button>
-    <input
-      #fileInput
-      class="file"
-      type="file"
-      accept=".json,application/json"
-      (change)="onFilePicked($event)"
-    />
+    <input #fileInput class="file" type="file" accept=".json,application/json" (change)="onFilePicked($event)" />
 
     <button class="btn about-btn" (click)="openAbout()" aria-label="About Cremona CAD">?</button>
   </div>
@@ -39,107 +29,176 @@
 
 <!-- About / Tutorial Modal -->
 @if (aboutOpen) {
-  <div class="modal-backdrop" (click)="closeAbout()" role="dialog" aria-modal="true" aria-label="About Cremona CAD">
-    <div class="modal" (click)="$event.stopPropagation()">
+<div class="modal-backdrop" (click)="closeAbout()" role="dialog" aria-modal="true" aria-label="About Cremona CAD">
+  <div class="modal" (click)="$event.stopPropagation()">
 
-      <div class="modal-header">
-        <div class="modal-tabs">
-          <button class="tab-btn" [class.active]="activeTab === 'about'" (click)="activeTab = 'about'">Cremona Cad</button>
-          <button class="tab-btn" [class.active]="activeTab === 'tutorial'" (click)="activeTab = 'tutorial'">Tutorial</button>
-          <button class="tab-btn" [class.active]="activeTab === 'author'" (click)="activeTab = 'author'">About The Author</button>
-        </div>
-        <button class="modal-close" (click)="closeAbout()" aria-label="Close">✕</button>
+    <div class="modal-header">
+      <div class="modal-tabs">
+        <button class="tab-btn" [class.active]="activeTab === 'about'" (click)="activeTab = 'about'">CremonaCad</button>
+        <button class="tab-btn" [class.active]="activeTab === 'tutorial'"
+          (click)="activeTab = 'tutorial'">Tutorial</button>
+        <button class="tab-btn" [class.active]="activeTab === 'author'" (click)="activeTab = 'author'">About The
+          Author</button>
       </div>
+      <button class="modal-close" (click)="closeAbout()" aria-label="Close">✕</button>
+    </div>
 
-      <div class="modal-body">
+    <div class="modal-body">
 
-        @if (activeTab === 'about') {
-          <section class="about-section">
-            <h2>Cremona CAD</h2>
-            <p>
-              Cremona CAD is a parametric drafting tool for luthiers. It generates precise, geometrically-accurate
-              violin outlines and internal templates based on historical and modern making traditions.
-              All drawing happens in the browser — no installation, no cloud account.
-            </p>
+      @if (activeTab === 'about') {
+      <section class="about-section">
+        <h2>CremonaCad</h2>
+        <figure class="ceruti-figure">
+          <img [src]="currentImage.src" [alt]="currentImage.alt" />
+          <figcaption>{{ currentImage.caption }}</figcaption>
+          <div class="image-nav" [class.single-image]="images.length === 1">
+            @if (images.length > 1) {
+            <button class="nav-btn" (click)="previousImage()" aria-label="Previous image">‹</button>
+            <span class="image-counter">{{ currentImageIndex + 1 }} / {{ images.length }}</span>
+            <button class="nav-btn" (click)="nextImage()" aria-label="Next image">›</button>
+            }
+          </div>
+        </figure>
+        <p>
+          CremonaCad is a free and open source application for designing violin family instruments!
+        </p>
+        <p>
+          Rather than a static trace, or a complex list of coordinates,
+          CremonaCad defines instruments using a simple system of intersecting arcs.
+          These patterns are historically informed by the drafting document found in
+          the workshop of Enrico Ceruti, as well as the significant research of David Beard, Kevin Kelly and François
+          Denis.
+        </p>
 
-            <h3>Available Recipes</h3>
-            <ul>
-              <li><strong>Enrico Ceruti Violin</strong> — proportions derived from the Cremonese master's surviving instruments.</li>
-              <li><strong>Kelly Violin</strong> — a contemporary American workshop model.</li>
-              <li><strong>Beard Violin</strong> — a traditional pattern used in craft-school instruction.</li>
-            </ul>
+        <p>
+          Upload a historical instrument and use it as a reference,
+          or go off the rails and create something totally unique! :D
+        </p>
+        <p>
+          Once your design is complete, CremonaCad can create moulds and templates for your specific instrument.
+          These patterns can be exported either as PDFs for traditional hand-making,
+          or as SVGs for computer assisted fabrication.
+        </p>
 
-            <h3>Files</h3>
-            <p>
-              Projects are saved as plain <code>.json</code> files. Use <em>Save</em> to export the current
-              recipe parameters and <em>Load</em> to restore a previous session. Files are recipe-specific;
-              a Ceruti file cannot be loaded into the Kelly recipe.
-            </p>
+      </section>
+      }
 
-            <h3>Reference Images</h3>
-            <p>
-              Any recipe panel lets you overlay a reference photograph or scan on the draft canvas.
-              Use the opacity and transform controls inside the recipe sidebar to align it with the generated draft.
-            </p>
+      @if (activeTab === 'tutorial') {
+      <section class="tutorial-section">
+        <h3>Overview</h3>
+        <p>CremonaCad uses input controls on the right side of the screen to draw your instrument on the canvas in real
+          time. The process is defined by a series of sections which build upon one another, drawing each part of the
+          instrument step by step. Once all the sections are complete, you can generate moulds and templates for
+          construction.</p>
+        <ul class="tips-list">
+          <li>The canvas comes with pan and zoom controls to allow precise visualiztion of your design.</li>
+          <li>Reference images can be loaded and scaled using the 'Reference' controls on the bottom right of the
+            canvas.</li>
+          <li>The 'Axis" controls on the bottom right of the canvas allow for custom grid settings.</li>
+          <li>Files can be saved and loaded using the 'File' menu at the top right of the screen.</li>
+        </ul>
 
-            <h3>Night / Day Mode</h3>
-            <p>Toggle the ☾ / ☀ button in the top-left to switch between dark and light themes. Your preference is saved automatically.</p>
-          </section>
-        }
 
-        @if (activeTab === 'tutorial') {
-          <section class="tutorial-section">
-            <h2>Getting Started</h2>
+        <h3>Base Measurements</h3>
+        <p>This section sets the primary dimensions of the instrument, the setting of a reference image, as well as
+          basic file properties.</p>
+        <ul class="tips-list">
+          <li>CremonaCad comes with a set of predefined templates from historical instruments. Select one to study, or
+            create a new design.</li>
+          <li>Use the 'Upload Reference Image' button to add your own images to aid in your design process.</li>
+          <li>Use the primary dimensions section to define the height and width of your instrument. This is also useful
+            for scaling your reference image.</li>
+          <li>For many measurements, ratios will be displayed to the right of the metric value. Many cremonese
+            instruments use simple integer ratios which define their arc segments.</li>
+          <li>Define rib and overhang values to create a total inset value. This inset will bond the 'inner path' of the
+            instrument.</li>
+        </ul>
 
-            <ol class="tutorial-steps">
-              <li>
-                <span class="step-label">Pick a recipe</span>
-                <p>A <em>recipe</em> is a set of proportional rules that describes a particular violin model.
-                The active recipe is shown in the sidebar on the right.</p>
-              </li>
-              <li>
-                <span class="step-label">Adjust the parameters</span>
-                <p>Each recipe exposes sliders and numeric inputs that control everything from body length to
-                upper/lower bout widths and corner placement. The draft canvas updates in real time.</p>
-              </li>
-              <li>
-                <span class="step-label">Navigate the canvas</span>
-                <p>
-                  <strong>Scroll</strong> to zoom in and out.<br />
-                  <strong>Middle-click drag</strong> (or <strong>right-click drag</strong>) to pan.<br />
-                  The draft is always centered on load.
-                </p>
-              </li>
-              <li>
-                <span class="step-label">Overlay a reference image</span>
-                <p>In the recipe sidebar, locate the <em>Reference Image</em> section. Upload any image (scan,
-                photo, PDF export) and use the transform controls to scale and position it behind the draft lines.</p>
-              </li>
-              <li>
-                <span class="step-label">Save your work</span>
-                <p>Click <strong>Save</strong> in the top bar to download a <code>.json</code> snapshot of all
-                current parameters. Click <strong>Load</strong> to restore it in a future session.</p>
-              </li>
-              <li>
-                <span class="step-label">Start fresh</span>
-                <p>Click <strong>New</strong> to reset all parameters to the recipe defaults.</p>
-              </li>
-            </ol>
+        <h3>Main Bouts</h3>
+        <p>The main bouts define the upper and lower sections of the instrument's body. These will be the first arc
+          segments you create.</p>
+        <ul class="tips-list">
+          <li>The join arcs U0 and L0 (Upper and Lower) are used to connect the 'Veisca' arc U1 and L1.</li>
+          <li>Each bout has a width measurent which sets the total outer width of the instrument including the inset.
+            These width values are often provided in online measurements of historical instruments, and are helpful in
+            guiding your design.</li>
+          <li>Use the 'Viol Neck' option to add a viola da gamba-style upper extension. These are of course common on
+            double bass</li>
+        </ul>
 
-            <h3>Tips</h3>
-            <ul class="tips-list">
-              <li>The canvas updates continuously; there is no "Apply" step.</li>
-              <li>Save often — the browser does not auto-save between sessions.</li>
-              <li>Day/Night mode preference persists across sessions via <code>localStorage</code>.</li>
-            </ul>
-          </section>
-        }
-        @if (activeTab === 'author') {
+        <h3>Corners</h3>
+        <p>This section defines both the position of the corners and the arc segments that connect them to the main
+          bouts. </p>
+        <ul class="tips-list">
+          <li>XY controls exist for each corner placement. In general I have tried to avoid cartesian coordinates, but
+            this allows for precise adjustments.</li>
+          <li>The 'Use Viol Corner' options allows for the creation of Viol style corners, which only have one
+            connecting Arc.</li>
+        </ul>
 
-        }
+        <h3>Center Bout</h3>
+        <p>The center bout is the narrowest section of the instrument, connecting the upper and lower bouts.</p>
+        <ul class="tips-list">
+          <li>The Center Bout Width defines the total outer width at the narrowest point. When adjusting the C0 circle,
+            this width will remain constant.</li>
+          <li>The 'Fit C0 to Bouts' option automatically calculates C0 to cleanly intersect U2 and L2. This is based off
+            of Kevin Kellys four circle method, while still allowing for manual adjustments.</li>
+        </ul>
 
-      </div>
+        <h3>Outer Path</h3>
+        <p>The outer path section defines the button and corner arcs that complete the outline of the instrument.</p>
+        <ul class="tips-list">
+          <li>Each corner is defined by at least two corner arcs and respective "cutoff" angles. The cutoff values
+            angles define points at which a line is drawn accross the outer corners</li>
+          <li>Some violins employ more elaborate corners with "double arcs" which you may employ on any corner.</li>
+          <li>The button is a small half circle segment that is usually found on the backs of violin family instruments.
+            You can define its dimensions here.</li>
+        </ul>
+
+        <h3>Mould</h3>
+        <p>The mould section defines the internal blocks and templates used to construct the instrument. These blocks
+          form the wooden structure around which the ribs are bent and glued.</p>
+        <ul class="tips-list">
+          <li>Four blocks are defined: Upper, Upper Corner, Lower Corner, and Lower. Each block has height and width
+            dimensions.</li>
+          <li>Corner block 'Pad' values add extra material at each corner point. This can help with finding the optimal
+            placing of the block against the mould.</li>
+          <li>If the mould is to be cut on the CNC, the 'Bit Diameter' controls prevent issues with right angles at
+            critical glue points.</li>
+          <li>The default mould has clamping channels parallel to the edges. However, a simple box cutout can be
+            specified as well.</li>
+        </ul>
+
+        <h3>Export</h3>
+        <p>Once your design is complete, you can export various templates and patterns for construction. CremonaCad
+          generates both SVG and PDF files suitable for hand-making or computer-assisted fabrication.</p>
+      </section>
+      }
+
+
+      @if (activeTab === 'author') {
+      <section class="author-section">
+        <h2>About The Project</h2>
+        <p>
+          Hi my name is Andrew Argraves, a software engineer, cellist, and aspiring lutheir living in New Haven, CT!
+
+          CremonaCad is a passion project initially developed as a tool to better understand the geomety of violin
+          family instruments. However, as the project has developed over many months of late night coding, I am begining
+          to see its potential as a design aid and educational tool for the maker community at large.
+
+          I intend to keep developing CremonaCad for some time, and hope to eventually add features for arching
+          templates, f-holes, and neck design. I believe strongly in open source software and community collaberation.
+          If you are interested in collaberating on CremonaCad, feel free to reach out to me at
+
+          andrewargraves@gmail.combined
+
+          Thanks, and happy drafting!
+        </p>
+
+      </section>
+      }
+
     </div>
   </div>
+</div>
 }
-
