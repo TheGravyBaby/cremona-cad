@@ -573,8 +573,8 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
   renderOuterTrace = (currentModule: boolean) => (g: any, ui: any): void => {
     let p = this.d.params;
     let offset = p.overhang + p.rib;
-    // let outerPath = defineOuterPath(p, offset, true);
-    // renderPath(outerPath, this.colors.innerTrace, 1)(g, ui);
+    let outerPath = defineOuterPath(p, offset, true);
+    renderPath(outerPath, this.colors.innerTrace, 1)(g, ui);
 
     if ((currentModule && this.showModuleArcs) || this.showAllArcs) {
       // primary arcs + their mirrors
