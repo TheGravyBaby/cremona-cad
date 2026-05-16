@@ -400,25 +400,32 @@ export function calculateOuterArcs(p: EnricoCerutiParams): void {
         // user may have changed things, make sure outer U3 is just inset U3 in this situation
         p.outerCorners.U3 = offsetArcRadius(p.bouts.U3, -inset);
     }
-    else {
+    else if (p.outerCorners.U3.end === p.outerCorners.U31?.start) {
         // in this situation the user likely toggled back to 
-        if (p.outerCorners.U3.end = p.outerCorners.U31.start) 
-            p.outerCorners.U3 = offsetArcRadius(p.bouts.U3, -inset);
+        p.outerCorners.U3 = offsetArcRadius(p.bouts.U3, -inset);
     }
 
     if (p.options.C21DoubleArc) {
         p.outerCorners.C21 = p.outerCorners.C21 ? redefineArcCircle(p.outerCorners.C21, p.bouts.C21, -inset) : offsetArcRadius(p.bouts.C21, -inset);
         p.outerCorners.C2 = offsetArcRadius(p.bouts.C2, -inset);
     }
+    else if (p.outerCorners.C2.end === p.outerCorners.C21?.start) {
+        p.outerCorners.C2 = offsetArcRadius(p.bouts.C2, -inset);
+    }
 
     if (p.options.C11DoubleArc) {
         p.outerCorners.C11 = p.outerCorners.C11 ? redefineArcCircle(p.outerCorners.C11, p.bouts.C11, -inset) : offsetArcRadius(p.bouts.C11, -inset);
         p.outerCorners.C1 = offsetArcRadius(p.bouts.C1, -inset);
-
+    }
+    else if (p.outerCorners.C1.end === p.outerCorners.C11?.start) {
+        p.outerCorners.C1 = offsetArcRadius(p.bouts.C1, -inset);
     }
 
     if (p.options.L31DoubleArc) {
         p.outerCorners.L31 = p.outerCorners.L31 ? redefineArcCircle(p.outerCorners.L31, p.bouts.L31, -inset) : offsetArcRadius(p.bouts.L31, -inset);
+        p.outerCorners.L3 = offsetArcRadius(p.bouts.L3, -inset);
+    }
+    else if (p.outerCorners.L3.end === p.outerCorners.L31?.start) {
         p.outerCorners.L3 = offsetArcRadius(p.bouts.L3, -inset);
     }
 }

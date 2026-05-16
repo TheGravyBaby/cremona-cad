@@ -1,7 +1,7 @@
 import { ChangeDetectorRef, Component, HostListener, Input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
-import { Arc, arcFromCircle,  Rectangle } from '../models/types';
+import { Arc, arcFromCircle, Rectangle, setArcStartByDegreeDiff, setArcEndByDegreeDiff } from '../models/types';
 import { greyOut, renderArcFromArc, renderArcFromArcFancy, renderCircle,  renderCrosshair, renderDashedLine,   renderLine, renderPath, renderRect } from '../helpers/renderFuncs';
 import { clampParam, safeRun } from '../helpers/validators';
 import { EnricoCerutiTemplate, CERUTI_TEMPLATES, EnricoCerutiParams } from './ceruti-types';
@@ -238,6 +238,26 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     tooBigMsg?: string,
   ): void {
     clampParam(this.d.params, key, min, max, tooSmallMsg, tooBigMsg);
+  }
+
+  // ===== Arc degree-diff helpers =====
+
+  /**
+   * Moves the arc's `start` so that (end − start) equals the given degrees,
+   * then triggers the provided change handler.
+   */
+  adjustArcStart(arc: Arc, degrees: number, changeFn: () => void): void {
+    setArcStartByDegreeDiff(arc, degrees);
+    changeFn();
+  }
+
+  /**
+   * Moves the arc's `end` so that (end − start) equals the given degrees,
+   * then triggers the provided change handler.
+   */
+  adjustArcEnd(arc: Arc, degrees: number, changeFn: () => void): void {
+    setArcEndByDegreeDiff(arc, degrees);
+    changeFn();
   }
 
   // ===== Basic UI funcs =====

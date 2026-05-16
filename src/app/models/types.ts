@@ -15,6 +15,27 @@ export class Arc extends Circle {
     this.start = start ?? 0;
     this.end = end ?? Math.PI*2;
   };
+
+  /** The magnitude of the angular span of this arc in degrees. */
+  get degreeDiff(): number {
+    return (this.end - this.start) * (180 / Math.PI);
+  }
+}
+
+/**
+ * Adjusts the arc's `start` angle so that (end − start) equals `degrees`.
+ * The `end` angle is kept fixed.
+ */
+export function setArcStartByDegreeDiff(arc: Arc, degrees: number): void {
+  arc.start = arc.end - degrees * (Math.PI / 180);
+}
+
+/**
+ * Adjusts the arc's `end` angle so that (end − start) equals `degrees`.
+ * The `start` angle is kept fixed.
+ */
+export function setArcEndByDegreeDiff(arc: Arc, degrees: number): void {
+  arc.end = arc.start + degrees * (Math.PI / 180);
 }
 
 export function arcFromCircle(circle: Circle, start?: number, end?: number): Arc {
