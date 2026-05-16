@@ -62,7 +62,7 @@ export class TopBarComponent {
   }
 
   aboutOpen = false;
-  activeTab: 'about' | 'tutorial' | 'author' | '' = 'about';
+  activeTab: 'about' | 'tutorial' | 'author' | 'version' | 'license' | '' = 'about';
 
   openAbout() {
     this.aboutOpen = true;
