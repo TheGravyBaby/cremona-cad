@@ -1,5 +1,5 @@
 import { solveInscribedCircleAlongAxis, circleCircleIntersections, angleFromCenter, interceptCirclesAndPoint, dist, lineFromTwoPoints, pointOnCircle, offsetCircleRadius, offsetArcRadius, inscribeCircleWithinCircle, pathFromArc, pathFromLine, flipArcAboutY, flipPointAboutY, unifyConnectedSvgPaths, pathFromRoundedRect, flipRectAboutY, pathFromCircle, pathFromRect, combinePathStrings, differenceFromTwoPaths, lineCircleIntersection, redefineArcCircle, intersectionFromTwoPaths, translatePath, flipCircleAboutY, interceptCirclesAndPointCompound } from "../helpers/draftMath";
-import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, increaseArcAngle, Line, Pt, Rectangle } from "../models/types";
+import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Pt, Rectangle } from "../models/types";
 import { error } from "../shared/message-emitter";
 import { EnricoCerutiParams } from "./ceruti-types";
 
@@ -383,55 +383,43 @@ export function calculateCenterBout(p: EnricoCerutiParams, solveC0?: boolean): v
 
 }
 
-export function calculateOuterCorners(p: EnricoCerutiParams): void {
+export function calculateOuterArcs(p: EnricoCerutiParams): void {
     let inset = p.overhang + p.rib;
+    p.button = p.button ?? new Rectangle(new Pt(-10, p.height - inset), new Pt(10, p.height - inset + 5));
 
-    // initalize the possibly undefined values
-    let initialized = p.outerCorners.U3 != null
     p.outerCorners.U3 = p.outerCorners.U3 ? redefineArcCircle(p.outerCorners.U3, p.bouts.U3, -inset) : offsetArcRadius(p.bouts.U3, -inset); // user might have redefined bouts
     p.outerCorners.C2 = p.outerCorners.C2 ? redefineArcCircle(p.outerCorners.C2, p.bouts.C2, -inset) : offsetArcRadius(p.bouts.C2, -inset);
     p.outerCorners.C1 = p.outerCorners.C1 ? redefineArcCircle(p.outerCorners.C1, p.bouts.C1, -inset) : offsetArcRadius(p.bouts.C1, -inset);
     p.outerCorners.L3 = p.outerCorners.L3 ? redefineArcCircle(p.outerCorners.L3, p.bouts.L3, -inset) : offsetArcRadius(p.bouts.L3, -inset);
-
-
-    // we want to increase the angle by the default corners a little bit
-    if (!initialized) {
-        // p.outerCorners.U31 = increaseArcAngle(p.outerCorners.U31, 5);
-        p.outerCorners.C2 = increaseArcAngle(p.outerCorners.C2, -10);
-        p.outerCorners.C1 = increaseArcAngle(p.outerCorners.C1, 10);
-        // p.outerCorners.L31 = increaseArcAngle(p.outerCorners.L31, -5);
-    }
-
-    p.outerCorners.U3.end = p.outerCorners.U3.start + p.outerCorners.U3.diffDeg * Math.PI / 180;
-    p.outerCorners.C2.end = p.outerCorners.C2.start - p.outerCorners.C2.diffDeg * Math.PI / 180;
-    p.outerCorners.C1.end = p.outerCorners.C1.start + p.outerCorners.C1.diffDeg * Math.PI / 180;
-    p.outerCorners.L3.end = p.outerCorners.L3.start - p.outerCorners.L3.diffDeg * Math.PI / 180;
+    
 
     if (p.options.U31DoubleArc) {
         // initialize the data if needed
-        p.outerCorners.U31 = p.outerCorners.U31 ?? arcFromCircle(inscribeCircleWithinCircle(p.outerCorners.U3, p.outerCorners.U3.r * .8, p.outerCorners.U3.end), p.outerCorners.U3.end, p.outerCorners.U3.end * 1.1);
+        p.outerCorners.U31 = p.outerCorners.U31 ? redefineArcCircle(p.outerCorners.U31, p.bouts.U31, -inset) : offsetArcRadius(p.bouts.U31, -inset);
 
-        // now recalculate based on last inputed values
-        let radDiff = p.outerCorners.U31.diffDeg * Math.PI / 180;
-        p.outerCorners.U31 = arcFromCircle(inscribeCircleWithinCircle(p.outerCorners.U3, p.outerCorners.U31.r, p.outerCorners.U3.end), p.outerCorners.U3.end, p.outerCorners.U3.end + radDiff);
+        // user may have changed things, make sure outer U3 is just inset U3 in this situation
+        p.outerCorners.U3 = offsetArcRadius(p.bouts.U3, -inset);
+    }
+    else {
+        // in this situation the user likely toggled back to 
+        if (p.outerCorners.U3.end = p.outerCorners.U31.start) 
+            p.outerCorners.U3 = offsetArcRadius(p.bouts.U3, -inset);
     }
 
     if (p.options.C21DoubleArc) {
-        p.outerCorners.C21 = p.outerCorners.C21 ?? arcFromCircle(inscribeCircleWithinCircle(p.outerCorners.C2, p.outerCorners.C2.r * .8, p.outerCorners.C2.end), p.outerCorners.C2.end, p.outerCorners.C2.end * 0.9);
-        let radDiffCU = p.outerCorners.C21.diffDeg * Math.PI / 180;
-        p.outerCorners.C21 = arcFromCircle(inscribeCircleWithinCircle(p.outerCorners.C2, p.outerCorners.C21.r, p.outerCorners.C2.end), p.outerCorners.C2.end, p.outerCorners.C2.end - radDiffCU);
+        p.outerCorners.C21 = p.outerCorners.C21 ? redefineArcCircle(p.outerCorners.C21, p.bouts.C21, -inset) : offsetArcRadius(p.bouts.C21, -inset);
+        p.outerCorners.C2 = offsetArcRadius(p.bouts.C2, -inset);
     }
 
     if (p.options.C11DoubleArc) {
-        p.outerCorners.C11 = p.outerCorners.C11 ?? arcFromCircle(inscribeCircleWithinCircle(p.outerCorners.C1, p.outerCorners.C1.r * .8, p.outerCorners.C1.end), p.outerCorners.C1.end, p.outerCorners.C1.end * 1.1);
-        let radDiffCL = p.outerCorners.C11.diffDeg * Math.PI / 180;
-        p.outerCorners.C11 = arcFromCircle(inscribeCircleWithinCircle(p.outerCorners.C1, p.outerCorners.C11.r, p.outerCorners.C1.end), p.outerCorners.C1.end, p.outerCorners.C1.end + radDiffCL);
+        p.outerCorners.C11 = p.outerCorners.C11 ? redefineArcCircle(p.outerCorners.C11, p.bouts.C11, -inset) : offsetArcRadius(p.bouts.C11, -inset);
+        p.outerCorners.C1 = offsetArcRadius(p.bouts.C1, -inset);
+
     }
 
     if (p.options.L31DoubleArc) {
-        p.outerCorners.L31 = p.outerCorners.L31 ?? arcFromCircle(inscribeCircleWithinCircle(p.outerCorners.L3, p.outerCorners.L3.r * .8, p.outerCorners.L3.end), p.outerCorners.L3.end, p.outerCorners.L3.end * 0.9);
-        let radDiffL3 = p.outerCorners.L31.diffDeg * Math.PI / 180;
-        p.outerCorners.L31 = arcFromCircle(inscribeCircleWithinCircle(p.outerCorners.L3, p.outerCorners.L31.r, p.outerCorners.L3.end), p.outerCorners.L3.end, p.outerCorners.L3.end - radDiffL3);
+        p.outerCorners.L31 = p.outerCorners.L31 ? redefineArcCircle(p.outerCorners.L31, p.bouts.L31, -inset) : offsetArcRadius(p.bouts.L31, -inset);
+        p.outerCorners.L3 = offsetArcRadius(p.bouts.L3, -inset);
     }
 }
 
@@ -699,14 +687,25 @@ export function defineInnerArcs(p: EnricoCerutiParams): Arc[] {
     } else {
         fullPath.push(p.bouts.L2);
         fullPath.push(p.bouts.L3);
+
+        if (p.options.L31DoubleArc) 
+            fullPath.push(p.bouts.L31);
     }
+
     fullPath.push(p.bouts.C0, p.bouts.C1, p.bouts.C2);
+        if (p.options.C21DoubleArc) 
+            fullPath.push(p.bouts.C21);
+        if (p.options.C11DoubleArc) 
+            fullPath.push(p.bouts.C11);
 
     if (p.options.useViolCornerUC) {
         fullPath.push(p.bouts.U4);
     } else {
         fullPath.push(p.bouts.U3);
         fullPath.push(p.bouts.U2);
+
+        if (p.options.U31DoubleArc)
+            fullPath.push(p.bouts.U31);
     }
     fullPath.push(p.bouts.U1);
     fullPath.push(p.bouts.U0);

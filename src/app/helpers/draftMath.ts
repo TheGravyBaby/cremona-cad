@@ -110,9 +110,7 @@ export function redefineArcCircle(arc: Arc, c: Arc, offset?: number): Arc {
     c = offsetArcRadius(c, offset);
   }
 
-  let RadDiff = arc.diffDeg * Math.PI / 180;
-
-  return arcFromCircle(c, c.start, c.start + RadDiff);
+  return arcFromCircle(c, c.start, arc.end);
 }
 
 export function flipArcAboutY(arc: Arc): Arc {
