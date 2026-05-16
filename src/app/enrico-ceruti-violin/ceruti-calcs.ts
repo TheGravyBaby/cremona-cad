@@ -1,4 +1,4 @@
-import { solveInscribedCircleAlongAxis, circleCircleIntersections, angleFromCenter, interceptCirclesAndPoint, dist, lineFromTwoPoints, pointOnCircle, offsetCircleRadius, offsetArcRadius, inscribeCircleWithinCircle, pathFromArc, pathFromLine, flipArcAboutY, flipPointAboutY, unifyConnectedSvgPaths, pathFromRoundedRect, flipRectAboutY, pathFromCircle, pathFromRect, combinePathStrings, differenceFromTwoPaths, lineCircleIntersection, redefineArcCircle, intersectionFromTwoPaths, translatePath, flipCircleAboutY } from "../helpers/draftMath";
+import { solveInscribedCircleAlongAxis, circleCircleIntersections, angleFromCenter, interceptCirclesAndPoint, dist, lineFromTwoPoints, pointOnCircle, offsetCircleRadius, offsetArcRadius, inscribeCircleWithinCircle, pathFromArc, pathFromLine, flipArcAboutY, flipPointAboutY, unifyConnectedSvgPaths, pathFromRoundedRect, flipRectAboutY, pathFromCircle, pathFromRect, combinePathStrings, differenceFromTwoPaths, lineCircleIntersection, redefineArcCircle, intersectionFromTwoPaths, translatePath, flipCircleAboutY, interceptCirclesAndPointCompound } from "../helpers/draftMath";
 import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, increaseArcAngle, Line, Pt, Rectangle } from "../models/types";
 import { error } from "../shared/message-emitter";
 import { EnricoCerutiParams } from "./ceruti-types";
@@ -116,10 +116,14 @@ export function calculateCorners(p: EnricoCerutiParams): void {
         p.bouts.UCr.y = Math.round(p.bouts.UCr.y * 10) / 10
         p.bouts.LCr.x = Math.round(p.bouts.LCr.x * 10) / 10
         p.bouts.UCr.y = Math.round(p.bouts.UCr.y * 10) / 10
+      
     }
 
     let U2R = p.bouts.U2?.r ?? Math.round(UBWI * p.ratios.U2toUBW);
     let U2Y = p.bouts.U2?.y ?? p.bouts.U1.y;
+            
+    p.bouts.U31 = p.bouts.U31 ?? new Arc(0,0,12, 17/16 * Math.PI)
+    p.bouts.L31 = p.bouts.L31 ?? new Arc(0,0,12, 15/16 * Math.PI)
 
     let U1U2Match = false
     let allowHeightFlex = false; // this is a fiddly feature that might be cool one day, needs more work for now
@@ -171,49 +175,76 @@ export function calculateCorners(p: EnricoCerutiParams): void {
         p.bouts.L2 = new Arc(p.bouts.LBW / 2 - L2R - inset, p.bouts.L1.y, L2R);
     }
 
-    let U3R = p.bouts.U3?.r ?? Math.round(LBWI * p.ratios.U3toLBW);
-    p.bouts.U3 = arcFromCircle(interceptCirclesAndPoint(p.bouts.U2, p.bouts.UCr, U3R).sort((a, b) => a.y - b.y)[1]);
+    if (p.options.U31DoubleArc) {
+        let U3r = p.bouts.U3.r
+        let U31 =  p.bouts.U31.r
+        let theta = p.bouts.U31.start ?? 17/16 * Math.PI
+        let compoundCircles = interceptCirclesAndPointCompound(p.bouts.U2!, p.bouts.UCr, U3r, U31, theta).sort((a, b) => a.C1.y - b.C1.y)[1];
+        let U3start = circleCircleIntersections(compoundCircles.C1, p.bouts.U2)[0]
+        let U31start = circleCircleIntersections(compoundCircles.C1, compoundCircles.C2)[0]
 
-    let L3R = p.bouts.L3?.r ?? Math.round(LBWI * p.ratios.L3toLBW);
-    p.bouts.L3 = arcFromCircle(interceptCirclesAndPoint(p.bouts.L2, p.bouts.LCr, L3R).sort((a, b) => a.y - b.y)[0]);
-
-    let U2Intersect = circleCircleIntersections(p.bouts.U2, p.bouts.U3).sort((a, b) => a.y - b.y);
-    let U2Angle = angleFromCenter(p.bouts.U2, U2Intersect[1]);
-    let U2StartAngle = angleFromCenter(p.bouts.U2, p.bouts.U1);
-
-    if (!U1U2Match) {
-        let newU1Intersect = circleCircleIntersections(p.bouts.U1, p.bouts.U2).sort((a, b) => a.y - b.y);
-        let U1EndAngle = angleFromCenter(p.bouts.U1, newU1Intersect[0]); // we might have to recalculate the angle if we altered the Y height of
-        p.bouts.U1.end = U1EndAngle
+        p.bouts.U2 = arcFromCircle(p.bouts.U2, p.bouts.U2.start, angleFromCenter(p.bouts.U2, U3start));
+        p.bouts.U3 = arcFromCircleAndPoints(compoundCircles.C1, U3start, U31start);
+        p.bouts.U31 = arcFromCircleAndPoints(compoundCircles.C2, U31start, p.bouts.UCr);
     }
-    p.bouts.U2 = arcFromCircle(p.bouts.U2, U2StartAngle, U2Angle);
-    p.bouts.U3 = arcFromCircleAndPoints(p.bouts.U3, U2Intersect[1], p.bouts.UCr);
+    else {
+        // viol corner calcs
+        if (p.options.useViolCornerLC) {
+            let L1EndPt = pointOnCircle(p.bouts.L1!, p.bouts.L1.end);
+            let a = p.bouts.LCr.y - L1EndPt.y
+            let b = L1EndPt.x - p.bouts.LCr.x
+            let L4r = (a * a + b * b) / (2 * b)
 
+            let l4 = new Circle(L1EndPt.x - L4r, L1EndPt.y, L4r);
+            p.bouts.L4 = arcFromCircleAndPoints(l4, L1EndPt, p.bouts.LCr);
+        }
 
-    let L2Intersect = circleCircleIntersections(p.bouts.L2, p.bouts.L3).sort((a, b) => a.y - b.y)[0];
-    let L2Angle = angleFromCenter(p.bouts.L2, L2Intersect);
-    let L2StartAngle = angleFromCenter(p.bouts.L2, p.bouts.L1);
+        let U3R = p.bouts.U3?.r ?? Math.round(LBWI * p.ratios.U3toLBW);
+        p.bouts.U3 = arcFromCircle(interceptCirclesAndPoint(p.bouts.U2, p.bouts.UCr, U3R).sort((a, b) => a.y - b.y)[1]);
 
-    if (!L2U1Match) {
-        let newL1Intersect = circleCircleIntersections(p.bouts.L1, p.bouts.L2).sort((a, b) => a.y - b.y)[0];
-        let L1EndAngle = angleFromCenter(p.bouts.L1, newL1Intersect);
-        p.bouts.L1.end = L1EndAngle // we might have to recalculate the angle if we altered the Y height of
+        let L3R = p.bouts.L3?.r ?? Math.round(LBWI * p.ratios.L3toLBW);
+        p.bouts.L3 = arcFromCircle(interceptCirclesAndPoint(p.bouts.L2, p.bouts.LCr, L3R).sort((a, b) => a.y - b.y)[0]);
+
+        let U2Intersect = circleCircleIntersections(p.bouts.U2, p.bouts.U3).sort((a, b) => a.y - b.y);
+        let U2Angle = angleFromCenter(p.bouts.U2, U2Intersect[1]);
+        let U2StartAngle = angleFromCenter(p.bouts.U2, p.bouts.U1);
+
+        if (!U1U2Match) {
+            let newU1Intersect = circleCircleIntersections(p.bouts.U1, p.bouts.U2).sort((a, b) => a.y - b.y);
+            let U1EndAngle = angleFromCenter(p.bouts.U1, newU1Intersect[0]); // we might have to recalculate the angle if we altered the Y height of
+            p.bouts.U1.end = U1EndAngle
+        }
+        p.bouts.U2 = arcFromCircle(p.bouts.U2, U2StartAngle, U2Angle);
+        p.bouts.U3 = arcFromCircleAndPoints(p.bouts.U3, U2Intersect[1], p.bouts.UCr);
     }
 
-    p.bouts.L2 = arcFromCircle(p.bouts.L2, L2StartAngle, L2Angle);
-    p.bouts.L3 = arcFromCircleAndPoints(p.bouts.L3, L2Intersect, p.bouts.LCr);
 
-    // viol corner calcs
-    if (p.options.useViolCornerLC) {
-        let L1EndPt = pointOnCircle(p.bouts.L1!, p.bouts.L1.end);
-        let a = p.bouts.LCr.y - L1EndPt.y
-        let b = L1EndPt.x - p.bouts.LCr.x
-        let L4r = (a * a + b * b) / (2 * b)
+    if (p.options.L31DoubleArc) {
+        let L3r = p.bouts.L3.r
+        let L31r =  p.bouts.L31.r
+        let theta = p.bouts.L31.start ?? 15/16 * Math.PI
+        let compoundCircles = interceptCirclesAndPointCompound(p.bouts.L2!, p.bouts.LCr, L3r, L31r, theta).sort((a, b) => a.C1.y - b.C1.y)[0];
+        let L3start = circleCircleIntersections(compoundCircles.C1, p.bouts.L2)[0]
+        let L31start = circleCircleIntersections(compoundCircles.C1, compoundCircles.C2)[0]
 
-        let l4 = new Circle(L1EndPt.x - L4r, L1EndPt.y, L4r);
-        p.bouts.L4 = arcFromCircleAndPoints(l4, L1EndPt, p.bouts.LCr);
+        p.bouts.L2 = arcFromCircle(p.bouts.L2, p.bouts.L2.start, angleFromCenter(p.bouts.L2, L3start));
+        p.bouts.L3 = arcFromCircleAndPoints(compoundCircles.C1, L3start, L31start);
+        p.bouts.L31 = arcFromCircleAndPoints(compoundCircles.C2, L31start, p.bouts.LCr);
     }
+    else {
+        let L2Intersect = circleCircleIntersections(p.bouts.L2, p.bouts.L3).sort((a, b) => a.y - b.y)[0];
+        let L2Angle = angleFromCenter(p.bouts.L2, L2Intersect);
+        let L2StartAngle = angleFromCenter(p.bouts.L2, p.bouts.L1);
 
+        if (!L2U1Match) {
+            let newL1Intersect = circleCircleIntersections(p.bouts.L1, p.bouts.L2).sort((a, b) => a.y - b.y)[0];
+            let L1EndAngle = angleFromCenter(p.bouts.L1, newL1Intersect);
+            p.bouts.L1.end = L1EndAngle // we might have to recalculate the angle if we altered the Y height of
+        }
+
+        p.bouts.L2 = arcFromCircle(p.bouts.L2, L2StartAngle, L2Angle);
+        p.bouts.L3 = arcFromCircleAndPoints(p.bouts.L3, L2Intersect, p.bouts.LCr);
+    }
     if (p.options.useViolCornerUC) {
         let U1EndPt = pointOnCircle(p.bouts.U1!, p.bouts.U1.end);
         let a = p.bouts.UCr.y - U1EndPt.y
@@ -298,24 +329,57 @@ export function calculateCenterBout(p: EnricoCerutiParams, solveC0?: boolean): v
         lastWorkingC0 = JSON.parse(JSON.stringify(p.bouts.C0));
     }
 
-    let cuRadius = p.bouts.CU?.r ?? Math.round((LBWI * p.ratios.CUtoLBW));
-    let clRadius = p.bouts.CL?.r ?? Math.round((LBWI * p.ratios.CLtoLBW));
+    // initialize C11 and C21
+    p.bouts.C11 = p.bouts.C11 ?? new Arc(0,0,12, 24/16 * Math.PI)
+    p.bouts.C21 = p.bouts.C21 ?? new Arc(0,0,12, 8/16 * Math.PI)
+    let cuRadius = p.bouts.C2?.r ?? Math.round((LBWI * p.ratios.C2toLBW));
+    let clRadius = p.bouts.C1?.r ?? Math.round((LBWI * p.ratios.C1toLBW));
+    let CUIntercept;
+    let CLIntercept;
 
-    let CU = interceptCirclesAndPoint(p.bouts.C0, p.bouts.UCr!, cuRadius).sort((a, b) => b.y - a.y)[1];
-    let CL = interceptCirclesAndPoint(p.bouts.C0, p.bouts.LCr!, clRadius).sort((a, b) => a.y - b.y)[1];
-    let CUIntercept = circleCircleIntersections(p.bouts.C0, CU).sort((a, b) => b.y - a.y)[0];
-    let CLIntercept = circleCircleIntersections(p.bouts.C0, CL).sort((a, b) => a.y - b.y)[1];
+    if (p.options.C21DoubleArc) {
+        let C2r = p.bouts.C2.r
+        let C21r =  p.bouts.C21.r
+        let theta = p.bouts.C21.start ?? 15/16 * Math.PI
+        let compoundCircles = interceptCirclesAndPointCompound(p.bouts.C0!, p.bouts.UCr, C2r, C21r, theta).sort((a, b) => a.C1.y - b.C1.y)[0];
+        CUIntercept = circleCircleIntersections(compoundCircles.C1, p.bouts.C0)[1]
+        let C21start = circleCircleIntersections(compoundCircles.C1, compoundCircles.C2)[0]
 
-    p.bouts.CU = arcFromCircleAndPoints(CU, CUIntercept, p.bouts.UCr);
-    p.bouts.CL = arcFromCircleAndPoints(CL, CLIntercept, p.bouts.LCr);
+        p.bouts.C2 = arcFromCircleAndPoints(compoundCircles.C1, CUIntercept, C21start);
+        p.bouts.C21 = arcFromCircleAndPoints(compoundCircles.C2, C21start, p.bouts.UCr);
+
+    }
+    else {
+        let CU = interceptCirclesAndPoint(p.bouts.C0, p.bouts.UCr!, cuRadius).sort((a, b) => b.y - a.y)[1];
+        CUIntercept = circleCircleIntersections(p.bouts.C0, CU).sort((a, b) => b.y - a.y)[0];
+        p.bouts.C2 = arcFromCircleAndPoints(CU, CUIntercept, p.bouts.UCr);
+
+    }
+    if (p.options.C11DoubleArc) {
+        let C1r = p.bouts.C1.r
+        let C11r = p.bouts.C11.r
+        let theta = p.bouts.C11.start ?? 17/16 * Math.PI
+        let compoundCircles = interceptCirclesAndPointCompound(p.bouts.C0!, p.bouts.LCr, C1r, C11r, theta).sort((a, b) => a.C1.y - b.C1.y)[1];
+        CLIntercept = circleCircleIntersections(compoundCircles.C1, p.bouts.C0)[1]
+        let C11start = circleCircleIntersections(compoundCircles.C1, compoundCircles.C2)[0]
+
+        p.bouts.C1 = arcFromCircleAndPoints(compoundCircles.C1, CLIntercept, C11start);
+        p.bouts.C11 = arcFromCircleAndPoints(compoundCircles.C2, C11start, p.bouts.LCr);
+    }
+    else {
+        let CL = interceptCirclesAndPoint(p.bouts.C0, p.bouts.LCr!, clRadius).sort((a, b) => a.y - b.y)[1];
+        CLIntercept = circleCircleIntersections(p.bouts.C0, CL).sort((a, b) => a.y - b.y)[1];
+        p.bouts.C1 = arcFromCircleAndPoints(CL, CLIntercept, p.bouts.LCr);
+    }
+
     p.bouts.C0 = arcFromCircleAndPoints(p.bouts.C0, CUIntercept, CLIntercept);
 
     // recalculate display ratios
     p.ratios.CBWtoLBW = p.bouts.CBW / p.bouts.LBW;
     p.ratios.C0toLBW = p.bouts.C0.r / LBWI;
     p.ratios.C0YtoH = p.bouts.C0.y / HI;
-    p.ratios.CUtoLBW = CU.r / LBWI;
-    p.ratios.CLtoLBW = CL.r / LBWI;
+    p.ratios.C2toLBW = p.bouts.C2.r / LBWI;
+    p.ratios.C1toLBW = p.bouts.C1.r / LBWI;
 
 }
 
@@ -323,51 +387,51 @@ export function calculateOuterCorners(p: EnricoCerutiParams): void {
     let inset = p.overhang + p.rib;
 
     // initalize the possibly undefined values
-    let initialized = p.outerCorners.U31 != null
-    p.outerCorners.U31 = p.outerCorners.U31 ? redefineArcCircle(p.outerCorners.U31, p.bouts.U3, -inset) : offsetArcRadius(p.bouts.U3, -inset); // user might have redefined bouts
-    p.outerCorners.CU1 = p.outerCorners.CU1 ? redefineArcCircle(p.outerCorners.CU1, p.bouts.CU, -inset) : offsetArcRadius(p.bouts.CU, -inset);
-    p.outerCorners.CL1 = p.outerCorners.CL1 ? redefineArcCircle(p.outerCorners.CL1, p.bouts.CL, -inset) : offsetArcRadius(p.bouts.CL, -inset);
-    p.outerCorners.L31 = p.outerCorners.L31 ? redefineArcCircle(p.outerCorners.L31, p.bouts.L3, -inset) : offsetArcRadius(p.bouts.L3, -inset);
+    let initialized = p.outerCorners.U3 != null
+    p.outerCorners.U3 = p.outerCorners.U3 ? redefineArcCircle(p.outerCorners.U3, p.bouts.U3, -inset) : offsetArcRadius(p.bouts.U3, -inset); // user might have redefined bouts
+    p.outerCorners.C2 = p.outerCorners.C2 ? redefineArcCircle(p.outerCorners.C2, p.bouts.C2, -inset) : offsetArcRadius(p.bouts.C2, -inset);
+    p.outerCorners.C1 = p.outerCorners.C1 ? redefineArcCircle(p.outerCorners.C1, p.bouts.C1, -inset) : offsetArcRadius(p.bouts.C1, -inset);
+    p.outerCorners.L3 = p.outerCorners.L3 ? redefineArcCircle(p.outerCorners.L3, p.bouts.L3, -inset) : offsetArcRadius(p.bouts.L3, -inset);
 
 
     // we want to increase the angle by the default corners a little bit
     if (!initialized) {
         // p.outerCorners.U31 = increaseArcAngle(p.outerCorners.U31, 5);
-        p.outerCorners.CU1 = increaseArcAngle(p.outerCorners.CU1, -10);
-        p.outerCorners.CL1 = increaseArcAngle(p.outerCorners.CL1, 10);
+        p.outerCorners.C2 = increaseArcAngle(p.outerCorners.C2, -10);
+        p.outerCorners.C1 = increaseArcAngle(p.outerCorners.C1, 10);
         // p.outerCorners.L31 = increaseArcAngle(p.outerCorners.L31, -5);
     }
 
-    p.outerCorners.U31.end = p.outerCorners.U31.start + p.outerCorners.U31.diffDeg * Math.PI / 180;
-    p.outerCorners.CU1.end = p.outerCorners.CU1.start - p.outerCorners.CU1.diffDeg * Math.PI / 180;
-    p.outerCorners.CL1.end = p.outerCorners.CL1.start + p.outerCorners.CL1.diffDeg * Math.PI / 180;
-    p.outerCorners.L31.end = p.outerCorners.L31.start - p.outerCorners.L31.diffDeg * Math.PI / 180;
+    p.outerCorners.U3.end = p.outerCorners.U3.start + p.outerCorners.U3.diffDeg * Math.PI / 180;
+    p.outerCorners.C2.end = p.outerCorners.C2.start - p.outerCorners.C2.diffDeg * Math.PI / 180;
+    p.outerCorners.C1.end = p.outerCorners.C1.start + p.outerCorners.C1.diffDeg * Math.PI / 180;
+    p.outerCorners.L3.end = p.outerCorners.L3.start - p.outerCorners.L3.diffDeg * Math.PI / 180;
 
     if (p.options.U31DoubleArc) {
         // initialize the data if needed
-        p.outerCorners.U32 = p.outerCorners.U32 ?? arcFromCircle(inscribeCircleWithinCircle(p.outerCorners.U31, p.outerCorners.U31.r * .8, p.outerCorners.U31.end), p.outerCorners.U31.end, p.outerCorners.U31.end * 1.1);
+        p.outerCorners.U31 = p.outerCorners.U31 ?? arcFromCircle(inscribeCircleWithinCircle(p.outerCorners.U3, p.outerCorners.U3.r * .8, p.outerCorners.U3.end), p.outerCorners.U3.end, p.outerCorners.U3.end * 1.1);
 
         // now recalculate based on last inputed values
-        let radDiff = p.outerCorners.U32.diffDeg * Math.PI / 180;
-        p.outerCorners.U32 = arcFromCircle(inscribeCircleWithinCircle(p.outerCorners.U31, p.outerCorners.U32.r, p.outerCorners.U31.end), p.outerCorners.U31.end, p.outerCorners.U31.end + radDiff);
+        let radDiff = p.outerCorners.U31.diffDeg * Math.PI / 180;
+        p.outerCorners.U31 = arcFromCircle(inscribeCircleWithinCircle(p.outerCorners.U3, p.outerCorners.U31.r, p.outerCorners.U3.end), p.outerCorners.U3.end, p.outerCorners.U3.end + radDiff);
     }
 
-    if (p.options.CU1DoubleArc) {
-        p.outerCorners.CU2 = p.outerCorners.CU2 ?? arcFromCircle(inscribeCircleWithinCircle(p.outerCorners.CU1, p.outerCorners.CU1.r * .8, p.outerCorners.CU1.end), p.outerCorners.CU1.end, p.outerCorners.CU1.end * 0.9);
-        let radDiffCU = p.outerCorners.CU2.diffDeg * Math.PI / 180;
-        p.outerCorners.CU2 = arcFromCircle(inscribeCircleWithinCircle(p.outerCorners.CU1, p.outerCorners.CU2.r, p.outerCorners.CU1.end), p.outerCorners.CU1.end, p.outerCorners.CU1.end - radDiffCU);
+    if (p.options.C21DoubleArc) {
+        p.outerCorners.C21 = p.outerCorners.C21 ?? arcFromCircle(inscribeCircleWithinCircle(p.outerCorners.C2, p.outerCorners.C2.r * .8, p.outerCorners.C2.end), p.outerCorners.C2.end, p.outerCorners.C2.end * 0.9);
+        let radDiffCU = p.outerCorners.C21.diffDeg * Math.PI / 180;
+        p.outerCorners.C21 = arcFromCircle(inscribeCircleWithinCircle(p.outerCorners.C2, p.outerCorners.C21.r, p.outerCorners.C2.end), p.outerCorners.C2.end, p.outerCorners.C2.end - radDiffCU);
     }
 
-    if (p.options.CL1DoubleArc) {
-        p.outerCorners.CL2 = p.outerCorners.CL2 ?? arcFromCircle(inscribeCircleWithinCircle(p.outerCorners.CL1, p.outerCorners.CL1.r * .8, p.outerCorners.CL1.end), p.outerCorners.CL1.end, p.outerCorners.CL1.end * 1.1);
-        let radDiffCL = p.outerCorners.CL2.diffDeg * Math.PI / 180;
-        p.outerCorners.CL2 = arcFromCircle(inscribeCircleWithinCircle(p.outerCorners.CL1, p.outerCorners.CL2.r, p.outerCorners.CL1.end), p.outerCorners.CL1.end, p.outerCorners.CL1.end + radDiffCL);
+    if (p.options.C11DoubleArc) {
+        p.outerCorners.C11 = p.outerCorners.C11 ?? arcFromCircle(inscribeCircleWithinCircle(p.outerCorners.C1, p.outerCorners.C1.r * .8, p.outerCorners.C1.end), p.outerCorners.C1.end, p.outerCorners.C1.end * 1.1);
+        let radDiffCL = p.outerCorners.C11.diffDeg * Math.PI / 180;
+        p.outerCorners.C11 = arcFromCircle(inscribeCircleWithinCircle(p.outerCorners.C1, p.outerCorners.C11.r, p.outerCorners.C1.end), p.outerCorners.C1.end, p.outerCorners.C1.end + radDiffCL);
     }
 
     if (p.options.L31DoubleArc) {
-        p.outerCorners.L32 = p.outerCorners.L32 ?? arcFromCircle(inscribeCircleWithinCircle(p.outerCorners.L31, p.outerCorners.L31.r * .8, p.outerCorners.L31.end), p.outerCorners.L31.end, p.outerCorners.L31.end * 0.9);
-        let radDiffL3 = p.outerCorners.L32.diffDeg * Math.PI / 180;
-        p.outerCorners.L32 = arcFromCircle(inscribeCircleWithinCircle(p.outerCorners.L31, p.outerCorners.L32.r, p.outerCorners.L31.end), p.outerCorners.L31.end, p.outerCorners.L31.end - radDiffL3);
+        p.outerCorners.L31 = p.outerCorners.L31 ?? arcFromCircle(inscribeCircleWithinCircle(p.outerCorners.L3, p.outerCorners.L3.r * .8, p.outerCorners.L3.end), p.outerCorners.L3.end, p.outerCorners.L3.end * 0.9);
+        let radDiffL3 = p.outerCorners.L31.diffDeg * Math.PI / 180;
+        p.outerCorners.L31 = arcFromCircle(inscribeCircleWithinCircle(p.outerCorners.L3, p.outerCorners.L31.r, p.outerCorners.L3.end), p.outerCorners.L3.end, p.outerCorners.L3.end - radDiffL3);
     }
 }
 
@@ -636,7 +700,7 @@ export function defineInnerArcs(p: EnricoCerutiParams): Arc[] {
         fullPath.push(p.bouts.L2);
         fullPath.push(p.bouts.L3);
     }
-    fullPath.push(p.bouts.C0, p.bouts.CL, p.bouts.CU);
+    fullPath.push(p.bouts.C0, p.bouts.C1, p.bouts.C2);
 
     if (p.options.useViolCornerUC) {
         fullPath.push(p.bouts.U4);
@@ -731,95 +795,95 @@ export function defineOuterPath(p: EnricoCerutiParams, offset?: number, button =
 
     if (p.options.useViolCornerUC) {
         let U4Offset = offsetArcRadius(p.bouts.U4!, offset);
-        let intersects = circleCircleIntersections(U4Offset, p.outerCorners.CU1);
+        let intersects = circleCircleIntersections(U4Offset, p.outerCorners.C2);
         let U4Angle = angleFromCenter(U4Offset, intersects[0])
-        let CU1Angle = angleFromCenter(p.outerCorners.CU1, intersects[0])
+        let CU1Angle = angleFromCenter(p.outerCorners.C2, intersects[0])
         U4Offset.end = U4Angle
-        p.outerCorners.CU1.end = CU1Angle
+        p.outerCorners.C2.end = CU1Angle
         arcs.push(U4Offset);
         arcs.push(flipArcAboutY(U4Offset));
-        arcs.push(p.outerCorners.CU1);
-        arcs.push(flipArcAboutY(p.outerCorners.CU1));
+        arcs.push(p.outerCorners.C2);
+        arcs.push(flipArcAboutY(p.outerCorners.C2));
     }
     else {
-        arcs.push(p.outerCorners.U31);
-        arcs.push(flipArcAboutY(p.outerCorners.U31));
-        p.options.U31DoubleArc && arcs.push(p.outerCorners.U32);
-        p.options.U31DoubleArc && arcs.push(flipArcAboutY(p.outerCorners.U32));
-        arcs.push(p.outerCorners.CU1);
-        arcs.push(flipArcAboutY(p.outerCorners.CU1));
-        p.options.CU1DoubleArc && arcs.push(p.outerCorners.CU2);
-        p.options.CU1DoubleArc && arcs.push(flipArcAboutY(p.outerCorners.CU2));
+        arcs.push(p.outerCorners.U3);
+        arcs.push(flipArcAboutY(p.outerCorners.U3));
+        p.options.U31DoubleArc && arcs.push(p.outerCorners.U31);
+        p.options.U31DoubleArc && arcs.push(flipArcAboutY(p.outerCorners.U31));
+        arcs.push(p.outerCorners.C2);
+        arcs.push(flipArcAboutY(p.outerCorners.C2));
+        p.options.C21DoubleArc && arcs.push(p.outerCorners.C21);
+        p.options.C21DoubleArc && arcs.push(flipArcAboutY(p.outerCorners.C21));
 
         // render the lines from the ends of each corners
-        if (p.options.U31DoubleArc && p.options.CU1DoubleArc) {
-            let U32End = pointOnCircle(p.outerCorners.U32, p.outerCorners.U32.end)
-            let CU2End = pointOnCircle(p.outerCorners.CU2, p.outerCorners.CU2.end)
+        if (p.options.U31DoubleArc && p.options.C21DoubleArc) {
+            let U32End = pointOnCircle(p.outerCorners.U31, p.outerCorners.U31.end)
+            let CU2End = pointOnCircle(p.outerCorners.C21, p.outerCorners.C21.end)
             paths.push(pathFromLine(U32End, CU2End));
             paths.push(pathFromLine(flipPointAboutY(U32End), flipPointAboutY(CU2End)));
         }
         else if (p.options.U31DoubleArc) {
-            let U32End = pointOnCircle(p.outerCorners.U32, p.outerCorners.U32.end)
-            let CU1End = pointOnCircle(p.outerCorners.CU1, p.outerCorners.CU1.end)
+            let U32End = pointOnCircle(p.outerCorners.U31, p.outerCorners.U31.end)
+            let CU1End = pointOnCircle(p.outerCorners.C2, p.outerCorners.C2.end)
             paths.push(pathFromLine(U32End, CU1End));
             paths.push(pathFromLine(flipPointAboutY(U32End), flipPointAboutY(CU1End)));
         }
-        else if (p.options.CU1DoubleArc) {
-            let U31End = pointOnCircle(p.outerCorners.U31, p.outerCorners.U31.end)
-            let CU2End = pointOnCircle(p.outerCorners.CU2, p.outerCorners.CU2.end)
+        else if (p.options.C21DoubleArc) {
+            let U31End = pointOnCircle(p.outerCorners.U3, p.outerCorners.U3.end)
+            let CU2End = pointOnCircle(p.outerCorners.C21, p.outerCorners.C21.end)
             paths.push(pathFromLine(U31End, CU2End));
             paths.push(pathFromLine(flipPointAboutY(U31End), flipPointAboutY(CU2End)));
         }
         else {
-            let U31End = pointOnCircle(p.outerCorners.U31, p.outerCorners.U31.end)
-            let CU1End = pointOnCircle(p.outerCorners.CU1, p.outerCorners.CU1.end)
+            let U31End = pointOnCircle(p.outerCorners.U3, p.outerCorners.U3.end)
+            let CU1End = pointOnCircle(p.outerCorners.C2, p.outerCorners.C2.end)
             paths.push(pathFromLine(U31End, CU1End));
             paths.push(pathFromLine(flipPointAboutY(U31End), flipPointAboutY(CU1End)));
         }
     }
     if (p.options.useViolCornerLC) {
         let L4Offset = offsetArcRadius(p.bouts.L4!, offset);
-        let intersects = circleCircleIntersections(L4Offset, p.outerCorners.CL1);
+        let intersects = circleCircleIntersections(L4Offset, p.outerCorners.C1);
         let L4Angle = angleFromCenter(L4Offset, intersects[1])
-        let CL1Angle = angleFromCenter(p.outerCorners.CL1, intersects[1])
+        let CL1Angle = angleFromCenter(p.outerCorners.C1, intersects[1])
         L4Offset.end = L4Angle
-        p.outerCorners.CL1.end = CL1Angle
+        p.outerCorners.C1.end = CL1Angle
         arcs.push(L4Offset);
         arcs.push(flipArcAboutY(L4Offset));
-        arcs.push(p.outerCorners.CL1);
-        arcs.push(flipArcAboutY(p.outerCorners.CL1));
+        arcs.push(p.outerCorners.C1);
+        arcs.push(flipArcAboutY(p.outerCorners.C1));
     }
     else {
-        arcs.push(p.outerCorners.CL1);
-        arcs.push(flipArcAboutY(p.outerCorners.CL1));
-        p.options.CL1DoubleArc && arcs.push(p.outerCorners.CL2);
-        p.options.CL1DoubleArc && arcs.push(flipArcAboutY(p.outerCorners.CL2));
-        arcs.push(p.outerCorners.L31);
-        arcs.push(flipArcAboutY(p.outerCorners.L31));
-        p.options.L31DoubleArc && arcs.push(p.outerCorners.L32);
-        p.options.L31DoubleArc && arcs.push(flipArcAboutY(p.outerCorners.L32));
+        arcs.push(p.outerCorners.C1);
+        arcs.push(flipArcAboutY(p.outerCorners.C1));
+        p.options.C11DoubleArc && arcs.push(p.outerCorners.C11);
+        p.options.C11DoubleArc && arcs.push(flipArcAboutY(p.outerCorners.C11));
+        arcs.push(p.outerCorners.L3);
+        arcs.push(flipArcAboutY(p.outerCorners.L3));
+        p.options.L31DoubleArc && arcs.push(p.outerCorners.L31);
+        p.options.L31DoubleArc && arcs.push(flipArcAboutY(p.outerCorners.L31));
 
-        if (p.options.CL1DoubleArc && p.options.L31DoubleArc) {
-            let CL2End = pointOnCircle(p.outerCorners.CL2, p.outerCorners.CL2.end)
-            let L32End = pointOnCircle(p.outerCorners.L32, p.outerCorners.L32.end)
+        if (p.options.C11DoubleArc && p.options.L31DoubleArc) {
+            let CL2End = pointOnCircle(p.outerCorners.C11, p.outerCorners.C11.end)
+            let L32End = pointOnCircle(p.outerCorners.L31, p.outerCorners.L31.end)
             paths.push(pathFromLine(CL2End, L32End));
             paths.push(pathFromLine(flipPointAboutY(CL2End), flipPointAboutY(L32End)));
         }
-        else if (p.options.CL1DoubleArc) {
-            let CL2End = pointOnCircle(p.outerCorners.CL2, p.outerCorners.CL2.end)
-            let L31End = pointOnCircle(p.outerCorners.L31, p.outerCorners.L31.end)
+        else if (p.options.C11DoubleArc) {
+            let CL2End = pointOnCircle(p.outerCorners.C11, p.outerCorners.C11.end)
+            let L31End = pointOnCircle(p.outerCorners.L3, p.outerCorners.L3.end)
             paths.push(pathFromLine(CL2End, L31End));
             paths.push(pathFromLine(flipPointAboutY(CL2End), flipPointAboutY(L31End)));
         }
         else if (p.options.L31DoubleArc) {
-            let CL1End = pointOnCircle(p.outerCorners.CL1, p.outerCorners.CL1.end)
-            let L32End = pointOnCircle(p.outerCorners.L32, p.outerCorners.L32.end)
+            let CL1End = pointOnCircle(p.outerCorners.C1, p.outerCorners.C1.end)
+            let L32End = pointOnCircle(p.outerCorners.L31, p.outerCorners.L31.end)
             paths.push(pathFromLine(CL1End, L32End));
             paths.push(pathFromLine(flipPointAboutY(CL1End), flipPointAboutY(L32End)));
         }
         else {
-            let CL1End = pointOnCircle(p.outerCorners.CL1, p.outerCorners.CL1.end)
-            let L31End = pointOnCircle(p.outerCorners.L31, p.outerCorners.L31.end)
+            let CL1End = pointOnCircle(p.outerCorners.C1, p.outerCorners.C1.end)
+            let L31End = pointOnCircle(p.outerCorners.L3, p.outerCorners.L3.end)
             paths.push(pathFromLine(CL1End, L31End));
             paths.push(pathFromLine(flipPointAboutY(CL1End), flipPointAboutY(L31End)));
         }

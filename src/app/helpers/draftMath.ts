@@ -190,7 +190,9 @@ export function interceptCirclesAndPointCompound(L: Circle, P: Pt, Cr1: number, 
   //   dist(C1.center, P - offset) = Cr2      <- shift P by -offset
   //
   // So C1's center must lie on TWO circles simultaneously:
-  //   1. Circle centered at L       with radius (L.r + Cr1)   [tangent to L]
+  //   1. Circle centered at L       with radius (L.r ± Cr1)   [tangent to L]
+  //        - P outside L → C1 outside L → external tangency → L.r + Cr1
+  //        - P inside  L → C1 inside  L → internal tangency → L.r - Cr1
   //   2. Circle centered at Q=P-offset with radius Cr2        [C2 reaches P]
   //
   // Their intersections give the two possible C1 centers directly.
@@ -203,7 +205,9 @@ export function interceptCirclesAndPointCompound(L: Circle, P: Pt, Cr1: number, 
   // Shift P back by the offset so we can solve for C1's center directly
   const Q: Pt = { x: P.x - offset.x, y: P.y - offset.y };
 
-  const C1locus = new Circle(L.x, L.y, L.r + Cr1);
+  const pInsideL = dist(L, P) < L.r;
+  const C1locusRadius = pInsideL ? L.r - Cr1 : L.r + Cr1;
+  const C1locus = new Circle(L.x, L.y, C1locusRadius);
   const C2locus = new Circle(Q.x, Q.y, Cr2);
 
   const C1centers = circleCircleIntersections(C1locus, C2locus);
