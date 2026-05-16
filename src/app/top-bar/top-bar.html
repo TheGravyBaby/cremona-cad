@@ -39,6 +39,8 @@
           (click)="activeTab = 'tutorial'">Tutorial</button>
         <button class="tab-btn" [class.active]="activeTab === 'author'" (click)="activeTab = 'author'">About The
           Author</button>
+        <button class="tab-btn" [class.active]="activeTab === 'version'" (click)="activeTab = 'version'">Version</button>
+        <button class="tab-btn" [class.active]="activeTab === 'license'" (click)="activeTab = 'license'">License</button>
       </div>
       <button class="modal-close" (click)="closeAbout()" aria-label="Close">✕</button>
     </div>
@@ -65,9 +67,9 @@
         <p>
           Rather than a static trace, or a complex list of coordinates,
           CremonaCad defines instruments using a simple system of <strong>intersecting arcs</strong>.
-          These patterns are historically informed by the drafting document found in
-          the workshop of <strong>Enrico Ceruti</strong>, as well as the research of
-          <strong>David Beard</strong>, <strong>Kevin Kelly</strong>, and <strong>François Denis</strong>.
+          These patterns are historically informed by a drafting document found in
+          the workshop of <strong>Enrico Ceruti</strong>, as well as the research of American luthiers
+          <strong>David Beard</strong> and <strong>Kevin Kelly</strong>.
         </p>
         <p>
           Upload a historical instrument and use it as a reference,
@@ -174,6 +176,39 @@
       }
 
 
+      @if (activeTab === 'version') {
+      <section class="info-section">
+        <h2>Version</h2>
+
+        <div class="changelog-entry">
+          <div class="changelog-version">v0.7.0 <span class="changelog-date">— May 2025</span></div>
+          <p class="changelog-desc">Initial release.</p>
+          <ul class="tips-list">
+            <li>Here we go!</li>
+  
+          </ul>
+        </div>
+      </section>
+      }
+
+      @if (activeTab === 'license') {
+      <section class="info-section">
+        <h2>License</h2>
+        <p>
+          CremonaCad is released under the
+          <strong>GNU General Public License v3.0 (GPL-3.0)</strong>.
+        </p>
+        <p>
+          You are free to use, modify, and distribute this software under the terms of the GPL-3.0 license.
+          Any derivative works must also be distributed under the same license.
+        </p>
+        <p>
+          Source code is available on
+          <a class="contact-link" href="https://github.com/AndrewArgraves/cremona-cad" target="_blank" rel="noopener">GitHub</a>.
+        </p>
+      </section>
+      }
+
       @if (activeTab === 'author') {
       <section class="author-section">
         <h2>About The Project</h2>
@@ -183,14 +218,13 @@
         <p>
           <strong>CremonaCad</strong> is a passion project initially developed as a tool to better understand the geometry of violin
           family instruments. As the application developed over many months of late-night coding, I began
-          to see its potential as a design aid and educational tool for the maker community at large. The fundemental goal of CremonaCad is to assist in the making and study
-          of these beautiful instruments. 
+          to see its potential as a design aid and educational tool for the maker community at large.
         </p>
         <p>
           I intend to keep developing CremonaCad for some time, and hope to add features for making arching templates, f-holes, and neck patterns.
-          At some point I would also like to add lute and guitar recipes.
+          Its conceivable recipes could also be added for other stringed instruments, such as lute or guitar.
         </p>
-        <p>I believe strongly in open source software and community collaboration. If you are interested in collaborating on CremonaCad, feel free to reach out:</p>
+        <p>I believe strongly in open source software and community collaboration. If you are interested in collaborating on CremonaCad, or have any ideas or suggestions, feel free to reach out.</p>
         <div class="author-contact">
           <span class="contact-icon">✉</span>
           <a class="contact-link" href="mailto:andrewargraves@gmail.com">andrewargraves@gmail.com</a>
