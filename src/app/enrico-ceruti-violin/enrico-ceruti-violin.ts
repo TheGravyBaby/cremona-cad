@@ -6,7 +6,7 @@ import { greyOut, renderArcFromArc, renderArcFromArcFancy, renderCircle,  render
 import { clampParam, safeRun } from '../helpers/validators';
 import { EnricoCerutiTemplate, CERUTI_TEMPLATES, EnricoCerutiParams } from './ceruti-types';
 import { dimensionInfo, insetInfo, referenceInfo } from './ceruti-helpers';
-import { combinePathStrings, flipAngleAboutYAxis, flipArcAboutY, flipCircleAboutY, flipPointAboutY, flipRectAboutY, pointOnCircle, } from '../helpers/draftMath';
+import { combinePathStrings, flipAngleAboutYAxis, flipArcAboutY, flipCircleAboutY, flipPointAboutY, flipRectAboutY, interceptCirclesAndPointCompound, pointOnCircle, } from '../helpers/draftMath';
 import { calculateCenterBout, calculateCornerBlocks, calculateCorners, calculateMainBouts, calculateMould, calculateOuterCorners,  defineInnerPath, defineOuterPath } from './ceruti-calcs';
 import { buildMirroredSvg, downloadSvgFile, downloadSvgAsPdf, downloadFullPlanPdf, PdfPage } from '../helpers/svg-export';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
@@ -414,6 +414,15 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       renderCrosshair({ x: -p.bouts.UCr!.x, y: p.bouts.UCr!.y }, this.colors.centerBoutUpOff2)(g, ui);
       renderCrosshair({ x: -p.bouts.LCr!.x, y: p.bouts.LCr!.y }, this.colors.centerBoutLowOff2)(g, ui);
     }
+
+    let C1r = 20
+    let C2r = 12
+    let theta = 15/16 * Math.PI;
+    let compoundCircles = interceptCirclesAndPointCompound(p.bouts.L2!, p.bouts.LCr, C1r, C2r, theta);
+    renderCircle(compoundCircles[1].C1, this.colors.centerBoutLowOff2)(g, ui);
+    renderCircle(compoundCircles[1].C2, this.colors.centerBoutLowOff2)(g, ui);
+
+
 
     if ((currentModule && this.showModuleArcs) || this.showAllArcs) {
       !p.options.useViolCornerLC && renderArcFromArcFancy(p.bouts.L2!, this.colors.lowerBoutOff)(g, ui);
