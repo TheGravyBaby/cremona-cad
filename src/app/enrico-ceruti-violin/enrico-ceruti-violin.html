@@ -214,9 +214,11 @@
 
         <section class="ui-group">
             <div class="ui-group-title">Viol Neck</div>
+            <div class="input-group basic-row field-row" role="group">
             <div class="toggle">
                 <input type="checkbox" [(ngModel)]="d.params.options.useViolNeck"
                     (change)="changeMainBouts()" /><span>Use Viol Neck </span>
+            </div>
             </div>
 
             @if (d.params.options.useViolNeck) {
@@ -343,9 +345,11 @@
                 }
             </div>
             
+            <div class="input-group basic-row field-row">
             <div class="toggle">
                 <input type="checkbox" [(ngModel)]="d.params.options.useViolCornerUC"
                     (change)="changeCorners()" /><span>Use Viol Corner</span>
+            </div>
             </div>
         </section>
 
@@ -403,9 +407,11 @@
                 </div>
                 }
             </div>
+            <div class="input-group basic-row field-row">
             <div class="toggle">
                 <input type="checkbox" [(ngModel)]="d.params.options.useViolCornerLC"
                     (change)="changeCorners()" /><span>Use Viol Corner</span>
+            </div>
             </div>
         </section>
 
