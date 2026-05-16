@@ -751,166 +751,82 @@
 
         <section class="ui-group">
             <div class="ui-group-title">Upper Corner</div>
-            @if (!d.params.options.useViolCornerUC) {
-            <div class="ui-group">
+            @if (d.params.options.U31DoubleArc) {
                 <div class="input-group basic-row field-row" role="group">
                     <label class="field-cell">
-                        <span class="field-title">U3 Angle<span class="unit-label">deg</span></span>
-                        <input type="number" class="basic-input" step="1" min="0"
-                            [(ngModel)]="d.params.outerCorners.U3.diffDeg" (input)="changeOuterTrace()"
-                            [style.borderColor]="colors.centerBoutUpOff" />
-                    </label>
-                    <div class="toggle">
-                        <input type="checkbox" [(ngModel)]="d.params.options.U31DoubleArc"
-                            (change)="changeOuterTrace()" /><span>Double Arc </span>
-                    </div>
-                </div>
-
-                @if(d.params.options.U31DoubleArc) {
-                <div class="input-group basic-row field-row" role="group">
-                    <label class="field-cell">
-                        <span class="field-title">U1 Angle <span class="unit-label">deg</span></span>
-                        <input type="number" class="basic-input" step="1" min="0"
-                            [(ngModel)]="d.params.outerCorners.U3.diffDeg" (input)="changeOuterTrace()"
-                            [style.borderColor]="colors.centerBoutUpOff2" />
-                    </label>
-                    <label class="field-cell">
-                        <span class="field-title">U3.1 Radius <span class="unit-label">mm</span></span>
-                        <input type="number" class="basic-input" step="1" min="0"
-                            [(ngModel)]="d.params.outerCorners.U31.r" (input)="changeOuterTrace()"
-                            [style.borderColor]="colors.centerBoutUpOff2" />
+                        <span class="field-title">Cutoff Angle <span class="unit-label">Rad</span></span>
+                        <input type="number" class="basic-input" step=".1" [(ngModel)]="d.params.outerCorners.U31.end"
+                            (input)="changeOuterTrace()" [style.borderColor]="colors.centerBoutUpOff" />
                     </label>
                 </div>
-                }
-
-            </div>
-            <div class="ui-group">
-                <div class="input-group basic-row field-row" role="group">
-                    <label class="field-cell">
-                        <span class="field-title">C2.1 Angle<span class="unit-label">deg</span></span>
-                        <input type="number" class="basic-input" step="1" min="0"
-                            [(ngModel)]="d.params.outerCorners.C21.diffDeg" (input)="changeOuterTrace()"
-                            [style.borderColor]="colors.centerBoutUp" />
-                    </label>
-                    <div class="toggle">
-                        <input type="checkbox" [(ngModel)]="d.params.options.C21DoubleArc"
-                            (change)="changeOuterTrace()" /><span>Double Arc </span>
-                    </div>
-                </div>
-
-                @if(d.params.options.C21DoubleArc) {
-                <div class="input-group basic-row field-row" role="group">
-                    <label class="field-cell">
-                        <span class="field-title">C2.1 Angle <span class="unit-label">deg</span></span>
-                        <input type="number" class="basic-input" step="1" min="0"
-                            [(ngModel)]="d.params.outerCorners.C21.diffDeg" (input)="changeOuterTrace()"
-                            [style.borderColor]="colors.centerBoutUpOff2" />
-                    </label>
-                    <label class="field-cell">
-                        <span class="field-title">C2.1 Radius <span class="unit-label">mm</span></span>
-                        <input type="number" class="basic-input" step="1" min="0"
-                            [(ngModel)]="d.params.outerCorners.C21.r" (input)="changeOuterTrace()"
-                            [style.borderColor]="colors.centerBoutUpOff2" />
-                    </label>
-                </div>
-                }
-
-            </div>
             }
             @else {
-            <div class="ui-group" [style.opacity]="0.9">
                 <div class="input-group basic-row field-row" role="group">
-                    <div class="basic-display" aria-live="polite">
-                        Viol corner selected — nothing to configure here.
-                    </div>
+                    <label class="field-cell">
+                        <span class="field-title">Cutoff Angle <span class="unit-label">Rad</span></span>
+                        <input type="number" class="basic-input" step=".1" [(ngModel)]="d.params.outerCorners.U3.end"
+                            (input)="changeOuterTrace()" [style.borderColor]="colors.centerBoutUpOff" />
+                    </label>
                 </div>
-            </div>
             }
-
+            @if (d.params.options.C21DoubleArc) {
+                 <div class="input-group basic-row field-row" role="group">
+                    <label class="field-cell">
+                        <span class="field-title">Cutoff Angle <span class="unit-label">Rad</span></span>
+                        <input type="number" class="basic-input" step=".1" [(ngModel)]="d.params.outerCorners.C21.end"
+                            (input)="changeOuterTrace()" [style.borderColor]="colors.centerBoutUpOff" />
+                    </label>
+                </div>
+            }
+            @else {
+                <div class="input-group basic-row field-row" role="group">
+                    <label class="field-cell">
+                        <span class="field-title">Cutoff Angle <span class="unit-label">Rad</span></span>
+                        <input type="number" class="basic-input" step=".1" [(ngModel)]="d.params.outerCorners.C2.end"
+                            (input)="changeOuterTrace()" [style.borderColor]="colors.centerBoutUpOff" />
+                    </label>
+                </div>
+            }
         </section>
 
         <section class="ui-group">
             <div class="ui-group-title">Lower Corner</div>
-
-            @if(!d.params.options.useViolCornerLC) {
-
-            <div class="ui-group">
+            @if (d.params.options.C11DoubleArc) {
                 <div class="input-group basic-row field-row" role="group">
                     <label class="field-cell">
-                        <span class="field-title">C1 Angle<span class="unit-label">deg</span></span>
-                        <input type="number" class="basic-input" step="1" min="0"
-                            [(ngModel)]="d.params.outerCorners.C11.diffDeg" (input)="changeOuterTrace()"
-                            [style.borderColor]="colors.centerBoutLow" />
-                    </label>
-                    <div class="toggle">
-                        <input type="checkbox" [(ngModel)]="d.params.options.C11DoubleArc"
-                            (change)="changeOuterTrace()" /><span>Double Arc </span>
-                    </div>
-                </div>
-
-
-                @if(d.params.options.C11DoubleArc) {
-                <div class="input-group basic-row field-row" role="group">
-
-                    <label class="field-cell">
-                        <span class="field-title">C2.1 Angle <span class="unit-label">deg</span></span>
-                        <input type="number" class="basic-input" step="1" min="0"
-                            [(ngModel)]="d.params.outerCorners.C21.diffDeg" (input)="changeOuterTrace()"
-                            [style.borderColor]="colors.centerBoutLowOff2" />
-                    </label>
-                    <label class="field-cell">
-                        <span class="field-title">C2.1 Radius <span class="unit-label">mm</span></span>
-                        <input type="number" class="basic-input" step="1" min="0"
-                            [(ngModel)]="d.params.outerCorners.C21.r" (input)="changeOuterTrace()"
-                            [style.borderColor]="colors.centerBoutLowOff2" />
+                        <span class="field-title">Cutoff Angle <span class="unit-label">Rad</span></span>
+                        <input type="number" class="basic-input" step=".1" [(ngModel)]="d.params.outerCorners.C11.end"
+                            (input)="changeOuterTrace()" [style.borderColor]="colors.centerBoutLowOff" />
                     </label>
                 </div>
-                }
-
-            </div>
-
-
-            <div class="ui-group">
-                <div class="input-group basic-row field-row" role="group">
-                    <label class="field-cell">
-                        <span class="field-title">L3.1 Angle<span class="unit-label">deg</span></span>
-                        <input type="number" class="basic-input" step="1" min="0"
-                            [(ngModel)]="d.params.outerCorners.L31.diffDeg" (input)="changeOuterTrace()"
-                            [style.borderColor]="colors.centerBoutLowOff" />
-                    </label>
-                    <div class="toggle">
-                        <input type="checkbox" [(ngModel)]="d.params.options.L31DoubleArc"
-                            (change)="changeOuterTrace()" /><span>Double Arc </span>
-                    </div>
-                </div>
-                @if(d.params.options.L31DoubleArc) {
-                <div class="input-group basic-row field-row" role="group">
-                    <label class="field-cell">
-                        <span class="field-title">L31 Angle <span class="unit-label">deg</span></span>
-                        <input type="number" class="basic-input" step="1" min="0"
-                            [(ngModel)]="d.params.outerCorners.L31.diffDeg" (input)="changeOuterTrace()"
-                            [style.borderColor]="colors.centerBoutLowOff2" />
-                    </label>
-                    <label class="field-cell">
-                        <span class="field-title">L31 Radius <span class="unit-label">mm</span></span>
-                        <input type="number" class="basic-input" step="1" min="0"
-                            [(ngModel)]="d.params.outerCorners.L31.r" (input)="changeOuterTrace()"
-                            [style.borderColor]="colors.centerBoutLowOff2" />
-                    </label>
-                </div>
-                }
-            </div>
             }
             @else {
-            <div class="ui-group" [style.opacity]="0.9">
                 <div class="input-group basic-row field-row" role="group">
-                    <div class="basic-display" aria-live="polite">
-                        Viol corner selected — nothing to configure here.
-                    </div>
+                    <label class="field-cell">
+                        <span class="field-title">Cutoff Angle <span class="unit-label">Rad</span></span>
+                        <input type="number" class="basic-input" step=".1" [(ngModel)]="d.params.outerCorners.C1.end"
+                            (input)="changeOuterTrace()" [style.borderColor]="colors.centerBoutLowOff" />
+                    </label>
                 </div>
-            </div>
             }
-
+            @if (d.params.options.L31DoubleArc) {
+                <div class="input-group basic-row field-row" role="group">
+                    <label class="field-cell">
+                        <span class="field-title">Cutoff Angle <span class="unit-label">Rad</span></span>
+                        <input type="number" class="basic-input" step=".1" [(ngModel)]="d.params.outerCorners.L31.end"
+                            (input)="changeOuterTrace()" [style.borderColor]="colors.centerBoutLowOff" />
+                    </label>
+                </div>
+            }
+            @else {
+                <div class="input-group basic-row field-row" role="group">
+                    <label class="field-cell">
+                        <span class="field-title">Cutoff Angle <span class="unit-label">Rad</span></span>
+                        <input type="number" class="basic-input" step=".1" [(ngModel)]="d.params.outerCorners.L3.end"
+                            (input)="changeOuterTrace()" [style.borderColor]="colors.centerBoutLowOff" />
+                    </label>
+                </div>
+            }
         </section>
 
         <section class="ui-group">

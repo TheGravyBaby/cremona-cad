@@ -9,22 +9,11 @@ export class Fraction { n: number; d: number; constructor(n: number, d: number) 
 export class Arc extends Circle { 
   start: number; 
   end: number; 
-  diff: number | null;
-  diffDeg: number | null;
 
   constructor(x:number, y:number, r:number, start?: number, end?: number){
     super(x, y, r);
     this.start = start ?? 0;
     this.end = end ?? Math.PI*2;
-    this.diff = Math.abs(this.end - this.start);
-
-    let oppositeAngle = 2 * Math.PI - this.diff;
-
-    if (oppositeAngle < this.diff)
-      this.diff = oppositeAngle;
-
-    this.diffDeg = this.diff * 180 / Math.PI;
-    this.diffDeg = this.diffDeg % 360;
   };
 }
 
@@ -38,10 +27,6 @@ export function arcFromCircleAndPoints(circle: Circle, startPt: Pt, endPt: Pt): 
   return new Arc(circle.x, circle.y, circle.r, startAngle, endAngle);
 }
 
-export function increaseArcAngle(arc: Arc, angleIncreaseDeg: number): Arc {
-  let angleIncreaseRad = angleIncreaseDeg * Math.PI / 180;
-  return new Arc(arc.x, arc.y, arc.r, arc.start, arc.end + angleIncreaseRad);
-}
 
 export type Axis = "x" | "y";
 export type RefImageFit = "fit" | "cover" | "stretch";
