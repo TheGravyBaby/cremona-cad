@@ -174,6 +174,52 @@ export function solveInscribedCircleAlongAxis(C: Circle, r: number, ax: Axis, va
   return pos ? Cunknown + s : Cunknown - s;
 }
 
+export function interceptCirclesAndPointCompound(L: Circle, P: Pt, Cr1: number, Cr2: number, Ctheta: number): {C1: Circle, C2: Circle}[] {
+  // C1 is externally tangent to L, so its center is always at distance (L.r + Cr1) from L's center.
+  // C2 is internally tangent to C1 (since Cr2 < Cr1), so C2's center sits (Cr1 - Cr2) from C1's center
+  // along the direction Ctheta — the same direction as the tangent point T on C1's boundary.
+  //
+  //   T = C1.center + Cr1 * (cos Ctheta, sin Ctheta)       <- tangent point on C1
+  //   C2.center = C1.center + (Cr1 - Cr2) * (cos Ctheta, sin Ctheta)
+  //
+  // The final constraint is that C2 must reach P:
+  //   dist(C2.center, P) = Cr2
+  //
+  // Substituting C2.center = C1.center + offset:
+  //   dist(C1.center + offset, P) = Cr2
+  //   dist(C1.center, P - offset) = Cr2      <- shift P by -offset
+  //
+  // So C1's center must lie on TWO circles simultaneously:
+  //   1. Circle centered at L       with radius (L.r + Cr1)   [tangent to L]
+  //   2. Circle centered at Q=P-offset with radius Cr2        [C2 reaches P]
+  //
+  // Their intersections give the two possible C1 centers directly.
+
+  const offset: Pt = {
+    x: (Cr1 - Cr2) * Math.cos(Ctheta),
+    y: (Cr1 - Cr2) * Math.sin(Ctheta),
+  };
+
+  // Shift P back by the offset so we can solve for C1's center directly
+  const Q: Pt = { x: P.x - offset.x, y: P.y - offset.y };
+
+  const C1locus = new Circle(L.x, L.y, L.r + Cr1);
+  const C2locus = new Circle(Q.x, Q.y, Cr2);
+
+  const C1centers = circleCircleIntersections(C1locus, C2locus);
+  if (C1centers.length === 0) return [];
+
+  return C1centers.map(c1Center => {
+    const C1: Circle = { ...c1Center, r: Cr1 };
+    const C2: Circle = {
+      x: c1Center.x + offset.x,
+      y: c1Center.y + offset.y,
+      r: Cr2,
+    };
+    return { C1, C2 };
+  });
+}
+
 export function interceptCirclesAndPoint(L: Circle, P: Pt, Cr: number): Circle[] {
   //  P *
   //     /\ Cr 
