@@ -40,8 +40,9 @@ export function dimensionInfo() {
 
 export function boutWidthInfo() {
     info(
-        "The total outer width of the bout, including the inset (rib thickness + overhang).\n\n" +
-        "This value also determines where the U1/L1 vesica arcs are cut off at the bout edge.",
+        "The total OUTER width of the bout, including the rib thickness + overhang.\n\n" +
+        "Remember, we are first forming the inner trace which used for the mould outline. The final dimensions of the instrument will be the sum of the mould outline, the rib thickness and the overhang.\n\n" + 
+        "Note that bout measurements can often be found for historical instruments online. ",
         "Additional Information", defaultTTL
     )
 }
@@ -56,7 +57,7 @@ export function violNeckInfo() {
 
 export function violCornerInfo() {
     info(
-        "Also known as a bass corner, the viol corner replaces the standard pointed corner with a smooth rounded profile and a sharp cutoff.\n\n" +
+        "Also known as a bass corner, the viol corner draws a single arc from the bout to the corner.\n\n" +
         "When enabled, the U3/L3 corner arc is bypassed and the bout arcs flow directly into the corner position.",
         "Additional Information", defaultTTL
     )
@@ -66,6 +67,24 @@ export function buttonInfo() {
     info(
         "The button is the small semicircular projection at the top of the upper bout on the back of the instrument.\n\n" +
         "It reinforces the neck joint and is only present on the back plate — it does not appear on the top.",
+        "Additional Information", defaultTTL
+    )
+}
+
+export function centerBoutWidthInfo() {
+    info(
+        "The total OUTER width of the center bout, including the rib thickness + overhang.\n\n" +
+        "Remember, we are tracing the inner edge for the mould — the final instrument width will be larger once the ribs and overhang are added.\n\n" +
+        "Note that bout measurements can often be found for historical instruments online. ",
+        "Additional Information", defaultTTL
+    )
+}
+
+export function fitC0Info() {
+    info(
+        "This button ensures the center bout C0 will always be positioned such that it cleanly intersects the upper and lower bout arcs.\n\n" +
+        "This is based on Kevin Kellys 'four circles' violin theory. Not all instruments follow this pattern and so it is togglable.\n\n" +
+        "If disabled, C0 X and Y position can be adjusted. ",
         "Additional Information", defaultTTL
     )
 }

@@ -44,47 +44,47 @@
 }
 
 :root.day-mode {
-  --ui-bg-app: #dddfe2;
-  --ui-bg-canvas: #cbccce;
-  --ui-bg-sidebar: #e2e4e7;
-  --ui-bg-panel: #eaebee;
-  --ui-bg-section: #e6e8eb;
-  --ui-bg-section-open: #ecedf0;
-  --ui-bg-surface: #e0e2e6;
-  --ui-bg-surface-2: #d8dadd;
-  --ui-bg-elevated: #eff0f2;
+  --ui-bg-app: #eaecf0;
+  --ui-bg-canvas: #d8dce2;
+  --ui-bg-sidebar: #f8f9fa;
+  --ui-bg-panel: #ffffff;
+  --ui-bg-section: #f0f2f4;
+  --ui-bg-section-open: #f8f9fa;
+  --ui-bg-surface: #eaecf0;
+  --ui-bg-surface-2: #e0e2e6;
+  --ui-bg-elevated: #ffffff;
 
-  --ui-border-soft: #b8bcc2;
-  --ui-border-strong: #a0a6ae;
-  --ui-border-elevated: #aab0b8;
+  --ui-border-soft: #c8ccd1;
+  --ui-border-strong: #a2a9b1;
+  --ui-border-elevated: #a2a9b1;
 
-  --ui-text-primary: #1a2028;
-  --ui-text-secondary: #3d4a58;
-  --ui-text-muted: #4a5560;
+  --ui-text-primary: #202122;
+  --ui-text-secondary: #54595d;
+  --ui-text-muted: #72777d;
 
-  --ui-focus-border: #6283b9;
-  --ui-focus-ring: rgba(60, 80, 140, 0.25);
-  --ui-accent: #4b8eba;
+  --ui-focus-border: #3366cc;
+  --ui-focus-ring: rgba(51, 102, 204, 0.22);
+  --ui-accent: #3366cc;
 
-  --ui-shadow-soft: 0 1px 2px rgba(10, 14, 24, 0.12);
-  --ui-shadow-open: 0 3px 10px rgba(10, 14, 24, 0.18);
-  --ui-shadow-pop: 0 4px 14px rgba(10, 14, 24, 0.22);
+  --ui-shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.10);
+  --ui-shadow-open: 0 3px 10px rgba(0, 0, 0, 0.14);
+  --ui-shadow-pop: 0 4px 14px rgba(0, 0, 0, 0.16);
 
-  --ui-control-bg: #eaebee;
-  --ui-control-bg-hover: #dddfe3;
-  --ui-control-bg-active: #d2d4d8;
+  --ui-control-bg: #f8f9fa;
+  --ui-control-bg-hover: #eaecf0;
+  --ui-control-bg-active: #c8ccd1;
 
-  --ui-topbar-grad-1: #d6c99a;
-  --ui-topbar-grad-2: #c8b87e;
-  --ui-topbar-border: rgba(140, 108, 30, 0.45);
-  --ui-topbar-control-border: rgba(130, 100, 28, 0.6);
-  --ui-topbar-control-bg: rgba(220, 208, 170, 0.92);
-  --ui-topbar-control-bg-hover: rgba(232, 220, 182, 1);
+  --ui-topbar-grad-1: #dfc46a;
+  --ui-topbar-grad-2: #c9a83e;
+  --ui-topbar-border: rgba(150, 112, 20, 0.50);
+  --ui-topbar-control-border: rgba(140, 104, 20, 0.65);
+  --ui-topbar-control-bg: rgba(228, 206, 140, 0.92);
+  --ui-topbar-control-bg-hover: rgba(238, 216, 156, 1);
 
-  --ui-canvas-btn-bg-start: #e8eaed;
-  --ui-canvas-btn-bg-end: #dddfe3;
-  --ui-canvas-btn-bg-active: #d2d4d8;
-  --ui-canvas-btn-border-hover: #7a8290;
+  --ui-canvas-btn-bg-start: #f8f9fa;
+  --ui-canvas-btn-bg-end: #eaecf0;
+  --ui-canvas-btn-bg-active: #c8ccd1;
+  --ui-canvas-btn-border-hover: #72777d;
 }
 
 body {

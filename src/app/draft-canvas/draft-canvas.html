@@ -12,7 +12,7 @@
       <div class="sep"></div>
 
       <button type="button" class="btn" (click)="applyZoom(pxPerMm / 1.1)">−</button>
-      <div class="readout">Zoom: {{ pxPerMm.toFixed(1) }} px/mm</div>
+      <div class="readout">{{ pxPerMm.toFixed(1) }} px/mm</div>
       <button type="button" class="btn" (click)="applyZoom(pxPerMm * 1.1)">+</button>
     </div>
 

@@ -116,7 +116,7 @@ const DefaultParams: EnricoCerutiParams = {
 
     CBWtoLBW: 1 / 2,
     C0YtoH: 9 / 16,
-    C0toLBW: 3 / 8,
+    C0toLBW: 4/9,
     C2toLBW: 1 / 12,
     C1toLBW: 1 / 8,
 
@@ -180,7 +180,7 @@ const DefaultParams: EnricoCerutiParams = {
     useViolNeck: false,
     useViolCornerUC: false,
     useViolCornerLC: false,
-    useKellyC0: false, // four circles based theory of clean intersection along center bout
+    useKellyC0: true, // four circles based theory of clean intersection along center bout
     U31DoubleArc: false,
     C21DoubleArc: false,
     C11DoubleArc: false,

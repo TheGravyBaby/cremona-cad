@@ -3,7 +3,7 @@
         <section class="panel-nav" aria-label="Sidebar section navigation">
             <label class="ui-group-title">Section Select</label>
             <div class="panel-nav-controls">
-                <button type="button" class="panel-nav-btn" (click)="stepPanel(-1)" title="Previous section"
+                <button type="button" class="panel-nav-btn panel-nav-btn--back" (click)="stepPanel(-1)" title="Previous section"
                     aria-label="Go to previous section" [disabled]="!canStepPanel(-1)">
                     Back
                 </button>
@@ -15,7 +15,7 @@
                     </option>
                     }
                 </select>
-                <button type="button" class="panel-nav-btn" (click)="stepPanel(1)" title="Next section"
+                <button type="button" class="panel-nav-btn panel-nav-btn--next" (click)="stepPanel(1)" title="Next section"
                     aria-label="Go to next section" [disabled]="!canStepPanel(1)">
                     Next
                 </button>
