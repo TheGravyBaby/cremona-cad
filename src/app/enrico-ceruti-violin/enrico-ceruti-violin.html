@@ -1,17 +1,10 @@
-<!-- for reference to copy
- <div class="input-group basic-row field-row" role="group">
-    <label class='field-cell'>
-    </label>
-</div> 
--->
-
 <div class="panel">
     <div class="panel-nav-wrap">
         <section class="panel-nav" aria-label="Sidebar section navigation">
             <label class="ui-group-title">Recipe Step</label>
             <div class="panel-nav-controls">
-                <button type="button" class="panel-nav-btn panel-nav-btn--back" (click)="stepPanel(-1)" title="Previous section"
-                    aria-label="Go to previous section" [disabled]="!canStepPanel(-1)">
+                <button type="button" class="panel-nav-btn panel-nav-btn--back" (click)="stepPanel(-1)"
+                    title="Previous section" aria-label="Go to previous section" [disabled]="!canStepPanel(-1)">
                     Back
                 </button>
                 <select id="panel-selector" class="panel-select" [ngModel]="openPanel"
@@ -22,8 +15,8 @@
                     </option>
                     }
                 </select>
-                <button type="button" class="panel-nav-btn panel-nav-btn--next" (click)="stepPanel(1)" title="Next section"
-                    aria-label="Go to next section" [disabled]="!canStepPanel(1)">
+                <button type="button" class="panel-nav-btn panel-nav-btn--next" (click)="stepPanel(1)"
+                    title="Next section" aria-label="Go to next section" [disabled]="!canStepPanel(1)">
                     Next
                 </button>
             </div>
@@ -219,12 +212,12 @@
         <section class="ui-group">
             <div class="ui-group-title">Viol Neck</div>
             <div class="input-group basic-row field-row" role="group">
-            <div class="toggle">
-                <input type="checkbox" [(ngModel)]="d.params.options.useViolNeck"
-                    (change)="changeMainBouts()" /><span>Use Viol Neck </span>
-            </div>
-            <button type="button" class="info-icon" (click)="onInfoClick('violNeck')" title="More information"
-                aria-label="Information">ⓘ</button>
+                <div class="toggle">
+                    <input type="checkbox" [(ngModel)]="d.params.options.useViolNeck"
+                        (change)="changeMainBouts()" /><span>Use Viol Neck </span>
+                </div>
+                <button type="button" class="info-icon" (click)="onInfoClick('violNeck')" title="More information"
+                    aria-label="Information">ⓘ</button>
             </div>
 
             @if (d.params.options.useViolNeck) {
@@ -249,24 +242,29 @@
         <section class="ui-group">
             <div class="input-group basic-row field-row" role="group">
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showModuleArcs" (change)="changeMainBouts()" /><span>Show Module Arcs </span>
+                    <input type="checkbox" [(ngModel)]="showModuleArcs" (change)="changeMainBouts()" /><span>Show Module
+                        Arcs </span>
                 </div>
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showAllArcs" (change)="changeMainBouts()" /><span>Show All Arcs</span>
+                    <input type="checkbox" [(ngModel)]="showAllArcs" (change)="changeMainBouts()" /><span>Show All
+                        Arcs</span>
                 </div>
 
             </div>
             <div class="input-group basic-row field-row" role="group">
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showModuleCircles" (change)="changeMainBouts()" /><span>Show Module Circles </span>
+                    <input type="checkbox" [(ngModel)]="showModuleCircles" (change)="changeMainBouts()" /><span>Show
+                        Module Circles </span>
                 </div>
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeMainBouts()" /><span>Show All Circles </span>
+                    <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeMainBouts()" /><span>Show All
+                        Circles </span>
                 </div>
             </div>
             <div class="input-group basic-row field-row" role="group">
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showModuleGuides" (change)="changeMainBouts()" /><span>Show Module Guides</span>
+                    <input type="checkbox" [(ngModel)]="showModuleGuides" (change)="changeMainBouts()" /><span>Show
+                        Module Guides</span>
                 </div>
             </div>
         </section>
@@ -275,7 +273,8 @@
         @if (openPanel === 'corners') {
         <section class="ui-group">
             <div class="ui-group-title">Upper Bout</div>
-            <div class="input-group basic-row field-row" role="group" [style.opacity]="d.params.options.useViolCornerUC ? 0.5 : 1"
+            <div class="input-group basic-row field-row" role="group"
+                [style.opacity]="d.params.options.useViolCornerUC ? 0.5 : 1"
                 [style.pointerEvents]="d.params.options.useViolCornerUC ? 'none' : 'auto'">
                 <label class="field-cell">
                     <span class="field-title">U2 Radius <span class="unit-label">mm</span></span>
@@ -311,18 +310,19 @@
                 </label>
             </div>
 
-            <div class="ui-group" [style.opacity]="d.params.options.useViolCornerUC ? 0.5 : 1"
-                [style.pointerEvents]="d.params.options.useViolCornerUC ? 'none' : 'auto'">
-                <div class="input-group basic-row field-row" role="group">
+            <div class="ui-group">
+                <div class="input-group basic-row field-row" role="group"
+                    [style.opacity]="d.params.options.useViolCornerUC ? 0.5 : 1"
+                    [style.pointerEvents]="d.params.options.useViolCornerUC ? 'none' : 'auto'">
                     <label class="field-cell">
                         <span class="field-title">U3 Radius <span class="unit-label">mm</span></span>
                         <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.U3.r"
                             (input)="changeCorners()" [style.borderColor]="colors.centerBoutUp" />
                     </label>
-                    <label class="field-cell"> 
+                    <label class="field-cell">
                         <div class="toggle">
-                        <input type="checkbox" [(ngModel)]="d.params.options.U31DoubleArc"
-                            (change)="changeCorners()" /><span>Compund</span>
+                            <input type="checkbox" [(ngModel)]="d.params.options.U31DoubleArc"
+                                (change)="changeCorners()" /><span>Compund</span>
                         </div>
                     </label>
                     <label class="field-cell">
@@ -332,7 +332,8 @@
                     </label>
                 </div>
                 @if (d.params.options.U31DoubleArc) {
-                <div class="ui-group">
+                <div class="ui-group" [style.opacity]="d.params.options.useViolCornerUC ? 0.5 : 1"
+                    [style.pointerEvents]="d.params.options.useViolCornerUC ? 'none' : 'auto'">
                     <div class="input-group basic-row field-row" role="group">
                         <label class="field-cell">
                             <span class="field-title">U31 Radius <span class="unit-label">mm</span></span>
@@ -341,24 +342,24 @@
                         </label>
                         <label class="field-cell">
                             <span class="field-title">Split Angle <span class="unit-label">°</span></span>
-                            <input type="number" class="basic-input" step="1"
-                                [ngModel]="d.params.bouts.U31.degreeDiff"
+                            <input type="number" class="basic-input" step="1" [ngModel]="d.params.bouts.U31.degreeDiff"
                                 (ngModelChange)="adjustArcStart(d.params.bouts.U31, $event, changeCorners.bind(this))"
                                 [style.borderColor]="colors.centerBoutUp" />
                         </label>
                     </div>
                 </div>
                 }
+                <div class="input-group basic-row field-row">
+                    <div class="toggle">
+                        <input type="checkbox" [(ngModel)]="d.params.options.useViolCornerUC"
+                            (change)="changeCorners()" /><span>Use Viol Corner</span>
+                    </div>
+                    <button type="button" class="info-icon" (click)="onInfoClick('violCorner')" title="More information"
+                        aria-label="Information">ⓘ</button>
+                </div>
             </div>
-            
-            <div class="input-group basic-row field-row">
-            <div class="toggle">
-                <input type="checkbox" [(ngModel)]="d.params.options.useViolCornerUC"
-                    (change)="changeCorners()" /><span>Use Viol Corner</span>
-            </div>
-            <button type="button" class="info-icon" (click)="onInfoClick('violCorner')" title="More information"
-                aria-label="Information">ⓘ</button>
-            </div>
+
+
         </section>
 
         <section class="ui-group">
@@ -376,9 +377,10 @@
                         (input)="changeCorners()" [style.borderColor]="colors.centerBoutLowOff2" />
                 </label>
             </div>
-            <div class="ui-group" [style.opacity]="d.params.options.useViolCornerLC ? 0.5 : 1"
-                [style.pointerEvents]="d.params.options.useViolCornerLC ? 'none' : 'auto'">
-                <div class="input-group basic-row field-row" role="group">
+            <div class="ui-group">
+                <div class="input-group basic-row field-row" role="group"
+                    [style.opacity]="d.params.options.useViolCornerLC ? 0.5 : 1"
+                    [style.pointerEvents]="d.params.options.useViolCornerLC ? 'none' : 'auto'">
                     <label class="field-cell">
                         <span class="field-title">L3 Radius <span class="unit-label">mm</span></span>
                         <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.L3.r"
@@ -397,7 +399,8 @@
                     </label>
                 </div>
                 @if (d.params.options.L31DoubleArc) {
-                <div class="ui-group">
+                <div class="ui-group" [style.opacity]="d.params.options.useViolCornerLC ? 0.5 : 1"
+                    [style.pointerEvents]="d.params.options.useViolCornerLC ? 'none' : 'auto'">
                     <div class="input-group basic-row field-row" role="group">
                         <label class="field-cell">
                             <span class="field-title">L31 Radius <span class="unit-label">mm</span></span>
@@ -406,23 +409,23 @@
                         </label>
                         <label class="field-cell">
                             <span class="field-title">Split Angle <span class="unit-label">°</span></span>
-                            <input type="number" class="basic-input" step="1"
-                                [ngModel]="d.params.bouts.L31.degreeDiff"
+                            <input type="number" class="basic-input" step="1" [ngModel]="d.params.bouts.L31.degreeDiff"
                                 (ngModelChange)="adjustArcStart(d.params.bouts.L31, $event, changeCorners.bind(this))"
                                 [style.borderColor]="colors.centerBoutLow" />
                         </label>
                     </div>
                 </div>
                 }
+                <div class="input-group basic-row field-row">
+                    <div class="toggle">
+                        <input type="checkbox" [(ngModel)]="d.params.options.useViolCornerLC"
+                            (change)="changeCorners()" /><span>Use Viol Corner</span>
+                    </div>
+                    <button type="button" class="info-icon" (click)="onInfoClick('violCorner')" title="More information"
+                        aria-label="Information">ⓘ</button>
+                </div>
             </div>
-            <div class="input-group basic-row field-row">
-            <div class="toggle">
-                <input type="checkbox" [(ngModel)]="d.params.options.useViolCornerLC"
-                    (change)="changeCorners()" /><span>Use Viol Corner</span>
-            </div>
-            <button type="button" class="info-icon" (click)="onInfoClick('violCorner')" title="More information"
-                aria-label="Information">ⓘ</button>
-            </div>
+
         </section>
 
         <section class="ui-group">
@@ -454,7 +457,7 @@
                         <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.L2.r"
                             (input)="changeCorners()" disabled [style.borderColor]="colors.lowerBout" />
                     </label>
-                     <label class="field-cell">
+                    <label class="field-cell">
                         <span class="field-title"> <span class="unit-label"></span></span>
                         <button type="button" class="recipe-btn" (click)="setL2toL1();">L2 to L1</button>
                     </label>
@@ -464,7 +467,7 @@
                             nearestFraction(d.params.ratios.L2toLBW) }}</div>
                     </label>
                 </div>
-                
+
             </div>
             }
         </section>
@@ -472,24 +475,29 @@
         <section class="ui-group">
             <div class="input-group basic-row field-row" role="group">
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showModuleArcs" (change)="changeCorners()" /><span>Show Module Arcs </span>
+                    <input type="checkbox" [(ngModel)]="showModuleArcs" (change)="changeCorners()" /><span>Show Module
+                        Arcs </span>
                 </div>
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showAllArcs" (change)="changeCorners()" /><span>Show All Arcs  </span>
+                    <input type="checkbox" [(ngModel)]="showAllArcs" (change)="changeCorners()" /><span>Show All Arcs
+                    </span>
                 </div>
 
             </div>
             <div class="input-group basic-row field-row" role="group">
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showModuleCircles" (change)="changeCorners()" /><span>Show Module Circles </span>
+                    <input type="checkbox" [(ngModel)]="showModuleCircles" (change)="changeCorners()" /><span>Show
+                        Module Circles </span>
                 </div>
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeCorners()" /><span>Show All Circles </span>
+                    <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeCorners()" /><span>Show All
+                        Circles </span>
                 </div>
             </div>
             <div class="input-group basic-row field-row" role="group">
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showModuleGuides" (change)="changeCorners()" /><span>Show Module Guides</span>
+                    <input type="checkbox" [(ngModel)]="showModuleGuides" (change)="changeCorners()" /><span>Show Module
+                        Guides</span>
                 </div>
             </div>
         </section>
@@ -578,8 +586,7 @@
                         </label>
                         <label class="field-cell">
                             <span class="field-title">Split Angle <span class="unit-label">°</span></span>
-                            <input type="number" class="basic-input" step="1"
-                                [ngModel]="d.params.bouts.C21.degreeDiff"
+                            <input type="number" class="basic-input" step="1" [ngModel]="d.params.bouts.C21.degreeDiff"
                                 (ngModelChange)="adjustArcStart(d.params.bouts.C21, $event, changeCenterBout.bind(this))"
                                 [style.borderColor]="colors.centerBoutUpOff" />
                         </label>
@@ -601,8 +608,8 @@
                     <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="d.params.bouts.CBW"
                         (input)="changeCenterBout(false)" [disabled]="d.params.options.useKellyC0" />
                 </label>
-                <button type="button" class="info-icon" (click)="onInfoClick('centerBoutWidth')" title="More information"
-                    aria-label="Information">ⓘ</button>
+                <button type="button" class="info-icon" (click)="onInfoClick('centerBoutWidth')"
+                    title="More information" aria-label="Information">ⓘ</button>
                 <label class="field-cell"></label>
                 <label class="field-cell">
                     <span class="field-title">CBW to LBW</span>
@@ -621,7 +628,7 @@
                         [style.pointerEvents]="d.params.options.useKellyC0 ? 'none' : 'auto'">
                         <span class="field-title">C0 Y <span class="unit-label">mm</span></span>
                         <input type="number" class="basic-input" step="1" [(ngModel)]="d.params.bouts.C0.y"
-                            (input)="changeCenterBout(false)" [style.borderColor]="colors.centerBout" 
+                            (input)="changeCenterBout(false)" [style.borderColor]="colors.centerBout"
                             [disabled]="d.params.options.useKellyC0" />
                     </label>
                     <label class="field-cell">
@@ -630,7 +637,7 @@
                             nearestFraction(d.params.ratios.C0toLBW) }}</div>
                     </label>
                 </div>
-               <div class="input-group basic-row field-row" role="group">
+                <div class="input-group basic-row field-row" role="group">
                     <div class="toggle">
                         <input type="checkbox" [(ngModel)]="d.params.options.useKellyC0"
                             (change)="changeCenterBout()" /><span>Fit C0 to Bouts</span>
@@ -639,8 +646,8 @@
                         aria-label="Information">ⓘ</button>
                 </div>
             </div>
-             
-            
+
+
         </section>
 
         <section class="ui-group">
@@ -688,8 +695,7 @@
                         </label>
                         <label class="field-cell">
                             <span class="field-title">Split Angle <span class="unit-label">°</span></span>
-                            <input type="number" class="basic-input" step="1"
-                                [ngModel]="d.params.bouts.C11.degreeDiff"
+                            <input type="number" class="basic-input" step="1" [ngModel]="d.params.bouts.C11.degreeDiff"
                                 (ngModelChange)="adjustArcStart(d.params.bouts.C11, $event, changeCenterBout.bind(this))"
                                 [style.borderColor]="colors.centerBoutLowOff" />
                         </label>
@@ -743,24 +749,29 @@
         <section class="ui-group">
             <div class="input-group basic-row field-row" role="group">
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showModuleArcs" (change)="changeCenterBout()" /><span>Show Module Arcs </span>
+                    <input type="checkbox" [(ngModel)]="showModuleArcs" (change)="changeCenterBout()" /><span>Show
+                        Module Arcs </span>
                 </div>
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showAllArcs" (change)="changeCenterBout()" /><span>Show All Arcs</span>
+                    <input type="checkbox" [(ngModel)]="showAllArcs" (change)="changeCenterBout()" /><span>Show All
+                        Arcs</span>
                 </div>
 
             </div>
             <div class="input-group basic-row field-row" role="group">
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showModuleCircles" (change)="changeCenterBout()" /><span>Show Module Circles </span>
+                    <input type="checkbox" [(ngModel)]="showModuleCircles" (change)="changeCenterBout()" /><span>Show
+                        Module Circles </span>
                 </div>
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeCenterBout()" /><span>Show All Circles </span>
+                    <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeCenterBout()" /><span>Show All
+                        Circles </span>
                 </div>
             </div>
             <div class="input-group basic-row field-row" role="group">
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showModuleGuides" (change)="changeCenterBout()" /><span>Show Module Guides</span>
+                    <input type="checkbox" [(ngModel)]="showModuleGuides" (change)="changeCenterBout()" /><span>Show
+                        Module Guides</span>
                 </div>
             </div>
         </section>
@@ -793,51 +804,51 @@
             <div class="ui-group">
                 <div class="ui-group-title">Top Cutoff</div>
                 @if (d.params.options.U31DoubleArc) {
-                    <div class="input-group basic-row field-row" role="group">
-                        <label class="field-cell">
-                            <span class="field-title">Angle <span class="unit-label">°</span></span>
-                            <input type="number" class="basic-input" step="1"
-                                [ngModel]="d.params.outerCorners.U31.degreeDiff"
-                                (ngModelChange)="adjustArcEnd(d.params.outerCorners.U31, $event, changeOuterTrace.bind(this))"
-                                [style.borderColor]="colors.centerBoutUp" />
-                        </label>
-                    </div>
+                <div class="input-group basic-row field-row" role="group">
+                    <label class="field-cell">
+                        <span class="field-title">Angle <span class="unit-label">°</span></span>
+                        <input type="number" class="basic-input" step="1"
+                            [ngModel]="d.params.outerCorners.U31.degreeDiff"
+                            (ngModelChange)="adjustArcEnd(d.params.outerCorners.U31, $event, changeOuterTrace.bind(this))"
+                            [style.borderColor]="colors.centerBoutUp" />
+                    </label>
+                </div>
                 }
                 @else {
-                    <div class="input-group basic-row field-row" role="group">
-                        <label class="field-cell">
-                            <span class="field-title">Angle <span class="unit-label">°</span></span>
-                            <input type="number" class="basic-input" step="1"
-                                [ngModel]="d.params.outerCorners.U3.degreeDiff"
-                                (ngModelChange)="adjustArcEnd(d.params.outerCorners.U3, $event, changeOuterTrace.bind(this))"
-                                [style.borderColor]="colors.centerBoutUp" />
-                        </label>
-                    </div>
+                <div class="input-group basic-row field-row" role="group">
+                    <label class="field-cell">
+                        <span class="field-title">Angle <span class="unit-label">°</span></span>
+                        <input type="number" class="basic-input" step="1"
+                            [ngModel]="d.params.outerCorners.U3.degreeDiff"
+                            (ngModelChange)="adjustArcEnd(d.params.outerCorners.U3, $event, changeOuterTrace.bind(this))"
+                            [style.borderColor]="colors.centerBoutUp" />
+                    </label>
+                </div>
                 }
             </div>
             <div class="ui-group">
                 <div class="ui-group-title">Bottom Cutoff</div>
                 @if (d.params.options.C21DoubleArc) {
-                    <div class="input-group basic-row field-row" role="group">
-                        <label class="field-cell">
-                            <span class="field-title">Angle <span class="unit-label">°</span></span>
-                            <input type="number" class="basic-input" step="1"
-                                [ngModel]="d.params.outerCorners.C21.degreeDiff"
-                                (ngModelChange)="adjustArcEnd(d.params.outerCorners.C21, $event, changeOuterTrace.bind(this))"
-                                [style.borderColor]="colors.centerBoutUp" />
-                        </label>
-                    </div>
+                <div class="input-group basic-row field-row" role="group">
+                    <label class="field-cell">
+                        <span class="field-title">Angle <span class="unit-label">°</span></span>
+                        <input type="number" class="basic-input" step="1"
+                            [ngModel]="d.params.outerCorners.C21.degreeDiff"
+                            (ngModelChange)="adjustArcEnd(d.params.outerCorners.C21, $event, changeOuterTrace.bind(this))"
+                            [style.borderColor]="colors.centerBoutUp" />
+                    </label>
+                </div>
                 }
                 @else {
-                    <div class="input-group basic-row field-row" role="group">
-                        <label class="field-cell">
-                            <span class="field-title">Angle <span class="unit-label">°</span></span>
-                            <input type="number" class="basic-input" step="1"
-                                [ngModel]="d.params.outerCorners.C2.degreeDiff"
-                                (ngModelChange)="adjustArcEnd(d.params.outerCorners.C2, $event, changeOuterTrace.bind(this))"
-                                [style.borderColor]="colors.centerBoutUp" />
-                        </label>
-                    </div>
+                <div class="input-group basic-row field-row" role="group">
+                    <label class="field-cell">
+                        <span class="field-title">Angle <span class="unit-label">°</span></span>
+                        <input type="number" class="basic-input" step="1"
+                            [ngModel]="d.params.outerCorners.C2.degreeDiff"
+                            (ngModelChange)="adjustArcEnd(d.params.outerCorners.C2, $event, changeOuterTrace.bind(this))"
+                            [style.borderColor]="colors.centerBoutUp" />
+                    </label>
+                </div>
                 }
             </div>
         </section>
@@ -850,51 +861,51 @@
             <div class="ui-group">
                 <div class="ui-group-title">Top Cutoff</div>
                 @if (d.params.options.C11DoubleArc) {
-                    <div class="input-group basic-row field-row" role="group">
-                        <label class="field-cell">
-                            <span class="field-title">Angle <span class="unit-label">°</span></span>
-                            <input type="number" class="basic-input" step="1"
-                                [ngModel]="d.params.outerCorners.C11.degreeDiff"
-                                (ngModelChange)="adjustArcEnd(d.params.outerCorners.C11, $event, changeOuterTrace.bind(this))"
-                                [style.borderColor]="colors.centerBoutLow" />
-                        </label>
-                    </div>
+                <div class="input-group basic-row field-row" role="group">
+                    <label class="field-cell">
+                        <span class="field-title">Angle <span class="unit-label">°</span></span>
+                        <input type="number" class="basic-input" step="1"
+                            [ngModel]="d.params.outerCorners.C11.degreeDiff"
+                            (ngModelChange)="adjustArcEnd(d.params.outerCorners.C11, $event, changeOuterTrace.bind(this))"
+                            [style.borderColor]="colors.centerBoutLow" />
+                    </label>
+                </div>
                 }
                 @else {
-                    <div class="input-group basic-row field-row" role="group">
-                        <label class="field-cell">
-                            <span class="field-title">Angle <span class="unit-label">°</span></span>
-                            <input type="number" class="basic-input" step="1"
-                                [ngModel]="d.params.outerCorners.C1.degreeDiff"
-                                (ngModelChange)="adjustArcEnd(d.params.outerCorners.C1, $event, changeOuterTrace.bind(this))"
-                                [style.borderColor]="colors.centerBoutLow" />
-                        </label>
-                    </div>
+                <div class="input-group basic-row field-row" role="group">
+                    <label class="field-cell">
+                        <span class="field-title">Angle <span class="unit-label">°</span></span>
+                        <input type="number" class="basic-input" step="1"
+                            [ngModel]="d.params.outerCorners.C1.degreeDiff"
+                            (ngModelChange)="adjustArcEnd(d.params.outerCorners.C1, $event, changeOuterTrace.bind(this))"
+                            [style.borderColor]="colors.centerBoutLow" />
+                    </label>
+                </div>
                 }
             </div>
             <div class="ui-group">
                 <div class="ui-group-title">Bottom Cutoff</div>
                 @if (d.params.options.L31DoubleArc) {
-                    <div class="input-group basic-row field-row" role="group">
-                        <label class="field-cell">
-                            <span class="field-title">Angle <span class="unit-label">°</span></span>
-                            <input type="number" class="basic-input" step="1"
-                                [ngModel]="d.params.outerCorners.L31.degreeDiff"
-                                (ngModelChange)="adjustArcEnd(d.params.outerCorners.L31, $event, changeOuterTrace.bind(this))"
-                                [style.borderColor]="colors.centerBoutLow" />
-                        </label>
-                    </div>
+                <div class="input-group basic-row field-row" role="group">
+                    <label class="field-cell">
+                        <span class="field-title">Angle <span class="unit-label">°</span></span>
+                        <input type="number" class="basic-input" step="1"
+                            [ngModel]="d.params.outerCorners.L31.degreeDiff"
+                            (ngModelChange)="adjustArcEnd(d.params.outerCorners.L31, $event, changeOuterTrace.bind(this))"
+                            [style.borderColor]="colors.centerBoutLow" />
+                    </label>
+                </div>
                 }
                 @else {
-                    <div class="input-group basic-row field-row" role="group">
-                        <label class="field-cell">
-                            <span class="field-title">Angle <span class="unit-label">°</span></span>
-                            <input type="number" class="basic-input" step="1"
-                                [ngModel]="d.params.outerCorners.L3.degreeDiff"
-                                (ngModelChange)="adjustArcEnd(d.params.outerCorners.L3, $event, changeOuterTrace.bind(this))"
-                                [style.borderColor]="colors.centerBoutLow" />
-                        </label>
-                    </div>
+                <div class="input-group basic-row field-row" role="group">
+                    <label class="field-cell">
+                        <span class="field-title">Angle <span class="unit-label">°</span></span>
+                        <input type="number" class="basic-input" step="1"
+                            [ngModel]="d.params.outerCorners.L3.degreeDiff"
+                            (ngModelChange)="adjustArcEnd(d.params.outerCorners.L3, $event, changeOuterTrace.bind(this))"
+                            [style.borderColor]="colors.centerBoutLow" />
+                    </label>
+                </div>
                 }
             </div>
         </section>
@@ -902,19 +913,23 @@
         <section class="ui-group">
             <div class="input-group basic-row field-row" role="group">
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showModuleArcs" (change)="changeOuterTrace()" /><span>Show Module Arcs </span>
+                    <input type="checkbox" [(ngModel)]="showModuleArcs" (change)="changeOuterTrace()" /><span>Show
+                        Module Arcs </span>
                 </div>
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showAllArcs" (change)="changeOuterTrace()" /><span>Show All Arcs</span>
+                    <input type="checkbox" [(ngModel)]="showAllArcs" (change)="changeOuterTrace()" /><span>Show All
+                        Arcs</span>
                 </div>
 
             </div>
             <div class="input-group basic-row field-row" role="group">
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showModuleCircles" (change)="changeOuterTrace()" /><span>Show Module Circles </span>
+                    <input type="checkbox" [(ngModel)]="showModuleCircles" (change)="changeOuterTrace()" /><span>Show
+                        Module Circles </span>
                 </div>
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeOuterTrace()" /><span>Show All Circles </span>
+                    <input type="checkbox" [(ngModel)]="showAllCircles" (change)="changeOuterTrace()" /><span>Show All
+                        Circles </span>
                 </div>
             </div>
         </section>
@@ -927,13 +942,13 @@
                 <label class="field-cell">
                     <span class="field-title">Height <span class="unit-label">mm</span></span>
                     <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blocks.U.height"
-                        (input)="changeMould()" />
+                        (input)="changeMould()" [style.borderColor]="colors.upperBoutOff" />
                 </label>
                 <span class="field-separator" aria-hidden="true"></span>
                 <label class="field-cell">
                     <span class="field-title">Width <span class="unit-label">mm</span></span>
                     <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blocks.U.width"
-                        (input)="changeMould()" />
+                        (input)="changeMould()" [style.borderColor]="colors.upperBoutOff" />
                 </label>
             </div>
         </section>
@@ -944,19 +959,19 @@
                 <label class="field-cell">
                     <span class="field-title">Height <span class="unit-label">mm</span></span>
                     <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blocks.CU.height"
-                        (input)="changeMould()" />
+                        (input)="changeMould()" [style.borderColor]="colors.centerBoutUp" />
                 </label>
                 <span class="field-separator" aria-hidden="true"></span>
                 <label class="field-cell">
                     <span class="field-title">Width <span class="unit-label">mm</span></span>
                     <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blocks.CU.width"
-                        (input)="changeMould()" />
+                        (input)="changeMould()" [style.borderColor]="colors.centerBoutUp" />
                 </label>
                 <span class="field-separator" aria-hidden="true"></span>
                 <label class="field-cell">
                     <span class="field-title">Pad <span class="unit-label">mm</span></span>
                     <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blocks.CUPad"
-                        (input)="changeMould()" />
+                        (input)="changeMould()" [style.borderColor]="colors.centerBoutUp" />
                 </label>
             </div>
         </section>
@@ -967,19 +982,19 @@
                 <label class="field-cell">
                     <span class="field-title">Height <span class="unit-label">mm</span></span>
                     <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blocks.CL.height"
-                        (input)="changeMould()" />
+                        (input)="changeMould()" [style.borderColor]="colors.centerBoutLow" />
                 </label>
                 <span class="field-separator" aria-hidden="true"></span>
                 <label class="field-cell">
                     <span class="field-title">Width <span class="unit-label">mm</span></span>
                     <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blocks.CL.width"
-                        (input)="changeMould()" />
+                        (input)="changeMould()" [style.borderColor]="colors.centerBoutLow" />
                 </label>
                 <span class="field-separator" aria-hidden="true"></span>
                 <label class="field-cell">
                     <span class="field-title">Pad <span class="unit-label">mm</span></span>
                     <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blocks.CLPad"
-                        (input)="changeMould()" />
+                        (input)="changeMould()" [style.borderColor]="colors.centerBoutLow" />
                 </label>
             </div>
         </section>
@@ -990,13 +1005,13 @@
                 <label class="field-cell">
                     <span class="field-title">Height <span class="unit-label">mm</span></span>
                     <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blocks.L.height"
-                        (input)="changeMould()" />
+                        (input)="changeMould()" [style.borderColor]="colors.lowerBoutOff" />
                 </label>
                 <span class="field-separator" aria-hidden="true"></span>
                 <label class="field-cell">
                     <span class="field-title">Width <span class="unit-label">mm</span></span>
                     <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.blocks.L.width"
-                        (input)="changeMould()" />
+                        (input)="changeMould()" [style.borderColor]="colors.lowerBoutOff" />
                 </label>
             </div>
         </section>
@@ -1019,10 +1034,10 @@
                 </label>
             </div>
             <div class="input-group basic-row field-row">
-            <div class="toggle">
-                <input type="checkbox" [(ngModel)]="simpleClampBox" (change)="changeMould()" />
-                <span>Use Simple Clamp Box</span>
-            </div>
+                <div class="toggle">
+                    <input type="checkbox" [(ngModel)]="simpleClampBox" (change)="changeMould()" />
+                    <span>Use Simple Clamp Box</span>
+                </div>
             </div>
         </section>
 
