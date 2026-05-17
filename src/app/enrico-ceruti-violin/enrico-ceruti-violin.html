@@ -801,55 +801,35 @@
                 <button type="button" class="info-icon" (click)="onInfoClick('cornerCutoff')" title="More information"
                     aria-label="Information">ⓘ</button>
             </div>
-            <div class="ui-group">
-                <div class="ui-group-title">Top Cutoff</div>
-                @if (d.params.options.U31DoubleArc) {
-                <div class="input-group basic-row field-row" role="group">
-                    <label class="field-cell">
-                        <span class="field-title">Angle <span class="unit-label">°</span></span>
-                        <input type="number" class="basic-input" step="1"
-                            [ngModel]="d.params.outerCorners.U31.degreeDiff"
-                            (ngModelChange)="adjustArcEnd(d.params.outerCorners.U31, $event, changeOuterTrace.bind(this))"
-                            [style.borderColor]="colors.centerBoutUp" />
-                    </label>
-                </div>
-                }
-                @else {
-                <div class="input-group basic-row field-row" role="group">
-                    <label class="field-cell">
-                        <span class="field-title">Angle <span class="unit-label">°</span></span>
-                        <input type="number" class="basic-input" step="1"
-                            [ngModel]="d.params.outerCorners.U3.degreeDiff"
-                            (ngModelChange)="adjustArcEnd(d.params.outerCorners.U3, $event, changeOuterTrace.bind(this))"
-                            [style.borderColor]="colors.centerBoutUp" />
-                    </label>
-                </div>
-                }
-            </div>
-            <div class="ui-group">
-                <div class="ui-group-title">Bottom Cutoff</div>
-                @if (d.params.options.C21DoubleArc) {
-                <div class="input-group basic-row field-row" role="group">
-                    <label class="field-cell">
-                        <span class="field-title">Angle <span class="unit-label">°</span></span>
-                        <input type="number" class="basic-input" step="1"
-                            [ngModel]="d.params.outerCorners.C21.degreeDiff"
-                            (ngModelChange)="adjustArcEnd(d.params.outerCorners.C21, $event, changeOuterTrace.bind(this))"
-                            [style.borderColor]="colors.centerBoutUp" />
-                    </label>
-                </div>
-                }
-                @else {
-                <div class="input-group basic-row field-row" role="group">
-                    <label class="field-cell">
-                        <span class="field-title">Angle <span class="unit-label">°</span></span>
-                        <input type="number" class="basic-input" step="1"
-                            [ngModel]="d.params.outerCorners.C2.degreeDiff"
-                            (ngModelChange)="adjustArcEnd(d.params.outerCorners.C2, $event, changeOuterTrace.bind(this))"
-                            [style.borderColor]="colors.centerBoutUp" />
-                    </label>
-                </div>
-                }
+            <div class="input-group basic-row field-row" role="group">
+                <label class="field-cell">
+                    <span class="field-title">Top Cutoff <span class="unit-label">°</span></span>
+                    @if (d.params.options.U31DoubleArc) {
+                    <input type="number" class="basic-input" step="1"
+                        [ngModel]="d.params.outerCorners.U31.degreeDiff"
+                        (ngModelChange)="adjustArcEnd(d.params.outerCorners.U31, $event, changeOuterTrace.bind(this))"
+                        [style.borderColor]="colors.centerBoutUp" />
+                    } @else {
+                    <input type="number" class="basic-input" step="1"
+                        [ngModel]="d.params.outerCorners.U3.degreeDiff"
+                        (ngModelChange)="adjustArcEnd(d.params.outerCorners.U3, $event, changeOuterTrace.bind(this))"
+                        [style.borderColor]="colors.centerBoutUp" />
+                    }
+                </label>
+                <label class="field-cell">
+                    <span class="field-title">Bottom Cutoff <span class="unit-label">°</span></span>
+                    @if (d.params.options.C21DoubleArc) {
+                    <input type="number" class="basic-input" step="1"
+                        [ngModel]="d.params.outerCorners.C21.degreeDiff"
+                        (ngModelChange)="adjustArcEnd(d.params.outerCorners.C21, $event, changeOuterTrace.bind(this))"
+                        [style.borderColor]="colors.centerBoutUp" />
+                    } @else {
+                    <input type="number" class="basic-input" step="1"
+                        [ngModel]="d.params.outerCorners.C2.degreeDiff"
+                        (ngModelChange)="adjustArcEnd(d.params.outerCorners.C2, $event, changeOuterTrace.bind(this))"
+                        [style.borderColor]="colors.centerBoutUp" />
+                    }
+                </label>
             </div>
         </section>
 
@@ -858,55 +838,35 @@
                 <button type="button" class="info-icon" (click)="onInfoClick('cornerCutoff')" title="More information"
                     aria-label="Information">ⓘ</button>
             </div>
-            <div class="ui-group">
-                <div class="ui-group-title">Top Cutoff</div>
-                @if (d.params.options.C11DoubleArc) {
-                <div class="input-group basic-row field-row" role="group">
-                    <label class="field-cell">
-                        <span class="field-title">Angle <span class="unit-label">°</span></span>
-                        <input type="number" class="basic-input" step="1"
-                            [ngModel]="d.params.outerCorners.C11.degreeDiff"
-                            (ngModelChange)="adjustArcEnd(d.params.outerCorners.C11, $event, changeOuterTrace.bind(this))"
-                            [style.borderColor]="colors.centerBoutLow" />
-                    </label>
-                </div>
-                }
-                @else {
-                <div class="input-group basic-row field-row" role="group">
-                    <label class="field-cell">
-                        <span class="field-title">Angle <span class="unit-label">°</span></span>
-                        <input type="number" class="basic-input" step="1"
-                            [ngModel]="d.params.outerCorners.C1.degreeDiff"
-                            (ngModelChange)="adjustArcEnd(d.params.outerCorners.C1, $event, changeOuterTrace.bind(this))"
-                            [style.borderColor]="colors.centerBoutLow" />
-                    </label>
-                </div>
-                }
-            </div>
-            <div class="ui-group">
-                <div class="ui-group-title">Bottom Cutoff</div>
-                @if (d.params.options.L31DoubleArc) {
-                <div class="input-group basic-row field-row" role="group">
-                    <label class="field-cell">
-                        <span class="field-title">Angle <span class="unit-label">°</span></span>
-                        <input type="number" class="basic-input" step="1"
-                            [ngModel]="d.params.outerCorners.L31.degreeDiff"
-                            (ngModelChange)="adjustArcEnd(d.params.outerCorners.L31, $event, changeOuterTrace.bind(this))"
-                            [style.borderColor]="colors.centerBoutLow" />
-                    </label>
-                </div>
-                }
-                @else {
-                <div class="input-group basic-row field-row" role="group">
-                    <label class="field-cell">
-                        <span class="field-title">Angle <span class="unit-label">°</span></span>
-                        <input type="number" class="basic-input" step="1"
-                            [ngModel]="d.params.outerCorners.L3.degreeDiff"
-                            (ngModelChange)="adjustArcEnd(d.params.outerCorners.L3, $event, changeOuterTrace.bind(this))"
-                            [style.borderColor]="colors.centerBoutLow" />
-                    </label>
-                </div>
-                }
+            <div class="input-group basic-row field-row" role="group">
+                <label class="field-cell">
+                    <span class="field-title">Top Cutoff <span class="unit-label">°</span></span>
+                    @if (d.params.options.C11DoubleArc) {
+                    <input type="number" class="basic-input" step="1"
+                        [ngModel]="d.params.outerCorners.C11.degreeDiff"
+                        (ngModelChange)="adjustArcEnd(d.params.outerCorners.C11, $event, changeOuterTrace.bind(this))"
+                        [style.borderColor]="colors.centerBoutLow" />
+                    } @else {
+                    <input type="number" class="basic-input" step="1"
+                        [ngModel]="d.params.outerCorners.C1.degreeDiff"
+                        (ngModelChange)="adjustArcEnd(d.params.outerCorners.C1, $event, changeOuterTrace.bind(this))"
+                        [style.borderColor]="colors.centerBoutLow" />
+                    }
+                </label>
+                <label class="field-cell">
+                    <span class="field-title">Bottom Cutoff <span class="unit-label">°</span></span>
+                    @if (d.params.options.L31DoubleArc) {
+                    <input type="number" class="basic-input" step="1"
+                        [ngModel]="d.params.outerCorners.L31.degreeDiff"
+                        (ngModelChange)="adjustArcEnd(d.params.outerCorners.L31, $event, changeOuterTrace.bind(this))"
+                        [style.borderColor]="colors.centerBoutLow" />
+                    } @else {
+                    <input type="number" class="basic-input" step="1"
+                        [ngModel]="d.params.outerCorners.L3.degreeDiff"
+                        (ngModelChange)="adjustArcEnd(d.params.outerCorners.L3, $event, changeOuterTrace.bind(this))"
+                        [style.borderColor]="colors.centerBoutLow" />
+                    }
+                </label>
             </div>
         </section>
 

@@ -346,7 +346,8 @@ select {
   border: none;
   border-radius: 0;
   background: transparent;
-  padding: 12px 0 0;
+  padding: 8px 0 0;
+  padding-bottom: 24px;
   margin-bottom: 0;
   display: flex;
   flex-direction: column;
