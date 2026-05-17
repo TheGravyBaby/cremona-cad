@@ -483,13 +483,13 @@ export class BeardViolinComponent extends RecipeComponentBase {
       let lowerGuidingCircle = { ...lowerRightCorner, r: lowerRightCornerCircle.r }
       let lowerGuidePath = arcPathByAngleAboutTheta(lowerGuidingCircle, 0 * Math.PI, 2 / 3 * Math.PI)
       renderPath(lowerGuidePath, "orange")(g, ui);
-      renderLine(lowerRightCorner, lowerRightCornerCircle, "orange", false)(g, ui);
+      renderLine(lowerRightCorner, lowerRightCornerCircle, "orange", 1, false)(g, ui);
 
       // guiding arcs that determine outer corner circle placement
       let upperGuidingCircle = { ...upperRightCorner, r: upperRightCornerCircle.r }
       let upperGuidePath = arcPathByAngleAboutTheta(upperGuidingCircle, 0 * Math.PI, 2 / 3 * Math.PI)
       renderPath(upperGuidePath, "orange")(g, ui);
-      renderLine(upperRightCorner, upperRightCornerCircle, "orange", false)(g, ui);
+      renderLine(upperRightCorner, upperRightCornerCircle, "orange", 1, false)(g, ui);
 
       renderCircle(lowerRightCornerCircle, "blue")(g, ui)
       renderCircle({ ...lowerRightCornerCircle, r: 1 }, "blue")(g, ui)

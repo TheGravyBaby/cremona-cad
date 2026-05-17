@@ -260,7 +260,7 @@
             </div>
             <div class="input-group basic-row field-row" role="group">
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showBoundingBoxes" (change)="changeMainBouts()" /><span>Show Module Guides</span>
+                    <input type="checkbox" [(ngModel)]="showModuleGuides" (change)="changeMainBouts()" /><span>Show Module Guides</span>
                 </div>
             </div>
         </section>
@@ -479,7 +479,7 @@
             </div>
             <div class="input-group basic-row field-row" role="group">
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showBoundingBoxes" (change)="changeCorners()" /><span>Show Module Guides</span>
+                    <input type="checkbox" [(ngModel)]="showModuleGuides" (change)="changeCorners()" /><span>Show Module Guides</span>
                 </div>
             </div>
         </section>
@@ -746,7 +746,7 @@
             </div>
             <div class="input-group basic-row field-row" role="group">
                 <div class="toggle">
-                    <input type="checkbox" [(ngModel)]="showBoundingBoxes" (change)="changeCenterBout()" /><span>Show Module Guides</span>
+                    <input type="checkbox" [(ngModel)]="showModuleGuides" (change)="changeCenterBout()" /><span>Show Module Guides</span>
                 </div>
             </div>
         </section>
@@ -776,7 +776,7 @@
                 @if (d.params.options.U31DoubleArc) {
                     <div class="input-group basic-row field-row" role="group">
                         <label class="field-cell">
-                            <span class="field-title">Cutoff Angle <span class="unit-label">°</span></span>
+                            <span class="field-title">Angle <span class="unit-label">°</span></span>
                             <input type="number" class="basic-input" step="1"
                                 [ngModel]="d.params.outerCorners.U31.degreeDiff"
                                 (ngModelChange)="adjustArcEnd(d.params.outerCorners.U31, $event, changeOuterTrace.bind(this))"
@@ -787,7 +787,7 @@
                 @else {
                     <div class="input-group basic-row field-row" role="group">
                         <label class="field-cell">
-                            <span class="field-title">Cutoff Angle <span class="unit-label">°</span></span>
+                            <span class="field-title">Angle <span class="unit-label">°</span></span>
                             <input type="number" class="basic-input" step="1"
                                 [ngModel]="d.params.outerCorners.U3.degreeDiff"
                                 (ngModelChange)="adjustArcEnd(d.params.outerCorners.U3, $event, changeOuterTrace.bind(this))"
@@ -801,7 +801,7 @@
                 @if (d.params.options.C21DoubleArc) {
                     <div class="input-group basic-row field-row" role="group">
                         <label class="field-cell">
-                            <span class="field-title">Cutoff Angle <span class="unit-label">°</span></span>
+                            <span class="field-title">Angle <span class="unit-label">°</span></span>
                             <input type="number" class="basic-input" step="1"
                                 [ngModel]="d.params.outerCorners.C21.degreeDiff"
                                 (ngModelChange)="adjustArcEnd(d.params.outerCorners.C21, $event, changeOuterTrace.bind(this))"
@@ -812,7 +812,7 @@
                 @else {
                     <div class="input-group basic-row field-row" role="group">
                         <label class="field-cell">
-                            <span class="field-title">Cutoff Angle <span class="unit-label">°</span></span>
+                            <span class="field-title">Angle <span class="unit-label">°</span></span>
                             <input type="number" class="basic-input" step="1"
                                 [ngModel]="d.params.outerCorners.C2.degreeDiff"
                                 (ngModelChange)="adjustArcEnd(d.params.outerCorners.C2, $event, changeOuterTrace.bind(this))"
@@ -830,7 +830,7 @@
                 @if (d.params.options.C11DoubleArc) {
                     <div class="input-group basic-row field-row" role="group">
                         <label class="field-cell">
-                            <span class="field-title">Cutoff Angle <span class="unit-label">°</span></span>
+                            <span class="field-title">Angle <span class="unit-label">°</span></span>
                             <input type="number" class="basic-input" step="1"
                                 [ngModel]="d.params.outerCorners.C11.degreeDiff"
                                 (ngModelChange)="adjustArcEnd(d.params.outerCorners.C11, $event, changeOuterTrace.bind(this))"
@@ -841,7 +841,7 @@
                 @else {
                     <div class="input-group basic-row field-row" role="group">
                         <label class="field-cell">
-                            <span class="field-title">Cutoff Angle <span class="unit-label">°</span></span>
+                            <span class="field-title">Angle <span class="unit-label">°</span></span>
                             <input type="number" class="basic-input" step="1"
                                 [ngModel]="d.params.outerCorners.C1.degreeDiff"
                                 (ngModelChange)="adjustArcEnd(d.params.outerCorners.C1, $event, changeOuterTrace.bind(this))"
@@ -855,7 +855,7 @@
                 @if (d.params.options.L31DoubleArc) {
                     <div class="input-group basic-row field-row" role="group">
                         <label class="field-cell">
-                            <span class="field-title">Cutoff Angle <span class="unit-label">°</span></span>
+                            <span class="field-title">Angle <span class="unit-label">°</span></span>
                             <input type="number" class="basic-input" step="1"
                                 [ngModel]="d.params.outerCorners.L31.degreeDiff"
                                 (ngModelChange)="adjustArcEnd(d.params.outerCorners.L31, $event, changeOuterTrace.bind(this))"
@@ -866,7 +866,7 @@
                 @else {
                     <div class="input-group basic-row field-row" role="group">
                         <label class="field-cell">
-                            <span class="field-title">Cutoff Angle <span class="unit-label">°</span></span>
+                            <span class="field-title">Angle <span class="unit-label">°</span></span>
                             <input type="number" class="basic-input" step="1"
                                 [ngModel]="d.params.outerCorners.L3.degreeDiff"
                                 (ngModelChange)="adjustArcEnd(d.params.outerCorners.L3, $event, changeOuterTrace.bind(this))"
@@ -996,9 +996,11 @@
                         (input)="changeMould()" [disabled]="simpleClampBox" />
                 </label>
             </div>
+            <div class="input-group basic-row field-row">
             <div class="toggle">
                 <input type="checkbox" [(ngModel)]="simpleClampBox" (change)="changeMould()" />
                 <span>Use Simple Clamp Box</span>
+            </div>
             </div>
         </section>
 

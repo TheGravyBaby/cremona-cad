@@ -304,17 +304,18 @@ export const renderCircle = (C: Circle, color: string, mirrorY?: boolean) => (g:
     }
 }
 
-export const renderLine = (P: Pt, Q: Pt, color: string, opacity: boolean = false) => (g: any, ui: any) => {
+export const renderLine = (P: Pt, Q: Pt, color: string, strokeWidth: number = 1, opacity: boolean = false) => (g: any, ui: any) => {
     g.append("line")
         .attr("x1", Q.x)
         .attr("y1", Q.y)
         .attr("x2", P.x)
         .attr("y2", P.y)
         .attr("stroke", color)
-        .attr('stroke-width', 1)
+        .attr('stroke-width', strokeWidth)
         .attr('vector-effect', 'non-scaling-stroke')
         .attr('opacity', opacity ? 0.25 : 1);
 }
+
 
 // 1) Crosshair point marker (+ optional dot)
 export const renderCrosshair = (
