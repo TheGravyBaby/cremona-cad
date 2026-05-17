@@ -8,9 +8,9 @@
 <div class="panel">
     <div class="panel-nav-wrap">
         <section class="panel-nav" aria-label="Sidebar section navigation">
-            <label class="ui-group-title">Section Select</label>
+            <label class="ui-group-title">Recipe Step</label>
             <div class="panel-nav-controls">
-                <button type="button" class="panel-nav-btn" (click)="stepPanel(-1)" title="Previous section"
+                <button type="button" class="panel-nav-btn panel-nav-btn--back" (click)="stepPanel(-1)" title="Previous section"
                     aria-label="Go to previous section" [disabled]="!canStepPanel(-1)">
                     Back
                 </button>
@@ -22,7 +22,7 @@
                     </option>
                     }
                 </select>
-                <button type="button" class="panel-nav-btn" (click)="stepPanel(1)" title="Next section"
+                <button type="button" class="panel-nav-btn panel-nav-btn--next" (click)="stepPanel(1)" title="Next section"
                     aria-label="Go to next section" [disabled]="!canStepPanel(1)">
                     Next
                 </button>
@@ -498,7 +498,7 @@
         @if (openPanel === 'centerBout') {
         <section class="ui-group">
             <div class="ui-group-title">Upper Corner</div>
-            <div class="input-group basic-row field-row" role="group">
+            <!-- <div class="input-group basic-row field-row" role="group">
                 <label class="field-cell">
                     <span class="field-title">X <span class="unit-label">mm</span></span>
                     <input type="number" class="basic-input" step=".25" [(ngModel)]="d.params.bouts.UCr.x"
@@ -510,7 +510,7 @@
                     <input type="number" class="basic-input" step=".25" [(ngModel)]="d.params.bouts.UCr.y"
                         (input)="changeCenterBout()" [style.borderColor]="colors.centerBoutUpOff2" />
                 </label>
-            </div>
+            </div> -->
             <!-- <div class="ui-group" [style.opacity]="d.params.options.useViolCornerUC ? 0.5 : 1"
                 [style.pointerEvents]="d.params.options.useViolCornerUC ? 'none' : 'auto'">
                 <div class="input-group basic-row field-row" role="group">
@@ -596,11 +596,13 @@
         <section class="ui-group">
             <div class="ui-group-title">Center Bout</div>
             <div class="input-group basic-row field-row" role="group">
-                <label class="field-cell">
+                <label class="field-cell" [style.opacity]="d.params.options.useKellyC0 ? 0.5 : 1">
                     <span class="field-title">Total Width <span class="unit-label">mm</span></span>
                     <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="d.params.bouts.CBW"
                         (input)="changeCenterBout(false)" [disabled]="d.params.options.useKellyC0" />
                 </label>
+                <button type="button" class="info-icon" (click)="onInfoClick('centerBoutWidth')" title="More information"
+                    aria-label="Information">ⓘ</button>
                 <label class="field-cell"></label>
                 <label class="field-cell">
                     <span class="field-title">CBW to LBW</span>
@@ -615,7 +617,7 @@
                         <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.C0.r"
                             (input)="changeCenterBout()" [style.borderColor]="colors.centerBout" />
                     </label>
-                    <label class="field-cell" [style.opacity]="d.params.options.useKellyC0 ? 0.5 : 1"
+                    <label class="field-cell" [style.opacity]="d.params.options.useKellyC0 ? 0.0 : 1"
                         [style.pointerEvents]="d.params.options.useKellyC0 ? 'none' : 'auto'">
                         <span class="field-title">C0 Y <span class="unit-label">mm</span></span>
                         <input type="number" class="basic-input" step="1" [(ngModel)]="d.params.bouts.C0.y"
@@ -628,20 +630,22 @@
                             nearestFraction(d.params.ratios.C0toLBW) }}</div>
                     </label>
                 </div>
-               
-            </div>
-             <div class="input-group basic-row field-row" role="group">
+               <div class="input-group basic-row field-row" role="group">
                     <div class="toggle">
                         <input type="checkbox" [(ngModel)]="d.params.options.useKellyC0"
                             (change)="changeCenterBout()" /><span>Fit C0 to Bouts</span>
                     </div>
+                    <button type="button" class="info-icon" (click)="onInfoClick('fitC0')" title="More information"
+                        aria-label="Information">ⓘ</button>
                 </div>
+            </div>
+             
             
         </section>
 
         <section class="ui-group">
             <div class="ui-group-title">Lower Corner</div>
-            <div class="input-group basic-row field-row" role="group">
+            <!-- <div class="input-group basic-row field-row" role="group">
                 <label class="field-cell">
                     <span class="field-title">X <span class="unit-label">mm</span></span>
                     <input type="number" class="basic-input" step=".25" [(ngModel)]="d.params.bouts.LCr.x"
@@ -653,7 +657,7 @@
                     <input type="number" class="basic-input" step=".25" [(ngModel)]="d.params.bouts.LCr.y"
                         (input)="changeCenterBout()" [style.borderColor]="colors.centerBoutLowOff2" />
                 </label>
-            </div>
+            </div> -->
             <div class="ui-group">
                 <div class="input-group basic-row field-row" role="group">
                     <label class="field-cell">

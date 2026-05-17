@@ -286,6 +286,50 @@ select {
   box-shadow: 0 0 0 3px var(--ui-focus-ring);
 }
 
+.panel-nav-btn--next {
+  background: #437946;
+  border-color: #1b5e20;
+  color: #fff;
+}
+
+.panel-nav-btn--next:hover {
+  background: #388e3c;
+  border-color: #2e7d32;
+  color: #fff;
+}
+
+.panel-nav-btn--next:active {
+  background: #1b5e20;
+}
+
+.panel-nav-btn--next:disabled {
+  background: var(--ui-bg-surface-2);
+  border-color: var(--ui-border-soft);
+  color: var(--ui-text-secondary);
+}
+
+.panel-nav-btn--back {
+  background: #7d3535;
+  border-color: #5e1b1b;
+  color: #fff;
+}
+
+.panel-nav-btn--back:hover {
+  background: #8e3c3c;
+  border-color: #7d3535;
+  color: #fff;
+}
+
+.panel-nav-btn--back:active {
+  background: #5e1b1b;
+}
+
+.panel-nav-btn--back:disabled {
+  background: var(--ui-bg-surface-2);
+  border-color: var(--ui-border-soft);
+  color: var(--ui-text-secondary);
+}
+
 .panel-disabled {
   opacity: 0.55;
   pointer-events: none;
@@ -472,4 +516,73 @@ select {
 .export-view-toggle {
   margin-left: auto;
   white-space: nowrap;
+}
+
+:host {
+  display: block;
+}
+
+/* ===== Export panel ===== */
+
+.export-description {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  color: var(--text-muted, #888);
+  line-height: 1.4;
+}
+
+.recipe-btn {
+  padding: 4px 8px;
+  height: 30px;
+  box-sizing: border-box;
+  width: 100%;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 4px;
+  background: var(--ui-bg-panel);
+  color: var(--ui-text-primary);
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.recipe-btn:hover:not(:disabled) {
+  background: var(--ui-control-bg-hover);
+  border-color: var(--ui-border-elevated);
+}
+
+.recipe-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.recipe-btn--primary {
+  background: var(--ui-accent);
+  border-color: var(--ui-focus-border);
+  color: #fff;
+}
+
+.recipe-btn--primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ui-accent) 85%, #fff);
+}
+
+.recipe-btn--full {
+  width: 100%;
+  justify-content: center;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.export-preview-wrap {
+  overflow: auto;
+  border: 1px solid var(--border-color, #444);
+  border-radius: 4px;
+  background: #fff;
+  padding: 8px;
+  max-height: 320px;
+}
+
+.export-preview svg {
+  display: block;
+  width: 100%;
+  height: auto;
 }

@@ -271,6 +271,9 @@ export function calculateCenterBout(p: EnricoCerutiParams, solveC0?: boolean): v
     let LBWI = p.bouts.LBW - 2 * inset;
     let HI = p.height - 2 * inset;
 
+    // initialize center bout if not already done
+    p.bouts.C0 = p.bouts.C0 ?? new Arc(0, Math.round(HI * p.ratios.C0YtoH) + inset, Math.round(LBWI * p.ratios.C0toLBW));
+
     if (solveC0 !== undefined)
         p.options.useKellyC0 = solveC0; // if solveC0 is passed in, then we want to toggle whether C0 is fixed or not, and remember on future calcs 
 
