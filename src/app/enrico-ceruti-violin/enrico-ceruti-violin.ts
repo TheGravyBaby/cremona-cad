@@ -2,7 +2,7 @@ import { ChangeDetectorRef, Component, HostListener, Input } from '@angular/core
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { Arc, arcFromCircle, Rectangle, setArcStartByDegreeDiff, setArcEndByDegreeDiff } from '../models/types';
-import { greyOut, renderArcFromArc, renderArcFromArcFancy, renderCircle, renderCrosshair, renderDashedLine, renderLine, renderPath, renderRect } from '../helpers/renderFuncs';
+import { greyOut, renderArcFromArc, renderArcFromArcFancy, renderCircle, renderCrosshair, renderDashedLine, renderDashedLineLong, renderLine, renderPath, renderRect } from '../helpers/renderFuncs';
 import { clampParam, safeRun } from '../helpers/validators';
 import { EnricoCerutiTemplate, CERUTI_TEMPLATES, EnricoCerutiParams } from './ceruti-types';
 import { dimensionInfo, insetInfo, referenceInfo } from './ceruti-helpers';
@@ -388,6 +388,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       calculateCorners(this.d.params);
       this.panelFlow?.refreshEnabledPanels();
       this.draftChange.emit([
+        this.renderBounds(this.showModuleGuides), this.renderBoutBouts(this.showModuleGuides), this.renderCornerGuides(this.showModuleGuides),
         this.renderBounds(false),
         this.renderMainBouts(false),
         this.renderCorners(true),
@@ -480,7 +481,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       calculateCenterBout(this.d.params, solveC0);
       this.panelFlow?.refreshEnabledPanels();
       this.draftChange.emit([
-        this.renderBounds(this.showModuleGuides), this.renderBoutBouts(this.showModuleGuides),
+        this.renderBounds(this.showModuleGuides), this.renderBoutBouts(this.showModuleGuides), this.renderCornerGuides(this.showModuleGuides),
         this.renderMainBouts(false),
         this.renderCorners(false),
         this.renderCenterBout(true),
@@ -697,11 +698,18 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     }
   };
 
+  renderCornerGuides = (render: boolean) => (g: any, ui: any): void => {
+    let lowerCornerLine = { p1: this.d.params.bouts.L2, p2: { x: this.d.params.bouts.LCr!.x, y: this.d.params.bouts.LCr!.y } };
+    let upperCornerLine = { p1: this.d.params.bouts.U2, p2: { x: this.d.params.bouts.UCr!.x, y: this.d.params.bouts.UCr!.y } };
+    
+    if (render) {
+      renderDashedLineLong(lowerCornerLine.p1, lowerCornerLine.p2, "grey")(g, ui);
+      renderDashedLineLong(upperCornerLine.p1, upperCornerLine.p2, "grey")(g, ui);
+      renderDashedLineLong({ x: -lowerCornerLine.p1.x, y: lowerCornerLine.p1.y }, { x: -lowerCornerLine.p2.x, y: lowerCornerLine.p2.y }, "grey")(g, ui);
+      renderDashedLineLong({ x: -upperCornerLine.p1.x, y: upperCornerLine.p1.y }, { x: -upperCornerLine.p2.x, y: upperCornerLine.p2.y }, "grey")(g, ui);
+    }
 
-
-
-
-
+  }
 
 
   // ===== Export =====

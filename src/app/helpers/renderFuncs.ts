@@ -207,6 +207,16 @@ export const renderBoxLine = (
     }
 }
 
+export const renderDashedLineLong = (
+    start: { x: number; y: number },
+    end: { x: number; y: number },
+    color = "black",
+    width = 1,
+    dash = "4,4",
+) => (g: any, ui: any) => {
+    renderDashLine(start, end, color, width, dash, true)(g, ui);
+}
+
 export const renderDashLine = (
     start: { x: number; y: number },
     end: { x: number; y: number },
