@@ -37,3 +37,43 @@ export function dimensionInfo() {
     )
 
 }
+
+export function boutWidthInfo() {
+    info(
+        "The total outer width of the bout, including the inset (rib thickness + overhang).\n\n" +
+        "This value also determines where the U1/L1 vesica arcs are cut off at the bout edge.",
+        "Additional Information", defaultTTL
+    )
+}
+
+export function violNeckInfo() {
+    info(
+        "The viol neck option replaces the standard upper block geometry with a rounded neck profile commonly used on double basses.\n\n" +
+        "When enabled, the upper end of the mould curves inward symmetrically, defined by a radius (V0) and a neck width.",
+        "Additional Information", defaultTTL
+    )
+}
+
+export function violCornerInfo() {
+    info(
+        "Also known as a bass corner, the viol corner replaces the standard pointed corner with a smooth rounded profile and a sharp cutoff.\n\n" +
+        "When enabled, the U3/L3 corner arc is bypassed and the bout arcs flow directly into the corner position.",
+        "Additional Information", defaultTTL
+    )
+}
+
+export function buttonInfo() {
+    info(
+        "The button is the small semicircular projection at the top of the upper bout on the back of the instrument.\n\n" +
+        "It reinforces the neck joint and is only present on the back plate — it does not appear on the top.",
+        "Additional Information", defaultTTL
+    )
+}
+
+export function cornerCutoffInfo() {
+    info(
+        "The cutoff angle controls how far the corner arc extends before being trimmed — this determines the final size of the corner..\n\n" +
+        "The exact value is largely a matter of taste. When in doubt, err on the side of leaving the corner a bit longer, as the end will be rounded over slightly during final construction.",
+        "Additional Information", defaultTTL
+    )
+}

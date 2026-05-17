@@ -5,7 +5,7 @@ import { Arc, arcFromCircle, Rectangle, setArcStartByDegreeDiff, setArcEndByDegr
 import { greyOut, renderArcFromArc, renderArcFromArcFancy, renderCircle, renderCrosshair, renderDashedLine, renderDashedLineLong, renderLine, renderPath, renderRect } from '../helpers/renderFuncs';
 import { clampParam, safeRun } from '../helpers/validators';
 import { EnricoCerutiTemplate, CERUTI_TEMPLATES, EnricoCerutiParams } from './ceruti-types';
-import { dimensionInfo, insetInfo, referenceInfo } from './ceruti-helpers';
+import { boutWidthInfo, buttonInfo, cornerCutoffInfo, dimensionInfo, insetInfo, referenceInfo, violCornerInfo, violNeckInfo } from './ceruti-helpers';
 import { combinePathStrings, flipAngleAboutYAxis, flipArcAboutY, flipCircleAboutY, flipPointAboutY, flipRectAboutY, interceptCirclesAndPointCompound, pointOnCircle, } from '../helpers/draftMath';
 import { calculateCenterBout, calculateCornerBlocks, calculateCorners, calculateMainBouts, calculateMould, calculateOuterArcs, defineInnerPath, defineOuterPath } from './ceruti-calcs';
 import { buildMirroredSvg, downloadSvgFile, downloadSvgAsPdf, downloadFullPlanPdf, PdfPage } from '../helpers/svg-export';
@@ -267,7 +267,12 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
   onInfoClick(name: string): void {
     if (name === 'referenceImage') referenceInfo()
     else if (name === 'inset') insetInfo()
-    else if (name === 'dimensions') dimensionInfo();
+    else if (name === 'dimensions') dimensionInfo()
+    else if (name === 'violNeck') violNeckInfo()
+    else if (name === 'violCorner') violCornerInfo()
+    else if (name === 'button') buttonInfo()
+    else if (name === 'cornerCutoff') cornerCutoffInfo()
+    else if (name === 'boutWidth') boutWidthInfo();
   }
 
   // ===== Change pipeline =====
