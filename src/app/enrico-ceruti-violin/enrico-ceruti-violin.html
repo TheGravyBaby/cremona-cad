@@ -126,6 +126,8 @@
                     <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="d.params.bouts.UBW"
                         (input)="changeMainBouts()" />
                 </label>
+                <button type="button" class="info-icon" (click)="onInfoClick('boutWidth')" title="More information"
+                    aria-label="Information">ⓘ</button>
                 <!-- empty cell for spacing -->
                 <label class="field-cell"></label>
                 <label class="field-cell">
@@ -173,6 +175,8 @@
                     <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="d.params.bouts.LBW"
                         (input)="changeMainBouts()" />
                 </label>
+                <button type="button" class="info-icon" (click)="onInfoClick('boutWidth')" title="More information"
+                    aria-label="Information">ⓘ</button>
                 <!-- empty cell for spacing -->
                 <label class="field-cell"></label>
                 <label class="field-cell">
@@ -219,6 +223,8 @@
                 <input type="checkbox" [(ngModel)]="d.params.options.useViolNeck"
                     (change)="changeMainBouts()" /><span>Use Viol Neck </span>
             </div>
+            <button type="button" class="info-icon" (click)="onInfoClick('violNeck')" title="More information"
+                aria-label="Information">ⓘ</button>
             </div>
 
             @if (d.params.options.useViolNeck) {
@@ -350,6 +356,8 @@
                 <input type="checkbox" [(ngModel)]="d.params.options.useViolCornerUC"
                     (change)="changeCorners()" /><span>Use Viol Corner</span>
             </div>
+            <button type="button" class="info-icon" (click)="onInfoClick('violCorner')" title="More information"
+                aria-label="Information">ⓘ</button>
             </div>
         </section>
 
@@ -412,6 +420,8 @@
                 <input type="checkbox" [(ngModel)]="d.params.options.useViolCornerLC"
                     (change)="changeCorners()" /><span>Use Viol Corner</span>
             </div>
+            <button type="button" class="info-icon" (click)="onInfoClick('violCorner')" title="More information"
+                aria-label="Information">ⓘ</button>
             </div>
         </section>
 
@@ -766,11 +776,16 @@
                     <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.button.height"
                         (input)="changeOuterTrace()" />
                 </label>
+                <button type="button" class="info-icon" (click)="onInfoClick('button')" title="More information"
+                    aria-label="Information">ⓘ</button>
             </div>
         </section>
 
         <section class="ui-group">
-            <div class="ui-group-title">Upper Corner</div>
+            <div class="ui-group-title">Upper Corner
+                <button type="button" class="info-icon" (click)="onInfoClick('cornerCutoff')" title="More information"
+                    aria-label="Information">ⓘ</button>
+            </div>
             <div class="ui-group">
                 <div class="ui-group-title">Top Cutoff</div>
                 @if (d.params.options.U31DoubleArc) {
@@ -824,7 +839,10 @@
         </section>
 
         <section class="ui-group">
-            <div class="ui-group-title">Lower Corner</div>
+            <div class="ui-group-title">Lower Corner
+                <button type="button" class="info-icon" (click)="onInfoClick('cornerCutoff')" title="More information"
+                    aria-label="Information">ⓘ</button>
+            </div>
             <div class="ui-group">
                 <div class="ui-group-title">Top Cutoff</div>
                 @if (d.params.options.C11DoubleArc) {

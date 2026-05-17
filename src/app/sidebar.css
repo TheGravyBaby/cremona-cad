@@ -321,6 +321,9 @@ select {
 }
 
 .ui-group-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.03em;
