@@ -45,7 +45,10 @@ export class TopBarComponent {
   }
 
   onNewClick() {
-    this.newFile.emit(true);
+    const confirmed = confirm('Start a new file? Any unsaved work will be lost.');
+    if (confirmed) {
+      this.newFile.emit(true);
+    }
   }
 
   onSaveClick() {
