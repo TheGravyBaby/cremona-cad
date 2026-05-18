@@ -276,7 +276,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       const h = this.refController.hitTestHandle(pt, this.pxPerMm);
 
       if (h) {
-        this.refController.startScale(pt, h);
+        this.refController.startScale(pt, h as any);
         this.host.nativeElement.setPointerCapture(event.pointerId);
         return;
       }
@@ -446,13 +446,44 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     const dataUrl = await this.readFileAsDataUrl(file);
     const { w, h } = await this.getImageSize(dataUrl);
 
+    // Scale image to fit within the current camera bounds (preserve aspect ratio)
+    const aspect = w / h || 1;
+    let imgW: number;
+    let imgH: number;
+    let imgX: number;
+    let imgY: number;
+
+    if (this.bounds) {
+      const bW = Math.abs(this.bounds.pt2.x - this.bounds.pt1.x);
+      const bH = Math.abs(this.bounds.pt2.y - this.bounds.pt1.y);
+      const bCx = (this.bounds.pt1.x + this.bounds.pt2.x) / 2;
+      const bCy = (this.bounds.pt1.y + this.bounds.pt2.y) / 2;
+
+      if (bW / bH > aspect) {
+        imgH = bH;
+        imgW = imgH * aspect;
+      } else {
+        imgW = bW;
+        imgH = imgW / aspect;
+      }
+
+      imgX = bCx - imgW / 2;
+      imgY = bCy - imgH / 2;
+    } else {
+      // No bounds set — fall back to a 200 mm wide default
+      imgW = 200;
+      imgH = imgW / aspect;
+      imgX = -imgW / 2;
+      imgY = 0;
+    }
+
     const img: ReferenceImage = {
       href: dataUrl,
       'xlink:href': dataUrl,
-      x: -w / 2,
-      y: 0,
-      width: w,
-      height: h,
+      x: imgX,
+      y: imgY,
+      width: imgW,
+      height: imgH,
       rotationDeg: 0,
     };
 

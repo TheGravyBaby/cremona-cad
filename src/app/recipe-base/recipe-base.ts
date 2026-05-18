@@ -28,6 +28,8 @@ export abstract class RecipeComponentBase implements AfterViewInit {
   @Output() setBounds = new EventEmitter<{pt1: Pt, pt2: Pt}>();
   @Output() referenceImageChange = new EventEmitter<ReferenceImage | null>();
 
+  @Input() cameraBounds: { pt1: Pt, pt2: Pt } | null = null;
+
   @Input() set loadFile(file: RecipeInterface | undefined) {
     if (file) {
       this.d = file;
@@ -287,37 +289,53 @@ export abstract class RecipeComponentBase implements AfterViewInit {
     if (!file) return;
 
     const dataUrl = await this.readFileAsDataUrl(file);
-
-    // Load it once to get natural dimensions
     const { w, h } = await this.getImageSize(dataUrl);
 
-    // Simple, predictable default:
-    // - size in "mm units" = natural px (same as your current approach)
-    // - place centered on X, start near Y=0
-    const width = w;
-    const height = h;
+    // Scale image to fit within the current camera bounds (mirrors draft-canvas logic)
+    const aspect = w / h || 1;
+    let imgW: number;
+    let imgH: number;
+    let imgX: number;
+    let imgY: number;
+
+    if (this.cameraBounds) {
+      const bW = Math.abs(this.cameraBounds.pt2.x - this.cameraBounds.pt1.x);
+      const bH = Math.abs(this.cameraBounds.pt2.y - this.cameraBounds.pt1.y);
+      const bCx = (this.cameraBounds.pt1.x + this.cameraBounds.pt2.x) / 2;
+      const bCy = (this.cameraBounds.pt1.y + this.cameraBounds.pt2.y) / 2;
+
+      if (bW / bH > aspect) {
+        imgH = bH;
+        imgW = imgH * aspect;
+      } else {
+        imgW = bW;
+        imgH = imgW / aspect;
+      }
+
+      imgX = bCx - imgW / 2;
+      imgY = bCy - imgH / 2;
+    } else {
+      // No bounds set — fall back to a 200 mm wide default
+      imgW = 200;
+      imgH = imgW / aspect;
+      imgX = -imgW / 2;
+      imgY = 0;
+    }
 
     this.d.referenceImage = {
       href: dataUrl,
-      "xlink:href": dataUrl,
-      x: -width / 2,
-      y: 0,
-      width,
-      height,
+      'xlink:href': dataUrl,
+      x: imgX,
+      y: imgY,
+      width: imgW,
+      height: imgH,
+      rotationDeg: 0,
     };
 
     sessionStorage.setItem('recipeData', JSON.stringify(this.d));
     this.referenceImageChange.emit(this.d.referenceImage);
 
-    // // Optional: auto-enable showing it when user uploads
-    // this.showReferenceImage = true;
-
-    // this.draw();
-
-    // optional: allow re-uploading same file by clearing the input
     input.value = '';
-
-    sessionStorage.setItem('recipeData', JSON.stringify(this.d));
   }
 
     private readFileAsDataUrl(file: File): Promise<string> {
