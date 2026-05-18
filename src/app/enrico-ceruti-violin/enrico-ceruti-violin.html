@@ -306,13 +306,13 @@
                 <label class="field-cell">
                     <span class="field-title">X <span class="unit-label">mm</span></span>
                     <input type="number" class="basic-input" step=".25" [(ngModel)]="d.params.bouts.UCr.x"
-                        (input)="changeCorners()" [style.borderColor]="colors.centerBoutUpOff2" />
+                        (input)="changeCorners()"  />
                 </label>
                 <span class="field-separator" aria-hidden="true"></span>
                 <label class="field-cell">
                     <span class="field-title">Y <span class="unit-label">mm</span></span>
                     <input type="number" class="basic-input" step=".25" [(ngModel)]="d.params.bouts.UCr.y"
-                        (input)="changeCorners()" [style.borderColor]="colors.centerBoutUpOff2" />
+                        (input)="changeCorners()"  />
                 </label>
                 <button type="button" class="info-icon" (click)="onInfoClick('cornerPosition')" title="More information"
                     aria-label="Information">ⓘ</button>
@@ -376,13 +376,13 @@
                 <label class="field-cell">
                     <span class="field-title">X <span class="unit-label">mm</span></span>
                     <input type="number" class="basic-input" step=".25" [(ngModel)]="d.params.bouts.LCr.x"
-                        (input)="changeCorners()" [style.borderColor]="colors.centerBoutLowOff2" />
+                        (input)="changeCorners()" />
                 </label>
                 <span class="field-separator" aria-hidden="true"></span>
                 <label class="field-cell">
                     <span class="field-title">Y <span class="unit-label">mm</span></span>
                     <input type="number" class="basic-input" step=".25" [(ngModel)]="d.params.bouts.LCr.y"
-                        (input)="changeCorners()" [style.borderColor]="colors.centerBoutLowOff2" />
+                        (input)="changeCorners()" />
                 </label>
                 <button type="button" class="info-icon" (click)="onInfoClick('cornerPosition')" title="More information"
                     aria-label="Information">ⓘ</button>

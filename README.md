@@ -85,7 +85,6 @@ git checkout -b feature/my-feature
 
 - [Angular 21](https://angular.dev/)
 - [D3.js](https://d3js.org/)
-- [Vitest](https://vitest.dev/)
 
 ## License
 
