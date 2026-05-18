@@ -3,7 +3,7 @@ import { Pt, ReferenceImage } from '../models/types';
 export class ReferenceImageController {
   private image?: ReferenceImage;
   public isInteracting = false;
-  public activeHandle: 'nw' | 'ne' | 'sw' | 'se' | null = null;
+  public activeHandle: 'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'e' | 'w' | null = null;
 
   // White suppression tuning (code-controlled; no UI slider needed)
   // Raise threshold to affect fewer pixels. Increase softness for gentler fade.
@@ -132,7 +132,23 @@ export class ReferenceImageController {
     };
   }
 
-  hitTestHandle(pt: Pt, pxPerMm: number): 'nw' | 'ne' | 'sw' | 'se' | null {
+  midpointPts(img?: ReferenceImage) {
+    const I = img ?? this.image;
+    if (!I) return { n: { x: 0, y: 0 }, s: { x: 0, y: 0 }, e: { x: 0, y: 0 }, w: { x: 0, y: 0 } };
+    const cx = I.x + I.width / 2;
+    const cy = I.y + I.height / 2;
+    const center = this.imageCenter(I);
+    const rotationDeg = this.getRotationDeg(I);
+
+    const n = this.rotatePoint({ x: cx, y: I.y + I.height }, center, rotationDeg);
+    const s = this.rotatePoint({ x: cx, y: I.y }, center, rotationDeg);
+    const e = this.rotatePoint({ x: I.x + I.width, y: cy }, center, rotationDeg);
+    const w = this.rotatePoint({ x: I.x, y: cy }, center, rotationDeg);
+
+    return { n, s, e, w };
+  }
+
+  hitTestHandle(pt: Pt, pxPerMm: number): 'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'e' | 'w' | null {
     if (!this.image) return null;
     const corners = this.cornerPts(this.image);
     const r = this.handleRmm(pxPerMm) + this.hitSlopMm(pxPerMm);
@@ -145,10 +161,21 @@ export class ReferenceImageController {
 
     const r2 = r * r;
     let best: { h: any; d2: number } | null = null;
+
+    // Test corner handles first (they take priority)
     (['nw', 'ne', 'sw', 'se'] as const).forEach(h => {
       const d2 = dist2(pt, corners[h]);
       if (d2 <= r2 && (!best || d2 < best.d2)) best = { h, d2 };
     });
+
+    // Test midpoint handles only if no corner matched
+    if (!best) {
+      const mids = this.midpointPts(this.image);
+      (['n', 's', 'e', 'w'] as const).forEach(h => {
+        const d2 = dist2(pt, mids[h]);
+        if (d2 <= r2 && (!best || d2 < best.d2)) best = { h, d2 };
+      });
+    }
 
     return (best?.h ?? null);
   }
@@ -169,7 +196,7 @@ export class ReferenceImageController {
     this.onChange(this.image);
   }
 
-  startScale(pt: Pt, handle: 'nw' | 'ne' | 'sw' | 'se') {
+  startScale(pt: Pt, handle: 'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'e' | 'w') {
     if (!this.image) return;
     this.isInteracting = true;
     this.activeHandle = handle;
@@ -177,12 +204,25 @@ export class ReferenceImageController {
     this.startImage = { ...this.image };
 
     const corners = this.cornerPts(this.startImage);
-    const anchorKey =
-      handle === 'nw' ? 'se' :
-        handle === 'ne' ? 'sw' :
-          handle === 'sw' ? 'ne' : 'nw';
+    const center = this.imageCenter(this.startImage);
+    const rotDeg = this.getRotationDeg(this.startImage);
 
-    this.anchorPt = corners[anchorKey];
+    if (handle === 'nw' || handle === 'ne' || handle === 'sw' || handle === 'se') {
+      const anchorKey =
+        handle === 'nw' ? 'se' :
+          handle === 'ne' ? 'sw' :
+            handle === 'sw' ? 'ne' : 'nw';
+      this.anchorPt = corners[anchorKey];
+    } else {
+      // Edge handles: anchor is the midpoint of the opposite edge in world space
+      const si = this.startImage;
+      const localAnchor =
+        handle === 'n' ? { x: si.x + si.width / 2, y: si.y } :               // south edge mid
+        handle === 's' ? { x: si.x + si.width / 2, y: si.y + si.height } :    // north edge mid
+        handle === 'e' ? { x: si.x,                 y: si.y + si.height / 2 } : // west edge mid
+                         { x: si.x + si.width,       y: si.y + si.height / 2 };  // east edge mid
+      this.anchorPt = this.rotatePoint(localAnchor, center, rotDeg);
+    }
   }
 
   updateScale(pt: Pt) {
@@ -192,7 +232,63 @@ export class ReferenceImageController {
     const center = this.imageCenter(this.startImage);
     const localPt = this.rotatePoint(pt, center, -rotationDeg);
     const localAnchor = this.rotatePoint(this.anchorPt, center, -rotationDeg);
+    const minMm = 10;
 
+    const isEdge = this.activeHandle === 'n' || this.activeHandle === 's' ||
+                   this.activeHandle === 'e' || this.activeHandle === 'w';
+
+    const edgeAspect = Math.abs(this.startImage.width / this.startImage.height) || 1;
+
+    if (isEdge) {
+      let newX = this.startImage.x;
+      let newY = this.startImage.y;
+      let newW = this.startImage.width;
+      let newH = this.startImage.height;
+
+      if (this.activeHandle === 'n') {
+        // localAnchor.y = fixed south edge; drag moves north edge
+        newH = Math.max(minMm, localPt.y - localAnchor.y);
+        newY = localAnchor.y;
+        if (newH > this.startImage.height) {
+          // Scale up: preserve aspect ratio, re-center horizontally on anchor
+          newW = newH * edgeAspect;
+          newX = localAnchor.x - newW / 2;
+        }
+      } else if (this.activeHandle === 's') {
+        // localAnchor.y = fixed north edge; drag moves south edge
+        newH = Math.max(minMm, localAnchor.y - localPt.y);
+        newY = localAnchor.y - newH;
+        if (newH > this.startImage.height) {
+          // Scale up: preserve aspect ratio, re-center horizontally on anchor
+          newW = newH * edgeAspect;
+          newX = localAnchor.x - newW / 2;
+        }
+      } else if (this.activeHandle === 'e') {
+        // localAnchor.x = fixed west edge; drag moves east edge
+        newW = Math.max(minMm, localPt.x - localAnchor.x);
+        newX = localAnchor.x;
+        if (newW > this.startImage.width) {
+          // Scale up: preserve aspect ratio, re-center vertically on anchor
+          newH = newW / edgeAspect;
+          newY = localAnchor.y - newH / 2;
+        }
+      } else if (this.activeHandle === 'w') {
+        // localAnchor.x = fixed east edge; drag moves west edge
+        newW = Math.max(minMm, localAnchor.x - localPt.x);
+        newX = localAnchor.x - newW;
+        if (newW > this.startImage.width) {
+          // Scale up: preserve aspect ratio, re-center vertically on anchor
+          newH = newW / edgeAspect;
+          newY = localAnchor.y - newH / 2;
+        }
+      }
+
+      this.image = { ...this.image, x: newX, y: newY, width: newW, height: newH, rotationDeg };
+      this.onChange(this.image);
+      return;
+    }
+
+    // Corner handles — preserve aspect ratio
     const startW = this.startImage.width;
     const startH = this.startImage.height;
     const aspect = Math.abs(startW / startH) || 1;
@@ -209,7 +305,6 @@ export class ReferenceImageController {
       targetH = targetW / aspect;
     }
 
-    const minMm = 10;
     targetW = Math.max(minMm, targetW);
     targetH = Math.max(minMm, targetH);
 
@@ -379,17 +474,44 @@ export class ReferenceImageController {
       .attr('vector-effect', 'non-scaling-stroke')
       .style('pointer-events', 'none');
 
-    const handles = (['nw', 'ne', 'sw', 'se'] as const).map(h => ({ h, ...corners[h] }));
+    // Corner handles — circles
+    const cornerHandles = (['nw', 'ne', 'sw', 'se'] as const).map(h => ({ h, ...corners[h] }));
 
     gRoot.append('g')
-      .attr('class', 'ref-handles')
+      .attr('class', 'ref-handles-corners')
       .selectAll('circle')
-      .data(handles)
+      .data(cornerHandles)
       .enter()
       .append('circle')
       .attr('cx', (d: any) => d.x)
       .attr('cy', (d: any) => d.y)
       .attr('r', r)
+      .attr('fill', '#fff')
+      .attr('stroke', '#bb1212ff')
+      .attr('stroke-width', 2 / pxPerMm)
+      .attr('vector-effect', 'non-scaling-stroke')
+      .style('pointer-events', 'none');
+
+    // Midpoint (edge) handles — diamonds
+    const mids = this.midpointPts(img);
+    const midHandles = (['n', 's', 'e', 'w'] as const).map(h => ({ h, ...mids[h] }));
+    const rotDeg = this.getRotationDeg(img);
+
+    // Determine the rotation angle for each edge handle's diamond
+    // n/s edges are horizontal → diamond rotated 0°; e/w edges are vertical → diamond rotated 90°
+    const edgeRotOffset = (h: string) => (h === 'e' || h === 'w') ? 45 : -45;
+
+    gRoot.append('g')
+      .attr('class', 'ref-handles-mids')
+      .selectAll('rect')
+      .data(midHandles)
+      .enter()
+      .append('rect')
+      .attr('x', (d: any) => d.x - r)
+      .attr('y', (d: any) => d.y - r)
+      .attr('width', r * 2)
+      .attr('height', r * 2)
+      .attr('transform', (d: any) => `rotate(${rotDeg + edgeRotOffset(d.h)} ${d.x} ${d.y})`)
       .attr('fill', '#fff')
       .attr('stroke', '#bb1212ff')
       .attr('stroke-width', 2 / pxPerMm)

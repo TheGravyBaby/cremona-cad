@@ -45,6 +45,7 @@ import { MessageCenterComponent } from './shared/message-center.component';
           [saveTick]="saveTick"
           [newFile]="newFileTick"
           [referenceImageParams]="referenceImage"
+          [cameraBounds]="bounds"
           (referenceImageChange)="onReferenceImageChange($event)">
         </app-kelly-violin>
         }
@@ -57,6 +58,7 @@ import { MessageCenterComponent } from './shared/message-center.component';
           [saveTick]="saveTick"
           [newFile]="newFileTick"
           [referenceImageParams]="referenceImage"
+          [cameraBounds]="bounds"
           (referenceImageChange)="onReferenceImageChange($event)">
         </app-enrico-ceruti-violin>
         }
@@ -68,6 +70,7 @@ import { MessageCenterComponent } from './shared/message-center.component';
           [loadFile]="loadedFileData"
           [saveTick]="saveTick"
           [referenceImageParams]="referenceImage"
+          [cameraBounds]="bounds"
           (referenceImageChange)="onReferenceImageChange($event)">
         </app-beard-violin>
         }
