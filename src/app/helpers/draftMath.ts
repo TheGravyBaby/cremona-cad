@@ -130,7 +130,7 @@ export function circleCircleIntersections(C1: Circle, C2: Circle, approx: boolea
 
   // tight, scale-aware tolerance (tweak 1e-12 -> 1e-11 if you still see misses)
   const scale = Math.max(1, C1.r, C2.r, d);
-  const eps = approx ? 1e-12 * scale : 0;
+  const eps = approx ? 1e-6 * scale : 0;
 
   // Only change: allow near-intersection by relaxing the bounds slightly
   if (d > C1.r + C2.r + eps) return [];

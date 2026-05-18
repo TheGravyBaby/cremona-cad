@@ -202,9 +202,6 @@ export function calculateCorners(p: EnricoCerutiParams): void {
         let U3R = p.bouts.U3?.r ?? Math.round(LBWI * p.ratios.U3toLBW);
         p.bouts.U3 = arcFromCircle(interceptCirclesAndPoint(p.bouts.U2, p.bouts.UCr, U3R).sort((a, b) => a.y - b.y)[1]);
 
-        let L3R = p.bouts.L3?.r ?? Math.round(LBWI * p.ratios.L3toLBW);
-        p.bouts.L3 = arcFromCircle(interceptCirclesAndPoint(p.bouts.L2, p.bouts.LCr, L3R).sort((a, b) => a.y - b.y)[0]);
-
         let U2Intersect = circleCircleIntersections(p.bouts.U2, p.bouts.U3).sort((a, b) => a.y - b.y);
         let U2Angle = angleFromCenter(p.bouts.U2, U2Intersect[1]);
         let U2StartAngle = angleFromCenter(p.bouts.U2, p.bouts.U1);
@@ -232,6 +229,19 @@ export function calculateCorners(p: EnricoCerutiParams): void {
         p.bouts.L31 = arcFromCircleAndPoints(compoundCircles.C2, L31start, p.bouts.LCr);
     }
     else {
+         if (p.options.useViolCornerUC) {
+            let U1EndPt = pointOnCircle(p.bouts.U1!, p.bouts.U1.end);
+            let a = p.bouts.UCr.y - U1EndPt.y
+            let b = U1EndPt.x - p.bouts.UCr.x
+            let U4r = (a * a + b * b) / (2 * b)
+
+            let u4 = new Circle(U1EndPt.x - U4r, U1EndPt.y, U4r);
+            p.bouts.U4 = arcFromCircleAndPoints(u4, U1EndPt, p.bouts.UCr);
+        }
+
+        let L3R = p.bouts.L3?.r ?? Math.round(LBWI * p.ratios.L3toLBW);
+        p.bouts.L3 = arcFromCircle(interceptCirclesAndPoint(p.bouts.L2, p.bouts.LCr, L3R).sort((a, b) => a.y - b.y)[0]);
+
         let L2Intersect = circleCircleIntersections(p.bouts.L2, p.bouts.L3).sort((a, b) => a.y - b.y)[0];
         let L2Angle = angleFromCenter(p.bouts.L2, L2Intersect);
         let L2StartAngle = angleFromCenter(p.bouts.L2, p.bouts.L1);
@@ -245,15 +255,7 @@ export function calculateCorners(p: EnricoCerutiParams): void {
         p.bouts.L2 = arcFromCircle(p.bouts.L2, L2StartAngle, L2Angle);
         p.bouts.L3 = arcFromCircleAndPoints(p.bouts.L3, L2Intersect, p.bouts.LCr);
     }
-    if (p.options.useViolCornerUC) {
-        let U1EndPt = pointOnCircle(p.bouts.U1!, p.bouts.U1.end);
-        let a = p.bouts.UCr.y - U1EndPt.y
-        let b = U1EndPt.x - p.bouts.UCr.x
-        let U4r = (a * a + b * b) / (2 * b)
-
-        let u4 = new Circle(U1EndPt.x - U4r, U1EndPt.y, U4r);
-        p.bouts.U4 = arcFromCircleAndPoints(u4, U1EndPt, p.bouts.UCr);
-    }
+   
 
     // recalculate display ratios
     p.ratios.U2toUBW = p.bouts.U2.r / UBWI;

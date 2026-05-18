@@ -180,7 +180,7 @@ export const DefaultParams: EnricoCerutiParams = {
     useViolNeck: false,
     useViolCornerUC: false,
     useViolCornerLC: false,
-    useKellyC0: true, // four circles based theory of clean intersection along center bout
+    useKellyC0: false, // four circles based theory of clean intersection along center bout
     U31DoubleArc: false,
     C21DoubleArc: false,
     C11DoubleArc: false,
