@@ -5,7 +5,7 @@ import { Arc, arcFromCircle, Rectangle, setArcStartByDegreeDiff, setArcEndByDegr
 import { greyOut, renderArcFromArc, renderArcFromArcFancy, renderCircle, renderCrosshair, renderDashedLine, renderDashedLineLong, renderLine, renderPath, renderRect } from '../helpers/renderFuncs';
 import { clampParam, safeRun } from '../helpers/validators';
 import { EnricoCerutiTemplate, CERUTI_TEMPLATES, EnricoCerutiParams } from './ceruti-types';
-import { boutWidthInfo, buttonInfo, centerBoutWidthInfo, cornerCutoffInfo, dimensionInfo, fitC0Info, insetInfo, referenceInfo, violCornerInfo, violNeckInfo } from './ceruti-helpers';
+import { bitDiameterInfo, boutWidthInfo, buttonInfo, centerBoutWidthInfo, channelDepthInfo, cornerCutoffInfo, cornerPositionInfo, dimensionInfo, fitC0Info, insetInfo, referenceInfo, violCornerInfo, violNeckInfo } from './ceruti-helpers';
 import { combinePathStrings, flipAngleAboutYAxis, flipArcAboutY, flipCircleAboutY, flipPointAboutY, flipRectAboutY, interceptCirclesAndPointCompound, pointOnCircle, } from '../helpers/draftMath';
 import { calculateCenterBout, calculateCornerBlocks, calculateCorners, calculateMainBouts, calculateMould, calculateOuterArcs, defineInnerPath, defineOuterPath } from './ceruti-calcs';
 import { buildMirroredSvg, downloadSvgFile, downloadSvgAsPdf, downloadFullPlanPdf, PdfPage } from '../helpers/svg-export';
@@ -38,7 +38,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     upperBout: '#4D8660',
     centerBoutUp: '#C24B2E',
     centerBout: '#A97645',
-    centerBoutLow: '#b6a25fff',
+    centerBoutLow: '#e1bf50ff',
     lowerBout: '#4D74A8',
     innerTrace: '#a47272ff',
     outerTrace: '#727fa4ff',
@@ -56,8 +56,8 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     centerBoutOff: greyOut(this.colorPalette.centerBout, this.offFactor),
     centerBoutOff2: greyOut(this.colorPalette.centerBout, this.off2Factor),
     centerBoutLow: this.colorPalette.centerBoutLow,
-    centerBoutLowOff: '#91845bff', //greyOut(this.colorPalette.centerBoutLow, this.offFactor),
-    centerBoutLowOff2: '#9b937bff', //greyOut(this.colorPalette.centerBoutLow, 4),
+    centerBoutLowOff: greyOut(this.colorPalette.centerBoutLow, this.offFactor),
+    centerBoutLowOff2: greyOut(this.colorPalette.centerBoutLow, 4),
     lowerBout: this.colorPalette.lowerBout,
     lowerBoutOff: greyOut(this.colorPalette.lowerBout, this.offFactor),
     lowerBoutOff2: greyOut(this.colorPalette.lowerBout, this.off2Factor),
@@ -274,7 +274,10 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     else if (name === 'cornerCutoff') cornerCutoffInfo()
     else if (name === 'boutWidth') boutWidthInfo()
     else if (name === 'centerBoutWidth') centerBoutWidthInfo()
-    else if (name === 'fitC0') fitC0Info();
+    else if (name === 'fitC0') fitC0Info()
+    else if (name === 'cornerPosition') cornerPositionInfo()
+    else if (name === 'bitDiameter') bitDiameterInfo()
+    else if (name === 'channelDepth') channelDepthInfo();
   }
 
   // ===== Change pipeline =====
@@ -502,10 +505,10 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
 
     if ((currentModule && this.showModuleCircles) || this.showAllCircles) {
       renderCircle(p.bouts.C0, this.colors.centerBout)(g, ui);
-      renderCircle(p.bouts.C2, this.colors.centerBoutUpOff)(g, ui);
-      renderCircle(p.bouts.C1, this.colors.centerBoutLowOff)(g, ui);
-      renderCircle(flipCircleAboutY(p.bouts.C2), this.colors.centerBoutUpOff)(g, ui);
-      renderCircle(flipCircleAboutY(p.bouts.C1), this.colors.centerBoutLowOff)(g, ui);
+      renderCircle(p.bouts.C2, this.colors.centerBoutUp)(g, ui);
+      renderCircle(p.bouts.C1, this.colors.centerBoutLow)(g, ui);
+      renderCircle(flipCircleAboutY(p.bouts.C2), this.colors.centerBoutUp)(g, ui);
+      renderCircle(flipCircleAboutY(p.bouts.C1), this.colors.centerBoutLow)(g, ui);
       renderCircle(flipCircleAboutY(p.bouts.C0), this.colors.centerBout)(g, ui);
 
       p.options.C21DoubleArc && renderCircle(p.bouts.C21!, this.colors.centerBoutUpOff2)(g, ui);
@@ -520,25 +523,20 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
 
     if (currentModule && this.showModuleGuides) {
       renderDashedLine({ x: -1000, y: p.bouts.C0.y }, { x: 1000, y: p.bouts.C0.y }, this.colors.centerBoutOff2)(g, ui);
-      renderCrosshair(p.bouts.UCr!, this.colors.centerBoutUpOff2)(g, ui);
-      renderCrosshair(p.bouts.LCr!, this.colors.centerBoutLowOff2)(g, ui);
-      renderCrosshair({ x: -p.bouts.UCr!.x, y: p.bouts.UCr!.y }, this.colors.centerBoutUpOff2)(g, ui);
-      renderCrosshair({ x: -p.bouts.LCr!.x, y: p.bouts.LCr!.y }, this.colors.centerBoutLowOff2)(g, ui);
-
     }
 
     if ((currentModule && this.showModuleArcs) || this.showAllArcs) {
 
-      renderArcFromArcFancy(p.bouts.C2, this.colors.centerBoutUpOff)(g, ui);
-      p.options.C21DoubleArc && renderArcFromArcFancy(p.bouts.C21!, this.colors.centerBoutUpOff)(g, ui);
+      renderArcFromArcFancy(p.bouts.C2, this.colors.centerBoutUp)(g, ui);
+      p.options.C21DoubleArc && renderArcFromArcFancy(p.bouts.C21!, this.colors.centerBoutUp)(g, ui);
 
-      renderArcFromArcFancy(p.bouts.C1, this.colors.centerBoutLowOff)(g, ui);
-      p.options.C11DoubleArc && renderArcFromArcFancy(p.bouts.C11!, this.colors.centerBoutLowOff)(g, ui);
+      renderArcFromArcFancy(p.bouts.C1, this.colors.centerBoutLow)(g, ui);
+      p.options.C11DoubleArc && renderArcFromArcFancy(p.bouts.C11!, this.colors.centerBoutLow)(g, ui);
       renderArcFromArcFancy(p.bouts.C0, this.colors.centerBout)(g, ui);
-      renderArcFromArcFancy(flipArcAboutY(p.bouts.C2), this.colors.centerBoutUpOff)(g, ui);
-      p.options.C21DoubleArc && renderArcFromArcFancy(flipArcAboutY(p.bouts.C21!), this.colors.centerBoutUpOff)(g, ui);
+      renderArcFromArcFancy(flipArcAboutY(p.bouts.C2), this.colors.centerBoutUp)(g, ui);
+      p.options.C21DoubleArc && renderArcFromArcFancy(flipArcAboutY(p.bouts.C21!), this.colors.centerBoutUp)(g, ui);
       renderArcFromArcFancy(flipArcAboutY(p.bouts.C1), this.colors.centerBoutLow)(g, ui);
-      p.options.C11DoubleArc && renderArcFromArcFancy(flipArcAboutY(p.bouts.C11!), this.colors.centerBoutLowOff)(g, ui);
+      p.options.C11DoubleArc && renderArcFromArcFancy(flipArcAboutY(p.bouts.C11!), this.colors.centerBoutLow)(g, ui);
       renderArcFromArcFancy(flipArcAboutY(p.bouts.C0), this.colors.centerBout)(g, ui);
     }
     else {

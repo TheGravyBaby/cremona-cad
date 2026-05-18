@@ -559,8 +559,9 @@ export function calculateMould(p: EnricoCerutiParams, useHighAccuracy = false, s
     let clampBox: string[]
     if (simpleClampBox) {
          let halfwayPt = p.bouts.C0.y
+         let blockY = Math.min(p.blocks.U.Pt2.y, p.blocks.U.Pt1.y);
         const clampBlockCutout1 = new Rectangle(
-            new Pt(clampWidest * 1.3, p.blocks.U.Pt2.y - blockInset ), 
+            new Pt(clampWidest * 1.3, blockY - blockInset ), 
             new Pt(clampWidest * -1.3, halfwayPt + blockInset/2)
         );
         const clampBlockCutout2 = new Rectangle(

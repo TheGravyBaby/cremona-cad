@@ -89,6 +89,28 @@ export function fitC0Info() {
     )
 }
 
+export function cornerPositionInfo() {
+    info(
+        "The X and Y coordinates define the location of the corner. The corner arcs will be drawn to meet this corner point. \n\n",
+        "Additional Information", defaultTTL
+    )
+}
+
+export function bitDiameterInfo() {
+    info(
+        "The diameter of the router bit used to cut the mould. This will affect how the corners of the blocks are cut. Hard 90 degree corners don't work well on CNC machines, this will ensure the blocks can be fit properly..\n\n" +
+        "If not cutting the mould from CNC, set this value to 0.",
+        "Additional Information", defaultTTL
+    )
+}
+
+export function channelDepthInfo() {
+    info(
+        "The distance between the outer edge of the mould and the empty space on the inside.",
+        "Additional Information", defaultTTL
+    )
+}
+
 export function cornerCutoffInfo() {
     info(
         "The cutoff angle controls how far the corner arc extends before being trimmed — this determines the final size of the corner..\n\n" +
