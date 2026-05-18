@@ -4,7 +4,8 @@ import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { Arc, arcFromCircle, Rectangle, setArcStartByDegreeDiff, setArcEndByDegreeDiff } from '../models/types';
 import { greyOut, renderArcFromArc, renderArcFromArcFancy, renderCircle, renderCrosshair, renderDashedLine, renderDashedLineLong, renderLine, renderPath, renderRect } from '../helpers/renderFuncs';
 import { clampParam, safeRun } from '../helpers/validators';
-import { EnricoCerutiTemplate, CERUTI_TEMPLATES, EnricoCerutiParams } from './ceruti-types';
+import { EnricoCerutiTemplate, EnricoCerutiParams } from './ceruti-types';
+import { CERUTI_TEMPLATES } from './ceruti-templates';
 import { bitDiameterInfo, boutWidthInfo, buttonInfo, centerBoutWidthInfo, channelDepthInfo, cornerCutoffInfo, cornerPositionInfo, dimensionInfo, fitC0Info, insetInfo, referenceInfo, violCornerInfo, violNeckInfo } from './ceruti-helpers';
 import { combinePathStrings, flipAngleAboutYAxis, flipArcAboutY, flipCircleAboutY, flipPointAboutY, flipRectAboutY, interceptCirclesAndPointCompound, pointOnCircle, } from '../helpers/draftMath';
 import { calculateCenterBout, calculateCornerBlocks, calculateCorners, calculateMainBouts, calculateMould, calculateOuterArcs, defineInnerPath, defineOuterPath } from './ceruti-calcs';
@@ -79,7 +80,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
   readonly templates: EnricoCerutiTemplate[] = CERUTI_TEMPLATES;
   override openPanel = 'base';
   override d: EnricoCerutiTemplate = {
-    ...CERUTI_TEMPLATES[0],
+    ...CERUTI_TEMPLATES[1],
   };
 
   showModuleArcs: boolean = true;
@@ -110,8 +111,19 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     const template = this.templates.find(t => t.key === key);
     if (!template) return;
     this.loadFile = template;
-    this.referenceImageChange.emit(this.d.referenceImage ?? null);
     sessionStorage.setItem('recipeData', JSON.stringify(this.d));
+      if(this.hasOuterTrace()) {
+      const path = combinePathStrings([defineOuterPath(this.d.params), defineInnerPath(this.d.params)]);
+      this.draftChange.emit([
+        renderPath(path, this.colors.outerTrace, 1),
+      ]);
+    }
+    this.setBounds.emit({
+        pt1: { x: -this.d.params.width / 2, y: 0 },
+        pt2: { x: this.d.params.width / 2, y: this.d.params.height },
+      });
+    this.referenceImageChange.emit(this.d.referenceImage ?? null);
+  
   }
 
   // ===== Inputs & lifecycle =====
@@ -143,8 +155,8 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
 
       let recipeData = sessionStorage.getItem('recipeData');
       if (!recipeData) {
-        let selectedTemplate = this.templates.find(t => t.key === this.selectedTemplateKey) ?? this.templates[0];
-        this.referenceImageChange.emit(selectedTemplate.referenceImage ?? null);
+        const selectedTemplate = this.templates.find(t => t.key === this.selectedTemplateKey) ?? this.templates[0];
+        this.d.referenceImage = selectedTemplate.referenceImage;
       }
       else {
         // check to see if the recipe loaded from session storage matches a template
@@ -161,6 +173,8 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
         pt1: { x: -this.d.params.width / 2, y: 0 },
         pt2: { x: this.d.params.width / 2, y: this.d.params.height },
       });
+      this.referenceImageChange.emit(this.d.referenceImage ?? null);
+
 
       // Run the activation handler immediately (not debounced) so the
       // first full render fires on this call rather than after a delay.
