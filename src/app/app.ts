@@ -39,7 +39,7 @@ import { MessageCenterComponent } from './shared/message-center.component';
 
         @if (selectedRecipe == "Kelly Violin") {
          <app-kelly-violin class="sidebar"
-          (draftChange)="draftArgs = $event"
+          (draftChange)="onDraftChange($event)"
           (setBounds)="bounds=$event"
           [loadFile]="loadedFileData"
           [saveTick]="saveTick"
@@ -51,7 +51,7 @@ import { MessageCenterComponent } from './shared/message-center.component';
 
         @if (selectedRecipe == "enrico-ceruti-violin") {
          <app-enrico-ceruti-violin class="sidebar"
-          (draftChange)="draftArgs = $event"
+          (draftChange)="onDraftChange($event)"
           (setBounds)="bounds=$event"
           [loadFile]="loadedFileData"
           [saveTick]="saveTick"
@@ -63,7 +63,7 @@ import { MessageCenterComponent } from './shared/message-center.component';
 
         @if (selectedRecipe == "Beard Violin") {
          <app-beard-violin class="sidebar"
-          (draftChange)="draftArgs = $event"
+          (draftChange)="onDraftChange($event)"
           (setBounds)="bounds=$event"
           [loadFile]="loadedFileData"
           [saveTick]="saveTick"
@@ -114,6 +114,12 @@ export class App {
     this.doc.documentElement.classList.toggle('day-mode', !this.nightMode);
   }
 
+  onDraftChange(fns: Array<(g: any, ui: any) => void>) {
+    queueMicrotask(() => {
+      this.draftArgs = fns;
+    });
+  }
+
   onReferenceImageChange(img: ReferenceImage | null) {
     queueMicrotask(() => {
       this.referenceImage = img;
@@ -123,7 +129,9 @@ export class App {
   newFileTick = 0;
 
   newFile() {
-    this.newFileTick += 1;
+    queueMicrotask(() => {
+      this.newFileTick += 1;
+    });
   }
 
   loadFile(data: RecipeInterface) {

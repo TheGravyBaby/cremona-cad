@@ -124,14 +124,17 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     this._firstRenderInitDone = false;
     this.openPanel = 'base';
 
+    // Write to sessionStorage before emitting so firstRender reads the
+    // fresh template data (not the previous session's recipe/panel).
+    sessionStorage.setItem('recipeData', JSON.stringify(this.d));
+    sessionStorage.setItem('openPanel', 'base');
+
     this.setBounds.emit({
       pt1: { x: -this.d.params.width / 2, y: 0 },
       pt2: { x: this.d.params.width / 2, y: this.d.params.height },
     });
     this.referenceImageChange.emit(this.d.referenceImage ?? null);
     this.draftChange.emit([this.firstRender]);
-
-    sessionStorage.setItem('recipeData', JSON.stringify(this.d));
   }
 
   override firstRender = (g: any, ui: any): void => {
