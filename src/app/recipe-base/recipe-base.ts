@@ -195,6 +195,7 @@ export abstract class RecipeComponentBase implements AfterViewInit {
   protected activatePanel(panel: string): void {
     if (!this.isPanelEnabled(panel)) return;
     this.openPanel = panel;
+    sessionStorage.setItem('recipeData', JSON.stringify({ ...this.d, openPanel: this.openPanel }));
     const handlers = this.getActivationHandlers();
     handlers[panel]?.();
   }

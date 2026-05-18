@@ -57,7 +57,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     centerBoutOff2: greyOut(this.colorPalette.centerBout, this.off2Factor),
     centerBoutLow: this.colorPalette.centerBoutLow,
     centerBoutLowOff: greyOut(this.colorPalette.centerBoutLow, this.offFactor),
-    centerBoutLowOff2: greyOut(this.colorPalette.centerBoutLow, 4),
+    centerBoutLowOff2: greyOut(this.colorPalette.centerBoutLow, this.off2Factor),
     lowerBout: this.colorPalette.lowerBout,
     lowerBoutOff: greyOut(this.colorPalette.lowerBout, this.offFactor),
     lowerBoutOff2: greyOut(this.colorPalette.lowerBout, this.off2Factor),
@@ -141,7 +141,13 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     }
     else {
       // check to see if the recipe loaded from session storage matches a template
-      this.d = JSON.parse(recipeData) as EnricoCerutiTemplate;
+      const parsed = JSON.parse(recipeData);
+      this.d = parsed as EnricoCerutiTemplate;
+      // Restore the last open panel from session storage
+      this.panelFlow?.refreshEnabledPanels();
+      if (parsed.openPanel && this.isPanelEnabled(parsed.openPanel)) {
+        this.openPanel = parsed.openPanel;
+      }
     }
 
     const handlers = this.getActivationHandlers();
