@@ -39,7 +39,7 @@
           (click)="activeTab = 'tutorial'">Tutorial</button>
         <button class="tab-btn" [class.active]="activeTab === 'version'" (click)="activeTab = 'version'">Version</button>
         <button class="tab-btn" [class.active]="activeTab === 'license'" (click)="activeTab = 'license'">License</button>
-        <button class="tab-btn" [class.active]="activeTab === 'author'" (click)="activeTab = 'author'">Andrew Argraves</button>
+        <button class="tab-btn" [class.active]="activeTab === 'author'" (click)="activeTab = 'author'">About The Author</button>
 
       </div>
       <button class="modal-close" (click)="closeAbout()" aria-label="Close">✕</button>
@@ -150,7 +150,6 @@
         <ul class="tips-list">
           <li>Each corner is defined by at least two corner arcs and respective <strong>cutoff angles</strong>. The cutoff values
             define points at which a line is drawn across the outer corners.</li>
-          <li>Some violins employ more elaborate corners with <strong>double arcs</strong>, which you may employ on any corner.</li>
           <li>The <strong>button</strong> is a small half-circle segment that is usually found on the backs of violin family instruments.
             You can define its dimensions here.</li>
         </ul>
