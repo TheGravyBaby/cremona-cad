@@ -7,7 +7,7 @@ import { clampParam, safeRun } from '../helpers/validators';
 import { EnricoCerutiTemplate, EnricoCerutiParams } from './ceruti-types';
 import { CERUTI_TEMPLATES } from './ceruti-templates';
 import { bitDiameterInfo, boutWidthInfo, buttonInfo, centerBoutWidthInfo, channelDepthInfo, cornerCutoffInfo, cornerPositionInfo, dimensionInfo, fitC0Info, insetInfo, referenceInfo, violCornerInfo, violNeckInfo } from './ceruti-helpers';
-import { combinePathStrings, flipAngleAboutYAxis, flipArcAboutY, flipCircleAboutY, flipPointAboutY, flipRectAboutY, interceptCirclesAndPointCompound, pointOnCircle, } from '../helpers/draftMath';
+import { combinePathStrings, flipAngleAboutYAxis, flipArcAboutY, flipCircleAboutY, flipPointAboutY, flipRectAboutY, interceptCirclesAndPointCompound, offsetArcRadius, pointOnCircle, } from '../helpers/draftMath';
 import { calculateCenterBout, calculateCornerBlocks, calculateCorners, calculateMainBouts, calculateMould, calculateOuterArcs, defineInnerPath, defineOuterPath } from './ceruti-calcs';
 import { buildMirroredSvg, downloadSvgFile, downloadSvgAsPdf, downloadFullPlanPdf, PdfPage } from '../helpers/svg-export';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
@@ -95,6 +95,8 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
   exportSimpleClampBox: boolean = false;
   exportPreview: SafeHtml | null = null;
   exportPreviewLabel: string = '';
+  renderOuterPath = true;
+
 
   pathStrokeWidth = 2
 
@@ -353,7 +355,6 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     sessionStorage.setItem('recipeData', JSON.stringify(this.d));
   }
 
-
   renderMainBouts = (currentModule: boolean) => (g: any, ui: any): void => {
     let p = this.d.params;
     let inset = p.overhang + p.rib;
@@ -415,6 +416,34 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       renderArcFromArc(wideBottomArc, this.colors.innerTrace, this.pathStrokeWidth)(g, ui);
       renderArcFromArc(p.bouts.L1, this.colors.innerTrace, this.pathStrokeWidth)(g, ui);
       renderArcFromArc(mirroredL1Arc, this.colors.innerTrace, this.pathStrokeWidth)(g, ui);
+    }
+    
+    if (this.renderOuterPath) {
+      const m = this.showModuleArcs && currentModule;
+      const outerTopColor     = m ? this.colors.upperBout    : this.colors.outerTrace;
+      const outerTopOffColor  = m ? this.colors.upperBoutOff : this.colors.outerTrace;
+      const outerBotColor     = m ? this.colors.lowerBout    : this.colors.outerTrace;
+      const outerBotOffColor  = m ? this.colors.lowerBoutOff : this.colors.outerTrace;
+      if (this.d.params.options.useViolNeck) {
+        let mirrorV0 = flipArcAboutY(p.viol.V0);
+        renderArcFromArc(offsetArcRadius(p.viol.V0, -inset), outerTopColor, this.pathStrokeWidth)(g, ui);
+        renderArcFromArc(offsetArcRadius(mirrorV0, -inset), outerTopColor, this.pathStrokeWidth)(g, ui);
+
+        let mirrorU0 = flipArcAboutY(p.bouts.U0);
+        renderArcFromArc(offsetArcRadius(p.bouts.U0, inset), outerTopColor, this.pathStrokeWidth)(g, ui);
+        renderArcFromArc(offsetArcRadius(mirrorU0, inset), outerTopColor, this.pathStrokeWidth)(g, ui);
+
+        let EndPt = pointOnCircle(p.viol?.V0!, p.viol?.V0.end ?? 0);
+        renderLine(EndPt, flipPointAboutY(EndPt), this.colors.innerTrace, this.pathStrokeWidth)(g, ui);
+      }
+      else
+        renderArcFromArc(offsetArcRadius(wideTopArc, inset), outerTopColor, this.pathStrokeWidth)(g, ui);
+
+      renderArcFromArc(offsetArcRadius(p.bouts.U1, inset), outerTopOffColor, this.pathStrokeWidth)(g, ui);
+      renderArcFromArc(offsetArcRadius(mirroredU1Arc, inset), outerTopOffColor, this.pathStrokeWidth)(g, ui);
+      renderArcFromArc(offsetArcRadius(wideBottomArc, inset), outerBotColor, this.pathStrokeWidth)(g, ui);
+      renderArcFromArc(offsetArcRadius(p.bouts.L1, inset), outerBotOffColor, this.pathStrokeWidth)(g, ui);
+      renderArcFromArc(offsetArcRadius(mirroredL1Arc, inset), outerBotOffColor, this.pathStrokeWidth)(g, ui);
     }
 
 
@@ -510,6 +539,35 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       p.options.useViolCornerUC && renderArcFromArc(flipArcAboutY(p.bouts.U4), this.colors.innerTrace, this.pathStrokeWidth)(g, ui);
     }
 
+    if (this.renderOuterPath) {
+      const m = this.showModuleArcs && currentModule;
+      const lBoutOff   = m ? this.colors.lowerBoutOff   : this.colors.outerTrace;
+      const cBoutLow   = m ? this.colors.centerBoutLow  : this.colors.outerTrace;
+      const uBoutOff   = m ? this.colors.upperBoutOff   : this.colors.outerTrace;
+      const cBoutUp    = m ? this.colors.centerBoutUp   : this.colors.outerTrace;
+      const inset = p.overhang + p.rib;
+
+      // Lower corners — L2 expands outward (+inset), L3 is already outer so shrinks (-inset)
+      !p.options.useViolCornerLC && renderArcFromArc(offsetArcRadius(p.bouts.L2!, inset), lBoutOff, this.pathStrokeWidth)(g, ui);
+      !p.options.useViolCornerLC && renderArcFromArc(offsetArcRadius(p.bouts.L3!, -inset), cBoutLow, this.pathStrokeWidth)(g, ui);
+      !p.options.useViolCornerLC && p.options.L31DoubleArc && renderArcFromArc(offsetArcRadius(p.bouts.L31!, -inset), cBoutLow, this.pathStrokeWidth)(g, ui);
+      !p.options.useViolCornerLC && renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.L2!), inset), lBoutOff, this.pathStrokeWidth)(g, ui);
+      !p.options.useViolCornerLC && renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.L3!), -inset), cBoutLow, this.pathStrokeWidth)(g, ui);
+      !p.options.useViolCornerLC && p.options.L31DoubleArc && renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.L31!), -inset), cBoutLow, this.pathStrokeWidth)(g, ui);
+      p.options.useViolCornerLC && renderArcFromArc(offsetArcRadius(p.bouts.L4, inset), lBoutOff, this.pathStrokeWidth)(g, ui);
+      p.options.useViolCornerLC && renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.L4), inset), lBoutOff, this.pathStrokeWidth)(g, ui);
+
+      // Upper corners — U2 expands outward (+inset), U3 is already outer so shrinks (-inset)
+      !p.options.useViolCornerUC && renderArcFromArc(offsetArcRadius(p.bouts.U2!, inset), uBoutOff, this.pathStrokeWidth)(g, ui);
+      !p.options.useViolCornerUC && renderArcFromArc(offsetArcRadius(p.bouts.U3!, -inset), cBoutUp, this.pathStrokeWidth)(g, ui);
+      !p.options.useViolCornerUC && p.options.U31DoubleArc && renderArcFromArc(offsetArcRadius(p.bouts.U31!, -inset), cBoutUp, this.pathStrokeWidth)(g, ui);
+      !p.options.useViolCornerUC && renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.U2!), inset), uBoutOff, this.pathStrokeWidth)(g, ui);
+      !p.options.useViolCornerUC && renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.U3!), -inset), cBoutUp, this.pathStrokeWidth)(g, ui);
+      !p.options.useViolCornerUC && p.options.U31DoubleArc && renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.U31!), -inset), cBoutUp, this.pathStrokeWidth)(g, ui);
+      p.options.useViolCornerUC && renderArcFromArc(offsetArcRadius(p.bouts.U4, inset), uBoutOff, this.pathStrokeWidth)(g, ui);
+      p.options.useViolCornerUC && renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.U4), inset), uBoutOff, this.pathStrokeWidth)(g, ui);
+    }
+
   }
 
   changeCenterBout(solveC0?: boolean): void {
@@ -584,6 +642,26 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       p.options.U31DoubleArc && renderArcFromArc(flipArcAboutY(p.bouts.U31!), this.colors.innerTrace, this.pathStrokeWidth)(g, ui);
     }
 
+    if (this.renderOuterPath) {
+      const m = this.showModuleArcs && currentModule;
+      const cBoutUp  = m ? this.colors.centerBoutUp  : this.colors.outerTrace;
+      const cBout    = m ? this.colors.centerBout     : this.colors.outerTrace;
+      const cBoutLow = m ? this.colors.centerBoutLow  : this.colors.outerTrace;
+      const inset = p.overhang + p.rib;
+
+      // All center bout arcs are outer arcs — shrink with -inset
+      renderArcFromArc(offsetArcRadius(p.bouts.C2, -inset), cBoutUp, this.pathStrokeWidth)(g, ui);
+      p.options.C21DoubleArc && renderArcFromArc(offsetArcRadius(p.bouts.C21!, -inset), cBoutUp, this.pathStrokeWidth)(g, ui);
+      renderArcFromArc(offsetArcRadius(p.bouts.C1, -inset), cBoutLow, this.pathStrokeWidth)(g, ui);
+      p.options.C11DoubleArc && renderArcFromArc(offsetArcRadius(p.bouts.C11!, -inset), cBoutLow, this.pathStrokeWidth)(g, ui);
+      renderArcFromArc(offsetArcRadius(p.bouts.C0, -inset), cBout, this.pathStrokeWidth)(g, ui);
+      renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.C2), -inset), cBoutUp, this.pathStrokeWidth)(g, ui);
+      p.options.C21DoubleArc && renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.C21!), -inset), cBoutUp, this.pathStrokeWidth)(g, ui);
+      renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.C1), -inset), cBoutLow, this.pathStrokeWidth)(g, ui);
+      p.options.C11DoubleArc && renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.C11!), -inset), cBoutLow, this.pathStrokeWidth)(g, ui);
+      renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.C0), -inset), cBout, this.pathStrokeWidth)(g, ui);
+    }
+
 
   }
 
@@ -604,7 +682,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     let p = this.d.params;
     let offset = p.overhang + p.rib;
     let outerPath = defineOuterPath(p, offset, true);
-    renderPath(outerPath, this.colors.innerTrace, this.pathStrokeWidth)(g, ui);
+    renderPath(outerPath, this.colors.outerTrace, this.pathStrokeWidth)(g, ui);
 
     if ((currentModule && this.showModuleArcs) || this.showAllArcs) {
       // primary arcs + their mirrors

@@ -267,6 +267,12 @@
                         Module Guides</span>
                 </div>
             </div>
+            <div class="input-group basic-row field-row" role="group">
+                <div class="toggle">
+                    <input type="checkbox" [(ngModel)]="renderOuterPath" (change)="changeMainBouts()" /><span>Show
+                        Outer Path</span>
+                </div>
+            </div>
         </section>
         }
 
@@ -502,6 +508,12 @@
                 <div class="toggle">
                     <input type="checkbox" [(ngModel)]="showModuleGuides" (change)="changeCorners()" /><span>Show Module
                         Guides</span>
+                </div>
+            </div>
+            <div class="input-group basic-row field-row" role="group">
+                <div class="toggle">
+                    <input type="checkbox" [(ngModel)]="renderOuterPath" (change)="changeCorners()" /><span>Show
+                        Outer Path</span>
                 </div>
             </div>
         </section>
@@ -776,6 +788,12 @@
                 <div class="toggle">
                     <input type="checkbox" [(ngModel)]="showModuleGuides" (change)="changeCenterBout()" /><span>Show
                         Module Guides</span>
+                </div>
+            </div>
+            <div class="input-group basic-row field-row" role="group">
+                <div class="toggle">
+                    <input type="checkbox" [(ngModel)]="renderOuterPath" (change)="changeCenterBout()" /><span>Show
+                        Outer Path</span>
                 </div>
             </div>
         </section>

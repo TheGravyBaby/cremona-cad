@@ -113,7 +113,7 @@
   background: var(--ui-bg-panel, #1e1e2e);
   border: 1px solid var(--ui-border-soft, #444);
   border-radius: 8px;
-  width: 50vw;
+  max-width: 800px;
   max-height: 70vh;
   align-self: flex-start;
   margin-top: 10vh;
