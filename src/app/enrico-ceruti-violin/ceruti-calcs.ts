@@ -186,19 +186,8 @@ export function calculateCorners(p: EnricoCerutiParams): void {
         p.bouts.U2 = arcFromCircle(p.bouts.U2, p.bouts.U2.start, angleFromCenter(p.bouts.U2, U3start));
         p.bouts.U3 = arcFromCircleAndPoints(compoundCircles.C1, U3start, U31start);
         p.bouts.U31 = arcFromCircleAndPoints(compoundCircles.C2, U31start, p.bouts.UCr);
-    }
+    } 
     else {
-        // viol corner calcs
-        if (p.options.useViolCornerLC) {
-            let L1EndPt = pointOnCircle(p.bouts.L1!, p.bouts.L1.end);
-            let a = p.bouts.LCr.y - L1EndPt.y
-            let b = L1EndPt.x - p.bouts.LCr.x
-            let L4r = (a * a + b * b) / (2 * b)
-
-            let l4 = new Circle(L1EndPt.x - L4r, L1EndPt.y, L4r);
-            p.bouts.L4 = arcFromCircleAndPoints(l4, L1EndPt, p.bouts.LCr);
-        }
-
         let U3R = p.bouts.U3?.r ?? Math.round(LBWI * p.ratios.U3toLBW);
         p.bouts.U3 = arcFromCircle(interceptCirclesAndPoint(p.bouts.U2, p.bouts.UCr, U3R).sort((a, b) => a.y - b.y)[1]);
 
@@ -214,6 +203,19 @@ export function calculateCorners(p: EnricoCerutiParams): void {
         p.bouts.U2 = arcFromCircle(p.bouts.U2, U2StartAngle, U2Angle);
         p.bouts.U3 = arcFromCircleAndPoints(p.bouts.U3, U2Intersect[1], p.bouts.UCr);
     }
+    if (p.options.useViolCornerLC) {
+        let L1EndPt = pointOnCircle(p.bouts.L1!, p.bouts.L1.end);
+        let a = p.bouts.LCr.y - L1EndPt.y
+        let b = L1EndPt.x - p.bouts.LCr.x
+        let L4r = (a * a + b * b) / (2 * b)
+
+        let l4 = new Circle(L1EndPt.x - L4r, L1EndPt.y, L4r);
+        p.bouts.L4 = arcFromCircleAndPoints(l4, L1EndPt, p.bouts.LCr);
+    }
+    
+
+    
+    
 
 
     if (p.options.L31DoubleArc) {
@@ -229,16 +231,6 @@ export function calculateCorners(p: EnricoCerutiParams): void {
         p.bouts.L31 = arcFromCircleAndPoints(compoundCircles.C2, L31start, p.bouts.LCr);
     }
     else {
-         if (p.options.useViolCornerUC) {
-            let U1EndPt = pointOnCircle(p.bouts.U1!, p.bouts.U1.end);
-            let a = p.bouts.UCr.y - U1EndPt.y
-            let b = U1EndPt.x - p.bouts.UCr.x
-            let U4r = (a * a + b * b) / (2 * b)
-
-            let u4 = new Circle(U1EndPt.x - U4r, U1EndPt.y, U4r);
-            p.bouts.U4 = arcFromCircleAndPoints(u4, U1EndPt, p.bouts.UCr);
-        }
-
         let L3R = p.bouts.L3?.r ?? Math.round(LBWI * p.ratios.L3toLBW);
         p.bouts.L3 = arcFromCircle(interceptCirclesAndPoint(p.bouts.L2, p.bouts.LCr, L3R).sort((a, b) => a.y - b.y)[0]);
 
@@ -255,6 +247,15 @@ export function calculateCorners(p: EnricoCerutiParams): void {
         p.bouts.L2 = arcFromCircle(p.bouts.L2, L2StartAngle, L2Angle);
         p.bouts.L3 = arcFromCircleAndPoints(p.bouts.L3, L2Intersect, p.bouts.LCr);
     }
+    if (p.options.useViolCornerUC) {
+            let U1EndPt = pointOnCircle(p.bouts.U1!, p.bouts.U1.end);
+            let a = p.bouts.UCr.y - U1EndPt.y
+            let b = U1EndPt.x - p.bouts.UCr.x
+            let U4r = (a * a + b * b) / (2 * b)
+
+            let u4 = new Circle(U1EndPt.x - U4r, U1EndPt.y, U4r);
+            p.bouts.U4 = arcFromCircleAndPoints(u4, U1EndPt, p.bouts.UCr);
+        }
    
 
     // recalculate display ratios
