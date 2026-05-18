@@ -67,7 +67,7 @@ export abstract class RecipeComponentBase implements AfterViewInit {
     this.debounceController = new DebounceController(callback);
   }
 
-  protected debounce(fn: () => void, delay = 1000): void {
+  protected debounce(fn: () => void, delay = 1800): void {
     this.debounceController?.run(fn, delay);
   }
 

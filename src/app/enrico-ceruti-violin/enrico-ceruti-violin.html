@@ -1,7 +1,7 @@
 <div class="panel">
     <div class="panel-nav-wrap">
         <section class="panel-nav" aria-label="Sidebar section navigation">
-            <label class="ui-group-title">Recipe Step</label>
+            <label class="ui-group-title">Select Recipe Step</label>
             <div class="panel-nav-controls">
                 <button type="button" class="panel-nav-btn panel-nav-btn--back" (click)="stepPanel(-1)"
                     title="Previous section" aria-label="Go to previous section" [disabled]="!canStepPanel(-1)">
@@ -308,6 +308,8 @@
                     <input type="number" class="basic-input" step=".25" [(ngModel)]="d.params.bouts.UCr.y"
                         (input)="changeCorners()" [style.borderColor]="colors.centerBoutUpOff2" />
                 </label>
+                <button type="button" class="info-icon" (click)="onInfoClick('cornerPosition')" title="More information"
+                    aria-label="Information">ⓘ</button>
             </div>
 
             <div class="ui-group">
@@ -376,6 +378,8 @@
                     <input type="number" class="basic-input" step=".25" [(ngModel)]="d.params.bouts.LCr.y"
                         (input)="changeCorners()" [style.borderColor]="colors.centerBoutLowOff2" />
                 </label>
+                <button type="button" class="info-icon" (click)="onInfoClick('cornerPosition')" title="More information"
+                    aria-label="Information">ⓘ</button>
             </div>
             <div class="ui-group">
                 <div class="input-group basic-row field-row" role="group"
@@ -561,7 +565,7 @@
                     <label class="field-cell">
                         <span class="field-title">C2 Radius <span class="unit-label">mm</span></span>
                         <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.C2.r"
-                            (input)="changeCenterBout()" [style.borderColor]="colors.centerBoutUpOff" />
+                            (input)="changeCenterBout()" [style.borderColor]="colors.centerBoutUp" />
                     </label>
                     <label class="field-cell">
                         <div class="toggle">
@@ -670,7 +674,7 @@
                     <label class="field-cell">
                         <span class="field-title">C1 Radius <span class="unit-label">mm</span></span>
                         <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.C1.r"
-                            (input)="changeCenterBout()" [style.borderColor]="colors.centerBoutLowOff" />
+                            (input)="changeCenterBout()" [style.borderColor]="colors.centerBoutLow" />
                     </label>
                     <label class="field-cell">
                         <div class="toggle">
@@ -984,6 +988,8 @@
                     <input class="basic-input" type="number" step=".1" min="0" [(ngModel)]="d.params.bitDiameter"
                         (input)="changeMould()" />
                 </label>
+                <button type="button" class="info-icon" (click)="onInfoClick('bitDiameter')" title="More information"
+                    aria-label="Information">ⓘ</button>
             </div>
             <div class="input-group basic-row field-row" role="group">
                 <label class="field-cell" [style.opacity]="simpleClampBox ? 0.5 : 1"
@@ -992,6 +998,8 @@
                     <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="d.params.clampChannelWidth"
                         (input)="changeMould()" [disabled]="simpleClampBox" />
                 </label>
+                <button type="button" class="info-icon" (click)="onInfoClick('channelDepth')" title="More information"
+                    aria-label="Information">ⓘ</button>
             </div>
             <div class="input-group basic-row field-row">
                 <div class="toggle">
