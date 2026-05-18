@@ -2,11 +2,11 @@ import { Circle, Pt, Rectangle } from '../models/types';
 import {
 	angleFromCenter,
 	arcPathFrom3Points,
-	calculateOffsetAlongPath,
+	
 	circleCircleIntersections,
 	differenceFromTwoPaths,
 	dist,
-	findClosestPointOnPathToCircle,
+	
 	findJoiningCircleFromCircleAndPoint,
 	findJoiningCircleOfKnownRadius,
 	inscribeCircleWithinCircle,
@@ -22,6 +22,7 @@ import {
 } from '../helpers/draftMath';
 import { KellyCalcEntry, KellyViolinData } from './kellyTypes';
 import { error, warn } from '../shared/message-emitter';
+import { calculateOffsetAlongPath, findClosestPointOnPathToCircle } from '../helpers/draftMathOld';
 
 export function initializeMainBouts(d: KellyViolinData) {
 	if (
