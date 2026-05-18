@@ -1,0 +1,73 @@
+<!--
+  HelloRecipe sidebar template.
+
+  The sidebar is structured as a series of collapsible panels. Each panel maps
+  to an entry in `panelOrder` and is activated via `onPanelSelect()` (inherited
+  from RecipeComponentBase).
+
+  The pattern used throughout the real recipes is:
+    - A <nav> strip showing panel progress at the top
+    - One <section> per panel, shown/hidden with @if
+    - Inputs bound with [(ngModel)] calling onChange() on every change
+-->
+
+<div class="sidebar-inner">
+
+  <!-- ── Panel navigation strip ─────────────────────────────────────── -->
+  <nav class="panel-nav">
+    <button
+      class="panel-nav-btn"
+      [class.active]="openPanel === 'dimensions'"
+      [disabled]="!isPanelEnabled('dimensions')"
+      (click)="onPanelSelect('dimensions')">
+      Dimensions
+    </button>
+  </nav>
+
+  <!-- ── Dimensions panel ───────────────────────────────────────────── -->
+  @if (openPanel === 'dimensions') {
+  <section class="panel">
+    <h3 class="panel-title">Dimensions</h3>
+
+    <!--
+      Each labelled row follows the same structure you'll see throughout the
+      real recipes: a label, a number input, and an optional unit annotation.
+      [(ngModel)] keeps the value in sync; (ngModelChange) triggers a debounced
+      redraw via onChange().
+    -->
+
+    <div class="field-row">
+      <label class="field-label" for="bodyLength">Body Length</label>
+      <input
+        id="bodyLength"
+        class="field-input"
+        type="number"
+        [(ngModel)]="p.bodyLength"
+        (ngModelChange)="onChange()"
+        min="1"
+        step="1" />
+      <span class="field-unit">mm</span>
+    </div>
+
+    <div class="field-row">
+      <label class="field-label" for="bodyWidth">Body Width</label>
+      <input
+        id="bodyWidth"
+        class="field-input"
+        type="number"
+        [(ngModel)]="p.bodyWidth"
+        (ngModelChange)="onChange()"
+        min="1"
+        step="1" />
+      <span class="field-unit">mm</span>
+    </div>
+
+    <p class="panel-hint">
+      Edit these values to resize the placeholder ellipse on the canvas.
+      Replace the ellipse in <code>hello-recipe.ts → drawBody()</code>
+      with real arc geometry to start building your own recipe.
+    </p>
+  </section>
+  }
+
+</div>

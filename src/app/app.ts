@@ -3,19 +3,18 @@ import { Component, inject } from '@angular/core';
 import { setGlobalEmitter } from './shared/message-emitter';
 import { MessageService } from './shared/message.service';
 import { TopBarComponent } from './top-bar/top-bar';
-import { BeardViolinComponent } from './beard-violin/beard-violin';
 import { DraftCanvasComponent } from './draft-canvas/draft-canvas';
 import { FormsModule } from '@angular/forms';
 import { RecipeInterface, ReferenceImage } from './models/types';
 import { Pt } from './models/types';
-import { KellyViolin } from './kelly-violin/kelly-violin';
 import { EnricoCerutiViolin } from './enrico-ceruti-violin/enrico-ceruti-violin';
+import { HelloRecipe } from './hello-recipe/hello-recipe';
 import { MessageCenterComponent } from './shared/message-center.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [TopBarComponent, BeardViolinComponent, DraftCanvasComponent, FormsModule, KellyViolin, EnricoCerutiViolin, MessageCenterComponent],
+  imports: [TopBarComponent, DraftCanvasComponent, FormsModule, EnricoCerutiViolin, HelloRecipe, MessageCenterComponent],
   template: `
     <div class="app">
      <app-top-bar class="top"
@@ -37,19 +36,6 @@ import { MessageCenterComponent } from './shared/message-center.component';
           >
         </app-draft-canvas>
 
-        @if (selectedRecipe == "Kelly Violin") {
-         <app-kelly-violin class="sidebar"
-          (draftChange)="onDraftChange($event)"
-          (setBounds)="bounds=$event"
-          [loadFile]="loadedFileData"
-          [saveTick]="saveTick"
-          [newFile]="newFileTick"
-          [referenceImageParams]="referenceImage"
-          [cameraBounds]="bounds"
-          (referenceImageChange)="onReferenceImageChange($event)">
-        </app-kelly-violin>
-        }
-
         @if (selectedRecipe == "enrico-ceruti-violin") {
          <app-enrico-ceruti-violin class="sidebar"
           (draftChange)="onDraftChange($event)"
@@ -63,17 +49,19 @@ import { MessageCenterComponent } from './shared/message-center.component';
         </app-enrico-ceruti-violin>
         }
 
-        @if (selectedRecipe == "Beard Violin") {
-         <app-beard-violin class="sidebar"
+        @if (selectedRecipe == "hello-recipe") {
+         <app-hello-recipe class="sidebar"
           (draftChange)="onDraftChange($event)"
           (setBounds)="bounds=$event"
           [loadFile]="loadedFileData"
           [saveTick]="saveTick"
+          [newFile]="newFileTick"
           [referenceImageParams]="referenceImage"
           [cameraBounds]="bounds"
           (referenceImageChange)="onReferenceImageChange($event)">
-        </app-beard-violin>
+        </app-hello-recipe>
         }
+
 
       </div>
       <app-message-center></app-message-center>
@@ -147,9 +135,8 @@ export class App {
     this.referenceImage = data?.referenceImage ?? null;
 
     const name = (data.recipeName ?? '').toLowerCase();
-    if (name === 'kelly') this.selectedRecipe = 'Kelly Violin';
-    if (name === 'beard') this.selectedRecipe = 'Beard Violin';
     if (name === 'ceruti') this.selectedRecipe = 'enrico-ceruti-violin';
+    if (name === 'hello') this.selectedRecipe = 'hello-recipe';
   }
 
   requestSave() {
