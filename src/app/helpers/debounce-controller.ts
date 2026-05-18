@@ -21,6 +21,11 @@ export class DebounceController {
     );
   }
 
+  /** Force the very next call to run() to execute synchronously, bypassing the debounce delay. */
+  markImmediate(): void {
+    this.skipDebounce = true;
+  }
+
   run(fn: () => void, delay = 1000): void {
     if (this.destroyed) return;
 
