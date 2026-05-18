@@ -294,12 +294,10 @@ export function calculateCenterBout(p: EnricoCerutiParams, solveC0?: boolean): v
             theta = theta + 3 * Math.PI / 2; // angle from U2 to C0, with the line from U2 to L2 as reference
 
             // now we need to convert the angle to the standard xy plane
-            let lineFromU2toL2 = lineFromTwoPoints(p.bouts.U2!, p.bouts.L2!);
-            if (lineFromU2toL2.m !== Infinity && lineFromU2toL2.m !== -Infinity) {
-                let angleFromU2toL2 = Math.atan2(p.bouts.L2!.y - p.bouts.U2!.y, p.bouts.L2!.x - p.bouts.U2!.x);
-                let diffFromYAxis = Math.PI / 2 + angleFromU2toL2; // angle from the line U2 to L2, to the Y axis
-                theta = theta + diffFromYAxis; // angle from U2 to C0, with the standard xy plane as reference
-            }
+            let angleFromU2toL2 = Math.atan2(p.bouts.L2!.y - p.bouts.U2!.y, p.bouts.L2!.x - p.bouts.U2!.x);
+            let diffFromYAxis = Math.PI / 2 + angleFromU2toL2; // angle from the line U2 to L2, to the Y axis
+            theta = theta + diffFromYAxis; // angle from U2 to C0, with the standard xy plane as reference
+            
 
             // cos(finalAngle) = o / r = (C0.x - U2.x) / (C0.r + U2.r)
             // sin(finalAngle) = a / r = (U2.y - C0.y) / (C0.r + U2.r)
@@ -311,7 +309,7 @@ export function calculateCenterBout(p: EnricoCerutiParams, solveC0?: boolean): v
             let C0toU2 = dist(p.bouts.C0, p.bouts.U2!);
             let C0rU2r = p.bouts.C0.r + p.bouts.L2.r
             let C0rL2r = p.bouts.C0.r + p.bouts.U2.r
-            let tolerance = 2
+            let tolerance = .1
             if (C0toL2 > C0rU2r + tolerance || C0toU2 > C0rL2r + tolerance)
                 throw new Error("Given the radii of C0, L2 and U2, there is no condition where C0 can be fit. Likely, you can increase the radius of C0 and try again.");
 
