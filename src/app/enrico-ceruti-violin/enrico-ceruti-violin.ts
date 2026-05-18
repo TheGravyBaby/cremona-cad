@@ -98,6 +98,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
   pathStrokeWidth = 2
 
   private lastNewFileTick = 0;
+  private _firstRenderInitDone = false;
 
   get selectedTemplateKey(): string {
     const current = JSON.stringify(this.d.params);
@@ -120,7 +121,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     this.lastNewFileTick = v;
 
     this.d = JSON.parse(JSON.stringify(CERUTI_TEMPLATES[0])) as EnricoCerutiTemplate;
-
+    this._firstRenderInitDone = false;
     this.openPanel = 'base';
 
     this.setBounds.emit({
@@ -134,29 +135,37 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
   }
 
   override firstRender = (g: any, ui: any): void => {
-    let recipeData = sessionStorage.getItem('recipeData');
-    if (!recipeData) {
-      let selectedTemplate = this.templates.find(t => t.key === this.selectedTemplateKey) ?? this.templates[0];
-      this.referenceImageChange.emit(selectedTemplate.referenceImage ?? null);
-    }
-    else {
-      // check to see if the recipe loaded from session storage matches a template
-      const parsed = JSON.parse(recipeData);
-      this.d = parsed as EnricoCerutiTemplate;
-      // Restore the last open panel from session storage
-      this.panelFlow?.refreshEnabledPanels();
-      if (parsed.openPanel && this.isPanelEnabled(parsed.openPanel)) {
-        this.openPanel = parsed.openPanel;
+    if (!this._firstRenderInitDone) {
+      this._firstRenderInitDone = true;
+
+      let recipeData = sessionStorage.getItem('recipeData');
+      if (!recipeData) {
+        let selectedTemplate = this.templates.find(t => t.key === this.selectedTemplateKey) ?? this.templates[0];
+        this.referenceImageChange.emit(selectedTemplate.referenceImage ?? null);
       }
+      else {
+        // check to see if the recipe loaded from session storage matches a template
+        this.d = JSON.parse(recipeData) as EnricoCerutiTemplate;
+        // Restore the last open panel from its own sessionStorage key
+        this.panelFlow?.refreshEnabledPanels();
+        const savedPanel = sessionStorage.getItem('openPanel');
+        if (savedPanel && this.isPanelEnabled(savedPanel)) {
+          this.openPanel = savedPanel;
+        }
+      }
+
+      this.setBounds.emit({
+        pt1: { x: -this.d.params.width / 2, y: 0 },
+        pt2: { x: this.d.params.width / 2, y: this.d.params.height },
+      });
+
+      // Run the activation handler immediately (not debounced) so the
+      // first full render fires on this call rather than after a delay.
+      this.debounceController?.markImmediate();
+      const handlers = this.getActivationHandlers();
+      handlers[this.openPanel]?.();
     }
 
-    const handlers = this.getActivationHandlers();
-    handlers[this.openPanel]?.();
-
-    this.setBounds.emit({
-      pt1: { x: -this.d.params.width / 2, y: 0 },
-      pt2: { x: this.d.params.width / 2, y: this.d.params.height },
-    });
     this.renderBounds(true)(g, ui);
   };
 
