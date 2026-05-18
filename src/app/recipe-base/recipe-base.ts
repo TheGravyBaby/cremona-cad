@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, output } from '@angular/core';
+import { AfterViewInit, Component, HostListener, output } from '@angular/core';
 import { Output, EventEmitter, Input } from "@angular/core";
 import { Pt, RecipeInterface, ReferenceImage } from '../models/types';
 import { PanelFlow, PanelDefinition } from '../helpers/panel-flow';
@@ -59,6 +59,15 @@ export abstract class RecipeComponentBase implements AfterViewInit {
 
   openPanel: string = "base";
 
+  // ===== Undo / Redo history =====
+  private _history: string[] = [];
+  private _historyIndex = -1;
+  private readonly _maxHistory = 50;
+  private _isRestoringHistory = false;
+
+  get canUndo(): boolean { return this._historyIndex > 0; }
+  get canRedo(): boolean { return this._historyIndex < this._history.length - 1; }
+
   // ===== Lifecycle & resource management =====
   protected _destroyed = false;
   protected debounceController?: DebounceController;
@@ -68,7 +77,67 @@ export abstract class RecipeComponentBase implements AfterViewInit {
   }
 
   protected debounce(fn: () => void, delay = 1800): void {
-    this.debounceController?.run(fn, delay);
+    this.debounceController?.run(() => {
+      this.pushHistory();
+      fn();
+    }, delay);
+  }
+
+  /** Snapshot the current state onto the history stack. */
+  pushHistory(): void {
+    if (this._isRestoringHistory) return;
+    // Discard any forward history when a new change is made
+    this._history = this._history.slice(0, this._historyIndex + 1);
+    this._history.push(JSON.stringify(this.d));
+    if (this._history.length > this._maxHistory) {
+      this._history.shift();
+    } else {
+      this._historyIndex = this._history.length - 1;
+    }
+  }
+
+  undo(): void {
+    if (!this.canUndo) return;
+    this._historyIndex--;
+    this.d = JSON.parse(this._history[this._historyIndex]);
+    this._afterHistoryRestore();
+  }
+
+  redo(): void {
+    if (!this.canRedo) return;
+    this._historyIndex++;
+    this.d = JSON.parse(this._history[this._historyIndex]);
+    this._afterHistoryRestore();
+  }
+
+  private _afterHistoryRestore(): void {
+    this._isRestoringHistory = true;
+    try {
+      sessionStorage.setItem('recipeData', JSON.stringify(this.d));
+      this.panelFlow?.refreshEnabledPanels();
+      this.debounceController?.markImmediate();
+      const handlers = this.getActivationHandlers();
+      handlers[this.openPanel]?.();
+      this.refreshBoundInputs();
+    } finally {
+      this._isRestoringHistory = false;
+    }
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  onUndoRedoKeyDown(e: KeyboardEvent): void {
+    const ctrl = e.ctrlKey || e.metaKey;
+    if (!ctrl) return;
+
+    if (e.key === 'z' || e.key === 'Z') {
+      if (e.shiftKey) {
+        if (this.canRedo) { e.preventDefault(); this.redo(); }
+      } else {
+        if (this.canUndo) { e.preventDefault(); this.undo(); }
+      }
+    } else if (e.key === 'y' || e.key === 'Y') {
+      if (this.canRedo) { e.preventDefault(); this.redo(); }
+    }
   }
 
   protected refreshBoundInputs(): void {
