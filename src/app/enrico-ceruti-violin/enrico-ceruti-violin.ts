@@ -175,7 +175,6 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
         pt1: { x: -this.d.params.width / 2, y: 0 },
         pt2: { x: this.d.params.width / 2, y: this.d.params.height },
       });
-      this.referenceImageChange.emit(this.d.referenceImage ?? null);
 
 
       // Run the activation handler immediately (not debounced) so the
@@ -183,6 +182,13 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       this.debounceController?.markImmediate();
       const handlers = this.getActivationHandlers();
       handlers[this.openPanel]?.();
+      this.referenceImageChange.emit(this.d.referenceImage ?? null);
+      if(this.hasOuterTrace()) {
+        const path = combinePathStrings([defineOuterPath(this.d.params), defineInnerPath(this.d.params)]);
+        this.draftChange.emit([
+          renderPath(path, this.colors.outerTrace, 1),
+        ]);
+      }
     }
 
     this.renderBounds(true)(g, ui);

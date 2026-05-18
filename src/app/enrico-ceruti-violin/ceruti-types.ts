@@ -1,5 +1,12 @@
 import { Arc, Pt, Rectangle, ReferenceImage } from "../models/types";
 
+/**
+ * Increment this when the shape of a saved recipe file changes in a
+ * backward-incompatible (or additive) way. Old files will still load
+ * but the user will see a warning in the message center.
+ */
+export const RECIPE_SCHEMA_VERSION = '1';
+
 export interface EnricoCerutiParams {
   height: number;
   width: number;

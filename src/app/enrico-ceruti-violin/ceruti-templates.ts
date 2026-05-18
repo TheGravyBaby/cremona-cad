@@ -1,4 +1,4 @@
-import { EnricoCerutiTemplate, DefaultParams, EnricoCerutiParams } from "./ceruti-types";
+import { EnricoCerutiTemplate, DefaultParams, EnricoCerutiParams, RECIPE_SCHEMA_VERSION } from "./ceruti-types";
 
 /**
  * Converts a raw recipe object copied from session storage into an
@@ -13,7 +13,7 @@ function templateFromRecipeJson(raw: any): EnricoCerutiTemplate {
     label:         raw.label        ?? '',
     recipeName:    raw.recipeName   ?? 'enrico-ceruti-violin',
     fileName:      raw.fileName     ?? '',
-    version:       raw.version      ?? '0.1',
+    version:       raw.version      ?? RECIPE_SCHEMA_VERSION,
     description:   raw.description  ?? '',
     referenceImage: raw.referenceImage,
     params:        (raw.params      ?? raw) as EnricoCerutiParams,
@@ -26,7 +26,7 @@ const StradGoetz = {
   "label": "Violin - Stradvarius - Goetz",
   "recipeName": "enrico-ceruti-violin",
   "fileName": "Violin - Stradvarius - Goetz",
-  "version": "0.1",
+  "version": "1",
   "description": "C. 1695, Long Strad \n\nThats why he's the GOET",
   "referenceImage": {
     "href": "/StradGoetz.jpg",
@@ -327,7 +327,7 @@ const RavatinMans = {
   "label": "Cello - Ravatin - Mans",
   "recipeName": "enrico-ceruti-violin",
   "fileName": "Cello - Ravatin - Mans",
-  "version": "0.1",
+  "version": "1",
   "description": "A beautiful cello by modern maker Frank Ravatin",
   "referenceImage": {
     "href": "/Ravatin_Mans.jpg",
@@ -951,7 +951,7 @@ export const CERUTI_TEMPLATES: EnricoCerutiTemplate[] = [
     recipeName: 'enrico-ceruti-violin',
     fileName: 'NewFiddle',
     description: 'A blank template to start from...',
-    version: '0.1',
+    version: RECIPE_SCHEMA_VERSION,
     params: DefaultParams,
     paths: [],
     referenceImage: {

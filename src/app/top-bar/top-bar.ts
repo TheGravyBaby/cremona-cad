@@ -1,5 +1,8 @@
-import { Component, EventEmitter, Output, Input, ViewChild, ElementRef } from '@angular/core';
+import { Component, EventEmitter, Output, Input, ViewChild, ElementRef, inject } from '@angular/core';
 import { RecipeInterface } from '../models/types';
+import { MessageService } from '../shared/message.service';
+import { RECIPE_SCHEMA_VERSION } from '../enrico-ceruti-violin/ceruti-types';
+import packageJson from '../../../package.json';
 
 @Component({
   selector: 'app-top-bar',
@@ -8,6 +11,9 @@ import { RecipeInterface } from '../models/types';
   styleUrls: ['./top-bar.css'],
 })
 export class TopBarComponent {
+  readonly appVersion: string = packageJson.version;
+  private messages = inject(MessageService);
+
   @Input() selectedRecipe: string = 'Beard';
   @Input() nightMode = true;
   @Output() recipeChange = new EventEmitter<string>();
@@ -98,6 +104,14 @@ export class TopBarComponent {
           alert(`That file is for "${fileRecipe}", but you currently selected "${selected}".`);
           input.value = ''; // allow re-picking same file
           return;
+        }
+
+        if (data.version && data.version !== RECIPE_SCHEMA_VERSION) {
+          this.messages.warn({
+            title: 'Older file format',
+            message: `This file uses schema version "${data.version}" (current: "${RECIPE_SCHEMA_VERSION}"). It has been loaded, but some fields may be missing or behave unexpectedly.`,
+            autoDismiss: false,
+          });
         }
 
         this.loadFile.emit(data);
