@@ -164,7 +164,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       this.referenceImage,
       (img) => {
         this.referenceImage = img as any;
-        this.referenceImageChange.emit(this.referenceImage ?? null);
+        // this.referenceImageChange.emit(this.referenceImage ?? null);
       },
       () => this.draw()
     );

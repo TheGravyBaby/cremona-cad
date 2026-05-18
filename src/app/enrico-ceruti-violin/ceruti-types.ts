@@ -1,4 +1,4 @@
-import { Arc, Circle, Pt, Rectangle, ReferenceImage } from "../models/types";
+import { Arc, Pt, Rectangle, ReferenceImage } from "../models/types";
 
 export interface EnricoCerutiParams {
   height: number;
@@ -98,7 +98,7 @@ export interface EnricoCerutiTemplate {
   referenceImage?: ReferenceImage;
 }
 
-const DefaultParams: EnricoCerutiParams = {
+export const DefaultParams: EnricoCerutiParams = {
   height: 350,
   width: 200,
   overhang: 3,
@@ -187,67 +187,3 @@ const DefaultParams: EnricoCerutiParams = {
     L31DoubleArc: false
   }
 }
-
-
-// =====================================================
-// Default template
-// =====================================================
-
-export const CERUTI_TEMPLATES: EnricoCerutiTemplate[] = [
-  {
-    key: 'ceruti-new',
-    label: 'New Fiddle',
-    recipeName: 'enrico-ceruti-violin',
-    fileName: 'NewFiddle',
-    description: 'A blank template to start from...',
-    version: '0.1',
-    params: DefaultParams,
-    paths: [],
-    referenceImage: {
-      "href": "",
-      "xlink:href": "",
-      "x": 0,
-      "y": 0,
-      "width": 0,
-      "height": 0,
-    },
-  },
-
-  // {
-  //   key: 'strad-goetz',
-  //   label: 'Strad Goetz',
-  //   recipeName: 'enrico-ceruti-violin',
-  //   fileName: 'Strad Goetz',
-  //   version: '0.1',
-  //   description: 'C. 1695, Long Strad',
-  //   referenceImage: {
-  //     "href": "/StradGoetz.jpg",
-  //     "xlink:href": "/StradGoetz.jpg",
-  //     "x": -158.7095239572227,
-  //     "y": -196.6448444843292,
-  //     "width": 319,
-  //     "height": 779,
-  //     "rotationDeg": 359.5
-  //   },
-  //   params: stradGoetzParams,
-  //   paths: [],
-  // },
-  // {
-  //     key: "ravatinMans",
-  //     label: "Cello - Ravatin - Mans",
-  //     recipeName: 'enrico-ceruti-violin',
-  //     fileName: 'Ravatin Mans Cello',
-  //     version: '0.1',
-  //     description: '',
-  //     referenceImage: {
-  //       "href": "/Ravatin_Mans.jpg",
-  //       "xlink:href": "/Ravatin_Mans.jpg",
-  //       "x": -272.160400390625,
-  //       "y": -58.821990966796875,
-  //       "width": 541,
-  //       "height": 1262,
-  //     },
-  //     params : DefaultParams,
-  //     paths: []
-  //   },
-];
