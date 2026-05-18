@@ -6,7 +6,7 @@ A free and open source application for designing violin family instruments.
 
 ---
 
-![Cremona CAD](public/DrawingDemo.png)
+<img src="public/DrawingDemo.png" alt="Cremona CAD" width="340" align="right" style="margin: 0 0 16px 24px;" />
 
 ## About
 
