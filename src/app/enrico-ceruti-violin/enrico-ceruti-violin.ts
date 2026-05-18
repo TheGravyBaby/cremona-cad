@@ -110,7 +110,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     if (!key) return;
     const template = this.templates.find(t => t.key === key);
     if (!template) return;
-    this.loadFile = template;
+    this.loadFile = JSON.parse(JSON.stringify(template));
     sessionStorage.setItem('recipeData', JSON.stringify(this.d));
       if(this.hasOuterTrace()) {
       const path = combinePathStrings([defineOuterPath(this.d.params), defineInnerPath(this.d.params)]);
@@ -322,11 +322,6 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       this.clamp('overhang', 1, 10, 'Overhang must be >= 1mm', 'Overhang must be < 10mm');
 
       this.d.params.ratios.HtoW = this.d.params.height / this.d.params.width;
-
-      // this.setBounds.emit({
-      //   pt1: { x: -this.d.params.width / 2, y: 0 },
-      //   pt2: { x: this.d.params.width / 2, y: this.d.params.height },
-      // });
       this.draftChange.emit([this.renderBounds(true)]);
       sessionStorage.setItem('recipeData', JSON.stringify(this.d));
     }));

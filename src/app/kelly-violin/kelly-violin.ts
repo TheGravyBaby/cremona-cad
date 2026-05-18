@@ -57,7 +57,7 @@ export class KellyViolin extends RecipeComponentBase {
     if (!key) return;
     const template = this.templates.find(t => t.key === key);
     if (!template) return;
-    this.loadFile = template;
+    this.loadFile = JSON.parse(JSON.stringify(template));
     this.referenceImageChange.emit(template.referenceImage ?? null);
     sessionStorage.setItem('recipeData', JSON.stringify(this.d));
   }
