@@ -59,7 +59,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     let oldBounds = JSON.parse(JSON.stringify(this.bounds));
     this.bounds = bounds;
     if (bounds && firstSet || bounds != oldBounds) {
-      this.fitCamera();
+      // this.fitCamera();  // debating leaving this on or not...
       this.draw();
     }
   }
