@@ -531,21 +531,25 @@ export function calculateMould(p: EnricoCerutiParams, useHighAccuracy = false, s
     const tolerance = 0.5;
     const bitRadius = p.bitDiameter / 2 + tolerance;
     const bitOffset = (bitRadius * Math.sqrt(2) / 2) - tolerance;
+    let circleCutouts = []
+    if (p.bitDiameter > 0) {
 
-    // these will keep the bit from making internal right angles
-    const circleCutouts = [
-        pathFromCircle({ x: blocks[0].Pt1.x + bitOffset, y: blocks[0].Pt1.y + bitOffset, r: bitRadius }),
-        pathFromCircle({ x: blocks[0].Pt2.x - bitOffset, y: blocks[0].Pt1.y + bitOffset, r: bitRadius }),
 
-        pathFromCircle({ x: blocks[1].Pt2.x + bitOffset, y: blocks[1].Pt2.y - bitOffset, r: bitRadius }),
-        pathFromCircle({ x: blocks[2].Pt2.x - bitOffset, y: blocks[2].Pt2.y - bitOffset, r: bitRadius }),
+        // these will keep the bit from making internal right angles
+        circleCutouts = [
+            pathFromCircle({ x: blocks[0].Pt1.x + bitOffset, y: blocks[0].Pt1.y + bitOffset, r: bitRadius }),
+            pathFromCircle({ x: blocks[0].Pt2.x - bitOffset, y: blocks[0].Pt1.y + bitOffset, r: bitRadius }),
 
-        pathFromCircle({ x: blocks[3].Pt2.x + bitOffset, y: blocks[3].Pt2.y + bitOffset, r: bitRadius }),
-        pathFromCircle({ x: blocks[4].Pt2.x - bitOffset, y: blocks[4].Pt2.y + bitOffset, r: bitRadius }),
- 
-        pathFromCircle({ x: blocks[5].Pt1.x + bitOffset, y: blocks[5].Pt2.y - bitOffset, r: bitRadius }),
-        pathFromCircle({ x: blocks[5].Pt2.x - bitOffset, y: blocks[5].Pt2.y - bitOffset, r: bitRadius }),
-    ];
+            pathFromCircle({ x: blocks[1].Pt2.x + bitOffset, y: blocks[1].Pt2.y - bitOffset, r: bitRadius }),
+            pathFromCircle({ x: blocks[2].Pt2.x - bitOffset, y: blocks[2].Pt2.y - bitOffset, r: bitRadius }),
+
+            pathFromCircle({ x: blocks[3].Pt2.x + bitOffset, y: blocks[3].Pt2.y + bitOffset, r: bitRadius }),
+            pathFromCircle({ x: blocks[4].Pt2.x - bitOffset, y: blocks[4].Pt2.y + bitOffset, r: bitRadius }),
+    
+            pathFromCircle({ x: blocks[5].Pt1.x + bitOffset, y: blocks[5].Pt2.y - bitOffset, r: bitRadius }),
+            pathFromCircle({ x: blocks[5].Pt2.x - bitOffset, y: blocks[5].Pt2.y - bitOffset, r: bitRadius }),
+        ];
+    }
 
     const blockInset = 20;
     const clampWidest = Math.max(Math.abs(p.blocks.L.Pt1.x), Math.abs(p.blocks.U.Pt1.x));
@@ -573,10 +577,13 @@ export function calculateMould(p: EnricoCerutiParams, useHighAccuracy = false, s
             new Pt(clampWidest * -1.3, p.blocks.L.Pt2.y + blockInset )
         );
 
+        
+        const rectRadius = (bitRadius > 0) ? bitRadius : 5;
+
         clampBox = [
-            pathFromRoundedRect(clampBlockCutout1, bitRadius),
-            pathFromRoundedRect(clampBlockCutout2, bitRadius)
-        ]
+            pathFromRoundedRect(clampBlockCutout1, rectRadius),
+            pathFromRoundedRect(clampBlockCutout2, rectRadius)
+        ];
     
     }
     else {

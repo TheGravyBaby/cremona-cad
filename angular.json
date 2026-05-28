@@ -30,7 +30,9 @@
               "src/styles.css"
             ],
             "allowedCommonJsDependencies": [
-              "polygon-clipping"
+              "polygon-clipping",
+              "jspdf",
+              "svg2pdf.js"
             ]
           },
           "configurations": {

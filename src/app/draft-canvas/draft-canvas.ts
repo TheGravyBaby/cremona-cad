@@ -14,6 +14,7 @@ import { Pt, ReferenceImage } from '../models/types';
 import { Camera } from './camera';
 import { ReferenceImageController } from './reference-image-controller';
 import { AxisGridController, AxisGridPreferences, CanvasViewport } from './axis-grid-controller';
+import { info } from '../shared/message-emitter';
 
 @Component({
   selector: 'app-draft-canvas',
@@ -271,7 +272,9 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
     const canRefOps = this.referenceModeEnabled && this.showReferenceImage && !!this.referenceImage?.href;
 
-    if (canRefOps && isPrimary) {
+    const modifierHeld = event.shiftKey || event.ctrlKey;
+
+    if (canRefOps && isPrimary && !modifierHeld) {
       const pt = this.worldFromPointer(event);
       const h = this.refController.hitTestHandle(pt, this.pxPerMm);
 
@@ -355,11 +358,33 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
   onScrollWheel = (event: WheelEvent) => {
     event.preventDefault();
-    const delta = event.deltaY;
 
-    if (delta < 0) this.applyZoom(this.pxPerMm* 1.1)
-    else if (delta > 0) this.applyZoom(this.pxPerMm / 1.1)
-    
+    // Pinch-to-zoom: browsers report pinch gestures as wheel events with ctrlKey=true.
+    // This is a well-known convention used by both macOS trackpads and touch screens.
+    if (event.ctrlKey) {
+      const delta = event.deltaY;
+      // deltaY is typically small (e.g. ±1–5) for pinch; use an exponential scale
+      // so that the zoom feels proportional regardless of how fast the user pinches.
+      const zoomFactor = Math.pow(0.99, delta);
+      this.applyZoom(this.pxPerMm * zoomFactor);
+      return;
+    }
+
+    // Two-finger trackpad scroll (or plain mouse wheel) — pan the camera.
+    // deltaX/deltaY are already in CSS pixels when deltaMode === DOM_DELTA_PIXEL (0),
+    // which is the default for trackpad events on macOS.
+    const modeScale = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? 16
+                    : event.deltaMode === WheelEvent.DOM_DELTA_PAGE ? 400
+                    : 1; // DOM_DELTA_PIXEL
+
+    const dxPx = event.deltaX * modeScale;
+    const dyPx = event.deltaY * modeScale;
+
+    if (dxPx !== 0 || dyPx !== 0) {
+      // Negate because scrolling right/down moves the world left/up (same as panning)
+      this.camera.panByPx(-dxPx, -dyPx);
+      this.draw();
+    }
   };
 
   applyZoom(newPxPerMm: number): void {
@@ -372,7 +397,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.draw();
   }
 
-
   fitCamera(): void {
     if (!this.bounds) return;
     const el = this.host.nativeElement;
@@ -382,8 +406,21 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.camera.fitToBounds(this.bounds, pxW, pxH);
   }
 
-
   // UI: Align Reference popup controls
+  referenceControlsInfo(): void {
+    info(
+     "X and Y position the image on the canvas.\n" +
+     "Width and height set the dimensions of the image you have uploaded.\n" + 
+     "Rotation allows you to rotate the image using degrees. \n" + 
+     "Lock Aspect keeps the proportions fixed when resizing.\n\n" +
+     "You can drag the image with your mouse, and change its size with the handles at the corners and edges.\n\n" + 
+     "Keyboard controls when image is selected:\n" +
+      " - Arrow keys: nudge image by 1 mm \n" +
+      " - Shift + Mouse Drag: Move the camera without moving the image. \n", 
+      "Reference Image", false
+    );
+  }
+
   toggleAlignPopup(): void {
     this.referenceModeEnabled = !this.referenceModeEnabled;
     this.alignPopupOpen = this.referenceModeEnabled;

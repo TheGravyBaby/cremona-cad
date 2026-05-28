@@ -20,4 +20,4 @@ export const emitGlobal = (m: any) => {
 export const message = (m: UserMessage) => emitGlobal(m);
 export const error = (msg: string, title?: string) => emitGlobal({ severity: 'error', message: msg, title, autoDismiss: 10000 });
 export const warn = (msg: string, title?: string) => emitGlobal({ severity: 'warn', message: msg, title, autoDismiss: 10000 });
-export const info = (msg: string, title?: string, autoDismiss: number | false = 10000) => emitGlobal({ severity: 'info', message: msg, title, autoDismiss });
+export const info = (msg: string, title?: string, autoDismiss: number | false = 15000) => emitGlobal({ severity: 'info', message: msg, title, autoDismiss });

@@ -6,7 +6,8 @@
 .toast[data-severity='error'] { border-left:6px solid #ff6b6b; }
 .toast[data-severity='warn'] { border-left:6px solid #ffb86b; }
 .toast[data-severity='info'] { border-left:6px solid #69c0ff; }
-.toast .msg { flex:1; margin-right:8px; font-size:13px; color: #f3f3f3; white-space: pre-wrap; }
+.toast .msg { flex:1; margin-right:8px; font-size:16px; color: #f3f3f3; white-space: pre-wrap; }
+.toast .msg strong { display: block; margin-bottom: 1px; }
 .toast .dismiss {
 	background: transparent;
 	border: none;

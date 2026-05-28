@@ -947,9 +947,9 @@ const DelGesuBaltic = {
 export const CERUTI_TEMPLATES: EnricoCerutiTemplate[] = [
   {
     key: 'ceruti-new',
-    label: 'New Fiddle',
+    label: 'New Instrument',
     recipeName: 'enrico-ceruti-violin',
-    fileName: 'NewFiddle',
+    fileName: 'NewInstrument',
     description: 'A blank template to start from...',
     version: RECIPE_SCHEMA_VERSION,
     params: DefaultParams,

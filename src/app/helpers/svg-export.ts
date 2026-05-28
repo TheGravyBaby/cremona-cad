@@ -1,3 +1,6 @@
+import { jsPDF } from 'jspdf';
+import { svg2pdf } from 'svg2pdf.js';
+
 export type SvgPathExport = {
   d: string;
   stroke?: string;
@@ -216,9 +219,6 @@ export async function downloadSvgAsPdf(
   paths: SvgPathExport[],
   meta?: { fileName?: string; description?: string; sheetLabel?: string }
 ): Promise<void> {
-  const { jsPDF } = await import('jspdf');
-  const { svg2pdf } = await import('svg2pdf.js');
-
   const offsetX = MARGIN_X + INNER_PAD;
   const offsetY = MARGIN_TOP + INNER_PAD;
   const pageW = width + (MARGIN_X + INNER_PAD) * 2;
@@ -257,8 +257,6 @@ export async function downloadFullPlanPdf(
   filename: string,
   pages: PdfPage[]
 ): Promise<void> {
-  const { jsPDF } = await import('jspdf');
-  const { svg2pdf } = await import('svg2pdf.js');
   const parser = new DOMParser();
 
   let doc: InstanceType<typeof jsPDF> | null = null;

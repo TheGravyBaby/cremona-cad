@@ -1,6 +1,6 @@
 import { info } from "../shared/message-emitter";
 
-let defaultTTL = 30000
+const defaultTTL = false
 
 export function referenceInfo() {
     info(
@@ -13,36 +13,35 @@ export function referenceInfo() {
 
 export function insetInfo() {
     info(
-        "When creating the mould of a violin, we do so at some inset value from the final dimensions of our face.\n\n" +
-        "The final dimensions will be the sum of the mould outline, the rib thickness and the overhang.\n\n" +
-        "If you are tracing a mould from an initial reference, it is recommended you use the purfling as a guide. " +
-        "There is no hard rule, but often the inner edge of the purfling corresponds to the inner edge of the ribs. " +
-        "This would this be a sensible target for the mould outline, but always use your best judgement :]\n\n" +
         "Standard rib thicknesses for instrumments are : \n" +
         "- Violins: 1.0 mm\n" +
         "- Violas: 1.1 mm\n" +
         "- Cellos: 1.3 - 1.6 mm\n" +
         "- Basses: 2.5 - 3.0 mm\n\n" +
-        "The overhang is more of a personal preference, but typically falls in the range of 2-5mm.",
+        "The overhang is more of a personal preference, but typically falls in the range of 2-5mm.\n\n-- \n\n" + 
+        "When creating the mould of a violin, we do so at some inset value from the final dimensions of our face.\n\n" +
+        "The final dimensions will be the sum of the mould outline, the rib thickness and the overhang.\n\n" +
+        "If you are tracing a mould from an initial reference, it is recommended you use the purfling as a guide. " +
+        "There is no hard rule, but often the inner edge of the purfling corresponds to the inner edge of the ribs. " +
+        "This would this be a sensible target for the mould outline, but always use your best judgement :]",
 
-        "Additional Information", defaultTTL * 2
+        "Additional Information", defaultTTL
     );
 }
 
 export function dimensionInfo() {
     info(
-        "These measurements dictate the outer dimenions of the final instrument.\n\n" +
-        "Most instruments in the cremonese tradition relied on simple whole number ratios for these measurements.",
+        "The outer dimensions of the finished instrument. For historical instruments, these are usually available online.\n\n" +
+        "The lower bout width is almost always the widest point. Many historical instruments height and width related to one another as simple whole number ratios.",
         "Additional Information", defaultTTL
     )
-
 }
 
 export function boutWidthInfo() {
     info(
-        "The total OUTER width of the bout, including the rib thickness + overhang.\n\n" +
+        "The 'total width' of the bout should include the rib thickness + overhang. This is the OUTER width.\n\n" +
         "Remember, we are first forming the inner trace which used for the mould outline. The final dimensions of the instrument will be the sum of the mould outline, the rib thickness and the overhang.\n\n" + 
-        "Note that bout measurements can often be found for historical instruments online. ",
+        "Note: If the top does not align with the reference image, go back one step to adjust the height.",
         "Additional Information", defaultTTL
     )
 }
@@ -73,9 +72,7 @@ export function buttonInfo() {
 
 export function centerBoutWidthInfo() {
     info(
-        "The total OUTER width of the center bout, including the rib thickness + overhang.\n\n" +
-        "Remember, we are tracing the inner edge for the mould — the final instrument width will be larger once the ribs and overhang are added.\n\n" +
-        "Note that bout measurements can often be found for historical instruments online. ",
+        "The 'total width' of the bout should include the rib thickness + overhang. This is the OUTER width.",
         "Additional Information", defaultTTL
     )
 }
@@ -108,6 +105,14 @@ export function channelDepthInfo() {
     info(
         "The distance between the outer edge of the mould and the empty space on the inside.",
         "Additional Information", defaultTTL
+    )
+}
+
+export function compoundArcInfo() {
+    info(
+        "A compound arc splits a single corner arc into two arcs joined end-to-end. This allows for more exaggerated corner shapes. \n\n" +
+        "You can select the radius for the second arc, which is usually smaller than its parent. The split angle controls the transition point between the arcs.",
+        "Compound Arc", defaultTTL
     )
 }
 
