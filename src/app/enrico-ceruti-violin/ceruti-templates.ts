@@ -1548,7 +1548,7 @@ const MagginiDelmas = {
   "paths": []
 }
 
-const MittenwaldBass ={
+const MittenwaldBass = {
   "key": "Bass - Mittenwald",
   "label": "Bass - Mittenwald ",
   "recipeName": "enrico-ceruti-violin",
