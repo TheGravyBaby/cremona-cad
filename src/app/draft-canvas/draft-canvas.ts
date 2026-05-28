@@ -365,7 +365,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       const delta = event.deltaY;
       // deltaY is typically small (e.g. ±1–5) for pinch; use an exponential scale
       // so that the zoom feels proportional regardless of how fast the user pinches.
-      const zoomFactor = Math.pow(0.99, delta);
+      const zoomFactor = Math.pow(0.999, delta);
       this.applyZoom(this.pxPerMm * zoomFactor);
       return;
     }
