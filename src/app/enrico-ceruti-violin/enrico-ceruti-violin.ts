@@ -6,7 +6,7 @@ import { greyOut, renderArcFromArc, renderArcFromArcFancy, renderCircle, renderC
 import { clampParam, safeRun } from '../helpers/validators';
 import { EnricoCerutiTemplate, EnricoCerutiParams } from './ceruti-types';
 import { CERUTI_TEMPLATES } from './ceruti-templates';
-import { bitDiameterInfo, boutWidthInfo, buttonInfo, centerBoutWidthInfo, channelDepthInfo, cornerCutoffInfo, cornerPositionInfo, dimensionInfo, fitC0Info, insetInfo, referenceInfo, violCornerInfo, violNeckInfo } from './ceruti-helpers';
+import { bitDiameterInfo, boutWidthInfo, buttonInfo, centerBoutWidthInfo, channelDepthInfo, compoundArcInfo, cornerCutoffInfo, cornerPositionInfo, dimensionInfo, fitC0Info, insetInfo, referenceInfo, violCornerInfo, violNeckInfo } from './ceruti-helpers';
 import { combinePathStrings, flipAngleAboutYAxis, flipArcAboutY, flipCircleAboutY, flipPointAboutY, flipRectAboutY, interceptCirclesAndPointCompound, offsetArcRadius, pointOnCircle, } from '../helpers/draftMath';
 import { calculateCenterBout, calculateCornerBlocks, calculateCorners, calculateMainBouts, calculateMould, calculateOuterArcs, defineInnerPath, defineOuterPath } from './ceruti-calcs';
 import { buildMirroredSvg, downloadSvgFile, downloadSvgAsPdf, downloadFullPlanPdf, PdfPage } from '../helpers/svg-export';
@@ -317,7 +317,8 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     else if (name === 'fitC0') fitC0Info()
     else if (name === 'cornerPosition') cornerPositionInfo()
     else if (name === 'bitDiameter') bitDiameterInfo()
-    else if (name === 'channelDepth') channelDepthInfo();
+    else if (name === 'channelDepth') channelDepthInfo()
+    else if (name === 'compoundArc') compoundArcInfo();
   }
 
   // ===== Change pipeline =====

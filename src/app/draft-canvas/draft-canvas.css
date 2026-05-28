@@ -41,13 +41,19 @@
   margin: 6px 0;
 }
 
-.align-popup input[type="number"],
-.axis-popup input[type="number"] {
-  width: 110px;
+.align-popup .row > label:not(.chk),
+.align-popup .row > span {
+  flex: 0 0 120px;
 }
 
+.align-popup .row > input[type="number"],
+.align-popup .row > button.btn {
+  flex: 0 0 80px;
+}
+
+.align-popup input[type="number"],
 .axis-popup input[type="number"] {
-  width: 90px;
+  width: 80px;
 }
 
 .align-popup .actions {
@@ -151,9 +157,9 @@ svg {
   align-items: center;
   gap: 6px;
   padding: 6px 8px;
-  border: 1px solid var(--ui-border-elevated);
-  border-radius: 4px;
-  background: var(--ui-bg-surface);
+  /* border: 1px solid var(--ui-border-elevated);
+  border-radius: 4px; */
+  /* background: var(--ui-bg-surface); */
   color: var(--ui-text-primary);
   user-select: none;
 }
