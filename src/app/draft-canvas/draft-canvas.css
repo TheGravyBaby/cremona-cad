@@ -59,6 +59,18 @@
 .align-popup .actions {
   justify-content: flex-end;
 }
+
+.opacity-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.opacity-control input[type="range"] {
+  flex: 1;
+  min-width: 0;
+}
 .canvas-shell {
   height: 100%;
   display: flex;
