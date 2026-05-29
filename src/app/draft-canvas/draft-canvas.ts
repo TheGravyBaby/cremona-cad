@@ -151,6 +151,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   ngAfterViewInit(): void {
     const el = this.host.nativeElement;
     this.host.nativeElement.addEventListener('keyup', this.onKeyUp);
+    document.addEventListener('keydown', this.onKeyDown);
 
     this.canvas = d3.select(el)
       .append('svg')
@@ -191,6 +192,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
  ngOnDestroy(): void {
     this.resizeObs?.disconnect();
     this.host.nativeElement.removeEventListener('keyup', this.onKeyUp);
+    document.removeEventListener('keydown', this.onKeyDown);
   }
 
   draw(): void {
@@ -309,6 +311,10 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   };
 
   onKeyDown = (event: KeyboardEvent) => {
+    // Don't intercept shortcuts when the user is typing in an input field
+    const tag = (event.target as HTMLElement)?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
     if (event.code === 'Space') {
       this.isSpaceDown = true;
       this.host.nativeElement.classList.add('pan-ready');
@@ -413,7 +419,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     // This is a well-known convention used by both macOS trackpads and touch screens.
     if (event.ctrlKey) {
       const delta = event.deltaY;
-      const zoomFactor = Math.pow(0.85, delta);
+      const zoomFactor = Math.pow(0.97, delta);
       const newPxPerMm = this.pxPerMm * zoomFactor;
 
       // Zoom toward the cursor position instead of canvas center
