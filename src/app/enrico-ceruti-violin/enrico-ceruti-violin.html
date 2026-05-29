@@ -228,7 +228,7 @@
                 <div class="input-group basic-row field-row" role="group">
                     <label class="field-cell">
                         <span class="field-title">V0 Radius <span class="unit-label">mm</span></span>
-                        <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.viol.V0.r"
+                        <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.viol.V0.r" [style.borderColor]="colors.violNeck"
                             (input)="changeMainBouts()" />
                     </label>
                     <label class="field-cell">
