@@ -570,6 +570,71 @@ select {
   line-height: 1.4;
 }
 
+.export-table {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border: 1px solid var(--ui-border-soft);
+  border-radius: 5px;
+  overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.export-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 5px 8px;
+  background: var(--ui-bg-surface);
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.export-row + .export-row {
+  border-top: 1px solid var(--ui-border-soft);
+}
+
+.export-row__label {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  overflow: hidden;
+  flex: 1 1 0;
+}
+
+.export-row__name {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--ui-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.export-row__desc {
+  font-size: 0.72rem;
+  color: var(--ui-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.export-row__actions {
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.export-row__actions .recipe-btn {
+  width: auto;
+  padding: 2px 6px;
+  font-size: 0.78rem;
+  height: 22px;
+}
+
 .recipe-btn {
   padding: 3px 7px;
   height: 26px;

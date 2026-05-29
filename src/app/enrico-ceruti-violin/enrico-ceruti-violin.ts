@@ -913,6 +913,11 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       mould: this.colorPalette.mouldTrace,
     };
 
+    let height = p.height + 2 * p.button.height + p.button.width / 2;
+    let inset = p.overhang + p.rib;
+    if (p.options.useViolNeck)
+      height = pointOnCircle(p.viol.V0, 0).y + 2 * p.button.height + p.button.width / 2 + inset;
+
     let pathD: string;
     switch (type) {
       case 'innerTrace':
@@ -932,7 +937,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
         break;
     }
 
-    const svg = buildMirroredSvg(p.width, p.height, [{ d: pathD!, stroke: "black", fill: 'none' }]);
+    const svg = buildMirroredSvg(p.width, height, [{ d: pathD!, stroke: "black", fill: 'none', strokeWidth: '.5' }]);
     downloadSvgFile(`${baseName}-${type}.svg`, svg);
   }
 

@@ -5,6 +5,7 @@ export type SvgPathExport = {
   d: string;
   stroke?: string;
   fill?: string;
+  strokeWidth?: number | string;
 };
 
 export type PdfPage = {
@@ -32,7 +33,7 @@ export function buildMirroredSvg(
 ): string {
   const viewBox = `${-width / 2} 0 ${width} ${height}`;
   const pathMarkup = paths
-    .map(p => `<path d="${p.d}" fill="${p.fill ?? 'none'}" stroke="${p.stroke ?? 'black'}"/>`)
+    .map(p => `<path d="${p.d}" fill="${p.fill ?? 'none'}" stroke="${p.stroke ?? 'black'}" stroke-width="${p.strokeWidth ?? 0.5}"/>`)
     .join('');
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}"><g transform="translate(0 ${height}) scale(1 -1)">${pathMarkup}</g></svg>`;
 }
@@ -107,16 +108,19 @@ function drawDraftingFrame(
   doc.setTextColor(80);
   doc.setFont('helvetica', 'normal');
 
-  // Horizontal ticks – drawn outward (into margin), never touching the path
-  for (let mm = 0; mm <= pathWidth; mm += 10) {
+  // Horizontal ticks – iterate in coordinate space so labels are always clean integers
+  const halfW = pathWidth / 2;
+  const startCoordX = Math.ceil(-halfW / 10) * 10;
+  for (let coord = startCoordX; coord <= halfW; coord += 10) {
+    const mm = coord + halfW;
     const px = offsetX + mm;
-    const len = mm % 50 === 0 ? MAJOR : MINOR;
+    const len = coord % 50 === 0 ? MAJOR : MINOR;
     doc.setLineWidth(0.1);
     doc.line(px, offsetY - INNER_PAD - len, px, offsetY - INNER_PAD);               // top: upward
     doc.line(px, offsetY + pathHeight + INNER_PAD, px, offsetY + pathHeight + INNER_PAD + len); // bottom: downward
-    if (mm % 50 === 0) {
+    if (coord % 50 === 0) {
       doc.text(
-        String(Math.round(mm - pathWidth / 2)),
+        String(coord),
         px,
         offsetY + pathHeight + INNER_PAD + MAJOR + 2.5,
         { align: 'center' }
