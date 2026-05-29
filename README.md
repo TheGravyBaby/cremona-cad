@@ -15,8 +15,6 @@ Rather than a static trace, or a complex list of coordinates, CremonaCad defines
 
 Upload a historical instrument and use it as a reference, or go off the rails and create something totally unique. Once your design is complete, CremonaCad can create moulds and templates for your specific instrument. These patterns can be exported either as PDFs for traditional hand-making, or as SVGs for computer assisted fabrication.
 
-As of Spring 2026, Cremona CAD is still early in its development lifecycle. The Enrico Ceruti violin recipe is the primary working recipe. The Kelly and Beard recipes are archived in the `examples/` directory for reference.
-
 ## Getting Started
 
 ### Prerequisites

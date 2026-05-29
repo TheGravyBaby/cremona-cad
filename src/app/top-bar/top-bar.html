@@ -39,7 +39,7 @@
         <button class="tab-btn" [class.active]="activeTab === 'about'" (click)="activeTab = 'about'">CremonaCad</button>
         <button class="tab-btn" [class.active]="activeTab === 'tutorial'"
           (click)="activeTab = 'tutorial'">Tutorial</button>
-        <button class="tab-btn" [class.active]="activeTab === 'version'" (click)="activeTab = 'version'">Version</button>
+        <!-- <button class="tab-btn" [class.active]="activeTab === 'version'" (click)="activeTab = 'version'">Version</button> -->
         <button class="tab-btn" [class.active]="activeTab === 'license'" (click)="activeTab = 'license'">License</button>
         <button class="tab-btn" [class.active]="activeTab === 'author'" (click)="activeTab = 'author'">About The Author</button>
 
@@ -95,19 +95,31 @@
           instrument step by step. Once all the sections are complete, you can generate moulds and templates for
           construction.</p>
         <ul class="tips-list">
-          <li>The canvas comes with pan and zoom controls to allow precise visualization of your design.</li>
+          <li>
+            <strong>Zoom:</strong> Use the <strong>scroll wheel</strong> to zoom in and out toward your cursor.
+            On a trackpad, use a <strong>pinch gesture</strong> to zoom. The <code>+</code> and <code>-</code> keys
+            also zoom toward the canvas center.
+          </li>
+          <li>
+            <strong>Pan:</strong> Hold <strong>Space</strong> and drag with the left mouse button, or drag with the
+            <strong>middle mouse button</strong> to pan. On a trackpad, use a <strong>two-finger scroll</strong> to pan.
+            Arrow keys also pan the camera — hold <strong>Shift</strong> for larger steps.
+          </li>
+          <li>
+            Press <strong>F</strong> to fit the entire design back into view at any time.
+          </li>
           <li>Reference images can be loaded and scaled using the <code>Reference</code> controls on the bottom right of the canvas.</li>
           <li>The <code>Axis</code> controls on the bottom right of the canvas allow for custom grid settings.</li>
           <li>Files can be saved and loaded using the <code>New</code> <code>Save</code> and <code>Load</code> buttons at the top right of the screen.</li>
         </ul>
-
+        
         <h3>Base Measurements</h3>
         <p>This section sets the primary dimensions of the instrument, the setting of a reference image, as well as
           basic file properties.</p>
         <ul class="tips-list">
           <li>CremonaCad comes with a set of predefined templates from historical instruments. Select one to study, or
             create a new design.</li>
-          <li>Use the <code>Upload Reference Image</code> button to add your own images to aid in your design process.</li>
+          <li>Use the <code>Upload Reference Image</code> button to add your own images to aid in your design process. If tracing a reference, it is recommended that you find the dimensions of your instrument beforehand, so that you can scale your reference accordingly.</li>
           <li>Use the primary dimensions section to define the height and width of your instrument. This is also useful
             for scaling your reference image.</li>
           <li>For many measurements, <strong>ratios</strong> will be displayed to the right of the metric value. Many Cremonese

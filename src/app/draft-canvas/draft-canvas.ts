@@ -59,7 +59,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     let oldBounds = JSON.parse(JSON.stringify(this.bounds));
     this.bounds = bounds;
     if (bounds && firstSet || bounds != oldBounds) {
-      // this.fitCamera();  // debating leaving this on or not...
+      this.fitCamera();
       this.draw();
     }
   }
@@ -76,6 +76,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   public showReferenceImage = true;
   public isDarkMode = false;
   private isDragging = false;
+  private isSpaceDown = false;
   public axisPopupOpen = false;
   public referenceModeEnabled = false; // UI toggle ("Align Reference")
   public alignPopupOpen = false;
@@ -149,6 +150,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
   ngAfterViewInit(): void {
     const el = this.host.nativeElement;
+    this.host.nativeElement.addEventListener('keyup', this.onKeyUp);
 
     this.canvas = d3.select(el)
       .append('svg')
@@ -186,8 +188,9 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.draw();
   }
 
-  ngOnDestroy(): void {
+ ngOnDestroy(): void {
     this.resizeObs?.disconnect();
+    this.host.nativeElement.removeEventListener('keyup', this.onKeyUp);
   }
 
   draw(): void {
@@ -261,45 +264,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  // UI controls
-  onPointerDown(event: PointerEvent) {
-    // record last pixel position for potential camera pan
-    this.lastPxX = event.clientX;
-    this.lastPxY = event.clientY;
-
-    const isPrimary = event.button === 0 || event.button === undefined; // left mouse / touch
-    const isMiddle = event.button === 1; // middle mouse
-
-    const canRefOps = this.referenceModeEnabled && this.showReferenceImage && !!this.referenceImage?.href;
-
-    const modifierHeld = event.shiftKey || event.ctrlKey;
-
-    if (canRefOps && isPrimary && !modifierHeld) {
-      const pt = this.worldFromPointer(event);
-      const h = this.refController.hitTestHandle(pt, this.pxPerMm);
-
-      if (h) {
-        this.refController.startScale(pt, h as any);
-        this.host.nativeElement.setPointerCapture(event.pointerId);
-        return;
-      }
-
-      if (this.refController.pointInImage(pt)) {
-        this.refController.startDrag(pt);
-        this.host.nativeElement.setPointerCapture(event.pointerId);
-        return;
-      }
-      // fall through to pan if click not on image/handles
-    }
-
-    // camera pan (middle mouse always; primary when not interacting with reference image)
-    if (isMiddle || isPrimary) {
-      this.isDragging = true;
-      this.host.nativeElement.classList.add('dragging');
-      this.host.nativeElement.setPointerCapture(event.pointerId);
-    }
-  };
-
   onPointerMove = (event: PointerEvent) => {
     // reference-image interaction takes precedence
     if (this.refController.isInteracting) {
@@ -344,15 +308,101 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     }
   };
 
-  onKeyDown = (event: KeyboardEvent) => {
-    // delegate keyboard handling for reference image to controller
+    onKeyDown = (event: KeyboardEvent) => {
+    if (event.code === 'Space') {
+      this.isSpaceDown = true;
+      this.host.nativeElement.classList.add('pan-ready');
+      event.preventDefault();
+    }
+
+    // Fit camera to bounds
+    if (event.code === 'KeyF') {
+      this.fitCamera();
+      this.draw();
+      event.preventDefault();
+    }
+
+    // Zoom in/out with +/- keys, centered on canvas
+    if (event.code === 'Equal' || event.code === 'NumpadAdd') {
+      this.applyZoom(this.pxPerMm * 1.15);
+      event.preventDefault();
+    }
+    if (event.code === 'Minus' || event.code === 'NumpadSubtract') {
+      this.applyZoom(this.pxPerMm / 1.15);
+      event.preventDefault();
+    }
+
+    // delegate keyboard handling for reference image to controller first (Option B).
+    // If it handles the event (e.g. arrow key nudge), skip camera pan.
     if (this.referenceModeEnabled && this.showReferenceImage && this.referenceImage?.href) {
       const handled = this.refController.handleKeyboard(event, this.lockAspect, this.refAspect);
       if (handled) {
         this.draw();
         event.preventDefault();
         event.stopPropagation();
+        return;
       }
+    }
+
+    // Arrow key panning. Shift held = 5× larger step.
+    const isArrow = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code);
+    if (isArrow) {
+      const step = event.shiftKey ? 200 : 40; // px
+      switch (event.code) {
+        case 'ArrowUp':    this.camera.panByPx(0,  step); break;
+        case 'ArrowDown':  this.camera.panByPx(0, -step); break;
+        case 'ArrowLeft':  this.camera.panByPx( step, 0); break;
+        case 'ArrowRight': this.camera.panByPx(-step, 0); break;
+      }
+      this.draw();
+      event.preventDefault();
+    }
+  };
+
+  onKeyUp = (event: KeyboardEvent) => {
+    if (event.code === 'Space') {
+      this.isSpaceDown = false;
+      this.host.nativeElement.classList.remove('pan-ready');
+      // if dragging was initiated via space, end it
+      if (this.isDragging) {
+        this.isDragging = false;
+        this.host.nativeElement.classList.remove('dragging');
+      }
+    }
+  };
+
+  onPointerDown(event: PointerEvent) {
+    this.lastPxX = event.clientX;
+    this.lastPxY = event.clientY;
+
+    const isPrimary = event.button === 0 || event.button === undefined;
+    const isMiddle = event.button === 1;
+
+    const canRefOps = this.referenceModeEnabled && this.showReferenceImage && !!this.referenceImage?.href;
+    const modifierHeld = event.shiftKey || event.ctrlKey;
+
+    if (canRefOps && isPrimary && !modifierHeld && !this.isSpaceDown) {
+      const pt = this.worldFromPointer(event);
+      const h = this.refController.hitTestHandle(pt, this.pxPerMm);
+
+      if (h) {
+        this.refController.startScale(pt, h as any);
+        this.host.nativeElement.setPointerCapture(event.pointerId);
+        return;
+      }
+
+      if (this.refController.pointInImage(pt)) {
+        this.refController.startDrag(pt);
+        this.host.nativeElement.setPointerCapture(event.pointerId);
+        return;
+      }
+    }
+
+    // Pan: middle mouse always; primary only when Space is held
+    if (isMiddle || (isPrimary && this.isSpaceDown)) {
+      this.isDragging = true;
+      this.host.nativeElement.classList.add('dragging');
+      this.host.nativeElement.setPointerCapture(event.pointerId);
     }
   };
 
@@ -363,25 +413,49 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     // This is a well-known convention used by both macOS trackpads and touch screens.
     if (event.ctrlKey) {
       const delta = event.deltaY;
-      // deltaY is typically small (e.g. ±1–5) for pinch; use an exponential scale
-      // so that the zoom feels proportional regardless of how fast the user pinches.
       const zoomFactor = Math.pow(0.999, delta);
-      this.applyZoom(this.pxPerMm * zoomFactor);
+      const newPxPerMm = this.pxPerMm * zoomFactor;
+
+      // Zoom toward the cursor position instead of canvas center
+      const pt = this.worldFromPointer(event as unknown as PointerEvent);
+      pt.y = -pt.y; // account for Y-up
+
+      const el = this.host.nativeElement;
+      const pxW = Math.max(1, el.clientWidth);
+      const pxH = Math.max(1, el.clientHeight);
+
+      this.camera.applyZoomAt(pt, newPxPerMm, pxW, pxH);
+      this.draw();
       return;
     }
 
-    // Two-finger trackpad scroll (or plain mouse wheel) — pan the camera.
-    // deltaX/deltaY are already in CSS pixels when deltaMode === DOM_DELTA_PIXEL (0),
-    // which is the default for trackpad events on macOS.
-    const modeScale = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? 16
-                    : event.deltaMode === WheelEvent.DOM_DELTA_PAGE ? 400
-                    : 1; // DOM_DELTA_PIXEL
+    // pinches should have a 0 delta x value
+    const isMouseWheel = Math.abs(event.deltaX) === 0 //&& Number.isInteger(event.deltaY);
+    if (isMouseWheel) {
+      // Each notch of a mouse wheel is typically deltaY = 3 lines.
+      // Use a per-notch zoom step similar to most CAD tools (~10% per notch).
+      const clampedDelta = Math.sign(event.deltaY);
+      const zoomFactor = Math.pow(0.85, clampedDelta); // ~15% per scroll notch
+      const newPxPerMm = this.pxPerMm * zoomFactor;
 
-    const dxPx = event.deltaX * modeScale;
-    const dyPx = event.deltaY * modeScale;
+
+      const pt = this.worldFromPointer(event as unknown as PointerEvent);
+      pt.y = -pt.y;
+
+      const el = this.host.nativeElement;
+      const pxW = Math.max(1, el.clientWidth);
+      const pxH = Math.max(1, el.clientHeight);
+
+      this.camera.applyZoomAt(pt, newPxPerMm, pxW, pxH);
+      this.draw();
+      return;
+    }
+
+    // Trackpad two-finger scroll (DOM_DELTA_PIXEL) — pan the camera.
+    const dxPx = event.deltaX;
+    const dyPx = event.deltaY;
 
     if (dxPx !== 0 || dyPx !== 0) {
-      // Negate because scrolling right/down moves the world left/up (same as panning)
       this.camera.panByPx(-dxPx, -dyPx);
       this.draw();
     }
@@ -409,14 +483,21 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   // UI: Align Reference popup controls
   referenceControlsInfo(): void {
     info(
-     "X and Y position the image on the canvas.\n" +
-     "Width and height set the dimensions of the image you have uploaded.\n" + 
-     "Rotation allows you to rotate the image using degrees. \n" + 
-     "Lock Aspect keeps the proportions fixed when resizing.\n\n" +
-     "You can drag the image with your mouse, and change its size with the handles at the corners and edges.\n\n" + 
-     "Keyboard controls when image is selected:\n" +
-      " - Arrow keys: nudge image by 1 mm \n" +
-      " - Shift + Mouse Drag: Move the camera without moving the image. \n", 
+      "You can upload a reference image using the upload button. It is recommended you scale the image using either the axis or the bounding box on the base measurement panel.\n\n" +
+      "X and Y position the image on the canvas.\n" +
+      "Width and height set the dimensions of the image in millimetres.\n" +
+      "Rotation allows you to rotate the image in degrees.\n" +
+      "Lock Aspect keeps the proportions fixed when resizing.\n\n" +
+      "Mouse controls:\n" +
+      " - Drag the image to reposition it.\n" +
+      " - Drag the handles at the corners and edges to resize it.\n" +
+      " - Hold Space and drag (or use the middle mouse button) to pan the camera without moving the image.\n" +
+      " - Scroll to zoom; pinch on a trackpad to zoom.\n\n" +
+      "Keyboard controls:\n" +
+      " - Arrow keys: nudge the image by 1 mm.\n" +
+      " - F: fit the full design back into view.\n" +
+      " - +/-: zoom in or out.\n" +
+      " - Outside of reference mode, arrow keys pan the camera instead (Shift for larger steps).\n",
       "Reference Image", false
     );
   }

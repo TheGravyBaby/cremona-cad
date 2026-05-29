@@ -1,6 +1,6 @@
 import { info } from "../shared/message-emitter";
 
-const defaultTTL = false
+const defaultTTL = 30000
 
 export function referenceInfo() {
     info(
@@ -41,23 +41,21 @@ export function boutWidthInfo() {
     info(
         "The 'total width' of the bout should include the rib thickness + overhang. This is the OUTER width.\n\n" +
         "Remember, we are first forming the inner trace which used for the mould outline. The final dimensions of the instrument will be the sum of the mould outline, the rib thickness and the overhang.\n\n" + 
-        "Note: If the top does not align with the reference image, go back one step to adjust the height.",
+        "Note: If the top of your instrument is too high for your reference image, you may need to either rescale the image, or adjust the height in the previous panel.",
         "Additional Information", defaultTTL
     )
 }
 
 export function violNeckInfo() {
     info(
-        "The viol neck option replaces the standard upper block geometry with a rounded neck profile commonly used on double basses.\n\n" +
-        "When enabled, the upper end of the mould curves inward symmetrically, defined by a radius (V0) and a neck width.",
+        "The viol neck option replaces the standard upper block geometry with a rounded neck profile commonly used on double basses.\n\n Still a work in progress, there may be bugs.",
         "Additional Information", defaultTTL
     )
 }
 
 export function violCornerInfo() {
     info(
-        "Also known as a bass corner, the viol corner draws a single arc from the bout to the corner.\n\n" +
-        "When enabled, the U3/L3 corner arc is bypassed and the bout arcs flow directly into the corner position.",
+        "Also known as a bass corner or gamba corner - this button will draw a single arc from the bout to the corner.\n\n",
         "Additional Information", defaultTTL
     )
 }
@@ -88,7 +86,7 @@ export function fitC0Info() {
 
 export function cornerPositionInfo() {
     info(
-        "The X and Y coordinates define the location of the corner. The corner arcs will be drawn to meet this corner point. \n\n",
+        "The X and Y coordinates define the location of the corner. The corner arcs will be drawn to meet this point. Corners always come to a point within the inset measurements. \n\n",
         "Additional Information", defaultTTL
     )
 }
