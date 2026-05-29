@@ -5,6 +5,8 @@ export class ReferenceImageController {
   public isInteracting = false;
   public activeHandle: 'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'e' | 'w' | null = null;
 
+  public referenceOpacity = 0.25;
+
   // White suppression tuning (code-controlled; no UI slider needed)
   // Raise threshold to affect fewer pixels. Increase softness for gentler fade.
   private whiteSuppressionEnabled = true;
@@ -355,7 +357,7 @@ export class ReferenceImageController {
       .attr('y', -y)
       .attr('width', width)
       .attr('height', height)
-      .attr('opacity', 0.25)
+      .attr('opacity', this.referenceOpacity)
       .attr('preserveAspectRatio', 'xMidYMid meet');
 
     img.lower();

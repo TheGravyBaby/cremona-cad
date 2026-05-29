@@ -95,6 +95,16 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     "rotationDeg": 0,
   }
 
+  public get referenceOpacity(): number {
+    return this.refController?.referenceOpacity ?? 0.25;
+  }
+  public set referenceOpacity(v: number) {
+    if (this.refController) {
+      this.refController.referenceOpacity = Math.max(0, Math.min(1, v));
+      this.draw();
+    }
+  }
+
   public get showGrid(): boolean {
     return this.axisGrid.showGrid;
   }
