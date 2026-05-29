@@ -17,72 +17,7 @@
     </div>
 
     <div class="right">
-
-      <div class="align-controls">
-        <button type="button" class="btn" [class.active]="referenceModeEnabled" (click)="toggleAlignPopup()">
-          Reference
-        </button>
-        @if(referenceModeEnabled) {
-        <div class="align-popup">
-          <div class="row">
-            <label>X (mm)</label>
-            <input type="number" [ngModel]="referenceImage?.x" (ngModelChange)="onRefParamChange('x', $event)" />
-          </div>
-          <div class="row">
-            <label>Y (mm)</label>
-            <input type="number" [ngModel]="referenceImage?.y" (ngModelChange)="onRefParamChange('y', $event)" />
-          </div>
-          <div class="row">
-            <label>Width (mm)</label>
-            <input type="number" [ngModel]="referenceImage?.width"
-              (ngModelChange)="onRefParamChange('width', $event)" />
-          </div>
-          <div class="row">
-            <label>Height (mm)</label>
-            <input type="number" [ngModel]="referenceImage?.height"
-              (ngModelChange)="onRefParamChange('height', $event)" />
-          </div>
-          <div class="row">
-            <label>Rotation (°)</label>
-            <input type="number" step="0.1" [ngModel]="referenceImage?.rotationDeg ?? 0"
-              (ngModelChange)="onRefParamChange('rotationDeg', $event)" />
-          </div>
-          <div class="row">
-            <label>Opacity</label>
-            <div class="opacity-control">
-              <input type="range" min="0" max="1" step="0.01"
-                [ngModel]="referenceOpacity"
-                (ngModelChange)="referenceOpacity = $event" />
-              <span class="readout">{{ (referenceOpacity * 100).toFixed(0) }}%</span>
-            </div>
-          </div>
-          <div class="row">
-            <label class="chk">
-              <input type="checkbox" [(ngModel)]="lockAspect" />
-              Lock aspect
-            </label>
-            <button type="button" class="btn" (click)="resetReferenceImage()">Reset</button>
-
-          </div>
-          <div class="row">
-            <input #refFileInput type="file" accept="image/*" style="display:none"
-              (change)="onReferenceFileSelected($event)" />
-            <label class="chk">
-              <input type="checkbox" [(ngModel)]="showReferenceImage" (change)="onDisplayPreferenceChange()" />
-              View Image
-            </label>
-            <button type="button" class="btn" (click)="refFileInput.click()">Upload</button>
-          </div>
-          <div class="row" style="gap: 6px;">
-              <button type="button" class="btn" (click)="referenceControlsInfo()" title="Help">Help</button>
-              <button type="button" class="btn ref-ok-btn" (click)="toggleAlignPopup()">
-                OK
-              </button>
-          </div>
-        </div>
-        }
-      </div>
-      <div class="axis-controls">
+       <div class="axis-controls">
         <button type="button" class="btn" [class.active]="axisPopupOpen" (click)="toggleAxisPopup()">
           Axis
         </button>
@@ -112,5 +47,54 @@
         }
       </div>
 
+
+      <div class="align-controls">
+        <button type="button" class="btn" [class.active]="referenceModeEnabled" (click)="toggleAlignPopup()">
+          Reference
+        </button>
+        @if(referenceModeEnabled) {
+        <div class="align-popup">
+          <div class="ref-grid">
+            <span class="ref-lbl">X</span>
+            <input type="number" [ngModel]="referenceImage?.x" (ngModelChange)="onRefParamChange('x', $event)" />
+            <span class="ref-lbl">Y</span>
+            <input type="number" [ngModel]="referenceImage?.y" (ngModelChange)="onRefParamChange('y', $event)" />
+            <span class="ref-lbl">W</span>
+            <input type="number" [ngModel]="referenceImage?.width" (ngModelChange)="onRefParamChange('width', $event)" />
+            <span class="ref-lbl">H</span>
+            <input type="number" [ngModel]="referenceImage?.height" (ngModelChange)="onRefParamChange('height', $event)" />
+            <span class="ref-lbl">°</span>
+            <input type="number" step="0.1" [ngModel]="referenceImage?.rotationDeg ?? 0" (ngModelChange)="onRefParamChange('rotationDeg', $event)" />
+          </div>
+          <div class="ref-opacity">
+            <span class="ref-lbl">Opacity</span>
+            <input type="range" min="0" max="1" step="0.01"
+              [ngModel]="referenceOpacity"
+              (ngModelChange)="referenceOpacity = $event" />
+            <span class="ref-pct">{{ (referenceOpacity * 100).toFixed(0) }}%</span>
+          </div>
+          <div class="ref-checks">
+            <!-- <label class="chk">
+              <input type="checkbox" [(ngModel)]="lockAspect" />
+              Lock
+            </label> -->
+            <label class="chk">
+              <input type="checkbox" [(ngModel)]="showReferenceImage" (change)="onDisplayPreferenceChange()" />
+              View
+            </label>
+          </div>
+          <div class="ref-actions">
+            <input #refFileInput type="file" accept="image/*" style="display:none"
+              (change)="onReferenceFileSelected($event)" />
+            <button type="button" class="btn" (click)="referenceControlsInfo()" title="Help">Help</button>
+            <div class="ref-right">
+              <button type="button" class="btn" (click)="refFileInput.click()">Upload</button>
+              <button type="button" class="btn ref-reset-btn" (click)="resetReferenceImage()">Reset</button>
+              <button type="button" class="btn ref-ok-btn" (click)="toggleAlignPopup()">OK</button>
+            </div>
+          </div>
+        </div>
+        }
+      </div>
     </div>
   </div>
