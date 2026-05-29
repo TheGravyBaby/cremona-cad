@@ -136,7 +136,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       if(this.hasOuterTrace()) {
       const path = combinePathStrings([defineOuterPath(this.d.params), defineInnerPath(this.d.params)]);
       this.draftChange.emit([
-        renderPath(path, this.colors.outerTrace, 1),
+        renderPath(path, this.colors.outerTrace),
       ]);
     }
     this.setBounds.emit({
@@ -205,7 +205,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       if(this.hasOuterTrace() && this.openPanel == 'base') {
         const path = combinePathStrings([defineOuterPath(this.d.params), defineInnerPath(this.d.params)]);
         this.draftChange.emit([
-          renderPath(path, this.colors.outerTrace, 1),
+          renderPath(path, this.colors.outerTrace),
         ]);
       }
     }
@@ -803,8 +803,8 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
 
 
   renderMould = (_currentModule: boolean, mouldPath: string, innerPath: string) => (g: any, ui: any): void => {
-    this.showInnerPath && renderPath(innerPath, this.colors.innerTrace, 1.2)(g, ui);
-    renderPath(mouldPath, this.colors.mouldTrace, 1.5)(g, ui);
+    this.showInnerPath && renderPath(innerPath, this.colors.innerTrace)(g, ui);
+    renderPath(mouldPath, this.colors.mouldTrace)(g, ui);
 
     if (this.showBlocks) {
       renderRect(this.d.params.blocks.U, this.colors.upperBout)(g, ui);
@@ -871,26 +871,26 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     switch (type) {
       case 'innerTrace': {
         const d = defineInnerPath(p);
-        this.draftChange.emit([renderPath(d, this.colors.innerTrace, 1)]);
+        this.draftChange.emit([renderPath(d, this.colors.innerTrace)]);
         break;
       }
       case 'outerTrace': {
         const path = combinePathStrings([defineOuterPath(p), defineInnerPath(p)]);
         this.draftChange.emit([
-          renderPath(path, this.colors.outerTrace, 1),
+          renderPath(path, this.colors.outerTrace),
         ]);
         break;
       }
       case 'back': {
         const path = combinePathStrings([defineOuterPath(p, p.overhang + p.rib, true), defineInnerPath(p)]);
         this.draftChange.emit([
-          renderPath(path, this.colors.outerTrace, 1),
+          renderPath(path, this.colors.outerTrace),
         ]);
         break;
       }
       case 'mould': {
         const d = calculateMould(p, true, this.exportSimpleClampBox);
-        this.draftChange.emit([renderPath(d, this.colors.mouldTrace, 1.5)]);
+        this.draftChange.emit([renderPath(d, this.colors.mouldTrace)]);
         break;
       }
       case 'blocks': {
