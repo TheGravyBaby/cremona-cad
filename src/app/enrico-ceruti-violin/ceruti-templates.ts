@@ -1548,7 +1548,7 @@ const MagginiDelmas = {
   "paths": []
 }
 
-const MittenwaldBass ={
+const MittenwaldBass = {
   "key": "Bass - Mittenwald",
   "label": "Bass - Mittenwald ",
   "recipeName": "enrico-ceruti-violin",
@@ -1565,17 +1565,17 @@ const MittenwaldBass ={
     "rotationDeg": 0
   },
   "params": {
-    "height": 1054,
+    "height": 1056,
     "width": 664,
     "overhang": 4,
     "rib": 3,
     "bitDiameter": 6.35,
     "clampChannelWidth": 5,
     "ratios": {
-      "HtoW": 1.5873493975903614,
+      "HtoW": 1.5903614457831325,
       "UBtoLB": 0.7439759036144579,
-      "U0toUBW": 0.6416666666666667,
-      "U1toUBW": 0.4375,
+      "U0toUBW": 0.55625,
+      "U1toUBW": 0.41875,
       "U2toUBW": 0.50625,
       "U3toLBW": 0.12615384615384614,
       "CBWtoLBW": 0.5135542168674698,
@@ -1583,7 +1583,7 @@ const MittenwaldBass ={
       "C0toLBW": 0.37538461538461537,
       "C2toLBW": 0.1,
       "C1toLBW": 0.12615384615384614,
-      "LBtoH": 0.6299810246679317,
+      "LBtoH": 0.6287878787878788,
       "L0toLBW": 0.8723076923076923,
       "L1toLBW": 0.3830769230769231,
       "L2toLBW": 0.5046153846153846,
@@ -1596,16 +1596,16 @@ const MittenwaldBass ={
       "UBW": 494,
       "U0": {
         "x": 0,
-        "y": 739,
-        "r": 308,
-        "start": 1.25329996191702,
-        "end": 1.2596790854124154
+        "y": 782,
+        "r": 267,
+        "start": 1.2254919245501412,
+        "end": 0.9386110983193822
       },
       "U1": {
-        "x": 30,
-        "y": 832.2952303175248,
-        "r": 210,
-        "start": 1.2596790935863498,
+        "x": 39,
+        "y": 835.2447180478965,
+        "r": 201,
+        "start": 0.9386111049539356,
         "end": 0
       },
       "L0": {
@@ -1725,10 +1725,10 @@ const MittenwaldBass ={
     },
     "viol": {
       "V0": {
-        "x": 125.5,
-        "y": 1120.9080386689968,
-        "r": 94,
-        "start": -1.8882927665797995,
+        "x": 120.5,
+        "y": 1116.9861937453543,
+        "r": 89,
+        "start": -1.9161008098605752,
         "end": 3.141592653589793
       },
       "width": 63
