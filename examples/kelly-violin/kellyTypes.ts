@@ -820,7 +820,7 @@ export const KELLY_TEMPLATES: KellyTemplate[] = [
 	},
 	{
 		key: "stradCello",
-		label: "Cello - Stradavari - Davidoff",
+		label: "Cello - Stradivari - Davidoff",
 		description: '',
 		...new KellyViolinRecipe('Stradivari - Davidoff', Strad_Davidoff_Params),
 		referenceImage: {

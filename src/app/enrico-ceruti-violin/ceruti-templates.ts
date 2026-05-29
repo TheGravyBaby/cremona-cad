@@ -23,9 +23,9 @@ function templateFromRecipeJson(raw: any): EnricoCerutiTemplate {
 
 const StradGoetz = {
   "key": "strad-goetz",
-  "label": "Violin - Stradvarius - Goetz",
+  "label": "Violin - Stradivari - Goetz",
   "recipeName": "enrico-ceruti-violin",
-  "fileName": "Violin - Stradvarius - Goetz",
+  "fileName": "Violin - Stradivari - Goetz",
   "version": "1",
   "description": "C. 1695, Long Strad \n\nThats why he's the GOET",
   "referenceImage": {
