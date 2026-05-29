@@ -41,6 +41,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     centerBout: '#A97645',
     centerBoutLow: '#e1bf50ff',
     lowerBout: '#4D74A8',
+    violNeck: '#248f48ff',
     innerTrace: '#a47272ff',
     outerTrace: '#727fa4ff',
     mouldTrace: '#81887eff',
@@ -62,6 +63,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     lowerBout: this.colorPalette.lowerBout,
     lowerBoutOff: greyOut(this.colorPalette.lowerBout, this.offFactor),
     lowerBoutOff2: greyOut(this.colorPalette.lowerBout, this.off2Factor),
+    violNeck: this.colorPalette.violNeck,
     innerTrace: this.colorPalette.innerTrace,
     outerTrace: this.colorPalette.outerTrace,
     mouldTrace: this.colorPalette.mouldTrace,
@@ -183,7 +185,7 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       const handlers = this.getActivationHandlers();
       handlers[this.openPanel]?.();
       this.referenceImageChange.emit(this.d.referenceImage ?? null);
-      if(this.hasOuterTrace()) {
+      if(this.hasOuterTrace() && this.openPanel == 'base') {
         const path = combinePathStrings([defineOuterPath(this.d.params), defineInnerPath(this.d.params)]);
         this.draftChange.emit([
           renderPath(path, this.colors.outerTrace, 1),
@@ -385,8 +387,8 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     if ((currentModule && this.showModuleArcs) || this.showAllArcs) {
       if (this.d.params.options.useViolNeck) {
         let mirrorV0 = flipArcAboutY(p.viol.V0);
-        renderArcFromArcFancy(p.viol.V0, this.colors.upperBout)(g, ui);
-        renderArcFromArcFancy(mirrorV0, this.colors.upperBout)(g, ui);
+        renderArcFromArcFancy(p.viol.V0, this.colors.violNeck)(g, ui);
+        renderArcFromArcFancy(mirrorV0, this.colors.violNeck)(g, ui);
         let mirrorU0 = flipArcAboutY(p.bouts.U0);
         renderArcFromArcFancy(p.bouts.U0, this.colors.upperBout)(g, ui);
         renderArcFromArcFancy(mirrorU0, this.colors.upperBout)(g, ui);
@@ -431,11 +433,11 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
       const outerTopOffColor  = m ? this.colors.upperBoutOff : this.colors.outerTrace;
       const outerBotColor     = m ? this.colors.lowerBout    : this.colors.outerTrace;
       const outerBotOffColor  = m ? this.colors.lowerBoutOff : this.colors.outerTrace;
+      const violNeckColor     = m ? this.colors.violNeck     : this.colors.outerTrace;
       if (this.d.params.options.useViolNeck) {
         let mirrorV0 = flipArcAboutY(p.viol.V0);
-        renderArcFromArc(offsetArcRadius(p.viol.V0, -inset), outerTopColor, this.pathStrokeWidth)(g, ui);
-        renderArcFromArc(offsetArcRadius(mirrorV0, -inset), outerTopColor, this.pathStrokeWidth)(g, ui);
-
+        renderArcFromArc(offsetArcRadius(p.viol.V0, -inset), violNeckColor, this.pathStrokeWidth)(g, ui);
+        renderArcFromArc(offsetArcRadius(mirrorV0, -inset), violNeckColor, this.pathStrokeWidth)(g, ui);
         let mirrorU0 = flipArcAboutY(p.bouts.U0);
         renderArcFromArc(offsetArcRadius(p.bouts.U0, inset), outerTopColor, this.pathStrokeWidth)(g, ui);
         renderArcFromArc(offsetArcRadius(mirrorU0, inset), outerTopColor, this.pathStrokeWidth)(g, ui);
