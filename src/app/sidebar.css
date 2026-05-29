@@ -467,8 +467,8 @@ select {
 }
 
 .basic-input {
-  width: 84px;
-  height: 26px;
+  /* width: 84px; */
+  height: 28px;
   padding: 2px 6px;
   border: 2px solid var(--ui-border-strong);
   border-radius: 4px;
@@ -484,6 +484,23 @@ select {
   outline: none;
   border-color: var(--ui-focus-border);
   box-shadow: 0 0 0 3px var(--ui-focus-ring);
+}
+
+.basic-input[type="number"]::-webkit-inner-spin-button,
+.basic-input[type="number"]::-webkit-outer-spin-button {
+  opacity: .8;
+  cursor: pointer;
+  background: var(--ui-bg-panel);
+  /* width: 20px; */
+  transform: scale(1.2);
+  transform-origin: right center;
+}
+
+.basic-input[type="number"] {
+  appearance: auto;
+  -moz-appearance: auto;
+  padding-right: 1px;
+  color-scheme: var(--ui-color-scheme);
 }
 
 .basic-display {

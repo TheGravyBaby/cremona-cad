@@ -41,6 +41,8 @@
   --ui-canvas-btn-bg-end: #2f2f33;
   --ui-canvas-btn-bg-active: #2a2a2f;
   --ui-canvas-btn-border-hover: #6a6a72;
+
+  --ui-color-scheme: dark;
 }
 
 :root.day-mode {
@@ -85,6 +87,8 @@
   --ui-canvas-btn-bg-end: #d8dce2;
   --ui-canvas-btn-bg-active: #b4b9c0;
   --ui-canvas-btn-border-hover: #72777d;
+
+  --ui-color-scheme: light;
 }
 
 body {
