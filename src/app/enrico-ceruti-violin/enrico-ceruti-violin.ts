@@ -2,7 +2,7 @@ import { ChangeDetectorRef, Component, HostListener, Input } from '@angular/core
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { Arc, arcFromCircle, Rectangle, setArcStartByDegreeDiff, setArcEndByDegreeDiff } from '../models/types';
-import { greyOut, renderArcFromArc, renderArcFromArcFancy, renderCircle, renderCrosshair, renderDashedLine, renderDashedLineLong, renderLine, renderPath, renderRect } from '../helpers/renderFuncs';
+import { greyOut, renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderCrosshair, renderDashedLine, renderDashedLineLong, renderLine, renderPath, renderRect } from '../helpers/renderFuncs';
 import { clampParam, safeRun } from '../helpers/validators';
 import { EnricoCerutiTemplate, EnricoCerutiParams } from './ceruti-types';
 import { CERUTI_TEMPLATES } from './ceruti-templates';
@@ -101,6 +101,23 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
 
 
   pathStrokeWidth = 2
+
+  highlightedArc: Arc | null = null;
+  highlightedArcColor: string = '';
+
+  onArcFocus(arc: Arc, color: string): void {
+    this.highlightedArc = arc;
+    this.highlightedArcColor = color;
+    this.debounceController?.markImmediate();
+    this.getActivationHandlers()[this.openPanel]?.();
+  }
+
+  onArcBlur(): void {
+    this.highlightedArc = null;
+    this.highlightedArcColor = '';
+    this.debounceController?.markImmediate();
+    this.getActivationHandlers()[this.openPanel]?.();
+  }
 
   private lastNewFileTick = 0;
   private _firstRenderInitDone = false;
@@ -368,6 +385,11 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
     let p = this.d.params;
     let inset = p.overhang + p.rib;
 
+    if (this.highlightedArc) {
+      renderArcHalo(this.highlightedArc, this.highlightedArcColor)(g, ui);
+      renderArcHalo(flipArcAboutY(this.highlightedArc), this.highlightedArcColor)(g, ui);
+    }
+
     let wideTopArc = arcFromCircle(p.bouts.U0, flipAngleAboutYAxis(p.bouts.U0.end), p.bouts.U0.end);
     let wideBottomArc = arcFromCircle(p.bouts.L0, flipAngleAboutYAxis(p.bouts.L0.end), p.bouts.L0.end);
     let mirroredU1Arc = flipArcAboutY(p.bouts.U1);
@@ -485,6 +507,11 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
   renderCorners = (currentModule: boolean) => (g: any, ui: any): void => {
     let p = this.d.params;
 
+    if (this.highlightedArc) {
+      renderArcHalo(this.highlightedArc, this.highlightedArcColor)(g, ui);
+      renderArcHalo(flipArcAboutY(this.highlightedArc), this.highlightedArcColor)(g, ui);
+    }
+
     if ((currentModule && this.showModuleCircles) || this.showAllCircles) {
       renderCircle(p.bouts.L2!, this.colors.lowerBoutOff)(g, ui);
       renderCircle(p.bouts.L3!, this.colors.centerBoutLow)(g, ui);
@@ -596,6 +623,11 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
 
   renderCenterBout = (currentModule: boolean) => (g: any, ui: any): void => {
     let p = this.d.params;
+
+    if (this.highlightedArc) {
+      renderArcHalo(this.highlightedArc, this.highlightedArcColor)(g, ui);
+      renderArcHalo(flipArcAboutY(this.highlightedArc), this.highlightedArcColor)(g, ui);
+    }
 
     if ((currentModule && this.showModuleCircles) || this.showAllCircles) {
       renderCircle(p.bouts.C0, this.colors.centerBout)(g, ui);

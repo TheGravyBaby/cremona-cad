@@ -675,9 +675,14 @@ export const renderArcFromArcFancy = (arc: Arc, color: string) => (g: any, ui: a
 
 }
 
+export const renderArcHalo = (arc: Arc, color: string, haloWidth = 12, opacity = .33) => (g: any, ui: any) => {
+    const group = g.append("g").attr("opacity", opacity);
+    renderArcFromArc(arc, color, haloWidth, false)(group, ui);
+}
+
 export function greyOut(color: string, degree: number): string {
     // clamp degree to [0,1]
-    degree = Math.max(0, Math.min(1, Number.isFinite(degree) ? degree : 0.5));
+    degree = Math.max(0, Math.min(1, Number.isFinite(degree) ? degree : 0.9));
 
     const s = color.trim();
 
