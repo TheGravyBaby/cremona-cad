@@ -65,10 +65,10 @@
             <button type="button" class="btn" (click)="refFileInput.click()">Upload</button>
           </div>
           <div class="row" style="gap: 6px;">
-            <button type="button" class="btn" style="background-color: #3a7d44; color: #fff; border-color: #3a7d44; flex: 1;" (click)="toggleAlignPopup()">
-              OK
-            </button>
-            <button type="button" class="btn" style="font-size: 1.1rem; padding: 0 10px;" (click)="referenceControlsInfo()" title="Help">ℹ</button>
+              <button type="button" class="btn" (click)="referenceControlsInfo()" title="Help">Help</button>
+              <button type="button" class="btn ref-ok-btn" (click)="toggleAlignPopup()">
+                OK
+              </button>
           </div>
         </div>
         }

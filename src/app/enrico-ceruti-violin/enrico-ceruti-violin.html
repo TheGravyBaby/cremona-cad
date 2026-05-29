@@ -827,6 +827,9 @@
 
         <section class="ui-group">
             <div class="ui-group-title">Upper Corner</div>
+            @if (d.params.options.useViolCornerUC) {
+            <p class="viol-corner-notice">Viol corner selected — no cutoff options available.</p>
+            } @else {
             <div class="input-group basic-row field-row" role="group">
                 <label class="field-cell">
                     <span class="field-title">Top Cutoff <span class="unit-label">°</span></span>
@@ -859,10 +862,14 @@
                 <button type="button" class="info-icon" (click)="onInfoClick('cornerCutoff')" title="More information"
                     aria-label="Information">ⓘ</button>
             </div>
+            }
         </section>
 
         <section class="ui-group">
             <div class="ui-group-title">Lower Corner</div>
+            @if (d.params.options.useViolCornerLC) {
+            <p class="viol-corner-notice">Viol corner selected — no cutoff options available.</p>
+            } @else {
             <div class="input-group basic-row field-row" role="group">
                 <label class="field-cell">
                     <span class="field-title">Top Cutoff <span class="unit-label">°</span></span>
@@ -895,6 +902,7 @@
                 <button type="button" class="info-icon" (click)="onInfoClick('cornerCutoff')" title="More information"
                     aria-label="Information">ⓘ</button>
             </div>
+            }
         </section>
 
         <section class="ui-group">

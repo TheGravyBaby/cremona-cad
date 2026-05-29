@@ -3,7 +3,7 @@
     <!-- show only the most recent 3 messages as toasts -->
     <div *ngFor="let m of messages | slice:0:3; trackBy: trackByMessageId" class="toast" [attr.data-severity]="m.severity">
       <div class="msg">
-        <strong *ngIf="m.title">{{m.title}}</strong><br>
+        <strong *ngIf="m.title">{{m.title}}</strong>
         <span>{{m.message}}</span>
       </div>
       <button class="dismiss" (click)="dismiss(m.id)" aria-label="Dismiss message">
