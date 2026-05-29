@@ -71,11 +71,9 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.camera.pxPerMm = v;
   }
 
-  private lastPxX = 0;
-  private lastPxY = 0;
   private activePointers = new Map<number, { x: number; y: number }>();
   private lastPinchDist = 0;
-  private lastPinchMid = { x: 0, y: 0 };
+  private lastThreeMid = { x: 0, y: 0 };
   public showReferenceImage = true;
   public isDarkMode = false;
   private isDragging = false;
@@ -280,48 +278,48 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   }
 
   onPointerMove = (event: PointerEvent) => {
-    // Update tracked position for this pointer
-    if (this.activePointers.has(event.pointerId)) {
-      this.activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-    }
+    // Capture previous position before updating the map (used for delta calcs below)
+    const prev = this.activePointers.get(event.pointerId);
+    this.activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
-    // Two-finger pinch-to-zoom + pan
-    if (this.activePointers.size === 2) {
-      const [a, b] = [...this.activePointers.values()];
+    const count = this.activePointers.size;
+    const pts = () => [...this.activePointers.values()];
+
+    // ── Two-finger: pinch-to-zoom only ────────────────────────────────────────
+    if (count === 2) {
+      const [a, b] = pts();
       const dist = Math.hypot(b.x - a.x, b.y - a.y);
-      const midX = (a.x + b.x) / 2;
-      const midY = (a.y + b.y) / 2;
-
       if (this.lastPinchDist > 0) {
+        const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+        const pt = this.worldFromPointer({ clientX: mid.x, clientY: mid.y } as PointerEvent);
+        pt.y = -pt.y;
         const el = this.host.nativeElement;
-        const pxW = Math.max(1, el.clientWidth);
-        const pxH = Math.max(1, el.clientHeight);
-
-        // Zoom toward the current midpoint
-        const zoomFactor = dist / this.lastPinchDist;
-        const newPxPerMm = this.pxPerMm * zoomFactor;
-        const fakeEvt = { clientX: midX, clientY: midY } as PointerEvent;
-        const zoomPt = this.worldFromPointer(fakeEvt);
-        zoomPt.y = -zoomPt.y;
-        this.camera.applyZoomAt(zoomPt, newPxPerMm, pxW, pxH);
-
-        // Pan by midpoint delta
-        const dxPx = midX - this.lastPinchMid.x;
-        const dyPx = midY - this.lastPinchMid.y;
-        if (dxPx !== 0 || dyPx !== 0) {
-          this.camera.panByPx(dxPx, dyPx);
-        }
-
+        this.camera.applyZoomAt(pt, this.pxPerMm * (dist / this.lastPinchDist),
+          Math.max(1, el.clientWidth), Math.max(1, el.clientHeight));
         this.draw();
       }
-
       this.lastPinchDist = dist;
-      this.lastPinchMid = { x: midX, y: midY };
       event.preventDefault();
       return;
     }
 
-    // reference-image interaction takes precedence
+    // ── Three-finger: pan only ────────────────────────────────────────────────
+    if (count === 3) {
+      const [a, b, c] = pts();
+      const midX = (a.x + b.x + c.x) / 3;
+      const midY = (a.y + b.y + c.y) / 3;
+      const dx = midX - this.lastThreeMid.x;
+      const dy = midY - this.lastThreeMid.y;
+      if (dx !== 0 || dy !== 0) {
+        this.camera.panByPx(dx, dy);
+        this.draw();
+      }
+      this.lastThreeMid = { x: midX, y: midY };
+      event.preventDefault();
+      return;
+    }
+
+    // ── Reference-image interaction (mouse / stylus) ──────────────────────────
     if (this.refController.isInteracting) {
       const pt = this.worldFromPointer(event);
       this.refController.onPointerMove(pt);
@@ -330,26 +328,16 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
-    // camera pan
-    if (!this.isDragging) return;
-
-    const dxPx = event.clientX - this.lastPxX;
-    const dyPx = event.clientY - this.lastPxY;
-
-    this.lastPxX = event.clientX;
-    this.lastPxY = event.clientY;
-
-    // delegate pan to camera (it converts px -> mm internally)
-    this.camera.panByPx(dxPx, dyPx);
+    // ── Mouse / stylus camera pan ─────────────────────────────────────────────
+    if (!this.isDragging || !prev) return;
+    this.camera.panByPx(event.clientX - prev.x, event.clientY - prev.y);
     this.draw();
   };
 
   onPointerUp = (event: PointerEvent) => {
     this.activePointers.delete(event.pointerId);
-    if (this.activePointers.size < 2) {
-      this.lastPinchDist = 0;
-      this.lastPinchMid = { x: 0, y: 0 };
-    }
+    if (this.activePointers.size < 2) this.lastPinchDist = 0;
+    if (this.activePointers.size < 3) this.lastThreeMid = { x: 0, y: 0 };
 
     // end reference-image interaction if active
     if (this.refController.isInteracting) {
@@ -439,37 +427,49 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
   onPointerDown(event: PointerEvent) {
     this.activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    const count = this.activePointers.size;
+    const pts = [...this.activePointers.values()];
+    const isPrimary = event.button === 0 || event.button === undefined;
 
-    // Two fingers down — cancel any ongoing pan and enter pinch mode
-    if (this.activePointers.size === 2) {
-      this.isDragging = false;
-      this.host.nativeElement.classList.remove('dragging');
-      const [a, b] = [...this.activePointers.values()];
-      this.lastPinchDist = Math.hypot(b.x - a.x, b.y - a.y);
-      this.lastPinchMid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    // ── Touch gestures ────────────────────────────────────────────────────────
+    if (event.pointerType === 'touch') {
+      if (count === 2) {
+        // Cancel any single-finger interaction and begin pinch-to-zoom
+        this.refController.endInteraction?.();
+        const [a, b] = pts;
+        this.lastPinchDist = Math.hypot(b.x - a.x, b.y - a.y);
+      } else if (count === 3) {
+        // Begin 3-finger pan
+        this.lastPinchDist = 0; // stop zoom while 3 fingers active
+        const [a, b, c] = pts;
+        this.lastThreeMid = { x: (a.x + b.x + c.x) / 3, y: (a.y + b.y + c.y) / 3 };
+      } else if (count === 1 && isPrimary) {
+        // Single touch: reference-image interaction only (no camera pan)
+        const canRefOps = this.referenceModeEnabled && this.showReferenceImage && !!this.referenceImage?.href;
+        if (canRefOps) {
+          const pt = this.worldFromPointer(event);
+          const h = this.refController.hitTestHandle(pt, this.pxPerMm);
+          if (h) { this.refController.startScale(pt, h as any); }
+          else if (this.refController.pointInImage(pt)) { this.refController.startDrag(pt); }
+        }
+      }
       this.host.nativeElement.setPointerCapture(event.pointerId);
       return;
     }
 
-    this.lastPxX = event.clientX;
-    this.lastPxY = event.clientY;
-
-    const isPrimary = event.button === 0 || event.button === undefined;
+    // ── Mouse / stylus ────────────────────────────────────────────────────────
     const isMiddle = event.button === 1;
-
     const canRefOps = this.referenceModeEnabled && this.showReferenceImage && !!this.referenceImage?.href;
     const modifierHeld = event.shiftKey || event.ctrlKey;
 
     if (canRefOps && isPrimary && !modifierHeld && !this.isSpaceDown) {
       const pt = this.worldFromPointer(event);
       const h = this.refController.hitTestHandle(pt, this.pxPerMm);
-
       if (h) {
         this.refController.startScale(pt, h as any);
         this.host.nativeElement.setPointerCapture(event.pointerId);
         return;
       }
-
       if (this.refController.pointInImage(pt)) {
         this.refController.startDrag(pt);
         this.host.nativeElement.setPointerCapture(event.pointerId);
@@ -477,9 +477,8 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       }
     }
 
-    // Pan: middle mouse always; primary when Space is held; or any single touch finger
-    const isTouch = event.pointerType === 'touch';
-    if (isMiddle || (isPrimary && this.isSpaceDown) || (isTouch && isPrimary)) {
+    // Pan: middle mouse always; or primary + Space
+    if (isMiddle || (isPrimary && this.isSpaceDown)) {
       this.isDragging = true;
       this.host.nativeElement.classList.add('dragging');
       this.host.nativeElement.setPointerCapture(event.pointerId);
