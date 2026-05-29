@@ -81,6 +81,7 @@
 .host {
   flex: 1 1 auto;
   min-height: 0;
+  touch-action: none; /* let pointer events handle all touch gestures (pinch, pan) */
   /* border: #444 1px solid; */
   /* cursor: grab; */
 }

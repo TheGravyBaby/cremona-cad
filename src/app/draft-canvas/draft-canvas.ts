@@ -73,6 +73,8 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
   private lastPxX = 0;
   private lastPxY = 0;
+  private activePointers = new Map<number, { x: number; y: number }>();
+  private lastPinchDist = 0;
   public showReferenceImage = true;
   public isDarkMode = false;
   private isDragging = false;
@@ -277,6 +279,37 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   }
 
   onPointerMove = (event: PointerEvent) => {
+    // Update tracked position for this pointer
+    if (this.activePointers.has(event.pointerId)) {
+      this.activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    }
+
+    // Two-finger pinch-to-zoom (and two-finger pan)
+    if (this.activePointers.size === 2) {
+      const [a, b] = [...this.activePointers.values()];
+      const dist = Math.hypot(b.x - a.x, b.y - a.y);
+
+      if (this.lastPinchDist > 0) {
+        const zoomFactor = dist / this.lastPinchDist;
+        const newPxPerMm = this.pxPerMm * zoomFactor;
+
+        // Zoom toward the midpoint between the two fingers
+        const midX = (a.x + b.x) / 2;
+        const midY = (a.y + b.y) / 2;
+        const fakeEvt = { clientX: midX, clientY: midY } as PointerEvent;
+        const pt = this.worldFromPointer(fakeEvt);
+        pt.y = -pt.y;
+
+        const el = this.host.nativeElement;
+        this.camera.applyZoomAt(pt, newPxPerMm, Math.max(1, el.clientWidth), Math.max(1, el.clientHeight));
+        this.draw();
+      }
+
+      this.lastPinchDist = dist;
+      event.preventDefault();
+      return;
+    }
+
     // reference-image interaction takes precedence
     if (this.refController.isInteracting) {
       const pt = this.worldFromPointer(event);
@@ -301,6 +334,11 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   };
 
   onPointerUp = (event: PointerEvent) => {
+    this.activePointers.delete(event.pointerId);
+    if (this.activePointers.size < 2) {
+      this.lastPinchDist = 0;
+    }
+
     // end reference-image interaction if active
     if (this.refController.isInteracting) {
       this.refController.endInteraction();
@@ -388,6 +426,18 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   };
 
   onPointerDown(event: PointerEvent) {
+    this.activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+    // Two fingers down — cancel any ongoing pan and enter pinch mode
+    if (this.activePointers.size === 2) {
+      this.isDragging = false;
+      this.host.nativeElement.classList.remove('dragging');
+      const [a, b] = [...this.activePointers.values()];
+      this.lastPinchDist = Math.hypot(b.x - a.x, b.y - a.y);
+      this.host.nativeElement.setPointerCapture(event.pointerId);
+      return;
+    }
+
     this.lastPxX = event.clientX;
     this.lastPxY = event.clientY;
 
@@ -448,10 +498,8 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     // scroll wheels should have a 0 delta x value
     const isMouseWheel = Math.abs(event.deltaX) === 0 //&& Number.isInteger(event.deltaY);
     if (isMouseWheel) {
-      // Each notch of a mouse wheel is typically deltaY = 3 lines.
-      // Use a per-notch zoom step similar to most CAD tools (~10% per notch).
       const clampedDelta = Math.sign(event.deltaY);
-      const zoomFactor = Math.pow(0.85, clampedDelta); // ~15% per scroll notch
+      const zoomFactor = Math.pow(0.85, clampedDelta); 
       const newPxPerMm = this.pxPerMm * zoomFactor;
 
 
