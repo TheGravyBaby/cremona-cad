@@ -138,7 +138,8 @@
                     <label class='field-cell'>
                         <span class="field-title">U0 - Join Arc Radius <span class="unit-label">mm</span></span>
                         <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="d.params.bouts.U0.r"
-                            (input)="changeMainBouts()" [style.borderColor]="colors.upperBout" />
+                            (input)="changeMainBouts()" [style.borderColor]="colors.upperBout"
+                            (focus)="onArcFocus(d.params.bouts.U0, colors.upperBout)" (blur)="onArcBlur()" />
                     </label>
                     <label class="field-cell"></label>
                     <label class='field-cell'>
@@ -151,7 +152,8 @@
                     <label class='field-cell'>
                         <span class="field-title">U1 - Vesecai Radius <span class="unit-label">mm</span></span>
                         <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="d.params.bouts.U1.r"
-                            (input)="changeMainBouts()" [style.borderColor]="colors.upperBoutOff" />
+                            (input)="changeMainBouts()" [style.borderColor]="colors.upperBoutOff"
+                            (focus)="onArcFocus(d.params.bouts.U1, colors.upperBoutOff)" (blur)="onArcBlur()" />
                     </label>
                     <label class="field-cell"></label>
                     <label class='field-cell'>
@@ -187,7 +189,8 @@
                     <label class='field-cell'>
                         <span class="field-title">L0 - Join Arc Radius <span class="unit-label">mm</span></span>
                         <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="d.params.bouts.L0.r"
-                            (input)="changeMainBouts()" [style.borderColor]="colors.lowerBout" />
+                            (input)="changeMainBouts()" [style.borderColor]="colors.lowerBout"
+                            (focus)="onArcFocus(d.params.bouts.L0, colors.lowerBout)" (blur)="onArcBlur()" />
                     </label>
                     <label class="field-cell"></label>
                     <label class='field-cell'>
@@ -200,7 +203,8 @@
                     <label class='field-cell'>
                         <span class="field-title">L1 - Vesecai Radius <span class="unit-label">mm</span></span>
                         <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="d.params.bouts.L1.r"
-                            (input)="changeMainBouts()" [style.borderColor]="colors.lowerBoutOff" />
+                            (input)="changeMainBouts()" [style.borderColor]="colors.lowerBoutOff"
+                            (focus)="onArcFocus(d.params.bouts.L1, colors.lowerBoutOff)" (blur)="onArcBlur()" />
                     </label>
                     <label class="field-cell"></label>
                     <label class='field-cell'>
@@ -229,7 +233,8 @@
                     <label class="field-cell">
                         <span class="field-title">V0 Radius <span class="unit-label">mm</span></span>
                         <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.viol.V0.r" [style.borderColor]="colors.violNeck"
-                            (input)="changeMainBouts()" />
+                            (input)="changeMainBouts()"
+                            (focus)="onArcFocus(d.params.viol.V0, colors.violNeck)" (blur)="onArcBlur()" />
                     </label>
                     <label class="field-cell">
                         <span class="field-title">Width <span class="unit-label">mm</span></span>
@@ -288,7 +293,8 @@
                 <label class="field-cell">
                     <span class="field-title">U2 Radius <span class="unit-label">mm</span></span>
                     <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.U2.r"
-                        (input)="changeCorners()" [style.borderColor]="colors.upperBout" />
+                        (input)="changeCorners()" [style.borderColor]="colors.upperBout"
+                        (focus)="onArcFocus(d.params.bouts.U2, colors.upperBout)" (blur)="onArcBlur()" />
                 </label>
                 <label class="field-cell">
                     <span class="field-title"> <span class="unit-label"></span></span>
@@ -328,7 +334,8 @@
                     <label class="field-cell">
                         <span class="field-title">U3 Radius <span class="unit-label">mm</span></span>
                         <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.U3.r"
-                            (input)="changeCorners()" [style.borderColor]="colors.centerBoutUp" />
+                            (input)="changeCorners()" [style.borderColor]="colors.centerBoutUp"
+                            (focus)="onArcFocus(d.params.bouts.U3, colors.centerBoutUp)" (blur)="onArcBlur()" />
                     </label>
                     <label class="field-cell">
                         <div class="toggle">
@@ -349,13 +356,15 @@
                         <label class="field-cell">
                             <span class="field-title">U31 Radius <span class="unit-label">mm</span></span>
                             <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.U31.r"
-                                (input)="changeCorners()" [style.borderColor]="colors.centerBoutUp" />
+                                (input)="changeCorners()" [style.borderColor]="colors.centerBoutUp"
+                                (focus)="onArcFocus(d.params.bouts.U31, colors.centerBoutUp)" (blur)="onArcBlur()" />
                         </label>
                         <label class="field-cell">
                             <span class="field-title">Split Angle <span class="unit-label">°</span></span>
                             <input type="number" class="basic-input" step="1" [ngModel]="d.params.bouts.U31.degreeDiff"
                                 (ngModelChange)="adjustArcStart(d.params.bouts.U31, $event, changeCorners.bind(this))"
-                                [style.borderColor]="colors.centerBoutUp" />
+                                [style.borderColor]="colors.centerBoutUp"
+                                (focus)="onArcFocus(d.params.bouts.U31, colors.centerBoutUp)" (blur)="onArcBlur()" />
                         </label>
                         <button type="button" class="info-icon" (click)="onInfoClick('compoundArc')" title="More information"
                             aria-label="Information">ⓘ</button>
@@ -399,7 +408,8 @@
                     <label class="field-cell">
                         <span class="field-title">L3 Radius <span class="unit-label">mm</span></span>
                         <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.L3.r"
-                            (input)="changeCorners()" [style.borderColor]="colors.centerBoutLow" />
+                            (input)="changeCorners()" [style.borderColor]="colors.centerBoutLow"
+                            (focus)="onArcFocus(d.params.bouts.L3, colors.centerBoutLow)" (blur)="onArcBlur()" />
                     </label>
                     <label class="field-cell">
                         <div class="toggle">
@@ -420,13 +430,15 @@
                         <label class="field-cell">
                             <span class="field-title">L31 Radius <span class="unit-label">mm</span></span>
                             <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.L31.r"
-                                (input)="changeCorners()" [style.borderColor]="colors.centerBoutLow" />
+                                (input)="changeCorners()" [style.borderColor]="colors.centerBoutLow"
+                                (focus)="onArcFocus(d.params.bouts.L31, colors.centerBoutLow)" (blur)="onArcBlur()" />
                         </label>
                         <label class="field-cell">
                             <span class="field-title">Split Angle <span class="unit-label">°</span></span>
                             <input type="number" class="basic-input" step="1" [ngModel]="d.params.bouts.L31.degreeDiff"
                                 (ngModelChange)="adjustArcStart(d.params.bouts.L31, $event, changeCorners.bind(this))"
-                                [style.borderColor]="colors.centerBoutLow" />
+                                [style.borderColor]="colors.centerBoutLow"
+                                (focus)="onArcFocus(d.params.bouts.L31, colors.centerBoutLow)" (blur)="onArcBlur()" />
                         </label>
                         <button type="button" class="info-icon" (click)="onInfoClick('compoundArc')" title="More information"
                             aria-label="Information">ⓘ</button>
@@ -452,7 +464,8 @@
                 <label class="field-cell">
                     <span class="field-title">L2 Radius <span class="unit-label">mm</span></span>
                     <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.L2.r"
-                        (input)="changeCorners()" [style.borderColor]="colors.lowerBout" />
+                        (input)="changeCorners()" [style.borderColor]="colors.lowerBout"
+                        (focus)="onArcFocus(d.params.bouts.L2, colors.lowerBout)" (blur)="onArcBlur()" />
                 </label>
                 <label class="field-cell">
                     <span class="field-title"> <span class="unit-label"></span></span>
@@ -584,7 +597,8 @@
                     <label class="field-cell">
                         <span class="field-title">C2 Radius <span class="unit-label">mm</span></span>
                         <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.C2.r"
-                            (input)="changeCenterBout()" [style.borderColor]="colors.centerBoutUp" />
+                            (input)="changeCenterBout()" [style.borderColor]="colors.centerBoutUp"
+                            (focus)="onArcFocus(d.params.bouts.C2, colors.centerBoutUp)" (blur)="onArcBlur()" />
                     </label>
                     <label class="field-cell">
                         <div class="toggle">
@@ -605,13 +619,15 @@
                         <label class="field-cell">
                             <span class="field-title">C21 Radius <span class="unit-label">mm</span></span>
                             <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.C21.r"
-                                (input)="changeCenterBout()" [style.borderColor]="colors.centerBoutUpOff" />
+                                (input)="changeCenterBout()" [style.borderColor]="colors.centerBoutUpOff"
+                                (focus)="onArcFocus(d.params.bouts.C21, colors.centerBoutUpOff)" (blur)="onArcBlur()" />
                         </label>
                         <label class="field-cell">
                             <span class="field-title">Split Angle <span class="unit-label">°</span></span>
                             <input type="number" class="basic-input" step="1" [ngModel]="d.params.bouts.C21.degreeDiff"
                                 (ngModelChange)="adjustArcStart(d.params.bouts.C21, $event, changeCenterBout.bind(this))"
-                                [style.borderColor]="colors.centerBoutUpOff" />
+                                [style.borderColor]="colors.centerBoutUpOff"
+                                (focus)="onArcFocus(d.params.bouts.C21, colors.centerBoutUpOff)" (blur)="onArcBlur()" />
                         </label>
                     </div>
                 </div>
@@ -645,7 +661,8 @@
                     <label class="field-cell">
                         <span class="field-title">C0 Radius <span class="unit-label">mm</span></span>
                         <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.C0.r"
-                            (input)="changeCenterBout()" [style.borderColor]="colors.centerBout" />
+                            (input)="changeCenterBout()" [style.borderColor]="colors.centerBout"
+                            (focus)="onArcFocus(d.params.bouts.C0, colors.centerBout)" (blur)="onArcBlur()" />
                     </label>
                     <label class="field-cell" [style.opacity]="d.params.options.useKellyC0 ? 0.0 : 1"
                         [style.pointerEvents]="d.params.options.useKellyC0 ? 'none' : 'auto'">
@@ -693,7 +710,8 @@
                     <label class="field-cell">
                         <span class="field-title">C1 Radius <span class="unit-label">mm</span></span>
                         <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.C1.r"
-                            (input)="changeCenterBout()" [style.borderColor]="colors.centerBoutLow" />
+                            (input)="changeCenterBout()" [style.borderColor]="colors.centerBoutLow"
+                            (focus)="onArcFocus(d.params.bouts.C1, colors.centerBoutLow)" (blur)="onArcBlur()" />
                     </label>
                     <label class="field-cell">
                         <div class="toggle">
@@ -714,13 +732,15 @@
                         <label class="field-cell">
                             <span class="field-title">C11 Radius <span class="unit-label">mm</span></span>
                             <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.C11.r"
-                                (input)="changeCenterBout()" [style.borderColor]="colors.centerBoutLowOff" />
+                                (input)="changeCenterBout()" [style.borderColor]="colors.centerBoutLowOff"
+                                (focus)="onArcFocus(d.params.bouts.C11, colors.centerBoutLowOff)" (blur)="onArcBlur()" />
                         </label>
                         <label class="field-cell">
                             <span class="field-title">Split Angle <span class="unit-label">°</span></span>
                             <input type="number" class="basic-input" step="1" [ngModel]="d.params.bouts.C11.degreeDiff"
                                 (ngModelChange)="adjustArcStart(d.params.bouts.C11, $event, changeCenterBout.bind(this))"
-                                [style.borderColor]="colors.centerBoutLowOff" />
+                                [style.borderColor]="colors.centerBoutLowOff"
+                                (focus)="onArcFocus(d.params.bouts.C11, colors.centerBoutLowOff)" (blur)="onArcBlur()" />
                         </label>
                     </div>
                 </div>
