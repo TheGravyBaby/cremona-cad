@@ -308,7 +308,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     }
   };
 
-    onKeyDown = (event: KeyboardEvent) => {
+  onKeyDown = (event: KeyboardEvent) => {
     if (event.code === 'Space') {
       this.isSpaceDown = true;
       this.host.nativeElement.classList.add('pan-ready');
@@ -413,7 +413,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     // This is a well-known convention used by both macOS trackpads and touch screens.
     if (event.ctrlKey) {
       const delta = event.deltaY;
-      const zoomFactor = Math.pow(0.999, delta);
+      const zoomFactor = Math.pow(0.85, delta);
       const newPxPerMm = this.pxPerMm * zoomFactor;
 
       // Zoom toward the cursor position instead of canvas center
@@ -429,7 +429,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
-    // pinches should have a 0 delta x value
+    // scroll wheels should have a 0 delta x value
     const isMouseWheel = Math.abs(event.deltaX) === 0 //&& Number.isInteger(event.deltaY);
     if (isMouseWheel) {
       // Each notch of a mouse wheel is typically deltaY = 3 lines.
