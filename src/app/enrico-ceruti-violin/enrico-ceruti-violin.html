@@ -1076,70 +1076,68 @@
 
         @if (openPanel === 'export') {
         <section class="ui-group">
-            <div class="ui-group-title">Inner Trace</div>
-            <p class="export-description">The inner body outline used for the mould and rib bending.</p>
-            <div class="input-group basic-row field-row" role="group">
-                <button type="button" class="recipe-btn" (click)="previewExport('innerTrace')">Preview</button>
-                <button type="button" class="recipe-btn recipe-btn--primary"
-                    (click)="downloadExport('innerTrace')">SVG</button>
-                <button type="button" class="recipe-btn recipe-btn--primary"
-                    (click)="downloadPdf('innerTrace')">PDF</button>
+            <div class="export-table">
+                <div class="export-row">
+                    <div class="export-row__label">
+                        <span class="export-row__name">Inner Trace</span>
+                        <span class="export-row__desc">Inner body outline for mould &amp; rib bending</span>
+                    </div>
+                    <div class="export-row__actions">
+                        <button type="button" class="recipe-btn" (click)="previewExport('innerTrace')">Preview</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('innerTrace')">SVG</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('innerTrace')">PDF</button>
+                    </div>
+                </div>
+                <div class="export-row">
+                    <div class="export-row__label">
+                        <span class="export-row__name">Top Trace</span>
+                        <span class="export-row__desc">Top of the instrument</span>
+                    </div>
+                    <div class="export-row__actions">
+                        <button type="button" class="recipe-btn" (click)="previewExport('outerTrace')">Preview</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('outerTrace')">SVG</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('outerTrace')">PDF</button>
+                    </div>
+                </div>
+                <div class="export-row">
+                    <div class="export-row__label">
+                        <span class="export-row__name">Back Trace</span>
+                        <span class="export-row__desc">Back of the instrument, with button</span>
+                    </div>
+                    <div class="export-row__actions">
+                        <button type="button" class="recipe-btn" (click)="previewExport('back')">Preview</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('back')">SVG</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('back')">PDF</button>
+                    </div>
+                </div>
+                <div class="export-row">
+                    <div class="export-row__label">
+                        <span class="export-row__name">Mould</span>
+                        <span class="export-row__desc">Mould for creating the rib structure</span>
+                    </div>
+                    <div class="export-row__actions">
+                        <button type="button" class="recipe-btn" (click)="previewExport('mould')">Preview</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('mould')">SVG</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('mould')">PDF</button>
+                    </div>
+                </div>
+                <div class="export-row">
+                    <div class="export-row__label">
+                        <span class="export-row__name">Block Templates</span>
+                        <span class="export-row__desc">Individual block templates</span>
+                    </div>
+                    <div class="export-row__actions">
+                        <button type="button" class="recipe-btn" (click)="previewExport('blocks')">Preview</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('blocks')">SVG</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('blocks')">PDF</button>
+                    </div>
+                </div>
             </div>
         </section>
 
         <section class="ui-group">
-            <div class="ui-group-title">Top Trace</div>
-            <p class="export-description">Top of the instrument.</p>
-            <div class="input-group basic-row field-row" role="group">
-                <button type="button" class="recipe-btn" (click)="previewExport('outerTrace')">Preview</button>
-                <button type="button" class="recipe-btn recipe-btn--primary"
-                    (click)="downloadExport('outerTrace')">SVG</button>
-                <button type="button" class="recipe-btn recipe-btn--primary"
-                    (click)="downloadPdf('outerTrace')">PDF</button>
-            </div>
-        </section>
-
-        <section class="ui-group">
-            <div class="ui-group-title">Back Trace</div>
-            <p class="export-description">The back of the instrument, with button.</p>
-            <div class="input-group basic-row field-row" role="group">
-                <button type="button" class="recipe-btn" (click)="previewExport('back')">Preview</button>
-                <button type="button" class="recipe-btn recipe-btn--primary"
-                    (click)="downloadExport('back')">SVG</button>
-                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('back')">PDF</button>
-            </div>
-        </section>
-
-        <section class="ui-group">
-            <div class="ui-group-title">Mould</div>
-            <p class="export-description">The mould use to create the rib structure.</p>
-            <div class="input-group basic-row field-row" role="group">
-                <button type="button" class="recipe-btn" (click)="previewExport('mould')">Preview</button>
-                <button type="button" class="recipe-btn recipe-btn--primary"
-                    (click)="downloadExport('mould')">SVG</button>
-                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('mould')">PDF</button>
-            </div>
-        </section>
-
-        <section class="ui-group">
-            <div class="ui-group-title">Block Templates</div>
-            <p class="export-description">Individual block templates.</p>
-            <div class="input-group basic-row field-row" role="group">
-                <button type="button" class="recipe-btn" (click)="previewExport('blocks')">Preview</button>
-                <button type="button" class="recipe-btn recipe-btn--primary"
-                    (click)="downloadExport('blocks')">SVG</button>
-                <button type="button" class="recipe-btn recipe-btn--primary"
-                    (click)="downloadPdf('blocks')">PDF</button>
-            </div>
-        </section>
-
-        <section class="ui-group">
-            <div class="ui-group-title">Full Plan</div>
-            <p class="export-description">All pages combined into a single true-scale PDF.</p>
-            <div class="input-group basic-row field-row" role="group">
-                <button type="button" class="recipe-btn recipe-btn--primary recipe-btn--full"
-                    (click)="downloadFullPlan()">Download Full Plan PDF</button>
-            </div>
+            <button type="button" class="recipe-btn recipe-btn--primary recipe-btn--full"
+                (click)="downloadFullPlan()">Download Full Plan PDF</button>
         </section>
         }
     </div>

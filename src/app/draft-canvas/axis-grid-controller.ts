@@ -142,83 +142,90 @@ export class AxisGridController {
 
   private drawAxisTicks(gRoot: RootGroup, gUI: RootGroup, cv: CanvasViewport, pxPerMm: number): void {
     const tickLen = 5 / pxPerMm;
-    const tickHalf = tickLen / 2;
     const fontSize = 13 / pxPerMm;
     const labelGap = 2 / pxPerMm;
     const tickColor = '#888';
-    const xAxisVisible = cv.topBound <= 0 && cv.bottomBound >= 0;
-    const yAxisVisible = cv.leftBound <= 0 && cv.rightBound >= 0;
 
-    // Loop 1: Y ticks — downward from origin (mirrors drawGrid loop 1)
+    // Both Y edges: always draw on left and right bounds
+    const yEdges: { x: number; dir: number }[] = [
+      { x: cv.leftBound, dir: 1 },   // left edge, tick points right
+      { x: cv.rightBound, dir: -1 }, // right edge, tick points left
+    ];
+
+    // Both X edges: always draw on top and bottom bounds
+    // gUI y = viewport coords (y+ down); gRoot y = flipped (y+ up)
+    const xEdges: { edgeY: number; rootEdgeY: number; baseline: string }[] = [
+      { edgeY: cv.topBound, rootEdgeY: -cv.topBound, baseline: 'hanging' },       // top edge
+      { edgeY: cv.bottomBound, rootEdgeY: -cv.bottomBound, baseline: 'ideographic' }, // bottom edge
+    ];
+
+    // Helper to draw a tick mark and label for a Y-axis row
+    const drawYTick = (y: number, label: string) => {
+      for (const { x, dir } of yEdges) {
+        // gRoot.append('line')
+        //   .attr('x1', x).attr('y1', y)
+        //   .attr('x2', x + dir * tickLen).attr('y2', y)
+        //   .attr('stroke', tickColor).attr('stroke-width', 1)
+        //   .attr('vector-effect', 'non-scaling-stroke');
+        gUI.append('text')
+          .attr('x', x + dir * (tickLen + labelGap)).attr('y', -y - 3)
+          .attr('text-anchor', dir > 0 ? 'start' : 'end').attr('dominant-baseline', 'middle')
+          .attr('fill', tickColor).attr('font-size', fontSize)
+          .attr('vector-effect', 'non-scaling-stroke')
+          .text(label).style('user-select', 'none');
+      }
+    };
+
+    // Helper to draw a tick mark and label for an X-axis column
+    const drawXTick = (x: number, label: string) => {
+      for (const { edgeY, rootEdgeY, baseline } of xEdges) {
+        // Tick points inward: top edge tick goes down (rootEdgeY dir = -1 in gRoot), bottom edge goes up (+1)
+        const tickDir = baseline === 'hanging' ? -1 : 1; // gRoot: top edge y increases downward from -cv.topBound
+        // gRoot.append('line')
+        //   .attr('x1', x).attr('y1', rootEdgeY)
+        //   .attr('x2', x).attr('y2', rootEdgeY + tickDir * tickLen)
+        //   .attr('stroke', tickColor).attr('stroke-width', 1)
+        //   .attr('vector-effect', 'non-scaling-stroke');
+        // Label offset: pull inside the viewport by labelGap
+        const labelY = baseline === 'hanging'
+          ? edgeY + (tickLen + labelGap)  // top edge: below the tick
+          : edgeY - (tickLen + labelGap); // bottom edge: above the tick, with padding
+        gUI.append('text')
+          .attr('x', x + 4).attr('y', labelY)
+          .attr('text-anchor', 'middle')
+          .attr('dominant-baseline', baseline)
+          .attr('fill', tickColor).attr('font-size', fontSize)
+          .attr('vector-effect', 'non-scaling-stroke')
+          .text(label).style('user-select', 'none');
+      }
+    };
+
+    // Loop 1: Y ticks — downward from origin
     for (let y = 0; y <= -cv.topBound; y += this.gridStepY) {
-      if (!yAxisVisible) continue;
       if (!this.showGridY) continue;
       if (y === 0) continue;
-      gRoot.append('line')
-        .attr('x1', -tickHalf).attr('y1', y)
-        .attr('x2', tickHalf).attr('y2', y)
-        .attr('stroke', tickColor).attr('stroke-width', 1)
-        .attr('vector-effect', 'non-scaling-stroke');
-      gUI.append('text')
-        .attr('x', tickHalf + labelGap).attr('y', -y)
-        .attr('text-anchor', 'start').attr('dominant-baseline', 'middle')
-        .attr('fill', tickColor).attr('font-size', fontSize)
-        .attr('vector-effect', 'non-scaling-stroke')
-        .text(`${-y}`).style('user-select', 'none');
+      drawYTick(y, `${y}`);
     }
 
-    // Loop 2: Y ticks — upward from origin (mirrors drawGrid loop 2)
+    // Loop 2: Y ticks — upward from origin
     for (let y = -this.gridStepY; y >= -cv.bottomBound; y -= this.gridStepY) {
-      if (!yAxisVisible) continue;
       if (!this.showGridY) continue;
       if (y === 0) continue;
-      gRoot.append('line')
-        .attr('x1', -tickHalf).attr('y1', y)
-        .attr('x2', tickHalf).attr('y2', y)
-        .attr('stroke', tickColor).attr('stroke-width', 1)
-        .attr('vector-effect', 'non-scaling-stroke');
-      gUI.append('text')
-        .attr('x', tickHalf + labelGap).attr('y', -y)
-        .attr('text-anchor', 'start').attr('dominant-baseline', 'middle')
-        .attr('fill', tickColor).attr('font-size', fontSize)
-        .attr('vector-effect', 'non-scaling-stroke')
-        .text(`${-y}`).style('user-select', 'none');
+      drawYTick(y, `${y}`);
     }
 
-    // Loop 3: X ticks — rightward from origin (mirrors drawGrid loop 3)
+    // Loop 3: X ticks — rightward from origin
     for (let x = -this.gridStepX; x <= cv.rightBound; x += this.gridStepX) {
-      if (!xAxisVisible) continue;
       if (!this.showGridX) continue;
       if (x === 0) continue;
-      gRoot.append('line')
-        .attr('x1', x).attr('y1', -tickHalf)
-        .attr('x2', x).attr('y2', tickHalf)
-        .attr('stroke', tickColor).attr('stroke-width', 1)
-        .attr('vector-effect', 'non-scaling-stroke');
-      gUI.append('text')
-        .attr('x', x).attr('y', tickHalf + labelGap)
-        .attr('text-anchor', 'middle').attr('dominant-baseline', 'hanging')
-        .attr('fill', tickColor).attr('font-size', fontSize)
-        .attr('vector-effect', 'non-scaling-stroke')
-        .text(`${x}`).style('user-select', 'none');
+      drawXTick(x, `${x}`);
     }
 
-    // Loop 4: X ticks — leftward from origin (mirrors drawGrid loop 4)
+    // Loop 4: X ticks — leftward from origin
     for (let x = -this.gridStepX; x >= cv.leftBound; x -= this.gridStepX) {
-      if (!xAxisVisible) continue;
       if (!this.showGridX) continue;
       if (x === 0) continue;
-      gRoot.append('line')
-        .attr('x1', x).attr('y1', -tickHalf)
-        .attr('x2', x).attr('y2', tickHalf)
-        .attr('stroke', tickColor).attr('stroke-width', 1)
-        .attr('vector-effect', 'non-scaling-stroke');
-      gUI.append('text')
-        .attr('x', x).attr('y', tickHalf + labelGap)
-        .attr('text-anchor', 'middle').attr('dominant-baseline', 'hanging')
-        .attr('fill', tickColor).attr('font-size', fontSize)
-        .attr('vector-effect', 'non-scaling-stroke')
-        .text(`${x}`).style('user-select', 'none');
+      drawXTick(x, `${x}`);
     }
   }
 
