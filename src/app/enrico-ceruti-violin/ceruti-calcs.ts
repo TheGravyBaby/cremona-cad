@@ -441,7 +441,6 @@ export function calculateOuterArcs(p: EnricoCerutiParams): void {
     }
 }
 
-
 export function calculateMould(p: EnricoCerutiParams, useHighAccuracy = false, simpleClampBox = false): string {
     let blocksInitialized = p.blocks.CU != null;
     let inset = p.overhang + p.rib;
