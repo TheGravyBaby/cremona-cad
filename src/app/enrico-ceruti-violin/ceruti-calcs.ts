@@ -97,6 +97,12 @@ export function calculateCorners(p: EnricoCerutiParams): void {
     let UBWI = p.bouts.UBW - 2 * inset;
     let LBWI = p.bouts.LBW - 2 * inset;
 
+    if (p.bouts.U1?.r == p.bouts.U2?.r) {
+        p.bouts.U2 = new Arc(p.bouts.U1.x, p.bouts.U1.y, p.bouts.U1.r);
+    }
+    if (p.bouts.L1?.r == p.bouts.L2?.r) {
+        p.bouts.L2 = new Arc(p.bouts.L1.x, p.bouts.L1.y, p.bouts.L1.r);
+    }
     if (!p.bouts.UCr) {
         // we set a line at the ratio height of the body, then draw a guide circle from the bout to that line
         // the intersection defines the "default" corner position, courtesy of David Beard
@@ -128,7 +134,7 @@ export function calculateCorners(p: EnricoCerutiParams): void {
     let U1U2Match = false
     let allowHeightFlex = false; // this is a fiddly feature that might be cool one day, needs more work for now
 
-
+  
     if (p.bouts.U2?.r == p.bouts.U1.r && p.bouts.U2?.y == p.bouts.U1.y && p.bouts.U2?.x == p.bouts.U1.x) {
         // this is a special case where the user has set U2 to be the same as U1, 
         // which causes the math below to break since we won't have two distinct circles to intersect
@@ -194,6 +200,8 @@ export function calculateCorners(p: EnricoCerutiParams): void {
         let U2Intersect = circleCircleIntersections(p.bouts.U2, p.bouts.U3).sort((a, b) => a.y - b.y);
         let U2Angle = angleFromCenter(p.bouts.U2, U2Intersect[1]);
         let U2StartAngle = angleFromCenter(p.bouts.U2, p.bouts.U1);
+        if (p.bouts.U2.r < p.bouts.U1.r) 
+            U2StartAngle -= Math.PI
 
         if (!U1U2Match) {
             let newU1Intersect = circleCircleIntersections(p.bouts.U1, p.bouts.U2).sort((a, b) => a.y - b.y);
@@ -231,6 +239,8 @@ export function calculateCorners(p: EnricoCerutiParams): void {
         let L2Intersect = circleCircleIntersections(p.bouts.L2, p.bouts.L3).sort((a, b) => a.y - b.y)[0];
         let L2Angle = angleFromCenter(p.bouts.L2, L2Intersect);
         let L2StartAngle = angleFromCenter(p.bouts.L2, p.bouts.L1);
+         if (p.bouts.L2.r < p.bouts.L1.r) 
+            L2StartAngle -= Math.PI
 
         if (!L2U1Match) {
             let newL1Intersect = circleCircleIntersections(p.bouts.L1, p.bouts.L2).sort((a, b) => a.y - b.y)[0];

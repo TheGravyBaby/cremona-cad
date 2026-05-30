@@ -41,8 +41,8 @@ export class CerutiViolin extends RecipeComponentBase {
     centerBoutLow: '#e1bf50ff',
     lowerBout: '#4D74A8',
     violNeck: '#248f48ff',
-    innerTrace: '#a47272ff',
-    outerTrace: '#727fa4ff',
+    innerTrace: '#868484ff',
+    outerTrace: '#868484ff',
     mouldTrace: '#81887eff',
   } as const;
 
@@ -479,16 +479,6 @@ export class CerutiViolin extends RecipeComponentBase {
       ]);
     }));
     sessionStorage.setItem('recipeData', JSON.stringify(this.d));
-  }
-
-  setU2toU1(): void {
-    this.d.params.bouts.U2 = new Arc(this.d.params.bouts.U1!.x, this.d.params.bouts.U1!.y, this.d.params.bouts.U1!.r);
-    this.changeCorners();
-  }
-
-  setL2toL1(): void {
-    this.d.params.bouts.L2 = new Arc(this.d.params.bouts.L1!.x, this.d.params.bouts.L1!.y, this.d.params.bouts.L1!.r);
-    this.changeCorners();
   }
 
   renderCorners = (currentModule: boolean) => (g: any, ui: any): void => {
