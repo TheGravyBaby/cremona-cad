@@ -666,7 +666,8 @@
                         <span class="field-title">C0 Y <span class="unit-label">mm</span></span>
                         <input type="number" class="basic-input" step="1" [(ngModel)]="d.params.bouts.C0.y"
                             (input)="changeCenterBout(false); onArcFocus(d.params.bouts.C0, colors.centerBout)" [style.borderColor]="colors.centerBout"
-                            [disabled]="d.params.options.useKellyC0" />
+                            [disabled]="d.params.options.useKellyC0" 
+                            (focus)="onArcFocus(d.params.bouts.C0, colors.centerBout)" (blur)="onArcBlur()" />
                     </label>
                     <label class="field-cell">
                         <span class="field-title">C0 to LBW</span>
