@@ -7,14 +7,14 @@ import { DraftCanvasComponent } from './draft-canvas/draft-canvas';
 import { FormsModule } from '@angular/forms';
 import { RecipeInterface, ReferenceImage } from './models/types';
 import { Pt } from './models/types';
-import { EnricoCerutiViolin } from './enrico-ceruti-violin/enrico-ceruti-violin';
+import { CerutiViolin } from './enrico-ceruti-violin/ceruti-violin';
 import { HelloRecipe } from './hello-recipe/hello-recipe';
 import { MessageCenterComponent } from './shared/message-center.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [TopBarComponent, DraftCanvasComponent, FormsModule, EnricoCerutiViolin, HelloRecipe, MessageCenterComponent],
+  imports: [TopBarComponent, DraftCanvasComponent, FormsModule, CerutiViolin, HelloRecipe, MessageCenterComponent],
   template: `
     <div class="app">
      <app-top-bar class="top"
@@ -37,7 +37,7 @@ import { MessageCenterComponent } from './shared/message-center.component';
         </app-draft-canvas>
 
         @if (selectedRecipe == "enrico-ceruti-violin") {
-         <app-enrico-ceruti-violin class="sidebar"
+         <app-ceruti-violin class="sidebar"
           (draftChange)="onDraftChange($event)"
           (setBounds)="bounds=$event"
           [loadFile]="loadedFileData"
@@ -46,7 +46,7 @@ import { MessageCenterComponent } from './shared/message-center.component';
           [referenceImageParams]="referenceImage"
           [cameraBounds]="bounds"
           (referenceImageChange)="onReferenceImageChange($event)">
-        </app-enrico-ceruti-violin>
+        </app-ceruti-violin>
         }
 
         @if (selectedRecipe == "hello-recipe") {

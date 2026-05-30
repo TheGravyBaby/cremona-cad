@@ -57,7 +57,7 @@ Recipe components follow the structure established in `recipe-base/`. The draft 
 
 ```
 src/app/
-├── enrico-ceruti-violin/  # Primary working recipe
+├── ceruti-violin/         # Primary working recipe
 ├── hello-recipe/          # Minimal recipe for experimentation
 ├── draft-canvas/          # SVG canvas, camera, axis grid, reference image
 ├── helpers/               # Math, render functions, SVG/PDF export

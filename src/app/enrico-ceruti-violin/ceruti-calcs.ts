@@ -212,12 +212,6 @@ export function calculateCorners(p: EnricoCerutiParams): void {
         let l4 = new Circle(L1EndPt.x - L4r, L1EndPt.y, L4r);
         p.bouts.L4 = arcFromCircleAndPoints(l4, L1EndPt, p.bouts.LCr);
     }
-    
-
-    
-    
-
-
     if (p.options.L31DoubleArc) {
         let L3r = p.bouts.L3.r
         let L31r =  p.bouts.L31.r
@@ -655,7 +649,9 @@ export function calculateCornerBlocks(p: EnricoCerutiParams, innerPath: string, 
     const rectMinX = (r: Rectangle) => Math.min(r.Pt1.x, r.Pt2.x);
     const rectMinY = (r: Rectangle) => Math.min(r.Pt1.y, r.Pt2.y);
 
-    // Total width of a row including inter-piece padding.
+    // row logic is just to group these in a compact arrangement
+    // might oneday be used to structure them for being cut from a single piece
+    // below code is vibes, but creates a nice arrangement
     const rowWidth = (items: Array<{ rect: Rectangle }>) =>
         items.reduce((sum, { rect }) => sum + rect.width, 0) + padding * (items.length - 1);
 
@@ -696,7 +692,6 @@ export function calculateCornerBlocks(p: EnricoCerutiParams, innerPath: string, 
     const r2 = layoutRow(rowLowerCorners, yCursor); yCursor += rowHeight(rowLowerCorners) + padding;
     const r1 = layoutRow(rowUpperCorners, yCursor); yCursor += rowHeight(rowUpperCorners) + padding;
     const r0 = layoutRow(rowUpper,        yCursor); 
-
 
     return [...r0, ...r2, ...r1, ...r3];
 }

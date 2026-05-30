@@ -13,13 +13,12 @@ import { buildMirroredSvg, downloadSvgFile, downloadSvgAsPdf, downloadFullPlanPd
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
 @Component({
-  selector: 'app-enrico-ceruti-violin',
+  selector: 'app-ceruti-violin',
   imports: [FormsModule],
-  // DomSanitizer injected via constructor
-  templateUrl: './enrico-ceruti-violin.html',
-  styleUrls: ['../sidebar.css', './enrico-ceruti-violin.css'],
+  templateUrl: './ceruti-violin.html',
+  styleUrls: ['../sidebar.css', './ceruti-violin.css'],
 })
-export class EnricoCerutiViolin extends RecipeComponentBase {
+export class CerutiViolin extends RecipeComponentBase {
 
   // ===== Static config =====
 
@@ -98,26 +97,9 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
   exportPreview: SafeHtml | null = null;
   exportPreviewLabel: string = '';
   renderOuterPath = true;
-
-
   pathStrokeWidth = 2
-
   highlightedArc: Arc | null = null;
   highlightedArcColor: string = '';
-
-  onArcFocus(arc: Arc, color: string): void {
-    this.highlightedArc = arc;
-    this.highlightedArcColor = color;
-    this.debounceController?.markImmediate();
-    this.getActivationHandlers()[this.openPanel]?.();
-  }
-
-  onArcBlur(): void {
-    this.highlightedArc = null;
-    this.highlightedArcColor = '';
-    this.debounceController?.markImmediate();
-    this.getActivationHandlers()[this.openPanel]?.();
-  }
 
   private lastNewFileTick = 0;
   private _firstRenderInitDone = false;
@@ -302,20 +284,11 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
   }
 
   // ===== Arc degree-diff helpers =====
-
-  /**
-   * Moves the arc's `start` so that (end − start) equals the given degrees,
-   * then triggers the provided change handler.
-   */
   adjustArcStart(arc: Arc, degrees: number, changeFn: () => void): void {
     setArcStartByDegreeDiff(arc, degrees);
     changeFn();
   }
 
-  /**
-   * Moves the arc's `end` so that (end − start) equals the given degrees,
-   * then triggers the provided change handler.
-   */
   adjustArcEnd(arc: Arc, degrees: number, changeFn: () => void): void {
     setArcEndByDegreeDiff(arc, degrees);
     changeFn();
@@ -341,6 +314,20 @@ export class EnricoCerutiViolin extends RecipeComponentBase {
   }
 
   // ===== Change pipeline =====
+
+  onArcFocus(arc: Arc, color: string): void {
+    this.highlightedArc = arc;
+    this.highlightedArcColor = color;
+    this.debounceController?.markImmediate();
+    this.getActivationHandlers()[this.openPanel]?.();
+  }
+
+  onArcBlur(): void {
+    this.highlightedArc = null;
+    this.highlightedArcColor = '';
+    this.debounceController?.markImmediate();
+    this.getActivationHandlers()[this.openPanel]?.();
+  }
 
   changeBaseMeasurements(): void {
     this.debounce(() => safeRun(() => {
