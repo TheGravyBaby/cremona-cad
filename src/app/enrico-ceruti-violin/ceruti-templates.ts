@@ -27,7 +27,7 @@ const StradGoetz = {
   "recipeName": "enrico-ceruti-violin",
   "fileName": "Violin - Stradivari - Goetz",
   "version": "1",
-  "description": "C. 1695, Long Strad \n\nThats why he's the GOET",
+  "description": "C. 1695, Long Strad\nThat's why he's the GOET",
   "referenceImage": {
     "href": "/StradGoetz.jpg",
     "xlink:href": "/StradGoetz.jpg",
