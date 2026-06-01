@@ -646,7 +646,7 @@ const RavatinMans = {
 const DelGesuBaltic = {
   "key": "delGesu",
   "label": "Violin - Del Gesù - Baltic",
-  "recipeName": "",
+  "recipeName": "enrico-ceruti-violin",
   "fileName": "Violin - Del Gesù - Baltic",
   "version": "",
   "description": "C. 1731",
