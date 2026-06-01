@@ -483,7 +483,7 @@ export class CerutiViolin extends RecipeComponentBase {
     sessionStorage.setItem('recipeData', JSON.stringify(this.d));
   }
 
-  renderCorners = (currentModule: boolean) => (g: any, ui: any): void => {
+  renderCorners = (currentModule: boolean, renderOuterPathCorners: boolean = true) => (g: any, ui: any): void => {
     let p = this.d.params;
 
     if (this.highlightedArc) {
@@ -554,7 +554,7 @@ export class CerutiViolin extends RecipeComponentBase {
       p.options.useViolCornerUC && renderArcFromArc(flipArcAboutY(p.bouts.U4), this.colors.innerTrace, this.pathStrokeWidth)(g, ui);
     }
 
-    if (this.renderOuterPath) {
+    if (this.renderOuterPath && renderOuterPathCorners) {
       const m = this.showModuleArcs && currentModule;
       const lBoutOff   = m ? this.colors.lowerBoutOff   : this.colors.outerTrace;
       const cBoutLow   = m ? this.colors.centerBoutLow  : this.colors.outerTrace;
@@ -600,7 +600,7 @@ export class CerutiViolin extends RecipeComponentBase {
     }));
   }
 
-  renderCenterBout = (currentModule: boolean) => (g: any, ui: any): void => {
+  renderCenterBout = (currentModule: boolean, renderOuterPathCorners: boolean = true) => (g: any, ui: any): void => {
     let p = this.d.params;
 
     if (this.highlightedArc) {
@@ -662,7 +662,7 @@ export class CerutiViolin extends RecipeComponentBase {
       p.options.U31DoubleArc && renderArcFromArc(flipArcAboutY(p.bouts.U31!), this.colors.innerTrace, this.pathStrokeWidth)(g, ui);
     }
 
-    if (this.renderOuterPath) {
+    if (this.renderOuterPath && renderOuterPathCorners) {
       const m = this.showModuleArcs && currentModule;
       const cBoutUp  = m ? this.colors.centerBoutUp  : this.colors.outerTrace;
       const cBout    = m ? this.colors.centerBout     : this.colors.outerTrace;
@@ -690,8 +690,8 @@ export class CerutiViolin extends RecipeComponentBase {
       calculateOuterArcs(this.d.params);
       this.draftChange.emit([
         this.renderMainBouts(false),
-        this.renderCorners(false),
-        this.renderCenterBout(false),
+        this.renderCorners(false, false),
+        this.renderCenterBout(false, false),
         this.renderOuterTrace(true),
       ]);
       sessionStorage.setItem('recipeData', JSON.stringify(this.d));
