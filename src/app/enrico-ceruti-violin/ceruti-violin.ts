@@ -285,11 +285,13 @@ export class CerutiViolin extends RecipeComponentBase {
 
   // ===== Arc degree-diff helpers =====
   adjustArcStart(arc: Arc, degrees: number, changeFn: () => void): void {
+    if (typeof degrees !== 'number') return;
     setArcStartByDegreeDiff(arc, degrees);
     changeFn();
   }
 
   adjustArcEnd(arc: Arc, degrees: number, changeFn: () => void): void {
+    if (typeof degrees !== 'number') return;
     setArcEndByDegreeDiff(arc, degrees);
     changeFn();
   }

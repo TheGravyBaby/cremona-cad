@@ -18,7 +18,7 @@ export class Arc extends Circle {
 
   /** The magnitude of the angular span of this arc in degrees. */
   get degreeDiff(): number {
-    return (this.end - this.start) * (180 / Math.PI);
+    return Math.round((this.end - this.start) * (180 / Math.PI));
   }
 }
 
