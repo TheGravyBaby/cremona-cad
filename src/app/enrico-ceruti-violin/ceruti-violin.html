@@ -855,12 +855,14 @@
                     <input type="number" class="basic-input" step="1"
                         [ngModel]="d.params.outerCorners.U31.degreeDiff"
                         (ngModelChange)="adjustArcEnd(d.params.outerCorners.U31, $event, changeOuterTrace.bind(this))"
-                        [style.borderColor]="colors.centerBoutUp" />
+                        [style.borderColor]="colors.centerBoutUp"
+                        (focus)="onArcFocus(d.params.outerCorners.U31, colors.centerBoutUp)" (blur)="onArcBlur()" />
                     } @else {
                     <input type="number" class="basic-input" step="1"
                         [ngModel]="d.params.outerCorners.U3.degreeDiff"
                         (ngModelChange)="adjustArcEnd(d.params.outerCorners.U3, $event, changeOuterTrace.bind(this))"
-                        [style.borderColor]="colors.centerBoutUp" />
+                        [style.borderColor]="colors.centerBoutUp"
+                        (focus)="onArcFocus(d.params.outerCorners.U3, colors.centerBoutUp)" (blur)="onArcBlur()" />
                     }
                 </label>
                 <label class="field-cell">
@@ -869,12 +871,14 @@
                     <input type="number" class="basic-input" step="1"
                         [ngModel]="d.params.outerCorners.C21.degreeDiff"
                         (ngModelChange)="adjustArcEnd(d.params.outerCorners.C21, $event, changeOuterTrace.bind(this))"
-                        [style.borderColor]="colors.centerBoutUp" />
+                        [style.borderColor]="colors.centerBoutUp"
+                        (focus)="onArcFocus(d.params.outerCorners.C21, colors.centerBoutUp)" (blur)="onArcBlur()" />
                     } @else {
                     <input type="number" class="basic-input" step="1"
                         [ngModel]="d.params.outerCorners.C2.degreeDiff"
                         (ngModelChange)="adjustArcEnd(d.params.outerCorners.C2, $event, changeOuterTrace.bind(this))"
-                        [style.borderColor]="colors.centerBoutUp" />
+                        [style.borderColor]="colors.centerBoutUp"
+                        (focus)="onArcFocus(d.params.outerCorners.C2, colors.centerBoutUp)" (blur)="onArcBlur()" />
                     }
                 </label>
                 <button type="button" class="info-icon" (click)="onInfoClick('cornerCutoff')" title="More information"
@@ -895,12 +899,14 @@
                     <input type="number" class="basic-input" step="1"
                         [ngModel]="d.params.outerCorners.C11.degreeDiff"
                         (ngModelChange)="adjustArcEnd(d.params.outerCorners.C11, $event, changeOuterTrace.bind(this))"
-                        [style.borderColor]="colors.centerBoutLow" />
+                        [style.borderColor]="colors.centerBoutLow"
+                        (focus)="onArcFocus(d.params.outerCorners.C11, colors.centerBoutLow)" (blur)="onArcBlur()" />
                     } @else {
                     <input type="number" class="basic-input" step="1"
                         [ngModel]="d.params.outerCorners.C1.degreeDiff"
                         (ngModelChange)="adjustArcEnd(d.params.outerCorners.C1, $event, changeOuterTrace.bind(this))"
-                        [style.borderColor]="colors.centerBoutLow" />
+                        [style.borderColor]="colors.centerBoutLow"
+                        (focus)="onArcFocus(d.params.outerCorners.C1, colors.centerBoutLow)" (blur)="onArcBlur()" />
                     }
                 </label>
                 <label class="field-cell">
@@ -909,12 +915,14 @@
                     <input type="number" class="basic-input" step="1"
                         [ngModel]="d.params.outerCorners.L31.degreeDiff"
                         (ngModelChange)="adjustArcEnd(d.params.outerCorners.L31, $event, changeOuterTrace.bind(this))"
-                        [style.borderColor]="colors.centerBoutLow" />
+                        [style.borderColor]="colors.centerBoutLow"
+                        (focus)="onArcFocus(d.params.outerCorners.L31, colors.centerBoutLow)" (blur)="onArcBlur()" />
                     } @else {
                     <input type="number" class="basic-input" step="1"
                         [ngModel]="d.params.outerCorners.L3.degreeDiff"
                         (ngModelChange)="adjustArcEnd(d.params.outerCorners.L3, $event, changeOuterTrace.bind(this))"
-                        [style.borderColor]="colors.centerBoutLow" />
+                        [style.borderColor]="colors.centerBoutLow"
+                        (focus)="onArcFocus(d.params.outerCorners.L3, colors.centerBoutLow)" (blur)="onArcBlur()" />
                     }
                 </label>
                 <button type="button" class="info-icon" (click)="onInfoClick('cornerCutoff')" title="More information"
