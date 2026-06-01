@@ -854,13 +854,13 @@
                     @if (d.params.options.U31DoubleArc) {
                     <input type="number" class="basic-input" step="1"
                         [ngModel]="d.params.outerCorners.U31.degreeDiff"
-                        (ngModelChange)="adjustArcEnd(d.params.outerCorners.U31, $event, changeOuterTrace.bind(this))"
+                        (ngModelChange)="adjustArcEnd(d.params.outerCorners.U31, $event, changeOuterTrace.bind(this)); onArcFocus(d.params.outerCorners.U31, colors.centerBoutUp)"
                         [style.borderColor]="colors.centerBoutUp"
                         (focus)="onArcFocus(d.params.outerCorners.U31, colors.centerBoutUp)" (blur)="onArcBlur()" />
                     } @else {
                     <input type="number" class="basic-input" step="1"
                         [ngModel]="d.params.outerCorners.U3.degreeDiff"
-                        (ngModelChange)="adjustArcEnd(d.params.outerCorners.U3, $event, changeOuterTrace.bind(this))"
+                        (ngModelChange)="adjustArcEnd(d.params.outerCorners.U3, $event, changeOuterTrace.bind(this)); onArcFocus(d.params.outerCorners.U3, colors.centerBoutUp)"
                         [style.borderColor]="colors.centerBoutUp"
                         (focus)="onArcFocus(d.params.outerCorners.U3, colors.centerBoutUp)" (blur)="onArcBlur()" />
                     }
@@ -870,13 +870,13 @@
                     @if (d.params.options.C21DoubleArc) {
                     <input type="number" class="basic-input" step="1"
                         [ngModel]="d.params.outerCorners.C21.degreeDiff"
-                        (ngModelChange)="adjustArcEnd(d.params.outerCorners.C21, $event, changeOuterTrace.bind(this))"
+                        (ngModelChange)="adjustArcEnd(d.params.outerCorners.C21, $event, changeOuterTrace.bind(this)); onArcFocus(d.params.outerCorners.C21, colors.centerBoutUp)"
                         [style.borderColor]="colors.centerBoutUp"
                         (focus)="onArcFocus(d.params.outerCorners.C21, colors.centerBoutUp)" (blur)="onArcBlur()" />
                     } @else {
                     <input type="number" class="basic-input" step="1"
                         [ngModel]="d.params.outerCorners.C2.degreeDiff"
-                        (ngModelChange)="adjustArcEnd(d.params.outerCorners.C2, $event, changeOuterTrace.bind(this))"
+                        (ngModelChange)="adjustArcEnd(d.params.outerCorners.C2, $event, changeOuterTrace.bind(this)); onArcFocus(d.params.outerCorners.C2, colors.centerBoutUp)"
                         [style.borderColor]="colors.centerBoutUp"
                         (focus)="onArcFocus(d.params.outerCorners.C2, colors.centerBoutUp)" (blur)="onArcBlur()" />
                     }
@@ -898,13 +898,13 @@
                     @if (d.params.options.C11DoubleArc) {
                     <input type="number" class="basic-input" step="1"
                         [ngModel]="d.params.outerCorners.C11.degreeDiff"
-                        (ngModelChange)="adjustArcEnd(d.params.outerCorners.C11, $event, changeOuterTrace.bind(this))"
+                        (ngModelChange)="adjustArcEnd(d.params.outerCorners.C11, $event, changeOuterTrace.bind(this)); onArcFocus(d.params.outerCorners.C11, colors.centerBoutLow)"
                         [style.borderColor]="colors.centerBoutLow"
                         (focus)="onArcFocus(d.params.outerCorners.C11, colors.centerBoutLow)" (blur)="onArcBlur()" />
                     } @else {
                     <input type="number" class="basic-input" step="1"
                         [ngModel]="d.params.outerCorners.C1.degreeDiff"
-                        (ngModelChange)="adjustArcEnd(d.params.outerCorners.C1, $event, changeOuterTrace.bind(this))"
+                        (ngModelChange)="adjustArcEnd(d.params.outerCorners.C1, $event, changeOuterTrace.bind(this)); onArcFocus(d.params.outerCorners.C1, colors.centerBoutLow)"
                         [style.borderColor]="colors.centerBoutLow"
                         (focus)="onArcFocus(d.params.outerCorners.C1, colors.centerBoutLow)" (blur)="onArcBlur()" />
                     }
@@ -914,13 +914,13 @@
                     @if (d.params.options.L31DoubleArc) {
                     <input type="number" class="basic-input" step="1"
                         [ngModel]="d.params.outerCorners.L31.degreeDiff"
-                        (ngModelChange)="adjustArcEnd(d.params.outerCorners.L31, $event, changeOuterTrace.bind(this))"
+                        (ngModelChange)="adjustArcEnd(d.params.outerCorners.L31, $event, changeOuterTrace.bind(this)); onArcFocus(d.params.outerCorners.L31, colors.centerBoutLow)"
                         [style.borderColor]="colors.centerBoutLow"
-                        (focus)="onArcFocus(d.params.outerCorners.L31, colors.centerBoutLow)" (blur)="onArcBlur()" />
+                        (focus)="onArcFocus(d.params.outerCorners.L31, colors.centerBoutLow)" (blur)="onArcBlur(); " />
                     } @else {
                     <input type="number" class="basic-input" step="1"
                         [ngModel]="d.params.outerCorners.L3.degreeDiff"
-                        (ngModelChange)="adjustArcEnd(d.params.outerCorners.L3, $event, changeOuterTrace.bind(this))"
+                        (ngModelChange)="adjustArcEnd(d.params.outerCorners.L3, $event, changeOuterTrace.bind(this)); onArcFocus(d.params.outerCorners.L3, colors.centerBoutLow)"
                         [style.borderColor]="colors.centerBoutLow"
                         (focus)="onArcFocus(d.params.outerCorners.L3, colors.centerBoutLow)" (blur)="onArcBlur()" />
                     }
