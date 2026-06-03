@@ -136,7 +136,7 @@
             <div class="ui-group">
                 <div class="input-group basic-row field-row" role="group">
                     <label class='field-cell'>
-                        <span class="field-title">U0 - Join Arc Radius <span class="unit-label">mm</span></span>
+                        <span class="field-title">U0 - Join Radius <span class="unit-label">mm</span></span>
                         <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="d.params.bouts.U0.r"
                             (input)="changeMainBouts(); onArcFocus(d.params.bouts.U0, colors.upperBout)" [style.borderColor]="colors.upperBout"
                             (focus)="onArcFocus(d.params.bouts.U0, colors.upperBout)" (blur)="onArcBlur()" />
@@ -187,7 +187,7 @@
             <div class="ui-group">
                 <div class="input-group basic-row field-row" role="group">
                     <label class='field-cell'>
-                        <span class="field-title">L0 - Join Arc Radius <span class="unit-label">mm</span></span>
+                        <span class="field-title">L0 - Join Radius <span class="unit-label">mm</span></span>
                         <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="d.params.bouts.L0.r"
                             (input)="changeMainBouts(); onArcFocus(d.params.bouts.L0, colors.lowerBout)" [style.borderColor]="colors.lowerBout"
                             (focus)="onArcFocus(d.params.bouts.L0, colors.lowerBout)" (blur)="onArcBlur()" />
@@ -291,7 +291,7 @@
                 [style.opacity]="d.params.options.useViolCornerUC ? 0.5 : 1"
                 [style.pointerEvents]="d.params.options.useViolCornerUC ? 'none' : 'auto'">
                 <label class="field-cell">
-                    <span class="field-title">U2 Radius <span class="unit-label">mm</span></span>
+                    <span class="field-title">U2 Join Radius <span class="unit-label">mm</span></span>
                     <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.U2.r"
                         (input)="changeCorners(); onArcFocus(d.params.bouts.U2, colors.upperBout)" [style.borderColor]="colors.upperBout"
                         (focus)="onArcFocus(d.params.bouts.U2, colors.upperBout)" (blur)="onArcBlur()" />
@@ -331,7 +331,7 @@
                     [style.opacity]="d.params.options.useViolCornerUC ? 0.5 : 1"
                     [style.pointerEvents]="d.params.options.useViolCornerUC ? 'none' : 'auto'">
                     <label class="field-cell">
-                        <span class="field-title">U3 Radius <span class="unit-label">mm</span></span>
+                        <span class="field-title">U3 Corner Radius <span class="unit-label">mm</span></span>
                         <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.U3.r"
                             (input)="changeCorners(); onArcFocus(d.params.bouts.U3, colors.centerBoutUp)" [style.borderColor]="colors.centerBoutUp"
                             (focus)="onArcFocus(d.params.bouts.U3, colors.centerBoutUp)" (blur)="onArcBlur()" />
@@ -461,7 +461,7 @@
             @if (!d.params.options.useViolCornerLC) {
             <div class="input-group basic-row field-row" role="group">
                 <label class="field-cell">
-                    <span class="field-title">L2 Radius <span class="unit-label">mm</span></span>
+                    <span class="field-title">L2 Join Radius <span class="unit-label">mm</span></span>
                     <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.L2.r"
                         (input)="changeCorners(); onArcFocus(d.params.bouts.L2, colors.lowerBout)" [style.borderColor]="colors.lowerBout"
                         (focus)="onArcFocus(d.params.bouts.L2, colors.lowerBout)" (blur)="onArcBlur()" />
@@ -592,7 +592,7 @@
             <div class="ui-group">
                 <div class="input-group basic-row field-row" role="group">
                     <label class="field-cell">
-                        <span class="field-title">C2 Radius <span class="unit-label">mm</span></span>
+                        <span class="field-title">C2 Corner Radius <span class="unit-label">mm</span></span>
                         <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.C2.r"
                             (input)="changeCenterBout(); onArcFocus(d.params.bouts.C2, colors.centerBoutUp)" [style.borderColor]="colors.centerBoutUp"
                             (focus)="onArcFocus(d.params.bouts.C2, colors.centerBoutUp)" (blur)="onArcBlur()" />
@@ -706,7 +706,7 @@
             <div class="ui-group">
                 <div class="input-group basic-row field-row" role="group">
                     <label class="field-cell">
-                        <span class="field-title">C1 Radius <span class="unit-label">mm</span></span>
+                        <span class="field-title">C1 Corner Radius <span class="unit-label">mm</span></span>
                         <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="d.params.bouts.C1.r"
                             (input)="changeCenterBout(); onArcFocus(d.params.bouts.C1, colors.centerBoutLow)" [style.borderColor]="colors.centerBoutLow"
                             (focus)="onArcFocus(d.params.bouts.C1, colors.centerBoutLow)" (blur)="onArcBlur()" />
