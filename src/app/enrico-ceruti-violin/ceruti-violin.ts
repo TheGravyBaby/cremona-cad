@@ -8,7 +8,7 @@ import { EnricoCerutiTemplate, EnricoCerutiParams } from './ceruti-types';
 import { CERUTI_TEMPLATES } from './ceruti-templates';
 import { bitDiameterInfo, boutWidthInfo, buttonInfo, centerBoutWidthInfo, channelDepthInfo, compoundArcInfo, cornerCutoffInfo, cornerPositionInfo, dimensionInfo, fitC0Info, insetInfo, referenceInfo, violCornerInfo, violNeckInfo } from './ceruti-helpers';
 import { combinePathStrings, flipAngleAboutYAxis, flipArcAboutY, flipCircleAboutY, flipPointAboutY, flipRectAboutY, interceptCirclesAndPointCompound, offsetArcRadius, pointOnCircle, } from '../helpers/draftMath';
-import { calculateCenterBout, calculateCornerBlocks, calculateCorners, calculateMainBouts, calculateMould, calculateOuterArcs, defineInnerPath, defineOuterPath } from './ceruti-calcs';
+import { calculateCenterBout, calculateCornerBlocks, calculateCorners, calculateMainBouts, calculateMould, calculateOuterArcs, defineInnerPath, defineOffsetArcs, defineOffsetPath } from './ceruti-calcs';
 import { buildMirroredSvg, downloadSvgFile, downloadSvgAsPdf, downloadFullPlanPdf, PdfPage } from '../helpers/svg-export';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
@@ -116,7 +116,7 @@ export class CerutiViolin extends RecipeComponentBase {
     this.loadFile = JSON.parse(JSON.stringify(template));
     sessionStorage.setItem('recipeData', JSON.stringify(this.d));
       if(this.hasOuterTrace()) {
-      const path = combinePathStrings([defineOuterPath(this.d.params), defineInnerPath(this.d.params)]);
+      const path = combinePathStrings([defineOffsetPath(this.d.params), defineInnerPath(this.d.params)]);
       this.draftChange.emit([
         renderPath(path, this.colors.outerTrace),
       ]);
@@ -185,7 +185,7 @@ export class CerutiViolin extends RecipeComponentBase {
       handlers[this.openPanel]?.();
       this.referenceImageChange.emit(this.d.referenceImage ?? null);
       if(this.hasOuterTrace() && this.openPanel == 'base') {
-        const path = combinePathStrings([defineOuterPath(this.d.params), defineInnerPath(this.d.params)]);
+        const path = combinePathStrings([defineOffsetPath(this.d.params), defineInnerPath(this.d.params)]);
         this.draftChange.emit([
           renderPath(path, this.colors.outerTrace),
         ]);
@@ -701,7 +701,7 @@ export class CerutiViolin extends RecipeComponentBase {
   renderOuterTrace = (currentModule: boolean) => (g: any, ui: any): void => {
     let p = this.d.params;
     let offset = p.overhang + p.rib;
-    let outerPath = defineOuterPath(p, offset, true);
+    let outerPath = defineOffsetPath(p, offset, true);
     renderPath(outerPath, this.colors.outerTrace, this.pathStrokeWidth)(g, ui);
 
     if ((currentModule && this.showModuleArcs) || this.showAllArcs) {
@@ -854,14 +854,21 @@ export class CerutiViolin extends RecipeComponentBase {
         break;
       }
       case 'outerTrace': {
-        const path = combinePathStrings([defineOuterPath(p), defineInnerPath(p)]);
+        const path = combinePathStrings([defineOffsetPath(p), defineInnerPath(p)]);
         this.draftChange.emit([
           renderPath(path, this.colors.outerTrace),
         ]);
         break;
       }
+      // case 'outerTrace': {
+      //   let arcs = defineOffsetArcs(p, 40, true);
+      //   let renders = arcs.map((arc: Arc) => renderArcFromArcFancy(arc, "red"));
+      //   this.draftChange.emit(renders);
+
+      //   break;
+      // }
       case 'back': {
-        const path = combinePathStrings([defineOuterPath(p, p.overhang + p.rib, true), defineInnerPath(p)]);
+        const path = combinePathStrings([defineOffsetPath(p, p.overhang + p.rib, true), defineInnerPath(p)]);
         this.draftChange.emit([
           renderPath(path, this.colors.outerTrace),
         ]);
@@ -903,10 +910,10 @@ export class CerutiViolin extends RecipeComponentBase {
         pathD = defineInnerPath(p);
         break;
       case 'outerTrace':
-        pathD = combinePathStrings([defineOuterPath(p), defineInnerPath(p)]);
+        pathD = combinePathStrings([defineOffsetPath(p), defineInnerPath(p)]);
         break;
       case 'back':
-        pathD = combinePathStrings([defineOuterPath(p, offset, true), defineInnerPath(p)]);
+        pathD = combinePathStrings([defineOffsetPath(p, offset, true), defineInnerPath(p)]);
         break;
       case 'mould':
         pathD = calculateMould(p, false, this.exportSimpleClampBox);
@@ -940,10 +947,10 @@ export class CerutiViolin extends RecipeComponentBase {
         pathD = defineInnerPath(p);
         break;
       case 'outerTrace':
-        pathD = combinePathStrings([defineOuterPath(p), defineInnerPath(p)]);
+        pathD = combinePathStrings([defineOffsetPath(p), defineInnerPath(p)]);
         break;
       case 'back':
-        pathD = combinePathStrings([defineOuterPath(p, p.overhang + p.rib, true), defineInnerPath(p)]);
+        pathD = combinePathStrings([defineOffsetPath(p, p.overhang + p.rib, true), defineInnerPath(p)]);
         break;
       case 'mould':
         pathD = calculateMould(p, true, this.exportSimpleClampBox);
@@ -991,7 +998,7 @@ export class CerutiViolin extends RecipeComponentBase {
         description,
         width: p.width,
         height: height,
-        paths: [{ d: defineOuterPath(p), stroke: 'black', fill: 'none' }, { d: defineInnerPath(p), stroke: 'black', fill: 'none' }],
+        paths: [{ d: defineOffsetPath(p), stroke: 'black', fill: 'none' }, { d: defineInnerPath(p), stroke: 'black', fill: 'none' }],
       },
       {
         label: 'Back',
@@ -999,7 +1006,7 @@ export class CerutiViolin extends RecipeComponentBase {
         description,
         width: p.width,
         height: height,
-        paths: [{ d: defineOuterPath(p, p.overhang + p.rib, true), stroke: 'black', fill: 'none' }, { d: defineInnerPath(p), stroke: 'black', fill: 'none' }],
+        paths: [{ d: defineOffsetPath(p, p.overhang + p.rib, true), stroke: 'black', fill: 'none' }, { d: defineInnerPath(p), stroke: 'black', fill: 'none' }],
       },
       {
         label: 'Mould Path',

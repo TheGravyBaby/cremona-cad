@@ -32,7 +32,7 @@ export function insetInfo() {
 export function dimensionInfo() {
     info(
         "The outer dimensions of the finished instrument. For historical instruments, these are usually available online.\n\n" +
-        "The lower bout width is almost always the widest point. Many historical instruments height and width related to one another as simple whole number ratios.",
+        "The lower bout width is always the widest point. Many historical instruments height and width related to one another as simple whole number ratios.",
         "Additional Information", defaultTTL
     )
 }
@@ -40,7 +40,7 @@ export function dimensionInfo() {
 export function boutWidthInfo() {
     info(
         "The 'total width' of the bout should include the rib thickness + overhang. This is the OUTER width.\n\n" +
-        "Remember, we are first forming the inner trace which used for the mould outline. The final dimensions of the instrument will be the sum of the mould outline, the rib thickness and the overhang.\n\n" + 
+        "Remember, we are first forming the inner trace which is used for the mould outline. The final dimensions of the instrument will be the sum of the mould outline, the rib thickness and the overhang.\n\n" + 
         "Note: If the top of your instrument is too high for your reference image, you may need to either rescale the image, or adjust the height in the previous panel.",
         "Additional Information", defaultTTL
     )
@@ -55,7 +55,7 @@ export function violNeckInfo() {
 
 export function violCornerInfo() {
     info(
-        "Also known as a bass corner or gamba corner - this button will draw a single arc from the bout to the corner.\n\n",
+        "Also known as a bass corner or gamba corner - this button will draw a single arc from the bout to the corner.x",
         "Additional Information", defaultTTL
     )
 }
