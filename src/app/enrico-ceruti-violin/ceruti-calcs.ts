@@ -32,6 +32,9 @@ export function calculateMainBouts(p: EnricoCerutiParams): void {
     let LBWI = p.bouts.LBW - 2 * inset;
     let HI = p.height - 2 * inset;
 
+    if ((p.bouts.LBW > p.width && p.bouts.UBW > p.width) || (p.bouts.LBW < p.width && p.bouts.UBW < p.width)) 
+        p.width = Math.max(p.bouts.LBW, p.bouts.UBW) + 2 * inset;
+    
     // recalcuate display ratios
     p.ratios.UBtoLB = p.bouts.UBW / p.bouts.LBW;
     p.ratios.U0toUBW = p.bouts.U0.r / UBWI;
