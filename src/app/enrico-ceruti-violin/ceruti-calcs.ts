@@ -44,19 +44,9 @@ export function calculateMainBouts(p: EnricoCerutiParams): void {
     p.ratios.L0toLBW = p.bouts.L0.r / LBWI;
     p.ratios.L1toLBW = p.bouts.L1.r / LBWI;
 
-    p.bouts.U0.y = p.height - inset - p.bouts.U0.r;
     p.bouts.L0.y = inset + p.bouts.L0.r;
-    p.bouts.U1.x = p.bouts.UBW / 2 - p.bouts.U1.r - inset;
-    p.bouts.U1.y = solveInscribedCircleAlongAxis(p.bouts.U0, p.bouts.U1.r, "x", p.bouts.U1.x, true);
     p.bouts.L1.x = p.bouts.LBW / 2 - p.bouts.L1.r - inset;
     p.bouts.L1.y = solveInscribedCircleAlongAxis(p.bouts.L0, p.bouts.L1.r, "x", p.bouts.L1.x, false);
-
-    let upperIntersect = circleCircleIntersections(p.bouts.U0, p.bouts.U1);
-    let U0Angle = angleFromCenter(p.bouts.U0, upperIntersect[0]);
-    let U1Angle = angleFromCenter(p.bouts.U1, upperIntersect[0]);
-
-    p.bouts.U0 = arcFromCircle(p.bouts.U0, 1 / 2 * Math.PI, U0Angle);
-    p.bouts.U1 = arcFromCircle(p.bouts.U1, U1Angle, 0);
 
     let lowerIntersect = circleCircleIntersections(p.bouts.L0, p.bouts.L1);
     let L0Angle = angleFromCenter(p.bouts.L0, lowerIntersect[0]);
@@ -66,31 +56,48 @@ export function calculateMainBouts(p: EnricoCerutiParams): void {
     p.bouts.L1 = arcFromCircle(p.bouts.L1, L1Angle, 0);
 
     if (p.options.useViolNeck) {
+        p.viol.width = p.viol.width ?? 10
         let Vr = p.viol?.V0?.r ?? p.bouts.UBW / 5
-        let x = p.viol?.width ? p.viol?.width / 2 : p.bouts.UBW / 10
+        let start = p.viol?.V0?.start ?? Math.PI * 1.05
+        let end =  p.viol?.V0?.end ?? 3/2 * Math.PI * .95
+        let neckEnd = new Pt(p.viol.width, p.height - inset)
+        let VyDiff =  Math.sin(start) * Vr
+        let VxDiff = Math.cos(start) * Vr
+        p.viol.V0 = new Arc(neckEnd.x - VxDiff, neckEnd.y - VyDiff, Vr, start, end)
 
-        let Vx = Vr + x
-        let c = Vr + p.bouts.U0.r
-        let Vy = Math.sqrt(c * c - Vx * Vx) - p.bouts.U0.r
-        Vy += (p.bouts.U0.y + p.bouts.U0.r)
+        let V0End = pointOnCircle(p.viol.V0,  p.viol.V0.end)
+        
+        // we know that U0 start is -Pi from V0 end
+        let U0start = p.viol.V0.end - Math.PI
+        let U0YDiff = Math.sin(U0start) * p.bouts.U0.r
+        let U0XDiff = Math.cos(U0start) * p.bouts.U0.r
+        p.bouts.U0.x = V0End.x - U0XDiff
+        p.bouts.U0.y = V0End.y - U0YDiff
+        p.bouts.U0.start = U0start
 
-        if (p.viol && p.viol.width) {
-            p.viol.V0 = new Arc(Vx, Vy, Vr)
-        }
-        else {
-            p.viol = {
-                V0: new Arc(Vx, Vy, Vr),
-                width: 2 * x
-            }
-        }
+        let U1x = p.bouts.UBW / 2 - p.bouts.U1.r - inset;
+        let U1y = solveInscribedCircleAlongAxis(p.bouts.U0, p.bouts.U1.r, "x",  U1x)
 
-        let V0intersect = circleCircleIntersections(p.bouts.U0, p.viol.V0)[0];
-        let V0Angle = angleFromCenter(p.viol.V0, V0intersect);
-        let U0Angle = angleFromCenter(p.bouts.U0, V0intersect);
+        p.bouts.U1 = new Arc(U1x, U1y, p.bouts.U1.r)
+        let U1U0Int = circleCircleIntersections(p.bouts.U1, p.bouts.U0)[0]
+        let U1start = angleFromCenter(p.bouts.U1, U1U0Int)
+        let U0End = angleFromCenter(p.bouts.U0, U1U0Int)
+        p.bouts.U0.end = U0End
+        p.bouts.U1.start = U1start
+        p.bouts.U1.end = 0
+    }
+    else {
+        p.bouts.U0.y = p.height - inset - p.bouts.U0.r;
+        p.bouts.U0.x = 0;
+        p.bouts.U1.x = p.bouts.UBW / 2 - p.bouts.U1.r - inset;
+        p.bouts.U1.y = solveInscribedCircleAlongAxis(p.bouts.U0, p.bouts.U1.r, "x", p.bouts.U1.x, true);
 
-        p.bouts.U0.start = U0Angle;
-        p.viol.V0.start = V0Angle
-        p.viol.V0.end = Math.PI
+        let upperIntersect = circleCircleIntersections(p.bouts.U0, p.bouts.U1);
+        let U0Angle = angleFromCenter(p.bouts.U0, upperIntersect[0]);
+        let U1Angle = angleFromCenter(p.bouts.U1, upperIntersect[0]);
+
+        p.bouts.U0 = arcFromCircle(p.bouts.U0, 1 / 2 * Math.PI, U0Angle);
+        p.bouts.U1 = arcFromCircle(p.bouts.U1, U1Angle, 0);
     }
 
 }
