@@ -128,45 +128,44 @@ function drawDraftingFrame(
     doc.setLineWidth(0.3);
     doc.rect(cbLeft, cbTop, cbW, cbH);
 
-    // ── tick-mark rulers (at path edges, pointing outward into open space) ──
+    // ── tick-mark rulers (on content border edges, pointing outward into margin) ──
     doc.setFontSize(6.5);
     doc.setTextColor(80);
     doc.setFont('helvetica', 'normal');
 
+    // Horizontal ticks — px tracks path coordinate space; ticks live on the top/bottom border line
     const halfW = pathWidth / 2;
     const startCoordX = Math.ceil(-halfW / 10) * 10;
     for (let coord = startCoordX; coord <= halfW; coord += 10) {
       const px = offsetX + coord + halfW;
       const len = coord % 50 === 0 ? MAJOR : MINOR;
       doc.setLineWidth(0.1);
-      doc.line(px, offsetY, px, offsetY - len);                                     // top: upward
-      doc.line(px, offsetY + pathHeight, px, offsetY + pathHeight + len);           // bottom: downward
+      doc.line(px, cbTop, px, cbTop - len);                       // top border: tick upward into margin
+      doc.line(px, cbTop + cbH, px, cbTop + cbH + len);           // bottom border: tick downward into margin
       if (coord % 50 === 0) {
-        doc.text(String(coord), px, offsetY + pathHeight + len + 2.5, { align: 'center' });
+        // label just inside the bottom border
+        doc.text(String(coord), px, cbTop + cbH - 2, { align: 'center' });
       }
     }
 
+    // Vertical ticks — py tracks path coordinate space; ticks live on the left/right border line
     for (let mm = 0; mm <= pathHeight; mm += 10) {
       const py = offsetY + pathHeight - mm;
       const len = mm % 50 === 0 ? MAJOR : MINOR;
       doc.setLineWidth(0.1);
-      doc.line(offsetX, py, offsetX - len, py);                                     // left: leftward
-      doc.line(offsetX + pathWidth, py, offsetX + pathWidth + len, py);             // right: rightward
+      doc.line(cbLeft, py, cbLeft - len, py);                     // left border: tick leftward into margin
+      doc.line(cbLeft + cbW, py, cbLeft + cbW + len, py);         // right border: tick rightward into margin
       if (mm % 50 === 0) {
-        doc.text(String(mm), offsetX - len - 1.2, py + 1, { align: 'right' });
+        // label just inside the left border
+        doc.text(String(mm), cbLeft + 2, py + 1, { align: 'left' });
       }
     }
 
-    // ── centre-line markers (spanning open space between content border and path) ──
+    // ── centre-line marker (vertical axis only — violin is left/right symmetric) ──
     doc.setLineWidth(0.12);
     doc.setDrawColor(150);
     const midX = offsetX + pathWidth / 2;
-    const midY = offsetY + pathHeight / 2;
     const CLgap = 2; // small visual gap between marker and path edge
-    // horizontal: left content border → left path edge, right path edge → right content border
-    doc.line(cbLeft, midY, offsetX - CLgap, midY);
-    doc.line(offsetX + pathWidth + CLgap, midY, cbLeft + cbW, midY);
-    // vertical: top content border → top path edge, bottom path edge → bottom content border
     doc.line(midX, cbTop, midX, offsetY - CLgap);
     doc.line(midX, offsetY + pathHeight + CLgap, midX, cbTop + cbH);
     doc.setDrawColor(0);
