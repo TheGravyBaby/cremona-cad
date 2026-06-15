@@ -296,6 +296,26 @@ export class CerutiViolin extends RecipeComponentBase {
     changeFn();
   }
 
+  getArcStartDeg(arc: Arc): number {
+    return Math.round(arc.start * (180 / Math.PI));
+  }
+
+  setArcStartDeg(arc: Arc, degrees: number, changeFn: () => void): void {
+    if (typeof degrees !== 'number') return;
+    arc.start = degrees * (Math.PI / 180);
+    changeFn();
+  }
+
+  getArcEndDeg(arc: Arc): number {
+    return Math.round(arc.end * (180 / Math.PI));
+  }
+
+  setArcEndDeg(arc: Arc, degrees: number, changeFn: () => void): void {
+    if (typeof degrees !== 'number') return;
+    arc.end = degrees * (Math.PI / 180);
+    changeFn();
+  }
+
   // ===== Basic UI funcs =====
 
   onInfoClick(name: string): void {
@@ -425,7 +445,7 @@ export class CerutiViolin extends RecipeComponentBase {
         renderArcFromArc(p.bouts.U0, this.colors.innerTrace, this.pathStrokeWidth)(g, ui);
         renderArcFromArc(mirrorU0, this.colors.innerTrace, this.pathStrokeWidth)(g, ui);
 
-        let EndPt = pointOnCircle(p.viol?.V0!, p.viol?.V0.end ?? 0);
+        let EndPt = pointOnCircle(p.viol?.V0!, p.viol?.V0.start ?? 0);
         renderLine(EndPt, flipPointAboutY(EndPt), this.colors.innerTrace, this.pathStrokeWidth)(g, ui);
       }
       else
@@ -453,7 +473,7 @@ export class CerutiViolin extends RecipeComponentBase {
         renderArcFromArc(offsetArcRadius(p.bouts.U0, inset), outerTopColor, this.pathStrokeWidth)(g, ui);
         renderArcFromArc(offsetArcRadius(mirrorU0, inset), outerTopColor, this.pathStrokeWidth)(g, ui);
 
-        let EndPt = pointOnCircle(p.viol?.V0!, p.viol?.V0.end ?? 0);
+        let EndPt = pointOnCircle(p.viol?.V0!, p.viol?.V0.start ?? 0);
         renderLine(EndPt, flipPointAboutY(EndPt), this.colors.innerTrace, this.pathStrokeWidth)(g, ui);
       }
       else

@@ -237,6 +237,20 @@
                             (focus)="onArcFocus(d.params.viol.V0, colors.violNeck)" (blur)="onArcBlur()" />
                     </label>
                     <label class="field-cell">
+                        <span class="field-title">V0 Start <span class="unit-label">°</span></span>
+                        <input type="number" class="basic-input" step="1" min="0" [ngModel]="getArcStartDeg(d.params.viol.V0)" [style.borderColor]="colors.violNeck"
+                            (ngModelChange)="setArcStartDeg(d.params.viol.V0, $event, changeMainBouts.bind(this)); onArcFocus(d.params.viol.V0, colors.violNeck)"
+                            (focus)="onArcFocus(d.params.viol.V0, colors.violNeck)" (blur)="onArcBlur()" />
+                    </label>
+                    <label class="field-cell">
+                        <span class="field-title">V0 End <span class="unit-label">°</span></span>
+                        <input type="number" class="basic-input" step="1" min="0" [ngModel]="getArcEndDeg(d.params.viol.V0)" [style.borderColor]="colors.violNeck"
+                            (ngModelChange)="setArcEndDeg(d.params.viol.V0, $event, changeMainBouts.bind(this)); onArcFocus(d.params.viol.V0, colors.violNeck)"
+                            (focus)="onArcFocus(d.params.viol.V0, colors.violNeck)" (blur)="onArcBlur()" />
+                    </label>
+                </div>
+                <div class="input-group basic-row field-row" role="group">
+                    <label class="field-cell">
                         <span class="field-title">Width <span class="unit-label">mm</span></span>
                         <input type="number" class="basic-input" step="1" [(ngModel)]="d.params.viol.width"
                             (input)="changeMainBouts()" />
