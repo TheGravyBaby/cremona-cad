@@ -512,7 +512,7 @@ export function calculateMould(p: EnricoCerutiParams, useHighAccuracy = false, s
         }
 
         if (p.options.useViolNeck) {
-            let endPt = pointOnCircle(p.viol!.V0, p.viol!.V0.end);
+            let endPt = pointOnCircle(p.viol!.V0, p.viol!.V0.start);
             p.blocks.U = new Rectangle(new Pt(endPt.x+2, endPt.y), new Pt(-endPt.x - 2, endPt.y - p.blocks.U.height));
         }
     }
@@ -524,7 +524,7 @@ export function calculateMould(p: EnricoCerutiParams, useHighAccuracy = false, s
 
 
         if (p.options.useViolNeck) {
-            let endPt = pointOnCircle(p.viol!.V0, p.viol!.V0.end);
+            let endPt = pointOnCircle(p.viol!.V0, p.viol!.V0.start);
             p.blocks.U = new Rectangle(new Pt(endPt.x+2, endPt.y), new Pt(-endPt.x - 2, endPt.y - p.blocks.U.height));
         }
     }
@@ -612,7 +612,7 @@ export function calculateMould(p: EnricoCerutiParams, useHighAccuracy = false, s
         let V0End;
         if (p.options.useViolNeck) {
             V0 = offsetArcRadius(p.viol.V0, clampOffset)
-            V0End = pointOnCircle(V0, V0.end);
+            V0End = pointOnCircle(V0, V0.start);
         }
 
         let C0Clamp = offsetArcRadius(p.bouts.C0, clampOffset)
@@ -941,7 +941,7 @@ export function defineInnerPath(p: EnricoCerutiParams): string {
     let paths: string[] = arcs.map(arc => pathFromArc(arc));
 
     if (p.options.useViolNeck) {
-        let EndPt = pointOnCircle(p.viol?.V0!, p.viol?.V0.end ?? 0);
+        let EndPt = pointOnCircle(p.viol?.V0!, p.viol?.V0.start ?? 0);
         paths.push(pathFromLine(EndPt, flipPointAboutY(EndPt)))
     }
 
@@ -1041,7 +1041,7 @@ export function defineOffsetPath(p: EnricoCerutiParams, offset?: number, button 
      if (p.options.useViolNeck) {
         if (button) {
             let offsetV0 = offsetArcRadius(p.viol?.V0!, - offset);
-            let EndPt = pointOnCircle(offsetV0, offsetV0.end ?? 0);
+            let EndPt = pointOnCircle(offsetV0, offsetV0.start ?? 0);
             let EndPtOffset = {...EndPt, y: EndPt.y + offset} // we need to offset the end point so that the line doesn't intersect with the arc, but rather is tangent to it, which is more manufacturable
             paths.push(pathFromLine(EndPt, EndPtOffset))
             paths.push(pathFromLine(flipPointAboutY(EndPtOffset), flipPointAboutY(EndPt)))
@@ -1060,7 +1060,7 @@ export function defineOffsetPath(p: EnricoCerutiParams, offset?: number, button 
         }
         else {
             let offsetV0 = offsetArcRadius(p.viol?.V0!, - offset);
-            let EndPt = pointOnCircle(offsetV0, offsetV0.end ?? 0);
+            let EndPt = pointOnCircle(offsetV0, offsetV0.start ?? 0);
             let EndPtOffset = {...EndPt, y: EndPt.y + offset} // we need to offset the end point so that the line doesn't intersect with the arc, but rather is tangent to it, which is more manufacturable
             // we need to make small risers for the offset
             paths.push(pathFromLine(EndPt, EndPtOffset))
