@@ -434,7 +434,7 @@ export function unifyTwoConnectedPaths(path1: string, path2: string): string {
   const arcRe = new RegExp(`^A\\s+${num}\\s+${num}\\s+${num}\\s+([01])\\s+([01])\\s+${num}\\s+${num}\\s*$`);
   const lineRe = new RegExp(`^L\\s+${num}\\s+${num}\\s*$`);
 
-  const almostEqual = (a: number, b: number, eps: number = 1e-4) => Math.abs(a - b) <= eps;
+  const almostEqual = (a: number, b: number, eps: number = 1e-3) => Math.abs(a - b) <= eps;
   const samePoint = (a: Pt, b: Pt) => almostEqual(a.x, b.x) && almostEqual(a.y, b.y);
 
   const parsePath = (path: string) => {
@@ -558,8 +558,47 @@ export function unifyTwoConnectedPaths(path1: string, path2: string): string {
 export function unifyConnectedSvgPaths(paths: string[]): string {
   if (paths.length === 0) return '';
 
-  let unified = paths[0].trim();
-  let remaining = paths.slice(1);
+  // Bridge-priority sort ─────────────────────────────────────────────────────
+  // A "bridge" segment connects two junction points: nodes where more than two
+  // segments meet (endpoint frequency > 2).  If the greedy loop picks any other
+  // segment as its seed first, it eventually buries those junction points as
+  // interior nodes of the growing chain, leaving the bridge stranded with no
+  // free end to attach to.
+  //
+  // Fix: rank every segment by (freq(start) + freq(end)) and seed the chain
+  // with the highest-ranking segment.  The bridge rises naturally to the top
+  // because its endpoints each appear in 3+ segments while regular chain arcs
+  // have endpoints that appear exactly twice.
+  const bridgeEps = 1e-3;
+  const quantize   = (v: number) => Math.round(v / bridgeEps) * bridgeEps;
+  const ptKey      = (pt: { x: number; y: number }) => `${quantize(pt.x)},${quantize(pt.y)}`;
+  const getEndpoints = (path: string) => {
+    const props = new svgPathProperties(path.trim());
+    const len   = props.getTotalLength();
+    return { start: props.getPointAtLength(0), end: props.getPointAtLength(len) };
+  };
+
+  const trimmed   = paths.map(p => p.trim());
+  const endpoints = trimmed.map(getEndpoints);
+
+  const freq = new Map<string, number>();
+  for (const ep of endpoints) {
+    freq.set(ptKey(ep.start), (freq.get(ptKey(ep.start)) ?? 0) + 1);
+    freq.set(ptKey(ep.end),   (freq.get(ptKey(ep.end))   ?? 0) + 1);
+  }
+
+  const sortedPaths = trimmed
+    .map((p, i) => ({
+      p,
+      score: (freq.get(ptKey(endpoints[i].start)) ?? 0)
+           + (freq.get(ptKey(endpoints[i].end))   ?? 0),
+    }))
+    .sort((a, b) => b.score - a.score)   // highest combined frequency first
+    .map(x => x.p);
+  // ──────────────────────────────────────────────────────────────────────────
+
+  let unified   = sortedPaths[0];
+  let remaining = sortedPaths.slice(1);
 
   while (remaining.length > 0) {
     let stitched = false;
@@ -601,6 +640,10 @@ export function unifyConnectedSvgPaths(paths: string[]): string {
         const endPt = props.getPointAtLength(totalLength);
         console.log(`  Path ${index}: start (${startPt.x}, ${startPt.y}), end (${endPt.x}, ${endPt.y})`);
       });
+      console.log({
+        unified,
+        remaining,
+      }); 
 
       let remainingPathsDeepCopy = [...remaining];
       remaining = [];

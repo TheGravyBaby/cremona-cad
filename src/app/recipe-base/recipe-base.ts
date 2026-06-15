@@ -1,7 +1,7 @@
 import { AfterViewInit, Component, HostListener, output } from '@angular/core';
 import { Output, EventEmitter, Input } from "@angular/core";
 import { Pt, RecipeInterface, ReferenceImage } from '../models/types';
-import { PanelFlow, PanelDefinition } from '../helpers/panel-flow';
+import { PanelFlow, PanelDefinition } from '../helpers/panelFlow';
 import { DebounceController } from '../helpers/debounce-controller';
 
 export interface NamedConstant {

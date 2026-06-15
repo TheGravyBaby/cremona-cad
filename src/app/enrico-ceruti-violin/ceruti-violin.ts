@@ -9,7 +9,7 @@ import { CERUTI_TEMPLATES } from './ceruti-templates';
 import { bitDiameterInfo, boutWidthInfo, buttonInfo, centerBoutWidthInfo, channelDepthInfo, compoundArcInfo, cornerCutoffInfo, cornerPositionInfo, dimensionInfo, fitC0Info, insetInfo, referenceInfo, violCornerInfo, violNeckInfo } from './ceruti-helpers';
 import { combinePathStrings, flipAngleAboutYAxis, flipArcAboutY, flipCircleAboutY, flipPointAboutY, flipRectAboutY, interceptCirclesAndPointCompound, offsetArcRadius, pointOnCircle, } from '../helpers/draftMath';
 import { calculateCenterBout, calculateCornerBlocks, calculateCorners, calculateMainBouts, calculateMould, calculateOuterArcs, defineInnerPath, defineOffsetArcs, defineOffsetPath } from './ceruti-calcs';
-import { buildMirroredSvg, downloadSvgFile, downloadSvgAsPdf, downloadFullPlanPdf, PdfPage } from '../helpers/svg-export';
+import { buildMirroredSvg, downloadSvgFile, downloadSvgAsPdf, downloadFullPlanPdf, PdfPage } from '../helpers/fileExporter';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
 @Component({
@@ -364,22 +364,10 @@ export class CerutiViolin extends RecipeComponentBase {
     }));
   }
 
-  oldViolNeckValue = this.d.params.options.useViolNeck;
   changeMainBouts(): void {
     this.debounce(() => safeRun(() => {
       let p = this.d.params
-      let inset = p.overhang + p.rib;
       calculateMainBouts(p);
-
-      if (p.options.useViolNeck && p.options.useViolNeck !== this.oldViolNeckValue) {
-        let height = pointOnCircle(p.viol.V0, 0).y + inset;
-        this.setBounds.emit({
-          pt1: { x: -p.width / 2, y: 0 },
-          pt2: { x: p.width / 2, y: height },
-        });
-        this.oldViolNeckValue = true;
-      }
-      this.oldViolNeckValue = p.options.useViolNeck;
 
       this.panelFlow?.refreshEnabledPanels();
       this.draftChange.emit([
@@ -920,9 +908,6 @@ export class CerutiViolin extends RecipeComponentBase {
     };
 
     let height = p.height + 2 * p.button.height + p.button.width / 2;
-    let inset = p.overhang + p.rib;
-    if (p.options.useViolNeck)
-      height = pointOnCircle(p.viol.V0, 0).y + 2 * p.button.height + p.button.width / 2 + inset;
 
     let pathD: string;
     switch (type) {
@@ -957,9 +942,6 @@ export class CerutiViolin extends RecipeComponentBase {
     };
 
     let height = p.height + 2 * p.button.height + p.button.width / 2;
-    let inset = p.overhang + p.rib;
-    if (p.options.useViolNeck)
-      height = pointOnCircle(p.viol.V0, 0).y + 2 * p.button.height + p.button.width / 2 + inset;
 
     let pathD: string;
     switch (type) {
