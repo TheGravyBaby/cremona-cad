@@ -13,11 +13,12 @@
  *  4. Using `setBounds` to tell the camera where to zoom on first render.
  */
 
-import { Component, Input } from '@angular/core';
+import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { Pt } from '../models/types';
 import { renderCircle } from '../helpers/renderFuncs';
+import { RecipeToolbarComponent } from '../recipe-toolbar/recipe-toolbar';
 
 // ─── Params type ────────────────────────────────────────────────────────────
 // Keep all recipe-specific values here so they survive save/load automatically.
@@ -34,20 +35,16 @@ const DEFAULTS: HelloParams = {
 @Component({
   selector: 'app-hello-recipe',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, RecipeToolbarComponent],
   templateUrl: './hello-recipe.html',
   styleUrls: ['../sidebar.css', './hello-recipe.css'],
 })
 export class HelloRecipe extends RecipeComponentBase {
 
   // ─── New-file reset ────────────────────────────────────────────────────
-  // The parent app emits a monotonically-increasing tick when the user clicks
-  // "New". Reset all params back to defaults when that happens.
-  private _lastNewFileTick = 0;
-
-  @Input() set newFile(v: number) {
-    if (v <= 0 || v === this._lastNewFileTick) return;
-    this._lastNewFileTick = v;
+  // Called when the user clicks "New" in the sidebar toolbar. Resets all
+  // params back to defaults.
+  onNewClick(): void {
     this.d.params = { ...DEFAULTS };
     sessionStorage.removeItem('recipeData');
     this.render();

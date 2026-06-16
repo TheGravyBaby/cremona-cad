@@ -19,24 +19,6 @@
       <option value="hello-recipe" [selected]="selectedRecipe === 'hello-recipe'">Hello Recipe</option>
     </select>
 
-    @if (templateOptions.length > 0) {
-    <div class="select-wrap">
-      <select class="select" [ngModel]="activeTemplateKey" (ngModelChange)="onTemplateSelect($event)"
-        aria-label="Load template">
-        <option value="">— Select a Template —</option>
-        @for (t of templateOptions; track t.key) {
-        <option [value]="t.key">{{ t.label }}</option>
-        }
-      </select>
-      <span class="select-caret" aria-hidden="true">&#x25BE;</span>
-    </div>
-    }
-
-    <button class="btn icon-btn" title="New" aria-label="New" (click)="onNewClick()"><img src="new.png" /></button>
-    <button class="btn icon-btn" title="Download" aria-label="Save" (click)="onSaveClick()"><img src="download.png"/></button>
-    <button class="btn icon-btn" title="Upload" aria-label="Load" (click)="triggerFilePick()"><img src="upload.png" /></button>
-    <input #fileInput class="file" type="file" accept=".json,application/json" (change)="onFilePicked($event)" />
-
     <button class="btn about-btn" (click)="openAbout()" aria-label="About Cremona CAD">?</button>
   </div>
 

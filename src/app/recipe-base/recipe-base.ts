@@ -23,27 +23,17 @@ export abstract class RecipeComponentBase implements AfterViewInit {
 
   @Input() cameraBounds: { pt1: Pt, pt2: Pt } | null = null;
 
-  @Input() set loadFile(file: RecipeInterface | undefined) {
-    if (file) {
-      this.d = file;
-      this.draftChange.emit([this.firstRender]);
-    }
+  loadFile(file: RecipeInterface): void {
+    this.d = file;
+    this.draftChange.emit([this.firstRender]);
   }
+
   @Input() set referenceImageParams(img: ReferenceImage | null | undefined) {
     this.d.params = this.d.params || {};
     if (img) this.d.referenceImage = img;
     else delete this.d.referenceImage;
   }
 
-  private _saveTick = 0;
-
-  @Input() set saveTick(v: number) {
-    if (v && v !== this._saveTick) {
-      this._saveTick = v;
-      this.saveToDisk();
-    }
-  }
-  
   d: RecipeInterface = {
     recipeName: "",
     fileName: "tst",
@@ -242,7 +232,7 @@ export abstract class RecipeComponentBase implements AfterViewInit {
   firstRender(canvas: any, ui: any) {
   }
 
-  private saveToDisk() {
+  saveToDisk() {
     const safeName = (this.d.fileName?.trim() || 'untitled') + (this.d.fileName?.endsWith('.json') ? '' : '.json');
     const limitedJson = {
       ...this.d,

@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, EventEmitter, HostListener, Input, OnInit, Output } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, Input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { Arc } from '../models/types';
@@ -22,14 +22,15 @@ import { CenterBoutPanel } from './panels/center-bout-panel/center-bout-panel';
 import { OuterTracePanel } from './panels/outer-trace-panel/outer-trace-panel';
 import { MouldPanel } from './panels/mould-panel/mould-panel';
 import { ExportPanel } from './panels/export-panel/export-panel';
+import { RecipeToolbarComponent } from '../recipe-toolbar/recipe-toolbar';
 
 @Component({
   selector: 'app-ceruti-violin',
-  imports: [FormsModule, BasePanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterTracePanel, MouldPanel, ExportPanel],
+  imports: [FormsModule, BasePanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterTracePanel, MouldPanel, ExportPanel, RecipeToolbarComponent],
   templateUrl: './ceruti-violin.html',
   styleUrls: ['../sidebar.css', './ceruti-violin.css'],
 })
-export class CerutiViolin extends RecipeComponentBase implements OnInit {
+export class CerutiViolin extends RecipeComponentBase {
 
   // ===== Static config =====
 
@@ -107,8 +108,6 @@ export class CerutiViolin extends RecipeComponentBase implements OnInit {
   // ===== Component state =====
 
   readonly templates: EnricoCerutiTemplate[] = CERUTI_TEMPLATES;
-  @Output() templateListChange = new EventEmitter<Array<{ key: string; label: string }>>();
-  @Output() activeTemplateKeyChange = new EventEmitter<string>();
   override openPanel = 'base';
   override d: EnricoCerutiTemplate = {
     ...CERUTI_TEMPLATES[1],
@@ -124,9 +123,7 @@ export class CerutiViolin extends RecipeComponentBase implements OnInit {
     return this.highlightedArc ? { arc: this.highlightedArc, color: this.highlightedArcColor } : null;
   }
 
-  private lastNewFileTick = 0;
   private _firstRenderInitDone = false;
-  private _lastTemplateTick = 0;
   private _lastLoadedParamsSnapshot = '';
 
   private isStateDirty(): boolean {
@@ -134,8 +131,8 @@ export class CerutiViolin extends RecipeComponentBase implements OnInit {
     return JSON.stringify(this.d.params) !== this._lastLoadedParamsSnapshot;
   }
 
-  override ngOnInit(): void {
-    this.templateListChange.emit(this.templates.map(t => ({ key: t.key, label: t.label })));
+  get templateOptions(): Array<{ key: string; label: string }> {
+    return this.templates.map(t => ({ key: t.key, label: t.label }));
   }
 
   get selectedTemplateKey(): string {
@@ -156,14 +153,10 @@ export class CerutiViolin extends RecipeComponentBase implements OnInit {
 
     if (this.isStateDirty()) {
       const confirmed = confirm('Load template? Any unsaved changes will be lost.');
-      if (!confirmed) {
-        // Revert the dropdown to whatever key currently reflects the state ('' if custom)
-        this.activeTemplateKeyChange.emit(this.selectedTemplateKey);
-        return;
-      }
+      if (!confirmed) return;
     }
 
-    this.loadFile = JSON.parse(JSON.stringify(template));
+    this.loadFile(JSON.parse(JSON.stringify(template)));
     this._lastLoadedParamsSnapshot = JSON.stringify(this.d.params);
     sessionStorage.setItem('recipeData', JSON.stringify(this.d));
     if (this.hasOuterTrace()) {
@@ -174,22 +167,11 @@ export class CerutiViolin extends RecipeComponentBase implements OnInit {
         pt2: { x: this.d.params.width / 2, y: this.d.params.height },
       });
     this.referenceImageChange.emit(this.d.referenceImage ?? null);
-    this.activeTemplateKeyChange.emit(key);
   }
 
-  // ===== Inputs & lifecycle =====
+  // ===== Lifecycle =====
 
-  @Input() set templateLoadRequest(req: { key: string; tick: number } | undefined) {
-    if (!req?.key || req.tick === this._lastTemplateTick) return;
-    this._lastTemplateTick = req.tick;
-    this.loadTemplate(req.key);
-    this.openPanel = 'base';
-  }
-
-  @Input() set newFile(v: number) {
-    if (v <= 0 || v === this.lastNewFileTick) return;
-    this.lastNewFileTick = v;
-
+  onNewClick(): void {
     this.d = JSON.parse(JSON.stringify(CERUTI_TEMPLATES[0])) as EnricoCerutiTemplate;
     this._firstRenderInitDone = false;
     this._lastLoadedParamsSnapshot = JSON.stringify(this.d.params);
@@ -205,7 +187,6 @@ export class CerutiViolin extends RecipeComponentBase implements OnInit {
       pt2: { x: this.d.params.width / 2, y: this.d.params.height },
     });
     this.referenceImageChange.emit(this.d.referenceImage ?? null);
-    this.activeTemplateKeyChange.emit(CERUTI_TEMPLATES[0].key);
     this.draftChange.emit([this.firstRender]);
   }
 
@@ -241,7 +222,6 @@ export class CerutiViolin extends RecipeComponentBase implements OnInit {
       handlers[this.openPanel]?.();
       this.referenceImageChange.emit(this.d.referenceImage ?? null);
       this._lastLoadedParamsSnapshot = JSON.stringify(this.d.params);
-      this.activeTemplateKeyChange.emit(this.selectedTemplateKey);
       if(this.hasOuterTrace() && this.openPanel == 'base') {
         this.draftChange.emit(this.renderOuterSilhouette());
       }

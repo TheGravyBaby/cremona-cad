@@ -1,0 +1,24 @@
+<div class="toolbar">
+   @if (templateOptions.length > 0) {
+  <div class="panel-select-wrap toolbar-template">
+    <select class="panel-select" [ngModel]="activeTemplateKey" (ngModelChange)="onTemplateSelect($event)"
+      aria-label="Load template">
+      <option value="">— Select a Template —</option>
+      @for (t of templateOptions; track t.key) {
+      <option [value]="t.key">{{ t.label }}</option>
+      }
+    </select>
+    <span class="panel-select-caret" aria-hidden="true">&#x25BE;</span>
+  </div>
+  }
+  <button type="button" class="toolbar-btn" title="New" aria-label="New" (click)="onNewClick()">
+    <img src="new.png" alt="" />
+  </button>
+  <button type="button" class="toolbar-btn" title="Save" aria-label="Save" (click)="onSaveClick()">
+    <img src="download.png" alt="" />
+  </button>
+  <button type="button" class="toolbar-btn" title="Load" aria-label="Load" (click)="triggerFilePick()">
+    <img src="upload.png" alt="" />
+  </button>
+  <input #fileInput class="toolbar-file-input" type="file" accept=".json,application/json" (change)="onFilePicked($event)" />
+</div>
