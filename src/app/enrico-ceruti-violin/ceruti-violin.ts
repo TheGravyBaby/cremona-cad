@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, HostListener, Input } from '@angular/core';
+import { ChangeDetectorRef, Component, Input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { Arc } from '../models/types';
@@ -113,7 +113,7 @@ export class CerutiViolin extends RecipeComponentBase {
     ...CERUTI_TEMPLATES[1],
   };
 
-  /** Ephemeral view toggles shared by the panel components and threaded into the render functions below. */
+  // Ephemeral view toggles shared by the panel components and threaded into the render functions below. 
   viewFlags: CerutiViewFlags = { ...DEFAULT_CERUTI_VIEW_FLAGS };
 
   highlightedArc: Arc | null = null;
@@ -167,6 +167,7 @@ export class CerutiViolin extends RecipeComponentBase {
         pt2: { x: this.d.params.width / 2, y: this.d.params.height },
       });
     this.referenceImageChange.emit(this.d.referenceImage ?? null);
+    this.openPanel = 'base';
   }
 
   // ===== Lifecycle =====
@@ -232,18 +233,6 @@ export class CerutiViolin extends RecipeComponentBase {
 
   override ngOnDestroy(): void {
     super.ngOnDestroy();
-  }
-
-  // ===== UI event handlers =====
-
-  @HostListener('keydown', ['$event'])
-  onHostKeyDown(e: KeyboardEvent) {
-    this.debounceController?.markImmediateFromKey(e);
-  }
-
-  @HostListener('mousedown', ['$event'])
-  onHostMouseDown(e: MouseEvent) {
-    this.debounceController?.markImmediateFromMouse(e);
   }
 
   // ===== Panel system =====

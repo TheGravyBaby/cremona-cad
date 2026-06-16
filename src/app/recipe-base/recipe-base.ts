@@ -61,6 +61,16 @@ export abstract class RecipeComponentBase implements AfterViewInit {
     this.debounceController = new DebounceController(callback);
   }
 
+  @HostListener('keydown', ['$event'])
+  onHostKeyDown(e: KeyboardEvent) {
+    this.debounceController?.markImmediateFromKey(e);
+  }
+
+  @HostListener('mousedown', ['$event'])
+  onHostMouseDown(e: MouseEvent) {
+    this.debounceController?.markImmediateFromMouse(e);
+  }
+
   protected debounce(fn: () => void, delay = 1800): void {
     this.debounceController?.run(() => {
       this.pushHistory();
