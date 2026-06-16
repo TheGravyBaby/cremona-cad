@@ -13,6 +13,14 @@
 
 <div class="sidebar-inner">
 
+  <!-- ── Recipe toolbar (New / Save / Load) ───────────────────────────── -->
+  <app-recipe-toolbar
+    [recipeName]="d.recipeName"
+    (newFile)="onNewClick()"
+    (saveFile)="saveToDisk()"
+    (loadFile)="loadFile($event)">
+  </app-recipe-toolbar>
+
   <!-- ── Panel navigation strip ─────────────────────────────────────── -->
   <nav class="panel-nav">
     <button

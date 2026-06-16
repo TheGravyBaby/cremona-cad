@@ -1,13 +1,31 @@
 .app {
+  --sidebar-width: 360px;
+
   height: 100vh;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr var(--sidebar-width);
+  grid-template-rows: auto 1fr;
   overflow: hidden;
   background: var(--ui-bg-app);
 }
 
+.top {
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
+}
+
+.top-spacer {
+  grid-column: 2;
+  grid-row: 1;
+  background: var(--ui-bg-sidebar);
+  border-left: 1px solid var(--ui-border-soft);
+  border-bottom: 1px solid var(--ui-topbar-border);
+}
+
 .main {
-  flex: 1 1 auto;
+  grid-column: 1 / 3;
+  grid-row: 2;
   display: flex;
   min-height: 0;
   /* allows children to scroll properly */
@@ -22,7 +40,7 @@
 }
 
 .sidebar {
-  flex: 0 0 360px;
+  flex: 0 0 var(--sidebar-width);
   border-left: 1px solid var(--ui-border-soft);
   background: var(--ui-bg-sidebar);
 }

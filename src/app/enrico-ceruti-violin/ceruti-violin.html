@@ -1,5 +1,14 @@
 <div class="panel">
     <div class="panel-nav-wrap">
+        <app-recipe-toolbar
+            [recipeName]="d.recipeName"
+            [templateOptions]="templateOptions"
+            [activeTemplateKey]="selectedTemplateKey"
+            (newFile)="onNewClick()"
+            (saveFile)="saveToDisk()"
+            (loadFile)="loadFile($event)"
+            (templateSelect)="loadTemplate($event)">
+        </app-recipe-toolbar>
         <section class="panel-nav" aria-label="Sidebar section navigation">
             <label class="ui-group-title">Select Recipe Step</label>
             <div class="panel-nav-controls">

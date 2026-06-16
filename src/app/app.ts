@@ -4,8 +4,7 @@ import { setGlobalEmitter } from './shared/message-emitter';
 import { MessageService } from './shared/message.service';
 import { TopBarComponent } from './top-bar/top-bar';
 import { DraftCanvasComponent } from './draft-canvas/draft-canvas';
-import { FormsModule } from '@angular/forms';
-import { RecipeInterface, ReferenceImage } from './models/types';
+import { ReferenceImage } from './models/types';
 import { Pt } from './models/types';
 import { CerutiViolin } from './enrico-ceruti-violin/ceruti-violin';
 import { HelloRecipe } from './hello-recipe/hello-recipe';
@@ -14,24 +13,19 @@ import { MessageCenterComponent } from './shared/message-center.component';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [TopBarComponent, DraftCanvasComponent, FormsModule, CerutiViolin, HelloRecipe, MessageCenterComponent],
+  imports: [TopBarComponent, DraftCanvasComponent, CerutiViolin, HelloRecipe, MessageCenterComponent],
   template: `
     <div class="app">
      <app-top-bar class="top"
       [selectedRecipe]="selectedRecipe"
       [nightMode]="nightMode"
-      [templateOptions]="topBarTemplateOptions"
-      [syncedTemplateKey]="topBarActiveTemplateKey"
       (recipeChange)="selectRecipe($event)"
-      (nightModeChange)="onNightModeChange($event)"
-      (loadFile)="loadFile($event)"
-      (saveFile)="requestSave()"
-      (newFile)="newFile()"
-      (templateSelect)="onTemplateSelect($event)">
+      (nightModeChange)="onNightModeChange($event)">
     </app-top-bar>
+    <div class="top-spacer" aria-hidden="true"></div>
 
       <div class="main">
-        <app-draft-canvas class="canvas" 
+        <app-draft-canvas class="canvas"
           [draftFunctions]="draftArgs"
           [referenceImageParams]="referenceImage"
           (referenceImageChange)="onReferenceImageChange($event)"
@@ -43,15 +37,9 @@ import { MessageCenterComponent } from './shared/message-center.component';
          <app-ceruti-violin class="sidebar"
           (draftChange)="onDraftChange($event)"
           (setBounds)="bounds=$event"
-          [loadFile]="loadedFileData"
-          [saveTick]="saveTick"
-          [newFile]="newFileTick"
           [referenceImageParams]="referenceImage"
           [cameraBounds]="bounds"
           [nightMode]="nightMode"
-          [templateLoadRequest]="templateLoadRequest"
-          (templateListChange)="onTemplateListChange($event)"
-          (activeTemplateKeyChange)="onActiveTemplateKeyChange($event)"
           (referenceImageChange)="onReferenceImageChange($event)">
         </app-ceruti-violin>
         }
@@ -60,9 +48,6 @@ import { MessageCenterComponent } from './shared/message-center.component';
          <app-hello-recipe class="sidebar"
           (draftChange)="onDraftChange($event)"
           (setBounds)="bounds=$event"
-          [loadFile]="loadedFileData"
-          [saveTick]="saveTick"
-          [newFile]="newFileTick"
           [referenceImageParams]="referenceImage"
           [cameraBounds]="bounds"
           (referenceImageChange)="onReferenceImageChange($event)">
@@ -84,18 +69,12 @@ export class App {
 
   draftArgs: Array<(g: any, ui: any) => void> = [];
   selectedRecipe: string = 'enrico-ceruti-violin';
-  loadedFileData: RecipeInterface | undefined = undefined;
-  saveTick = 0;
   bounds: {pt1: Pt, pt2: Pt} | null = null;
   sessionData = sessionStorage.getItem('recipeData');
 
   referenceImage: ReferenceImage | null = this.sessionData ? JSON.parse(this.sessionData).referenceImage : null;
 
   nightMode = true;
-
-  topBarTemplateOptions: Array<{ key: string; label: string }> = [];
-  templateLoadRequest: { key: string; tick: number } = { key: '', tick: 0 };
-  topBarActiveTemplateKey = '';
 
   constructor() {
     const savedTheme = localStorage.getItem('themeMode');
@@ -128,50 +107,10 @@ export class App {
     });
   }
 
-  newFileTick = 0;
-
-  newFile() {
-    queueMicrotask(() => {
-      this.newFileTick += 1;
-    });
-  }
-
-  loadFile(data: RecipeInterface) {
-    this.loadedFileData = data;
-    sessionStorage.setItem('recipeData', JSON.stringify(this.loadedFileData));
-
-    const name = (data.recipeName ?? '').toLowerCase();
-    if (name === 'ceruti') this.selectRecipe('enrico-ceruti-violin');
-    if (name === 'hello') this.selectRecipe('hello-recipe');
-
-    // pull reference image out of loaded file (if present), overriding the
-    // clear that selectRecipe() just did
-    this.referenceImage = data?.referenceImage ?? null;
-  }
-
   /** Switches the active recipe, clearing state that belonged to the old one. */
   selectRecipe(recipe: string): void {
     if (recipe === this.selectedRecipe) return;
     this.selectedRecipe = recipe;
     this.referenceImage = null;
-    this.topBarTemplateOptions = [];
-    this.topBarActiveTemplateKey = '';
-  }
-
-  requestSave() {
-    this.saveTick++;
-  }
-
-  onTemplateListChange(options: Array<{ key: string; label: string }>): void {
-    this.topBarTemplateOptions = options;
-  }
-
-  onTemplateSelect(key: string): void {
-    this.templateLoadRequest = { key, tick: this.templateLoadRequest.tick + 1 };
-    this.topBarActiveTemplateKey = key;
-  }
-
-  onActiveTemplateKeyChange(key: string): void {
-    this.topBarActiveTemplateKey = key;
   }
 }

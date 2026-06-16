@@ -1,0 +1,61 @@
+.toolbar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 10;
+  box-sizing: border-box;
+  width: var(--sidebar-width);
+  height: 44px;
+
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  padding-right: 12px;
+  border-left: 1px solid var(--ui-topbar-border);
+  background: linear-gradient(180deg, var(--ui-topbar-grad-1), var(--ui-topbar-grad-2));
+  border-bottom: 1px solid var(--ui-topbar-border);
+}
+
+.toolbar-btn {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 6px;
+  background: var(--ui-control-bg);
+  cursor: pointer;
+}
+
+.toolbar-btn:hover {
+  background: var(--ui-control-bg-hover);
+}
+
+.toolbar-btn:active {
+  background: var(--ui-control-bg-active);
+}
+
+.toolbar-btn img {
+  height: 13px;
+  width: auto;
+  display: block;
+  pointer-events: none;
+  filter: invert(1);
+}
+
+:host-context(.day-mode) .toolbar-btn img {
+  filter: none;
+}
+
+.toolbar-file-input {
+  display: none;
+}
+
+.toolbar-template {
+  /* flex: 1 1 auto;
+  min-width: 0; */
+}

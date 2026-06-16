@@ -98,25 +98,6 @@
   padding-right: 24px;
 }
 
-.select-wrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.select-caret {
-  position: absolute;
-  right: 8px;
-  pointer-events: none;
-  font-size: 11px;
-  color: var(--ui-text-secondary);
-  line-height: 1;
-}
-
-.file {
-  display: none;
-}
-
 /* ── About button ─────────────────────────────────────────── */
 .about-btn {
   width: 28px;
