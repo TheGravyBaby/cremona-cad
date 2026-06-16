@@ -213,14 +213,13 @@ export class CerutiViolin extends RecipeComponentBase implements OnInit {
     if (!this._firstRenderInitDone) {
       this._firstRenderInitDone = true;
 
-      let recipeData = sessionStorage.getItem('recipeData');
+      const recipeData = this.loadMatchingSessionRecipe<EnricoCerutiTemplate>();
       if (!recipeData) {
         const selectedTemplate = this.templates.find(t => t.key === this.selectedTemplateKey) ?? this.templates[0];
         this.d.referenceImage = selectedTemplate.referenceImage;
       }
       else {
-        // check to see if the recipe loaded from session storage matches a template
-        this.d = JSON.parse(recipeData) as EnricoCerutiTemplate;
+        this.d = recipeData;
         // Restore the last open panel from its own sessionStorage key
         this.panelFlow?.refreshEnabledPanels();
         const savedPanel = sessionStorage.getItem('openPanel');
