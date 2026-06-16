@@ -2,7 +2,7 @@ import { ChangeDetectorRef, Component, EventEmitter, HostListener, Input, OnInit
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { Arc, arcFromCircle, Rectangle, setArcStartByDegreeDiff, setArcEndByDegreeDiff } from '../models/types';
-import { greyOut, renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderCrosshair, renderDashedLine, renderDashedLineLong, renderLine, renderPath, renderRect } from '../helpers/renderFuncs';
+import { applyTransforms, ColorTransform, renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderCrosshair, renderDashedLine, renderDashedLineLong, renderLine, renderPath, renderRect } from '../helpers/renderFuncs';
 import { clampParam, safeRun } from '../helpers/validators';
 import { EnricoCerutiTemplate, EnricoCerutiParams } from './ceruti-types';
 import { CERUTI_TEMPLATES } from './ceruti-templates';
@@ -32,6 +32,10 @@ export class CerutiViolin extends RecipeComponentBase implements OnInit {
     { id: 'export', label: 'Export' },
   ] as const;
 
+  @Input() nightMode = true;
+  readonly lightDarkenDegree = 0.15;
+  readonly lightSaturateDegree = 0.4;
+
   offFactor = .5;
   off2Factor = .8;
   private readonly colorPalette = {
@@ -46,26 +50,39 @@ export class CerutiViolin extends RecipeComponentBase implements OnInit {
     mouldTrace: '#81887eff',
   } as const;
 
-  colors = {
-    upperBout: this.colorPalette.upperBout,
-    upperBoutOff: greyOut(this.colorPalette.upperBout, this.offFactor),
-    upperBoutOff2: greyOut(this.colorPalette.upperBout, this.off2Factor),
-    centerBoutUp: this.colorPalette.centerBoutUp,
-    centerBoutUpOff: greyOut(this.colorPalette.centerBoutUp, this.offFactor),
-    centerBoutUpOff2: greyOut(this.colorPalette.centerBoutUp, this.off2Factor),
-    centerBout: this.colorPalette.centerBout,
-    centerBoutOff: greyOut(this.colorPalette.centerBout, this.offFactor),
-    centerBoutOff2: greyOut(this.colorPalette.centerBout, this.off2Factor),
-    centerBoutLow: this.colorPalette.centerBoutLow,
-    centerBoutLowOff: greyOut(this.colorPalette.centerBoutLow, this.offFactor),
-    centerBoutLowOff2: greyOut(this.colorPalette.centerBoutLow, this.off2Factor),
-    lowerBout: this.colorPalette.lowerBout,
-    lowerBoutOff: greyOut(this.colorPalette.lowerBout, this.offFactor),
-    lowerBoutOff2: greyOut(this.colorPalette.lowerBout, this.off2Factor),
-    violNeck: this.colorPalette.violNeck,
-    innerTrace: this.colorPalette.innerTrace,
-    outerTrace: this.colorPalette.outerTrace,
-    mouldTrace: this.colorPalette.mouldTrace,
+  private makeColor(base: string, ...extra: ColorTransform[]): string {
+    const transforms: ColorTransform[] = [];
+    if (!this.nightMode) {
+      transforms.push({ type: 'darken', degree: this.lightDarkenDegree });
+      transforms.push({ type: 'saturate', degree: this.lightSaturateDegree });
+    }
+    transforms.push(...extra);
+    return applyTransforms(base, ...transforms);
+  }
+
+  get colors() {
+    const p = this.colorPalette;
+    return {
+      upperBout: this.makeColor(p.upperBout),
+      upperBoutOff: this.makeColor(p.upperBout, { type: 'greyOut', degree: this.offFactor }),
+      upperBoutOff2: this.makeColor(p.upperBout, { type: 'greyOut', degree: this.off2Factor }),
+      centerBoutUp: this.makeColor(p.centerBoutUp),
+      centerBoutUpOff: this.makeColor(p.centerBoutUp, { type: 'greyOut', degree: this.offFactor }),
+      centerBoutUpOff2: this.makeColor(p.centerBoutUp, { type: 'greyOut', degree: this.off2Factor }),
+      centerBout: this.makeColor(p.centerBout),
+      centerBoutOff: this.makeColor(p.centerBout, { type: 'greyOut', degree: this.offFactor }),
+      centerBoutOff2: this.makeColor(p.centerBout, { type: 'greyOut', degree: this.off2Factor }),
+      centerBoutLow: this.makeColor(p.centerBoutLow),
+      centerBoutLowOff: this.makeColor(p.centerBoutLow, { type: 'greyOut', degree: this.offFactor }),
+      centerBoutLowOff2: this.makeColor(p.centerBoutLow, { type: 'greyOut', degree: this.off2Factor }),
+      lowerBout: this.makeColor(p.lowerBout),
+      lowerBoutOff: this.makeColor(p.lowerBout, { type: 'greyOut', degree: this.offFactor }),
+      lowerBoutOff2: this.makeColor(p.lowerBout, { type: 'greyOut', degree: this.off2Factor }),
+      violNeck: this.makeColor(p.violNeck),
+      innerTrace: p.innerTrace,
+      outerTrace: p.outerTrace,
+      mouldTrace: p.mouldTrace,
+    };
   }
 
   // ===== Constructor =====

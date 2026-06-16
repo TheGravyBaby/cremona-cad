@@ -48,6 +48,7 @@ import { MessageCenterComponent } from './shared/message-center.component';
           [newFile]="newFileTick"
           [referenceImageParams]="referenceImage"
           [cameraBounds]="bounds"
+          [nightMode]="nightMode"
           [templateLoadRequest]="templateLoadRequest"
           (templateListChange)="onTemplateListChange($event)"
           (activeTemplateKeyChange)="onActiveTemplateKeyChange($event)"

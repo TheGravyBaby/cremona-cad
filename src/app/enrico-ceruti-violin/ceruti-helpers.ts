@@ -6,7 +6,7 @@ export function referenceInfo() {
     info(
         "Uploading a reference image can be helpful when you want to trace the outline of an existing instrument. \n\n" +
         "It is recommended that first you find the height and width of your reference instrument in mm and enter that into primary dimension fields below. \n\n" +
-        "Then, upload your reference image and click the 'Align Reference' button on the bottom bar. This will allow you to scale the reference to your desired dimensions.",
+        "Then, upload your reference image and click the 'Reference' button on the bottom bar. This will allow you to scale the reference to your desired dimensions.",
         "Additional Information", defaultTTL
     );
 }
