@@ -47,8 +47,8 @@
 
 :root.day-mode {
   --ui-bg-app: #dadada;
-  --ui-bg-canvas: #c8c8c8;
-  --ui-bg-sidebar: #e5e5e5;
+  --ui-bg-canvas: #c0bfbe;
+  --ui-bg-sidebar: #c1b9a8;
   --ui-bg-panel: #ededed;
   --ui-bg-section: #e0e0e0;
   --ui-bg-section-open: #e5e5e5;
@@ -76,8 +76,8 @@
   --ui-control-bg-hover: #d8dce2;
   --ui-control-bg-active: #b4b9c0;
 
-  --ui-topbar-grad-1: #dfc46a;
-  --ui-topbar-grad-2: #c9a83e;
+  --ui-topbar-grad-1: #d6be6d;
+  --ui-topbar-grad-2: #d4bb69;
   --ui-topbar-border: rgba(150, 112, 20, 0.50);
   --ui-topbar-control-border: rgba(140, 104, 20, 0.65);
   --ui-topbar-control-bg: rgba(228, 206, 140, 0.92);
