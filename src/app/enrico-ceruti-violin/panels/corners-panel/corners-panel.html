@@ -1,0 +1,215 @@
+<section class="ui-group">
+    <div class="ui-group-title">Upper Bout</div>
+    <div class="input-group basic-row field-row" role="group"
+        [style.opacity]="params.options.useViolCornerUC ? 0.5 : 1"
+        [style.pointerEvents]="params.options.useViolCornerUC ? 'none' : 'auto'">
+        <label class="field-cell">
+            <span class="field-title">U2 Join Radius <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="params.bouts.U2!.r"
+                (input)="onChange(); onArcFocus(params.bouts.U2!, colors.upperBout)" [style.borderColor]="colors.upperBout"
+                (focus)="onArcFocus(params.bouts.U2!, colors.upperBout)" (blur)="onArcBlur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title"> <span class="unit-label"></span></span>
+        </label>
+        <label class="field-cell">
+            <span class="field-title">U2 to UBW</span>
+            <div class="basic-display" aria-label="Upper bout to width ratio value">{{
+                nearestFraction(params.ratios.U2toUBW) }}</div>
+        </label>
+    </div>
+
+</section>
+
+<section class="ui-group">
+    <div class="ui-group-title">Upper Corner</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">X <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step=".25" [(ngModel)]="params.bouts.UCr!.x"
+                (input)="onChange()"  />
+        </label>
+        <span class="field-separator" aria-hidden="true"></span>
+        <label class="field-cell">
+            <span class="field-title">Y <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step=".25" [(ngModel)]="params.bouts.UCr!.y"
+                (input)="onChange()"  />
+        </label>
+        <button type="button" class="info-icon" (click)="cornerPositionInfo()" title="More information"
+            aria-label="Information">ⓘ</button>
+    </div>
+
+    <div class="ui-group">
+        <div class="input-group basic-row field-row" role="group"
+            [style.opacity]="params.options.useViolCornerUC ? 0.5 : 1"
+            [style.pointerEvents]="params.options.useViolCornerUC ? 'none' : 'auto'">
+            <label class="field-cell">
+                <span class="field-title">U3 Corner Radius <span class="unit-label">mm</span></span>
+                <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="params.bouts.U3!.r"
+                    (input)="onChange(); onArcFocus(params.bouts.U3!, colors.centerBoutUp)" [style.borderColor]="colors.centerBoutUp"
+                    (focus)="onArcFocus(params.bouts.U3!, colors.centerBoutUp)" (blur)="onArcBlur()" />
+            </label>
+            <label class="field-cell">
+                <div class="toggle">
+                    <input type="checkbox" [(ngModel)]="params.options.U31DoubleArc"
+                        (change)="onChange()" /><span>Compund</span>
+                </div>
+            </label>
+            <label class="field-cell">
+                <span class="field-title">U3 to LBW</span>
+                <div class="basic-display" aria-label="Upper bout to width ratio value">{{
+                    nearestFraction(params.ratios.U3toLBW) }}</div>
+            </label>
+        </div>
+        @if (params.options.U31DoubleArc) {
+        <div class="ui-group" [style.opacity]="params.options.useViolCornerUC ? 0.5 : 1"
+            [style.pointerEvents]="params.options.useViolCornerUC ? 'none' : 'auto'">
+            <div class="input-group basic-row field-row" role="group">
+                <label class="field-cell">
+                    <span class="field-title">U31 Radius <span class="unit-label">mm</span></span>
+                    <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="params.bouts.U31!.r"
+                        (input)="onChange(); onArcFocus(params.bouts.U31!, colors.centerBoutUp)" [style.borderColor]="colors.centerBoutUp"
+                        (focus)="onArcFocus(params.bouts.U31!, colors.centerBoutUp)" (blur)="onArcBlur()" />
+                </label>
+                <label class="field-cell">
+                    <span class="field-title">Split Angle <span class="unit-label">°</span></span>
+                    <input type="number" class="basic-input" step="1" [ngModel]="params.bouts.U31!.degreeDiff"
+                        (ngModelChange)="adjustArcStart(params.bouts.U31!, $event, onChange.bind(this)); onArcFocus(params.bouts.U31!, colors.centerBoutUp)"
+                        [style.borderColor]="colors.centerBoutUp"
+                        (focus)="onArcFocus(params.bouts.U31!, colors.centerBoutUp)" (blur)="onArcBlur()" />
+                </label>
+                <button type="button" class="info-icon" (click)="compoundArcInfo()" title="More information"
+                    aria-label="Information">ⓘ</button>
+            </div>
+        </div>
+        }
+        <div class="input-group basic-row field-row">
+            <div class="toggle">
+                <input type="checkbox" [(ngModel)]="params.options.useViolCornerUC"
+                    (change)="onChange()" /><span>Use Viol Corner</span>
+            </div>
+            <button type="button" class="info-icon" (click)="violCornerInfo()" title="More information"
+                aria-label="Information">ⓘ</button>
+        </div>
+    </div>
+
+
+</section>
+
+<section class="ui-group">
+    <div class="ui-group-title">Lower Corner</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">X <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step=".25" [(ngModel)]="params.bouts.LCr!.x"
+                (input)="onChange()" />
+        </label>
+        <span class="field-separator" aria-hidden="true"></span>
+        <label class="field-cell">
+            <span class="field-title">Y <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step=".25" [(ngModel)]="params.bouts.LCr!.y"
+                (input)="onChange()" />
+        </label>
+        <button type="button" class="info-icon" (click)="cornerPositionInfo()" title="More information"
+            aria-label="Information">ⓘ</button>
+    </div>
+    <div class="ui-group">
+        <div class="input-group basic-row field-row" role="group"
+            [style.opacity]="params.options.useViolCornerLC ? 0.5 : 1"
+            [style.pointerEvents]="params.options.useViolCornerLC ? 'none' : 'auto'">
+            <label class="field-cell">
+                <span class="field-title">L3 Radius <span class="unit-label">mm</span></span>
+                <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="params.bouts.L3!.r"
+                    (input)="onChange(); onArcFocus(params.bouts.L3!, colors.centerBoutLow)" [style.borderColor]="colors.centerBoutLow"
+                    (focus)="onArcFocus(params.bouts.L3!, colors.centerBoutLow)" (blur)="onArcBlur()" />
+            </label>
+            <label class="field-cell">
+                <div class="toggle">
+                    <input type="checkbox" [(ngModel)]="params.options.L31DoubleArc"
+                        (change)="onChange()" /><span>Compound</span>
+                </div>
+            </label>
+            <label class="field-cell">
+                <span class="field-title">L3 to LBW</span>
+                <div class="basic-display" aria-label="Lower bout to width ratio value">{{
+                    nearestFraction(params.ratios.L3toLBW) }}</div>
+            </label>
+        </div>
+        @if (params.options.L31DoubleArc) {
+        <div class="ui-group" [style.opacity]="params.options.useViolCornerLC ? 0.5 : 1"
+            [style.pointerEvents]="params.options.useViolCornerLC ? 'none' : 'auto'">
+            <div class="input-group basic-row field-row" role="group">
+                <label class="field-cell">
+                    <span class="field-title">L31 Radius <span class="unit-label">mm</span></span>
+                    <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="params.bouts.L31!.r"
+                        (input)="onChange(); onArcFocus(params.bouts.L31!, colors.centerBoutLow)" [style.borderColor]="colors.centerBoutLow"
+                        (focus)="onArcFocus(params.bouts.L31!, colors.centerBoutLow)" (blur)="onArcBlur()" />
+                </label>
+                <label class="field-cell">
+                    <span class="field-title">Split Angle <span class="unit-label">°</span></span>
+                    <input type="number" class="basic-input" step="1" [ngModel]="params.bouts.L31!.degreeDiff"
+                        (ngModelChange)="adjustArcStart(params.bouts.L31!, $event, onChange.bind(this)); onArcFocus(params.bouts.L31!, colors.centerBoutLow)"
+                        [style.borderColor]="colors.centerBoutLow"
+                        (focus)="onArcFocus(params.bouts.L31!, colors.centerBoutLow)" (blur)="onArcBlur()" />
+                </label>
+                <button type="button" class="info-icon" (click)="compoundArcInfo()" title="More information"
+                    aria-label="Information">ⓘ</button>
+            </div>
+        </div>
+        }
+        <div class="input-group basic-row field-row">
+            <div class="toggle">
+                <input type="checkbox" [(ngModel)]="params.options.useViolCornerLC"
+                    (change)="onChange()" /><span>Use Viol Corner</span>
+            </div>
+            <button type="button" class="info-icon" (click)="violCornerInfo()" title="More information"
+                aria-label="Information">ⓘ</button>
+        </div>
+    </div>
+
+</section>
+
+<section class="ui-group">
+    <div class="ui-group-title">Lower Bout</div>
+    @if (!params.options.useViolCornerLC) {
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">L2 Join Radius <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="params.bouts.L2!.r"
+                (input)="onChange(); onArcFocus(params.bouts.L2!, colors.lowerBout)" [style.borderColor]="colors.lowerBout"
+                (focus)="onArcFocus(params.bouts.L2!, colors.lowerBout)" (blur)="onArcBlur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title"> <span class="unit-label"></span></span>
+        </label>
+        <label class="field-cell">
+            <span class="field-title">L2 to LBW</span>
+            <div class="basic-display" aria-label="Lower bout to width ratio value">{{
+                nearestFraction(params.ratios.L2toLBW) }}</div>
+        </label>
+    </div>
+
+    }
+    @else {
+    <div [style.opacity]="0.5" [style.pointerEvents]="'none'">
+        <div class="input-group basic-row field-row" role="group">
+            <label class="field-cell">
+                <span class="field-title">L2 Radius <span class="unit-label">mm</span></span>
+                <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="params.bouts.L2!.r"
+                    (input)="onChange(); onArcFocus(params.bouts.L2!, colors.lowerBout);" disabled [style.borderColor]="colors.lowerBout" />
+            </label>
+            <label class="field-cell">
+                <span class="field-title"> <span class="unit-label"></span></span>
+            </label>
+            <label class="field-cell">
+                <span class="field-title">L2 to LBW</span>
+                <div class="basic-display" aria-label="Lower bout to width ratio value">{{
+                    nearestFraction(params.ratios.L2toLBW) }}</div>
+            </label>
+        </div>
+
+    </div>
+    }
+</section>
+
+<app-ceruti-render-toggles [flags]="flags" (changed)="onChange()"></app-ceruti-render-toggles>

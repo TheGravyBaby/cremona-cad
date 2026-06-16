@@ -1,5 +1,53 @@
 import { Arc, Pt, Rectangle, ReferenceImage } from "../models/types";
 
+/** Resolved palette returned by CerutiViolin's `colors` getter, threaded into every panel and render fn. */
+export interface CerutiColors {
+  upperBout: string;
+  upperBoutOff: string;
+  upperBoutOff2: string;
+  centerBoutUp: string;
+  centerBoutUpOff: string;
+  centerBoutUpOff2: string;
+  centerBout: string;
+  centerBoutOff: string;
+  centerBoutOff2: string;
+  centerBoutLow: string;
+  centerBoutLowOff: string;
+  centerBoutLowOff2: string;
+  lowerBout: string;
+  lowerBoutOff: string;
+  lowerBoutOff2: string;
+  violNeck: string;
+  innerTrace: string;
+  outerTrace: string;
+  mouldTrace: string;
+}
+
+/** Ephemeral, non-persisted view toggles shared across panels and their render functions. */
+export interface CerutiViewFlags {
+  showModuleArcs: boolean;
+  showModuleCircles: boolean;
+  showAllArcs: boolean;
+  showAllCircles: boolean;
+  showModuleGuides: boolean;
+  renderOuterPath: boolean;
+  showBlocks: boolean;
+  showInnerPath: boolean;
+  simpleClampBox: boolean;
+}
+
+export const DEFAULT_CERUTI_VIEW_FLAGS: CerutiViewFlags = {
+  showModuleArcs: true,
+  showModuleCircles: false,
+  showAllArcs: false,
+  showAllCircles: false,
+  showModuleGuides: false,
+  renderOuterPath: true,
+  showBlocks: true,
+  showInnerPath: false,
+  simpleClampBox: false,
+};
+
 /**
  * Increment this when the shape of a saved recipe file changes in a
  * backward-incompatible (or additive) way. Old files will still load

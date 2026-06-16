@@ -1,0 +1,143 @@
+<section class="ui-group">
+    <div class="ui-group-title">Upper Corner</div>
+    <div class="ui-group">
+        <div class="input-group basic-row field-row" role="group">
+            <label class="field-cell">
+                <span class="field-title">C2 Corner Radius <span class="unit-label">mm</span></span>
+                <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="params.bouts.C2!.r"
+                    (input)="onChange(); onArcFocus(params.bouts.C2!, colors.centerBoutUp)" [style.borderColor]="colors.centerBoutUp"
+                    (focus)="onArcFocus(params.bouts.C2!, colors.centerBoutUp)" (blur)="onArcBlur()" />
+            </label>
+            <label class="field-cell">
+                <div class="toggle">
+                    <input type="checkbox" [(ngModel)]="params.options.C21DoubleArc"
+                        (change)="onChange()" /><span>Compound</span>
+                </div>
+            </label>
+            <label class="field-cell">
+                <span class="field-title">C2 to LBW</span>
+                <div class="basic-display"
+                    aria-label="Upper center bout radius to lower bout width ratio value">{{
+                    nearestFraction(params.ratios.C2toLBW) }}</div>
+            </label>
+        </div>
+        @if (params.options.C21DoubleArc) {
+        <div class="ui-group">
+            <div class="input-group basic-row field-row" role="group">
+                <label class="field-cell">
+                    <span class="field-title">C21 Radius <span class="unit-label">mm</span></span>
+                    <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="params.bouts.C21!.r"
+                        (input)="onChange(); onArcFocus(params.bouts.C21!, colors.centerBoutUpOff)" [style.borderColor]="colors.centerBoutUpOff"
+                        (focus)="onArcFocus(params.bouts.C21!, colors.centerBoutUpOff)" (blur)="onArcBlur()" />
+                </label>
+                <label class="field-cell">
+                    <span class="field-title">Split Angle <span class="unit-label">°</span></span>
+                    <input type="number" class="basic-input" step="1" [ngModel]="params.bouts.C21!.degreeDiff"
+                        (ngModelChange)="adjustArcStart(params.bouts.C21!, $event, onChange.bind(this)); onArcFocus(params.bouts.C21!, colors.centerBoutUpOff)"
+                        [style.borderColor]="colors.centerBoutUpOff"
+                        (focus)="onArcFocus(params.bouts.C21!, colors.centerBoutUpOff)" (blur)="onArcBlur()" />
+                </label>
+            </div>
+        </div>
+        }
+    </div>
+</section>
+
+<section class="ui-group">
+    <div class="ui-group-title">Center Bout</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell" [style.opacity]="params.options.useKellyC0 ? 0.5 : 1">
+            <span class="field-title">Total Width <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="params.bouts.CBW"
+                (input)="onChange(false)" [disabled]="params.options.useKellyC0" />
+        </label>
+        <button type="button" class="info-icon" (click)="centerBoutWidthInfo()"
+            title="More information" aria-label="Information">ⓘ</button>
+        <label class="field-cell"></label>
+        <label class="field-cell">
+            <span class="field-title">CBW to LBW</span>
+            <div class="basic-display" aria-label="Center bout width to lower bout width ratio value">{{
+                nearestFraction(params.ratios.CBWtoLBW) }}</div>
+        </label>
+    </div>
+    <div class="ui-group">
+        <div class="input-group basic-row field-row" role="group">
+            <label class="field-cell">
+                <span class="field-title">C0 Radius <span class="unit-label">mm</span></span>
+                <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="params.bouts.C0!.r"
+                    (input)="onChange(); onArcFocus(params.bouts.C0!, colors.centerBout)" [style.borderColor]="colors.centerBout"
+                    (focus)="onArcFocus(params.bouts.C0!, colors.centerBout)" (blur)="onArcBlur()" />
+            </label>
+            <label class="field-cell" [style.opacity]="params.options.useKellyC0 ? 0.0 : 1"
+                [style.pointerEvents]="params.options.useKellyC0 ? 'none' : 'auto'">
+                <span class="field-title">C0 Y <span class="unit-label">mm</span></span>
+                <input type="number" class="basic-input" step="1" [(ngModel)]="params.bouts.C0!.y"
+                    (input)="onChange(false); onArcFocus(params.bouts.C0!, colors.centerBout)" [style.borderColor]="colors.centerBout"
+                    [disabled]="params.options.useKellyC0"
+                    (focus)="onArcFocus(params.bouts.C0!, colors.centerBout)" (blur)="onArcBlur()" />
+            </label>
+            <label class="field-cell">
+                <span class="field-title">C0 to LBW</span>
+                <div class="basic-display" aria-label="Center bout radius to lower bout width ratio value">{{
+                    nearestFraction(params.ratios.C0toLBW) }}</div>
+            </label>
+        </div>
+        <div class="input-group basic-row field-row" role="group">
+            <div class="toggle">
+                <input type="checkbox" [(ngModel)]="params.options.useKellyC0"
+                    (change)="onChange()" /><span>Fit C0 to Bouts</span>
+            </div>
+            <button type="button" class="info-icon" (click)="fitC0Info()" title="More information"
+                aria-label="Information">ⓘ</button>
+        </div>
+    </div>
+
+
+</section>
+
+<section class="ui-group">
+    <div class="ui-group-title">Lower Corner</div>
+    <div class="ui-group">
+        <div class="input-group basic-row field-row" role="group">
+            <label class="field-cell">
+                <span class="field-title">C1 Corner Radius <span class="unit-label">mm</span></span>
+                <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="params.bouts.C1!.r"
+                    (input)="onChange(); onArcFocus(params.bouts.C1!, colors.centerBoutLow)" [style.borderColor]="colors.centerBoutLow"
+                    (focus)="onArcFocus(params.bouts.C1!, colors.centerBoutLow)" (blur)="onArcBlur()" />
+            </label>
+            <label class="field-cell">
+                <div class="toggle">
+                    <input type="checkbox" [(ngModel)]="params.options.C11DoubleArc"
+                        (change)="onChange()" /><span>Compound</span>
+                </div>
+            </label>
+            <label class="field-cell">
+                <span class="field-title">C1 to LBW</span>
+                <div class="basic-display"
+                    aria-label="Lower center bout radius to lower bout width ratio value">{{
+                    nearestFraction(params.ratios.C1toLBW) }}</div>
+            </label>
+        </div>
+        @if (params.options.C11DoubleArc) {
+        <div class="ui-group">
+            <div class="input-group basic-row field-row" role="group">
+                <label class="field-cell">
+                    <span class="field-title">C11 Radius <span class="unit-label">mm</span></span>
+                    <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="params.bouts.C11!.r"
+                        (input)="onChange(); onArcFocus(params.bouts.C11!, colors.centerBoutLowOff)" [style.borderColor]="colors.centerBoutLowOff"
+                        (focus)="onArcFocus(params.bouts.C11!, colors.centerBoutLowOff)" (blur)="onArcBlur()" />
+                </label>
+                <label class="field-cell">
+                    <span class="field-title">Split Angle <span class="unit-label">°</span></span>
+                    <input type="number" class="basic-input" step="1" [ngModel]="params.bouts.C11!.degreeDiff"
+                        (ngModelChange)="adjustArcStart(params.bouts.C11!, $event, onChange.bind(this)); onArcFocus(params.bouts.C11!, colors.centerBoutLowOff)"
+                        [style.borderColor]="colors.centerBoutLowOff"
+                        (focus)="onArcFocus(params.bouts.C11!, colors.centerBoutLowOff)" (blur)="onArcBlur()" />
+                </label>
+            </div>
+        </div>
+        }
+    </div>
+</section>
+
+<app-ceruti-render-toggles [flags]="flags" (changed)="onChange()"></app-ceruti-render-toggles>
