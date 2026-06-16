@@ -162,8 +162,8 @@ select {
   padding: 6px 10px;
   border: 2px solid var(--ui-border-strong);
   border-radius: 6px;
-  background: var(--ui-bg-panel);
-  color: var(--ui-text-primary);
+  background: var(--ui-accent);
+  color: white;
   font-size: 14px;
   cursor: pointer;
 }
