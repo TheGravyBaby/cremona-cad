@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { Arc } from '../models/types';
 import { applyTransforms, ColorTransform, renderPath } from '../helpers/renderFuncs';
-import { combinePathStrings } from '../helpers/draftMath';
+import { combinePathStrings } from '../helpers/svgPathMath';
 import { clampParam, safeRun } from '../helpers/validators';
 import { CerutiColors, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, EnricoCerutiTemplate, EnricoCerutiParams } from './ceruti-types';
 import { CERUTI_TEMPLATES } from './ceruti-templates';
