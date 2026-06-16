@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, HostListener, Input } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, HostListener, Input, OnInit, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { Arc, arcFromCircle, Rectangle, setArcStartByDegreeDiff, setArcEndByDegreeDiff } from '../models/types';
@@ -18,7 +18,7 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
   templateUrl: './ceruti-violin.html',
   styleUrls: ['../sidebar.css', './ceruti-violin.css'],
 })
-export class CerutiViolin extends RecipeComponentBase {
+export class CerutiViolin extends RecipeComponentBase implements OnInit {
 
   // ===== Static config =====
 
@@ -79,6 +79,8 @@ export class CerutiViolin extends RecipeComponentBase {
   // ===== Component state =====
 
   readonly templates: EnricoCerutiTemplate[] = CERUTI_TEMPLATES;
+  @Output() templateListChange = new EventEmitter<Array<{ key: string; label: string }>>();
+  @Output() activeTemplateKeyChange = new EventEmitter<string>();
   override openPanel = 'base';
   override d: EnricoCerutiTemplate = {
     ...CERUTI_TEMPLATES[1],
@@ -103,6 +105,17 @@ export class CerutiViolin extends RecipeComponentBase {
 
   private lastNewFileTick = 0;
   private _firstRenderInitDone = false;
+  private _lastTemplateTick = 0;
+  private _lastLoadedParamsSnapshot = '';
+
+  private isStateDirty(): boolean {
+    if (!this._lastLoadedParamsSnapshot) return false;
+    return JSON.stringify(this.d.params) !== this._lastLoadedParamsSnapshot;
+  }
+
+  override ngOnInit(): void {
+    this.templateListChange.emit(this.templates.map(t => ({ key: t.key, label: t.label })));
+  }
 
   get selectedTemplateKey(): string {
     const current = JSON.stringify(this.d.params);
@@ -113,7 +126,18 @@ export class CerutiViolin extends RecipeComponentBase {
     if (!key) return;
     const template = this.templates.find(t => t.key === key);
     if (!template) return;
+
+    if (this.isStateDirty()) {
+      const confirmed = confirm('Load template? Any unsaved changes will be lost.');
+      if (!confirmed) {
+        // Revert the dropdown to whatever key currently reflects the state ('' if custom)
+        this.activeTemplateKeyChange.emit(this.selectedTemplateKey);
+        return;
+      }
+    }
+
     this.loadFile = JSON.parse(JSON.stringify(template));
+    this._lastLoadedParamsSnapshot = JSON.stringify(this.d.params);
     sessionStorage.setItem('recipeData', JSON.stringify(this.d));
       if(this.hasOuterTrace()) {
       const path = combinePathStrings([defineOffsetPath(this.d.params), defineInnerPath(this.d.params)]);
@@ -126,10 +150,17 @@ export class CerutiViolin extends RecipeComponentBase {
         pt2: { x: this.d.params.width / 2, y: this.d.params.height },
       });
     this.referenceImageChange.emit(this.d.referenceImage ?? null);
-  
+    this.activeTemplateKeyChange.emit(key);
   }
 
   // ===== Inputs & lifecycle =====
+
+  @Input() set templateLoadRequest(req: { key: string; tick: number } | undefined) {
+    if (!req?.key || req.tick === this._lastTemplateTick) return;
+    this._lastTemplateTick = req.tick;
+    this.loadTemplate(req.key);
+    this.openPanel = 'base';
+  }
 
   @Input() set newFile(v: number) {
     if (v <= 0 || v === this.lastNewFileTick) return;
@@ -137,6 +168,7 @@ export class CerutiViolin extends RecipeComponentBase {
 
     this.d = JSON.parse(JSON.stringify(CERUTI_TEMPLATES[0])) as EnricoCerutiTemplate;
     this._firstRenderInitDone = false;
+    this._lastLoadedParamsSnapshot = JSON.stringify(this.d.params);
     this.openPanel = 'base';
 
     // Write to sessionStorage before emitting so firstRender reads the
@@ -149,12 +181,13 @@ export class CerutiViolin extends RecipeComponentBase {
       pt2: { x: this.d.params.width / 2, y: this.d.params.height },
     });
     this.referenceImageChange.emit(this.d.referenceImage ?? null);
+    this.activeTemplateKeyChange.emit(CERUTI_TEMPLATES[0].key);
     this.draftChange.emit([this.firstRender]);
   }
 
   override firstRender = (g: any, ui: any): void => {
     if (!this._firstRenderInitDone) {
-      this._firstRenderInitDone = true;
+      this._firstRenderInitDone = true; 
 
       let recipeData = sessionStorage.getItem('recipeData');
       if (!recipeData) {
@@ -184,6 +217,8 @@ export class CerutiViolin extends RecipeComponentBase {
       const handlers = this.getActivationHandlers();
       handlers[this.openPanel]?.();
       this.referenceImageChange.emit(this.d.referenceImage ?? null);
+      this._lastLoadedParamsSnapshot = JSON.stringify(this.d.params);
+      this.activeTemplateKeyChange.emit(this.selectedTemplateKey);
       if(this.hasOuterTrace() && this.openPanel == 'base') {
         const path = combinePathStrings([defineOffsetPath(this.d.params), defineInnerPath(this.d.params)]);
         this.draftChange.emit([
@@ -936,8 +971,8 @@ export class CerutiViolin extends RecipeComponentBase {
     const p = this.d.params;
     const baseName = this.d.fileName?.trim() || 'ceruti-violin';
     const sheetLabels: Record<string, string> = {
-      innerTrace: 'Inner Trace',
-      outerTrace: 'Outer Trace',
+      innerTrace: 'Inner Contour',
+      outerTrace: 'Outer Contour',
       mould: 'Mould Path',
     };
 
@@ -987,7 +1022,7 @@ export class CerutiViolin extends RecipeComponentBase {
 
     const pages: PdfPage[] = [
       {
-        label: 'Inner Trace',
+        label: 'Inner Contour',
         fileName: baseName,
         description,
         width: p.width,
@@ -995,7 +1030,7 @@ export class CerutiViolin extends RecipeComponentBase {
         paths: [{ d: defineInnerPath(p), stroke: 'black', fill: 'none' }],
       },
       {
-        label: 'Top',
+        label: 'Top Contour',
         fileName: baseName,
         description,
         width: p.width,
@@ -1003,7 +1038,7 @@ export class CerutiViolin extends RecipeComponentBase {
         paths: [{ d: defineOffsetPath(p), stroke: 'black', fill: 'none' }, { d: defineInnerPath(p), stroke: 'black', fill: 'none' }],
       },
       {
-        label: 'Back',
+        label: 'Back Contour',
         fileName: baseName,
         description,
         width: p.width,
@@ -1011,7 +1046,7 @@ export class CerutiViolin extends RecipeComponentBase {
         paths: [{ d: defineOffsetPath(p, p.overhang + p.rib, true), stroke: 'black', fill: 'none' }, { d: defineInnerPath(p), stroke: 'black', fill: 'none' }],
       },
       {
-        label: 'Mould Path',
+        label: 'Mould',
         fileName: baseName,
         description,
         width: p.width,

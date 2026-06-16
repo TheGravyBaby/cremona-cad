@@ -44,16 +44,6 @@
                 <textarea class="description-textarea" rows="1" maxlength="200" [(ngModel)]="d.description"></textarea>
             </label>
 
-            <label>
-                Load Template
-                <select [ngModel]="selectedTemplateKey" (ngModelChange)="loadTemplate($event)">
-                    <option value="">— select a template —</option>
-                    @for (t of templates; track t.key) {
-                    <option [value]="t.key">{{ t.label }}</option>
-                    }
-                </select>
-            </label>
-
             <div class="input-group basic-row field-row" role="group">
                 <label class="file-upload">
                     Upload Reference Image
