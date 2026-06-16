@@ -1,7 +1,9 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { combinePathStrings, pointOnCircle } from '../../../helpers/draftMath';
+import { pointOnCircle } from '../../../helpers/draftMath';
+import { combinePathStrings } from '../../../helpers/svgPathMath';
 import { buildMirroredSvg, downloadFullPlanPdf, downloadSvgAsPdf, downloadSvgFile, PdfPage } from '../../../helpers/fileExporter';
+import { downloadDxfFile } from '../../../helpers/dxfExporter';
 import { renderPath } from '../../../helpers/renderFuncs';
 import { calculateCornerBlocks, calculateMould, defineInnerPath, defineOffsetPath } from '../../ceruti-calcs';
 import { CerutiColors, EnricoCerutiParams } from '../../ceruti-types';
@@ -88,6 +90,33 @@ export class ExportPanel {
 
     const svg = buildMirroredSvg(p.width, height, [{ d: pathD!, stroke: "black", fill: 'none', strokeWidth: '.5' }]);
     downloadSvgFile(`${baseName}-${type}.svg`, svg);
+  }
+
+  downloadDxf(type: ExportType): void {
+    const p = this.params;
+    const offset = p.overhang + p.rib;
+    const baseName = this.fileName?.trim() || 'ceruti-violin';
+
+    let pathD: string;
+    switch (type) {
+      case 'innerTrace':
+        pathD = defineInnerPath(p);
+        break;
+      case 'outerTrace':
+        pathD = combinePathStrings([defineOffsetPath(p), defineInnerPath(p)]);
+        break;
+      case 'back':
+        pathD = combinePathStrings([defineOffsetPath(p, offset, true), defineInnerPath(p)]);
+        break;
+      case 'mould':
+        pathD = calculateMould(p, false, false);
+        break;
+      case 'blocks':
+        pathD = combinePathStrings(calculateCornerBlocks(p, defineInnerPath(p)));
+        break;
+    }
+
+    downloadDxfFile(`${baseName}-${type}.dxf`, pathD!);
   }
 
   downloadPdf(type: ExportType): void {

@@ -1,4 +1,5 @@
-import { solveInscribedCircleAlongAxis, circleCircleIntersections, angleFromCenter, interceptCirclesAndPoint, dist, pointOnCircle, offsetArcRadius, pathFromArc, pathFromLine, flipArcAboutY, flipPointAboutY, unifyConnectedSvgPaths, pathFromRoundedRect, flipRectAboutY, pathFromCircle, pathFromRect, combinePathStrings, differenceFromTwoPaths, lineCircleIntersection, redefineArcCircle, interceptCirclesAndPointCompound, intersectionFromTwoPaths, translatePath } from "../helpers/draftMath";
+import { solveInscribedCircleAlongAxis, circleCircleIntersections, angleFromCenter, interceptCirclesAndPoint, dist, pointOnCircle, offsetArcRadius, flipArcAboutY, flipPointAboutY, flipRectAboutY, lineCircleIntersection, redefineArcCircle, interceptCirclesAndPointCompound } from "../helpers/draftMath";
+import { pathFromArc, pathFromLine, unifyConnectedSvgPaths, pathFromRoundedRect, pathFromCircle, pathFromRect, combinePathStrings, differenceFromManyPaths, intersectionFromTwoPaths, translatePath } from "../helpers/svgPathMath";
 import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Pt, Rectangle } from "../models/types";
 import { error } from "../shared/message-emitter";
 import { EnricoCerutiParams } from "./ceruti-types";
@@ -56,11 +57,11 @@ export function calculateMainBouts(p: EnricoCerutiParams): void {
     p.bouts.L1 = arcFromCircle(p.bouts.L1, L1Angle, 0);
 
     if (p.options.useViolNeck) {
-        p.viol.width = p.viol.width ?? 10
+        p.viol.width = p.viol.width ?? p.bouts.UBW * .1
         let Vr = p.viol?.V0?.r ?? p.bouts.UBW / 5
         let start = p.viol?.V0?.start ?? Math.PI * 1.05
-        let end =  p.viol?.V0?.end ?? 3/2 * Math.PI * .95
-        let neckEnd = new Pt(p.viol.width, p.height - inset)
+        let end =  p.viol?.V0?.end ?? 3/2 * Math.PI * .92
+        let neckEnd = new Pt(p.viol.width / 2, p.height - inset)
         let VyDiff =  Math.sin(start) * Vr
         let VxDiff = Math.cos(start) * Vr
         p.viol.V0 = new Arc(neckEnd.x - VxDiff, neckEnd.y - VyDiff, Vr, start, end)
@@ -546,8 +547,6 @@ export function calculateMould(p: EnricoCerutiParams, useHighAccuracy = false, s
     const bitOffset = (bitRadius * Math.sqrt(2) / 2) - tolerance;
     let circleCutouts = []
     if (p.bitDiameter > 0) {
-
-
         // these will keep the bit from making internal right angles
         circleCutouts = [
             pathFromCircle({ x: blocks[0].Pt1.x + bitOffset, y: blocks[0].Pt1.y + bitOffset, r: bitRadius }),
@@ -571,11 +570,7 @@ export function calculateMould(p: EnricoCerutiParams, useHighAccuracy = false, s
     cutoutPaths = cutoutPaths.concat(circleCutouts);
 
     const renderDensity = useHighAccuracy ? 0.1 : 1;
-    let mouldPath = innerPath
-
-    for (let cutoutPath of cutoutPaths) {
-        mouldPath = differenceFromTwoPaths(mouldPath, cutoutPath, renderDensity);
-    }
+    let mouldPath = differenceFromManyPaths(innerPath, cutoutPaths, renderDensity);
    
     let clampBox: string[]
     if (simpleClampBox) {
