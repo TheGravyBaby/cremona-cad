@@ -680,53 +680,106 @@ export const renderArcHalo = (arc: Arc, color: string, haloWidth = 12, opacity =
     renderArcFromArc(arc, color, haloWidth, false)(group, ui);
 }
 
-export function greyOut(color: string, degree: number): string {
-    // clamp degree to [0,1]
-    degree = Math.max(0, Math.min(1, Number.isFinite(degree) ? degree : 0.9));
+export type ColorTransform =
+    | { type: 'greyOut'; degree: number }
+    | { type: 'darken'; degree: number }
+    | { type: 'saturate'; degree: number };
 
-    const s = color.trim();
-
-    // helpers
-    const clamp = (v: number) => Math.max(0, Math.min(255, Math.round(v)));
-    const toHex = (v: number) => clamp(v).toString(16).padStart(2, "0");
-
-    // parse hex (#rgb or #rrggbb)
+function parsedColor(s: string): { r: number; g: number; b: number; a: number } | null {
     const hexShort = /^#([0-9a-f]{3})$/i.exec(s);
-    const hexLong = /^#([0-9a-f]{6})$/i.exec(s);
-    if (hexShort || hexLong) {
-        let r: number, g: number, b: number, a = 1;
-        if (hexShort) {
-            const [r1, g1, b1] = hexShort[1].split("");
-            r = parseInt(r1 + r1, 16);
-            g = parseInt(g1 + g1, 16);
-            b = parseInt(b1 + b1, 16);
-        } else {
-            r = parseInt(hexLong![1].substr(0, 2), 16);
-            g = parseInt(hexLong![1].substr(2, 2), 16);
-            b = parseInt(hexLong![1].substr(4, 2), 16);
-        }
-        const lum = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
-        const nr = clamp(r * (1 - degree) + lum * degree);
-        const ng = clamp(g * (1 - degree) + lum * degree);
-        const nb = clamp(b * (1 - degree) + lum * degree);
-        // preserve hex output when fully opaque
-        return `#${toHex(nr)}${toHex(ng)}${toHex(nb)}`;
+    if (hexShort) {
+        const [r1, g1, b1] = hexShort[1].split('');
+        return { r: parseInt(r1 + r1, 16), g: parseInt(g1 + g1, 16), b: parseInt(b1 + b1, 16), a: 1 };
     }
-
-    // parse rgb/rgba()
+    const hexLong = /^#([0-9a-f]{6})$/i.exec(s);
+    if (hexLong) {
+        return {
+            r: parseInt(hexLong[1].substring(0, 2), 16),
+            g: parseInt(hexLong[1].substring(2, 4), 16),
+            b: parseInt(hexLong[1].substring(4, 6), 16),
+            a: 1,
+        };
+    }
+    const hexAlpha = /^#([0-9a-f]{8})$/i.exec(s);
+    if (hexAlpha) {
+        return {
+            r: parseInt(hexAlpha[1].substring(0, 2), 16),
+            g: parseInt(hexAlpha[1].substring(2, 4), 16),
+            b: parseInt(hexAlpha[1].substring(4, 6), 16),
+            a: parseInt(hexAlpha[1].substring(6, 8), 16) / 255,
+        };
+    }
     const rgbMatch = /^rgba?\(\s*([0-9]{1,3})\s*,\s*([0-9]{1,3})\s*,\s*([0-9]{1,3})(?:\s*,\s*(0|1|0?\.\d+))?\s*\)$/i.exec(s);
     if (rgbMatch) {
-        const r = clamp(Number(rgbMatch[1]));
-        const g = clamp(Number(rgbMatch[2]));
-        const b = clamp(Number(rgbMatch[3]));
-        const a = rgbMatch[4] !== undefined ? Math.max(0, Math.min(1, parseFloat(rgbMatch[4]))) : 1;
-        const lum = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
-        const nr = clamp(r * (1 - degree) + lum * degree);
-        const ng = clamp(g * (1 - degree) + lum * degree);
-        const nb = clamp(b * (1 - degree) + lum * degree);
-        return a === 1 ? `rgb(${nr}, ${ng}, ${nb})` : `rgba(${nr}, ${ng}, ${nb}, ${a})`;
+        return {
+            r: Number(rgbMatch[1]),
+            g: Number(rgbMatch[2]),
+            b: Number(rgbMatch[3]),
+            a: rgbMatch[4] !== undefined ? Math.max(0, Math.min(1, parseFloat(rgbMatch[4]))) : 1,
+        };
     }
+    return null;
+}
 
-    // fallback: unable to parse, return original color
-    return color;
+function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: number } {
+    const rn = r / 255, gn = g / 255, bn = b / 255;
+    const max = Math.max(rn, gn, bn), min = Math.min(rn, gn, bn);
+    const l = (max + min) / 2;
+    if (max === min) return { h: 0, s: 0, l };
+    const d = max - min;
+    const s = d / (1 - Math.abs(2 * l - 1));
+    let h: number;
+    if (max === rn)      h = ((gn - bn) / d + 6) % 6;
+    else if (max === gn) h = (bn - rn) / d + 2;
+    else                 h = (rn - gn) / d + 4;
+    return { h: h * 60, s, l };
+}
+
+function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: number } {
+    const c = (1 - Math.abs(2 * l - 1)) * s;
+    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+    const m = l - c / 2;
+    let rn = 0, gn = 0, bn = 0;
+    if      (h < 60)  { rn = c; gn = x; bn = 0; }
+    else if (h < 120) { rn = x; gn = c; bn = 0; }
+    else if (h < 180) { rn = 0; gn = c; bn = x; }
+    else if (h < 240) { rn = 0; gn = x; bn = c; }
+    else if (h < 300) { rn = x; gn = 0; bn = c; }
+    else              { rn = c; gn = 0; bn = x; }
+    const to255 = (v: number) => Math.max(0, Math.min(255, Math.round((v + m) * 255)));
+    return { r: to255(rn), g: to255(gn), b: to255(bn) };
+}
+
+function applyOneTransform(r: number, g: number, b: number, t: ColorTransform): { r: number; g: number; b: number } {
+    const clamp = (v: number) => Math.max(0, Math.min(255, Math.round(v)));
+    const degree = Math.max(0, Math.min(1, Number.isFinite(t.degree) ? t.degree : 0));
+    switch (t.type) {
+        case 'greyOut': {
+            const lum = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+            return { r: clamp(r * (1 - degree) + lum * degree), g: clamp(g * (1 - degree) + lum * degree), b: clamp(b * (1 - degree) + lum * degree) };
+        }
+        case 'darken':
+            return { r: clamp(r * (1 - degree)), g: clamp(g * (1 - degree)), b: clamp(b * (1 - degree)) };
+        case 'saturate': {
+            const { h, s, l } = rgbToHsl(r, g, b);
+            return hslToRgb(h, Math.min(1, s + degree), l);
+        }
+    }
+}
+
+export function applyTransforms(color: string, ...transforms: ColorTransform[]): string {
+    if (transforms.length === 0) return color;
+    const parsed = parsedColor(color.trim());
+    if (!parsed) return color;
+    const clamp = (v: number) => Math.max(0, Math.min(255, Math.round(v)));
+    const toHex = (v: number) => clamp(v).toString(16).padStart(2, '0');
+    let { r, g, b, a } = parsed;
+    for (const t of transforms) ({ r, g, b } = applyOneTransform(r, g, b, t));
+    return a >= (1 - 1 / 255)
+        ? `#${toHex(r)}${toHex(g)}${toHex(b)}`
+        : `rgba(${clamp(r)}, ${clamp(g)}, ${clamp(b)}, ${a.toFixed(2)})`;
+}
+
+export function greyOut(color: string, degree: number): string {
+    return applyTransforms(color, { type: 'greyOut', degree });
 }
