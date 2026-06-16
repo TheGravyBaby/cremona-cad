@@ -22,7 +22,7 @@ import { MessageCenterComponent } from './shared/message-center.component';
       [nightMode]="nightMode"
       [templateOptions]="topBarTemplateOptions"
       [syncedTemplateKey]="topBarActiveTemplateKey"
-      (recipeChange)="selectedRecipe = $event"
+      (recipeChange)="selectRecipe($event)"
       (nightModeChange)="onNightModeChange($event)"
       (loadFile)="loadFile($event)"
       (saveFile)="requestSave()"
@@ -139,15 +139,23 @@ export class App {
   loadFile(data: RecipeInterface) {
     this.loadedFileData = data;
     sessionStorage.setItem('recipeData', JSON.stringify(this.loadedFileData));
-    this.referenceImage = data.referenceImage ?? null;
-
-
-    // pull reference image out of loaded file (if present)
-    this.referenceImage = data?.referenceImage ?? null;
 
     const name = (data.recipeName ?? '').toLowerCase();
-    if (name === 'ceruti') this.selectedRecipe = 'enrico-ceruti-violin';
-    if (name === 'hello') this.selectedRecipe = 'hello-recipe';
+    if (name === 'ceruti') this.selectRecipe('enrico-ceruti-violin');
+    if (name === 'hello') this.selectRecipe('hello-recipe');
+
+    // pull reference image out of loaded file (if present), overriding the
+    // clear that selectRecipe() just did
+    this.referenceImage = data?.referenceImage ?? null;
+  }
+
+  /** Switches the active recipe, clearing state that belonged to the old one. */
+  selectRecipe(recipe: string): void {
+    if (recipe === this.selectedRecipe) return;
+    this.selectedRecipe = recipe;
+    this.referenceImage = null;
+    this.topBarTemplateOptions = [];
+    this.topBarActiveTemplateKey = '';
   }
 
   requestSave() {

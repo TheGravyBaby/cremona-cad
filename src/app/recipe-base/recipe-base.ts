@@ -197,19 +197,32 @@ export abstract class RecipeComponentBase implements AfterViewInit {
 
 
  ngOnInit() {
+    const recipeData = this.loadMatchingSessionRecipe();
+    if (recipeData) {
+      this.d = recipeData;
+      this.panelFlow?.refreshEnabledPanels();
+    }
+  }
+
+  /**
+   * Reads `recipeData` from sessionStorage, but only returns it if its
+   * `recipeName` matches this component's current recipe. Since every recipe
+   * shares the same sessionStorage key, this guards against e.g. switching
+   * between recipes and loading incompatible data
+   */
+  protected loadMatchingSessionRecipe<T extends RecipeInterface = RecipeInterface>(): T | null {
     const saved = sessionStorage.getItem('recipeData');
-    if (saved) {
-      try {
-        let recipeData = JSON.parse(saved);
-        if (this.d.recipeName == recipeData.recipeName) {
-          this.d = recipeData;
-          this.panelFlow?.refreshEnabledPanels();
-        } else {
-          console.warn('Saved recipe does not match current recipe. Ignoring saved data.');
-        }
-      } catch (e) {
-        console.error('Failed to load from sessionStorage', e);
+    if (!saved) return null;
+    try {
+      const recipeData = JSON.parse(saved);
+      if (recipeData.recipeName === this.d.recipeName) {
+        return recipeData as T;
       }
+      console.warn('Saved recipe does not match current recipe. Ignoring saved data.');
+      return null;
+    } catch (e) {
+      console.error('Failed to load from sessionStorage', e);
+      return null;
     }
   }
 
