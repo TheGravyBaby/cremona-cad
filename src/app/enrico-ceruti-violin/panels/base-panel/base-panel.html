@@ -1,0 +1,70 @@
+<section class="ui-group">
+    <div class="ui-group-title">File Properties</div>
+    <label>
+        File Name
+        <input type="text" class="textarea" [ngModel]="fileName" (ngModelChange)="fileNameChange.emit($event)" />
+    </label>
+
+    <label>
+        Description
+        <textarea class="description-textarea" rows="1" maxlength="200" [ngModel]="description"
+            (ngModelChange)="descriptionChange.emit($event)"></textarea>
+    </label>
+
+    <div class="input-group basic-row field-row" role="group">
+        <label class="file-upload">
+            Upload Reference Image
+            <input type="file" accept="image/*" (change)="referenceFileSelected.emit($event)" />
+        </label>
+        <button type="button" class="info-icon" (click)="referenceInfo()" title="More information"
+            aria-label="Information">ⓘ</button>
+    </div>
+</section>
+
+<section class="ui-group">
+    <div class="ui-group-title">Primary Dimensions</div>
+
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Height <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="params.height"
+                (input)="onChange()" />
+        </label>
+        <span class="field-separator" aria-hidden="true"></span>
+        <label class="field-cell">
+            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="params.width"
+                (input)="onChange()" />
+        </label>
+        <span class="field-separator" aria-hidden="true"></span>
+        <label class="field-cell" s>
+            <span class="field-title">H to W</span>
+            <div class="basic-display" aria-label="Height to width ratio value">{{
+                nearestFraction(params.ratios.HtoW) }}</div>
+        </label>
+        <button type="button" class="info-icon" (click)="dimensionInfo()" title="More information"
+            aria-label="Information">ⓘ</button>
+    </div>
+
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Overhang <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.1" min="0" [(ngModel)]="params.overhang"
+                (input)="onChange()" />
+        </label>
+        <span class="field-separator" aria-hidden="true"></span>
+        <label class="field-cell">
+            <span class="field-title">Ribs <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.1" min="0" [(ngModel)]="params.rib"
+                (input)="onChange()" />
+        </label>
+        <span class="field-separator" aria-hidden="true"></span>
+        <label class="field-cell">
+            <span class="field-title">Inset<span class="unit-label">mm</span></span>
+            <div class="basic-display" aria-label="Inset">{{ (params.overhang + params.rib) }}</div>
+        </label>
+        <button type="button" class="info-icon" (click)="insetInfo()" title="More information"
+            aria-label="Information">ⓘ</button>
+
+    </div>
+</section>

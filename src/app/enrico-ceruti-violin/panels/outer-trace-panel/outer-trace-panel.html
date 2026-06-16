@@ -1,0 +1,108 @@
+<section class='ui-group'>
+    <div class="ui-group-title">Button</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="params.button!.width"
+                (input)="onChange()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Height <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="params.button!.height"
+                (input)="onChange()" />
+        </label>
+        <button type="button" class="info-icon" (click)="buttonInfo()" title="More information"
+            aria-label="Information">ⓘ</button>
+    </div>
+</section>
+
+<section class="ui-group">
+    <div class="ui-group-title">Upper Corner</div>
+    @if (params.options.useViolCornerUC) {
+    <p class="viol-corner-notice">Viol corner selected — no cutoff options available.</p>
+    } @else {
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Top Cutoff <span class="unit-label">°</span></span>
+            @if (params.options.U31DoubleArc) {
+            <input type="number" class="basic-input" step="1"
+                [ngModel]="params.outerCorners.U31!.degreeDiff"
+                (ngModelChange)="adjustArcEnd(params.outerCorners.U31!, $event, onChange.bind(this)); onArcFocus(params.outerCorners.U31!, colors.centerBoutUp)"
+                [style.borderColor]="colors.centerBoutUp"
+                (focus)="onArcFocus(params.outerCorners.U31!, colors.centerBoutUp)" (blur)="onArcBlur()" />
+            } @else {
+            <input type="number" class="basic-input" step="1"
+                [ngModel]="params.outerCorners.U3!.degreeDiff"
+                (ngModelChange)="adjustArcEnd(params.outerCorners.U3!, $event, onChange.bind(this)); onArcFocus(params.outerCorners.U3!, colors.centerBoutUp)"
+                [style.borderColor]="colors.centerBoutUp"
+                (focus)="onArcFocus(params.outerCorners.U3!, colors.centerBoutUp)" (blur)="onArcBlur()" />
+            }
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Bottom Cutoff <span class="unit-label">°</span></span>
+            @if (params.options.C21DoubleArc) {
+            <input type="number" class="basic-input" step="1"
+                [ngModel]="params.outerCorners.C21!.degreeDiff"
+                (ngModelChange)="adjustArcEnd(params.outerCorners.C21!, $event, onChange.bind(this)); onArcFocus(params.outerCorners.C21!, colors.centerBoutUp)"
+                [style.borderColor]="colors.centerBoutUp"
+                (focus)="onArcFocus(params.outerCorners.C21!, colors.centerBoutUp)" (blur)="onArcBlur()" />
+            } @else {
+            <input type="number" class="basic-input" step="1"
+                [ngModel]="params.outerCorners.C2!.degreeDiff"
+                (ngModelChange)="adjustArcEnd(params.outerCorners.C2!, $event, onChange.bind(this)); onArcFocus(params.outerCorners.C2!, colors.centerBoutUp)"
+                [style.borderColor]="colors.centerBoutUp"
+                (focus)="onArcFocus(params.outerCorners.C2!, colors.centerBoutUp)" (blur)="onArcBlur()" />
+            }
+        </label>
+        <button type="button" class="info-icon" (click)="cornerCutoffInfo()" title="More information"
+            aria-label="Information">ⓘ</button>
+    </div>
+    }
+</section>
+
+<section class="ui-group">
+    <div class="ui-group-title">Lower Corner</div>
+    @if (params.options.useViolCornerLC) {
+    <p class="viol-corner-notice">Viol corner selected — no cutoff options available.</p>
+    } @else {
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Top Cutoff <span class="unit-label">°</span></span>
+            @if (params.options.C11DoubleArc) {
+            <input type="number" class="basic-input" step="1"
+                [ngModel]="params.outerCorners.C11!.degreeDiff"
+                (ngModelChange)="adjustArcEnd(params.outerCorners.C11!, $event, onChange.bind(this)); onArcFocus(params.outerCorners.C11!, colors.centerBoutLow)"
+                [style.borderColor]="colors.centerBoutLow"
+                (focus)="onArcFocus(params.outerCorners.C11!, colors.centerBoutLow)" (blur)="onArcBlur()" />
+            } @else {
+            <input type="number" class="basic-input" step="1"
+                [ngModel]="params.outerCorners.C1!.degreeDiff"
+                (ngModelChange)="adjustArcEnd(params.outerCorners.C1!, $event, onChange.bind(this)); onArcFocus(params.outerCorners.C1!, colors.centerBoutLow)"
+                [style.borderColor]="colors.centerBoutLow"
+                (focus)="onArcFocus(params.outerCorners.C1!, colors.centerBoutLow)" (blur)="onArcBlur()" />
+            }
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Bottom Cutoff <span class="unit-label">°</span></span>
+            @if (params.options.L31DoubleArc) {
+            <input type="number" class="basic-input" step="1"
+                [ngModel]="params.outerCorners.L31!.degreeDiff"
+                (ngModelChange)="adjustArcEnd(params.outerCorners.L31!, $event, onChange.bind(this)); onArcFocus(params.outerCorners.L31!, colors.centerBoutLow)"
+                [style.borderColor]="colors.centerBoutLow"
+                (focus)="onArcFocus(params.outerCorners.L31!, colors.centerBoutLow)" (blur)="onArcBlur(); " />
+            } @else {
+            <input type="number" class="basic-input" step="1"
+                [ngModel]="params.outerCorners.L3!.degreeDiff"
+                (ngModelChange)="adjustArcEnd(params.outerCorners.L3!, $event, onChange.bind(this)); onArcFocus(params.outerCorners.L3!, colors.centerBoutLow)"
+                [style.borderColor]="colors.centerBoutLow"
+                (focus)="onArcFocus(params.outerCorners.L3!, colors.centerBoutLow)" (blur)="onArcBlur()" />
+            }
+        </label>
+        <button type="button" class="info-icon" (click)="cornerCutoffInfo()" title="More information"
+            aria-label="Information">ⓘ</button>
+    </div>
+    }
+</section>
+
+<app-ceruti-render-toggles [flags]="flags" [showGuideRow]="false" [showOuterPathRow]="false"
+    (changed)="onChange()"></app-ceruti-render-toggles>

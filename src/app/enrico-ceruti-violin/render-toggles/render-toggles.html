@@ -1,0 +1,38 @@
+<section class="ui-group">
+    <div class="input-group basic-row field-row" role="group">
+        <div class="toggle">
+            <input type="checkbox" [(ngModel)]="flags.showModuleArcs" (change)="changed.emit()" />
+            <span>Show Module Arcs</span>
+        </div>
+        <div class="toggle">
+            <input type="checkbox" [(ngModel)]="flags.showAllArcs" (change)="changed.emit()" /><span>Show All
+                Arcs</span>
+        </div>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <div class="toggle">
+            <input type="checkbox" [(ngModel)]="flags.showModuleCircles" (change)="changed.emit()" />
+            <span>Show Module Circles </span>
+        </div>
+        <div class="toggle">
+            <input type="checkbox" [(ngModel)]="flags.showAllCircles" (change)="changed.emit()" /><span>Show All
+                Circles </span>
+        </div>
+    </div>
+    @if (showGuideRow) {
+    <div class="input-group basic-row field-row" role="group">
+        <div class="toggle">
+            <input type="checkbox" [(ngModel)]="flags.showModuleGuides" (change)="changed.emit()" />
+            <span>Show Module Guides</span>
+        </div>
+    </div>
+    }
+    @if (showOuterPathRow) {
+    <div class="input-group basic-row field-row" role="group">
+        <div class="toggle">
+            <input type="checkbox" [(ngModel)]="flags.renderOuterPath" (change)="changed.emit()" />
+            <span>Show Outer Path</span>
+        </div>
+    </div>
+    }
+</section>

@@ -1,0 +1,120 @@
+<section class="ui-group" [style.border-color]="colors.upperBoutOff">
+    <div class="ui-group-title">Upper Block</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Height <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.blocks.U!.height"
+                (input)="onChange()" [style.borderColor]="colors.upperBoutOff" />
+        </label>
+        <span class="field-separator" aria-hidden="true"></span>
+        <label class="field-cell">
+            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.blocks.U!.width"
+                (input)="onChange()" [style.borderColor]="colors.upperBoutOff" />
+        </label>
+    </div>
+</section>
+
+<section class="ui-group" [style.border-color]="colors.centerBoutUp">
+    <div class="ui-group-title">Upper Corner Block</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Height <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.blocks.CU!.height"
+                (input)="onChange()" [style.borderColor]="colors.centerBoutUp" />
+        </label>
+        <span class="field-separator" aria-hidden="true"></span>
+        <label class="field-cell">
+            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.blocks.CU!.width"
+                (input)="onChange()" [style.borderColor]="colors.centerBoutUp" />
+        </label>
+        <span class="field-separator" aria-hidden="true"></span>
+        <label class="field-cell">
+            <span class="field-title">Pad <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.blocks.CUPad"
+                (input)="onChange()" [style.borderColor]="colors.centerBoutUp" />
+        </label>
+    </div>
+</section>
+
+<section class="ui-group" [style.border-color]="colors.centerBoutLow">
+    <div class="ui-group-title">Lower Corner Block</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Height <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.blocks.CL!.height"
+                (input)="onChange()" [style.borderColor]="colors.centerBoutLow" />
+        </label>
+        <span class="field-separator" aria-hidden="true"></span>
+        <label class="field-cell">
+            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.blocks.CL!.width"
+                (input)="onChange()" [style.borderColor]="colors.centerBoutLow" />
+        </label>
+        <span class="field-separator" aria-hidden="true"></span>
+        <label class="field-cell">
+            <span class="field-title">Pad <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.blocks.CLPad"
+                (input)="onChange()" [style.borderColor]="colors.centerBoutLow" />
+        </label>
+    </div>
+</section>
+
+<section class="ui-group" [style.border-color]="colors.lowerBoutOff">
+    <div class="ui-group-title">Lower Block</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Height <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.blocks.L!.height"
+                (input)="onChange()" [style.borderColor]="colors.lowerBoutOff" />
+        </label>
+        <span class="field-separator" aria-hidden="true"></span>
+        <label class="field-cell">
+            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.blocks.L!.width"
+                (input)="onChange()" [style.borderColor]="colors.lowerBoutOff" />
+        </label>
+    </div>
+</section>
+
+<section class="ui-group">
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Bit Diameter <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step=".1" min="0" [(ngModel)]="params.bitDiameter"
+                (input)="onChange()" />
+        </label>
+        <button type="button" class="info-icon" (click)="bitDiameterInfo()" title="More information"
+            aria-label="Information">ⓘ</button>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell" [style.opacity]="flags.simpleClampBox ? 0.5 : 1"
+            [style.pointerEvents]="flags.simpleClampBox ? 'none' : 'auto'">
+            <span class="field-title">Channel Depth <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.clampChannelWidth"
+                (input)="onChange()" [disabled]="flags.simpleClampBox" />
+        </label>
+        <button type="button" class="info-icon" (click)="channelDepthInfo()" title="More information"
+            aria-label="Information">ⓘ</button>
+    </div>
+    <div class="input-group basic-row field-row">
+        <div class="toggle">
+            <input type="checkbox" [(ngModel)]="flags.simpleClampBox" (change)="onChange()" />
+            <span>Use Simple Clamp Box</span>
+        </div>
+    </div>
+</section>
+
+<section class="ui-group">
+    <div class="input-group basic-row field-row" role="group">
+        <div class="toggle">
+            <input type="checkbox" [(ngModel)]="flags.showBlocks" (change)="onChange()" />
+            <span>Show Blocks</span>
+        </div>
+        <div class="toggle">
+            <input type="checkbox" [(ngModel)]="flags.showInnerPath" (change)="onChange()" />
+            <span>Show Inner Path</span>
+        </div>
+    </div>
+</section>
