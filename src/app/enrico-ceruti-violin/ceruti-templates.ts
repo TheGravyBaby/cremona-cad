@@ -2127,7 +2127,7 @@ export const CERUTI_TEMPLATES: EnricoCerutiTemplate[] = [
     key: 'ceruti-new',
     label: 'New Instrument',
     recipeName: 'enrico-ceruti-violin',
-    fileName: 'NewInstrument',
+    fileName: 'New Instrument',
     description: 'A blank template to start from...',
     version: RECIPE_SCHEMA_VERSION,
     params: DefaultParams,

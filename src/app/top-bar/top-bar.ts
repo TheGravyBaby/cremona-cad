@@ -1,4 +1,5 @@
 import { Component, EventEmitter, Output, Input, ViewChild, ElementRef, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { RecipeInterface } from '../models/types';
 import { MessageService } from '../shared/message.service';
 import { RECIPE_SCHEMA_VERSION } from '../enrico-ceruti-violin/ceruti-types';
@@ -7,6 +8,7 @@ import packageJson from '../../../package.json';
 @Component({
   selector: 'app-top-bar',
   standalone: true,
+  imports: [FormsModule],
   templateUrl: './top-bar.html',
   styleUrls: ['./top-bar.css'],
 })
@@ -22,6 +24,14 @@ export class TopBarComponent {
   @Output() saveFile = new EventEmitter<void>();
   @Output() nightModeChange = new EventEmitter<boolean>();
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
+
+  @Input() templateOptions: Array<{ key: string; label: string }> = [];
+  @Output() templateSelect = new EventEmitter<string>();
+  activeTemplateKey = '';
+
+  @Input() set syncedTemplateKey(key: string) {
+    this.activeTemplateKey = key;
+  }
 
   // Image gallery properties
   images = [
@@ -59,6 +69,12 @@ export class TopBarComponent {
 
   onSaveClick() {
     this.saveFile.emit();
+  }
+
+  onTemplateSelect(key: string): void {
+    if (!key) return;
+    this.activeTemplateKey = key;
+    this.templateSelect.emit(key);
   }
 
   onSelectChange(event: Event) {

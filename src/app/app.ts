@@ -20,11 +20,14 @@ import { MessageCenterComponent } from './shared/message-center.component';
      <app-top-bar class="top"
       [selectedRecipe]="selectedRecipe"
       [nightMode]="nightMode"
+      [templateOptions]="topBarTemplateOptions"
+      [syncedTemplateKey]="topBarActiveTemplateKey"
       (recipeChange)="selectedRecipe = $event"
       (nightModeChange)="onNightModeChange($event)"
       (loadFile)="loadFile($event)"
       (saveFile)="requestSave()"
-      (newFile)="newFile()">
+      (newFile)="newFile()"
+      (templateSelect)="onTemplateSelect($event)">
     </app-top-bar>
 
       <div class="main">
@@ -45,6 +48,9 @@ import { MessageCenterComponent } from './shared/message-center.component';
           [newFile]="newFileTick"
           [referenceImageParams]="referenceImage"
           [cameraBounds]="bounds"
+          [templateLoadRequest]="templateLoadRequest"
+          (templateListChange)="onTemplateListChange($event)"
+          (activeTemplateKeyChange)="onActiveTemplateKeyChange($event)"
           (referenceImageChange)="onReferenceImageChange($event)">
         </app-ceruti-violin>
         }
@@ -85,6 +91,10 @@ export class App {
   referenceImage: ReferenceImage | null = this.sessionData ? JSON.parse(this.sessionData).referenceImage : null;
 
   nightMode = true;
+
+  topBarTemplateOptions: Array<{ key: string; label: string }> = [];
+  templateLoadRequest: { key: string; tick: number } = { key: '', tick: 0 };
+  topBarActiveTemplateKey = '';
 
   constructor() {
     const savedTheme = localStorage.getItem('themeMode');
@@ -141,5 +151,18 @@ export class App {
 
   requestSave() {
     this.saveTick++;
+  }
+
+  onTemplateListChange(options: Array<{ key: string; label: string }>): void {
+    this.topBarTemplateOptions = options;
+  }
+
+  onTemplateSelect(key: string): void {
+    this.templateLoadRequest = { key, tick: this.templateLoadRequest.tick + 1 };
+    this.topBarActiveTemplateKey = key;
+  }
+
+  onActiveTemplateKeyChange(key: string): void {
+    this.topBarActiveTemplateKey = key;
   }
 }

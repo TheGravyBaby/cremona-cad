@@ -19,6 +19,16 @@
       <option value="hello-recipe" [selected]="selectedRecipe === 'hello-recipe'">Hello Recipe</option>
     </select> -->
 
+    @if (templateOptions.length > 0) {
+    <select class="select" [ngModel]="activeTemplateKey" (ngModelChange)="onTemplateSelect($event)"
+      aria-label="Load template">
+      <option value="">— Select a Template —</option>
+      @for (t of templateOptions; track t.key) {
+      <option [value]="t.key">{{ t.label }}</option>
+      }
+    </select>
+    }
+
     <button class="btn" (click)="onNewClick()">New</button>
     <button class="btn" (click)="onSaveClick()">Save</button>
     <button class="btn" (click)="triggerFilePick()">Load</button>
@@ -40,8 +50,10 @@
         <button class="tab-btn" [class.active]="activeTab === 'tutorial'"
           (click)="activeTab = 'tutorial'">Tutorial</button>
         <!-- <button class="tab-btn" [class.active]="activeTab === 'version'" (click)="activeTab = 'version'">Version</button> -->
-        <button class="tab-btn" [class.active]="activeTab === 'license'" (click)="activeTab = 'license'">License</button>
-        <button class="tab-btn" [class.active]="activeTab === 'author'" (click)="activeTab = 'author'">About The Author</button>
+        <button class="tab-btn" [class.active]="activeTab === 'license'"
+          (click)="activeTab = 'license'">License</button>
+        <button class="tab-btn" [class.active]="activeTab === 'author'" (click)="activeTab = 'author'">About The
+          Author</button>
 
       </div>
       <button class="modal-close" (click)="closeAbout()" aria-label="Close">✕</button>
@@ -93,7 +105,7 @@
           instrument step by step. Once all the sections are complete, you can generate moulds and templates for
           construction.</p>
 
-          <h3>Basic Controls</h3>
+        <h3>Basic Controls</h3>
         <ul class="tips-list">
           <li>
             <strong>Zoom:</strong> Use the <strong>scroll wheel</strong> to zoom in and out toward your cursor.
@@ -108,23 +120,29 @@
           <li>
             Press <strong>F</strong> to fit the entire design back into view at any time.
           </li>
-          <li>Reference images can be loaded and scaled using the <code>Reference</code> controls on the bottom right of the canvas.</li>
+          <li>Reference images can be loaded and scaled using the <code>Reference</code> controls on the bottom right of
+            the canvas.</li>
           <li>The <code>Axis</code> controls on the bottom right of the canvas allow for custom grid settings.</li>
-          <li>Files can be saved and loaded using the <code>New</code> <code>Save</code> and <code>Load</code> buttons at the top right of the screen.</li>
+          <li>Files can be saved and loaded using the <code>New</code> <code>Save</code> and <code>Load</code> buttons
+            at the top right of the screen.</li>
         </ul>
-        
+
         <h3>Base Measurements</h3>
         <p>This section sets the primary dimensions of the instrument, the setting of a reference image, as well as
           basic file properties.</p>
         <ul class="tips-list">
           <li>CremonaCad comes with a set of predefined templates from historical instruments. Select one to study, or
             create a new design.</li>
-          <li>Use the <code>Upload Reference Image</code> button to add your own images to aid in your design process. If tracing a reference, it is recommended that you find the dimensions of your instrument beforehand, so that you can scale your reference accordingly.</li>
+          <li>Use the <code>Upload Reference Image</code> button to add your own images to aid in your design process.
+            If tracing a reference, it is recommended that you find the dimensions of your instrument beforehand, so
+            that you can scale your reference accordingly.</li>
           <li>Use the primary dimensions section to define the height and width of your instrument. This is also useful
             for scaling your reference image.</li>
-          <li>For many measurements, <strong>ratios</strong> will be displayed to the right of the metric value. Many Cremonese
+          <li>For many measurements, <strong>ratios</strong> will be displayed to the right of the metric value. Many
+            Cremonese
             instruments use simple integer ratios which define their arc segments.</li>
-          <li>Define rib and overhang values to create a total <strong>inset</strong> value. This inset will bound the inner path of the
+          <li>Define rib and overhang values to create a total <strong>inset</strong> value. This inset will bound the
+            inner path of the
             instrument.</li>
         </ul>
 
@@ -132,11 +150,13 @@
         <p>The main bouts define the upper and lower sections of the instrument's body. These will be the first arc
           segments you create.</p>
         <ul class="tips-list">
-          <li>The join arcs <code>U0</code> and <code>L0</code> (Upper and Lower) are used to connect the Vesica arcs <code>U1</code> and <code>L1</code>.</li>
+          <li>The join arcs <code>U0</code> and <code>L0</code> (Upper and Lower) are used to connect the Vesica arcs
+            <code>U1</code> and <code>L1</code>.</li>
           <li>Each bout has a width measurement which sets the total outer width of the instrument including the inset.
             These width values are often provided in online measurements of historical instruments, and are helpful in
             guiding your design.</li>
-          <li>Use the <code>Viol Neck</code> option to add a viola da gamba-style upper extension. These are of course common on
+          <li>Use the <code>Viol Neck</code> option to add a viola da gamba-style upper extension. These are of course
+            common on
             double bass.</li>
         </ul>
 
@@ -153,18 +173,22 @@
         <h3>Center Bout</h3>
         <p>The center bout is the narrowest section of the instrument, connecting the upper and lower bouts.</p>
         <ul class="tips-list">
-          <li>The <strong>Center Bout Width</strong> defines the total outer width at the narrowest point. When adjusting the <code>C0</code> circle,
+          <li>The <strong>Center Bout Width</strong> defines the total outer width at the narrowest point. When
+            adjusting the <code>C0</code> circle,
             this width will remain constant.</li>
-          <li>The <code>Fit C0 to Bouts</code> option automatically calculates <code>C0</code> to cleanly intersect <code>U2</code> and <code>L2</code>. This is based off
+          <li>The <code>Fit C0 to Bouts</code> option automatically calculates <code>C0</code> to cleanly intersect
+            <code>U2</code> and <code>L2</code>. This is based off
             of Kevin Kelly's four-circle method, while still allowing for manual adjustments.</li>
         </ul>
 
         <h3>Outer Path</h3>
         <p>The outer path section defines the button and corner arcs that complete the outline of the instrument.</p>
         <ul class="tips-list">
-          <li>Each corner is defined by at least two corner arcs and respective <strong>cutoff angles</strong>. The cutoff values
+          <li>Each corner is defined by at least two corner arcs and respective <strong>cutoff angles</strong>. The
+            cutoff values
             define points at which a line is drawn across the outer corners.</li>
-          <li>The <strong>button</strong> is a small half-circle segment that is usually found on the backs of violin family instruments.
+          <li>The <strong>button</strong> is a small half-circle segment that is usually found on the backs of violin
+            family instruments.
             You can define its dimensions here.</li>
         </ul>
 
@@ -172,11 +196,14 @@
         <p>The mould section defines the internal blocks and templates used to construct the instrument. These blocks
           form the wooden structure around which the ribs are bent and glued.</p>
         <ul class="tips-list">
-          <li>Four blocks are defined: <strong>Upper</strong>, <strong>Upper Corner</strong>, <strong>Lower Corner</strong>, and <strong>Lower</strong>. Each block has height and width
+          <li>Four blocks are defined: <strong>Upper</strong>, <strong>Upper Corner</strong>, <strong>Lower
+              Corner</strong>, and <strong>Lower</strong>. Each block has height and width
             dimensions.</li>
-          <li>Corner block <strong>Pad</strong> values add extra material at each corner point. This can help with finding the optimal
+          <li>Corner block <strong>Pad</strong> values add extra material at each corner point. This can help with
+            finding the optimal
             placing of the block against the mould.</li>
-          <li>If the mould is to be cut on a CNC, the <code>Bit Diameter</code> value prevent issues with right angles at
+          <li>If the mould is to be cut on a CNC, the <code>Bit Diameter</code> value prevent issues with right angles
+            at
             critical glue points.</li>
           <li>The default mould has clamping channels parallel to the edges. However, a simple box cutout can be
             specified as well.</li>
@@ -213,7 +240,8 @@
         </p>
         <p>
           Source code is available on
-          <a class="contact-link" href="https://github.com/TheGravyBaby/cremona-cad" target="_blank" rel="noopener">GitHub</a>.
+          <a class="contact-link" href="https://github.com/TheGravyBaby/cremona-cad" target="_blank"
+            rel="noopener">GitHub</a>.
         </p>
       </section>
       }
@@ -226,17 +254,22 @@
           <figcaption>Pictured: a man who should probably be practicing instead of coding x_x</figcaption>
         </figure>
         <p>
-          A musician and software engineer based out of  New Haven, CT. 
+          A musician and software engineer based out of New Haven, CT.
         </p>
         <p>
-          <strong>CremonaCad</strong> started as a personal tool to help me understand the geometry behind historical violin patterns.
-          After months of development and experimentation, I realized that it might be genuinely useful in developing the craft of violin-making.
+          <strong>CremonaCad</strong> started as a personal tool to help me understand the geometry behind historical
+          violin patterns.
+          After months of development and experimentation, I realized that it might be genuinely useful in developing
+          the craft of violin-making.
         </p>
         <p>
-          I plan to keep developing the application with features like arching templates, f-hole patterns, and neck profiles.
-          As of Spring 2026, Cremona Cad is still early in its development lifecycle, I hope to use it as an actual tool in the making of my first instruments.
+          I plan to keep developing the application with features like arching templates, f-hole patterns, and neck
+          profiles.
+          As of Spring 2026, Cremona Cad is still early in its development lifecycle, I hope to use it as an actual tool
+          in the making of my first instruments.
         </p>
-        <p>CremonaCad is open source, and I welcome feedback, ideas, and collaboration from anyone in the making community.</p>
+        <p>CremonaCad is open source, and I welcome feedback, ideas, and collaboration from anyone in the making
+          community.</p>
         <div class="author-contact">
           <span class="contact-icon">✉</span>
           <a class="contact-link" href="mailto:andrewargraves@gmail.com">andrewargraves@gmail.com</a>
