@@ -16,6 +16,24 @@
     </div>
 </section>
 
+<section class='ui-group'>
+    <div class="ui-group-title">Fluting &amp; Purfling</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Purfling Offset <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.1" min="0"
+                [ngModel]="params.purflingOffset"
+                (ngModelChange)="params.purflingOffset = $event; onChange()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Fluting Width <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.1" min="0"
+                [ngModel]="params.flutingWidth"
+                (ngModelChange)="params.flutingWidth = $event; onChange()" />
+        </label>
+    </div>
+</section>
+
 <section class="ui-group">
     <div class="ui-group-title">Upper Corner</div>
     @if (params.options.useViolCornerUC) {

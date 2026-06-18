@@ -1,8 +1,10 @@
-import { flipArcAboutY, flipCircleAboutY } from '../../helpers/draftMath';
-import { renderArcFromArcFancy, renderCircle, renderPath } from '../../helpers/renderFuncs';
-import { defineOuterPath } from '../ceruti-calcs';
+import { angleFromCenter, circleCircleIntersections, findJoiningArcs, flipArcAboutY, flipCircleAboutY, pointOnCircle } from '../../helpers/draftMath';
+import { pathFromArc, pathFromCornerBezier, unifyConnectedSvgPaths } from '../../helpers/svgPathMath';
+import { renderArcFromArc, renderArcFromArcFancy, renderCircle, renderCrosshair, renderPath } from '../../helpers/renderFuncs';
+import { defineOffsetArcs, defineOuterPath } from '../ceruti-calcs';
 import { CerutiColors, EnricoCerutiParams } from '../ceruti-types';
 import { PATH_STROKE_WIDTH } from './render-constants';
+import { find } from 'rxjs';
 
 export interface OuterTraceViewFlags {
   showModuleArcs: boolean;
@@ -21,6 +23,43 @@ export const renderOuterTrace = (
   let offset = p.overhang + p.rib;
   let outerPath = defineOuterPath(p, offset, true);
   renderPath(outerPath, colors.outerTrace, PATH_STROKE_WIDTH)(g, ui);
+
+  if (p.purflingOffset !== null) {
+    const purflingArcOffset = offset - p.purflingOffset;
+    const purflingArcs = defineOffsetArcs(p, purflingArcOffset, true);
+    const mirrored = purflingArcs.map(arc => flipArcAboutY(arc));
+    const purflingPath = unifyConnectedSvgPaths([...purflingArcs, ...mirrored].map(arc => pathFromArc(arc)));
+    renderPath(purflingPath, colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
+  }
+
+  if (p.purflingOffset !== null && p.flutingWidth !== null) {
+    const flutingArcOffset = offset - p.purflingOffset - p.flutingWidth;
+    const flutingArcs = defineOffsetArcs(p, flutingArcOffset, false);
+
+    let lowerJoin = findJoiningArcs(flutingArcs[2], "end", flutingArcs[3], "end")
+    renderArcFromArc(lowerJoin[0], "red")(g,ui)
+    renderArcFromArc(lowerJoin[1], "green")(g,ui)
+
+    let upperJoin = findJoiningArcs(flutingArcs[3], "start", flutingArcs[4], "end", true)
+    renderArcFromArc(upperJoin[0], "orange")(g,ui)
+    renderArcFromArc(upperJoin[1], "yellow")(g,ui)
+
+
+
+
+
+    // renderPath(join1, "red")(g, ui)  
+
+    // // note, we need to define the proper end of the arc
+    // // some arcs we join on the start, ohers the end
+    // let join2 = pathFromCornerBezier(flutingArcs[3], flutingArcs[4])
+    // renderPath(join2, "red")(g, ui)
+
+    const mirrored = flutingArcs.map(arc => flipArcAboutY(arc));
+    for (const arc of [...flutingArcs, ...mirrored]) {
+      renderPath(pathFromArc(arc), "blue", PATH_STROKE_WIDTH)(g, ui);
+    }
+  }
 
   if ((currentModule && flags.showModuleArcs) || flags.showAllArcs) {
     // primary arcs + their mirrors

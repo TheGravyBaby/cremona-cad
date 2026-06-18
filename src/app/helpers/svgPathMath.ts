@@ -51,11 +51,21 @@ export function pathFromLine(Pt1: Pt, Pt2: Pt): string {
 // Connects arc1.end to arc2.end with a quadratic bezier whose control point is
 // the intersection of the tangent lines at each arc endpoint. This produces a
 // naturally asymmetric rounded corner that matches the tangent of both arcs.
+// Returns 1 for CCW arcs, -1 for CW arcs — matches the sweep logic in pathFromArc.
+// The tangent at arc.end in the arc's traversal direction is (-s*sin(θ), s*cos(θ)).
+function arcSweepSign(arc: Arc): 1 | -1 {
+  const TWO_PI = Math.PI * 2;
+  const diff = ((arc.end - arc.start) % TWO_PI + TWO_PI) % TWO_PI;
+  return diff <= Math.PI ? 1 : -1;
+}
+
 export function pathFromCornerBezier(arc1: Arc, arc2: Arc): string {
   const P1 = pointOnCircle(arc1, arc1.end);
   const P2 = pointOnCircle(arc2, arc2.end);
-  const T1: Pt = { x: P1.x - Math.sin(arc1.end), y: P1.y + Math.cos(arc1.end) };
-  const T2: Pt = { x: P2.x - Math.sin(arc2.end), y: P2.y + Math.cos(arc2.end) };
+  const s1 = arcSweepSign(arc1);
+  const s2 = arcSweepSign(arc2);
+  const T1: Pt = { x: P1.x - s1 * Math.sin(arc1.end), y: P1.y + s1 * Math.cos(arc1.end) };
+  const T2: Pt = { x: P2.x - s2 * Math.sin(arc2.end), y: P2.y + s2 * Math.cos(arc2.end) };
   const ctrl = intersectLines(P1, T1, P2, T2);
   if (!ctrl) return `M ${P1.x} ${P1.y} L ${P2.x} ${P2.y}`;
   return `M ${P1.x} ${P1.y} Q ${ctrl.x} ${ctrl.y} ${P2.x} ${P2.y}`;
@@ -67,8 +77,10 @@ export function pathFromCornerBezier(arc1: Arc, arc2: Arc): string {
 export function pathFromCornerCubic(arc1: Arc, arc2: Arc, sharpness: number): string {
   const P1 = pointOnCircle(arc1, arc1.end);
   const P2 = pointOnCircle(arc2, arc2.end);
-  const T1: Pt = { x: P1.x - Math.sin(arc1.end), y: P1.y + Math.cos(arc1.end) };
-  const T2: Pt = { x: P2.x - Math.sin(arc2.end), y: P2.y + Math.cos(arc2.end) };
+  const s1 = arcSweepSign(arc1);
+  const s2 = arcSweepSign(arc2);
+  const T1: Pt = { x: P1.x - s1 * Math.sin(arc1.end), y: P1.y + s1 * Math.cos(arc1.end) };
+  const T2: Pt = { x: P2.x - s2 * Math.sin(arc2.end), y: P2.y + s2 * Math.cos(arc2.end) };
   const V = intersectLines(P1, T1, P2, T2);
   if (!V || !Number.isFinite(V.x) || !Number.isFinite(V.y)) return `M ${P1.x} ${P1.y} L ${P2.x} ${P2.y}`;
   const t = Number.isFinite(sharpness) ? Math.max(0, Math.min(1, sharpness)) : 0.1;
