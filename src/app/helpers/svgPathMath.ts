@@ -48,6 +48,35 @@ export function pathFromLine(Pt1: Pt, Pt2: Pt): string {
   return `M ${Pt1.x} ${Pt1.y} L ${Pt2.x} ${Pt2.y}`;
 }
 
+// Connects arc1.end to arc2.end with a quadratic bezier whose control point is
+// the intersection of the tangent lines at each arc endpoint. This produces a
+// naturally asymmetric rounded corner that matches the tangent of both arcs.
+export function pathFromCornerBezier(arc1: Arc, arc2: Arc): string {
+  const P1 = pointOnCircle(arc1, arc1.end);
+  const P2 = pointOnCircle(arc2, arc2.end);
+  const T1: Pt = { x: P1.x - Math.sin(arc1.end), y: P1.y + Math.cos(arc1.end) };
+  const T2: Pt = { x: P2.x - Math.sin(arc2.end), y: P2.y + Math.cos(arc2.end) };
+  const ctrl = intersectLines(P1, T1, P2, T2);
+  if (!ctrl) return `M ${P1.x} ${P1.y} L ${P2.x} ${P2.y}`;
+  return `M ${P1.x} ${P1.y} Q ${ctrl.x} ${ctrl.y} ${P2.x} ${P2.y}`;
+}
+
+// Like pathFromCornerBezier but uses a cubic bezier. Both control points slide
+// toward the tangent-intersection V by `sharpness` (0–1). Low sharpness gives a
+// gradual curve; high sharpness gives long flat approaches with a tight peak at V.
+export function pathFromCornerCubic(arc1: Arc, arc2: Arc, sharpness: number): string {
+  const P1 = pointOnCircle(arc1, arc1.end);
+  const P2 = pointOnCircle(arc2, arc2.end);
+  const T1: Pt = { x: P1.x - Math.sin(arc1.end), y: P1.y + Math.cos(arc1.end) };
+  const T2: Pt = { x: P2.x - Math.sin(arc2.end), y: P2.y + Math.cos(arc2.end) };
+  const V = intersectLines(P1, T1, P2, T2);
+  if (!V || !Number.isFinite(V.x) || !Number.isFinite(V.y)) return `M ${P1.x} ${P1.y} L ${P2.x} ${P2.y}`;
+  const t = Number.isFinite(sharpness) ? Math.max(0, Math.min(1, sharpness)) : 0.1;
+  const cp1 = { x: P1.x + t * (V.x - P1.x), y: P1.y + t * (V.y - P1.y) };
+  const cp2 = { x: P2.x + t * (V.x - P2.x), y: P2.y + t * (V.y - P2.y) };
+  return `M ${P1.x} ${P1.y} C ${cp1.x} ${cp1.y} ${cp2.x} ${cp2.y} ${P2.x} ${P2.y}`;
+}
+
 export function pathFromRect(R: Rectangle): string {
   const { Pt1, Pt2 } = R;
   return `M ${Pt1.x} ${Pt1.y} L ${Pt2.x} ${Pt1.y} L ${Pt2.x} ${Pt2.y} L ${Pt1.x} ${Pt2.y} Z`;
@@ -135,8 +164,10 @@ export function combinePathStrings(paths: string[]): string {
 export function unifyTwoConnectedPaths(path1: string, path2: string): string {
   const num = `([\\d.eE+\\-]+)`;
   const moveRe = new RegExp(`^\\s*M\\s+${num}\\s+${num}\\s+(.*)$`);
-  const arcRe = new RegExp(`^A\\s+${num}\\s+${num}\\s+${num}\\s+([01])\\s+([01])\\s+${num}\\s+${num}\\s*$`);
+  const arcRe  = new RegExp(`^A\\s+${num}\\s+${num}\\s+${num}\\s+([01])\\s+([01])\\s+${num}\\s+${num}\\s*$`);
   const lineRe = new RegExp(`^L\\s+${num}\\s+${num}\\s*$`);
+  const quadRe   = new RegExp(`^Q\\s+${num}\\s+${num}\\s+${num}\\s+${num}\\s*$`);
+  const cubicRe  = new RegExp(`^C\\s+${num}\\s+${num}\\s+${num}\\s+${num}\\s+${num}\\s+${num}\\s*$`);
 
   const almostEqual = (a: number, b: number, eps: number = 1e-3) => Math.abs(a - b) <= eps;
   const samePoint = (a: Pt, b: Pt) => almostEqual(a.x, b.x) && almostEqual(a.y, b.y);
@@ -150,14 +181,14 @@ export function unifyTwoConnectedPaths(path1: string, path2: string): string {
 
     const start: Pt = { x: Number(moveMatch[1]), y: Number(moveMatch[2]) };
     const body = moveMatch[3].trim();
-    const commands = body.match(/[AL][^AL]*/g)?.map(c => c.trim()) ?? [];
+    const commands = body.match(/[ALQC][^ALQC]*/g)?.map(c => c.trim()) ?? [];
 
     if (commands.length === 0) {
       throw new Error(`Unsupported segment body: ${body}`);
     }
 
     let end: Pt = { ...start };
-    let singleType: 'arc' | 'line' | null = null;
+    let singleType: 'arc' | 'line' | 'quad' | 'cubic' | null = null;
     let singleArcMeta: {
       rx: number;
       ry: number;
@@ -165,6 +196,8 @@ export function unifyTwoConnectedPaths(path1: string, path2: string): string {
       largeArcFlag: number;
       sweepFlag: number;
     } | null = null;
+    let singleQuadMeta: { cx: number; cy: number } | null = null;
+    let singleCubicMeta: { cp1x: number; cp1y: number; cp2x: number; cp2y: number } | null = null;
 
     for (const command of commands) {
       const arcMatch = command.match(arcRe);
@@ -192,6 +225,29 @@ export function unifyTwoConnectedPaths(path1: string, path2: string): string {
         continue;
       }
 
+      const quadMatch = command.match(quadRe);
+      if (quadMatch) {
+        end = { x: Number(quadMatch[3]), y: Number(quadMatch[4]) };
+        if (commands.length === 1) {
+          singleType = 'quad';
+          singleQuadMeta = { cx: Number(quadMatch[1]), cy: Number(quadMatch[2]) };
+        }
+        continue;
+      }
+
+      const cubicMatch = command.match(cubicRe);
+      if (cubicMatch) {
+        end = { x: Number(cubicMatch[5]), y: Number(cubicMatch[6]) };
+        if (commands.length === 1) {
+          singleType = 'cubic';
+          singleCubicMeta = {
+            cp1x: Number(cubicMatch[1]), cp1y: Number(cubicMatch[2]),
+            cp2x: Number(cubicMatch[3]), cp2y: Number(cubicMatch[4]),
+          };
+        }
+        continue;
+      }
+
       throw new Error(`Unsupported segment body: ${body}`);
     }
 
@@ -202,6 +258,8 @@ export function unifyTwoConnectedPaths(path1: string, path2: string): string {
       full: trimmed,
       singleType,
       singleArcMeta,
+      singleQuadMeta,
+      singleCubicMeta,
     };
   };
 
@@ -217,6 +275,15 @@ export function unifyTwoConnectedPaths(path1: string, path2: string): string {
       return `M ${seg.end.x} ${seg.end.y} A ${seg.singleArcMeta.rx} ${seg.singleArcMeta.ry} ${seg.singleArcMeta.xAxisRotation} ${seg.singleArcMeta.largeArcFlag} ${reversedSweepFlag} ${seg.start.x} ${seg.start.y}`;
     }
 
+    if (seg.singleType === 'quad' && seg.singleQuadMeta) {
+      return `M ${seg.end.x} ${seg.end.y} Q ${seg.singleQuadMeta.cx} ${seg.singleQuadMeta.cy} ${seg.start.x} ${seg.start.y}`;
+    }
+
+    if (seg.singleType === 'cubic' && seg.singleCubicMeta) {
+      const m = seg.singleCubicMeta;
+      return `M ${seg.end.x} ${seg.end.y} C ${m.cp2x} ${m.cp2y} ${m.cp1x} ${m.cp1y} ${seg.start.x} ${seg.start.y}`;
+    }
+
     return `M ${seg.end.x} ${seg.end.y} L ${seg.start.x} ${seg.start.y}`;
   };
 
@@ -229,7 +296,7 @@ export function unifyTwoConnectedPaths(path1: string, path2: string): string {
     if (almostEqual(from.x, to.x) && almostEqual(from.y, to.y)) return body;
     // Replace only the very first pair of numbers in the body (the start of the first command)
     return body.replace(
-      /^([AL]\s+(?:[\d.eE+\-]+\s+){0,5})([\d.eE+\-]+)\s+([\d.eE+\-]+)/,
+      /^([ALQC]\s+(?:[\d.eE+\-]+\s+){0,5})([\d.eE+\-]+)\s+([\d.eE+\-]+)/,
       (_m, prefix, _x, _y) => `${prefix}${to.x} ${to.y}`
     );
   };
