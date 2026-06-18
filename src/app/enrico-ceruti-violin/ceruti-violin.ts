@@ -7,7 +7,7 @@ import { combinePathStrings } from '../helpers/svgPathMath';
 import { clampParam, safeRun } from '../helpers/validators';
 import { CerutiColors, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, EnricoCerutiTemplate, EnricoCerutiParams } from './ceruti-types';
 import { CERUTI_TEMPLATES } from './ceruti-templates';
-import { calculateCenterBout, calculateCorners, calculateMainBouts, calculateMould, calculateOuterArcs, defineInnerPath, defineOffsetPath } from './ceruti-calcs';
+import { calculateCenterBout, calculateCorners, calculateMainBouts, calculateMould, calculateOuterArcs, defineInnerPath, defineOuterPath } from './ceruti-calcs';
 import { HighlightedArc } from './renders/render-constants';
 import { renderBounds, renderBoutBouts, renderCornerGuides } from './renders/guides.render';
 import { renderMainBouts } from './renders/main-bouts.render';
@@ -142,7 +142,7 @@ export class CerutiViolin extends RecipeComponentBase {
 
   /** The plain outer+inner silhouette shown when landing on a panel with nothing more specific to draw yet. */
   private renderOuterSilhouette(): Array<(g: any, ui: any) => void> {
-    const path = combinePathStrings([defineOffsetPath(this.d.params), defineInnerPath(this.d.params)]);
+    const path = combinePathStrings([defineOuterPath(this.d.params), defineInnerPath(this.d.params)]);
     return [renderPath(path, this.colors.outerTrace)];
   }
 

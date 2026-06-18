@@ -1,6 +1,6 @@
 import { flipArcAboutY, flipCircleAboutY } from '../../helpers/draftMath';
 import { renderArcFromArcFancy, renderCircle, renderPath } from '../../helpers/renderFuncs';
-import { defineOffsetPath } from '../ceruti-calcs';
+import { defineOuterPath } from '../ceruti-calcs';
 import { CerutiColors, EnricoCerutiParams } from '../ceruti-types';
 import { PATH_STROKE_WIDTH } from './render-constants';
 
@@ -19,7 +19,7 @@ export const renderOuterTrace = (
 ) => (g: any, ui: any): void => {
   let p = params;
   let offset = p.overhang + p.rib;
-  let outerPath = defineOffsetPath(p, offset, true);
+  let outerPath = defineOuterPath(p, offset, true);
   renderPath(outerPath, colors.outerTrace, PATH_STROKE_WIDTH)(g, ui);
 
   if ((currentModule && flags.showModuleArcs) || flags.showAllArcs) {

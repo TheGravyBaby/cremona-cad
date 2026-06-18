@@ -57,6 +57,24 @@
         <button type="button" class="info-icon" (click)="cornerCutoffInfo()" title="More information"
             aria-label="Information">ⓘ</button>
     </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <div class="toggle">
+                <input type="checkbox"
+                    [ngModel]="(params.options.ucCornerConnector ?? 'line') === 'cubic'"
+                    (ngModelChange)="params.options.ucCornerConnector = $event ? 'cubic' : 'line'; onChange()" />
+                <span>{{ (params.options.ucCornerConnector ?? 'line') === 'cubic' ? 'Curve' : 'Line' }}</span>
+            </div>
+        </label>
+        @if ((params.options.ucCornerConnector ?? 'line') === 'cubic') {
+        <label class="field-cell">
+            <span class="field-title">Sharpness</span>
+            <input type="number" class="basic-input" step="0.01" min="0" max="1"
+                [ngModel]="params.options.ucCornerSharpness ?? 0.1"
+                (ngModelChange)="params.options.ucCornerSharpness = $event; onChange()" />
+        </label>
+        }
+    </div>
     }
 </section>
 
@@ -100,6 +118,24 @@
         </label>
         <button type="button" class="info-icon" (click)="cornerCutoffInfo()" title="More information"
             aria-label="Information">ⓘ</button>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <div class="toggle">
+                <input type="checkbox"
+                    [ngModel]="(params.options.lcCornerConnector ?? 'line') === 'cubic'"
+                    (ngModelChange)="params.options.lcCornerConnector = $event ? 'cubic' : 'line'; onChange()" />
+                <span>{{ (params.options.lcCornerConnector ?? 'line') === 'cubic' ? 'Curve' : 'Line' }}</span>
+            </div>
+        </label>
+        @if ((params.options.lcCornerConnector ?? 'line') === 'cubic') {
+        <label class="field-cell">
+            <span class="field-title">Sharpness</span>
+            <input type="number" class="basic-input" step="0.01" min="0" max="1"
+                [ngModel]="params.options.lcCornerSharpness ?? 0.1"
+                (ngModelChange)="params.options.lcCornerSharpness = $event; onChange()" />
+        </label>
+        }
     </div>
     }
 </section>

@@ -5,7 +5,7 @@ import { combinePathStrings } from '../../../helpers/svgPathMath';
 import { buildMirroredSvg, downloadFullPlanPdf, downloadSvgAsPdf, downloadSvgFile, PdfPage } from '../../../helpers/fileExporter';
 import { downloadDxfFile } from '../../../helpers/dxfExporter';
 import { renderPath } from '../../../helpers/renderFuncs';
-import { calculateCornerBlocks, calculateMould, defineInnerPath, defineOffsetPath } from '../../ceruti-calcs';
+import { calculateCornerBlocks, calculateMould, defineInnerPath, defineOuterPath } from '../../ceruti-calcs';
 import { CerutiColors, EnricoCerutiParams } from '../../ceruti-types';
 
 type ExportType = 'innerTrace' | 'outerTrace' | 'back' | 'mould' | 'blocks';
@@ -35,14 +35,14 @@ export class ExportPanel {
         break;
       }
       case 'outerTrace': {
-        const path = combinePathStrings([defineOffsetPath(p), defineInnerPath(p)]);
+        const path = combinePathStrings([defineOuterPath(p), defineInnerPath(p)]);
         this.draftChange.emit([
           renderPath(path, this.colors.outerTrace),
         ]);
         break;
       }
       case 'back': {
-        const path = combinePathStrings([defineOffsetPath(p, p.overhang + p.rib, true), defineInnerPath(p)]);
+        const path = combinePathStrings([defineOuterPath(p, p.overhang + p.rib, true), defineInnerPath(p)]);
         this.draftChange.emit([
           renderPath(path, this.colors.outerTrace),
         ]);
@@ -75,10 +75,10 @@ export class ExportPanel {
         pathD = defineInnerPath(p);
         break;
       case 'outerTrace':
-        pathD = combinePathStrings([defineOffsetPath(p), defineInnerPath(p)]);
+        pathD = combinePathStrings([defineOuterPath(p), defineInnerPath(p)]);
         break;
       case 'back':
-        pathD = combinePathStrings([defineOffsetPath(p, offset, true), defineInnerPath(p)]);
+        pathD = combinePathStrings([defineOuterPath(p, offset, true), defineInnerPath(p)]);
         break;
       case 'mould':
         pathD = calculateMould(p, false, false);
@@ -103,10 +103,10 @@ export class ExportPanel {
         pathD = defineInnerPath(p);
         break;
       case 'outerTrace':
-        pathD = combinePathStrings([defineOffsetPath(p), defineInnerPath(p)]);
+        pathD = combinePathStrings([defineOuterPath(p), defineInnerPath(p)]);
         break;
       case 'back':
-        pathD = combinePathStrings([defineOffsetPath(p, offset, true), defineInnerPath(p)]);
+        pathD = combinePathStrings([defineOuterPath(p, offset, true), defineInnerPath(p)]);
         break;
       case 'mould':
         pathD = calculateMould(p, false, false);
@@ -136,10 +136,10 @@ export class ExportPanel {
         pathD = defineInnerPath(p);
         break;
       case 'outerTrace':
-        pathD = combinePathStrings([defineOffsetPath(p), defineInnerPath(p)]);
+        pathD = combinePathStrings([defineOuterPath(p), defineInnerPath(p)]);
         break;
       case 'back':
-        pathD = combinePathStrings([defineOffsetPath(p, p.overhang + p.rib, true), defineInnerPath(p)]);
+        pathD = combinePathStrings([defineOuterPath(p, p.overhang + p.rib, true), defineInnerPath(p)]);
         break;
       case 'mould':
         pathD = calculateMould(p, true, false);
@@ -186,7 +186,7 @@ export class ExportPanel {
         description,
         width: p.width,
         height: height,
-        paths: [{ d: defineOffsetPath(p), stroke: 'black', fill: 'none' }, { d: defineInnerPath(p), stroke: 'black', fill: 'none' }],
+        paths: [{ d: defineOuterPath(p), stroke: 'black', fill: 'none' }, { d: defineInnerPath(p), stroke: 'black', fill: 'none' }],
       },
       {
         label: 'Back Contour',
@@ -194,7 +194,7 @@ export class ExportPanel {
         description,
         width: p.width,
         height: height,
-        paths: [{ d: defineOffsetPath(p, p.overhang + p.rib, true), stroke: 'black', fill: 'none' }, { d: defineInnerPath(p), stroke: 'black', fill: 'none' }],
+        paths: [{ d: defineOuterPath(p, p.overhang + p.rib, true), stroke: 'black', fill: 'none' }, { d: defineInnerPath(p), stroke: 'black', fill: 'none' }],
       },
       {
         label: 'Mould',
