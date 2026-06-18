@@ -319,3 +319,65 @@ export function inscribeCircleWithinCircle(outerCirle: Circle, innerCircleRadius
 
 }
 
+// Biarc interpolation — connects two arc endpoints with a G1-continuous S-curve (two arcs tangent at a joint).
+// Assumes arcs sweep CCW (increasing angle). For arcs whose concave sides face each other, the result is
+// an S-curve: the two joining arcs are externally tangent at their shared joint point.
+//
+// At side = "end": departure tangent is in arc's forward sweep direction.
+// At side = "start": departure tangent is opposite to arc's forward sweep direction.
+//
+// Reference: Bolton (1975) "Biarc Curves"; Meek & Walton (1992) "Biarc Approximation of NURBS Curves".
+// The equal-radius biarc is found by solving 2R²(1+k) + 2R(b−a) − |P1−P2|² = 0.
+export function findJoiningArcs(arc1: Arc, side1: "start" | "end", arc2: Arc, side2: "start" | "end", T1Invert = false, T2Invert = false): Arc[] {
+  const theta1 = side1 === "end" ? arc1.end : arc1.start;
+  const P1: Pt = { x: arc1.x + arc1.r * Math.cos(theta1), y: arc1.y + arc1.r * Math.sin(theta1) };
+  const s1 = side1 === "end" ? 1 : -1;
+  const T1Sine = T1Invert ? -1 : 1;
+  const T1: Pt = { x: s1 * T1Sine * -Math.sin(theta1), y: s1 * T1Sine * Math.cos(theta1) };
+
+  const theta2 = side2 === "start" ? arc2.start : arc2.end;
+  const P2: Pt = { x: arc2.x + arc2.r * Math.cos(theta2), y: arc2.y + arc2.r * Math.sin(theta2) };
+  const s2 = side2 === "start" ? 1 : -1;
+  const T2Sine = T2Invert ? -1 : 1;
+  const T2: Pt = { x: s2 * T2Sine * Math.sin(theta2), y: s2 * T2Sine * -Math.cos(theta2) };
+
+  // Left normals (90° CCW rotation of each tangent) — biarc centers live on these rays from P1/P2
+  const N1: Pt = { x: -T1.y, y: T1.x };
+  const N2: Pt = { x: -T2.y, y: T2.x };
+
+  const A: Pt = { x: P1.x - P2.x, y: P1.y - P2.y };
+  const A2 = A.x * A.x + A.y * A.y;
+  const a  = A.x * N1.x + A.y * N1.y;  // A · N1
+  const b  = A.x * N2.x + A.y * N2.y;  // A · N2
+  const k  = N1.x * N2.x + N1.y * N2.y; // N1 · N2
+
+  // Solve 2R²(1+k) + 2R(b−a) − A2 = 0 for the equal-radius biarc
+  const qa = 2 * (1 + k);
+  const qb = 2 * (b - a);
+  const qc = -A2;
+
+  let R: number;
+  if (Math.abs(qa) < 1e-10) {
+    if (Math.abs(qb) < 1e-10) return [];
+    R = -qc / qb;
+  } else {
+    const disc = qb * qb - 4 * qa * qc;
+    if (disc < 0) return [];
+    const R1 = (-qb + Math.sqrt(disc)) / (2 * qa);
+    const R2 = (-qb - Math.sqrt(disc)) / (2 * qa);
+    const pos = [R1, R2].filter(r => r > 1e-10);
+    if (pos.length === 0) return [];
+    R = Math.min(...pos); // larger root → more open, gradual curve
+  }
+
+  const C1: Pt = { x: P1.x + R * N1.x, y: P1.y + R * N1.y };
+  const C2: Pt = { x: P2.x + R * N2.x, y: P2.y + R * N2.y };
+
+  // For equal-radius external tangency, |C1−C2| = 2R and the joint J is the midpoint
+  const J: Pt = { x: (C1.x + C2.x) / 2, y: (C1.y + C2.y) / 2 };
+
+  return [
+    new Arc(C1.x, C1.y, R, Math.atan2(P1.y - C1.y, P1.x - C1.x), Math.atan2(J.y - C1.y, J.x - C1.x)),
+    new Arc(C2.x, C2.y, R, Math.atan2(J.y  - C2.y, J.x  - C2.x), Math.atan2(P2.y - C2.y, P2.x - C2.x)),
+  ];
+}

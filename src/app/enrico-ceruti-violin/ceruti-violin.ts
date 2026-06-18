@@ -393,11 +393,10 @@ export class CerutiViolin extends RecipeComponentBase {
   changeOuterTrace(): void {
     this.debounce(() => safeRun(() => {
       const p = this.d.params;
+      p.purflingOffset ??= p.overhang + p.rib;
+      p.flutingWidth ??= 2 * (p.overhang + p.rib);
       calculateOuterArcs(p);
       this.draftChange.emit([
-        renderMainBouts(p, this.colors, this.viewFlags, false, this.highlighted),
-        renderCorners(p, this.colors, this.viewFlags, false, this.highlighted, false),
-        renderCenterBout(p, this.colors, this.viewFlags, false, this.highlighted, false),
         renderOuterTrace(p, this.colors, this.viewFlags, true),
       ]);
       sessionStorage.setItem('recipeData', JSON.stringify(this.d));

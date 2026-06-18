@@ -62,6 +62,8 @@ export interface EnricoCerutiParams {
   rib: number;
   bitDiameter: number;
   clampChannelWidth: number;
+  purflingOffset: number | null;
+  flutingWidth: number | null;
   button: Rectangle | null,
   bouts: {
     UBW: number | null;
@@ -165,6 +167,8 @@ export const DefaultParams: EnricoCerutiParams = {
   rib: 1,
   bitDiameter: 6.35,
   clampChannelWidth: 5,
+  purflingOffset: null,
+  flutingWidth: null,
   ratios: {
     HtoW: 7 / 4,
 
