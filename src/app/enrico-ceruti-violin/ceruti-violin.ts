@@ -394,6 +394,7 @@ export class CerutiViolin extends RecipeComponentBase {
     this.debounce(() => safeRun(() => {
       const p = this.d.params;
       p.purflingOffset ??= p.overhang + p.rib;
+      p.purflingChannelDepth ??= 1.2;
       p.flutingWidth ??= 2 * (p.overhang + p.rib);
       calculateOuterArcs(p);
       this.draftChange.emit([

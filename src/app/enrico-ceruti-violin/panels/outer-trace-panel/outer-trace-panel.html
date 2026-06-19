@@ -21,14 +21,20 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Purfling Offset <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="0.1" min="0"
-                [ngModel]="params.purflingOffset"
+            <input type="number" class="basic-input" step="0.1" min="0" [ngModel]="params.purflingOffset"
                 (ngModelChange)="params.purflingOffset = $event; onChange()" />
         </label>
         <label class="field-cell">
+            <span class="field-title">Purfling Depth <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.1" min="0" [ngModel]="params.purflingChannelDepth"
+                (ngModelChange)="params.purflingChannelDepth = $event; onChange()" />
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+
+        <label class="field-cell">
             <span class="field-title">Fluting Width <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="0.1" min="0"
-                [ngModel]="params.flutingWidth"
+            <input type="number" class="basic-input" step="0.1" min="0" [ngModel]="params.flutingWidth"
                 (ngModelChange)="params.flutingWidth = $event; onChange()" />
         </label>
     </div>
@@ -43,14 +49,12 @@
         <label class="field-cell">
             <span class="field-title">Top Cutoff <span class="unit-label">°</span></span>
             @if (params.options.U31DoubleArc) {
-            <input type="number" class="basic-input" step="1"
-                [ngModel]="params.outerCorners.U31!.degreeDiff"
+            <input type="number" class="basic-input" step="1" [ngModel]="params.outerCorners.U31!.degreeDiff"
                 (ngModelChange)="adjustArcEnd(params.outerCorners.U31!, $event, onChange.bind(this)); onArcFocus(params.outerCorners.U31!, colors.centerBoutUp)"
                 [style.borderColor]="colors.centerBoutUp"
                 (focus)="onArcFocus(params.outerCorners.U31!, colors.centerBoutUp)" (blur)="onArcBlur()" />
             } @else {
-            <input type="number" class="basic-input" step="1"
-                [ngModel]="params.outerCorners.U3!.degreeDiff"
+            <input type="number" class="basic-input" step="1" [ngModel]="params.outerCorners.U3!.degreeDiff"
                 (ngModelChange)="adjustArcEnd(params.outerCorners.U3!, $event, onChange.bind(this)); onArcFocus(params.outerCorners.U3!, colors.centerBoutUp)"
                 [style.borderColor]="colors.centerBoutUp"
                 (focus)="onArcFocus(params.outerCorners.U3!, colors.centerBoutUp)" (blur)="onArcBlur()" />
@@ -59,14 +63,12 @@
         <label class="field-cell">
             <span class="field-title">Bottom Cutoff <span class="unit-label">°</span></span>
             @if (params.options.C21DoubleArc) {
-            <input type="number" class="basic-input" step="1"
-                [ngModel]="params.outerCorners.C21!.degreeDiff"
+            <input type="number" class="basic-input" step="1" [ngModel]="params.outerCorners.C21!.degreeDiff"
                 (ngModelChange)="adjustArcEnd(params.outerCorners.C21!, $event, onChange.bind(this)); onArcFocus(params.outerCorners.C21!, colors.centerBoutUp)"
                 [style.borderColor]="colors.centerBoutUp"
                 (focus)="onArcFocus(params.outerCorners.C21!, colors.centerBoutUp)" (blur)="onArcBlur()" />
             } @else {
-            <input type="number" class="basic-input" step="1"
-                [ngModel]="params.outerCorners.C2!.degreeDiff"
+            <input type="number" class="basic-input" step="1" [ngModel]="params.outerCorners.C2!.degreeDiff"
                 (ngModelChange)="adjustArcEnd(params.outerCorners.C2!, $event, onChange.bind(this)); onArcFocus(params.outerCorners.C2!, colors.centerBoutUp)"
                 [style.borderColor]="colors.centerBoutUp"
                 (focus)="onArcFocus(params.outerCorners.C2!, colors.centerBoutUp)" (blur)="onArcBlur()" />
@@ -78,8 +80,7 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <div class="toggle">
-                <input type="checkbox"
-                    [ngModel]="(params.options.ucCornerConnector ?? 'line') === 'cubic'"
+                <input type="checkbox" [ngModel]="(params.options.ucCornerConnector ?? 'line') === 'cubic'"
                     (ngModelChange)="params.options.ucCornerConnector = $event ? 'cubic' : 'line'; onChange()" />
                 <span>{{ (params.options.ucCornerConnector ?? 'line') === 'cubic' ? 'Curve' : 'Line' }}</span>
             </div>
@@ -105,14 +106,12 @@
         <label class="field-cell">
             <span class="field-title">Top Cutoff <span class="unit-label">°</span></span>
             @if (params.options.C11DoubleArc) {
-            <input type="number" class="basic-input" step="1"
-                [ngModel]="params.outerCorners.C11!.degreeDiff"
+            <input type="number" class="basic-input" step="1" [ngModel]="params.outerCorners.C11!.degreeDiff"
                 (ngModelChange)="adjustArcEnd(params.outerCorners.C11!, $event, onChange.bind(this)); onArcFocus(params.outerCorners.C11!, colors.centerBoutLow)"
                 [style.borderColor]="colors.centerBoutLow"
                 (focus)="onArcFocus(params.outerCorners.C11!, colors.centerBoutLow)" (blur)="onArcBlur()" />
             } @else {
-            <input type="number" class="basic-input" step="1"
-                [ngModel]="params.outerCorners.C1!.degreeDiff"
+            <input type="number" class="basic-input" step="1" [ngModel]="params.outerCorners.C1!.degreeDiff"
                 (ngModelChange)="adjustArcEnd(params.outerCorners.C1!, $event, onChange.bind(this)); onArcFocus(params.outerCorners.C1!, colors.centerBoutLow)"
                 [style.borderColor]="colors.centerBoutLow"
                 (focus)="onArcFocus(params.outerCorners.C1!, colors.centerBoutLow)" (blur)="onArcBlur()" />
@@ -121,14 +120,12 @@
         <label class="field-cell">
             <span class="field-title">Bottom Cutoff <span class="unit-label">°</span></span>
             @if (params.options.L31DoubleArc) {
-            <input type="number" class="basic-input" step="1"
-                [ngModel]="params.outerCorners.L31!.degreeDiff"
+            <input type="number" class="basic-input" step="1" [ngModel]="params.outerCorners.L31!.degreeDiff"
                 (ngModelChange)="adjustArcEnd(params.outerCorners.L31!, $event, onChange.bind(this)); onArcFocus(params.outerCorners.L31!, colors.centerBoutLow)"
                 [style.borderColor]="colors.centerBoutLow"
                 (focus)="onArcFocus(params.outerCorners.L31!, colors.centerBoutLow)" (blur)="onArcBlur(); " />
             } @else {
-            <input type="number" class="basic-input" step="1"
-                [ngModel]="params.outerCorners.L3!.degreeDiff"
+            <input type="number" class="basic-input" step="1" [ngModel]="params.outerCorners.L3!.degreeDiff"
                 (ngModelChange)="adjustArcEnd(params.outerCorners.L3!, $event, onChange.bind(this)); onArcFocus(params.outerCorners.L3!, colors.centerBoutLow)"
                 [style.borderColor]="colors.centerBoutLow"
                 (focus)="onArcFocus(params.outerCorners.L3!, colors.centerBoutLow)" (blur)="onArcBlur()" />
@@ -140,8 +137,7 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <div class="toggle">
-                <input type="checkbox"
-                    [ngModel]="(params.options.lcCornerConnector ?? 'line') === 'cubic'"
+                <input type="checkbox" [ngModel]="(params.options.lcCornerConnector ?? 'line') === 'cubic'"
                     (ngModelChange)="params.options.lcCornerConnector = $event ? 'cubic' : 'line'; onChange()" />
                 <span>{{ (params.options.lcCornerConnector ?? 'line') === 'cubic' ? 'Curve' : 'Line' }}</span>
             </div>
