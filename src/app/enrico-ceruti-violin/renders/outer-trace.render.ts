@@ -29,7 +29,15 @@ export const renderOuterTrace = (
     const purflingArcs = defineOffsetArcs(p, purflingArcOffset, true);
     const mirrored = purflingArcs.map(arc => flipArcAboutY(arc));
     const purflingPath = unifyConnectedSvgPaths([...purflingArcs, ...mirrored].map(arc => pathFromArc(arc)));
-    renderPath(purflingPath, colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
+    renderPath(purflingPath, colors.innerTrace, 1)(g, ui);
+
+    if (p.purflingChannelDepth !== null) {
+      const outerPurflingOffset = purflingArcOffset + p.purflingChannelDepth;
+      const outerPurflingArcs = defineOffsetArcs(p, outerPurflingOffset, true);
+      const outerMirrored = outerPurflingArcs.map(arc => flipArcAboutY(arc));
+      const outerPurflingPath = unifyConnectedSvgPaths([...outerPurflingArcs, ...outerMirrored].map(arc => pathFromArc(arc)));
+      renderPath(outerPurflingPath, colors.innerTrace, 1)(g, ui);
+    }
   }
 
   if (p.purflingOffset !== null && p.flutingWidth !== null) {

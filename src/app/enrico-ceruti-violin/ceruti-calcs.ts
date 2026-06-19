@@ -936,13 +936,30 @@ export function defineOuterCornerArcs(p: EnricoCerutiParams, offset: number): Ar
 }
 
 export function defineFlutingArcs(p: EnricoCerutiParams, offset: number): Arc[] {
-    if (p.options.useViolCornerLC && p.options.useViolCornerUC) 
-        return defineOffsetArcs(p, offset, true);
-
     const flutingArcs = defineOffsetArcs(p, offset, false);
 
+    if (p.options.useViolCornerLC && p.options.useViolCornerUC) {
+        let U4Offset = offsetArcRadius(p.bouts.U4!, offset);
+        let C2Offset = offsetArcRadius(p.bouts.C2, -offset);
+        let intersectsU = circleCircleIntersections(U4Offset, C2Offset);
+        let U4Angle = angleFromCenter(U4Offset, intersectsU[0]);
+        let C2Angle = angleFromCenter(C2Offset, intersectsU[0]);
+        U4Offset.end = U4Angle;
+        C2Offset.end = C2Angle;
+        flutingArcs.push(U4Offset);
+        flutingArcs.push(C2Offset);
+        let L4Offset = offsetArcRadius(p.bouts.L4!, offset);
+        let C1Offset = offsetArcRadius(p.bouts.C1, -offset);
+        let intersectsL = circleCircleIntersections(L4Offset, C1Offset);
+        C1Offset.end = angleFromCenter(C1Offset, intersectsL[1]);
+        L4Offset.end = angleFromCenter(L4Offset, intersectsL[1]);
+        flutingArcs.push(C1Offset, L4Offset);
+        return flutingArcs;
+    }
+        
+
     if (p.options.useViolCornerUC){
-        let lowerJoin = findJoiningArcs(flutingArcs[2], "end", flutingArcs[3], "end")
+        let lowerJoin = findJoiningArcs(flutingArcs[2], "end", flutingArcs[3], "end", false)
         for (const arc of lowerJoin) {
             flutingArcs.push(arc);
         }
@@ -958,7 +975,7 @@ export function defineFlutingArcs(p: EnricoCerutiParams, offset: number): Arc[] 
         return flutingArcs;
     }
     if (p.options.useViolCornerLC) {
-        let upperJoin = findJoiningArcs(flutingArcs[1], "start", flutingArcs[2], "end", true)
+        let upperJoin = findJoiningArcs(flutingArcs[2], "start", flutingArcs[3], "end", true)
         for (const arc of upperJoin) {
             flutingArcs.push(arc);
         }
