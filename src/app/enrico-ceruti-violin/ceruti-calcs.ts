@@ -1,4 +1,4 @@
-import { solveInscribedCircleAlongAxis, circleCircleIntersections, angleFromCenter, interceptCirclesAndPoint, dist, pointOnCircle, offsetArcRadius, flipArcAboutY, flipPointAboutY, flipRectAboutY, lineCircleIntersection, redefineArcCircle, interceptCirclesAndPointCompound } from "../helpers/draftMath";
+import { solveInscribedCircleAlongAxis, circleCircleIntersections, angleFromCenter, interceptCirclesAndPoint, dist, pointOnCircle, offsetArcRadius, flipArcAboutY, flipPointAboutY, flipRectAboutY, lineCircleIntersection, redefineArcCircle, interceptCirclesAndPointCompound, findJoiningArcs } from "../helpers/draftMath";
 import { pathFromArc, pathFromLine, pathFromCornerCubic, unifyConnectedSvgPaths, pathFromRoundedRect, pathFromCircle, pathFromRect, combinePathStrings, differenceFromManyPaths, intersectionFromTwoPaths, translatePath } from "../helpers/svgPathMath";
 import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Pt, Rectangle } from "../models/types";
 import { error, message } from "../shared/message-emitter";
@@ -753,7 +753,7 @@ export function defineOffsetArcs(p: EnricoCerutiParams, offset?: number, corners
 
     arcs.push(offsetArcRadius(p.bouts.L0, offset), offsetArcRadius(p.bouts.L1, offset));
     if (p.options.useViolCornerLC) {
-        !corners && arcs.push(offsetArcRadius(p.bouts.L4, offset));
+        corners && arcs.push(offsetArcRadius(p.bouts.L4, offset));
     } else {
         arcs.push(offsetArcRadius(p.bouts.L2, offset));
         // corners && fullPath.push(offsetArcRadius(p.bouts.L3, -offset));
@@ -766,7 +766,7 @@ export function defineOffsetArcs(p: EnricoCerutiParams, offset?: number, corners
     // }
 
     if (p.options.useViolCornerUC) {
-       !corners && arcs.push(offsetArcRadius(p.bouts.U4, offset));
+       corners && arcs.push(offsetArcRadius(p.bouts.U4, offset));
     } else {
         // corners && arcs.push(offsetArcRadius(p.bouts.U3, -offset));
         arcs.push(offsetArcRadius(p.bouts.U2, offset));
@@ -933,6 +933,56 @@ export function defineOuterCornerArcs(p: EnricoCerutiParams, offset: number): Ar
     }
 
     return arcs;
+}
+
+export function defineFlutingArcs(p: EnricoCerutiParams, offset: number): Arc[] {
+    if (p.options.useViolCornerLC && p.options.useViolCornerUC) 
+        return defineOffsetArcs(p, offset, true);
+
+    const flutingArcs = defineOffsetArcs(p, offset, false);
+
+    if (p.options.useViolCornerUC){
+        let lowerJoin = findJoiningArcs(flutingArcs[2], "end", flutingArcs[3], "end")
+        for (const arc of lowerJoin) {
+            flutingArcs.push(arc);
+        }
+        let U4Offset = offsetArcRadius(p.bouts.U4!, offset);
+        let C2Offset = offsetArcRadius(p.bouts.C2, -offset);
+        let intersects = circleCircleIntersections(U4Offset, C2Offset);
+        let U4Angle = angleFromCenter(U4Offset, intersects[0]);
+        let C2Angle = angleFromCenter(C2Offset, intersects[0]);
+        U4Offset.end = U4Angle;
+        C2Offset.end = C2Angle;
+        flutingArcs.push(U4Offset);
+        flutingArcs.push(C2Offset);
+        return flutingArcs;
+    }
+    if (p.options.useViolCornerLC) {
+        let upperJoin = findJoiningArcs(flutingArcs[1], "start", flutingArcs[2], "end", true)
+        for (const arc of upperJoin) {
+            flutingArcs.push(arc);
+        }
+        let L4Offset = offsetArcRadius(p.bouts.L4!, offset);
+        let C1Offset = offsetArcRadius(p.bouts.C1, -offset);
+        let intersects = circleCircleIntersections(L4Offset, C1Offset);
+        C1Offset.end = angleFromCenter(C1Offset, intersects[1]);
+        L4Offset.end = angleFromCenter(L4Offset, intersects[1]);
+        flutingArcs.push(C1Offset, L4Offset);
+
+        return flutingArcs;
+    }
+
+    let lowerJoin = findJoiningArcs(flutingArcs[2], "end", flutingArcs[3], "end")
+    for (const arc of lowerJoin) {
+        flutingArcs.push(arc);
+    }
+
+    let upperJoin = findJoiningArcs(flutingArcs[3], "start", flutingArcs[4], "end", true)
+    for (const arc of upperJoin) {
+        flutingArcs.push(arc);
+    }
+
+    return flutingArcs;
 }
 
 export function defineInnerPath(p: EnricoCerutiParams): string {
