@@ -2,12 +2,12 @@ import { ChangeDetectorRef, Component, Input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { Arc } from '../models/types';
-import { applyTransforms, ColorTransform, renderPath } from '../helpers/renderFuncs';
+import { applyTransforms, ColorTransform, renderFilledPath, renderPath } from '../helpers/renderFuncs';
 import { combinePathStrings } from '../helpers/svgPathMath';
 import { clampParam, safeRun } from '../helpers/validators';
 import { CerutiColors, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, EnricoCerutiTemplate, EnricoCerutiParams } from './ceruti-types';
 import { CERUTI_TEMPLATES } from './ceruti-templates';
-import { calculateCenterBout, calculateCorners, calculateMainBouts, calculateMould, calculateOuterArcs, defineInnerPath, defineOuterPath } from './ceruti-calcs';
+import { calculateCenterBout, calculateCorners, calculateMainBouts, calculateMould, calculateOuterArcs, defineFlutingPlatformPath, defineInnerPath, defineOuterPath, defineOuterPurflingPath, definePurflingPath } from './ceruti-calcs';
 import { HighlightedArc } from './renders/render-constants';
 import { renderBounds, renderBoutBouts, renderCornerGuides } from './renders/guides.render';
 import { renderMainBouts } from './renders/main-bouts.render';
@@ -60,6 +60,7 @@ export class CerutiViolin extends RecipeComponentBase {
     innerTrace: '#868484ff',
     outerTrace: '#868484ff',
     mouldTrace: '#81887eff',
+    fluting: '#4B9B8E',
   } as const;
 
   private makeColor(base: string, ...extra: ColorTransform[]): string {
@@ -94,6 +95,7 @@ export class CerutiViolin extends RecipeComponentBase {
       innerTrace: p.innerTrace,
       outerTrace: p.outerTrace,
       mouldTrace: p.mouldTrace,
+      fluting: this.makeColor(p.fluting),
     };
   }
 
@@ -142,8 +144,21 @@ export class CerutiViolin extends RecipeComponentBase {
 
   /** The plain outer+inner silhouette shown when landing on a panel with nothing more specific to draw yet. */
   private renderOuterSilhouette(): Array<(g: any, ui: any) => void> {
-    const path = combinePathStrings([defineOuterPath(this.d.params), defineInnerPath(this.d.params)]);
-    return [renderPath(path, this.colors.outerTrace)];
+    const p = this.d.params;
+    const offset = p.overhang + p.rib;
+    const silhouette = renderPath(combinePathStrings([defineOuterPath(p), defineInnerPath(p)]), this.colors.outerTrace);
+    try {
+      const renders: Array<(g: any, ui: any) => void> = [silhouette];
+      const purflingPath = definePurflingPath(p, offset);
+      if (purflingPath) renders.push(renderPath(purflingPath, this.colors.innerTrace, 1));
+      const outerPurflingPath = defineOuterPurflingPath(p, offset);
+      if (outerPurflingPath) renders.push(renderPath(outerPurflingPath, this.colors.innerTrace, 1));
+      const flutingPath = defineFlutingPlatformPath(p, offset);
+      if (flutingPath) renders.push(renderFilledPath(flutingPath, this.colors.fluting));
+      return renders;
+    } catch {
+      return [silhouette];
+    }
   }
 
   loadTemplate(key: string): void {
@@ -245,7 +260,7 @@ export class CerutiViolin extends RecipeComponentBase {
       corners: () => this.changeCorners(),
       outerTrace: () => this.changeOuterTrace(),
       mould: () => this.changeMould(),
-      export: () => this.draftChange.emit(this.renderOuterSilhouette()),
+      export: () => {},
     };
   }
 
@@ -395,7 +410,7 @@ export class CerutiViolin extends RecipeComponentBase {
       const p = this.d.params;
       p.purflingOffset ??= p.overhang + p.rib;
       p.purflingChannelDepth ??= 1.2;
-      p.flutingWidth ??= 2 * (p.overhang + p.rib);
+      p.flutingWidth ??= p.overhang + p.rib;
       calculateOuterArcs(p);
       this.draftChange.emit([
         renderOuterTrace(p, this.colors, this.viewFlags, true),

@@ -12,5 +12,7 @@ export class RenderToggles {
   @Input({ required: true }) flags!: CerutiViewFlags;
   @Input() showGuideRow = true;
   @Input() showOuterPathRow = true;
+  @Input() showAllArcs = true;
+  @Input() showAllCircles = true;
   @Output() changed = new EventEmitter<void>();
 }

@@ -1,10 +1,8 @@
-import { angleFromCenter, circleCircleIntersections, findJoiningArcs, flipArcAboutY, flipCircleAboutY, pointOnCircle } from '../../helpers/draftMath';
-import { pathFromArc, pathFromCornerBezier, unifyConnectedSvgPaths } from '../../helpers/svgPathMath';
-import { renderArcFromArc, renderArcFromArcFancy, renderCircle, renderCrosshair, renderPath } from '../../helpers/renderFuncs';
-import { defineFlutingArcs, defineOffsetArcs, defineOuterPath } from '../ceruti-calcs';
+import { flipArcAboutY, flipCircleAboutY } from '../../helpers/draftMath';
+import { renderArcFromArc, renderArcFromArcFancy, renderCircle, renderCrosshair, renderFilledPath, renderPath } from '../../helpers/renderFuncs';
+import { defineFlutingPlatformPath, defineOuterPath, defineOuterPurflingPath, definePurflingPath } from '../ceruti-calcs';
 import { CerutiColors, EnricoCerutiParams } from '../ceruti-types';
 import { PATH_STROKE_WIDTH } from './render-constants';
-import { find } from 'rxjs';
 
 export interface OuterTraceViewFlags {
   showModuleArcs: boolean;
@@ -24,31 +22,14 @@ export const renderOuterTrace = (
   let outerPath = defineOuterPath(p, offset, true);
   renderPath(outerPath, colors.outerTrace, PATH_STROKE_WIDTH)(g, ui);
 
-  if (p.purflingOffset !== null) {
-    const purflingArcOffset = offset - p.purflingOffset;
-    const purflingArcs = defineOffsetArcs(p, purflingArcOffset, true);
-    const mirrored = purflingArcs.map(arc => flipArcAboutY(arc));
-    const purflingPath = unifyConnectedSvgPaths([...purflingArcs, ...mirrored].map(arc => pathFromArc(arc)));
-    renderPath(purflingPath, colors.innerTrace, 1)(g, ui);
+  const purflingPath = definePurflingPath(p, offset);
+  if (purflingPath !== null) renderPath(purflingPath, colors.innerTrace, 1)(g, ui);
 
-    if (p.purflingChannelDepth !== null) {
-      const outerPurflingOffset = purflingArcOffset + p.purflingChannelDepth;
-      const outerPurflingArcs = defineOffsetArcs(p, outerPurflingOffset, true);
-      const outerMirrored = outerPurflingArcs.map(arc => flipArcAboutY(arc));
-      const outerPurflingPath = unifyConnectedSvgPaths([...outerPurflingArcs, ...outerMirrored].map(arc => pathFromArc(arc)));
-      renderPath(outerPurflingPath, colors.innerTrace, 1)(g, ui);
-    }
-  }
+  const outerPurflingPath = defineOuterPurflingPath(p, offset);
+  if (outerPurflingPath !== null) renderPath(outerPurflingPath, colors.innerTrace, 1)(g, ui);
 
-  if (p.purflingOffset !== null && p.flutingWidth !== null) {
-    let flutingOffset = offset - p.purflingOffset - p.flutingWidth;
-    let flutingArcs = defineFlutingArcs(p, flutingOffset);
-  
-    const mirrored = flutingArcs.map(arc => flipArcAboutY(arc));
-    for (const arc of [...flutingArcs, ...mirrored]) {
-      renderPath(pathFromArc(arc), "blue", PATH_STROKE_WIDTH)(g, ui);
-    }
-  }
+  const flutingPlatformPath = defineFlutingPlatformPath(p, offset);
+  if (flutingPlatformPath !== null) renderFilledPath(flutingPlatformPath, colors.fluting)(g, ui);
 
   if ((currentModule && flags.showModuleArcs) || flags.showAllArcs) {
     // primary arcs + their mirrors

@@ -5,6 +5,8 @@ export type SvgPathExport = {
   d: string;
   stroke?: string;
   fill?: string;
+  fillRule?: string;
+  fillOpacity?: number;
   strokeWidth?: number | string;
 };
 
@@ -50,7 +52,13 @@ export function buildMirroredSvg(
 ): string {
   const viewBox = `${-width / 2} 0 ${width} ${height}`;
   const pathMarkup = paths
-    .map(p => `<path d="${p.d}" fill="${p.fill ?? 'none'}" stroke="${p.stroke ?? 'black'}" stroke-width="${p.strokeWidth ?? 0.5}"/>`)
+    .map(p => {
+      const extras = [
+        p.fillRule ? ` fill-rule="${p.fillRule}"` : '',
+        p.fillOpacity != null ? ` fill-opacity="${p.fillOpacity}"` : '',
+      ].join('');
+      return `<path d="${p.d}" fill="${p.fill ?? 'none'}" stroke="${p.stroke ?? 'black'}" stroke-width="${p.strokeWidth ?? 0.5}"${extras}/>`;
+    })
     .join('');
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}"><g transform="translate(0 ${height}) scale(1 -1)">${pathMarkup}</g></svg>`;
 }
@@ -62,7 +70,13 @@ function buildScaledSvg(
 ): string {
   const viewBox = `${-width / 2} 0 ${width} ${height}`;
   const pathMarkup = paths
-    .map(p => `<path d="${p.d}" fill="${p.fill ?? 'none'}" stroke="${p.stroke ?? 'black'}" stroke-width="0.5"/>`)
+    .map(p => {
+      const extras = [
+        p.fillRule ? ` fill-rule="${p.fillRule}"` : '',
+        p.fillOpacity != null ? ` fill-opacity="${p.fillOpacity}"` : '',
+      ].join('');
+      return `<path d="${p.d}" fill="${p.fill ?? 'none'}" stroke="${p.stroke ?? 'black'}" stroke-width="0.5"${extras}/>`;
+    })
     .join('');
   return [
     `<svg xmlns="http://www.w3.org/2000/svg"`,
