@@ -18,6 +18,19 @@ function quadraticBezierPoint(
   };
 }
 
+function cubicBezierPoint(
+  p0: { x: number; y: number }, p1: { x: number; y: number },
+  p2: { x: number; y: number }, p3: { x: number; y: number }, t: number
+): { x: number; y: number } {
+  const mt = 1 - t;
+  const mt2 = mt * mt;
+  const t2 = t * t;
+  return {
+    x: mt2 * mt * p0.x + 3 * mt2 * t * p1.x + 3 * mt * t2 * p2.x + t2 * t * p3.x,
+    y: mt2 * mt * p0.y + 3 * mt2 * t * p1.y + 3 * mt * t2 * p2.y + t2 * t * p3.y,
+  };
+}
+
 /**
  * Converts an absolute SVG path string (the M/L/A/Q/Z subset this app emits)
  * into DXF-ready entities, preserving true arcs instead of flattening them.
@@ -35,7 +48,7 @@ export function pathToDxfEntities(d: string): DxfEntity[] {
   // Restricted to this app's command set so exponent letters in scientific
   // notation (e.g. "6.12e-15", which JS produces for near-zero coordinates)
   // aren't mistaken for new path commands.
-  const commands = d.match(/[MLAQZ][^MLAQZ]*/gi) ?? [];
+  const commands = d.match(/[MLAQCZ][^MLAQCZ]*/gi) ?? [];
 
   for (const command of commands) {
     const cmd = command[0].toUpperCase();
@@ -92,6 +105,22 @@ export function pathToDxfEntities(d: string): DxfEntity[] {
           let prev = current;
           for (let s = 1; s <= SEGMENTS; s++) {
             const next = quadraticBezierPoint(current, control, end, s / SEGMENTS);
+            entities.push({ type: 'LINE', x0: prev.x, y0: prev.y, x1: next.x, y1: next.y });
+            prev = next;
+          }
+          current = end;
+        }
+        break;
+      }
+      case 'C': {
+        for (let i = 0; i < nums.length; i += 6) {
+          const cp1 = { x: nums[i], y: nums[i + 1] };
+          const cp2 = { x: nums[i + 2], y: nums[i + 3] };
+          const end = { x: nums[i + 4], y: nums[i + 5] };
+          const SEGMENTS = 16;
+          let prev = current;
+          for (let s = 1; s <= SEGMENTS; s++) {
+            const next = cubicBezierPoint(current, cp1, cp2, end, s / SEGMENTS);
             entities.push({ type: 'LINE', x0: prev.x, y0: prev.y, x1: next.x, y1: next.y });
             prev = next;
           }

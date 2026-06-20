@@ -2,7 +2,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { adjustArcEnd } from '../../../helpers/arcDegrees';
 import { Arc } from '../../../models/types';
-import { buttonInfo, cornerCutoffInfo } from '../../ceruti-helpers';
+import { buttonInfo, cornerCutoffInfo, flutingInfo, purflingInfo } from '../../ceruti-helpers';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams } from '../../ceruti-types';
 import { RenderToggles } from '../../render-toggles/render-toggles';
 
@@ -23,6 +23,8 @@ export class OuterTracePanel {
 
   protected readonly buttonInfo = buttonInfo;
   protected readonly cornerCutoffInfo = cornerCutoffInfo;
+  protected readonly purflingInfo = purflingInfo;
+  protected readonly flutingInfo = flutingInfo;
   protected readonly adjustArcEnd = adjustArcEnd;
 
   onChange(): void {

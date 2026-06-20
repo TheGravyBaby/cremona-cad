@@ -820,7 +820,7 @@ export function defineOffsetArcs(p: EnricoCerutiParams, offset?: number, corners
             lowerCorner = circleCircleIntersections(L3Offset, C1Offset).sort((a, b) => a.x - b.x)[0];
 
         if(!upperCorner || !lowerCorner) {
-            error("The offset is too small, and the corner circles no longer intersect. Try reducing increasing.", "Purfling Error");
+            error("The offset is too small, and the corner circles no longer intersect. Try reducing the purfling offset.", "Purfling Error");
             return [];
         }
 
@@ -1141,3 +1141,56 @@ export function defineOuterPath(p: EnricoCerutiParams, offset?: number, button =
     return path;
 }
 
+/**
+ * Returns the inner purfling line path. Returns null if purflingOffset is not set.
+ */
+export function definePurflingPath(p: EnricoCerutiParams, offset: number): string | null {
+    if (!p.purflingOffset) 
+        p.purflingOffset = p.rib + p.overhang;
+    
+    const purflingArcOffset = offset - p.purflingOffset;
+    const arcs = defineOffsetArcs(p, purflingArcOffset, true);
+    const mirrored = arcs.map(arc => flipArcAboutY(arc));
+    return unifyConnectedSvgPaths([...arcs, ...mirrored].map(arc => pathFromArc(arc)));
+}
+
+/**
+ * Returns the outer purfling channel line path. Returns null if purflingOffset or
+ * purflingChannelDepth is not set.
+ */
+export function defineOuterPurflingPath(p: EnricoCerutiParams, offset: number): string | null {
+    if (!p.purflingOffset)
+        p.purflingOffset = p.rib + p.overhang;
+    if (!p.purflingChannelDepth)
+        p.purflingChannelDepth = 1.2
+
+    const outerPurflingArcOffset = offset - p.purflingOffset + p.purflingChannelDepth;
+    const arcs = defineOffsetArcs(p, outerPurflingArcOffset, true);
+    const mirrored = arcs.map(arc => flipArcAboutY(arc));
+    return unifyConnectedSvgPaths([...arcs, ...mirrored].map(arc => pathFromArc(arc)));
+}
+
+/**
+ * Builds the closed inner-boundary path of the fluting platform region.
+ * Returns null if either purflingOffset or flutingWidth is not yet set.
+ */
+export function defineFlutingPath(p: EnricoCerutiParams, offset: number): string | null {
+    if (p.purflingOffset === null || p.flutingWidth === null) return null;
+    const flutingOffset = offset - p.purflingOffset - p.flutingWidth;
+    const flutingArcs = defineFlutingArcs(p, flutingOffset);
+    const mirrored = flutingArcs.map(arc => flipArcAboutY(arc));
+    return unifyConnectedSvgPaths([...flutingArcs, ...mirrored].map(arc => pathFromArc(arc)));
+}
+
+/**
+ * Returns the complete SVG path `d` string for the fluting platform area —
+ * the outer trace as the outer boundary and the inner fluting edge as a hole,
+ * combined with fill-rule="evenodd". Suitable for SVG/PDF export and rendering.
+ * Returns null if the fluting platform is not yet configured.
+ */
+export function defineFlutingPlatformPath(p: EnricoCerutiParams, offset: number, button = false): string | null {
+    const innerPath = defineFlutingPath(p, offset);
+    if (innerPath === null) return null;
+    const outerPath = defineOuterPath(p, offset, button);
+    return `${outerPath} Z ${innerPath} Z`;
+}

@@ -21,6 +21,7 @@ export interface CerutiColors {
   innerTrace: string;
   outerTrace: string;
   mouldTrace: string;
+  fluting: string;
 }
 
 /** Ephemeral, non-persisted view toggles shared across panels and their render functions. */

@@ -4,20 +4,24 @@
             <input type="checkbox" [(ngModel)]="flags.showModuleArcs" (change)="changed.emit()" />
             <span>Show Module Arcs</span>
         </div>
+        @if (showAllArcs) {
         <div class="toggle">
             <input type="checkbox" [(ngModel)]="flags.showAllArcs" (change)="changed.emit()" /><span>Show All
                 Arcs</span>
         </div>
+        }
     </div>
     <div class="input-group basic-row field-row" role="group">
         <div class="toggle">
             <input type="checkbox" [(ngModel)]="flags.showModuleCircles" (change)="changed.emit()" />
             <span>Show Module Circles </span>
         </div>
+        @if (showAllCircles) {
         <div class="toggle">
             <input type="checkbox" [(ngModel)]="flags.showAllCircles" (change)="changed.emit()" /><span>Show All
                 Circles </span>
         </div>
+        }
     </div>
     @if (showGuideRow) {
     <div class="input-group basic-row field-row" role="group">

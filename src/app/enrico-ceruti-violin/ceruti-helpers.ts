@@ -114,6 +114,24 @@ export function compoundArcInfo() {
     )
 }
 
+export function purflingInfo() {
+    info(
+        "The purfling is an inlaid decorative strip that runs parallel to the edge of the instrument, set slightly inward from the outer edge.\n\n" +
+        "Offset: the distance from the outer edge to the inner wall of the purfling channel.\n\n" +
+        "Depth: the width of the channel itself — the distance between the two purfling lines.",
+        "Purfling", defaultTTL
+    )
+}
+
+export function flutingInfo() {
+    info(
+        "The fluting is a shallow carved channel in the top and back plates that runs just inside the purfling, following the contour of the instrument edge. It creates a gentle scalloped transition between the edge and the arching of the plate.\n\n" +
+        "This shaded region represents the platform for the fluting — the flat reference surface that a CNC machine levels before arching begins. Carving the fluting channel itself comes later.\n\n" +
+        "Width: the distance from the inner purfling wall inward to the edge of the platform.",
+        "Fluting", defaultTTL
+    )
+}
+
 export function cornerCutoffInfo() {
     info(
         "The cutoff angle controls how far the corner arc extends before being trimmed — this determines the final size of the corner..\n\n" +

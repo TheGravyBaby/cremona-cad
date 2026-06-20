@@ -292,6 +292,16 @@ export const renderPath = (path: string, color: string, strokeWidth: number = 2,
         .attr('vector-effect', 'non-scaling-stroke');;
 };
 
+export const renderFilledPath = (path: string, fill: string, opacity: number = 0.15, fillRule: 'evenodd' | 'nonzero' = 'evenodd') => (g: any, ui: any) => {
+    g.append("path")
+        .attr("d", path)
+        .attr("fill", fill)
+        .attr("fill-rule", fillRule)
+        .attr("fill-opacity", opacity)
+        .attr("stroke", "none")
+        .attr("vector-effect", "non-scaling-stroke");
+};
+
 export const renderCircle = (C: Circle, color: string, mirrorY?: boolean) => (g: any, ui: any) => {
     g.append('circle')
         .attr('cx', C.x)
