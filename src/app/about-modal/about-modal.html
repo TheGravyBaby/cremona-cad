@@ -142,14 +142,22 @@
         </ul>
 
         <h3>Outer Path</h3>
-        <p>The outer path section defines the button and corner arcs that complete the outline of the instrument.</p>
+        <p>The outer path section defines the corner arcs and button that complete the instrument outline.</p>
         <ul class="tips-list">
-          <li>Each corner is defined by at least two corner arcs and respective <strong>cutoff angles</strong>. The
-            cutoff values
-            define points at which a line is drawn across the outer corners.</li>
-          <li>The <strong>button</strong> is a small half-circle segment that is usually found on the backs of violin
-            family instruments.
-            You can define its dimensions here.</li>
+          <li>Each corner is defined by at least two arcs and respective <strong>cutoff angles</strong>. The cutoff
+            angle trims the arc at a point, determining the final length of the corner tip.</li>
+          <li>The <strong>button</strong> is the small semicircular tab at the neck joint on the back plate.
+            You can define its radius here. It does not appear on the top.</li>
+        </ul>
+
+        <h3>Purfling & Fluting</h3>
+        <p>These sections define the plate-edge details inset from the outer outline.</p>
+        <ul class="tips-list">
+          <li><strong>Purfling</strong> is a narrow inlaid strip set just inside the plate edge. The
+            <strong>offset</strong> controls how far from the edge the channel begins; the <strong>depth</strong>
+            sets the channel width.</li>
+          <li><strong>Fluting</strong> is the shallow cove carved between the purfling and the rising arch. The
+            <strong>width</strong> sets how far the flat platform extends inward from the inner purfling wall.</li>
         </ul>
 
         <h3>Mould</h3>
@@ -181,16 +189,26 @@
         <h2>Version</h2>
 
         <div class="changelog-entry">
-          <div class="changelog-version">v{{ appVersion }} <span class="changelog-date">— Jun 16, 2026</span></div>
+          <div class="changelog-version">v{{ appVersion }} <span class="changelog-date">— Jun 22, 2026</span></div>
+          <p class="changelog-desc">Purfling and fluting.</p>
+          <ul class="changelog-list">
+            <li>Added purfling channel to the design workflow — set offset and depth relative to the plate edge.</li>
+            <li>Added fluting to the design workflow — defines the flat platform between the purfling and the arching.</li>
+            <li>Updated templates for purflign and fluting support. </li>
+          </ul>
+        </div>
+
+        <div class="changelog-entry">
+          <div class="changelog-version">v0.7.1 <span class="changelog-date">— Jun 16, 2026</span></div>
           <p class="changelog-desc">Post release refinement.</p>
-            <ul class="changelog-list">
-              <li>PDFs now render against standard ISO paper formats.</li>
-              <li>Refactored violneck system for more accurate and flexible arc relations.</li>
-              <li>Updated Mittenwald bass and Magini Delmas templates for the new system.</li>
-              <li>Many small UI improvements to aid in visibility.</li>
-              <li>Significant internal refactors for component relations. Simplifying architecture around saving, loading, and tempalte selection. This should further enable new developers to dablle in the codebase.</li>
-            </ul>
-          </div>
+          <ul class="changelog-list">
+            <li>PDFs now render against standard ISO paper formats.</li>
+            <li>Refactored violneck system for more accurate and flexible arc relations.</li>
+            <li>Updated Mittenwald bass and Magini Delmas templates for the new system.</li>
+            <li>Many small UI improvements to aid in visibility.</li>
+            <li>Significant internal refactors around saving, loading, and template selection.</li>
+          </ul>
+        </div>
 
         <div class="changelog-entry">
           <div class="changelog-version">v0.7.0 <span class="changelog-date">— May 18, 2026</span></div>
