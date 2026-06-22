@@ -1,6 +1,5 @@
 import { flipArcAboutY, flipCircleAboutY } from '../../helpers/draftMath';
 import { renderArcFromArc, renderArcFromArcFancy, renderCircle, renderCrosshair, renderFilledPath, renderPath } from '../../helpers/renderFuncs';
-import { defineFlutingPlatformPath, defineOuterPath, defineOuterPurflingPath, definePurflingPath } from '../ceruti-calcs';
 import { CerutiColors, EnricoCerutiParams } from '../ceruti-types';
 import { PATH_STROKE_WIDTH } from './render-constants';
 
@@ -16,19 +15,18 @@ export const renderOuterTrace = (
   colors: CerutiColors,
   flags: OuterTraceViewFlags,
   currentModule: boolean,
+  outerPath: string,
+  purflingPath: string | null,
+  outerPurflingPath: string | null,
+  flutingPlatformPath: string | null,
 ) => (g: any, ui: any): void => {
   let p = params;
-  let offset = p.overhang + p.rib;
-  let outerPath = defineOuterPath(p, offset, true);
   renderPath(outerPath, colors.outerTrace, PATH_STROKE_WIDTH)(g, ui);
 
-  const purflingPath = definePurflingPath(p, offset);
   if (purflingPath !== null) renderPath(purflingPath, colors.innerTrace, 1)(g, ui);
 
-  const outerPurflingPath = defineOuterPurflingPath(p, offset);
   if (outerPurflingPath !== null) renderPath(outerPurflingPath, colors.innerTrace, 1)(g, ui);
 
-  const flutingPlatformPath = defineFlutingPlatformPath(p, offset);
   if (flutingPlatformPath !== null) renderFilledPath(flutingPlatformPath, colors.fluting)(g, ui);
 
   if ((currentModule && flags.showModuleArcs) || flags.showAllArcs) {
