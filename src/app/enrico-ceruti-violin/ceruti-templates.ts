@@ -877,8 +877,7 @@ const DelGesuBaltic = {
       "C21DoubleArc": true,
       "C11DoubleArc": true,
       "L31DoubleArc": false,
-      "lcCornerConnector": "cubic",
-      "ucCornerConnector": "cubic",
+      "ucCornerSharpness": 0.1,
       "lcCornerSharpness": 0.17
     },
     "purflingOffset": 5.2,
@@ -1213,9 +1212,8 @@ const StradDavidoff =  {
       "C21DoubleArc": true,
       "C11DoubleArc": true,
       "L31DoubleArc": false,
-      "lcCornerConnector": "cubic",
-      "lcCornerSharpness": 0.1,
-      "ucCornerConnector": "cubic"
+      "ucCornerSharpness": 0.1,
+      "lcCornerSharpness": 0.1
     },
     "purflingOffset": 5,
     "purflingChannelDepth": 1.2,
