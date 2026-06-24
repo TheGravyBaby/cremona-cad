@@ -684,13 +684,18 @@ export function calculateCornerBlocks(p: EnricoCerutiParams, innerPath: string, 
         });
     };
 
+    // Expand a rect by 1mm on the face that may be flush with the inner path boundary,
+    // so polygon-clipping has a clean crossing rather than a tangent touch point.
+    const expandedTop    = (r: Rectangle) => new Rectangle(new Pt(r.Pt1.x, Math.min(r.Pt1.y, r.Pt2.y)), new Pt(r.Pt2.x, Math.max(r.Pt1.y, r.Pt2.y) + 1));
+    const expandedBottom = (r: Rectangle) => new Rectangle(new Pt(r.Pt1.x, Math.min(r.Pt1.y, r.Pt2.y) - 1), new Pt(r.Pt2.x, Math.max(r.Pt1.y, r.Pt2.y)));
+
     // Build clipped paths paired with their bounding rectangles.
     const cuRect   = p.blocks.CU;
     const cuMirror = flipRectAboutY(p.blocks.CU);
     const clRect   = p.blocks.CL;
     const clMirror = flipRectAboutY(p.blocks.CL);
 
-    const rowUpper        = [{ rect: p.blocks.U,  path: intersectionFromTwoPaths(pathFromRect(p.blocks.U), innerPath) }];
+    const rowUpper        = [{ rect: p.blocks.U,  path: intersectionFromTwoPaths(pathFromRect(expandedTop(p.blocks.U)), innerPath) }];
     const rowUpperCorners = [
         { rect: cuMirror, path: intersectionFromTwoPaths(pathFromRect(cuMirror), innerPath) },
         { rect: cuRect,   path: intersectionFromTwoPaths(pathFromRect(cuRect), innerPath) },
@@ -699,13 +704,13 @@ export function calculateCornerBlocks(p: EnricoCerutiParams, innerPath: string, 
         { rect: clMirror, path: intersectionFromTwoPaths(pathFromRect(clMirror), innerPath) },
         { rect: clRect,   path: intersectionFromTwoPaths(pathFromRect(clRect), innerPath) },
     ];
-    const rowLower        = [{ rect: p.blocks.L,  path: intersectionFromTwoPaths(pathFromRect(p.blocks.L), innerPath) }];
+    const rowLower        = [{ rect: p.blocks.L,  path: intersectionFromTwoPaths(pathFromRect(expandedBottom(p.blocks.L)), innerPath) }];
 
     // Stack rows top-to-bottom, advancing yCursor by each row's tallest piece.
     const rowHeight = (items: Array<{ rect: Rectangle }>) => Math.max(...items.map(({ rect }) => rect.height));
 
     let yCursor = 0;
-    const r3 = layoutRow(rowLower,        yCursor); yCursor += rowHeight(rowUpper)        + padding;
+    const r3 = layoutRow(rowLower,        yCursor); yCursor += rowHeight(rowLower)        + padding;
     const r2 = layoutRow(rowLowerCorners, yCursor); yCursor += rowHeight(rowLowerCorners) + padding;
     const r1 = layoutRow(rowUpperCorners, yCursor); yCursor += rowHeight(rowUpperCorners) + padding;
     const r0 = layoutRow(rowUpper,        yCursor); 
