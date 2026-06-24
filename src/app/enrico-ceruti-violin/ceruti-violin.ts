@@ -408,9 +408,6 @@ export class CerutiViolin extends RecipeComponentBase {
   changeOuterTrace(): void {
     this.debounce(() => safeRun(() => {
       const p = this.d.params;
-      p.purflingOffset ??= p.overhang + p.rib;
-      p.purflingChannelDepth ??= 1.2;
-      p.flutingWidth ??= p.overhang + p.rib;
       calculateOuterArcs(p);
       const offset = p.overhang + p.rib;
       const outerPath = defineOuterPath(p, offset, true);

@@ -57,7 +57,7 @@ export function calculateMainBouts(p: EnricoCerutiParams): void {
     p.bouts.L1 = arcFromCircle(p.bouts.L1, L1Angle, 0);
 
     if (p.options.useViolNeck) {
-        p.viol.width = p.viol.width ?? p.bouts.UBW * .1
+        p.viol.width ??= p.bouts.UBW * .1
         let Vr = p.viol?.V0?.r ?? p.bouts.UBW / 5
         let start = p.viol?.V0?.start ?? Math.PI * 1.05
         let end =  p.viol?.V0?.end ?? 3/2 * Math.PI * .92
@@ -139,8 +139,8 @@ export function calculateCorners(p: EnricoCerutiParams): void {
     let U2R = p.bouts.U2?.r ?? Math.round(UBWI * p.ratios.U2toUBW);
     let U2Y = p.bouts.U2?.y ?? p.bouts.U1.y;
             
-    p.bouts.U31 = p.bouts.U31 ?? new Arc(0,0,12, 17/16 * Math.PI)
-    p.bouts.L31 = p.bouts.L31 ?? new Arc(0,0,12, 15/16 * Math.PI)
+    p.bouts.U31 ??= new Arc(0,0,12, 17/16 * Math.PI)
+    p.bouts.L31 ??= new Arc(0,0,12, 15/16 * Math.PI)
 
     let U1U2Match = false
     let allowHeightFlex = false; // this is a fiddly feature that might be cool one day, needs more work for now
@@ -290,12 +290,12 @@ export function calculateCenterBout(p: EnricoCerutiParams, solveC0?: boolean): v
     let HI = p.height - 2 * inset;
 
     // initialize center bout if not already done
-    p.bouts.C0 = p.bouts.C0 ?? new Arc(0, Math.round(HI * p.ratios.C0YtoH) + inset, Math.round(LBWI * p.ratios.C0toLBW));
+    p.bouts.C0 ??= new Arc(0, Math.round(HI * p.ratios.C0YtoH) + inset, Math.round(LBWI * p.ratios.C0toLBW));
 
     if (solveC0 !== undefined)
         p.options.useKellyC0 = solveC0; // if solveC0 is passed in, then we want to toggle whether C0 is fixed or not, and remember on future calcs 
 
-    p.bouts.CBW = p.bouts.CBW ?? Math.round(p.bouts.LBW * p.ratios.CBWtoLBW);
+    p.bouts.CBW ??= Math.round(p.bouts.LBW * p.ratios.CBWtoLBW);
 
     if (p.options.useKellyC0) {
         try {
@@ -352,8 +352,8 @@ export function calculateCenterBout(p: EnricoCerutiParams, solveC0?: boolean): v
     }
 
     // initialize C11 and C21
-    p.bouts.C11 = p.bouts.C11 ?? new Arc(0,0,12, 24/16 * Math.PI)
-    p.bouts.C21 = p.bouts.C21 ?? new Arc(0,0,12, 8/16 * Math.PI)
+    p.bouts.C11 ??= new Arc(0,0,12, 24/16 * Math.PI)
+    p.bouts.C21 ??= new Arc(0,0,12, 8/16 * Math.PI)
     let cuRadius = p.bouts.C2?.r ?? Math.round((LBWI * p.ratios.C2toLBW));
     let clRadius = p.bouts.C1?.r ?? Math.round((LBWI * p.ratios.C1toLBW));
     let CUIntercept;
@@ -407,7 +407,10 @@ export function calculateCenterBout(p: EnricoCerutiParams, solveC0?: boolean): v
 
 export function calculateOuterArcs(p: EnricoCerutiParams): void {
     let inset = p.overhang + p.rib;
-    p.button = p.button ?? new Rectangle(new Pt(-10, p.height - inset), new Pt(10, p.height - inset + 5));
+    p.purflingChannelDepth ??= 1.2;
+    p.purflingOffset ??= inset + p.purflingChannelDepth;
+    p.flutingWidth ??= inset;
+    p.button ??= new Rectangle(new Pt(-10, p.height - inset), new Pt(10, p.height - inset + 5));
 
     p.outerCorners.U3 = p.outerCorners.U3 ? redefineArcCircle(p.outerCorners.U3, p.bouts.U3, -inset) : offsetArcRadius(p.bouts.U3, -inset); // user might have redefined bouts
     p.outerCorners.C2 = p.outerCorners.C2 ? redefineArcCircle(p.outerCorners.C2, p.bouts.C2, -inset) : offsetArcRadius(p.bouts.C2, -inset);
@@ -747,7 +750,7 @@ export function defineInnerArcs(p: EnricoCerutiParams): Arc[] {
 }
 
 export function defineOffsetArcs(p: EnricoCerutiParams, offset?: number, corners: boolean = false): Arc[] {
-    offset = offset ?? p.overhang + p.rib;
+    offset ??= p.overhang + p.rib;
     let arcs = [];
 
 
@@ -1022,13 +1025,13 @@ export function defineInnerPath(p: EnricoCerutiParams): string {
 // but technically its up to the caller
 // this is technically an outer path function due to the corner logic
 export function defineOuterPath(p: EnricoCerutiParams, offset?: number, button = false): string {
-    offset = offset ?? p.overhang + p.rib;
+    offset ??= p.overhang + p.rib;
     let arcs = defineOffsetArcs(p, offset);
 
     let U0ForButton = offsetArcRadius(p.bouts.U0, offset);
     let buttonPaths: string[] = [];
     if (button && !p.options.useViolNeck) {
-        p.button = p.button ?? new Rectangle(new Pt(-10, p.height - offset), new Pt(10, p.height - offset + 5));
+        p.button ??= new Rectangle(new Pt(-10, p.height - offset), new Pt(10, p.height - offset + 5));
         let U0Intersect = lineCircleIntersection(new Pt(p.button.width / 2, p.height), new Pt(p.button.width / 2, 0), U0ForButton).sort((a, b) => a.y - b.y)[1]; // long vertical line
         buttonPaths.push(pathFromLine(U0Intersect, {...U0Intersect , y: U0Intersect.y + p.button.height}));
         buttonPaths.push(pathFromLine(flipPointAboutY(U0Intersect), flipPointAboutY({...U0Intersect , y: U0Intersect.y + p.button.height})));
@@ -1053,14 +1056,13 @@ export function defineOuterPath(p: EnricoCerutiParams, offset?: number, button =
 
     let paths: string[] = [];
 
-    // render corner connectors — 'cubic' uses a shaped bezier, 'line' uses the original straight cutoff
-    const globalSharpness = p.options.outerCornerSharpness ?? 0.1;
-    const ucs = p.options.ucCornerSharpness ?? globalSharpness;
-    const lcs = p.options.lcCornerSharpness ?? globalSharpness;
-    const ucCornerPath = (a1: Arc, a2: Arc) => (p.options.ucCornerConnector ?? 'line') === 'cubic'
+    // render corner connectors — sharpness > 0 uses a shaped bezier, 0 uses a straight line
+    const ucs = p.options.ucCornerSharpness ?? 0;
+    const lcs = p.options.lcCornerSharpness ?? 0;
+    const ucCornerPath = (a1: Arc, a2: Arc) => ucs > 0
       ? pathFromCornerCubic(a1, a2, ucs)
       : pathFromLine(pointOnCircle(a1, a1.end), pointOnCircle(a2, a2.end));
-    const lcCornerPath = (a1: Arc, a2: Arc) => (p.options.lcCornerConnector ?? 'line') === 'cubic'
+    const lcCornerPath = (a1: Arc, a2: Arc) => lcs > 0
       ? pathFromCornerCubic(a1, a2, lcs)
       : pathFromLine(pointOnCircle(a1, a1.end), pointOnCircle(a2, a2.end));
 
@@ -1112,7 +1114,7 @@ export function defineOuterPath(p: EnricoCerutiParams, offset?: number, button =
             paths.push(pathFromLine(EndPt, EndPtOffset))
             paths.push(pathFromLine(flipPointAboutY(EndPtOffset), flipPointAboutY(EndPt)))
 
-            p.button = p.button ?? new Rectangle(new Pt(10, EndPtOffset.y), new Pt(-10, EndPtOffset.y + 5));
+            p.button ??= new Rectangle(new Pt(10, EndPtOffset.y), new Pt(-10, EndPtOffset.y + 5));
             buttonPaths.push(pathFromLine({x: p.button.width / 2, y: EndPtOffset.y}, {x: p.button.width / 2, y: EndPtOffset.y + p.button.height}));
             buttonPaths.push(pathFromLine({x: -p.button.width / 2, y: EndPtOffset.y}, {x: -p.button.width / 2, y: EndPtOffset.y + p.button.height}));
 
@@ -1145,9 +1147,7 @@ export function defineOuterPath(p: EnricoCerutiParams, offset?: number, button =
  * Returns the inner purfling line path. Returns null if purflingOffset is not set.
  */
 export function definePurflingPath(p: EnricoCerutiParams, offset: number): string | null {
-    if (!p.purflingOffset) 
-        p.purflingOffset = p.rib + p.overhang;
-    
+    p.purflingOffset ??= p.rib + p.overhang;
     const purflingArcOffset = offset - p.purflingOffset;
     const arcs = defineOffsetArcs(p, purflingArcOffset, true);
     const mirrored = arcs.map(arc => flipArcAboutY(arc));
@@ -1159,11 +1159,8 @@ export function definePurflingPath(p: EnricoCerutiParams, offset: number): strin
  * purflingChannelDepth is not set.
  */
 export function defineOuterPurflingPath(p: EnricoCerutiParams, offset: number): string | null {
-    if (!p.purflingOffset)
-        p.purflingOffset = p.rib + p.overhang;
-    if (!p.purflingChannelDepth)
-        p.purflingChannelDepth = 1.2
-
+    p.purflingOffset ??= p.rib + p.overhang;
+    p.purflingChannelDepth ??= 1.2;
     const outerPurflingArcOffset = offset - p.purflingOffset + p.purflingChannelDepth;
     const arcs = defineOffsetArcs(p, outerPurflingArcOffset, true);
     const mirrored = arcs.map(arc => flipArcAboutY(arc));

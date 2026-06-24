@@ -1,6 +1,6 @@
 {
   "name": "cremona-cad",
-  "version": "0.7.2",
+  "version": "0.7.2.1",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
