@@ -457,8 +457,20 @@ const RavatinMans = {
         "end": -2.586629400253944
       },
       "CBW": 240,
-      "C11": null,
-      "C21": null,
+      "C11": {
+        "x": 0,
+        "y": 0,
+        "r": 12,
+        "start": 4.71238898038469,
+        "end": 6.283185307179586
+      },
+      "C21": {
+        "x": 0,
+        "y": 0,
+        "r": 12,
+        "start": 1.5707963267948966,
+        "end": 6.283185307179586
+      },
       "C2": {
         "x": 147.8362423950687,
         "y": 474.0060612505023,
@@ -503,14 +515,14 @@ const RavatinMans = {
         "y": 522.9920547320693,
         "r": 31,
         "start": -2.96527544536804,
-        "end": -2.389316792209911
+        "end": -2.441676669769741
       },
       "C2": {
         "x": 147.8362423950687,
         "y": 474.0060612505023,
         "r": 23,
         "start": 2.8816899375187273,
-        "end": 0.9871068021847857
+        "end": 0.9094678827651348
       },
       "C21": null,
       "C1": {
@@ -518,7 +530,7 @@ const RavatinMans = {
         "y": 370.6090793259713,
         "r": 41,
         "start": -2.5866294002539436,
-        "end": -1.13800612109865
+        "end": -1.1554594136185934
       },
       "C11": null,
       "L3": {
@@ -533,7 +545,7 @@ const RavatinMans = {
         "y": 306.9118070533952,
         "r": 27,
         "start": -2.9598516561244486,
-        "end": 2.485575610097859
+        "end": 2.5204821951377463
       }
     },
     "blocks": {
@@ -596,8 +608,13 @@ const RavatinMans = {
       "U31DoubleArc": true,
       "C21DoubleArc": false,
       "C11DoubleArc": false,
-      "L31DoubleArc": true
-    }
+      "L31DoubleArc": true,
+      "ucCornerSharpness": 0.04,
+      "lcCornerSharpness": 0.09
+    },
+    "purflingOffset": 7.8,
+    "purflingChannelDepth": 1.2,
+    "flutingWidth": 7
   },
   "paths": []
 }
@@ -1476,7 +1493,9 @@ const MagginiDelmas = {
       "C21DoubleArc": false,
       "C11DoubleArc": false,
       "L31DoubleArc": false
-    }
+    },
+    "purflingOffset": 8,
+    "purflingChannelDepth": 1.2
   },
   "paths": []
 }
@@ -1668,7 +1687,7 @@ const MittenwaldBass = {
         "y": 662.4368465986827,
         "r": 58,
         "start": 2.982051641159248,
-        "end": 1.6109265831031
+        "end": 1.6114805515534683
       },
       "C21": null,
       "C1": {
@@ -1749,7 +1768,9 @@ const MittenwaldBass = {
       "C21DoubleArc": false,
       "C11DoubleArc": false,
       "L31DoubleArc": false
-    }
+    },
+    "purflingOffset": 7,
+    "purflingChannelDepth": 1.2
   },
   "paths": []
 }
@@ -1759,8 +1780,17 @@ const GuadagniniPiacenza = {
   "label": "Viola - Guadagnini - Piacenza",
   "recipeName": "enrico-ceruti-violin",
   "fileName": "Viola - Guadagnini - Piacenza",
-  "description": "C. 1747",
   "version": "1",
+  "description": "C. 1747",
+  "referenceImage": {
+    "href": "/Guadagnini_Piacenza.png",
+    "xlink:href": "/Guadagnini_Piacenza.png",
+    "x": -120.8,
+    "y": -7,
+    "width": 243,
+    "height": 431,
+    "rotationDeg": 0
+  },
   "params": {
     "height": 414,
     "width": 238,
@@ -1993,18 +2023,11 @@ const GuadagniniPiacenza = {
       "C21DoubleArc": false,
       "C11DoubleArc": false,
       "L31DoubleArc": false
-    }
+    },
+    "purflingOffset": 4.7,
+    "purflingChannelDepth": 1.2
   },
-  "paths": [],
-  "referenceImage": {
-    "href": "/Guadagnini_Piacenza.png",
-    "xlink:href": "/Guadagnini_Piacenza.png",
-    "x": -120.8,
-    "y": -7,
-    "width": 243,
-    "height": 431,
-    "rotationDeg": 0
-  }
+  "paths": []
 }
 
 export const CERUTI_TEMPLATES: EnricoCerutiTemplate[] = [
