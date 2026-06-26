@@ -1,5 +1,5 @@
 import { solveInscribedCircleAlongAxis, circleCircleIntersections, angleFromCenter, interceptCirclesAndPoint, dist, pointOnCircle, offsetArcRadius, flipArcAboutY, flipPointAboutY, flipRectAboutY, lineCircleIntersection, redefineArcCircle, interceptCirclesAndPointCompound, findJoiningArcs } from "../helpers/draftMath";
-import { pathFromArc, pathFromLine, pathFromCornerCubic, unifyConnectedSvgPaths, pathFromRoundedRect, pathFromCircle, pathFromRect, combinePathStrings, differenceFromManyPaths, intersectionFromTwoPaths, translatePath } from "../helpers/svgPathMath";
+import { pathFromArc, pathFromLine, pathFromCornerCubic, unifyConnectedSvgPaths, pathFromRoundedRect, pathFromCircle, pathFromRect, combinePathStrings, differenceFromManyPaths, intersectionFromTwoPaths, translatePath, differenceFromTwoPaths } from "../helpers/svgPathMath";
 import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Pt, Rectangle } from "../models/types";
 import { error, message } from "../shared/message-emitter";
 import { EnricoCerutiParams } from "./ceruti-types";
@@ -663,6 +663,30 @@ export function calculateMould(p: EnricoCerutiParams, useHighAccuracy = false, s
 }
 
 export function calculateCornerBlocks(p: EnricoCerutiParams, innerPath: string, padding = 5): string[] {
+    let result = [];
+    // Expand a rect by 1mm on the face that may be flush with the inner path boundary,
+    // so polygon-clipping has a clean crossing rather than a tangent touch point.
+    const expandedTop    = (r: Rectangle) => new Rectangle(new Pt(r.Pt1.x, Math.min(r.Pt1.y, r.Pt2.y)), new Pt(r.Pt2.x, Math.max(r.Pt1.y, r.Pt2.y) + 1));
+    const expandedBottom = (r: Rectangle) => new Rectangle(new Pt(r.Pt1.x, Math.min(r.Pt1.y, r.Pt2.y) - 1), new Pt(r.Pt2.x, Math.max(r.Pt1.y, r.Pt2.y)));
+
+    // Build clipped paths paired with their bounding rectangles.
+    const cuRect   = p.blocks.CU;
+    const cuMirror = flipRectAboutY(p.blocks.CU);
+    const clRect   = p.blocks.CL;
+    const clMirror = flipRectAboutY(p.blocks.CL);
+
+    const cuClipped   = intersectionFromTwoPaths(pathFromRect(expandedTop(cuRect)), innerPath);
+    const cuMirrorClipped = intersectionFromTwoPaths(pathFromRect(expandedTop(cuMirror)), innerPath);
+    const clClipped   = intersectionFromTwoPaths(pathFromRect(expandedBottom(clRect)), innerPath);
+    const clMirrorClipped = intersectionFromTwoPaths(pathFromRect(expandedBottom(clMirror)), innerPath);
+    const uClipped = intersectionFromTwoPaths(pathFromRect(expandedTop(p.blocks.U)), innerPath);
+    const lClipped = intersectionFromTwoPaths(pathFromRect(expandedBottom(p.blocks.L)), innerPath);
+
+    // result.push(cuClipped, cuMirrorClipped, clClipped, clMirrorClipped, uClipped, lClipped);
+    // the above code produces clean bug free paths
+    // comment out to see them
+    // now we need to arrange them in a nice layout for cutting
+    
     const rectMinX = (r: Rectangle) => Math.min(r.Pt1.x, r.Pt2.x);
     const rectMinY = (r: Rectangle) => Math.min(r.Pt1.y, r.Pt2.y);
 
@@ -684,28 +708,18 @@ export function calculateCornerBlocks(p: EnricoCerutiParams, innerPath: string, 
         });
     };
 
-    // Expand a rect by 1mm on the face that may be flush with the inner path boundary,
-    // so polygon-clipping has a clean crossing rather than a tangent touch point.
-    const expandedTop    = (r: Rectangle) => new Rectangle(new Pt(r.Pt1.x, Math.min(r.Pt1.y, r.Pt2.y)), new Pt(r.Pt2.x, Math.max(r.Pt1.y, r.Pt2.y) + 1));
-    const expandedBottom = (r: Rectangle) => new Rectangle(new Pt(r.Pt1.x, Math.min(r.Pt1.y, r.Pt2.y) - 1), new Pt(r.Pt2.x, Math.max(r.Pt1.y, r.Pt2.y)));
-
-    // Build clipped paths paired with their bounding rectangles.
-    const cuRect   = p.blocks.CU;
-    const cuMirror = flipRectAboutY(p.blocks.CU);
-    const clRect   = p.blocks.CL;
-    const clMirror = flipRectAboutY(p.blocks.CL);
-
-    const rowUpper        = [{ rect: p.blocks.U,  path: intersectionFromTwoPaths(pathFromRect(expandedTop(p.blocks.U)), innerPath) }];
+    const rowUpper = [{ rect: p.blocks.U,  path: uClipped }];
     const rowUpperCorners = [
-        { rect: cuMirror, path: intersectionFromTwoPaths(pathFromRect(cuMirror), innerPath) },
-        { rect: cuRect,   path: intersectionFromTwoPaths(pathFromRect(cuRect), innerPath) },
+        { rect: cuMirror, path: cuMirrorClipped },
+        { rect: cuRect, path: cuClipped },
     ];
     const rowLowerCorners = [
-        { rect: clMirror, path: intersectionFromTwoPaths(pathFromRect(clMirror), innerPath) },
-        { rect: clRect,   path: intersectionFromTwoPaths(pathFromRect(clRect), innerPath) },
+        { rect: clMirror, path: clMirrorClipped },
+        { rect: clRect, path: clClipped }
     ];
-    const rowLower        = [{ rect: p.blocks.L,  path: intersectionFromTwoPaths(pathFromRect(expandedBottom(p.blocks.L)), innerPath) }];
+    const rowLower = [{ rect: p.blocks.L,  path: lClipped }];
 
+    // Calculate y offsets for each row based on their heights and padding.
     // Stack rows top-to-bottom, advancing yCursor by each row's tallest piece.
     const rowHeight = (items: Array<{ rect: Rectangle }>) => Math.max(...items.map(({ rect }) => rect.height));
 
@@ -715,7 +729,8 @@ export function calculateCornerBlocks(p: EnricoCerutiParams, innerPath: string, 
     const r1 = layoutRow(rowUpperCorners, yCursor); yCursor += rowHeight(rowUpperCorners) + padding;
     const r0 = layoutRow(rowUpper,        yCursor); 
 
-    return [...r0, ...r2, ...r1, ...r3];
+    result.push(...r0, ...r1, ...r2, ...r3);
+    return result;
 }
 
 export function defineInnerArcs(p: EnricoCerutiParams): Arc[] {

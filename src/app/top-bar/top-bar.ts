@@ -10,7 +10,7 @@ import { AboutModalComponent } from '../about-modal/about-modal';
 })
 export class TopBarComponent {
   @Input() selectedRecipe: string = 'Beard';
-  @Input() nightMode = true;
+  @Input() nightMode = false;
   @Output() recipeChange = new EventEmitter<string>();
   @Output() nightModeChange = new EventEmitter<boolean>();
 
