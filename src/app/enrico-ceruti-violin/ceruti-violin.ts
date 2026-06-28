@@ -60,7 +60,7 @@ export class CerutiViolin extends RecipeComponentBase {
     innerTrace: '#868484ff',
     outerTrace: '#868484ff',
     mouldTrace: '#81887eff',
-    fluting: '#4B9B8E',
+    fluting: '#478968ff',
   } as const;
 
   private makeColor(base: string, ...extra: ColorTransform[]): string {
