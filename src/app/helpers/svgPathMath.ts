@@ -767,7 +767,9 @@ export function intersectionFromTwoPaths(path1: string, path2: string): string {
  */
 export function translatePath(path: string, dx: number, dy: number): string {
   if (dx === 0 && dy === 0) return path;
-  return path.replace(/([A-Za-z])([^A-Za-z]*)/g, (_, cmd: string, args: string) => {
+  // Exclude e/E from the command-letter match: they appear in scientific-notation
+  // numbers (e.g. 5.03e-14) and are not valid SVG path commands.
+  return path.replace(/([A-DF-Za-df-z])([^A-DF-Za-df-z]*)/g, (_, cmd: string, args: string) => {
     const nums = args.trim().split(/[\s,]+/).filter((s: string) => s.length > 0).map(Number);
     switch (cmd.toUpperCase()) {
       case 'M':
