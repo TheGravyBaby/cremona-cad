@@ -1,5 +1,5 @@
 import { DOCUMENT } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { ApplicationRef, Component, inject } from '@angular/core';
 import { setGlobalEmitter } from './shared/message-emitter';
 import { MessageService } from './shared/message.service';
 import { TopBarComponent } from './top-bar/top-bar';
@@ -64,6 +64,7 @@ import { MessageCenterComponent } from './shared/message-center.component';
 
 export class App {
   private readonly doc = inject(DOCUMENT);
+  private readonly appRef = inject(ApplicationRef);
   // inject MessageService via Angular's injector
   private messageService = inject(MessageService);
 
@@ -98,12 +99,14 @@ export class App {
   onDraftChange(fns: Array<(g: any, ui: any) => void>) {
     queueMicrotask(() => {
       this.draftArgs = fns;
+      this.appRef.tick();
     });
   }
 
   onReferenceImageChange(img: ReferenceImage | null) {
     queueMicrotask(() => {
       this.referenceImage = img;
+      this.appRef.tick();
     });
   }
 

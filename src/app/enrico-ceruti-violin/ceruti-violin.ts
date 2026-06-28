@@ -146,15 +146,13 @@ export class CerutiViolin extends RecipeComponentBase {
   private renderOuterSilhouette(): Array<(g: any, ui: any) => void> {
     const p = this.d.params;
     const offset = p.overhang + p.rib;
-    const silhouette = renderPath(combinePathStrings([defineOuterPath(p), defineInnerPath(p)]), this.colors.outerTrace);
+    const silhouette = renderPath(defineOuterPath(p), this.colors.outerTrace);
     try {
       const renders: Array<(g: any, ui: any) => void> = [silhouette];
       const purflingPath = definePurflingPath(p, offset);
       if (purflingPath) renders.push(renderPath(purflingPath, this.colors.innerTrace, 1));
       const outerPurflingPath = defineOuterPurflingPath(p, offset);
       if (outerPurflingPath) renders.push(renderPath(outerPurflingPath, this.colors.innerTrace, 1));
-      const flutingPath = defineFlutingPlatformPath(p, offset);
-      if (flutingPath) renders.push(renderFilledPath(flutingPath, this.colors.fluting));
       return renders;
     } catch {
       return [silhouette];
@@ -408,9 +406,6 @@ export class CerutiViolin extends RecipeComponentBase {
   changeOuterTrace(): void {
     this.debounce(() => safeRun(() => {
       const p = this.d.params;
-      p.purflingOffset ??= p.overhang + p.rib;
-      p.purflingChannelDepth ??= 1.2;
-      p.flutingWidth ??= p.overhang + p.rib;
       calculateOuterArcs(p);
       const offset = p.overhang + p.rib;
       const outerPath = defineOuterPath(p, offset, true);

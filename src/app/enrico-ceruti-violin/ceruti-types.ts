@@ -122,8 +122,6 @@ export interface EnricoCerutiParams {
     C21DoubleArc: boolean;
     C11DoubleArc: boolean;
     L31DoubleArc: boolean;
-    ucCornerConnector?: 'cubic' | 'line';
-    lcCornerConnector?: 'cubic' | 'line';
     ucCornerSharpness?: number;
     lcCornerSharpness?: number;
     outerCornerSharpness?: number;
@@ -252,10 +250,8 @@ export const DefaultParams: EnricoCerutiParams = {
     C21DoubleArc: false,
     C11DoubleArc: false,
     L31DoubleArc: false,
-    ucCornerConnector: 'line',
-    lcCornerConnector: 'line',
-    ucCornerSharpness: 0.1,
-    lcCornerSharpness: 0.1,
+    ucCornerSharpness: 0,
+    lcCornerSharpness: 0,
     outerCornerSharpness: 0.1
   }
 }
