@@ -131,6 +131,76 @@ export function flutingInfo() {
     )
 }
 
+export function ribHeightInfo() {
+    info(
+        "The height of the ribs — the side walls of the instrument body." +
+        "This sets how deep the air cavity is.\n\n" +
+        "Typical values:\n" +
+        "- Violin: 29–32 mm\n" +
+        "- Viola: 38–44 mm\n" +
+        "- Cello: 115–130 mm\n" +
+        "- Bass: 175–215 mm",
+        "Rib Height", defaultTTL
+    )
+}
+
+export function archHeightInfo() {
+    info(
+        "The maximum height of the arch above the outer plate edge — the measurement you'd take with a caliper from the fluting platform to the highest point of the arch.\n\n" +
+        "Typical values:\n" +
+        "- Violin top: 14–17 mm  |  back: 13–16 mm\n" +
+        "- Viola top: 18–22 mm  |  back: 17–21 mm\n" +
+        "- Cello top: 24–28 mm  |  back: 22–26 mm\n\n" +
+        "The back is usually 1–2 mm lower than the top.",
+        "Arch Height", defaultTTL
+    )
+}
+
+export function plateThicknessInfo() {
+    info(
+        "The thickness of the plate at the outer edge.\n\n" +
+        "Typical edge thicknesses:\n" +
+        "- Violin top: 2.3–2.8 mm  |  back: 2.8–3.5 mm\n" +
+        "- Viola: slightly heavier than violin\n" +
+        "- Cello top: 4.0–5.0 mm  |  back: 5.0–6.0 mm",
+        "Plate Thickness", defaultTTL
+    )
+}
+
+export function trochoidFactorInfo() {
+    info(
+        "Controls the shape within the trochoid (roulette) family of curves, all of which peak at the same height.\n\n" +
+        "- d = 0: raised cosine — gradual, symmetric rise from the edge.\n" +
+        "- d = 1: standard cycloid — steeper rise from the edge, noticeably flatter near the peak.\n" +
+        "- Values between blend the two characters.\n\n" +
+        "Geometrically, the cycloid is traced by a point at radius d·r on a circle of radius r rolling along the baseline. " +
+        "The module guide (when enabled) shows the generating circle at the arch midpoint.",
+        "Trochoid Factor", defaultTTL
+    )
+}
+
+export function curveTypeInfo() {
+    info(
+        "Three arch profiles are available:\n\n" +
+        "Catenary — the curve formed by a hanging chain, inverted. Naturally smooth and symmetric; a good starting point.\n\n" +
+        "Cycloid — from the trochoid family (rolling circle). The trochoid factor controls how steeply the arch rises from the edge: 0 is a raised cosine, 1 is the classic cycloid.\n\n" +
+        "Spline — a natural cubic spline through user-placed control points.",
+        "Arch Curve Type", defaultTTL
+    )
+}
+
+export function splinePointInfo() {
+    info(
+        "Each control point pins the arch at a specific height and position along the plate length.\n\n" +
+        "Position (0–100): how far along the half-span from the plate edge to the arch peak. " +
+        "0 = plate edge (always z = 0), 100 = center peak (always z = arch height). " +
+        "Interior points are in between.\n\n" +
+        "Height (mm): arch height at this position, measured above the plate outer edge — same unit as the Arch Height field.\n\n" +
+        "The curve is symmetric: each point mirrors to the opposite half of the plate automatically.",
+        "Spline Control Point", defaultTTL
+    )
+}
+
 export function cornerCutoffInfo() {
     info(
         "Controls where the corner arc is trimmed, setting the final length of the corner tip. Shorter values produce blunter corners; longer values produce more pronounced points.\n\n" +

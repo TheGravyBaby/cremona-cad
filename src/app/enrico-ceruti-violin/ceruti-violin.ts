@@ -7,7 +7,7 @@ import { combinePathStrings } from '../helpers/svgPathMath';
 import { clampParam, safeRun } from '../helpers/validators';
 import { CerutiColors, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, EnricoCerutiTemplate, EnricoCerutiParams } from './ceruti-types';
 import { CERUTI_TEMPLATES } from './ceruti-templates';
-import { calculateCenterBout, calculateCorners, calculateMainBouts, calculateMould, calculateOuterArcs, defineFlutingPlatformPath, defineInnerPath, defineOuterPath, defineOuterPurflingPath, definePurflingPath } from './ceruti-calcs';
+import { calculateCenterBout, calculateCorners, calculateLongArch, calculateMainBouts, calculateMould, calculateOuterArcs, defaultArchingParams, defineFlutingPlatformPath, defineInnerPath, defineOuterPath, defineOuterPurflingPath, definePurflingPath } from './ceruti-calcs';
 import { HighlightedArc } from './renders/render-constants';
 import { renderBounds, renderBoutBouts, renderCornerGuides } from './renders/guides.render';
 import { renderMainBouts } from './renders/main-bouts.render';
@@ -15,18 +15,20 @@ import { renderCorners } from './renders/corners.render';
 import { renderCenterBout } from './renders/center-bout.render';
 import { renderOuterTrace } from './renders/outer-trace.render';
 import { renderMould } from './renders/mould.render';
+import { renderLongArchBoxes } from './renders/long-arching.render';
 import { BasePanel } from './panels/base-panel/base-panel';
 import { MainBoutsPanel } from './panels/main-bouts-panel/main-bouts-panel';
 import { CornersPanel } from './panels/corners-panel/corners-panel';
 import { CenterBoutPanel } from './panels/center-bout-panel/center-bout-panel';
 import { OuterTracePanel } from './panels/outer-trace-panel/outer-trace-panel';
 import { MouldPanel } from './panels/mould-panel/mould-panel';
+import { LongArchingPanel } from './panels/long-arching-panel/long-arching-panel';
 import { ExportPanel } from './panels/export-panel/export-panel';
 import { RecipeToolbarComponent } from '../recipe-toolbar/recipe-toolbar';
 
 @Component({
   selector: 'app-ceruti-violin',
-  imports: [FormsModule, BasePanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterTracePanel, MouldPanel, ExportPanel, RecipeToolbarComponent],
+  imports: [FormsModule, BasePanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterTracePanel, MouldPanel, LongArchingPanel, ExportPanel, RecipeToolbarComponent],
   templateUrl: './ceruti-violin.html',
   styleUrls: ['../sidebar.css', './ceruti-violin.css'],
 })
@@ -41,6 +43,7 @@ export class CerutiViolin extends RecipeComponentBase {
     { id: 'centerBout', label: 'Center Bout' },
     { id: 'outerTrace', label: 'Outer Path' },
     { id: 'mould', label: 'Mould' },
+    { id: 'longArching', label: 'Long Arching' },
     { id: 'export', label: 'Export' },
   ] as const;
 
@@ -61,6 +64,8 @@ export class CerutiViolin extends RecipeComponentBase {
     outerTrace: '#868484ff',
     mouldTrace: '#81887eff',
     fluting: '#478968ff',
+    archTop: '#C47B3A',
+    archBack: '#4D74A8',
   } as const;
 
   private makeColor(base: string, ...extra: ColorTransform[]): string {
@@ -96,6 +101,8 @@ export class CerutiViolin extends RecipeComponentBase {
       outerTrace: p.outerTrace,
       mouldTrace: p.mouldTrace,
       fluting: this.makeColor(p.fluting),
+      archTop: this.makeColor(p.archTop),
+      archBack: this.makeColor(p.archBack),
     };
   }
 
@@ -258,6 +265,7 @@ export class CerutiViolin extends RecipeComponentBase {
       corners: () => this.changeCorners(),
       outerTrace: () => this.changeOuterTrace(),
       mould: () => this.changeMould(),
+      longArching: () => this.changeLongArching(),
       export: () => {},
     };
   }
@@ -270,6 +278,7 @@ export class CerutiViolin extends RecipeComponentBase {
       case 'centerBout': return this.hasCorners();
       case 'outerTrace': return this.hasCenterBout();
       case 'mould': return this.hasCenterBout();
+      case 'longArching': return this.hasCenterBout();
       case 'export': return this.hasCenterBout();
       default: return false;
     }
@@ -415,6 +424,20 @@ export class CerutiViolin extends RecipeComponentBase {
       this.draftChange.emit([
         renderOuterTrace(p, this.colors, this.viewFlags, true, outerPath, purflingPath, outerPurflingPath, flutingPlatformPath),
       ]);
+      sessionStorage.setItem('recipeData', JSON.stringify(this.d));
+    }));
+  }
+
+  changeLongArching(): void {
+    if (!this.d.params.arching) {
+      this.d.params.arching = defaultArchingParams(this.d.params.height);
+    }
+    const a = this.d.params.arching;
+    const p = this.d.params;
+    
+    this.debounce(() => safeRun(() => {
+      calculateLongArch(p);
+      this.draftChange.emit([renderLongArchBoxes(p, a, this.colors, this.viewFlags.showModuleGuides)]);
       sessionStorage.setItem('recipeData', JSON.stringify(this.d));
     }));
   }

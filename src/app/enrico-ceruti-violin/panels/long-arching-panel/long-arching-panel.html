@@ -1,0 +1,178 @@
+@if (params.arching) {
+
+<section class="ui-group">
+    <div class="ui-group-title">Body</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Rib Height <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.5" min="1"
+                [(ngModel)]="arching.ribHeight" (input)="onChange()" />
+        </label>
+        <button type="button" class="info-icon" (click)="ribHeightInfo()" title="More information">ⓘ</button>
+    </div>
+</section>
+
+<section class="ui-group" [style.border-color]="colors.outerTrace">
+    <div class="ui-group-title">Top Plate</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Thickness <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.1" min="0"
+                [(ngModel)]="arching.top.thickness" (input)="onChange()" />
+        </label>
+        <button type="button" class="info-icon" (click)="plateThicknessInfo()" title="More information">ⓘ</button>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Arch Height <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.1" min="0"
+                [(ngModel)]="topArch.archHeight" (input)="onChange()" />
+        </label>
+        @if (topCycloid) {
+        <span class="field-separator" aria-hidden="true"></span>
+        <label class="field-cell">
+            <span class="field-title">Cycloid Factor <span class="unit-label">0–1</span></span>
+            <input class="basic-input" type="number" step="0.05" min="0" max="1"
+                [(ngModel)]="topCycloid.d" (input)="onChange()" />
+        </label>
+        <button type="button" class="info-icon" (click)="trochoidFactorInfo()" title="More information">ⓘ</button>
+        } @else {
+        <button type="button" class="info-icon" (click)="archHeightInfo()" title="More information">ⓘ</button>
+        }
+    </div>
+    @if (topSpline) {
+    <div class="input-group basic-row" style="padding: 0 2px 2px;">
+        <span class="field-cell">Position <span class="unit-label">%</span></span>
+        <span class="field-separator" style="visibility:hidden" aria-hidden="true"></span>
+        <span class="field-cell">Height <span class="unit-label">mm</span></span>
+        <button type="button" class="info-icon" (click)="splinePointInfo()" title="More information">ⓘ</button>
+    </div>
+    @for (pt of topSpline.points; track $index) {
+    <div class="input-group basic-row field-row" role="group">
+        <div class="field-cell">
+            <input class="basic-input" type="number" step="1" min="1" max="99"
+                [ngModel]="pt.t * 100 | number:'1.0-0'"
+                (ngModelChange)="pt.t = $event / 100; onChange()" />
+        </div>
+        <span class="field-separator" aria-hidden="true"></span>
+        <div class="field-cell">
+            <input class="basic-input" type="number" step="0.1" min="0"
+                [(ngModel)]="pt.z" (input)="onChange()" />
+        </div>
+        <button class="info-icon" (click)="removeSplinePoint('top', $index)" title="Remove point">×</button>
+    </div>
+    }
+    <div class="input-group basic-row field-row" role="group">
+        <button class="panel-nav-btn" (click)="addSplinePoint('top')">+ Add Point</button>
+    </div>
+    }
+    <div class="input-group basic-row field-row" role="group">
+        <div class="toggle">
+            <input type="radio" name="top-curve-type"
+                [checked]="topArch.type === 'catenary'"
+                (change)="setCurveType('top', 'catenary')" />
+            <span>Catenary</span>
+        </div>
+        <div class="toggle">
+            <input type="radio" name="top-curve-type"
+                [checked]="topArch.type === 'cycloid'"
+                (change)="setCurveType('top', 'cycloid')" />
+            <span>Cycloid</span>
+        </div>
+        <div class="toggle">
+            <input type="radio" name="top-curve-type"
+                [checked]="topArch.type === 'spline'"
+                (change)="setCurveType('top', 'spline')" />
+            <span>Spline</span>
+        </div>
+        <button type="button" class="info-icon" (click)="curveTypeInfo()" title="More information">ⓘ</button>
+    </div>
+</section>
+
+<section class="ui-group" [style.border-color]="colors.mouldTrace">
+    <div class="ui-group-title">Back Plate</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Thickness <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.1" min="0"
+                [(ngModel)]="arching.bottom.thickness" (input)="onChange()" />
+        </label>
+        <button type="button" class="info-icon" (click)="plateThicknessInfo()" title="More information">ⓘ</button>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Arch Height <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.1" min="0"
+                [(ngModel)]="bottomArch.archHeight" (input)="onChange()" />
+        </label>
+        @if (bottomCycloid) {
+        <span class="field-separator" aria-hidden="true"></span>
+        <label class="field-cell">
+            <span class="field-title">Cycloid Factor <span class="unit-label">0–1</span></span>
+            <input class="basic-input" type="number" step="0.05" min="0" max="1"
+                [(ngModel)]="bottomCycloid.d" (input)="onChange()" />
+        </label>
+        <button type="button" class="info-icon" (click)="trochoidFactorInfo()" title="More information">ⓘ</button>
+        } @else {
+        <button type="button" class="info-icon" (click)="archHeightInfo()" title="More information">ⓘ</button>
+        }
+    </div>
+    @if (bottomSpline) {
+    <div class="input-group basic-row" style="padding: 0 2px 2px;">
+        <span class="field-cell">Position <span class="unit-label">%</span></span>
+        <span class="field-separator" style="visibility:hidden" aria-hidden="true"></span>
+        <span class="field-cell">Height <span class="unit-label">mm</span></span>
+        <button type="button" class="info-icon" (click)="splinePointInfo()" title="More information">ⓘ</button>
+    </div>
+    @for (pt of bottomSpline.points; track $index) {
+    <div class="input-group basic-row field-row" role="group">
+        <div class="field-cell">
+            <input class="basic-input" type="number" step="1" min="1" max="99"
+                [ngModel]="pt.t * 100 | number:'1.0-0'"
+                (ngModelChange)="pt.t = $event / 100; onChange()" />
+        </div>
+        <span class="field-separator" aria-hidden="true"></span>
+        <div class="field-cell">
+            <input class="basic-input" type="number" step="0.1" min="0"
+                [(ngModel)]="pt.z" (input)="onChange()" />
+        </div>
+        <button class="info-icon" (click)="removeSplinePoint('bottom', $index)" title="Remove point">×</button>
+    </div>
+    }
+    <div class="input-group basic-row field-row" role="group">
+        <button class="panel-nav-btn" (click)="addSplinePoint('bottom')">+ Add Point</button>
+    </div>
+    }
+    <div class="input-group basic-row field-row" role="group">
+        <div class="toggle">
+            <input type="radio" name="bottom-curve-type"
+                [checked]="bottomArch.type === 'catenary'"
+                (change)="setCurveType('bottom', 'catenary')" />
+            <span>Catenary</span>
+        </div>
+        <div class="toggle">
+            <input type="radio" name="bottom-curve-type"
+                [checked]="bottomArch.type === 'cycloid'"
+                (change)="setCurveType('bottom', 'cycloid')" />
+            <span>Cycloid</span>
+        </div>
+        <div class="toggle">
+            <input type="radio" name="bottom-curve-type"
+                [checked]="bottomArch.type === 'spline'"
+                (change)="setCurveType('bottom', 'spline')" />
+            <span>Spline</span>
+        </div>
+        <button type="button" class="info-icon" (click)="curveTypeInfo()" title="More information">ⓘ</button>
+    </div>
+</section>
+
+<app-ceruti-render-toggles
+    [flags]="flags"
+    [showArcsRow]="false"
+    [showCirclesRow]="false"
+    [showGuideRow]="true"
+    [showOuterPathRow]="false"
+    (changed)="onChange()">
+</app-ceruti-render-toggles>
+
+}

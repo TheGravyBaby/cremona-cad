@@ -10,6 +10,8 @@ import { CerutiViewFlags } from '../ceruti-types';
 })
 export class RenderToggles {
   @Input({ required: true }) flags!: CerutiViewFlags;
+  @Input() showArcsRow = true;
+  @Input() showCirclesRow = true;
   @Input() showGuideRow = true;
   @Input() showOuterPathRow = true;
   @Input() showAllArcs = true;
