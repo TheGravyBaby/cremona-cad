@@ -381,3 +381,62 @@ export function findJoiningArcs(arc1: Arc, side1: "start" | "end", arc2: Arc, si
     new Arc(C2.x, C2.y, R, Math.atan2(J.y  - C2.y, J.x  - C2.x), Math.atan2(P2.y - C2.y, P2.x - C2.x)),
   ];
 }
+
+// ===== Curve math =====
+
+/**
+ * Solves the catenary shape parameter `a` for a given sag `H` and span `L`.
+ * Uses bisection: a * (cosh(L / 2a) − 1) = H.
+ */
+export function solveCatenaryA(H: number, L: number): number {
+  const f = (a: number): number => a * (Math.cosh(L / (2 * a)) - 1) - H;
+  let lo = L * 1e-4;
+  let hi = L * 1e4;
+  for (let i = 0; i < 64; i++) {
+    const mid = (lo + hi) / 2;
+    f(mid) > 0 ? (lo = mid) : (hi = mid);
+  }
+  return (lo + hi) / 2;
+}
+
+/**
+ * 1-D natural cubic spline: given strictly-increasing `ys[]` and values `zs[]`,
+ * returns a function z(y). Natural BC: M[0] = M[n] = 0 (zero curvature at ends).
+ */
+export function makeNaturalSpline(ys: number[], zs: number[]): (y: number) => number {
+  const n = ys.length - 1;
+  const h: number[] = ys.slice(0, n).map((v, i) => ys[i + 1] - v);
+
+  const m = n - 1;
+  const bd: number[] = [];
+  const up: number[] = [];
+  const rhs: number[] = [];
+  for (let i = 0; i < m; i++) {
+    const r = i + 1;
+    bd.push(2 * (h[r - 1] + h[r]));
+    up.push(i < m - 1 ? h[r] : 0);
+    rhs.push(6 * ((zs[r + 1] - zs[r]) / h[r] - (zs[r] - zs[r - 1]) / h[r - 1]));
+  }
+  for (let i = 1; i < m; i++) {
+    const f = up[i - 1] / bd[i - 1];
+    bd[i]  -= f * up[i - 1];
+    rhs[i] -= f * rhs[i - 1];
+  }
+  const Mi: number[] = new Array(m).fill(0);
+  if (m > 0) {
+    Mi[m - 1] = rhs[m - 1] / bd[m - 1];
+    for (let i = m - 2; i >= 0; i--) Mi[i] = (rhs[i] - up[i] * Mi[i + 1]) / bd[i];
+  }
+  const M = [0, ...Mi, 0];
+
+  return (y: number): number => {
+    let i = 0;
+    while (i < n - 1 && ys[i + 1] <= y) i++;
+    const hi = h[i];
+    const s  = ys[i + 1] - y;
+    const t  = y - ys[i];
+    return (M[i] * s * s * s + M[i + 1] * t * t * t) / (6 * hi)
+         + (zs[i]     / hi - M[i]     * hi / 6) * s
+         + (zs[i + 1] / hi - M[i + 1] * hi / 6) * t;
+  };
+}

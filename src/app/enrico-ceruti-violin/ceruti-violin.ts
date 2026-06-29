@@ -42,8 +42,8 @@ export class CerutiViolin extends RecipeComponentBase {
     { id: 'corners', label: 'Corners' },
     { id: 'centerBout', label: 'Center Bout' },
     { id: 'outerTrace', label: 'Outer Path' },
-    { id: 'mould', label: 'Mould' },
     { id: 'longArching', label: 'Long Arching' },
+    { id: 'mould', label: 'Mould' },
     { id: 'export', label: 'Export' },
   ] as const;
 

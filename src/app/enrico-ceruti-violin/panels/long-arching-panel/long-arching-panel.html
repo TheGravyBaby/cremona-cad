@@ -26,7 +26,7 @@
         <label class="field-cell">
             <span class="field-title">Arch Height <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="0.1" min="0"
-                [(ngModel)]="topArch.archHeight" (input)="onChange()" />
+                [(ngModel)]="topArch.archHeight" (input)="onChange()" [style.border-color]="colors.archTop" />
         </label>
         @if (topCycloid) {
         <span class="field-separator" aria-hidden="true"></span>
@@ -103,7 +103,7 @@
         <label class="field-cell">
             <span class="field-title">Arch Height <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="0.1" min="0"
-                [(ngModel)]="bottomArch.archHeight" (input)="onChange()" />
+                [(ngModel)]="bottomArch.archHeight" (input)="onChange()" [style.border-color]="colors.archBack" />
         </label>
         @if (bottomCycloid) {
         <span class="field-separator" aria-hidden="true"></span>

@@ -1,7 +1,7 @@
 import { Pt, Circle, Rectangle, Arc } from "../models/types";
 import * as polygonClipping from 'polygon-clipping';
 import { svgPathProperties } from 'svg-path-properties';
-import { dist, angleFromCenter, pointOnCircle, intersectLines, lineCircleIntersection, circleCircleIntersections } from './draftMath';
+import { dist, angleFromCenter, pointOnCircle, intersectLines, lineCircleIntersection, circleCircleIntersections, solveCatenaryA, makeNaturalSpline } from './draftMath';
 
 // This file holds everything oriented around building, combining, and boolean-diffing
 // SVG path *strings* — as opposed to draftMath.ts, which works with plain geometric
@@ -792,4 +792,96 @@ export function translatePath(path: string, dx: number, dy: number): string {
     }
     return cmd + ' ' + nums.join(' ');
   });
+}
+
+// ===== Arch curve path builders =====
+
+/**
+ * Build an SVG polyline path for a catenary arch curve.
+ *
+ * @param hEff   Effective arch height above the plate-edge reference level.
+ * @param span   Length of the arch span along canvas Y.
+ * @param yStart Canvas Y at the bottom end of the span.
+ * @param xBase  Canvas X at zero arch contribution (plate edge at the rib ends).
+ * @param sign   +1 for top plate (arches right), −1 for back plate (arches left).
+ */
+export function buildCatenaryPath(
+  hEff: number,
+  span: number,
+  yStart: number,
+  xBase: number,
+  sign: 1 | -1,
+  N = 80,
+): string {
+  if (hEff <= 0 || span <= 0) return '';
+  const a = solveCatenaryA(hEff, span);
+  const peak = hEff + a;
+  const pts: string[] = [];
+  for (let i = 0; i <= N; i++) {
+    const yLocal = (i / N) * span;
+    const z = peak - a * Math.cosh((yLocal - span / 2) / a);
+    pts.push(`${i === 0 ? 'M' : 'L'} ${xBase + sign * z} ${yStart + yLocal}`);
+  }
+  return pts.join(' ');
+}
+
+/**
+ * Build an SVG polyline path for a trochoid/cycloid arch curve.
+ * d=0 gives a raised cosine; d=1 gives the standard cycloid.
+ */
+export function buildCycloidPath(
+  hEff: number,
+  span: number,
+  yStart: number,
+  xBase: number,
+  sign: 1 | -1,
+  d: number,
+  N = 80,
+): string {
+  if (hEff <= 0 || span <= 0) return '';
+  const pts: string[] = [];
+  for (let i = 0; i <= N; i++) {
+    const t = (i / N) * 2 * Math.PI;
+    // Trochoid family scaled to fit (span, hEff).
+    // x: (t - d*sin(t)) / (2π) * span  →  d=0: linear/cosine arch; d=1: standard cycloid
+    // z: (1 - cos(t)) / 2 * hEff       →  independent of d after normalisation
+    const yLocal = ((t - d * Math.sin(t)) / (2 * Math.PI)) * span;
+    const z      = ((1 - Math.cos(t))     / 2)             * hEff;
+    pts.push(`${i === 0 ? 'M' : 'L'} ${xBase + sign * z} ${yStart + yLocal}`);
+  }
+  return pts.join(' ');
+}
+
+/**
+ * Build an SVG polyline path for a natural-cubic-spline arch curve.
+ * Control points `{ t, z }` where `t` is normalized half-span position
+ * (0 = plate edge, 1 = peak) and `z` is arch height at that position.
+ */
+export function buildSplinePath(
+  hEff: number,
+  span: number,
+  yStart: number,
+  xBase: number,
+  sign: 1 | -1,
+  points: { t: number; z: number }[],
+  N = 120,
+): string {
+  if (hEff <= 0 || span <= 0) return '';
+  const sorted = [...points].sort((a, b) => a.t - b.t);
+  // Full symmetric knot list along y (always single-valued)
+  const ys: number[] = [0];
+  const zs: number[] = [0];
+  for (const p of sorted)               { ys.push(p.t * span / 2);       zs.push(p.z); }
+  ys.push(span / 2);                      zs.push(hEff);
+  for (const p of sorted.slice().reverse()) { ys.push(span - p.t * span / 2); zs.push(p.z); }
+  ys.push(span);                           zs.push(0);
+
+  const zOf = makeNaturalSpline(ys, zs);
+  const pts: string[] = [];
+  for (let i = 0; i <= N; i++) {
+    const y = (i / N) * span;
+    const z = zOf(y);
+    pts.push(`${i === 0 ? 'M' : 'L'} ${xBase + sign * z} ${yStart + y}`);
+  }
+  return pts.join(' ');
 }
