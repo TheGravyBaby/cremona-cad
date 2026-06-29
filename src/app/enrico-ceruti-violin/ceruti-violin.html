@@ -105,6 +105,15 @@
         </app-ceruti-mould-panel>
         }
 
+        @if (openPanel === 'longArching') {
+        <app-ceruti-long-arching-panel
+            [params]="d.params"
+            [colors]="colors"
+            [flags]="viewFlags"
+            (changed)="changeLongArching()">
+        </app-ceruti-long-arching-panel>
+        }
+
         @if (openPanel === 'export') {
         <app-ceruti-export-panel
             [params]="d.params"

@@ -22,6 +22,8 @@ export interface CerutiColors {
   outerTrace: string;
   mouldTrace: string;
   fluting: string;
+  archTop: string;
+  archBack: string;
 }
 
 /** Ephemeral, non-persisted view toggles shared across panels and their render functions. */
@@ -55,6 +57,42 @@ export const DEFAULT_CERUTI_VIEW_FLAGS: CerutiViewFlags = {
  * but the user will see a warning in the message center.
  */
 export const RECIPE_SCHEMA_VERSION = '1';
+
+export interface ArchCatenary {
+  type: 'catenary';
+  archHeight: number;
+}
+
+export interface ArchCycloid {
+  type: 'cycloid';
+  archHeight: number;
+  d: number; // trochoid factor: 0 = raised cosine, 1 = standard cycloid (valid range 0–1)
+}
+
+export interface ArchSplinePoint {
+  t: number; // normalized half-span position: 0 = plate edge, 1 = peak
+  z: number; // arch height at this point (mm)
+}
+
+export interface ArchSpline {
+  type: 'spline';
+  archHeight: number;
+  points: ArchSplinePoint[]; // interior points only, t strictly in (0, 1), kept sorted by t
+}
+
+export type ArchCurve = ArchCatenary | ArchCycloid | ArchSpline;
+
+export interface ArchPlate {
+  arch: ArchCurve;
+  thickness: number;
+}
+
+export interface ArchingParams {
+  surfaceMethod: 'proportional';
+  ribHeight: number;
+  top: ArchPlate;
+  bottom: ArchPlate;
+}
 
 export interface EnricoCerutiParams {
   height: number;
@@ -146,6 +184,7 @@ export interface EnricoCerutiParams {
     UCYtoH: number;
     LCYtoH: number;
   };
+  arching?: ArchingParams;
 }
 
 export interface EnricoCerutiTemplate {
