@@ -103,7 +103,8 @@ export interface EnricoCerutiParams {
   clampChannelWidth: number;
   purflingOffset: number | null;
   purflingChannelDepth: number | null;
-  flutingWidth: number | null;
+  innerFlutingDepth: number | null;
+  outerFlutingDepth: number | null;
   button: Rectangle | null,
   bouts: {
     UBW: number | null;
@@ -208,7 +209,8 @@ export const DefaultParams: EnricoCerutiParams = {
   clampChannelWidth: 5,
   purflingOffset: null,
   purflingChannelDepth: null,
-  flutingWidth: null,
+  innerFlutingDepth: null,
+  outerFlutingDepth: null,
   ratios: {
     HtoW: 7 / 4,
 

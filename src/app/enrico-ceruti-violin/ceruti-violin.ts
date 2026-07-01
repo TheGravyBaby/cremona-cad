@@ -420,7 +420,7 @@ export class CerutiViolin extends RecipeComponentBase {
       const outerPath = defineOuterPath(p, offset, true, true);
       const purflingPath = definePurflingPath(p, offset);
       const outerPurflingPath = defineOuterPurflingPath(p, offset);
-      const flutingPlatformPath = defineFlutingAreaPath(p, offset);
+      const flutingPlatformPath = defineFlutingAreaPath(p, p.innerFlutingDepth, p.outerFlutingDepth);
       this.draftChange.emit([
         renderOuterTrace(p, this.colors, this.viewFlags, true, outerPath, purflingPath, outerPurflingPath, flutingPlatformPath),
       ]);
