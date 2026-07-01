@@ -2,12 +2,12 @@ import { ChangeDetectorRef, Component, Input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { Arc } from '../models/types';
-import { applyTransforms, ColorTransform, renderFilledPath, renderPath } from '../helpers/renderFuncs';
+import { applyTransforms, ColorTransform, renderArcFromArc, renderFilledPath, renderPath } from '../helpers/renderFuncs';
 import { combinePathStrings } from '../helpers/svgPathMath';
 import { clampParam, safeRun } from '../helpers/validators';
 import { CerutiColors, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, EnricoCerutiTemplate, EnricoCerutiParams } from './ceruti-types';
 import { CERUTI_TEMPLATES } from './ceruti-templates';
-import { calculateCenterBout, calculateCorners, calculateLongArch, calculateMainBouts, calculateMould, calculateOuterArcs, defaultArchingParams, defineFlutingPlatformPath, defineInnerPath, defineOuterPath, defineOuterPurflingPath, definePurflingPath } from './ceruti-calcs';
+import { calculateCenterBout, calculateCorners, calculateLongArch, calculateMainBouts, calculateMould, calculateOuterArcs, defaultArchingParams, defineFlutingPlatformPath, defineInnerPath, defineOuterCornerArcs, defineOuterPath, defineOuterPurflingPath, definePurflingPath } from './ceruti-calcs';
 import { HighlightedArc } from './renders/render-constants';
 import { renderBounds, renderBoutBouts, renderCornerGuides } from './renders/guides.render';
 import { renderMainBouts } from './renders/main-bouts.render';
@@ -15,7 +15,7 @@ import { renderCorners } from './renders/corners.render';
 import { renderCenterBout } from './renders/center-bout.render';
 import { renderOuterTrace } from './renders/outer-trace.render';
 import { renderMould } from './renders/mould.render';
-import { renderLongArchBoxes } from './renders/long-arching.render';
+import { renderLongArchBoxes as renderLongArch } from './renders/long-arching.render';
 import { BasePanel } from './panels/base-panel/base-panel';
 import { MainBoutsPanel } from './panels/main-bouts-panel/main-bouts-panel';
 import { CornersPanel } from './panels/corners-panel/corners-panel';
@@ -418,11 +418,13 @@ export class CerutiViolin extends RecipeComponentBase {
       calculateOuterArcs(p);
       const offset = p.overhang + p.rib;
       const outerPath = defineOuterPath(p, offset, true);
+      const middleOuterPath = defineOuterPath(p, .5* offset, false);
       const purflingPath = definePurflingPath(p, offset);
       const outerPurflingPath = defineOuterPurflingPath(p, offset);
       const flutingPlatformPath = defineFlutingPlatformPath(p, offset);
       this.draftChange.emit([
         renderOuterTrace(p, this.colors, this.viewFlags, true, outerPath, purflingPath, outerPurflingPath, flutingPlatformPath),
+        renderPath(middleOuterPath, "red", 1),
       ]);
       sessionStorage.setItem('recipeData', JSON.stringify(this.d));
     }));
@@ -436,8 +438,8 @@ export class CerutiViolin extends RecipeComponentBase {
     const p = this.d.params;
     
     this.debounce(() => safeRun(() => {
-      calculateLongArch(p);
-      this.draftChange.emit([renderLongArchBoxes(p, a, this.colors, this.viewFlags.showModuleGuides)]);
+      const { span, yStart, topPath, backPath } = calculateLongArch(p);
+      this.draftChange.emit([renderLongArch(p, a, this.colors, this.viewFlags.showModuleGuides, topPath, backPath, span, yStart)]);
       sessionStorage.setItem('recipeData', JSON.stringify(this.d));
     }));
   }
