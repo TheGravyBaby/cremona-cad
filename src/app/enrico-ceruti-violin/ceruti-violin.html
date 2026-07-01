@@ -118,6 +118,7 @@
         <app-ceruti-export-panel
             [params]="d.params"
             [colors]="colors"
+            [paths]="d.paths"
             [fileName]="d.fileName"
             [description]="d.description ?? ''"
             (draftChange)="draftChange.emit($event)">
