@@ -906,6 +906,32 @@ export function defineOffsetArcs(p: EnricoCerutiParams, offset?: number, corners
     return arcs;
 }
 
+/**
+ * Given a scaled corner arc and the cutoff line defined by two full-inset endpoints,
+ * returns the angle at which the scaled arc intersects that line.
+ * Picks the intersection closest to refPt (i.e. the full-inset endpoint for that arc).
+ * Falls back to `fallback` if no intersection exists.
+ */
+function cutoffEndAtOffset(scaledArc: Arc, cutPt1: Pt, cutPt2: Pt, refPt: Pt, fallback: number): number {
+    const ints = lineCircleIntersection(cutPt1, cutPt2, scaledArc);
+    if (ints.length === 0) return fallback;
+    const best = ints.sort((a, b) => dist(a, refPt) - dist(b, refPt))[0];
+    return angleFromCenter(scaledArc, best);
+}
+
+function insetCutoffLine(pt1: Pt, pt2: Pt, delta: number, interior: Pt): { p1: Pt; p2: Pt } {
+    const dx = pt2.x - pt1.x;
+    const dy = pt2.y - pt1.y;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    const nx = -dy / len;
+    const ny = dx / len;
+    const sign = (interior.x - pt1.x) * nx + (interior.y - pt1.y) * ny >= 0 ? -1 : 1;
+    return {
+        p1: { x: pt1.x + sign * delta * nx, y: pt1.y + sign * delta * ny },
+        p2: { x: pt2.x + sign * delta * nx, y: pt2.y + sign * delta * ny },
+    };
+}
+
 export function defineOuterCornerArcs(p: EnricoCerutiParams, offset: number): Arc[] {
     let arcs: Arc[] = [];
 
@@ -922,14 +948,34 @@ export function defineOuterCornerArcs(p: EnricoCerutiParams, offset: number): Ar
         arcs.push(flipArcAboutY(p.outerCorners.C2));
     }
     else {
-        arcs.push(p.outerCorners.U3);
-        arcs.push(flipArcAboutY(p.outerCorners.U3));
-        p.options.U31DoubleArc && arcs.push(p.outerCorners.U31);
-        p.options.U31DoubleArc && arcs.push(flipArcAboutY(p.outerCorners.U31));
-        arcs.push(p.outerCorners.C2);
-        arcs.push(flipArcAboutY(p.outerCorners.C2));
-        p.options.C21DoubleArc && arcs.push(p.outerCorners.C21);
-        p.options.C21DoubleArc && arcs.push(flipArcAboutY(p.outerCorners.C21));
+        const inset = p.overhang + p.rib;
+        const ucPt1 = p.options.U31DoubleArc
+            ? pointOnCircle(offsetArcRadius(p.bouts.U31, -inset), p.outerCorners.U31!.end)
+            : pointOnCircle(offsetArcRadius(p.bouts.U3, -inset), p.outerCorners.U3.end);
+        const ucPt2 = p.options.C21DoubleArc
+            ? pointOnCircle(offsetArcRadius(p.bouts.C21, -inset), p.outerCorners.C21!.end)
+            : pointOnCircle(offsetArcRadius(p.bouts.C2, -inset), p.outerCorners.C2.end);
+
+        const U3off = offsetArcRadius(p.bouts.U3, -offset);
+        if (!p.options.U31DoubleArc) U3off.end = cutoffEndAtOffset(U3off, ucPt1, ucPt2, ucPt1, p.outerCorners.U3.end);
+        arcs.push(U3off);
+        arcs.push(flipArcAboutY(U3off));
+        if (p.options.U31DoubleArc) {
+            const U31off = offsetArcRadius(p.bouts.U31, -offset);
+            U31off.end = cutoffEndAtOffset(U31off, ucPt1, ucPt2, ucPt1, p.outerCorners.U31!.end);
+            arcs.push(U31off);
+            arcs.push(flipArcAboutY(U31off));
+        }
+        const C2off = offsetArcRadius(p.bouts.C2, -offset);
+        if (!p.options.C21DoubleArc) C2off.end = cutoffEndAtOffset(C2off, ucPt1, ucPt2, ucPt2, p.outerCorners.C2.end);
+        arcs.push(C2off);
+        arcs.push(flipArcAboutY(C2off));
+        if (p.options.C21DoubleArc) {
+            const C21off = offsetArcRadius(p.bouts.C21, -offset);
+            C21off.end = cutoffEndAtOffset(C21off, ucPt1, ucPt2, ucPt2, p.outerCorners.C21!.end);
+            arcs.push(C21off);
+            arcs.push(flipArcAboutY(C21off));
+        }
     }
 
     if (p.options.useViolCornerLC) {
@@ -945,14 +991,34 @@ export function defineOuterCornerArcs(p: EnricoCerutiParams, offset: number): Ar
         arcs.push(flipArcAboutY(p.outerCorners.C1));
     }
     else {
-        arcs.push(p.outerCorners.C1);
-        arcs.push(flipArcAboutY(p.outerCorners.C1));
-        p.options.C11DoubleArc && arcs.push(p.outerCorners.C11);
-        p.options.C11DoubleArc && arcs.push(flipArcAboutY(p.outerCorners.C11));
-        arcs.push(p.outerCorners.L3);
-        arcs.push(flipArcAboutY(p.outerCorners.L3));
-        p.options.L31DoubleArc && arcs.push(p.outerCorners.L31);
-        p.options.L31DoubleArc && arcs.push(flipArcAboutY(p.outerCorners.L31));
+        const inset = p.overhang + p.rib;
+        const lcPt1 = p.options.C11DoubleArc
+            ? pointOnCircle(offsetArcRadius(p.bouts.C11, -inset), p.outerCorners.C11!.end)
+            : pointOnCircle(offsetArcRadius(p.bouts.C1, -inset), p.outerCorners.C1.end);
+        const lcPt2 = p.options.L31DoubleArc
+            ? pointOnCircle(offsetArcRadius(p.bouts.L31, -inset), p.outerCorners.L31!.end)
+            : pointOnCircle(offsetArcRadius(p.bouts.L3, -inset), p.outerCorners.L3.end);
+
+        const C1off = offsetArcRadius(p.bouts.C1, -offset);
+        if (!p.options.C11DoubleArc) C1off.end = cutoffEndAtOffset(C1off, lcPt1, lcPt2, lcPt1, p.outerCorners.C1.end);
+        arcs.push(C1off);
+        arcs.push(flipArcAboutY(C1off));
+        if (p.options.C11DoubleArc) {
+            const C11off = offsetArcRadius(p.bouts.C11, -offset);
+            C11off.end = cutoffEndAtOffset(C11off, lcPt1, lcPt2, lcPt1, p.outerCorners.C11!.end);
+            arcs.push(C11off);
+            arcs.push(flipArcAboutY(C11off));
+        }
+        const L3off = offsetArcRadius(p.bouts.L3, -offset);
+        if (!p.options.L31DoubleArc) L3off.end = cutoffEndAtOffset(L3off, lcPt1, lcPt2, lcPt2, p.outerCorners.L3.end);
+        arcs.push(L3off);
+        arcs.push(flipArcAboutY(L3off));
+        if (p.options.L31DoubleArc) {
+            const L31off = offsetArcRadius(p.bouts.L31, -offset);
+            L31off.end = cutoffEndAtOffset(L31off, lcPt1, lcPt2, lcPt2, p.outerCorners.L31!.end);
+            arcs.push(L31off);
+            arcs.push(flipArcAboutY(L31off));
+        }
     }
 
     return arcs;
@@ -1041,10 +1107,10 @@ export function defineInnerPath(p: EnricoCerutiParams): string {
     return path;
 }
 
-// offset should be positive to go outside of the inner path, 
+// offset should be positive to go outside of the inner path,
 // but technically its up to the caller
 // this is technically an outer path function due to the corner logic
-export function defineOuterPath(p: EnricoCerutiParams, offset?: number, button = false): string {
+export function defineOuterPath(p: EnricoCerutiParams, offset?: number, closeArcs = true, button = false): string {
     offset ??= p.overhang + p.rib;
     let arcs = defineOffsetArcs(p, offset);
 
@@ -1086,41 +1152,89 @@ export function defineOuterPath(p: EnricoCerutiParams, offset?: number, button =
       ? pathFromCornerCubic(a1, a2, lcs)
       : pathFromLine(pointOnCircle(a1, a1.end), pointOnCircle(a2, a2.end));
 
-    if (!p.options.useViolCornerUC) {
+    if (closeArcs && !p.options.useViolCornerUC) {
+        const inset = p.overhang + p.rib;
+        const ucPt1 = p.options.U31DoubleArc
+            ? pointOnCircle(offsetArcRadius(p.bouts.U31, -inset), p.outerCorners.U31!.end)
+            : pointOnCircle(offsetArcRadius(p.bouts.U3, -inset), p.outerCorners.U3.end);
+        const ucPt2 = p.options.C21DoubleArc
+            ? pointOnCircle(offsetArcRadius(p.bouts.C21, -inset), p.outerCorners.C21!.end)
+            : pointOnCircle(offsetArcRadius(p.bouts.C2, -inset), p.outerCorners.C2.end);
+
         if (p.options.U31DoubleArc && p.options.C21DoubleArc) {
-            paths.push(ucCornerPath(p.outerCorners.U31, p.outerCorners.C21));
-            paths.push(ucCornerPath(flipArcAboutY(p.outerCorners.U31), flipArcAboutY(p.outerCorners.C21)));
+            const U31c = offsetArcRadius(p.bouts.U31, -offset);
+            U31c.end = cutoffEndAtOffset(U31c, ucPt1, ucPt2, ucPt1, p.outerCorners.U31!.end);
+            const C21c = offsetArcRadius(p.bouts.C21, -offset);
+            C21c.end = cutoffEndAtOffset(C21c, ucPt1, ucPt2, ucPt2, p.outerCorners.C21!.end);
+            paths.push(ucCornerPath(U31c, C21c));
+            paths.push(ucCornerPath(flipArcAboutY(U31c), flipArcAboutY(C21c)));
         }
         else if (p.options.U31DoubleArc) {
-            paths.push(ucCornerPath(p.outerCorners.U31, p.outerCorners.C2));
-            paths.push(ucCornerPath(flipArcAboutY(p.outerCorners.U31), flipArcAboutY(p.outerCorners.C2)));
+            const U31c = offsetArcRadius(p.bouts.U31, -offset);
+            U31c.end = cutoffEndAtOffset(U31c, ucPt1, ucPt2, ucPt1, p.outerCorners.U31!.end);
+            const C2c = offsetArcRadius(p.bouts.C2, -offset);
+            C2c.end = cutoffEndAtOffset(C2c, ucPt1, ucPt2, ucPt2, p.outerCorners.C2.end);
+            paths.push(ucCornerPath(U31c, C2c));
+            paths.push(ucCornerPath(flipArcAboutY(U31c), flipArcAboutY(C2c)));
         }
         else if (p.options.C21DoubleArc) {
-            paths.push(ucCornerPath(p.outerCorners.U3, p.outerCorners.C21));
-            paths.push(ucCornerPath(flipArcAboutY(p.outerCorners.U3), flipArcAboutY(p.outerCorners.C21)));
+            const U3c = offsetArcRadius(p.bouts.U3, -offset);
+            U3c.end = cutoffEndAtOffset(U3c, ucPt1, ucPt2, ucPt1, p.outerCorners.U3.end);
+            const C21c = offsetArcRadius(p.bouts.C21, -offset);
+            C21c.end = cutoffEndAtOffset(C21c, ucPt1, ucPt2, ucPt2, p.outerCorners.C21!.end);
+            paths.push(ucCornerPath(U3c, C21c));
+            paths.push(ucCornerPath(flipArcAboutY(U3c), flipArcAboutY(C21c)));
         }
         else {
-            paths.push(ucCornerPath(p.outerCorners.U3, p.outerCorners.C2));
-            paths.push(ucCornerPath(flipArcAboutY(p.outerCorners.U3), flipArcAboutY(p.outerCorners.C2)));
+            const U3c = offsetArcRadius(p.bouts.U3, -offset);
+            U3c.end = cutoffEndAtOffset(U3c, ucPt1, ucPt2, ucPt1, p.outerCorners.U3.end);
+            const C2c = offsetArcRadius(p.bouts.C2, -offset);
+            C2c.end = cutoffEndAtOffset(C2c, ucPt1, ucPt2, ucPt2, p.outerCorners.C2.end);
+            paths.push(ucCornerPath(U3c, C2c));
+            paths.push(ucCornerPath(flipArcAboutY(U3c), flipArcAboutY(C2c)));
         }
     }
 
-    if (!p.options.useViolCornerLC) {
+    if (closeArcs && !p.options.useViolCornerLC) {
+        const inset = p.overhang + p.rib;
+        const lcPt1 = p.options.C11DoubleArc
+            ? pointOnCircle(offsetArcRadius(p.bouts.C11, -inset), p.outerCorners.C11!.end)
+            : pointOnCircle(offsetArcRadius(p.bouts.C1, -inset), p.outerCorners.C1.end);
+        const lcPt2 = p.options.L31DoubleArc
+            ? pointOnCircle(offsetArcRadius(p.bouts.L31, -inset), p.outerCorners.L31!.end)
+            : pointOnCircle(offsetArcRadius(p.bouts.L3, -inset), p.outerCorners.L3.end);
+
         if (p.options.C11DoubleArc && p.options.L31DoubleArc) {
-            paths.push(lcCornerPath(p.outerCorners.C11, p.outerCorners.L31));
-            paths.push(lcCornerPath(flipArcAboutY(p.outerCorners.C11), flipArcAboutY(p.outerCorners.L31)));
+            const C11c = offsetArcRadius(p.bouts.C11, -offset);
+            C11c.end = cutoffEndAtOffset(C11c, lcPt1, lcPt2, lcPt1, p.outerCorners.C11!.end);
+            const L31c = offsetArcRadius(p.bouts.L31, -offset);
+            L31c.end = cutoffEndAtOffset(L31c, lcPt1, lcPt2, lcPt2, p.outerCorners.L31!.end);
+            paths.push(lcCornerPath(C11c, L31c));
+            paths.push(lcCornerPath(flipArcAboutY(C11c), flipArcAboutY(L31c)));
         }
         else if (p.options.C11DoubleArc) {
-            paths.push(lcCornerPath(p.outerCorners.C11, p.outerCorners.L3));
-            paths.push(lcCornerPath(flipArcAboutY(p.outerCorners.C11), flipArcAboutY(p.outerCorners.L3)));
+            const C11c = offsetArcRadius(p.bouts.C11, -offset);
+            C11c.end = cutoffEndAtOffset(C11c, lcPt1, lcPt2, lcPt1, p.outerCorners.C11!.end);
+            const L3c = offsetArcRadius(p.bouts.L3, -offset);
+            L3c.end = cutoffEndAtOffset(L3c, lcPt1, lcPt2, lcPt2, p.outerCorners.L3.end);
+            paths.push(lcCornerPath(C11c, L3c));
+            paths.push(lcCornerPath(flipArcAboutY(C11c), flipArcAboutY(L3c)));
         }
         else if (p.options.L31DoubleArc) {
-            paths.push(lcCornerPath(p.outerCorners.C1, p.outerCorners.L31));
-            paths.push(lcCornerPath(flipArcAboutY(p.outerCorners.C1), flipArcAboutY(p.outerCorners.L31)));
+            const C1c = offsetArcRadius(p.bouts.C1, -offset);
+            C1c.end = cutoffEndAtOffset(C1c, lcPt1, lcPt2, lcPt1, p.outerCorners.C1.end);
+            const L31c = offsetArcRadius(p.bouts.L31, -offset);
+            L31c.end = cutoffEndAtOffset(L31c, lcPt1, lcPt2, lcPt2, p.outerCorners.L31!.end);
+            paths.push(lcCornerPath(C1c, L31c));
+            paths.push(lcCornerPath(flipArcAboutY(C1c), flipArcAboutY(L31c)));
         }
         else {
-            paths.push(lcCornerPath(p.outerCorners.C1, p.outerCorners.L3));
-            paths.push(lcCornerPath(flipArcAboutY(p.outerCorners.C1), flipArcAboutY(p.outerCorners.L3)));
+            const C1c = offsetArcRadius(p.bouts.C1, -offset);
+            C1c.end = cutoffEndAtOffset(C1c, lcPt1, lcPt2, lcPt1, p.outerCorners.C1.end);
+            const L3c = offsetArcRadius(p.bouts.L3, -offset);
+            L3c.end = cutoffEndAtOffset(L3c, lcPt1, lcPt2, lcPt2, p.outerCorners.L3.end);
+            paths.push(lcCornerPath(C1c, L3c));
+            paths.push(lcCornerPath(flipArcAboutY(C1c), flipArcAboutY(L3c)));
         }
     }
 
@@ -1161,6 +1275,131 @@ export function defineOuterPath(p: EnricoCerutiParams, offset?: number, button =
     
     let path = unifyConnectedSvgPaths([...paths, ...buttonPaths]);
     return path;
+}
+
+/**
+ * Builds an inset path starting from the outer edge, offset inward by `delta`.
+ * The cutoff connector at each corner is parallel to the outer cutoff line and
+ * separated from it by exactly `delta` (perpendicular distance).
+ */
+export function defineInsetPath(p: EnricoCerutiParams, delta: number): string {
+    const inset = p.overhang + p.rib;
+    const innerOffset = inset - delta;
+
+    const arcs = defineOffsetArcs(p, innerOffset);
+    const mirroredArcs = arcs.map(arc => flipArcAboutY(arc));
+
+    const paths: string[] = [];
+    const cornerArcs: Arc[] = [];
+
+    const ucs = p.options.ucCornerSharpness ?? 0;
+    const lcs = p.options.lcCornerSharpness ?? 0;
+    const ucCornerPath = (a1: Arc, a2: Arc) => ucs > 0
+        ? pathFromCornerCubic(a1, a2, ucs)
+        : pathFromLine(pointOnCircle(a1, a1.end), pointOnCircle(a2, a2.end));
+    const lcCornerPath = (a1: Arc, a2: Arc) => lcs > 0
+        ? pathFromCornerCubic(a1, a2, lcs)
+        : pathFromLine(pointOnCircle(a1, a1.end), pointOnCircle(a2, a2.end));
+
+    if (p.options.useViolCornerUC) {
+        const U4off = offsetArcRadius(p.bouts.U4!, innerOffset);
+        const C2off = offsetArcRadius(p.bouts.C2, -innerOffset);
+        const int = circleCircleIntersections(U4off, C2off);
+        U4off.end = angleFromCenter(U4off, int[0]);
+        C2off.end = angleFromCenter(C2off, int[0]);
+        cornerArcs.push(U4off, flipArcAboutY(U4off), C2off, flipArcAboutY(C2off));
+    } else {
+        const ucPt1 = p.options.U31DoubleArc
+            ? pointOnCircle(offsetArcRadius(p.bouts.U31, -inset), p.outerCorners.U31!.end)
+            : pointOnCircle(offsetArcRadius(p.bouts.U3, -inset), p.outerCorners.U3.end);
+        const ucPt2 = p.options.C21DoubleArc
+            ? pointOnCircle(offsetArcRadius(p.bouts.C21, -inset), p.outerCorners.C21!.end)
+            : pointOnCircle(offsetArcRadius(p.bouts.C2, -inset), p.outerCorners.C2.end);
+        const ucLine = insetCutoffLine(ucPt1, ucPt2, delta, p.bouts.C0);
+
+        const U3off = offsetArcRadius(p.bouts.U3, -innerOffset);
+        let U31off: Arc | null = null;
+        if (!p.options.U31DoubleArc) {
+            U3off.end = cutoffEndAtOffset(U3off, ucLine.p1, ucLine.p2, ucLine.p1, p.outerCorners.U3.end);
+        }
+        cornerArcs.push(U3off, flipArcAboutY(U3off));
+
+        if (p.options.U31DoubleArc) {
+            U31off = offsetArcRadius(p.bouts.U31, -innerOffset);
+            U31off.end = cutoffEndAtOffset(U31off, ucLine.p1, ucLine.p2, ucLine.p1, p.outerCorners.U31!.end);
+            cornerArcs.push(U31off, flipArcAboutY(U31off));
+        }
+
+        const C2off = offsetArcRadius(p.bouts.C2, -innerOffset);
+        let C21off: Arc | null = null;
+        if (!p.options.C21DoubleArc) {
+            C2off.end = cutoffEndAtOffset(C2off, ucLine.p1, ucLine.p2, ucLine.p2, p.outerCorners.C2.end);
+        }
+        cornerArcs.push(C2off, flipArcAboutY(C2off));
+
+        if (p.options.C21DoubleArc) {
+            C21off = offsetArcRadius(p.bouts.C21, -innerOffset);
+            C21off.end = cutoffEndAtOffset(C21off, ucLine.p1, ucLine.p2, ucLine.p2, p.outerCorners.C21!.end);
+            cornerArcs.push(C21off, flipArcAboutY(C21off));
+        }
+
+        const ucTerm1 = U31off ?? U3off;
+        const ucTerm2 = C21off ?? C2off;
+        paths.push(ucCornerPath(ucTerm1, ucTerm2));
+        paths.push(ucCornerPath(flipArcAboutY(ucTerm1), flipArcAboutY(ucTerm2)));
+    }
+
+    if (p.options.useViolCornerLC) {
+        const L4off = offsetArcRadius(p.bouts.L4!, innerOffset);
+        const C1off = offsetArcRadius(p.bouts.C1, -innerOffset);
+        const int = circleCircleIntersections(L4off, C1off);
+        L4off.end = angleFromCenter(L4off, int[1]);
+        C1off.end = angleFromCenter(C1off, int[1]);
+        cornerArcs.push(L4off, flipArcAboutY(L4off), C1off, flipArcAboutY(C1off));
+    } else {
+        const lcPt1 = p.options.C11DoubleArc
+            ? pointOnCircle(offsetArcRadius(p.bouts.C11, -inset), p.outerCorners.C11!.end)
+            : pointOnCircle(offsetArcRadius(p.bouts.C1, -inset), p.outerCorners.C1.end);
+        const lcPt2 = p.options.L31DoubleArc
+            ? pointOnCircle(offsetArcRadius(p.bouts.L31, -inset), p.outerCorners.L31!.end)
+            : pointOnCircle(offsetArcRadius(p.bouts.L3, -inset), p.outerCorners.L3.end);
+        const lcLine = insetCutoffLine(lcPt1, lcPt2, delta, p.bouts.C0);
+
+        const C1off = offsetArcRadius(p.bouts.C1, -innerOffset);
+        let C11off: Arc | null = null;
+        if (!p.options.C11DoubleArc) {
+            C1off.end = cutoffEndAtOffset(C1off, lcLine.p1, lcLine.p2, lcLine.p1, p.outerCorners.C1.end);
+        }
+        cornerArcs.push(C1off, flipArcAboutY(C1off));
+
+        if (p.options.C11DoubleArc) {
+            C11off = offsetArcRadius(p.bouts.C11, -innerOffset);
+            C11off.end = cutoffEndAtOffset(C11off, lcLine.p1, lcLine.p2, lcLine.p1, p.outerCorners.C11!.end);
+            cornerArcs.push(C11off, flipArcAboutY(C11off));
+        }
+
+        const L3off = offsetArcRadius(p.bouts.L3, -innerOffset);
+        let L31off: Arc | null = null;
+        if (!p.options.L31DoubleArc) {
+            L3off.end = cutoffEndAtOffset(L3off, lcLine.p1, lcLine.p2, lcLine.p2, p.outerCorners.L3.end);
+        }
+        cornerArcs.push(L3off, flipArcAboutY(L3off));
+
+        if (p.options.L31DoubleArc) {
+            L31off = offsetArcRadius(p.bouts.L31, -innerOffset);
+            L31off.end = cutoffEndAtOffset(L31off, lcLine.p1, lcLine.p2, lcLine.p2, p.outerCorners.L31!.end);
+            cornerArcs.push(L31off, flipArcAboutY(L31off));
+        }
+
+        const lcTerm1 = C11off ?? C1off;
+        const lcTerm2 = L31off ?? L3off;
+        paths.push(lcCornerPath(lcTerm1, lcTerm2));
+        paths.push(lcCornerPath(flipArcAboutY(lcTerm1), flipArcAboutY(lcTerm2)));
+    }
+
+    paths.push(...[...arcs, ...mirroredArcs].map(arc => pathFromArc(arc)));
+    paths.push(...cornerArcs.map(arc => pathFromArc(arc)));
+    return unifyConnectedSvgPaths(paths);
 }
 
 /**
@@ -1205,10 +1444,10 @@ export function defineFlutingPath(p: EnricoCerutiParams, offset: number): string
  * combined with fill-rule="evenodd". Suitable for SVG/PDF export and rendering.
  * Returns null if the fluting platform is not yet configured.
  */
-export function defineFlutingPlatformPath(p: EnricoCerutiParams, offset: number, button = false): string | null {
+export function defineFlutingAreaPath(p: EnricoCerutiParams, offset: number, button = false): string | null {
     const innerPath = defineFlutingPath(p, offset);
     if (innerPath === null) return null;
-    const outerPath = defineOuterPath(p, offset, button);
+    const outerPath = defineInsetPath(p, p.overhang);
     return `${outerPath} Z ${innerPath} Z`;
 }
 
