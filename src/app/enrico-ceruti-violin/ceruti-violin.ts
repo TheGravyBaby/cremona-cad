@@ -7,13 +7,13 @@ import { combinePathStrings } from '../helpers/svgPathMath';
 import { clampParam, safeRun } from '../helpers/validators';
 import { CerutiColors, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, EnricoCerutiTemplate, EnricoCerutiParams } from './ceruti-types';
 import { CERUTI_TEMPLATES } from './ceruti-templates';
-import { calculateCenterBout, calculateCorners, calculateLongArch, calculateMainBouts, calculateMould, calculateOuterArcs, defaultArchingParams, defineFlutingAreaPath, defineInnerPath, defineInsetPath, defineOuterCornerArcs, defineOuterPath, defineOuterPurflingPath, definePurflingPath } from './ceruti-calcs';
+import { calculateCenterBout, calculateCorners, calculateLongArch, calculateMainBouts, calculateMould, calculateOuterArcs, defaultArchingParams, defineFlutingAreaPath, defineFlutingPath, defineInnerPath, defineInsetPath, defineOuterCornerArcs, defineOuterPath, defineOuterPurflingPath, definePurflingPath } from './ceruti-calcs';
 import { HighlightedArc } from './renders/render-constants';
 import { renderBounds, renderBoutBouts, renderCornerGuides } from './renders/guides.render';
 import { renderMainBouts } from './renders/main-bouts.render';
 import { renderCorners } from './renders/corners.render';
 import { renderCenterBout } from './renders/center-bout.render';
-import { renderOuterTrace } from './renders/outer-trace.render';
+import { renderOuterTraceGuides } from './renders/outer-trace.render';
 import { renderMould } from './renders/mould.render';
 import { renderLongArchBoxes as renderLongArch } from './renders/long-arching.render';
 import { BasePanel } from './panels/base-panel/base-panel';
@@ -266,7 +266,18 @@ export class CerutiViolin extends RecipeComponentBase {
       outerTrace: () => this.changeOuterTrace(),
       mould: () => this.changeMould(),
       longArching: () => this.changeLongArching(),
-      export: () => {},
+      // A loaded template may already satisfy every panel guard (canOpenPanel), letting the
+      // user jump straight to Export without the intermediate panels ever having run their
+      // change handlers this session — so the path cache those handlers populate could still
+      // be empty. Force them to run now so every key Export reads is guaranteed to exist.
+      export: () => {
+        this.debounceController?.markImmediate();
+        this.changeCenterBout();
+        this.debounceController?.markImmediate();
+        this.changeOuterTrace();
+        this.debounceController?.markImmediate();
+        this.changeMould();
+      },
     };
   }
 
@@ -309,6 +320,20 @@ export class CerutiViolin extends RecipeComponentBase {
   private hasOuterTrace(): boolean {
     const o = this.d.params.outerCorners;
     return !!(o.U3 || o.C2 || o.C1 || o.L3);
+  }
+
+  // ===== Path cache =====
+  // Populated incrementally by each panel's change handler as soon as it has what
+  // it needs; consumed by export (and eventually render) instead of recalculating.
+
+  private upsertPath(key: string, path: string): void {
+    const entry = this.d.paths.find(p => p.key === key);
+    if (entry) entry.path = path;
+    else this.d.paths.push({ key, path });
+  }
+
+  private getPath(key: string): string {
+    return this.d.paths.find(p => p.key === key)!.path;
   }
 
   // ===== Shared helpers =====
@@ -399,6 +424,7 @@ export class CerutiViolin extends RecipeComponentBase {
       const p = this.d.params;
       calculateCorners(p);
       calculateCenterBout(p, solveC0);
+      this.upsertPath('inner', defineInnerPath(p));
       this.panelFlow?.refreshEnabledPanels();
       this.draftChange.emit([
         renderBounds(p, this.viewFlags.showModuleGuides),
@@ -417,13 +443,29 @@ export class CerutiViolin extends RecipeComponentBase {
       const p = this.d.params;
       calculateOuterArcs(p);
       const offset = p.overhang + p.rib;
-      const outerPath = defineOuterPath(p, offset, true, true);
+      const topPath = defineOuterPath(p, offset, true, false);
+      const backPath = defineOuterPath(p, offset, true, true);
       const purflingPath = definePurflingPath(p, offset);
       const outerPurflingPath = defineOuterPurflingPath(p, offset);
-      const flutingPlatformPath = defineFlutingAreaPath(p, p.innerFlutingDepth, p.outerFlutingDepth);
-      this.draftChange.emit([
-        renderOuterTrace(p, this.colors, this.viewFlags, true, outerPath, purflingPath, outerPurflingPath, flutingPlatformPath),
-      ]);
+      const flutingAreaPath = defineFlutingAreaPath(p, p.innerFlutingDepth, p.outerFlutingDepth);
+      const flutingLinePath = defineFlutingPath(p, offset);
+
+      this.upsertPath('top', topPath);
+      this.upsertPath('back', backPath);
+      if (purflingPath) this.upsertPath('purfling', purflingPath);
+      if (outerPurflingPath) this.upsertPath('outerPurfling', outerPurflingPath);
+      if (flutingAreaPath) this.upsertPath('flutingArea', flutingAreaPath);
+      if (flutingLinePath) this.upsertPath('flutingLine', flutingLinePath);
+
+      // The panel previews the back plate — it carries the button and is the most informative trace.
+      // Fluting is a filled area, so it must be drawn before the purfling lines or it paints over them.
+      const renders: Array<(g: any, ui: any) => void> = [renderPath(backPath, this.colors.outerTrace)];
+      if (flutingAreaPath) renders.push(renderFilledPath(flutingAreaPath, this.colors.fluting));
+      if (purflingPath) renders.push(renderPath(purflingPath, this.colors.innerTrace, 1));
+      if (outerPurflingPath) renders.push(renderPath(outerPurflingPath, this.colors.innerTrace, 1));
+      renders.push(renderOuterTraceGuides(p, this.colors, this.viewFlags, true));
+
+      this.draftChange.emit(renders);
       sessionStorage.setItem('recipeData', JSON.stringify(this.d));
     }));
   }
@@ -445,10 +487,14 @@ export class CerutiViolin extends RecipeComponentBase {
   changeMould(): void {
     this.debounce(() => safeRun(() => {
       const p = this.d.params;
-      let mouldPath = calculateMould(p, false, this.viewFlags.simpleClampBox);
-      let innerPath = defineInnerPath(p);
+      // Cached copy is always the accurate, export-quality clamp box — the (possibly
+      // simplified, view-flag-driven) mould below is only ever used for the live preview.
+      this.upsertPath('mould', calculateMould(p, true, false));
+
+      const innerPath = this.getPath('inner');
+      const previewMouldPath = calculateMould(p, false, this.viewFlags.simpleClampBox);
       this.draftChange.emit([
-        renderMould(p, this.colors, this.viewFlags.showBlocks, this.viewFlags.showInnerPath, mouldPath, innerPath),
+        renderMould(p, this.colors, this.viewFlags.showBlocks, this.viewFlags.showInnerPath, previewMouldPath, innerPath),
       ]);
       sessionStorage.setItem('recipeData', JSON.stringify(this.d));
     }));

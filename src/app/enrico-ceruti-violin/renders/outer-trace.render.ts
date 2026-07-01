@@ -1,7 +1,6 @@
 import { flipArcAboutY, flipCircleAboutY } from '../../helpers/draftMath';
-import { renderArcFromArc, renderArcFromArcFancy, renderCircle, renderCrosshair, renderFilledPath, renderPath } from '../../helpers/renderFuncs';
+import { renderArcFromArcFancy, renderCircle } from '../../helpers/renderFuncs';
 import { CerutiColors, EnricoCerutiParams } from '../ceruti-types';
-import { PATH_STROKE_WIDTH } from './render-constants';
 
 export interface OuterTraceViewFlags {
   showModuleArcs: boolean;
@@ -10,24 +9,14 @@ export interface OuterTraceViewFlags {
   showAllCircles: boolean;
 }
 
-export const renderOuterTrace = (
+/** Construction-guide arcs/circles for the outer-corner module; the trace itself is rendered from the path cache. */
+export const renderOuterTraceGuides = (
   params: EnricoCerutiParams,
   colors: CerutiColors,
   flags: OuterTraceViewFlags,
   currentModule: boolean,
-  outerPath: string,
-  purflingPath: string | null,
-  outerPurflingPath: string | null,
-  flutingPlatformPath: string | null,
 ) => (g: any, ui: any): void => {
   let p = params;
-  renderPath(outerPath, colors.outerTrace, PATH_STROKE_WIDTH)(g, ui);
-
-  if (purflingPath !== null) renderPath(purflingPath, colors.innerTrace, 1)(g, ui);
-
-  if (outerPurflingPath !== null) renderPath(outerPurflingPath, colors.innerTrace, 1)(g, ui);
-
-  if (flutingPlatformPath !== null) renderFilledPath(flutingPlatformPath, colors.fluting)(g, ui);
 
   if ((currentModule && flags.showModuleArcs) || flags.showAllArcs) {
     // primary arcs + their mirrors

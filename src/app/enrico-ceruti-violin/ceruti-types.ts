@@ -188,6 +188,12 @@ export interface EnricoCerutiParams {
   arching?: ArchingParams;
 }
 
+/** A single named, precalculated SVG path — the shared cache read by export (and eventually render). */
+export interface PathEntry {
+  key: string;
+  path: string;
+}
+
 export interface EnricoCerutiTemplate {
   key: string;
   label: string;
@@ -196,7 +202,7 @@ export interface EnricoCerutiTemplate {
   version: string;
   description?: string;
   params: EnricoCerutiParams;
-  paths: any[];
+  paths: PathEntry[];
   referenceImage?: ReferenceImage;
 }
 

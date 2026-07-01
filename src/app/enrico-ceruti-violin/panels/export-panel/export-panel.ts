@@ -5,8 +5,8 @@ import { combinePathStrings } from '../../../helpers/svgPathMath';
 import { buildMirroredSvg, downloadFullPlanPdf, downloadSvgAsPdf, downloadSvgFile, PdfPage, SvgPathExport } from '../../../helpers/fileExporter';
 import { downloadDxfFile } from '../../../helpers/dxfExporter';
 import { renderFilledPath, renderPath } from '../../../helpers/renderFuncs';
-import { calculateCornerBlocks, calculateMould, defineFlutingPath, defineFlutingAreaPath, defineInnerPath, defineOuterPath, defineOuterPurflingPath, definePurflingPath } from '../../ceruti-calcs';
-import { CerutiColors, EnricoCerutiParams } from '../../ceruti-types';
+import { calculateCornerBlocks } from '../../ceruti-calcs';
+import { CerutiColors, EnricoCerutiParams, PathEntry } from '../../ceruti-types';
 
 type ExportType = 'innerTrace' | 'outerTrace' | 'back' | 'mould' | 'blocks';
 
@@ -19,11 +19,22 @@ type ExportType = 'innerTrace' | 'outerTrace' | 'back' | 'mould' | 'blocks';
 export class ExportPanel implements OnInit {
   @Input({ required: true }) params!: EnricoCerutiParams;
   @Input({ required: true }) colors!: CerutiColors;
+  @Input({ required: true }) paths!: PathEntry[];
   @Input() fileName = '';
   @Input() description = '';
 
   /** Forwarded straight through to the canvas by the parent — this panel composes its own preview renders. */
   @Output() draftChange = new EventEmitter<Array<(g: any, ui: any) => void>>();
+
+  /** Looks up a precalculated path from the shared cache populated by the parent's panel handlers. */
+  private getPath(key: string): string {
+    return this.paths.find(entry => entry.key === key)!.path;
+  }
+
+  /** Same, but for keys that are legitimately absent (e.g. purfling not yet configured). */
+  private getPathOrNull(key: string): string | null {
+    return this.paths.find(entry => entry.key === key)?.path ?? null;
+  }
 
   ngOnInit(): void {
     this.previewExport('outerTrace');
@@ -34,43 +45,29 @@ export class ExportPanel implements OnInit {
 
     switch (type) {
       case 'innerTrace': {
-        this.draftChange.emit([renderPath(defineInnerPath(p), this.colors.innerTrace)]);
+        this.draftChange.emit([renderPath(this.getPath('inner'), this.colors.innerTrace)]);
         break;
       }
-      case 'outerTrace': {
-        const offset = p.overhang + p.rib;
-        const renders: Array<(g: any, ui: any) => void> = [
-          renderPath(defineOuterPath(p), this.colors.outerTrace),
-        ];
-        const purflingPath = definePurflingPath(p, offset);
-        if (purflingPath) renders.push(renderPath(purflingPath, this.colors.innerTrace, 1));
-        const outerPurflingPath = defineOuterPurflingPath(p, offset);
-        if (outerPurflingPath) renders.push(renderPath(outerPurflingPath, this.colors.innerTrace, 1));
-        const flutingPath = defineFlutingAreaPath(p, p.innerFlutingDepth, p.outerFlutingDepth);
-        if (flutingPath) renders.push(renderFilledPath(flutingPath, this.colors.fluting));
-        this.draftChange.emit(renders);
-        break;
-      }
+      case 'outerTrace':
       case 'back': {
-        const offset = p.overhang + p.rib;
         const renders: Array<(g: any, ui: any) => void> = [
-          renderPath(defineOuterPath(p, offset, true), this.colors.outerTrace),
+          renderPath(this.getPath(type === 'back' ? 'back' : 'top'), this.colors.outerTrace),
         ];
-        const purflingPath = definePurflingPath(p, offset);
-        if (purflingPath) renders.push(renderPath(purflingPath, this.colors.innerTrace, 1));
-        const outerPurflingPath = defineOuterPurflingPath(p, offset);
-        if (outerPurflingPath) renders.push(renderPath(outerPurflingPath, this.colors.innerTrace, 1));
-        const flutingPath = defineFlutingAreaPath(p, p.innerFlutingDepth, p.outerFlutingDepth);
+        const flutingPath = this.getPathOrNull('flutingArea');
         if (flutingPath) renders.push(renderFilledPath(flutingPath, this.colors.fluting));
+        const purflingPath = this.getPathOrNull('purfling');
+        if (purflingPath) renders.push(renderPath(purflingPath, this.colors.innerTrace, 1));
+        const outerPurflingPath = this.getPathOrNull('outerPurfling');
+        if (outerPurflingPath) renders.push(renderPath(outerPurflingPath, this.colors.innerTrace, 1));
         this.draftChange.emit(renders);
         break;
       }
       case 'mould': {
-        this.draftChange.emit([renderPath(calculateMould(p, true, false), this.colors.mouldTrace)]);
+        this.draftChange.emit([renderPath(this.getPath('mould'), this.colors.mouldTrace)]);
         break;
       }
       case 'blocks': {
-        const renders = calculateCornerBlocks(p, defineInnerPath(p)).map((block: string) => renderPath(block, this.colors.mouldTrace));
+        const renders = calculateCornerBlocks(p, this.getPath('inner')).map((block: string) => renderPath(block, this.colors.mouldTrace));
         this.draftChange.emit(renders);
         break;
       }
@@ -79,40 +76,30 @@ export class ExportPanel implements OnInit {
 
   downloadExport(type: ExportType): void {
     const p = this.params;
-    const offset = p.overhang + p.rib;
     const baseName = this.fileName?.trim() || 'ceruti-violin';
     const height = p.height + 2 * p.button!.height + p.button!.width / 2;
 
     let paths: SvgPathExport[];
     switch (type) {
       case 'innerTrace':
-        paths = [{ d: defineInnerPath(p), stroke: 'black', fill: 'none', strokeWidth: '.5' }];
+        paths = [{ d: this.getPath('inner'), stroke: 'black', fill: 'none', strokeWidth: '.5' }];
         break;
-      case 'outerTrace': {
-        paths = [{ d: defineOuterPath(p), stroke: 'black', fill: 'none', strokeWidth: '.5' }];
-        const purflingPath = definePurflingPath(p, offset);
-        if (purflingPath) paths.push({ d: purflingPath, stroke: 'black', fill: 'none', strokeWidth: '.5' });
-        const outerPurflingPath = defineOuterPurflingPath(p, offset);
-        if (outerPurflingPath) paths.push({ d: outerPurflingPath, stroke: 'black', fill: 'none', strokeWidth: '.5' });
-        const flutingPath = defineFlutingAreaPath(p, p.innerFlutingDepth, p.outerFlutingDepth);
-        if (flutingPath) paths.push({ d: flutingPath, fill: '#bbbbbb', fillRule: 'evenodd', fillOpacity: 0.35, stroke: 'none', strokeWidth: 0 });
-        break;
-      }
+      case 'outerTrace':
       case 'back': {
-        paths = [{ d: defineOuterPath(p, offset, true), stroke: 'black', fill: 'none', strokeWidth: '.5' }];
-        const purflingPath = definePurflingPath(p, offset);
+        paths = [{ d: this.getPath(type === 'back' ? 'back' : 'top'), stroke: 'black', fill: 'none', strokeWidth: '.5' }];
+        const flutingPath = this.getPathOrNull('flutingArea');
+        if (flutingPath) paths.push({ d: flutingPath, fill: '#bbbbbb', fillRule: 'evenodd', fillOpacity: 1, stroke: 'none', strokeWidth: 0 });
+        const purflingPath = this.getPathOrNull('purfling');
         if (purflingPath) paths.push({ d: purflingPath, stroke: 'black', fill: 'none', strokeWidth: '.5' });
-        const outerPurflingPath = defineOuterPurflingPath(p, offset);
+        const outerPurflingPath = this.getPathOrNull('outerPurfling');
         if (outerPurflingPath) paths.push({ d: outerPurflingPath, stroke: 'black', fill: 'none', strokeWidth: '.5' });
-        const flutingPath = defineFlutingAreaPath(p, p.innerFlutingDepth, p.outerFlutingDepth);
-        if (flutingPath) paths.push({ d: flutingPath, fill: '#bbbbbb', fillRule: 'evenodd', fillOpacity: 0.35, stroke: 'none', strokeWidth: 0 });
         break;
       }
       case 'mould':
-        paths = [{ d: calculateMould(p, false, false), stroke: 'black', fill: 'none', strokeWidth: '.5' }];
+        paths = [{ d: this.getPath('mould'), stroke: 'black', fill: 'none', strokeWidth: '.5' }];
         break;
       case 'blocks':
-        paths = [{ d: combinePathStrings(calculateCornerBlocks(p, defineInnerPath(p))), stroke: 'black', fill: 'none', strokeWidth: '.5' }];
+        paths = [{ d: combinePathStrings(calculateCornerBlocks(p, this.getPath('inner'))), stroke: 'black', fill: 'none', strokeWidth: '.5' }];
         break;
     }
 
@@ -121,41 +108,30 @@ export class ExportPanel implements OnInit {
 
   downloadDxf(type: ExportType): void {
     const p = this.params;
-    const offset = p.overhang + p.rib;
     const baseName = this.fileName?.trim() || 'ceruti-violin';
 
     let pathD: string;
     switch (type) {
       case 'innerTrace':
-        pathD = defineInnerPath(p);
+        pathD = this.getPath('inner');
         break;
-      case 'outerTrace': {
-        const dxfPaths = [defineOuterPath(p)];
-        const purflingPath = definePurflingPath(p, offset);
-        if (purflingPath) dxfPaths.push(purflingPath);
-        const outerPurflingPath = defineOuterPurflingPath(p, offset);
-        if (outerPurflingPath) dxfPaths.push(outerPurflingPath);
-        const flutingPath = defineFlutingPath(p, offset);
-        if (flutingPath) dxfPaths.push(flutingPath);
-        pathD = combinePathStrings(dxfPaths);
-        break;
-      }
+      case 'outerTrace':
       case 'back': {
-        const dxfPaths = [defineOuterPath(p, offset, true)];
-        const purflingPath = definePurflingPath(p, offset);
+        const dxfPaths = [this.getPath(type === 'back' ? 'back' : 'top')];
+        const purflingPath = this.getPathOrNull('purfling');
         if (purflingPath) dxfPaths.push(purflingPath);
-        const outerPurflingPath = defineOuterPurflingPath(p, offset);
+        const outerPurflingPath = this.getPathOrNull('outerPurfling');
         if (outerPurflingPath) dxfPaths.push(outerPurflingPath);
-        const flutingPath = defineFlutingPath(p, offset);
+        const flutingPath = this.getPathOrNull('flutingLine');
         if (flutingPath) dxfPaths.push(flutingPath);
         pathD = combinePathStrings(dxfPaths);
         break;
       }
       case 'mould':
-        pathD = calculateMould(p, false, false);
+        pathD = this.getPath('mould');
         break;
       case 'blocks':
-        pathD = combinePathStrings(calculateCornerBlocks(p, defineInnerPath(p)));
+        pathD = combinePathStrings(calculateCornerBlocks(p, this.getPath('inner')));
         break;
     }
 
@@ -164,7 +140,6 @@ export class ExportPanel implements OnInit {
 
   downloadPdf(type: ExportType): void {
     const p = this.params;
-    const offset = p.overhang + p.rib;
     const baseName = this.fileName?.trim() || 'ceruti-violin';
     const sheetLabels: Record<string, string> = {
       innerTrace: 'Inner Contour',
@@ -177,33 +152,24 @@ export class ExportPanel implements OnInit {
     let pdfPaths: SvgPathExport[];
     switch (type) {
       case 'innerTrace':
-        pdfPaths = [{ d: defineInnerPath(p), stroke: 'black', fill: 'none' }];
+        pdfPaths = [{ d: this.getPath('inner'), stroke: 'black', fill: 'none' }];
         break;
-      case 'outerTrace': {
-        pdfPaths = [{ d: defineOuterPath(p), stroke: 'black', fill: 'none' }];
-        const purflingPath = definePurflingPath(p, offset);
-        if (purflingPath) pdfPaths.push({ d: purflingPath, stroke: 'black', fill: 'none' });
-        const outerPurflingPath = defineOuterPurflingPath(p, offset);
-        if (outerPurflingPath) pdfPaths.push({ d: outerPurflingPath, stroke: 'black', fill: 'none' });
-        const flutingPath = defineFlutingAreaPath(p, p.innerFlutingDepth, p.outerFlutingDepth);
-        if (flutingPath) pdfPaths.push({ d: flutingPath, fill: '#bbbbbb', fillRule: 'evenodd', fillOpacity: 0.35, stroke: 'none' });
-        break;
-      }
+      case 'outerTrace':
       case 'back': {
-        pdfPaths = [{ d: defineOuterPath(p, offset, true), stroke: 'black', fill: 'none' }];
-        const purflingPath = definePurflingPath(p, offset);
+        pdfPaths = [{ d: this.getPath(type === 'back' ? 'back' : 'top'), stroke: 'black', fill: 'none' }];
+        const flutingPath = this.getPathOrNull('flutingArea');
+        if (flutingPath) pdfPaths.push({ d: flutingPath, fill: '#bbbbbb', fillRule: 'evenodd', fillOpacity: 1, stroke: 'none' });
+        const purflingPath = this.getPathOrNull('purfling');
         if (purflingPath) pdfPaths.push({ d: purflingPath, stroke: 'black', fill: 'none' });
-        const outerPurflingPath = defineOuterPurflingPath(p, offset);
+        const outerPurflingPath = this.getPathOrNull('outerPurfling');
         if (outerPurflingPath) pdfPaths.push({ d: outerPurflingPath, stroke: 'black', fill: 'none' });
-        const flutingPath = defineFlutingAreaPath(p, p.innerFlutingDepth, p.outerFlutingDepth);
-        if (flutingPath) pdfPaths.push({ d: flutingPath, fill: '#bbbbbb', fillRule: 'evenodd', fillOpacity: 0.35, stroke: 'none' });
         break;
       }
       case 'mould':
-        pdfPaths = [{ d: calculateMould(p, true, false), stroke: 'black', fill: 'none' }];
+        pdfPaths = [{ d: this.getPath('mould'), stroke: 'black', fill: 'none' }];
         break;
       case 'blocks':
-        pdfPaths = [{ d: combinePathStrings(calculateCornerBlocks(p, defineInnerPath(p))), stroke: 'black', fill: 'none' }];
+        pdfPaths = [{ d: combinePathStrings(calculateCornerBlocks(p, this.getPath('inner'))), stroke: 'black', fill: 'none' }];
         break;
     }
 
@@ -229,12 +195,9 @@ export class ExportPanel implements OnInit {
     if (p.options.useViolNeck)
       height = pointOnCircle(p.viol.V0!, 0).y + 2 * p.button!.height + p.button!.width / 2 + inset;
 
-    const topPurfling = definePurflingPath(p, inset);
-    const topOuterPurfling = defineOuterPurflingPath(p, inset);
-    const topFluting = defineFlutingAreaPath(p, p.innerFlutingDepth, p.outerFlutingDepth);
-    const backPurfling = definePurflingPath(p, inset);
-    const backOuterPurfling = defineOuterPurflingPath(p, inset);
-    const backFluting = defineFlutingAreaPath(p, p.innerFlutingDepth, p.outerFlutingDepth);
+    const purflingPath = this.getPathOrNull('purfling');
+    const outerPurflingPath = this.getPathOrNull('outerPurfling');
+    const flutingPath = this.getPathOrNull('flutingArea');
 
     const pages: PdfPage[] = [
       {
@@ -243,7 +206,7 @@ export class ExportPanel implements OnInit {
         description,
         width: p.width,
         height,
-        paths: [{ d: defineInnerPath(p), stroke: 'black', fill: 'none' }],
+        paths: [{ d: this.getPath('inner'), stroke: 'black', fill: 'none' }],
       },
       {
         label: 'Top Contour',
@@ -252,10 +215,10 @@ export class ExportPanel implements OnInit {
         width: p.width,
         height,
         paths: [
-          { d: defineOuterPath(p), stroke: 'black', fill: 'none' },
-          ...(topPurfling ? [{ d: topPurfling, stroke: 'black', fill: 'none' }] : []),
-          ...(topOuterPurfling ? [{ d: topOuterPurfling, stroke: 'black', fill: 'none' }] : []),
-          ...(topFluting ? [{ d: topFluting, fill: '#bbbbbb', fillRule: 'evenodd', fillOpacity: 0.35, stroke: 'none' }] : []),
+          { d: this.getPath('top'), stroke: 'black', fill: 'none' },
+          ...(flutingPath ? [{ d: flutingPath, fill: '#bbbbbb', fillRule: 'evenodd', fillOpacity: 1, stroke: 'none' }] : []),
+          ...(purflingPath ? [{ d: purflingPath, stroke: 'black', fill: 'none' }] : []),
+          ...(outerPurflingPath ? [{ d: outerPurflingPath, stroke: 'black', fill: 'none' }] : []),
         ],
       },
       {
@@ -265,10 +228,10 @@ export class ExportPanel implements OnInit {
         width: p.width,
         height,
         paths: [
-          { d: defineOuterPath(p, inset, true), stroke: 'black', fill: 'none' },
-          ...(backPurfling ? [{ d: backPurfling, stroke: 'black', fill: 'none' }] : []),
-          ...(backOuterPurfling ? [{ d: backOuterPurfling, stroke: 'black', fill: 'none' }] : []),
-          ...(backFluting ? [{ d: backFluting, fill: '#bbbbbb', fillRule: 'evenodd', fillOpacity: 0.35, stroke: 'none' }] : []),
+          { d: this.getPath('back'), stroke: 'black', fill: 'none' },
+          ...(flutingPath ? [{ d: flutingPath, fill: '#bbbbbb', fillRule: 'evenodd', fillOpacity: 1, stroke: 'none' }] : []),
+          ...(purflingPath ? [{ d: purflingPath, stroke: 'black', fill: 'none' }] : []),
+          ...(outerPurflingPath ? [{ d: outerPurflingPath, stroke: 'black', fill: 'none' }] : []),
         ],
       },
       {
@@ -277,7 +240,7 @@ export class ExportPanel implements OnInit {
         description,
         width: p.width,
         height,
-        paths: [{ d: calculateMould(p, true, false), stroke: 'black', fill: 'none' }],
+        paths: [{ d: this.getPath('mould'), stroke: 'black', fill: 'none' }],
       },
       {
         label: 'Blocks',
@@ -285,7 +248,7 @@ export class ExportPanel implements OnInit {
         description,
         width: p.width,
         height,
-        paths: calculateCornerBlocks(p, defineInnerPath(p)).map((block: string) => ({ d: block, stroke: 'black', fill: 'none' })),
+        paths: calculateCornerBlocks(p, this.getPath('inner')).map((block: string) => ({ d: block, stroke: 'black', fill: 'none' })),
       }
     ];
 
