@@ -1492,8 +1492,8 @@ function buildArchPath(arch: ArchCurve, span: number, yStart: number, xBase: num
 
 export function calculateLongArch(p: EnricoCerutiParams): { span: number; yStart: number; topPath: string; backPath: string } {
   const a = p.arching!;
-  const span   = p.height - 2 * (p.overhang + (p.innerFlutingDepth ?? 0));
-  const yStart = p.overhang + (p.innerFlutingDepth ?? 0);
+  const span   = p.height - 2 * (p.innerFlutingDepth ?? 0);
+  const yStart =  p.innerFlutingDepth ?? 0;
   const topPath  = buildArchPath(a.top.arch,    span, yStart, a.ribHeight + a.top.thickness, 1);
   const backPath = buildArchPath(a.bottom.arch, span, yStart, -a.bottom.thickness,           -1);
   return { span, yStart, topPath, backPath };
