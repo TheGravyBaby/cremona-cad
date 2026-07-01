@@ -1,8 +1,8 @@
 import { solveInscribedCircleAlongAxis, circleCircleIntersections, angleFromCenter, interceptCirclesAndPoint, dist, pointOnCircle, offsetArcRadius, flipArcAboutY, flipPointAboutY, flipRectAboutY, lineCircleIntersection, redefineArcCircle, interceptCirclesAndPointCompound, findJoiningArcs } from "../helpers/draftMath";
-import { pathFromArc, pathFromLine, pathFromCornerCubic, unifyConnectedSvgPaths, pathFromRoundedRect, pathFromCircle, pathFromRect, combinePathStrings, differenceFromManyPaths, intersectionFromTwoPaths, translatePath, differenceFromTwoPaths } from "../helpers/svgPathMath";
+import { pathFromArc, pathFromLine, pathFromCornerCubic, unifyConnectedSvgPaths, pathFromRoundedRect, pathFromCircle, pathFromRect, combinePathStrings, differenceFromManyPaths, intersectionFromTwoPaths, translatePath, differenceFromTwoPaths, buildCatenaryPath, buildCycloidPath, buildSplinePath } from "../helpers/svgPathMath";
 import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Pt, Rectangle } from "../models/types";
 import { error, message } from "../shared/message-emitter";
-import { ArchingParams, EnricoCerutiParams } from "./ceruti-types";
+import { ArchCurve, ArchingParams, EnricoCerutiParams } from "./ceruti-types";
 
 export function calculateMainBouts(p: EnricoCerutiParams): void {
     let inset = p.overhang + p.rib;
@@ -1219,26 +1219,41 @@ export function defaultArchingParams(bodyHeight: number): ArchingParams {
   if (bodyHeight < 400) {
     // Violin
     return { surfaceMethod: 'proportional', ribHeight: 32,
-      top:    { arch: cat(15), thickness: 2.5 },
+      top:    { arch: cat(15), thickness: 3.5 },
       bottom: { arch: cat(14), thickness: 3.5 } };
   }
   if (bodyHeight < 500) {
     // Viola
     return { surfaceMethod: 'proportional', ribHeight: 40,
-      top:    { arch: cat(20), thickness: 3.0 },
+      top:    { arch: cat(20), thickness: 4.0 },
       bottom: { arch: cat(18), thickness: 4.0 } };
   }
   if (bodyHeight < 800) {
     // Cello
     return { surfaceMethod: 'proportional', ribHeight: 120,
-      top:    { arch: cat(27), thickness: 5.0 },
+      top:    { arch: cat(27), thickness: 6.0 },
       bottom: { arch: cat(25), thickness: 6.0 } };
   }
   // Double bass
   return { surfaceMethod: 'proportional', ribHeight: 185,
-    top:    { arch: cat(55), thickness: 8.0 },
+    top:    { arch: cat(55), thickness: 9.0 },
     bottom: { arch: cat(50), thickness: 9.0 } };
 }
 
-export function calculateLongArch(_p: EnricoCerutiParams): void {
+function buildArchPath(arch: ArchCurve, span: number, yStart: number, xBase: number, sign: 1 | -1): string {
+  const h = arch.archHeight;
+  switch (arch.type) {
+    case 'catenary': return buildCatenaryPath(h, span, yStart, xBase, sign);
+    case 'cycloid':  return buildCycloidPath(h, span, yStart, xBase, sign, arch.d);
+    case 'spline':   return buildSplinePath(h, span, yStart, xBase, sign, arch.points);
+  }
+}
+
+export function calculateLongArch(p: EnricoCerutiParams): { span: number; yStart: number; topPath: string; backPath: string } {
+  const a = p.arching!;
+  const span   = p.height - 2 * (p.overhang + (p.flutingWidth ?? 0));
+  const yStart = p.overhang + (p.flutingWidth ?? 0);
+  const topPath  = buildArchPath(a.top.arch,    span, yStart, a.ribHeight + a.top.thickness, 1);
+  const backPath = buildArchPath(a.bottom.arch, span, yStart, -a.bottom.thickness,           -1);
+  return { span, yStart, topPath, backPath };
 }

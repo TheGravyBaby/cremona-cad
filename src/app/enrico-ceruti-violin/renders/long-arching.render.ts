@@ -1,25 +1,6 @@
 import { Circle, Rectangle } from '../../models/types';
 import { renderCircle, renderCrosshair, renderLine, renderPath, renderRect } from '../../helpers/renderFuncs';
-import { buildCatenaryPath, buildCycloidPath, buildSplinePath } from '../../helpers/svgPathMath';
 import { ArchCurve, ArchingParams, CerutiColors, EnricoCerutiParams } from '../ceruti-types';
-
-function buildArchPath(
-  arch: ArchCurve,
-  span: number,
-  yStart: number,
-  xBase: number,
-  sign: 1 | -1,
-): string {
-  // archHeight is measured from the plate outer edge — the luthier-standard measurement.
-  // No plate thickness subtraction: the arch curve starts at xBase (plate outer edge) and
-  // peaks at xBase + sign * archHeight.
-  const h = arch.archHeight;
-  switch (arch.type) {
-    case 'catenary': return buildCatenaryPath(h, span, yStart, xBase, sign);
-    case 'cycloid':  return buildCycloidPath(h, span, yStart, xBase, sign, arch.d);
-    case 'spline':   return buildSplinePath(h, span, yStart, xBase, sign, arch.points);
-  }
-}
 
 // ===== Guide overlays =====
 
@@ -78,6 +59,10 @@ export const renderLongArchBoxes = (
   a: ArchingParams,
   colors: CerutiColors,
   showGuides = false,
+  topPath: string,
+  backPath: string,
+  span: number,
+  yStart: number,
 ) => (g: any, ui: any): void => {
   const ribBox = new Rectangle(
     { x: 0, y: p.overhang },
@@ -91,14 +76,6 @@ export const renderLongArchBoxes = (
     { x: -a.bottom.thickness, y: 0 },
     { x: 0, y: p.height },
   );
-  
-
-
-  const span    = p.height - 2 * (p.overhang + p.flutingWidth);
-  const yStart  = p.overhang + p.flutingWidth;
-
-  const topPath  = buildArchPath(a.top.arch,    span, yStart, a.ribHeight + a.top.thickness, 1);
-  const backPath = buildArchPath(a.bottom.arch, span, yStart, -a.bottom.thickness,           -1);
 
   if (topPath)  renderPath(topPath,  colors.archTop,  1.5)(g, ui);
   if (backPath) renderPath(backPath, colors.archBack, 1.5)(g, ui);
