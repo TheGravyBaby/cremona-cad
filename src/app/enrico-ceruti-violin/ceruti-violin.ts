@@ -7,7 +7,7 @@ import { combinePathStrings } from '../helpers/svgPathMath';
 import { clampParam, safeRun } from '../helpers/validators';
 import { CerutiColors, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, EnricoCerutiTemplate, EnricoCerutiParams } from './ceruti-types';
 import { CERUTI_TEMPLATES } from './ceruti-templates';
-import { calculateCenterBout, calculateCorners, calculateLongArch, calculateMainBouts, calculateMould, calculateOuterArcs, defaultArchingParams, defineFlutingPlatformPath, defineInnerPath, defineOuterCornerArcs, defineOuterPath, defineOuterPurflingPath, definePurflingPath } from './ceruti-calcs';
+import { calculateCenterBout, calculateCorners, calculateLongArch, calculateMainBouts, calculateMould, calculateOuterArcs, defaultArchingParams, defineFlutingAreaPath, defineInnerPath, defineInsetPath, defineOuterCornerArcs, defineOuterPath, defineOuterPurflingPath, definePurflingPath } from './ceruti-calcs';
 import { HighlightedArc } from './renders/render-constants';
 import { renderBounds, renderBoutBouts, renderCornerGuides } from './renders/guides.render';
 import { renderMainBouts } from './renders/main-bouts.render';
@@ -417,14 +417,12 @@ export class CerutiViolin extends RecipeComponentBase {
       const p = this.d.params;
       calculateOuterArcs(p);
       const offset = p.overhang + p.rib;
-      const outerPath = defineOuterPath(p, offset, true);
-      const middleOuterPath = defineOuterPath(p, .5* offset, false);
+      const outerPath = defineOuterPath(p, offset, true, true);
       const purflingPath = definePurflingPath(p, offset);
       const outerPurflingPath = defineOuterPurflingPath(p, offset);
-      const flutingPlatformPath = defineFlutingPlatformPath(p, offset);
+      const flutingPlatformPath = defineFlutingAreaPath(p, offset);
       this.draftChange.emit([
         renderOuterTrace(p, this.colors, this.viewFlags, true, outerPath, purflingPath, outerPurflingPath, flutingPlatformPath),
-        renderPath(middleOuterPath, "red", 1),
       ]);
       sessionStorage.setItem('recipeData', JSON.stringify(this.d));
     }));

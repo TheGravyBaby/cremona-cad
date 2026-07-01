@@ -5,7 +5,7 @@ import { combinePathStrings } from '../../../helpers/svgPathMath';
 import { buildMirroredSvg, downloadFullPlanPdf, downloadSvgAsPdf, downloadSvgFile, PdfPage, SvgPathExport } from '../../../helpers/fileExporter';
 import { downloadDxfFile } from '../../../helpers/dxfExporter';
 import { renderFilledPath, renderPath } from '../../../helpers/renderFuncs';
-import { calculateCornerBlocks, calculateMould, defineFlutingPath, defineFlutingPlatformPath, defineInnerPath, defineOuterPath, defineOuterPurflingPath, definePurflingPath } from '../../ceruti-calcs';
+import { calculateCornerBlocks, calculateMould, defineFlutingPath, defineFlutingAreaPath, defineInnerPath, defineOuterPath, defineOuterPurflingPath, definePurflingPath } from '../../ceruti-calcs';
 import { CerutiColors, EnricoCerutiParams } from '../../ceruti-types';
 
 type ExportType = 'innerTrace' | 'outerTrace' | 'back' | 'mould' | 'blocks';
@@ -46,7 +46,7 @@ export class ExportPanel implements OnInit {
         if (purflingPath) renders.push(renderPath(purflingPath, this.colors.innerTrace, 1));
         const outerPurflingPath = defineOuterPurflingPath(p, offset);
         if (outerPurflingPath) renders.push(renderPath(outerPurflingPath, this.colors.innerTrace, 1));
-        const flutingPath = defineFlutingPlatformPath(p, offset);
+        const flutingPath = defineFlutingAreaPath(p, offset);
         if (flutingPath) renders.push(renderFilledPath(flutingPath, this.colors.fluting));
         this.draftChange.emit(renders);
         break;
@@ -60,7 +60,7 @@ export class ExportPanel implements OnInit {
         if (purflingPath) renders.push(renderPath(purflingPath, this.colors.innerTrace, 1));
         const outerPurflingPath = defineOuterPurflingPath(p, offset);
         if (outerPurflingPath) renders.push(renderPath(outerPurflingPath, this.colors.innerTrace, 1));
-        const flutingPath = defineFlutingPlatformPath(p, offset, true);
+        const flutingPath = defineFlutingAreaPath(p, offset, true);
         if (flutingPath) renders.push(renderFilledPath(flutingPath, this.colors.fluting));
         this.draftChange.emit(renders);
         break;
@@ -94,7 +94,7 @@ export class ExportPanel implements OnInit {
         if (purflingPath) paths.push({ d: purflingPath, stroke: 'black', fill: 'none', strokeWidth: '.5' });
         const outerPurflingPath = defineOuterPurflingPath(p, offset);
         if (outerPurflingPath) paths.push({ d: outerPurflingPath, stroke: 'black', fill: 'none', strokeWidth: '.5' });
-        const flutingPath = defineFlutingPlatformPath(p, offset);
+        const flutingPath = defineFlutingAreaPath(p, offset);
         if (flutingPath) paths.push({ d: flutingPath, fill: '#bbbbbb', fillRule: 'evenodd', fillOpacity: 0.35, stroke: 'none', strokeWidth: 0 });
         break;
       }
@@ -104,7 +104,7 @@ export class ExportPanel implements OnInit {
         if (purflingPath) paths.push({ d: purflingPath, stroke: 'black', fill: 'none', strokeWidth: '.5' });
         const outerPurflingPath = defineOuterPurflingPath(p, offset);
         if (outerPurflingPath) paths.push({ d: outerPurflingPath, stroke: 'black', fill: 'none', strokeWidth: '.5' });
-        const flutingPath = defineFlutingPlatformPath(p, offset, true);
+        const flutingPath = defineFlutingAreaPath(p, offset, true);
         if (flutingPath) paths.push({ d: flutingPath, fill: '#bbbbbb', fillRule: 'evenodd', fillOpacity: 0.35, stroke: 'none', strokeWidth: 0 });
         break;
       }
@@ -185,7 +185,7 @@ export class ExportPanel implements OnInit {
         if (purflingPath) pdfPaths.push({ d: purflingPath, stroke: 'black', fill: 'none' });
         const outerPurflingPath = defineOuterPurflingPath(p, offset);
         if (outerPurflingPath) pdfPaths.push({ d: outerPurflingPath, stroke: 'black', fill: 'none' });
-        const flutingPath = defineFlutingPlatformPath(p, offset);
+        const flutingPath = defineFlutingAreaPath(p, offset);
         if (flutingPath) pdfPaths.push({ d: flutingPath, fill: '#bbbbbb', fillRule: 'evenodd', fillOpacity: 0.35, stroke: 'none' });
         break;
       }
@@ -195,7 +195,7 @@ export class ExportPanel implements OnInit {
         if (purflingPath) pdfPaths.push({ d: purflingPath, stroke: 'black', fill: 'none' });
         const outerPurflingPath = defineOuterPurflingPath(p, offset);
         if (outerPurflingPath) pdfPaths.push({ d: outerPurflingPath, stroke: 'black', fill: 'none' });
-        const flutingPath = defineFlutingPlatformPath(p, offset, true);
+        const flutingPath = defineFlutingAreaPath(p, offset, true);
         if (flutingPath) pdfPaths.push({ d: flutingPath, fill: '#bbbbbb', fillRule: 'evenodd', fillOpacity: 0.35, stroke: 'none' });
         break;
       }
@@ -231,10 +231,10 @@ export class ExportPanel implements OnInit {
 
     const topPurfling = definePurflingPath(p, inset);
     const topOuterPurfling = defineOuterPurflingPath(p, inset);
-    const topFluting = defineFlutingPlatformPath(p, inset);
+    const topFluting = defineFlutingAreaPath(p, inset);
     const backPurfling = definePurflingPath(p, inset);
     const backOuterPurfling = defineOuterPurflingPath(p, inset);
-    const backFluting = defineFlutingPlatformPath(p, inset, true);
+    const backFluting = defineFlutingAreaPath(p, inset, true);
 
     const pages: PdfPage[] = [
       {
