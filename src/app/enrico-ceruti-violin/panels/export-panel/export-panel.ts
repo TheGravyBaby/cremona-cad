@@ -46,7 +46,7 @@ export class ExportPanel implements OnInit {
         if (purflingPath) renders.push(renderPath(purflingPath, this.colors.innerTrace, 1));
         const outerPurflingPath = defineOuterPurflingPath(p, offset);
         if (outerPurflingPath) renders.push(renderPath(outerPurflingPath, this.colors.innerTrace, 1));
-        const flutingPath = defineFlutingAreaPath(p, offset);
+        const flutingPath = defineFlutingAreaPath(p, p.innerFlutingDepth, p.outerFlutingDepth);
         if (flutingPath) renders.push(renderFilledPath(flutingPath, this.colors.fluting));
         this.draftChange.emit(renders);
         break;
@@ -60,7 +60,7 @@ export class ExportPanel implements OnInit {
         if (purflingPath) renders.push(renderPath(purflingPath, this.colors.innerTrace, 1));
         const outerPurflingPath = defineOuterPurflingPath(p, offset);
         if (outerPurflingPath) renders.push(renderPath(outerPurflingPath, this.colors.innerTrace, 1));
-        const flutingPath = defineFlutingAreaPath(p, offset, true);
+        const flutingPath = defineFlutingAreaPath(p, p.innerFlutingDepth, p.outerFlutingDepth);
         if (flutingPath) renders.push(renderFilledPath(flutingPath, this.colors.fluting));
         this.draftChange.emit(renders);
         break;
@@ -94,7 +94,7 @@ export class ExportPanel implements OnInit {
         if (purflingPath) paths.push({ d: purflingPath, stroke: 'black', fill: 'none', strokeWidth: '.5' });
         const outerPurflingPath = defineOuterPurflingPath(p, offset);
         if (outerPurflingPath) paths.push({ d: outerPurflingPath, stroke: 'black', fill: 'none', strokeWidth: '.5' });
-        const flutingPath = defineFlutingAreaPath(p, offset);
+        const flutingPath = defineFlutingAreaPath(p, p.innerFlutingDepth, p.outerFlutingDepth);
         if (flutingPath) paths.push({ d: flutingPath, fill: '#bbbbbb', fillRule: 'evenodd', fillOpacity: 0.35, stroke: 'none', strokeWidth: 0 });
         break;
       }
@@ -104,7 +104,7 @@ export class ExportPanel implements OnInit {
         if (purflingPath) paths.push({ d: purflingPath, stroke: 'black', fill: 'none', strokeWidth: '.5' });
         const outerPurflingPath = defineOuterPurflingPath(p, offset);
         if (outerPurflingPath) paths.push({ d: outerPurflingPath, stroke: 'black', fill: 'none', strokeWidth: '.5' });
-        const flutingPath = defineFlutingAreaPath(p, offset, true);
+        const flutingPath = defineFlutingAreaPath(p, p.innerFlutingDepth, p.outerFlutingDepth);
         if (flutingPath) paths.push({ d: flutingPath, fill: '#bbbbbb', fillRule: 'evenodd', fillOpacity: 0.35, stroke: 'none', strokeWidth: 0 });
         break;
       }
@@ -185,7 +185,7 @@ export class ExportPanel implements OnInit {
         if (purflingPath) pdfPaths.push({ d: purflingPath, stroke: 'black', fill: 'none' });
         const outerPurflingPath = defineOuterPurflingPath(p, offset);
         if (outerPurflingPath) pdfPaths.push({ d: outerPurflingPath, stroke: 'black', fill: 'none' });
-        const flutingPath = defineFlutingAreaPath(p, offset);
+        const flutingPath = defineFlutingAreaPath(p, p.innerFlutingDepth, p.outerFlutingDepth);
         if (flutingPath) pdfPaths.push({ d: flutingPath, fill: '#bbbbbb', fillRule: 'evenodd', fillOpacity: 0.35, stroke: 'none' });
         break;
       }
@@ -195,7 +195,7 @@ export class ExportPanel implements OnInit {
         if (purflingPath) pdfPaths.push({ d: purflingPath, stroke: 'black', fill: 'none' });
         const outerPurflingPath = defineOuterPurflingPath(p, offset);
         if (outerPurflingPath) pdfPaths.push({ d: outerPurflingPath, stroke: 'black', fill: 'none' });
-        const flutingPath = defineFlutingAreaPath(p, offset, true);
+        const flutingPath = defineFlutingAreaPath(p, p.innerFlutingDepth, p.outerFlutingDepth);
         if (flutingPath) pdfPaths.push({ d: flutingPath, fill: '#bbbbbb', fillRule: 'evenodd', fillOpacity: 0.35, stroke: 'none' });
         break;
       }
@@ -231,10 +231,10 @@ export class ExportPanel implements OnInit {
 
     const topPurfling = definePurflingPath(p, inset);
     const topOuterPurfling = defineOuterPurflingPath(p, inset);
-    const topFluting = defineFlutingAreaPath(p, inset);
+    const topFluting = defineFlutingAreaPath(p, p.innerFlutingDepth, p.outerFlutingDepth);
     const backPurfling = definePurflingPath(p, inset);
     const backOuterPurfling = defineOuterPurflingPath(p, inset);
-    const backFluting = defineFlutingAreaPath(p, inset, true);
+    const backFluting = defineFlutingAreaPath(p, p.innerFlutingDepth, p.outerFlutingDepth);
 
     const pages: PdfPage[] = [
       {

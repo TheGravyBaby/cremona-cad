@@ -409,7 +409,9 @@ export function calculateOuterArcs(p: EnricoCerutiParams): void {
     let inset = p.overhang + p.rib;
     p.purflingChannelDepth ??= 1.2;
     p.purflingOffset ??= inset + p.purflingChannelDepth;
-    p.flutingWidth ??= inset;
+    p.innerFlutingDepth ??= inset * 2;
+    p.outerFlutingDepth ??=  p.overhang * .5;
+
     p.button ??= new Rectangle(new Pt(-10, p.height - inset), new Pt(10, p.height - inset + 5));
 
     p.outerCorners.U3 = p.outerCorners.U3 ? redefineArcCircle(p.outerCorners.U3, p.bouts.U3, -inset) : offsetArcRadius(p.bouts.U3, -inset); // user might have redefined bouts
@@ -1431,9 +1433,9 @@ export function defineOuterPurflingPath(p: EnricoCerutiParams, offset: number): 
  * Returns null if either purflingOffset or flutingWidth is not yet set.
  */
 export function defineFlutingPath(p: EnricoCerutiParams, offset: number): string | null {
-    if (p.purflingOffset === null || p.flutingWidth === null) return null;
-    const flutingOffset = offset - p.purflingOffset - p.flutingWidth;
-    const flutingArcs = defineFlutingArcs(p, flutingOffset);
+    if (p.purflingOffset === null || p.innerFlutingDepth === null) return null;
+    const flutingOffset = offset - p.rib - p.overhang;
+    const flutingArcs = defineFlutingArcs(p, -flutingOffset);
     const mirrored = flutingArcs.map(arc => flipArcAboutY(arc));
     return unifyConnectedSvgPaths([...flutingArcs, ...mirrored].map(arc => pathFromArc(arc)));
 }
@@ -1444,10 +1446,10 @@ export function defineFlutingPath(p: EnricoCerutiParams, offset: number): string
  * combined with fill-rule="evenodd". Suitable for SVG/PDF export and rendering.
  * Returns null if the fluting platform is not yet configured.
  */
-export function defineFlutingAreaPath(p: EnricoCerutiParams, offset: number, button = false): string | null {
-    const innerPath = defineFlutingPath(p, offset);
+export function defineFlutingAreaPath(p: EnricoCerutiParams, innerOffset: number, outerOffset: number): string | null {
+    const innerPath = defineFlutingPath(p, innerOffset);
     if (innerPath === null) return null;
-    const outerPath = defineInsetPath(p, p.overhang);
+    const outerPath = defineInsetPath(p, outerOffset);
     return `${outerPath} Z ${innerPath} Z`;
 }
 
@@ -1490,8 +1492,8 @@ function buildArchPath(arch: ArchCurve, span: number, yStart: number, xBase: num
 
 export function calculateLongArch(p: EnricoCerutiParams): { span: number; yStart: number; topPath: string; backPath: string } {
   const a = p.arching!;
-  const span   = p.height - 2 * (p.overhang + (p.flutingWidth ?? 0));
-  const yStart = p.overhang + (p.flutingWidth ?? 0);
+  const span   = p.height - 2 * (p.overhang + (p.innerFlutingDepth ?? 0));
+  const yStart = p.overhang + (p.innerFlutingDepth ?? 0);
   const topPath  = buildArchPath(a.top.arch,    span, yStart, a.ribHeight + a.top.thickness, 1);
   const backPath = buildArchPath(a.bottom.arch, span, yStart, -a.bottom.thickness,           -1);
   return { span, yStart, topPath, backPath };
