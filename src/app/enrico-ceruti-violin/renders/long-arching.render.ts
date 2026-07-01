@@ -1,4 +1,4 @@
-import { Circle, Rectangle } from '../../models/types';
+import { Circle, Pt, Rectangle } from '../../models/types';
 import { renderCircle, renderCrosshair, renderLine, renderPath, renderRect } from '../../helpers/renderFuncs';
 import { ArchCurve, ArchingParams, CerutiColors, EnricoCerutiParams } from '../ceruti-types';
 
@@ -81,8 +81,23 @@ export const renderLongArchBoxes = (
   if (backPath) renderPath(backPath, colors.archBack, 1.5)(g, ui);
 
   renderRect(ribBox, colors.mouldTrace)(g, ui);
-  renderRect(topPlateBox, colors.outerTrace)(g, ui);
-  renderRect(backPlateBox, colors.mouldTrace)(g, ui);
+
+  renderLine(new Pt(a.ribHeight, 0), new Pt(a.ribHeight, p.height), colors.innerTrace)(g, ui);
+  renderLine(new Pt(a.ribHeight, p.height), new Pt(a.ribHeight + a.top.thickness, p.height), colors.innerTrace)(g, ui);
+  renderLine(new Pt(a.ribHeight + a.top.thickness, p.height), new Pt(a.ribHeight + a.top.thickness, p.height - p.outerFlutingDepth || 0), colors.innerTrace)(g, ui);
+  renderLine(new Pt(a.ribHeight + a.top.thickness, p.height - p.outerFlutingDepth || 0), new Pt(a.ribHeight + a.top.thickness, p.height - p.innerFlutingDepth || 0), colors.fluting)(g, ui);
+  renderLine(new Pt(a.ribHeight, 0), new Pt(a.ribHeight + a.top.thickness, 0), colors.innerTrace)(g, ui);
+  renderLine(new Pt(a.ribHeight + a.top.thickness, 0), new Pt(a.ribHeight + a.top.thickness, p.outerFlutingDepth || 0), colors.innerTrace)(g, ui);
+  renderLine(new Pt(a.ribHeight + a.top.thickness, p.outerFlutingDepth || 0), new Pt(a.ribHeight + a.top.thickness, p.innerFlutingDepth || 0), colors.fluting)(g, ui);
+
+  renderLine(new Pt(0, 0), new Pt(0, p.height), colors.innerTrace)(g, ui);
+  renderLine(new Pt(0, 0), new Pt(-a.bottom.thickness, 0), colors.innerTrace)(g, ui);
+  renderLine(new Pt(-a.bottom.thickness, 0), new Pt(-a.bottom.thickness, p.outerFlutingDepth || 0), colors.innerTrace)(g, ui);
+  renderLine(new Pt(-a.bottom.thickness, p.outerFlutingDepth || 0), new Pt(-a.bottom.thickness, p.innerFlutingDepth || 0), colors.fluting)(g, ui);
+  renderLine(new Pt(0, p.height), new Pt(-a.bottom.thickness, p.height), colors.innerTrace)(g, ui);
+  renderLine(new Pt(-a.bottom.thickness, p.height), new Pt(-a.bottom.thickness, p.height - p.outerFlutingDepth || 0), colors.innerTrace)(g, ui);
+  renderLine(new Pt(-a.bottom.thickness, p.height - p.outerFlutingDepth || 0), new Pt(-a.bottom.thickness, p.height - p.innerFlutingDepth || 0), colors.fluting)(g, ui);
+
   renderLine({x:0, y: p.bouts.UCr.y}, {x:a.ribHeight, y: p.bouts.UCr.y}, colors.mouldTrace)(g, ui);
   renderLine({x:0, y: p.bouts.LCr.y}, {x:a.ribHeight, y: p.bouts.LCr.y}, colors.mouldTrace)(g, ui);
 
