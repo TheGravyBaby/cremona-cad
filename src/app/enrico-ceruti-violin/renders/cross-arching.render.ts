@@ -25,6 +25,7 @@ function renderPlateEdges(
   zInner: number,
   thickness: number,
   sign: 1 | -1,
+  flutingSlicePath: string | null = null,
 ) {
   return (g: any, ui: any): void => {
     const zOuter = zInner + sign * thickness;
@@ -35,8 +36,10 @@ function renderPlateEdges(
     for (const side of [1, -1] as const) {
       renderLine(new Pt(side * halfWidth, zInner), new Pt(side * halfWidth, zOuter), colors.innerTrace)(g, ui);
       renderLine(new Pt(side * halfWidth, zOuter), new Pt(side * fo, zOuter), colors.innerTrace)(g, ui);
-      renderLine(new Pt(side * fo, zOuter), new Pt(side * fi, zOuter), colors.fluting)(g, ui);
+      // The carved channel profile replaces the flat platform segment when supplied.
+      if (!flutingSlicePath) renderLine(new Pt(side * fo, zOuter), new Pt(side * fi, zOuter), colors.fluting)(g, ui);
     }
+    if (flutingSlicePath) renderPath(flutingSlicePath, colors.fluting, 1.5)(g, ui);
   };
 }
 
@@ -57,6 +60,7 @@ export const renderCrossSection = (
   flutingOuterHalf: number | null = null,
   flutingInnerHalf: number | null = null,
   topArchPath: string | null = null,
+  flutingSliceTop: string | null = null,
 ) => (g: any, ui: any): void => {
   if (topArchPath) renderPath(topArchPath, colors.archTop, 1.5)(g, ui);
 
@@ -74,7 +78,7 @@ export const renderCrossSection = (
   }
 
   if (halfWidthOuter !== null) {
-    renderPlateEdges(colors, halfWidthOuter, flutingOuterHalf, flutingInnerHalf, a.ribHeight, a.top.thickness, 1)(g, ui);
+    renderPlateEdges(colors, halfWidthOuter, flutingOuterHalf, flutingInnerHalf, a.ribHeight, a.top.thickness, 1, flutingSliceTop)(g, ui);
     renderPlateEdges(colors, halfWidthOuter, flutingOuterHalf, flutingInnerHalf, 0, a.bottom.thickness, -1)(g, ui);
   }
 };

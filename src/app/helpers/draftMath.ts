@@ -5,6 +5,23 @@ export function dist(a: Pt, b: Pt) {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
+export function distPointToSegment(p: Pt, a: Pt, b: Pt): number {
+  const abx = b.x - a.x, aby = b.y - a.y;
+  const lenSq = abx * abx + aby * aby;
+  const t = lenSq === 0 ? 0 : Math.min(Math.max(((p.x - a.x) * abx + (p.y - a.y) * aby) / lenSq, 0), 1);
+  return Math.hypot(p.x - (a.x + t * abx), p.y - (a.y + t * aby));
+}
+
+/** Distance from a point to a closed polyline (last point connects back to the first). */
+export function distPointToPolyline(p: Pt, poly: Pt[]): number {
+  let best = Infinity;
+  for (let i = 0; i < poly.length; i++) {
+    const d = distPointToSegment(p, poly[i], poly[(i + 1) % poly.length]);
+    if (d < best) best = d;
+  }
+  return best;
+}
+
 export function flipAngleAboutYAxis(theta: number): number {
   return (Math.PI - theta + 2 * Math.PI) % (2 * Math.PI);
 }

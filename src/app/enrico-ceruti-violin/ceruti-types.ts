@@ -39,6 +39,7 @@ export interface CerutiViewFlags {
   simpleClampBox: boolean;
   /** Body height (mm) of the cross-section station being viewed; null = resolve a default on first activation. */
   crossSectionY: number | null;
+  showArchContours: boolean;
 }
 
 export const DEFAULT_CERUTI_VIEW_FLAGS: CerutiViewFlags = {
@@ -52,6 +53,7 @@ export const DEFAULT_CERUTI_VIEW_FLAGS: CerutiViewFlags = {
   showInnerPath: false,
   simpleClampBox: false,
   crossSectionY: null,
+  showArchContours: false,
 };
 
 /**
@@ -95,10 +97,27 @@ export interface CrossArchParams {
   d: number; // trochoid factor: 0 = raised cosine, 1 = standard cycloid (valid range 0–1)
 }
 
+/**
+ * The carved fluting channel for one plate — the vertical dimension of the
+ * platform annulus already defined in plan view. The transverse profile runs
+ * from the platform's outer boundary (plate surface level) down through the
+ * trough and back up to meet the cross-arch takeoff at −edgeDepth.
+ */
+export interface FlutingChannelParams {
+  /** mm below the plate outer surface at the deepest point of the channel. */
+  channelDepth: number;
+  /**
+   * Trough position across the annulus: 0 = platform outer boundary,
+   * 1 = fluting inner boundary. null = derive from the purfling line.
+   */
+  troughT: number | null;
+}
+
 export interface ArchPlate {
   arch: ArchCurve;
   thickness: number;
   cross?: CrossArchParams;
+  fluting?: FlutingChannelParams;
   /** mm below the plate outer surface where both the long arch and cross arch take off (default 0). */
   edgeDepth: number;
 }

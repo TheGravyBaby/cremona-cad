@@ -1,8 +1,8 @@
 import { solveInscribedCircleAlongAxis, circleCircleIntersections, angleFromCenter, interceptCirclesAndPoint, dist, pointOnCircle, offsetArcRadius, flipArcAboutY, flipPointAboutY, flipRectAboutY, lineCircleIntersection, redefineArcCircle, interceptCirclesAndPointCompound, findJoiningArcs, arcHorizontalIntersections } from "../helpers/draftMath";
 import { pathFromArc, pathFromLine, pathFromCornerCubic, unifyConnectedSvgPaths, pathFromRoundedRect, pathFromCircle, pathFromRect, combinePathStrings, differenceFromManyPaths, intersectionFromTwoPaths, translatePath, differenceFromTwoPaths, buildCatenaryPath, buildCycloidPath, buildSplinePath, buildCycloidPathAcross, catenaryZAt, cycloidZAt, splineZAt } from "../helpers/svgPathMath";
 import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Pt, Rectangle } from "../models/types";
-import { error, message } from "../shared/message-emitter";
-import { ArchCurve, ArchingParams, CrossArchParams, EnricoCerutiParams } from "./ceruti-types";
+import { error, message, warn } from "../shared/message-emitter";
+import { ArchCurve, ArchingParams, CrossArchParams, EnricoCerutiParams, FlutingChannelParams } from "./ceruti-types";
 
 export function calculateMainBouts(p: EnricoCerutiParams): void {
     let inset = p.overhang + p.rib;
@@ -1441,6 +1441,22 @@ export function defineFlutingPath(p: EnricoCerutiParams, offset: number): string
 }
 
 /**
+ * The plan-view line of the fluting trough — the deepest path of the carved
+ * channel, offset between the platform boundaries at the resolved trough
+ * position. Returns null until both the fluting platform and the arching's
+ * channel params exist.
+ */
+export function defineTroughPath(p: EnricoCerutiParams): string | null {
+    const fluting = p.arching?.top.fluting;
+    if (!fluting || p.innerFlutingDepth === null || p.outerFlutingDepth === null) return null;
+    const u = resolveTroughU(p, fluting);
+    const troughFromEdge = p.outerFlutingDepth + u * (p.innerFlutingDepth - p.outerFlutingDepth);
+    const arcs = defineFlutingArcs(p, p.overhang + p.rib - troughFromEdge);
+    const mirrored = arcs.map(arc => flipArcAboutY(arc));
+    return unifyConnectedSvgPaths([...arcs, ...mirrored].map(arc => pathFromArc(arc)));
+}
+
+/**
  * Returns the complete SVG path `d` string for the fluting platform area —
  * the outer trace as the outer boundary and the inner fluting edge as a hole,
  * combined with fill-rule="evenodd". Suitable for SVG/PDF export and rendering.
@@ -1530,6 +1546,47 @@ export function longArchHeightAt(p: EnricoCerutiParams, arch: ArchCurve, y: numb
 /** Default cross-arch shape: a mid-range curtate factor. */
 export function defaultCrossArchParams(): CrossArchParams {
   return { d: 0.6 };
+}
+
+/** Default fluting channel: 1 mm trough, trough position derived from the purfling line. */
+export function defaultFlutingChannelParams(): FlutingChannelParams {
+  return { channelDepth: 1.0, troughT: null };
+}
+
+/**
+ * Trough position across the platform annulus (0 = platform outer boundary,
+ * 1 = fluting inner boundary). Uses the plate's troughT when set, otherwise
+ * places the trough on the purfling line via the plan-view offsets. Clamped
+ * away from the boundaries so both profile half-waves keep a real width.
+ */
+export function resolveTroughU(p: EnricoCerutiParams, fluting: FlutingChannelParams): number {
+  const outer = p.outerFlutingDepth ?? 0;
+  const inner = p.innerFlutingDepth ?? 0;
+  const width = inner - outer;
+  const t = fluting.troughT
+    ?? (width > 0 ? ((p.purflingOffset ?? p.rib + p.overhang) - outer) / width : 0.5);
+  return Math.min(Math.max(t, 0.05), 0.95);
+}
+
+/**
+ * Warns when a ball-nose bit can't reach the bottom of the fluting trough: the
+ * profile's concave radius there (raised cosine of depth channelDepth over the
+ * trough-side half-wave: r = 1/κ, κ = channelDepth/2·(π/w)²) must exceed the
+ * bit radius. `annulusWidth` is the local platform width in mm; the narrowest
+ * station (the C-bout) governs, so callers pass that.
+ */
+export function checkFlutingBitFit(p: EnricoCerutiParams, fluting: FlutingChannelParams, annulusWidth: number): void {
+  if (fluting.channelDepth <= 0 || annulusWidth <= 0) return;
+  const w = resolveTroughU(p, fluting) * annulusWidth;
+  const troughRadius = 2 / fluting.channelDepth * (w / Math.PI) ** 2;
+  if (troughRadius < p.bitDiameter / 2) {
+    warn(
+      `The fluting trough's concave radius (~${troughRadius.toFixed(1)} mm) is tighter than the ` +
+      `bit radius (${(p.bitDiameter / 2).toFixed(2)} mm). The channel bottom will be undercut — ` +
+      `use a smaller bit, a shallower channel, or a wider platform.`,
+      "Fluting Channel",
+    );
+  }
 }
 
 /**

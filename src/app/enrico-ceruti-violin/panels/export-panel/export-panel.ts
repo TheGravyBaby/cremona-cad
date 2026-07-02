@@ -4,8 +4,11 @@ import { pointOnCircle } from '../../../helpers/draftMath';
 import { combinePathStrings } from '../../../helpers/svgPathMath';
 import { buildMirroredSvg, downloadFullPlanPdf, downloadSvgAsPdf, downloadSvgFile, PdfPage, SvgPathExport } from '../../../helpers/fileExporter';
 import { downloadDxfFile } from '../../../helpers/dxfExporter';
+import { downloadStlFile } from '../../../helpers/stlExporter';
 import { renderFilledPath, renderPath } from '../../../helpers/renderFuncs';
-import { calculateCornerBlocks } from '../../ceruti-calcs';
+import { error } from '../../../shared/message-emitter';
+import { calculateCornerBlocks, calculateOuterArcs, defaultCrossArchParams, defaultFlutingChannelParams } from '../../ceruti-calcs';
+import { buildTopPlateStl, buildTopSurfaceModel } from '../../ceruti-surface';
 import { CerutiColors, EnricoCerutiParams, PathEntry } from '../../ceruti-types';
 
 type ExportType = 'innerTrace' | 'outerTrace' | 'back' | 'mould' | 'blocks';
@@ -104,6 +107,21 @@ export class ExportPanel implements OnInit {
     }
 
     downloadSvgFile(`${baseName}-${type}.svg`, buildMirroredSvg(p.width, height, paths!));
+  }
+
+  downloadStl(): void {
+    const p = this.params;
+    if (!p.arching) {
+      error("The top plate surface needs the arching modules — open Long Arching and Cross Arching first.", "STL Export");
+      return;
+    }
+    p.arching.top.cross ??= defaultCrossArchParams();
+    p.arching.top.fluting ??= defaultFlutingChannelParams();
+    calculateOuterArcs(p);
+    const model = buildTopSurfaceModel(p);
+    if (!model) return;
+    const baseName = this.fileName?.trim() || 'ceruti-violin';
+    downloadStlFile(`${baseName}-top-plate.stl`, buildTopPlateStl(p, model));
   }
 
   downloadDxf(type: ExportType): void {
