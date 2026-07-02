@@ -1,5 +1,8 @@
 import * as d3 from 'd3';
+import * as polygonClipping from 'polygon-clipping';
 import { Pt } from '../models/types';
+// polygon-clipping ships as either an ESM default or a CJS namespace depending on bundler.
+const polyClipper: any = (polygonClipping as any).default ?? polygonClipping;
 import { distPointToPolyline } from '../helpers/draftMath';
 import { buildHeightFieldStl } from '../helpers/stlExporter';
 import { cycloidZAt, flutingProfileZ, samplePathToPolyline } from '../helpers/svgPathMath';
@@ -228,10 +231,24 @@ export function computeArchContours(
             ).join(' ') + ' Z'
         ).join(' ');
 
+    // Build the outline clip polygon in grid-index coordinates so marching-squares
+    // contour rings are clipped to the exact instrument boundary rather than the
+    // quantised grid staircase.
+    const toGridI = (x: number) => (x + xMax) / gridMm;
+    const toGridJ = (y: number) => (y - yMin) / gridMm;
+    const outlineRing: [number, number][] = model.outerPlate.map(
+        pt => [toGridI(pt.x), toGridJ(pt.y)] as [number, number]
+    );
+    outlineRing.push(outlineRing[0]); // polygon-clipping requires a closed ring
+    const outlineClip: [number, number][][][] = [[outlineRing]];
+
     const out: { level: number; path: string }[] = [];
     for (const level of levels) {
         const multi = generator.contour(level > 0 ? (posVals as any) : (negVals as any), level);
-        const path = toPath(multi.coordinates as any);
+        // Clip marching-squares rings to the exact outline so every contour boundary
+        // follows the instrument shape rather than a grid staircase.
+        const clipped: number[][][][] = (polyClipper.intersection(multi.coordinates as any, outlineClip) ?? []) as any;
+        const path = toPath(clipped);
         if (path.trim().length > 0) out.push({ level, path });
     }
     return out;
@@ -255,5 +272,10 @@ export function buildTopPlateStl(p: EnricoCerutiParams, model: TopSurfaceModel, 
         return z === null ? null : thickness + z;
     };
 
-    return buildHeightFieldStl(zAt, { xMin: -xMax, xMax, yMin: -1, yMax: p.height + 1, gridMm, baseZ: 0 });
+    return buildHeightFieldStl(zAt, {
+        xMin: -xMax, xMax, yMin: -1, yMax: p.height + 1, gridMm, baseZ: 0,
+        // Exact outline walls replace the grid staircase at the instrument boundary.
+        outline: model.outerPlate.map(pt => [pt.x, pt.y] as [number, number]),
+        outlineTopZ: thickness,
+    });
 }
