@@ -1,5 +1,5 @@
 import { Circle, Pt, Rectangle } from '../../models/types';
-import { renderCircle, renderCrosshair, renderLine, renderPath, renderRect } from '../../helpers/renderFuncs';
+import { renderCircle, renderCrosshair, renderLine, renderMeasure, renderPath, renderRect } from '../../helpers/renderFuncs';
 import { ArchCurve, ArchingParams, CerutiColors, EnricoCerutiParams } from '../ceruti-types';
 
 // ===== Guide overlays =====
@@ -15,7 +15,7 @@ function renderSplineGuide(
   return (g: any, ui: any): void => {
     if (arch.type !== 'spline') return;
     for (const pt of arch.points) {
-      const cx  = xBase + sign * pt.z;
+      const cx = xBase + sign * pt.z;
       const yHi = yStart + pt.t * span / 2;
       const yLo = yStart + span - pt.t * span / 2;
       renderCrosshair({ x: cx, y: yHi }, color, 2, 1.5, 1)(g, ui);
@@ -34,11 +34,11 @@ function renderCycloidGuide(
 ) {
   return (g: any, ui: any): void => {
     if (arch.type !== 'cycloid' || arch.d <= 0.01 || arch.archHeight <= 0) return;
-    const h  = arch.archHeight;
+    const h = arch.archHeight;
     // Rolling circle at arch midpoint (t=π):
     //   centre sits at h/2 above the plate-edge baseline (independent of d)
     //   radius r = h / (2d)  →  for d=1 the top of the circle touches the arch peak
-    const r  = h / (2 * arch.d);
+    const r = h / (2 * arch.d);
     const cx = xBase + sign * (h / 2);
     const cy = yStart + span / 2;
     renderCircle(new Circle(cx, cy, r), color)(g, ui);
@@ -77,8 +77,9 @@ export const renderLongArchBoxes = (
     { x: 0, y: p.height },
   );
 
-  if (topPath)  renderPath(topPath,  colors.archTop,  1.5)(g, ui);
+  if (topPath) renderPath(topPath, colors.archTop, 1.5)(g, ui);
   if (backPath) renderPath(backPath, colors.archBack, 1.5)(g, ui);
+
 
   renderRect(ribBox, colors.mouldTrace)(g, ui);
 
@@ -98,17 +99,34 @@ export const renderLongArchBoxes = (
   renderLine(new Pt(-a.bottom.thickness, p.height), new Pt(-a.bottom.thickness, p.height - p.outerFlutingDepth || 0), colors.innerTrace)(g, ui);
   renderLine(new Pt(-a.bottom.thickness, p.height - p.outerFlutingDepth || 0), new Pt(-a.bottom.thickness, p.height - p.innerFlutingDepth || 0), colors.fluting)(g, ui);
 
-  renderLine({x:0, y: p.bouts.UCr.y}, {x:a.ribHeight, y: p.bouts.UCr.y}, colors.mouldTrace)(g, ui);
-  renderLine({x:0, y: p.bouts.LCr.y}, {x:a.ribHeight, y: p.bouts.LCr.y}, colors.mouldTrace)(g, ui);
+  renderLine({ x: 0, y: p.bouts.UCr.y }, { x: a.ribHeight, y: p.bouts.UCr.y }, colors.mouldTrace)(g, ui);
+  renderLine({ x: 0, y: p.bouts.LCr.y }, { x: a.ribHeight, y: p.bouts.LCr.y }, colors.mouldTrace)(g, ui);
 
 
 
   if (showGuides) {
-    renderCycloidGuide(a.top.arch,    span, yStart, a.ribHeight + a.top.thickness, 1,  colors.archTop)(g, ui);
-    renderCycloidGuide(a.bottom.arch, span, yStart, -a.bottom.thickness,           -1, colors.archBack)(g, ui);
-    renderSplineGuide(a.top.arch,    span, yStart, a.ribHeight + a.top.thickness, 1,  colors.archTop)(g, ui);
-    renderSplineGuide(a.bottom.arch, span, yStart, -a.bottom.thickness,           -1, colors.archBack)(g, ui);
-  } 
+    renderCycloidGuide(a.top.arch, span, yStart, a.ribHeight + a.top.thickness, 1, colors.archTop)(g, ui);
+    renderCycloidGuide(a.bottom.arch, span, yStart, -a.bottom.thickness, -1, colors.archBack)(g, ui);
+    renderSplineGuide(a.top.arch,    span, yStart, a.ribHeight + a.top.thickness    - a.top.edgeDepth,    1,  colors.archTop)(g, ui);
+    renderSplineGuide(a.bottom.arch, span, yStart, -a.bottom.thickness              + a.bottom.edgeDepth, -1, colors.archBack)(g, ui);
+
+    // Arch height measures: horizontal line at the body midpoint (where the peak sits),
+    // spanning from the plate outer surface to the arch peak.
+    const midY = yStart + span / 2;
+    renderMeasure(
+      new Pt(a.ribHeight + a.top.thickness, midY),
+      new Pt(a.ribHeight + a.top.thickness + a.top.arch.archHeight, midY),
+      `${a.top.arch.archHeight.toFixed(1)}`,
+      colors.archTop, 3, 7,
+    )(g, ui);
+    renderMeasure(
+      new Pt(-a.bottom.thickness, midY),
+      new Pt(-a.bottom.thickness - a.bottom.arch.archHeight, midY),
+      `${a.bottom.arch.archHeight.toFixed(1)}`,
+      colors.archBack, 3, 7,
+    )(g, ui);
+
+  }
 
 
 };

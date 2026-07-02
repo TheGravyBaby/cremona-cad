@@ -212,6 +212,16 @@ export function crossSectionStationInfo() {
     )
 }
 
+export function crossArchEdgeDepthInfo() {
+    info(
+        "Lowers the point where the cross arch takes off from the plate edge, measured in mm below the plate outer surface.\n\n" +
+        "The center peak height remains anchored to the long arch — only the edge takeoff moves down, so the effective arch height increases by this amount.\n\n" +
+        "This is useful when the cycloid factor is low (arch nearly flat at the edges): a small edge depth gives the fluting channel a meaningful slope to intersect cleanly with the arch surface.\n\n" +
+        "0 = takeoff exactly at the plate surface (default). Values of 0.5–2 mm are typical.",
+        "Cross Arch Edge Depth", defaultTTL
+    )
+}
+
 export function cornerCutoffInfo() {
     info(
         "Controls where the corner arc is trimmed, setting the final length of the corner tip. Shorter values produce blunter corners; longer values produce more pronounced points.\n\n" +

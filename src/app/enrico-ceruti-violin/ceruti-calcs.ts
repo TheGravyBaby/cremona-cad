@@ -1460,25 +1460,25 @@ export function defaultArchingParams(bodyHeight: number): ArchingParams {
   if (bodyHeight < 400) {
     // Violin
     return { surfaceMethod: 'proportional', ribHeight: 32,
-      top:    { arch: cat(15), thickness: 3.5 },
-      bottom: { arch: cat(14), thickness: 3.5 } };
+      top:    { arch: cat(15), thickness: 3.5, edgeDepth: 0 },
+      bottom: { arch: cat(14), thickness: 3.5, edgeDepth: 0 } };
   }
   if (bodyHeight < 500) {
     // Viola
     return { surfaceMethod: 'proportional', ribHeight: 40,
-      top:    { arch: cat(20), thickness: 4.0 },
-      bottom: { arch: cat(18), thickness: 4.0 } };
+      top:    { arch: cat(20), thickness: 4.0, edgeDepth: 0 },
+      bottom: { arch: cat(18), thickness: 4.0, edgeDepth: 0 } };
   }
   if (bodyHeight < 800) {
     // Cello
     return { surfaceMethod: 'proportional', ribHeight: 120,
-      top:    { arch: cat(27), thickness: 6.0 },
-      bottom: { arch: cat(25), thickness: 6.0 } };
+      top:    { arch: cat(27), thickness: 6.0, edgeDepth: 0 },
+      bottom: { arch: cat(25), thickness: 6.0, edgeDepth: 0 } };
   }
   // Double bass
   return { surfaceMethod: 'proportional', ribHeight: 185,
-    top:    { arch: cat(55), thickness: 9.0 },
-    bottom: { arch: cat(50), thickness: 9.0 } };
+    top:    { arch: cat(55), thickness: 9.0, edgeDepth: 0 },
+    bottom: { arch: cat(50), thickness: 9.0, edgeDepth: 0 } };
 }
 
 function buildArchPath(arch: ArchCurve, span: number, yStart: number, xBase: number, sign: 1 | -1): string {
@@ -1494,8 +1494,20 @@ export function calculateLongArch(p: EnricoCerutiParams): { span: number; yStart
   const a = p.arching!;
   const span   = p.height - 2 * (p.innerFlutingDepth ?? 0);
   const yStart =  p.innerFlutingDepth ?? 0;
-  const topPath  = buildArchPath(a.top.arch,    span, yStart, a.ribHeight + a.top.thickness, 1);
-  const backPath = buildArchPath(a.bottom.arch, span, yStart, -a.bottom.thickness,           -1);
+
+  // edgeDepth lowers the arch takeoff below the plate surface by that many mm, increasing
+  // hEff by the same amount so the peak stays anchored at the user-entered archHeight.
+  const topED  = a.top.edgeDepth;
+  const botED  = a.bottom.edgeDepth;
+
+  const topPath  = buildArchPath(
+    { ...a.top.arch,    archHeight: a.top.arch.archHeight    + topED },
+    span, yStart, a.ribHeight + a.top.thickness - topED, 1,
+  );
+  const backPath = buildArchPath(
+    { ...a.bottom.arch, archHeight: a.bottom.arch.archHeight + botED },
+    span, yStart, -a.bottom.thickness + botED, -1,
+  );
   return { span, yStart, topPath, backPath };
 }
 
@@ -1525,6 +1537,11 @@ export function defaultCrossArchParams(): CrossArchParams {
  * inner-boundary chord, peaking at the long arch's height at that station —
  * built in section coordinates (canvas X = violin X, canvas Y = Z, taking off
  * from the plate's outer edge surface). Returns null where no arch exists.
+ *
+ * `edgeDepth` lowers the cycloid's edge takeoff below the plate surface by that
+ * many mm, increasing hEff by the same amount so the center peak stays anchored
+ * at the long arch height. This gives the fluting channel a meaningful slope to
+ * meet regardless of the trochoid factor.
  */
 export function calculateCrossArchTop(p: EnricoCerutiParams, y: number): { path: string; halfSpan: number } | null {
   const a = p.arching!;
@@ -1533,8 +1550,10 @@ export function calculateCrossArchTop(p: EnricoCerutiParams, y: number): { path:
   const h = longArchHeightAt(p, a.top.arch, y);
   if (h <= 0) return null;
   const d = a.top.cross?.d ?? defaultCrossArchParams().d;
-  const zBase = a.ribHeight + a.top.thickness;
-  return { path: buildCycloidPathAcross(h, 2 * halfSpan, -halfSpan, zBase, 1, d), halfSpan };
+  const edgeDepth = a.top.edgeDepth;
+  const zBase = a.ribHeight + a.top.thickness - edgeDepth;
+  const hEff  = h + edgeDepth;
+  return { path: buildCycloidPathAcross(hEff, 2 * halfSpan, -halfSpan, zBase, 1, d), halfSpan };
 }
 
 /** Outermost |x| where the horizontal station line crosses any of the arcs' drawn spans; null if none. */
