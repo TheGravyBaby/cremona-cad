@@ -472,7 +472,7 @@ export class CerutiViolin extends RecipeComponentBase {
       // Fluting is a filled area, so it must be drawn before the purfling lines or it paints over them.
       const renders: Array<(g: any, ui: any) => void> = [renderPath(backPath, this.colors.outerTrace)];
       if (flutingAreaPath) renders.push(renderFilledPath(flutingAreaPath, this.colors.fluting));
-      if (troughPath) renders.push(renderPath(troughPath, this.colors.fluting, 1));
+      // if (troughPath) renders.push(renderPath(troughPath, this.colors.fluting, 1));
       if (purflingPath) renders.push(renderPath(purflingPath, this.colors.innerTrace, 1));
       if (outerPurflingPath) renders.push(renderPath(outerPurflingPath, this.colors.innerTrace, 1));
       renders.push(renderOuterTraceGuides(p, this.colors, this.viewFlags, true));
