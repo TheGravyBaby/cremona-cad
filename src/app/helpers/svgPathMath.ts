@@ -867,6 +867,80 @@ export function buildSplinePath(
   N = 120,
 ): string {
   if (hEff <= 0 || span <= 0) return '';
+  const zOf = makeArchSplineZOf(hEff, span, points);
+  const pts: string[] = [];
+  for (let i = 0; i <= N; i++) {
+    const y = (i / N) * span;
+    const z = zOf(y);
+    pts.push(`${i === 0 ? 'M' : 'L'} ${xBase + sign * z} ${yStart + y}`);
+  }
+  return pts.join(' ');
+}
+
+/**
+ * Build an SVG polyline path for a trochoid/cycloid cross-arch curve drawn
+ * across the canvas: the span runs along canvas X and the height rises from
+ * `yBase` along canvas Y (sign +1 up for the top plate, −1 down for the back).
+ * Same parametrisation as buildCycloidPath.
+ */
+export function buildCycloidPathAcross(
+  hEff: number,
+  span: number,
+  xStart: number,
+  yBase: number,
+  sign: 1 | -1,
+  d: number,
+  N = 80,
+): string {
+  if (hEff <= 0 || span <= 0) return '';
+  const pts: string[] = [];
+  for (let i = 0; i <= N; i++) {
+    const t = (i / N) * 2 * Math.PI;
+    const xLocal = ((t - d * Math.sin(t)) / (2 * Math.PI)) * span;
+    const z      = ((1 - Math.cos(t))     / 2)             * hEff;
+    pts.push(`${i === 0 ? 'M' : 'L'} ${xStart + xLocal} ${yBase + sign * z}`);
+  }
+  return pts.join(' ');
+}
+
+// ===== Arch curve evaluators =====
+// The evaluable counterparts of the path builders above, for querying an arch
+// height at a single station. Out-of-span positions return 0 (the plate-edge
+// reference level).
+
+/** Arch height at position s ∈ [0, span] along a catenary arch. */
+export function catenaryZAt(hEff: number, span: number, s: number): number {
+  if (hEff <= 0 || span <= 0 || s <= 0 || s >= span) return 0;
+  const a = solveCatenaryA(hEff, span);
+  return hEff + a - a * Math.cosh((s - span / 2) / a);
+}
+
+/**
+ * Arch height at position s ∈ [0, span] along a trochoid arch. Inverts the
+ * monotone s(t) = (t − d·sin t)/2π · span (Kepler's equation) by bisection —
+ * robust even at the d=1 cusps where Newton's method stalls.
+ */
+export function cycloidZAt(hEff: number, span: number, d: number, s: number): number {
+  if (hEff <= 0 || span <= 0 || s <= 0 || s >= span) return 0;
+  const m = (s / span) * 2 * Math.PI;
+  let lo = 0;
+  let hi = 2 * Math.PI;
+  for (let i = 0; i < 60; i++) {
+    const t = (lo + hi) / 2;
+    if (t - d * Math.sin(t) < m) lo = t; else hi = t;
+  }
+  const t = (lo + hi) / 2;
+  return ((1 - Math.cos(t)) / 2) * hEff;
+}
+
+/** Arch height at position s ∈ [0, span] along a spline arch. */
+export function splineZAt(hEff: number, span: number, points: { t: number; z: number }[], s: number): number {
+  if (hEff <= 0 || span <= 0 || s <= 0 || s >= span) return 0;
+  return makeArchSplineZOf(hEff, span, points)(s);
+}
+
+/** Natural-spline evaluator z(s) over [0, span] — shared by buildSplinePath and splineZAt. */
+function makeArchSplineZOf(hEff: number, span: number, points: { t: number; z: number }[]): (s: number) => number {
   const sorted = [...points].sort((a, b) => a.t - b.t);
   // Full symmetric knot list along y (always single-valued)
   const ys: number[] = [0];
@@ -875,13 +949,5 @@ export function buildSplinePath(
   ys.push(span / 2);                      zs.push(hEff);
   for (const p of sorted.slice().reverse()) { ys.push(span - p.t * span / 2); zs.push(p.z); }
   ys.push(span);                           zs.push(0);
-
-  const zOf = makeNaturalSpline(ys, zs);
-  const pts: string[] = [];
-  for (let i = 0; i <= N; i++) {
-    const y = (i / N) * span;
-    const z = zOf(y);
-    pts.push(`${i === 0 ? 'M' : 'L'} ${xBase + sign * z} ${yStart + y}`);
-  }
-  return pts.join(' ');
+  return makeNaturalSpline(ys, zs);
 }

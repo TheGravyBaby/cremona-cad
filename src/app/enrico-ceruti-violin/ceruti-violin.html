@@ -114,6 +114,15 @@
         </app-ceruti-long-arching-panel>
         }
 
+        @if (openPanel === 'crossArching') {
+        <app-ceruti-cross-arching-panel
+            [params]="d.params"
+            [colors]="colors"
+            [flags]="viewFlags"
+            (changed)="changeCrossArching()">
+        </app-ceruti-cross-arching-panel>
+        }
+
         @if (openPanel === 'export') {
         <app-ceruti-export-panel
             [params]="d.params"

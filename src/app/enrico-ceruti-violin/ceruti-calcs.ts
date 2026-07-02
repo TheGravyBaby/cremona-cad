@@ -1,8 +1,8 @@
-import { solveInscribedCircleAlongAxis, circleCircleIntersections, angleFromCenter, interceptCirclesAndPoint, dist, pointOnCircle, offsetArcRadius, flipArcAboutY, flipPointAboutY, flipRectAboutY, lineCircleIntersection, redefineArcCircle, interceptCirclesAndPointCompound, findJoiningArcs } from "../helpers/draftMath";
-import { pathFromArc, pathFromLine, pathFromCornerCubic, unifyConnectedSvgPaths, pathFromRoundedRect, pathFromCircle, pathFromRect, combinePathStrings, differenceFromManyPaths, intersectionFromTwoPaths, translatePath, differenceFromTwoPaths, buildCatenaryPath, buildCycloidPath, buildSplinePath } from "../helpers/svgPathMath";
+import { solveInscribedCircleAlongAxis, circleCircleIntersections, angleFromCenter, interceptCirclesAndPoint, dist, pointOnCircle, offsetArcRadius, flipArcAboutY, flipPointAboutY, flipRectAboutY, lineCircleIntersection, redefineArcCircle, interceptCirclesAndPointCompound, findJoiningArcs, arcHorizontalIntersections } from "../helpers/draftMath";
+import { pathFromArc, pathFromLine, pathFromCornerCubic, unifyConnectedSvgPaths, pathFromRoundedRect, pathFromCircle, pathFromRect, combinePathStrings, differenceFromManyPaths, intersectionFromTwoPaths, translatePath, differenceFromTwoPaths, buildCatenaryPath, buildCycloidPath, buildSplinePath, buildCycloidPathAcross, catenaryZAt, cycloidZAt, splineZAt } from "../helpers/svgPathMath";
 import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Pt, Rectangle } from "../models/types";
 import { error, message } from "../shared/message-emitter";
-import { ArchCurve, ArchingParams, EnricoCerutiParams } from "./ceruti-types";
+import { ArchCurve, ArchingParams, CrossArchParams, EnricoCerutiParams } from "./ceruti-types";
 
 export function calculateMainBouts(p: EnricoCerutiParams): void {
     let inset = p.overhang + p.rib;
@@ -1497,4 +1497,97 @@ export function calculateLongArch(p: EnricoCerutiParams): { span: number; yStart
   const topPath  = buildArchPath(a.top.arch,    span, yStart, a.ribHeight + a.top.thickness, 1);
   const backPath = buildArchPath(a.bottom.arch, span, yStart, -a.bottom.thickness,           -1);
   return { span, yStart, topPath, backPath };
+}
+
+/**
+ * Long-arch height above the plate-edge reference at body height `y` — the
+ * evaluable counterpart of calculateLongArch's paths. Returns 0 outside the
+ * arch span. This is the centerline (x = 0) peak constraint for cross arches.
+ */
+export function longArchHeightAt(p: EnricoCerutiParams, arch: ArchCurve, y: number): number {
+  const span   = p.height - 2 * (p.innerFlutingDepth ?? 0);
+  const yStart = p.innerFlutingDepth ?? 0;
+  const s = y - yStart;
+  switch (arch.type) {
+    case 'catenary': return catenaryZAt(arch.archHeight, span, s);
+    case 'cycloid':  return cycloidZAt(arch.archHeight, span, arch.d, s);
+    case 'spline':   return splineZAt(arch.archHeight, span, arch.points, s);
+  }
+}
+
+/** Default cross-arch shape: a mid-range curtate factor. */
+export function defaultCrossArchParams(): CrossArchParams {
+  return { d: 0.6 };
+}
+
+/**
+ * The top-plate cross arch at body height `y`: a trochoid spanning the fluting
+ * inner-boundary chord, peaking at the long arch's height at that station —
+ * built in section coordinates (canvas X = violin X, canvas Y = Z, taking off
+ * from the plate's outer edge surface). Returns null where no arch exists.
+ */
+export function calculateCrossArchTop(p: EnricoCerutiParams, y: number): { path: string; halfSpan: number } | null {
+  const a = p.arching!;
+  const halfSpan = flutingHalfWidthAtY(p, y);
+  if (halfSpan === null || halfSpan <= 0) return null;
+  const h = longArchHeightAt(p, a.top.arch, y);
+  if (h <= 0) return null;
+  const d = a.top.cross?.d ?? defaultCrossArchParams().d;
+  const zBase = a.ribHeight + a.top.thickness;
+  return { path: buildCycloidPathAcross(h, 2 * halfSpan, -halfSpan, zBase, 1, d), halfSpan };
+}
+
+/** Outermost |x| where the horizontal station line crosses any of the arcs' drawn spans; null if none. */
+function maxAbsXAtY(arcs: Arc[], y: number): number | null {
+    let best: number | null = null;
+    for (const arc of arcs) {
+        if (!arc) continue;
+        for (const pt of arcHorizontalIntersections(arc, y)) {
+            if (best === null || Math.abs(pt.x) > best) best = Math.abs(pt.x);
+        }
+    }
+    return best;
+}
+
+/**
+ * Half-width of the inner (mould) outline at body height `y`. The outline is
+ * symmetric about x = 0 so the unmirrored arcs suffice. Returns null when the
+ * station line misses the outline entirely (beyond the top/bottom caps).
+ */
+export function innerHalfWidthAtY(p: EnricoCerutiParams, y: number): number | null {
+    return maxAbsXAtY(defineInnerArcs(p), y);
+}
+
+/**
+ * Half-width of the finished plate edge (outer path) at body height `y`.
+ * Requires p.outerCorners to be current (calculateOuterArcs) since the corner
+ * region's outermost extent lies on the outer corner arcs.
+ */
+export function outerHalfWidthAtY(p: EnricoCerutiParams, y: number, offset?: number): number | null {
+    offset ??= p.overhang + p.rib;
+    const arcs = [...defineOffsetArcs(p, offset), ...defineOuterCornerArcs(p, offset)];
+    return maxAbsXAtY(arcs, y);
+}
+
+/**
+ * Half-width of the fluting platform's inner boundary at body height `y` —
+ * the outer path inset by innerFlutingDepth. This is where the cross arches
+ * take off. Falls back to the plate edge when fluting isn't configured.
+ */
+export function flutingHalfWidthAtY(p: EnricoCerutiParams, y: number): number | null {
+    if (p.innerFlutingDepth === null) return outerHalfWidthAtY(p, y);
+    const offset = p.overhang + p.rib - p.innerFlutingDepth;
+    return maxAbsXAtY(defineFlutingArcs(p, offset), y);
+}
+
+/**
+ * Half-width of the fluting platform's outer boundary (the outer path inset by
+ * outerFlutingDepth, per defineInsetPath) at body height `y`. Chords the bout
+ * offset arcs only — near the corner cutoffs this reads slightly inboard of
+ * the true boundary, which only shifts the trace/fluting colour transition
+ * there, never the platform's connection to the cross arch.
+ */
+export function flutingOuterHalfWidthAtY(p: EnricoCerutiParams, y: number): number | null {
+    const offset = p.overhang + p.rib - (p.outerFlutingDepth ?? 0);
+    return maxAbsXAtY(defineOffsetArcs(p, offset), y);
 }

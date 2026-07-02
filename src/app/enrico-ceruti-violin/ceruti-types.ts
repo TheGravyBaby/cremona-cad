@@ -37,6 +37,8 @@ export interface CerutiViewFlags {
   showBlocks: boolean;
   showInnerPath: boolean;
   simpleClampBox: boolean;
+  /** Body height (mm) of the cross-section station being viewed; null = resolve a default on first activation. */
+  crossSectionY: number | null;
 }
 
 export const DEFAULT_CERUTI_VIEW_FLAGS: CerutiViewFlags = {
@@ -49,6 +51,7 @@ export const DEFAULT_CERUTI_VIEW_FLAGS: CerutiViewFlags = {
   showBlocks: true,
   showInnerPath: false,
   simpleClampBox: false,
+  crossSectionY: null,
 };
 
 /**
@@ -82,9 +85,21 @@ export interface ArchSpline {
 
 export type ArchCurve = ArchCatenary | ArchCycloid | ArchSpline;
 
+/**
+ * Cross-arch shape parameters for one plate. The section curve at any station
+ * is a trochoid whose span (fluting inner-boundary chord) and peak (long-arch
+ * height there) are both derived — the trochoid factor is the only free
+ * parameter. Constant along the body for now; consumed per-station so it can
+ * become d(Y) later.
+ */
+export interface CrossArchParams {
+  d: number; // trochoid factor: 0 = raised cosine, 1 = standard cycloid (valid range 0–1)
+}
+
 export interface ArchPlate {
   arch: ArchCurve;
   thickness: number;
+  cross?: CrossArchParams;
 }
 
 export interface ArchingParams {
