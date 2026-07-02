@@ -7,7 +7,7 @@ import {
   ArchingParams, CerutiColors, CerutiViewFlags, EnricoCerutiParams,
 } from '../../ceruti-types';
 import {
-  archHeightInfo, curveTypeInfo, plateThicknessInfo, ribHeightInfo,
+  archHeightInfo, crossArchEdgeDepthInfo, curveTypeInfo, plateThicknessInfo, ribHeightInfo,
   splinePointInfo, trochoidFactorInfo,
 } from '../../ceruti-helpers';
 import { RenderToggles } from '../../render-toggles/render-toggles';
@@ -31,6 +31,7 @@ export class LongArchingPanel {
   protected readonly trochoidFactorInfo = trochoidFactorInfo;
   protected readonly curveTypeInfo      = curveTypeInfo;
   protected readonly splinePointInfo    = splinePointInfo;
+  protected readonly archEdgeDepthInfo  = crossArchEdgeDepthInfo;
 
   get arching(): ArchingParams    { return this.params.arching!; }
   get topArch(): ArchCurve        { return this.arching.top.arch; }

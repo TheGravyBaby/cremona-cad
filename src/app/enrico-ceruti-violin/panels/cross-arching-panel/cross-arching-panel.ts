@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ArchingParams, CerutiColors, CerutiViewFlags, CrossArchParams, EnricoCerutiParams } from '../../ceruti-types';
-import { crossSectionStationInfo, trochoidFactorInfo } from '../../ceruti-helpers';
+import { crossArchEdgeDepthInfo, crossSectionStationInfo, trochoidFactorInfo } from '../../ceruti-helpers';
 import { RenderToggles } from '../../render-toggles/render-toggles';
 
 @Component({
@@ -19,6 +19,7 @@ export class CrossArchingPanel {
 
   protected readonly crossSectionStationInfo = crossSectionStationInfo;
   protected readonly trochoidFactorInfo = trochoidFactorInfo;
+  protected readonly crossArchEdgeDepthInfo = crossArchEdgeDepthInfo;
 
   get arching(): ArchingParams { return this.params.arching!; }
   get topCross(): CrossArchParams { return this.arching.top.cross!; }

@@ -471,19 +471,19 @@ export const renderMeasure = (
     };
     tick(P); tick(Q);
 
-    // label at midpoint, nudged along normal
+    // label at midpoint, nudged along normal.
+    // Text goes to the ui layer with Y negated so it stays upright despite the grid's Y-flip.
     const mx = (P.x + Q.x) / 2 + nx * offset;
     const my = (P.y + Q.y) / 2 + ny * offset;
 
-    g.append("text")
+    ui.append("text")
         .text(label)
         .attr("x", mx)
-        .attr("y", my)
+        .attr("y", -my)
         .attr("fill", color)
         .attr("font-size", fontSize)
         .attr("text-anchor", "middle")
-        .attr("dominant-baseline", "central")
-        .attr("vector-effect", "non-scaling-stroke");
+        .attr("dominant-baseline", "central");
 };
 
 
