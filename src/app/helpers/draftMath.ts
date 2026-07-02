@@ -22,6 +22,88 @@ export function distPointToPolyline(p: Pt, poly: Pt[]): number {
   return best;
 }
 
+/**
+ * Uniform-grid spatial index over a closed polyline's segments. A single
+ * distance query is O(N); dense batch queries (contour grids, wireframe
+ * strips, STL export) make that quadratic, so they should build this once
+ * and query cells instead of scanning every segment.
+ */
+export interface PolylineIndex {
+  poly: Pt[];
+  cellSize: number;
+  minX: number;
+  minY: number;
+  cols: number;
+  rows: number;
+  /** Per-cell lists of segment start indices (segment i runs poly[i] → poly[(i+1) % n]). */
+  cells: number[][];
+}
+
+export function buildPolylineIndex(poly: Pt[], cellSize = 6): PolylineIndex {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const pt of poly) {
+    if (pt.x < minX) minX = pt.x;
+    if (pt.x > maxX) maxX = pt.x;
+    if (pt.y < minY) minY = pt.y;
+    if (pt.y > maxY) maxY = pt.y;
+  }
+  const cols = poly.length ? Math.max(1, Math.ceil((maxX - minX) / cellSize)) : 1;
+  const rows = poly.length ? Math.max(1, Math.ceil((maxY - minY) / cellSize)) : 1;
+  const cells: number[][] = Array.from({ length: cols * rows }, () => []);
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i], b = poly[(i + 1) % poly.length];
+    const i0 = Math.min(cols - 1, Math.max(0, Math.floor((Math.min(a.x, b.x) - minX) / cellSize)));
+    const i1 = Math.min(cols - 1, Math.max(0, Math.floor((Math.max(a.x, b.x) - minX) / cellSize)));
+    const j0 = Math.min(rows - 1, Math.max(0, Math.floor((Math.min(a.y, b.y) - minY) / cellSize)));
+    const j1 = Math.min(rows - 1, Math.max(0, Math.floor((Math.max(a.y, b.y) - minY) / cellSize)));
+    for (let cj = j0; cj <= j1; cj++) {
+      for (let ci = i0; ci <= i1; ci++) cells[cj * cols + ci].push(i);
+    }
+  }
+  return { poly, cellSize, minX, minY, cols, rows, cells };
+}
+
+/**
+ * Same result as `distPointToPolyline`, but resolved via the index: cells are
+ * scanned ring by ring outward from the query point, stopping once every
+ * unscanned cell is provably farther than the best segment found. A cell at
+ * Chebyshev ring r is at least (r−1)·cellSize away, so after scanning ring r
+ * the search ends when best ≤ r·cellSize.
+ */
+export function distPointToPolylineIndexed(p: Pt, idx: PolylineIndex): number {
+  const { poly, cellSize, minX, minY, cols, rows, cells } = idx;
+  const ci = Math.floor((p.x - minX) / cellSize);
+  const cj = Math.floor((p.y - minY) / cellSize);
+  // Farthest ring that can still contain grid cells, even for off-grid query points.
+  const maxRing = Math.max(ci, cols - 1 - ci, cj, rows - 1 - cj);
+  let best = Infinity;
+
+  const scanCell = (x: number, y: number): void => {
+    if (x < 0 || x >= cols || y < 0 || y >= rows) return;
+    for (const i of cells[y * cols + x]) {
+      const d = distPointToSegment(p, poly[i], poly[(i + 1) % poly.length]);
+      if (d < best) best = d;
+    }
+  };
+
+  for (let r = 0; r <= maxRing; r++) {
+    if (r === 0) {
+      scanCell(ci, cj);
+    } else {
+      for (let dx = -r; dx <= r; dx++) {
+        scanCell(ci + dx, cj - r);
+        scanCell(ci + dx, cj + r);
+      }
+      for (let dy = -r + 1; dy <= r - 1; dy++) {
+        scanCell(ci - r, cj + dy);
+        scanCell(ci + r, cj + dy);
+      }
+    }
+    if (best <= r * cellSize) break;
+  }
+  return best;
+}
+
 export function flipAngleAboutYAxis(theta: number): number {
   return (Math.PI - theta + 2 * Math.PI) % (2 * Math.PI);
 }
@@ -405,7 +487,11 @@ export function findJoiningArcs(arc1: Arc, side1: "start" | "end", arc2: Arc, si
  * Solves the catenary shape parameter `a` for a given sag `H` and span `L`.
  * Uses bisection: a * (cosh(L / 2a) − 1) = H.
  */
+// Station sweeps re-solve the same arch hundreds of times per redraw; the
+// bisection is 64 cosh evaluations, so a single-entry memo pays for itself.
+let lastCatenary: { H: number; L: number; a: number } | null = null;
 export function solveCatenaryA(H: number, L: number): number {
+  if (lastCatenary && lastCatenary.H === H && lastCatenary.L === L) return lastCatenary.a;
   const f = (a: number): number => a * (Math.cosh(L / (2 * a)) - 1) - H;
   let lo = L * 1e-4;
   let hi = L * 1e4;
@@ -413,7 +499,9 @@ export function solveCatenaryA(H: number, L: number): number {
     const mid = (lo + hi) / 2;
     f(mid) > 0 ? (lo = mid) : (hi = mid);
   }
-  return (lo + hi) / 2;
+  const a = (lo + hi) / 2;
+  lastCatenary = { H, L, a };
+  return a;
 }
 
 /**

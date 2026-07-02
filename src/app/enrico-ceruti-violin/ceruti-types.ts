@@ -107,6 +107,7 @@ export type ArchCurve = ArchCatenary | ArchCycloid | ArchSpline;
  */
 export interface CrossArchParams {
   d: number; // trochoid factor: 0 = raised cosine, 1 = standard cycloid (valid range 0–1)
+  pct: number; // cycloid window: 1 = full arch (flat edge takeoff), <1 clips the flat cusp ends for a steeper edge (valid range 0.05–1)
 }
 
 /**

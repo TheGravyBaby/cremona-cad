@@ -3,7 +3,7 @@ import * as polygonClipping from 'polygon-clipping';
 import { Pt } from '../models/types';
 // polygon-clipping ships as either an ESM default or a CJS namespace depending on bundler.
 const polyClipper: any = (polygonClipping as any).default ?? polygonClipping;
-import { distPointToPolyline } from '../helpers/draftMath';
+import { buildPolylineIndex, distPointToPolylineIndexed, PolylineIndex } from '../helpers/draftMath';
 import { buildHeightFieldStl } from '../helpers/stlExporter';
 import { cycloidZAt, flutingProfileZ, samplePathToPolyline } from '../helpers/svgPathMath';
 import { ArchCurve, EnricoCerutiParams } from './ceruti-types';
@@ -35,8 +35,12 @@ export interface TopSurfaceModel {
     platformOuter: Pt[];
     /** Fluting inner boundary loop; null when fluting isn't configured (platform stays flat). */
     flutingInner: Pt[] | null;
+    /** Spatial indexes over the two loops — channel distance queries run per grid point. */
+    platformOuterIdx: PolylineIndex;
+    flutingInnerIdx: PolylineIndex | null;
     arch: ArchCurve;
     crossD: number;
+    crossPct: number;
     edgeDepth: number;
     channelDepth: number;
     troughU: number;
@@ -49,12 +53,17 @@ export function buildTopSurfaceModel(p: EnricoCerutiParams): TopSurfaceModel | n
     if (!a) return null;
     const fluting = a.top.fluting ?? defaultFlutingChannelParams();
     const innerPath = defineFlutingPath(p, p.innerFlutingDepth ?? 0);
+    const platformOuter = samplePathToPolyline(defineInsetPath(p, p.outerFlutingDepth ?? 0));
+    const flutingInner = innerPath ? samplePathToPolyline(innerPath) : null;
     return {
         outerPlate: samplePathToPolyline(defineOuterPath(p, p.overhang + p.rib, true, false)),
-        platformOuter: samplePathToPolyline(defineInsetPath(p, p.outerFlutingDepth ?? 0)),
-        flutingInner: innerPath ? samplePathToPolyline(innerPath) : null,
+        platformOuter,
+        flutingInner,
+        platformOuterIdx: buildPolylineIndex(platformOuter),
+        flutingInnerIdx: flutingInner ? buildPolylineIndex(flutingInner) : null,
         arch: a.top.arch,
         crossD: a.top.cross?.d ?? defaultCrossArchParams().d,
+        crossPct: a.top.cross?.pct ?? defaultCrossArchParams().pct,
         edgeDepth: a.top.edgeDepth ?? 0,
         channelDepth: a.top.edgeDepth ?? 0,
         troughU: resolveTroughU(p, fluting),
@@ -70,6 +79,12 @@ export interface StationChords {
     flutingInnerHalf: number | null;
     /** Sorted x-crossings of the platform outer loop at this station (land/channel split). */
     landCrossings: number[];
+    /**
+     * Long-arch centerline height at this station. Hoisted here because it is
+     * x-independent but iterative to evaluate (catenary/cycloid inversion) —
+     * per-point evaluation dominated the contour grid.
+     */
+    archH: number;
 }
 
 export function stationChordsAt(p: EnricoCerutiParams, model: TopSurfaceModel, y: number): StationChords {
@@ -88,6 +103,7 @@ export function stationChordsAt(p: EnricoCerutiParams, model: TopSurfaceModel, y
             : null,
         flutingInnerHalf,
         landCrossings,
+        archH: longArchHeightAt(p, model.arch, y),
     };
 }
 
@@ -128,18 +144,18 @@ export function topSurfaceZAt(p: EnricoCerutiParams, model: TopSurfaceModel, x: 
 
     const fi = chords.flutingInnerHalf;
     if (fi !== null && ax <= fi) {
-        const h = longArchHeightAt(p, model.arch, y);
+        const h = chords.archH;
         // Degenerate cap station: an inner chord with no arch height stays flat at the sunken takeoff.
         if (h <= 0) return -model.edgeDepth;
-        return -model.edgeDepth + cycloidZAt(h + model.edgeDepth, 2 * fi, model.crossD, x + fi);
+        return -model.edgeDepth + cycloidZAt(h + model.edgeDepth, 2 * fi, model.crossD, x + fi, model.crossPct);
     }
 
     if (!insideCrossings(x, chords.landCrossings)) return 0; // flat edge land
     if (!model.flutingInner) return 0; // fluting unconfigured — platform stays flat
 
     const pt = { x, y };
-    const dOut = distPointToPolyline(pt, model.platformOuter);
-    const dIn = distPointToPolyline(pt, model.flutingInner);
+    const dOut = distPointToPolylineIndexed(pt, model.platformOuterIdx);
+    const dIn = distPointToPolylineIndexed(pt, model.flutingInnerIdx!);
     const u = dOut + dIn > 0 ? dOut / (dOut + dIn) : 0;
     return flutingProfileZ(u, model.channelDepth, model.troughU, model.edgeDepth, dOut + dIn);
 }
@@ -246,9 +262,13 @@ export function computeArchContours(
     for (const level of levels) {
         const multi = generator.contour(level > 0 ? (posVals as any) : (negVals as any), level);
         // Clip marching-squares rings to the exact outline so every contour boundary
-        // follows the instrument shape rather than a grid staircase.
-        const clipped: number[][][][] = (polyClipper.intersection(multi.coordinates as any, outlineClip) ?? []) as any;
-        const path = toPath(clipped);
+        // follows the instrument shape rather than a grid staircase. Positive levels
+        // never reach the outline (the flat edge land at z = 0 always separates the
+        // dome from the plate edge), so the intersection would be a no-op for them.
+        const rings: number[][][][] = level > 0
+            ? (multi.coordinates as any)
+            : ((polyClipper.intersection(multi.coordinates as any, outlineClip) ?? []) as any);
+        const path = toPath(rings);
         if (path.trim().length > 0) out.push({ level, path });
     }
     return out;
