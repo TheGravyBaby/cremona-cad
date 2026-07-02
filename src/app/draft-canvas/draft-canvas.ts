@@ -174,8 +174,11 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.gRoot = this.canvas.append('g').attr('class', 'root');
     this.gUI = this.canvas.append('g').attr('class', 'ui');
 
-    this.resizeObs = new ResizeObserver(() => this.draw());
-    this.resizeObs.observe(el);
+    // Guarded for test environments (jsdom) that don't implement ResizeObserver.
+    if (typeof ResizeObserver !== 'undefined') {
+      this.resizeObs = new ResizeObserver(() => this.draw());
+      this.resizeObs.observe(el);
+    }
     // wire reference image controller (keeps component in sync via callback)
     this.refController = new ReferenceImageController(
       this.referenceImage,

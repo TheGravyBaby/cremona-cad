@@ -5,9 +5,11 @@ import { Arc } from '../models/types';
 import { applyTransforms, ColorTransform, renderArcFromArc, renderFilledPath, renderPath } from '../helpers/renderFuncs';
 import { combinePathStrings } from '../helpers/svgPathMath';
 import { clampParam, safeRun } from '../helpers/validators';
-import { CerutiColors, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, EnricoCerutiTemplate, EnricoCerutiParams } from './ceruti-types';
+import { ArchingParams, CerutiColors, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, EnricoCerutiTemplate, EnricoCerutiParams } from './ceruti-types';
 import { CERUTI_TEMPLATES } from './ceruti-templates';
-import { calculateCenterBout, calculateCorners, calculateCrossArchTop, calculateLongArch, calculateMainBouts, calculateMould, calculateOuterArcs, defaultArchingParams, defaultCrossArchParams, defineFlutingAreaPath, defineFlutingPath, defineInnerPath, defineInsetPath, defineOuterCornerArcs, defineOuterPath, defineOuterPurflingPath, definePurflingPath, flutingHalfWidthAtY, flutingOuterHalfWidthAtY, innerHalfWidthAtY, outerHalfWidthAtY } from './ceruti-calcs';
+import { calculateCenterBout, calculateCorners, calculateCrossArchTop, calculateLongArch, calculateMainBouts, calculateMould, calculateOuterArcs, checkFlutingBitFit, defaultArchingParams, defaultCrossArchParams, defaultFlutingChannelParams, defineFlutingAreaPath, defineFlutingPath, defineInnerPath, defineInsetPath, defineOuterCornerArcs, defineOuterPath, defineOuterPurflingPath, definePurflingPath, defineTroughPath, flutingHalfWidthAtY, flutingOuterHalfWidthAtY, innerHalfWidthAtY, outerHalfWidthAtY } from './ceruti-calcs';
+import { buildTopSurfaceModel, calculateFlutingSectionTop, computeArchContours, stationChordsAt } from './ceruti-surface';
+import { renderArchContourMap } from './renders/arch-contours.render';
 import { HighlightedArc } from './renders/render-constants';
 import { renderBounds, renderBoutBouts, renderCornerGuides } from './renders/guides.render';
 import { renderMainBouts } from './renders/main-bouts.render';
@@ -454,6 +456,8 @@ export class CerutiViolin extends RecipeComponentBase {
       const outerPurflingPath = defineOuterPurflingPath(p, offset);
       const flutingAreaPath = defineFlutingAreaPath(p, p.innerFlutingDepth, p.outerFlutingDepth);
       const flutingLinePath = defineFlutingPath(p, offset);
+      // Null until the arching module has initialized the channel params.
+      const troughPath = defineTroughPath(p);
 
       this.upsertPath('top', topPath);
       this.upsertPath('back', backPath);
@@ -461,11 +465,13 @@ export class CerutiViolin extends RecipeComponentBase {
       if (outerPurflingPath) this.upsertPath('outerPurfling', outerPurflingPath);
       if (flutingAreaPath) this.upsertPath('flutingArea', flutingAreaPath);
       if (flutingLinePath) this.upsertPath('flutingLine', flutingLinePath);
+      if (troughPath) this.upsertPath('flutingTrough', troughPath);
 
       // The panel previews the back plate — it carries the button and is the most informative trace.
       // Fluting is a filled area, so it must be drawn before the purfling lines or it paints over them.
       const renders: Array<(g: any, ui: any) => void> = [renderPath(backPath, this.colors.outerTrace)];
       if (flutingAreaPath) renders.push(renderFilledPath(flutingAreaPath, this.colors.fluting));
+      if (troughPath) renders.push(renderPath(troughPath, this.colors.fluting, 1));
       if (purflingPath) renders.push(renderPath(purflingPath, this.colors.innerTrace, 1));
       if (outerPurflingPath) renders.push(renderPath(outerPurflingPath, this.colors.innerTrace, 1));
       renders.push(renderOuterTraceGuides(p, this.colors, this.viewFlags, true));
@@ -495,6 +501,7 @@ export class CerutiViolin extends RecipeComponentBase {
     }
     const a = this.d.params.arching;
     a.top.cross ??= defaultCrossArchParams();
+    a.top.fluting ??= defaultFlutingChannelParams();
     const p = this.d.params;
     const f = this.viewFlags;
     // The station is ephemeral view state; default to the c-bout waist (C0's centre height)
@@ -505,18 +512,46 @@ export class CerutiViolin extends RecipeComponentBase {
       f.crossSectionY = Math.min(Math.max(f.crossSectionY ?? 0, 1), p.height - 1);
       // The plate slabs span the outer path, whose corner arcs must be current.
       calculateOuterArcs(p);
+      const model = buildTopSurfaceModel(p);
       const halfWidthInner = innerHalfWidthAtY(p, f.crossSectionY);
-      const halfWidthOuter = outerHalfWidthAtY(p, f.crossSectionY);
-      // Exact station chords of the fluting platform boundaries; the inner one is
-      // the same query the cross arch takes off from, so they meet by construction.
-      const flutingOuterHalf = flutingOuterHalfWidthAtY(p, f.crossSectionY);
-      const flutingInnerHalf = flutingHalfWidthAtY(p, f.crossSectionY);
+      // Chords come from the surface model's sampled outer path: the arc-only
+      // queries miss the cubic corner tips, voiding the corner-band stations.
+      const chords = model ? stationChordsAt(p, model, f.crossSectionY) : null;
+      const halfWidthOuter = chords?.outerHalf ?? outerHalfWidthAtY(p, f.crossSectionY);
+      const flutingOuterHalf = chords?.platformOuterHalf ?? flutingOuterHalfWidthAtY(p, f.crossSectionY);
+      const flutingInnerHalf = chords?.flutingInnerHalf ?? flutingHalfWidthAtY(p, f.crossSectionY);
       const crossTop = calculateCrossArchTop(p, f.crossSectionY);
-      this.draftChange.emit([
-        renderCrossSection(p, a, this.colors, f.showModuleGuides, halfWidthInner, halfWidthOuter, flutingOuterHalf, flutingInnerHalf, crossTop?.path ?? null),
-      ]);
+
+      const flutingSlice = model ? calculateFlutingSectionTop(p, model, f.crossSectionY) : null;
+      this.warnFlutingBitFit(p, a);
+
+      const renders = [
+        renderCrossSection(p, a, this.colors, f.showModuleGuides, halfWidthInner, halfWidthOuter, flutingOuterHalf, flutingInnerHalf, crossTop?.path ?? null, flutingSlice),
+      ];
+      if (f.showArchContours && model) {
+        // Stack the plan-view topo map above the section, sharing the X axis.
+        const yOffset = a.ribHeight + a.top.thickness + a.top.arch.archHeight + 15;
+        const contours = computeArchContours(p, model, 1, 1, yOffset);
+        const outline = defineOuterPath(p, p.overhang + p.rib, true, false);
+        renders.push(renderArchContourMap(p, this.colors, contours, outline, defineTroughPath(p), yOffset, f.crossSectionY));
+      }
+      this.draftChange.emit(renders);
       sessionStorage.setItem('recipeData', JSON.stringify(this.d));
     }));
+  }
+
+  /**
+   * Bit-fit is worth one warning per distinct configuration, not one per
+   * debounced redraw (station drags would spam the message center otherwise).
+   */
+  private lastBitFitKey: string | null = null;
+  private warnFlutingBitFit(p: EnricoCerutiParams, a: ArchingParams): void {
+    const fluting = a.top.fluting!;
+    const width = (p.innerFlutingDepth ?? 0) - (p.outerFlutingDepth ?? 0);
+    const key = `${fluting.channelDepth}|${fluting.troughT}|${p.bitDiameter}|${width}`;
+    if (key === this.lastBitFitKey) return;
+    this.lastBitFitKey = key;
+    checkFlutingBitFit(p, fluting, width);
   }
 
   changeMould(): void {

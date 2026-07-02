@@ -131,6 +131,32 @@ export function flutingInfo() {
     )
 }
 
+export function flutingChannelInfo() {
+    info(
+        "Depth of the fluting channel at its trough, measured down from the plate outer surface.\n\n" +
+        "The carved profile runs from the platform's outer boundary (at plate surface level), dips to this depth at the trough line, " +
+        "and rises to meet the cross arch at its sunken takeoff (the Edge Depth). Typical violin channels are 0.5–1.0 mm deep.\n\n" +
+        "If the trough is deeper than the Edge Depth you get the classic recurve; shallower and the channel descends smoothly into the arch without one.",
+        "Fluting Channel", defaultTTL
+    )
+}
+
+export function troughPositionInfo() {
+    info(
+        "Where the deepest line of the channel sits across the platform: 0 = the platform's outer boundary, 1 = the inner boundary where the cross arch takes off.\n\n" +
+        "When 'Trough on purfling line' is checked, the position is derived from the purfling offset — the traditional placement, just inside the purfling.",
+        "Trough Position", defaultTTL
+    )
+}
+
+export function archContoursInfo() {
+    info(
+        "A topographic map of the top plate surface, drawn above the section view (sharing its X axis): one contour per millimetre of height.\n\n" +
+        "Green-tinted contours are at or below the plate surface — the fluting channel. The horizontal line marks the station of the section below.",
+        "Contour Map", defaultTTL
+    )
+}
+
 export function ribHeightInfo() {
     info(
         "The height of the ribs — the side walls of the instrument body." +

@@ -39,6 +39,51 @@
 </section>
 }
 
+@if (arching.top.fluting) {
+<section class="ui-group" [style.border-color]="colors.fluting">
+    <div class="ui-group-title">Fluting Channel</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Channel Depth <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.1" min="0" max="5"
+                [(ngModel)]="topFluting.channelDepth" (input)="onChange()" [style.border-color]="colors.fluting" />
+        </label>
+        <button type="button" class="info-icon" (click)="flutingChannelInfo()" title="More information">ⓘ</button>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <div class="toggle">
+            <input type="checkbox" [(ngModel)]="troughAuto" (change)="onChange()" />
+            <span>Trough on Purfling Line</span>
+        </div>
+        <button type="button" class="info-icon" (click)="troughPositionInfo()" title="More information">ⓘ</button>
+    </div>
+    @if (!troughAuto) {
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Trough Position <span class="unit-label">0–1</span></span>
+            <input class="basic-input" type="number" step="0.05" min="0.05" max="0.95"
+                [(ngModel)]="topFluting.troughT" (input)="onChange()" [style.border-color]="colors.fluting" />
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <input class="basic-input" type="range" step="0.01" min="0.05" max="0.95"
+            [(ngModel)]="topFluting.troughT" (input)="onChange()"
+            aria-label="Fluting trough position" />
+    </div>
+    }
+</section>
+}
+
+<section class="ui-group">
+    <div class="input-group basic-row field-row" role="group">
+        <div class="toggle">
+            <input type="checkbox" [(ngModel)]="flags.showArchContours" (change)="onChange()" />
+            <span>Show Contour Map</span>
+        </div>
+        <button type="button" class="info-icon" (click)="archContoursInfo()" title="More information">ⓘ</button>
+    </div>
+</section>
+
 <app-ceruti-render-toggles
     [flags]="flags"
     [showArcsRow]="false"

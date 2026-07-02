@@ -794,6 +794,23 @@ export function translatePath(path: string, dx: number, dy: number): string {
   });
 }
 
+/**
+ * Sample an SVG path string into a polyline at roughly `stepMm` spacing.
+ * The path is assumed closed (or close to it); the duplicate closing point
+ * is not emitted, so consumers can treat the result as a closed loop.
+ */
+export function samplePathToPolyline(path: string, stepMm = 1): Pt[] {
+  const props = new svgPathProperties(path.trim());
+  const len = props.getTotalLength();
+  const n = Math.max(8, Math.ceil(len / stepMm));
+  const pts: Pt[] = [];
+  for (let i = 0; i < n; i++) {
+    const pt = props.getPointAtLength((i / n) * len);
+    pts.push({ x: pt.x, y: pt.y });
+  }
+  return pts;
+}
+
 // ===== Arch curve path builders =====
 
 /**
@@ -931,6 +948,23 @@ export function cycloidZAt(hEff: number, span: number, d: number, s: number): nu
   }
   const t = (lo + hi) / 2;
   return ((1 - Math.cos(t)) / 2) * hEff;
+}
+
+/**
+ * Fluting channel transverse profile: height relative to the plate outer
+ * surface at normalized position u across the platform annulus (0 = platform
+ * outer boundary, 1 = fluting inner boundary). Two raised-cosine half-waves —
+ * 0 → −channelDepth at troughU → −edgeDepth at u = 1 — with zero slope at all
+ * three knots, so the profile is C1 and meets both the flat edge land and the
+ * cross-arch takeoff (horizontal for trochoid d < 1) without a crease. Handles
+ * channelDepth < edgeDepth too (monotone descent, no recurve).
+ */
+export function flutingProfileZ(u: number, channelDepth: number, troughU: number, edgeDepth: number): number {
+  if (u <= 0) return 0;
+  if (u >= 1) return -edgeDepth;
+  const blend = (t: number) => (1 - Math.cos(Math.PI * t)) / 2; // 0→1, zero slope at both ends
+  if (u <= troughU) return -channelDepth * blend(u / troughU);
+  return -channelDepth + (channelDepth - edgeDepth) * blend((u - troughU) / (1 - troughU));
 }
 
 /** Arch height at position s ∈ [0, span] along a spline arch. */
