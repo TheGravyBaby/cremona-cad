@@ -23,21 +23,36 @@ function makeParams(): EnricoCerutiParams {
 }
 
 describe('flutingProfileZ', () => {
-  it('hits its three knots and stays continuous across the trough', () => {
-    expect(flutingProfileZ(0, 1, 0.4, 0.5)).toBe(0);
-    expect(flutingProfileZ(0.4, 1, 0.4, 0.5)).toBeCloseTo(-1, 10);
-    expect(flutingProfileZ(1, 1, 0.4, 0.5)).toBeCloseTo(-0.5, 10);
-    const justBelow = flutingProfileZ(0.4 - 1e-9, 1, 0.4, 0.5);
-    const justAbove = flutingProfileZ(0.4 + 1e-9, 1, 0.4, 0.5);
-    expect(Math.abs(justBelow - justAbove)).toBeLessThan(1e-6);
+  it('hits its three knots and has exactly one local minimum', () => {
+    // Circular-arc profile through A=(0,0), T=(troughU·width, −channelDepth), B=(width, −edgeDepth).
+    // T lies exactly on the arc so z(troughU) = −channelDepth precisely.
+    const width = 10;
+    expect(flutingProfileZ(0, 1, 0.4, 0.5, width)).toBe(0);
+    expect(flutingProfileZ(0.4, 1, 0.4, 0.5, width)).toBeCloseTo(-1, 1);
+    expect(flutingProfileZ(1, 1, 0.4, 0.5, width)).toBeCloseTo(-0.5, 1);
+    // Exactly one local minimum: first strictly descends, then strictly ascends — no inflection wiggles.
+    let prevZ = flutingProfileZ(0, 1, 0.4, 0.5, width);
+    let foundTrough = false;
+    let descending = true;
+    for (let i = 1; i <= 99; i++) {
+      const u = i / 100;
+      const z = flutingProfileZ(u, 1, 0.4, 0.5, width);
+      if (descending) {
+        if (z > prevZ + 1e-9) { foundTrough = true; descending = false; }
+        else { expect(z).toBeLessThanOrEqual(prevZ + 1e-9); }
+      } else {
+        expect(z).toBeGreaterThanOrEqual(prevZ - 1e-9);
+      }
+      prevZ = z;
+    }
+    expect(foundTrough).toBe(true);
   });
 
-  it('descends monotonically when the channel is shallower than the edge depth', () => {
-    let prev = flutingProfileZ(0, 0.5, 0.4, 1.0);
-    for (let u = 0.05; u <= 1; u += 0.05) {
-      const z = flutingProfileZ(u, 0.5, 0.4, 1.0);
-      expect(z).toBeLessThanOrEqual(prev + 1e-12);
-      prev = z;
+  it('falls back to the straight chord when T is not below the A–B chord', () => {
+    // channelDepth(0.3) <= edgeDepth·troughU(0.4): T sits on or above the chord from A to B,
+    // so no concave arc exists. The function returns the linear chord −edgeDepth·u.
+    for (let u = 0; u <= 1; u += 0.1) {
+      expect(flutingProfileZ(u, 0.3, 0.4, 1.0, 10)).toBeCloseTo(-1.0 * u, 10);
     }
   });
 });

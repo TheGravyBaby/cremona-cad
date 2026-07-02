@@ -951,20 +951,47 @@ export function cycloidZAt(hEff: number, span: number, d: number, s: number): nu
 }
 
 /**
+ * The gouge arc behind the fluting profile: the circle through the channel's
+ * three knots in physical section coordinates (t across the annulus in mm,
+ * z below the plate surface) — A = (0, 0) at the platform outer boundary,
+ * T = (troughU·width, −channelDepth), B = (width, −edgeDepth) at the fluting
+ * inner boundary. Returns null when the trough knot isn't meaningfully below
+ * the A–B chord (no concave scoop exists) or the knots are near-collinear.
+ */
+export function flutingArc(channelDepth: number, troughU: number, edgeDepth: number, width: number):
+  { cx: number; cz: number; r: number } | null {
+  if (width <= 0) return null;
+  const tx = troughU * width, tz = -channelDepth;
+  const bx = width, bz = -edgeDepth;
+  // Trough must sit below the A–B chord for a downward-bulging arc.
+  if (tz >= -edgeDepth * troughU - 1e-9) return null;
+  // Circumcenter of A=(0,0), T, B via perpendicular-bisector determinant.
+  const d = 2 * (tx * bz - bx * tz);
+  if (Math.abs(d) < 1e-12) return null;
+  const t2 = tx * tx + tz * tz;
+  const b2 = bx * bx + bz * bz;
+  const cx = (bz * t2 - tz * b2) / d;
+  const cz = (tx * b2 - bx * t2) / d;
+  return { cx, cz, r: Math.hypot(cx, cz) };
+}
+
+/**
  * Fluting channel transverse profile: height relative to the plate outer
  * surface at normalized position u across the platform annulus (0 = platform
- * outer boundary, 1 = fluting inner boundary). Two raised-cosine half-waves —
- * 0 → −channelDepth at troughU → −edgeDepth at u = 1 — with zero slope at all
- * three knots, so the profile is C1 and meets both the flat edge land and the
- * cross-arch takeoff (horizontal for trochoid d < 1) without a crease. Handles
- * channelDepth < edgeDepth too (monotone descent, no recurve).
+ * outer boundary, 1 = fluting inner boundary), whose physical width is `width`
+ * mm. A single circular arc — the section a gouge sweep would cut — through
+ * 0 → −channelDepth at troughU → −edgeDepth at u = 1. The arc meets the flat
+ * edge land and the cross-arch takeoff with small creases, like a fresh gouge
+ * pass. Degenerate channels (trough not below the end-to-end chord) fall back
+ * to the straight chord.
  */
-export function flutingProfileZ(u: number, channelDepth: number, troughU: number, edgeDepth: number): number {
+export function flutingProfileZ(u: number, channelDepth: number, troughU: number, edgeDepth: number, width: number): number {
   if (u <= 0) return 0;
   if (u >= 1) return -edgeDepth;
-  const blend = (t: number) => (1 - Math.cos(Math.PI * t)) / 2; // 0→1, zero slope at both ends
-  if (u <= troughU) return -channelDepth * blend(u / troughU);
-  return -channelDepth + (channelDepth - edgeDepth) * blend((u - troughU) / (1 - troughU));
+  const arc = flutingArc(channelDepth, troughU, edgeDepth, width);
+  if (!arc) return -edgeDepth * u;
+  const dt = u * width - arc.cx;
+  return arc.cz - Math.sqrt(Math.max(arc.r * arc.r - dt * dt, 0));
 }
 
 /** Arch height at position s ∈ [0, span] along a spline arch. */
