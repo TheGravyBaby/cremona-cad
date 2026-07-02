@@ -99,13 +99,10 @@ export interface CrossArchParams {
 
 /**
  * The carved fluting channel for one plate — the vertical dimension of the
- * platform annulus already defined in plan view. The transverse profile runs
- * from the platform's outer boundary (plate surface level) down through the
- * trough and back up to meet the cross-arch takeoff at −edgeDepth.
+ * platform annulus already defined in plan view. The transverse profile is a
+ * single circular arc (gouge cut) whose depth is tied to the plate's edgeDepth.
  */
 export interface FlutingChannelParams {
-  /** mm below the plate outer surface at the deepest point of the channel. */
-  channelDepth: number;
   /**
    * Trough position across the annulus: 0 = platform outer boundary,
    * 1 = fluting inner boundary. null = derive from the purfling line.

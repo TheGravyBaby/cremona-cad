@@ -495,6 +495,18 @@ export class CerutiViolin extends RecipeComponentBase {
     }));
   }
 
+  /**
+   * The contour grid is by far the costliest part of the cross-arching redraw,
+   * and it depends only on the params — the station line is drawn separately —
+   * so station drags reuse the cached paths and only a real value change recomputes.
+   */
+  private archContourCache: {
+    key: string;
+    contours: { level: number; path: string }[];
+    outline: string | null;
+    trough: string | null;
+  } | null = null;
+
   changeCrossArching(): void {
     if (!this.d.params.arching) {
       this.d.params.arching = defaultArchingParams(this.d.params.height);
@@ -531,9 +543,19 @@ export class CerutiViolin extends RecipeComponentBase {
       if (f.showArchContours && model) {
         // Stack the plan-view topo map above the section, sharing the X axis.
         const yOffset = a.ribHeight + a.top.thickness + a.top.arch.archHeight + 15;
-        const contours = computeArchContours(p, model, 1, 1, yOffset);
-        const outline = defineOuterPath(p, p.overhang + p.rib, true, false);
-        renders.push(renderArchContourMap(p, this.colors, contours, outline, defineTroughPath(p), yOffset, f.crossSectionY));
+        // Snapshot taken after calculateOuterArcs so the key is deterministic;
+        // yOffset derives from params, so its changes invalidate too.
+        const key = JSON.stringify(p);
+        if (this.archContourCache?.key !== key) {
+          this.archContourCache = {
+            key,
+            contours: computeArchContours(p, model, 1, 1, yOffset),
+            outline: defineOuterPath(p, p.overhang + p.rib, true, false),
+            trough: defineTroughPath(p),
+          };
+        }
+        const cached = this.archContourCache;
+        renders.push(renderArchContourMap(p, this.colors, cached.contours, cached.outline, cached.trough, yOffset, f.crossSectionY));
       }
       this.draftChange.emit(renders);
       sessionStorage.setItem('recipeData', JSON.stringify(this.d));
@@ -548,7 +570,7 @@ export class CerutiViolin extends RecipeComponentBase {
   private warnFlutingBitFit(p: EnricoCerutiParams, a: ArchingParams): void {
     const fluting = a.top.fluting!;
     const width = (p.innerFlutingDepth ?? 0) - (p.outerFlutingDepth ?? 0);
-    const key = `${fluting.channelDepth}|${fluting.troughT}|${p.bitDiameter}|${width}`;
+    const key = `${a.top.edgeDepth}|${fluting.troughT}|${p.bitDiameter}|${width}`;
     if (key === this.lastBitFitKey) return;
     this.lastBitFitKey = key;
     checkFlutingBitFit(p, fluting, width);

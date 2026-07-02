@@ -53,7 +53,7 @@ export function buildTopSurfaceModel(p: EnricoCerutiParams): TopSurfaceModel | n
         arch: a.top.arch,
         crossD: a.top.cross?.d ?? defaultCrossArchParams().d,
         edgeDepth: a.top.edgeDepth ?? 0,
-        channelDepth: fluting.channelDepth,
+        channelDepth: a.top.edgeDepth ?? 0,
         troughU: resolveTroughU(p, fluting),
         zBase: a.ribHeight + a.top.thickness,
     };
@@ -71,14 +71,19 @@ export interface StationChords {
 
 export function stationChordsAt(p: EnricoCerutiParams, model: TopSurfaceModel, y: number): StationChords {
     const landCrossings = polylineCrossingsAtY(model.platformOuter, y);
+    // Arc-exact when available: same query the cross arch spans, so the channel meets the
+    // takeoff point by construction. Falls back to the sampled polyline at corner-band
+    // stations where the arc-only query misses the cubic Bézier tips — without this,
+    // calculateFlutingSectionTop would treat those stations as cap stations and sweep a
+    // full-width channel profile over the arch region, creating strange shapes.
+    const flutingInnerHalf = flutingHalfWidthAtY(p, y)
+        ?? (model.flutingInner ? maxAbsCrossingAtY(model.flutingInner, y) : null);
     return {
         outerHalf: maxAbsCrossingAtY(model.outerPlate, y),
         platformOuterHalf: landCrossings.length
             ? Math.max(Math.abs(landCrossings[0]), Math.abs(landCrossings[landCrossings.length - 1]))
             : null,
-        // Arc-exact on purpose: this is the same query the cross arch spans,
-        // so the channel meets the takeoff point by construction.
-        flutingInnerHalf: flutingHalfWidthAtY(p, y),
+        flutingInnerHalf,
         landCrossings,
     };
 }
@@ -133,7 +138,7 @@ export function topSurfaceZAt(p: EnricoCerutiParams, model: TopSurfaceModel, x: 
     const dOut = distPointToPolyline(pt, model.platformOuter);
     const dIn = distPointToPolyline(pt, model.flutingInner);
     const u = dOut + dIn > 0 ? dOut / (dOut + dIn) : 0;
-    return flutingProfileZ(u, model.channelDepth, model.troughU, model.edgeDepth);
+    return flutingProfileZ(u, model.channelDepth, model.troughU, model.edgeDepth, dOut + dIn);
 }
 
 /**

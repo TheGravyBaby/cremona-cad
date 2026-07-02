@@ -1,5 +1,5 @@
 import { solveInscribedCircleAlongAxis, circleCircleIntersections, angleFromCenter, interceptCirclesAndPoint, dist, pointOnCircle, offsetArcRadius, flipArcAboutY, flipPointAboutY, flipRectAboutY, lineCircleIntersection, redefineArcCircle, interceptCirclesAndPointCompound, findJoiningArcs, arcHorizontalIntersections } from "../helpers/draftMath";
-import { pathFromArc, pathFromLine, pathFromCornerCubic, unifyConnectedSvgPaths, pathFromRoundedRect, pathFromCircle, pathFromRect, combinePathStrings, differenceFromManyPaths, intersectionFromTwoPaths, translatePath, differenceFromTwoPaths, buildCatenaryPath, buildCycloidPath, buildSplinePath, buildCycloidPathAcross, catenaryZAt, cycloidZAt, splineZAt } from "../helpers/svgPathMath";
+import { pathFromArc, pathFromLine, pathFromCornerCubic, unifyConnectedSvgPaths, pathFromRoundedRect, pathFromCircle, pathFromRect, combinePathStrings, differenceFromManyPaths, intersectionFromTwoPaths, translatePath, differenceFromTwoPaths, buildCatenaryPath, buildCycloidPath, buildSplinePath, buildCycloidPathAcross, catenaryZAt, cycloidZAt, splineZAt, flutingArc } from "../helpers/svgPathMath";
 import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Pt, Rectangle } from "../models/types";
 import { error, message, warn } from "../shared/message-emitter";
 import { ArchCurve, ArchingParams, CrossArchParams, EnricoCerutiParams, FlutingChannelParams } from "./ceruti-types";
@@ -1548,9 +1548,9 @@ export function defaultCrossArchParams(): CrossArchParams {
   return { d: 0.6 };
 }
 
-/** Default fluting channel: 1 mm trough, trough position derived from the purfling line. */
+/** Default fluting channel: trough position derived from the purfling line; channel depth matches edgeDepth. */
 export function defaultFlutingChannelParams(): FlutingChannelParams {
-  return { channelDepth: 1.0, troughT: null };
+  return { troughT: null };
 }
 
 /**
@@ -1570,15 +1570,17 @@ export function resolveTroughU(p: EnricoCerutiParams, fluting: FlutingChannelPar
 
 /**
  * Warns when a ball-nose bit can't reach the bottom of the fluting trough: the
- * profile's concave radius there (raised cosine of depth channelDepth over the
- * trough-side half-wave: r = 1/κ, κ = channelDepth/2·(π/w)²) must exceed the
- * bit radius. `annulusWidth` is the local platform width in mm; the narrowest
- * station (the C-bout) governs, so callers pass that.
+ * profile is a circular gouge arc, so its concave radius is the arc radius
+ * itself, which must exceed the bit radius. `annulusWidth` is the local
+ * platform width in mm; the narrowest station (the C-bout) governs, so callers
+ * pass that.
  */
 export function checkFlutingBitFit(p: EnricoCerutiParams, fluting: FlutingChannelParams, annulusWidth: number): void {
-  if (fluting.channelDepth <= 0 || annulusWidth <= 0) return;
-  const w = resolveTroughU(p, fluting) * annulusWidth;
-  const troughRadius = 2 / fluting.channelDepth * (w / Math.PI) ** 2;
+  const edgeDepth = p.arching?.top.edgeDepth ?? 0;
+  if (edgeDepth <= 0 || annulusWidth <= 0) return;
+  const arc = flutingArc(edgeDepth, resolveTroughU(p, fluting), edgeDepth, annulusWidth);
+  if (!arc) return; // degenerate channel falls back to the straight chord — nothing concave to cut
+  const troughRadius = arc.r;
   if (troughRadius < p.bitDiameter / 2) {
     warn(
       `The fluting trough's concave radius (~${troughRadius.toFixed(1)} mm) is tighter than the ` +
