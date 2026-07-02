@@ -201,6 +201,17 @@ export function splinePointInfo() {
     )
 }
 
+export function crossSectionStationInfo() {
+    info(
+        "Selects which cross section of the body you are viewing — the position along the body length (Y), " +
+        "measured in mm from the bottom of the instrument.\n\n" +
+        "The section is drawn width-for-width: the box spans the mould outline at this height, " +
+        "widened by the rib thickness on each side, since the ribs are bent around the mould.\n\n" +
+        "This is a view control only — it is not saved with the recipe.",
+        "Cross Section Station", defaultTTL
+    )
+}
+
 export function cornerCutoffInfo() {
     info(
         "Controls where the corner arc is trimmed, setting the final length of the corner tip. Shorter values produce blunter corners; longer values produce more pronounced points.\n\n" +

@@ -440,3 +440,26 @@ export function makeNaturalSpline(ys: number[], zs: number[]): (y: number) => nu
          + (zs[i + 1] / hi - M[i + 1] * hi / 6) * t;
   };
 }
+/** True when angle θ lies on the drawn (minor) span between the arc's start and end — see pathFromArc. */
+export function angleOnDrawnArc(arc: Arc, theta: number): boolean {
+  const TWO_PI = Math.PI * 2;
+  const diff = ((arc.end - arc.start) % TWO_PI + TWO_PI) % TWO_PI;
+  const from = diff <= Math.PI ? arc.start : arc.end;
+  const span = diff <= Math.PI ? diff : TWO_PI - diff;
+  const rel = ((theta - from) % TWO_PI + TWO_PI) % TWO_PI;
+  const eps = 1e-9;
+  return rel <= span + eps || rel >= TWO_PI - eps;
+}
+
+/**
+ * Intersections of the horizontal line y = `y` with the drawn span of the arc.
+ * Circle crossings are computed analytically, then filtered to the minor sweep
+ * that pathFromArc actually renders.
+ */
+export function arcHorizontalIntersections(arc: Arc, y: number): Pt[] {
+  const dy = y - arc.y;
+  if (Math.abs(dy) > arc.r) return [];
+  const xOff = Math.sqrt(arc.r * arc.r - dy * dy);
+  const candidates = [new Pt(arc.x + xOff, y), new Pt(arc.x - xOff, y)];
+  return candidates.filter(pt => angleOnDrawnArc(arc, angleFromCenter(arc, pt)));
+}

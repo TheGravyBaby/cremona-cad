@@ -1,0 +1,43 @@
+@if (params.arching) {
+
+<section class="ui-group">
+    <div class="ui-group-title">Cross Section</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Station Height <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="1" min="1" [max]="params.height - 1"
+                [(ngModel)]="flags.crossSectionY" (input)="onChange()" />
+        </label>
+        <button type="button" class="info-icon" (click)="crossSectionStationInfo()" title="More information">ⓘ</button>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <input class="basic-input" type="range" step="1" min="1" [max]="params.height - 1"
+            [(ngModel)]="flags.crossSectionY" (input)="onChange()"
+            aria-label="Cross section station height" />
+    </div>
+</section>
+
+@if (arching.top.cross) {
+<section class="ui-group" [style.border-color]="colors.outerTrace">
+    <div class="ui-group-title">Top Plate</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Cycloid Factor <span class="unit-label">0–1</span></span>
+            <input class="basic-input" type="number" step="0.05" min="0" max="1"
+                [(ngModel)]="topCross.d" (input)="onChange()" [style.border-color]="colors.archTop" />
+        </label>
+        <button type="button" class="info-icon" (click)="trochoidFactorInfo()" title="More information">ⓘ</button>
+    </div>
+</section>
+}
+
+<app-ceruti-render-toggles
+    [flags]="flags"
+    [showArcsRow]="false"
+    [showCirclesRow]="false"
+    [showGuideRow]="true"
+    [showOuterPathRow]="false"
+    (changed)="onChange()">
+</app-ceruti-render-toggles>
+
+}

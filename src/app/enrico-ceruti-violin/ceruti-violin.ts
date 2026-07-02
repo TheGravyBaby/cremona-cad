@@ -7,7 +7,7 @@ import { combinePathStrings } from '../helpers/svgPathMath';
 import { clampParam, safeRun } from '../helpers/validators';
 import { CerutiColors, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, EnricoCerutiTemplate, EnricoCerutiParams } from './ceruti-types';
 import { CERUTI_TEMPLATES } from './ceruti-templates';
-import { calculateCenterBout, calculateCorners, calculateLongArch, calculateMainBouts, calculateMould, calculateOuterArcs, defaultArchingParams, defineFlutingAreaPath, defineFlutingPath, defineInnerPath, defineInsetPath, defineOuterCornerArcs, defineOuterPath, defineOuterPurflingPath, definePurflingPath } from './ceruti-calcs';
+import { calculateCenterBout, calculateCorners, calculateCrossArchTop, calculateLongArch, calculateMainBouts, calculateMould, calculateOuterArcs, defaultArchingParams, defaultCrossArchParams, defineFlutingAreaPath, defineFlutingPath, defineInnerPath, defineInsetPath, defineOuterCornerArcs, defineOuterPath, defineOuterPurflingPath, definePurflingPath, flutingHalfWidthAtY, flutingOuterHalfWidthAtY, innerHalfWidthAtY, outerHalfWidthAtY } from './ceruti-calcs';
 import { HighlightedArc } from './renders/render-constants';
 import { renderBounds, renderBoutBouts, renderCornerGuides } from './renders/guides.render';
 import { renderMainBouts } from './renders/main-bouts.render';
@@ -16,6 +16,7 @@ import { renderCenterBout } from './renders/center-bout.render';
 import { renderOuterTraceGuides } from './renders/outer-trace.render';
 import { renderMould } from './renders/mould.render';
 import { renderLongArchBoxes as renderLongArch } from './renders/long-arching.render';
+import { renderCrossSection } from './renders/cross-arching.render';
 import { BasePanel } from './panels/base-panel/base-panel';
 import { MainBoutsPanel } from './panels/main-bouts-panel/main-bouts-panel';
 import { CornersPanel } from './panels/corners-panel/corners-panel';
@@ -23,12 +24,13 @@ import { CenterBoutPanel } from './panels/center-bout-panel/center-bout-panel';
 import { OuterTracePanel } from './panels/outer-trace-panel/outer-trace-panel';
 import { MouldPanel } from './panels/mould-panel/mould-panel';
 import { LongArchingPanel } from './panels/long-arching-panel/long-arching-panel';
+import { CrossArchingPanel } from './panels/cross-arching-panel/cross-arching-panel';
 import { ExportPanel } from './panels/export-panel/export-panel';
 import { RecipeToolbarComponent } from '../recipe-toolbar/recipe-toolbar';
 
 @Component({
   selector: 'app-ceruti-violin',
-  imports: [FormsModule, BasePanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterTracePanel, MouldPanel, LongArchingPanel, ExportPanel, RecipeToolbarComponent],
+  imports: [FormsModule, BasePanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterTracePanel, MouldPanel, LongArchingPanel, CrossArchingPanel, ExportPanel, RecipeToolbarComponent],
   templateUrl: './ceruti-violin.html',
   styleUrls: ['../sidebar.css', './ceruti-violin.css'],
 })
@@ -43,6 +45,7 @@ export class CerutiViolin extends RecipeComponentBase {
     { id: 'centerBout', label: 'Center Bout' },
     { id: 'outerTrace', label: 'Outer Path' },
     { id: 'longArching', label: 'Long Arching' },
+    { id: 'crossArching', label: 'Cross Arching' },
     { id: 'mould', label: 'Mould' },
     { id: 'export', label: 'Export' },
   ] as const;
@@ -266,6 +269,7 @@ export class CerutiViolin extends RecipeComponentBase {
       outerTrace: () => this.changeOuterTrace(),
       mould: () => this.changeMould(),
       longArching: () => this.changeLongArching(),
+      crossArching: () => this.changeCrossArching(),
       // A loaded template may already satisfy every panel guard (canOpenPanel), letting the
       // user jump straight to Export without the intermediate panels ever having run their
       // change handlers this session — so the path cache those handlers populate could still
@@ -290,6 +294,7 @@ export class CerutiViolin extends RecipeComponentBase {
       case 'outerTrace': return this.hasCenterBout();
       case 'mould': return this.hasCenterBout();
       case 'longArching': return this.hasCenterBout();
+      case 'crossArching': return this.hasCenterBout();
       case 'export': return this.hasCenterBout();
       default: return false;
     }
@@ -480,6 +485,36 @@ export class CerutiViolin extends RecipeComponentBase {
     this.debounce(() => safeRun(() => {
       const { span, yStart, topPath, backPath } = calculateLongArch(p);
       this.draftChange.emit([renderLongArch(p, a, this.colors, this.viewFlags.showModuleGuides, topPath, backPath, span, yStart)]);
+      sessionStorage.setItem('recipeData', JSON.stringify(this.d));
+    }));
+  }
+
+  changeCrossArching(): void {
+    if (!this.d.params.arching) {
+      this.d.params.arching = defaultArchingParams(this.d.params.height);
+    }
+    const a = this.d.params.arching;
+    a.top.cross ??= defaultCrossArchParams();
+    const p = this.d.params;
+    const f = this.viewFlags;
+    // The station is ephemeral view state; default to the c-bout waist (C0's centre height)
+    // the first time the panel opens this session.
+    f.crossSectionY ??= Math.round(p.bouts.C0?.y ?? p.height / 2);
+
+    this.debounce(() => safeRun(() => {
+      f.crossSectionY = Math.min(Math.max(f.crossSectionY ?? 0, 1), p.height - 1);
+      // The plate slabs span the outer path, whose corner arcs must be current.
+      calculateOuterArcs(p);
+      const halfWidthInner = innerHalfWidthAtY(p, f.crossSectionY);
+      const halfWidthOuter = outerHalfWidthAtY(p, f.crossSectionY);
+      // Exact station chords of the fluting platform boundaries; the inner one is
+      // the same query the cross arch takes off from, so they meet by construction.
+      const flutingOuterHalf = flutingOuterHalfWidthAtY(p, f.crossSectionY);
+      const flutingInnerHalf = flutingHalfWidthAtY(p, f.crossSectionY);
+      const crossTop = calculateCrossArchTop(p, f.crossSectionY);
+      this.draftChange.emit([
+        renderCrossSection(p, a, this.colors, f.showModuleGuides, halfWidthInner, halfWidthOuter, flutingOuterHalf, flutingInnerHalf, crossTop?.path ?? null),
+      ]);
       sessionStorage.setItem('recipeData', JSON.stringify(this.d));
     }));
   }
