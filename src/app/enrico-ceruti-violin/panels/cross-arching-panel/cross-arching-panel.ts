@@ -28,10 +28,17 @@ export class CrossArchingPanel {
   get arching(): ArchingParams { return this.params.arching!; }
   get topCross(): CrossArchParams { return this.arching.top.cross!; }
   get topFluting(): FlutingChannelParams { return this.arching.top.fluting!; }
+  get backCross(): CrossArchParams { return this.arching.bottom.cross!; }
+  get backFluting(): FlutingChannelParams { return this.arching.bottom.fluting!; }
 
   get topCrossPercent(): number { return Math.round(this.topCross.pct * 100); }
   set topCrossPercent(v: number) {
     this.topCross.pct = Math.min(Math.max(v, 5), 100) / 100;
+  }
+
+  get backCrossPercent(): number { return Math.round(this.backCross.pct * 100); }
+  set backCrossPercent(v: number) {
+    this.backCross.pct = Math.min(Math.max(v, 5), 100) / 100;
   }
 
   onChange(): void { this.changed.emit(); }

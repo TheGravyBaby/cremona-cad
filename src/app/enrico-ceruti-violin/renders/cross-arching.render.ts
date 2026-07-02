@@ -61,8 +61,11 @@ export const renderCrossSection = (
   flutingInnerHalf: number | null = null,
   topArchPath: string | null = null,
   flutingSliceTop: string | null = null,
+  backArchPath: string | null = null,
+  flutingSliceBottom: string | null = null,
 ) => (g: any, ui: any): void => {
   if (topArchPath) renderPath(topArchPath, colors.archTop, 1.5)(g, ui);
+  if (backArchPath) renderPath(backArchPath, colors.archBack, 1.5)(g, ui);
 
   if (halfWidthInner !== null) {
     const halfWidthRib = halfWidthInner + p.rib;
@@ -79,6 +82,6 @@ export const renderCrossSection = (
 
   if (halfWidthOuter !== null) {
     renderPlateEdges(colors, halfWidthOuter, flutingOuterHalf, flutingInnerHalf, a.ribHeight, a.top.thickness, 1, flutingSliceTop)(g, ui);
-    renderPlateEdges(colors, halfWidthOuter, flutingOuterHalf, flutingInnerHalf, 0, a.bottom.thickness, -1)(g, ui);
+    renderPlateEdges(colors, halfWidthOuter, flutingOuterHalf, flutingInnerHalf, 0, a.bottom.thickness, -1, flutingSliceBottom)(g, ui);
   }
 };
