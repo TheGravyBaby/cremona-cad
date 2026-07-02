@@ -174,12 +174,12 @@ export function computeWireframeRibs(
   p: EnricoCerutiParams,
   model: TopSurfaceModel,
   yOffset: number,
-  stationStepMm = 4,
+  stationStepMm = 6,
   rotXDeg       = 0,
   rotYDeg       = 0,
   rotZDeg       = 0,
   zAmp          = 2.5,
-  ribFractions  = [0, 0.35, 0.7, 1.0],
+  ribFractions  = [0, 1.0],
 ): string[] {
   // Build projection matrix once for all ribs.
   const proj = buildProjection(yOffset, p.height / 2, rotXDeg, rotYDeg, rotZDeg, zAmp);

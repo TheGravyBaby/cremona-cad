@@ -12,6 +12,14 @@ export interface HeightFieldStlOptions {
   gridMm: number;
   /** Z of the flat base plane (the blank's bottom face). */
   baseZ: number;
+  /**
+   * When provided, side walls follow this closed polygon (x/y in the same mm
+   * coordinate space as the height field) instead of the grid staircase.
+   * Eliminates jagged staircase edges on curved outlines.
+   */
+  outline?: [number, number][];
+  /** Z height of the top edge of each outline wall segment (typically the plate thickness). */
+  outlineTopZ?: number;
 }
 
 /**
@@ -59,10 +67,38 @@ export function buildHeightFieldStl(zAt: (x: number, y: number) => number | null
       quad(x0, y0, baseZ, x0, y1, baseZ, x1, y1, baseZ, x1, y0, baseZ);
 
       // Skirts on edges shared with non-solid neighbours, wound to face away from the cell.
-      if (!solidCell(i, j - 1)) quad(x0, y0, baseZ, x1, y0, baseZ, x1, y0, z10, x0, y0, z00);
-      if (!solidCell(i, j + 1)) quad(x1, y1, baseZ, x0, y1, baseZ, x0, y1, z01, x1, y1, z11);
-      if (!solidCell(i - 1, j)) quad(x0, y1, baseZ, x0, y0, baseZ, x0, y0, z00, x0, y1, z01);
-      if (!solidCell(i + 1, j)) quad(x1, y0, baseZ, x1, y1, baseZ, x1, y1, z11, x1, y0, z10);
+      // Omitted when an explicit outline polygon is provided (outline walls replace staircase skirts).
+      if (!opts.outline) {
+        if (!solidCell(i, j - 1)) quad(x0, y0, baseZ, x1, y0, baseZ, x1, y0, z10, x0, y0, z00);
+        if (!solidCell(i, j + 1)) quad(x1, y1, baseZ, x0, y1, baseZ, x0, y1, z01, x1, y1, z11);
+        if (!solidCell(i - 1, j)) quad(x0, y1, baseZ, x0, y0, baseZ, x0, y0, z00, x0, y1, z01);
+        if (!solidCell(i + 1, j)) quad(x1, y0, baseZ, x1, y1, baseZ, x1, y1, z11, x1, y0, z10);
+      }
+    }
+  }
+
+  // True outline walls: walk the boundary polygon and emit vertical wall quads.
+  // These replace the staircase skirts and follow the exact instrument shape.
+  if (opts.outline) {
+    const poly = opts.outline;
+    const topZ = opts.outlineTopZ ?? baseZ + 1;
+    const n = poly.length;
+    // Determine polygon orientation via signed shoelace area (positive = CCW in standard coords).
+    let area = 0;
+    for (let k = 0; k < n; k++) {
+      const [ax, ay] = poly[k], [bx, by] = poly[(k + 1) % n];
+      area += ax * by - bx * ay;
+    }
+    // CCW polygon: winding (p0,baseZ),(p1,baseZ),(p1,topZ),(p0,topZ) → outward normal.
+    // CW polygon:  reversed winding.
+    const ccw = area > 0;
+    for (let k = 0; k < n; k++) {
+      const [ax, ay] = poly[k], [bx, by] = poly[(k + 1) % n];
+      if (ccw) {
+        quad(ax, ay, baseZ, bx, by, baseZ, bx, by, topZ, ax, ay, topZ);
+      } else {
+        quad(ax, ay, topZ, bx, by, topZ, bx, by, baseZ, ax, ay, baseZ);
+      }
     }
   }
 
