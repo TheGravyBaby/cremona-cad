@@ -149,6 +149,14 @@ export function troughPositionInfo() {
     )
 }
 
+export function flatPlatformInfo() {
+    info(
+        "Leaves the fluting platform flat at the plate surface with a 90° ledge dropping to the arch takeoff at the inner boundary — the pre-channel state used when making.\n\n" +
+        "This is the flat platform you cut the purfling on and join the arching to, before the channel is finally gouged. Turn it off to see the finished carved channel.",
+        "Flat Platform", defaultTTL
+    )
+}
+
 export function archContoursInfo() {
     info(
         "A topographic map of the top plate surface, drawn above the section view (sharing its X axis): one contour per millimetre of height.\n\n" +

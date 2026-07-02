@@ -44,6 +44,8 @@ export interface TopSurfaceModel {
     edgeDepth: number;
     channelDepth: number;
     troughU: number;
+    /** Flat pre-channel platform with a ledge at the inner boundary instead of a carved channel. */
+    flatPlatform: boolean;
     /** Absolute Z of the plate outer surface (ribHeight + top thickness). */
     zBase: number;
 }
@@ -67,6 +69,7 @@ export function buildTopSurfaceModel(p: EnricoCerutiParams): TopSurfaceModel | n
         edgeDepth: a.top.edgeDepth ?? 0,
         channelDepth: a.top.edgeDepth ?? 0,
         troughU: resolveTroughU(p, fluting),
+        flatPlatform: fluting.flatPlatform ?? false,
         zBase: a.ribHeight + a.top.thickness,
     };
 }
@@ -157,7 +160,7 @@ export function topSurfaceZAt(p: EnricoCerutiParams, model: TopSurfaceModel, x: 
     const dOut = distPointToPolylineIndexed(pt, model.platformOuterIdx);
     const dIn = distPointToPolylineIndexed(pt, model.flutingInnerIdx!);
     const u = dOut + dIn > 0 ? dOut / (dOut + dIn) : 0;
-    return flutingProfileZ(u, model.channelDepth, model.troughU, model.edgeDepth, dOut + dIn);
+    return flutingProfileZ(u, model.channelDepth, model.troughU, model.edgeDepth, dOut + dIn, model.flatPlatform);
 }
 
 /**
@@ -186,6 +189,18 @@ export function calculateFlutingSectionTop(p: EnricoCerutiParams, model: TopSurf
     };
 
     if (fi === null || fi <= 0) return sampleSide(-fo, fo);
+
+    // Flat pre-channel platform: a crisp 90° ledge at the inner boundary rather
+    // than the sampled gouge arc — flat land out to the platform outer chord,
+    // then a vertical drop to the arch takeoff at −edgeDepth.
+    if (model.flatPlatform) {
+        const zTop = model.zBase;
+        const zTake = model.zBase - model.edgeDepth;
+        const ledgeSide = (fInner: number, fOuter: number): string =>
+            `M ${fInner} ${zTake} L ${fInner} ${zTop} L ${fOuter} ${zTop}`;
+        return `${ledgeSide(-fi, -fo)} ${ledgeSide(fi, fo)}`;
+    }
+
     return `${sampleSide(-fo, -fi)} ${sampleSide(fi, fo)}`;
 }
 

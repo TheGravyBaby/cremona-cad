@@ -121,6 +121,13 @@ export interface FlutingChannelParams {
    * 1 = fluting inner boundary. null = derive from the purfling line.
    */
   troughT: number | null;
+  /**
+   * When true the annulus stays a flat platform at the plate surface with a
+   * 90° ledge dropping to the arch takeoff at the inner boundary — the
+   * pre-channel state a maker cuts the purfling on before gouging the channel.
+   * When false (default) the carved gouge-arc channel is used.
+   */
+  flatPlatform: boolean;
 }
 
 export interface ArchPlate {
