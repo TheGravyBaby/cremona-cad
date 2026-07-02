@@ -40,6 +40,14 @@ export interface CerutiViewFlags {
   /** Body height (mm) of the cross-section station being viewed; null = resolve a default on first activation. */
   crossSectionY: number | null;
   showArchContours: boolean;
+  /** Render an oblique cavalier wireframe of the top-plate surface (stacked cross-section strips). */
+  show3DWireframe: boolean;
+  /** Rotation around the X axis (degrees). Tilts body length to reveal the arch profile. */
+  wireframeRotXDeg: number;
+  /** Rotation around the Y axis (degrees). Rolls the body on its length axis. */
+  wireframeRotYDeg: number;
+  /** Rotation around the Z axis (degrees). Spins the plan view. */
+  wireframeRotZDeg: number;
 }
 
 export const DEFAULT_CERUTI_VIEW_FLAGS: CerutiViewFlags = {
@@ -54,6 +62,10 @@ export const DEFAULT_CERUTI_VIEW_FLAGS: CerutiViewFlags = {
   simpleClampBox: false,
   crossSectionY: null,
   showArchContours: false,
+  show3DWireframe: false,
+  wireframeRotXDeg: -30,
+  wireframeRotYDeg: -10,
+  wireframeRotZDeg: 0,
 };
 
 /**

@@ -3,11 +3,10 @@ import { FormsModule } from '@angular/forms';
 import { ArchingParams, CerutiColors, CerutiViewFlags, CrossArchParams, EnricoCerutiParams, FlutingChannelParams } from '../../ceruti-types';
 import { archContoursInfo, crossArchEdgeDepthInfo, crossSectionStationInfo, trochoidFactorInfo, troughPositionInfo } from '../../ceruti-helpers';
 import { resolveTroughU } from '../../ceruti-calcs';
-import { RenderToggles } from '../../render-toggles/render-toggles';
 
 @Component({
   selector: 'app-ceruti-cross-arching-panel',
-  imports: [FormsModule, RenderToggles],
+  imports: [FormsModule],
   templateUrl: './cross-arching-panel.html',
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
