@@ -24,7 +24,7 @@
  */
 
 import { CerutiColors, EnricoCerutiParams } from '../ceruti-types';
-import { TopSurfaceModel, StationChords, stationChordsAt, topSurfaceZAt } from '../ceruti-surface';
+import { PlateSurfaceModel, StationChords, stationChordsAt, topSurfaceZAt } from '../ceruti-surface';
 
 const DEG = Math.PI / 180;
 
@@ -51,7 +51,7 @@ const DEG = Math.PI / 180;
 function buildProjection(
   yOffset: number, heightMid: number,
   rotXDeg: number, rotYDeg: number, rotZDeg: number,
-  zAmp = 1,
+  zAmp = 1, xOffset = 0,
 ): (x: number, y: number, z: number) => [number, number] {
   const rx = rotXDeg * DEG, ry = rotYDeg * DEG, rz = rotZDeg * DEG;
   const cx = Math.cos(rx), sx = Math.sin(rx);
@@ -72,7 +72,7 @@ function buildProjection(
   return (x: number, y: number, z: number): [number, number] => {
     const py = y - heightMid;
     return [
-      m00 * x + m01 * py + m02 * z,
+      xOffset + m00 * x + m01 * py + m02 * z,
       yCenter + m10 * x + m11 * py + m12 * z,
     ];
   };
@@ -111,7 +111,7 @@ export interface WireframeGeometry {
 /** Sample one cross-section at body-y `y` from precomputed station chords. */
 function stripGeomFromChords(
   p: EnricoCerutiParams,
-  model: TopSurfaceModel,
+  model: PlateSurfaceModel,
   y: number,
   chords: StationChords,
   sampleStep: number,
@@ -146,7 +146,7 @@ function stripGeomFromChords(
  */
 export function computeWireframeGeometry(
   p: EnricoCerutiParams,
-  model: TopSurfaceModel,
+  model: PlateSurfaceModel,
   stationStepMm = 4,
   sampleStep    = 1.5,
   ribFractions  = [0, 1.0],
@@ -203,8 +203,12 @@ export function projectWireframe(
   rotYDeg = 0,
   rotZDeg = 0,
   zAmp    = 1,
+  xOffset = 0,
+  signZ: 1 | -1 = 1,
 ): { strips: WireframeStrip[]; ribs: string[] } {
-  const proj = buildProjection(yOffset, bodyHeight / 2, rotXDeg, rotYDeg, rotZDeg, zAmp);
+  // signZ folds the back plate's height field downward; xOffset sits its
+  // wireframe beside the top plate's on the shared canvas.
+  const proj = buildProjection(yOffset, bodyHeight / 2, rotXDeg, rotYDeg, rotZDeg, zAmp * signZ, xOffset);
 
   const strips = geom.strips.map(strip => projectStripGeom(strip, proj));
   const ribs = geom.ribs.map(rib =>
@@ -220,7 +224,7 @@ export function projectWireframe(
 /** Build the SVG path for a single cross-section at body-y `y`. */
 export function computeSingleWireframeStrip(
   p: EnricoCerutiParams,
-  model: TopSurfaceModel,
+  model: PlateSurfaceModel,
   y: number,
   yOffset: number,
   rotXDeg    = 0,
@@ -228,10 +232,12 @@ export function computeSingleWireframeStrip(
   rotZDeg    = 0,
   zAmp       = 1,
   sampleStep = 1.5,
+  xOffset    = 0,
+  signZ: 1 | -1 = 1,
 ): WireframeStrip | null {
   const strip = stripGeomFromChords(p, model, y, stationChordsAt(p, model, y), sampleStep);
   if (!strip) return null;
-  const proj = buildProjection(yOffset, p.height / 2, rotXDeg, rotYDeg, rotZDeg, zAmp);
+  const proj = buildProjection(yOffset, p.height / 2, rotXDeg, rotYDeg, rotZDeg, zAmp * signZ, xOffset);
   return projectStripGeom(strip, proj);
 }
 
@@ -250,6 +256,7 @@ export function renderArch3dWireframe(
   strips: WireframeStrip[],
   ribs: string[],
   highlightedStrip: WireframeStrip | null,
+  domeColor: string = colors.archTop,
 ): (g: any, ui: any) => void {
   return (g: any, ui: any): void => {
     // Longitudinal ribs — faint
@@ -266,7 +273,7 @@ export function renderArch3dWireframe(
     // Cross-section strips
     for (const { path, maxZ } of strips) {
       const isChannel = maxZ < -0.01;
-      const color     = isChannel ? colors.fluting : colors.archTop;
+      const color     = isChannel ? colors.fluting : domeColor;
       const opacity   = isChannel ? 0.5 : 0.65;
       g.append('path')
         .attr('d', path)

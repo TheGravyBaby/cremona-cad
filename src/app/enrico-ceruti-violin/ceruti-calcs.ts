@@ -1446,8 +1446,8 @@ export function defineFlutingPath(p: EnricoCerutiParams, offset: number): string
  * position. Returns null until both the fluting platform and the arching's
  * channel params exist.
  */
-export function defineTroughPath(p: EnricoCerutiParams): string | null {
-    const fluting = p.arching?.top.fluting;
+export function defineTroughPath(p: EnricoCerutiParams, side: 'top' | 'bottom' = 'top'): string | null {
+    const fluting = p.arching?.[side].fluting;
     if (!fluting || p.innerFlutingDepth === null || p.outerFlutingDepth === null) return null;
     const u = resolveTroughU(p, fluting);
     const troughFromEdge = p.outerFlutingDepth + u * (p.innerFlutingDepth - p.outerFlutingDepth);
@@ -1472,29 +1472,31 @@ export function defineFlutingAreaPath(p: EnricoCerutiParams, innerOffset: number
 /** Returns instrument-appropriate arching defaults based on body length (p.height). */
 export function defaultArchingParams(bodyHeight: number): ArchingParams {
   const cat = (archHeight: number) => ({ type: 'catenary' as const, archHeight });
+  // Each plate carries its own cross-arch and fluting-channel params so the top
+  // and back can be shaped independently.
+  const plate = (archHeight: number, thickness: number) => ({
+    arch: cat(archHeight), thickness, edgeDepth: 0,
+    cross: defaultCrossArchParams(), fluting: defaultFlutingChannelParams(),
+  });
 
   if (bodyHeight < 400) {
     // Violin
     return { surfaceMethod: 'proportional', ribHeight: 32,
-      top:    { arch: cat(15), thickness: 3.5, edgeDepth: 0 },
-      bottom: { arch: cat(14), thickness: 3.5, edgeDepth: 0 } };
+      top: plate(15, 3.5), bottom: plate(14, 3.5) };
   }
   if (bodyHeight < 500) {
     // Viola
     return { surfaceMethod: 'proportional', ribHeight: 40,
-      top:    { arch: cat(20), thickness: 4.0, edgeDepth: 0 },
-      bottom: { arch: cat(18), thickness: 4.0, edgeDepth: 0 } };
+      top: plate(20, 4.0), bottom: plate(18, 4.0) };
   }
   if (bodyHeight < 800) {
     // Cello
     return { surfaceMethod: 'proportional', ribHeight: 120,
-      top:    { arch: cat(27), thickness: 6.0, edgeDepth: 0 },
-      bottom: { arch: cat(25), thickness: 6.0, edgeDepth: 0 } };
+      top: plate(27, 6.0), bottom: plate(25, 6.0) };
   }
   // Double bass
   return { surfaceMethod: 'proportional', ribHeight: 185,
-    top:    { arch: cat(55), thickness: 9.0, edgeDepth: 0 },
-    bottom: { arch: cat(50), thickness: 9.0, edgeDepth: 0 } };
+    top: plate(55, 9.0), bottom: plate(50, 9.0) };
 }
 
 function buildArchPath(arch: ArchCurve, span: number, yStart: number, xBase: number, sign: 1 | -1): string {
@@ -1603,18 +1605,23 @@ export function checkFlutingBitFit(p: EnricoCerutiParams, fluting: FlutingChanne
  * at the long arch height. This gives the fluting channel a meaningful slope to
  * meet regardless of the trochoid factor.
  */
-export function calculateCrossArchTop(p: EnricoCerutiParams, y: number): { path: string; halfSpan: number } | null {
+export function calculateCrossArchTop(p: EnricoCerutiParams, y: number, side: 'top' | 'bottom' = 'top'): { path: string; halfSpan: number } | null {
   const a = p.arching!;
+  const plate = a[side];
   const halfSpan = flutingHalfWidthAtY(p, y);
   if (halfSpan === null || halfSpan <= 0) return null;
-  const h = longArchHeightAt(p, a.top.arch, y);
+  const h = longArchHeightAt(p, plate.arch, y);
   if (h <= 0) return null;
-  const d = a.top.cross?.d ?? defaultCrossArchParams().d;
-  const pct = a.top.cross?.pct ?? defaultCrossArchParams().pct;
-  const edgeDepth = a.top.edgeDepth;
-  const zBase = a.ribHeight + a.top.thickness - edgeDepth;
+  const d = plate.cross?.d ?? defaultCrossArchParams().d;
+  const pct = plate.cross?.pct ?? defaultCrossArchParams().pct;
+  const edgeDepth = plate.edgeDepth;
+  // Outer-surface Z of the plate: top grows up from the rib, back grows down.
+  // sign folds the arch (and its edge-depth takeoff) to the correct side.
+  const sign: 1 | -1 = side === 'top' ? 1 : -1;
+  const outerZ = side === 'top' ? a.ribHeight + plate.thickness : -plate.thickness;
+  const zBase = outerZ - sign * edgeDepth;
   const hEff  = h + edgeDepth;
-  return { path: buildCycloidPathAcross(hEff, 2 * halfSpan, -halfSpan, zBase, 1, d, 80, pct), halfSpan };
+  return { path: buildCycloidPathAcross(hEff, 2 * halfSpan, -halfSpan, zBase, sign, d, 80, pct), halfSpan };
 }
 
 /** Outermost |x| where the horizontal station line crosses any of the arcs' drawn spans; null if none. */

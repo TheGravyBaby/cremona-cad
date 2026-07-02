@@ -4,8 +4,8 @@ import {
   defaultArchingParams, defaultCrossArchParams, defaultFlutingChannelParams,
 } from './ceruti-calcs';
 import {
-  buildTopPlateStl, buildTopSurfaceModel, calculateFlutingSectionTop,
-  computeArchContours, stationChordsAt, topSurfaceZAt, TopSurfaceModel,
+  buildPlateStl, buildPlateSurfaceModel, calculateFlutingSectionTop,
+  computeArchContours, stationChordsAt, topSurfaceZAt, PlateSurfaceModel,
 } from './ceruti-surface';
 import { DefaultParams, EnricoCerutiParams } from './ceruti-types';
 
@@ -67,11 +67,11 @@ describe('flutingProfileZ', () => {
 
 describe('top surface height field', () => {
   let p: EnricoCerutiParams;
-  let model: TopSurfaceModel;
+  let model: PlateSurfaceModel;
 
   beforeEach(() => {
     p = makeParams();
-    model = buildTopSurfaceModel(p)!;
+    model = buildPlateSurfaceModel(p, 'top')!;
   });
 
   it('builds a model with sampled boundary loops', () => {
@@ -136,7 +136,7 @@ describe('top surface height field', () => {
   it('flat platform leaves the annulus flat with a ledge to the arch takeoff', () => {
     p.arching!.top.edgeDepth = 1.2;
     p.arching!.top.fluting!.flatPlatform = true;
-    const flatModel = buildTopSurfaceModel(p)!;
+    const flatModel = buildPlateSurfaceModel(p, 'top')!;
     const y = p.height / 2;
     const chords = stationChordsAt(p, flatModel, y);
     const fi = chords.flutingInnerHalf!;
@@ -161,7 +161,57 @@ describe('top surface height field', () => {
   });
 
   it('exports a plausible binary STL', () => {
-    const buf = buildTopPlateStl(p, model, 2);
+    const buf = buildPlateStl(p, model, 'top', 2);
+    const dv = new DataView(buf);
+    const triCount = dv.getUint32(80, true);
+    expect(triCount).toBeGreaterThan(1000);
+    expect(buf.byteLength).toBe(84 + triCount * 50);
+  });
+});
+
+describe('back plate surface height field', () => {
+  let p: EnricoCerutiParams;
+  let model: PlateSurfaceModel;
+
+  beforeEach(() => {
+    p = makeParams();
+    // defaultArchingParams already seeds bottom.cross/fluting; build the back model.
+    model = buildPlateSurfaceModel(p, 'bottom')!;
+  });
+
+  it('folds downward from the back outer surface', () => {
+    expect(model.signZ).toBe(-1);
+    expect(model.zBase).toBeCloseTo(-p.arching!.bottom.thickness, 6);
+  });
+
+  it('uses the same relative height field convention (dome positive)', () => {
+    // The relative field is plate-agnostic: peak positive, channel negative.
+    const y = p.height / 2;
+    const peak = topSurfaceZAt(p, model, 0, y)!;
+    expect(peak).toBeGreaterThan(p.arching!.bottom.arch.archHeight * 0.9);
+  });
+
+  it('carries the neck-root button in its outline, unlike the top', () => {
+    // The button sits at the neck end (max y); the back outline reaches past the
+    // top outline's highest point there.
+    const top = buildPlateSurfaceModel(p, 'top')!;
+    const maxYBack = Math.max(...model.outerPlate.map(pt => pt.y));
+    const maxYTop = Math.max(...top.outerPlate.map(pt => pt.y));
+    expect(maxYBack).toBeGreaterThan(maxYTop);
+  });
+
+  it('places the flat-platform ledge on the negative (down) side', () => {
+    p.arching!.bottom.edgeDepth = 1.2;
+    p.arching!.bottom.fluting!.flatPlatform = true;
+    const flat = buildPlateSurfaceModel(p, 'bottom')!;
+    const y = p.height / 2;
+    const slice = calculateFlutingSectionTop(p, flat, y)!;
+    // signZ = −1: the ledge drops toward the rib (zBase + edgeDepth), not below the plate.
+    expect(slice).toContain(`${flat.zBase + 1.2}`);
+  });
+
+  it('exports a plausible binary STL for the back plate', () => {
+    const buf = buildPlateStl(p, model, 'bottom', 2);
     const dv = new DataView(buf);
     const triCount = dv.getUint32(80, true);
     expect(triCount).toBeGreaterThan(1000);

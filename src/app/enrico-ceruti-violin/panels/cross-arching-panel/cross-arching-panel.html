@@ -1,7 +1,7 @@
 @if (params.arching) {
 
 @if (arching.top.cross) {
-<section class="ui-group" [style.border-color]="colors.outerTrace">
+<section class="ui-group" [style.border-color]="colors.archTop">
     <div class="ui-group-title">Top Plate</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
@@ -25,28 +25,72 @@
         </label>
         <button type="button" class="info-icon" (click)="crossArchEdgeDepthInfo()" title="More information">ⓘ</button>
     </div>
+
+    @if (arching.top.fluting) {
+        @if (!topFluting.flatPlatform) {
+        <div class="input-group basic-row field-row" role="group">
+            <label class="field-cell">
+                <span class="field-title">Fluting Curve <span class="unit-label">0–1</span></span>
+                <input class="basic-input" type="number" step="0.05" min="0.05" max="0.95"
+                    [(ngModel)]="topFluting.troughT" (input)="onChange()" [style.border-color]="colors.fluting" />
+            </label>
+        </div>
+        }
+        <div class="input-group basic-row field-row" role="group">
+            <div class="toggle">
+                <input type="checkbox" [(ngModel)]="topFluting.flatPlatform" (change)="onChange()" />
+                <span>Flat Platform</span>
+            </div>
+            <button type="button" class="info-icon" (click)="flatPlatformInfo()" title="More information">ⓘ</button>
+        </div>
+    }
 </section>
 }
 
-@if (arching.top.fluting) {
-<section class="ui-group" [style.border-color]="colors.fluting">
-    <div class="ui-group-title">Fluting Channel</div>
-    @if (!topFluting.flatPlatform) {
+@if (arching.bottom.cross) {
+<section class="ui-group" [style.border-color]="colors.archBack">
+    <div class="ui-group-title">Back Plate</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title">Trough Position <span class="unit-label">0–1</span></span>
-            <input class="basic-input" type="number" step="0.05" min="0.05" max="0.95"
-                [(ngModel)]="topFluting.troughT" (input)="onChange()" [style.border-color]="colors.fluting" />
+            <span class="field-title">Cycloid Factor <span class="unit-label">0–1</span></span>
+            <input class="basic-input" type="number" step="0.05" min="0" max="1"
+                [(ngModel)]="backCross.d" (input)="onChange()" [style.border-color]="colors.archBack" />
         </label>
+        <label class="field-cell">
+            <span class="field-title">Cycloid Percentage <span class="unit-label">%</span></span>
+            <input class="basic-input" type="number" step="5" min="5" max="100"
+                [(ngModel)]="backCrossPercent" (input)="onChange()" [style.border-color]="colors.archBack" />
+        </label>
+        <button type="button" class="info-icon" (click)="crossArchCycloidControlsInfo()" title="More information">ⓘ</button>
     </div>
-    }
+
     <div class="input-group basic-row field-row" role="group">
-        <div class="toggle">
-            <input type="checkbox" [(ngModel)]="topFluting.flatPlatform" (change)="onChange()" />
-            <span>Flat Platform</span>
-        </div>
-        <button type="button" class="info-icon" (click)="flatPlatformInfo()" title="More information">ⓘ</button>
+        <label class="field-cell">
+            <span class="field-title">Edge Depth <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.1" min="0" max="5"
+                [(ngModel)]="arching.bottom.edgeDepth" (input)="onChange()" />
+        </label>
+        <button type="button" class="info-icon" (click)="crossArchEdgeDepthInfo()" title="More information">ⓘ</button>
     </div>
+
+    @if (arching.bottom.fluting) {
+        @if (!backFluting.flatPlatform) {
+        <div class="input-group basic-row field-row" role="group">
+            <label class="field-cell">
+                <span class="field-title">Fluting Curve <span class="unit-label">0–1</span></span>
+                <input class="basic-input" type="number" step="0.05" min="0.05" max="0.95"
+                    [(ngModel)]="backFluting.troughT" (input)="onChange()" [style.border-color]="colors.fluting" />
+            </label>
+        </div>
+        }
+        <div class="input-group basic-row field-row" role="group">
+            <div class="toggle">
+                <input type="checkbox" [(ngModel)]="backFluting.flatPlatform" (change)="onChange()" />
+                <span>Flat Platform</span>
+            </div>
+            <button type="button" class="info-icon" (click)="flatPlatformInfo()" title="More information">ⓘ</button>
+        </div>
+    }
 </section>
 }
 

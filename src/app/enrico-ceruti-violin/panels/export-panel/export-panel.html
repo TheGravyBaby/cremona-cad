@@ -54,7 +54,16 @@
                 <span class="export-row__desc">Arched top surface with fluting channel, for CNC</span>
             </div>
             <div class="export-row__actions">
-                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadStl()">STL</button>
+                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadStl('top')">STL</button>
+            </div>
+        </div>
+        <div class="export-row">
+            <div class="export-row__label">
+                <span class="export-row__name">Back Plate 3D</span>
+                <span class="export-row__desc">Arched back surface with fluting channel, for CNC</span>
+            </div>
+            <div class="export-row__actions">
+                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadStl('bottom')">STL</button>
             </div>
         </div>
         <div class="export-row">

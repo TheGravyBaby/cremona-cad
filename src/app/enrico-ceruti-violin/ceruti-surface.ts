@@ -23,8 +23,8 @@ import {
 // the channel dips negative. Distance-ratio u (never normal projection) keeps
 // the corners fold-free where the annulus widens.
 
-/** Precomputed geometry for evaluating the top-plate height field. Rebuild on param change, reuse across queries. */
-export interface TopSurfaceModel {
+/** Precomputed geometry for evaluating a plate's height field. Rebuild on param change, reuse across queries. */
+export interface PlateSurfaceModel {
     /**
      * The plate edge (outer path) as a sampled closed loop. Chords come from
      * this polyline, not the offset arcs: the corner tips are cubic Béziers
@@ -46,31 +46,41 @@ export interface TopSurfaceModel {
     troughU: number;
     /** Flat pre-channel platform with a ledge at the inner boundary instead of a carved channel. */
     flatPlatform: boolean;
-    /** Absolute Z of the plate outer surface (ribHeight + top thickness). */
+    /** Absolute Z of the plate outer surface: top = ribHeight + top thickness, back = −bottom thickness. */
     zBase: number;
+    /**
+     * Direction the relative height field folds into absolute Z: top plate grows
+     * up (+1), back plate grows down (−1). The field math (peak positive, channel
+     * negative) is identical for both plates; only the placement flips.
+     */
+    signZ: 1 | -1;
 }
 
-export function buildTopSurfaceModel(p: EnricoCerutiParams): TopSurfaceModel | null {
+export function buildPlateSurfaceModel(p: EnricoCerutiParams, side: 'top' | 'bottom' = 'top'): PlateSurfaceModel | null {
     const a = p.arching;
     if (!a) return null;
-    const fluting = a.top.fluting ?? defaultFlutingChannelParams();
+    const plate = a[side];
+    const fluting = plate.fluting ?? defaultFlutingChannelParams();
     const innerPath = defineFlutingPath(p, p.innerFlutingDepth ?? 0);
     const platformOuter = samplePathToPolyline(defineInsetPath(p, p.outerFlutingDepth ?? 0));
     const flutingInner = innerPath ? samplePathToPolyline(innerPath) : null;
+    // The back plate carries the neck-root button in its outline; the top does not.
+    const outerPlate = samplePathToPolyline(defineOuterPath(p, p.overhang + p.rib, true, side === 'bottom'));
     return {
-        outerPlate: samplePathToPolyline(defineOuterPath(p, p.overhang + p.rib, true, false)),
+        outerPlate,
         platformOuter,
         flutingInner,
         platformOuterIdx: buildPolylineIndex(platformOuter),
         flutingInnerIdx: flutingInner ? buildPolylineIndex(flutingInner) : null,
-        arch: a.top.arch,
-        crossD: a.top.cross?.d ?? defaultCrossArchParams().d,
-        crossPct: a.top.cross?.pct ?? defaultCrossArchParams().pct,
-        edgeDepth: a.top.edgeDepth ?? 0,
-        channelDepth: a.top.edgeDepth ?? 0,
+        arch: plate.arch,
+        crossD: plate.cross?.d ?? defaultCrossArchParams().d,
+        crossPct: plate.cross?.pct ?? defaultCrossArchParams().pct,
+        edgeDepth: plate.edgeDepth ?? 0,
+        channelDepth: plate.edgeDepth ?? 0,
         troughU: resolveTroughU(p, fluting),
         flatPlatform: fluting.flatPlatform ?? false,
-        zBase: a.ribHeight + a.top.thickness,
+        zBase: side === 'top' ? a.ribHeight + plate.thickness : -plate.thickness,
+        signZ: side === 'top' ? 1 : -1,
     };
 }
 
@@ -90,7 +100,7 @@ export interface StationChords {
     archH: number;
 }
 
-export function stationChordsAt(p: EnricoCerutiParams, model: TopSurfaceModel, y: number): StationChords {
+export function stationChordsAt(p: EnricoCerutiParams, model: PlateSurfaceModel, y: number): StationChords {
     const landCrossings = polylineCrossingsAtY(model.platformOuter, y);
     // Arc-exact when available: same query the cross arch spans, so the channel meets the
     // takeoff point by construction. Falls back to the sampled polyline at corner-band
@@ -140,7 +150,7 @@ function insideCrossings(x: number, xs: number[]): boolean {
  * surface. Returns null outside the plate outline. Pass `chords` when
  * evaluating many points on one station row.
  */
-export function topSurfaceZAt(p: EnricoCerutiParams, model: TopSurfaceModel, x: number, y: number, chords?: StationChords): number | null {
+export function topSurfaceZAt(p: EnricoCerutiParams, model: PlateSurfaceModel, x: number, y: number, chords?: StationChords): number | null {
     chords ??= stationChordsAt(p, model, y);
     const ax = Math.abs(x);
     if (chords.outerHalf === null || ax > chords.outerHalf) return null;
@@ -170,7 +180,7 @@ export function topSurfaceZAt(p: EnricoCerutiParams, model: TopSurfaceModel, x: 
  * coordinates (canvas X = violin X, canvas Y = absolute Z). At cap stations
  * (no inner chord) the channel spans the body in a single curve.
  */
-export function calculateFlutingSectionTop(p: EnricoCerutiParams, model: TopSurfaceModel, y: number): string | null {
+export function calculateFlutingSectionTop(p: EnricoCerutiParams, model: PlateSurfaceModel, y: number): string | null {
     const chords = stationChordsAt(p, model, y);
     if (chords.outerHalf === null) return null;
     const fo = Math.min(chords.platformOuterHalf ?? chords.outerHalf, chords.outerHalf);
@@ -183,7 +193,7 @@ export function calculateFlutingSectionTop(p: EnricoCerutiParams, model: TopSurf
             const x = x0 + ((x1 - x0) * i) / n;
             const z = topSurfaceZAt(p, model, x, y, chords);
             if (z === null) continue;
-            pts.push(`${pts.length === 0 ? 'M' : 'L'} ${x} ${model.zBase + z}`);
+            pts.push(`${pts.length === 0 ? 'M' : 'L'} ${x} ${model.zBase + model.signZ * z}`);
         }
         return pts.join(' ');
     };
@@ -195,7 +205,7 @@ export function calculateFlutingSectionTop(p: EnricoCerutiParams, model: TopSurf
     // then a vertical drop to the arch takeoff at −edgeDepth.
     if (model.flatPlatform) {
         const zTop = model.zBase;
-        const zTake = model.zBase - model.edgeDepth;
+        const zTake = model.zBase - model.signZ * model.edgeDepth;
         const ledgeSide = (fInner: number, fOuter: number): string =>
             `M ${fInner} ${zTake} L ${fInner} ${zTop} L ${fOuter} ${zTop}`;
         return `${ledgeSide(-fi, -fo)} ${ledgeSide(fi, fo)}`;
@@ -208,7 +218,12 @@ export function calculateFlutingSectionTop(p: EnricoCerutiParams, model: TopSurf
  * Contour (topo) map of the top surface: level curves every `stepMm` of height
  * relative to the plate outer surface, computed on a `gridMm` plan grid via
  * d3-contour (marching squares). Returns plan-view path strings translated by
- * `yOffset` so the map can stack above the section view on the same canvas.
+ * `xOffset`/`yOffset` so the map can sit beside a sibling plate's map and stack
+ * above the section view on the same canvas.
+ *
+ * The height field is relative to the plate outer surface (peak positive,
+ * channel negative) for both plates, so the level curves are plate-agnostic —
+ * only the on-canvas offset differs between top and back.
  *
  * Out-of-outline grid cells are padded below every positive threshold but
  * above every non-positive one: positive levels close naturally at the
@@ -217,10 +232,11 @@ export function calculateFlutingSectionTop(p: EnricoCerutiParams, model: TopSurf
  */
 export function computeArchContours(
     p: EnricoCerutiParams,
-    model: TopSurfaceModel,
+    model: PlateSurfaceModel,
     stepMm = 1,
     gridMm = 1,
     yOffset = 0,
+    xOffset = 0,
 ): { level: number; path: string }[] {
     const xMax = p.width / 2 + p.overhang + p.rib + 2;
     const yMin = -1, yMax = p.height + 1;
@@ -258,7 +274,7 @@ export function computeArchContours(
     const toPath = (rings: number[][][][]): string =>
         rings.flat().map(ring =>
             ring.map(([cx, cy], idx) =>
-                `${idx === 0 ? 'M' : 'L'} ${(-xMax + cx * gridMm).toFixed(2)} ${(yMin + cy * gridMm + yOffset).toFixed(2)}`
+                `${idx === 0 ? 'M' : 'L'} ${(-xMax + cx * gridMm + xOffset).toFixed(2)} ${(yMin + cy * gridMm + yOffset).toFixed(2)}`
             ).join(' ') + ' Z'
         ).join(' ');
 
@@ -290,12 +306,15 @@ export function computeArchContours(
 }
 
 /**
- * Binary STL of the top plate as machined: the height-field surface on top,
- * flat base at z = 0 (the blank's gluing face on the CNC bed), vertical skirt
- * at the outline. Coordinates in mm, x/y as in plan view.
+ * Binary STL of one plate as machined: the height-field surface on top, flat
+ * base at z = 0 (the blank's gluing face on the CNC bed), vertical skirt at the
+ * outline. Coordinates in mm, x/y as in plan view. The height field is
+ * plate-agnostic (peak positive above the gluing face), so the back plate is
+ * machined the same way — only the thickness and the button-bearing outline
+ * differ, both carried by `side`/`model`.
  */
-export function buildTopPlateStl(p: EnricoCerutiParams, model: TopSurfaceModel, gridMm = 0.5): ArrayBuffer {
-    const thickness = p.arching!.top.thickness;
+export function buildPlateStl(p: EnricoCerutiParams, model: PlateSurfaceModel, side: 'top' | 'bottom' = 'top', gridMm = 0.5): ArrayBuffer {
+    const thickness = p.arching![side].thickness;
     const xMax = p.width / 2 + p.overhang + p.rib + 2;
 
     // The exporter scans row-major, so one station's chords serve a whole row.
