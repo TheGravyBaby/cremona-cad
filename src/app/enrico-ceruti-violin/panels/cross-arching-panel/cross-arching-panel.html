@@ -74,6 +74,51 @@
         </div>
         <button type="button" class="info-icon" (click)="archContoursInfo()" title="More information">ⓘ</button>
     </div>
+    <div class="input-group basic-row field-row" role="group">
+        <div class="toggle">
+            <input type="checkbox" [(ngModel)]="flags.show3DWireframe" (change)="onChange()" />
+            <span>Show 3D Wireframe</span>
+        </div>
+    </div>
+    @if (flags.show3DWireframe) {
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Rotate X <span class="unit-label">°</span></span>
+            <input class="basic-input" type="number" step="1"
+                [(ngModel)]="flags.wireframeRotXDeg" (input)="onChange()" />
+        </label>
+         <label class="field-cell">
+            <span class="field-title">Rotate Y <span class="unit-label">°</span></span>
+            <input class="basic-input" type="number" step="1"
+                [(ngModel)]="flags.wireframeRotYDeg" (input)="onChange()" />
+        </label>
+    </div>
+    <!-- <div class="input-group basic-row field-row" role="group">
+        <input class="basic-input" type="range" step="1" min="-180" max="180"
+            [(ngModel)]="flags.wireframeRotXDeg" (input)="onChange()"
+            aria-label="3D wireframe rotate around X axis" />
+    </div> -->
+    <div class="input-group basic-row field-row" role="group">
+       
+    </div>
+    <!-- <div class="input-group basic-row field-row" role="group">
+        <input class="basic-input" type="range" step="1" min="-180" max="180"
+            [(ngModel)]="flags.wireframeRotYDeg" (input)="onChange()"
+            aria-label="3D wireframe rotate around Y axis" />
+    </div> -->
+    <!-- <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Rotate Z <span class="unit-label">°</span></span>
+            <input class="basic-input" type="number" step="1"
+                [(ngModel)]="flags.wireframeRotZDeg" (input)="onChange()" />
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <input class="basic-input" type="range" step="1" min="-180" max="180"
+            [(ngModel)]="flags.wireframeRotZDeg" (input)="onChange()"
+            aria-label="3D wireframe rotate around Z axis" />
+    </div> -->
+    }
 </section>
 
 

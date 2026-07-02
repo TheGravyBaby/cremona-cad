@@ -10,6 +10,7 @@ import { CERUTI_TEMPLATES } from './ceruti-templates';
 import { calculateCenterBout, calculateCorners, calculateCrossArchTop, calculateLongArch, calculateMainBouts, calculateMould, calculateOuterArcs, checkFlutingBitFit, defaultArchingParams, defaultCrossArchParams, defaultFlutingChannelParams, defineFlutingAreaPath, defineFlutingPath, defineInnerPath, defineInsetPath, defineOuterCornerArcs, defineOuterPath, defineOuterPurflingPath, definePurflingPath, defineTroughPath, flutingHalfWidthAtY, flutingOuterHalfWidthAtY, innerHalfWidthAtY, outerHalfWidthAtY } from './ceruti-calcs';
 import { buildTopSurfaceModel, calculateFlutingSectionTop, computeArchContours, stationChordsAt } from './ceruti-surface';
 import { renderArchContourMap } from './renders/arch-contours.render';
+import { computeSingleWireframeStrip, computeWireframeRibs, computeWireframeStrips, renderArch3dWireframe, WireframeStrip } from './renders/arch-3d-wireframe.render';
 import { HighlightedArc } from './renders/render-constants';
 import { renderBounds, renderBoutBouts, renderCornerGuides } from './renders/guides.render';
 import { renderMainBouts } from './renders/main-bouts.render';
@@ -507,6 +508,12 @@ export class CerutiViolin extends RecipeComponentBase {
     trough: string | null;
   } | null = null;
 
+  private wireframeCache: {
+    key: string;
+    strips: WireframeStrip[];
+    ribs: string[];
+  } | null = null;
+
   changeCrossArching(): void {
     if (!this.d.params.arching) {
       this.d.params.arching = defaultArchingParams(this.d.params.height);
@@ -540,9 +547,10 @@ export class CerutiViolin extends RecipeComponentBase {
       const renders = [
         renderCrossSection(p, a, this.colors, f.showModuleGuides, halfWidthInner, halfWidthOuter, flutingOuterHalf, flutingInnerHalf, crossTop?.path ?? null, flutingSlice),
       ];
+      // yOffset is needed by both the topo-map and 3D wireframe overlays.
+      const yOffset = a.ribHeight + a.top.thickness + a.top.arch.archHeight + 15;
       if (f.showArchContours && model) {
         // Stack the plan-view topo map above the section, sharing the X axis.
-        const yOffset = a.ribHeight + a.top.thickness + a.top.arch.archHeight + 15;
         // Snapshot taken after calculateOuterArcs so the key is deterministic;
         // yOffset derives from params, so its changes invalidate too.
         const key = JSON.stringify(p);
@@ -556,6 +564,24 @@ export class CerutiViolin extends RecipeComponentBase {
         }
         const cached = this.archContourCache;
         renders.push(renderArchContourMap(p, this.colors, cached.contours, cached.outline, cached.trough, yOffset, f.crossSectionY));
+      }
+      if (f.show3DWireframe && model) {
+        const rotX = f.wireframeRotXDeg ?? 0;
+        const rotY = f.wireframeRotYDeg ?? 0;
+        const rotZ = f.wireframeRotZDeg ?? 0;
+        // Recompute strip geometry when params or any rotation angle changes; station drags reuse the cache.
+        const key = `${JSON.stringify(p)}|rotX:${rotX}|rotY:${rotY}|rotZ:${rotZ}`;
+        if (this.wireframeCache?.key !== key) {
+          this.wireframeCache = {
+            key,
+            strips: computeWireframeStrips(p, model, yOffset, 4, rotX, rotY, rotZ),
+            ribs:   computeWireframeRibs(p, model, yOffset, 4, rotX, rotY, rotZ),
+          };
+        }
+        const highlightedStrip = f.crossSectionY != null
+          ? computeSingleWireframeStrip(p, model, f.crossSectionY, yOffset, rotX, rotY, rotZ)
+          : null;
+        renders.push(renderArch3dWireframe(this.colors, this.wireframeCache.strips, this.wireframeCache.ribs, highlightedStrip));
       }
       this.draftChange.emit(renders);
       sessionStorage.setItem('recipeData', JSON.stringify(this.d));
