@@ -617,7 +617,7 @@ export class CerutiViolin extends RecipeComponentBase {
   private warnFlutingBitFit(p: EnricoCerutiParams, a: ArchingParams): void {
     const fluting = a.top.fluting!;
     const width = (p.innerFlutingDepth ?? 0) - (p.outerFlutingDepth ?? 0);
-    const key = `${a.top.edgeDepth}|${fluting.troughT}|${p.bitDiameter}|${width}`;
+    const key = `${a.top.edgeDepth}|${fluting.troughT}|${fluting.flatPlatform}|${p.bitDiameter}|${width}`;
     if (key === this.lastBitFitKey) return;
     this.lastBitFitKey = key;
     checkFlutingBitFit(p, fluting, width);

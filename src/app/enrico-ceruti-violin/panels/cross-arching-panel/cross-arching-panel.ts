@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ArchingParams, CerutiColors, CerutiViewFlags, CrossArchParams, EnricoCerutiParams, FlutingChannelParams } from '../../ceruti-types';
-import { archContoursInfo, crossArchCycloidControlsInfo, crossArchEdgeDepthInfo, crossSectionStationInfo, troughPositionInfo } from '../../ceruti-helpers';
+import { archContoursInfo, crossArchCycloidControlsInfo, crossArchEdgeDepthInfo, crossSectionStationInfo, flatPlatformInfo, troughPositionInfo } from '../../ceruti-helpers';
 
 @Component({
   selector: 'app-ceruti-cross-arching-panel',
@@ -20,6 +20,7 @@ export class CrossArchingPanel {
   protected readonly crossArchCycloidControlsInfo = crossArchCycloidControlsInfo;
   protected readonly crossArchEdgeDepthInfo = crossArchEdgeDepthInfo;
   protected readonly troughPositionInfo = troughPositionInfo;
+  protected readonly flatPlatformInfo = flatPlatformInfo;
   protected readonly archContoursInfo = archContoursInfo;
 
 

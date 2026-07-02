@@ -55,6 +55,14 @@ describe('flutingProfileZ', () => {
       expect(flutingProfileZ(u, 0.3, 0.4, 1.0, 10)).toBeCloseTo(-1.0 * u, 10);
     }
   });
+
+  it('stays flat across the annulus with a ledge at the inner boundary when flatPlatform', () => {
+    // Whole platform sits at the plate surface; only the inner boundary drops to −edgeDepth.
+    for (let u = 0; u < 1; u += 0.1) {
+      expect(flutingProfileZ(u, 1, 0.4, 0.5, 10, true)).toBe(0);
+    }
+    expect(flutingProfileZ(1, 1, 0.4, 0.5, 10, true)).toBeCloseTo(-0.5, 10);
+  });
 });
 
 describe('top surface height field', () => {
@@ -123,6 +131,25 @@ describe('top surface height field', () => {
     const slice = calculateFlutingSectionTop(p, model, p.height / 2);
     expect(slice).toBeTruthy();
     expect(slice!.startsWith('M')).toBe(true);
+  });
+
+  it('flat platform leaves the annulus flat with a ledge to the arch takeoff', () => {
+    p.arching!.top.edgeDepth = 1.2;
+    p.arching!.top.fluting!.flatPlatform = true;
+    const flatModel = buildTopSurfaceModel(p)!;
+    const y = p.height / 2;
+    const chords = stationChordsAt(p, flatModel, y);
+    const fi = chords.flutingInnerHalf!;
+    const outer = chords.outerHalf!;
+    // The whole annulus sits at the plate surface — no scoop below it.
+    for (let x = fi + 0.2; x < outer; x += 0.2) {
+      const z = topSurfaceZAt(p, flatModel, x, y, chords);
+      if (z !== null) expect(z).toBeCloseTo(0, 6);
+    }
+    // The arch still takes off at −edgeDepth; the ledge bridges the two.
+    expect(topSurfaceZAt(p, flatModel, fi - 1e-6, y, chords)!).toBeCloseTo(-1.2, 3);
+    const slice = calculateFlutingSectionTop(p, flatModel, y)!;
+    expect(slice).toContain(`L ${fi} ${flatModel.zBase}`);
   });
 
   it('generates closed contours including channel levels', () => {

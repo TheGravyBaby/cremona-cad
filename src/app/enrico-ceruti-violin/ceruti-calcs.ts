@@ -1550,7 +1550,7 @@ export function defaultCrossArchParams(): CrossArchParams {
 
 /** Default fluting channel: trough position derived from the purfling line; channel depth matches edgeDepth. */
 export function defaultFlutingChannelParams(): FlutingChannelParams {
-  return { troughT: 1 };
+  return { troughT: 1, flatPlatform: false };
 }
 
 /**
@@ -1577,7 +1577,8 @@ export function resolveTroughU(p: EnricoCerutiParams, fluting: FlutingChannelPar
  */
 export function checkFlutingBitFit(p: EnricoCerutiParams, fluting: FlutingChannelParams, annulusWidth: number): void {
   const edgeDepth = p.arching?.top.edgeDepth ?? 0;
-  if (edgeDepth <= 0 || annulusWidth <= 0) return;
+  // A flat pre-channel platform has no scoop cut yet — nothing to warn about.
+  if (edgeDepth <= 0 || annulusWidth <= 0 || fluting.flatPlatform) return;
   const arc = flutingArc(edgeDepth, resolveTroughU(p, fluting), edgeDepth, annulusWidth);
   if (!arc) return; // degenerate channel falls back to the straight chord — nothing concave to cut
   const troughRadius = arc.r;

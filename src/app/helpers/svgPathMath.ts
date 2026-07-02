@@ -1021,10 +1021,16 @@ export function flutingArc(channelDepth: number, troughU: number, edgeDepth: num
  * edge land and the cross-arch takeoff with small creases, like a fresh gouge
  * pass. Degenerate channels (trough not below the end-to-end chord) fall back
  * to the straight chord.
+ *
+ * When `flatPlatform` is set the channel isn't carved: the annulus stays flat
+ * at the plate surface across its whole width, with a single vertical ledge at
+ * the inner boundary (u = 1) dropping to the arch takeoff — the pre-channel
+ * state a maker cuts the purfling on before gouging.
  */
-export function flutingProfileZ(u: number, channelDepth: number, troughU: number, edgeDepth: number, width: number): number {
+export function flutingProfileZ(u: number, channelDepth: number, troughU: number, edgeDepth: number, width: number, flatPlatform = false): number {
   if (u <= 0) return 0;
   if (u >= 1) return -edgeDepth;
+  if (flatPlatform) return 0;
   const arc = flutingArc(channelDepth, troughU, edgeDepth, width);
   if (!arc) return -edgeDepth * u;
   const dt = u * width - arc.cx;
