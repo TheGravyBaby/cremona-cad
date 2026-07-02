@@ -50,7 +50,7 @@ const DEG = Math.PI / 180;
 function buildProjection(
   yOffset: number, heightMid: number,
   rotXDeg: number, rotYDeg: number, rotZDeg: number,
-  zAmp = 2.5,
+  zAmp = 1,
 ): (x: number, y: number, z: number) => [number, number] {
   const rx = rotXDeg * DEG, ry = rotYDeg * DEG, rz = rotZDeg * DEG;
   const cx = Math.cos(rx), sx = Math.sin(rx);
@@ -130,7 +130,7 @@ export function computeSingleWireframeStrip(
   rotXDeg   = 0,
   rotYDeg   = 0,
   rotZDeg   = 0,
-  zAmp       = 2.5,
+  zAmp       = 1,
   sampleStep = 1.5,
 ): WireframeStrip | null {
   const proj = buildProjection(yOffset, p.height / 2, rotXDeg, rotYDeg, rotZDeg, zAmp);
@@ -178,7 +178,7 @@ export function computeWireframeRibs(
   rotXDeg       = 0,
   rotYDeg       = 0,
   rotZDeg       = 0,
-  zAmp          = 2.5,
+  zAmp          = 1,
   ribFractions  = [0, 1.0],
 ): string[] {
   // Build projection matrix once for all ribs.
