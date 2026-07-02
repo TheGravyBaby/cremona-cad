@@ -763,7 +763,7 @@ export function intersectionFromTwoPaths(path1: string, path2: string): string {
 
 /**
  * Translates all coordinates in an absolute SVG path string by (dx, dy).
- * Supports M, L, A, Q, and Z commands.
+ * Supports M, L, C, A, Q, and Z commands.
  */
 export function translatePath(path: string, dx: number, dy: number): string {
   if (dx === 0 && dy === 0) return path;
@@ -774,6 +774,8 @@ export function translatePath(path: string, dx: number, dy: number): string {
     switch (cmd.toUpperCase()) {
       case 'M':
       case 'L':
+      case 'C':
+        // C x1 y1 x2 y2 x y — every param is a coordinate pair, so pairwise translation applies.
         for (let i = 0; i < nums.length; i += 2) { nums[i] += dx; nums[i + 1] += dy; }
         break;
       case 'A':
@@ -843,8 +845,35 @@ export function buildCatenaryPath(
 }
 
 /**
+ * A trochoid arch point in the windowed parametrisation, returned as
+ * normalised (x, z) both in [0, 1] for the fractional position `frac ∈ [0, 1]`.
+ *
+ * `pct ∈ (0, 1]` selects the central fraction of the full cusp-to-cusp arch
+ * (t ∈ [0, 2π]) that is stretched across the span. pct=1 is the full arch,
+ * whose edges leave the baseline tangent (flat takeoff, slope 0). Smaller pct
+ * clips the flat cusp ends and stretches a steeper central window, so the edge
+ * takeoff slope becomes nonzero — useful where a fluting channel must meet the
+ * arch at more than a grazing angle. The peak stays centred at frac=0.5.
+ */
+function trochoidNorm(frac: number, d: number, pct: number): { x: number; z: number } {
+  const t0 = (1 - pct) * Math.PI;
+  const t1 = 2 * Math.PI - t0;
+  const t = t0 + frac * (t1 - t0);
+  const xRaw = (tt: number) => tt - d * Math.sin(tt);
+  const x0 = xRaw(t0);
+  const denom = xRaw(t1) - x0;
+  const c0 = Math.cos(t0);
+  return {
+    // pct=1: (t - d·sin t)/2π ; z: (1 - cos t)/2 — the classic normalisation.
+    x: denom !== 0 ? (xRaw(t) - x0) / denom : frac,
+    z: (c0 - Math.cos(t)) / (c0 + 1),
+  };
+}
+
+/**
  * Build an SVG polyline path for a trochoid/cycloid arch curve.
  * d=0 gives a raised cosine; d=1 gives the standard cycloid.
+ * `pct` (see {@link trochoidNorm}) clips the flat cusp ends; default 1 (full).
  */
 export function buildCycloidPath(
   hEff: number,
@@ -854,16 +883,14 @@ export function buildCycloidPath(
   sign: 1 | -1,
   d: number,
   N = 80,
+  pct = 1,
 ): string {
   if (hEff <= 0 || span <= 0) return '';
   const pts: string[] = [];
   for (let i = 0; i <= N; i++) {
-    const t = (i / N) * 2 * Math.PI;
-    // Trochoid family scaled to fit (span, hEff).
-    // x: (t - d*sin(t)) / (2π) * span  →  d=0: linear/cosine arch; d=1: standard cycloid
-    // z: (1 - cos(t)) / 2 * hEff       →  independent of d after normalisation
-    const yLocal = ((t - d * Math.sin(t)) / (2 * Math.PI)) * span;
-    const z      = ((1 - Math.cos(t))     / 2)             * hEff;
+    const { x: u, z: w } = trochoidNorm(i / N, d, pct);
+    const yLocal = u * span;
+    const z      = w * hEff;
     pts.push(`${i === 0 ? 'M' : 'L'} ${xBase + sign * z} ${yStart + yLocal}`);
   }
   return pts.join(' ');
@@ -908,13 +935,14 @@ export function buildCycloidPathAcross(
   sign: 1 | -1,
   d: number,
   N = 80,
+  pct = 1,
 ): string {
   if (hEff <= 0 || span <= 0) return '';
   const pts: string[] = [];
   for (let i = 0; i <= N; i++) {
-    const t = (i / N) * 2 * Math.PI;
-    const xLocal = ((t - d * Math.sin(t)) / (2 * Math.PI)) * span;
-    const z      = ((1 - Math.cos(t))     / 2)             * hEff;
+    const { x: u, z: w } = trochoidNorm(i / N, d, pct);
+    const xLocal = u * span;
+    const z      = w * hEff;
     pts.push(`${i === 0 ? 'M' : 'L'} ${xStart + xLocal} ${yBase + sign * z}`);
   }
   return pts.join(' ');
@@ -934,20 +962,29 @@ export function catenaryZAt(hEff: number, span: number, s: number): number {
 
 /**
  * Arch height at position s ∈ [0, span] along a trochoid arch. Inverts the
- * monotone s(t) = (t − d·sin t)/2π · span (Kepler's equation) by bisection —
- * robust even at the d=1 cusps where Newton's method stalls.
+ * monotone windowed x-map (Kepler's equation) by bisection — robust even at
+ * the d=1 cusps where Newton's method stalls. `pct` (default 1) clips the flat
+ * cusp ends; see {@link trochoidNorm}.
  */
-export function cycloidZAt(hEff: number, span: number, d: number, s: number): number {
+export function cycloidZAt(hEff: number, span: number, d: number, s: number, pct = 1): number {
   if (hEff <= 0 || span <= 0 || s <= 0 || s >= span) return 0;
-  const m = (s / span) * 2 * Math.PI;
-  let lo = 0;
-  let hi = 2 * Math.PI;
-  for (let i = 0; i < 60; i++) {
+  const t0 = (1 - pct) * Math.PI;
+  const t1 = 2 * Math.PI - t0;
+  const xRaw = (tt: number) => tt - d * Math.sin(tt);
+  const x0 = xRaw(t0);
+  // Target on the raw x-parametrisation, mapped from the fractional station.
+  const m = x0 + (s / span) * (xRaw(t1) - x0);
+  let lo = t0;
+  let hi = t1;
+  // 24 halvings bound t to (t1−t0)/2²⁴ ≈ sub-micron in z; this runs once per
+  // surface sample, so the iteration count is a real cost.
+  for (let i = 0; i < 24; i++) {
     const t = (lo + hi) / 2;
-    if (t - d * Math.sin(t) < m) lo = t; else hi = t;
+    if (xRaw(t) < m) lo = t; else hi = t;
   }
   const t = (lo + hi) / 2;
-  return ((1 - Math.cos(t)) / 2) * hEff;
+  const c0 = Math.cos(t0);
+  return ((c0 - Math.cos(t)) / (c0 + 1)) * hEff;
 }
 
 /**

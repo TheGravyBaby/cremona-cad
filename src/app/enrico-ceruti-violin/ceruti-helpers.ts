@@ -238,6 +238,26 @@ export function crossSectionStationInfo() {
     )
 }
 
+export function cyclePercentageInfo() {
+    info(
+        "Selects how much of the full cycloid arch is stretched across the width, as a percentage.\n\n" +
+        "The full cycloid (100%) runs cusp to cusp, so it leaves the plate edge tangent — a flat takeoff that gives the fluting channel very little slope to connect to. Lowering the percentage clips those flat cusp ends and stretches a steeper central portion over the same width, so the arch rises from the edge at a real angle.\n\n" +
+        "The center peak stays anchored to the long arch and the curve stays symmetric — only the edge steepness changes. Use this together with Edge Depth to open up room for the fluting channel.\n\n" +
+        "100% = full cycloid (default). 60–90% steepens the edge noticeably.",
+        "Cycloid Percentage", defaultTTL
+    )
+}
+
+export function crossArchCycloidControlsInfo() {
+    info(
+        "These two controls shape how the cross-arch rises from the edge while keeping the center peak anchored to the long arch.\n\n" +
+        "Cycloid Factor (0–1): chooses the trochoid-family curve character. 0 is raised-cosine-like (gentler edge rise), 1 is classic cycloid (steeper edge rise, flatter near the crest).\n\n" +
+        "Cycloid Percentage (%): chooses how much of the full cycloid is stretched across the plate width. Lower values trim flatter cusp ends and map a steeper central portion onto the same span, increasing edge takeoff angle.\n\n" +
+        "Use them together: Factor sets curve family character; Percentage sets edge steepness within that character.",
+        "Cross-Arch Cycloid Controls", defaultTTL
+    )
+}
+
 export function crossArchEdgeDepthInfo() {
     info(
         "Lowers the point where the cross arch takes off from the plate edge, measured in mm below the plate outer surface.\n\n" +

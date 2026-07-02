@@ -1543,14 +1543,14 @@ export function longArchHeightAt(p: EnricoCerutiParams, arch: ArchCurve, y: numb
   }
 }
 
-/** Default cross-arch shape: a mid-range curtate factor. */
+/** Default cross-arch shape: a mid-range curtate factor, full cycloid window. */
 export function defaultCrossArchParams(): CrossArchParams {
-  return { d: 0.6 };
+  return { d: 0.6, pct: 1 };
 }
 
 /** Default fluting channel: trough position derived from the purfling line; channel depth matches edgeDepth. */
 export function defaultFlutingChannelParams(): FlutingChannelParams {
-  return { troughT: null };
+  return { troughT: 1 };
 }
 
 /**
@@ -1609,10 +1609,11 @@ export function calculateCrossArchTop(p: EnricoCerutiParams, y: number): { path:
   const h = longArchHeightAt(p, a.top.arch, y);
   if (h <= 0) return null;
   const d = a.top.cross?.d ?? defaultCrossArchParams().d;
+  const pct = a.top.cross?.pct ?? defaultCrossArchParams().pct;
   const edgeDepth = a.top.edgeDepth;
   const zBase = a.ribHeight + a.top.thickness - edgeDepth;
   const hEff  = h + edgeDepth;
-  return { path: buildCycloidPathAcross(hEff, 2 * halfSpan, -halfSpan, zBase, 1, d), halfSpan };
+  return { path: buildCycloidPathAcross(hEff, 2 * halfSpan, -halfSpan, zBase, 1, d, 80, pct), halfSpan };
 }
 
 /** Outermost |x| where the horizontal station line crosses any of the arcs' drawn spans; null if none. */

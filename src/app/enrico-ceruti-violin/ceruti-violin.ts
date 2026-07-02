@@ -8,9 +8,9 @@ import { clampParam, safeRun } from '../helpers/validators';
 import { ArchingParams, CerutiColors, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, EnricoCerutiTemplate, EnricoCerutiParams } from './ceruti-types';
 import { CERUTI_TEMPLATES } from './ceruti-templates';
 import { calculateCenterBout, calculateCorners, calculateCrossArchTop, calculateLongArch, calculateMainBouts, calculateMould, calculateOuterArcs, checkFlutingBitFit, defaultArchingParams, defaultCrossArchParams, defaultFlutingChannelParams, defineFlutingAreaPath, defineFlutingPath, defineInnerPath, defineInsetPath, defineOuterCornerArcs, defineOuterPath, defineOuterPurflingPath, definePurflingPath, defineTroughPath, flutingHalfWidthAtY, flutingOuterHalfWidthAtY, innerHalfWidthAtY, outerHalfWidthAtY } from './ceruti-calcs';
-import { buildTopSurfaceModel, calculateFlutingSectionTop, computeArchContours, stationChordsAt } from './ceruti-surface';
+import { buildTopSurfaceModel, calculateFlutingSectionTop, computeArchContours, stationChordsAt, TopSurfaceModel } from './ceruti-surface';
 import { renderArchContourMap } from './renders/arch-contours.render';
-import { computeSingleWireframeStrip, computeWireframeRibs, computeWireframeStrips, renderArch3dWireframe, WireframeStrip } from './renders/arch-3d-wireframe.render';
+import { computeSingleWireframeStrip, computeWireframeGeometry, projectWireframe, renderArch3dWireframe, WireframeGeometry } from './renders/arch-3d-wireframe.render';
 import { HighlightedArc } from './renders/render-constants';
 import { renderBounds, renderBoutBouts, renderCornerGuides } from './renders/guides.render';
 import { renderMainBouts } from './renders/main-bouts.render';
@@ -508,10 +508,23 @@ export class CerutiViolin extends RecipeComponentBase {
     trough: string | null;
   } | null = null;
 
+  /**
+   * Wireframe surface sampling is rotation-independent: the cache holds raw
+   * strip/rib geometry and each redraw only re-projects it, so rotation drags
+   * skip the expensive topSurfaceZAt sweep.
+   */
   private wireframeCache: {
     key: string;
-    strips: WireframeStrip[];
-    ribs: string[];
+    geom: WireframeGeometry;
+  } | null = null;
+
+  /**
+   * The sampled surface model is pure params → geometry; rebuilding it costs
+   * tens of ms (three path samplings), so station drags reuse it.
+   */
+  private surfaceModelCache: {
+    key: string;
+    model: TopSurfaceModel | null;
   } | null = null;
 
   changeCrossArching(): void {
@@ -520,6 +533,8 @@ export class CerutiViolin extends RecipeComponentBase {
     }
     const a = this.d.params.arching;
     a.top.cross ??= defaultCrossArchParams();
+    // Older recipes carry a cross block without the cycloid window; backfill it.
+    a.top.cross.pct ??= defaultCrossArchParams().pct;
     a.top.fluting ??= defaultFlutingChannelParams();
     const p = this.d.params;
     const f = this.viewFlags;
@@ -531,7 +546,14 @@ export class CerutiViolin extends RecipeComponentBase {
       f.crossSectionY = Math.min(Math.max(f.crossSectionY ?? 0, 1), p.height - 1);
       // The plate slabs span the outer path, whose corner arcs must be current.
       calculateOuterArcs(p);
-      const model = buildTopSurfaceModel(p);
+      // Snapshot taken after calculateOuterArcs so the key is deterministic.
+      // One key serves the model, contour, and wireframe caches: all three
+      // depend only on params (yOffset derives from params too).
+      const paramsKey = JSON.stringify(p);
+      if (this.surfaceModelCache?.key !== paramsKey) {
+        this.surfaceModelCache = { key: paramsKey, model: buildTopSurfaceModel(p) };
+      }
+      const model = this.surfaceModelCache.model;
       const halfWidthInner = innerHalfWidthAtY(p, f.crossSectionY);
       // Chords come from the surface model's sampled outer path: the arc-only
       // queries miss the cubic corner tips, voiding the corner-band stations.
@@ -551,13 +573,12 @@ export class CerutiViolin extends RecipeComponentBase {
       const yOffset = a.ribHeight + a.top.thickness + a.top.arch.archHeight + 15;
       if (f.showArchContours && model) {
         // Stack the plan-view topo map above the section, sharing the X axis.
-        // Snapshot taken after calculateOuterArcs so the key is deterministic;
-        // yOffset derives from params, so its changes invalidate too.
-        const key = JSON.stringify(p);
-        if (this.archContourCache?.key !== key) {
+        if (this.archContourCache?.key !== paramsKey) {
           this.archContourCache = {
-            key,
-            contours: computeArchContours(p, model, 1, 1, yOffset),
+            key: paramsKey,
+            // 1 mm levels on a 1.25 mm grid: level count is the feature; the
+            // marching-squares grid can be slightly coarser without visible loss.
+            contours: computeArchContours(p, model, 1, 1.25, yOffset),
             outline: defineOuterPath(p, p.overhang + p.rib, true, false),
             trough: defineTroughPath(p),
           };
@@ -569,19 +590,19 @@ export class CerutiViolin extends RecipeComponentBase {
         const rotX = f.wireframeRotXDeg ?? 0;
         const rotY = f.wireframeRotYDeg ?? 0;
         const rotZ = f.wireframeRotZDeg ?? 0;
-        // Recompute strip geometry when params or any rotation angle changes; station drags reuse the cache.
-        const key = `${JSON.stringify(p)}|rotX:${rotX}|rotY:${rotY}|rotZ:${rotZ}`;
-        if (this.wireframeCache?.key !== key) {
+        // Surface sampling is rotation-independent; rotation and station drags
+        // only re-project the cached geometry, which is a few thousand mul-adds.
+        if (this.wireframeCache?.key !== paramsKey) {
           this.wireframeCache = {
-            key,
-            strips: computeWireframeStrips(p, model, yOffset, 4, rotX, rotY, rotZ),
-            ribs:   computeWireframeRibs(p, model, yOffset, 4, rotX, rotY, rotZ),
+            key: paramsKey,
+            geom: computeWireframeGeometry(p, model, 4),
           };
         }
+        const { strips, ribs } = projectWireframe(this.wireframeCache.geom, p.height, yOffset, rotX, rotY, rotZ);
         const highlightedStrip = f.crossSectionY != null
           ? computeSingleWireframeStrip(p, model, f.crossSectionY, yOffset, rotX, rotY, rotZ)
           : null;
-        renders.push(renderArch3dWireframe(this.colors, this.wireframeCache.strips, this.wireframeCache.ribs, highlightedStrip));
+        renders.push(renderArch3dWireframe(this.colors, strips, ribs, highlightedStrip));
       }
       this.draftChange.emit(renders);
       sessionStorage.setItem('recipeData', JSON.stringify(this.d));

@@ -73,12 +73,12 @@
                 (change)="setCurveType('top', 'catenary')" />
             <span>Catenary</span>
         </div>
-        <div class="toggle">
+        <!-- <div class="toggle">
             <input type="radio" name="top-curve-type"
                 [checked]="topArch.type === 'cycloid'"
                 (change)="setCurveType('top', 'cycloid')" />
             <span>Cycloid</span>
-        </div>
+        </div> -->
         <div class="toggle">
             <input type="radio" name="top-curve-type"
                 [checked]="topArch.type === 'spline'"
@@ -91,7 +91,7 @@
         <label class="field-cell">
             <span class="field-title">Edge Depth <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="0.1" min="0" max="5"
-                [(ngModel)]="arching.top.edgeDepth" (input)="onChange()" [style.border-color]="colors.archTop" />
+                [(ngModel)]="arching.top.edgeDepth" (input)="onChange()" />
         </label>
         <button type="button" class="info-icon" (click)="archEdgeDepthInfo()" title="More information">ⓘ</button>
     </div>
@@ -158,12 +158,12 @@
                 (change)="setCurveType('bottom', 'catenary')" />
             <span>Catenary</span>
         </div>
-        <div class="toggle">
+        <!-- <div class="toggle">
             <input type="radio" name="bottom-curve-type"
                 [checked]="bottomArch.type === 'cycloid'"
                 (change)="setCurveType('bottom', 'cycloid')" />
             <span>Cycloid</span>
-        </div>
+        </div> -->
         <div class="toggle">
             <input type="radio" name="bottom-curve-type"
                 [checked]="bottomArch.type === 'spline'"
@@ -176,7 +176,7 @@
         <label class="field-cell">
             <span class="field-title">Edge Depth <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="0.1" min="0" max="5"
-                [(ngModel)]="arching.bottom.edgeDepth" (input)="onChange()" [style.border-color]="colors.archBack" />
+                [(ngModel)]="arching.bottom.edgeDepth" (input)="onChange()" />
         </label>
         <button type="button" class="info-icon" (click)="archEdgeDepthInfo()" title="More information">ⓘ</button>
     </div>

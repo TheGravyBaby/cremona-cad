@@ -12,18 +12,19 @@
  *   reveal the arch profile; rotating around Y rolls the body on its length
  *   axis; rotating around Z spins the plan view.
  *
- * zAmp amplifies the arch height visually (the ~15 mm arch would be nearly
- * invisible at 1:1 next to the ~356 mm body length) and is applied before
- * rotation so all three sliders remain geometrically coherent.
+ * zAmp amplifies the arch height visually and is applied inside the
+ * projection so all three rotation sliders remain geometrically coherent.
  *
- * Strip geometry is expensive (stationChordsAt + topSurfaceZAt calls);
- * callers should pre-compute via `computeWireframeStrips` and cache the
- * result against `JSON.stringify(params)`.  The render function itself only
- * does SVG I/O, so it stays cheap for station-slider drags.
+ * The pipeline is split so rotation stays cheap:
+ *   computeWireframeGeometry — samples the surface (stationChordsAt +
+ *     topSurfaceZAt per point). Depends only on params; cache the result
+ *     against `JSON.stringify(params)`.
+ *   projectWireframe — turns cached geometry into SVG paths for one set of
+ *     rotation angles. A few thousand multiply-adds; run it every redraw.
  */
 
 import { CerutiColors, EnricoCerutiParams } from '../ceruti-types';
-import { TopSurfaceModel, stationChordsAt, topSurfaceZAt } from '../ceruti-surface';
+import { TopSurfaceModel, StationChords, stationChordsAt, topSurfaceZAt } from '../ceruti-surface';
 
 const DEG = Math.PI / 180;
 
@@ -45,7 +46,7 @@ const DEG = Math.PI / 180;
  * @param rotXDeg   - rotation around X axis (degrees)
  * @param rotYDeg   - rotation around Y axis (degrees)
  * @param rotZDeg   - rotation around Z axis (degrees)
- * @param zAmp      - visual amplification of arch height (default 2.5)
+ * @param zAmp      - visual amplification of arch height
  */
 function buildProjection(
   yOffset: number, heightMid: number,
@@ -88,37 +89,132 @@ export interface WireframeStrip {
   y: number;
 }
 
+/** Unprojected cross-section strip: surface samples in violin coordinates. */
+export interface WireframeStripGeom {
+  y: number;
+  xs: number[];
+  zs: number[];
+  maxZ: number;
+}
+
+/** One longitudinal rib vertex in violin coordinates. */
+interface RibPt { x: number; y: number; z: number; }
+
+/** Rotation-independent wireframe geometry — the cacheable, expensive part. */
+export interface WireframeGeometry {
+  strips: WireframeStripGeom[];
+  ribs: RibPt[][];
+}
+
 // ===== Geometry computation (expensive — cache the result) =====
 
-/**
- * Inner loop shared by computeSingleWireframeStrip and computeWireframeStrips.
- * Accepts a pre-built projection so the caller controls when trig is computed.
- */
-function computeStripWithProj(
+/** Sample one cross-section at body-y `y` from precomputed station chords. */
+function stripGeomFromChords(
   p: EnricoCerutiParams,
   model: TopSurfaceModel,
   y: number,
-  proj: (x: number, y: number, z: number) => [number, number],
-  sampleStep = 1.5,
-): WireframeStrip | null {
-  const chords = stationChordsAt(p, model, y);
+  chords: StationChords,
+  sampleStep: number,
+): WireframeStripGeom | null {
   if (chords.outerHalf === null) return null;
 
   const hw    = chords.outerHalf;
   const steps = Math.max(2, Math.ceil(hw * 2 / sampleStep));
 
-  const pts: string[] = [];
+  const xs: number[] = [];
+  const zs: number[] = [];
   let maxZ = -Infinity;
 
   for (let i = 0; i <= steps; i++) {
     const x = -hw + (i / steps) * hw * 2;
     const z = topSurfaceZAt(p, model, x, y, chords) ?? 0;
-    maxZ = Math.max(maxZ, z);
-    const [sx, sy] = proj(x, y, z);
-    pts.push(`${i === 0 ? 'M' : 'L'} ${sx.toFixed(2)} ${sy.toFixed(2)}`);
+    if (z > maxZ) maxZ = z;
+    xs.push(x);
+    zs.push(z);
   }
 
-  return { path: pts.join(' '), maxZ, y };
+  return { y, xs, zs, maxZ };
+}
+
+/**
+ * Sample all wireframe geometry: cross-section strips every `stationStepMm`
+ * plus longitudinal ribs at fixed fractions of the half-width. Strips and
+ * ribs share one `stationChordsAt` per station. Depends only on params —
+ * cache the result and re-project on rotation changes.
+ *
+ * @param ribFractions - fractional half-widths to sample (e.g. [0, 0.5, 1.0])
+ */
+export function computeWireframeGeometry(
+  p: EnricoCerutiParams,
+  model: TopSurfaceModel,
+  stationStepMm = 4,
+  sampleStep    = 1.5,
+  ribFractions  = [0, 1.0],
+): WireframeGeometry {
+  const strips: WireframeStripGeom[] = [];
+
+  const ribSpecs: { frac: number; sign: number }[] = [];
+  for (const frac of ribFractions) {
+    for (const sign of frac === 0 ? [1] : [-1, 1]) ribSpecs.push({ frac, sign });
+  }
+  const ribs: RibPt[][] = ribSpecs.map(() => []);
+
+  for (let y = 0; y <= p.height; y += stationStepMm) {
+    const chords = stationChordsAt(p, model, y);
+    if (chords.outerHalf === null) {
+      // A gap station restarts every rib run, matching the strip coverage.
+      for (const rib of ribs) rib.length = 0;
+      continue;
+    }
+
+    const strip = stripGeomFromChords(p, model, y, chords, sampleStep);
+    if (strip) strips.push(strip);
+
+    for (let k = 0; k < ribSpecs.length; k++) {
+      const x = ribSpecs[k].sign * ribSpecs[k].frac * chords.outerHalf;
+      const z = topSurfaceZAt(p, model, x, y, chords) ?? 0;
+      ribs[k].push({ x, y, z });
+    }
+  }
+
+  return { strips, ribs: ribs.filter(rib => rib.length > 1) };
+}
+
+// ===== Projection to SVG paths (cheap — run every redraw) =====
+
+function projectStripGeom(
+  strip: WireframeStripGeom,
+  proj: (x: number, y: number, z: number) => [number, number],
+): WireframeStrip {
+  const pts: string[] = [];
+  for (let i = 0; i < strip.xs.length; i++) {
+    const [sx, sy] = proj(strip.xs[i], strip.y, strip.zs[i]);
+    pts.push(`${i === 0 ? 'M' : 'L'} ${sx.toFixed(2)} ${sy.toFixed(2)}`);
+  }
+  return { path: pts.join(' '), maxZ: strip.maxZ, y: strip.y };
+}
+
+/** Project cached geometry for one set of rotation angles. */
+export function projectWireframe(
+  geom: WireframeGeometry,
+  bodyHeight: number,
+  yOffset: number,
+  rotXDeg = 0,
+  rotYDeg = 0,
+  rotZDeg = 0,
+  zAmp    = 1,
+): { strips: WireframeStrip[]; ribs: string[] } {
+  const proj = buildProjection(yOffset, bodyHeight / 2, rotXDeg, rotYDeg, rotZDeg, zAmp);
+
+  const strips = geom.strips.map(strip => projectStripGeom(strip, proj));
+  const ribs = geom.ribs.map(rib =>
+    rib.map((pt, i) => {
+      const [sx, sy] = proj(pt.x, pt.y, pt.z);
+      return `${i === 0 ? 'M' : 'L'} ${sx.toFixed(2)} ${sy.toFixed(2)}`;
+    }).join(' ')
+  );
+
+  return { strips, ribs };
 }
 
 /** Build the SVG path for a single cross-section at body-y `y`. */
@@ -127,83 +223,16 @@ export function computeSingleWireframeStrip(
   model: TopSurfaceModel,
   y: number,
   yOffset: number,
-  rotXDeg   = 0,
-  rotYDeg   = 0,
-  rotZDeg   = 0,
+  rotXDeg    = 0,
+  rotYDeg    = 0,
+  rotZDeg    = 0,
   zAmp       = 1,
   sampleStep = 1.5,
 ): WireframeStrip | null {
+  const strip = stripGeomFromChords(p, model, y, stationChordsAt(p, model, y), sampleStep);
+  if (!strip) return null;
   const proj = buildProjection(yOffset, p.height / 2, rotXDeg, rotYDeg, rotZDeg, zAmp);
-  return computeStripWithProj(p, model, y, proj, sampleStep);
-}
-
-/**
- * Compute all wireframe strips for the full body, stepping every
- * `stationStepMm` mm. This is the cacheable, expensive part.
- *
- * The projection matrix is built **once** here (6 trig calls total) rather
- * than once per strip.
- */
-export function computeWireframeStrips(
-  p: EnricoCerutiParams,
-  model: TopSurfaceModel,
-  yOffset: number,
-  stationStepMm = 4,
-  rotXDeg       = 0,
-  rotYDeg       = 0,
-  rotZDeg       = 0,
-  zAmp          = 2.5,
-): WireframeStrip[] {
-  const proj   = buildProjection(yOffset, p.height / 2, rotXDeg, rotYDeg, rotZDeg, zAmp);
-  const strips: WireframeStrip[] = [];
-  for (let y = 0; y <= p.height; y += stationStepMm) {
-    const strip = computeStripWithProj(p, model, y, proj);
-    if (strip) strips.push(strip);
-  }
-  return strips;
-}
-
-/**
- * Compute a sparse set of longitudinal rib paths — lines running along the
- * body length at fixed fractional positions of the half-width at each station.
- * These orthogonal lines help the eye read the 3D shape as a mesh.
- *
- * @param ribFractions  - fractional half-widths to sample (e.g. [0, 0.5, 1.0])
- */
-export function computeWireframeRibs(
-  p: EnricoCerutiParams,
-  model: TopSurfaceModel,
-  yOffset: number,
-  stationStepMm = 6,
-  rotXDeg       = 0,
-  rotYDeg       = 0,
-  rotZDeg       = 0,
-  zAmp          = 1,
-  ribFractions  = [0, 1.0],
-): string[] {
-  // Build projection matrix once for all ribs.
-  const proj = buildProjection(yOffset, p.height / 2, rotXDeg, rotYDeg, rotZDeg, zAmp);
-
-  const ribPaths: string[] = [];
-
-  for (const frac of ribFractions) {
-    for (const sign of frac === 0 ? [1] : [-1, 1]) {
-      const pts: string[] = [];
-
-      for (let y = 0; y <= p.height; y += stationStepMm) {
-        const chords = stationChordsAt(p, model, y);
-        if (chords.outerHalf === null) { pts.length = 0; continue; }
-        const x = sign * frac * chords.outerHalf;
-        const z = topSurfaceZAt(p, model, x, y, chords) ?? 0;
-        const [sx, sy] = proj(x, y, z);
-        pts.push(`${pts.length === 0 ? 'M' : 'L'} ${sx.toFixed(2)} ${sy.toFixed(2)}`);
-      }
-
-      if (pts.length > 1) ribPaths.push(pts.join(' '));
-    }
-  }
-
-  return ribPaths;
+  return projectStripGeom(strip, proj);
 }
 
 // ===== Render function (cheap — only SVG I/O) =====
