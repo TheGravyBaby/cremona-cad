@@ -26,6 +26,9 @@ export interface CerutiColors {
   archBack: string;
 }
 
+/** A plate's costly 3D/topo overlay is one-at-a-time: rendering both is what made the panel slow. */
+export type PlateViewMode = 'none' | 'contours' | 'wireframe';
+
 /** Ephemeral, non-persisted view toggles shared across panels and their render functions. */
 export interface CerutiViewFlags {
   showModuleArcs: boolean;
@@ -39,9 +42,10 @@ export interface CerutiViewFlags {
   simpleClampBox: boolean;
   /** Body height (mm) of the cross-section station being viewed; null = resolve a default on first activation. */
   crossSectionY: number | null;
-  showArchContours: boolean;
-  /** Render an oblique cavalier wireframe of the top-plate surface (stacked cross-section strips). */
-  show3DWireframe: boolean;
+  /** Top plate's overlay above the section view: contour map, oblique wireframe, or neither. */
+  topPlateView: PlateViewMode;
+  /** Back plate's overlay above the section view: contour map, oblique wireframe, or neither. */
+  backPlateView: PlateViewMode;
   /** Rotation around the X axis (degrees). Tilts body length to reveal the arch profile. */
   wireframeRotXDeg: number;
   /** Rotation around the Y axis (degrees). Rolls the body on its length axis. */
@@ -61,8 +65,8 @@ export const DEFAULT_CERUTI_VIEW_FLAGS: CerutiViewFlags = {
   showInnerPath: false,
   simpleClampBox: false,
   crossSectionY: null,
-  showArchContours: false,
-  show3DWireframe: false,
+  topPlateView: 'none',
+  backPlateView: 'none',
   wireframeRotXDeg: -30,
   wireframeRotYDeg: -10,
   wireframeRotZDeg: 0,

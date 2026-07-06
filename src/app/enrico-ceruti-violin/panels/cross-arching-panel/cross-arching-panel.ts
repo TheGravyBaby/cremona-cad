@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ArchingParams, CerutiColors, CerutiViewFlags, CrossArchParams, EnricoCerutiParams, FlutingChannelParams } from '../../ceruti-types';
+import { ArchingParams, CerutiColors, CerutiViewFlags, CrossArchParams, EnricoCerutiParams, FlutingChannelParams, PlateViewMode } from '../../ceruti-types';
 import { archContoursInfo, crossArchCycloidControlsInfo, crossArchEdgeDepthInfo, crossSectionStationInfo, flatPlatformInfo, troughPositionInfo } from '../../ceruti-helpers';
 
 @Component({
@@ -42,4 +42,19 @@ export class CrossArchingPanel {
   }
 
   onChange(): void { this.changed.emit(); }
+
+  /**
+   * Toggles a plate's overlay: clicking the active mode turns it off, clicking the
+   * other mode switches to it. Only one plate may have an overlay at a time — the
+   * costly contour/wireframe render is one-at-a-time across both plates, not just
+   * within a single plate — so activating one clears the other plate's overlay.
+   */
+  togglePlateView(plate: 'top' | 'back', mode: PlateViewMode): void {
+    const key = plate === 'top' ? 'topPlateView' : 'backPlateView';
+    const otherKey = plate === 'top' ? 'backPlateView' : 'topPlateView';
+    const next = this.flags[key] === mode ? 'none' : mode;
+    this.flags[key] = next;
+    if (next !== 'none') this.flags[otherKey] = 'none';
+    this.onChange();
+  }
 }

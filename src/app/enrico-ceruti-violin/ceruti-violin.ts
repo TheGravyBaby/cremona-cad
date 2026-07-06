@@ -10,7 +10,8 @@ import { CERUTI_TEMPLATES } from './ceruti-templates';
 import { calculateCenterBout, calculateCorners, calculateCrossArchTop, calculateLongArch, calculateMainBouts, calculateMould, calculateOuterArcs, checkFlutingBitFit, defaultArchingParams, defaultCrossArchParams, defaultFlutingChannelParams, defineFlutingAreaPath, defineFlutingPath, defineInnerPath, defineInsetPath, defineOuterCornerArcs, defineOuterPath, defineOuterPurflingPath, definePurflingPath, defineTroughPath, flutingHalfWidthAtY, flutingOuterHalfWidthAtY, innerHalfWidthAtY, outerHalfWidthAtY } from './ceruti-calcs';
 import { buildPlateSurfaceModel, calculateFlutingSectionTop, computeArchContours, stationChordsAt, PlateSurfaceModel } from './ceruti-surface';
 import { renderArchContourMap } from './renders/arch-contours.render';
-import { computeSingleWireframeStrip, computeWireframeGeometry, projectWireframe, renderArch3dWireframe, WireframeGeometry } from './renders/arch-3d-wireframe.render';
+import { computeSingleWireframeStrip, computeWireframeBounds, computeWireframeGeometry, projectWireframe, renderArch3dWireframe, WireframeGeometry } from './renders/arch-3d-wireframe.render';
+import { renderWireframeDragFrame } from './renders/wireframe-drag-frame.render';
 import { HighlightedArc } from './renders/render-constants';
 import { renderBounds, renderBoutBouts, renderCornerGuides } from './renders/guides.render';
 import { renderMainBouts } from './renders/main-bouts.render';
@@ -259,6 +260,9 @@ export class CerutiViolin extends RecipeComponentBase {
 
   override ngOnDestroy(): void {
     super.ngOnDestroy();
+    // In case the component is torn down mid-drag (recipe switch, navigation).
+    window.removeEventListener('pointermove', this.onWireframeDragMove);
+    window.removeEventListener('pointerup', this.onWireframeDragEnd);
   }
 
   // ===== Panel system =====
@@ -503,9 +507,9 @@ export class CerutiViolin extends RecipeComponentBase {
    */
   private archContourCache: {
     key: string;
-    top: { contours: { level: number; path: string }[]; outline: string | null; trough: string | null };
-    bottom: { contours: { level: number; path: string }[]; outline: string | null; trough: string | null };
-  } | null = null;
+    top: { contours: { level: number; path: string }[]; outline: string | null; trough: string | null } | null;
+    bottom: { contours: { level: number; path: string }[]; outline: string | null; trough: string | null } | null;
+  } = { key: '', top: null, bottom: null };
 
   /**
    * Wireframe surface sampling is rotation-independent: the cache holds raw
@@ -514,9 +518,9 @@ export class CerutiViolin extends RecipeComponentBase {
    */
   private wireframeCache: {
     key: string;
-    top: WireframeGeometry;
-    bottom: WireframeGeometry;
-  } | null = null;
+    top: WireframeGeometry | null;
+    bottom: WireframeGeometry | null;
+  } = { key: '', top: null, bottom: null };
 
   /**
    * The sampled surface model is pure params → geometry; rebuilding it costs
@@ -546,96 +550,183 @@ export class CerutiViolin extends RecipeComponentBase {
     f.crossSectionY ??= Math.round(p.bouts.C0?.y ?? p.height / 2);
 
     this.debounce(() => safeRun(() => {
-      f.crossSectionY = Math.min(Math.max(f.crossSectionY ?? 0, 1), p.height - 1);
-      // The plate slabs span the outer path, whose corner arcs must be current.
-      calculateOuterArcs(p);
-      // Snapshot taken after calculateOuterArcs so the key is deterministic.
-      // One key serves the model, contour, and wireframe caches: all three
-      // depend only on params (yOffset derives from params too).
-      const paramsKey = JSON.stringify(p);
-      if (this.surfaceModelCache?.key !== paramsKey) {
-        this.surfaceModelCache = {
-          key: paramsKey,
-          top: buildPlateSurfaceModel(p, 'top'),
-          bottom: buildPlateSurfaceModel(p, 'bottom'),
-        };
-      }
-      const model = this.surfaceModelCache.top;
-      const backModel = this.surfaceModelCache.bottom;
-      const halfWidthInner = innerHalfWidthAtY(p, f.crossSectionY);
-      // Chords come from the surface model's sampled outer path: the arc-only
-      // queries miss the cubic corner tips, voiding the corner-band stations.
-      const chords = model ? stationChordsAt(p, model, f.crossSectionY) : null;
-      const halfWidthOuter = chords?.outerHalf ?? outerHalfWidthAtY(p, f.crossSectionY);
-      const flutingOuterHalf = chords?.platformOuterHalf ?? flutingOuterHalfWidthAtY(p, f.crossSectionY);
-      const flutingInnerHalf = chords?.flutingInnerHalf ?? flutingHalfWidthAtY(p, f.crossSectionY);
-      const crossTop = calculateCrossArchTop(p, f.crossSectionY, 'top');
-      const crossBack = calculateCrossArchTop(p, f.crossSectionY, 'bottom');
-
-      const flutingSlice = model ? calculateFlutingSectionTop(p, model, f.crossSectionY) : null;
-      const flutingSliceBack = backModel ? calculateFlutingSectionTop(p, backModel, f.crossSectionY) : null;
-      this.warnFlutingBitFit(p, a);
-
-      const renders = [
-        renderCrossSection(p, a, this.colors, f.showModuleGuides, halfWidthInner, halfWidthOuter, flutingOuterHalf, flutingInnerHalf, crossTop?.path ?? null, flutingSlice, crossBack?.path ?? null, flutingSliceBack),
-      ];
-      // yOffset lifts the overlays above the section; xGap sets the two plates'
-      // maps side by side, each spanning ±xMax of body half-width.
-      const yOffset = a.ribHeight + a.top.thickness + a.top.arch.archHeight + 15;
-      const xMax = p.width / 2 + p.overhang + p.rib + 2;
-      const xOffsetTop = -(xMax + 5);
-      const xOffsetBack = xMax + 5;
-      if (f.showArchContours && model && backModel) {
-        // Plan-view topo maps above the section: top on the left, back on the right.
-        if (this.archContourCache?.key !== paramsKey) {
-          // 1 mm levels on a 1.25 mm grid: level count is the feature; the
-          // marching-squares grid can be slightly coarser without visible loss.
-          this.archContourCache = {
-            key: paramsKey,
-            top: {
-              contours: computeArchContours(p, model, 1, 1.25, yOffset, xOffsetTop),
-              outline: defineOuterPath(p, p.overhang + p.rib, true, false),
-              trough: defineTroughPath(p, 'top'),
-            },
-            bottom: {
-              contours: computeArchContours(p, backModel, 1, 1.25, yOffset, xOffsetBack),
-              outline: defineOuterPath(p, p.overhang + p.rib, true, true),
-              trough: defineTroughPath(p, 'bottom'),
-            },
-          };
-        }
-        const c = this.archContourCache;
-        renders.push(renderArchContourMap(p, this.colors, c.top.contours, c.top.outline, c.top.trough, yOffset, f.crossSectionY, xOffsetTop, this.colors.archTop));
-        renders.push(renderArchContourMap(p, this.colors, c.bottom.contours, c.bottom.outline, c.bottom.trough, yOffset, f.crossSectionY, xOffsetBack, this.colors.archBack));
-      }
-      if (f.show3DWireframe && model && backModel) {
-        const rotX = f.wireframeRotXDeg ?? 0;
-        const rotY = f.wireframeRotYDeg ?? 0;
-        const rotZ = f.wireframeRotZDeg ?? 0;
-        // Surface sampling is rotation-independent; rotation and station drags
-        // only re-project the cached geometry, which is a few thousand mul-adds.
-        if (this.wireframeCache?.key !== paramsKey) {
-          this.wireframeCache = {
-            key: paramsKey,
-            top: computeWireframeGeometry(p, model, 4),
-            bottom: computeWireframeGeometry(p, backModel, 4),
-          };
-        }
-        const wf = this.wireframeCache;
-        const top = projectWireframe(wf.top, p.height, yOffset, rotX, rotY, rotZ, 1, xOffsetTop, 1);
-        const back = projectWireframe(wf.bottom, p.height, yOffset, rotX, rotY, rotZ, 1, xOffsetBack, -1);
-        const highlightTop = f.crossSectionY != null
-          ? computeSingleWireframeStrip(p, model, f.crossSectionY, yOffset, rotX, rotY, rotZ, 1, 1.5, xOffsetTop, 1)
-          : null;
-        const highlightBack = f.crossSectionY != null
-          ? computeSingleWireframeStrip(p, backModel, f.crossSectionY, yOffset, rotX, rotY, rotZ, 1, 1.5, xOffsetBack, -1)
-          : null;
-        renders.push(renderArch3dWireframe(this.colors, top.strips, top.ribs, highlightTop, this.colors.archTop));
-        renders.push(renderArch3dWireframe(this.colors, back.strips, back.ribs, highlightBack, this.colors.archBack));
-      }
-      this.draftChange.emit(renders);
+      this.runCrossArchingRedraw();
       sessionStorage.setItem('recipeData', JSON.stringify(this.d));
     }));
+  }
+
+  /**
+   * Wireframe rotation is driven by a mouse drag (60fps ticks) rather than a
+   * discrete edit, so it bypasses the debounce/history pipeline entirely: no
+   * 1800ms settle delay, and no per-tick `pushHistory()` flooding the undo
+   * stack with near-duplicate snapshots of unchanged params. Rotation is
+   * ephemeral view state, same as the station slider, so nothing is lost by
+   * skipping the history push.
+   */
+  redrawWireframeRotation(): void {
+    safeRun(() => this.runCrossArchingRedraw());
+  }
+
+  // ===== Wireframe drag-to-rotate =====
+  //
+  // The hit frame drawn around the wireframe (renderWireframeDragFrame) only
+  // reports drag *start* — every rotation tick tears down and rebuilds the
+  // whole canvas, so an SVG element's own pointer capture wouldn't survive a
+  // single tick. Move/up are tracked on `window` instead, which is stable
+  // across redraws, so a fast drag keeps tracking even if the cursor strays
+  // outside the frame mid-drag.
+  private static readonly WIREFRAME_DEG_PER_PX = 0.4;
+  private wireframeDragActive = false;
+  private wireframeDragLastX = 0;
+  private wireframeDragLastY = 0;
+
+  private onWireframeDragStart = (event: PointerEvent): void => {
+    // Stop this from bubbling into draft-canvas's own pointerdown handler —
+    // draft-canvas has no idea this frame exists and should stay that way.
+    event.stopPropagation();
+    event.preventDefault();
+    this.wireframeDragActive = true;
+    this.wireframeDragLastX = event.clientX;
+    this.wireframeDragLastY = event.clientY;
+    window.addEventListener('pointermove', this.onWireframeDragMove);
+    window.addEventListener('pointerup', this.onWireframeDragEnd);
+  };
+
+  private onWireframeDragMove = (event: PointerEvent): void => {
+    const dx = event.clientX - this.wireframeDragLastX;
+    const dy = event.clientY - this.wireframeDragLastY;
+    this.wireframeDragLastX = event.clientX;
+    this.wireframeDragLastY = event.clientY;
+
+    // Horizontal drag yaws the body on its length axis; vertical drag pitches
+    // it to reveal more or less of the arch profile — see the rotation-axis
+    // notes atop arch-3d-wireframe.render.ts.
+    const f = this.viewFlags;
+    f.wireframeRotYDeg = this.normalizeDeg((f.wireframeRotYDeg ?? 0) + dx * CerutiViolin.WIREFRAME_DEG_PER_PX);
+    f.wireframeRotXDeg = this.clampDeg((f.wireframeRotXDeg ?? 0) - dy * CerutiViolin.WIREFRAME_DEG_PER_PX, -90, 90);
+    this.redrawWireframeRotation();
+  };
+
+  private onWireframeDragEnd = (): void => {
+    this.wireframeDragActive = false;
+    window.removeEventListener('pointermove', this.onWireframeDragMove);
+    window.removeEventListener('pointerup', this.onWireframeDragEnd);
+    // The cursor/dragging state changed but nothing else did; redraw once
+    // more so the frame's grab/grabbing cursor updates back.
+    this.redrawWireframeRotation();
+  };
+
+  private normalizeDeg(deg: number): number {
+    const v = deg % 360;
+    return v < 0 ? v + 360 : v;
+  }
+
+  private clampDeg(deg: number, min: number, max: number): number {
+    return Math.min(Math.max(deg, min), max);
+  }
+
+  private runCrossArchingRedraw(): void {
+    const a = this.d.params.arching!;
+    const p = this.d.params;
+    const f = this.viewFlags;
+    f.crossSectionY = Math.min(Math.max(f.crossSectionY ?? 0, 1), p.height - 1);
+    // The plate slabs span the outer path, whose corner arcs must be current.
+    calculateOuterArcs(p);
+    // Snapshot taken after calculateOuterArcs so the key is deterministic.
+    // One key serves the model, contour, and wireframe caches: all three
+    // depend only on params (yOffset derives from params too).
+    const paramsKey = JSON.stringify(p);
+    if (this.surfaceModelCache?.key !== paramsKey) {
+      this.surfaceModelCache = {
+        key: paramsKey,
+        top: buildPlateSurfaceModel(p, 'top'),
+        bottom: buildPlateSurfaceModel(p, 'bottom'),
+      };
+    }
+    const model = this.surfaceModelCache.top;
+    const backModel = this.surfaceModelCache.bottom;
+    const halfWidthInner = innerHalfWidthAtY(p, f.crossSectionY);
+    // Chords come from the surface model's sampled outer path: the arc-only
+    // queries miss the cubic corner tips, voiding the corner-band stations.
+    const chords = model ? stationChordsAt(p, model, f.crossSectionY) : null;
+    const halfWidthOuter = chords?.outerHalf ?? outerHalfWidthAtY(p, f.crossSectionY);
+    const flutingOuterHalf = chords?.platformOuterHalf ?? flutingOuterHalfWidthAtY(p, f.crossSectionY);
+    const flutingInnerHalf = chords?.flutingInnerHalf ?? flutingHalfWidthAtY(p, f.crossSectionY);
+    const crossTop = calculateCrossArchTop(p, f.crossSectionY, 'top');
+    const crossBack = calculateCrossArchTop(p, f.crossSectionY, 'bottom');
+
+    const flutingSlice = model ? calculateFlutingSectionTop(p, model, f.crossSectionY) : null;
+    const flutingSliceBack = backModel ? calculateFlutingSectionTop(p, backModel, f.crossSectionY) : null;
+    this.warnFlutingBitFit(p, a);
+
+    const renders = [
+      renderCrossSection(p, a, this.colors, f.showModuleGuides, halfWidthInner, halfWidthOuter, flutingOuterHalf, flutingInnerHalf, crossTop?.path ?? null, flutingSlice, crossBack?.path ?? null, flutingSliceBack),
+    ];
+    // yOffset lifts the overlay above the section. Only one plate's overlay is ever
+    // shown at a time, so it sits centered (xOffset 0) on the shared Y axis rather
+    // than split to either side.
+    const yOffset = a.ribHeight + a.top.thickness + a.top.arch.archHeight + 15;
+    const showTopContours = f.topPlateView === 'contours';
+    const showBackContours = f.backPlateView === 'contours';
+    if ((showTopContours || showBackContours) && (model || backModel)) {
+      // Only the requested side is computed — the other stays null in the cache.
+      if (this.archContourCache.key !== paramsKey) {
+        this.archContourCache = { key: paramsKey, top: null, bottom: null };
+      }
+      const c = this.archContourCache;
+      // 1 mm levels on a 1.25 mm grid: level count is the feature; the
+      // marching-squares grid can be slightly coarser without visible loss.
+      if (showTopContours && model) {
+        c.top ??= {
+          contours: computeArchContours(p, model, 1, 1.25, yOffset, 0),
+          outline: defineOuterPath(p, p.overhang + p.rib, true, false),
+          trough: defineTroughPath(p, 'top'),
+        };
+        renders.push(renderArchContourMap(p, this.colors, c.top.contours, c.top.outline, c.top.trough, yOffset, f.crossSectionY, 0, this.colors.archTop));
+      }
+      if (showBackContours && backModel) {
+        c.bottom ??= {
+          contours: computeArchContours(p, backModel, 1, 1.25, yOffset, 0),
+          outline: defineOuterPath(p, p.overhang + p.rib, true, true),
+          trough: defineTroughPath(p, 'bottom'),
+        };
+        renders.push(renderArchContourMap(p, this.colors, c.bottom.contours, c.bottom.outline, c.bottom.trough, yOffset, f.crossSectionY, 0, this.colors.archBack));
+      }
+    }
+    const showTopWireframe = f.topPlateView === 'wireframe';
+    const showBackWireframe = f.backPlateView === 'wireframe';
+    if ((showTopWireframe || showBackWireframe) && (model || backModel)) {
+      const rotX = f.wireframeRotXDeg ?? 0;
+      const rotY = f.wireframeRotYDeg ?? 0;
+      const rotZ = f.wireframeRotZDeg ?? 0;
+      // Surface sampling is rotation-independent; rotation and station drags
+      // only re-project the cached geometry, which is a few thousand mul-adds.
+      if (this.wireframeCache.key !== paramsKey) {
+        this.wireframeCache = { key: paramsKey, top: null, bottom: null };
+      }
+      const wf = this.wireframeCache;
+      if (showTopWireframe && model) {
+        wf.top ??= computeWireframeGeometry(p, model, 4);
+        const top = projectWireframe(wf.top, p.height, yOffset, rotX, rotY, rotZ, 1, 0, 1);
+        const highlightTop = f.crossSectionY != null
+          ? computeSingleWireframeStrip(p, model, f.crossSectionY, yOffset, rotX, rotY, rotZ, 1, 1.5, 0, 1)
+          : null;
+        renders.push(renderArch3dWireframe(this.colors, top.strips, top.ribs, highlightTop, this.colors.archTop));
+        const bounds = computeWireframeBounds(wf.top, p.height, yOffset, rotX, rotY, rotZ, 1, 0, 1);
+        renders.push(renderWireframeDragFrame(bounds, this.colors, this.wireframeDragActive, this.onWireframeDragStart));
+      }
+      if (showBackWireframe && backModel) {
+        wf.bottom ??= computeWireframeGeometry(p, backModel, 4);
+        const back = projectWireframe(wf.bottom, p.height, yOffset, rotX, rotY, rotZ, 1, 0, -1);
+        const highlightBack = f.crossSectionY != null
+          ? computeSingleWireframeStrip(p, backModel, f.crossSectionY, yOffset, rotX, rotY, rotZ, 1, 1.5, 0, -1)
+          : null;
+        renders.push(renderArch3dWireframe(this.colors, back.strips, back.ribs, highlightBack, this.colors.archBack));
+        const bounds = computeWireframeBounds(wf.bottom, p.height, yOffset, rotX, rotY, rotZ, 1, 0, -1);
+        renders.push(renderWireframeDragFrame(bounds, this.colors, this.wireframeDragActive, this.onWireframeDragStart));
+      }
+    }
+    this.draftChange.emit(renders);
   }
 
   /**
