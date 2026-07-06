@@ -221,6 +221,41 @@ export function projectWireframe(
   return { strips, ribs };
 }
 
+/**
+ * Axis-aligned bounding box of the projected wireframe, in the same world
+ * coordinates as `projectWireframe`'s output. Used to size the drag-to-rotate
+ * hit frame so it tracks rotation exactly (a tilted wireframe's screen
+ * footprint grows/shrinks), without needing a second, approximate estimate.
+ */
+export function computeWireframeBounds(
+  geom: WireframeGeometry,
+  bodyHeight: number,
+  yOffset: number,
+  rotXDeg = 0,
+  rotYDeg = 0,
+  rotZDeg = 0,
+  zAmp    = 1,
+  xOffset = 0,
+  signZ: 1 | -1 = 1,
+): { minX: number; minY: number; maxX: number; maxY: number } {
+  const proj = buildProjection(yOffset, bodyHeight / 2, rotXDeg, rotYDeg, rotZDeg, zAmp * signZ, xOffset);
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  const consider = (x: number, y: number, z: number) => {
+    const [sx, sy] = proj(x, y, z);
+    if (sx < minX) minX = sx;
+    if (sx > maxX) maxX = sx;
+    if (sy < minY) minY = sy;
+    if (sy > maxY) maxY = sy;
+  };
+  for (const strip of geom.strips) {
+    for (let i = 0; i < strip.xs.length; i++) consider(strip.xs[i], strip.y, strip.zs[i]);
+  }
+  for (const rib of geom.ribs) {
+    for (const pt of rib) consider(pt.x, pt.y, pt.z);
+  }
+  return { minX, minY, maxX, maxY };
+}
+
 /** Build the SVG path for a single cross-section at body-y `y`. */
 export function computeSingleWireframeStrip(
   p: EnricoCerutiParams,
