@@ -46,12 +46,16 @@ export interface CerutiViewFlags {
   topPlateView: PlateViewMode;
   /** Back plate's overlay above the section view: contour map, oblique wireframe, or neither. */
   backPlateView: PlateViewMode;
-  /** Rotation around the X axis (degrees). Tilts body length to reveal the arch profile. */
-  wireframeRotXDeg: number;
+  /**
+   * Rotation around the X axis (degrees). Tilts body length to reveal the
+   * arch profile. Shared by both the wireframe and 3D contour views — they're
+   * the same oblique projection at zero rotation, just different geometry.
+   */
+  plateRotXDeg: number;
   /** Rotation around the Y axis (degrees). Rolls the body on its length axis. */
-  wireframeRotYDeg: number;
+  plateRotYDeg: number;
   /** Rotation around the Z axis (degrees). Spins the plan view. */
-  wireframeRotZDeg: number;
+  plateRotZDeg: number;
 }
 
 export const DEFAULT_CERUTI_VIEW_FLAGS: CerutiViewFlags = {
@@ -67,9 +71,9 @@ export const DEFAULT_CERUTI_VIEW_FLAGS: CerutiViewFlags = {
   crossSectionY: null,
   topPlateView: 'none',
   backPlateView: 'none',
-  wireframeRotXDeg: -30,
-  wireframeRotYDeg: -10,
-  wireframeRotZDeg: 0,
+  plateRotXDeg: -30,
+  plateRotYDeg: -10,
+  plateRotZDeg: 0,
 };
 
 /**

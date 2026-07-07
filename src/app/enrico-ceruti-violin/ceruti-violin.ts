@@ -1,15 +1,15 @@
 import { ChangeDetectorRef, Component, Input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
-import { Arc } from '../models/types';
+import { Arc, Pt } from '../models/types';
 import { applyTransforms, ColorTransform, renderArcFromArc, renderFilledPath, renderPath } from '../helpers/renderFuncs';
-import { combinePathStrings } from '../helpers/svgPathMath';
+import { combinePathStrings, samplePathToPolyline } from '../helpers/svgPathMath';
 import { clampParam, safeRun } from '../helpers/validators';
 import { ArchingParams, CerutiColors, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, EnricoCerutiTemplate, EnricoCerutiParams } from './ceruti-types';
 import { CERUTI_TEMPLATES } from './ceruti-templates';
 import { calculateCenterBout, calculateCorners, calculateCrossArchTop, calculateLongArch, calculateMainBouts, calculateMould, calculateOuterArcs, checkFlutingBitFit, defaultArchingParams, defaultCrossArchParams, defaultFlutingChannelParams, defineFlutingAreaPath, defineFlutingPath, defineInnerPath, defineInsetPath, defineOuterCornerArcs, defineOuterPath, defineOuterPurflingPath, definePurflingPath, defineTroughPath, flutingHalfWidthAtY, flutingOuterHalfWidthAtY, innerHalfWidthAtY, outerHalfWidthAtY } from './ceruti-calcs';
-import { buildPlateSurfaceModel, calculateFlutingSectionTop, computeArchContours, stationChordsAt, PlateSurfaceModel } from './ceruti-surface';
-import { renderArchContourMap } from './renders/arch-contours.render';
+import { ArchContourLevel, buildPlateSurfaceModel, calculateFlutingSectionTop, computeArchContourRings, stationChordsAt, PlateSurfaceModel } from './ceruti-surface';
+import { computeArchContourBounds, projectArchContourRings, projectFlatPolyline, renderArchContours3d } from './renders/arch-contours.render';
 import { computeSingleWireframeStrip, computeWireframeBounds, computeWireframeGeometry, projectWireframe, renderArch3dWireframe, WireframeGeometry } from './renders/arch-3d-wireframe.render';
 import { renderWireframeDragFrame } from './renders/wireframe-drag-frame.render';
 import { HighlightedArc } from './renders/render-constants';
@@ -261,8 +261,8 @@ export class CerutiViolin extends RecipeComponentBase {
   override ngOnDestroy(): void {
     super.ngOnDestroy();
     // In case the component is torn down mid-drag (recipe switch, navigation).
-    window.removeEventListener('pointermove', this.onWireframeDragMove);
-    window.removeEventListener('pointerup', this.onWireframeDragEnd);
+    window.removeEventListener('pointermove', this.onPlateDragMove);
+    window.removeEventListener('pointerup', this.onPlateDragEnd);
   }
 
   // ===== Panel system =====
@@ -501,14 +501,60 @@ export class CerutiViolin extends RecipeComponentBase {
   }
 
   /**
+   * The wireframe/contour step sizes below were tuned by eye against a
+   * standard violin. Body height, body width, and arch height all vary a
+   * lot across the instrument family (see defaultArchingParams) — a cello or
+   * bass plugged into the same fixed mm steps would render 2-3x the wires and
+   * contours of a violin, which is what actually caused the lag. Scaling each
+   * step relative to these reference dimensions keeps rendered density (and
+   * cost) roughly constant across the whole size range instead.
+   */
+  private static readonly REFERENCE_BODY_HEIGHT = 350; // mm, violin body length
+  private static readonly REFERENCE_BODY_WIDTH = 200;  // mm, violin body width
+  private static readonly REFERENCE_ARCH_HEIGHT = 15;  // mm, violin top-plate default
+  private static readonly REFERENCE_STATION_STEP_MM = 4;
+  private static readonly REFERENCE_SAMPLE_STEP_MM = 1.5;
+  private static readonly REFERENCE_GRID_MM = 1.25;
+  private static readonly REFERENCE_LEVEL_STEP_MM = 1;
+
+  private static clamp(v: number, min: number, max: number): number {
+    return Math.min(Math.max(v, min), max);
+  }
+
+  /** Wireframe cross-section spacing and per-strip sample spacing, scaled to keep strip/point counts constant. */
+  private wireframeSteps(p: EnricoCerutiParams): { stationStepMm: number; sampleStepMm: number } {
+    const stationStepMm = CerutiViolin.clamp(
+      CerutiViolin.REFERENCE_STATION_STEP_MM * (p.height / CerutiViolin.REFERENCE_BODY_HEIGHT), 2, 15,
+    );
+    const sampleStepMm = CerutiViolin.clamp(
+      CerutiViolin.REFERENCE_SAMPLE_STEP_MM * (p.width / CerutiViolin.REFERENCE_BODY_WIDTH), 0.75, 5,
+    );
+    return { stationStepMm, sampleStepMm };
+  }
+
+  /** Contour height step and marching-squares grid spacing, scaled to keep level count and grid point count constant. */
+  private contourSteps(p: EnricoCerutiParams, archHeight: number): { stepMm: number; gridMm: number } {
+    const areaScale = Math.sqrt(
+      (p.width * p.height) / (CerutiViolin.REFERENCE_BODY_WIDTH * CerutiViolin.REFERENCE_BODY_HEIGHT),
+    );
+    const stepMm = CerutiViolin.clamp(
+      CerutiViolin.REFERENCE_LEVEL_STEP_MM * (archHeight / CerutiViolin.REFERENCE_ARCH_HEIGHT), 0.5, 6,
+    );
+    const gridMm = CerutiViolin.clamp(CerutiViolin.REFERENCE_GRID_MM * areaScale, 0.75, 4);
+    return { stepMm, gridMm };
+  }
+
+  /**
    * The contour grid is by far the costliest part of the cross-arching redraw,
-   * and it depends only on the params — the station line is drawn separately —
-   * so station drags reuse the cached paths and only a real value change recomputes.
+   * and it depends only on the params, so rotation and station drags reuse
+   * the cached rings/polylines and only a real value change recomputes them.
+   * Rings and outline/trough polylines are kept in local plate coordinates
+   * (no offset, no rotation baked in) so they can be projected at any angle.
    */
   private archContourCache: {
     key: string;
-    top: { contours: { level: number; path: string }[]; outline: string | null; trough: string | null } | null;
-    bottom: { contours: { level: number; path: string }[]; outline: string | null; trough: string | null } | null;
+    top: { levels: ArchContourLevel[]; outlinePts: Pt[] | null; troughPts: Pt[] | null } | null;
+    bottom: { levels: ArchContourLevel[]; outlinePts: Pt[] | null; troughPts: Pt[] | null } | null;
   } = { key: '', top: null, bottom: null };
 
   /**
@@ -556,64 +602,64 @@ export class CerutiViolin extends RecipeComponentBase {
   }
 
   /**
-   * Wireframe rotation is driven by a mouse drag (60fps ticks) rather than a
-   * discrete edit, so it bypasses the debounce/history pipeline entirely: no
-   * 1800ms settle delay, and no per-tick `pushHistory()` flooding the undo
-   * stack with near-duplicate snapshots of unchanged params. Rotation is
-   * ephemeral view state, same as the station slider, so nothing is lost by
-   * skipping the history push.
+   * Plate rotation (wireframe or 3D contours) is driven by a mouse drag
+   * (60fps ticks) rather than a discrete edit, so it bypasses the
+   * debounce/history pipeline entirely: no 1800ms settle delay, and no
+   * per-tick `pushHistory()` flooding the undo stack with near-duplicate
+   * snapshots of unchanged params. Rotation is ephemeral view state, same as
+   * the station slider, so nothing is lost by skipping the history push.
    */
-  redrawWireframeRotation(): void {
+  redrawPlateRotation(): void {
     safeRun(() => this.runCrossArchingRedraw());
   }
 
-  // ===== Wireframe drag-to-rotate =====
+  // ===== Plate drag-to-rotate (shared by the wireframe and 3D contour views) =====
   //
-  // The hit frame drawn around the wireframe (renderWireframeDragFrame) only
-  // reports drag *start* — every rotation tick tears down and rebuilds the
-  // whole canvas, so an SVG element's own pointer capture wouldn't survive a
-  // single tick. Move/up are tracked on `window` instead, which is stable
-  // across redraws, so a fast drag keeps tracking even if the cursor strays
-  // outside the frame mid-drag.
-  private static readonly WIREFRAME_DEG_PER_PX = 0.4;
-  private wireframeDragActive = false;
-  private wireframeDragLastX = 0;
-  private wireframeDragLastY = 0;
+  // The hit frame drawn around the active plate view (renderWireframeDragFrame)
+  // only reports drag *start* — every rotation tick tears down and rebuilds
+  // the whole canvas, so an SVG element's own pointer capture wouldn't
+  // survive a single tick. Move/up are tracked on `window` instead, which is
+  // stable across redraws, so a fast drag keeps tracking even if the cursor
+  // strays outside the frame mid-drag.
+  private static readonly PLATE_DEG_PER_PX = 0.4;
+  private plateDragActive = false;
+  private plateDragLastX = 0;
+  private plateDragLastY = 0;
 
-  private onWireframeDragStart = (event: PointerEvent): void => {
+  private onPlateDragStart = (event: PointerEvent): void => {
     // Stop this from bubbling into draft-canvas's own pointerdown handler —
     // draft-canvas has no idea this frame exists and should stay that way.
     event.stopPropagation();
     event.preventDefault();
-    this.wireframeDragActive = true;
-    this.wireframeDragLastX = event.clientX;
-    this.wireframeDragLastY = event.clientY;
-    window.addEventListener('pointermove', this.onWireframeDragMove);
-    window.addEventListener('pointerup', this.onWireframeDragEnd);
+    this.plateDragActive = true;
+    this.plateDragLastX = event.clientX;
+    this.plateDragLastY = event.clientY;
+    window.addEventListener('pointermove', this.onPlateDragMove);
+    window.addEventListener('pointerup', this.onPlateDragEnd);
   };
 
-  private onWireframeDragMove = (event: PointerEvent): void => {
-    const dx = event.clientX - this.wireframeDragLastX;
-    const dy = event.clientY - this.wireframeDragLastY;
-    this.wireframeDragLastX = event.clientX;
-    this.wireframeDragLastY = event.clientY;
+  private onPlateDragMove = (event: PointerEvent): void => {
+    const dx = event.clientX - this.plateDragLastX;
+    const dy = event.clientY - this.plateDragLastY;
+    this.plateDragLastX = event.clientX;
+    this.plateDragLastY = event.clientY;
 
     // Horizontal drag yaws the body on its length axis; vertical drag pitches
     // it to reveal more or less of the arch profile — see the rotation-axis
-    // notes atop arch-3d-wireframe.render.ts.
+    // notes in renders/oblique-projection.ts.
     const f = this.viewFlags;
-    f.wireframeRotYDeg = this.normalizeDeg((f.wireframeRotYDeg ?? 0) + dx * CerutiViolin.WIREFRAME_DEG_PER_PX);
-    f.wireframeRotXDeg = this.clampDeg((f.wireframeRotXDeg ?? 0) - dy * CerutiViolin.WIREFRAME_DEG_PER_PX, -90, 90);
-    this.redrawWireframeRotation();
+    f.plateRotYDeg = this.normalizeDeg((f.plateRotYDeg ?? 0) + dx * CerutiViolin.PLATE_DEG_PER_PX);
+    f.plateRotXDeg = this.clampDeg((f.plateRotXDeg ?? 0) - dy * CerutiViolin.PLATE_DEG_PER_PX, -90, 90);
+    this.redrawPlateRotation();
   };
 
-  private onWireframeDragEnd = (): void => {
-    this.wireframeDragActive = false;
-    window.removeEventListener('pointermove', this.onWireframeDragMove);
-    window.removeEventListener('pointerup', this.onWireframeDragEnd);
+  private onPlateDragEnd = (): void => {
+    this.plateDragActive = false;
+    window.removeEventListener('pointermove', this.onPlateDragMove);
+    window.removeEventListener('pointerup', this.onPlateDragEnd);
     // The cursor/dragging state changed but nothing else did; redraw once
     // more so the frame's grab/grabbing cursor updates back.
-    this.redrawWireframeRotation();
+    this.redrawPlateRotation();
   };
 
   private normalizeDeg(deg: number): number {
@@ -666,6 +712,10 @@ export class CerutiViolin extends RecipeComponentBase {
     // shown at a time, so it sits centered (xOffset 0) on the shared Y axis rather
     // than split to either side.
     const yOffset = a.ribHeight + a.top.thickness + a.top.arch.archHeight + 15;
+    const rotX = f.plateRotXDeg ?? 0;
+    const rotY = f.plateRotYDeg ?? 0;
+    const rotZ = f.plateRotZDeg ?? 0;
+
     const showTopContours = f.topPlateView === 'contours';
     const showBackContours = f.backPlateView === 'contours';
     if ((showTopContours || showBackContours) && (model || backModel)) {
@@ -674,56 +724,71 @@ export class CerutiViolin extends RecipeComponentBase {
         this.archContourCache = { key: paramsKey, top: null, bottom: null };
       }
       const c = this.archContourCache;
-      // 1 mm levels on a 1.25 mm grid: level count is the feature; the
-      // marching-squares grid can be slightly coarser without visible loss.
+      // Level step and grid spacing scale with this plate's arch height and
+      // the instrument's overall size, so a cello or bass renders roughly the
+      // same number of contour levels (and the same grid point count) a
+      // violin does, instead of 2-3x as many.
       if (showTopContours && model) {
+        const { stepMm, gridMm } = this.contourSteps(p, a.top.arch.archHeight);
         c.top ??= {
-          contours: computeArchContours(p, model, 1, 1.25, yOffset, 0),
-          outline: defineOuterPath(p, p.overhang + p.rib, true, false),
-          trough: defineTroughPath(p, 'top'),
+          levels: computeArchContourRings(p, model, stepMm, gridMm),
+          outlinePts: samplePathToPolyline(defineOuterPath(p, p.overhang + p.rib, true, false), 1),
+          troughPts: (() => { const t = defineTroughPath(p, 'top'); return t ? samplePathToPolyline(t, 1) : null; })(),
         };
-        renders.push(renderArchContourMap(p, this.colors, c.top.contours, c.top.outline, c.top.trough, yOffset, f.crossSectionY, 0, this.colors.archTop));
+        const levels = projectArchContourRings(c.top.levels, p.height, yOffset, rotX, rotY, rotZ, 1, 0, 1);
+        const outline = c.top.outlinePts ? projectFlatPolyline(c.top.outlinePts, p.height, yOffset, rotX, rotY, rotZ, 1, 0, 1) : null;
+        const trough = c.top.troughPts ? projectFlatPolyline(c.top.troughPts, p.height, yOffset, rotX, rotY, rotZ, 1, 0, 1) : null;
+        renders.push(renderArchContours3d(this.colors, levels, outline, trough, this.colors.archTop));
+        const bounds = computeArchContourBounds(c.top.levels, p.height, yOffset, rotX, rotY, rotZ, 1, 0, 1);
+        renders.push(renderWireframeDragFrame(bounds, this.colors, this.plateDragActive, this.onPlateDragStart));
       }
       if (showBackContours && backModel) {
+        const { stepMm, gridMm } = this.contourSteps(p, a.bottom.arch.archHeight);
         c.bottom ??= {
-          contours: computeArchContours(p, backModel, 1, 1.25, yOffset, 0),
-          outline: defineOuterPath(p, p.overhang + p.rib, true, true),
-          trough: defineTroughPath(p, 'bottom'),
+          levels: computeArchContourRings(p, backModel, stepMm, gridMm),
+          outlinePts: samplePathToPolyline(defineOuterPath(p, p.overhang + p.rib, true, true), 1),
+          troughPts: (() => { const t = defineTroughPath(p, 'bottom'); return t ? samplePathToPolyline(t, 1) : null; })(),
         };
-        renders.push(renderArchContourMap(p, this.colors, c.bottom.contours, c.bottom.outline, c.bottom.trough, yOffset, f.crossSectionY, 0, this.colors.archBack));
+        const levels = projectArchContourRings(c.bottom.levels, p.height, yOffset, rotX, rotY, rotZ, 1, 0, -1);
+        const outline = c.bottom.outlinePts ? projectFlatPolyline(c.bottom.outlinePts, p.height, yOffset, rotX, rotY, rotZ, 1, 0, -1) : null;
+        const trough = c.bottom.troughPts ? projectFlatPolyline(c.bottom.troughPts, p.height, yOffset, rotX, rotY, rotZ, 1, 0, -1) : null;
+        renders.push(renderArchContours3d(this.colors, levels, outline, trough, this.colors.archBack));
+        const bounds = computeArchContourBounds(c.bottom.levels, p.height, yOffset, rotX, rotY, rotZ, 1, 0, -1);
+        renders.push(renderWireframeDragFrame(bounds, this.colors, this.plateDragActive, this.onPlateDragStart));
       }
     }
     const showTopWireframe = f.topPlateView === 'wireframe';
     const showBackWireframe = f.backPlateView === 'wireframe';
     if ((showTopWireframe || showBackWireframe) && (model || backModel)) {
-      const rotX = f.wireframeRotXDeg ?? 0;
-      const rotY = f.wireframeRotYDeg ?? 0;
-      const rotZ = f.wireframeRotZDeg ?? 0;
       // Surface sampling is rotation-independent; rotation and station drags
       // only re-project the cached geometry, which is a few thousand mul-adds.
       if (this.wireframeCache.key !== paramsKey) {
         this.wireframeCache = { key: paramsKey, top: null, bottom: null };
       }
       const wf = this.wireframeCache;
+      // Station/sample spacing scale with body size so a cello or bass
+      // renders roughly the same number of cross-section strips (and the
+      // same points per strip) a violin does, instead of 2-3x as many.
+      const { stationStepMm, sampleStepMm } = this.wireframeSteps(p);
       if (showTopWireframe && model) {
-        wf.top ??= computeWireframeGeometry(p, model, 4);
+        wf.top ??= computeWireframeGeometry(p, model, stationStepMm, sampleStepMm);
         const top = projectWireframe(wf.top, p.height, yOffset, rotX, rotY, rotZ, 1, 0, 1);
         const highlightTop = f.crossSectionY != null
-          ? computeSingleWireframeStrip(p, model, f.crossSectionY, yOffset, rotX, rotY, rotZ, 1, 1.5, 0, 1)
+          ? computeSingleWireframeStrip(p, model, f.crossSectionY, yOffset, rotX, rotY, rotZ, 1, sampleStepMm, 0, 1)
           : null;
         renders.push(renderArch3dWireframe(this.colors, top.strips, top.ribs, highlightTop, this.colors.archTop));
         const bounds = computeWireframeBounds(wf.top, p.height, yOffset, rotX, rotY, rotZ, 1, 0, 1);
-        renders.push(renderWireframeDragFrame(bounds, this.colors, this.wireframeDragActive, this.onWireframeDragStart));
+        renders.push(renderWireframeDragFrame(bounds, this.colors, this.plateDragActive, this.onPlateDragStart));
       }
       if (showBackWireframe && backModel) {
-        wf.bottom ??= computeWireframeGeometry(p, backModel, 4);
+        wf.bottom ??= computeWireframeGeometry(p, backModel, stationStepMm, sampleStepMm);
         const back = projectWireframe(wf.bottom, p.height, yOffset, rotX, rotY, rotZ, 1, 0, -1);
         const highlightBack = f.crossSectionY != null
-          ? computeSingleWireframeStrip(p, backModel, f.crossSectionY, yOffset, rotX, rotY, rotZ, 1, 1.5, 0, -1)
+          ? computeSingleWireframeStrip(p, backModel, f.crossSectionY, yOffset, rotX, rotY, rotZ, 1, sampleStepMm, 0, -1)
           : null;
         renders.push(renderArch3dWireframe(this.colors, back.strips, back.ribs, highlightBack, this.colors.archBack));
         const bounds = computeWireframeBounds(wf.bottom, p.height, yOffset, rotX, rotY, rotZ, 1, 0, -1);
-        renders.push(renderWireframeDragFrame(bounds, this.colors, this.wireframeDragActive, this.onWireframeDragStart));
+        renders.push(renderWireframeDragFrame(bounds, this.colors, this.plateDragActive, this.onPlateDragStart));
       }
     }
     this.draftChange.emit(renders);
