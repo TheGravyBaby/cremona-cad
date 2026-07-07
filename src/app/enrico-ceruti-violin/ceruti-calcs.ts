@@ -1,5 +1,5 @@
 import { solveInscribedCircleAlongAxis, circleCircleIntersections, angleFromCenter, interceptCirclesAndPoint, dist, pointOnCircle, offsetArcRadius, flipArcAboutY, flipPointAboutY, flipRectAboutY, lineCircleIntersection, redefineArcCircle, interceptCirclesAndPointCompound, findJoiningArcs, arcHorizontalIntersections } from "../helpers/draftMath";
-import { pathFromArc, pathFromLine, pathFromCornerCubic, unifyConnectedSvgPaths, pathFromRoundedRect, pathFromCircle, pathFromRect, combinePathStrings, differenceFromManyPaths, intersectionFromTwoPaths, translatePath, differenceFromTwoPaths, buildCatenaryPath, buildCycloidPath, buildSplinePath, buildCycloidPathAcross, catenaryZAt, cycloidZAt, splineZAt, flutingArc } from "../helpers/svgPathMath";
+import { pathFromArc, pathFromLine, pathFromCornerCubic, unifyConnectedSvgPaths, pathFromRoundedRect, pathFromCircle, pathFromRect, combinePathStrings, differenceFromManyPaths, intersectionFromTwoPaths, translatePath, differenceFromTwoPaths, buildCatenaryPath, buildCycloidPath, buildSplinePath, buildCycloidPathAcross, catenaryZAt, cycloidZAt, splineZAt, flutingArc, cycloidEdgeSlope } from "../helpers/svgPathMath";
 import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Pt, Rectangle } from "../models/types";
 import { error, message, warn } from "../shared/message-emitter";
 import { ArchCurve, ArchingParams, CrossArchParams, EnricoCerutiParams, FlutingChannelParams } from "./ceruti-types";
@@ -1026,28 +1026,38 @@ export function defineOuterCornerArcs(p: EnricoCerutiParams, offset: number): Ar
     return arcs;
 }
 
+// Returns the angle `degrees` back from arc.end, moving toward arc.start along
+// whichever direction the arc actually sweeps (sign of the shortest start->end delta).
+function angleBeforeEnd(arc: Arc, degrees: number): number {
+    const delta = Math.atan2(Math.sin(arc.end - arc.start), Math.cos(arc.end - arc.start));
+    const dir = Math.sign(delta) || 1;
+    return arc.end - dir * degrees * Math.PI / 180;
+}
+
 export function defineFlutingArcs(p: EnricoCerutiParams, offset: number): Arc[] {
     const flutingArcs = defineOffsetArcs(p, offset, false);
+    // flutingArcs[2] is always C0off here: whichever side is viol, its corner arc(s)
+    // (L2/U2) drop out of defineOffsetArcs, leaving C0 adjacent to L1/U1 in the array.
 
     if (p.options.useViolCornerLC && p.options.useViolCornerUC) {
         let U4Offset = offsetArcRadius(p.bouts.U4!, offset);
-        let C2Offset = offsetArcRadius(p.bouts.C2, -offset);
-        let intersectsU = circleCircleIntersections(U4Offset, C2Offset);
-        let U4Angle = angleFromCenter(U4Offset, intersectsU[0]);
-        let C2Angle = angleFromCenter(C2Offset, intersectsU[0]);
-        U4Offset.end = U4Angle;
-        C2Offset.end = C2Angle;
+        U4Offset.end = angleBeforeEnd(U4Offset, 10);
+        let upperJoin = findJoiningArcs(flutingArcs[2], "start", U4Offset, "end", true)
         flutingArcs.push(U4Offset);
-        flutingArcs.push(C2Offset);
+        for (const arc of upperJoin) {
+            flutingArcs.push(arc);
+        }
+
         let L4Offset = offsetArcRadius(p.bouts.L4!, offset);
-        let C1Offset = offsetArcRadius(p.bouts.C1, -offset);
-        let intersectsL = circleCircleIntersections(L4Offset, C1Offset);
-        C1Offset.end = angleFromCenter(C1Offset, intersectsL[1]);
-        L4Offset.end = angleFromCenter(L4Offset, intersectsL[1]);
-        flutingArcs.push(C1Offset, L4Offset);
+        L4Offset.end = angleBeforeEnd(L4Offset, 10);
+        let lowerJoin = findJoiningArcs(L4Offset, "end", flutingArcs[2], "end", false)
+        flutingArcs.push(L4Offset);
+        for (const arc of lowerJoin) {
+            flutingArcs.push(arc);
+        }
         return flutingArcs;
     }
-        
+
 
     if (p.options.useViolCornerUC){
         let lowerJoin = findJoiningArcs(flutingArcs[2], "end", flutingArcs[3], "end", false)
@@ -1055,14 +1065,12 @@ export function defineFlutingArcs(p: EnricoCerutiParams, offset: number): Arc[] 
             flutingArcs.push(arc);
         }
         let U4Offset = offsetArcRadius(p.bouts.U4!, offset);
-        let C2Offset = offsetArcRadius(p.bouts.C2, -offset);
-        let intersects = circleCircleIntersections(U4Offset, C2Offset);
-        let U4Angle = angleFromCenter(U4Offset, intersects[0]);
-        let C2Angle = angleFromCenter(C2Offset, intersects[0]);
-        U4Offset.end = U4Angle;
-        C2Offset.end = C2Angle;
+        U4Offset.end = angleBeforeEnd(U4Offset, 12);
+        let upperJoin = findJoiningArcs(flutingArcs[3], "start", U4Offset, "end", true)
         flutingArcs.push(U4Offset);
-        flutingArcs.push(C2Offset);
+        for (const arc of upperJoin) {
+            flutingArcs.push(arc);
+        }
         return flutingArcs;
     }
     if (p.options.useViolCornerLC) {
@@ -1071,11 +1079,12 @@ export function defineFlutingArcs(p: EnricoCerutiParams, offset: number): Arc[] 
             flutingArcs.push(arc);
         }
         let L4Offset = offsetArcRadius(p.bouts.L4!, offset);
-        let C1Offset = offsetArcRadius(p.bouts.C1, -offset);
-        let intersects = circleCircleIntersections(L4Offset, C1Offset);
-        C1Offset.end = angleFromCenter(C1Offset, intersects[1]);
-        L4Offset.end = angleFromCenter(L4Offset, intersects[1]);
-        flutingArcs.push(C1Offset, L4Offset);
+        L4Offset.end = angleBeforeEnd(L4Offset, 12);
+        let lowerJoin = findJoiningArcs(L4Offset, "end", flutingArcs[2], "end", false)
+        flutingArcs.push(L4Offset);
+        for (const arc of lowerJoin) {
+            flutingArcs.push(arc);
+        }
 
         return flutingArcs;
     }
@@ -1443,13 +1452,16 @@ export function defineFlutingPath(p: EnricoCerutiParams, offset: number): string
 /**
  * The plan-view line of the fluting trough — the deepest path of the carved
  * channel, offset between the platform boundaries at the resolved trough
- * position. Returns null until both the fluting platform and the arching's
+ * position. The real trough position varies station-by-station (it follows
+ * the cross arch's takeoff slope, per {@link resolveTroughU}); this traces a
+ * single representative offset for the whole plate, evaluated at the C-bout
+ * waist. Returns null until both the fluting platform and the arching's
  * channel params exist.
  */
 export function defineTroughPath(p: EnricoCerutiParams, side: 'top' | 'bottom' = 'top'): string | null {
     const fluting = p.arching?.[side].fluting;
     if (!fluting || p.innerFlutingDepth === null || p.outerFlutingDepth === null) return null;
-    const u = resolveTroughU(p, fluting);
+    const u = resolveTroughU(p, side);
     const troughFromEdge = p.outerFlutingDepth + u * (p.innerFlutingDepth - p.outerFlutingDepth);
     const arcs = defineFlutingArcs(p, p.overhang + p.rib - troughFromEdge);
     const mirrored = arcs.map(arc => flipArcAboutY(arc));
@@ -1550,9 +1562,9 @@ export function defaultCrossArchParams(): CrossArchParams {
   return { d: 0.6, pct: 1 };
 }
 
-/** Default fluting channel: trough position derived from the purfling line; channel depth matches edgeDepth. */
+/** Default fluting channel: the carved gouge-arc, tangent to the cross arch. */
 export function defaultFlutingChannelParams(): FlutingChannelParams {
-  return { troughT: 1, flatPlatform: false };
+  return { flatPlatform: false };
 }
 
 /**
@@ -1561,13 +1573,15 @@ export function defaultFlutingChannelParams(): FlutingChannelParams {
  * places the trough on the purfling line via the plan-view offsets. Clamped
  * away from the boundaries so both profile half-waves keep a real width.
  */
-export function resolveTroughU(p: EnricoCerutiParams, fluting: FlutingChannelParams): number {
+export function resolveTroughU(p: EnricoCerutiParams, side: 'top' | 'bottom' = 'top'): number {
   const outer = p.outerFlutingDepth ?? 0;
   const inner = p.innerFlutingDepth ?? 0;
   const width = inner - outer;
-  const t = fluting.troughT
-    ?? (width > 0 ? ((p.purflingOffset ?? p.rib + p.overhang) - outer) / width : 0.5);
-  return Math.min(Math.max(t, 0.05), 0.95);
+  if (width <= 0) return 1;
+  const edgeDepth = p.arching?.[side].edgeDepth ?? 0;
+  const y = p.bouts.C0?.y ?? p.height / 2;
+  const arc = flutingArc(edgeDepth, width, crossArchEdgeSlopeAt(p, y, side));
+  return arc ? Math.min(Math.max(arc.cx / width, 0), 1) : 1;
 }
 
 /**
@@ -1575,13 +1589,15 @@ export function resolveTroughU(p: EnricoCerutiParams, fluting: FlutingChannelPar
  * profile is a circular gouge arc, so its concave radius is the arc radius
  * itself, which must exceed the bit radius. `annulusWidth` is the local
  * platform width in mm; the narrowest station (the C-bout) governs, so callers
- * pass that.
+ * pass that. `y` is the station the check is evaluated at — the arch's
+ * takeoff slope (and so the arc's radius) varies along the body.
  */
-export function checkFlutingBitFit(p: EnricoCerutiParams, fluting: FlutingChannelParams, annulusWidth: number): void {
-  const edgeDepth = p.arching?.top.edgeDepth ?? 0;
+export function checkFlutingBitFit(p: EnricoCerutiParams, fluting: FlutingChannelParams, annulusWidth: number, side: 'top' | 'bottom' = 'top', y?: number): void {
+  const edgeDepth = p.arching?.[side].edgeDepth ?? 0;
   // A flat pre-channel platform has no scoop cut yet — nothing to warn about.
   if (edgeDepth <= 0 || annulusWidth <= 0 || fluting.flatPlatform) return;
-  const arc = flutingArc(edgeDepth, resolveTroughU(p, fluting), edgeDepth, annulusWidth);
+  const slope = y !== undefined ? crossArchEdgeSlopeAt(p, y, side) : 0;
+  const arc = flutingArc(edgeDepth, annulusWidth, slope);
   if (!arc) return; // degenerate channel falls back to the straight chord — nothing concave to cut
   const troughRadius = arc.r;
   if (troughRadius < p.bitDiameter / 2) {
@@ -1622,6 +1638,25 @@ export function calculateCrossArchTop(p: EnricoCerutiParams, y: number, side: 't
   const zBase = outerZ - sign * edgeDepth;
   const hEff  = h + edgeDepth;
   return { path: buildCycloidPathAcross(hEff, 2 * halfSpan, -halfSpan, zBase, sign, d, 80, pct), halfSpan };
+}
+
+/**
+ * The cross arch's own slope at its takeoff (the fluting inner boundary) at
+ * body height `y` — what the fluting channel's gouge arc must be tangent to
+ * there. Same hEff/span construction as {@link calculateCrossArchTop}; 0
+ * where no arch exists at this station (cap stations, or pct = 1's flat
+ * takeoff).
+ */
+export function crossArchEdgeSlopeAt(p: EnricoCerutiParams, y: number, side: 'top' | 'bottom' = 'top'): number {
+  const plate = p.arching![side];
+  const halfSpan = flutingHalfWidthAtY(p, y);
+  if (halfSpan === null || halfSpan <= 0) return 0;
+  const h = longArchHeightAt(p, plate.arch, y);
+  if (h <= 0) return 0;
+  const d = plate.cross?.d ?? defaultCrossArchParams().d;
+  const pct = plate.cross?.pct ?? defaultCrossArchParams().pct;
+  const edgeDepth = plate.edgeDepth;
+  return cycloidEdgeSlope(h + edgeDepth, 2 * halfSpan, d, pct);
 }
 
 /** Outermost |x| where the horizontal station line crosses any of the arcs' drawn spans; null if none. */

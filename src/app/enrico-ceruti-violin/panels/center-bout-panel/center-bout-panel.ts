@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { adjustArcStart } from '../../../helpers/arcDegrees';
 import { nearestFraction } from '../../../helpers/nearestFraction';
 import { Arc } from '../../../models/types';
-import { centerBoutWidthInfo, fitC0Info } from '../../ceruti-helpers';
+import { centerBoutWidthInfo, cornerPositionInfo, fitC0Info } from '../../ceruti-helpers';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams } from '../../ceruti-types';
 import { RenderToggles } from '../../render-toggles/render-toggles';
 
@@ -27,6 +27,7 @@ export class CenterBoutPanel {
   protected readonly centerBoutWidthInfo = centerBoutWidthInfo;
   protected readonly fitC0Info = fitC0Info;
   protected readonly adjustArcStart = adjustArcStart;
+  protected readonly cornerPositionInfo = cornerPositionInfo;
 
   onChange(solveC0?: boolean): void {
     this.changed.emit(solveC0);

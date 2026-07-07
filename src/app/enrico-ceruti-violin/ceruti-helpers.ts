@@ -141,14 +141,6 @@ export function flutingChannelInfo() {
     )
 }
 
-export function troughPositionInfo() {
-    info(
-        "Where the deepest line of the channel sits across the platform: 0 = the platform's outer boundary, 1 = the inner boundary where the cross arch takes off.\n\n" +
-        "When 'Trough on purfling line' is checked, the position is derived from the purfling offset — the traditional placement, just inside the purfling.",
-        "Trough Position", defaultTTL
-    )
-}
-
 export function flatPlatformInfo() {
     info(
         "Leaves the fluting platform flat at the plate surface with a 90° ledge dropping to the arch takeoff at the inner boundary — the pre-channel state used when making.\n\n" +

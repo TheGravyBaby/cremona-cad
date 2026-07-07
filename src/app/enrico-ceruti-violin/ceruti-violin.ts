@@ -476,7 +476,7 @@ export class CerutiViolin extends RecipeComponentBase {
       // Fluting is a filled area, so it must be drawn before the purfling lines or it paints over them.
       const renders: Array<(g: any, ui: any) => void> = [renderPath(backPath, this.colors.outerTrace)];
       if (flutingAreaPath) renders.push(renderFilledPath(flutingAreaPath, this.colors.fluting));
-      // if (troughPath) renders.push(renderPath(troughPath, this.colors.fluting, 1));
+      if (troughPath) renders.push(renderPath(troughPath, this.colors.fluting, 1));
       if (purflingPath) renders.push(renderPath(purflingPath, this.colors.innerTrace, 1));
       if (outerPurflingPath) renders.push(renderPath(outerPurflingPath, this.colors.innerTrace, 1));
       renders.push(renderOuterTraceGuides(p, this.colors, this.viewFlags, true));
@@ -703,7 +703,7 @@ export class CerutiViolin extends RecipeComponentBase {
 
     const flutingSlice = model ? calculateFlutingSectionTop(p, model, f.crossSectionY) : null;
     const flutingSliceBack = backModel ? calculateFlutingSectionTop(p, backModel, f.crossSectionY) : null;
-    this.warnFlutingBitFit(p, a);
+    this.warnFlutingBitFit(p, a, f.crossSectionY);
 
     const renders = [
       renderCrossSection(p, a, this.colors, f.showModuleGuides, halfWidthInner, halfWidthOuter, flutingOuterHalf, flutingInnerHalf, crossTop?.path ?? null, flutingSlice, crossBack?.path ?? null, flutingSliceBack),
@@ -799,13 +799,13 @@ export class CerutiViolin extends RecipeComponentBase {
    * debounced redraw (station drags would spam the message center otherwise).
    */
   private lastBitFitKey: string | null = null;
-  private warnFlutingBitFit(p: EnricoCerutiParams, a: ArchingParams): void {
+  private warnFlutingBitFit(p: EnricoCerutiParams, a: ArchingParams, y: number): void {
     const fluting = a.top.fluting!;
     const width = (p.innerFlutingDepth ?? 0) - (p.outerFlutingDepth ?? 0);
-    const key = `${a.top.edgeDepth}|${fluting.troughT}|${fluting.flatPlatform}|${p.bitDiameter}|${width}`;
+    const key = `${a.top.edgeDepth}|${fluting.flatPlatform}|${p.bitDiameter}|${width}|${y}`;
     if (key === this.lastBitFitKey) return;
     this.lastBitFitKey = key;
-    checkFlutingBitFit(p, fluting, width);
+    checkFlutingBitFit(p, fluting, width, 'top', y);
   }
 
   changeMould(): void {

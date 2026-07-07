@@ -988,50 +988,66 @@ export function cycloidZAt(hEff: number, span: number, d: number, s: number, pct
 }
 
 /**
- * The gouge arc behind the fluting profile: the circle through the channel's
- * three knots in physical section coordinates (t across the annulus in mm,
- * z below the plate surface) — A = (0, 0) at the platform outer boundary,
- * T = (troughU·width, −channelDepth), B = (width, −edgeDepth) at the fluting
- * inner boundary. Returns null when the trough knot isn't meaningfully below
- * the A–B chord (no concave scoop exists) or the knots are near-collinear.
+ * Analytic slope dz/ds of a trochoid arch at its edge (s=0) — the takeoff
+ * point a fluting channel must meet. Zero when pct=1 (full arch, flat cusp
+ * takeoff, per {@link trochoidNorm}); nonzero once pct clips the cusp, giving
+ * the edge a real grade to join smoothly rather than tangent-flat.
  */
-export function flutingArc(channelDepth: number, troughU: number, edgeDepth: number, width: number):
+export function cycloidEdgeSlope(hEff: number, span: number, d: number, pct = 1): number {
+  if (hEff <= 0 || span <= 0) return 0;
+  const t0 = (1 - pct) * Math.PI;
+  const t1 = 2 * Math.PI - t0;
+  const xRaw = (tt: number) => tt - d * Math.sin(tt);
+  const dxdt0 = 1 - d * Math.cos(t0);
+  const dsdt0 = (span * dxdt0) / (xRaw(t1) - xRaw(t0));
+  if (dsdt0 === 0) return 0;
+  const dzdt0 = (hEff * Math.sin(t0)) / (Math.cos(t0) + 1);
+  return dzdt0 / dsdt0;
+}
+
+/**
+ * The gouge arc behind the fluting profile: the unique circle through
+ * A = (0, 0) at the platform outer boundary and B = (width, −edgeDepth) at the
+ * fluting inner boundary, tangent to `archEdgeSlope` — the cross arch's own
+ * takeoff slope — at B. Two points plus one tangent fully determine a circle,
+ * so there's no free trough position left to choose; the shape follows
+ * directly from edgeDepth, width, and the arch it has to join. The arc still
+ * meets the flat edge land at A with a small crease, like a fresh gouge pass
+ * — only the arch end is tangent. Returns null for a degenerate width or
+ * where B − A runs parallel to the tangent at B (no circle solves).
+ */
+export function flutingArc(edgeDepth: number, width: number, archEdgeSlope: number):
   { cx: number; cz: number; r: number } | null {
   if (width <= 0) return null;
-  const tx = troughU * width, tz = -channelDepth;
-  const bx = width, bz = -edgeDepth;
-  // Trough must sit below the A–B chord for a downward-bulging arc.
-  if (tz >= -edgeDepth * troughU - 1e-9) return null;
-  // Circumcenter of A=(0,0), T, B via perpendicular-bisector determinant.
-  const d = 2 * (tx * bz - bx * tz);
-  if (Math.abs(d) < 1e-12) return null;
-  const t2 = tx * tx + tz * tz;
-  const b2 = bx * bx + bz * bz;
-  const cx = (bz * t2 - tz * b2) / d;
-  const cz = (tx * b2 - bx * t2) / d;
-  return { cx, cz, r: Math.hypot(cx, cz) };
+  const dx = width, dz = -edgeDepth;
+  const m = Math.hypot(1, archEdgeSlope);
+  const nx = -archEdgeSlope / m, nz = 1 / m; // unit normal to the tangent line at B
+  const denom = 2 * (dx * nx + dz * nz);
+  if (Math.abs(denom) < 1e-9) return null;
+  const t = -(dx * dx + dz * dz) / denom;
+  return { cx: width + t * nx, cz: -edgeDepth + t * nz, r: Math.abs(t) };
 }
 
 /**
  * Fluting channel transverse profile: height relative to the plate outer
  * surface at normalized position u across the platform annulus (0 = platform
  * outer boundary, 1 = fluting inner boundary), whose physical width is `width`
- * mm. A single circular arc — the section a gouge sweep would cut — through
- * 0 → −channelDepth at troughU → −edgeDepth at u = 1. The arc meets the flat
- * edge land and the cross-arch takeoff with small creases, like a fresh gouge
- * pass. Degenerate channels (trough not below the end-to-end chord) fall back
- * to the straight chord.
+ * mm. A single circular arc — the section a gouge sweep would cut — from
+ * 0 at u=0 to −edgeDepth at u=1, tangent to the arch (`archEdgeSlope`) there.
+ * When the arch's own takeoff isn't flat this arc dips below −edgeDepth
+ * before rising back up to meet it — the classic recurve. Degenerate
+ * channels fall back to the straight chord.
  *
  * When `flatPlatform` is set the channel isn't carved: the annulus stays flat
  * at the plate surface across its whole width, with a single vertical ledge at
  * the inner boundary (u = 1) dropping to the arch takeoff — the pre-channel
  * state a maker cuts the purfling on before gouging.
  */
-export function flutingProfileZ(u: number, channelDepth: number, troughU: number, edgeDepth: number, width: number, flatPlatform = false): number {
+export function flutingProfileZ(u: number, edgeDepth: number, width: number, archEdgeSlope: number, flatPlatform = false): number {
   if (u <= 0) return 0;
   if (u >= 1) return -edgeDepth;
   if (flatPlatform) return 0;
-  const arc = flutingArc(channelDepth, troughU, edgeDepth, width);
+  const arc = flutingArc(edgeDepth, width, archEdgeSlope);
   if (!arc) return -edgeDepth * u;
   const dt = u * width - arc.cx;
   return arc.cz - Math.sqrt(Math.max(arc.r * arc.r - dt * dt, 0));
