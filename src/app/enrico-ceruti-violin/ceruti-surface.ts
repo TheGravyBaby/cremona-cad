@@ -230,14 +230,27 @@ export function calculateFlutingSectionTop(p: EnricoCerutiParams, model: PlateSu
  * outline, while channel levels (≤ 0) ring the trough band instead of
  * uselessly tracing the outline.
  */
-export function computeArchContours(
+/** One contour level's rings in local plate (x, y) coordinates — no canvas offset applied. */
+export interface ArchContourLevel {
+    level: number;
+    rings: [number, number][][];
+}
+
+/**
+ * The expensive, rotation-independent part shared by both consumers: builds
+ * the height-field grid, runs marching squares, and clips every ring to the
+ * exact instrument outline. Returns local plate coordinates so callers can
+ * either flatten straight to a plan-view path (`computeArchContours`) or
+ * project each ring through an arbitrary rotation (`computeArchContourRings`,
+ * used by the 3D contour view — every ring point sits at z = its level, so
+ * projecting them is exactly like projecting a wireframe rib).
+ */
+function computeArchContourRingsRaw(
     p: EnricoCerutiParams,
     model: PlateSurfaceModel,
-    stepMm = 1,
-    gridMm = 1,
-    yOffset = 0,
-    xOffset = 0,
-): { level: number; path: string }[] {
+    stepMm: number,
+    gridMm: number,
+): { xMax: number; levels: ArchContourLevel[] } {
     const xMax = p.width / 2 + p.overhang + p.rib + 2;
     const yMin = -1, yMax = p.height + 1;
     const nx = Math.floor((2 * xMax) / gridMm) + 1;
@@ -267,16 +280,12 @@ export function computeArchContours(
         }
     }
 
-    const levels: number[] = [];
-    for (let k = Math.ceil(zMin / stepMm); k * stepMm <= zMax; k++) levels.push(k * stepMm);
+    const levelVals: number[] = [];
+    for (let k = Math.ceil(zMin / stepMm); k * stepMm <= zMax; k++) levelVals.push(k * stepMm);
 
     const generator = d3.contours().size([nx, ny]).smooth(true);
-    const toPath = (rings: number[][][][]): string =>
-        rings.flat().map(ring =>
-            ring.map(([cx, cy], idx) =>
-                `${idx === 0 ? 'M' : 'L'} ${(-xMax + cx * gridMm + xOffset).toFixed(2)} ${(yMin + cy * gridMm + yOffset).toFixed(2)}`
-            ).join(' ') + ' Z'
-        ).join(' ');
+    const toLocalRings = (rings: number[][][][]): [number, number][][] =>
+        rings.flat().map(ring => ring.map(([cx, cy]) => [-xMax + cx * gridMm, yMin + cy * gridMm] as [number, number]));
 
     // Build the outline clip polygon in grid-index coordinates so marching-squares
     // contour rings are clipped to the exact instrument boundary rather than the
@@ -289,20 +298,70 @@ export function computeArchContours(
     outlineRing.push(outlineRing[0]); // polygon-clipping requires a closed ring
     const outlineClip: [number, number][][][] = [[outlineRing]];
 
-    const out: { level: number; path: string }[] = [];
-    for (const level of levels) {
+    const levels: ArchContourLevel[] = [];
+    for (const level of levelVals) {
         const multi = generator.contour(level > 0 ? (posVals as any) : (negVals as any), level);
         // Clip marching-squares rings to the exact outline so every contour boundary
         // follows the instrument shape rather than a grid staircase. Positive levels
         // never reach the outline (the flat edge land at z = 0 always separates the
         // dome from the plate edge), so the intersection would be a no-op for them.
-        const rings: number[][][][] = level > 0
+        const rawRings: number[][][][] = level > 0
             ? (multi.coordinates as any)
             : ((polyClipper.intersection(multi.coordinates as any, outlineClip) ?? []) as any);
-        const path = toPath(rings);
-        if (path.trim().length > 0) out.push({ level, path });
+        const rings = toLocalRings(rawRings);
+        if (rings.length > 0) levels.push({ level, rings });
     }
-    return out;
+    return { xMax, levels };
+}
+
+/**
+ * Contour (topo) map of the top surface: level curves every `stepMm` of height
+ * relative to the plate outer surface, computed on a `gridMm` plan grid via
+ * d3-contour (marching squares). Returns plan-view path strings translated by
+ * `xOffset`/`yOffset` so the map can sit beside a sibling plate's map and stack
+ * above the section view on the same canvas.
+ *
+ * The height field is relative to the plate outer surface (peak positive,
+ * channel negative) for both plates, so the level curves are plate-agnostic —
+ * only the on-canvas offset differs between top and back.
+ *
+ * Out-of-outline grid cells are padded below every positive threshold but
+ * above every non-positive one: positive levels close naturally at the
+ * outline, while channel levels (≤ 0) ring the trough band instead of
+ * uselessly tracing the outline.
+ */
+export function computeArchContours(
+    p: EnricoCerutiParams,
+    model: PlateSurfaceModel,
+    stepMm = 1,
+    gridMm = 1,
+    yOffset = 0,
+    xOffset = 0,
+): { level: number; path: string }[] {
+    const { levels } = computeArchContourRingsRaw(p, model, stepMm, gridMm);
+    return levels.map(({ level, rings }) => ({
+        level,
+        path: rings.map(ring =>
+            ring.map(([x, y], idx) =>
+                `${idx === 0 ? 'M' : 'L'} ${(x + xOffset).toFixed(2)} ${(y + yOffset).toFixed(2)}`
+            ).join(' ') + ' Z'
+        ).join(' '),
+    }));
+}
+
+/**
+ * Same contour geometry as `computeArchContours`, but in local plate
+ * coordinates (no canvas offset) so each ring point can be projected through
+ * an arbitrary rotation for the 3D contour view — every point in a ring sits
+ * at z = that ring's level by construction.
+ */
+export function computeArchContourRings(
+    p: EnricoCerutiParams,
+    model: PlateSurfaceModel,
+    stepMm = 1,
+    gridMm = 1,
+): ArchContourLevel[] {
+    return computeArchContourRingsRaw(p, model, stepMm, gridMm).levels;
 }
 
 /**

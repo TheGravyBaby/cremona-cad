@@ -131,17 +131,17 @@
             [(ngModel)]="flags.crossSectionY" (input)="onChange()"
             aria-label="Cross section station height" />
     </div>
-    @if (flags.topPlateView === 'wireframe' || flags.backPlateView === 'wireframe') {
+    @if (flags.topPlateView !== 'none' || flags.backPlateView !== 'none') {
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Rotate X <span class="unit-label">°</span></span>
             <input class="basic-input" type="number" step="1"
-                [(ngModel)]="flags.wireframeRotXDeg" (input)="onChange()" />
+                [(ngModel)]="flags.plateRotXDeg" (input)="onChange()" />
         </label>
          <label class="field-cell">
             <span class="field-title">Rotate Y <span class="unit-label">°</span></span>
             <input class="basic-input" type="number" step="1"
-                [(ngModel)]="flags.wireframeRotYDeg" (input)="onChange()" />
+                [(ngModel)]="flags.plateRotYDeg" (input)="onChange()" />
         </label>
     </div>
     }
