@@ -1,132 +1,112 @@
-@if (params.arching) {
+<section class="ui-group">
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Cross Section Height <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="1" min="1" [max]="params.height - 1"
+                [(ngModel)]="flags.crossSectionY" (input)="onChange()" />
+        </label>
+        <input class="basic-input" type="range" step="1" min="1" [max]="params.height - 1"
+            [(ngModel)]="flags.crossSectionY" (input)="onChange()" aria-label="Cross section station height" />
+        <button type="button" class="info-icon" (click)="crossSectionStationInfo()" title="More information">ⓘ</button>
+    </div>
+</section>
 
-@if (arching.top.cross) {
 <section class="ui-group" [style.border-color]="colors.archTop">
     <div class="ui-group-title">Top Plate</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Cycloid Factor</span>
-            <input class="basic-input" type="number" step="0.05" min="0" max="1"
-                [(ngModel)]="topCross.d" (input)="onChange()" [style.border-color]="colors.archTop" />
+            <input class="basic-input" type="number" step="0.05" min="0" max="1" [(ngModel)]="topCross.d"
+                (input)="onChange()" [style.border-color]="colors.archTop" />
         </label>
         <label class="field-cell">
             <span class="field-title">Percentage <span class="unit-label">%</span></span>
-            <input class="basic-input" type="number" step="5" min="5" max="100"
-                [(ngModel)]="topCrossPercent" (input)="onChange()" [style.border-color]="colors.archTop" />
+            <input class="basic-input" type="number" step="5" min="5" max="100" [(ngModel)]="topCrossPercent"
+                (input)="onChange()" [style.border-color]="colors.archTop" />
         </label>
-        <button type="button" class="info-icon" (click)="crossArchCycloidControlsInfo()" title="More information">ⓘ</button>
+        <button type="button" class="info-icon" (click)="crossArchCycloidControlsInfo()"
+            title="More information">ⓘ</button>
     </div>
 
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Edge Depth <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.1" min="0" max="5"
-                [(ngModel)]="arching.top.edgeDepth" (input)="onChange()" />
+            <input class="basic-input" type="number" step="0.1" min="0" max="5" [(ngModel)]="arching.top.edgeDepth"
+                (input)="onChange()" />
         </label>
         <button type="button" class="info-icon" (click)="crossArchEdgeDepthInfo()" title="More information">ⓘ</button>
     </div>
 
     @if (arching.top.fluting) {
-        <div class="input-group basic-row field-row" role="group">
-            <div class="toggle">
-                <input type="checkbox" [(ngModel)]="topFluting.flatPlatform" (change)="onChange()" />
-                <span>Flat Platform</span>
-            </div>
-            <button type="button" class="info-icon" (click)="flatPlatformInfo()" title="More information">ⓘ</button>
+    <div class="input-group basic-row field-row" role="group">
+        <div class="toggle">
+            <input type="checkbox" [(ngModel)]="topFluting.flatPlatform" (change)="onChange()" />
+            <span>Flat Platform</span>
         </div>
+        <button type="button" class="info-icon" (click)="flatPlatformInfo()" title="More information">ⓘ</button>
+    </div>
     }
     <div class="input-group basic-row field-row" role="group">
-         <div class="toggle">
-            <input type="checkbox" [checked]="flags.topPlateView === 'wireframe'" (change)="togglePlateView('top', 'wireframe')" />
+        <div class="toggle">
+            <input type="checkbox" [checked]="flags.topPlateView === 'wireframe'"
+                (change)="togglePlateView('top', 'wireframe')" />
             <span>Show 3D Wireframe</span>
         </div>
         <div class="toggle">
-            <input type="checkbox" [checked]="flags.topPlateView === 'contours'" (change)="togglePlateView('top', 'contours')" />
+            <input type="checkbox" [checked]="flags.topPlateView === 'contours'"
+                (change)="togglePlateView('top', 'contours')" />
             <span>Show Contour Map</span>
         </div>
         <button type="button" class="info-icon" (click)="archContoursInfo()" title="More information">ⓘ</button>
     </div>
 </section>
-}
 
-@if (arching.bottom.cross) {
 <section class="ui-group" [style.border-color]="colors.archBack">
     <div class="ui-group-title">Back Plate</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Cycloid Factor</span>
-            <input class="basic-input" type="number" step="0.05" min="0" max="1"
-                [(ngModel)]="backCross.d" (input)="onChange()" [style.border-color]="colors.archBack" />
+            <input class="basic-input" type="number" step="0.05" min="0" max="1" [(ngModel)]="backCross.d"
+                (input)="onChange()" [style.border-color]="colors.archBack" />
         </label>
         <label class="field-cell">
             <span class="field-title">Percentage <span class="unit-label">%</span></span>
-            <input class="basic-input" type="number" step="5" min="5" max="100"
-                [(ngModel)]="backCrossPercent" (input)="onChange()" [style.border-color]="colors.archBack" />
+            <input class="basic-input" type="number" step="5" min="5" max="100" [(ngModel)]="backCrossPercent"
+                (input)="onChange()" [style.border-color]="colors.archBack" />
         </label>
-        <button type="button" class="info-icon" (click)="crossArchCycloidControlsInfo()" title="More information">ⓘ</button>
+        <button type="button" class="info-icon" (click)="crossArchCycloidControlsInfo()"
+            title="More information">ⓘ</button>
     </div>
 
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Edge Depth <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.1" min="0" max="5"
-                [(ngModel)]="arching.bottom.edgeDepth" (input)="onChange()" />
+            <input class="basic-input" type="number" step="0.1" min="0" max="5" [(ngModel)]="arching.bottom.edgeDepth"
+                (input)="onChange()" />
         </label>
         <button type="button" class="info-icon" (click)="crossArchEdgeDepthInfo()" title="More information">ⓘ</button>
     </div>
 
     @if (arching.bottom.fluting) {
-        <div class="input-group basic-row field-row" role="group">
-            <div class="toggle">
-                <input type="checkbox" [(ngModel)]="backFluting.flatPlatform" (change)="onChange()" />
-                <span>Flat Platform</span>
-            </div>
-            <button type="button" class="info-icon" (click)="flatPlatformInfo()" title="More information">ⓘ</button>
+    <div class="input-group basic-row field-row" role="group">
+        <div class="toggle">
+            <input type="checkbox" [(ngModel)]="backFluting.flatPlatform" (change)="onChange()" />
+            <span>Flat Platform</span>
         </div>
+        <button type="button" class="info-icon" (click)="flatPlatformInfo()" title="More information">ⓘ</button>
+    </div>
     }
     <div class="input-group basic-row field-row" role="group">
-         <div class="toggle">
-            <input type="checkbox" [checked]="flags.backPlateView === 'wireframe'" (change)="togglePlateView('back', 'wireframe')" />
+        <div class="toggle">
+            <input type="checkbox" [checked]="flags.backPlateView === 'wireframe'"
+                (change)="togglePlateView('back', 'wireframe')" />
             <span>Show 3D Wireframe</span>
         </div>
         <div class="toggle">
-            <input type="checkbox" [checked]="flags.backPlateView === 'contours'" (change)="togglePlateView('back', 'contours')" />
+            <input type="checkbox" [checked]="flags.backPlateView === 'contours'"
+                (change)="togglePlateView('back', 'contours')" />
             <span>Show Contour Map</span>
         </div>
         <button type="button" class="info-icon" (click)="archContoursInfo()" title="More information">ⓘ</button>
     </div>
 </section>
-}
-
-<section class="ui-group">
-    <div class="ui-group-title">View Controls</div>
-    <div class="input-group basic-row field-row" role="group">
-        <label class="field-cell">
-            <span class="field-title">Station Height <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="1" min="1" [max]="params.height - 1"
-                [(ngModel)]="flags.crossSectionY" (input)="onChange()" />
-        </label>
-        <button type="button" class="info-icon" (click)="crossSectionStationInfo()" title="More information">ⓘ</button>
-    </div>
-    <div class="input-group basic-row field-row" role="group">
-        <input class="basic-input" type="range" step="1" min="1" [max]="params.height - 1"
-            [(ngModel)]="flags.crossSectionY" (input)="onChange()"
-            aria-label="Cross section station height" />
-    </div>
-    @if (flags.topPlateView !== 'none' || flags.backPlateView !== 'none') {
-    <div class="input-group basic-row field-row" role="group">
-        <label class="field-cell">
-            <span class="field-title">Rotate X <span class="unit-label">°</span></span>
-            <input class="basic-input" type="number" step="1"
-                [(ngModel)]="flags.plateRotXDeg" (input)="onChange()" />
-        </label>
-         <label class="field-cell">
-            <span class="field-title">Rotate Y <span class="unit-label">°</span></span>
-            <input class="basic-input" type="number" step="1"
-                [(ngModel)]="flags.plateRotYDeg" (input)="onChange()" />
-        </label>
-    </div>
-    }
-</section>
-
-}
