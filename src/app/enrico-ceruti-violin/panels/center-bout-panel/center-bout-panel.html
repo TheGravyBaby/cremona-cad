@@ -1,5 +1,20 @@
 <section class="ui-group">
     <div class="ui-group-title">Upper Corner</div>
+       <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">X <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step=".25" [(ngModel)]="params.bouts.UCr!.x"
+                (input)="onChange()"  />
+        </label>
+        <span class="field-separator" aria-hidden="true"></span>
+        <label class="field-cell">
+            <span class="field-title">Y <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step=".25" [(ngModel)]="params.bouts.UCr!.y"
+                (input)="onChange()"  />
+        </label>
+        <button type="button" class="info-icon" (click)="cornerPositionInfo()" title="More information"
+            aria-label="Information">ⓘ</button>
+    </div>
     <div class="ui-group">
         <div class="input-group basic-row field-row" role="group">
             <label class="field-cell">
@@ -97,6 +112,21 @@
 
 <section class="ui-group">
     <div class="ui-group-title">Lower Corner</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">X <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step=".25" [(ngModel)]="params.bouts.LCr!.x"
+                (input)="onChange()" />
+        </label>
+        <span class="field-separator" aria-hidden="true"></span>
+        <label class="field-cell">
+            <span class="field-title">Y <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step=".25" [(ngModel)]="params.bouts.LCr!.y"
+                (input)="onChange()" />
+        </label>
+        <button type="button" class="info-icon" (click)="cornerPositionInfo()" title="More information"
+            aria-label="Information">ⓘ</button>
+    </div>
     <div class="ui-group">
         <div class="input-group basic-row field-row" role="group">
             <label class="field-cell">

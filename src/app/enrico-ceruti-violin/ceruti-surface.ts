@@ -5,11 +5,11 @@ import { Pt } from '../models/types';
 const polyClipper: any = (polygonClipping as any).default ?? polygonClipping;
 import { buildPolylineIndex, distPointToPolylineIndexed, PolylineIndex } from '../helpers/draftMath';
 import { buildHeightFieldStl } from '../helpers/stlExporter';
-import { cycloidZAt, flutingProfileZ, samplePathToPolyline } from '../helpers/svgPathMath';
+import { cycloidEdgeSlope, cycloidZAt, flutingProfileZ, samplePathToPolyline } from '../helpers/svgPathMath';
 import { ArchCurve, EnricoCerutiParams } from './ceruti-types';
 import {
     defaultCrossArchParams, defaultFlutingChannelParams, defineFlutingPath, defineInsetPath,
-    defineOuterPath, flutingHalfWidthAtY, longArchHeightAt, resolveTroughU,
+    defineOuterPath, flutingHalfWidthAtY, longArchHeightAt,
 } from './ceruti-calcs';
 
 // The evaluable top-plate surface: a height field z(x, y) over the plan view,
@@ -42,8 +42,6 @@ export interface PlateSurfaceModel {
     crossD: number;
     crossPct: number;
     edgeDepth: number;
-    channelDepth: number;
-    troughU: number;
     /** Flat pre-channel platform with a ledge at the inner boundary instead of a carved channel. */
     flatPlatform: boolean;
     /** Absolute Z of the plate outer surface: top = ribHeight + top thickness, back = −bottom thickness. */
@@ -76,8 +74,6 @@ export function buildPlateSurfaceModel(p: EnricoCerutiParams, side: 'top' | 'bot
         crossD: plate.cross?.d ?? defaultCrossArchParams().d,
         crossPct: plate.cross?.pct ?? defaultCrossArchParams().pct,
         edgeDepth: plate.edgeDepth ?? 0,
-        channelDepth: plate.edgeDepth ?? 0,
-        troughU: resolveTroughU(p, fluting),
         flatPlatform: fluting.flatPlatform ?? false,
         zBase: side === 'top' ? a.ribHeight + plate.thickness : -plate.thickness,
         signZ: side === 'top' ? 1 : -1,
@@ -169,8 +165,14 @@ export function topSurfaceZAt(p: EnricoCerutiParams, model: PlateSurfaceModel, x
     const pt = { x, y };
     const dOut = distPointToPolylineIndexed(pt, model.platformOuterIdx);
     const dIn = distPointToPolylineIndexed(pt, model.flutingInnerIdx!);
-    const u = dOut + dIn > 0 ? dOut / (dOut + dIn) : 0;
-    return flutingProfileZ(u, model.channelDepth, model.troughU, model.edgeDepth, dOut + dIn, model.flatPlatform);
+    const width = dOut + dIn;
+    const u = width > 0 ? dOut / width : 0;
+    // Same hEff/span the arch branch above builds its cycloid from, so the
+    // channel's target slope always matches what's actually taking off at fi.
+    const slope = fi !== null && fi > 0 && chords.archH > 0
+        ? cycloidEdgeSlope(chords.archH + model.edgeDepth, 2 * fi, model.crossD, model.crossPct)
+        : 0;
+    return flutingProfileZ(u, model.edgeDepth, width, slope, model.flatPlatform);
 }
 
 /**

@@ -1,5 +1,5 @@
 import { flipArcAboutY, flipCircleAboutY, offsetArcRadius } from '../../helpers/draftMath';
-import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderDashedLine } from '../../helpers/renderFuncs';
+import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderCrosshair, renderDashedLine } from '../../helpers/renderFuncs';
 import { CerutiColors, EnricoCerutiParams } from '../ceruti-types';
 import { HighlightedArc, PATH_STROKE_WIDTH } from './render-constants';
 
@@ -47,6 +47,13 @@ export const renderCenterBout = (
 
   if (currentModule && flags.showModuleGuides) {
     renderDashedLine({ x: -1000, y: p.bouts.C0!.y }, { x: 1000, y: p.bouts.C0!.y }, colors.centerBoutOff2)(g, ui);
+  }
+
+  if (currentModule && flags.showModuleArcs) {
+    renderCrosshair(p.bouts.UCr!, colors.centerBoutUpOff2)(g, ui);
+    renderCrosshair(p.bouts.LCr!, colors.centerBoutLowOff2)(g, ui);
+    renderCrosshair({ x: -p.bouts.UCr!.x, y: p.bouts.UCr!.y }, colors.centerBoutUpOff2)(g, ui);
+    renderCrosshair({ x: -p.bouts.LCr!.x, y: p.bouts.LCr!.y }, colors.centerBoutLowOff2)(g, ui);
   }
 
   if ((currentModule && flags.showModuleArcs) || flags.showAllArcs) {

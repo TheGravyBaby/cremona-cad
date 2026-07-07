@@ -27,15 +27,6 @@
     </div>
 
     @if (arching.top.fluting) {
-        @if (!topFluting.flatPlatform) {
-        <div class="input-group basic-row field-row" role="group">
-            <label class="field-cell">
-                <span class="field-title">Fluting Curve</span>
-                <input class="basic-input" type="number" step="0.05" min="0.05" max="0.95"
-                    [(ngModel)]="topFluting.troughT" (input)="onChange()" [style.border-color]="colors.fluting" />
-            </label>
-        </div>
-        }
         <div class="input-group basic-row field-row" role="group">
             <div class="toggle">
                 <input type="checkbox" [(ngModel)]="topFluting.flatPlatform" (change)="onChange()" />
@@ -85,15 +76,6 @@
     </div>
 
     @if (arching.bottom.fluting) {
-        @if (!backFluting.flatPlatform) {
-        <div class="input-group basic-row field-row" role="group">
-            <label class="field-cell">
-                <span class="field-title">Fluting Curve</span>
-                <input class="basic-input" type="number" step="0.05" min="0.05" max="0.95"
-                    [(ngModel)]="backFluting.troughT" (input)="onChange()" [style.border-color]="colors.fluting" />
-            </label>
-        </div>
-        }
         <div class="input-group basic-row field-row" role="group">
             <div class="toggle">
                 <input type="checkbox" [(ngModel)]="backFluting.flatPlatform" (change)="onChange()" />
