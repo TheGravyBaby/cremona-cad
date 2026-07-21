@@ -6,6 +6,7 @@ import { applyTransforms, ColorTransform, renderArcFromArc, renderFilledPath, re
 import { combinePathStrings, samplePathToPolyline } from '../helpers/svgPathMath';
 import { clampParam, safeRun } from '../helpers/validators';
 import { clamp, normalizeDegrees } from '../helpers/draftMath';
+import { normalizeReferenceImages } from '../helpers/referenceImages';
 import { ArchingParams, CerutiColors, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, EnricoCerutiTemplate, EnricoCerutiParams } from './ceruti-types';
 import { CERUTI_TEMPLATES } from './ceruti-templates';
 import { calculateCenterBout, calculateCorners, calculateCrossArchTop, calculateLongArch, calculateMainBouts, calculateMould, calculateOuterArcs, contourSampleSteps, defaultArchingParams, defaultCrossArchParams, defaultFlutingChannelParams, defineFlutingAreaPath, defineFlutingPath, defineInnerPath, defineInsetPath, defineOuterCornerArcs, defineOuterPath, defineOuterPurflingPath, definePurflingPath, defineTroughPath, flutingHalfWidthAtY, flutingOuterHalfWidthAtY, innerHalfWidthAtY, outerHalfWidthAtY, wireframeSampleSteps } from './ceruti-calcs';
@@ -194,7 +195,7 @@ export class CerutiViolin extends RecipeComponentBase {
         pt1: { x: -this.d.params.width / 2, y: 0 },
         pt2: { x: this.d.params.width / 2, y: this.d.params.height },
       });
-    this.referenceImageChange.emit(this.d.referenceImage ?? null);
+    this.referenceImagesChange.emit(normalizeReferenceImages(this.d));
     this.openPanel = 'base';
   }
 
@@ -215,7 +216,7 @@ export class CerutiViolin extends RecipeComponentBase {
       pt1: { x: -this.d.params.width / 2, y: 0 },
       pt2: { x: this.d.params.width / 2, y: this.d.params.height },
     });
-    this.referenceImageChange.emit(this.d.referenceImage ?? null);
+    this.referenceImagesChange.emit(normalizeReferenceImages(this.d));
     this.draftChange.emit([this.firstRender]);
   }
 
@@ -226,7 +227,8 @@ export class CerutiViolin extends RecipeComponentBase {
       const recipeData = this.loadMatchingSessionRecipe<EnricoCerutiTemplate>();
       if (!recipeData) {
         const selectedTemplate = this.templates.find(t => t.key === this.selectedTemplateKey) ?? this.templates[0];
-        this.d.referenceImage = selectedTemplate.referenceImage;
+        this.d.referenceImages = normalizeReferenceImages(selectedTemplate);
+        delete this.d.referenceImage;
       }
       else {
         this.d = recipeData;
@@ -249,7 +251,7 @@ export class CerutiViolin extends RecipeComponentBase {
       this.debounceController?.markImmediate();
       const handlers = this.getActivationHandlers();
       handlers[this.openPanel]?.();
-      this.referenceImageChange.emit(this.d.referenceImage ?? null);
+      this.referenceImagesChange.emit(normalizeReferenceImages(this.d));
       this._lastLoadedParamsSnapshot = JSON.stringify(this.d.params);
       if(this.hasOuterTrace() && this.openPanel == 'base') {
         this.draftChange.emit(this.renderOuterSilhouette());

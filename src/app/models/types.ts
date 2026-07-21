@@ -62,11 +62,19 @@ export type ReferenceImage = {
   href: string;
 }
 
+/** A reference image plus the tab identity the multi-image control keys on. */
+export type NamedReferenceImage = ReferenceImage & {
+  id: string;
+  label: string;
+}
+
 export interface RecipeInterface {
     recipeName: string;
     fileName: string;
     version: string;
     params: any;
-    paths: any; 
+    paths: any;
+    /** @deprecated legacy single-image field; migrated into `referenceImages` on load. */
     referenceImage?: ReferenceImage;
+    referenceImages?: NamedReferenceImage[];
 }

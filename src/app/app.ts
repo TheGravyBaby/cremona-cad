@@ -4,8 +4,9 @@ import { setGlobalEmitter } from './shared/message-emitter';
 import { MessageService } from './shared/message.service';
 import { TopBarComponent } from './top-bar/top-bar';
 import { DraftCanvasComponent } from './draft-canvas/draft-canvas';
-import { ReferenceImage } from './models/types';
+import { NamedReferenceImage } from './models/types';
 import { Pt } from './models/types';
+import { normalizeReferenceImages } from './helpers/referenceImages';
 import { CerutiViolin } from './enrico-ceruti-violin/ceruti-violin';
 import { HelloRecipe } from './hello-recipe/hello-recipe';
 import { MessageCenterComponent } from './shared/message-center.component';
@@ -27,8 +28,8 @@ import { MessageCenterComponent } from './shared/message-center.component';
       <div class="main">
         <app-draft-canvas class="canvas"
           [draftFunctions]="draftArgs"
-          [referenceImageParams]="referenceImage"
-          (referenceImageChange)="onReferenceImageChange($event)"
+          [referenceImages]="referenceImages"
+          (referenceImagesChange)="onReferenceImagesChange($event)"
           [setCameraBounds]="bounds"
           >
         </app-draft-canvas>
@@ -37,10 +38,10 @@ import { MessageCenterComponent } from './shared/message-center.component';
          <app-ceruti-violin class="sidebar"
           (draftChange)="onDraftChange($event)"
           (setBounds)="bounds=$event"
-          [referenceImageParams]="referenceImage"
+          [referenceImages]="referenceImages"
           [cameraBounds]="bounds"
           [nightMode]="nightMode"
-          (referenceImageChange)="onReferenceImageChange($event)">
+          (referenceImagesChange)="onReferenceImagesChange($event)">
         </app-ceruti-violin>
         }
 
@@ -48,9 +49,9 @@ import { MessageCenterComponent } from './shared/message-center.component';
          <app-hello-recipe class="sidebar"
           (draftChange)="onDraftChange($event)"
           (setBounds)="bounds=$event"
-          [referenceImageParams]="referenceImage"
+          [referenceImages]="referenceImages"
           [cameraBounds]="bounds"
-          (referenceImageChange)="onReferenceImageChange($event)">
+          (referenceImagesChange)="onReferenceImagesChange($event)">
         </app-hello-recipe>
         }
 
@@ -73,7 +74,9 @@ export class App {
   bounds: {pt1: Pt, pt2: Pt} | null = null;
   sessionData = sessionStorage.getItem('recipeData');
 
-  referenceImage: ReferenceImage | null = this.sessionData ? JSON.parse(this.sessionData).referenceImage : null;
+  referenceImages: NamedReferenceImage[] = normalizeReferenceImages(
+    this.sessionData ? JSON.parse(this.sessionData) : null
+  );
 
   nightMode = true;
 
@@ -103,9 +106,9 @@ export class App {
     });
   }
 
-  onReferenceImageChange(img: ReferenceImage | null) {
+  onReferenceImagesChange(imgs: NamedReferenceImage[]) {
     queueMicrotask(() => {
-      this.referenceImage = img;
+      this.referenceImages = imgs ?? [];
       this.appRef.tick();
     });
   }
@@ -114,6 +117,6 @@ export class App {
   selectRecipe(recipe: string): void {
     if (recipe === this.selectedRecipe) return;
     this.selectedRecipe = recipe;
-    this.referenceImage = null;
+    this.referenceImages = [];
   }
 }

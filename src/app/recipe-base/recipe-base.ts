@@ -1,8 +1,9 @@
 import { AfterViewInit, Component, HostListener, output } from '@angular/core';
 import { Output, EventEmitter, Input } from "@angular/core";
-import { Pt, RecipeInterface, ReferenceImage } from '../models/types';
+import { NamedReferenceImage, Pt, RecipeInterface } from '../models/types';
 import { PanelFlow, PanelDefinition } from '../helpers/panelFlow';
 import { DebounceController } from '../helpers/debounce-controller';
+import { normalizeReferenceImages, toNamedReferenceImage } from '../helpers/referenceImages';
 import { NamedConstant, DEFAULT_NAMED_CONSTANTS, nearestFraction } from '../helpers/nearestFraction';
 
 export type { NamedConstant };
@@ -19,7 +20,7 @@ export abstract class RecipeComponentBase implements AfterViewInit {
 
   @Output() draftChange = new EventEmitter<Array<(g: any, ui: any) => void>>();
   @Output() setBounds = new EventEmitter<{pt1: Pt, pt2: Pt}>();
-  @Output() referenceImageChange = new EventEmitter<ReferenceImage | null>();
+  @Output() referenceImagesChange = new EventEmitter<NamedReferenceImage[]>();
 
   @Input() cameraBounds: { pt1: Pt, pt2: Pt } | null = null;
 
@@ -28,10 +29,11 @@ export abstract class RecipeComponentBase implements AfterViewInit {
     this.draftChange.emit([this.firstRender]);
   }
 
-  @Input() set referenceImageParams(img: ReferenceImage | null | undefined) {
+  @Input() set referenceImages(imgs: NamedReferenceImage[] | null | undefined) {
     this.d.params = this.d.params || {};
-    if (img) this.d.referenceImage = img;
-    else delete this.d.referenceImage;
+    this.d.referenceImages = imgs ?? [];
+    // Drop the legacy singular field so it can't shadow the array on save.
+    delete this.d.referenceImage;
   }
 
   d: RecipeInterface = {
@@ -280,15 +282,15 @@ export abstract class RecipeComponentBase implements AfterViewInit {
     }
   }
 
-  onReferenceImageChange(img: ReferenceImage | null) {
+  onReferenceImagesChange(imgs: NamedReferenceImage[]) {
     this.d.params = this.d.params || {};
-    if (img) this.d.referenceImage = img;
-    else delete this.d.referenceImage;
+    this.d.referenceImages = imgs ?? [];
+    delete this.d.referenceImage;
 
     sessionStorage.setItem('recipeData', JSON.stringify(this.d));
   }
 
-    // reference image controls
+    // reference image controls — the base panel's uploader adds a new tab.
   async onReferenceFileSelected(evt: Event): Promise<void> {
     const input = evt.target as HTMLInputElement;
     const file = input.files?.[0];
@@ -328,18 +330,25 @@ export abstract class RecipeComponentBase implements AfterViewInit {
       imgY = 0;
     }
 
-    this.d.referenceImage = {
-      href: dataUrl,
-      'xlink:href': dataUrl,
-      x: imgX,
-      y: imgY,
-      width: imgW,
-      height: imgH,
-      rotationDeg: 0,
-    };
+    // Fold any legacy singular field in first, then append the new image.
+    const existing = normalizeReferenceImages(this.d);
+    const named = toNamedReferenceImage(
+      {
+        href: dataUrl,
+        'xlink:href': dataUrl,
+        x: imgX,
+        y: imgY,
+        width: imgW,
+        height: imgH,
+        rotationDeg: 0,
+      },
+      `Img ${existing.length + 1}`,
+    );
+    this.d.referenceImages = [...existing, named];
+    delete this.d.referenceImage;
 
     sessionStorage.setItem('recipeData', JSON.stringify(this.d));
-    this.referenceImageChange.emit(this.d.referenceImage);
+    this.referenceImagesChange.emit(this.d.referenceImages);
 
     input.value = '';
   }
