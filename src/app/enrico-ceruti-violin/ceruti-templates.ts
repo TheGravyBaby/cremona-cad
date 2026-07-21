@@ -16,6 +16,7 @@ function templateFromRecipeJson(raw: any): EnricoCerutiTemplate {
     version: raw.version ?? RECIPE_SCHEMA_VERSION,
     description: raw.description ?? '',
     referenceImage: raw.referenceImage,
+    referenceImages: raw.referenceImages,
     params: (raw.params ?? raw) as EnricoCerutiParams,
     paths: raw.paths ?? [],
   };
@@ -2040,14 +2041,7 @@ export const CERUTI_TEMPLATES: EnricoCerutiTemplate[] = [
     version: RECIPE_SCHEMA_VERSION,
     params: DefaultParams,
     paths: [],
-    referenceImage: {
-      "href": "",
-      "xlink:href": "",
-      "x": 0,
-      "y": 0,
-      "width": 0,
-      "height": 0,
-    },
+    referenceImages: [],
   },
   templateFromRecipeJson(DelGesuBaltic),
   templateFromRecipeJson(StradGoetz),

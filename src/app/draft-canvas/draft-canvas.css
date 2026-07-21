@@ -9,6 +9,61 @@
   color: #fff;
 }
 
+/* Split "Reference" control: left region opens the menu, right region toggles view */
+.btn-split {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 4px;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--ui-canvas-btn-bg-start) 0%, var(--ui-canvas-btn-bg-end) 100%);
+  line-height: 1.2;
+  font-size: 12px;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.btn-split:hover {
+  border-color: var(--ui-canvas-btn-border-hover);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.btn-split.dim {
+  opacity: 0.7;
+}
+
+.btn-split-main {
+  border: none;
+  background: transparent;
+  color: var(--ui-text-primary);
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.btn-split-main.active {
+  background: var(--ui-accent);
+  color: #fff;
+}
+
+.btn-split-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 7px;
+  border-left: 1px solid var(--ui-border-strong);
+  cursor: pointer;
+}
+
+.btn-split-toggle.on {
+  background: color-mix(in srgb, var(--ui-accent) 22%, transparent);
+}
+
+.btn-split-toggle input {
+  margin: 0;
+  cursor: pointer;
+}
+
 .align-popup,
 .axis-popup {
   position: absolute;
@@ -49,6 +104,94 @@
   min-width: 0;
   width: 200px;
   padding: 8px;
+}
+
+/* Reference image tabs */
+.ref-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--ui-border-soft);
+}
+
+.ref-tab {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  max-width: 120px;
+  padding: 2px 4px 2px 7px;
+  border: 1px solid var(--ui-border-elevated);
+  border-radius: 4px;
+  background: var(--ui-bg-surface);
+  color: var(--ui-text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.ref-tab:hover {
+  border-color: var(--ui-canvas-btn-border-hover);
+}
+
+.ref-tab.active {
+  border-color: var(--ui-accent);
+  color: var(--ui-text-primary);
+}
+
+.ref-tab-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ref-tab-edit {
+  width: 84px;
+  min-width: 0;
+  box-sizing: border-box;
+  font-size: 11px;
+}
+
+.ref-tab-x {
+  border: none;
+  background: none;
+  padding: 0 2px;
+  line-height: 1;
+  font-size: 13px;
+  color: var(--ui-text-muted);
+  cursor: pointer;
+}
+
+.ref-tab-x:hover {
+  color: #bb1212;
+}
+
+.ref-tab-add {
+  border: 1px solid var(--ui-border-elevated);
+  border-radius: 4px;
+  background: var(--ui-bg-surface);
+  color: var(--ui-text-primary);
+  font-size: 13px;
+  line-height: 1;
+  padding: 3px 7px;
+  cursor: pointer;
+}
+
+.ref-tab-add:hover {
+  border-color: var(--ui-canvas-btn-border-hover);
+}
+
+.ref-empty {
+  font-size: 11px;
+  color: var(--ui-text-muted);
+  padding: 6px 2px 10px;
+}
+
+.ref-actions .btn:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 .ref-grid {
@@ -292,6 +435,19 @@ svg {
   background: linear-gradient(180deg, #3a3a3a 0%, #2f2f2f 100%);
   border-color: #555;
   color: #e0e0e0;
+}
+
+.canvas-shell.dark-mode .btn-split {
+  background: linear-gradient(180deg, #3a3a3a 0%, #2f2f2f 100%);
+  border-color: #555;
+}
+
+.canvas-shell.dark-mode .btn-split-main {
+  color: #e0e0e0;
+}
+
+.canvas-shell.dark-mode .btn-split-toggle {
+  border-left-color: #555;
 }
 
 .canvas-shell.dark-mode .btn:hover {

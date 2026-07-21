@@ -1,4 +1,4 @@
-import { Arc, Pt, Rectangle, ReferenceImage } from "../models/types";
+import { Arc, NamedReferenceImage, Pt, Rectangle, ReferenceImage } from "../models/types";
 
 /** Resolved palette returned by CerutiViolin's `colors` getter, threaded into every panel and render fn. */
 export interface CerutiColors {
@@ -261,7 +261,9 @@ export interface EnricoCerutiTemplate {
   description?: string;
   params: EnricoCerutiParams;
   paths: PathEntry[];
+  /** @deprecated legacy single-image field; migrated into `referenceImages` on load. */
   referenceImage?: ReferenceImage;
+  referenceImages?: NamedReferenceImage[];
 }
 
 export const DefaultParams: EnricoCerutiParams = {
