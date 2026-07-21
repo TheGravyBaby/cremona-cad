@@ -117,17 +117,17 @@ export function purflingInfo() {
     info(
         "Purfling is a narrow inlaid strip set just inside the plate edge. The channel is routed into the plate surface before the strip is glued in.\n\n" +
         "Offset: distance from the outer plate edge to the near wall of the channel.\n\n" +
-        "Depth: width of the channel — the span between the two purfling lines.",
-        "Purfling", defaultTTL
+        "Width: The width of the channel — the span between the two purfling lines.",
+        "Additional Information", defaultTTL
     )
 }
 
 export function flutingInfo() {
     info(
         "The fluting is a shallow cove carved between the purfling and the rising arch of the plate. It creates the characteristic scalloped transition at the edge.\n\n" +
-        "This shaded region shows the flat platform — the reference surface from which the fluting is carved downward.\n\n" +
-        "Width: distance from the inner purfling wall inward to the platform edge.",
-        "Fluting", defaultTTL
+        "Offset: The distance from the outer edge to the fluting platform. \n\n" +
+        "Width: The width of the fluting channel.",
+        "Additional Information", defaultTTL
     )
 }
 
@@ -151,34 +151,36 @@ export function flatPlatformInfo() {
 
 export function archContoursInfo() {
     info(
-        "A topographic map of the top plate surface, drawn above the section view (sharing its X axis): one contour per millimetre of height.\n\n" +
-        "Green-tinted contours are at or below the plate surface — the fluting channel. The horizontal line marks the station of the section below.",
-        "Contour Map", defaultTTL
+        "With the long and cross arches are set, an interpolation of the instrument surface can be generated. "
+        + "This surface can be viewed either as a contour map, or as a wireframe mesh.\n\n" + 
+        "You can rotate both of these to inspect the surface by grabbing and dragging on the view box.\n\n" +
+        "Note that the wireframe interpolates the edge by connecting each frame line, and does not follow the actual edge contour.\n\n" +
+        "Also note that the contour map can be a bit 'fuzzy' around the edges, but the final STL output will have the clean edge you defined at earlier stages.",
+        "Additional Info", defaultTTL
     )
 }
 
 export function ribHeightInfo() {
     info(
-        "The height of the ribs — the side walls of the instrument body." +
-        "This sets how deep the air cavity is.\n\n" +
+        "The height of the ribs — the side walls of the instrument body.\n" +
         "Typical values:\n" +
         "- Violin: 29–32 mm\n" +
         "- Viola: 38–44 mm\n" +
         "- Cello: 115–130 mm\n" +
         "- Bass: 175–215 mm",
-        "Rib Height", defaultTTL
+        "Additional Info", defaultTTL
     )
 }
 
 export function archHeightInfo() {
     info(
-        "The maximum height of the arch above the outer plate edge — the measurement you'd take with a caliper from the fluting platform to the highest point of the arch.\n\n" +
+        "The maximum height of the arch above the outer plate edge.\n\n" +
         "Typical values:\n" +
         "- Violin top: 14–17 mm  |  back: 13–16 mm\n" +
         "- Viola top: 18–22 mm  |  back: 17–21 mm\n" +
         "- Cello top: 24–28 mm  |  back: 22–26 mm\n\n" +
         "The back is usually 1–2 mm lower than the top.",
-        "Arch Height", defaultTTL
+        "Additional Info", defaultTTL
     )
 }
 
@@ -207,10 +209,9 @@ export function trochoidFactorInfo() {
 
 export function curveTypeInfo() {
     info(
-        "Three arch profiles are available:\n\n" +
+        "Two arch profiles are available:\n\n" +
         "Catenary — the curve formed by a hanging chain, inverted. Naturally smooth and symmetric; a good starting point.\n\n" +
-        "Cycloid — from the trochoid family (rolling circle). The trochoid factor controls how steeply the arch rises from the edge: 0 is a raised cosine, 1 is the classic cycloid.\n\n" +
-        "Spline — a natural cubic spline through user-placed control points.",
+        "Spline — a natural cubic spline through user-placed control points. Many cremonese instruments used a spline based curve.",
         "Arch Curve Type", defaultTTL
     )
 }
@@ -231,10 +232,8 @@ export function crossSectionStationInfo() {
     info(
         "Selects which cross section of the body you are viewing — the position along the body length (Y), " +
         "measured in mm from the bottom of the instrument.\n\n" +
-        "The section is drawn width-for-width: the box spans the mould outline at this height, " +
-        "widened by the rib thickness on each side, since the ribs are bent around the mould.\n\n" +
         "This is a view control only — it is not saved with the recipe.",
-        "Cross Section Station", defaultTTL
+        "Additional Info", defaultTTL
     )
 }
 
@@ -261,10 +260,9 @@ export function crossArchCycloidControlsInfo() {
 export function crossArchEdgeDepthInfo() {
     info(
         "Lowers the point where the cross arch takes off from the plate edge, measured in mm below the plate outer surface.\n\n" +
-        "The center peak height remains anchored to the long arch — only the edge takeoff moves down, so the effective arch height increases by this amount.\n\n" +
-        "This is useful when the cycloid factor is low (arch nearly flat at the edges): a small edge depth gives the fluting channel a meaningful slope to intersect cleanly with the arch surface.\n\n" +
-        "0 = takeoff exactly at the plate surface (default). Values of 0.5–2 mm are typical.",
-        "Cross Arch Edge Depth", defaultTTL
+        "This is primarily used to control the degree of curvature along the fluting.\n\n" +
+        "Values of 0.5–2 mm are typical.",
+        "Additional Info", defaultTTL
     )
 }
 

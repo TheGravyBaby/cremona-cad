@@ -121,7 +121,7 @@
                 (ngModelChange)="params.purflingOffset = $event; onChange()" />
         </label>
         <label class="field-cell">
-            <span class="field-title">Depth <span class="unit-label">mm</span></span>
+            <span class="field-title">Width <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="0.1" min="0" [ngModel]="params.purflingChannelDepth"
                 (ngModelChange)="params.purflingChannelDepth = $event; onChange()" />
         </label>
@@ -133,23 +133,40 @@
 <section class='ui-group'>
     <div class="ui-group-title">Fluting</div>
     <div class="input-group basic-row field-row" role="group">
-        <label class="field-cell">
-            <span class="field-title">Inner Depth <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="0.1" min="0"
-                [ngModel]="params.innerFlutingDepth"
-                (ngModelChange)="params.innerFlutingDepth = $event; onChange()"
-                [style.borderColor]="colors.fluting" />
-        </label>
          <label class="field-cell">
-            <span class="field-title">Outer Depth <span class="unit-label">mm</span></span>
+            <span class="field-title">Offset<span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="0.1" min="0"
                 [ngModel]="params.outerFlutingDepth"
                 (ngModelChange)="params.outerFlutingDepth = $event; onChange()"
                 [style.borderColor]="colors.fluting" />
         </label>
+         <label class="field-cell">
+            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.1" min="0"
+                [ngModel]="params.innerFlutingDepth"
+                (ngModelChange)="params.innerFlutingDepth = $event; onChange()"
+                [style.borderColor]="colors.fluting" />
+        </label>
         <button type="button" class="info-icon" (click)="flutingInfo()" title="More information"
             aria-label="Information">ⓘ</button>
     </div>
+    <div class="input-group basic-row field-row" role="group">
+    <label class="field-cell">
+            <div class="toggle">
+                <input type="checkbox" [(ngModel)]="params.options.useCBoutFlutingDepth"
+                    (change)="onChange()" /><span>C Bout</span>
+            </div>
+        </label>
+        @if (params.options.useCBoutFlutingDepth) {
+         <label class="field-cell">
+            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="0.1" min="0"
+                [ngModel]="params.innerFlutingDepth_cBout"
+                (ngModelChange)="params.innerFlutingDepth_cBout = $event; onChange()"
+                [style.borderColor]="colors.fluting" />
+        </label>
+        }
+        </div>
 </section>
 
 <app-ceruti-render-toggles [flags]="flags" [showGuideRow]="false" [showOuterPathRow]="false"

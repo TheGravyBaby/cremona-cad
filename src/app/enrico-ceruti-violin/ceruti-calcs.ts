@@ -1,4 +1,4 @@
-import { solveInscribedCircleAlongAxis, circleCircleIntersections, angleFromCenter, interceptCirclesAndPoint, dist, pointOnCircle, offsetArcRadius, flipArcAboutY, flipPointAboutY, flipRectAboutY, lineCircleIntersection, redefineArcCircle, interceptCirclesAndPointCompound, findJoiningArcs, arcHorizontalIntersections } from "../helpers/draftMath";
+import { solveInscribedCircleAlongAxis, circleCircleIntersections, angleFromCenter, interceptCirclesAndPoint, dist, pointOnCircle, offsetArcRadius, flipArcAboutY, flipPointAboutY, flipRectAboutY, lineCircleIntersection, redefineArcCircle, interceptCirclesAndPointCompound, findJoiningArcs, arcHorizontalIntersections, clamp } from "../helpers/draftMath";
 import { pathFromArc, pathFromLine, pathFromCornerCubic, unifyConnectedSvgPaths, pathFromRoundedRect, pathFromCircle, pathFromRect, combinePathStrings, differenceFromManyPaths, intersectionFromTwoPaths, translatePath, differenceFromTwoPaths, buildCatenaryPath, buildCycloidPath, buildSplinePath, buildCycloidPathAcross, catenaryZAt, cycloidZAt, splineZAt, flutingArc, cycloidEdgeSlope } from "../helpers/svgPathMath";
 import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Pt, Rectangle } from "../models/types";
 import { error, message, warn } from "../shared/message-emitter";
@@ -410,6 +410,9 @@ export function calculateOuterArcs(p: EnricoCerutiParams): void {
     p.purflingChannelDepth ??= 1.2;
     p.purflingOffset ??= inset + p.purflingChannelDepth;
     p.innerFlutingDepth ??= inset * 2;
+    p.innerFlutingDepth_cBout = p.options.useCBoutFlutingDepth
+        ? (p.innerFlutingDepth_cBout ?? p.innerFlutingDepth)
+        : p.innerFlutingDepth;
     p.outerFlutingDepth ??=  p.overhang * .5;
 
     p.button ??= new Rectangle(new Pt(-10, p.height - inset), new Pt(10, p.height - inset + 5));
@@ -771,7 +774,7 @@ export function defineInnerArcs(p: EnricoCerutiParams): Arc[] {
     return fullPath;
 }
 
-export function defineOffsetArcs(p: EnricoCerutiParams, offset?: number, corners: boolean = false): Arc[] {
+export function defineOffsetArcs(p: EnricoCerutiParams, offset?: number, corners: boolean = false, centerOffset?: number): Arc[] {
     offset ??= p.overhang + p.rib;
     let arcs = [];
 
@@ -784,7 +787,14 @@ export function defineOffsetArcs(p: EnricoCerutiParams, offset?: number, corners
         // corners && fullPath.push(offsetArcRadius(p.bouts.L3, -offset));
     }
 
-    arcs.push(offsetArcRadius(p.bouts.C0, -offset));
+
+    // centerOffset code is half baked, but largely unnecessary
+    // it was intended to allow fluting along the c-bout to be a different
+    // width than the rest of the purfling channel, but this is not a common use case
+    if (centerOffset) 
+        arcs.push(offsetArcRadius(p.bouts.C0, -centerOffset));
+    else
+        arcs.push(offsetArcRadius(p.bouts.C0, -offset));
     // if (corners) {
     //     arcs.push(offsetArcRadius(p.bouts.C1, -offset));
     //     arcs.push(offsetArcRadius(p.bouts.C2, -offset));
@@ -1034,8 +1044,8 @@ function angleBeforeEnd(arc: Arc, degrees: number): number {
     return arc.end - dir * degrees * Math.PI / 180;
 }
 
-export function defineFlutingArcs(p: EnricoCerutiParams, offset: number): Arc[] {
-    const flutingArcs = defineOffsetArcs(p, offset, false);
+export function defineFlutingArcs(p: EnricoCerutiParams, offset: number, centerOffset?: number): Arc[] {
+    const flutingArcs = defineOffsetArcs(p, offset, false, centerOffset);
     // flutingArcs[2] is always C0off here: whichever side is viol, its corner arc(s)
     // (L2/U2) drop out of defineOffsetArcs, leaving C0 adjacent to L1/U1 in the array.
 
@@ -1441,10 +1451,11 @@ export function defineOuterPurflingPath(p: EnricoCerutiParams, offset: number): 
  * Builds the closed inner-boundary path of the fluting platform region.
  * Returns null if either purflingOffset or flutingWidth is not yet set.
  */
-export function defineFlutingPath(p: EnricoCerutiParams, offset: number): string | null {
+export function defineFlutingPath(p: EnricoCerutiParams, offset: number, centerOffset?: number): string | null {
     if (p.purflingOffset === null || p.innerFlutingDepth === null) return null;
     const flutingOffset = offset - p.rib - p.overhang;
-    const flutingArcs = defineFlutingArcs(p, -flutingOffset);
+    const centerFlutingOffet = centerOffset ?? offset;
+    const flutingArcs = defineFlutingArcs(p, -flutingOffset, -centerFlutingOffet);
     const mirrored = flutingArcs.map(arc => flipArcAboutY(arc));
     return unifyConnectedSvgPaths([...flutingArcs, ...mirrored].map(arc => pathFromArc(arc)));
 }
@@ -1474,8 +1485,8 @@ export function defineTroughPath(p: EnricoCerutiParams, side: 'top' | 'bottom' =
  * combined with fill-rule="evenodd". Suitable for SVG/PDF export and rendering.
  * Returns null if the fluting platform is not yet configured.
  */
-export function defineFlutingAreaPath(p: EnricoCerutiParams, innerOffset: number, outerOffset: number): string | null {
-    const innerPath = defineFlutingPath(p, innerOffset);
+export function defineFlutingAreaPath(p: EnricoCerutiParams, innerOffset: number, outerOffset: number, centerOffset: number): string | null {
+    const innerPath = defineFlutingPath(p, innerOffset, centerOffset);
     if (innerPath === null) return null;
     const outerPath = defineInsetPath(p, outerOffset);
     return `${outerPath} Z ${innerPath} Z`;
@@ -1509,6 +1520,46 @@ export function defaultArchingParams(bodyHeight: number): ArchingParams {
   // Double bass
   return { surfaceMethod: 'proportional', ribHeight: 185,
     top: plate(55, 9.0), bottom: plate(50, 9.0) };
+}
+
+/**
+ * The wireframe/contour step sizes below were tuned by eye against a
+ * standard violin. Body height, body width, and arch height all vary a
+ * lot across the instrument family (see defaultArchingParams) — a cello or
+ * bass plugged into the same fixed mm steps would render 2-3x the wires and
+ * contours of a violin, which is what actually caused the lag. Scaling each
+ * step relative to these reference dimensions keeps rendered density (and
+ * cost) roughly constant across the whole size range instead.
+ */
+const REFERENCE_BODY_HEIGHT = 350; // mm, violin body length
+const REFERENCE_BODY_WIDTH = 200;  // mm, violin body width
+const REFERENCE_ARCH_HEIGHT = 15;  // mm, violin top-plate default
+const REFERENCE_STATION_STEP_MM = 4;
+const REFERENCE_SAMPLE_STEP_MM = 1.5;
+const REFERENCE_GRID_MM = 1.25;
+const REFERENCE_LEVEL_STEP_MM = 1;
+
+/** Wireframe cross-section spacing and per-strip sample spacing, scaled to keep strip/point counts constant. */
+export function wireframeSampleSteps(p: EnricoCerutiParams): { stationStepMm: number; sampleStepMm: number } {
+  const stationStepMm = clamp(
+    REFERENCE_STATION_STEP_MM * (p.height / REFERENCE_BODY_HEIGHT), 2, 15,
+  );
+  const sampleStepMm = clamp(
+    REFERENCE_SAMPLE_STEP_MM * (p.width / REFERENCE_BODY_WIDTH), 0.75, 5,
+  );
+  return { stationStepMm, sampleStepMm };
+}
+
+/** Contour height step and marching-squares grid spacing, scaled to keep level count and grid point count constant. */
+export function contourSampleSteps(p: EnricoCerutiParams, archHeight: number): { stepMm: number; gridMm: number } {
+  const areaScale = Math.sqrt(
+    (p.width * p.height) / (REFERENCE_BODY_WIDTH * REFERENCE_BODY_HEIGHT),
+  );
+  const stepMm = clamp(
+    REFERENCE_LEVEL_STEP_MM * (archHeight / REFERENCE_ARCH_HEIGHT), 0.5, 6,
+  );
+  const gridMm = clamp(REFERENCE_GRID_MM * areaScale, 0.75, 4);
+  return { stepMm, gridMm };
 }
 
 function buildArchPath(arch: ArchCurve, span: number, yStart: number, xBase: number, sign: 1 | -1): string {
@@ -1559,7 +1610,7 @@ export function longArchHeightAt(p: EnricoCerutiParams, arch: ArchCurve, y: numb
 
 /** Default cross-arch shape: a mid-range curtate factor, full cycloid window. */
 export function defaultCrossArchParams(): CrossArchParams {
-  return { d: 0.6, pct: 1 };
+  return { d: 0.4, pct: .9 };
 }
 
 /** Default fluting channel: the carved gouge-arc, tangent to the cross arch. */
@@ -1582,32 +1633,6 @@ export function resolveTroughU(p: EnricoCerutiParams, side: 'top' | 'bottom' = '
   const y = p.bouts.C0?.y ?? p.height / 2;
   const arc = flutingArc(edgeDepth, width, crossArchEdgeSlopeAt(p, y, side));
   return arc ? Math.min(Math.max(arc.cx / width, 0), 1) : 1;
-}
-
-/**
- * Warns when a ball-nose bit can't reach the bottom of the fluting trough: the
- * profile is a circular gouge arc, so its concave radius is the arc radius
- * itself, which must exceed the bit radius. `annulusWidth` is the local
- * platform width in mm; the narrowest station (the C-bout) governs, so callers
- * pass that. `y` is the station the check is evaluated at — the arch's
- * takeoff slope (and so the arc's radius) varies along the body.
- */
-export function checkFlutingBitFit(p: EnricoCerutiParams, fluting: FlutingChannelParams, annulusWidth: number, side: 'top' | 'bottom' = 'top', y?: number): void {
-  const edgeDepth = p.arching?.[side].edgeDepth ?? 0;
-  // A flat pre-channel platform has no scoop cut yet — nothing to warn about.
-  if (edgeDepth <= 0 || annulusWidth <= 0 || fluting.flatPlatform) return;
-  const slope = y !== undefined ? crossArchEdgeSlopeAt(p, y, side) : 0;
-  const arc = flutingArc(edgeDepth, annulusWidth, slope);
-  if (!arc) return; // degenerate channel falls back to the straight chord — nothing concave to cut
-  const troughRadius = arc.r;
-  if (troughRadius < p.bitDiameter / 2) {
-    warn(
-      `The fluting trough's concave radius (~${troughRadius.toFixed(1)} mm) is tighter than the ` +
-      `bit radius (${(p.bitDiameter / 2).toFixed(2)} mm). The channel bottom will be undercut — ` +
-      `use a smaller bit, a shallower channel, or a wider platform.`,
-      "Fluting Channel",
-    );
-  }
 }
 
 /**
