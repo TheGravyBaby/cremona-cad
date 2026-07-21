@@ -1454,7 +1454,7 @@ export function defineOuterPurflingPath(p: EnricoCerutiParams, offset: number): 
 export function defineFlutingPath(p: EnricoCerutiParams, offset: number, centerOffset?: number): string | null {
     if (p.purflingOffset === null || p.innerFlutingDepth === null) return null;
     const flutingOffset = offset - p.rib - p.overhang;
-    const centerFlutingOffet = centerOffset ?? offset;
+    const centerFlutingOffet = centerOffset !== undefined ? centerOffset - p.rib - p.overhang : flutingOffset;
     const flutingArcs = defineFlutingArcs(p, -flutingOffset, -centerFlutingOffet);
     const mirrored = flutingArcs.map(arc => flipArcAboutY(arc));
     return unifyConnectedSvgPaths([...flutingArcs, ...mirrored].map(arc => pathFromArc(arc)));
