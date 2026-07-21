@@ -5,9 +5,10 @@ import { Arc, Pt } from '../models/types';
 import { applyTransforms, ColorTransform, renderArcFromArc, renderFilledPath, renderPath } from '../helpers/renderFuncs';
 import { combinePathStrings, samplePathToPolyline } from '../helpers/svgPathMath';
 import { clampParam, safeRun } from '../helpers/validators';
+import { clamp, normalizeDegrees } from '../helpers/draftMath';
 import { ArchingParams, CerutiColors, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, EnricoCerutiTemplate, EnricoCerutiParams } from './ceruti-types';
 import { CERUTI_TEMPLATES } from './ceruti-templates';
-import { calculateCenterBout, calculateCorners, calculateCrossArchTop, calculateLongArch, calculateMainBouts, calculateMould, calculateOuterArcs, checkFlutingBitFit, defaultArchingParams, defaultCrossArchParams, defaultFlutingChannelParams, defineFlutingAreaPath, defineFlutingPath, defineInnerPath, defineInsetPath, defineOuterCornerArcs, defineOuterPath, defineOuterPurflingPath, definePurflingPath, defineTroughPath, flutingHalfWidthAtY, flutingOuterHalfWidthAtY, innerHalfWidthAtY, outerHalfWidthAtY } from './ceruti-calcs';
+import { calculateCenterBout, calculateCorners, calculateCrossArchTop, calculateLongArch, calculateMainBouts, calculateMould, calculateOuterArcs, contourSampleSteps, defaultArchingParams, defaultCrossArchParams, defaultFlutingChannelParams, defineFlutingAreaPath, defineFlutingPath, defineInnerPath, defineInsetPath, defineOuterCornerArcs, defineOuterPath, defineOuterPurflingPath, definePurflingPath, defineTroughPath, flutingHalfWidthAtY, flutingOuterHalfWidthAtY, innerHalfWidthAtY, outerHalfWidthAtY, wireframeSampleSteps } from './ceruti-calcs';
 import { ArchContourLevel, buildPlateSurfaceModel, calculateFlutingSectionTop, computeArchContourRings, stationChordsAt, PlateSurfaceModel } from './ceruti-surface';
 import { computeArchContourBounds, projectArchContourRings, projectFlatPolyline, renderArchContours3d } from './renders/arch-contours.render';
 import { computeSingleWireframeStrip, computeWireframeBounds, computeWireframeGeometry, projectWireframe, renderArch3dWireframe, WireframeGeometry } from './renders/arch-3d-wireframe.render';
@@ -459,8 +460,8 @@ export class CerutiViolin extends RecipeComponentBase {
       const backPath = defineOuterPath(p, offset, true, true);
       const purflingPath = definePurflingPath(p, offset);
       const outerPurflingPath = defineOuterPurflingPath(p, offset);
-      const flutingAreaPath = defineFlutingAreaPath(p, p.innerFlutingDepth, p.outerFlutingDepth);
-      const flutingLinePath = defineFlutingPath(p, offset);
+      const flutingAreaPath = defineFlutingAreaPath(p, p.innerFlutingDepth, p.outerFlutingDepth, p.innerFlutingDepth_cBout);
+      const flutingLinePath = defineFlutingPath(p, offset, p.innerFlutingDepth_cBout);
       // Null until the arching module has initialized the channel params.
       const troughPath = defineTroughPath(p);
 
@@ -476,7 +477,7 @@ export class CerutiViolin extends RecipeComponentBase {
       // Fluting is a filled area, so it must be drawn before the purfling lines or it paints over them.
       const renders: Array<(g: any, ui: any) => void> = [renderPath(backPath, this.colors.outerTrace)];
       if (flutingAreaPath) renders.push(renderFilledPath(flutingAreaPath, this.colors.fluting));
-      if (troughPath) renders.push(renderPath(troughPath, this.colors.fluting, 1));
+      // if (troughPath) renders.push(renderPath(troughPath, this.colors.fluting, 1));
       if (purflingPath) renders.push(renderPath(purflingPath, this.colors.innerTrace, 1));
       if (outerPurflingPath) renders.push(renderPath(outerPurflingPath, this.colors.innerTrace, 1));
       renders.push(renderOuterTraceGuides(p, this.colors, this.viewFlags, true));
@@ -498,50 +499,6 @@ export class CerutiViolin extends RecipeComponentBase {
       this.draftChange.emit([renderLongArch(p, a, this.colors, this.viewFlags.showModuleGuides, topPath, backPath, span, yStart)]);
       sessionStorage.setItem('recipeData', JSON.stringify(this.d));
     }));
-  }
-
-  /**
-   * The wireframe/contour step sizes below were tuned by eye against a
-   * standard violin. Body height, body width, and arch height all vary a
-   * lot across the instrument family (see defaultArchingParams) — a cello or
-   * bass plugged into the same fixed mm steps would render 2-3x the wires and
-   * contours of a violin, which is what actually caused the lag. Scaling each
-   * step relative to these reference dimensions keeps rendered density (and
-   * cost) roughly constant across the whole size range instead.
-   */
-  private static readonly REFERENCE_BODY_HEIGHT = 350; // mm, violin body length
-  private static readonly REFERENCE_BODY_WIDTH = 200;  // mm, violin body width
-  private static readonly REFERENCE_ARCH_HEIGHT = 15;  // mm, violin top-plate default
-  private static readonly REFERENCE_STATION_STEP_MM = 4;
-  private static readonly REFERENCE_SAMPLE_STEP_MM = 1.5;
-  private static readonly REFERENCE_GRID_MM = 1.25;
-  private static readonly REFERENCE_LEVEL_STEP_MM = 1;
-
-  private static clamp(v: number, min: number, max: number): number {
-    return Math.min(Math.max(v, min), max);
-  }
-
-  /** Wireframe cross-section spacing and per-strip sample spacing, scaled to keep strip/point counts constant. */
-  private wireframeSteps(p: EnricoCerutiParams): { stationStepMm: number; sampleStepMm: number } {
-    const stationStepMm = CerutiViolin.clamp(
-      CerutiViolin.REFERENCE_STATION_STEP_MM * (p.height / CerutiViolin.REFERENCE_BODY_HEIGHT), 2, 15,
-    );
-    const sampleStepMm = CerutiViolin.clamp(
-      CerutiViolin.REFERENCE_SAMPLE_STEP_MM * (p.width / CerutiViolin.REFERENCE_BODY_WIDTH), 0.75, 5,
-    );
-    return { stationStepMm, sampleStepMm };
-  }
-
-  /** Contour height step and marching-squares grid spacing, scaled to keep level count and grid point count constant. */
-  private contourSteps(p: EnricoCerutiParams, archHeight: number): { stepMm: number; gridMm: number } {
-    const areaScale = Math.sqrt(
-      (p.width * p.height) / (CerutiViolin.REFERENCE_BODY_WIDTH * CerutiViolin.REFERENCE_BODY_HEIGHT),
-    );
-    const stepMm = CerutiViolin.clamp(
-      CerutiViolin.REFERENCE_LEVEL_STEP_MM * (archHeight / CerutiViolin.REFERENCE_ARCH_HEIGHT), 0.5, 6,
-    );
-    const gridMm = CerutiViolin.clamp(CerutiViolin.REFERENCE_GRID_MM * areaScale, 0.75, 4);
-    return { stepMm, gridMm };
   }
 
   /**
@@ -648,8 +605,8 @@ export class CerutiViolin extends RecipeComponentBase {
     // it to reveal more or less of the arch profile — see the rotation-axis
     // notes in renders/oblique-projection.ts.
     const f = this.viewFlags;
-    f.plateRotYDeg = this.normalizeDeg((f.plateRotYDeg ?? 0) + dx * CerutiViolin.PLATE_DEG_PER_PX);
-    f.plateRotXDeg = this.clampDeg((f.plateRotXDeg ?? 0) - dy * CerutiViolin.PLATE_DEG_PER_PX, -90, 90);
+    f.plateRotYDeg = normalizeDegrees((f.plateRotYDeg ?? 0) + dx * CerutiViolin.PLATE_DEG_PER_PX);
+    f.plateRotXDeg = clamp((f.plateRotXDeg ?? 0) - dy * CerutiViolin.PLATE_DEG_PER_PX, -90, 90);
     this.redrawPlateRotation();
   };
 
@@ -662,20 +619,11 @@ export class CerutiViolin extends RecipeComponentBase {
     this.redrawPlateRotation();
   };
 
-  private normalizeDeg(deg: number): number {
-    const v = deg % 360;
-    return v < 0 ? v + 360 : v;
-  }
-
-  private clampDeg(deg: number, min: number, max: number): number {
-    return Math.min(Math.max(deg, min), max);
-  }
-
   private runCrossArchingRedraw(): void {
     const a = this.d.params.arching!;
     const p = this.d.params;
     const f = this.viewFlags;
-    f.crossSectionY = Math.min(Math.max(f.crossSectionY ?? 0, 1), p.height - 1);
+    f.crossSectionY = clamp(f.crossSectionY ?? 0, 1, p.height - 1);
     // The plate slabs span the outer path, whose corner arcs must be current.
     calculateOuterArcs(p);
     // Snapshot taken after calculateOuterArcs so the key is deterministic.
@@ -703,7 +651,6 @@ export class CerutiViolin extends RecipeComponentBase {
 
     const flutingSlice = model ? calculateFlutingSectionTop(p, model, f.crossSectionY) : null;
     const flutingSliceBack = backModel ? calculateFlutingSectionTop(p, backModel, f.crossSectionY) : null;
-    this.warnFlutingBitFit(p, a, f.crossSectionY);
 
     const renders = [
       renderCrossSection(p, a, this.colors, f.showModuleGuides, halfWidthInner, halfWidthOuter, flutingOuterHalf, flutingInnerHalf, crossTop?.path ?? null, flutingSlice, crossBack?.path ?? null, flutingSliceBack),
@@ -729,7 +676,7 @@ export class CerutiViolin extends RecipeComponentBase {
       // same number of contour levels (and the same grid point count) a
       // violin does, instead of 2-3x as many.
       if (showTopContours && model) {
-        const { stepMm, gridMm } = this.contourSteps(p, a.top.arch.archHeight);
+        const { stepMm, gridMm } = contourSampleSteps(p, a.top.arch.archHeight);
         c.top ??= {
           levels: computeArchContourRings(p, model, stepMm, gridMm),
           outlinePts: samplePathToPolyline(defineOuterPath(p, p.overhang + p.rib, true, false), 1),
@@ -743,7 +690,7 @@ export class CerutiViolin extends RecipeComponentBase {
         renders.push(renderWireframeDragFrame(bounds, this.colors, this.plateDragActive, this.onPlateDragStart));
       }
       if (showBackContours && backModel) {
-        const { stepMm, gridMm } = this.contourSteps(p, a.bottom.arch.archHeight);
+        const { stepMm, gridMm } = contourSampleSteps(p, a.bottom.arch.archHeight);
         c.bottom ??= {
           levels: computeArchContourRings(p, backModel, stepMm, gridMm),
           outlinePts: samplePathToPolyline(defineOuterPath(p, p.overhang + p.rib, true, true), 1),
@@ -769,7 +716,7 @@ export class CerutiViolin extends RecipeComponentBase {
       // Station/sample spacing scale with body size so a cello or bass
       // renders roughly the same number of cross-section strips (and the
       // same points per strip) a violin does, instead of 2-3x as many.
-      const { stationStepMm, sampleStepMm } = this.wireframeSteps(p);
+      const { stationStepMm, sampleStepMm } = wireframeSampleSteps(p);
       if (showTopWireframe && model) {
         wf.top ??= computeWireframeGeometry(p, model, stationStepMm, sampleStepMm);
         const top = projectWireframe(wf.top, p.height, yOffset, rotX, rotY, rotZ, 1, 0, 1);
@@ -793,21 +740,6 @@ export class CerutiViolin extends RecipeComponentBase {
     }
     this.draftChange.emit(renders);
   }
-
-  /**
-   * Bit-fit is worth one warning per distinct configuration, not one per
-   * debounced redraw (station drags would spam the message center otherwise).
-   */
-  private lastBitFitKey: string | null = null;
-  private warnFlutingBitFit(p: EnricoCerutiParams, a: ArchingParams, y: number): void {
-    const fluting = a.top.fluting!;
-    const width = (p.innerFlutingDepth ?? 0) - (p.outerFlutingDepth ?? 0);
-    const key = `${a.top.edgeDepth}|${fluting.flatPlatform}|${p.bitDiameter}|${width}|${y}`;
-    if (key === this.lastBitFitKey) return;
-    this.lastBitFitKey = key;
-    checkFlutingBitFit(p, fluting, width, 'top', y);
-  }
-
   changeMould(): void {
     this.debounce(() => safeRun(() => {
       const p = this.d.params;

@@ -5,6 +5,16 @@ export function dist(a: Pt, b: Pt) {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
+export function clamp(v: number, min: number, max: number): number {
+  return Math.min(Math.max(v, min), max);
+}
+
+/** Wraps a degree value into [0, 360). */
+export function normalizeDegrees(deg: number): number {
+  const v = deg % 360;
+  return v < 0 ? v + 360 : v;
+}
+
 export function distPointToSegment(p: Pt, a: Pt, b: Pt): number {
   const abx = b.x - a.x, aby = b.y - a.y;
   const lenSq = abx * abx + aby * aby;

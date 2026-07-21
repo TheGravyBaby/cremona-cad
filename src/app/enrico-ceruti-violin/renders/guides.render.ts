@@ -31,12 +31,12 @@ export const renderBoutBouts = (params: EnricoCerutiParams, colors: CerutiColors
 };
 
 export const renderCornerGuides = (params: EnricoCerutiParams, render: boolean) => (g: any, ui: any): void => {
-  if (!render) return;
-  let lowerCornerLine = { p1: params.bouts.L2, p2: { x: params.bouts.LCr!.x, y: params.bouts.LCr!.y } };
-  let upperCornerLine = { p1: params.bouts.U2, p2: { x: params.bouts.UCr!.x, y: params.bouts.UCr!.y } };
+  // if (!render) return;
+  // let lowerCornerLine = { p1: params.bouts.L2, p2: { x: params.bouts.LCr!.x, y: params.bouts.LCr!.y } };
+  // let upperCornerLine = { p1: params.bouts.U2, p2: { x: params.bouts.UCr!.x, y: params.bouts.UCr!.y } };
 
-  renderDashedLineLong(lowerCornerLine.p1, lowerCornerLine.p2, "grey")(g, ui);
-  renderDashedLineLong(upperCornerLine.p1, upperCornerLine.p2, "grey")(g, ui);
-  renderDashedLineLong({ x: -lowerCornerLine.p1.x, y: lowerCornerLine.p1.y }, { x: -lowerCornerLine.p2.x, y: lowerCornerLine.p2.y }, "grey")(g, ui);
-  renderDashedLineLong({ x: -upperCornerLine.p1.x, y: upperCornerLine.p1.y }, { x: -upperCornerLine.p2.x, y: upperCornerLine.p2.y }, "grey")(g, ui);
+  // renderDashedLineLong(lowerCornerLine.p1, lowerCornerLine.p2, "grey")(g, ui);
+  // renderDashedLineLong(upperCornerLine.p1, upperCornerLine.p2, "grey")(g, ui);
+  // renderDashedLineLong({ x: -lowerCornerLine.p1.x, y: lowerCornerLine.p1.y }, { x: -lowerCornerLine.p2.x, y: lowerCornerLine.p2.y }, "grey")(g, ui);
+  // renderDashedLineLong({ x: -upperCornerLine.p1.x, y: upperCornerLine.p1.y }, { x: -upperCornerLine.p2.x, y: upperCornerLine.p2.y }, "grey")(g, ui);
 };

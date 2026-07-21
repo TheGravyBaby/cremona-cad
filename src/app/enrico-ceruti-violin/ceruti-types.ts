@@ -161,6 +161,7 @@ export interface EnricoCerutiParams {
   purflingOffset: number | null;
   purflingChannelDepth: number | null;
   innerFlutingDepth: number | null;
+  innerFlutingDepth_cBout: number | null;
   outerFlutingDepth: number | null;
   button: Rectangle | null,
   bouts: {
@@ -220,7 +221,7 @@ export interface EnricoCerutiParams {
     L31DoubleArc: boolean;
     ucCornerSharpness?: number;
     lcCornerSharpness?: number;
-    outerCornerSharpness?: number;
+    useCBoutFlutingDepth: boolean;
   },
   ratios: {
     HtoW: number;
@@ -273,6 +274,7 @@ export const DefaultParams: EnricoCerutiParams = {
   purflingOffset: null,
   purflingChannelDepth: null,
   innerFlutingDepth: null,
+  innerFlutingDepth_cBout: null,
   outerFlutingDepth: null,
   ratios: {
     HtoW: 7 / 4,
@@ -356,6 +358,6 @@ export const DefaultParams: EnricoCerutiParams = {
     L31DoubleArc: false,
     ucCornerSharpness: 0,
     lcCornerSharpness: 0,
-    outerCornerSharpness: 0.1
+    useCBoutFlutingDepth: false,
   }
 }
