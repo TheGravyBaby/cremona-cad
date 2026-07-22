@@ -1,28 +1,28 @@
-import { Circle, Pt, Rectangle } from '../models/types';
+import { Circle, Pt, Rectangle } from '../../src/app/models/types';
 import {
 	angleFromCenter,
-	arcPathFrom3Points,
-	
 	circleCircleIntersections,
-	differenceFromTwoPaths,
 	dist,
-	
 	findJoiningCircleFromCircleAndPoint,
 	findJoiningCircleOfKnownRadius,
 	inscribeCircleWithinCircle,
 	interceptCirclesAndPoint,
 	lineCircleIntersection,
 	offsetCircleRadius,
+	pointOnCircle,
+} from '../../src/app/helpers/draftMath';
+import {
+	arcPathFrom3Points,
+	differenceFromTwoPaths,
 	pathFromCircle,
 	pathFromLine,
 	pathFromRect,
 	pathFromRoundedRect,
-	pointOnCircle,
 	unifyConnectedSvgPaths,
-} from '../helpers/draftMath';
+} from '../../src/app/helpers/svgPathMath';
 import { KellyCalcEntry, KellyViolinData } from './kellyTypes';
-import { error, warn } from '../shared/message-emitter';
-import { calculateOffsetAlongPath, findClosestPointOnPathToCircle } from '../helpers/draftMathOld';
+import { error, warn } from '../../src/app/shared/message-emitter';
+import { calculateOffsetAlongPath, findClosestPointOnPathToCircle } from '../shared/draftMathOld';
 
 export function initializeMainBouts(d: KellyViolinData) {
 	if (

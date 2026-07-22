@@ -1,11 +1,11 @@
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { circleCircleIntersections, interceptCirclesAndPoint, intersectLines, lineCircleIntersection, solveInscribedCircleAlongAxis} from '../helpers/draftMath';
-import { RecipeComponentBase } from '../recipe-base/recipe-base';
-import { arcPathFrom3Points } from '../helpers/draftMath';
-import { Circle, Fraction, Pt, RecipeInterface } from '../models/types';
-import { renderCircle, renderPath, renderLine, renderBoxLine, renderCrosshair, renderDashLine } from '../helpers/renderFuncs';
-import { arcPathByAngleAboutTheta } from '../helpers/draftMathOld';
+import { circleCircleIntersections, interceptCirclesAndPoint, intersectLines, lineCircleIntersection, solveInscribedCircleAlongAxis} from '../../src/app/helpers/draftMath';
+import { RecipeComponentBase } from '../../src/app/recipe-base/recipe-base';
+import { arcPathFrom3Points } from '../../src/app/helpers/svgPathMath';
+import { Circle, Fraction, Pt, RecipeInterface } from '../../src/app/models/types';
+import { renderCircle, renderPath, renderLine, renderBoxLine, renderCrosshair, renderDashLine } from '../../src/app/helpers/renderFuncs';
+import { arcPathByAngleAboutTheta } from '../shared/draftMathOld';
 
 
 interface BeardViolinParams {

@@ -1,6 +1,6 @@
 import { svgPathProperties } from "svg-path-properties";
-import { Pt, Circle } from "../models/types";
-import { dist } from "./draftMath";
+import { Pt, Circle } from "../../src/app/models/types";
+import { dist } from "../../src/app/helpers/draftMath";
 import * as polygonClipping from 'polygon-clipping';
 
 

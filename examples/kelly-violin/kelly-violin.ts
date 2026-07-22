@@ -1,14 +1,15 @@
 import { ChangeDetectorRef, Component, HostListener, Input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { error, info, warn } from '../shared/message-emitter';
-import { RecipeComponentBase } from '../recipe-base/recipe-base';
-import { Circle } from '../models/types';
-import { greyOut, renderCircle, renderCircleAngleIndicator, renderCrosshair, renderDashedLine, renderDashLine, renderDistanceMeasurementLine, renderLine, renderPath, renderRect } from '../helpers/renderFuncs';
-import {  combinePathStrings, pointOnCircle } from '../helpers/draftMath';
+import { error, info, warn } from '../../src/app/shared/message-emitter';
+import { RecipeComponentBase } from '../../src/app/recipe-base/recipe-base';
+import { Circle } from '../../src/app/models/types';
+import { greyOut, renderCircle, renderCircleAngleIndicator, renderCrosshair, renderDashedLine, renderDashLine, renderDistanceMeasurementLine, renderLine, renderPath, renderRect } from '../../src/app/helpers/renderFuncs';
+import { pointOnCircle } from '../../src/app/helpers/draftMath';
+import { combinePathStrings } from '../../src/app/helpers/svgPathMath';
 import { KellyTemplate, KellyViolinData, KellyViolinRecipe, KELLY_TEMPLATES } from './kellyTypes';
 import { calculatePrimaryShapes, calculateMainPathsSegmented, calculateMainPathsUnified, calculateMouldPath, calculateOffsetPathsSegments, calculateTopPath, initializeMainBouts, initializeMinorBouts, initializeCornerPlacement, initializeCornerCircles, initializeTopAndBottomTrace, initializeBlocks, normalizeDegrees, calculateMainBouts } from './kellyCals';
-import { clampParam, safeRun } from '../helpers/validators';
-import { buildMirroredSvg, downloadSvgFile } from '../helpers/svg-export';
+import { clampParam, safeRun } from '../../src/app/helpers/validators';
+import { buildMirroredSvg, downloadSvgFile } from '../../src/app/helpers/fileExporter';
 
 @Component({
   selector: 'app-kelly-violin',
