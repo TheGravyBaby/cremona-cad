@@ -569,19 +569,19 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     info(
       "Each tab is a separate reference image, so you can trace different profiles (plan, long arch, cross arch) without losing the others. Only the active tab is shown and editable.\n\n" +
       " - + adds a reference image, double-click a tab to rename it, and × removes it.\n" +
-      " - Replace swaps the active tab's image; Reset restores it to the values it had when the popup opened.\n\n" +
+      " - Replace swaps the active tab's image; Reset restores it to the values it had when you last selected this tab.\n\n" +
       "You can upload a reference image using the + or Replace button. It is recommended you scale the image using either the axis or the bounding box on the base measurement panel.\n\n" +
       "X and Y position the image on the canvas.\n" +
       "Width and height set the dimensions of the image in millimetres.\n" +
-      "Rotation allows you to rotate the image in degrees.\n" +
-      "Lock Aspect keeps the proportions fixed when resizing.\n\n" +
+      "Rotation rotates the image in degrees.\n\n" +
       "Mouse controls:\n" +
       " - Drag the image to reposition it.\n" +
-      " - Drag the handles at the corners and edges to resize it.\n" +
+      " - Drag a corner handle to resize proportionally; drag an edge handle to resize just that dimension (it snaps back to proportional once you drag past the image's original size).\n" +
       " - Hold Space and drag (or use the middle mouse button) to pan the camera without moving the image.\n" +
-      " - Scroll to zoom; pinch on a trackpad to zoom.\n\n" +
+      " - Scroll to zoom; two-finger trackpad scroll pans, pinch zooms.\n\n" +
       "Keyboard controls:\n" +
       " - Arrow keys: nudge the image by 1 mm.\n" +
+      " - Ctrl + Up/Down: scale the image; Ctrl + Left/Right: rotate it 1°.\n" +
       " - F: fit the full design back into view.\n" +
       " - +/-: zoom in or out.\n" +
       " - Outside of reference mode, arrow keys pan the camera instead (Shift for larger steps).\n",

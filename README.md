@@ -11,9 +11,9 @@ A free and open source application for designing violin family instruments.
 
 <img src="public/DrawingDemo2.png" alt="Cremona CAD" width="340" align="right" style="margin: 0 0 16px 24px;" />
 
-Rather than a static trace, or a complex list of coordinates, CremonaCad defines instruments using a simple system of **intersecting arcs**. These patterns are historically informed by a drafting document found in the workshop of **Enrico Ceruti**, as well as the research of American luthiers **David Beard** and **Kevin Kelly**.
+Rather than a static trace, or a complex list of coordinates, CremonaCad defines instruments using a simple system of **intersecting arcs**, historically informed by a drafting document found in the workshop of **Enrico Ceruti**.
 
-Upload a historical instrument and use it as a reference, or go off the rails and create something totally unique. Once your design is complete, CremonaCad can create moulds and templates for your specific instrument. These patterns can be exported either as PDFs for traditional hand-making, or as SVGs for computer assisted fabrication.
+See the in-app **About** tab (and **Tutorial** tab) for the full picture, including the design workflow and supported export formats.
 
 ## Getting Started
 
@@ -57,7 +57,7 @@ Recipe components follow the structure established in `recipe-base/`. The draft 
 
 ```
 src/app/
-├── ceruti-violin/         # Primary working recipe
+├── enrico-ceruti-violin/  # Primary working recipe
 ├── hello-recipe/          # Minimal recipe for experimentation
 ├── draft-canvas/          # SVG canvas, camera, axis grid, reference image
 ├── helpers/               # Math, render functions, SVG/PDF export

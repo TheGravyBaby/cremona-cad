@@ -154,10 +154,37 @@
         <p>These sections define the plate-edge details inset from the outer outline.</p>
         <ul class="tips-list">
           <li><strong>Purfling</strong> is a narrow inlaid strip set just inside the plate edge. The
-            <strong>offset</strong> controls how far from the edge the channel begins; the <strong>depth</strong>
-            sets the channel width.</li>
-          <li><strong>Fluting</strong> is the shallow cove carved between the purfling and the rising arch. The
-            <strong>width</strong> sets how far the flat platform extends inward from the inner purfling wall.</li>
+            <strong>offset</strong> controls how far from the edge the channel begins; the <strong>width</strong>
+            sets the channel's span.</li>
+          <li><strong>Fluting</strong> is the shallow cove carved between the purfling and the rising arch.
+            <strong>Offset</strong> and <strong>Reach</strong> are both measured from the plate edge — Offset to
+            the platform's outer boundary, Reach to its inner boundary, where the arch takes off.</li>
+        </ul>
+
+        <h3>Long Arching</h3>
+        <p>This section shapes the lengthwise profile of the top and back plates — how the arch rises from end to
+          end along the centerline.</p>
+        <ul class="tips-list">
+          <li>Choose a <strong>Catenary</strong> curve for a smooth, symmetric arch, or a <strong>Spline</strong> to
+            place your own control points along the profile.</li>
+          <li><strong>Arch Height</strong> sets the peak height above the plate edge; <strong>Thickness</strong>
+            sets the plate thickness at that edge.</li>
+          <li><strong>Arch Depth</strong> lowers where the arch takes off from the plate edge, giving the fluting
+            channel more room to curve into.</li>
+        </ul>
+
+        <h3>Cross Arching</h3>
+        <p>This section shapes the arch's cross-section — how it rises across the width of the plate at any point
+          along its length. The center peak follows the long arch you already set.</p>
+        <ul class="tips-list">
+          <li>Drag the <strong>Cross Section Height</strong> slider to preview the profile at different points
+            along the body.</li>
+          <li><strong>Cycloid Factor</strong> and <strong>Percentage</strong> shape the curve's character and how
+            steeply it takes off from the edge.</li>
+          <li>Toggle <strong>Flat Platform</strong> to preview the pre-carving state, before the fluting channel is
+            gouged.</li>
+          <li>Enable <strong>Wireframe</strong> or <strong>Contour Map</strong> to inspect the full interpolated
+            surface in 3D.</li>
         </ul>
 
         <h3>Mould</h3>
@@ -178,8 +205,9 @@
         </ul>
 
         <h3>Export</h3>
-        <p>Once your design is complete, you can export various templates and patterns for construction. CremonaCad
-          generates both <strong>SVG</strong> and <strong>PDF</strong> files.</p>
+        <p>Once your design is complete, you can export templates and patterns for construction. Traces, the mould,
+          and block templates are available as <strong>SVG</strong>, <strong>PDF</strong>, and <strong>DXF</strong>;
+          the arched top and back plates export as <strong>STL</strong> for CNC carving.</p>
       </section>
       }
 
@@ -199,7 +227,7 @@
         </div>
 
         <div class="changelog-entry">
-          <div class="changelog-version">v{{ 0.7.2 }} <span class="changelog-date">— Jun 22, 2026</span></div>
+          <div class="changelog-version">v0.7.2 <span class="changelog-date">— Jun 22, 2026</span></div>
           <p class="changelog-desc">Purfling and fluting.</p>
           <ul class="changelog-list">
             <li>Added purfling channel to the design workflow — set offset and depth relative to the plate edge.</li>
