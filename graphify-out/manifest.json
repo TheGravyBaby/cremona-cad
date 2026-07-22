@@ -1,8 +1,8 @@
 {
   ".claude/settings.local.json": {
-    "mtime": 1783006028.2989328,
-    "ast_hash": "61449243d4f34af69701c8c9b9d7d0f6",
-    "semantic_hash": "61449243d4f34af69701c8c9b9d7d0f6"
+    "mtime": 1784686896.244522,
+    "ast_hash": "5c1c2f55376739f49adafaff6d2ae669",
+    "semantic_hash": "5c1c2f55376739f49adafaff6d2ae669"
   },
   ".vscode/extensions.json": {
     "mtime": 1767295246.1082134,
@@ -30,24 +30,24 @@
     "semantic_hash": "f0314cf07360003db2f17a96654e59db"
   },
   "examples/beard-violin/beard-violin.ts": {
-    "mtime": 1780026619.1548285,
-    "ast_hash": "5b504c42ee937164f0293f7647fe2509",
-    "semantic_hash": "5b504c42ee937164f0293f7647fe2509"
+    "mtime": 1784685474.082253,
+    "ast_hash": "5c8d6fa88ff6a6c6506b9398d0bd0a20",
+    "semantic_hash": "5c8d6fa88ff6a6c6506b9398d0bd0a20"
   },
   "examples/kelly-violin/kelly-violin.ts": {
-    "mtime": 1780026619.1569798,
-    "ast_hash": "07243071c7ea258f003a26a07ac33b93",
-    "semantic_hash": "07243071c7ea258f003a26a07ac33b93"
+    "mtime": 1784685464.7222025,
+    "ast_hash": "04d5d9b5ce2655e86e52be1ce683d57e",
+    "semantic_hash": "04d5d9b5ce2655e86e52be1ce683d57e"
   },
   "examples/kelly-violin/kellyCals.ts": {
-    "mtime": 1780026619.1572666,
-    "ast_hash": "00ce1887e61405c6587e15ed03ba1b31",
-    "semantic_hash": "00ce1887e61405c6587e15ed03ba1b31"
+    "mtime": 1784685426.3319957,
+    "ast_hash": "df5ff96b1a51932a593543dfd7dde316",
+    "semantic_hash": "df5ff96b1a51932a593543dfd7dde316"
   },
   "examples/kelly-violin/kellyTypes.ts": {
-    "mtime": 1780077336.0566275,
-    "ast_hash": "efedf41aface7bb19108151251750bdb",
-    "semantic_hash": "efedf41aface7bb19108151251750bdb"
+    "mtime": 1784685453.0281396,
+    "ast_hash": "63f987fc2b8aeff618e73da61c2c0003",
+    "semantic_hash": "63f987fc2b8aeff618e73da61c2c0003"
   },
   "package.json": {
     "mtime": 1782691097.6302826,
@@ -105,9 +105,9 @@
     "semantic_hash": "e30d9c2c5e83bf3c6ae2485be7709828"
   },
   "src/app/enrico-ceruti-violin/ceruti-calcs.ts": {
-    "mtime": 1784683836.6861198,
-    "ast_hash": "abdb51dd0b0f51724c61890cd7ebcf9d",
-    "semantic_hash": "abdb51dd0b0f51724c61890cd7ebcf9d"
+    "mtime": 1784686917.2676945,
+    "ast_hash": "9dc7e3c22fedcace285439d7e31d7296",
+    "semantic_hash": "9dc7e3c22fedcace285439d7e31d7296"
   },
   "src/app/enrico-ceruti-violin/ceruti-helpers.ts": {
     "mtime": 1784683836.6861198,
@@ -115,14 +115,14 @@
     "semantic_hash": "806a0fe59e494a49c3e58e0f3070af98"
   },
   "src/app/enrico-ceruti-violin/ceruti-surface.spec.ts": {
-    "mtime": 1783006870.1956935,
-    "ast_hash": "9f683cc7810b9c4b32f84d6e87cb7593",
-    "semantic_hash": "9f683cc7810b9c4b32f84d6e87cb7593"
+    "mtime": 1784686974.513915,
+    "ast_hash": "30d2438b6e1dfedf07530ae0dc7615e5",
+    "semantic_hash": "30d2438b6e1dfedf07530ae0dc7615e5"
   },
   "src/app/enrico-ceruti-violin/ceruti-surface.ts": {
-    "mtime": 1784683836.6861198,
-    "ast_hash": "0ce67dd58889d01f4d112b97e1b035e4",
-    "semantic_hash": "0ce67dd58889d01f4d112b97e1b035e4"
+    "mtime": 1784686967.0178773,
+    "ast_hash": "864ab5fae526ca8867f594668595874c",
+    "semantic_hash": "864ab5fae526ca8867f594668595874c"
   },
   "src/app/enrico-ceruti-violin/ceruti-templates.ts": {
     "mtime": 1784683836.6861198,
@@ -135,9 +135,9 @@
     "semantic_hash": "b87641c0434479de70f9ff60263f7e1e"
   },
   "src/app/enrico-ceruti-violin/ceruti-violin.ts": {
-    "mtime": 1784683836.6862023,
-    "ast_hash": "d7b9c8b829232a66e030d417c0fa8c6e",
-    "semantic_hash": "d7b9c8b829232a66e030d417c0fa8c6e"
+    "mtime": 1784686954.0968125,
+    "ast_hash": "fb29cea1f9d6584e643063dd9cf3b3a0",
+    "semantic_hash": "fb29cea1f9d6584e643063dd9cf3b3a0"
   },
   "src/app/enrico-ceruti-violin/panels/base-panel/base-panel.ts": {
     "mtime": 1782137772.319017,
@@ -160,9 +160,9 @@
     "semantic_hash": "a4836b5b982d841e468da8d74f40ae9a"
   },
   "src/app/enrico-ceruti-violin/panels/export-panel/export-panel.ts": {
-    "mtime": 1783006833.0204833,
-    "ast_hash": "e87ac7879ae31057e40c6960ff333b49",
-    "semantic_hash": "e87ac7879ae31057e40c6960ff333b49"
+    "mtime": 1784686979.9829426,
+    "ast_hash": "45982ef18be09ec71559435047ea906e",
+    "semantic_hash": "45982ef18be09ec71559435047ea906e"
   },
   "src/app/enrico-ceruti-violin/panels/long-arching-panel/long-arching-panel.ts": {
     "mtime": 1782957360.137777,
@@ -279,11 +279,6 @@
     "ast_hash": "da6b63e70a48c4ff73e787dc107cd224",
     "semantic_hash": "da6b63e70a48c4ff73e787dc107cd224"
   },
-  "src/app/helpers/draftMathOld.ts": {
-    "mtime": 1779129769.6486661,
-    "ast_hash": "72f508ae38e9f0f75dbb72846e18bad5",
-    "semantic_hash": "72f508ae38e9f0f75dbb72846e18bad5"
-  },
   "src/app/helpers/dxfExporter.ts": {
     "mtime": 1782144969.8514225,
     "ast_hash": "af977eb083df555da84765804f9922a9",
@@ -350,9 +345,9 @@
     "semantic_hash": "8b84e6112300662e22c3891a6b3602fd"
   },
   "src/app/recipe-toolbar/recipe-toolbar.ts": {
-    "mtime": 1782137772.3213692,
-    "ast_hash": "c1289c34bf6d2f5a392c84b1881d17ad",
-    "semantic_hash": "c1289c34bf6d2f5a392c84b1881d17ad"
+    "mtime": 1784686215.229422,
+    "ast_hash": "6c0f1bc52fc5ded2857de39b2064b26e",
+    "semantic_hash": "6c0f1bc52fc5ded2857de39b2064b26e"
   },
   "src/app/shared/message-center.component.ts": {
     "mtime": 1778851406.7637095,
@@ -365,9 +360,9 @@
     "semantic_hash": "b00320376e78c964f724c63f698baeb4"
   },
   "src/app/shared/message.service.ts": {
-    "mtime": 1778851406.7637095,
-    "ast_hash": "8c8c0fef131721e5513300225dc4a377",
-    "semantic_hash": "8c8c0fef131721e5513300225dc4a377"
+    "mtime": 1784686220.911117,
+    "ast_hash": "10ce5103d47d392f5b50ff40dc719c1a",
+    "semantic_hash": "10ce5103d47d392f5b50ff40dc719c1a"
   },
   "src/app/top-bar/top-bar.spec.ts": {
     "mtime": 1778565376.472874,
@@ -588,5 +583,25 @@
     "mtime": 1782137772.3161006,
     "ast_hash": "d8aa057b70bf4f4c9b2a5d13c74063ca",
     "semantic_hash": "d8aa057b70bf4f4c9b2a5d13c74063ca"
+  },
+  "examples/shared/draftMathOld.ts": {
+    "mtime": 1784685270.6951857,
+    "ast_hash": "b35c8fe41a878e2cac369fd193b7a4ce",
+    "semantic_hash": "b35c8fe41a878e2cac369fd193b7a4ce"
+  },
+  "src/app/enrico-ceruti-violin/ceruti-arching.ts": {
+    "mtime": 1784686917.2680776,
+    "ast_hash": "acf4b332efa82f830b6948bb915653cc",
+    "semantic_hash": "acf4b332efa82f830b6948bb915653cc"
+  },
+  "src/app/enrico-ceruti-violin/ceruti-paths.ts": {
+    "mtime": 1784686917.2679486,
+    "ast_hash": "8d6f11275521888fbfadcb0a438b4d82",
+    "semantic_hash": "8d6f11275521888fbfadcb0a438b4d82"
+  },
+  "src/app/recipe-base/recipe-base.html": {
+    "mtime": 1767482634.25889,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
   }
 }
