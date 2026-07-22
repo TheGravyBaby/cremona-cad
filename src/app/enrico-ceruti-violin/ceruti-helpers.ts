@@ -13,7 +13,7 @@ export function referenceInfo() {
 
 export function insetInfo() {
     info(
-        "The mould is the form around which ribs are bent and shaped. It sits inset from the finished plate edge by the combined thickness of the rib and the overhang.\n\n" +
+        "The mould sits inset from the outer edge of the instrument by rib thickness + overhang:\n\n" +
         "Final outer edge = mould edge + rib thickness + overhang.\n\n" +
         "Standard rib thicknesses:\n" +
         "- Violin: 1.0 mm\n" +
@@ -21,8 +21,8 @@ export function insetInfo() {
         "- Cello: 1.3–1.6 mm\n" +
         "- Bass: 2.5–3.0 mm\n\n" +
         "Overhang is typically 2–5 mm.\n\n" +
-        "If tracing from a reference image, the inner edge of the purfling is a reliable guide for the mould outline — " +
-        "it commonly aligns with the inner edge of the ribs.",
+        "Tracing from a reference image: the purfling's inner edge is a reliable guide for the mould outline — " +
+        "it commonly aligns with the ribs' inner edge.",
         "Additional Information", defaultTTL
     );
 }
@@ -37,8 +37,7 @@ export function dimensionInfo() {
 
 export function boutWidthInfo() {
     info(
-        "The widths of the upper and lower bouts are outer measurements — they include rib thickness and overhang.\n\n" +
-        "The arc segments define the inner mould outline; the finished plate will extend beyond by rib thickness + overhang.\n\n" +
+        "These are outer measurements — they include rib thickness and overhang. The arc radii below instead define the inner mould outline.\n\n" +
         "If the instrument appears too tall relative to your reference image, adjust the height in the previous panel or rescale the image.",
         "Additional Information", defaultTTL
     )
@@ -100,7 +99,9 @@ export function bitDiameterInfo() {
 
 export function channelDepthInfo() {
     info(
-        "The wall thickness of the mould — the distance from the outer mould edge to the open interior cavity. Deeper channels make a stiffer mould; shallower ones use less material.",
+        "Width of the solid rim along the edge of the mould.\n\n" +
+        "Larger values leave more material between the blocks; smaller values open the interior sooner.\n\n" +
+        "Ignored when 'Use Simple Clamp Box' is on — that swaps this arc-following cutout for a plain rectangular slot.",
         "Additional Information", defaultTTL
     )
 }
@@ -124,38 +125,26 @@ export function purflingInfo() {
 
 export function flutingInfo() {
     info(
-        "The fluting is a shallow cove carved between the purfling and the rising arch of the plate. It creates the characteristic scalloped transition at the edge.\n\n" +
-        "Offset: The distance from the outer edge to the fluting platform. \n\n" +
-        "Width: The width of the fluting channel.",
+        "Both values are measured from the outer plate edge inward; the channel's actual width is Reach minus Offset.\n\n" +
+        "Offset: distance from the outer edge to the platform's outer boundary.\n\n" +
+        "Reach: distance from the outer edge to the platform's inner boundary, where the cross arch takes off.\n\n" +
+        "C Bout: overrides Reach in the center bout only, for a narrower or wider channel there.",
         "Additional Information", defaultTTL
-    )
-}
-
-export function flutingChannelInfo() {
-    info(
-        "Depth of the fluting channel at its trough, measured down from the plate outer surface.\n\n" +
-        "The carved profile runs from the platform's outer boundary (at plate surface level), dips to this depth at the trough line, " +
-        "and rises to meet the cross arch at its sunken takeoff (the Edge Depth). Typical violin channels are 0.5–1.0 mm deep.\n\n" +
-        "If the trough is deeper than the Edge Depth you get the classic recurve; shallower and the channel descends smoothly into the arch without one.",
-        "Fluting Channel", defaultTTL
     )
 }
 
 export function flatPlatformInfo() {
     info(
-        "Leaves the fluting platform flat at the plate surface with a 90° ledge dropping to the arch takeoff at the inner boundary — the pre-channel state used when making.\n\n" +
-        "This is the flat platform you cut the purfling on and join the arching to, before the channel is finally gouged. Turn it off to see the finished carved channel.",
+        "Leaves the fluting platform flat at the plate surface — the state you cut purfling on and join the arching to before the channel is gouged.\n\n" +
+        "Turn off to see the finished carved channel.",
         "Flat Platform", defaultTTL
     )
 }
 
 export function archContoursInfo() {
     info(
-        "With the long and cross arches are set, an interpolation of the instrument surface can be generated. "
-        + "This surface can be viewed either as a contour map, or as a wireframe mesh.\n\n" + 
-        "You can rotate both of these to inspect the surface by grabbing and dragging on the view box.\n\n" +
-        "Note that the wireframe interpolates the edge by connecting each frame line, and does not follow the actual edge contour.\n\n" +
-        "Also note that the contour map can be a bit 'fuzzy' around the edges, but the final STL output will have the clean edge you defined at earlier stages.",
+        "Once the long and cross arches are set, the surface can be viewed as a contour map or a wireframe mesh — drag the view box to rotate either.\n\n" +
+        "The wireframe's edge is interpolated between frame lines rather than the true edge contour, and the contour map can look 'fuzzy' near the edges. Neither affects the final STL, which uses the clean edge defined earlier.",
         "Additional Info", defaultTTL
     )
 }
@@ -237,29 +226,18 @@ export function crossSectionStationInfo() {
     )
 }
 
-export function cyclePercentageInfo() {
-    info(
-        "Selects how much of the full cycloid arch is stretched across the width, as a percentage.\n\n" +
-        "The full cycloid (100%) runs cusp to cusp, so it leaves the plate edge tangent — a flat takeoff that gives the fluting channel very little slope to connect to. Lowering the percentage clips those flat cusp ends and stretches a steeper central portion over the same width, so the arch rises from the edge at a real angle.\n\n" +
-        "The center peak stays anchored to the long arch and the curve stays symmetric — only the edge steepness changes. Use this together with Edge Depth to open up room for the fluting channel.\n\n" +
-        "100% = full cycloid (default). 60–90% steepens the edge noticeably.",
-        "Cycloid Percentage", defaultTTL
-    )
-}
-
 export function crossArchCycloidControlsInfo() {
     info(
         "These two controls shape how the cross-arch rises from the edge while keeping the center peak anchored to the long arch.\n\n" +
         "Cycloid Factor (0–1): chooses the trochoid-family curve character. 0 is raised-cosine-like (gentler edge rise), 1 is classic cycloid (steeper edge rise, flatter near the crest).\n\n" +
-        "Cycloid Percentage (%): chooses how much of the full cycloid is stretched across the plate width. Lower values trim flatter cusp ends and map a steeper central portion onto the same span, increasing edge takeoff angle.\n\n" +
-        "Use them together: Factor sets curve family character; Percentage sets edge steepness within that character.",
+        "Cycloid Percentage (%): chooses how much of the full cycloid is stretched across the plate width. Lower values trim flatter cusp ends and map a steeper central portion onto the same span, increasing edge takeoff angle.",
         "Cross-Arch Cycloid Controls", defaultTTL
     )
 }
 
 export function crossArchEdgeDepthInfo() {
     info(
-        "Lowers the point where the cross arch takes off from the plate edge, measured in mm below the plate outer surface.\n\n" +
+        "Lowers the point where the long and cross arches take off from the plate edge, measured in mm below the plate outer surface.\n\n" +
         "This is primarily used to control the degree of curvature along the fluting.\n\n" +
         "Values of 0.5–2 mm are typical.",
         "Additional Info", defaultTTL

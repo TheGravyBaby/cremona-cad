@@ -141,7 +141,7 @@
                 [style.borderColor]="colors.fluting" />
         </label>
          <label class="field-cell">
-            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <span class="field-title">Reach <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="0.1" min="0"
                 [ngModel]="params.innerFlutingDepth"
                 (ngModelChange)="params.innerFlutingDepth = $event; onChange()"
@@ -159,7 +159,7 @@
         </label>
         @if (params.options.useCBoutFlutingDepth) {
          <label class="field-cell">
-            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <span class="field-title">Reach <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="0.1" min="0"
                 [ngModel]="params.innerFlutingDepth_cBout"
                 (ngModelChange)="params.innerFlutingDepth_cBout = $event; onChange()"

@@ -1,5 +1,5 @@
 import { DOCUMENT } from '@angular/common';
-import { ApplicationRef, Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { setGlobalEmitter } from './shared/message-emitter';
 import { MessageService } from './shared/message.service';
 import { TopBarComponent } from './top-bar/top-bar';
@@ -27,8 +27,8 @@ import { MessageCenterComponent } from './shared/message-center.component';
 
       <div class="main">
         <app-draft-canvas class="canvas"
-          [draftFunctions]="draftArgs"
-          [referenceImages]="referenceImages"
+          [draftFunctions]="draftArgs()"
+          [referenceImages]="referenceImages()"
           (referenceImagesChange)="onReferenceImagesChange($event)"
           [setCameraBounds]="bounds"
           >
@@ -38,7 +38,7 @@ import { MessageCenterComponent } from './shared/message-center.component';
          <app-ceruti-violin class="sidebar"
           (draftChange)="onDraftChange($event)"
           (setBounds)="bounds=$event"
-          [referenceImages]="referenceImages"
+          [referenceImages]="referenceImages()"
           [cameraBounds]="bounds"
           [nightMode]="nightMode"
           (referenceImagesChange)="onReferenceImagesChange($event)">
@@ -49,7 +49,7 @@ import { MessageCenterComponent } from './shared/message-center.component';
          <app-hello-recipe class="sidebar"
           (draftChange)="onDraftChange($event)"
           (setBounds)="bounds=$event"
-          [referenceImages]="referenceImages"
+          [referenceImages]="referenceImages()"
           [cameraBounds]="bounds"
           (referenceImagesChange)="onReferenceImagesChange($event)">
         </app-hello-recipe>
@@ -65,18 +65,17 @@ import { MessageCenterComponent } from './shared/message-center.component';
 
 export class App {
   private readonly doc = inject(DOCUMENT);
-  private readonly appRef = inject(ApplicationRef);
   // inject MessageService via Angular's injector
   private messageService = inject(MessageService);
 
-  draftArgs: Array<(g: any, ui: any) => void> = [];
+  draftArgs = signal<Array<(g: any, ui: any) => void>>([]);
   selectedRecipe: string = 'enrico-ceruti-violin';
   bounds: {pt1: Pt, pt2: Pt} | null = null;
   sessionData = sessionStorage.getItem('recipeData');
 
-  referenceImages: NamedReferenceImage[] = normalizeReferenceImages(
+  referenceImages = signal<NamedReferenceImage[]>(normalizeReferenceImages(
     this.sessionData ? JSON.parse(this.sessionData) : null
-  );
+  ));
 
   nightMode = true;
 
@@ -100,23 +99,17 @@ export class App {
   }
 
   onDraftChange(fns: Array<(g: any, ui: any) => void>) {
-    queueMicrotask(() => {
-      this.draftArgs = fns;
-      this.appRef.tick();
-    });
+    this.draftArgs.set(fns);
   }
 
   onReferenceImagesChange(imgs: NamedReferenceImage[]) {
-    queueMicrotask(() => {
-      this.referenceImages = imgs ?? [];
-      this.appRef.tick();
-    });
+    this.referenceImages.set(imgs ?? []);
   }
 
   /** Switches the active recipe, clearing state that belonged to the old one. */
   selectRecipe(recipe: string): void {
     if (recipe === this.selectedRecipe) return;
     this.selectedRecipe = recipe;
-    this.referenceImages = [];
+    this.referenceImages.set([]);
   }
 }

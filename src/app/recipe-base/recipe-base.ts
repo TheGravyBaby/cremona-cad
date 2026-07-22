@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, HostListener, output } from '@angular/core';
+import { AfterViewInit, Component, HostListener, output, afterNextRender, inject, Injector } from '@angular/core';
 import { Output, EventEmitter, Input } from "@angular/core";
 import { NamedReferenceImage, Pt, RecipeInterface } from '../models/types';
 import { PanelFlow, PanelDefinition } from '../helpers/panelFlow';
@@ -17,6 +17,8 @@ export type { NamedConstant };
 
 export abstract class RecipeComponentBase implements AfterViewInit {
   static readonly DEFAULT_NAMED_CONSTANTS: readonly NamedConstant[] = DEFAULT_NAMED_CONSTANTS;
+
+  private readonly injector = inject(Injector);
 
   @Output() draftChange = new EventEmitter<Array<(g: any, ui: any) => void>>();
   @Output() setBounds = new EventEmitter<{pt1: Pt, pt2: Pt}>();
@@ -229,9 +231,9 @@ export abstract class RecipeComponentBase implements AfterViewInit {
   }
 
   ngAfterViewInit() {
-    queueMicrotask(() => {
+    afterNextRender(() => {
       this.draftChange.emit([this.firstRender]);
-    });
+    }, { injector: this.injector });
   }
 
   ngOnDestroy() {
