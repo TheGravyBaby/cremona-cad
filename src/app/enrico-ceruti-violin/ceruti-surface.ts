@@ -7,10 +7,8 @@ import { buildPolylineIndex, distPointToPolylineIndexed, PolylineIndex } from '.
 import { buildHeightFieldStl } from '../helpers/stlExporter';
 import { cycloidEdgeSlope, cycloidZAt, flutingProfileZ, samplePathToPolyline } from '../helpers/svgPathMath';
 import { ArchCurve, EnricoCerutiParams } from './ceruti-types';
-import {
-    defaultCrossArchParams, defaultFlutingChannelParams, defineFlutingPath, defineInsetPath,
-    defineOuterPath, flutingHalfWidthAtY, longArchHeightAt,
-} from './ceruti-calcs';
+import { defineFlutingPath, defineInsetPath, defineOuterPath } from './ceruti-paths';
+import { defaultCrossArchParams, defaultFlutingChannelParams, flutingHalfWidthAtY, longArchHeightAt } from './ceruti-arching';
 
 // The evaluable top-plate surface: a height field z(x, y) over the plan view,
 // stitched from three regions classified by station chords (so it always

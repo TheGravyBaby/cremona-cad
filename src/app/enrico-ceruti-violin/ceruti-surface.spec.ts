@@ -1,8 +1,6 @@
 import { flutingProfileZ } from '../helpers/svgPathMath';
-import {
-  calculateCenterBout, calculateCorners, calculateMainBouts, calculateOuterArcs,
-  defaultArchingParams, defaultCrossArchParams, defaultFlutingChannelParams,
-} from './ceruti-calcs';
+import { calculateCenterBout, calculateCorners, calculateMainBouts, calculateOuterArcs } from './ceruti-calcs';
+import { defaultArchingParams, defaultCrossArchParams, defaultFlutingChannelParams } from './ceruti-arching';
 import {
   buildPlateStl, buildPlateSurfaceModel, calculateFlutingSectionTop,
   computeArchContours, stationChordsAt, topSurfaceZAt, PlateSurfaceModel,

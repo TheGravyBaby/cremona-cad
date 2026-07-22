@@ -7,7 +7,8 @@ import { downloadDxfFile } from '../../../helpers/dxfExporter';
 import { downloadStlFile } from '../../../helpers/stlExporter';
 import { renderFilledPath, renderPath } from '../../../helpers/renderFuncs';
 import { error } from '../../../shared/message-emitter';
-import { calculateCornerBlocks, calculateMould, calculateOuterArcs, defaultCrossArchParams, defaultFlutingChannelParams } from '../../ceruti-calcs';
+import { calculateCornerBlocks, calculateMould, calculateOuterArcs } from '../../ceruti-calcs';
+import { defaultCrossArchParams, defaultFlutingChannelParams } from '../../ceruti-arching';
 import { buildPlateStl, buildPlateSurfaceModel } from '../../ceruti-surface';
 import { CerutiColors, EnricoCerutiParams, PathEntry } from '../../ceruti-types';
 

@@ -1,0 +1,278 @@
+import { flipArcAboutY, arcHorizontalIntersections, clamp } from "../helpers/draftMath";
+import { pathFromArc, unifyConnectedSvgPaths, buildCatenaryPath, buildCycloidPath, buildSplinePath, buildCycloidPathAcross, catenaryZAt, cycloidZAt, splineZAt, flutingArc, cycloidEdgeSlope } from "../helpers/svgPathMath";
+import { Arc } from "../models/types";
+import { ArchCurve, ArchingParams, CrossArchParams, EnricoCerutiParams, FlutingChannelParams } from "./ceruti-types";
+import { defineFlutingArcs, defineInnerArcs, defineOffsetArcs, defineOuterCornerArcs } from "./ceruti-paths";
+
+// ===== Arching & fluting profile system =====
+// The long-arch/cross-arch/fluting-channel height profile — a distinct concern
+// from the flat 2D outline in ceruti-calcs.ts/ceruti-paths.ts. Everything here
+// is about the arch's Z profile: how high it rises, its cross-sectional shape
+// at a given body height, and the *AtY half-width queries the renderers sample
+// it with.
+
+/**
+ * The plan-view line of the fluting trough — the deepest path of the carved
+ * channel, offset between the platform boundaries at the resolved trough
+ * position. The real trough position varies station-by-station (it follows
+ * the cross arch's takeoff slope, per {@link resolveTroughU}); this traces a
+ * single representative offset for the whole plate, evaluated at the C-bout
+ * waist. Returns null until both the fluting platform and the arching's
+ * channel params exist.
+ */
+export function defineTroughPath(p: EnricoCerutiParams, side: 'top' | 'bottom' = 'top'): string | null {
+    const fluting = p.arching?.[side].fluting;
+    if (!fluting || p.innerFlutingDepth === null || p.outerFlutingDepth === null) return null;
+    const u = resolveTroughU(p, side);
+    const troughFromEdge = p.outerFlutingDepth + u * (p.innerFlutingDepth - p.outerFlutingDepth);
+    const arcs = defineFlutingArcs(p, p.overhang + p.rib - troughFromEdge);
+    const mirrored = arcs.map(arc => flipArcAboutY(arc));
+    return unifyConnectedSvgPaths([...arcs, ...mirrored].map(arc => pathFromArc(arc)));
+}
+
+/** Returns instrument-appropriate arching defaults based on body length (p.height). */
+export function defaultArchingParams(bodyHeight: number): ArchingParams {
+  const cat = (archHeight: number) => ({ type: 'catenary' as const, archHeight });
+  // Each plate carries its own cross-arch and fluting-channel params so the top
+  // and back can be shaped independently.
+  const plate = (archHeight: number, thickness: number) => ({
+    arch: cat(archHeight), thickness, edgeDepth: 0,
+    cross: defaultCrossArchParams(), fluting: defaultFlutingChannelParams(),
+  });
+
+  if (bodyHeight < 400) {
+    // Violin
+    return { surfaceMethod: 'proportional', ribHeight: 32,
+      top: plate(15, 3.5), bottom: plate(14, 3.5) };
+  }
+  if (bodyHeight < 500) {
+    // Viola
+    return { surfaceMethod: 'proportional', ribHeight: 40,
+      top: plate(20, 4.0), bottom: plate(18, 4.0) };
+  }
+  if (bodyHeight < 800) {
+    // Cello
+    return { surfaceMethod: 'proportional', ribHeight: 120,
+      top: plate(27, 6.0), bottom: plate(25, 6.0) };
+  }
+  // Double bass
+  return { surfaceMethod: 'proportional', ribHeight: 185,
+    top: plate(55, 9.0), bottom: plate(50, 9.0) };
+}
+
+/**
+ * The wireframe/contour step sizes below were tuned by eye against a
+ * standard violin. Body height, body width, and arch height all vary a
+ * lot across the instrument family (see defaultArchingParams) — a cello or
+ * bass plugged into the same fixed mm steps would render 2-3x the wires and
+ * contours of a violin, which is what actually caused the lag. Scaling each
+ * step relative to these reference dimensions keeps rendered density (and
+ * cost) roughly constant across the whole size range instead.
+ */
+const REFERENCE_BODY_HEIGHT = 350; // mm, violin body length
+const REFERENCE_BODY_WIDTH = 200;  // mm, violin body width
+const REFERENCE_ARCH_HEIGHT = 15;  // mm, violin top-plate default
+const REFERENCE_STATION_STEP_MM = 4;
+const REFERENCE_SAMPLE_STEP_MM = 1.5;
+const REFERENCE_GRID_MM = 1.25;
+const REFERENCE_LEVEL_STEP_MM = 1;
+
+/** Wireframe cross-section spacing and per-strip sample spacing, scaled to keep strip/point counts constant. */
+export function wireframeSampleSteps(p: EnricoCerutiParams): { stationStepMm: number; sampleStepMm: number } {
+  const stationStepMm = clamp(
+    REFERENCE_STATION_STEP_MM * (p.height / REFERENCE_BODY_HEIGHT), 2, 15,
+  );
+  const sampleStepMm = clamp(
+    REFERENCE_SAMPLE_STEP_MM * (p.width / REFERENCE_BODY_WIDTH), 0.75, 5,
+  );
+  return { stationStepMm, sampleStepMm };
+}
+
+/** Contour height step and marching-squares grid spacing, scaled to keep level count and grid point count constant. */
+export function contourSampleSteps(p: EnricoCerutiParams, archHeight: number): { stepMm: number; gridMm: number } {
+  const areaScale = Math.sqrt(
+    (p.width * p.height) / (REFERENCE_BODY_WIDTH * REFERENCE_BODY_HEIGHT),
+  );
+  const stepMm = clamp(
+    REFERENCE_LEVEL_STEP_MM * (archHeight / REFERENCE_ARCH_HEIGHT), 0.5, 6,
+  );
+  const gridMm = clamp(REFERENCE_GRID_MM * areaScale, 0.75, 4);
+  return { stepMm, gridMm };
+}
+
+function buildArchPath(arch: ArchCurve, span: number, yStart: number, xBase: number, sign: 1 | -1): string {
+  const h = arch.archHeight;
+  switch (arch.type) {
+    case 'catenary': return buildCatenaryPath(h, span, yStart, xBase, sign);
+    case 'cycloid':  return buildCycloidPath(h, span, yStart, xBase, sign, arch.d);
+    case 'spline':   return buildSplinePath(h, span, yStart, xBase, sign, arch.points);
+  }
+}
+
+export function calculateLongArch(p: EnricoCerutiParams): { span: number; yStart: number; topPath: string; backPath: string } {
+  const a = p.arching!;
+  const span   = p.height - 2 * (p.innerFlutingDepth ?? 0);
+  const yStart =  p.innerFlutingDepth ?? 0;
+
+  // edgeDepth lowers the arch takeoff below the plate surface by that many mm, increasing
+  // hEff by the same amount so the peak stays anchored at the user-entered archHeight.
+  const topED  = a.top.edgeDepth;
+  const botED  = a.bottom.edgeDepth;
+
+  const topPath  = buildArchPath(
+    { ...a.top.arch,    archHeight: a.top.arch.archHeight    + topED },
+    span, yStart, a.ribHeight + a.top.thickness - topED, 1,
+  );
+  const backPath = buildArchPath(
+    { ...a.bottom.arch, archHeight: a.bottom.arch.archHeight + botED },
+    span, yStart, -a.bottom.thickness + botED, -1,
+  );
+  return { span, yStart, topPath, backPath };
+}
+
+/**
+ * Long-arch height above the plate-edge reference at body height `y` — the
+ * evaluable counterpart of calculateLongArch's paths. Returns 0 outside the
+ * arch span. This is the centerline (x = 0) peak constraint for cross arches.
+ */
+export function longArchHeightAt(p: EnricoCerutiParams, arch: ArchCurve, y: number): number {
+  const span   = p.height - 2 * (p.innerFlutingDepth ?? 0);
+  const yStart = p.innerFlutingDepth ?? 0;
+  const s = y - yStart;
+  switch (arch.type) {
+    case 'catenary': return catenaryZAt(arch.archHeight, span, s);
+    case 'cycloid':  return cycloidZAt(arch.archHeight, span, arch.d, s);
+    case 'spline':   return splineZAt(arch.archHeight, span, arch.points, s);
+  }
+}
+
+/** Default cross-arch shape: a mid-range curtate factor, full cycloid window. */
+export function defaultCrossArchParams(): CrossArchParams {
+  return { d: 0.4, pct: .9 };
+}
+
+/** Default fluting channel: the carved gouge-arc, tangent to the cross arch. */
+export function defaultFlutingChannelParams(): FlutingChannelParams {
+  return { flatPlatform: false };
+}
+
+/**
+ * Trough position across the platform annulus (0 = platform outer boundary,
+ * 1 = fluting inner boundary). Uses the plate's troughT when set, otherwise
+ * places the trough on the purfling line via the plan-view offsets. Clamped
+ * away from the boundaries so both profile half-waves keep a real width.
+ */
+export function resolveTroughU(p: EnricoCerutiParams, side: 'top' | 'bottom' = 'top'): number {
+  const outer = p.outerFlutingDepth ?? 0;
+  const inner = p.innerFlutingDepth ?? 0;
+  const width = inner - outer;
+  if (width <= 0) return 1;
+  const edgeDepth = p.arching?.[side].edgeDepth ?? 0;
+  const y = p.bouts.C0?.y ?? p.height / 2;
+  const arc = flutingArc(edgeDepth, width, crossArchEdgeSlopeAt(p, y, side));
+  return arc ? Math.min(Math.max(arc.cx / width, 0), 1) : 1;
+}
+
+/**
+ * The top-plate cross arch at body height `y`: a trochoid spanning the fluting
+ * inner-boundary chord, peaking at the long arch's height at that station —
+ * built in section coordinates (canvas X = violin X, canvas Y = Z, taking off
+ * from the plate's outer edge surface). Returns null where no arch exists.
+ *
+ * `edgeDepth` lowers the cycloid's edge takeoff below the plate surface by that
+ * many mm, increasing hEff by the same amount so the center peak stays anchored
+ * at the long arch height. This gives the fluting channel a meaningful slope to
+ * meet regardless of the trochoid factor.
+ */
+export function calculateCrossArchTop(p: EnricoCerutiParams, y: number, side: 'top' | 'bottom' = 'top'): { path: string; halfSpan: number } | null {
+  const a = p.arching!;
+  const plate = a[side];
+  const halfSpan = flutingHalfWidthAtY(p, y);
+  if (halfSpan === null || halfSpan <= 0) return null;
+  const h = longArchHeightAt(p, plate.arch, y);
+  if (h <= 0) return null;
+  const d = plate.cross?.d ?? defaultCrossArchParams().d;
+  const pct = plate.cross?.pct ?? defaultCrossArchParams().pct;
+  const edgeDepth = plate.edgeDepth;
+  // Outer-surface Z of the plate: top grows up from the rib, back grows down.
+  // sign folds the arch (and its edge-depth takeoff) to the correct side.
+  const sign: 1 | -1 = side === 'top' ? 1 : -1;
+  const outerZ = side === 'top' ? a.ribHeight + plate.thickness : -plate.thickness;
+  const zBase = outerZ - sign * edgeDepth;
+  const hEff  = h + edgeDepth;
+  return { path: buildCycloidPathAcross(hEff, 2 * halfSpan, -halfSpan, zBase, sign, d, 80, pct), halfSpan };
+}
+
+/**
+ * The cross arch's own slope at its takeoff (the fluting inner boundary) at
+ * body height `y` — what the fluting channel's gouge arc must be tangent to
+ * there. Same hEff/span construction as {@link calculateCrossArchTop}; 0
+ * where no arch exists at this station (cap stations, or pct = 1's flat
+ * takeoff).
+ */
+export function crossArchEdgeSlopeAt(p: EnricoCerutiParams, y: number, side: 'top' | 'bottom' = 'top'): number {
+  const plate = p.arching![side];
+  const halfSpan = flutingHalfWidthAtY(p, y);
+  if (halfSpan === null || halfSpan <= 0) return 0;
+  const h = longArchHeightAt(p, plate.arch, y);
+  if (h <= 0) return 0;
+  const d = plate.cross?.d ?? defaultCrossArchParams().d;
+  const pct = plate.cross?.pct ?? defaultCrossArchParams().pct;
+  const edgeDepth = plate.edgeDepth;
+  return cycloidEdgeSlope(h + edgeDepth, 2 * halfSpan, d, pct);
+}
+
+/** Outermost |x| where the horizontal station line crosses any of the arcs' drawn spans; null if none. */
+function maxAbsXAtY(arcs: Arc[], y: number): number | null {
+    let best: number | null = null;
+    for (const arc of arcs) {
+        if (!arc) continue;
+        for (const pt of arcHorizontalIntersections(arc, y)) {
+            if (best === null || Math.abs(pt.x) > best) best = Math.abs(pt.x);
+        }
+    }
+    return best;
+}
+
+/**
+ * Half-width of the inner (mould) outline at body height `y`. The outline is
+ * symmetric about x = 0 so the unmirrored arcs suffice. Returns null when the
+ * station line misses the outline entirely (beyond the top/bottom caps).
+ */
+export function innerHalfWidthAtY(p: EnricoCerutiParams, y: number): number | null {
+    return maxAbsXAtY(defineInnerArcs(p), y);
+}
+
+/**
+ * Half-width of the finished plate edge (outer path) at body height `y`.
+ * Requires p.outerCorners to be current (calculateOuterArcs) since the corner
+ * region's outermost extent lies on the outer corner arcs.
+ */
+export function outerHalfWidthAtY(p: EnricoCerutiParams, y: number, offset?: number): number | null {
+    offset ??= p.overhang + p.rib;
+    const arcs = [...defineOffsetArcs(p, offset), ...defineOuterCornerArcs(p, offset)];
+    return maxAbsXAtY(arcs, y);
+}
+
+/**
+ * Half-width of the fluting platform's inner boundary at body height `y` —
+ * the outer path inset by innerFlutingDepth. This is where the cross arches
+ * take off. Falls back to the plate edge when fluting isn't configured.
+ */
+export function flutingHalfWidthAtY(p: EnricoCerutiParams, y: number): number | null {
+    if (p.innerFlutingDepth === null) return outerHalfWidthAtY(p, y);
+    const offset = p.overhang + p.rib - p.innerFlutingDepth;
+    return maxAbsXAtY(defineFlutingArcs(p, offset), y);
+}
+
+/**
+ * Half-width of the fluting platform's outer boundary (the outer path inset by
+ * outerFlutingDepth, per defineInsetPath) at body height `y`. Chords the bout
+ * offset arcs only — near the corner cutoffs this reads slightly inboard of
+ * the true boundary, which only shifts the trace/fluting colour transition
+ * there, never the platform's connection to the cross arch.
+ */
+export function flutingOuterHalfWidthAtY(p: EnricoCerutiParams, y: number): number | null {
+    const offset = p.overhang + p.rib - (p.outerFlutingDepth ?? 0);
+    return maxAbsXAtY(defineOffsetArcs(p, offset), y);
+}
