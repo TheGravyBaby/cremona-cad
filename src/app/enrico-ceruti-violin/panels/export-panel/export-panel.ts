@@ -7,7 +7,7 @@ import { downloadDxfFile } from '../../../helpers/dxfExporter';
 import { downloadStlFile } from '../../../helpers/stlExporter';
 import { renderFilledPath, renderPath } from '../../../helpers/renderFuncs';
 import { error } from '../../../shared/message-emitter';
-import { calculateCornerBlocks, calculateOuterArcs, defaultCrossArchParams, defaultFlutingChannelParams } from '../../ceruti-calcs';
+import { calculateCornerBlocks, calculateMould, calculateOuterArcs, defaultCrossArchParams, defaultFlutingChannelParams } from '../../ceruti-calcs';
 import { buildPlateStl, buildPlateSurfaceModel } from '../../ceruti-surface';
 import { CerutiColors, EnricoCerutiParams, PathEntry } from '../../ceruti-types';
 
@@ -66,7 +66,9 @@ export class ExportPanel implements OnInit {
         break;
       }
       case 'mould': {
-        this.draftChange.emit([renderPath(this.getPath('mould'), this.colors.mouldTrace)]);
+        // Computed directly rather than read from the cache — it's export-only and
+        // too expensive (10x denser boolean diff) to keep current on every edit.
+        this.draftChange.emit([renderPath(calculateMould(p, true, false), this.colors.mouldTrace)]);
         break;
       }
       case 'blocks': {
@@ -99,7 +101,7 @@ export class ExportPanel implements OnInit {
         break;
       }
       case 'mould':
-        paths = [{ d: this.getPath('mould'), stroke: 'black', fill: 'none', strokeWidth: '.5' }];
+        paths = [{ d: calculateMould(p, true, false), stroke: 'black', fill: 'none', strokeWidth: '.5' }];
         break;
       case 'blocks':
         paths = [{ d: combinePathStrings(calculateCornerBlocks(p, this.getPath('inner'))), stroke: 'black', fill: 'none', strokeWidth: '.5' }];
@@ -148,7 +150,7 @@ export class ExportPanel implements OnInit {
         break;
       }
       case 'mould':
-        pathD = this.getPath('mould');
+        pathD = calculateMould(p, true, false);
         break;
       case 'blocks':
         pathD = combinePathStrings(calculateCornerBlocks(p, this.getPath('inner')));
@@ -186,7 +188,7 @@ export class ExportPanel implements OnInit {
         break;
       }
       case 'mould':
-        pdfPaths = [{ d: this.getPath('mould'), stroke: 'black', fill: 'none' }];
+        pdfPaths = [{ d: calculateMould(p, true, false), stroke: 'black', fill: 'none' }];
         break;
       case 'blocks':
         pdfPaths = [{ d: combinePathStrings(calculateCornerBlocks(p, this.getPath('inner'))), stroke: 'black', fill: 'none' }];
@@ -260,7 +262,7 @@ export class ExportPanel implements OnInit {
         description,
         width: p.width,
         height,
-        paths: [{ d: this.getPath('mould'), stroke: 'black', fill: 'none' }],
+        paths: [{ d: calculateMould(p, true, false), stroke: 'black', fill: 'none' }],
       },
       {
         label: 'Blocks',
