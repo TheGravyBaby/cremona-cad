@@ -74,7 +74,7 @@ function buildPathMarkup(paths: SvgPathExport[], strokeWidth: (p: SvgPathExport)
 // keeping labels upright (and rotated the intended way) regardless of the outer flip.
 function buildTextMarkup(texts: SvgTextExport[]): string {
   return texts
-    .map(t => `<text transform="translate(${t.x} ${t.y}) scale(1 -1) rotate(${t.rotationDeg ?? 0})" text-anchor="middle" dominant-baseline="central" fill="${t.color ?? 'black'}" font-size="${t.fontSize ?? 5}">${t.text}</text>`)
+    .map(t => `<text transform="translate(${t.x} ${t.y}) scale(1 -1) rotate(${-(t.rotationDeg ?? 0)})" text-anchor="middle" dominant-baseline="central" fill="${t.color ?? 'black'}" font-size="${t.fontSize ?? 5}">${t.text}</text>`)
     .join('');
 }
 
