@@ -1,4 +1,4 @@
-import { Circle, Pt, Rectangle, ReferenceImage } from '../models/types';
+import { Circle, Pt, Rectangle, ReferenceImage } from '../../src/app/models/types';
 
 export interface KellyParams {
 	height: number;
