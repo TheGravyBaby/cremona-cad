@@ -66,7 +66,8 @@ export class RecipeToolbarComponent {
         }
 
         if (data.version && data.version !== RECIPE_SCHEMA_VERSION) {
-          this.messages.warn({
+          this.messages.emit({
+            severity: 'warn',
             title: 'Older file format',
             message: `This file uses schema version "${data.version}" (current: "${RECIPE_SCHEMA_VERSION}"). It has been loaded, but some fields may be missing or behave unexpectedly.`,
             autoDismiss: false,

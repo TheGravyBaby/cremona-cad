@@ -54,10 +54,6 @@ export class MessageService {
     this.messagesSubject.next(this._messages);
   }
 
-  error(input: MessageInput) { this.emit(typeof input === 'string' ? { message: input, severity: 'error' } : { ...input, severity: 'error' }); }
-  warn(input: MessageInput)  { this.emit(typeof input === 'string' ? { message: input, severity: 'warn'  } : { ...input, severity: 'warn'  }); }
-  info(input: MessageInput)  { this.emit(typeof input === 'string' ? { message: input, severity: 'info'  } : { ...input, severity: 'info'  }); }
-
   // clear one or all
   clear(id?: string) {
     if (!id) this._messages = [];
