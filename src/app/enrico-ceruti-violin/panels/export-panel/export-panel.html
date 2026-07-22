@@ -78,6 +78,30 @@
                 <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadDxf('blocks')">DXF</button>
             </div>
         </div>
+        <div class="export-row">
+            <div class="export-row__label">
+                <span class="export-row__name">Long Arch Templates</span>
+                <span class="export-row__desc">Centerline profile strips, top and back</span>
+            </div>
+            <div class="export-row__actions">
+                <button type="button" class="recipe-btn" (click)="previewExport('longArchTemplates')">Preview</button>
+                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('longArchTemplates')">SVG</button>
+                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('longArchTemplates')">PDF</button>
+                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadDxf('longArchTemplates')">DXF</button>
+            </div>
+        </div>
+        <div class="export-row">
+            <div class="export-row__label">
+                <span class="export-row__name">Cross Arch Templates</span>
+                <span class="export-row__desc">5 cross-section strips per plate, evenly spaced</span>
+            </div>
+            <div class="export-row__actions">
+                <button type="button" class="recipe-btn" (click)="previewExport('crossArchTemplates')">Preview</button>
+                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('crossArchTemplates')">SVG</button>
+                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('crossArchTemplates')">PDF</button>
+                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadDxf('crossArchTemplates')">DXF</button>
+            </div>
+        </div>
     </div>
 </section>
 

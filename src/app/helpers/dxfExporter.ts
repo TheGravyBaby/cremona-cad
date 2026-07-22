@@ -4,6 +4,8 @@ type DxfEntity =
   | { type: 'LINE'; x0: number; y0: number; x1: number; y1: number }
   | { type: 'ARC'; cx: number; cy: number; r: number; startAngleDeg: number; endAngleDeg: number };
 
+export type DxfText = { text: string; x: number; y: number; height: number; rotationDeg?: number };
+
 const TWO_PI = Math.PI * 2;
 const toDeg = (rad: number) => (rad * 180) / Math.PI;
 const normalizeRad = (rad: number) => ((rad % TWO_PI) + TWO_PI) % TWO_PI;
@@ -141,7 +143,7 @@ export function pathToDxfEntities(d: string): DxfEntity[] {
   return entities;
 }
 
-function buildDxfFile(entities: DxfEntity[]): string {
+function buildDxfFile(entities: DxfEntity[], texts: DxfText[] = []): string {
   const lines: string[] = [];
   const push = (code: number, value: string | number) => {
     lines.push(String(code), String(value));
@@ -166,6 +168,15 @@ function buildDxfFile(entities: DxfEntity[]): string {
       push(51, entity.endAngleDeg.toFixed(4));
     }
   }
+  for (const t of texts) {
+    push(0, 'TEXT'); push(8, '0');
+    push(10, t.x.toFixed(4)); push(20, t.y.toFixed(4)); push(30, '0.0');
+    push(40, t.height.toFixed(4));
+    push(1, t.text);
+    push(50, (t.rotationDeg ?? 0).toFixed(4));
+    push(72, 1); push(73, 2); // horizontal/vertical justification: middle-center
+    push(11, t.x.toFixed(4)); push(21, t.y.toFixed(4)); push(31, '0.0'); // alignment point, required for justified text
+  }
   push(0, 'ENDSEC');
 
   push(0, 'EOF');
@@ -173,9 +184,9 @@ function buildDxfFile(entities: DxfEntity[]): string {
   return lines.join('\n') + '\n';
 }
 
-export function downloadDxfFile(filename: string, pathD: string): void {
+export function downloadDxfFile(filename: string, pathD: string, texts: DxfText[] = []): void {
   const entities = pathToDxfEntities(pathD);
-  const dxfContent = buildDxfFile(entities);
+  const dxfContent = buildDxfFile(entities, texts);
 
   const blob = new Blob([dxfContent], { type: 'application/dxf' });
   const url = URL.createObjectURL(blob);
