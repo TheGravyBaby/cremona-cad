@@ -292,6 +292,18 @@ export const renderPath = (path: string, color: string, strokeWidth: number = 2,
         .attr('vector-effect', 'non-scaling-stroke');;
 };
 
+/** Plain centered label at a drafting point, upright regardless of the canvas Y-flip (and rotation, if given). */
+export const renderText = (P: Pt, label: string, color: string = 'black', fontSize: number = 5, rotationDeg: number = 0) => (g: any, ui: any) => {
+    ui.append("text")
+        .text(label)
+        .attr("transform", `translate(${P.x},${-P.y}) rotate(${-rotationDeg})`)
+        .attr("fill", color)
+        .attr("font-size", fontSize)
+        .attr("text-anchor", "middle")
+        .attr("dominant-baseline", "central")
+        .attr("vector-effect", "non-scaling-stroke");
+};
+
 export const renderFilledPath = (path: string, fill: string, opacity: number = 0.15, fillRule: 'evenodd' | 'nonzero' = 'evenodd') => (g: any, ui: any) => {
     g.append("path")
         .attr("d", path)

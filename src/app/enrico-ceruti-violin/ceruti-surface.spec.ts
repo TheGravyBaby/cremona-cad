@@ -1,9 +1,10 @@
-import { flutingProfileZ } from '../helpers/svgPathMath';
+import { flutingProfileZ, pathsBounds } from '../helpers/svgPathMath';
 import { calculateCenterBout, calculateCorners, calculateMainBouts, calculateOuterArcs } from './ceruti-calcs';
-import { defaultArchingParams, defaultCrossArchParams, defaultFlutingChannelParams } from './ceruti-arching';
+import { defaultArchingParams, defaultCrossArchParams, defaultFlutingChannelParams, longArchHeightAt } from './ceruti-arching';
 import {
-  buildPlateStl, buildPlateSurfaceModel, calculateFlutingSectionTop,
-  computeArchContours, stationChordsAt, topSurfaceZAt, PlateSurfaceModel,
+  buildPlateStl, buildPlateSurfaceModel, calculateCrossArchTemplates, calculateFlutingSectionTop,
+  calculateLongArchTemplates, computeArchContours, computeArchSectionProfile, crossArchTemplateStationYs,
+  stationChordsAt, topSurfaceZAt, PlateSurfaceModel,
 } from './ceruti-surface';
 import { DefaultParams, EnricoCerutiParams } from './ceruti-types';
 
@@ -164,6 +165,82 @@ describe('top surface height field', () => {
     const triCount = dv.getUint32(80, true);
     expect(triCount).toBeGreaterThan(1000);
     expect(buf.byteLength).toBe(84 + triCount * 50);
+  });
+});
+
+describe('arching templates', () => {
+  let p: EnricoCerutiParams;
+  let model: PlateSurfaceModel;
+
+  beforeEach(() => {
+    p = makeParams();
+    model = buildPlateSurfaceModel(p, 'top')!;
+  });
+
+  it('sweeps the full station width in one continuous path, matching the height field', () => {
+    const y = p.height / 2;
+    const profile = computeArchSectionProfile(p, model, y)!;
+    expect(profile).toBeTruthy();
+    expect(profile.startsWith('M')).toBe(true);
+    const chords = stationChordsAt(p, model, y);
+    const z = topSurfaceZAt(p, model, 0, y, chords)!;
+    expect(profile).toContain(`0 ${model.zBase + model.signZ * z}`);
+  });
+
+  it('returns null off the plate', () => {
+    expect(computeArchSectionProfile(p, model, -10)).toBeNull();
+    expect(computeArchSectionProfile(p, model, p.height + 50)).toBeNull();
+  });
+
+  it('picks 5 interior stations, never the zero-height ends of the long arch', () => {
+    const stations = crossArchTemplateStationYs(p);
+    expect(stations.length).toBe(5);
+    for (const y of stations) {
+      expect(longArchHeightAt(p, p.arching!.top.arch, y)).toBeGreaterThan(0);
+    }
+  });
+
+  it('builds one closed, labeled blank per station per plate side', () => {
+    const shapes = calculateCrossArchTemplates(p);
+    expect(shapes.length).toBe(10);
+    for (const s of shapes) {
+      expect(s.path.trim().endsWith('Z')).toBe(true);
+      expect(s.label).toMatch(/^(Top|Back) \d+mm$/);
+    }
+    expect(shapes.some(s => s.label.startsWith('Top'))).toBe(true);
+    expect(shapes.some(s => s.label.startsWith('Back'))).toBe(true);
+  });
+
+  it('places each cross-arch label inside its own blank’s bounds', () => {
+    for (const s of calculateCrossArchTemplates(p)) {
+      const b = pathsBounds([s.path]);
+      expect(s.labelPos.x).toBeGreaterThanOrEqual(b.minX);
+      expect(s.labelPos.x).toBeLessThanOrEqual(b.maxX);
+      expect(s.labelPos.y).toBeGreaterThanOrEqual(b.minY);
+      expect(s.labelPos.y).toBeLessThanOrEqual(b.maxY);
+    }
+  });
+
+  it('cross-arch templates are empty without arching configured', () => {
+    const bare = makeParams();
+    bare.arching = undefined;
+    expect(calculateCrossArchTemplates(bare)).toEqual([]);
+  });
+
+  it('builds one closed, labeled blank per plate side for the long arch', () => {
+    const shapes = calculateLongArchTemplates(p);
+    expect(shapes.length).toBe(2);
+    expect(shapes.map(s => s.label).sort()).toEqual(['Back Long', 'Top Long']);
+    for (const s of shapes) {
+      expect(s.path.trim().endsWith('Z')).toBe(true);
+      expect(s.labelRotation).toBe(90);
+    }
+  });
+
+  it('long-arch templates are empty without arching configured', () => {
+    const bare = makeParams();
+    bare.arching = undefined;
+    expect(calculateLongArchTemplates(bare)).toEqual([]);
   });
 });
 

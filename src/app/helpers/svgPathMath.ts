@@ -797,6 +797,42 @@ export function translatePath(path: string, dx: number, dy: number): string {
 }
 
 /**
+ * Rotates an absolute SVG path string 180° about the origin (negates every
+ * coordinate). Unlike a mirror/reflection, a point rotation preserves
+ * concavity — it's the safe way to re-orient a shape (e.g. which edge of a
+ * template faces "up") without flipping a carefully-mirrored cutout curve
+ * back into its original, wrong-handed shape. Supports M, L, C, A, Q, and Z.
+ */
+export function rotatePath180(path: string): string {
+  return path.replace(/([A-DF-Za-df-z])([^A-DF-Za-df-z]*)/g, (_, cmd: string, args: string) => {
+    const nums = args.trim().split(/[\s,]+/).filter((s: string) => s.length > 0).map(Number);
+    switch (cmd.toUpperCase()) {
+      case 'M':
+      case 'L':
+      case 'C':
+        for (let i = 0; i < nums.length; i += 2) { nums[i] = -nums[i]; nums[i + 1] = -nums[i + 1]; }
+        break;
+      case 'A':
+        // A rx ry x-rotation large-arc-flag sweep-flag x y — a point reflection flips the sweep direction.
+        for (let i = 0; i < nums.length; i += 7) {
+          nums[i + 4] = nums[i + 4] ? 0 : 1;
+          nums[i + 5] = -nums[i + 5]; nums[i + 6] = -nums[i + 6];
+        }
+        break;
+      case 'Q':
+        for (let i = 0; i < nums.length; i += 4) {
+          nums[i] = -nums[i]; nums[i + 1] = -nums[i + 1];
+          nums[i + 2] = -nums[i + 2]; nums[i + 3] = -nums[i + 3];
+        }
+        break;
+      case 'Z':
+        return cmd;
+    }
+    return cmd + ' ' + nums.join(' ');
+  });
+}
+
+/**
  * Sample an SVG path string into a polyline at roughly `stepMm` spacing.
  * The path is assumed closed (or close to it); the duplicate closing point
  * is not emitted, so consumers can treat the result as a closed loop.
@@ -811,6 +847,60 @@ export function samplePathToPolyline(path: string, stepMm = 1): Pt[] {
     pts.push({ x: pt.x, y: pt.y });
   }
   return pts;
+}
+
+/** Combined bounding box of one or more path strings, sampled via {@link samplePathToPolyline}. */
+export function pathsBounds(paths: string[]): { minX: number; minY: number; maxX: number; maxY: number; width: number; height: number } {
+  const pts = paths.flatMap(path => samplePathToPolyline(path, 0.5));
+  if (!pts.length) return { minX: 0, minY: 0, maxX: 0, maxY: 0, width: 0, height: 0 };
+  const xs = pts.map(pt => pt.x), ys = pts.map(pt => pt.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  return { minX, minY, maxX, maxY, width: maxX - minX, height: maxY - minY };
+}
+
+/**
+ * Close an open arch profile into a rectangular *negative* template blank: a
+ * maker checks a carved (convex) arch by laying a matching concave cutout
+ * against it and reading the light gaps, so the raw profile — a direct trace
+ * of the wood's own convex surface — is mirrored about its own height axis
+ * *first*, and the backing edge is built against that mirrored curve, not the
+ * original. (Mirroring the already-closed positive shape instead just moves
+ * the backing to the wrong side, leaving the solid convex again.)
+ *
+ * `heightAxis` selects which coordinate carries the "height" the curve varies
+ * over — 'y' for a cross-arch profile (x = body position, y = absolute Z, per
+ * {@link computeArchSectionProfile}), 'x' for a long-arch profile (x =
+ * absolute Z, y = body length, per {@link buildCatenaryPath}'s convention).
+ *
+ * `direction` must match the plate's sign/signZ convention (+1 top, −1 back):
+ * on the *mirrored* curve, the arch's peak sits on the low side of
+ * `heightAxis` for the top plate but the high side for the back plate. The
+ * backing edge is placed `margin` past that peak, so material stays thin near
+ * the peak (where the template must recess to receive it) and thicker toward
+ * the flat edges — never landing past the peak on the wrong side.
+ *
+ * Returns the backing edge's constant coordinate and the curve's position-axis
+ * midpoint alongside the closed path, so a caller can place a label at
+ * `margin/2` in from the backing — guaranteed solid material everywhere,
+ * unlike a naive bounding-box center which can land right on the cutout.
+ */
+export function closeProfileToBlank(path: string, heightAxis: 'x' | 'y', direction: 1 | -1 = 1, margin = 10): { path: string; backing: number; positionMid: number } {
+  const pts = samplePathToPolyline(path, 0.25);
+  if (pts.length < 2) return { path, backing: 0, positionMid: 0 };
+  const mirror = (pt: Pt): Pt => heightAxis === 'x' ? { x: -pt.x, y: pt.y } : { x: pt.x, y: -pt.y };
+  const curve = pts.map(mirror);
+  const heights = curve.map(pt => heightAxis === 'x' ? pt.x : pt.y);
+  const positions = curve.map(pt => heightAxis === 'x' ? pt.y : pt.x);
+  const baseline = direction === 1 ? Math.min(...heights) - margin : Math.max(...heights) + margin;
+  const positionMid = (Math.min(...positions) + Math.max(...positions)) / 2;
+  const first = curve[0];
+  const last = curve[curve.length - 1];
+  const atBaseline = (pt: Pt): Pt => heightAxis === 'x' ? { x: baseline, y: pt.y } : { x: pt.x, y: baseline };
+  const b1 = atBaseline(last);
+  const b2 = atBaseline(first);
+  const curveStr = curve.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt.x} ${pt.y}`).join(' ');
+  return { path: `${curveStr} L ${b1.x} ${b1.y} L ${b2.x} ${b2.y} Z`, backing: baseline, positionMid };
 }
 
 // ===== Arch curve path builders =====

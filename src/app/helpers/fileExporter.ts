@@ -10,11 +10,22 @@ export type SvgPathExport = {
   strokeWidth?: number | string;
 };
 
+export type SvgTextExport = {
+  text: string;
+  x: number;
+  y: number;
+  fontSize?: number;
+  color?: string;
+  /** Degrees, counter-clockwise in drafting space (before the export's Y-flip). */
+  rotationDeg?: number;
+};
+
 export type PdfPage = {
   label: string;
   width: number;
   height: number;
   paths: SvgPathExport[];
+  texts?: SvgTextExport[];
   fileName?: string;
   description?: string;
 };
@@ -45,45 +56,53 @@ const INNER_PAD = 3;      // mm gap between content border and path
 
 // ─── SVG builders ────────────────────────────────────────────────────────────
 
-export function buildMirroredSvg(
-  width: number,
-  height: number,
-  paths: SvgPathExport[]
-): string {
-  const viewBox = `${-width / 2} 0 ${width} ${height}`;
-  const pathMarkup = paths
+function buildPathMarkup(paths: SvgPathExport[], strokeWidth: (p: SvgPathExport) => number | string): string {
+  return paths
     .map(p => {
       const extras = [
         p.fillRule ? ` fill-rule="${p.fillRule}"` : '',
         p.fillOpacity != null ? ` fill-opacity="${p.fillOpacity}"` : '',
       ].join('');
-      return `<path d="${p.d}" fill="${p.fill ?? 'none'}" stroke="${p.stroke ?? 'black'}" stroke-width="${p.strokeWidth ?? 0.5}"${extras}/>`;
+      return `<path d="${p.d}" fill="${p.fill ?? 'none'}" stroke="${p.stroke ?? 'black'}" stroke-width="${strokeWidth(p)}"${extras}/>`;
     })
     .join('');
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}"><g transform="translate(0 ${height}) scale(1 -1)">${pathMarkup}</g></svg>`;
+}
+
+// The root <g> flips Y so drafting coordinates (Y-up) land correctly in SVG's Y-down
+// space; that flip would also mirror text glyphs, so each <text> carries its own
+// counter-transform — translate to its drafting position, undo the flip, then rotate —
+// keeping labels upright (and rotated the intended way) regardless of the outer flip.
+function buildTextMarkup(texts: SvgTextExport[]): string {
+  return texts
+    .map(t => `<text transform="translate(${t.x} ${t.y}) scale(1 -1) rotate(${t.rotationDeg ?? 0})" text-anchor="middle" dominant-baseline="central" fill="${t.color ?? 'black'}" font-size="${t.fontSize ?? 5}">${t.text}</text>`)
+    .join('');
+}
+
+export function buildMirroredSvg(
+  width: number,
+  height: number,
+  paths: SvgPathExport[],
+  texts: SvgTextExport[] = []
+): string {
+  const viewBox = `${-width / 2} 0 ${width} ${height}`;
+  const markup = buildPathMarkup(paths, p => p.strokeWidth ?? 0.5) + buildTextMarkup(texts);
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}"><g transform="translate(0 ${height}) scale(1 -1)">${markup}</g></svg>`;
 }
 
 function buildScaledSvg(
   width: number,
   height: number,
-  paths: SvgPathExport[]
+  paths: SvgPathExport[],
+  texts: SvgTextExport[] = []
 ): string {
   const viewBox = `${-width / 2} 0 ${width} ${height}`;
-  const pathMarkup = paths
-    .map(p => {
-      const extras = [
-        p.fillRule ? ` fill-rule="${p.fillRule}"` : '',
-        p.fillOpacity != null ? ` fill-opacity="${p.fillOpacity}"` : '',
-      ].join('');
-      return `<path d="${p.d}" fill="${p.fill ?? 'none'}" stroke="${p.stroke ?? 'black'}" stroke-width="0.5"${extras}/>`;
-    })
-    .join('');
+  const markup = buildPathMarkup(paths, () => 0.5) + buildTextMarkup(texts);
   return [
     `<svg xmlns="http://www.w3.org/2000/svg"`,
     `     width="${width}mm" height="${height}mm"`,
     `     viewBox="${viewBox}">`,
     `  <g transform="translate(0 ${height}) scale(1 -1)">`,
-    `    ${pathMarkup}`,
+    `    ${markup}`,
     `  </g>`,
     `</svg>`,
   ].join('\n');
@@ -296,7 +315,8 @@ export async function downloadSvgAsPdf(
   width: number,
   height: number,
   paths: SvgPathExport[],
-  meta?: { fileName?: string; description?: string; sheetLabel?: string }
+  meta?: { fileName?: string; description?: string; sheetLabel?: string },
+  texts: SvgTextExport[] = []
 ): Promise<void> {
   const match = findStandardPage(width, height);
 
@@ -334,7 +354,7 @@ export async function downloadSvgAsPdf(
     format: [pageW, pageH],
   });
 
-  const svgString = buildScaledSvg(width, height, paths);
+  const svgString = buildScaledSvg(width, height, paths, texts);
   const parser = new DOMParser();
   const svgEl = parser.parseFromString(svgString, 'image/svg+xml')
     .documentElement as unknown as SVGSVGElement;
@@ -365,7 +385,7 @@ export async function downloadFullPlanPdf(
   let doc: InstanceType<typeof jsPDF> | null = null;
 
   for (let i = 0; i < pages.length; i++) {
-    const { label, width, height, paths, fileName, description } = pages[i];
+    const { label, width, height, paths, texts, fileName, description } = pages[i];
 
     const match = findStandardPage(width, height);
     let pageW: number;
@@ -405,7 +425,7 @@ export async function downloadFullPlanPdf(
       doc.addPage([pageW, pageH], width > height ? 'landscape' : 'portrait');
     }
 
-    const svgString = buildScaledSvg(width, height, paths);
+    const svgString = buildScaledSvg(width, height, paths, texts);
     const svgEl = parser.parseFromString(svgString, 'image/svg+xml')
       .documentElement as unknown as SVGSVGElement;
     await svg2pdf(svgEl, doc, { x: offsetX, y: offsetY, width, height });

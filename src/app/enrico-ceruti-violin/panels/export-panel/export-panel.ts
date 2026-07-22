@@ -1,18 +1,24 @@
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { pointOnCircle } from '../../../helpers/draftMath';
-import { combinePathStrings } from '../../../helpers/svgPathMath';
-import { buildMirroredSvg, downloadFullPlanPdf, downloadSvgAsPdf, downloadSvgFile, PdfPage, SvgPathExport } from '../../../helpers/fileExporter';
-import { downloadDxfFile } from '../../../helpers/dxfExporter';
+import { combinePathStrings, pathsBounds } from '../../../helpers/svgPathMath';
+import { buildMirroredSvg, downloadFullPlanPdf, downloadSvgAsPdf, downloadSvgFile, PdfPage, SvgPathExport, SvgTextExport } from '../../../helpers/fileExporter';
+import { downloadDxfFile, DxfText } from '../../../helpers/dxfExporter';
 import { downloadStlFile } from '../../../helpers/stlExporter';
-import { renderFilledPath, renderPath } from '../../../helpers/renderFuncs';
+import { renderFilledPath, renderPath, renderText } from '../../../helpers/renderFuncs';
 import { error } from '../../../shared/message-emitter';
 import { calculateCornerBlocks, calculateMould, calculateOuterArcs } from '../../ceruti-calcs';
 import { defaultCrossArchParams, defaultFlutingChannelParams } from '../../ceruti-arching';
-import { buildPlateStl, buildPlateSurfaceModel } from '../../ceruti-surface';
+import { buildPlateStl, buildPlateSurfaceModel, calculateCrossArchTemplates, calculateLongArchTemplates, TemplateShape } from '../../ceruti-surface';
 import { CerutiColors, EnricoCerutiParams, PathEntry } from '../../ceruti-types';
 
-type ExportType = 'innerTrace' | 'outerTrace' | 'back' | 'mould' | 'blocks';
+type ExportType = 'innerTrace' | 'outerTrace' | 'back' | 'mould' | 'blocks' | 'crossArchTemplates' | 'longArchTemplates';
+
+/** Templates are laid out in their own coordinate frame (not the violin's plan-view box), so their
+ *  export sheet is sized from the actual combined geometry rather than the shared plan dimensions. */
+const TEMPLATE_SHEET_PAD = 5;
+/** Label text size (mm), consistent across the canvas preview, SVG/PDF, and DXF exports. */
+const TEMPLATE_LABEL_SIZE = 5;
 
 @Component({
   selector: 'app-ceruti-export-panel',
@@ -38,6 +44,27 @@ export class ExportPanel implements OnInit {
   /** Same, but for keys that are legitimately absent (e.g. purfling not yet configured). */
   private getPathOrNull(key: string): string | null {
     return this.paths.find(entry => entry.key === key)?.path ?? null;
+  }
+
+  /** Arching templates need the arching modules built, same precondition as STL export. */
+  private requireArching(): boolean {
+    if (!this.params.arching) {
+      error('Arching templates need the arching modules — open Long Arching and Cross Arching first.', 'Arching Templates');
+      return false;
+    }
+    return true;
+  }
+
+  private archTemplates(type: 'crossArchTemplates' | 'longArchTemplates'): TemplateShape[] {
+    return type === 'crossArchTemplates' ? calculateCrossArchTemplates(this.params) : calculateLongArchTemplates(this.params);
+  }
+
+  private toSvgTexts(shapes: TemplateShape[]): SvgTextExport[] {
+    return shapes.map(s => ({ text: s.label, x: s.labelPos.x, y: s.labelPos.y, rotationDeg: s.labelRotation, fontSize: TEMPLATE_LABEL_SIZE }));
+  }
+
+  private toDxfTexts(shapes: TemplateShape[]): DxfText[] {
+    return shapes.map(s => ({ text: s.label, x: s.labelPos.x, y: s.labelPos.y, height: TEMPLATE_LABEL_SIZE, rotationDeg: s.labelRotation }));
   }
 
   ngOnInit(): void {
@@ -77,6 +104,17 @@ export class ExportPanel implements OnInit {
         this.draftChange.emit(renders);
         break;
       }
+      case 'crossArchTemplates':
+      case 'longArchTemplates': {
+        if (!this.requireArching()) { this.draftChange.emit([]); break; }
+        const shapes = this.archTemplates(type);
+        const renders = shapes.flatMap(s => [
+          renderPath(s.path, this.colors.mouldTrace),
+          renderText(s.labelPos, s.label, this.colors.mouldTrace, TEMPLATE_LABEL_SIZE, s.labelRotation),
+        ]);
+        this.draftChange.emit(renders);
+        break;
+      }
     }
   }
 
@@ -86,6 +124,9 @@ export class ExportPanel implements OnInit {
     const height = p.height + 2 * p.button!.height + p.button!.width / 2;
 
     let paths: SvgPathExport[];
+    let texts: SvgTextExport[] = [];
+    let sheetWidth = p.width;
+    let sheetHeight = height;
     switch (type) {
       case 'innerTrace':
         paths = [{ d: this.getPath('inner'), stroke: 'black', fill: 'none', strokeWidth: '.5' }];
@@ -107,9 +148,20 @@ export class ExportPanel implements OnInit {
       case 'blocks':
         paths = [{ d: combinePathStrings(calculateCornerBlocks(p, this.getPath('inner'))), stroke: 'black', fill: 'none', strokeWidth: '.5' }];
         break;
+      case 'crossArchTemplates':
+      case 'longArchTemplates': {
+        if (!this.requireArching()) return;
+        const shapes = this.archTemplates(type);
+        const bounds = pathsBounds(shapes.map(s => s.path));
+        sheetWidth = bounds.width + TEMPLATE_SHEET_PAD;
+        sheetHeight = bounds.height + TEMPLATE_SHEET_PAD;
+        paths = [{ d: combinePathStrings(shapes.map(s => s.path)), stroke: 'black', fill: 'none', strokeWidth: '.5' }];
+        texts = this.toSvgTexts(shapes);
+        break;
+      }
     }
 
-    downloadSvgFile(`${baseName}-${type}.svg`, buildMirroredSvg(p.width, height, paths!));
+    downloadSvgFile(`${baseName}-${type}.svg`, buildMirroredSvg(sheetWidth, sheetHeight, paths!, texts));
   }
 
   downloadStl(side: 'top' | 'bottom' = 'top'): void {
@@ -134,6 +186,7 @@ export class ExportPanel implements OnInit {
     const baseName = this.fileName?.trim() || 'ceruti-violin';
 
     let pathD: string;
+    let texts: DxfText[] = [];
     switch (type) {
       case 'innerTrace':
         pathD = this.getPath('inner');
@@ -156,9 +209,17 @@ export class ExportPanel implements OnInit {
       case 'blocks':
         pathD = combinePathStrings(calculateCornerBlocks(p, this.getPath('inner')));
         break;
+      case 'crossArchTemplates':
+      case 'longArchTemplates': {
+        if (!this.requireArching()) return;
+        const shapes = this.archTemplates(type);
+        pathD = combinePathStrings(shapes.map(s => s.path));
+        texts = this.toDxfTexts(shapes);
+        break;
+      }
     }
 
-    downloadDxfFile(`${baseName}-${type}.dxf`, pathD!);
+    downloadDxfFile(`${baseName}-${type}.dxf`, pathD!, texts);
   }
 
   downloadPdf(type: ExportType): void {
@@ -168,11 +229,16 @@ export class ExportPanel implements OnInit {
       innerTrace: 'Inner Contour',
       outerTrace: 'Outer Contour',
       mould: 'Mould Path',
+      crossArchTemplates: 'Cross Arch Templates',
+      longArchTemplates: 'Long Arch Templates',
     };
 
     const height = p.height + 2 * p.button!.height + p.button!.width / 2;
 
     let pdfPaths: SvgPathExport[];
+    let texts: SvgTextExport[] = [];
+    let sheetWidth = p.width;
+    let sheetHeight = height;
     switch (type) {
       case 'innerTrace':
         pdfPaths = [{ d: this.getPath('inner'), stroke: 'black', fill: 'none' }];
@@ -194,18 +260,30 @@ export class ExportPanel implements OnInit {
       case 'blocks':
         pdfPaths = [{ d: combinePathStrings(calculateCornerBlocks(p, this.getPath('inner'))), stroke: 'black', fill: 'none' }];
         break;
+      case 'crossArchTemplates':
+      case 'longArchTemplates': {
+        if (!this.requireArching()) return;
+        const shapes = this.archTemplates(type);
+        const bounds = pathsBounds(shapes.map(s => s.path));
+        sheetWidth = bounds.width + TEMPLATE_SHEET_PAD;
+        sheetHeight = bounds.height + TEMPLATE_SHEET_PAD;
+        pdfPaths = [{ d: combinePathStrings(shapes.map(s => s.path)), stroke: 'black', fill: 'none' }];
+        texts = this.toSvgTexts(shapes);
+        break;
+      }
     }
 
     downloadSvgAsPdf(
       `${baseName}-${type}.pdf`,
-      p.width,
-      height,
+      sheetWidth,
+      sheetHeight,
       pdfPaths!,
       {
         fileName: baseName,
         description: this.description ?? '',
         sheetLabel: sheetLabels[type],
-      }
+      },
+      texts
     );
   }
 
@@ -221,6 +299,21 @@ export class ExportPanel implements OnInit {
     const purflingPath = this.getPathOrNull('purfling');
     const outerPurflingPath = this.getPathOrNull('outerPurfling');
     const flutingPath = this.getPathOrNull('flutingArea');
+
+    // Arching templates sit in their own coordinate frame, so their page is sized from the
+    // actual combined geometry rather than the shared plan width/height used above.
+    const templatePage = (label: string, shapes: TemplateShape[]): PdfPage => {
+      const bounds = pathsBounds(shapes.map(s => s.path));
+      return {
+        label,
+        fileName: baseName,
+        description,
+        width: bounds.width + TEMPLATE_SHEET_PAD,
+        height: bounds.height + TEMPLATE_SHEET_PAD,
+        paths: [{ d: combinePathStrings(shapes.map(s => s.path)), stroke: 'black', fill: 'none' }],
+        texts: this.toSvgTexts(shapes),
+      };
+    };
 
     const pages: PdfPage[] = [
       {
@@ -272,7 +365,13 @@ export class ExportPanel implements OnInit {
         width: p.width,
         height,
         paths: calculateCornerBlocks(p, this.getPath('inner')).map((block: string) => ({ d: block, stroke: 'black', fill: 'none' })),
-      }
+      },
+      // Arching templates need the arching modules built — omit these pages rather than
+      // failing the whole plan when they haven't been opened yet.
+      ...(p.arching ? [
+        templatePage('Long Arch Templates', calculateLongArchTemplates(p)),
+        templatePage('Cross Arch Templates', calculateCrossArchTemplates(p)),
+      ] : []),
     ];
 
     downloadFullPlanPdf(`${baseName}-full-plan.pdf`, pages);
