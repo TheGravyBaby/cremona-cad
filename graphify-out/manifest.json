@@ -1,0 +1,592 @@
+{
+  ".claude/settings.local.json": {
+    "mtime": 1783006028.2989328,
+    "ast_hash": "61449243d4f34af69701c8c9b9d7d0f6",
+    "semantic_hash": "61449243d4f34af69701c8c9b9d7d0f6"
+  },
+  ".vscode/extensions.json": {
+    "mtime": 1767295246.1082134,
+    "ast_hash": "d3b118b41884c371c18cbd55e392eb07",
+    "semantic_hash": "d3b118b41884c371c18cbd55e392eb07"
+  },
+  ".vscode/launch.json": {
+    "mtime": 1767295246.1084864,
+    "ast_hash": "c6799d2f7ae6f5d7a740d1023654bb8d",
+    "semantic_hash": "c6799d2f7ae6f5d7a740d1023654bb8d"
+  },
+  ".vscode/tasks.json": {
+    "mtime": 1767295246.1085865,
+    "ast_hash": "903821282d5c5b46a4673a263eeb9dee",
+    "semantic_hash": "903821282d5c5b46a4673a263eeb9dee"
+  },
+  "angular.json": {
+    "mtime": 1779989156.186541,
+    "ast_hash": "e92a409565fa78327c178e8372807e57",
+    "semantic_hash": "e92a409565fa78327c178e8372807e57"
+  },
+  "examples/beard-violin/beard-violin.spec.ts": {
+    "mtime": 1780026619.1548285,
+    "ast_hash": "f0314cf07360003db2f17a96654e59db",
+    "semantic_hash": "f0314cf07360003db2f17a96654e59db"
+  },
+  "examples/beard-violin/beard-violin.ts": {
+    "mtime": 1780026619.1548285,
+    "ast_hash": "5b504c42ee937164f0293f7647fe2509",
+    "semantic_hash": "5b504c42ee937164f0293f7647fe2509"
+  },
+  "examples/kelly-violin/kelly-violin.ts": {
+    "mtime": 1780026619.1569798,
+    "ast_hash": "07243071c7ea258f003a26a07ac33b93",
+    "semantic_hash": "07243071c7ea258f003a26a07ac33b93"
+  },
+  "examples/kelly-violin/kellyCals.ts": {
+    "mtime": 1780026619.1572666,
+    "ast_hash": "00ce1887e61405c6587e15ed03ba1b31",
+    "semantic_hash": "00ce1887e61405c6587e15ed03ba1b31"
+  },
+  "examples/kelly-violin/kellyTypes.ts": {
+    "mtime": 1780077336.0566275,
+    "ast_hash": "efedf41aface7bb19108151251750bdb",
+    "semantic_hash": "efedf41aface7bb19108151251750bdb"
+  },
+  "package.json": {
+    "mtime": 1782691097.6302826,
+    "ast_hash": "303dda43e9863f19ad1ad788d8ae4d39",
+    "semantic_hash": "303dda43e9863f19ad1ad788d8ae4d39"
+  },
+  "src/app/about-modal/about-modal.ts": {
+    "mtime": 1782137772.3174114,
+    "ast_hash": "3c7560f7998fcad1c7b5b41bb919bdf8",
+    "semantic_hash": "3c7560f7998fcad1c7b5b41bb919bdf8"
+  },
+  "src/app/app.config.ts": {
+    "mtime": 1767295246.1092632,
+    "ast_hash": "da471005d16ef07ff7f99a0cfcc8ea64",
+    "semantic_hash": "da471005d16ef07ff7f99a0cfcc8ea64"
+  },
+  "src/app/app.routes.ts": {
+    "mtime": 1767295246.1093304,
+    "ast_hash": "9e82134f3e41732656270447c4c872fe",
+    "semantic_hash": "9e82134f3e41732656270447c4c872fe"
+  },
+  "src/app/app.spec.ts": {
+    "mtime": 1767295807.7322972,
+    "ast_hash": "f1af7caff6d990732eeacb73c9ee4b51",
+    "semantic_hash": "f1af7caff6d990732eeacb73c9ee4b51"
+  },
+  "src/app/app.ts": {
+    "mtime": 1784683836.6841335,
+    "ast_hash": "095615475f9b2a157790fc0bffdd3339",
+    "semantic_hash": "095615475f9b2a157790fc0bffdd3339"
+  },
+  "src/app/draft-canvas/axis-grid-controller.ts": {
+    "mtime": 1780070841.0772936,
+    "ast_hash": "5d4c988be1a54042c2209b03b59f16d3",
+    "semantic_hash": "5d4c988be1a54042c2209b03b59f16d3"
+  },
+  "src/app/draft-canvas/camera.ts": {
+    "mtime": 1776951694.0741594,
+    "ast_hash": "9cbd845410eea423400e3f03a7dbeab5",
+    "semantic_hash": "9cbd845410eea423400e3f03a7dbeab5"
+  },
+  "src/app/draft-canvas/draft-canvas.spec.ts": {
+    "mtime": 1782960415.9322162,
+    "ast_hash": "33b213a31952aa819d2e9b1c56868bc7",
+    "semantic_hash": "33b213a31952aa819d2e9b1c56868bc7"
+  },
+  "src/app/draft-canvas/draft-canvas.ts": {
+    "mtime": 1784683836.6842022,
+    "ast_hash": "5ef122eaad3aaf3e6763687e8b2734d3",
+    "semantic_hash": "5ef122eaad3aaf3e6763687e8b2734d3"
+  },
+  "src/app/draft-canvas/reference-image-controller.ts": {
+    "mtime": 1780033647.4833252,
+    "ast_hash": "e30d9c2c5e83bf3c6ae2485be7709828",
+    "semantic_hash": "e30d9c2c5e83bf3c6ae2485be7709828"
+  },
+  "src/app/enrico-ceruti-violin/ceruti-calcs.ts": {
+    "mtime": 1784683836.6861198,
+    "ast_hash": "abdb51dd0b0f51724c61890cd7ebcf9d",
+    "semantic_hash": "abdb51dd0b0f51724c61890cd7ebcf9d"
+  },
+  "src/app/enrico-ceruti-violin/ceruti-helpers.ts": {
+    "mtime": 1784683836.6861198,
+    "ast_hash": "806a0fe59e494a49c3e58e0f3070af98",
+    "semantic_hash": "806a0fe59e494a49c3e58e0f3070af98"
+  },
+  "src/app/enrico-ceruti-violin/ceruti-surface.spec.ts": {
+    "mtime": 1783006870.1956935,
+    "ast_hash": "9f683cc7810b9c4b32f84d6e87cb7593",
+    "semantic_hash": "9f683cc7810b9c4b32f84d6e87cb7593"
+  },
+  "src/app/enrico-ceruti-violin/ceruti-surface.ts": {
+    "mtime": 1784683836.6861198,
+    "ast_hash": "0ce67dd58889d01f4d112b97e1b035e4",
+    "semantic_hash": "0ce67dd58889d01f4d112b97e1b035e4"
+  },
+  "src/app/enrico-ceruti-violin/ceruti-templates.ts": {
+    "mtime": 1784683836.6861198,
+    "ast_hash": "327affa364681f088cb2327bf2c605dd",
+    "semantic_hash": "327affa364681f088cb2327bf2c605dd"
+  },
+  "src/app/enrico-ceruti-violin/ceruti-types.ts": {
+    "mtime": 1784683836.6861198,
+    "ast_hash": "b87641c0434479de70f9ff60263f7e1e",
+    "semantic_hash": "b87641c0434479de70f9ff60263f7e1e"
+  },
+  "src/app/enrico-ceruti-violin/ceruti-violin.ts": {
+    "mtime": 1784683836.6862023,
+    "ast_hash": "d7b9c8b829232a66e030d417c0fa8c6e",
+    "semantic_hash": "d7b9c8b829232a66e030d417c0fa8c6e"
+  },
+  "src/app/enrico-ceruti-violin/panels/base-panel/base-panel.ts": {
+    "mtime": 1782137772.319017,
+    "ast_hash": "10942ece4ef9f0460b49a5b4c8e6d89a",
+    "semantic_hash": "10942ece4ef9f0460b49a5b4c8e6d89a"
+  },
+  "src/app/enrico-ceruti-violin/panels/center-bout-panel/center-bout-panel.ts": {
+    "mtime": 1784683836.6862023,
+    "ast_hash": "51b96c303e2ffe9c810a42a9147cb4de",
+    "semantic_hash": "51b96c303e2ffe9c810a42a9147cb4de"
+  },
+  "src/app/enrico-ceruti-violin/panels/corners-panel/corners-panel.ts": {
+    "mtime": 1782137772.31925,
+    "ast_hash": "2101ee16136cb761893d7bbc24c20ba2",
+    "semantic_hash": "2101ee16136cb761893d7bbc24c20ba2"
+  },
+  "src/app/enrico-ceruti-violin/panels/cross-arching-panel/cross-arching-panel.ts": {
+    "mtime": 1784683836.6862023,
+    "ast_hash": "a4836b5b982d841e468da8d74f40ae9a",
+    "semantic_hash": "a4836b5b982d841e468da8d74f40ae9a"
+  },
+  "src/app/enrico-ceruti-violin/panels/export-panel/export-panel.ts": {
+    "mtime": 1783006833.0204833,
+    "ast_hash": "e87ac7879ae31057e40c6960ff333b49",
+    "semantic_hash": "e87ac7879ae31057e40c6960ff333b49"
+  },
+  "src/app/enrico-ceruti-violin/panels/long-arching-panel/long-arching-panel.ts": {
+    "mtime": 1782957360.137777,
+    "ast_hash": "3eb9330dd085090d6ccf215a1678a745",
+    "semantic_hash": "3eb9330dd085090d6ccf215a1678a745"
+  },
+  "src/app/enrico-ceruti-violin/panels/main-bouts-panel/main-bouts-panel.ts": {
+    "mtime": 1782137772.3194528,
+    "ast_hash": "880a58e7c9112e2b6de4b4f39fc9ecfd",
+    "semantic_hash": "880a58e7c9112e2b6de4b4f39fc9ecfd"
+  },
+  "src/app/enrico-ceruti-violin/panels/mould-panel/mould-panel.ts": {
+    "mtime": 1782137772.3195343,
+    "ast_hash": "843f83b0bdcff8b504f2ec9ac7afa754",
+    "semantic_hash": "843f83b0bdcff8b504f2ec9ac7afa754"
+  },
+  "src/app/enrico-ceruti-violin/panels/outer-trace-panel/outer-trace-panel.ts": {
+    "mtime": 1782144969.8514225,
+    "ast_hash": "8779b45b16dacb1e5bb2a15d190885c7",
+    "semantic_hash": "8779b45b16dacb1e5bb2a15d190885c7"
+  },
+  "src/app/enrico-ceruti-violin/render-toggles/render-toggles.ts": {
+    "mtime": 1782698005.680088,
+    "ast_hash": "94b1688778b4f13a8f2d3e0c5f5985de",
+    "semantic_hash": "94b1688778b4f13a8f2d3e0c5f5985de"
+  },
+  "src/app/enrico-ceruti-violin/renders/arch-3d-wireframe.render.ts": {
+    "mtime": 1784683836.6862023,
+    "ast_hash": "36a0770f36dd205c5bc3380feb68359a",
+    "semantic_hash": "36a0770f36dd205c5bc3380feb68359a"
+  },
+  "src/app/enrico-ceruti-violin/renders/arch-contours.render.ts": {
+    "mtime": 1784683836.6862023,
+    "ast_hash": "9f813f2b8103f573a4eaadfc0b8ba832",
+    "semantic_hash": "9f813f2b8103f573a4eaadfc0b8ba832"
+  },
+  "src/app/enrico-ceruti-violin/renders/center-bout.render.ts": {
+    "mtime": 1784683836.6862023,
+    "ast_hash": "2f4a6cd72e50b3cc100fb21c144d6550",
+    "semantic_hash": "2f4a6cd72e50b3cc100fb21c144d6550"
+  },
+  "src/app/enrico-ceruti-violin/renders/corners.render.ts": {
+    "mtime": 1782137772.3197818,
+    "ast_hash": "df3e2ea47dc8838436c51f839b35d027",
+    "semantic_hash": "df3e2ea47dc8838436c51f839b35d027"
+  },
+  "src/app/enrico-ceruti-violin/renders/cross-arching.render.ts": {
+    "mtime": 1783005772.6485782,
+    "ast_hash": "e9d49451f668039858c934cd3f5f82e3",
+    "semantic_hash": "e9d49451f668039858c934cd3f5f82e3"
+  },
+  "src/app/enrico-ceruti-violin/renders/guides.render.ts": {
+    "mtime": 1784683836.6862023,
+    "ast_hash": "788ad4ec1c64ec65fbaa78f54de9ccb6",
+    "semantic_hash": "788ad4ec1c64ec65fbaa78f54de9ccb6"
+  },
+  "src/app/enrico-ceruti-violin/renders/long-arching.render.ts": {
+    "mtime": 1782957942.0061,
+    "ast_hash": "726d1d28e9e52e4839152aaba6b7d379",
+    "semantic_hash": "726d1d28e9e52e4839152aaba6b7d379"
+  },
+  "src/app/enrico-ceruti-violin/renders/main-bouts.render.ts": {
+    "mtime": 1782148189.4800668,
+    "ast_hash": "f90f044088a9b2586b158c86956ff8bd",
+    "semantic_hash": "f90f044088a9b2586b158c86956ff8bd"
+  },
+  "src/app/enrico-ceruti-violin/renders/mould.render.ts": {
+    "mtime": 1782137772.3198748,
+    "ast_hash": "a6a984a9e871475cc9e024be4985a6d3",
+    "semantic_hash": "a6a984a9e871475cc9e024be4985a6d3"
+  },
+  "src/app/enrico-ceruti-violin/renders/oblique-projection.ts": {
+    "mtime": 1784683836.6862023,
+    "ast_hash": "5fac3bc93fcb7ffcdec14be410caffc7",
+    "semantic_hash": "5fac3bc93fcb7ffcdec14be410caffc7"
+  },
+  "src/app/enrico-ceruti-violin/renders/outer-trace.render.ts": {
+    "mtime": 1782937295.4380646,
+    "ast_hash": "7dd2cb2ba5924e1e67edab12c2ee413b",
+    "semantic_hash": "7dd2cb2ba5924e1e67edab12c2ee413b"
+  },
+  "src/app/enrico-ceruti-violin/renders/render-constants.ts": {
+    "mtime": 1782137772.3198748,
+    "ast_hash": "4fd047cb5a18d3a11a212634aad9c779",
+    "semantic_hash": "4fd047cb5a18d3a11a212634aad9c779"
+  },
+  "src/app/enrico-ceruti-violin/renders/wireframe-drag-frame.render.ts": {
+    "mtime": 1784683836.6862023,
+    "ast_hash": "568cacf5b274126bb5b362cf1fdb5cc3",
+    "semantic_hash": "568cacf5b274126bb5b362cf1fdb5cc3"
+  },
+  "src/app/hello-recipe/hello-recipe.ts": {
+    "mtime": 1782137772.3198748,
+    "ast_hash": "443e4f2c71ab9a30edce16fb045fe4d2",
+    "semantic_hash": "443e4f2c71ab9a30edce16fb045fe4d2"
+  },
+  "src/app/helpers/arcDegrees.ts": {
+    "mtime": 1782137772.3198748,
+    "ast_hash": "25a68793df405021c1bcd59a8e3f7193",
+    "semantic_hash": "25a68793df405021c1bcd59a8e3f7193"
+  },
+  "src/app/helpers/debounce-controller.ts": {
+    "mtime": 1779065733.2931907,
+    "ast_hash": "6f92bcd2cb2009a6499c0874ff35aa1b",
+    "semantic_hash": "6f92bcd2cb2009a6499c0874ff35aa1b"
+  },
+  "src/app/helpers/draftMath.spec.ts": {
+    "mtime": 1783000798.8008723,
+    "ast_hash": "7b887364027245f19892b5e6746f0de9",
+    "semantic_hash": "7b887364027245f19892b5e6746f0de9"
+  },
+  "src/app/helpers/draftMath.ts": {
+    "mtime": 1784683836.6872022,
+    "ast_hash": "da6b63e70a48c4ff73e787dc107cd224",
+    "semantic_hash": "da6b63e70a48c4ff73e787dc107cd224"
+  },
+  "src/app/helpers/draftMathOld.ts": {
+    "mtime": 1779129769.6486661,
+    "ast_hash": "72f508ae38e9f0f75dbb72846e18bad5",
+    "semantic_hash": "72f508ae38e9f0f75dbb72846e18bad5"
+  },
+  "src/app/helpers/dxfExporter.ts": {
+    "mtime": 1782144969.8514225,
+    "ast_hash": "af977eb083df555da84765804f9922a9",
+    "semantic_hash": "af977eb083df555da84765804f9922a9"
+  },
+  "src/app/helpers/fileExporter.ts": {
+    "mtime": 1782144969.8514225,
+    "ast_hash": "b327651d3c51150007179e7ab325e19d",
+    "semantic_hash": "b327651d3c51150007179e7ab325e19d"
+  },
+  "src/app/helpers/nearestFraction.ts": {
+    "mtime": 1782137772.3198748,
+    "ast_hash": "57ad2b805a264d31a9f3ee07402a17e0",
+    "semantic_hash": "57ad2b805a264d31a9f3ee07402a17e0"
+  },
+  "src/app/helpers/panelFlow.ts": {
+    "mtime": 1782137772.3198748,
+    "ast_hash": "c8b5f8559634f22f12a72a35ac51f433",
+    "semantic_hash": "c8b5f8559634f22f12a72a35ac51f433"
+  },
+  "src/app/helpers/referenceImages.ts": {
+    "mtime": 1784683836.6872022,
+    "ast_hash": "a71b7eee32d79d9549cebcdfac8fc67a",
+    "semantic_hash": "a71b7eee32d79d9549cebcdfac8fc67a"
+  },
+  "src/app/helpers/renderFuncs.ts": {
+    "mtime": 1782957794.0899315,
+    "ast_hash": "8b9f2b00ef72fcac75e3b9eff5efe863",
+    "semantic_hash": "8b9f2b00ef72fcac75e3b9eff5efe863"
+  },
+  "src/app/helpers/stlExporter.ts": {
+    "mtime": 1782973234.180202,
+    "ast_hash": "47f8d71725faa556818a6ec872671508",
+    "semantic_hash": "47f8d71725faa556818a6ec872671508"
+  },
+  "src/app/helpers/svgPathMath.cycloid.spec.ts": {
+    "mtime": 1783002417.2759693,
+    "ast_hash": "4c38ce74d119084e86777d915832d313",
+    "semantic_hash": "4c38ce74d119084e86777d915832d313"
+  },
+  "src/app/helpers/svgPathMath.ts": {
+    "mtime": 1784683836.6872022,
+    "ast_hash": "414da4aee683ed608bd86e27560fdda0",
+    "semantic_hash": "414da4aee683ed608bd86e27560fdda0"
+  },
+  "src/app/helpers/validators.ts": {
+    "mtime": 1777159508.1349957,
+    "ast_hash": "85765aae2489f15b4282bb03c8cac363",
+    "semantic_hash": "85765aae2489f15b4282bb03c8cac363"
+  },
+  "src/app/models/types.ts": {
+    "mtime": 1784683836.6872022,
+    "ast_hash": "e09c0408c8c50abba65810e30eebb48c",
+    "semantic_hash": "e09c0408c8c50abba65810e30eebb48c"
+  },
+  "src/app/recipe-base/recipe-base.spec.ts": {
+    "mtime": 1778565376.471154,
+    "ast_hash": "d29f03ca2816f7a0e587e33e2ce75fc1",
+    "semantic_hash": "d29f03ca2816f7a0e587e33e2ce75fc1"
+  },
+  "src/app/recipe-base/recipe-base.ts": {
+    "mtime": 1784683836.6872022,
+    "ast_hash": "8b84e6112300662e22c3891a6b3602fd",
+    "semantic_hash": "8b84e6112300662e22c3891a6b3602fd"
+  },
+  "src/app/recipe-toolbar/recipe-toolbar.ts": {
+    "mtime": 1782137772.3213692,
+    "ast_hash": "c1289c34bf6d2f5a392c84b1881d17ad",
+    "semantic_hash": "c1289c34bf6d2f5a392c84b1881d17ad"
+  },
+  "src/app/shared/message-center.component.ts": {
+    "mtime": 1778851406.7637095,
+    "ast_hash": "2309295510a575e8c63eba23db3d004b",
+    "semantic_hash": "2309295510a575e8c63eba23db3d004b"
+  },
+  "src/app/shared/message-emitter.ts": {
+    "mtime": 1779989156.188541,
+    "ast_hash": "b00320376e78c964f724c63f698baeb4",
+    "semantic_hash": "b00320376e78c964f724c63f698baeb4"
+  },
+  "src/app/shared/message.service.ts": {
+    "mtime": 1778851406.7637095,
+    "ast_hash": "8c8c0fef131721e5513300225dc4a377",
+    "semantic_hash": "8c8c0fef131721e5513300225dc4a377"
+  },
+  "src/app/top-bar/top-bar.spec.ts": {
+    "mtime": 1778565376.472874,
+    "ast_hash": "cd3a94ee89d48b897da8b7dc2c8fdb4e",
+    "semantic_hash": "cd3a94ee89d48b897da8b7dc2c8fdb4e"
+  },
+  "src/app/top-bar/top-bar.ts": {
+    "mtime": 1782691097.6313248,
+    "ast_hash": "0bf4d04e6c846c93e7215594f680c081",
+    "semantic_hash": "0bf4d04e6c846c93e7215594f680c081"
+  },
+  "src/main.ts": {
+    "mtime": 1767296051.9175289,
+    "ast_hash": "ac0b277dca1867b341af9e2d25224ae9",
+    "semantic_hash": "ac0b277dca1867b341af9e2d25224ae9"
+  },
+  "tsconfig.app.json": {
+    "mtime": 1779133817.3324637,
+    "ast_hash": "bca93849cde0be58ff16ce5be33dcbe8",
+    "semantic_hash": "bca93849cde0be58ff16ce5be33dcbe8"
+  },
+  "tsconfig.json": {
+    "mtime": 1767722262.5183876,
+    "ast_hash": "154475bfd7c8b6f8b2692d3b5928ca50",
+    "semantic_hash": "154475bfd7c8b6f8b2692d3b5928ca50"
+  },
+  "tsconfig.spec.json": {
+    "mtime": 1767295246.1082134,
+    "ast_hash": "9261a8f9db3b2c991df0e6f9d51828b1",
+    "semantic_hash": "9261a8f9db3b2c991df0e6f9d51828b1"
+  },
+  ".github/workflows/deploy-pages.yml": {
+    "mtime": 1778730161.714857,
+    "ast_hash": "d64501f757df2ccd73efa7af95d6ed96",
+    "semantic_hash": "d64501f757df2ccd73efa7af95d6ed96"
+  },
+  "README.md": {
+    "mtime": 1780175191.8074143,
+    "ast_hash": "f025afce336d2331252ba8e8d818aeb5",
+    "semantic_hash": "f025afce336d2331252ba8e8d818aeb5"
+  },
+  "examples/beard-violin/beard-violin.html": {
+    "mtime": 1780026619.1548285,
+    "ast_hash": "d2b892f509b5c33f724f9fafe6b33bca",
+    "semantic_hash": "d2b892f509b5c33f724f9fafe6b33bca"
+  },
+  "examples/kelly-violin/kelly-violin.html": {
+    "mtime": 1780026619.156457,
+    "ast_hash": "15af4f5ffddaa16d2410c52d6c615352",
+    "semantic_hash": "15af4f5ffddaa16d2410c52d6c615352"
+  },
+  "src/app/about-modal/about-modal.html": {
+    "mtime": 1782691097.6302826,
+    "ast_hash": "217d67fccffccd4c9990ed38d7f0cddb",
+    "semantic_hash": "217d67fccffccd4c9990ed38d7f0cddb"
+  },
+  "src/app/draft-canvas/draft-canvas.html": {
+    "mtime": 1784683836.6842022,
+    "ast_hash": "9e82aa7663f30c3f1c3ef10a11a14327",
+    "semantic_hash": "9e82aa7663f30c3f1c3ef10a11a14327"
+  },
+  "src/app/enrico-ceruti-violin/ceruti-violin.html": {
+    "mtime": 1782943983.4523957,
+    "ast_hash": "8d964c54166b97423ec92324d300f0b3",
+    "semantic_hash": "8d964c54166b97423ec92324d300f0b3"
+  },
+  "src/app/enrico-ceruti-violin/panels/base-panel/base-panel.html": {
+    "mtime": 1782137772.3188212,
+    "ast_hash": "ed113e2f952b81f446a8bd350977b775",
+    "semantic_hash": "ed113e2f952b81f446a8bd350977b775"
+  },
+  "src/app/enrico-ceruti-violin/panels/center-bout-panel/center-bout-panel.html": {
+    "mtime": 1784683836.6862023,
+    "ast_hash": "c34e682aa0128df7625b0194895d5537",
+    "semantic_hash": "c34e682aa0128df7625b0194895d5537"
+  },
+  "src/app/enrico-ceruti-violin/panels/corners-panel/corners-panel.html": {
+    "mtime": 1782137772.3191428,
+    "ast_hash": "1abc18659535539385571fd3c021e43b",
+    "semantic_hash": "1abc18659535539385571fd3c021e43b"
+  },
+  "src/app/enrico-ceruti-violin/panels/cross-arching-panel/cross-arching-panel.html": {
+    "mtime": 1784683836.6862023,
+    "ast_hash": "2a6c523adf86e59ff00e14ec88526e73",
+    "semantic_hash": "2a6c523adf86e59ff00e14ec88526e73"
+  },
+  "src/app/enrico-ceruti-violin/panels/export-panel/export-panel.html": {
+    "mtime": 1783006842.0645344,
+    "ast_hash": "406658408cff2717ed13111b0bac373e",
+    "semantic_hash": "406658408cff2717ed13111b0bac373e"
+  },
+  "src/app/enrico-ceruti-violin/panels/long-arching-panel/long-arching-panel.html": {
+    "mtime": 1784683836.6862023,
+    "ast_hash": "a3cd0a66178ec66e7d8f6490c7088573",
+    "semantic_hash": "a3cd0a66178ec66e7d8f6490c7088573"
+  },
+  "src/app/enrico-ceruti-violin/panels/main-bouts-panel/main-bouts-panel.html": {
+    "mtime": 1782137772.3193347,
+    "ast_hash": "64a0342908f917e344fc78346984c604",
+    "semantic_hash": "64a0342908f917e344fc78346984c604"
+  },
+  "src/app/enrico-ceruti-violin/panels/mould-panel/mould-panel.html": {
+    "mtime": 1782137772.3194528,
+    "ast_hash": "df93a2540266444c762633b7ad984671",
+    "semantic_hash": "df93a2540266444c762633b7ad984671"
+  },
+  "src/app/enrico-ceruti-violin/panels/outer-trace-panel/outer-trace-panel.html": {
+    "mtime": 1784683836.6862023,
+    "ast_hash": "92554742c32d3c308feddb7cd5842877",
+    "semantic_hash": "92554742c32d3c308feddb7cd5842877"
+  },
+  "src/app/enrico-ceruti-violin/render-toggles/render-toggles.html": {
+    "mtime": 1782698015.4401493,
+    "ast_hash": "12e3d0766e9a4d4ef53794912c4a1c3e",
+    "semantic_hash": "12e3d0766e9a4d4ef53794912c4a1c3e"
+  },
+  "src/app/hello-recipe/hello-recipe.html": {
+    "mtime": 1782137772.3198748,
+    "ast_hash": "ad5c66200867782109dae6280c4c9a1b",
+    "semantic_hash": "ad5c66200867782109dae6280c4c9a1b"
+  },
+  "src/app/recipe-toolbar/recipe-toolbar.html": {
+    "mtime": 1782137772.3213692,
+    "ast_hash": "5bc096fd3cc4f251e797884bba943f10",
+    "semantic_hash": "5bc096fd3cc4f251e797884bba943f10"
+  },
+  "src/app/shared/message-center.component.html": {
+    "mtime": 1780026869.0674622,
+    "ast_hash": "2d14d6ad96da0fdbe8302905331689c7",
+    "semantic_hash": "2d14d6ad96da0fdbe8302905331689c7"
+  },
+  "src/app/top-bar/top-bar.html": {
+    "mtime": 1782137772.3213692,
+    "ast_hash": "46d58736b16e1b912c338586c7325c89",
+    "semantic_hash": "46d58736b16e1b912c338586c7325c89"
+  },
+  "src/index.html": {
+    "mtime": 1767295807.7322972,
+    "ast_hash": "6ab70f2ca408c8cc4bf3e15c8cd25983",
+    "semantic_hash": "6ab70f2ca408c8cc4bf3e15c8cd25983"
+  },
+  "public/CC_Drawing.png": {
+    "mtime": 1779066941.0294268,
+    "ast_hash": "b47b07a1b9d675359abd6c61cd033789",
+    "semantic_hash": "b47b07a1b9d675359abd6c61cd033789"
+  },
+  "public/CerutiDrawing.png": {
+    "mtime": 1778867101.3493369,
+    "ast_hash": "d35ec62912298dd87f463b5622a81994",
+    "semantic_hash": "d35ec62912298dd87f463b5622a81994"
+  },
+  "public/CremonaCadLogo.svg": {
+    "mtime": 1777159508.133188,
+    "ast_hash": "29588f1739f7d6dbdfc55a07db06dfbc",
+    "semantic_hash": "29588f1739f7d6dbdfc55a07db06dfbc"
+  },
+  "public/DelGesuBaltic.png": {
+    "mtime": 1778694685.114512,
+    "ast_hash": "5fa952681d76f86ce837baf1d8b66b32",
+    "semantic_hash": "5fa952681d76f86ce837baf1d8b66b32"
+  },
+  "public/DrawingDemo2.png": {
+    "mtime": 1779134634.8772736,
+    "ast_hash": "95a35b26d56f73d245865504731a22b5",
+    "semantic_hash": "95a35b26d56f73d245865504731a22b5"
+  },
+  "public/Guadagnini_Piacenza.png": {
+    "mtime": 1780028196.3003995,
+    "ast_hash": "55fe13b29224d0289188c9c2d7311d97",
+    "semantic_hash": "55fe13b29224d0289188c9c2d7311d97"
+  },
+  "public/HesMe.jpg": {
+    "mtime": 1779065930.420145,
+    "ast_hash": "66457685bf0637ebfeb4c854e8be03f6",
+    "semantic_hash": "66457685bf0637ebfeb4c854e8be03f6"
+  },
+  "public/Maggini_Delmas.png": {
+    "mtime": 1778694768.5899396,
+    "ast_hash": "7b036d7751ccec409cba358e2f7701ea",
+    "semantic_hash": "7b036d7751ccec409cba358e2f7701ea"
+  },
+  "public/Ravatin_Mans.jpg": {
+    "mtime": 1778694558.5905976,
+    "ast_hash": "3af0721a229374c9c88076bc9433d2d9",
+    "semantic_hash": "3af0721a229374c9c88076bc9433d2d9"
+  },
+  "public/StradGoetz.jpg": {
+    "mtime": 1777570831.9351964,
+    "ast_hash": "175eb9f4bd0551aa5523d3cd86b23487",
+    "semantic_hash": "175eb9f4bd0551aa5523d3cd86b23487"
+  },
+  "public/Strad_Davidoff.jpg": {
+    "mtime": 1778694625.3036873,
+    "ast_hash": "2fcc9fd4a875c24a8aa0fe66557e499c",
+    "semantic_hash": "2fcc9fd4a875c24a8aa0fe66557e499c"
+  },
+  "public/download.png": {
+    "mtime": 1782137772.3161006,
+    "ast_hash": "fbeb3c33b35ab1babd6352e910b938d2",
+    "semantic_hash": "fbeb3c33b35ab1babd6352e910b938d2"
+  },
+  "public/fhole.jpeg": {
+    "mtime": 1767482634.2582233,
+    "ast_hash": "55f37c237522a694621fa74b05c9e363",
+    "semantic_hash": "55f37c237522a694621fa74b05c9e363"
+  },
+  "public/mittenwald_c1900.jpg": {
+    "mtime": 1780023816.4698918,
+    "ast_hash": "6b9a481e89767baf824142bc8ff9450f",
+    "semantic_hash": "6b9a481e89767baf824142bc8ff9450f"
+  },
+  "public/new.png": {
+    "mtime": 1782137772.3161006,
+    "ast_hash": "41035d517a34306376b30730d0528167",
+    "semantic_hash": "41035d517a34306376b30730d0528167"
+  },
+  "public/upload.png": {
+    "mtime": 1782137772.3161006,
+    "ast_hash": "d8aa057b70bf4f4c9b2a5d13c74063ca",
+    "semantic_hash": "d8aa057b70bf4f4c9b2a5d13c74063ca"
+  }
+}
