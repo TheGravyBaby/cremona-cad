@@ -340,6 +340,8 @@ export class CerutiViolin extends RecipeComponentBase {
   // ===== Path cache =====
   // Populated incrementally by each panel's change handler as soon as it has what
   // it needs; consumed by export (and eventually render) instead of recalculating.
+  // Exception: 'mould' is never populated here — it's expensive and export-only,
+  // so ExportPanel computes it directly instead of reading it from this cache.
 
   private upsertPath(key: string, path: string): void {
     const entry = this.d.paths.find(p => p.key === key);
@@ -745,10 +747,9 @@ export class CerutiViolin extends RecipeComponentBase {
   changeMould(): void {
     this.debounce(() => safeRun(() => {
       const p = this.d.params;
-      // Cached copy is always the accurate, export-quality clamp box — the (possibly
-      // simplified, view-flag-driven) mould below is only ever used for the live preview.
-      this.upsertPath('mould', calculateMould(p, true, false));
-
+      // The accurate, export-quality mould (10x denser boolean diff) is only ever
+      // consumed by the export panel, so it computes it on demand instead of it
+      // being recalculated here on every edit.
       const innerPath = this.getPath('inner');
       const previewMouldPath = calculateMould(p, false, this.viewFlags.simpleClampBox);
       this.draftChange.emit([
