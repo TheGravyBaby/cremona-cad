@@ -369,8 +369,12 @@ export function calculateCrossArchTemplates(p: EnricoCerutiParams): TemplateShap
  * centerline elevation curves, canvas X = Z, canvas Y = body length) and
  * closed into blanks via {@link closeProfileToBlank}, placed side by side.
  * Labels run rotated 90° along the strip's length, same backing-relative
- * placement as the cross-arch templates. Returns `[]` if the arching modules
- * haven't been configured yet.
+ * placement as the cross-arch templates. Both present with the flat backing
+ * edge on the left: the top plate's naturally lands there (direction = +1),
+ * while the back plate's naturally lands on the right, so it's rotated 180°
+ * after the fact — same {@link rotateTemplateShape180} used to re-orient the
+ * top cross-arch templates, since a plain mirror would flip the cutout back
+ * to convex. Returns `[]` if the arching modules haven't been configured yet.
  */
 export function calculateLongArchTemplates(p: EnricoCerutiParams): TemplateShape[] {
     if (!p.arching) return [];
@@ -378,7 +382,8 @@ export function calculateLongArchTemplates(p: EnricoCerutiParams): TemplateShape
     const templates: TemplateShape[] = [];
     if (backPath) {
         const { path, backing, positionMid } = closeProfileToBlank(backPath, 'x', -1, TEMPLATE_MARGIN);
-        templates.push({ path, label: 'Back Long', labelPos: { x: backing - TEMPLATE_MARGIN / 2, y: positionMid }, labelRotation: 90 });
+        const shape: TemplateShape = { path, label: 'Back Long', labelPos: { x: backing - TEMPLATE_MARGIN / 2, y: positionMid }, labelRotation: 90 };
+        templates.push(rotateTemplateShape180(shape));
     }
     if (topPath) {
         const { path, backing, positionMid } = closeProfileToBlank(topPath, 'x', 1, TEMPLATE_MARGIN);
