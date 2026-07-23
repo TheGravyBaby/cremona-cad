@@ -7,11 +7,10 @@ import { downloadDxfFile, DxfText } from '../../../helpers/dxfExporter';
 import { downloadStlFile } from '../../../helpers/stlExporter';
 import { renderFilledPath, renderPath, renderText } from '../../../helpers/renderFuncs';
 import { error } from '../../../shared/message-emitter';
-import { calculateCornerBlocks, calculateMould, calculateOuterArcs } from '../../ceruti-calcs';
+import { calculateCornerBlocks, calculateMould, calculateOuterArcs, ensureCenterBoutInnerPath, ensureOuterTracePaths } from '../../ceruti-calcs';
 import { defaultCrossArchParams, defaultFlutingChannelParams } from '../../ceruti-arching';
 import { buildPlateStl, buildPlateSurfaceModel, calculateCrossArchTemplates, calculateLongArchTemplates, TemplateShape } from '../../ceruti-surface';
 import { CerutiColors, EnricoCerutiParams, PathEntry } from '../../ceruti-types';
-import { ensureCenterBoutInnerPath, ensureOuterTracePaths } from '../../shared/derived-paths';
 
 type ExportType = 'innerTrace' | 'outerTrace' | 'back' | 'mould' | 'blocks' | 'crossArchTemplates' | 'longArchTemplates';
 

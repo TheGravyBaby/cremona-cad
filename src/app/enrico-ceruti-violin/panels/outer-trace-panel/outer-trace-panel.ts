@@ -3,10 +3,9 @@ import { FormsModule } from '@angular/forms';
 import { flipArcAboutY, flipCircleAboutY } from '../../../helpers/draftMath';
 import { adjustArcEnd } from '../../../helpers/arcDegrees';
 import { renderArcFromArcFancy, renderCircle, renderFilledPath, renderPath } from '../../../helpers/renderFuncs';
-import { calculateOuterArcs } from '../../ceruti-calcs';
+import { calculateOuterArcs, ensureOuterTracePaths } from '../../ceruti-calcs';
 import { buttonInfo, cornerCutoffInfo, flutingInfo, purflingInfo } from '../../ceruti-helpers';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, PathEntry } from '../../ceruti-types';
-import { ensureOuterTracePaths } from '../../shared/derived-paths';
 import { RenderToggles } from '../../render-toggles/render-toggles';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 

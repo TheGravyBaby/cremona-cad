@@ -5,9 +5,9 @@ import { flipArcAboutY, flipCircleAboutY, offsetArcRadius } from '../../../helpe
 import { nearestFraction } from '../../../helpers/nearestFraction';
 import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderCrosshair, renderDashedLine } from '../../../helpers/renderFuncs';
 import { Arc } from '../../../models/types';
+import { ensureCenterBoutInnerPath } from '../../ceruti-calcs';
 import { centerBoutWidthInfo, cornerPositionInfo, fitC0Info } from '../../ceruti-helpers';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, PathEntry } from '../../ceruti-types';
-import { ensureCenterBoutInnerPath } from '../../shared/derived-paths';
 import { renderBounds, renderBoutBouts, renderCornerGuides } from '../../renders/guides.render';
 import { HighlightedArc, PATH_STROKE_WIDTH } from '../../renders/render-constants';
 import { RenderToggles } from '../../render-toggles/render-toggles';
