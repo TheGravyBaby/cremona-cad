@@ -1,11 +1,11 @@
-import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
+import { Component, Input, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ArchingParams, CerutiColors, CerutiViewFlags, CrossArchParams, EnricoCerutiParams, FlutingChannelParams, PlateViewMode } from '../../ceruti-types';
 import { archContoursInfo, crossArchCycloidControlsInfo, crossArchEdgeDepthInfo, crossSectionStationInfo, flatPlatformInfo } from '../../ceruti-helpers';
 import { defaultArchingParams, defaultCrossArchParams, defaultFlutingChannelParams } from '../../ceruti-arching';
 import { CrossArchingSceneBuilder } from './cross-arching-scene';
 import { CrossArchingRotationController } from './cross-arching-rotation-controller';
-import { PanelRenderRequest } from '../../ceruti-types';
+import { CerutiPanelBase, RenderLayer } from '../panel-base';
 
 @Component({
   selector: 'app-ceruti-cross-arching-panel',
@@ -13,12 +13,10 @@ import { PanelRenderRequest } from '../../ceruti-types';
   templateUrl: './cross-arching-panel.html',
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
-export class CrossArchingPanel implements OnInit, OnDestroy {
+export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDestroy {
   @Input({ required: true }) params!: EnricoCerutiParams;
   @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;
-
-  @Output() panelUpdate = new EventEmitter<PanelRenderRequest>();
 
   private readonly scene = new CrossArchingSceneBuilder();
   private rotation: CrossArchingRotationController | null = null;
@@ -52,7 +50,7 @@ export class CrossArchingPanel implements OnInit, OnDestroy {
       this.flags,
       () => this.emitDragRefresh(),
     );
-    this.panelUpdate.emit(this.buildRenderRequest(true));
+    this.emitImmediate();
   }
 
   ngOnDestroy(): void {
@@ -60,7 +58,7 @@ export class CrossArchingPanel implements OnInit, OnDestroy {
   }
 
   onChange(): void {
-    this.panelUpdate.emit(this.buildRenderRequest(false));
+    this.emitDebounced();
   }
 
   /**
@@ -79,7 +77,7 @@ export class CrossArchingPanel implements OnInit, OnDestroy {
   }
 
   private emitDragRefresh(): void {
-    this.panelUpdate.emit(this.buildRenderRequest(true, false));
+    this.emitImmediate(false, false);
   }
 
   private ensureCrossArchingState(): void {
@@ -98,25 +96,18 @@ export class CrossArchingPanel implements OnInit, OnDestroy {
     this.flags.crossSectionY ??= Math.round(this.params.bouts.C0?.y ?? this.params.height / 2);
   }
 
-  private buildRenderRequest(immediate: boolean, persistSession = true): PanelRenderRequest {
-    return {
-      immediate,
-      refreshEnabledPanels: false,
-      persistSession,
-      run: () => {
-        this.ensureCrossArchingState();
-        return this.scene.build(
-          {
-            params: this.params,
-            viewFlags: this.flags,
-            colors: this.colors,
-          },
-          {
-            active: this.rotation?.isDragging ?? false,
-            onPointerDown: this.rotation?.onPointerDown ?? (() => {}),
-          },
-        );
+  protected buildRun(): RenderLayer[] {
+    this.ensureCrossArchingState();
+    return this.scene.build(
+      {
+        params: this.params,
+        viewFlags: this.flags,
+        colors: this.colors,
       },
-    };
+      {
+        active: this.rotation?.isDragging ?? false,
+        onPointerDown: this.rotation?.onPointerDown ?? (() => {}),
+      },
+    );
   }
 }
