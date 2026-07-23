@@ -5,7 +5,6 @@ import { CerutiColors, CerutiViewFlags, EnricoCerutiParams } from '../../ceruti-
 import {
   calculateCrossArchTop,
   contourSampleSteps,
-  defineTroughPath,
   flutingHalfWidthAtY,
   flutingOuterHalfWidthAtY,
   innerHalfWidthAtY,
@@ -63,8 +62,8 @@ export class CrossArchingSceneBuilder {
    */
   private archContourCache: {
     key: string;
-    top: { levels: ArchContourLevel[]; outlinePts: Pt[] | null; troughPts: Pt[] | null } | null;
-    bottom: { levels: ArchContourLevel[]; outlinePts: Pt[] | null; troughPts: Pt[] | null } | null;
+    top: { levels: ArchContourLevel[]; outlinePts: Pt[] | null } | null;
+    bottom: { levels: ArchContourLevel[]; outlinePts: Pt[] | null } | null;
   } = { key: '', top: null, bottom: null };
 
   /**
@@ -158,21 +157,14 @@ export class CrossArchingSceneBuilder {
         c.top ??= {
           levels: computeArchContourRings(p, model, stepMm, gridMm),
           outlinePts: samplePathToPolyline(defineOuterPath(p, p.overhang + p.rib, true, false), 1),
-          troughPts: (() => {
-            const t = defineTroughPath(p, 'top');
-            return t ? samplePathToPolyline(t, 1) : null;
-          })(),
         };
 
         const levels = projectArchContourRings(c.top.levels, p.height, yOffset, rotX, rotY, rotZ, 1, 0, 1);
         const outline = c.top.outlinePts
           ? projectFlatPolyline(c.top.outlinePts, p.height, yOffset, rotX, rotY, rotZ, 1, 0, 1)
           : null;
-        const trough = c.top.troughPts
-          ? projectFlatPolyline(c.top.troughPts, p.height, yOffset, rotX, rotY, rotZ, 1, 0, 1)
-          : null;
 
-        renders.push(renderArchContours3d(colors, levels, outline, trough, colors.archTop));
+        renders.push(renderArchContours3d(colors, levels, outline, colors.archTop));
         const bounds = computeArchContourBounds(c.top.levels, p.height, yOffset, rotX, rotY, rotZ, 1, 0, 1);
         renders.push(renderWireframeDragFrame(bounds, colors, drag.active, drag.onPointerDown));
       }
@@ -182,21 +174,14 @@ export class CrossArchingSceneBuilder {
         c.bottom ??= {
           levels: computeArchContourRings(p, backModel, stepMm, gridMm),
           outlinePts: samplePathToPolyline(defineOuterPath(p, p.overhang + p.rib, true, true), 1),
-          troughPts: (() => {
-            const t = defineTroughPath(p, 'bottom');
-            return t ? samplePathToPolyline(t, 1) : null;
-          })(),
         };
 
         const levels = projectArchContourRings(c.bottom.levels, p.height, yOffset, rotX, rotY, rotZ, 1, 0, -1);
         const outline = c.bottom.outlinePts
           ? projectFlatPolyline(c.bottom.outlinePts, p.height, yOffset, rotX, rotY, rotZ, 1, 0, -1)
           : null;
-        const trough = c.bottom.troughPts
-          ? projectFlatPolyline(c.bottom.troughPts, p.height, yOffset, rotX, rotY, rotZ, 1, 0, -1)
-          : null;
 
-        renders.push(renderArchContours3d(colors, levels, outline, trough, colors.archBack));
+        renders.push(renderArchContours3d(colors, levels, outline, colors.archBack));
         const bounds = computeArchContourBounds(c.bottom.levels, p.height, yOffset, rotX, rotY, rotZ, 1, 0, -1);
         renders.push(renderWireframeDragFrame(bounds, colors, drag.active, drag.onPointerDown));
       }
