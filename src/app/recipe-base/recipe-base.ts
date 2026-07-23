@@ -114,9 +114,10 @@ export abstract class RecipeComponentBase implements AfterViewInit {
     try {
       sessionStorage.setItem('recipeData', JSON.stringify(this.d));
       this.panelFlow?.refreshEnabledPanels();
+      const current = this.panelFlow?.getCurrent(this.openPanel);
+      if (current) this.openPanel = current;
       this.debounceController?.markImmediate();
-      const handlers = this.getActivationHandlers();
-      handlers[this.openPanel]?.();
+      this.onStateRestored();
       this.refreshBoundInputs();
     } finally {
       this._isRestoringHistory = false;
@@ -153,7 +154,24 @@ export abstract class RecipeComponentBase implements AfterViewInit {
 
   protected abstract canOpenPanel(panel: string): boolean;
 
-  protected abstract getActivationHandlers(): Record<string, () => void>;
+  protected onPanelActivated(_panel: string): void {}
+
+  protected onStateRestored(): void {
+    this.onPanelActivated(this.openPanel);
+  }
+
+  /** Forces the currently open panel subtree to unmount/remount so panel-owned ngOnInit redraws run again. */
+  protected remountActivePanel(): void {
+    const panel = this.openPanel;
+    if (!panel) return;
+    this.openPanel = '';
+    queueMicrotask(() => {
+      if (this._destroyed) return;
+      this.openPanel = panel;
+      sessionStorage.setItem('openPanel', panel);
+      this.refreshBoundInputs();
+    });
+  }
 
   protected isPanelEnabled(panel: string): boolean {
     return this.panelFlow?.isEnabled(panel) ?? false;
@@ -195,8 +213,7 @@ export abstract class RecipeComponentBase implements AfterViewInit {
     if (!this.isPanelEnabled(panel)) return;
     this.openPanel = panel;
     sessionStorage.setItem('openPanel', panel);
-    const handlers = this.getActivationHandlers();
-    handlers[panel]?.();
+    this.onPanelActivated(panel);
   }
 
 
