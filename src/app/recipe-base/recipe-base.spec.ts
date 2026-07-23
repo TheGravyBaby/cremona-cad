@@ -4,10 +4,6 @@ class TestRecipeComponent extends RecipeComponentBase {
   protected canOpenPanel(): boolean {
     return true;
   }
-
-  protected getActivationHandlers(): Record<string, () => void> {
-    return {};
-  }
 }
 
 describe('RecipeComponentBase', () => {

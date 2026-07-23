@@ -11,6 +11,7 @@ import { calculateCornerBlocks, calculateMould, calculateOuterArcs } from '../..
 import { defaultCrossArchParams, defaultFlutingChannelParams } from '../../ceruti-arching';
 import { buildPlateStl, buildPlateSurfaceModel, calculateCrossArchTemplates, calculateLongArchTemplates, TemplateShape } from '../../ceruti-surface';
 import { CerutiColors, EnricoCerutiParams, PathEntry } from '../../ceruti-types';
+import { ensureCenterBoutInnerPath, ensureOuterTracePaths } from '../../shared/derived-paths';
 
 type ExportType = 'innerTrace' | 'outerTrace' | 'back' | 'mould' | 'blocks' | 'crossArchTemplates' | 'longArchTemplates';
 
@@ -36,7 +37,7 @@ export class ExportPanel implements OnInit {
   /** Forwarded straight through to the canvas by the parent — this panel composes its own preview renders. */
   @Output() draftChange = new EventEmitter<Array<(g: any, ui: any) => void>>();
 
-  /** Looks up a precalculated path from the shared cache populated by the parent's panel handlers. */
+  /** Looks up a precalculated path from the shared cache populated by panel updates/shared derivation helpers. */
   private getPath(key: string): string {
     return this.paths.find(entry => entry.key === key)!.path;
   }
@@ -59,6 +60,11 @@ export class ExportPanel implements OnInit {
     return type === 'crossArchTemplates' ? calculateCrossArchTemplates(this.params) : calculateLongArchTemplates(this.params);
   }
 
+  private ensureDerivedPaths(): void {
+    ensureCenterBoutInnerPath(this.params, this.paths);
+    ensureOuterTracePaths(this.params, this.paths);
+  }
+
   private toSvgTexts(shapes: TemplateShape[]): SvgTextExport[] {
     return shapes.map(s => ({ text: s.label, x: s.labelPos.x, y: s.labelPos.y, rotationDeg: s.labelRotation, fontSize: TEMPLATE_LABEL_SIZE }));
   }
@@ -68,10 +74,12 @@ export class ExportPanel implements OnInit {
   }
 
   ngOnInit(): void {
+    this.ensureDerivedPaths();
     this.previewExport('outerTrace');
   }
 
   previewExport(type: ExportType): void {
+    this.ensureDerivedPaths();
     const p = this.params;
 
     switch (type) {
@@ -119,6 +127,7 @@ export class ExportPanel implements OnInit {
   }
 
   downloadExport(type: ExportType): void {
+    this.ensureDerivedPaths();
     const p = this.params;
     const baseName = this.fileName?.trim() || 'ceruti-violin';
     const height = p.height + 2 * p.button!.height + p.button!.width / 2;
@@ -182,6 +191,7 @@ export class ExportPanel implements OnInit {
   }
 
   downloadDxf(type: ExportType): void {
+    this.ensureDerivedPaths();
     const p = this.params;
     const baseName = this.fileName?.trim() || 'ceruti-violin';
 
@@ -223,6 +233,7 @@ export class ExportPanel implements OnInit {
   }
 
   downloadPdf(type: ExportType): void {
+    this.ensureDerivedPaths();
     const p = this.params;
     const baseName = this.fileName?.trim() || 'ceruti-violin';
     const sheetLabels: Record<string, string> = {
@@ -288,6 +299,7 @@ export class ExportPanel implements OnInit {
   }
 
   downloadFullPlan(): void {
+    this.ensureDerivedPaths();
     const p = this.params;
     const baseName = this.fileName?.trim() || 'ceruti-violin';
     const description = this.description ?? '';
