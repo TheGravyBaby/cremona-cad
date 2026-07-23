@@ -7,10 +7,9 @@
  *
  * Each contour ring sits at z = its level by construction (that's what a
  * contour ring is), so projecting it is exactly like projecting a wireframe
- * rib. The outline and trough context lines don't have a natural z of their
- * own — they're projected flat, at z = 0 (the plate-surface reference plane),
- * which is an approximation for the trough (its true depth varies) but keeps
- * them as simple, cheap context rather than a second surface to sample.
+ * rib. The outline context line doesn't have a natural z of its own — it's
+ * projected flat, at z = 0 (the plate-surface reference plane), which keeps
+ * it as simple, cheap context rather than a second surface to sample.
  *
  * The pipeline mirrors the wireframe's cache/reproject split:
  *   computeArchContourRings (ceruti-surface.ts) — expensive marching-squares
@@ -52,7 +51,7 @@ export function projectArchContourRings(
   }));
 }
 
-/** Projects a flat (z = 0) polyline — used for the outline/trough context lines. */
+/** Projects a flat (z = 0) polyline — used for the outline context line. */
 export function projectFlatPolyline(
   pts: Pt[],
   bodyHeight: number,
@@ -113,7 +112,6 @@ export function renderArchContours3d(
   colors: CerutiColors,
   levels: ProjectedContourLevel[],
   outlinePath: string | null,
-  troughPath: string | null,
   domeColor: string = colors.archTop,
 ): (g: any, ui: any) => void {
   return (g: any, ui: any): void => {
@@ -124,15 +122,6 @@ export function renderArchContours3d(
         .attr('stroke-width', 1)
         .attr('fill', 'none')
         .attr('opacity', 0.6)
-        .attr('vector-effect', 'non-scaling-stroke');
-    }
-    if (troughPath) {
-      g.append('path')
-        .attr('d', troughPath)
-        .attr('stroke', colors.fluting)
-        .attr('stroke-width', 1)
-        .attr('fill', 'none')
-        .attr('opacity', 0.8)
         .attr('vector-effect', 'non-scaling-stroke');
     }
     for (const { level, path } of levels) {

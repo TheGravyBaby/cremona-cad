@@ -1,5 +1,5 @@
-import { flipArcAboutY, arcHorizontalIntersections, clamp } from "../helpers/draftMath";
-import { pathFromArc, unifyConnectedSvgPaths, buildCatenaryPath, buildCycloidPath, buildSplinePath, buildCycloidPathAcross, catenaryZAt, cycloidZAt, splineZAt, flutingArc, cycloidEdgeSlope } from "../helpers/svgPathMath";
+import { arcHorizontalIntersections, clamp } from "../helpers/draftMath";
+import { buildCatenaryPath, buildCycloidPath, buildSplinePath, buildCycloidPathAcross, catenaryZAt, cycloidZAt, splineZAt, cycloidEdgeSlope } from "../helpers/svgPathMath";
 import { Arc } from "../models/types";
 import { ArchCurve, ArchingParams, CrossArchParams, EnricoCerutiParams, FlutingChannelParams } from "./ceruti-types";
 import { defineFlutingArcs, defineInnerArcs, defineOffsetArcs, defineOuterCornerArcs } from "./ceruti-paths";
@@ -10,25 +10,6 @@ import { defineFlutingArcs, defineInnerArcs, defineOffsetArcs, defineOuterCorner
 // is about the arch's Z profile: how high it rises, its cross-sectional shape
 // at a given body height, and the *AtY half-width queries the renderers sample
 // it with.
-
-/**
- * The plan-view line of the fluting trough — the deepest path of the carved
- * channel, offset between the platform boundaries at the resolved trough
- * position. The real trough position varies station-by-station (it follows
- * the cross arch's takeoff slope, per {@link resolveTroughU}); this traces a
- * single representative offset for the whole plate, evaluated at the C-bout
- * waist. Returns null until both the fluting platform and the arching's
- * channel params exist.
- */
-export function defineTroughPath(p: EnricoCerutiParams, side: 'top' | 'bottom' = 'top'): string | null {
-    const fluting = p.arching?.[side].fluting;
-    if (!fluting || p.innerFlutingDepth === null || p.outerFlutingDepth === null) return null;
-    const u = resolveTroughU(p, side);
-    const troughFromEdge = p.outerFlutingDepth + u * (p.innerFlutingDepth - p.outerFlutingDepth);
-    const arcs = defineFlutingArcs(p, p.overhang + p.rib - troughFromEdge);
-    const mirrored = arcs.map(arc => flipArcAboutY(arc));
-    return unifyConnectedSvgPaths([...arcs, ...mirrored].map(arc => pathFromArc(arc)));
-}
 
 /** Returns instrument-appropriate arching defaults based on body length (p.height). */
 export function defaultArchingParams(bodyHeight: number): ArchingParams {
@@ -154,23 +135,6 @@ export function defaultCrossArchParams(): CrossArchParams {
 /** Default fluting channel: the carved gouge-arc, tangent to the cross arch. */
 export function defaultFlutingChannelParams(): FlutingChannelParams {
   return { flatPlatform: false };
-}
-
-/**
- * Trough position across the platform annulus (0 = platform outer boundary,
- * 1 = fluting inner boundary). Uses the plate's troughT when set, otherwise
- * places the trough on the purfling line via the plan-view offsets. Clamped
- * away from the boundaries so both profile half-waves keep a real width.
- */
-export function resolveTroughU(p: EnricoCerutiParams, side: 'top' | 'bottom' = 'top'): number {
-  const outer = p.outerFlutingDepth ?? 0;
-  const inner = p.innerFlutingDepth ?? 0;
-  const width = inner - outer;
-  if (width <= 0) return 1;
-  const edgeDepth = p.arching?.[side].edgeDepth ?? 0;
-  const y = p.bouts.C0?.y ?? p.height / 2;
-  const arc = flutingArc(edgeDepth, width, crossArchEdgeSlopeAt(p, y, side));
-  return arc ? Math.min(Math.max(arc.cx / width, 0), 1) : 1;
 }
 
 /**
