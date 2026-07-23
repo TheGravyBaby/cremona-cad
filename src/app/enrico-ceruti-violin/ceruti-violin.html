@@ -57,9 +57,7 @@
             [params]="d.params"
             [colors]="colors"
             [flags]="viewFlags"
-            (changed)="changeMainBouts()"
-            (arcFocus)="onArcFocus($event.arc, $event.color)"
-            (arcBlur)="onArcBlur()">
+            (panelUpdate)="onPanelRenderRequest($event)">
         </app-ceruti-main-bouts-panel>
         }
 
@@ -68,40 +66,37 @@
             [params]="d.params"
             [colors]="colors"
             [flags]="viewFlags"
-            (changed)="changeCorners()"
-            (arcFocus)="onArcFocus($event.arc, $event.color)"
-            (arcBlur)="onArcBlur()">
+            (panelUpdate)="onPanelRenderRequest($event)">
         </app-ceruti-corners-panel>
         }
 
         @if (openPanel === 'centerBout') {
         <app-ceruti-center-bout-panel
             [params]="d.params"
+            [paths]="d.paths"
             [colors]="colors"
             [flags]="viewFlags"
-            (changed)="changeCenterBout($event)"
-            (arcFocus)="onArcFocus($event.arc, $event.color)"
-            (arcBlur)="onArcBlur()">
+            (panelUpdate)="onPanelRenderRequest($event)">
         </app-ceruti-center-bout-panel>
         }
 
         @if (openPanel === 'outerTrace') {
         <app-ceruti-outer-trace-panel
             [params]="d.params"
+            [paths]="d.paths"
             [colors]="colors"
             [flags]="viewFlags"
-            (changed)="changeOuterTrace()"
-            (arcFocus)="onArcFocus($event.arc, $event.color)"
-            (arcBlur)="onArcBlur()">
+            (panelUpdate)="onPanelRenderRequest($event)">
         </app-ceruti-outer-trace-panel>
         }
 
         @if (openPanel === 'mould') {
         <app-ceruti-mould-panel
             [params]="d.params"
+            [paths]="d.paths"
             [colors]="colors"
             [flags]="viewFlags"
-            (changed)="changeMould()">
+            (panelUpdate)="onPanelRenderRequest($event)">
         </app-ceruti-mould-panel>
         }
 
@@ -110,7 +105,7 @@
             [params]="d.params"
             [colors]="colors"
             [flags]="viewFlags"
-            (changed)="changeLongArching()">
+            (panelUpdate)="onPanelRenderRequest($event)">
         </app-ceruti-long-arching-panel>
         }
 
@@ -119,7 +114,7 @@
             [params]="d.params"
             [colors]="colors"
             [flags]="viewFlags"
-            (changed)="changeCrossArching()">
+            (panelUpdate)="onPanelRenderRequest($event)">
         </app-ceruti-cross-arching-panel>
         }
 

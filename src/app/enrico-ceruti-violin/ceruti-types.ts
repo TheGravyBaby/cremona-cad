@@ -58,6 +58,33 @@ export interface CerutiViewFlags {
   plateRotZDeg: number;
 }
 
+/**
+ * Generic panel-to-parent render request payload.
+ * Panels describe how to build their render layers; the parent applies shared
+ * policy (debounce/history/session/panel-flow) before executing it.
+ */
+export interface PanelRenderRequest {
+  /**
+   * When true, bypasses debounce delay and runs immediately (used for hover/
+   * focus previews and initial panel activation draws).
+   */
+  immediate?: boolean;
+  /**
+   * When true, parent refreshes panel enablement after applying this request
+   * (used by panels whose edits unlock downstream panels).
+   */
+  refreshEnabledPanels?: boolean;
+  /**
+   * When false, parent skips writing recipe data to session storage after this
+   * request. Defaults to persisted when omitted.
+   */
+  persistSession?: boolean;
+  /**
+   * Builds the render layer stack for the current panel state.
+   */
+  run: () => Array<(g: any, ui: any) => void>;
+}
+
 export const DEFAULT_CERUTI_VIEW_FLAGS: CerutiViewFlags = {
   showModuleArcs: true,
   showModuleCircles: false,

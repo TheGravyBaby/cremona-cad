@@ -75,11 +75,10 @@ export class HelloRecipe extends RecipeComponentBase {
     return true; // all panels always available in this simple recipe
   }
 
-  // Maps panel ids → functions that run when that panel becomes active.
-  protected override getActivationHandlers(): Record<string, () => void> {
-    return {
-      dimensions: () => this.render(),
-    };
+  protected override onPanelActivated(panel: string): void {
+    if (panel === 'dimensions') {
+      this.render();
+    }
   }
 
   // ─── Convenience accessor ──────────────────────────────────────────────
