@@ -64,7 +64,7 @@
         <label class="field-cell" [style.opacity]="params.options.useKellyC0 ? 0.5 : 1">
             <span class="field-title">Total Width <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="params.bouts.CBW"
-                (input)="onChange(false)" [disabled]="params.options.useKellyC0" />
+                (input)="onManualEdit()" [disabled]="params.options.useKellyC0" />
         </label>
         <button type="button" class="info-icon" (click)="centerBoutWidthInfo()"
             title="More information" aria-label="Information">ⓘ</button>
@@ -87,7 +87,7 @@
                 [style.pointerEvents]="params.options.useKellyC0 ? 'none' : 'auto'">
                 <span class="field-title">C0 Y <span class="unit-label">mm</span></span>
                 <input type="number" class="basic-input" step="1" [(ngModel)]="params.bouts.C0!.y"
-                    (input)="onChange(false); onArcFocus(params.bouts.C0!, colors.centerBout)" [style.borderColor]="colors.centerBout"
+                    (input)="onManualEdit(); onArcFocus(params.bouts.C0!, colors.centerBout)" [style.borderColor]="colors.centerBout"
                     [disabled]="params.options.useKellyC0"
                     (focus)="onArcFocus(params.bouts.C0!, colors.centerBout)" (blur)="onArcBlur()" />
             </label>

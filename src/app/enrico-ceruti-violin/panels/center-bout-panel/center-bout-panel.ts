@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { adjustArcStart } from '../../../helpers/arcDegrees';
 import { flipArcAboutY, flipCircleAboutY, offsetArcRadius } from '../../../helpers/draftMath';
@@ -6,13 +6,14 @@ import { nearestFraction } from '../../../helpers/nearestFraction';
 import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderCrosshair, renderDashedLine } from '../../../helpers/renderFuncs';
 import { Arc } from '../../../models/types';
 import { centerBoutWidthInfo, cornerPositionInfo, fitC0Info } from '../../ceruti-helpers';
-import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, PanelRenderRequest, PathEntry } from '../../ceruti-types';
+import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, PathEntry } from '../../ceruti-types';
 import { ensureCenterBoutInnerPath } from '../../shared/derived-paths';
 import { renderBounds, renderBoutBouts, renderCornerGuides } from '../../renders/guides.render';
 import { HighlightedArc, PATH_STROKE_WIDTH } from '../../renders/render-constants';
 import { RenderToggles } from '../../render-toggles/render-toggles';
 import { renderMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { renderCorners } from '../corners-panel/corners-panel';
+import { CerutiPanelBase, RenderLayer } from '../panel-base';
 
 export interface CenterBoutViewFlags {
   showModuleCircles: boolean;
@@ -29,15 +30,11 @@ export interface CenterBoutViewFlags {
   templateUrl: './center-bout-panel.html',
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
-export class CenterBoutPanel implements OnInit {
+export class CenterBoutPanel extends CerutiPanelBase implements OnInit {
   @Input({ required: true }) params!: EnricoCerutiParams;
   @Input({ required: true }) paths!: PathEntry[];
   @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;
-
-  @Output() panelUpdate = new EventEmitter<PanelRenderRequest>();
-  @Output() arcFocus = new EventEmitter<{ arc: Arc; color: string }>();
-  @Output() arcBlur = new EventEmitter<void>();
 
   protected readonly nearestFraction = nearestFraction;
   protected readonly centerBoutWidthInfo = centerBoutWidthInfo;
@@ -53,53 +50,47 @@ export class CenterBoutPanel implements OnInit {
   }
 
   ngOnInit(): void {
-    this.panelUpdate.emit(this.buildRenderRequest(undefined, true, true));
+    this.emitImmediate(true);
   }
 
-  onChange(solveC0?: boolean): void {
-    this.panelUpdate.emit(this.buildRenderRequest(solveC0, false, true));
+  onChange(): void {
+    this.emitDebounced(true);
+  }
+
+  /** Hand-editing CBW or C0.y directly overrides the Kelly-fit C0 the same way toggling the checkbox off would. */
+  onManualEdit(): void {
+    this.params.options.useKellyC0 = false;
+    this.onChange();
   }
 
   onArcFocus(arc: Arc, color: string): void {
     this.highlightedArc = arc;
     this.highlightedArcColor = color;
-    this.arcFocus.emit({ arc, color });
-    this.panelUpdate.emit(this.buildRenderRequest(undefined, true, false));
+    this.emitImmediate(false);
   }
 
   onArcBlur(): void {
     this.highlightedArc = null;
     this.highlightedArcColor = '';
-    this.arcBlur.emit();
-    this.panelUpdate.emit(this.buildRenderRequest(undefined, true, false));
+    this.emitImmediate(false);
   }
 
-  private buildRenderRequest(
-    solveC0: boolean | undefined,
-    immediate: boolean,
-    refreshEnabledPanels: boolean,
-  ): PanelRenderRequest {
-    return {
-      immediate,
-      refreshEnabledPanels,
-      run: () => {
-        const p = this.params;
-        const c = this.colors;
-        const f = this.flags;
-        const highlighted = this.highlighted;
+  protected buildRun(): RenderLayer[] {
+    const p = this.params;
+    const c = this.colors;
+    const f = this.flags;
+    const highlighted = this.highlighted;
 
-        ensureCenterBoutInnerPath(p, this.paths, solveC0);
+    ensureCenterBoutInnerPath(p, this.paths);
 
-        return [
-          renderBounds(p, f.showModuleGuides),
-          renderBoutBouts(p, c, f.showModuleGuides),
-          renderCornerGuides(p, f.showModuleGuides),
-          renderMainBouts(p, c, f, false, highlighted),
-          renderCorners(p, c, f, false, highlighted),
-          renderCenterBout(p, c, f, true, highlighted),
-        ];
-      },
-    };
+    return [
+      renderBounds(p, f.showModuleGuides),
+      renderBoutBouts(p, c, f.showModuleGuides),
+      renderCornerGuides(p, f.showModuleGuides),
+      renderMainBouts(p, c, f, false, highlighted),
+      renderCorners(p, c, f, false, highlighted),
+      renderCenterBout(p, c, f, true, highlighted),
+    ];
   }
 }
 

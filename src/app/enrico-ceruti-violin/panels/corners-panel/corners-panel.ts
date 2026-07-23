@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { adjustArcStart } from '../../../helpers/arcDegrees';
 import { flipArcAboutY, flipCircleAboutY, offsetArcRadius } from '../../../helpers/draftMath';
@@ -7,11 +7,12 @@ import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, r
 import { Arc } from '../../../models/types';
 import { calculateCorners } from '../../ceruti-calcs';
 import { compoundArcInfo, cornerPositionInfo, violCornerInfo } from '../../ceruti-helpers';
-import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, PanelRenderRequest } from '../../ceruti-types';
+import { CerutiColors, CerutiViewFlags, EnricoCerutiParams } from '../../ceruti-types';
 import { renderBounds, renderBoutBouts, renderCornerGuides } from '../../renders/guides.render';
 import { renderMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { HighlightedArc, PATH_STROKE_WIDTH } from '../../renders/render-constants';
 import { RenderToggles } from '../../render-toggles/render-toggles';
+import { CerutiPanelBase, RenderLayer } from '../panel-base';
 
 export interface CornersViewFlags {
   showModuleCircles: boolean;
@@ -27,14 +28,10 @@ export interface CornersViewFlags {
   templateUrl: './corners-panel.html',
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
-export class CornersPanel implements OnInit {
+export class CornersPanel extends CerutiPanelBase implements OnInit {
   @Input({ required: true }) params!: EnricoCerutiParams;
   @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;
-
-  @Output() panelUpdate = new EventEmitter<PanelRenderRequest>();
-  @Output() arcFocus = new EventEmitter<{ arc: Arc; color: string }>();
-  @Output() arcBlur = new EventEmitter<void>();
 
   protected readonly nearestFraction = nearestFraction;
   protected readonly cornerPositionInfo = cornerPositionInfo;
@@ -50,48 +47,40 @@ export class CornersPanel implements OnInit {
   }
 
   ngOnInit(): void {
-    this.panelUpdate.emit(this.buildRenderRequest(true, true));
+    this.emitImmediate(true);
   }
 
   onChange(): void {
-    this.panelUpdate.emit(this.buildRenderRequest(false, true));
+    this.emitDebounced(true);
   }
 
   onArcFocus(arc: Arc, color: string): void {
     this.highlightedArc = arc;
     this.highlightedArcColor = color;
-    this.arcFocus.emit({ arc, color });
-    this.panelUpdate.emit(this.buildRenderRequest(true, false));
+    this.emitImmediate(false);
   }
 
   onArcBlur(): void {
     this.highlightedArc = null;
     this.highlightedArcColor = '';
-    this.arcBlur.emit();
-    this.panelUpdate.emit(this.buildRenderRequest(true, false));
+    this.emitImmediate(false);
   }
 
-  private buildRenderRequest(immediate: boolean, refreshEnabledPanels: boolean): PanelRenderRequest {
-    return {
-      immediate,
-      refreshEnabledPanels,
-      run: () => {
-        const p = this.params;
-        const c = this.colors;
-        const f = this.flags;
-        const highlighted = this.highlighted;
+  protected buildRun(): RenderLayer[] {
+    const p = this.params;
+    const c = this.colors;
+    const f = this.flags;
+    const highlighted = this.highlighted;
 
-        calculateCorners(p);
-        return [
-          renderBounds(p, f.showModuleGuides),
-          renderBoutBouts(p, c, f.showModuleGuides),
-          renderCornerGuides(p, f.showModuleGuides),
-          renderBounds(p, false),
-          renderMainBouts(p, c, f, false, highlighted),
-          renderCorners(p, c, f, true, highlighted),
-        ];
-      },
-    };
+    calculateCorners(p);
+    return [
+      renderBounds(p, f.showModuleGuides),
+      renderBoutBouts(p, c, f.showModuleGuides),
+      renderCornerGuides(p, f.showModuleGuides),
+      renderBounds(p, false),
+      renderMainBouts(p, c, f, false, highlighted),
+      renderCorners(p, c, f, true, highlighted),
+    ];
   }
 }
 

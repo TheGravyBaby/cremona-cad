@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { getArcEndDeg, getArcStartDeg, setArcEndDeg, setArcStartDeg } from '../../../helpers/arcDegrees';
 import {
@@ -11,10 +11,11 @@ import {
 import { arcFromCircle, Arc } from '../../../models/types';
 import { calculateMainBouts } from '../../ceruti-calcs';
 import { boutWidthInfo, violNeckInfo } from '../../ceruti-helpers';
-import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, PanelRenderRequest } from '../../ceruti-types';
+import { CerutiColors, CerutiViewFlags, EnricoCerutiParams } from '../../ceruti-types';
 import { renderBounds, renderBoutBouts } from '../../renders/guides.render';
 import { HighlightedArc, PATH_STROKE_WIDTH } from '../../renders/render-constants';
 import { RenderToggles } from '../../render-toggles/render-toggles';
+import { CerutiPanelBase, RenderLayer } from '../panel-base';
 
 export interface MainBoutsViewFlags {
   showModuleCircles: boolean;
@@ -31,14 +32,10 @@ export interface MainBoutsViewFlags {
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 
-export class MainBoutsPanel implements OnInit {
+export class MainBoutsPanel extends CerutiPanelBase implements OnInit {
   @Input({ required: true }) params!: EnricoCerutiParams;
   @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;
-
-  @Output() panelUpdate = new EventEmitter<PanelRenderRequest>();
-  @Output() arcFocus = new EventEmitter<{ arc: Arc; color: string }>();
-  @Output() arcBlur = new EventEmitter<void>();
 
   protected readonly nearestFraction = nearestFraction;
   protected readonly boutWidthInfo = boutWidthInfo;
@@ -58,45 +55,37 @@ export class MainBoutsPanel implements OnInit {
   ngOnInit(): void {
     // When the panel is shown, emit one initial render request so the parent
     // does not need to import panel-specific bootstrap helpers.
-    this.panelUpdate.emit(this.buildRenderRequest(true, true));
+    this.emitImmediate(true);
   }
 
   onChange(): void {
-    this.panelUpdate.emit(this.buildRenderRequest(false, true));
+    this.emitDebounced(true);
   }
 
   onArcFocus(arc: Arc, color: string): void {
     this.highlightedArc = arc;
     this.highlightedArcColor = color;
-    this.arcFocus.emit({ arc, color });
-    this.panelUpdate.emit(this.buildRenderRequest(true, false));
+    this.emitImmediate(false);
   }
 
   onArcBlur(): void {
     this.highlightedArc = null;
     this.highlightedArcColor = '';
-    this.arcBlur.emit();
-    this.panelUpdate.emit(this.buildRenderRequest(true, false));
+    this.emitImmediate(false);
   }
 
-  private buildRenderRequest(immediate: boolean, refreshEnabledPanels: boolean): PanelRenderRequest {
-    return {
-      immediate,
-      refreshEnabledPanels,
-      run: () => {
-        const p = this.params;
-        const f = this.flags;
-        const c = this.colors;
-        const highlighted = this.highlighted;
+  protected buildRun(): RenderLayer[] {
+    const p = this.params;
+    const f = this.flags;
+    const c = this.colors;
+    const highlighted = this.highlighted;
 
-         calculateMainBouts(p);
-         return [
-         renderBounds(p, f.showModuleGuides),
-         renderBoutBouts(p, c, f.showModuleGuides),
-         renderMainBouts(p, c, f, true, highlighted),
-         ];
-      },
-    };
+    calculateMainBouts(p);
+    return [
+      renderBounds(p, f.showModuleGuides),
+      renderBoutBouts(p, c, f.showModuleGuides),
+      renderMainBouts(p, c, f, true, highlighted),
+    ];
   }
 }
 

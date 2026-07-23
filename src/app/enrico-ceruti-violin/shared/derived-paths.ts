@@ -14,10 +14,9 @@ export const upsertPathEntry = (paths: PathEntry[], key: string, path: string): 
 export const ensureCenterBoutInnerPath = (
   params: EnricoCerutiParams,
   paths: PathEntry[],
-  solveC0?: boolean,
 ): void => {
   calculateCorners(params);
-  calculateCenterBout(params, solveC0);
+  calculateCenterBout(params);
   upsertPathEntry(paths, 'inner', defineInnerPath(params));
 };
 

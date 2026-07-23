@@ -293,7 +293,8 @@ export function calculateCorners(p: EnricoCerutiParams): void {
 }
 
 let lastWorkingC0: Arc | null = null;
-export function calculateCenterBout(p: EnricoCerutiParams, solveC0?: boolean): void {
+/** Reads/recalculates from `p.options.useKellyC0`; callers who need to force it toggle the flag first. */
+export function calculateCenterBout(p: EnricoCerutiParams): void {
     let inset = p.overhang + p.rib;
     let UBWI = p.bouts.UBW - 2 * inset;
     let LBWI = p.bouts.LBW - 2 * inset;
@@ -301,9 +302,6 @@ export function calculateCenterBout(p: EnricoCerutiParams, solveC0?: boolean): v
 
     // initialize center bout if not already done
     p.bouts.C0 ??= new Arc(0, Math.round(HI * p.ratios.C0YtoH) + inset, Math.round(LBWI * p.ratios.C0toLBW));
-
-    if (solveC0 !== undefined)
-        p.options.useKellyC0 = solveC0; // if solveC0 is passed in, then we want to toggle whether C0 is fixed or not, and remember on future calcs 
 
     p.bouts.CBW ??= Math.round(p.bouts.LBW * p.ratios.CBWtoLBW);
 
@@ -349,7 +347,7 @@ export function calculateCenterBout(p: EnricoCerutiParams, solveC0?: boolean): v
             if (lastWorkingC0)
                 p.bouts.C0 = JSON.parse(JSON.stringify(lastWorkingC0));
 
-            return calculateCenterBout(p, false); // recalculate with Kelly method disabled
+            return calculateCenterBout(p); // recalculate now that useKellyC0 is disabled above
         }
     }
 

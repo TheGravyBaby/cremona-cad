@@ -1,14 +1,14 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { flipArcAboutY, flipCircleAboutY } from '../../../helpers/draftMath';
 import { adjustArcEnd } from '../../../helpers/arcDegrees';
 import { renderArcFromArcFancy, renderCircle, renderFilledPath, renderPath } from '../../../helpers/renderFuncs';
-import { Arc } from '../../../models/types';
 import { calculateOuterArcs } from '../../ceruti-calcs';
 import { buttonInfo, cornerCutoffInfo, flutingInfo, purflingInfo } from '../../ceruti-helpers';
-import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, PanelRenderRequest, PathEntry } from '../../ceruti-types';
+import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, PathEntry } from '../../ceruti-types';
 import { ensureOuterTracePaths } from '../../shared/derived-paths';
 import { RenderToggles } from '../../render-toggles/render-toggles';
+import { CerutiPanelBase, RenderLayer } from '../panel-base';
 
 export interface OuterTraceViewFlags {
   showModuleArcs: boolean;
@@ -23,15 +23,11 @@ export interface OuterTraceViewFlags {
   templateUrl: './outer-trace-panel.html',
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
-export class OuterTracePanel implements OnInit {
+export class OuterTracePanel extends CerutiPanelBase implements OnInit {
   @Input({ required: true }) params!: EnricoCerutiParams;
   @Input({ required: true }) paths!: PathEntry[];
   @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;
-
-  @Output() panelUpdate = new EventEmitter<PanelRenderRequest>();
-  @Output() arcFocus = new EventEmitter<{ arc: Arc; color: string }>();
-  @Output() arcBlur = new EventEmitter<void>();
 
   protected readonly buttonInfo = buttonInfo;
   protected readonly cornerCutoffInfo = cornerCutoffInfo;
@@ -40,21 +36,19 @@ export class OuterTracePanel implements OnInit {
   protected readonly adjustArcEnd = adjustArcEnd;
 
   ngOnInit(): void {
-    this.panelUpdate.emit(this.buildRenderRequest(true));
+    this.emitImmediate();
   }
 
   onChange(): void {
-    this.panelUpdate.emit(this.buildRenderRequest(false));
+    this.emitDebounced();
   }
 
-  onArcFocus(arc: Arc, color: string): void {
-    this.arcFocus.emit({ arc, color });
-    this.panelUpdate.emit(this.buildRenderRequest(true));
+  onArcFocus(): void {
+    this.emitImmediate();
   }
 
   onArcBlur(): void {
-    this.arcBlur.emit();
-    this.panelUpdate.emit(this.buildRenderRequest(true));
+    this.emitImmediate();
   }
 
   private getPath(key: string): string {
@@ -65,30 +59,24 @@ export class OuterTracePanel implements OnInit {
     return this.paths.find(entry => entry.key === key)?.path ?? null;
   }
 
-  private buildRenderRequest(immediate: boolean): PanelRenderRequest {
-    return {
-      immediate,
-      refreshEnabledPanels: false,
-      run: () => {
-        const p = this.params;
+  protected buildRun(): RenderLayer[] {
+    const p = this.params;
 
-        calculateOuterArcs(p);
-        ensureOuterTracePaths(p, this.paths);
+    calculateOuterArcs(p);
+    ensureOuterTracePaths(p, this.paths);
 
-        const renders: Array<(g: any, ui: any) => void> = [
-          renderPath(this.getPath('back'), this.colors.outerTrace),
-        ];
-        const flutingPath = this.getPathOrNull('flutingArea');
-        if (flutingPath) renders.push(renderFilledPath(flutingPath, this.colors.fluting));
-        const purflingPath = this.getPathOrNull('purfling');
-        if (purflingPath) renders.push(renderPath(purflingPath, this.colors.innerTrace, 1));
-        const outerPurflingPath = this.getPathOrNull('outerPurfling');
-        if (outerPurflingPath) renders.push(renderPath(outerPurflingPath, this.colors.innerTrace, 1));
-        renders.push(renderOuterTraceGuides(p, this.colors, this.flags, true));
+    const renders: RenderLayer[] = [
+      renderPath(this.getPath('back'), this.colors.outerTrace),
+    ];
+    const flutingPath = this.getPathOrNull('flutingArea');
+    if (flutingPath) renders.push(renderFilledPath(flutingPath, this.colors.fluting));
+    const purflingPath = this.getPathOrNull('purfling');
+    if (purflingPath) renders.push(renderPath(purflingPath, this.colors.innerTrace, 1));
+    const outerPurflingPath = this.getPathOrNull('outerPurfling');
+    if (outerPurflingPath) renders.push(renderPath(outerPurflingPath, this.colors.innerTrace, 1));
+    renders.push(renderOuterTraceGuides(p, this.colors, this.flags, true));
 
-        return renders;
-      },
-    };
+    return renders;
   }
 }
 

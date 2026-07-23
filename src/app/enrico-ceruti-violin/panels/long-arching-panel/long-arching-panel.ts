@@ -6,7 +6,7 @@ import { renderCircle, renderCrosshair, renderLine, renderMeasure, renderPath, r
 import {
   ArchCatenary, ArchCycloid, ArchCurve,
   ArchSpline, ArchSplinePoint,
-  ArchingParams, CerutiColors, CerutiViewFlags, EnricoCerutiParams, PanelRenderRequest,
+  ArchingParams, CerutiColors, CerutiViewFlags, EnricoCerutiParams,
 } from '../../ceruti-types';
 import { calculateLongArch, defaultArchingParams } from '../../ceruti-arching';
 import {
@@ -14,6 +14,7 @@ import {
   splinePointInfo, trochoidFactorInfo,
 } from '../../ceruti-helpers';
 import { RenderToggles } from '../../render-toggles/render-toggles';
+import { CerutiPanelBase, RenderLayer } from '../panel-base';
 
 @Component({
   selector: 'app-ceruti-long-arching-panel',
@@ -21,12 +22,10 @@ import { RenderToggles } from '../../render-toggles/render-toggles';
   templateUrl: './long-arching-panel.html',
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
-export class LongArchingPanel implements OnInit {
+export class LongArchingPanel extends CerutiPanelBase implements OnInit {
   @Input({ required: true }) params!: EnricoCerutiParams;
   @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;
-
-  @Output() panelUpdate = new EventEmitter<PanelRenderRequest>();
 
   protected readonly ribHeightInfo      = ribHeightInfo;
   protected readonly archHeightInfo     = archHeightInfo;
@@ -37,7 +36,7 @@ export class LongArchingPanel implements OnInit {
   protected readonly archEdgeDepthInfo  = crossArchEdgeDepthInfo;
 
   ngOnInit(): void {
-    this.panelUpdate.emit(this.buildRenderRequest(true));
+    this.emitImmediate();
   }
 
   get arching(): ArchingParams    { return this.params.arching!; }
@@ -114,32 +113,26 @@ export class LongArchingPanel implements OnInit {
   }
 
   onChange(): void {
-    this.panelUpdate.emit(this.buildRenderRequest(false));
+    this.emitDebounced();
   }
 
-  private buildRenderRequest(immediate: boolean): PanelRenderRequest {
-    return {
-      immediate,
-      refreshEnabledPanels: false,
-      run: () => {
-        if (!this.params.arching) {
-          this.params.arching = defaultArchingParams(this.params.height);
-        }
-        const { span, yStart, topPath, backPath } = calculateLongArch(this.params);
-        return [
-          renderLongArchBoxes(
-            this.params,
-            this.params.arching,
-            this.colors,
-            this.flags.showModuleGuides,
-            topPath,
-            backPath,
-            span,
-            yStart,
-          ),
-        ];
-      },
-    };
+  protected buildRun(): RenderLayer[] {
+    if (!this.params.arching) {
+      this.params.arching = defaultArchingParams(this.params.height);
+    }
+    const { span, yStart, topPath, backPath } = calculateLongArch(this.params);
+    return [
+      renderLongArchBoxes(
+        this.params,
+        this.params.arching,
+        this.colors,
+        this.flags.showModuleGuides,
+        topPath,
+        backPath,
+        span,
+        yStart,
+      ),
+    ];
   }
 }
 
