@@ -8,7 +8,9 @@ import {
   ArchSpline, ArchSplinePoint,
   ArchingParams, CerutiColors, CerutiViewFlags, EnricoCerutiParams,
 } from '../../ceruti-types';
-import { calculateLongArch, calculateLongArchFluting, defaultArchingParams } from '../../ceruti-arching';
+import { calculateLongArch, defaultArchingParams } from '../../ceruti-arching';
+import { calculateOuterArcs } from '../../ceruti-calcs';
+import { buildPlateSurfaceModel, calculateLongArchSectionFluting } from '../../ceruti-surface';
 import {
   archHeightInfo, crossArchEdgeDepthInfo, curveTypeInfo, plateThicknessInfo, ribHeightInfo,
   splinePointInfo, trochoidFactorInfo,
@@ -120,9 +122,13 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
     if (!this.params.arching) {
       this.params.arching = defaultArchingParams(this.params.height);
     }
+    // The surface models chord the outer/inset/fluting paths, whose corner arcs must be current.
+    calculateOuterArcs(this.params);
     const { span, yStart, topPath, backPath } = calculateLongArch(this.params);
-    const topFluting = calculateLongArchFluting(this.params, 'top');
-    const backFluting = calculateLongArchFluting(this.params, 'bottom');
+    const topModel = buildPlateSurfaceModel(this.params, 'top');
+    const backModel = buildPlateSurfaceModel(this.params, 'bottom');
+    const topFluting = topModel ? calculateLongArchSectionFluting(this.params, topModel) : null;
+    const backFluting = backModel ? calculateLongArchSectionFluting(this.params, backModel) : null;
     return [
       renderLongArchBoxes(
         this.params,
