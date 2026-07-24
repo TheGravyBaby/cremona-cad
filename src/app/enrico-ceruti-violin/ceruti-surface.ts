@@ -286,6 +286,45 @@ export function calculateFlutingSectionTop(p: EnricoCerutiParams, model: PlateSu
 }
 
 /**
+ * The long-arch section's fluting recurve at both body ends, sampled straight
+ * from the plate surface along the centerline (x = 0). The long-arch panel draws
+ * this so its channel is exactly what the 3D surface carries — there is no
+ * separate slope reconstruction to drift from the surface when edgeDepth ≠ 0.
+ *
+ * Long-arch section coordinates (canvas X = plate depth Z, canvas Y = body
+ * length) — the transpose of {@link calculateFlutingSectionTop}'s cross-section
+ * layout. Returns null when no channel band exists (fluting unconfigured, or the
+ * inner and outer insets coincide).
+ */
+export function calculateLongArchSectionFluting(
+    p: EnricoCerutiParams, model: PlateSurfaceModel,
+): { startPath: string; endPath: string } | null {
+    const inner = p.innerFlutingDepth ?? 0;
+    const outer = p.outerFlutingDepth ?? 0;
+    if (inner - outer <= 0) return null;
+
+    // Walk the centerline from the platform outer boundary (land, z = 0) in to the
+    // fluting inner boundary (arch takeoff, z = −edgeDepth); topSurfaceZAt classifies
+    // each point, so the recurve between them is the real carved channel.
+    const sampleBand = (yOuter: number, yInner: number): string => {
+        const n = Math.max(8, Math.ceil(Math.abs(yInner - yOuter) / 0.25));
+        const pts: string[] = [];
+        for (let i = 0; i <= n; i++) {
+            const y = yOuter + ((yInner - yOuter) * i) / n;
+            const z = topSurfaceZAt(p, model, 0, y);
+            if (z === null) continue;
+            pts.push(`${pts.length === 0 ? 'M' : 'L'} ${model.zBase + model.signZ * z} ${y}`);
+        }
+        return pts.join(' ');
+    };
+
+    return {
+        startPath: sampleBand(outer, inner),
+        endPath: sampleBand(p.height - outer, p.height - inner),
+    };
+}
+
+/**
  * Full-width surface profile at station `y` — arch hump, fluting channel, and
  * flat edge land in one continuous sweep from edge to edge, in absolute (x, Z)
  * coordinates. Unlike {@link calculateFlutingSectionTop}, which only traces the

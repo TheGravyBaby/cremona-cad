@@ -22,20 +22,23 @@ function makeParams(): EnricoCerutiParams {
 }
 
 describe('flutingProfileZ', () => {
-  it('hits its three knots and has exactly one local minimum', () => {
-    // Circular-arc profile through A=(0,0), T=(troughU·width, −channelDepth), B=(width, −edgeDepth).
-    // T lies exactly on the arc so z(troughU) = −channelDepth precisely.
-    const width = 10;
-    expect(flutingProfileZ(0, 1, 0.4, 0.5, width)).toBe(0);
-    expect(flutingProfileZ(0.4, 1, 0.4, 0.5, width)).toBeCloseTo(-1, 1);
-    expect(flutingProfileZ(1, 1, 0.4, 0.5, width)).toBeCloseTo(-0.5, 1);
-    // Exactly one local minimum: first strictly descends, then strictly ascends — no inflection wiggles.
-    let prevZ = flutingProfileZ(0, 1, 0.4, 0.5, width);
+  // Signature: (u, edgeDepth, width, archEdgeSlope, flatPlatform?). A single
+  // circular gouge arc across the annulus — 0 at the platform outer boundary
+  // (u=0), −edgeDepth at the fluting inner boundary (u=1), tangent to
+  // archEdgeSlope there. A nonzero takeoff slope dips it below −edgeDepth (the
+  // recurve) before it rises to meet the arch.
+  it('hits both boundary knots and dips through a single trough between them', () => {
+    const edgeDepth = 0.5, width = 10, slope = 0.5;
+    expect(flutingProfileZ(0, edgeDepth, width, slope)).toBe(0);
+    expect(flutingProfileZ(1, edgeDepth, width, slope)).toBeCloseTo(-edgeDepth, 10);
+    // Strictly descends to one trough, then strictly ascends to meet the arch — no wiggles.
+    let prevZ = flutingProfileZ(0, edgeDepth, width, slope);
+    let minZ = prevZ;
     let foundTrough = false;
     let descending = true;
-    for (let i = 1; i <= 99; i++) {
-      const u = i / 100;
-      const z = flutingProfileZ(u, 1, 0.4, 0.5, width);
+    for (let i = 1; i <= 100; i++) {
+      const z = flutingProfileZ(i / 100, edgeDepth, width, slope);
+      minZ = Math.min(minZ, z);
       if (descending) {
         if (z > prevZ + 1e-9) { foundTrough = true; descending = false; }
         else { expect(z).toBeLessThanOrEqual(prevZ + 1e-9); }
@@ -45,22 +48,30 @@ describe('flutingProfileZ', () => {
       prevZ = z;
     }
     expect(foundTrough).toBe(true);
+    expect(minZ).toBeLessThan(-edgeDepth); // dipped past the takeoff — the recurve
   });
 
-  it('falls back to the straight chord when T is not below the A–B chord', () => {
-    // channelDepth(0.3) <= edgeDepth·troughU(0.4): T sits on or above the chord from A to B,
-    // so no concave arc exists. The function returns the linear chord −edgeDepth·u.
-    for (let u = 0; u <= 1; u += 0.1) {
-      expect(flutingProfileZ(u, 0.3, 0.4, 1.0, 10)).toBeCloseTo(-1.0 * u, 10);
+  it('clamps to the boundary heights outside the annulus', () => {
+    expect(flutingProfileZ(-0.2, 0.5, 10, 0.5)).toBe(0);
+    expect(flutingProfileZ(1.2, 0.5, 10, 0.5)).toBe(-0.5);
+  });
+
+  it('falls back to the straight chord when no tangent circle solves', () => {
+    // slope = −edgeDepth/width makes B−A parallel to the tangent at B, so no
+    // circle passes through both points tangent there; the profile is then the
+    // linear chord −edgeDepth·u.
+    const edgeDepth = 1, width = 2, slope = -edgeDepth / width;
+    for (let u = 0.1; u <= 0.9; u += 0.1) {
+      expect(flutingProfileZ(u, edgeDepth, width, slope)).toBeCloseTo(-edgeDepth * u, 10);
     }
   });
 
   it('stays flat across the annulus with a ledge at the inner boundary when flatPlatform', () => {
     // Whole platform sits at the plate surface; only the inner boundary drops to −edgeDepth.
     for (let u = 0; u < 1; u += 0.1) {
-      expect(flutingProfileZ(u, 1, 0.4, 0.5, 10, true)).toBe(0);
+      expect(flutingProfileZ(u, 1, 10, 0.5, true)).toBe(0);
     }
-    expect(flutingProfileZ(1, 1, 0.4, 0.5, 10, true)).toBeCloseTo(-0.5, 10);
+    expect(flutingProfileZ(1, 1, 10, 0.5, true)).toBeCloseTo(-1, 10);
   });
 });
 
@@ -123,7 +134,10 @@ describe('top surface height field', () => {
       const z = topSurfaceZAt(p, model, x, y, chords);
       if (z !== null) minZ = Math.min(minZ, z);
     }
-    expect(minZ).toBeCloseTo(-model.channelDepth, 1);
+    // The channel scoops below the plate surface, past the arch takeoff (−edgeDepth).
+    // Its depth is emergent from the gouge arc (tangent to the cross-arch slope),
+    // not a stored parameter.
+    expect(minZ).toBeLessThan(-model.edgeDepth);
   });
 
   it('produces a section slice that starts and ends where the render expects', () => {

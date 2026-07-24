@@ -1,5 +1,5 @@
 import { arcHorizontalIntersections, clamp } from "../helpers/draftMath";
-import { buildCatenaryPath, buildCycloidPath, buildSplinePath, buildCycloidPathAcross, catenaryZAt, cycloidZAt, splineZAt, cycloidEdgeSlope, flutingProfileZ } from "../helpers/svgPathMath";
+import { buildCatenaryPath, buildCycloidPath, buildSplinePath, buildCycloidPathAcross, catenaryZAt, cycloidZAt, splineZAt, cycloidEdgeSlope } from "../helpers/svgPathMath";
 import { Arc } from "../models/types";
 import { ArchCurve, ArchingParams, CrossArchParams, EnricoCerutiParams, FlutingChannelParams } from "./ceruti-types";
 import { defineFlutingArcs, defineInnerArcs, defineOffsetArcs, defineOuterCornerArcs } from "./ceruti-paths";
@@ -184,77 +184,6 @@ export function crossArchEdgeSlopeAt(p: EnricoCerutiParams, y: number, side: 'to
   const pct = plate.cross?.pct ?? defaultCrossArchParams().pct;
   const edgeDepth = plate.edgeDepth;
   return cycloidEdgeSlope(h + edgeDepth, 2 * halfSpan, d, pct);
-}
-
-/**
- * The long arch's own takeoff slope dz/dy at its span endpoint — the y-direction
- * analog of {@link crossArchEdgeSlopeAt}. This is the slope the fluting channel
- * must be tangent to where it meets the arch at the top/bottom caps, the way the
- * cross-arch slope governs it along the bouts. Both endpoints share this value:
- * every arch curve type is symmetric about mid-span.
- *
- * `edgeDepth` is folded into the effective peak (matching {@link calculateLongArch},
- * which builds the rendered curve from archHeight + edgeDepth), so the slope tracks
- * the curve actually drawn. Evaluated by finite difference a short step into the
- * span — robust across catenary/cycloid/spline without a per-type derivative.
- */
-export function longArchEdgeSlopeAt(p: EnricoCerutiParams, arch: ArchCurve, edgeDepth = 0): number {
-  const span = p.height - 2 * (p.innerFlutingDepth ?? 0);
-  if (span <= 0) return 0;
-  const yStart = p.innerFlutingDepth ?? 0;
-  const eff: ArchCurve = { ...arch, archHeight: arch.archHeight + edgeDepth };
-  const eps = Math.min(0.5, span * 0.02);
-  // longArchHeightAt is 0 at yStart, so the height a step in is the rise over run.
-  return longArchHeightAt(p, eff, yStart + eps) / eps;
-}
-
-/**
- * The fluting-channel recurve where it crosses the long arch — the cap-end
- * counterpart of the cross-arch section's fluting slice. Returns section-space
- * paths (canvas X = plate depth Z, canvas Y = body length) for both the top
- * (near y = height) and bottom (near y = 0) ends of one plate, or null when no
- * channel band exists.
- *
- * The channel is the same gouge arc {@link flutingProfileZ} carves along the
- * bouts, only here parameterized in the body-length (y) direction and made
- * tangent to the *long* arch's slope ({@link longArchEdgeSlopeAt}) instead of the
- * cross arch's. u runs 0 at the platform outer boundary (land) to 1 at the
- * fluting inner boundary (arch takeoff); the physical band width is the gap
- * between the two insets, inner − outer.
- */
-export function calculateLongArchFluting(
-  p: EnricoCerutiParams,
-  side: 'top' | 'bottom' = 'top',
-): { startPath: string; endPath: string } | null {
-  const a = p.arching!;
-  const plate = a[side];
-  const inner = p.innerFlutingDepth ?? 0;
-  const outer = p.outerFlutingDepth ?? 0;
-  const width = inner - outer;
-  if (width <= 0) return null;
-
-  const edgeDepth = plate.edgeDepth;
-  const flat = plate.fluting?.flatPlatform ?? false;
-  const slope = longArchEdgeSlopeAt(p, plate.arch, edgeDepth);
-  const sign: 1 | -1 = side === 'top' ? 1 : -1;
-  const zBase = side === 'top' ? a.ribHeight + plate.thickness : -plate.thickness;
-
-  const N = 40;
-  const buildEnd = (yOuter: number, yInner: number): string => {
-    const pts: string[] = [];
-    for (let i = 0; i <= N; i++) {
-      const u = i / N;
-      const z = flutingProfileZ(u, edgeDepth, width, slope, flat);
-      const yBody = yOuter + u * (yInner - yOuter);
-      pts.push(`${i === 0 ? 'M' : 'L'} ${zBase + sign * z} ${yBody}`);
-    }
-    return pts.join(' ');
-  };
-
-  return {
-    startPath: buildEnd(outer, inner),
-    endPath: buildEnd(p.height - outer, p.height - inner),
-  };
 }
 
 /** Outermost |x| where the horizontal station line crosses any of the arcs' drawn spans; null if none. */
