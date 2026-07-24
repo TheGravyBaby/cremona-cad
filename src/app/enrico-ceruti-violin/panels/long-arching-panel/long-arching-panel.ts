@@ -8,7 +8,7 @@ import {
   ArchSpline, ArchSplinePoint,
   ArchingParams, CerutiColors, CerutiViewFlags, EnricoCerutiParams,
 } from '../../ceruti-types';
-import { calculateLongArch, defaultArchingParams } from '../../ceruti-arching';
+import { calculateLongArch, calculateLongArchFluting, defaultArchingParams } from '../../ceruti-arching';
 import {
   archHeightInfo, crossArchEdgeDepthInfo, curveTypeInfo, plateThicknessInfo, ribHeightInfo,
   splinePointInfo, trochoidFactorInfo,
@@ -121,6 +121,8 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
       this.params.arching = defaultArchingParams(this.params.height);
     }
     const { span, yStart, topPath, backPath } = calculateLongArch(this.params);
+    const topFluting = calculateLongArchFluting(this.params, 'top');
+    const backFluting = calculateLongArchFluting(this.params, 'bottom');
     return [
       renderLongArchBoxes(
         this.params,
@@ -131,6 +133,8 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
         backPath,
         span,
         yStart,
+        topFluting,
+        backFluting,
       ),
     ];
   }
@@ -184,6 +188,8 @@ export const renderLongArchBoxes = (
   backPath: string,
   span: number,
   yStart: number,
+  topFluting: { startPath: string; endPath: string } | null = null,
+  backFluting: { startPath: string; endPath: string } | null = null,
 ) => (g: any, ui: any): void => {
   const ribBox = new Rectangle(
     { x: 0, y: p.overhang },
@@ -207,18 +213,29 @@ export const renderLongArchBoxes = (
   renderLine(new Pt(a.ribHeight, 0), new Pt(a.ribHeight, p.height), colors.innerTrace)(g, ui);
   renderLine(new Pt(a.ribHeight, p.height), new Pt(a.ribHeight + a.top.thickness, p.height), colors.innerTrace)(g, ui);
   renderLine(new Pt(a.ribHeight + a.top.thickness, p.height), new Pt(a.ribHeight + a.top.thickness, p.height - p.outerFlutingDepth || 0), colors.innerTrace)(g, ui);
-  renderLine(new Pt(a.ribHeight + a.top.thickness, p.height - p.outerFlutingDepth || 0), new Pt(a.ribHeight + a.top.thickness, p.height - p.innerFlutingDepth || 0), colors.fluting)(g, ui);
   renderLine(new Pt(a.ribHeight, 0), new Pt(a.ribHeight + a.top.thickness, 0), colors.innerTrace)(g, ui);
   renderLine(new Pt(a.ribHeight + a.top.thickness, 0), new Pt(a.ribHeight + a.top.thickness, p.outerFlutingDepth || 0), colors.innerTrace)(g, ui);
-  renderLine(new Pt(a.ribHeight + a.top.thickness, p.outerFlutingDepth || 0), new Pt(a.ribHeight + a.top.thickness, p.innerFlutingDepth || 0), colors.fluting)(g, ui);
+  // Carved cap recurve replaces the flat channel segments when a channel band exists.
+  if (topFluting) {
+    renderPath(topFluting.startPath, colors.fluting, 1.5)(g, ui);
+    renderPath(topFluting.endPath, colors.fluting, 1.5)(g, ui);
+  } else {
+    renderLine(new Pt(a.ribHeight + a.top.thickness, p.height - p.outerFlutingDepth || 0), new Pt(a.ribHeight + a.top.thickness, p.height - p.innerFlutingDepth || 0), colors.fluting)(g, ui);
+    renderLine(new Pt(a.ribHeight + a.top.thickness, p.outerFlutingDepth || 0), new Pt(a.ribHeight + a.top.thickness, p.innerFlutingDepth || 0), colors.fluting)(g, ui);
+  }
 
   renderLine(new Pt(0, 0), new Pt(0, p.height), colors.innerTrace)(g, ui);
   renderLine(new Pt(0, 0), new Pt(-a.bottom.thickness, 0), colors.innerTrace)(g, ui);
   renderLine(new Pt(-a.bottom.thickness, 0), new Pt(-a.bottom.thickness, p.outerFlutingDepth || 0), colors.innerTrace)(g, ui);
-  renderLine(new Pt(-a.bottom.thickness, p.outerFlutingDepth || 0), new Pt(-a.bottom.thickness, p.innerFlutingDepth || 0), colors.fluting)(g, ui);
   renderLine(new Pt(0, p.height), new Pt(-a.bottom.thickness, p.height), colors.innerTrace)(g, ui);
   renderLine(new Pt(-a.bottom.thickness, p.height), new Pt(-a.bottom.thickness, p.height - p.outerFlutingDepth || 0), colors.innerTrace)(g, ui);
-  renderLine(new Pt(-a.bottom.thickness, p.height - p.outerFlutingDepth || 0), new Pt(-a.bottom.thickness, p.height - p.innerFlutingDepth || 0), colors.fluting)(g, ui);
+  if (backFluting) {
+    renderPath(backFluting.startPath, colors.fluting, 1.5)(g, ui);
+    renderPath(backFluting.endPath, colors.fluting, 1.5)(g, ui);
+  } else {
+    renderLine(new Pt(-a.bottom.thickness, p.outerFlutingDepth || 0), new Pt(-a.bottom.thickness, p.innerFlutingDepth || 0), colors.fluting)(g, ui);
+    renderLine(new Pt(-a.bottom.thickness, p.height - p.outerFlutingDepth || 0), new Pt(-a.bottom.thickness, p.height - p.innerFlutingDepth || 0), colors.fluting)(g, ui);
+  }
 
   renderLine({ x: 0, y: p.bouts.UCr.y }, { x: a.ribHeight, y: p.bouts.UCr.y }, colors.mouldTrace)(g, ui);
   renderLine({ x: 0, y: p.bouts.LCr.y }, { x: a.ribHeight, y: p.bouts.LCr.y }, colors.mouldTrace)(g, ui);
