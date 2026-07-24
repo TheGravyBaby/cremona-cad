@@ -3,7 +3,7 @@ import * as polygonClipping from 'polygon-clipping';
 import { Pt } from '../models/types';
 // polygon-clipping ships as either an ESM default or a CJS namespace depending on bundler.
 const polyClipper: any = (polygonClipping as any).default ?? polygonClipping;
-import { buildPolylineIndex, distPointToPolylineIndexed, PolylineIndex } from '../helpers/draftMath';
+import { buildPolylineIndex, closestPointToPolylineIndexed, PolylineIndex } from '../helpers/draftMath';
 import { buildHeightFieldStl } from '../helpers/stlExporter';
 import { closeProfileToBlank, cycloidEdgeSlope, cycloidZAt, flutingProfileZ, pathsBounds, rotatePath180, samplePathToPolyline, translatePath } from '../helpers/svgPathMath';
 import { ArchCurve, EnricoCerutiParams } from './ceruti-types';
@@ -94,15 +94,34 @@ export interface StationChords {
     archH: number;
 }
 
+/**
+ * The fluting inner half-chord at station `y`. Arc-exact when available: same
+ * query the cross arch spans, so the channel meets the takeoff point by
+ * construction. Falls back to the sampled polyline at corner-band stations where
+ * the arc-only query misses the cubic Bézier tips — without this,
+ * calculateFlutingSectionTop would treat those stations as cap stations and
+ * sweep a full-width channel profile over the arch region, creating strange
+ * shapes.
+ */
+function flutingInnerHalfAt(p: EnricoCerutiParams, model: PlateSurfaceModel, y: number): number | null {
+    return flutingHalfWidthAtY(p, y)
+        ?? (model.flutingInner ? maxAbsCrossingAtY(model.flutingInner, y) : null);
+}
+
+/**
+ * Cross-arch trochoid height (relative to the plate outer surface) at width x,
+ * for a station whose fluting inner half-chord is `fi` and long-arch centerline
+ * height is `archH`. The takeoff sits at −edgeDepth; a degenerate cap station
+ * (no arch height) stays flat there.
+ */
+function crossArchZAt(model: PlateSurfaceModel, fi: number, archH: number, x: number): number {
+    if (archH <= 0) return -model.edgeDepth;
+    return -model.edgeDepth + cycloidZAt(archH + model.edgeDepth, 2 * fi, model.crossD, x + fi, model.crossPct);
+}
+
 export function stationChordsAt(p: EnricoCerutiParams, model: PlateSurfaceModel, y: number): StationChords {
     const landCrossings = polylineCrossingsAtY(model.platformOuter, y);
-    // Arc-exact when available: same query the cross arch spans, so the channel meets the
-    // takeoff point by construction. Falls back to the sampled polyline at corner-band
-    // stations where the arc-only query misses the cubic Bézier tips — without this,
-    // calculateFlutingSectionTop would treat those stations as cap stations and sweep a
-    // full-width channel profile over the arch region, creating strange shapes.
-    const flutingInnerHalf = flutingHalfWidthAtY(p, y)
-        ?? (model.flutingInner ? maxAbsCrossingAtY(model.flutingInner, y) : null);
+    const flutingInnerHalf = flutingInnerHalfAt(p, model, y);
     return {
         outerHalf: maxAbsCrossingAtY(model.outerPlate, y),
         platformOuterHalf: landCrossings.length
@@ -139,6 +158,63 @@ function insideCrossings(x: number, xs: number[]): boolean {
     return count % 2 === 1;
 }
 
+const CHANNEL_SLOPE_PROBE_EPS = 0.3; // mm inward from the fluting inner boundary to sample the arch's takeoff slope
+
+/**
+ * The cross-arch's own edge slope at a station — today's channel target, kept as
+ * the fallback where the directional probe can't land a clean arch sample. Same
+ * hEff/span the arch branch builds its cycloid from; 0 at cap/degenerate stations.
+ */
+function crossEdgeSlopeFallback(model: PlateSurfaceModel, fi: number | null, archH: number): number {
+    return fi !== null && fi > 0 && archH > 0
+        ? cycloidEdgeSlope(archH + model.edgeDepth, 2 * fi, model.crossD, model.crossPct)
+        : 0;
+}
+
+/** The arch-region surface height at (x, y), or null when (x, y) isn't under the arch (channel/land/off-body). */
+function archSampleZAt(p: EnricoCerutiParams, model: PlateSurfaceModel, x: number, y: number): number | null {
+    const fi = flutingInnerHalfAt(p, model, y);
+    if (fi === null || Math.abs(x) > fi) return null;
+    return crossArchZAt(model, fi, longArchHeightAt(p, model.arch, y), x);
+}
+
+/**
+ * The arch surface's slope at the fluting inner boundary, measured along the
+ * boundary's inward normal — the direction the channel profile actually meets
+ * the arch. This is the slope the channel's gouge arc must be tangent to so it
+ * meets the arch tangentially in 3D — along the bouts it equals the cross-arch
+ * edge slope, at the caps the long-arch slope, and it blends around the corners
+ * without a seam. It picks up both the cross (∂x) and long (∂y) contributions at
+ * once.
+ *
+ * The probe direction is `innerPt − queryPt`: for a channel point strictly
+ * outside the inner loop, that vector is the loop's inward normal (nearest-point
+ * property), and it reliably points into the arch even at the high-curvature
+ * caps — where the inter-loop chord would skew and miss the narrow arch sliver,
+ * seaming cap points onto the cross-arch fallback.
+ *
+ * The finite difference is taken between two points *inside* the arch (ε and 2ε
+ * past the boundary), never the boundary itself: the arch sits at −edgeDepth on
+ * the boundary but rises from 0 just inside, so a boundary-anchored difference
+ * would fold that edgeDepth takeoff step into the slope. Differencing two
+ * interior samples cancels it, leaving the arch's genuine rise. Null when a
+ * probe steps outside the arch region, where the caller falls back to the
+ * cross-arch slope.
+ */
+function archTransverseSlopeAt(
+    p: EnricoCerutiParams, model: PlateSurfaceModel, innerPt: Pt, queryPt: Pt,
+): number | null {
+    const dx = innerPt.x - queryPt.x, dy = innerPt.y - queryPt.y;
+    const len = Math.hypot(dx, dy);
+    if (len < 1e-6) return null;
+    const ux = dx / len, uy = dy / len;
+    const e = CHANNEL_SLOPE_PROBE_EPS;
+    const z1 = archSampleZAt(p, model, innerPt.x + e * ux, innerPt.y + e * uy);
+    const z2 = archSampleZAt(p, model, innerPt.x + 2 * e * ux, innerPt.y + 2 * e * uy);
+    if (z1 === null || z2 === null) return null;
+    return (z2 - z1) / e;
+}
+
 /**
  * Top-plate surface height at plan point (x, y), relative to the plate outer
  * surface. Returns null outside the plate outline. Pass `chords` when
@@ -150,26 +226,21 @@ export function topSurfaceZAt(p: EnricoCerutiParams, model: PlateSurfaceModel, x
     if (chords.outerHalf === null || ax > chords.outerHalf) return null;
 
     const fi = chords.flutingInnerHalf;
-    if (fi !== null && ax <= fi) {
-        const h = chords.archH;
-        // Degenerate cap station: an inner chord with no arch height stays flat at the sunken takeoff.
-        if (h <= 0) return -model.edgeDepth;
-        return -model.edgeDepth + cycloidZAt(h + model.edgeDepth, 2 * fi, model.crossD, x + fi, model.crossPct);
-    }
+    if (fi !== null && ax <= fi) return crossArchZAt(model, fi, chords.archH, x);
 
     if (!insideCrossings(x, chords.landCrossings)) return 0; // flat edge land
     if (!model.flutingInner) return 0; // fluting unconfigured — platform stays flat
 
     const pt = { x, y };
-    const dOut = distPointToPolylineIndexed(pt, model.platformOuterIdx);
-    const dIn = distPointToPolylineIndexed(pt, model.flutingInnerIdx!);
-    const width = dOut + dIn;
-    const u = width > 0 ? dOut / width : 0;
-    // Same hEff/span the arch branch above builds its cycloid from, so the
-    // channel's target slope always matches what's actually taking off at fi.
-    const slope = fi !== null && fi > 0 && chords.archH > 0
-        ? cycloidEdgeSlope(chords.archH + model.edgeDepth, 2 * fi, model.crossD, model.crossPct)
-        : 0;
+    const outer = closestPointToPolylineIndexed(pt, model.platformOuterIdx);
+    const inner = closestPointToPolylineIndexed(pt, model.flutingInnerIdx!);
+    const width = outer.dist + inner.dist;
+    const u = width > 0 ? outer.dist / width : 0;
+    // Meet the arch tangentially in 3D: the takeoff slope comes from the arch
+    // surface along the fluting inner boundary's normal (cross along the bouts,
+    // long at the caps), not from the cross arch alone.
+    const slope = archTransverseSlopeAt(p, model, inner.point, pt)
+        ?? crossEdgeSlopeFallback(model, fi, chords.archH);
     return flutingProfileZ(u, model.edgeDepth, width, slope, model.flatPlatform);
 }
 

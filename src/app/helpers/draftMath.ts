@@ -114,6 +114,55 @@ export function distPointToPolylineIndexed(p: Pt, idx: PolylineIndex): number {
   return best;
 }
 
+/** Closest point on segment a→b to p, with its distance. */
+export function closestPointOnSegment(p: Pt, a: Pt, b: Pt): { dist: number; point: Pt } {
+  const abx = b.x - a.x, aby = b.y - a.y;
+  const lenSq = abx * abx + aby * aby;
+  const t = lenSq === 0 ? 0 : Math.min(Math.max(((p.x - a.x) * abx + (p.y - a.y) * aby) / lenSq, 0), 1);
+  const point = { x: a.x + t * abx, y: a.y + t * aby };
+  return { dist: Math.hypot(p.x - point.x, p.y - point.y), point };
+}
+
+/**
+ * Like {@link distPointToPolylineIndexed}, but also returns the closest point
+ * itself — needed when the direction to the loop (not just the distance) matters,
+ * e.g. sampling the arch surface's slope in the fluting channel's transverse
+ * direction. Same outward ring scan and early-out bound.
+ */
+export function closestPointToPolylineIndexed(p: Pt, idx: PolylineIndex): { dist: number; point: Pt } {
+  const { poly, cellSize, minX, minY, cols, rows, cells } = idx;
+  const ci = Math.floor((p.x - minX) / cellSize);
+  const cj = Math.floor((p.y - minY) / cellSize);
+  const maxRing = Math.max(ci, cols - 1 - ci, cj, rows - 1 - cj);
+  let best = Infinity;
+  let bestPt: Pt = poly[0] ?? p;
+
+  const scanCell = (x: number, y: number): void => {
+    if (x < 0 || x >= cols || y < 0 || y >= rows) return;
+    for (const i of cells[y * cols + x]) {
+      const r = closestPointOnSegment(p, poly[i], poly[(i + 1) % poly.length]);
+      if (r.dist < best) { best = r.dist; bestPt = r.point; }
+    }
+  };
+
+  for (let r = 0; r <= maxRing; r++) {
+    if (r === 0) {
+      scanCell(ci, cj);
+    } else {
+      for (let dx = -r; dx <= r; dx++) {
+        scanCell(ci + dx, cj - r);
+        scanCell(ci + dx, cj + r);
+      }
+      for (let dy = -r + 1; dy <= r - 1; dy++) {
+        scanCell(ci - r, cj + dy);
+        scanCell(ci + r, cj + dy);
+      }
+    }
+    if (best <= r * cellSize) break;
+  }
+  return { dist: best, point: bestPt };
+}
+
 export function flipAngleAboutYAxis(theta: number): number {
   return (Math.PI - theta + 2 * Math.PI) % (2 * Math.PI);
 }
