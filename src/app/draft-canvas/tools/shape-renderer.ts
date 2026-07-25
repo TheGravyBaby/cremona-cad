@@ -55,7 +55,112 @@ export function drawShape(gRoot: RootGroup, gUI: RootGroup, shape: DraftShape, p
         .attr('stroke-width', 1.5)
         .attr('vector-effect', 'non-scaling-stroke');
       break;
+    case 'boxline':
+      drawBoxLine(gRoot, gUI, {
+        start: shape.start, end: shape.end, weights: shape.weights,
+        color1: color, color2: shape.color2, label: shape.label,
+      }, pxPerMm);
+      break;
   }
+}
+
+export type BoxLineParams = {
+  start: Pt;
+  end: Pt;
+  weights: number[];
+  color1: string;
+  color2: string;
+  label: boolean;
+};
+
+// Fixed for now — see the Box Line "full integration" plan for making these configurable.
+const BOXLINE_THICKNESS_MM = 8;
+const BOXLINE_LABEL_OFFSET_MUL = 0.9;
+
+/**
+ * Draws a line divided into weighted ratio segments, alternating color1/color2,
+ * with boundary ticks and per-segment weight labels — ported from the recipe-side
+ * helpers/renderFuncs.ts renderBoxLine. An invisible centerline is left snappable
+ * (endpoints + along-path); the banding/outline/ticks are marked `data-no-snap`
+ * so they don't flood the snap engine with quad-corner/tick candidates.
+ */
+export function drawBoxLine(gRoot: RootGroup, gUI: RootGroup, p: BoxLineParams, pxPerMm: number): void {
+  const { start, end, weights, color1, color2, label } = p;
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const len = Math.hypot(dx, dy);
+  if (len < 1e-6 || weights.length === 0) return;
+
+  const ux = dx / len, uy = dy / len;
+  const nx = -uy, ny = ux;
+  const halfT = BOXLINE_THICKNESS_MM / 2;
+  const total = weights.reduce((a, b) => a + b, 0);
+  const unit = len / total;
+
+  gRoot.append('line')
+    .attr('x1', start.x).attr('y1', start.y).attr('x2', end.x).attr('y2', end.y)
+    .attr('stroke', 'none')
+    .style('pointer-events', 'none');
+
+  const outlineLine = (ox: number, oy: number) => gRoot.append('line')
+    .attr('data-no-snap', '')
+    .attr('x1', start.x + ox).attr('y1', start.y + oy)
+    .attr('x2', end.x + ox).attr('y2', end.y + oy)
+    .attr('stroke', 'rgba(0,0,0,0.25)')
+    .attr('stroke-width', 1)
+    .attr('vector-effect', 'non-scaling-stroke');
+  outlineLine(nx * halfT, ny * halfT);
+  outlineLine(-nx * halfT, -ny * halfT);
+
+  const tickAt = (tx: number, ty: number) => gRoot.append('line')
+    .attr('data-no-snap', '')
+    .attr('x1', tx + nx * halfT).attr('y1', ty + ny * halfT)
+    .attr('x2', tx - nx * halfT).attr('y2', ty - ny * halfT)
+    .attr('stroke', 'rgba(0,0,0,0.35)')
+    .attr('stroke-width', 1)
+    .attr('vector-effect', 'non-scaling-stroke');
+
+  let cursor = 0;
+  for (let i = 0; i < weights.length; i++) {
+    const w = weights[i];
+    const a = cursor;
+    const b = cursor + w * unit;
+    const ax = start.x + ux * a, ay = start.y + uy * a;
+    const bx = start.x + ux * b, by = start.y + uy * b;
+
+    const p1 = { x: ax + nx * halfT, y: ay + ny * halfT };
+    const p2 = { x: bx + nx * halfT, y: by + ny * halfT };
+    const p3 = { x: bx - nx * halfT, y: by - ny * halfT };
+    const p4 = { x: ax - nx * halfT, y: ay - ny * halfT };
+
+    gRoot.append('path')
+      .attr('data-no-snap', '')
+      .attr('d', `M ${p1.x},${p1.y} L ${p2.x},${p2.y} L ${p3.x},${p3.y} L ${p4.x},${p4.y} Z`)
+      .attr('fill', i % 2 === 0 ? color1 : color2)
+      .attr('stroke', 'rgba(0,0,0,0.15)')
+      .attr('stroke-width', 1)
+      .attr('vector-effect', 'non-scaling-stroke')
+      .attr('opacity', 0.25);
+
+    tickAt(ax, ay);
+
+    if (label) {
+      const cx = (ax + bx) / 2, cy = (ay + by) / 2;
+      const lx = cx + nx * (BOXLINE_THICKNESS_MM * BOXLINE_LABEL_OFFSET_MUL);
+      const ly = cy + ny * (BOXLINE_THICKNESS_MM * BOXLINE_LABEL_OFFSET_MUL);
+      gUI.append('text')
+        .attr('x', lx).attr('y', -ly)
+        .attr('text-anchor', 'middle')
+        .attr('dominant-baseline', 'central')
+        .attr('font-size', 12 / pxPerMm)
+        .attr('fill', 'rgba(0,0,0,0.75)')
+        .style('user-select', 'none')
+        .text(String(w));
+    }
+
+    cursor = b;
+  }
+  tickAt(end.x, end.y);
 }
 
 function drawArcCenterGuides(
@@ -146,6 +251,29 @@ export function drawSelectionHalo(gRoot: RootGroup, shape: DraftShape): void {
         .attr('x1', shape.start.x).attr('y1', shape.start.y)
         .attr('x2', shape.end.x).attr('y2', shape.end.y));
       break;
+    case 'boxline': {
+      const dx = shape.end.x - shape.start.x;
+      const dy = shape.end.y - shape.start.y;
+      const len = Math.hypot(dx, dy);
+      if (len < 1e-6) break;
+      const ux = dx / len, uy = dy / len;
+      const nx = -uy, ny = ux;
+      const halfT = BOXLINE_THICKNESS_MM / 2;
+      const p1 = { x: shape.start.x + nx * halfT, y: shape.start.y + ny * halfT };
+      const p2 = { x: shape.end.x + nx * halfT, y: shape.end.y + ny * halfT };
+      const p3 = { x: shape.end.x - nx * halfT, y: shape.end.y - ny * halfT };
+      const p4 = { x: shape.start.x - nx * halfT, y: shape.start.y - ny * halfT };
+      gRoot.append('path')
+        .attr('d', `M ${p1.x},${p1.y} L ${p2.x},${p2.y} L ${p3.x},${p3.y} L ${p4.x},${p4.y} Z`)
+        .attr('fill', SELECTION_HALO_COLOR)
+        .attr('fill-opacity', 0.25)
+        .attr('stroke', SELECTION_HALO_COLOR)
+        .attr('stroke-width', 4)
+        .attr('stroke-linejoin', 'round')
+        .attr('opacity', 0.6)
+        .attr('vector-effect', 'non-scaling-stroke');
+      break;
+    }
     case 'circle':
       halo(gRoot.append('circle')
         .attr('cx', shape.center.x).attr('cy', shape.center.y).attr('r', shape.radius));

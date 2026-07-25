@@ -31,5 +31,5 @@ export function createDimensionTool(): TwoPointTool {
     type: 'dimension',
     start,
     end,
-  }), previewDimension);
+  }), previewDimension, true);
 }

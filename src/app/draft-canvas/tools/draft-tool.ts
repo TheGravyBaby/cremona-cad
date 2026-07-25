@@ -10,6 +10,8 @@ export interface DraftToolHost {
   requestDraw(): void;
   /** Tangent direction (radians) of the snap that resolved the most recent point, if any. */
   getSnapTangent(): number | undefined;
+  /** True while the angle-lock modifier (Shift) is held — see two-point-tool.ts's angle snapping. */
+  isAngleLockHeld(): boolean;
 }
 
 /**
