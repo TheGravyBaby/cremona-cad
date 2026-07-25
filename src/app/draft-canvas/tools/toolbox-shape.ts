@@ -59,8 +59,16 @@ export type BoxLineShape = ShapeBase & {
   label: boolean;
 };
 
+// A free-floating text annotation, anchored at a single point — independent
+// of any other shape, unlike the auto-generated labels on Dimension/Box Line.
+export type TextShape = ShapeBase & {
+  type: 'text';
+  position: Pt;
+  text: string;
+};
+
 // Extend this union as new tools are added.
-export type DraftShape = LineShape | ArcShape | CircleShape | DimensionShape | RectShape | BoxLineShape;
+export type DraftShape = LineShape | ArcShape | CircleShape | DimensionShape | RectShape | BoxLineShape | TextShape;
 
 let shapeIdSeq = 0;
 

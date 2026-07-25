@@ -22,6 +22,9 @@ export interface DraftToolHost {
 export interface DraftTool {
   readonly id: string;
   readonly label: string;
+  /** A single click commits immediately (e.g. Text) — draft-canvas returns to Select and
+   * selects the new shape right after, rather than leaving the tool active for another click. */
+  readonly oneShot?: boolean;
   onPointerDown(pt: Pt, host: DraftToolHost): void;
   onPointerMove(pt: Pt, host: DraftToolHost): void;
   onPointerUp(pt: Pt, host: DraftToolHost): void;

@@ -26,13 +26,14 @@ import { createCircleTool, createDottedCircleTool } from './tools/circle-tool';
 import { createDimensionTool } from './tools/dimension-tool';
 import { createRectTool, createSquareTool } from './tools/rect-tool';
 import { createBoxLineTool } from './tools/box-line-tool';
+import { createTextTool } from './tools/text-tool';
 import { ToolSlot, single, flyout } from './tools/tool-slot';
 import { ToolboxStore } from './tools/toolbox-store';
 import { drawShape, drawSelectionHalo } from './tools/shape-renderer';
 import { SnapCandidate, SnapEngine } from './tools/snap-engine';
 import { drawSnapMarker } from './tools/snap-marker-renderer';
 import { distanceToShape } from './tools/shape-hit-test';
-import { DraftShape, LineShape, DimensionShape, CircleShape, ArcShape, RectShape } from './tools/toolbox-shape';
+import { DraftShape, LineShape, DimensionShape, CircleShape, ArcShape, RectShape, TextShape } from './tools/toolbox-shape';
 import { Layer } from './tools/layer';
 
 @Component({
@@ -54,6 +55,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     KeyC: ['circle', 'circle-dashed'],
     KeyR: ['rect', 'square'],
     KeyB: ['boxline'],
+    KeyT: ['text'],
   };
   // Reverse of the above (tool id -> its group's letter), for tooltip hints.
   private static readonly HOTKEY_LETTER_BY_TOOL: Record<string, string> = Object.fromEntries(
@@ -90,6 +92,9 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     ],
     [
       single(createBoxLineTool(this.toolbox)),
+    ],
+    [
+      single(createTextTool()),
     ],
   ];
   public activeTool: DraftTool | null = null;
@@ -344,7 +349,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     const selectedShape = this.selectedShapeId
       ? this.toolbox.getEditableShapes().find(s => s.id === this.selectedShapeId)
       : undefined;
-    if (selectedShape) drawSelectionHalo(this.gRoot, selectedShape);
+    if (selectedShape) drawSelectionHalo(this.gRoot, this.gUI, selectedShape, this.pxPerMm);
 
     const snapLayer = this.gRoot.append('g').attr('class', 'snappable');
     this.draftFuncs.map(f => {
@@ -499,7 +504,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     let bestId: string | null = null;
     let bestDist = Infinity;
     for (const shape of this.toolbox.getEditableShapes()) {
-      const dist = distanceToShape(pt, shape);
+      const dist = distanceToShape(pt, shape, this.pxPerMm);
       if (dist <= toleranceMm && dist < bestDist) {
         bestId = shape.id;
         bestDist = dist;
@@ -578,6 +583,45 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     if (!Number.isFinite(v)) return;
     const point = { ...shape[which], [axis]: v };
     this.toolbox.updateShape(shape.id, { [which]: point } as Partial<DraftShape>);
+  }
+
+  private get selectedTextShape(): TextShape | undefined {
+    const s = this.selectedShape;
+    return s?.type === 'text' ? s : undefined;
+  }
+
+  public get showTextPanel(): boolean {
+    return !!this.selectedTextShape;
+  }
+
+  public get textPositionX(): number { return this.selectedTextShape?.position.x ?? 0; }
+  public get textPositionY(): number { return this.selectedTextShape?.position.y ?? 0; }
+  public get textContent(): string { return this.selectedTextShape?.text ?? ''; }
+
+  setTextPosition(axis: 'x' | 'y', value: number): void {
+    const shape = this.selectedTextShape;
+    if (!shape) return;
+    const v = Number(value);
+    if (!Number.isFinite(v)) return;
+    this.toolbox.updateShape(shape.id, { position: { ...shape.position, [axis]: v } });
+  }
+
+  setTextContent(text: string): void {
+    const shape = this.selectedTextShape;
+    if (!shape) return;
+    this.toolbox.updateShape(shape.id, { text });
+  }
+
+  /** Focuses+selects the text-content field once its settings panel has just been opened
+   * (e.g. right after placing a new Text shape) so typing the real content needs no extra click. */
+  private focusTextContentInput(): void {
+    setTimeout(() => {
+      const el = this.host.nativeElement
+        .closest('.canvas-shell')
+        ?.querySelector('.text-content-input') as HTMLInputElement | null;
+      el?.focus();
+      el?.select();
+    });
   }
 
   private get selectedCircleShape(): CircleShape | undefined {
@@ -981,8 +1025,20 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
     if (this.activeTool && isPrimary && !modifierHeld && !this.isSpaceDown) {
       const pt = this.resolveToolPoint(this.worldFromPointer(event));
-      this.activeTool.onPointerDown(pt, this.toolHost);
+      const tool = this.activeTool;
+      tool.onPointerDown(pt, this.toolHost);
       this.host.nativeElement.setPointerCapture(event.pointerId);
+      if (tool.oneShot) {
+        // Commits immediately (e.g. Text) — return to Select, select what was just
+        // placed, and open its settings so the user can edit it right away.
+        const shapes = this.toolbox.getEditableShapes();
+        const newest = shapes[shapes.length - 1];
+        if (newest) this.selectedShapeId = newest.id;
+        this.selectTool(null);
+        this.settingsOpen = true;
+        this.focusTextContentInput();
+        return;
+      }
       this.draw();
       return;
     }
