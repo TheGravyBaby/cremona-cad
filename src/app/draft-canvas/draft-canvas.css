@@ -291,15 +291,16 @@
 /* Floating drafting toolbox, SketchUp-style: a vertical strip docked to the right edge */
 .tool-palette {
   position: absolute;
-  top: 12px;
-  left: 12px;
+  min-width: 46px;
+  top: 6px;
+  left: 6px;
   display: flex;
   flex-direction: column;
   padding: 6px;
   border: 1px solid var(--ui-border-strong);
   border-radius: 6px;
   background: var(--ui-bg-surface-2);
-  box-shadow: var(--ui-shadow-pop);
+  /* box-shadow: var(--ui-shadow-pop); */
   z-index: 5;
 }
 
@@ -328,7 +329,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
+  width: 46px;
   height: 20px;
   padding: 0;
   border: 1px solid var(--ui-border-strong);
