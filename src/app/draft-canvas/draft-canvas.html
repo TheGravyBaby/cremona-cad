@@ -131,6 +131,13 @@
             <text x="12" y="17" font-size="15" text-anchor="middle" fill="currentColor" stroke="none" font-family="sans-serif">A</text>
           </svg>
         }
+        @case ('point') {
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <line x1="12" y1="4" x2="12" y2="20" />
+            <line x1="4" y1="12" x2="20" y2="12" />
+            <circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none" />
+          </svg>
+        }
       }
     </ng-template>
 
@@ -231,6 +238,21 @@
                   <span class="settings-lbl">Y</span>
                   <input type="number" [value]="textPositionY"
                     (change)="setTextPosition('y', $any($event.target).valueAsNumber)"
+                    (keydown.enter)="$any($event.target).blur()" />
+                </div>
+              </div>
+            }
+            @if (showPointPanel) {
+              <div class="settings-row">
+                <span class="settings-lbl">Position (mm)</span>
+                <div class="settings-grid">
+                  <span class="settings-lbl">X</span>
+                  <input type="number" [value]="pointPositionX"
+                    (change)="setPointPosition('x', $any($event.target).valueAsNumber)"
+                    (keydown.enter)="$any($event.target).blur()" />
+                  <span class="settings-lbl">Y</span>
+                  <input type="number" [value]="pointPositionY"
+                    (change)="setPointPosition('y', $any($event.target).valueAsNumber)"
                     (keydown.enter)="$any($event.target).blur()" />
                 </div>
               </div>

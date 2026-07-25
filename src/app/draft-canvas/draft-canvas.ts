@@ -27,13 +27,14 @@ import { createDimensionTool } from './tools/dimension-tool';
 import { createRectTool, createSquareTool } from './tools/rect-tool';
 import { createBoxLineTool } from './tools/box-line-tool';
 import { createTextTool } from './tools/text-tool';
+import { createPointTool } from './tools/point-tool';
 import { ToolSlot, single, flyout } from './tools/tool-slot';
 import { ToolboxStore } from './tools/toolbox-store';
 import { drawShape, drawSelectionHalo } from './tools/shape-renderer';
 import { SnapCandidate, SnapEngine } from './tools/snap-engine';
 import { drawSnapMarker } from './tools/snap-marker-renderer';
 import { distanceToShape } from './tools/shape-hit-test';
-import { DraftShape, LineShape, DimensionShape, CircleShape, ArcShape, RectShape, TextShape } from './tools/toolbox-shape';
+import { DraftShape, LineShape, DimensionShape, CircleShape, ArcShape, RectShape, TextShape, PointShape } from './tools/toolbox-shape';
 import { Layer } from './tools/layer';
 
 @Component({
@@ -56,6 +57,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     KeyR: ['rect', 'square'],
     KeyB: ['boxline'],
     KeyT: ['text'],
+    KeyP: ['point'],
   };
   // Reverse of the above (tool id -> its group's letter), for tooltip hints.
   private static readonly HOTKEY_LETTER_BY_TOOL: Record<string, string> = Object.fromEntries(
@@ -95,6 +97,9 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     ],
     [
       single(createTextTool()),
+    ],
+    [
+      single(createPointTool()),
     ],
   ];
   public activeTool: DraftTool | null = null;
@@ -301,6 +306,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       if (this.selectedShapeId && !this.toolbox.getEditableShapes().some(s => s.id === this.selectedShapeId)) {
         this.selectedShapeId = null;
       }
+      this.closeSettingsIfUnavailable();
       this.draw();
     });
 
@@ -380,7 +386,14 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.activeSnap = null;
     this.openFlyout = null;
     if (tool) this.selectedShapeId = null; // selection only applies in Select mode
+    this.closeSettingsIfUnavailable();
     this.draw();
+  }
+
+  /** Settings only means anything with an active tool or a selected shape — closes itself
+   * the moment neither applies (tool deactivated, selection cleared/deleted, layer switched). */
+  private closeSettingsIfUnavailable(): void {
+    if (!this.activeTool && !this.selectedShapeId) this.settingsOpen = false;
   }
 
   /** Activates a slot's current tool — its only tool if single, its selected variant if a flyout. */
@@ -415,6 +428,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   }
 
   toggleSettings(): void {
+    if (!this.activeTool && !this.selectedShapeId) return; // nothing to show settings for
     this.settingsOpen = !this.settingsOpen;
     this.openFlyout = null;
     this.layersOpen = false;
@@ -516,6 +530,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private setSelectedShape(id: string | null): void {
     if (this.selectedShapeId === id) return;
     this.selectedShapeId = id;
+    this.closeSettingsIfUnavailable();
     this.draw();
   }
 
@@ -523,6 +538,35 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     return this.selectedShapeId
       ? this.toolbox.getEditableShapes().find(s => s.id === this.selectedShapeId)
       : undefined;
+  }
+
+  /** Narrows the current selection to one shape type, for a settings panel's own `selectedXShape` getter. */
+  private selectedShapeOfType<T extends DraftShape['type']>(type: T): Extract<DraftShape, { type: T }> | undefined {
+    const s = this.selectedShape;
+    return s?.type === type ? (s as Extract<DraftShape, { type: T }>) : undefined;
+  }
+
+  /** Shared by every settings-panel numeric field: parse, reject non-finite/invalid, patch. */
+  private patchNumberField<S extends DraftShape>(
+    shape: S | undefined,
+    key: keyof S,
+    raw: number,
+    opts?: { transform?: (v: number) => number; validate?: (v: number) => boolean },
+  ): void {
+    if (!shape) return;
+    const v = Number(raw);
+    if (!Number.isFinite(v) || (opts?.validate && !opts.validate(v))) return;
+    const value = opts?.transform ? opts.transform(v) : v;
+    this.toolbox.updateShape(shape.id, { [key]: value } as Partial<DraftShape>);
+  }
+
+  /** Shared by every settings-panel Pt field (start/end, p1/p2, center, position): patch one axis in place. */
+  private patchPointField<S extends DraftShape>(shape: S | undefined, key: keyof S, axis: 'x' | 'y', raw: number): void {
+    if (!shape) return;
+    const v = Number(raw);
+    if (!Number.isFinite(v)) return;
+    const current = shape[key] as Pt;
+    this.toolbox.updateShape(shape.id, { [key]: { ...current, [axis]: v } } as Partial<DraftShape>);
   }
 
   /** Shows the selected shape's color when something's selected, otherwise the pen color new shapes will use. */
@@ -553,18 +597,12 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   public get lineEndY(): number { return this.selectedLineLikeShape?.end.y ?? 0; }
 
   setLinePoint(which: 'start' | 'end', axis: 'x' | 'y', value: number): void {
-    const shape = this.selectedLineLikeShape;
-    if (!shape) return;
-    const v = Number(value);
-    if (!Number.isFinite(v)) return;
-    const point = { ...shape[which], [axis]: v };
-    this.toolbox.updateShape(shape.id, { [which]: point } as Partial<DraftShape>);
+    this.patchPointField(this.selectedLineLikeShape, which, axis, value);
   }
 
   /** Rect and Square both commit as a 'rect' shape (p1/p2 corners) — same panel edits either. */
   private get selectedRectShape(): RectShape | undefined {
-    const s = this.selectedShape;
-    return s?.type === 'rect' ? s : undefined;
+    return this.selectedShapeOfType('rect');
   }
 
   public get showRectPanel(): boolean {
@@ -577,17 +615,11 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   public get rectP2Y(): number { return this.selectedRectShape?.p2.y ?? 0; }
 
   setRectPoint(which: 'p1' | 'p2', axis: 'x' | 'y', value: number): void {
-    const shape = this.selectedRectShape;
-    if (!shape) return;
-    const v = Number(value);
-    if (!Number.isFinite(v)) return;
-    const point = { ...shape[which], [axis]: v };
-    this.toolbox.updateShape(shape.id, { [which]: point } as Partial<DraftShape>);
+    this.patchPointField(this.selectedRectShape, which, axis, value);
   }
 
   private get selectedTextShape(): TextShape | undefined {
-    const s = this.selectedShape;
-    return s?.type === 'text' ? s : undefined;
+    return this.selectedShapeOfType('text');
   }
 
   public get showTextPanel(): boolean {
@@ -599,11 +631,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   public get textContent(): string { return this.selectedTextShape?.text ?? ''; }
 
   setTextPosition(axis: 'x' | 'y', value: number): void {
-    const shape = this.selectedTextShape;
-    if (!shape) return;
-    const v = Number(value);
-    if (!Number.isFinite(v)) return;
-    this.toolbox.updateShape(shape.id, { position: { ...shape.position, [axis]: v } });
+    this.patchPointField(this.selectedTextShape, 'position', axis, value);
   }
 
   setTextContent(text: string): void {
@@ -624,9 +652,23 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     });
   }
 
+  private get selectedPointShape(): PointShape | undefined {
+    return this.selectedShapeOfType('point');
+  }
+
+  public get showPointPanel(): boolean {
+    return !!this.selectedPointShape;
+  }
+
+  public get pointPositionX(): number { return this.selectedPointShape?.position.x ?? 0; }
+  public get pointPositionY(): number { return this.selectedPointShape?.position.y ?? 0; }
+
+  setPointPosition(axis: 'x' | 'y', value: number): void {
+    this.patchPointField(this.selectedPointShape, 'position', axis, value);
+  }
+
   private get selectedCircleShape(): CircleShape | undefined {
-    const s = this.selectedShape;
-    return s?.type === 'circle' ? s : undefined;
+    return this.selectedShapeOfType('circle');
   }
 
   public get showCirclePanel(): boolean {
@@ -638,24 +680,15 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   public get circleRadius(): number { return this.selectedCircleShape?.radius ?? 0; }
 
   setCircleCenter(axis: 'x' | 'y', value: number): void {
-    const shape = this.selectedCircleShape;
-    if (!shape) return;
-    const v = Number(value);
-    if (!Number.isFinite(v)) return;
-    this.toolbox.updateShape(shape.id, { center: { ...shape.center, [axis]: v } });
+    this.patchPointField(this.selectedCircleShape, 'center', axis, value);
   }
 
   setCircleRadius(value: number): void {
-    const shape = this.selectedCircleShape;
-    if (!shape) return;
-    const v = Number(value);
-    if (!Number.isFinite(v) || v <= 0) return;
-    this.toolbox.updateShape(shape.id, { radius: v });
+    this.patchNumberField(this.selectedCircleShape, 'radius', value, { validate: v => v > 0 });
   }
 
   private get selectedArcShape(): ArcShape | undefined {
-    const s = this.selectedShape;
-    return s?.type === 'arc' ? s : undefined;
+    return this.selectedShapeOfType('arc');
   }
 
   public get showArcPanel(): boolean {
@@ -669,29 +702,17 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   public get arcEndDeg(): number { return (this.selectedArcShape?.endAngle ?? 0) * 180 / Math.PI; }
 
   setArcCenter(axis: 'x' | 'y', value: number): void {
-    const shape = this.selectedArcShape;
-    if (!shape) return;
-    const v = Number(value);
-    if (!Number.isFinite(v)) return;
-    this.toolbox.updateShape(shape.id, { center: { ...shape.center, [axis]: v } });
+    this.patchPointField(this.selectedArcShape, 'center', axis, value);
   }
 
   setArcRadius(value: number): void {
-    const shape = this.selectedArcShape;
-    if (!shape) return;
-    const v = Number(value);
-    if (!Number.isFinite(v) || v <= 0) return;
-    this.toolbox.updateShape(shape.id, { radius: v });
+    this.patchNumberField(this.selectedArcShape, 'radius', value, { validate: v => v > 0 });
   }
 
   /** Angle fields are edited in degrees for readability; stored in radians, matching arc-geometry.ts's convention. */
   setArcAngle(which: 'start' | 'end', valueDeg: number): void {
-    const shape = this.selectedArcShape;
-    if (!shape) return;
-    const v = Number(valueDeg);
-    if (!Number.isFinite(v)) return;
-    const rad = v * Math.PI / 180;
-    this.toolbox.updateShape(shape.id, which === 'start' ? { startAngle: rad } : { endAngle: rad });
+    const key = which === 'start' ? 'startAngle' : 'endAngle';
+    this.patchNumberField(this.selectedArcShape, key, valueDeg, { transform: v => v * Math.PI / 180 });
   }
 
   /** Box Line has extra per-shape settings (a second color + segment weights) that don't fit the single color swatch. */
@@ -1029,14 +1050,17 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       tool.onPointerDown(pt, this.toolHost);
       this.host.nativeElement.setPointerCapture(event.pointerId);
       if (tool.oneShot) {
-        // Commits immediately (e.g. Text) — return to Select, select what was just
-        // placed, and open its settings so the user can edit it right away.
+        // Commits immediately (e.g. Text, Point) — return to Select and select what was
+        // just placed. Text also opens its settings and focuses the content field, since
+        // typing the real text right away is the point; Point has nothing to type into.
         const shapes = this.toolbox.getEditableShapes();
         const newest = shapes[shapes.length - 1];
         if (newest) this.selectedShapeId = newest.id;
         this.selectTool(null);
-        this.settingsOpen = true;
-        this.focusTextContentInput();
+        if (newest?.type === 'text') {
+          this.settingsOpen = true;
+          this.focusTextContentInput();
+        }
         return;
       }
       this.draw();

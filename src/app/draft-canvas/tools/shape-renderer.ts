@@ -79,8 +79,28 @@ export function drawShape(gRoot: RootGroup, gUI: RootGroup, shape: DraftShape, p
         .style('user-select', 'none')
         .text(shape.text);
       break;
+    case 'point': {
+      // Same zero-radius-circle trick as 'text' above, for a plain snappable center point.
+      gRoot.append('circle')
+        .attr('cx', shape.position.x).attr('cy', shape.position.y).attr('r', 0)
+        .attr('fill', 'none').attr('stroke', 'none')
+        .style('pointer-events', 'none');
+
+      const half = POINT_MARKER_SIZE_PX / pxPerMm;
+      const crossLine = (x1: number, y1: number, x2: number, y2: number) => gRoot.append('line')
+        .attr('data-no-snap', '')
+        .attr('x1', x1).attr('y1', y1).attr('x2', x2).attr('y2', y2)
+        .attr('stroke', color)
+        .attr('stroke-width', 1.5)
+        .attr('vector-effect', 'non-scaling-stroke');
+      crossLine(shape.position.x - half, shape.position.y, shape.position.x + half, shape.position.y);
+      crossLine(shape.position.x, shape.position.y - half, shape.position.x, shape.position.y + half);
+      break;
+    }
   }
 }
+
+const POINT_MARKER_SIZE_PX = 5;
 
 // Constant on-screen size (annotation-style, like Dimension/Box Line labels), not to-scale mm.
 export const TEXT_FONT_SIZE_PX = 14;
@@ -335,5 +355,9 @@ export function drawSelectionHalo(gRoot: RootGroup, gUI: RootGroup, shape: Draft
         .style('pointer-events', 'none');
       break;
     }
+    case 'point':
+      halo(gRoot.append('circle')
+        .attr('cx', shape.position.x).attr('cy', shape.position.y).attr('r', 3));
+      break;
   }
 }

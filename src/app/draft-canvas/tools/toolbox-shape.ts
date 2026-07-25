@@ -67,8 +67,16 @@ export type TextShape = ShapeBase & {
   text: string;
 };
 
+// A single marked reference point — no geometry beyond its location, for calling
+// out or snapping to a spot that isn't already an endpoint/center of something else.
+export type PointShape = ShapeBase & {
+  type: 'point';
+  position: Pt;
+};
+
 // Extend this union as new tools are added.
-export type DraftShape = LineShape | ArcShape | CircleShape | DimensionShape | RectShape | BoxLineShape | TextShape;
+export type DraftShape =
+  | LineShape | ArcShape | CircleShape | DimensionShape | RectShape | BoxLineShape | TextShape | PointShape;
 
 let shapeIdSeq = 0;
 
