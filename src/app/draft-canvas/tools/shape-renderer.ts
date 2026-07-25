@@ -61,8 +61,29 @@ export function drawShape(gRoot: RootGroup, gUI: RootGroup, shape: DraftShape, p
         color1: color, color2: shape.color2, label: shape.label,
       }, pxPerMm);
       break;
+    case 'text':
+      // Zero-radius circle: gets picked up by snap-engine.ts's `circle` branch as a plain
+      // 'center' point candidate, without also contributing along-path samples (getTotalLength
+      // is 0, so the generic sampling below it is skipped) — the simplest way to make a single
+      // point snappable using the existing element-based snap indexing.
+      gRoot.append('circle')
+        .attr('cx', shape.position.x).attr('cy', shape.position.y).attr('r', 0)
+        .attr('fill', 'none').attr('stroke', 'none')
+        .style('pointer-events', 'none');
+      gUI.append('text')
+        .attr('x', shape.position.x).attr('y', -shape.position.y)
+        .attr('text-anchor', 'start')
+        .attr('dominant-baseline', 'central')
+        .attr('fill', color)
+        .attr('font-size', TEXT_FONT_SIZE_PX / pxPerMm)
+        .style('user-select', 'none')
+        .text(shape.text);
+      break;
   }
 }
+
+// Constant on-screen size (annotation-style, like Dimension/Box Line labels), not to-scale mm.
+export const TEXT_FONT_SIZE_PX = 14;
 
 export type BoxLineParams = {
   start: Pt;
@@ -235,7 +256,7 @@ function drawDimension(gRoot: RootGroup, gUI: RootGroup, start: Pt, end: Pt, col
 const SELECTION_HALO_COLOR = '#f59e0b';
 
 /** Draws a soft highlight behind a selected shape — append before drawShape so it sits underneath. */
-export function drawSelectionHalo(gRoot: RootGroup, shape: DraftShape): void {
+export function drawSelectionHalo(gRoot: RootGroup, gUI: RootGroup, shape: DraftShape, pxPerMm: number): void {
   const halo = (sel: d3.Selection<any, unknown, null, undefined>) => sel
     .attr('fill', 'none')
     .attr('stroke', SELECTION_HALO_COLOR)
@@ -287,5 +308,32 @@ export function drawSelectionHalo(gRoot: RootGroup, shape: DraftShape): void {
         .attr('x', Math.min(shape.p1.x, shape.p2.x)).attr('y', Math.min(shape.p1.y, shape.p2.y))
         .attr('width', Math.abs(shape.p2.x - shape.p1.x)).attr('height', Math.abs(shape.p2.y - shape.p1.y)));
       break;
+    case 'text': {
+      // Measure the actual rendered text (a hidden throwaway node) rather than estimating
+      // width from character count — gUI shares gRoot's mm-space coordinates (just unflipped),
+      // so getBBox() here is already in the right units for a gUI-space halo rect.
+      const probe = gUI.append('text')
+        .attr('x', shape.position.x).attr('y', -shape.position.y)
+        .attr('text-anchor', 'start')
+        .attr('dominant-baseline', 'central')
+        .attr('font-size', TEXT_FONT_SIZE_PX / pxPerMm)
+        .style('visibility', 'hidden')
+        .text(shape.text || ' ');
+      const box = (probe.node() as SVGTextElement).getBBox();
+      probe.remove();
+
+      const pad = 3 / pxPerMm;
+      gUI.append('rect')
+        .attr('x', box.x - pad).attr('y', box.y - pad)
+        .attr('width', box.width + pad * 2).attr('height', box.height + pad * 2)
+        .attr('fill', SELECTION_HALO_COLOR)
+        .attr('fill-opacity', 0.25)
+        .attr('stroke', SELECTION_HALO_COLOR)
+        .attr('stroke-width', 2)
+        .attr('opacity', 0.6)
+        .attr('vector-effect', 'non-scaling-stroke')
+        .style('pointer-events', 'none');
+      break;
+    }
   }
 }

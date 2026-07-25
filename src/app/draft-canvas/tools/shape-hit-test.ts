@@ -1,6 +1,7 @@
 import { Pt } from '../../models/types';
 import { DraftShape } from './toolbox-shape';
 import { pointOnCircle } from './arc-geometry';
+import { TEXT_FONT_SIZE_PX } from './shape-renderer';
 
 const TWO_PI = Math.PI * 2;
 
@@ -53,8 +54,30 @@ function distanceToRect(p: Pt, p1: Pt, p2: Pt): number {
   return best;
 }
 
+/** Distance to an axis-aligned box, 0 if `p` is inside it — unlike distanceToRect (perimeter-only),
+ * appropriate for text, whose whole rendered footprint should count as a hit, not just its edge. */
+function distanceToBoxInterior(p: Pt, x0: number, y0: number, x1: number, y1: number): number {
+  const dx = Math.max(x0 - p.x, 0, p.x - x1);
+  const dy = Math.max(y0 - p.y, 0, p.y - y1);
+  return Math.hypot(dx, dy);
+}
+
+/**
+ * Estimates a text shape's world-mm footprint from its (constant on-screen) font size and
+ * character count — this module stays DOM-free (see the "generic math vs SVG rendering"
+ * separation elsewhere in draft-canvas), so unlike the selection halo it can't measure the
+ * actual rendered glyphs. Anchored at `position` per shape-renderer.ts's text-anchor:start,
+ * dominant-baseline:central.
+ */
+function distanceToText(p: Pt, position: Pt, text: string, pxPerMm: number): number {
+  const fontSizeMm = TEXT_FONT_SIZE_PX / pxPerMm;
+  const width = Math.max(1, text.length) * fontSizeMm * 0.55;
+  const height = fontSizeMm * 1.2;
+  return distanceToBoxInterior(p, position.x, position.y - height / 2, position.x + width, position.y + height / 2);
+}
+
 /** Shortest distance from a world-space point to a toolbox shape's geometry. */
-export function distanceToShape(p: Pt, shape: DraftShape): number {
+export function distanceToShape(p: Pt, shape: DraftShape, pxPerMm: number): number {
   switch (shape.type) {
     case 'line':
     case 'dimension':
@@ -66,5 +89,7 @@ export function distanceToShape(p: Pt, shape: DraftShape): number {
       return distanceToArc(p, shape.center, shape.radius, shape.startAngle, shape.endAngle);
     case 'rect':
       return distanceToRect(p, shape.p1, shape.p2);
+    case 'text':
+      return distanceToText(p, shape.position, shape.text, pxPerMm);
   }
 }
