@@ -295,13 +295,57 @@
   left: 12px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
   padding: 6px;
   border: 1px solid var(--ui-border-strong);
   border-radius: 6px;
   background: var(--ui-bg-surface-2);
   box-shadow: var(--ui-shadow-pop);
   z-index: 5;
+}
+
+.tool-row {
+  display: flex;
+  gap: 4px;
+}
+
+/* Holds just the toggle; centers it regardless of the palette's width, which
+   varies with whichever row (e.g. a flyout with its caret) is currently widest. */
+.tool-palette-header {
+  display: flex;
+  justify-content: center;
+}
+
+/* Extra breathing room below the toggle only exists while there's content to
+   separate it from — collapsing removes this div entirely, not just its rows. */
+.tool-palette-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 8px;
+}
+
+.tool-palette-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 4px;
+  background: linear-gradient(180deg, var(--ui-canvas-btn-bg-start) 0%, var(--ui-canvas-btn-bg-end) 100%);
+  color: var(--ui-text-primary);
+  cursor: pointer;
+  transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+}
+
+.tool-palette-toggle:hover {
+  border-color: var(--ui-canvas-btn-border-hover);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.tool-palette-toggle svg {
+  transition: transform 120ms ease;
 }
 
 .tool-palette-sep {
@@ -334,6 +378,86 @@
   background: var(--ui-accent);
   color: #fff;
   border-color: var(--ui-accent);
+}
+
+/* A flyout groups several construction methods behind one button + a caret */
+.tool-flyout {
+  position: relative;
+  display: flex;
+}
+
+.tool-flyout-main {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.tool-flyout-caret {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  padding: 0;
+  border: 1px solid var(--ui-border-strong);
+  border-left: none;
+  border-top-right-radius: 4px;
+  border-bottom-right-radius: 4px;
+  background: linear-gradient(180deg, var(--ui-canvas-btn-bg-start) 0%, var(--ui-canvas-btn-bg-end) 100%);
+  color: var(--ui-text-primary);
+  cursor: pointer;
+}
+
+.tool-flyout-caret:hover {
+  border-color: var(--ui-canvas-btn-border-hover);
+}
+
+.tool-flyout-popup {
+  position: absolute;
+  top: 0;
+  left: calc(100% + 6px);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  min-width: 150px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 6px;
+  background: var(--ui-bg-surface-2);
+  box-shadow: var(--ui-shadow-pop);
+  z-index: 6;
+}
+
+.tool-flyout-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: none;
+  color: var(--ui-text-primary);
+  cursor: pointer;
+  font-size: 12px;
+  text-align: left;
+}
+
+.tool-flyout-item:hover {
+  border-color: var(--ui-border-strong);
+  background: var(--ui-bg-surface);
+}
+
+.tool-flyout-item svg {
+  flex: 0 0 auto;
+}
+
+/* Drawing-color swatch, pinned to the bottom of the tool palette */
+.tool-color-swatch {
+  width: 32px;
+  height: 32px;
+  padding: 2px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 4px;
+  background: var(--ui-bg-surface);
+  cursor: pointer;
 }
 
 .host {

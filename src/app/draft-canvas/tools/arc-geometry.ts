@@ -23,3 +23,36 @@ export function arcPathData(center: Pt, radius: number, startAngle: number, endA
   const end = pointOnCircle(center, radius, endAngle);
   return `M ${start.x},${start.y} A ${radius},${radius} 0 ${largeArcFlag},${sweepFlag} ${end.x},${end.y}`;
 }
+
+export type TangentArcFit = { center: Pt; radius: number; startAngle: number; endAngle: number };
+
+/**
+ * The unique circle through `start` and `end` that is tangent to direction
+ * `startTangent` at `start` — lets an arc continue smoothly from an existing
+ * line/arc endpoint instead of being built from an independent center point.
+ * Returns null when `end` lies on the tangent line itself (no finite circle fits).
+ */
+export function fitTangentArc(start: Pt, startTangent: number, end: Pt): TangentArcFit | null {
+  const tx = Math.cos(startTangent);
+  const ty = Math.sin(startTangent);
+  const nx = -ty; // normal to the tangent, rotated +90° (CCW)
+  const ny = tx;
+
+  const dx = start.x - end.x;
+  const dy = start.y - end.y;
+  const denom = 2 * (dx * nx + dy * ny);
+  if (Math.abs(denom) < 1e-9) return null;
+
+  const r = -(dx * dx + dy * dy) / denom;
+  if (Math.abs(r) < 1e-6) return null;
+
+  const center: Pt = { x: start.x + r * nx, y: start.y + r * ny };
+  const radius = Math.abs(r);
+
+  return {
+    center,
+    radius,
+    startAngle: Math.atan2(start.y - center.y, start.x - center.x),
+    endAngle: Math.atan2(end.y - center.y, end.x - center.x),
+  };
+}

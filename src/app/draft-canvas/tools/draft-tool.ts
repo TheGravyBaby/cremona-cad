@@ -8,6 +8,8 @@ type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 export interface DraftToolHost {
   addShape(shape: DraftShape): void;
   requestDraw(): void;
+  /** Tangent direction (radians) of the snap that resolved the most recent point, if any. */
+  getSnapTangent(): number | undefined;
 }
 
 /**
@@ -24,7 +26,7 @@ export interface DraftTool {
   /** Return true if the key was consumed (e.g. Escape cancels the in-progress shape). */
   onKeyDown?(event: KeyboardEvent, host: DraftToolHost): boolean;
   /** Draws any in-progress preview (e.g. the line being dragged out). */
-  renderPreview(gRoot: RootGroup): void;
+  renderPreview(gRoot: RootGroup, gUI: RootGroup, pxPerMm: number): void;
   /** Clears in-progress state, e.g. when the tool is deselected. */
   reset(): void;
 }
