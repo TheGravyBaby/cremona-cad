@@ -91,5 +91,7 @@ export function distanceToShape(p: Pt, shape: DraftShape, pxPerMm: number): numb
       return distanceToRect(p, shape.p1, shape.p2);
     case 'text':
       return distanceToText(p, shape.position, shape.text, pxPerMm);
+    case 'point':
+      return Math.hypot(p.x - shape.position.x, p.y - shape.position.y);
   }
 }
