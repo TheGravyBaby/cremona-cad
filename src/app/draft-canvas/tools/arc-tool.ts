@@ -16,13 +16,16 @@ const PREVIEW_COLOR = '#2563eb';
  * State only advances in onPointerDown — onPointerMove is preview-only.
  */
 export class ArcTool implements DraftTool {
-  readonly id = 'arc';
-  readonly label = 'Arc';
-
   private stage: ArcStage = 'idle';
   private center: Pt | null = null;
   private radiusPt: Pt | null = null;
   private hoverPt: Pt | null = null;
+
+  constructor(
+    readonly id: string = 'arc',
+    readonly label: string = 'Arc',
+    private readonly showCenterGuides: boolean = false,
+  ) { }
 
   onPointerDown(pt: Pt, host: DraftToolHost): void {
     if (this.stage === 'idle') {
@@ -55,7 +58,7 @@ export class ArcTool implements DraftTool {
     return false;
   }
 
-  renderPreview(gRoot: RootGroup): void {
+  renderPreview(gRoot: RootGroup, _gUI: RootGroup, _pxPerMm: number): void {
     if (!this.center || !this.hoverPt) return;
 
     if (this.stage === 'center-set') {
@@ -116,6 +119,7 @@ export class ArcTool implements DraftTool {
       radius,
       startAngle,
       endAngle,
+      ...(this.showCenterGuides ? { showCenterGuides: true } : {}),
     });
     this.reset();
   }
@@ -130,4 +134,13 @@ export class ArcTool implements DraftTool {
       .attr('vector-effect', 'non-scaling-stroke')
       .style('pointer-events', 'none');
   }
+}
+
+export function createArcTool(): ArcTool {
+  return new ArcTool();
+}
+
+/** Same 3-click arc, but its committed rendering keeps the center/radius guides permanently visible. */
+export function createFancyArcTool(): ArcTool {
+  return new ArcTool('arc-fancy', 'Fancy Arc', true);
 }

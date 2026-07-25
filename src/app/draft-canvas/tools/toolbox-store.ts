@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { DraftShape } from './toolbox-shape';
+import { DraftShape, DEFAULT_SHAPE_COLOR } from './toolbox-shape';
 
 const STORAGE_KEY = 'draft-canvas-toolbox-shapes';
 const MAX_HISTORY = 50;
@@ -19,6 +19,7 @@ export class ToolboxStore {
   private history: DraftShape[][] = [];
   private historyIndex = -1;
   private listeners = new Set<() => void>();
+  private _currentColor: string = DEFAULT_SHAPE_COLOR;
 
   constructor() {
     this.load();
@@ -28,6 +29,15 @@ export class ToolboxStore {
 
   get canUndo(): boolean { return this.historyIndex > 0; }
   get canRedo(): boolean { return this.historyIndex < this.history.length - 1; }
+
+  /** The "pen" color new shapes are stamped with — not part of undo history, same as other tool preferences. */
+  get currentColor(): string { return this._currentColor; }
+  set currentColor(color: string) {
+    if (this._currentColor === color) return;
+    this._currentColor = color;
+    this.persist();
+    this.notify();
+  }
 
   getShapes(): DraftShape[] {
     return this.shapes;
@@ -39,6 +49,11 @@ export class ToolboxStore {
 
   removeShape(id: string): void {
     this.applyMutation(this.shapes.filter(s => s.id !== id));
+  }
+
+  /** Patches a shape's properties (e.g. color) in place. Also the primitive a future Move would use for geometry. */
+  updateShape(id: string, patch: Partial<DraftShape>): void {
+    this.applyMutation(this.shapes.map(s => s.id === id ? { ...s, ...patch } as DraftShape : s));
   }
 
   clear(): void {
@@ -86,7 +101,12 @@ export class ToolboxStore {
       const raw = sessionStorage.getItem(STORAGE_KEY);
       if (!raw) return;
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) this.shapes = parsed;
+      if (Array.isArray(parsed)) {
+        this.shapes = parsed; // legacy format, from before currentColor existed
+      } else if (parsed && typeof parsed === 'object') {
+        if (Array.isArray(parsed.shapes)) this.shapes = parsed.shapes;
+        if (typeof parsed.currentColor === 'string') this._currentColor = parsed.currentColor;
+      }
     } catch {
       // ignore malformed/blocked sessionStorage
     }
@@ -94,7 +114,7 @@ export class ToolboxStore {
 
   private persist(): void {
     try {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(this.shapes));
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ shapes: this.shapes, currentColor: this._currentColor }));
     } catch {
       // ignore storage errors
     }

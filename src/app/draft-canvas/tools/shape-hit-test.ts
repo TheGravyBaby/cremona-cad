@@ -39,12 +39,31 @@ function distanceToArc(p: Pt, center: Pt, radius: number, startAngle: number, en
   return Math.min(Math.hypot(p.x - startPt.x, p.y - startPt.y), Math.hypot(p.x - endPt.x, p.y - endPt.y));
 }
 
+function distanceToRect(p: Pt, p1: Pt, p2: Pt): number {
+  const x0 = Math.min(p1.x, p2.x);
+  const x1 = Math.max(p1.x, p2.x);
+  const y0 = Math.min(p1.y, p2.y);
+  const y1 = Math.max(p1.y, p2.y);
+  const corners = [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }];
+
+  let best = Infinity;
+  for (let i = 0; i < 4; i++) {
+    best = Math.min(best, distanceToSegment(p, corners[i], corners[(i + 1) % 4]));
+  }
+  return best;
+}
+
 /** Shortest distance from a world-space point to a toolbox shape's geometry. */
 export function distanceToShape(p: Pt, shape: DraftShape): number {
   switch (shape.type) {
     case 'line':
+    case 'dimension':
       return distanceToSegment(p, shape.start, shape.end);
+    case 'circle':
+      return Math.abs(Math.hypot(p.x - shape.center.x, p.y - shape.center.y) - shape.radius);
     case 'arc':
       return distanceToArc(p, shape.center, shape.radius, shape.startAngle, shape.endAngle);
+    case 'rect':
+      return distanceToRect(p, shape.p1, shape.p2);
   }
 }

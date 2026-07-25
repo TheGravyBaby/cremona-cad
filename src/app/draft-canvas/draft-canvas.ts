@@ -9,6 +9,7 @@ import {
   ViewChild,
 } from '@angular/core';
 import * as d3 from 'd3';
+import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Input } from '@angular/core';
 import { NamedReferenceImage, Pt, ReferenceImage } from '../models/types';
@@ -18,8 +19,13 @@ import { AxisGridController, AxisGridPreferences, CanvasViewport } from './axis-
 import { toNamedReferenceImage } from '../helpers/referenceImages';
 import { info } from '../shared/message-emitter';
 import { DraftTool, DraftToolHost } from './tools/draft-tool';
-import { LineTool } from './tools/line-tool';
-import { ArcTool } from './tools/arc-tool';
+import { createLineTool, createDottedLineTool } from './tools/line-tool';
+import { createArcTool, createFancyArcTool } from './tools/arc-tool';
+import { createTangentArcTool } from './tools/tangent-arc-tool';
+import { createCircleTool, createDottedCircleTool } from './tools/circle-tool';
+import { createDimensionTool } from './tools/dimension-tool';
+import { createRectTool, createSquareTool } from './tools/rect-tool';
+import { ToolSlot, single, flyout } from './tools/tool-slot';
 import { ToolboxStore } from './tools/toolbox-store';
 import { drawShape, drawSelectionHalo } from './tools/shape-renderer';
 import { SnapCandidate, SnapEngine } from './tools/snap-engine';
@@ -29,7 +35,7 @@ import { distanceToShape } from './tools/shape-hit-test';
 @Component({
   selector: 'app-draft-canvas',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, NgTemplateOutlet],
   templateUrl: './draft-canvas.html',
   styleUrls: ['./draft-canvas.css'],
 })
@@ -47,12 +53,31 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private refController: ReferenceImageController;
   private toolbox = inject(ToolboxStore);
   private toolboxUnsub?: () => void;
-  // Add new tools here — the toolbar and pointer routing pick them up automatically.
-  public tools: DraftTool[] = [new LineTool(), new ArcTool()];
+  // Add new tools here, grouped into rows of up to 2 slots. Use flyout([...])
+  // to group every variant of the same kind of shape (styles and construction
+  // methods alike) behind one button + caret; use single(...) for a tool with
+  // no variants. The toolbar and pointer routing pick both up automatically.
+  public toolRows: ToolSlot[][] = [
+    [
+      flyout([createLineTool(), createDottedLineTool(), createDimensionTool()]),
+    ],
+    [
+      flyout([createArcTool(), createTangentArcTool(), createFancyArcTool()]),
+    ],
+    [
+      flyout([createCircleTool(), createDottedCircleTool()]),
+    ],
+    [
+      flyout([createRectTool(), createSquareTool()]),
+    ],
+  ];
   public activeTool: DraftTool | null = null;
+  public openFlyout: ToolSlot | null = null;
+  public toolPaletteCollapsed = false;
   private toolHost: DraftToolHost = {
-    addShape: (shape) => this.toolbox.addShape(shape),
+    addShape: (shape) => this.toolbox.addShape({ ...shape, color: shape.color ?? this.toolbox.currentColor }),
     requestDraw: () => this.draw(),
+    getSnapTangent: () => this.activeSnap?.tangent,
   };
 
   // Snapping: candidates are re-indexed from the rendered scene only when the
@@ -232,7 +257,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     });
 
     this.axisGrid.loadPreferences();
-    this.loadReferenceImagePreference();
+    this.loadDisplayPreferences();
 
     // redraw when the toolbox shape history changes from outside this component
     // (e.g. recipe-base's undo/redo keyboard handler)
@@ -248,7 +273,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.draw();
   }
 
- ngOnDestroy(): void {
+  ngOnDestroy(): void {
     this.resizeObs?.disconnect();
     this.host.nativeElement.removeEventListener('keyup', this.onKeyUp);
     document.removeEventListener('keydown', this.onKeyDown);
@@ -295,14 +320,14 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.draftFuncs.map(f => {
       f(snapLayer, this.gUI)
     })
-    this.toolbox.getShapes().forEach(s => drawShape(snapLayer, s));
+    this.toolbox.getShapes().forEach(s => drawShape(snapLayer, this.gUI, s, this.pxPerMm));
 
     if (this.snapDirty) {
       this.snapEngine.rebuild(snapLayer);
       this.snapDirty = false;
     }
 
-    this.activeTool?.renderPreview(this.gRoot);
+    this.activeTool?.renderPreview(this.gRoot, this.gUI, this.pxPerMm);
     if (this.activeTool && this.activeSnap) {
       drawSnapMarker(this.gRoot, this.activeSnap, this.pxPerMm);
     }
@@ -313,8 +338,24 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.activeTool?.reset();
     this.activeTool = tool;
     this.activeSnap = null;
+    this.openFlyout = null;
     if (tool) this.selectedShapeId = null; // selection only applies in Select mode
     this.draw();
+  }
+
+  /** Activates a slot's current tool — its only tool if single, its selected variant if a flyout. */
+  activateSlot(slot: ToolSlot): void {
+    this.selectTool(slot.kind === 'single' ? slot.tool : slot.variants[slot.selectedIndex]);
+  }
+
+  toggleFlyout(slot: ToolSlot): void {
+    this.openFlyout = this.openFlyout === slot ? null : slot;
+  }
+
+  /** Picking a variant from the flyout both activates it and becomes the slot's new default face. */
+  chooseFlyoutVariant(slot: Extract<ToolSlot, { kind: 'flyout' }>, index: number): void {
+    slot.selectedIndex = index;
+    this.selectTool(slot.variants[index]);
   }
 
   /** Resolves a raw pointer point to a nearby snap candidate when a tool is active. */
@@ -350,6 +391,21 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.draw();
   }
 
+  /** Shows the selected shape's color when something's selected, otherwise the pen color new shapes will use. */
+  public get displayedColor(): string {
+    const shape = this.selectedShapeId
+      ? this.toolbox.getShapes().find(s => s.id === this.selectedShapeId)
+      : undefined;
+    return shape?.color ?? this.toolbox.currentColor;
+  }
+
+  setColor(color: string): void {
+    this.toolbox.currentColor = color;
+    if (this.selectedShapeId) {
+      this.toolbox.updateShape(this.selectedShapeId, { color });
+    }
+  }
+
   clearToolbox(): void {
     this.toolbox.clear();
   }
@@ -364,6 +420,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
         JSON.stringify({
           ...existing,
           showReferenceImage: this.showReferenceImage,
+          toolPaletteCollapsed: this.toolPaletteCollapsed,
         })
       );
     } catch {
@@ -372,17 +429,26 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.draw();
   }
 
-  private loadReferenceImagePreference(): void {
+  toggleToolPalette(): void {
+    this.toolPaletteCollapsed = !this.toolPaletteCollapsed;
+    this.onDisplayPreferenceChange();
+  }
+
+  private loadDisplayPreferences(): void {
     try {
       const raw = sessionStorage.getItem(DraftCanvasComponent.DISPLAY_PREFS_KEY);
       if (!raw) return;
 
       const parsed = JSON.parse(raw) as {
         showReferenceImage?: boolean;
+        toolPaletteCollapsed?: boolean;
       };
 
       if (typeof parsed.showReferenceImage === 'boolean') {
         this.showReferenceImage = parsed.showReferenceImage;
+      }
+      if (typeof parsed.toolPaletteCollapsed === 'boolean') {
+        this.toolPaletteCollapsed = parsed.toolPaletteCollapsed;
       }
     } catch {
       // ignore malformed/blocked sessionStorage
@@ -563,9 +629,9 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     if (isArrow) {
       const step = event.shiftKey ? 200 : 40; // px
       switch (event.code) {
-        case 'ArrowUp':    this.camera.panByPx(0,  step); break;
-        case 'ArrowDown':  this.camera.panByPx(0, -step); break;
-        case 'ArrowLeft':  this.camera.panByPx( step, 0); break;
+        case 'ArrowUp': this.camera.panByPx(0, step); break;
+        case 'ArrowDown': this.camera.panByPx(0, -step); break;
+        case 'ArrowLeft': this.camera.panByPx(step, 0); break;
         case 'ArrowRight': this.camera.panByPx(-step, 0); break;
       }
       this.draw();
@@ -675,7 +741,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     const isMouseWheel = Math.abs(event.deltaX) === 0 //&& Number.isInteger(event.deltaY);
     if (isMouseWheel) {
       const clampedDelta = Math.sign(event.deltaY);
-      const zoomFactor = Math.pow(0.85, clampedDelta); 
+      const zoomFactor = Math.pow(0.85, clampedDelta);
       const newPxPerMm = this.pxPerMm * zoomFactor;
 
 
@@ -860,7 +926,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
     if (key === 'x' || key === 'y') {
       (next as any)[key] = v;
-      } else if (key === 'rotationDeg') {
+    } else if (key === 'rotationDeg') {
       next.rotationDeg = this.normalizeRotationDeg(v);
     } else if (key === 'width') {
       next.width = Math.max(minMm, v);

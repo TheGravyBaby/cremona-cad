@@ -6,7 +6,11 @@ type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 
 export type SnapKind = 'endpoint' | 'center' | 'path';
 
-export type SnapCandidate = { kind: SnapKind; pt: Pt };
+// `tangent` (radians) is set for endpoint/path candidates — any point on a
+// line/arc/circle has a well-defined tangent direction — but not for
+// centers, which have none. Lets a tool starting at a snapped point (e.g.
+// TangentArcTool) continue smoothly from the geometry it snapped to.
+export type SnapCandidate = { kind: SnapKind; pt: Pt; tangent?: number };
 
 // Lower wins ties when multiple candidate kinds fall within tolerance.
 const KIND_PRIORITY: Record<SnapKind, number> = { endpoint: 0, center: 1, path: 2 };
@@ -67,6 +71,18 @@ function collectFromElement(el: SVGGeometryElement, out: SnapCandidate[]): void 
     if (d) {
       for (const center of extractArcCenters(d)) out.push({ kind: 'center', pt: center });
     }
+  } else if (el.tagName === 'rect') {
+    // Exact corners as endpoints — the generic getTotalLength walk below only
+    // reliably finds one of the four (it's a closed shape starting/ending at
+    // the same point), and edge midpoints don't need to be pinpoint-exact.
+    const x = parseFloat(el.getAttribute('x') ?? '0');
+    const y = parseFloat(el.getAttribute('y') ?? '0');
+    const w = parseFloat(el.getAttribute('width') ?? '0');
+    const h = parseFloat(el.getAttribute('height') ?? '0');
+    out.push({ kind: 'endpoint', pt: { x, y } });
+    out.push({ kind: 'endpoint', pt: { x: x + w, y } });
+    out.push({ kind: 'endpoint', pt: { x: x + w, y: y + h } });
+    out.push({ kind: 'endpoint', pt: { x, y: y + h } });
   }
 
   if (typeof el.getTotalLength !== 'function') return;
@@ -81,13 +97,23 @@ function collectFromElement(el: SVGGeometryElement, out: SnapCandidate[]): void 
 
   const start = el.getPointAtLength(0);
   const end = el.getPointAtLength(total);
-  out.push({ kind: 'endpoint', pt: { x: start.x, y: start.y } });
-  out.push({ kind: 'endpoint', pt: { x: end.x, y: end.y } });
+  out.push({ kind: 'endpoint', pt: { x: start.x, y: start.y }, tangent: tangentAt(el, 0, total) });
+  out.push({ kind: 'endpoint', pt: { x: end.x, y: end.y }, tangent: tangentAt(el, total, total) });
 
   const sampleCount = Math.min(MAX_SAMPLES_PER_ELEMENT, Math.max(1, Math.round(total / ALONG_PATH_STEP_MM)));
   const step = total / sampleCount;
   for (let s = step; s < total; s += step) {
     const p = el.getPointAtLength(s);
-    out.push({ kind: 'path', pt: { x: p.x, y: p.y } });
+    out.push({ kind: 'path', pt: { x: p.x, y: p.y }, tangent: tangentAt(el, s, total) });
   }
+}
+
+/** Tangent direction at length `s` via a small finite difference — works uniformly for any geometry element. */
+function tangentAt(el: SVGGeometryElement, s: number, total: number): number {
+  const eps = Math.min(0.05, Math.max(total * 0.001, 1e-4));
+  const s0 = Math.max(0, s - eps);
+  const s1 = Math.min(total, s + eps);
+  const p0 = el.getPointAtLength(s0);
+  const p1 = el.getPointAtLength(s1);
+  return Math.atan2(p1.y - p0.y, p1.x - p0.x);
 }
