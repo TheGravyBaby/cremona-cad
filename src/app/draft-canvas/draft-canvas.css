@@ -460,6 +460,65 @@
   cursor: pointer;
 }
 
+.settings-popup {
+  min-width: 170px;
+  gap: 10px;
+}
+
+.settings-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-row-inline {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.settings-lbl {
+  font-size: 11px;
+  color: var(--ui-text-muted);
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: auto 1fr auto 1fr;
+  align-items: center;
+  gap: 4px 6px;
+}
+
+.settings-grid input[type="number"] {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.settings-pair {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 4px 6px;
+}
+
+.settings-pair input[type="number"] {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.box-line-weights-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 4px 6px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 4px;
+  background: var(--ui-bg-surface);
+  color: var(--ui-text-primary);
+  font-size: 11px;
+}
+
 .host {
   flex: 1 1 auto;
   min-height: 0;

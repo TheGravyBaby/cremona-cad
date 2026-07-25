@@ -30,7 +30,12 @@ export class SnapEngine {
 
   rebuild(layer: RootGroup): void {
     const candidates: SnapCandidate[] = [];
-    layer.selectAll<SVGGeometryElement, unknown>('path, line, circle, rect, polyline, polygon')
+    // `[data-no-snap]` marks purely decorative sub-elements (e.g. a Box Line's
+    // banding/ticks) that would otherwise flood candidates with noise — only
+    // the shape's real geometry (e.g. its centerline) should be snappable.
+    layer.selectAll<SVGGeometryElement, unknown>(
+      'path:not([data-no-snap]), line:not([data-no-snap]), circle, rect, polyline, polygon',
+    )
       .each(function () {
         collectFromElement(this, candidates);
       });

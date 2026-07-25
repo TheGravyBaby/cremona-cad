@@ -1,5 +1,5 @@
 import { makeShapeId } from './toolbox-shape';
-import { TwoPointTool } from './two-point-tool';
+import { TwoPointTool, previewLine } from './two-point-tool';
 
 export function createLineTool(): TwoPointTool {
   return new TwoPointTool('line', 'Line', (start, end) => ({
@@ -7,7 +7,7 @@ export function createLineTool(): TwoPointTool {
     type: 'line',
     start,
     end,
-  }));
+  }), previewLine, true);
 }
 
 export function createDottedLineTool(): TwoPointTool {
@@ -17,5 +17,5 @@ export function createDottedLineTool(): TwoPointTool {
     start,
     end,
     dashed: true,
-  }));
+  }), previewLine, true);
 }

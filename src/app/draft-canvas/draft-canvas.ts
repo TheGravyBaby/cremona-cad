@@ -25,12 +25,14 @@ import { createTangentArcTool } from './tools/tangent-arc-tool';
 import { createCircleTool, createDottedCircleTool } from './tools/circle-tool';
 import { createDimensionTool } from './tools/dimension-tool';
 import { createRectTool, createSquareTool } from './tools/rect-tool';
+import { createBoxLineTool } from './tools/box-line-tool';
 import { ToolSlot, single, flyout } from './tools/tool-slot';
 import { ToolboxStore } from './tools/toolbox-store';
 import { drawShape, drawSelectionHalo } from './tools/shape-renderer';
 import { SnapCandidate, SnapEngine } from './tools/snap-engine';
 import { drawSnapMarker } from './tools/snap-marker-renderer';
 import { distanceToShape } from './tools/shape-hit-test';
+import { DraftShape, LineShape, DimensionShape, CircleShape, ArcShape, RectShape } from './tools/toolbox-shape';
 
 @Component({
   selector: 'app-draft-canvas',
@@ -70,14 +72,20 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     [
       flyout([createRectTool(), createSquareTool()]),
     ],
+    [
+      single(createBoxLineTool(this.toolbox)),
+    ],
   ];
   public activeTool: DraftTool | null = null;
   public openFlyout: ToolSlot | null = null;
+  public settingsOpen = false;
   public toolPaletteCollapsed = false;
+  private isAngleLockHeld = false;
   private toolHost: DraftToolHost = {
     addShape: (shape) => this.toolbox.addShape({ ...shape, color: shape.color ?? this.toolbox.currentColor }),
     requestDraw: () => this.draw(),
     getSnapTangent: () => this.activeSnap?.tangent,
+    isAngleLockHeld: () => this.isAngleLockHeld,
   };
 
   // Snapping: candidates are re-indexed from the rendered scene only when the
@@ -322,7 +330,12 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     })
     this.toolbox.getShapes().forEach(s => drawShape(snapLayer, this.gUI, s, this.pxPerMm));
 
-    if (this.snapDirty) {
+    // Candidates are only ever read from resolveToolPoint(), which is a no-op
+    // with no active tool (e.g. while editing a selected shape's properties in
+    // Select mode) — so skip the (potentially large, whole-scene) rebuild
+    // until a tool is actually active to consume it. `snapDirty` stays set,
+    // so activating a tool later still rebuilds first.
+    if (this.snapDirty && this.activeTool) {
       this.snapEngine.rebuild(snapLayer);
       this.snapDirty = false;
     }
@@ -350,6 +363,12 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
   toggleFlyout(slot: ToolSlot): void {
     this.openFlyout = this.openFlyout === slot ? null : slot;
+    this.settingsOpen = false;
+  }
+
+  toggleSettings(): void {
+    this.settingsOpen = !this.settingsOpen;
+    this.openFlyout = null;
   }
 
   /** Picking a variant from the flyout both activates it and becomes the slot's new default face. */
@@ -391,18 +410,173 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.draw();
   }
 
-  /** Shows the selected shape's color when something's selected, otherwise the pen color new shapes will use. */
-  public get displayedColor(): string {
-    const shape = this.selectedShapeId
+  private get selectedShape(): DraftShape | undefined {
+    return this.selectedShapeId
       ? this.toolbox.getShapes().find(s => s.id === this.selectedShapeId)
       : undefined;
-    return shape?.color ?? this.toolbox.currentColor;
+  }
+
+  /** Shows the selected shape's color when something's selected, otherwise the pen color new shapes will use. */
+  public get displayedColor(): string {
+    return this.selectedShape?.color ?? this.toolbox.currentColor;
   }
 
   setColor(color: string): void {
     this.toolbox.currentColor = color;
     if (this.selectedShapeId) {
       this.toolbox.updateShape(this.selectedShapeId, { color });
+    }
+  }
+
+  /** Line/Dotted Line/Dimension all share start+end geometry — editable numerically once a shape is selected. */
+  private get selectedLineLikeShape(): LineShape | DimensionShape | undefined {
+    const s = this.selectedShape;
+    return (s?.type === 'line' || s?.type === 'dimension') ? s : undefined;
+  }
+
+  public get showLinePanel(): boolean {
+    return !!this.selectedLineLikeShape;
+  }
+
+  public get lineStartX(): number { return this.selectedLineLikeShape?.start.x ?? 0; }
+  public get lineStartY(): number { return this.selectedLineLikeShape?.start.y ?? 0; }
+  public get lineEndX(): number { return this.selectedLineLikeShape?.end.x ?? 0; }
+  public get lineEndY(): number { return this.selectedLineLikeShape?.end.y ?? 0; }
+
+  setLinePoint(which: 'start' | 'end', axis: 'x' | 'y', value: number): void {
+    const shape = this.selectedLineLikeShape;
+    if (!shape) return;
+    const v = Number(value);
+    if (!Number.isFinite(v)) return;
+    const point = { ...shape[which], [axis]: v };
+    this.toolbox.updateShape(shape.id, { [which]: point } as Partial<DraftShape>);
+  }
+
+  /** Rect and Square both commit as a 'rect' shape (p1/p2 corners) — same panel edits either. */
+  private get selectedRectShape(): RectShape | undefined {
+    const s = this.selectedShape;
+    return s?.type === 'rect' ? s : undefined;
+  }
+
+  public get showRectPanel(): boolean {
+    return !!this.selectedRectShape;
+  }
+
+  public get rectP1X(): number { return this.selectedRectShape?.p1.x ?? 0; }
+  public get rectP1Y(): number { return this.selectedRectShape?.p1.y ?? 0; }
+  public get rectP2X(): number { return this.selectedRectShape?.p2.x ?? 0; }
+  public get rectP2Y(): number { return this.selectedRectShape?.p2.y ?? 0; }
+
+  setRectPoint(which: 'p1' | 'p2', axis: 'x' | 'y', value: number): void {
+    const shape = this.selectedRectShape;
+    if (!shape) return;
+    const v = Number(value);
+    if (!Number.isFinite(v)) return;
+    const point = { ...shape[which], [axis]: v };
+    this.toolbox.updateShape(shape.id, { [which]: point } as Partial<DraftShape>);
+  }
+
+  private get selectedCircleShape(): CircleShape | undefined {
+    const s = this.selectedShape;
+    return s?.type === 'circle' ? s : undefined;
+  }
+
+  public get showCirclePanel(): boolean {
+    return !!this.selectedCircleShape;
+  }
+
+  public get circleCenterX(): number { return this.selectedCircleShape?.center.x ?? 0; }
+  public get circleCenterY(): number { return this.selectedCircleShape?.center.y ?? 0; }
+  public get circleRadius(): number { return this.selectedCircleShape?.radius ?? 0; }
+
+  setCircleCenter(axis: 'x' | 'y', value: number): void {
+    const shape = this.selectedCircleShape;
+    if (!shape) return;
+    const v = Number(value);
+    if (!Number.isFinite(v)) return;
+    this.toolbox.updateShape(shape.id, { center: { ...shape.center, [axis]: v } });
+  }
+
+  setCircleRadius(value: number): void {
+    const shape = this.selectedCircleShape;
+    if (!shape) return;
+    const v = Number(value);
+    if (!Number.isFinite(v) || v <= 0) return;
+    this.toolbox.updateShape(shape.id, { radius: v });
+  }
+
+  private get selectedArcShape(): ArcShape | undefined {
+    const s = this.selectedShape;
+    return s?.type === 'arc' ? s : undefined;
+  }
+
+  public get showArcPanel(): boolean {
+    return !!this.selectedArcShape;
+  }
+
+  public get arcCenterX(): number { return this.selectedArcShape?.center.x ?? 0; }
+  public get arcCenterY(): number { return this.selectedArcShape?.center.y ?? 0; }
+  public get arcRadius(): number { return this.selectedArcShape?.radius ?? 0; }
+  public get arcStartDeg(): number { return (this.selectedArcShape?.startAngle ?? 0) * 180 / Math.PI; }
+  public get arcEndDeg(): number { return (this.selectedArcShape?.endAngle ?? 0) * 180 / Math.PI; }
+
+  setArcCenter(axis: 'x' | 'y', value: number): void {
+    const shape = this.selectedArcShape;
+    if (!shape) return;
+    const v = Number(value);
+    if (!Number.isFinite(v)) return;
+    this.toolbox.updateShape(shape.id, { center: { ...shape.center, [axis]: v } });
+  }
+
+  setArcRadius(value: number): void {
+    const shape = this.selectedArcShape;
+    if (!shape) return;
+    const v = Number(value);
+    if (!Number.isFinite(v) || v <= 0) return;
+    this.toolbox.updateShape(shape.id, { radius: v });
+  }
+
+  /** Angle fields are edited in degrees for readability; stored in radians, matching arc-geometry.ts's convention. */
+  setArcAngle(which: 'start' | 'end', valueDeg: number): void {
+    const shape = this.selectedArcShape;
+    if (!shape) return;
+    const v = Number(valueDeg);
+    if (!Number.isFinite(v)) return;
+    const rad = v * Math.PI / 180;
+    this.toolbox.updateShape(shape.id, which === 'start' ? { startAngle: rad } : { endAngle: rad });
+  }
+
+  /** Box Line has extra per-shape settings (a second color + segment weights) that don't fit the single color swatch. */
+  public get showBoxLinePanel(): boolean {
+    return this.activeTool?.id === 'boxline' || this.selectedShape?.type === 'boxline';
+  }
+
+  public get displayedBoxLineColor2(): string {
+    const shape = this.selectedShape;
+    return (shape?.type === 'boxline' ? shape.color2 : undefined) ?? this.toolbox.currentBoxLineColor2;
+  }
+
+  public get displayedBoxLineWeightsText(): string {
+    const shape = this.selectedShape;
+    const weights = (shape?.type === 'boxline' ? shape.weights : undefined) ?? this.toolbox.currentBoxLineWeights;
+    return weights.join(',');
+  }
+
+  setBoxLineColor2(color: string): void {
+    this.toolbox.currentBoxLineColor2 = color;
+    const shape = this.selectedShape;
+    if (shape?.type === 'boxline') {
+      this.toolbox.updateShape(shape.id, { color2: color });
+    }
+  }
+
+  setBoxLineWeightsText(text: string): void {
+    const weights = text.split(',').map(s => Number(s.trim())).filter(n => Number.isFinite(n) && n > 0);
+    if (weights.length === 0) return;
+    this.toolbox.currentBoxLineWeights = weights;
+    const shape = this.selectedShape;
+    if (shape?.type === 'boxline') {
+      this.toolbox.updateShape(shape.id, { weights });
     }
   }
 
@@ -456,6 +630,8 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   }
 
   onPointerMove = (event: PointerEvent) => {
+    this.isAngleLockHeld = event.shiftKey;
+
     // Update tracked position for this pointer
     if (this.activePointers.has(event.pointerId)) {
       this.activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
@@ -530,6 +706,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   };
 
   onPointerUp = (event: PointerEvent) => {
+    this.isAngleLockHeld = event.shiftKey;
     this.activePointers.delete(event.pointerId);
     if (this.activePointers.size < 2) {
       this.lastPinchDist = 0;
@@ -652,6 +829,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   };
 
   onPointerDown(event: PointerEvent) {
+    this.isAngleLockHeld = event.shiftKey;
     this.activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
     // Two fingers down — cancel any ongoing pan and enter pinch mode
@@ -672,7 +850,9 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     const isMiddle = event.button === 1;
 
     const canRefOps = this.referenceModeEnabled && this.showReferenceImage && !!this.activeReferenceImage?.href;
-    const modifierHeld = event.shiftKey || event.ctrlKey;
+    // Shift is reserved as the drafting angle-lock modifier (see isAngleLockHeld), so it
+    // must not block tool activation/selection the way Ctrl (kept free for future use) does.
+    const modifierHeld = event.ctrlKey;
 
     if (this.activeTool && isPrimary && !modifierHeld && !this.isSpaceDown) {
       const pt = this.resolveToolPoint(this.worldFromPointer(event));

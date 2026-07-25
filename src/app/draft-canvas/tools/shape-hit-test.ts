@@ -58,6 +58,7 @@ export function distanceToShape(p: Pt, shape: DraftShape): number {
   switch (shape.type) {
     case 'line':
     case 'dimension':
+    case 'boxline':
       return distanceToSegment(p, shape.start, shape.end);
     case 'circle':
       return Math.abs(Math.hypot(p.x - shape.center.x, p.y - shape.center.y) - shape.radius);

@@ -44,8 +44,20 @@ export type RectShape = ShapeBase & {
   p2: Pt; // opposite corner — the box is axis-aligned between p1 and p2
 };
 
+// A line divided into weighted ratio segments, alternating `color`/`color2` per
+// segment — for illustrating ratios (e.g. vesica radius-to-gap) the way
+// helpers/renderFuncs.ts's renderBoxLine does for recipe drafts.
+export type BoxLineShape = ShapeBase & {
+  type: 'boxline';
+  start: Pt;
+  end: Pt;
+  weights: number[];
+  color2: string;
+  label: boolean;
+};
+
 // Extend this union as new tools are added.
-export type DraftShape = LineShape | ArcShape | CircleShape | DimensionShape | RectShape;
+export type DraftShape = LineShape | ArcShape | CircleShape | DimensionShape | RectShape | BoxLineShape;
 
 let shapeIdSeq = 0;
 

@@ -20,6 +20,8 @@ export class ToolboxStore {
   private historyIndex = -1;
   private listeners = new Set<() => void>();
   private _currentColor: string = DEFAULT_SHAPE_COLOR;
+  private _currentBoxLineColor2: string = '#93c5fd';
+  private _currentBoxLineWeights: number[] = [1, 1, 1];
 
   constructor() {
     this.load();
@@ -35,6 +37,23 @@ export class ToolboxStore {
   set currentColor(color: string) {
     if (this._currentColor === color) return;
     this._currentColor = color;
+    this.persist();
+    this.notify();
+  }
+
+  /** The second alternating color new Box Line shapes will use. */
+  get currentBoxLineColor2(): string { return this._currentBoxLineColor2; }
+  set currentBoxLineColor2(color: string) {
+    if (this._currentBoxLineColor2 === color) return;
+    this._currentBoxLineColor2 = color;
+    this.persist();
+    this.notify();
+  }
+
+  /** The segment weights new Box Line shapes will use. */
+  get currentBoxLineWeights(): number[] { return this._currentBoxLineWeights; }
+  set currentBoxLineWeights(weights: number[]) {
+    this._currentBoxLineWeights = weights;
     this.persist();
     this.notify();
   }
@@ -106,6 +125,8 @@ export class ToolboxStore {
       } else if (parsed && typeof parsed === 'object') {
         if (Array.isArray(parsed.shapes)) this.shapes = parsed.shapes;
         if (typeof parsed.currentColor === 'string') this._currentColor = parsed.currentColor;
+        if (typeof parsed.currentBoxLineColor2 === 'string') this._currentBoxLineColor2 = parsed.currentBoxLineColor2;
+        if (Array.isArray(parsed.currentBoxLineWeights)) this._currentBoxLineWeights = parsed.currentBoxLineWeights;
       }
     } catch {
       // ignore malformed/blocked sessionStorage
@@ -114,7 +135,12 @@ export class ToolboxStore {
 
   private persist(): void {
     try {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ shapes: this.shapes, currentColor: this._currentColor }));
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+        shapes: this.shapes,
+        currentColor: this._currentColor,
+        currentBoxLineColor2: this._currentBoxLineColor2,
+        currentBoxLineWeights: this._currentBoxLineWeights,
+      }));
     } catch {
       // ignore storage errors
     }

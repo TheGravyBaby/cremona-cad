@@ -44,6 +44,42 @@ export function previewRect(gRoot: RootGroup, _gUI: RootGroup, _pxPerMm: number,
     .style('pointer-events', 'none');
 }
 
+// Locking angle set = multiples of 30° union multiples of 45° (0, 30, 45, 60,
+// 90, 120, 135, 150, 180, ...) — matches how most CAD/drawing tools define
+// "common" angle snaps, rather than a single fixed increment.
+const ANGLE_LOCK_DEG: readonly number[] = (() => {
+  const set = new Set<number>();
+  for (let k = 0; k < 12; k++) set.add(k * 30);
+  for (let k = 0; k < 8; k++) set.add(k * 45);
+  return [...set].sort((a, b) => a - b);
+})();
+
+function normalizeDeltaDeg(deg: number): number {
+  let d = deg % 360;
+  if (d > 180) d -= 360;
+  if (d < -180) d += 360;
+  return d;
+}
+
+/** Snaps `pt` onto the nearest ANGLE_LOCK_DEG ray from `start`, preserving distance. */
+function snapToLockedAngle(start: Pt, pt: Pt): Pt {
+  const dx = pt.x - start.x;
+  const dy = pt.y - start.y;
+  const len = Math.hypot(dx, dy);
+  if (len < 1e-9) return pt;
+
+  const angleDeg = Math.atan2(dy, dx) * 180 / Math.PI;
+  let best = ANGLE_LOCK_DEG[0];
+  let bestDiff = Infinity;
+  for (const candidate of ANGLE_LOCK_DEG) {
+    const diff = Math.abs(normalizeDeltaDeg(angleDeg - candidate));
+    if (diff < bestDiff) { bestDiff = diff; best = candidate; }
+  }
+
+  const rad = best * Math.PI / 180;
+  return { x: start.x + len * Math.cos(rad), y: start.y + len * Math.sin(rad) };
+}
+
 /**
  * Shared press-drag-release interaction for any tool defined by exactly two
  * points (a straight segment, or a center + radius point). Only how the
@@ -59,6 +95,7 @@ export class TwoPointTool implements DraftTool {
     readonly label: string,
     private readonly buildShape: (start: Pt, end: Pt) => DraftShape,
     private readonly renderPreviewShape: PreviewRenderer = previewLine,
+    private readonly angleLockEnabled: boolean = false,
   ) { }
 
   onPointerDown(pt: Pt): void {
@@ -68,17 +105,23 @@ export class TwoPointTool implements DraftTool {
 
   onPointerMove(pt: Pt, host: DraftToolHost): void {
     if (!this.startPt) return;
-    this.currentPt = pt;
+    this.currentPt = this.applyAngleLock(pt, host);
     host.requestDraw();
   }
 
   onPointerUp(pt: Pt, host: DraftToolHost): void {
     if (!this.startPt) return;
-    if (this.startPt.x !== pt.x || this.startPt.y !== pt.y) {
-      host.addShape(this.buildShape(this.startPt, pt));
+    const end = this.applyAngleLock(pt, host);
+    if (this.startPt.x !== end.x || this.startPt.y !== end.y) {
+      host.addShape(this.buildShape(this.startPt, end));
     }
     this.reset();
     host.requestDraw();
+  }
+
+  private applyAngleLock(pt: Pt, host: DraftToolHost): Pt {
+    if (!this.angleLockEnabled || !this.startPt || !host.isAngleLockHeld()) return pt;
+    return snapToLockedAngle(this.startPt, pt);
   }
 
   onKeyDown(event: KeyboardEvent): boolean {
