@@ -115,8 +115,7 @@ export type BoxLineParams = {
 };
 
 // Fixed for now — see the Box Line "full integration" plan for making these configurable.
-const BOXLINE_THICKNESS_MM = 8;
-const BOXLINE_LABEL_OFFSET_MUL = 0.9;
+const BOXLINE_THICKNESS_MM = 10;
 
 /**
  * Draws a line divided into weighted ratio segments, alternating color1/color2,
@@ -181,16 +180,14 @@ export function drawBoxLine(gRoot: RootGroup, gUI: RootGroup, p: BoxLineParams, 
       .attr('stroke', 'rgba(0,0,0,0.15)')
       .attr('stroke-width', 1)
       .attr('vector-effect', 'non-scaling-stroke')
-      .attr('opacity', 0.25);
+      .attr('opacity', 0.5);
 
     tickAt(ax, ay);
 
     if (label) {
       const cx = (ax + bx) / 2, cy = (ay + by) / 2;
-      const lx = cx + nx * (BOXLINE_THICKNESS_MM * BOXLINE_LABEL_OFFSET_MUL);
-      const ly = cy + ny * (BOXLINE_THICKNESS_MM * BOXLINE_LABEL_OFFSET_MUL);
       gUI.append('text')
-        .attr('x', lx).attr('y', -ly)
+        .attr('x', cx).attr('y', -cy)
         .attr('text-anchor', 'middle')
         .attr('dominant-baseline', 'central')
         .attr('font-size', 12 / pxPerMm)

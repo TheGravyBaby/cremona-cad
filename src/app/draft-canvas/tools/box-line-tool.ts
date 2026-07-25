@@ -27,7 +27,7 @@ export function createBoxLineTool(toolbox: ToolboxStore): TwoPointTool {
       weights: toolbox.currentBoxLineWeights,
       color1: toolbox.currentColor,
       color2: toolbox.currentBoxLineColor2,
-      label: true,
+      label: true, 
     }, pxPerMm);
   }, true);
 }
