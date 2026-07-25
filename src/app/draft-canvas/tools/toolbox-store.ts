@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { DraftShape, DEFAULT_SHAPE_COLOR } from './toolbox-shape';
+import { Layer, DEFAULT_LAYER_ID, makeLayerId } from './layer';
 
 const STORAGE_KEY = 'draft-canvas-toolbox-shapes';
 const MAX_HISTORY = 50;
@@ -22,6 +23,8 @@ export class ToolboxStore {
   private _currentColor: string = DEFAULT_SHAPE_COLOR;
   private _currentBoxLineColor2: string = '#93c5fd';
   private _currentBoxLineWeights: number[] = [1, 1, 1];
+  private _layers: Layer[] = [{ id: DEFAULT_LAYER_ID, name: 'Layer 1', visible: true, locked: false }];
+  private _activeLayerId: string = DEFAULT_LAYER_ID;
 
   constructor() {
     this.load();
@@ -58,25 +61,105 @@ export class ToolboxStore {
     this.notify();
   }
 
+  get layers(): Layer[] { return this._layers; }
+
+  private get activeLayer(): Layer {
+    return this._layers.find(l => l.id === this._activeLayerId) ?? this._layers[0];
+  }
+
+  private layerFor(shape: DraftShape): Layer | undefined {
+    const id = shape.layerId ?? DEFAULT_LAYER_ID;
+    return this._layers.find(l => l.id === id);
+  }
+
+  /** Not undo-tracked — which layer is active is a view preference, same as currentColor. */
+  get activeLayerId(): string { return this._activeLayerId; }
+  setActiveLayer(id: string): void {
+    if (this._activeLayerId === id) return;
+    this._activeLayerId = id;
+    // Switching onto a layer always shows it — otherwise you'd switch and see nothing.
+    this._layers = this._layers.map(l => l.id === id ? { ...l, visible: true } : l);
+    this.persist();
+    this.notify();
+  }
+
+  addLayer(): string {
+    const layer: Layer = { id: makeLayerId(), name: `Layer ${this._layers.length + 1}`, visible: true, locked: false };
+    this._layers = [...this._layers, layer];
+    this._activeLayerId = layer.id;
+    this.persist();
+    this.notify();
+    return layer.id;
+  }
+
+  renameLayer(id: string, name: string): void {
+    const trimmed = name.trim();
+    this._layers = this._layers.map(l => l.id === id ? { ...l, name: trimmed || l.name } : l);
+    this.persist();
+    this.notify();
+  }
+
+  toggleLayerVisible(id: string): void {
+    this._layers = this._layers.map(l => l.id === id ? { ...l, visible: !l.visible } : l);
+    this.persist();
+    this.notify();
+  }
+
+  toggleLayerLocked(id: string): void {
+    this._layers = this._layers.map(l => l.id === id ? { ...l, locked: !l.locked } : l);
+    this.persist();
+    this.notify();
+  }
+
+  /** Deletes a layer and every shape on it (undo-tracked, since shape removal is). Refuses to delete the last or a locked layer. */
+  removeLayer(id: string): void {
+    const layer = this._layers.find(l => l.id === id);
+    if (this._layers.length <= 1 || layer?.locked) return;
+    this._layers = this._layers.filter(l => l.id !== id);
+    if (this._activeLayerId === id) this._activeLayerId = this._layers[0].id;
+    this.applyMutation(this.shapes.filter(s => (s.layerId ?? DEFAULT_LAYER_ID) !== id));
+  }
+
   getShapes(): DraftShape[] {
     return this.shapes;
   }
 
+  /** Shapes on every visible layer — what should render (and be snappable), regardless of which layer is active. */
+  getVisibleShapes(): DraftShape[] {
+    const visibleIds = new Set(this._layers.filter(l => l.visible).map(l => l.id));
+    return this.shapes.filter(s => visibleIds.has(s.layerId ?? DEFAULT_LAYER_ID));
+  }
+
+  /** Shapes that can be selected/edited right now: on the active layer, and only while it's unlocked. */
+  getEditableShapes(): DraftShape[] {
+    const active = this.activeLayer;
+    if (active.locked) return [];
+    return this.shapes.filter(s => (s.layerId ?? DEFAULT_LAYER_ID) === active.id);
+  }
+
   addShape(shape: DraftShape): void {
+    if (this.layerFor(shape)?.locked) return;
     this.applyMutation([...this.shapes, shape]);
   }
 
   removeShape(id: string): void {
+    const shape = this.shapes.find(s => s.id === id);
+    if (!shape || this.layerFor(shape)?.locked) return;
     this.applyMutation(this.shapes.filter(s => s.id !== id));
   }
 
   /** Patches a shape's properties (e.g. color) in place. Also the primitive a future Move would use for geometry. */
   updateShape(id: string, patch: Partial<DraftShape>): void {
+    const shape = this.shapes.find(s => s.id === id);
+    if (!shape || this.layerFor(shape)?.locked) return;
     this.applyMutation(this.shapes.map(s => s.id === id ? { ...s, ...patch } as DraftShape : s));
   }
 
-  clear(): void {
-    this.applyMutation([]);
+  /** Clears only the active layer's shapes — Clear is now scoped per layer. */
+  clearActiveLayer(): void {
+    if (this.activeLayer.locked) return;
+    const active = this._activeLayerId;
+    this.applyMutation(this.shapes.filter(s => (s.layerId ?? DEFAULT_LAYER_ID) !== active));
   }
 
   undo(): void {
@@ -127,6 +210,13 @@ export class ToolboxStore {
         if (typeof parsed.currentColor === 'string') this._currentColor = parsed.currentColor;
         if (typeof parsed.currentBoxLineColor2 === 'string') this._currentBoxLineColor2 = parsed.currentBoxLineColor2;
         if (Array.isArray(parsed.currentBoxLineWeights)) this._currentBoxLineWeights = parsed.currentBoxLineWeights;
+        if (Array.isArray(parsed.layers) && parsed.layers.length > 0) {
+          // Normalize layers saved before visible/locked existed.
+          this._layers = parsed.layers.map((l: Partial<Layer> & { id: string; name: string }) => ({
+            id: l.id, name: l.name, visible: l.visible ?? true, locked: l.locked ?? false,
+          }));
+        }
+        if (typeof parsed.activeLayerId === 'string') this._activeLayerId = parsed.activeLayerId;
       }
     } catch {
       // ignore malformed/blocked sessionStorage
@@ -140,6 +230,8 @@ export class ToolboxStore {
         currentColor: this._currentColor,
         currentBoxLineColor2: this._currentBoxLineColor2,
         currentBoxLineWeights: this._currentBoxLineWeights,
+        layers: this._layers,
+        activeLayerId: this._activeLayerId,
       }));
     } catch {
       // ignore storage errors

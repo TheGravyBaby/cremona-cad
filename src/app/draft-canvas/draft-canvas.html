@@ -17,7 +17,7 @@
     @if (!toolPaletteCollapsed) {
     <div class="tool-palette-content">
     <div class="tool-row">
-      <button type="button" class="tool-btn" [class.active]="activeTool === null" (click)="selectTool(null)" title="Select">
+      <button type="button" class="tool-btn" [class.active]="activeTool === null" (click)="selectTool(null)" title="Select (Esc / S)">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" />
         </svg>
@@ -29,14 +29,14 @@
         @for (slot of row; track $index) {
           @if (slot.kind === 'single') {
             <button type="button" class="tool-btn" [class.active]="activeTool === slot.tool"
-              (click)="selectTool(slot.tool)" [title]="slot.tool.label">
+              (click)="selectTool(slot.tool)" [title]="slot.tool.label + hotkeyHint(slot.tool.id)">
               <ng-container [ngTemplateOutlet]="toolIcon" [ngTemplateOutletContext]="{ id: slot.tool.id }" />
             </button>
           } @else {
             <div class="tool-flyout">
               <button type="button" class="tool-btn tool-flyout-main"
                 [class.active]="activeTool === slot.variants[slot.selectedIndex]"
-                (click)="activateSlot(slot)" [title]="slot.variants[slot.selectedIndex].label">
+                (click)="activateSlot(slot)" [title]="slot.variants[slot.selectedIndex].label + hotkeyHint(slot.variants[slot.selectedIndex].id)">
                 <ng-container [ngTemplateOutlet]="toolIcon" [ngTemplateOutletContext]="{ id: slot.variants[slot.selectedIndex].id }" />
               </button>
               <button type="button" class="tool-flyout-caret" (click)="toggleFlyout(slot)" title="More options">
@@ -47,7 +47,8 @@
               @if (openFlyout === slot) {
                 <div class="tool-flyout-popup">
                   @for (variant of slot.variants; track variant.id) {
-                    <button type="button" class="tool-flyout-item" (click)="chooseFlyoutVariant(slot, $index)">
+                    <button type="button" class="tool-flyout-item" (click)="chooseFlyoutVariant(slot, $index)"
+                      [title]="variant.label + hotkeyHint(variant.id)">
                       <ng-container [ngTemplateOutlet]="toolIcon" [ngTemplateOutletContext]="{ id: variant.id }" />
                       <span>{{ variant.label }}</span>
                     </button>
@@ -284,15 +285,83 @@
     <div class="tool-palette-sep"></div>
 
     <div class="tool-row">
-      <button type="button" class="tool-btn" (click)="clearToolbox()" title="Clear all shapes">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="3 6 5 6 21 6" />
-          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-          <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-          <line x1="10" y1="11" x2="10" y2="17" />
-          <line x1="14" y1="11" x2="14" y2="17" />
-        </svg>
-      </button>
+      <div class="tool-flyout">
+        <button type="button" class="tool-btn tool-flyout-main" [class.active]="layersOpen"
+          (click)="toggleLayers()" title="Layers">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="12 3 21 8 12 13 3 8 12 3" />
+            <polyline points="3 13 12 18 21 13" />
+            <polyline points="3 18 12 23 21 18" />
+          </svg>
+        </button>
+        <button type="button" class="tool-flyout-caret" (click)="toggleLayers()" title="Layers">
+          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </button>
+        @if (layersOpen) {
+          <div class="tool-flyout-popup layers-popup">
+            <div class="layer-tabs">
+              @for (layer of toolboxLayers; track layer.id) {
+                <div class="layer-tab" [class.active]="layer.id === activeLayerId" [class.locked]="layer.locked" (click)="selectLayer(layer.id)">
+                  <button type="button" class="layer-tab-icon-btn" (click)="toggleLayerVisible(layer.id); $event.stopPropagation()"
+                    [title]="layer.visible ? 'Hide layer' : 'Show layer'">
+                    @if (layer.visible) {
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                    } @else {
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a20.3 20.3 0 0 1 5.06-6.06M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a20.3 20.3 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24" />
+                        <line x1="1" y1="1" x2="23" y2="23" />
+                      </svg>
+                    }
+                  </button>
+                  @if (editingLayerId === layer.id) {
+                    <input #layerRenameInput class="layer-tab-edit" type="text" [value]="layer.name"
+                      (click)="$event.stopPropagation()"
+                      (keydown.enter)="commitRenameLayer(layer.id, layerRenameInput.value)"
+                      (keydown.escape)="editingLayerId = null"
+                      (blur)="commitRenameLayer(layer.id, layerRenameInput.value)" />
+                  } @else {
+                    <span class="layer-tab-label" (dblclick)="startRenameLayer(layer.id)" title="Double-click to rename">{{ layer.name }}</span>
+                    <button type="button" class="layer-tab-icon-btn" (click)="toggleLayerLocked(layer.id); $event.stopPropagation()"
+                      [title]="layer.locked ? 'Unlock layer' : 'Lock layer'">
+                      @if (layer.locked) {
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <rect x="4" y="11" width="16" height="9" rx="1.5" />
+                          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                        </svg>
+                      } @else {
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <rect x="4" y="11" width="16" height="9" rx="1.5" />
+                          <path d="M7 11V7a5 5 0 0 1 9.5-2.2" />
+                        </svg>
+                      }
+                    </button>
+                    @if (toolboxLayers.length > 1 && !layer.locked) {
+                      <button type="button" class="layer-tab-x" title="Delete layer (and its shapes)"
+                        (click)="deleteLayer(layer.id); $event.stopPropagation()">×</button>
+                    }
+                  }
+                </div>
+              }
+              <button type="button" class="layer-tab-add" title="Add layer" (click)="addLayer()">+</button>
+            </div>
+            <button type="button" class="btn layer-clear-btn" (click)="clearActiveLayer()" title="Clear this layer's shapes">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                <line x1="10" y1="11" x2="10" y2="17" />
+                <line x1="14" y1="11" x2="14" y2="17" />
+              </svg>
+              <span>Clear Layer</span>
+            </button>
+          </div>
+        }
+      </div>
     </div>
     </div>
     }

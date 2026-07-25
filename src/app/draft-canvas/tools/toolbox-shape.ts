@@ -3,10 +3,13 @@ import { Pt } from '../../models/types';
 export const DEFAULT_SHAPE_COLOR = '#1d4ed8';
 
 // Properties shared by every shape type, regardless of geometry — extend here
-// as more per-object properties (layer, stroke width, ...) are added.
+// as more per-object properties (stroke width, ...) are added.
 type ShapeBase = {
   id: string;
   color?: string;
+  // Missing on shapes persisted before layers existed — treat as DEFAULT_LAYER_ID
+  // (see layer.ts) rather than migrating stored data.
+  layerId?: string;
 };
 
 export type LineShape = ShapeBase & {
