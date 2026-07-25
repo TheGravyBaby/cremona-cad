@@ -33,6 +33,7 @@ import { SnapCandidate, SnapEngine } from './tools/snap-engine';
 import { drawSnapMarker } from './tools/snap-marker-renderer';
 import { distanceToShape } from './tools/shape-hit-test';
 import { DraftShape, LineShape, DimensionShape, CircleShape, ArcShape, RectShape } from './tools/toolbox-shape';
+import { Layer } from './tools/layer';
 
 @Component({
   selector: 'app-draft-canvas',
@@ -44,6 +45,21 @@ import { DraftShape, LineShape, DimensionShape, CircleShape, ArcShape, RectShape
 
 export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private static readonly DISPLAY_PREFS_KEY = 'draft-canvas-display-preferences';
+  // Tool mnemonics (see onKeyDown): pressing the key activates the group's first
+  // variant, or advances to the next one in the list on repeated presses. Order
+  // here should match each tool's flyout order in toolRows.
+  private static readonly HOTKEY_TOOL_CYCLE: Record<string, string[]> = {
+    KeyL: ['line', 'line-dashed', 'dimension'],
+    KeyA: ['arc', 'arc-tangent', 'arc-fancy'],
+    KeyC: ['circle', 'circle-dashed'],
+    KeyR: ['rect', 'square'],
+    KeyB: ['boxline'],
+  };
+  // Reverse of the above (tool id -> its group's letter), for tooltip hints.
+  private static readonly HOTKEY_LETTER_BY_TOOL: Record<string, string> = Object.fromEntries(
+    Object.entries(DraftCanvasComponent.HOTKEY_TOOL_CYCLE)
+      .flatMap(([code, ids]) => ids.map(id => [id, code.replace('Key', '')])),
+  );
   private initialized = false;
   private canvas!: d3.Selection<SVGSVGElement, unknown, null, undefined>;
   private gRoot!: d3.Selection<SVGGElement, unknown, null, undefined>;
@@ -79,10 +95,16 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   public activeTool: DraftTool | null = null;
   public openFlyout: ToolSlot | null = null;
   public settingsOpen = false;
+  public layersOpen = false;
+  public editingLayerId: string | null = null;
   public toolPaletteCollapsed = false;
   private isAngleLockHeld = false;
   private toolHost: DraftToolHost = {
-    addShape: (shape) => this.toolbox.addShape({ ...shape, color: shape.color ?? this.toolbox.currentColor }),
+    addShape: (shape) => this.toolbox.addShape({
+      ...shape,
+      color: shape.color ?? this.toolbox.currentColor,
+      layerId: shape.layerId ?? this.toolbox.activeLayerId,
+    }),
     requestDraw: () => this.draw(),
     getSnapTangent: () => this.activeSnap?.tangent,
     isAngleLockHeld: () => this.isAngleLockHeld,
@@ -271,7 +293,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     // (e.g. recipe-base's undo/redo keyboard handler)
     this.toolboxUnsub = this.toolbox.onChange(() => {
       this.snapDirty = true;
-      if (this.selectedShapeId && !this.toolbox.getShapes().some(s => s.id === this.selectedShapeId)) {
+      if (this.selectedShapeId && !this.toolbox.getEditableShapes().some(s => s.id === this.selectedShapeId)) {
         this.selectedShapeId = null;
       }
       this.draw();
@@ -320,7 +342,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.referenceModeEnabled && this.showReferenceImage && this.refController.drawControls(this.gRoot, this.pxPerMm);
 
     const selectedShape = this.selectedShapeId
-      ? this.toolbox.getShapes().find(s => s.id === this.selectedShapeId)
+      ? this.toolbox.getEditableShapes().find(s => s.id === this.selectedShapeId)
       : undefined;
     if (selectedShape) drawSelectionHalo(this.gRoot, selectedShape);
 
@@ -328,7 +350,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.draftFuncs.map(f => {
       f(snapLayer, this.gUI)
     })
-    this.toolbox.getShapes().forEach(s => drawShape(snapLayer, this.gUI, s, this.pxPerMm));
+    this.toolbox.getVisibleShapes().forEach(s => drawShape(snapLayer, this.gUI, s, this.pxPerMm));
 
     // Candidates are only ever read from resolveToolPoint(), which is a no-op
     // with no active tool (e.g. while editing a selected shape's properties in
@@ -364,11 +386,93 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   toggleFlyout(slot: ToolSlot): void {
     this.openFlyout = this.openFlyout === slot ? null : slot;
     this.settingsOpen = false;
+    this.layersOpen = false;
+  }
+
+  /** The hotkey letter for a tool id, formatted for a tooltip (e.g. " (L)"), or '' if it has none. */
+  public hotkeyHint(toolId: string): string {
+    const letter = DraftCanvasComponent.HOTKEY_LETTER_BY_TOOL[toolId];
+    return letter ? ` (${letter})` : '';
+  }
+
+  /** Activates a tool by id from anywhere in toolRows — used by the hotkey mnemonics. */
+  private activateToolById(id: string): void {
+    for (const row of this.toolRows) {
+      for (const slot of row) {
+        if (slot.kind === 'single') {
+          if (slot.tool.id === id) { this.selectTool(slot.tool); return; }
+        } else {
+          const idx = slot.variants.findIndex(v => v.id === id);
+          if (idx >= 0) { this.chooseFlyoutVariant(slot, idx); return; }
+        }
+      }
+    }
   }
 
   toggleSettings(): void {
     this.settingsOpen = !this.settingsOpen;
     this.openFlyout = null;
+    this.layersOpen = false;
+  }
+
+  toggleLayers(): void {
+    this.layersOpen = !this.layersOpen;
+    this.openFlyout = null;
+    this.settingsOpen = false;
+  }
+
+  public get toolboxLayers(): Layer[] { return this.toolbox.layers; }
+  public get activeLayerId(): string { return this.toolbox.activeLayerId; }
+
+  /** The active-layer switch itself goes through the same onChange path as any other
+   * toolbox mutation (see ngAfterViewInit's toolboxUnsub), which already re-filters the
+   * current selection against the new layer and redraws — no need to duplicate that here. */
+  selectLayer(id: string): void {
+    this.toolbox.setActiveLayer(id);
+  }
+
+  addLayer(): void {
+    const id = this.toolbox.addLayer();
+    this.startRenameLayer(id);
+  }
+
+  startRenameLayer(id: string): void {
+    this.editingLayerId = id;
+    // The rename <input> is created by this state change; focus it next tick.
+    setTimeout(() => {
+      const el = this.host.nativeElement
+        .closest('.canvas-shell')
+        ?.querySelector('.layer-tab-edit') as HTMLInputElement | null;
+      el?.focus();
+      el?.select();
+    });
+  }
+
+  commitRenameLayer(id: string, name: string): void {
+    this.toolbox.renameLayer(id, name);
+    this.editingLayerId = null;
+  }
+
+  deleteLayer(id: string): void {
+    this.toolbox.removeLayer(id);
+    if (this.editingLayerId === id) this.editingLayerId = null;
+  }
+
+  toggleLayerVisible(id: string): void {
+    this.toolbox.toggleLayerVisible(id);
+  }
+
+  /** Locking the layer you're actively drawing on would make the active tool a silent no-op — bail back to Select instead. */
+  toggleLayerLocked(id: string): void {
+    this.toolbox.toggleLayerLocked(id);
+    if (this.activeTool && this.toolbox.activeLayerId === id && this.toolboxLayers.find(l => l.id === id)?.locked) {
+      this.selectTool(null);
+    }
+  }
+
+  /** Clear is now scoped to the active layer only — see toolbox-store.ts's clearActiveLayer. */
+  clearActiveLayer(): void {
+    this.toolbox.clearActiveLayer();
   }
 
   /** Picking a variant from the flyout both activates it and becomes the slot's new default face. */
@@ -394,7 +498,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     const toleranceMm = DraftCanvasComponent.SELECT_HIT_TOLERANCE_PX / this.pxPerMm;
     let bestId: string | null = null;
     let bestDist = Infinity;
-    for (const shape of this.toolbox.getShapes()) {
+    for (const shape of this.toolbox.getEditableShapes()) {
       const dist = distanceToShape(pt, shape);
       if (dist <= toleranceMm && dist < bestDist) {
         bestId = shape.id;
@@ -412,7 +516,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
   private get selectedShape(): DraftShape | undefined {
     return this.selectedShapeId
-      ? this.toolbox.getShapes().find(s => s.id === this.selectedShapeId)
+      ? this.toolbox.getEditableShapes().find(s => s.id === this.selectedShapeId)
       : undefined;
   }
 
@@ -578,10 +682,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     if (shape?.type === 'boxline') {
       this.toolbox.updateShape(shape.id, { weights });
     }
-  }
-
-  clearToolbox(): void {
-    this.toolbox.clear();
   }
 
   onDisplayPreferenceChange(): void {
@@ -750,19 +850,44 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
-    // Select mode: Escape clears the current selection, Delete/Backspace removes it
-    if (!this.activeTool && this.selectedShapeId) {
-      if (event.key === 'Escape') {
+    // Escape backs out one level at a time: cancel-in-progress is handled above by the
+    // tool itself, so by the time we get here Escape just steps back to Select (matching
+    // SketchUp), then — with nothing active — clears the current selection.
+    if (event.key === 'Escape') {
+      if (this.activeTool) {
+        this.selectTool(null);
+      } else if (this.selectedShapeId) {
         this.setSelectedShape(null);
-        event.preventDefault();
-        return;
       }
+      event.preventDefault();
+      return;
+    }
+
+    // Select mode: Delete/Backspace removes the current selection
+    if (!this.activeTool && this.selectedShapeId) {
       if (event.code === 'Delete' || event.code === 'Backspace') {
         this.toolbox.removeShape(this.selectedShapeId);
         this.selectedShapeId = null;
         event.preventDefault();
         return;
       }
+    }
+
+    // Tool mnemonics: S selects; each other letter activates that tool group's first
+    // variant, or cycles to the next variant in the group on repeated presses (so there's
+    // no need for a separate "alternate" modifier — see HOTKEY_TOOL_CYCLE below).
+    if (event.code === 'KeyS') {
+      this.selectTool(null);
+      event.preventDefault();
+      return;
+    }
+    const cycle = DraftCanvasComponent.HOTKEY_TOOL_CYCLE[event.code];
+    if (cycle) {
+      const currentIdx = this.activeTool ? cycle.indexOf(this.activeTool.id) : -1;
+      const nextId = cycle[(currentIdx + 1) % cycle.length];
+      this.activateToolById(nextId);
+      event.preventDefault();
+      return;
     }
 
     if (event.code === 'Space') {

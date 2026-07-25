@@ -508,6 +508,119 @@
   box-sizing: border-box;
 }
 
+.layers-popup {
+  min-width: 170px;
+  gap: 8px;
+}
+
+.layer-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 4px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--ui-border-soft);
+}
+
+.layer-tab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 4px 7px;
+  border: 1px solid var(--ui-border-elevated);
+  border-radius: 4px;
+  background: var(--ui-bg-surface);
+  color: var(--ui-text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.layer-tab:hover {
+  border-color: var(--ui-canvas-btn-border-hover);
+}
+
+.layer-tab.active {
+  border-color: var(--ui-accent);
+  color: var(--ui-text-primary);
+  background: color-mix(in srgb, var(--ui-accent) 12%, transparent);
+}
+
+.layer-tab.locked .layer-tab-label {
+  font-style: italic;
+  opacity: 0.75;
+}
+
+.layer-tab-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border: none;
+  background: none;
+  padding: 2px;
+  color: inherit;
+  cursor: pointer;
+}
+
+.layer-tab-icon-btn:hover {
+  color: var(--ui-text-primary);
+}
+
+.layer-tab-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1 1 auto;
+}
+
+.layer-tab-edit {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  font-size: 11px;
+}
+
+.layer-tab-x {
+  border: none;
+  background: none;
+  padding: 0 2px;
+  line-height: 1;
+  font-size: 13px;
+  color: var(--ui-text-muted);
+  cursor: pointer;
+}
+
+.layer-tab-x:hover {
+  color: #bb1212;
+}
+
+.layer-tab-add {
+  border: 1px dashed var(--ui-border-elevated);
+  border-radius: 4px;
+  background: none;
+  color: var(--ui-text-muted);
+  font-size: 13px;
+  line-height: 1.4;
+  padding: 3px 7px;
+  cursor: pointer;
+}
+
+.layer-tab-add:hover {
+  border-color: var(--ui-canvas-btn-border-hover);
+  color: var(--ui-text-primary);
+}
+
+.layer-clear-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 11px;
+  padding: 5px 8px;
+}
+
 .box-line-weights-input {
   width: 100%;
   box-sizing: border-box;
