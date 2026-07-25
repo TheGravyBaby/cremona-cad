@@ -5,6 +5,7 @@ import { PanelFlow, PanelDefinition } from '../helpers/panelFlow';
 import { DebounceController } from '../helpers/debounce-controller';
 import { normalizeReferenceImages, toNamedReferenceImage } from '../helpers/referenceImages';
 import { NamedConstant, DEFAULT_NAMED_CONSTANTS, nearestFraction } from '../helpers/nearestFraction';
+import { ToolboxStore } from '../draft-canvas/tools/toolbox-store';
 
 export type { NamedConstant };
 
@@ -19,6 +20,7 @@ export abstract class RecipeComponentBase implements AfterViewInit {
   static readonly DEFAULT_NAMED_CONSTANTS: readonly NamedConstant[] = DEFAULT_NAMED_CONSTANTS;
 
   private readonly injector = inject(Injector);
+  private readonly toolbox = inject(ToolboxStore);
 
   @Output() draftChange = new EventEmitter<Array<(g: any, ui: any) => void>>();
   @Output() setBounds = new EventEmitter<{pt1: Pt, pt2: Pt}>();
@@ -129,13 +131,19 @@ export abstract class RecipeComponentBase implements AfterViewInit {
     const ctrl = e.ctrlKey || e.metaKey;
     if (!ctrl) return;
 
+    // The draft-canvas toolbox (line/shape tools) keeps its own history, separate
+    // from this recipe's `d` snapshots. It takes precedence whenever it has
+    // something to undo/redo, so a shape you just drew doesn't get skipped over.
     if (e.key === 'z' || e.key === 'Z') {
       if (e.shiftKey) {
+        if (this.toolbox.canRedo) { e.preventDefault(); this.toolbox.redo(); return; }
         if (this.canRedo) { e.preventDefault(); this.redo(); }
       } else {
+        if (this.toolbox.canUndo) { e.preventDefault(); this.toolbox.undo(); return; }
         if (this.canUndo) { e.preventDefault(); this.undo(); }
       }
     } else if (e.key === 'y' || e.key === 'Y') {
+      if (this.toolbox.canRedo) { e.preventDefault(); this.toolbox.redo(); return; }
       if (this.canRedo) { e.preventDefault(); this.redo(); }
     }
   }

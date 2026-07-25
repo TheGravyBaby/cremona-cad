@@ -281,10 +281,59 @@
   box-shadow: 0 1px 4px rgba(0,0,0,0.3);
 }
 .canvas-shell {
+  position: relative;
   height: 100%;
   display: flex;
   flex-direction: column;
   min-height: 0;
+}
+
+/* Floating drafting toolbox, SketchUp-style: a vertical strip docked to the right edge */
+.tool-palette {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 6px;
+  background: var(--ui-bg-surface-2);
+  box-shadow: var(--ui-shadow-pop);
+  z-index: 5;
+}
+
+.tool-palette-sep {
+  height: 1px;
+  margin: 2px 4px;
+  background: var(--ui-border-elevated);
+}
+
+.tool-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 4px;
+  background: linear-gradient(180deg, var(--ui-canvas-btn-bg-start) 0%, var(--ui-canvas-btn-bg-end) 100%);
+  color: var(--ui-text-primary);
+  cursor: pointer;
+  transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+}
+
+.tool-btn:hover {
+  border-color: var(--ui-canvas-btn-border-hover);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.tool-btn.active {
+  background: var(--ui-accent);
+  color: #fff;
+  border-color: var(--ui-accent);
 }
 
 .host {

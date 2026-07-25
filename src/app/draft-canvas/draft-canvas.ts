@@ -3,6 +3,7 @@ import {
   Component,
   ElementRef,
   EventEmitter,
+  inject,
   OnDestroy,
   Output,
   ViewChild,
@@ -16,6 +17,14 @@ import { ReferenceImageController } from './reference-image-controller';
 import { AxisGridController, AxisGridPreferences, CanvasViewport } from './axis-grid-controller';
 import { toNamedReferenceImage } from '../helpers/referenceImages';
 import { info } from '../shared/message-emitter';
+import { DraftTool, DraftToolHost } from './tools/draft-tool';
+import { LineTool } from './tools/line-tool';
+import { ArcTool } from './tools/arc-tool';
+import { ToolboxStore } from './tools/toolbox-store';
+import { drawShape, drawSelectionHalo } from './tools/shape-renderer';
+import { SnapCandidate, SnapEngine } from './tools/snap-engine';
+import { drawSnapMarker } from './tools/snap-marker-renderer';
+import { distanceToShape } from './tools/shape-hit-test';
 
 @Component({
   selector: 'app-draft-canvas',
@@ -36,11 +45,33 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private camera = new Camera();
   private axisGrid = new AxisGridController(DraftCanvasComponent.DISPLAY_PREFS_KEY, () => this.draw());
   private refController: ReferenceImageController;
+  private toolbox = inject(ToolboxStore);
+  private toolboxUnsub?: () => void;
+  // Add new tools here — the toolbar and pointer routing pick them up automatically.
+  public tools: DraftTool[] = [new LineTool(), new ArcTool()];
+  public activeTool: DraftTool | null = null;
+  private toolHost: DraftToolHost = {
+    addShape: (shape) => this.toolbox.addShape(shape),
+    requestDraw: () => this.draw(),
+  };
+
+  // Snapping: candidates are re-indexed from the rendered scene only when the
+  // underlying geometry changes (draftFunctions/toolbox shapes), not on every
+  // hover redraw — see `snapDirty` below.
+  private static readonly SNAP_TOLERANCE_PX = 10;
+  private snapEngine = new SnapEngine();
+  private snapDirty = true;
+  private activeSnap: SnapCandidate | null = null;
+
+  // Selection (Select tool, i.e. activeTool === null): which toolbox shape, if any, is picked.
+  private static readonly SELECT_HIT_TOLERANCE_PX = 6;
+  private selectedShapeId: string | null = null;
 
   @ViewChild('host', { static: true }) host!: ElementRef<HTMLDivElement>;
   @Output() referenceImagesChange = new EventEmitter<NamedReferenceImage[]>();
   @Input() set draftFunctions(value: Array<(canvas: any, uiCan: any) => void>) {
     this.draftFuncs = value
+    this.snapDirty = true;
     this.draw();
   }
   @Input() set referenceImages(value: NamedReferenceImage[] | null | undefined) {
@@ -203,6 +234,16 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.axisGrid.loadPreferences();
     this.loadReferenceImagePreference();
 
+    // redraw when the toolbox shape history changes from outside this component
+    // (e.g. recipe-base's undo/redo keyboard handler)
+    this.toolboxUnsub = this.toolbox.onChange(() => {
+      this.snapDirty = true;
+      if (this.selectedShapeId && !this.toolbox.getShapes().some(s => s.id === this.selectedShapeId)) {
+        this.selectedShapeId = null;
+      }
+      this.draw();
+    });
+
     this.initialized = true;
     this.draw();
   }
@@ -211,6 +252,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.resizeObs?.disconnect();
     this.host.nativeElement.removeEventListener('keyup', this.onKeyUp);
     document.removeEventListener('keydown', this.onKeyDown);
+    this.toolboxUnsub?.();
   }
 
   draw(): void {
@@ -244,9 +286,72 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.showReferenceImage && this.refController.drawImage(this.gRoot)
     this.referenceModeEnabled && this.showReferenceImage && this.refController.drawControls(this.gRoot, this.pxPerMm);
 
+    const selectedShape = this.selectedShapeId
+      ? this.toolbox.getShapes().find(s => s.id === this.selectedShapeId)
+      : undefined;
+    if (selectedShape) drawSelectionHalo(this.gRoot, selectedShape);
+
+    const snapLayer = this.gRoot.append('g').attr('class', 'snappable');
     this.draftFuncs.map(f => {
-      f(this.gRoot, this.gUI)
+      f(snapLayer, this.gUI)
     })
+    this.toolbox.getShapes().forEach(s => drawShape(snapLayer, s));
+
+    if (this.snapDirty) {
+      this.snapEngine.rebuild(snapLayer);
+      this.snapDirty = false;
+    }
+
+    this.activeTool?.renderPreview(this.gRoot);
+    if (this.activeTool && this.activeSnap) {
+      drawSnapMarker(this.gRoot, this.activeSnap, this.pxPerMm);
+    }
+  }
+
+  /** Pass null to switch to the default select tool (no active drafting tool). */
+  selectTool(tool: DraftTool | null): void {
+    this.activeTool?.reset();
+    this.activeTool = tool;
+    this.activeSnap = null;
+    if (tool) this.selectedShapeId = null; // selection only applies in Select mode
+    this.draw();
+  }
+
+  /** Resolves a raw pointer point to a nearby snap candidate when a tool is active. */
+  private resolveToolPoint(rawPt: Pt): Pt {
+    if (!this.activeTool) {
+      this.activeSnap = null;
+      return rawPt;
+    }
+    const toleranceMm = DraftCanvasComponent.SNAP_TOLERANCE_PX / this.pxPerMm;
+    const hit = this.snapEngine.nearest(rawPt, toleranceMm);
+    this.activeSnap = hit;
+    return hit ? hit.pt : rawPt;
+  }
+
+  /** Nearest toolbox shape to a world-space point within the select tolerance, or null. */
+  private hitTestToolboxShape(pt: Pt): string | null {
+    const toleranceMm = DraftCanvasComponent.SELECT_HIT_TOLERANCE_PX / this.pxPerMm;
+    let bestId: string | null = null;
+    let bestDist = Infinity;
+    for (const shape of this.toolbox.getShapes()) {
+      const dist = distanceToShape(pt, shape);
+      if (dist <= toleranceMm && dist < bestDist) {
+        bestId = shape.id;
+        bestDist = dist;
+      }
+    }
+    return bestId;
+  }
+
+  private setSelectedShape(id: string | null): void {
+    if (this.selectedShapeId === id) return;
+    this.selectedShapeId = id;
+    this.draw();
+  }
+
+  clearToolbox(): void {
+    this.toolbox.clear();
   }
 
   onDisplayPreferenceChange(): void {
@@ -335,6 +440,15 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
+    // active drafting tool takes precedence over camera pan (space-drag still overrides)
+    if (this.activeTool && !this.isDragging) {
+      const pt = this.resolveToolPoint(this.worldFromPointer(event));
+      this.activeTool.onPointerMove(pt, this.toolHost);
+      this.draw(); // updates the snap-indicator glyph even before a shape is started
+      event.preventDefault();
+      return;
+    }
+
     // camera pan
     if (!this.isDragging) return;
 
@@ -354,6 +468,12 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     if (this.activePointers.size < 2) {
       this.lastPinchDist = 0;
       this.lastPinchMid = { x: 0, y: 0 };
+    }
+
+    // commit an in-progress tool shape (e.g. finishing a line drag)
+    if (this.activeTool && !this.isDragging) {
+      const pt = this.resolveToolPoint(this.worldFromPointer(event));
+      this.activeTool.onPointerUp(pt, this.toolHost);
     }
 
     // end reference-image interaction if active
@@ -379,6 +499,28 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     // Don't intercept shortcuts when the user is typing in an input field
     const tag = (event.target as HTMLElement)?.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+    // let the active tool handle its own keys first (e.g. Escape cancels a line in progress)
+    if (this.activeTool?.onKeyDown?.(event, this.toolHost)) {
+      this.draw();
+      event.preventDefault();
+      return;
+    }
+
+    // Select mode: Escape clears the current selection, Delete/Backspace removes it
+    if (!this.activeTool && this.selectedShapeId) {
+      if (event.key === 'Escape') {
+        this.setSelectedShape(null);
+        event.preventDefault();
+        return;
+      }
+      if (event.code === 'Delete' || event.code === 'Backspace') {
+        this.toolbox.removeShape(this.selectedShapeId);
+        this.selectedShapeId = null;
+        event.preventDefault();
+        return;
+      }
+    }
 
     if (event.code === 'Space') {
       this.isSpaceDown = true;
@@ -466,6 +608,14 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     const canRefOps = this.referenceModeEnabled && this.showReferenceImage && !!this.activeReferenceImage?.href;
     const modifierHeld = event.shiftKey || event.ctrlKey;
 
+    if (this.activeTool && isPrimary && !modifierHeld && !this.isSpaceDown) {
+      const pt = this.resolveToolPoint(this.worldFromPointer(event));
+      this.activeTool.onPointerDown(pt, this.toolHost);
+      this.host.nativeElement.setPointerCapture(event.pointerId);
+      this.draw();
+      return;
+    }
+
     if (canRefOps && isPrimary && !modifierHeld && !this.isSpaceDown) {
       const pt = this.worldFromPointer(event);
       const h = this.refController.hitTestHandle(pt, this.pxPerMm);
@@ -481,6 +631,12 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
         this.host.nativeElement.setPointerCapture(event.pointerId);
         return;
       }
+    }
+
+    // Select tool: pick (or clear) the toolbox shape under the click
+    if (!this.activeTool && isPrimary && !modifierHeld && !this.isSpaceDown && !canRefOps) {
+      const pt = this.worldFromPointer(event);
+      this.setSelectedShape(this.hitTestToolboxShape(pt));
     }
 
     // Pan: middle mouse always; primary when Space is held; or any single touch finger
