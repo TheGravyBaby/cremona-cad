@@ -155,6 +155,21 @@ export class ToolboxStore {
     this.applyMutation(this.shapes.map(s => s.id === id ? { ...s, ...patch } as DraftShape : s));
   }
 
+  /** Batched form of updateShape for multi-shape operations (e.g. dragging a selection) — applies
+   * every patch in a single history step instead of one step per shape. */
+  updateShapes(patches: Map<string, Partial<DraftShape>>): void {
+    if (patches.size === 0) return;
+    let changed = false;
+    const next = this.shapes.map(s => {
+      const patch = patches.get(s.id);
+      if (!patch || this.layerFor(s)?.locked) return s;
+      changed = true;
+      return { ...s, ...patch } as DraftShape;
+    });
+    if (!changed) return;
+    this.applyMutation(next);
+  }
+
   /** Clears only the active layer's shapes — Clear is now scoped per layer. */
   clearActiveLayer(): void {
     if (this.activeLayer.locked) return;

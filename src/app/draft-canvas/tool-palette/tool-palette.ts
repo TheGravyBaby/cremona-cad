@@ -335,6 +335,17 @@ export class ToolPaletteComponent implements OnChanges {
     this.patchNumberField(this.selectedArcShape, key, valueDeg, { transform: v => v * Math.PI / 180 });
   }
 
+  /** "Compass": keeps the center point and dashed radius guides permanently visible on the committed arc. */
+  public get arcShowCenterGuides(): boolean {
+    return this.selectedArcShape?.showCenterGuides ?? false;
+  }
+
+  setArcShowCenterGuides(value: boolean): void {
+    const shape = this.selectedArcShape;
+    if (!shape) return;
+    this.toolbox.updateShape(shape.id, { showCenterGuides: value } as Partial<DraftShape>);
+  }
+
   /** Box Line has extra per-shape settings (a second color + segment weights) that don't fit the single color swatch. */
   public get showBoxLinePanel(): boolean {
     return this.activeTool?.id === 'boxline' || this.selectedShape?.type === 'boxline';

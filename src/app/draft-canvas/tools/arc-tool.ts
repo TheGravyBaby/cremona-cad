@@ -6,34 +6,49 @@ import { arcPathData, pointOnCircle } from './arc-geometry';
 
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 
-type ArcStage = 'idle' | 'center-set' | 'radius-set';
+type ArcStage = 'idle' | 'first-set' | 'second-set';
 
 const PREVIEW_COLOR = '#2563eb';
 
 /**
- * Three clicks, no dragging: center, then the point that fixes the radius,
- * then a third point whose angle (not distance) fixes where the arc ends.
- * State only advances in onPointerDown — onPointerMove is preview-only.
+ * Three clicks, no dragging. Two variants share this class, differing only in
+ * what the first two clicks mean:
+ *  - center-first (`startFirst = false`): click 1 is the circle's center,
+ *    click 2 fixes the radius and the start angle.
+ *  - start-first (`startFirst = true`): click 1 is the arc's start point,
+ *    click 2 is the circle's center — radius and start angle are derived from
+ *    the distance/angle between the two.
+ * Either way, the third click's angle (not its distance) fixes where the arc
+ * ends. State only advances in onPointerDown — onPointerMove is preview-only.
  */
 export class ArcTool implements DraftTool {
   private stage: ArcStage = 'idle';
-  private center: Pt | null = null;
-  private radiusPt: Pt | null = null;
+  private pt1: Pt | null = null;
+  private pt2: Pt | null = null;
   private hoverPt: Pt | null = null;
 
   constructor(
     readonly id: string = 'arc',
     readonly label: string = 'Arc',
-    private readonly showCenterGuides: boolean = false,
+    private readonly startFirst: boolean = false,
   ) { }
+
+  private get center(): Pt | null {
+    return this.startFirst ? this.pt2 : this.pt1;
+  }
+
+  /** The point (other than the center) whose distance/angle fixes radius + start angle. */
+  private get anchorPt(): Pt | null {
+    return this.startFirst ? this.pt1 : this.pt2;
+  }
 
   onPointerDown(pt: Pt, host: DraftToolHost): void {
     if (this.stage === 'idle') {
-      this.center = pt;
-      this.stage = 'center-set';
-    } else if (this.stage === 'center-set') {
-      this.radiusPt = pt;
-      this.stage = 'radius-set';
+      this.pt1 = pt;
+      this.stage = 'first-set';
+    } else if (this.stage === 'first-set') {
+      this.pt2 = pt;
+      this.stage = 'second-set';
     } else {
       this.commit(pt, host);
     }
@@ -59,19 +74,21 @@ export class ArcTool implements DraftTool {
   }
 
   renderPreview(gRoot: RootGroup, _gUI: RootGroup, _pxPerMm: number): void {
-    if (!this.center || !this.hoverPt) return;
+    if (!this.pt1 || !this.hoverPt) return;
 
-    if (this.stage === 'center-set') {
-      this.drawGuideLine(gRoot, this.center, this.hoverPt);
+    if (this.stage === 'first-set') {
+      this.drawGuideLine(gRoot, this.pt1, this.hoverPt);
       return;
     }
 
-    if (this.stage === 'radius-set' && this.radiusPt) {
-      const radius = Math.hypot(this.radiusPt.x - this.center.x, this.radiusPt.y - this.center.y);
+    const center = this.center;
+    const anchorPt = this.anchorPt;
+    if (this.stage === 'second-set' && center && anchorPt) {
+      const radius = Math.hypot(anchorPt.x - center.x, anchorPt.y - center.y);
       if (radius < 1e-6) return;
 
       gRoot.append('circle')
-        .attr('cx', this.center.x).attr('cy', this.center.y).attr('r', radius)
+        .attr('cx', center.x).attr('cy', center.y).attr('r', radius)
         .attr('fill', 'none')
         .attr('stroke', PREVIEW_COLOR)
         .attr('stroke-width', 1)
@@ -80,14 +97,14 @@ export class ArcTool implements DraftTool {
         .attr('vector-effect', 'non-scaling-stroke')
         .style('pointer-events', 'none');
 
-      const startAngle = Math.atan2(this.radiusPt.y - this.center.y, this.radiusPt.x - this.center.x);
-      const endAngle = Math.atan2(this.hoverPt.y - this.center.y, this.hoverPt.x - this.center.x);
+      const startAngle = Math.atan2(anchorPt.y - center.y, anchorPt.x - center.x);
+      const endAngle = Math.atan2(this.hoverPt.y - center.y, this.hoverPt.x - center.x);
 
-      this.drawGuideLine(gRoot, this.center, this.radiusPt);
-      this.drawGuideLine(gRoot, this.center, pointOnCircle(this.center, radius, endAngle));
+      this.drawGuideLine(gRoot, center, anchorPt);
+      this.drawGuideLine(gRoot, center, pointOnCircle(center, radius, endAngle));
 
       gRoot.append('path')
-        .attr('d', arcPathData(this.center, radius, startAngle, endAngle))
+        .attr('d', arcPathData(center, radius, startAngle, endAngle))
         .attr('fill', 'none')
         .attr('stroke', PREVIEW_COLOR)
         .attr('stroke-width', 1.5)
@@ -99,27 +116,28 @@ export class ArcTool implements DraftTool {
 
   reset(): void {
     this.stage = 'idle';
-    this.center = null;
-    this.radiusPt = null;
+    this.pt1 = null;
+    this.pt2 = null;
     this.hoverPt = null;
   }
 
   private commit(pt: Pt, host: DraftToolHost): void {
-    if (!this.center || !this.radiusPt) return;
-    const radius = Math.hypot(this.radiusPt.x - this.center.x, this.radiusPt.y - this.center.y);
+    const center = this.center;
+    const anchorPt = this.anchorPt;
+    if (!center || !anchorPt) return;
+    const radius = Math.hypot(anchorPt.x - center.x, anchorPt.y - center.y);
     if (radius < 1e-6) { this.reset(); return; }
 
-    const startAngle = Math.atan2(this.radiusPt.y - this.center.y, this.radiusPt.x - this.center.x);
-    const endAngle = Math.atan2(pt.y - this.center.y, pt.x - this.center.x);
+    const startAngle = Math.atan2(anchorPt.y - center.y, anchorPt.x - center.x);
+    const endAngle = Math.atan2(pt.y - center.y, pt.x - center.x);
 
     host.addShape({
       id: makeShapeId(),
       type: 'arc',
-      center: { ...this.center },
+      center: { ...center },
       radius,
       startAngle,
       endAngle,
-      ...(this.showCenterGuides ? { showCenterGuides: true } : {}),
     });
     this.reset();
   }
@@ -137,10 +155,10 @@ export class ArcTool implements DraftTool {
 }
 
 export function createArcTool(): ArcTool {
-  return new ArcTool();
+  return new ArcTool('arc', 'Arc');
 }
 
-/** Same 3-click arc, but its committed rendering keeps the center/radius guides permanently visible. */
-export function createFancyArcTool(): ArcTool {
-  return new ArcTool('arc-fancy', 'Fancy Arc', true);
+/** Same 3-click construction, but the first click sets the arc's start point rather than the circle's center. */
+export function createArcStartFirstTool(): ArcTool {
+  return new ArcTool('arc-start', '3-Point Arc', true);
 }

@@ -19,7 +19,7 @@ import { toNamedReferenceImage } from '../helpers/referenceImages';
 import { info } from '../shared/message-emitter';
 import { DraftTool, DraftToolHost } from './tools/draft-tool';
 import { createLineTool, createDottedLineTool } from './tools/line-tool';
-import { createArcTool, createFancyArcTool } from './tools/arc-tool';
+import { createArcTool, createArcStartFirstTool } from './tools/arc-tool';
 import { createTangentArcTool } from './tools/tangent-arc-tool';
 import { createCircleTool, createDottedCircleTool } from './tools/circle-tool';
 import { createDimensionTool } from './tools/dimension-tool';
@@ -29,10 +29,13 @@ import { createTextTool } from './tools/text-tool';
 import { createPointTool } from './tools/point-tool';
 import { ToolSlot, single, flyout } from './tools/tool-slot';
 import { ToolboxStore } from './tools/toolbox-store';
-import { drawShape, drawSelectionHalo } from './tools/shape-renderer';
+import { drawShape, drawSelectionHalo, drawMoveGrabber, drawEndpointGrabber } from './tools/shape-renderer';
 import { SnapCandidate, SnapEngine } from './tools/snap-engine';
 import { drawSnapMarker } from './tools/snap-marker-renderer';
 import { distanceToShape } from './tools/shape-hit-test';
+import { translateShape } from './tools/shape-transform';
+import { moveGrabberPosition, endpointGrabbers, withEndpoint, EndpointKey } from './tools/shape-grabbers';
+import { snapToLockedAngle } from './tools/angle-lock';
 import { DraftShape } from './tools/toolbox-shape';
 import { HOTKEY_TOOL_CYCLE } from './tools/tool-hotkeys';
 import { ToolPaletteComponent } from './tool-palette/tool-palette';
@@ -67,7 +70,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       flyout([createLineTool(), createDottedLineTool(), createDimensionTool()]),
     ],
     [
-      flyout([createArcTool(), createTangentArcTool(), createFancyArcTool()]),
+      flyout([createArcTool(), createTangentArcTool(), createArcStartFirstTool()]),
     ],
     [
       flyout([createCircleTool(), createDottedCircleTool()]),
@@ -105,10 +108,40 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private snapEngine = new SnapEngine();
   private snapDirty = true;
   private activeSnap: SnapCandidate | null = null;
+  // The most recently drawn `.snappable` layer — kept so an endpoint-drag (which happens in
+  // Select mode, with no active tool) can force an on-demand rebuild; see ensureSnapIndex().
+  private snapLayer: d3.Selection<SVGGElement, unknown, null, undefined> | null = null;
 
-  // Selection (Select tool, i.e. activeTool === null): which toolbox shape, if any, is picked.
+  // Selection (Select tool, i.e. activeTool === null): which toolbox shape(s), if any, are
+  // picked. Plain click replaces the selection; shift-click toggles a shape in/out of it.
   private static readonly SELECT_HIT_TOLERANCE_PX = 6;
-  private selectedShapeId: string | null = null;
+  private static readonly MOVE_GRABBER_HIT_TOLERANCE_PX = 9;
+  private static readonly NUDGE_STEP_MM_FINE = 1;
+  private static readonly NUDGE_STEP_MM_COARSE = 10;
+  private static readonly ARROW_NUDGE_DIRECTION: Record<string, [number, number]> = {
+    ArrowUp: [0, 1],
+    ArrowDown: [0, -1],
+    ArrowLeft: [-1, 0],
+    ArrowRight: [1, 0],
+  };
+  private selectedShapeIds = new Set<string>();
+
+  // Drag-to-move: pointerdown on an already-selected shape arms a potential move; it only
+  // becomes a real drag once the pointer clears a small threshold (so a plain click still just
+  // selects). While dragging, the moved shapes are rendered from `dragOverrides` — a live,
+  // uncommitted preview — and only written to the store as one batched update on pointerup, so
+  // a whole drag is a single undo step instead of one per intermediate pointermove.
+  private static readonly DRAG_MOVE_THRESHOLD_PX = 3;
+  private dragAnchor: Pt | null = null;
+  private dragOriginals: DraftShape[] = [];
+  private dragOverrides: Map<string, DraftShape> | null = null;
+  private isDraggingSelection = false;
+
+  // Drag-an-endpoint: same live-preview-then-batch-commit approach as drag-to-move, but edits
+  // a single (x,y) point on a single shape rather than translating the whole selection. Shares
+  // `dragOverrides` with the move-drag above — draw() doesn't care which mechanism produced it.
+  private dragEndpoint: { shapeId: string; key: EndpointKey; original: DraftShape } | null = null;
+  private isDraggingEndpoint = false;
 
   @ViewChild('host', { static: true }) host!: ElementRef<HTMLDivElement>;
   @ViewChild(ToolPaletteComponent) toolPalette?: ToolPaletteComponent;
@@ -282,8 +315,9 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     // (e.g. recipe-base's undo/redo keyboard handler)
     this.toolboxUnsub = this.toolbox.onChange(() => {
       this.snapDirty = true;
-      if (this.selectedShapeId && !this.toolbox.getEditableShapes().some(s => s.id === this.selectedShapeId)) {
-        this.selectedShapeId = null;
+      const editableIds = new Set(this.toolbox.getEditableShapes().map(s => s.id));
+      for (const id of this.selectedShapeIds) {
+        if (!editableIds.has(id)) this.selectedShapeIds.delete(id);
       }
       this.draw();
     });
@@ -330,29 +364,41 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.showReferenceImage && this.refController.drawImage(this.gRoot)
     this.referenceModeEnabled && this.showReferenceImage && this.refController.drawControls(this.gRoot, this.pxPerMm);
 
-    const selectedShape = this.selectedShapeId
-      ? this.toolbox.getEditableShapes().find(s => s.id === this.selectedShapeId)
-      : undefined;
-    if (selectedShape) drawSelectionHalo(this.gRoot, this.gUI, selectedShape, this.pxPerMm);
+    if (this.selectedShapeIds.size) {
+      const editable = this.toolbox.getEditableShapes();
+      for (const id of this.selectedShapeIds) {
+        const shape = this.dragOverrides?.get(id) ?? editable.find(s => s.id === id);
+        if (!shape) continue;
+        drawSelectionHalo(this.gRoot, this.gUI, shape, this.pxPerMm);
+        const grabberPos = moveGrabberPosition(shape);
+        if (grabberPos) drawMoveGrabber(this.gRoot, grabberPos, this.pxPerMm);
+        const endpoints = endpointGrabbers(shape);
+        if (endpoints) for (const g of endpoints) drawEndpointGrabber(this.gRoot, g.pos, this.pxPerMm);
+      }
+    }
 
     const snapLayer = this.gRoot.append('g').attr('class', 'snappable');
+    this.snapLayer = snapLayer;
     this.draftFuncs.map(f => {
       f(snapLayer, this.gUI)
     })
-    this.toolbox.getVisibleShapes().forEach(s => drawShape(snapLayer, this.gUI, s, this.pxPerMm));
+    this.toolbox.getVisibleShapes().forEach(s => {
+      const shape = this.dragOverrides?.get(s.id) ?? s;
+      drawShape(snapLayer, this.gUI, shape, this.pxPerMm);
+    });
 
-    // Candidates are only ever read from resolveToolPoint(), which is a no-op
-    // with no active tool (e.g. while editing a selected shape's properties in
-    // Select mode) — so skip the (potentially large, whole-scene) rebuild
-    // until a tool is actually active to consume it. `snapDirty` stays set,
-    // so activating a tool later still rebuilds first.
-    if (this.snapDirty && this.activeTool) {
+    // Candidates are only ever read from resolveToolPoint() and (on-demand, via
+    // ensureSnapIndex()) an in-progress endpoint-drag — both no-ops the rest of the time
+    // (e.g. while editing a selected shape's properties in Select mode) — so skip the
+    // (potentially large, whole-scene) rebuild until something actually needs it. `snapDirty`
+    // stays set, so the next thing that does need it still rebuilds first.
+    if (this.snapDirty && (this.activeTool || this.dragEndpoint)) {
       this.snapEngine.rebuild(snapLayer);
       this.snapDirty = false;
     }
 
     this.activeTool?.renderPreview(this.gRoot, this.gUI, this.pxPerMm);
-    if (this.activeTool && this.activeSnap) {
+    if ((this.activeTool || this.isDraggingEndpoint) && this.activeSnap) {
       drawSnapMarker(this.gRoot, this.activeSnap, this.pxPerMm);
     }
   }
@@ -363,7 +409,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.activeTool?.reset();
     this.activeTool = tool;
     this.activeSnap = null;
-    if (tool) this.selectedShapeId = null; // selection only applies in Select mode
+    if (tool) this.selectedShapeIds.clear(); // selection only applies in Select mode
     this.draw();
   }
 
@@ -380,6 +426,16 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
           if (idx >= 0) { slot.selectedIndex = idx; this.selectTool(slot.variants[idx]); return; }
         }
       }
+    }
+  }
+
+  /** Rebuilds the snap index right now if it's stale — used when arming an endpoint-drag,
+   * since that starts in Select mode (no active tool), where draw()'s own rebuild would
+   * otherwise wait until the next draw() call, one tick too late for that drag's first move. */
+  private ensureSnapIndex(): void {
+    if (this.snapDirty && this.snapLayer) {
+      this.snapEngine.rebuild(this.snapLayer);
+      this.snapDirty = false;
     }
   }
 
@@ -410,16 +466,79 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     return bestId;
   }
 
+  /** True if `pt` (world mm) grabs a move handle of a currently selected shape — the square
+   * for shapes that have one, or the shape body itself for Text/Point (see moveGrabberPosition). */
+  private hitTestMoveHandle(pt: Pt): boolean {
+    const grabberToleranceMm = DraftCanvasComponent.MOVE_GRABBER_HIT_TOLERANCE_PX / this.pxPerMm;
+    const grabberTol2 = grabberToleranceMm * grabberToleranceMm;
+    const bodyToleranceMm = DraftCanvasComponent.SELECT_HIT_TOLERANCE_PX / this.pxPerMm;
+    for (const shape of this.selectedShapes) {
+      const pos = moveGrabberPosition(shape);
+      if (pos) {
+        const dx = pos.x - pt.x;
+        const dy = pos.y - pt.y;
+        if (dx * dx + dy * dy <= grabberTol2) return true;
+      } else if (distanceToShape(pt, shape, this.pxPerMm) <= bodyToleranceMm) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** True if `pt` (world mm) grabs an endpoint handle of a currently selected shape — checked
+   * before hitTestMoveHandle since it's the more specific target. */
+  private hitTestEndpointGrabber(pt: Pt): { shapeId: string; key: EndpointKey } | null {
+    const toleranceMm = DraftCanvasComponent.MOVE_GRABBER_HIT_TOLERANCE_PX / this.pxPerMm;
+    const tol2 = toleranceMm * toleranceMm;
+    for (const shape of this.selectedShapes) {
+      const grabbers = endpointGrabbers(shape);
+      if (!grabbers) continue;
+      for (const g of grabbers) {
+        const dx = g.pos.x - pt.x;
+        const dy = g.pos.y - pt.y;
+        if (dx * dx + dy * dy <= tol2) return { shapeId: shape.id, key: g.key };
+      }
+    }
+    return null;
+  }
+
+  /** Plain click: replaces the whole selection with just `id` (or clears it if null). */
   private setSelectedShape(id: string | null): void {
-    if (this.selectedShapeId === id) return;
-    this.selectedShapeId = id;
+    if (this.selectedShapeIds.size === (id ? 1 : 0) && (!id || this.selectedShapeIds.has(id))) return;
+    this.selectedShapeIds = id ? new Set([id]) : new Set();
     this.draw();
   }
 
+  /** Shift-click: adds/removes one shape from the selection, leaving the rest untouched.
+   * A shift-click on empty space (id === null) is a no-op — it doesn't clear anything. */
+  private toggleSelected(id: string | null): void {
+    if (!id) return;
+    if (this.selectedShapeIds.has(id)) this.selectedShapeIds.delete(id);
+    else this.selectedShapeIds.add(id);
+    this.draw();
+  }
+
+  private clearSelection(): void {
+    if (this.selectedShapeIds.size === 0) return;
+    this.selectedShapeIds.clear();
+    this.draw();
+  }
+
+  /** The single selected shape, or undefined when zero or more than one are selected —
+   * per-shape-type settings panels only make sense for exactly one shape (see tool-palette.ts). */
   public get selectedShape(): DraftShape | undefined {
-    return this.selectedShapeId
-      ? this.toolbox.getEditableShapes().find(s => s.id === this.selectedShapeId)
-      : undefined;
+    if (this.selectedShapeIds.size !== 1) return undefined;
+    const [id] = this.selectedShapeIds;
+    return this.toolbox.getEditableShapes().find(s => s.id === id);
+  }
+
+  public get selectedShapes(): DraftShape[] {
+    if (this.selectedShapeIds.size === 0) return [];
+    return this.toolbox.getEditableShapes().filter(s => this.selectedShapeIds.has(s.id));
+  }
+
+  public get selectedCount(): number {
+    return this.selectedShapeIds.size;
   }
 
   onDisplayPreferenceChange(): void {
@@ -510,6 +629,70 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
+    // Select mode: an armed endpoint-drag (see onPointerDown) becomes a real drag once the
+    // pointer clears a small threshold. Unlike the whole-shape move below, the new point is the
+    // pointer position directly (no delta/anchor) since only one point on one shape is affected.
+    // Snapping uses the same SnapEngine/tolerance as the drafting tools, so an endpoint can land
+    // on another shape's endpoint/center/path exactly like a fresh Line/Arc/etc. click would.
+    if (this.dragEndpoint) {
+      const rawPt = this.worldFromPointer(event);
+      const toleranceMm = DraftCanvasComponent.SNAP_TOLERANCE_PX / this.pxPerMm;
+      const hit = this.snapEngine.nearest(rawPt, toleranceMm);
+      this.activeSnap = hit;
+      let pt = hit ? hit.pt : rawPt;
+
+      // Shift-lock to common angles, same as drawing a fresh Line/Box Line (see
+      // two-point-tool.ts) — measured from the *other* end, since that's the segment whose
+      // angle is being locked. Dimension is excluded: its drawing tool doesn't angle-lock either.
+      const original = this.dragEndpoint.original;
+      if ((original.type === 'line' || original.type === 'boxline') && this.isAngleLockHeld
+        && (this.dragEndpoint.key === 'start' || this.dragEndpoint.key === 'end')) {
+        const anchor = this.dragEndpoint.key === 'start' ? original.end : original.start;
+        pt = snapToLockedAngle(anchor, pt);
+      }
+
+      if (!this.isDraggingEndpoint) {
+        const origPos = endpointGrabbers(this.dragEndpoint.original)?.find(g => g.key === this.dragEndpoint!.key)?.pos;
+        const pxDist = origPos ? Math.hypot(rawPt.x - origPos.x, rawPt.y - origPos.y) * this.pxPerMm : Infinity;
+        if (pxDist < DraftCanvasComponent.DRAG_MOVE_THRESHOLD_PX) {
+          event.preventDefault();
+          return;
+        }
+        this.isDraggingEndpoint = true;
+      }
+      const updated = withEndpoint(this.dragEndpoint.original, this.dragEndpoint.key, pt);
+      this.dragOverrides = new Map([[this.dragEndpoint.shapeId, updated]]);
+      event.preventDefault();
+      this.draw();
+      return;
+    }
+
+    // Select mode: an armed selection-move (see onPointerDown) becomes a real drag once the
+    // pointer clears a small threshold, so a plain click still just selects. While dragging,
+    // shapes are translated from their pointerdown-time originals (not accumulated deltas) and
+    // rendered via `dragOverrides` in draw() — nothing is written to the store until pointerup.
+    if (this.dragAnchor) {
+      const pt = this.worldFromPointer(event);
+      const dxMm = pt.x - this.dragAnchor.x;
+      const dyMm = pt.y - this.dragAnchor.y;
+      if (!this.isDraggingSelection) {
+        const pxDist = Math.hypot(dxMm, dyMm) * this.pxPerMm;
+        if (pxDist < DraftCanvasComponent.DRAG_MOVE_THRESHOLD_PX) {
+          event.preventDefault();
+          return;
+        }
+        this.isDraggingSelection = true;
+      }
+      const overrides = new Map<string, DraftShape>();
+      for (const shape of this.dragOriginals) {
+        overrides.set(shape.id, translateShape(shape, dxMm, dyMm));
+      }
+      this.dragOverrides = overrides;
+      event.preventDefault();
+      this.draw();
+      return;
+    }
+
     // active drafting tool takes precedence over camera pan (space-drag still overrides)
     if (this.activeTool && !this.isDragging) {
       const pt = this.resolveToolPoint(this.worldFromPointer(event));
@@ -545,6 +728,24 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     if (this.activeTool && !this.isDragging) {
       const pt = this.resolveToolPoint(this.worldFromPointer(event));
       this.activeTool.onPointerUp(pt, this.toolHost);
+    }
+
+    // finalize (or cancel) an armed/active selection-move or endpoint-drag — see
+    // onPointerDown/onPointerMove. Both share `dragOverrides` and commit the same way.
+    if (this.dragAnchor || this.dragEndpoint) {
+      if ((this.isDraggingSelection || this.isDraggingEndpoint) && this.dragOverrides) {
+        const patches = new Map<string, Partial<DraftShape>>();
+        for (const [id, shape] of this.dragOverrides) patches.set(id, shape);
+        this.toolbox.updateShapes(patches);
+      }
+      this.dragAnchor = null;
+      this.dragOriginals = [];
+      this.dragEndpoint = null;
+      this.dragOverrides = null;
+      this.isDraggingSelection = false;
+      this.isDraggingEndpoint = false;
+      this.activeSnap = null;
+      this.draw();
     }
 
     // end reference-image interaction if active
@@ -584,18 +785,35 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     if (event.key === 'Escape') {
       if (this.activeTool) {
         this.selectTool(null);
-      } else if (this.selectedShapeId) {
-        this.setSelectedShape(null);
+      } else if (this.selectedShapeIds.size) {
+        this.clearSelection();
       }
       event.preventDefault();
       return;
     }
 
     // Select mode: Delete/Backspace removes the current selection
-    if (!this.activeTool && this.selectedShapeId) {
+    if (!this.activeTool && this.selectedShapeIds.size) {
       if (event.code === 'Delete' || event.code === 'Backspace') {
-        this.toolbox.removeShape(this.selectedShapeId);
-        this.selectedShapeId = null;
+        for (const id of this.selectedShapeIds) this.toolbox.removeShape(id);
+        this.selectedShapeIds.clear();
+        event.preventDefault();
+        return;
+      }
+    }
+
+    // Select mode: arrow keys nudge every selected shape (in world mm) instead of panning
+    // the camera — Shift gives a coarser step, matching the pan/reference-nudge convention.
+    if (!this.activeTool && this.selectedShapeIds.size) {
+      const dir = DraftCanvasComponent.ARROW_NUDGE_DIRECTION[event.code];
+      if (dir) {
+        const stepMm = event.shiftKey ? DraftCanvasComponent.NUDGE_STEP_MM_COARSE : DraftCanvasComponent.NUDGE_STEP_MM_FINE;
+        const [dx, dy] = [dir[0] * stepMm, dir[1] * stepMm];
+        const editable = this.toolbox.getEditableShapes();
+        for (const id of this.selectedShapeIds) {
+          const shape = editable.find(s => s.id === id);
+          if (shape) this.toolbox.updateShape(id, translateShape(shape, dx, dy));
+        }
         event.preventDefault();
         return;
       }
@@ -701,6 +919,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
     const isPrimary = event.button === 0 || event.button === undefined;
     const isMiddle = event.button === 1;
+    const isTouch = event.pointerType === 'touch';
 
     const canRefOps = this.referenceModeEnabled && this.showReferenceImage && !!this.activeReferenceImage?.href;
     // Shift is reserved as the drafting angle-lock modifier (see isAngleLockHeld), so it
@@ -718,7 +937,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
         // typing the real text right away is the point; Point has nothing to type into.
         const shapes = this.toolbox.getEditableShapes();
         const newest = shapes[shapes.length - 1];
-        if (newest) this.selectedShapeId = newest.id;
+        if (newest) this.selectedShapeIds = new Set([newest.id]);
         this.selectTool(null);
         if (newest?.type === 'text') this.toolPalette?.openSettingsForText();
         return;
@@ -744,14 +963,40 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       }
     }
 
-    // Select tool: pick (or clear) the toolbox shape under the click
+    // Select tool: grabbing a selected shape's endpoint (triangle) arms an endpoint-only drag —
+    // checked first since it's the most specific target. Otherwise grabbing its move handle (the
+    // square, or the shape body itself for Text/Point — see hitTestMoveHandle) arms a whole-shape
+    // drag. Either way this takes priority over re-selecting, since the handles only exist for
+    // shapes already selected. Otherwise a plain click picks (or clears) the shape under it, and
+    // shift-click toggles it in/out of the current selection instead, for multi-select. Touch is
+    // excluded from arming either drag so single-finger touch keeps its existing "always pans" behavior.
     if (!this.activeTool && isPrimary && !modifierHeld && !this.isSpaceDown && !canRefOps) {
       const pt = this.worldFromPointer(event);
-      this.setSelectedShape(this.hitTestToolboxShape(pt));
+      const endpointHit = !event.shiftKey && !isTouch && this.selectedShapeIds.size
+        ? this.hitTestEndpointGrabber(pt) : null;
+      if (endpointHit) {
+        const shape = this.selectedShapes.find(s => s.id === endpointHit.shapeId)!;
+        this.dragEndpoint = { shapeId: endpointHit.shapeId, key: endpointHit.key, original: shape };
+        this.isDraggingEndpoint = false;
+        this.activeSnap = null;
+        this.ensureSnapIndex();
+        this.host.nativeElement.setPointerCapture(event.pointerId);
+      } else if (!event.shiftKey && !isTouch && this.selectedShapeIds.size && this.hitTestMoveHandle(pt)) {
+        this.dragAnchor = pt;
+        this.dragOriginals = this.selectedShapes;
+        this.isDraggingSelection = false;
+        this.host.nativeElement.setPointerCapture(event.pointerId);
+      } else {
+        const hitId = this.hitTestToolboxShape(pt);
+        if (event.shiftKey) {
+          this.toggleSelected(hitId);
+        } else {
+          this.setSelectedShape(hitId);
+        }
+      }
     }
 
     // Pan: middle mouse always; primary when Space is held; or any single touch finger
-    const isTouch = event.pointerType === 'touch';
     if (isMiddle || (isPrimary && this.isSpaceDown) || (isTouch && isPrimary)) {
       this.isDragging = true;
       this.host.nativeElement.classList.add('dragging');
