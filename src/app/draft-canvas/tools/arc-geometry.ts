@@ -24,6 +24,18 @@ export function arcPathData(center: Pt, radius: number, startAngle: number, endA
   return `M ${start.x},${start.y} A ${radius},${radius} 0 ${largeArcFlag},${sweepFlag} ${end.x},${end.y}`;
 }
 
+/**
+ * Given two boundary angles on a circle, returns them as (startAngle, endAngle) oriented so
+ * the CCW arc between them is the minor (<=180°) one by default, or the major (>180°) one when
+ * `preferLong` is true — swapping which angle is "start" is the only way to pick between the
+ * two arcs that share the same two boundary points, since arcPathData always sweeps CCW.
+ */
+export function pickArcOrientation(a: number, b: number, preferLong: boolean): { startAngle: number; endAngle: number } {
+  const span = normalizeAngle(b - a);
+  const isMinor = span <= Math.PI;
+  return isMinor === !preferLong ? { startAngle: a, endAngle: b } : { startAngle: b, endAngle: a };
+}
+
 export type TangentArcFit = { center: Pt; radius: number; startAngle: number; endAngle: number };
 
 /**

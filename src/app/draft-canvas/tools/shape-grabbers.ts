@@ -23,24 +23,27 @@ export function moveGrabberPosition(shape: DraftShape): Pt | null {
       return { x: shape.center.x, y: shape.center.y };
     case 'rect':
       return { x: (shape.p1.x + shape.p2.x) / 2, y: (shape.p1.y + shape.p2.y) / 2 };
-    case 'arc': {
-      const span = normalizeAngle(shape.endAngle - shape.startAngle);
-      const midAngle = shape.startAngle + span / 2;
-      return {
-        x: shape.center.x + shape.radius * Math.cos(midAngle),
-        y: shape.center.y + shape.radius * Math.sin(midAngle),
-      };
-    }
+    case 'arc':
+      return { x: shape.center.x, y: shape.center.y };
     case 'text':
     case 'point':
       return null;
   }
 }
 
+/** The point on an arc's circle midway (by angle) between its start and end — where the
+ * radius-resize handle sits, since it's the most "on the arc" point to grab. */
+function arcMidpoint(shape: Extract<DraftShape, { type: 'arc' }>): Pt {
+  const span = normalizeAngle(shape.endAngle - shape.startAngle);
+  const midAngle = shape.startAngle + span / 2;
+  return pointOnCircle(shape.center, shape.radius, midAngle);
+}
+
 // 'start'/'end' — Line/Dimension/Box Line's endpoints.
 // 'p1'/'p2' — Rect's corners (either can go anywhere; drawShape already takes the
 //   min/max of the two, so there's no "wrong" corner to drag).
-// 'radius' — Circle's edge; only the drag point's distance from center matters.
+// 'radius' — Circle's edge, or Arc's midpoint; only the drag point's distance from center
+//   matters (center and, for Arc, both angles stay fixed).
 // 'startAngle'/'endAngle' — Arc's sweep ends; only the drag point's angle from center
 //   matters (radius is fixed), matching how the Arc tool's own third click behaves.
 export type EndpointKey = 'start' | 'end' | 'p1' | 'p2' | 'radius' | 'startAngle' | 'endAngle';
@@ -67,6 +70,7 @@ export function endpointGrabbers(shape: DraftShape): EndpointGrabber[] | null {
       return [
         { key: 'startAngle', pos: pointOnCircle(shape.center, shape.radius, shape.startAngle) },
         { key: 'endAngle', pos: pointOnCircle(shape.center, shape.radius, shape.endAngle) },
+        { key: 'radius', pos: arcMidpoint(shape) },
       ];
     case 'text':
     case 'point':
@@ -95,6 +99,10 @@ export function withEndpoint(shape: DraftShape, key: EndpointKey, pos: Pt): Draf
       if (key === 'startAngle' || key === 'endAngle') {
         const angle = Math.atan2(pos.y - shape.center.y, pos.x - shape.center.x);
         return { ...shape, [key]: angle };
+      }
+      if (key === 'radius') {
+        const radius = Math.max(MIN_RADIUS_MM, Math.hypot(pos.x - shape.center.x, pos.y - shape.center.y));
+        return { ...shape, radius };
       }
       return shape;
     default:
