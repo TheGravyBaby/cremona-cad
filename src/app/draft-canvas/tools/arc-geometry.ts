@@ -43,8 +43,13 @@ export type TangentArcFit = { center: Pt; radius: number; startAngle: number; en
  * `startTangent` at `start` — lets an arc continue smoothly from an existing
  * line/arc endpoint instead of being built from an independent center point.
  * Returns null when `end` lies on the tangent line itself (no finite circle fits).
+ *
+ * That circle still has two arcs connecting `start` and `end`; only one of them actually
+ * continues smoothly from `startTangent` (the other kinks backwards at `start`) — that's the
+ * one returned by default. Pass `preferOther: true` (e.g. while an angle-lock-style modifier
+ * is held) to deliberately take the other one instead, trading the smooth join for its sweep.
  */
-export function fitTangentArc(start: Pt, startTangent: number, end: Pt): TangentArcFit | null {
+export function fitTangentArc(start: Pt, startTangent: number, end: Pt, preferOther = false): TangentArcFit | null {
   const tx = Math.cos(startTangent);
   const ty = Math.sin(startTangent);
   const nx = -ty; // normal to the tangent, rotated +90° (CCW)
@@ -68,8 +73,9 @@ export function fitTangentArc(start: Pt, startTangent: number, end: Pt): Tangent
   // at `start` only matches `startTangent` when r > 0 — when r < 0 it points exactly backwards,
   // so swapping which boundary angle is labeled "start" is what actually continues smoothly
   // from the tangent, rather than (depending on where `end` lands) rendering the wrong one of
-  // the two arcs that share these boundary points.
-  return r > 0
+  // the two arcs that share these boundary points. `preferOther` inverts that choice.
+  const useAsIs = preferOther ? !(r > 0) : r > 0;
+  return useAsIs
     ? { center, radius, startAngle, endAngle }
     : { center, radius, startAngle: endAngle, endAngle: startAngle };
 }
