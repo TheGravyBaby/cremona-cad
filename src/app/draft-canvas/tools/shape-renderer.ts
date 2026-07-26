@@ -358,3 +358,38 @@ export function drawSelectionHalo(gRoot: RootGroup, gUI: RootGroup, shape: Draft
       break;
   }
 }
+
+const MOVE_GRABBER_SIZE_PX = 9;
+const MOVE_GRABBER_FILL = '#f59e0b';
+const MOVE_GRABBER_STROKE = '#78350f';
+
+/** Draws the square "move" handle at `pos` (world mm) — constant on-screen size, like the
+ * point marker/dimension ticks. See shape-grabbers.ts for where `pos` comes from per shape type. */
+export function drawMoveGrabber(gRoot: RootGroup, pos: Pt, pxPerMm: number): void {
+  const half = MOVE_GRABBER_SIZE_PX / 2 / pxPerMm;
+  gRoot.append('rect')
+    .attr('x', pos.x - half).attr('y', pos.y - half)
+    .attr('width', half * 2).attr('height', half * 2)
+    .attr('fill', MOVE_GRABBER_FILL)
+    .attr('stroke', MOVE_GRABBER_STROKE)
+    .attr('stroke-width', 1)
+    .attr('vector-effect', 'non-scaling-stroke');
+}
+
+const ENDPOINT_GRABBER_SIZE_PX = 10;
+
+/** Draws a triangular endpoint handle at `pos` (world mm) — deliberately a different shape
+ * from the square move handle, so "move the whole shape" vs. "edit this point" stay visually
+ * distinct at a glance. Constant on-screen size, like drawMoveGrabber. */
+export function drawEndpointGrabber(gRoot: RootGroup, pos: Pt, pxPerMm: number): void {
+  const r = ENDPOINT_GRABBER_SIZE_PX / 2 / pxPerMm;
+  const top = `${pos.x},${pos.y + r}`;
+  const bottomLeft = `${pos.x - r},${pos.y - r * 0.6}`;
+  const bottomRight = `${pos.x + r},${pos.y - r * 0.6}`;
+  gRoot.append('polygon')
+    .attr('points', `${top} ${bottomLeft} ${bottomRight}`)
+    .attr('fill', MOVE_GRABBER_FILL)
+    .attr('stroke', MOVE_GRABBER_STROKE)
+    .attr('stroke-width', 1)
+    .attr('vector-effect', 'non-scaling-stroke');
+}

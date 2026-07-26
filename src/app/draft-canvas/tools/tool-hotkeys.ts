@@ -7,7 +7,7 @@
 // to show a tooltip hint) — kept in one file so the two can't drift apart.
 export const HOTKEY_TOOL_CYCLE: Record<string, string[]> = {
   KeyL: ['line', 'line-dashed', 'dimension'],
-  KeyA: ['arc', 'arc-tangent', 'arc-fancy'],
+  KeyA: ['arc', 'arc-tangent', 'arc-start'],
   KeyC: ['circle', 'circle-dashed'],
   KeyR: ['rect', 'square'],
   KeyB: ['boxline'],

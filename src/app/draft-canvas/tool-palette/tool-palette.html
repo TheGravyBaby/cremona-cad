@@ -80,11 +80,10 @@
           <circle cx="3" cy="15" r="1.4" fill="currentColor" stroke="none" />
         </svg>
       }
-      @case ('arc-fancy') {
+      @case ('arc-start') {
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
           <path d="M4 19a15 15 0 0 1 15-15" />
-          <path d="M4 19L19 19M19 19L19 4" stroke-dasharray="2 3" stroke-width="1.5" />
-          <circle cx="19" cy="19" r="1.2" fill="currentColor" stroke="none" />
+          <circle cx="4" cy="19" r="1.4" fill="currentColor" stroke="none" />
         </svg>
       }
       @case ('circle') {
@@ -306,6 +305,11 @@
                   (keydown.enter)="$any($event.target).blur()" />
               </div>
             </div>
+            <label class="settings-row settings-inline">
+              <input type="checkbox" [checked]="arcShowCenterGuides"
+                (change)="setArcShowCenterGuides($any($event.target).checked)" />
+              <span class="settings-lbl">Compass (show center + radius guides)</span>
+            </label>
           }
           @if (showBoxLinePanel) {
             <div class="settings-row settings-row-inline">
