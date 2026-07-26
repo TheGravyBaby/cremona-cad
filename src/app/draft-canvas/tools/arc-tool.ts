@@ -2,7 +2,7 @@ import * as d3 from 'd3';
 import { Pt } from '../../models/types';
 import { DraftTool, DraftToolHost } from './draft-tool';
 import { makeShapeId } from './toolbox-shape';
-import { arcPathData, pointOnCircle } from './arc-geometry';
+import { arcPathData, pointOnCircle, pickArcOrientation } from './arc-geometry';
 
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 
@@ -20,12 +20,18 @@ const PREVIEW_COLOR = '#2563eb';
  *    the distance/angle between the two.
  * Either way, the third click's angle (not its distance) fixes where the arc
  * ends. State only advances in onPointerDown — onPointerMove is preview-only.
+ *
+ * Of the two arcs that share the same start/end boundary points, the shorter (<=180°) one
+ * is preferred by default — holding the angle-lock modifier (Shift) while placing the third
+ * point takes the longer one instead, mirroring how Shift already means "the other/alternate
+ * behavior" for line-drawing's angle lock.
  */
 export class ArcTool implements DraftTool {
   private stage: ArcStage = 'idle';
   private pt1: Pt | null = null;
   private pt2: Pt | null = null;
   private hoverPt: Pt | null = null;
+  private preferLongArc = false;
 
   constructor(
     readonly id: string = 'arc',
@@ -58,6 +64,7 @@ export class ArcTool implements DraftTool {
   onPointerMove(pt: Pt, host: DraftToolHost): void {
     if (this.stage === 'idle') return;
     this.hoverPt = pt;
+    this.preferLongArc = host.isAngleLockHeld();
     host.requestDraw();
   }
 
@@ -97,11 +104,12 @@ export class ArcTool implements DraftTool {
         .attr('vector-effect', 'non-scaling-stroke')
         .style('pointer-events', 'none');
 
-      const startAngle = Math.atan2(anchorPt.y - center.y, anchorPt.x - center.x);
-      const endAngle = Math.atan2(this.hoverPt.y - center.y, this.hoverPt.x - center.x);
+      const rawStartAngle = Math.atan2(anchorPt.y - center.y, anchorPt.x - center.x);
+      const rawEndAngle = Math.atan2(this.hoverPt.y - center.y, this.hoverPt.x - center.x);
+      const { startAngle, endAngle } = pickArcOrientation(rawStartAngle, rawEndAngle, this.preferLongArc);
 
       this.drawGuideLine(gRoot, center, anchorPt);
-      this.drawGuideLine(gRoot, center, pointOnCircle(center, radius, endAngle));
+      this.drawGuideLine(gRoot, center, pointOnCircle(center, radius, rawEndAngle));
 
       gRoot.append('path')
         .attr('d', arcPathData(center, radius, startAngle, endAngle))
@@ -128,8 +136,9 @@ export class ArcTool implements DraftTool {
     const radius = Math.hypot(anchorPt.x - center.x, anchorPt.y - center.y);
     if (radius < 1e-6) { this.reset(); return; }
 
-    const startAngle = Math.atan2(anchorPt.y - center.y, anchorPt.x - center.x);
-    const endAngle = Math.atan2(pt.y - center.y, pt.x - center.x);
+    const rawStartAngle = Math.atan2(anchorPt.y - center.y, anchorPt.x - center.x);
+    const rawEndAngle = Math.atan2(pt.y - center.y, pt.x - center.x);
+    const { startAngle, endAngle } = pickArcOrientation(rawStartAngle, rawEndAngle, host.isAngleLockHeld());
 
     host.addShape({
       id: makeShapeId(),
