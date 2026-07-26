@@ -9,7 +9,6 @@ import {
   ViewChild,
 } from '@angular/core';
 import * as d3 from 'd3';
-import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Input } from '@angular/core';
 import { NamedReferenceImage, Pt, ReferenceImage } from '../models/types';
@@ -34,36 +33,20 @@ import { drawShape, drawSelectionHalo } from './tools/shape-renderer';
 import { SnapCandidate, SnapEngine } from './tools/snap-engine';
 import { drawSnapMarker } from './tools/snap-marker-renderer';
 import { distanceToShape } from './tools/shape-hit-test';
-import { DraftShape, LineShape, DimensionShape, CircleShape, ArcShape, RectShape, TextShape, PointShape } from './tools/toolbox-shape';
-import { Layer } from './tools/layer';
+import { DraftShape } from './tools/toolbox-shape';
+import { HOTKEY_TOOL_CYCLE } from './tools/tool-hotkeys';
+import { ToolPaletteComponent } from './tool-palette/tool-palette';
 
 @Component({
   selector: 'app-draft-canvas',
   standalone: true,
-  imports: [FormsModule, NgTemplateOutlet],
+  imports: [FormsModule, ToolPaletteComponent],
   templateUrl: './draft-canvas.html',
   styleUrls: ['./draft-canvas.css'],
 })
 
 export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private static readonly DISPLAY_PREFS_KEY = 'draft-canvas-display-preferences';
-  // Tool mnemonics (see onKeyDown): pressing the key activates the group's first
-  // variant, or advances to the next one in the list on repeated presses. Order
-  // here should match each tool's flyout order in toolRows.
-  private static readonly HOTKEY_TOOL_CYCLE: Record<string, string[]> = {
-    KeyL: ['line', 'line-dashed', 'dimension'],
-    KeyA: ['arc', 'arc-tangent', 'arc-fancy'],
-    KeyC: ['circle', 'circle-dashed'],
-    KeyR: ['rect', 'square'],
-    KeyB: ['boxline'],
-    KeyT: ['text'],
-    KeyP: ['point'],
-  };
-  // Reverse of the above (tool id -> its group's letter), for tooltip hints.
-  private static readonly HOTKEY_LETTER_BY_TOOL: Record<string, string> = Object.fromEntries(
-    Object.entries(DraftCanvasComponent.HOTKEY_TOOL_CYCLE)
-      .flatMap(([code, ids]) => ids.map(id => [id, code.replace('Key', '')])),
-  );
   private initialized = false;
   private canvas!: d3.Selection<SVGSVGElement, unknown, null, undefined>;
   private gRoot!: d3.Selection<SVGGElement, unknown, null, undefined>;
@@ -103,11 +86,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     ],
   ];
   public activeTool: DraftTool | null = null;
-  public openFlyout: ToolSlot | null = null;
-  public settingsOpen = false;
-  public layersOpen = false;
-  public editingLayerId: string | null = null;
-  public toolPaletteCollapsed = false;
   private isAngleLockHeld = false;
   private toolHost: DraftToolHost = {
     addShape: (shape) => this.toolbox.addShape({
@@ -133,6 +111,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private selectedShapeId: string | null = null;
 
   @ViewChild('host', { static: true }) host!: ElementRef<HTMLDivElement>;
+  @ViewChild(ToolPaletteComponent) toolPalette?: ToolPaletteComponent;
   @Output() referenceImagesChange = new EventEmitter<NamedReferenceImage[]>();
   @Input() set draftFunctions(value: Array<(canvas: any, uiCan: any) => void>) {
     this.draftFuncs = value
@@ -306,7 +285,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       if (this.selectedShapeId && !this.toolbox.getEditableShapes().some(s => s.id === this.selectedShapeId)) {
         this.selectedShapeId = null;
       }
-      this.closeSettingsIfUnavailable();
       this.draw();
     });
 
@@ -379,41 +357,19 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  /** Pass null to switch to the default select tool (no active drafting tool). */
+  /** Pass null to switch to the default select tool (no active drafting tool). Also used
+   * as the (toolActivated) handler for <app-tool-palette> — see tool-palette.ts. */
   selectTool(tool: DraftTool | null): void {
     this.activeTool?.reset();
     this.activeTool = tool;
     this.activeSnap = null;
-    this.openFlyout = null;
     if (tool) this.selectedShapeId = null; // selection only applies in Select mode
-    this.closeSettingsIfUnavailable();
     this.draw();
   }
 
-  /** Settings only means anything with an active tool or a selected shape — closes itself
-   * the moment neither applies (tool deactivated, selection cleared/deleted, layer switched). */
-  private closeSettingsIfUnavailable(): void {
-    if (!this.activeTool && !this.selectedShapeId) this.settingsOpen = false;
-  }
-
-  /** Activates a slot's current tool — its only tool if single, its selected variant if a flyout. */
-  activateSlot(slot: ToolSlot): void {
-    this.selectTool(slot.kind === 'single' ? slot.tool : slot.variants[slot.selectedIndex]);
-  }
-
-  toggleFlyout(slot: ToolSlot): void {
-    this.openFlyout = this.openFlyout === slot ? null : slot;
-    this.settingsOpen = false;
-    this.layersOpen = false;
-  }
-
-  /** The hotkey letter for a tool id, formatted for a tooltip (e.g. " (L)"), or '' if it has none. */
-  public hotkeyHint(toolId: string): string {
-    const letter = DraftCanvasComponent.HOTKEY_LETTER_BY_TOOL[toolId];
-    return letter ? ` (${letter})` : '';
-  }
-
-  /** Activates a tool by id from anywhere in toolRows — used by the hotkey mnemonics. */
+  /** Activates a tool by id from anywhere in toolRows — used by the hotkey mnemonics. Mutates
+   * the slot's selectedIndex directly (toolRows is shared by reference with the tool palette,
+   * which does the same on click) so a flyout's face stays in sync regardless of trigger source. */
   private activateToolById(id: string): void {
     for (const row of this.toolRows) {
       for (const slot of row) {
@@ -421,83 +377,10 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
           if (slot.tool.id === id) { this.selectTool(slot.tool); return; }
         } else {
           const idx = slot.variants.findIndex(v => v.id === id);
-          if (idx >= 0) { this.chooseFlyoutVariant(slot, idx); return; }
+          if (idx >= 0) { slot.selectedIndex = idx; this.selectTool(slot.variants[idx]); return; }
         }
       }
     }
-  }
-
-  toggleSettings(): void {
-    if (!this.activeTool && !this.selectedShapeId) return; // nothing to show settings for
-    this.settingsOpen = !this.settingsOpen;
-    this.openFlyout = null;
-    this.layersOpen = false;
-  }
-
-  toggleLayers(): void {
-    this.layersOpen = !this.layersOpen;
-    this.openFlyout = null;
-    this.settingsOpen = false;
-  }
-
-  public get toolboxLayers(): Layer[] { return this.toolbox.layers; }
-  public get activeLayerId(): string { return this.toolbox.activeLayerId; }
-
-  /** The active-layer switch itself goes through the same onChange path as any other
-   * toolbox mutation (see ngAfterViewInit's toolboxUnsub), which already re-filters the
-   * current selection against the new layer and redraws — no need to duplicate that here. */
-  selectLayer(id: string): void {
-    this.toolbox.setActiveLayer(id);
-  }
-
-  addLayer(): void {
-    const id = this.toolbox.addLayer();
-    this.startRenameLayer(id);
-  }
-
-  startRenameLayer(id: string): void {
-    this.editingLayerId = id;
-    // The rename <input> is created by this state change; focus it next tick.
-    setTimeout(() => {
-      const el = this.host.nativeElement
-        .closest('.canvas-shell')
-        ?.querySelector('.layer-tab-edit') as HTMLInputElement | null;
-      el?.focus();
-      el?.select();
-    });
-  }
-
-  commitRenameLayer(id: string, name: string): void {
-    this.toolbox.renameLayer(id, name);
-    this.editingLayerId = null;
-  }
-
-  deleteLayer(id: string): void {
-    this.toolbox.removeLayer(id);
-    if (this.editingLayerId === id) this.editingLayerId = null;
-  }
-
-  toggleLayerVisible(id: string): void {
-    this.toolbox.toggleLayerVisible(id);
-  }
-
-  /** Locking the layer you're actively drawing on would make the active tool a silent no-op — bail back to Select instead. */
-  toggleLayerLocked(id: string): void {
-    this.toolbox.toggleLayerLocked(id);
-    if (this.activeTool && this.toolbox.activeLayerId === id && this.toolboxLayers.find(l => l.id === id)?.locked) {
-      this.selectTool(null);
-    }
-  }
-
-  /** Clear is now scoped to the active layer only — see toolbox-store.ts's clearActiveLayer. */
-  clearActiveLayer(): void {
-    this.toolbox.clearActiveLayer();
-  }
-
-  /** Picking a variant from the flyout both activates it and becomes the slot's new default face. */
-  chooseFlyoutVariant(slot: Extract<ToolSlot, { kind: 'flyout' }>, index: number): void {
-    slot.selectedIndex = index;
-    this.selectTool(slot.variants[index]);
   }
 
   /** Resolves a raw pointer point to a nearby snap candidate when a tool is active. */
@@ -530,223 +413,13 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private setSelectedShape(id: string | null): void {
     if (this.selectedShapeId === id) return;
     this.selectedShapeId = id;
-    this.closeSettingsIfUnavailable();
     this.draw();
   }
 
-  private get selectedShape(): DraftShape | undefined {
+  public get selectedShape(): DraftShape | undefined {
     return this.selectedShapeId
       ? this.toolbox.getEditableShapes().find(s => s.id === this.selectedShapeId)
       : undefined;
-  }
-
-  /** Narrows the current selection to one shape type, for a settings panel's own `selectedXShape` getter. */
-  private selectedShapeOfType<T extends DraftShape['type']>(type: T): Extract<DraftShape, { type: T }> | undefined {
-    const s = this.selectedShape;
-    return s?.type === type ? (s as Extract<DraftShape, { type: T }>) : undefined;
-  }
-
-  /** Shared by every settings-panel numeric field: parse, reject non-finite/invalid, patch. */
-  private patchNumberField<S extends DraftShape>(
-    shape: S | undefined,
-    key: keyof S,
-    raw: number,
-    opts?: { transform?: (v: number) => number; validate?: (v: number) => boolean },
-  ): void {
-    if (!shape) return;
-    const v = Number(raw);
-    if (!Number.isFinite(v) || (opts?.validate && !opts.validate(v))) return;
-    const value = opts?.transform ? opts.transform(v) : v;
-    this.toolbox.updateShape(shape.id, { [key]: value } as Partial<DraftShape>);
-  }
-
-  /** Shared by every settings-panel Pt field (start/end, p1/p2, center, position): patch one axis in place. */
-  private patchPointField<S extends DraftShape>(shape: S | undefined, key: keyof S, axis: 'x' | 'y', raw: number): void {
-    if (!shape) return;
-    const v = Number(raw);
-    if (!Number.isFinite(v)) return;
-    const current = shape[key] as Pt;
-    this.toolbox.updateShape(shape.id, { [key]: { ...current, [axis]: v } } as Partial<DraftShape>);
-  }
-
-  /** Shows the selected shape's color when something's selected, otherwise the pen color new shapes will use. */
-  public get displayedColor(): string {
-    return this.selectedShape?.color ?? this.toolbox.currentColor;
-  }
-
-  setColor(color: string): void {
-    this.toolbox.currentColor = color;
-    if (this.selectedShapeId) {
-      this.toolbox.updateShape(this.selectedShapeId, { color });
-    }
-  }
-
-  /** Line/Dotted Line/Dimension all share start+end geometry — editable numerically once a shape is selected. */
-  private get selectedLineLikeShape(): LineShape | DimensionShape | undefined {
-    const s = this.selectedShape;
-    return (s?.type === 'line' || s?.type === 'dimension') ? s : undefined;
-  }
-
-  public get showLinePanel(): boolean {
-    return !!this.selectedLineLikeShape;
-  }
-
-  public get lineStartX(): number { return this.selectedLineLikeShape?.start.x ?? 0; }
-  public get lineStartY(): number { return this.selectedLineLikeShape?.start.y ?? 0; }
-  public get lineEndX(): number { return this.selectedLineLikeShape?.end.x ?? 0; }
-  public get lineEndY(): number { return this.selectedLineLikeShape?.end.y ?? 0; }
-
-  setLinePoint(which: 'start' | 'end', axis: 'x' | 'y', value: number): void {
-    this.patchPointField(this.selectedLineLikeShape, which, axis, value);
-  }
-
-  /** Rect and Square both commit as a 'rect' shape (p1/p2 corners) — same panel edits either. */
-  private get selectedRectShape(): RectShape | undefined {
-    return this.selectedShapeOfType('rect');
-  }
-
-  public get showRectPanel(): boolean {
-    return !!this.selectedRectShape;
-  }
-
-  public get rectP1X(): number { return this.selectedRectShape?.p1.x ?? 0; }
-  public get rectP1Y(): number { return this.selectedRectShape?.p1.y ?? 0; }
-  public get rectP2X(): number { return this.selectedRectShape?.p2.x ?? 0; }
-  public get rectP2Y(): number { return this.selectedRectShape?.p2.y ?? 0; }
-
-  setRectPoint(which: 'p1' | 'p2', axis: 'x' | 'y', value: number): void {
-    this.patchPointField(this.selectedRectShape, which, axis, value);
-  }
-
-  private get selectedTextShape(): TextShape | undefined {
-    return this.selectedShapeOfType('text');
-  }
-
-  public get showTextPanel(): boolean {
-    return !!this.selectedTextShape;
-  }
-
-  public get textPositionX(): number { return this.selectedTextShape?.position.x ?? 0; }
-  public get textPositionY(): number { return this.selectedTextShape?.position.y ?? 0; }
-  public get textContent(): string { return this.selectedTextShape?.text ?? ''; }
-
-  setTextPosition(axis: 'x' | 'y', value: number): void {
-    this.patchPointField(this.selectedTextShape, 'position', axis, value);
-  }
-
-  setTextContent(text: string): void {
-    const shape = this.selectedTextShape;
-    if (!shape) return;
-    this.toolbox.updateShape(shape.id, { text });
-  }
-
-  /** Focuses+selects the text-content field once its settings panel has just been opened
-   * (e.g. right after placing a new Text shape) so typing the real content needs no extra click. */
-  private focusTextContentInput(): void {
-    setTimeout(() => {
-      const el = this.host.nativeElement
-        .closest('.canvas-shell')
-        ?.querySelector('.text-content-input') as HTMLInputElement | null;
-      el?.focus();
-      el?.select();
-    });
-  }
-
-  private get selectedPointShape(): PointShape | undefined {
-    return this.selectedShapeOfType('point');
-  }
-
-  public get showPointPanel(): boolean {
-    return !!this.selectedPointShape;
-  }
-
-  public get pointPositionX(): number { return this.selectedPointShape?.position.x ?? 0; }
-  public get pointPositionY(): number { return this.selectedPointShape?.position.y ?? 0; }
-
-  setPointPosition(axis: 'x' | 'y', value: number): void {
-    this.patchPointField(this.selectedPointShape, 'position', axis, value);
-  }
-
-  private get selectedCircleShape(): CircleShape | undefined {
-    return this.selectedShapeOfType('circle');
-  }
-
-  public get showCirclePanel(): boolean {
-    return !!this.selectedCircleShape;
-  }
-
-  public get circleCenterX(): number { return this.selectedCircleShape?.center.x ?? 0; }
-  public get circleCenterY(): number { return this.selectedCircleShape?.center.y ?? 0; }
-  public get circleRadius(): number { return this.selectedCircleShape?.radius ?? 0; }
-
-  setCircleCenter(axis: 'x' | 'y', value: number): void {
-    this.patchPointField(this.selectedCircleShape, 'center', axis, value);
-  }
-
-  setCircleRadius(value: number): void {
-    this.patchNumberField(this.selectedCircleShape, 'radius', value, { validate: v => v > 0 });
-  }
-
-  private get selectedArcShape(): ArcShape | undefined {
-    return this.selectedShapeOfType('arc');
-  }
-
-  public get showArcPanel(): boolean {
-    return !!this.selectedArcShape;
-  }
-
-  public get arcCenterX(): number { return this.selectedArcShape?.center.x ?? 0; }
-  public get arcCenterY(): number { return this.selectedArcShape?.center.y ?? 0; }
-  public get arcRadius(): number { return this.selectedArcShape?.radius ?? 0; }
-  public get arcStartDeg(): number { return (this.selectedArcShape?.startAngle ?? 0) * 180 / Math.PI; }
-  public get arcEndDeg(): number { return (this.selectedArcShape?.endAngle ?? 0) * 180 / Math.PI; }
-
-  setArcCenter(axis: 'x' | 'y', value: number): void {
-    this.patchPointField(this.selectedArcShape, 'center', axis, value);
-  }
-
-  setArcRadius(value: number): void {
-    this.patchNumberField(this.selectedArcShape, 'radius', value, { validate: v => v > 0 });
-  }
-
-  /** Angle fields are edited in degrees for readability; stored in radians, matching arc-geometry.ts's convention. */
-  setArcAngle(which: 'start' | 'end', valueDeg: number): void {
-    const key = which === 'start' ? 'startAngle' : 'endAngle';
-    this.patchNumberField(this.selectedArcShape, key, valueDeg, { transform: v => v * Math.PI / 180 });
-  }
-
-  /** Box Line has extra per-shape settings (a second color + segment weights) that don't fit the single color swatch. */
-  public get showBoxLinePanel(): boolean {
-    return this.activeTool?.id === 'boxline' || this.selectedShape?.type === 'boxline';
-  }
-
-  public get displayedBoxLineColor2(): string {
-    const shape = this.selectedShape;
-    return (shape?.type === 'boxline' ? shape.color2 : undefined) ?? this.toolbox.currentBoxLineColor2;
-  }
-
-  public get displayedBoxLineWeightsText(): string {
-    const shape = this.selectedShape;
-    const weights = (shape?.type === 'boxline' ? shape.weights : undefined) ?? this.toolbox.currentBoxLineWeights;
-    return weights.join(',');
-  }
-
-  setBoxLineColor2(color: string): void {
-    this.toolbox.currentBoxLineColor2 = color;
-    const shape = this.selectedShape;
-    if (shape?.type === 'boxline') {
-      this.toolbox.updateShape(shape.id, { color2: color });
-    }
-  }
-
-  setBoxLineWeightsText(text: string): void {
-    const weights = text.split(',').map(s => Number(s.trim())).filter(n => Number.isFinite(n) && n > 0);
-    if (weights.length === 0) return;
-    this.toolbox.currentBoxLineWeights = weights;
-    const shape = this.selectedShape;
-    if (shape?.type === 'boxline') {
-      this.toolbox.updateShape(shape.id, { weights });
-    }
   }
 
   onDisplayPreferenceChange(): void {
@@ -759,18 +432,12 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
         JSON.stringify({
           ...existing,
           showReferenceImage: this.showReferenceImage,
-          toolPaletteCollapsed: this.toolPaletteCollapsed,
         })
       );
     } catch {
       // ignore storage errors
     }
     this.draw();
-  }
-
-  toggleToolPalette(): void {
-    this.toolPaletteCollapsed = !this.toolPaletteCollapsed;
-    this.onDisplayPreferenceChange();
   }
 
   private loadDisplayPreferences(): void {
@@ -780,14 +447,10 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
       const parsed = JSON.parse(raw) as {
         showReferenceImage?: boolean;
-        toolPaletteCollapsed?: boolean;
       };
 
       if (typeof parsed.showReferenceImage === 'boolean') {
         this.showReferenceImage = parsed.showReferenceImage;
-      }
-      if (typeof parsed.toolPaletteCollapsed === 'boolean') {
-        this.toolPaletteCollapsed = parsed.toolPaletteCollapsed;
       }
     } catch {
       // ignore malformed/blocked sessionStorage
@@ -946,7 +609,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       event.preventDefault();
       return;
     }
-    const cycle = DraftCanvasComponent.HOTKEY_TOOL_CYCLE[event.code];
+    const cycle = HOTKEY_TOOL_CYCLE[event.code];
     if (cycle) {
       const currentIdx = this.activeTool ? cycle.indexOf(this.activeTool.id) : -1;
       const nextId = cycle[(currentIdx + 1) % cycle.length];
@@ -1057,10 +720,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
         const newest = shapes[shapes.length - 1];
         if (newest) this.selectedShapeId = newest.id;
         this.selectTool(null);
-        if (newest?.type === 'text') {
-          this.settingsOpen = true;
-          this.focusTextContentInput();
-        }
+        if (newest?.type === 'text') this.toolPalette?.openSettingsForText();
         return;
       }
       this.draw();
