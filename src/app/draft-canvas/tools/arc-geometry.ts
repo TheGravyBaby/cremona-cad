@@ -61,10 +61,15 @@ export function fitTangentArc(start: Pt, startTangent: number, end: Pt): Tangent
   const center: Pt = { x: start.x + r * nx, y: start.y + r * ny };
   const radius = Math.abs(r);
 
-  return {
-    center,
-    radius,
-    startAngle: Math.atan2(start.y - center.y, start.x - center.x),
-    endAngle: Math.atan2(end.y - center.y, end.x - center.x),
-  };
+  const startAngle = Math.atan2(start.y - center.y, start.x - center.x);
+  const endAngle = Math.atan2(end.y - center.y, end.x - center.x);
+
+  // arcPathData always sweeps CCW from startAngle to endAngle, but the CCW direction of travel
+  // at `start` only matches `startTangent` when r > 0 — when r < 0 it points exactly backwards,
+  // so swapping which boundary angle is labeled "start" is what actually continues smoothly
+  // from the tangent, rather than (depending on where `end` lands) rendering the wrong one of
+  // the two arcs that share these boundary points.
+  return r > 0
+    ? { center, radius, startAngle, endAngle }
+    : { center, radius, startAngle: endAngle, endAngle: startAngle };
 }
