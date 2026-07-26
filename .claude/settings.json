@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat /tmp/draft-canvas-ts-1.ts /tmp/draft-canvas-ts-2.ts > /tmp/draft-canvas-ts-merged.ts && wc -l /tmp/draft-canvas-ts-merged.ts)"
+    ],
+    "additionalDirectories": [
+      "/tmp"
+    ]
+  }
+}
