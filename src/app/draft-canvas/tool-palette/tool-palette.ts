@@ -6,7 +6,7 @@ import { ToolboxStore } from '../tools/toolbox-store';
 import { Layer } from '../tools/layer';
 import { HOTKEY_LETTER_BY_TOOL } from '../tools/tool-hotkeys';
 import {
-  DraftShape, LineShape, DimensionShape, RectShape, TextShape, PointShape, CircleShape, ArcShape,
+  DraftShape, LineShape, DimensionShape, RectShape, TextShape, PointShape, CircleShape, ArcShape, BoxLineShape,
 } from '../tools/toolbox-shape';
 
 /**
@@ -24,7 +24,7 @@ import {
   styleUrls: ['./tool-palette.css'],
 })
 export class ToolPaletteComponent implements OnChanges {
-  private static readonly COLLAPSED_KEY = 'draft-canvas-tool-palette-collapsed';
+  private static readonly PINNED_KEY = 'draft-canvas-tool-palette-pinned';
 
   private toolbox = inject(ToolboxStore);
   private elRef = inject(ElementRef<HTMLElement>);
@@ -39,14 +39,41 @@ export class ToolPaletteComponent implements OnChanges {
   public settingsOpen = false;
   public layersOpen = false;
   public editingLayerId: string | null = null;
-  public toolPaletteCollapsed = false;
+
+  /** Pinned = always expanded, like a docked panel. Unpinned = a slim rail that
+   * expands only while the pointer is over it (see onDockMouseEnter/Leave) — no
+   * pin/unpin animation, it just shows or hides. */
+  public pinned = true;
+  public hovering = false;
 
   constructor() {
     try {
-      this.toolPaletteCollapsed = sessionStorage.getItem(ToolPaletteComponent.COLLAPSED_KEY) === 'true';
+      const stored = sessionStorage.getItem(ToolPaletteComponent.PINNED_KEY);
+      this.pinned = stored === null ? true : stored === 'true';
     } catch {
       // ignore blocked sessionStorage
     }
+  }
+
+  public get expanded(): boolean {
+    return this.pinned || this.hovering;
+  }
+
+  togglePinned(): void {
+    this.pinned = !this.pinned;
+    try {
+      sessionStorage.setItem(ToolPaletteComponent.PINNED_KEY, String(this.pinned));
+    } catch {
+      // ignore storage errors
+    }
+  }
+
+  onDockMouseEnter(): void {
+    this.hovering = true;
+  }
+
+  onDockMouseLeave(): void {
+    this.hovering = false;
   }
 
   /** Reacts to the active tool/selection changing for reasons outside this component
@@ -95,14 +122,6 @@ export class ToolPaletteComponent implements OnChanges {
     this.settingsOpen = false;
   }
 
-  toggleToolPalette(): void {
-    this.toolPaletteCollapsed = !this.toolPaletteCollapsed;
-    try {
-      sessionStorage.setItem(ToolPaletteComponent.COLLAPSED_KEY, String(this.toolPaletteCollapsed));
-    } catch {
-      // ignore storage errors
-    }
-  }
 
   /** Called by draft-canvas.ts right after placing a Text shape, so typing the real
    * content needs no extra click — see draft-canvas.ts's oneShot pointer-down handling. */
@@ -351,6 +370,25 @@ export class ToolPaletteComponent implements OnChanges {
     return this.activeTool?.id === 'boxline' || this.selectedShape?.type === 'boxline';
   }
 
+  private get selectedBoxLineShape(): BoxLineShape | undefined {
+    return this.selectedShapeOfType('boxline');
+  }
+
+  /** Unlike showBoxLinePanel, the endpoints only make sense for an actual selected shape —
+   * there's no "pen position" the way there's a pen color/weights default. */
+  public get showBoxLinePointsPanel(): boolean {
+    return !!this.selectedBoxLineShape;
+  }
+
+  public get boxLineStartX(): number { return this.selectedBoxLineShape?.start.x ?? 0; }
+  public get boxLineStartY(): number { return this.selectedBoxLineShape?.start.y ?? 0; }
+  public get boxLineEndX(): number { return this.selectedBoxLineShape?.end.x ?? 0; }
+  public get boxLineEndY(): number { return this.selectedBoxLineShape?.end.y ?? 0; }
+
+  setBoxLinePoint(which: 'start' | 'end', axis: 'x' | 'y', value: number): void {
+    this.patchPointField(this.selectedBoxLineShape, which, axis, value);
+  }
+
   public get displayedBoxLineColor2(): string {
     const shape = this.selectedShape;
     return (shape?.type === 'boxline' ? shape.color2 : undefined) ?? this.toolbox.currentBoxLineColor2;
@@ -361,6 +399,18 @@ export class ToolPaletteComponent implements OnChanges {
     const weights = (shape?.type === 'boxline' ? shape.weights : undefined) ?? this.toolbox.currentBoxLineWeights;
     return weights.join(',');
   }
+
+  /** Segment count when using the "equal segments" input mode — just the number of weights,
+   * since that mode only ever produces equal (all-1) weights; see setBoxLineSegmentCount. */
+  public get displayedBoxLineSegmentCount(): number {
+    const shape = this.selectedShape;
+    const weights = (shape?.type === 'boxline' ? shape.weights : undefined) ?? this.toolbox.currentBoxLineWeights;
+    return weights.length;
+  }
+
+  /** Toggles the Weights row between a free-form comma list and a simple equal-segment count —
+   * pure UI/input-mode state, not persisted per-shape, so switching shapes doesn't reset it. */
+  public boxLineUseSegmentCount = false;
 
   setBoxLineColor2(color: string): void {
     this.toolbox.currentBoxLineColor2 = color;
@@ -373,6 +423,19 @@ export class ToolPaletteComponent implements OnChanges {
   setBoxLineWeightsText(text: string): void {
     const weights = text.split(',').map(s => Number(s.trim())).filter(n => Number.isFinite(n) && n > 0);
     if (weights.length === 0) return;
+    this.toolbox.currentBoxLineWeights = weights;
+    const shape = this.selectedShape;
+    if (shape?.type === 'boxline') {
+      this.toolbox.updateShape(shape.id, { weights });
+    }
+  }
+
+  /** Equal-segments mode: N segments all weighted 1 — e.g. 16 for showing sixteenths, without
+   * typing out "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1" by hand. */
+  setBoxLineSegmentCount(count: number): void {
+    const n = Math.round(count);
+    if (!Number.isFinite(n) || n < 1) return;
+    const weights = new Array(n).fill(1);
     this.toolbox.currentBoxLineWeights = weights;
     const shape = this.selectedShape;
     if (shape?.type === 'boxline') {

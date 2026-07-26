@@ -1,16 +1,14 @@
-/* Floating drafting toolbox, SketchUp-style: a vertical strip docked to the right edge */
+/* Floating drafting toolbox, dock-style: pinned it stays open; unpinned it's
+   fully rendered at all times but slides mostly behind the left edge, leaving
+   a sliver showing — hovering *anywhere* on that visible sliver (not just the
+   pin button) reveals the rest (see tool-palette.ts's `expanded`/`hovering`).
+   Collapsing only ever changes the translateX offset, instantly (no
+   transition), like a conventional OS dock's auto-hide. */
 .tool-palette {
   position: absolute;
-  min-width: 46px;
-  top: 6px;
-  left: 6px;
-  display: flex;
-  flex-direction: column;
-  padding: 6px;
-  border: 1px solid var(--ui-border-strong);
-  border-radius: 6px;
-  background: var(--ui-bg-surface-2);
-  /* box-shadow: var(--ui-shadow-pop); */
+  left: 0;
+  top: 50%;
+  transform: translateY(-60%);
   z-index: 5;
 }
 
@@ -19,44 +17,25 @@
   gap: 4px;
 }
 
-/* Holds just the toggle; centers it regardless of the palette's width, which
-   varies with whichever row (e.g. a flyout with its caret) is currently widest. */
-.tool-palette-header {
-  display: flex;
-  justify-content: center;
-}
-
-/* Extra breathing room below the toggle only exists while there's content to
-   separate it from — collapsing removes this div entirely, not just its rows. */
-.tool-palette-content {
+/* The dock body: full-size and fully rendered at all times, so collapsing
+   never changes its shape or the pin button's position within it — only
+   translateX moves, leaving REVEAL px showing at the edge as a grip. */
+.tool-dock-body {
+  --reveal: 12px;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding-top: 8px;
-}
-
-.tool-palette-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 46px;
-  height: 20px;
-  padding: 0;
+  padding: 6px 12px;
   border: 1px solid var(--ui-border-strong);
-  border-radius: 4px;
-  background: linear-gradient(180deg, var(--ui-canvas-btn-bg-start) 0%, var(--ui-canvas-btn-bg-end) 100%);
-  color: var(--ui-text-primary);
-  cursor: pointer;
-  transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+  border-left: none;
+  border-radius: 0 6px 6px 0;
+  background: var(--ui-bg-surface-2);
+  box-shadow: var(--ui-shadow-pop);
+  transform: translateX(0);
 }
 
-.tool-palette-toggle:hover {
-  border-color: var(--ui-canvas-btn-border-hover);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
-}
-
-.tool-palette-toggle svg {
-  transition: transform 120ms ease;
+.tool-dock-body.collapsed {
+  transform: translateX(calc(-100% + var(--reveal)));
 }
 
 .tool-palette-sep {
@@ -193,6 +172,20 @@
   color: var(--ui-text-muted);
 }
 
+/* Consistent sizing for every text/number field in the settings popup, so grids,
+   pairs and standalone rows all line up regardless of which panel renders them. */
+.settings-popup input[type="number"],
+.settings-popup input[type="text"] {
+  height: 22px;
+  padding: 2px 6px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 4px;
+  background: var(--ui-bg-surface);
+  color: var(--ui-text-primary);
+  font-size: 11px;
+  box-sizing: border-box;
+}
+
 .settings-grid {
   display: grid;
   grid-template-columns: auto 1fr auto 1fr;
@@ -203,7 +196,6 @@
 .settings-grid input[type="number"] {
   width: 100%;
   min-width: 0;
-  box-sizing: border-box;
 }
 
 .settings-pair {
@@ -216,7 +208,27 @@
 .settings-pair input[type="number"] {
   width: 100%;
   min-width: 0;
-  box-sizing: border-box;
+}
+
+/* A checkbox + label row (e.g. Compass, Equal segments) — sized to match the
+   rest of the settings controls instead of the browser's default checkbox. */
+.settings-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.settings-checkbox input[type="checkbox"] {
+  width: 13px;
+  height: 13px;
+  margin: 0;
+  accent-color: var(--ui-accent);
+  cursor: pointer;
+}
+
+.settings-checkbox .settings-lbl {
+  color: var(--ui-text-primary);
 }
 
 .layers-popup {
@@ -334,11 +346,4 @@
 
 .box-line-weights-input {
   width: 100%;
-  box-sizing: border-box;
-  padding: 4px 6px;
-  border: 1px solid var(--ui-border-strong);
-  border-radius: 4px;
-  background: var(--ui-bg-surface);
-  color: var(--ui-text-primary);
-  font-size: 11px;
 }
