@@ -19,6 +19,11 @@ type Stage = 'idle' | 'start-set';
  * each other instead of needing to be eyeballed. The second click is the end
  * point; radius and sweep are solved from the tangent constraint rather than
  * picked independently, unlike the center-first Arc tool.
+ *
+ * Of the two arcs sharing that start/end pair, the one that continues smoothly from the
+ * tangent is preferred by default — holding the angle-lock modifier (Shift) takes the other
+ * one instead (which no longer joins smoothly, but sweeps the other way), same convention as
+ * the center-first Arc tool's short/long toggle.
  */
 export class TangentArcTool implements DraftTool {
   readonly id = 'arc-tangent';
@@ -28,6 +33,7 @@ export class TangentArcTool implements DraftTool {
   private start: Pt | null = null;
   private startTangent = DEFAULT_TANGENT;
   private hoverPt: Pt | null = null;
+  private preferOtherArc = false;
 
   onPointerDown(pt: Pt, host: DraftToolHost): void {
     if (this.stage === 'idle') {
@@ -43,6 +49,7 @@ export class TangentArcTool implements DraftTool {
   onPointerMove(pt: Pt, host: DraftToolHost): void {
     if (this.stage === 'idle') return;
     this.hoverPt = pt;
+    this.preferOtherArc = host.isAngleLockHeld();
     host.requestDraw();
   }
 
@@ -74,7 +81,7 @@ export class TangentArcTool implements DraftTool {
       .attr('vector-effect', 'non-scaling-stroke')
       .style('pointer-events', 'none');
 
-    const fit = fitTangentArc(this.start, this.startTangent, this.hoverPt);
+    const fit = fitTangentArc(this.start, this.startTangent, this.hoverPt, this.preferOtherArc);
     if (!fit) return;
 
     gRoot.append('path')
@@ -92,11 +99,12 @@ export class TangentArcTool implements DraftTool {
     this.start = null;
     this.hoverPt = null;
     this.startTangent = DEFAULT_TANGENT;
+    this.preferOtherArc = false;
   }
 
   private commit(pt: Pt, host: DraftToolHost): void {
     if (!this.start) return;
-    const fit = fitTangentArc(this.start, this.startTangent, pt);
+    const fit = fitTangentArc(this.start, this.startTangent, pt, host.isAngleLockHeld());
     if (fit) {
       host.addShape({
         id: makeShapeId(),
