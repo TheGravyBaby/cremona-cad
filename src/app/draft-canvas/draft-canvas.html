@@ -21,9 +21,6 @@
     (change)="onReferenceFileSelected($event)" />
 
   <app-tool-palette
-    [toolRows]="toolRows"
-    [activeTool]="activeTool"
-    (toolActivated)="selectTool($event)"
     (addReferenceRequested)="requestAddReference()"
     (replaceReferenceRequested)="requestReplaceReference()">
   </app-tool-palette>

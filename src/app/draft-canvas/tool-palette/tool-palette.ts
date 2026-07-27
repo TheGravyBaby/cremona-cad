@@ -1,7 +1,8 @@
-import { Component, ElementRef, EventEmitter, Input, OnChanges, Output, SimpleChanges, inject } from '@angular/core';
+import { Component, ElementRef, EventEmitter, OnDestroy, OnInit, Output, inject } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { DraftTool } from '../tools/draft-tool';
 import { ToolSlot } from '../tools/tool-slot';
+import { ToolRegistryService } from '../tools/tool-registry';
 import { ToolboxStore } from '../tools/toolbox-store';
 import { Layer } from '../tools/layer';
 import { HOTKEY_LETTER_BY_TOOL } from '../tools/tool-hotkeys';
@@ -24,17 +25,17 @@ import { info } from '../../shared/message-emitter';
   templateUrl: './tool-palette.html',
   styleUrls: ['./tool-palette.css'],
 })
-export class ToolPaletteComponent implements OnChanges {
+export class ToolPaletteComponent implements OnInit, OnDestroy {
   private static readonly PINNED_KEY = 'draft-canvas-tool-palette-pinned';
 
   private toolbox = inject(ToolboxStore);
   private elRef = inject(ElementRef<HTMLElement>);
   public refImages = inject(ReferenceImageStore);
+  private toolRegistry = inject(ToolRegistryService);
+  private toolRegistryUnsub?: () => void;
 
-  @Input() toolRows: ToolSlot[][] = [];
-  @Input() activeTool: DraftTool | null = null;
-  /** Emits the tool that should become active — null means "back to Select." */
-  @Output() toolActivated = new EventEmitter<DraftTool | null>();
+  public get toolRows(): ToolSlot[][] { return this.toolRegistry.toolRows; }
+  public get activeTool(): DraftTool | null { return this.toolRegistry.activeTool; }
   /** The one bridge back to draft-canvas.ts for reference images: only it can trigger the
    * hidden file input (it needs camera bounds to place the uploaded image). */
   @Output() addReferenceRequested = new EventEmitter<void>();
@@ -81,17 +82,26 @@ export class ToolPaletteComponent implements OnChanges {
     this.hovering = false;
   }
 
-  /** Reacts to the active tool/selection changing for reasons outside this component
-   * (e.g. a hotkey, or the shape getting deleted) — mirrors what selectTool()/direct
-   * clicks already do locally, so both paths behave identically. */
-  ngOnChanges(changes: SimpleChanges): void {
-    if ('activeTool' in changes) this.openFlyout = null;
+  /** Reacts to the active tool changing for reasons outside this component (e.g. a hotkey) —
+   * mirrors what activateSlot()/chooseFlyoutVariant() already do locally, so both paths close
+   * an open flyout identically. */
+  ngOnInit(): void {
+    this.toolRegistryUnsub = this.toolRegistry.onChange(() => { this.openFlyout = null; });
+  }
+
+  ngOnDestroy(): void {
+    this.toolRegistryUnsub?.();
+  }
+
+  /** Pass null for the Select button — back to no active drafting tool. */
+  selectTool(tool: DraftTool | null): void {
+    this.toolRegistry.selectTool(tool);
   }
 
   /** Activates a slot's current tool — its only tool if single, its selected variant if a flyout. */
   activateSlot(slot: ToolSlot): void {
     this.openFlyout = null;
-    this.toolActivated.emit(slot.kind === 'single' ? slot.tool : slot.variants[slot.selectedIndex]);
+    this.toolRegistry.selectTool(slot.kind === 'single' ? slot.tool : slot.variants[slot.selectedIndex]);
   }
 
   toggleFlyout(slot: ToolSlot): void {
@@ -104,7 +114,7 @@ export class ToolPaletteComponent implements OnChanges {
   chooseFlyoutVariant(slot: Extract<ToolSlot, { kind: 'flyout' }>, index: number): void {
     slot.selectedIndex = index;
     this.openFlyout = null;
-    this.toolActivated.emit(slot.variants[index]);
+    this.toolRegistry.selectTool(slot.variants[index]);
   }
 
   /** The hotkey letter for a tool id, formatted for a tooltip (e.g. " (L)"), or '' if it has none. */
@@ -169,7 +179,7 @@ export class ToolPaletteComponent implements OnChanges {
   toggleLayerLocked(id: string): void {
     this.toolbox.toggleLayerLocked(id);
     if (this.activeTool && this.toolbox.activeLayerId === id && this.toolboxLayers.find(l => l.id === id)?.locked) {
-      this.toolActivated.emit(null);
+      this.toolRegistry.selectTool(null);
     }
   }
 

@@ -7,12 +7,13 @@
 // to show a tooltip hint) — kept in one file so the two can't drift apart.
 export const HOTKEY_TOOL_CYCLE: Record<string, string[]> = {
   KeyL: ['line', 'dimension'],
-  KeyA: ['arc', 'arc-tangent', 'arc-start'],
+  KeyA: ['arc', 'arc-tangent', 'arc-start', 'arc-chain'],
   KeyC: ['circle'],
   KeyR: ['rect'],
   KeyB: ['boxline'],
   KeyT: ['text'],
   KeyP: ['point'],
+  KeyO: ['offset'],
 };
 
 // Reverse of the above (tool id -> its group's letter), for tooltip hints.
