@@ -1,7 +1,7 @@
 import { Pt } from '../../models/types';
 import { DraftShape } from './toolbox-shape';
 import { pointOnCircle } from './arc-geometry';
-import { TEXT_FONT_SIZE_PX } from './shape-renderer';
+import { TEXT_FONT_SIZE_PX, TEXT_LINE_HEIGHT_RATIO } from './shape-renderer';
 
 const TWO_PI = Math.PI * 2;
 
@@ -64,15 +64,18 @@ function distanceToBoxInterior(p: Pt, x0: number, y0: number, x1: number, y1: nu
 
 /**
  * Estimates a text shape's world-mm footprint from its (constant on-screen) font size and
- * character count — this module stays DOM-free (see the "generic math vs SVG rendering"
- * separation elsewhere in draft-canvas), so unlike the selection halo it can't measure the
- * actual rendered glyphs. Anchored at `position` per shape-renderer.ts's text-anchor:start,
- * dominant-baseline:central.
+ * per-line character count — this module stays DOM-free (see the "generic math vs SVG
+ * rendering" separation elsewhere in draft-canvas), so unlike the selection halo it can't
+ * measure the actual rendered glyphs. Anchored at `position` per shape-renderer.ts's
+ * text-anchor:start, and (for the whole multi-line block) dominant-baseline:central.
  */
 function distanceToText(p: Pt, position: Pt, text: string, pxPerMm: number): number {
   const fontSizeMm = TEXT_FONT_SIZE_PX / pxPerMm;
-  const width = Math.max(1, text.length) * fontSizeMm * 0.55;
-  const height = fontSizeMm * 1.2;
+  const lines = text.split('\n');
+  const maxLineLen = Math.max(1, ...lines.map(line => line.length));
+  const lineHeight = fontSizeMm * TEXT_LINE_HEIGHT_RATIO;
+  const width = maxLineLen * fontSizeMm * 0.55;
+  const height = lines.length * lineHeight;
   return distanceToBoxInterior(p, position.x, position.y - height / 2, position.x + width, position.y + height / 2);
 }
 

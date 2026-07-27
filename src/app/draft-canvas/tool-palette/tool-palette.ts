@@ -123,21 +123,6 @@ export class ToolPaletteComponent implements OnChanges {
   }
 
 
-  /** Called by draft-canvas.ts right after placing a Text shape, so typing the real
-   * content needs no extra click — see draft-canvas.ts's oneShot pointer-down handling. */
-  public openSettingsForText(): void {
-    this.settingsOpen = true;
-    this.focusTextContentInput();
-  }
-
-  private focusTextContentInput(): void {
-    setTimeout(() => {
-      const el = (this.elRef.nativeElement as HTMLElement).querySelector('.text-content-input') as HTMLInputElement | null;
-      el?.focus();
-      el?.select();
-    });
-  }
-
   // ===== Layers =====
 
   public get toolboxLayers(): Layer[] { return this.toolbox.layers; }
@@ -232,7 +217,7 @@ export class ToolPaletteComponent implements OnChanges {
     }
   }
 
-  /** Line/Dotted Line/Dimension all share start+end geometry — editable numerically once a shape is selected. */
+  /** Line/Dimension both share start+end geometry — editable numerically once a shape is selected. */
   private get selectedLineLikeShape(): LineShape | DimensionShape | undefined {
     const s = this.selectedShape;
     return (s?.type === 'line' || s?.type === 'dimension') ? s : undefined;
@@ -251,6 +236,28 @@ export class ToolPaletteComponent implements OnChanges {
     this.patchPointField(this.selectedLineLikeShape, which, axis, value);
   }
 
+  /** Dashed is a pen setting (like currentColor), not a separate tool — Dimension doesn't get
+   * one, since only plain Line ever did (there was never a "Dotted Dimension"). */
+  private get selectedLineShape(): LineShape | undefined {
+    return this.selectedShapeOfType('line');
+  }
+
+  public get showLineDashedToggle(): boolean {
+    return this.activeTool?.id === 'line' || !!this.selectedLineShape;
+  }
+
+  public get lineDashed(): boolean {
+    return this.selectedLineShape?.dashed ?? this.toolbox.currentDashed;
+  }
+
+  setLineDashed(value: boolean): void {
+    this.toolbox.currentDashed = value;
+    const shape = this.selectedLineShape;
+    if (shape) {
+      this.toolbox.updateShape(shape.id, { dashed: value });
+    }
+  }
+
   /** Rect and Square both commit as a 'rect' shape (p1/p2 corners) — same panel edits either. */
   private get selectedRectShape(): RectShape | undefined {
     return this.selectedShapeOfType('rect');
@@ -267,6 +274,24 @@ export class ToolPaletteComponent implements OnChanges {
 
   setRectPoint(which: 'p1' | 'p2', axis: 'x' | 'y', value: number): void {
     this.patchPointField(this.selectedRectShape, which, axis, value);
+  }
+
+  /** Dashed is a pen setting (like currentColor), not a separate tool — shared with
+   * Line/Circle's currentDashed, same as currentColor is shared across every shape type. */
+  public get showRectDashedToggle(): boolean {
+    return this.activeTool?.id === 'rect' || !!this.selectedRectShape;
+  }
+
+  public get rectDashed(): boolean {
+    return this.selectedRectShape?.dashed ?? this.toolbox.currentDashed;
+  }
+
+  setRectDashed(value: boolean): void {
+    this.toolbox.currentDashed = value;
+    const shape = this.selectedRectShape;
+    if (shape) {
+      this.toolbox.updateShape(shape.id, { dashed: value });
+    }
   }
 
   private get selectedTextShape(): TextShape | undefined {
@@ -324,6 +349,24 @@ export class ToolPaletteComponent implements OnChanges {
 
   setCircleRadius(value: number): void {
     this.patchNumberField(this.selectedCircleShape, 'radius', value, { validate: v => v > 0 });
+  }
+
+  /** Dashed is a pen setting (like currentColor), not a separate tool — shared with Line's
+   * currentDashed, same as currentColor is shared across every shape type. */
+  public get showCircleDashedToggle(): boolean {
+    return this.activeTool?.id === 'circle' || !!this.selectedCircleShape;
+  }
+
+  public get circleDashed(): boolean {
+    return this.selectedCircleShape?.dashed ?? this.toolbox.currentDashed;
+  }
+
+  setCircleDashed(value: boolean): void {
+    this.toolbox.currentDashed = value;
+    const shape = this.selectedCircleShape;
+    if (shape) {
+      this.toolbox.updateShape(shape.id, { dashed: value });
+    }
   }
 
   private get selectedArcShape(): ArcShape | undefined {

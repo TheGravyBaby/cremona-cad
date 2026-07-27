@@ -45,6 +45,7 @@ export type RectShape = ShapeBase & {
   type: 'rect';
   p1: Pt;
   p2: Pt; // opposite corner — the box is axis-aligned between p1 and p2
+  dashed?: boolean;
 };
 
 // A line divided into weighted ratio segments, alternating `color`/`color2` per

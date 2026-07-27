@@ -1,7 +1,7 @@
 import * as d3 from 'd3';
 import { Pt } from '../../models/types';
 import { makeShapeId } from './toolbox-shape';
-import { TwoPointTool } from './two-point-tool';
+import { TwoPointTool, angleLockModifier } from './two-point-tool';
 import { ToolboxStore } from './toolbox-store';
 import { drawBoxLine } from './shape-renderer';
 
@@ -29,5 +29,5 @@ export function createBoxLineTool(toolbox: ToolboxStore): TwoPointTool {
       color2: toolbox.currentBoxLineColor2,
       label: true, 
     }, pxPerMm);
-  }, true);
+  }, angleLockModifier);
 }

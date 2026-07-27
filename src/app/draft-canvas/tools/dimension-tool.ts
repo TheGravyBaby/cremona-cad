@@ -1,7 +1,7 @@
 import * as d3 from 'd3';
 import { Pt } from '../../models/types';
 import { makeShapeId } from './toolbox-shape';
-import { TwoPointTool, previewLine, PREVIEW_COLOR } from './two-point-tool';
+import { TwoPointTool, previewLine, PREVIEW_COLOR, angleLockModifier } from './two-point-tool';
 
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 
@@ -31,5 +31,5 @@ export function createDimensionTool(): TwoPointTool {
     type: 'dimension',
     start,
     end,
-  }), previewDimension, true);
+  }), previewDimension, angleLockModifier);
 }

@@ -1,21 +1,15 @@
 import { makeShapeId } from './toolbox-shape';
-import { TwoPointTool, previewLine } from './two-point-tool';
+import { TwoPointTool, previewLine, angleLockModifier } from './two-point-tool';
+import { ToolboxStore } from './toolbox-store';
 
-export function createLineTool(): TwoPointTool {
+/** Reads `currentDashed` at commit time (like Box Line reads its weights/colors) so dashed
+ * is a pen setting, not a separate tool — see the Dashed checkbox in the Line settings panel. */
+export function createLineTool(toolbox: ToolboxStore): TwoPointTool {
   return new TwoPointTool('line', 'Line', (start, end) => ({
     id: makeShapeId(),
     type: 'line',
     start,
     end,
-  }), previewLine, true);
-}
-
-export function createDottedLineTool(): TwoPointTool {
-  return new TwoPointTool('line-dashed', 'Dotted Line', (start, end) => ({
-    id: makeShapeId(),
-    type: 'line',
-    start,
-    end,
-    dashed: true,
-  }), previewLine, true);
+    dashed: toolbox.currentDashed,
+  }), previewLine, angleLockModifier);
 }

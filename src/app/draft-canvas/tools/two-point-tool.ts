@@ -10,6 +10,16 @@ export const PREVIEW_COLOR = '#2563eb';
 
 type PreviewRenderer = (gRoot: RootGroup, gUI: RootGroup, pxPerMm: number, start: Pt, end: Pt) => void;
 
+/** Transforms the live second point while the angle-lock modifier (Shift) is held — e.g.
+ * snapping to a common angle (Line/Box Line) or forcing a square (Box/Rect). Applied uniformly
+ * on every pointermove/pointerup so drag preview and the committed shape always agree. */
+export type TwoPointModifier = (start: Pt, pt: Pt, host: DraftToolHost) => Pt;
+
+/** The default angle-lock behavior shared by Line and Box Line — see angle-lock.ts. */
+export function angleLockModifier(start: Pt, pt: Pt, host: DraftToolHost): Pt {
+  return host.isAngleLockHeld() ? snapToLockedAngle(start, pt) : pt;
+}
+
 export function previewLine(gRoot: RootGroup, _gUI: RootGroup, _pxPerMm: number, start: Pt, end: Pt): void {
   gRoot.append('line')
     .attr('x1', start.x).attr('y1', start.y)
@@ -60,7 +70,7 @@ export class TwoPointTool implements DraftTool {
     readonly label: string,
     private readonly buildShape: (start: Pt, end: Pt) => DraftShape,
     private readonly renderPreviewShape: PreviewRenderer = previewLine,
-    private readonly angleLockEnabled: boolean = false,
+    private readonly modifier?: TwoPointModifier,
   ) { }
 
   onPointerDown(pt: Pt): void {
@@ -70,13 +80,13 @@ export class TwoPointTool implements DraftTool {
 
   onPointerMove(pt: Pt, host: DraftToolHost): void {
     if (!this.startPt) return;
-    this.currentPt = this.applyAngleLock(pt, host);
+    this.currentPt = this.applyModifier(pt, host);
     host.requestDraw();
   }
 
   onPointerUp(pt: Pt, host: DraftToolHost): void {
     if (!this.startPt) return;
-    const end = this.applyAngleLock(pt, host);
+    const end = this.applyModifier(pt, host);
     if (this.startPt.x !== end.x || this.startPt.y !== end.y) {
       host.addShape(this.buildShape(this.startPt, end));
     }
@@ -84,9 +94,9 @@ export class TwoPointTool implements DraftTool {
     host.requestDraw();
   }
 
-  private applyAngleLock(pt: Pt, host: DraftToolHost): Pt {
-    if (!this.angleLockEnabled || !this.startPt || !host.isAngleLockHeld()) return pt;
-    return snapToLockedAngle(this.startPt, pt);
+  private applyModifier(pt: Pt, host: DraftToolHost): Pt {
+    if (!this.modifier || !this.startPt) return pt;
+    return this.modifier(this.startPt, pt, host);
   }
 
   onKeyDown(event: KeyboardEvent): boolean {
