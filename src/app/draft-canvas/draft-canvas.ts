@@ -14,9 +14,9 @@ import { Input } from '@angular/core';
 import { NamedReferenceImage, Pt, ReferenceImage } from '../models/types';
 import { Camera } from './camera';
 import { ReferenceImageController } from './reference-image-controller';
+import { ReferenceImageStore } from './reference-image-store';
 import { AxisGridController, AxisGridPreferences, CanvasViewport } from './axis-grid-controller';
 import { toNamedReferenceImage } from '../helpers/referenceImages';
-import { info } from '../shared/message-emitter';
 import { DraftTool, DraftToolHost } from './tools/draft-tool';
 import { createLineTool } from './tools/line-tool';
 import { createArcTool, createArcStartFirstTool } from './tools/arc-tool';
@@ -39,11 +39,12 @@ import { snapToLockedAngle } from './tools/angle-lock';
 import { DraftShape, TextShape } from './tools/toolbox-shape';
 import { HOTKEY_TOOL_CYCLE } from './tools/tool-hotkeys';
 import { ToolPaletteComponent } from './tool-palette/tool-palette';
+import { SettingsBarComponent } from './settings-bar/settings-bar';
 
 @Component({
   selector: 'app-draft-canvas',
   standalone: true,
-  imports: [FormsModule, ToolPaletteComponent],
+  imports: [FormsModule, ToolPaletteComponent, SettingsBarComponent],
   templateUrl: './draft-canvas.html',
   styleUrls: ['./draft-canvas.css'],
 })
@@ -59,6 +60,9 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private camera = new Camera();
   private axisGrid = new AxisGridController(DraftCanvasComponent.DISPLAY_PREFS_KEY, () => this.draw());
   private refController: ReferenceImageController;
+  private refImages = inject(ReferenceImageStore);
+  private refImagesUnsub?: () => void;
+  private refImagesRedrawUnsub?: () => void;
   private toolbox = inject(ToolboxStore);
   private toolboxUnsub?: () => void;
   // Add new tools here, grouped into rows of up to 2 slots. Use flyout([...])
@@ -162,17 +166,12 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   }
   @Input() set referenceImages(value: NamedReferenceImage[] | null | undefined) {
     if (value === undefined) return;
-    this._referenceImages = value ?? [];
-    // Keep the active tab pointing at a live entry (or the first one).
-    if (!this._referenceImages.some(r => r.id === this.activeRefId)) {
-      this.activeRefId = this._referenceImages[0]?.id ?? null;
-      this.captureResetBaseline();
-    }
+    this.refImages.setImages(value ?? []);
     this.syncControllerToActive();
     this.draw();
   }
   public get referenceImages(): NamedReferenceImage[] {
-    return this._referenceImages;
+    return this.refImages.images;
   }
   @Input() set setCameraBounds(bounds: { pt1: Pt, pt2: Pt } | null) {
     let firstSet = !this.bounds;
@@ -196,37 +195,16 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private activePointers = new Map<number, { x: number; y: number }>();
   private lastPinchDist = 0;
   private lastPinchMid = { x: 0, y: 0 };
-  public showReferenceImage = true;
   public isDarkMode = false;
   private isDragging = false;
   private isSpaceDown = false;
   public axisPopupOpen = false;
-  public referenceModeEnabled = false; // UI toggle ("Align Reference")
-  public alignPopupOpen = false;
-  public lockAspect = true;
-  private refAspect = 1;
   private bounds: { pt1: Pt, pt2: Pt } | null = null;
-  private oldReferenceImageParams?: NamedReferenceImage;
-
-  // The multi-image collection lives here; the controller only ever holds the
-  // active entry. Tabs switch which entry is active/editable/drawn.
-  private _referenceImages: NamedReferenceImage[] = [];
-  public activeRefId: string | null = null;
-  public editingRefId: string | null = null;
   private pendingRefUploadMode: 'add' | 'replace' = 'add';
+  @ViewChild('refFileInput') refFileInputRef?: ElementRef<HTMLInputElement>;
 
-  public get activeReferenceImage(): NamedReferenceImage | null {
-    return this._referenceImages.find(r => r.id === this.activeRefId) ?? null;
-  }
-
-  public get referenceOpacity(): number {
-    return this.refController?.referenceOpacity ?? 0.25;
-  }
-  public set referenceOpacity(v: number) {
-    if (this.refController) {
-      this.refController.referenceOpacity = Math.max(0, Math.min(1, v));
-      this.draw();
-    }
+  private get activeReferenceImage(): NamedReferenceImage | null {
+    return this.refImages.active;
   }
 
   public get showGrid(): boolean {
@@ -277,11 +255,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.axisGrid.updatePreferences({ gridStepY: value });
   }
 
-  private normalizeRotationDeg(deg: number): number {
-    const v = deg % 360;
-    return v < 0 ? v + 360 : v;
-  }
-
   ngAfterViewInit(): void {
     const el = this.host.nativeElement;
     this.host.nativeElement.addEventListener('keyup', this.onKeyUp);
@@ -303,10 +276,21 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     // wire reference image controller (keeps the active tab in sync via callback)
     this.refController = new ReferenceImageController(
       this.activeReferenceImage ?? undefined,
-      (img) => this.applyControllerChange(img),
+      (img) => this.refImages.applyLiveUpdate(img),
       () => this.draw()
     );
     this.syncControllerToActive();
+
+    // Re-point the controller at the (possibly new/changed) active image, redraw, relay to the
+    // recipe, and re-persist the View toggle — whenever tool-palette-driven reference-image
+    // edits, or an upload/replace/reset from onReferenceFileSelected below, change the store's
+    // data. onDisplayPreferenceChange() also calls draw() itself.
+    this.refImagesUnsub = this.refImages.onChange(() => {
+      this.syncControllerToActive();
+      this.emitReferenceImages();
+      this.onDisplayPreferenceChange();
+    });
+    this.refImagesRedrawUnsub = this.refImages.onRedraw(() => this.draw());
 
     // White suppression tuning for reference images (dark mode friendly)
     // Adjust these values in code as desired.
@@ -340,6 +324,8 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.host.nativeElement.removeEventListener('keyup', this.onKeyUp);
     document.removeEventListener('keydown', this.onKeyDown);
     this.toolboxUnsub?.();
+    this.refImagesUnsub?.();
+    this.refImagesRedrawUnsub?.();
   }
 
   draw(): void {
@@ -370,8 +356,9 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     };
 
     this.axisGrid.draw(this.gRoot, this.gUI, cv, this.pxPerMm);
-    this.showReferenceImage && this.refController.drawImage(this.gRoot)
-    this.referenceModeEnabled && this.showReferenceImage && this.refController.drawControls(this.gRoot, this.pxPerMm);
+    this.refController.referenceOpacity = this.refImages.opacity;
+    this.refImages.showReferenceImage && this.refController.drawImage(this.gRoot)
+    this.refImages.referenceModeEnabled && this.refImages.showReferenceImage && this.refController.drawControls(this.gRoot, this.pxPerMm);
 
     if (this.selectedShapeIds.size) {
       const editable = this.toolbox.getEditableShapes();
@@ -639,7 +626,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
         DraftCanvasComponent.DISPLAY_PREFS_KEY,
         JSON.stringify({
           ...existing,
-          showReferenceImage: this.showReferenceImage,
+          showReferenceImage: this.refImages.showReferenceImage,
         })
       );
     } catch {
@@ -658,7 +645,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       };
 
       if (typeof parsed.showReferenceImage === 'boolean') {
-        this.showReferenceImage = parsed.showReferenceImage;
+        this.refImages.showReferenceImage = parsed.showReferenceImage;
       }
     } catch {
       // ignore malformed/blocked sessionStorage
@@ -950,8 +937,8 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
     // delegate keyboard handling for reference image to controller first (Option B).
     // If it handles the event (e.g. arrow key nudge), skip camera pan.
-    if (this.referenceModeEnabled && this.showReferenceImage && this.activeReferenceImage?.href) {
-      const handled = this.refController.handleKeyboard(event, this.lockAspect, this.refAspect);
+    if (this.refImages.referenceModeEnabled && this.refImages.showReferenceImage && this.activeReferenceImage?.href) {
+      const handled = this.refController.handleKeyboard(event, this.refImages.lockAspect, this.refImages.refAspect);
       if (handled) {
         this.emitReferenceImages();
         this.draw();
@@ -1010,7 +997,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     const isMiddle = event.button === 1;
     const isTouch = event.pointerType === 'touch';
 
-    const canRefOps = this.referenceModeEnabled && this.showReferenceImage && !!this.activeReferenceImage?.href;
+    const canRefOps = this.refImages.referenceModeEnabled && this.refImages.showReferenceImage && !!this.activeReferenceImage?.href;
     // Shift is reserved as the drafting angle-lock modifier (see isAngleLockHeld), so it
     // must not block tool activation/selection the way Ctrl (kept free for future use) does.
     const modifierHeld = event.ctrlKey;
@@ -1165,170 +1152,30 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   }
 
   // UI: Align Reference popup controls
-  referenceControlsInfo(): void {
-    info(
-      "Each tab is a separate reference image, so you can trace different profiles (plan, long arch, cross arch) without losing the others. Only the active tab is shown and editable.\n\n" +
-      " - + adds a reference image, double-click a tab to rename it, and × removes it.\n" +
-      " - Replace swaps the active tab's image; Reset restores it to the values it had when you last selected this tab.\n\n" +
-      "You can upload a reference image using the + or Replace button. It is recommended you scale the image using either the axis or the bounding box on the base measurement panel.\n\n" +
-      "X and Y position the image on the canvas.\n" +
-      "Width and height set the dimensions of the image in millimetres.\n" +
-      "Rotation rotates the image in degrees.\n\n" +
-      "Mouse controls:\n" +
-      " - Drag the image to reposition it.\n" +
-      " - Drag a corner handle to resize proportionally; drag an edge handle to resize just that dimension (it snaps back to proportional once you drag past the image's original size).\n" +
-      " - Hold Space and drag (or use the middle mouse button) to pan the camera without moving the image.\n" +
-      " - Scroll to zoom; two-finger trackpad scroll pans, pinch zooms.\n\n" +
-      "Keyboard controls:\n" +
-      " - Arrow keys: nudge the image by 1 mm.\n" +
-      " - Ctrl + Up/Down: scale the image; Ctrl + Left/Right: rotate it 1°.\n" +
-      " - F: fit the full design back into view.\n" +
-      " - +/-: zoom in or out.\n" +
-      " - Outside of reference mode, arrow keys pan the camera instead (Shift for larger steps).\n",
-      "Reference Image", false
-    );
-  }
-
-  toggleAlignPopup(): void {
-    this.referenceModeEnabled = !this.referenceModeEnabled;
-    this.alignPopupOpen = this.referenceModeEnabled;
-    this.captureResetBaseline();
-    this.draw();
-  }
-
-  // ===== Multi-image (tab) state =====
+  // ===== Reference image: camera/pointer-dependent parts only — the popup UI, tab CRUD, and
+  // param/reset/rename logic now live in ReferenceImageStore + tool-palette.ts. =====
 
   /** Points the controller at the active tab (or clears it when none). */
   private syncControllerToActive(): void {
     this.refController?.setImage(this.activeReferenceImage ?? undefined);
   }
 
-  /** Snapshots the active tab so Reset can restore it and aspect-lock is seeded. */
-  private captureResetBaseline(): void {
-    const active = this.activeReferenceImage;
-    this.oldReferenceImageParams = active ? { ...active } : undefined;
-    if (active && active.height) this.refAspect = Math.abs(active.width / active.height) || 1;
-  }
-
-  /** Live write-back from the controller during drag/scale — keeps id/label. */
-  private applyControllerChange(img?: ReferenceImage): void {
-    if (!img || !this.activeRefId) return;
-    const idx = this._referenceImages.findIndex(r => r.id === this.activeRefId);
-    if (idx < 0) return;
-    this._referenceImages[idx] = { ...this._referenceImages[idx], ...img };
-  }
-
-  /** Replaces the active tab's entry and re-points the controller at it. */
-  private replaceActive(next: NamedReferenceImage): void {
-    const idx = this._referenceImages.findIndex(r => r.id === next.id);
-    if (idx < 0) return;
-    this._referenceImages[idx] = next;
-    this.refController.setImage(next);
-  }
-
   private emitReferenceImages(): void {
-    this.referenceImagesChange.emit(this._referenceImages);
+    this.referenceImagesChange.emit(this.refImages.images);
   }
 
-  private nextRefLabel(): string {
-    return `Img ${this._referenceImages.length + 1}`;
-  }
-
-  selectRefTab(id: string): void {
-    if (this.activeRefId === id) return;
-    this.activeRefId = id;
-    this.editingRefId = null;
-    this.captureResetBaseline();
-    this.syncControllerToActive();
-    this.draw();
-  }
-
-  requestAddReference(fileInput: HTMLInputElement): void {
+  requestAddReference(): void {
     this.pendingRefUploadMode = 'add';
-    fileInput.click();
+    this.refFileInputRef?.nativeElement.click();
   }
 
-  requestReplaceReference(fileInput: HTMLInputElement): void {
+  requestReplaceReference(): void {
     this.pendingRefUploadMode = this.activeReferenceImage ? 'replace' : 'add';
-    fileInput.click();
-  }
-
-  deleteRefTab(id: string): void {
-    const idx = this._referenceImages.findIndex(r => r.id === id);
-    if (idx < 0) return;
-    this._referenceImages = this._referenceImages.filter(r => r.id !== id);
-    if (this.editingRefId === id) this.editingRefId = null;
-    if (this.activeRefId === id) {
-      this.activeRefId = this._referenceImages[Math.min(idx, this._referenceImages.length - 1)]?.id ?? null;
-      this.captureResetBaseline();
-    }
-    this.syncControllerToActive();
-    this.emitReferenceImages();
-    this.draw();
-  }
-
-  startRenameRef(id: string): void {
-    this.editingRefId = id;
-    // The rename <input> is created by this state change; focus it next tick.
-    setTimeout(() => {
-      const el = this.host.nativeElement
-        .closest('.canvas-shell')
-        ?.querySelector('.ref-tab-edit') as HTMLInputElement | null;
-      el?.focus();
-      el?.select();
-    });
-  }
-
-  commitRenameRef(id: string, label: string): void {
-    const tab = this._referenceImages.find(r => r.id === id);
-    if (tab) tab.label = (label ?? '').trim() || tab.label;
-    this.editingRefId = null;
-    this.emitReferenceImages();
-  }
-
-  closeAlignPopup(): void {
-    this.alignPopupOpen = false;
+    this.refFileInputRef?.nativeElement.click();
   }
 
   toggleAxisPopup(): void {
     this.axisPopupOpen = !this.axisPopupOpen;
-  }
-
-  onRefParamChange(key: keyof ReferenceImage, val: number): void {
-    const active = this.activeReferenceImage;
-    if (!active) return;
-    const v = Number(val) || 0;
-    const minMm = 1;
-
-    let next: NamedReferenceImage = { ...active };
-
-    if (key === 'x' || key === 'y') {
-      (next as any)[key] = v;
-    } else if (key === 'rotationDeg') {
-      next.rotationDeg = this.normalizeRotationDeg(v);
-    } else if (key === 'width') {
-      next.width = Math.max(minMm, v);
-      if (this.lockAspect) {
-        next.height = Math.max(minMm, Math.round(next.width / (this.refAspect || 1)));
-      }
-    } else if (key === 'height') {
-      next.height = Math.max(minMm, v);
-      if (this.lockAspect) {
-        next.width = Math.max(minMm, Math.round(next.height * (this.refAspect || 1)));
-      }
-    }
-
-    this.replaceActive(next);
-    this.emitReferenceImages();
-    this.draw();
-  }
-
-  resetReferenceImage(): void {
-    const baseline = this.oldReferenceImageParams;
-    if (!baseline || baseline.id !== this.activeRefId) return;
-    this.replaceActive({ ...baseline });
-    this.emitReferenceImages();
-    this.draw();
   }
 
   /** Fits an image of the given pixel size into the current camera bounds (aspect-preserving). */
@@ -1364,7 +1211,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     const dataUrl = await this.readFileAsDataUrl(file);
     const { w, h } = await this.getImageSize(dataUrl);
     const { imgW, imgH, imgX, imgY } = this.fitImageToBounds(w, h);
-    this.refAspect = w / h || 1;
+    this.refImages.refAspect = w / h || 1;
 
     const geom: ReferenceImage = {
       href: dataUrl,
@@ -1378,20 +1225,11 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
     if (this.pendingRefUploadMode === 'replace' && this.activeReferenceImage) {
       // Keep the tab's id/label; swap in the new image and geometry.
-      const next: NamedReferenceImage = { ...this.activeReferenceImage, ...geom };
-      this.replaceActive(next);
-      this.oldReferenceImageParams = { ...next };
+      this.refImages.replaceActive({ ...this.activeReferenceImage, ...geom });
     } else {
-      const named = toNamedReferenceImage(geom, this.nextRefLabel());
-      this._referenceImages = [...this._referenceImages, named];
-      this.activeRefId = named.id;
-      this.oldReferenceImageParams = { ...named };
-      this.syncControllerToActive();
+      this.refImages.addImage(toNamedReferenceImage(geom, this.refImages.nextLabel()));
     }
-
-    this.showReferenceImage = true;
-    this.emitReferenceImages();
-    this.draw();
+    this.refImages.setShowReferenceImage(true);
 
     input.value = '';
   }

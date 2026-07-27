@@ -17,27 +17,51 @@
     }
   </div>
 
+  <input #refFileInput type="file" accept="image/*" style="display:none"
+    (change)="onReferenceFileSelected($event)" />
+
   <app-tool-palette
     [toolRows]="toolRows"
     [activeTool]="activeTool"
-    [selectedShape]="selectedShape"
-    (toolActivated)="selectTool($event)">
+    (toolActivated)="selectTool($event)"
+    (addReferenceRequested)="requestAddReference()"
+    (replaceReferenceRequested)="requestReplaceReference()">
   </app-tool-palette>
 
   <div class="ui-controls">
     <div class="left">
       <!-- <button type="button" class="btn" (click)="darkMode()">Dark Mode</button> -->
 
-      <button type="button" class="btn" (click)="fitCamera(); draw()">Fit</button>
-
-      <div class="sep"></div>
-
-      <button type="button" class="btn" (click)="applyZoom(pxPerMm / 1.1)">−</button>
-      <div class="readout">{{ pxPerMm.toFixed(1) }} px/mm</div>
-      <button type="button" class="btn" (click)="applyZoom(pxPerMm * 1.1)">+</button>
+      <app-settings-bar [activeTool]="activeTool" [selectedShape]="selectedShape"></app-settings-bar>
     </div>
 
     <div class="right">
+      <div class="zoom-controls">
+        <button type="button" class="zoom-btn" (click)="fitCamera(); draw()" title="Fit to view (F)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 4H5a1 1 0 0 0-1 1v4" />
+            <path d="M15 4h4a1 1 0 0 1 1 1v4" />
+            <path d="M9 20H5a1 1 0 0 1-1-1v-4" />
+            <path d="M15 20h4a1 1 0 0 0 1-1v-4" />
+          </svg>
+        </button>
+        <button type="button" class="zoom-btn" (click)="applyZoom(pxPerMm / 1.1)" title="Zoom out">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round">
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </button>
+        <span class="zoom-readout" title="Zoom (px/mm)">{{ pxPerMm.toFixed(1) }}</span>
+        <button type="button" class="zoom-btn" (click)="applyZoom(pxPerMm * 1.1)" title="Zoom in">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </button>
+      </div>
+
        <div class="axis-controls">
         <button type="button" class="btn" [class.active]="axisPopupOpen" (click)="toggleAxisPopup()">
           Axis
@@ -68,85 +92,5 @@
         }
       </div>
 
-
-      <div class="align-controls">
-        <div class="btn-split" [class.dim]="!showReferenceImage">
-          <button type="button" class="btn-split-main" [class.active]="referenceModeEnabled"
-            (click)="toggleAlignPopup()" title="Reference image controls">
-            Reference
-          </button>
-          <label class="btn-split-toggle" [class.on]="showReferenceImage"
-            title="Show / hide the reference image">
-            <input type="checkbox" [(ngModel)]="showReferenceImage" (change)="onDisplayPreferenceChange()" />
-          </label>
-        </div>
-        @if(referenceModeEnabled) {
-        <div class="align-popup">
-          <input #refFileInput type="file" accept="image/*" style="display:none"
-            (change)="onReferenceFileSelected($event)" />
-
-          <div class="ref-tabs">
-            @for (tab of referenceImages; track tab.id) {
-              <div class="ref-tab" [class.active]="tab.id === activeRefId" (click)="selectRefTab(tab.id)">
-                @if (editingRefId === tab.id) {
-                  <input #renameInput class="ref-tab-edit" type="text" [value]="tab.label"
-                    (click)="$event.stopPropagation()"
-                    (keydown.enter)="commitRenameRef(tab.id, renameInput.value)"
-                    (keydown.escape)="editingRefId = null"
-                    (blur)="commitRenameRef(tab.id, renameInput.value)" />
-                } @else {
-                  <span class="ref-tab-label" (dblclick)="startRenameRef(tab.id)" title="Double-click to rename">{{ tab.label }}</span>
-                  <button type="button" class="ref-tab-x" title="Remove"
-                    (click)="deleteRefTab(tab.id); $event.stopPropagation()">×</button>
-                }
-              </div>
-            }
-            <button type="button" class="ref-tab-add" title="Add reference image"
-              (click)="requestAddReference(refFileInput)">+</button>
-          </div>
-
-          @if (activeReferenceImage) {
-          <div class="ref-grid">
-            <span class="ref-lbl">X</span>
-            <input type="number" [ngModel]="activeReferenceImage?.x" (ngModelChange)="onRefParamChange('x', $event)" />
-            <span class="ref-lbl">Y</span>
-            <input type="number" [ngModel]="activeReferenceImage?.y" (ngModelChange)="onRefParamChange('y', $event)" />
-            <span class="ref-lbl">W</span>
-            <input type="number" [ngModel]="activeReferenceImage?.width" (ngModelChange)="onRefParamChange('width', $event)" />
-            <span class="ref-lbl">H</span>
-            <input type="number" [ngModel]="activeReferenceImage?.height" (ngModelChange)="onRefParamChange('height', $event)" />
-            <span class="ref-lbl">°</span>
-            <input type="number" step="0.1" [ngModel]="activeReferenceImage?.rotationDeg ?? 0" (ngModelChange)="onRefParamChange('rotationDeg', $event)" />
-          </div>
-          <div class="ref-opacity">
-            <span class="ref-lbl">Opacity</span>
-            <input type="range" min="0" max="1" step="0.01"
-              [ngModel]="referenceOpacity"
-              (ngModelChange)="referenceOpacity = $event" />
-            <span class="ref-pct">{{ (referenceOpacity * 100).toFixed(0) }}%</span>
-          </div>
-          <div class="ref-checks">
-            <label class="chk">
-              <input type="checkbox" [(ngModel)]="showReferenceImage" (change)="onDisplayPreferenceChange()" />
-              View
-            </label>
-          </div>
-          } @else {
-          <div class="ref-empty">No reference image. Click + to add one.</div>
-          }
-
-          <div class="ref-actions">
-            <button type="button" class="btn" (click)="referenceControlsInfo()" title="Help">Help</button>
-            <div class="ref-right">
-              <button type="button" class="btn" [disabled]="!activeReferenceImage"
-                (click)="requestReplaceReference(refFileInput)">Replace</button>
-              <button type="button" class="btn ref-reset-btn" [disabled]="!activeReferenceImage"
-                (click)="resetReferenceImage()">Reset</button>
-              <button type="button" class="btn ref-ok-btn" (click)="toggleAlignPopup()">OK</button>
-            </div>
-          </div>
-        </div>
-        }
-      </div>
     </div>
   </div>

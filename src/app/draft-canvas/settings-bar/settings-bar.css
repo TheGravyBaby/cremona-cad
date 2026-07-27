@@ -1,0 +1,122 @@
+/* Inkscape-style contextual settings strip, laid out as a two-row table: a thin label row
+   on top and a taller control row below, so every field's label sits flush with every
+   other's regardless of how tall its particular control is. Each .field/.toggle is
+   `display: contents` — its label and control become direct grid items, and
+   grid-auto-flow: column packs each consecutive label+control pair into its own column,
+   row 1 then row 2, in DOM order. Color swatches have no label, so they span both rows
+   and get their own column via .color-swatch's explicit grid-row.
+   Wraps to a second row (the parent .ui-controls/.left grow to fit) when everything doesn't
+   fit on one line, rather than clipping or scrolling. A slightly different background than
+   the surrounding .ui-controls bar sets this off as its own group. */
+.settings-bar {
+  display: grid;
+  grid-template-rows: auto auto;
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 2px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--ui-bg-surface);
+}
+
+/* Just the color, sized to match the old bordered/padded swatch's overall footprint
+   (26px + 2×2px padding + 2×1px border = 32px) — no separate border box around it.
+   Spans both table rows since it has no label, so it doesn't disrupt the next field's
+   label/control column pairing. */
+.color-swatch {
+  grid-row: 1 / span 2;
+  align-self: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+}
+
+.field {
+  display: contents;
+}
+
+/* Groups an X/Y pair (or any other paired-point fields) tightly together — a nested version
+   of .settings-bar's own two-row grid, so the pair reads as one coordinate instead of two
+   independent fields. Spans both outer rows, like .color-swatch, so it occupies one column
+   band in the outer bar without disrupting the label/control row split. */
+.point-group {
+  grid-row: 1 / span 2;
+  align-self: center;
+  display: grid;
+  grid-template-rows: auto auto;
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  align-items: center;
+  column-gap: 2px;
+  row-gap: 2px;
+}
+
+.f-lbl {
+  align-self: end;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--ui-text-muted);
+  white-space: nowrap;
+}
+
+.field input[type="number"] {
+  width: 52px;
+  height: 22px;
+  padding: 2px 4px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 4px;
+  background: var(--ui-bg-surface-2);
+  color: var(--ui-text-primary);
+  font-size: 12px;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.text-field input[type="text"] {
+  width: 160px;
+  height: 22px;
+  padding: 2px 6px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 4px;
+  background: var(--ui-bg-surface-2);
+  color: var(--ui-text-primary);
+  font-size: 12px;
+  box-sizing: border-box;
+}
+
+.weights-field input[type="text"] {
+  width: 100px;
+  height: 22px;
+  padding: 2px 6px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 4px;
+  background: var(--ui-bg-surface-2);
+  color: var(--ui-text-primary);
+  font-size: 12px;
+  box-sizing: border-box;
+}
+
+.toggle {
+  display: contents;
+  cursor: pointer;
+}
+
+.toggle input[type="checkbox"] {
+  align-self: center;
+  justify-self: center;
+  width: 13px;
+  height: 13px;
+  margin: 0;
+  accent-color: var(--ui-accent);
+  cursor: pointer;
+}
+
+.toggle .f-lbl {
+  color: var(--ui-text-primary);
+}

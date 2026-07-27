@@ -521,27 +521,6 @@ export class ReferenceImageController {
       .style('pointer-events', 'none');
   }
 
-  onRefParamChange(key: keyof ReferenceImage, val: number, lockAspect: boolean, refAspect: number) {
-    if (!this.image) return;
-    const v = Number(val) || 0;
-    const minMm = 1;
-    let next: ReferenceImage = { ...this.image } as ReferenceImage;
-
-    if (key === 'x' || key === 'y') {
-      (next as any)[key] = v;
-    } else if (key === 'rotationDeg') {
-      next.rotationDeg = this.normalizeRotationDeg(v);
-    } else if (key === 'width') {
-      next.width = Math.max(minMm, v);
-      if (lockAspect) next.height = Math.max(minMm, Math.round(next.width / (refAspect || 1)));
-    } else if (key === 'height') {
-      next.height = Math.max(minMm, v);
-      if (lockAspect) next.width = Math.max(minMm, Math.round(next.height * (refAspect || 1)));
-    }
-
-    this.image = next;
-    this.onChange(this.image);
-  }
 
   handleKeyboard(event: KeyboardEvent, lockAspect: boolean, refAspect: number) {
     if (!this.image) return false;
