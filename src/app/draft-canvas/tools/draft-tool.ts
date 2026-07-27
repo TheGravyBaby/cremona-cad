@@ -15,6 +15,10 @@ export interface DraftToolHost {
   /** The shapes currently selected in Select mode — only meaningful to tools with
    * `actsOnSelection: true`, which run against a selection made before they were activated. */
   getSelectedShapes(): DraftShape[];
+  /** Current zoom, for converting an mm distance to screen pixels — e.g. distinguishing a
+   * stationary click from a real drag with the same fixed pixel threshold draft-canvas's own
+   * Select-mode drags use, regardless of how zoomed in/out the canvas is. */
+  getPxPerMm(): number;
 }
 
 /**
