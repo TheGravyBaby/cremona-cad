@@ -24,6 +24,9 @@ export class SettingsBarComponent {
 
   @Input() activeTool: DraftTool | null = null;
   @Input() selectedShape: DraftShape | undefined = undefined;
+  /** The full selection, however many shapes — unlike `selectedShape` (only set for exactly
+   * one), this drives group-editable settings like color that apply across a multi-selection. */
+  @Input() selectedShapes: DraftShape[] = [];
 
   /** Narrows the current selection to one shape type, for a settings panel's own `selectedXShape` getter. */
   private selectedShapeOfType<T extends DraftShape['type']>(type: T): Extract<DraftShape, { type: T }> | undefined {
@@ -54,9 +57,9 @@ export class SettingsBarComponent {
     this.toolbox.updateShape(shape.id, { [key]: { ...current, [axis]: v } } as Partial<DraftShape>);
   }
 
-  /** Nothing to tint if there's neither an active drawing tool nor a selected shape. */
+  /** Nothing to tint if there's neither an active drawing tool nor a selection. */
   public get showColorSwatch(): boolean {
-    return !!this.activeTool || !!this.selectedShape;
+    return !!this.activeTool || this.selectedShapes.length > 0;
   }
 
   /** Whether the bar has anything at all to show — used to hide the whole strip (rather than
@@ -65,16 +68,20 @@ export class SettingsBarComponent {
     return this.showColorSwatch;
   }
 
-  /** Shows the selected shape's color when something's selected, otherwise the pen color new shapes will use. */
+  /** Shows the selection's color when something's selected (the first shape's, when the
+   * selection has mixed colors — a native color <input> can't represent "mixed"), otherwise
+   * the pen color new shapes will use. */
   public get displayedColor(): string {
-    return this.selectedShape?.color ?? this.toolbox.currentColor;
+    return this.selectedShapes[0]?.color ?? this.toolbox.currentColor;
   }
 
+  /** Applies to every selected shape at once (one history step via updateShapes), so recoloring
+   * a group is a single undo — not one step per shape. */
   setColor(color: string): void {
     this.toolbox.currentColor = color;
-    if (this.selectedShape) {
-      this.toolbox.updateShape(this.selectedShape.id, { color });
-    }
+    if (this.selectedShapes.length === 0) return;
+    const patches = new Map<string, Partial<DraftShape>>(this.selectedShapes.map(s => [s.id, { color }]));
+    this.toolbox.updateShapes(patches);
   }
 
   /** Line/Dimension both share start+end geometry — editable numerically once a shape is selected. */
