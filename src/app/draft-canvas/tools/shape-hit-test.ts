@@ -69,14 +69,19 @@ function distanceToBoxInterior(p: Pt, x0: number, y0: number, x1: number, y1: nu
  * measure the actual rendered glyphs. Anchored at `position` per shape-renderer.ts's
  * text-anchor:start, and (for the whole multi-line block) dominant-baseline:central.
  */
-function distanceToText(p: Pt, position: Pt, text: string, pxPerMm: number): number {
+function textFootprint(position: Pt, text: string, pxPerMm: number): ShapeBounds {
   const fontSizeMm = TEXT_FONT_SIZE_PX / pxPerMm;
   const lines = text.split('\n');
   const maxLineLen = Math.max(1, ...lines.map(line => line.length));
   const lineHeight = fontSizeMm * TEXT_LINE_HEIGHT_RATIO;
   const width = maxLineLen * fontSizeMm * 0.55;
   const height = lines.length * lineHeight;
-  return distanceToBoxInterior(p, position.x, position.y - height / 2, position.x + width, position.y + height / 2);
+  return { x0: position.x, y0: position.y - height / 2, x1: position.x + width, y1: position.y + height / 2 };
+}
+
+function distanceToText(p: Pt, position: Pt, text: string, pxPerMm: number): number {
+  const box = textFootprint(position, text, pxPerMm);
+  return distanceToBoxInterior(p, box.x0, box.y0, box.x1, box.y1);
 }
 
 /** Shortest distance from a world-space point to a toolbox shape's geometry. */
@@ -96,5 +101,53 @@ export function distanceToShape(p: Pt, shape: DraftShape, pxPerMm: number): numb
       return distanceToText(p, shape.position, shape.text, pxPerMm);
     case 'point':
       return Math.hypot(p.x - shape.position.x, p.y - shape.position.y);
+  }
+}
+
+export interface ShapeBounds {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
+/** Axis-aligned bounding box of a toolbox shape's geometry, in world mm — used for
+ * marquee/area selection (see draft-canvas.ts's onPointerDown/onPointerUp). Arc's bound is
+ * sampled along its actual sweep rather than its full enclosing circle, so a marquee has to
+ * cover the visible arc, not the untraced rest of the circle it sits on. */
+export function shapeBounds(shape: DraftShape, pxPerMm: number): ShapeBounds {
+  switch (shape.type) {
+    case 'line':
+    case 'dimension':
+    case 'boxline':
+      return {
+        x0: Math.min(shape.start.x, shape.end.x), x1: Math.max(shape.start.x, shape.end.x),
+        y0: Math.min(shape.start.y, shape.end.y), y1: Math.max(shape.start.y, shape.end.y),
+      };
+    case 'circle':
+      return {
+        x0: shape.center.x - shape.radius, x1: shape.center.x + shape.radius,
+        y0: shape.center.y - shape.radius, y1: shape.center.y + shape.radius,
+      };
+    case 'arc': {
+      const span = normalizeAngle(shape.endAngle - shape.startAngle);
+      const steps = 16;
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (let i = 0; i <= steps; i++) {
+        const pt = pointOnCircle(shape.center, shape.radius, shape.startAngle + (span * i) / steps);
+        x0 = Math.min(x0, pt.x); x1 = Math.max(x1, pt.x);
+        y0 = Math.min(y0, pt.y); y1 = Math.max(y1, pt.y);
+      }
+      return { x0, y0, x1, y1 };
+    }
+    case 'rect':
+      return {
+        x0: Math.min(shape.p1.x, shape.p2.x), x1: Math.max(shape.p1.x, shape.p2.x),
+        y0: Math.min(shape.p1.y, shape.p2.y), y1: Math.max(shape.p1.y, shape.p2.y),
+      };
+    case 'text':
+      return textFootprint(shape.position, shape.text, pxPerMm);
+    case 'point':
+      return { x0: shape.position.x, x1: shape.position.x, y0: shape.position.y, y1: shape.position.y };
   }
 }

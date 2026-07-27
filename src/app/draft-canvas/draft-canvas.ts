@@ -29,10 +29,10 @@ import { createTextTool } from './tools/text-tool';
 import { createPointTool } from './tools/point-tool';
 import { ToolSlot, single, flyout } from './tools/tool-slot';
 import { ToolboxStore } from './tools/toolbox-store';
-import { drawShape, drawSelectionHalo, drawMoveGrabber, drawEndpointGrabber } from './tools/shape-renderer';
+import { drawShape, drawSelectionHalo, drawMoveGrabber, drawEndpointGrabber, drawAreaSelectBox } from './tools/shape-renderer';
 import { SnapCandidate, SnapEngine } from './tools/snap-engine';
 import { drawSnapMarker } from './tools/snap-marker-renderer';
-import { distanceToShape } from './tools/shape-hit-test';
+import { distanceToShape, shapeBounds } from './tools/shape-hit-test';
 import { translateShape } from './tools/shape-transform';
 import { moveGrabberPosition, endpointGrabbers, withEndpoint, EndpointKey } from './tools/shape-grabbers';
 import { snapToLockedAngle } from './tools/angle-lock';
@@ -147,6 +147,16 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   // `dragOverrides` with the move-drag above — draw() doesn't care which mechanism produced it.
   private dragEndpoint: { shapeId: string; key: EndpointKey; original: DraftShape } | null = null;
   private isDraggingEndpoint = false;
+
+  // Area-select (marquee): pointerdown on empty canvas in Select mode arms a potential
+  // rubber-band box, same threshold-gated arm/commit pattern as the drags above, so a plain
+  // click on empty space still just (de)selects — see onPointerDown/onPointerMove/onPointerUp.
+  // Shapes fully contained within the box become the selection, or are added to whatever was
+  // already selected if Shift was held when the drag started.
+  private areaSelectAnchor: Pt | null = null;
+  private areaSelectCurrent: Pt | null = null;
+  private areaSelectAdditive = false;
+  private isAreaSelecting = false;
 
   // Inline text editing: placing (or later re-editing) a Text shape opens a plain <textarea>
   // positioned directly over its on-canvas location, instead of routing through the settings
@@ -398,6 +408,14 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.activeTool?.renderPreview(this.gRoot, this.gUI, this.pxPerMm);
     if ((this.activeTool || this.isDraggingEndpoint) && this.activeSnap) {
       drawSnapMarker(this.gRoot, this.activeSnap, this.pxPerMm);
+    }
+    if (this.isAreaSelecting && this.areaSelectAnchor && this.areaSelectCurrent) {
+      drawAreaSelectBox(this.gRoot, {
+        x0: Math.min(this.areaSelectAnchor.x, this.areaSelectCurrent.x),
+        x1: Math.max(this.areaSelectAnchor.x, this.areaSelectCurrent.x),
+        y0: Math.min(this.areaSelectAnchor.y, this.areaSelectCurrent.y),
+        y1: Math.max(this.areaSelectAnchor.y, this.areaSelectCurrent.y),
+      });
     }
 
     if (this.editingTextShapeId) this.updateEditingTextPosition();
@@ -769,6 +787,25 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
+    // Select mode: an armed area-select (see onPointerDown) becomes a real marquee once the
+    // pointer clears the same drag threshold as the drags above — a plain click on empty space
+    // still just (de)selects, resolved in onPointerUp once we know it never became a drag.
+    if (this.areaSelectAnchor) {
+      const pt = this.worldFromPointer(event);
+      this.areaSelectCurrent = pt;
+      if (!this.isAreaSelecting) {
+        const pxDist = Math.hypot(pt.x - this.areaSelectAnchor.x, pt.y - this.areaSelectAnchor.y) * this.pxPerMm;
+        if (pxDist < DraftCanvasComponent.DRAG_MOVE_THRESHOLD_PX) {
+          event.preventDefault();
+          return;
+        }
+        this.isAreaSelecting = true;
+      }
+      event.preventDefault();
+      this.draw();
+      return;
+    }
+
     // active drafting tool takes precedence over camera pan (space-drag still overrides)
     if (this.activeTool && !this.isDragging) {
       const pt = this.resolveToolPoint(this.worldFromPointer(event));
@@ -821,6 +858,35 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       this.isDraggingSelection = false;
       this.isDraggingEndpoint = false;
       this.activeSnap = null;
+      this.draw();
+    }
+
+    // Resolve an armed area-select (see onPointerDown/onPointerMove): if it never became a
+    // real drag, it's a plain click on empty space — clear the selection (unless Shift, which
+    // is a no-op there, same as a shift-click on empty space elsewhere). Otherwise select every
+    // shape fully contained in the final box, unioned with the prior selection if Shift was
+    // held when the drag started.
+    if (this.areaSelectAnchor) {
+      if (this.isAreaSelecting && this.areaSelectCurrent) {
+        const box = {
+          x0: Math.min(this.areaSelectAnchor.x, this.areaSelectCurrent.x),
+          x1: Math.max(this.areaSelectAnchor.x, this.areaSelectCurrent.x),
+          y0: Math.min(this.areaSelectAnchor.y, this.areaSelectCurrent.y),
+          y1: Math.max(this.areaSelectAnchor.y, this.areaSelectCurrent.y),
+        };
+        const contained = this.toolbox.getEditableShapes().filter(shape => {
+          const b = shapeBounds(shape, this.pxPerMm);
+          return b.x0 >= box.x0 && b.x1 <= box.x1 && b.y0 >= box.y0 && b.y1 <= box.y1;
+        });
+        this.selectedShapeIds = this.areaSelectAdditive
+          ? new Set([...this.selectedShapeIds, ...contained.map(s => s.id)])
+          : new Set(contained.map(s => s.id));
+      } else if (!this.areaSelectAdditive) {
+        this.selectedShapeIds.clear();
+      }
+      this.areaSelectAnchor = null;
+      this.areaSelectCurrent = null;
+      this.isAreaSelecting = false;
       this.draw();
     }
 
@@ -1063,10 +1129,22 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
         this.host.nativeElement.setPointerCapture(event.pointerId);
       } else {
         const hitId = this.hitTestToolboxShape(pt);
-        if (event.shiftKey) {
-          this.toggleSelected(hitId);
+        if (hitId) {
+          if (event.shiftKey) this.toggleSelected(hitId);
+          else this.setSelectedShape(hitId);
+        } else if (isTouch) {
+          // Touch keeps its existing immediate-click behavior — it also falls through to the
+          // pan-arming block below, so a marquee drag would conflict with that single-finger pan.
+          if (!event.shiftKey) this.setSelectedShape(null);
         } else {
-          this.setSelectedShape(hitId);
+          // Empty space: arm a potential marquee rather than deciding now — onPointerUp
+          // resolves it as either a plain click (never dragged) or an area-select (dragged
+          // past the threshold), same pattern as the move/endpoint drags above.
+          this.areaSelectAnchor = pt;
+          this.areaSelectCurrent = pt;
+          this.areaSelectAdditive = event.shiftKey;
+          this.isAreaSelecting = false;
+          this.host.nativeElement.setPointerCapture(event.pointerId);
         }
       }
     }

@@ -100,15 +100,19 @@
   box-shadow: none;
 }
 
-.host.dragging {
-  cursor: grabbing;
+/* Crosshair signals "this tool draws on click" — the standard cursor drawing/vector apps use
+   for that, so it doesn't need a custom icon. Space-pan (pan-ready/dragging) still takes over
+   when active: same .host.X specificity, declared after .drawing, so it wins the cascade
+   whenever both classes are present together. */
+.host.drawing {
+  cursor: crosshair;
 }
 
-.pan-ready {
+.host.pan-ready {
   cursor: grab;
 }
 
-.dragging {
+.host.dragging {
   cursor: grabbing;
 }
 
