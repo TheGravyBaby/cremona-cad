@@ -252,17 +252,60 @@ export class ToolboxStore {
 
   private persist(): void {
     try {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
-        shapes: this.shapes,
-        currentColor: this._currentColor,
-        currentDashed: this._currentDashed,
-        currentBoxLineColor2: this._currentBoxLineColor2,
-        currentBoxLineWeights: this._currentBoxLineWeights,
-        layers: this._layers,
-        activeLayerId: this._activeLayerId,
-      }));
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(this.exportState()));
     } catch {
       // ignore storage errors
     }
+  }
+
+  /** Same shape persist() writes to sessionStorage — reused so the recipe file's saved/loaded
+   * blob and the session's scratch copy can't drift apart. */
+  exportState(): object {
+    return {
+      shapes: this.shapes,
+      currentColor: this._currentColor,
+      currentDashed: this._currentDashed,
+      currentBoxLineColor2: this._currentBoxLineColor2,
+      currentBoxLineWeights: this._currentBoxLineWeights,
+      layers: this._layers,
+      activeLayerId: this._activeLayerId,
+    };
+  }
+
+  /** Wipes shapes and layers back to a single empty default layer, resetting undo history too —
+   * used when loading a new template or a new file, so drawings from whatever was previously
+   * open don't linger into the freshly loaded one. */
+  resetAll(): void {
+    this.shapes = [];
+    this._layers = [{ id: DEFAULT_LAYER_ID, name: 'Layer 1', visible: true, locked: false }];
+    this._activeLayerId = DEFAULT_LAYER_ID;
+    this.history = [this.shapes];
+    this.historyIndex = 0;
+    this.persist();
+    this.notify();
+  }
+
+  /** Restores drawn shapes/layers from a recipe file (see recipe-base.ts's loadFile) — same
+   * field-by-field tolerance as load() for older saves missing newer fields, and resets undo
+   * history so a freshly loaded file starts with nothing to undo past. */
+  loadState(state: unknown): void {
+    if (!state || typeof state !== 'object') return;
+    const parsed = state as Record<string, unknown>;
+    if (Array.isArray(parsed['shapes'])) this.shapes = parsed['shapes'] as DraftShape[];
+    if (typeof parsed['currentColor'] === 'string') this._currentColor = parsed['currentColor'] as string;
+    if (typeof parsed['currentDashed'] === 'boolean') this._currentDashed = parsed['currentDashed'] as boolean;
+    if (typeof parsed['currentBoxLineColor2'] === 'string') this._currentBoxLineColor2 = parsed['currentBoxLineColor2'] as string;
+    if (Array.isArray(parsed['currentBoxLineWeights'])) this._currentBoxLineWeights = parsed['currentBoxLineWeights'] as number[];
+    if (Array.isArray(parsed['layers']) && (parsed['layers'] as unknown[]).length > 0) {
+      this._layers = (parsed['layers'] as Array<Partial<Layer> & { id: string; name: string }>).map(l => ({
+        id: l.id, name: l.name, visible: l.visible ?? true, locked: l.locked ?? false,
+      }));
+    }
+    if (typeof parsed['activeLayerId'] === 'string') this._activeLayerId = parsed['activeLayerId'] as string;
+
+    this.history = [this.shapes];
+    this.historyIndex = 0;
+    this.persist();
+    this.notify();
   }
 }

@@ -77,4 +77,8 @@ export interface RecipeInterface {
     /** @deprecated legacy single-image field; migrated into `referenceImages` on load. */
     referenceImage?: ReferenceImage;
     referenceImages?: NamedReferenceImage[];
+    /** Shapes drawn with the draft-canvas toolbox — see ToolboxStore.exportState/loadState.
+     * Untyped here (rather than importing DraftShape) to avoid a models/types.ts <-> draft-canvas
+     * circular import; recipe-base.ts is the only code that reads/writes it. */
+    toolboxState?: object;
 }
