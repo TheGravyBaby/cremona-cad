@@ -2,7 +2,18 @@
   "permissions": {
     "allow": [
       "Bash(cat /tmp/draft-canvas-ts-1.ts /tmp/draft-canvas-ts-2.ts > /tmp/draft-canvas-ts-merged.ts && wc -l /tmp/draft-canvas-ts-merged.ts)",
-      "Bash(python3 -)"
+      "Bash(python3 -)",
+      "Bash(npx ts-node *)",
+      "Bash(cat)",
+      "Bash(node /tmp/biarc_real.js)",
+      "Bash(node /tmp/biarc_general.js)",
+      "Bash(node /tmp/biarc_general2.js)",
+      "Bash(git -C /Users/aargraves/Documents/cremona-cad status --short src/app/enrico-ceruti-violin/_debug-join.ts)",
+      "Bash(git -C /Users/aargraves/Documents/cremona-cad status --short)",
+      "Bash(node /tmp/biarc_minor.js)",
+      "Bash(node /tmp/verify_fix.js)",
+      "Bash(node /tmp/verify_scale.js)",
+      "Bash(node /tmp/verify_combined.js)"
     ],
     "additionalDirectories": [
       "/tmp"

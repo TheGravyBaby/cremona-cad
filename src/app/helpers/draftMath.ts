@@ -510,18 +510,52 @@ export function findJoiningArcs(arc1: Arc, side1: "start" | "end", arc2: Arc, si
   const theta1 = side1 === "end" ? arc1.end : arc1.start;
   const P1: Pt = { x: arc1.x + arc1.r * Math.cos(theta1), y: arc1.y + arc1.r * Math.sin(theta1) };
   const s1 = side1 === "end" ? 1 : -1;
-  const T1Sine = T1Invert ? -1 : 1;
-  const T1: Pt = { x: s1 * T1Sine * -Math.sin(theta1), y: s1 * T1Sine * Math.cos(theta1) };
+  const T1vec: Pt = { x: s1 * -Math.sin(theta1), y: s1 * Math.cos(theta1) };
 
   const theta2 = side2 === "start" ? arc2.start : arc2.end;
   const P2: Pt = { x: arc2.x + arc2.r * Math.cos(theta2), y: arc2.y + arc2.r * Math.sin(theta2) };
   const s2 = side2 === "start" ? 1 : -1;
-  const T2Sine = T2Invert ? -1 : 1;
-  const T2: Pt = { x: s2 * T2Sine * Math.sin(theta2), y: s2 * T2Sine * -Math.cos(theta2) };
+  const T2vec: Pt = { x: s2 * Math.sin(theta2), y: s2 * -Math.cos(theta2) };
+
+  return findJoiningArcsFromTangents(
+    P1, Math.atan2(T1vec.y, T1vec.x),
+    P2, Math.atan2(T2vec.y, T2vec.x),
+    T1Invert, T2Invert,
+  );
+}
+
+/**
+ * Core biarc solve, factored out of findJoiningArcs so callers driven by raw
+ * click/snap tangents (e.g. JoinArcTool) can feed it points+tangents directly
+ * instead of going through Arc+side. T1/T2 are "departure" tangent angles —
+ * pointing away from each curve's own body, into the joint that will be
+ * built — matching findJoiningArcs' existing convention (see its side1/side2
+ * comment above). `invert1`/`invert2` flip the corresponding departure
+ * direction 180°, the same escape hatch findJoiningArcs already exposed.
+ */
+export function findJoiningArcsFromTangents(P1: Pt, T1: number, P2: Pt, T2: number, invert1 = false, invert2 = false): Arc[] {
+  const roots = solveBiarcRoots(P1, T1, P2, T2, invert1, invert2);
+  if (roots.length === 0) return [];
+  return biarcFromRoot(P1, P2, roots[0].N1, roots[0].N2, Math.min(...roots.map(r => r.R)));
+}
+
+/**
+ * Every valid equal-radius biarc root for this P1/T1/P2/T2 pair (the quadratic
+ * 2R²(1+k) + 2R(b−a) − A² = 0 can have up to two positive solutions — a tight one and a more
+ * graceful/open one). Exposed separately from findJoiningArcsFromTangents (which only ever
+ * exposed the smaller root) so callers that need to compare candidates — e.g. JoinArcTool,
+ * picking whichever combination of root and invert flags actually gives the small, sensible
+ * connector rather than an oversized loop — can see all of them instead of just one.
+ */
+function solveBiarcRoots(P1: Pt, T1: number, P2: Pt, T2: number, invert1: boolean, invert2: boolean): { R: number; N1: Pt; N2: Pt }[] {
+  const t1 = invert1 ? T1 + Math.PI : T1;
+  const t2 = invert2 ? T2 + Math.PI : T2;
+  const T1vec: Pt = { x: Math.cos(t1), y: Math.sin(t1) };
+  const T2vec: Pt = { x: Math.cos(t2), y: Math.sin(t2) };
 
   // Left normals (90° CCW rotation of each tangent) — biarc centers live on these rays from P1/P2
-  const N1: Pt = { x: -T1.y, y: T1.x };
-  const N2: Pt = { x: -T2.y, y: T2.x };
+  const N1: Pt = { x: -T1vec.y, y: T1vec.x };
+  const N2: Pt = { x: -T2vec.y, y: T2vec.x };
 
   const A: Pt = { x: P1.x - P2.x, y: P1.y - P2.y };
   const A2 = A.x * A.x + A.y * A.y;
@@ -534,20 +568,20 @@ export function findJoiningArcs(arc1: Arc, side1: "start" | "end", arc2: Arc, si
   const qb = 2 * (b - a);
   const qc = -A2;
 
-  let R: number;
+  let roots: number[];
   if (Math.abs(qa) < 1e-10) {
     if (Math.abs(qb) < 1e-10) return [];
-    R = -qc / qb;
+    roots = [-qc / qb];
   } else {
     const disc = qb * qb - 4 * qa * qc;
     if (disc < 0) return [];
-    const R1 = (-qb + Math.sqrt(disc)) / (2 * qa);
-    const R2 = (-qb - Math.sqrt(disc)) / (2 * qa);
-    const pos = [R1, R2].filter(r => r > 1e-10);
-    if (pos.length === 0) return [];
-    R = Math.min(...pos); // larger root → more open, gradual curve
+    roots = [(-qb + Math.sqrt(disc)) / (2 * qa), (-qb - Math.sqrt(disc)) / (2 * qa)];
   }
 
+  return roots.filter(r => r > 1e-10).map(R => ({ R, N1, N2 }));
+}
+
+function biarcFromRoot(P1: Pt, P2: Pt, N1: Pt, N2: Pt, R: number): Arc[] {
   const C1: Pt = { x: P1.x + R * N1.x, y: P1.y + R * N1.y };
   const C2: Pt = { x: P2.x + R * N2.x, y: P2.y + R * N2.y };
 
@@ -558,6 +592,15 @@ export function findJoiningArcs(arc1: Arc, side1: "start" | "end", arc2: Arc, si
     new Arc(C1.x, C1.y, R, Math.atan2(P1.y - C1.y, P1.x - C1.x), Math.atan2(J.y - C1.y, J.x - C1.x)),
     new Arc(C2.x, C2.y, R, Math.atan2(J.y  - C2.y, J.x  - C2.x), Math.atan2(P2.y - C2.y, P2.x - C2.x)),
   ];
+}
+
+/**
+ * Every valid equal-radius biarc for this P1/T1/P2/T2 pair and invert combination — i.e. one
+ * result per positive root from solveBiarcRoots, instead of collapsing to a single choice like
+ * findJoiningArcsFromTangents does. See solveBiarcRoots' comment for why more than one can exist.
+ */
+export function findAllJoiningArcsFromTangents(P1: Pt, T1: number, P2: Pt, T2: number, invert1 = false, invert2 = false): Arc[][] {
+  return solveBiarcRoots(P1, T1, P2, T2, invert1, invert2).map(({ R, N1, N2 }) => biarcFromRoot(P1, P2, N1, N2, R));
 }
 
 // ===== Curve math =====
