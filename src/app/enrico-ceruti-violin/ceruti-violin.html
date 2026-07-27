@@ -39,7 +39,7 @@
         </section>
     </div>
 
-    <div class="panel-content">
+    <div class="panel-content" [class.has-view-toggle-bar]="renderToggleRows">
         @if (openPanel === 'base') {
         <app-ceruti-base-panel
             [params]="d.params"
@@ -53,7 +53,7 @@
         }
 
         @if (openPanel === 'mainBouts') {
-        <app-ceruti-main-bouts-panel
+        <app-ceruti-main-bouts-panel #panelRef
             [params]="d.params"
             [colors]="colors"
             [flags]="viewFlags"
@@ -62,7 +62,7 @@
         }
 
         @if (openPanel === 'corners') {
-        <app-ceruti-corners-panel
+        <app-ceruti-corners-panel #panelRef
             [params]="d.params"
             [colors]="colors"
             [flags]="viewFlags"
@@ -71,7 +71,7 @@
         }
 
         @if (openPanel === 'centerBout') {
-        <app-ceruti-center-bout-panel
+        <app-ceruti-center-bout-panel #panelRef
             [params]="d.params"
             [paths]="d.paths"
             [colors]="colors"
@@ -81,7 +81,7 @@
         }
 
         @if (openPanel === 'outerTrace') {
-        <app-ceruti-outer-trace-panel
+        <app-ceruti-outer-trace-panel #panelRef
             [params]="d.params"
             [paths]="d.paths"
             [colors]="colors"
@@ -101,7 +101,7 @@
         }
 
         @if (openPanel === 'longArching') {
-        <app-ceruti-long-arching-panel
+        <app-ceruti-long-arching-panel #panelRef
             [params]="d.params"
             [colors]="colors"
             [flags]="viewFlags"
@@ -129,4 +129,17 @@
         </app-ceruti-export-panel>
         }
     </div>
+
+    @if (renderToggleRows; as rt) {
+    <app-ceruti-render-toggles
+        [flags]="viewFlags"
+        [showArcsRow]="rt.arcs"
+        [showCirclesRow]="rt.circles"
+        [showGuideRow]="rt.guide"
+        [showOuterPathRow]="rt.outerPath"
+        [showAllArcs]="rt.allArcs"
+        [showAllCircles]="rt.allCircles"
+        (changed)="onRenderTogglesChanged()">
+    </app-ceruti-render-toggles>
+    }
 </div>

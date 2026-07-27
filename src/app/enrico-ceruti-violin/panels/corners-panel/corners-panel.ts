@@ -11,7 +11,6 @@ import { CerutiColors, CerutiViewFlags, EnricoCerutiParams } from '../../ceruti-
 import { renderBounds, renderBoutBouts, renderCornerGuides } from '../../renders/guides.render';
 import { renderMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { HighlightedArc, PATH_STROKE_WIDTH } from '../../renders/render-constants';
-import { RenderToggles } from '../../render-toggles/render-toggles';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 
 export interface CornersViewFlags {
@@ -24,7 +23,7 @@ export interface CornersViewFlags {
 
 @Component({
   selector: 'app-ceruti-corners-panel',
-  imports: [FormsModule, RenderToggles],
+  imports: [FormsModule],
   templateUrl: './corners-panel.html',
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })

@@ -10,7 +10,6 @@ import { centerBoutWidthInfo, cornerPositionInfo, fitC0Info } from '../../ceruti
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, PathEntry } from '../../ceruti-types';
 import { renderBounds, renderBoutBouts, renderCornerGuides } from '../../renders/guides.render';
 import { HighlightedArc, PATH_STROKE_WIDTH } from '../../renders/render-constants';
-import { RenderToggles } from '../../render-toggles/render-toggles';
 import { renderMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { renderCorners } from '../corners-panel/corners-panel';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
@@ -26,7 +25,7 @@ export interface CenterBoutViewFlags {
 
 @Component({
   selector: 'app-ceruti-center-bout-panel',
-  imports: [FormsModule, RenderToggles],
+  imports: [FormsModule],
   templateUrl: './center-bout-panel.html',
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })

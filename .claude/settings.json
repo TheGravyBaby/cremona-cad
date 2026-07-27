@@ -13,7 +13,18 @@
       "Bash(node /tmp/biarc_minor.js)",
       "Bash(node /tmp/verify_fix.js)",
       "Bash(node /tmp/verify_scale.js)",
-      "Bash(node /tmp/verify_combined.js)"
+      "Bash(node /tmp/verify_combined.js)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:4200/)",
+      "Bash(lsof -i :4200 -sTCP:LISTEN)",
+      "Bash(chromium-cli --help)",
+      "Bash(node -e \"require.resolve\\('playwright'\\)\")",
+      "Bash(npx --no-install playwright --version)",
+      "Bash(timeout 25 npm ls playwright)",
+      "Bash(timeout 25 npm view playwright version)",
+      "Bash(npm view *)",
+      "Bash(open -a \"Google Chrome\" \"http://localhost:4200\")",
+      "Bash(open \"http://localhost:4200\")",
+      "Bash(screencapture -x /private/tmp/claude-501/-Users-aargraves-Documents-cremona-cad/d6fc8cd1-c557-4499-8b37-450a3bf000f8/scratchpad/app-check.png)"
     ],
     "additionalDirectories": [
       "/tmp"
