@@ -6,6 +6,7 @@ import { createLineTool } from './line-tool';
 import { createArcTool, createArcStartFirstTool } from './arc-tool';
 import { createTangentArcTool } from './tangent-arc-tool';
 import { createChainedTangentArcTool } from './chained-tangent-arc-tool';
+import { createJoinArcTool } from './join-arc-tool';
 import { createCircleTool } from './circle-tool';
 import { createDimensionTool } from './dimension-tool';
 import { createRectTool } from './rect-tool';
@@ -37,7 +38,7 @@ export class ToolRegistryService {
     ],
     [ single(createDimensionTool()) ],
     [
-      flyout([createArcTool(), createArcStartFirstTool(), createTangentArcTool(), createChainedTangentArcTool()]),
+      flyout([createArcTool(), createArcStartFirstTool(), createTangentArcTool(), createChainedTangentArcTool(), createJoinArcTool()]),
     ],
     [
       single(createCircleTool(this.toolbox)),

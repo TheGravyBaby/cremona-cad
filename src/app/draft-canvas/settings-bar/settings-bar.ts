@@ -235,15 +235,30 @@ export class SettingsBarComponent {
     this.patchNumberField(this.selectedArcShape, key, valueDeg, { transform: v => v * Math.PI / 180 });
   }
 
-  /** "Compass": keeps the center point and dashed radius guides permanently visible on the committed arc. */
-  public get arcShowCenterGuides(): boolean {
-    return this.selectedArcShape?.showCenterGuides ?? false;
+  /** Every Arc in the current selection, however many — lets Compass stay group-editable
+   * across a multi-selection, the same way Color and Dashed already are. */
+  private get selectedArcShapes(): ArcShape[] {
+    return this.selectedShapes.filter((s): s is ArcShape => s.type === 'arc');
   }
 
+  /** Broader than showArcPanel: Compass also shows for a multi-selection of Arcs (whose
+   * individual X/Y/R/Start/End controls don't make sense as a group and stay gated behind
+   * showArcPanel), same reasoning as showBoxLineColor2. */
+  public get showArcCenterGuidesToggle(): boolean {
+    return this.selectedArcShapes.length > 0;
+  }
+
+  /** "Compass": keeps the center point and dashed radius guides permanently visible on the committed arc. */
+  public get arcShowCenterGuides(): boolean {
+    return this.selectedArcShapes[0]?.showCenterGuides ?? false;
+  }
+
+  /** Applies to every selected arc at once, so toggling Compass on a group is a single undo. */
   setArcShowCenterGuides(value: boolean): void {
-    const shape = this.selectedArcShape;
-    if (!shape) return;
-    this.toolbox.updateShape(shape.id, { showCenterGuides: value } as Partial<DraftShape>);
+    const shapes = this.selectedArcShapes;
+    if (shapes.length === 0) return;
+    const patches = new Map<string, Partial<DraftShape>>(shapes.map(s => [s.id, { showCenterGuides: value }]));
+    this.toolbox.updateShapes(patches);
   }
 
   /** Box Line has extra per-shape settings (a second color + segment weights) that don't fit the single color swatch. */

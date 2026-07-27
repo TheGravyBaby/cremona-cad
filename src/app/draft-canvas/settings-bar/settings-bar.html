@@ -131,6 +131,9 @@
       <input type="number" [value]="arcEndDeg" (change)="setArcAngle('end', $any($event.target).valueAsNumber)"
         (keydown.enter)="$any($event.target).blur()" />
     </span>
+  }
+
+  @if (showArcCenterGuidesToggle) {
     <label class="toggle">
       <span class="f-lbl">Compass</span>
       <input type="checkbox" [checked]="arcShowCenterGuides" (change)="setArcShowCenterGuides($any($event.target).checked)" />
