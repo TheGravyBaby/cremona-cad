@@ -18,12 +18,12 @@ import { AxisGridController, AxisGridPreferences, CanvasViewport } from './axis-
 import { toNamedReferenceImage } from '../helpers/referenceImages';
 import { info } from '../shared/message-emitter';
 import { DraftTool, DraftToolHost } from './tools/draft-tool';
-import { createLineTool, createDottedLineTool } from './tools/line-tool';
+import { createLineTool } from './tools/line-tool';
 import { createArcTool, createArcStartFirstTool } from './tools/arc-tool';
 import { createTangentArcTool } from './tools/tangent-arc-tool';
-import { createCircleTool, createDottedCircleTool } from './tools/circle-tool';
+import { createCircleTool } from './tools/circle-tool';
 import { createDimensionTool } from './tools/dimension-tool';
-import { createRectTool, createSquareTool } from './tools/rect-tool';
+import { createRectTool } from './tools/rect-tool';
 import { createBoxLineTool } from './tools/box-line-tool';
 import { createTextTool } from './tools/text-tool';
 import { createPointTool } from './tools/point-tool';
@@ -36,7 +36,7 @@ import { distanceToShape } from './tools/shape-hit-test';
 import { translateShape } from './tools/shape-transform';
 import { moveGrabberPosition, endpointGrabbers, withEndpoint, EndpointKey } from './tools/shape-grabbers';
 import { snapToLockedAngle } from './tools/angle-lock';
-import { DraftShape } from './tools/toolbox-shape';
+import { DraftShape, TextShape } from './tools/toolbox-shape';
 import { HOTKEY_TOOL_CYCLE } from './tools/tool-hotkeys';
 import { ToolPaletteComponent } from './tool-palette/tool-palette';
 
@@ -67,16 +67,17 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   // no variants. The toolbar and pointer routing pick both up automatically.
   public toolRows: ToolSlot[][] = [
     [
-      flyout([createLineTool(), createDottedLineTool(), createDimensionTool()]),
+      single(createLineTool(this.toolbox)),
     ],
+    [ single(createDimensionTool()) ],
     [
       flyout([createArcTool(), createTangentArcTool(), createArcStartFirstTool()]),
     ],
     [
-      flyout([createCircleTool(), createDottedCircleTool()]),
+      single(createCircleTool(this.toolbox)), 
     ],
     [
-      flyout([createRectTool(), createSquareTool()]),
+      single(createRectTool(this.toolbox)),
     ],
     [
       single(createBoxLineTool(this.toolbox)),
@@ -143,8 +144,16 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private dragEndpoint: { shapeId: string; key: EndpointKey; original: DraftShape } | null = null;
   private isDraggingEndpoint = false;
 
+  // Inline text editing: placing (or later re-editing) a Text shape opens a plain <textarea>
+  // positioned directly over its on-canvas location, instead of routing through the settings
+  // panel — see startEditingText(). The Text tool stays active throughout, so consecutive
+  // clicks place more text boxes without having to reselect the tool each time.
+  public editingTextShapeId: string | null = null;
+  public editingTextScreenX = 0;
+  public editingTextScreenY = 0;
+  @ViewChild('textEditArea') textEditAreaRef?: ElementRef<HTMLTextAreaElement>;
+
   @ViewChild('host', { static: true }) host!: ElementRef<HTMLDivElement>;
-  @ViewChild(ToolPaletteComponent) toolPalette?: ToolPaletteComponent;
   @Output() referenceImagesChange = new EventEmitter<NamedReferenceImage[]>();
   @Input() set draftFunctions(value: Array<(canvas: any, uiCan: any) => void>) {
     this.draftFuncs = value
@@ -383,16 +392,18 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       f(snapLayer, this.gUI)
     })
     this.toolbox.getVisibleShapes().forEach(s => {
+      if (s.id === this.editingTextShapeId) return; // shown via the inline textarea instead
       const shape = this.dragOverrides?.get(s.id) ?? s;
       drawShape(snapLayer, this.gUI, shape, this.pxPerMm);
     });
 
     // Candidates are only ever read from resolveToolPoint() and (on-demand, via
     // ensureSnapIndex()) an in-progress endpoint-drag — both no-ops the rest of the time
-    // (e.g. while editing a selected shape's properties in Select mode) — so skip the
-    // (potentially large, whole-scene) rebuild until something actually needs it. `snapDirty`
-    // stays set, so the next thing that does need it still rebuilds first.
-    if (this.snapDirty && (this.activeTool || this.dragEndpoint)) {
+    // (e.g. while editing a selected shape's properties in Select mode, or typing into the
+    // inline text editor, which also leaves the Text tool "active" without needing snapping)
+    // — so skip the (potentially large, whole-scene) rebuild until something actually needs
+    // it. `snapDirty` stays set, so the next thing that does need it still rebuilds first.
+    if (this.snapDirty && (this.activeTool || this.dragEndpoint) && !this.editingTextShapeId) {
       this.snapEngine.rebuild(snapLayer);
       this.snapDirty = false;
     }
@@ -401,11 +412,14 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     if ((this.activeTool || this.isDraggingEndpoint) && this.activeSnap) {
       drawSnapMarker(this.gRoot, this.activeSnap, this.pxPerMm);
     }
+
+    if (this.editingTextShapeId) this.updateEditingTextPosition();
   }
 
   /** Pass null to switch to the default select tool (no active drafting tool). Also used
    * as the (toolActivated) handler for <app-tool-palette> — see tool-palette.ts. */
   selectTool(tool: DraftTool | null): void {
+    if (this.editingTextShapeId) this.editingTextShapeId = null; // e.g. switching tools mid-edit
     this.activeTool?.reset();
     this.activeTool = tool;
     this.activeSnap = null;
@@ -539,6 +553,81 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
   public get selectedCount(): number {
     return this.selectedShapeIds.size;
+  }
+
+  // ===== Inline text editing (see the field comments above editingTextShapeId) =====
+
+  public get editingTextShape(): TextShape | undefined {
+    if (!this.editingTextShapeId) return undefined;
+    const s = this.toolbox.getEditableShapes().find(sh => sh.id === this.editingTextShapeId);
+    return s?.type === 'text' ? s : undefined;
+  }
+
+  public get editingTextColor(): string {
+    return this.editingTextShape?.color ?? this.toolbox.currentColor;
+  }
+
+  /** Grows the textarea by line count so Shift+Enter'd lines are all visible, not scrolled. */
+  public get editingTextRows(): number {
+    return Math.max(1, this.editingTextShape?.text.split('\n').length ?? 1);
+  }
+
+  /** Converts a world-mm point to pixels relative to the host div, via the SVG's own current
+   * screen transform — reuses whatever pan/zoom/viewBox math is already in effect instead of
+   * duplicating Camera's bookkeeping here. */
+  private worldToHostPx(pt: Pt): { x: number; y: number } {
+    const svgNode = this.canvas.node();
+    const ctm = this.gRoot.node()?.getScreenCTM();
+    if (!svgNode || !ctm) return { x: 0, y: 0 };
+    const svgPoint = svgNode.createSVGPoint();
+    svgPoint.x = pt.x;
+    svgPoint.y = pt.y;
+    const screenPt = svgPoint.matrixTransform(ctm);
+    const hostRect = this.host.nativeElement.getBoundingClientRect();
+    return { x: screenPt.x - hostRect.left, y: screenPt.y - hostRect.top };
+  }
+
+  /** Keeps the overlay glued to its shape's on-canvas position — called from draw() so it
+   * tracks pan/zoom automatically. Closes the editor if the shape vanished (e.g. undo). */
+  private updateEditingTextPosition(): void {
+    const shape = this.editingTextShape;
+    if (!shape) { this.editingTextShapeId = null; return; }
+    const pos = this.worldToHostPx(shape.position);
+    this.editingTextScreenX = pos.x;
+    this.editingTextScreenY = pos.y;
+  }
+
+  private startEditingText(id: string): void {
+    this.editingTextShapeId = id;
+    this.updateEditingTextPosition();
+    // The <textarea> is created by this state change; focus (and select its placeholder
+    // content, so the first keystroke replaces it) next tick, once it exists in the DOM.
+    setTimeout(() => {
+      const el = this.textEditAreaRef?.nativeElement;
+      if (!el) return;
+      el.value = this.editingTextShape?.text ?? '';
+      el.focus();
+      el.select();
+    });
+  }
+
+  finishEditingText(): void {
+    this.editingTextShapeId = null;
+    this.draw();
+  }
+
+  onTextEditInput(value: string): void {
+    if (!this.editingTextShapeId) return;
+    this.toolbox.updateShape(this.editingTextShapeId, { text: value });
+  }
+
+  /** Enter finishes editing (Text stays the active tool, ready for the next click); Shift+Enter
+   * is left alone so the browser inserts its normal newline in the textarea. */
+  onTextEditKeyDown(event: KeyboardEvent): void {
+    if ((event.key === 'Enter' && !event.shiftKey) || event.key === 'Escape') {
+      event.preventDefault();
+      this.finishEditingText();
+    }
   }
 
   onDisplayPreferenceChange(): void {
@@ -932,14 +1021,13 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       tool.onPointerDown(pt, this.toolHost);
       this.host.nativeElement.setPointerCapture(event.pointerId);
       if (tool.oneShot) {
-        // Commits immediately (e.g. Text, Point) — return to Select and select what was
-        // just placed. Text also opens its settings and focuses the content field, since
-        // typing the real text right away is the point; Point has nothing to type into.
+        // Commits immediately (e.g. Text, Point) but stays on its own tool rather than
+        // switching to Select, so consecutive clicks keep placing more of them fluidly. Text
+        // also opens an inline on-canvas editor right away — see startEditingText.
         const shapes = this.toolbox.getEditableShapes();
         const newest = shapes[shapes.length - 1];
-        if (newest) this.selectedShapeIds = new Set([newest.id]);
-        this.selectTool(null);
-        if (newest?.type === 'text') this.toolPalette?.openSettingsForText();
+        if (newest?.type === 'text') this.startEditingText(newest.id);
+        this.draw();
         return;
       }
       this.draw();

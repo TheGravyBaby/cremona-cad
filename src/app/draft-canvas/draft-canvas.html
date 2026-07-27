@@ -1,7 +1,21 @@
 <div class="canvas-shell" [class.dark-mode]="isDarkMode">
   <div #host class="host" tabindex="0" aria-label="Draft canvas" (wheel)="onScrollWheel($event)"
     (pointerdown)="onPointerDown($event)" (pointermove)="onPointerMove($event)" (pointerup)="onPointerUp($event)"
-    (pointerleave)="onPointerUp($event)" (keydown)="onKeyDown($event)" (dblclick)="onDoubleClick($event)"></div>
+    (pointerleave)="onPointerUp($event)" (keydown)="onKeyDown($event)" (dblclick)="onDoubleClick($event)">
+    @if (editingTextShapeId) {
+      <textarea #textEditArea class="text-edit-overlay"
+        [rows]="editingTextRows"
+        [style.left.px]="editingTextScreenX"
+        [style.top.px]="editingTextScreenY"
+        [style.color]="editingTextColor"
+        (input)="onTextEditInput($any($event.target).value)"
+        (keydown)="onTextEditKeyDown($event)"
+        (blur)="finishEditingText()"
+        (pointerdown)="$event.stopPropagation()"
+        (pointerup)="$event.stopPropagation()"
+        spellcheck="false"></textarea>
+    }
+  </div>
 
   <app-tool-palette
     [toolRows]="toolRows"

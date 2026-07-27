@@ -1,18 +1,8 @@
-import * as d3 from 'd3';
 import { Pt } from '../../models/types';
 import { makeShapeId } from './toolbox-shape';
 import { TwoPointTool, previewRect } from './two-point-tool';
-
-type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
-
-export function createRectTool(): TwoPointTool {
-  return new TwoPointTool('rect', 'Box', (p1, p2) => ({
-    id: makeShapeId(),
-    type: 'rect',
-    p1,
-    p2,
-  }), previewRect);
-}
+import { DraftToolHost } from './draft-tool';
+import { ToolboxStore } from './toolbox-store';
 
 /** The opposite corner forced to make a square — same side length as the larger dimension, same drag direction. */
 function squareCorner(p1: Pt, p2: Pt): Pt {
@@ -22,15 +12,21 @@ function squareCorner(p1: Pt, p2: Pt): Pt {
   return { x: p1.x + sx * size, y: p1.y + sy * size };
 }
 
-function previewSquare(gRoot: RootGroup, gUI: RootGroup, pxPerMm: number, p1: Pt, p2: Pt): void {
-  previewRect(gRoot, gUI, pxPerMm, p1, squareCorner(p1, p2));
+/** Holding the angle-lock modifier (Shift) forces the box into a square — same "Shift changes
+ * this drag's constraint" convention as Line's angle-lock, just constraining shape instead of angle. */
+function squareLockModifier(p1: Pt, p2: Pt, host: DraftToolHost): Pt {
+  return host.isAngleLockHeld() ? squareCorner(p1, p2) : p2;
 }
 
-export function createSquareTool(): TwoPointTool {
-  return new TwoPointTool('square', 'Square', (p1, p2) => ({
+/** Reads `currentDashed` at commit time (like Line/Circle) so dashed is a pen setting, not a
+ * separate tool — see the Dashed checkbox in the Box settings panel. Holding Shift while
+ * dragging constrains it to a square (see squareLockModifier) instead of needing a separate tool. */
+export function createRectTool(toolbox: ToolboxStore): TwoPointTool {
+  return new TwoPointTool('rect', 'Box', (p1, p2) => ({
     id: makeShapeId(),
     type: 'rect',
     p1,
-    p2: squareCorner(p1, p2),
-  }), previewSquare);
+    p2,
+    dashed: toolbox.currentDashed,
+  }), previewRect, squareLockModifier);
 }

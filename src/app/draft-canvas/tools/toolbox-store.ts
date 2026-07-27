@@ -21,6 +21,7 @@ export class ToolboxStore {
   private historyIndex = -1;
   private listeners = new Set<() => void>();
   private _currentColor: string = DEFAULT_SHAPE_COLOR;
+  private _currentDashed = false;
   private _currentBoxLineColor2: string = '#93c5fd';
   private _currentBoxLineWeights: number[] = [1, 1, 1];
   private _layers: Layer[] = [{ id: DEFAULT_LAYER_ID, name: 'Layer 1', visible: true, locked: false }];
@@ -40,6 +41,16 @@ export class ToolboxStore {
   set currentColor(color: string) {
     if (this._currentColor === color) return;
     this._currentColor = color;
+    this.persist();
+    this.notify();
+  }
+
+  /** Whether new Line/Circle shapes are stamped dashed — shared by both, same as currentColor is
+   * shared across every shape type, rather than tracked separately per shape type. */
+  get currentDashed(): boolean { return this._currentDashed; }
+  set currentDashed(value: boolean) {
+    if (this._currentDashed === value) return;
+    this._currentDashed = value;
     this.persist();
     this.notify();
   }
@@ -223,6 +234,7 @@ export class ToolboxStore {
       } else if (parsed && typeof parsed === 'object') {
         if (Array.isArray(parsed.shapes)) this.shapes = parsed.shapes;
         if (typeof parsed.currentColor === 'string') this._currentColor = parsed.currentColor;
+        if (typeof parsed.currentDashed === 'boolean') this._currentDashed = parsed.currentDashed;
         if (typeof parsed.currentBoxLineColor2 === 'string') this._currentBoxLineColor2 = parsed.currentBoxLineColor2;
         if (Array.isArray(parsed.currentBoxLineWeights)) this._currentBoxLineWeights = parsed.currentBoxLineWeights;
         if (Array.isArray(parsed.layers) && parsed.layers.length > 0) {
@@ -243,6 +255,7 @@ export class ToolboxStore {
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
         shapes: this.shapes,
         currentColor: this._currentColor,
+        currentDashed: this._currentDashed,
         currentBoxLineColor2: this._currentBoxLineColor2,
         currentBoxLineWeights: this._currentBoxLineWeights,
         layers: this._layers,

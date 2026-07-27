@@ -289,12 +289,40 @@
 }
 
 .host {
+  position: relative; /* positioning context for .text-edit-overlay */
   flex: 1 1 auto;
   min-height: 0;
   touch-action: none; /* let pointer events handle all touch gestures (pinch, pan) */
   -webkit-tap-highlight-color: transparent;
   /* border: #444 1px solid; */
   /* cursor: grab; */
+}
+
+/* Inline Text-tool editor — positioned (via [style.left]/[style.top]) directly over the shape's
+   on-canvas location; see draft-canvas.ts's editingText* state. transform: translateY(-50%)
+   vertically centers it on that point, matching the SVG text's dominant-baseline:central. */
+.text-edit-overlay {
+  position: absolute;
+  transform: translateY(-50%);
+  min-width: 120px;
+  padding: 1px 2px;
+  margin: 0;
+  box-sizing: border-box;
+  border: 1px dashed rgba(37, 99, 235, 0.6);
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.85);
+  font-family: sans-serif;
+  font-size: 14px;
+  line-height: 1.2;
+  resize: none;
+  overflow: hidden;
+  outline: none;
+  white-space: pre;
+}
+
+.canvas-shell.dark-mode .text-edit-overlay {
+  background: rgba(45, 45, 45, 0.85);
+  border-color: rgba(96, 165, 250, 0.7);
 }
 
 .host:focus,

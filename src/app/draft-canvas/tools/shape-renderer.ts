@@ -46,15 +46,17 @@ export function drawShape(gRoot: RootGroup, gUI: RootGroup, shape: DraftShape, p
     case 'dimension':
       drawDimension(gRoot, gUI, shape.start, shape.end, color, pxPerMm);
       break;
-    case 'rect':
-      gRoot.append('rect')
+    case 'rect': {
+      const rect = gRoot.append('rect')
         .attr('x', Math.min(shape.p1.x, shape.p2.x)).attr('y', Math.min(shape.p1.y, shape.p2.y))
         .attr('width', Math.abs(shape.p2.x - shape.p1.x)).attr('height', Math.abs(shape.p2.y - shape.p1.y))
         .attr('fill', 'none')
         .attr('stroke', color)
         .attr('stroke-width', 1.5)
         .attr('vector-effect', 'non-scaling-stroke');
+      if (shape.dashed) rect.attr('stroke-dasharray', DASH_PATTERN);
       break;
+    }
     case 'boxline':
       drawBoxLine(gRoot, gUI, {
         start: shape.start, end: shape.end, weights: shape.weights,
@@ -70,14 +72,14 @@ export function drawShape(gRoot: RootGroup, gUI: RootGroup, shape: DraftShape, p
         .attr('cx', shape.position.x).attr('cy', shape.position.y).attr('r', 0)
         .attr('fill', 'none').attr('stroke', 'none')
         .style('pointer-events', 'none');
-      gUI.append('text')
-        .attr('x', shape.position.x).attr('y', -shape.position.y)
-        .attr('text-anchor', 'start')
-        .attr('dominant-baseline', 'central')
-        .attr('fill', color)
-        .attr('font-size', TEXT_FONT_SIZE_PX / pxPerMm)
-        .style('user-select', 'none')
-        .text(shape.text);
+      {
+        const textEl = gUI.append('text')
+          .attr('text-anchor', 'start')
+          .attr('fill', color)
+          .attr('font-size', TEXT_FONT_SIZE_PX / pxPerMm)
+          .style('user-select', 'none');
+        appendTextLines(textEl, shape.position, shape.text, TEXT_FONT_SIZE_PX / pxPerMm);
+      }
       break;
     case 'point': {
       // Same zero-radius-circle trick as 'text' above, for a plain snappable center point.
@@ -104,6 +106,31 @@ const POINT_MARKER_SIZE_PX = 5;
 
 // Constant on-screen size (annotation-style, like Dimension/Box Line labels), not to-scale mm.
 export const TEXT_FONT_SIZE_PX = 14;
+// Multiplies font size for per-line spacing — exported so shape-hit-test.ts's DOM-free
+// footprint estimate can stay in sync with the actual rendered line spacing here.
+export const TEXT_LINE_HEIGHT_RATIO = 1.2;
+
+/** Appends one tspan per '\n'-separated line, vertically centering the whole block on
+ * `position` (matching the single-line dominant-baseline:central convention used everywhere
+ * else) rather than anchoring just the first line there. Shared by drawShape and
+ * drawSelectionHalo's 'text' cases so committed and halo/probe rendering never disagree. */
+function appendTextLines(
+  textSel: d3.Selection<SVGTextElement, unknown, null, undefined>,
+  position: Pt,
+  text: string,
+  fontSizeMm: number,
+): void {
+  const lines = text.split('\n');
+  const lineHeightMm = fontSizeMm * TEXT_LINE_HEIGHT_RATIO;
+  const totalHeight = (lines.length - 1) * lineHeightMm;
+  lines.forEach((line, i) => {
+    textSel.append('tspan')
+      .attr('x', position.x)
+      .attr('y', -(position.y + totalHeight / 2 - i * lineHeightMm))
+      .attr('dominant-baseline', 'central')
+      .text(line.length ? line : ' ');
+  });
+}
 
 export type BoxLineParams = {
   start: Pt;
@@ -329,13 +356,12 @@ export function drawSelectionHalo(gRoot: RootGroup, gUI: RootGroup, shape: Draft
       // Measure the actual rendered text (a hidden throwaway node) rather than estimating
       // width from character count — gUI shares gRoot's mm-space coordinates (just unflipped),
       // so getBBox() here is already in the right units for a gUI-space halo rect.
+      const fontSizeMm = TEXT_FONT_SIZE_PX / pxPerMm;
       const probe = gUI.append('text')
-        .attr('x', shape.position.x).attr('y', -shape.position.y)
         .attr('text-anchor', 'start')
-        .attr('dominant-baseline', 'central')
-        .attr('font-size', TEXT_FONT_SIZE_PX / pxPerMm)
-        .style('visibility', 'hidden')
-        .text(shape.text || ' ');
+        .attr('font-size', fontSizeMm)
+        .style('visibility', 'hidden');
+      appendTextLines(probe, shape.position, shape.text || ' ', fontSizeMm);
       const box = (probe.node() as SVGTextElement).getBBox();
       probe.remove();
 
