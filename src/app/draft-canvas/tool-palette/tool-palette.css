@@ -21,11 +21,11 @@
    never changes its shape or the pin button's position within it — only
    translateX moves, leaving REVEAL px showing at the edge as a grip. */
 .tool-dock-body {
-  --reveal: 12px;
+  --reveal: 8px;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 6px 12px;
+  padding: 8px;
   border: 1px solid var(--ui-border-strong);
   border-left: none;
   border-radius: 0 6px 6px 0;

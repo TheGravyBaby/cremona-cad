@@ -419,3 +419,20 @@ export function drawEndpointGrabber(gRoot: RootGroup, pos: Pt, pxPerMm: number):
     .attr('stroke-width', 1)
     .attr('vector-effect', 'non-scaling-stroke');
 }
+
+const AREA_SELECT_COLOR = '#2563eb';
+
+/** Draws the rubber-band marquee box (world mm) while an area-select drag is in progress —
+ * see draft-canvas.ts's areaSelectAnchor/areaSelectCurrent. */
+export function drawAreaSelectBox(gRoot: RootGroup, box: { x0: number; y0: number; x1: number; y1: number }): void {
+  gRoot.append('rect')
+    .attr('x', box.x0).attr('y', box.y0)
+    .attr('width', box.x1 - box.x0).attr('height', box.y1 - box.y0)
+    .attr('fill', AREA_SELECT_COLOR)
+    .attr('fill-opacity', 0.08)
+    .attr('stroke', AREA_SELECT_COLOR)
+    .attr('stroke-width', 1)
+    .attr('stroke-dasharray', DASH_PATTERN)
+    .attr('vector-effect', 'non-scaling-stroke')
+    .style('pointer-events', 'none');
+}

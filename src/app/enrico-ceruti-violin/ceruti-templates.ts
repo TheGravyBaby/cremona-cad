@@ -33,9 +33,9 @@ const StradGoetz = {
     "href": "/StradGoetz.jpg",
     "xlink:href": "/StradGoetz.jpg",
     "x": -157.7095239572227,
-    "y": -196.6448444843292,
+    "y": -31.4199536546349,
     "width": 319,
-    "height": 779,
+    "height": 448.5502183406114,
     "rotationDeg": 359.6
   },
   "params": {
@@ -337,9 +337,9 @@ const RavatinMans = {
     "href": "/Ravatin_Mans.jpg",
     "xlink:href": "/Ravatin_Mans.jpg",
     "x": -270.98718678951263,
-    "y": -244.2769876886315,
+    "y": -57.4042342305183,
     "width": 539.1827434301376,
-    "height": 1272.3834126331224,
+    "height": 898.6379057168960,
     "rotationDeg": 0
   },
   "params": {
@@ -907,9 +907,9 @@ const DelGesuBaltic = {
     "href": "/DelGesuBaltic.png",
     "xlink:href": "/DelGesuBaltic.png",
     "x": -105.49351739883423,
-    "y": -96,
+    "y": -11.62768,
     "width": 212,
-    "height": 582,
+    "height": 413.25536,
     "rotationDeg": 359.8
   }
 }
@@ -925,9 +925,9 @@ const StradDavidoff =  {
     "href": "/Strad_Davidoff.jpg",
     "xlink:href": "/Strad_Davidoff.jpg",
     "x": -225.03115844726562,
-    "y": -38.968841552734375,
+    "y": -29.912574,
     "width": 449,
-    "height": 840,
+    "height": 821.887464,
     "rotationDeg": 0
   },
   "params": {
@@ -1251,9 +1251,9 @@ const MagginiDelmas = {
     "href": "/Maggini_Delmas.png",
     "xlink:href": "/Maggini_Delmas.png",
     "x": -298.9228318104225,
-    "y": -318.3115921020508,
+    "y": -5.822057,
     "width": 603,
-    "height": 1723,
+    "height": 1098.020930,
     "rotationDeg": 0
   },
   "params": {
