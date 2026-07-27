@@ -12,6 +12,9 @@ export interface DraftToolHost {
   getSnapTangent(): number | undefined;
   /** True while the angle-lock modifier (Shift) is held — see two-point-tool.ts's angle snapping. */
   isAngleLockHeld(): boolean;
+  /** The shapes currently selected in Select mode — only meaningful to tools with
+   * `actsOnSelection: true`, which run against a selection made before they were activated. */
+  getSelectedShapes(): DraftShape[];
 }
 
 /**
@@ -25,6 +28,10 @@ export interface DraftTool {
   /** A single click commits immediately (e.g. Text) — draft-canvas returns to Select and
    * selects the new shape right after, rather than leaving the tool active for another click. */
   readonly oneShot?: boolean;
+  /** True for tools that transform the current selection instead of drawing new shapes by
+   * clicking (e.g. Offset) — draft-canvas keeps the selection alive across activation for
+   * these, instead of clearing it the way it does for ordinary drawing tools. */
+  readonly actsOnSelection?: boolean;
   onPointerDown(pt: Pt, host: DraftToolHost): void;
   onPointerMove(pt: Pt, host: DraftToolHost): void;
   onPointerUp(pt: Pt, host: DraftToolHost): void;

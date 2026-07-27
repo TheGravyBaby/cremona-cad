@@ -246,6 +246,26 @@ export function offsetCircleRadius(C: Circle, offset: number): Circle {
   return { x: C.x, y: C.y, r: newR };
 }
 
+/**
+ * Translates a line segment perpendicular to its own direction — the line equivalent of
+ * offsetArcRadius/offsetCircleRadius. Positive `offset` moves it to the right of the a→b
+ * direction (rotate the direction vector -90°), matching the "radially outward" convention
+ * those two use for arcs/circles: at any point on a CCW arc the direction of travel is the
+ * tangent angle +90°, so radially-outward there is -90° from travel — i.e. "right of travel".
+ */
+export function offsetLineByDistance(a: Pt, b: Pt, offset: number): { start: Pt; end: Pt } {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len = Math.hypot(dx, dy);
+  if (len < 1e-9) return { start: { ...a }, end: { ...b } };
+  const nx = dy / len;
+  const ny = -dx / len;
+  return {
+    start: { x: a.x + nx * offset, y: a.y + ny * offset },
+    end: { x: b.x + nx * offset, y: b.y + ny * offset },
+  };
+}
+
 export function offsetArcRadius(arc: Arc, offset: number): Arc {
   const newR = arc.r + offset;
   if (newR < 0) 

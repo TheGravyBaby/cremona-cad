@@ -18,16 +18,7 @@ import { ReferenceImageStore } from './reference-image-store';
 import { AxisGridController, AxisGridPreferences, CanvasViewport } from './axis-grid-controller';
 import { toNamedReferenceImage } from '../helpers/referenceImages';
 import { DraftTool, DraftToolHost } from './tools/draft-tool';
-import { createLineTool } from './tools/line-tool';
-import { createArcTool, createArcStartFirstTool } from './tools/arc-tool';
-import { createTangentArcTool } from './tools/tangent-arc-tool';
-import { createCircleTool } from './tools/circle-tool';
-import { createDimensionTool } from './tools/dimension-tool';
-import { createRectTool } from './tools/rect-tool';
-import { createBoxLineTool } from './tools/box-line-tool';
-import { createTextTool } from './tools/text-tool';
-import { createPointTool } from './tools/point-tool';
-import { ToolSlot, single, flyout } from './tools/tool-slot';
+import { ToolRegistryService } from './tools/tool-registry';
 import { ToolboxStore } from './tools/toolbox-store';
 import { drawShape, drawSelectionHalo, drawMoveGrabber, drawEndpointGrabber, drawAreaSelectBox } from './tools/shape-renderer';
 import { SnapCandidate, SnapEngine } from './tools/snap-engine';
@@ -65,35 +56,9 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private refImagesRedrawUnsub?: () => void;
   private toolbox = inject(ToolboxStore);
   private toolboxUnsub?: () => void;
-  // Add new tools here, grouped into rows of up to 2 slots. Use flyout([...])
-  // to group every variant of the same kind of shape (styles and construction
-  // methods alike) behind one button + caret; use single(...) for a tool with
-  // no variants. The toolbar and pointer routing pick both up automatically.
-  public toolRows: ToolSlot[][] = [
-    [
-      single(createLineTool(this.toolbox)),
-    ],
-    [ single(createDimensionTool()) ],
-    [
-      flyout([createArcTool(), createTangentArcTool(), createArcStartFirstTool()]),
-    ],
-    [
-      single(createCircleTool(this.toolbox)), 
-    ],
-    [
-      single(createRectTool(this.toolbox)),
-    ],
-    [
-      single(createBoxLineTool(this.toolbox)),
-    ],
-    [
-      single(createTextTool()),
-    ],
-    [
-      single(createPointTool()),
-    ],
-  ];
-  public activeTool: DraftTool | null = null;
+  private toolRegistry = inject(ToolRegistryService);
+  private toolRegistryUnsub?: () => void;
+  public get activeTool(): DraftTool | null { return this.toolRegistry.activeTool; }
   private isAngleLockHeld = false;
   private toolHost: DraftToolHost = {
     addShape: (shape) => this.toolbox.addShape({
@@ -104,6 +69,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     requestDraw: () => this.draw(),
     getSnapTangent: () => this.activeSnap?.tangent,
     isAngleLockHeld: () => this.isAngleLockHeld,
+    getSelectedShapes: () => this.selectedShapes,
   };
 
   // Snapping: candidates are re-indexed from the rendered scene only when the
@@ -325,6 +291,8 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       this.draw();
     });
 
+    this.toolRegistryUnsub = this.toolRegistry.onChange(() => this.onActiveToolChanged());
+
     this.initialized = true;
     this.draw();
   }
@@ -336,6 +304,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.toolboxUnsub?.();
     this.refImagesUnsub?.();
     this.refImagesRedrawUnsub?.();
+    this.toolRegistryUnsub?.();
   }
 
   draw(): void {
@@ -421,31 +390,24 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     if (this.editingTextShapeId) this.updateEditingTextPosition();
   }
 
-  /** Pass null to switch to the default select tool (no active drafting tool). Also used
-   * as the (toolActivated) handler for <app-tool-palette> — see tool-palette.ts. */
+  /** Pass null to switch to the default select tool (no active drafting tool). Thin wrapper
+   * around ToolRegistryService.selectTool — the actual side effects run in
+   * onActiveToolChanged() below, via the registry's onChange subscription, so they also fire
+   * when tool-palette.ts or a hotkey switch the tool directly through the registry. */
   selectTool(tool: DraftTool | null): void {
-    if (this.editingTextShapeId) this.editingTextShapeId = null; // e.g. switching tools mid-edit
-    this.activeTool?.reset();
-    this.activeTool = tool;
-    this.activeSnap = null;
-    if (tool) this.selectedShapeIds.clear(); // selection only applies in Select mode
-    this.draw();
+    this.toolRegistry.selectTool(tool);
   }
 
-  /** Activates a tool by id from anywhere in toolRows — used by the hotkey mnemonics. Mutates
-   * the slot's selectedIndex directly (toolRows is shared by reference with the tool palette,
-   * which does the same on click) so a flyout's face stays in sync regardless of trigger source. */
-  private activateToolById(id: string): void {
-    for (const row of this.toolRows) {
-      for (const slot of row) {
-        if (slot.kind === 'single') {
-          if (slot.tool.id === id) { this.selectTool(slot.tool); return; }
-        } else {
-          const idx = slot.variants.findIndex(v => v.id === id);
-          if (idx >= 0) { slot.selectedIndex = idx; this.selectTool(slot.variants[idx]); return; }
-        }
-      }
-    }
+  /** Runs whenever the active tool changes, regardless of what triggered it (a click routed
+   * through selectTool() above, tool-palette.ts calling the registry directly, or a hotkey). */
+  private onActiveToolChanged(): void {
+    if (this.editingTextShapeId) this.editingTextShapeId = null; // e.g. switching tools mid-edit
+    this.activeSnap = null;
+    // Selection-acting tools (e.g. Offset) run against a selection made in Select mode before
+    // they were activated, so it must survive activation — every other tool draws fresh shapes
+    // and has no use for a stale selection.
+    if (this.activeTool && !this.activeTool.actsOnSelection) this.selectedShapeIds.clear();
+    this.draw();
   }
 
   /** Rebuilds the snap index right now if it's stale — used when arming an endpoint-drag,
@@ -973,7 +935,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     if (cycle) {
       const currentIdx = this.activeTool ? cycle.indexOf(this.activeTool.id) : -1;
       const nextId = cycle[(currentIdx + 1) % cycle.length];
-      this.activateToolById(nextId);
+      this.toolRegistry.activateById(nextId);
       event.preventDefault();
       return;
     }
