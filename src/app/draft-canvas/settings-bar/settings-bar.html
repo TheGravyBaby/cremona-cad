@@ -4,6 +4,16 @@
     <input type="color" class="color-swatch" [value]="displayedColor" (input)="setColor($any($event.target).value)"
       title="Drawing color — edits the selected shape's color, or the color new shapes will use" />
   }
+  @if (showBoxLineColor2) {
+    <input type="color" class="color-swatch" [value]="displayedBoxLineColor2" (input)="setBoxLineColor2($any($event.target).value)"
+      title="Box Line's second alternating segment color" />
+  }
+  @if (showDashedToggle) {
+    <label class="toggle">
+      <span class="f-lbl">Dashed</span>
+      <input type="checkbox" [checked]="dashed" (change)="setDashed($any($event.target).checked)" />
+    </label>
+  }
 
   @if (showLinePanel) {
     <span class="point-group">
@@ -27,12 +37,6 @@
       </span>
     </span>
   }
-  @if (showLineDashedToggle) {
-    <label class="toggle">
-      <span class="f-lbl">Dashed</span>
-      <input type="checkbox" [checked]="lineDashed" (change)="setLineDashed($any($event.target).checked)" />
-    </label>
-  }
 
   @if (showRectPanel) {
     <span class="point-group">
@@ -55,12 +59,6 @@
           (keydown.enter)="$any($event.target).blur()" />
       </span>
     </span>
-  }
-  @if (showRectDashedToggle) {
-    <label class="toggle">
-      <span class="f-lbl">Dashed</span>
-      <input type="checkbox" [checked]="rectDashed" (change)="setRectDashed($any($event.target).checked)" />
-    </label>
   }
 
   @if (showTextPanel) {
@@ -109,12 +107,6 @@
         (keydown.enter)="$any($event.target).blur()" />
     </span>
   }
-  @if (showCircleDashedToggle) {
-    <label class="toggle">
-      <span class="f-lbl">Dashed</span>
-      <input type="checkbox" [checked]="circleDashed" (change)="setCircleDashed($any($event.target).checked)" />
-    </label>
-  }
 
   @if (showArcPanel) {
     <span class="point-group">
@@ -146,8 +138,6 @@
   }
 
   @if (showBoxLinePanel) {
-    <input type="color" class="color-swatch" [value]="displayedBoxLineColor2" (input)="setBoxLineColor2($any($event.target).value)"
-      title="Box Line's second alternating segment color" />
     @if (showBoxLinePointsPanel) {
       <span class="point-group">
         <span class="field"><span class="f-lbl">X1</span>
