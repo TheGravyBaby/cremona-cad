@@ -1,46 +1,68 @@
-<section class="ui-group">
+<div class="view-toggle-bar">
     @if (showArcsRow) {
-    <div class="input-group basic-row field-row" role="group">
-        <div class="toggle">
-            <input type="checkbox" [(ngModel)]="flags.showModuleArcs" (change)="changed.emit()" />
-            <span>Show Module Arcs</span>
-        </div>
+    <div class="vt-group">
+        <button type="button" class="vt-btn" [class.active]="flags.showModuleArcs" (click)="toggle('showModuleArcs')"
+            title="Show Module Arcs" aria-label="Show Module Arcs">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round">
+                <path d="M4 19a15 15 0 0 1 15-15" />
+            </svg>
+        </button>
         @if (showAllArcs) {
-        <div class="toggle">
-            <input type="checkbox" [(ngModel)]="flags.showAllArcs" (change)="changed.emit()" /><span>Show All
-                Arcs</span>
-        </div>
+        <button type="button" class="vt-sub" [class.active]="flags.showAllArcs" (click)="toggle('showAllArcs')"
+            title="Show All Arcs (every module, not just the current one)" aria-label="Show All Arcs">
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="13" height="13" rx="2" />
+                <path d="M21 8v11a2 2 0 0 1-2 2H8" />
+            </svg>
+        </button>
         }
     </div>
     }
+
     @if (showCirclesRow) {
-    <div class="input-group basic-row field-row" role="group">
-        <div class="toggle">
-            <input type="checkbox" [(ngModel)]="flags.showModuleCircles" (change)="changed.emit()" />
-            <span>Show Module Circles </span>
-        </div>
+    <div class="vt-group">
+        <button type="button" class="vt-btn" [class.active]="flags.showModuleCircles"
+            (click)="toggle('showModuleCircles')" title="Show Module Circles" aria-label="Show Module Circles">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round">
+                <circle cx="12" cy="12" r="8" />
+            </svg>
+        </button>
         @if (showAllCircles) {
-        <div class="toggle">
-            <input type="checkbox" [(ngModel)]="flags.showAllCircles" (change)="changed.emit()" /><span>Show All
-                Circles </span>
-        </div>
+        <button type="button" class="vt-sub" [class.active]="flags.showAllCircles" (click)="toggle('showAllCircles')"
+            title="Show All Circles (every module, not just the current one)" aria-label="Show All Circles">
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="13" height="13" rx="2" />
+                <path d="M21 8v11a2 2 0 0 1-2 2H8" />
+            </svg>
+        </button>
         }
     </div>
     }
+
     @if (showGuideRow) {
-    <div class="input-group basic-row field-row" role="group">
-        <div class="toggle">
-            <input type="checkbox" [(ngModel)]="flags.showModuleGuides" (change)="changed.emit()" />
-            <span>Show Module Guides</span>
-        </div>
-    </div>
+    <button type="button" class="vt-btn" [class.active]="flags.showModuleGuides"
+        (click)="toggle('showModuleGuides')" title="Show Module Guides" aria-label="Show Module Guides">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round">
+            <rect x="4" y="4" width="16" height="16" rx="2" stroke-dasharray="3 2.5" />
+            <line x1="12" y1="2" x2="12" y2="22" stroke-dasharray="2 2" />
+            <line x1="2" y1="12" x2="22" y2="12" stroke-dasharray="2 2" />
+        </svg>
+    </button>
     }
+
     @if (showOuterPathRow) {
-    <div class="input-group basic-row field-row" role="group">
-        <div class="toggle">
-            <input type="checkbox" [(ngModel)]="flags.renderOuterPath" (change)="changed.emit()" />
-            <span>Show Outer Path</span>
-        </div>
-    </div>
+    <button type="button" class="vt-btn" [class.active]="flags.renderOuterPath"
+        (click)="toggle('renderOuterPath')" title="Show Outer Path" aria-label="Show Outer Path">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round">
+            <path d="M4 19a15 15 0 0 1 15-15" />
+            <path d="M8 19a11 11 0 0 1 11-11" stroke-dasharray="3 2.5" />
+        </svg>
+    </button>
     }
-</section>
+</div>

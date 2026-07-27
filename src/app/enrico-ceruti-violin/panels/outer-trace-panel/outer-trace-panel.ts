@@ -6,7 +6,6 @@ import { renderArcFromArcFancy, renderCircle, renderFilledPath, renderPath } fro
 import { calculateOuterArcs, ensureOuterTracePaths } from '../../ceruti-calcs';
 import { buttonInfo, cornerCutoffInfo, flutingInfo, purflingInfo } from '../../ceruti-helpers';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, PathEntry } from '../../ceruti-types';
-import { RenderToggles } from '../../render-toggles/render-toggles';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 
 export interface OuterTraceViewFlags {
@@ -18,7 +17,7 @@ export interface OuterTraceViewFlags {
 
 @Component({
   selector: 'app-ceruti-outer-trace-panel',
-  imports: [FormsModule, RenderToggles],
+  imports: [FormsModule],
   templateUrl: './outer-trace-panel.html',
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })

@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, Input } from '@angular/core';
+import { ChangeDetectorRef, Component, Input, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { applyTransforms, ColorTransform, renderPath } from '../helpers/renderFuncs';
@@ -18,10 +18,11 @@ import { LongArchingPanel } from './panels/long-arching-panel/long-arching-panel
 import { CrossArchingPanel } from './panels/cross-arching-panel/cross-arching-panel';
 import { ExportPanel } from './panels/export-panel/export-panel';
 import { RecipeToolbarComponent } from '../recipe-toolbar/recipe-toolbar';
+import { RenderToggles } from './render-toggles/render-toggles';
 
 @Component({
   selector: 'app-ceruti-violin',
-  imports: [FormsModule, BasePanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterTracePanel, MouldPanel, LongArchingPanel, CrossArchingPanel, ExportPanel, RecipeToolbarComponent],
+  imports: [FormsModule, BasePanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterTracePanel, MouldPanel, LongArchingPanel, CrossArchingPanel, ExportPanel, RecipeToolbarComponent, RenderToggles],
   templateUrl: './ceruti-violin.html',
   styleUrls: ['../sidebar.css', './ceruti-violin.css'],
 })
@@ -116,8 +117,42 @@ export class CerutiViolin extends RecipeComponentBase {
     ...CERUTI_TEMPLATES[1],
   };
 
-  // Ephemeral view toggles shared by the panel components and threaded into the render functions below. 
+  // Ephemeral view toggles shared by the panel components and threaded into the render functions below.
   viewFlags: CerutiViewFlags = { ...DEFAULT_CERUTI_VIEW_FLAGS };
+
+  /** Which render-toggle rows apply to each panel — mirrors the showXRow inputs each panel
+   * used to pass to its own <app-ceruti-render-toggles>, now that a single fixed instance
+   * (see ceruti-violin.html) serves every panel. `null` hides the bar entirely (base, mould,
+   * cross arching, export don't expose any of these view flags). */
+  private static readonly RENDER_TOGGLE_ROWS: Record<string, {
+    arcs: boolean; circles: boolean; guide: boolean; outerPath: boolean; allArcs: boolean; allCircles: boolean;
+  } | null> = {
+    base: null,
+    mainBouts: { arcs: true, circles: true, guide: true, outerPath: true, allArcs: true, allCircles: true },
+    corners: { arcs: true, circles: true, guide: true, outerPath: true, allArcs: true, allCircles: true },
+    centerBout: { arcs: true, circles: true, guide: true, outerPath: true, allArcs: true, allCircles: true },
+    outerTrace: { arcs: true, circles: true, guide: false, outerPath: false, allArcs: false, allCircles: false },
+    longArching: { arcs: false, circles: false, guide: true, outerPath: false, allArcs: true, allCircles: true },
+    crossArching: null,
+    mould: null,
+    export: null,
+  };
+
+  get renderToggleRows() {
+    return CerutiViolin.RENDER_TOGGLE_ROWS[this.openPanel] ?? null;
+  }
+
+  /** Whichever of the 5 panel components is currently mounted (see #panelRef in ceruti-violin.html)
+   * — only one is ever in the DOM at a time, since they're behind mutually exclusive @if blocks. */
+  @ViewChild('panelRef') private panelRef?: { requestViewRerender(): void };
+
+  /** The view-toggle bar is a single fixed instance shared across panels (see ceruti-violin.html),
+   * not owned by any one of them — it redraws the active panel via requestViewRerender()
+   * (CerutiPanelBase's public wrapper around emitImmediate) rather than onChange(), which
+   * debounces and would leave the toggle looking unresponsive until some other edit flushed it. */
+  onRenderTogglesChanged(): void {
+    this.panelRef?.requestViewRerender();
+  }
 
   private _firstRenderInitDone = false;
   private _lastLoadedParamsSnapshot = '';

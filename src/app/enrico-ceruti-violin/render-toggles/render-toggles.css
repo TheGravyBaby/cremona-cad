@@ -1,0 +1,86 @@
+/* Fixed strip pinned to the bottom of the recipe sidebar, matching draft-canvas's own
+   bottom bar (.ui-controls, min-height 42px) so the two read as one coherent system.
+   Icon buttons mirror draft-canvas's tool-palette .tool-btn styling; the "All Arcs"/
+   "All Circles" sub-toggles reuse its split-button sliver (.tool-view-toggle) shape to
+   read as a modifier attached to the button on their left, rather than a peer control. */
+:host {
+  display: block;
+}
+
+.view-toggle-bar {
+  position: fixed;
+  bottom: 0;
+  right: 0;
+  z-index: 4;
+  box-sizing: border-box;
+  width: var(--sidebar-width);
+  height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border-top: 1px solid var(--ui-border-soft);
+  background: var(--ui-bg-surface-2);
+}
+
+.vt-group {
+  display: flex;
+}
+
+.vt-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 4px;
+  background: linear-gradient(180deg, var(--ui-canvas-btn-bg-start) 0%, var(--ui-canvas-btn-bg-end) 100%);
+  color: var(--ui-text-primary);
+  cursor: pointer;
+  transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+}
+
+.vt-btn:hover {
+  border-color: var(--ui-canvas-btn-border-hover);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.vt-btn.active {
+  background: var(--ui-accent);
+  color: #fff;
+  border-color: var(--ui-accent);
+}
+
+.vt-group .vt-btn {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.vt-sub {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--ui-border-strong);
+  border-left: none;
+  border-top-right-radius: 4px;
+  border-bottom-right-radius: 4px;
+  background: linear-gradient(180deg, var(--ui-canvas-btn-bg-start) 0%, var(--ui-canvas-btn-bg-end) 100%);
+  color: var(--ui-text-muted);
+  cursor: pointer;
+}
+
+.vt-sub:hover {
+  border-color: var(--ui-canvas-btn-border-hover);
+  color: var(--ui-text-primary);
+}
+
+.vt-sub.active {
+  background: var(--ui-accent);
+  color: #fff;
+  border-color: var(--ui-accent);
+}

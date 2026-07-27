@@ -1,12 +1,14 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { CerutiViewFlags } from '../ceruti-types';
+
+type ToggleKey = 'showModuleArcs' | 'showAllArcs' | 'showModuleCircles' | 'showAllCircles'
+  | 'showModuleGuides' | 'renderOuterPath';
 
 @Component({
   selector: 'app-ceruti-render-toggles',
-  imports: [FormsModule],
+  imports: [],
   templateUrl: './render-toggles.html',
-  styleUrls: ['../../sidebar.css'],
+  styleUrls: ['./render-toggles.css'],
 })
 export class RenderToggles {
   @Input({ required: true }) flags!: CerutiViewFlags;
@@ -17,4 +19,9 @@ export class RenderToggles {
   @Input() showAllArcs = true;
   @Input() showAllCircles = true;
   @Output() changed = new EventEmitter<void>();
+
+  toggle(key: ToggleKey): void {
+    this.flags[key] = !this.flags[key];
+    this.changed.emit();
+  }
 }

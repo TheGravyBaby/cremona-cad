@@ -15,12 +15,11 @@ import {
   archHeightInfo, crossArchEdgeDepthInfo, curveTypeInfo, plateThicknessInfo, ribHeightInfo,
   splinePointInfo, trochoidFactorInfo,
 } from '../../ceruti-helpers';
-import { RenderToggles } from '../../render-toggles/render-toggles';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 
 @Component({
   selector: 'app-ceruti-long-arching-panel',
-  imports: [FormsModule, DecimalPipe, RenderToggles],
+  imports: [FormsModule, DecimalPipe],
   templateUrl: './long-arching-panel.html',
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })

@@ -14,7 +14,6 @@ import { boutWidthInfo, violNeckInfo } from '../../ceruti-helpers';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams } from '../../ceruti-types';
 import { renderBounds, renderBoutBouts } from '../../renders/guides.render';
 import { HighlightedArc, PATH_STROKE_WIDTH } from '../../renders/render-constants';
-import { RenderToggles } from '../../render-toggles/render-toggles';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 
 export interface MainBoutsViewFlags {
@@ -27,7 +26,7 @@ export interface MainBoutsViewFlags {
 
 @Component({
   selector: 'app-ceruti-main-bouts-panel',
-  imports: [FormsModule, RenderToggles],
+  imports: [FormsModule],
   templateUrl: './main-bouts-panel.html',
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })

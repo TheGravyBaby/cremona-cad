@@ -176,12 +176,15 @@ export abstract class RecipeComponentBase implements AfterViewInit {
     this.onPanelActivated(this.openPanel);
   }
 
-  /** Forces the currently open panel subtree to unmount/remount so panel-owned ngOnInit redraws run again. */
+  /** Forces the currently open panel subtree to unmount/remount so panel-owned ngOnInit redraws run again.
+   * Must be a macrotask (setTimeout), not queueMicrotask: microtasks all drain before Angular's zone
+   * runs change detection, so a microtask-scheduled restore flips openPanel back before Angular ever
+   * renders the transient '' — the @if never toggles and ngOnInit never re-fires. */
   protected remountActivePanel(): void {
     const panel = this.openPanel;
     if (!panel) return;
     this.openPanel = '';
-    queueMicrotask(() => {
+    setTimeout(() => {
       if (this._destroyed) return;
       this.openPanel = panel;
       sessionStorage.setItem('openPanel', panel);
