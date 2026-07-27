@@ -84,6 +84,35 @@ export class SettingsBarComponent {
     this.toolbox.updateShapes(patches);
   }
 
+  /** Dashed applies to Line, Rect and Circle — a shared pen setting (like currentColor), not a
+   * per-tool one, so it's one common control rather than three near-identical toggles. */
+  private static readonly DASHABLE_TOOL_IDS = new Set(['line', 'rect', 'circle']);
+
+  private get selectedDashableShapes(): (LineShape | RectShape | CircleShape)[] {
+    return this.selectedShapes.filter(
+      (s): s is LineShape | RectShape | CircleShape => s.type === 'line' || s.type === 'rect' || s.type === 'circle');
+  }
+
+  public get showDashedToggle(): boolean {
+    return (!!this.activeTool && SettingsBarComponent.DASHABLE_TOOL_IDS.has(this.activeTool.id))
+      || this.selectedDashableShapes.length > 0;
+  }
+
+  /** First selected dashable shape's value (same "first wins" convention as displayedColor when
+   * the group is mixed), otherwise the pen default new shapes will use. */
+  public get dashed(): boolean {
+    return this.selectedDashableShapes[0]?.dashed ?? this.toolbox.currentDashed;
+  }
+
+  /** Applies to every selected Line/Rect/Circle at once (one history step via updateShapes). */
+  setDashed(value: boolean): void {
+    this.toolbox.currentDashed = value;
+    const shapes = this.selectedDashableShapes;
+    if (shapes.length === 0) return;
+    const patches = new Map<string, Partial<DraftShape>>(shapes.map(s => [s.id, { dashed: value }]));
+    this.toolbox.updateShapes(patches);
+  }
+
   /** Line/Dimension both share start+end geometry — editable numerically once a shape is selected. */
   private get selectedLineLikeShape(): LineShape | DimensionShape | undefined {
     const s = this.selectedShape;
@@ -103,28 +132,6 @@ export class SettingsBarComponent {
     this.patchPointField(this.selectedLineLikeShape, which, axis, value);
   }
 
-  /** Dashed is a pen setting (like currentColor), not a separate tool — Dimension doesn't get
-   * one, since only plain Line ever did (there was never a "Dotted Dimension"). */
-  private get selectedLineShape(): LineShape | undefined {
-    return this.selectedShapeOfType('line');
-  }
-
-  public get showLineDashedToggle(): boolean {
-    return this.activeTool?.id === 'line' || !!this.selectedLineShape;
-  }
-
-  public get lineDashed(): boolean {
-    return this.selectedLineShape?.dashed ?? this.toolbox.currentDashed;
-  }
-
-  setLineDashed(value: boolean): void {
-    this.toolbox.currentDashed = value;
-    const shape = this.selectedLineShape;
-    if (shape) {
-      this.toolbox.updateShape(shape.id, { dashed: value });
-    }
-  }
-
   /** Rect and Square both commit as a 'rect' shape (p1/p2 corners) — same panel edits either. */
   private get selectedRectShape(): RectShape | undefined {
     return this.selectedShapeOfType('rect');
@@ -141,24 +148,6 @@ export class SettingsBarComponent {
 
   setRectPoint(which: 'p1' | 'p2', axis: 'x' | 'y', value: number): void {
     this.patchPointField(this.selectedRectShape, which, axis, value);
-  }
-
-  /** Dashed is a pen setting (like currentColor), not a separate tool — shared with
-   * Line/Circle's currentDashed, same as currentColor is shared across every shape type. */
-  public get showRectDashedToggle(): boolean {
-    return this.activeTool?.id === 'rect' || !!this.selectedRectShape;
-  }
-
-  public get rectDashed(): boolean {
-    return this.selectedRectShape?.dashed ?? this.toolbox.currentDashed;
-  }
-
-  setRectDashed(value: boolean): void {
-    this.toolbox.currentDashed = value;
-    const shape = this.selectedRectShape;
-    if (shape) {
-      this.toolbox.updateShape(shape.id, { dashed: value });
-    }
   }
 
   private get selectedTextShape(): TextShape | undefined {
@@ -218,24 +207,6 @@ export class SettingsBarComponent {
     this.patchNumberField(this.selectedCircleShape, 'radius', value, { validate: v => v > 0 });
   }
 
-  /** Dashed is a pen setting (like currentColor), not a separate tool — shared with Line's
-   * currentDashed, same as currentColor is shared across every shape type. */
-  public get showCircleDashedToggle(): boolean {
-    return this.activeTool?.id === 'circle' || !!this.selectedCircleShape;
-  }
-
-  public get circleDashed(): boolean {
-    return this.selectedCircleShape?.dashed ?? this.toolbox.currentDashed;
-  }
-
-  setCircleDashed(value: boolean): void {
-    this.toolbox.currentDashed = value;
-    const shape = this.selectedCircleShape;
-    if (shape) {
-      this.toolbox.updateShape(shape.id, { dashed: value });
-    }
-  }
-
   private get selectedArcShape(): ArcShape | undefined {
     return this.selectedShapeOfType('arc');
   }
@@ -284,6 +255,20 @@ export class SettingsBarComponent {
     return this.selectedShapeOfType('boxline');
   }
 
+  /** Every Box Line in the current selection, however many — unlike selectedBoxLineShape (only
+   * set for exactly one), this drives Color2 so it stays group-editable across a multi-selection,
+   * the same way the primary color swatch is. */
+  private get selectedBoxLineShapes(): BoxLineShape[] {
+    return this.selectedShapes.filter((s): s is BoxLineShape => s.type === 'boxline');
+  }
+
+  /** Broader than showBoxLinePanel: Color2 also shows for a multi-selection of Box Lines (whose
+   * individual X/Y/weights controls don't make sense as a group and stay gated behind
+   * showBoxLinePanel), same reasoning as the primary color swatch's showColorSwatch. */
+  public get showBoxLineColor2(): boolean {
+    return this.activeTool?.id === 'boxline' || this.selectedBoxLineShapes.length > 0;
+  }
+
   /** Unlike showBoxLinePanel, the endpoints only make sense for an actual selected shape —
    * there's no "pen position" the way there's a pen color/weights default. */
   public get showBoxLinePointsPanel(): boolean {
@@ -299,9 +284,10 @@ export class SettingsBarComponent {
     this.patchPointField(this.selectedBoxLineShape, which, axis, value);
   }
 
+  /** First selected Box Line's color2 (same "first wins" convention as displayedColor when the
+   * group has mixed values — a native color <input> can't show "mixed"), otherwise the pen default. */
   public get displayedBoxLineColor2(): string {
-    const shape = this.selectedShape;
-    return (shape?.type === 'boxline' ? shape.color2 : undefined) ?? this.toolbox.currentBoxLineColor2;
+    return this.selectedBoxLineShapes[0]?.color2 ?? this.toolbox.currentBoxLineColor2;
   }
 
   public get displayedBoxLineWeightsText(): string {
@@ -322,12 +308,13 @@ export class SettingsBarComponent {
    * pure UI/input-mode state, not persisted per-shape, so switching shapes doesn't reset it. */
   public boxLineUseSegmentCount = false;
 
+  /** Applies to every selected Box Line at once (one history step via updateShapes), same as setColor. */
   setBoxLineColor2(color: string): void {
     this.toolbox.currentBoxLineColor2 = color;
-    const shape = this.selectedShape;
-    if (shape?.type === 'boxline') {
-      this.toolbox.updateShape(shape.id, { color2: color });
-    }
+    const shapes = this.selectedBoxLineShapes;
+    if (shapes.length === 0) return;
+    const patches = new Map<string, Partial<DraftShape>>(shapes.map(s => [s.id, { color2: color }]));
+    this.toolbox.updateShapes(patches);
   }
 
   setBoxLineWeightsText(text: string): void {
