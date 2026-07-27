@@ -14,7 +14,7 @@
   z-index: 4;
   box-sizing: border-box;
   width: var(--sidebar-width);
-  height: 44px;
+  height: 43px;
   display: flex;
   align-items: center;
   gap: 6px;
