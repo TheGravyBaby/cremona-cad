@@ -181,6 +181,7 @@ export class CerutiViolin extends RecipeComponentBase {
 
   onNewClick(): void {
     this.d = JSON.parse(JSON.stringify(CERUTI_TEMPLATES[0])) as EnricoCerutiTemplate;
+    this.toolbox.resetAll();
     this._firstRenderInitDone = false;
     this._lastLoadedParamsSnapshot = JSON.stringify(this.d.params);
     this.openPanel = 'base';

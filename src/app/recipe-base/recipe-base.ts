@@ -6,6 +6,7 @@ import { DebounceController } from '../helpers/debounce-controller';
 import { normalizeReferenceImages, toNamedReferenceImage } from '../helpers/referenceImages';
 import { NamedConstant, DEFAULT_NAMED_CONSTANTS, nearestFraction } from '../helpers/nearestFraction';
 import { ToolboxStore } from '../draft-canvas/tools/toolbox-store';
+import { ReferenceImageStore } from '../draft-canvas/reference-image-store';
 
 export type { NamedConstant };
 
@@ -20,7 +21,8 @@ export abstract class RecipeComponentBase implements AfterViewInit {
   static readonly DEFAULT_NAMED_CONSTANTS: readonly NamedConstant[] = DEFAULT_NAMED_CONSTANTS;
 
   private readonly injector = inject(Injector);
-  private readonly toolbox = inject(ToolboxStore);
+  protected readonly toolbox = inject(ToolboxStore);
+  private readonly refImagesStore = inject(ReferenceImageStore);
 
   @Output() draftChange = new EventEmitter<Array<(g: any, ui: any) => void>>();
   @Output() setBounds = new EventEmitter<{pt1: Pt, pt2: Pt}>();
@@ -30,6 +32,12 @@ export abstract class RecipeComponentBase implements AfterViewInit {
 
   loadFile(file: RecipeInterface): void {
     this.d = file;
+    // Toolbox shapes are drawn separately from the recipe's own render pipeline (ToolboxStore is
+    // a root singleton, not part of `this.d`) — always start from a clean slate, then restore
+    // whatever this file itself saved (if anything), so drawings from a previously open file or
+    // template don't linger into the newly loaded one.
+    this.toolbox.resetAll();
+    this.toolbox.loadState(file.toolboxState);
     this.draftChange.emit([this.firstRender]);
   }
 
@@ -273,10 +281,11 @@ export abstract class RecipeComponentBase implements AfterViewInit {
 
   saveToDisk() {
     const safeName = (this.d.fileName?.trim() || 'untitled') + (this.d.fileName?.endsWith('.json') ? '' : '.json');
+    this.d.toolboxState = this.toolbox.exportState();
     const limitedJson = {
       ...this.d,
       paths: []
-      
+
     }
     const json = JSON.stringify(this.d, null, 2);
 
@@ -373,6 +382,12 @@ export abstract class RecipeComponentBase implements AfterViewInit {
     );
     this.d.referenceImages = [...existing, named];
     delete this.d.referenceImage;
+
+    // Also add straight to the store (not just this.d) so the new tab becomes active right away —
+    // draft-canvas's own `referenceImages` @Input setter only re-picks the active tab when the
+    // current one has disappeared, so without this the upload would silently stay on whichever
+    // tab was already selected.
+    this.refImagesStore.addImage(named);
 
     sessionStorage.setItem('recipeData', JSON.stringify(this.d));
     this.referenceImagesChange.emit(this.d.referenceImages);
