@@ -129,269 +129,13 @@
 
     <div class="tool-row">
       <div class="tool-flyout">
-        <button type="button" class="tool-btn tool-flyout-main" [class.active]="settingsOpen" (click)="toggleSettings()"
-          title="Tool settings">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round">
-            <line x1="4" y1="6" x2="20" y2="6" />
-            <circle cx="9" cy="6" r="2" fill="currentColor" stroke="none" />
-            <line x1="4" y1="12" x2="20" y2="12" />
-            <circle cx="15" cy="12" r="2" fill="currentColor" stroke="none" />
-            <line x1="4" y1="18" x2="20" y2="18" />
-            <circle cx="9" cy="18" r="2" fill="currentColor" stroke="none" />
-          </svg>
-        </button>
-        <button type="button" class="tool-flyout-caret" (click)="toggleSettings()" title="Tool settings">
-          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M6 9l6 6 6-6" />
-          </svg>
-        </button>
-        @if (settingsOpen) {
-        <div class="tool-flyout-popup settings-popup">
-          <div class="settings-row settings-row-inline">
-            <span class="settings-lbl">Color</span>
-            <input type="color" class="tool-color-swatch" [value]="displayedColor"
-              (input)="setColor($any($event.target).value)"
-              title="Drawing color — edits the selected shape's color, or the color new shapes will use" />
-          </div>
-          @if (showLinePanel) {
-          <div class="settings-row">
-            <span class="settings-lbl">Start / End (mm)</span>
-            <div class="settings-grid">
-              <span class="settings-lbl">X1</span>
-              <input type="number" [value]="lineStartX"
-                (change)="setLinePoint('start', 'x', $any($event.target).valueAsNumber)"
-                (keydown.enter)="$any($event.target).blur()" />
-              <span class="settings-lbl">Y1</span>
-              <input type="number" [value]="lineStartY"
-                (change)="setLinePoint('start', 'y', $any($event.target).valueAsNumber)"
-                (keydown.enter)="$any($event.target).blur()" />
-              <span class="settings-lbl">X2</span>
-              <input type="number" [value]="lineEndX"
-                (change)="setLinePoint('end', 'x', $any($event.target).valueAsNumber)"
-                (keydown.enter)="$any($event.target).blur()" />
-              <span class="settings-lbl">Y2</span>
-              <input type="number" [value]="lineEndY"
-                (change)="setLinePoint('end', 'y', $any($event.target).valueAsNumber)"
-                (keydown.enter)="$any($event.target).blur()" />
-            </div>
-          </div>
-          }
-          @if (showLineDashedToggle) {
-          <label class="settings-checkbox">
-            <input type="checkbox" [checked]="lineDashed" (change)="setLineDashed($any($event.target).checked)" />
-            <span class="settings-lbl">Dashed</span>
-          </label>
-          }
-          @if (showRectPanel) {
-          <div class="settings-row">
-            <span class="settings-lbl">Corner 1 (mm)</span>
-            <div class="settings-grid">
-              <span class="settings-lbl">X1</span>
-              <input type="number" [value]="rectP1X"
-                (change)="setRectPoint('p1', 'x', $any($event.target).valueAsNumber)"
-                (keydown.enter)="$any($event.target).blur()" />
-              <span class="settings-lbl">Y1</span>
-              <input type="number" [value]="rectP1Y"
-                (change)="setRectPoint('p1', 'y', $any($event.target).valueAsNumber)"
-                (keydown.enter)="$any($event.target).blur()" />
-            </div>
-          </div>
-          <div class="settings-row">
-            <span class="settings-lbl">Corner 2 (mm)</span>
-            <div class="settings-grid">
-              <span class="settings-lbl">X2</span>
-              <input type="number" [value]="rectP2X"
-                (change)="setRectPoint('p2', 'x', $any($event.target).valueAsNumber)"
-                (keydown.enter)="$any($event.target).blur()" />
-              <span class="settings-lbl">Y2</span>
-              <input type="number" [value]="rectP2Y"
-                (change)="setRectPoint('p2', 'y', $any($event.target).valueAsNumber)"
-                (keydown.enter)="$any($event.target).blur()" />
-            </div>
-          </div>
-          }
-          @if (showRectDashedToggle) {
-          <label class="settings-checkbox">
-            <input type="checkbox" [checked]="rectDashed" (change)="setRectDashed($any($event.target).checked)" />
-            <span class="settings-lbl">Dashed</span>
-          </label>
-          }
-          @if (showTextPanel) {
-          <div class="settings-row">
-            <span class="settings-lbl">Text</span>
-            <input #textContentInput type="text" class="text-content-input box-line-weights-input" [value]="textContent"
-              (input)="setTextContent($any($event.target).value)" (keydown.enter)="textContentInput.blur()"
-              (keydown.escape)="textContentInput.blur()" title="Text content — updates live as you type"
-              placeholder="Text" />
-          </div>
-          <div class="settings-row">
-            <span class="settings-lbl">Position (mm)</span>
-            <div class="settings-grid">
-              <span class="settings-lbl">X</span>
-              <input type="number" [value]="textPositionX"
-                (change)="setTextPosition('x', $any($event.target).valueAsNumber)"
-                (keydown.enter)="$any($event.target).blur()" />
-              <span class="settings-lbl">Y</span>
-              <input type="number" [value]="textPositionY"
-                (change)="setTextPosition('y', $any($event.target).valueAsNumber)"
-                (keydown.enter)="$any($event.target).blur()" />
-            </div>
-          </div>
-          }
-          @if (showPointPanel) {
-          <div class="settings-row">
-            <span class="settings-lbl">Position (mm)</span>
-            <div class="settings-grid">
-              <span class="settings-lbl">X</span>
-              <input type="number" [value]="pointPositionX"
-                (change)="setPointPosition('x', $any($event.target).valueAsNumber)"
-                (keydown.enter)="$any($event.target).blur()" />
-              <span class="settings-lbl">Y</span>
-              <input type="number" [value]="pointPositionY"
-                (change)="setPointPosition('y', $any($event.target).valueAsNumber)"
-                (keydown.enter)="$any($event.target).blur()" />
-            </div>
-          </div>
-          }
-          @if (showCirclePanel) {
-          <div class="settings-row">
-            <span class="settings-lbl">Center (mm)</span>
-            <div class="settings-grid">
-              <span class="settings-lbl">X</span>
-              <input type="number" [value]="circleCenterX"
-                (change)="setCircleCenter('x', $any($event.target).valueAsNumber)"
-                (keydown.enter)="$any($event.target).blur()" />
-              <span class="settings-lbl">Y</span>
-              <input type="number" [value]="circleCenterY"
-                (change)="setCircleCenter('y', $any($event.target).valueAsNumber)"
-                (keydown.enter)="$any($event.target).blur()" />
-            </div>
-          </div>
-          <div class="settings-pair">
-            <span class="settings-lbl">Radius (mm)</span>
-            <input type="number" min="0.01" [value]="circleRadius"
-              (change)="setCircleRadius($any($event.target).valueAsNumber)"
-              (keydown.enter)="$any($event.target).blur()" />
-          </div>
-          }
-          @if (showCircleDashedToggle) {
-          <label class="settings-checkbox">
-            <input type="checkbox" [checked]="circleDashed" (change)="setCircleDashed($any($event.target).checked)" />
-            <span class="settings-lbl">Dashed</span>
-          </label>
-          }
-          @if (showArcPanel) {
-          <div class="settings-row">
-            <span class="settings-lbl">Center (mm)</span>
-            <div class="settings-grid">
-              <span class="settings-lbl">X</span>
-              <input type="number" [value]="arcCenterX" (change)="setArcCenter('x', $any($event.target).valueAsNumber)"
-                (keydown.enter)="$any($event.target).blur()" />
-              <span class="settings-lbl">Y</span>
-              <input type="number" [value]="arcCenterY" (change)="setArcCenter('y', $any($event.target).valueAsNumber)"
-                (keydown.enter)="$any($event.target).blur()" />
-            </div>
-          </div>
-          <div class="settings-pair">
-            <span class="settings-lbl">Radius (mm)</span>
-            <input type="number" min="0.01" [value]="arcRadius"
-              (change)="setArcRadius($any($event.target).valueAsNumber)" (keydown.enter)="$any($event.target).blur()" />
-          </div>
-          <div class="settings-row">
-            <span class="settings-lbl">Start / End (°)</span>
-            <div class="settings-grid">
-              <span class="settings-lbl">Start</span>
-              <input type="number" [value]="arcStartDeg"
-                (change)="setArcAngle('start', $any($event.target).valueAsNumber)"
-                (keydown.enter)="$any($event.target).blur()" />
-              <span class="settings-lbl">End</span>
-              <input type="number" [value]="arcEndDeg" (change)="setArcAngle('end', $any($event.target).valueAsNumber)"
-                (keydown.enter)="$any($event.target).blur()" />
-            </div>
-          </div>
-          <label class="settings-checkbox">
-            <input type="checkbox" [checked]="arcShowCenterGuides"
-              (change)="setArcShowCenterGuides($any($event.target).checked)" />
-            <span class="settings-lbl">Compass</span>
-          </label>
-          }
-          @if (showBoxLinePanel) {
-          @if (showBoxLinePointsPanel) {
-          <div class="settings-row settings-row-inline">
-            <span class="settings-lbl">Color 2</span>
-            <input type="color" class="tool-color-swatch" [value]="displayedBoxLineColor2"
-              (input)="setBoxLineColor2($any($event.target).value)"
-              title="Box Line's second alternating segment color" />
-          </div>
-          <div class="settings-row">
-            <span class="settings-lbl">Start / End (mm)</span>
-            <div class="settings-grid">
-              <span class="settings-lbl">X1</span>
-              <input type="number" [value]="boxLineStartX"
-                (change)="setBoxLinePoint('start', 'x', $any($event.target).valueAsNumber)"
-                (keydown.enter)="$any($event.target).blur()" />
-              <span class="settings-lbl">Y1</span>
-              <input type="number" [value]="boxLineStartY"
-                (change)="setBoxLinePoint('start', 'y', $any($event.target).valueAsNumber)"
-                (keydown.enter)="$any($event.target).blur()" />
-              <span class="settings-lbl">X2</span>
-              <input type="number" [value]="boxLineEndX"
-                (change)="setBoxLinePoint('end', 'x', $any($event.target).valueAsNumber)"
-                (keydown.enter)="$any($event.target).blur()" />
-              <span class="settings-lbl">Y2</span>
-              <input type="number" [value]="boxLineEndY"
-                (change)="setBoxLinePoint('end', 'y', $any($event.target).valueAsNumber)"
-                (keydown.enter)="$any($event.target).blur()" />
-            </div>
-          </div>
-          }
-          <label class="settings-checkbox">
-            <input type="checkbox" [checked]="boxLineUseSegmentCount"
-              (change)="boxLineUseSegmentCount = $any($event.target).checked" />
-            <span class="settings-lbl">Equal segments</span>
-          </label>
-          @if (boxLineUseSegmentCount) {
-          <div class="settings-pair">
-            <span class="settings-lbl">Count</span>
-            <input type="number" min="1" step="1" [value]="displayedBoxLineSegmentCount"
-              (change)="setBoxLineSegmentCount($any($event.target).valueAsNumber)"
-              (keydown.enter)="$any($event.target).blur()" title="Number of equal segments (e.g. 16 for sixteenths)" />
-          </div>
-          } @else {
-          <div class="settings-row">
-            <span class="settings-lbl">Weights</span>
-            <input #boxLineWeightsInput type="text" class="box-line-weights-input" [value]="displayedBoxLineWeightsText"
-              (change)="setBoxLineWeightsText($any($event.target).value)"
-              (keydown.enter)="setBoxLineWeightsText(boxLineWeightsInput.value); boxLineWeightsInput.blur()"
-              (keydown.escape)="boxLineWeightsInput.value = displayedBoxLineWeightsText; boxLineWeightsInput.blur()"
-              title="Segment weights, comma-separated (e.g. 1,1,1 or 3,4,3) — Enter to apply" placeholder="1,1,1" />
-          </div>
-          }
-          }
-        </div>
-        }
-      </div>
-    </div>
-
-    <div class="tool-palette-sep"></div>
-
-    <div class="tool-row">
-      <div class="tool-flyout">
-        <button type="button" class="tool-btn tool-flyout-main" [class.active]="layersOpen" (click)="toggleLayers()"
+        <button type="button" class="tool-btn" [class.active]="layersOpen" (click)="toggleLayers()"
           title="Layers">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round">
             <polygon points="12 3 21 8 12 13 3 8 12 3" />
             <polyline points="3 13 12 18 21 13" />
             <polyline points="3 18 12 23 21 18" />
-          </svg>
-        </button>
-        <button type="button" class="tool-flyout-caret" (click)="toggleLayers()" title="Layers">
-          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M6 9l6 6 6-6" />
           </svg>
         </button>
         @if (layersOpen) {
@@ -463,6 +207,94 @@
             </svg>
             <span>Clear Layer</span>
           </button>
+        </div>
+        }
+      </div>
+    </div>
+
+    <div class="tool-row">
+      <div class="tool-flyout">
+        <button type="button" class="tool-btn tool-flyout-main" [class.active]="refImages.referenceModeEnabled"
+          (click)="toggleReference()" title="Reference image">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <circle cx="8.5" cy="8.5" r="1.5" />
+            <path d="M21 15l-5-5L5 21" />
+          </svg>
+        </button>
+        <button type="button" class="tool-view-toggle" [title]="refImages.showReferenceImage ? 'Hide reference image' : 'Show reference image'"
+          (click)="refImages.setShowReferenceImage(!refImages.showReferenceImage); $event.stopPropagation()">
+          @if (refImages.showReferenceImage) {
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 12l6 6L20 6" />
+          </svg>
+          } @else {
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
+            stroke-linecap="round">
+            <path d="M5 5l14 14M19 5L5 19" />
+          </svg>
+          }
+        </button>
+        @if (refImages.referenceModeEnabled) {
+        <div class="tool-flyout-popup reference-popup">
+          <div class="layer-tabs">
+            @for (tab of refImages.images; track tab.id) {
+            <div class="layer-tab" [class.active]="tab.id === refImages.activeId" (click)="selectRefTab(tab.id)">
+              @if (editingRefId === tab.id) {
+              <input #refRenameInput class="layer-tab-edit" type="text" [value]="tab.label"
+                (click)="$event.stopPropagation()" (keydown.enter)="commitRenameRef(tab.id, refRenameInput.value)"
+                (keydown.escape)="editingRefId = null" (blur)="commitRenameRef(tab.id, refRenameInput.value)" />
+              } @else {
+              <span class="layer-tab-label" (dblclick)="startRenameRef(tab.id)" title="Double-click to rename">{{
+                tab.label }}</span>
+              <button type="button" class="layer-tab-x" title="Remove"
+                (click)="deleteRefTab(tab.id); $event.stopPropagation()">×</button>
+              }
+            </div>
+            }
+            <button type="button" class="layer-tab-add" title="Add reference image"
+              (click)="requestAddReference()">+</button>
+          </div>
+
+          @if (refImages.active) {
+          <div class="settings-grid">
+            <span class="settings-lbl">X</span>
+            <input type="number" [value]="refImages.active.x"
+              (change)="onRefParamChange('x', $any($event.target).valueAsNumber)" />
+            <span class="settings-lbl">Y</span>
+            <input type="number" [value]="refImages.active.y"
+              (change)="onRefParamChange('y', $any($event.target).valueAsNumber)" />
+            <span class="settings-lbl">W</span>
+            <input type="number" [value]="refImages.active.width"
+              (change)="onRefParamChange('width', $any($event.target).valueAsNumber)" />
+            <span class="settings-lbl">H</span>
+            <input type="number" [value]="refImages.active.height"
+              (change)="onRefParamChange('height', $any($event.target).valueAsNumber)" />
+            <span class="settings-lbl">°</span>
+            <input type="number" step="0.1" [value]="refImages.active.rotationDeg ?? 0"
+              (change)="onRefParamChange('rotationDeg', $any($event.target).valueAsNumber)" />
+          </div>
+          <div class="ref-opacity">
+            <span class="settings-lbl">Opacity</span>
+            <input type="range" min="0" max="1" step="0.01" [value]="refImages.opacity"
+              (input)="refImages.setOpacity($any($event.target).valueAsNumber)" />
+            <span class="ref-pct">{{ (refImages.opacity * 100).toFixed(0) }}%</span>
+          </div>
+          } @else {
+          <div class="ref-empty">No reference image. Click + to add one.</div>
+          }
+
+          <div class="ref-actions">
+            <button type="button" class="btn" (click)="referenceControlsInfo()" title="Help">Help</button>
+            <div class="ref-right">
+              <button type="button" class="btn" [disabled]="!refImages.active"
+                (click)="requestReplaceReference()">Replace</button>
+              <button type="button" class="btn ref-reset-btn" [disabled]="!refImages.active"
+                (click)="resetReferenceImage()">Reset</button>
+            </div>
+          </div>
         </div>
         }
       </div>
