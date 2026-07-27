@@ -110,36 +110,24 @@ select {
   box-sizing: border-box;
   font-size: 12px;
   font-weight: 600;
-  color: var(--ui-text-secondary);
-  background: var(--ui-bg-panel);
+  color: var(--ui-text-primary);
+  background: linear-gradient(180deg, var(--ui-canvas-btn-bg-start) 0%, var(--ui-canvas-btn-bg-end) 100%);
   border: 1px solid var(--ui-border-strong);
   border-radius: 4px;
   cursor: pointer;
   user-select: none;
-  transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
-}
-
-.toggle:has(input:checked) {
-  border-color: var(--ui-focus-border);
-  color: var(--ui-text-primary);
-  background: color-mix(in srgb, var(--ui-focus-border) 12%, var(--ui-bg-panel));
+  transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease, color 120ms ease;
 }
 
 .toggle:hover:not(:has(input:disabled)) {
-  border-color: var(--ui-border-elevated);
-  color: var(--ui-text-primary);
+  border-color: var(--ui-canvas-btn-border-hover);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }
 
-:root.day-mode .toggle {
-  border-color: var(--ui-border-elevated);
-  color: var(--ui-text-secondary);
-  background: var(--ui-bg-surface);
-}
-
-:root.day-mode .toggle:has(input:checked) {
-  border-color: var(--ui-focus-border);
-  color: var(--ui-text-primary);
-  background: color-mix(in srgb, var(--ui-focus-border) 14%, var(--ui-bg-panel));
+.toggle:has(input:checked) {
+  background: var(--ui-accent);
+  color: #fff;
+  border-color: var(--ui-accent);
 }
 
 .toggle input[type="checkbox"],
