@@ -3,6 +3,20 @@
   display: inline-block;
 }
 
+/* Icon-only, sized to match .zoom-controls' 28px outer footprint (26px content + 1px border
+   each side) so the two sit flush together. box-sizing pinned so the 28px is the actual
+   rendered size regardless of .btn's own padding; ".btn.axis-toggle-btn" (not just
+   ".axis-toggle-btn") so this wins over .btn's padding despite matching specificity. */
+.btn.axis-toggle-btn {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+}
+
 .btn.active {
   background: var(--ui-accent);
   color: #fff;

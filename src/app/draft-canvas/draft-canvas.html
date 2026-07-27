@@ -36,35 +36,16 @@
     </div>
 
     <div class="right">
-      <div class="zoom-controls">
-        <button type="button" class="zoom-btn" (click)="fitCamera(); draw()" title="Fit to view (F)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M9 4H5a1 1 0 0 0-1 1v4" />
-            <path d="M15 4h4a1 1 0 0 1 1 1v4" />
-            <path d="M9 20H5a1 1 0 0 1-1-1v-4" />
-            <path d="M15 20h4a1 1 0 0 0 1-1v-4" />
-          </svg>
-        </button>
-        <button type="button" class="zoom-btn" (click)="applyZoom(pxPerMm / 1.1)" title="Zoom out">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round">
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-        </button>
-        <span class="zoom-readout" title="Zoom (px/mm)">{{ pxPerMm.toFixed(1) }}</span>
-        <button type="button" class="zoom-btn" (click)="applyZoom(pxPerMm * 1.1)" title="Zoom in">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-        </button>
-      </div>
-
        <div class="axis-controls">
-        <button type="button" class="btn" [class.active]="axisPopupOpen" (click)="toggleAxisPopup()">
-          Axis
+        <button type="button" class="btn axis-toggle-btn" [class.active]="axisPopupOpen" (click)="toggleAxisPopup()"
+          title="Axis &amp; grid settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 20V4" />
+            <path d="M1.5 8L4 4l2.5 4" />
+            <path d="M4 20h16" />
+            <path d="M16 22.5L20 20l-4-2.5" />
+          </svg>
         </button>
         @if(axisPopupOpen) {
         <div class="axis-popup">
@@ -90,6 +71,31 @@
           </label>
         </div>
         }
+      </div>
+            <div class="zoom-controls">
+        <button type="button" class="zoom-btn" (click)="fitCamera(); draw()" title="Fit to view (F)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 4H5a1 1 0 0 0-1 1v4" />
+            <path d="M15 4h4a1 1 0 0 1 1 1v4" />
+            <path d="M9 20H5a1 1 0 0 1-1-1v-4" />
+            <path d="M15 20h4a1 1 0 0 0 1-1v-4" />
+          </svg>
+        </button>
+        <button type="button" class="zoom-btn" (click)="applyZoom(pxPerMm / 1.1)" title="Zoom out">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round">
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </button>
+        <span class="zoom-readout" title="Zoom (px/mm)">{{ pxPerMm.toFixed(1) }}</span>
+        <button type="button" class="zoom-btn" (click)="applyZoom(pxPerMm * 1.1)" title="Zoom in">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </button>
       </div>
 
     </div>
