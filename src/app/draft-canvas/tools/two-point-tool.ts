@@ -55,15 +55,24 @@ export function previewRect(gRoot: RootGroup, _gUI: RootGroup, _pxPerMm: number,
     .style('pointer-events', 'none');
 }
 
+/** Same fixed pixel threshold draft-canvas.ts uses to tell a stationary click apart from a real
+ * drag for its own Select-mode drags (endpoint/move/marquee) — kept independent here rather than
+ * imported since draft-canvas's copy is a private component constant. */
+const CLICK_MOVE_THRESHOLD_PX = 3;
+
 /**
- * Shared press-drag-release interaction for any tool defined by exactly two
- * points (a straight segment, or a center + radius point). Only how the
- * final shape is built, and how the drag preview looks, differs per use —
+ * Shared interaction for any tool defined by exactly two points (a straight
+ * segment, or a center + radius point). Supports both gestures side by side:
+ * press-drag-release (as before), and click-click — press+release near the
+ * same spot leaves the first point planted and waits for a second click to
+ * finish the shape, which is friendlier on a trackpad. Only how the final
+ * shape is built, and how the drag/hover preview looks, differs per use —
  * see line-tool.ts, circle-tool.ts, dimension-tool.ts.
  */
 export class TwoPointTool implements DraftTool {
   private startPt: Pt | null = null;
   private currentPt: Pt | null = null;
+  private awaitingSecondClick = false;
 
   constructor(
     readonly id: string,
@@ -73,9 +82,16 @@ export class TwoPointTool implements DraftTool {
     private readonly modifier?: TwoPointModifier,
   ) { }
 
-  onPointerDown(pt: Pt): void {
+  onPointerDown(pt: Pt, host: DraftToolHost): void {
+    if (this.startPt && this.awaitingSecondClick) {
+      // Second click of a click-click gesture — finish the shape here, same convention as
+      // ArcTool's final click (commits on pointerdown; a click's pointerup does nothing further).
+      this.commit(pt, host);
+      return;
+    }
     this.startPt = pt;
     this.currentPt = pt;
+    this.awaitingSecondClick = false;
   }
 
   onPointerMove(pt: Pt, host: DraftToolHost): void {
@@ -85,6 +101,24 @@ export class TwoPointTool implements DraftTool {
   }
 
   onPointerUp(pt: Pt, host: DraftToolHost): void {
+    if (!this.startPt || this.awaitingSecondClick) return;
+    const end = this.applyModifier(pt, host);
+    const movedPx = Math.hypot(end.x - this.startPt.x, end.y - this.startPt.y) * host.getPxPerMm();
+    if (movedPx < CLICK_MOVE_THRESHOLD_PX) {
+      // Barely moved — treat as a click, not a drag: leave the first point planted and wait for
+      // a second click instead of committing a near-zero-length shape.
+      this.awaitingSecondClick = true;
+      host.requestDraw();
+      return;
+    }
+    if (this.startPt.x !== end.x || this.startPt.y !== end.y) {
+      host.addShape(this.buildShape(this.startPt, end));
+    }
+    this.reset();
+    host.requestDraw();
+  }
+
+  private commit(pt: Pt, host: DraftToolHost): void {
     if (!this.startPt) return;
     const end = this.applyModifier(pt, host);
     if (this.startPt.x !== end.x || this.startPt.y !== end.y) {
@@ -115,5 +149,6 @@ export class TwoPointTool implements DraftTool {
   reset(): void {
     this.startPt = null;
     this.currentPt = null;
+    this.awaitingSecondClick = false;
   }
 }

@@ -70,6 +70,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     getSnapTangent: () => this.activeSnap?.tangent,
     isAngleLockHeld: () => this.isAngleLockHeld,
     getSelectedShapes: () => this.selectedShapes,
+    getPxPerMm: () => this.pxPerMm,
   };
 
   // Snapping: candidates are re-indexed from the rendered scene only when the
