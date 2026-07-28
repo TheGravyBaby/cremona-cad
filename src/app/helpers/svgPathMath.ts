@@ -1,7 +1,7 @@
 import { Pt, Circle, Rectangle, Arc } from "../models/types";
 import * as polygonClipping from 'polygon-clipping';
 import { svgPathProperties } from 'svg-path-properties';
-import { dist, angleFromCenter, pointOnCircle, intersectLines, lineCircleIntersection, circleCircleIntersections, solveCatenaryA, makeNaturalSpline } from './draftMath';
+import { dist, angleFromCenter, pointOnCircle, intersectLines, lineCircleIntersection, circleCircleIntersections, solveCatenaryA, makeMonotoneSpline } from './draftMath';
 
 // This file holds everything oriented around building, combining, and boolean-diffing
 // SVG path *strings* — as opposed to draftMath.ts, which works with plain geometric
@@ -1149,9 +1149,15 @@ export function splineZAt(hEff: number, span: number, points: { t: number; z: nu
   return makeArchSplineZOf(hEff, span, points)(s);
 }
 
-/** Natural-spline evaluator z(s) over [0, span] — shared by buildSplinePath and splineZAt. */
+/** Spline evaluator z(s) over [0, span] — shared by buildSplinePath and splineZAt. */
 function makeArchSplineZOf(hEff: number, span: number, points: { t: number; z: number }[]): (s: number) => number {
-  const sorted = [...points].sort((a, b) => a.t - b.t);
+  // Interior control points live in (0, 1) of the half-span; clamp off the ends
+  // so a point that lands on the edge or the peak can't collapse a knot interval.
+  const eps = 1e-3;
+  const sorted = points
+    .map(p => ({ t: Math.min(Math.max(p.t, eps), 1 - eps), z: p.z }))
+    .sort((a, b) => a.t - b.t)
+    .filter((p, i, all) => i === 0 || p.t - all[i - 1].t > eps);
   // Full symmetric knot list along y (always single-valued)
   const ys: number[] = [0];
   const zs: number[] = [0];
@@ -1159,5 +1165,5 @@ function makeArchSplineZOf(hEff: number, span: number, points: { t: number; z: n
   ys.push(span / 2);                      zs.push(hEff);
   for (const p of sorted.slice().reverse()) { ys.push(span - p.t * span / 2); zs.push(p.z); }
   ys.push(span);                           zs.push(0);
-  return makeNaturalSpline(ys, zs);
+  return makeMonotoneSpline(ys, zs);
 }

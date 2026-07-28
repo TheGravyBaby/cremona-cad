@@ -71,6 +71,8 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     isAngleLockHeld: () => this.isAngleLockHeld,
     getSelectedShapes: () => this.selectedShapes,
     getPxPerMm: () => this.pxPerMm,
+    hitTestShape: (pt) => this.hitTestToolboxShape(pt),
+    selectShape: (id) => this.setSelectedShape(id),
   };
 
   // Snapping: candidates are re-indexed from the rendered scene only when the

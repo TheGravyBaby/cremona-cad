@@ -19,6 +19,13 @@ export interface DraftToolHost {
    * stationary click from a real drag with the same fixed pixel threshold draft-canvas's own
    * Select-mode drags use, regardless of how zoomed in/out the canvas is. */
   getPxPerMm(): number;
+  /** Nearest toolbox shape to `pt` within the same tolerance Select-mode clicks use, or null —
+   * lets a selection-based tool (e.g. Offset) hit-test a click itself, without needing its own
+   * copy of every shape or the select tolerance constant. */
+  hitTestShape(pt: Pt): string | null;
+  /** Replaces the whole selection with just this shape — same effect as a plain Select-mode
+   * click on it, so a tool like Offset can adopt a shape the user clicked directly. */
+  selectShape(id: string): void;
 }
 
 /**

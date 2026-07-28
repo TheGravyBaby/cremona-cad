@@ -200,7 +200,7 @@ export function curveTypeInfo() {
     info(
         "Two arch profiles are available:\n\n" +
         "Catenary — the curve formed by a hanging chain, inverted. Naturally smooth and symmetric; a good starting point.\n\n" +
-        "Spline — a natural cubic spline through user-placed control points. Many cremonese instruments used a spline based curve.",
+        "Spline — a cubic spline through user-placed control points. The curve holds to the heights you set and never rises above them, so two points at the same height give a flat run between them. Many cremonese instruments used a spline based curve.",
         "Arch Curve Type", defaultTTL
     )
 }
