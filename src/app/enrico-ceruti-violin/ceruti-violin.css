@@ -3,3 +3,17 @@
 .panel-content.has-view-toggle-bar {
   padding-bottom: 44px;
 }
+
+/* Spline control-point list (long-arching-panel): a table of many rows once
+   asymmetric points are in play, so it trades the standard field spacing for
+   a much tighter one to keep the list scannable without excess scrolling. */
+.spline-points {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.spline-row.spline-row--header {
+  padding: 0 2px;
+  margin-bottom: 1px;
+}
