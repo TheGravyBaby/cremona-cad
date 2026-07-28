@@ -170,6 +170,10 @@ export class OffsetTool implements DraftTool {
 
   onPointerDown(pt: Pt, host: DraftToolHost): void {
     this.lastPt = pt;
+    if (host.getSelectedShapes().length === 0) {
+      const hitId = host.hitTestShape(pt);
+      if (hitId) host.selectShape(hitId);
+    }
     this.cachedShapes = supportedShapes(host.getSelectedShapes());
     if (this.cachedShapes.length === 0) return;
 

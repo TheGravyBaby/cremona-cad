@@ -627,45 +627,65 @@ export function solveCatenaryA(H: number, L: number): number {
 }
 
 /**
- * 1-D natural cubic spline: given strictly-increasing `ys[]` and values `zs[]`,
- * returns a function z(y). Natural BC: M[0] = M[n] = 0 (zero curvature at ends).
+ * 1-D shape-preserving cubic spline (Fritsch–Carlson monotone Hermite, a.k.a.
+ * PCHIP): given strictly-increasing `ys[]` and values `zs[]`, returns z(y).
+ *
+ * Chosen over a natural cubic spline because it never overshoots the data. A
+ * natural spline enforces C² continuity, and buys it by rising above the knots
+ * it passes through: three knots at equal height following a steep rise come
+ * out as a hump-dip-hump ripple rather than the flat the values describe. Here
+ * the knot slopes are instead derived from the neighbouring secants and clamped
+ * to their sign, so a run of equal values gets zero slope at each end and the
+ * segment between them is genuinely flat. The cost is C¹ rather than C²
+ * continuity — curvature can step at a knot, which reads as a soft crease only
+ * where the data itself turns sharply.
  */
-export function makeNaturalSpline(ys: number[], zs: number[]): (y: number) => number {
+export function makeMonotoneSpline(ys: number[], zs: number[]): (y: number) => number {
   const n = ys.length - 1;
-  const h: number[] = ys.slice(0, n).map((v, i) => ys[i + 1] - v);
+  if (n < 1) return () => zs[0] ?? 0;
 
-  const m = n - 1;
-  const bd: number[] = [];
-  const up: number[] = [];
-  const rhs: number[] = [];
-  for (let i = 0; i < m; i++) {
-    const r = i + 1;
-    bd.push(2 * (h[r - 1] + h[r]));
-    up.push(i < m - 1 ? h[r] : 0);
-    rhs.push(6 * ((zs[r + 1] - zs[r]) / h[r] - (zs[r] - zs[r - 1]) / h[r - 1]));
+  const h: number[]     = ys.slice(0, n).map((v, i) => ys[i + 1] - v);
+  const delta: number[] = h.map((hi, i) => (zs[i + 1] - zs[i]) / hi);
+
+  // Interior slopes: zero at any local extremum (sign change or flat secant),
+  // otherwise the weighted harmonic mean of the two secants — the Fritsch–Carlson
+  // choice, which is the largest slope that still keeps the segment monotone.
+  const m: number[] = new Array(n + 1).fill(0);
+  for (let i = 1; i < n; i++) {
+    if (delta[i - 1] * delta[i] <= 0) { m[i] = 0; continue; }
+    const w1 = 2 * h[i] + h[i - 1];
+    const w2 = h[i] + 2 * h[i - 1];
+    m[i] = (w1 + w2) / (w1 / delta[i - 1] + w2 / delta[i]);
   }
-  for (let i = 1; i < m; i++) {
-    const f = up[i - 1] / bd[i - 1];
-    bd[i]  -= f * up[i - 1];
-    rhs[i] -= f * rhs[i - 1];
-  }
-  const Mi: number[] = new Array(m).fill(0);
-  if (m > 0) {
-    Mi[m - 1] = rhs[m - 1] / bd[m - 1];
-    for (let i = m - 2; i >= 0; i--) Mi[i] = (rhs[i] - up[i] * Mi[i + 1]) / bd[i];
-  }
-  const M = [0, ...Mi, 0];
+  m[0] = n === 1 ? delta[0] : endSlope(h[0], h[1], delta[0], delta[1]);
+  m[n] = n === 1 ? delta[0] : endSlope(h[n - 1], h[n - 2], delta[n - 1], delta[n - 2]);
 
   return (y: number): number => {
     let i = 0;
     while (i < n - 1 && ys[i + 1] <= y) i++;
     const hi = h[i];
-    const s  = ys[i + 1] - y;
-    const t  = y - ys[i];
-    return (M[i] * s * s * s + M[i + 1] * t * t * t) / (6 * hi)
-         + (zs[i]     / hi - M[i]     * hi / 6) * s
-         + (zs[i + 1] / hi - M[i + 1] * hi / 6) * t;
+    const t  = (y - ys[i]) / hi;
+    const t2 = t * t;
+    const t3 = t2 * t;
+    // Cubic Hermite basis on the unit interval.
+    return (2 * t3 - 3 * t2 + 1) * zs[i]
+         + (t3 - 2 * t2 + t) * hi * m[i]
+         + (-2 * t3 + 3 * t2) * zs[i + 1]
+         + (t3 - t2) * hi * m[i + 1];
   };
+}
+
+/**
+ * End-knot slope for {@link makeMonotoneSpline}: the one-sided three-point
+ * estimate, then clipped — to zero if it disagrees in sign with the end secant,
+ * and to 3× the end secant where the neighbouring secants turn, which is the
+ * limit past which the end segment would overshoot.
+ */
+function endSlope(hEnd: number, hNext: number, dEnd: number, dNext: number): number {
+  const s = ((2 * hEnd + hNext) * dEnd - hEnd * dNext) / (hEnd + hNext);
+  if (s * dEnd <= 0) return 0;
+  if (dEnd * dNext <= 0 && Math.abs(s) > 3 * Math.abs(dEnd)) return 3 * dEnd;
+  return s;
 }
 /** True when angle θ lies on the drawn (minor) span between the arc's start and end — see pathFromArc. */
 export function angleOnDrawnArc(arc: Arc, theta: number): boolean {
