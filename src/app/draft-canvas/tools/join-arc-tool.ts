@@ -21,17 +21,10 @@ function arcSpan(startAngle: number, endAngle: number): number {
 }
 
 /**
- * findAllJoiningArcsFromTangents always labels each piece "sweep CCW from the shared endpoint
- * to the joint" (or joint-to-endpoint) — but the joint J and the far endpoint are just two fixed
- * points on an already-correct circle, and *either* of the two arcs between them (the minor one,
- * or its complement going the long way around) touches both points and keeps the exact same
- * tangency, since neither the circle nor the two boundary points move when you relabel which one
- * is "start". Which of the two the fixed CCW-from-P-to-J labeling happens to produce is an
- * accident of where the points land angularly — sometimes it's the minor arc, sometimes (as seen
- * on real cases) it's the ~347° major one, whose small complement — the "negative space" of that
- * big circle — was the one that actually belonged in the join. Always taking the minor (≤180°)
- * arc for each piece keeps the same circles and the same joint, and reliably draws the small
- * portion of them instead of looping the long way around for no geometric reason.
+ * findAllJoiningArcsFromTangents labels each arc's sweep direction arbitrarily — the short way
+ * around its circle between its two boundary points, or the long way, both equally valid/tangent.
+ * Always take the short (≤180°) one; the long one is just the same circle looping the far way
+ * around for no reason.
  */
 function preferMinorSweep(arc: ResolvedArc): ResolvedArc {
   if (arcSpan(arc.startAngle, arc.endAngle) <= Math.PI) return arc;
@@ -39,49 +32,38 @@ function preferMinorSweep(arc: ResolvedArc): ResolvedArc {
 }
 
 /**
- * The equal-radius biarc solve has two independent sources of ambiguity: which of the 4
- * invert1/invert2 departure-direction combinations is physically correct (a bare snapped point
- * doesn't say whether it was a shape's start or end — see findAllJoiningArcsFromTangents' doc
- * comment), and which of up to 2 valid radii for a given combination is the graceful one vs. the
- * tight/looping one. Trying all combinations of both (up to 4 × 2 = 8 candidates) is cheap; the
- * question is how to score them. Each piece is first corrected to its minor sweep
- * (preferMinorSweep) regardless of scoring — see its own doc comment.
+ * A bare snapped point doesn't say which end of a shape it was, and the biarc math can have up to
+ * 2 valid radii per orientation — so this tries all 4 invert1/invert2 combinations and every root
+ * each gives (up to 8 candidates total) and scores them, rather than guessing one.
  *
- * Three single-number metrics were each falsified by a real logged case before this one. Total
- * arc *length* buries a large gentle arc (more raw length than a small tight loop despite looking
- * better) under a shorter-but-uglier one. Total *turning* (the curvature integral, independent of
- * radius) fixed that, but is fooled by near-singular radius blowups (T1/T2 close to antiparallel
- * sends one candidate's radius to the thousands while its turning — barely anything, because
- * that's exactly what makes it degenerate — looks artificially great). Radius-to-chord
- * proportionality (|log(radius / chord)|, since a well-formed biarc's radius sits on the same
- * order as the distance it's bridging) fixed both of those, but a fourth case then falsified it
- * alone too: it preferred a radius with slightly better proportionality (0.41 vs 0.50 mismatch)
- * whose turning was far worse (151° vs 35°) — neither axis alone survives every case, because a
- * candidate can be near-best on one and clearly wrong on the other.
+ * Each candidate is scored on two things: scaleMismatch (how far its radius is from the P1–P2
+ * chord length, log-scaled — a well-formed join's radius is roughly chord-sized) and turning
+ * (total curvature in radians — a tighter, more efficient join turns less). combinedScore is
+ * `2 × scaleMismatch + turning`; the weight and the choice to add rather than multiply were both
+ * fit against six real cases (see join-arc-tool.spec.ts) where simpler formulas picked wrong —
+ * multiplying let one near-zero factor mask a badly-wrong other one, which addition can't do.
+ * jointRatio (how far the two arcs' meeting point sits from the P1–P2 midpoint) is computed and
+ * logged too, in case a future case needs it, but isn't part of the score yet.
  *
- * What separates right from wrong in every one of the four real cases logged from this tool is
- * being *simultaneously* reasonable on both axes, not optimal on either alone — so the two scores
- * are combined multiplicatively (scaleMismatch × turning-in-radians) rather than compared
- * separately. A candidate only scores well if it's not badly wrong on either count; one being
- * near-zero doesn't let the other run wild. This reproduces the confirmed-correct choice on all
- * four logged cases (see /tmp verification during development — not persisted, but readily
- * reproducible from the debug log). A generous hard cutoff still discards radii far beyond
- * anything a real join needs (50× the chord) as a pure safety net: in the extreme limit of a
- * near-singularity, turning shrinks faster than the mismatch score grows, so the product alone
- * isn't proof against an even worse blowup than any seen so far. Sorted ascending so index 0 is
- * the default and index 1 is the next-best fallback for Shift.
+ * All candidates are returned, sorted ascending by combinedScore (index 0 is the default). None
+ * are filtered out, even implausible ones, so Shift can still cycle to whichever one turns out to
+ * be correct if the score is ever wrong again (see JoinArcTool.onKeyDown).
  */
-type BiarcCandidate = {
+export type BiarcCandidate = {
   invert1: boolean; invert2: boolean; radius: number; arcs: ResolvedArc[];
-  turningDeg: number; scaleMismatch: number; combinedScore: number;
+  turningDeg: number; scaleMismatch: number; jointRatio: number; combinedScore: number;
 };
 
-/** Hard safety cutoff — see computeBiarcCandidates' doc comment on why the combined score alone
- * isn't asymptotically proof against an arbitrarily extreme near-singularity. */
-const MAX_RADIUS_TO_CHORD_RATIO = 50;
+/** Where the two arcs meet — the midpoint of their centers, since two equal-radius circles that
+ * are tangent to each other always touch exactly halfway between their centers. */
+function computeJoint(arcs: ResolvedArc[]): Pt {
+  return { x: (arcs[0].center.x + arcs[1].center.x) / 2, y: (arcs[0].center.y + arcs[1].center.y) / 2 };
+}
 
-function computeBiarcCandidates(P1: Pt, T1: number, P2: Pt, T2: number): BiarcCandidate[] {
+/** Exported so join-arc-tool.spec.ts can test the scoring directly, without simulating pointer/keyboard events. */
+export function computeBiarcCandidates(P1: Pt, T1: number, P2: Pt, T2: number): BiarcCandidate[] {
   const chord = Math.hypot(P2.x - P1.x, P2.y - P1.y);
+  const chordMid: Pt = { x: (P1.x + P2.x) / 2, y: (P1.y + P2.y) / 2 };
   const candidates: BiarcCandidate[] = [];
   for (const invert1 of [false, true]) {
     for (const invert2 of [false, true]) {
@@ -90,57 +72,55 @@ function computeBiarcCandidates(P1: Pt, T1: number, P2: Pt, T2: number): BiarcCa
         const turning = arcs.reduce((sum, arc) => sum + arcSpan(arc.startAngle, arc.endAngle), 0);
         const radius = arcs[0]?.radius ?? 0;
         const scaleMismatch = chord > 1e-6 && radius > 1e-9 ? Math.abs(Math.log(radius / chord)) : Number.POSITIVE_INFINITY;
-        candidates.push({ invert1, invert2, radius, arcs, turningDeg: turning * 180 / Math.PI, scaleMismatch, combinedScore: scaleMismatch * turning });
+        const joint = computeJoint(arcs);
+        const jointRatio = chord > 1e-6 ? Math.hypot(joint.x - chordMid.x, joint.y - chordMid.y) / (chord / 2) : Number.POSITIVE_INFINITY;
+        candidates.push({
+          invert1, invert2, radius, arcs, turningDeg: turning * 180 / Math.PI, scaleMismatch, jointRatio,
+          combinedScore: 2 * scaleMismatch + turning,
+        });
       }
     }
   }
   candidates.sort((a, b) => a.combinedScore - b.combinedScore);
-
-  const reasonable = chord > 1e-6 ? candidates.filter(c => c.radius <= chord * MAX_RADIUS_TO_CHORD_RATIO) : candidates;
-  return reasonable.length > 0 ? reasonable : candidates;
+  return candidates;
 }
 
 function rankedBiarcCandidates(P1: Pt, T1: number, P2: Pt, T2: number): ResolvedArc[][] {
   return computeBiarcCandidates(P1, T1, P2, T2).map(c => c.arcs);
 }
 
-// Diagnostic aid used while tuning the candidate-selection heuristic — disabled now that the
-// combined scale/turning score has been picking correctly on its own, but left here (not
-// deleted) in case a future bad case needs the same paste-the-JSON-here workflow again.
-//
-// /**
-//  * Dumps every candidate this biarc solve considered — point/tangent inputs, each candidate's
-//  * invert flags, radius, total turning, scale-mismatch, and combined score — as JSON on commit, so
-//  * a case where the auto-picked default is wrong can be pasted verbatim instead of reconstructed
-//  * by hand.
-//  */
-// function logJoinDebug(P1: Pt, T1: number, P2: Pt, T2: number, chosenIndex: number, shiftHeld: boolean): void {
-//   const candidates = computeBiarcCandidates(P1, T1, P2, T2);
-//   console.log('[JoinArcTool] biarc candidates', JSON.stringify({
-//     P1, T1deg: T1 * 180 / Math.PI, P2, T2deg: T2 * 180 / Math.PI,
-//     shiftHeld, chosenIndex,
-//     candidates: candidates.map((c, index) => ({
-//       index, invert1: c.invert1, invert2: c.invert2, radius: c.radius,
-//       turningDeg: c.turningDeg, scaleMismatch: c.scaleMismatch, combinedScore: c.combinedScore,
-//       arcs: c.arcs.map(a => ({ center: a.center, radius: a.radius, startAngleDeg: a.startAngle * 180 / Math.PI, endAngleDeg: a.endAngle * 180 / Math.PI })),
-//     })),
-//   }, null, 2));
-// }
+function round(n: number, decimals: number): number {
+  const f = 10 ** decimals;
+  return Math.round(n * f) / f;
+}
+
+/** Logs the ranked candidates on every Shift cycle step and on commit, so a bad auto-pick can be
+ * pasted straight into join-arc-tool.spec.ts as a new test case instead of reconstructed by hand.
+ * Rounded, and limited to what diagnosing a scoring mistake needs — not the full arc geometry. */
+function logJoinDebug(P1: Pt, T1: number, P2: Pt, T2: number, chosenIndex: number): void {
+  const candidates = computeBiarcCandidates(P1, T1, P2, T2);
+  console.log('[JoinArcTool] biarc candidates', JSON.stringify({
+    P1: { x: round(P1.x, 2), y: round(P1.y, 2) }, T1deg: round(T1 * 180 / Math.PI, 2),
+    P2: { x: round(P2.x, 2), y: round(P2.y, 2) }, T2deg: round(T2 * 180 / Math.PI, 2),
+    chosenIndex,
+    candidates: candidates.map((c, index) => ({
+      index, invert1: c.invert1, invert2: c.invert2,
+      turningDeg: round(c.turningDeg, 1), scaleMismatch: round(c.scaleMismatch, 4), combinedScore: round(c.combinedScore, 4),
+    })),
+  }, null, 2));
+}
 
 /**
- * Connects two existing shapes (or a shape and a bare point) with a new tangent arc, or a
- * two-arc biarc when both ends have a tangent to satisfy. Two clicks, like TangentArcTool: the
- * first snaps to an existing endpoint (capturing its tangent via host.getSnapTangent(), same
- * mechanism every other arc tool uses), the second is either another snapped endpoint or a free
- * point. When only one side has a tangent, this reduces to exactly TangentArcTool's single-arc
- * case (fitTangentArc); when both do, a single circle generally can't satisfy both constraints,
- * so this reaches for the biarc solver instead (findAllJoiningArcsFromTangents), auto-picking
- * whichever candidate orientation scores best on radius-proportionality combined with total
- * turning (see rankedBiarcCandidates / computeBiarcCandidates) as the default.
+ * Connects two existing shapes (or a shape and a bare point) with a tangent arc, or a two-arc
+ * biarc when both ends need to match a tangent. Two clicks, like TangentArcTool: the first snaps
+ * to an existing endpoint and captures its tangent, the second is another endpoint or a free
+ * point. One tangent → a single arc (fitTangentArc); two tangents → the biarc solver, auto-picking
+ * its best-scoring orientation (see computeBiarcCandidates).
  *
- * Remaining ambiguity — ties, or a case where the top-ranked pick isn't actually the one the user
- * wants — is resolved the same way every arc tool resolves its own two-solution ambiguity: holding
- * Shift (host.isAngleLockHeld()) steps to the next-best candidate instead of the first.
+ * If the auto-pick is wrong, each Shift press steps to the next candidate (by score) and logs it
+ * (see onKeyDown), so a bad case can be reported back with an index rather than a screenshot. The
+ * single-arc fallback keeps every other arc tool's simpler "hold Shift for the other solution"
+ * behavior instead — there are only ever two, so there's nothing to cycle through.
  */
 export class JoinArcTool implements DraftTool {
   readonly id = 'join-arc';
@@ -152,6 +132,9 @@ export class JoinArcTool implements DraftTool {
   private hoverPt: Pt | null = null;
   private hoverTangent: number | undefined;
   private preferOther = false;
+  /** Which biarc candidate (in computeBiarcCandidates' score order) Shift has cycled to for the
+   * in-progress join — advances one discrete step per Shift key-down, wraps around. */
+  private candidateCycleIndex = 0;
 
   onPointerDown(pt: Pt, host: DraftToolHost): void {
     if (this.stage === 'idle') {
@@ -176,10 +159,20 @@ export class JoinArcTool implements DraftTool {
     // clicks drive this tool, not drags — state advances in onPointerDown only
   }
 
-  onKeyDown(event: KeyboardEvent): boolean {
+  onKeyDown(event: KeyboardEvent, host: DraftToolHost): boolean {
     if (event.key === 'Escape' && this.stage !== 'idle') {
       this.reset();
       return true;
+    }
+    if (event.key === 'Shift' && !event.repeat && this.stage === 'start-set'
+      && this.start && this.startTangent !== undefined && this.hoverPt && this.hoverTangent !== undefined) {
+      const candidates = computeBiarcCandidates(this.start, this.startTangent, this.hoverPt, this.hoverTangent);
+      if (candidates.length > 0) {
+        this.candidateCycleIndex = (this.candidateCycleIndex + 1) % candidates.length;
+        logJoinDebug(this.start, this.startTangent, this.hoverPt, this.hoverTangent, this.candidateCycleIndex);
+        host.requestDraw();
+        return true;
+      }
     }
     return false;
   }
@@ -221,20 +214,19 @@ export class JoinArcTool implements DraftTool {
     this.hoverPt = null;
     this.hoverTangent = undefined;
     this.preferOther = false;
+    this.candidateCycleIndex = 0;
   }
 
   private commit(pt: Pt, host: DraftToolHost): void {
     if (!this.start) return;
     const endTangent = host.getSnapTangent();
-    const shiftHeld = host.isAngleLockHeld();
-    // Debug logging disabled — see logJoinDebug's comment above. Re-enable by uncommenting that
-    // function and this block if a bad candidate needs diagnosing again:
-    // if (this.startTangent !== undefined && endTangent !== undefined) {
-    //   const candidateCount = computeBiarcCandidates(this.start, this.startTangent, pt, endTangent).length;
-    //   const chosenIndex = shiftHeld && candidateCount > 1 ? 1 : 0;
-    //   logJoinDebug(this.start, this.startTangent, pt, endTangent, chosenIndex, shiftHeld);
-    // }
-    const arcs = this.resolve(pt, endTangent, shiftHeld);
+    const preferOther = host.isAngleLockHeld();
+    if (this.startTangent !== undefined && endTangent !== undefined) {
+      const candidateCount = computeBiarcCandidates(this.start, this.startTangent, pt, endTangent).length;
+      const chosenIndex = candidateCount > 0 ? this.candidateCycleIndex % candidateCount : 0;
+      logJoinDebug(this.start, this.startTangent, pt, endTangent, chosenIndex);
+    }
+    const arcs = this.resolve(pt, endTangent, preferOther);
     for (const arc of arcs) {
       host.addShape({
         id: makeShapeId(),
@@ -258,10 +250,8 @@ export class JoinArcTool implements DraftTool {
     if (startTangent !== undefined && endTangent !== undefined) {
       const candidates = rankedBiarcCandidates(start, startTangent, end, endTangent);
       if (candidates.length > 0) {
-        // Shift-driven alternate-candidate override disabled — the combined scale/turning score
-        // has been picking correctly on its own. Restore `preferOther && candidates.length > 1 ?
-        // 1 : 0` here if a future case needs the manual escape hatch again.
-        const index = 0;
+        // candidateCycleIndex walks the score-ordered list one step per Shift press — see onKeyDown.
+        const index = this.candidateCycleIndex % candidates.length;
         return candidates[index];
       }
       // No real biarc solution (e.g. degenerate geometry) — fall through to a single tangent arc.
