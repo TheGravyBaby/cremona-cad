@@ -122,13 +122,26 @@ export interface ArchCycloid {
 }
 
 export interface ArchSplinePoint {
-  t: number; // normalized half-span position: 0 = plate edge, 1 = peak
-  z: number; // arch height at this point (mm)
+  t: number; // normalized full-span position: 0 = upper plate edge, 1 = lower plate edge
+  z: number; // arch height at this point (mm above the plate edge)
+  /**
+   * When true the point repeats at 1 − t, mirrored about the plate's mid-length
+   * (not about the peak, which is free to sit off-centre). Absent marks a point
+   * saved before asymmetric splines, whose `t` was a half-span position
+   * (0 = plate edge, 1 = peak) and was always mirrored — see normalizeArchCurve.
+   */
+  mirror?: boolean;
 }
 
 export interface ArchSpline {
   type: 'spline';
   archHeight: number;
+  /**
+   * Normalized full-span position of the peak — the one knot pinned to
+   * `archHeight`. 0.5 (the default when absent) centres the arch; moving it
+   * off 0.5 is what makes the arch asymmetric end to end.
+   */
+  peak?: number;
   points: ArchSplinePoint[]; // interior points only, t strictly in (0, 1), kept sorted by t
 }
 

@@ -208,11 +208,13 @@ export function curveTypeInfo() {
 export function splinePointInfo() {
     info(
         "Each control point pins the arch at a specific height and position along the plate length.\n\n" +
-        "Position (0–100): how far along the half-span from the plate edge to the arch peak. " +
-        "0 = plate edge (always z = 0), 100 = center peak (always z = arch height). " +
-        "Interior points are in between.\n\n" +
+        "Position (0–100): how far along the full plate length, 0 = upper edge, 100 = lower edge. " +
+        "Both edges are always z = 0.\n\n" +
         "Height (mm): arch height at this position, measured above the plate outer edge — same unit as the Arch Height field.\n\n" +
-        "The curve is symmetric: each point mirrors to the opposite half of the plate automatically.",
+        "Peak: the first row is the arch peak — it always sits at the Arch Height, but you can move it along the plate. " +
+        "Off 50 gives an arch that is asymmetric end to end.\n\n" +
+        "Mirror: on (the default) the point repeats at the same distance from the other end of the plate, " +
+        "mirrored about the plate's mid-length. Turn it off to shape one end independently.",
         "Spline Control Point", defaultTTL
     )
 }

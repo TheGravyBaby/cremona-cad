@@ -987,9 +987,10 @@ export function buildCycloidPath(
 }
 
 /**
- * Build an SVG polyline path for a natural-cubic-spline arch curve.
- * Control points `{ t, z }` where `t` is normalized half-span position
- * (0 = plate edge, 1 = peak) and `z` is arch height at that position.
+ * Build an SVG polyline path for a spline arch curve. Control points `{ t, z }`
+ * where `t` is normalized full-span position (0 = upper plate edge, 1 = lower
+ * plate edge) and `z` is arch height there; `peak` is where the arch reaches
+ * `hEff`. See {@link archSplineKnots}.
  */
 export function buildSplinePath(
   hEff: number,
@@ -997,11 +998,12 @@ export function buildSplinePath(
   yStart: number,
   xBase: number,
   sign: 1 | -1,
-  points: { t: number; z: number }[],
+  points: ArchSplineControlPoint[],
+  peak = 0.5,
   N = 120,
 ): string {
   if (hEff <= 0 || span <= 0) return '';
-  const zOf = makeArchSplineZOf(hEff, span, points);
+  const zOf = makeArchSplineZOf(hEff, span, points, peak);
   const pts: string[] = [];
   for (let i = 0; i <= N; i++) {
     const y = (i / N) * span;
@@ -1143,27 +1145,72 @@ export function flutingProfileZ(u: number, edgeDepth: number, width: number, arc
   return arc.cz - Math.sqrt(Math.max(arc.r * arc.r - dt * dt, 0));
 }
 
+/** A spline-arch control point in normalized full-span coordinates. */
+export interface ArchSplineControlPoint {
+  t: number;
+  z: number;
+  mirror?: boolean;
+}
+
+/** Closest approach two knots may make before the later one is discarded. */
+const SPLINE_KNOT_EPS = 1e-3;
+/** Control points and the peak are held this far off the plate edges. */
+const SPLINE_POINT_MARGIN = 0.005;
+const SPLINE_PEAK_MARGIN  = 0.02;
+
+/**
+ * The interior knot list a spline arch actually interpolates, in normalized
+ * full-span position: the peak at `hEff`, plus every control point and — for
+ * points flagged `mirror` — its reflection about the plate's mid-length. Sorted
+ * by t, with knots that land on top of one another collapsed; the peak outranks
+ * a control point it collides with, and earlier control points outrank later
+ * ones. Excludes the two plate edges, which are always (0, 0) and (1, 0).
+ *
+ * Shared by the path builder, the height evaluator, and the panel's control
+ * point guides so all three agree on where the knots ended up.
+ */
+export function archSplineKnots(
+  hEff: number,
+  points: ArchSplineControlPoint[],
+  peak = 0.5,
+): { t: number; z: number }[] {
+  const hold = (t: number, margin: number) => Math.min(Math.max(t, margin), 1 - margin);
+  const raw = [{ t: hold(peak, SPLINE_PEAK_MARGIN), z: hEff, rank: 0 }];
+  for (const p of points) {
+    const t = hold(p.t, SPLINE_POINT_MARGIN);
+    raw.push({ t, z: p.z, rank: 1 });
+    if (p.mirror) raw.push({ t: 1 - t, z: p.z, rank: 1 });
+  }
+  raw.sort((a, b) => a.t - b.t || a.rank - b.rank);
+  const knots: { t: number; z: number }[] = [];
+  for (const k of raw) {
+    if (knots.length && k.t - knots[knots.length - 1].t <= SPLINE_KNOT_EPS) continue;
+    knots.push({ t: k.t, z: k.z });
+  }
+  return knots;
+}
+
 /** Arch height at position s ∈ [0, span] along a spline arch. */
-export function splineZAt(hEff: number, span: number, points: { t: number; z: number }[], s: number): number {
+export function splineZAt(
+  hEff: number,
+  span: number,
+  points: ArchSplineControlPoint[],
+  peak: number,
+  s: number,
+): number {
   if (hEff <= 0 || span <= 0 || s <= 0 || s >= span) return 0;
-  return makeArchSplineZOf(hEff, span, points)(s);
+  return makeArchSplineZOf(hEff, span, points, peak)(s);
 }
 
 /** Spline evaluator z(s) over [0, span] — shared by buildSplinePath and splineZAt. */
-function makeArchSplineZOf(hEff: number, span: number, points: { t: number; z: number }[]): (s: number) => number {
-  // Interior control points live in (0, 1) of the half-span; clamp off the ends
-  // so a point that lands on the edge or the peak can't collapse a knot interval.
-  const eps = 1e-3;
-  const sorted = points
-    .map(p => ({ t: Math.min(Math.max(p.t, eps), 1 - eps), z: p.z }))
-    .sort((a, b) => a.t - b.t)
-    .filter((p, i, all) => i === 0 || p.t - all[i - 1].t > eps);
-  // Full symmetric knot list along y (always single-valued)
-  const ys: number[] = [0];
-  const zs: number[] = [0];
-  for (const p of sorted)               { ys.push(p.t * span / 2);       zs.push(p.z); }
-  ys.push(span / 2);                      zs.push(hEff);
-  for (const p of sorted.slice().reverse()) { ys.push(span - p.t * span / 2); zs.push(p.z); }
-  ys.push(span);                           zs.push(0);
+function makeArchSplineZOf(
+  hEff: number,
+  span: number,
+  points: ArchSplineControlPoint[],
+  peak: number,
+): (s: number) => number {
+  const knots = archSplineKnots(hEff, points, peak);
+  const ys = [0, ...knots.map(k => k.t * span), span];
+  const zs = [0, ...knots.map(k => k.z),       0];
   return makeMonotoneSpline(ys, zs);
 }

@@ -86,8 +86,39 @@ function buildArchPath(arch: ArchCurve, span: number, yStart: number, xBase: num
   switch (arch.type) {
     case 'catenary': return buildCatenaryPath(h, span, yStart, xBase, sign);
     case 'cycloid':  return buildCycloidPath(h, span, yStart, xBase, sign, arch.d);
-    case 'spline':   return buildSplinePath(h, span, yStart, xBase, sign, arch.points);
+    case 'spline':   return buildSplinePath(h, span, yStart, xBase, sign, arch.points, arch.peak);
   }
+}
+
+/**
+ * Restates an arch against a takeoff `edgeDepth` mm below the plate surface.
+ * Every height a user enters — the peak and each spline control point alike —
+ * is measured from the plate edge, so all of them gain edgeDepth once the
+ * builders measure z up from the lowered takeoff instead.
+ */
+function archFromLoweredTakeoff(arch: ArchCurve, edgeDepth: number): ArchCurve {
+  const raised = { ...arch, archHeight: arch.archHeight + edgeDepth };
+  return raised.type === 'spline'
+    ? { ...raised, points: raised.points.map(p => ({ ...p, z: p.z + edgeDepth })) }
+    : raised;
+}
+
+/**
+ * Brings an arch loaded from an older recipe up to the current shape, in place.
+ * Spline control points predating asymmetric arches carry no `mirror` flag and
+ * a `t` measured over the half-span (0 = plate edge, 1 = peak); they become
+ * mirrored points at half that t over the full span, which is the same curve.
+ */
+export function normalizeArchCurve(arch: ArchCurve): void {
+  if (arch.type !== 'spline') return;
+  arch.peak ??= 0.5;
+  for (const p of arch.points) {
+    if (p.mirror === undefined) {
+      p.t = p.t / 2;
+      p.mirror = true;
+    }
+  }
+  arch.points.sort((a, b) => a.t - b.t);
 }
 
 export function calculateLongArch(p: EnricoCerutiParams): { span: number; yStart: number; topPath: string; backPath: string } {
@@ -101,11 +132,11 @@ export function calculateLongArch(p: EnricoCerutiParams): { span: number; yStart
   const botED  = a.bottom.edgeDepth;
 
   const topPath  = buildArchPath(
-    { ...a.top.arch,    archHeight: a.top.arch.archHeight    + topED },
+    archFromLoweredTakeoff(a.top.arch, topED),
     span, yStart, a.ribHeight + a.top.thickness - topED, 1,
   );
   const backPath = buildArchPath(
-    { ...a.bottom.arch, archHeight: a.bottom.arch.archHeight + botED },
+    archFromLoweredTakeoff(a.bottom.arch, botED),
     span, yStart, -a.bottom.thickness + botED, -1,
   );
   return { span, yStart, topPath, backPath };
@@ -123,7 +154,7 @@ export function longArchHeightAt(p: EnricoCerutiParams, arch: ArchCurve, y: numb
   switch (arch.type) {
     case 'catenary': return catenaryZAt(arch.archHeight, span, s);
     case 'cycloid':  return cycloidZAt(arch.archHeight, span, arch.d, s);
-    case 'spline':   return splineZAt(arch.archHeight, span, arch.points, s);
+    case 'spline':   return splineZAt(arch.archHeight, span, arch.points, arch.peak ?? 0.5, s);
   }
 }
 

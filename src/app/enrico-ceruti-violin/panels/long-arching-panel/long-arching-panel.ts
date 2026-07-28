@@ -8,7 +8,8 @@ import {
   ArchSpline, ArchSplinePoint,
   ArchingParams, CerutiColors, CerutiViewFlags, EnricoCerutiParams,
 } from '../../ceruti-types';
-import { calculateLongArch, defaultArchingParams } from '../../ceruti-arching';
+import { calculateLongArch, defaultArchingParams, normalizeArchCurve } from '../../ceruti-arching';
+import { archSplineKnots } from '../../../helpers/svgPathMath';
 import { calculateOuterArcs } from '../../ceruti-calcs';
 import { buildPlateSurfaceModel, calculateLongArchSectionFluting } from '../../ceruti-surface';
 import {
@@ -37,6 +38,12 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
   protected readonly archEdgeDepthInfo  = crossArchEdgeDepthInfo;
 
   ngOnInit(): void {
+    // Recipes saved before asymmetric splines store control points in the old
+    // half-span form; upgrade before any binding reads them.
+    if (this.params.arching) {
+      normalizeArchCurve(this.params.arching.top.arch);
+      normalizeArchCurve(this.params.arching.bottom.arch);
+    }
     this.emitImmediate();
   }
 
@@ -79,20 +86,40 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
         plateParams.arch = {
           type: 'spline',
           archHeight: h,
-          points: [{ t: 0.5, z: +(h * 0.45).toFixed(1) }],
+          peak: 0.5,
+          // A mirrored point at 30% and the peak's own height gives the flat
+          // shoulder common on Cremonese arches; a second at 15%, 4/5 height,
+          // shapes the rise into that shoulder rather than leaving it a straight ramp.
+          points: [
+            { t: 0.15, z: +(h * 0.8).toFixed(1), mirror: true },
+            { t: 0.3, z: h, mirror: true },
+          ],
         };
         break;
     }
     this.onChange();
   }
 
+  /** The peak's position as a whole percent, for the panel's number input. */
+  splinePeakPct(arch: ArchSpline): number {
+    return Math.round((arch.peak ?? 0.5) * 100);
+  }
+
+  setSplinePeakPct(arch: ArchSpline, pct: number): void {
+    // Held clear of the plate ends: the peak is what pins the arch height, and
+    // it has to stay an interior knot to do that.
+    arch.peak = Math.min(Math.max(pct / 100, 0.05), 0.95);
+    this.onChange();
+  }
+
   addSplinePoint(plate: 'top' | 'bottom'): void {
     const arch = (plate === 'top' ? this.arching.top : this.arching.bottom).arch as ArchSpline;
-    const sorted = [...arch.points].sort((a, b) => a.t - b.t);
-    const boundaries: ArchSplinePoint[] = [
+    // Fill the widest gap in the curve as it currently stands — mirrored twins
+    // and the peak included, since those are the knots actually on screen.
+    const boundaries: { t: number; z: number }[] = [
       { t: 0, z: 0 },
-      ...sorted,
-      { t: 1, z: arch.archHeight },
+      ...archSplineKnots(arch.archHeight, arch.points, arch.peak ?? 0.5),
+      { t: 1, z: 0 },
     ];
     let maxGap = 0;
     let gapIdx = 0;
@@ -102,7 +129,8 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
     }
     const t = +((boundaries[gapIdx].t + boundaries[gapIdx + 1].t) / 2).toFixed(3);
     const z = +((boundaries[gapIdx].z + boundaries[gapIdx + 1].z) / 2).toFixed(1);
-    arch.points.push({ t, z });
+    // Symmetric by default; a point already on the mid-length has nothing to mirror to.
+    arch.points.push({ t, z, mirror: Math.abs(t - 0.5) > 0.01 });
     arch.points.sort((a, b) => a.t - b.t);
     this.onChange();
   }
@@ -110,6 +138,11 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
   removeSplinePoint(plate: 'top' | 'bottom', index: number): void {
     const arch = (plate === 'top' ? this.arching.top : this.arching.bottom).arch as ArchSpline;
     arch.points.splice(index, 1);
+    this.onChange();
+  }
+
+  toggleSplineMirror(pt: ArchSplinePoint): void {
+    pt.mirror = !pt.mirror;
     this.onChange();
   }
 
@@ -155,12 +188,39 @@ function renderSplineGuide(
 ) {
   return (g: any, ui: any): void => {
     if (arch.type !== 'spline') return;
-    for (const pt of arch.points) {
-      const cx = xBase + sign * pt.z;
-      const yHi = yStart + pt.t * span / 2;
-      const yLo = yStart + span - pt.t * span / 2;
-      renderCrosshair({ x: cx, y: yHi }, color, 2, 1.5, 1)(g, ui);
-      renderCrosshair({ x: cx, y: yLo }, color, 2, 1.5, 1)(g, ui);
+    // Mark the knots the curve was actually built from — peak and mirrored
+    // twins included — so a collapsed or mirrored point is visible as such.
+    for (const knot of archSplineKnots(arch.archHeight, arch.points, arch.peak ?? 0.5)) {
+      const pt = { x: xBase + sign * knot.z, y: yStart + knot.t * span };
+      renderCrosshair(pt, color, 2, 1.5, 1)(g, ui);
+    }
+  };
+}
+
+/**
+ * One height measure per spline knot (peak and every control point, mirrored
+ * twins included) instead of the single centre measure the other curve types
+ * get — a spline's height varies knot to knot, so one label at mid-span would
+ * only ever describe the peak.
+ */
+function renderSplineMeasures(
+  arch: ArchCurve,
+  span: number,
+  yStart: number,
+  xBase: number,
+  sign: 1 | -1,
+  color: string,
+) {
+  return (g: any, ui: any): void => {
+    if (arch.type !== 'spline') return;
+    for (const knot of archSplineKnots(arch.archHeight, arch.points, arch.peak ?? 0.5)) {
+      const y = yStart + knot.t * span;
+      renderMeasure(
+        new Pt(xBase, y),
+        new Pt(xBase + sign * knot.z, y),
+        knot.z.toFixed(1),
+        color, 3, 7,
+      )(g, ui);
     }
   };
 }
@@ -252,17 +312,25 @@ export const renderLongArchBoxes = (
     renderSplineGuide(a.bottom.arch, span, yStart, -a.bottom.thickness + a.bottom.edgeDepth, -1, colors.archBack)(g, ui);
 
     const midY = yStart + span / 2;
-    renderMeasure(
-      new Pt(a.ribHeight + a.top.thickness, midY),
-      new Pt(a.ribHeight + a.top.thickness + a.top.arch.archHeight, midY),
-      `${a.top.arch.archHeight.toFixed(1)}`,
-      colors.archTop, 3, 7,
-    )(g, ui);
-    renderMeasure(
-      new Pt(-a.bottom.thickness, midY),
-      new Pt(-a.bottom.thickness - a.bottom.arch.archHeight, midY),
-      `${a.bottom.arch.archHeight.toFixed(1)}`,
-      colors.archBack, 3, 7,
-    )(g, ui);
+    if (a.top.arch.type === 'spline') {
+      renderSplineMeasures(a.top.arch, span, yStart, a.ribHeight + a.top.thickness - a.top.edgeDepth, 1, colors.archTop)(g, ui);
+    } else {
+      renderMeasure(
+        new Pt(a.ribHeight + a.top.thickness, midY),
+        new Pt(a.ribHeight + a.top.thickness + a.top.arch.archHeight, midY),
+        `${a.top.arch.archHeight.toFixed(1)}`,
+        colors.archTop, 3, 7,
+      )(g, ui);
+    }
+    if (a.bottom.arch.type === 'spline') {
+      renderSplineMeasures(a.bottom.arch, span, yStart, -a.bottom.thickness + a.bottom.edgeDepth, -1, colors.archBack)(g, ui);
+    } else {
+      renderMeasure(
+        new Pt(-a.bottom.thickness, midY),
+        new Pt(-a.bottom.thickness - a.bottom.arch.archHeight, midY),
+        `${a.bottom.arch.archHeight.toFixed(1)}`,
+        colors.archBack, 3, 7,
+      )(g, ui);
+    }
   }
 };
