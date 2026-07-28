@@ -34,6 +34,13 @@ export class SettingsBarComponent {
     return s?.type === type ? (s as Extract<DraftShape, { type: T }>) : undefined;
   }
 
+  /** Display-only rounding for X/Y coordinate fields — shown to 2 decimal places so the paired
+   * boxes stay narrow; the underlying shape data keeps its full precision, this only affects
+   * what's rendered into the input. */
+  private round2(v: number): number {
+    return Math.round(v * 100) / 100;
+  }
+
   /** Shared by every settings-panel numeric field: parse, reject non-finite/invalid, patch. */
   private patchNumberField<S extends DraftShape>(
     shape: S | undefined,
@@ -66,6 +73,26 @@ export class SettingsBarComponent {
    * render an empty, oddly-backgrounded box) when there's no active tool and no selection. */
   public get hasContent(): boolean {
     return this.showColorSwatch;
+  }
+
+  /** Friendly name for each shape type, used by groupTitle when the settings reflect a selection. */
+  private static readonly SHAPE_TYPE_LABELS: Record<DraftShape['type'], string> = {
+    line: 'Line', arc: 'Arc', circle: 'Circle', dimension: 'Distance', rect: 'Box', boxline: 'Box Line', text: 'Text', point: 'Point',
+  };
+
+  /** Heading shown above the settings strip so it's clear what "Color"/"Dashed"/etc. apply to —
+   * the selection's shape type when something's selected (uniform type, or "Selection" when
+   * mixed), otherwise the active drawing tool's own label. Undefined exactly when hasContent is
+   * false, so there's never a heading over an empty bar. */
+  public get groupTitle(): string | undefined {
+    if (this.selectedShapes.length > 0) {
+      const types = new Set(this.selectedShapes.map(s => s.type));
+      const label = types.size === 1
+        ? SettingsBarComponent.SHAPE_TYPE_LABELS[this.selectedShapes[0].type]
+        : 'Selection';
+      return `${label} Settings`;
+    }
+    return this.activeTool ? `${this.activeTool.label} Settings` : undefined;
   }
 
   /** Shows the selection's color when something's selected (the first shape's, when the
@@ -123,10 +150,10 @@ export class SettingsBarComponent {
     return !!this.selectedLineLikeShape;
   }
 
-  public get lineStartX(): number { return this.selectedLineLikeShape?.start.x ?? 0; }
-  public get lineStartY(): number { return this.selectedLineLikeShape?.start.y ?? 0; }
-  public get lineEndX(): number { return this.selectedLineLikeShape?.end.x ?? 0; }
-  public get lineEndY(): number { return this.selectedLineLikeShape?.end.y ?? 0; }
+  public get lineStartX(): number { return this.round2(this.selectedLineLikeShape?.start.x ?? 0); }
+  public get lineStartY(): number { return this.round2(this.selectedLineLikeShape?.start.y ?? 0); }
+  public get lineEndX(): number { return this.round2(this.selectedLineLikeShape?.end.x ?? 0); }
+  public get lineEndY(): number { return this.round2(this.selectedLineLikeShape?.end.y ?? 0); }
 
   setLinePoint(which: 'start' | 'end', axis: 'x' | 'y', value: number): void {
     this.patchPointField(this.selectedLineLikeShape, which, axis, value);
@@ -141,10 +168,10 @@ export class SettingsBarComponent {
     return !!this.selectedRectShape;
   }
 
-  public get rectP1X(): number { return this.selectedRectShape?.p1.x ?? 0; }
-  public get rectP1Y(): number { return this.selectedRectShape?.p1.y ?? 0; }
-  public get rectP2X(): number { return this.selectedRectShape?.p2.x ?? 0; }
-  public get rectP2Y(): number { return this.selectedRectShape?.p2.y ?? 0; }
+  public get rectP1X(): number { return this.round2(this.selectedRectShape?.p1.x ?? 0); }
+  public get rectP1Y(): number { return this.round2(this.selectedRectShape?.p1.y ?? 0); }
+  public get rectP2X(): number { return this.round2(this.selectedRectShape?.p2.x ?? 0); }
+  public get rectP2Y(): number { return this.round2(this.selectedRectShape?.p2.y ?? 0); }
 
   setRectPoint(which: 'p1' | 'p2', axis: 'x' | 'y', value: number): void {
     this.patchPointField(this.selectedRectShape, which, axis, value);
@@ -158,8 +185,8 @@ export class SettingsBarComponent {
     return !!this.selectedTextShape;
   }
 
-  public get textPositionX(): number { return this.selectedTextShape?.position.x ?? 0; }
-  public get textPositionY(): number { return this.selectedTextShape?.position.y ?? 0; }
+  public get textPositionX(): number { return this.round2(this.selectedTextShape?.position.x ?? 0); }
+  public get textPositionY(): number { return this.round2(this.selectedTextShape?.position.y ?? 0); }
   public get textContent(): string { return this.selectedTextShape?.text ?? ''; }
 
   setTextPosition(axis: 'x' | 'y', value: number): void {
@@ -180,8 +207,8 @@ export class SettingsBarComponent {
     return !!this.selectedPointShape;
   }
 
-  public get pointPositionX(): number { return this.selectedPointShape?.position.x ?? 0; }
-  public get pointPositionY(): number { return this.selectedPointShape?.position.y ?? 0; }
+  public get pointPositionX(): number { return this.round2(this.selectedPointShape?.position.x ?? 0); }
+  public get pointPositionY(): number { return this.round2(this.selectedPointShape?.position.y ?? 0); }
 
   setPointPosition(axis: 'x' | 'y', value: number): void {
     this.patchPointField(this.selectedPointShape, 'position', axis, value);
@@ -195,9 +222,9 @@ export class SettingsBarComponent {
     return !!this.selectedCircleShape;
   }
 
-  public get circleCenterX(): number { return this.selectedCircleShape?.center.x ?? 0; }
-  public get circleCenterY(): number { return this.selectedCircleShape?.center.y ?? 0; }
-  public get circleRadius(): number { return this.selectedCircleShape?.radius ?? 0; }
+  public get circleCenterX(): number { return this.round2(this.selectedCircleShape?.center.x ?? 0); }
+  public get circleCenterY(): number { return this.round2(this.selectedCircleShape?.center.y ?? 0); }
+  public get circleRadius(): number { return this.round2(this.selectedCircleShape?.radius ?? 0); }
 
   setCircleCenter(axis: 'x' | 'y', value: number): void {
     this.patchPointField(this.selectedCircleShape, 'center', axis, value);
@@ -215,11 +242,11 @@ export class SettingsBarComponent {
     return !!this.selectedArcShape;
   }
 
-  public get arcCenterX(): number { return this.selectedArcShape?.center.x ?? 0; }
-  public get arcCenterY(): number { return this.selectedArcShape?.center.y ?? 0; }
-  public get arcRadius(): number { return this.selectedArcShape?.radius ?? 0; }
-  public get arcStartDeg(): number { return (this.selectedArcShape?.startAngle ?? 0) * 180 / Math.PI; }
-  public get arcEndDeg(): number { return (this.selectedArcShape?.endAngle ?? 0) * 180 / Math.PI; }
+  public get arcCenterX(): number { return this.round2(this.selectedArcShape?.center.x ?? 0); }
+  public get arcCenterY(): number { return this.round2(this.selectedArcShape?.center.y ?? 0); }
+  public get arcRadius(): number { return this.round2(this.selectedArcShape?.radius ?? 0); }
+  public get arcStartDeg(): number { return this.round2((this.selectedArcShape?.startAngle ?? 0) * 180 / Math.PI); }
+  public get arcEndDeg(): number { return this.round2((this.selectedArcShape?.endAngle ?? 0) * 180 / Math.PI); }
 
   setArcCenter(axis: 'x' | 'y', value: number): void {
     this.patchPointField(this.selectedArcShape, 'center', axis, value);
@@ -290,10 +317,10 @@ export class SettingsBarComponent {
     return !!this.selectedBoxLineShape;
   }
 
-  public get boxLineStartX(): number { return this.selectedBoxLineShape?.start.x ?? 0; }
-  public get boxLineStartY(): number { return this.selectedBoxLineShape?.start.y ?? 0; }
-  public get boxLineEndX(): number { return this.selectedBoxLineShape?.end.x ?? 0; }
-  public get boxLineEndY(): number { return this.selectedBoxLineShape?.end.y ?? 0; }
+  public get boxLineStartX(): number { return this.round2(this.selectedBoxLineShape?.start.x ?? 0); }
+  public get boxLineStartY(): number { return this.round2(this.selectedBoxLineShape?.start.y ?? 0); }
+  public get boxLineEndX(): number { return this.round2(this.selectedBoxLineShape?.end.x ?? 0); }
+  public get boxLineEndY(): number { return this.round2(this.selectedBoxLineShape?.end.y ?? 0); }
 
   setBoxLinePoint(which: 'start' | 'end', axis: 'x' | 'y', value: number): void {
     this.patchPointField(this.selectedBoxLineShape, which, axis, value);

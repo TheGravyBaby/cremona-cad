@@ -9,6 +9,33 @@
    fit on one line, rather than clipping or scrolling. A slightly different background than
    the surrounding .ui-controls bar sets this off as its own group. */
 .settings-bar {
+  position: relative;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--ui-bg-surface);
+}
+
+/* Names what the strip below applies to (e.g. "Line Settings") — the active tool or the
+   selected shape type, so a label like "Color" or "Dashed" isn't left unexplained. Sits
+   just above the bar as a small tab rather than an inline row, so it doesn't add height
+   to the bar itself — same background and left edge as the bar, square where it meets
+   it (bottom corners) so it reads as one continuous shape rather than a separate box. */
+.settings-title {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  padding: 2px 6px;
+  border-radius: 4px 4px 0 0;
+  background: var(--ui-bg-surface);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ui-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.settings-grid {
   display: grid;
   grid-template-rows: auto auto;
   grid-auto-flow: column;
@@ -16,20 +43,15 @@
   align-items: center;
   column-gap: 8px;
   row-gap: 2px;
-  padding: 4px 8px;
-  border-radius: 6px;
-  background: var(--ui-bg-surface);
 }
 
-/* Just the color, sized to match the old bordered/padded swatch's overall footprint
-   (26px + 2×2px padding + 2×1px border = 32px) — no separate border box around it.
-   Spans both table rows since it has no label, so it doesn't disrupt the next field's
-   label/control column pairing. */
+/* Just the color, sized to match the row of other controls. Labeled like every other
+   field now (an f-lbl in row 1, the swatch itself in row 2), so it no longer needs to
+   span both rows the way it did when unlabeled. */
 .color-swatch {
-  grid-row: 1 / span 2;
   align-self: center;
   width: 32px;
-  height: 32px;
+  height: 22px;
   padding: 0;
   border: none;
   border-radius: 4px;
@@ -53,8 +75,18 @@
   grid-auto-flow: column;
   grid-auto-columns: max-content;
   align-items: center;
-  column-gap: 2px;
+  column-gap: 0;
   row-gap: 2px;
+}
+
+/* Butts the pair's two boxes together (no gap) — shared middle border instead of double. */
+.point-group .field:last-child input[type="number"] {
+  border-left: none;
+  border-radius: 0 4px 4px 0;
+}
+
+.point-group .field:first-child input[type="number"] {
+  border-radius: 4px 0 0 4px;
 }
 
 .f-lbl {
@@ -66,7 +98,7 @@
 }
 
 .field input[type="number"] {
-  width: 52px;
+  width: 64px;
   height: 22px;
   padding: 2px 4px;
   border: 1px solid var(--ui-border-strong);
@@ -115,8 +147,4 @@
   margin: 0;
   accent-color: var(--ui-accent);
   cursor: pointer;
-}
-
-.toggle .f-lbl {
-  color: var(--ui-text-primary);
 }

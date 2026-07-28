@@ -1,12 +1,20 @@
 @if (hasContent) {
 <div class="settings-bar">
+  @if (groupTitle) {
+    <div class="settings-title">{{ groupTitle }}</div>
+  }
+  <div class="settings-grid">
   @if (showColorSwatch) {
-    <input type="color" class="color-swatch" [value]="displayedColor" (input)="setColor($any($event.target).value)"
-      title="Drawing color — edits the selected shape's color, or the color new shapes will use" />
+    <span class="field"><span class="f-lbl">Color</span>
+      <input type="color" class="color-swatch" [value]="displayedColor" (input)="setColor($any($event.target).value)"
+        title="Drawing color — edits the selected shape's color, or the color new shapes will use" />
+    </span>
   }
   @if (showBoxLineColor2) {
-    <input type="color" class="color-swatch" [value]="displayedBoxLineColor2" (input)="setBoxLineColor2($any($event.target).value)"
-      title="Box Line's second alternating segment color" />
+    <span class="field"><span class="f-lbl">Color 2</span>
+      <input type="color" class="color-swatch" [value]="displayedBoxLineColor2" (input)="setBoxLineColor2($any($event.target).value)"
+        title="Box Line's second alternating segment color" />
+    </span>
   }
   @if (showDashedToggle) {
     <label class="toggle">
@@ -184,5 +192,6 @@
       </span>
     }
   }
+  </div>
 </div>
 }
