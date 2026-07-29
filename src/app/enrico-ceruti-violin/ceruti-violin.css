@@ -17,3 +17,70 @@
   padding: 0 2px;
   margin-bottom: 1px;
 }
+
+/*
+ * Read-only overview of a plate's stations (cross-arching-panel's Cross
+ * Section group) — plain numbers, no input chrome, so it stays legible next
+ * to the section-height slider rather than repeating the editable rows'
+ * width. Each row is `display: contents` so its cells lay directly into the
+ * table's own grid; grid-template-columns is set inline per plate since the
+ * column count depends on whether that plate is asymmetric.
+ */
+.station-table {
+  display: grid;
+  column-gap: 6px;
+  border-top: 1px solid var(--ui-border-strong);
+  border-bottom: 1px solid var(--ui-border-strong);
+  margin: 2px 0 6px;
+  font-size: 12px;
+}
+
+.station-table-row { display: contents; }
+
+.station-table-row > span {
+  padding: 3px 2px;
+  display: flex;
+  align-items: center;
+  color: var(--ui-text-primary);
+}
+
+.station-table-row--header > span {
+  color: var(--ui-text-secondary);
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.station-table-row:not(.station-table-row--header):hover > span {
+  background: var(--ui-control-bg-hover);
+}
+
+.station-table-y {
+  cursor: pointer;
+}
+
+.station-table-y:hover { text-decoration: underline; }
+
+/* The section on screen is an uncommitted preview: the button is what makes it
+   real, so it carries the accent until it's pressed (or the cursor moves off,
+   which discards the preview). */
+.panel-nav-btn--draft {
+  border-color: var(--ui-focus-border);
+  background: var(--ui-control-bg-hover);
+}
+
+/* Sits where the Set Station button would be, so parking the cursor on a
+   station doesn't shift the row — it says which shape the plate's own
+   Factor/Percent fields are pointed at now. */
+.station-note {
+  font-size: 12px;
+  font-style: italic;
+  font-weight: 500 !important;
+  color: var(--ui-text-secondary);
+}
+
+.station-table .info-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 12px;
+  justify-self: end;
+}

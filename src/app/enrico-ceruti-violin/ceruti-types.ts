@@ -147,15 +147,59 @@ export interface ArchSpline {
 
 export type ArchCurve = ArchCatenary | ArchCycloid | ArchSpline;
 
+/** One side's trochoid shape — see {@link CrossArchShape}'s `d`/`pct` for field meaning. */
+export interface CrossArchSide {
+  d: number;
+  pct: number;
+}
+
+/**
+ * A cross-arch section shape: one trochoid shared across the full width, or —
+ * when the owning plate is asymmetric — independent halves either side of the
+ * centerline. Carried both by the plate itself ({@link CrossArchParams}, the
+ * base shape) and by each {@link CrossArchStation} along the body.
+ */
+export interface CrossArchShape {
+  d: number; // trochoid factor: 0 = raised cosine, 1 = standard cycloid (valid range 0–1)
+  pct: number; // cycloid window: 1 = full arch (flat edge takeoff), <1 clips the flat cusp ends for a steeper edge (valid range 0.05–1)
+  /** Shape for x<0, used only while the plate's cross arch is asymmetric. */
+  left?: CrossArchSide;
+  /** Shape for x>0, used only while the plate's cross arch is asymmetric. */
+  right?: CrossArchSide;
+}
+
+/** A cross-arch shape pinned to one body-length position. */
+export interface CrossArchStation extends CrossArchShape {
+  /** Body-length position in mm, held strictly inside the plate ends. */
+  y: number;
+}
+
 /**
  * Cross-arch shape parameters for one plate. The section curve at any station
  * is a trochoid whose span (fluting inner-boundary chord) and peak (long-arch
- * height there) are both derived. Constant along the body for now; consumed
- * per-station so it can become d(Y) later.
+ * height there) are both derived; this fixes the remaining freedom, its
+ * transverse shape.
+ *
+ * `d`/`pct` (and `left`/`right`) here are the plate's *base* shape, which
+ * anchors both body ends. `stations` are interior overrides the shape ramps
+ * through in between — the same edges-plus-interior-points relationship
+ * {@link ArchSpline} has along the long arch.
  */
-export interface CrossArchParams {
-  d: number; // trochoid factor: 0 = raised cosine, 1 = standard cycloid (valid range 0–1)
-  pct: number; // cycloid window: 1 = full arch (flat edge takeoff), <1 clips the flat cusp ends for a steeper edge (valid range 0.05–1)
+export interface CrossArchParams extends CrossArchShape {
+  /**
+   * When true, `left` (x<0) and `right` (x>0) each carry their own d/pct
+   * instead of sharing `d`/`pct` — e.g. a flatter bass-side shoulder against
+   * a fuller treble-side one. Applies to the base shape and every station
+   * alike. The symmetric `d`/`pct` are kept (not overwritten) while
+   * asymmetric is on, so toggling back off restores the prior shape.
+   * Default false/absent (symmetric).
+   */
+  asymmetric?: boolean;
+  /**
+   * Interior shape overrides along the body, kept sorted by `y`. Absent or
+   * empty means one shape everywhere — the behaviour before stations existed.
+   */
+  stations?: CrossArchStation[];
 }
 
 /**

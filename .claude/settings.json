@@ -27,7 +27,11 @@
       "Bash(screencapture -x /private/tmp/claude-501/-Users-aargraves-Documents-cremona-cad/d6fc8cd1-c557-4499-8b37-450a3bf000f8/scratchpad/app-check.png)",
       "Bash(node /private/tmp/claude-501/-Users-aargraves-Documents-cremona-cad/3e358a09-ac26-43d0-889e-a7a83f8a2c34/scratchpad/sp.mjs)",
       "Bash(node /private/tmp/claude-501/-Users-aargraves-Documents-cremona-cad/3e358a09-ac26-43d0-889e-a7a83f8a2c34/scratchpad/sp2.mjs)",
-      "Bash(node /private/tmp/claude-501/-Users-aargraves-Documents-cremona-cad/3e358a09-ac26-43d0-889e-a7a83f8a2c34/scratchpad/sp3.mjs)"
+      "Bash(node /private/tmp/claude-501/-Users-aargraves-Documents-cremona-cad/3e358a09-ac26-43d0-889e-a7a83f8a2c34/scratchpad/sp3.mjs)",
+      "Bash(timeout 400 npx ng test --watch=false)",
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(npx ng *)",
+      "Bash(node /private/tmp/claude-501/-Users-aargraves-Documents-cremona-cad/df83ca51-ed5f-420c-aa9a-3ac7d69913b3/scratchpad/diag.mjs)"
     ],
     "additionalDirectories": [
       "/tmp"

@@ -6,9 +6,9 @@ const polyClipper: any = (polygonClipping as any).default ?? polygonClipping;
 import { buildPolylineIndex, closestPointToPolylineIndexed, PolylineIndex } from '../helpers/draftMath';
 import { buildHeightFieldStl } from '../helpers/stlExporter';
 import { closeProfileToBlank, cycloidEdgeSlope, cycloidZAt, flutingProfileZ, pathsBounds, rotatePath180, samplePathToPolyline, translatePath } from '../helpers/svgPathMath';
-import { ArchCurve, EnricoCerutiParams } from './ceruti-types';
+import { ArchCurve, CrossArchSide, EnricoCerutiParams } from './ceruti-types';
 import { defineFlutingPath, defineInsetPath, defineOuterPath } from './ceruti-paths';
-import { calculateLongArch, defaultCrossArchParams, defaultFlutingChannelParams, flutingHalfWidthAtY, longArchHeightAt } from './ceruti-arching';
+import { calculateLongArch, CrossArchResolver, CrossArchSides, defaultCrossArchParams, defaultFlutingChannelParams, flutingHalfWidthAtY, longArchHeightAt, makeCrossArchResolver, normalizeCrossArchStations } from './ceruti-arching';
 
 // The evaluable top-plate surface: a height field z(x, y) over the plan view,
 // stitched from three regions classified by station chords (so it always
@@ -37,8 +37,12 @@ export interface PlateSurfaceModel {
     platformOuterIdx: PolylineIndex;
     flutingInnerIdx: PolylineIndex | null;
     arch: ArchCurve;
-    crossD: number;
-    crossPct: number;
+    /**
+     * Cross-arch shape at a body station, left (x<0) and right (x≥0) halves.
+     * Built once here because the interpolators behind it are shared by every
+     * query; a constant function unless the plate has stations set.
+     */
+    crossAt: CrossArchResolver;
     edgeDepth: number;
     /** Flat pre-channel platform with a ledge at the inner boundary instead of a carved channel. */
     flatPlatform: boolean;
@@ -69,8 +73,7 @@ export function buildPlateSurfaceModel(p: EnricoCerutiParams, side: 'top' | 'bot
         platformOuterIdx: buildPolylineIndex(platformOuter),
         flutingInnerIdx: flutingInner ? buildPolylineIndex(flutingInner) : null,
         arch: plate.arch,
-        crossD: plate.cross?.d ?? defaultCrossArchParams().d,
-        crossPct: plate.cross?.pct ?? defaultCrossArchParams().pct,
+        crossAt: makeCrossArchResolver(plate.cross ?? defaultCrossArchParams(), p.height),
         edgeDepth: plate.edgeDepth ?? 0,
         flatPlatform: fluting.flatPlatform ?? false,
         zBase: side === 'top' ? a.ribHeight + plate.thickness : -plate.thickness,
@@ -92,6 +95,8 @@ export interface StationChords {
      * per-point evaluation dominated the contour grid.
      */
     archH: number;
+    /** Cross-arch shape at this station — hoisted for the same reason as archH. */
+    cross: CrossArchSides;
 }
 
 /**
@@ -110,13 +115,16 @@ function flutingInnerHalfAt(p: EnricoCerutiParams, model: PlateSurfaceModel, y: 
 
 /**
  * Cross-arch trochoid height (relative to the plate outer surface) at width x,
- * for a station whose fluting inner half-chord is `fi` and long-arch centerline
- * height is `archH`. The takeoff sits at −edgeDepth; a degenerate cap station
- * (no arch height) stays flat there.
+ * for a station whose fluting inner half-chord is `fi`, long-arch centerline
+ * height is `archH`, and cross-arch shape is `cross`. The takeoff sits at
+ * −edgeDepth; a degenerate cap station (no arch height) stays flat there.
+ * Uses `cross.left` for x<0 and `cross.right` for x≥0 — identical when the
+ * plate's cross arch is symmetric, since both resolve to the same shape.
  */
-function crossArchZAt(model: PlateSurfaceModel, fi: number, archH: number, x: number): number {
+function crossArchZAt(model: PlateSurfaceModel, fi: number, archH: number, x: number, cross: CrossArchSides): number {
     if (archH <= 0) return -model.edgeDepth;
-    return -model.edgeDepth + cycloidZAt(archH + model.edgeDepth, 2 * fi, model.crossD, x + fi, model.crossPct);
+    const side = x < 0 ? cross.left : cross.right;
+    return -model.edgeDepth + cycloidZAt(archH + model.edgeDepth, 2 * fi, side.d, x + fi, side.pct);
 }
 
 export function stationChordsAt(p: EnricoCerutiParams, model: PlateSurfaceModel, y: number): StationChords {
@@ -130,6 +138,7 @@ export function stationChordsAt(p: EnricoCerutiParams, model: PlateSurfaceModel,
         flutingInnerHalf,
         landCrossings,
         archH: longArchHeightAt(p, model.arch, y),
+        cross: model.crossAt(y),
     };
 }
 
@@ -164,18 +173,26 @@ const CHANNEL_SLOPE_PROBE_EPS = 0.3; // mm inward from the fluting inner boundar
  * The cross-arch's own edge slope at a station — today's channel target, kept as
  * the fallback where the directional probe can't land a clean arch sample. Same
  * hEff/span the arch branch builds its cycloid from; 0 at cap/degenerate stations.
+ * `atLeft` picks `cross.left` vs `cross.right`; both resolve identically unless
+ * the plate's cross arch is asymmetric.
  */
-function crossEdgeSlopeFallback(model: PlateSurfaceModel, fi: number | null, archH: number): number {
-    return fi !== null && fi > 0 && archH > 0
-        ? cycloidEdgeSlope(archH + model.edgeDepth, 2 * fi, model.crossD, model.crossPct)
-        : 0;
+function crossEdgeSlopeFallback(
+    model: PlateSurfaceModel, fi: number | null, archH: number, cross: CrossArchSides, atLeft: boolean,
+): number {
+    if (fi === null || fi <= 0 || archH <= 0) return 0;
+    const side = atLeft ? cross.left : cross.right;
+    return cycloidEdgeSlope(archH + model.edgeDepth, 2 * fi, side.d, side.pct);
 }
 
-/** The arch-region surface height at (x, y), or null when (x, y) isn't under the arch (channel/land/off-body). */
+/**
+ * The arch-region surface height at (x, y), or null when (x, y) isn't under the
+ * arch (channel/land/off-body). Resolves the cross-arch shape at its own y
+ * rather than taking a station's — the slope probe steps off the station row.
+ */
 function archSampleZAt(p: EnricoCerutiParams, model: PlateSurfaceModel, x: number, y: number): number | null {
     const fi = flutingInnerHalfAt(p, model, y);
     if (fi === null || Math.abs(x) > fi) return null;
-    return crossArchZAt(model, fi, longArchHeightAt(p, model.arch, y), x);
+    return crossArchZAt(model, fi, longArchHeightAt(p, model.arch, y), x, model.crossAt(y));
 }
 
 /**
@@ -226,7 +243,7 @@ export function topSurfaceZAt(p: EnricoCerutiParams, model: PlateSurfaceModel, x
     if (chords.outerHalf === null || ax > chords.outerHalf) return null;
 
     const fi = chords.flutingInnerHalf;
-    if (fi !== null && ax <= fi) return crossArchZAt(model, fi, chords.archH, x);
+    if (fi !== null && ax <= fi) return crossArchZAt(model, fi, chords.archH, x, chords.cross);
 
     if (!insideCrossings(x, chords.landCrossings)) return 0; // flat edge land
     if (!model.flutingInner) return 0; // fluting unconfigured — platform stays flat
@@ -240,7 +257,7 @@ export function topSurfaceZAt(p: EnricoCerutiParams, model: PlateSurfaceModel, x
     // surface along the fluting inner boundary's normal (cross along the bouts,
     // long at the caps), not from the cross arch alone.
     const slope = archTransverseSlopeAt(p, model, inner.point, pt)
-        ?? crossEdgeSlopeFallback(model, fi, chords.archH);
+        ?? crossEdgeSlopeFallback(model, fi, chords.archH, chords.cross, x < 0);
     return flutingProfileZ(u, model.edgeDepth, width, slope, model.flatPlatform);
 }
 
@@ -330,13 +347,18 @@ export function calculateLongArchSectionFluting(
  * coordinates. Unlike {@link calculateFlutingSectionTop}, which only traces the
  * channel/land portion (meant to be paired with {@link calculateCrossArchTop}'s
  * hump when rendering), this sweeps the whole half-width in a single pass since
- * {@link topSurfaceZAt} already classifies arch/channel/land internally. Basis
- * for cut-out arching templates, which need one uninterrupted cutting edge.
+ * {@link topSurfaceZAt} already classifies arch/channel/land internally.
+ *
+ * `halfOverride` sweeps only to that half-width instead of the full outer edge
+ * — {@link calculateCrossArchTemplatesForSide} passes the fluting inner
+ * half-chord so the arch-only cutout templates stop short of the channel.
  */
-export function computeArchSectionProfile(p: EnricoCerutiParams, model: PlateSurfaceModel, y: number, stepMm = 0.25): string | null {
+export function computeArchSectionProfile(
+    p: EnricoCerutiParams, model: PlateSurfaceModel, y: number, stepMm = 0.25, halfOverride?: number,
+): string | null {
     const chords = stationChordsAt(p, model, y);
     if (chords.outerHalf === null) return null;
-    const half = chords.outerHalf;
+    const half = halfOverride ?? chords.outerHalf;
     const n = Math.max(8, Math.ceil((2 * half) / stepMm));
     const pts: string[] = [];
     for (let i = 0; i <= n; i++) {
@@ -407,20 +429,33 @@ function stackTemplates(shapes: TemplateShape[]): TemplateShape[] {
 }
 
 /**
- * The five cross-arch template blanks for one plate side, each traced from
- * {@link computeArchSectionProfile} at a {@link crossArchTemplateStationYs}
- * station and closed into a blank via {@link closeProfileToBlank}. `model.signZ`
- * (+1 top, −1 back) picks which side of the (already-mirrored) cutout curve the
- * backing attaches to — this is the only value that keeps material thin at the
- * arch's peak and thick at the flat edges; the two plates' mirrored curves are
- * shaped oppositely (valley vs. hump), so they need opposite backing sides to
- * get the same thin-at-peak result. The returned `backing` coordinate places
- * the label a half margin in from that edge — always in solid material.
+ * The cross-arch template blanks for one plate side, one per `stationYs`
+ * position, each traced from {@link computeArchSectionProfile} and closed into
+ * a blank via {@link closeProfileToBlank}. Clipped to the fluting inner
+ * half-chord rather than the full plate edge — these check the arch's dome
+ * alone, which is carved before the fluting channel and by a different tool, so
+ * the channel/flat-edge-land portion {@link computeArchSectionProfile} would
+ * otherwise include has no place on this template. A station beyond the fluting
+ * (fluting unconfigured, or a cap station with none) falls back to the full
+ * outer half, same as before fluting is clipped.
+ *
+ * `model.signZ` (+1 top, −1 back) picks which side of the (already-mirrored)
+ * cutout curve the backing attaches to — this is the only value that keeps
+ * material thin at the arch's peak and thick at the flat edges; the two
+ * plates' mirrored curves are shaped oppositely (valley vs. hump), so they
+ * need opposite backing sides to get the same thin-at-peak result. The
+ * returned `backing` coordinate places the label a half margin in from that
+ * edge — always in solid material.
  */
-function calculateCrossArchTemplatesForSide(p: EnricoCerutiParams, model: PlateSurfaceModel, sideLabel: string): TemplateShape[] {
-    return crossArchTemplateStationYs(p)
+function calculateCrossArchTemplatesForSide(
+    p: EnricoCerutiParams, model: PlateSurfaceModel, sideLabel: string, stationYs: number[],
+): TemplateShape[] {
+    return stationYs
         .map((y): TemplateShape | null => {
-            const profile = computeArchSectionProfile(p, model, y);
+            const chords = stationChordsAt(p, model, y);
+            if (chords.outerHalf === null) return null;
+            const half = chords.flutingInnerHalf ?? chords.outerHalf;
+            const profile = computeArchSectionProfile(p, model, y, 0.25, half);
             if (profile === null) return null;
             const { path, backing, positionMid } = closeProfileToBlank(profile, 'y', model.signZ, TEMPLATE_MARGIN);
             return {
@@ -450,13 +485,19 @@ function rotateTemplateShape180(shape: TemplateShape): TemplateShape {
 }
 
 /**
- * All ten cross-arch template blanks (5 stations × top/back), stacked into one
- * combined, non-overlapping layout — back plate's row below the top plate's,
- * each station ordered by increasing body-length position. Both plates present
+ * Cross-arch template blanks for both plates, stacked into one combined,
+ * non-overlapping layout — back plate's row below the top plate's, each
+ * station ordered by increasing body-length position. Both plates present
  * with the flat backing edge up: the back plate's already lands there
  * (model.signZ = −1), while the top plate's naturally lands at the bottom, so
  * its blanks are rotated 180° after the fact ({@link rotateTemplateShape180}).
  * Returns `[]` if the arching modules haven't been configured yet.
+ *
+ * Each plate templates its own custom cross-arch stations when it has any —
+ * exactly those positions, no others, since a maker who has already pinned
+ * specific stations wants blanks for the shape they actually designed rather
+ * than a generic evenly-spaced sweep that may miss it entirely. A plate with
+ * no stations set falls back to the 5 evenly-spaced default positions.
  */
 export function calculateCrossArchTemplates(p: EnricoCerutiParams): TemplateShape[] {
     if (!p.arching) return [];
@@ -467,7 +508,9 @@ export function calculateCrossArchTemplates(p: EnricoCerutiParams): TemplateShap
         plate.fluting ??= defaultFlutingChannelParams();
         const model = buildPlateSurfaceModel(p, key);
         if (!model) return [];
-        const shapes = calculateCrossArchTemplatesForSide(p, model, label);
+        const customStations = normalizeCrossArchStations(plate.cross.stations, p.height);
+        const stationYs = customStations.length ? customStations.map(s => s.y) : crossArchTemplateStationYs(p);
+        const shapes = calculateCrossArchTemplatesForSide(p, model, label, stationYs);
         return key === 'top' ? shapes.map(rotateTemplateShape180) : shapes;
     });
     return stackTemplates(templates);

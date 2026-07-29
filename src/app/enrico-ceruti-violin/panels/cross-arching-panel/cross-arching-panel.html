@@ -3,30 +3,150 @@
         <label class="field-cell">
             <span class="field-title">Cross Section Height <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" min="1" [max]="params.height - 1"
-                [(ngModel)]="flags.crossSectionY" (input)="onChange()" />
+                [(ngModel)]="flags.crossSectionY" (input)="onCursorChange()" />
         </label>
         <input class="basic-input" type="range" step="1" min="1" [max]="params.height - 1"
-            [(ngModel)]="flags.crossSectionY" (input)="onChange()" aria-label="Cross section station height" />
+            [(ngModel)]="flags.crossSectionY" (input)="onCursorChange()" aria-label="Cross section station height" />
         <button type="button" class="info-icon" (click)="crossSectionStationInfo()" title="More information">ⓘ</button>
+    </div>
+
+    @if (topStations.length) {
+    <div class="station-table" [style.border-color]="colors.archTop"
+        [style.grid-template-columns]="topCross.asymmetric
+            ? 'minmax(30px,auto) repeat(4, minmax(26px,auto)) auto'
+            : 'minmax(30px,auto) minmax(26px,auto) minmax(26px,auto) auto'">
+        <div class="station-table-row station-table-row--header">
+            <span>mm</span>
+            @if (topCross.asymmetric) {
+            <span>L·d</span><span>L·%</span><span>R·d</span><span>R·%</span>
+            } @else {
+            <span>d</span><span>%</span>
+            }
+            <span></span>
+        </div>
+        @for (st of topStations; track $index) {
+        <div class="station-table-row">
+            <span class="station-table-y" title="Jump to this station" (click)="jumpToStation(st.y)">{{ st.y }}</span>
+            @if (topCross.asymmetric) {
+            <span>{{ st.left!.d }}</span><span>{{ st.left!.pct * 100 | number:'1.0-0' }}</span>
+            <span>{{ st.right!.d }}</span><span>{{ st.right!.pct * 100 | number:'1.0-0' }}</span>
+            } @else {
+            <span>{{ st.d }}</span><span>{{ st.pct * 100 | number:'1.0-0' }}</span>
+            }
+            <button class="info-icon" (click)="removeStation('top', $index)" title="Remove station">×</button>
+        </div>
+        }
+    </div>
+    }
+    <div class="input-group basic-row field-row" role="group">
+        <span>Top</span>
+        @if (stationAtCursor('top'); as st) {
+        <span class="station-note">Top Plate fields edit station {{ st.y }}mm</span>
+        } @else {
+        <button class="panel-nav-btn" [class.panel-nav-btn--draft]="!!draftFor('top')"
+            (click)="setStationHere('top')">
+            + Set Station at {{ flags.crossSectionY }}mm
+        </button>
+        }
+        <button type="button" class="info-icon" (click)="crossStationInfo()" title="More information">ⓘ</button>
+    </div>
+
+    @if (backStations.length) {
+    <div class="station-table" [style.border-color]="colors.archBack"
+        [style.grid-template-columns]="backCross.asymmetric
+            ? 'minmax(30px,auto) repeat(4, minmax(26px,auto)) auto'
+            : 'minmax(30px,auto) minmax(26px,auto) minmax(26px,auto) auto'">
+        <div class="station-table-row station-table-row--header">
+            <span>mm</span>
+            @if (backCross.asymmetric) {
+            <span>L·d</span><span>L·%</span><span>R·d</span><span>R·%</span>
+            } @else {
+            <span>d</span><span>%</span>
+            }
+            <span></span>
+        </div>
+        @for (st of backStations; track $index) {
+        <div class="station-table-row">
+            <span class="station-table-y" title="Jump to this station" (click)="jumpToStation(st.y)">{{ st.y }}</span>
+            @if (backCross.asymmetric) {
+            <span>{{ st.left!.d }}</span><span>{{ st.left!.pct * 100 | number:'1.0-0' }}</span>
+            <span>{{ st.right!.d }}</span><span>{{ st.right!.pct * 100 | number:'1.0-0' }}</span>
+            } @else {
+            <span>{{ st.d }}</span><span>{{ st.pct * 100 | number:'1.0-0' }}</span>
+            }
+            <button class="info-icon" (click)="removeStation('bottom', $index)" title="Remove station">×</button>
+        </div>
+        }
+    </div>
+    }
+    <div class="input-group basic-row field-row" role="group">
+        <span>Back</span>
+        @if (stationAtCursor('bottom'); as st) {
+        <span class="station-note">Back Plate fields edit station {{ st.y }}mm</span>
+        } @else {
+        <button class="panel-nav-btn" [class.panel-nav-btn--draft]="!!draftFor('bottom')"
+            (click)="setStationHere('bottom')">
+            + Set Station at {{ flags.crossSectionY }}mm
+        </button>
+        }
     </div>
 </section>
 
 <section class="ui-group" [style.border-color]="colors.archTop">
     <div class="ui-group-title">Top Plate</div>
     <div class="input-group basic-row field-row" role="group">
+        <div class="toggle">
+            <input type="checkbox" [checked]="topCross.asymmetric" (change)="toggleAsymmetricCross('top')" />
+            <span>Asymmetric (left / right)</span>
+        </div>
+        <button type="button" class="info-icon" (click)="asymmetricCrossArchInfo()" title="More information">ⓘ</button>
+    </div>
+
+    @if (!topCross.asymmetric) {
+    <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Cycloid Factor</span>
-            <input class="basic-input" type="number" step="0.05" min="0" max="1" [(ngModel)]="topCross.d"
-                (input)="onChange()" [style.border-color]="colors.archTop" />
+            <input class="basic-input" type="number" step="0.05" min="0" max="1" [ngModel]="activeTopShape.d"
+                (ngModelChange)="setActiveD('top', $event)" [style.border-color]="colors.archTop" />
         </label>
         <label class="field-cell">
-            <span class="field-title">Percentage <span class="unit-label">%</span></span>
-            <input class="basic-input" type="number" step="5" min="5" max="100" [(ngModel)]="topCrossPercent"
-                (input)="onChange()" [style.border-color]="colors.archTop" />
+            <span class="field-title">Percent <span class="unit-label">%</span></span>
+            <input class="basic-input" type="number" step="5" min="5" max="100" [ngModel]="topCrossPercent"
+                (ngModelChange)="setActivePct('top', $event)" [style.border-color]="colors.archTop" />
         </label>
         <button type="button" class="info-icon" (click)="crossArchCycloidControlsInfo()"
             title="More information">ⓘ</button>
     </div>
+    } @else {
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Left Factor</span>
+            <input class="basic-input" type="number" step="0.05" min="0" max="1" [ngModel]="activeTopShape.left!.d"
+                (ngModelChange)="setActiveSideD('top', 'left', $event)" [style.border-color]="colors.archTop" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Left Percent <span class="unit-label">%</span></span>
+            <input class="basic-input" type="number" step="5" min="5" max="100"
+                [ngModel]="activeTopShape.left!.pct * 100 | number:'1.0-0'"
+                (ngModelChange)="setActiveSidePct('top', 'left', $event)" [style.border-color]="colors.archTop" />
+        </label>
+        <button type="button" class="info-icon" (click)="crossArchCycloidControlsInfo()"
+            title="More information">ⓘ</button>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Right Factor</span>
+            <input class="basic-input" type="number" step="0.05" min="0" max="1" [ngModel]="activeTopShape.right!.d"
+                (ngModelChange)="setActiveSideD('top', 'right', $event)" [style.border-color]="colors.archTop" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Right Percent <span class="unit-label">%</span></span>
+            <input class="basic-input" type="number" step="5" min="5" max="100"
+                [ngModel]="activeTopShape.right!.pct * 100 | number:'1.0-0'"
+                (ngModelChange)="setActiveSidePct('top', 'right', $event)" [style.border-color]="colors.archTop" />
+        </label>
+    </div>
+    }
 
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
@@ -64,19 +184,58 @@
 <section class="ui-group" [style.border-color]="colors.archBack">
     <div class="ui-group-title">Back Plate</div>
     <div class="input-group basic-row field-row" role="group">
+        <div class="toggle">
+            <input type="checkbox" [checked]="backCross.asymmetric" (change)="toggleAsymmetricCross('bottom')" />
+            <span>Asymmetric (left / right)</span>
+        </div>
+        <button type="button" class="info-icon" (click)="asymmetricCrossArchInfo()" title="More information">ⓘ</button>
+    </div>
+
+    @if (!backCross.asymmetric) {
+    <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Cycloid Factor</span>
-            <input class="basic-input" type="number" step="0.05" min="0" max="1" [(ngModel)]="backCross.d"
-                (input)="onChange()" [style.border-color]="colors.archBack" />
+            <input class="basic-input" type="number" step="0.05" min="0" max="1" [ngModel]="activeBackShape.d"
+                (ngModelChange)="setActiveD('bottom', $event)" [style.border-color]="colors.archBack" />
         </label>
         <label class="field-cell">
-            <span class="field-title">Percentage <span class="unit-label">%</span></span>
-            <input class="basic-input" type="number" step="5" min="5" max="100" [(ngModel)]="backCrossPercent"
-                (input)="onChange()" [style.border-color]="colors.archBack" />
+            <span class="field-title">Percent <span class="unit-label">%</span></span>
+            <input class="basic-input" type="number" step="5" min="5" max="100" [ngModel]="backCrossPercent"
+                (ngModelChange)="setActivePct('bottom', $event)" [style.border-color]="colors.archBack" />
         </label>
         <button type="button" class="info-icon" (click)="crossArchCycloidControlsInfo()"
             title="More information">ⓘ</button>
     </div>
+    } @else {
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Left Cycloid Factor</span>
+            <input class="basic-input" type="number" step="0.05" min="0" max="1" [ngModel]="activeBackShape.left!.d"
+                (ngModelChange)="setActiveSideD('bottom', 'left', $event)" [style.border-color]="colors.archBack" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Left Percent <span class="unit-label">%</span></span>
+            <input class="basic-input" type="number" step="5" min="5" max="100"
+                [ngModel]="activeBackShape.left!.pct * 100 | number:'1.0-0'"
+                (ngModelChange)="setActiveSidePct('bottom', 'left', $event)" [style.border-color]="colors.archBack" />
+        </label>
+        <button type="button" class="info-icon" (click)="crossArchCycloidControlsInfo()"
+            title="More information">ⓘ</button>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Right Cycloid Factor</span>
+            <input class="basic-input" type="number" step="0.05" min="0" max="1" [ngModel]="activeBackShape.right!.d"
+                (ngModelChange)="setActiveSideD('bottom', 'right', $event)" [style.border-color]="colors.archBack" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Right Percent <span class="unit-label">%</span></span>
+            <input class="basic-input" type="number" step="5" min="5" max="100"
+                [ngModel]="activeBackShape.right!.pct * 100 | number:'1.0-0'"
+                (ngModelChange)="setActiveSidePct('bottom', 'right', $event)" [style.border-color]="colors.archBack" />
+        </label>
+    </div>
+    }
 
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
