@@ -237,6 +237,24 @@ export function crossArchCycloidControlsInfo() {
     )
 }
 
+export function asymmetricCrossArchInfo() {
+    info(
+        "By default the cross arch is the same shape on both sides of the centerline. Turning this on lets the left (x<0) and right (x>0) halves take independent Cycloid Factor / Percentage values instead.\n\n" +
+        "Both halves always meet the center at the same peak height with a level tangent regardless of how differently they're shaped, so there is never a seam at the centerline — only the takeoff shape on each side changes.",
+        "Asymmetric Cross Arch", defaultTTL
+    )
+}
+
+export function crossStationInfo() {
+    info(
+        "By default one cross-arch shape is used the whole length of the plate. A station pins a different shape at one body position — the arch then ramps smoothly from the plate's own Factor/Percent at the ends, through each station, and back.\n\n" +
+        "To add one: dial in the shape you want with the plate's Factor/Percent fields, move the section height to where it should apply, then press Set Station.\n\n" +
+        "To change one: move the section height onto it (or click its row in the table). The plate's Factor/Percent fields then edit that station instead of the plate ends, and say so above them.\n\n" +
+        "Historic arching is rarely uniform — corner sections tend to run flatter, the lower bout fuller. Two or three stations are usually plenty.",
+        "Cross-Arch Stations", defaultTTL
+    )
+}
+
 export function crossArchEdgeDepthInfo() {
     info(
         "Lowers the point where the long and cross arches take off from the plate edge, measured in mm below the plate outer surface.\n\n" +
