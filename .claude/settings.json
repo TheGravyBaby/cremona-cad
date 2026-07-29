@@ -31,7 +31,10 @@
       "Bash(timeout 400 npx ng test --watch=false)",
       "Bash(echo \"EXIT=$?\")",
       "Bash(npx ng *)",
-      "Bash(node /private/tmp/claude-501/-Users-aargraves-Documents-cremona-cad/df83ca51-ed5f-420c-aa9a-3ac7d69913b3/scratchpad/diag.mjs)"
+      "Bash(node /private/tmp/claude-501/-Users-aargraves-Documents-cremona-cad/df83ca51-ed5f-420c-aa9a-3ac7d69913b3/scratchpad/diag.mjs)",
+      "Read(//Users/aargraves/.claude/skills/graphify/references/**)",
+      "Bash(python3 -c ' *)",
+      "Bash(cd /Users/aargraves/Documents/cremona-cad *)"
     ],
     "additionalDirectories": [
       "/tmp"
