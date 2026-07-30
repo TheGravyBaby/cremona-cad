@@ -100,6 +100,16 @@ export type ImageShape = ShapeBase & {
   /** Fades near-white pixels to transparent so a scan on white paper reads on a dark canvas.
    * Undefined means on, matching the old always-on behavior. */
   suppressWhite?: boolean;
+  /**
+   * Mirrors the image content left-right about its own center — for a scan that came out
+   * reversed, or to compare a traced half against its opposite. There's deliberately no separate
+   * vertical mirror: combined with `rotationDeg` (already free), one mirror axis reaches every
+   * orientation a second axis would — mirroring twice is just a 180° rotation, and a vertical
+   * mirror is this same horizontal mirror plus a 180° rotation. Purely a rendering flag: the box
+   * (x/y/width/height/rotationDeg) is untouched, so mirroring doesn't move handles or change
+   * hit-testing. Undefined means unmirrored.
+   */
+  mirrored?: boolean;
   /** Hidden from the canvas, and unselectable while hidden. Per-image, so one reference can be
    * parked without disturbing the others — this is what the old tab strip's active-tab-only
    * display was really for. */

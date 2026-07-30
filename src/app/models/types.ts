@@ -76,6 +76,8 @@ export type NamedReferenceImage = ReferenceImage & {
   /** Whether near-white pixels are faded out for dark-mode legibility. Omitted means on, which
    * is what this did unconditionally before it became a toggle. */
   suppressWhite?: boolean;
+  /** Mirrors the image content left-right about its own center. Omitted means unmirrored. */
+  mirrored?: boolean;
   /** Hidden from the canvas. Omitted means visible. */
   hidden?: boolean;
   /** Protected from being selected or dragged on the canvas. **Omitted means locked** — every

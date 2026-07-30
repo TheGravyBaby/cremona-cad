@@ -392,9 +392,8 @@ export class SettingsBarComponent {
   public get imageHeight(): number { return this.round2(this.selectedImageShape?.height ?? 0); }
   public get imageRotationDeg(): number { return this.round2(this.selectedImageShape?.rotationDeg ?? 0); }
 
-  /** Percent, for a 0–100 slider — the shape stores a 0–1 fraction. */
-  public get imageOpacityPct(): number {
-    return Math.round((this.selectedImageShape?.opacity ?? DEFAULT_IMAGE_OPACITY) * 100);
+  public get imageOpacity(): number {
+    return this.round2(this.selectedImageShape?.opacity ?? DEFAULT_IMAGE_OPACITY);
   }
 
   setImageLabel(label: string): void {
@@ -420,9 +419,9 @@ export class SettingsBarComponent {
     this.patchNumberField(this.selectedImageShape, 'rotationDeg', valueDeg, { transform: normalizeDegrees });
   }
 
-  setImageOpacityPct(pct: number): void {
-    this.patchNumberField(this.selectedImageShape, 'opacity', pct, {
-      transform: v => Math.max(0, Math.min(1, v / 100)),
+  setImageOpacity(value: number): void {
+    this.patchNumberField(this.selectedImageShape, 'opacity', value, {
+      transform: v => Math.max(0, Math.min(1, v)),
     });
   }
 
@@ -437,6 +436,19 @@ export class SettingsBarComponent {
     const shape = this.selectedImageShape;
     if (!shape) return;
     this.toolbox.updateShape(shape.id, { suppressWhite: value });
+  }
+
+  /** Mirrors the image content left-right about its own center — for a scan that came out
+   * reversed, or to compare a traced half against its opposite. Purely a content flag: the box
+   * itself (position/size/rotation) is untouched, so handles don't move. No separate vertical
+   * mirror: combined with Rot°, this one axis reaches every orientation a second would — see
+   * ImageShape.mirrored. */
+  public get imageMirrored(): boolean { return this.selectedImageShape?.mirrored ?? false; }
+
+  toggleImageMirrored(): void {
+    const shape = this.selectedImageShape;
+    if (!shape) return;
+    this.toolbox.updateShape(shape.id, { mirrored: !this.imageMirrored });
   }
 
   /**

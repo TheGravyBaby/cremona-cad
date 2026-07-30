@@ -124,11 +124,23 @@ describe('round-trip through the recipe field', () => {
     const original: NamedReferenceImage[] = [{
       id: 'r1', label: 'Plan', href: 'data:image/png;base64,AAAA',
       x: -157.7, y: -31.4, width: 319, height: 448.55, rotationDeg: 359.6,
-      opacity: 0.4, suppressWhite: false, hidden: true, locked: false,
+      opacity: 0.4, suppressWhite: false, mirrored: true, hidden: true, locked: false,
     }];
 
     const out = imageShapesToRecipe(imageShapesFromRecipe({ referenceImages: original }, assets), assets);
     expect(out).toEqual(original.map(e => ({ ...e, 'xlink:href': e.href })));
+  });
+
+  it('carries mirrored through unchanged, defaulting to unmirrored', () => {
+    const assets = store();
+    const shapes = imageShapesFromRecipe({
+      referenceImages: [
+        { id: 'a', label: 'A', href: '/a.jpg', x: 0, y: 0, width: 1, height: 1, mirrored: true },
+        { id: 'b', label: 'B', href: '/b.jpg', x: 0, y: 0, width: 1, height: 1 },
+      ],
+    }, assets);
+    expect(shapes.map(s => s.mirrored)).toEqual([true, undefined]);
+    expect(imageShapesToRecipe(shapes, assets).map(e => e.mirrored)).toEqual([true, undefined]);
   });
 
   it('emits xlink:href alongside href, as every previous version of the format did', () => {
