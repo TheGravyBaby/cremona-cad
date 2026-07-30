@@ -198,7 +198,17 @@ describe('arching templates', () => {
     expect(profile.startsWith('M')).toBe(true);
     const chords = stationChordsAt(p, model, y);
     const z = topSurfaceZAt(p, model, 0, y, chords)!;
-    expect(profile).toContain(`0 ${model.zBase + model.signZ * z}`);
+
+    // Compared against the nearest sample rather than by looking for the centreline
+    // coordinate as a substring: the profile is a fixed-step polyline, so no sample is
+    // guaranteed to land exactly on x = 0, and an exact float match would be testing the
+    // sampler's grid alignment rather than whether the path follows the height field.
+    const samples = [...profile.matchAll(/[ML]\s+(-?[\d.]+)\s+(-?[\d.]+)/g)]
+      .map(m => ({ x: +m[1], z: +m[2] }));
+    expect(samples.length).toBeGreaterThan(10);
+    const nearest = samples.reduce((a, b) => Math.abs(b.x) < Math.abs(a.x) ? b : a);
+    expect(nearest.x).toBeCloseTo(0, 0);
+    expect(nearest.z).toBeCloseTo(model.zBase + model.signZ * z, 2);
   });
 
   it('returns null off the plate', () => {
