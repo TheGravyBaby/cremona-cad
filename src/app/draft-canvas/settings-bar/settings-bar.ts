@@ -4,7 +4,9 @@ import { DraftTool } from '../tools/draft-tool';
 import { ToolboxStore } from '../tools/toolbox-store';
 import {
   DraftShape, LineShape, DimensionShape, RectShape, TextShape, PointShape, CircleShape, ArcShape, BoxLineShape,
+  ImageShape, DEFAULT_IMAGE_OPACITY,
 } from '../tools/toolbox-shape';
+import { normalizeDegrees } from '../../helpers/draftMath';
 
 /**
  * The Inkscape-style contextual settings strip along the bottom bar: color, then whichever
@@ -78,6 +80,7 @@ export class SettingsBarComponent {
   /** Friendly name for each shape type, used by groupTitle when the settings reflect a selection. */
   private static readonly SHAPE_TYPE_LABELS: Record<DraftShape['type'], string> = {
     line: 'Line', arc: 'Arc', circle: 'Circle', dimension: 'Distance', rect: 'Box', boxline: 'Box Line', text: 'Text', point: 'Point',
+    image: 'Reference Image',
   };
 
   /** Heading shown above the settings strip so it's clear what "Color"/"Dashed"/etc. apply to —
@@ -367,6 +370,73 @@ export class SettingsBarComponent {
     if (shape?.type === 'boxline') {
       this.toolbox.updateShape(shape.id, { weights });
     }
+  }
+
+  // ===== Reference image =====
+  // The replacement for the old reference-image popup's X/Y/W/H/°/opacity grid. It lives here
+  // now for the same reason every other shape's numeric fields do: the controls belong to the
+  // selected object, not to a mode.
+
+  private get selectedImageShape(): ImageShape | undefined {
+    return this.selectedShapeOfType('image');
+  }
+
+  public get showImagePanel(): boolean {
+    return !!this.selectedImageShape;
+  }
+
+  public get imageLabel(): string { return this.selectedImageShape?.label ?? ''; }
+  public get imageX(): number { return this.round2(this.selectedImageShape?.x ?? 0); }
+  public get imageY(): number { return this.round2(this.selectedImageShape?.y ?? 0); }
+  public get imageWidth(): number { return this.round2(this.selectedImageShape?.width ?? 0); }
+  public get imageHeight(): number { return this.round2(this.selectedImageShape?.height ?? 0); }
+  public get imageRotationDeg(): number { return this.round2(this.selectedImageShape?.rotationDeg ?? 0); }
+
+  /** Percent, for a 0–100 slider — the shape stores a 0–1 fraction. */
+  public get imageOpacityPct(): number {
+    return Math.round((this.selectedImageShape?.opacity ?? DEFAULT_IMAGE_OPACITY) * 100);
+  }
+
+  setImageLabel(label: string): void {
+    const shape = this.selectedImageShape;
+    if (!shape) return;
+    // An empty name would leave nothing to identify the image by; keep the old one.
+    const trimmed = label.trim();
+    if (trimmed) this.toolbox.updateShape(shape.id, { label: trimmed });
+  }
+
+  setImagePosition(axis: 'x' | 'y', value: number): void {
+    this.patchNumberField(this.selectedImageShape, axis, value);
+  }
+
+  /** Width and height are independent here, unlike a corner-handle drag — typing an exact
+   * dimension is how you scale a photo to a real measurement, which is the whole point of a
+   * reference image and would be defeated by silently correcting the other axis. */
+  setImageSize(key: 'width' | 'height', value: number): void {
+    this.patchNumberField(this.selectedImageShape, key, value, { validate: v => v > 0 });
+  }
+
+  setImageRotation(valueDeg: number): void {
+    this.patchNumberField(this.selectedImageShape, 'rotationDeg', valueDeg, { transform: normalizeDegrees });
+  }
+
+  setImageOpacityPct(pct: number): void {
+    this.patchNumberField(this.selectedImageShape, 'opacity', pct, {
+      transform: v => Math.max(0, Math.min(1, v / 100)),
+    });
+  }
+
+  /** Whether near-white pixels are faded to transparent, so a scan on white paper reads against
+   * a dark canvas. Was unconditional; now per-image, since it ruins a photo whose subject really
+   * is white (a plaster cast, a light-varnished front). */
+  public get imageSuppressWhite(): boolean {
+    return this.selectedImageShape?.suppressWhite ?? true;
+  }
+
+  setImageSuppressWhite(value: boolean): void {
+    const shape = this.selectedImageShape;
+    if (!shape) return;
+    this.toolbox.updateShape(shape.id, { suppressWhite: value });
   }
 
   /** Equal-segments mode: N segments all weighted 1 — e.g. 16 for showing sixteenths, without

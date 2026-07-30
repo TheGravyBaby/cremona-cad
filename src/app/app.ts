@@ -4,9 +4,8 @@ import { setGlobalEmitter } from './shared/message-emitter';
 import { MessageService } from './shared/message.service';
 import { TopBarComponent } from './top-bar/top-bar';
 import { DraftCanvasComponent } from './draft-canvas/draft-canvas';
-import { NamedReferenceImage } from './models/types';
 import { Pt } from './models/types';
-import { normalizeReferenceImages } from './helpers/referenceImages';
+import { ToolboxStore } from './draft-canvas/tools/toolbox-store';
 import { CerutiViolin } from './enrico-ceruti-violin/ceruti-violin';
 import { HelloRecipe } from './hello-recipe/hello-recipe';
 import { MessageCenterComponent } from './shared/message-center.component';
@@ -28,8 +27,6 @@ import { MessageCenterComponent } from './shared/message-center.component';
       <div class="main">
         <app-draft-canvas class="canvas"
           [draftFunctions]="draftArgs()"
-          [referenceImages]="referenceImages()"
-          (referenceImagesChange)="onReferenceImagesChange($event)"
           [setCameraBounds]="bounds"
           >
         </app-draft-canvas>
@@ -38,10 +35,8 @@ import { MessageCenterComponent } from './shared/message-center.component';
          <app-ceruti-violin class="sidebar"
           (draftChange)="onDraftChange($event)"
           (setBounds)="bounds=$event"
-          [referenceImages]="referenceImages()"
           [cameraBounds]="bounds"
-          [nightMode]="nightMode"
-          (referenceImagesChange)="onReferenceImagesChange($event)">
+          [nightMode]="nightMode">
         </app-ceruti-violin>
         }
 
@@ -49,9 +44,7 @@ import { MessageCenterComponent } from './shared/message-center.component';
          <app-hello-recipe class="sidebar"
           (draftChange)="onDraftChange($event)"
           (setBounds)="bounds=$event"
-          [referenceImages]="referenceImages()"
-          [cameraBounds]="bounds"
-          (referenceImagesChange)="onReferenceImagesChange($event)">
+          [cameraBounds]="bounds">
         </app-hello-recipe>
         }
 
@@ -67,15 +60,11 @@ export class App {
   private readonly doc = inject(DOCUMENT);
   // inject MessageService via Angular's injector
   private messageService = inject(MessageService);
+  private toolbox = inject(ToolboxStore);
 
   draftArgs = signal<Array<(g: any, ui: any) => void>>([]);
   selectedRecipe: string = 'enrico-ceruti-violin';
   bounds: {pt1: Pt, pt2: Pt} | null = null;
-  sessionData = sessionStorage.getItem('recipeData');
-
-  referenceImages = signal<NamedReferenceImage[]>(normalizeReferenceImages(
-    this.sessionData ? JSON.parse(this.sessionData) : null
-  ));
 
   nightMode = true;
 
@@ -102,14 +91,12 @@ export class App {
     this.draftArgs.set(fns);
   }
 
-  onReferenceImagesChange(imgs: NamedReferenceImage[]) {
-    this.referenceImages.set(imgs ?? []);
-  }
-
-  /** Switches the active recipe, clearing state that belonged to the old one. */
+  /** Switches the active recipe, clearing canvas state that belonged to the old one — including
+   * its reference images, which are ToolboxStore shapes now rather than something this component
+   * threads between the canvas and the sidebar. */
   selectRecipe(recipe: string): void {
     if (recipe === this.selectedRecipe) return;
     this.selectedRecipe = recipe;
-    this.referenceImages.set([]);
+    this.toolbox.resetAll();
   }
 }

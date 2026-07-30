@@ -34,7 +34,13 @@
       "Bash(node /private/tmp/claude-501/-Users-aargraves-Documents-cremona-cad/df83ca51-ed5f-420c-aa9a-3ac7d69913b3/scratchpad/diag.mjs)",
       "Read(//Users/aargraves/.claude/skills/graphify/references/**)",
       "Bash(python3 -c ' *)",
-      "Bash(cd /Users/aargraves/Documents/cremona-cad *)"
+      "Bash(cd /Users/aargraves/Documents/cremona-cad *)",
+      "Bash(git rm *)",
+      "Bash(grep -vE \"^\\\\s*$\")",
+      "Bash(npx esbuild *)",
+      "Bash(node /private/tmp/claude-501/-Users-aargraves-Documents-cremona-cad/71eca4b2-6f97-410b-a3b0-832b4b681130/scratchpad/harness.mjs)",
+      "Bash(node harness.mjs)",
+      "Bash(pkill -f \"ng test\")"
     ],
     "additionalDirectories": [
       "/tmp"

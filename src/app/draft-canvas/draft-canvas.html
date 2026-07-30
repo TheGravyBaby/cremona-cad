@@ -17,13 +17,10 @@
     }
   </div>
 
-  <input #refFileInput type="file" accept="image/*" style="display:none"
-    (change)="onReferenceFileSelected($event)" />
+  <input #imageFileInput type="file" accept="image/*" style="display:none"
+    (change)="onImageFileSelected($event)" />
 
-  <app-tool-palette
-    (addReferenceRequested)="requestAddReference()"
-    (replaceReferenceRequested)="requestReplaceReference()">
-  </app-tool-palette>
+  <app-tool-palette></app-tool-palette>
 
   <div class="ui-controls">
     <div class="left">

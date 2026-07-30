@@ -14,6 +14,7 @@ export const HOTKEY_TOOL_CYCLE: Record<string, string[]> = {
   KeyT: ['text'],
   KeyP: ['point'],
   KeyO: ['offset'],
+  KeyI: ['image'],
 };
 
 // Reverse of the above (tool id -> its group's letter), for tooltip hints.

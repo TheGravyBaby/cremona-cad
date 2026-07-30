@@ -148,6 +148,47 @@
     </label>
   }
 
+  @if (showImagePanel) {
+    <span class="field text-field"><span class="f-lbl">Name</span>
+      <input #imageLabelInput type="text" [value]="imageLabel" (change)="setImageLabel(imageLabelInput.value)"
+        (keydown.enter)="imageLabelInput.blur()" (keydown.escape)="imageLabelInput.value = imageLabel; imageLabelInput.blur()"
+        title="What this image is — e.g. Plan, Long arch, Cross arch" placeholder="Reference" />
+    </span>
+    <span class="point-group">
+      <span class="field"><span class="f-lbl">X</span>
+        <input type="number" [value]="imageX" (change)="setImagePosition('x', $any($event.target).valueAsNumber)"
+          (keydown.enter)="$any($event.target).blur()" />
+      </span>
+      <span class="field"><span class="f-lbl">Y</span>
+        <input type="number" [value]="imageY" (change)="setImagePosition('y', $any($event.target).valueAsNumber)"
+          (keydown.enter)="$any($event.target).blur()" />
+      </span>
+    </span>
+    <span class="point-group">
+      <span class="field"><span class="f-lbl">W</span>
+        <input type="number" min="0.01" [value]="imageWidth" (change)="setImageSize('width', $any($event.target).valueAsNumber)"
+          (keydown.enter)="$any($event.target).blur()" title="Width in mm — type a real measurement to scale the image to it" />
+      </span>
+      <span class="field"><span class="f-lbl">H</span>
+        <input type="number" min="0.01" [value]="imageHeight" (change)="setImageSize('height', $any($event.target).valueAsNumber)"
+          (keydown.enter)="$any($event.target).blur()" title="Height in mm — type a real measurement to scale the image to it" />
+      </span>
+    </span>
+    <span class="field"><span class="f-lbl">Rot°</span>
+      <input type="number" step="0.1" [value]="imageRotationDeg" (change)="setImageRotation($any($event.target).valueAsNumber)"
+        (keydown.enter)="$any($event.target).blur()" />
+    </span>
+    <span class="field"><span class="f-lbl">Opacity</span>
+      <input type="range" min="0" max="100" step="1" [value]="imageOpacityPct"
+        (input)="setImageOpacityPct($any($event.target).valueAsNumber)" [title]="imageOpacityPct + '%'" />
+    </span>
+    <label class="toggle">
+      <span class="f-lbl">Drop white</span>
+      <input type="checkbox" [checked]="imageSuppressWhite" (change)="setImageSuppressWhite($any($event.target).checked)"
+        title="Fade near-white pixels to transparent, so a scan on white paper reads against a dark canvas" />
+    </label>
+  }
+
   @if (showBoxLinePanel) {
     @if (showBoxLinePointsPanel) {
       <span class="point-group">

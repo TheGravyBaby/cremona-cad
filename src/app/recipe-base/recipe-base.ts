@@ -1,12 +1,14 @@
 import { AfterViewInit, Component, HostListener, output, afterNextRender, inject, Injector } from '@angular/core';
 import { Output, EventEmitter, Input } from "@angular/core";
-import { NamedReferenceImage, Pt, RecipeInterface } from '../models/types';
+import { Pt, RecipeInterface } from '../models/types';
 import { PanelFlow, PanelDefinition } from '../helpers/panelFlow';
 import { DebounceController } from '../helpers/debounce-controller';
-import { normalizeReferenceImages, toNamedReferenceImage } from '../helpers/referenceImages';
 import { NamedConstant, DEFAULT_NAMED_CONSTANTS, nearestFraction } from '../helpers/nearestFraction';
 import { ToolboxStore } from '../draft-canvas/tools/toolbox-store';
-import { ReferenceImageStore } from '../draft-canvas/reference-image-store';
+import { ImageAssetStore } from '../draft-canvas/tools/image-asset-store';
+import {
+  ReferenceImageSource, imageShapesFromRecipe, imageShapesToRecipe,
+} from '../draft-canvas/tools/reference-image-schema';
 
 export type { NamedConstant };
 
@@ -22,15 +24,24 @@ export abstract class RecipeComponentBase implements AfterViewInit {
 
   private readonly injector = inject(Injector);
   protected readonly toolbox = inject(ToolboxStore);
-  private readonly refImagesStore = inject(ReferenceImageStore);
+  protected readonly imageAssets = inject(ImageAssetStore);
+  private toolboxSyncUnsub?: () => void;
 
   @Output() draftChange = new EventEmitter<Array<(g: any, ui: any) => void>>();
   @Output() setBounds = new EventEmitter<{pt1: Pt, pt2: Pt}>();
-  @Output() referenceImagesChange = new EventEmitter<NamedReferenceImage[]>();
 
   @Input() cameraBounds: { pt1: Pt, pt2: Pt } | null = null;
 
   loadFile(file: RecipeInterface): void {
+    // Snapshot the file's reference images before touching the stores. resetAll() below both
+    // clears the asset table and (through the sync subscription) rewrites `d.referenceImages`
+    // from the now-empty canvas — and `file` becomes `this.d`, so reading it afterwards would
+    // read back the wipe rather than the file.
+    const incoming: ReferenceImageSource = {
+      referenceImages: file.referenceImages,
+      referenceImage: file.referenceImage,
+    };
+
     this.d = file;
     // Toolbox shapes are drawn separately from the recipe's own render pipeline (ToolboxStore is
     // a root singleton, not part of `this.d`) — always start from a clean slate, then restore
@@ -38,12 +49,31 @@ export abstract class RecipeComponentBase implements AfterViewInit {
     // template don't linger into the newly loaded one.
     this.toolbox.resetAll();
     this.toolbox.loadState(file.toolboxState);
+    this.loadReferenceImages(incoming);
     this.draftChange.emit([this.firstRender]);
   }
 
-  @Input() set referenceImages(imgs: NamedReferenceImage[] | null | undefined) {
-    this.d.params = this.d.params || {};
-    this.d.referenceImages = imgs ?? [];
+  /**
+   * Hands a recipe's reference images to the canvas. This — plus syncReferenceImages() on the way
+   * back out — is the entire coupling between a recipe and the reference-image feature: the
+   * canvas owns placed images as ordinary shapes from here on, and `this.d.referenceImages` is
+   * just their serialized form (see reference-image-schema.ts). Templates and saved files carry
+   * that field unchanged, including the long-deprecated singular `referenceImage`.
+   *
+   * Call this after any assignment to `this.d` that brings new reference images with it.
+   */
+  protected loadReferenceImages(source: ReferenceImageSource): void {
+    this.toolbox.loadImages(imageShapesFromRecipe(source, this.imageAssets));
+  }
+
+  /**
+   * Mirrors the canvas's placed images back into `this.d` so whichever code path persists the
+   * recipe next — a sessionStorage write, saveToDisk, a subclass's own snapshot — picks them up
+   * without having to know images exist. Subscribed to ToolboxStore so it can't be forgotten at
+   * a call site.
+   */
+  private syncReferenceImages(): void {
+    this.d.referenceImages = imageShapesToRecipe(this.toolbox.getImageShapes(), this.imageAssets);
     // Drop the legacy singular field so it can't shadow the array on save.
     delete this.d.referenceImage;
   }
@@ -92,12 +122,17 @@ export abstract class RecipeComponentBase implements AfterViewInit {
     }, delay);
   }
 
-  /** Snapshot the current state onto the history stack. */
+  /** Snapshot the current state onto the history stack.
+   *
+   * Reference images are left out: they're owned by ToolboxStore, which keeps its own history
+   * (see onUndoRedoKeyDown), so snapshotting them here would be both redundant and expensive —
+   * an uploaded image is a base64 payload, and this stack holds up to 50 entries. */
   pushHistory(): void {
     if (this._isRestoringHistory) return;
     // Discard any forward history when a new change is made
     this._history = this._history.slice(0, this._historyIndex + 1);
-    this._history.push(JSON.stringify(this.d));
+    const { referenceImages, referenceImage, ...withoutImages } = this.d;
+    this._history.push(JSON.stringify(withoutImages));
     if (this._history.length > this._maxHistory) {
       this._history.shift();
     } else {
@@ -122,6 +157,9 @@ export abstract class RecipeComponentBase implements AfterViewInit {
   private _afterHistoryRestore(): void {
     this._isRestoringHistory = true;
     try {
+      // The restored snapshot has no reference images in it (see pushHistory) — put the canvas's
+      // current ones back before persisting, or this write would drop them from the session.
+      this.syncReferenceImages();
       sessionStorage.setItem('recipeData', JSON.stringify(this.d));
       this.panelFlow?.refreshEnabledPanels();
       const current = this.panelFlow?.getCurrent(this.openPanel);
@@ -237,9 +275,15 @@ export abstract class RecipeComponentBase implements AfterViewInit {
 
 
  ngOnInit() {
+    // Keeps `d.referenceImages` current with whatever the canvas holds, so every existing
+    // persist path (sessionStorage writes, saveToDisk, subclass snapshots) serializes images
+    // without needing to know they exist. See syncReferenceImages.
+    this.toolboxSyncUnsub = this.toolbox.onChange(() => this.syncReferenceImages());
+
     const recipeData = this.loadMatchingSessionRecipe();
     if (recipeData) {
       this.d = recipeData;
+      this.loadReferenceImages(recipeData);
       this.panelFlow?.refreshEnabledPanels();
     }
   }
@@ -275,6 +319,8 @@ export abstract class RecipeComponentBase implements AfterViewInit {
   ngOnDestroy() {
     this._destroyed = true;
     this.debounceController?.destroy();
+    this.syncReferenceImages();
+    this.toolboxSyncUnsub?.();
     sessionStorage.setItem('recipeData', JSON.stringify(this.d));
     sessionStorage.setItem('openPanel', this.openPanel);
   }
@@ -285,6 +331,9 @@ export abstract class RecipeComponentBase implements AfterViewInit {
   saveToDisk() {
     const safeName = (this.d.fileName?.trim() || 'untitled') + (this.d.fileName?.endsWith('.json') ? '' : '.json');
     this.d.toolboxState = this.toolbox.exportState();
+    // Writes `referenceImages` in exactly the format every previous version of the app wrote, so
+    // a file saved here still opens in an older build.
+    this.syncReferenceImages();
     const limitedJson = {
       ...this.d,
       paths: []
@@ -319,101 +368,6 @@ export abstract class RecipeComponentBase implements AfterViewInit {
       if (idx === -1) this.d.paths.push(entry);
       else this.d.paths[idx] = entry;
     }
-  }
-
-  onReferenceImagesChange(imgs: NamedReferenceImage[]) {
-    this.d.params = this.d.params || {};
-    this.d.referenceImages = imgs ?? [];
-    delete this.d.referenceImage;
-
-    sessionStorage.setItem('recipeData', JSON.stringify(this.d));
-  }
-
-    // reference image controls — the base panel's uploader adds a new tab.
-  async onReferenceFileSelected(evt: Event): Promise<void> {
-    const input = evt.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file) return;
-
-    const dataUrl = await this.readFileAsDataUrl(file);
-    const { w, h } = await this.getImageSize(dataUrl);
-
-    // Scale image to fit within the current camera bounds (mirrors draft-canvas logic)
-    const aspect = w / h || 1;
-    let imgW: number;
-    let imgH: number;
-    let imgX: number;
-    let imgY: number;
-
-    if (this.cameraBounds) {
-      const bW = Math.abs(this.cameraBounds.pt2.x - this.cameraBounds.pt1.x);
-      const bH = Math.abs(this.cameraBounds.pt2.y - this.cameraBounds.pt1.y);
-      const bCx = (this.cameraBounds.pt1.x + this.cameraBounds.pt2.x) / 2;
-      const bCy = (this.cameraBounds.pt1.y + this.cameraBounds.pt2.y) / 2;
-
-      if (bW / bH > aspect) {
-        imgH = bH;
-        imgW = imgH * aspect;
-      } else {
-        imgW = bW;
-        imgH = imgW / aspect;
-      }
-
-      imgX = bCx - imgW / 2;
-      imgY = bCy - imgH / 2;
-    } else {
-      // No bounds set — fall back to a 200 mm wide default
-      imgW = 200;
-      imgH = imgW / aspect;
-      imgX = -imgW / 2;
-      imgY = 0;
-    }
-
-    // Fold any legacy singular field in first, then append the new image.
-    const existing = normalizeReferenceImages(this.d);
-    const named = toNamedReferenceImage(
-      {
-        href: dataUrl,
-        'xlink:href': dataUrl,
-        x: imgX,
-        y: imgY,
-        width: imgW,
-        height: imgH,
-        rotationDeg: 0,
-      },
-      `Img ${existing.length + 1}`,
-    );
-    this.d.referenceImages = [...existing, named];
-    delete this.d.referenceImage;
-
-    // Also add straight to the store (not just this.d) so the new tab becomes active right away —
-    // draft-canvas's own `referenceImages` @Input setter only re-picks the active tab when the
-    // current one has disappeared, so without this the upload would silently stay on whichever
-    // tab was already selected.
-    this.refImagesStore.addImage(named);
-
-    sessionStorage.setItem('recipeData', JSON.stringify(this.d));
-    this.referenceImagesChange.emit(this.d.referenceImages);
-
-    input.value = '';
-  }
-
-    private readFileAsDataUrl(file: File): Promise<string> {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result));
-        reader.onerror = () => reject(reader.error);
-        reader.readAsDataURL(file);
-      });
-  }
-
-  private getImageSize(dataUrl: string): Promise<{ w: number; h: number }> {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
-      img.onerror = reject;
-      img.src = dataUrl;
-    });
   }
 
   nearestFraction(

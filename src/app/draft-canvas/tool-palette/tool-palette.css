@@ -100,30 +100,6 @@
   border-color: var(--ui-canvas-btn-border-hover);
 }
 
-/* Same footprint as .tool-flyout-caret (14px, flush against the main button, right-rounded),
-   so the Reference tool's show/hide toggle reads as part of the same control instead of a
-   bolted-on extra. Unlike a native checkbox, there's no filled box behind the mark — just a
-   plain check/x glyph, kept as minimal as the chevron it sits next to. */
-.tool-view-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 14px;
-  padding: 0;
-  border: 1px solid var(--ui-border-strong);
-  border-left: none;
-  border-top-right-radius: 4px;
-  border-bottom-right-radius: 4px;
-  background: linear-gradient(180deg, var(--ui-canvas-btn-bg-start) 0%, var(--ui-canvas-btn-bg-end) 100%);
-  color: var(--ui-text-muted);
-  cursor: pointer;
-}
-
-.tool-view-toggle:hover {
-  border-color: var(--ui-canvas-btn-border-hover);
-  color: var(--ui-text-primary);
-}
-
 .tool-flyout-popup {
   position: absolute;
   top: 0;
@@ -305,77 +281,4 @@
   gap: 6px;
   font-size: 11px;
   padding: 5px 8px;
-}
-
-/* This popup is the tallest in the dock (tabs + XY/WH/rotation grid + opacity + actions) and its
-   button sits low in the dock, so anchoring from the top (the default) pushes it far down the
-   screen. Anchor from the bottom instead so it grows upward from the button. */
-.reference-popup {
-  top: auto;
-  bottom: 0;
-  min-width: 200px;
-  gap: 8px;
-}
-
-.ref-empty {
-  font-size: 11px;
-  color: var(--ui-text-muted);
-  padding: 6px 2px 10px;
-}
-
-.ref-opacity {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.ref-opacity input[type="range"] {
-  flex: 1;
-  min-width: 0;
-}
-
-.ref-pct {
-  font-size: 11px;
-  color: var(--ui-text-muted);
-  width: 30px;
-  text-align: right;
-}
-
-.ref-actions {
-  display: flex;
-  gap: 4px;
-  justify-content: space-between;
-}
-
-.ref-actions .btn {
-  padding: 3px 7px;
-  border: 1px solid var(--ui-border-strong);
-  border-radius: 4px;
-  background: linear-gradient(180deg, var(--ui-canvas-btn-bg-start) 0%, var(--ui-canvas-btn-bg-end) 100%);
-  color: var(--ui-text-primary);
-  font-size: 11px;
-  cursor: pointer;
-}
-
-.ref-actions .btn:hover {
-  border-color: var(--ui-canvas-btn-border-hover);
-}
-
-.ref-actions .btn:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-
-.ref-actions .ref-right {
-  display: flex;
-  gap: 4px;
-}
-
-.ref-actions .btn.ref-reset-btn {
-  border-color: #f57f17;
-  border-width: 2px;
-}
-
-.ref-actions .btn.ref-reset-btn:hover {
-  border-color: #e65100;
 }

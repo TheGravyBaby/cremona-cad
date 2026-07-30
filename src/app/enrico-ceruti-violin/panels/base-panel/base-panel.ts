@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { nearestFraction } from '../../../helpers/nearestFraction';
-import { dimensionInfo, insetInfo, referenceInfo } from '../../ceruti-helpers';
+import { dimensionInfo, insetInfo } from '../../ceruti-helpers';
 import { EnricoCerutiParams } from '../../ceruti-types';
 
 @Component({
@@ -18,10 +18,8 @@ export class BasePanel {
   @Output() descriptionChange = new EventEmitter<string>();
 
   @Output() changed = new EventEmitter<void>();
-  @Output() referenceFileSelected = new EventEmitter<Event>();
 
   protected readonly nearestFraction = nearestFraction;
-  protected readonly referenceInfo = referenceInfo;
   protected readonly dimensionInfo = dimensionInfo;
   protected readonly insetInfo = insetInfo;
 

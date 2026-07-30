@@ -2,15 +2,6 @@ import { info } from "../shared/message-emitter";
 
 const defaultTTL = 30000
 
-export function referenceInfo() {
-    info(
-        "A reference image lets you trace the outline of an existing instrument and scale it to real-world dimensions.\n\n" +
-        "First, enter the finished height and width of the instrument in the primary dimension fields. " +
-        "Then upload your image and click 'Reference' on the bottom bar to scale it to those dimensions.",
-        "Additional Information", defaultTTL
-    );
-}
-
 export function insetInfo() {
     info(
         "The mould sits inset from the outer edge of the instrument by rib thickness + overhang:\n\n" +

@@ -1,7 +1,9 @@
 import { Injectable, inject } from '@angular/core';
-import { DraftTool } from './draft-tool';
+import { DraftTool, DraftToolHost } from './draft-tool';
 import { ToolSlot, single, flyout } from './tool-slot';
 import { ToolboxStore } from './toolbox-store';
+import { ImageAssetStore } from './image-asset-store';
+import { createImageTool } from './image-tool';
 import { createLineTool } from './line-tool';
 import { createArcTool, createArcStartFirstTool } from './arc-tool';
 import { createTangentArcTool } from './tangent-arc-tool';
@@ -17,7 +19,7 @@ import { createOffsetTool } from './offset-tool';
 
 /**
  * Owns the set of drafting tools and which one is active — a root-provided singleton, same
- * pattern as ToolboxStore/ReferenceImageStore, so both draft-canvas.ts (pointer routing +
+ * pattern as ToolboxStore, so both draft-canvas.ts (pointer routing +
  * rendering the active tool's preview) and tool-palette.ts (the toolbar UI) can depend on it
  * directly instead of draft-canvas prop-drilling toolRows/activeTool down through
  * @Input()/@Output(). Assumes a single draft-canvas instance on screen, same as those stores.
@@ -25,8 +27,12 @@ import { createOffsetTool } from './offset-tool';
 @Injectable({ providedIn: 'root' })
 export class ToolRegistryService {
   private toolbox = inject(ToolboxStore);
+  private imageAssets = inject(ImageAssetStore);
   private listeners = new Set<() => void>();
   private _activeTool: DraftTool | null = null;
+  /** Set once by draft-canvas so selectTool can run a tool's onActivate hook. Null until then;
+   * nothing can activate a tool before the canvas exists anyway. */
+  private host: DraftToolHost | null = null;
 
   // Add new tools here, grouped into rows of up to 2 slots. Use flyout([...])
   // to group every variant of the same kind of shape (styles and construction
@@ -60,17 +66,32 @@ export class ToolRegistryService {
     [
       single(createOffsetTool()),
     ],
+    // Reference images — placed from a file rather than drawn, but a placed image is an ordinary
+    // selectable/movable shape from then on. See image-tool.ts.
+    [
+      single(createImageTool(this.imageAssets)),
+    ],
   ];
 
   get activeTool(): DraftTool | null { return this._activeTool; }
 
+  /** Wires the canvas in, so tools activated from anywhere (palette click, hotkey) can run their
+   * onActivate hook against it. */
+  setHost(host: DraftToolHost): void {
+    this.host = host;
+  }
+
   /** Pass null to switch to the default select tool (no active drafting tool). Always resets
    * the outgoing tool and notifies, even if re-selecting the tool that's already active — e.g.
-   * clicking an active tool's button again clears its in-progress construction. */
+   * clicking an active tool's button again clears its in-progress construction.
+   *
+   * onActivate runs after the notify, so a tool that immediately hands control back (Image, once
+   * its file dialog resolves) does so from a settled state rather than mid-switch. */
   selectTool(tool: DraftTool | null): void {
     this._activeTool?.reset();
     this._activeTool = tool;
     this.notify();
+    if (tool && this.host) tool.onActivate?.(this.host);
   }
 
   /** Activates a tool by id from anywhere in toolRows — used by the hotkey mnemonics. Mutates

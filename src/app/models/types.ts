@@ -50,7 +50,6 @@ export function arcFromCircleAndPoints(circle: Circle, startPt: Pt, endPt: Pt): 
 
 
 export type Axis = "x" | "y";
-export type RefImageFit = "fit" | "cover" | "stretch";
 export type ReferenceImage = {
 
   x: number;
@@ -62,10 +61,23 @@ export type ReferenceImage = {
   href: string;
 }
 
-/** A reference image plus the tab identity the multi-image control keys on. */
+/**
+ * One reference image as it appears in a recipe file or a built-in template — the durable,
+ * on-disk form. Converted to and from the canvas's own `ImageShape` by
+ * draft-canvas/tools/reference-image-schema.ts, which is the only code that should touch this
+ * type. Every field past `href`/`x`/`y`/`width`/`height` is optional so the templates and saved
+ * files that predate it keep loading unchanged.
+ */
 export type NamedReferenceImage = ReferenceImage & {
-  id: string;
-  label: string;
+  id?: string;
+  label?: string;
+  /** Render opacity, 0–1. Was a single global setting; now per-image. Omitted means the default. */
+  opacity?: number;
+  /** Whether near-white pixels are faded out for dark-mode legibility. Omitted means on, which
+   * is what this did unconditionally before it became a toggle. */
+  suppressWhite?: boolean;
+  /** Which toolbox layer the image sits on, so hiding/locking a layer covers its images too. */
+  layerId?: string;
 }
 
 export interface RecipeInterface {

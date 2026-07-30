@@ -2,25 +2,23 @@ import {
   AfterViewInit,
   Component,
   ElementRef,
-  EventEmitter,
   inject,
   OnDestroy,
-  Output,
   ViewChild,
 } from '@angular/core';
 import * as d3 from 'd3';
 import { FormsModule } from '@angular/forms';
 import { Input } from '@angular/core';
-import { NamedReferenceImage, Pt, ReferenceImage } from '../models/types';
+import { Pt } from '../models/types';
 import { Camera } from './camera';
-import { ReferenceImageController } from './reference-image-controller';
-import { ReferenceImageStore } from './reference-image-store';
 import { AxisGridController, AxisGridPreferences, CanvasViewport } from './axis-grid-controller';
-import { toNamedReferenceImage } from '../helpers/referenceImages';
 import { DraftTool, DraftToolHost } from './tools/draft-tool';
 import { ToolRegistryService } from './tools/tool-registry';
 import { ToolboxStore } from './tools/toolbox-store';
-import { drawShape, drawSelectionHalo, drawMoveGrabber, drawEndpointGrabber, drawAreaSelectBox } from './tools/shape-renderer';
+import { ImageAssetStore } from './tools/image-asset-store';
+import {
+  drawShape, drawImageShape, drawSelectionHalo, drawMoveGrabber, drawEndpointGrabber, drawAreaSelectBox,
+} from './tools/shape-renderer';
 import { SnapCandidate, SnapEngine } from './tools/snap-engine';
 import { drawSnapMarker } from './tools/snap-marker-renderer';
 import { distanceToShape, shapeBounds } from './tools/shape-hit-test';
@@ -50,10 +48,8 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private draftFuncs: Array<(canvas: any, uiCan: any) => void> = [];
   private camera = new Camera();
   private axisGrid = new AxisGridController(DraftCanvasComponent.DISPLAY_PREFS_KEY, () => this.draw());
-  private refController: ReferenceImageController;
-  private refImages = inject(ReferenceImageStore);
-  private refImagesUnsub?: () => void;
-  private refImagesRedrawUnsub?: () => void;
+  private imageAssets = inject(ImageAssetStore);
+  private imageAssetsUnsub?: () => void;
   private toolbox = inject(ToolboxStore);
   private toolboxUnsub?: () => void;
   private toolRegistry = inject(ToolRegistryService);
@@ -73,6 +69,13 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     getPxPerMm: () => this.pxPerMm,
     hitTestShape: (pt) => this.hitTestToolboxShape(pt),
     selectShape: (id) => this.setSelectedShape(id),
+    returnToSelect: (selectShapeId) => {
+      this.toolRegistry.selectTool(null);
+      if (selectShapeId) this.setSelectedShape(selectShapeId);
+      this.draw();
+    },
+    requestImageFile: () => this.requestImageFile(),
+    getDesignBounds: () => this.bounds,
   };
 
   // Snapping: candidates are re-indexed from the rendered scene only when the
@@ -137,20 +140,10 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   @ViewChild('textEditArea') textEditAreaRef?: ElementRef<HTMLTextAreaElement>;
 
   @ViewChild('host', { static: true }) host!: ElementRef<HTMLDivElement>;
-  @Output() referenceImagesChange = new EventEmitter<NamedReferenceImage[]>();
   @Input() set draftFunctions(value: Array<(canvas: any, uiCan: any) => void>) {
     this.draftFuncs = value
     this.snapDirty = true;
     this.draw();
-  }
-  @Input() set referenceImages(value: NamedReferenceImage[] | null | undefined) {
-    if (value === undefined) return;
-    this.refImages.setImages(value ?? []);
-    this.syncControllerToActive();
-    this.draw();
-  }
-  public get referenceImages(): NamedReferenceImage[] {
-    return this.refImages.images;
   }
   @Input() set setCameraBounds(bounds: { pt1: Pt, pt2: Pt } | null) {
     let firstSet = !this.bounds;
@@ -179,12 +172,9 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private isSpaceDown = false;
   public axisPopupOpen = false;
   private bounds: { pt1: Pt, pt2: Pt } | null = null;
-  private pendingRefUploadMode: 'add' | 'replace' = 'add';
-  @ViewChild('refFileInput') refFileInputRef?: ElementRef<HTMLInputElement>;
-
-  private get activeReferenceImage(): NamedReferenceImage | null {
-    return this.refImages.active;
-  }
+  @ViewChild('imageFileInput') imageFileInputRef?: ElementRef<HTMLInputElement>;
+  /** Resolver for the picker promise handed to the Image tool — see requestImageFile. */
+  private pendingImageFile: ((file: { dataUrl: string; width: number; height: number } | null) => void) | null = null;
 
   public get showGrid(): boolean {
     return this.axisGrid.showGrid;
@@ -252,36 +242,11 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       this.resizeObs = new ResizeObserver(() => this.draw());
       this.resizeObs.observe(el);
     }
-    // wire reference image controller (keeps the active tab in sync via callback)
-    this.refController = new ReferenceImageController(
-      this.activeReferenceImage ?? undefined,
-      (img) => this.refImages.applyLiveUpdate(img),
-      () => this.draw()
-    );
-    this.syncControllerToActive();
-
-    // Re-point the controller at the (possibly new/changed) active image, redraw, relay to the
-    // recipe, and re-persist the View toggle — whenever tool-palette-driven reference-image
-    // edits, or an upload/replace/reset from onReferenceFileSelected below, change the store's
-    // data. onDisplayPreferenceChange() also calls draw() itself.
-    this.refImagesUnsub = this.refImages.onChange(() => {
-      this.syncControllerToActive();
-      this.emitReferenceImages();
-      this.onDisplayPreferenceChange();
-    });
-    this.refImagesRedrawUnsub = this.refImages.onRedraw(() => this.draw());
-
-    // White suppression tuning for reference images (dark mode friendly)
-    // Adjust these values in code as desired.
-    this.refController.setWhiteSuppressionOptions({
-      enabled: true,
-      threshold: 0.9,
-      softness: 0.08,
-      saturationGate: 0.18,
-    });
+    // White suppression happens off the main thread of the draw loop (an offscreen canvas pass
+    // per image), so the first draw shows the raw image and this redraws once it's ready.
+    this.imageAssetsUnsub = this.imageAssets.onChange(() => this.draw());
 
     this.axisGrid.loadPreferences();
-    this.loadDisplayPreferences();
 
     // redraw when the toolbox shape history changes from outside this component
     // (e.g. recipe-base's undo/redo keyboard handler)
@@ -295,6 +260,9 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     });
 
     this.toolRegistryUnsub = this.toolRegistry.onChange(() => this.onActiveToolChanged());
+    // Lets a tool activated from the palette or a hotkey reach the canvas from its onActivate
+    // hook, not just from a pointer event — see ToolRegistryService.selectTool.
+    this.toolRegistry.setHost(this.toolHost);
 
     this.initialized = true;
     this.draw();
@@ -305,8 +273,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.host.nativeElement.removeEventListener('keyup', this.onKeyUp);
     document.removeEventListener('keydown', this.onKeyDown);
     this.toolboxUnsub?.();
-    this.refImagesUnsub?.();
-    this.refImagesRedrawUnsub?.();
+    this.imageAssetsUnsub?.();
     this.toolRegistryUnsub?.();
   }
 
@@ -337,10 +304,18 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       leftBound, rightBound, topBound, bottomBound, mmW, mmH
     };
 
+    // Reference images go down first, before the grid and before anything the recipe draws —
+    // you trace on top of a photo, not underneath it. (This replaces the old controller's
+    // append-then-`.lower()` trick, which only worked because it ran before everything else too.)
+    this.toolbox.getVisibleImages().forEach(image => {
+      // A live drag/resize renders from the uncommitted override, same as any other shape.
+      const dragged = this.dragOverrides?.get(image.id);
+      const shape = dragged?.type === 'image' ? dragged : image;
+      const href = this.imageAssets.displayHref(shape.imageRef, shape.suppressWhite ?? true);
+      if (href) drawImageShape(this.gRoot, shape, href);
+    });
+
     this.axisGrid.draw(this.gRoot, this.gUI, cv, this.pxPerMm);
-    this.refController.referenceOpacity = this.refImages.opacity;
-    this.refImages.showReferenceImage && this.refController.drawImage(this.gRoot)
-    this.refImages.referenceModeEnabled && this.refImages.showReferenceImage && this.refController.drawControls(this.gRoot, this.pxPerMm);
 
     if (this.selectedShapeIds.size) {
       const editable = this.toolbox.getEditableShapes();
@@ -350,8 +325,11 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
         drawSelectionHalo(this.gRoot, this.gUI, shape, this.pxPerMm);
         const grabberPos = moveGrabberPosition(shape);
         if (grabberPos) drawMoveGrabber(this.gRoot, grabberPos, this.pxPerMm);
-        const endpoints = endpointGrabbers(shape);
-        if (endpoints) for (const g of endpoints) drawEndpointGrabber(this.gRoot, g.pos, this.pxPerMm);
+        const endpoints = endpointGrabbers(shape, this.pxPerMm);
+        const rotationDeg = shape.type === 'image' ? (shape.rotationDeg ?? 0) : 0;
+        if (endpoints) {
+          for (const g of endpoints) drawEndpointGrabber(this.gRoot, g.pos, this.pxPerMm, g.kind, rotationDeg);
+        }
       }
     }
 
@@ -435,19 +413,32 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     return hit ? hit.pt : rawPt;
   }
 
-  /** Nearest toolbox shape to a world-space point within the select tolerance, or null. */
+  /**
+   * Nearest toolbox shape to a world-space point within the select tolerance, or null.
+   *
+   * Images are considered only when nothing else is under the cursor, mirroring the fact that
+   * they render underneath everything. Their whole interior hit-tests at distance 0 (you grab a
+   * photo by its middle, not its edge), so ranking them by distance alongside real geometry would
+   * mean an image always won — making anything traced on top of it unselectable.
+   */
   private hitTestToolboxShape(pt: Pt): string | null {
     const toleranceMm = DraftCanvasComponent.SELECT_HIT_TOLERANCE_PX / this.pxPerMm;
-    let bestId: string | null = null;
-    let bestDist = Infinity;
-    for (const shape of this.toolbox.getEditableShapes()) {
-      const dist = distanceToShape(pt, shape, this.pxPerMm);
-      if (dist <= toleranceMm && dist < bestDist) {
-        bestId = shape.id;
-        bestDist = dist;
+    const nearestOf = (shapes: DraftShape[]): string | null => {
+      let bestId: string | null = null;
+      let bestDist = Infinity;
+      for (const shape of shapes) {
+        const dist = distanceToShape(pt, shape, this.pxPerMm);
+        if (dist <= toleranceMm && dist < bestDist) {
+          bestId = shape.id;
+          bestDist = dist;
+        }
       }
-    }
-    return bestId;
+      return bestId;
+    };
+
+    const editable = this.toolbox.getEditableShapes();
+    return nearestOf(editable.filter(s => s.type !== 'image'))
+      ?? nearestOf(editable.filter(s => s.type === 'image'));
   }
 
   /** True if `pt` (world mm) grabs a move handle of a currently selected shape — the square
@@ -475,7 +466,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     const toleranceMm = DraftCanvasComponent.MOVE_GRABBER_HIT_TOLERANCE_PX / this.pxPerMm;
     const tol2 = toleranceMm * toleranceMm;
     for (const shape of this.selectedShapes) {
-      const grabbers = endpointGrabbers(shape);
+      const grabbers = endpointGrabbers(shape, this.pxPerMm);
       if (!grabbers) continue;
       for (const g of grabbers) {
         const dx = g.pos.x - pt.x;
@@ -600,41 +591,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  onDisplayPreferenceChange(): void {
-    try {
-      const existingRaw = sessionStorage.getItem(DraftCanvasComponent.DISPLAY_PREFS_KEY);
-      const existing = existingRaw ? JSON.parse(existingRaw) as Record<string, unknown> : {};
-
-      sessionStorage.setItem(
-        DraftCanvasComponent.DISPLAY_PREFS_KEY,
-        JSON.stringify({
-          ...existing,
-          showReferenceImage: this.refImages.showReferenceImage,
-        })
-      );
-    } catch {
-      // ignore storage errors
-    }
-    this.draw();
-  }
-
-  private loadDisplayPreferences(): void {
-    try {
-      const raw = sessionStorage.getItem(DraftCanvasComponent.DISPLAY_PREFS_KEY);
-      if (!raw) return;
-
-      const parsed = JSON.parse(raw) as {
-        showReferenceImage?: boolean;
-      };
-
-      if (typeof parsed.showReferenceImage === 'boolean') {
-        this.refImages.showReferenceImage = parsed.showReferenceImage;
-      }
-    } catch {
-      // ignore malformed/blocked sessionStorage
-    }
-  }
-
   onPointerMove = (event: PointerEvent) => {
     this.isAngleLockHeld = event.shiftKey;
 
@@ -679,15 +635,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
-    // reference-image interaction takes precedence
-    if (this.refController.isInteracting) {
-      const pt = this.worldFromPointer(event);
-      this.refController.onPointerMove(pt);
-      event.preventDefault();
-      this.draw();
-      return;
-    }
-
     // Select mode: an armed endpoint-drag (see onPointerDown) becomes a real drag once the
     // pointer clears a small threshold. Unlike the whole-shape move below, the new point is the
     // pointer position directly (no delta/anchor) since only one point on one shape is affected.
@@ -711,7 +658,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       }
 
       if (!this.isDraggingEndpoint) {
-        const origPos = endpointGrabbers(this.dragEndpoint.original)?.find(g => g.key === this.dragEndpoint!.key)?.pos;
+        const origPos = endpointGrabbers(this.dragEndpoint.original, this.pxPerMm)?.find(g => g.key === this.dragEndpoint!.key)?.pos;
         const pxDist = origPos ? Math.hypot(rawPt.x - origPos.x, rawPt.y - origPos.y) * this.pxPerMm : Infinity;
         if (pxDist < DraftCanvasComponent.DRAG_MOVE_THRESHOLD_PX) {
           event.preventDefault();
@@ -855,12 +802,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       this.draw();
     }
 
-    // end reference-image interaction if active
-    if (this.refController.isInteracting) {
-      this.refController.endInteraction();
-      this.emitReferenceImages();
-    }
-
     // end camera pan if active
     if (this.isDragging) {
       this.isDragging = false;
@@ -966,20 +907,8 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       event.preventDefault();
     }
 
-    // delegate keyboard handling for reference image to controller first (Option B).
-    // If it handles the event (e.g. arrow key nudge), skip camera pan.
-    if (this.refImages.referenceModeEnabled && this.refImages.showReferenceImage && this.activeReferenceImage?.href) {
-      const handled = this.refController.handleKeyboard(event, this.refImages.lockAspect, this.refImages.refAspect);
-      if (handled) {
-        this.emitReferenceImages();
-        this.draw();
-        event.preventDefault();
-        event.stopPropagation();
-        return;
-      }
-    }
-
-    // Arrow key panning. Shift held = 5× larger step.
+    // Arrow key panning. Shift held = 5× larger step. A selected shape — including a placed
+    // reference image — takes the arrow keys first, via the nudge block above.
     const isArrow = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code);
     if (isArrow) {
       const step = event.shiftKey ? 200 : 40; // px
@@ -1028,7 +957,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     const isMiddle = event.button === 1;
     const isTouch = event.pointerType === 'touch';
 
-    const canRefOps = this.refImages.referenceModeEnabled && this.refImages.showReferenceImage && !!this.activeReferenceImage?.href;
     // Shift is reserved as the drafting angle-lock modifier (see isAngleLockHeld), so it
     // must not block tool activation/selection the way Ctrl (kept free for future use) does.
     const modifierHeld = event.ctrlKey;
@@ -1052,23 +980,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
-    if (canRefOps && isPrimary && !modifierHeld && !this.isSpaceDown) {
-      const pt = this.worldFromPointer(event);
-      const h = this.refController.hitTestHandle(pt, this.pxPerMm);
-
-      if (h) {
-        this.refController.startScale(pt, h as any);
-        this.host.nativeElement.setPointerCapture(event.pointerId);
-        return;
-      }
-
-      if (this.refController.pointInImage(pt)) {
-        this.refController.startDrag(pt);
-        this.host.nativeElement.setPointerCapture(event.pointerId);
-        return;
-      }
-    }
-
     // Select tool: grabbing a selected shape's endpoint (triangle) arms an endpoint-only drag —
     // checked first since it's the most specific target. Otherwise grabbing its move handle (the
     // square, or the shape body itself for Text/Point — see hitTestMoveHandle) arms a whole-shape
@@ -1076,7 +987,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     // shapes already selected. Otherwise a plain click picks (or clears) the shape under it, and
     // shift-click toggles it in/out of the current selection instead, for multi-select. Touch is
     // excluded from arming either drag so single-finger touch keeps its existing "always pans" behavior.
-    if (!this.activeTool && isPrimary && !modifierHeld && !this.isSpaceDown && !canRefOps) {
+    if (!this.activeTool && isPrimary && !modifierHeld && !this.isSpaceDown) {
       const pt = this.worldFromPointer(event);
       const endpointHit = !event.shiftKey && !isTouch && this.selectedShapeIds.size
         ? this.hitTestEndpointGrabber(pt) : null;
@@ -1190,109 +1101,54 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     const el = this.host.nativeElement;
     const pxW = Math.max(1, el.clientWidth);
     const pxH = Math.max(1, el.clientHeight);
-    this.syncControllerToActive();
     this.camera.fitToBounds(this.bounds, pxW, pxH);
-  }
-
-  // UI: Align Reference popup controls
-  // ===== Reference image: camera/pointer-dependent parts only — the popup UI, tab CRUD, and
-  // param/reset/rename logic now live in ReferenceImageStore + tool-palette.ts. =====
-
-  /** Points the controller at the active tab (or clears it when none). */
-  private syncControllerToActive(): void {
-    this.refController?.setImage(this.activeReferenceImage ?? undefined);
-  }
-
-  private emitReferenceImages(): void {
-    this.referenceImagesChange.emit(this.refImages.images);
-  }
-
-  requestAddReference(): void {
-    this.pendingRefUploadMode = 'add';
-    this.refFileInputRef?.nativeElement.click();
-  }
-
-  requestReplaceReference(): void {
-    this.pendingRefUploadMode = this.activeReferenceImage ? 'replace' : 'add';
-    this.refFileInputRef?.nativeElement.click();
   }
 
   toggleAxisPopup(): void {
     this.axisPopupOpen = !this.axisPopupOpen;
   }
 
-  /** Fits an image of the given pixel size into the current camera bounds (aspect-preserving). */
-  private fitImageToBounds(w: number, h: number): { imgW: number; imgH: number; imgX: number; imgY: number } {
-    const aspect = w / h || 1;
-    if (this.bounds) {
-      const bW = Math.abs(this.bounds.pt2.x - this.bounds.pt1.x);
-      const bH = Math.abs(this.bounds.pt2.y - this.bounds.pt1.y);
-      const bCx = (this.bounds.pt1.x + this.bounds.pt2.x) / 2;
-      const bCy = (this.bounds.pt1.y + this.bounds.pt2.y) / 2;
-      let imgW: number;
-      let imgH: number;
-      if (bW / bH > aspect) {
-        imgH = bH;
-        imgW = imgH * aspect;
-      } else {
-        imgW = bW;
-        imgH = imgW / aspect;
-      }
-      return { imgW, imgH, imgX: bCx - imgW / 2, imgY: bCy - imgH / 2 };
-    }
-    // No bounds set — fall back to a 200 mm wide default
-    const imgW = 200;
-    const imgH = imgW / aspect;
-    return { imgW, imgH, imgX: -imgW / 2, imgY: 0 };
+  // ===== Image file picker =====
+  // The only image-specific code left in the canvas: a <input type="file"> can't be opened
+  // except by a real user gesture on a real element, so it has to live in this component's
+  // template. Everything about what happens to the chosen file — sizing, placement, interning —
+  // belongs to image-tool.ts, which consumes this through DraftToolHost.requestImageFile.
+
+  /** Opens the hidden file input and resolves once the user picks a file (or dismisses). */
+  private requestImageFile(): Promise<{ dataUrl: string; width: number; height: number } | null> {
+    const input = this.imageFileInputRef?.nativeElement;
+    if (!input) return Promise.resolve(null);
+
+    // Abandon any previous unresolved pick, so a second activation can't leave the first tool
+    // waiting on a promise that will never settle.
+    this.pendingImageFile?.(null);
+    input.value = '';
+
+    return new Promise(resolve => {
+      this.pendingImageFile = resolve;
+      input.click();
+    });
   }
 
-  async onReferenceFileSelected(evt: Event): Promise<void> {
+  /** Bound to the hidden input's `change` in the template. Reads the file and measures it, then
+   * settles whatever requestImageFile handed out. */
+  async onImageFileSelected(evt: Event): Promise<void> {
+    const resolve = this.pendingImageFile;
+    this.pendingImageFile = null;
+
     const input = evt.target as HTMLInputElement;
     const file = input.files?.[0];
-    if (!file) return;
+    if (!file) { resolve?.(null); return; }
 
-    const dataUrl = await this.readFileAsDataUrl(file);
-    const { w, h } = await this.getImageSize(dataUrl);
-    const { imgW, imgH, imgX, imgY } = this.fitImageToBounds(w, h);
-    this.refImages.refAspect = w / h || 1;
-
-    const geom: ReferenceImage = {
-      href: dataUrl,
-      'xlink:href': dataUrl,
-      x: imgX,
-      y: imgY,
-      width: imgW,
-      height: imgH,
-      rotationDeg: 0,
-    };
-
-    if (this.pendingRefUploadMode === 'replace' && this.activeReferenceImage) {
-      // Keep the tab's id/label; swap in the new image and geometry.
-      this.refImages.replaceActive({ ...this.activeReferenceImage, ...geom });
-    } else {
-      this.refImages.addImage(toNamedReferenceImage(geom, this.refImages.nextLabel()));
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      const { width, height } = await measureImage(dataUrl);
+      resolve?.({ dataUrl, width, height });
+    } catch {
+      resolve?.(null);
+    } finally {
+      input.value = '';
     }
-    this.refImages.setShowReferenceImage(true);
-
-    input.value = '';
-  }
-
-  private readFileAsDataUrl(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result));
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(file);
-    });
-  }
-
-  private getImageSize(dataUrl: string): Promise<{ w: number; h: number }> {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
-      img.onerror = reject;
-      img.src = dataUrl;
-    });
   }
 
   worldFromPointer(e: PointerEvent | MouseEvent): Pt {
@@ -1321,4 +1177,22 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.camera.applyZoomAt(pt, newPxPerMm, pxW, pxH);
     this.draw();
   }
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+function measureImage(dataUrl: string): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
 }

@@ -10,15 +10,6 @@
         <textarea class="description-textarea" rows="1" maxlength="200" [ngModel]="description"
             (ngModelChange)="descriptionChange.emit($event)"></textarea>
     </label>
-
-    <div class="input-group basic-row field-row" role="group">
-        <label class="file-upload">
-            Upload Reference Image
-            <input type="file" accept="image/*" (change)="referenceFileSelected.emit($event)" />
-        </label>
-        <button type="button" class="info-icon" (click)="referenceInfo()" title="More information"
-            aria-label="Information">ⓘ</button>
-    </div>
 </section>
 
 <section class="ui-group">
