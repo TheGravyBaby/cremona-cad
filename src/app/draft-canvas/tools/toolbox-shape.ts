@@ -1,4 +1,5 @@
 import { Pt } from '../../models/types';
+import { rotatePointAbout } from '../../helpers/draftMath';
 
 export const DEFAULT_SHAPE_COLOR = '#1d4ed8';
 
@@ -75,9 +76,73 @@ export type PointShape = ShapeBase & {
   position: Pt;
 };
 
+// A photo or scan placed on the canvas to trace over — an instrument's plan view, a long-arch
+// profile, a drawing from a book. Geometry only: the pixels live in ImageAssetStore under
+// `imageRef`, so undo snapshots and sessionStorage writes stay cheap (see image-asset-store.ts).
+//
+// `x`/`y` are the low corner of the *unrotated* box and `rotationDeg` spins it about the box
+// center — the same convention the recipe file's `referenceImages` entries use, so
+// reference-image-schema.ts converts between the two with no geometry math.
+export type ImageShape = ShapeBase & {
+  type: 'image';
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotationDeg?: number;
+  imageRef: string;
+  /** Shown in the settings bar and written back out as the file's `label` — how the user tells
+   * "plan view" from "long arch" when several are placed. */
+  label: string;
+  /** Per-image, unlike the single global slider the old reference popup had. Undefined means
+   * DEFAULT_IMAGE_OPACITY, which is what every pre-existing recipe file effectively had. */
+  opacity?: number;
+  /** Fades near-white pixels to transparent so a scan on white paper reads on a dark canvas.
+   * Undefined means on, matching the old always-on behavior. */
+  suppressWhite?: boolean;
+};
+
+/** What an image renders at when its shape doesn't say — the old global reference opacity. */
+export const DEFAULT_IMAGE_OPACITY = 0.25;
+
 // Extend this union as new tools are added.
 export type DraftShape =
-  | LineShape | ArcShape | CircleShape | DimensionShape | RectShape | BoxLineShape | TextShape | PointShape;
+  | LineShape | ArcShape | CircleShape | DimensionShape | RectShape | BoxLineShape | TextShape | PointShape
+  | ImageShape;
+
+/** An image's box center, about which `rotationDeg` turns it. */
+export function imageCenter(shape: ImageShape): Pt {
+  return { x: shape.x + shape.width / 2, y: shape.y + shape.height / 2 };
+}
+
+/** An image's four corners in world space, rotation applied. Named for the Y-up world, so `sw`
+ * is the low-x/low-y corner of the unrotated box. */
+export function imageCorners(shape: ImageShape): Record<'sw' | 'se' | 'nw' | 'ne', Pt> {
+  const center = imageCenter(shape);
+  const deg = shape.rotationDeg ?? 0;
+  const x1 = shape.x + shape.width;
+  const y1 = shape.y + shape.height;
+  return {
+    sw: rotatePointAbout({ x: shape.x, y: shape.y }, center, deg),
+    se: rotatePointAbout({ x: x1, y: shape.y }, center, deg),
+    nw: rotatePointAbout({ x: shape.x, y: y1 }, center, deg),
+    ne: rotatePointAbout({ x: x1, y: y1 }, center, deg),
+  };
+}
+
+/** An image's four edge midpoints in world space, rotation applied. */
+export function imageEdgeMidpoints(shape: ImageShape): Record<'n' | 's' | 'e' | 'w', Pt> {
+  const center = imageCenter(shape);
+  const deg = shape.rotationDeg ?? 0;
+  const cx = shape.x + shape.width / 2;
+  const cy = shape.y + shape.height / 2;
+  return {
+    n: rotatePointAbout({ x: cx, y: shape.y + shape.height }, center, deg),
+    s: rotatePointAbout({ x: cx, y: shape.y }, center, deg),
+    e: rotatePointAbout({ x: shape.x + shape.width, y: cy }, center, deg),
+    w: rotatePointAbout({ x: shape.x, y: cy }, center, deg),
+  };
+}
 
 let shapeIdSeq = 0;
 

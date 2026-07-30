@@ -3,7 +3,6 @@ import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { applyTransforms, ColorTransform, renderPath } from '../helpers/renderFuncs';
 import { clampParam, safeRun } from '../helpers/validators';
-import { normalizeReferenceImages } from '../helpers/referenceImages';
 import { CerutiColors, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, EnricoCerutiTemplate, EnricoCerutiParams, PanelRenderRequest } from './ceruti-types';
 import { CERUTI_TEMPLATES } from './ceruti-templates';
 import { defineOuterPath, defineOuterPurflingPath, definePurflingPath } from './ceruti-paths';
@@ -208,15 +207,18 @@ export class CerutiViolin extends RecipeComponentBase {
         pt1: { x: -this.d.params.width / 2, y: 0 },
         pt2: { x: this.d.params.width / 2, y: this.d.params.height },
       });
-    this.referenceImagesChange.emit(normalizeReferenceImages(this.d));
     this.openPanel = 'base';
   }
 
   // ===== Lifecycle and bootstrap =====
 
   onNewClick(): void {
-    this.d = JSON.parse(JSON.stringify(CERUTI_TEMPLATES[0])) as EnricoCerutiTemplate;
+    const blank = JSON.parse(JSON.stringify(CERUTI_TEMPLATES[0])) as EnricoCerutiTemplate;
+    this.d = blank;
+    // resetAll() clears the image asset table too, so the new template's own images (the blank
+    // one has none, but that shouldn't be baked in as an assumption) have to be loaded after it.
     this.toolbox.resetAll();
+    this.loadReferenceImages(blank);
     this._firstRenderInitDone = false;
     this._lastLoadedParamsSnapshot = JSON.stringify(this.d.params);
     this.openPanel = 'base';
@@ -230,7 +232,6 @@ export class CerutiViolin extends RecipeComponentBase {
       pt1: { x: -this.d.params.width / 2, y: 0 },
       pt2: { x: this.d.params.width / 2, y: this.d.params.height },
     });
-    this.referenceImagesChange.emit(normalizeReferenceImages(this.d));
     this.draftChange.emit([this.firstRender]);
   }
 
@@ -240,12 +241,14 @@ export class CerutiViolin extends RecipeComponentBase {
 
       const recipeData = this.loadMatchingSessionRecipe<EnricoCerutiTemplate>();
       if (!recipeData) {
+        // Nothing saved for this recipe yet — adopt the selected template's reference images
+        // (e.g. StradGoetz's `/StradGoetz.jpg`) so a fresh session opens with them placed.
         const selectedTemplate = this.templates.find(t => t.key === this.selectedTemplateKey) ?? this.templates[0];
-        this.d.referenceImages = normalizeReferenceImages(selectedTemplate);
-        delete this.d.referenceImage;
+        this.loadReferenceImages(selectedTemplate);
       }
       else {
         this.d = recipeData;
+        this.loadReferenceImages(recipeData);
         // Restore the last open panel from its own sessionStorage key
         this.panelFlow?.refreshEnabledPanels();
         const savedPanel = sessionStorage.getItem('openPanel');
@@ -264,7 +267,6 @@ export class CerutiViolin extends RecipeComponentBase {
       // self-emits from ngOnInit after activation.
       this.debounceController?.markImmediate();
       this.onPanelActivated(this.openPanel);
-      this.referenceImagesChange.emit(normalizeReferenceImages(this.d));
       this._lastLoadedParamsSnapshot = JSON.stringify(this.d.params);
       if(this.hasOuterTrace() && this.openPanel == 'base') {
         this.draftChange.emit(this.renderOuterSilhouette());

@@ -15,6 +15,21 @@ export function normalizeDegrees(deg: number): number {
   return v < 0 ? v + 360 : v;
 }
 
+/** Rotates `p` about `center` by `deg` (counterclockwise, matching the Y-up world). Pass a
+ * negative angle to map a world point back into an unrotated object's local frame. */
+export function rotatePointAbout(p: Pt, center: Pt, deg: number): Pt {
+  if (deg === 0) return { x: p.x, y: p.y };
+  const rad = deg * Math.PI / 180;
+  const c = Math.cos(rad);
+  const s = Math.sin(rad);
+  const dx = p.x - center.x;
+  const dy = p.y - center.y;
+  return {
+    x: center.x + (dx * c - dy * s),
+    y: center.y + (dx * s + dy * c),
+  };
+}
+
 export function distPointToSegment(p: Pt, a: Pt, b: Pt): number {
   const abx = b.x - a.x, aby = b.y - a.y;
   const lenSq = abx * abx + aby * aby;

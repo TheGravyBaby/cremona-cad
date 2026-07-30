@@ -1,7 +1,10 @@
 import * as d3 from 'd3';
 import { Pt } from '../../models/types';
-import { DraftShape, DEFAULT_SHAPE_COLOR } from './toolbox-shape';
+import {
+  DraftShape, DEFAULT_SHAPE_COLOR, DEFAULT_IMAGE_OPACITY, ImageShape, imageCenter, imageCorners,
+} from './toolbox-shape';
 import { arcPathData, pointOnCircle } from './arc-geometry';
+import { GrabberKind } from './shape-grabbers';
 
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 
@@ -99,7 +102,39 @@ export function drawShape(gRoot: RootGroup, gUI: RootGroup, shape: DraftShape, p
       crossLine(shape.position.x, shape.position.y - half, shape.position.x, shape.position.y + half);
       break;
     }
+    case 'image':
+      // Drawn by drawImageShape in its own pass beneath everything else, and needing an href
+      // resolved from ImageAssetStore that this DOM-only module has no business reaching for.
+      // See draft-canvas.ts's draw().
+      break;
   }
+}
+
+/**
+ * Draws a placed image. Separate from drawShape because images render in their own pass
+ * underneath the recipe's own geometry (you trace on top of a photo, not under it), and because
+ * the href has to be resolved through ImageAssetStore first — see draft-canvas.ts's draw().
+ *
+ * The nested flip transform undoes gRoot's `scale(1,-1)` for this subtree only: SVG `<image>`
+ * has no way to render bottom-up, so without it every photo would appear upside down.
+ */
+export function drawImageShape(gRoot: RootGroup, shape: ImageShape, href: string): void {
+  const center = imageCenter(shape);
+  gRoot.append('g')
+    .attr('class', 'reference-image-group')
+    .attr('transform', `rotate(${shape.rotationDeg ?? 0} ${center.x} ${center.y})`)
+    .append('image')
+    .attr('class', 'reference-image')
+    .attr('href', href)
+    .attr('xlink:href', href)
+    .attr('transform', `translate(0 ${shape.height}) scale(1 -1)`)
+    .attr('x', shape.x)
+    .attr('y', -shape.y)
+    .attr('width', shape.width)
+    .attr('height', shape.height)
+    .attr('opacity', shape.opacity ?? DEFAULT_IMAGE_OPACITY)
+    .attr('preserveAspectRatio', 'xMidYMid meet')
+    .style('pointer-events', 'none');
 }
 
 const POINT_MARKER_SIZE_PX = 5;
@@ -382,6 +417,20 @@ export function drawSelectionHalo(gRoot: RootGroup, gUI: RootGroup, shape: Draft
       halo(gRoot.append('circle')
         .attr('cx', shape.position.x).attr('cy', shape.position.y).attr('r', 3));
       break;
+    case 'image': {
+      // An outline rather than a fill: a translucent wash over the picture would fight the
+      // tracing the image exists for. Follows the rotated corners, so it reads as the box the
+      // handles belong to.
+      const c = imageCorners(shape);
+      gRoot.append('path')
+        .attr('d', `M ${c.sw.x} ${c.sw.y} L ${c.se.x} ${c.se.y} L ${c.ne.x} ${c.ne.y} L ${c.nw.x} ${c.nw.y} Z`)
+        .attr('fill', 'none')
+        .attr('stroke', SELECTION_HALO_COLOR)
+        .attr('stroke-width', 2)
+        .attr('vector-effect', 'non-scaling-stroke')
+        .style('pointer-events', 'none');
+      break;
+    }
   }
 }
 
@@ -404,20 +453,48 @@ export function drawMoveGrabber(gRoot: RootGroup, pos: Pt, pxPerMm: number): voi
 
 const ENDPOINT_GRABBER_SIZE_PX = 10;
 
-/** Draws a triangular endpoint handle at `pos` (world mm) — deliberately a different shape
- * from the square move handle, so "move the whole shape" vs. "edit this point" stay visually
- * distinct at a glance. Constant on-screen size, like drawMoveGrabber. */
-export function drawEndpointGrabber(gRoot: RootGroup, pos: Pt, pxPerMm: number): void {
+/**
+ * Draws an endpoint handle at `pos` (world mm), constant on-screen size like drawMoveGrabber.
+ * The glyph depends on what the handle does, so a box's eight resize handles don't read as eight
+ * interchangeable endpoints:
+ *   point  — triangle (default): edit this one point of the geometry
+ *   corner — circle: resize proportionally from this corner
+ *   edge   — diamond: resize one dimension from this edge
+ *   rotate — hollow circle: spin the shape about its center
+ * `rotationDeg` only orients the diamond so it sits square to its edge.
+ */
+export function drawEndpointGrabber(
+  gRoot: RootGroup, pos: Pt, pxPerMm: number, kind: GrabberKind = 'point', rotationDeg = 0,
+): void {
   const r = ENDPOINT_GRABBER_SIZE_PX / 2 / pxPerMm;
-  const top = `${pos.x},${pos.y + r}`;
-  const bottomLeft = `${pos.x - r},${pos.y - r * 0.6}`;
-  const bottomRight = `${pos.x + r},${pos.y - r * 0.6}`;
-  gRoot.append('polygon')
-    .attr('points', `${top} ${bottomLeft} ${bottomRight}`)
-    .attr('fill', MOVE_GRABBER_FILL)
+  const styled = (sel: d3.Selection<any, unknown, null, undefined>, hollow = false) => sel
+    .attr('fill', hollow ? '#fff' : MOVE_GRABBER_FILL)
     .attr('stroke', MOVE_GRABBER_STROKE)
-    .attr('stroke-width', 1)
-    .attr('vector-effect', 'non-scaling-stroke');
+    .attr('stroke-width', hollow ? 2 : 1)
+    .attr('vector-effect', 'non-scaling-stroke')
+    .style('pointer-events', 'none');
+
+  switch (kind) {
+    case 'corner':
+      styled(gRoot.append('circle').attr('cx', pos.x).attr('cy', pos.y).attr('r', r));
+      return;
+    case 'edge':
+      styled(gRoot.append('rect')
+        .attr('x', pos.x - r * 0.8).attr('y', pos.y - r * 0.8)
+        .attr('width', r * 1.6).attr('height', r * 1.6)
+        .attr('transform', `rotate(${rotationDeg + 45} ${pos.x} ${pos.y})`));
+      return;
+    case 'rotate':
+      styled(gRoot.append('circle').attr('cx', pos.x).attr('cy', pos.y).attr('r', r * 0.9), true);
+      return;
+    case 'point': {
+      const top = `${pos.x},${pos.y + r}`;
+      const bottomLeft = `${pos.x - r},${pos.y - r * 0.6}`;
+      const bottomRight = `${pos.x + r},${pos.y - r * 0.6}`;
+      styled(gRoot.append('polygon').attr('points', `${top} ${bottomLeft} ${bottomRight}`));
+      return;
+    }
+  }
 }
 
 const AREA_SELECT_COLOR = '#2563eb';

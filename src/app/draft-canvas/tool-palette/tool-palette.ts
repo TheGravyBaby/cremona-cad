@@ -1,4 +1,4 @@
-import { Component, ElementRef, EventEmitter, OnDestroy, OnInit, Output, inject } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, inject } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { DraftTool } from '../tools/draft-tool';
 import { ToolSlot } from '../tools/tool-slot';
@@ -6,17 +6,13 @@ import { ToolRegistryService } from '../tools/tool-registry';
 import { ToolboxStore } from '../tools/toolbox-store';
 import { Layer } from '../tools/layer';
 import { HOTKEY_LETTER_BY_TOOL } from '../tools/tool-hotkeys';
-import { ReferenceImageStore } from '../reference-image-store';
-import { ReferenceImage } from '../../models/types';
-import { info } from '../../shared/message-emitter';
 
 /**
- * The floating drafting toolbox: tool selection, the Layers flyout, and the Reference-image
- * flyout. Per-shape-type settings now live in the bottom bar instead — see settings-bar.ts.
- * Everything here is either pure display state (which popup is open, which flyout variant faces
- * out) or a thin wrapper around ToolboxStore/ReferenceImageStore (layer CRUD, reference tab
- * CRUD) — draft-canvas.ts keeps ownership of the actual tool instances/pointer routing and only
- * needs to know which tool is active.
+ * The floating drafting toolbox: tool selection and the Layers flyout. Per-shape-type settings
+ * live in the bottom bar instead — see settings-bar.ts. Everything here is either pure display
+ * state (which popup is open, which flyout variant faces out) or a thin wrapper around
+ * ToolboxStore (layer CRUD) — draft-canvas.ts keeps ownership of the actual tool
+ * instances/pointer routing and only needs to know which tool is active.
  */
 @Component({
   selector: 'app-tool-palette',
@@ -30,21 +26,15 @@ export class ToolPaletteComponent implements OnInit, OnDestroy {
 
   private toolbox = inject(ToolboxStore);
   private elRef = inject(ElementRef<HTMLElement>);
-  public refImages = inject(ReferenceImageStore);
   private toolRegistry = inject(ToolRegistryService);
   private toolRegistryUnsub?: () => void;
 
   public get toolRows(): ToolSlot[][] { return this.toolRegistry.toolRows; }
   public get activeTool(): DraftTool | null { return this.toolRegistry.activeTool; }
-  /** The one bridge back to draft-canvas.ts for reference images: only it can trigger the
-   * hidden file input (it needs camera bounds to place the uploaded image). */
-  @Output() addReferenceRequested = new EventEmitter<void>();
-  @Output() replaceReferenceRequested = new EventEmitter<void>();
 
   public openFlyout: ToolSlot | null = null;
   public layersOpen = false;
   public editingLayerId: string | null = null;
-  public editingRefId: string | null = null;
 
   /** Pinned = always expanded, like a docked panel. Unpinned = a slim rail that
    * expands only while the pointer is over it (see onDockMouseEnter/Leave) — no
@@ -107,7 +97,6 @@ export class ToolPaletteComponent implements OnInit, OnDestroy {
   toggleFlyout(slot: ToolSlot): void {
     this.openFlyout = this.openFlyout === slot ? null : slot;
     this.layersOpen = false;
-    this.refImages.setReferenceModeEnabled(false);
   }
 
   /** Picking a variant from the flyout both activates it and becomes the slot's new default face. */
@@ -126,15 +115,6 @@ export class ToolPaletteComponent implements OnInit, OnDestroy {
   toggleLayers(): void {
     this.layersOpen = !this.layersOpen;
     this.openFlyout = null;
-    this.refImages.setReferenceModeEnabled(false);
-  }
-
-  /** Doubles as "open the popup" and "enable on-canvas drag/resize handles" — see
-   * ReferenceImageStore.referenceModeEnabled. */
-  toggleReference(): void {
-    this.refImages.toggleMode();
-    this.openFlyout = null;
-    this.layersOpen = false;
   }
 
   // ===== Layers =====
@@ -188,73 +168,4 @@ export class ToolPaletteComponent implements OnInit, OnDestroy {
     this.toolbox.clearActiveLayer();
   }
 
-  // ===== Reference image =====
-  // Camera/pointer-dependent parts (drag/resize handles on canvas, the actual controller/file
-  // reading) stay in draft-canvas.ts — everything here is either a thin ReferenceImageStore
-  // delegation or pure UI state (editingRefId), same pattern as Layers above.
-
-  selectRefTab(id: string): void {
-    this.refImages.selectTab(id);
-    this.editingRefId = null;
-  }
-
-  startRenameRef(id: string): void {
-    this.editingRefId = id;
-    // The rename <input> is created by this state change; focus it next tick.
-    setTimeout(() => {
-      const el = (this.elRef.nativeElement as HTMLElement).querySelector('.ref-tab-edit') as HTMLInputElement | null;
-      el?.focus();
-      el?.select();
-    });
-  }
-
-  commitRenameRef(id: string, label: string): void {
-    this.refImages.renameTab(id, label);
-    this.editingRefId = null;
-  }
-
-  deleteRefTab(id: string): void {
-    this.refImages.deleteTab(id);
-    if (this.editingRefId === id) this.editingRefId = null;
-  }
-
-  onRefParamChange(key: keyof ReferenceImage, val: number): void {
-    this.refImages.setParam(key, val);
-  }
-
-  resetReferenceImage(): void {
-    this.refImages.resetActive();
-  }
-
-  requestAddReference(): void {
-    this.addReferenceRequested.emit();
-  }
-
-  requestReplaceReference(): void {
-    this.replaceReferenceRequested.emit();
-  }
-
-  referenceControlsInfo(): void {
-    info(
-      "Each tab is a separate reference image, so you can trace different profiles (plan, long arch, cross arch) without losing the others. Only the active tab is shown and editable.\n\n" +
-      " - + adds a reference image, double-click a tab to rename it, and × removes it.\n" +
-      " - Replace swaps the active tab's image; Reset restores it to the values it had when you last selected this tab.\n\n" +
-      "You can upload a reference image using the + or Replace button. It is recommended you scale the image using either the axis or the bounding box on the base measurement panel.\n\n" +
-      "X and Y position the image on the canvas.\n" +
-      "Width and height set the dimensions of the image in millimetres.\n" +
-      "Rotation rotates the image in degrees.\n\n" +
-      "Mouse controls:\n" +
-      " - Drag the image to reposition it.\n" +
-      " - Drag a corner handle to resize proportionally; drag an edge handle to resize just that dimension (it snaps back to proportional once you drag past the image's original size).\n" +
-      " - Hold Space and drag (or use the middle mouse button) to pan the camera without moving the image.\n" +
-      " - Scroll to zoom; two-finger trackpad scroll pans, pinch zooms.\n\n" +
-      "Keyboard controls:\n" +
-      " - Arrow keys: nudge the image by 1 mm.\n" +
-      " - Ctrl + Up/Down: scale the image; Ctrl + Left/Right: rotate it 1°.\n" +
-      " - F: fit the full design back into view.\n" +
-      " - +/-: zoom in or out.\n" +
-      " - Outside of reference mode, arrow keys pan the camera instead (Shift for larger steps).\n",
-      "Reference Image", false
-    );
-  }
 }

@@ -145,6 +145,14 @@
         <path d="M8 19a11 11 0 0 1 11-11" stroke-dasharray="3 2.5" />
       </svg>
       }
+      @case ('image') {
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" />
+        <circle cx="8.5" cy="8.5" r="1.5" />
+        <path d="M21 15l-5-5L5 21" />
+      </svg>
+      }
       }
     </ng-template>
 
@@ -230,94 +238,6 @@
             </svg>
             <span>Clear Layer</span>
           </button>
-        </div>
-        }
-      </div>
-    </div>
-
-    <div class="tool-row">
-      <div class="tool-flyout">
-        <button type="button" class="tool-btn tool-flyout-main" [class.active]="refImages.referenceModeEnabled"
-          (click)="toggleReference()" title="Reference image">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="18" height="18" rx="2" />
-            <circle cx="8.5" cy="8.5" r="1.5" />
-            <path d="M21 15l-5-5L5 21" />
-          </svg>
-        </button>
-        <button type="button" class="tool-view-toggle" [title]="refImages.showReferenceImage ? 'Hide reference image' : 'Show reference image'"
-          (click)="refImages.setShowReferenceImage(!refImages.showReferenceImage); $event.stopPropagation()">
-          @if (refImages.showReferenceImage) {
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 12l6 6L20 6" />
-          </svg>
-          } @else {
-          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
-            stroke-linecap="round">
-            <path d="M5 5l14 14M19 5L5 19" />
-          </svg>
-          }
-        </button>
-        @if (refImages.referenceModeEnabled) {
-        <div class="tool-flyout-popup reference-popup">
-          <div class="layer-tabs">
-            @for (tab of refImages.images; track tab.id) {
-            <div class="layer-tab" [class.active]="tab.id === refImages.activeId" (click)="selectRefTab(tab.id)">
-              @if (editingRefId === tab.id) {
-              <input #refRenameInput class="layer-tab-edit" type="text" [value]="tab.label"
-                (click)="$event.stopPropagation()" (keydown.enter)="commitRenameRef(tab.id, refRenameInput.value)"
-                (keydown.escape)="editingRefId = null" (blur)="commitRenameRef(tab.id, refRenameInput.value)" />
-              } @else {
-              <span class="layer-tab-label" (dblclick)="startRenameRef(tab.id)" title="Double-click to rename">{{
-                tab.label }}</span>
-              <button type="button" class="layer-tab-x" title="Remove"
-                (click)="deleteRefTab(tab.id); $event.stopPropagation()">×</button>
-              }
-            </div>
-            }
-            <button type="button" class="layer-tab-add" title="Add reference image"
-              (click)="requestAddReference()">+</button>
-          </div>
-
-          @if (refImages.active) {
-          <div class="settings-grid">
-            <span class="settings-lbl">X</span>
-            <input type="number" [value]="refImages.active.x"
-              (change)="onRefParamChange('x', $any($event.target).valueAsNumber)" />
-            <span class="settings-lbl">Y</span>
-            <input type="number" [value]="refImages.active.y"
-              (change)="onRefParamChange('y', $any($event.target).valueAsNumber)" />
-            <span class="settings-lbl">W</span>
-            <input type="number" [value]="refImages.active.width"
-              (change)="onRefParamChange('width', $any($event.target).valueAsNumber)" />
-            <span class="settings-lbl">H</span>
-            <input type="number" [value]="refImages.active.height"
-              (change)="onRefParamChange('height', $any($event.target).valueAsNumber)" />
-            <span class="settings-lbl">°</span>
-            <input type="number" step="0.1" [value]="refImages.active.rotationDeg ?? 0"
-              (change)="onRefParamChange('rotationDeg', $any($event.target).valueAsNumber)" />
-          </div>
-          <div class="ref-opacity">
-            <span class="settings-lbl">Opacity</span>
-            <input type="range" min="0" max="1" step="0.01" [value]="refImages.opacity"
-              (input)="refImages.setOpacity($any($event.target).valueAsNumber)" />
-            <span class="ref-pct">{{ (refImages.opacity * 100).toFixed(0) }}%</span>
-          </div>
-          } @else {
-          <div class="ref-empty">No reference image. Click + to add one.</div>
-          }
-
-          <div class="ref-actions">
-            <button type="button" class="btn" (click)="referenceControlsInfo()" title="Help">Help</button>
-            <div class="ref-right">
-              <button type="button" class="btn" [disabled]="!refImages.active"
-                (click)="requestReplaceReference()">Replace</button>
-              <button type="button" class="btn ref-reset-btn" [disabled]="!refImages.active"
-                (click)="resetReferenceImage()">Reset</button>
-            </div>
-          </div>
         </div>
         }
       </div>

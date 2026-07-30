@@ -1,6 +1,7 @@
-import { Injectable } from '@angular/core';
-import { DraftShape, DEFAULT_SHAPE_COLOR } from './toolbox-shape';
+import { Injectable, inject } from '@angular/core';
+import { DraftShape, ImageShape, DEFAULT_SHAPE_COLOR } from './toolbox-shape';
 import { Layer, DEFAULT_LAYER_ID, makeLayerId } from './layer';
+import { ImageAssetStore } from './image-asset-store';
 
 const STORAGE_KEY = 'draft-canvas-toolbox-shapes';
 const MAX_HISTORY = 50;
@@ -13,9 +14,17 @@ const MAX_HISTORY = 50;
  * A root-provided singleton (rather than a plain class draft-canvas `new`s up)
  * so recipe-base's undo/redo keyboard handler can see the same shape history
  * and defer to it — see recipe-base.ts `onUndoRedoKeyDown`.
+ *
+ * Placed reference images (`ImageShape`) live in the same list, so they get selection,
+ * move/resize, delete, layers and undo from the same machinery every other shape uses. They are
+ * the one exception to "backed by sessionStorage", though: their durable home is the recipe's
+ * `referenceImages` field, which templates and saved files already carry (see
+ * reference-image-schema.ts), so exportState leaves them out and they are re-derived from the
+ * recipe on load rather than restored from here.
  */
 @Injectable({ providedIn: 'root' })
 export class ToolboxStore {
+  private imageAssets = inject(ImageAssetStore);
   private shapes: DraftShape[] = [];
   private history: DraftShape[][] = [];
   private historyIndex = -1;
@@ -135,10 +144,27 @@ export class ToolboxStore {
     return this.shapes;
   }
 
-  /** Shapes on every visible layer — what should render (and be snappable), regardless of which layer is active. */
+  /** Shapes on every visible layer — what should render (and be snappable), regardless of which
+   * layer is active. Images are excluded: they render in their own earlier pass, beneath
+   * everything else, and are deliberately kept out of the snap index (a photo's bounding box
+   * isn't geometry worth snapping to). See getVisibleImages and draft-canvas.ts's draw(). */
   getVisibleShapes(): DraftShape[] {
     const visibleIds = new Set(this._layers.filter(l => l.visible).map(l => l.id));
-    return this.shapes.filter(s => visibleIds.has(s.layerId ?? DEFAULT_LAYER_ID));
+    return this.shapes.filter(s => s.type !== 'image' && visibleIds.has(s.layerId ?? DEFAULT_LAYER_ID));
+  }
+
+  /** Placed images on every visible layer, in insertion order — the underlay pass. Hiding a
+   * layer hides its images, which is what replaced the old single global "show reference" toggle. */
+  getVisibleImages(): ImageShape[] {
+    const visibleIds = new Set(this._layers.filter(l => l.visible).map(l => l.id));
+    return this.shapes.filter(
+      (s): s is ImageShape => s.type === 'image' && visibleIds.has(s.layerId ?? DEFAULT_LAYER_ID));
+  }
+
+  /** Every placed image regardless of layer visibility — what the save adapter writes out, since
+   * a hidden image should still survive a round-trip through the file. */
+  getImageShapes(): ImageShape[] {
+    return this.shapes.filter((s): s is ImageShape => s.type === 'image');
   }
 
   /** Shapes that can be selected/edited right now: on the active layer, and only while it's unlocked. */
@@ -259,10 +285,16 @@ export class ToolboxStore {
   }
 
   /** Same shape persist() writes to sessionStorage — reused so the recipe file's saved/loaded
-   * blob and the session's scratch copy can't drift apart. */
+   * blob and the session's scratch copy can't drift apart.
+   *
+   * Images are filtered out of both destinations on purpose: the recipe's own `referenceImages`
+   * field is their durable home (that's what keeps templates and existing saved files valid), and
+   * writing them here as well would mean two copies of the same data that can disagree — plus a
+   * dangling `imageRef` on reload, since ImageAssetStore is session-scoped and rebuilt from the
+   * recipe. */
   exportState(): object {
     return {
-      shapes: this.shapes,
+      shapes: this.shapes.filter(s => s.type !== 'image'),
       currentColor: this._currentColor,
       currentDashed: this._currentDashed,
       currentBoxLineColor2: this._currentBoxLineColor2,
@@ -272,10 +304,25 @@ export class ToolboxStore {
     };
   }
 
+  /**
+   * Replaces every placed image, leaving drawn shapes alone — called once per file/template load
+   * with whatever reference-image-schema.ts read out of the recipe. Resets undo history for the
+   * same reason loadState does: a freshly loaded file starts with nothing to undo past.
+   */
+  loadImages(images: ImageShape[]): void {
+    this.shapes = [...images, ...this.shapes.filter(s => s.type !== 'image')];
+    this.history = [this.shapes];
+    this.historyIndex = 0;
+    this.persist();
+    this.notify();
+  }
+
   /** Wipes shapes and layers back to a single empty default layer, resetting undo history too —
    * used when loading a new template or a new file, so drawings from whatever was previously
-   * open don't linger into the freshly loaded one. */
+   * open don't linger into the freshly loaded one. Clears the image asset table with them, so a
+   * previous file's photos can't stay resident once nothing references them. */
   resetAll(): void {
+    this.imageAssets.resetAll();
     this.shapes = [];
     this._layers = [{ id: DEFAULT_LAYER_ID, name: 'Layer 1', visible: true, locked: false }];
     this._activeLayerId = DEFAULT_LAYER_ID;

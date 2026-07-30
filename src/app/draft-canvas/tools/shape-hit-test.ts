@@ -1,6 +1,7 @@
 import { Pt } from '../../models/types';
-import { DraftShape } from './toolbox-shape';
+import { DraftShape, ImageShape, imageCenter, imageCorners } from './toolbox-shape';
 import { pointOnCircle } from './arc-geometry';
+import { rotatePointAbout } from '../../helpers/draftMath';
 import { TEXT_FONT_SIZE_PX, TEXT_LINE_HEIGHT_RATIO } from './shape-renderer';
 
 const TWO_PI = Math.PI * 2;
@@ -84,6 +85,18 @@ function distanceToText(p: Pt, position: Pt, text: string, pxPerMm: number): num
   return distanceToBoxInterior(p, box.x0, box.y0, box.x1, box.y1);
 }
 
+/** Distance to a placed image, 0 anywhere inside it — the whole picture is the drag target, the
+ * same interior-counts-as-a-hit rule text uses. Rotation is handled by mapping the probe point
+ * back into the image's unrotated frame, so the box math stays axis-aligned. */
+function distanceToImage(p: Pt, shape: ImageShape): number {
+  const local = rotatePointAbout(p, imageCenter(shape), -(shape.rotationDeg ?? 0));
+  return distanceToBoxInterior(
+    local,
+    Math.min(shape.x, shape.x + shape.width), Math.min(shape.y, shape.y + shape.height),
+    Math.max(shape.x, shape.x + shape.width), Math.max(shape.y, shape.y + shape.height),
+  );
+}
+
 /** Shortest distance from a world-space point to a toolbox shape's geometry. */
 export function distanceToShape(p: Pt, shape: DraftShape, pxPerMm: number): number {
   switch (shape.type) {
@@ -101,6 +114,8 @@ export function distanceToShape(p: Pt, shape: DraftShape, pxPerMm: number): numb
       return distanceToText(p, shape.position, shape.text, pxPerMm);
     case 'point':
       return Math.hypot(p.x - shape.position.x, p.y - shape.position.y);
+    case 'image':
+      return distanceToImage(p, shape);
   }
 }
 
@@ -149,5 +164,14 @@ export function shapeBounds(shape: DraftShape, pxPerMm: number): ShapeBounds {
       return textFootprint(shape.position, shape.text, pxPerMm);
     case 'point':
       return { x0: shape.position.x, x1: shape.position.x, y0: shape.position.y, y1: shape.position.y };
+    case 'image': {
+      // A rotated image's marquee bound is the box around its four rotated corners, not its
+      // unrotated w×h — same reasoning as sampling an arc's actual sweep above.
+      const corners = Object.values(imageCorners(shape));
+      return {
+        x0: Math.min(...corners.map(c => c.x)), x1: Math.max(...corners.map(c => c.x)),
+        y0: Math.min(...corners.map(c => c.y)), y1: Math.max(...corners.map(c => c.y)),
+      };
+    }
   }
 }
