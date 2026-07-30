@@ -14,7 +14,66 @@
     @for (row of toolRows; track $index) {
     <div class="tool-row">
       @for (slot of row; track $index) {
-      @if (slot.kind === 'single') {
+      <!-- Reference Image behaves like the Layers button rather than a drawing tool: its main
+           button opens the list of placed images (uploading happens from inside that panel), and
+           it carries the same master show/hide toggle. The tool itself stays a normal toolRows
+           entry so its hotkey and the panel's Upload button can both activate it. -->
+      @if (slot.kind === 'single' && slot.tool.id === 'image') {
+      <div class="tool-flyout">
+        <button type="button" class="tool-btn tool-flyout-main" [class.active]="imagesOpen"
+          (click)="toggleImages()" title="Reference images (I to upload)">
+          <ng-container [ngTemplateOutlet]="toolIcon" [ngTemplateOutletContext]="{ id: slot.tool.id }" />
+        </button>
+        <button type="button" class="tool-view-toggle" [class.on]="showImages"
+          [title]="showImages ? 'Hide all reference images' : 'Show all reference images'"
+          (click)="toggleShowImages(); $event.stopPropagation()">
+          <ng-container [ngTemplateOutlet]="eyeIcon" [ngTemplateOutletContext]="{ on: showImages }" />
+        </button>
+        @if (imagesOpen) {
+        <div class="tool-flyout-popup images-popup">
+          <div class="layer-tabs">
+            @for (image of images; track image.id) {
+            <div class="layer-tab" [class.locked]="isImageLocked(image)">
+              <button type="button" class="layer-tab-icon-btn" [class.on]="!image.hidden"
+                (click)="toggleImageHidden(image); $event.stopPropagation()"
+                [title]="image.hidden ? 'Show this image' : 'Hide this image'">
+                <ng-container [ngTemplateOutlet]="eyeIcon" [ngTemplateOutletContext]="{ on: !image.hidden }" />
+              </button>
+              @if (editingImageId === image.id) {
+              <input #imageRenameInput class="layer-tab-edit" type="text" [value]="image.label"
+                (click)="$event.stopPropagation()" (keydown.enter)="commitRenameImage(image.id, imageRenameInput.value)"
+                (keydown.escape)="editingImageId = null" (blur)="commitRenameImage(image.id, imageRenameInput.value)" />
+              } @else {
+              <span class="layer-tab-label" (click)="editImage(image)" (dblclick)="startRenameImage(image.id)"
+                title="Click to select and unlock for editing; double-click to rename">{{ image.label }}</span>
+              <button type="button" class="layer-tab-icon-btn"
+                (click)="toggleImageLocked(image); $event.stopPropagation()"
+                [title]="isImageLocked(image) ? 'Unlock for editing' : 'Lock in place'">
+                <ng-container [ngTemplateOutlet]="lockIcon" [ngTemplateOutletContext]="{ locked: isImageLocked(image) }" />
+              </button>
+              <button type="button" class="layer-tab-x" title="Remove this image"
+                (click)="deleteImage(image.id); $event.stopPropagation()">×</button>
+              }
+            </div>
+            }
+          </div>
+          @if (images.length === 0) {
+          <div class="images-empty">No reference images yet.</div>
+          }
+          <button type="button" class="btn image-upload-btn" (click)="addImage()"
+            title="Choose an image file to place on the canvas">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+            <span>Upload Image</span>
+          </button>
+        </div>
+        }
+      </div>
+      } @else if (slot.kind === 'single') {
       <button type="button" class="tool-btn" [class.active]="activeTool === slot.tool"
         (click)="selectTool(slot.tool)" [title]="slot.tool.label + hotkeyHint(slot.tool.id)">
         <ng-container [ngTemplateOutlet]="toolIcon" [ngTemplateOutletContext]="{ id: slot.tool.id }" />
@@ -49,6 +108,41 @@
       }
     </div>
     }
+
+    <!-- Shared by every show/hide control: the two master toggles and each row in the Layers and
+         Reference Images popups, so "visible" looks the same everywhere it appears. -->
+    <ng-template #eyeIcon let-on="on">
+      @if (on) {
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" />
+        <circle cx="12" cy="12" r="3" />
+      </svg>
+      } @else {
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path
+          d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a20.3 20.3 0 0 1 5.06-6.06M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a20.3 20.3 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24" />
+        <line x1="1" y1="1" x2="23" y2="23" />
+      </svg>
+      }
+    </ng-template>
+
+    <ng-template #lockIcon let-locked="locked">
+      @if (locked) {
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="11" width="16" height="9" rx="1.5" />
+        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+      </svg>
+      } @else {
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="11" width="16" height="9" rx="1.5" />
+        <path d="M7 11V7a5 5 0 0 1 9.5-2.2" />
+      </svg>
+      }
+    </ng-template>
 
     <ng-template #toolIcon let-id="id">
       @switch (id) {
@@ -160,7 +254,7 @@
 
     <div class="tool-row">
       <div class="tool-flyout">
-        <button type="button" class="tool-btn" [class.active]="layersOpen" (click)="toggleLayers()"
+        <button type="button" class="tool-btn tool-flyout-main" [class.active]="layersOpen" (click)="toggleLayers()"
           title="Layers">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round">
@@ -169,29 +263,23 @@
             <polyline points="3 18 12 23 21 18" />
           </svg>
         </button>
+        <!-- Master for everything drawn, mirroring the Reference Image button's master for every
+             placed image — so either side of the drawing can be dropped out of view in one click. -->
+        <button type="button" class="tool-view-toggle" [class.on]="showShapes"
+          [title]="showShapes ? 'Hide all drawn shapes' : 'Show all drawn shapes'"
+          (click)="toggleShowShapes(); $event.stopPropagation()">
+          <ng-container [ngTemplateOutlet]="eyeIcon" [ngTemplateOutletContext]="{ on: showShapes }" />
+        </button>
         @if (layersOpen) {
         <div class="tool-flyout-popup layers-popup">
           <div class="layer-tabs">
             @for (layer of toolboxLayers; track layer.id) {
             <div class="layer-tab" [class.active]="layer.id === activeLayerId" [class.locked]="layer.locked"
               (click)="selectLayer(layer.id)">
-              <button type="button" class="layer-tab-icon-btn"
+              <button type="button" class="layer-tab-icon-btn" [class.on]="layer.visible"
                 (click)="toggleLayerVisible(layer.id); $event.stopPropagation()"
                 [title]="layer.visible ? 'Hide layer' : 'Show layer'">
-                @if (layer.visible) {
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                  stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-                } @else {
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                  stroke-linecap="round" stroke-linejoin="round">
-                  <path
-                    d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a20.3 20.3 0 0 1 5.06-6.06M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a20.3 20.3 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24" />
-                  <line x1="1" y1="1" x2="23" y2="23" />
-                </svg>
-                }
+                <ng-container [ngTemplateOutlet]="eyeIcon" [ngTemplateOutletContext]="{ on: layer.visible }" />
               </button>
               @if (editingLayerId === layer.id) {
               <input #layerRenameInput class="layer-tab-edit" type="text" [value]="layer.name"
@@ -203,19 +291,7 @@
               <button type="button" class="layer-tab-icon-btn"
                 (click)="toggleLayerLocked(layer.id); $event.stopPropagation()"
                 [title]="layer.locked ? 'Unlock layer' : 'Lock layer'">
-                @if (layer.locked) {
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                  stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="4" y="11" width="16" height="9" rx="1.5" />
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                </svg>
-                } @else {
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                  stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="4" y="11" width="16" height="9" rx="1.5" />
-                  <path d="M7 11V7a5 5 0 0 1 9.5-2.2" />
-                </svg>
-                }
+                <ng-container [ngTemplateOutlet]="lockIcon" [ngTemplateOutletContext]="{ locked: layer.locked }" />
               </button>
               @if (toolboxLayers.length > 1 && !layer.locked) {
               <button type="button" class="layer-tab-x" title="Delete layer (and its shapes)"

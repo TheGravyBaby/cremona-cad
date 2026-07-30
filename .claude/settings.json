@@ -40,7 +40,8 @@
       "Bash(npx esbuild *)",
       "Bash(node /private/tmp/claude-501/-Users-aargraves-Documents-cremona-cad/71eca4b2-6f97-410b-a3b0-832b4b681130/scratchpad/harness.mjs)",
       "Bash(node harness.mjs)",
-      "Bash(pkill -f \"ng test\")"
+      "Bash(pkill -f \"ng test\")",
+      "Bash(grep -rn \"^\\\\.btn[ ,{:]\" src/styles.css src/app/draft-canvas/draft-canvas.css)"
     ],
     "additionalDirectories": [
       "/tmp"

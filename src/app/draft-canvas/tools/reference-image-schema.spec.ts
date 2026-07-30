@@ -78,13 +78,53 @@ describe('imageShapesFromRecipe', () => {
   });
 });
 
+describe('lock defaults', () => {
+  it('opens a template image locked, since absent means locked', () => {
+    const shapes = imageShapesFromRecipe({
+      referenceImage: { href: '/StradGoetz.jpg', x: 0, y: 0, width: 319, height: 448 },
+    }, store());
+    expect(shapes[0].locked).toBe(true);
+  });
+
+  it('opens an image the user deliberately unlocked still unlocked', () => {
+    const shapes = imageShapesFromRecipe({
+      referenceImages: [
+        { id: 'a', label: 'A', href: '/a.jpg', x: 0, y: 0, width: 1, height: 1, locked: false },
+      ],
+    }, store());
+    expect(shapes[0].locked).toBe(false);
+  });
+
+  it('writes locked out explicitly, so absent-means-locked cannot silently re-lock it', () => {
+    const assets = store();
+    const shapes = imageShapesFromRecipe({
+      referenceImages: [
+        { id: 'a', label: 'A', href: '/a.jpg', x: 0, y: 0, width: 1, height: 1, locked: false },
+      ],
+    }, assets);
+    expect(imageShapesToRecipe(shapes, assets)[0].locked).toBe(false);
+  });
+
+  it('carries per-image hidden through unchanged, defaulting to visible', () => {
+    const assets = store();
+    const shapes = imageShapesFromRecipe({
+      referenceImages: [
+        { id: 'a', label: 'A', href: '/a.jpg', x: 0, y: 0, width: 1, height: 1, hidden: true },
+        { id: 'b', label: 'B', href: '/b.jpg', x: 0, y: 0, width: 1, height: 1 },
+      ],
+    }, assets);
+    expect(shapes.map(s => s.hidden)).toEqual([true, undefined]);
+    expect(imageShapesToRecipe(shapes, assets).map(e => e.hidden)).toEqual([true, undefined]);
+  });
+});
+
 describe('round-trip through the recipe field', () => {
   it('preserves geometry, identity and the new per-image settings', () => {
     const assets = store();
     const original: NamedReferenceImage[] = [{
       id: 'r1', label: 'Plan', href: 'data:image/png;base64,AAAA',
       x: -157.7, y: -31.4, width: 319, height: 448.55, rotationDeg: 359.6,
-      opacity: 0.4, suppressWhite: false, layerId: 'layer-default',
+      opacity: 0.4, suppressWhite: false, hidden: true, locked: false,
     }];
 
     const out = imageShapesToRecipe(imageShapesFromRecipe({ referenceImages: original }, assets), assets);

@@ -1,9 +1,10 @@
-import { Component, ElementRef, OnDestroy, OnInit, inject } from '@angular/core';
+import { Component, ElementRef, EventEmitter, OnDestroy, OnInit, Output, inject } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { DraftTool } from '../tools/draft-tool';
 import { ToolSlot } from '../tools/tool-slot';
 import { ToolRegistryService } from '../tools/tool-registry';
 import { ToolboxStore } from '../tools/toolbox-store';
+import { ImageShape } from '../tools/toolbox-shape';
 import { Layer } from '../tools/layer';
 import { HOTKEY_LETTER_BY_TOOL } from '../tools/tool-hotkeys';
 
@@ -32,9 +33,15 @@ export class ToolPaletteComponent implements OnInit, OnDestroy {
   public get toolRows(): ToolSlot[][] { return this.toolRegistry.toolRows; }
   public get activeTool(): DraftTool | null { return this.toolRegistry.activeTool; }
 
+  /** Which shape is selected is draft-canvas state, not store state, so picking an image out of
+   * the list has to ask the canvas to select it — see editImage. */
+  @Output() selectImageRequested = new EventEmitter<string>();
+
   public openFlyout: ToolSlot | null = null;
   public layersOpen = false;
+  public imagesOpen = false;
   public editingLayerId: string | null = null;
+  public editingImageId: string | null = null;
 
   /** Pinned = always expanded, like a docked panel. Unpinned = a slim rail that
    * expands only while the pointer is over it (see onDockMouseEnter/Leave) — no
@@ -97,6 +104,7 @@ export class ToolPaletteComponent implements OnInit, OnDestroy {
   toggleFlyout(slot: ToolSlot): void {
     this.openFlyout = this.openFlyout === slot ? null : slot;
     this.layersOpen = false;
+    this.imagesOpen = false;
   }
 
   /** Picking a variant from the flyout both activates it and becomes the slot's new default face. */
@@ -115,7 +123,18 @@ export class ToolPaletteComponent implements OnInit, OnDestroy {
   toggleLayers(): void {
     this.layersOpen = !this.layersOpen;
     this.openFlyout = null;
+    this.imagesOpen = false;
   }
+
+  // ===== Master show/hide switches =====
+  // The quick "get this out of my way" pair, one per popup button. Both are ToolboxStore view
+  // state rather than component state, since draft-canvas has to read them when it draws.
+
+  public get showImages(): boolean { return this.toolbox.showImages; }
+  toggleShowImages(): void { this.toolbox.setShowImages(!this.toolbox.showImages); }
+
+  public get showShapes(): boolean { return this.toolbox.showShapes; }
+  toggleShowShapes(): void { this.toolbox.setShowShapes(!this.toolbox.showShapes); }
 
   // ===== Layers =====
 
@@ -168,4 +187,67 @@ export class ToolPaletteComponent implements OnInit, OnDestroy {
     this.toolbox.clearActiveLayer();
   }
 
+  // ===== Reference images =====
+  // Deliberately shaped like Layers above: a list of rows, each with an eye, a lock, a name and a
+  // delete. Each image is its own visibility/lock unit (see ImageShape), so this list *is* the
+  // image layering — there's no second layer type behind it. Unlike the tab strip this replaced,
+  // every image stays on screen at once; the eye is what parks one.
+
+  public get images(): ImageShape[] { return this.toolbox.getImageShapes(); }
+
+  /** Absent `locked` means locked — see ImageShape.locked. */
+  public isImageLocked(image: ImageShape): boolean { return image.locked ?? true; }
+
+  toggleImages(): void {
+    this.imagesOpen = !this.imagesOpen;
+    this.openFlyout = null;
+    this.layersOpen = false;
+  }
+
+  /** Placing an image is the Image tool's job — this just activates it, exactly as its hotkey
+   * does. Closes the panel on the way, since the panel sits over the canvas and the next thing
+   * you'll do is position the image that lands there. */
+  addImage(): void {
+    this.imagesOpen = false;
+    this.toolRegistry.activateById('image');
+  }
+
+  toggleImageHidden(image: ImageShape): void {
+    this.toolbox.setImageHidden(image.id, !image.hidden);
+  }
+
+  toggleImageLocked(image: ImageShape): void {
+    this.toolbox.setImageLocked(image.id, !this.isImageLocked(image));
+  }
+
+  /**
+   * "I want to work on this one": unlocks the image, makes sure it's visible, and selects it so
+   * its handles and settings-bar row are live immediately. Saves the unlock–then–hunt–for–it dance
+   * that having images locked by default would otherwise cost.
+   */
+  editImage(image: ImageShape): void {
+    if (image.hidden) this.toolbox.setImageHidden(image.id, false);
+    this.toolbox.setImageLocked(image.id, false);
+    this.selectImageRequested.emit(image.id);
+  }
+
+  startRenameImage(id: string): void {
+    this.editingImageId = id;
+    // The rename <input> is created by this state change; focus it next tick.
+    setTimeout(() => {
+      const el = (this.elRef.nativeElement as HTMLElement).querySelector('.layer-tab-edit') as HTMLInputElement | null;
+      el?.focus();
+      el?.select();
+    });
+  }
+
+  commitRenameImage(id: string, label: string): void {
+    this.toolbox.renameImage(id, label);
+    this.editingImageId = null;
+  }
+
+  deleteImage(id: string): void {
+    this.toolbox.removeImage(id);
+    if (this.editingImageId === id) this.editingImageId = null;
+  }
 }

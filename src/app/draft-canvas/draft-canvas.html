@@ -20,7 +20,7 @@
   <input #imageFileInput type="file" accept="image/*" style="display:none"
     (change)="onImageFileSelected($event)" />
 
-  <app-tool-palette></app-tool-palette>
+  <app-tool-palette (selectImageRequested)="selectShapeById($event)"></app-tool-palette>
 
   <div class="ui-controls">
     <div class="left">

@@ -35,6 +35,8 @@ export class ToolboxStore {
   private _currentBoxLineWeights: number[] = [1, 1, 1];
   private _layers: Layer[] = [{ id: DEFAULT_LAYER_ID, name: 'Layer 1', visible: true, locked: false }];
   private _activeLayerId: string = DEFAULT_LAYER_ID;
+  private _showImages = true;
+  private _showShapes = true;
 
   constructor() {
     this.load();
@@ -81,6 +83,28 @@ export class ToolboxStore {
     this.notify();
   }
 
+  /** Master switch for every placed reference image — the one-click "get the photos out of my
+   * way" while tracing, paired with the per-image `hidden` flag the way the Layers master switch
+   * below is paired with per-layer visibility. Not undo-tracked: what you can see is a view
+   * preference, not an edit, same as layer visibility. */
+  get showImages(): boolean { return this._showImages; }
+  setShowImages(value: boolean): void {
+    if (this._showImages === value) return;
+    this._showImages = value;
+    this.persist();
+    this.notify();
+  }
+
+  /** Master switch for everything drawn with the toolbox, so a reference image can be examined on
+   * its own without hiding each layer in turn. */
+  get showShapes(): boolean { return this._showShapes; }
+  setShowShapes(value: boolean): void {
+    if (this._showShapes === value) return;
+    this._showShapes = value;
+    this.persist();
+    this.notify();
+  }
+
   get layers(): Layer[] { return this._layers; }
 
   private get activeLayer(): Layer {
@@ -90,6 +114,13 @@ export class ToolboxStore {
   private layerFor(shape: DraftShape): Layer | undefined {
     const id = shape.layerId ?? DEFAULT_LAYER_ID;
     return this._layers.find(l => l.id === id);
+  }
+
+  /** Whether a shape is protected from canvas-driven edits. Images answer for themselves (see
+   * ImageShape.locked — absent means locked); every other shape inherits its layer's lock. */
+  private isShapeLocked(shape: DraftShape): boolean {
+    if (shape.type === 'image') return shape.locked ?? true;
+    return this.layerFor(shape)?.locked ?? false;
   }
 
   /** Not undo-tracked — which layer is active is a view preference, same as currentColor. */
@@ -131,13 +162,17 @@ export class ToolboxStore {
     this.notify();
   }
 
-  /** Deletes a layer and every shape on it (undo-tracked, since shape removal is). Refuses to delete the last or a locked layer. */
+  /** Deletes a layer and every shape drawn on it (undo-tracked, since shape removal is). Refuses
+   * to delete the last or a locked layer. Placed images survive regardless: they carry no
+   * `layerId`, so without the guard here deleting layer 1 would take every reference image with
+   * it — they'd fall into its id by default. */
   removeLayer(id: string): void {
     const layer = this._layers.find(l => l.id === id);
     if (this._layers.length <= 1 || layer?.locked) return;
     this._layers = this._layers.filter(l => l.id !== id);
     if (this._activeLayerId === id) this._activeLayerId = this._layers[0].id;
-    this.applyMutation(this.shapes.filter(s => (s.layerId ?? DEFAULT_LAYER_ID) !== id));
+    this.applyMutation(this.shapes.filter(
+      s => s.type === 'image' || (s.layerId ?? DEFAULT_LAYER_ID) !== id));
   }
 
   getShapes(): DraftShape[] {
@@ -149,46 +184,99 @@ export class ToolboxStore {
    * everything else, and are deliberately kept out of the snap index (a photo's bounding box
    * isn't geometry worth snapping to). See getVisibleImages and draft-canvas.ts's draw(). */
   getVisibleShapes(): DraftShape[] {
+    if (!this._showShapes) return [];
     const visibleIds = new Set(this._layers.filter(l => l.visible).map(l => l.id));
     return this.shapes.filter(s => s.type !== 'image' && visibleIds.has(s.layerId ?? DEFAULT_LAYER_ID));
   }
 
-  /** Placed images on every visible layer, in insertion order — the underlay pass. Hiding a
-   * layer hides its images, which is what replaced the old single global "show reference" toggle. */
+  /** Placed images that should render, in insertion order — the underlay pass. Governed by the
+   * master switch and each image's own `hidden` flag rather than by layers, since images don't
+   * belong to one (see ImageShape). */
   getVisibleImages(): ImageShape[] {
-    const visibleIds = new Set(this._layers.filter(l => l.visible).map(l => l.id));
-    return this.shapes.filter(
-      (s): s is ImageShape => s.type === 'image' && visibleIds.has(s.layerId ?? DEFAULT_LAYER_ID));
+    if (!this._showImages) return [];
+    return this.getImageShapes().filter(s => !s.hidden);
   }
 
-  /** Every placed image regardless of layer visibility — what the save adapter writes out, since
-   * a hidden image should still survive a round-trip through the file. */
+  /** Every placed image, hidden ones included — what the save adapter writes out, and what the
+   * image list in the tool palette shows. */
   getImageShapes(): ImageShape[] {
     return this.shapes.filter((s): s is ImageShape => s.type === 'image');
   }
 
-  /** Shapes that can be selected/edited right now: on the active layer, and only while it's unlocked. */
+  /**
+   * Shapes that can be selected/edited right now. Drawn shapes: on the active layer, and only
+   * while it's unlocked. Images: any unlocked, visible image regardless of the active layer,
+   * since they aren't layer members — so adjusting a reference doesn't mean first hunting for
+   * which layer it happens to be on.
+   */
   getEditableShapes(): DraftShape[] {
+    const images = this.getVisibleImages().filter(s => !this.isShapeLocked(s));
     const active = this.activeLayer;
-    if (active.locked) return [];
-    return this.shapes.filter(s => (s.layerId ?? DEFAULT_LAYER_ID) === active.id);
+    if (active.locked || !this._showShapes) return images;
+    return [
+      ...images,
+      ...this.shapes.filter(s => s.type !== 'image' && (s.layerId ?? DEFAULT_LAYER_ID) === active.id),
+    ];
   }
 
   addShape(shape: DraftShape): void {
-    if (this.layerFor(shape)?.locked) return;
+    // A brand-new shape has no lock of its own to consult; what matters is whether the layer it
+    // would land on accepts it. Images don't land on one, so they're always accepted.
+    if (shape.type !== 'image' && this.layerFor(shape)?.locked) return;
     this.applyMutation([...this.shapes, shape]);
   }
 
   removeShape(id: string): void {
     const shape = this.shapes.find(s => s.id === id);
-    if (!shape || this.layerFor(shape)?.locked) return;
+    if (!shape || this.isShapeLocked(shape)) return;
+    this.applyMutation(this.shapes.filter(s => s.id !== id));
+  }
+
+  // ===== Per-image view state =====
+  // An image is its own visibility/lock unit — the equivalent of a one-image layer, without a
+  // second layering system to keep in sync. Like the layer equivalents above, these are not
+  // undo-tracked: hiding or locking something is a view preference, so Ctrl+Z keeps meaning
+  // "undo my last edit" rather than "un-hide that photo".
+
+  private patchImage(id: string, patch: Partial<ImageShape>): void {
+    const idx = this.shapes.findIndex(s => s.id === id && s.type === 'image');
+    if (idx < 0) return;
+    this.shapes = this.shapes.map((s, i) => i === idx ? { ...s, ...patch } as ImageShape : s);
+    // Fold the change into the current history entry rather than pushing a new one. Without this
+    // the entry would still hold the pre-patch array, and the next undo/redo would quietly revert
+    // the hide or lock along with whatever edit the user actually meant to undo.
+    this.history[this.historyIndex] = this.shapes;
+    this.persist();
+    this.notify();
+  }
+
+  setImageHidden(id: string, hidden: boolean): void {
+    this.patchImage(id, { hidden });
+  }
+
+  /** Unlocking has to bypass the lock guard the edit paths use, which is why this doesn't go
+   * through updateShape. */
+  setImageLocked(id: string, locked: boolean): void {
+    this.patchImage(id, { locked });
+  }
+
+  renameImage(id: string, label: string): void {
+    const trimmed = label.trim();
+    if (trimmed) this.patchImage(id, { label: trimmed });
+  }
+
+  /** Deletes an image regardless of its lock — an explicit × in the image list is unambiguous,
+   * unlike a stray drag on the canvas, which is what the lock exists to stop. Undo-tracked, since
+   * removal loses work. */
+  removeImage(id: string): void {
+    if (!this.shapes.some(s => s.id === id && s.type === 'image')) return;
     this.applyMutation(this.shapes.filter(s => s.id !== id));
   }
 
   /** Patches a shape's properties (e.g. color) in place. Also the primitive a future Move would use for geometry. */
   updateShape(id: string, patch: Partial<DraftShape>): void {
     const shape = this.shapes.find(s => s.id === id);
-    if (!shape || this.layerFor(shape)?.locked) return;
+    if (!shape || this.isShapeLocked(shape)) return;
     this.applyMutation(this.shapes.map(s => s.id === id ? { ...s, ...patch } as DraftShape : s));
   }
 
@@ -199,7 +287,7 @@ export class ToolboxStore {
     let changed = false;
     const next = this.shapes.map(s => {
       const patch = patches.get(s.id);
-      if (!patch || this.layerFor(s)?.locked) return s;
+      if (!patch || this.isShapeLocked(s)) return s;
       changed = true;
       return { ...s, ...patch } as DraftShape;
     });
@@ -207,11 +295,13 @@ export class ToolboxStore {
     this.applyMutation(next);
   }
 
-  /** Clears only the active layer's shapes — Clear is now scoped per layer. */
+  /** Clears only the active layer's drawn shapes — Clear is scoped per layer, and never touches
+   * placed images, which aren't layer members and are removed from the image list instead. */
   clearActiveLayer(): void {
     if (this.activeLayer.locked) return;
     const active = this._activeLayerId;
-    this.applyMutation(this.shapes.filter(s => (s.layerId ?? DEFAULT_LAYER_ID) !== active));
+    this.applyMutation(this.shapes.filter(
+      s => s.type === 'image' || (s.layerId ?? DEFAULT_LAYER_ID) !== active));
   }
 
   undo(): void {
@@ -270,6 +360,8 @@ export class ToolboxStore {
           }));
         }
         if (typeof parsed.activeLayerId === 'string') this._activeLayerId = parsed.activeLayerId;
+        if (typeof parsed.showImages === 'boolean') this._showImages = parsed.showImages;
+        if (typeof parsed.showShapes === 'boolean') this._showShapes = parsed.showShapes;
       }
     } catch {
       // ignore malformed/blocked sessionStorage
@@ -301,6 +393,8 @@ export class ToolboxStore {
       currentBoxLineWeights: this._currentBoxLineWeights,
       layers: this._layers,
       activeLayerId: this._activeLayerId,
+      showImages: this._showImages,
+      showShapes: this._showShapes,
     };
   }
 
@@ -326,6 +420,10 @@ export class ToolboxStore {
     this.shapes = [];
     this._layers = [{ id: DEFAULT_LAYER_ID, name: 'Layer 1', visible: true, locked: false }];
     this._activeLayerId = DEFAULT_LAYER_ID;
+    // Both masters back on, so a newly loaded file can't open looking empty because of a toggle
+    // flipped while the previous one was open.
+    this._showImages = true;
+    this._showShapes = true;
     this.history = [this.shapes];
     this.historyIndex = 0;
     this.persist();
@@ -349,6 +447,8 @@ export class ToolboxStore {
       }));
     }
     if (typeof parsed['activeLayerId'] === 'string') this._activeLayerId = parsed['activeLayerId'] as string;
+    if (typeof parsed['showImages'] === 'boolean') this._showImages = parsed['showImages'] as boolean;
+    if (typeof parsed['showShapes'] === 'boolean') this._showShapes = parsed['showShapes'] as boolean;
 
     this.history = [this.shapes];
     this.historyIndex = 0;

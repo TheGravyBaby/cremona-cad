@@ -439,6 +439,20 @@ export class SettingsBarComponent {
     this.toolbox.updateShape(shape.id, { suppressWhite: value });
   }
 
+  /**
+   * Re-locking right where you've been adjusting the image, so protecting it again doesn't mean
+   * going back to the palette's image list. Locking immediately deselects it (a locked image
+   * isn't editable), which is the intended "done with that" gesture.
+   *
+   * Goes through setImageLocked rather than updateShape because unlocking has to bypass the very
+   * guard updateShape applies.
+   */
+  lockImage(): void {
+    const shape = this.selectedImageShape;
+    if (!shape) return;
+    this.toolbox.setImageLocked(shape.id, true);
+  }
+
   /** Equal-segments mode: N segments all weighted 1 — e.g. 16 for showing sixteenths, without
    * typing out "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1" by hand. */
   setBoxLineSegmentCount(count: number): void {

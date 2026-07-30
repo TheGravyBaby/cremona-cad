@@ -187,6 +187,15 @@
       <input type="checkbox" [checked]="imageSuppressWhite" (change)="setImageSuppressWhite($any($event.target).checked)"
         title="Fade near-white pixels to transparent, so a scan on white paper reads against a dark canvas" />
     </label>
+    <button type="button" class="settings-action" (click)="lockImage()"
+      title="Lock this image in place so it can't be selected or dragged on the canvas. Unlock it again from the Reference Images list in the tool palette.">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="11" width="16" height="9" rx="1.5" />
+        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+      </svg>
+      <span>Lock</span>
+    </button>
   }
 
   @if (showBoxLinePanel) {

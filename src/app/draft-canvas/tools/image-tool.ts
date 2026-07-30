@@ -77,6 +77,10 @@ export class ImageTool implements DraftTool {
       rotationDeg: 0,
       imageRef: this.assets.intern(file.dataUrl, file.width, file.height),
       label: 'Reference',
+      // Explicitly unlocked, against the absent-means-locked default: you add an image in order
+      // to position and scale it, so it has to be grabbable straight away. It saves as unlocked
+      // and can be locked from the image list or the settings bar once it's placed.
+      locked: false,
     };
 
     host.addShape(shape);
