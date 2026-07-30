@@ -2,9 +2,9 @@ import { arcHorizontalIntersections, clamp, makeMonotoneSpline } from "../helper
 import {
   buildCatenaryPath, buildCycloidPath, buildSplinePath, buildCycloidPathAcross, catenaryZAt, cycloidZAt, splineZAt, cycloidEdgeSlope,
   crossArchSplineProfileGrid, crossArchSplineEdgeSlopeFrac, crossArchSplineZAt, crossArchSplineEdgeSlope, buildCrossArchSplinePathAcross,
-  CROSS_ARCH_SPLINE_GRID_N,
+  archSplineKnots,
 } from "../helpers/svgPathMath";
-import { Arc } from "../models/types";
+import { Arc, Pt } from "../models/types";
 import {
   ArchCurve, ArchingParams, CrossArchCycloidParams, CrossArchCycloidShape, CrossArchParams, CrossArchShape, CrossArchSide,
   CrossArchSplineParams, CrossArchSplineShape, CrossArchStation, EnricoCerutiParams, FlutingChannelParams,
@@ -398,17 +398,16 @@ export function defaultFlutingChannelParams(): FlutingChannelParams {
 }
 
 /**
- * The top-plate cross arch at body height `y`: a trochoid spanning the fluting
- * inner-boundary chord, peaking at the long arch's height at that station —
- * built in section coordinates (canvas X = violin X, canvas Y = Z, taking off
- * from the plate's outer edge surface). Returns null where no arch exists.
- *
- * `edgeDepth` lowers the cycloid's edge takeoff below the plate surface by that
- * many mm, increasing hEff by the same amount so the center peak stays anchored
- * at the long arch height. This gives the fluting channel a meaningful slope to
- * meet regardless of the trochoid factor.
+ * The per-station geometry every cross-arch builder/guide below needs before
+ * it can even look at the shape itself: the fluting half-span, the effective
+ * peak height (long-arch height at `y` plus the edge-depth takeoff), and where
+ * that takeoff sits in section coordinates (canvas X = violin X, canvas Y = Z).
+ * Null where no arch exists at this station (cap stations, or a missing/zero
+ * fluting chord).
  */
-export function calculateCrossArchTop(p: EnricoCerutiParams, y: number, side: 'top' | 'bottom' = 'top'): { path: string; halfSpan: number } | null {
+function crossArchStationGeometry(
+  p: EnricoCerutiParams, y: number, side: 'top' | 'bottom',
+): { halfSpan: number; hEff: number; zBase: number; sign: 1 | -1; cross: CrossArchParams } | null {
   const a = p.arching!;
   const plate = a[side];
   const halfSpan = flutingHalfWidthAtY(p, y);
@@ -422,7 +421,24 @@ export function calculateCrossArchTop(p: EnricoCerutiParams, y: number, side: 't
   const sign: 1 | -1 = side === 'top' ? 1 : -1;
   const outerZ = side === 'top' ? a.ribHeight + plate.thickness : -plate.thickness;
   const zBase = outerZ - sign * edgeDepth;
-  const hEff  = h + edgeDepth;
+  const hEff = h + edgeDepth;
+  return { halfSpan, hEff, zBase, sign, cross };
+}
+
+/**
+ * The top-plate cross arch at body height `y`: a trochoid spanning the fluting
+ * inner-boundary chord, peaking at the long arch's height at that station.
+ * Returns null where no arch exists.
+ *
+ * `edgeDepth` lowers the cycloid's edge takeoff below the plate surface by that
+ * many mm, increasing hEff by the same amount so the center peak stays anchored
+ * at the long arch height. This gives the fluting channel a meaningful slope to
+ * meet regardless of the trochoid factor.
+ */
+export function calculateCrossArchTop(p: EnricoCerutiParams, y: number, side: 'top' | 'bottom' = 'top'): { path: string; halfSpan: number } | null {
+  const geo = crossArchStationGeometry(p, y, side);
+  if (!geo) return null;
+  const { halfSpan, hEff, zBase, sign, cross } = geo;
   if (cross.type === 'spline') {
     const { zFracGrid } = resolveCrossArchSplineRowAt(cross, y, p.height);
     return { path: buildCrossArchSplinePathAcross(hEff, halfSpan, zBase, sign, zFracGrid, 80), halfSpan };
@@ -468,20 +484,86 @@ function buildCycloidPathAcrossAsym(
  * cross arch is asymmetric; ignored (both sides equal) otherwise.
  */
 export function crossArchEdgeSlopeAt(p: EnricoCerutiParams, y: number, side: 'top' | 'bottom' = 'top', atLeft = false): number {
-  const plate = p.arching![side];
-  const halfSpan = flutingHalfWidthAtY(p, y);
-  if (halfSpan === null || halfSpan <= 0) return 0;
-  const h = longArchHeightAt(p, plate.arch, y);
-  if (h <= 0) return 0;
-  const cross = plate.cross ?? defaultCrossArchParams();
-  const edgeDepth = plate.edgeDepth;
+  const geo = crossArchStationGeometry(p, y, side);
+  if (!geo) return 0;
+  const { halfSpan, hEff, cross } = geo;
   if (cross.type === 'spline') {
     const row = resolveCrossArchSplineRowAt(cross, y, p.height);
-    return crossArchSplineEdgeSlope(atLeft ? row.leftEdgeSlopeFrac : row.rightEdgeSlopeFrac, h + edgeDepth, halfSpan);
+    return crossArchSplineEdgeSlope(atLeft ? row.leftEdgeSlopeFrac : row.rightEdgeSlopeFrac, hEff, halfSpan);
   }
   const sides = resolveCrossArchSidesAt(cross, y, p.height);
   const shape = atLeft ? sides.left : sides.right;
-  return cycloidEdgeSlope(h + edgeDepth, 2 * halfSpan, shape.d, shape.pct);
+  return cycloidEdgeSlope(hEff, 2 * halfSpan, shape.d, shape.pct);
+}
+
+/**
+ * Generating-circle guide for a cycloid cross-arch at station `y` — the two
+ * circles (one per side, concentric and equal-radius when symmetric) whose
+ * rolling traces the takeoff-to-peak rise, plus the peak point itself. The
+ * same geometry the long-arch panel's own cycloid guide draws (a circle of
+ * radius hEff/(2·d) centered at half the peak height), just built per side
+ * since a cross arch can be asymmetric. Null where no arch exists at this
+ * station, or the plate's cross arch isn't a cycloid. A side's radius is null
+ * when its factor is too small (d ≤ 0.01) for a meaningful circle.
+ */
+export interface CrossArchCycloidGuide {
+  center: Pt;
+  peak: Pt;
+  leftR: number | null;
+  rightR: number | null;
+}
+
+export function calculateCrossArchCycloidGuide(p: EnricoCerutiParams, y: number, side: 'top' | 'bottom' = 'top'): CrossArchCycloidGuide | null {
+  const geo = crossArchStationGeometry(p, y, side);
+  if (!geo) return null;
+  const { hEff, zBase, sign, cross } = geo;
+  if (cross.type !== 'cycloid') return null;
+  const { left, right } = resolveCrossArchSidesAt(cross, y, p.height);
+  const guideR = (d: number): number | null => d > 0.01 ? hEff / (2 * d) : null;
+  return {
+    center: new Pt(0, zBase + sign * (hEff / 2)),
+    peak: new Pt(0, zBase + sign * hEff),
+    leftR: guideR(left.d),
+    rightR: guideR(right.d),
+  };
+}
+
+/**
+ * The defined spline shape nearest a body-length position — the base shape
+ * (anchoring both body ends) or the closest station. Shared by the panel
+ * (seeding a new draft/preview) and {@link calculateCrossArchSplineGuide}
+ * (deciding which shape's control points to mark): a spline's control-point
+ * list has no well-defined continuous interpolation between stations the way
+ * a scalar d/pct does, so both read off whichever real shape is nearest
+ * rather than attempting to reconstruct an in-between one.
+ */
+export function nearestCrossArchSplineShape(cross: CrossArchSplineParams, y: number, bodyHeight: number): CrossArchSplineShape {
+  const stations = normalizeCrossArchStations(cross.stations, bodyHeight);
+  let best: CrossArchSplineShape = cross;
+  let bestDist = Math.min(y, bodyHeight - y);
+  for (const s of stations) {
+    const d = Math.abs(s.y - y);
+    if (d < bestDist) { bestDist = d; best = s; }
+  }
+  return best;
+}
+
+/**
+ * Control-point guide for a spline cross-arch at station `y` — the crosshair
+ * positions the module-guide overlay marks, in section coordinates. Drawn
+ * from whichever shape (a station or the base) is nearest `y` — see
+ * {@link nearestCrossArchSplineShape} — since control points don't ramp
+ * point-by-point between stations the way a scalar does. Null where no arch
+ * exists at this station, or the plate's cross arch isn't a spline.
+ */
+export function calculateCrossArchSplineGuide(p: EnricoCerutiParams, y: number, side: 'top' | 'bottom' = 'top'): Pt[] | null {
+  const geo = crossArchStationGeometry(p, y, side);
+  if (!geo) return null;
+  const { halfSpan, hEff, zBase, sign, cross } = geo;
+  if (cross.type !== 'spline') return null;
+  const shape = nearestCrossArchSplineShape(cross, y, p.height);
+  return archSplineKnots(1, shape.points, shape.peak ?? 0.5).map(k =>
+    new Pt(-halfSpan + k.t * 2 * halfSpan, zBase + sign * k.z * hEff));
 }
 
 /** Outermost |x| where the horizontal station line crosses any of the arcs' drawn spans; null if none. */

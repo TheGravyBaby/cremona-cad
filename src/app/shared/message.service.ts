@@ -10,6 +10,8 @@ export interface Message {
   message: string;
   timestamp: number;
   autoDismiss?: number | false;
+  // when true, kicks out any other message of the same severity instead of stacking alongside it
+  exclusive?: boolean;
 }
 
 type MessageInput = Partial<Omit<Message, 'id' | 'timestamp'>> | string;
@@ -30,6 +32,7 @@ function makeMessage(input: MessageInput): Message {
     message: input.message ?? '',
     timestamp: Date.now(),
     autoDismiss: input.autoDismiss ?? 4000,
+    exclusive: input.exclusive,
   };
 }
 
@@ -45,8 +48,11 @@ export class MessageService {
   emit(input: MessageInput) {
     const m = makeMessage(input);
 
-    // dedupe by title when present
-    if (m.title && m.title.trim().length > 0) {
+    if (m.exclusive) {
+      // kicks every other message of the same severity, regardless of title
+      this._messages = this._messages.filter(existing => existing.severity !== m.severity);
+    } else if (m.title && m.title.trim().length > 0) {
+      // dedupe by title when present
       this._messages = this._messages.filter(existing => existing.title !== m.title);
     }
 
