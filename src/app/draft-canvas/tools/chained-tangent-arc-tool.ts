@@ -11,23 +11,16 @@ const PREVIEW_COLOR = '#2563eb';
 type Stage = 'idle' | 'first-set' | 'second-set' | 'chaining';
 
 /**
- * Builds a chain of arcs that meet tangent-to-tangent at each joint, so the
- * chain reads as one smooth curve even though every arc committed is its
- * own independent shape (not one long path) — matches how the rest of the
- * toolbox keeps shapes as separate, individually editable primitives.
+ * Builds a chain of arcs meeting tangent-to-tangent at each joint, so it reads
+ * as one smooth curve even though every arc commits as its own independent,
+ * individually editable shape rather than one long path.
  *
- * The first arc is normally built like the plain center-first Arc tool
- * (three clicks: center, then a point fixing radius + start angle, then a
- * point fixing the sweep) — but if that very first click snaps onto
- * existing geometry (any endpoint or on-path point that has a well-defined
- * tangent — see SnapEngine/DraftToolHost.getSnapTangent), the freeform
- * construction is skipped entirely and the chain starts right there,
- * tangent to whatever was snapped. Either way, every arc after the first is
- * a single click: its start point and tangent are inherited from the
- * previous arc's end point (same construction as the Tangent Arc tool —
- * see fitTangentArc), so the chain just keeps extending click by click.
- * Escape ends the chain; the next click starts a brand new one from
- * scratch, same as Escape cancelling the plain Arc tool mid-construction.
+ * The first arc is built like the center-first Arc tool (three clicks) — unless
+ * that first click snaps onto geometry with a well-defined tangent, in which
+ * case the freeform construction is skipped and the chain starts there, tangent
+ * to what was snapped. Every arc after the first is a single click, inheriting
+ * start point and tangent from the previous arc's end (see fitTangentArc).
+ * Escape ends the chain; the next click starts a fresh one.
  */
 export class ChainedTangentArcTool implements DraftTool {
   readonly id = 'arc-chain';

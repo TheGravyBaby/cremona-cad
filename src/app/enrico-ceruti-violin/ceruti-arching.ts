@@ -42,13 +42,11 @@ export function defaultArchingParams(bodyHeight: number): ArchingParams {
 }
 
 /**
- * The wireframe/contour step sizes below were tuned by eye against a
- * standard violin. Body height, body width, and arch height all vary a
- * lot across the instrument family (see defaultArchingParams) — a cello or
- * bass plugged into the same fixed mm steps would render 2-3x the wires and
- * contours of a violin, which is what actually caused the lag. Scaling each
- * step relative to these reference dimensions keeps rendered density (and
- * cost) roughly constant across the whole size range instead.
+ * The wireframe/contour step sizes below were tuned by eye against a standard
+ * violin. Body dimensions vary a lot across the instrument family, so a cello
+ * on fixed mm steps would render 2-3x the wires and contours of a violin.
+ * Scaling each step against these reference dimensions keeps rendered density
+ * roughly constant across the size range.
  */
 const REFERENCE_BODY_HEIGHT = 350; // mm, violin body length
 const REFERENCE_BODY_WIDTH = 200;  // mm, violin body width
@@ -109,12 +107,10 @@ function archFromLoweredTakeoff(arch: ArchCurve, edgeDepth: number): ArchCurve {
  * a `t` measured over the half-span (0 = plate edge, 1 = peak); they become
  * mirrored points at half that t over the full span, which is the same curve.
  *
- * **Must run on every recipe that enters the app** — see
- * {@link normalizeArchingParams}, the single caller, which every load path goes
- * through. It cannot be deferred to the render path and it cannot be applied
- * lazily on read: in the current format an absent `mirror` means an unmirrored
- * point, so only a loader — which knows the data just came off disk — can tell a
- * legacy point from a deliberately unmirrored one.
+ * **Must run on every recipe that enters the app**, via its single caller
+ * {@link normalizeArchingParams}. It cannot be applied lazily on read: an
+ * absent `mirror` means an unmirrored point in the current format, so only a
+ * loader can tell a legacy point from a deliberately unmirrored one.
  */
 export function normalizeArchCurve(arch: ArchCurve): void {
   if (arch.type !== 'spline') return;
@@ -133,11 +129,10 @@ export function normalizeArchCurve(arch: ArchCurve): void {
  * once per recipe entering the app — a template, a file off disk, or a session
  * restore — and before anything reads `arching`.
  *
- * This exists as its own function so the migration is not tied to a panel being
- * opened: the surface builder, the 3D preview and the STL/template exports all
- * read spline arches directly (see ceruti-surface.ts), so a recipe that reached
- * Export without passing through here would be interpolated from legacy
- * coordinates and quietly cut wrong.
+ * Separate from any panel so the migration isn't tied to one being opened: the
+ * surface builder, 3D preview and STL/template exports all read spline arches
+ * directly, and a recipe reaching Export without passing through here would be
+ * interpolated from legacy coordinates and quietly cut wrong.
  */
 export function normalizeArchingParams(p: EnricoCerutiParams | undefined | null): void {
   if (!p?.arching) return;
@@ -198,13 +193,11 @@ export type CrossArchResolver = (y: number) => CrossArchSides;
 
 /**
  * Splits one shape into its per-side pair: `left`/`right` when the plate is
- * asymmetric (falling back to the shared `d`/`pct` for a side not populated
- * yet — e.g. a station added before the toggle was flipped), otherwise both
- * sides share `d`/`pct`. The trochoid's peak is always exactly zero-slope
- * regardless of d/pct (see {@link cycloidEdgeSlope}'s doc), so left and right
- * halves built from different shapes still meet the center height without a
- * seam — there is no extra blending to do beyond picking which pair applies
- * on which side.
+ * asymmetric, falling back to the shared `d`/`pct` for a side not populated yet
+ * (a station added before the toggle was flipped). The trochoid's peak is
+ * always zero-slope regardless of d/pct, so halves built from different shapes
+ * still meet at the center without a seam — no blending needed beyond picking
+ * which pair applies where.
  */
 function crossShapeSides(shape: CrossArchShape, asymmetric: boolean): CrossArchSides {
   const shared: CrossArchSide = { d: shape.d, pct: shape.pct };
@@ -245,16 +238,14 @@ export function normalizeCrossArchStations(
 }
 
 /**
- * Builds the cross-arch shape track along the body once, for repeated querying
- * — the surface height field samples it per grid row, so the interpolators are
- * constructed here rather than per query.
+ * Builds the cross-arch shape track along the body once, for repeated querying —
+ * the surface height field samples it per grid row.
  *
- * With no stations this is a constant function (the plate's base shape), which
- * is exactly the behaviour before stations existed. With stations, each of
- * d/pct ramps from the base at y=0, through every station, and back to the base
- * at y=bodyHeight, via the same shape-preserving monotone spline the long arch
- * uses: it cannot overshoot between knots, so an interpolated d/pct can never
- * swing outside the range the maker actually entered.
+ * With no stations this is a constant function (the plate's base shape). With
+ * stations, d/pct each ramp from the base at y=0, through every station, and
+ * back to the base at y=bodyHeight, via the same shape-preserving monotone
+ * spline the long arch uses — it cannot overshoot between knots, so an
+ * interpolated d/pct never swings outside the range the maker entered.
  */
 export function makeCrossArchResolver(cross: CrossArchParams, bodyHeight: number): CrossArchResolver {
   const asymmetric = !!cross.asymmetric;
@@ -331,11 +322,10 @@ export function calculateCrossArchTop(p: EnricoCerutiParams, y: number, side: 't
 
 /**
  * Asymmetric counterpart of {@link buildCycloidPathAcross}: samples the
- * cross-arch height at even physical-x steps (rather than even parametric
- * steps, since a single trochoid parametrisation no longer spans the whole
- * curve) via {@link cycloidZAt}, using `left`'s shape for x<0 and `right`'s
- * for x≥0. Both halves reach exactly `hEff` at x=0 regardless of how
- * differently their d/pct are set — see {@link resolveCrossArchSides}.
+ * cross-arch height at even physical-x steps rather than even parametric ones,
+ * since a single trochoid parametrisation no longer spans the whole curve.
+ * Uses `left`'s shape for x<0 and `right`'s for x≥0; both halves reach exactly
+ * `hEff` at x=0 however differently their d/pct are set.
  */
 function buildCycloidPathAcrossAsym(
   hEff: number, halfSpan: number, zBase: number, sign: 1 | -1,

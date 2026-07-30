@@ -21,10 +21,9 @@ const PREVIEW_COLOR = '#2563eb';
  * Either way, the third click's angle (not its distance) fixes where the arc
  * ends. State only advances in onPointerDown — onPointerMove is preview-only.
  *
- * Of the two arcs that share the same start/end boundary points, the shorter (<=180°) one
- * is preferred by default — holding the angle-lock modifier (Shift) while placing the third
- * point takes the longer one instead, mirroring how Shift already means "the other/alternate
- * behavior" for line-drawing's angle lock.
+ * Of the two arcs sharing the same start/end boundary points, the shorter (<=180°) one is
+ * preferred by default; Shift while placing the third point takes the longer one, matching
+ * Shift's "the other behavior" meaning elsewhere.
  */
 export class ArcTool implements DraftTool {
   private stage: ArcStage = 'idle';

@@ -24,9 +24,9 @@ import { calculateLongArch, CrossArchResolver, CrossArchSides, defaultCrossArchP
 /** Precomputed geometry for evaluating a plate's height field. Rebuild on param change, reuse across queries. */
 export interface PlateSurfaceModel {
     /**
-     * The plate edge (outer path) as a sampled closed loop. Chords come from
-     * this polyline, not the offset arcs: the corner tips are cubic Béziers
-     * that arc-only queries miss entirely, voiding the corner-band stations.
+     * The plate edge as a sampled closed loop. Chords come from this polyline,
+     * not the offset arcs — the corner tips are cubic Béziers that arc-only
+     * queries miss entirely.
      */
     outerPlate: Pt[];
     /** Platform outer boundary (plan mm), sampled as a closed loop. */
@@ -39,8 +39,7 @@ export interface PlateSurfaceModel {
     arch: ArchCurve;
     /**
      * Cross-arch shape at a body station, left (x<0) and right (x≥0) halves.
-     * Built once here because the interpolators behind it are shared by every
-     * query; a constant function unless the plate has stations set.
+     * A constant function unless the plate has stations set.
      */
     crossAt: CrossArchResolver;
     edgeDepth: number;
@@ -50,8 +49,8 @@ export interface PlateSurfaceModel {
     zBase: number;
     /**
      * Direction the relative height field folds into absolute Z: top plate grows
-     * up (+1), back plate grows down (−1). The field math (peak positive, channel
-     * negative) is identical for both plates; only the placement flips.
+     * up (+1), back grows down (−1). The field math is identical for both; only
+     * the placement flips.
      */
     signZ: 1 | -1;
 }
@@ -90,9 +89,8 @@ export interface StationChords {
     /** Sorted x-crossings of the platform outer loop at this station (land/channel split). */
     landCrossings: number[];
     /**
-     * Long-arch centerline height at this station. Hoisted here because it is
-     * x-independent but iterative to evaluate (catenary/cycloid inversion) —
-     * per-point evaluation dominated the contour grid.
+     * Long-arch centerline height at this station. Hoisted because it is
+     * x-independent but iterative to evaluate (catenary/cycloid inversion).
      */
     archH: number;
     /** Cross-arch shape at this station — hoisted for the same reason as archH. */
@@ -100,13 +98,11 @@ export interface StationChords {
 }
 
 /**
- * The fluting inner half-chord at station `y`. Arc-exact when available: same
- * query the cross arch spans, so the channel meets the takeoff point by
- * construction. Falls back to the sampled polyline at corner-band stations where
- * the arc-only query misses the cubic Bézier tips — without this,
- * calculateFlutingSectionTop would treat those stations as cap stations and
- * sweep a full-width channel profile over the arch region, creating strange
- * shapes.
+ * The fluting inner half-chord at station `y`. Arc-exact when available — the
+ * same query the cross arch spans, so the channel meets the takeoff point by
+ * construction. Falls back to the sampled polyline at corner-band stations,
+ * where the arc-only query misses the cubic Bézier tips and callers would
+ * otherwise mistake them for cap stations.
  */
 function flutingInnerHalfAt(p: EnricoCerutiParams, model: PlateSurfaceModel, y: number): number | null {
     return flutingHalfWidthAtY(p, y)
@@ -118,8 +114,6 @@ function flutingInnerHalfAt(p: EnricoCerutiParams, model: PlateSurfaceModel, y: 
  * for a station whose fluting inner half-chord is `fi`, long-arch centerline
  * height is `archH`, and cross-arch shape is `cross`. The takeoff sits at
  * −edgeDepth; a degenerate cap station (no arch height) stays flat there.
- * Uses `cross.left` for x<0 and `cross.right` for x≥0 — identical when the
- * plate's cross arch is symmetric, since both resolve to the same shape.
  */
 function crossArchZAt(model: PlateSurfaceModel, fi: number, archH: number, x: number, cross: CrossArchSides): number {
     if (archH <= 0) return -model.edgeDepth;
@@ -170,11 +164,9 @@ function insideCrossings(x: number, xs: number[]): boolean {
 const CHANNEL_SLOPE_PROBE_EPS = 0.3; // mm inward from the fluting inner boundary to sample the arch's takeoff slope
 
 /**
- * The cross-arch's own edge slope at a station — today's channel target, kept as
- * the fallback where the directional probe can't land a clean arch sample. Same
- * hEff/span the arch branch builds its cycloid from; 0 at cap/degenerate stations.
- * `atLeft` picks `cross.left` vs `cross.right`; both resolve identically unless
- * the plate's cross arch is asymmetric.
+ * The cross-arch's own edge slope at a station — the fallback for where the
+ * directional probe can't land a clean arch sample. Same hEff/span the arch
+ * branch builds its cycloid from; 0 at cap/degenerate stations.
  */
 function crossEdgeSlopeFallback(
     model: PlateSurfaceModel, fi: number | null, archH: number, cross: CrossArchSides, atLeft: boolean,
@@ -197,28 +189,22 @@ function archSampleZAt(p: EnricoCerutiParams, model: PlateSurfaceModel, x: numbe
 
 /**
  * The arch surface's slope at the fluting inner boundary, measured along the
- * boundary's inward normal — the direction the channel profile actually meets
- * the arch. This is the slope the channel's gouge arc must be tangent to so it
- * meets the arch tangentially in 3D — along the bouts it equals the cross-arch
- * edge slope, at the caps the long-arch slope, and it blends around the corners
- * without a seam. It picks up both the cross (∂x) and long (∂y) contributions at
- * once.
+ * boundary's inward normal — the slope the channel's gouge arc must be tangent
+ * to so it meets the arch tangentially in 3D. Picks up both the cross (∂x) and
+ * long (∂y) contributions at once, so it blends around the corners seamlessly.
  *
- * The probe direction is `innerPt − queryPt`: for a channel point strictly
- * outside the inner loop, that vector is the loop's inward normal (nearest-point
- * property), and it reliably points into the arch even at the high-curvature
- * caps — where the inter-loop chord would skew and miss the narrow arch sliver,
- * seaming cap points onto the cross-arch fallback.
+ * Two wrinkles. The probe direction is `innerPt − queryPt` (the loop's inward
+ * normal by the nearest-point property), which still points into the arch at the
+ * high-curvature caps where an inter-loop chord would skew and miss. And the
+ * finite difference is taken between two points *inside* the arch (ε and 2ε past
+ * the boundary), never the boundary itself — the arch sits at −edgeDepth on the
+ * boundary but rises from 0 just inside, so a boundary-anchored difference would
+ * fold that takeoff step into the slope.
  *
- * The finite difference is taken between two points *inside* the arch (ε and 2ε
- * past the boundary), never the boundary itself: the arch sits at −edgeDepth on
- * the boundary but rises from 0 just inside, so a boundary-anchored difference
- * would fold that edgeDepth takeoff step into the slope. Differencing two
- * interior samples cancels it, leaving the arch's genuine rise. Null when a
- * probe steps outside the arch region, where the caller falls back to the
+ * Null when a probe steps outside the arch region; the caller falls back to the
  * cross-arch slope.
  */
-function archTransverseSlopeAt(
+function archTransverseSlopeAt( 
     p: EnricoCerutiParams, model: PlateSurfaceModel, innerPt: Pt, queryPt: Pt,
 ): number | null {
     const dx = innerPt.x - queryPt.x, dy = innerPt.y - queryPt.y;
@@ -304,14 +290,13 @@ export function calculateFlutingSectionTop(p: EnricoCerutiParams, model: PlateSu
 
 /**
  * The long-arch section's fluting recurve at both body ends, sampled straight
- * from the plate surface along the centerline (x = 0). The long-arch panel draws
- * this so its channel is exactly what the 3D surface carries — there is no
- * separate slope reconstruction to drift from the surface when edgeDepth ≠ 0.
+ * from the plate surface along the centerline (x = 0), so the panel's channel is
+ * exactly what the 3D surface carries with no separate slope reconstruction to
+ * drift from it.
  *
  * Long-arch section coordinates (canvas X = plate depth Z, canvas Y = body
- * length) — the transpose of {@link calculateFlutingSectionTop}'s cross-section
- * layout. Returns null when no channel band exists (fluting unconfigured, or the
- * inner and outer insets coincide).
+ * length) — the transpose of {@link calculateFlutingSectionTop}. Null when no
+ * channel band exists.
  */
 export function calculateLongArchSectionFluting(
     p: EnricoCerutiParams, model: PlateSurfaceModel,
@@ -344,14 +329,10 @@ export function calculateLongArchSectionFluting(
 /**
  * Full-width surface profile at station `y` — arch hump, fluting channel, and
  * flat edge land in one continuous sweep from edge to edge, in absolute (x, Z)
- * coordinates. Unlike {@link calculateFlutingSectionTop}, which only traces the
- * channel/land portion (meant to be paired with {@link calculateCrossArchTop}'s
- * hump when rendering), this sweeps the whole half-width in a single pass since
- * {@link topSurfaceZAt} already classifies arch/channel/land internally.
+ * coordinates. Unlike {@link calculateFlutingSectionTop}, which traces only the
+ * channel/land portion, this sweeps the whole half-width in one pass.
  *
- * `halfOverride` sweeps only to that half-width instead of the full outer edge
- * — {@link calculateCrossArchTemplatesForSide} passes the fluting inner
- * half-chord so the arch-only cutout templates stop short of the channel.
+ * `halfOverride` stops the sweep short of the full outer edge.
  */
 export function computeArchSectionProfile(
     p: EnricoCerutiParams, model: PlateSurfaceModel, y: number, stepMm = 0.25, halfOverride?: number,
@@ -430,22 +411,14 @@ function stackTemplates(shapes: TemplateShape[]): TemplateShape[] {
 
 /**
  * The cross-arch template blanks for one plate side, one per `stationYs`
- * position, each traced from {@link computeArchSectionProfile} and closed into
- * a blank via {@link closeProfileToBlank}. Clipped to the fluting inner
- * half-chord rather than the full plate edge — these check the arch's dome
- * alone, which is carved before the fluting channel and by a different tool, so
- * the channel/flat-edge-land portion {@link computeArchSectionProfile} would
- * otherwise include has no place on this template. A station beyond the fluting
- * (fluting unconfigured, or a cap station with none) falls back to the full
- * outer half, same as before fluting is clipped.
+ * position. Clipped to the fluting inner half-chord rather than the full plate
+ * edge: these check the arch's dome alone, which is carved before the fluting
+ * channel and by a different tool. A station with no fluting falls back to the
+ * full outer half.
  *
- * `model.signZ` (+1 top, −1 back) picks which side of the (already-mirrored)
- * cutout curve the backing attaches to — this is the only value that keeps
- * material thin at the arch's peak and thick at the flat edges; the two
- * plates' mirrored curves are shaped oppositely (valley vs. hump), so they
- * need opposite backing sides to get the same thin-at-peak result. The
- * returned `backing` coordinate places the label a half margin in from that
- * edge — always in solid material.
+ * `model.signZ` picks which side of the cutout curve the backing attaches to —
+ * the two plates' mirrored curves are shaped oppositely (valley vs. hump), so
+ * they need opposite backing sides to both come out thin at the peak.
  */
 function calculateCrossArchTemplatesForSide(
     p: EnricoCerutiParams, model: PlateSurfaceModel, sideLabel: string, stationYs: number[],
@@ -469,12 +442,10 @@ function calculateCrossArchTemplatesForSide(
 }
 
 /**
- * Rotates a template blank 180° about the origin — unlike a mirror, a point
- * rotation preserves concavity, so it re-orients which edge faces "up" for
- * presentation without flipping the (already-correct) cutout curve back to
- * the wrong hand. The label's own position rotates along with it, but its
- * `labelRotation` is untouched — text is always rendered upright at its
- * position regardless of the shape's rotation, so it stays readable.
+ * Rotates a template blank 180° about the origin, re-orienting which edge faces
+ * "up" for presentation. A rotation, not a mirror: it preserves concavity, so
+ * the cutout curve keeps its correct hand. `labelRotation` is untouched — text
+ * renders upright regardless of the shape's rotation.
  */
 function rotateTemplateShape180(shape: TemplateShape): TemplateShape {
     return {
@@ -485,19 +456,13 @@ function rotateTemplateShape180(shape: TemplateShape): TemplateShape {
 }
 
 /**
- * Cross-arch template blanks for both plates, stacked into one combined,
- * non-overlapping layout — back plate's row below the top plate's, each
- * station ordered by increasing body-length position. Both plates present
- * with the flat backing edge up: the back plate's already lands there
- * (model.signZ = −1), while the top plate's naturally lands at the bottom, so
- * its blanks are rotated 180° after the fact ({@link rotateTemplateShape180}).
- * Returns `[]` if the arching modules haven't been configured yet.
+ * Cross-arch template blanks for both plates, stacked into one non-overlapping
+ * layout. Both plates present with the flat backing edge up; the top plate's
+ * naturally lands at the bottom, so its blanks are rotated 180° after the fact.
  *
- * Each plate templates its own custom cross-arch stations when it has any —
- * exactly those positions, no others, since a maker who has already pinned
- * specific stations wants blanks for the shape they actually designed rather
- * than a generic evenly-spaced sweep that may miss it entirely. A plate with
- * no stations set falls back to the 5 evenly-spaced default positions.
+ * A plate with custom cross-arch stations gets blanks at exactly those
+ * positions — the maker wants the shape they designed, not a generic sweep that
+ * may miss it. Otherwise 5 evenly-spaced defaults.
  */
 export function calculateCrossArchTemplates(p: EnricoCerutiParams): TemplateShape[] {
     if (!p.arching) return [];
@@ -517,17 +482,11 @@ export function calculateCrossArchTemplates(p: EnricoCerutiParams): TemplateShap
 }
 
 /**
- * The two long-arch template blanks (top, back), traced directly from
- * {@link calculateLongArch}'s `topPath`/`backPath` (already the exact
- * centerline elevation curves, canvas X = Z, canvas Y = body length) and
- * closed into blanks via {@link closeProfileToBlank}, placed side by side.
- * Labels run rotated 90° along the strip's length, same backing-relative
- * placement as the cross-arch templates. Both present with the flat backing
- * edge on the left: the top plate's naturally lands there (direction = +1),
- * while the back plate's naturally lands on the right, so it's rotated 180°
- * after the fact — same {@link rotateTemplateShape180} used to re-orient the
- * top cross-arch templates, since a plain mirror would flip the cutout back
- * to convex. Returns `[]` if the arching modules haven't been configured yet.
+ * The two long-arch template blanks (top, back), traced from
+ * {@link calculateLongArch}'s centerline elevation curves and placed side by
+ * side. Labels run rotated 90° along the strip's length. Both present with the
+ * flat backing edge on the left, so the back plate's blank is rotated 180°
+ * after the fact.
  */
 export function calculateLongArchTemplates(p: EnricoCerutiParams): TemplateShape[] {
     if (!p.arching) return [];
@@ -545,22 +504,6 @@ export function calculateLongArchTemplates(p: EnricoCerutiParams): TemplateShape
     return rowTemplates(templates);
 }
 
-/**
- * Contour (topo) map of the top surface: level curves every `stepMm` of height
- * relative to the plate outer surface, computed on a `gridMm` plan grid via
- * d3-contour (marching squares). Returns plan-view path strings translated by
- * `xOffset`/`yOffset` so the map can sit beside a sibling plate's map and stack
- * above the section view on the same canvas.
- *
- * The height field is relative to the plate outer surface (peak positive,
- * channel negative) for both plates, so the level curves are plate-agnostic —
- * only the on-canvas offset differs between top and back.
- *
- * Out-of-outline grid cells are padded below every positive threshold but
- * above every non-positive one: positive levels close naturally at the
- * outline, while channel levels (≤ 0) ring the trough band instead of
- * uselessly tracing the outline.
- */
 /** One contour level's rings in local plate (x, y) coordinates — no canvas offset applied. */
 export interface ArchContourLevel {
     level: number;
@@ -568,13 +511,10 @@ export interface ArchContourLevel {
 }
 
 /**
- * The expensive, rotation-independent part shared by both consumers: builds
- * the height-field grid, runs marching squares, and clips every ring to the
- * exact instrument outline. Returns local plate coordinates so callers can
- * either flatten straight to a plan-view path (`computeArchContours`) or
- * project each ring through an arbitrary rotation (`computeArchContourRings`,
- * used by the 3D contour view — every ring point sits at z = its level, so
- * projecting them is exactly like projecting a wireframe rib).
+ * The expensive, rotation-independent part shared by both consumers: builds the
+ * height-field grid, runs marching squares, and clips every ring to the exact
+ * instrument outline. Returns local plate coordinates so callers can either
+ * flatten to a plan-view path or project each ring through a rotation.
  */
 function computeArchContourRingsRaw(
     p: EnricoCerutiParams,
@@ -646,20 +586,10 @@ function computeArchContourRingsRaw(
 }
 
 /**
- * Contour (topo) map of the top surface: level curves every `stepMm` of height
- * relative to the plate outer surface, computed on a `gridMm` plan grid via
- * d3-contour (marching squares). Returns plan-view path strings translated by
- * `xOffset`/`yOffset` so the map can sit beside a sibling plate's map and stack
- * above the section view on the same canvas.
- *
- * The height field is relative to the plate outer surface (peak positive,
- * channel negative) for both plates, so the level curves are plate-agnostic —
- * only the on-canvas offset differs between top and back.
- *
- * Out-of-outline grid cells are padded below every positive threshold but
- * above every non-positive one: positive levels close naturally at the
- * outline, while channel levels (≤ 0) ring the trough band instead of
- * uselessly tracing the outline.
+ * Contour (topo) map of the plate surface: level curves every `stepMm` of
+ * height, returned as plan-view path strings translated by `xOffset`/`yOffset`
+ * so two plates' maps can sit side by side on one canvas. The level curves
+ * themselves are plate-agnostic — only the offset differs between top and back.
  */
 export function computeArchContours(
     p: EnricoCerutiParams,
@@ -698,10 +628,8 @@ export function computeArchContourRings(
 /**
  * Binary STL of one plate as machined: the height-field surface on top, flat
  * base at z = 0 (the blank's gluing face on the CNC bed), vertical skirt at the
- * outline. Coordinates in mm, x/y as in plan view. The height field is
- * plate-agnostic (peak positive above the gluing face), so the back plate is
- * machined the same way — only the thickness and the button-bearing outline
- * differ, both carried by `side`/`model`.
+ * outline. Coordinates in mm, x/y as in plan view. Both plates machine the same
+ * way — only thickness and the button-bearing outline differ.
  */
 export function buildPlateStl(p: EnricoCerutiParams, model: PlateSurfaceModel, side: 'top' | 'bottom' = 'top', gridMm = 0.5): ArrayBuffer {
     const thickness = p.arching![side].thickness;

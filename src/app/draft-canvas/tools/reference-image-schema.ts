@@ -5,16 +5,14 @@ import { ImageAssetStore } from './image-asset-store';
 /**
  * The boundary between the recipe *file format* and the canvas's own object model.
  *
- * Recipes — both the built-in templates in ceruti-templates.ts and every `.json` a user has
- * saved — describe reference images as a `referenceImages` array of `NamedReferenceImage`, with
- * the pixels inline as an `href` (a `data:` URL for an upload, a path like `/StradGoetz.jpg` for
- * an image a template ships with). The canvas works in `ImageShape`s that carry only an
- * `imageRef` into ImageAssetStore.
+ * Recipes describe reference images as a `referenceImages` array of `NamedReferenceImage`, pixels
+ * inline as an `href` (a `data:` URL for an upload, a path like `/StradGoetz.jpg` for one a
+ * template ships with). The canvas works in `ImageShape`s carrying only an `imageRef` into
+ * ImageAssetStore.
  *
  * Keeping that translation in one place is what lets the file format stay frozen while the canvas
- * side was rewritten: no template needed editing, old files still load (including the long-
- * deprecated singular `referenceImage`), and saves still emit exactly the same field, so a file
- * written today still opens in an older build.
+ * side changes: old files still load (including the deprecated singular `referenceImage`), and
+ * saves emit the same field, so a file written today still opens in an older build.
  */
 
 /** The subset of a recipe this module reads. Structural, so it accepts RecipeInterface, any

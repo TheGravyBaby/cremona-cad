@@ -120,14 +120,8 @@ export function buildPolylineIndex(poly: Pt[], cellSize = 6): PolylineIndex {
  * Chebyshev distance from that cell to the grid box, and 0 for a query already inside it.
  *
  * Rings below this one lie entirely outside the grid, so scanning them finds nothing while
- * still costing O(r) bounds checks each. Skipping straight to this ring is what keeps a query
- * far outside the grid from spending O(ring²) doing nothing: the early-out in the scans below
- * can't fire while `best` is still Infinity, so without this a distant point walks every empty
- * ring in between.
- *
- * This pairs with the scans clamping each ring to the grid rather than walking its whole
- * perimeter — together they cut the work on the mixed interior/exterior query set in
- * draftMath.spec.ts by ~25×, from tens of millions of cell visits to about a million.
+ * still costing O(r) bounds checks each. The early-out in the scans below can't fire while
+ * `best` is Infinity, so without this a distant query walks every empty ring in between.
  */
 function ringReachingGrid(ci: number, cj: number, cols: number, rows: number): number {
   const outX = Math.max(0 - ci, ci - (cols - 1), 0);
@@ -692,10 +686,8 @@ export function findJoiningArcsFromTangents(P1: Pt, T1: number, P2: Pt, T2: numb
 /**
  * Every valid equal-radius biarc root for this P1/T1/P2/T2 pair (the quadratic
  * 2R²(1+k) + 2R(b−a) − A² = 0 can have up to two positive solutions — a tight one and a more
- * graceful/open one). Exposed separately from findJoiningArcsFromTangents (which only ever
- * exposed the smaller root) so callers that need to compare candidates — e.g. JoinArcTool,
- * picking whichever combination of root and invert flags actually gives the small, sensible
- * connector rather than an oversized loop — can see all of them instead of just one.
+ * graceful/open one). Separate from findJoiningArcsFromTangents, which only exposes the
+ * smaller root, so callers can compare candidates across roots and invert flags.
  */
 function solveBiarcRoots(P1: Pt, T1: number, P2: Pt, T2: number, invert1: boolean, invert2: boolean): { R: number; N1: Pt; N2: Pt }[] {
   const t1 = invert1 ? T1 + Math.PI : T1;
@@ -780,14 +772,12 @@ export function solveCatenaryA(H: number, L: number): number {
  * 1-D shape-preserving cubic spline (Fritsch–Carlson monotone Hermite, a.k.a.
  * PCHIP): given strictly-increasing `ys[]` and values `zs[]`, returns z(y).
  *
- * Chosen over a natural cubic spline because it never overshoots the data. A
- * natural spline enforces C² continuity, and buys it by rising above the knots
- * it passes through: three knots at equal height following a steep rise come
- * out as a hump-dip-hump ripple rather than the flat the values describe. Here
- * the knot slopes are instead derived from the neighbouring secants and clamped
- * to their sign, so a run of equal values gets zero slope at each end and the
- * segment between them is genuinely flat. The cost is C¹ rather than C²
- * continuity — curvature can step at a knot, which reads as a soft crease only
+ * Chosen over a natural cubic spline because it never overshoots the data: a
+ * natural spline buys its C² continuity by rising above the knots it passes
+ * through, turning three equal-height knots after a steep rise into a
+ * hump-dip-hump ripple. Here knot slopes come from the neighbouring secants and
+ * are clamped to their sign, so a run of equal values is genuinely flat. The
+ * cost is C¹ — curvature can step at a knot, reading as a soft crease only
  * where the data itself turns sharply.
  */
 export function makeMonotoneSpline(ys: number[], zs: number[]): (y: number) => number {

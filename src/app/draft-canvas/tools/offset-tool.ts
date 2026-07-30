@@ -71,16 +71,13 @@ function boundaryPoints(shape: DraftShape): { pt: Pt; tangentAngle: number }[] |
 }
 
 /**
- * Each shape's own "positive offset" convention (see tryOffsetShape) is derived from its own
- * stored forward direction — but two connected shapes only offset into one continuous curve
- * together when that convention points the same physical way at their shared joint. Whether it
- * does depends on how the two shapes happen to be chained: one's end meeting the other's start
- * (their forward tangents there point the same way) offsets cleanly with no adjustment; both
- * ends or both starts meeting at a joint (forward tangents point opposite ways, since both
- * shapes are "arriving" or both "leaving") needs one shape's sign flipped relative to the
- * other. This walks the selection's connectivity graph (shapes sharing an endpoint) and returns
- * each shape's sign relative to an arbitrary reference in its connected component, so a single
- * offset distance can be rebased (see resolveDistances) and applied uniformly across the group.
+ * Each shape's "positive offset" convention (see tryOffsetShape) comes from its own stored
+ * forward direction, but two connected shapes only offset into one continuous curve when that
+ * convention points the same physical way at their shared joint. End-meets-start offsets cleanly;
+ * end-meets-end or start-meets-start needs one shape's sign flipped, since both shapes are then
+ * "arriving" or both "leaving". This walks the selection's connectivity graph and returns each
+ * shape's sign relative to an arbitrary reference in its component, so one offset distance can be
+ * rebased (see resolveDistances) and applied uniformly.
  */
 function computeSignByShapeId(shapes: DraftShape[]): Map<string, number> {
   const boundaries = new Map<string, { pt: Pt; tangentAngle: number }[]>();
@@ -145,17 +142,14 @@ function tryOffsetShape(shape: DraftShape, distance: number): DraftShape | null 
 }
 
 /**
- * Acts on the current selection instead of drawing new shapes. Select shapes in Select mode,
- * then activate Offset: move the mouse to preview a new offset copy of every selected shape live (magnitude
- * + side both driven by whichever selected shape the cursor is nearest to), click to commit,
- * or type an exact distance and press Enter. Non-destructive — originals are untouched, and the
- * tool stays active afterward so the same selection can be offset again at a new distance.
+ * Acts on the current selection instead of drawing new shapes. Move the mouse to preview an
+ * offset copy of every selected shape (magnitude and side both driven by whichever selected shape
+ * the cursor is nearest), click to commit, or type an exact distance and press Enter.
+ * Non-destructive, and the tool stays active so the selection can be offset again.
  *
- * A connected run of shapes (sharing endpoints, e.g. a chain built with the chain tool) offsets
- * as one continuous curve — see computeSignByShapeId for how each shape's sign is worked out
- * relative to its neighbors. Known limitation: a joint's continuity/sign is preserved but its
- * exact tangency is not — the offset arcs will meet, but the curvature match isn't re-derived, so
- * a very tight radius next to a very loose one can visibly kink.
+ * A connected run of shapes offsets as one continuous curve — see computeSignByShapeId. Known
+ * limitation: a joint's continuity is preserved but its exact tangency is not, so a very tight
+ * radius next to a very loose one can visibly kink.
  */
 export class OffsetTool implements DraftTool {
   readonly id = 'offset';

@@ -333,10 +333,8 @@ export function unifyTwoConnectedPaths(path1: string, path2: string): string {
 }
 
 /**
- * Orders and joins a set of connected SVG segments into one path string.
- *
- * It greedily finds the next segment that can connect to either end of the
- * current chain and stitches with `concatSvgPaths`.
+ * Orders and joins a set of connected SVG segments into one path string,
+ * greedily attaching whichever segment can connect to either end of the chain.
  */
 export function unifyConnectedSvgPaths(paths: string[]): string {
   if (paths.length === 0) return '';
@@ -797,11 +795,10 @@ export function translatePath(path: string, dx: number, dy: number): string {
 }
 
 /**
- * Rotates an absolute SVG path string 180° about the origin (negates every
- * coordinate). Unlike a mirror/reflection, a point rotation preserves
- * concavity — it's the safe way to re-orient a shape (e.g. which edge of a
- * template faces "up") without flipping a carefully-mirrored cutout curve
- * back into its original, wrong-handed shape. Supports M, L, C, A, Q, and Z.
+ * Rotates an absolute SVG path string 180° about the origin. Unlike a mirror, a
+ * point rotation preserves concavity, so it re-orients a shape without flipping
+ * a carefully-mirrored cutout curve back to the wrong hand. Supports M, L, C,
+ * A, Q, and Z.
  */
 export function rotatePath180(path: string): string {
   return path.replace(/([A-DF-Za-df-z])([^A-DF-Za-df-z]*)/g, (_, cmd: string, args: string) => {
@@ -860,30 +857,23 @@ export function pathsBounds(paths: string[]): { minX: number; minY: number; maxX
 }
 
 /**
- * Close an open arch profile into a rectangular *negative* template blank: a
- * maker checks a carved (convex) arch by laying a matching concave cutout
- * against it and reading the light gaps, so the raw profile — a direct trace
- * of the wood's own convex surface — is mirrored about its own height axis
- * *first*, and the backing edge is built against that mirrored curve, not the
- * original. (Mirroring the already-closed positive shape instead just moves
- * the backing to the wrong side, leaving the solid convex again.)
+ * Close an open arch profile into a rectangular *negative* template blank — a
+ * maker checks a carved convex arch by laying a matching concave cutout against
+ * it and reading the light gaps. The profile is mirrored about its height axis
+ * *first* and the backing edge built against the mirrored curve; mirroring the
+ * already-closed shape instead just moves the backing to the wrong side.
  *
- * `heightAxis` selects which coordinate carries the "height" the curve varies
- * over — 'y' for a cross-arch profile (x = body position, y = absolute Z, per
- * {@link computeArchSectionProfile}), 'x' for a long-arch profile (x =
- * absolute Z, y = body length, per {@link buildCatenaryPath}'s convention).
+ * `heightAxis` selects which coordinate carries the height the curve varies
+ * over: 'y' for a cross-arch profile, 'x' for a long-arch one.
  *
- * `direction` must match the plate's sign/signZ convention (+1 top, −1 back):
- * on the *mirrored* curve, the arch's peak sits on the low side of
- * `heightAxis` for the top plate but the high side for the back plate. The
- * backing edge is placed `margin` past that peak, so material stays thin near
- * the peak (where the template must recess to receive it) and thicker toward
- * the flat edges — never landing past the peak on the wrong side.
+ * `direction` must match the plate's signZ convention (+1 top, −1 back) — on
+ * the mirrored curve the peak sits on opposite sides for the two plates. The
+ * backing edge is placed `margin` past the peak, keeping material thin there
+ * and thicker toward the flat edges.
  *
- * Returns the backing edge's constant coordinate and the curve's position-axis
- * midpoint alongside the closed path, so a caller can place a label at
- * `margin/2` in from the backing — guaranteed solid material everywhere,
- * unlike a naive bounding-box center which can land right on the cutout.
+ * Also returns the backing edge's constant coordinate and the curve's
+ * position-axis midpoint, so a caller can place a label `margin/2` in from the
+ * backing — always solid material, unlike a bounding-box center.
  */
 export function closeProfileToBlank(path: string, heightAxis: 'x' | 'y', direction: 1 | -1 = 1, margin = 10): { path: string; backing: number; positionMid: number } {
   const pts = samplePathToPolyline(path, 0.25);
@@ -945,11 +935,10 @@ export function buildCatenaryPath(
  * normalised (x, z) both in [0, 1] for the fractional position `frac ∈ [0, 1]`.
  *
  * `pct ∈ (0, 1]` selects the central fraction of the full cusp-to-cusp arch
- * (t ∈ [0, 2π]) that is stretched across the span. pct=1 is the full arch,
- * whose edges leave the baseline tangent (flat takeoff, slope 0). Smaller pct
- * clips the flat cusp ends and stretches a steeper central window, so the edge
- * takeoff slope becomes nonzero — useful where a fluting channel must meet the
- * arch at more than a grazing angle. The peak stays centred at frac=0.5.
+ * (t ∈ [0, 2π]) stretched across the span. pct=1 is the full arch, whose edges
+ * leave the baseline tangent (flat takeoff). Smaller pct clips the flat cusp
+ * ends for a nonzero takeoff slope, so a fluting channel can meet the arch at
+ * more than a grazing angle. The peak stays centred at frac=0.5.
  */
 function trochoidNorm(frac: number, d: number, pct: number): { x: number; z: number } {
   const t0 = (1 - pct) * Math.PI;
@@ -1106,13 +1095,11 @@ export function cycloidEdgeSlope(hEff: number, span: number, d: number, pct = 1)
 /**
  * The gouge arc behind the fluting profile: the unique circle through
  * A = (0, 0) at the platform outer boundary and B = (width, −edgeDepth) at the
- * fluting inner boundary, tangent to `archEdgeSlope` — the cross arch's own
- * takeoff slope — at B. Two points plus one tangent fully determine a circle,
- * so there's no free trough position left to choose; the shape follows
- * directly from edgeDepth, width, and the arch it has to join. The arc still
- * meets the flat edge land at A with a small crease, like a fresh gouge pass
- * — only the arch end is tangent. Returns null for a degenerate width or
- * where B − A runs parallel to the tangent at B (no circle solves).
+ * fluting inner boundary, tangent to `archEdgeSlope` at B. Two points plus a
+ * tangent fully determine the circle, so there is no free trough position to
+ * choose. Only the arch end is tangent — the arc meets the flat edge land at A
+ * with a small crease, like a fresh gouge pass. Null for a degenerate width, or
+ * where B − A runs parallel to the tangent at B.
  */
 export function flutingArc(edgeDepth: number, width: number, archEdgeSlope: number):
   { cx: number; cz: number; r: number } | null {
@@ -1130,16 +1117,15 @@ export function flutingArc(edgeDepth: number, width: number, archEdgeSlope: numb
  * Fluting channel transverse profile: height relative to the plate outer
  * surface at normalized position u across the platform annulus (0 = platform
  * outer boundary, 1 = fluting inner boundary), whose physical width is `width`
- * mm. A single circular arc — the section a gouge sweep would cut — from
- * 0 at u=0 to −edgeDepth at u=1, tangent to the arch (`archEdgeSlope`) there.
- * When the arch's own takeoff isn't flat this arc dips below −edgeDepth
- * before rising back up to meet it — the classic recurve. Degenerate
- * channels fall back to the straight chord.
+ * mm. A single circular arc — the section a gouge sweep would cut — from 0 at
+ * u=0 to −edgeDepth at u=1, tangent to the arch (`archEdgeSlope`) there. When
+ * the arch's takeoff isn't flat the arc dips below −edgeDepth before rising
+ * back to meet it: the classic recurve. Degenerate channels fall back to the
+ * straight chord.
  *
- * When `flatPlatform` is set the channel isn't carved: the annulus stays flat
- * at the plate surface across its whole width, with a single vertical ledge at
- * the inner boundary (u = 1) dropping to the arch takeoff — the pre-channel
- * state a maker cuts the purfling on before gouging.
+ * `flatPlatform` leaves the channel uncarved — flat annulus with a vertical
+ * ledge at u = 1 dropping to the arch takeoff, the pre-channel state a maker
+ * cuts the purfling on before gouging.
  */
 export function flutingProfileZ(u: number, edgeDepth: number, width: number, archEdgeSlope: number, flatPlatform = false): number {
   if (u <= 0) return 0;
@@ -1175,10 +1161,10 @@ const SPLINE_PEAK_MARGIN  = 0.02;
  * Shared by the path builder, the height evaluator, and the panel's control
  * point guides so all three agree on where the knots ended up.
  *
- * Expects points already in the current format. An absent `mirror` here means an
- * unmirrored point, *not* a legacy one — recipes off disk are migrated at load
- * (see ceruti-arching's normalizeArchCurve), because only the loader can tell the
- * two apart.
+ * Expects points already in the current format: an absent `mirror` means an
+ * unmirrored point, *not* a legacy one. Recipes off disk are migrated at load
+ * (ceruti-arching's normalizeArchCurve), since only the loader can tell those
+ * apart.
  */
 export function archSplineKnots(
   hEff: number,

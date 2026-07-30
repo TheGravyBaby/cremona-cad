@@ -238,15 +238,10 @@ export interface ArchingParams {
 /**
  * The recipe's saved parameters — serialized verbatim into the file's `params`.
  *
- * Note the `Arc`/`Rectangle`-typed fields below (`button`, `bouts.*`, `outerCorners.*`). Those
- * are **class instances in memory but plain objects on disk**: a loaded file yields prototype-less
- * data, and ceruti-calcs.ts is what restores real instances by reassigning them through
- * `arcFromCircle*` / `offsetArcRadius` / `redefineArcCircle` before anything renders. That is the
- * only reason `Arc.degreeDiff` resolves in the corner and bout panels.
- *
- * So: a new field here is safe if it holds plain data. A field holding a class whose behavior
- * lives on the prototype is safe *only* if the calc pass reassigns it — otherwise it works until
- * someone saves and reopens. See the header note in models/types.ts.
+ * The `Arc`/`Rectangle`-typed fields below are class instances in memory but plain objects on
+ * disk, restored by ceruti-calcs.ts before anything renders. So a new field here is safe if it
+ * holds plain data; one holding a class whose behavior lives on the prototype is safe *only* if
+ * the calc pass reassigns it. See the header note in models/types.ts.
  */
 export interface EnricoCerutiParams {
   height: number;

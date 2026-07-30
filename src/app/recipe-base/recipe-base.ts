@@ -66,13 +66,12 @@ export abstract class RecipeComponentBase implements AfterViewInit {
   protected onRecipeAdopted(): void { }
 
   /**
-   * Hands a recipe's reference images to the canvas. This — plus syncReferenceImages() on the way
-   * back out — is the entire coupling between a recipe and the reference-image feature: the
-   * canvas owns placed images as ordinary shapes from here on, and `this.d.referenceImages` is
-   * just their serialized form (see reference-image-schema.ts). Templates and saved files carry
-   * that field unchanged, including the long-deprecated singular `referenceImage`.
+   * Hands a recipe's reference images to the canvas. This, plus syncReferenceImages() on the way
+   * back out, is the entire coupling between a recipe and the reference-image feature: the canvas
+   * owns placed images as ordinary shapes from here on, and `this.d.referenceImages` is just
+   * their serialized form (see reference-image-schema.ts).
    *
-   * Call this after any assignment to `this.d` that brings new reference images with it.
+   * Call after any assignment to `this.d` that brings new reference images with it.
    */
   protected loadReferenceImages(source: ReferenceImageSource): void {
     this.toolbox.loadImages(imageShapesFromRecipe(source, this.imageAssets));
@@ -137,11 +136,10 @@ export abstract class RecipeComponentBase implements AfterViewInit {
   /** Snapshot the current state onto the history stack.
    *
    * Everything ToolboxStore owns is left out — reference images and drawn shapes alike. That store
-   * keeps its own history (see onUndoRedoKeyDown), so snapshotting its state here would be both
-   * redundant and expensive: an uploaded image is a base64 payload, `toolboxState` is every shape
-   * on the canvas, and this stack holds up to 50 entries. `toolboxState` in particular is written
-   * onto `this.d` by saveToDisk and stays there, so without this it would ride along in every
-   * later snapshot as a stale copy. */
+   * keeps its own history (see onUndoRedoKeyDown), so snapshotting it here would be redundant and
+   * expensive across a 50-entry stack. `toolboxState` in particular is written onto `this.d` by
+   * saveToDisk and stays there, so it would otherwise ride along in every later snapshot as a
+   * stale copy. */
   pushHistory(): void {
     if (this._isRestoringHistory) return;
     // Discard any forward history when a new change is made

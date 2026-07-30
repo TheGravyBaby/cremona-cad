@@ -43,12 +43,11 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
   get backFluting(): FlutingChannelParams { return this.arching.bottom.fluting!; }
 
   /**
-   * Uncommitted station being previewed at the cursor, per plate. Editing a
-   * plate's Factor/Percent fields at a position that has no station yet writes
-   * here rather than to the base shape, and {@link paramsForRender} feeds it to
-   * the renderers as though it were real — so the maker sees the section they
-   * are dialling in before committing it. Never written to params: pressing Set
-   * Station is what makes it permanent, and moving the cursor discards it.
+   * Uncommitted station being previewed at the cursor, per plate. Editing
+   * Factor/Percent where no station exists yet writes here rather than to the
+   * base shape, and {@link paramsForRender} feeds it to the renderers as though
+   * it were real. Never written to params — Set Station makes it permanent,
+   * moving the cursor discards it.
    */
   private draft: { top: CrossArchStation | null; bottom: CrossArchStation | null } = { top: null, bottom: null };
 
@@ -293,11 +292,9 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
   /**
    * Params as the renderers should see them: the real ones, plus any open
    * preview folded in as though it were a committed station. Structurally
-   * shared apart from the two objects that have to differ, so the copy is cheap
-   * and everything the preview doesn't touch stays identity-equal. Never
-   * assigned back to `this.params` — the preview must not reach the recipe, and
-   * the scene's cache key (a stringify of what it is handed) picks the preview
-   * up on its own.
+   * shared apart from the two objects that must differ, so the copy is cheap
+   * and untouched branches stay identity-equal. Never assigned back to
+   * `this.params` — the preview must not reach the recipe.
    */
   private paramsForRender(): EnricoCerutiParams {
     const drafts = { top: this.draftFor('top'), bottom: this.draftFor('bottom') };

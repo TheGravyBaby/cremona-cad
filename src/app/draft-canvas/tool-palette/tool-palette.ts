@@ -97,13 +97,10 @@ export class ToolPaletteComponent implements OnInit, OnDestroy {
   // The three slot shape questions the template asks, delegated to the registry so the palette
   // never has to know whether a slot is a lone tool or an array of variants.
 
-  /** The tool a slot's button shows and activates. */
   faceOf(slot: ToolSlot): DraftTool { return this.toolRegistry.faceOf(slot); }
 
-  /** Everything listed in a slot's flyout popup. */
   variantsOf(slot: ToolSlot): DraftTool[] { return this.toolRegistry.variantsOf(slot); }
 
-  /** Whether to render a caret beside the slot's main button. */
   hasVariants(slot: ToolSlot): boolean { return this.toolRegistry.hasVariants(slot); }
 
   /** Activates whichever tool the slot's button is currently showing. */

@@ -117,17 +117,13 @@ export function drawShape(gRoot: RootGroup, gUI: RootGroup, shape: DraftShape, p
  *
  * Nested layers, innermost first:
  *  1. The `<image>`'s own `translate(0 h) scale(1 -1)` undoes gRoot's `scale(1,-1)` for this
- *     element only — SVG `<image>` has no way to render bottom-up, so without it every photo
- *     would appear upside down. This is a coordinate-system correction, not user-visible mirroring.
- *  2. When `mirrored`, a wrapping group flips the now-right-side-up content about a *world-space*
- *     vertical line through the image's own center (`2·center.x − x`, the standard mirror-about-a-
- *     line formula — no sandwiched translate/untranslate needed since only one axis is ever
- *     reflected). Applied inside the rotate group but outside the correction, so the mirror is a
- *     property of the image's content: rotating a mirrored image keeps it mirrored, exactly like
- *     rotating a printed photo you've turned face-down keeps it mirrored. Skipped entirely when
- *     unmirrored, rather than emitted as an inert identity transform.
- *  3. The rotate group turns the (possibly mirrored) box in world space, same as every other
- *     rotate-capable shape.
+ *     element only — SVG `<image>` can't render bottom-up, so without it every photo appears
+ *     upside down. A coordinate correction, not user-visible mirroring.
+ *  2. When `mirrored`, a wrapping group flips the content about a world-space vertical line
+ *     through the image's center (`2·center.x − x`). Inside the rotate group but outside the
+ *     correction, so the mirror is a property of the content — rotating a mirrored image keeps it
+ *     mirrored, like turning a face-down photo.
+ *  3. The rotate group turns the box in world space, same as every other rotate-capable shape.
  */
 export function drawImageShape(gRoot: RootGroup, shape: ImageShape, href: string): void {
   const center = imageCenter(shape);

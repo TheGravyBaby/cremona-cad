@@ -22,14 +22,11 @@ export type LineShape = ShapeBase & {
 
 /**
  * Counterclockwise-sweep convention: the arc runs CCW from `startAngle` to `endAngle`, so the
- * ordering of the two angles is what selects the minor vs major arc between the same pair of
- * boundary points — swapping them gives the *other* arc. See arcPathData in helpers/draftMath.ts,
- * and pickArcOrientation, which is how the tools let the user choose.
+ * ordering of the two angles selects minor vs major between the same pair of boundary points —
+ * swapping them gives the *other* arc. See arcPathData and pickArcOrientation in draftMath.ts.
  *
- * This is deliberately **not** the convention of models/types.ts's `Arc`, which stores the same
- * four numbers but always renders the minor arc and needs an out-of-band flag for the major one.
- * Converting from this type to that one is lossy past 180°; see the note on `Arc` for why the two
- * are kept apart.
+ * Deliberately **not** the convention of models/types.ts's `Arc`, which always renders the minor
+ * arc; converting this type to that one is lossy past 180°.
  */
 export type ArcShape = ShapeBase & {
   type: 'arc';
@@ -113,13 +110,10 @@ export type ImageShape = ShapeBase & {
    * Undefined means on, matching the old always-on behavior. */
   suppressWhite?: boolean;
   /**
-   * Mirrors the image content left-right about its own center — for a scan that came out
-   * reversed, or to compare a traced half against its opposite. There's deliberately no separate
-   * vertical mirror: combined with `rotationDeg` (already free), one mirror axis reaches every
-   * orientation a second axis would — mirroring twice is just a 180° rotation, and a vertical
-   * mirror is this same horizontal mirror plus a 180° rotation. Purely a rendering flag: the box
-   * (x/y/width/height/rotationDeg) is untouched, so mirroring doesn't move handles or change
-   * hit-testing. Undefined means unmirrored.
+   * Mirrors the image content left-right about its own center. No separate vertical mirror:
+   * combined with the already-free `rotationDeg`, one axis reaches every orientation a second
+   * would. Purely a rendering flag — the box is untouched, so mirroring doesn't move handles or
+   * change hit-testing. Undefined means unmirrored.
    */
   mirrored?: boolean;
   /** Hidden from the canvas, and unselectable while hidden. Per-image, so one reference can be
@@ -149,18 +143,13 @@ export const DEFAULT_IMAGE_OPACITY = 0.25;
  * Every shape the canvas can hold. Extend this union as new tools are added.
  *
  * Deliberately plain objects with no methods or getters, and deliberately not built on
- * models/types.ts's `Circle`/`Arc`/`Rectangle` classes, even though the geometry overlaps.
- * ToolboxStore round-trips this union through JSON constantly — sessionStorage on every edit,
- * plus a 50-deep undo stack — and JSON.parse returns prototype-less objects. Anything living on a
- * prototype would survive until the first undo and then vanish.
+ * models/types.ts's `Circle`/`Arc`/`Rectangle` classes. ToolboxStore round-trips this union
+ * through JSON constantly (sessionStorage on every edit, plus a 50-deep undo stack), and there is
+ * no calc pass here to restore prototypes the way the recipe side has — so anything living on a
+ * prototype would survive until the first undo and then vanish. See the note in models/types.ts.
  *
- * The recipe side gets away with classes only because ceruti-calcs.ts reassigns its arcs through
- * real constructors on every recalculation, which is what makes `Arc.degreeDiff` work after a file
- * load. There is no equivalent pass here. See the header note in models/types.ts.
- *
- * Sharing geometry *math* between the two is fine and encouraged — helpers/draftMath.ts is the
- * common ground, and `{ ...center, r: radius }` is structurally a `Circle`, so its solvers take
- * canvas shapes without a conversion step.
+ * Sharing geometry *math* between the two is encouraged: `{ ...center, r: radius }` is
+ * structurally a `Circle`, so helpers/draftMath.ts solvers take canvas shapes as-is.
  */
 export type DraftShape =
   | LineShape | ArcShape | CircleShape | DimensionShape | RectShape | SectionShape | TextShape | PointShape
@@ -202,7 +191,6 @@ export function imageEdgeMidpoints(shape: ImageShape): Record<'n' | 's' | 'e' | 
 
 let shapeIdSeq = 0;
 
-/** Generates a stable-enough unique id for a toolbox shape. */
 export function makeShapeId(): string {
   shapeIdSeq += 1;
   return `shape-${Date.now().toString(36)}-${shapeIdSeq.toString(36)}`;
