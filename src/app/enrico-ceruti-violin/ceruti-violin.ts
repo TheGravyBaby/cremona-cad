@@ -123,7 +123,7 @@ export class CerutiViolin extends RecipeComponentBase {
   /** Which render-toggle rows apply to each panel — mirrors the showXRow inputs each panel
    * used to pass to its own <app-ceruti-render-toggles>, now that a single fixed instance
    * (see ceruti-violin.html) serves every panel. `null` hides the bar entirely (base, mould,
-   * cross arching, export don't expose any of these view flags). */
+   * export don't expose any of these view flags). */
   private static readonly RENDER_TOGGLE_ROWS: Record<string, {
     arcs: boolean; circles: boolean; guide: boolean; outerPath: boolean; allArcs: boolean; allCircles: boolean;
   } | null> = {
@@ -133,7 +133,7 @@ export class CerutiViolin extends RecipeComponentBase {
     centerBout: { arcs: true, circles: true, guide: true, outerPath: true, allArcs: true, allCircles: true },
     outerTrace: { arcs: true, circles: true, guide: false, outerPath: false, allArcs: false, allCircles: false },
     longArching: { arcs: false, circles: false, guide: true, outerPath: false, allArcs: true, allCircles: true },
-    crossArching: null,
+    crossArching: { arcs: false, circles: false, guide: true, outerPath: false, allArcs: true, allCircles: true },
     mould: null,
     export: null,
   };

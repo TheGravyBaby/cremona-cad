@@ -14,7 +14,7 @@ export function insetInfo() {
         "Overhang is typically 2–5 mm.\n\n" +
         "Tracing from a reference image: the purfling's inner edge is a reliable guide for the mould outline — " +
         "it commonly aligns with the ribs' inner edge.",
-        "Additional Information", defaultTTL
+        "Mould Inset", defaultTTL, true
     );
 }
 
@@ -22,7 +22,7 @@ export function dimensionInfo() {
     info(
         "The outer dimensions of the finished instrument body — height (overall length) and lower bout width.\n\n" +
         "For historical instruments these are usually documented online. Many Cremonese instruments relate height and width as simple whole-number ratios.",
-        "Additional Information", defaultTTL
+        "Body Dimensions", defaultTTL, true
     )
 }
 
@@ -30,7 +30,7 @@ export function boutWidthInfo() {
     info(
         "These are outer measurements — they include rib thickness and overhang. The arc radii below instead define the inner mould outline.\n\n" +
         "If the instrument appears too tall relative to your reference image, adjust the height in the previous panel or rescale the image.",
-        "Additional Information", defaultTTL
+        "Bout Width", defaultTTL, true
     )
 }
 
@@ -38,14 +38,14 @@ export function violNeckInfo() {
     info(
         "Replaces the standard upper block geometry with a rounded neck profile common on double basses and gambas.\n\n" +
         "Still in development — expect rough edges.",
-        "Additional Information", defaultTTL
+        "Viol Neck", defaultTTL, true
     )
 }
 
 export function violCornerInfo() {
     info(
         "The gamba (bass) corner draws a single continuous arc from the bout to the corner tip, replacing the two-arc Cremonese corner. Common on viols and double basses.",
-        "Additional Information", defaultTTL
+        "Viol Corner", defaultTTL, true
     )
 }
 
@@ -53,14 +53,14 @@ export function buttonInfo() {
     info(
         "The button is the small semicircular tab at the top of the upper bout on the back plate. It reinforces the neck joint.\n\n" +
         "It appears only on the back — not on the top plate.",
-        "Additional Information", defaultTTL
+        "Button", defaultTTL, true
     )
 }
 
 export function centerBoutWidthInfo() {
     info(
         "The width at the narrowest point of the instrument body. Like the bout widths, this is an outer measurement — it includes rib thickness and overhang.",
-        "Additional Information", defaultTTL
+        "Center Bout Width", defaultTTL, true
     )
 }
 
@@ -68,7 +68,7 @@ export function fitC0Info() {
     info(
         "The center-bout arc (C0) can be constrained to cleanly intersect both the upper and lower bout arcs — a layout derived from Kevin Kelly's four-circles violin theory.\n\n" +
         "Not all instruments follow this geometry. When disabled, C0's X and Y position can be set freely.",
-        "Additional Information", defaultTTL
+        "Fit C0", defaultTTL, true
     )
 }
 
@@ -76,7 +76,7 @@ export function cornerPositionInfo() {
     info(
         "The corner tip coordinates. The corner arcs are drawn to meet at this point.\n\n" +
         "Corners are always positioned within the inset boundary — the tip sits on the mould outline, not the finished plate edge.",
-        "Additional Information", defaultTTL
+        "Corner Position", defaultTTL, true
     )
 }
 
@@ -84,7 +84,7 @@ export function bitDiameterInfo() {
     info(
         "The diameter of the CNC router bit used to cut the mould. Strict 90° interior corners aren't achievable on a CNC; this value adds relief so corner blocks can seat properly.\n\n" +
         "Set to 0 if cutting by hand.",
-        "Additional Information", defaultTTL
+        "Bit Diameter", defaultTTL, true
     )
 }
 
@@ -93,7 +93,7 @@ export function channelDepthInfo() {
         "Width of the solid rim along the edge of the mould.\n\n" +
         "Larger values leave more material between the blocks; smaller values open the interior sooner.\n\n" +
         "Ignored when 'Use Simple Clamp Box' is on — that swaps this arc-following cutout for a plain rectangular slot.",
-        "Additional Information", defaultTTL
+        "Channel Depth", defaultTTL, true
     )
 }
 
@@ -101,7 +101,7 @@ export function compoundArcInfo() {
     info(
         "A compound arc splits one corner arc into two, joined end-to-end. This allows more pronounced or S-curved corner shapes than a single arc permits.\n\n" +
         "Radius 2 is the secondary arc, typically smaller than the primary. The split angle sets the transition point between them.",
-        "Compound Arc", defaultTTL
+        "Compound Arc", defaultTTL, true
     )
 }
 
@@ -110,7 +110,7 @@ export function purflingInfo() {
         "Purfling is a narrow inlaid strip set just inside the plate edge. The channel is routed into the plate surface before the strip is glued in.\n\n" +
         "Offset: distance from the outer plate edge to the near wall of the channel.\n\n" +
         "Width: The width of the channel — the span between the two purfling lines.",
-        "Additional Information", defaultTTL
+        "Purfling", defaultTTL, true
     )
 }
 
@@ -120,7 +120,7 @@ export function flutingInfo() {
         "Offset: distance from the outer edge to the platform's outer boundary.\n\n" +
         "Reach: distance from the outer edge to the platform's inner boundary, where the cross arch takes off.\n\n" +
         "C Bout: overrides Reach in the center bout only, for a narrower or wider channel there.",
-        "Additional Information", defaultTTL
+        "Fluting", defaultTTL, true
     )
 }
 
@@ -128,7 +128,7 @@ export function flatPlatformInfo() {
     info(
         "Leaves the fluting platform flat at the plate surface — the state you cut purfling on and join the arching to before the channel is gouged.\n\n" +
         "Turn off to see the finished carved channel.",
-        "Flat Platform", defaultTTL
+        "Flat Platform", defaultTTL, true
     )
 }
 
@@ -136,7 +136,7 @@ export function archContoursInfo() {
     info(
         "Once the long and cross arches are set, the surface can be viewed as a contour map or a wireframe mesh — drag the view box to rotate either.\n\n" +
         "The wireframe's edge is interpolated between frame lines rather than the true edge contour, and the contour map can look 'fuzzy' near the edges. Neither affects the final STL, which uses the clean edge defined earlier.",
-        "Additional Info", defaultTTL
+        "Arch Contours", defaultTTL, true
     )
 }
 
@@ -148,7 +148,7 @@ export function ribHeightInfo() {
         "- Viola: 38–44 mm\n" +
         "- Cello: 115–130 mm\n" +
         "- Bass: 175–215 mm",
-        "Additional Info", defaultTTL
+        "Rib Height", defaultTTL, true
     )
 }
 
@@ -160,7 +160,7 @@ export function archHeightInfo() {
         "- Viola top: 18–22 mm  |  back: 17–21 mm\n" +
         "- Cello top: 24–28 mm  |  back: 22–26 mm\n\n" +
         "The back is usually 1–2 mm lower than the top.",
-        "Additional Info", defaultTTL
+        "Arch Height", defaultTTL, true
     )
 }
 
@@ -171,7 +171,7 @@ export function plateThicknessInfo() {
         "- Violin top: 2.3–2.8 mm  |  back: 2.8–3.5 mm\n" +
         "- Viola: slightly heavier than violin\n" +
         "- Cello top: 4.0–5.0 mm  |  back: 5.0–6.0 mm",
-        "Plate Thickness", defaultTTL
+        "Plate Thickness", defaultTTL, true
     )
 }
 
@@ -183,7 +183,7 @@ export function trochoidFactorInfo() {
         "- Values between blend the two characters.\n\n" +
         "Geometrically, the cycloid is traced by a point at radius d·r on a circle of radius r rolling along the baseline. " +
         "The module guide (when enabled) shows the generating circle at the arch midpoint.",
-        "Trochoid Factor", defaultTTL
+        "Trochoid Factor", defaultTTL, true
     )
 }
 
@@ -192,7 +192,7 @@ export function curveTypeInfo() {
         "Two arch profiles are available:\n\n" +
         "Catenary — the curve formed by a hanging chain, inverted. Naturally smooth and symmetric; a good starting point.\n\n" +
         "Spline — a cubic spline through user-placed control points. The curve holds to the heights you set and never rises above them, so two points at the same height give a flat run between them. Many cremonese instruments used a spline based curve.",
-        "Arch Curve Type", defaultTTL
+        "Arch Curve Type", defaultTTL, true
     )
 }
 
@@ -206,7 +206,7 @@ export function splinePointInfo() {
         "Off 50 gives an arch that is asymmetric end to end.\n\n" +
         "Mirror: on (the default) the point repeats at the same distance from the other end of the plate, " +
         "mirrored about the plate's mid-length. Turn it off to shape one end independently.",
-        "Spline Control Point", defaultTTL
+        "Spline Control Point", defaultTTL, true
     )
 }
 
@@ -215,7 +215,7 @@ export function crossSectionStationInfo() {
         "Selects which cross section of the body you are viewing — the position along the body length (Y), " +
         "measured in mm from the bottom of the instrument.\n\n" +
         "This is a view control only — it is not saved with the recipe.",
-        "Additional Info", defaultTTL
+        "Cross-Section Station", defaultTTL, true
     )
 }
 
@@ -224,7 +224,7 @@ export function crossArchCycloidControlsInfo() {
         "These two controls shape how the cross-arch rises from the edge while keeping the center peak anchored to the long arch.\n\n" +
         "Cycloid Factor (0–1): chooses the trochoid-family curve character. 0 is raised-cosine-like (gentler edge rise), 1 is classic cycloid (steeper edge rise, flatter near the crest).\n\n" +
         "Cycloid Percentage (%): chooses how much of the full cycloid is stretched across the plate width. Lower values trim flatter cusp ends and map a steeper central portion onto the same span, increasing edge takeoff angle.",
-        "Cross-Arch Cycloid Controls", defaultTTL
+        "Cross-Arch Cycloid Controls", defaultTTL, true
     )
 }
 
@@ -232,7 +232,7 @@ export function asymmetricCrossArchInfo() {
     info(
         "By default the cross arch is the same shape on both sides of the centerline. Turning this on lets the left (x<0) and right (x>0) halves take independent Cycloid Factor / Percentage values instead.\n\n" +
         "Both halves always meet the center at the same peak height with a level tangent regardless of how differently they're shaped, so there is never a seam at the centerline — only the takeoff shape on each side changes.",
-        "Asymmetric Cross Arch", defaultTTL
+        "Asymmetric Cross Arch", defaultTTL, true
     )
 }
 
@@ -242,7 +242,7 @@ export function crossStationInfo() {
         "To add one: dial in the shape you want with the plate's Factor/Percent fields, move the section height to where it should apply, then press Set Station.\n\n" +
         "To change one: move the section height onto it (or click its row in the table). The plate's Factor/Percent fields then edit that station instead of the plate ends, and say so above them.\n\n" +
         "Historic arching is rarely uniform — corner sections tend to run flatter, the lower bout fuller. Two or three stations are usually plenty.",
-        "Cross-Arch Stations", defaultTTL
+        "Cross-Arch Stations", defaultTTL, true
     )
 }
 
@@ -251,7 +251,7 @@ export function crossArchCurveTypeInfo() {
         "Two cross-arch profiles are available:\n\n" +
         "Cycloid — a trochoid curve controlled by a Factor and Percent, always symmetric unless you turn on the separate Asymmetric toggle.\n\n" +
         "Spline — a cubic spline through user-placed control points, with a movable Peak position and per-point Mirror flags instead of a separate asymmetric toggle. The peak's height is always the long arch's height at that body position — only its position across the width, and the shape of the rise to it, are yours to set.",
-        "Cross-Arch Curve Type", defaultTTL
+        "Cross-Arch Curve Type", defaultTTL, true
     )
 }
 
@@ -262,7 +262,7 @@ export function crossArchSplinePointInfo() {
         "Height (0–100%): a FRACTION of the peak height at this body position — not mm. The peak height itself comes from the long arch and changes station to station, so points are stored as a percentage of it, the same way a cycloid's Factor/Percent are ratios rather than mm.\n\n" +
         "Peak: the first row is the arch peak — it always sits at 100% (the full local height), but you can move it across the width. Off 50 gives a cross arch that crowns closer to one edge than the other.\n\n" +
         "Mirror: on (the default) the point repeats at the same distance from the other edge, mirrored about the centerline. Turn it off to shape one side independently.",
-        "Cross-Arch Spline Control Point", defaultTTL
+        "Cross-Arch Spline Control Point", defaultTTL, true
     )
 }
 
@@ -271,7 +271,7 @@ export function crossArchEdgeDepthInfo() {
         "Lowers the point where the long and cross arches take off from the plate edge, measured in mm below the plate outer surface.\n\n" +
         "This is primarily used to control the degree of curvature along the fluting.\n\n" +
         "Values of 0.5–2 mm are typical.",
-        "Additional Info", defaultTTL
+        "Edge Depth", defaultTTL, true
     )
 }
 
@@ -279,6 +279,6 @@ export function cornerCutoffInfo() {
     info(
         "Controls where the corner arc is trimmed, setting the final length of the corner tip. Shorter values produce blunter corners; longer values produce more pronounced points.\n\n" +
         "When in doubt, leave the corner a little long — the tip gets slightly rounded during final fitting and varnishing.",
-        "Additional Information", defaultTTL
+        "Corner Cutoff", defaultTTL, true
     )
 }

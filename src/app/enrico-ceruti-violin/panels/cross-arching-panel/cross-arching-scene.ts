@@ -3,6 +3,8 @@ import { clamp } from '../../../helpers/draftMath';
 import { samplePathToPolyline } from '../../../helpers/svgPathMath';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams } from '../../ceruti-types';
 import {
+  calculateCrossArchCycloidGuide,
+  calculateCrossArchSplineGuide,
   calculateCrossArchTop,
   contourSampleSteps,
   flutingHalfWidthAtY,
@@ -121,6 +123,14 @@ export class CrossArchingSceneBuilder {
     const flutingSlice = model ? calculateFlutingSectionTop(p, model, f.crossSectionY) : null;
     const flutingSliceBack = backModel ? calculateFlutingSectionTop(p, backModel, f.crossSectionY) : null;
 
+    // Module guides: the generating circles for a cycloid cross-arch, or the
+    // control-point crosshairs for a spline one — only worth computing when
+    // the (shared, global) guide toggle is actually on.
+    const topCycloidGuide = f.showModuleGuides ? calculateCrossArchCycloidGuide(p, f.crossSectionY, 'top') : null;
+    const topSplineGuide = f.showModuleGuides ? calculateCrossArchSplineGuide(p, f.crossSectionY, 'top') : null;
+    const backCycloidGuide = f.showModuleGuides ? calculateCrossArchCycloidGuide(p, f.crossSectionY, 'bottom') : null;
+    const backSplineGuide = f.showModuleGuides ? calculateCrossArchSplineGuide(p, f.crossSectionY, 'bottom') : null;
+
     const renders: RenderLayer[] = [
       renderCrossSection(
         p,
@@ -135,6 +145,10 @@ export class CrossArchingSceneBuilder {
         flutingSlice,
         crossBack?.path ?? null,
         flutingSliceBack,
+        topCycloidGuide,
+        topSplineGuide,
+        backCycloidGuide,
+        backSplineGuide,
       ),
     ];
 

@@ -13,7 +13,7 @@ import {
 } from '../../ceruti-helpers';
 import {
   defaultArchingParams, defaultCrossArchParams, defaultCrossArchSplineParams, defaultFlutingChannelParams,
-  resolveCrossArchSidesAt, STATION_MERGE_EPS_MM,
+  nearestCrossArchSplineShape, resolveCrossArchSidesAt, STATION_MERGE_EPS_MM,
 } from '../../ceruti-arching';
 import { clamp } from '../../../helpers/draftMath';
 import { archSplineKnots } from '../../../helpers/svgPathMath';
@@ -140,23 +140,15 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
 
   /**
    * The nearest defined spline shape to `y` — the closest station, or the
-   * base shape if no station is closer (the base anchors both body ends, so
-   * "distance to the base" is distance to whichever end is nearer). Unlike
-   * {@link effectiveShapeAt}'s exact interpolation, this is an exact copy of
-   * a real shape: a spline control-point list has no natural point-by-point
-   * "halfway between these two" to reconstruct, since two shapes can differ
-   * in point count and position entirely.
+   * base shape if no station is closer. Unlike {@link effectiveShapeAt}'s
+   * exact interpolation, this is an exact copy of a real shape: a spline
+   * control-point list has no natural point-by-point "halfway between these
+   * two" to reconstruct, since two shapes can differ in point count and
+   * position entirely. Shared with the module-guide overlay's own crosshair
+   * placement — see {@link nearestCrossArchSplineShape}.
    */
   private nearestSplineShapeAt(plate: 'top' | 'bottom', y: number): CrossArchSplineShape {
-    const cross = this.crossFor(plate) as CrossArchSplineParams;
-    const stations = cross.stations ?? [];
-    let best: CrossArchSplineShape = cross;
-    let bestDist = Math.min(y, this.params.height - y);
-    for (const s of stations) {
-      const d = Math.abs(s.y - y);
-      if (d < bestDist) { bestDist = d; best = s; }
-    }
-    return best;
+    return nearestCrossArchSplineShape(this.crossFor(plate) as CrossArchSplineParams, y, this.params.height);
   }
 
   /**

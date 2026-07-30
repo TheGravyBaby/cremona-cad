@@ -1,6 +1,7 @@
-import { Pt, Rectangle } from '../../models/types';
-import { renderLine, renderPath, renderRect } from '../../helpers/renderFuncs';
+import { Circle, Pt, Rectangle } from '../../models/types';
+import { renderCircle, renderCrosshair, renderLine, renderPath, renderRect } from '../../helpers/renderFuncs';
 import { ArchingParams, CerutiColors, EnricoCerutiParams } from '../ceruti-types';
+import { CrossArchCycloidGuide } from '../ceruti-arching';
 
 /**
  * Coordinate mapping for all cross-arching renders:
@@ -43,6 +44,30 @@ function renderPlateEdges(
   };
 }
 
+/**
+ * Generating-circle guide for a cycloid cross-arch: the two circles (one per
+ * side — concentric, equal radius when symmetric) whose rolling traces the
+ * takeoff-to-peak rise, plus a small dot marking the peak itself. Same
+ * construction as the long-arch panel's own cycloid guide, just built per
+ * side (see {@link CrossArchCycloidGuide}).
+ */
+function renderCrossArchCycloidGuide(guide: CrossArchCycloidGuide | null, color: string) {
+  return (g: any, ui: any): void => {
+    if (!guide) return;
+    if (guide.leftR !== null) renderCircle(new Circle(guide.center.x, guide.center.y, guide.leftR), color)(g, ui);
+    if (guide.rightR !== null) renderCircle(new Circle(guide.center.x, guide.center.y, guide.rightR), color)(g, ui);
+    renderCircle(new Circle(guide.peak.x, guide.peak.y, 1), color)(g, ui);
+  };
+}
+
+/** Control-point crosshairs for a spline cross-arch, at the knots {@link calculateCrossArchSplineGuide} resolved. */
+function renderCrossArchSplineGuide(knots: Pt[] | null, color: string) {
+  return (g: any, ui: any): void => {
+    if (!knots) return;
+    for (const pt of knots) renderCrosshair(pt, color, 2, 1.5, 1)(g, ui);
+  };
+}
+
 // ===== Render =====
 
 /**
@@ -63,6 +88,10 @@ export const renderCrossSection = (
   flutingSliceTop: string | null = null,
   backArchPath: string | null = null,
   flutingSliceBottom: string | null = null,
+  topCycloidGuide: CrossArchCycloidGuide | null = null,
+  topSplineGuide: Pt[] | null = null,
+  backCycloidGuide: CrossArchCycloidGuide | null = null,
+  backSplineGuide: Pt[] | null = null,
 ) => (g: any, ui: any): void => {
   if (topArchPath) renderPath(topArchPath, colors.archTop, 1.5)(g, ui);
   if (backArchPath) renderPath(backArchPath, colors.archBack, 1.5)(g, ui);
@@ -83,5 +112,12 @@ export const renderCrossSection = (
   if (halfWidthOuter !== null) {
     renderPlateEdges(colors, halfWidthOuter, flutingOuterHalf, flutingInnerHalf, a.ribHeight, a.top.thickness, 1, flutingSliceTop)(g, ui);
     renderPlateEdges(colors, halfWidthOuter, flutingOuterHalf, flutingInnerHalf, 0, a.bottom.thickness, -1, flutingSliceBottom)(g, ui);
+  }
+
+  if (showGuides) {
+    renderCrossArchCycloidGuide(topCycloidGuide, colors.archTop)(g, ui);
+    renderCrossArchSplineGuide(topSplineGuide, colors.archTop)(g, ui);
+    renderCrossArchCycloidGuide(backCycloidGuide, colors.archBack)(g, ui);
+    renderCrossArchSplineGuide(backSplineGuide, colors.archBack)(g, ui);
   }
 };
