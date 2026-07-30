@@ -143,10 +143,13 @@ export class SettingsBarComponent {
     this.toolbox.updateShapes(patches);
   }
 
-  /** Line/Dimension both share start+end geometry — editable numerically once a shape is selected. */
-  private get selectedLineLikeShape(): LineShape | DimensionShape | undefined {
+  /** Line, Dimension and Section all carry the same start+end geometry, so one panel edits any of
+   * them numerically once a shape is selected — Section's own panel further down adds only the
+   * controls unique to it (weights/count). Unlike the pen color there's no "pen position" default,
+   * so none of this shows for a merely-active tool. */
+  private get selectedLineLikeShape(): LineShape | DimensionShape | SectionShape | undefined {
     const s = this.selectedShape;
-    return (s?.type === 'line' || s?.type === 'dimension') ? s : undefined;
+    return (s?.type === 'line' || s?.type === 'dimension' || s?.type === 'section') ? s : undefined;
   }
 
   public get showLinePanel(): boolean {
@@ -162,26 +165,16 @@ export class SettingsBarComponent {
     this.patchPointField(this.selectedLineLikeShape, which, axis, value);
   }
 
-  /** Dimension only (not Line) — there's no "pen position" default the way there's a pen color,
-   * so this only makes sense once an actual Dimension is selected, same reasoning as
-   * showSectionPointsPanel. */
-  private get selectedDimensionShape(): DimensionShape | undefined {
-    return this.selectedShapeOfType('dimension');
-  }
-
-  public get showDimensionLengthField(): boolean {
-    return !!this.selectedDimensionShape;
-  }
-
-  public get dimensionLength(): number {
-    const s = this.selectedDimensionShape;
+  public get lineLength(): number {
+    const s = this.selectedLineLikeShape;
     return s ? this.round2(Math.hypot(s.end.x - s.start.x, s.end.y - s.start.y)) : 0;
   }
 
-  /** Moves `end` to the given distance from `start`, along the line's existing angle — the
-   * numeric equivalent of dragging the end handle without changing direction. */
-  setDimensionLength(value: number): void {
-    const shape = this.selectedDimensionShape;
+  /** Moves `end` to the given distance from `start`, along the shape's existing angle — the
+   * numeric equivalent of dragging the end handle without changing direction. On a Section the
+   * segments follow along, since its weights are relative to whatever the total length is. */
+  setLineLength(value: number): void {
+    const shape = this.selectedLineLikeShape;
     if (!shape) return;
     const v = Number(value);
     if (!Number.isFinite(v) || v <= 0) return;
@@ -323,13 +316,8 @@ export class SettingsBarComponent {
     return this.activeTool?.id === 'section' || this.selectedShape?.type === 'section';
   }
 
-  private get selectedSectionShape(): SectionShape | undefined {
-    return this.selectedShapeOfType('section');
-  }
-
-  /** Every Section in the current selection, however many — unlike selectedSectionShape (only
-   * set for exactly one), this drives Color2 so it stays group-editable across a multi-selection,
-   * the same way the primary color swatch is. */
+  /** Every Section in the current selection, however many — this drives Color2 so it stays
+   * group-editable across a multi-selection, the same way the primary color swatch is. */
   private get selectedSectionShapes(): SectionShape[] {
     return this.selectedShapes.filter((s): s is SectionShape => s.type === 'section');
   }
@@ -341,20 +329,8 @@ export class SettingsBarComponent {
     return this.activeTool?.id === 'section' || this.selectedSectionShapes.length > 0;
   }
 
-  /** Unlike showSectionPanel, the endpoints only make sense for an actual selected shape —
-   * there's no "pen position" the way there's a pen color/weights default. */
-  public get showSectionPointsPanel(): boolean {
-    return !!this.selectedSectionShape;
-  }
-
-  public get sectionStartX(): number { return this.round2(this.selectedSectionShape?.start.x ?? 0); }
-  public get sectionStartY(): number { return this.round2(this.selectedSectionShape?.start.y ?? 0); }
-  public get sectionEndX(): number { return this.round2(this.selectedSectionShape?.end.x ?? 0); }
-  public get sectionEndY(): number { return this.round2(this.selectedSectionShape?.end.y ?? 0); }
-
-  setSectionPoint(which: 'start' | 'end', axis: 'x' | 'y', value: number): void {
-    this.patchPointField(this.selectedSectionShape, which, axis, value);
-  }
+  // A Section's endpoints and length are edited by the shared line-like panel above, since they're
+  // the same start/end fields Line and Dimension have — only the controls below are Section's own.
 
   /** First selected Section's color2 (same "first wins" convention as displayedColor when the
    * group has mixed values — a native color <input> can't show "mixed"), otherwise the pen default. */
