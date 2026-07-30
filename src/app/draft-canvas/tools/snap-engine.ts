@@ -30,7 +30,7 @@ export class SnapEngine {
 
   rebuild(layer: RootGroup): void {
     const candidates: SnapCandidate[] = [];
-    // `[data-no-snap]` marks purely decorative sub-elements (e.g. a Box Line's
+    // `[data-no-snap]` marks purely decorative sub-elements (e.g. a Section's
     // banding/ticks) that would otherwise flood candidates with noise — only
     // the shape's real geometry (e.g. its centerline) should be snappable.
     layer.selectAll<SVGGeometryElement, unknown>(

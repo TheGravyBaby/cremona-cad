@@ -102,7 +102,7 @@ export function distanceToShape(p: Pt, shape: DraftShape, pxPerMm: number): numb
   switch (shape.type) {
     case 'line':
     case 'dimension':
-    case 'boxline':
+    case 'section':
       return distanceToSegment(p, shape.start, shape.end);
     case 'circle':
       return Math.abs(Math.hypot(p.x - shape.center.x, p.y - shape.center.y) - shape.radius);
@@ -134,7 +134,7 @@ export function shapeBounds(shape: DraftShape, pxPerMm: number): ShapeBounds {
   switch (shape.type) {
     case 'line':
     case 'dimension':
-    case 'boxline':
+    case 'section':
       return {
         x0: Math.min(shape.start.x, shape.end.x), x1: Math.max(shape.start.x, shape.end.x),
         y0: Math.min(shape.start.y, shape.end.y), y1: Math.max(shape.start.y, shape.end.y),

@@ -3,10 +3,10 @@ import { inject } from '@angular/core';
 import { DraftTool } from '../tools/draft-tool';
 import { ToolboxStore } from '../tools/toolbox-store';
 import {
-  DraftShape, LineShape, DimensionShape, RectShape, TextShape, PointShape, CircleShape, ArcShape, BoxLineShape,
+  DraftShape, LineShape, DimensionShape, RectShape, TextShape, PointShape, CircleShape, ArcShape, SectionShape,
   ImageShape, DEFAULT_IMAGE_OPACITY,
 } from '../tools/toolbox-shape';
-import { normalizeDegrees } from '../../helpers/draftMath';
+import { normalizeDegrees, pointAtDistanceToward } from '../../helpers/draftMath';
 
 /**
  * The Inkscape-style contextual settings strip along the bottom bar: color, then whichever
@@ -79,7 +79,7 @@ export class SettingsBarComponent {
 
   /** Friendly name for each shape type, used by groupTitle when the settings reflect a selection. */
   private static readonly SHAPE_TYPE_LABELS: Record<DraftShape['type'], string> = {
-    line: 'Line', arc: 'Arc', circle: 'Circle', dimension: 'Distance', rect: 'Box', boxline: 'Box Line', text: 'Text', point: 'Point',
+    line: 'Line', arc: 'Arc', circle: 'Circle', dimension: 'Distance', rect: 'Box', section: 'Section', text: 'Text', point: 'Point',
     image: 'Reference Image',
   };
 
@@ -160,6 +160,33 @@ export class SettingsBarComponent {
 
   setLinePoint(which: 'start' | 'end', axis: 'x' | 'y', value: number): void {
     this.patchPointField(this.selectedLineLikeShape, which, axis, value);
+  }
+
+  /** Dimension only (not Line) — there's no "pen position" default the way there's a pen color,
+   * so this only makes sense once an actual Dimension is selected, same reasoning as
+   * showSectionPointsPanel. */
+  private get selectedDimensionShape(): DimensionShape | undefined {
+    return this.selectedShapeOfType('dimension');
+  }
+
+  public get showDimensionLengthField(): boolean {
+    return !!this.selectedDimensionShape;
+  }
+
+  public get dimensionLength(): number {
+    const s = this.selectedDimensionShape;
+    return s ? this.round2(Math.hypot(s.end.x - s.start.x, s.end.y - s.start.y)) : 0;
+  }
+
+  /** Moves `end` to the given distance from `start`, along the line's existing angle — the
+   * numeric equivalent of dragging the end handle without changing direction. */
+  setDimensionLength(value: number): void {
+    const shape = this.selectedDimensionShape;
+    if (!shape) return;
+    const v = Number(value);
+    if (!Number.isFinite(v) || v <= 0) return;
+    const end = pointAtDistanceToward(shape.start, shape.end, v);
+    this.toolbox.updateShape(shape.id, { end });
   }
 
   /** Rect and Square both commit as a 'rect' shape (p1/p2 corners) — same panel edits either. */
@@ -273,7 +300,7 @@ export class SettingsBarComponent {
 
   /** Broader than showArcPanel: Compass also shows for a multi-selection of Arcs (whose
    * individual X/Y/R/Start/End controls don't make sense as a group and stay gated behind
-   * showArcPanel), same reasoning as showBoxLineColor2. */
+   * showArcPanel), same reasoning as showSectionColor2. */
   public get showArcCenterGuidesToggle(): boolean {
     return this.selectedArcShapes.length > 0;
   }
@@ -291,83 +318,83 @@ export class SettingsBarComponent {
     this.toolbox.updateShapes(patches);
   }
 
-  /** Box Line has extra per-shape settings (a second color + segment weights) that don't fit the single color swatch. */
-  public get showBoxLinePanel(): boolean {
-    return this.activeTool?.id === 'boxline' || this.selectedShape?.type === 'boxline';
+  /** Section has extra per-shape settings (a second color + segment weights) that don't fit the single color swatch. */
+  public get showSectionPanel(): boolean {
+    return this.activeTool?.id === 'section' || this.selectedShape?.type === 'section';
   }
 
-  private get selectedBoxLineShape(): BoxLineShape | undefined {
-    return this.selectedShapeOfType('boxline');
+  private get selectedSectionShape(): SectionShape | undefined {
+    return this.selectedShapeOfType('section');
   }
 
-  /** Every Box Line in the current selection, however many — unlike selectedBoxLineShape (only
+  /** Every Section in the current selection, however many — unlike selectedSectionShape (only
    * set for exactly one), this drives Color2 so it stays group-editable across a multi-selection,
    * the same way the primary color swatch is. */
-  private get selectedBoxLineShapes(): BoxLineShape[] {
-    return this.selectedShapes.filter((s): s is BoxLineShape => s.type === 'boxline');
+  private get selectedSectionShapes(): SectionShape[] {
+    return this.selectedShapes.filter((s): s is SectionShape => s.type === 'section');
   }
 
-  /** Broader than showBoxLinePanel: Color2 also shows for a multi-selection of Box Lines (whose
+  /** Broader than showSectionPanel: Color2 also shows for a multi-selection of Sections (whose
    * individual X/Y/weights controls don't make sense as a group and stay gated behind
-   * showBoxLinePanel), same reasoning as the primary color swatch's showColorSwatch. */
-  public get showBoxLineColor2(): boolean {
-    return this.activeTool?.id === 'boxline' || this.selectedBoxLineShapes.length > 0;
+   * showSectionPanel), same reasoning as the primary color swatch's showColorSwatch. */
+  public get showSectionColor2(): boolean {
+    return this.activeTool?.id === 'section' || this.selectedSectionShapes.length > 0;
   }
 
-  /** Unlike showBoxLinePanel, the endpoints only make sense for an actual selected shape —
+  /** Unlike showSectionPanel, the endpoints only make sense for an actual selected shape —
    * there's no "pen position" the way there's a pen color/weights default. */
-  public get showBoxLinePointsPanel(): boolean {
-    return !!this.selectedBoxLineShape;
+  public get showSectionPointsPanel(): boolean {
+    return !!this.selectedSectionShape;
   }
 
-  public get boxLineStartX(): number { return this.round2(this.selectedBoxLineShape?.start.x ?? 0); }
-  public get boxLineStartY(): number { return this.round2(this.selectedBoxLineShape?.start.y ?? 0); }
-  public get boxLineEndX(): number { return this.round2(this.selectedBoxLineShape?.end.x ?? 0); }
-  public get boxLineEndY(): number { return this.round2(this.selectedBoxLineShape?.end.y ?? 0); }
+  public get sectionStartX(): number { return this.round2(this.selectedSectionShape?.start.x ?? 0); }
+  public get sectionStartY(): number { return this.round2(this.selectedSectionShape?.start.y ?? 0); }
+  public get sectionEndX(): number { return this.round2(this.selectedSectionShape?.end.x ?? 0); }
+  public get sectionEndY(): number { return this.round2(this.selectedSectionShape?.end.y ?? 0); }
 
-  setBoxLinePoint(which: 'start' | 'end', axis: 'x' | 'y', value: number): void {
-    this.patchPointField(this.selectedBoxLineShape, which, axis, value);
+  setSectionPoint(which: 'start' | 'end', axis: 'x' | 'y', value: number): void {
+    this.patchPointField(this.selectedSectionShape, which, axis, value);
   }
 
-  /** First selected Box Line's color2 (same "first wins" convention as displayedColor when the
+  /** First selected Section's color2 (same "first wins" convention as displayedColor when the
    * group has mixed values — a native color <input> can't show "mixed"), otherwise the pen default. */
-  public get displayedBoxLineColor2(): string {
-    return this.selectedBoxLineShapes[0]?.color2 ?? this.toolbox.currentBoxLineColor2;
+  public get displayedSectionColor2(): string {
+    return this.selectedSectionShapes[0]?.color2 ?? this.toolbox.currentSectionColor2;
   }
 
-  public get displayedBoxLineWeightsText(): string {
+  public get displayedSectionWeightsText(): string {
     const shape = this.selectedShape;
-    const weights = (shape?.type === 'boxline' ? shape.weights : undefined) ?? this.toolbox.currentBoxLineWeights;
+    const weights = (shape?.type === 'section' ? shape.weights : undefined) ?? this.toolbox.currentSectionWeights;
     return weights.join(',');
   }
 
   /** Segment count when using the "equal segments" input mode — just the number of weights,
-   * since that mode only ever produces equal (all-1) weights; see setBoxLineSegmentCount. */
-  public get displayedBoxLineSegmentCount(): number {
+   * since that mode only ever produces equal (all-1) weights; see setSectionSegmentCount. */
+  public get displayedSectionSegmentCount(): number {
     const shape = this.selectedShape;
-    const weights = (shape?.type === 'boxline' ? shape.weights : undefined) ?? this.toolbox.currentBoxLineWeights;
+    const weights = (shape?.type === 'section' ? shape.weights : undefined) ?? this.toolbox.currentSectionWeights;
     return weights.length;
   }
 
   /** Toggles the Weights row between a free-form comma list and a simple equal-segment count —
    * pure UI/input-mode state, not persisted per-shape, so switching shapes doesn't reset it. */
-  public boxLineUseSegmentCount = false;
+  public sectionUseSegmentCount = false;
 
-  /** Applies to every selected Box Line at once (one history step via updateShapes), same as setColor. */
-  setBoxLineColor2(color: string): void {
-    this.toolbox.currentBoxLineColor2 = color;
-    const shapes = this.selectedBoxLineShapes;
+  /** Applies to every selected Section at once (one history step via updateShapes), same as setColor. */
+  setSectionColor2(color: string): void {
+    this.toolbox.currentSectionColor2 = color;
+    const shapes = this.selectedSectionShapes;
     if (shapes.length === 0) return;
     const patches = new Map<string, Partial<DraftShape>>(shapes.map(s => [s.id, { color2: color }]));
     this.toolbox.updateShapes(patches);
   }
 
-  setBoxLineWeightsText(text: string): void {
+  setSectionWeightsText(text: string): void {
     const weights = text.split(',').map(s => Number(s.trim())).filter(n => Number.isFinite(n) && n > 0);
     if (weights.length === 0) return;
-    this.toolbox.currentBoxLineWeights = weights;
+    this.toolbox.currentSectionWeights = weights;
     const shape = this.selectedShape;
-    if (shape?.type === 'boxline') {
+    if (shape?.type === 'section') {
       this.toolbox.updateShape(shape.id, { weights });
     }
   }
@@ -467,13 +494,13 @@ export class SettingsBarComponent {
 
   /** Equal-segments mode: N segments all weighted 1 — e.g. 16 for showing sixteenths, without
    * typing out "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1" by hand. */
-  setBoxLineSegmentCount(count: number): void {
+  setSectionSegmentCount(count: number): void {
     const n = Math.round(count);
     if (!Number.isFinite(n) || n < 1) return;
     const weights = new Array(n).fill(1);
-    this.toolbox.currentBoxLineWeights = weights;
+    this.toolbox.currentSectionWeights = weights;
     const shape = this.selectedShape;
-    if (shape?.type === 'boxline') {
+    if (shape?.type === 'section') {
       this.toolbox.updateShape(shape.id, { weights });
     }
   }

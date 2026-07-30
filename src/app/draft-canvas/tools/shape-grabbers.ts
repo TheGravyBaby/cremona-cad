@@ -18,7 +18,7 @@ export function moveGrabberPosition(shape: DraftShape): Pt | null {
   switch (shape.type) {
     case 'line':
     case 'dimension':
-    case 'boxline':
+    case 'section':
       return { x: (shape.start.x + shape.end.x) / 2, y: (shape.start.y + shape.end.y) / 2 };
     case 'circle':
       return { x: shape.center.x, y: shape.center.y };
@@ -45,7 +45,7 @@ function arcMidpoint(shape: Extract<DraftShape, { type: 'arc' }>): Pt {
   return pointOnCircle(shape.center, shape.radius, midAngle);
 }
 
-// 'start'/'end' — Line/Dimension/Box Line's endpoints.
+// 'start'/'end' — Line/Dimension/Section's endpoints.
 // 'p1'/'p2' — Rect's corners (either can go anywhere; drawShape already takes the
 //   min/max of the two, so there's no "wrong" corner to drag).
 // 'radius' — Circle's edge, or Arc's midpoint; only the drag point's distance from center
@@ -84,7 +84,7 @@ export function endpointGrabbers(shape: DraftShape, pxPerMm: number): EndpointGr
   switch (shape.type) {
     case 'line':
     case 'dimension':
-    case 'boxline':
+    case 'section':
       return [{ key: 'start', pos: shape.start }, { key: 'end', pos: shape.end }];
     case 'rect':
       return [{ key: 'p1', pos: shape.p1 }, { key: 'p2', pos: shape.p2 }];
@@ -123,7 +123,7 @@ export function withEndpoint(shape: DraftShape, key: EndpointKey, pos: Pt): Draf
   switch (shape.type) {
     case 'line':
     case 'dimension':
-    case 'boxline':
+    case 'section':
       if (key === 'start' || key === 'end') return { ...shape, [key]: pos };
       return shape;
     case 'rect':

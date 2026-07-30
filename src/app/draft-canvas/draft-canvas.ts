@@ -654,11 +654,11 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       this.activeSnap = hit;
       let pt = hit ? hit.pt : rawPt;
 
-      // Shift-lock to common angles, same as drawing a fresh Line/Box Line (see
+      // Shift-lock to common angles, same as drawing a fresh Line/Section (see
       // two-point-tool.ts) — measured from the *other* end, since that's the segment whose
       // angle is being locked. Dimension is excluded: its drawing tool doesn't angle-lock either.
       const original = this.dragEndpoint.original;
-      if ((original.type === 'line' || original.type === 'boxline') && this.isAngleLockHeld
+      if ((original.type === 'line' || original.type === 'section') && this.isAngleLockHeld
         && (this.dragEndpoint.key === 'start' || this.dragEndpoint.key === 'end')) {
         const anchor = this.dragEndpoint.key === 'start' ? original.end : original.start;
         pt = snapToLockedAngle(anchor, pt);
@@ -874,14 +874,10 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       }
     }
 
-    // Tool mnemonics: S selects; each other letter activates that tool group's first
-    // variant, or cycles to the next variant in the group on repeated presses (so there's
-    // no need for a separate "alternate" modifier — see HOTKEY_TOOL_CYCLE below).
-    if (event.code === 'KeyS') {
-      this.selectTool(null);
-      event.preventDefault();
-      return;
-    }
+    // Tool mnemonics: each letter activates that tool group's first variant, or cycles to
+    // the next variant in the group on repeated presses (so there's no need for a separate
+    // "alternate" modifier — see HOTKEY_TOOL_CYCLE below). Escape (above) is the way back
+    // to Select — there's no dedicated select-tool key, matching AutoCAD/Fusion 360.
     const cycle = HOTKEY_TOOL_CYCLE[event.code];
     if (cycle) {
       const currentIdx = this.activeTool ? cycle.indexOf(this.activeTool.id) : -1;
