@@ -51,9 +51,10 @@ export type RectShape = ShapeBase & {
 
 // A line divided into weighted ratio segments, alternating `color`/`color2` per
 // segment — for illustrating ratios (e.g. vesica radius-to-gap) the way
-// helpers/renderFuncs.ts's renderBoxLine does for recipe drafts.
-export type BoxLineShape = ShapeBase & {
-  type: 'boxline';
+// helpers/renderFuncs.ts's renderBoxLine does for recipe drafts (that legacy
+// renderer keeps its own name — it's a separate feature).
+export type SectionShape = ShapeBase & {
+  type: 'section';
   start: Pt;
   end: Pt;
   weights: number[];
@@ -62,7 +63,7 @@ export type BoxLineShape = ShapeBase & {
 };
 
 // A free-floating text annotation, anchored at a single point — independent
-// of any other shape, unlike the auto-generated labels on Dimension/Box Line.
+// of any other shape, unlike the auto-generated labels on Dimension/Section.
 export type TextShape = ShapeBase & {
   type: 'text';
   position: Pt;
@@ -135,7 +136,7 @@ export const DEFAULT_IMAGE_OPACITY = 0.25;
 
 // Extend this union as new tools are added.
 export type DraftShape =
-  | LineShape | ArcShape | CircleShape | DimensionShape | RectShape | BoxLineShape | TextShape | PointShape
+  | LineShape | ArcShape | CircleShape | DimensionShape | RectShape | SectionShape | TextShape | PointShape
   | ImageShape;
 
 /** An image's box center, about which `rotationDeg` turns it. */

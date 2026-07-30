@@ -60,8 +60,8 @@ export function drawShape(gRoot: RootGroup, gUI: RootGroup, shape: DraftShape, p
       if (shape.dashed) rect.attr('stroke-dasharray', DASH_PATTERN);
       break;
     }
-    case 'boxline':
-      drawBoxLine(gRoot, gUI, {
+    case 'section':
+      drawSection(gRoot, gUI, {
         start: shape.start, end: shape.end, weights: shape.weights,
         color1: color, color2: shape.color2, label: shape.label,
       }, pxPerMm);
@@ -156,7 +156,7 @@ export function drawImageShape(gRoot: RootGroup, shape: ImageShape, href: string
 
 const POINT_MARKER_SIZE_PX = 5;
 
-// Constant on-screen size (annotation-style, like Dimension/Box Line labels), not to-scale mm.
+// Constant on-screen size (annotation-style, like Dimension/Section labels), not to-scale mm.
 export const TEXT_FONT_SIZE_PX = 14;
 // Multiplies font size for per-line spacing — exported so shape-hit-test.ts's DOM-free
 // footprint estimate can stay in sync with the actual rendered line spacing here.
@@ -184,7 +184,7 @@ function appendTextLines(
   });
 }
 
-export type BoxLineParams = {
+export type SectionParams = {
   start: Pt;
   end: Pt;
   weights: number[];
@@ -193,8 +193,8 @@ export type BoxLineParams = {
   label: boolean;
 };
 
-// Fixed for now — see the Box Line "full integration" plan for making these configurable.
-const BOXLINE_THICKNESS_MM = 10;
+// Fixed for now — see the Section "full integration" plan for making these configurable.
+const SECTION_THICKNESS_MM = 10;
 
 /**
  * Draws a line divided into weighted ratio segments, alternating color1/color2,
@@ -203,7 +203,7 @@ const BOXLINE_THICKNESS_MM = 10;
  * (endpoints + along-path); the banding/outline/ticks are marked `data-no-snap`
  * so they don't flood the snap engine with quad-corner/tick candidates.
  */
-export function drawBoxLine(gRoot: RootGroup, gUI: RootGroup, p: BoxLineParams, pxPerMm: number): void {
+export function drawSection(gRoot: RootGroup, gUI: RootGroup, p: SectionParams, pxPerMm: number): void {
   const { start, end, weights, color1, color2, label } = p;
   const dx = end.x - start.x;
   const dy = end.y - start.y;
@@ -212,7 +212,7 @@ export function drawBoxLine(gRoot: RootGroup, gUI: RootGroup, p: BoxLineParams, 
 
   const ux = dx / len, uy = dy / len;
   const nx = -uy, ny = ux;
-  const halfT = BOXLINE_THICKNESS_MM / 2;
+  const halfT = SECTION_THICKNESS_MM / 2;
   const total = weights.reduce((a, b) => a + b, 0);
   const unit = len / total;
 
@@ -368,14 +368,14 @@ export function drawSelectionHalo(gRoot: RootGroup, gUI: RootGroup, shape: Draft
         .attr('x1', shape.start.x).attr('y1', shape.start.y)
         .attr('x2', shape.end.x).attr('y2', shape.end.y));
       break;
-    case 'boxline': {
+    case 'section': {
       const dx = shape.end.x - shape.start.x;
       const dy = shape.end.y - shape.start.y;
       const len = Math.hypot(dx, dy);
       if (len < 1e-6) break;
       const ux = dx / len, uy = dy / len;
       const nx = -uy, ny = ux;
-      const halfT = BOXLINE_THICKNESS_MM / 2;
+      const halfT = SECTION_THICKNESS_MM / 2;
       const p1 = { x: shape.start.x + nx * halfT, y: shape.start.y + ny * halfT };
       const p2 = { x: shape.end.x + nx * halfT, y: shape.end.y + ny * halfT };
       const p3 = { x: shape.end.x - nx * halfT, y: shape.end.y - ny * halfT };

@@ -10,7 +10,7 @@ export const HOTKEY_TOOL_CYCLE: Record<string, string[]> = {
   KeyA: ['arc', 'arc-tangent', 'arc-start', 'arc-chain', 'join-arc'],
   KeyC: ['circle'],
   KeyR: ['rect'],
-  KeyB: ['boxline'],
+  KeyS: ['section'],
   KeyT: ['text'],
   KeyP: ['point'],
   KeyO: ['offset'],

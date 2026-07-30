@@ -1,8 +1,7 @@
 import { Component, ElementRef, EventEmitter, OnDestroy, OnInit, Output, inject } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { DraftTool } from '../tools/draft-tool';
-import { ToolSlot } from '../tools/tool-slot';
-import { ToolRegistryService } from '../tools/tool-registry';
+import { ToolRegistryService, ToolSlot } from '../tools/tool-registry';
 import { ToolboxStore } from '../tools/toolbox-store';
 import { ImageShape } from '../tools/toolbox-shape';
 import { Layer } from '../tools/layer';
@@ -95,10 +94,22 @@ export class ToolPaletteComponent implements OnInit, OnDestroy {
     this.toolRegistry.selectTool(tool);
   }
 
-  /** Activates a slot's current tool — its only tool if single, its selected variant if a flyout. */
+  // The three slot shape questions the template asks, delegated to the registry so the palette
+  // never has to know whether a slot is a lone tool or an array of variants.
+
+  /** The tool a slot's button shows and activates. */
+  faceOf(slot: ToolSlot): DraftTool { return this.toolRegistry.faceOf(slot); }
+
+  /** Everything listed in a slot's flyout popup. */
+  variantsOf(slot: ToolSlot): DraftTool[] { return this.toolRegistry.variantsOf(slot); }
+
+  /** Whether to render a caret beside the slot's main button. */
+  hasVariants(slot: ToolSlot): boolean { return this.toolRegistry.hasVariants(slot); }
+
+  /** Activates whichever tool the slot's button is currently showing. */
   activateSlot(slot: ToolSlot): void {
     this.openFlyout = null;
-    this.toolRegistry.selectTool(slot.kind === 'single' ? slot.tool : slot.variants[slot.selectedIndex]);
+    this.toolRegistry.selectTool(this.faceOf(slot));
   }
 
   toggleFlyout(slot: ToolSlot): void {
@@ -108,10 +119,9 @@ export class ToolPaletteComponent implements OnInit, OnDestroy {
   }
 
   /** Picking a variant from the flyout both activates it and becomes the slot's new default face. */
-  chooseFlyoutVariant(slot: Extract<ToolSlot, { kind: 'flyout' }>, index: number): void {
-    slot.selectedIndex = index;
+  chooseFlyoutVariant(slot: ToolSlot, tool: DraftTool): void {
     this.openFlyout = null;
-    this.toolRegistry.selectTool(slot.variants[index]);
+    this.toolRegistry.selectVariant(slot, tool);
   }
 
   /** The hotkey letter for a tool id, formatted for a tooltip (e.g. " (L)"), or '' if it has none. */

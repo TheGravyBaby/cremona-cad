@@ -9,6 +9,17 @@ export function clamp(v: number, min: number, max: number): number {
   return Math.min(Math.max(v, min), max);
 }
 
+/** The point `distance` mm from `from`, along the direction toward `toward` — i.e. `from`
+ * pushed out/in along the existing `from`→`toward` ray, preserving its angle. Falls back to
+ * `toward` unchanged when the two points coincide (no direction to preserve). */
+export function pointAtDistanceToward(from: Pt, toward: Pt, distance: number): Pt {
+  const dx = toward.x - from.x;
+  const dy = toward.y - from.y;
+  const len = Math.hypot(dx, dy);
+  if (len < 1e-9) return toward;
+  return { x: from.x + (dx / len) * distance, y: from.y + (dy / len) * distance };
+}
+
 /** Wraps a degree value into [0, 360). */
 export function normalizeDegrees(deg: number): number {
   const v = deg % 360;

@@ -11,11 +11,11 @@ export const PREVIEW_COLOR = '#2563eb';
 type PreviewRenderer = (gRoot: RootGroup, gUI: RootGroup, pxPerMm: number, start: Pt, end: Pt) => void;
 
 /** Transforms the live second point while the angle-lock modifier (Shift) is held — e.g.
- * snapping to a common angle (Line/Box Line) or forcing a square (Box/Rect). Applied uniformly
+ * snapping to a common angle (Line/Section) or forcing a square (Box/Rect). Applied uniformly
  * on every pointermove/pointerup so drag preview and the committed shape always agree. */
 export type TwoPointModifier = (start: Pt, pt: Pt, host: DraftToolHost) => Pt;
 
-/** The default angle-lock behavior shared by Line and Box Line — see angle-lock.ts. */
+/** The default angle-lock behavior shared by Line and Section — see angle-lock.ts. */
 export function angleLockModifier(start: Pt, pt: Pt, host: DraftToolHost): Pt {
   return host.isAngleLockHeld() ? snapToLockedAngle(start, pt) : pt;
 }

@@ -14,15 +14,18 @@
     @for (row of toolRows; track $index) {
     <div class="tool-row">
       @for (slot of row; track $index) {
+      <!-- Whichever tool the slot is currently showing — its only one, or the variant last picked
+           out of its flyout. See ToolSlot in tool-registry.ts. -->
+      @let face = faceOf(slot);
       <!-- Reference Image behaves like the Layers button rather than a drawing tool: its main
            button opens the list of placed images (uploading happens from inside that panel), and
            it carries the same master show/hide toggle. The tool itself stays a normal toolRows
            entry so its hotkey and the panel's Upload button can both activate it. -->
-      @if (slot.kind === 'single' && slot.tool.id === 'image') {
+      @if (face.id === 'image') {
       <div class="tool-flyout">
         <button type="button" class="tool-btn tool-flyout-main" [class.active]="imagesOpen"
           (click)="toggleImages()" title="Reference images (I to upload)">
-          <ng-container [ngTemplateOutlet]="toolIcon" [ngTemplateOutletContext]="{ id: slot.tool.id }" />
+          <ng-container [ngTemplateOutlet]="toolIcon" [ngTemplateOutletContext]="{ id: face.id }" />
         </button>
         <button type="button" class="tool-view-toggle" [class.on]="showImages"
           [title]="showImages ? 'Hide all reference images' : 'Show all reference images'"
@@ -73,19 +76,17 @@
         </div>
         }
       </div>
-      } @else if (slot.kind === 'single') {
-      <button type="button" class="tool-btn" [class.active]="activeTool === slot.tool"
-        (click)="selectTool(slot.tool)" [title]="slot.tool.label + hotkeyHint(slot.tool.id)">
-        <ng-container [ngTemplateOutlet]="toolIcon" [ngTemplateOutletContext]="{ id: slot.tool.id }" />
-      </button>
       } @else {
+      <!-- Every other slot renders the same way; only the caret and its popup are conditional, so
+           a lone tool and a flyout's face are one piece of markup. tool-flyout-main squares off the
+           right corners to meet the caret, so it's applied only when there is one. -->
       <div class="tool-flyout">
-        <button type="button" class="tool-btn tool-flyout-main"
-          [class.active]="activeTool === slot.variants[slot.selectedIndex]" (click)="activateSlot(slot)"
-          [title]="slot.variants[slot.selectedIndex].label + hotkeyHint(slot.variants[slot.selectedIndex].id)">
-          <ng-container [ngTemplateOutlet]="toolIcon"
-            [ngTemplateOutletContext]="{ id: slot.variants[slot.selectedIndex].id }" />
+        <button type="button" class="tool-btn" [class.tool-flyout-main]="hasVariants(slot)"
+          [class.active]="activeTool === face" (click)="activateSlot(slot)"
+          [title]="face.label + hotkeyHint(face.id)">
+          <ng-container [ngTemplateOutlet]="toolIcon" [ngTemplateOutletContext]="{ id: face.id }" />
         </button>
+        @if (hasVariants(slot)) {
         <button type="button" class="tool-flyout-caret" (click)="toggleFlyout(slot)" title="More options">
           <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
             stroke-linecap="round" stroke-linejoin="round">
@@ -94,14 +95,15 @@
         </button>
         @if (openFlyout === slot) {
         <div class="tool-flyout-popup">
-          @for (variant of slot.variants; track variant.id) {
-          <button type="button" class="tool-flyout-item" (click)="chooseFlyoutVariant(slot, $index)"
+          @for (variant of variantsOf(slot); track variant.id) {
+          <button type="button" class="tool-flyout-item" (click)="chooseFlyoutVariant(slot, variant)"
             [title]="variant.label + hotkeyHint(variant.id)">
             <ng-container [ngTemplateOutlet]="toolIcon" [ngTemplateOutletContext]="{ id: variant.id }" />
             <span>{{ variant.label }}</span>
           </button>
           }
         </div>
+        }
         }
       </div>
       }
@@ -209,7 +211,7 @@
         <rect x="4" y="6" width="16" height="12" />
       </svg>
       }
-      @case ('boxline') {
+      @case ('section') {
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
         stroke-linejoin="round">
         <rect x="3" y="8" width="18" height="8" />
@@ -220,8 +222,8 @@
       @case ('text') {
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
         stroke-linecap="round">
-        <text x="12" y="17" font-size="15" text-anchor="middle" fill="currentColor" stroke="none"
-          font-family="sans-serif">A</text>
+        <text x="12" y="19" font-size="22" text-anchor="middle" fill="currentColor" stroke="none"
+          font-family="">T</text>
       </svg>
       }
       @case ('point') {

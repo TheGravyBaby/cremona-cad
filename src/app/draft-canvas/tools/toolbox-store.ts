@@ -31,8 +31,8 @@ export class ToolboxStore {
   private listeners = new Set<() => void>();
   private _currentColor: string = DEFAULT_SHAPE_COLOR;
   private _currentDashed = false;
-  private _currentBoxLineColor2: string = '#93c5fd';
-  private _currentBoxLineWeights: number[] = [1, 1, 1];
+  private _currentSectionColor2: string = '#93c5fd';
+  private _currentSectionWeights: number[] = [1, 1, 1];
   private _layers: Layer[] = [{ id: DEFAULT_LAYER_ID, name: 'Layer 1', visible: true, locked: false }];
   private _activeLayerId: string = DEFAULT_LAYER_ID;
   private _showImages = true;
@@ -66,19 +66,19 @@ export class ToolboxStore {
     this.notify();
   }
 
-  /** The second alternating color new Box Line shapes will use. */
-  get currentBoxLineColor2(): string { return this._currentBoxLineColor2; }
-  set currentBoxLineColor2(color: string) {
-    if (this._currentBoxLineColor2 === color) return;
-    this._currentBoxLineColor2 = color;
+  /** The second alternating color new Section shapes will use. */
+  get currentSectionColor2(): string { return this._currentSectionColor2; }
+  set currentSectionColor2(color: string) {
+    if (this._currentSectionColor2 === color) return;
+    this._currentSectionColor2 = color;
     this.persist();
     this.notify();
   }
 
-  /** The segment weights new Box Line shapes will use. */
-  get currentBoxLineWeights(): number[] { return this._currentBoxLineWeights; }
-  set currentBoxLineWeights(weights: number[]) {
-    this._currentBoxLineWeights = weights;
+  /** The segment weights new Section shapes will use. */
+  get currentSectionWeights(): number[] { return this._currentSectionWeights; }
+  set currentSectionWeights(weights: number[]) {
+    this._currentSectionWeights = weights;
     this.persist();
     this.notify();
   }
@@ -351,8 +351,8 @@ export class ToolboxStore {
         if (Array.isArray(parsed.shapes)) this.shapes = parsed.shapes;
         if (typeof parsed.currentColor === 'string') this._currentColor = parsed.currentColor;
         if (typeof parsed.currentDashed === 'boolean') this._currentDashed = parsed.currentDashed;
-        if (typeof parsed.currentBoxLineColor2 === 'string') this._currentBoxLineColor2 = parsed.currentBoxLineColor2;
-        if (Array.isArray(parsed.currentBoxLineWeights)) this._currentBoxLineWeights = parsed.currentBoxLineWeights;
+        if (typeof parsed.currentSectionColor2 === 'string') this._currentSectionColor2 = parsed.currentSectionColor2;
+        if (Array.isArray(parsed.currentSectionWeights)) this._currentSectionWeights = parsed.currentSectionWeights;
         if (Array.isArray(parsed.layers) && parsed.layers.length > 0) {
           // Normalize layers saved before visible/locked existed.
           this._layers = parsed.layers.map((l: Partial<Layer> & { id: string; name: string }) => ({
@@ -389,8 +389,8 @@ export class ToolboxStore {
       shapes: this.shapes.filter(s => s.type !== 'image'),
       currentColor: this._currentColor,
       currentDashed: this._currentDashed,
-      currentBoxLineColor2: this._currentBoxLineColor2,
-      currentBoxLineWeights: this._currentBoxLineWeights,
+      currentSectionColor2: this._currentSectionColor2,
+      currentSectionWeights: this._currentSectionWeights,
       layers: this._layers,
       activeLayerId: this._activeLayerId,
       showImages: this._showImages,
@@ -439,8 +439,8 @@ export class ToolboxStore {
     if (Array.isArray(parsed['shapes'])) this.shapes = parsed['shapes'] as DraftShape[];
     if (typeof parsed['currentColor'] === 'string') this._currentColor = parsed['currentColor'] as string;
     if (typeof parsed['currentDashed'] === 'boolean') this._currentDashed = parsed['currentDashed'] as boolean;
-    if (typeof parsed['currentBoxLineColor2'] === 'string') this._currentBoxLineColor2 = parsed['currentBoxLineColor2'] as string;
-    if (Array.isArray(parsed['currentBoxLineWeights'])) this._currentBoxLineWeights = parsed['currentBoxLineWeights'] as number[];
+    if (typeof parsed['currentSectionColor2'] === 'string') this._currentSectionColor2 = parsed['currentSectionColor2'] as string;
+    if (Array.isArray(parsed['currentSectionWeights'])) this._currentSectionWeights = parsed['currentSectionWeights'] as number[];
     if (Array.isArray(parsed['layers']) && (parsed['layers'] as unknown[]).length > 0) {
       this._layers = (parsed['layers'] as Array<Partial<Layer> & { id: string; name: string }>).map(l => ({
         id: l.id, name: l.name, visible: l.visible ?? true, locked: l.locked ?? false,

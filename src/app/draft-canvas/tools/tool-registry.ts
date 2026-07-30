@@ -1,6 +1,5 @@
 import { Injectable, inject } from '@angular/core';
 import { DraftTool, DraftToolHost } from './draft-tool';
-import { ToolSlot, single, flyout } from './tool-slot';
 import { ToolboxStore } from './toolbox-store';
 import { ImageAssetStore } from './image-asset-store';
 import { createImageTool } from './image-tool';
@@ -12,10 +11,18 @@ import { createJoinArcTool } from './join-arc-tool';
 import { createCircleTool } from './circle-tool';
 import { createDimensionTool } from './dimension-tool';
 import { createRectTool } from './rect-tool';
-import { createBoxLineTool } from './box-line-tool';
+import { createSectionTool } from './section-tool';
 import { createTextTool } from './text-tool';
 import { createPointTool } from './point-tool';
 import { createOffsetTool } from './offset-tool';
+
+/**
+ * One button's worth of space in a palette row: a lone tool written as itself, or an array
+ * grouping several variants of the same kind of shape (e.g. Arc's construction methods) behind
+ * one button plus a caret, so the palette doesn't grow a permanent icon per method. Which
+ * variant currently faces out is registry state, not part of the slot — see faceOf.
+ */
+export type ToolSlot = DraftTool | DraftTool[];
 
 /**
  * Owns the set of drafting tools and which one is active — a root-provided singleton, same
@@ -34,44 +41,31 @@ export class ToolRegistryService {
    * nothing can activate a tool before the canvas exists anyway. */
   private host: DraftToolHost | null = null;
 
-  // Add new tools here, grouped into rows of up to 2 slots. Use flyout([...])
-  // to group every variant of the same kind of shape (styles and construction
-  // methods alike) behind one button + caret; use single(...) for a tool with
-  // no variants. The toolbar and pointer routing pick both up automatically.
+  // Add new tools here. Each entry is one palette row; put several tools in a row to make the
+  // dock wider rather than taller. A *nested* array is one slot holding several variants of the
+  // same kind of shape (styles and construction methods alike), collapsed behind one button +
+  // caret — see ToolSlot. The toolbar and pointer routing pick all of it up automatically.
   readonly toolRows: ToolSlot[][] = [
-    [
-      single(createLineTool(this.toolbox)),
-    ],
-    [ single(createDimensionTool()) ],
-    [
-      flyout([createArcTool(), createArcStartFirstTool(), createTangentArcTool(), createChainedTangentArcTool(), createJoinArcTool()]),
-    ],
-    [
-      single(createCircleTool(this.toolbox)),
-    ],
-    [
-      single(createRectTool(this.toolbox)),
-    ],
-    [
-      single(createBoxLineTool(this.toolbox)),
-    ],
-    [
-      single(createTextTool()),
-    ],
-    [
-      single(createPointTool()),
-    ],
+    [createLineTool(this.toolbox)],
+    [createDimensionTool()],
+    [createSectionTool(this.toolbox)],
+    [[createArcTool(), createArcStartFirstTool(), createTangentArcTool(), createChainedTangentArcTool(), createJoinArcTool()]],
+    [createCircleTool(this.toolbox)],
+    [createRectTool(this.toolbox)],
+    [createTextTool()],
+    [createPointTool()],
     // Modify tools — act on the current selection rather than drawing new shapes; Join will
     // join this row once it exists.
-    [
-      single(createOffsetTool()),
-    ],
+    [createOffsetTool()],
     // Reference images — placed from a file rather than drawn, but a placed image is an ordinary
     // selectable/movable shape from then on. See image-tool.ts.
-    [
-      single(createImageTool(this.imageAssets)),
-    ],
+    [createImageTool(this.imageAssets)],
   ];
+
+  /** Which variant currently faces out of a multi-variant slot, keyed by the slot itself. Absent
+   * means the first variant, so this stays empty until a flyout is actually used. Registry state
+   * rather than a field on the slot, which is what lets a lone tool be written as itself. */
+  private flyoutFaces = new Map<ToolSlot, DraftTool>();
 
   get activeTool(): DraftTool | null { return this._activeTool; }
 
@@ -94,18 +88,36 @@ export class ToolRegistryService {
     if (tool && this.host) tool.onActivate?.(this.host);
   }
 
-  /** Activates a tool by id from anywhere in toolRows — used by the hotkey mnemonics. Mutates
-   * the slot's selectedIndex directly so a flyout's face stays in sync regardless of whether
-   * the hotkey or a click on the flyout triggered the switch. */
+  /** Every tool in a slot — a one-element list for a lone tool, so callers can treat both alike. */
+  variantsOf(slot: ToolSlot): DraftTool[] {
+    return Array.isArray(slot) ? slot : [slot];
+  }
+
+  /** The tool a slot's button shows and activates: its only tool, or whichever variant was last
+   * picked out of its flyout. */
+  faceOf(slot: ToolSlot): DraftTool {
+    if (!Array.isArray(slot)) return slot;
+    return this.flyoutFaces.get(slot) ?? slot[0];
+  }
+
+  /** Whether a slot has alternatives worth showing a caret for. */
+  hasVariants(slot: ToolSlot): boolean {
+    return Array.isArray(slot) && slot.length > 1;
+  }
+
+  /** Activates one of a slot's tools and makes it that slot's new face, so the button keeps
+   * showing what you last used regardless of whether a hotkey or a flyout click chose it. */
+  selectVariant(slot: ToolSlot, tool: DraftTool): void {
+    if (Array.isArray(slot)) this.flyoutFaces.set(slot, tool);
+    this.selectTool(tool);
+  }
+
+  /** Activates a tool by id from anywhere in toolRows — used by the hotkey mnemonics. */
   activateById(id: string): void {
     for (const row of this.toolRows) {
       for (const slot of row) {
-        if (slot.kind === 'single') {
-          if (slot.tool.id === id) { this.selectTool(slot.tool); return; }
-        } else {
-          const idx = slot.variants.findIndex(v => v.id === id);
-          if (idx >= 0) { slot.selectedIndex = idx; this.selectTool(slot.variants[idx]); return; }
-        }
+        const tool = this.variantsOf(slot).find(t => t.id === id);
+        if (tool) { this.selectVariant(slot, tool); return; }
       }
     }
   }
