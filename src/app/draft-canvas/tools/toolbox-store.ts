@@ -15,12 +15,10 @@ const MAX_HISTORY = 50;
  * so recipe-base's undo/redo keyboard handler can see the same shape history
  * and defer to it — see recipe-base.ts `onUndoRedoKeyDown`.
  *
- * Placed reference images (`ImageShape`) live in the same list, so they get selection,
- * move/resize, delete, layers and undo from the same machinery every other shape uses. They are
- * the one exception to "backed by sessionStorage", though: their durable home is the recipe's
- * `referenceImages` field, which templates and saved files already carry (see
- * reference-image-schema.ts), so exportState leaves them out and they are re-derived from the
- * recipe on load rather than restored from here.
+ * Placed reference images (`ImageShape`) live in the same list, so they get selection, move,
+ * delete, layers and undo from the same machinery. They are the one exception to the
+ * sessionStorage backing: their durable home is the recipe's `referenceImages` field, so
+ * exportState leaves them out and they are re-derived from the recipe on load.
  */
 @Injectable({ providedIn: 'root' })
 export class ToolboxStore {
@@ -381,10 +379,8 @@ export class ToolboxStore {
    * blob and the session's scratch copy can't drift apart.
    *
    * Images are filtered out of both destinations on purpose: the recipe's own `referenceImages`
-   * field is their durable home (that's what keeps templates and existing saved files valid), and
-   * writing them here as well would mean two copies of the same data that can disagree — plus a
-   * dangling `imageRef` on reload, since ImageAssetStore is session-scoped and rebuilt from the
-   * recipe. */
+   * field is their durable home, so writing them here too would mean two copies that can
+   * disagree — plus a dangling `imageRef` on reload, since ImageAssetStore is session-scoped. */
   exportState(): object {
     return {
       shapes: this.shapes.filter(s => s.type !== 'image'),

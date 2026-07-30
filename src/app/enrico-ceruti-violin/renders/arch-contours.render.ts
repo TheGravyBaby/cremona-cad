@@ -1,15 +1,12 @@
 /**
  * Contour (topo) map of one plate's surface, viewed through the same oblique
  * projection as the 3D wireframe (see oblique-projection.ts). At rotation
- * (0,0,0) this is exactly the flat plan-view map this feature replaces: the
- * projection's zero-rotation case reduces to a plain (x, y) → (x, y) plan
- * view, since z only enters through the rotated terms.
+ * (0,0,0) it reduces to the flat plan-view map, since z only enters through
+ * the rotated terms.
  *
- * Each contour ring sits at z = its level by construction (that's what a
- * contour ring is), so projecting it is exactly like projecting a wireframe
- * rib. The outline context line doesn't have a natural z of its own — it's
- * projected flat, at z = 0 (the plate-surface reference plane), which keeps
- * it as simple, cheap context rather than a second surface to sample.
+ * Each contour ring sits at z = its level by construction, so projecting it is
+ * like projecting a wireframe rib. The outline context line has no natural z of
+ * its own and is projected flat at z = 0.
  *
  * The pipeline mirrors the wireframe's cache/reproject split:
  *   computeArchContourRings (ceruti-surface.ts) — expensive marching-squares

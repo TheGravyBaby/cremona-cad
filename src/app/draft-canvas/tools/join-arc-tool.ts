@@ -34,18 +34,15 @@ function preferMinorSweep(arc: ResolvedArc): ResolvedArc {
  * 2 valid radii per orientation — so this tries all 4 invert1/invert2 combinations and every root
  * each gives (up to 8 candidates total) and scores them, rather than guessing one.
  *
- * Each candidate is scored on two things: scaleMismatch (how far its radius is from the P1–P2
- * chord length, log-scaled — a well-formed join's radius is roughly chord-sized) and turning
- * (total curvature in radians — a tighter, more efficient join turns less). combinedScore is
- * `2 × scaleMismatch + turning`; the weight and the choice to add rather than multiply were both
- * fit against six real cases (see join-arc-tool.spec.ts) where simpler formulas picked wrong —
- * multiplying let one near-zero factor mask a badly-wrong other one, which addition can't do.
- * jointRatio (how far the two arcs' meeting point sits from the P1–P2 midpoint) is computed and
- * logged too, in case a future case needs it, but isn't part of the score yet.
+ * Each candidate is scored on scaleMismatch (how far its radius is from the P1–P2 chord length,
+ * log-scaled — a well-formed join's radius is roughly chord-sized) and turning (total curvature;
+ * a tighter join turns less). combinedScore is `2 × scaleMismatch + turning` — added rather than
+ * multiplied so one near-zero factor can't mask a badly-wrong other one, and fit against the
+ * cases in join-arc-tool.spec.ts. jointRatio is computed and logged but not yet scored.
  *
- * All candidates are returned, sorted ascending by combinedScore (index 0 is the default). None
- * are filtered out, even implausible ones, so Shift can still cycle to whichever one turns out to
- * be correct if the score is ever wrong again (see JoinArcTool.onKeyDown).
+ * All candidates are returned, sorted ascending by combinedScore (index 0 is the default).
+ * Nothing is filtered out, so Shift can cycle to an implausible-looking one that's actually right
+ * (see JoinArcTool.onKeyDown).
  */
 export type BiarcCandidate = {
   invert1: boolean; invert2: boolean; radius: number; arcs: ResolvedArc[];
@@ -115,9 +112,8 @@ function logJoinDebug(P1: Pt, T1: number, P2: Pt, T2: number, chosenIndex: numbe
  * point. One tangent → a single arc (fitTangentArc); two tangents → the biarc solver, auto-picking
  * its best-scoring orientation (see computeBiarcCandidates).
  *
- * If the auto-pick is wrong, each Shift press steps to the next candidate (by score) and logs it
- * (see onKeyDown), so a bad case can be reported back with an index rather than a screenshot. The
- * single-arc fallback keeps every other arc tool's simpler "hold Shift for the other solution"
+ * If the auto-pick is wrong, each Shift press steps to the next candidate by score and logs it.
+ * The single-arc case keeps every other arc tool's simpler "hold Shift for the other solution"
  * behavior instead — there are only ever two, so there's nothing to cycle through.
  */
 export class JoinArcTool implements DraftTool {

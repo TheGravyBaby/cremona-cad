@@ -36,11 +36,10 @@ function smoothstep(edge0: number, edge1: number, x: number): number {
  * blob, recipe-base's `JSON.stringify(this.d)` snapshots, and per-frame drag previews.
  *
  * Session-scoped and not persisted itself — the recipe file is the durable home for hrefs (see
- * reference-image-schema.ts), and this table is rebuilt from it on load, same lifecycle as
- * ToolboxStore's shapes.
+ * reference-image-schema.ts), and this table is rebuilt from it on load.
  *
- * Also owns the white-suppression cache, since a suppressed variant is a property of the pixels
- * rather than of any one shape placing them: two shapes showing the same image share the work.
+ * Also owns the white-suppression cache: a suppressed variant is a property of the pixels, not of
+ * any one shape placing them, so two shapes showing the same image share the work.
  */
 @Injectable({ providedIn: 'root' })
 export class ImageAssetStore {

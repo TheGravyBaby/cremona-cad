@@ -19,20 +19,15 @@ const DEG = Math.PI / 180;
  * Pre-multiply the three rotation matrices (Ry * Rx * Rz) into a single 2-row
  * matrix and return a lightweight per-point projection closure.
  *
- * Trig is computed **once** here; the returned function executes only
- * 6 multiplications and 5 additions per point.
+ * Trig is computed **once** here; the returned closure is 6 multiplies and
+ * 5 adds per point.
  *
- * Rotation order (extrinsic / fixed-frame): Z → X → Y.
- * At (rotXDeg=0, rotYDeg=0, rotZDeg=0) the view looks straight down the
- * Z axis: screen X = violin X, screen Y = violin Y (plan view) — the flat
- * plan-view rendering used elsewhere is exactly this projection's zero-
- * rotation case.
+ * Rotation order (extrinsic / fixed-frame): Z → X → Y. At all-zero rotation
+ * the view looks straight down Z, so the flat plan view rendered elsewhere is
+ * exactly this projection's zero-rotation case.
  *
  * @param yOffset   - canvas world origin for the violin body
  * @param heightMid - p.height / 2 — centres Y before rotation
- * @param rotXDeg   - rotation around X axis (degrees)
- * @param rotYDeg   - rotation around Y axis (degrees)
- * @param rotZDeg   - rotation around Z axis (degrees)
  * @param zAmp      - visual amplification of arch height
  */
 export function buildProjection(

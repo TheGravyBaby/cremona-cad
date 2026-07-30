@@ -4,12 +4,11 @@
  * pans and zooms with the camera for free — no screen-pixel math needed here.
  *
  * The frame owns only drag *start*: on `pointerdown` it calls back into the
- * caller (which attaches window-level move/up listeners). That split matters
- * because every rotation tick tears down and rebuilds this element along with
- * the rest of the canvas (see DraftCanvasComponent.draw()), so anything tied
- * to *this* element's lifetime — like pointer capture — would be lost
- * mid-drag. Window listeners survive the rebuild; this element only needs to
- * answer "did the drag start inside the wireframe's bounds".
+ * caller, which attaches window-level move/up listeners. That split matters
+ * because every rotation tick rebuilds this element along with the rest of the
+ * canvas, so anything tied to its lifetime — like pointer capture — would be
+ * lost mid-drag. Window listeners survive; this element only has to answer "did
+ * the drag start inside the wireframe's bounds".
  */
 import { CerutiColors } from '../ceruti-types';
 

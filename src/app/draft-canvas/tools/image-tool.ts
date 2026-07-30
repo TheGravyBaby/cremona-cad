@@ -41,15 +41,13 @@ function fitToBounds(
 /**
  * Places a reference image — a photo, scan, or drawing to trace over — on the canvas.
  *
- * Unlike every other tool, its input is a file rather than a click, so it does its whole job in
- * onActivate: open the picker, place the image over the design bounds, then hand control straight
- * back to Select with the new image selected, so its resize/rotate handles and its settings-bar
- * row are immediately live. There is deliberately nothing else here — moving, resizing, rotating,
- * hiding, deleting and undoing a placed image are all the generic shape machinery (see
- * shape-grabbers.ts, shape-hit-test.ts, ToolboxStore), not this tool's business.
+ * Unlike every other tool its input is a file rather than a click, so it does its whole job in
+ * onActivate: open the picker, place the image over the design bounds, hand control back to
+ * Select with the new image selected. Nothing else lives here — moving, resizing, rotating,
+ * deleting and undoing a placed image are all the generic shape machinery.
  *
- * The pixels never touch the shape: `imageRef` points into ImageAssetStore, which is what keeps
- * base64 payloads out of undo history and sessionStorage.
+ * The pixels never touch the shape: `imageRef` points into ImageAssetStore, which keeps base64
+ * payloads out of undo history and sessionStorage.
  */
 export class ImageTool implements DraftTool {
   readonly id = 'image';

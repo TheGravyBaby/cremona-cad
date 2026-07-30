@@ -141,7 +141,6 @@ function arcCenterFromEndpoints(
   };
 }
 
-/** Walks a path `d` string and returns the center of every elliptical arc segment in it. */
 export function extractArcCenters(d: string): Pt[] {
   const centers: Pt[] = [];
   let cur: Pt = { x: 0, y: 0 };

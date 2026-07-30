@@ -12,18 +12,15 @@ const DEFAULT_TANGENT = 0; // pointing along +x, used when the start point didn'
 type Stage = 'idle' | 'start-set';
 
 /**
- * Two clicks, not a drag. The first click sets the arc's start point and
- * locks its starting tangent — inherited from whichever line/arc/circle
- * point it snapped to (see snap-engine.ts's per-candidate `tangent` and
- * `DraftToolHost.getSnapTangent`) — so consecutive arcs flow smoothly into
- * each other instead of needing to be eyeballed. The second click is the end
- * point; radius and sweep are solved from the tangent constraint rather than
- * picked independently, unlike the center-first Arc tool.
+ * Two clicks, not a drag. The first sets the arc's start point and locks its
+ * starting tangent, inherited from whatever it snapped to (see
+ * `DraftToolHost.getSnapTangent`), so consecutive arcs flow smoothly instead of
+ * being eyeballed. The second is the end point; radius and sweep are solved
+ * from the tangent constraint rather than picked independently.
  *
- * Of the two arcs sharing that start/end pair, the one that continues smoothly from the
- * tangent is preferred by default — holding the angle-lock modifier (Shift) takes the other
- * one instead (which no longer joins smoothly, but sweeps the other way), same convention as
- * the center-first Arc tool's short/long toggle.
+ * Of the two arcs sharing that start/end pair, the one continuing smoothly from the tangent
+ * is preferred by default; Shift takes the other, which sweeps the other way but no longer
+ * joins smoothly.
  */
 export class TangentArcTool implements DraftTool {
   readonly id = 'arc-tangent';
