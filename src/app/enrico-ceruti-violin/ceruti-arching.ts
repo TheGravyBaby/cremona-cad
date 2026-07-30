@@ -108,6 +108,13 @@ function archFromLoweredTakeoff(arch: ArchCurve, edgeDepth: number): ArchCurve {
  * Spline control points predating asymmetric arches carry no `mirror` flag and
  * a `t` measured over the half-span (0 = plate edge, 1 = peak); they become
  * mirrored points at half that t over the full span, which is the same curve.
+ *
+ * **Must run on every recipe that enters the app** — see
+ * {@link normalizeArchingParams}, the single caller, which every load path goes
+ * through. It cannot be deferred to the render path and it cannot be applied
+ * lazily on read: in the current format an absent `mirror` means an unmirrored
+ * point, so only a loader — which knows the data just came off disk — can tell a
+ * legacy point from a deliberately unmirrored one.
  */
 export function normalizeArchCurve(arch: ArchCurve): void {
   if (arch.type !== 'spline') return;
@@ -119,6 +126,23 @@ export function normalizeArchCurve(arch: ArchCurve): void {
     }
   }
   arch.points.sort((a, b) => a.t - b.t);
+}
+
+/**
+ * Migrates a freshly loaded recipe's arching in place, if it has any. Call this
+ * once per recipe entering the app — a template, a file off disk, or a session
+ * restore — and before anything reads `arching`.
+ *
+ * This exists as its own function so the migration is not tied to a panel being
+ * opened: the surface builder, the 3D preview and the STL/template exports all
+ * read spline arches directly (see ceruti-surface.ts), so a recipe that reached
+ * Export without passing through here would be interpolated from legacy
+ * coordinates and quietly cut wrong.
+ */
+export function normalizeArchingParams(p: EnricoCerutiParams | undefined | null): void {
+  if (!p?.arching) return;
+  normalizeArchCurve(p.arching.top.arch);
+  normalizeArchCurve(p.arching.bottom.arch);
 }
 
 export function calculateLongArch(p: EnricoCerutiParams): { span: number; yStart: number; topPath: string; backPath: string } {

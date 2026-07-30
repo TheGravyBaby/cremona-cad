@@ -8,6 +8,23 @@ type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 
 export const PREVIEW_COLOR = '#2563eb';
 
+/**
+ * The dashed, non-scaling, click-through look every in-progress preview shares, applied to an
+ * already-positioned element. One definition so a line, a circle and an Offset candidate can't
+ * drift into three slightly different previews — see offset-tool.ts, which uses it too.
+ */
+export function stylePreview<E extends d3.BaseType>(
+  sel: d3.Selection<E, unknown, null, undefined>,
+): d3.Selection<E, unknown, null, undefined> {
+  return sel
+    .attr('fill', 'none')
+    .attr('stroke', PREVIEW_COLOR)
+    .attr('stroke-width', 1.5)
+    .attr('stroke-dasharray', '4 3')
+    .attr('vector-effect', 'non-scaling-stroke')
+    .style('pointer-events', 'none');
+}
+
 type PreviewRenderer = (gRoot: RootGroup, gUI: RootGroup, pxPerMm: number, start: Pt, end: Pt) => void;
 
 /** Transforms the live second point while the angle-lock modifier (Shift) is held — e.g.
@@ -21,38 +38,21 @@ export function angleLockModifier(start: Pt, pt: Pt, host: DraftToolHost): Pt {
 }
 
 export function previewLine(gRoot: RootGroup, _gUI: RootGroup, _pxPerMm: number, start: Pt, end: Pt): void {
-  gRoot.append('line')
+  stylePreview(gRoot.append('line')
     .attr('x1', start.x).attr('y1', start.y)
-    .attr('x2', end.x).attr('y2', end.y)
-    .attr('stroke', PREVIEW_COLOR)
-    .attr('stroke-width', 1.5)
-    .attr('stroke-dasharray', '4 3')
-    .attr('vector-effect', 'non-scaling-stroke')
-    .style('pointer-events', 'none');
+    .attr('x2', end.x).attr('y2', end.y));
 }
 
 export function previewCircle(gRoot: RootGroup, _gUI: RootGroup, _pxPerMm: number, center: Pt, radiusPt: Pt): void {
   const radius = Math.hypot(radiusPt.x - center.x, radiusPt.y - center.y);
-  gRoot.append('circle')
-    .attr('cx', center.x).attr('cy', center.y).attr('r', radius)
-    .attr('fill', 'none')
-    .attr('stroke', PREVIEW_COLOR)
-    .attr('stroke-width', 1.5)
-    .attr('stroke-dasharray', '4 3')
-    .attr('vector-effect', 'non-scaling-stroke')
-    .style('pointer-events', 'none');
+  stylePreview(gRoot.append('circle')
+    .attr('cx', center.x).attr('cy', center.y).attr('r', radius));
 }
 
 export function previewRect(gRoot: RootGroup, _gUI: RootGroup, _pxPerMm: number, p1: Pt, p2: Pt): void {
-  gRoot.append('rect')
+  stylePreview(gRoot.append('rect')
     .attr('x', Math.min(p1.x, p2.x)).attr('y', Math.min(p1.y, p2.y))
-    .attr('width', Math.abs(p2.x - p1.x)).attr('height', Math.abs(p2.y - p1.y))
-    .attr('fill', 'none')
-    .attr('stroke', PREVIEW_COLOR)
-    .attr('stroke-width', 1.5)
-    .attr('stroke-dasharray', '4 3')
-    .attr('vector-effect', 'non-scaling-stroke')
-    .style('pointer-events', 'none');
+    .attr('width', Math.abs(p2.x - p1.x)).attr('height', Math.abs(p2.y - p1.y)));
 }
 
 /** Same fixed pixel threshold draft-canvas.ts uses to tell a stationary click apart from a real

@@ -54,12 +54,11 @@ export class ToolRegistryService {
     [createRectTool(this.toolbox)],
     [createTextTool()],
     [createPointTool()],
-    // Modify tools — act on the current selection rather than drawing new shapes; Join will
-    // join this row once it exists.
+    // Modify tools — act on the current selection rather than drawing new shapes.
     [createOffsetTool()],
     // Reference images — placed from a file rather than drawn, but a placed image is an ordinary
     // selectable/movable shape from then on. See image-tool.ts.
-    [createImageTool(this.imageAssets)],
+    [createImageTool(this.imageAssets, this.toolbox)],
   ];
 
   /** Which variant currently faces out of a multi-variant slot, keyed by the slot itself. Absent

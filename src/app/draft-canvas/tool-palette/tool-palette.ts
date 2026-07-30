@@ -160,14 +160,21 @@ export class ToolPaletteComponent implements OnInit, OnDestroy {
     this.startRenameLayer(id);
   }
 
-  startRenameLayer(id: string): void {
-    this.editingLayerId = id;
-    // The rename <input> is created by this state change; focus it next tick.
+  /** Focuses a rename <input> the frame after the state change that creates it. The layer and
+   * image lists have their own marker class (they share only styling), so an open editor in one
+   * can't steal the focus meant for the other. */
+  private focusRenameInput(markerClass: string): void {
     setTimeout(() => {
-      const el = (this.elRef.nativeElement as HTMLElement).querySelector('.layer-tab-edit') as HTMLInputElement | null;
+      const el = (this.elRef.nativeElement as HTMLElement)
+        .querySelector(`.${markerClass}`) as HTMLInputElement | null;
       el?.focus();
       el?.select();
     });
+  }
+
+  startRenameLayer(id: string): void {
+    this.editingLayerId = id;
+    this.focusRenameInput('layer-rename-edit');
   }
 
   commitRenameLayer(id: string, name: string): void {
@@ -243,12 +250,7 @@ export class ToolPaletteComponent implements OnInit, OnDestroy {
 
   startRenameImage(id: string): void {
     this.editingImageId = id;
-    // The rename <input> is created by this state change; focus it next tick.
-    setTimeout(() => {
-      const el = (this.elRef.nativeElement as HTMLElement).querySelector('.layer-tab-edit') as HTMLInputElement | null;
-      el?.focus();
-      el?.select();
-    });
+    this.focusRenameInput('image-rename-edit');
   }
 
   commitRenameImage(id: string, label: string): void {

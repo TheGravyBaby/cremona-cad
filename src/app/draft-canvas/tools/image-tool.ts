@@ -3,6 +3,7 @@ import { Pt } from '../../models/types';
 import { DraftTool, DraftToolHost } from './draft-tool';
 import { ImageShape, makeShapeId } from './toolbox-shape';
 import { ImageAssetStore } from './image-asset-store';
+import { ToolboxStore } from './toolbox-store';
 
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 
@@ -54,7 +55,7 @@ export class ImageTool implements DraftTool {
   readonly id = 'image';
   readonly label = 'Reference Image';
 
-  constructor(private assets: ImageAssetStore) {}
+  constructor(private assets: ImageAssetStore, private toolbox: ToolboxStore) {}
 
   onActivate(host: DraftToolHost): void {
     void this.placeImage(host);
@@ -76,7 +77,9 @@ export class ImageTool implements DraftTool {
       ...box,
       rotationDeg: 0,
       imageRef: this.assets.intern(file.dataUrl, file.width, file.height),
-      label: 'Reference',
+      // Numbered like the recipe loader's own default (see reference-image-schema.ts), so several
+      // placed images are told apart in the image list without renaming each one first.
+      label: `Img ${this.toolbox.getImageShapes().length + 1}`,
       // Explicitly unlocked, against the absent-means-locked default: you add an image in order
       // to position and scale it, so it has to be grabbable straight away. It saves as unlocked
       // and can be locked from the image list or the settings bar once it's placed.
@@ -97,6 +100,6 @@ export class ImageTool implements DraftTool {
   reset(): void {}
 }
 
-export function createImageTool(assets: ImageAssetStore): ImageTool {
-  return new ImageTool(assets);
+export function createImageTool(assets: ImageAssetStore, toolbox: ToolboxStore): ImageTool {
+  return new ImageTool(assets, toolbox);
 }

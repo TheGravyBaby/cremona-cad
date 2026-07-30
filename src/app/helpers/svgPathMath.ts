@@ -1168,6 +1168,11 @@ const SPLINE_PEAK_MARGIN  = 0.02;
  *
  * Shared by the path builder, the height evaluator, and the panel's control
  * point guides so all three agree on where the knots ended up.
+ *
+ * Expects points already in the current format. An absent `mirror` here means an
+ * unmirrored point, *not* a legacy one — recipes off disk are migrated at load
+ * (see ceruti-arching's normalizeArchCurve), because only the loader can tell the
+ * two apart.
  */
 export function archSplineKnots(
   hEff: number,

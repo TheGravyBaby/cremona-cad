@@ -6,6 +6,7 @@ import { clampParam, safeRun } from '../helpers/validators';
 import { CerutiColors, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, EnricoCerutiTemplate, EnricoCerutiParams, PanelRenderRequest } from './ceruti-types';
 import { CERUTI_TEMPLATES } from './ceruti-templates';
 import { defineOuterPath, defineOuterPurflingPath, definePurflingPath } from './ceruti-paths';
+import { normalizeArchingParams } from './ceruti-arching';
 import { renderBounds } from './renders/guides.render';
 import { BasePanel } from './panels/base-panel/base-panel';
 import { MainBoutsPanel } from './panels/main-bouts-panel/main-bouts-panel';
@@ -212,9 +213,19 @@ export class CerutiViolin extends RecipeComponentBase {
 
   // ===== Lifecycle and bootstrap =====
 
+  /**
+   * Migrates arching saved in an older format the moment a recipe is adopted, rather than when the
+   * Long Arching panel happens to open — the surface builder, the 3D preview and the STL/template
+   * exports all read spline arches straight out of params, and any of them is reachable first.
+   */
+  protected override onRecipeAdopted(): void {
+    normalizeArchingParams(this.d.params);
+  }
+
   onNewClick(): void {
     const blank = JSON.parse(JSON.stringify(CERUTI_TEMPLATES[0])) as EnricoCerutiTemplate;
     this.d = blank;
+    this.onRecipeAdopted();
     // resetAll() clears the image asset table too, so the new template's own images (the blank
     // one has none, but that shouldn't be baked in as an assumption) have to be loaded after it.
     this.toolbox.resetAll();
@@ -248,6 +259,7 @@ export class CerutiViolin extends RecipeComponentBase {
       }
       else {
         this.d = recipeData;
+        this.onRecipeAdopted();
         this.loadReferenceImages(recipeData);
         // Restore the last open panel from its own sessionStorage key
         this.panelFlow?.refreshEnabledPanels();

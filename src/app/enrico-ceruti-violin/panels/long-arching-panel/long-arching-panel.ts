@@ -8,7 +8,7 @@ import {
   ArchSpline, ArchSplinePoint,
   ArchingParams, CerutiColors, CerutiViewFlags, EnricoCerutiParams,
 } from '../../ceruti-types';
-import { calculateLongArch, defaultArchingParams, normalizeArchCurve } from '../../ceruti-arching';
+import { calculateLongArch, defaultArchingParams } from '../../ceruti-arching';
 import { archSplineKnots } from '../../../helpers/svgPathMath';
 import { calculateOuterArcs } from '../../ceruti-calcs';
 import { buildPlateSurfaceModel, calculateLongArchSectionFluting } from '../../ceruti-surface';
@@ -38,12 +38,11 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
   protected readonly archEdgeDepthInfo  = crossArchEdgeDepthInfo;
 
   ngOnInit(): void {
-    // Recipes saved before asymmetric splines store control points in the old
-    // half-span form; upgrade before any binding reads them.
-    if (this.params.arching) {
-      normalizeArchCurve(this.params.arching.top.arch);
-      normalizeArchCurve(this.params.arching.bottom.arch);
-    }
+    // No format migration here on purpose: ceruti-violin's onRecipeAdopted has already run
+    // normalizeArchingParams on every load path, so `params.arching` is current by the time this
+    // panel can mount. Migrating here as well was the old arrangement, and it left every other
+    // consumer of a spline arch (surface, 3D preview, exports) reading legacy coordinates
+    // whenever the user never opened this panel.
     this.emitImmediate();
   }
 

@@ -4,11 +4,12 @@ import { offsetArcRadius, offsetCircleRadius, offsetLineByDistance } from '../..
 import { DraftTool, DraftToolHost } from './draft-tool';
 import { DraftShape, makeShapeId } from './toolbox-shape';
 import { arcPathData, pointOnCircle } from './arc-geometry';
-import { PREVIEW_COLOR } from './two-point-tool';
+import { PREVIEW_COLOR, stylePreview } from './two-point-tool';
 
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 
-/** Only these shape types have a defined offset in Phase 1 — see offset-tool plan. */
+/** The shape types with a defined offset. Rect/section/text/point have no meaningful parallel
+ * copy, so they're filtered out of the selection rather than silently ignored downstream. */
 function supportedShapes(shapes: DraftShape[]): DraftShape[] {
   return shapes.filter(s => s.type === 'arc' || s.type === 'circle' || s.type === 'line');
 }
@@ -145,19 +146,17 @@ function tryOffsetShape(shape: DraftShape, distance: number): DraftShape | null 
 }
 
 /**
- * Acts on the current selection instead of drawing new shapes — the first tool in a new
- * "Modify" category (Join will be the next). Select shapes in Select mode, then activate
- * Offset: move the mouse to preview a new offset copy of every selected shape live (magnitude
+ * Acts on the current selection instead of drawing new shapes. Select shapes in Select mode,
+ * then activate Offset: move the mouse to preview a new offset copy of every selected shape live (magnitude
  * + side both driven by whichever selected shape the cursor is nearest to), click to commit,
  * or type an exact distance and press Enter. Non-destructive — originals are untouched, and the
  * tool stays active afterward so the same selection can be offset again at a new distance.
  *
  * A connected run of shapes (sharing endpoints, e.g. a chain built with the chain tool) offsets
  * as one continuous curve — see computeSignByShapeId for how each shape's sign is worked out
- * relative to its neighbors. What Phase 1 still doesn't do is preserve exact tangency at a
- * joint (only its continuity/sign): the offset arcs will meet, but the joint's curvature match
- * isn't re-derived, so a very tight radius next to a very loose one can visibly kink. Full
- * tangency-preserving chain offset is separate, later work.
+ * relative to its neighbors. Known limitation: a joint's continuity/sign is preserved but its
+ * exact tangency is not — the offset arcs will meet, but the curvature match isn't re-derived, so
+ * a very tight radius next to a very loose one can visibly kink.
  */
 export class OffsetTool implements DraftTool {
   readonly id = 'offset';
@@ -166,7 +165,18 @@ export class OffsetTool implements DraftTool {
 
   private lastPt: Pt | null = null;
   private cachedShapes: DraftShape[] = [];
+  /** Signs for `cachedShapes`, invalidated whenever that list changes. The graph walk depends
+   * only on the selection, not the cursor, so it must not be redone per pointermove/frame. */
+  private cachedSigns: Map<string, number> | null = null;
   private typedBuffer = '';
+
+  /** Adopts the current selection, dropping the cached signs if it actually changed. */
+  private setShapes(shapes: DraftShape[]): void {
+    const same = shapes.length === this.cachedShapes.length
+      && shapes.every((s, i) => s === this.cachedShapes[i]);
+    this.cachedShapes = shapes;
+    if (!same) this.cachedSigns = null;
+  }
 
   onPointerDown(pt: Pt, host: DraftToolHost): void {
     this.lastPt = pt;
@@ -174,7 +184,7 @@ export class OffsetTool implements DraftTool {
       const hitId = host.hitTestShape(pt);
       if (hitId) host.selectShape(hitId);
     }
-    this.cachedShapes = supportedShapes(host.getSelectedShapes());
+    this.setShapes(supportedShapes(host.getSelectedShapes()));
     if (this.cachedShapes.length === 0) return;
 
     const resolved = this.resolveDistances(pt);
@@ -192,7 +202,7 @@ export class OffsetTool implements DraftTool {
 
   onPointerMove(pt: Pt, host: DraftToolHost): void {
     this.lastPt = pt;
-    this.cachedShapes = supportedShapes(host.getSelectedShapes());
+    this.setShapes(supportedShapes(host.getSelectedShapes()));
     host.requestDraw();
   }
 
@@ -255,6 +265,7 @@ export class OffsetTool implements DraftTool {
   reset(): void {
     this.lastPt = null;
     this.cachedShapes = [];
+    this.cachedSigns = null;
     this.typedBuffer = '';
   }
 
@@ -276,7 +287,7 @@ export class OffsetTool implements DraftTool {
     }
     if (Math.abs(rawDistance) < 1e-6) return null;
 
-    const groupSign = computeSignByShapeId(this.cachedShapes);
+    const groupSign = this.cachedSigns ??= computeSignByShapeId(this.cachedShapes);
     const anchorSign = groupSign.get(nearest.shapeId) ?? 1;
 
     const distances = new Map<string, number>();
@@ -287,34 +298,19 @@ export class OffsetTool implements DraftTool {
     return { distances, rawDistance };
   }
 
+  /** Draws one offset candidate in the same dashed preview style every other tool uses — see
+   * two-point-tool.ts's stylePreview, which owns that look. */
   private drawPreviewShape(gRoot: RootGroup, shape: DraftShape): void {
     if (shape.type === 'arc') {
-      gRoot.append('path')
-        .attr('d', arcPathData(shape.center, shape.radius, shape.startAngle, shape.endAngle))
-        .attr('fill', 'none')
-        .attr('stroke', PREVIEW_COLOR)
-        .attr('stroke-width', 1.5)
-        .attr('stroke-dasharray', '4 3')
-        .attr('vector-effect', 'non-scaling-stroke')
-        .style('pointer-events', 'none');
+      stylePreview(gRoot.append('path')
+        .attr('d', arcPathData(shape.center, shape.radius, shape.startAngle, shape.endAngle)));
     } else if (shape.type === 'circle') {
-      gRoot.append('circle')
-        .attr('cx', shape.center.x).attr('cy', shape.center.y).attr('r', shape.radius)
-        .attr('fill', 'none')
-        .attr('stroke', PREVIEW_COLOR)
-        .attr('stroke-width', 1.5)
-        .attr('stroke-dasharray', '4 3')
-        .attr('vector-effect', 'non-scaling-stroke')
-        .style('pointer-events', 'none');
+      stylePreview(gRoot.append('circle')
+        .attr('cx', shape.center.x).attr('cy', shape.center.y).attr('r', shape.radius));
     } else if (shape.type === 'line') {
-      gRoot.append('line')
+      stylePreview(gRoot.append('line')
         .attr('x1', shape.start.x).attr('y1', shape.start.y)
-        .attr('x2', shape.end.x).attr('y2', shape.end.y)
-        .attr('stroke', PREVIEW_COLOR)
-        .attr('stroke-width', 1.5)
-        .attr('stroke-dasharray', '4 3')
-        .attr('vector-effect', 'non-scaling-stroke')
-        .style('pointer-events', 'none');
+        .attr('x2', shape.end.x).attr('y2', shape.end.y));
     }
   }
 }
