@@ -1,4 +1,6 @@
-import { Pt, Circle, Axis, Line, Rectangle, Arc, arcFromCircle } from "../models/types";
+import { Pt, Circle, Axis, SlopeInterceptLine, Rectangle, Arc, arcFromCircle } from "../models/types";
+
+const TWO_PI = Math.PI * 2;
 
 // ======= Simple Geometry =======
 export function dist(a: Pt, b: Pt) {
@@ -24,6 +26,20 @@ export function pointAtDistanceToward(from: Pt, toward: Pt, distance: number): P
 export function normalizeDegrees(deg: number): number {
   const v = deg % 360;
   return v < 0 ? v + 360 : v;
+}
+
+/** Wraps a radian value into [0, 2π). The radian twin of normalizeDegrees, and the canonical
+ * spelling of the `((a % 2π) + 2π) % 2π` idiom that this codebase otherwise reinvents per file. */
+export function normalizeRadians(rad: number): number {
+  const v = rad % TWO_PI;
+  return v < 0 ? v + TWO_PI : v;
+}
+
+/** Wraps a degree *difference* into [-180, 180) — the signed shortest way round, as opposed to
+ * normalizeDegrees' unsigned [0, 360). Use this when the sign means "which way to turn". */
+export function signedDegreeDelta(deg: number): number {
+  const v = normalizeDegrees(deg);
+  return v >= 180 ? v - 360 : v;
 }
 
 /** Rotates `p` about `center` by `deg` (counterclockwise, matching the Y-up world). Pass a
@@ -226,6 +242,88 @@ export function pointOnCircle(C: Circle,  θ: number): Pt {
   };
 }
 
+// ======= Arc construction =======
+// These take center/radius/angles loose rather than an Arc, because their callers are the canvas
+// tools, whose ArcShape stores `center: Pt` and `radius` separately. Arc's own `start`/`end` carry
+// the *minor*-sweep convention of pathFromArc; the functions below sweep strictly CCW (see
+// arcPathData), so reusing Arc here would silently mix two conventions in one type.
+
+/**
+ * Builds an SVG arc path `d` sweeping counterclockwise from startAngle to
+ * endAngle — this app's existing convention for a "positive" sweep in its
+ * Y-up drafting space (see renderArcFromArc in helpers/renderFuncs.ts).
+ */
+export function arcPathData(center: Pt, radius: number, startAngle: number, endAngle: number): string {
+  const span = normalizeRadians(endAngle - startAngle);
+  const largeArcFlag = span > Math.PI ? 1 : 0;
+  const sweepFlag = 1;
+  const start = pointOnCircle({ ...center, r: radius }, startAngle);
+  const end = pointOnCircle({ ...center, r: radius }, endAngle);
+  return `M ${start.x},${start.y} A ${radius},${radius} 0 ${largeArcFlag},${sweepFlag} ${end.x},${end.y}`;
+}
+
+/**
+ * Given two boundary angles on a circle, returns them as (startAngle, endAngle) oriented so
+ * the CCW arc between them is the minor (<=180°) one by default, or the major (>180°) one when
+ * `preferLong` is true — swapping which angle is "start" is the only way to pick between the
+ * two arcs that share the same two boundary points, since arcPathData always sweeps CCW.
+ */
+export function pickArcOrientation(a: number, b: number, preferLong: boolean): { startAngle: number; endAngle: number } {
+  const span = normalizeRadians(b - a);
+  const isMinor = span <= Math.PI;
+  return isMinor === !preferLong ? { startAngle: a, endAngle: b } : { startAngle: b, endAngle: a };
+}
+
+export type TangentArcFit = { center: Pt; radius: number; startAngle: number; endAngle: number };
+
+/**
+ * The unique circle through `start` and `end` that is tangent to direction
+ * `startTangent` at `start` — lets an arc continue smoothly from an existing
+ * line/arc endpoint instead of being built from an independent center point.
+ * Returns null when `end` lies on the tangent line itself (no finite circle fits).
+ *
+ * That circle still has two arcs connecting `start` and `end`; only one of them actually
+ * continues smoothly from `startTangent` (the other kinks backwards at `start`) — that's the
+ * one returned by default. Pass `preferOther: true` (e.g. while an angle-lock-style modifier
+ * is held) to deliberately take the other one instead, trading the smooth join for its sweep.
+ */
+export function fitTangentArc(start: Pt, startTangent: number, end: Pt, preferOther = false): TangentArcFit | null {
+  const tx = Math.cos(startTangent);
+  const ty = Math.sin(startTangent);
+  const nx = -ty; // normal to the tangent, rotated +90° (CCW)
+  const ny = tx;
+
+  const dx = start.x - end.x;
+  const dy = start.y - end.y;
+  const denom = 2 * (dx * nx + dy * ny);
+  if (Math.abs(denom) < 1e-9) return null;
+
+  const r = -(dx * dx + dy * dy) / denom;
+  if (Math.abs(r) < 1e-6) return null;
+
+  const center: Pt = { x: start.x + r * nx, y: start.y + r * ny };
+  const radius = Math.abs(r);
+
+  const startAngle = angleFromCenter(center, start);
+  const endAngle = angleFromCenter(center, end);
+
+  // arcPathData always sweeps CCW from startAngle to endAngle, but the CCW direction of travel
+  // at `start` only matches `startTangent` when r > 0 — when r < 0 it points exactly backwards,
+  // so swapping which boundary angle is labeled "start" is what actually continues smoothly
+  // from the tangent, rather than (depending on where `end` lands) rendering the wrong one of
+  // the two arcs that share these boundary points. `preferOther` inverts that choice.
+  const useAsIs = preferOther ? !(r > 0) : r > 0;
+  return useAsIs
+    ? { center, radius, startAngle, endAngle }
+    : { center, radius, startAngle: endAngle, endAngle: startAngle };
+}
+
+/** True when `angle` lies on the CCW sweep from startAngle to endAngle — the arcPathData
+ * convention, and deliberately *not* angleOnDrawnArc's minor-sweep one. */
+export function angleWithinSweep(angle: number, startAngle: number, endAngle: number): boolean {
+  return normalizeRadians(angle - startAngle) <= normalizeRadians(endAngle - startAngle);
+}
+
 export function intersectLines(A: Pt, B: Pt, C: Pt, D: Pt): Pt | null {
   const x1 = A.x, y1 = A.y;
   const x2 = B.x, y2 = B.y;
@@ -276,7 +374,7 @@ export function lineCircleIntersection(P1: Pt, P2: Pt, C: Circle): Pt[] {
 }
 
 
-export function lineFromTwoPoints(A: Pt, B: Pt): Line {
+export function lineFromTwoPoints(A: Pt, B: Pt): SlopeInterceptLine {
   let m = (B.y - A.y) / (B.x - A.x);
 
   // find y intercept 
@@ -741,11 +839,10 @@ function endSlope(hEnd: number, hNext: number, dEnd: number, dNext: number): num
 }
 /** True when angle θ lies on the drawn (minor) span between the arc's start and end — see pathFromArc. */
 export function angleOnDrawnArc(arc: Arc, theta: number): boolean {
-  const TWO_PI = Math.PI * 2;
-  const diff = ((arc.end - arc.start) % TWO_PI + TWO_PI) % TWO_PI;
+  const diff = normalizeRadians(arc.end - arc.start);
   const from = diff <= Math.PI ? arc.start : arc.end;
   const span = diff <= Math.PI ? diff : TWO_PI - diff;
-  const rel = ((theta - from) % TWO_PI + TWO_PI) % TWO_PI;
+  const rel = normalizeRadians(theta - from);
   const eps = 1e-9;
   return rel <= span + eps || rel >= TWO_PI - eps;
 }

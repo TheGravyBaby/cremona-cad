@@ -1,9 +1,8 @@
 import * as d3 from 'd3';
 import { Arc, Circle, Pt } from '../../models/types';
-import { offsetArcRadius, offsetCircleRadius, offsetLineByDistance } from '../../helpers/draftMath';
+import { arcPathData, dist, offsetArcRadius, offsetCircleRadius, offsetLineByDistance, pointOnCircle } from '../../helpers/draftMath';
 import { DraftTool, DraftToolHost } from './draft-tool';
 import { DraftShape, makeShapeId } from './toolbox-shape';
-import { arcPathData, pointOnCirc } from './arc-geometry';
 import { PREVIEW_COLOR, stylePreview } from './two-point-tool';
 
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
@@ -21,7 +20,7 @@ function supportedShapes(shapes: DraftShape[]): DraftShape[] {
  */
 function signedOffsetMetric(shape: DraftShape, pt: Pt): { abs: number; signed: number } | null {
   if (shape.type === 'arc' || shape.type === 'circle') {
-    const centerDist = Math.hypot(pt.x - shape.center.x, pt.y - shape.center.y);
+    const centerDist = dist(pt, shape.center);
     const signed = centerDist - shape.radius;
     return { abs: Math.abs(signed), signed };
   }
@@ -51,7 +50,7 @@ function nearestSignedDistance(shapes: DraftShape[], pt: Pt): { shapeId: string;
 const JOINT_EPS_MM = 1e-3;
 
 function samePoint(a: Pt, b: Pt): boolean {
-  return Math.hypot(a.x - b.x, a.y - b.y) < JOINT_EPS_MM;
+  return dist(a, b) < JOINT_EPS_MM;
 }
 
 /** A shape's two boundary points, each with the tangent angle (radians) of travel through it
@@ -60,8 +59,8 @@ function samePoint(a: Pt, b: Pt): boolean {
 function boundaryPoints(shape: DraftShape): { pt: Pt; tangentAngle: number }[] | null {
   if (shape.type === 'arc') {
     return [
-      { pt: pointOnCirc(shape.center, shape.radius, shape.startAngle), tangentAngle: shape.startAngle + Math.PI / 2 },
-      { pt: pointOnCirc(shape.center, shape.radius, shape.endAngle), tangentAngle: shape.endAngle + Math.PI / 2 },
+      { pt: pointOnCircle({ ...shape.center, r: shape.radius }, shape.startAngle), tangentAngle: shape.startAngle + Math.PI / 2 },
+      { pt: pointOnCircle({ ...shape.center, r: shape.radius }, shape.endAngle), tangentAngle: shape.endAngle + Math.PI / 2 },
     ];
   }
   if (shape.type === 'line') {

@@ -1,5 +1,6 @@
 import * as d3 from 'd3';
 import { Pt } from '../../models/types';
+import { dist } from '../../helpers/draftMath';
 import { makeShapeId } from './toolbox-shape';
 import { TwoPointTool, previewLine, PREVIEW_COLOR, angleLockModifier } from './two-point-tool';
 
@@ -8,7 +9,7 @@ type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 function previewDimension(gRoot: RootGroup, gUI: RootGroup, pxPerMm: number, start: Pt, end: Pt): void {
   previewLine(gRoot, gUI, pxPerMm, start, end);
 
-  const length = Math.hypot(end.x - start.x, end.y - start.y);
+  const length = dist(end, start);
   if (length < 1e-6) return;
 
   const midX = (start.x + end.x) / 2;

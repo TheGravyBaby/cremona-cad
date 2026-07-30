@@ -1,44 +1,16 @@
 import { Pt } from '../../models/types';
 import { DraftShape, ImageShape, imageCenter, imageCorners } from './toolbox-shape';
-import { pointOnCirc } from './arc-geometry';
-import { rotatePointAbout } from '../../helpers/draftMath';
+import { angleFromCenter, angleWithinSweep, dist, distPointToSegment, normalizeRadians, pointOnCircle, rotatePointAbout } from '../../helpers/draftMath';
 import { TEXT_FONT_SIZE_PX, TEXT_LINE_HEIGHT_RATIO } from './shape-renderer';
 
-const TWO_PI = Math.PI * 2;
-
-function normalizeAngle(a: number): number {
-  return ((a % TWO_PI) + TWO_PI) % TWO_PI;
-}
-
-function distanceToSegment(p: Pt, a: Pt, b: Pt): number {
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const lengthSq = dx * dx + dy * dy;
-  if (lengthSq < 1e-12) return Math.hypot(p.x - a.x, p.y - a.y);
-
-  const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / lengthSq));
-  const projX = a.x + t * dx;
-  const projY = a.y + t * dy;
-  return Math.hypot(p.x - projX, p.y - projY);
-}
-
-/** Same "sweeps CCW from startAngle to endAngle" convention as arc-geometry.ts's arcPathData. */
-function isAngleWithinSweep(angle: number, startAngle: number, endAngle: number): boolean {
-  const span = normalizeAngle(endAngle - startAngle);
-  const rel = normalizeAngle(angle - startAngle);
-  return rel <= span;
-}
-
 function distanceToArc(p: Pt, center: Pt, radius: number, startAngle: number, endAngle: number): number {
-  const angle = Math.atan2(p.y - center.y, p.x - center.x);
-  if (isAngleWithinSweep(angle, startAngle, endAngle)) {
-    const distToCenter = Math.hypot(p.x - center.x, p.y - center.y);
-    return Math.abs(distToCenter - radius);
+  if (angleWithinSweep(angleFromCenter(center, p), startAngle, endAngle)) {
+    return Math.abs(dist(p, center) - radius);
   }
   // outside the swept range — nearest point is whichever endpoint is closer
-  const startPt = pointOnCirc(center, radius, startAngle);
-  const endPt = pointOnCirc(center, radius, endAngle);
-  return Math.min(Math.hypot(p.x - startPt.x, p.y - startPt.y), Math.hypot(p.x - endPt.x, p.y - endPt.y));
+  const startPt = pointOnCircle({ ...center, r: radius }, startAngle);
+  const endPt = pointOnCircle({ ...center, r: radius }, endAngle);
+  return Math.min(dist(p, startPt), dist(p, endPt));
 }
 
 function distanceToRect(p: Pt, p1: Pt, p2: Pt): number {
@@ -50,7 +22,7 @@ function distanceToRect(p: Pt, p1: Pt, p2: Pt): number {
 
   let best = Infinity;
   for (let i = 0; i < 4; i++) {
-    best = Math.min(best, distanceToSegment(p, corners[i], corners[(i + 1) % 4]));
+    best = Math.min(best, distPointToSegment(p, corners[i], corners[(i + 1) % 4]));
   }
   return best;
 }
@@ -103,9 +75,9 @@ export function distanceToShape(p: Pt, shape: DraftShape, pxPerMm: number): numb
     case 'line':
     case 'dimension':
     case 'section':
-      return distanceToSegment(p, shape.start, shape.end);
+      return distPointToSegment(p, shape.start, shape.end);
     case 'circle':
-      return Math.abs(Math.hypot(p.x - shape.center.x, p.y - shape.center.y) - shape.radius);
+      return Math.abs(dist(p, shape.center) - shape.radius);
     case 'arc':
       return distanceToArc(p, shape.center, shape.radius, shape.startAngle, shape.endAngle);
     case 'rect':
@@ -113,7 +85,7 @@ export function distanceToShape(p: Pt, shape: DraftShape, pxPerMm: number): numb
     case 'text':
       return distanceToText(p, shape.position, shape.text, pxPerMm);
     case 'point':
-      return Math.hypot(p.x - shape.position.x, p.y - shape.position.y);
+      return dist(p, shape.position);
     case 'image':
       return distanceToImage(p, shape);
   }
@@ -145,11 +117,11 @@ export function shapeBounds(shape: DraftShape, pxPerMm: number): ShapeBounds {
         y0: shape.center.y - shape.radius, y1: shape.center.y + shape.radius,
       };
     case 'arc': {
-      const span = normalizeAngle(shape.endAngle - shape.startAngle);
+      const span = normalizeRadians(shape.endAngle - shape.startAngle);
       const steps = 16;
       let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
       for (let i = 0; i <= steps; i++) {
-        const pt = pointOnCirc(shape.center, shape.radius, shape.startAngle + (span * i) / steps);
+        const pt = pointOnCircle({ ...shape.center, r: shape.radius }, shape.startAngle + (span * i) / steps);
         x0 = Math.min(x0, pt.x); x1 = Math.max(x1, pt.x);
         y0 = Math.min(y0, pt.y); y1 = Math.max(y1, pt.y);
       }
