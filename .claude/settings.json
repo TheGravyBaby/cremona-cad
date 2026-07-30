@@ -1,54 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(cat /tmp/draft-canvas-ts-1.ts /tmp/draft-canvas-ts-2.ts > /tmp/draft-canvas-ts-merged.ts && wc -l /tmp/draft-canvas-ts-merged.ts)",
-      "Bash(python3 -)",
-      "Bash(npx ts-node *)",
-      "Bash(cat)",
-      "Bash(node /tmp/biarc_real.js)",
-      "Bash(node /tmp/biarc_general.js)",
-      "Bash(node /tmp/biarc_general2.js)",
-      "Bash(git -C /Users/aargraves/Documents/cremona-cad status --short src/app/enrico-ceruti-violin/_debug-join.ts)",
-      "Bash(git -C /Users/aargraves/Documents/cremona-cad status --short)",
-      "Bash(node /tmp/biarc_minor.js)",
-      "Bash(node /tmp/verify_fix.js)",
-      "Bash(node /tmp/verify_scale.js)",
-      "Bash(node /tmp/verify_combined.js)",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:4200/)",
-      "Bash(lsof -i :4200 -sTCP:LISTEN)",
-      "Bash(chromium-cli --help)",
-      "Bash(node -e \"require.resolve\\('playwright'\\)\")",
-      "Bash(npx --no-install playwright --version)",
-      "Bash(timeout 25 npm ls playwright)",
-      "Bash(timeout 25 npm view playwright version)",
-      "Bash(npm view *)",
-      "Bash(open -a \"Google Chrome\" \"http://localhost:4200\")",
-      "Bash(open \"http://localhost:4200\")",
-      "Bash(screencapture -x /private/tmp/claude-501/-Users-aargraves-Documents-cremona-cad/d6fc8cd1-c557-4499-8b37-450a3bf000f8/scratchpad/app-check.png)",
-      "Bash(node /private/tmp/claude-501/-Users-aargraves-Documents-cremona-cad/3e358a09-ac26-43d0-889e-a7a83f8a2c34/scratchpad/sp.mjs)",
-      "Bash(node /private/tmp/claude-501/-Users-aargraves-Documents-cremona-cad/3e358a09-ac26-43d0-889e-a7a83f8a2c34/scratchpad/sp2.mjs)",
-      "Bash(node /private/tmp/claude-501/-Users-aargraves-Documents-cremona-cad/3e358a09-ac26-43d0-889e-a7a83f8a2c34/scratchpad/sp3.mjs)",
-      "Bash(timeout 400 npx ng test --watch=false)",
-      "Bash(echo \"EXIT=$?\")",
-      "Bash(npx ng *)",
-      "Bash(node /private/tmp/claude-501/-Users-aargraves-Documents-cremona-cad/df83ca51-ed5f-420c-aa9a-3ac7d69913b3/scratchpad/diag.mjs)",
-      "Read(//Users/aargraves/.claude/skills/graphify/references/**)",
-      "Bash(python3 -c ' *)",
-      "Bash(cd /Users/aargraves/Documents/cremona-cad *)",
-      "Bash(git rm *)",
-      "Bash(grep -vE \"^\\\\s*$\")",
-      "Bash(npx esbuild *)",
-      "Bash(node /private/tmp/claude-501/-Users-aargraves-Documents-cremona-cad/71eca4b2-6f97-410b-a3b0-832b4b681130/scratchpad/harness.mjs)",
-      "Bash(node harness.mjs)",
-      "Bash(pkill -f \"ng test\")",
-      "Bash(grep -rn \"^\\\\.btn[ ,{:]\" src/styles.css src/app/draft-canvas/draft-canvas.css)",
-      "Bash(sed -i '' \"s/a Box Line's/a Section's/\" src/app/draft-canvas/tools/snap-engine.ts)",
-      "Bash(sed -i '' \"s/like Box Line reads/like Section reads/\" src/app/draft-canvas/tools/line-tool.ts src/app/draft-canvas/tools/circle-tool.ts)",
-      "Bash(sed -i '' -e \"s/\\(Line\\\\/Box Line\\)/\\(Line\\\\/Section\\)/\" -e \"s/shared by Line and Box Line/shared by Line and Section/\" src/app/draft-canvas/tools/two-point-tool.ts)",
-      "Bash(sed -i '' \"s/renderFuncs.ts's renderBoxLine does for recipe drafts./renderFuncs.ts's renderBoxLine does for recipe drafts \\(that legacy renderer keeps its own name — it's a separate feature\\)./\" src/app/draft-canvas/tools/toolbox-shape.ts)"
+
     ],
     "additionalDirectories": [
-      "/tmp"
     ]
   }
 }
