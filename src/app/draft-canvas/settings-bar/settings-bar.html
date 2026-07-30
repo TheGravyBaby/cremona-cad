@@ -44,13 +44,11 @@
           (keydown.enter)="$any($event.target).blur()" />
       </span>
     </span>
-    @if (showDimensionLengthField) {
-      <span class="field"><span class="f-lbl">Distance</span>
-        <input type="number" min="0" step="any" [value]="dimensionLength"
-          (change)="setDimensionLength($any($event.target).valueAsNumber)" (keydown.enter)="$any($event.target).blur()"
-          title="Sets the distance from X1/Y1, keeping the current angle" />
-      </span>
-    }
+    <span class="field"><span class="f-lbl">Distance</span>
+      <input type="number" min="0" step="any" [value]="lineLength"
+        (change)="setLineLength($any($event.target).valueAsNumber)" (keydown.enter)="$any($event.target).blur()"
+        title="Sets the distance from X1/Y1, keeping the current angle" />
+    </span>
   }
 
   @if (showRectPanel) {
@@ -220,30 +218,8 @@
     </button>
   }
 
+  <!-- Endpoints and Distance for a selected Section come from the shared line-like panel above. -->
   @if (showSectionPanel) {
-    @if (showSectionPointsPanel) {
-      <span class="point-group">
-        <span class="field"><span class="f-lbl">X1</span>
-          <input type="number" [value]="sectionStartX" (change)="setSectionPoint('start', 'x', $any($event.target).valueAsNumber)"
-            (keydown.enter)="$any($event.target).blur()" />
-        </span>
-        <span class="field"><span class="f-lbl">Y1</span>
-          <input type="number" [value]="sectionStartY" (change)="setSectionPoint('start', 'y', $any($event.target).valueAsNumber)"
-            (keydown.enter)="$any($event.target).blur()" />
-        </span>
-      </span>
-      <span class="point-group">
-        <span class="field"><span class="f-lbl">X2</span>
-          <input type="number" [value]="sectionEndX" (change)="setSectionPoint('end', 'x', $any($event.target).valueAsNumber)"
-            (keydown.enter)="$any($event.target).blur()" />
-        </span>
-        <span class="field"><span class="f-lbl">Y2</span>
-          <input type="number" [value]="sectionEndY" (change)="setSectionPoint('end', 'y', $any($event.target).valueAsNumber)"
-            (keydown.enter)="$any($event.target).blur()" />
-        </span>
-      </span>
-    }
-
     <label class="toggle">
       <span class="f-lbl">Fraction</span>
       <input type="checkbox" [checked]="sectionUseSegmentCount" (change)="sectionUseSegmentCount = $any($event.target).checked" />
