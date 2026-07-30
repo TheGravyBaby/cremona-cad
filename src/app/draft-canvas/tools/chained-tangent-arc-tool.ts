@@ -2,7 +2,7 @@ import * as d3 from 'd3';
 import { Pt } from '../../models/types';
 import { DraftTool, DraftToolHost } from './draft-tool';
 import { makeShapeId } from './toolbox-shape';
-import { arcPathData, fitTangentArc, pickArcOrientation, pointOnCirc } from './arc-geometry';
+import { angleFromCenter, arcPathData, dist, fitTangentArc, pickArcOrientation, pointOnCircle } from '../../helpers/draftMath';
 
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 
@@ -99,7 +99,7 @@ export class ChainedTangentArcTool implements DraftTool {
     if (this.stage === 'second-set' && this.pt1 && this.pt2) {
       const center = this.pt1;
       const anchorPt = this.pt2;
-      const radius = Math.hypot(anchorPt.x - center.x, anchorPt.y - center.y);
+      const radius = dist(anchorPt, center);
       if (radius < 1e-6) return;
 
       gRoot.append('circle')
@@ -112,12 +112,12 @@ export class ChainedTangentArcTool implements DraftTool {
         .attr('vector-effect', 'non-scaling-stroke')
         .style('pointer-events', 'none');
 
-      const rawStartAngle = Math.atan2(anchorPt.y - center.y, anchorPt.x - center.x);
-      const rawEndAngle = Math.atan2(this.hoverPt.y - center.y, this.hoverPt.x - center.x);
+      const rawStartAngle = angleFromCenter(center, anchorPt);
+      const rawEndAngle = angleFromCenter(center, this.hoverPt);
       const { startAngle, endAngle } = pickArcOrientation(rawStartAngle, rawEndAngle, this.preferAlt);
 
       this.drawGuideLine(gRoot, center, anchorPt);
-      this.drawGuideLine(gRoot, center, pointOnCirc(center, radius, rawEndAngle));
+      this.drawGuideLine(gRoot, center, pointOnCircle({ ...center, r: radius }, rawEndAngle));
 
       gRoot.append('path')
         .attr('d', arcPathData(center, radius, startAngle, endAngle))
@@ -172,11 +172,11 @@ export class ChainedTangentArcTool implements DraftTool {
     const center = this.pt1;
     const anchorPt = this.pt2;
     if (!center || !anchorPt) { this.reset(); return; }
-    const radius = Math.hypot(anchorPt.x - center.x, anchorPt.y - center.y);
+    const radius = dist(anchorPt, center);
     if (radius < 1e-6) { this.reset(); return; }
 
-    const rawStartAngle = Math.atan2(anchorPt.y - center.y, anchorPt.x - center.x);
-    const rawEndAngle = Math.atan2(pt.y - center.y, pt.x - center.x);
+    const rawStartAngle = angleFromCenter(center, anchorPt);
+    const rawEndAngle = angleFromCenter(center, pt);
     const { startAngle, endAngle } = pickArcOrientation(rawStartAngle, rawEndAngle, host.isAngleLockHeld());
 
     host.addShape({
@@ -194,7 +194,7 @@ export class ChainedTangentArcTool implements DraftTool {
     // reliably correspond to the clicked point. `rawEndAngle` (computed straight from `pt`,
     // before any swap) always does. The CCW tangent-direction formula (angle + 90°) holds at
     // any point along a CCW-swept arc regardless of which label it ended up under.
-    this.chainPt = pointOnCirc(center, radius, rawEndAngle);
+    this.chainPt = pointOnCircle({ ...center, r: radius }, rawEndAngle);
     this.chainTangent = rawEndAngle + Math.PI / 2;
     this.pt1 = null;
     this.pt2 = null;
@@ -218,7 +218,7 @@ export class ChainedTangentArcTool implements DraftTool {
     // Same swap hazard as commitFirstArc: fitTangentArc may return startAngle/endAngle with
     // the physical points swapped, so continue from the point actually clicked (`pt`, which
     // lies exactly on the fit circle by construction) rather than trusting fit.endAngle.
-    const clickedAngle = Math.atan2(pt.y - fit.center.y, pt.x - fit.center.x);
+    const clickedAngle = angleFromCenter(fit.center, pt);
     this.chainPt = pt;
     this.chainTangent = clickedAngle + Math.PI / 2;
   }

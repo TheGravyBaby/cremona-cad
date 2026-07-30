@@ -2,7 +2,7 @@ import * as d3 from 'd3';
 import { Pt } from '../../models/types';
 import { DraftTool, DraftToolHost } from './draft-tool';
 import { makeShapeId } from './toolbox-shape';
-import { arcPathData, pointOnCirc, pickArcOrientation } from './arc-geometry';
+import { angleFromCenter, arcPathData, dist, pickArcOrientation, pointOnCircle } from '../../helpers/draftMath';
 
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 
@@ -91,7 +91,7 @@ export class ArcTool implements DraftTool {
     const center = this.center;
     const anchorPt = this.anchorPt;
     if (this.stage === 'second-set' && center && anchorPt) {
-      const radius = Math.hypot(anchorPt.x - center.x, anchorPt.y - center.y);
+      const radius = dist(anchorPt, center);
       if (radius < 1e-6) return;
 
       gRoot.append('circle')
@@ -104,12 +104,12 @@ export class ArcTool implements DraftTool {
         .attr('vector-effect', 'non-scaling-stroke')
         .style('pointer-events', 'none');
 
-      const rawStartAngle = Math.atan2(anchorPt.y - center.y, anchorPt.x - center.x);
-      const rawEndAngle = Math.atan2(this.hoverPt.y - center.y, this.hoverPt.x - center.x);
+      const rawStartAngle = angleFromCenter(center, anchorPt);
+      const rawEndAngle = angleFromCenter(center, this.hoverPt);
       const { startAngle, endAngle } = pickArcOrientation(rawStartAngle, rawEndAngle, this.preferLongArc);
 
       this.drawGuideLine(gRoot, center, anchorPt);
-      this.drawGuideLine(gRoot, center, pointOnCirc(center, radius, rawEndAngle));
+      this.drawGuideLine(gRoot, center, pointOnCircle({ ...center, r: radius }, rawEndAngle));
 
       gRoot.append('path')
         .attr('d', arcPathData(center, radius, startAngle, endAngle))
@@ -133,11 +133,11 @@ export class ArcTool implements DraftTool {
     const center = this.center;
     const anchorPt = this.anchorPt;
     if (!center || !anchorPt) return;
-    const radius = Math.hypot(anchorPt.x - center.x, anchorPt.y - center.y);
+    const radius = dist(anchorPt, center);
     if (radius < 1e-6) { this.reset(); return; }
 
-    const rawStartAngle = Math.atan2(anchorPt.y - center.y, anchorPt.x - center.x);
-    const rawEndAngle = Math.atan2(pt.y - center.y, pt.x - center.x);
+    const rawStartAngle = angleFromCenter(center, anchorPt);
+    const rawEndAngle = angleFromCenter(center, pt);
     const { startAngle, endAngle } = pickArcOrientation(rawStartAngle, rawEndAngle, host.isAngleLockHeld());
 
     host.addShape({

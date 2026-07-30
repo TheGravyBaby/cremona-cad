@@ -1,10 +1,11 @@
 import { Pt } from '../../models/types';
+import { dist } from '../../helpers/draftMath';
 import { makeShapeId } from './toolbox-shape';
 import { TwoPointTool, previewCircle } from './two-point-tool';
 import { ToolboxStore } from './toolbox-store';
 
 function radiusOf(center: Pt, radiusPt: Pt): number {
-  return Math.hypot(radiusPt.x - center.x, radiusPt.y - center.y);
+  return dist(radiusPt, center);
 }
 
 /** Reads `currentDashed` at commit time (like Section reads its weights/colors) so dashed

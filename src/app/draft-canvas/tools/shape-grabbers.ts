@@ -1,12 +1,6 @@
 import { Pt } from '../../models/types';
 import { DraftShape, ImageShape, imageCenter, imageCorners, imageEdgeMidpoints } from './toolbox-shape';
-import { pointOnCirc } from './arc-geometry';
-import { normalizeDegrees, rotatePointAbout } from '../../helpers/draftMath';
-
-const TWO_PI = Math.PI * 2;
-function normalizeAngle(a: number): number {
-  return ((a % TWO_PI) + TWO_PI) % TWO_PI;
-}
+import { angleFromCenter, dist, normalizeDegrees, normalizeRadians, pointOnCircle, rotatePointAbout } from '../../helpers/draftMath';
 
 /**
  * Where the square "move" handle renders/hit-tests for a selected shape — grabbing it
@@ -40,9 +34,9 @@ export function moveGrabberPosition(shape: DraftShape): Pt | null {
 /** The point on an arc's circle midway (by angle) between its start and end — where the
  * radius-resize handle sits, since it's the most "on the arc" point to grab. */
 function arcMidpoint(shape: Extract<DraftShape, { type: 'arc' }>): Pt {
-  const span = normalizeAngle(shape.endAngle - shape.startAngle);
+  const span = normalizeRadians(shape.endAngle - shape.startAngle);
   const midAngle = shape.startAngle + span / 2;
-  return pointOnCirc(shape.center, shape.radius, midAngle);
+  return pointOnCircle({ ...shape.center, r: shape.radius }, midAngle);
 }
 
 // 'start'/'end' — Line/Dimension/Section's endpoints.
@@ -92,8 +86,8 @@ export function endpointGrabbers(shape: DraftShape, pxPerMm: number): EndpointGr
       return [{ key: 'radius', pos: { x: shape.center.x + shape.radius, y: shape.center.y } }];
     case 'arc':
       return [
-        { key: 'startAngle', pos: pointOnCirc(shape.center, shape.radius, shape.startAngle) },
-        { key: 'endAngle', pos: pointOnCirc(shape.center, shape.radius, shape.endAngle) },
+        { key: 'startAngle', pos: pointOnCircle({ ...shape.center, r: shape.radius }, shape.startAngle) },
+        { key: 'endAngle', pos: pointOnCircle({ ...shape.center, r: shape.radius }, shape.endAngle) },
         { key: 'radius', pos: arcMidpoint(shape) },
       ];
     case 'text':
@@ -131,17 +125,17 @@ export function withEndpoint(shape: DraftShape, key: EndpointKey, pos: Pt): Draf
       return shape;
     case 'circle':
       if (key === 'radius') {
-        const radius = Math.max(MIN_RADIUS_MM, Math.hypot(pos.x - shape.center.x, pos.y - shape.center.y));
+        const radius = Math.max(MIN_RADIUS_MM, dist(pos, shape.center));
         return { ...shape, radius };
       }
       return shape;
     case 'arc':
       if (key === 'startAngle' || key === 'endAngle') {
-        const angle = Math.atan2(pos.y - shape.center.y, pos.x - shape.center.x);
+        const angle = angleFromCenter(shape.center, pos);
         return { ...shape, [key]: angle };
       }
       if (key === 'radius') {
-        const radius = Math.max(MIN_RADIUS_MM, Math.hypot(pos.x - shape.center.x, pos.y - shape.center.y));
+        const radius = Math.max(MIN_RADIUS_MM, dist(pos, shape.center));
         return { ...shape, radius };
       }
       return shape;
@@ -169,7 +163,7 @@ function withImageHandle(shape: ImageShape, key: EndpointKey, pos: Pt): DraftSha
   if (key === 'rotate') {
     // The handle sits due north of the center at zero rotation, so the box's rotation is the
     // cursor's bearing from center, less that quarter turn.
-    const bearing = Math.atan2(pos.y - center.y, pos.x - center.x) * 180 / Math.PI;
+    const bearing = angleFromCenter(center, pos) * 180 / Math.PI;
     return { ...shape, rotationDeg: normalizeDegrees(bearing - 90) };
   }
 

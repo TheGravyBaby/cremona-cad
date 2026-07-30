@@ -1,4 +1,4 @@
-import { Pt, Circle, Line, Rectangle, Arc } from "../models/types";
+import { Pt, Circle, SlopeInterceptLine, Rectangle, Arc } from "../models/types";
 import { pointOnCircle } from "./draftMath";
 
 export const renderDistanceMeasurementLine = (P: Pt, Q: Pt, label: string, color: string) => (g: any, ui: any) => {
@@ -257,7 +257,7 @@ export const renderDashLine = (
         .attr("vector-effect", "non-scaling-stroke");
 }
 
-export const renderDashLineMxB = (line: Line,  
+export const renderDashLineMxB = (line: SlopeInterceptLine,  
     color = "black",
     width = 1,
     dash = "4,4", 

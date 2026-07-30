@@ -1,4 +1,5 @@
 import { Pt } from '../../models/types';
+import { dist, signedDegreeDelta } from '../../helpers/draftMath';
 
 // Locking angle set = multiples of 30° union multiples of 45° (0, 30, 45, 60,
 // 90, 120, 135, 150, 180, ...) — matches how most CAD/drawing tools define
@@ -10,27 +11,20 @@ const ANGLE_LOCK_DEG: readonly number[] = (() => {
   return [...set].sort((a, b) => a - b);
 })();
 
-function normalizeDeltaDeg(deg: number): number {
-  let d = deg % 360;
-  if (d > 180) d -= 360;
-  if (d < -180) d += 360;
-  return d;
-}
-
 /** Snaps `pt` onto the nearest ANGLE_LOCK_DEG ray from `anchor`, preserving distance. Shared
  * by TwoPointTool (drawing) and draft-canvas.ts's Line endpoint-drag, so both use the same
  * "common angle" behavior for Shift-lock. */
 export function snapToLockedAngle(anchor: Pt, pt: Pt): Pt {
   const dx = pt.x - anchor.x;
   const dy = pt.y - anchor.y;
-  const len = Math.hypot(dx, dy);
+  const len = dist(pt, anchor);
   if (len < 1e-9) return pt;
 
   const angleDeg = Math.atan2(dy, dx) * 180 / Math.PI;
   let best = ANGLE_LOCK_DEG[0];
   let bestDiff = Infinity;
   for (const candidate of ANGLE_LOCK_DEG) {
-    const diff = Math.abs(normalizeDeltaDeg(angleDeg - candidate));
+    const diff = Math.abs(signedDegreeDelta(angleDeg - candidate));
     if (diff < bestDiff) { bestDiff = diff; best = candidate; }
   }
 

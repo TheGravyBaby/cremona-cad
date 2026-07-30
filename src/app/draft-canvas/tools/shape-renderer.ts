@@ -3,7 +3,7 @@ import { Pt } from '../../models/types';
 import {
   DraftShape, DEFAULT_SHAPE_COLOR, DEFAULT_IMAGE_OPACITY, ImageShape, imageCenter, imageCorners,
 } from './toolbox-shape';
-import { arcPathData, pointOnCirc } from './arc-geometry';
+import { arcPathData, pointOnCircle } from '../../helpers/draftMath';
 import { GrabberKind } from './shape-grabbers';
 
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
@@ -283,8 +283,8 @@ export function drawSection(gRoot: RootGroup, gUI: RootGroup, p: SectionParams, 
 function drawArcCenterGuides(
   gRoot: RootGroup, center: Pt, radius: number, startAngle: number, endAngle: number, color: string, pxPerMm: number,
 ): void {
-  const startPt = pointOnCirc(center, radius, startAngle);
-  const endPt = pointOnCirc(center, radius, endAngle);
+  const startPt = pointOnCircle({ ...center, r: radius }, startAngle);
+  const endPt = pointOnCircle({ ...center, r: radius }, endAngle);
 
   const guideLine = (a: Pt, b: Pt) => gRoot.append('line')
     .attr('x1', a.x).attr('y1', a.y).attr('x2', b.x).attr('y2', b.y)

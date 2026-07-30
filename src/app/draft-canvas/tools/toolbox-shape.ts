@@ -20,12 +20,23 @@ export type LineShape = ShapeBase & {
   dashed?: boolean;
 };
 
+/**
+ * Counterclockwise-sweep convention: the arc runs CCW from `startAngle` to `endAngle`, so the
+ * ordering of the two angles is what selects the minor vs major arc between the same pair of
+ * boundary points — swapping them gives the *other* arc. See arcPathData in helpers/draftMath.ts,
+ * and pickArcOrientation, which is how the tools let the user choose.
+ *
+ * This is deliberately **not** the convention of models/types.ts's `Arc`, which stores the same
+ * four numbers but always renders the minor arc and needs an out-of-band flag for the major one.
+ * Converting from this type to that one is lossy past 180°; see the note on `Arc` for why the two
+ * are kept apart.
+ */
 export type ArcShape = ShapeBase & {
   type: 'arc';
   center: Pt;
   radius: number;
   startAngle: number; // radians
-  endAngle: number; // radians; sweeps counterclockwise from startAngle — see arc-geometry.ts
+  endAngle: number; // radians
   showCenterGuides?: boolean; // "fancy" arc: dashed radius lines + crosshair at center
 };
 
@@ -134,7 +145,23 @@ export type ImageShape = ShapeBase & {
 /** What an image renders at when its shape doesn't say — the old global reference opacity. */
 export const DEFAULT_IMAGE_OPACITY = 0.25;
 
-// Extend this union as new tools are added.
+/**
+ * Every shape the canvas can hold. Extend this union as new tools are added.
+ *
+ * Deliberately plain objects with no methods or getters, and deliberately not built on
+ * models/types.ts's `Circle`/`Arc`/`Rectangle` classes, even though the geometry overlaps.
+ * ToolboxStore round-trips this union through JSON constantly — sessionStorage on every edit,
+ * plus a 50-deep undo stack — and JSON.parse returns prototype-less objects. Anything living on a
+ * prototype would survive until the first undo and then vanish.
+ *
+ * The recipe side gets away with classes only because ceruti-calcs.ts reassigns its arcs through
+ * real constructors on every recalculation, which is what makes `Arc.degreeDiff` work after a file
+ * load. There is no equivalent pass here. See the header note in models/types.ts.
+ *
+ * Sharing geometry *math* between the two is fine and encouraged — helpers/draftMath.ts is the
+ * common ground, and `{ ...center, r: radius }` is structurally a `Circle`, so its solvers take
+ * canvas shapes without a conversion step.
+ */
 export type DraftShape =
   | LineShape | ArcShape | CircleShape | DimensionShape | RectShape | SectionShape | TextShape | PointShape
   | ImageShape;

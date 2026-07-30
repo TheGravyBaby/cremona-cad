@@ -1,9 +1,8 @@
 import * as d3 from 'd3';
 import { Pt } from '../../models/types';
-import { findAllJoiningArcsFromTangents } from '../../helpers/draftMath';
+import { arcPathData, dist, findAllJoiningArcsFromTangents, fitTangentArc, normalizeRadians } from '../../helpers/draftMath';
 import { DraftTool, DraftToolHost } from './draft-tool';
 import { makeShapeId } from './toolbox-shape';
-import { arcPathData, fitTangentArc } from './arc-geometry';
 
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 
@@ -13,11 +12,10 @@ type Stage = 'idle' | 'start-set';
 
 type ResolvedArc = { center: Pt; radius: number; startAngle: number; endAngle: number };
 
-const TWO_PI = Math.PI * 2;
 
 /** CCW sweep of an arc's boundary angles, in [0, 2π) — same convention as arcPathData. */
 function arcSpan(startAngle: number, endAngle: number): number {
-  return ((endAngle - startAngle) % TWO_PI + TWO_PI) % TWO_PI;
+  return normalizeRadians(endAngle - startAngle);
 }
 
 /**
@@ -62,7 +60,7 @@ function computeJoint(arcs: ResolvedArc[]): Pt {
 
 /** Exported so join-arc-tool.spec.ts can test the scoring directly, without simulating pointer/keyboard events. */
 export function computeBiarcCandidates(P1: Pt, T1: number, P2: Pt, T2: number): BiarcCandidate[] {
-  const chord = Math.hypot(P2.x - P1.x, P2.y - P1.y);
+  const chord = dist(P2, P1);
   const chordMid: Pt = { x: (P1.x + P2.x) / 2, y: (P1.y + P2.y) / 2 };
   const candidates: BiarcCandidate[] = [];
   for (const invert1 of [false, true]) {
@@ -73,7 +71,7 @@ export function computeBiarcCandidates(P1: Pt, T1: number, P2: Pt, T2: number): 
         const radius = arcs[0]?.radius ?? 0;
         const scaleMismatch = chord > 1e-6 && radius > 1e-9 ? Math.abs(Math.log(radius / chord)) : Number.POSITIVE_INFINITY;
         const joint = computeJoint(arcs);
-        const jointRatio = chord > 1e-6 ? Math.hypot(joint.x - chordMid.x, joint.y - chordMid.y) / (chord / 2) : Number.POSITIVE_INFINITY;
+        const jointRatio = chord > 1e-6 ? dist(joint, chordMid) / (chord / 2) : Number.POSITIVE_INFINITY;
         candidates.push({
           invert1, invert2, radius, arcs, turningDeg: turning * 180 / Math.PI, scaleMismatch, jointRatio,
           combinedScore: 2 * scaleMismatch + turning,
