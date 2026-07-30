@@ -113,8 +113,6 @@ git checkout -b feature/my-feature
 - [svg-path-properties](https://github.com/rveciana/svg-path-properties) — sampling paths into polylines off-screen
 - [Vitest](https://vitest.dev/) — unit tests
 
-DXF and STL export are written directly, without a dependency.
-
 ## License
 
 Released under the **GNU General Public License v3.0 (GPL-3.0)**.
