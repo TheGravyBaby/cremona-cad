@@ -5,10 +5,16 @@ import { Pt } from '../models/types';
 const polyClipper: any = (polygonClipping as any).default ?? polygonClipping;
 import { buildPolylineIndex, closestPointToPolylineIndexed, PolylineIndex } from '../helpers/draftMath';
 import { buildHeightFieldStl } from '../helpers/stlExporter';
-import { closeProfileToBlank, cycloidEdgeSlope, cycloidZAt, flutingProfileZ, pathsBounds, rotatePath180, samplePathToPolyline, translatePath } from '../helpers/svgPathMath';
-import { ArchCurve, CrossArchSide, EnricoCerutiParams } from './ceruti-types';
+import {
+    closeProfileToBlank, cycloidEdgeSlope, cycloidZAt, flutingProfileZ, pathsBounds, rotatePath180, samplePathToPolyline, translatePath,
+    crossArchSplineZAt, crossArchSplineEdgeSlope,
+} from '../helpers/svgPathMath';
+import { ArchCurve, CrossArchStation, EnricoCerutiParams } from './ceruti-types';
 import { defineFlutingPath, defineInsetPath, defineOuterPath } from './ceruti-paths';
-import { calculateLongArch, CrossArchResolver, CrossArchSides, defaultCrossArchParams, defaultFlutingChannelParams, flutingHalfWidthAtY, longArchHeightAt, makeCrossArchResolver, normalizeCrossArchStations } from './ceruti-arching';
+import {
+    calculateLongArch, CrossArchAtY, CrossArchQuery, defaultCrossArchParams, defaultFlutingChannelParams, flutingHalfWidthAtY,
+    longArchHeightAt, makeCrossArchAtY, normalizeCrossArchStations,
+} from './ceruti-arching';
 
 // The evaluable top-plate surface: a height field z(x, y) over the plan view,
 // stitched from three regions classified by station chords (so it always
@@ -38,10 +44,11 @@ export interface PlateSurfaceModel {
     flutingInnerIdx: PolylineIndex | null;
     arch: ArchCurve;
     /**
-     * Cross-arch shape at a body station, left (x<0) and right (x≥0) halves.
-     * A constant function unless the plate has stations set.
+     * Cross-arch shape at a body station, cycloid sides or a spline profile
+     * depending on the plate's curve type. A constant function unless the
+     * plate has stations set.
      */
-    crossAt: CrossArchResolver;
+    crossAt: CrossArchAtY;
     edgeDepth: number;
     /** Flat pre-channel platform with a ledge at the inner boundary instead of a carved channel. */
     flatPlatform: boolean;
@@ -72,7 +79,7 @@ export function buildPlateSurfaceModel(p: EnricoCerutiParams, side: 'top' | 'bot
         platformOuterIdx: buildPolylineIndex(platformOuter),
         flutingInnerIdx: flutingInner ? buildPolylineIndex(flutingInner) : null,
         arch: plate.arch,
-        crossAt: makeCrossArchResolver(plate.cross ?? defaultCrossArchParams(), p.height),
+        crossAt: makeCrossArchAtY(plate.cross ?? defaultCrossArchParams(), p.height),
         edgeDepth: plate.edgeDepth ?? 0,
         flatPlatform: fluting.flatPlatform ?? false,
         zBase: side === 'top' ? a.ribHeight + plate.thickness : -plate.thickness,
@@ -94,7 +101,7 @@ export interface StationChords {
      */
     archH: number;
     /** Cross-arch shape at this station — hoisted for the same reason as archH. */
-    cross: CrossArchSides;
+    cross: CrossArchQuery;
 }
 
 /**
@@ -115,10 +122,12 @@ function flutingInnerHalfAt(p: EnricoCerutiParams, model: PlateSurfaceModel, y: 
  * height is `archH`, and cross-arch shape is `cross`. The takeoff sits at
  * −edgeDepth; a degenerate cap station (no arch height) stays flat there.
  */
-function crossArchZAt(model: PlateSurfaceModel, fi: number, archH: number, x: number, cross: CrossArchSides): number {
+function crossArchZAt(model: PlateSurfaceModel, fi: number, archH: number, x: number, cross: CrossArchQuery): number {
     if (archH <= 0) return -model.edgeDepth;
-    const side = x < 0 ? cross.left : cross.right;
-    return -model.edgeDepth + cycloidZAt(archH + model.edgeDepth, 2 * fi, side.d, x + fi, side.pct);
+    const hEff = archH + model.edgeDepth;
+    if (cross.type === 'spline') return -model.edgeDepth + crossArchSplineZAt(cross.row.zFracGrid, hEff, fi, x);
+    const side = x < 0 ? cross.sides.left : cross.sides.right;
+    return -model.edgeDepth + cycloidZAt(hEff, 2 * fi, side.d, x + fi, side.pct);
 }
 
 export function stationChordsAt(p: EnricoCerutiParams, model: PlateSurfaceModel, y: number): StationChords {
@@ -169,11 +178,15 @@ const CHANNEL_SLOPE_PROBE_EPS = 0.3; // mm inward from the fluting inner boundar
  * branch builds its cycloid from; 0 at cap/degenerate stations.
  */
 function crossEdgeSlopeFallback(
-    model: PlateSurfaceModel, fi: number | null, archH: number, cross: CrossArchSides, atLeft: boolean,
+    model: PlateSurfaceModel, fi: number | null, archH: number, cross: CrossArchQuery, atLeft: boolean,
 ): number {
     if (fi === null || fi <= 0 || archH <= 0) return 0;
-    const side = atLeft ? cross.left : cross.right;
-    return cycloidEdgeSlope(archH + model.edgeDepth, 2 * fi, side.d, side.pct);
+    const hEff = archH + model.edgeDepth;
+    if (cross.type === 'spline') {
+        return crossArchSplineEdgeSlope(atLeft ? cross.row.leftEdgeSlopeFrac : cross.row.rightEdgeSlopeFrac, hEff, fi);
+    }
+    const side = atLeft ? cross.sides.left : cross.sides.right;
+    return cycloidEdgeSlope(hEff, 2 * fi, side.d, side.pct);
 }
 
 /**
@@ -473,7 +486,10 @@ export function calculateCrossArchTemplates(p: EnricoCerutiParams): TemplateShap
         plate.fluting ??= defaultFlutingChannelParams();
         const model = buildPlateSurfaceModel(p, key);
         if (!model) return [];
-        const customStations = normalizeCrossArchStations(plate.cross.stations, p.height);
+        // Only .y is read here, common to either curve type's station shape — see
+        // normalizeCrossArchStations' generic signature, which needs a single array
+        // type rather than the cycloid/spline union `plate.cross.stations` carries.
+        const customStations = normalizeCrossArchStations(plate.cross.stations as CrossArchStation[] | undefined, p.height);
         const stationYs = customStations.length ? customStations.map(s => s.y) : crossArchTemplateStationYs(p);
         const shapes = calculateCrossArchTemplatesForSide(p, model, label, stationYs);
         return key === 'top' ? shapes.map(rotateTemplateShape180) : shapes;

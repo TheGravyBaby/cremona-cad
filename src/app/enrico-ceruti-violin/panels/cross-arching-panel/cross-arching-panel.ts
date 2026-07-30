@@ -1,13 +1,22 @@
 import { Component, Input, OnDestroy, OnInit } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ArchingParams, ArchPlate, CerutiColors, CerutiViewFlags, CrossArchParams, CrossArchShape, CrossArchStation, EnricoCerutiParams, FlutingChannelParams, PlateViewMode } from '../../ceruti-types';
-import { archContoursInfo, asymmetricCrossArchInfo, crossArchCycloidControlsInfo, crossArchEdgeDepthInfo, crossSectionStationInfo, crossStationInfo, flatPlatformInfo } from '../../ceruti-helpers';
 import {
-  defaultArchingParams, defaultCrossArchParams, defaultFlutingChannelParams,
+  ArchingParams, ArchPlate, CerutiColors, CerutiViewFlags,
+  CrossArchCycloidParams, CrossArchCycloidShape, CrossArchParams, CrossArchShape,
+  CrossArchSplineParams, CrossArchSplinePoint, CrossArchSplineShape, CrossArchStation,
+  EnricoCerutiParams, FlutingChannelParams, PlateViewMode,
+} from '../../ceruti-types';
+import {
+  archContoursInfo, asymmetricCrossArchInfo, crossArchCurveTypeInfo, crossArchCycloidControlsInfo, crossArchEdgeDepthInfo,
+  crossArchSplinePointInfo, crossSectionStationInfo, crossStationInfo, flatPlatformInfo,
+} from '../../ceruti-helpers';
+import {
+  defaultArchingParams, defaultCrossArchParams, defaultCrossArchSplineParams, defaultFlutingChannelParams,
   resolveCrossArchSidesAt, STATION_MERGE_EPS_MM,
 } from '../../ceruti-arching';
 import { clamp } from '../../../helpers/draftMath';
+import { archSplineKnots } from '../../../helpers/svgPathMath';
 import { CrossArchingSceneBuilder } from './cross-arching-scene';
 import { CrossArchingRotationController } from './cross-arching-rotation-controller';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
@@ -33,6 +42,8 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
   protected readonly crossStationInfo = crossStationInfo;
   protected readonly flatPlatformInfo = flatPlatformInfo;
   protected readonly archContoursInfo = archContoursInfo;
+  protected readonly crossArchCurveTypeInfo = crossArchCurveTypeInfo;
+  protected readonly crossArchSplinePointInfo = crossArchSplinePointInfo;
 
 
 
@@ -41,6 +52,11 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
   get topFluting(): FlutingChannelParams { return this.arching.top.fluting!; }
   get backCross(): CrossArchParams { return this.arching.bottom.cross!; }
   get backFluting(): FlutingChannelParams { return this.arching.bottom.fluting!; }
+
+  get topCrossCycloid(): CrossArchCycloidParams | null { return this.topCross.type === 'cycloid' ? this.topCross : null; }
+  get topCrossSpline(): CrossArchSplineParams | null { return this.topCross.type === 'spline' ? this.topCross : null; }
+  get backCrossCycloid(): CrossArchCycloidParams | null { return this.backCross.type === 'cycloid' ? this.backCross : null; }
+  get backCrossSpline(): CrossArchSplineParams | null { return this.backCross.type === 'spline' ? this.backCross : null; }
 
   /**
    * Uncommitted station being previewed at the cursor, per plate. Editing
@@ -63,44 +79,84 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
   }
 
   /**
-   * What a plate's Factor/Percent fields display: always the cross-section shape
-   * at the cursor, whatever is supplying it —
+   * What a plate's fields are showing: always the cross-section shape at the
+   * cursor, whatever is supplying it —
    *   • a station sitting under the cursor,
    *   • an uncommitted draft the maker is dialling in there,
    *   • the base shape, when the plate has no stations at all (it applies
    *     everywhere then), or
-   *   • otherwise a snapshot of the interpolated shape at this position, so the
-   *     readout matches the real geometry while simply browsing the body.
+   *   • otherwise a snapshot of the shape at this position, so the readout
+   *     matches the real geometry while simply browsing the body: an exact
+   *     interpolated snapshot for a cycloid plate ({@link effectiveShapeAt}),
+   *     or the nearest defined shape for a spline plate ({@link nearestSplineShapeAt}
+   *     — a spline's control-point list has no well-defined "interpolated"
+   *     middle ground the way two scalars do).
    *
    * That last case returns a throwaway object, so this is read-only — every
    * write goes through {@link editTarget}.
    */
   private activeShape(plate: 'top' | 'bottom'): CrossArchShape {
+    const cross = this.crossFor(plate);
     return this.stationAtCursor(plate)
       ?? this.draftFor(plate)
-      ?? (this.crossFor(plate).stations?.length
-        ? this.effectiveShapeAt(plate, this.cursorY)
-        : this.crossFor(plate));
+      ?? (cross.stations?.length
+        ? (cross.type === 'spline' ? this.nearestSplineShapeAt(plate, this.cursorY) : this.effectiveShapeAt(plate, this.cursorY))
+        : cross);
   }
 
-  get activeTopShape(): CrossArchShape { return this.activeShape('top'); }
-  get activeBackShape(): CrossArchShape { return this.activeShape('bottom'); }
+  get activeTopCycloidShape(): CrossArchCycloidShape | null {
+    const s = this.activeShape('top');
+    return s.type === 'cycloid' ? s : null;
+  }
+  get activeTopSplineShape(): CrossArchSplineShape | null {
+    const s = this.activeShape('top');
+    return s.type === 'spline' ? s : null;
+  }
+  get activeBackCycloidShape(): CrossArchCycloidShape | null {
+    const s = this.activeShape('bottom');
+    return s.type === 'cycloid' ? s : null;
+  }
+  get activeBackSplineShape(): CrossArchSplineShape | null {
+    const s = this.activeShape('bottom');
+    return s.type === 'spline' ? s : null;
+  }
 
-  get topCrossPercent(): number { return Math.round(this.activeTopShape.pct * 100); }
-  get backCrossPercent(): number { return Math.round(this.activeBackShape.pct * 100); }
+  get topCrossPercent(): number { return Math.round((this.activeTopCycloidShape?.pct ?? 0) * 100); }
+  get backCrossPercent(): number { return Math.round((this.activeBackCycloidShape?.pct ?? 0) * 100); }
 
-  /** The interpolated shape at `y`, as a detached copy safe to seed a draft from. */
-  private effectiveShapeAt(plate: 'top' | 'bottom', y: number): CrossArchShape {
-    const cross = this.crossFor(plate);
+  /** The interpolated cycloid shape at `y`, as a detached copy safe to seed a draft from. */
+  private effectiveShapeAt(plate: 'top' | 'bottom', y: number): CrossArchCycloidShape {
+    const cross = this.crossFor(plate) as CrossArchCycloidParams;
     const sides = resolveCrossArchSidesAt(cross, y, this.params.height);
     // Factors are entered in 0.05 steps; keep an interpolated one to that grain
     // rather than showing a maker 0.1034 in a field they are about to nudge.
-    const shape: CrossArchShape = { d: round2(sides.left.d), pct: sides.left.pct };
+    const shape: CrossArchCycloidShape = { type: 'cycloid', d: round2(sides.left.d), pct: sides.left.pct };
     if (cross.asymmetric) {
       shape.left = { d: round2(sides.left.d), pct: sides.left.pct };
       shape.right = { d: round2(sides.right.d), pct: sides.right.pct };
     }
     return shape;
+  }
+
+  /**
+   * The nearest defined spline shape to `y` — the closest station, or the
+   * base shape if no station is closer (the base anchors both body ends, so
+   * "distance to the base" is distance to whichever end is nearer). Unlike
+   * {@link effectiveShapeAt}'s exact interpolation, this is an exact copy of
+   * a real shape: a spline control-point list has no natural point-by-point
+   * "halfway between these two" to reconstruct, since two shapes can differ
+   * in point count and position entirely.
+   */
+  private nearestSplineShapeAt(plate: 'top' | 'bottom', y: number): CrossArchSplineShape {
+    const cross = this.crossFor(plate) as CrossArchSplineParams;
+    const stations = cross.stations ?? [];
+    let best: CrossArchSplineShape = cross;
+    let bestDist = Math.min(y, this.params.height - y);
+    for (const s of stations) {
+      const d = Math.abs(s.y - y);
+      if (d < bestDist) { bestDist = d; best = s; }
+    }
+    return best;
   }
 
   /**
@@ -117,29 +173,108 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     if (!cross.stations?.length) return cross;
     let draft = this.draftFor(plate);
     if (!draft) {
-      draft = { y: this.cursorY, ...this.effectiveShapeAt(plate, this.cursorY) };
+      const seed = cross.type === 'spline'
+        ? cloneSplineShape(this.nearestSplineShapeAt(plate, this.cursorY))
+        : this.effectiveShapeAt(plate, this.cursorY);
+      draft = { y: this.cursorY, ...seed } as CrossArchStation;
       this.draft[plate] = draft;
     }
     return draft;
   }
 
   setActiveD(plate: 'top' | 'bottom', d: number): void {
-    this.editTarget(plate).d = clamp(d, 0, 1);
+    const target = this.editTarget(plate);
+    if (target.type !== 'cycloid') return;
+    target.d = clamp(d, 0, 1);
     this.onChange();
   }
 
   setActivePct(plate: 'top' | 'bottom', pct: number): void {
-    this.editTarget(plate).pct = clamp(pct, 5, 100) / 100;
+    const target = this.editTarget(plate);
+    if (target.type !== 'cycloid') return;
+    target.pct = clamp(pct, 5, 100) / 100;
     this.onChange();
   }
 
   setActiveSideD(plate: 'top' | 'bottom', side: 'left' | 'right', d: number): void {
-    this.editTarget(plate)[side]!.d = clamp(d, 0, 1);
+    const target = this.editTarget(plate);
+    if (target.type !== 'cycloid') return;
+    target[side]!.d = clamp(d, 0, 1);
     this.onChange();
   }
 
   setActiveSidePct(plate: 'top' | 'bottom', side: 'left' | 'right', pct: number): void {
-    this.editTarget(plate)[side]!.pct = clamp(pct, 5, 100) / 100;
+    const target = this.editTarget(plate);
+    if (target.type !== 'cycloid') return;
+    target[side]!.pct = clamp(pct, 5, 100) / 100;
+    this.onChange();
+  }
+
+  /** The peak's position as a whole percent, for the panel's number input. */
+  splinePeakPct(shape: CrossArchSplineShape): number {
+    return Math.round((shape.peak ?? 0.5) * 100);
+  }
+
+  setSplinePeakPct(plate: 'top' | 'bottom', pct: number): void {
+    const target = this.editTarget(plate);
+    if (target.type !== 'spline') return;
+    // Held clear of the takeoff edges: the peak has to stay an interior knot.
+    target.peak = clamp(pct, 2, 98) / 100;
+    this.onChange();
+  }
+
+  addSplinePoint(plate: 'top' | 'bottom'): void {
+    const target = this.editTarget(plate);
+    if (target.type !== 'spline') return;
+    // Fill the widest gap in the curve as it currently stands — mirrored twins
+    // and the peak included, since those are the knots actually on screen.
+    // hEff=1 here: only the relative (t) spacing of the gaps matters.
+    const boundaries: { t: number; z: number }[] = [
+      { t: 0, z: 0 },
+      ...archSplineKnots(1, target.points, target.peak ?? 0.5),
+      { t: 1, z: 0 },
+    ];
+    let maxGap = 0;
+    let gapIdx = 0;
+    for (let i = 0; i < boundaries.length - 1; i++) {
+      const gap = boundaries[i + 1].t - boundaries[i].t;
+      if (gap > maxGap) { maxGap = gap; gapIdx = i; }
+    }
+    const t = +((boundaries[gapIdx].t + boundaries[gapIdx + 1].t) / 2).toFixed(3);
+    const z = +((boundaries[gapIdx].z + boundaries[gapIdx + 1].z) / 2).toFixed(3);
+    // Symmetric by default; a point already on the centerline has nothing to mirror to.
+    target.points.push({ t, z, mirror: Math.abs(t - 0.5) > 0.01 });
+    target.points.sort((a, b) => a.t - b.t);
+    this.onChange();
+  }
+
+  removeSplinePoint(plate: 'top' | 'bottom', index: number): void {
+    const target = this.editTarget(plate);
+    if (target.type !== 'spline') return;
+    target.points.splice(index, 1);
+    this.onChange();
+  }
+
+  toggleSplineMirror(pt: CrossArchSplinePoint): void {
+    pt.mirror = !pt.mirror;
+    this.onChange();
+  }
+
+  /**
+   * Switches a plate's cross-arch curve type. Fully replaces the shape with a
+   * fresh default in the new type — exactly like the long-arch panel's own
+   * `setCurveType` discards the old arch object wholesale — and clears every
+   * station along with it, since a station's shape is structurally tied to
+   * its curve type. An open draft preview is discarded too: it would
+   * otherwise be shaped like the old type and get spliced into the render
+   * against a base shape of the new one.
+   */
+  setCurveType(plate: 'top' | 'bottom', type: CrossArchShape['type']): void {
+    const cross = this.crossFor(plate);
+    if (cross.type === type) return;
+    const plateParams = plate === 'top' ? this.arching.top : this.arching.bottom;
+    plateParams.cross = type === 'spline' ? defaultCrossArchSplineParams() : defaultCrossArchParams();
+    this.draft[plate] = null;
     this.onChange();
   }
 
@@ -155,29 +290,29 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
    * left (x<0) / right (x>0) shapes. Turning asymmetric on seeds both sides
    * of the base shape *and* of every station from their own current d/pct, so
    * the arch keeps its exact prior shape until the maker pulls the sides apart.
+   * Cycloid-only — a spline shape's asymmetry comes from its peak position and
+   * per-point mirror flags instead, so there is nothing here to toggle.
    */
   toggleAsymmetricCross(plate: 'top' | 'bottom'): void {
-    const cross = plate === 'top' ? this.topCross : this.backCross;
+    const cross = this.crossFor(plate);
+    if (cross.type !== 'cycloid') return;
     cross.asymmetric = !cross.asymmetric;
     if (cross.asymmetric) {
       seedCrossArchSides(cross);
       // An open preview isn't in cross.stations, so seed it alongside them.
       const draft = this.draft[plate];
-      if (draft) seedShapeSides(draft);
+      if (draft && draft.type === 'cycloid') seedShapeSides(draft);
     }
     this.onChange();
   }
 
   // ===== Cross-arch stations =====
-  // The plate's base d/pct anchor both body ends; stations are interior
+  // The plate's base shape anchors both body ends; stations are interior
   // overrides the shape ramps through in between. The section-height control at
-  // the top of the panel doubles as the cursor these are placed at.
-
-  // Read-only views: these must not write `stations` back into params, or merely
-  // opening the panel would change JSON.stringify(params) — the recipe's own
-  // unsaved-changes check and the scene's render cache key both read that.
-  get topStations(): CrossArchStation[] { return this.topCross.stations ?? []; }
-  get backStations(): CrossArchStation[] { return this.backCross.stations ?? []; }
+  // the top of the panel doubles as the cursor these are placed at. The
+  // template reads stations straight off topCrossCycloid/topCrossSpline (and
+  // their back-plate equivalents) rather than a shared getter here, so each
+  // row stays properly typed to its curve type instead of the general union.
 
   private crossFor(plate: 'top' | 'bottom'): CrossArchParams {
     return plate === 'top' ? this.topCross : this.backCross;
@@ -198,26 +333,39 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
   /**
    * Commits the shape the plate's fields are showing as a real station at the
    * cursor — the preview the maker has been looking at, or, if they changed
-   * nothing, the interpolated shape already there (which pins it against later
-   * edits without moving the surface).
+   * nothing, the shape already there (which pins it against later edits
+   * without moving the surface).
    *
    * Only reachable with the cursor off every existing station: once one is
    * there the fields edit it directly, so there is nothing left to commit.
    */
   setStationHere(plate: 'top' | 'bottom'): void {
     const cross = this.crossFor(plate);
-    const source = this.activeShape(plate);
-    const shape: CrossArchShape = { d: source.d, pct: source.pct };
-    if (cross.asymmetric) {
-      shape.left = { ...source.left! };
-      shape.right = { ...source.right! };
-    }
     const existing = this.stationAtCursor(plate);
-    if (existing) {
-      Object.assign(existing, shape);
+    if (cross.type === 'spline') {
+      const source = this.activeShape(plate) as CrossArchSplineShape;
+      const shape: CrossArchSplineShape = { type: 'spline', peak: source.peak, points: source.points.map(pt => ({ ...pt })) };
+      if (existing) {
+        Object.assign(existing, shape);
+      } else {
+        const stations = (cross.stations ??= []);
+        stations.push({ y: this.cursorY, ...shape });
+        stations.sort((a, b) => a.y - b.y);
+      }
     } else {
-      (cross.stations ??= []).push({ y: this.cursorY, ...shape });
-      cross.stations.sort((a, b) => a.y - b.y);
+      const source = this.activeShape(plate) as CrossArchCycloidShape;
+      const shape: CrossArchCycloidShape = { type: 'cycloid', d: source.d, pct: source.pct };
+      if (cross.asymmetric) {
+        shape.left = { ...source.left! };
+        shape.right = { ...source.right! };
+      }
+      if (existing) {
+        Object.assign(existing, shape);
+      } else {
+        const stations = (cross.stations ??= []);
+        stations.push({ y: this.cursorY, ...shape });
+        stations.sort((a, b) => a.y - b.y);
+      }
     }
     this.draft[plate] = null;
     this.onChange();
@@ -277,12 +425,14 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     const a = this.params.arching;
     for (const plate of [a.top, a.bottom]) {
       plate.cross ??= defaultCrossArchParams();
-      // Older recipes carry a cross block without the cycloid window; backfill it.
-      plate.cross.pct ??= defaultCrossArchParams().pct;
+      if (plate.cross.type === 'cycloid') {
+        // Older recipes carry a cross block without the cycloid window; backfill it.
+        plate.cross.pct ??= defaultCrossArchParams().pct;
+        // The asymmetric rows bind straight to left/right, so an asymmetric plate
+        // must always have both — on the base shape and on every station.
+        if (plate.cross.asymmetric) seedCrossArchSides(plate.cross);
+      }
       plate.fluting ??= defaultFlutingChannelParams();
-      // The asymmetric rows bind straight to left/right, so an asymmetric plate
-      // must always have both — on the base shape and on every station.
-      if (plate.cross.asymmetric) seedCrossArchSides(plate.cross);
     }
 
     // Station is ephemeral view state; default to c-bout waist on first open.
@@ -302,7 +452,11 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     const a = this.arching;
     const withDraft = (plate: ArchPlate, draft: CrossArchStation | null): ArchPlate =>
       draft
-        ? { ...plate, cross: { ...plate.cross!, stations: [...(plate.cross!.stations ?? []), draft] } }
+        // The draft always matches plate.cross's own curve type by construction
+        // (setCurveType clears any open draft, and editTarget/setStationHere
+        // always seed a new one from the current cross) — true at runtime even
+        // though the two union arms aren't statically correlated here.
+        ? { ...plate, cross: { ...plate.cross!, stations: [...(plate.cross!.stations ?? []), draft] } as CrossArchParams }
         : plate;
     return {
       ...this.params,
@@ -332,7 +486,7 @@ function round2(v: number): number {
 }
 
 /** Gives one shape a left/right pair, seeded from its own symmetric d/pct where missing. */
-function seedShapeSides(shape: CrossArchShape): void {
+function seedShapeSides(shape: CrossArchCycloidShape): void {
   shape.left ??= { d: shape.d, pct: shape.pct };
   shape.right ??= { d: shape.d, pct: shape.pct };
 }
@@ -343,6 +497,11 @@ function seedShapeSides(shape: CrossArchShape): void {
  * pairs are left alone, so this is safe to re-run — flipping asymmetric off and
  * back on returns the sides the maker had set, rather than resetting them.
  */
-function seedCrossArchSides(cross: CrossArchParams): void {
-  for (const shape of [cross as CrossArchShape, ...(cross.stations ?? [])]) seedShapeSides(shape);
+function seedCrossArchSides(cross: CrossArchCycloidParams): void {
+  for (const shape of [cross as CrossArchCycloidShape, ...(cross.stations ?? [])]) seedShapeSides(shape);
+}
+
+/** Deep-copies a spline shape's points so editing a seeded draft never mutates its source. */
+function cloneSplineShape(shape: CrossArchSplineShape): CrossArchSplineShape {
+  return { type: 'spline', peak: shape.peak, points: shape.points.map(pt => ({ ...pt })) };
 }
