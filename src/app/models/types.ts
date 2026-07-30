@@ -76,8 +76,12 @@ export type NamedReferenceImage = ReferenceImage & {
   /** Whether near-white pixels are faded out for dark-mode legibility. Omitted means on, which
    * is what this did unconditionally before it became a toggle. */
   suppressWhite?: boolean;
-  /** Which toolbox layer the image sits on, so hiding/locking a layer covers its images too. */
-  layerId?: string;
+  /** Hidden from the canvas. Omitted means visible. */
+  hidden?: boolean;
+  /** Protected from being selected or dragged on the canvas. **Omitted means locked** — every
+   * template and every file saved before this field existed should open protected rather than
+   * one stray click away from a nudged reference. */
+  locked?: boolean;
 }
 
 export interface RecipeInterface {

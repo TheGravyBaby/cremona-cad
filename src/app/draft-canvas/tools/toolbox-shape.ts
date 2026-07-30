@@ -100,6 +100,24 @@ export type ImageShape = ShapeBase & {
   /** Fades near-white pixels to transparent so a scan on white paper reads on a dark canvas.
    * Undefined means on, matching the old always-on behavior. */
   suppressWhite?: boolean;
+  /** Hidden from the canvas, and unselectable while hidden. Per-image, so one reference can be
+   * parked without disturbing the others — this is what the old tab strip's active-tab-only
+   * display was really for. */
+  hidden?: boolean;
+  /**
+   * Locked images can't be selected, moved or resized on the canvas — a click passes straight
+   * through them. **Undefined means locked**, so every template image and every recipe saved
+   * before this field existed opens protected: you trace over a reference far more often than you
+   * adjust one, and an accidental drag is expensive. The Image tool places new images explicitly
+   * unlocked, since you add one in order to scale it.
+   */
+  locked?: boolean;
+  /**
+   * Unlike every other shape, an image's `layerId` (inherited from ShapeBase) is unused and never
+   * stamped. Images render in their own pass beneath everything, so layer z-order is meaningless
+   * for them, and `hidden`/`locked` above give them the two things they'd otherwise borrow from a
+   * layer — per image rather than per group. See ToolboxStore.getVisibleImages.
+   */
 };
 
 /** What an image renders at when its shape doesn't say — the old global reference opacity. */

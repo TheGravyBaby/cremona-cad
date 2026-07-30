@@ -100,6 +100,59 @@
   border-color: var(--ui-canvas-btn-border-hover);
 }
 
+/* The master show/hide switch carried by the Layers and Reference Image buttons. Same footprint
+   as .tool-flyout-caret (14px, flush against the main button, right-rounded), so it reads as part
+   of the same control rather than a bolted-on extra, and so both buttons look alike. Unlike a
+   native checkbox there's no filled box behind the mark — just an eye glyph, kept as minimal as
+   the caret it replaced. When on it fills with the accent color and the glyph goes white, exactly
+   like .tool-btn.active does for a selected tool or the pinned dock button, so "showing" reads the
+   same way "selected" does everywhere else in the dock. */
+.tool-view-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  padding: 0;
+  border: 1px solid var(--ui-border-strong);
+  border-left: none;
+  border-top-right-radius: 4px;
+  border-bottom-right-radius: 4px;
+  background: linear-gradient(180deg, var(--ui-canvas-btn-bg-start) 0%, var(--ui-canvas-btn-bg-end) 100%);
+  color: var(--ui-text);
+  cursor: pointer;
+}
+
+.tool-view-toggle:hover {
+  border-color: var(--ui-canvas-btn-border-hover);
+  color: var(--ui-text-primary);
+}
+
+
+.tool-view-toggle.on {
+  /* background: var(--ui-accent);
+  border-color: var(--ui-accent);
+  color: #fff; */
+}
+
+.tool-view-toggle.on:hover {
+  /* color: #fff; */
+}
+
+/* Same filled-accent treatment for the per-row eyes inside the Layers and Reference Images
+   popups, scaled down to a chip that fits a list row. Deliberately not applied to the lock
+   buttons beside them: a filled accent reads as "on/showing", and filling a padlock would
+   invert that. */
+.layer-tab-icon-btn.on {
+  /* background: var(--ui-accent); */
+  border-radius: 3px;
+  /* color: #fff; */
+}
+
+.layer-tab-icon-btn.on:hover {
+  /* color: #fff; */
+  opacity: 0.85;
+}
+
 .tool-flyout-popup {
   position: absolute;
   top: 0;
@@ -170,9 +223,27 @@
   min-width: 0;
 }
 
-.layers-popup {
-  min-width: 170px;
+/* One width for both popups so they line up with each other as you switch between them — image
+   names ("Long arch") set the floor, and Layers matches rather than being a little narrower. */
+.layers-popup,
+.images-popup {
+  min-width: 190px;
   gap: 8px;
+}
+
+/* Reuses the Layers popup's row markup (.layer-tab and friends), since an image row is the same
+   thing: eye, name, lock, delete. Wider only because image names ("Long arch") run longer than
+   "Layer 1". Anchored from the bottom because its button sits low in the dock, so growing
+   downward from the top would push it off-screen. */
+.images-popup {
+  top: auto;
+  bottom: 0;
+}
+
+.images-empty {
+  font-size: 11px;
+  color: var(--ui-text-muted);
+  padding: 2px 2px 4px;
 }
 
 .layer-tabs {
@@ -274,11 +345,32 @@
   color: var(--ui-text-primary);
 }
 
-.layer-clear-btn {
+/* The full-width action at the foot of a popup: Clear Layer, Upload Image. Carries its own box
+   styling rather than leaning on the global `.btn` — that lives in draft-canvas.css, the parent
+   component's stylesheet, so Angular's view encapsulation never applies it in here and these
+   buttons would otherwise fall back to native browser chrome. */
+.layer-clear-btn,
+.image-upload-btn {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  font-size: 11px;
+  width: 100%;
   padding: 5px 8px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 4px;
+  background: linear-gradient(180deg, var(--ui-canvas-btn-bg-start) 0%, var(--ui-canvas-btn-bg-end) 100%);
+  color: var(--ui-text-primary);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.layer-clear-btn:hover,
+.image-upload-btn:hover {
+  border-color: var(--ui-canvas-btn-border-hover);
+}
+
+.layer-clear-btn svg,
+.image-upload-btn svg {
+  flex: 0 0 auto;
 }

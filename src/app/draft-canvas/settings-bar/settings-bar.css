@@ -146,6 +146,28 @@
   cursor: pointer;
 }
 
+/* A push-button action rather than a value to edit (currently just Reference Image's Lock).
+   Spans both rows like .point-group, since it has no separate label above it. */
+.settings-action {
+  grid-row: 1 / span 2;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 4px;
+  background: linear-gradient(180deg, var(--ui-canvas-btn-bg-start) 0%, var(--ui-canvas-btn-bg-end) 100%);
+  color: var(--ui-text-primary);
+  font-size: 11px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.settings-action:hover {
+  border-color: var(--ui-canvas-btn-border-hover);
+}
+
 .toggle input[type="checkbox"] {
   align-self: center;
   justify-self: center;

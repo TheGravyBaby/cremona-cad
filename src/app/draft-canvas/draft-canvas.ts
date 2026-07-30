@@ -57,7 +57,9 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   public get activeTool(): DraftTool | null { return this.toolRegistry.activeTool; }
   private isAngleLockHeld = false;
   private toolHost: DraftToolHost = {
-    addShape: (shape) => this.toolbox.addShape({
+    // Images are deliberately not stamped with a layer: they aren't layer members (see
+    // ImageShape), and giving them one would make deleting that layer delete them.
+    addShape: (shape) => this.toolbox.addShape(shape.type === 'image' ? shape : {
       ...shape,
       color: shape.color ?? this.toolbox.currentColor,
       layerId: shape.layerId ?? this.toolbox.activeLayerId,
@@ -384,6 +386,11 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private onActiveToolChanged(): void {
     if (this.editingTextShapeId) this.editingTextShapeId = null; // e.g. switching tools mid-edit
     this.activeSnap = null;
+    // Picking up a tool while the thing it produces is hidden would make it a silent no-op, so
+    // activating one turns its master switch back on — the same reasoning as ToolboxStore's
+    // setActiveLayer always revealing the layer you switch onto.
+    if (this.activeTool?.id === 'image') this.toolbox.setShowImages(true);
+    else if (this.activeTool) this.toolbox.setShowShapes(true);
     // Selection-acting tools (e.g. Offset) run against a selection made in Select mode before
     // they were activated, so it must survive activation — every other tool draws fresh shapes
     // and has no use for a stale selection.
@@ -1106,6 +1113,14 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
   toggleAxisPopup(): void {
     this.axisPopupOpen = !this.axisPopupOpen;
+  }
+
+  /** Selects a shape by id from outside the canvas — the tool palette's image list uses this to
+   * hand you a just-unlocked image with its handles already live. Switches to Select first, since
+   * a drawing tool being active would hide the selection it just made. */
+  selectShapeById(id: string): void {
+    this.toolRegistry.selectTool(null);
+    this.setSelectedShape(id);
   }
 
   // ===== Image file picker =====
