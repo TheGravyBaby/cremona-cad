@@ -6,7 +6,7 @@ function normalizeAngle(a: number): number {
   return ((a % TWO_PI) + TWO_PI) % TWO_PI;
 }
 
-export function pointOnCircle(center: Pt, radius: number, angle: number): Pt {
+export function pointOnCirc(center: Pt, radius: number, angle: number): Pt {
   return { x: center.x + radius * Math.cos(angle), y: center.y + radius * Math.sin(angle) };
 }
 
@@ -19,8 +19,8 @@ export function arcPathData(center: Pt, radius: number, startAngle: number, endA
   const span = normalizeAngle(endAngle - startAngle);
   const largeArcFlag = span > Math.PI ? 1 : 0;
   const sweepFlag = 1;
-  const start = pointOnCircle(center, radius, startAngle);
-  const end = pointOnCircle(center, radius, endAngle);
+  const start = pointOnCirc(center, radius, startAngle);
+  const end = pointOnCirc(center, radius, endAngle);
   return `M ${start.x},${start.y} A ${radius},${radius} 0 ${largeArcFlag},${sweepFlag} ${end.x},${end.y}`;
 }
 

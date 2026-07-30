@@ -3,7 +3,7 @@ import { Arc, Circle, Pt } from '../../models/types';
 import { offsetArcRadius, offsetCircleRadius, offsetLineByDistance } from '../../helpers/draftMath';
 import { DraftTool, DraftToolHost } from './draft-tool';
 import { DraftShape, makeShapeId } from './toolbox-shape';
-import { arcPathData, pointOnCircle } from './arc-geometry';
+import { arcPathData, pointOnCirc } from './arc-geometry';
 import { PREVIEW_COLOR, stylePreview } from './two-point-tool';
 
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
@@ -60,8 +60,8 @@ function samePoint(a: Pt, b: Pt): boolean {
 function boundaryPoints(shape: DraftShape): { pt: Pt; tangentAngle: number }[] | null {
   if (shape.type === 'arc') {
     return [
-      { pt: pointOnCircle(shape.center, shape.radius, shape.startAngle), tangentAngle: shape.startAngle + Math.PI / 2 },
-      { pt: pointOnCircle(shape.center, shape.radius, shape.endAngle), tangentAngle: shape.endAngle + Math.PI / 2 },
+      { pt: pointOnCirc(shape.center, shape.radius, shape.startAngle), tangentAngle: shape.startAngle + Math.PI / 2 },
+      { pt: pointOnCirc(shape.center, shape.radius, shape.endAngle), tangentAngle: shape.endAngle + Math.PI / 2 },
     ];
   }
   if (shape.type === 'line') {
