@@ -183,11 +183,15 @@
         (change)="setImageOpacity($any($event.target).valueAsNumber)" (keydown.enter)="$any($event.target).blur()"
         title="Opacity from 0 (invisible) to 1 (fully opaque)" />
     </span>
-    <label class="toggle">
-      <span class="f-lbl">Drop white</span>
-      <input type="checkbox" [checked]="imageSuppressWhite" (change)="setImageSuppressWhite($any($event.target).checked)"
-        title="Fade near-white pixels to transparent, so a scan on white paper reads against a dark canvas" />
-    </label>
+    <button type="button" class="settings-action" [class.active]="imageSuppressWhite"
+      (click)="setImageSuppressWhite(!imageSuppressWhite)"
+      title="Fade near-white pixels to transparent, so a scan on white paper reads against a dark canvas">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3c3.5 4 6 7.2 6 10.5a6 6 0 0 1-12 0C6 10.2 8.5 7 12 3z" />
+      </svg>
+      <span>Drop white</span>
+    </button>
     <button type="button" class="settings-action" [class.active]="imageMirrored" (click)="toggleImageMirrored()"
       title="Mirror the image left-right — for a scan that came out reversed, or to compare against its opposite half. Combine with Rot° to mirror on any axis. The image's position, size and rotation are unaffected.">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
