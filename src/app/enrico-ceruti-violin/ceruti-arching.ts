@@ -1,7 +1,14 @@
 import { arcHorizontalIntersections, clamp, makeMonotoneSpline } from "../helpers/draftMath";
-import { buildCatenaryPath, buildCycloidPath, buildSplinePath, buildCycloidPathAcross, catenaryZAt, cycloidZAt, splineZAt, cycloidEdgeSlope } from "../helpers/svgPathMath";
+import {
+  buildCatenaryPath, buildCycloidPath, buildSplinePath, buildCycloidPathAcross, catenaryZAt, cycloidZAt, splineZAt, cycloidEdgeSlope,
+  crossArchSplineProfileGrid, crossArchSplineEdgeSlopeFrac, crossArchSplineZAt, crossArchSplineEdgeSlope, buildCrossArchSplinePathAcross,
+  CROSS_ARCH_SPLINE_GRID_N,
+} from "../helpers/svgPathMath";
 import { Arc } from "../models/types";
-import { ArchCurve, ArchingParams, CrossArchParams, CrossArchShape, CrossArchSide, CrossArchStation, EnricoCerutiParams, FlutingChannelParams } from "./ceruti-types";
+import {
+  ArchCurve, ArchingParams, CrossArchCycloidParams, CrossArchCycloidShape, CrossArchParams, CrossArchShape, CrossArchSide,
+  CrossArchSplineParams, CrossArchSplineShape, CrossArchStation, EnricoCerutiParams, FlutingChannelParams,
+} from "./ceruti-types";
 import { defineFlutingArcs, defineInnerArcs, defineOffsetArcs, defineOuterCornerArcs } from "./ceruti-paths";
 
 // ===== Arching & fluting profile system =====
@@ -138,6 +145,22 @@ export function normalizeArchingParams(p: EnricoCerutiParams | undefined | null)
   if (!p?.arching) return;
   normalizeArchCurve(p.arching.top.arch);
   normalizeArchCurve(p.arching.bottom.arch);
+  normalizeCrossArchParams(p.arching.top.cross);
+  normalizeCrossArchParams(p.arching.bottom.cross);
+}
+
+/**
+ * Brings a cross-arch block loaded from an older recipe up to the current
+ * shape, in place. Cross-arch was cycloid-only before spline support existed,
+ * so an absent `type` — on the base shape or any station — is unambiguously
+ * legacy cycloid, unlike the long arch's `mirror` migration (no similar
+ * ambiguity to resolve here). Called from {@link normalizeArchingParams}, the
+ * same single trust boundary `normalizeArchCurve` relies on.
+ */
+export function normalizeCrossArchParams(cross: CrossArchParams | undefined): void {
+  if (!cross) return;
+  (cross as { type?: 'cycloid' | 'spline' }).type ??= 'cycloid';
+  for (const s of cross.stations ?? []) (s as { type?: 'cycloid' | 'spline' }).type ??= 'cycloid';
 }
 
 export function calculateLongArch(p: EnricoCerutiParams): { span: number; yStart: number; topPath: string; backPath: string } {
@@ -178,8 +201,13 @@ export function longArchHeightAt(p: EnricoCerutiParams, arch: ArchCurve, y: numb
 }
 
 /** Default cross-arch shape: a mid-range curtate factor, full cycloid window. */
-export function defaultCrossArchParams(): CrossArchParams {
-  return { d: 0.4, pct: .9 };
+export function defaultCrossArchParams(): CrossArchCycloidParams {
+  return { type: 'cycloid', d: 0.4, pct: .9 };
+}
+
+/** Default spline cross-arch shape: a gentle single-point rise to the center peak. */
+export function defaultCrossArchSplineParams(): CrossArchSplineParams {
+  return { type: 'spline', peak: 0.5, points: [{ t: 0.2, z: 0.85, mirror: true }] };
 }
 
 /** A cross-arch shape split into the two halves the section is actually built from. */
@@ -199,14 +227,14 @@ export type CrossArchResolver = (y: number) => CrossArchSides;
  * still meet at the center without a seam — no blending needed beyond picking
  * which pair applies where.
  */
-function crossShapeSides(shape: CrossArchShape, asymmetric: boolean): CrossArchSides {
+function crossShapeSides(shape: CrossArchCycloidShape, asymmetric: boolean): CrossArchSides {
   const shared: CrossArchSide = { d: shape.d, pct: shape.pct };
   if (!asymmetric) return { left: shared, right: shared };
   return { left: shape.left ?? shared, right: shape.right ?? shared };
 }
 
 /** The plate's base (station-free) per-side shape — what anchors both body ends. */
-export function resolveCrossArchSides(cross: CrossArchParams): CrossArchSides {
+export function resolveCrossArchSides(cross: CrossArchCycloidParams): CrossArchSides {
   return crossShapeSides(cross, !!cross.asymmetric);
 }
 
@@ -221,15 +249,15 @@ const STATION_MARGIN_MM = 1;
  * collapsed (earlier wins) so the interpolator always gets strictly increasing
  * knots. Does not mutate the input.
  */
-export function normalizeCrossArchStations(
-  stations: CrossArchStation[] | undefined, bodyHeight: number,
-): CrossArchStation[] {
+export function normalizeCrossArchStations<T extends { y: number }>(
+  stations: T[] | undefined, bodyHeight: number,
+): T[] {
   if (!stations?.length) return [];
   const hi = Math.max(STATION_MARGIN_MM, bodyHeight - STATION_MARGIN_MM);
   const sorted = stations
     .map(s => ({ ...s, y: clamp(s.y, STATION_MARGIN_MM, hi) }))
     .sort((a, b) => a.y - b.y);
-  const out: CrossArchStation[] = [];
+  const out: T[] = [];
   for (const s of sorted) {
     if (out.length && s.y - out[out.length - 1].y <= STATION_MERGE_EPS_MM) continue;
     out.push(s);
@@ -247,7 +275,7 @@ export function normalizeCrossArchStations(
  * spline the long arch uses — it cannot overshoot between knots, so an
  * interpolated d/pct never swings outside the range the maker entered.
  */
-export function makeCrossArchResolver(cross: CrossArchParams, bodyHeight: number): CrossArchResolver {
+export function makeCrossArchResolver(cross: CrossArchCycloidParams, bodyHeight: number): CrossArchResolver {
   const asymmetric = !!cross.asymmetric;
   const base = crossShapeSides(cross, asymmetric);
   const stations = normalizeCrossArchStations(cross.stations, bodyHeight);
@@ -276,8 +304,92 @@ export function makeCrossArchResolver(cross: CrossArchParams, bodyHeight: number
  * (panel readouts, section renders). Hot paths should build the resolver once
  * and reuse it instead.
  */
-export function resolveCrossArchSidesAt(cross: CrossArchParams, y: number, bodyHeight: number): CrossArchSides {
+export function resolveCrossArchSidesAt(cross: CrossArchCycloidParams, y: number, bodyHeight: number): CrossArchSides {
   return makeCrossArchResolver(cross, bodyHeight)(y);
+}
+
+/** A spline cross-arch shape's height profile, already interpolated to one body-length station. */
+export interface CrossArchSplineRow {
+  /** Height fraction of hEff at each of CROSS_ARCH_SPLINE_GRID_N evenly-spaced transverse positions. */
+  zFracGrid: number[];
+  leftEdgeSlopeFrac: number;
+  rightEdgeSlopeFrac: number;
+}
+
+/** The spline cross-arch shape at a body-length station. Constant unless stations are set. */
+export type CrossArchSplineResolver = (y: number) => CrossArchSplineRow;
+
+/** Samples one spline shape into the profile + edge slopes a station track ramps between. */
+function splineShapeProfile(shape: CrossArchSplineShape): { grid: number[]; leftSlope: number; rightSlope: number } {
+  const peak = shape.peak ?? 0.5;
+  return {
+    grid: crossArchSplineProfileGrid(shape.points, peak),
+    leftSlope: crossArchSplineEdgeSlopeFrac(shape.points, peak, true),
+    rightSlope: crossArchSplineEdgeSlopeFrac(shape.points, peak, false),
+  };
+}
+
+/**
+ * Builds the spline cross-arch shape track along the body once, for repeated
+ * querying — the spline counterpart of {@link makeCrossArchResolver}.
+ *
+ * Rather than ramping the control points directly (there's no correspondence
+ * between one station's Nth point and another's — they can differ in count
+ * and position entirely), every defined shape (base + each station) is first
+ * sampled into a dense, fixed-size height profile ({@link crossArchSplineProfileGrid}).
+ * Each of those grid columns is then ramped across the body length with its
+ * own shape-preserving monotone spline, exactly like `d`/`pct` are ramped
+ * today — just ~160 ramps instead of 4. A moving peak position falls out for
+ * free, since its effect on the profile is already baked in before any
+ * y-interpolation happens.
+ */
+export function makeCrossArchSplineResolver(cross: CrossArchSplineParams, bodyHeight: number): CrossArchSplineResolver {
+  const base = splineShapeProfile(cross);
+  const stations = normalizeCrossArchStations(cross.stations, bodyHeight);
+  if (!stations.length || bodyHeight <= 0) {
+    return () => ({ zFracGrid: base.grid, leftEdgeSlopeFrac: base.leftSlope, rightEdgeSlopeFrac: base.rightSlope });
+  }
+
+  const ys = [0, ...stations.map(s => s.y), bodyHeight];
+  const profiles = stations.map(splineShapeProfile);
+  const columnTracks = base.grid.map((baseZ, col) =>
+    makeMonotoneSpline(ys, [baseZ, ...profiles.map(p => p.grid[col]), baseZ]));
+  const leftSlopeTrack = makeMonotoneSpline(ys, [base.leftSlope, ...profiles.map(p => p.leftSlope), base.leftSlope]);
+  const rightSlopeTrack = makeMonotoneSpline(ys, [base.rightSlope, ...profiles.map(p => p.rightSlope), base.rightSlope]);
+
+  return (y: number) => ({
+    zFracGrid: columnTracks.map(track => track(y)),
+    leftEdgeSlopeFrac: leftSlopeTrack(y),
+    rightEdgeSlopeFrac: rightSlopeTrack(y),
+  });
+}
+
+/**
+ * One-shot {@link makeCrossArchSplineResolver} for callers querying a single
+ * station. Hot paths should build the resolver once and reuse it instead.
+ */
+export function resolveCrossArchSplineRowAt(cross: CrossArchSplineParams, y: number, bodyHeight: number): CrossArchSplineRow {
+  return makeCrossArchSplineResolver(cross, bodyHeight)(y);
+}
+
+/**
+ * The cross-arch shape at a body-length station, however it's built — the
+ * dispatcher seam where `cross.type` is resolved once (used by
+ * {@link PlateSurfaceModel.crossAt}). Cheap to call at query time despite the
+ * name: it just closes over whichever resolver already got built.
+ */
+export type CrossArchQuery =
+  | { type: 'cycloid'; sides: CrossArchSides }
+  | { type: 'spline'; row: CrossArchSplineRow };
+export type CrossArchAtY = (y: number) => CrossArchQuery;
+
+export function makeCrossArchAtY(cross: CrossArchParams, bodyHeight: number): CrossArchAtY {
+  if (cross.type === 'spline') {
+    const resolve = makeCrossArchSplineResolver(cross, bodyHeight);
+    return y => ({ type: 'spline', row: resolve(y) });
+  }
+  const resolve = makeCrossArchResolver(cross, bodyHeight);
+  return y => ({ type: 'cycloid', sides: resolve(y) });
 }
 
 /** Default fluting channel: the carved gouge-arc, tangent to the cross arch. */
@@ -311,6 +423,10 @@ export function calculateCrossArchTop(p: EnricoCerutiParams, y: number, side: 't
   const outerZ = side === 'top' ? a.ribHeight + plate.thickness : -plate.thickness;
   const zBase = outerZ - sign * edgeDepth;
   const hEff  = h + edgeDepth;
+  if (cross.type === 'spline') {
+    const { zFracGrid } = resolveCrossArchSplineRowAt(cross, y, p.height);
+    return { path: buildCrossArchSplinePathAcross(hEff, halfSpan, zBase, sign, zFracGrid, 80), halfSpan };
+  }
   const { left, right } = resolveCrossArchSidesAt(cross, y, p.height);
   // Both halves share one trochoid parametrisation when they're the same shape,
   // which samples evenly in the curve's own parameter rather than in x.
@@ -358,9 +474,13 @@ export function crossArchEdgeSlopeAt(p: EnricoCerutiParams, y: number, side: 'to
   const h = longArchHeightAt(p, plate.arch, y);
   if (h <= 0) return 0;
   const cross = plate.cross ?? defaultCrossArchParams();
+  const edgeDepth = plate.edgeDepth;
+  if (cross.type === 'spline') {
+    const row = resolveCrossArchSplineRowAt(cross, y, p.height);
+    return crossArchSplineEdgeSlope(atLeft ? row.leftEdgeSlopeFrac : row.rightEdgeSlopeFrac, h + edgeDepth, halfSpan);
+  }
   const sides = resolveCrossArchSidesAt(cross, y, p.height);
   const shape = atLeft ? sides.left : sides.right;
-  const edgeDepth = plate.edgeDepth;
   return cycloidEdgeSlope(h + edgeDepth, 2 * halfSpan, shape.d, shape.pct);
 }
 

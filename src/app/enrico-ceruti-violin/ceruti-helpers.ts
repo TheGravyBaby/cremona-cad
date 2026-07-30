@@ -246,6 +246,26 @@ export function crossStationInfo() {
     )
 }
 
+export function crossArchCurveTypeInfo() {
+    info(
+        "Two cross-arch profiles are available:\n\n" +
+        "Cycloid — a trochoid curve controlled by a Factor and Percent, always symmetric unless you turn on the separate Asymmetric toggle.\n\n" +
+        "Spline — a cubic spline through user-placed control points, with a movable Peak position and per-point Mirror flags instead of a separate asymmetric toggle. The peak's height is always the long arch's height at that body position — only its position across the width, and the shape of the rise to it, are yours to set.",
+        "Cross-Arch Curve Type", defaultTTL
+    )
+}
+
+export function crossArchSplinePointInfo() {
+    info(
+        "Each control point pins the cross arch at a specific height and position across the plate width.\n\n" +
+        "Position (0–100): how far across the full width, 0 = left fluting takeoff edge, 100 = right takeoff edge. Both edges are always 0%.\n\n" +
+        "Height (0–100%): a FRACTION of the peak height at this body position — not mm. The peak height itself comes from the long arch and changes station to station, so points are stored as a percentage of it, the same way a cycloid's Factor/Percent are ratios rather than mm.\n\n" +
+        "Peak: the first row is the arch peak — it always sits at 100% (the full local height), but you can move it across the width. Off 50 gives a cross arch that crowns closer to one edge than the other.\n\n" +
+        "Mirror: on (the default) the point repeats at the same distance from the other edge, mirrored about the centerline. Turn it off to shape one side independently.",
+        "Cross-Arch Spline Control Point", defaultTTL
+    )
+}
+
 export function crossArchEdgeDepthInfo() {
     info(
         "Lowers the point where the long and cross arches take off from the plate edge, measured in mm below the plate outer surface.\n\n" +

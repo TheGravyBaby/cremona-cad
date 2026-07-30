@@ -147,19 +147,20 @@ export interface ArchSpline {
 
 export type ArchCurve = ArchCatenary | ArchCycloid | ArchSpline;
 
-/** One side's trochoid shape — see {@link CrossArchShape}'s `d`/`pct` for field meaning. */
+/** One side's trochoid shape — see {@link CrossArchCycloidShape}'s `d`/`pct` for field meaning. */
 export interface CrossArchSide {
   d: number;
   pct: number;
 }
 
 /**
- * A cross-arch section shape: one trochoid shared across the full width, or —
- * when the owning plate is asymmetric — independent halves either side of the
- * centerline. Carried both by the plate itself ({@link CrossArchParams}, the
- * base shape) and by each {@link CrossArchStation} along the body.
+ * A cross-arch section shape built from a trochoid: one shared across the
+ * full width, or — when the owning plate is asymmetric — independent halves
+ * either side of the centerline. Carried both by the plate itself (the base
+ * shape) and by each station along the body.
  */
-export interface CrossArchShape {
+export interface CrossArchCycloidShape {
+  type: 'cycloid';
   d: number; // trochoid factor: 0 = raised cosine, 1 = standard cycloid (valid range 0–1)
   pct: number; // cycloid window: 1 = full arch (flat edge takeoff), <1 clips the flat cusp ends for a steeper edge (valid range 0.05–1)
   /** Shape for x<0, used only while the plate's cross arch is asymmetric. */
@@ -168,24 +169,72 @@ export interface CrossArchShape {
   right?: CrossArchSide;
 }
 
-/** A cross-arch shape pinned to one body-length position. */
-export interface CrossArchStation extends CrossArchShape {
-  /** Body-length position in mm, held strictly inside the plate ends. */
-  y: number;
+/**
+ * A cross-arch spline control point, in normalized full-width position. Unlike
+ * the long arch's {@link ArchSplinePoint}, `z` is a FRACTION of the station's
+ * own peak height (hEff) rather than an absolute mm value: the cross arch's
+ * peak height is derived per body-length station (from the long arch there),
+ * not a fixed user constant, so only a portable ratio — like a trochoid's
+ * `d`/`pct` — means the same thing when a shape ramps between stations.
+ */
+export interface CrossArchSplinePoint {
+  /** Normalized full-width position: 0 = left fluting takeoff edge, 1 = right takeoff edge. */
+  t: number;
+  /** Height at this point as a fraction of this station's own peak height (hEff). */
+  z: number;
+  /** Repeats at 1 − t, mirrored about the centerline (x = 0). */
+  mirror?: boolean;
 }
 
 /**
- * Cross-arch shape parameters for one plate. The section curve at any station
- * is a trochoid whose span (fluting inner-boundary chord) and peak (long-arch
- * height there) are both derived; this fixes the remaining freedom, its
- * transverse shape.
+ * A cross-arch section shape built from a spline through user-placed control
+ * points — the same shape-preserving construction as the long arch's
+ * {@link ArchSpline}, adapted so a shape ramps portably between stations (see
+ * {@link CrossArchSplinePoint}). Asymmetry comes from moving `peak` off-center
+ * and leaving points unmirrored, exactly like the long arch — there is no
+ * separate asymmetric toggle for spline mode.
+ */
+export interface CrossArchSplineShape {
+  type: 'spline';
+  /**
+   * Normalized full-width position of the peak (default 0.5, centered). The
+   * peak's HEIGHT is always the station's full hEff — that's what anchors the
+   * cross arch to the long arch — only its position along the width moves.
+   */
+  peak?: number;
+  points: CrossArchSplinePoint[];
+}
+
+/** A cross-arch section shape: a trochoid or a spline. See the two variants for field meaning. */
+export type CrossArchShape = CrossArchCycloidShape | CrossArchSplineShape;
+
+/** A cycloid cross-arch shape pinned to one body-length position. */
+export type CrossArchCycloidStation = CrossArchCycloidShape & {
+  /** Body-length position in mm, held strictly inside the plate ends. */
+  y: number;
+};
+
+/** A spline cross-arch shape pinned to one body-length position. */
+export type CrossArchSplineStation = CrossArchSplineShape & {
+  /** Body-length position in mm, held strictly inside the plate ends. */
+  y: number;
+};
+
+/** A cross-arch shape pinned to one body-length position — either curve type. */
+export type CrossArchStation = CrossArchCycloidStation | CrossArchSplineStation;
+
+/**
+ * Cross-arch shape parameters for one plate, built from a trochoid. The
+ * section curve at any station is a trochoid whose span (fluting
+ * inner-boundary chord) and peak (long-arch height there) are both derived;
+ * this fixes the remaining freedom, its transverse shape.
  *
  * `d`/`pct` (and `left`/`right`) here are the plate's *base* shape, which
  * anchors both body ends. `stations` are interior overrides the shape ramps
  * through in between — the same edges-plus-interior-points relationship
  * {@link ArchSpline} has along the long arch.
  */
-export interface CrossArchParams extends CrossArchShape {
+export type CrossArchCycloidParams = CrossArchCycloidShape & {
   /**
    * When true, `left` (x<0) and `right` (x>0) each carry their own d/pct
    * instead of sharing `d`/`pct` — e.g. a flatter bass-side shoulder against
@@ -199,8 +248,27 @@ export interface CrossArchParams extends CrossArchShape {
    * Interior shape overrides along the body, kept sorted by `y`. Absent or
    * empty means one shape everywhere — the behaviour before stations existed.
    */
-  stations?: CrossArchStation[];
-}
+  stations?: CrossArchCycloidStation[];
+};
+
+/**
+ * Cross-arch shape parameters for one plate, built from a spline. No
+ * `asymmetric` flag — asymmetry comes from `peak`/`mirror` (see
+ * {@link CrossArchSplineShape}), so it isn't a separate axis to toggle.
+ */
+export type CrossArchSplineParams = CrossArchSplineShape & {
+  /** Interior shape overrides along the body, kept sorted by `y`. */
+  stations?: CrossArchSplineStation[];
+};
+
+/**
+ * Cross-arch shape parameters for one plate: a trochoid or a spline, each
+ * with its own base shape plus optional interior stations. Switching a
+ * plate's curve type replaces this wholesale (see the long arch's
+ * `ArchCurve`, which the panel's `setCurveType` already treats this way) —
+ * there is no attempt to carry d/pct data into spline points or vice versa.
+ */
+export type CrossArchParams = CrossArchCycloidParams | CrossArchSplineParams;
 
 /**
  * The carved fluting channel for one plate — the vertical dimension of the

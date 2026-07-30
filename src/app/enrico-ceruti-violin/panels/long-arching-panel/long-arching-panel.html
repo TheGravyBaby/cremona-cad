@@ -14,10 +14,27 @@
 
 <section class="ui-group" [style.border-color]="colors.outerTrace">
     <div class="ui-group-title">Top Plate</div>
-    <div class="input-group basic-row field-row" role="group">
-       
-    </div>
-    @if (!topSpline) {
+ <div class="input-group basic-row field-row" role="group">
+        <div class="toggle">
+            <input type="radio" name="top-curve-type"
+                [checked]="topArch.type === 'catenary'"
+                (change)="setCurveType('top', 'catenary')" />
+            <span>Catenary</span>
+        </div>
+        <!-- <div class="toggle">
+            <input type="radio" name="top-curve-type"
+                [checked]="topArch.type === 'cycloid'"
+                (change)="setCurveType('top', 'cycloid')" />
+            <span>Cycloid</span>
+        </div> -->
+        <div class="toggle">
+            <input type="radio" name="top-curve-type"
+                [checked]="topArch.type === 'spline'"
+                (change)="setCurveType('top', 'spline')" />
+            <span>Spline</span>
+        </div>
+        <button type="button" class="info-icon" (click)="curveTypeInfo()" title="More information">ⓘ</button>
+    </div>    @if (!topSpline) {
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Arch Height <span class="unit-label">mm</span></span>
@@ -84,27 +101,7 @@
         <button class="panel-nav-btn" (click)="addSplinePoint('top')">+ Add Point</button>
     </div>
     }
-    <div class="input-group basic-row field-row" role="group">
-        <div class="toggle">
-            <input type="radio" name="top-curve-type"
-                [checked]="topArch.type === 'catenary'"
-                (change)="setCurveType('top', 'catenary')" />
-            <span>Catenary</span>
-        </div>
-        <!-- <div class="toggle">
-            <input type="radio" name="top-curve-type"
-                [checked]="topArch.type === 'cycloid'"
-                (change)="setCurveType('top', 'cycloid')" />
-            <span>Cycloid</span>
-        </div> -->
-        <div class="toggle">
-            <input type="radio" name="top-curve-type"
-                [checked]="topArch.type === 'spline'"
-                (change)="setCurveType('top', 'spline')" />
-            <span>Spline</span>
-        </div>
-        <button type="button" class="info-icon" (click)="curveTypeInfo()" title="More information">ⓘ</button>
-    </div>
+
     <div class="input-group basic-row field-row" role="group">
          <label class="field-cell">
             <span class="field-title">Thickness <span class="unit-label">mm</span></span>
@@ -123,7 +120,25 @@
 <section class="ui-group" [style.border-color]="colors.mouldTrace">
     <div class="ui-group-title">Back Plate</div>
     <div class="input-group basic-row field-row" role="group">
-       
+        <div class="toggle">
+            <input type="radio" name="bottom-curve-type"
+                [checked]="bottomArch.type === 'catenary'"
+                (change)="setCurveType('bottom', 'catenary')" />
+            <span>Catenary</span>
+        </div>
+        <!-- <div class="toggle">
+            <input type="radio" name="bottom-curve-type"
+                [checked]="bottomArch.type === 'cycloid'"
+                (change)="setCurveType('bottom', 'cycloid')" />
+            <span>Cycloid</span>
+        </div> -->
+        <div class="toggle">
+            <input type="radio" name="bottom-curve-type"
+                [checked]="bottomArch.type === 'spline'"
+                (change)="setCurveType('bottom', 'spline')" />
+            <span>Spline</span>
+        </div>
+        <button type="button" class="info-icon" (click)="curveTypeInfo()" title="More information">ⓘ</button>
     </div>
     @if (!bottomSpline) {
     <div class="input-group basic-row field-row" role="group">
@@ -193,27 +208,6 @@
         <button class="panel-nav-btn" (click)="addSplinePoint('bottom')">+ Add Point</button>
     </div>
     }
-    <div class="input-group basic-row field-row" role="group">
-        <div class="toggle">
-            <input type="radio" name="bottom-curve-type"
-                [checked]="bottomArch.type === 'catenary'"
-                (change)="setCurveType('bottom', 'catenary')" />
-            <span>Catenary</span>
-        </div>
-        <!-- <div class="toggle">
-            <input type="radio" name="bottom-curve-type"
-                [checked]="bottomArch.type === 'cycloid'"
-                (change)="setCurveType('bottom', 'cycloid')" />
-            <span>Cycloid</span>
-        </div> -->
-        <div class="toggle">
-            <input type="radio" name="bottom-curve-type"
-                [checked]="bottomArch.type === 'spline'"
-                (change)="setCurveType('bottom', 'spline')" />
-            <span>Spline</span>
-        </div>
-        <button type="button" class="info-icon" (click)="curveTypeInfo()" title="More information">ⓘ</button>
-    </div>
     <div class="input-group basic-row field-row" role="group">
          <label class="field-cell">
             <span class="field-title">Thickness <span class="unit-label">mm</span></span>

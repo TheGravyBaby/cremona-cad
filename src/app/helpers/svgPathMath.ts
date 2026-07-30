@@ -1,7 +1,7 @@
 import { Pt, Circle, Rectangle, Arc } from "../models/types";
 import * as polygonClipping from 'polygon-clipping';
 import { svgPathProperties } from 'svg-path-properties';
-import { dist, angleFromCenter, pointOnCircle, intersectLines, lineCircleIntersection, circleCircleIntersections, solveCatenaryA, makeMonotoneSpline } from './draftMath';
+import { clamp, dist, angleFromCenter, pointOnCircle, intersectLines, lineCircleIntersection, circleCircleIntersections, solveCatenaryA, makeMonotoneSpline } from './draftMath';
 
 // This file holds everything oriented around building, combining, and boolean-diffing
 // SVG path *strings* — as opposed to draftMath.ts, which works with plain geometric
@@ -1210,4 +1210,116 @@ function makeArchSplineZOf(
   const ys = [0, ...knots.map(k => k.t * span), span];
   const zs = [0, ...knots.map(k => k.z),       0];
   return makeMonotoneSpline(ys, zs);
+}
+
+// ===== Cross-arch spline =====
+// The cross arch's peak height (hEff) and width (span) are *derived* per
+// body-length station (from the long arch and the fluting geometry there),
+// not user-entered constants — that's what lets a station system ramp a
+// trochoid's d/pct between stations at all, since those are portable ratios.
+// A spline cross-arch shape needs the same portability, so its control points
+// store z as a FRACTION of hEff rather than an absolute mm value (see
+// CrossArchSplinePoint in ceruti-types.ts) — reusing archSplineKnots/splineZAt
+// above with hEff=1, span=1 makes that fraction literally the function's
+// output. makeMonotoneSpline is homogeneous of degree 1 in its z-values (every
+// branch — the sign-based zero-slope test, the harmonic-mean weights, the
+// endSlope clipping — scales linearly with a positive constant), so
+// `splineZAt(1, 1, ...) * hEff` is exactly what a direct hEff evaluation would
+// give, not an approximation.
+
+/**
+ * Column count for a cross-arch spline's sampled height profile (see
+ * {@link crossArchSplineProfileGrid}). Fixed rather than instrument-size-scaled,
+ * since the t-domain is already normalized 0..1 regardless of physical span.
+ * Dense enough that linear interpolation between columns (crossArchSplineZAt)
+ * doesn't visibly facet the curve — comparable to buildSplinePath's N=120
+ * along-path samples and buildCycloidPathAcross's N=80.
+ */
+export const CROSS_ARCH_SPLINE_GRID_N = 161;
+
+/**
+ * Samples a cross-arch spline shape's height profile as a fraction of hEff at
+ * `n` evenly-spaced positions across the full transverse width (0 = left
+ * takeoff edge, 1 = right takeoff edge). This is the shape a station's
+ * `makeMonotoneSpline`-over-y ramp (one per grid column) is built from — see
+ * ceruti-arching's makeCrossArchSplineResolver — which sidesteps needing any
+ * point-to-point correspondence between two stations' differently-shaped
+ * point lists: each station just contributes a different sampled profile.
+ */
+export function crossArchSplineProfileGrid(
+  points: ArchSplineControlPoint[],
+  peak = 0.5,
+  n = CROSS_ARCH_SPLINE_GRID_N,
+): number[] {
+  const grid: number[] = [];
+  for (let i = 0; i < n; i++) grid.push(splineZAt(1, 1, points, peak, i / (n - 1)));
+  return grid;
+}
+
+/** How far into the profile the edge-slope probe samples (normalized t). Held
+ *  below archSplineKnots' SPLINE_POINT_MARGIN so the probe can never cross
+ *  into a neighboring segment, even when a control point sits close to an edge. */
+const CROSS_ARCH_SPLINE_EDGE_PROBE_T = 1e-4;
+
+/**
+ * Fractional edge slope d(zFrac)/d(t) of a cross-arch spline shape at one
+ * takeoff edge — the spline counterpart of {@link cycloidEdgeSlope}. A finite
+ * difference is unavoidable here (there's no closed form for an arbitrary
+ * monotone spline's edge slope), but it's a forward difference from an
+ * exact-zero edge, so there's no cancellation error to worry about even at a
+ * small probe distance. Computed once per shape at resolver-build time, never
+ * per (x, y) sample, so the cost is negligible.
+ */
+export function crossArchSplineEdgeSlopeFrac(
+  points: ArchSplineControlPoint[], peak: number, atLeft: boolean,
+): number {
+  const eps = CROSS_ARCH_SPLINE_EDGE_PROBE_T;
+  return atLeft
+    ? splineZAt(1, 1, points, peak, eps) / eps
+    : splineZAt(1, 1, points, peak, 1 - eps) / eps;
+}
+
+/**
+ * Cross-arch spline height at physical width position `x`, from a
+ * y-already-interpolated fractional height grid (see
+ * {@link crossArchSplineProfileGrid}/ceruti-arching's CrossArchSplineRow).
+ * Linearly interpolates between the two bracketing grid columns — the only
+ * approximation this scheme makes; with CROSS_ARCH_SPLINE_GRID_N columns it's
+ * the same "smooth curve as a dense polyline" tradeoff already made by every
+ * other sampled curve in this file.
+ */
+export function crossArchSplineZAt(zFracGrid: number[], hEff: number, halfSpan: number, x: number): number {
+  if (hEff <= 0 || halfSpan <= 0) return 0;
+  const s = clamp((x + halfSpan) / (2 * halfSpan), 0, 1);
+  const n = zFracGrid.length;
+  const pos = s * (n - 1);
+  const i0 = Math.min(Math.floor(pos), n - 2);
+  const f = pos - i0;
+  return (zFracGrid[i0] * (1 - f) + zFracGrid[i0 + 1] * f) * hEff;
+}
+
+/** Scales a y-already-interpolated fractional edge slope to a physical dz/dx. */
+export function crossArchSplineEdgeSlope(slopeFrac: number, hEff: number, halfSpan: number): number {
+  if (hEff <= 0 || halfSpan <= 0) return 0;
+  return (slopeFrac * hEff) / (2 * halfSpan);
+}
+
+/**
+ * Build an SVG polyline path for a cross-arch spline curve drawn across the
+ * canvas (span along canvas X, height along canvas Y) — the spline
+ * counterpart of {@link buildCycloidPathAcross}, from an already-ramped
+ * fractional height grid rather than a live points list.
+ */
+export function buildCrossArchSplinePathAcross(
+  hEff: number, halfSpan: number, zBase: number, sign: 1 | -1, zFracGrid: number[], N = 80,
+): string {
+  if (hEff <= 0 || halfSpan <= 0) return '';
+  const span = 2 * halfSpan;
+  const pts: string[] = [];
+  for (let i = 0; i <= N; i++) {
+    const x = -halfSpan + (span * i) / N;
+    const z = crossArchSplineZAt(zFracGrid, hEff, halfSpan, x);
+    pts.push(`${i === 0 ? 'M' : 'L'} ${x} ${zBase + sign * z}`);
+  }
+  return pts.join(' ');
 }
