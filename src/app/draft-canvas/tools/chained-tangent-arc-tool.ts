@@ -2,7 +2,7 @@ import * as d3 from 'd3';
 import { Pt } from '../../models/types';
 import { DraftTool, DraftToolHost } from './draft-tool';
 import { makeShapeId } from './toolbox-shape';
-import { arcPathData, fitTangentArc, pickArcOrientation, pointOnCircle } from './arc-geometry';
+import { arcPathData, fitTangentArc, pickArcOrientation, pointOnCirc } from './arc-geometry';
 
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 
@@ -117,7 +117,7 @@ export class ChainedTangentArcTool implements DraftTool {
       const { startAngle, endAngle } = pickArcOrientation(rawStartAngle, rawEndAngle, this.preferAlt);
 
       this.drawGuideLine(gRoot, center, anchorPt);
-      this.drawGuideLine(gRoot, center, pointOnCircle(center, radius, rawEndAngle));
+      this.drawGuideLine(gRoot, center, pointOnCirc(center, radius, rawEndAngle));
 
       gRoot.append('path')
         .attr('d', arcPathData(center, radius, startAngle, endAngle))
@@ -194,7 +194,7 @@ export class ChainedTangentArcTool implements DraftTool {
     // reliably correspond to the clicked point. `rawEndAngle` (computed straight from `pt`,
     // before any swap) always does. The CCW tangent-direction formula (angle + 90°) holds at
     // any point along a CCW-swept arc regardless of which label it ended up under.
-    this.chainPt = pointOnCircle(center, radius, rawEndAngle);
+    this.chainPt = pointOnCirc(center, radius, rawEndAngle);
     this.chainTangent = rawEndAngle + Math.PI / 2;
     this.pt1 = null;
     this.pt2 = null;

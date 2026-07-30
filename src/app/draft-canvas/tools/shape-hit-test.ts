@@ -1,6 +1,6 @@
 import { Pt } from '../../models/types';
 import { DraftShape, ImageShape, imageCenter, imageCorners } from './toolbox-shape';
-import { pointOnCircle } from './arc-geometry';
+import { pointOnCirc } from './arc-geometry';
 import { rotatePointAbout } from '../../helpers/draftMath';
 import { TEXT_FONT_SIZE_PX, TEXT_LINE_HEIGHT_RATIO } from './shape-renderer';
 
@@ -36,8 +36,8 @@ function distanceToArc(p: Pt, center: Pt, radius: number, startAngle: number, en
     return Math.abs(distToCenter - radius);
   }
   // outside the swept range — nearest point is whichever endpoint is closer
-  const startPt = pointOnCircle(center, radius, startAngle);
-  const endPt = pointOnCircle(center, radius, endAngle);
+  const startPt = pointOnCirc(center, radius, startAngle);
+  const endPt = pointOnCirc(center, radius, endAngle);
   return Math.min(Math.hypot(p.x - startPt.x, p.y - startPt.y), Math.hypot(p.x - endPt.x, p.y - endPt.y));
 }
 
@@ -149,7 +149,7 @@ export function shapeBounds(shape: DraftShape, pxPerMm: number): ShapeBounds {
       const steps = 16;
       let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
       for (let i = 0; i <= steps; i++) {
-        const pt = pointOnCircle(shape.center, shape.radius, shape.startAngle + (span * i) / steps);
+        const pt = pointOnCirc(shape.center, shape.radius, shape.startAngle + (span * i) / steps);
         x0 = Math.min(x0, pt.x); x1 = Math.max(x1, pt.x);
         y0 = Math.min(y0, pt.y); y1 = Math.max(y1, pt.y);
       }

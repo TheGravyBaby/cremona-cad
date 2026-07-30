@@ -2,7 +2,7 @@ import * as d3 from 'd3';
 import { Pt } from '../../models/types';
 import { DraftTool, DraftToolHost } from './draft-tool';
 import { makeShapeId } from './toolbox-shape';
-import { arcPathData, pointOnCircle, pickArcOrientation } from './arc-geometry';
+import { arcPathData, pointOnCirc, pickArcOrientation } from './arc-geometry';
 
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 
@@ -109,7 +109,7 @@ export class ArcTool implements DraftTool {
       const { startAngle, endAngle } = pickArcOrientation(rawStartAngle, rawEndAngle, this.preferLongArc);
 
       this.drawGuideLine(gRoot, center, anchorPt);
-      this.drawGuideLine(gRoot, center, pointOnCircle(center, radius, rawEndAngle));
+      this.drawGuideLine(gRoot, center, pointOnCirc(center, radius, rawEndAngle));
 
       gRoot.append('path')
         .attr('d', arcPathData(center, radius, startAngle, endAngle))

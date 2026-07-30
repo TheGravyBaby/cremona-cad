@@ -1,6 +1,6 @@
 import { Pt } from '../../models/types';
 import { DraftShape, ImageShape, imageCenter, imageCorners, imageEdgeMidpoints } from './toolbox-shape';
-import { pointOnCircle } from './arc-geometry';
+import { pointOnCirc } from './arc-geometry';
 import { normalizeDegrees, rotatePointAbout } from '../../helpers/draftMath';
 
 const TWO_PI = Math.PI * 2;
@@ -42,7 +42,7 @@ export function moveGrabberPosition(shape: DraftShape): Pt | null {
 function arcMidpoint(shape: Extract<DraftShape, { type: 'arc' }>): Pt {
   const span = normalizeAngle(shape.endAngle - shape.startAngle);
   const midAngle = shape.startAngle + span / 2;
-  return pointOnCircle(shape.center, shape.radius, midAngle);
+  return pointOnCirc(shape.center, shape.radius, midAngle);
 }
 
 // 'start'/'end' — Line/Dimension/Section's endpoints.
@@ -92,8 +92,8 @@ export function endpointGrabbers(shape: DraftShape, pxPerMm: number): EndpointGr
       return [{ key: 'radius', pos: { x: shape.center.x + shape.radius, y: shape.center.y } }];
     case 'arc':
       return [
-        { key: 'startAngle', pos: pointOnCircle(shape.center, shape.radius, shape.startAngle) },
-        { key: 'endAngle', pos: pointOnCircle(shape.center, shape.radius, shape.endAngle) },
+        { key: 'startAngle', pos: pointOnCirc(shape.center, shape.radius, shape.startAngle) },
+        { key: 'endAngle', pos: pointOnCirc(shape.center, shape.radius, shape.endAngle) },
         { key: 'radius', pos: arcMidpoint(shape) },
       ];
     case 'text':
