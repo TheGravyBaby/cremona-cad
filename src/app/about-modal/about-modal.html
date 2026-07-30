@@ -79,10 +79,107 @@
           <li>
             Press <strong>F</strong> to fit the entire design back into view at any time.
           </li>
-          <li>The <code>Reference Image</code> button in the tool palette opens your list of reference images — photos
-            or scans placed on the canvas to trace over. <code>Upload Image</code> at the foot of that panel adds one
-            (or press <strong>I</strong>), and each image gets its own row with an eye and a lock. Place as many as you
-            like — plan, long arch, cross arch — and park the ones you aren't tracing with their eye.</li>
+          <li>The <code>Axis</code> controls on the bottom right of the canvas allow for custom grid settings.</li>
+          <li>Files can be saved and loaded using the <code>+</code> (New), <code>↓</code> (Save), and <code>↑</code> (Load) icon buttons
+            at the top right of the screen.</li>
+          <li>CremonaCad comes with a set of predefined templates from historical instruments. Select one to study, or
+            create a new design.</li>
+        </ul>
+
+        <h3>Drawing Tools</h3>
+        <p>The toolbar down the left edge of the canvas is a small drafting set, separate from the recipe panels on the
+          right. Nothing you draw with it feeds into the instrument — it is there to work things out alongside the
+          recipe: sketch a proportion you are testing, trace a feature off a photograph, mark a measurement, or lay out
+          an f-hole by hand. Your drawing is saved inside the design file along with everything else.</p>
+
+        <h4>Drawing a shape</h4>
+        <ul class="tips-list">
+          <li>Every tool accepts two gestures: <strong>drag</strong> from one point to the next, or <strong>click once
+              and click again</strong>. The second is easier on a trackpad, and it is the only way the arc tools work —
+            they take three separate clicks rather than a drag.</li>
+          <li><strong>Escape</strong> steps back one level at a time: it abandons a shape you are part way through, then
+            returns you to the arrow (<code>Select</code>), then clears your selection.</li>
+          <li>Each tool has a letter — <strong>L</strong>ine, <strong>A</strong>rc, <strong>C</strong>ircle,
+            <strong>R</strong>ectangle, <strong>S</strong>ection, <strong>T</strong>ext, <strong>P</strong>oint,
+            <strong>O</strong>ffset, <strong>I</strong>mage. Buttons carrying a small caret hold several related tools;
+            press the letter again to step through them, or click the caret to see them all. The button keeps showing
+            whichever you used last.</li>
+          <li>The <code>Color</code> swatch in the settings bar along the bottom sets the colour of the selected shape,
+            or of the next one you draw if nothing is selected.</li>
+        </ul>
+
+        <h4>Snapping</h4>
+        <ul class="tips-list">
+          <li>As you draw, points pull onto the geometry already on screen — both the recipe's own arcs and anything you
+            have drawn yourself. A small green glyph tells you what you caught: a <strong>square</strong> for an
+            endpoint, a <strong>crosshair in a circle</strong> for an arc or circle centre, a <strong>diamond</strong>
+            for a point somewhere along a path.</li>
+          <li>Snapping to a path also captures its <strong>direction</strong>, which is what lets the tangent arcs
+            continue smoothly out of whatever you started on.</li>
+        </ul>
+
+        <h4>Arcs</h4>
+        <p>Since the instrument is built from arcs, the arc button holds five ways of striking one. All five take
+          clicks, not drags, and <strong>Shift</strong> asks for the other solution — the long way round instead of the
+          short, or the opposite curve.</p>
+        <ul class="tips-list">
+          <li><code>Arc</code> — click the centre, then a point setting the radius and where the arc begins, then a
+            third fixing where it ends.</li>
+          <li><code>Arc (start first)</code> — the same three clicks with the first two swapped, for when you know where
+            the arc must start but not yet where its centre lies.</li>
+          <li><code>Tangent Arc</code> — click a point on an existing curve, then an end point. The radius is solved so
+            the new arc leaves the old one smoothly, with no visible joint.</li>
+          <li><code>Chained Tangent Arc</code> — the same idea, continued: after the first arc, every further click adds
+            another arc running smoothly out of the last. Escape ends the chain. Each arc is still its own shape, so any
+            one of them can be adjusted afterwards.</li>
+          <li><code>Join Arc</code> — bridges two existing curves. Click an endpoint on each and it fits the arc, or
+            pair of arcs, that meets both smoothly. If it picks the wrong one, tap <strong>Shift</strong> to cycle
+            through the alternatives.</li>
+        </ul>
+
+        <h4>Offset, dimensions and sections</h4>
+        <ul class="tips-list">
+          <li><code>Offset</code> works the other way round from the drawing tools: <strong>select first</strong>, then
+            pick up the tool, then move the cursor to the side you want and click. The distance follows your cursor and
+            is shown as you go — or simply <strong>type a number</strong> and press <strong>Enter</strong> for an exact
+            one. Lines, arcs and circles can be offset; a run of shapes meeting end to end offsets together as one
+            curve.</li>
+          <li><code>Dimension</code> draws a measured line between two points and labels it — useful with snapping for
+            reading a distance off the design.</li>
+          <li><code>Section</code> divides a line into weighted parts, alternating between two colours, for showing a
+            ratio. Set the parts in the settings bar as a list like <code>1,1,1</code> or <code>3,4,3</code>.</li>
+        </ul>
+
+        <h4>Adjusting what you have drawn</h4>
+        <ul class="tips-list">
+          <li>With the arrow tool, click a shape to select it, <strong>Shift</strong>-click to add more, or drag a box
+            across the canvas to catch several at once.</li>
+          <li>The settings bar along the bottom shows the selected shape's numbers — a line's two endpoints and its
+            length, an arc's centre, radius, start and end angle — and every one of them can be typed into directly when
+            eyeballing it is not good enough.</li>
+          <li>Drag a shape to move it, or drag one of its endpoints to reshape it. Arrow keys nudge the selection in
+            small steps, <strong>Shift</strong> with them in larger ones. <strong>Delete</strong> removes it, and
+            <strong>Ctrl+Z</strong> undoes.</li>
+          <li>Holding <strong>Shift</strong> while drawing a line locks it to common angles — 30°, 45°, 90° and so on.
+            On a box it forces a square. The same key on the arc tools asks for the other arc.</li>
+          <li>The <code>Compass</code> toggle on a selected arc shows its centre and radius lines, so you can see how it
+            was struck.</li>
+        </ul>
+
+        <h4>Layers</h4>
+        <ul class="tips-list">
+          <li>The <code>Layers</code> button opens your list of layers. New shapes land on whichever is active.
+            Double-click a name to rename it, use its eye to hide it and its lock to protect it from stray clicks.</li>
+          <li>The small eye on the <code>Layers</code> button itself hides everything you have drawn at once — handy for
+            comparing your sketch against the recipe underneath, or checking the recipe on its own.</li>
+        </ul>
+
+        <h4>Reference Images</h4>
+        <ul class="tips-list">
+          <li>The <code>Reference Image</code> button opens your list of reference images — photos or scans placed on
+            the canvas to trace over. <code>Upload Image</code> at the foot of that panel adds one (or press
+            <strong>I</strong>), and each image gets its own row with an eye and a lock. Place as many as you like —
+            plan, long arch, cross arch — and park the ones you aren't tracing with their eye.</li>
           <li>A freshly uploaded image is unlocked so you can position and scale it: drag it to move, drag a corner to
             scale proportionally or an edge to scale one dimension, drag the handle above it to rotate, arrow keys to
             nudge, <strong>Ctrl+Z</strong> to undo. Its name, exact position, size, rotation, opacity and white-removal
@@ -94,14 +191,7 @@
             or dragged by accident, so clicks pass straight through it to whatever you're drawing on top. Images loaded
             from a template or a saved file start locked for the same reason. Click an image's name in the panel to
             unlock and select it again.</li>
-          <li>The small eye on the <code>Reference Image</code> button hides or shows every image at once; the matching
-            eye on the <code>Layers</code> button does the same for everything you've drawn. Handy for checking your
-            drawing against the photo, or seeing it on its own.</li>
-          <li>The <code>Axis</code> controls on the bottom right of the canvas allow for custom grid settings.</li>
-          <li>Files can be saved and loaded using the <code>+</code> (New), <code>↓</code> (Save), and <code>↑</code> (Load) icon buttons
-            at the top right of the screen.</li>
-          <li>CremonaCad comes with a set of predefined templates from historical instruments. Select one to study, or
-            create a new design.</li>
+          <li>The small eye on the <code>Reference Image</code> button hides or shows every image at once.</li>
         </ul>
 
         <h3>Base Measurements</h3>
@@ -179,10 +269,14 @@
         <p>This section shapes the lengthwise profile of the top and back plates — how the arch rises from end to
           end along the centerline.</p>
         <ul class="tips-list">
-          <li>Choose a <strong>Catenary</strong> curve for a smooth, symmetric arch, or a <strong>Spline</strong> to
-            place your own control points along the profile.</li>
+          <li>Choose a <strong>Catenary</strong> or <strong>Cycloid</strong> curve for a smooth, symmetric arch, or a
+            <strong>Spline</strong> to place your own control points along the profile.</li>
           <li><strong>Arch Height</strong> sets the peak height above the plate edge; <strong>Thickness</strong>
             sets the plate thickness at that edge.</li>
+          <li>Each spline point carries a <code>Mirror</code> toggle, which repeats it at the opposite end of the
+            plate. Turn it off and that point stands alone, so the profile no longer has to be
+            <strong>symmetric</strong> about its peak — the upper and lower halves can be shaped independently, the way
+            they usually are on a real instrument.</li>
           <li><strong>Arch Depth</strong> lowers where the arch takes off from the plate edge, giving the fluting
             channel more room to curve into.</li>
         </ul>
@@ -193,8 +287,19 @@
         <ul class="tips-list">
           <li>Drag the <strong>Cross Section Height</strong> slider to preview the profile at different points
             along the body.</li>
-          <li><strong>Cycloid Factor</strong> and <strong>Percentage</strong> shape the curve's character and how
-            steeply it takes off from the edge.</li>
+          <li><strong>Cycloid Factor</strong> and <strong>Percent</strong> shape the curve's character and how
+            steeply it takes off from the edge. Choose a <strong>Spline</strong> instead to place the cross-section's
+            control points by hand.</li>
+          <li>Turn on <code>Asymmetric (left / right)</code> to give each side of the plate its own factor and
+            percentage, so one flank can be fuller than the other.</li>
+          <li>A single cross-section repeated the whole length of the plate is a simplification. Press
+            <code>+ Set Station at …</code> to pin the current cross-section at the height you are previewing, then move the
+            slider and set another. Each <strong>station</strong> holds its own shape, and the surface flows smoothly
+            between them — which is how you get a rounder centre bout and flatter ends, or any other change in
+            character along the body.</li>
+          <li>Your stations are listed in a table above the controls. Click a station's height to jump the preview
+            back to it; while you are parked on one, the fields below edit that station rather than the plate as a
+            whole.</li>
           <li>Toggle <strong>Flat Platform</strong> to preview the pre-carving state, before the fluting channel is
             gouged.</li>
           <li>Enable <strong>Wireframe</strong> or <strong>Contour Map</strong> to inspect the full interpolated
@@ -234,10 +339,11 @@
           <div class="changelog-version">v{{ appVersion }} <span class="changelog-date">— Jul 30, 2026</span></div>
           <p class="changelog-desc">Drawing toolbox.</p>
           <ul class="changelog-list">
-            <li><strong>A drawing toolbox</strong> — sketch straight onto the canvas with lines, arcs, circles, boxes, points and text. Arcs can be struck from a centre, continued smoothly from what you just drew, or fitted between two existing curves. Offset any of it to a parallel copy, measure distances, and keep your work sorted on named layers.</li>
-            <li><strong>Snapping</strong> — everything you draw snaps to the endpoints, centres and edges of the recipe underneath, so your sketch lines up with the instrument rather than near it.</li>
-            <li><strong>Reference images have moved</strong> — a scan is now an object on the canvas instead of a panel setting. Place it, scale it, rotate it, mirror it, and hide or lock it on its own. Several can sit side by side, each named.</li>
-            <li><strong>Asymmetric arching</strong> — the long arch spline no longer has to be symmetric about the peak, and cross arches take their own left and right factors, so a plate can lean the way a real one does. Cross-arch stations are listed in a table you can jump between.</li>
+            <li><strong>A drawing toolbox</strong> — now draw directly onto the canvas with lines, arcs, circles, boxes, points and text. Keep your work sorted on named layers.</li>
+            <li><strong>Snapping</strong> — everything you draw can snap to existing paths, centres and edges of the recipe underneath, so your sketch lines up with the instrument rather than near it.</li>
+            <li><strong>Reference images have moved</strong> — images are now objects on the canvas instead of a panel setting. Several can sit side by side, each named.</li>
+            <li><strong>Asymmetric arching</strong> — splines can now be drawn asymetrically, and can be used for the long arch. The cross arching panel now supports asymetric cycloids.</li>
+            <li><strong>Cross Arcing Stations</strong> - to support more complex curvature along the plate surfaces, different cross arches can be set at different heights along the panel. A smooth surface will be generated between the different stations.</li>
             <li><strong>Clearer view controls</strong> — the module and view toggles are proper buttons now, and easier to read at a glance.</li>
           </ul>
         </div>
