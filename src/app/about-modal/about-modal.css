@@ -110,6 +110,17 @@
   border-bottom: 1px solid color-mix(in srgb, var(--ui-accent, #6f8fb8) 40%, transparent 60%);
 }
 
+/* Sub-heading within an h3 topic — the Drawing Tools section is long enough to need one more
+   level. Deliberately no rule beneath it, so it reads as subordinate to h3 rather than a peer. */
+.modal-body h4 {
+  margin: 14px 0 5px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.75;
+}
+
 .modal-body p {
   margin: 0 0 10px;
 }
