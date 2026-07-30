@@ -94,13 +94,6 @@
 
 <section class="ui-group" [style.border-color]="colors.archTop">
     <div class="ui-group-title">Top Plate</div>
-    <div class="input-group basic-row field-row" role="group">
-        <div class="toggle">
-            <input type="checkbox" [checked]="topCross.asymmetric" (change)="toggleAsymmetricCross('top')" />
-            <span>Asymmetric (left / right)</span>
-        </div>
-        <button type="button" class="info-icon" (click)="asymmetricCrossArchInfo()" title="More information">ⓘ</button>
-    </div>
 
     @if (!topCross.asymmetric) {
     <div class="input-group basic-row field-row" role="group">
@@ -147,6 +140,13 @@
         </label>
     </div>
     }
+    <div class="input-group basic-row field-row" role="group">
+        <div class="toggle">
+            <input type="checkbox" [checked]="topCross.asymmetric" (change)="toggleAsymmetricCross('top')" />
+            <span>Asymmetric (left / right)</span>
+        </div>
+        <button type="button" class="info-icon" (click)="asymmetricCrossArchInfo()" title="More information">ⓘ</button>
+    </div>
 
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
@@ -183,14 +183,6 @@
 
 <section class="ui-group" [style.border-color]="colors.archBack">
     <div class="ui-group-title">Back Plate</div>
-    <div class="input-group basic-row field-row" role="group">
-        <div class="toggle">
-            <input type="checkbox" [checked]="backCross.asymmetric" (change)="toggleAsymmetricCross('bottom')" />
-            <span>Asymmetric (left / right)</span>
-        </div>
-        <button type="button" class="info-icon" (click)="asymmetricCrossArchInfo()" title="More information">ⓘ</button>
-    </div>
-
     @if (!backCross.asymmetric) {
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
@@ -236,6 +228,13 @@
         </label>
     </div>
     }
+    <div class="input-group basic-row field-row" role="group">
+        <div class="toggle">
+            <input type="checkbox" [checked]="backCross.asymmetric" (change)="toggleAsymmetricCross('bottom')" />
+            <span>Asymmetric (left / right)</span>
+        </div>
+        <button type="button" class="info-icon" (click)="asymmetricCrossArchInfo()" title="More information">ⓘ</button>
+    </div>
 
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
