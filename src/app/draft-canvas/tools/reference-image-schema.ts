@@ -61,6 +61,7 @@ export function imageShapesFromRecipe(
         label: entry.label || `Img ${i + 1}`,
         opacity: entry.opacity,
         suppressWhite: entry.suppressWhite,
+        mirrored: entry.mirrored,
         hidden: entry.hidden,
         // An absent `locked` means locked — so the built-in templates and every file saved before
         // the field existed open protected. See ImageShape.locked.
@@ -98,6 +99,7 @@ export function imageShapesToRecipe(
       rotationDeg: shape.rotationDeg ?? 0,
       opacity: shape.opacity,
       suppressWhite: shape.suppressWhite,
+      mirrored: shape.mirrored,
       hidden: shape.hidden,
       // Written explicitly rather than left absent, so an image the user deliberately unlocked
       // reopens unlocked instead of silently re-locking under the absent-means-locked default.

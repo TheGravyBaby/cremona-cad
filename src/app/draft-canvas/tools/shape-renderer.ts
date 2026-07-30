@@ -115,15 +115,32 @@ export function drawShape(gRoot: RootGroup, gUI: RootGroup, shape: DraftShape, p
  * underneath the recipe's own geometry (you trace on top of a photo, not under it), and because
  * the href has to be resolved through ImageAssetStore first — see draft-canvas.ts's draw().
  *
- * The nested flip transform undoes gRoot's `scale(1,-1)` for this subtree only: SVG `<image>`
- * has no way to render bottom-up, so without it every photo would appear upside down.
+ * Nested layers, innermost first:
+ *  1. The `<image>`'s own `translate(0 h) scale(1 -1)` undoes gRoot's `scale(1,-1)` for this
+ *     element only — SVG `<image>` has no way to render bottom-up, so without it every photo
+ *     would appear upside down. This is a coordinate-system correction, not user-visible mirroring.
+ *  2. When `mirrored`, a wrapping group flips the now-right-side-up content about a *world-space*
+ *     vertical line through the image's own center (`2·center.x − x`, the standard mirror-about-a-
+ *     line formula — no sandwiched translate/untranslate needed since only one axis is ever
+ *     reflected). Applied inside the rotate group but outside the correction, so the mirror is a
+ *     property of the image's content: rotating a mirrored image keeps it mirrored, exactly like
+ *     rotating a printed photo you've turned face-down keeps it mirrored. Skipped entirely when
+ *     unmirrored, rather than emitted as an inert identity transform.
+ *  3. The rotate group turns the (possibly mirrored) box in world space, same as every other
+ *     rotate-capable shape.
  */
 export function drawImageShape(gRoot: RootGroup, shape: ImageShape, href: string): void {
   const center = imageCenter(shape);
-  gRoot.append('g')
+
+  const rotateGroup = gRoot.append('g')
     .attr('class', 'reference-image-group')
-    .attr('transform', `rotate(${shape.rotationDeg ?? 0} ${center.x} ${center.y})`)
-    .append('image')
+    .attr('transform', `rotate(${shape.rotationDeg ?? 0} ${center.x} ${center.y})`);
+
+  const imageParent = shape.mirrored
+    ? rotateGroup.append('g').attr('transform', `translate(${2 * center.x} 0) scale(-1 1)`)
+    : rotateGroup;
+
+  imageParent.append('image')
     .attr('class', 'reference-image')
     .attr('href', href)
     .attr('xlink:href', href)

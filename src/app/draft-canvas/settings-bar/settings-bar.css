@@ -117,6 +117,10 @@
   box-sizing: border-box;
 }
 
+.text-field.image-name-field input[type="text"] {
+  width: 90px;
+}
+
 .text-field input[type="text"] {
   width: 160px;
   height: 22px;
@@ -166,6 +170,15 @@
 
 .settings-action:hover {
   border-color: var(--ui-canvas-btn-border-hover);
+}
+
+/* A toggleable action (currently Flip X/Y) reads as "on" the same way a selected tool does
+   elsewhere in the dock — filled accent background, white icon/label — rather than the plain
+   icon tint used for the eye toggles. */
+.settings-action.active {
+  background: var(--ui-accent);
+  border-color: var(--ui-accent);
+  color: #fff;
 }
 
 .toggle input[type="checkbox"] {

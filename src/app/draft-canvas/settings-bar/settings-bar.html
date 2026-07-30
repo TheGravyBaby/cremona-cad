@@ -149,7 +149,7 @@
   }
 
   @if (showImagePanel) {
-    <span class="field text-field"><span class="f-lbl">Name</span>
+    <span class="field text-field image-name-field"><span class="f-lbl">Name</span>
       <input #imageLabelInput type="text" [value]="imageLabel" (change)="setImageLabel(imageLabelInput.value)"
         (keydown.enter)="imageLabelInput.blur()" (keydown.escape)="imageLabelInput.value = imageLabel; imageLabelInput.blur()"
         title="What this image is — e.g. Plan, Long arch, Cross arch" placeholder="Reference" />
@@ -179,14 +179,25 @@
         (keydown.enter)="$any($event.target).blur()" />
     </span>
     <span class="field"><span class="f-lbl">Opacity</span>
-      <input type="range" min="0" max="100" step="1" [value]="imageOpacityPct"
-        (input)="setImageOpacityPct($any($event.target).valueAsNumber)" [title]="imageOpacityPct + '%'" />
+      <input type="number" min="0" max="1" step="0.05" [value]="imageOpacity"
+        (change)="setImageOpacity($any($event.target).valueAsNumber)" (keydown.enter)="$any($event.target).blur()"
+        title="Opacity from 0 (invisible) to 1 (fully opaque)" />
     </span>
     <label class="toggle">
       <span class="f-lbl">Drop white</span>
       <input type="checkbox" [checked]="imageSuppressWhite" (change)="setImageSuppressWhite($any($event.target).checked)"
         title="Fade near-white pixels to transparent, so a scan on white paper reads against a dark canvas" />
     </label>
+    <button type="button" class="settings-action" [class.active]="imageMirrored" (click)="toggleImageMirrored()"
+      title="Mirror the image left-right — for a scan that came out reversed, or to compare against its opposite half. Combine with Rot° to mirror on any axis. The image's position, size and rotation are unaffected.">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3v18" />
+        <path d="M16 7l4 5-4 5" />
+        <path d="M8 7l-4 5 4 5" />
+      </svg>
+      <span>Mirror</span>
+    </button>
     <button type="button" class="settings-action" (click)="lockImage()"
       title="Lock this image in place so it can't be selected or dragged on the canvas. Unlock it again from the Reference Images list in the tool palette.">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"

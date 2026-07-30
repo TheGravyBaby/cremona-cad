@@ -127,32 +127,6 @@
   color: var(--ui-text-primary);
 }
 
-
-.tool-view-toggle.on {
-  /* background: var(--ui-accent);
-  border-color: var(--ui-accent);
-  color: #fff; */
-}
-
-.tool-view-toggle.on:hover {
-  /* color: #fff; */
-}
-
-/* Same filled-accent treatment for the per-row eyes inside the Layers and Reference Images
-   popups, scaled down to a chip that fits a list row. Deliberately not applied to the lock
-   buttons beside them: a filled accent reads as "on/showing", and filling a padlock would
-   invert that. */
-.layer-tab-icon-btn.on {
-  /* background: var(--ui-accent); */
-  border-radius: 3px;
-  /* color: #fff; */
-}
-
-.layer-tab-icon-btn.on:hover {
-  /* color: #fff; */
-  opacity: 0.85;
-}
-
 .tool-flyout-popup {
   position: absolute;
   top: 0;
