@@ -43,7 +43,7 @@
                 <ng-container [ngTemplateOutlet]="eyeIcon" [ngTemplateOutletContext]="{ on: !image.hidden }" />
               </button>
               @if (editingImageId === image.id) {
-              <input #imageRenameInput class="layer-tab-edit" type="text" [value]="image.label"
+              <input #imageRenameInput class="layer-tab-edit image-rename-edit" type="text" [value]="image.label"
                 (click)="$event.stopPropagation()" (keydown.enter)="commitRenameImage(image.id, imageRenameInput.value)"
                 (keydown.escape)="editingImageId = null" (blur)="commitRenameImage(image.id, imageRenameInput.value)" />
               } @else {
@@ -284,7 +284,7 @@
                 <ng-container [ngTemplateOutlet]="eyeIcon" [ngTemplateOutletContext]="{ on: layer.visible }" />
               </button>
               @if (editingLayerId === layer.id) {
-              <input #layerRenameInput class="layer-tab-edit" type="text" [value]="layer.name"
+              <input #layerRenameInput class="layer-tab-edit layer-rename-edit" type="text" [value]="layer.name"
                 (click)="$event.stopPropagation()" (keydown.enter)="commitRenameLayer(layer.id, layerRenameInput.value)"
                 (keydown.escape)="editingLayerId = null" (blur)="commitRenameLayer(layer.id, layerRenameInput.value)" />
               } @else {

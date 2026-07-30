@@ -43,6 +43,7 @@ export abstract class RecipeComponentBase implements AfterViewInit {
     };
 
     this.d = file;
+    this.onRecipeAdopted();
     // Toolbox shapes are drawn separately from the recipe's own render pipeline (ToolboxStore is
     // a root singleton, not part of `this.d`) — always start from a clean slate, then restore
     // whatever this file itself saved (if anything), so drawings from a previously open file or
@@ -52,6 +53,17 @@ export abstract class RecipeComponentBase implements AfterViewInit {
     this.loadReferenceImages(incoming);
     this.draftChange.emit([this.firstRender]);
   }
+
+  /**
+   * Runs immediately after `this.d` is replaced wholesale — a file, a template, a new blank, a
+   * session restore — and before anything reads it. The place for a recipe to migrate its own
+   * older saved formats forward.
+   *
+   * A subclass that assigns `this.d` itself is responsible for calling this; every assignment in
+   * this base class already does. Deliberately not tied to a panel's lifecycle: params are read by
+   * exports and surface builders that a user can reach without opening the panel that owns them.
+   */
+  protected onRecipeAdopted(): void { }
 
   /**
    * Hands a recipe's reference images to the canvas. This — plus syncReferenceImages() on the way
@@ -124,15 +136,18 @@ export abstract class RecipeComponentBase implements AfterViewInit {
 
   /** Snapshot the current state onto the history stack.
    *
-   * Reference images are left out: they're owned by ToolboxStore, which keeps its own history
-   * (see onUndoRedoKeyDown), so snapshotting them here would be both redundant and expensive —
-   * an uploaded image is a base64 payload, and this stack holds up to 50 entries. */
+   * Everything ToolboxStore owns is left out — reference images and drawn shapes alike. That store
+   * keeps its own history (see onUndoRedoKeyDown), so snapshotting its state here would be both
+   * redundant and expensive: an uploaded image is a base64 payload, `toolboxState` is every shape
+   * on the canvas, and this stack holds up to 50 entries. `toolboxState` in particular is written
+   * onto `this.d` by saveToDisk and stays there, so without this it would ride along in every
+   * later snapshot as a stale copy. */
   pushHistory(): void {
     if (this._isRestoringHistory) return;
     // Discard any forward history when a new change is made
     this._history = this._history.slice(0, this._historyIndex + 1);
-    const { referenceImages, referenceImage, ...withoutImages } = this.d;
-    this._history.push(JSON.stringify(withoutImages));
+    const { referenceImages, referenceImage, toolboxState, ...withoutCanvasState } = this.d;
+    this._history.push(JSON.stringify(withoutCanvasState));
     if (this._history.length > this._maxHistory) {
       this._history.shift();
     } else {
@@ -283,6 +298,7 @@ export abstract class RecipeComponentBase implements AfterViewInit {
     const recipeData = this.loadMatchingSessionRecipe();
     if (recipeData) {
       this.d = recipeData;
+      this.onRecipeAdopted();
       this.loadReferenceImages(recipeData);
       this.panelFlow?.refreshEnabledPanels();
     }

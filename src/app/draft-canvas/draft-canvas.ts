@@ -132,6 +132,19 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private areaSelectAdditive = false;
   private isAreaSelecting = false;
 
+  /** The in-progress marquee as a normalized box, or null if no drag is armed. Shared by draw()
+   * (rendering the rubber band) and onPointerUp (testing containment) so the two can't disagree
+   * about which region the user actually swept. */
+  private areaSelectBox(): { x0: number; y0: number; x1: number; y1: number } | null {
+    const a = this.areaSelectAnchor;
+    const b = this.areaSelectCurrent;
+    if (!a || !b) return null;
+    return {
+      x0: Math.min(a.x, b.x), x1: Math.max(a.x, b.x),
+      y0: Math.min(a.y, b.y), y1: Math.max(a.y, b.y),
+    };
+  }
+
   // Inline text editing: placing (or later re-editing) a Text shape opens a plain <textarea>
   // positioned directly over its on-canvas location, instead of routing through the settings
   // panel — see startEditingText(). The Text tool stays active throughout, so consecutive
@@ -148,10 +161,12 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.draw();
   }
   @Input() set setCameraBounds(bounds: { pt1: Pt, pt2: Pt } | null) {
-    let firstSet = !this.bounds;
-    let oldBounds = JSON.parse(JSON.stringify(this.bounds));
+    // Compared by value: recipes hand over a freshly built object on every parameter change, so a
+    // reference (or reference-against-a-deep-clone) test would call every one of them a new extent
+    // and refit — throwing away the zoom and pan the user had set just to redraw the same bounds.
+    const changed = JSON.stringify(this.bounds) !== JSON.stringify(bounds);
     this.bounds = bounds;
-    if (bounds && firstSet || bounds != oldBounds) {
+    if (bounds && changed) {
       this.fitCamera();
       this.draw();
     }
@@ -361,14 +376,8 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     if ((this.activeTool || this.isDraggingEndpoint) && this.activeSnap) {
       drawSnapMarker(this.gRoot, this.activeSnap, this.pxPerMm);
     }
-    if (this.isAreaSelecting && this.areaSelectAnchor && this.areaSelectCurrent) {
-      drawAreaSelectBox(this.gRoot, {
-        x0: Math.min(this.areaSelectAnchor.x, this.areaSelectCurrent.x),
-        x1: Math.max(this.areaSelectAnchor.x, this.areaSelectCurrent.x),
-        y0: Math.min(this.areaSelectAnchor.y, this.areaSelectCurrent.y),
-        y1: Math.max(this.areaSelectAnchor.y, this.areaSelectCurrent.y),
-      });
-    }
+    const marquee = this.isAreaSelecting ? this.areaSelectBox() : null;
+    if (marquee) drawAreaSelectBox(this.gRoot, marquee);
 
     if (this.editingTextShapeId) this.updateEditingTextPosition();
   }
@@ -786,13 +795,8 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     // shape fully contained in the final box, unioned with the prior selection if Shift was
     // held when the drag started.
     if (this.areaSelectAnchor) {
-      if (this.isAreaSelecting && this.areaSelectCurrent) {
-        const box = {
-          x0: Math.min(this.areaSelectAnchor.x, this.areaSelectCurrent.x),
-          x1: Math.max(this.areaSelectAnchor.x, this.areaSelectCurrent.x),
-          y0: Math.min(this.areaSelectAnchor.y, this.areaSelectCurrent.y),
-          y1: Math.max(this.areaSelectAnchor.y, this.areaSelectCurrent.y),
-        };
+      const box = this.isAreaSelecting ? this.areaSelectBox() : null;
+      if (box) {
         const contained = this.toolbox.getEditableShapes().filter(shape => {
           const b = shapeBounds(shape, this.pxPerMm);
           return b.x0 >= box.x0 && b.x1 <= box.x1 && b.y0 >= box.y0 && b.y1 <= box.y1;

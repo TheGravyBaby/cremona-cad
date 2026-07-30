@@ -273,7 +273,8 @@ export class ToolboxStore {
     this.applyMutation(this.shapes.filter(s => s.id !== id));
   }
 
-  /** Patches a shape's properties (e.g. color) in place. Also the primitive a future Move would use for geometry. */
+  /** Patches a shape's properties (colour, or geometry — this is what a committed move/resize
+   * drag writes through) in place. */
   updateShape(id: string, patch: Partial<DraftShape>): void {
     const shape = this.shapes.find(s => s.id === id);
     if (!shape || this.isShapeLocked(shape)) return;

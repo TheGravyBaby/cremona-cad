@@ -65,8 +65,8 @@ export type GrabberKind = 'point' | 'corner' | 'edge' | 'rotate';
 export type EndpointGrabber = { key: EndpointKey; pos: Pt; kind?: GrabberKind };
 
 const MIN_RADIUS_MM = 0.01;
-/** Floor for an image's box dimensions while dragging a handle, matching the old reference
- * controller's limit — small enough to be usable, large enough that a box can't vanish. */
+/** Floor for an image's box dimensions while dragging a handle — small enough to be usable,
+ * large enough that a box can't be collapsed to nothing and lost. */
 const MIN_IMAGE_MM = 10;
 /** How far past the top edge the rotation handle floats, in screen px (constant on-screen, like
  * every other grabber). */
