@@ -887,7 +887,13 @@ export function pathsBounds(paths: string[]): { minX: number; minY: number; maxX
  */
 export function closeProfileToBlank(path: string, heightAxis: 'x' | 'y', direction: 1 | -1 = 1, margin = 10): { path: string; backing: number; positionMid: number } {
   const pts = samplePathToPolyline(path, 0.25);
+  // Degenerate input passes straight through. Testing extent rather than point count is the
+  // point: a single-point path like 'M 0 0' samples into a run of *coincident* points, which
+  // clears a length check but would still be closed into a nonsense blank — a baseline `margin`
+  // below a profile that has no height, exported as a real template.
   if (pts.length < 2) return { path, backing: 0, positionMid: 0 };
+  const spread = Math.max(...pts.map(p => Math.abs(p.x - pts[0].x) + Math.abs(p.y - pts[0].y)));
+  if (spread < 1e-9) return { path, backing: 0, positionMid: 0 };
   const mirror = (pt: Pt): Pt => heightAxis === 'x' ? { x: -pt.x, y: pt.y } : { x: pt.x, y: -pt.y };
   const curve = pts.map(mirror);
   const heights = curve.map(pt => heightAxis === 'x' ? pt.x : pt.y);

@@ -41,12 +41,24 @@ describe('cycloidZAt windowed percentage', () => {
     }
   });
 
-  it('gives a steeper edge takeoff as pct drops', () => {
+  it('gives a steeper edge takeoff once the window is clipped', () => {
     // Slope near the edge, approximated over the first millimetre of span.
     const edgeSlope = (pct: number) =>
       cycloidZAt(hEff, span, 0.6, 1, pct) - cycloidZAt(hEff, span, 0.6, 1e-6, pct);
     // Full window leaves the edge essentially tangent; clipping it steepens.
-    expect(edgeSlope(1)).toBeLessThan(edgeSlope(0.7));
-    expect(edgeSlope(0.7)).toBeLessThan(edgeSlope(0.4));
+    for (const pct of [0.9, 0.7, 0.5, 0.3]) {
+      expect(edgeSlope(1)).toBeLessThan(edgeSlope(pct));
+    }
+  });
+
+  it('peaks in edge steepness partway down, rather than steepening all the way', () => {
+    // Deliberately pinned, because it is the surprising half of how `pct` behaves and an
+    // earlier version of the test above assumed the opposite. The curve is renormalised to
+    // reach exactly hEff, so past roughly pct = 0.6 further clipping stretches the retained
+    // window back over the same span and the takeoff flattens off again.
+    const edgeSlope = (pct: number) =>
+      cycloidZAt(hEff, span, 0.6, 1, pct) - cycloidZAt(hEff, span, 0.6, 1e-6, pct);
+    expect(edgeSlope(0.6)).toBeGreaterThan(edgeSlope(0.9));
+    expect(edgeSlope(0.6)).toBeGreaterThan(edgeSlope(0.3));
   });
 });
