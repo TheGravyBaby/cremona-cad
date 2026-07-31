@@ -71,18 +71,24 @@ export function gougeProfileSlope(s: number, sweepRadius: number, depth: number)
 }
 
 /**
- * A starting gouge for a plate, seeded from whatever fluting the classic model
- * already has configured so the two open on comparable geometry rather than
- * the gouged panel starting from nothing.
+ * A starting gouge for a plate: one that cuts a channel of about the width the
+ * outline itself implies, so the panel opens on something a maker recognises
+ * and adjusts rather than on an arbitrary tool.
  *
- * The sweep is picked so the cut's width matches the classic annulus width at
- * its nominal setting: given a target half-width `w` and depth `D`,
- * R = (w² + D²) / 2D falls straight out of the half-width formula. That makes
- * the first render a fair side-by-side rather than an arbitrary one.
+ * The width comes from the plate's own edge geometry — the land edge outward of
+ * the purfling, and twice the edge inset inward of it, which is where a channel
+ * of ordinary proportions reaches on an instrument of this size. Given that
+ * target half-width `w` and a depth `D`, R = (w² + D²) / 2D falls straight out
+ * of the half-width formula and names the gouge that cuts it.
+ *
+ * Deliberately derived from the outline rather than from the classic model's
+ * `innerFlutingDepth`: under this model the channel's reach is an *output* of
+ * the tool, so seeding the tool from a stored reach would run the dependency
+ * backwards at the one moment it is most likely to be believed.
  */
 export function defaultGougedFlutingParams(p: EnricoCerutiParams): GougedFlutingParams {
-  const inner = p.innerFlutingDepth ?? 6;
-  const outer = p.outerFlutingDepth ?? 2;
+  const inner = 2 * (p.overhang + p.rib);
+  const outer = p.outerFlutingDepth ?? p.overhang * 0.5;
   const depth = 1.2;
   const halfWidth = Math.max(Math.abs(inner - outer) / 2, 0.5);
   return {
@@ -265,6 +271,28 @@ export function gougedCornerJoinAreaPath(p: EnricoCerutiParams, paths: GougedCha
   return `${defineInsetPath(p, p.outerFlutingDepth ?? 0)} Z ${paths.outer} Z`;
 }
 
+/**
+ * Everything the gouge takes out of a plate, as an area to fill and the two
+ * loops that bound it — what a plan-view sheet has to show, and what a maker
+ * marks on the wood before starting.
+ *
+ * With the corner pass on, the channel and the corner join are one region: the
+ * pass rides the platform boundary the whole way round, so the union of the two
+ * is bounded by the boundary outside and the channel's inner edge inside, with
+ * the channel's own outer edge falling in the middle of carved wood. That the
+ * union collapses to a single annulus is exact rather than approximate — the
+ * three loops nest — so the sheet needs no boolean operation to produce it.
+ *
+ * With the pass off, the corners are left as flat land and the region is the
+ * channel alone.
+ */
+export function gougedCarvedRegion(
+  p: EnricoCerutiParams, g: GougedFlutingParams, paths: GougedChannelPaths,
+): { area: string; edges: string[] } {
+  const outer = cornerGougeOn(g) ? defineInsetPath(p, p.outerFlutingDepth ?? 0) : paths.outer;
+  return { area: `${outer} Z ${paths.inner} Z`, edges: [outer, paths.inner] };
+}
+
 // ===== The transition solve =====
 // Where the arch stops being the template and becomes the run into the channel.
 //
@@ -411,6 +439,58 @@ export function solveGougedLongArch(
   const span = p.height - 2 * yStart;
   if (span <= 0) return null;
   return { span, yStart, takeoff, lowered: archFromLoweredTakeoff(arch, takeoff.takeoffDepth) };
+}
+
+/**
+ * The plate's centerline elevation at body height `y`, relative to the plate
+ * surface — flat land at the caps, then down through the channel, then the arch
+ * all the way over and back.
+ *
+ * One function across the whole body rather than three pieces stitched at the
+ * ends, because there is no seam to stitch: the arch's takeoff was solved to
+ * meet the channel's flank at the same height *and* the same slope, so the two
+ * branches agree to the tolerance the solve was run to. That is the property
+ * the whole model exists for, and the long-arch template is where a maker would
+ * first notice if it failed.
+ *
+ * `la` is the plate's solved long arch; without one the plate is channel and
+ * land only, which is what an arch too high to meet its channel leaves.
+ */
+export function gougedCenterlineZAt(
+  p: EnricoCerutiParams, g: GougedFlutingParams, la: GougedLongArch | null, y: number,
+): number {
+  const w = gougeHalfWidth(g.sweepRadius, g.depth);
+  const centerY = (p.outerFlutingDepth ?? 0) + w;
+  // Distance from the nearer cap's channel centerline, so both ends are the
+  // same arithmetic — the caps are identical by symmetry, and the C-bout gouge
+  // never reaches either of them.
+  const s = Math.min(y, p.height - y) - centerY;
+  if (la && y > la.yStart && y < p.height - la.yStart) {
+    return archZAt(la.lowered, la.span, y - la.yStart) - la.takeoff.takeoffDepth;
+  }
+  return s <= -w ? 0 : gougeProfileZ(Math.min(s, w), g.sweepRadius, g.depth);
+}
+
+/**
+ * The centerline elevation as a path, in the long-arch section frame (canvas
+ * X = Z, canvas Y = body length) — the long-arch template's cutting edge.
+ *
+ * Runs the full body length rather than just the arch's span. The flat land at
+ * each cap is what the blank seats against when the template is held to the
+ * plate, and the channel between it and the arch is cut before the arch is,
+ * so both are wood the template has to clear.
+ */
+export function gougedLongArchProfilePath(
+  p: EnricoCerutiParams, g: GougedFlutingParams, la: GougedLongArch | null,
+  xBase: number, sign: 1 | -1, stepMm = 0.5,
+): string {
+  const n = Math.max(16, Math.ceil(p.height / stepMm));
+  const pts: string[] = [];
+  for (let i = 0; i <= n; i++) {
+    const y = (p.height * i) / n;
+    pts.push(`${i === 0 ? 'M' : 'L'} ${xBase + sign * gougedCenterlineZAt(p, g, la, y)} ${y}`);
+  }
+  return pts.join(' ');
 }
 
 /**

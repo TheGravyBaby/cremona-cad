@@ -12,8 +12,8 @@ import {
   GougedCrossSplineStation, GougedCrossStation, GougedFlutingParams, PlateViewMode,
 } from '../../ceruti-types';
 import {
-  contourSampleSteps, defaultArchingParams, innerHalfWidthAtY, outerHalfWidthAtY, STATION_MERGE_EPS_MM,
-  wireframeSampleSteps,
+  bodyLandmarks, contourSampleSteps, defaultArchingParams, innerHalfWidthAtY, outerHalfWidthAtY,
+  STATION_MERGE_EPS_MM, wireframeSampleSteps,
 } from '../../ceruti-arching';
 import {
   defaultGougedCrossCycloidParams, defaultGougedCrossParams, defaultGougedFlutingParams, GougedCrossSection,
@@ -142,38 +142,23 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
   }
 
   /**
-   * The five body positions a maker would sight a section against, marked on
-   * the station slider so a station can be set *at* one rather than near it.
-   *
-   * All five are already in the recipe, so none of them is measured or
-   * searched for here: the bout arcs are placed so their flank circle's
-   * rightmost point is the widest point of that bout, the C-bout arc's leftmost
-   * point is the waist, and the corner tips are stored outright. Reading them
-   * back off the outline instead would let the marks disagree with the numbers
-   * that produced them.
+   * The body landmarks, placed on the station slider so a station can be set
+   * *at* one rather than near it. Which positions those are is
+   * {@link bodyLandmarks}' business — the same list the cross-arch templates
+   * are cut at, so a tick and a template sheet cannot disagree about where the
+   * waist is. All this adds is where to draw them.
    */
   get stationLandmarks(): { label: string; title: string; y: number; left: string }[] {
-    const b = this.params.bouts;
-    const marks: { label: string; title: string; y: number | undefined }[] = [
-      { label: 'LB', title: 'Widest point of the lower bout', y: b.L1?.y },
-      { label: 'LC', title: 'Lower corner', y: b.LCr?.y },
-      { label: 'C', title: 'Narrowest point of the center bout', y: b.C0?.y },
-      { label: 'UC', title: 'Upper corner', y: b.UCr?.y },
-      { label: 'UB', title: 'Widest point of the upper bout', y: b.U1?.y },
-    ];
     const lo = 1, hi = this.params.height - 1;
     if (hi <= lo) return [];
-    return marks
-      .filter((m): m is { label: string; title: string; y: number } => Number.isFinite(m.y))
-      .filter(m => m.y > lo && m.y < hi)
-      .map(m => ({
-        label: m.label,
-        title: `${m.title} — ${Math.round(m.y)}mm`,
-        y: Math.round(m.y),
-        // The thumb's centre never reaches the ends of the track, so a plain
-        // percentage would drift off the value it marks at both extremes.
-        left: `calc(${TICK_THUMB_PX / 2}px + (100% - ${TICK_THUMB_PX}px) * ${(m.y - lo) / (hi - lo)})`,
-      }));
+    return bodyLandmarks(this.params).map(m => ({
+      label: m.code,
+      title: `${m.name} — ${m.y}mm`,
+      y: m.y,
+      // The thumb's centre never reaches the ends of the track, so a plain
+      // percentage would drift off the value it marks at both extremes.
+      left: `calc(${TICK_THUMB_PX / 2}px + (100% - ${TICK_THUMB_PX}px) * ${(m.y - lo) / (hi - lo)})`,
+    }));
   }
 
   /** Moving the cursor abandons whatever preview was open at the old position. */

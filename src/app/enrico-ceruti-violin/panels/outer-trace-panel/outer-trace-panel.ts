@@ -2,9 +2,9 @@ import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { flipArcAboutY, flipCircleAboutY } from '../../../helpers/draftMath';
 import { adjustArcEnd } from '../../../helpers/arcDegrees';
-import { renderArcFromArcFancy, renderCircle, renderFilledPath, renderPath } from '../../../helpers/renderFuncs';
+import { renderArcFromArcFancy, renderCircle, renderPath } from '../../../helpers/renderFuncs';
 import { calculateOuterArcs, ensureOuterTracePaths } from '../../ceruti-calcs';
-import { buttonInfo, cornerCutoffInfo, flutingInfo, purflingInfo } from '../../ceruti-helpers';
+import { buttonInfo, cornerCutoffInfo, purflingInfo } from '../../ceruti-helpers';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, PathEntry } from '../../ceruti-types';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 
@@ -30,7 +30,6 @@ export class OuterTracePanel extends CerutiPanelBase implements OnInit {
   protected readonly buttonInfo = buttonInfo;
   protected readonly cornerCutoffInfo = cornerCutoffInfo;
   protected readonly purflingInfo = purflingInfo;
-  protected readonly flutingInfo = flutingInfo;
   protected readonly adjustArcEnd = adjustArcEnd;
 
   ngOnInit(): void {
@@ -63,11 +62,12 @@ export class OuterTracePanel extends CerutiPanelBase implements OnInit {
     calculateOuterArcs(p);
     ensureOuterTracePaths(p, this.paths);
 
+    // Outline and purfling only. The channel is the Fluting Channel panel's
+    // subject — it is cut against the purfling, so it belongs with the gouge
+    // that cuts it rather than shaded in here where nothing can be set about it.
     const renders: RenderLayer[] = [
       renderPath(this.getPath('back'), this.colors.outerTrace),
     ];
-    const flutingPath = this.getPathOrNull('flutingArea');
-    if (flutingPath) renders.push(renderFilledPath(flutingPath, this.colors.fluting));
     const purflingPath = this.getPathOrNull('purfling');
     if (purflingPath) renders.push(renderPath(purflingPath, this.colors.innerTrace, 1));
     const outerPurflingPath = this.getPathOrNull('outerPurfling');

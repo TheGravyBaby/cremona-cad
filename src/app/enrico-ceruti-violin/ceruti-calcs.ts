@@ -3,7 +3,8 @@ import { pathFromArc, pathFromLine, pathFromRoundedRect, pathFromCircle, pathFro
 import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Pt, Rectangle } from "../models/types";
 import { error } from "../shared/message-emitter";
 import { EnricoCerutiParams, PathEntry } from "./ceruti-types";
-import { defineInnerPath, defineOuterPath, definePurflingPath, defineOuterPurflingPath, defineFlutingAreaPath, defineFlutingPath } from "./ceruti-paths";
+import { defineInnerPath, defineOuterPath, definePurflingPath, defineOuterPurflingPath } from "./ceruti-paths";
+import { defaultGougedFlutingParams, gougedCarvedRegion, gougedChannelPaths } from "./ceruti-gouged";
 
 // ===== Outline solvers =====
 // Solve where the violin body's bouts/corners/center-bout arcs actually sit.
@@ -773,14 +774,27 @@ export const ensureOuterTracePaths = (
   const backPath = defineOuterPath(params, offset, true, true);
   const purflingPath = definePurflingPath(params, offset);
   const outerPurflingPath = defineOuterPurflingPath(params, offset);
-  const flutingAreaPath = defineFlutingAreaPath(params, params.innerFlutingDepth, params.outerFlutingDepth, params.innerFlutingDepth_cBout);
-  const flutingLinePath = defineFlutingPath(params, offset, params.innerFlutingDepth_cBout);
 
   upsertPathEntry(paths, 'top', topPath);
   upsertPathEntry(paths, 'back', backPath);
   if (purflingPath) upsertPathEntry(paths, 'purfling', purflingPath);
   if (outerPurflingPath) upsertPathEntry(paths, 'outerPurfling', outerPurflingPath);
-  if (flutingAreaPath) upsertPathEntry(paths, 'flutingArea', flutingAreaPath);
-  if (flutingLinePath) upsertPathEntry(paths, 'flutingLine', flutingLinePath);
+
+  // The channel, per plate. Two entries rather than one because the top and the
+  // back carry their own gouges — the same tool is not required at both — so
+  // unlike the purfling these two loops can legitimately differ, and a plan
+  // sheet that showed one for both would be quietly wrong about one of them.
+  for (const [side, areaKey, lineKey] of [
+    ['top', 'channelAreaTop', 'channelLineTop'],
+    ['bottom', 'channelAreaBack', 'channelLineBack'],
+  ] as const) {
+    const gouge = params.arching?.[side].gougedFluting
+      ?? (params.arching ? defaultGougedFlutingParams(params) : null);
+    const channel = gouge && gougedChannelPaths(params, gouge);
+    if (!gouge || !channel) continue;
+    const { area, edges } = gougedCarvedRegion(params, gouge, channel);
+    upsertPathEntry(paths, areaKey, area);
+    upsertPathEntry(paths, lineKey, combinePathStrings(edges));
+  }
 };
 

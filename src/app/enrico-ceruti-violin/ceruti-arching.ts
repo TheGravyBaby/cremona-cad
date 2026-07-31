@@ -598,6 +598,49 @@ export function calculateCrossArchSplineGuide(p: EnricoCerutiParams, y: number, 
   }));
 }
 
+/** A named position along the body that a maker would sight a section against. */
+export interface BodyLandmark {
+    /** Short code — what a template blank is labelled with, and what the station slider ticks read. */
+    code: 'LB' | 'LC' | 'C' | 'UC' | 'UB';
+    /** Full name, for tooltips and anywhere there's room to spell it out. */
+    name: string;
+    /** Body height in mm, rounded — stations are whole millimetres everywhere else too. */
+    y: number;
+}
+
+/**
+ * The five positions that decide a plate's shape: the two widest points, the
+ * two corners, and the waist. Sections are sighted against these, so both the
+ * station slider's ticks and the cross-arch template set are built from them —
+ * which is the point of having one function rather than two lists that can
+ * drift apart.
+ *
+ * None of the five is measured or searched for. All are already in the recipe:
+ * the bout flank circles are placed so their outermost point *is* the widest
+ * point of that bout, the C-bout arc's leftmost point is the waist, and the
+ * corner tips are stored outright. Reading them back off the finished outline
+ * would let the marks disagree with the numbers that produced them.
+ *
+ * Landmarks outside the body — or on a recipe whose bouts aren't laid out yet —
+ * are dropped rather than clamped, since a tick or a template at a position the
+ * instrument doesn't have would be a fiction.
+ */
+export function bodyLandmarks(p: EnricoCerutiParams): BodyLandmark[] {
+    const b = p.bouts;
+    const marks: Array<{ code: BodyLandmark['code']; name: string; y: number | undefined }> = [
+        { code: 'LB', name: 'Widest point of the lower bout', y: b.L1?.y },
+        { code: 'LC', name: 'Lower corner', y: b.LCr?.y },
+        { code: 'C', name: 'Narrowest point of the center bout', y: b.C0?.y },
+        { code: 'UC', name: 'Upper corner', y: b.UCr?.y },
+        { code: 'UB', name: 'Widest point of the upper bout', y: b.U1?.y },
+    ];
+    const lo = 1, hi = p.height - 1;
+    if (hi <= lo) return [];
+    return marks
+        .filter((m): m is BodyLandmark => Number.isFinite(m.y) && m.y! > lo && m.y! < hi)
+        .map(m => ({ code: m.code, name: m.name, y: Math.round(m.y) }));
+}
+
 /** Outermost |x| where the horizontal station line crosses any of the arcs' drawn spans; null if none. */
 function maxAbsXAtY(arcs: Arc[], y: number): number | null {
     let best: number | null = null;

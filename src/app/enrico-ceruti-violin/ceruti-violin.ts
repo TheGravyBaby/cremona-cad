@@ -14,8 +14,6 @@ import { CornersPanel } from './panels/corners-panel/corners-panel';
 import { CenterBoutPanel } from './panels/center-bout-panel/center-bout-panel';
 import { OuterTracePanel } from './panels/outer-trace-panel/outer-trace-panel';
 import { MouldPanel } from './panels/mould-panel/mould-panel';
-import { LongArchingPanel } from './panels/long-arching-panel/long-arching-panel';
-import { CrossArchingPanel } from './panels/cross-arching-panel/cross-arching-panel';
 import { GougedFlutingPanel } from './panels/gouged-fluting-panel/gouged-fluting-panel';
 import { GougedLongArchingPanel } from './panels/gouged-long-arching-panel/gouged-long-arching-panel';
 import { GougedCrossArchingPanel } from './panels/gouged-cross-arching-panel/gouged-cross-arching-panel';
@@ -25,7 +23,7 @@ import { RenderToggles } from './render-toggles/render-toggles';
 
 @Component({
   selector: 'app-ceruti-violin',
-  imports: [FormsModule, BasePanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterTracePanel, MouldPanel, LongArchingPanel, CrossArchingPanel, GougedFlutingPanel, GougedLongArchingPanel, GougedCrossArchingPanel, ExportPanel, RecipeToolbarComponent, RenderToggles],
+  imports: [FormsModule, BasePanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterTracePanel, MouldPanel, GougedFlutingPanel, GougedLongArchingPanel, GougedCrossArchingPanel, ExportPanel, RecipeToolbarComponent, RenderToggles],
   templateUrl: './ceruti-violin.html',
   styleUrls: ['../sidebar.css', './ceruti-violin.css'],
 })
@@ -39,15 +37,14 @@ export class CerutiViolin extends RecipeComponentBase {
     { id: 'corners', label: 'Corners' },
     { id: 'centerBout', label: 'Center Bout' },
     { id: 'outerTrace', label: 'Outer Path' },
-    { id: 'longArching', label: 'Long Arching' },
-    { id: 'crossArching', label: 'Cross Arching' },
-    // The gouged model runs alongside the classic one rather than replacing it —
-    // the two describe the same instrument through opposite dependencies, and
-    // keeping both in the sequence is what makes them comparable. Channel first
-    // here, matching the order of operations at the bench.
-    { id: 'gougedFluting', label: 'Fluting Channel (Gouged)' },
-    { id: 'gougedLongArching', label: 'Long Arching (Gouged)' },
-    { id: 'gougedCrossArching', label: 'Cross Arching (Gouged)' },
+    // The arching panels run in the order of operations at the bench: the
+    // channel is gouged at constant section first, then the long arch is carved
+    // to a template, then the crown across. Ids still say `gouged` because a
+    // saved session restores its open panel by id; the model they belong to is
+    // simply the arching model now, so the labels don't qualify it.
+    { id: 'gougedFluting', label: 'Fluting Channel' },
+    { id: 'gougedLongArching', label: 'Long Arching' },
+    { id: 'gougedCrossArching', label: 'Cross Arching' },
     { id: 'mould', label: 'Mould' },
     { id: 'export', label: 'Export' },
   ] as const;
@@ -142,8 +139,6 @@ export class CerutiViolin extends RecipeComponentBase {
     corners: { arcs: true, circles: true, guide: true, outerPath: true, allArcs: true, allCircles: true },
     centerBout: { arcs: true, circles: true, guide: true, outerPath: true, allArcs: true, allCircles: true },
     outerTrace: { arcs: true, circles: true, guide: false, outerPath: false, allArcs: false, allCircles: false },
-    longArching: { arcs: false, circles: false, guide: true, outerPath: false, allArcs: true, allCircles: true },
-    crossArching: { arcs: false, circles: false, guide: true, outerPath: false, allArcs: true, allCircles: true },
     gougedFluting: { arcs: false, circles: false, guide: true, outerPath: false, allArcs: true, allCircles: true },
     gougedLongArching: { arcs: false, circles: false, guide: true, outerPath: false, allArcs: true, allCircles: true },
     gougedCrossArching: { arcs: false, circles: false, guide: true, outerPath: false, allArcs: true, allCircles: true },
@@ -328,8 +323,6 @@ export class CerutiViolin extends RecipeComponentBase {
       case 'centerBout': return this.hasCorners();
       case 'outerTrace': return this.hasCenterBout();
       case 'mould': return this.hasCenterBout();
-      case 'longArching': return this.hasCenterBout();
-      case 'crossArching': return this.hasCenterBout();
       case 'gougedFluting': return this.hasCenterBout();
       case 'gougedLongArching': return this.hasCenterBout();
       case 'gougedCrossArching': return this.hasCenterBout();

@@ -254,15 +254,28 @@
             You can define its radius here. It does not appear on the top.</li>
         </ul>
 
-        <h3>Purfling & Fluting</h3>
-        <p>These sections define the plate-edge details inset from the outer outline.</p>
+        <h3>Purfling</h3>
         <ul class="tips-list">
           <li><strong>Purfling</strong> is a narrow inlaid strip set just inside the plate edge. The
             <strong>offset</strong> controls how far from the edge the channel begins; the <strong>width</strong>
             sets the channel's span.</li>
-          <li><strong>Fluting</strong> is the shallow cove carved between the purfling and the rising arch.
-            <strong>Offset</strong> and <strong>Reach</strong> are both measured from the plate edge — Offset to
-            the platform's outer boundary, Reach to its inner boundary, where the arch takes off.</li>
+        </ul>
+
+        <h3>Fluting Channel</h3>
+        <p>The cove around the edge of the plate, and the first of the three arching sections — it is gouged before
+          the arch is carved, so it comes first here too.</p>
+        <ul class="tips-list">
+          <li>The channel is described by the tool that cuts it: a <strong>Sweep</strong> radius and a
+            <strong>Depth</strong>. Those two fix the section, and the <strong>Width</strong> beside them is what
+            falls out — it is a reading, not a setting. The same gouge runs the whole way round, so the section is
+            the same at the waist as at the bouts.</li>
+          <li><strong>Land Edge</strong> is where the channel starts, measured in from the plate edge. It is set
+            against the purfling, which is drawn with it.</li>
+          <li>The channel runs past the corners rather than steering into them.
+            <strong>Gouge Corners</strong> takes the wedge left behind as a second pass, riding the land edge round
+            the point. Turn it off to leave the corners as flat land.</li>
+          <li>Turn on <strong>C Bout</strong> for a second, narrower gouge through the waist. Same land edge, same
+            depth — only the tool changes, so the inner edge pulls back.</li>
         </ul>
 
         <h3>Long Arching</h3>
@@ -277,19 +290,21 @@
             plate. Turn it off and that point stands alone, so the profile no longer has to be
             <strong>symmetric</strong> about its peak — the upper and lower halves can be shaped independently, the way
             they usually are on a real instrument.</li>
-          <li><strong>Arch Depth</strong> lowers where the arch takes off from the plate edge, giving the fluting
-            channel more room to curve into.</li>
+          <li>Where the arch stops is not entered. It runs down into the channel until it meets the flank at the
+            same slope, and that meeting point is solved for — so a deeper gouge is met further in, on its own.</li>
         </ul>
 
         <h3>Cross Arching</h3>
         <p>This section shapes the arch's cross-section — how it rises across the width of the plate at any point
           along its length. The center peak follows the long arch you already set.</p>
         <ul class="tips-list">
-          <li>Drag the <strong>Cross Section Height</strong> slider to preview the profile at different points
-            along the body.</li>
-          <li><strong>Cycloid Factor</strong> and <strong>Percent</strong> shape the curve's character and how
-            steeply it takes off from the edge. Choose a <strong>Spline</strong> instead to place the cross-section's
-            control points by hand.</li>
+          <li>Drag the <strong>Station</strong> slider to preview the profile at different points along the body.
+            The ticks under it mark the five positions a section is usually sighted against — the two widest points,
+            the two corners, and the waist. Click one to land on it exactly. These are also the positions the
+            cross-arch templates are cut at.</li>
+          <li>You author the crown only — the dome across the middle of the plate. <strong>Cycloid Factor</strong>
+            and <strong>Percent</strong> shape its character, or choose a <strong>Spline</strong> to place its
+            control points by hand. The run out into the channel is solved, not drawn.</li>
           <li>Turn on <code>Asymmetric (left / right)</code> to give each side of the plate its own factor and
             percentage, so one flank can be fuller than the other.</li>
           <li>A single cross-section repeated the whole length of the plate is a simplification. Press
@@ -300,8 +315,6 @@
           <li>Your stations are listed in a table above the controls. Click a station's height to jump the preview
             back to it; while you are parked on one, the fields below edit that station rather than the plate as a
             whole.</li>
-          <li>Toggle <strong>Flat Platform</strong> to preview the pre-carving state, before the fluting channel is
-            gouged.</li>
           <li>Enable <strong>Wireframe</strong> or <strong>Contour Map</strong> to inspect the full interpolated
             surface in 3D.</li>
         </ul>

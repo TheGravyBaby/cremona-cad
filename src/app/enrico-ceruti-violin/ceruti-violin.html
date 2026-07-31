@@ -99,24 +99,6 @@
         </app-ceruti-mould-panel>
         }
 
-        @if (openPanel === 'longArching') {
-        <app-ceruti-long-arching-panel #panelRef
-            [params]="d.params"
-            [colors]="colors"
-            [flags]="viewFlags"
-            (panelUpdate)="onPanelRenderRequest($event)">
-        </app-ceruti-long-arching-panel>
-        }
-
-        @if (openPanel === 'crossArching') {
-        <app-ceruti-cross-arching-panel #panelRef
-            [params]="d.params"
-            [colors]="colors"
-            [flags]="viewFlags"
-            (panelUpdate)="onPanelRenderRequest($event)">
-        </app-ceruti-cross-arching-panel>
-        }
-
         @if (openPanel === 'gougedFluting') {
         <app-ceruti-gouged-fluting-panel #panelRef
             [params]="d.params"

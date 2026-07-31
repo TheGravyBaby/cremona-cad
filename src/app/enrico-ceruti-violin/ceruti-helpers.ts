@@ -114,16 +114,6 @@ export function purflingInfo() {
     )
 }
 
-export function flutingInfo() {
-    info(
-        "Both values are measured from the outer plate edge inward; the channel's actual width is Reach minus Offset.\n\n" +
-        "Offset: distance from the outer edge to the platform's outer boundary.\n\n" +
-        "Reach: distance from the outer edge to the platform's inner boundary, where the cross arch takes off.\n\n" +
-        "C Bout: overrides Reach in the center bout only, for a narrower or wider channel there.",
-        "Fluting", defaultTTL, true
-    )
-}
-
 export function flatPlatformInfo() {
     info(
         "Leaves the fluting platform flat at the plate surface — the state you cut purfling on and join the arching to before the channel is gouged.\n\n" +

@@ -19,7 +19,10 @@
       "Bash(perl -0pi -e 's/\\(return withCornerPass\\\\\\(p, g, chords, platformOuterIdx, x, y\\), \\(gougeProfileZ\\\\\\(s, section\\\\.sweepRadius, g\\\\.gouge\\\\.depth\\\\\\)\\\\\\);\\)/$1, s, $2/; s/\\(return withCornerPass\\\\\\(p, g, chords, platformOuterIdx, x, y\\), \\(capZ\\\\\\);\\)/$1, s, $2/' src/app/enrico-ceruti-violin/ceruti-surface.ts)",
       "Bash(grep -E \"^\\\\s*\\\\[?[0-9]*m?[0-9]* [.0-9F+ ]+$|w=.*2w=\")",
       "Bash(grep -E \"^\\\\s*\\\\[?[0-9]*m?[0-9]* [.,0-9F+ ]+$|w=.*2w=\")",
-      "Bash(grep -E \"^\\\\s*\\\\[?[0-9]*m?[0-9.]+ [.,0-9F+ ]+$|w=.*wedgeMax\")"
+      "Bash(grep -E \"^\\\\s*\\\\[?[0-9]*m?[0-9.]+ [.,0-9F+ ]+$|w=.*wedgeMax\")",
+      "Bash(git --no-pager diff --stat)",
+      "Bash(git --no-pager diff .claude/settings.json)",
+      "Bash(git --no-pager diff src/app/enrico-ceruti-violin/ceruti-calcs.ts src/app/enrico-ceruti-violin/ceruti-violin.ts)"
     ],
     "additionalDirectories": [
       "/tmp"

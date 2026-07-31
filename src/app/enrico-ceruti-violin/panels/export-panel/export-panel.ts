@@ -8,8 +8,8 @@ import { downloadStlFile } from '../../../helpers/stlExporter';
 import { renderFilledPath, renderPath, renderText } from '../../../helpers/renderFuncs';
 import { error } from '../../../shared/message-emitter';
 import { calculateCornerBlocks, calculateMould, calculateOuterArcs, ensureCenterBoutInnerPath, ensureOuterTracePaths } from '../../ceruti-calcs';
-import { defaultCrossArchParams, defaultFlutingChannelParams } from '../../ceruti-arching';
-import { buildPlateStl, buildPlateSurfaceModel, calculateCrossArchTemplates, calculateLongArchTemplates, TemplateShape } from '../../ceruti-surface';
+import { defaultGougedCrossParams, defaultGougedFlutingParams } from '../../ceruti-gouged';
+import { buildGougedPlateSurfaceModel, buildPlateStl, calculateCrossArchTemplates, calculateLongArchTemplates, TemplateShape } from '../../ceruti-surface';
 import { CerutiColors, EnricoCerutiParams, PathEntry } from '../../ceruti-types';
 
 type ExportType = 'innerTrace' | 'outerTrace' | 'back' | 'mould' | 'blocks' | 'crossArchTemplates' | 'longArchTemplates';
@@ -46,10 +46,19 @@ export class ExportPanel implements OnInit {
     return this.paths.find(entry => entry.key === key)?.path ?? null;
   }
 
+  /**
+   * Which plate's channel belongs on this sheet. The two plates carry their own
+   * gouges, so the top and back contours are no longer the same drawing with a
+   * different outline — each shows the channel that plate is actually cut with.
+   */
+  private channelKey(type: 'outerTrace' | 'back', part: 'Area' | 'Line'): string {
+    return `channel${part}${type === 'back' ? 'Back' : 'Top'}`;
+  }
+
   /** Arching templates need the arching modules built, same precondition as STL export. */
   private requireArching(): boolean {
     if (!this.params.arching) {
-      error('Arching templates need the arching modules — open Long Arching and Cross Arching first.', 'Arching Templates');
+      error('Arching templates need the arching modules — open Fluting Channel, Long Arching and Cross Arching first.', 'Arching Templates');
       return false;
     }
     return true;
@@ -91,8 +100,8 @@ export class ExportPanel implements OnInit {
         const renders: Array<(g: any, ui: any) => void> = [
           renderPath(this.getPath(type === 'back' ? 'back' : 'top'), this.colors.outerTrace),
         ];
-        const flutingPath = this.getPathOrNull('flutingArea');
-        if (flutingPath) renders.push(renderFilledPath(flutingPath, this.colors.fluting));
+        const channelPath = this.getPathOrNull(this.channelKey(type, 'Area'));
+        if (channelPath) renders.push(renderFilledPath(channelPath, this.colors.fluting));
         const purflingPath = this.getPathOrNull('purfling');
         if (purflingPath) renders.push(renderPath(purflingPath, this.colors.innerTrace, 1));
         const outerPurflingPath = this.getPathOrNull('outerPurfling');
@@ -142,8 +151,8 @@ export class ExportPanel implements OnInit {
       case 'outerTrace':
       case 'back': {
         paths = [{ d: this.getPath(type === 'back' ? 'back' : 'top'), stroke: 'black', fill: 'none', strokeWidth: '.5' }];
-        const flutingPath = this.getPathOrNull('flutingArea');
-        if (flutingPath) paths.push({ d: flutingPath, fill: '#bbbbbb', fillRule: 'evenodd', fillOpacity: 1, stroke: 'none', strokeWidth: 0 });
+        const channelPath = this.getPathOrNull(this.channelKey(type, 'Area'));
+        if (channelPath) paths.push({ d: channelPath, fill: '#bbbbbb', fillRule: 'evenodd', fillOpacity: 1, stroke: 'none', strokeWidth: 0 });
         const purflingPath = this.getPathOrNull('purfling');
         if (purflingPath) paths.push({ d: purflingPath, stroke: 'black', fill: 'none', strokeWidth: '.5' });
         const outerPurflingPath = this.getPathOrNull('outerPurfling');
@@ -180,10 +189,10 @@ export class ExportPanel implements OnInit {
       return;
     }
     const plate = p.arching[side];
-    plate.cross ??= defaultCrossArchParams();
-    plate.fluting ??= defaultFlutingChannelParams();
+    plate.gougedFluting ??= defaultGougedFlutingParams(p);
+    plate.gougedCross ??= defaultGougedCrossParams();
     calculateOuterArcs(p);
-    const model = buildPlateSurfaceModel(p, side);
+    const model = buildGougedPlateSurfaceModel(p, side);
     if (!model) return;
     const baseName = this.fileName?.trim() || 'ceruti-violin';
     downloadStlFile(`${baseName}-${plateLabel}-plate.stl`, buildPlateStl(p, model, side));
@@ -207,8 +216,8 @@ export class ExportPanel implements OnInit {
         if (purflingPath) dxfPaths.push(purflingPath);
         const outerPurflingPath = this.getPathOrNull('outerPurfling');
         if (outerPurflingPath) dxfPaths.push(outerPurflingPath);
-        const flutingPath = this.getPathOrNull('flutingLine');
-        if (flutingPath) dxfPaths.push(flutingPath);
+        const channelPath = this.getPathOrNull(this.channelKey(type, 'Line'));
+        if (channelPath) dxfPaths.push(channelPath);
         pathD = combinePathStrings(dxfPaths);
         break;
       }
@@ -256,8 +265,8 @@ export class ExportPanel implements OnInit {
       case 'outerTrace':
       case 'back': {
         pdfPaths = [{ d: this.getPath(type === 'back' ? 'back' : 'top'), stroke: 'black', fill: 'none' }];
-        const flutingPath = this.getPathOrNull('flutingArea');
-        if (flutingPath) pdfPaths.push({ d: flutingPath, fill: '#bbbbbb', fillRule: 'evenodd', fillOpacity: 1, stroke: 'none' });
+        const channelPath = this.getPathOrNull(this.channelKey(type, 'Area'));
+        if (channelPath) pdfPaths.push({ d: channelPath, fill: '#bbbbbb', fillRule: 'evenodd', fillOpacity: 1, stroke: 'none' });
         const purflingPath = this.getPathOrNull('purfling');
         if (purflingPath) pdfPaths.push({ d: purflingPath, stroke: 'black', fill: 'none' });
         const outerPurflingPath = this.getPathOrNull('outerPurfling');
@@ -309,7 +318,8 @@ export class ExportPanel implements OnInit {
 
     const purflingPath = this.getPathOrNull('purfling');
     const outerPurflingPath = this.getPathOrNull('outerPurfling');
-    const flutingPath = this.getPathOrNull('flutingArea');
+    const topChannel = this.getPathOrNull('channelAreaTop');
+    const backChannel = this.getPathOrNull('channelAreaBack');
 
     // Arching templates sit in their own coordinate frame, so their page is sized from the
     // actual combined geometry rather than the shared plan width/height used above.
@@ -343,7 +353,7 @@ export class ExportPanel implements OnInit {
         height,
         paths: [
           { d: this.getPath('top'), stroke: 'black', fill: 'none' },
-          ...(flutingPath ? [{ d: flutingPath, fill: '#bbbbbb', fillRule: 'evenodd', fillOpacity: 1, stroke: 'none' }] : []),
+          ...(topChannel ? [{ d: topChannel, fill: '#bbbbbb', fillRule: 'evenodd', fillOpacity: 1, stroke: 'none' }] : []),
           ...(purflingPath ? [{ d: purflingPath, stroke: 'black', fill: 'none' }] : []),
           ...(outerPurflingPath ? [{ d: outerPurflingPath, stroke: 'black', fill: 'none' }] : []),
         ],
@@ -356,7 +366,7 @@ export class ExportPanel implements OnInit {
         height,
         paths: [
           { d: this.getPath('back'), stroke: 'black', fill: 'none' },
-          ...(flutingPath ? [{ d: flutingPath, fill: '#bbbbbb', fillRule: 'evenodd', fillOpacity: 1, stroke: 'none' }] : []),
+          ...(backChannel ? [{ d: backChannel, fill: '#bbbbbb', fillRule: 'evenodd', fillOpacity: 1, stroke: 'none' }] : []),
           ...(purflingPath ? [{ d: purflingPath, stroke: 'black', fill: 'none' }] : []),
           ...(outerPurflingPath ? [{ d: outerPurflingPath, stroke: 'black', fill: 'none' }] : []),
         ],
