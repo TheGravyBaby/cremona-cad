@@ -769,16 +769,24 @@ export function solveCatenaryA(H: number, L: number): number {
 }
 
 /**
- * 1-D shape-preserving cubic spline (Fritsch–Carlson monotone Hermite, a.k.a.
- * PCHIP): given strictly-increasing `ys[]` and values `zs[]`, returns z(y).
+ * 1-D shape-preserving cubic spline: given strictly-increasing `ys[]` and values
+ * `zs[]`, returns z(y). Never overshoots the data, and is curvature-continuous
+ * everywhere it can be.
  *
- * Chosen over a natural cubic spline because it never overshoots the data: a
- * natural spline buys its C² continuity by rising above the knots it passes
- * through, turning three equal-height knots after a steep rise into a
- * hump-dip-hump ripple. Here knot slopes come from the neighbouring secants and
- * are clamped to their sign, so a run of equal values is genuinely flat. The
- * cost is C¹ — curvature can step at a knot, reading as a soft crease only
- * where the data itself turns sharply.
+ * A plain natural cubic spline buys its C² continuity by rising above the knots
+ * it passes through, turning three equal-height knots after a steep rise into a
+ * hump-dip-hump ripple. Fritsch–Carlson (PCHIP) fixes that by deriving every
+ * slope from the neighbouring secants, but only ever achieves C¹ — curvature
+ * *steps* at each knot, which on a domed profile (a cross arch) reads as a
+ * string of little bumps and dips no amount of control-point nudging removes.
+ *
+ * So: take the natural spline's C² slopes, then pass them through Hyman's
+ * monotonicity filter (see {@link hymanFilterSlopes}). The filter only engages
+ * where a natural spline would actually have overshot, so a flat run stays
+ * genuinely flat and a dome comes out fully curvature-continuous.
+ *
+ * Reference: Hyman (1983), "Accurate Monotonicity Preserving Cubic Interpolation",
+ * SIAM J. Sci. Stat. Comput. 4(4).
  */
 export function makeMonotoneSpline(ys: number[], zs: number[]): (y: number) => number {
   const n = ys.length - 1;
@@ -786,19 +794,7 @@ export function makeMonotoneSpline(ys: number[], zs: number[]): (y: number) => n
 
   const h: number[]     = ys.slice(0, n).map((v, i) => ys[i + 1] - v);
   const delta: number[] = h.map((hi, i) => (zs[i + 1] - zs[i]) / hi);
-
-  // Interior slopes: zero at any local extremum (sign change or flat secant),
-  // otherwise the weighted harmonic mean of the two secants — the Fritsch–Carlson
-  // choice, which is the largest slope that still keeps the segment monotone.
-  const m: number[] = new Array(n + 1).fill(0);
-  for (let i = 1; i < n; i++) {
-    if (delta[i - 1] * delta[i] <= 0) { m[i] = 0; continue; }
-    const w1 = 2 * h[i] + h[i - 1];
-    const w2 = h[i] + 2 * h[i - 1];
-    m[i] = (w1 + w2) / (w1 / delta[i - 1] + w2 / delta[i]);
-  }
-  m[0] = n === 1 ? delta[0] : endSlope(h[0], h[1], delta[0], delta[1]);
-  m[n] = n === 1 ? delta[0] : endSlope(h[n - 1], h[n - 2], delta[n - 1], delta[n - 2]);
+  const m = hymanFilterSlopes(naturalSplineSlopes(h, delta), h, delta);
 
   return (y: number): number => {
     let i = 0;
@@ -816,16 +812,68 @@ export function makeMonotoneSpline(ys: number[], zs: number[]): (y: number) => n
 }
 
 /**
- * End-knot slope for {@link makeMonotoneSpline}: the one-sided three-point
- * estimate, then clipped — to zero if it disagrees in sign with the end secant,
- * and to 3× the end secant where the neighbouring secants turn, which is the
- * limit past which the end segment would overshoot.
+ * Knot slopes of the natural cubic spline through the data — the C² choice, the
+ * unfiltered half of {@link makeMonotoneSpline}. Takes the interval widths `h`
+ * and secants `delta` the caller already computed.
+ *
+ * Enforcing C² across every knot gives one linear equation per knot, closed at
+ * the two ends by the natural condition z''= 0. In slope form that system is
+ * tridiagonal and strictly diagonally dominant, so the Thomas algorithm solves
+ * it in one forward sweep and one back-substitution with no pivoting.
  */
-function endSlope(hEnd: number, hNext: number, dEnd: number, dNext: number): number {
-  const s = ((2 * hEnd + hNext) * dEnd - hEnd * dNext) / (hEnd + hNext);
-  if (s * dEnd <= 0) return 0;
-  if (dEnd * dNext <= 0 && Math.abs(s) > 3 * Math.abs(dEnd)) return 3 * dEnd;
-  return s;
+function naturalSplineSlopes(h: number[], delta: number[]): number[] {
+  const n = h.length;
+  const sub  = new Array<number>(n + 1).fill(0); // below the diagonal
+  const diag = new Array<number>(n + 1).fill(0);
+  const sup  = new Array<number>(n + 1).fill(0); // above the diagonal
+  const rhs  = new Array<number>(n + 1).fill(0);
+
+  // Natural end: 2·m₀ + m₁ = 3·δ₀, and its mirror at the far end.
+  diag[0] = 2 / h[0];   sup[0] = 1 / h[0];   rhs[0] = 3 * delta[0] / h[0];
+  for (let i = 1; i < n; i++) {
+    sub[i]  = 1 / h[i - 1];
+    diag[i] = 2 * (1 / h[i - 1] + 1 / h[i]);
+    sup[i]  = 1 / h[i];
+    rhs[i]  = 3 * (delta[i - 1] / h[i - 1] + delta[i] / h[i]);
+  }
+  sub[n] = 1 / h[n - 1];   diag[n] = 2 / h[n - 1];   rhs[n] = 3 * delta[n - 1] / h[n - 1];
+
+  for (let i = 1; i <= n; i++) {
+    const w = sub[i] / diag[i - 1];
+    diag[i] -= w * sup[i - 1];
+    rhs[i]  -= w * rhs[i - 1];
+  }
+  const m = new Array<number>(n + 1).fill(0);
+  m[n] = rhs[n] / diag[n];
+  for (let i = n - 1; i >= 0; i--) m[i] = (rhs[i] - sup[i] * m[i + 1]) / diag[i];
+  return m;
+}
+
+/**
+ * Hyman's monotonicity filter: clips each slope to the largest magnitude that
+ * still keeps its two adjoining segments monotone, and to zero at a local
+ * extremum (where the secants change sign, or either one is flat).
+ *
+ * The bound is Fritsch–Carlson's sufficient condition — with every slope held to
+ * 3·min(|δₗ|, |δᵣ|), both ends of any segment sit within 3·|δ| of it, which is
+ * what rules out an interior overshoot. Slopes already inside the bound pass
+ * through untouched, so a curve whose natural fit never overshot keeps its full
+ * C² continuity; only the knots that would have rung are dropped to C¹.
+ */
+function hymanFilterSlopes(m: number[], h: number[], delta: number[]): number[] {
+  const n = h.length;
+  const out = m.slice();
+  for (let i = 0; i <= n; i++) {
+    // The ends have one secant, so it stands in for both — matching the interior
+    // rule's behaviour of clipping to 3× the only secant that constrains it.
+    const dL = delta[i > 0 ? i - 1 : 0];
+    const dR = delta[i < n ? i : n - 1];
+    if (dL * dR <= 0) { out[i] = 0; continue; }
+    const bound = 3 * Math.min(Math.abs(dL), Math.abs(dR));
+    out[i] = Math.sign(dL) * Math.min(Math.abs(out[i]), bound);
+    if (out[i] * dL <= 0) out[i] = 0;
+  }
+  return out;
 }
 /** True when angle θ lies on the drawn (minor) span between the arc's start and end — see pathFromArc. */
 export function angleOnDrawnArc(arc: Arc, theta: number): boolean {

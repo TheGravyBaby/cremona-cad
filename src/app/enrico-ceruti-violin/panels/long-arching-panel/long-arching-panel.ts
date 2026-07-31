@@ -2,14 +2,16 @@ import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Circle, Pt, Rectangle } from '../../../models/types';
-import { renderCircle, renderCrosshair, renderLine, renderMeasure, renderPath, renderRect } from '../../../helpers/renderFuncs';
+import { renderCircle, renderCrosshair, renderLine, renderMeasure, renderPath, renderPointHalo, renderRect } from '../../../helpers/renderFuncs';
 import {
   ArchCatenary, ArchCycloid, ArchCurve,
   ArchSpline, ArchSplinePoint,
   ArchingParams, CerutiColors, CerutiViewFlags, EnricoCerutiParams,
 } from '../../ceruti-types';
-import { calculateLongArch, defaultArchingParams } from '../../ceruti-arching';
-import { archSplineKnots } from '../../../helpers/svgPathMath';
+import { calculateLongArch, clampSplinePointHeights, defaultArchingParams } from '../../ceruti-arching';
+import { clamp } from '../../../helpers/draftMath';
+import { archSplineKnots, SPLINE_PEAK_SOURCE } from '../../../helpers/svgPathMath';
+import { HighlightedSplinePoint } from '../../renders/render-constants';
 import { calculateOuterArcs } from '../../ceruti-calcs';
 import { buildPlateSurfaceModel, calculateLongArchSectionFluting } from '../../ceruti-surface';
 import {
@@ -36,6 +38,29 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
   protected readonly curveTypeInfo      = curveTypeInfo;
   protected readonly splinePointInfo    = splinePointInfo;
   protected readonly archEdgeDepthInfo  = crossArchEdgeDepthInfo;
+  protected readonly peakSource         = SPLINE_PEAK_SOURCE;
+
+  private highlightedPlate: 'top' | 'bottom' | null = null;
+  private highlightedSource = SPLINE_PEAK_SOURCE;
+
+  /** The focused control point when it belongs to `plate`, else null (that plate draws no halo). */
+  private splineHighlightFor(plate: 'top' | 'bottom'): HighlightedSplinePoint | null {
+    return this.highlightedPlate === plate
+      ? { source: this.highlightedSource, color: plate === 'top' ? this.colors.archTop : this.colors.archBack }
+      : null;
+  }
+
+  /** `source` is the point's index in the plate's `points`, or {@link SPLINE_PEAK_SOURCE} for the peak row. */
+  onSplinePointFocus(plate: 'top' | 'bottom', source: number): void {
+    this.highlightedPlate = plate;
+    this.highlightedSource = source;
+    this.emitImmediate(false);
+  }
+
+  onSplinePointBlur(): void {
+    this.highlightedPlate = null;
+    this.emitImmediate(false);
+  }
 
   ngOnInit(): void {
     // No format migration here on purpose: ceruti-violin's onRecipeAdopted has already run
@@ -96,6 +121,26 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
         };
         break;
     }
+    this.onChange();
+  }
+
+  /**
+   * Sets a plate's arch height. The peak sits at exactly this height, so on a
+   * spline it is also the ceiling on every control point — lowering it brings
+   * any point above it down too (see {@link clampSplinePointHeights}).
+   */
+  setArchHeight(plate: 'top' | 'bottom', mm: number): void {
+    const arch = (plate === 'top' ? this.arching.top : this.arching.bottom).arch;
+    arch.archHeight = Math.max(mm || 0, 0);
+    if (arch.type === 'spline') clampSplinePointHeights(arch.points, arch.archHeight);
+    this.onChange();
+  }
+
+  /** Sets one control point's height, held at or below the peak. */
+  setSplinePointHeight(plate: 'top' | 'bottom', pt: ArchSplinePoint, mm: number): void {
+    const arch = plate === 'top' ? this.topSpline : this.bottomSpline;
+    if (!arch) return;
+    pt.z = clamp(mm || 0, 0, arch.archHeight);
     this.onChange();
   }
 
@@ -172,9 +217,34 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
         yStart,
         topFluting,
         backFluting,
+        this.splineHighlightFor('top'),
+        this.splineHighlightFor('bottom'),
       ),
     ];
   }
+}
+
+/**
+ * Halo behind the spline control point whose textbox has focus. Drawn whether
+ * or not the module guides are showing — it answers "which point am I
+ * editing?", which is most useful precisely when the crosshairs are off.
+ * A mirrored point halos both of its knots, since they share a source.
+ */
+function renderSplineHighlight(
+  arch: ArchCurve,
+  span: number,
+  yStart: number,
+  xBase: number,
+  sign: 1 | -1,
+  highlighted: HighlightedSplinePoint | null,
+) {
+  return (g: any, ui: any): void => {
+    if (arch.type !== 'spline' || !highlighted) return;
+    for (const knot of archSplineKnots(arch.archHeight, arch.points, arch.peak ?? 0.5)) {
+      if (knot.source !== highlighted.source) continue;
+      renderPointHalo(new Pt(xBase + sign * knot.z, yStart + knot.t * span), highlighted.color)(g, ui);
+    }
+  };
 }
 
 function renderSplineGuide(
@@ -254,6 +324,8 @@ export const renderLongArchBoxes = (
   yStart: number,
   topFluting: { startPath: string; endPath: string } | null = null,
   backFluting: { startPath: string; endPath: string } | null = null,
+  topHighlight: HighlightedSplinePoint | null = null,
+  backHighlight: HighlightedSplinePoint | null = null,
 ) => (g: any, ui: any): void => {
   const ribBox = new Rectangle(
     { x: 0, y: p.overhang },
@@ -267,6 +339,10 @@ export const renderLongArchBoxes = (
     { x: -a.bottom.thickness, y: 0 },
     { x: 0, y: p.height },
   );
+
+  // Before the curves so a halo reads as sitting behind the arch it marks.
+  renderSplineHighlight(a.top.arch, span, yStart, a.ribHeight + a.top.thickness - a.top.edgeDepth, 1, topHighlight)(g, ui);
+  renderSplineHighlight(a.bottom.arch, span, yStart, -a.bottom.thickness + a.bottom.edgeDepth, -1, backHighlight)(g, ui);
 
   if (topPath) renderPath(topPath, colors.archTop, 1.5)(g, ui);
   if (backPath) renderPath(backPath, colors.archBack, 1.5)(g, ui);

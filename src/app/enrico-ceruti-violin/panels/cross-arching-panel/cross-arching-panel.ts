@@ -16,7 +16,8 @@ import {
   nearestCrossArchSplineShape, resolveCrossArchSidesAt, STATION_MERGE_EPS_MM,
 } from '../../ceruti-arching';
 import { clamp } from '../../../helpers/draftMath';
-import { archSplineKnots } from '../../../helpers/svgPathMath';
+import { archSplineKnots, SPLINE_PEAK_SOURCE } from '../../../helpers/svgPathMath';
+import { HighlightedSplinePoint } from '../../renders/render-constants';
 import { CrossArchingSceneBuilder } from './cross-arching-scene';
 import { CrossArchingRotationController } from './cross-arching-rotation-controller';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
@@ -44,6 +45,29 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
   protected readonly archContoursInfo = archContoursInfo;
   protected readonly crossArchCurveTypeInfo = crossArchCurveTypeInfo;
   protected readonly crossArchSplinePointInfo = crossArchSplinePointInfo;
+  protected readonly peakSource = SPLINE_PEAK_SOURCE;
+
+  private highlightedPlate: 'top' | 'bottom' | null = null;
+  private highlightedSource = SPLINE_PEAK_SOURCE;
+
+  /** The focused control point when it belongs to `plate`, else null (that plate draws no halo). */
+  private splineHighlightFor(plate: 'top' | 'bottom'): HighlightedSplinePoint | null {
+    return this.highlightedPlate === plate
+      ? { source: this.highlightedSource, color: plate === 'top' ? this.colors.archTop : this.colors.archBack }
+      : null;
+  }
+
+  /** `source` is the point's index in the shape's `points`, or {@link SPLINE_PEAK_SOURCE} for the peak row. */
+  onSplinePointFocus(plate: 'top' | 'bottom', source: number): void {
+    this.highlightedPlate = plate;
+    this.highlightedSource = source;
+    this.emitImmediate(false);
+  }
+
+  onSplinePointBlur(): void {
+    this.highlightedPlate = null;
+    this.emitImmediate(false);
+  }
 
 
 
@@ -92,8 +116,10 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
    *     — a spline's control-point list has no well-defined "interpolated"
    *     middle ground the way two scalars do).
    *
-   * That last case returns a throwaway object, so this is read-only — every
-   * write goes through {@link editTarget}.
+   * Read-only either way: the cycloid branch of that last case returns a
+   * throwaway snapshot, and the spline branch returns a *live* station or base
+   * shape that a write here would edit at the wrong body position. Every write
+   * goes through {@link editTarget}.
    */
   private activeShape(plate: 'top' | 'bottom'): CrossArchShape {
     const cross = this.crossFor(plate);
@@ -247,7 +273,40 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     this.onChange();
   }
 
-  toggleSplineMirror(pt: CrossArchSplinePoint): void {
+  /**
+   * The control point a spline row's fields write to: row `index` of whatever
+   * {@link editTarget} resolves to. The rows render {@link activeShape}, and
+   * editTarget returns either that same object or a clone of it that preserves
+   * point order — so a row index is a valid key into either. Going through
+   * editTarget is what stops an edit made while browsing between stations from
+   * landing on the nearest station instead of opening a draft here.
+   */
+  private splinePointTarget(plate: 'top' | 'bottom', index: number): CrossArchSplinePoint | null {
+    const target = this.editTarget(plate);
+    return target.type === 'spline' ? target.points[index] ?? null : null;
+  }
+
+  setSplinePointPosPct(plate: 'top' | 'bottom', index: number, pct: number): void {
+    const pt = this.splinePointTarget(plate, index);
+    if (!pt) return;
+    pt.t = clamp(pct || 0, 1, 99) / 100;
+    this.onChange();
+  }
+
+  /**
+   * Sets one control point's height, as a percent of the local arch height. The
+   * cross-arch peak always sits at that full height, so 100 is the ceiling.
+   */
+  setSplinePointHeightPct(plate: 'top' | 'bottom', index: number, pct: number): void {
+    const pt = this.splinePointTarget(plate, index);
+    if (!pt) return;
+    pt.z = clamp(pct || 0, 0, 100) / 100;
+    this.onChange();
+  }
+
+  toggleSplineMirror(plate: 'top' | 'bottom', index: number): void {
+    const pt = this.splinePointTarget(plate, index);
+    if (!pt) return;
     pt.mirror = !pt.mirror;
     this.onChange();
   }
@@ -463,6 +522,7 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
         params: this.paramsForRender(),
         viewFlags: this.flags,
         colors: this.colors,
+        splineHighlight: { top: this.splineHighlightFor('top'), bottom: this.splineHighlightFor('bottom') },
       },
       {
         active: this.rotation?.isDragging ?? false,

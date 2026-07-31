@@ -1144,6 +1144,22 @@ export interface ArchSplineControlPoint {
   mirror?: boolean;
 }
 
+/** {@link ArchSplineKnot.source} for the peak, which every spline has exactly one of. */
+export const SPLINE_PEAK_SOURCE = -1;
+
+/** One interpolated knot, tagged with the control point it came from. */
+export interface ArchSplineKnot {
+  t: number;
+  z: number;
+  /**
+   * Which control point produced this knot: its index in `points`, or
+   * {@link SPLINE_PEAK_SOURCE} for the peak. A mirrored twin carries its
+   * origin point's index, so both knots of one point share a source — which
+   * is what lets a panel highlight a point and its reflection together.
+   */
+  source: number;
+}
+
 /** Closest approach two knots may make before the later one is discarded. */
 const SPLINE_KNOT_EPS = 1e-3;
 /** Control points and the peak are held this far off the plate edges. */
@@ -1170,19 +1186,19 @@ export function archSplineKnots(
   hEff: number,
   points: ArchSplineControlPoint[],
   peak = 0.5,
-): { t: number; z: number }[] {
+): ArchSplineKnot[] {
   const hold = (t: number, margin: number) => Math.min(Math.max(t, margin), 1 - margin);
-  const raw = [{ t: hold(peak, SPLINE_PEAK_MARGIN), z: hEff, rank: 0 }];
-  for (const p of points) {
+  const raw = [{ t: hold(peak, SPLINE_PEAK_MARGIN), z: hEff, rank: 0, source: SPLINE_PEAK_SOURCE }];
+  points.forEach((p, i) => {
     const t = hold(p.t, SPLINE_POINT_MARGIN);
-    raw.push({ t, z: p.z, rank: 1 });
-    if (p.mirror) raw.push({ t: 1 - t, z: p.z, rank: 1 });
-  }
+    raw.push({ t, z: p.z, rank: 1, source: i });
+    if (p.mirror) raw.push({ t: 1 - t, z: p.z, rank: 1, source: i });
+  });
   raw.sort((a, b) => a.t - b.t || a.rank - b.rank);
-  const knots: { t: number; z: number }[] = [];
+  const knots: ArchSplineKnot[] = [];
   for (const k of raw) {
     if (knots.length && k.t - knots[knots.length - 1].t <= SPLINE_KNOT_EPS) continue;
-    knots.push({ t: k.t, z: k.z });
+    knots.push({ t: k.t, z: k.z, source: k.source });
   }
   return knots;
 }
@@ -1221,9 +1237,10 @@ function makeArchSplineZOf(
 // store z as a FRACTION of hEff rather than an absolute mm value (see
 // CrossArchSplinePoint in ceruti-types.ts) — reusing archSplineKnots/splineZAt
 // above with hEff=1, span=1 makes that fraction literally the function's
-// output. makeMonotoneSpline is homogeneous of degree 1 in its z-values (every
-// branch — the sign-based zero-slope test, the harmonic-mean weights, the
-// endSlope clipping — scales linearly with a positive constant), so
+// output. makeMonotoneSpline is homogeneous of degree 1 in its z-values (the
+// natural-slope solve is linear in them, and every branch of the Hyman filter —
+// the sign-based zero-slope test, the 3·min secant bound — is preserved by a
+// positive scaling), so
 // `splineZAt(1, 1, ...) * hEff` is exactly what a direct hEff evaluation would
 // give, not an approximation.
 

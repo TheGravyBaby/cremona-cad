@@ -1,7 +1,8 @@
 import { Circle, Pt, Rectangle } from '../../models/types';
-import { renderCircle, renderCrosshair, renderLine, renderPath, renderRect } from '../../helpers/renderFuncs';
+import { renderCircle, renderCrosshair, renderLine, renderPath, renderPointHalo, renderRect } from '../../helpers/renderFuncs';
 import { ArchingParams, CerutiColors, EnricoCerutiParams } from '../ceruti-types';
-import { CrossArchCycloidGuide } from '../ceruti-arching';
+import { CrossArchCycloidGuide, CrossArchSplineGuideKnot } from '../ceruti-arching';
+import { HighlightedSplinePoint } from './render-constants';
 
 /**
  * Coordinate mapping for all cross-arching renders:
@@ -61,10 +62,27 @@ function renderCrossArchCycloidGuide(guide: CrossArchCycloidGuide | null, color:
 }
 
 /** Control-point crosshairs for a spline cross-arch, at the knots {@link calculateCrossArchSplineGuide} resolved. */
-function renderCrossArchSplineGuide(knots: Pt[] | null, color: string) {
+function renderCrossArchSplineGuide(knots: CrossArchSplineGuideKnot[] | null, color: string) {
   return (g: any, ui: any): void => {
     if (!knots) return;
-    for (const pt of knots) renderCrosshair(pt, color, 2, 1.5, 1)(g, ui);
+    for (const k of knots) renderCrosshair(k.point, color, 2, 1.5, 1)(g, ui);
+  };
+}
+
+/**
+ * Halo behind the spline control point whose textbox has focus. Drawn whether
+ * or not the module guides are showing — it answers "which point am I
+ * editing?", which is most useful precisely when the crosshairs are off.
+ * A mirrored point halos both of its knots, since they share a source.
+ */
+function renderCrossArchSplineHighlight(
+  knots: CrossArchSplineGuideKnot[] | null, highlighted: HighlightedSplinePoint | null,
+) {
+  return (g: any, ui: any): void => {
+    if (!knots || !highlighted) return;
+    for (const k of knots) {
+      if (k.source === highlighted.source) renderPointHalo(k.point, highlighted.color)(g, ui);
+    }
   };
 }
 
@@ -89,10 +107,16 @@ export const renderCrossSection = (
   backArchPath: string | null = null,
   flutingSliceBottom: string | null = null,
   topCycloidGuide: CrossArchCycloidGuide | null = null,
-  topSplineGuide: Pt[] | null = null,
+  topSplineGuide: CrossArchSplineGuideKnot[] | null = null,
   backCycloidGuide: CrossArchCycloidGuide | null = null,
-  backSplineGuide: Pt[] | null = null,
+  backSplineGuide: CrossArchSplineGuideKnot[] | null = null,
+  topSplineHighlight: HighlightedSplinePoint | null = null,
+  backSplineHighlight: HighlightedSplinePoint | null = null,
 ) => (g: any, ui: any): void => {
+  // Before the curves so a halo reads as sitting behind the arch it marks.
+  renderCrossArchSplineHighlight(topSplineGuide, topSplineHighlight)(g, ui);
+  renderCrossArchSplineHighlight(backSplineGuide, backSplineHighlight)(g, ui);
+
   if (topArchPath) renderPath(topArchPath, colors.archTop, 1.5)(g, ui);
   if (backArchPath) renderPath(backArchPath, colors.archBack, 1.5)(g, ui);
 
