@@ -316,11 +316,12 @@ export function classicChannelDiagnosticInfo() {
 
 export function gougedCrossTemplateInfo() {
     info(
-        "The crown template, in millimetres from the centerline — not percentages.\n\n" +
-        "That is deliberate. In the classic model a cross-arch point is a fraction of the local fluting width, so the same numbers describe a physically different curve at the waist than at the widest bout: the arch stretches. A template a maker holds against the wood does not stretch. Here 45 mm out and 9 mm up means the same thing everywhere.\n\n" +
-        "You do not set where the arch ends. The last stretch — the transition into the channel — is solved so the arch meets the channel tangentially, and the contact point slides along the channel's inner flank to wherever that works out. This is why the channel keeps a crisp, constant outer edge while the recurve shoulder inside it varies, which is what one sees on real instruments.\n\n" +
-        "Mirror: on repeats the point on the other side. Turn it off to shape the bass and treble sides independently.",
-        "Cross-Arch Template", defaultTTL, true
+        "The crown shape across the plate, both axes as percentages.\n\n" +
+        "Position runs from 0 at the crown to ±100 at the channel, as a percent of the local half-width; negative is the bass side. Height is a percent of the local arch height, so the crown is always 100.\n\n" +
+        "Percentages rather than millimetres, because what carries from station to station is a SHAPE. Fixed distances make the crown a rigid object of one size, and the plate it sits on is not one size — carried onto a narrower station a fixed-width crown swells to fill it, and the section reads wrong even though every number is what you typed.\n\n" +
+        "You do not set where the arch ends. The last stretch — the run out into the channel — is solved so the arch meets it tangentially, and the contact slides along the channel's inner flank to wherever that works out. This is why the channel keeps a crisp, constant outer edge while the recurve shoulder inside it varies, which is what one sees on real instruments.\n\n" +
+        "Mirror: on repeats the knot on the other side. Turn it off to shape the bass and treble sides independently.",
+        "Cross-Arch Shape", defaultTTL, true
     )
 }
 

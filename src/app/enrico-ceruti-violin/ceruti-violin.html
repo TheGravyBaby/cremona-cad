@@ -135,6 +135,15 @@
         </app-ceruti-gouged-long-arching-panel>
         }
 
+        @if (openPanel === 'gougedCrossArching') {
+        <app-ceruti-gouged-cross-arching-panel #panelRef
+            [params]="d.params"
+            [colors]="colors"
+            [flags]="viewFlags"
+            (panelUpdate)="onPanelRenderRequest($event)">
+        </app-ceruti-gouged-cross-arching-panel>
+        }
+
         @if (openPanel === 'export') {
         <app-ceruti-export-panel
             [params]="d.params"
