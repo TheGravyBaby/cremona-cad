@@ -4,21 +4,17 @@ import { FormsModule } from '@angular/forms';
 import { renderFilledPath, renderPath } from '../../../helpers/renderFuncs';
 import { translatePath } from '../../../helpers/svgPathMath';
 import { calculateOuterArcs } from '../../ceruti-calcs';
-import { defineOuterPath } from '../../ceruti-paths';
+import { defineOuterPath, defineOuterPurflingPath, definePurflingPath } from '../../ceruti-paths';
 import { ArchingParams, CerutiColors, CerutiViewFlags, EnricoCerutiParams, GougedFlutingParams } from '../../ceruti-types';
 import { defaultArchingParams } from '../../ceruti-arching';
 import {
-  channelSwing, ClassicChannelSample, classicChannelProfile, cornerGougeOn, defaultGougedFlutingParams,
-  diagnosticRibbonPath, effectiveCBoutSweep, gougedChannelAreaPath, gougedChannelPaths,
-  gougedCornerJoinAreaPath, gougeHalfWidth, plateLayoutOffset,
+  cornerGougeOn, defaultGougedFlutingParams, effectiveCBoutSweep, gougedChannelAreaPath,
+  gougedChannelPaths, gougedCornerJoinAreaPath, gougeHalfWidth, plateLayoutOffset,
 } from '../../ceruti-gouged';
 import {
-  classicChannelDiagnosticInfo, cornerGougeInfo, gougeCenterlineInfo, gougeSectionInfo,
+  cornerGougeInfo, gougeCBoutInfo, gougeCenterlineInfo, gougeSectionInfo,
 } from '../../ceruti-helpers';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
-
-/** Ribbon height (mm) for the diagnostic overlay — big enough to read, small enough not to swamp the plan view. */
-const DIAGNOSTIC_AMPLITUDE = 14;
 
 /**
  * Step one of the gouged model: carve the channel. It comes first because
@@ -41,21 +37,9 @@ export class GougedFlutingPanel extends CerutiPanelBase implements OnInit {
   @Input({ required: true }) flags!: CerutiViewFlags;
 
   protected readonly gougeSectionInfo = gougeSectionInfo;
+  protected readonly gougeCBoutInfo = gougeCBoutInfo;
   protected readonly gougeCenterlineInfo = gougeCenterlineInfo;
-  protected readonly classicChannelDiagnosticInfo = classicChannelDiagnosticInfo;
   protected readonly cornerGougeInfo = cornerGougeInfo;
-
-  /**
-   * Panel-local, not a shared view flag: the diagnostic describes the *classic*
-   * model and is only meaningful while standing in this panel deciding whether
-   * the gouged one earns itself.
-   */
-  showDiagnostic = false;
-  diagnosticPlate: 'top' | 'bottom' = 'top';
-
-  /** Filled in by buildRun so the template can report the swing numerically. */
-  diagnosticWidth: { min: number; max: number; ratio: number } | null = null;
-  diagnosticRadius: { min: number; max: number; ratio: number } | null = null;
 
   ngOnInit(): void {
     this.emitImmediate();
@@ -89,41 +73,40 @@ export class GougedFlutingPanel extends CerutiPanelBase implements OnInit {
     return 2 * gougeHalfWidth(effectiveCBoutSweep(g), g.depth);
   }
 
-  /** Whether the corner pass is cutting on this plate. */
-  cornerGouge(plate: 'top' | 'bottom'): boolean {
-    return cornerGougeOn(this.gouge(plate));
+  /**
+   * One toggle for both plates. The corners are gouged out at the bench in a
+   * single operation with the plate in front of you either way, so a top that
+   * had them and a back that didn't would be describing two different methods
+   * rather than two different tools. Reads as on if either plate has it, so an
+   * older recipe with only one set doesn't quietly lose the cut.
+   */
+  get cornerGouge(): boolean {
+    return cornerGougeOn(this.gouge('top')) || cornerGougeOn(this.gouge('bottom'));
   }
 
-  setCornerGouge(plate: 'top' | 'bottom', on: boolean): void {
-    this.gouge(plate).cornerGouge = on;
+  setCornerGouge(on: boolean): void {
+    this.gouge('top').cornerGouge = on;
+    this.gouge('bottom').cornerGouge = on;
     this.onToggle();
   }
 
-  /** Whether a distinct C-bout gouge is actually in force (set, and able to cut to depth). */
-  hasCBoutGouge(plate: 'top' | 'bottom'): boolean {
+  /** Whether a second gouge is set for the waist at all. */
+  cBoutGouge(plate: 'top' | 'bottom'): boolean {
+    return this.gouge(plate).sweepRadius_cBout !== null;
+  }
+
+  /** Turning it on seeds from the main sweep, so the channel doesn't jump before it's dialled. */
+  setCBoutGouge(plate: 'top' | 'bottom', on: boolean): void {
     const g = this.gouge(plate);
-    return g.sweepRadius_cBout !== null && effectiveCBoutSweep(g) !== g.sweepRadius;
-  }
-
-  /**
-   * Where the channel's inner edge falls, mm from the plate edge. This is the
-   * gouged model's answer to the classic `innerFlutingDepth` — an output rather
-   * than an input, which is the whole point of anchoring the channel to the
-   * land.
-   */
-  innerEdgeOffset(plate: 'top' | 'bottom'): number {
-    return (this.params.outerFlutingDepth ?? 0) + this.channelWidth(plate);
-  }
-
-  innerEdgeOffsetCBout(plate: 'top' | 'bottom'): number {
-    return (this.params.outerFlutingDepth ?? 0) + this.channelWidthCBout(plate);
+    g.sweepRadius_cBout = on ? g.sweepRadius : null;
+    this.onToggle();
   }
 
   /**
    * A narrower gouge for the waist. Only the sweep varies — same land edge,
    * same depth — so the channel keeps its outer line and pulls its inner edge
-   * back. Blank clears the override. Held above the depth, since a gouge cannot
-   * cut deeper than it is curved.
+   * back. Held above the depth, since a gouge cannot cut deeper than it is
+   * curved.
    */
   setSweepRadiusCBout(plate: 'top' | 'bottom', mm: number | null): void {
     const g = this.gouge(plate);
@@ -183,9 +166,19 @@ export class GougedFlutingPanel extends CerutiPanelBase implements OnInit {
   private plateLayers(plate: 'top' | 'bottom', dx: number): RenderLayer[] {
     const at = (path: string): string => translatePath(path, dx, 0);
     const color = plate === 'top' ? this.colors.archTop : this.colors.archBack;
+    const inset = this.params.overhang + this.params.rib;
     const layers: RenderLayer[] = [
       renderPath(at(defineOuterPath(this.params, undefined, true, plate === 'bottom')), this.colors.outerTrace, 1),
     ];
+
+    // Cosmetic only — nothing here reads the purfling. It is drawn because the
+    // land edge below is set *against* it at the bench, so seeing the two
+    // together is how you tell whether the channel starts where it should.
+    // Both lines come from the Outer Path panel's own path functions rather
+    // than a copy, so they cannot drift from what that panel shows.
+    for (const purfling of [definePurflingPath(this.params, inset), defineOuterPurflingPath(this.params, inset)]) {
+      if (purfling) layers.push(renderPath(at(purfling), this.colors.innerTrace, 1));
+    }
 
     const paths = gougedChannelPaths(this.params, this.gouge(plate));
     if (!paths) return layers;
@@ -193,42 +186,22 @@ export class GougedFlutingPanel extends CerutiPanelBase implements OnInit {
     // Areas rather than outlines: the channel and the corner-join land are
     // regions of the plate, and a maker reads them as regions. Both are
     // even-odd fills between two loops, so neither needs a tolerance or a
-    // sampled boundary test.
+    // sampled boundary test. Each plate carries its own colour so a top and a
+    // back with different gouges can be told apart at a glance.
     //
-    // With the corner pass running, that region is carved rather than left, so
-    // it reads as channel. It understates the cut slightly — the second pass
-    // also takes wood from inside the channel's own outer edge, which this
-    // region by definition excludes — so it marks what the corner pass is *for*
-    // rather than tracing its exact footprint.
-    const cornerCarved = cornerGougeOn(this.gouge(plate));
+    // With the pass on, the corner region is the channel — same tool, same
+    // depth, just anchored to the land edge instead — so it is drawn as the
+    // channel, with no weight of its own to suggest otherwise. Off, it drops
+    // back to marking wood that is being left rather than taken. It understates
+    // the cut either way: the pass also takes wood from inside the channel's
+    // own outer edge, which this region by definition excludes.
+    const carved = cornerGougeOn(this.gouge(plate));
     layers.push(renderFilledPath(
       at(gougedCornerJoinAreaPath(this.params, paths)),
-      cornerCarved ? this.colors.fluting : this.colors.centerBoutUp,
-      cornerCarved ? 0.45 : 0.3,
+      color,
+      carved ? 0.45 : 0.22,
     ));
-    layers.push(renderFilledPath(at(gougedChannelAreaPath(paths)), this.colors.fluting, 0.45));
-    layers.push(renderPath(at(paths.outer), color, 1));
-    layers.push(renderPath(at(paths.inner), color, 1));
-
-    if (this.showDiagnostic && this.diagnosticPlate === plate) {
-      layers.push(...this.diagnosticLayers(classicChannelProfile(this.params, plate), dx));
-    }
-    return layers;
-  }
-
-  /** Two ribbons — annulus width and the sweep radius it forces — plus their swing read-outs. */
-  private diagnosticLayers(samples: ClassicChannelSample[], dx: number): RenderLayer[] {
-    if (!samples.length) return [];
-    const widths = samples.map(s => s.width);
-    const radii = samples.map(s => s.radius);
-    this.diagnosticWidth = channelSwing(widths);
-    this.diagnosticRadius = channelSwing(radii);
-
-    const layers: RenderLayer[] = [];
-    const radiusPath = diagnosticRibbonPath(samples, radii, DIAGNOSTIC_AMPLITUDE);
-    if (radiusPath) layers.push(renderFilledPath(translatePath(radiusPath, dx, 0), this.colors.centerBoutLow, 0.35, 'nonzero'));
-    const widthPath = diagnosticRibbonPath(samples, widths, DIAGNOSTIC_AMPLITUDE);
-    if (widthPath) layers.push(renderPath(translatePath(widthPath, dx, 0), this.colors.innerTrace, 1));
+    layers.push(renderFilledPath(at(gougedChannelAreaPath(paths)), color, 0.45));
     return layers;
   }
 }
