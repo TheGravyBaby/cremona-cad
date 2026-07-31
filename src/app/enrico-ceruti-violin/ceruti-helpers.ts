@@ -282,3 +282,53 @@ export function cornerCutoffInfo() {
         "Corner Cutoff", defaultTTL, true
     )
 }
+
+export function gougeSectionInfo() {
+    info(
+        "The gouge that cuts the fluting channel — sweep radius and depth. Together they fix the channel's cross-section completely, and its width follows from them rather than being set separately.\n\n" +
+        "This is the difference between this panel and the classic Cross Arching one. There the channel is worked out FROM the arch, so its shape drifts as you travel around the plate — widest and shallowest at the corners, where the two boundary lines it is measured between disagree most. Here the gouge is the given, exactly as it is at the bench: one tool, one sweep, run the whole way round.\n\n" +
+        "Sweep radius is how curved the tool is: small values cut a deep narrow trough, large values a broad shallow one. Typical fluting gouges land somewhere between 8 and 25 mm of sweep at 1–1.5 mm depth.\n\n" +
+        "C-Bout is an optional second, usually narrower gouge for the waist. It changes only the tool: the channel still starts at the same land edge and still cuts to the same depth, so what moves is the INNER edge — a tighter gouge simply does not reach as far in. The arcs either side of the waist no longer meet the C-bout arc head-on, but each junction is joined by a biarc solved from its neighbours' tangents, so the line stays closed and smooth at the new radius.\n\n" +
+        "This is the honest way to vary the channel through the waist. Sliding the channel inward instead would drag its outer edge away from the purfling it is cut against, which is not something a maker can do.",
+        "Gouge Section", defaultTTL, true
+    )
+}
+
+export function gougeCenterlineInfo() {
+    info(
+        "Where the flat land ends and the channel begins, measured inward from the plate edge. This is the same measurement as the Outer Path panel's Outer Fluting Depth — it is repeated here because the channel is anchored to it.\n\n" +
+        "The channel has no position of its own. It starts at this edge and grows inward by whatever the gouge cuts, so the inner edge shown below is a RESULT, not a setting. In the classic model both edges are set by hand and the channel is whatever fits between them; here you cut to a line with a tool, and the far side falls where it falls.\n\n" +
+        "Both plates share this edge. It belongs to the outline and the purfling, not to either gouge, so a top and a back with different gouges still start their channels in the same place.\n\n" +
+        "The channel bypasses the corners rather than following them — a maker does not steer the gouge into a corner point, they run past and gouge the leftover wood out afterwards. The land edge DOES follow the corners, because the purfling does. That disagreement is the corner-join area this panel shades, and it is the only place the two part company.\n\n" +
+        "To narrow the channel through the waist, set a C-bout sweep on the plate below rather than moving the line: same edge, same depth, smaller tool.",
+        "Land Edge", defaultTTL, true
+    )
+}
+
+export function classicChannelDiagnosticInfo() {
+    info(
+        "Plots what the CLASSIC arching model's channel actually does, as a ribbon beside the fluting line — bulging where the value is high, flat where it is steady.\n\n" +
+        "In that model the channel is derived: a circle is fitted through both platform boundaries, tangent to the arch. Its width and its sweep radius are therefore outputs, and they drift as you travel around the plate.\n\n" +
+        "This is the evidence for whether the gouged model is worth the trouble. A real gouge cannot change sweep as it travels, so every millimetre of swing shown here is geometry the classic model asks for that no maker could actually cut. If the ribbon is nearly flat, the two models will look much the same; if it swings hard at the corners and C-bouts, they will not.",
+        "Classic Channel Diagnostic", defaultTTL, true
+    )
+}
+
+export function gougedCrossTemplateInfo() {
+    info(
+        "The crown template, in millimetres from the centerline — not percentages.\n\n" +
+        "That is deliberate. In the classic model a cross-arch point is a fraction of the local fluting width, so the same numbers describe a physically different curve at the waist than at the widest bout: the arch stretches. A template a maker holds against the wood does not stretch. Here 45 mm out and 9 mm up means the same thing everywhere.\n\n" +
+        "You do not set where the arch ends. The last stretch — the transition into the channel — is solved so the arch meets the channel tangentially, and the contact point slides along the channel's inner flank to wherever that works out. This is why the channel keeps a crisp, constant outer edge while the recurve shoulder inside it varies, which is what one sees on real instruments.\n\n" +
+        "Mirror: on repeats the point on the other side. Turn it off to shape the bass and treble sides independently.",
+        "Cross-Arch Template", defaultTTL, true
+    )
+}
+
+export function gougedTransitionInfo() {
+    info(
+        "Where the arch stops being the template and becomes the run into the channel. This is reported, not set.\n\n" +
+        "Given the crown template and the channel, tangency is one equation, so exactly one unknown is needed to satisfy it — the contact point. Solving for it is what keeps this model from asking you for more numbers than the classic one, despite describing a more physical process.\n\n" +
+        "If a station reports that no solution exists, the arch and the channel genuinely cannot meet there: the arch is too high, or the channel too close, for any tangent run between them. Real makers resolve this by quietly cheating the arch. Lower the arch height, move the channel outward, or widen the gouge.",
+        "Transition Zone", defaultTTL, true
+    )
+}

@@ -287,6 +287,92 @@ export interface FlutingChannelParams {
   flatPlatform: boolean;
 }
 
+// ===== Gouged arching model =====
+// A second, parallel arching model that inverts the classic one's dependency.
+// There the gouge section is *derived* — flutingArc solves the unique circle
+// through both platform boundaries tangent to the arch, so its sweep radius
+// falls out of the arch and swings around the body (worst at the corners,
+// where the two boundary loops disagree about whether to follow or bypass
+// them). Here the gouge is the given: a real tool has one sweep and one
+// depth, and a maker just keeps running it. What gets solved instead is where
+// the arch stops being the template and starts being the transition into the
+// channel — a contact point free to slide along the channel's inner flank.
+//
+// The knob count is unchanged; only which quantity is an input and which is
+// an output. Nothing here is read by the classic path, the exports, or the
+// physical templates — see the plan note in ceruti-gouged.ts.
+
+/**
+ * The gouge that cuts a plate's fluting channel, plus where it runs. A real
+ * gouge has one sweep and one depth, so the channel's transverse section is
+ * the same everywhere — including through the corners, which the channel
+ * bypasses rather than follows.
+ */
+export interface GougedFlutingParams {
+  /** Sweep radius of the gouge (mm). With `depth`, fixes the section entirely. */
+  sweepRadius: number;
+  /** Depth of the channel at its trough, below the plate outer surface (mm). */
+  depth: number;
+  /**
+   * A second, usually narrower gouge run through the C-bout. Null uses
+   * `sweepRadius` throughout.
+   *
+   * Only the sweep changes: the channel still starts at the same land edge and
+   * still cuts to the same `depth`, so what moves is the *inner* edge — a
+   * tighter gouge reaches less far in. That is why this is expressible at all.
+   * Varying the channel's position instead would mean offsetting the C-bout arc
+   * against its neighbours, and while the biarc joins would absorb it, the
+   * outer edge would then wander away from the purfling it is cut against.
+   */
+  sweepRadius_cBout: number | null;
+}
+
+/**
+ * A gouged cross-arch control point, in millimetres — unlike the classic
+ * {@link CrossArchSplinePoint}, whose `t`/`z` are fractions of the local
+ * fluting chord and peak height.
+ *
+ * Millimetres are the whole point: a fractional point describes a curve that
+ * *stretches* station to station, so "the same cross arch" is physically a
+ * different shape at the waist than at the widest bout. A template a maker
+ * holds against the wood does not stretch. Only the skirt outside the last
+ * control point adapts, and that part is solved rather than authored.
+ */
+export interface GougedCrossPoint {
+  /** Distance from the plate centerline (mm), always positive. */
+  x: number;
+  /** Height above the plate outer surface (mm). */
+  z: number;
+  /** Repeats at −x, mirrored about the centerline. Unmirrored points give the section its asymmetry. */
+  mirror?: boolean;
+}
+
+/**
+ * A gouged cross-arch section shape: the crown template only. Its peak sits at
+ * x = 0 at the long arch's height for that station; its outer end is *not*
+ * here, because the takeoff point is solved for tangency against the channel
+ * (see `solveGougedTakeoff`) rather than entered.
+ */
+export interface GougedCrossShape {
+  type: 'gouged';
+  points: GougedCrossPoint[];
+}
+
+/** A gouged cross-arch shape pinned to one body-length position. */
+export type GougedCrossStation = GougedCrossShape & {
+  /** Body-length position in mm, held strictly inside the plate ends. */
+  y: number;
+};
+
+/**
+ * Gouged cross-arch parameters for one plate: a base template anchoring both
+ * body ends, plus optional interior stations the shape ramps through — the
+ * same edges-plus-interior-points relationship the classic cross arch has.
+ */
+export type GougedCrossParams = GougedCrossShape & {
+  stations?: GougedCrossStation[];
+};
+
 export interface ArchPlate {
   arch: ArchCurve;
   thickness: number;
@@ -294,6 +380,14 @@ export interface ArchPlate {
   fluting?: FlutingChannelParams;
   /** mm below the plate outer surface where both the long arch and cross arch take off (default 0). */
   edgeDepth: number;
+  /**
+   * Gouged-model channel for this plate. Absent until the maker opens the
+   * Fluting Channel panel; the classic `fluting`/`cross` fields above are
+   * never read when this model is in use, and vice versa.
+   */
+  gougedFluting?: GougedFlutingParams;
+  /** Gouged-model cross-arch template for this plate. Absent until authored. */
+  gougedCross?: GougedCrossParams;
 }
 
 export interface ArchingParams {

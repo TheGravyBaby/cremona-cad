@@ -101,7 +101,7 @@ function buildArchPath(arch: ArchCurve, span: number, yStart: number, xBase: num
  * is measured from the plate edge, so all of them gain edgeDepth once the
  * builders measure z up from the lowered takeoff instead.
  */
-function archFromLoweredTakeoff(arch: ArchCurve, edgeDepth: number): ArchCurve {
+export function archFromLoweredTakeoff(arch: ArchCurve, edgeDepth: number): ArchCurve {
   const raised = { ...arch, archHeight: arch.archHeight + edgeDepth };
   return raised.type === 'spline'
     ? { ...raised, points: raised.points.map(p => ({ ...p, z: p.z + edgeDepth })) }
