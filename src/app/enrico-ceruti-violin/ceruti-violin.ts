@@ -18,13 +18,14 @@ import { LongArchingPanel } from './panels/long-arching-panel/long-arching-panel
 import { CrossArchingPanel } from './panels/cross-arching-panel/cross-arching-panel';
 import { GougedFlutingPanel } from './panels/gouged-fluting-panel/gouged-fluting-panel';
 import { GougedLongArchingPanel } from './panels/gouged-long-arching-panel/gouged-long-arching-panel';
+import { GougedCrossArchingPanel } from './panels/gouged-cross-arching-panel/gouged-cross-arching-panel';
 import { ExportPanel } from './panels/export-panel/export-panel';
 import { RecipeToolbarComponent } from '../recipe-toolbar/recipe-toolbar';
 import { RenderToggles } from './render-toggles/render-toggles';
 
 @Component({
   selector: 'app-ceruti-violin',
-  imports: [FormsModule, BasePanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterTracePanel, MouldPanel, LongArchingPanel, CrossArchingPanel, GougedFlutingPanel, GougedLongArchingPanel, ExportPanel, RecipeToolbarComponent, RenderToggles],
+  imports: [FormsModule, BasePanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterTracePanel, MouldPanel, LongArchingPanel, CrossArchingPanel, GougedFlutingPanel, GougedLongArchingPanel, GougedCrossArchingPanel, ExportPanel, RecipeToolbarComponent, RenderToggles],
   templateUrl: './ceruti-violin.html',
   styleUrls: ['../sidebar.css', './ceruti-violin.css'],
 })
@@ -46,6 +47,7 @@ export class CerutiViolin extends RecipeComponentBase {
     // here, matching the order of operations at the bench.
     { id: 'gougedFluting', label: 'Fluting Channel (Gouged)' },
     { id: 'gougedLongArching', label: 'Long Arching (Gouged)' },
+    { id: 'gougedCrossArching', label: 'Cross Arching (Gouged)' },
     { id: 'mould', label: 'Mould' },
     { id: 'export', label: 'Export' },
   ] as const;
@@ -144,6 +146,7 @@ export class CerutiViolin extends RecipeComponentBase {
     crossArching: { arcs: false, circles: false, guide: true, outerPath: false, allArcs: true, allCircles: true },
     gougedFluting: { arcs: false, circles: false, guide: true, outerPath: false, allArcs: true, allCircles: true },
     gougedLongArching: { arcs: false, circles: false, guide: true, outerPath: false, allArcs: true, allCircles: true },
+    gougedCrossArching: { arcs: false, circles: false, guide: true, outerPath: false, allArcs: true, allCircles: true },
     mould: null,
     export: null,
   };
@@ -329,6 +332,7 @@ export class CerutiViolin extends RecipeComponentBase {
       case 'crossArching': return this.hasCenterBout();
       case 'gougedFluting': return this.hasCenterBout();
       case 'gougedLongArching': return this.hasCenterBout();
+      case 'gougedCrossArching': return this.hasCenterBout();
       case 'export': return this.hasCenterBout();
       default: return false;
     }

@@ -1,9 +1,13 @@
 import { Pt } from '../models/types';
-import { buildPolylineIndex, clamp, closestPointToPolylineIndexed } from '../helpers/draftMath';
+import {
+  buildPolylineIndex, clamp, closestPointToPolylineIndexed, makeMonotoneSpline, PolylineIndex,
+} from '../helpers/draftMath';
 import { catenaryZAt, cycloidZAt, flutingArc, samplePathToPolyline, splineZAt } from '../helpers/svgPathMath';
-import { ArchCurve, EnricoCerutiParams, GougedCrossParams, GougedFlutingParams } from './ceruti-types';
+import {
+  ArchCurve, EnricoCerutiParams, GougedCrossParams, GougedCrossShape, GougedFlutingParams,
+} from './ceruti-types';
 import { defineFlutingPath, defineInsetPath } from './ceruti-paths';
-import { archFromLoweredTakeoff, crossArchEdgeSlopeAt } from './ceruti-arching';
+import { archFromLoweredTakeoff, crossArchEdgeSlopeAt, normalizeCrossArchStations } from './ceruti-arching';
 
 /**
  * The gouged arching model's geometry — the half of it that concerns the
@@ -95,9 +99,9 @@ export function effectiveCBoutSweep(g: GougedFlutingParams): number {
   return c !== null && gougeHalfWidth(c, g.depth) > 0 ? c : g.sweepRadius;
 }
 
-/** A default crown template: a flat-shouldered rise, in mm from the centerline. */
+/** A default crown shape: a full centre falling away to a flattish shoulder, both axes fractional. */
 export function defaultGougedCrossParams(): GougedCrossParams {
-  return { type: 'gouged', points: [{ x: 45, z: 9, mirror: true }, { x: 70, z: 4, mirror: true }] };
+  return { type: 'gouged', points: [{ x: 0.45, z: 0.62, mirror: true }, { x: 0.75, z: 0.26, mirror: true }] };
 }
 
 /**
@@ -437,6 +441,362 @@ export function gougedChannelCapPath(
     const s = -w + ((end + w) * i) / n;
     const y = atStart ? centerY + s : p.height - centerY - s;
     pts.push(`${i === 0 ? 'M' : 'L'} ${xBase + sign * gougeProfileZ(s, g.sweepRadius, g.depth)} ${y}`);
+  }
+  return pts.join(' ');
+}
+
+// ===== The cross-arch template =====
+
+/** One authored knot of a crown shape, both coordinates as fractions. */
+export interface GougedCrossKnot {
+  /** Distance from the centerline as a fraction of the local half-width — positive; sides are resolved first. */
+  x: number;
+  /** Height as a fraction of the local arch height. */
+  z: number;
+}
+
+/**
+ * A shape's knots on one side, unsigned and sorted outward.
+ *
+ * Nothing is scaled here: knots are fractions of the station's own half-width
+ * and arch height, so they mean the same shape wherever they are carried. That
+ * is the point of the fractional form — a crown described in millimetres is a
+ * rigid object, and a plate that narrows toward the ends would wear it badly.
+ */
+export function gougedCrossKnots(shape: GougedCrossShape, side: 1 | -1): GougedCrossKnot[] {
+  const out: GougedCrossKnot[] = [];
+  for (const pt of shape.points) {
+    const onThisSide = Math.sign(pt.x) === side;
+    if (!onThisSide && !pt.mirror) continue;
+    const x = Math.abs(pt.x);
+    if (x <= 1e-6) continue;
+    out.push({ x, z: pt.z });
+  }
+  out.sort((a, b) => a.x - b.x);
+  // Two knots at the same position describe one place on the shape; the first
+  // wins, matching how archSplineKnots collapses colliding knots.
+  return out.filter((k, i) => i === 0 || k.x - out[i - 1].x > 1e-6);
+}
+
+/**
+ * A shape's height fraction as a continuous function of position fraction,
+ * anchored at the crown. Flat beyond the outermost knot: nothing is authored
+ * out there, because that stretch is the transition and belongs to the solve.
+ */
+function knotFunction(knots: GougedCrossKnot[]): (x: number) => number {
+  if (!knots.length) return () => 1;
+  const xs = [0, ...knots.map(k => k.x)];
+  const zs = [1, ...knots.map(k => k.z)];
+  const f = makeMonotoneSpline(xs, zs);
+  const last = xs[xs.length - 1];
+  const lastZ = zs[zs.length - 1];
+  return x => (x <= last ? f(Math.max(x, 0)) : lastZ);
+}
+
+/** A crown shape resolved to one body station: its knots on each side, still fractional. */
+export interface GougedCrossRow {
+  left: GougedCrossKnot[];
+  right: GougedCrossKnot[];
+}
+
+export type GougedCrossResolver = (y: number) => GougedCrossRow;
+
+/**
+ * Ramps a plate's crown shape along the body — the gouged counterpart of
+ * {@link makeCrossArchSplineResolver}.
+ *
+ * Two stations can carry entirely different knot lists, so there is no knot to
+ * knot correspondence to interpolate. The classic spline resolver solves that
+ * by sampling each shape onto a dense fixed grid and ramping every column. Here
+ * the union of every station's own knot positions serves the same purpose and
+ * is far smaller — a handful of columns rather than 161 — which matters because
+ * these knots are re-splined at query time to solve the transition, where the
+ * classic grid is only ever read by linear interpolation.
+ *
+ * A station with no knot at some position contributes its own shape's value
+ * there, held flat past its outermost knot.
+ */
+export function makeGougedCrossResolver(
+  cross: GougedCrossParams, bodyHeight: number,
+): GougedCrossResolver {
+  const stations = normalizeCrossArchStations(cross.stations, bodyHeight);
+  const shapes = [cross as GougedCrossShape, ...stations];
+
+  const sideTracks = (side: 1 | -1) => {
+    const perShape = shapes.map(s => gougedCrossKnots(s, side));
+    const xs = [...new Set(perShape.flat().map(k => +k.x.toFixed(4)))].sort((a, b) => a - b);
+    if (!stations.length || bodyHeight <= 0) {
+      const base = knotFunction(perShape[0]);
+      return { xs, tracks: xs.map(x => { const v = base(x); return () => v; }) };
+    }
+    // The base shape anchors both body ends, stations override in between —
+    // the same edges-plus-interior-points arrangement the classic resolvers use.
+    const ys = [0, ...stations.map(s => s.y), bodyHeight];
+    const fns = perShape.map(knotFunction);
+    const tracks = xs.map(x => {
+      const baseZ = fns[0](x);
+      return makeMonotoneSpline(ys, [baseZ, ...fns.slice(1).map(f => f(x)), baseZ]);
+    });
+    return { xs, tracks };
+  };
+
+  const right = sideTracks(1);
+  const left = sideTracks(-1);
+  const read = (s: { xs: number[]; tracks: ((y: number) => number)[] }, y: number): GougedCrossKnot[] =>
+    s.xs.map((x, i) => ({ x, z: clamp(s.tracks[i](y), 0, 1) }));
+
+  return (y: number) => ({ left: read(left, y), right: read(right, y) });
+}
+
+/** Which gouge is cutting at body station `y` — the C-bout tool between the corners, else the main one. */
+export function gougeAtY(
+  p: EnricoCerutiParams, g: GougedFlutingParams, y: number,
+): { sweepRadius: number; halfWidth: number } {
+  const corners = [p.bouts.UCr?.y, p.bouts.LCr?.y].filter((v): v is number => v !== null && v !== undefined);
+  const inCBout = corners.length === 2 && y >= Math.min(...corners) && y <= Math.max(...corners);
+  const sweepRadius = inCBout ? effectiveCBoutSweep(g) : g.sweepRadius;
+  return { sweepRadius, halfWidth: gougeHalfWidth(sweepRadius, g.depth) };
+}
+
+/** A candidate landing for one side: where the arch stops, and how deep it is there. */
+interface SideEnd { xEnd: number; zEnd: number; }
+
+/**
+ * The whole transverse profile as one spline: left takeoff, left knots, the
+ * crown, right knots, right takeoff.
+ *
+ * Built across the full width rather than as two curves meeting at the middle,
+ * and that is not a detail. As an *endpoint* of a one-sided spline the crown
+ * gets a natural end condition, which leaves it with a nonzero slope — so the
+ * two sides arrive at the centerline at an angle and the arch peaks in a sharp
+ * ridge. As an *interior* knot it sits between secants of opposite sign, which
+ * is precisely the case Hyman's filter zeroes, giving a genuine smooth maximum.
+ *
+ * It is also the only correct answer: a nonzero slope at x = 0 would put the
+ * real high spot somewhere off the centerline, and the entered arch height
+ * would stop describing the plate — the same invariant the peak clamp protects.
+ *
+ * The transition is not a separate curve either. It is this spline's outermost
+ * segment on each side, which is why it arrives curvature-continuous with the
+ * rest of the arch for free: there is no blend primitive to match up, because
+ * there is no blend.
+ */
+function crossProfile(
+  archH: number, centerHalf: number,
+  left: GougedCrossKnot[], right: GougedCrossKnot[], endL: SideEnd, endR: SideEnd,
+): (x: number) => number {
+  // Fractions become millimetres here and nowhere else. Position scales with
+  // the station's half-width; height is measured *up from that side's takeoff*
+  // toward the crown, not up from the plate surface — the classic model's own
+  // `hEff = archH + edgeDepth` convention.
+  //
+  // Measuring from the takeoff is what lets the recurve bands near the body
+  // caps work at all. There the crown sits below plate level, so `archH` is
+  // negative, and scaling a knot as `z × archH` would lift it *above* the
+  // crown and invert the section. Measured from the takeoff the shape stays
+  // right whichever side of plate level the crown is on.
+  const heightAt = (z: number, end: SideEnd) => end.zEnd + z * (archH - end.zEnd);
+
+  const xs: number[] = [-endL.xEnd];
+  const zs: number[] = [endL.zEnd];
+  for (let i = left.length - 1; i >= 0; i--) {
+    const x = left[i].x * centerHalf;
+    if (x > 1e-6 && x < endL.xEnd - 1e-6) { xs.push(-x); zs.push(heightAt(left[i].z, endL)); }
+  }
+  xs.push(0);
+  zs.push(archH);
+  for (const k of right) {
+    const x = k.x * centerHalf;
+    if (x > 1e-6 && x < endR.xEnd - 1e-6) { xs.push(x); zs.push(heightAt(k.z, endR)); }
+  }
+  xs.push(endR.xEnd);
+  zs.push(endR.zEnd);
+  return makeMonotoneSpline(xs, zs);
+}
+
+/** A plate's transverse surface at one body station, with the transition solved on both sides. */
+export interface GougedCrossSection {
+  /** Channel centerline half-chord here. */
+  centerHalf: number;
+  halfWidth: number;
+  sweepRadius: number;
+  left: GougedTakeoff | null;
+  right: GougedTakeoff | null;
+  /** |x| where the arch hands over to the channel on each side — where one is drawn in place of the other. */
+  xEndLeft: number;
+  xEndRight: number;
+  /** Surface height above the plate outer surface at transverse position `x`. */
+  zAt: (x: number) => number;
+}
+
+/**
+ * Solves a station: the crown template runs out from the peak until it meets
+ * the channel tangentially, once on each side.
+ *
+ * Both sides are solved separately even though the channel is symmetric — an
+ * unmirrored knot makes the template asymmetric, and then the two sides reach
+ * the channel at different points. That the contact wanders while the channel's
+ * outer edge stays put is the observable this whole model was built for.
+ */
+export function solveGougedCrossSection(
+  archH: number, centerHalf: number, sweepRadius: number, depth: number, row: GougedCrossRow,
+): GougedCrossSection | null {
+  const halfWidth = gougeHalfWidth(sweepRadius, depth);
+  // The crown may sit *below* plate level — that is the recurve band near each
+  // body cap, where the long arch has not yet climbed clear of its own takeoff.
+  // A station is only genuinely archless once the crown reaches the channel's
+  // trough, at which point there is nothing left for the channel to run into.
+  // Requiring a positive crown here instead is what left a flat ring around
+  // both caps, with a straight seam where the height crossed zero.
+  if (halfWidth <= 0 || centerHalf <= halfWidth || archH <= -depth) return null;
+
+  const endAt = (s: number): SideEnd => ({
+    xEnd: centerHalf - s,
+    zEnd: gougeProfileZ(s, sweepRadius, depth),
+  });
+
+  // Where a side lands if it never finds a tangency: the channel's inner edge,
+  // at plate level. The section still draws — with a visible crease, which is
+  // the honest picture of an arch that cannot meet its channel — and the panel
+  // reports it rather than the model quietly fudging a meeting.
+  let endL = endAt(halfWidth * (1 - 1e-3));
+  let endR = endL;
+  let takeL: GougedTakeoff | null = null;
+  let takeR: GougedTakeoff | null = null;
+
+  const solveSide = (side: 1 | -1): GougedTakeoff | null => {
+    const slopeAt = (takeoffDepth: number, contactS: number): number => {
+      const mine: SideEnd = { xEnd: centerHalf - contactS, zEnd: -takeoffDepth };
+      if (mine.xEnd <= 1e-3) return 0;
+      const f = side === 1
+        ? crossProfile(archH, centerHalf, row.left, row.right, endL, mine)
+        : crossProfile(archH, centerHalf, row.left, row.right, mine, endR);
+      const eps = Math.max(mine.xEnd * 1e-4, 1e-6);
+      // Measured inward, matching the channel's own slope convention: `s` grows
+      // toward the centerline, so a rising arch reads positive on both.
+      return (f(side * (mine.xEnd - eps)) - mine.zEnd) / eps;
+    };
+    return solveGougedTakeoff(sweepRadius, depth, slopeAt);
+  };
+
+  // Both sides live on one spline now, so each landing nudges the other's
+  // arrival slope. The coupling is weak — a cubic spline's influence decays
+  // geometrically along its knots, and the crown plus its neighbours sit
+  // between the two ends — so a few sweeps settle it, and a symmetric template
+  // converges on the first.
+  for (let i = 0; i < 4; i++) {
+    takeR = solveSide(1);
+    if (takeR) endR = endAt(takeR.contactS);
+    takeL = solveSide(-1);
+    if (takeL) endL = endAt(takeL.contactS);
+  }
+
+  const profile = crossProfile(archH, centerHalf, row.left, row.right, endL, endR);
+  const zAt = (x: number): number => {
+    if (x >= -endL.xEnd && x <= endR.xEnd) return profile(x);
+    // Past the arch's reach the channel is the surface, and past that the flat
+    // land — both of which {@link gougeProfileZ} already describes, measured
+    // inward from the centerline on whichever side we are.
+    return gougeProfileZ(centerHalf - Math.abs(x), sweepRadius, depth);
+  };
+
+  return {
+    centerHalf, halfWidth, sweepRadius,
+    left: takeL, right: takeR,
+    xEndLeft: endL.xEnd, xEndRight: endR.xEnd,
+    zAt,
+  };
+}
+
+/**
+ * Outermost |x| where a station line crosses a sampled loop, or null when it
+ * misses. A local copy of the same query {@link PlateSurfaceModel} runs against
+ * its own boundaries — kept here rather than imported so the gouged math stays
+ * free of any dependency on the classic surface module.
+ */
+export function loopHalfChordAtY(poly: Pt[], y: number): number | null {
+  const xs: number[] = [];
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i], b = poly[(i + 1) % poly.length];
+    // Half-open, so a vertex sitting exactly on the station line counts once.
+    if ((a.y <= y) !== (b.y <= y)) xs.push(a.x + ((y - a.y) / (b.y - a.y)) * (b.x - a.x));
+  }
+  if (!xs.length) return null;
+  return Math.max(...xs.map(Math.abs));
+}
+
+/** Everything a station needs about a plate, built once and queried per station. */
+export interface GougedPlateGeometry {
+  gouge: GougedFlutingParams;
+  /** Sampled channel centerline, for half-chord queries along the body. */
+  centerPoly: Pt[];
+  /** The same loop indexed for distance queries — how the height field measures the channel. */
+  centerIdx: PolylineIndex;
+  resolveCross: GougedCrossResolver;
+  /** The plate's long arch, already terminated against the channel at the caps. */
+  longArch: GougedLongArch | null;
+}
+
+export function buildGougedPlateGeometry(
+  p: EnricoCerutiParams, arch: ArchCurve, g: GougedFlutingParams, cross: GougedCrossParams,
+): GougedPlateGeometry | null {
+  const paths = gougedChannelPaths(p, g);
+  if (!paths) return null;
+  const centerPoly = samplePathToPolyline(paths.center, 1);
+  return {
+    gouge: g,
+    centerPoly,
+    centerIdx: buildPolylineIndex(centerPoly),
+    resolveCross: makeGougedCrossResolver(cross, p.height),
+    longArch: solveGougedLongArch(p, arch, g),
+  };
+}
+
+/**
+ * The long arch's height at station `y` under the gouged model — the crown the
+ * cross template hangs from.
+ *
+ * Read off the *solved* arch rather than the classic {@link longArchHeightAt},
+ * whose span is pinned to `innerFlutingDepth`. Here the span comes out of the
+ * cap solve, so the two disagree slightly near the ends.
+ */
+export function gougedLongArchHeightAt(geo: GougedPlateGeometry, y: number): number {
+  const la = geo.longArch;
+  if (!la) return 0;
+  const s = y - la.yStart;
+  if (s <= 0 || s >= la.span) return -la.takeoff.takeoffDepth;
+  return archZAt(la.lowered, la.span, s) - la.takeoff.takeoffDepth;
+}
+
+/** The solved transverse section at station `y`, or null where the plate has no arch there. */
+export function gougedCrossSectionAt(
+  p: EnricoCerutiParams, geo: GougedPlateGeometry, y: number,
+): GougedCrossSection | null {
+  const centerHalf = loopHalfChordAtY(geo.centerPoly, y);
+  if (centerHalf === null) return null;
+  const { sweepRadius } = gougeAtY(p, geo.gouge, y);
+  return solveGougedCrossSection(
+    gougedLongArchHeightAt(geo, y), centerHalf, sweepRadius, geo.gouge.depth, geo.resolveCross(y),
+  );
+}
+
+/**
+ * The full-width section at a station, in section coordinates (canvas X =
+ * violin X, canvas Y = absolute Z) — crown, both transitions, both channels and
+ * the flat land beyond, as one continuous curve.
+ *
+ * Sampled from {@link GougedCrossSection.zAt} rather than assembled piecewise,
+ * so what is drawn is exactly the surface the model evaluates. There is no seam
+ * to line up: the arch and the channel are one function.
+ */
+export function gougedCrossSectionPath(
+  section: GougedCrossSection, xFrom: number, xTo: number, zBase: number, sign: 1 | -1, n = 160,
+): string {
+  if (!(xTo > xFrom)) return '';
+  const pts: string[] = [];
+  for (let i = 0; i <= n; i++) {
+    const x = xFrom + ((xTo - xFrom) * i) / n;
+    pts.push(`${i === 0 ? 'M' : 'L'} ${x} ${zBase + sign * section.zAt(x)}`);
   }
   return pts.join(' ');
 }

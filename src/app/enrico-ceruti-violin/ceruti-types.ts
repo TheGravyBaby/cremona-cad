@@ -339,11 +339,20 @@ export interface GougedFlutingParams {
  * control point adapts, and that part is solved rather than authored.
  */
 export interface GougedCrossPoint {
-  /** Distance from the plate centerline (mm), always positive. */
+  /**
+   * Signed position across the plate as a fraction of the local half-width:
+   * 0 is the crown, ±1 the channel centerline. Negative is the bass side.
+   *
+   * A fraction rather than millimetres, deliberately. Absolute distances make
+   * the crown a rigid object of fixed size, and the plate it sits on is not —
+   * carried up the body onto a narrower station, a fixed-width crown swells to
+   * fill it and the section reads wrong. A fraction is a *shape*, which is what
+   * a maker actually carries from station to station.
+   */
   x: number;
-  /** Height above the plate outer surface (mm). */
+  /** Height as a fraction of the local arch height: 1 is the crown, 0 the plate surface. */
   z: number;
-  /** Repeats at −x, mirrored about the centerline. Unmirrored points give the section its asymmetry. */
+  /** Repeats at −x. Leaving it off confines the point to its own side, which is where asymmetry comes from. */
   mirror?: boolean;
 }
 

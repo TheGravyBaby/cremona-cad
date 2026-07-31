@@ -4,8 +4,9 @@ import { defaultArchingParams, defaultCrossArchParams, defaultFlutingChannelPara
 import {
   buildPlateStl, buildPlateSurfaceModel, calculateCrossArchTemplates, calculateFlutingSectionTop,
   calculateLongArchTemplates, computeArchContours, computeArchSectionProfile, crossArchTemplateStationYs,
-  stationChordsAt, topSurfaceZAt, PlateSurfaceModel,
+  stationChordsAt, topSurfaceZAt, PlateSurfaceModel, buildGougedPlateSurfaceModel,
 } from './ceruti-surface';
+import { defaultGougedCrossParams, defaultGougedFlutingParams, gougeHalfWidth } from './ceruti-gouged';
 import { DefaultParams, EnricoCerutiParams } from './ceruti-types';
 
 /** A fully calculated default violin with arching + fluting configured. */
@@ -315,5 +316,150 @@ describe('back plate surface height field', () => {
     const triCount = dv.getUint32(80, true);
     expect(triCount).toBeGreaterThan(1000);
     expect(buf.byteLength).toBe(84 + triCount * 50);
+  });
+});
+
+describe('gouged surface model', () => {
+  /**
+   * The claim the gouged model exists to make: the channel is one gouge wide
+   * everywhere, because a maker has one gouge. The classic model cannot say
+   * this — there the width is the gap between two boundary loops that disagree
+   * about the corners, so it comes out as a value that drifts.
+   *
+   * Measured on the surface rather than on the parameters, since the surface is
+   * what every consumer downstream actually reads.
+   */
+  function gougedParams(): EnricoCerutiParams {
+    const p = makeParams();
+    for (const side of ['top', 'bottom'] as const) {
+      p.arching![side].gougedFluting = defaultGougedFlutingParams(p);
+      p.arching![side].gougedCross = defaultGougedCrossParams();
+    }
+    return p;
+  }
+
+  it('cuts one constant channel section the whole way round', () => {
+    const p = gougedParams();
+    const model = buildGougedPlateSurfaceModel(p, 'top')!;
+    expect(model.gouged).toBeTruthy();
+    const depth = model.gouged!.gouge.depth;
+
+    // Walk the channel centerline itself. That is where the gouge's deepest
+    // point runs, so every sample on it must sit at exactly the full cut depth
+    // — including through the corners, which the channel bypasses.
+    const poly = model.gouged!.centerPoly;
+    let checked = 0;
+    for (let i = 0; i < poly.length; i += 7) {
+      const z = topSurfaceZAt(p, model, poly[i].x, poly[i].y);
+      if (z === null) continue; // off the plate outline at the very tips
+      checked++;
+      expect(z).toBeCloseTo(-depth, 6);
+    }
+    expect(checked).toBeGreaterThan(50);
+  });
+
+  it('leaves flat land outside the cut', () => {
+    // Measured perpendicular to the centerline, not along the station chord —
+    // the surface is defined by true distance to the loop, and the two only
+    // agree where the centerline happens to run square to the station line.
+    const p = gougedParams();
+    const model = buildGougedPlateSurfaceModel(p, 'top')!;
+    const poly = model.gouged!.centerPoly;
+    const w = gougeHalfWidth(model.gouged!.gouge.sweepRadius, model.gouged!.gouge.depth);
+
+    let checked = 0;
+    for (let i = 0; i < poly.length; i += 23) {
+      const prev = poly[(i - 1 + poly.length) % poly.length];
+      const next = poly[(i + 1) % poly.length];
+      const tx = next.x - prev.x, ty = next.y - prev.y;
+      const len = Math.hypot(tx, ty);
+      if (len < 1e-9) continue;
+      // Step outward along the loop normal, past the cut's own edge.
+      const nx = ty / len, ny = -tx / len;
+      const outward = Math.hypot(poly[i].x + nx, poly[i].y - p.height / 2) > Math.hypot(poly[i].x, poly[i].y - p.height / 2) ? 1 : -1;
+      const step = w + 0.6;
+      const z = topSurfaceZAt(p, model, poly[i].x + outward * nx * step, poly[i].y + outward * ny * step);
+      if (z === null) continue; // stepped off the plate outline
+      checked++;
+      expect(z).toBeCloseTo(0, 6);
+    }
+    expect(checked).toBeGreaterThan(8);
+  });
+
+  it('runs continuously along the body through the cap recurve bands', () => {
+    // The artifact this exists to prevent: a straight seam ringing both caps,
+    // where the crown dropped below plate level and the station stopped being
+    // solved, leaving flat land where a shallow dish belonged. It shows up as a
+    // step along y — not in the section at any one station, each of which
+    // looked perfectly reasonable on its own.
+    //
+    // A plain jump threshold will not do. Near the caps the channel runs almost
+    // *across* the body, so stepping in y traverses the gouge section
+    // transversely and picks up its full flank slope; those steps are real
+    // geometry. What separates a slope from a seam is refinement — halving the
+    // step halves a slope's jump and leaves a discontinuity untouched.
+    const p = gougedParams();
+    const model = buildGougedPlateSurfaceModel(p, 'top')!;
+
+    const xs = [0, 20, 40, 60];
+    // One stationChordsAt per row, shared across the x samples — the same
+    // hoisting every real consumer does, and without it the gouged solve reruns
+    // per point and this takes minutes.
+    const maxJumps = (step: number): number[] => {
+      const worst = xs.map(() => 0);
+      const prev: (number | null)[] = xs.map(() => null);
+      for (let y = 4; y <= p.height - 4; y += step) {
+        const chords = stationChordsAt(p, model, y);
+        xs.forEach((x, i) => {
+          const z = topSurfaceZAt(p, model, x, y, chords);
+          if (z === null) { prev[i] = null; return; }
+          const before = prev[i];
+          if (before !== null) worst[i] = Math.max(worst[i], Math.abs(z - before));
+          prev[i] = z;
+        });
+      }
+      return worst;
+    };
+
+    const coarse = maxJumps(0.5);
+    const fine = maxJumps(0.125);
+    // A quarter of the step should give about a quarter of the jump. Anything
+    // that refuses to shrink is a step in the surface itself.
+    xs.forEach((_, i) => expect(fine[i]).toBeLessThan(coarse[i] * 0.4));
+  });
+
+  it('crowns on the centerline at essentially the height the section reports', () => {
+    // Not exactly, and deliberately so. The height field parameterizes the arch
+    // by true distance to the channel rather than by the station chord, which
+    // is what makes the handover seamless. Where the channel curves away — the
+    // waist especially — the nearest channel point is slightly closer than the
+    // chord suggests, so the crown reads a hair low. On a violin that is a few
+    // hundredths of a millimetre against a 15mm arch.
+    const p = gougedParams();
+    const model = buildGougedPlateSurfaceModel(p, 'top')!;
+    const y = p.height / 2;
+    const z = topSurfaceZAt(p, model, 0, y)!;
+    expect(z).toBeGreaterThan(0);
+    expect(z).toBeCloseTo(stationChordsAt(p, model, y).gougedSection!.zAt(0), 1);
+  });
+
+  it('exports an STL through the same builder the classic model uses', () => {
+    // buildPlateStl only ever asks the model for heights, so it needs no
+    // knowledge of which model filled them in. That is the whole point of
+    // attaching the gouged geometry to a PlateSurfaceModel rather than
+    // inventing a parallel type for it.
+    const p = gougedParams();
+    const buf = buildPlateStl(p, buildGougedPlateSurfaceModel(p, 'top')!, 'top', 2);
+    const triCount = new DataView(buf).getUint32(80, true);
+    expect(triCount).toBeGreaterThan(1000);
+    expect(buf.byteLength).toBe(84 + triCount * 50);
+  });
+
+  it('leaves the classic model untouched', () => {
+    // The safety argument for shipping both at once: buildPlateSurfaceModel
+    // never grows a gouged block, so the exports and physical templates cannot
+    // drift onto the new geometry while it is still being settled.
+    const p = gougedParams();
+    expect(buildPlateSurfaceModel(p, 'top')!.gouged).toBeUndefined();
   });
 });
