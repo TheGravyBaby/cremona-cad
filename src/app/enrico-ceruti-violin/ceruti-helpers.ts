@@ -346,6 +346,17 @@ export function gougedCrossTemplateInfo() {
     )
 }
 
+export function gougedCrossStationInfo() {
+    info(
+        "By default one crown shape is used the whole length of the plate. A station pins a different shape at one body position — the crown then ramps smoothly from the plate's base shape at the ends, through each station, and back.\n\n" +
+        "To add one: dial in the shape you want, move the section station to where it should apply, then press Set Station. The fields preview it there as you work, and the preview is discarded if you move off without committing.\n\n" +
+        "To change one: move the section onto it, or click its row in the table. The fields then edit that station rather than the plate ends, and say so above them.\n\n" +
+        "What ramps between stations is the crown's sampled shape, not the numbers that describe it, so two stations can carry entirely different point counts and still ramp. The consequence is that the fields cannot show you a shape at a position between stations — there is no trochoid factor or point list that describes a blend of two. They show the nearest station's shape instead, and any edit opens a new station where you are rather than reaching back to it.\n\n" +
+        "The run-out into the channel is solved separately at every station regardless, so a shape carried across a narrowing plate still meets its channel tangentially — the contact point simply lands somewhere else. Historic arching is rarely uniform; two or three stations are usually plenty.",
+        "Crown Stations", defaultTTL, true
+    )
+}
+
 export function gougedTransitionInfo() {
     info(
         "Where the arch stops being the template and becomes the run into the channel. This is reported, not set.\n\n" +

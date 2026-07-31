@@ -401,11 +401,25 @@ export interface GougedCrossCycloidShape {
 /** A gouged cross-arch section shape: a trochoid or a control-point template. */
 export type GougedCrossShape = GougedCrossSplineShape | GougedCrossCycloidShape;
 
-/** A gouged cross-arch shape pinned to one body-length position. */
-export type GougedCrossStation = GougedCrossShape & {
+/** A control-point gouged cross-arch shape pinned to one body-length position. */
+export type GougedCrossSplineStation = GougedCrossSplineShape & {
   /** Body-length position in mm, held strictly inside the plate ends. */
   y: number;
 };
+
+/** A trochoid gouged cross-arch shape pinned to one body-length position. */
+export type GougedCrossCycloidStation = GougedCrossCycloidShape & {
+  /** Body-length position in mm, held strictly inside the plate ends. */
+  y: number;
+};
+
+/**
+ * A gouged cross-arch shape pinned to one body-length position — either curve
+ * type. Split per type rather than left as `GougedCrossShape & { y }` so a
+ * plate's station list narrows along with the plate: knowing a plate is a
+ * trochoid should be enough to read `d` off its stations.
+ */
+export type GougedCrossStation = GougedCrossSplineStation | GougedCrossCycloidStation;
 
 /**
  * Gouged cross-arch parameters for one plate: a base template anchoring both
@@ -416,11 +430,11 @@ export type GougedCrossStation = GougedCrossShape & {
  * `points` or `d`/`pct` are reachable without a cast once its type is known.
  */
 export type GougedCrossSplineParams = GougedCrossSplineShape & {
-  stations?: GougedCrossStation[];
+  stations?: GougedCrossSplineStation[];
 };
 
 export type GougedCrossCycloidParams = GougedCrossCycloidShape & {
-  stations?: GougedCrossStation[];
+  stations?: GougedCrossCycloidStation[];
 };
 
 export type GougedCrossParams = GougedCrossSplineParams | GougedCrossCycloidParams;
