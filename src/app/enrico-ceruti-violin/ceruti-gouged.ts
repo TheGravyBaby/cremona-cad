@@ -7,7 +7,7 @@ import {
 } from '../helpers/svgPathMath';
 import {
   ArchCurve, EnricoCerutiParams, GougedCrossCycloidParams, GougedCrossCycloidShape, GougedCrossParams,
-  GougedCrossShape, GougedCrossSplineParams, GougedFlutingParams,
+  GougedCrossShape, GougedCrossSplineParams, GougedCrossStation, GougedFlutingParams,
 } from './ceruti-types';
 import { defineFlutingPath, defineInsetPath } from './ceruti-paths';
 import { archFromLoweredTakeoff, crossArchEdgeSlopeAt, normalizeCrossArchStations } from './ceruti-arching';
@@ -560,18 +560,58 @@ function cycloidCrownKnots(shape: GougedCrossCycloidShape): GougedCrossKnot[] {
 }
 
 /**
+ * The defined shape nearest a body-length position — the base shape (which
+ * anchors both body ends) or the closest station.
+ *
+ * Used for the panel's readout while browsing between stations, and *not* an
+ * evaluation of the surface there: {@link makeGougedCrossResolver} ramps the
+ * sampled knot positions, so the real shape at an in-between station is a blend
+ * of its neighbours. There is nothing to show for that blend in the fields —
+ * two shapes can differ in knot count entirely, and a ramped trochoid is no
+ * longer a trochoid of any `d`. Showing the nearest real shape is at least a
+ * shape the maker authored, and every edit opens a draft station here anyway
+ * rather than writing back to it.
+ */
+export function nearestGougedCrossShape(
+  cross: GougedCrossParams, y: number, bodyHeight: number,
+): GougedCrossShape {
+  // Widened explicitly: `stations` is a union of two arrays, and inference
+  // would otherwise pin the type parameter to whichever arm comes first.
+  const stations = normalizeCrossArchStations<GougedCrossStation>(cross.stations, bodyHeight);
+  let best: GougedCrossShape = cross;
+  let bestDist = Math.min(y, bodyHeight - y);
+  for (const s of stations) {
+    const d = Math.abs(s.y - y);
+    if (d < bestDist) { bestDist = d; best = s; }
+  }
+  return best;
+}
+
+/**
  * A shape's height fraction as a continuous function of position fraction,
- * anchored at the crown. Flat beyond the outermost knot: nothing is authored
- * out there, because that stretch is the transition and belongs to the solve.
+ * anchored at *both* ends.
+ *
+ * Those anchors are not assumptions, they are what the fractional form means:
+ * `x` is measured from the crown out to the takeoff and `z` up from the takeoff
+ * to the crown, so (0, 1) and (1, 0) are true of every shape by definition.
+ * With both in place this is exactly the curve {@link crossProfile} draws, since
+ * that builds the same knots plus the same two endpoints and only scales the
+ * axes — an affine map a spline is indifferent to.
+ *
+ * It used to hold flat past the outermost knot on the grounds that nothing is
+ * authored out there. Alone that was harmless, but it made the resolver invent
+ * plateaus: a station knot at some other position forces every *other* shape to
+ * report a height there, and a held-flat answer claims "level with my outermost
+ * knot" — a definite statement the shape never made. Two ramped columns then
+ * land at nearly equal heights and the monotone spline, correctly, draws a flat
+ * between them. Descending toward the takeoff instead says what the shape
+ * actually does out there.
  */
 function knotFunction(knots: GougedCrossKnot[]): (x: number) => number {
-  if (!knots.length) return () => 1;
-  const xs = [0, ...knots.map(k => k.x)];
-  const zs = [1, ...knots.map(k => k.z)];
+  const xs = [0, ...knots.map(k => k.x), 1];
+  const zs = [1, ...knots.map(k => k.z), 0];
   const f = makeMonotoneSpline(xs, zs);
-  const last = xs[xs.length - 1];
-  const lastZ = zs[zs.length - 1];
-  return x => (x <= last ? f(Math.max(x, 0)) : lastZ);
+  return x => f(clamp(x, 0, 1));
 }
 
 /** A crown shape resolved to one body station: its knots on each side, still fractional. */
@@ -600,7 +640,9 @@ export type GougedCrossResolver = (y: number) => GougedCrossRow;
 export function makeGougedCrossResolver(
   cross: GougedCrossParams, bodyHeight: number,
 ): GougedCrossResolver {
-  const stations = normalizeCrossArchStations(cross.stations, bodyHeight);
+  // Widened explicitly: `stations` is a union of two arrays, and inference
+  // would otherwise pin the type parameter to whichever arm comes first.
+  const stations = normalizeCrossArchStations<GougedCrossStation>(cross.stations, bodyHeight);
   const shapes = [cross as GougedCrossShape, ...stations];
 
   const sideTracks = (side: 1 | -1) => {
@@ -721,8 +763,6 @@ export interface GougedCrossSection {
   sweepRadius: number;
   /** Crown height above the plate outer surface — negative in the recurve bands near the caps. */
   archH: number;
-  /** The crown shape resolved to this station, as the solve saw it. */
-  row: GougedCrossRow;
   left: GougedTakeoff | null;
   right: GougedTakeoff | null;
   /** |x| where the arch hands over to the channel on each side — where one is drawn in place of the other. */
@@ -804,7 +844,7 @@ export function solveGougedCrossSection(
   };
 
   return {
-    centerHalf, halfWidth, sweepRadius, archH, row,
+    centerHalf, halfWidth, sweepRadius, archH,
     left: takeL, right: takeR,
     xEndLeft: endL.xEnd, xEndRight: endR.xEnd,
     zAt,
@@ -836,12 +876,24 @@ export interface GougedCrossGuideCircle {
  * what generates it is a rolling circle, so the guide draws that instead, the
  * same construction the classic cross-arch guide shows.
  *
- * Both are read off the *solved* station rather than the shape's own numbers.
- * Knot positions are fractions of this side's crown and heights fractions of
- * its rise from the takeoff, so neither means anything in millimetres until the
- * transition has been solved — and each side is placed against its own takeoff,
- * so an asymmetric template puts its mirrored knots at two heights. That is the
- * model's whole subject, and a guide that hid it would be lying.
+ * Knots come from `shape` rather than from the station's resolved row, and the
+ * difference matters: the row carries the *union* of every station's knot
+ * positions, since that is how {@link makeGougedCrossResolver} ramps shapes
+ * whose point lists don't correspond. Marking those would show a maker two
+ * crosshairs per side for one authored point. The guide marks what was
+ * authored, so it agrees with the panel's own rows.
+ *
+ * Their placement is still read off the *solved* station: positions are
+ * fractions of this side's crown and heights fractions of its rise from the
+ * takeoff, so neither means anything in millimetres until the transition has
+ * been solved. Each side is placed against its own takeoff, so an asymmetric
+ * template puts its mirrored knots at two heights — the model's whole subject,
+ * and a guide that hid it would be lying.
+ *
+ * Between stations, `shape` is the nearest authored one while the curve drawn
+ * is a ramp through it, so the crosshairs can sit a little off the section.
+ * They mark the shape the panel's fields are editing, which is the question
+ * they exist to answer; the classic cross-arch guide behaves the same way.
  */
 export interface GougedCrossGuide {
   knots: GougedCrossGuideKnot[];
@@ -855,7 +907,6 @@ export function gougedCrossGuide(shape: GougedCrossShape, section: GougedCrossSe
 
   for (const side of [-1, 1] as const) {
     const xEnd = side < 0 ? section.xEndLeft : section.xEndRight;
-    const knots = side < 0 ? section.row.left : section.row.right;
     // The endpoint of the profile spline, which is exactly the takeoff.
     const base = section.zAt(side * xEnd);
     const hEff = section.archH - base;
@@ -868,7 +919,9 @@ export function gougedCrossGuide(shape: GougedCrossShape, section: GougedCrossSe
       const d = clamp(shape.d, 0, 1);
       if (d > 0.01) out.circles.push({ centerZ: base + hEff / 2, radius: hEff / (2 * d) });
     } else {
-      for (const k of knots) out.knots.push({ x: side * k.x * xEnd, z: base + k.z * hEff, base });
+      for (const k of gougedCrossKnots(shape, side)) {
+        out.knots.push({ x: side * k.x * xEnd, z: base + k.z * hEff, base });
+      }
     }
   }
   return out;

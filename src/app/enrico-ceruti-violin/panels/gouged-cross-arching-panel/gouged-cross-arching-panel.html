@@ -8,6 +8,8 @@
             <input class="basic-input" type="number" step="5" min="1" [max]="params.height - 1"
                 [ngModel]="cursorY" (ngModelChange)="setCursorY($event)" />
         </label>
+        <input class="basic-input" type="range" step="1" min="1" [max]="params.height - 1"
+            [ngModel]="cursorY" (ngModelChange)="setCursorY($event)" aria-label="Cross section station height" />
         <button type="button" class="info-icon" (click)="crossSectionStationInfo()" title="More information">ⓘ</button>
     </div>
 </section>
@@ -77,19 +79,19 @@
         <div class="input-group basic-row field-row spline-row" role="group">
             <div class="field-cell">
                 <input class="basic-input" type="number" step="1" min="-99" max="99"
-                    [ngModel]="pointXPct(pt)" (ngModelChange)="setPointXPct('top', pt, $event)"
+                    [ngModel]="pointXPct(pt)" (ngModelChange)="setPointXPct('top', $index, $event)"
                     (focus)="onPointFocus('top', $index)" (blur)="onPointBlur()"
                     title="Across the plate as a percent of the crown — 0 is the peak, ±100 where it runs into the channel. Negative is bass side." />
             </div>
             <span class="field-separator" aria-hidden="true"></span>
             <div class="field-cell">
                 <input class="basic-input" type="number" step="1" min="0" max="100"
-                    [ngModel]="pointZPct(pt)" (ngModelChange)="setPointZPct('top', pt, $event)"
+                    [ngModel]="pointZPct(pt)" (ngModelChange)="setPointZPct('top', $index, $event)"
                     (focus)="onPointFocus('top', $index)" (blur)="onPointBlur()"
                     title="Percent of the local arch height — the crown always sits at 100" />
             </div>
             <div class="toggle" title="Repeat this knot on the other side of the centerline">
-                <input type="checkbox" [checked]="pt.mirror" (change)="toggleMirror(pt)" />
+                <input type="checkbox" [checked]="pt.mirror" (change)="toggleMirror('top', $index)" />
                 <span>Mirror</span>
             </div>
             <button class="info-icon" (click)="removePoint('top', $index)" title="Remove knot">×</button>
@@ -100,6 +102,55 @@
         <button class="panel-nav-btn" (click)="addPoint('top')">+ Add Point</button>
     </div>
     }
+
+    @if (cycloidStations('top'); as stations) {
+    @if (stations.length) {
+    <div class="station-table" [style.border-color]="colors.archTop"
+        style="grid-template-columns: minmax(30px,auto) minmax(26px,auto) minmax(26px,auto) auto;">
+        <div class="station-table-row station-table-row--header">
+            <span>mm</span><span>d</span><span>%</span><span></span>
+        </div>
+        @for (st of stations; track $index) {
+        <div class="station-table-row">
+            <span class="station-table-y" title="Jump to this station" (click)="jumpToStation(st.y)">{{ st.y }}</span>
+            <span>{{ st.d }}</span><span>{{ stationPct(st) }}</span>
+            <button class="info-icon" (click)="removeStation('top', $index)" title="Remove station">×</button>
+        </div>
+        }
+    </div>
+    }
+    }
+
+    @if (splineStations('top'); as stations) {
+    @if (stations.length) {
+    <div class="station-table" [style.border-color]="colors.archTop"
+        style="grid-template-columns: minmax(30px,auto) minmax(26px,auto) auto;">
+        <div class="station-table-row station-table-row--header">
+            <span>mm</span><span>Pts</span><span></span>
+        </div>
+        @for (st of stations; track $index) {
+        <div class="station-table-row">
+            <span class="station-table-y" title="Jump to this station" (click)="jumpToStation(st.y)">{{ st.y }}</span>
+            <span>{{ st.points.length }}</span>
+            <button class="info-icon" (click)="removeStation('top', $index)" title="Remove station">×</button>
+        </div>
+        }
+    </div>
+    }
+    }
+
+    <div class="input-group basic-row field-row" role="group">
+        @if (stationAtCursor('top'); as st) {
+        <span class="station-note">Top Plate fields edit station {{ st.y }}mm</span>
+        } @else {
+        <button class="panel-nav-btn" [class.panel-nav-btn--draft]="!!draftFor('top')"
+            (click)="setStationHere('top')">
+            + Set Station at {{ cursorY }}mm
+        </button>
+        }
+        <button type="button" class="info-icon" (click)="gougedCrossStationInfo()" title="More information">ⓘ</button>
+    </div>
+
     <div class="input-group basic-row field-row" role="group">
         <div class="toggle">
             <input type="checkbox" [checked]="flags.topPlateView === 'contours'"
@@ -163,19 +214,19 @@
         <div class="input-group basic-row field-row spline-row" role="group">
             <div class="field-cell">
                 <input class="basic-input" type="number" step="1" min="-99" max="99"
-                    [ngModel]="pointXPct(pt)" (ngModelChange)="setPointXPct('bottom', pt, $event)"
+                    [ngModel]="pointXPct(pt)" (ngModelChange)="setPointXPct('bottom', $index, $event)"
                     (focus)="onPointFocus('bottom', $index)" (blur)="onPointBlur()"
                     title="Across the plate as a percent of the crown — 0 is the peak, ±100 where it runs into the channel. Negative is bass side." />
             </div>
             <span class="field-separator" aria-hidden="true"></span>
             <div class="field-cell">
                 <input class="basic-input" type="number" step="1" min="0" max="100"
-                    [ngModel]="pointZPct(pt)" (ngModelChange)="setPointZPct('bottom', pt, $event)"
+                    [ngModel]="pointZPct(pt)" (ngModelChange)="setPointZPct('bottom', $index, $event)"
                     (focus)="onPointFocus('bottom', $index)" (blur)="onPointBlur()"
                     title="Percent of the local arch height — the crown always sits at 100" />
             </div>
             <div class="toggle" title="Repeat this knot on the other side of the centerline">
-                <input type="checkbox" [checked]="pt.mirror" (change)="toggleMirror(pt)" />
+                <input type="checkbox" [checked]="pt.mirror" (change)="toggleMirror('bottom', $index)" />
                 <span>Mirror</span>
             </div>
             <button class="info-icon" (click)="removePoint('bottom', $index)" title="Remove knot">×</button>
@@ -186,6 +237,55 @@
         <button class="panel-nav-btn" (click)="addPoint('bottom')">+ Add Point</button>
     </div>
     }
+
+    @if (cycloidStations('bottom'); as stations) {
+    @if (stations.length) {
+    <div class="station-table" [style.border-color]="colors.archBack"
+        style="grid-template-columns: minmax(30px,auto) minmax(26px,auto) minmax(26px,auto) auto;">
+        <div class="station-table-row station-table-row--header">
+            <span>mm</span><span>d</span><span>%</span><span></span>
+        </div>
+        @for (st of stations; track $index) {
+        <div class="station-table-row">
+            <span class="station-table-y" title="Jump to this station" (click)="jumpToStation(st.y)">{{ st.y }}</span>
+            <span>{{ st.d }}</span><span>{{ stationPct(st) }}</span>
+            <button class="info-icon" (click)="removeStation('bottom', $index)" title="Remove station">×</button>
+        </div>
+        }
+    </div>
+    }
+    }
+
+    @if (splineStations('bottom'); as stations) {
+    @if (stations.length) {
+    <div class="station-table" [style.border-color]="colors.archBack"
+        style="grid-template-columns: minmax(30px,auto) minmax(26px,auto) auto;">
+        <div class="station-table-row station-table-row--header">
+            <span>mm</span><span>Pts</span><span></span>
+        </div>
+        @for (st of stations; track $index) {
+        <div class="station-table-row">
+            <span class="station-table-y" title="Jump to this station" (click)="jumpToStation(st.y)">{{ st.y }}</span>
+            <span>{{ st.points.length }}</span>
+            <button class="info-icon" (click)="removeStation('bottom', $index)" title="Remove station">×</button>
+        </div>
+        }
+    </div>
+    }
+    }
+
+    <div class="input-group basic-row field-row" role="group">
+        @if (stationAtCursor('bottom'); as st) {
+        <span class="station-note">Back Plate fields edit station {{ st.y }}mm</span>
+        } @else {
+        <button class="panel-nav-btn" [class.panel-nav-btn--draft]="!!draftFor('bottom')"
+            (click)="setStationHere('bottom')">
+            + Set Station at {{ cursorY }}mm
+        </button>
+        }
+        <button type="button" class="info-icon" (click)="gougedCrossStationInfo()" title="More information">ⓘ</button>
+    </div>
+
     <div class="input-group basic-row field-row" role="group">
         <div class="toggle">
             <input type="checkbox" [checked]="flags.backPlateView === 'contours'"

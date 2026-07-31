@@ -1,10 +1,12 @@
 import {
-  gougeHalfWidth, gougeProfileSlope, gougeProfileZ, gougedCrossKnots, makeGougedCrossResolver,
-  solveGougedCrossSection, solveGougedTakeoff,
+  gougeHalfWidth, gougeProfileSlope, gougeProfileZ, gougedCrossGuide, gougedCrossKnots,
+  makeGougedCrossResolver, nearestGougedCrossShape, solveGougedCrossSection, solveGougedTakeoff,
 } from './ceruti-gouged';
 import { makeMonotoneSpline } from '../helpers/draftMath';
 import { trochoidNorm } from '../helpers/svgPathMath';
-import { GougedCrossCycloidShape, GougedCrossParams, GougedCrossSplineShape } from './ceruti-types';
+import {
+  GougedCrossCycloidShape, GougedCrossParams, GougedCrossShape, GougedCrossSplineShape,
+} from './ceruti-types';
 
 /**
  * The gouged model's two load-bearing claims, in the order they matter:
@@ -306,8 +308,121 @@ describe('makeGougedCrossResolver', () => {
     const resolve = makeGougedCrossResolver(cross, BODY);
     expect(resolve(178).right.map(k => k.x)).toEqual([0.45, 0.8]);
     expect(resolve(178).right[1].z).toBeCloseTo(0.1, 6);
-    // The base has nothing at 0.8, so it holds its outermost height flat out there.
-    expect(resolve(0).right[1].z).toBeCloseTo(0.62, 6);
+    // The base has nothing at 0.8, so it reports what its own curve does out
+    // there: on down toward the takeoff, which every shape reaches at z = 0.
+    const filled = resolve(0).right[1].z;
+    expect(filled).toBeGreaterThan(0);
+    expect(filled).toBeLessThan(0.62);
+  });
+
+  it('does not flatten the crown where one shape has a knot the other lacks', () => {
+    // The plateau this pins: filling a missing column by holding the shape's
+    // outermost height claims it is level out there. Two ramped columns then
+    // arrive at nearly the same height and the monotone spline draws — quite
+    // correctly — a flat shoulder between them, from a shape with one knot.
+    const cross: GougedCrossParams = {
+      type: 'gouged',
+      points: [{ x: 0.7, z: 0.4, mirror: true }],
+      stations: [{ y: 103, type: 'gouged', points: [{ x: 0.41, z: 0.65, mirror: true }] }],
+    };
+    const resolve = makeGougedCrossResolver(cross, BODY);
+    for (let y = 0; y <= BODY; y += 8) {
+      const [inner, outer] = resolve(y).right;
+      expect(outer.z).toBeLessThan(inner.z - 1e-3);
+    }
+  });
+});
+
+describe('nearestGougedCrossShape', () => {
+  const BODY = 356;
+  const base: GougedCrossParams = {
+    type: 'gouged',
+    points: [{ x: 0.45, z: 0.62, mirror: true }],
+    stations: [
+      { y: 120, type: 'gouged', points: [{ x: 0.45, z: 0.3, mirror: true }] },
+      { y: 240, type: 'gouged', points: [{ x: 0.45, z: 0.9, mirror: true }] },
+    ],
+  };
+
+  /** The one field these fixtures differ in. */
+  const heightOf = (shape: GougedCrossShape) => (shape as GougedCrossSplineShape).points[0].z;
+
+  it('picks the station the cursor is nearest', () => {
+    expect(heightOf(nearestGougedCrossShape(base, 118, BODY))).toBeCloseTo(0.3, 6);
+    expect(heightOf(nearestGougedCrossShape(base, 200, BODY))).toBeCloseTo(0.9, 6);
+  });
+
+  it('falls back to the base shape near the body ends, which it anchors', () => {
+    expect(heightOf(nearestGougedCrossShape(base, 5, BODY))).toBeCloseTo(0.62, 6);
+    expect(heightOf(nearestGougedCrossShape(base, BODY - 5, BODY))).toBeCloseTo(0.62, 6);
+  });
+
+  it('is the base shape everywhere when no station is set', () => {
+    const plain: GougedCrossParams = { type: 'gouged', points: [{ x: 0.45, z: 0.62, mirror: true }] };
+    for (const y of [10, 100, 178, 300]) expect(nearestGougedCrossShape(plain, y, BODY)).toBe(plain);
+  });
+
+  it('hands back a station as a copy, so the panel cannot edit one by browsing past it', () => {
+    // normalizeCrossArchStations clamps into the body and returns copies. The
+    // base shape is passed straight through, though, which is why the panel
+    // treats everything from here as read-only rather than relying on that.
+    expect(nearestGougedCrossShape(base, 120, BODY)).not.toBe(base.stations![0]);
+  });
+});
+
+describe('gougedCrossGuide', () => {
+  const R = 2.2667;
+  const D = 1.2;
+  const ARCH = 15;
+  const HALF = 100;
+  const sectionFor = (row: { left: { x: number; z: number }[]; right: { x: number; z: number }[] }) =>
+    solveGougedCrossSection(ARCH, HALF, R, D, row)!;
+  const rowOf = (shape: GougedCrossShape) => ({
+    left: gougedCrossKnots(shape, -1),
+    right: gougedCrossKnots(shape, 1),
+  });
+
+  it('marks one crosshair per side per authored knot', () => {
+    const shape: GougedCrossSplineShape = { type: 'gouged', points: [{ x: 0.4, z: 0.57, mirror: true }] };
+    expect(gougedCrossGuide(shape, sectionFor(rowOf(shape))).knots.length).toBe(2);
+  });
+
+  it('marks the shape it was given, not the wider set of columns the ramp uses', () => {
+    // The regression this pins: a resolved row carries the union of every
+    // station's knot positions, because that is how shapes with unrelated point
+    // lists are ramped. Drawing the guide from that row put two crosshairs on
+    // each side for one authored point.
+    const cross: GougedCrossParams = {
+      type: 'gouged',
+      points: [{ x: 0.4, z: 0.57, mirror: true }],
+      stations: [{ y: 103, type: 'gouged', points: [{ x: 0.7, z: 0.4, mirror: true }] }],
+    };
+    const row = makeGougedCrossResolver(cross, 356)(199);
+    expect(row.right.length).toBe(2); // the ramp really does carry both columns
+
+    const shape: GougedCrossSplineShape = { type: 'gouged', points: [{ x: 0.4, z: 0.57, mirror: true }] };
+    expect(gougedCrossGuide(shape, sectionFor(row)).knots.length).toBe(2);
+  });
+
+  it('places a knot against its own side takeoff, and measures its height from there', () => {
+    const shape: GougedCrossSplineShape = { type: 'gouged', points: [{ x: 0.4, z: 0.57, mirror: true }] };
+    const section = sectionFor(rowOf(shape));
+    for (const k of gougedCrossGuide(shape, section).knots) {
+      const xEnd = k.x < 0 ? section.xEndLeft : section.xEndRight;
+      expect(Math.abs(k.x)).toBeCloseTo(0.4 * xEnd, 9);
+      expect((k.z - k.base) / (section.archH - k.base)).toBeCloseTo(0.57, 9);
+    }
+  });
+
+  it('draws generating circles for a trochoid, which has no control points to mark', () => {
+    const shape: GougedCrossCycloidShape = { type: 'gouged-cycloid', d: 0.4, pct: 0.9 };
+    const guide = gougedCrossGuide(shape, sectionFor(rowOf(shape)));
+    expect(guide.knots).toEqual([]);
+    expect(guide.circles.length).toBe(2);
+    // radius = hEff / 2d, per side, off that side's own takeoff.
+    const section = sectionFor(rowOf(shape));
+    const hEff = section.archH - section.zAt(section.xEndRight);
+    expect(guide.circles[1].radius).toBeCloseTo(hEff / (2 * 0.4), 6);
   });
 });
 
