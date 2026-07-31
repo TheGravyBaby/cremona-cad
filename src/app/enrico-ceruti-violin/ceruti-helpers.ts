@@ -1,4 +1,4 @@
-import { info } from "../shared/message-emitter";
+import { error, info } from "../shared/message-emitter";
 
 const defaultTTL = 30000
 
@@ -314,10 +314,31 @@ export function classicChannelDiagnosticInfo() {
     )
 }
 
+export function gougedCrossCurveTypeInfo() {
+    info(
+        "How the crown across the plate is described. Both feed the same solve — only the way you author the shape changes.\n\n" +
+        "Cycloid: a trochoid, set by two numbers. The same curve family the classic cross arching offers, so switching a plate between the two models compares the CHANNELS rather than changing the crown at the same time.\n\n" +
+        "Spline: control points you place yourself, in percentages of the local half-width and arch height. More work, and the only way to make the two sides differ.\n\n" +
+        "Switching replaces the shape rather than converting it. Two numbers and a list of points describe a curve in ways that have no honest translation between them, so carrying one across would be inventing values you never chose.",
+        "Crown Curve", defaultTTL, true
+    )
+}
+
+export function gougedCrossCycloidControlsInfo() {
+    info(
+        "Cycloid factor: 0 is a raised cosine, 1 the standard cycloid. Higher fills the shoulders and tightens the crown.\n\n" +
+        "Percent: how much of the curve is used, trimmed evenly from both ends.\n\n" +
+        "It does more work here than it does classically. In the classic model the channel is BUILT to meet whatever slope the arch arrives with. Here the channel is already cut, and its flank has a definite slope everywhere except at the very bottom — so how steeply the crown runs out decides WHERE ALONG THAT FLANK the two can meet. A gentle run-out has to find a gentle part of the channel, which is near its trough; a steep one meets it high up, close to the edge.\n\n" +
+        "Which way the percent moves that depends on the cycloid factor, because the two ends of the curve are not the same thing at both extremes. Below about 0.8 the ends are flat, so opening the window flattens the run-out and draws the contact inward. At 1 the ends are cusps — the steepest part of the whole curve — and opening it does the opposite. Watch the section rather than reasoning it out.\n\n" +
+        "It stops short of 100 because the very end of a flat-ended curve can only meet the channel at the bottom of the trough, where the tangency has nowhere left to slide.",
+        "Cycloid Crown", defaultTTL, true
+    )
+}
+
 export function gougedCrossTemplateInfo() {
     info(
         "The crown shape across the plate, both axes as percentages.\n\n" +
-        "Position runs from 0 at the crown to ±100 at the channel, as a percent of the local half-width; negative is the bass side. Height is a percent of the local arch height, so the crown is always 100.\n\n" +
+        "Position runs from 0 at the peak to ±100 where the crown runs into the channel; negative is the bass side. Height is a percent of the local arch height, so the peak is always 100.\n\n" +
         "Percentages rather than millimetres, because what carries from station to station is a SHAPE. Fixed distances make the crown a rigid object of one size, and the plate it sits on is not one size — carried onto a narrower station a fixed-width crown swells to fill it, and the section reads wrong even though every number is what you typed.\n\n" +
         "You do not set where the arch ends. The last stretch — the run out into the channel — is solved so the arch meets it tangentially, and the contact slides along the channel's inner flank to wherever that works out. This is why the channel keeps a crisp, constant outer edge while the recurve shoulder inside it varies, which is what one sees on real instruments.\n\n" +
         "Mirror: on repeats the knot on the other side. Turn it off to shape the bass and treble sides independently.",
@@ -331,5 +352,25 @@ export function gougedTransitionInfo() {
         "Given the crown template and the channel, tangency is one equation, so exactly one unknown is needed to satisfy it — the contact point. Solving for it is what keeps this model from asking you for more numbers than the classic one, despite describing a more physical process.\n\n" +
         "If a station reports that no solution exists, the arch and the channel genuinely cannot meet there: the arch is too high, or the channel too close, for any tangent run between them. Real makers resolve this by quietly cheating the arch. Lower the arch height, move the channel outward, or widen the gouge.",
         "Transition Zone", defaultTTL, true
+    )
+}
+
+/**
+ * Raised when a cross-arch station's crown cannot run tangentially into its
+ * channel.
+ *
+ * A popup rather than a line in the panel, because it is a property of the
+ * geometry rather than a state of the controls — the surface at that station
+ * carries a visible crease, and a maker reading the section deserves telling
+ * rather than being left to notice. Titled per plate so both can be reported at
+ * once; the panel decides when to raise it.
+ */
+export function gougedTransitionError(plate: 'top' | 'bottom', y: number) {
+    const label = plate === 'top' ? 'Top' : 'Back';
+    error(
+        `The ${label.toLowerCase()} plate's crown cannot meet its channel at station ${y.toFixed(0)} mm.\n\n` +
+        "The crown arrives steeper than the gouge's flank ever gets, so there is nowhere along that flank the two can run tangent. Tangency is one equation with one unknown — the contact point — and here it has no solution. The section is drawn with a visible crease rather than a fudged meeting, which is the honest picture of an arch that cannot reach its channel.\n\n" +
+        "Real makers resolve this by quietly cheating the arch. Lower the arch height, widen the gouge, or soften the crown's run-out.",
+        `${label} Plate Transition`
     )
 }

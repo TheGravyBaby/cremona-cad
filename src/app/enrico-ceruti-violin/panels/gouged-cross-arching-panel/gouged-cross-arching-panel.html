@@ -10,33 +10,6 @@
         </label>
         <button type="button" class="info-icon" (click)="crossSectionStationInfo()" title="More information">ⓘ</button>
     </div>
-    <div class="input-group basic-row field-row" role="group">
-        <span class="field-cell"><span class="field-title">Top</span></span>
-        <div class="toggle">
-            <input type="checkbox" [checked]="flags.topPlateView === 'contours'"
-                (change)="togglePlateView('top', 'contours')" />
-            <span>Contours</span>
-        </div>
-        <div class="toggle">
-            <input type="checkbox" [checked]="flags.topPlateView === 'wireframe'"
-                (change)="togglePlateView('top', 'wireframe')" />
-            <span>Wireframe</span>
-        </div>
-        <button type="button" class="info-icon" (click)="archContoursInfo()" title="More information">ⓘ</button>
-    </div>
-    <div class="input-group basic-row field-row" role="group">
-        <span class="field-cell"><span class="field-title">Back</span></span>
-        <div class="toggle">
-            <input type="checkbox" [checked]="flags.backPlateView === 'contours'"
-                (change)="togglePlateView('back', 'contours')" />
-            <span>Contours</span>
-        </div>
-        <div class="toggle">
-            <input type="checkbox" [checked]="flags.backPlateView === 'wireframe'"
-                (change)="togglePlateView('back', 'wireframe')" />
-            <span>Wireframe</span>
-        </div>
-    </div>
 </section>
 
 <section class="ui-group">
@@ -59,6 +32,40 @@
 
 <section class="ui-group" [style.border-color]="colors.archTop">
     <div class="ui-group-title">Top Plate</div>
+    <div class="input-group basic-row field-row" role="group">
+        <div class="toggle">
+            <input type="radio" name="top-gouged-cross-curve-type"
+                [checked]="cross('top').type === 'gouged-cycloid'"
+                (change)="setCurveType('top', 'gouged-cycloid')" />
+            <span>Cycloid</span>
+        </div>
+        <div class="toggle">
+            <input type="radio" name="top-gouged-cross-curve-type"
+                [checked]="cross('top').type === 'gouged'"
+                (change)="setCurveType('top', 'gouged')" />
+            <span>Spline</span>
+        </div>
+        <button type="button" class="info-icon" (click)="gougedCrossCurveTypeInfo()" title="More information">ⓘ</button>
+    </div>
+
+    @if (crossCycloid('top'); as shape) {
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Cycloid Factor</span>
+            <input class="basic-input" type="number" step="0.05" min="0" max="1" [ngModel]="shape.d"
+                (ngModelChange)="setCycloidD('top', $event)" [style.border-color]="colors.archTop" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Percent <span class="unit-label">%</span></span>
+            <input class="basic-input" type="number" step="5" min="5" max="98" [ngModel]="cycloidPct('top')"
+                (ngModelChange)="setCycloidPct('top', $event)" [style.border-color]="colors.archTop" />
+        </label>
+        <button type="button" class="info-icon" (click)="gougedCrossCycloidControlsInfo()"
+            title="More information">ⓘ</button>
+    </div>
+    }
+
+    @if (crossSpline('top'); as spline) {
     <div class="spline-points">
         <div class="input-group basic-row spline-row spline-row--header">
             <span class="field-cell">Position <span class="unit-label">%</span></span>
@@ -66,13 +73,13 @@
             <span class="field-cell">Height <span class="unit-label">%</span></span>
             <button type="button" class="info-icon" (click)="gougedCrossTemplateInfo()" title="More information">ⓘ</button>
         </div>
-        @for (pt of cross('top').points; track $index) {
+        @for (pt of spline.points; track $index) {
         <div class="input-group basic-row field-row spline-row" role="group">
             <div class="field-cell">
                 <input class="basic-input" type="number" step="1" min="-99" max="99"
                     [ngModel]="pointXPct(pt)" (ngModelChange)="setPointXPct('top', pt, $event)"
                     (focus)="onPointFocus('top', $index)" (blur)="onPointBlur()"
-                    title="Across the plate as a percent of the local half-width — 0 is the crown, ±100 the channel. Negative is bass side." />
+                    title="Across the plate as a percent of the crown — 0 is the peak, ±100 where it runs into the channel. Negative is bass side." />
             </div>
             <span class="field-separator" aria-hidden="true"></span>
             <div class="field-cell">
@@ -92,18 +99,59 @@
     <div class="input-group basic-row field-row" role="group">
         <button class="panel-nav-btn" (click)="addPoint('top')">+ Add Point</button>
     </div>
-    @if (sectionFor('top'); as s) {
-    @if (!s.left || !s.right) {
+    }
     <div class="input-group basic-row field-row" role="group">
-        <span class="field-cell">Arch cannot meet the channel here — lower the arch, or widen the gouge.</span>
-        <button type="button" class="info-icon" (click)="gougedTransitionInfo()" title="More information">ⓘ</button>
+        <div class="toggle">
+            <input type="checkbox" [checked]="flags.topPlateView === 'contours'"
+                (change)="togglePlateView('top', 'contours')" />
+            <span>Contours</span>
+        </div>
+        <div class="toggle">
+            <input type="checkbox" [checked]="flags.topPlateView === 'wireframe'"
+                (change)="togglePlateView('top', 'wireframe')" />
+            <span>Wireframe</span>
+        </div>
+        <button type="button" class="info-icon" (click)="archContoursInfo()" title="More information">ⓘ</button>
     </div>
-    }
-    }
+
 </section>
 
 <section class="ui-group" [style.border-color]="colors.archBack">
     <div class="ui-group-title">Back Plate</div>
+    <div class="input-group basic-row field-row" role="group">
+        <div class="toggle">
+            <input type="radio" name="back-gouged-cross-curve-type"
+                [checked]="cross('bottom').type === 'gouged-cycloid'"
+                (change)="setCurveType('bottom', 'gouged-cycloid')" />
+            <span>Cycloid</span>
+        </div>
+        <div class="toggle">
+            <input type="radio" name="back-gouged-cross-curve-type"
+                [checked]="cross('bottom').type === 'gouged'"
+                (change)="setCurveType('bottom', 'gouged')" />
+            <span>Spline</span>
+        </div>
+        <button type="button" class="info-icon" (click)="gougedCrossCurveTypeInfo()" title="More information">ⓘ</button>
+    </div>
+
+    @if (crossCycloid('bottom'); as shape) {
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Cycloid Factor</span>
+            <input class="basic-input" type="number" step="0.05" min="0" max="1" [ngModel]="shape.d"
+                (ngModelChange)="setCycloidD('bottom', $event)" [style.border-color]="colors.archBack" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Percent <span class="unit-label">%</span></span>
+            <input class="basic-input" type="number" step="5" min="5" max="98" [ngModel]="cycloidPct('bottom')"
+                (ngModelChange)="setCycloidPct('bottom', $event)" [style.border-color]="colors.archBack" />
+        </label>
+        <button type="button" class="info-icon" (click)="gougedCrossCycloidControlsInfo()"
+            title="More information">ⓘ</button>
+    </div>
+    }
+
+    @if (crossSpline('bottom'); as spline) {
     <div class="spline-points">
         <div class="input-group basic-row spline-row spline-row--header">
             <span class="field-cell">Position <span class="unit-label">%</span></span>
@@ -111,13 +159,13 @@
             <span class="field-cell">Height <span class="unit-label">%</span></span>
             <button type="button" class="info-icon" (click)="gougedCrossTemplateInfo()" title="More information">ⓘ</button>
         </div>
-        @for (pt of cross('bottom').points; track $index) {
+        @for (pt of spline.points; track $index) {
         <div class="input-group basic-row field-row spline-row" role="group">
             <div class="field-cell">
                 <input class="basic-input" type="number" step="1" min="-99" max="99"
                     [ngModel]="pointXPct(pt)" (ngModelChange)="setPointXPct('bottom', pt, $event)"
                     (focus)="onPointFocus('bottom', $index)" (blur)="onPointBlur()"
-                    title="Across the plate as a percent of the local half-width — 0 is the crown, ±100 the channel. Negative is bass side." />
+                    title="Across the plate as a percent of the crown — 0 is the peak, ±100 where it runs into the channel. Negative is bass side." />
             </div>
             <span class="field-separator" aria-hidden="true"></span>
             <div class="field-cell">
@@ -137,14 +185,21 @@
     <div class="input-group basic-row field-row" role="group">
         <button class="panel-nav-btn" (click)="addPoint('bottom')">+ Add Point</button>
     </div>
-    @if (sectionFor('bottom'); as s) {
-    @if (!s.left || !s.right) {
+    }
     <div class="input-group basic-row field-row" role="group">
-        <span class="field-cell">Arch cannot meet the channel here — lower the arch, or widen the gouge.</span>
-        <button type="button" class="info-icon" (click)="gougedTransitionInfo()" title="More information">ⓘ</button>
+        <div class="toggle">
+            <input type="checkbox" [checked]="flags.backPlateView === 'contours'"
+                (change)="togglePlateView('back', 'contours')" />
+            <span>Contours</span>
+        </div>
+        <div class="toggle">
+            <input type="checkbox" [checked]="flags.backPlateView === 'wireframe'"
+                (change)="togglePlateView('back', 'wireframe')" />
+            <span>Wireframe</span>
+        </div>
+        <button type="button" class="info-icon" (click)="archContoursInfo()" title="More information">ⓘ</button>
     </div>
-    }
-    }
+
 </section>
 
 }

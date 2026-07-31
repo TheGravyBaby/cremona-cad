@@ -939,8 +939,12 @@ export function buildCatenaryPath(
  * leave the baseline tangent (flat takeoff). Smaller pct clips the flat cusp
  * ends for a nonzero takeoff slope, so a fluting channel can meet the arch at
  * more than a grazing angle. The peak stays centred at frac=0.5.
+ *
+ * `frac` is linear in the generating parameter t, not in x — so stepping it
+ * uniformly clusters points where the curve bends hardest (near the cusps),
+ * which is what a sampler wants and a uniform-in-x walk would miss.
  */
-function trochoidNorm(frac: number, d: number, pct: number): { x: number; z: number } {
+export function trochoidNorm(frac: number, d: number, pct: number): { x: number; z: number } {
   const t0 = (1 - pct) * Math.PI;
   const t1 = 2 * Math.PI - t0;
   const t = t0 + frac * (t1 - t0);
