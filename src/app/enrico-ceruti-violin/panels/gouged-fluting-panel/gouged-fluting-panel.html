@@ -1,0 +1,132 @@
+@if (params.arching) {
+
+<section class="ui-group">
+    <div class="ui-group-title">Channel</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Land Edge <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.5" min="0"
+                [ngModel]="params.outerFlutingDepth" (ngModelChange)="setLandEdge($event)"
+                [style.border-color]="colors.innerTrace"
+                title="Where the flat land ends and the channel begins — shared by both plates, since it belongs to the outline and the purfling" />
+        </label>
+        <button type="button" class="info-icon" (click)="gougeCenterlineInfo()" title="More information">ⓘ</button>
+    </div>
+</section>
+
+<section class="ui-group" [style.border-color]="colors.archTop">
+    <div class="ui-group-title">Top Plate</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Sweep <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.5" min="0.1"
+                [ngModel]="gouge('top').sweepRadius" (ngModelChange)="setSweepRadius('top', $event)"
+                title="Sweep radius of the gouge" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">C-Bout <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.5" min="0.1" placeholder="—"
+                [ngModel]="gouge('top').sweepRadius_cBout" (ngModelChange)="setSweepRadiusCBout('top', $event)"
+                title="A second, usually narrower gouge for the waist — same edge, same depth, so only the inner edge moves. Blank uses the main sweep." />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Depth <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.1" min="0"
+                [ngModel]="gouge('top').depth" (ngModelChange)="setDepth('top', $event)"
+                [style.border-color]="colors.fluting"
+                title="Depth at the trough — held below the sweep radius" />
+        </label>
+        <button type="button" class="info-icon" (click)="gougeSectionInfo()" title="More information">ⓘ</button>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <span class="field-cell">
+            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            {{ channelWidth('top') | number:'1.2-2' }}@if (hasCBoutGouge('top')) { · C {{ channelWidthCBout('top') | number:'1.2-2' }} }
+        </span>
+        <span class="field-cell">
+            <span class="field-title">Inner Edge <span class="unit-label">mm</span></span>
+            {{ innerEdgeOffset('top') | number:'1.2-2' }}@if (hasCBoutGouge('top')) { · C {{ innerEdgeOffsetCBout('top') | number:'1.2-2' }} }
+        </span>
+    </div>
+</section>
+
+<section class="ui-group" [style.border-color]="colors.archBack">
+    <div class="ui-group-title">Back Plate</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Sweep <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.5" min="0.1"
+                [ngModel]="gouge('bottom').sweepRadius" (ngModelChange)="setSweepRadius('bottom', $event)"
+                title="Sweep radius of the gouge" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">C-Bout <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.5" min="0.1" placeholder="—"
+                [ngModel]="gouge('bottom').sweepRadius_cBout" (ngModelChange)="setSweepRadiusCBout('bottom', $event)"
+                title="A second, usually narrower gouge for the waist — same edge, same depth, so only the inner edge moves. Blank uses the main sweep." />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Depth <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.1" min="0"
+                [ngModel]="gouge('bottom').depth" (ngModelChange)="setDepth('bottom', $event)"
+                [style.border-color]="colors.fluting"
+                title="Depth at the trough — held below the sweep radius" />
+        </label>
+        <button type="button" class="info-icon" (click)="gougeSectionInfo()" title="More information">ⓘ</button>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <span class="field-cell">
+            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            {{ channelWidth('bottom') | number:'1.2-2' }}@if (hasCBoutGouge('bottom')) { · C {{ channelWidthCBout('bottom') | number:'1.2-2' }} }
+        </span>
+        <span class="field-cell">
+            <span class="field-title">Inner Edge <span class="unit-label">mm</span></span>
+            {{ innerEdgeOffset('bottom') | number:'1.2-2' }}@if (hasCBoutGouge('bottom')) { · C {{ innerEdgeOffsetCBout('bottom') | number:'1.2-2' }} }
+        </span>
+    </div>
+</section>
+
+<section class="ui-group">
+    <div class="ui-group-title">Classic Channel Diagnostic</div>
+    <div class="input-group basic-row field-row" role="group">
+        <div class="toggle" title="Plot what the classic model's channel actually does around the plate">
+            <input type="checkbox" [(ngModel)]="showDiagnostic" (change)="onToggle()" />
+            <span>Show</span>
+        </div>
+        @if (showDiagnostic) {
+        <div class="toggle">
+            <input type="radio" name="diagnostic-plate" [checked]="diagnosticPlate === 'top'"
+                (change)="diagnosticPlate = 'top'; onToggle()" />
+            <span>Top</span>
+        </div>
+        <div class="toggle">
+            <input type="radio" name="diagnostic-plate" [checked]="diagnosticPlate === 'bottom'"
+                (change)="diagnosticPlate = 'bottom'; onToggle()" />
+            <span>Back</span>
+        </div>
+        }
+        <button type="button" class="info-icon" (click)="classicChannelDiagnosticInfo()" title="More information">ⓘ</button>
+    </div>
+    @if (showDiagnostic) {
+    @if (diagnosticWidth) {
+    <div class="input-group basic-row field-row" role="group">
+        <span class="field-cell">
+            <span class="field-title">Annulus <span class="unit-label">mm</span></span>
+            {{ diagnosticWidth.min | number:'1.2-2' }} – {{ diagnosticWidth.max | number:'1.2-2' }}
+        </span>
+        <span class="field-cell">×{{ diagnosticWidth.ratio | number:'1.2-2' }}</span>
+    </div>
+    }
+    @if (diagnosticRadius) {
+    <div class="input-group basic-row field-row" role="group">
+        <span class="field-cell">
+            <span class="field-title">Forced Sweep <span class="unit-label">mm</span></span>
+            {{ diagnosticRadius.min | number:'1.2-2' }} – {{ diagnosticRadius.max | number:'1.2-2' }}
+        </span>
+        <span class="field-cell">×{{ diagnosticRadius.ratio | number:'1.2-2' }}</span>
+    </div>
+    }
+    }
+</section>
+
+}

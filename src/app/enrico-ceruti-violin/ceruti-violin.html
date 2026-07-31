@@ -117,6 +117,24 @@
         </app-ceruti-cross-arching-panel>
         }
 
+        @if (openPanel === 'gougedFluting') {
+        <app-ceruti-gouged-fluting-panel #panelRef
+            [params]="d.params"
+            [colors]="colors"
+            [flags]="viewFlags"
+            (panelUpdate)="onPanelRenderRequest($event)">
+        </app-ceruti-gouged-fluting-panel>
+        }
+
+        @if (openPanel === 'gougedLongArching') {
+        <app-ceruti-gouged-long-arching-panel #panelRef
+            [params]="d.params"
+            [colors]="colors"
+            [flags]="viewFlags"
+            (panelUpdate)="onPanelRenderRequest($event)">
+        </app-ceruti-gouged-long-arching-panel>
+        }
+
         @if (openPanel === 'export') {
         <app-ceruti-export-panel
             [params]="d.params"

@@ -230,7 +230,7 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
  * editing?", which is most useful precisely when the crosshairs are off.
  * A mirrored point halos both of its knots, since they share a source.
  */
-function renderSplineHighlight(
+export function renderSplineHighlight(
   arch: ArchCurve,
   span: number,
   yStart: number,
@@ -247,7 +247,7 @@ function renderSplineHighlight(
   };
 }
 
-function renderSplineGuide(
+export function renderSplineGuide(
   arch: ArchCurve,
   span: number,
   yStart: number,
@@ -272,7 +272,7 @@ function renderSplineGuide(
  * get — a spline's height varies knot to knot, so one label at mid-span would
  * only ever describe the peak.
  */
-function renderSplineMeasures(
+export function renderSplineMeasures(
   arch: ArchCurve,
   span: number,
   yStart: number,
