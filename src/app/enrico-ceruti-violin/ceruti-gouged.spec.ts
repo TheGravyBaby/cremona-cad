@@ -1,5 +1,5 @@
 import {
-  gougeHalfWidth, gougeProfileSlope, gougeProfileZ, gougedCrossGuide, gougedCrossKnots,
+  cornerGougeZ, gougeHalfWidth, gougeProfileSlope, gougeProfileZ, gougedCrossGuide, gougedCrossKnots,
   chordTrust, crownOffsetTrust, GougedCrossSection, gougedCrossKnotX, makeGougedCrossResolver,
   nearestGougedCrossShape,
   solveGougedCrossSection,
@@ -111,6 +111,32 @@ describe('solveGougedTakeoff', () => {
     expect(t).not.toBeNull();
     const arrived = 0.15 + 0.3 * t!.takeoffDepth - 0.05 * t!.contactS;
     expect(gougeProfileSlope(t!.contactS, R, D)).toBeCloseTo(arrived, 5);
+  });
+});
+
+describe('cornerGougeZ', () => {
+  const R = 14, D = 1.2;
+  const w = gougeHalfWidth(R, D);
+
+  it('is the same cut, re-anchored so its outer edge sits on the boundary', () => {
+    // The corner pass differs from the channel in one thing only: what it is
+    // measured from. Same tool, same depth, same arc — the outer flank starts
+    // where the land ends instead of a half-width further in.
+    expect(cornerGougeZ(0, R, D)).toBeCloseTo(0, 12);
+    expect(cornerGougeZ(w, R, D)).toBeCloseTo(-D, 12);
+    expect(cornerGougeZ(2 * w, R, D)).toBeCloseTo(0, 12);
+    for (const d of [0.4, 1.3, 2.7, 4.1]) {
+      expect(cornerGougeZ(d, R, D)).toBeCloseTo(gougeProfileZ(d - w, R, D), 12);
+    }
+  });
+
+  it('is inert past its own reach, so composing it by minimum cannot bite there', () => {
+    // What lets the caller take an unconditional minimum instead of masking the
+    // band by hand: outside the cut it returns plate level, and the channel it
+    // is composed against is never above plate level.
+    for (const d of [-3, -0.01, 2 * w + 0.01, 2 * w + 5]) {
+      expect(cornerGougeZ(d, R, D)).toBe(0);
+    }
   });
 });
 

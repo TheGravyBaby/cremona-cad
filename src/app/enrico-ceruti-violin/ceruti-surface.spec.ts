@@ -387,7 +387,13 @@ describe('gouged surface model', () => {
     // Measured perpendicular to the centerline, not along the station chord —
     // the surface is defined by true distance to the loop, and the two only
     // agree where the centerline happens to run square to the station line.
+    //
+    // Corner pass off, because at a corner the land outboard of the channel is
+    // exactly what it carves: the channel bypasses the point, the platform
+    // boundary follows it, and the wedge between them is the corner pass's whole
+    // job. This is about the reach of the channel's own cut, which is unchanged.
     const p = gougedParams();
+    for (const side of ['top', 'bottom'] as const) p.arching![side].gougedFluting!.cornerGouge = false;
     const model = buildGougedPlateSurfaceModel(p, 'top')!;
     const poly = model.gouged!.centerPoly;
     const w = gougeHalfWidth(model.gouged!.gouge.sweepRadius, model.gouged!.gouge.depth);
@@ -409,6 +415,142 @@ describe('gouged surface model', () => {
       expect(z).toBeCloseTo(0, 6);
     }
     expect(checked).toBeGreaterThan(8);
+  });
+
+  describe('corner gouge', () => {
+    /**
+     * The plate swept twice, corner pass on and off, reduced to what the three
+     * tests below need. Memoized: it is the slow part, and all three want the
+     * same numbers.
+     *
+     * Two independently built parameter sets, because the geometry holds a
+     * *reference* to the gouge params — flipping the flag on one shared object
+     * would move both surfaces and every assertion here would pass vacuously.
+     */
+    let cache: {
+      rows: { y: number; max: number }[];
+      added: number;
+      maxZWhereChanged: number;
+    } | null = null;
+
+    function sweep() {
+      if (cache) return cache;
+      const pOff = gougedParams();
+      for (const side of ['top', 'bottom'] as const) pOff.arching![side].gougedFluting!.cornerGouge = false;
+      const off = buildGougedPlateSurfaceModel(pOff, 'top')!;
+      const pOn = gougedParams();
+      const on = buildGougedPlateSurfaceModel(pOn, 'top')!;
+
+      const rows: { y: number; max: number }[] = [];
+      let added = 0;
+      let maxZWhereChanged = -Infinity;
+      for (let y = 4; y < pOn.height - 4; y += 2) {
+        const cOff = stationChordsAt(pOff, off, y);
+        const cOn = stationChordsAt(pOn, on, y);
+        let max = 0;
+        for (let x = -120; x <= 120; x += 0.5) {
+          const a = topSurfaceZAt(pOff, off, x, y, cOff);
+          const b = topSurfaceZAt(pOn, on, x, y, cOn);
+          if (a === null || b === null) continue;
+          if (b > a + 1e-9) added++;
+          if (Math.abs(b - a) > 1e-6) maxZWhereChanged = Math.max(maxZWhereChanged, a);
+          max = Math.max(max, Math.abs(b - a));
+        }
+        rows.push({ y, max });
+      }
+      return (cache = { rows, added, maxZWhereChanged });
+    }
+
+    /** Even-odd crossing test, matching how the height field classifies land against channel. */
+    function insideLandCrossings(x: number, xs: number[]): boolean {
+      let count = 0;
+      for (const c of xs) if (c > x) count++;
+      return count % 2 === 1;
+    }
+
+    /** How far a station sits from the nearer corner, which is where the pass is expected to bite. */
+    function fromCorner(p: EnricoCerutiParams, y: number): number {
+      const ys = [p.bouts.UCr!.y, p.bouts.LCr!.y];
+      return Math.min(...ys.map(c => Math.abs(y - c)));
+    }
+
+    it('only ever removes wood, and never above the plate surface', () => {
+      // Both halves of the claim that lets this run after the channel is
+      // settled. A second pass of a gouge can deepen and nothing else, so the
+      // composition is a minimum; and it is called only from the channel-side
+      // returns, so nothing standing proud of the plate — the whole arch — is
+      // reachable by it. The takeoff and every station's section are decided
+      // before this runs and cannot be moved by it.
+      const { added, maxZWhereChanged } = sweep();
+      expect(added).toBe(0);
+      expect(maxZWhereChanged).toBeLessThanOrEqual(0);
+    });
+
+    it('changes nothing along the flanks, where the two loops are the same curve', () => {
+      // The reason the pass needs no blend band and no weight. Away from the
+      // corners the platform boundary and the channel's outer loop coincide, so
+      // the second cut finds exactly what the first one left and the minimum is
+      // inert. The residual is polyline sampling — both loops are sampled at
+      // roughly 1 mm and a chord sits inside its arc — not geometry.
+      const p = gougedParams();
+      const flanks = sweep().rows.filter(r => fromCorner(p, r.y) > 30);
+      expect(flanks.length).toBeGreaterThan(100);
+      expect(Math.max(...flanks.map(r => r.max))).toBeLessThan(0.01);
+    });
+
+    it('leaves no ridge of untouched wood between the two runs', () => {
+      // The defect this replaced. One pass anchored on the boundary and one on
+      // the channel, with the corner wedge wider than the two of them, left a
+      // ridge standing in between — merged near the point, opening to about 5 mm
+      // of full-height plate further back, which is what a maker would look at
+      // and reach for the gouge again.
+      //
+      // Measured as a flat *patch* rather than a flat sample: the arch crosses
+      // plate level on its way down to the channel, so isolated samples at zero
+      // are expected on every station and mean nothing. A ridge is wide.
+      const widestFlatPatch = (cornerGouge: boolean): number => {
+        const p = gougedParams();
+        for (const side of ['top', 'bottom'] as const) p.arching![side].gougedFluting!.cornerGouge = cornerGouge;
+        const model = buildGougedPlateSurfaceModel(p, 'top')!;
+        const depth = p.arching!.top.gougedFluting!.depth;
+        const step = 0.25;
+        let widest = 0;
+        for (const corner of [p.bouts.UCr!.y, p.bouts.LCr!.y]) {
+          for (let y = corner - 24; y <= corner + 24; y += 1) {
+            const chords = stationChordsAt(p, model, y);
+            let run = 0;
+            for (let x = 1; x <= 120; x += step) {
+              // Inside the platform boundary and clear of its walls, where the
+              // gouge's own flank is legitimately close to plate level.
+              const clear = insideLandCrossings(x, chords.landCrossings)
+                && Math.min(...chords.landCrossings.map(c => Math.abs(c - x))) > 1.5;
+              const z = clear ? topSurfaceZAt(p, model, x, y, chords) : null;
+              // Above plate level is the arch, which is not this pass's business.
+              run = z !== null && z <= 0.02 && z > -0.05 * depth ? run + step : 0;
+              widest = Math.max(widest, run);
+            }
+          }
+        }
+        return widest;
+      };
+
+      // Off, the wedge is simply left: several millimetres of flat plate between
+      // the channel and the land. On, nothing survives but the zero crossing.
+      expect(widestFlatPatch(false)).toBeGreaterThan(3);
+      expect(widestFlatPatch(true)).toBeLessThan(1.5);
+    });
+
+    it('carves the corner wedge to the full depth of the gouge', () => {
+      // The corner is where the channel bypasses and the platform boundary
+      // follows, so the wedge between them is untouched wood under the channel
+      // pass alone. Cut to depth here, which is what a maker takes it to.
+      const p = gougedParams();
+      const depth = p.arching!.top.gougedFluting!.depth;
+      for (const corner of [p.bouts.UCr!.y, p.bouts.LCr!.y]) {
+        const band = sweep().rows.filter(r => Math.abs(r.y - corner) <= 12);
+        expect(Math.max(...band.map(r => r.max))).toBeGreaterThan(0.9 * depth);
+      }
+    });
   });
 
   it('runs continuously along the body through the cap recurve bands', () => {
