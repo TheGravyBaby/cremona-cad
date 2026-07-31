@@ -2,9 +2,12 @@ import { Pt } from '../models/types';
 import {
   buildPolylineIndex, clamp, closestPointToPolylineIndexed, makeMonotoneSpline, PolylineIndex,
 } from '../helpers/draftMath';
-import { catenaryZAt, cycloidZAt, flutingArc, samplePathToPolyline, splineZAt } from '../helpers/svgPathMath';
 import {
-  ArchCurve, EnricoCerutiParams, GougedCrossParams, GougedCrossShape, GougedFlutingParams,
+  catenaryZAt, cycloidZAt, flutingArc, samplePathToPolyline, splineZAt,
+} from '../helpers/svgPathMath';
+import {
+  ArchCurve, EnricoCerutiParams, GougedCrossCycloidParams, GougedCrossCycloidShape, GougedCrossParams,
+  GougedCrossShape, GougedCrossSplineParams, GougedFlutingParams,
 } from './ceruti-types';
 import { defineFlutingPath, defineInsetPath } from './ceruti-paths';
 import { archFromLoweredTakeoff, crossArchEdgeSlopeAt, normalizeCrossArchStations } from './ceruti-arching';
@@ -99,9 +102,28 @@ export function effectiveCBoutSweep(g: GougedFlutingParams): number {
   return c !== null && gougeHalfWidth(c, g.depth) > 0 ? c : g.sweepRadius;
 }
 
-/** A default crown shape: a full centre falling away to a flattish shoulder, both axes fractional. */
-export function defaultGougedCrossParams(): GougedCrossParams {
-  return { type: 'gouged', points: [{ x: 0.45, z: 0.62, mirror: true }, { x: 0.75, z: 0.26, mirror: true }] };
+/**
+ * A default crown shape: one mirrored knot, three quarters of the way out at
+ * under a third of the height.
+ *
+ * Deliberately a single point. The crown is anchored at both ends already — the
+ * peak at the centerline and the solved takeoff at the channel — so one knot is
+ * all it takes to describe a curve, and it is the shortest route to seeing what
+ * the knot does. Points are cheap to add; a default that arrives pre-shaped
+ * mostly gives the maker someone else's arch to argue with.
+ */
+export function defaultGougedCrossParams(): GougedCrossSplineParams {
+  return { type: 'gouged', points: [{ x: 0.7, z: 0.4, mirror: true }] };
+}
+
+/**
+ * A default trochoid crown: the same `d`/`pct` {@link defaultCrossArchParams}
+ * gives the classic model, so switching a plate to this curve type is a
+ * like-for-like comparison of the two channel models rather than a change of
+ * crown family at the same time.
+ */
+export function defaultGougedCrossCycloidParams(): GougedCrossCycloidParams {
+  return { type: 'gouged-cycloid', d: 0.4, pct: 0.9 };
 }
 
 /**
@@ -447,6 +469,27 @@ export function gougedChannelCapPath(
 
 // ===== The cross-arch template =====
 
+/**
+ * How many knots a trochoid crown is sampled into, evenly across the crown's
+ * span. Enough that re-splining them reproduces the curve closely, and small
+ * enough that the transition solve — which rebuilds this spline at every
+ * bisection step — stays cheap.
+ *
+ * Evenly, and *stopping short of the channel*, both matter. The takeoff can
+ * only ever land within a gouge half-width of the centerline, which on a real
+ * plate is the outermost couple of percent of the half-width. Bunching knots
+ * there — which sampling by the trochoid's own parameter does, since that is
+ * where it bends hardest — drops them into the one region the solve moves
+ * through. Each knot the takeoff passes leaves the spline, so the arrival slope
+ * steps rather than varies, and the bisection is left hunting a root on a
+ * staircase: it finds one on either side of a step and misses the middle.
+ *
+ * The last sampled knot therefore sits at N/(N+1) of the way out, leaving the
+ * final stretch unauthored — which is what this model says it is anyway.
+ */
+const CYCLOID_CROWN_KNOTS = 24;
+
+
 /** One authored knot of a crown shape, both coordinates as fractions. */
 export interface GougedCrossKnot {
   /** Distance from the centerline as a fraction of the local half-width — positive; sides are resolved first. */
@@ -464,6 +507,9 @@ export interface GougedCrossKnot {
  * rigid object, and a plate that narrows toward the ends would wear it badly.
  */
 export function gougedCrossKnots(shape: GougedCrossShape, side: 1 | -1): GougedCrossKnot[] {
+  // A trochoid is symmetric about the crown, so `side` has nothing to select.
+  if (shape.type === 'gouged-cycloid') return cycloidCrownKnots(shape);
+
   const out: GougedCrossKnot[] = [];
   for (const pt of shape.points) {
     const onThisSide = Math.sign(pt.x) === side;
@@ -476,6 +522,41 @@ export function gougedCrossKnots(shape: GougedCrossShape, side: 1 | -1): GougedC
   // Two knots at the same position describe one place on the shape; the first
   // wins, matching how archSplineKnots collapses colliding knots.
   return out.filter((k, i) => i === 0 || k.x - out[i - 1].x > 1e-6);
+}
+
+/**
+ * Half a trochoid, sampled into the same fractional knots an authored template
+ * carries — crown outward to the channel centerline.
+ *
+ * Sampling rather than evaluating is deliberate, and it is what makes this a
+ * small change instead of a second code path. Everything downstream of the
+ * knots — the station ramp, the full-width spline, the tangency solve, the
+ * surface — already works in terms of a knot list and needs no notion of which
+ * curve family produced it. A shape can even ramp from a trochoid station to an
+ * authored one, because the resolver interpolates positions, not parameters.
+ *
+ * The price is that the curve the surface actually carries is a monotone cubic
+ * *through* the trochoid rather than the trochoid itself. At this knot count
+ * the two are indistinguishable next to the wood, and the reconstruction is
+ * strictly better behaved: the spline cannot overshoot, whereas a true d=1 cusp
+ * has an infinite edge slope for the solve to run into.
+ *
+ * Positions are walked evenly and stop short of the channel — see
+ * {@link CYCLOID_CROWN_KNOTS} for why that is a correctness matter and not a
+ * question of sampling taste.
+ */
+function cycloidCrownKnots(shape: GougedCrossCycloidShape): GougedCrossKnot[] {
+  const d = clamp(shape.d, 0, 1);
+  const pct = clamp(shape.pct, 0.05, 1);
+  const n = CYCLOID_CROWN_KNOTS;
+  const out: GougedCrossKnot[] = [];
+  for (let i = 1; i <= n; i++) {
+    // Crown fraction (0 = crown, 1 = channel centerline) back onto the
+    // trochoid's own span, where 0.5 is the peak and 0 the outer end.
+    const x = i / (n + 1);
+    out.push({ x, z: clamp(cycloidZAt(1, 1, d, 0.5 * (1 - x), pct), 0, 1) });
+  }
+  return out;
 }
 
 /**
@@ -582,32 +663,50 @@ interface SideEnd { xEnd: number; zEnd: number; }
  * there is no blend.
  */
 function crossProfile(
-  archH: number, centerHalf: number,
+  archH: number,
   left: GougedCrossKnot[], right: GougedCrossKnot[], endL: SideEnd, endR: SideEnd,
 ): (x: number) => number {
-  // Fractions become millimetres here and nowhere else. Position scales with
-  // the station's half-width; height is measured *up from that side's takeoff*
-  // toward the crown, not up from the plate surface — the classic model's own
+  // Fractions become millimetres here and nowhere else, and *both* axes are
+  // measured against that side's own takeoff: position from the crown out to
+  // it, height up from it toward the crown. The latter is the classic model's
   // `hEff = archH + edgeDepth` convention.
   //
-  // Measuring from the takeoff is what lets the recurve bands near the body
-  // caps work at all. There the crown sits below plate level, so `archH` is
-  // negative, and scaling a knot as `z × archH` would lift it *above* the
+  // Measuring height from the takeoff is what lets the recurve bands near the
+  // body caps work at all. There the crown sits below plate level, so `archH`
+  // is negative, and scaling a knot as `z × archH` would lift it *above* the
   // crown and invert the section. Measured from the takeoff the shape stays
   // right whichever side of plate level the crown is on.
+  //
+  // Measuring position from the takeoff — rather than from the channel
+  // centerline, with knots outside the takeoff discarded — is what makes the
+  // tangency solvable. Discarding is a step change: the solve moves the takeoff
+  // inward looking for its root, and each knot it passes leaves the spline, so
+  // the slope it arrives with jumps rather than varies. Bisection on a staircase
+  // does not find roots, it finds risers — it converges neatly onto the drop
+  // point and reports a tangency that isn't one. Stretching the shape instead
+  // means no knot ever crosses the takeoff, the arrival slope moves smoothly,
+  // and the root is a root. It is also the more honest reading of a fractional
+  // template: the shape spans the part of the plate the maker actually carves,
+  // which ends where the channel begins.
   const heightAt = (z: number, end: SideEnd) => end.zEnd + z * (archH - end.zEnd);
+  const place = (knots: GougedCrossKnot[], end: SideEnd) => knots
+    .map(k => ({ x: k.x * end.xEnd, z: heightAt(k.z, end) }))
+    .filter(k => k.x > 1e-6 && k.x < end.xEnd - 1e-6);
+
+  const keptL = place(left, endL);
+  const keptR = place(right, endR);
 
   const xs: number[] = [-endL.xEnd];
   const zs: number[] = [endL.zEnd];
-  for (let i = left.length - 1; i >= 0; i--) {
-    const x = left[i].x * centerHalf;
-    if (x > 1e-6 && x < endL.xEnd - 1e-6) { xs.push(-x); zs.push(heightAt(left[i].z, endL)); }
+  for (let i = keptL.length - 1; i >= 0; i--) {
+    xs.push(-keptL[i].x);
+    zs.push(keptL[i].z);
   }
   xs.push(0);
   zs.push(archH);
-  for (const k of right) {
-    const x = k.x * centerHalf;
-    if (x > 1e-6 && x < endR.xEnd - 1e-6) { xs.push(x); zs.push(heightAt(k.z, endR)); }
+  for (const k of keptR) {
+    xs.push(k.x);
+    zs.push(k.z);
   }
   xs.push(endR.xEnd);
   zs.push(endR.zEnd);
@@ -620,6 +719,10 @@ export interface GougedCrossSection {
   centerHalf: number;
   halfWidth: number;
   sweepRadius: number;
+  /** Crown height above the plate outer surface — negative in the recurve bands near the caps. */
+  archH: number;
+  /** The crown shape resolved to this station, as the solve saw it. */
+  row: GougedCrossRow;
   left: GougedTakeoff | null;
   right: GougedTakeoff | null;
   /** |x| where the arch hands over to the channel on each side — where one is drawn in place of the other. */
@@ -669,8 +772,8 @@ export function solveGougedCrossSection(
       const mine: SideEnd = { xEnd: centerHalf - contactS, zEnd: -takeoffDepth };
       if (mine.xEnd <= 1e-3) return 0;
       const f = side === 1
-        ? crossProfile(archH, centerHalf, row.left, row.right, endL, mine)
-        : crossProfile(archH, centerHalf, row.left, row.right, mine, endR);
+        ? crossProfile(archH, row.left, row.right, endL, mine)
+        : crossProfile(archH, row.left, row.right, mine, endR);
       const eps = Math.max(mine.xEnd * 1e-4, 1e-6);
       // Measured inward, matching the channel's own slope convention: `s` grows
       // toward the centerline, so a rising arch reads positive on both.
@@ -691,7 +794,7 @@ export function solveGougedCrossSection(
     if (takeL) endL = endAt(takeL.contactS);
   }
 
-  const profile = crossProfile(archH, centerHalf, row.left, row.right, endL, endR);
+  const profile = crossProfile(archH, row.left, row.right, endL, endR);
   const zAt = (x: number): number => {
     if (x >= -endL.xEnd && x <= endR.xEnd) return profile(x);
     // Past the arch's reach the channel is the surface, and past that the flat
@@ -701,11 +804,74 @@ export function solveGougedCrossSection(
   };
 
   return {
-    centerHalf, halfWidth, sweepRadius,
+    centerHalf, halfWidth, sweepRadius, archH, row,
     left: takeL, right: takeR,
     xEndLeft: endL.xEnd, xEndRight: endR.xEnd,
     zAt,
   };
+}
+
+/** One crosshair of a crown guide — where an authored knot landed at this station. */
+export interface GougedCrossGuideKnot {
+  x: number;
+  /** Height above the plate outer surface. */
+  z: number;
+  /** This side's takeoff level: the zero the knot's height percentage counts up from. */
+  base: number;
+}
+
+/** A trochoid crown's generating circle on one side, centered on the centerline. */
+export interface GougedCrossGuideCircle {
+  centerZ: number;
+  radius: number;
+}
+
+/**
+ * The module-guide geometry for a station's crown: what the shape was built
+ * from, rather than what it came out as.
+ *
+ * Which of the two lists is filled depends on the curve type, because the two
+ * are authored in genuinely different terms. An authored crown *is* its control
+ * points, so the guide marks them. A trochoid has no control points to mark —
+ * what generates it is a rolling circle, so the guide draws that instead, the
+ * same construction the classic cross-arch guide shows.
+ *
+ * Both are read off the *solved* station rather than the shape's own numbers.
+ * Knot positions are fractions of this side's crown and heights fractions of
+ * its rise from the takeoff, so neither means anything in millimetres until the
+ * transition has been solved — and each side is placed against its own takeoff,
+ * so an asymmetric template puts its mirrored knots at two heights. That is the
+ * model's whole subject, and a guide that hid it would be lying.
+ */
+export interface GougedCrossGuide {
+  knots: GougedCrossGuideKnot[];
+  circles: GougedCrossGuideCircle[];
+  /** The crown itself, always marked. */
+  peakZ: number;
+}
+
+export function gougedCrossGuide(shape: GougedCrossShape, section: GougedCrossSection): GougedCrossGuide {
+  const out: GougedCrossGuide = { knots: [], circles: [], peakZ: section.archH };
+
+  for (const side of [-1, 1] as const) {
+    const xEnd = side < 0 ? section.xEndLeft : section.xEndRight;
+    const knots = side < 0 ? section.row.left : section.row.right;
+    // The endpoint of the profile spline, which is exactly the takeoff.
+    const base = section.zAt(side * xEnd);
+    const hEff = section.archH - base;
+
+    if (shape.type === 'gouged-cycloid') {
+      // A trochoid of rise `hEff` and factor `d` is traced by a circle of
+      // radius hEff/(2d) rolling at half that rise. Below 0.01 the curve has
+      // flattened into a raised cosine and the circle runs off to infinity —
+      // there is nothing honest left to draw.
+      const d = clamp(shape.d, 0, 1);
+      if (d > 0.01) out.circles.push({ centerZ: base + hEff / 2, radius: hEff / (2 * d) });
+    } else {
+      for (const k of knots) out.knots.push({ x: side * k.x * xEnd, z: base + k.z * hEff, base });
+    }
+  }
+  return out;
 }
 
 /**

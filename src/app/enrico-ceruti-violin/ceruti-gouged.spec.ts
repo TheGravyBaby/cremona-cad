@@ -2,7 +2,9 @@ import {
   gougeHalfWidth, gougeProfileSlope, gougeProfileZ, gougedCrossKnots, makeGougedCrossResolver,
   solveGougedCrossSection, solveGougedTakeoff,
 } from './ceruti-gouged';
-import { GougedCrossParams, GougedCrossShape } from './ceruti-types';
+import { makeMonotoneSpline } from '../helpers/draftMath';
+import { trochoidNorm } from '../helpers/svgPathMath';
+import { GougedCrossCycloidShape, GougedCrossParams, GougedCrossSplineShape } from './ceruti-types';
 
 /**
  * The gouged model's two load-bearing claims, in the order they matter:
@@ -108,7 +110,7 @@ describe('solveGougedTakeoff', () => {
 });
 
 describe('gougedCrossKnots', () => {
-  const shape = (points: GougedCrossShape['points']): GougedCrossShape => ({ type: 'gouged', points });
+  const shape = (points: GougedCrossSplineShape['points']): GougedCrossSplineShape => ({ type: 'gouged', points });
 
   it('keeps both coordinates fractional, so the shape scales with the station', () => {
     expect(gougedCrossKnots(shape([{ x: 0.45, z: 0.62, mirror: true }]), 1))
@@ -130,6 +132,137 @@ describe('gougedCrossKnots', () => {
   it('sorts outward and collapses knots landing on one another', () => {
     const s = shape([{ x: 0.7, z: 0.3 }, { x: 0.45, z: 0.62 }, { x: 0.45, z: 0.1 }]);
     expect(gougedCrossKnots(s, 1).map(k => k.x)).toEqual([0.45, 0.7]);
+  });
+});
+
+describe('the trochoid crown', () => {
+  const cyc = (d: number, pct: number): GougedCrossCycloidShape => ({ type: 'gouged-cycloid', d, pct });
+
+  /** The trochoid's own half, as fractional crown coordinates — what the knots are sampled from. */
+  const exact = (d: number, pct: number, xFrac: number): number => {
+    // Bisect the sampler's own map rather than inverting it: monotone in frac.
+    let lo = 0;
+    let hi = 0.5;
+    for (let i = 0; i < 60; i++) {
+      const mid = (lo + hi) / 2;
+      if (1 - 2 * trochoidNorm(mid, d, pct).x > xFrac) lo = mid; else hi = mid;
+    }
+    return trochoidNorm((lo + hi) / 2, d, pct).z;
+  };
+
+  it('runs from the crown outward but stops short of the channel', () => {
+    // The last stretch is the transition and belongs to the solve. Authoring a
+    // knot out there would also put one wherever the takeoff lands, and two
+    // knots at one position carrying two heights is what the spline cannot do.
+    const knots = gougedCrossKnots(cyc(0.4, 0.9), 1);
+    expect(knots[0].x).toBeGreaterThan(0);
+    expect(knots[knots.length - 1].x).toBeLessThan(1);
+    expect(knots[knots.length - 1].x).toBeGreaterThan(0.9);
+  });
+
+  it('descends monotonically from the crown', () => {
+    const knots = gougedCrossKnots(cyc(0.7, 0.85), 1);
+    for (let i = 1; i < knots.length; i++) {
+      expect(knots[i].x).toBeGreaterThan(knots[i - 1].x);
+      expect(knots[i].z).toBeLessThan(knots[i - 1].z);
+    }
+  });
+
+  it('gives both sides the same shape', () => {
+    const s = cyc(0.4, 0.9);
+    expect(gougedCrossKnots(s, 1)).toEqual(gougedCrossKnots(s, -1));
+  });
+
+  /**
+   * The knots are re-splined downstream, so what the surface carries is a
+   * monotone cubic *through* the trochoid rather than the trochoid itself. This
+   * bounds the difference — if it ever grew, the panel would be quietly drawing
+   * one curve and cutting another.
+   */
+  it('is reproduced by the spline through its own knots', () => {
+    // The looser bound is for d→1 only, where the trochoid approaches a cusp:
+    // unbounded curvature at the outer end, so the sampling converges about an
+    // order slower there. Even so it is 2e-3 of the arch height — three
+    // hundredths of a millimetre on a violin top, under the export grid.
+    for (const [d, pct, tol] of [[0, 1, 1e-3], [0.4, 0.9, 1e-3], [0.6, 0.3, 1e-3], [1, 0.85, 3e-3]] as const) {
+      const knots = gougedCrossKnots(cyc(d, pct), 1);
+      const f = makeMonotoneSpline([0, ...knots.map(k => k.x)], [1, ...knots.map(k => k.z)]);
+      // Only over the sampled span. Past the last knot the shape is deliberately
+      // not the trochoid — that is the transition, which the tangency solve
+      // replaces with a run into the channel.
+      const last = knots[knots.length - 1].x;
+      let worst = 0;
+      for (let i = 0; i <= 200; i++) {
+        const x = (i / 200) * last;
+        worst = Math.max(worst, Math.abs(f(x) - exact(d, pct, x)));
+      }
+      expect(worst).toBeLessThan(tol);
+    }
+  });
+
+  it('meets the channel like any other crown', () => {
+    const row = { left: gougedCrossKnots(cyc(0.4, 0.9), -1), right: gougedCrossKnots(cyc(0.4, 0.9), 1) };
+    const s = solveGougedCrossSection(15, 100, R, D, row)!;
+    expect(s).not.toBeNull();
+    expect(gougeProfileSlope(s.right!.contactS, R, D)).toBeCloseTo(s.right!.slope, 9);
+    expect(s.zAt(0)).toBeCloseTo(15, 9);
+  });
+
+  /**
+   * The knob that earns its place. Classically `pct` clips the cusp so the arch
+   * has a grade for a channel built to match it; here the channel is already
+   * cut, so the grade decides *where along its flank* the two can meet. A
+   * flatter run-out has to find a flatter part of the channel, which is nearer
+   * the trough — i.e. a smaller contact `s`.
+   */
+  const contactAt = (d: number, pct: number, archH = 15, half = 100): number | null => {
+    const knots = gougedCrossKnots(cyc(d, pct), 1);
+    return solveGougedCrossSection(archH, half, R, D, { left: knots, right: knots })?.right?.contactS ?? null;
+  };
+
+  it('brings the contact outward as the run-out steepens', () => {
+    // At low d the trochoid's outer end flattens as the window opens, so the
+    // contact retreats toward the trough — the only part of the channel flat
+    // enough to meet it. (At d near 1 the end is a cusp instead, and the
+    // dependence reverses; that is the curve, not the solve.)
+    expect(contactAt(0.4, 0.5)!).toBeGreaterThan(contactAt(0.4, 0.75)!);
+    expect(contactAt(0.4, 0.75)!).toBeGreaterThan(contactAt(0.4, 0.95)!);
+  });
+
+  /**
+   * The contact has to move *continuously* with the crown, and this is the test
+   * that would have caught the way it first didn't.
+   *
+   * The crown's knots were originally laid out along the channel, with any that
+   * fell outside the takeoff discarded. The solve moves the takeoff inward
+   * hunting its root, so it passes knots, and each one leaving the spline steps
+   * the slope the arch arrives with. Bisection on a staircase converges onto a
+   * riser and calls it a root: the sweep below came out ragged, with stations
+   * either pinned to a drop point or reporting no tangency at all between two
+   * that solved fine. Anchoring the knots to the takeoff instead of the channel
+   * is what removed the steps.
+   */
+  it('moves the contact smoothly as the crown changes', () => {
+    for (const d of [0, 0.4, 0.8, 1]) {
+      let prev: number | null = null;
+      for (let pct = 0.3; pct <= 0.98; pct += 0.02) {
+        const s = contactAt(d, pct);
+        expect(s).not.toBeNull();
+        // A 2% step in the window cannot move the contact by a tenth of the
+        // channel's half-width unless something discontinuous is happening.
+        if (prev !== null) expect(Math.abs(s! - prev)).toBeLessThan(0.1 * gougeHalfWidth(R, D));
+        prev = s;
+      }
+    }
+  });
+
+  it('solves on a narrow station as well as a wide one', () => {
+    // The narrow stations are where the takeoff sits furthest in as a fraction
+    // of the half-width, so they are where knots crowding it used to bite first.
+    for (const d of [0, 0.4, 0.8, 1]) {
+      expect(contactAt(d, 0.9, 15, 55)).not.toBeNull();
+      expect(contactAt(d, 0.9, 2, 100)).not.toBeNull();
+    }
   });
 });
 

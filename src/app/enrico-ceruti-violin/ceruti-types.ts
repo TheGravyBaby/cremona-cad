@@ -340,14 +340,21 @@ export interface GougedFlutingParams {
  */
 export interface GougedCrossPoint {
   /**
-   * Signed position across the plate as a fraction of the local half-width:
-   * 0 is the crown, ±1 the channel centerline. Negative is the bass side.
+   * Signed position across the plate as a fraction of this side's own crown:
+   * 0 is the crown's peak, ±1 the takeoff where it runs into the channel.
+   * Negative is the bass side.
    *
    * A fraction rather than millimetres, deliberately. Absolute distances make
    * the crown a rigid object of fixed size, and the plate it sits on is not —
    * carried up the body onto a narrower station, a fixed-width crown swells to
    * fill it and the section reads wrong. A fraction is a *shape*, which is what
    * a maker actually carries from station to station.
+   *
+   * Measured against the takeoff rather than the channel centerline, which is a
+   * hair further out. That matters less as description than as arithmetic: the
+   * takeoff is solved, so anchoring to the channel instead would let it slide
+   * past a knot mid-solve, and a knot leaving the spline steps the very slope
+   * the solve is trying to match. See `crossProfile`.
    */
   x: number;
   /** Height as a fraction of the local arch height: 1 is the crown, 0 the plate surface. */
@@ -357,15 +364,42 @@ export interface GougedCrossPoint {
 }
 
 /**
- * A gouged cross-arch section shape: the crown template only. Its peak sits at
- * x = 0 at the long arch's height for that station; its outer end is *not*
- * here, because the takeoff point is solved for tangency against the channel
- * (see `solveGougedTakeoff`) rather than entered.
+ * A gouged cross-arch section shape built from control points: the crown
+ * template only. Its peak sits at x = 0 at the long arch's height for that
+ * station; its outer end is *not* here, because the takeoff point is solved for
+ * tangency against the channel (see `solveGougedTakeoff`) rather than entered.
+ *
+ * The discriminator stays `'gouged'` rather than becoming `'gouged-spline'` so
+ * templates saved before the trochoid existed still load as what they are.
  */
-export interface GougedCrossShape {
+export interface GougedCrossSplineShape {
   type: 'gouged';
   points: GougedCrossPoint[];
 }
+
+/**
+ * A gouged cross-arch section shape built from a trochoid — the same curve
+ * family the classic cross arch offers, so the two models can be compared
+ * without also changing the crown's shape.
+ *
+ * There is no `left`/`right` pair here, unlike {@link CrossArchCycloidShape}:
+ * this is the symmetric form only. Note also what `pct` means in this model.
+ * Classically it clips the flat cusp so the arch has a real grade where it
+ * meets a channel *derived from that grade*; here the channel is already fixed
+ * and `pct` decides how steeply the crown runs out, which is what sets where
+ * along the channel flank the tangency lands. A flatter run-out (`pct` near 1)
+ * can only meet the channel near its trough.
+ */
+export interface GougedCrossCycloidShape {
+  type: 'gouged-cycloid';
+  /** Trochoid factor: 0 = raised cosine, 1 = standard cycloid (valid range 0–1). */
+  d: number;
+  /** Trochoid window: 1 = the full curve, <1 clips the flat cusp end for a steeper run-out (valid range 0.05–1). */
+  pct: number;
+}
+
+/** A gouged cross-arch section shape: a trochoid or a control-point template. */
+export type GougedCrossShape = GougedCrossSplineShape | GougedCrossCycloidShape;
 
 /** A gouged cross-arch shape pinned to one body-length position. */
 export type GougedCrossStation = GougedCrossShape & {
@@ -377,10 +411,19 @@ export type GougedCrossStation = GougedCrossShape & {
  * Gouged cross-arch parameters for one plate: a base template anchoring both
  * body ends, plus optional interior stations the shape ramps through — the
  * same edges-plus-interior-points relationship the classic cross arch has.
+ *
+ * Split by curve type the same way {@link CrossArchParams} is, so a plate's
+ * `points` or `d`/`pct` are reachable without a cast once its type is known.
  */
-export type GougedCrossParams = GougedCrossShape & {
+export type GougedCrossSplineParams = GougedCrossSplineShape & {
   stations?: GougedCrossStation[];
 };
+
+export type GougedCrossCycloidParams = GougedCrossCycloidShape & {
+  stations?: GougedCrossStation[];
+};
+
+export type GougedCrossParams = GougedCrossSplineParams | GougedCrossCycloidParams;
 
 export interface ArchPlate {
   arch: ArchCurve;
