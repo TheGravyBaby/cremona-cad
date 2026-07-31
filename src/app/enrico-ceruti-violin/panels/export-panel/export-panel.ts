@@ -5,7 +5,7 @@ import { combinePathStrings, pathsBounds } from '../../../helpers/svgPathMath';
 import { buildMirroredSvg, downloadFullPlanPdf, downloadSvgAsPdf, downloadSvgFile, PdfPage, SvgPathExport, SvgTextExport } from '../../../helpers/fileExporter';
 import { downloadDxfFile, DxfText } from '../../../helpers/dxfExporter';
 import { downloadStlFile } from '../../../helpers/stlExporter';
-import { renderFilledPath, renderPath, renderText } from '../../../helpers/renderFuncs';
+import { renderPath, renderText } from '../../../helpers/renderFuncs';
 import { error } from '../../../shared/message-emitter';
 import { calculateCornerBlocks, calculateMould, calculateOuterArcs, ensureCenterBoutInnerPath, ensureOuterTracePaths } from '../../ceruti-calcs';
 import { defaultGougedCrossParams, defaultGougedFlutingParams } from '../../ceruti-gouged';
@@ -44,15 +44,6 @@ export class ExportPanel implements OnInit {
   /** Same, but for keys that are legitimately absent (e.g. purfling not yet configured). */
   private getPathOrNull(key: string): string | null {
     return this.paths.find(entry => entry.key === key)?.path ?? null;
-  }
-
-  /**
-   * Which plate's channel belongs on this sheet. The two plates carry their own
-   * gouges, so the top and back contours are no longer the same drawing with a
-   * different outline — each shows the channel that plate is actually cut with.
-   */
-  private channelKey(type: 'outerTrace' | 'back', part: 'Area' | 'Line'): string {
-    return `channel${part}${type === 'back' ? 'Back' : 'Top'}`;
   }
 
   /** Arching templates need the arching modules built, same precondition as STL export. */
@@ -97,11 +88,14 @@ export class ExportPanel implements OnInit {
       }
       case 'outerTrace':
       case 'back': {
+        // Outline and purfling. The channel is not drawn here in any form: in
+        // plan it is only ever two rims with nothing between them to say how
+        // deep or what section, and the arching templates now carry that
+        // whole. A rim pair on a contour sheet would be a second, weaker
+        // account of geometry that is stated exactly elsewhere.
         const renders: Array<(g: any, ui: any) => void> = [
           renderPath(this.getPath(type === 'back' ? 'back' : 'top'), this.colors.outerTrace),
         ];
-        const channelPath = this.getPathOrNull(this.channelKey(type, 'Area'));
-        if (channelPath) renders.push(renderFilledPath(channelPath, this.colors.fluting));
         const purflingPath = this.getPathOrNull('purfling');
         if (purflingPath) renders.push(renderPath(purflingPath, this.colors.innerTrace, 1));
         const outerPurflingPath = this.getPathOrNull('outerPurfling');
@@ -151,8 +145,6 @@ export class ExportPanel implements OnInit {
       case 'outerTrace':
       case 'back': {
         paths = [{ d: this.getPath(type === 'back' ? 'back' : 'top'), stroke: 'black', fill: 'none', strokeWidth: '.5' }];
-        const channelPath = this.getPathOrNull(this.channelKey(type, 'Area'));
-        if (channelPath) paths.push({ d: channelPath, fill: '#bbbbbb', fillRule: 'evenodd', fillOpacity: 1, stroke: 'none', strokeWidth: 0 });
         const purflingPath = this.getPathOrNull('purfling');
         if (purflingPath) paths.push({ d: purflingPath, stroke: 'black', fill: 'none', strokeWidth: '.5' });
         const outerPurflingPath = this.getPathOrNull('outerPurfling');
@@ -216,8 +208,6 @@ export class ExportPanel implements OnInit {
         if (purflingPath) dxfPaths.push(purflingPath);
         const outerPurflingPath = this.getPathOrNull('outerPurfling');
         if (outerPurflingPath) dxfPaths.push(outerPurflingPath);
-        const channelPath = this.getPathOrNull(this.channelKey(type, 'Line'));
-        if (channelPath) dxfPaths.push(channelPath);
         pathD = combinePathStrings(dxfPaths);
         break;
       }
@@ -265,8 +255,6 @@ export class ExportPanel implements OnInit {
       case 'outerTrace':
       case 'back': {
         pdfPaths = [{ d: this.getPath(type === 'back' ? 'back' : 'top'), stroke: 'black', fill: 'none' }];
-        const channelPath = this.getPathOrNull(this.channelKey(type, 'Area'));
-        if (channelPath) pdfPaths.push({ d: channelPath, fill: '#bbbbbb', fillRule: 'evenodd', fillOpacity: 1, stroke: 'none' });
         const purflingPath = this.getPathOrNull('purfling');
         if (purflingPath) pdfPaths.push({ d: purflingPath, stroke: 'black', fill: 'none' });
         const outerPurflingPath = this.getPathOrNull('outerPurfling');
@@ -318,8 +306,6 @@ export class ExportPanel implements OnInit {
 
     const purflingPath = this.getPathOrNull('purfling');
     const outerPurflingPath = this.getPathOrNull('outerPurfling');
-    const topChannel = this.getPathOrNull('channelAreaTop');
-    const backChannel = this.getPathOrNull('channelAreaBack');
 
     // Arching templates sit in their own coordinate frame, so their page is sized from the
     // actual combined geometry rather than the shared plan width/height used above.
@@ -353,7 +339,6 @@ export class ExportPanel implements OnInit {
         height,
         paths: [
           { d: this.getPath('top'), stroke: 'black', fill: 'none' },
-          ...(topChannel ? [{ d: topChannel, fill: '#bbbbbb', fillRule: 'evenodd', fillOpacity: 1, stroke: 'none' }] : []),
           ...(purflingPath ? [{ d: purflingPath, stroke: 'black', fill: 'none' }] : []),
           ...(outerPurflingPath ? [{ d: outerPurflingPath, stroke: 'black', fill: 'none' }] : []),
         ],
@@ -366,7 +351,6 @@ export class ExportPanel implements OnInit {
         height,
         paths: [
           { d: this.getPath('back'), stroke: 'black', fill: 'none' },
-          ...(backChannel ? [{ d: backChannel, fill: '#bbbbbb', fillRule: 'evenodd', fillOpacity: 1, stroke: 'none' }] : []),
           ...(purflingPath ? [{ d: purflingPath, stroke: 'black', fill: 'none' }] : []),
           ...(outerPurflingPath ? [{ d: outerPurflingPath, stroke: 'black', fill: 'none' }] : []),
         ],

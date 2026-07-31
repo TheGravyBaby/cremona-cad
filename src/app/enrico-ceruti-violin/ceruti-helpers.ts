@@ -282,8 +282,9 @@ export function gougeCBoutInfo() {
 
 export function gougeCenterlineInfo() {
     info(
-        "Where the flat land ends and the channel begins, measured inward from the plate edge. Same value as the Outer Path panel's Offset; repeated here because the channel is anchored to it.\n\n" +
-        "The channel has no position of its own — it starts at this line and grows inward by whatever the gouge cuts. Both plates share it, since it belongs to the purfling rather than to either tool.",
+        "Where the flat land ends and the channel begins, measured inward from the plate edge.\n\n" +
+        "The channel has no position of its own — it starts at this line and grows inward by whatever the gouge cuts. Both plates share it, since it belongs to the purfling rather than to either tool.\n\n" +
+        "The arching templates stop short of it, at the bottom of the trough — highest point of the arch to lowest, and nothing past it.",
         "Land Edge", defaultTTL, true
     )
 }

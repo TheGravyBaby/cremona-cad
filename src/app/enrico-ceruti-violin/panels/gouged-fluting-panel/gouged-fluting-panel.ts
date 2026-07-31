@@ -199,9 +199,9 @@ export class GougedFlutingPanel extends CerutiPanelBase implements OnInit {
     layers.push(renderFilledPath(
       at(gougedCornerJoinAreaPath(this.params, paths)),
       color,
-      carved ? 0.45 : 0.22,
+      carved ? 0.3 : 0.2,
     ));
-    layers.push(renderFilledPath(at(gougedChannelAreaPath(paths)), color, 0.45));
+    layers.push(renderFilledPath(at(gougedChannelAreaPath(paths)), color, 0.3));
     return layers;
   }
 }

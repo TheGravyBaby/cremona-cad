@@ -529,7 +529,10 @@ export function computeArchSectionProfile(
 ): string | null {
     const chords = stationChordsAt(p, model, y);
     if (chords.outerHalf === null) return null;
-    const half = halfOverride ?? chords.outerHalf;
+    // Clamped, so an override may only ever narrow the sweep. Past the plate
+    // edge there is no surface to sample and the points would simply be dropped,
+    // leaving a profile whose extent silently disagreed with what was asked for.
+    const half = halfOverride === undefined ? chords.outerHalf : Math.min(halfOverride, chords.outerHalf);
     const n = Math.max(8, Math.ceil((2 * half) / stepMm));
     const pts: string[] = [];
     for (let i = 0; i <= n; i++) {
@@ -556,6 +559,68 @@ export interface TemplateShape {
     labelPos: Pt;
     /** Text rotation in degrees: 0 for the wide cross-arch strips, 90 for the long, narrow long-arch strips. */
     labelRotation: number;
+}
+
+/** The vertices of a plain `M x y L x y …` polyline, exactly as written. */
+function parsePolyline(path: string): Pt[] {
+    return [...path.matchAll(/[ML]\s*(-?[\d.]+(?:e-?\d+)?)[\s,]+(-?[\d.]+(?:e-?\d+)?)/gi)]
+        .map(m => ({ x: +m[1], y: +m[2] }));
+}
+
+/**
+ * Cuts a sampled profile back to the bottom of the fluting trough at each end,
+ * keeping the peak and everything between.
+ *
+ * What a template is for is the run from the high point to the low point, and
+ * the trough is where the low point actually is. Everything outboard of it —
+ * the channel's outer flank, the land beyond — is either already cut by the time
+ * the template is picked up or is flat, and a flat is nothing to sight against.
+ *
+ * Read off the sampled surface, which is what makes this hold at the corners.
+ * Placing the cut arithmetically instead — at the channel centerline's
+ * half-chord plus the gouge's half-width — is right along a bout and wrong at a
+ * corner, because the surface reads its transverse position there off a
+ * distance field rather than off the chord (see `chordTrust`), exactly where a
+ * horizontal chord stops describing the plate. An extremum has no such blind
+ * spot: it is wherever the surface puts it.
+ *
+ * The cut therefore lands where the surface's own tangent is horizontal, which
+ * is the property to check it by: a blank whose cutting edge leaves the wood at
+ * a grade has not reached the trough.
+ *
+ * `base` and `direction` convert a sample's coordinate to height above the
+ * plate surface, so "lowest" means lowest on the wood for either plate rather
+ * than lowest on the canvas.
+ *
+ * Returns null if the profile has no interior at all.
+ */
+export function trimProfileToTroughs(
+    profile: string, base: number, heightAxis: 'x' | 'y', direction: 1 | -1,
+): string | null {
+    // Read straight off the profile's own samples rather than re-sampled by arc
+    // length. Both callers hand over a plain polyline, and arc-length sampling
+    // would slide the cut off the vertex it identified — by a fraction of a
+    // millimetre, but onto a part of the arc that is no longer its bottom.
+    const pts = parsePolyline(profile);
+    if (pts.length < 3) return profile;
+    const h = (pt: Pt): number => direction * ((heightAxis === 'x' ? pt.x : pt.y) - base);
+
+    // The peak first, so each trough is sought on its own side of it. A single
+    // global minimum would find only the deeper of the two channels, and the
+    // two are free to differ — the crown is not obliged to sit centred.
+    let peak = 0;
+    for (let i = 1; i < pts.length; i++) if (h(pts[i]) > h(pts[peak])) peak = i;
+
+    // Ties resolved inward, toward the peak: a trough sampled flat across its
+    // bottom then cuts at the innermost of those samples, which keeps the blank
+    // to the shape it is describing rather than a fraction past it.
+    let lo = 0;
+    for (let i = 1; i <= peak; i++) if (h(pts[i]) <= h(pts[lo])) lo = i;
+    let hi = pts.length - 1;
+    for (let i = pts.length - 2; i >= peak; i--) if (h(pts[i]) <= h(pts[hi])) hi = i;
+
+    if (lo >= hi) return null;
+    return pts.slice(lo, hi + 1).map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt.x} ${pt.y}`).join(' ');
 }
 
 function translateTemplateShape(shape: TemplateShape, dx: number, dy: number): TemplateShape {
@@ -626,14 +691,18 @@ function stackTemplates(shapes: TemplateShape[]): TemplateShape[] {
 /**
  * The cross-arch template blanks for one plate side, one per station.
  *
- * Swept to the full plate edge, not clipped back to the arch's dome. Under this
- * model the channel is gouged first and the arch is carved down to meet it, so
- * by the time a maker holds this template to the wood the channel and the flat
- * land are already there — and they are what the blank registers against. A
- * template that stopped at the takeoff would have to be positioned against a
- * point on a curve, which is exactly the thing the eye cannot judge. The height
- * field runs continuously from centerline to plate edge here, so nothing has to
- * be stitched on to reach it.
+ * Swept the full station width and then cut back to the bottom of the fluting
+ * trough at each end: crown, both run-outs, and the inner flank of each channel.
+ * What the blank has to describe is the arch from its highest point to its
+ * lowest, and the trough is the lowest. The channel is gouged before the arch is
+ * carved, so by the time this template is picked up the trough is already there
+ * to sit in.
+ *
+ * Not clipped at the takeoff, which is the other place this could stop: that
+ * point is on a curve, and where a curve leaves a curve is exactly what the eye
+ * cannot judge. The height field is continuous across it either way — arch and
+ * channel are one function here — so the choice is only about what the maker
+ * can line up.
  *
  * `model.signZ` picks which side of the cutout curve the backing attaches to —
  * the two plates' mirrored curves are shaped oppositely (valley vs. hump), so
@@ -644,8 +713,9 @@ function calculateCrossArchTemplatesForSide(
 ): TemplateShape[] {
     return stations
         .map(({ y, code }): TemplateShape | null => {
-            const profile = computeArchSectionProfile(p, model, y, 0.25);
-            if (profile === null) return null;
+            const swept = computeArchSectionProfile(p, model, y, 0.25);
+            const profile = swept && trimProfileToTroughs(swept, model.zBase, 'y', model.signZ);
+            if (!profile) return null;
             const { path, backing, positionMid } = closeProfileToBlank(profile, 'y', model.signZ, TEMPLATE_MARGIN);
             return {
                 path,
@@ -713,8 +783,10 @@ export function calculateCrossArchTemplates(p: EnricoCerutiParams): TemplateShap
  * Each plate's arch is terminated against its own channel by
  * {@link solveGougedLongArch} rather than at an entered edge depth, so the two
  * blanks can differ in length as well as in height — a deeper gouge takes off
- * further in. Both run the full body length regardless, including the flat land
- * at the caps that the template seats on.
+ * further in.
+ *
+ * Both stop at the bottom of the channel trough at each cap rather than running
+ * the whole body — highest point to lowest, and nothing past it.
  */
 export function calculateLongArchTemplates(p: EnricoCerutiParams): TemplateShape[] {
     if (!p.arching) return [];
@@ -725,9 +797,9 @@ export function calculateLongArchTemplates(p: EnricoCerutiParams): TemplateShape
         const gouge = plate.gougedFluting!;
         const sign: 1 | -1 = key === 'top' ? 1 : -1;
         const zBase = key === 'top' ? a.ribHeight + plate.thickness : -plate.thickness;
-        const profile = gougedLongArchProfilePath(
-            p, gouge, solveGougedLongArch(p, plate.arch, gouge), zBase, sign,
-        );
+        const swept = gougedLongArchProfilePath(p, gouge, solveGougedLongArch(p, plate.arch, gouge), zBase, sign);
+        const profile = trimProfileToTroughs(swept, zBase, 'x', sign);
+        if (!profile) continue;
         const { path, backing, positionMid } = closeProfileToBlank(profile, 'x', sign, TEMPLATE_MARGIN);
         const shape: TemplateShape = {
             path,

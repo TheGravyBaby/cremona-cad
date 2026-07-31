@@ -26,6 +26,20 @@ export class DebounceController {
     this.skipDebounce = true;
   }
 
+  /**
+   * Withdraw a pending bypass, so the next run() debounces after all.
+   *
+   * The bypass is set speculatively by the host listeners above — an arrow key
+   * or a mousedown on a number input means "the user is nudging a value and
+   * wants to see it move". That is the right default for work measured in
+   * milliseconds, but a caller that knows its own run costs a second can say so,
+   * and a held arrow key then coalesces into one recompute instead of one per
+   * repeat.
+   */
+  clearImmediate(): void {
+    this.skipDebounce = false;
+  }
+
   run(fn: () => void, delay = 1000): void {
     if (this.destroyed) return;
 

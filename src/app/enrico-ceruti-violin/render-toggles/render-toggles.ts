@@ -2,7 +2,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CerutiViewFlags } from '../ceruti-types';
 
 type ToggleKey = 'showModuleArcs' | 'showAllArcs' | 'showModuleCircles' | 'showAllCircles'
-  | 'showModuleGuides' | 'renderOuterPath';
+  | 'showModuleGuides' | 'renderOuterPath' | 'showBlocks' | 'showInnerPath';
 
 @Component({
   selector: 'app-ceruti-render-toggles',
@@ -18,6 +18,8 @@ export class RenderToggles {
   @Input() showOuterPathRow = true;
   @Input() showAllArcs = true;
   @Input() showAllCircles = true;
+  @Input() showBlocksRow = false;
+  @Input() showInnerPathRow = false;
   @Output() changed = new EventEmitter<void>();
 
   toggle(key: ToggleKey): void {

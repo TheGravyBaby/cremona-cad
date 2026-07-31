@@ -271,28 +271,6 @@ export function gougedCornerJoinAreaPath(p: EnricoCerutiParams, paths: GougedCha
   return `${defineInsetPath(p, p.outerFlutingDepth ?? 0)} Z ${paths.outer} Z`;
 }
 
-/**
- * Everything the gouge takes out of a plate, as an area to fill and the two
- * loops that bound it — what a plan-view sheet has to show, and what a maker
- * marks on the wood before starting.
- *
- * With the corner pass on, the channel and the corner join are one region: the
- * pass rides the platform boundary the whole way round, so the union of the two
- * is bounded by the boundary outside and the channel's inner edge inside, with
- * the channel's own outer edge falling in the middle of carved wood. That the
- * union collapses to a single annulus is exact rather than approximate — the
- * three loops nest — so the sheet needs no boolean operation to produce it.
- *
- * With the pass off, the corners are left as flat land and the region is the
- * channel alone.
- */
-export function gougedCarvedRegion(
-  p: EnricoCerutiParams, g: GougedFlutingParams, paths: GougedChannelPaths,
-): { area: string; edges: string[] } {
-  const outer = cornerGougeOn(g) ? defineInsetPath(p, p.outerFlutingDepth ?? 0) : paths.outer;
-  return { area: `${outer} Z ${paths.inner} Z`, edges: [outer, paths.inner] };
-}
-
 // ===== The transition solve =====
 // Where the arch stops being the template and becomes the run into the channel.
 //
@@ -475,10 +453,9 @@ export function gougedCenterlineZAt(
  * The centerline elevation as a path, in the long-arch section frame (canvas
  * X = Z, canvas Y = body length) — the long-arch template's cutting edge.
  *
- * Runs the full body length rather than just the arch's span. The flat land at
- * each cap is what the blank seats against when the template is held to the
- * plate, and the channel between it and the arch is cut before the arch is,
- * so both are wood the template has to clear.
+ * Runs the full body length. Where the blank *stops* is decided afterwards, by
+ * trimming the flat off what this returns rather than by working out in advance
+ * where the flat begins — see `trimProfileFlats`.
  */
 export function gougedLongArchProfilePath(
   p: EnricoCerutiParams, g: GougedFlutingParams, la: GougedLongArch | null,

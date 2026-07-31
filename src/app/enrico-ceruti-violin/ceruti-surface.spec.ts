@@ -2,16 +2,21 @@ import { flutingProfileZ, pathsBounds } from '../helpers/svgPathMath';
 import { calculateCenterBout, calculateCorners, calculateMainBouts, calculateOuterArcs } from './ceruti-calcs';
 import { defaultArchingParams, defaultCrossArchParams, defaultFlutingChannelParams, longArchHeightAt } from './ceruti-arching';
 import {
-  buildPlateStl, buildPlateSurfaceModel, calculateCrossArchTemplates, calculateFlutingSectionTop,
+  buildPlateStl, buildPlateSurfaceModel, calculateCrossArchTemplates, calculateFlutingSectionTop, trimProfileToTroughs,
   calculateLongArchTemplates, computeArchContours, computeArchSectionProfile, crossArchTemplateStations,
   stationChordsAt, topSurfaceZAt, PlateSurfaceModel, buildGougedPlateSurfaceModel,
   computeArchContourRings,
 } from './ceruti-surface';
 import {
-  defaultGougedCrossParams, defaultGougedFlutingParams, gougedCenterlineZAt, gougeHalfWidth,
-  solveGougedLongArch,
+  defaultGougedCrossParams, defaultGougedFlutingParams, gougedCenterlineZAt, gougedCrossSectionAt,
+  gougeHalfWidth, solveGougedLongArch,
 } from './ceruti-gouged';
 import { DefaultParams, EnricoCerutiParams } from './ceruti-types';
+
+/** A polyline path's own vertices — not re-sampled, so a cut point stays where it was put. */
+function polyline(path: string): Array<{ x: number; y: number }> {
+  return [...path.matchAll(/[ML]\s*(-?[\d.]+)\s+(-?[\d.]+)/g)].map(m => ({ x: +m[1], y: +m[2] }));
+}
 
 /** A fully calculated default violin with arching + fluting configured. */
 function makeParams(): EnricoCerutiParams {
@@ -287,6 +292,82 @@ describe('arching templates', () => {
     }
   });
 
+  it('cuts a profile at the trough on each side of the peak, keeping the middle', () => {
+    // A hand-made profile with everything the real ones have and nothing else:
+    // flat land, a trough, a hump, a second and deeper trough, flat land. The
+    // second trough is the deeper one deliberately — a single global minimum
+    // would find only that, and the two channels are free to differ.
+    const shape = [0, 0, 0, -1, -2, -1, 0, 3, 5, 3, 0, -1, -3, -1, 0, 0, 0];
+    const profile = shape.map((z, i) => `${i === 0 ? 'M' : 'L'} ${i} ${100 + z}`).join(' ');
+    const pts = polyline(trimProfileToTroughs(profile, 100, 'y', 1)!);
+
+    // Exactly the vertices it identified — the cut lands on a sample, not near
+    // one, which is what makes the end tangent the trough's own.
+    expect(pts[0]).toEqual({ x: 4, y: 98 });
+    expect(pts[pts.length - 1]).toEqual({ x: 12, y: 97 });
+    expect(Math.max(...pts.map(q => q.y))).toBe(105);
+  });
+
+  it('reads the trough off the surface, so a back plate cuts the same as a top', () => {
+    // Same shape mirrored: on the back plate the wood's low point is the canvas
+    // high point, and a trim that went by canvas coordinates would cut at the
+    // peak instead.
+    const shape = [0, 0, -1, -2, -1, 0, 3, 5, 3, 0, -1, -2, -1, 0, 0];
+    const mirrored = shape.map((z, i) => `${i === 0 ? 'M' : 'L'} ${i} ${100 - z}`).join(' ');
+    const pts = polyline(trimProfileToTroughs(mirrored, 100, 'y', -1)!);
+    expect(pts[0].x).toBe(3);
+    expect(pts[pts.length - 1].x).toBe(11);
+  });
+
+  it('ends every cross-arch blank flat, at the full depth of the gouge', () => {
+    // The property that says the cut reached the trough rather than stopping
+    // somewhere up the flank: the bottom of the gouge's arc is where its tangent
+    // is horizontal, so a blank still on a grade at its end has not got there.
+    // Checked at the corners as much as the bouts — placing the cut
+    // arithmetically instead (channel half-chord plus gouge half-width) is right
+    // along a bout and wrong at a corner, where the surface reads its position
+    // off a distance field rather than off the chord.
+    const gouge = defaultGougedFlutingParams(p);
+    for (const key of ['top', 'bottom'] as const) {
+      const model = buildGougedPlateSurfaceModel(p, key)!;
+      for (const { y } of crossArchTemplateStations(p, p.arching![key])) {
+        const swept = computeArchSectionProfile(p, model, y, 0.25)!;
+        const pts = polyline(trimProfileToTroughs(swept, model.zBase, 'y', model.signZ)!);
+        const n = pts.length;
+        const depth = (pt: { y: number }) => model.signZ * (pt.y - model.zBase);
+
+        // Full gouge depth at both ends — the trough's floor, not the flank.
+        expect(depth(pts[0])).toBeCloseTo(-gouge.depth, 2);
+        expect(depth(pts[n - 1])).toBeCloseTo(-gouge.depth, 2);
+        // And flat there. Measured as a secant over two samples, which on a
+        // curve through its own minimum is bounded by the sample step over the
+        // gouge's radius — hence a tolerance rather than zero.
+        for (const [a, b] of [[pts[0], pts[2]], [pts[n - 3], pts[n - 1]]]) {
+          expect(Math.abs((b.y - a.y) / (b.x - a.x))).toBeLessThan(0.1);
+        }
+      }
+    }
+  });
+
+  it('trims every cross-arch blank clear of the plate edge, corners included', () => {
+    // The corners are the case that used to fail. Placing the cut arithmetically
+    // — channel half-chord plus gouge half-width — is right along a bout and
+    // wrong at a corner, where the surface reads its position off a distance
+    // field instead, so the corner blanks came out carrying flats.
+    const gouged = buildGougedPlateSurfaceModel(p, 'top')!;
+    const blanks = calculateCrossArchTemplates(p);
+    for (const { y, code } of crossArchTemplateStations(p, p.arching!.top)) {
+      const plateEdge = stationChordsAt(p, gouged, y).outerHalf!;
+      const width = pathsBounds([blanks.find(s => s.label === `Top ${code} ${y}mm`)!.path]).width;
+      // Cut at the trough, so each side loses the land plus the channel's outer
+      // flank — comfortably more than the land alone.
+      expect(width).toBeLessThan(2 * (plateEdge - p.outerFlutingDepth!));
+      // But still most of the plate: a blank that had collapsed onto the crown
+      // would pass the bound above while describing nothing.
+      expect(width).toBeGreaterThan(plateEdge);
+    }
+  });
+
   it('cross-arch templates are empty without arching configured', () => {
     const bare = makeParams();
     bare.arching = undefined;
@@ -303,16 +384,31 @@ describe('arching templates', () => {
     }
   });
 
-  it('runs the long-arch template from cap to cap, through the channel and onto the arch', () => {
+  it('runs the long-arch blank trough to trough, leaving the flat caps out', () => {
+    // The trough sits a half-width in from the land edge at each cap, so the
+    // blank is that much shorter again than the body between the land edges.
+    const gouge = defaultGougedFlutingParams(p);
+    const trough = p.outerFlutingDepth! + gougeHalfWidth(gouge.sweepRadius, gouge.depth);
+    // Closed against the x axis, so the strip's length is its y extent. Within
+    // a sampling step rather than exactly — closeProfileToBlank re-samples at
+    // fixed arc length, and its last step lands short of the true endpoint.
+    for (const s of calculateLongArchTemplates(p)) {
+      expect(Math.abs(pathsBounds([s.path]).height - (p.height - 2 * trough))).toBeLessThanOrEqual(0.5);
+    }
+  });
+
+  it('carries the centerline from land edge through the channel and onto the arch', () => {
     const plate = p.arching!.top;
     const gouge = defaultGougedFlutingParams(p);
     const la = solveGougedLongArch(p, plate.arch, gouge)!;
     expect(la).toBeTruthy();
     const z = (y: number) => gougedCenterlineZAt(p, gouge, la, y);
 
-    // Flat land at the plate edge, full depth at the channel's trough — the two
-    // surfaces the blank registers against before the arch begins.
-    expect(z(0)).toBeCloseTo(0, 9);
+    // Plate level right at the land edge, and full depth at the channel's
+    // trough. The first is what makes the land edge the right place to end the
+    // blank: the channel's outer flank arrives there with nothing left to
+    // describe, so everything beyond is the flat the template now omits.
+    expect(z(p.outerFlutingDepth!)).toBeCloseTo(0, 9);
     const centerY = p.outerFlutingDepth! + gougeHalfWidth(gouge.sweepRadius, gouge.depth);
     expect(z(centerY)).toBeCloseTo(-gouge.depth, 9);
     // And the arch's own height at the peak, measured from the plate surface.

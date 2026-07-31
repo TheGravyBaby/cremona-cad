@@ -52,9 +52,20 @@ export abstract class CerutiPanelBase {
     this.emit(false, refreshEnabledPanels, persistSession);
   }
 
-  private emit(immediate: boolean, refreshEnabledPanels: boolean, persistSession?: boolean): void {
+  /**
+   * Like `emitDebounced`, but declines the immediate-bypass the parent hands out
+   * for arrow keys and spinner clicks. For panels whose `buildRun()` is
+   * expensive enough that running it once per key repeat would put the panel
+   * further behind the input with every press — see `PanelRenderRequest.coalesce`.
+   */
+  protected emitCoalesced(refreshEnabledPanels = false, persistSession?: boolean): void {
+    this.emit(false, refreshEnabledPanels, persistSession, true);
+  }
+
+  private emit(immediate: boolean, refreshEnabledPanels: boolean, persistSession?: boolean, coalesce = false): void {
     this.panelUpdate.emit({
       immediate,
+      coalesce,
       refreshEnabledPanels,
       persistSession,
       run: () => this.buildRun(),

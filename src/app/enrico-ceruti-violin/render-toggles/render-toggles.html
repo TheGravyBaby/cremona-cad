@@ -59,6 +59,30 @@
     </button>
     }
 
+    @if (showBlocksRow) {
+    <button type="button" class="vt-btn" [class.active]="flags.showBlocks" (click)="toggle('showBlocks')"
+        title="Show Corner Blocks" aria-label="Show Corner Blocks">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="2" width="6" height="4" rx="1" />
+            <rect x="9" y="18" width="6" height="4" rx="1" />
+            <rect x="2" y="9" width="5" height="6" rx="1" />
+            <rect x="17" y="9" width="5" height="6" rx="1" />
+        </svg>
+    </button>
+    }
+
+    @if (showInnerPathRow) {
+    <button type="button" class="vt-btn" [class.active]="flags.showInnerPath" (click)="toggle('showInnerPath')"
+        title="Show Inner Path" aria-label="Show Inner Path">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="2" width="20" height="20" rx="4" />
+            <rect x="6.5" y="6.5" width="11" height="11" rx="2.5" stroke-dasharray="3 2.5" />
+        </svg>
+    </button>
+    }
+
     @if (showOuterPathRow) {
     <button type="button" class="vt-btn" [class.active]="flags.renderOuterPath"
         (click)="toggle('renderOuterPath')" title="Show Outer Path" aria-label="Show Outer Path">
