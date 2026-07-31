@@ -173,10 +173,10 @@
         @for (pt of spline.points; track $index) {
         <div class="input-group basic-row field-row spline-row" role="group">
             <div class="field-cell">
-                <input class="basic-input" type="number" step="1" min="-99" max="99" [ngModel]="pointXPct(pt)"
+                <input class="basic-input" type="number" step="0.5" min="0" max="100" [ngModel]="pointXPct(pt)"
                     (ngModelChange)="setPointXPct('top', $index, $event)" (focus)="onPointFocus('top', $index)"
                     (blur)="onPointBlur()"
-                    title="Across the plate as a percent of the half-width — 0 is the joint, ±100 where it runs into the channel. Negative is bass side." />
+                    title="Across the plate — 0 is the bass channel, 50 the joint, 100 the treble channel. A knot at 66 and one at 34 are the same place on opposite sides." />
             </div>
             <span class="field-separator" aria-hidden="true"></span>
             <div class="field-cell">
@@ -283,10 +283,10 @@
         @for (pt of spline.points; track $index) {
         <div class="input-group basic-row field-row spline-row" role="group">
             <div class="field-cell">
-                <input class="basic-input" type="number" step="1" min="-99" max="99" [ngModel]="pointXPct(pt)"
+                <input class="basic-input" type="number" step="0.5" min="0" max="100" [ngModel]="pointXPct(pt)"
                     (ngModelChange)="setPointXPct('bottom', $index, $event)" (focus)="onPointFocus('bottom', $index)"
                     (blur)="onPointBlur()"
-                    title="Across the plate as a percent of the half-width — 0 is the joint, ±100 where it runs into the channel. Negative is bass side." />
+                    title="Across the plate — 0 is the bass channel, 50 the joint, 100 the treble channel. A knot at 66 and one at 34 are the same place on opposite sides." />
             </div>
             <span class="field-separator" aria-hidden="true"></span>
             <div class="field-cell">

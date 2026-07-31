@@ -369,8 +369,18 @@ export interface GougedFlutingParams {
 export interface GougedCrossPoint {
   /**
    * Signed position across the plate as a fraction of this side's own crown:
-   * 0 is the crown's peak, ±1 the takeoff where it runs into the channel.
+   * 0 is the *joint*, ±1 the takeoff where the crown runs into the channel.
    * Negative is the bass side.
+   *
+   * From the joint, not from the crown — the crown may sit off-centre, and a
+   * knot is a place on the section rather than an offset from the ridge, so it
+   * holds still while the ridge is dialled into place around it. A knot can
+   * therefore end up on the far side of the crown from the flank it was
+   * authored on; `crossProfile` sorts rather than assuming. The sign only ever
+   * says which flank the knot counts its fraction along.
+   *
+   * The panel shows this as a plain 0–100 across the whole plate with 50 at the
+   * joint, which is the reading in which a mirrored pair looks like one.
    *
    * A fraction rather than millimetres, deliberately. Absolute distances make
    * the crown a rigid object of fixed size, and the plate it sits on is not —

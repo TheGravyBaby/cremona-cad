@@ -228,7 +228,7 @@ export function defaultCrossArchParams(): CrossArchCycloidParams {
 
 /** Default spline cross-arch shape: a gentle single-point rise to the center peak. */
 export function defaultCrossArchSplineParams(): CrossArchSplineParams {
-  return { type: 'spline', peak: 0.5, points: [{ t: 0.2, z: 0.85, mirror: true }] };
+  return { type: 'spline', peak: 0.5, points: [{ t: 0.33, z: 0.5, mirror: true }] };
 }
 
 /** A cross-arch shape split into the two halves the section is actually built from. */

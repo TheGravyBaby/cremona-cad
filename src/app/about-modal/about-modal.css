@@ -14,7 +14,8 @@
   background: var(--ui-bg-panel, #1e1e2e);
   border: 1px solid var(--ui-border-soft, #444);
   border-radius: 8px;
-  max-width: 800px;
+  /* Fixed width on every tab, so switching tabs or tutorial topics doesn't resize it. */
+  width: min(880px, calc(100vw - 32px));
   max-height: 70vh;
   align-self: flex-start;
   margin-top: 10vh;
@@ -23,6 +24,12 @@
   overflow: hidden;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
   color: var(--ui-text-primary, #e0e0e0);
+}
+
+/* The tutorial browses topic to topic, so its height is pinned too — a short topic
+   would otherwise shrink the modal out from under the sidebar. */
+.modal:has(.tutorial-section) {
+  height: 70vh;
 }
 
 /* ── Modal header / tabs ──────────────────────────────────── */
@@ -87,6 +94,9 @@
   overflow-y: auto;
   padding: 20px 24px;
   flex: 1;
+  /* Flex items default to min-height:auto, which would let the body grow past the
+     modal's max-height instead of shrinking and handing scroll to its child. */
+  min-height: 0;
   font-size: 14px;
   line-height: 1.6;
 }
@@ -140,6 +150,119 @@
   padding: 1px 5px;
   border-radius: 3px;
   font-size: 12px;
+}
+
+/* ── Tutorial: sidebar of topics, one topic shown at a time ─ */
+/* The topic pane scrolls, not the modal body, so the contents list stays put. */
+.modal-body:has(.tutorial-section) {
+  overflow: hidden;
+  padding-right: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.tutorial-section {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  /* minmax(0, …) so the row is capped by the container rather than sized by its
+     content — without it the panes grow tall and never scroll. */
+  grid-template-rows: minmax(0, 1fr);
+  gap: 20px;
+  flex: 1;
+  min-height: 0;
+}
+
+.tutorial-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow-y: auto;
+  border-right: 1px solid var(--ui-border-soft, #444);
+  padding-right: 8px;
+}
+
+.nav-group-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.45;
+  margin: 12px 0 3px 6px;
+}
+
+.nav-group-label:first-child {
+  margin-top: 0;
+}
+
+.nav-topic {
+  background: none;
+  border: none;
+  border-left: 2px solid transparent;
+  border-radius: 0 3px 3px 0;
+  color: var(--ui-text-primary, #e0e0e0);
+  font-size: 13px;
+  text-align: left;
+  padding: 4px 8px;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.nav-topic:hover {
+  opacity: 1;
+  background: var(--ui-control-bg-hover, rgba(255, 255, 255, 0.06));
+}
+
+.nav-topic.active {
+  opacity: 1;
+  font-weight: 600;
+  border-left-color: var(--ui-accent, #6f8fb8);
+  background: var(--ui-bg-surface, rgba(255, 255, 255, 0.05));
+}
+
+.tutorial-topic {
+  overflow-y: auto;
+  padding-right: 24px;
+}
+
+.tutorial-topic h3:first-child {
+  margin-top: 0;
+}
+
+/* Key / action pairs — controls read faster as a table than as prose. Ruled faintly
+   so a wrapped action stays visibly tied to its key. */
+.keymap {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  margin: 0 0 12px;
+  font-size: 13px;
+  border: 1px solid var(--keymap-rule);
+  border-radius: 4px;
+  overflow: hidden;
+
+  --keymap-rule: color-mix(in srgb, var(--ui-border-soft, #444) 55%, transparent);
+}
+
+.keymap dt,
+.keymap dd {
+  padding: 5px 10px;
+  border-top: 1px solid var(--keymap-rule);
+}
+
+.keymap dt {
+  font-weight: 600;
+}
+
+.keymap dd {
+  margin: 0;
+  opacity: 0.85;
+  border-left: 1px solid var(--keymap-rule);
+}
+
+/* The first row sits against the container's own border. */
+.keymap dt:first-child,
+.keymap dt:first-child + dd {
+  border-top: none;
 }
 
 /* ── Tutorial steps ───────────────────────────────────────── */
