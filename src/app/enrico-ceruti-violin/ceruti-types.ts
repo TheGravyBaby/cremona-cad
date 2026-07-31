@@ -478,17 +478,22 @@ export type GougedCrossParams = GougedCrossSplineParams | GougedCrossCycloidPara
 export interface ArchPlate {
   arch: ArchCurve;
   thickness: number;
+  /** @deprecated Classic model only — replaced by {@link ArchPlate.gougedCross}. */
   cross?: CrossArchParams;
+  /** @deprecated Classic model only — the channel is {@link ArchPlate.gougedFluting} now. */
   fluting?: FlutingChannelParams;
-  /** mm below the plate outer surface where both the long arch and cross arch take off (default 0). */
+  /**
+   * @deprecated Classic model only. The takeoff is solved against the channel
+   * rather than entered — see `solveGougedTakeoff`.
+   */
   edgeDepth: number;
   /**
-   * Gouged-model channel for this plate. Absent until the maker opens the
-   * Fluting Channel panel; the classic `fluting`/`cross` fields above are
-   * never read when this model is in use, and vice versa.
+   * The gouge that cuts this plate's fluting channel. Seeded from the outline
+   * on first use, so a recipe that predates the panel still opens on a sane
+   * tool rather than on nothing.
    */
   gougedFluting?: GougedFlutingParams;
-  /** Gouged-model cross-arch template for this plate. Absent until authored. */
+  /** The plate's cross-arch crown. Absent until authored. */
   gougedCross?: GougedCrossParams;
 }
 
@@ -516,8 +521,22 @@ export interface EnricoCerutiParams {
   clampChannelWidth: number;
   purflingOffset: number | null;
   purflingChannelDepth: number | null;
+  /**
+   * @deprecated Classic model only, and no longer editable anywhere: the
+   * channel's reach is now an output of the gouge that cuts it — see
+   * {@link GougedChannelPaths.innerEdgeOffset}. Still defaulted on load and
+   * still read by the classic arching engine, which is retained unreferenced
+   * until it's clear nothing is wanted back from it. Saved recipes keep the
+   * field; nothing the UI does can change it.
+   */
   innerFlutingDepth: number | null;
+  /** @deprecated Classic model only — see {@link EnricoCerutiParams.innerFlutingDepth}. */
   innerFlutingDepth_cBout: number | null;
+  /**
+   * Distance from the plate edge in to the edge of the flat land, where the
+   * channel starts. Live and current: it is what the gouge's outer flank is
+   * anchored to, set in the Fluting Channel panel as Land Edge.
+   */
   outerFlutingDepth: number | null;
   button: Rectangle | null,
   bouts: {
@@ -577,6 +596,7 @@ export interface EnricoCerutiParams {
     L31DoubleArc: boolean;
     ucCornerSharpness?: number;
     lcCornerSharpness?: number;
+    /** @deprecated Classic model only — the C-bout gouge replaces it, per plate. */
     useCBoutFlutingDepth: boolean;
   },
   ratios: {

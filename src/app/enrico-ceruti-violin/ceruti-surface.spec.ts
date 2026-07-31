@@ -3,11 +3,14 @@ import { calculateCenterBout, calculateCorners, calculateMainBouts, calculateOut
 import { defaultArchingParams, defaultCrossArchParams, defaultFlutingChannelParams, longArchHeightAt } from './ceruti-arching';
 import {
   buildPlateStl, buildPlateSurfaceModel, calculateCrossArchTemplates, calculateFlutingSectionTop,
-  calculateLongArchTemplates, computeArchContours, computeArchSectionProfile, crossArchTemplateStationYs,
+  calculateLongArchTemplates, computeArchContours, computeArchSectionProfile, crossArchTemplateStations,
   stationChordsAt, topSurfaceZAt, PlateSurfaceModel, buildGougedPlateSurfaceModel,
   computeArchContourRings,
 } from './ceruti-surface';
-import { defaultGougedCrossParams, defaultGougedFlutingParams, gougeHalfWidth } from './ceruti-gouged';
+import {
+  defaultGougedCrossParams, defaultGougedFlutingParams, gougedCenterlineZAt, gougeHalfWidth,
+  solveGougedLongArch,
+} from './ceruti-gouged';
 import { DefaultParams, EnricoCerutiParams } from './ceruti-types';
 
 /** A fully calculated default violin with arching + fluting configured. */
@@ -218,12 +221,38 @@ describe('arching templates', () => {
     expect(computeArchSectionProfile(p, model, p.height + 50)).toBeNull();
   });
 
-  it('picks 5 interior stations, never the zero-height ends of the long arch', () => {
-    const stations = crossArchTemplateStationYs(p);
-    expect(stations.length).toBe(5);
-    for (const y of stations) {
-      expect(longArchHeightAt(p, p.arching!.top.arch, y)).toBeGreaterThan(0);
+  it('cuts a template at every body landmark, up the body in order', () => {
+    const stations = crossArchTemplateStations(p, p.arching!.top);
+    expect(stations.map(s => s.code)).toEqual(['LB', 'LC', 'C', 'UC', 'UB']);
+    for (let i = 1; i < stations.length; i++) {
+      expect(stations[i].y).toBeGreaterThan(stations[i - 1].y);
     }
+    // Every one of them is a real interior station with an arch over it.
+    for (const s of stations) {
+      expect(s.y).toBeGreaterThan(0);
+      expect(s.y).toBeLessThan(p.height);
+    }
+  });
+
+  it('adds a blank for an authored station, but not for one already on a landmark', () => {
+    const plate = p.arching!.top;
+    const landmarks = crossArchTemplateStations(p, plate);
+    // Between two landmarks, so it is nowhere near either.
+    const between = Math.round((landmarks[0].y + landmarks[1].y) / 2);
+    const onLandmark = landmarks[2].y;
+    plate.gougedCross = {
+      ...defaultGougedCrossParams(),
+      stations: [
+        { ...defaultGougedCrossParams(), y: between },
+        { ...defaultGougedCrossParams(), y: onLandmark },
+      ],
+    };
+
+    const stations = crossArchTemplateStations(p, plate);
+    expect(stations.length).toBe(landmarks.length + 1);
+    expect(stations.filter(s => s.y === between)).toEqual([{ y: between, code: '' }]);
+    // The one sitting on a landmark contributed nothing beyond the landmark itself.
+    expect(stations.filter(s => s.y === onLandmark).length).toBe(1);
   });
 
   it('builds one closed, labeled blank per station per plate side', () => {
@@ -231,10 +260,21 @@ describe('arching templates', () => {
     expect(shapes.length).toBe(10);
     for (const s of shapes) {
       expect(s.path.trim().endsWith('Z')).toBe(true);
-      expect(s.label).toMatch(/^(Top|Back) \d+mm$/);
+      expect(s.label).toMatch(/^(Top|Back) (LB|LC|C|UC|UB) \d+mm$/);
     }
     expect(shapes.some(s => s.label.startsWith('Top'))).toBe(true);
     expect(shapes.some(s => s.label.startsWith('Back'))).toBe(true);
+  });
+
+  it('gives each plate its own stations rather than pooling them', () => {
+    const landmarks = crossArchTemplateStations(p, p.arching!.top);
+    p.arching!.bottom.gougedCross = {
+      ...defaultGougedCrossParams(),
+      stations: [{ ...defaultGougedCrossParams(), y: Math.round((landmarks[0].y + landmarks[1].y) / 2) }],
+    };
+    const shapes = calculateCrossArchTemplates(p);
+    expect(shapes.filter(s => s.label.startsWith('Back')).length).toBe(landmarks.length + 1);
+    expect(shapes.filter(s => s.label.startsWith('Top')).length).toBe(landmarks.length);
   });
 
   it('places each cross-arch label inside its own blank’s bounds', () => {
@@ -261,6 +301,41 @@ describe('arching templates', () => {
       expect(s.path.trim().endsWith('Z')).toBe(true);
       expect(s.labelRotation).toBe(90);
     }
+  });
+
+  it('runs the long-arch template from cap to cap, through the channel and onto the arch', () => {
+    const plate = p.arching!.top;
+    const gouge = defaultGougedFlutingParams(p);
+    const la = solveGougedLongArch(p, plate.arch, gouge)!;
+    expect(la).toBeTruthy();
+    const z = (y: number) => gougedCenterlineZAt(p, gouge, la, y);
+
+    // Flat land at the plate edge, full depth at the channel's trough — the two
+    // surfaces the blank registers against before the arch begins.
+    expect(z(0)).toBeCloseTo(0, 9);
+    const centerY = p.outerFlutingDepth! + gougeHalfWidth(gouge.sweepRadius, gouge.depth);
+    expect(z(centerY)).toBeCloseTo(-gouge.depth, 9);
+    // And the arch's own height at the peak, measured from the plate surface.
+    expect(z(p.height / 2)).toBeCloseTo(plate.arch.archHeight, 3);
+
+    // The claim the whole model rests on, at the one place a maker would catch
+    // it failing: the arch leaves the channel at the same height *and* the same
+    // grade, so the template's edge has no step and no kink at the takeoff.
+    // Height, as a one-sided pair: the channel branch owns the takeoff itself
+    // and the arch branch picks up immediately past it, and both are the solved
+    // takeoff depth. Compared *at* the join rather than across it — the curve
+    // has real grade here, so straddling it would measure the slope and call it
+    // a step.
+    expect(z(la.yStart)).toBeCloseTo(-la.takeoff.takeoffDepth, 9);
+    expect(z(la.yStart + 1e-6)).toBeCloseTo(-la.takeoff.takeoffDepth, 6);
+    // Grade: no kink either. Measured over a short step on each side — the
+    // solve matches slope at the join, not curvature, so a long secant on the
+    // channel's arc and one on the arch would differ in their second-order
+    // terms and read as a kink that isn't there.
+    const e = 0.005;
+    const slopeIn = (z(la.yStart) - z(la.yStart - e)) / e;
+    const slopeOut = (z(la.yStart + e) - z(la.yStart)) / e;
+    expect(slopeOut).toBeCloseTo(slopeIn, 2);
   });
 
   it('long-arch templates are empty without arching configured', () => {

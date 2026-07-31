@@ -9,16 +9,17 @@ import {
     closeProfileToBlank, cycloidEdgeSlope, cycloidZAt, flutingProfileZ, pathsBounds, rotatePath180, samplePathToPolyline, translatePath,
     crossArchSplineZAt, crossArchSplineEdgeSlope,
 } from '../helpers/svgPathMath';
-import { ArchCurve, CrossArchStation, EnricoCerutiParams } from './ceruti-types';
+import { ArchCurve, ArchPlate, EnricoCerutiParams } from './ceruti-types';
 import { defineFlutingPath, defineInsetPath, defineOuterPath } from './ceruti-paths';
 import {
     buildGougedPlateGeometry, defaultGougedCrossParams, defaultGougedFlutingParams,
     chordTrust, cornerGougeOn, cornerGougeZ, gougeAtY, GougedCrossSection, gougedCrossSectionAt,
-    GougedPlateGeometry, gougeProfileZ,
+    gougedLongArchProfilePath, GougedPlateGeometry, gougeProfileZ, solveGougedLongArch,
 } from './ceruti-gouged';
 import {
-    calculateLongArch, CrossArchAtY, CrossArchQuery, defaultCrossArchParams, defaultFlutingChannelParams, flutingHalfWidthAtY,
-    longArchHeightAt, makeCrossArchAtY, normalizeCrossArchStations,
+    bodyLandmarks, CrossArchAtY, CrossArchQuery, defaultCrossArchParams, defaultFlutingChannelParams,
+    flutingHalfWidthAtY, longArchHeightAt, makeCrossArchAtY, normalizeCrossArchStations,
+    STATION_MERGE_EPS_MM,
 } from './ceruti-arching';
 
 // The evaluable top-plate surface: a height field z(x, y) over the plan view,
@@ -565,13 +566,37 @@ function translateTemplateShape(shape: TemplateShape, dx: number, dy: number): T
     };
 }
 
-/** 5 evenly-spaced interior body-length stations across the long arch's valid
- * span. Deliberately excludes the span's own endpoints — those are the cusp
- * points where the long arch height is 0 ({@link longArchHeightAt}), so a
- * cross-arch template there would be degenerate. */
-export function crossArchTemplateStationYs(p: EnricoCerutiParams): number[] {
-    const { span, yStart } = calculateLongArch(p);
-    return [1, 2, 3, 4, 5].map(i => yStart + (i / 6) * span);
+/** A body position to cut a cross-arch template at, and what to call the blank. */
+export interface TemplateStation {
+    y: number;
+    /** Landmark code (`LB`…`UB`), or empty for a station the maker set themselves. */
+    code: string;
+}
+
+/**
+ * Where a plate gets cross-arch templates: the five body landmarks, plus any
+ * station the maker actually set that isn't already one of them.
+ *
+ * The landmarks are the set because they are what a section is sighted against
+ * — the same five the station slider marks, from the same {@link bodyLandmarks},
+ * so a tick and a blank cannot disagree about where the waist is. They are
+ * unconditional: a plate's shape is judged at its widest points and its corners
+ * whether or not the maker chose to author a station there.
+ *
+ * An authored station is a deliberate statement about the shape, so it gets its
+ * own blank too — unless it lands on a landmark, where it would be the same
+ * template cut twice. `STATION_MERGE_EPS_MM` is the same tolerance the station
+ * list itself dedupes with, so "on" means here what it means there.
+ */
+export function crossArchTemplateStations(p: EnricoCerutiParams, plate?: ArchPlate): TemplateStation[] {
+    const landmarks: TemplateStation[] = bodyLandmarks(p).map(m => ({ y: m.y, code: m.code }));
+    const authored = normalizeCrossArchStations(
+        plate?.gougedCross?.stations as Array<{ y: number }> | undefined, p.height,
+    )
+        .map(s => Math.round(s.y))
+        .filter(y => !landmarks.some(m => Math.abs(m.y - y) <= STATION_MERGE_EPS_MM))
+        .map((y): TemplateStation => ({ y, code: '' }));
+    return [...landmarks, ...authored].sort((a, b) => a.y - b.y);
 }
 
 /** Center each shape on x = 0 and place them left-to-right with a gap between, the row itself centered on x = 0. */
@@ -599,30 +624,32 @@ function stackTemplates(shapes: TemplateShape[]): TemplateShape[] {
 }
 
 /**
- * The cross-arch template blanks for one plate side, one per `stationYs`
- * position. Clipped to the fluting inner half-chord rather than the full plate
- * edge: these check the arch's dome alone, which is carved before the fluting
- * channel and by a different tool. A station with no fluting falls back to the
- * full outer half.
+ * The cross-arch template blanks for one plate side, one per station.
+ *
+ * Swept to the full plate edge, not clipped back to the arch's dome. Under this
+ * model the channel is gouged first and the arch is carved down to meet it, so
+ * by the time a maker holds this template to the wood the channel and the flat
+ * land are already there — and they are what the blank registers against. A
+ * template that stopped at the takeoff would have to be positioned against a
+ * point on a curve, which is exactly the thing the eye cannot judge. The height
+ * field runs continuously from centerline to plate edge here, so nothing has to
+ * be stitched on to reach it.
  *
  * `model.signZ` picks which side of the cutout curve the backing attaches to —
  * the two plates' mirrored curves are shaped oppositely (valley vs. hump), so
  * they need opposite backing sides to both come out thin at the peak.
  */
 function calculateCrossArchTemplatesForSide(
-    p: EnricoCerutiParams, model: PlateSurfaceModel, sideLabel: string, stationYs: number[],
+    p: EnricoCerutiParams, model: PlateSurfaceModel, sideLabel: string, stations: TemplateStation[],
 ): TemplateShape[] {
-    return stationYs
-        .map((y): TemplateShape | null => {
-            const chords = stationChordsAt(p, model, y);
-            if (chords.outerHalf === null) return null;
-            const half = chords.flutingInnerHalf ?? chords.outerHalf;
-            const profile = computeArchSectionProfile(p, model, y, 0.25, half);
+    return stations
+        .map(({ y, code }): TemplateShape | null => {
+            const profile = computeArchSectionProfile(p, model, y, 0.25);
             if (profile === null) return null;
             const { path, backing, positionMid } = closeProfileToBlank(profile, 'y', model.signZ, TEMPLATE_MARGIN);
             return {
                 path,
-                label: `${sideLabel} ${Math.round(y)}mm`,
+                label: `${sideLabel} ${code ? `${code} ` : ''}${Math.round(y)}mm`,
                 labelPos: { x: positionMid, y: backing + model.signZ * TEMPLATE_MARGIN / 2 },
                 labelRotation: 0,
             };
@@ -644,54 +671,71 @@ function rotateTemplateShape180(shape: TemplateShape): TemplateShape {
     };
 }
 
+/** The two plates, back first — the order the blanks stack in on the sheet. */
+const TEMPLATE_SIDES: Array<{ key: 'top' | 'bottom'; label: string }> =
+    [{ key: 'bottom', label: 'Back' }, { key: 'top', label: 'Top' }];
+
+/** A plate's gouge and crown, seeded if the maker hasn't been into those panels yet. */
+function ensureGougedPlate(p: EnricoCerutiParams, key: 'top' | 'bottom'): ArchPlate {
+    const plate = p.arching![key];
+    plate.gougedFluting ??= defaultGougedFlutingParams(p);
+    plate.gougedCross ??= defaultGougedCrossParams();
+    return plate;
+}
+
 /**
  * Cross-arch template blanks for both plates, stacked into one non-overlapping
  * layout. Both plates present with the flat backing edge up; the top plate's
  * naturally lands at the bottom, so its blanks are rotated 180° after the fact.
  *
- * A plate with custom cross-arch stations gets blanks at exactly those
- * positions — the maker wants the shape they designed, not a generic sweep that
- * may miss it. Otherwise 5 evenly-spaced defaults.
+ * Each plate is cut at its own stations — the landmarks both share, plus
+ * whatever either has been given of its own — so a back with three extra
+ * stations doesn't force three blank duplicates onto the top.
  */
 export function calculateCrossArchTemplates(p: EnricoCerutiParams): TemplateShape[] {
     if (!p.arching) return [];
-    const sides: Array<{ key: 'top' | 'bottom'; label: string }> = [{ key: 'bottom', label: 'Back' }, { key: 'top', label: 'Top' }];
-    const templates = sides.flatMap(({ key, label }) => {
-        const plate = p.arching![key];
-        plate.cross ??= defaultCrossArchParams();
-        plate.fluting ??= defaultFlutingChannelParams();
-        const model = buildPlateSurfaceModel(p, key);
+    const templates = TEMPLATE_SIDES.flatMap(({ key, label }) => {
+        const plate = ensureGougedPlate(p, key);
+        const model = buildGougedPlateSurfaceModel(p, key);
         if (!model) return [];
-        // Only .y is read here, common to either curve type's station shape — see
-        // normalizeCrossArchStations' generic signature, which needs a single array
-        // type rather than the cycloid/spline union `plate.cross.stations` carries.
-        const customStations = normalizeCrossArchStations(plate.cross.stations as CrossArchStation[] | undefined, p.height);
-        const stationYs = customStations.length ? customStations.map(s => s.y) : crossArchTemplateStationYs(p);
-        const shapes = calculateCrossArchTemplatesForSide(p, model, label, stationYs);
+        const shapes = calculateCrossArchTemplatesForSide(p, model, label, crossArchTemplateStations(p, plate));
         return key === 'top' ? shapes.map(rotateTemplateShape180) : shapes;
     });
     return stackTemplates(templates);
 }
 
 /**
- * The two long-arch template blanks (top, back), traced from
- * {@link calculateLongArch}'s centerline elevation curves and placed side by
- * side. Labels run rotated 90° along the strip's length. Both present with the
- * flat backing edge on the left, so the back plate's blank is rotated 180°
- * after the fact.
+ * The two long-arch template blanks (top, back), traced from each plate's
+ * centerline elevation and placed side by side. Labels run rotated 90° along
+ * the strip's length. Both present with the flat backing edge on the left, so
+ * the back plate's blank is rotated 180° after the fact.
+ *
+ * Each plate's arch is terminated against its own channel by
+ * {@link solveGougedLongArch} rather than at an entered edge depth, so the two
+ * blanks can differ in length as well as in height — a deeper gouge takes off
+ * further in. Both run the full body length regardless, including the flat land
+ * at the caps that the template seats on.
  */
 export function calculateLongArchTemplates(p: EnricoCerutiParams): TemplateShape[] {
     if (!p.arching) return [];
-    const { topPath, backPath } = calculateLongArch(p);
+    const a = p.arching;
     const templates: TemplateShape[] = [];
-    if (backPath) {
-        const { path, backing, positionMid } = closeProfileToBlank(backPath, 'x', -1, TEMPLATE_MARGIN);
-        const shape: TemplateShape = { path, label: 'Back Long', labelPos: { x: backing - TEMPLATE_MARGIN / 2, y: positionMid }, labelRotation: 90 };
-        templates.push(rotateTemplateShape180(shape));
-    }
-    if (topPath) {
-        const { path, backing, positionMid } = closeProfileToBlank(topPath, 'x', 1, TEMPLATE_MARGIN);
-        templates.push({ path, label: 'Top Long', labelPos: { x: backing + TEMPLATE_MARGIN / 2, y: positionMid }, labelRotation: 90 });
+    for (const { key, label } of TEMPLATE_SIDES) {
+        const plate = ensureGougedPlate(p, key);
+        const gouge = plate.gougedFluting!;
+        const sign: 1 | -1 = key === 'top' ? 1 : -1;
+        const zBase = key === 'top' ? a.ribHeight + plate.thickness : -plate.thickness;
+        const profile = gougedLongArchProfilePath(
+            p, gouge, solveGougedLongArch(p, plate.arch, gouge), zBase, sign,
+        );
+        const { path, backing, positionMid } = closeProfileToBlank(profile, 'x', sign, TEMPLATE_MARGIN);
+        const shape: TemplateShape = {
+            path,
+            label: `${label} Long`,
+            labelPos: { x: backing + sign * TEMPLATE_MARGIN / 2, y: positionMid },
+            labelRotation: 90,
+        };
+        templates.push(key === 'bottom' ? rotateTemplateShape180(shape) : shape);
     }
     return rowTemplates(templates);
 }
