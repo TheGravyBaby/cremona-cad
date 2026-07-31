@@ -338,11 +338,23 @@ export function gougedCrossCycloidControlsInfo() {
 export function gougedCrossTemplateInfo() {
     info(
         "The crown shape across the plate, both axes as percentages.\n\n" +
-        "Position runs from 0 at the peak to ±100 where the crown runs into the channel; negative is the bass side. Height is a percent of the local arch height, so the peak is always 100.\n\n" +
+        "Position runs from 0 at the joint to ±100 where the crown runs into the channel; negative is the bass side. It is measured across the plate, not out from the crown, so moving the Peak leaves your points where you put them. Height is a percent of the local arch height, so the crown is always 100.\n\n" +
         "Percentages rather than millimetres, because what carries from station to station is a SHAPE. Fixed distances make the crown a rigid object of one size, and the plate it sits on is not one size — carried onto a narrower station a fixed-width crown swells to fill it, and the section reads wrong even though every number is what you typed.\n\n" +
         "You do not set where the arch ends. The last stretch — the run out into the channel — is solved so the arch meets it tangentially, and the contact slides along the channel's inner flank to wherever that works out. This is why the channel keeps a crisp, constant outer edge while the recurve shoulder inside it varies, which is what one sees on real instruments.\n\n" +
         "Mirror: on repeats the knot on the other side. Turn it off to shape the bass and treble sides independently.",
         "Cross-Arch Shape", defaultTTL, true
+    )
+}
+
+export function gougedCrossPeakInfo() {
+    info(
+        "Where the crown sits across the plate. 50 puts it on the joint; lower moves it to the bass side.\n\n" +
+        "Real plates rarely peak dead centre, and a CT section traced onto a crown pinned to the joint has to absorb that error somewhere else in the shape — usually as knots that no longer describe the arch they came from.\n\n" +
+        "Moving it does not tilt the arch. The crown stays a genuine smooth high point at the long arch's height, because it is still an interior knot of the section curve; what changes is that the two sides now have different widths to cover.\n\n" +
+        "Nor does it drag the control points along. Their positions are measured from the joint, so a point stays at the distance across the plate you put it at while you dial the ridge into place around it. A point can therefore end up on the far side of the crown from the side it was entered on, which is simply what the section says.\n\n" +
+        "Toward each cap the ridge eases back onto the joint on its own. Where the long arch has not yet climbed clear of the channel there is no crown, and a ridge is a feature of a crown — placing one out there would only trace a fold across a part of the plate that is nearly all channel. So this is the position the ridge reaches once there is arch to carry it, which is everywhere but the last stretch into each cap.\n\n" +
+        "Held to 30–70. The crown only has to stay clear of the channel to be valid, but much past this one shoulder becomes a cliff and the other most of the plate.",
+        "Crown Position", defaultTTL, true
     )
 }
 

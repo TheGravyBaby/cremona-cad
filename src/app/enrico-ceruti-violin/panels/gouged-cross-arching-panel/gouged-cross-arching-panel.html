@@ -75,13 +75,26 @@
             <span class="field-cell">Height <span class="unit-label">%</span></span>
             <button type="button" class="info-icon" (click)="gougedCrossTemplateInfo()" title="More information">ⓘ</button>
         </div>
+        <div class="input-group basic-row field-row spline-row" role="group">
+            <div class="field-cell">
+                <input class="basic-input" type="number" step="1" min="30" max="70"
+                    [ngModel]="peakPct('top')" (ngModelChange)="setPeakPct('top', $event)"
+                    title="Where the crown sits across the plate — 50 is the joint, lower is bass side." />
+            </div>
+            <span class="field-separator" aria-hidden="true"></span>
+            <div class="field-cell">
+                <span class="basic-display" title="The crown always sits at the local long-arch height">100</span>
+            </div>
+            <span>Peak</span>
+            <button type="button" class="info-icon" (click)="gougedCrossPeakInfo()" title="More information">ⓘ</button>
+        </div>
         @for (pt of spline.points; track $index) {
         <div class="input-group basic-row field-row spline-row" role="group">
             <div class="field-cell">
                 <input class="basic-input" type="number" step="1" min="-99" max="99"
                     [ngModel]="pointXPct(pt)" (ngModelChange)="setPointXPct('top', $index, $event)"
                     (focus)="onPointFocus('top', $index)" (blur)="onPointBlur()"
-                    title="Across the plate as a percent of the crown — 0 is the peak, ±100 where it runs into the channel. Negative is bass side." />
+                    title="Across the plate as a percent of the half-width — 0 is the joint, ±100 where it runs into the channel. Negative is bass side." />
             </div>
             <span class="field-separator" aria-hidden="true"></span>
             <div class="field-cell">
@@ -124,14 +137,14 @@
     @if (splineStations('top'); as stations) {
     @if (stations.length) {
     <div class="station-table" [style.border-color]="colors.archTop"
-        style="grid-template-columns: minmax(30px,auto) minmax(26px,auto) auto;">
+        style="grid-template-columns: minmax(30px,auto) minmax(26px,auto) minmax(26px,auto) auto;">
         <div class="station-table-row station-table-row--header">
-            <span>mm</span><span>Pts</span><span></span>
+            <span>mm</span><span>Peak</span><span>Pts</span><span></span>
         </div>
         @for (st of stations; track $index) {
         <div class="station-table-row">
             <span class="station-table-y" title="Jump to this station" (click)="jumpToStation(st.y)">{{ st.y }}</span>
-            <span>{{ st.points.length }}</span>
+            <span>{{ stationPeakPct(st) }}</span><span>{{ st.points.length }}</span>
             <button class="info-icon" (click)="removeStation('top', $index)" title="Remove station">×</button>
         </div>
         }
@@ -210,13 +223,26 @@
             <span class="field-cell">Height <span class="unit-label">%</span></span>
             <button type="button" class="info-icon" (click)="gougedCrossTemplateInfo()" title="More information">ⓘ</button>
         </div>
+        <div class="input-group basic-row field-row spline-row" role="group">
+            <div class="field-cell">
+                <input class="basic-input" type="number" step="1" min="30" max="70"
+                    [ngModel]="peakPct('bottom')" (ngModelChange)="setPeakPct('bottom', $event)"
+                    title="Where the crown sits across the plate — 50 is the joint, lower is bass side." />
+            </div>
+            <span class="field-separator" aria-hidden="true"></span>
+            <div class="field-cell">
+                <span class="basic-display" title="The crown always sits at the local long-arch height">100</span>
+            </div>
+            <span>Peak</span>
+            <button type="button" class="info-icon" (click)="gougedCrossPeakInfo()" title="More information">ⓘ</button>
+        </div>
         @for (pt of spline.points; track $index) {
         <div class="input-group basic-row field-row spline-row" role="group">
             <div class="field-cell">
                 <input class="basic-input" type="number" step="1" min="-99" max="99"
                     [ngModel]="pointXPct(pt)" (ngModelChange)="setPointXPct('bottom', $index, $event)"
                     (focus)="onPointFocus('bottom', $index)" (blur)="onPointBlur()"
-                    title="Across the plate as a percent of the crown — 0 is the peak, ±100 where it runs into the channel. Negative is bass side." />
+                    title="Across the plate as a percent of the half-width — 0 is the joint, ±100 where it runs into the channel. Negative is bass side." />
             </div>
             <span class="field-separator" aria-hidden="true"></span>
             <div class="field-cell">
@@ -259,14 +285,14 @@
     @if (splineStations('bottom'); as stations) {
     @if (stations.length) {
     <div class="station-table" [style.border-color]="colors.archBack"
-        style="grid-template-columns: minmax(30px,auto) minmax(26px,auto) auto;">
+        style="grid-template-columns: minmax(30px,auto) minmax(26px,auto) minmax(26px,auto) auto;">
         <div class="station-table-row station-table-row--header">
-            <span>mm</span><span>Pts</span><span></span>
+            <span>mm</span><span>Peak</span><span>Pts</span><span></span>
         </div>
         @for (st of stations; track $index) {
         <div class="station-table-row">
             <span class="station-table-y" title="Jump to this station" (click)="jumpToStation(st.y)">{{ st.y }}</span>
-            <span>{{ st.points.length }}</span>
+            <span>{{ stationPeakPct(st) }}</span><span>{{ st.points.length }}</span>
             <button class="info-icon" (click)="removeStation('bottom', $index)" title="Remove station">×</button>
         </div>
         }

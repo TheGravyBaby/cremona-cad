@@ -794,8 +794,142 @@ export function makeMonotoneSpline(ys: number[], zs: number[]): (y: number) => n
 
   const h: number[]     = ys.slice(0, n).map((v, i) => ys[i + 1] - v);
   const delta: number[] = h.map((hi, i) => (zs[i + 1] - zs[i]) / hi);
-  const m = hymanFilterSlopes(naturalSplineSlopes(h, delta), h, delta);
+  return hermiteEvaluator(ys, zs, h, hymanFilterSlopes(naturalSplineSlopes(h, delta), h, delta));
+}
 
+/**
+ * The same curve *before* the monotonicity filter: a natural cubic spline, C²
+ * at every knot rather than only where the filter left it alone.
+ *
+ * The filter is not free, and what it costs is exactly curvature continuity —
+ * it buys the no-overshoot guarantee by clamping knot slopes, and a clamped
+ * slope is a knot where the second derivative steps. On a flat graph that is
+ * invisible. On a rendered surface it is a crease running along the locus of
+ * that knot, because specular shading reads curvature, and it is why an
+ * asymmetric cross arch shows a line down its ridge while a symmetric one does
+ * not: with symmetric data the filter has nothing to clamp.
+ *
+ * The trade is real and the caller must be able to live with it. A natural
+ * spline through steep or unevenly spaced data can rise above the knots it
+ * passes through. Check the result — see `naturalSplineOvershoot` in
+ * ceruti-gouged, which is what decides between the two there.
+ */
+export function makeNaturalSpline(ys: number[], zs: number[]): (y: number) => number {
+  const n = ys.length - 1;
+  if (n < 1) return () => zs[0] ?? 0;
+
+  const h: number[]     = ys.slice(0, n).map((v, i) => ys[i + 1] - v);
+  const delta: number[] = h.map((hi, i) => (zs[i + 1] - zs[i]) / hi);
+  return hermiteEvaluator(ys, zs, h, naturalSplineSlopes(h, delta));
+}
+
+/**
+ * Cubic spline through the data, C² at *every* knot, with the slope at knot
+ * `flat` pinned to zero — a curvature-continuous curve with a genuine smooth
+ * extremum exactly where the caller asked for one.
+ *
+ * The two conditions fight over the same freedom, and understanding why is the
+ * whole design. A cubic Hermite has one slope unknown per knot; C² at each
+ * interior knot plus one condition per end uses every one of them. Adding
+ * `m[flat] = 0` is one equation too many, which is exactly why
+ * {@link makeMonotoneSpline} cannot have both: its filter pins the slope and
+ * *drops* C² there, leaving a curvature step that a rendered surface shows as a
+ * crease along that knot.
+ *
+ * The room is made by giving up one end condition instead. That keeps C²
+ * everywhere and the pinned slope, and costs only the natural (z''= 0)
+ * behaviour at one end — no discontinuity, since an end condition sets how the
+ * curve leaves the data rather than joining two pieces of it.
+ *
+ * Which end, though, is a choice the data does not make, and choosing one would
+ * make a symmetric problem come out asymmetric. So it is solved both ways and
+ * averaged. Both solutions satisfy every C² equation and the pinned slope, and
+ * those are linear, so the average satisfies them too — it differs only in
+ * meeting the average of the two end conditions. Symmetric data therefore gives
+ * a symmetric curve, and the centred case comes out bit-identical to the
+ * monotone spline.
+ *
+ * No overshoot guarantee whatsoever: that is what the filter was buying. The
+ * caller must check the result and fall back.
+ *
+ * Returns null when the data is too short to constrain (fewer than two
+ * intervals) or the system is singular.
+ */
+export function makeC2SplineWithFlatKnot(
+  ys: number[], zs: number[], flat: number,
+): ((y: number) => number) | null {
+  const n = ys.length - 1;
+  if (n < 2 || flat <= 0 || flat >= n) return null;
+
+  const h: number[] = ys.slice(0, n).map((v, i) => ys[i + 1] - v);
+  const delta: number[] = h.map((hi, i) => (zs[i + 1] - zs[i]) / hi);
+
+  // C² at every interior knot, the pinned slope, and one end condition.
+  const solveWith = (naturalAtStart: boolean): number[] | null => {
+    const rows: number[][] = [];
+    const rhs: number[] = [];
+    if (naturalAtStart) {
+      const r = new Array<number>(n + 1).fill(0);
+      r[0] = 2; r[1] = 1;
+      rows.push(r); rhs.push(3 * delta[0]);
+    }
+    for (let i = 1; i < n; i++) {
+      const r = new Array<number>(n + 1).fill(0);
+      r[i - 1] = h[i];
+      r[i] = 2 * (h[i - 1] + h[i]);
+      r[i + 1] = h[i - 1];
+      rows.push(r); rhs.push(3 * (h[i] * delta[i - 1] + h[i - 1] * delta[i]));
+    }
+    if (!naturalAtStart) {
+      const r = new Array<number>(n + 1).fill(0);
+      r[n - 1] = 1; r[n] = 2;
+      rows.push(r); rhs.push(3 * delta[n - 1]);
+    }
+    const pin = new Array<number>(n + 1).fill(0);
+    pin[flat] = 1;
+    rows.push(pin); rhs.push(0);
+    return solveDense(rows, rhs);
+  };
+
+  const a = solveWith(true);
+  const b = solveWith(false);
+  if (!a || !b) return null;
+  const m = a.map((v, i) => (v + b[i]) / 2);
+  if (m.some(v => !Number.isFinite(v))) return null;
+  return hermiteEvaluator(ys, zs, h, m);
+}
+
+/**
+ * Gauss–Jordan with partial pivoting. Dense on purpose: the pinned-slope row
+ * destroys the tridiagonal structure the natural spline enjoys, and a cross
+ * arch carries a handful of knots, so the cubic cost is nothing next to the
+ * clarity of not maintaining a special-cased banded solver.
+ */
+function solveDense(rows: number[][], rhs: number[]): number[] | null {
+  const n = rhs.length;
+  const m = rows.map((r, i) => [...r, rhs[i]]);
+  for (let col = 0; col < n; col++) {
+    let pivot = col;
+    for (let r = col + 1; r < n; r++) {
+      if (Math.abs(m[r][col]) > Math.abs(m[pivot][col])) pivot = r;
+    }
+    if (Math.abs(m[pivot][col]) < 1e-12) return null;
+    [m[col], m[pivot]] = [m[pivot], m[col]];
+    for (let r = 0; r < n; r++) {
+      if (r === col) continue;
+      const f = m[r][col] / m[col][col];
+      if (f === 0) continue;
+      for (let k = col; k <= n; k++) m[r][k] -= f * m[col][k];
+    }
+  }
+  return m.map((r, i) => r[n] / r[i]);
+}
+
+/** Piecewise cubic Hermite through `zs` with knot slopes `m` — the shared tail of both splines above. */
+function hermiteEvaluator(
+  ys: number[], zs: number[], h: number[], m: number[],
+): (y: number) => number {
+  const n = ys.length - 1;
   return (y: number): number => {
     let i = 0;
     while (i < n - 1 && ys[i + 1] <= y) i++;

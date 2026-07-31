@@ -1,6 +1,9 @@
 import {
   gougeHalfWidth, gougeProfileSlope, gougeProfileZ, gougedCrossGuide, gougedCrossKnots,
-  makeGougedCrossResolver, nearestGougedCrossShape, solveGougedCrossSection, solveGougedTakeoff,
+  chordTrust, crownOffsetTrust, GougedCrossSection, gougedCrossKnotX, makeGougedCrossResolver,
+  nearestGougedCrossShape,
+  solveGougedCrossSection,
+  solveGougedTakeoff,
 } from './ceruti-gouged';
 import { makeMonotoneSpline } from '../helpers/draftMath';
 import { trochoidNorm } from '../helpers/svgPathMath';
@@ -533,9 +536,9 @@ describe('the crown', () => {
    * there. Each side is measured on its own and extrapolated instead:
    * d(ε) → z'(0) + z''(0)·ε/2, so 2·d(ε) − d(2ε) cancels the linear term.
    */
-  const crownSlopes = (s: { zAt: (x: number) => number }): [number, number] => {
+  const crownSlopes = (s: { zAt: (x: number) => number }, xPeak = 0): [number, number] => {
     const oneSided = (dir: -1 | 1): number => {
-      const d = (e: number) => (s.zAt(dir * e) - s.zAt(0)) / (dir * e);
+      const d = (e: number) => (s.zAt(xPeak + dir * e) - s.zAt(xPeak)) / (dir * e);
       return 2 * d(0.02) - d(0.04);
     };
     return [oneSided(-1), oneSided(1)];
@@ -575,5 +578,269 @@ describe('the crown', () => {
     const ratio = (ARCH - s.zAt(2 * e)) / (ARCH - s.zAt(e));
     expect(ratio).toBeGreaterThan(3.5);
     expect(ratio).toBeLessThan(4.5);
+  });
+
+  // ===== Moved off the joint =====
+  // Real plates rarely peak on the centre joint, which is what makes a traced
+  // CT section fit badly against a crown pinned there.
+
+  /** `peak` is a fraction of the full width, so 0.5 is the joint. */
+  const moved = (peak: number, half = HALF, archH = ARCH) =>
+    solveGougedCrossSection(archH, half, R, D, { left: knots, right: knots, peak })!;
+
+  it('puts the crown where it was asked to, at the full arch height', () => {
+    const s = moved(0.6);
+    expect(s.xPeak).toBeCloseTo(0.2 * HALF, 9); // 60% of the width is 20% of a half
+    expect(s.zAt(s.xPeak)).toBeCloseTo(ARCH, 9);
+  });
+
+  it('stays a smooth maximum after moving, not a tilted ridge', () => {
+    // The property the whole section rests on, and the one a move could break:
+    // the crown is flat because it is an *interior* knot between secants of
+    // opposite sign, which is where Hyman's filter zeroes the slope. That
+    // argument never mentioned x = 0, and this is the check that it didn't
+    // quietly depend on it.
+    //
+    // Bounded more loosely than the centred cases above, because the estimator
+    // is not exact: 2·d(ε) − d(2ε) cancels the linear term and leaves −z'''ε²/3,
+    // and z''' climbs sharply when the crown sits close to a knot — which is
+    // exactly what moving it does to one flank. See the convergence check below
+    // for why that residual is the method's and not the geometry's. A real
+    // ridge would read about 0.7 here, four orders larger.
+    for (const peak of [0.32, 0.42, 0.58, 0.68]) {
+      const s = moved(peak);
+      for (const slope of crownSlopes(s, s.xPeak)) expect(Math.abs(slope)).toBeLessThan(1e-4);
+    }
+  });
+
+  it('has a crown slope converging to zero rather than to a tilt', () => {
+    // The discriminator between a small numerical residual and a small real
+    // slope: halving the step must quarter the first and leave the second alone.
+    const s = moved(0.32);
+    const residual = (eps: number) => {
+      const d = (e: number) => (s.zAt(s.xPeak - e) - s.zAt(s.xPeak)) / -e;
+      return Math.abs(2 * d(eps) - d(2 * eps));
+    };
+    expect(residual(0.01)).toBeLessThan(residual(0.02) / 3);
+    expect(residual(0.005)).toBeLessThan(residual(0.01) / 3);
+  });
+
+  it('is still the highest point of the section once moved', () => {
+    const s = moved(0.35);
+    let max = -Infinity;
+    let argmax = 0;
+    for (let x = -HALF; x <= HALF; x += 0.25) {
+      if (s.zAt(x) > max) { max = s.zAt(x); argmax = x; }
+    }
+    expect(max).toBeCloseTo(ARCH, 6);
+    expect(argmax).toBeCloseTo(s.xPeak, 0);
+  });
+
+  it('leaves the control points where they were when the crown moves', () => {
+    // Positions are measured from the joint, so dialling the ridge across the
+    // plate must not drag the shape along with it.
+    const centred = moved(0.5);
+    const off = moved(0.65);
+    for (const side of [-1, 1] as const) {
+      for (const frac of [0.45, 0.7]) {
+        expect(gougedCrossKnotX(off, side, frac)).toBeCloseTo(gougedCrossKnotX(centred, side, frac), 1);
+      }
+    }
+  });
+
+  it('keeps a knot that ends up on the far side of the crown', () => {
+    // Positions being absolute, a knot entered on the treble side can end up on
+    // the bass flank of a crown moved out past it. Dropping such a knot would be
+    // a step change, and a step is what the tangency solve cannot survive.
+    const inner = [{ x: 0.2, z: 0.75 }, { x: 0.6, z: 0.35 }];
+    const s = solveGougedCrossSection(ARCH, HALF, R, D, { left: inner, right: inner, peak: 0.65 })!;
+    const x = gougedCrossKnotX(s, 1, 0.2);
+    expect(x).toBeLessThan(s.xPeak); // the knot really is inside the crown
+
+    // And it is still pinning the curve: the section passes through the height
+    // it was given, then climbs on to the crown. Were it dropped the curve would
+    // run free from the crown down to the takeoff and sit higher here.
+    const base = s.zAt(s.xEndRight);
+    expect(s.zAt(x)).toBeCloseTo(base + 0.75 * (ARCH - base), 6);
+    expect(s.zAt(x)).toBeLessThan(s.zAt((x + s.xPeak) / 2));
+  });
+
+  it('still meets the channel tangentially on both sides', () => {
+    const s = moved(0.65);
+    for (const side of [s.left!, s.right!]) {
+      expect(side).not.toBeNull();
+      expect(gougeProfileSlope(side.contactS, R, D)).toBeCloseTo(side.slope, 9);
+    }
+  });
+
+  it('moves the contact smoothly as the crown travels', () => {
+    // The crown is anchored to the centerline chord, which the solve never
+    // touches, so sweeping it must not make the contact jump.
+    let prev: number | null = null;
+    for (let peak = 0.3; peak <= 0.7001; peak += 0.01) {
+      const s = moved(peak);
+      expect(s.right).not.toBeNull();
+      if (prev !== null) expect(Math.abs(s.right!.contactS - prev)).toBeLessThan(0.1 * gougeHalfWidth(R, D));
+      prev = s.right!.contactS;
+    }
+  });
+
+  it('tapers the crown back to the joint where there is no arch to speak of', () => {
+    // The cap bands. An offset ridge there is steered by the centerline chord,
+    // which swings hardest and samples worst exactly where the plate closes —
+    // and the ridge is a curvature feature, so steering it badly folds the
+    // surface. Where the long arch has not climbed clear of the channel there is
+    // no crown to carry a ridge, so there is nothing to place.
+    const full = 0.4 * HALF;
+    // No crown at all — the recurve band, where the arch sits below plate level.
+    for (const archH of [-0.5, 0]) expect(moved(0.7, HALF, archH).xPeak).toBe(0);
+    // And it eases in rather than ramping: a twelfth of the way up the band
+    // carries a few percent of the offset, not a twelfth of it.
+    expect(Math.abs(moved(0.7, HALF, 0.2).xPeak)).toBeLessThan(0.05 * full);
+  });
+
+  it('reaches the position it was asked for once the arch has climbed clear', () => {
+    // And leaves it alone thereafter: a real arch is far above the band, so this
+    // must not quietly shrink the offset through the bouts.
+    for (const archH of [4, 9, 15]) {
+      expect(moved(0.7, HALF, archH).xPeak).toBeCloseTo(0.4 * HALF, 9);
+    }
+  });
+
+  it('eases into the taper without a kink at either end of it', () => {
+    // The reason this is a smoothstep and not a clamp. A clamp is C⁰ in slope at
+    // both ends of the band, and a kink in the ridge line is exactly the fold
+    // the taper exists to remove — it would only move it inward. Second
+    // differences of a C¹ path shrink like h²; across a kink they shrink like h.
+    const xPeakAt = (archH: number) => moved(0.7, HALF, archH).xPeak;
+    const worstCurvature = (h: number) => {
+      let worst = 0;
+      for (let a = -0.5; a <= 3.5; a += h) {
+        worst = Math.max(worst, Math.abs(xPeakAt(a - h) - 2 * xPeakAt(a) + xPeakAt(a + h)));
+      }
+      return worst;
+    };
+    expect(worstCurvature(0.02)).toBeLessThan(worstCurvature(0.04) / 3);
+  });
+
+  it('clamps the crown clear of the channel at a narrow station', () => {
+    // The same percent is a far larger share of a narrow station. Left
+    // unclamped the crown would reach the channel and collapse an interval of
+    // the profile spline to zero width.
+    const narrow = 3;
+    const s = moved(0.7, narrow);
+    expect(Math.abs(s.xPeak)).toBeLessThan(narrow - gougeHalfWidth(R, D));
+    expect(Number.isFinite(s.zAt(0))).toBe(true);
+  });
+
+  it('is unchanged from the centred solve when the crown is not moved', () => {
+    // Old templates carry no peak at all, and must render exactly as before.
+    const before = solveGougedCrossSection(ARCH, HALF, R, D, { left: knots, right: knots })!;
+    const after = moved(0.5);
+    for (let x = -HALF; x <= HALF; x += 1) expect(after.zAt(x)).toBeCloseTo(before.zAt(x), 12);
+  });
+
+  // ===== The ridge crease =====
+  // A monotone spline pins the crown's slope by clamping it, and a clamped
+  // slope is a knot where the second derivative steps. Invisible on a graph; on
+  // a rendered surface it is a line down the ridge, because specular shading
+  // reads curvature. Symmetric data hides it — both flanks step by the same
+  // amount — which is why it only appeared once the crown could move.
+
+  const one = [{ x: 0.7, z: 0.4 }];
+  const withOneKnot = (peak: number, archH = ARCH) =>
+    solveGougedCrossSection(archH, HALF, R, D, { left: one, right: one, peak })!;
+
+  /** One-sided curvatures at the crown, each measured wholly on its own flank. */
+  const crownCurvatures = (s: GougedCrossSection, h = 0.02): [number, number] => {
+    const side = (dir: 1 | -1) =>
+      (s.zAt(s.xPeak + dir * h) - 2 * s.zAt(s.xPeak + dir * 2 * h) + s.zAt(s.xPeak + dir * 3 * h)) / (h * h);
+    return [side(-1), side(1)];
+  };
+
+  it('joins the two flanks with matching curvature at a moved crown', () => {
+    for (const peak of [0.44, 0.46, 0.48]) {
+      const [l, r] = crownCurvatures(withOneKnot(peak));
+      expect(Math.abs(l - r) / Math.abs(r)).toBeLessThan(0.02);
+    }
+  });
+
+  it('still matches when the crown is centred', () => {
+    // Exactly equal in principle — symmetric data, mirror-image flanks — so the
+    // bound is set by the finite difference reading it, not by the geometry.
+    const [l, r] = crownCurvatures(withOneKnot(0.5));
+    expect(Math.abs(l - r) / Math.abs(r)).toBeLessThan(1e-6);
+  });
+
+  it('keeps the crown exact whichever spline it settles on', () => {
+    // The smooth curve gives up the no-overshoot guarantee, so a template it
+    // cannot handle falls back. Either way the arch height must still describe
+    // the plate: the crown sits where asked, at the height asked, and nothing
+    // rises above it.
+    const templates = [
+      one,
+      [{ x: 0.45, z: 0.62 }, { x: 0.75, z: 0.26 }],
+      [{ x: 0.3, z: 0.85 }, { x: 0.6, z: 0.5 }, { x: 0.85, z: 0.15 }],
+      [{ x: 0.2, z: 0.95 }, { x: 0.9, z: 0.05 }],
+    ];
+    for (const pts of templates) {
+      for (const peak of [0.3, 0.35, 0.42, 0.46, 0.5, 0.58, 0.7]) {
+        const s = solveGougedCrossSection(ARCH, HALF, R, D, { left: pts, right: pts, peak })!;
+        expect(s).not.toBeNull();
+        expect(s.zAt(s.xPeak)).toBeCloseTo(ARCH, 9);
+        let max = -Infinity;
+        let lowest = Infinity;
+        for (let x = -s.xEndLeft; x <= s.xEndRight; x += 0.25) {
+          max = Math.max(max, s.zAt(x));
+          lowest = Math.min(lowest, s.zAt(x));
+        }
+        expect(max).toBeLessThanOrEqual(ARCH + 1e-6);
+        // And it never dives through the channel it is supposed to meet.
+        expect(lowest).toBeGreaterThan(-D - 1e-6);
+      }
+    }
+  });
+});
+
+describe('chord trust', () => {
+  /**
+   * The invariant the whole cap fix rests on. The height field reads transverse
+   * position by blending distance against chord, weighted by `chordTrust`; while
+   * distance carries any weight the field cannot tell one side of the joint from
+   * the other and picks a flank by the sign of x. That is only harmless when the
+   * two flanks agree — so the crown may not leave the joint until the blend has
+   * finished, not merely in proportion to it.
+   */
+  it('never lets the crown off the joint while the surface still leans on distance', () => {
+    for (let f = 0; f <= 1.2; f += 0.005) {
+      if (crownOffsetTrust(f) > 0) expect(chordTrust(f)).toBe(1);
+    }
+  });
+
+  it('leaves the crown fully free where the chord is the whole story', () => {
+    expect(crownOffsetTrust(1)).toBe(1);
+    expect(chordTrust(1)).toBe(1);
+  });
+
+  it('centres the crown where the caps close in from three sides', () => {
+    // The ratio falls toward the caps: the nearest channel is ahead, not beside.
+    expect(crownOffsetTrust(0.3)).toBe(0);
+    expect(crownOffsetTrust(0.45)).toBe(0);
+  });
+
+  it('eases rather than switches, so neither reads as a crease along the body', () => {
+    for (const f of [chordTrust, crownOffsetTrust]) {
+      let prev: number | null = null;
+      let prevSlope: number | null = null;
+      for (let v = 0; v <= 1; v += 0.01) {
+        const z = f(v);
+        if (prev !== null) {
+          const slope = (z - prev) / 0.01;
+          if (prevSlope !== null) expect(Math.abs(slope - prevSlope)).toBeLessThan(1.5);
+          prevSlope = slope;
+        }
+        prev = z;
+      }
+    }
   });
 });
