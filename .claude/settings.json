@@ -15,7 +15,11 @@
       "Bash(echo \"EXIT:$?\")",
       "Bash(node /private/tmp/claude-501/-Users-aargraves-Documents-cremona-cad/3e358a09-ac26-43d0-889e-a7a83f8a2c34/scratchpad/delta.mjs)",
       "Bash(git show *)",
-      "Bash(perl -0pi -e 's/\\\\Qcrossprofile\\\\E//' /dev/null)"
+      "Bash(perl -0pi -e 's/\\\\Qcrossprofile\\\\E//' /dev/null)",
+      "Bash(perl -0pi -e 's/\\(return withCornerPass\\\\\\(p, g, chords, platformOuterIdx, x, y\\), \\(gougeProfileZ\\\\\\(s, section\\\\.sweepRadius, g\\\\.gouge\\\\.depth\\\\\\)\\\\\\);\\)/$1, s, $2/; s/\\(return withCornerPass\\\\\\(p, g, chords, platformOuterIdx, x, y\\), \\(capZ\\\\\\);\\)/$1, s, $2/' src/app/enrico-ceruti-violin/ceruti-surface.ts)",
+      "Bash(grep -E \"^\\\\s*\\\\[?[0-9]*m?[0-9]* [.0-9F+ ]+$|w=.*2w=\")",
+      "Bash(grep -E \"^\\\\s*\\\\[?[0-9]*m?[0-9]* [.,0-9F+ ]+$|w=.*2w=\")",
+      "Bash(grep -E \"^\\\\s*\\\\[?[0-9]*m?[0-9.]+ [.,0-9F+ ]+$|w=.*wedgeMax\")"
     ],
     "additionalDirectories": [
       "/tmp"

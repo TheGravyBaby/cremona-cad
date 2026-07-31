@@ -13,7 +13,8 @@ import { ArchCurve, CrossArchStation, EnricoCerutiParams } from './ceruti-types'
 import { defineFlutingPath, defineInsetPath, defineOuterPath } from './ceruti-paths';
 import {
     buildGougedPlateGeometry, defaultGougedCrossParams, defaultGougedFlutingParams,
-    chordTrust, gougeAtY, GougedCrossSection, gougedCrossSectionAt, GougedPlateGeometry, gougeProfileZ,
+    chordTrust, cornerGougeOn, cornerGougeZ, gougeAtY, GougedCrossSection, gougedCrossSectionAt,
+    GougedPlateGeometry, gougeProfileZ,
 } from './ceruti-gouged';
 import {
     calculateLongArch, CrossArchAtY, CrossArchQuery, defaultCrossArchParams, defaultFlutingChannelParams, flutingHalfWidthAtY,
@@ -299,7 +300,8 @@ function archTransverseSlopeAt(
  * evaluate the same channel there.
  */
 function gougedZAt(
-    p: EnricoCerutiParams, g: GougedPlateGeometry, chords: StationChords, x: number, y: number,
+    p: EnricoCerutiParams, g: GougedPlateGeometry, chords: StationChords,
+    platformOuterIdx: PolylineIndex, x: number, y: number,
 ): number {
     // Signed distance from the channel centerline, positive toward the plate
     // centre. Inside the centerline loop is inward, which is the direction the
@@ -357,14 +359,50 @@ function gougedZAt(
         }
         // Channel, then flat land beyond it — gougeProfileZ already flattens to
         // 0 once past the cut's own edge, so the land needs no separate case.
-        return gougeProfileZ(s, section.sweepRadius, g.gouge.depth);
+        return withCornerPass(p, g, chords, platformOuterIdx, x, y, s, gougeProfileZ(s, section.sweepRadius, g.gouge.depth));
     }
 
     // Past the long arch's reach — the cap bands beyond where it met the
     // channel — there is no crown to solve against. The channel still runs
     // through, though: it is cut before any arching exists, which is the whole
     // premise. Falling back to flat here would erase it across both caps.
-    return gougeProfileZ(s, gougeAtY(p, g.gouge, y).sweepRadius, g.gouge.depth);
+    const capZ = gougeProfileZ(s, gougeAtY(p, g.gouge, y).sweepRadius, g.gouge.depth);
+    return withCornerPass(p, g, chords, platformOuterIdx, x, y, s, capZ);
+}
+
+/**
+ * The corner pass applied over whatever the channel left — the second gouging,
+ * run to meet a channel that is already established.
+ *
+ * Called only from the two channel-side returns above, never from the arch
+ * branch, and that placement is the whole guarantee. A maker gouging corners
+ * does take wood out of the channel where the two meet, but they are not
+ * re-cutting the arch, and neither is this: the takeoff, the tangency solve and
+ * every station's section are decided before it runs and cannot be moved by it.
+ * A `Math.min` here can only deepen, and only outboard of the contact.
+ *
+ * Outside the platform boundary is the flat edge land, which is not gouged at
+ * all — hence the crossings test rather than a bare distance.
+ */
+function withCornerPass(
+    p: EnricoCerutiParams, g: GougedPlateGeometry, chords: StationChords,
+    platformOuterIdx: PolylineIndex, x: number, y: number, s: number, z: number,
+): number {
+    if (!cornerGougeOn(g.gouge)) return z;
+    if (!insideCrossings(x, chords.landCrossings)) return z;
+    const { sweepRadius, halfWidth } = gougeAtY(p, g.gouge, y);
+    const edgeDist = closestPointToPolylineIndexed({ x, y }, platformOuterIdx).dist;
+    // Nothing this far in is reachable by the pass however wide the wedge gets,
+    // and that is most of the plate — so the arithmetic below runs only near the
+    // edge, where it means something.
+    if (edgeDist > 2 * halfWidth + g.cornerWedgeMax) return z;
+    // How much wider than one gouge the gap is *here*: distance to the boundary
+    // plus distance outboard of the channel's own outer edge, which is −(s + w).
+    // Identically zero along the flanks, where the boundary and that edge are
+    // the same curve — so the extra passes appear only where wood is left.
+    // Clamped to the plate's own maximum so no local estimate can run away.
+    const wedge = clamp(edgeDist - halfWidth - s, 0, g.cornerWedgeMax);
+    return Math.min(z, cornerGougeZ(edgeDist, sweepRadius, g.gouge.depth, wedge));
 }
 
 /**
@@ -377,7 +415,7 @@ export function topSurfaceZAt(p: EnricoCerutiParams, model: PlateSurfaceModel, x
     const ax = Math.abs(x);
     if (chords.outerHalf === null || ax > chords.outerHalf) return null;
 
-    if (model.gouged) return gougedZAt(p, model.gouged, chords, x, y);
+    if (model.gouged) return gougedZAt(p, model.gouged, chords, model.platformOuterIdx, x, y);
 
     const fi = chords.flutingInnerHalf;
     if (fi !== null && ax <= fi) return crossArchZAt(model, fi, chords.archH, x, chords.cross);

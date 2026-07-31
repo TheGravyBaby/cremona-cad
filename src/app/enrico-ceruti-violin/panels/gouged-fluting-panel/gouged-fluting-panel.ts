@@ -8,11 +8,13 @@ import { defineOuterPath } from '../../ceruti-paths';
 import { ArchingParams, CerutiColors, CerutiViewFlags, EnricoCerutiParams, GougedFlutingParams } from '../../ceruti-types';
 import { defaultArchingParams } from '../../ceruti-arching';
 import {
-  channelSwing, ClassicChannelSample, classicChannelProfile, defaultGougedFlutingParams,
+  channelSwing, ClassicChannelSample, classicChannelProfile, cornerGougeOn, defaultGougedFlutingParams,
   diagnosticRibbonPath, effectiveCBoutSweep, gougedChannelAreaPath, gougedChannelPaths,
   gougedCornerJoinAreaPath, gougeHalfWidth, plateLayoutOffset,
 } from '../../ceruti-gouged';
-import { classicChannelDiagnosticInfo, gougeCenterlineInfo, gougeSectionInfo } from '../../ceruti-helpers';
+import {
+  classicChannelDiagnosticInfo, cornerGougeInfo, gougeCenterlineInfo, gougeSectionInfo,
+} from '../../ceruti-helpers';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 
 /** Ribbon height (mm) for the diagnostic overlay — big enough to read, small enough not to swamp the plan view. */
@@ -41,6 +43,7 @@ export class GougedFlutingPanel extends CerutiPanelBase implements OnInit {
   protected readonly gougeSectionInfo = gougeSectionInfo;
   protected readonly gougeCenterlineInfo = gougeCenterlineInfo;
   protected readonly classicChannelDiagnosticInfo = classicChannelDiagnosticInfo;
+  protected readonly cornerGougeInfo = cornerGougeInfo;
 
   /**
    * Panel-local, not a shared view flag: the diagnostic describes the *classic*
@@ -84,6 +87,16 @@ export class GougedFlutingPanel extends CerutiPanelBase implements OnInit {
   channelWidthCBout(plate: 'top' | 'bottom'): number {
     const g = this.gouge(plate);
     return 2 * gougeHalfWidth(effectiveCBoutSweep(g), g.depth);
+  }
+
+  /** Whether the corner pass is cutting on this plate. */
+  cornerGouge(plate: 'top' | 'bottom'): boolean {
+    return cornerGougeOn(this.gouge(plate));
+  }
+
+  setCornerGouge(plate: 'top' | 'bottom', on: boolean): void {
+    this.gouge(plate).cornerGouge = on;
+    this.onToggle();
   }
 
   /** Whether a distinct C-bout gouge is actually in force (set, and able to cut to depth). */
@@ -181,7 +194,18 @@ export class GougedFlutingPanel extends CerutiPanelBase implements OnInit {
     // regions of the plate, and a maker reads them as regions. Both are
     // even-odd fills between two loops, so neither needs a tolerance or a
     // sampled boundary test.
-    layers.push(renderFilledPath(at(gougedCornerJoinAreaPath(this.params, paths)), this.colors.centerBoutUp, 0.3));
+    //
+    // With the corner pass running, that region is carved rather than left, so
+    // it reads as channel. It understates the cut slightly — the second pass
+    // also takes wood from inside the channel's own outer edge, which this
+    // region by definition excludes — so it marks what the corner pass is *for*
+    // rather than tracing its exact footprint.
+    const cornerCarved = cornerGougeOn(this.gouge(plate));
+    layers.push(renderFilledPath(
+      at(gougedCornerJoinAreaPath(this.params, paths)),
+      cornerCarved ? this.colors.fluting : this.colors.centerBoutUp,
+      cornerCarved ? 0.45 : 0.3,
+    ));
     layers.push(renderFilledPath(at(gougedChannelAreaPath(paths)), this.colors.fluting, 0.45));
     layers.push(renderPath(at(paths.outer), color, 1));
     layers.push(renderPath(at(paths.inner), color, 1));

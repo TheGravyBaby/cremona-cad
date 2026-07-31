@@ -89,6 +89,7 @@ export function defaultGougedFlutingParams(p: EnricoCerutiParams): GougedFluting
     sweepRadius: +((halfWidth * halfWidth + depth * depth) / (2 * depth)).toFixed(2),
     depth,
     sweepRadius_cBout: null,
+    cornerGouge: true,
   };
 }
 
@@ -101,6 +102,55 @@ export function defaultGougedFlutingParams(p: EnricoCerutiParams): GougedFluting
 export function effectiveCBoutSweep(g: GougedFlutingParams): number {
   const c = g.sweepRadius_cBout;
   return c !== null && gougeHalfWidth(c, g.depth) > 0 ? c : g.sweepRadius;
+}
+
+/** Whether the corner pass is cutting. Absent reads as on — see {@link GougedFlutingParams.cornerGouge}. */
+export function cornerGougeOn(g: GougedFlutingParams): boolean {
+  return g.cornerGouge ?? true;
+}
+
+/**
+ * The corner pass, as a height field: the same gouge run a second time with its
+ * outer edge on the *platform boundary* rather than on the channel's own outer
+ * loop.
+ *
+ * `edgeDist` is distance inward from that boundary, so the cut's outer flank
+ * starts at 0 there and its trough sits a half-width in. Two consequences fall
+ * straight out of that anchoring, and both are the point:
+ *
+ * - Along the flanks the platform boundary and the channel's outer loop are the
+ *   same curve, so this returns exactly what the channel already returns and
+ *   composing the two changes nothing. No band to feather, no weight to tune —
+ *   the second pass is a no-op wherever there was nothing left to cut.
+ * - At a corner the platform boundary *follows* the point while the channel
+ *   bypasses it, so the cut wraps the corner on its own, and the wedge between
+ *   the two loops — the region the panel shades — is carved by construction.
+ *
+ * Composed with {@link Math.min}: two passes of a gouge leave the deeper of the
+ * two, which is also what makes this incapable of adding material anywhere.
+ * Returns 0 past its own reach, so the minimum is inert there.
+ *
+ * `wedge` is how much wider than one gouge the gap is here, and it is what makes
+ * this a *pass count* rather than a single cut. One pass anchored on the
+ * boundary and one on the channel leaves a ridge of untouched wood between them
+ * wherever the two loops are further apart than 2w — measurably so: about 5 mm
+ * of full-height plate at the widest part of a violin corner. A maker meeting
+ * that keeps taking passes until the two runs join. Sliding the same tool across
+ * the gap sweeps a flat floor at its own depth with its own radius left standing
+ * at either wall, which is exactly this: the arc, opened at the trough.
+ *
+ * The floor is at the gouge's depth and no deeper — the tool cannot be pushed
+ * past its setting, however many passes it makes — so this stays a statement
+ * about the tool rather than about the gap it happens to be crossing. At
+ * `wedge = 0` it is the single cut again, term for term.
+ */
+export function cornerGougeZ(edgeDist: number, sweepRadius: number, depth: number, wedge = 0): number {
+  const w = gougeHalfWidth(sweepRadius, depth);
+  if (w <= 0) return 0;
+  const flat = Math.max(wedge, 0);
+  if (edgeDist <= w) return gougeProfileZ(edgeDist - w, sweepRadius, depth);
+  if (edgeDist <= w + flat) return -depth;
+  return gougeProfileZ(edgeDist - w - flat, sweepRadius, depth);
 }
 
 /**
@@ -1187,6 +1237,36 @@ export interface GougedPlateGeometry {
   resolveCross: GougedCrossResolver;
   /** The plate's long arch, already terminated against the channel at the caps. */
   longArch: GougedLongArch | null;
+  /**
+   * The widest the corner wedge gets anywhere on this plate — how much further
+   * apart than one gouge the platform boundary and the channel ever run.
+   *
+   * Zero on the flanks by construction, so this is a pure corner measurement.
+   * It bounds the corner pass in both directions: nothing further inside the
+   * boundary than `2w + this` can be reached by it, which lets the height field
+   * skip the query outright over most of the plate, and no local wedge estimate
+   * is allowed to exceed it, which makes a runaway floor impossible rather than
+   * merely unlikely.
+   */
+  cornerWedgeMax: number;
+}
+
+/**
+ * How far the channel runs from the platform boundary, in excess of the one
+ * gouge width that separates them along the flanks.
+ *
+ * Measured *at the boundary* rather than at an arbitrary point, because the gap
+ * is a property of the two loops and not of whoever is asking. Sampled coarsely:
+ * this only sets a bound, and the corner is tens of millimetres of arc.
+ */
+function maxCornerWedge(p: EnricoCerutiParams, g: GougedFlutingParams, centerIdx: PolylineIndex): number {
+  const boundary = samplePathToPolyline(defineInsetPath(p, p.outerFlutingDepth ?? 0), 2);
+  let max = 0;
+  for (const v of boundary) {
+    const gap = closestPointToPolylineIndexed(v, centerIdx).dist - gougeAtY(p, g, v.y).halfWidth;
+    if (gap > max) max = gap;
+  }
+  return max;
 }
 
 export function buildGougedPlateGeometry(
@@ -1195,12 +1275,14 @@ export function buildGougedPlateGeometry(
   const paths = gougedChannelPaths(p, g);
   if (!paths) return null;
   const centerPoly = samplePathToPolyline(paths.center, 1);
+  const centerIdx = buildPolylineIndex(centerPoly);
   return {
     gouge: g,
     centerPoly,
-    centerIdx: buildPolylineIndex(centerPoly),
+    centerIdx,
     resolveCross: makeGougedCrossResolver(cross, p.height),
     longArch: solveGougedLongArch(p, arch, g),
+    cornerWedgeMax: cornerGougeOn(g) ? maxCornerWedge(p, g, centerIdx) : 0,
   };
 }
 

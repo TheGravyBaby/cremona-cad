@@ -325,6 +325,22 @@ export interface GougedFlutingParams {
    * outer edge would then wander away from the purfling it is cut against.
    */
   sweepRadius_cBout: number | null;
+  /**
+   * Whether to run the gouge into the corners as a second pass.
+   *
+   * The channel proper bypasses the corners, leaving a wedge of flat wood
+   * between it and the platform boundary — real, and the reason the corner is a
+   * separate operation at the bench rather than a distortion of the channel.
+   * This carves that wedge, with the cut's outer edge riding the platform
+   * boundary the whole way round the corner.
+   *
+   * A *second cut*, not a redefinition. It only removes material, and only on
+   * the channel side of the arch's takeoff, so the channel's structure and
+   * everything solved against it upstream are untouched — which is the order of
+   * operations at the bench, where the corners are gouged to meet a channel that
+   * is already established. Absent reads as on.
+   */
+  cornerGouge?: boolean;
 }
 
 /**

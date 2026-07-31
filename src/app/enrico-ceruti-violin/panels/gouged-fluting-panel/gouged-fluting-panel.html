@@ -48,6 +48,13 @@
             {{ innerEdgeOffset('top') | number:'1.2-2' }}@if (hasCBoutGouge('top')) { · C {{ innerEdgeOffsetCBout('top') | number:'1.2-2' }} }
         </span>
     </div>
+    <div class="input-group basic-row field-row" role="group">
+        <div class="toggle" title="Run the gouge into the corners to meet the channel, instead of leaving them flat">
+            <input type="checkbox" [ngModel]="cornerGouge('top')" (ngModelChange)="setCornerGouge('top', $event)" />
+            <span>Gouge Corners</span>
+        </div>
+        <button type="button" class="info-icon" (click)="cornerGougeInfo()" title="More information">ⓘ</button>
+    </div>
 </section>
 
 <section class="ui-group" [style.border-color]="colors.archBack">
@@ -83,6 +90,13 @@
             <span class="field-title">Inner Edge <span class="unit-label">mm</span></span>
             {{ innerEdgeOffset('bottom') | number:'1.2-2' }}@if (hasCBoutGouge('bottom')) { · C {{ innerEdgeOffsetCBout('bottom') | number:'1.2-2' }} }
         </span>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <div class="toggle" title="Run the gouge into the corners to meet the channel, instead of leaving them flat">
+            <input type="checkbox" [ngModel]="cornerGouge('bottom')" (ngModelChange)="setCornerGouge('bottom', $event)" />
+            <span>Gouge Corners</span>
+        </div>
+        <button type="button" class="info-icon" (click)="cornerGougeInfo()" title="More information">ⓘ</button>
     </div>
 </section>
 

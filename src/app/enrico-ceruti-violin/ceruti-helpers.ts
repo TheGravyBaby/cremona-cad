@@ -305,6 +305,18 @@ export function gougeCenterlineInfo() {
     )
 }
 
+export function cornerGougeInfo() {
+    info(
+        "Runs the gouge into the corners as a second pass, so they meet the channel instead of staying flat.\n\n" +
+        "The channel bypasses the corners, which leaves a wedge of untouched wood between it and the land edge — the shaded region on the plan view. At the bench that wedge is real, and it is why the corners are a separate operation rather than something the channel is allowed to distort itself around.\n\n" +
+        "The cut is the same tool at the same depth, anchored differently: its outer edge rides the land edge, which DOES follow the corners. Along the flanks the two lines are the same curve, so the second pass finds nothing left to cut and changes nothing at all. It only bites where they part company, which is exactly the corners.\n\n" +
+        "One pass is not enough there. At a corner the gap is wider than the gouge — on a violin, about a gouge and a half at its worst — so a single cut from each side would leave a ridge standing between them. It takes as many passes as the gap needs, which sweeps a floor at the gouge's own depth with the tool's radius left standing at either wall. The floor never goes below the depth you set, however many passes it takes: the tool cannot be pushed past its own setting.\n\n" +
+        "It can only remove wood, never add it, and it never reaches past where the arch takes off the channel. The channel is established before the corners are gouged, and everything solved against it — the takeoff, the transition, every station's section — is decided before this runs and cannot be moved by it.\n\n" +
+        "Where the corner cut and the channel meet at an angle they leave a facet, the same way two passes of a real gouge do. Turn this off to see the corners as bare flat land.",
+        "Gouge Corners", defaultTTL, true
+    )
+}
+
 export function classicChannelDiagnosticInfo() {
     info(
         "Plots what the CLASSIC arching model's channel actually does, as a ribbon beside the fluting line — bulging where the value is high, flat where it is steady.\n\n" +
