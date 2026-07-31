@@ -4,7 +4,6 @@ import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Pt, Rectangle } fro
 import { error } from "../shared/message-emitter";
 import { EnricoCerutiParams, PathEntry } from "./ceruti-types";
 import { defineInnerPath, defineOuterPath, definePurflingPath, defineOuterPurflingPath } from "./ceruti-paths";
-import { defaultGougedFlutingParams, gougedCarvedRegion, gougedChannelPaths } from "./ceruti-gouged";
 
 // ===== Outline solvers =====
 // Solve where the violin body's bouts/corners/center-bout arcs actually sit.
@@ -780,21 +779,10 @@ export const ensureOuterTracePaths = (
   if (purflingPath) upsertPathEntry(paths, 'purfling', purflingPath);
   if (outerPurflingPath) upsertPathEntry(paths, 'outerPurfling', outerPurflingPath);
 
-  // The channel, per plate. Two entries rather than one because the top and the
-  // back carry their own gouges — the same tool is not required at both — so
-  // unlike the purfling these two loops can legitimately differ, and a plan
-  // sheet that showed one for both would be quietly wrong about one of them.
-  for (const [side, areaKey, lineKey] of [
-    ['top', 'channelAreaTop', 'channelLineTop'],
-    ['bottom', 'channelAreaBack', 'channelLineBack'],
-  ] as const) {
-    const gouge = params.arching?.[side].gougedFluting
-      ?? (params.arching ? defaultGougedFlutingParams(params) : null);
-    const channel = gouge && gougedChannelPaths(params, gouge);
-    if (!gouge || !channel) continue;
-    const { area, edges } = gougedCarvedRegion(params, gouge, channel);
-    upsertPathEntry(paths, areaKey, area);
-    upsertPathEntry(paths, lineKey, combinePathStrings(edges));
-  }
+  // No channel here. This cache feeds the plan-view sheets, and in plan the
+  // channel is only a pair of rims — nothing between them says how deep it goes
+  // or what section it is cut to. The arching templates state all of that
+  // exactly, so a rim pair on a contour sheet would be a second and weaker
+  // account of the same geometry.
 };
 

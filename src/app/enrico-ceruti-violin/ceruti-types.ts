@@ -70,6 +70,18 @@ export interface PanelRenderRequest {
    */
   immediate?: boolean;
   /**
+   * When true, the request waits out the debounce even where the parent would
+   * otherwise have run it straight away — an arrow-key nudge or a spinner click,
+   * both of which the host listeners read as "show me this move".
+   *
+   * For a panel whose run is a redraw that is exactly right. For one whose run
+   * re-solves a surface it is not: a held arrow key would queue a second of work
+   * per key repeat and the panel would fall progressively further behind the
+   * input. Panels that know their own cost set this and get one recompute at the
+   * end of the burst instead. Ignored when `immediate` is set.
+   */
+  coalesce?: boolean;
+  /**
    * When true, parent refreshes panel enablement after applying this request
    * (used by panels whose edits unlock downstream panels).
    */

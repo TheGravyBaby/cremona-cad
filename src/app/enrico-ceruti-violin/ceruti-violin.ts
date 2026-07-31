@@ -21,6 +21,21 @@ import { ExportPanel } from './panels/export-panel/export-panel';
 import { RecipeToolbarComponent } from '../recipe-toolbar/recipe-toolbar';
 import { RenderToggles } from './render-toggles/render-toggles';
 
+/** Which buttons the shared view-toggle bar shows for a panel. */
+interface RenderToggleRows {
+  arcs: boolean; circles: boolean; guide: boolean; outerPath: boolean;
+  allArcs: boolean; allCircles: boolean; blocks: boolean; innerPath: boolean;
+}
+
+/** A row set, everything unnamed off — so each panel's entry lists only what it actually offers. */
+function toggleRows(on: Partial<RenderToggleRows>): RenderToggleRows {
+  return {
+    arcs: false, circles: false, guide: false, outerPath: false,
+    allArcs: false, allCircles: false, blocks: false, innerPath: false,
+    ...on,
+  };
+}
+
 @Component({
   selector: 'app-ceruti-violin',
   imports: [FormsModule, BasePanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterTracePanel, MouldPanel, GougedFlutingPanel, GougedLongArchingPanel, GougedCrossArchingPanel, ExportPanel, RecipeToolbarComponent, RenderToggles],
@@ -129,20 +144,22 @@ export class CerutiViolin extends RecipeComponentBase {
 
   /** Which render-toggle rows apply to each panel — mirrors the showXRow inputs each panel
    * used to pass to its own <app-ceruti-render-toggles>, now that a single fixed instance
-   * (see ceruti-violin.html) serves every panel. `null` hides the bar entirely (base, mould,
-   * export don't expose any of these view flags). */
-  private static readonly RENDER_TOGGLE_ROWS: Record<string, {
-    arcs: boolean; circles: boolean; guide: boolean; outerPath: boolean; allArcs: boolean; allCircles: boolean;
-  } | null> = {
+   * (see ceruti-violin.html) serves every panel. `null` hides the bar entirely (base and
+   * export expose none of these view flags). */
+  private static readonly RENDER_TOGGLE_ROWS: Record<string, RenderToggleRows | null> = {
     base: null,
-    mainBouts: { arcs: true, circles: true, guide: true, outerPath: true, allArcs: true, allCircles: true },
-    corners: { arcs: true, circles: true, guide: true, outerPath: true, allArcs: true, allCircles: true },
-    centerBout: { arcs: true, circles: true, guide: true, outerPath: true, allArcs: true, allCircles: true },
-    outerTrace: { arcs: true, circles: true, guide: false, outerPath: false, allArcs: false, allCircles: false },
-    gougedFluting: { arcs: false, circles: false, guide: true, outerPath: false, allArcs: true, allCircles: true },
-    gougedLongArching: { arcs: false, circles: false, guide: true, outerPath: false, allArcs: true, allCircles: true },
-    gougedCrossArching: { arcs: false, circles: false, guide: true, outerPath: false, allArcs: true, allCircles: true },
-    mould: null,
+    mainBouts: toggleRows({ arcs: true, circles: true, guide: true, outerPath: true, allArcs: true, allCircles: true }),
+    corners: toggleRows({ arcs: true, circles: true, guide: true, outerPath: true, allArcs: true, allCircles: true }),
+    centerBout: toggleRows({ arcs: true, circles: true, guide: true, outerPath: true, allArcs: true, allCircles: true }),
+    outerTrace: toggleRows({ arcs: true, circles: true }),
+    gougedFluting: toggleRows({ guide: true, allArcs: true, allCircles: true }),
+    gougedLongArching: toggleRows({ guide: true, allArcs: true, allCircles: true }),
+    gougedCrossArching: toggleRows({ guide: true, allArcs: true, allCircles: true }),
+    // The mould's two are what it draws *around* the mould — the blocks it is
+    // built to hold and the inner path it is cut to. Same kind of thing as every
+    // other row here: what appears on the canvas, not what the recipe is, so
+    // they belong on the bar rather than as checkboxes at the foot of the panel.
+    mould: toggleRows({ blocks: true, innerPath: true }),
     export: null,
   };
 
@@ -397,6 +414,7 @@ export class CerutiViolin extends RecipeComponentBase {
       apply();
       return;
     }
+    if (request.coalesce) this.debounceController?.clearImmediate();
     this.debounce(apply);
   }
 

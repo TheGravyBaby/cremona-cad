@@ -131,8 +131,22 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
     this.emitImmediate();
   }
 
+  /**
+   * Coalesced rather than merely debounced, because this panel's run is the
+   * expensive one: two gouged surface models, each a root-find per side per
+   * station row, and then contour rings or wireframe strips over the whole plate
+   * on top of that. The parent hands out an immediate bypass for arrow keys and
+   * number-spinner clicks, which is right for a panel that redraws some arcs and
+   * wrong here — a held arrow key would start a full re-solve per key repeat and
+   * the drawing would fall further behind the field with every press. Declining
+   * it means a burst of nudges costs one recompute at the end.
+   *
+   * The bypass is only declined for value edits. Focus halos, view toggles and
+   * the first draw still go through `emitImmediate`, and cost nothing extra: the
+   * cache is keyed on the params, which none of them change.
+   */
   onChange(): void {
-    this.emitDebounced();
+    this.emitCoalesced();
   }
 
   get arching(): ArchingParams { return this.params.arching!; }
