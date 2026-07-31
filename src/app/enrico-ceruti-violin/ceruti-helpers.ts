@@ -318,7 +318,7 @@ export function gougedCrossCycloidControlsInfo() {
 
 export function gougedCrossTemplateInfo() {
     info(
-        "Position: 0 at the joint to ±100 where the crown runs into the channel; negative is bass side. Height: percent of the local arch height, so the crown is always 100.\n\n" +
+        "Position: across the whole plate — 0 the bass channel, 50 the joint, 100 the treble channel. A knot at 66 and one at 34 sit the same distance out on opposite sides. Height: percent of the local arch height, so the crown is always 100.\n\n" +
         "Percentages rather than mm, because what carries between stations is a shape — a fixed-width crown swells to fill a narrower station.\n\n" +
         "Where the arch ends is solved, not set: the run-out meets the channel tangentially and the contact slides to wherever that works out.\n\n" +
         "Mirror: off shapes the two sides independently.",

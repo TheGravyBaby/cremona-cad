@@ -44,6 +44,17 @@ import { CerutiPanelBase, RenderLayer } from '../panel-base';
 const TICK_THUMB_PX = 14;
 
 /**
+ * How close to the joint a knot may sit, as a fraction of its side's crown.
+ *
+ * A knot's sign is which flank it belongs to, so there is no such thing as a
+ * knot *at* the joint — and one arriving there would land on a centred crown
+ * and hand the profile spline a zero-width interval. At a violin's half-width
+ * this is under a millimetre, so nothing a maker would want to place is out of
+ * reach.
+ */
+const KNOT_MIN_FRAC = 0.02;
+
+/**
  * Step three of the gouged model: the crown across the plate, as a trochoid or
  * as control points.
  *
@@ -342,9 +353,23 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
     this.onChange();
   }
 
-  /** A knot's position as a signed whole percent of the local half-width, for the panel's input. */
+  /**
+   * A knot's position across the *whole* plate: 0 the bass channel, 100 the
+   * treble one, 50 the joint.
+   *
+   * The same reading the long arch's control points use, and the reason is that
+   * it is the only one in which a mirrored pair looks like a mirrored pair — 66
+   * and 34 are plainly the same place on opposite flanks, where +66 and −66 in
+   * the stored form require knowing that each side counts from the joint
+   * outward in its own units. Storage keeps that signed per-side form, which is
+   * what the shape means (see {@link GougedCrossPoint.x}); this is only the
+   * scale the panel speaks in.
+   *
+   * Half a percent of the full width is one percent of a side, so the field's
+   * half-step moves a knot exactly as far as a whole step used to.
+   */
   pointXPct(pt: GougedCrossPoint): number {
-    return Math.round(pt.x * 100);
+    return +(50 + pt.x * 50).toFixed(1);
   }
 
   /** A knot's height as a whole percent of the local arch height. */
@@ -368,21 +393,41 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
   }
 
   /**
-   * Sets a knot's position across the plate, as a percent of the half-width:
-   * 0 is the joint, ±100 the takeoff where the crown runs into the channel.
-   * Negative is the bass side. Held off both ends — the takeoff is solved rather
-   * than authored, and a knot sitting exactly on the joint would collide with a
-   * centred crown.
+   * Sets a knot's position across the whole plate — 0 the bass channel, 50 the
+   * joint, 100 the treble one — and stores it back in the signed per-side form.
+   *
+   * Held off both ends, since the takeoff is solved rather than authored, and
+   * off the joint itself, where a knot has no side to belong to and would
+   * collide with a centred crown besides.
+   *
+   * That last band is *stepped through* rather than clamped, and the difference
+   * is the whole usability of an asymmetric template. Clamping parks a knot
+   * against 51 and then silently refuses every further press — the field shows
+   * 50 while the model still reads 51, because a value that comes back
+   * unchanged is a value Angular has no reason to write back to the input. So
+   * the knot cannot be walked across the joint at all, and the box stops
+   * agreeing with the drawing. Continuing in the direction of travel instead
+   * lands it at 49: one press, one move, and the number on screen is the number
+   * in the model.
+   *
+   * Note what is deliberately *not* here any more: this used to re-sort the
+   * point list. The rows route their edits by index, so a knot passing its
+   * neighbour re-seated every input in the table under the maker's cursor —
+   * the focused box would jump to some other knot's value and the next press
+   * would edit that knot. Order carries no meaning to the geometry, which sorts
+   * for itself in {@link gougedCrossKnots} and again in `crossProfile`, so the
+   * table simply keeps the order the points were added in.
    */
   setPointXPct(plate: 'top' | 'bottom', index: number, pct: number): void {
     const target = this.editTarget(plate);
     if (target.type !== 'gouged') return;
     const pt = target.points[index];
     if (!pt) return;
-    const v = pct || 0;
-    const mag = clamp(Math.abs(v), 2, 99) / 100;
-    pt.x = (v < 0 ? -1 : 1) * mag;
-    target.points.sort((a, b) => a.x - b.x);
+    const want = (clamp(pct || 0, 0, 100) - 50) / 50;
+    const frac = Math.abs(want) >= KNOT_MIN_FRAC
+      ? want
+      : (want < pt.x ? -KNOT_MIN_FRAC : KNOT_MIN_FRAC);
+    pt.x = clamp(frac, -0.99, 0.99);
     this.onChange();
   }
 
@@ -415,9 +460,11 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
     // of an existing one.
     const outermost = target.points.reduce((m, p) => Math.max(m, Math.abs(p.x)), 0);
     const outer = target.points.find(p => Math.abs(p.x) === outermost);
-    const x = outermost > 0 ? clamp((outermost + 1) / 2, 0.02, 0.99) : 0.5;
+    const x = outermost > 0 ? clamp((outermost + 1) / 2, KNOT_MIN_FRAC, 0.99) : 0.5;
+    // Appended rather than sorted into place, for the reason given in
+    // {@link setPointXPct}: the rows are addressed by index, so a stable order
+    // is what keeps a field editing the knot it is showing.
     target.points.push({ x: +x.toFixed(2), z: +((outer?.z ?? 1) * 0.5).toFixed(2), mirror: true });
-    target.points.sort((a, b) => a.x - b.x);
     this.onChange();
   }
 
@@ -811,9 +858,16 @@ function pushStation<T extends { y: number }>(stations: T[], station: T): void {
  * mutate — a draft from the nearest station, a new station from the draft or
  * the base. A trochoid is two numbers and copies by spread; a template's points
  * need copying individually, or the new shape would edit the old one's knots.
+ *
+ * The crown position is part of the shape and has to come across with the
+ * points. Dropping it read as the panel undoing the maker's own edit: every
+ * station committed here defaulted its crown back to the joint, and since the
+ * resolver ramps that position along the body like anything else, a plate with
+ * one station pulled its crown off the offset it had been given and back onto
+ * the centre through the whole middle of the body.
  */
 function cloneGougedShape(shape: GougedCrossShape): GougedCrossShape {
   return shape.type === 'gouged'
-    ? { type: 'gouged', points: shape.points.map(pt => ({ ...pt })) }
+    ? { type: 'gouged', points: shape.points.map(pt => ({ ...pt })), peak: shape.peak }
     : { type: 'gouged-cycloid', d: shape.d, pct: shape.pct };
 }

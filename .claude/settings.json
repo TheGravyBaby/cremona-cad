@@ -24,7 +24,8 @@
       "Bash(git --no-pager diff .claude/settings.json)",
       "Bash(git --no-pager diff src/app/enrico-ceruti-violin/ceruti-calcs.ts src/app/enrico-ceruti-violin/ceruti-violin.ts)",
       "Bash(sed -i '' \"s|^import { calculateCenterBout|import { it, expect } from 'vitest';\\\\nimport { calculateCenterBout|\" src/scratch/slope.spec.ts)",
-      "Bash(sed -i '' \"s|'../../src/app|'../app|g\" src/scratch/slope.spec.ts)"
+      "Bash(sed -i '' \"s|'../../src/app|'../app|g\" src/scratch/slope.spec.ts)",
+      "Bash(git checkout *)"
     ],
     "additionalDirectories": [
       "/tmp"

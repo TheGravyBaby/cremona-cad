@@ -160,17 +160,23 @@ export function cornerGougeZ(edgeDist: number, sweepRadius: number, depth: numbe
 }
 
 /**
- * A default crown shape: one mirrored knot, three quarters of the way out at
- * under a third of the height.
+ * A default crown shape: one mirrored knot a third of the way across the plate,
+ * at half the arch height.
  *
  * Deliberately a single point. The crown is anchored at both ends already — the
  * peak at the centerline and the solved takeoff at the channel — so one knot is
  * all it takes to describe a curve, and it is the shortest route to seeing what
  * the knot does. Points are cheap to add; a default that arrives pre-shaped
  * mostly gives the maker someone else's arch to argue with.
+ *
+ * The same knot {@link defaultCrossArchSplineParams} gives the classic model,
+ * stated in this model's terms: `x` is signed and counts from the joint out
+ * along its own flank, so a third of the way across the plate is −0.34 rather
+ * than the classic 0.33 measured from the bass edge. Mirrored, so the sign only
+ * decides which number the panel shows — 33, with its twin at 67.
  */
 export function defaultGougedCrossParams(): GougedCrossSplineParams {
-  return { type: 'gouged', points: [{ x: 0.7, z: 0.4, mirror: true }] };
+  return { type: 'gouged', points: [{ x: -0.17, z: 0.5, mirror: true }] };
 }
 
 /**
