@@ -90,7 +90,7 @@
         }
 
         @if (openPanel === 'mould') {
-        <app-ceruti-mould-panel
+        <app-ceruti-mould-panel #panelRef
             [params]="d.params"
             [paths]="d.paths"
             [colors]="colors"
