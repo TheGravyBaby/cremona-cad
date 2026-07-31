@@ -365,9 +365,9 @@ export interface GougedCrossPoint {
 
 /**
  * A gouged cross-arch section shape built from control points: the crown
- * template only. Its peak sits at x = 0 at the long arch's height for that
- * station; its outer end is *not* here, because the takeoff point is solved for
- * tangency against the channel (see `solveGougedTakeoff`) rather than entered.
+ * template only. Its peak sits at the long arch's height for that station; its
+ * outer end is *not* here, because the takeoff point is solved for tangency
+ * against the channel (see `solveGougedTakeoff`) rather than entered.
  *
  * The discriminator stays `'gouged'` rather than becoming `'gouged-spline'` so
  * templates saved before the trochoid existed still load as what they are.
@@ -375,6 +375,26 @@ export interface GougedCrossPoint {
 export interface GougedCrossSplineShape {
   type: 'gouged';
   points: GougedCrossPoint[];
+  /**
+   * Where the crown sits across the plate, as a fraction of the full width
+   * between the channel centerlines: 0.5 is the joint, below it the bass side.
+   * Absent means 0.5, which is how every template read before this existed.
+   * Held well inside 0–1 — the crown has to stay an interior knot.
+   *
+   * Measured against the *centerline chord* rather than against the solved
+   * takeoffs, unlike {@link GougedCrossPoint.x}. A knot must not cross the
+   * takeoff mid-solve, so it is anchored to it; the crown must not move at all
+   * mid-solve, so it is anchored to something the solve does not touch.
+   *
+   * The position reached where there is arch to carry a ridge, not at every
+   * station: toward the caps it eases back onto the joint. See
+   * `PEAK_TAPER_DEPTHS` for why that is a matter of the surface holding together
+   * rather than a style choice.
+   *
+   * Real plates rarely peak on the joint, and a scan traced onto a centred
+   * crown has to absorb that error somewhere else in the shape.
+   */
+  peak?: number;
 }
 
 /**

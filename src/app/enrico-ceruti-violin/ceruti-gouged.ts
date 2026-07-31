@@ -1,6 +1,7 @@
 import { Pt } from '../models/types';
 import {
-  buildPolylineIndex, clamp, closestPointToPolylineIndexed, makeMonotoneSpline, PolylineIndex,
+  buildPolylineIndex, clamp, closestPointToPolylineIndexed, makeC2SplineWithFlatKnot, makeMonotoneSpline,
+  PolylineIndex,
 } from '../helpers/draftMath';
 import {
   catenaryZAt, cycloidZAt, flutingArc, samplePathToPolyline, splineZAt,
@@ -618,6 +619,12 @@ function knotFunction(knots: GougedCrossKnot[]): (x: number) => number {
 export interface GougedCrossRow {
   left: GougedCrossKnot[];
   right: GougedCrossKnot[];
+  /**
+   * Where the crown sits, as a fraction of the full centerline chord — 0.5 is
+   * the joint. Optional for the same reason the shape's own `peak` is: absent
+   * means centred, which is what every row meant before the crown could move.
+   */
+  peak?: number;
 }
 
 export type GougedCrossResolver = (y: number) => GougedCrossRow;
@@ -635,7 +642,11 @@ export type GougedCrossResolver = (y: number) => GougedCrossRow;
  * classic grid is only ever read by linear interpolation.
  *
  * A station with no knot at some position contributes its own shape's value
- * there, held flat past its outermost knot.
+ * there, read off its own curve — see {@link knotFunction}.
+ *
+ * The crown position ramps alongside as a plain scalar. It has no column to
+ * belong to: it is the origin the fractional positions are measured from, so
+ * ramping it with them would be circular.
  */
 export function makeGougedCrossResolver(
   cross: GougedCrossParams, bodyHeight: number,
@@ -668,7 +679,17 @@ export function makeGougedCrossResolver(
   const read = (s: { xs: number[]; tracks: ((y: number) => number)[] }, y: number): GougedCrossKnot[] =>
     s.xs.map((x, i) => ({ x, z: clamp(s.tracks[i](y), 0, 1) }));
 
-  return (y: number) => ({ left: read(left, y), right: read(right, y) });
+  // Only a template carries a crown position; a trochoid is symmetric by
+  // construction and peaks where its two halves meet.
+  const peakOf = (s: GougedCrossShape) => (s.type === 'gouged' ? s.peak ?? 0.5 : 0.5);
+  const peakTrack = stations.length && bodyHeight > 0
+    ? makeMonotoneSpline(
+      [0, ...stations.map(s => s.y), bodyHeight],
+      [peakOf(shapes[0]), ...shapes.slice(1).map(peakOf), peakOf(shapes[0])],
+    )
+    : () => peakOf(shapes[0]);
+
+  return (y: number) => ({ left: read(left, y), right: read(right, y), peak: peakTrack(y) });
 }
 
 /** Which gouge is cutting at body station `y` — the C-bout tool between the corners, else the main one. */
@@ -685,19 +706,42 @@ export function gougeAtY(
 interface SideEnd { xEnd: number; zEnd: number; }
 
 /**
+ * Where a knot fraction lands across the plate: `frac` measured from the joint
+ * out to this side's takeoff at `side * xEnd`.
+ *
+ * Measured from the joint rather than from the crown, so moving the crown does
+ * not drag every knot along with it. A knot is a place on the section — the
+ * position a maker read off a scan, or off a plate with a caliper — and it
+ * should stay there while the ridge is dialled into place around it.
+ *
+ * The consequence is that a knot can end up on the far side of the crown from
+ * the one it was authored on; see {@link crossProfile}, which sorts rather than
+ * assuming.
+ *
+ * The single place the fractional form becomes a position, so the profile, the
+ * module guide and the panel's halos cannot drift apart about it.
+ */
+function knotXAt(xEnd: number, side: 1 | -1, frac: number): number {
+  return side * frac * xEnd;
+}
+
+/** {@link knotXAt} against a solved station — what the guide and the panel's halos use. */
+export function gougedCrossKnotX(section: GougedCrossSection, side: 1 | -1, frac: number): number {
+  return knotXAt(side < 0 ? section.xEndLeft : section.xEndRight, side, frac);
+}
+
+/**
  * The whole transverse profile as one spline: left takeoff, left knots, the
  * crown, right knots, right takeoff.
  *
  * Built across the full width rather than as two curves meeting at the middle,
  * and that is not a detail. As an *endpoint* of a one-sided spline the crown
  * gets a natural end condition, which leaves it with a nonzero slope — so the
- * two sides arrive at the centerline at an angle and the arch peaks in a sharp
+ * two sides arrive at the crown at an angle and the arch peaks in a sharp
  * ridge. As an *interior* knot it sits between secants of opposite sign, which
  * is precisely the case Hyman's filter zeroes, giving a genuine smooth maximum.
- *
- * It is also the only correct answer: a nonzero slope at x = 0 would put the
- * real high spot somewhere off the centerline, and the entered arch height
- * would stop describing the plate — the same invariant the peak clamp protects.
+ * That argument is about the knot being interior, not about where it sits, so
+ * it survives the crown moving off the joint.
  *
  * The transition is not a separate curve either. It is this spline's outermost
  * segment on each side, which is why it arrives curvature-continuous with the
@@ -705,7 +749,7 @@ interface SideEnd { xEnd: number; zEnd: number; }
  * there is no blend.
  */
 function crossProfile(
-  archH: number,
+  archH: number, xPeak: number,
   left: GougedCrossKnot[], right: GougedCrossKnot[], endL: SideEnd, endR: SideEnd,
 ): (x: number) => number {
   // Fractions become millimetres here and nowhere else, and *both* axes are
@@ -730,29 +774,87 @@ function crossProfile(
   // and the root is a root. It is also the more honest reading of a fractional
   // template: the shape spans the part of the plate the maker actually carves,
   // which ends where the channel begins.
+  //
+  // Positions run from the joint, not from the crown — see {@link knotXAt} for
+  // why. So the crown is not necessarily between the two runs of knots: move it
+  // and a knot authored on the treble side can end up on the bass flank of it.
+  // The list is therefore sorted rather than assembled in assumed order.
   const heightAt = (z: number, end: SideEnd) => end.zEnd + z * (archH - end.zEnd);
-  const place = (knots: GougedCrossKnot[], end: SideEnd) => knots
-    .map(k => ({ x: k.x * end.xEnd, z: heightAt(k.z, end) }))
-    .filter(k => k.x > 1e-6 && k.x < end.xEnd - 1e-6);
+  const place = (knots: GougedCrossKnot[], end: SideEnd, side: 1 | -1) => knots
+    .map(k => ({ x: knotXAt(end.xEnd, side, k.x), z: heightAt(k.z, end) }))
+    // Defensive: authored fractions are held below 1, so this never fires.
+    .filter(k => k.x > -endL.xEnd + 1e-6 && k.x < endR.xEnd - 1e-6);
 
-  const keptL = place(left, endL);
-  const keptR = place(right, endR);
+  const inner = [...place(left, endL, -1), ...place(right, endR, 1)].sort((a, b) => a.x - b.x);
 
+  // A knot landing *on* the crown would hand the spline a zero-width interval.
+  // It is held clear rather than dropped: dropping is a step change, and a step
+  // is what the tangency solve cannot survive — the same lesson the takeoff
+  // anchoring above records. At this gap the nudge is far below anything the
+  // wood or the mesh could resolve.
+  const CROWN_GAP = 1e-4;
   const xs: number[] = [-endL.xEnd];
   const zs: number[] = [endL.zEnd];
-  for (let i = keptL.length - 1; i >= 0; i--) {
-    xs.push(-keptL[i].x);
-    zs.push(keptL[i].z);
+  for (const k of inner) {
+    if (k.x < xPeak) { xs.push(Math.min(k.x, xPeak - CROWN_GAP)); zs.push(k.z); }
   }
-  xs.push(0);
+  const crown = xs.length;
+  xs.push(xPeak);
   zs.push(archH);
-  for (const k of keptR) {
-    xs.push(k.x);
-    zs.push(k.z);
+  for (const k of inner) {
+    if (k.x >= xPeak) { xs.push(Math.max(k.x, xPeak + CROWN_GAP)); zs.push(k.z); }
   }
   xs.push(endR.xEnd);
   zs.push(endR.zEnd);
+
+  // A centred crown is already curvature-continuous: the two flanks are mirror
+  // images, so the monotone spline's filter has nothing asymmetric to clamp and
+  // its second derivatives match across the crown by symmetry. Taking the plain
+  // path here is not just an optimisation — it guarantees that adding this
+  // machinery changed nothing for every recipe that does not use a moved crown.
+  if (Math.abs(xPeak) < 1e-9) return makeMonotoneSpline(xs, zs);
+
+  const smooth = makeC2SplineWithFlatKnot(xs, zs, crown);
+  if (smooth && !overshoots(smooth, xs, zs, archH)) return smooth;
   return makeMonotoneSpline(xs, zs);
+}
+
+/**
+ * How far a profile may stray outside the knots bracketing it, as a fraction of
+ * the crown's own rise, before it is judged unusable.
+ *
+ * Generous on purpose. The curvature-continuous spline buys its smoothness by
+ * giving up the no-overshoot guarantee, and a fraction of a millimetre of
+ * wander on a 15mm arch is far below what the wood, the mesh or the eye
+ * resolves — whereas the crease it removes is plainly visible. This is the
+ * "nudge the curve to make it smooth" trade, with a number on it.
+ */
+const PROFILE_OVERSHOOT_TOLERANCE = 0.02;
+
+/**
+ * Whether a profile wanders outside the knots it passes through.
+ *
+ * Checked per interval rather than against the crown alone, because the
+ * curvature-continuous spline does not misbehave where one would expect. Its
+ * crown is exact by construction; where it can swing is the outermost interval,
+ * the long unauthored run from the last knot down into the channel — which is
+ * also the stretch the tangency solve reads its arrival slope from, so a swing
+ * there would not merely look wrong, it would move the contact.
+ */
+function overshoots(f: (x: number) => number, xs: number[], zs: number[], archH: number): boolean {
+  const rise = Math.max(archH - Math.min(zs[0], zs[zs.length - 1]), 1e-6);
+  const tol = PROFILE_OVERSHOOT_TOLERANCE * rise;
+  for (let i = 0; i < xs.length - 1; i++) {
+    const lo = Math.min(zs[i], zs[i + 1]) - tol;
+    const hi = Math.max(zs[i], zs[i + 1]) + tol;
+    // A cubic's extremum on an interval is interior; quarter points catch any
+    // excursion big enough to matter at this tolerance.
+    for (const t of [0.25, 0.5, 0.75]) {
+      const v = f(xs[i] + t * (xs[i + 1] - xs[i]));
+      if (v < lo || v > hi) return true;
+    }
+  }
+  return false;
 }
 
 /** A plate's transverse surface at one body station, with the transition solved on both sides. */
@@ -763,6 +865,8 @@ export interface GougedCrossSection {
   sweepRadius: number;
   /** Crown height above the plate outer surface — negative in the recurve bands near the caps. */
   archH: number;
+  /** Where the crown sits across the plate (mm), after tapering. 0 is the joint. */
+  xPeak: number;
   left: GougedTakeoff | null;
   right: GougedTakeoff | null;
   /** |x| where the arch hands over to the channel on each side — where one is drawn in place of the other. */
@@ -771,6 +875,82 @@ export interface GougedCrossSection {
   /** Surface height above the plate outer surface at transverse position `x`. */
   zAt: (x: number) => number;
 }
+
+/**
+ * How much of a station's geometry its own chord coordinate actually describes,
+ * from `chordFrac` — the distance from the joint to the nearest channel, over
+ * the station's half-chord.
+ *
+ * Through the body the nearest channel from the joint is straight out to the
+ * side, so the ratio is 1 and the chord is the whole story. Approaching a cap
+ * the channel wraps across the body and the nearest one is *ahead*, not beside:
+ * the ratio falls, and a station line stops being a sensible description of a
+ * plate that is closing in from three directions at once.
+ *
+ * Two things have to agree about where that happens, which is why this is one
+ * function rather than two thresholds. The surface reads its transverse
+ * position by blending true distance against chord, and has to lean on distance
+ * exactly where the chord stops describing the plate. But distance cannot tell
+ * the two sides of the joint apart — it is a scalar, and the surface has to
+ * pick a flank by the sign of x. That is only harmless while the two flanks
+ * agree, so the crown offset has to be back on the joint wherever the surface
+ * is leaning on distance. Same curve, both places: see `gougedZAt` and the
+ * offset taper in {@link solveGougedCrossSection}.
+ */
+export function chordTrust(chordFrac: number): number {
+  return smoothstep(chordFrac, CHORD_TRUST_LO, CHORD_TRUST_FULL);
+}
+
+/** Below this the chord says nothing useful and the surface reads position by distance alone. */
+const CHORD_TRUST_LO = 0.15;
+/** At and above this the chord is the whole story: {@link chordTrust} is exactly 1. */
+const CHORD_TRUST_FULL = 0.5;
+/** How far past that the crown's offset is eased in — see {@link crownOffsetTrust}. */
+const CROWN_OFFSET_BAND = 0.2;
+
+/**
+ * How much of its authored offset the crown may take, from the same ratio.
+ *
+ * Deliberately stricter than {@link chordTrust}, and the gap between them is the
+ * whole point rather than slack. Scaling the offset *in proportion* to the
+ * blend is not enough: at a station that is 40% chord-driven, the crown sits at
+ * 40% of its offset and the surface is still 60% distance-driven, so the two
+ * flanks still disagree and the step at the joint is merely smaller. It has to
+ * be *gone*, which means the offset may only begin once the blend has finished.
+ *
+ * So this starts where `chordTrust` ends. The invariant it exists to hold:
+ * `crownOffsetTrust(f) > 0` implies `chordTrust(f) === 1`. Wherever the crown is
+ * off the joint at all, the height field is reading position purely by chord,
+ * and the sign of x is a real answer rather than a coin toss.
+ *
+ * The cost is that the crown stays centred a little further into each cap than
+ * strictly needed — which is where a ridge means least anyway.
+ */
+export function crownOffsetTrust(chordFrac: number): number {
+  return smoothstep(chordFrac, CHORD_TRUST_FULL, CHORD_TRUST_FULL + CROWN_OFFSET_BAND);
+}
+
+/** Hermite smoothstep from 0 at `lo` to 1 at `hi`, flat in slope at both ends. */
+function smoothstep(v: number, lo: number, hi: number): number {
+  const k = clamp((v - lo) / (hi - lo), 0, 1);
+  return k * k * (3 - 2 * k);
+}
+
+/**
+ * How far above plate level the crown must climb, in gouge depths, before the
+ * ridge may sit fully where it was asked to.
+ *
+ * Measured against the gouge rather than against the arch height because the
+ * gouge is what the crown has to clear: below a couple of depths the section is
+ * mostly channel with a rumour of arch on top, and there is nothing there to
+ * call a ridge. It also keeps this function self-contained — the plate's own
+ * arch height is not among its arguments and should not have to be.
+ *
+ * The consequence to know: on the default violin gouge the band is 0–2.4mm, so
+ * a 15mm arch is at full offset over all but the last stretch into each cap.
+ * A very low arch over a deep gouge would taper across more of the body.
+ */
+const PEAK_TAPER_DEPTHS = 2;
 
 /**
  * Solves a station: the crown template runs out from the peak until it meets
@@ -783,6 +963,7 @@ export interface GougedCrossSection {
  */
 export function solveGougedCrossSection(
   archH: number, centerHalf: number, sweepRadius: number, depth: number, row: GougedCrossRow,
+  chordFrac = 1,
 ): GougedCrossSection | null {
   const halfWidth = gougeHalfWidth(sweepRadius, depth);
   // The crown may sit *below* plate level — that is the recurve band near each
@@ -792,6 +973,54 @@ export function solveGougedCrossSection(
   // Requiring a positive crown here instead is what left a flat ring around
   // both caps, with a straight seam where the height crossed zero.
   if (halfWidth <= 0 || centerHalf <= halfWidth || archH <= -depth) return null;
+
+  // The crown, in millimetres. Anchored to the centerline half-chord — a
+  // quantity the solve never touches — so it holds still while both takeoffs
+  // hunt for their contacts.
+  //
+  // Tapered by how much crown there is to move. The ridge line's path along the
+  // body is `(peak − ½)·2·centerHalf(y)`, so an offset crown inherits every
+  // property of `centerHalf` — a chord read off a sampled loop that runs nearly
+  // horizontal at the caps, where it therefore swings fastest per mm of body and
+  // carries the most of the sampling's own wobble. The ridge is a curvature
+  // feature of the section; steering one with that folds the surface. Centred,
+  // the whole term is zero and none of it can reach the plate, which is why this
+  // only ever appeared once the crown could move.
+  //
+  // Tapering on the arch height fixes it at the cause and says something true
+  // besides: where the long arch has not yet climbed clear of the channel there
+  // is no crown, and a ridge is a feature of a crown. It costs nothing to plumb,
+  // since `archH` is already the first thing this function is handed.
+  //
+  // Smoothstepped rather than clamped. A clamp is C⁰ in slope at both ends of
+  // the band, and a kink in the ridge line is precisely the fold this exists to
+  // remove — it would move the problem inward rather than solve it.
+  //
+  // Two conditions, both about whether an offset ridge means anything here, and
+  // both multiplied in because either one alone is a reason to be centred:
+  //
+  //   how much crown there is — a ridge is a feature of a crown, and near the
+  //   caps the arch has barely climbed clear of the channel; and
+  //
+  //   how much the station chord describes — see {@link crownOffsetTrust}. This is
+  //   the one that keeps the *surface* whole rather than the section pretty:
+  //   where the height field falls back on distance it cannot tell one side of
+  //   the joint from the other, so it picks a flank by the sign of x. An
+  //   asymmetric crown makes those two flanks disagree, and the disagreement
+  //   lands as a step down the joint. Centring the crown there is not a
+  //   cosmetic choice — it is the condition under which the sign of x stops
+  //   mattering.
+  const t = clamp(archH / (PEAK_TAPER_DEPTHS * depth), 0, 1);
+  const taper = t * t * (3 - 2 * t) * crownOffsetTrust(chordFrac);
+
+  // Held well inside the channel's inner edge, which is the innermost a takeoff
+  // can ever land. The crown has to stay a strictly interior knot: landing it on
+  // a takeoff would put two knots at one position and the spline's interval
+  // widths would include a zero. With the taper in place this is a backstop
+  // rather than something reached — a narrow station is a shallow one, and a
+  // shallow one has already tapered its crown back to the joint.
+  const peakLimit = 0.9 * Math.max(centerHalf - halfWidth, 0);
+  const xPeak = clamp(((row.peak ?? 0.5) - 0.5) * 2 * centerHalf * taper, -peakLimit, peakLimit);
 
   const endAt = (s: number): SideEnd => ({
     xEnd: centerHalf - s,
@@ -812,8 +1041,8 @@ export function solveGougedCrossSection(
       const mine: SideEnd = { xEnd: centerHalf - contactS, zEnd: -takeoffDepth };
       if (mine.xEnd <= 1e-3) return 0;
       const f = side === 1
-        ? crossProfile(archH, row.left, row.right, endL, mine)
-        : crossProfile(archH, row.left, row.right, mine, endR);
+        ? crossProfile(archH, xPeak, row.left, row.right, endL, mine)
+        : crossProfile(archH, xPeak, row.left, row.right, mine, endR);
       const eps = Math.max(mine.xEnd * 1e-4, 1e-6);
       // Measured inward, matching the channel's own slope convention: `s` grows
       // toward the centerline, so a rising arch reads positive on both.
@@ -834,7 +1063,7 @@ export function solveGougedCrossSection(
     if (takeL) endL = endAt(takeL.contactS);
   }
 
-  const profile = crossProfile(archH, row.left, row.right, endL, endR);
+  const profile = crossProfile(archH, xPeak, row.left, row.right, endL, endR);
   const zAt = (x: number): number => {
     if (x >= -endL.xEnd && x <= endR.xEnd) return profile(x);
     // Past the arch's reach the channel is the surface, and past that the flat
@@ -844,7 +1073,7 @@ export function solveGougedCrossSection(
   };
 
   return {
-    centerHalf, halfWidth, sweepRadius, archH,
+    centerHalf, halfWidth, sweepRadius, archH, xPeak,
     left: takeL, right: takeR,
     xEndLeft: endL.xEnd, xEndRight: endR.xEnd,
     zAt,
@@ -860,7 +1089,11 @@ export interface GougedCrossGuideKnot {
   base: number;
 }
 
-/** A trochoid crown's generating circle on one side, centered on the centerline. */
+/**
+ * A trochoid crown's generating circle on one side. Centered under the crown,
+ * which for a trochoid is always the joint — the curve is symmetric by
+ * construction, so there is no crown position to move.
+ */
 export interface GougedCrossGuideCircle {
   centerZ: number;
   radius: number;
@@ -898,7 +1131,7 @@ export interface GougedCrossGuideCircle {
 export interface GougedCrossGuide {
   knots: GougedCrossGuideKnot[];
   circles: GougedCrossGuideCircle[];
-  /** The crown itself, always marked. */
+  /** The crown itself, always marked — at `section.xPeak`, which need not be the joint. */
   peakZ: number;
 }
 
@@ -920,7 +1153,7 @@ export function gougedCrossGuide(shape: GougedCrossShape, section: GougedCrossSe
       if (d > 0.01) out.circles.push({ centerZ: base + hEff / 2, radius: hEff / (2 * d) });
     } else {
       for (const k of gougedCrossKnots(shape, side)) {
-        out.knots.push({ x: side * k.x * xEnd, z: base + k.z * hEff, base });
+        out.knots.push({ x: gougedCrossKnotX(section, side, k.x), z: base + k.z * hEff, base });
       }
     }
   }
@@ -994,8 +1227,15 @@ export function gougedCrossSectionAt(
   const centerHalf = loopHalfChordAtY(geo.centerPoly, y);
   if (centerHalf === null) return null;
   const { sweepRadius } = gougeAtY(p, geo.gouge, y);
+  // Measured at the joint, which is where the sign-of-x ambiguity lives and so
+  // the only place the answer matters. Equals the half-chord through the body,
+  // and falls away as the channel wraps round each cap.
+  const chordFrac = centerHalf > 1e-9
+    ? closestPointToPolylineIndexed({ x: 0, y }, geo.centerIdx).dist / centerHalf
+    : 1;
   return solveGougedCrossSection(
     gougedLongArchHeightAt(geo, y), centerHalf, sweepRadius, geo.gouge.depth, geo.resolveCross(y),
+    chordFrac,
   );
 }
 

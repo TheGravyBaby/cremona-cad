@@ -13,7 +13,7 @@ import { ArchCurve, CrossArchStation, EnricoCerutiParams } from './ceruti-types'
 import { defineFlutingPath, defineInsetPath, defineOuterPath } from './ceruti-paths';
 import {
     buildGougedPlateGeometry, defaultGougedCrossParams, defaultGougedFlutingParams,
-    gougeAtY, GougedCrossSection, gougedCrossSectionAt, GougedPlateGeometry, gougeProfileZ,
+    chordTrust, gougeAtY, GougedCrossSection, gougedCrossSectionAt, GougedPlateGeometry, gougeProfileZ,
 } from './ceruti-gouged';
 import {
     calculateLongArch, CrossArchAtY, CrossArchQuery, defaultCrossArchParams, defaultFlutingChannelParams, flutingHalfWidthAtY,
@@ -328,16 +328,30 @@ function gougedZAt(
             // Chord position has no such structure.
             //
             // So: distance at the handover, chord by the time we are a third of
-            // the way in, smoothstepped between. The medial axis lives near the
-            // far end where the blend has already settled on chord, so its
-            // gradient jump is multiplied by a weight that is flat there and
-            // never reaches the surface.
+            // the way in, smoothstepped between.
+            //
+            // Scheduling that on the *distance* is load-bearing and cannot be
+            // swapped for the chord, tempting though it looks. Near the caps the
+            // channel wraps across the body, so the handover happens *at the
+            // joint* — where the chord reads 1, "all the way in". Weighting by
+            // chord there would hand back the crown height at the very point the
+            // surface has to equal the takeoff, and the arch would part company
+            // with its channel by a tenth of a millimetre all round both caps.
+            //
+            // The price is that the arch is driven by distance in the cap bands,
+            // and distance cannot tell the two sides of the joint apart: the
+            // return below picks a flank by the sign of x, and the two flanks of
+            // an asymmetric crown disagree. That is a step down the joint —
+            // which is why the weight is {@link chordTrust}, the same curve the
+            // crown-offset taper is scaled by. The crown is centred wherever
+            // this leans on distance, so there the two flanks agree and the sign
+            // of x stops mattering. Change one and the other must follow, so
+            // they are one function.
             const xEnd = x < 0 ? section.xEndLeft : section.xEndRight;
             const span = section.centerHalf - contact;
             const tDist = span > 1e-9 ? clamp((s - contact) / span, 0, 1) : 1;
             const tChord = xEnd > 1e-9 ? clamp(1 - Math.abs(x) / xEnd, 0, 1) : 1;
-            const k = clamp((tDist - 0.15) / 0.35, 0, 1);
-            const w = k * k * (3 - 2 * k);
+            const w = chordTrust(tDist);
             const t = (1 - w) * tDist + w * tChord;
             return section.zAt((x < 0 ? -1 : 1) * xEnd * (1 - t));
         }
@@ -674,19 +688,19 @@ function computeArchContourRingsRaw(
     for (let j = 0; j < ny; j++) {
         const y = yMin + j * gridMm;
         const chords = stationChordsAt(p, model, y);
-        // The outline is x-symmetric: evaluate x ≥ 0 and mirror.
-        for (let x = 0; x <= xMax; x += gridMm) {
+        // Both halves, evaluated. The *outline* is x-symmetric, and this used to
+        // sample x ≥ 0 and mirror on that basis — but the outline is not the
+        // surface. A cross arch can be asymmetric in either model: an unmirrored
+        // control point, a moved crown, or the classic model's own left/right
+        // cycloid pair. Mirroring then stamps the treble half onto the bass half
+        // and leaves a seam down the joint where the two copies meet, which is
+        // not in the height field at all — only in the picture of it. The saving
+        // was half the samples on a grid that is already cached per recipe.
+        for (let i = 0; i < nx; i++) {
+            const x = -xMax + i * gridMm;
             const z = topSurfaceZAt(p, model, x, y, chords);
-            const i = Math.round((x + xMax) / gridMm);
-            const iMirror = Math.round((xMax - x) / gridMm);
-            const pos = z ?? -1e6;
-            const neg = z ?? 1e6;
-            posVals[j * nx + i] = pos;
-            negVals[j * nx + i] = neg;
-            if (iMirror >= 0 && iMirror < nx) {
-                posVals[j * nx + iMirror] = pos;
-                negVals[j * nx + iMirror] = neg;
-            }
+            posVals[j * nx + i] = z ?? -1e6;
+            negVals[j * nx + i] = z ?? 1e6;
             if (z !== null) { zMin = Math.min(zMin, z); zMax = Math.max(zMax, z); }
         }
     }

@@ -1,4 +1,7 @@
-import { buildPolylineIndex, distPointToPolyline, distPointToPolylineIndexed, makeMonotoneSpline } from './draftMath';
+import {
+  buildPolylineIndex, distPointToPolyline, distPointToPolylineIndexed, makeC2SplineWithFlatKnot,
+  makeMonotoneSpline,
+} from './draftMath';
 
 describe('makeMonotoneSpline', () => {
   /**
@@ -119,5 +122,58 @@ describe('distPointToPolylineIndexed', () => {
 
   it('returns Infinity for an empty polyline, matching the brute force', () => {
     expect(distPointToPolylineIndexed({ x: 3, y: 4 }, buildPolylineIndex([]))).toBe(Infinity);
+  });
+});
+
+describe('makeC2SplineWithFlatKnot', () => {
+  /** One-sided second derivatives at `x`, each measured wholly on its own side. */
+  const curvatures = (f: (x: number) => number, x: number, h = 1e-3): [number, number] => {
+    const side = (dir: 1 | -1) =>
+      (f(x + dir * h) - 2 * f(x + dir * 2 * h) + f(x + dir * 3 * h)) / (h * h);
+    return [side(-1), side(1)];
+  };
+
+  const xs = [-100, -60, -10, 55, 100];
+  const zs = [0, 9, 15, 9, 0];
+
+  it('is curvature-continuous at the pinned knot, where a monotone spline is not', () => {
+    // The whole reason this exists. Both curves have a flat maximum at the same
+    // place; only one joins its two flanks without a curvature step, and on a
+    // rendered surface that step is a crease along the knot.
+    const smooth = makeC2SplineWithFlatKnot(xs, zs, 2)!;
+    const [sl, sr] = curvatures(smooth, -10);
+    expect(Math.abs(sl - sr) / Math.abs(sr)).toBeLessThan(0.01);
+
+    const [ml, mr] = curvatures(makeMonotoneSpline(xs, zs), -10);
+    expect(Math.abs(ml - mr) / Math.abs(mr)).toBeGreaterThan(0.2);
+  });
+
+  it('puts a genuine flat maximum at the pinned knot', () => {
+    const f = makeC2SplineWithFlatKnot(xs, zs, 2)!;
+    expect(f(-10)).toBeCloseTo(15, 9);
+    const slope = (f(-10 + 1e-4) - f(-10 - 1e-4)) / 2e-4;
+    expect(Math.abs(slope)).toBeLessThan(1e-6);
+    for (let x = -100; x <= 100; x += 0.25) expect(f(x)).toBeLessThanOrEqual(15 + 1e-9);
+  });
+
+  it('is C2 at every other knot too, not just the pinned one', () => {
+    const f = makeC2SplineWithFlatKnot(xs, zs, 2)!;
+    for (const x of [-60, 55]) {
+      const [l, r] = curvatures(f, x);
+      expect(Math.abs(l - r) / Math.max(Math.abs(l), Math.abs(r))).toBeLessThan(0.01);
+    }
+  });
+
+  it('keeps symmetric data symmetric', () => {
+    // Made by averaging the two ways of freeing up an end condition. Picking one
+    // would tilt a problem that has no reason to be tilted.
+    const sym = makeC2SplineWithFlatKnot([-100, -50, 0, 50, 100], [0, 9, 15, 9, 0], 2)!;
+    for (const x of [7, 23, 61, 94]) expect(sym(x)).toBeCloseTo(sym(-x), 9);
+  });
+
+  it('returns null when there is nothing to constrain', () => {
+    expect(makeC2SplineWithFlatKnot([0, 1], [0, 1], 0)).toBeNull();
+    expect(makeC2SplineWithFlatKnot([0, 1, 2], [0, 1, 0], 0)).toBeNull(); // pinned at an end
+    expect(makeC2SplineWithFlatKnot([0, 1, 2], [0, 1, 0], 2)).toBeNull();
   });
 });

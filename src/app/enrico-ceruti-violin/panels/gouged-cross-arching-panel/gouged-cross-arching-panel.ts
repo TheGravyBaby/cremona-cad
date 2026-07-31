@@ -17,7 +17,7 @@ import {
 } from '../../ceruti-arching';
 import {
   defaultGougedCrossCycloidParams, defaultGougedCrossParams, defaultGougedFlutingParams, GougedCrossSection,
-  gougedCrossGuide, gougedCrossSectionAt, gougedCrossSectionPath, nearestGougedCrossShape,
+  gougedCrossGuide, gougedCrossKnotX, gougedCrossSectionAt, gougedCrossSectionPath, nearestGougedCrossShape,
 } from '../../ceruti-gouged';
 import {
   ArchContourLevel, buildGougedPlateSurfaceModel, buildPlateStl, computeArchContourRings, PlateSurfaceModel,
@@ -35,7 +35,7 @@ import { calculateOuterArcs } from '../../ceruti-calcs';
 import { defineOuterPath } from '../../ceruti-paths';
 import {
   archContoursInfo, crossSectionStationInfo, gougedCrossCurveTypeInfo, gougedCrossCycloidControlsInfo,
-  gougedCrossStationInfo, gougedCrossTemplateInfo, gougedTransitionError,
+  gougedCrossPeakInfo, gougedCrossStationInfo, gougedCrossTemplateInfo, gougedTransitionError,
 } from '../../ceruti-helpers';
 import { CrossArchingRotationController } from '../cross-arching-panel/cross-arching-rotation-controller';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
@@ -50,9 +50,10 @@ import { CerutiPanelBase, RenderLayer } from '../panel-base';
  * more physical process. The panel therefore *reports* the transition rather
  * than offering it for editing.
  *
- * Stations are deliberately absent for now: one template per plate, applying
- * everywhere. The resolver behind this already ramps between stations when they
- * exist, so adding them later is a panel change rather than a model change.
+ * The plate's base shape anchors both body ends and stations override it in
+ * between, the same arrangement the classic cross-arching panel uses — down to
+ * the draft-preview mechanism, since the question "what am I looking at, and
+ * what would an edit here change?" is the same one in both models.
  */
 @Component({
   selector: 'app-ceruti-gouged-cross-arching-panel',
@@ -70,6 +71,7 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
   protected readonly gougedCrossCycloidControlsInfo = gougedCrossCycloidControlsInfo;
   protected readonly gougedCrossTemplateInfo = gougedCrossTemplateInfo;
   protected readonly gougedCrossStationInfo = gougedCrossStationInfo;
+  protected readonly gougedCrossPeakInfo = gougedCrossPeakInfo;
   protected readonly archContoursInfo = archContoursInfo;
 
   /** Solved section at the cursor per plate, filled by buildRun for the template to report. */
@@ -275,6 +277,34 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
 
   // ===== Template editing =====
 
+  /** The crown's position across the plate as a whole percent, 50 being the joint. */
+  peakPct(plate: 'top' | 'bottom'): number {
+    return Math.round((this.crossSpline(plate)?.peak ?? 0.5) * 100);
+  }
+
+  /** The same, for a row of the station table. */
+  stationPeakPct(st: GougedCrossSplineStation): number {
+    return Math.round((st.peak ?? 0.5) * 100);
+  }
+
+  /**
+   * Moves the crown across the plate: 50 is the joint, below it the bass side.
+   * Real plates rarely peak dead centre, and a scan traced onto a centred crown
+   * has to absorb that error somewhere in the shape instead.
+   *
+   * Held to 30–70 here rather than at the geometric limit. The crown only has to
+   * stay clear of the channel to be a valid knot, but past about this it stops
+   * describing an arch: one shoulder becomes a cliff into the channel while the
+   * other runs most of the width. The solve clamps further at narrow stations,
+   * where the same percent is a much larger share of what is left.
+   */
+  setPeakPct(plate: 'top' | 'bottom', pct: number): void {
+    const target = this.editTarget(plate);
+    if (target.type !== 'gouged') return;
+    target.peak = clamp(pct || 0, 30, 70) / 100;
+    this.onChange();
+  }
+
   /** A knot's position as a signed whole percent of the local half-width, for the panel's input. */
   pointXPct(pt: GougedCrossPoint): number {
     return Math.round(pt.x * 100);
@@ -301,10 +331,11 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
   }
 
   /**
-   * Sets a knot's position across the plate, as a percent of this side's own
-   * crown: 0 is the peak, ±100 the takeoff where the crown runs into the
-   * channel. Negative is the bass side. Held off both ends — the peak owns the
-   * centerline, and the takeoff is solved rather than authored.
+   * Sets a knot's position across the plate, as a percent of the half-width:
+   * 0 is the joint, ±100 the takeoff where the crown runs into the channel.
+   * Negative is the bass side. Held off both ends — the takeoff is solved rather
+   * than authored, and a knot sitting exactly on the joint would collide with a
+   * centred crown.
    */
   setPointXPct(plate: 'top' | 'bottom', index: number, pct: number): void {
     const target = this.editTarget(plate);
@@ -666,7 +697,7 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
         renderMeasure(new Pt(k.x, zBase + sign * k.base), at, (k.z - k.base).toFixed(1), color, 3, 7)(g, ui);
         renderCrosshair(at, color, 2, 1.5, 1)(g, ui);
       }
-      renderCircle(new Circle(0, zBase + sign * guide.peakZ, 1), color)(g, ui);
+      renderCircle(new Circle(section.xPeak, zBase + sign * guide.peakZ, 1), color)(g, ui);
     }
   }
 
@@ -721,7 +752,7 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
   private highlightKnots(plate: 'top' | 'bottom', section: GougedCrossSection): number[] {
     const pt = this.crossSpline(plate)?.points[this.highlightedIndex];
     if (!pt) return [];
-    const at = (side: 1 | -1) => side * Math.abs(pt.x) * (side < 0 ? section.xEndLeft : section.xEndRight);
+    const at = (side: 1 | -1) => gougedCrossKnotX(section, side, Math.abs(pt.x));
     if (pt.mirror) return [at(1), at(-1)];
     return [at(pt.x < 0 ? -1 : 1)];
   }

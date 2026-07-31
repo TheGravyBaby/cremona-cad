@@ -5,6 +5,7 @@ import {
   buildPlateStl, buildPlateSurfaceModel, calculateCrossArchTemplates, calculateFlutingSectionTop,
   calculateLongArchTemplates, computeArchContours, computeArchSectionProfile, crossArchTemplateStationYs,
   stationChordsAt, topSurfaceZAt, PlateSurfaceModel, buildGougedPlateSurfaceModel,
+  computeArchContourRings,
 } from './ceruti-surface';
 import { defaultGougedCrossParams, defaultGougedFlutingParams, gougeHalfWidth } from './ceruti-gouged';
 import { DefaultParams, EnricoCerutiParams } from './ceruti-types';
@@ -338,6 +339,30 @@ describe('gouged surface model', () => {
     return p;
   }
 
+  it('draws contours from both halves rather than mirroring one', () => {
+    // The grid used to sample x >= 0 and mirror, on the grounds that the outline
+    // is x-symmetric. The outline is; the surface need not be. A moved crown, an
+    // unmirrored control point, or the classic model's own left/right cycloid
+    // pair all break it — and the mirror then stamps the treble half onto the
+    // bass half, leaving a seam down the joint that is in the picture and not in
+    // the height field.
+    const centroidOfHighest = (peak: number): number => {
+      const p = gougedParams();
+      p.arching!.top.gougedCross = { ...defaultGougedCrossParams(), peak };
+      const model = buildGougedPlateSurfaceModel(p, 'top')!;
+      const levels = computeArchContourRings(p, model, 1, 1);
+      const top = levels[levels.length - 1];
+      let sum = 0;
+      let n = 0;
+      for (const ring of top.rings) for (const [x] of ring) { sum += x; n++; }
+      return sum / n;
+    };
+
+    // A centred crown sits on the joint; a moved one takes its contours with it.
+    expect(Math.abs(centroidOfHighest(0.5))).toBeLessThan(1.5);
+    expect(centroidOfHighest(0.42)).toBeLessThan(-4);
+  }, 20_000);
+
   it('cuts one constant channel section the whole way round', () => {
     const p = gougedParams();
     const model = buildGougedPlateSurfaceModel(p, 'top')!;
@@ -426,7 +451,11 @@ describe('gouged surface model', () => {
     // A quarter of the step should give about a quarter of the jump. Anything
     // that refuses to shrink is a step in the surface itself.
     xs.forEach((_, i) => expect(fine[i]).toBeLessThan(coarse[i] * 0.4));
-  });
+    // Walks the whole body twice at 0.125mm, solving a section per station —
+    // a root-find per side each time. Slow on purpose: the refinement is what
+    // separates a real slope from a seam, and coarsening it would blunt exactly
+    // the thing being measured.
+  }, 20_000);
 
   it('crowns on the centerline at essentially the height the section reports', () => {
     // Not exactly, and deliberately so. The height field parameterizes the arch
