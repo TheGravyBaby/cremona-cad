@@ -85,13 +85,11 @@ export class GougedLongArchingPanel extends CerutiPanelBase implements OnInit {
     return (plateParams.gougedFluting ??= defaultGougedFlutingParams(this.params));
   }
 
-  // ===== The solve, reported =====
-
-  takeoffFor(plate: 'top' | 'bottom'): GougedLongArch | null {
-    return this.solved[plate];
-  }
-
-  /** True when the arch and channel cannot meet at all — the one case the maker must resolve. */
+  /**
+   * True when the arch and channel cannot meet at all — the one case the maker
+   * must resolve, and the only thing the solve has to say that isn't already
+   * visible in the section beside it.
+   */
   unsolvable(plate: 'top' | 'bottom'): boolean {
     return this.solved[plate] === null && this.archFor(plate).archHeight > 0;
   }

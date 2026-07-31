@@ -4,14 +4,14 @@ import {
   PolylineIndex,
 } from '../helpers/draftMath';
 import {
-  catenaryZAt, cycloidZAt, flutingArc, samplePathToPolyline, splineZAt,
+  catenaryZAt, cycloidZAt, samplePathToPolyline, splineZAt,
 } from '../helpers/svgPathMath';
 import {
   ArchCurve, EnricoCerutiParams, GougedCrossCycloidParams, GougedCrossCycloidShape, GougedCrossParams,
   GougedCrossShape, GougedCrossSplineParams, GougedCrossStation, GougedFlutingParams,
 } from './ceruti-types';
 import { defineFlutingPath, defineInsetPath } from './ceruti-paths';
-import { archFromLoweredTakeoff, crossArchEdgeSlopeAt, normalizeCrossArchStations } from './ceruti-arching';
+import { archFromLoweredTakeoff, normalizeCrossArchStations } from './ceruti-arching';
 
 /**
  * The gouged arching model's geometry — the half of it that concerns the
@@ -263,85 +263,6 @@ export function gougedChannelAreaPath(paths: GougedChannelPaths): string {
  */
 export function gougedCornerJoinAreaPath(p: EnricoCerutiParams, paths: GougedChannelPaths): string {
   return `${defineInsetPath(p, p.outerFlutingDepth ?? 0)} Z ${paths.outer} Z`;
-}
-
-/**
- * One sample of the *classic* model's channel, taken along its own inner
- * boundary — the diagnostic that decides whether the gouged model is worth
- * finishing.
- *
- * `width` is the annulus the classic `flutingProfileZ` is handed at that point,
- * and `radius` is the gouge sweep its {@link flutingArc} therefore produces.
- * Both are outputs there, so both drift; the point of plotting them is to see
- * by how much, and where. A real gouge cannot change sweep as it travels, so
- * every millimetre of swing here is geometry the classic model asks for and no
- * maker could cut.
- */
-export interface ClassicChannelSample {
-  pt: Pt;
-  /** Outward unit normal of the boundary loop, for drawing a ribbon off it. */
-  normal: Pt;
-  width: number;
-  radius: number | null;
-}
-
-export function classicChannelProfile(
-  p: EnricoCerutiParams, side: 'top' | 'bottom' = 'top', step = 2,
-): ClassicChannelSample[] {
-  const innerPath = defineFlutingPath(p, p.innerFlutingDepth ?? 0);
-  if (!innerPath) return [];
-  const inner = samplePathToPolyline(innerPath, step);
-  const platformIdx = buildPolylineIndex(samplePathToPolyline(defineInsetPath(p, p.outerFlutingDepth ?? 0), 1));
-  const edgeDepth = p.arching?.[side].edgeDepth ?? 0;
-
-  const out: ClassicChannelSample[] = [];
-  for (let i = 0; i < inner.length; i++) {
-    const pt = inner[i];
-    const prev = inner[(i - 1 + inner.length) % inner.length];
-    const next = inner[(i + 1) % inner.length];
-    const tx = next.x - prev.x, ty = next.y - prev.y;
-    const len = Math.hypot(tx, ty) || 1;
-    // Loops run one consistent way, so a fixed 90° turn of the tangent points
-    // outward the whole way round; sign only has to be right relative to itself.
-    const normal = new Pt(ty / len, -tx / len);
-    const width = closestPointToPolylineIndexed(pt, platformIdx).dist;
-    // The arch's takeoff slope varies along the body, and it is the third input
-    // that makes the classic radius drift even where the width holds steady.
-    const slope = crossArchEdgeSlopeAt(p, pt.y, side, pt.x < 0);
-    out.push({ pt, normal, width, radius: flutingArc(edgeDepth, width, slope)?.r ?? null });
-  }
-  return out;
-}
-
-/** Min/max/ratio of a diagnostic series, for the panel's numeric read-out. */
-export function channelSwing(values: (number | null)[]): { min: number; max: number; ratio: number } | null {
-  const real = values.filter((v): v is number => v !== null && Number.isFinite(v));
-  if (!real.length) return null;
-  const min = Math.min(...real), max = Math.max(...real);
-  return { min, max, ratio: min > 0 ? max / min : Infinity };
-}
-
-/**
- * Wraps a diagnostic series around its own loop as a ribbon: each sample pushed
- * out along the boundary's normal in proportion to where it sits between the
- * series min and max. Reads as a wavy band beside the outline — flat where the
- * quantity is stable, bulging where it swings.
- */
-export function diagnosticRibbonPath(
-  samples: ClassicChannelSample[], values: (number | null)[], amplitude: number,
-): string | null {
-  const swing = channelSwing(values);
-  if (!swing || samples.length < 2) return null;
-  const span = swing.max - swing.min || 1;
-  const pts: string[] = [];
-  for (let i = 0; i < samples.length; i++) {
-    const v = values[i];
-    if (v === null || !Number.isFinite(v)) continue;
-    const t = clamp((v - swing.min) / span, 0, 1);
-    const s = samples[i];
-    pts.push(`${pts.length === 0 ? 'M' : 'L'} ${s.pt.x + s.normal.x * t * amplitude} ${s.pt.y + s.normal.y * t * amplitude}`);
-  }
-  return pts.length > 1 ? pts.join(' ') : null;
 }
 
 // ===== The transition solve =====

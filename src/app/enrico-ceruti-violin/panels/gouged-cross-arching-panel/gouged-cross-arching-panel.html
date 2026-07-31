@@ -8,8 +8,19 @@
             <input class="basic-input" type="number" step="5" min="1" [max]="params.height - 1" [ngModel]="cursorY"
                 (ngModelChange)="setCursorY($event)" />
         </label>
-        <input class="basic-input" type="range" step="1" min="1" [max]="params.height - 1" [ngModel]="cursorY"
-            (ngModelChange)="setCursorY($event)" aria-label="Cross section station height" />
+        <div class="station-slider">
+            <input class="basic-input" type="range" step="1" min="1" [max]="params.height - 1" [ngModel]="cursorY"
+                (ngModelChange)="setCursorY($event)" aria-label="Cross section station height" />
+            <div class="station-ticks" aria-hidden="true">
+                @for (mark of stationLandmarks; track mark.label) {
+                <button type="button" class="station-tick" [style.left]="mark.left" [title]="mark.title"
+                    (click)="setCursorY(mark.y)">
+                    <span class="station-tick-mark"></span>
+                    <span class="station-tick-label">{{ mark.label }}</span>
+                </button>
+                }
+            </div>
+        </div>
         <button type="button" class="info-icon" (click)="crossSectionStationInfo()" title="More information">ⓘ</button>
     </div>
     @if (cycloidStations('top'); as stations) {
@@ -86,7 +97,7 @@
     }
 </section>
 
-<section class="ui-group">
+<!-- <section class="ui-group">
     <div class="ui-group-title">Export</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
@@ -102,7 +113,7 @@
             {{ exporting === 'bottom' ? 'Building…' : 'Back STL' }}
         </button>
     </div>
-</section>
+</section> -->
 
 <section class="ui-group" [style.border-color]="colors.archTop">
     <div class="ui-group-title">Top Plate</div>
