@@ -129,6 +129,23 @@ export function normalizeArchCurve(arch: ArchCurve): void {
     }
   }
   arch.points.sort((a, b) => a.t - b.t);
+  clampSplinePointHeights(arch.points, arch.archHeight);
+}
+
+/**
+ * Holds a spline's control points at or below its peak — the one knot that pins
+ * the arch's real height. For a long arch that ceiling is the entered Arch
+ * Height; for a cross arch the peak is always the full local hEff, so `peakZ`
+ * is 1 in that shape's own fractional units.
+ *
+ * Without this a control point can quietly become the true high spot, and then
+ * the height label, the surface model and the exports all disagree with the
+ * number the maker typed. Lowering the peak therefore drags any point above it
+ * down with it; raising the peak again leaves them where they landed, since
+ * nothing records which of them the maker wanted brought back up.
+ */
+export function clampSplinePointHeights(points: { z: number }[], peakZ: number): void {
+  for (const p of points) p.z = clamp(p.z, 0, peakZ);
 }
 
 /**
@@ -161,6 +178,10 @@ export function normalizeCrossArchParams(cross: CrossArchParams | undefined): vo
   if (!cross) return;
   (cross as { type?: 'cycloid' | 'spline' }).type ??= 'cycloid';
   for (const s of cross.stations ?? []) (s as { type?: 'cycloid' | 'spline' }).type ??= 'cycloid';
+  // A cross-arch peak is always the full local hEff, so 1 is the ceiling here.
+  for (const shape of [cross, ...(cross.stations ?? [])]) {
+    if (shape.type === 'spline') clampSplinePointHeights(shape.points, 1);
+  }
 }
 
 export function calculateLongArch(p: EnricoCerutiParams): { span: number; yStart: number; topPath: string; backPath: string } {
@@ -548,22 +569,33 @@ export function nearestCrossArchSplineShape(cross: CrossArchSplineParams, y: num
   return best;
 }
 
+/** One spline cross-arch knot in section coordinates, tagged with the control point it came from. */
+export interface CrossArchSplineGuideKnot {
+  point: Pt;
+  /** Matches ArchSplineKnot.source — the panel's row index, or SPLINE_PEAK_SOURCE. */
+  source: number;
+}
+
 /**
  * Control-point guide for a spline cross-arch at station `y` — the crosshair
  * positions the module-guide overlay marks, in section coordinates. Drawn
  * from whichever shape (a station or the base) is nearest `y` — see
  * {@link nearestCrossArchSplineShape} — since control points don't ramp
- * point-by-point between stations the way a scalar does. Null where no arch
- * exists at this station, or the plate's cross arch isn't a spline.
+ * point-by-point between stations the way a scalar does. That is the same
+ * shape the panel's own control-point rows edit, so `source` indexes those
+ * rows directly. Null where no arch exists at this station, or the plate's
+ * cross arch isn't a spline.
  */
-export function calculateCrossArchSplineGuide(p: EnricoCerutiParams, y: number, side: 'top' | 'bottom' = 'top'): Pt[] | null {
+export function calculateCrossArchSplineGuide(p: EnricoCerutiParams, y: number, side: 'top' | 'bottom' = 'top'): CrossArchSplineGuideKnot[] | null {
   const geo = crossArchStationGeometry(p, y, side);
   if (!geo) return null;
   const { halfSpan, hEff, zBase, sign, cross } = geo;
   if (cross.type !== 'spline') return null;
   const shape = nearestCrossArchSplineShape(cross, y, p.height);
-  return archSplineKnots(1, shape.points, shape.peak ?? 0.5).map(k =>
-    new Pt(-halfSpan + k.t * 2 * halfSpan, zBase + sign * k.z * hEff));
+  return archSplineKnots(1, shape.points, shape.peak ?? 0.5).map(k => ({
+    point: new Pt(-halfSpan + k.t * 2 * halfSpan, zBase + sign * k.z * hEff),
+    source: k.source,
+  }));
 }
 
 /** Outermost |x| where the horizontal station line crosses any of the arcs' drawn spans; null if none. */

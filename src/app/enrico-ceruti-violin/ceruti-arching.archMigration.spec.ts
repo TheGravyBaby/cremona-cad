@@ -1,5 +1,7 @@
-import { normalizeArchCurve, normalizeArchingParams } from './ceruti-arching';
-import { ArchCatenary, ArchSpline, EnricoCerutiParams } from './ceruti-types';
+import {
+  clampSplinePointHeights, normalizeArchCurve, normalizeArchingParams, normalizeCrossArchParams,
+} from './ceruti-arching';
+import { ArchCatenary, ArchSpline, CrossArchSplineParams, EnricoCerutiParams } from './ceruti-types';
 import { splineZAt } from '../helpers/svgPathMath';
 
 /**
@@ -83,6 +85,58 @@ describe('normalizeArchCurve', () => {
     const copy: ArchCatenary = { ...catenary };
     normalizeArchCurve(copy);
     expect(copy).toEqual(catenary);
+  });
+});
+
+describe('clampSplinePointHeights', () => {
+  it('holds points at or below the peak and floors them at zero', () => {
+    const points = [{ z: 3 }, { z: 15 }, { z: 22 }, { z: -4 }];
+    clampSplinePointHeights(points, HEIGHT);
+    expect(points.map(p => p.z)).toEqual([3, 15, 15, 0]);
+  });
+
+  // The invariant this exists to protect: the peak is what pins the arch's
+  // height, so a taller control point would quietly become the real high spot
+  // and the entered Arch Height would stop describing the curve.
+  it('keeps the curve\'s true maximum equal to the entered arch height', () => {
+    const arch = {
+      type: 'spline', archHeight: HEIGHT, peak: 0.5,
+      points: [{ t: 0.3, z: 22, mirror: true }],
+    } as ArchSpline;
+
+    const maxOf = (a: ArchSpline): number => {
+      let max = 0;
+      for (let i = 0; i <= 2000; i++) max = Math.max(max, splineZAt(a.archHeight, SPAN, a.points, a.peak!, SPAN * i / 2000));
+      return max;
+    };
+    expect(maxOf(arch)).toBeGreaterThan(HEIGHT);
+
+    clampSplinePointHeights(arch.points, arch.archHeight);
+    expect(maxOf(arch)).toBeCloseTo(HEIGHT, 9);
+  });
+});
+
+describe('normalizeCrossArchParams', () => {
+  it('clamps spline control points to the peak on the base and every station', () => {
+    // Cross-arch heights are fractions of the local hEff, and the peak is
+    // always the full hEff — so the ceiling is 1, not an entered millimetre.
+    const cross = {
+      type: 'spline', peak: 0.5,
+      points: [{ t: 0.2, z: 1.4, mirror: true }],
+      stations: [
+        { y: 100, type: 'spline', peak: 0.5, points: [{ t: 0.25, z: 2, mirror: true }, { t: 0.4, z: 0.6 }] },
+      ],
+    } as unknown as CrossArchSplineParams;
+
+    normalizeCrossArchParams(cross);
+    expect(cross.points[0].z).toBe(1);
+    expect(cross.stations![0].points.map(p => p.z)).toEqual([1, 0.6]);
+  });
+
+  it('leaves cycloid params untouched', () => {
+    const cross = { d: 0.4, pct: 0.9 } as unknown as CrossArchSplineParams;
+    normalizeCrossArchParams(cross);
+    expect(cross).toEqual({ type: 'cycloid', d: 0.4, pct: 0.9 });
   });
 });
 

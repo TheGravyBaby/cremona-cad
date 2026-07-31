@@ -39,6 +39,7 @@ import {
 } from '../../renders/arch-3d-wireframe.render';
 import { renderCrossSection } from '../../renders/cross-arching.render';
 import { renderWireframeDragFrame } from '../../renders/wireframe-drag-frame.render';
+import { HighlightedSplinePoint } from '../../renders/render-constants';
 
 export type RenderLayer = (g: any, ui: any) => void;
 
@@ -46,6 +47,8 @@ export interface CrossArchingSceneInput {
   params: EnricoCerutiParams;
   viewFlags: CerutiViewFlags;
   colors: CerutiColors;
+  /** Spline control point whose textbox has focus, per plate; null when focus is elsewhere. */
+  splineHighlight?: { top: HighlightedSplinePoint | null; bottom: HighlightedSplinePoint | null };
 }
 
 export interface CrossArchingDragState {
@@ -124,12 +127,14 @@ export class CrossArchingSceneBuilder {
     const flutingSliceBack = backModel ? calculateFlutingSectionTop(p, backModel, f.crossSectionY) : null;
 
     // Module guides: the generating circles for a cycloid cross-arch, or the
-    // control-point crosshairs for a spline one — only worth computing when
-    // the (shared, global) guide toggle is actually on.
+    // control-point crosshairs for a spline one. The cycloid circles are only
+    // worth computing behind the (shared, global) guide toggle, but the spline
+    // knots are also where a focused textbox's halo goes — which is drawn with
+    // the guides off — so those are resolved unconditionally.
     const topCycloidGuide = f.showModuleGuides ? calculateCrossArchCycloidGuide(p, f.crossSectionY, 'top') : null;
-    const topSplineGuide = f.showModuleGuides ? calculateCrossArchSplineGuide(p, f.crossSectionY, 'top') : null;
     const backCycloidGuide = f.showModuleGuides ? calculateCrossArchCycloidGuide(p, f.crossSectionY, 'bottom') : null;
-    const backSplineGuide = f.showModuleGuides ? calculateCrossArchSplineGuide(p, f.crossSectionY, 'bottom') : null;
+    const topSplineGuide = calculateCrossArchSplineGuide(p, f.crossSectionY, 'top');
+    const backSplineGuide = calculateCrossArchSplineGuide(p, f.crossSectionY, 'bottom');
 
     const renders: RenderLayer[] = [
       renderCrossSection(
@@ -149,6 +154,8 @@ export class CrossArchingSceneBuilder {
         topSplineGuide,
         backCycloidGuide,
         backSplineGuide,
+        input.splineHighlight?.top ?? null,
+        input.splineHighlight?.bottom ?? null,
       ),
     ];
 

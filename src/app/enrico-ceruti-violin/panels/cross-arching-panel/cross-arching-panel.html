@@ -217,7 +217,8 @@
             <div class="field-cell">
                 <input class="basic-input" type="number" step="1" min="2" max="98"
                     [ngModel]="splinePeakPct(shape)"
-                    (ngModelChange)="setSplinePeakPct('top', $event)" />
+                    (ngModelChange)="setSplinePeakPct('top', $event)"
+                    (focus)="onSplinePointFocus('top', peakSource)" (blur)="onSplinePointBlur()" />
             </div>
             <span class="field-separator" aria-hidden="true"></span>
             <div class="field-cell">
@@ -230,16 +231,19 @@
             <div class="field-cell">
                 <input class="basic-input" type="number" step="1" min="1" max="99"
                     [ngModel]="pt.t * 100 | number:'1.0-0'"
-                    (ngModelChange)="pt.t = $event / 100; onChange()" />
+                    (ngModelChange)="setSplinePointPosPct('top', $index, $event)"
+                    (focus)="onSplinePointFocus('top', $index)" (blur)="onSplinePointBlur()" />
             </div>
             <span class="field-separator" aria-hidden="true"></span>
             <div class="field-cell">
                 <input class="basic-input" type="number" step="1" min="0" max="100"
                     [ngModel]="pt.z * 100 | number:'1.0-0'"
-                    (ngModelChange)="pt.z = $event / 100; onChange()" />
+                    (ngModelChange)="setSplinePointHeightPct('top', $index, $event)"
+                    (focus)="onSplinePointFocus('top', $index)" (blur)="onSplinePointBlur()"
+                    title="Held at or below 100% — the peak always sits at the local arch height" />
             </div>
             <div class="toggle" title="Repeat this point at the opposite edge">
-                <input type="checkbox" [checked]="pt.mirror" (change)="toggleSplineMirror(pt)" />
+                <input type="checkbox" [checked]="pt.mirror" (change)="toggleSplineMirror('top', $index)" />
                 <span>Mirror</span>
             </div>
             <button class="info-icon" (click)="removeSplinePoint('top', $index)" title="Remove point">×</button>
@@ -371,7 +375,8 @@
             <div class="field-cell">
                 <input class="basic-input" type="number" step="1" min="2" max="98"
                     [ngModel]="splinePeakPct(shape)"
-                    (ngModelChange)="setSplinePeakPct('bottom', $event)" />
+                    (ngModelChange)="setSplinePeakPct('bottom', $event)"
+                    (focus)="onSplinePointFocus('bottom', peakSource)" (blur)="onSplinePointBlur()" />
             </div>
             <span class="field-separator" aria-hidden="true"></span>
             <div class="field-cell">
@@ -384,16 +389,19 @@
             <div class="field-cell">
                 <input class="basic-input" type="number" step="1" min="1" max="99"
                     [ngModel]="pt.t * 100 | number:'1.0-0'"
-                    (ngModelChange)="pt.t = $event / 100; onChange()" />
+                    (ngModelChange)="setSplinePointPosPct('bottom', $index, $event)"
+                    (focus)="onSplinePointFocus('bottom', $index)" (blur)="onSplinePointBlur()" />
             </div>
             <span class="field-separator" aria-hidden="true"></span>
             <div class="field-cell">
                 <input class="basic-input" type="number" step="1" min="0" max="100"
                     [ngModel]="pt.z * 100 | number:'1.0-0'"
-                    (ngModelChange)="pt.z = $event / 100; onChange()" />
+                    (ngModelChange)="setSplinePointHeightPct('bottom', $index, $event)"
+                    (focus)="onSplinePointFocus('bottom', $index)" (blur)="onSplinePointBlur()"
+                    title="Held at or below 100% — the peak always sits at the local arch height" />
             </div>
             <div class="toggle" title="Repeat this point at the opposite edge">
-                <input type="checkbox" [checked]="pt.mirror" (change)="toggleSplineMirror(pt)" />
+                <input type="checkbox" [checked]="pt.mirror" (change)="toggleSplineMirror('bottom', $index)" />
                 <span>Mirror</span>
             </div>
             <button class="info-icon" (click)="removeSplinePoint('bottom', $index)" title="Remove point">×</button>

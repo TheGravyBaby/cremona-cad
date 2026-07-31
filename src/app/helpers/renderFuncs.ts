@@ -702,6 +702,21 @@ export const renderArcHalo = (arc: Arc, color: string, haloWidth = 12, opacity =
     renderArcFromArc(arc, color, haloWidth, false)(group, ui);
 }
 
+/**
+ * Point counterpart of {@link renderArcHalo}: a soft disc marking a single
+ * location rather than a traced curve. `haloR` is in user (mm) units, so the
+ * halo scales with the drawing and stays proportionate to the crosshair it
+ * sits behind.
+ */
+export const renderPointHalo = (P: Pt, color: string, haloR = 3, opacity = .33) => (g: any, ui: any) => {
+    g.append("circle")
+        .attr("cx", P.x)
+        .attr("cy", P.y)
+        .attr("r", haloR)
+        .attr("fill", color)
+        .attr("opacity", opacity);
+}
+
 export type ColorTransform =
     | { type: 'greyOut'; degree: number }
     | { type: 'darken'; degree: number }
