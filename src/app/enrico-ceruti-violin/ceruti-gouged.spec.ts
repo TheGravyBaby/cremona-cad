@@ -92,11 +92,30 @@ describe('solveGougedTakeoff', () => {
     expect(steep.takeoffDepth).toBeLessThan(shallow.takeoffDepth);
   });
 
-  it('returns null rather than a bad root when no tangency exists', () => {
+  it('reports the closest approach, not a bad root, when no tangency exists', () => {
     const w = gougeHalfWidth(R, D);
     // Steeper than the channel ever gets, so the arch can never come tangent to it.
     const beyond = gougeProfileSlope(w * (1 - 1e-3), R, D) * 2;
-    expect(solveGougedTakeoff(R, D, constantSlope(beyond))).toBeNull();
+    const t = solveGougedTakeoff(R, D, constantSlope(beyond))!;
+    expect(t).not.toBeNull();
+    expect(t.tangent).toBe(false);
+    // Nearest it can get is where the channel is steepest — its inner edge.
+    expect(t.contactS).toBeGreaterThan(w * 0.9);
+  });
+
+  it('lands an unsolvable side beside a solvable one rather than at the far end of the flank', () => {
+    // The seam this exists to prevent: a station whose residual just fails to
+    // cross zero used to be pinned at the channel's inner edge while its
+    // neighbours solved near the trough, stepping the surface by most of the
+    // channel depth. Closest approach has to be continuous in the arch's grade.
+    const w = gougeHalfWidth(R, D);
+    const grade = gougeProfileSlope(w * 0.05, R, D);
+    const solved = solveGougedTakeoff(R, D, constantSlope(grade))!;
+    expect(solved.tangent).toBe(true);
+    // A shade too flat to reach even the shallowest part of the flank.
+    const missed = solveGougedTakeoff(R, D, constantSlope(-1e-6))!;
+    expect(missed.tangent).toBe(false);
+    expect(Math.abs(missed.contactS - solved.contactS)).toBeLessThan(w * 0.1);
   });
 
   it('returns null for a tool that cuts nothing', () => {

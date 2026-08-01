@@ -168,15 +168,10 @@ export function cornerGougeZ(edgeDist: number, sweepRadius: number, depth: numbe
  * the knot does. Points are cheap to add; a default that arrives pre-shaped
  * mostly gives the maker someone else's arch to argue with.
  *
- * **How far out is load-bearing, not taste.** The stretch from the outermost
- * knot to the takeoff is unauthored, and it is the stretch the tangency solve
- * reads its arrival slope from. Pulled well inward, that run gets long and
- * slack, and near the body caps — where the crown has barely climbed clear of
- * the channel — some stations stop finding a root at all. The surface then
- * steps along the body, which the "runs continuously along the body through the
- * cap recurve bands" case in `ceruti-surface.spec.ts` measures by refinement.
- * A knot around a third of the way across the plate trips it by roughly 0.8mm;
- * out here there is margin.
+ * Out near the takeoff rather than in near the joint, which is where a maker
+ * reading a section would put the one point they were given: the crown's own
+ * height is already pinned, so a knot earns its place by saying where the arch
+ * turns over into the run-out.
  */
 export function defaultGougedCrossParams(): GougedCrossSplineParams {
   return { type: 'gouged', points: [{ x: 0.66, z: 0.5, mirror: true }] };
@@ -300,8 +295,17 @@ export interface GougedTakeoff {
   contactS: number;
   /** How far below the plate surface the arch takes off (mm) — 0 at the channel's inner edge. */
   takeoffDepth: number;
-  /** The channel's slope there, which the arch matches. */
+  /** The channel's slope there, which the arch matches — or comes nearest to matching. */
   slope: number;
+  /**
+   * Whether this is a true tangency.
+   *
+   * False means the arch cannot come tangent to the channel anywhere along the
+   * flank, and this is its closest approach instead. The distinction is for
+   * *reporting*, not for geometry: the surface uses this point either way, so a
+   * station that cannot quite solve still lands beside the ones that can.
+   */
+  tangent: boolean;
 }
 
 /** Depth below the plate surface at `s` from the centerline — {@link gougeProfileZ} negated. */
@@ -325,9 +329,28 @@ function takeoffDepthAt(s: number, sweepRadius: number, depth: number): number {
  * takeoff depth move with the contact, so monotonicity is not something to
  * bet the geometry on.
  *
- * Null when no root exists — the arch and channel genuinely cannot meet, which
- * is real information about an unbuildable instrument rather than an error to
- * paper over. A maker resolves it by cheating the arch; the panel says so.
+ * When no root exists the closest approach is returned instead, flagged
+ * `tangent: false` — the arch and channel genuinely cannot meet, which is real
+ * information about an unbuildable instrument, but it is information for the
+ * *panel* to report rather than grounds for handing back no geometry at all.
+ *
+ * That distinction is the whole reason this does not simply return null. The
+ * residual here is a difference of two small slopes, and near the body caps —
+ * where the long arch has barely climbed clear of the channel — both terms go
+ * to zero together and whether the difference crosses zero comes down to the
+ * last few digits. Solvability then flickers off for a single station between
+ * two that solve perfectly well, which is not a fact about the instrument.
+ *
+ * The old fallback made that flicker visible in the worst possible way. A
+ * station with no root was pinned at the channel's *inner edge* — s ≈ w, the
+ * top of the flank — while its neighbours had solved to s ≈ 0.02·w, down at the
+ * trough. Opposite ends of the same flank, so the surface stepped by nearly the
+ * full channel depth at one station and rang a seam round the cap. Closest
+ * approach lands beside the neighbours instead, because a residual that only
+ * just fails to cross zero is nearest to zero right about where it would have
+ * crossed.
+ *
+ * Null is now reserved for a channel with no flank to land on at all.
  */
 export function solveGougedTakeoff(
   sweepRadius: number,
@@ -345,28 +368,35 @@ export function solveGougedTakeoff(
   const residual = (s: number): number =>
     archSlopeAt(takeoffDepthAt(s, sweepRadius, depth), s) - gougeProfileSlope(s, sweepRadius, depth);
 
+  const takeoffAt = (contactS: number, tangent: boolean): GougedTakeoff => ({
+    contactS,
+    takeoffDepth: takeoffDepthAt(contactS, sweepRadius, depth),
+    slope: gougeProfileSlope(contactS, sweepRadius, depth),
+    tangent,
+  });
+
   let aS = lo, aR = residual(lo);
+  // Tracked alongside the bracket hunt rather than in a second pass, so the
+  // fallback costs nothing when a root is found and no extra residuals when it
+  // is not — each one rebuilds the profile spline, which is the expensive part.
+  let nearest = { s: lo, mag: Math.abs(aR) };
   let bracket: [number, number] | null = null;
   for (let i = 1; i <= scanSteps; i++) {
     const s = lo + ((hi - lo) * i) / scanSteps;
     const r = residual(s);
+    if (Math.abs(r) < nearest.mag) nearest = { s, mag: Math.abs(r) };
     if (aR === 0) { bracket = [aS, aS]; break; }
     if (aR * r < 0) { bracket = [aS, s]; break; }
     aS = s; aR = r;
   }
-  if (!bracket) return null;
+  if (!bracket) return takeoffAt(nearest.s, false);
 
   let [x0, x1] = bracket;
   for (let i = 0; i < 60 && x1 - x0 > 1e-9; i++) {
     const mid = (x0 + x1) / 2;
     if (residual(x0) * residual(mid) <= 0) x1 = mid; else x0 = mid;
   }
-  const contactS = (x0 + x1) / 2;
-  return {
-    contactS,
-    takeoffDepth: takeoffDepthAt(contactS, sweepRadius, depth),
-    slope: gougeProfileSlope(contactS, sweepRadius, depth),
-  };
+  return takeoffAt((x0 + x1) / 2, true);
 }
 
 /** Arch height at `s` along a span, for whichever curve type the plate carries. */
@@ -881,6 +911,17 @@ const PROFILE_OVERSHOOT_TOLERANCE = 0.02;
 function overshoots(f: (x: number) => number, xs: number[], zs: number[], archH: number): boolean {
   const rise = Math.max(archH - Math.min(zs[0], zs[zs.length - 1]), 1e-6);
   const tol = PROFILE_OVERSHOOT_TOLERANCE * rise;
+  // The takeoffs are the profile's lowest points by construction — knots are
+  // fractions of the rise *up* from one — and dipping under them is not wander
+  // to be traded against smoothness, it is the arch cutting through the channel
+  // it is supposed to land on. Wood the gouge never removed. So this floor gets
+  // no tolerance, unlike the per-interval bounds below.
+  //
+  // It only started to bite once an unsolved side began landing near the trough
+  // rather than at the channel's inner edge (see {@link solveGougedTakeoff}):
+  // with the endpoint at −depth instead of ≈0, a swing that used to be a
+  // harmless dip in mid-flank became a breach of the trough.
+  const floor = Math.min(zs[0], zs[zs.length - 1]);
   for (let i = 0; i < xs.length - 1; i++) {
     const lo = Math.min(zs[i], zs[i + 1]) - tol;
     const hi = Math.max(zs[i], zs[i + 1]) + tol;
@@ -888,7 +929,7 @@ function overshoots(f: (x: number) => number, xs: number[], zs: number[], archH:
     // excursion big enough to matter at this tolerance.
     for (const t of [0.25, 0.5, 0.75]) {
       const v = f(xs[i] + t * (xs[i + 1] - xs[i]));
-      if (v < lo || v > hi) return true;
+      if (v < lo || v > hi || v < floor) return true;
     }
   }
   return false;
@@ -1064,10 +1105,11 @@ export function solveGougedCrossSection(
     zEnd: gougeProfileZ(s, sweepRadius, depth),
   });
 
-  // Where a side lands if it never finds a tangency: the channel's inner edge,
-  // at plate level. The section still draws — with a visible crease, which is
-  // the honest picture of an arch that cannot meet its channel — and the panel
-  // reports it rather than the model quietly fudging a meeting.
+  // The seed the sweeps below start from, not a resting place: the solve
+  // returns a landing on every side it can reach a flank at all — its closest
+  // approach when no true tangency exists — so this is overwritten on the first
+  // pass in every case that draws. See {@link solveGougedTakeoff} for why an
+  // unsolved side must land *near* its neighbours rather than at a fixed edge.
   let endL = endAt(halfWidth * (1 - 1e-3));
   let endR = endL;
   let takeL: GougedTakeoff | null = null;

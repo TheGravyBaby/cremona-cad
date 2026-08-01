@@ -707,7 +707,9 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
    */
   private reportTransition(plate: 'top' | 'bottom', y: number): void {
     const section = this.section[plate];
-    const unsolvable = !!section && (!section.left || !section.right);
+    // A side that found no tangency still carries a takeoff — its closest
+    // approach, so the surface stays whole — and the flag on it is what says so.
+    const unsolvable = !!section && (!section.left?.tangent || !section.right?.tangent);
     if (unsolvable === this.unsolvable[plate]) return;
     this.unsolvable[plate] = unsolvable;
     if (unsolvable) gougedTransitionError(plate, y);
