@@ -6,32 +6,37 @@ const polyClipper: any = (polygonClipping as any).default ?? polygonClipping;
 import { buildPolylineIndex, clamp, closestPointToPolylineIndexed, PolylineIndex } from '../helpers/draftMath';
 import { buildHeightFieldStl } from '../helpers/stlExporter';
 import {
-    closeProfileToBlank, cycloidEdgeSlope, cycloidZAt, flutingProfileZ, pathsBounds, rotatePath180, samplePathToPolyline, translatePath,
-    crossArchSplineZAt, crossArchSplineEdgeSlope,
+    closeProfileToBlank, pathsBounds, rotatePath180, samplePathToPolyline, translatePath,
 } from '../helpers/svgPathMath';
 import { ArchCurve, ArchPlate, EnricoCerutiParams } from './ceruti-types';
-import { defineFlutingPath, defineInsetPath, defineOuterPath } from './ceruti-paths';
+import { defineInsetPath, defineOuterPath } from './ceruti-paths';
 import {
     buildGougedPlateGeometry, defaultGougedCrossParams, defaultGougedFlutingParams,
     chordTrust, cornerGougeOn, cornerGougeZ, gougeAtY, GougedCrossSection, gougedCrossSectionAt,
     gougedLongArchProfilePath, GougedPlateGeometry, gougeProfileZ, solveGougedLongArch,
 } from './ceruti-gouged';
 import {
-    bodyLandmarks, CrossArchAtY, CrossArchQuery, defaultCrossArchParams, defaultFlutingChannelParams,
-    flutingHalfWidthAtY, longArchHeightAt, makeCrossArchAtY, normalizeCrossArchStations,
-    STATION_MERGE_EPS_MM,
+    bodyLandmarks, longArchHeightAt, normalizeCrossArchStations, STATION_MERGE_EPS_MM,
 } from './ceruti-arching';
 
-// The evaluable top-plate surface: a height field z(x, y) over the plan view,
-// stitched from three regions classified by station chords (so it always
-// agrees with the cross-section render at the same station):
-//   |x| ≤ fluting inner chord      → cross-arch trochoid, takeoff at −edgeDepth
-//   outside the platform outer loop → flat edge land at plate-surface level (0)
-//   between the two                 → fluting channel, transverse position u
-//                                     from the distance ratio to the two loops
+// The evaluable plate surface: a height field z(x, y) over the plan view.
+//
+// The channel is cut first, at constant section, and the arch runs into it and
+// stops where it meets it tangentially. So a point's height is decided by which
+// side of that contact it falls on:
+//   inboard of the solved contact  → the station's crown, run out to its takeoff
+//   outboard of it                 → the gouge's own circular section, which
+//                                    flattens to 0 of its own accord at the cut's
+//                                    edge, so the flat edge land needs no case
+// with a second gouging pass laid over the channel side at the corners.
+//
+// Which measure decides "how far across" differs between the two, deliberately:
+// the channel goes by true distance to the centerline loop (that is what keeps
+// the cut one gouge wide the whole way round, corners included) and the arch by
+// station chord. See `gougedZAt`, which blends them across the handover.
+//
 // Heights are relative to the plate outer surface (ribHeight + top thickness);
-// the channel dips negative. Distance-ratio u (never normal projection) keeps
-// the corners fold-free where the annulus widens.
+// the channel dips negative.
 
 /** Precomputed geometry for evaluating a plate's height field. Rebuild on param change, reuse across queries. */
 export interface PlateSurfaceModel {
@@ -43,21 +48,9 @@ export interface PlateSurfaceModel {
     outerPlate: Pt[];
     /** Platform outer boundary (plan mm), sampled as a closed loop. */
     platformOuter: Pt[];
-    /** Fluting inner boundary loop; null when fluting isn't configured (platform stays flat). */
-    flutingInner: Pt[] | null;
-    /** Spatial indexes over the two loops — channel distance queries run per grid point. */
+    /** Spatial index over that loop — the corner pass's distance query runs per grid point. */
     platformOuterIdx: PolylineIndex;
-    flutingInnerIdx: PolylineIndex | null;
     arch: ArchCurve;
-    /**
-     * Cross-arch shape at a body station, cycloid sides or a spline profile
-     * depending on the plate's curve type. A constant function unless the
-     * plate has stations set.
-     */
-    crossAt: CrossArchAtY;
-    edgeDepth: number;
-    /** Flat pre-channel platform with a ledge at the inner boundary instead of a carved channel. */
-    flatPlatform: boolean;
     /** Absolute Z of the plate outer surface: top = ribHeight + top thickness, back = −bottom thickness. */
     zBase: number;
     /**
@@ -66,67 +59,41 @@ export interface PlateSurfaceModel {
      * the placement flips.
      */
     signZ: 1 | -1;
-    /**
-     * Gouged-model geometry. Present only on models from
-     * {@link buildGougedPlateSurfaceModel}; absent means the classic model, and
-     * every field above then behaves exactly as it always has.
-     *
-     * When present it takes over the height field entirely — the classic
-     * `crossAt`/`edgeDepth`/`flutingInner` route is not consulted at all. The
-     * two models describe the same instrument through opposite dependencies, so
-     * mixing them would be meaningless.
-     */
-    gouged?: GougedPlateGeometry;
+    /** The channel loops, the gouge, and the crown resolver — what the height field is actually built from. */
+    gouged: GougedPlateGeometry;
 }
 
+/**
+ * A plate's evaluable surface.
+ *
+ * Everything downstream — the contour rings, the 3D wireframe, the section
+ * slices, the template blanks and the STL builder — takes one of these and asks
+ * it for heights. None of them reaches past this into the arching params, which
+ * is what let the model underneath be replaced without any of them changing.
+ */
 export function buildPlateSurfaceModel(p: EnricoCerutiParams, side: 'top' | 'bottom' = 'top'): PlateSurfaceModel | null {
     const a = p.arching;
     if (!a) return null;
     const plate = a[side];
-    const fluting = plate.fluting ?? defaultFlutingChannelParams();
-    const innerPath = defineFlutingPath(p, p.innerFlutingDepth ?? 0);
-    const platformOuter = samplePathToPolyline(defineInsetPath(p, p.outerFlutingDepth ?? 0));
-    const flutingInner = innerPath ? samplePathToPolyline(innerPath) : null;
-    // The back plate carries the neck-root button in its outline; the top does not.
-    const outerPlate = samplePathToPolyline(defineOuterPath(p, p.overhang + p.rib, true, side === 'bottom'));
-    return {
-        outerPlate,
-        platformOuter,
-        flutingInner,
-        platformOuterIdx: buildPolylineIndex(platformOuter),
-        flutingInnerIdx: flutingInner ? buildPolylineIndex(flutingInner) : null,
-        arch: plate.arch,
-        crossAt: makeCrossArchAtY(plate.cross ?? defaultCrossArchParams(), p.height),
-        edgeDepth: plate.edgeDepth ?? 0,
-        flatPlatform: fluting.flatPlatform ?? false,
-        zBase: side === 'top' ? a.ribHeight + plate.thickness : -plate.thickness,
-        signZ: side === 'top' ? 1 : -1,
-    };
-}
-
-/**
- * The same plate under the gouged model — a classic model with a `gouged` block
- * attached, which is what lets every consumer downstream take it unchanged.
- * The contour rings, the 3D wireframe, the section slices and the STL builder
- * all take a {@link PlateSurfaceModel} and ask it for heights; none of them
- * needs to know which model produced them.
- *
- * Deliberately a *separate entry point*. {@link buildPlateSurfaceModel} keeps
- * returning the classic surface whatever a recipe carries, so the exports and
- * the physical templates stay on known-good geometry until it is settled which
- * model survives. Only the gouged panels call this one.
- */
-export function buildGougedPlateSurfaceModel(p: EnricoCerutiParams, side: 'top' | 'bottom' = 'top'): PlateSurfaceModel | null {
-    const model = buildPlateSurfaceModel(p, side);
-    if (!model) return null;
-    const plate = p.arching![side];
     const gouged = buildGougedPlateGeometry(
         p,
         plate.arch,
         plate.gougedFluting ?? defaultGougedFlutingParams(p),
         plate.gougedCross ?? defaultGougedCrossParams(),
     );
-    return gouged ? { ...model, gouged } : null;
+    if (!gouged) return null;
+    const platformOuter = samplePathToPolyline(defineInsetPath(p, p.outerFlutingDepth ?? 0));
+    // The back plate carries the neck-root button in its outline; the top does not.
+    const outerPlate = samplePathToPolyline(defineOuterPath(p, p.overhang + p.rib, true, side === 'bottom'));
+    return {
+        outerPlate,
+        platformOuter,
+        platformOuterIdx: buildPolylineIndex(platformOuter),
+        arch: plate.arch,
+        zBase: side === 'top' ? a.ribHeight + plate.thickness : -plate.thickness,
+        signZ: side === 'top' ? 1 : -1,
+        gouged,
+    };
 }
 
 /** Per-station bounds, computed once per grid row / section slice. */
@@ -134,7 +101,6 @@ export interface StationChords {
     outerHalf: number | null;
     /** Outermost |x| of the platform outer boundary — where the flat edge land ends. */
     platformOuterHalf: number | null;
-    flutingInnerHalf: number | null;
     /** Sorted x-crossings of the platform outer loop at this station (land/channel split). */
     landCrossings: number[];
     /**
@@ -142,58 +108,28 @@ export interface StationChords {
      * x-independent but iterative to evaluate (catenary/cycloid inversion).
      */
     archH: number;
-    /** Cross-arch shape at this station — hoisted for the same reason as archH. */
-    cross: CrossArchQuery;
     /**
-     * Gouged model only: the solved transverse section here, hoisted because
-     * solving it runs a root-find per side and every sample on this row shares
-     * the answer. Null on classic models, or where the plate has no arch here.
+     * The solved transverse section here, hoisted because solving it runs a
+     * root-find per side and every sample on this row shares the answer. Null
+     * where the plate has no arch — the cap bands past the long arch's reach,
+     * which still carry a channel.
      */
-    gougedSection?: GougedCrossSection | null;
-    /** Gouged model only: x-crossings of the channel centerline, for the inside/outside test. */
-    gougedCenterCrossings?: number[];
-}
-
-/**
- * The fluting inner half-chord at station `y`. Arc-exact when available — the
- * same query the cross arch spans, so the channel meets the takeoff point by
- * construction. Falls back to the sampled polyline at corner-band stations,
- * where the arc-only query misses the cubic Bézier tips and callers would
- * otherwise mistake them for cap stations.
- */
-function flutingInnerHalfAt(p: EnricoCerutiParams, model: PlateSurfaceModel, y: number): number | null {
-    return flutingHalfWidthAtY(p, y)
-        ?? (model.flutingInner ? maxAbsCrossingAtY(model.flutingInner, y) : null);
-}
-
-/**
- * Cross-arch trochoid height (relative to the plate outer surface) at width x,
- * for a station whose fluting inner half-chord is `fi`, long-arch centerline
- * height is `archH`, and cross-arch shape is `cross`. The takeoff sits at
- * −edgeDepth; a degenerate cap station (no arch height) stays flat there.
- */
-function crossArchZAt(model: PlateSurfaceModel, fi: number, archH: number, x: number, cross: CrossArchQuery): number {
-    if (archH <= 0) return -model.edgeDepth;
-    const hEff = archH + model.edgeDepth;
-    if (cross.type === 'spline') return -model.edgeDepth + crossArchSplineZAt(cross.row.zFracGrid, hEff, fi, x);
-    const side = x < 0 ? cross.sides.left : cross.sides.right;
-    return -model.edgeDepth + cycloidZAt(hEff, 2 * fi, side.d, x + fi, side.pct);
+    gougedSection: GougedCrossSection | null;
+    /** X-crossings of the channel centerline, for the inside/outside test. */
+    gougedCenterCrossings: number[];
 }
 
 export function stationChordsAt(p: EnricoCerutiParams, model: PlateSurfaceModel, y: number): StationChords {
     const landCrossings = polylineCrossingsAtY(model.platformOuter, y);
-    const flutingInnerHalf = flutingInnerHalfAt(p, model, y);
     return {
         outerHalf: maxAbsCrossingAtY(model.outerPlate, y),
         platformOuterHalf: landCrossings.length
             ? Math.max(Math.abs(landCrossings[0]), Math.abs(landCrossings[landCrossings.length - 1]))
             : null,
-        flutingInnerHalf,
         landCrossings,
         archH: longArchHeightAt(p, model.arch, y),
-        cross: model.crossAt(y),
-        gougedSection: model.gouged ? gougedCrossSectionAt(p, model.gouged, y) : null,
-        gougedCenterCrossings: model.gouged ? polylineCrossingsAtY(model.gouged.centerPoly, y) : undefined,
+        gougedSection: gougedCrossSectionAt(p, model.gouged, y),
+        gougedCenterCrossings: polylineCrossingsAtY(model.gouged.centerPoly, y),
     };
 }
 
@@ -221,67 +157,6 @@ function insideCrossings(x: number, xs: number[]): boolean {
     let count = 0;
     for (const c of xs) if (c > x) count++;
     return count % 2 === 1;
-}
-
-const CHANNEL_SLOPE_PROBE_EPS = 0.3; // mm inward from the fluting inner boundary to sample the arch's takeoff slope
-
-/**
- * The cross-arch's own edge slope at a station — the fallback for where the
- * directional probe can't land a clean arch sample. Same hEff/span the arch
- * branch builds its cycloid from; 0 at cap/degenerate stations.
- */
-function crossEdgeSlopeFallback(
-    model: PlateSurfaceModel, fi: number | null, archH: number, cross: CrossArchQuery, atLeft: boolean,
-): number {
-    if (fi === null || fi <= 0 || archH <= 0) return 0;
-    const hEff = archH + model.edgeDepth;
-    if (cross.type === 'spline') {
-        return crossArchSplineEdgeSlope(atLeft ? cross.row.leftEdgeSlopeFrac : cross.row.rightEdgeSlopeFrac, hEff, fi);
-    }
-    const side = atLeft ? cross.sides.left : cross.sides.right;
-    return cycloidEdgeSlope(hEff, 2 * fi, side.d, side.pct);
-}
-
-/**
- * The arch-region surface height at (x, y), or null when (x, y) isn't under the
- * arch (channel/land/off-body). Resolves the cross-arch shape at its own y
- * rather than taking a station's — the slope probe steps off the station row.
- */
-function archSampleZAt(p: EnricoCerutiParams, model: PlateSurfaceModel, x: number, y: number): number | null {
-    const fi = flutingInnerHalfAt(p, model, y);
-    if (fi === null || Math.abs(x) > fi) return null;
-    return crossArchZAt(model, fi, longArchHeightAt(p, model.arch, y), x, model.crossAt(y));
-}
-
-/**
- * The arch surface's slope at the fluting inner boundary, measured along the
- * boundary's inward normal — the slope the channel's gouge arc must be tangent
- * to so it meets the arch tangentially in 3D. Picks up both the cross (∂x) and
- * long (∂y) contributions at once, so it blends around the corners seamlessly.
- *
- * Two wrinkles. The probe direction is `innerPt − queryPt` (the loop's inward
- * normal by the nearest-point property), which still points into the arch at the
- * high-curvature caps where an inter-loop chord would skew and miss. And the
- * finite difference is taken between two points *inside* the arch (ε and 2ε past
- * the boundary), never the boundary itself — the arch sits at −edgeDepth on the
- * boundary but rises from 0 just inside, so a boundary-anchored difference would
- * fold that takeoff step into the slope.
- *
- * Null when a probe steps outside the arch region; the caller falls back to the
- * cross-arch slope.
- */
-function archTransverseSlopeAt( 
-    p: EnricoCerutiParams, model: PlateSurfaceModel, innerPt: Pt, queryPt: Pt,
-): number | null {
-    const dx = innerPt.x - queryPt.x, dy = innerPt.y - queryPt.y;
-    const len = Math.hypot(dx, dy);
-    if (len < 1e-6) return null;
-    const ux = dx / len, uy = dy / len;
-    const e = CHANNEL_SLOPE_PROBE_EPS;
-    const z1 = archSampleZAt(p, model, innerPt.x + e * ux, innerPt.y + e * uy);
-    const z2 = archSampleZAt(p, model, innerPt.x + 2 * e * ux, innerPt.y + 2 * e * uy);
-    if (z1 === null || z2 === null) return null;
-    return (z2 - z1) / e;
 }
 
 /**
@@ -413,107 +288,8 @@ function withCornerPass(
  */
 export function topSurfaceZAt(p: EnricoCerutiParams, model: PlateSurfaceModel, x: number, y: number, chords?: StationChords): number | null {
     chords ??= stationChordsAt(p, model, y);
-    const ax = Math.abs(x);
-    if (chords.outerHalf === null || ax > chords.outerHalf) return null;
-
-    if (model.gouged) return gougedZAt(p, model.gouged, chords, model.platformOuterIdx, x, y);
-
-    const fi = chords.flutingInnerHalf;
-    if (fi !== null && ax <= fi) return crossArchZAt(model, fi, chords.archH, x, chords.cross);
-
-    if (!insideCrossings(x, chords.landCrossings)) return 0; // flat edge land
-    if (!model.flutingInner) return 0; // fluting unconfigured — platform stays flat
-
-    const pt = { x, y };
-    const outer = closestPointToPolylineIndexed(pt, model.platformOuterIdx);
-    const inner = closestPointToPolylineIndexed(pt, model.flutingInnerIdx!);
-    const width = outer.dist + inner.dist;
-    const u = width > 0 ? outer.dist / width : 0;
-    // Meet the arch tangentially in 3D: the takeoff slope comes from the arch
-    // surface along the fluting inner boundary's normal (cross along the bouts,
-    // long at the caps), not from the cross arch alone.
-    const slope = archTransverseSlopeAt(p, model, inner.point, pt)
-        ?? crossEdgeSlopeFallback(model, fi, chords.archH, chords.cross, x < 0);
-    return flutingProfileZ(u, model.edgeDepth, width, slope, model.flatPlatform);
-}
-
-/**
- * The carved fluting profile across the station, sampled from the height field
- * so the section view and the 3D surface always agree — one polyline per side
- * from the fluting inner chord out to the platform outer chord, in section
- * coordinates (canvas X = violin X, canvas Y = absolute Z). At cap stations
- * (no inner chord) the channel spans the body in a single curve.
- */
-export function calculateFlutingSectionTop(p: EnricoCerutiParams, model: PlateSurfaceModel, y: number): string | null {
-    const chords = stationChordsAt(p, model, y);
-    if (chords.outerHalf === null) return null;
-    const fo = Math.min(chords.platformOuterHalf ?? chords.outerHalf, chords.outerHalf);
-    const fi = chords.flutingInnerHalf;
-
-    const sampleSide = (x0: number, x1: number): string => {
-        const n = Math.max(8, Math.ceil(Math.abs(x1 - x0) / 0.25));
-        const pts: string[] = [];
-        for (let i = 0; i <= n; i++) {
-            const x = x0 + ((x1 - x0) * i) / n;
-            const z = topSurfaceZAt(p, model, x, y, chords);
-            if (z === null) continue;
-            pts.push(`${pts.length === 0 ? 'M' : 'L'} ${x} ${model.zBase + model.signZ * z}`);
-        }
-        return pts.join(' ');
-    };
-
-    if (fi === null || fi <= 0) return sampleSide(-fo, fo);
-
-    // Flat pre-channel platform: a crisp 90° ledge at the inner boundary rather
-    // than the sampled gouge arc — flat land out to the platform outer chord,
-    // then a vertical drop to the arch takeoff at −edgeDepth.
-    if (model.flatPlatform) {
-        const zTop = model.zBase;
-        const zTake = model.zBase - model.signZ * model.edgeDepth;
-        const ledgeSide = (fInner: number, fOuter: number): string =>
-            `M ${fInner} ${zTake} L ${fInner} ${zTop} L ${fOuter} ${zTop}`;
-        return `${ledgeSide(-fi, -fo)} ${ledgeSide(fi, fo)}`;
-    }
-
-    return `${sampleSide(-fo, -fi)} ${sampleSide(fi, fo)}`;
-}
-
-/**
- * The long-arch section's fluting recurve at both body ends, sampled straight
- * from the plate surface along the centerline (x = 0), so the panel's channel is
- * exactly what the 3D surface carries with no separate slope reconstruction to
- * drift from it.
- *
- * Long-arch section coordinates (canvas X = plate depth Z, canvas Y = body
- * length) — the transpose of {@link calculateFlutingSectionTop}. Null when no
- * channel band exists.
- */
-export function calculateLongArchSectionFluting(
-    p: EnricoCerutiParams, model: PlateSurfaceModel,
-): { startPath: string; endPath: string } | null {
-    const inner = p.innerFlutingDepth ?? 0;
-    const outer = p.outerFlutingDepth ?? 0;
-    if (inner - outer <= 0) return null;
-
-    // Walk the centerline from the platform outer boundary (land, z = 0) in to the
-    // fluting inner boundary (arch takeoff, z = −edgeDepth); topSurfaceZAt classifies
-    // each point, so the recurve between them is the real carved channel.
-    const sampleBand = (yOuter: number, yInner: number): string => {
-        const n = Math.max(8, Math.ceil(Math.abs(yInner - yOuter) / 0.25));
-        const pts: string[] = [];
-        for (let i = 0; i <= n; i++) {
-            const y = yOuter + ((yInner - yOuter) * i) / n;
-            const z = topSurfaceZAt(p, model, 0, y);
-            if (z === null) continue;
-            pts.push(`${pts.length === 0 ? 'M' : 'L'} ${model.zBase + model.signZ * z} ${y}`);
-        }
-        return pts.join(' ');
-    };
-
-    return {
-        startPath: sampleBand(outer, inner),
-        endPath: sampleBand(p.height - outer, p.height - inner),
-    };
+    if (chords.outerHalf === null || Math.abs(x) > chords.outerHalf) return null;
+    return gougedZAt(p, model.gouged, chords, model.platformOuterIdx, x, y);
 }
 
 /**
@@ -766,7 +542,7 @@ export function calculateCrossArchTemplates(p: EnricoCerutiParams): TemplateShap
     if (!p.arching) return [];
     const templates = TEMPLATE_SIDES.flatMap(({ key, label }) => {
         const plate = ensureGougedPlate(p, key);
-        const model = buildGougedPlateSurfaceModel(p, key);
+        const model = buildPlateSurfaceModel(p, key);
         if (!model) return [];
         const shapes = calculateCrossArchTemplatesForSide(p, model, label, crossArchTemplateStations(p, plate));
         return key === 'top' ? shapes.map(rotateTemplateShape180) : shapes;

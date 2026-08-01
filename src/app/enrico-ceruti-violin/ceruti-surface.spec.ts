@@ -1,11 +1,10 @@
-import { flutingProfileZ, pathsBounds } from '../helpers/svgPathMath';
+import { pathsBounds } from '../helpers/svgPathMath';
 import { calculateCenterBout, calculateCorners, calculateMainBouts, calculateOuterArcs } from './ceruti-calcs';
-import { defaultArchingParams, defaultCrossArchParams, defaultFlutingChannelParams, longArchHeightAt } from './ceruti-arching';
+import { defaultArchingParams, longArchHeightAt } from './ceruti-arching';
 import {
-  buildPlateStl, buildPlateSurfaceModel, calculateCrossArchTemplates, calculateFlutingSectionTop, trimProfileToTroughs,
+  buildPlateStl, buildPlateSurfaceModel, calculateCrossArchTemplates, trimProfileToTroughs,
   calculateLongArchTemplates, computeArchContours, computeArchSectionProfile, crossArchTemplateStations,
-  stationChordsAt, topSurfaceZAt, PlateSurfaceModel, buildGougedPlateSurfaceModel,
-  computeArchContourRings,
+  stationChordsAt, topSurfaceZAt, PlateSurfaceModel, computeArchContourRings,
 } from './ceruti-surface';
 import {
   defaultGougedCrossParams, defaultGougedFlutingParams, gougedCenterlineZAt, gougedCrossSectionAt,
@@ -26,64 +25,8 @@ function makeParams(): EnricoCerutiParams {
   calculateCenterBout(p);
   calculateOuterArcs(p);
   p.arching = defaultArchingParams(p.height);
-  p.arching.top.cross = defaultCrossArchParams();
-  p.arching.top.fluting = defaultFlutingChannelParams();
   return p;
 }
-
-describe('flutingProfileZ', () => {
-  // Signature: (u, edgeDepth, width, archEdgeSlope, flatPlatform?). A single
-  // circular gouge arc across the annulus — 0 at the platform outer boundary
-  // (u=0), −edgeDepth at the fluting inner boundary (u=1), tangent to
-  // archEdgeSlope there. A nonzero takeoff slope dips it below −edgeDepth (the
-  // recurve) before it rises to meet the arch.
-  it('hits both boundary knots and dips through a single trough between them', () => {
-    const edgeDepth = 0.5, width = 10, slope = 0.5;
-    expect(flutingProfileZ(0, edgeDepth, width, slope)).toBe(0);
-    expect(flutingProfileZ(1, edgeDepth, width, slope)).toBeCloseTo(-edgeDepth, 10);
-    // Strictly descends to one trough, then strictly ascends to meet the arch — no wiggles.
-    let prevZ = flutingProfileZ(0, edgeDepth, width, slope);
-    let minZ = prevZ;
-    let foundTrough = false;
-    let descending = true;
-    for (let i = 1; i <= 100; i++) {
-      const z = flutingProfileZ(i / 100, edgeDepth, width, slope);
-      minZ = Math.min(minZ, z);
-      if (descending) {
-        if (z > prevZ + 1e-9) { foundTrough = true; descending = false; }
-        else { expect(z).toBeLessThanOrEqual(prevZ + 1e-9); }
-      } else {
-        expect(z).toBeGreaterThanOrEqual(prevZ - 1e-9);
-      }
-      prevZ = z;
-    }
-    expect(foundTrough).toBe(true);
-    expect(minZ).toBeLessThan(-edgeDepth); // dipped past the takeoff — the recurve
-  });
-
-  it('clamps to the boundary heights outside the annulus', () => {
-    expect(flutingProfileZ(-0.2, 0.5, 10, 0.5)).toBe(0);
-    expect(flutingProfileZ(1.2, 0.5, 10, 0.5)).toBe(-0.5);
-  });
-
-  it('falls back to the straight chord when no tangent circle solves', () => {
-    // slope = −edgeDepth/width makes B−A parallel to the tangent at B, so no
-    // circle passes through both points tangent there; the profile is then the
-    // linear chord −edgeDepth·u.
-    const edgeDepth = 1, width = 2, slope = -edgeDepth / width;
-    for (let u = 0.1; u <= 0.9; u += 0.1) {
-      expect(flutingProfileZ(u, edgeDepth, width, slope)).toBeCloseTo(-edgeDepth * u, 10);
-    }
-  });
-
-  it('stays flat across the annulus with a ledge at the inner boundary when flatPlatform', () => {
-    // Whole platform sits at the plate surface; only the inner boundary drops to −edgeDepth.
-    for (let u = 0; u < 1; u += 0.1) {
-      expect(flutingProfileZ(u, 1, 10, 0.5, true)).toBe(0);
-    }
-    expect(flutingProfileZ(1, 1, 10, 0.5, true)).toBeCloseTo(-1, 10);
-  });
-});
 
 describe('top surface height field', () => {
   let p: EnricoCerutiParams;
@@ -97,7 +40,7 @@ describe('top surface height field', () => {
   it('builds a model with sampled boundary loops', () => {
     expect(model).toBeTruthy();
     expect(model.platformOuter.length).toBeGreaterThan(100);
-    expect(model.flutingInner!.length).toBeGreaterThan(100);
+    expect(model.gouged.centerPoly.length).toBeGreaterThan(100);
   });
 
   it('never voids a station row inside the body — including the corner bands', () => {
@@ -111,19 +54,6 @@ describe('top surface height field', () => {
     }
   });
 
-  it('is continuous across the channel/arch join at several stations', () => {
-    const cornerYs = [Math.round(p.bouts.LCr!.y), Math.round(p.bouts.UCr!.y)];
-    for (const y of [60, 120, p.height / 2, 240, 300, ...cornerYs]) {
-      const chords = stationChordsAt(p, model, y);
-      const fi = chords.flutingInnerHalf!;
-      const inside = topSurfaceZAt(p, model, fi - 1e-6, y, chords)!;
-      const outside = topSurfaceZAt(p, model, fi + 1e-6, y, chords)!;
-      // Arch takeoff sits at −edgeDepth; the channel profile ends there too.
-      expect(inside).toBeCloseTo(-model.edgeDepth, 3);
-      expect(Math.abs(inside - outside)).toBeLessThan(0.05);
-    }
-  });
-
   it('peaks at the long-arch height on the centerline and is flat land at the edge', () => {
     const y = p.height / 2;
     const peak = topSurfaceZAt(p, model, 0, y)!;
@@ -132,47 +62,6 @@ describe('top surface height field', () => {
     const nearEdge = topSurfaceZAt(p, model, chords.outerHalf! - 0.2, y, chords)!;
     expect(nearEdge).toBeCloseTo(0, 6);
     expect(topSurfaceZAt(p, model, chords.outerHalf! + 1, y, chords)).toBeNull();
-  });
-
-  it('dips below the surface inside the channel', () => {
-    const y = p.height / 2;
-    const chords = stationChordsAt(p, model, y);
-    const fi = chords.flutingInnerHalf!;
-    const outer = chords.outerHalf!;
-    let minZ = 0;
-    for (let x = fi; x < outer; x += 0.1) {
-      const z = topSurfaceZAt(p, model, x, y, chords);
-      if (z !== null) minZ = Math.min(minZ, z);
-    }
-    // The channel scoops below the plate surface, past the arch takeoff (−edgeDepth).
-    // Its depth is emergent from the gouge arc (tangent to the cross-arch slope),
-    // not a stored parameter.
-    expect(minZ).toBeLessThan(-model.edgeDepth);
-  });
-
-  it('produces a section slice that starts and ends where the render expects', () => {
-    const slice = calculateFlutingSectionTop(p, model, p.height / 2);
-    expect(slice).toBeTruthy();
-    expect(slice!.startsWith('M')).toBe(true);
-  });
-
-  it('flat platform leaves the annulus flat with a ledge to the arch takeoff', () => {
-    p.arching!.top.edgeDepth = 1.2;
-    p.arching!.top.fluting!.flatPlatform = true;
-    const flatModel = buildPlateSurfaceModel(p, 'top')!;
-    const y = p.height / 2;
-    const chords = stationChordsAt(p, flatModel, y);
-    const fi = chords.flutingInnerHalf!;
-    const outer = chords.outerHalf!;
-    // The whole annulus sits at the plate surface — no scoop below it.
-    for (let x = fi + 0.2; x < outer; x += 0.2) {
-      const z = topSurfaceZAt(p, flatModel, x, y, chords);
-      if (z !== null) expect(z).toBeCloseTo(0, 6);
-    }
-    // The arch still takes off at −edgeDepth; the ledge bridges the two.
-    expect(topSurfaceZAt(p, flatModel, fi - 1e-6, y, chords)!).toBeCloseTo(-1.2, 3);
-    const slice = calculateFlutingSectionTop(p, flatModel, y)!;
-    expect(slice).toContain(`L ${fi} ${flatModel.zBase}`);
   });
 
   it('generates closed contours including channel levels', () => {
@@ -329,7 +218,7 @@ describe('arching templates', () => {
     // off a distance field rather than off the chord.
     const gouge = defaultGougedFlutingParams(p);
     for (const key of ['top', 'bottom'] as const) {
-      const model = buildGougedPlateSurfaceModel(p, key)!;
+      const model = buildPlateSurfaceModel(p, key)!;
       for (const { y } of crossArchTemplateStations(p, p.arching![key])) {
         const swept = computeArchSectionProfile(p, model, y, 0.25)!;
         const pts = polyline(trimProfileToTroughs(swept, model.zBase, 'y', model.signZ)!);
@@ -354,7 +243,7 @@ describe('arching templates', () => {
     // — channel half-chord plus gouge half-width — is right along a bout and
     // wrong at a corner, where the surface reads its position off a distance
     // field instead, so the corner blanks came out carrying flats.
-    const gouged = buildGougedPlateSurfaceModel(p, 'top')!;
+    const gouged = buildPlateSurfaceModel(p, 'top')!;
     const blanks = calculateCrossArchTemplates(p);
     for (const { y, code } of crossArchTemplateStations(p, p.arching!.top)) {
       const plateEdge = stationChordsAt(p, gouged, y).outerHalf!;
@@ -447,7 +336,6 @@ describe('back plate surface height field', () => {
 
   beforeEach(() => {
     p = makeParams();
-    // defaultArchingParams already seeds bottom.cross/fluting; build the back model.
     model = buildPlateSurfaceModel(p, 'bottom')!;
   });
 
@@ -470,16 +358,6 @@ describe('back plate surface height field', () => {
     const maxYBack = Math.max(...model.outerPlate.map(pt => pt.y));
     const maxYTop = Math.max(...top.outerPlate.map(pt => pt.y));
     expect(maxYBack).toBeGreaterThan(maxYTop);
-  });
-
-  it('places the flat-platform ledge on the negative (down) side', () => {
-    p.arching!.bottom.edgeDepth = 1.2;
-    p.arching!.bottom.fluting!.flatPlatform = true;
-    const flat = buildPlateSurfaceModel(p, 'bottom')!;
-    const y = p.height / 2;
-    const slice = calculateFlutingSectionTop(p, flat, y)!;
-    // signZ = −1: the ledge drops toward the rib (zBase + edgeDepth), not below the plate.
-    expect(slice).toContain(`${flat.zBase + 1.2}`);
   });
 
   it('exports a plausible binary STL for the back plate', () => {
@@ -520,7 +398,7 @@ describe('gouged surface model', () => {
     const centroidOfHighest = (peak: number): number => {
       const p = gougedParams();
       p.arching!.top.gougedCross = { ...defaultGougedCrossParams(), peak };
-      const model = buildGougedPlateSurfaceModel(p, 'top')!;
+      const model = buildPlateSurfaceModel(p, 'top')!;
       const levels = computeArchContourRings(p, model, 1, 1);
       const top = levels[levels.length - 1];
       let sum = 0;
@@ -536,7 +414,7 @@ describe('gouged surface model', () => {
 
   it('cuts one constant channel section the whole way round', () => {
     const p = gougedParams();
-    const model = buildGougedPlateSurfaceModel(p, 'top')!;
+    const model = buildPlateSurfaceModel(p, 'top')!;
     expect(model.gouged).toBeTruthy();
     const depth = model.gouged!.gouge.depth;
 
@@ -565,7 +443,7 @@ describe('gouged surface model', () => {
     // job. This is about the reach of the channel's own cut, which is unchanged.
     const p = gougedParams();
     for (const side of ['top', 'bottom'] as const) p.arching![side].gougedFluting!.cornerGouge = false;
-    const model = buildGougedPlateSurfaceModel(p, 'top')!;
+    const model = buildPlateSurfaceModel(p, 'top')!;
     const poly = model.gouged!.centerPoly;
     const w = gougeHalfWidth(model.gouged!.gouge.sweepRadius, model.gouged!.gouge.depth);
 
@@ -608,9 +486,9 @@ describe('gouged surface model', () => {
       if (cache) return cache;
       const pOff = gougedParams();
       for (const side of ['top', 'bottom'] as const) pOff.arching![side].gougedFluting!.cornerGouge = false;
-      const off = buildGougedPlateSurfaceModel(pOff, 'top')!;
+      const off = buildPlateSurfaceModel(pOff, 'top')!;
       const pOn = gougedParams();
-      const on = buildGougedPlateSurfaceModel(pOn, 'top')!;
+      const on = buildPlateSurfaceModel(pOn, 'top')!;
 
       const rows: { y: number; max: number }[] = [];
       let added = 0;
@@ -682,7 +560,7 @@ describe('gouged surface model', () => {
       const widestFlatPatch = (cornerGouge: boolean): number => {
         const p = gougedParams();
         for (const side of ['top', 'bottom'] as const) p.arching![side].gougedFluting!.cornerGouge = cornerGouge;
-        const model = buildGougedPlateSurfaceModel(p, 'top')!;
+        const model = buildPlateSurfaceModel(p, 'top')!;
         const depth = p.arching!.top.gougedFluting!.depth;
         const step = 0.25;
         let widest = 0;
@@ -737,7 +615,7 @@ describe('gouged surface model', () => {
     // geometry. What separates a slope from a seam is refinement — halving the
     // step halves a slope's jump and leaves a discontinuity untouched.
     const p = gougedParams();
-    const model = buildGougedPlateSurfaceModel(p, 'top')!;
+    const model = buildPlateSurfaceModel(p, 'top')!;
 
     const xs = [0, 20, 40, 60];
     // One stationChordsAt per row, shared across the x samples — the same
@@ -778,30 +656,21 @@ describe('gouged surface model', () => {
     // chord suggests, so the crown reads a hair low. On a violin that is a few
     // hundredths of a millimetre against a 15mm arch.
     const p = gougedParams();
-    const model = buildGougedPlateSurfaceModel(p, 'top')!;
+    const model = buildPlateSurfaceModel(p, 'top')!;
     const y = p.height / 2;
     const z = topSurfaceZAt(p, model, 0, y)!;
     expect(z).toBeGreaterThan(0);
     expect(z).toBeCloseTo(stationChordsAt(p, model, y).gougedSection!.zAt(0), 1);
   });
 
-  it('exports an STL through the same builder the classic model uses', () => {
-    // buildPlateStl only ever asks the model for heights, so it needs no
-    // knowledge of which model filled them in. That is the whole point of
-    // attaching the gouged geometry to a PlateSurfaceModel rather than
-    // inventing a parallel type for it.
+  it('exports an STL through a builder that never asks which model it is', () => {
+    // buildPlateStl only ever asks the model for heights. That is what let the
+    // arching model underneath be replaced without it changing at all.
     const p = gougedParams();
-    const buf = buildPlateStl(p, buildGougedPlateSurfaceModel(p, 'top')!, 'top', 2);
+    const buf = buildPlateStl(p, buildPlateSurfaceModel(p, 'top')!, 'top', 2);
     const triCount = new DataView(buf).getUint32(80, true);
     expect(triCount).toBeGreaterThan(1000);
     expect(buf.byteLength).toBe(84 + triCount * 50);
   });
 
-  it('leaves the classic model untouched', () => {
-    // The safety argument for shipping both at once: buildPlateSurfaceModel
-    // never grows a gouged block, so the exports and physical templates cannot
-    // drift onto the new geometry while it is still being settled.
-    const p = gougedParams();
-    expect(buildPlateSurfaceModel(p, 'top')!.gouged).toBeUndefined();
-  });
 });

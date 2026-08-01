@@ -72,7 +72,7 @@
 
           @if (tutorialTopic === 'basics') {
           <h3>Basics</h3>
-          <p>The panels down the right side draw your instrument on the canvas in real time. Each section builds on the
+          <p>The panels on the right side draw your instrument on the canvas in real time. Each section builds on the
             one before it; when they are all set, you can export moulds and templates.</p>
           <dl class="keymap">
             <dt>Scroll / pinch</dt><dd>Zoom to cursor</dd>
@@ -84,15 +84,14 @@
           <ul class="tips-list">
             <li><code>Axis</code>, bottom right of the canvas — grid settings.</li>
             <li><code>+</code> new, <code>↓</code> save, <code>↑</code> load, at the top right.</li>
-            <li>Templates of historical instruments ship with the app — open one to study, or start a new design.</li>
+            <li>Templates of historical instruments can be found on the top right.</li>
           </ul>
           }
 
           @if (tutorialTopic === 'drawing') {
           <h3>Drawing Tools</h3>
-          <p>The toolbar on the left edge is a drafting set, separate from the panels on the right. Nothing you draw
-            feeds into the instrument — sketch proportions, trace a photo, mark a measurement. It is saved in the design
-            file.</p>
+          <p>The toolbar on the left side is a drafting set, allowing you to mark up the canvas. Drawings you make save
+            save to your recipe file, but do not interact with the instrument render..</p>
 
           <h4>Drawing a shape</h4>
           <dl class="keymap">
@@ -130,7 +129,7 @@
               press Enter for an exact distance. Shapes meeting end to end offset as one curve.</li>
             <li><code>Dimension</code> — a measured, labelled line between two points.</li>
             <li><code>Section</code> — divides a line into weighted parts in alternating colours; set them in the
-              settings bar as <code>1,1,1</code> or <code>3,4,3</code>.</li>
+              settings bar as <code>fraction</code> or a comma seperated list eg [<code>3,4,3</code>].</li>
           </ul>
 
           <h4>Editing</h4>
@@ -150,18 +149,14 @@
 
           @if (tutorialTopic === 'images') {
           <h3>Images</h3>
-          <p>Photos or scans placed on the canvas to trace over. The <code>Image</code> tool - located on the left toolbar - lists them.
-            <br><code>Upload Image</code> or <strong>I</strong> adds one. Place as many as you like.
+          <p>You can upload and scale images using the <code>Image</code> tool - located on the left toolbar.
           <ul class="tips-list">
-            <li>A new image is unlocked: drag to move, corner to scale proportionally, edge to scale one dimension,
-              handle above to rotate, arrows to nudge. Name, position, size, rotation, opacity and white-removal are in
-              the settings bar.</li>
-            <li><code>Mirror</code> flips the picture left–right for a reversed scan, or to compare a traced half
-              against its opposite. Combine with <code>Rot°</code> to mirror on any axis. Position, size and rotation
-              are untouched.</li>
-            <li><code>Lock</code> when placed — clicks then pass through to what you are drawing. Images from templates
+            <li>A new image is unlocked by default: click and drag to do operations on it, or use the settings bar.</li>
+            <li><code>Mirror</code> flips the picture left–right.</li>
+            <li><code>Drop White</code> will make the white background of images translucent.</li>
+            <li><code>Lock</code> will disable canvas interactions with the image. Images from templates
               and saved files start locked; click the name in the panel to unlock.</li>
-            <li>The eye on the <code>Reference Image</code> button hides every image at once.</li>
+            <li>The eye on the <code>Image</code> button toggles the view on all images.</li>
           </ul>
           }
 
@@ -173,7 +168,8 @@
               It is recommended to upload a reference image and then scale it to the bounding box rendered on this panel.</li>
             <li><strong>Ratios</strong> appear beside many metric values — Cremonese instruments often use simple
               integer ratios to define their arc segments.</li>
-            <li>Rib and overhang combine into the <strong>inset</strong>, which bounds the inner path.</li>
+            <li>The arcs you will draw will be <strong>inset</strong> from the outer edge a distance equal to the rib thickness + the overhang.
+            We have to draw the instrument starting from this inset to connect our corners and form a mould. </li>
           </ul>
           }
 
@@ -181,10 +177,9 @@
           <h3>Main Bouts</h3>
           <p>The upper and lower sections of the body — the first arcs you create.</p>
           <ul class="tips-list">
-            <li>Join arcs <code>U0</code> and <code>L0</code> connect the vesica arcs <code>U1</code> and
-              <code>L1</code>.</li>
-            <li>Each bout's width is the total outer width including the inset — the figure usually quoted in published
-              measurements of historical instruments.</li>
+            <li>The upper and lower bouts are primarily defined by two outer arcs with a central join arc.</li>
+            <li>Each bout's width corresponds to the outer width of the instrument. For historical instruments, 
+              these measurements can be found online.</li>
             <li><code>Viol Neck</code> adds a viola da gamba-style upper extension, common on double bass.</li>
           </ul>
           }
@@ -195,6 +190,7 @@
           <ul class="tips-list">
             <li>Each corner has XY controls for precise placement.</li>
             <li><code>Use Viol Corner</code> gives viol-style corners, with a single connecting arc.</li>
+            <li>You can use the <code>Compound</code> button to allow more complex corner shapes.</li>
           </ul>
           }
 
@@ -206,6 +202,7 @@
               adjust the <code>C0</code> circle.</li>
             <li><code>Fit C0 to Bouts</code> solves <code>C0</code> to intersect <code>U2</code> and <code>L2</code>
               cleanly — Kevin Kelly's four-circle method, still open to manual adjustment.</li>
+            <li>Like the previous panel, you can adjust the corner position. The <code>Compound</code> button to allow more complex corner shapes.</li>
           </ul>
           }
 
@@ -213,8 +210,7 @@
           <h3>Outer Path</h3>
           <p>The corner arcs and button that complete the outline.</p>
           <ul class="tips-list">
-            <li>Each corner is at least two arcs with <strong>cutoff angles</strong>, which trim the arcs and so set the
-              length of the corner tip.</li>
+            <li>The flate of the outer corners are defined by carving a line between the two corner circles.</li>
             <li>The <strong>button</strong> is the semicircular tab at the neck joint. Back plate only; set its radius
               here.</li>
           </ul>
@@ -231,8 +227,7 @@
 
           @if (tutorialTopic === 'fluting') {
           <h3>Fluting Channel</h3>
-          <p>The cove around the edge of the plate. It is gouged before the arch is carved, so it comes first here
-            too.</p>
+          <p>The small "moat" around the edge of the plate. It is gouged before the arch is carved, so it comes first.</p>
           <ul class="tips-list">
             <li><strong>Sweep</strong> radius and <strong>Depth</strong> describe the gouge and fix the section;
               <strong>Width</strong> beside them is a reading, not a setting. The same gouge runs all the way round.
@@ -240,41 +235,33 @@
             <li><strong>Land Edge</strong> — where the channel starts, measured in from the plate edge. Set against the
               purfling, which is drawn with it.</li>
             <li>The channel runs past the corners. <strong>Gouge Corners</strong> smooths the area between the fluting channel and the corners. This is useful for STL exports but is left optional.</li>
-            <li><strong>C Bout</strong> adds a second, narrower gouge through the waist — same land edge and depth, so
-              the inner edge pulls back.</li>
+            <li><strong>C Bout</strong> adds a second, narrower fluting channel through the Center Bout.</li>
           </ul>
           }
 
           @if (tutorialTopic === 'long') {
           <h3>Long Arching</h3>
-          <p>The lengthwise profile of the plate, along the centerline.</p>
+          <p>The lengthwise profile of the plate.</p>
           <ul class="tips-list">
-            <li><strong>Catenary</strong> or <strong>Cycloid</strong> for a smooth symmetric arch, or
-              <strong>Spline</strong> to place your own control points.</li>
+            <li>A <strong>Catenary</strong> is obtained by dangling a string between two points.
+              <strong>Spline</strong> allows to place control points, including asymmetric points.</li>
             <li><strong>Arch Height</strong> — peak above the plate edge. <strong>Thickness</strong> — plate thickness
               at that edge.</li>
             <li>A spline point's <code>Mirror</code> toggle repeats it at the opposite end. Turn it off and the upper
-              and lower halves can be shaped independently, as they usually are on a real instrument.</li>
-            <li>Where the arch stops is solved, not entered: it runs into the channel until it meets the flank at the
-              same slope, so a deeper gouge is met further in.</li>
+              and lower halves can be shaped independently.</li>
           </ul>
           }
 
           @if (tutorialTopic === 'cross') {
           <h3>Cross Arching</h3>
-          <p>The cross-section across the width of the plate. Its centre peak follows the long arch.</p>
+          <p>The cross-section across the width of the plate.</p>
           <ul class="tips-list">
             <li>The <strong>Station</strong> slider previews the profile along the body. Its ticks are the five usual
-              sighting positions — two widest points, two corners, waist — which are also where the cross-arch templates
-              are cut. Click one to land on it exactly.</li>
-            <li>You author the crown only. <strong>Cycloid Factor</strong> and <strong>Percent</strong> shape it, or use
-              a <strong>Spline</strong>. The run out into the channel is solved.</li>
-            <li><code>Asymmetric (left / right)</code> gives each side its own factor and percentage.</li>
-            <li><code>+ Set Station at …</code> pins the current cross-section at the height you are previewing. Each
+              sighting positions — two widest points, two corners, waist.</li>
+              <li>Cross arching can be defined using cycloid curves or splines.</li>
+            <li><code>+ Set Station</code> pins the current cross-section at the height you are previewing. Each
               <strong>station</strong> holds its own shape and the surface flows between them — a rounder centre bout
               and flatter ends, say.</li>
-            <li>Stations are listed above the controls. Click a height to jump back to it; while parked on a station,
-              the fields below edit that station rather than the whole plate.</li>
             <li><strong>Wireframe</strong> and <strong>Contour Map</strong> show the interpolated surface in 3D.</li>
           </ul>
           }

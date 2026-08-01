@@ -9,7 +9,7 @@ import { renderPath, renderText } from '../../../helpers/renderFuncs';
 import { error } from '../../../shared/message-emitter';
 import { calculateCornerBlocks, calculateMould, calculateOuterArcs, ensureCenterBoutInnerPath, ensureOuterTracePaths } from '../../ceruti-calcs';
 import { defaultGougedCrossParams, defaultGougedFlutingParams } from '../../ceruti-gouged';
-import { buildGougedPlateSurfaceModel, buildPlateStl, calculateCrossArchTemplates, calculateLongArchTemplates, TemplateShape } from '../../ceruti-surface';
+import { buildPlateSurfaceModel, buildPlateStl, calculateCrossArchTemplates, calculateLongArchTemplates, TemplateShape } from '../../ceruti-surface';
 import { CerutiColors, EnricoCerutiParams, PathEntry } from '../../ceruti-types';
 
 type ExportType = 'innerTrace' | 'outerTrace' | 'back' | 'mould' | 'blocks' | 'crossArchTemplates' | 'longArchTemplates';
@@ -184,7 +184,7 @@ export class ExportPanel implements OnInit {
     plate.gougedFluting ??= defaultGougedFlutingParams(p);
     plate.gougedCross ??= defaultGougedCrossParams();
     calculateOuterArcs(p);
-    const model = buildGougedPlateSurfaceModel(p, side);
+    const model = buildPlateSurfaceModel(p, side);
     if (!model) return;
     const baseName = this.fileName?.trim() || 'ceruti-violin';
     downloadStlFile(`${baseName}-${plateLabel}-plate.stl`, buildPlateStl(p, model, side));

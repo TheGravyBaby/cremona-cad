@@ -1,7 +1,7 @@
 import {
-  clampSplinePointHeights, normalizeArchCurve, normalizeArchingParams, normalizeCrossArchParams,
+  clampSplinePointHeights, normalizeArchCurve, normalizeArchingParams,
 } from './ceruti-arching';
-import { ArchCatenary, ArchSpline, CrossArchSplineParams, EnricoCerutiParams } from './ceruti-types';
+import { ArchCatenary, ArchSpline, EnricoCerutiParams } from './ceruti-types';
 import { splineZAt } from '../helpers/svgPathMath';
 
 /**
@@ -113,30 +113,6 @@ describe('clampSplinePointHeights', () => {
 
     clampSplinePointHeights(arch.points, arch.archHeight);
     expect(maxOf(arch)).toBeCloseTo(HEIGHT, 9);
-  });
-});
-
-describe('normalizeCrossArchParams', () => {
-  it('clamps spline control points to the peak on the base and every station', () => {
-    // Cross-arch heights are fractions of the local hEff, and the peak is
-    // always the full hEff — so the ceiling is 1, not an entered millimetre.
-    const cross = {
-      type: 'spline', peak: 0.5,
-      points: [{ t: 0.2, z: 1.4, mirror: true }],
-      stations: [
-        { y: 100, type: 'spline', peak: 0.5, points: [{ t: 0.25, z: 2, mirror: true }, { t: 0.4, z: 0.6 }] },
-      ],
-    } as unknown as CrossArchSplineParams;
-
-    normalizeCrossArchParams(cross);
-    expect(cross.points[0].z).toBe(1);
-    expect(cross.stations![0].points.map(p => p.z)).toEqual([1, 0.6]);
-  });
-
-  it('leaves cycloid params untouched', () => {
-    const cross = { d: 0.4, pct: 0.9 } as unknown as CrossArchSplineParams;
-    normalizeCrossArchParams(cross);
-    expect(cross).toEqual({ type: 'cycloid', d: 0.4, pct: 0.9 });
   });
 });
 

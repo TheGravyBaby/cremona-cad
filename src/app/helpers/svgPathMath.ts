@@ -1012,32 +1012,6 @@ export function buildSplinePath(
   return pts.join(' ');
 }
 
-/**
- * Build an SVG polyline path for a trochoid/cycloid cross-arch curve drawn
- * across the canvas: the span runs along canvas X and the height rises from
- * `yBase` along canvas Y (sign +1 up for the top plate, −1 down for the back).
- * Same parametrisation as buildCycloidPath.
- */
-export function buildCycloidPathAcross(
-  hEff: number,
-  span: number,
-  xStart: number,
-  yBase: number,
-  sign: 1 | -1,
-  d: number,
-  N = 80,
-  pct = 1,
-): string {
-  if (hEff <= 0 || span <= 0) return '';
-  const pts: string[] = [];
-  for (let i = 0; i <= N; i++) {
-    const { x: u, z: w } = trochoidNorm(i / N, d, pct);
-    const xLocal = u * span;
-    const z      = w * hEff;
-    pts.push(`${i === 0 ? 'M' : 'L'} ${xStart + xLocal} ${yBase + sign * z}`);
-  }
-  return pts.join(' ');
-}
 
 // ===== Arch curve evaluators =====
 // The evaluable counterparts of the path builders above, for querying an arch
@@ -1078,68 +1052,8 @@ export function cycloidZAt(hEff: number, span: number, d: number, s: number, pct
   return ((c0 - Math.cos(t)) / (c0 + 1)) * hEff;
 }
 
-/**
- * Analytic slope dz/ds of a trochoid arch at its edge (s=0) — the takeoff
- * point a fluting channel must meet. Zero when pct=1 (full arch, flat cusp
- * takeoff, per {@link trochoidNorm}); nonzero once pct clips the cusp, giving
- * the edge a real grade to join smoothly rather than tangent-flat.
- */
-export function cycloidEdgeSlope(hEff: number, span: number, d: number, pct = 1): number {
-  if (hEff <= 0 || span <= 0) return 0;
-  const t0 = (1 - pct) * Math.PI;
-  const t1 = 2 * Math.PI - t0;
-  const xRaw = (tt: number) => tt - d * Math.sin(tt);
-  const dxdt0 = 1 - d * Math.cos(t0);
-  const dsdt0 = (span * dxdt0) / (xRaw(t1) - xRaw(t0));
-  if (dsdt0 === 0) return 0;
-  const dzdt0 = (hEff * Math.sin(t0)) / (Math.cos(t0) + 1);
-  return dzdt0 / dsdt0;
-}
 
-/**
- * The gouge arc behind the fluting profile: the unique circle through
- * A = (0, 0) at the platform outer boundary and B = (width, −edgeDepth) at the
- * fluting inner boundary, tangent to `archEdgeSlope` at B. Two points plus a
- * tangent fully determine the circle, so there is no free trough position to
- * choose. Only the arch end is tangent — the arc meets the flat edge land at A
- * with a small crease, like a fresh gouge pass. Null for a degenerate width, or
- * where B − A runs parallel to the tangent at B.
- */
-export function flutingArc(edgeDepth: number, width: number, archEdgeSlope: number):
-  { cx: number; cz: number; r: number } | null {
-  if (width <= 0) return null;
-  const dx = width, dz = -edgeDepth;
-  const m = Math.hypot(1, archEdgeSlope);
-  const nx = -archEdgeSlope / m, nz = 1 / m; // unit normal to the tangent line at B
-  const denom = 2 * (dx * nx + dz * nz);
-  if (Math.abs(denom) < 1e-9) return null;
-  const t = -(dx * dx + dz * dz) / denom;
-  return { cx: width + t * nx, cz: -edgeDepth + t * nz, r: Math.abs(t) };
-}
 
-/**
- * Fluting channel transverse profile: height relative to the plate outer
- * surface at normalized position u across the platform annulus (0 = platform
- * outer boundary, 1 = fluting inner boundary), whose physical width is `width`
- * mm. A single circular arc — the section a gouge sweep would cut — from 0 at
- * u=0 to −edgeDepth at u=1, tangent to the arch (`archEdgeSlope`) there. When
- * the arch's takeoff isn't flat the arc dips below −edgeDepth before rising
- * back to meet it: the classic recurve. Degenerate channels fall back to the
- * straight chord.
- *
- * `flatPlatform` leaves the channel uncarved — flat annulus with a vertical
- * ledge at u = 1 dropping to the arch takeoff, the pre-channel state a maker
- * cuts the purfling on before gouging.
- */
-export function flutingProfileZ(u: number, edgeDepth: number, width: number, archEdgeSlope: number, flatPlatform = false): number {
-  if (u <= 0) return 0;
-  if (u >= 1) return -edgeDepth;
-  if (flatPlatform) return 0;
-  const arc = flutingArc(edgeDepth, width, archEdgeSlope);
-  if (!arc) return -edgeDepth * u;
-  const dt = u * width - arc.cx;
-  return arc.cz - Math.sqrt(Math.max(arc.r * arc.r - dt * dt, 0));
-}
 
 /** A spline-arch control point in normalized full-span coordinates. */
 export interface ArchSplineControlPoint {
@@ -1258,89 +1172,12 @@ function makeArchSplineZOf(
  */
 export const CROSS_ARCH_SPLINE_GRID_N = 161;
 
-/**
- * Samples a cross-arch spline shape's height profile as a fraction of hEff at
- * `n` evenly-spaced positions across the full transverse width (0 = left
- * takeoff edge, 1 = right takeoff edge). This is the shape a station's
- * `makeMonotoneSpline`-over-y ramp (one per grid column) is built from — see
- * ceruti-arching's makeCrossArchSplineResolver — which sidesteps needing any
- * point-to-point correspondence between two stations' differently-shaped
- * point lists: each station just contributes a different sampled profile.
- */
-export function crossArchSplineProfileGrid(
-  points: ArchSplineControlPoint[],
-  peak = 0.5,
-  n = CROSS_ARCH_SPLINE_GRID_N,
-): number[] {
-  const grid: number[] = [];
-  for (let i = 0; i < n; i++) grid.push(splineZAt(1, 1, points, peak, i / (n - 1)));
-  return grid;
-}
 
 /** How far into the profile the edge-slope probe samples (normalized t). Held
  *  below archSplineKnots' SPLINE_POINT_MARGIN so the probe can never cross
  *  into a neighboring segment, even when a control point sits close to an edge. */
 const CROSS_ARCH_SPLINE_EDGE_PROBE_T = 1e-4;
 
-/**
- * Fractional edge slope d(zFrac)/d(t) of a cross-arch spline shape at one
- * takeoff edge — the spline counterpart of {@link cycloidEdgeSlope}. A finite
- * difference is unavoidable here (there's no closed form for an arbitrary
- * monotone spline's edge slope), but it's a forward difference from an
- * exact-zero edge, so there's no cancellation error to worry about even at a
- * small probe distance. Computed once per shape at resolver-build time, never
- * per (x, y) sample, so the cost is negligible.
- */
-export function crossArchSplineEdgeSlopeFrac(
-  points: ArchSplineControlPoint[], peak: number, atLeft: boolean,
-): number {
-  const eps = CROSS_ARCH_SPLINE_EDGE_PROBE_T;
-  return atLeft
-    ? splineZAt(1, 1, points, peak, eps) / eps
-    : splineZAt(1, 1, points, peak, 1 - eps) / eps;
-}
 
-/**
- * Cross-arch spline height at physical width position `x`, from a
- * y-already-interpolated fractional height grid (see
- * {@link crossArchSplineProfileGrid}/ceruti-arching's CrossArchSplineRow).
- * Linearly interpolates between the two bracketing grid columns — the only
- * approximation this scheme makes; with CROSS_ARCH_SPLINE_GRID_N columns it's
- * the same "smooth curve as a dense polyline" tradeoff already made by every
- * other sampled curve in this file.
- */
-export function crossArchSplineZAt(zFracGrid: number[], hEff: number, halfSpan: number, x: number): number {
-  if (hEff <= 0 || halfSpan <= 0) return 0;
-  const s = clamp((x + halfSpan) / (2 * halfSpan), 0, 1);
-  const n = zFracGrid.length;
-  const pos = s * (n - 1);
-  const i0 = Math.min(Math.floor(pos), n - 2);
-  const f = pos - i0;
-  return (zFracGrid[i0] * (1 - f) + zFracGrid[i0 + 1] * f) * hEff;
-}
 
-/** Scales a y-already-interpolated fractional edge slope to a physical dz/dx. */
-export function crossArchSplineEdgeSlope(slopeFrac: number, hEff: number, halfSpan: number): number {
-  if (hEff <= 0 || halfSpan <= 0) return 0;
-  return (slopeFrac * hEff) / (2 * halfSpan);
-}
 
-/**
- * Build an SVG polyline path for a cross-arch spline curve drawn across the
- * canvas (span along canvas X, height along canvas Y) — the spline
- * counterpart of {@link buildCycloidPathAcross}, from an already-ramped
- * fractional height grid rather than a live points list.
- */
-export function buildCrossArchSplinePathAcross(
-  hEff: number, halfSpan: number, zBase: number, sign: 1 | -1, zFracGrid: number[], N = 80,
-): string {
-  if (hEff <= 0 || halfSpan <= 0) return '';
-  const span = 2 * halfSpan;
-  const pts: string[] = [];
-  for (let i = 0; i <= N; i++) {
-    const x = -halfSpan + (span * i) / N;
-    const z = crossArchSplineZAt(zFracGrid, hEff, halfSpan, x);
-    pts.push(`${i === 0 ? 'M' : 'L'} ${x} ${zBase + sign * z}`);
-  }
-  return pts.join(' ');
-}

@@ -20,7 +20,7 @@ import {
   gougedCrossGuide, gougedCrossKnotX, gougedCrossSectionAt, gougedCrossSectionPath, nearestGougedCrossShape,
 } from '../../ceruti-gouged';
 import {
-  ArchContourLevel, buildGougedPlateSurfaceModel, buildPlateStl, computeArchContourRings, PlateSurfaceModel,
+  ArchContourLevel, buildPlateSurfaceModel, buildPlateStl, computeArchContourRings, PlateSurfaceModel,
 } from '../../ceruti-surface';
 import { downloadStlFile } from '../../../helpers/stlExporter';
 import {
@@ -37,7 +37,7 @@ import {
   archContoursInfo, crossSectionStationInfo, gougedCrossCurveTypeInfo, gougedCrossCycloidControlsInfo,
   gougedCrossPeakInfo, gougedCrossStationInfo, gougedCrossTemplateInfo, gougedTransitionError,
 } from '../../ceruti-helpers';
-import { CrossArchingRotationController } from '../cross-arching-panel/cross-arching-rotation-controller';
+import { CrossArchingRotationController } from './cross-arching-rotation-controller';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 
 /** Range-thumb width, in the px the browser actually draws it — see `stationLandmarks`. */
@@ -602,7 +602,7 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
       this.cache = {
         key,
         params: p,
-        model: { top: buildGougedPlateSurfaceModel(p, 'top'), bottom: buildGougedPlateSurfaceModel(p, 'bottom') },
+        model: { top: buildPlateSurfaceModel(p, 'top'), bottom: buildPlateSurfaceModel(p, 'bottom') },
         contours: { top: null, bottom: null },
         wireframe: { top: null, bottom: null },
       };

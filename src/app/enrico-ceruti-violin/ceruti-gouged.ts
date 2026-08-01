@@ -160,8 +160,7 @@ export function cornerGougeZ(edgeDist: number, sweepRadius: number, depth: numbe
 }
 
 /**
- * A default crown shape: one mirrored knot a third of the way across the plate,
- * at half the arch height.
+ * A default crown shape: one mirrored knot, part way out from the joint.
  *
  * Deliberately a single point. The crown is anchored at both ends already — the
  * peak at the centerline and the solved takeoff at the channel — so one knot is
@@ -169,14 +168,18 @@ export function cornerGougeZ(edgeDist: number, sweepRadius: number, depth: numbe
  * the knot does. Points are cheap to add; a default that arrives pre-shaped
  * mostly gives the maker someone else's arch to argue with.
  *
- * The same knot {@link defaultCrossArchSplineParams} gives the classic model,
- * stated in this model's terms: `x` is signed and counts from the joint out
- * along its own flank, so a third of the way across the plate is −0.34 rather
- * than the classic 0.33 measured from the bass edge. Mirrored, so the sign only
- * decides which number the panel shows — 33, with its twin at 67.
+ * **How far out is load-bearing, not taste.** The stretch from the outermost
+ * knot to the takeoff is unauthored, and it is the stretch the tangency solve
+ * reads its arrival slope from. Pulled inward, that run gets long and slack, and
+ * near the body caps — where the crown has barely climbed clear of the channel —
+ * some stations stop finding a root at all. The surface then steps along the
+ * body, which the "runs continuously along the body through the cap recurve
+ * bands" case in `ceruti-surface.spec.ts` measures by refinement. `x: 0.7` (85
+ * in the panel's scale) clears it; a knot around a third of the way across the
+ * plate does not, by a margin of roughly 0.8mm.
  */
 export function defaultGougedCrossParams(): GougedCrossSplineParams {
-  return { type: 'gouged', points: [{ x: -0.17, z: 0.5, mirror: true }] };
+  return { type: 'gouged', points: [{ x: 0.7, z: 0.4, mirror: true }] };
 }
 
 /**

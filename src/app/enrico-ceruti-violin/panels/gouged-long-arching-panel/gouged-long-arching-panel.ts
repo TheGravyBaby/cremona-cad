@@ -19,7 +19,7 @@ import {
   splinePointInfo, trochoidFactorInfo,
 } from '../../ceruti-helpers';
 import { HighlightedSplinePoint } from '../../renders/render-constants';
-import { renderSplineGuide, renderSplineHighlight, renderSplineMeasures } from '../long-arching-panel/long-arching-panel';
+import { renderSplineGuide, renderSplineHighlight, renderSplineMeasures } from '../../renders/long-arch.render';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 
 /**

@@ -159,145 +159,6 @@ export interface ArchSpline {
 
 export type ArchCurve = ArchCatenary | ArchCycloid | ArchSpline;
 
-/** One side's trochoid shape — see {@link CrossArchCycloidShape}'s `d`/`pct` for field meaning. */
-export interface CrossArchSide {
-  d: number;
-  pct: number;
-}
-
-/**
- * A cross-arch section shape built from a trochoid: one shared across the
- * full width, or — when the owning plate is asymmetric — independent halves
- * either side of the centerline. Carried both by the plate itself (the base
- * shape) and by each station along the body.
- */
-export interface CrossArchCycloidShape {
-  type: 'cycloid';
-  d: number; // trochoid factor: 0 = raised cosine, 1 = standard cycloid (valid range 0–1)
-  pct: number; // cycloid window: 1 = full arch (flat edge takeoff), <1 clips the flat cusp ends for a steeper edge (valid range 0.05–1)
-  /** Shape for x<0, used only while the plate's cross arch is asymmetric. */
-  left?: CrossArchSide;
-  /** Shape for x>0, used only while the plate's cross arch is asymmetric. */
-  right?: CrossArchSide;
-}
-
-/**
- * A cross-arch spline control point, in normalized full-width position. Unlike
- * the long arch's {@link ArchSplinePoint}, `z` is a FRACTION of the station's
- * own peak height (hEff) rather than an absolute mm value: the cross arch's
- * peak height is derived per body-length station (from the long arch there),
- * not a fixed user constant, so only a portable ratio — like a trochoid's
- * `d`/`pct` — means the same thing when a shape ramps between stations.
- */
-export interface CrossArchSplinePoint {
-  /** Normalized full-width position: 0 = left fluting takeoff edge, 1 = right takeoff edge. */
-  t: number;
-  /** Height at this point as a fraction of this station's own peak height (hEff). */
-  z: number;
-  /** Repeats at 1 − t, mirrored about the centerline (x = 0). */
-  mirror?: boolean;
-}
-
-/**
- * A cross-arch section shape built from a spline through user-placed control
- * points — the same shape-preserving construction as the long arch's
- * {@link ArchSpline}, adapted so a shape ramps portably between stations (see
- * {@link CrossArchSplinePoint}). Asymmetry comes from moving `peak` off-center
- * and leaving points unmirrored, exactly like the long arch — there is no
- * separate asymmetric toggle for spline mode.
- */
-export interface CrossArchSplineShape {
-  type: 'spline';
-  /**
-   * Normalized full-width position of the peak (default 0.5, centered). The
-   * peak's HEIGHT is always the station's full hEff — that's what anchors the
-   * cross arch to the long arch — only its position along the width moves.
-   */
-  peak?: number;
-  points: CrossArchSplinePoint[];
-}
-
-/** A cross-arch section shape: a trochoid or a spline. See the two variants for field meaning. */
-export type CrossArchShape = CrossArchCycloidShape | CrossArchSplineShape;
-
-/** A cycloid cross-arch shape pinned to one body-length position. */
-export type CrossArchCycloidStation = CrossArchCycloidShape & {
-  /** Body-length position in mm, held strictly inside the plate ends. */
-  y: number;
-};
-
-/** A spline cross-arch shape pinned to one body-length position. */
-export type CrossArchSplineStation = CrossArchSplineShape & {
-  /** Body-length position in mm, held strictly inside the plate ends. */
-  y: number;
-};
-
-/** A cross-arch shape pinned to one body-length position — either curve type. */
-export type CrossArchStation = CrossArchCycloidStation | CrossArchSplineStation;
-
-/**
- * Cross-arch shape parameters for one plate, built from a trochoid. The
- * section curve at any station is a trochoid whose span (fluting
- * inner-boundary chord) and peak (long-arch height there) are both derived;
- * this fixes the remaining freedom, its transverse shape.
- *
- * `d`/`pct` (and `left`/`right`) here are the plate's *base* shape, which
- * anchors both body ends. `stations` are interior overrides the shape ramps
- * through in between — the same edges-plus-interior-points relationship
- * {@link ArchSpline} has along the long arch.
- */
-export type CrossArchCycloidParams = CrossArchCycloidShape & {
-  /**
-   * When true, `left` (x<0) and `right` (x>0) each carry their own d/pct
-   * instead of sharing `d`/`pct` — e.g. a flatter bass-side shoulder against
-   * a fuller treble-side one. Applies to the base shape and every station
-   * alike. The symmetric `d`/`pct` are kept (not overwritten) while
-   * asymmetric is on, so toggling back off restores the prior shape.
-   * Default false/absent (symmetric).
-   */
-  asymmetric?: boolean;
-  /**
-   * Interior shape overrides along the body, kept sorted by `y`. Absent or
-   * empty means one shape everywhere — the behaviour before stations existed.
-   */
-  stations?: CrossArchCycloidStation[];
-};
-
-/**
- * Cross-arch shape parameters for one plate, built from a spline. No
- * `asymmetric` flag — asymmetry comes from `peak`/`mirror` (see
- * {@link CrossArchSplineShape}), so it isn't a separate axis to toggle.
- */
-export type CrossArchSplineParams = CrossArchSplineShape & {
-  /** Interior shape overrides along the body, kept sorted by `y`. */
-  stations?: CrossArchSplineStation[];
-};
-
-/**
- * Cross-arch shape parameters for one plate: a trochoid or a spline, each
- * with its own base shape plus optional interior stations. Switching a
- * plate's curve type replaces this wholesale (see the long arch's
- * `ArchCurve`, which the panel's `setCurveType` already treats this way) —
- * there is no attempt to carry d/pct data into spline points or vice versa.
- */
-export type CrossArchParams = CrossArchCycloidParams | CrossArchSplineParams;
-
-/**
- * The carved fluting channel for one plate — the vertical dimension of the
- * platform annulus already defined in plan view. The transverse profile is a
- * single circular arc (gouge cut) from the platform's outer boundary to the
- * cross arch's takeoff, tangent to the arch there — fully determined by
- * edgeDepth and the arch, with no separate trough position to set.
- */
-export interface FlutingChannelParams {
-  /**
-   * When true the annulus stays a flat platform at the plate surface with a
-   * 90° ledge dropping to the arch takeoff at the inner boundary — the
-   * pre-channel state a maker cuts the purfling on before gouging the channel.
-   * When false (default) the carved gouge-arc channel is used.
-   */
-  flatPlatform: boolean;
-}
 
 // ===== Gouged arching model =====
 // A second, parallel arching model that inverts the classic one's dependency.
@@ -500,15 +361,6 @@ export type GougedCrossParams = GougedCrossSplineParams | GougedCrossCycloidPara
 export interface ArchPlate {
   arch: ArchCurve;
   thickness: number;
-  /** @deprecated Classic model only — replaced by {@link ArchPlate.gougedCross}. */
-  cross?: CrossArchParams;
-  /** @deprecated Classic model only — the channel is {@link ArchPlate.gougedFluting} now. */
-  fluting?: FlutingChannelParams;
-  /**
-   * @deprecated Classic model only. The takeoff is solved against the channel
-   * rather than entered — see `solveGougedTakeoff`.
-   */
-  edgeDepth: number;
   /**
    * The gouge that cuts this plate's fluting channel. Seeded from the outline
    * on first use, so a recipe that predates the panel still opens on a sane
@@ -544,16 +396,14 @@ export interface EnricoCerutiParams {
   purflingOffset: number | null;
   purflingChannelDepth: number | null;
   /**
-   * @deprecated Classic model only, and no longer editable anywhere: the
-   * channel's reach is now an output of the gouge that cuts it — see
-   * {@link GougedChannelPaths.innerEdgeOffset}. Still defaulted on load and
-   * still read by the classic arching engine, which is retained unreferenced
-   * until it's clear nothing is wanted back from it. Saved recipes keep the
-   * field; nothing the UI does can change it.
+   * How far in from the plate edge the carved area begins, in mm. No longer
+   * editable — the channel's own reach is an output of the gouge that cuts it,
+   * see {@link GougedChannelPaths.innerEdgeOffset} — but still the band the
+   * long arch is spanned across, so it is defaulted on load and read by
+   * {@link longArchHeightAt}. Retiring it would recompress every plate's arch,
+   * which is a shape decision rather than a cleanup.
    */
   innerFlutingDepth: number | null;
-  /** @deprecated Classic model only — see {@link EnricoCerutiParams.innerFlutingDepth}. */
-  innerFlutingDepth_cBout: number | null;
   /**
    * Distance from the plate edge in to the edge of the flat land, where the
    * channel starts. Live and current: it is what the gouge's outer flank is
@@ -618,8 +468,6 @@ export interface EnricoCerutiParams {
     L31DoubleArc: boolean;
     ucCornerSharpness?: number;
     lcCornerSharpness?: number;
-    /** @deprecated Classic model only — the C-bout gouge replaces it, per plate. */
-    useCBoutFlutingDepth: boolean;
   },
   ratios: {
     HtoW: number;
@@ -674,7 +522,6 @@ export const DefaultParams: EnricoCerutiParams = {
   purflingOffset: null,
   purflingChannelDepth: null,
   innerFlutingDepth: null,
-  innerFlutingDepth_cBout: null,
   outerFlutingDepth: null,
   ratios: {
     HtoW: 7 / 4,
@@ -758,6 +605,5 @@ export const DefaultParams: EnricoCerutiParams = {
     L31DoubleArc: false,
     ucCornerSharpness: 0,
     lcCornerSharpness: 0,
-    useCBoutFlutingDepth: false,
   }
 }
