@@ -99,7 +99,7 @@ export function channelDepthInfo() {
 
 export function compoundArcInfo() {
     info(
-        "A compound arc splits one corner arc into two, joined end-to-end. This allows more pronounced or S-curved corner shapes than a single arc permits.\n\n" +
+        "A compound arc splits one corner arc into two, joined end-to-end. This allows more pronounced corner than a single arc permits.\n\n" +
         "Radius 2 is the secondary arc, typically smaller than the primary. The split angle sets the transition point between them.",
         "Compound Arc", defaultTTL, true
     )
