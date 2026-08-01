@@ -170,16 +170,16 @@ export function cornerGougeZ(edgeDist: number, sweepRadius: number, depth: numbe
  *
  * **How far out is load-bearing, not taste.** The stretch from the outermost
  * knot to the takeoff is unauthored, and it is the stretch the tangency solve
- * reads its arrival slope from. Pulled inward, that run gets long and slack, and
- * near the body caps — where the crown has barely climbed clear of the channel —
- * some stations stop finding a root at all. The surface then steps along the
- * body, which the "runs continuously along the body through the cap recurve
- * bands" case in `ceruti-surface.spec.ts` measures by refinement. `x: 0.7` (85
- * in the panel's scale) clears it; a knot around a third of the way across the
- * plate does not, by a margin of roughly 0.8mm.
+ * reads its arrival slope from. Pulled well inward, that run gets long and
+ * slack, and near the body caps — where the crown has barely climbed clear of
+ * the channel — some stations stop finding a root at all. The surface then
+ * steps along the body, which the "runs continuously along the body through the
+ * cap recurve bands" case in `ceruti-surface.spec.ts` measures by refinement.
+ * A knot around a third of the way across the plate trips it by roughly 0.8mm;
+ * out here there is margin.
  */
 export function defaultGougedCrossParams(): GougedCrossSplineParams {
-  return { type: 'gouged', points: [{ x: 0.7, z: 0.4, mirror: true }] };
+  return { type: 'gouged', points: [{ x: 0.66, z: 0.5, mirror: true }] };
 }
 
 /**
