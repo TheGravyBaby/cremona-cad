@@ -740,15 +740,3 @@ export function defineFlutingPath(p: EnricoCerutiParams, offset: number, centerO
     return unifyConnectedSvgPaths([...flutingArcs, ...mirrored].map(arc => pathFromArc(arc)));
 }
 
-/**
- * Returns the complete SVG path `d` string for the fluting platform area —
- * the outer trace as the outer boundary and the inner fluting edge as a hole,
- * combined with fill-rule="evenodd". Suitable for SVG/PDF export and rendering.
- * Returns null if the fluting platform is not yet configured.
- */
-export function defineFlutingAreaPath(p: EnricoCerutiParams, innerOffset: number, outerOffset: number, centerOffset: number): string | null {
-    const innerPath = defineFlutingPath(p, innerOffset, centerOffset);
-    if (innerPath === null) return null;
-    const outerPath = defineInsetPath(p, outerOffset);
-    return `${outerPath} Z ${innerPath} Z`;
-}

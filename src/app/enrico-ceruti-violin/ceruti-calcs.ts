@@ -418,9 +418,6 @@ export function calculateOuterArcs(p: EnricoCerutiParams): void {
     p.purflingChannelDepth ??= 1.2;
     p.purflingOffset ??= inset + p.purflingChannelDepth;
     p.innerFlutingDepth ??= inset * 2;
-    p.innerFlutingDepth_cBout = p.options.useCBoutFlutingDepth
-        ? (p.innerFlutingDepth_cBout ?? p.innerFlutingDepth)
-        : p.innerFlutingDepth;
     p.outerFlutingDepth ??=  p.overhang * .5;
 
     p.button ??= new Rectangle(new Pt(-10, p.height - inset), new Pt(10, p.height - inset + 5));
