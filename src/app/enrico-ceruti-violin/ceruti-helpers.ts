@@ -107,18 +107,9 @@ export function compoundArcInfo() {
 
 export function purflingInfo() {
     info(
-        "Purfling is a narrow inlaid strip set just inside the plate edge. The channel is routed into the plate surface before the strip is glued in.\n\n" +
         "Offset: distance from the outer plate edge to the near wall of the channel.\n\n" +
         "Width: The width of the channel — the span between the two purfling lines.",
         "Purfling", defaultTTL, true
-    )
-}
-
-export function flatPlatformInfo() {
-    info(
-        "Leaves the fluting platform flat at the plate surface — the state you cut purfling on and join the arching to before the channel is gouged.\n\n" +
-        "Turn off to see the finished carved channel.",
-        "Flat Platform", defaultTTL, true
     )
 }
 

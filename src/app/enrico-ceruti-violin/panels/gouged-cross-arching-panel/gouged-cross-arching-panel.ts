@@ -43,6 +43,52 @@ import { CerutiPanelBase, RenderLayer } from '../panel-base';
 /** Range-thumb width, in the px the browser actually draws it — see `stationLandmarks`. */
 const TICK_THUMB_PX = 14;
 
+/** One plate's cached geometry, held until something that plate can see changes. */
+interface PlateCache {
+  key: string;
+  /** The params the model was built from — the recipe plus any open preview. */
+  params: EnricoCerutiParams;
+  model: PlateSurfaceModel | null;
+  contours: { levels: ArchContourLevel[]; outline: Pt[] | null } | null;
+  wireframe: WireframeGeometry | null;
+}
+
+/**
+ * A cache key covering everything one plate's geometry depends on, and nothing
+ * else.
+ *
+ * The other plate's arching block is dropped rather than nulled, so its absence
+ * is what the key records: two plates that differ only in each other's settings
+ * hash the same, which is exactly the sharing being claimed. Everything else —
+ * the outline, the rib height, the surface method, this plate's own arch, gouge
+ * and crown — stays in, because any of it moves this plate's surface.
+ *
+ * Stringified rather than compared field by field for the same reason it always
+ * was: the shapes are small, deeply nested, and rebuilt by spread on every
+ * preview, so identity comparison would miss nothing and match nothing.
+ */
+function plateCacheKey(p: EnricoCerutiParams, plate: 'top' | 'bottom'): string {
+  const { top, bottom, ...shared } = p.arching!;
+  return JSON.stringify({ ...p, arching: { ...shared, plate: p.arching![plate] } });
+}
+
+/**
+ * Whether a number field handed back something worth acting on.
+ *
+ * An `<input type="number">` reports an empty or half-typed box as NaN, and
+ * every field here fires on each keystroke. Coercing that to 0 — which is what
+ * `value || 0` does — means clearing a box to retype it *commits* zero, and the
+ * zero is written straight back over what is being typed. A maker who selects
+ * "0.4" and types "1" gets the field rewritten to "0" under the cursor between
+ * the two keystrokes, and the value they were reaching for never lands.
+ *
+ * Nothing is the right answer to "the box is empty": leave the value alone and
+ * wait for a number.
+ */
+function entered(v: number): boolean {
+  return Number.isFinite(v);
+}
+
 /**
  * How close to the joint a knot may sit, as a fraction of its side's crown.
  *
@@ -100,20 +146,22 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
   private rotation: CrossArchingRotationController | null = null;
 
   /**
-   * The gouged surface is markedly costlier to sample than the classic one — a
-   * root-find per side per station row — so the model, its contour rings and
-   * its wireframe strips are each cached against a params snapshot. All three
-   * depend only on params, which is what lets a rotation drag re-project
-   * without re-solving anything.
+   * Everything expensive, cached — **per plate**, which is the point.
+   *
+   * The surface is costly to build (~40ms a plate: a root-find per side per
+   * station row) and costlier to sample (~380ms for a contour map over one).
+   * Caching it against a params snapshot is what lets a rotation drag
+   * re-project without re-solving anything, since rotation lives in `flags`.
+   *
+   * Keyed per plate rather than once for the whole recipe because the two
+   * plates are independent geometry that merely sit in one params object. A
+   * single whole-params key threw away the back plate's model, contour rings
+   * and wireframe every time the top plate's crown was nudged — recomputing, at
+   * worst, most of half a second of work to redraw something that had not
+   * changed. {@link plateCacheKey} narrows the key to what a plate can actually
+   * see.
    */
-  private cache: {
-    key: string;
-    /** The params the cached model was built from — the recipe plus any open preview. */
-    params: EnricoCerutiParams;
-    model: { top: PlateSurfaceModel | null; bottom: PlateSurfaceModel | null };
-    contours: { top: { levels: ArchContourLevel[]; outline: Pt[] | null } | null; bottom: { levels: ArchContourLevel[]; outline: Pt[] | null } | null };
-    wireframe: { top: WireframeGeometry | null; bottom: WireframeGeometry | null };
-  } | null = null;
+  private cache: { top: PlateCache | null; bottom: PlateCache | null } = { top: null, bottom: null };
 
   ngOnInit(): void {
     // Ephemeral view state; default to the c-bout waist on first open, matching
@@ -143,21 +191,40 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
   }
 
   /**
-   * Coalesced rather than merely debounced, because this panel's run is the
-   * expensive one: two gouged surface models, each a root-find per side per
-   * station row, and then contour rings or wireframe strips over the whole plate
-   * on top of that. The parent hands out an immediate bypass for arrow keys and
-   * number-spinner clicks, which is right for a panel that redraws some arcs and
-   * wrong here — a held arrow key would start a full re-solve per key repeat and
-   * the drawing would fall further behind the field with every press. Declining
-   * it means a burst of nudges costs one recompute at the end.
+   * How a value edit redraws — and it depends on what is on screen, because the
+   * cost of a redraw here spans an order of magnitude.
    *
-   * The bypass is only declined for value edits. Focus halos, view toggles and
-   * the first draw still go through `emitImmediate`, and cost nothing extra: the
-   * cache is keyed on the params, which none of them change.
+   * Measured on a default violin, per params change: the two gouged surface
+   * models are ~80ms (a root-find per side per station row, and unavoidable —
+   * the section view needs them); a wireframe adds ~95ms on top; a contour map
+   * adds ~380ms. Only one overlay can be open at a time, so those are the three
+   * cases and not a combination of them.
+   *
+   * At ~80ms, and even at ~175ms, the parent's immediate bypass is the right
+   * behaviour and the one every other panel gets: an arrow key or a spinner
+   * click is a maker saying "show me this move", and debouncing it makes the
+   * panel feel unresponsive to no purpose. At ~460ms it stops being possible —
+   * key repeat arrives every ~30ms, so each press would queue another half
+   * second of work and the drawing would fall further behind the field with
+   * every one. There `emitCoalesced` declines the bypass, and a burst of nudges
+   * costs one recompute at the end instead of one per press.
+   *
+   * So the rule is the contour map specifically, not "an overlay is open".
+   * Typing is debounced either way; this only decides whether a *stepped* edit
+   * gets to skip the wait.
+   *
+   * Neither path touches focus halos, view toggles or the first draw — those
+   * still go through `emitImmediate` and cost nothing extra, since all three
+   * caches are keyed on the params and none of them change any.
    */
   onChange(): void {
-    this.emitCoalesced();
+    if (this.contoursOpen) this.emitCoalesced();
+    else this.emitDebounced();
+  }
+
+  /** Whether either plate is showing the contour map — the one overlay too costly to redraw per keypress. */
+  private get contoursOpen(): boolean {
+    return this.flags.topPlateView === 'contours' || this.flags.backPlateView === 'contours';
   }
 
   get arching(): ArchingParams { return this.params.arching!; }
@@ -188,7 +255,8 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
 
   /** Moving the cursor abandons whatever preview was open at the old position. */
   setCursorY(mm: number): void {
-    this.flags.crossSectionY = clamp(mm || 0, 1, this.params.height - 1);
+    if (!entered(mm)) return;
+    this.flags.crossSectionY = clamp(mm, 1, this.params.height - 1);
     this.onCursorChange();
   }
 
@@ -303,8 +371,8 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
 
   setCycloidD(plate: 'top' | 'bottom', d: number): void {
     const target = this.editTarget(plate);
-    if (target.type !== 'gouged-cycloid') return;
-    target.d = clamp(d || 0, 0, 1);
+    if (target.type !== 'gouged-cycloid' || !entered(d)) return;
+    target.d = clamp(d, 0, 1);
     this.onChange();
   }
 
@@ -318,8 +386,8 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
    */
   setCycloidPct(plate: 'top' | 'bottom', pct: number): void {
     const target = this.editTarget(plate);
-    if (target.type !== 'gouged-cycloid') return;
-    target.pct = clamp(pct || 0, 5, 98) / 100;
+    if (target.type !== 'gouged-cycloid' || !entered(pct)) return;
+    target.pct = clamp(pct, 5, 98) / 100;
     this.onChange();
   }
 
@@ -348,8 +416,8 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
    */
   setPeakPct(plate: 'top' | 'bottom', pct: number): void {
     const target = this.editTarget(plate);
-    if (target.type !== 'gouged') return;
-    target.peak = clamp(pct || 0, 30, 70) / 100;
+    if (target.type !== 'gouged' || !entered(pct)) return;
+    target.peak = clamp(pct, 30, 70) / 100;
     this.onChange();
   }
 
@@ -422,8 +490,8 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
     const target = this.editTarget(plate);
     if (target.type !== 'gouged') return;
     const pt = target.points[index];
-    if (!pt) return;
-    const want = (clamp(pct || 0, 0, 100) - 50) / 50;
+    if (!pt || !entered(pct)) return;
+    const want = (clamp(pct, 0, 100) - 50) / 50;
     const frac = Math.abs(want) >= KNOT_MIN_FRAC
       ? want
       : (want < pt.x ? -KNOT_MIN_FRAC : KNOT_MIN_FRAC);
@@ -440,8 +508,8 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
    */
   setPointZPct(plate: 'top' | 'bottom', index: number, pct: number): void {
     const pt = this.pointTarget(plate, index);
-    if (!pt) return;
-    pt.z = clamp(pct || 0, 0, 100) / 100;
+    if (!pt || !entered(pct)) return;
+    pt.z = clamp(pct, 0, 100) / 100;
     this.onChange();
   }
 
@@ -596,26 +664,32 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
     // sees in every view at once, and never in the recipe.
     const p = this.paramsForRender();
 
-    // Snapshot taken after calculateOuterArcs so the key is deterministic.
-    const key = JSON.stringify(p);
-    if (this.cache?.key !== key) {
-      this.cache = {
-        key,
-        params: p,
-        model: { top: buildPlateSurfaceModel(p, 'top'), bottom: buildPlateSurfaceModel(p, 'bottom') },
-        contours: { top: null, bottom: null },
-        wireframe: { top: null, bottom: null },
-      };
-    }
-
     const y = this.cursorY;
     for (const plate of ['top', 'bottom'] as const) {
-      const gouged = this.cache.model[plate]?.gouged;
+      const gouged = this.plateCache(p, plate).model?.gouged;
       this.section[plate] = gouged ? gougedCrossSectionAt(p, gouged, y) : null;
       this.reportTransition(plate, y);
     }
 
     return [this.sectionView(y), ...this.overlayLayers(y)];
+  }
+
+  /**
+   * One plate's cache, rebuilt only if something that plate can see has moved.
+   *
+   * The model is built eagerly because the section view draws both plates and
+   * needs both; the contour rings and wireframe strips hang off it lazily, so a
+   * plate whose overlay is closed never pays for one. Dropping them together
+   * with the model is what keeps them honest — they are sampled *from* it, so
+   * they cannot outlive it.
+   */
+  private plateCache(p: EnricoCerutiParams, plate: 'top' | 'bottom'): PlateCache {
+    const key = plateCacheKey(p, plate);
+    const cached = this.cache[plate];
+    if (cached?.key === key) return cached;
+    return this.cache[plate] = {
+      key, params: p, model: buildPlateSurfaceModel(p, plate), contours: null, wireframe: null,
+    };
   }
 
   /**
@@ -646,10 +720,6 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
    * {@link PlateSurfaceModel} and never ask which model filled it in.
    */
   private overlayLayers(y: number): RenderLayer[] {
-    const c = this.cache!;
-    // The params the model was built from, so the overlay and the section below
-    // it never disagree about whether a preview is in force.
-    const p = c.params;
     const a = this.arching;
     const layers: RenderLayer[] = [];
     // Lifts the overlay clear of the section view below it.
@@ -661,21 +731,26 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
 
     for (const plate of ['top', 'bottom'] as const) {
       const mode = plate === 'top' ? this.flags.topPlateView : this.flags.backPlateView;
-      const model = c.model[plate];
-      if (mode === 'none' || !model) continue;
+      if (mode === 'none') continue;
+      const c = this.cache[plate];
+      const model = c?.model;
+      if (!c || !model) continue;
+      // The params the model was built from, so the overlay and the section
+      // below it never disagree about whether a preview is in force.
+      const p = c.params;
       const zSign: 1 | -1 = plate === 'top' ? 1 : -1;
       const color = plate === 'top' ? this.colors.archTop : this.colors.archBack;
       const arch = plate === 'top' ? a.top.arch : a.bottom.arch;
 
       if (mode === 'contours') {
-        if (!c.contours[plate]) {
+        if (!c.contours) {
           const { stepMm, gridMm } = contourSampleSteps(p, arch.archHeight);
-          c.contours[plate] = {
+          c.contours = {
             levels: computeArchContourRings(p, model, stepMm, gridMm),
             outline: samplePathToPolyline(defineOuterPath(p, p.overhang + p.rib, true, plate === 'bottom'), 1),
           };
         }
-        const cached = c.contours[plate]!;
+        const cached = c.contours;
         const levels = projectArchContourRings(cached.levels, p.height, yOffset, rotX, rotY, rotZ, 1, 0, zSign);
         const outline = cached.outline
           ? projectFlatPolyline(cached.outline, p.height, yOffset, rotX, rotY, rotZ, 1, 0, zSign)
@@ -687,8 +762,8 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
         ));
       } else {
         const { stationStepMm, sampleStepMm } = wireframeSampleSteps(p);
-        c.wireframe[plate] ??= computeWireframeGeometry(p, model, stationStepMm, sampleStepMm);
-        const wf = c.wireframe[plate]!;
+        c.wireframe ??= computeWireframeGeometry(p, model, stationStepMm, sampleStepMm);
+        const wf = c.wireframe;
         const projected = projectWireframe(wf, p.height, yOffset, rotX, rotY, rotZ, 1, 0, zSign);
         const highlight = computeSingleWireframeStrip(p, model, y, yOffset, rotX, rotY, rotZ, 1, sampleStepMm, 0, zSign);
         layers.push(renderArch3dWireframe(this.colors, projected.strips, projected.ribs, highlight, color));
@@ -804,9 +879,9 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
    * than inventing a parallel type for it.
    */
   exportStl(plate: 'top' | 'bottom'): void {
-    const cache = this.cache;
-    const model = cache?.model[plate];
-    if (!model || this.exporting) return;
+    const cache = this.cache[plate];
+    const model = cache?.model;
+    if (!cache || !model || this.exporting) return;
     this.exporting = plate;
     // Yield first: a full-plate mesh at this grid takes seconds, and the button
     // should show it started rather than freezing mid-click.
@@ -815,7 +890,7 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
         const name = `${this.params.height.toFixed(0)}mm-${plate === 'top' ? 'top' : 'back'}-plate-gouged.stl`;
         // Built from the cached params rather than the recipe, so the mesh is
         // the surface on screen — preview station included, if one is open.
-        downloadStlFile(name, buildPlateStl(cache!.params, model, plate, this.stlGridMm));
+        downloadStlFile(name, buildPlateStl(cache.params, model, plate, this.stlGridMm));
       } finally {
         this.exporting = null;
         this.emitImmediate(false, false);
