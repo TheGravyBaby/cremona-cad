@@ -432,6 +432,10 @@ export class CerutiViolin extends RecipeComponentBase {
       this.d.params.ratios.HtoW = this.d.params.height / this.d.params.width;
       this.draftChange.emit([renderBounds(this.d.params, true)]);
       sessionStorage.setItem('recipeData', JSON.stringify(this.d));
+      this.setBounds.emit({
+        pt1: { x: -this.d.params.width / 2, y: 0 },
+        pt2: { x: this.d.params.width / 2, y: this.d.params.height }
+      })
     }));
   }
 
