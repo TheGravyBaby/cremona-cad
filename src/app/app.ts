@@ -4,7 +4,6 @@ import { setGlobalEmitter } from './shared/message-emitter';
 import { MessageService } from './shared/message.service';
 import { TopBarComponent } from './top-bar/top-bar';
 import { DraftCanvasComponent } from './draft-canvas/draft-canvas';
-import { Pt } from './models/types';
 import { ToolboxStore } from './draft-canvas/tools/toolbox-store';
 import { CerutiViolin } from './enrico-ceruti-violin/ceruti-violin';
 import { HelloRecipe } from './hello-recipe/hello-recipe';
@@ -27,15 +26,14 @@ import { MessageCenterComponent } from './shared/message-center.component';
       <div class="main">
         <app-draft-canvas class="canvas"
           [draftFunctions]="draftArgs()"
-          [setCameraBounds]="bounds"
+          [fitRequest]="fitToken()"
           >
         </app-draft-canvas>
 
         @if (selectedRecipe == "enrico-ceruti-violin") {
          <app-ceruti-violin class="sidebar"
           (draftChange)="onDraftChange($event)"
-          (setBounds)="bounds=$event"
-          [cameraBounds]="bounds"
+          (requestFit)="requestFit()"
           [nightMode]="nightMode">
         </app-ceruti-violin>
         }
@@ -43,8 +41,7 @@ import { MessageCenterComponent } from './shared/message-center.component';
         @if (selectedRecipe == "hello-recipe") {
          <app-hello-recipe class="sidebar"
           (draftChange)="onDraftChange($event)"
-          (setBounds)="bounds=$event"
-          [cameraBounds]="bounds">
+          (requestFit)="requestFit()">
         </app-hello-recipe>
         }
 
@@ -64,7 +61,10 @@ export class App {
 
   draftArgs = signal<Array<(g: any, ui: any) => void>>([]);
   selectedRecipe: string = 'enrico-ceruti-violin';
-  bounds: {pt1: Pt, pt2: Pt} | null = null;
+  /** Incremented to ask the canvas to re-frame; the value itself means nothing. The camera fits to
+   * what the canvas rendered, so this is a signal rather than a set of extents — see
+   * RecipeComponentBase.requestFit. */
+  fitToken = signal(0);
 
   nightMode = true;
 
@@ -91,6 +91,10 @@ export class App {
     this.draftArgs.set(fns);
   }
 
+  requestFit(): void {
+    this.fitToken.update(n => n + 1);
+  }
+
   /** Switches the active recipe, clearing canvas state that belonged to the old one — including
    * its reference images, which are ToolboxStore shapes now rather than something this component
    * threads between the canvas and the sidebar. */
@@ -98,5 +102,8 @@ export class App {
     if (recipe === this.selectedRecipe) return;
     this.selectedRecipe = recipe;
     this.toolbox.resetAll();
+    // A different recipe draws a different thing at a different size — frame it rather than
+    // leaving the camera parked where the old one was.
+    this.requestFit();
   }
 }

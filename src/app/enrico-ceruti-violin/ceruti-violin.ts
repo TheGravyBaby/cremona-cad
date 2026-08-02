@@ -229,10 +229,7 @@ export class CerutiViolin extends RecipeComponentBase {
     if (this.hasOuterTrace()) {
       this.draftChange.emit(this.renderOuterSilhouette());
     }
-    this.setBounds.emit({
-        pt1: { x: -this.d.params.width / 2, y: 0 },
-        pt2: { x: this.d.params.width / 2, y: this.d.params.height },
-      });
+    this.requestFit.emit();
     this.openPanel = 'base';
   }
 
@@ -264,10 +261,7 @@ export class CerutiViolin extends RecipeComponentBase {
     sessionStorage.setItem('recipeData', JSON.stringify(this.d));
     sessionStorage.setItem('openPanel', 'base');
 
-    this.setBounds.emit({
-      pt1: { x: -this.d.params.width / 2, y: 0 },
-      pt2: { x: this.d.params.width / 2, y: this.d.params.height },
-    });
+    this.requestFit.emit();
     this.draftChange.emit([this.firstRender]);
   }
 
@@ -294,11 +288,9 @@ export class CerutiViolin extends RecipeComponentBase {
         }
       }
 
-      this.setBounds.emit({
-        pt1: { x: -this.d.params.width / 2, y: 0 },
-        pt2: { x: this.d.params.width / 2, y: this.d.params.height },
-      });
-
+      // Runs inside a draw, so the re-frame lands on the next one — by which point the restored
+      // session's shapes and reference images are on the canvas to be measured.
+      this.requestFit.emit();
 
       // Base panel still uses parent-side render policy; every other panel
       // self-emits from ngOnInit after activation.
@@ -432,10 +424,8 @@ export class CerutiViolin extends RecipeComponentBase {
       this.d.params.ratios.HtoW = this.d.params.height / this.d.params.width;
       this.draftChange.emit([renderBounds(this.d.params, true)]);
       sessionStorage.setItem('recipeData', JSON.stringify(this.d));
-      this.setBounds.emit({
-        pt1: { x: -this.d.params.width / 2, y: 0 },
-        pt2: { x: this.d.params.width / 2, y: this.d.params.height }
-      })
+      // No re-frame here on purpose: resizing the plate is an edit, not a new drawing, and moving
+      // the camera mid-keystroke would throw away the view the user set. `F` re-frames.
     }));
   }
 

@@ -10,13 +10,14 @@
  *  3. Emitting draw functions via `draftChange` — the canvas calls each
  *     function with (g, ui) where `g` is the main D3 SVG group and `ui` is
  *     an overlay group for labels/annotations.
- *  4. Using `setBounds` to tell the camera where to zoom on first render.
+ *  4. Using `requestFit` to ask the canvas to re-frame after replacing the
+ *     drawing. Note it takes no coordinates: the canvas fits to whatever it
+ *     has rendered, so a recipe never describes its own extents.
  */
 
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
-import { Pt } from '../models/types';
 import { renderCircle } from '../helpers/renderFuncs';
 import { RecipeToolbarComponent } from '../recipe-toolbar/recipe-toolbar';
 
@@ -48,6 +49,9 @@ export class HelloRecipe extends RecipeComponentBase {
     this.d.params = { ...DEFAULTS };
     sessionStorage.removeItem('recipeData');
     this.render();
+    // A blank file is a new drawing, not an edit — so this is one of the few places worth
+    // re-framing the camera. Slider changes below deliberately leave the view alone.
+    this.requestFit.emit();
   }
 
   // ─── Panel definition ──────────────────────────────────────────────────
@@ -97,15 +101,6 @@ export class HelloRecipe extends RecipeComponentBase {
   private render(): void {
     const fns = [this.drawBody.bind(this)];
     this.draftChange.emit(fns);
-
-    // Tell the camera to frame the instrument.
-    const pad = 30;
-    const hw = this.p.bodyWidth / 2 + pad;
-    const hh = this.p.bodyLength / 2 + pad;
-    this.setBounds.emit({
-      pt1: new Pt(-hw, -hh),
-      pt2: new Pt(hw, hh),
-    });
   }
 
   /**

@@ -37,8 +37,10 @@ export interface DraftToolHost {
   /** Opens the canvas's image file picker and resolves to the chosen file as a data URL plus its
    * natural pixel size — or null if the user dismissed the dialog. */
   requestImageFile(): Promise<{ dataUrl: string; width: number; height: number } | null>;
-  /** The design extents the camera frames (a recipe's `setBounds`), or null before any recipe has
-   * set them. Used to size a placed image against the drawing it will be traced over. */
+  /** Extents of the drawn design — measured from what the recipe actually rendered, not from its
+   * parameters — or null while the canvas is still empty. Used to size a placed image against the
+   * drawing it will be traced over. Placed images are excluded, so one scaled-up photo can't
+   * become the yardstick for the next; see draft-canvas's designBounds(). */
   getDesignBounds(): { pt1: Pt; pt2: Pt } | null;
 }
 
