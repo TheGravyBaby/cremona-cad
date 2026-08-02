@@ -40,6 +40,11 @@ import { SettingsBarComponent } from './settings-bar/settings-bar';
 
 export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private static readonly DISPLAY_PREFS_KEY = 'draft-canvas-display-preferences';
+  /** `event.ctrlKey` reflects only the physical Control key on every platform, including Mac —
+   * it never includes Command. On Mac, Command is the conventional "hold to modify" key for
+   * drawing tools (Ctrl carries secondary-click baggage there instead), so isTangentLockHeld
+   * below accepts either on Mac while staying Ctrl-only on Windows/Linux. */
+  private static readonly IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform);
   private initialized = false;
   private canvas!: d3.Selection<SVGSVGElement, unknown, null, undefined>;
   private gRoot!: d3.Selection<SVGGElement, unknown, null, undefined>;
@@ -56,10 +61,10 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private toolRegistryUnsub?: () => void;
   public get activeTool(): DraftTool | null { return this.toolRegistry.activeTool; }
   private isAngleLockHeld = false;
-  /** True while the tangent-lock modifier (Ctrl) is held — see two-point-tool.ts's
-   * angleLockModifier. Separate from isAngleLockHeld/Shift so the two can be reached for
-   * independently: Shift always means the 30/45/90° grid, Ctrl always means "tangent to
-   * whatever the start point snapped onto", regardless of what the other key is doing. */
+  /** True while the tangent-lock modifier (Ctrl, or ⌘ on Mac — see IS_MAC) is held — see
+   * two-point-tool.ts's angleLockModifier. Separate from isAngleLockHeld/Shift so the two can be
+   * reached for independently: Shift always means the 30/45/90° grid, this always means "tangent
+   * to whatever the start point snapped onto", regardless of what the other key is doing. */
   private isTangentLockHeld = false;
   private toolHost: DraftToolHost = {
     // Images are deliberately not stamped with a layer: they aren't layer members (see
@@ -615,7 +620,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
   onPointerMove = (event: PointerEvent) => {
     this.isAngleLockHeld = event.shiftKey;
-    this.isTangentLockHeld = event.ctrlKey;
+    this.isTangentLockHeld = event.ctrlKey || (DraftCanvasComponent.IS_MAC && event.metaKey);
 
     // Update tracked position for this pointer
     if (this.activePointers.has(event.pointerId)) {
@@ -766,7 +771,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
   onPointerUp = (event: PointerEvent) => {
     this.isAngleLockHeld = event.shiftKey;
-    this.isTangentLockHeld = event.ctrlKey;
+    this.isTangentLockHeld = event.ctrlKey || (DraftCanvasComponent.IS_MAC && event.metaKey);
     this.activePointers.delete(event.pointerId);
     if (this.activePointers.size < 2) {
       this.lastPinchDist = 0;
@@ -952,7 +957,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
   onPointerDown(event: PointerEvent) {
     this.isAngleLockHeld = event.shiftKey;
-    this.isTangentLockHeld = event.ctrlKey;
+    this.isTangentLockHeld = event.ctrlKey || (DraftCanvasComponent.IS_MAC && event.metaKey);
     this.activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
     // Two fingers down — cancel any ongoing pan and enter pinch mode
