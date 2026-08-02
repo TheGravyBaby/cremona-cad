@@ -10,7 +10,8 @@ import * as d3 from 'd3';
 import { FormsModule } from '@angular/forms';
 import { Input } from '@angular/core';
 import { Pt } from '../models/types';
-import { Camera } from './camera';
+import { Bounds, Camera } from './camera';
+import { unionRenderedBounds } from './scene-bounds';
 import { AxisGridController, AxisGridPreferences, CanvasViewport } from './axis-grid-controller';
 import { DraftTool, DraftToolHost } from './tools/draft-tool';
 import { ToolRegistryService } from './tools/tool-registry';
@@ -49,6 +50,9 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private canvas!: d3.Selection<SVGSVGElement, unknown, null, undefined>;
   private gRoot!: d3.Selection<SVGGElement, unknown, null, undefined>;
   private gUI!: d3.Selection<SVGGElement, unknown, null, undefined>;
+  /** The reference-image layer from the most recent draw. Kept, like `snapLayer` below, because
+   * the camera fit is measured off the rendered SVG — see fitCamera(). */
+  private imageLayer: d3.Selection<SVGGElement, unknown, null, undefined> | null = null;
   private resizeObs?: ResizeObserver;
   private draftFuncs: Array<(canvas: any, uiCan: any) => void> = [];
   private camera = new Camera();
@@ -88,7 +92,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       this.draw();
     },
     requestImageFile: () => this.requestImageFile(),
-    getDesignBounds: () => this.bounds,
+    getDesignBounds: () => this.designBounds(),
   };
 
   // Snapping: candidates are re-indexed from the rendered scene only when the
@@ -171,16 +175,13 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.snapDirty = true;
     this.draw();
   }
-  @Input() set setCameraBounds(bounds: { pt1: Pt, pt2: Pt } | null) {
-    // Compared by value: recipes hand over a freshly built object on every parameter change, so a
-    // reference (or reference-against-a-deep-clone) test would call every one of them a new extent
-    // and refit — throwing away the zoom and pan the user had set just to redraw the same bounds.
-    const changed = JSON.stringify(this.bounds) !== JSON.stringify(bounds);
-    this.bounds = bounds;
-    if (bounds && changed) {
-      this.fitCamera();
-      this.draw();
-    }
+  /** Bumped by whoever replaced the drawing wholesale — a new file, a loaded template, a recipe
+   * switch — to re-arm the auto-fit. It carries no geometry: the camera frames what gets rendered
+   * (see fitCamera), and only the caller can tell "the user opened a different design" apart from
+   * "the user edited this one", which must not move the camera out from under them. */
+  @Input() set fitRequest(_token: number) {
+    this.autoFitPending = true;
+    this.draw();
   }
   // expose pxPerMm for the template/readouts while keeping camera as source of truth
   public get pxPerMm() {
@@ -199,7 +200,10 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private isDragging = false;
   private isSpaceDown = false;
   public axisPopupOpen = false;
-  private bounds: { pt1: Pt, pt2: Pt } | null = null;
+  /** Set while the camera still owes the scene a fit — starts true so the first draw with anything
+   * in it frames the drawing, instead of leaving the user at Camera's arbitrary default. Consumed
+   * by draw() once there is geometry to measure; re-armed through the `fitRequest` input above. */
+  private autoFitPending = true;
   @ViewChild('imageFileInput') imageFileInputRef?: ElementRef<HTMLInputElement>;
   /** Resolver for the picker promise handed to the Image tool — see requestImageFile. */
   private pendingImageFile: ((file: { dataUrl: string; width: number; height: number } | null) => void) | null = null;
@@ -335,12 +339,15 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     // Reference images go down first, before the grid and before anything the recipe draws —
     // you trace on top of a photo, not underneath it. (This replaces the old controller's
     // append-then-`.lower()` trick, which only worked because it ran before everything else too.)
+    // They get their own group purely so the camera fit can measure them as a unit.
+    const imageLayer = this.gRoot.append('g').attr('class', 'reference-images');
+    this.imageLayer = imageLayer;
     this.toolbox.getVisibleImages().forEach(image => {
       // A live drag/resize renders from the uncommitted override, same as any other shape.
       const dragged = this.dragOverrides?.get(image.id);
       const shape = dragged?.type === 'image' ? dragged : image;
       const href = this.imageAssets.displayHref(shape.imageRef, shape.suppressWhite ?? true);
-      if (href) drawImageShape(this.gRoot, shape, href);
+      if (href) drawImageShape(imageLayer, shape, href);
     });
 
     this.axisGrid.draw(this.gRoot, this.gUI, cv, this.pxPerMm);
@@ -391,6 +398,15 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     if (marquee) drawAreaSelectBox(this.gRoot, marquee);
 
     if (this.editingTextShapeId) this.updateEditingTextPosition();
+
+    // Everything is on screen now, so there is finally something to measure. Fitting changes the
+    // viewBox that this pass just laid out against, so it needs a second pass — the flag is
+    // cleared first so that pass can't recurse, and stays set while the scene is still empty (a
+    // recipe that hasn't emitted its first render yet) so the next draw tries again.
+    if (this.autoFitPending && this.fitCamera()) {
+      this.autoFitPending = false;
+      this.draw();
+    }
   }
 
   /** Pass null to switch to the default select tool (no active drafting tool). Thin wrapper
@@ -910,10 +926,9 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       event.preventDefault();
     }
 
-    // Fit camera to bounds
+    // Fit the camera to everything on the canvas
     if (event.code === 'KeyF') {
-      this.fitCamera();
-      this.draw();
+      if (this.fitCamera()) this.draw();
       event.preventDefault();
     }
 
@@ -1120,12 +1135,44 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.draw();
   }
 
-  fitCamera(): void {
-    if (!this.bounds) return;
+  /**
+   * Frames everything currently rendered — reference images, recipe output, and visible toolbox
+   * shapes alike — measured off the SVG rather than asked of the recipe. The recipe only knows the
+   * plate it computed; the canvas is the one place that knows a 3D wireframe, a contour map and a
+   * hand-drawn line are all on screen next to it.
+   *
+   * Deliberately measures neither the grid (which spans the viewport, so including it would make
+   * the fit a no-op) nor the selection halos, grabbers and tool previews (sized in screen pixels,
+   * so they'd grow the box as the camera zoomed out to contain them). Text drawn into `gUI` is
+   * also left out: it lives in the unflipped overlay, and labels sit beside the geometry they
+   * annotate anyway.
+   *
+   * Returns false — leaving the camera untouched — when there is nothing on the canvas to frame,
+   * or when the canvas has no size yet to frame it into.
+   */
+  fitCamera(): boolean {
+    // A zero-width host is a real state at startup: the first draw can land before layout has
+    // sized this element. Fitting into it would derive a nonsense zoom, and (worse, for the
+    // startup auto-fit) claim the frame was done — so report failure and let the ResizeObserver's
+    // redraw try again once there's a viewport.
     const el = this.host.nativeElement;
-    const pxW = Math.max(1, el.clientWidth);
-    const pxH = Math.max(1, el.clientHeight);
-    this.camera.fitToBounds(this.bounds, pxW, pxH);
+    const pxW = el.clientWidth;
+    const pxH = el.clientHeight;
+    if (pxW < 1 || pxH < 1) return false;
+
+    const box = unionRenderedBounds([this.imageLayer?.node(), this.snapLayer?.node()]);
+    if (!box) return false;
+
+    this.camera.fitToBounds(box, pxW, pxH);
+    return true;
+  }
+
+  /** The extents a placed reference image is sized against — the drawn design, without the other
+   * images. Sizing an image against the union would compound: place one, scale it up to match a
+   * photo's real dimensions, and the next one would arrive sized to *that* rather than to the
+   * drawing. See image-tool.ts. */
+  private designBounds(): Bounds | null {
+    return unionRenderedBounds([this.snapLayer?.node()]);
   }
 
   toggleAxisPopup(): void {

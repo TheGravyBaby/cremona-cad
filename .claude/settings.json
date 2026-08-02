@@ -27,7 +27,17 @@
       "Bash(sed -i '' \"s|'../../src/app|'../app|g\" src/scratch/slope.spec.ts)",
       "Bash(git checkout *)",
       "Bash(grep -E \"ms$|grid|stations|Test Files|Tests \")",
-      "Bash(awk -F: '$1>755')"
+      "Bash(awk -F: '$1>755')",
+      "Bash(ls -d /Users/aargraves/Documents/cremona-cad/.claude/skills 2>/dev/null; ls /Users/aargraves/Documents/cremona-cad/.claude 2>/dev/null; echo \"---drivers---\"; which chromium-cli playwright chromium google-chrome 2>/dev/null; ls /Applications | grep -i chrom)",
+      "Read(//Applications/**)",
+      "Bash(npm init *)",
+      "Bash(npm i *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:4321/)",
+      "Bash(node drive.mjs)",
+      "Bash(node drive2.mjs)",
+      "Bash(sed -i '' 's|/arch/i.test\\(s.t\\)|/Cross Arching/i.test\\(s.t\\)|' drive2.mjs)",
+      "Bash(pkill -f \"ng serve --port 4321\")",
+      "Bash(curl -s -o /dev/null -w \"server now: %{http_code}\\\\n\" --max-time 3 http://localhost:4321/)"
     ],
     "additionalDirectories": [
       "/tmp"

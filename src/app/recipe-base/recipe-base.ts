@@ -1,6 +1,6 @@
 import { AfterViewInit, Component, HostListener, output, afterNextRender, inject, Injector } from '@angular/core';
-import { Output, EventEmitter, Input } from "@angular/core";
-import { Pt, RecipeInterface } from '../models/types';
+import { Output, EventEmitter } from "@angular/core";
+import { RecipeInterface } from '../models/types';
 import { PanelFlow, PanelDefinition } from '../helpers/panelFlow';
 import { DebounceController } from '../helpers/debounce-controller';
 import { NamedConstant, DEFAULT_NAMED_CONSTANTS, nearestFraction } from '../helpers/nearestFraction';
@@ -28,9 +28,17 @@ export abstract class RecipeComponentBase implements AfterViewInit {
   private toolboxSyncUnsub?: () => void;
 
   @Output() draftChange = new EventEmitter<Array<(g: any, ui: any) => void>>();
-  @Output() setBounds = new EventEmitter<{pt1: Pt, pt2: Pt}>();
 
-  @Input() cameraBounds: { pt1: Pt, pt2: Pt } | null = null;
+  /**
+   * Asks the canvas to re-frame its camera. Carries no coordinates — the canvas fits to what it
+   * has actually rendered (recipe output, drawn shapes, reference images, the 3D previews), which
+   * a recipe can't describe and shouldn't have to.
+   *
+   * Emit only when the drawing is replaced wholesale — a new file, a loaded template. An ordinary
+   * parameter edit must not emit: yanking the camera while someone is typing a dimension throws
+   * away the zoom and pan they set. `F` re-frames on demand.
+   */
+  @Output() requestFit = new EventEmitter<void>();
 
   loadFile(file: RecipeInterface): void {
     // Snapshot the file's reference images before touching the stores. resetAll() below both
