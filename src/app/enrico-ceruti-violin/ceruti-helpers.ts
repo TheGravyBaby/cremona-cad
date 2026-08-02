@@ -300,19 +300,15 @@ export function gougedCrossCycloidControlsInfo() {
 
 export function gougedCrossTemplateInfo() {
     info(
-        "Position: across the whole plate — 0 the bass channel, 50 the joint, 100 the treble channel. A knot at 66 and one at 34 sit the same distance out on opposite sides. Height: percent of the local arch height, so the crown is always 100.\n\n" +
-        "Percentages rather than mm, because what carries between stations is a shape — a fixed-width crown swells to fill a narrower station.\n\n" +
-        "Where the arch ends is solved, not set: the run-out meets the channel tangentially and the contact slides to wherever that works out.\n\n" +
-        "Mirror: off shapes the two sides independently.",
+        "Position defines the position of your control point accross the body width, where 50% is dead center. Height works much the same. The long arch panel defines the peak height for this curve, so height is defined as a percentage of this peak.",
         "Cross-Arch Shape", defaultTTL, true
     )
 }
 
 export function gougedCrossPeakInfo() {
     info(
-        "Where the crown sits across the plate. 50 is the joint; lower moves it to the bass side. Real plates rarely peak dead centre.\n\n" +
-        "It does not tilt the arch or drag the control points along — those are measured from the joint, so a point can end up on the far side of the crown from where it was entered.\n\n" +
-        "Toward each cap the ridge eases back onto the joint on its own, since there is no crown out there to carry it.",
+        "Where the peak of the curve fits along the body. Real plates rarely peak dead centre.\n\n" +
+        "You can move the peak +/- from the center as needed, center is defined as 50%.",
         "Crown Position", defaultTTL, true
     )
 }
@@ -347,8 +343,7 @@ export function gougedTransitionError(plate: 'top' | 'bottom', y: number) {
     const label = plate === 'top' ? 'Top' : 'Back';
     error(
         `The ${label.toLowerCase()} plate's crown cannot meet its channel at station ${y.toFixed(0)} mm.\n\n` +
-        "The crown arrives steeper than the gouge's flank ever gets, so there is nowhere along that flank the two can run tangent. Tangency is one equation with one unknown — the contact point — and here it has no solution. The section is drawn with a visible crease rather than a fudged meeting, which is the honest picture of an arch that cannot reach its channel.\n\n" +
-        "Real makers resolve this by quietly cheating the arch. Lower the arch height, widen the gouge, or soften the crown's run-out.",
+        "This isn't a big deal, don't worry. All it means is that a curve cannot be drawn at this point which will be tangent to the fluting edge. Usually it will be pretty close, and can be smoothed out. If you wanted to resolve this, adjust the curve so it isn't so steep at the edge.",
         `${label} Plate Transition`
     )
 }
