@@ -1,15 +1,16 @@
-import { pathsBounds } from '../helpers/svgPathMath';
+import { pathsBounds, samplePathToPolyline } from '../helpers/svgPathMath';
 import { calculateCenterBout, calculateCorners, calculateMainBouts, calculateOuterArcs } from './ceruti-calcs';
 import { defaultArchingParams, longArchHeightAt } from './ceruti-arching';
 import {
   buildPlateStl, buildPlateSurfaceModel, calculateCrossArchTemplates, trimProfileToTroughs,
   calculateLongArchTemplates, computeArchContours, computeArchSectionProfile, crossArchTemplateStations,
-  stationChordsAt, topSurfaceZAt, PlateSurfaceModel, computeArchContourRings,
+  stationChordsAt, topSurfaceZAt, plateHalfChordAtY, PlateSurfaceModel, computeArchContourRings,
 } from './ceruti-surface';
 import {
   defaultGougedCrossParams, defaultGougedFlutingParams, gougedCenterlineZAt, gougedCrossSectionAt,
   gougeHalfWidth, solveGougedLongArch,
 } from './ceruti-gouged';
+import { defineInnerPath } from './ceruti-paths';
 import { DefaultParams, EnricoCerutiParams } from './ceruti-types';
 
 /** A polyline path's own vertices — not re-sampled, so a cut point stays where it was put. */
@@ -51,6 +52,21 @@ describe('top surface height field', () => {
       const chords = stationChordsAt(p, model, y);
       expect(chords.outerHalf).not.toBeNull();
       expect(topSurfaceZAt(p, model, 0, y, chords)).not.toBeNull();
+    }
+  });
+
+  it('keeps the plate edge outside the mould at every station', () => {
+    // What the cross-arching section view draws its frame from, and the reason
+    // both halves are now measured off the sampled loops rather than the arcs.
+    // An arc query answers with whatever arc happens to span the station line,
+    // and around a corner that is the bout arc running on past the corner it was
+    // cut at — so the edge came back several mm inside the mould, or missing
+    // entirely, which drew a plate narrower than the ribs it sits on.
+    const mould = samplePathToPolyline(defineInnerPath(p));
+    for (let y = 3; y <= p.height - 3; y++) {
+      const inner = plateHalfChordAtY(mould, y);
+      if (inner === null) continue;
+      expect(plateHalfChordAtY(model.outerPlate, y)).toBeGreaterThanOrEqual(inner);
     }
   });
 

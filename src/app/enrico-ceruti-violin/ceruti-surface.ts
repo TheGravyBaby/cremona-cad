@@ -122,7 +122,7 @@ export interface StationChords {
 export function stationChordsAt(p: EnricoCerutiParams, model: PlateSurfaceModel, y: number): StationChords {
     const landCrossings = polylineCrossingsAtY(model.platformOuter, y);
     return {
-        outerHalf: maxAbsCrossingAtY(model.outerPlate, y),
+        outerHalf: plateHalfChordAtY(model.outerPlate, y),
         platformOuterHalf: landCrossings.length
             ? Math.max(Math.abs(landCrossings[0]), Math.abs(landCrossings[landCrossings.length - 1]))
             : null,
@@ -134,10 +134,27 @@ export function stationChordsAt(p: EnricoCerutiParams, model: PlateSurfaceModel,
 }
 
 
-/** Outermost |x| where the station line crosses the loop; null when it misses. */
-function maxAbsCrossingAtY(poly: Pt[], y: number): number | null {
+/**
+ * Half-width of the run of plate the centerline sits in, at station `y`; null
+ * where the station line misses the loop entirely.
+ *
+ * Bounded by the crossings either side of x = 0 rather than by the outermost
+ * crossing of all. Where the outline turns a corner it runs very nearly
+ * horizontally for several mm, and a station line laid across that run clips it
+ * more than once — leaving a short detached sliver out at the corner tip. The
+ * outermost crossing is that sliver's far edge, which reaches the plate across
+ * a gap that isn't wood.
+ */
+export function plateHalfChordAtY(poly: Pt[], y: number): number | null {
     const xs = polylineCrossingsAtY(poly, y);
-    return xs.length ? Math.max(Math.abs(xs[0]), Math.abs(xs[xs.length - 1])) : null;
+    if (!xs.length) return null;
+    const right = xs.find(x => x >= 0);
+    const left = xs.filter(x => x <= 0).pop();
+    // A station line that lands wholly to one side has no run around the
+    // centerline to bound; the loop's own extent is the only answer available.
+    return right === undefined || left === undefined
+        ? Math.max(Math.abs(xs[0]), Math.abs(xs[xs.length - 1]))
+        : Math.max(-left, right);
 }
 
 function polylineCrossingsAtY(poly: Pt[], y: number): number[] {

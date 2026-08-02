@@ -5,11 +5,11 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Station <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="5" min="1" [max]="params.height - 1" [ngModel]="cursorY"
+            <input class="basic-input" type="number" step="5" min="0" [max]="params.height" [ngModel]="cursorY"
                 (ngModelChange)="setCursorY($event)" />
         </label>
         <div class="station-slider">
-            <input class="basic-input" type="range" step="1" min="1" [max]="params.height - 1" [ngModel]="cursorY"
+            <input class="basic-input" type="range" step="1" min="0" [max]="params.height" [ngModel]="cursorY"
                 (ngModelChange)="setCursorY($event)" aria-label="Cross section station height" />
             <div class="station-ticks" aria-hidden="true">
                 @for (mark of stationLandmarks; track mark.label) {
@@ -201,7 +201,8 @@
         @if (stationAtCursor('top'); as st) {
         <span class="station-note">Top Plate fields edit station {{ st.y }}mm</span>
         } @else {
-        <button class="panel-nav-btn" [class.panel-nav-btn--draft]="!!draftFor('top')" (click)="setStationHere('top')">
+        <button class="panel-nav-btn" [class.panel-nav-btn--draft]="!!draftFor('top')" [disabled]="!stationableHere"
+            (click)="setStationHere('top')">
             + Set Station at {{ cursorY }}mm
         </button>
         }
@@ -311,7 +312,7 @@
         <span class="station-note">Back Plate fields edit station {{ st.y }}mm</span>
         } @else {
         <button class="panel-nav-btn" [class.panel-nav-btn--draft]="!!draftFor('bottom')"
-            (click)="setStationHere('bottom')">
+            [disabled]="!stationableHere" (click)="setStationHere('bottom')">
             + Set Station at {{ cursorY }}mm
         </button>
         }

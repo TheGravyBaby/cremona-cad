@@ -12,15 +12,16 @@ import {
   GougedCrossSplineStation, GougedCrossStation, GougedFlutingParams, PlateViewMode,
 } from '../../ceruti-types';
 import {
-  bodyLandmarks, contourSampleSteps, defaultArchingParams, innerHalfWidthAtY, outerHalfWidthAtY,
-  STATION_MERGE_EPS_MM, wireframeSampleSteps,
+  bodyLandmarks, contourSampleSteps, defaultArchingParams,
+  STATION_MARGIN_MM, STATION_MERGE_EPS_MM, wireframeSampleSteps,
 } from '../../ceruti-arching';
 import {
   defaultGougedCrossCycloidParams, defaultGougedCrossParams, defaultGougedFlutingParams, GougedCrossSection,
   gougedCrossGuide, gougedCrossKnotX, gougedCrossSectionAt, gougedCrossSectionPath, nearestGougedCrossShape,
 } from '../../ceruti-gouged';
 import {
-  ArchContourLevel, buildPlateSurfaceModel, buildPlateStl, computeArchContourRings, PlateSurfaceModel,
+  ArchContourLevel, buildPlateSurfaceModel, buildPlateStl, computeArchContourRings, plateHalfChordAtY,
+  PlateSurfaceModel,
 } from '../../ceruti-surface';
 import { downloadStlFile } from '../../../helpers/stlExporter';
 import {
@@ -32,7 +33,7 @@ import {
 } from '../../renders/arch-3d-wireframe.render';
 import { renderWireframeDragFrame } from '../../renders/wireframe-drag-frame.render';
 import { calculateOuterArcs } from '../../ceruti-calcs';
-import { defineOuterPath } from '../../ceruti-paths';
+import { defineInnerPath, defineOuterPath } from '../../ceruti-paths';
 import {
   archContoursInfo, crossSectionStationInfo, gougedCrossCurveTypeInfo, gougedCrossCycloidControlsInfo,
   gougedCrossPeakInfo, gougedCrossStationInfo, gougedCrossTemplateInfo, gougedTransitionError,
@@ -49,6 +50,8 @@ interface PlateCache {
   /** The params the model was built from — the recipe plus any open preview. */
   params: EnricoCerutiParams;
   model: PlateSurfaceModel | null;
+  /** The mould outline, sampled. What the rib box in the section view is measured off. */
+  mouldPoly: Pt[];
   contours: { levels: ArchContourLevel[]; outline: Pt[] | null } | null;
   wireframe: WireframeGeometry | null;
 }
@@ -229,8 +232,27 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
 
   get arching(): ArchingParams { return this.params.arching!; }
 
+  /**
+   * The cursor runs the whole body, both ends included. There is no plate at
+   * either end — the section is a point and the overlay's station line has
+   * nowhere to go — so those two positions draw nothing rather than a
+   * degenerate figure. That is worth having anyway: it is how you sight the
+   * cursor onto the very end of the instrument, and a slider that stops a
+   * millimetre short reads as a bug rather than as a rule.
+   */
   get cursorY(): number {
-    return clamp(this.flags.crossSectionY ?? 0, 1, this.params.height - 1);
+    return clamp(this.flags.crossSectionY ?? 0, 0, this.params.height);
+  }
+
+  /**
+   * Whether a station set at the cursor would stay where it was put.
+   * {@link normalizeCrossArchStations} holds stations {@link STATION_MARGIN_MM}
+   * inside both ends so they stay interior knots, so the button at 0mm would
+   * author a station at 1mm — an affordance that lies about what it does.
+   */
+  get stationableHere(): boolean {
+    const y = this.cursorY;
+    return y >= STATION_MARGIN_MM && y <= this.params.height - STATION_MARGIN_MM;
   }
 
   /**
@@ -241,7 +263,7 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
    * waist is. All this adds is where to draw them.
    */
   get stationLandmarks(): { label: string; title: string; y: number; left: string }[] {
-    const lo = 1, hi = this.params.height - 1;
+    const lo = 0, hi = this.params.height;
     if (hi <= lo) return [];
     return bodyLandmarks(this.params).map(m => ({
       label: m.code,
@@ -256,14 +278,20 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
   /** Moving the cursor abandons whatever preview was open at the old position. */
   setCursorY(mm: number): void {
     if (!entered(mm)) return;
-    this.flags.crossSectionY = clamp(mm, 1, this.params.height - 1);
+    this.flags.crossSectionY = clamp(mm, 0, this.params.height);
     this.onCursorChange();
   }
 
+  /**
+   * Never debounced, unlike every other control here: the cursor moves *where we
+   * look*, not what the plate is, so it changes no params and all three caches
+   * survive it. Dragging the slider only re-slices a model that is already built,
+   * which is why it can stay live even with the contour map open.
+   */
   onCursorChange(): void {
     this.draft.top = null;
     this.draft.bottom = null;
-    this.onChange();
+    this.emitImmediate();
   }
 
   gouge(plate: 'top' | 'bottom'): GougedFlutingParams {
@@ -688,7 +716,9 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
     const cached = this.cache[plate];
     if (cached?.key === key) return cached;
     return this.cache[plate] = {
-      key, params: p, model: buildPlateSurfaceModel(p, plate), contours: null, wireframe: null,
+      key, params: p, model: buildPlateSurfaceModel(p, plate),
+      mouldPoly: samplePathToPolyline(defineInnerPath(p)),
+      contours: null, wireframe: null,
     };
   }
 
@@ -758,6 +788,14 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
           ? projectFlatPolyline(cached.outline, p.height, yOffset, rotX, rotY, rotZ, 1, 0, zSign)
           : null;
         layers.push(renderArchContours3d(this.colors, levels, outline, color));
+        // The cursor station, drawn exactly as the wireframe draws it — same
+        // strip, same projection, same grey. A contour map says how deep the
+        // plate is everywhere and nothing about where you are on it; this is
+        // the one line that answers that, so it belongs in both views. Passing
+        // no strips and no ribs leaves the renderer with only its highlight.
+        const { sampleStepMm } = wireframeSampleSteps(p);
+        const cursorStrip = computeSingleWireframeStrip(p, model, y, yOffset, rotX, rotY, rotZ, 1, sampleStepMm, 0, zSign);
+        layers.push(renderArch3dWireframe(this.colors, [], [], cursorStrip, color));
         layers.push(renderWireframeDragFrame(
           computeArchContourBounds(cached.levels, p.height, yOffset, rotX, rotY, rotZ, 1, 0, zSign),
           this.colors, drag.active, drag.onPointerDown,
@@ -786,8 +824,29 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
   private sectionView(y: number): RenderLayer {
     const p = this.params;
     const a = this.arching;
-    const innerHalf = innerHalfWidthAtY(p, y);
-    const outerHalf = outerHalfWidthAtY(p, y) ?? 0;
+    // Both widths come off the sampled outlines, not the arcs those outlines
+    // were built from. An arc query is exact along the bouts and wrong at the
+    // corners in two ways at once: the plate edge rounds each corner on a cubic,
+    // which there is no arc to intersect, so it reports nothing right through
+    // the corner band; and the bout arcs it does find run on past the corner
+    // they were cut at, so the station either side of the band reads several
+    // millimetres too wide. The loops are what the wireframe and the contour map
+    // already measure, so the frame now cannot disagree with the overlay above
+    // it — and the back plate's button is included, which the arcs never were.
+    const outerHalf = (plate: 'top' | 'bottom'): number | null => {
+      const model = this.cache[plate]?.model;
+      return model ? plateHalfChordAtY(model.outerPlate, y) : null;
+    };
+    const mould = this.cache.top?.mouldPoly;
+    const innerHalf = mould ? plateHalfChordAtY(mould, y) : null;
+    const halves = { top: outerHalf('top'), bottom: outerHalf('bottom') };
+
+    // At either end of the body the outline has no width to give, so there is
+    // no section — not a thin one. Drawing the frame anyway would put a stack
+    // of zero-length lines and two thickness ticks on the centreline, which
+    // reads as a section of an instrument a millimetre wide. Nothing is the
+    // honest picture, and it is what the overlay's station line already does.
+    if (halves.top === null && halves.bottom === null) return () => {};
 
     return (g: any, ui: any): void => {
       if (innerHalf !== null) {
@@ -799,8 +858,9 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
           renderLine(new Pt(sx * innerHalf, 0), new Pt(sx * innerHalf, a.ribHeight), this.colors.innerTrace)(g, ui);
         }
       }
-      this.platePart(g, ui, 'top', outerHalf);
-      this.platePart(g, ui, 'bottom', outerHalf);
+      for (const plate of ['top', 'bottom'] as const) {
+        if (halves[plate] !== null) this.platePart(g, ui, plate, halves[plate]!);
+      }
     };
   }
 

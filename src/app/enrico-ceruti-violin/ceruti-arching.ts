@@ -1,8 +1,6 @@
-import { arcHorizontalIntersections, clamp } from "../helpers/draftMath";
+import { clamp } from "../helpers/draftMath";
 import { catenaryZAt, cycloidZAt, splineZAt } from "../helpers/svgPathMath";
-import { Arc } from "../models/types";
 import { ArchCurve, ArchingParams, EnricoCerutiParams } from "./ceruti-types";
-import { defineInnerArcs, defineOffsetArcs, defineOuterCornerArcs } from "./ceruti-paths";
 
 // ===== Arching profile system =====
 // The long-arch height profile and the body-position queries every arching
@@ -189,7 +187,7 @@ export function longArchHeightAt(p: EnricoCerutiParams, arch: ArchCurve, y: numb
 export const STATION_MERGE_EPS_MM = 0.5;
 
 /** Stations are held this far (mm) inside the body ends so they stay interior knots. */
-const STATION_MARGIN_MM = 1;
+export const STATION_MARGIN_MM = 1;
 
 /**
  * A station list put in the order and the bounds everything downstream assumes:
@@ -260,35 +258,9 @@ export function bodyLandmarks(p: EnricoCerutiParams): BodyLandmark[] {
         .map(m => ({ code: m.code, name: m.name, y: Math.round(m.y) }));
 }
 
-/** Outermost |x| where the horizontal station line crosses any of the arcs' drawn spans; null if none. */
-function maxAbsXAtY(arcs: Arc[], y: number): number | null {
-    let best: number | null = null;
-    for (const arc of arcs) {
-        if (!arc) continue;
-        for (const pt of arcHorizontalIntersections(arc, y)) {
-            if (best === null || Math.abs(pt.x) > best) best = Math.abs(pt.x);
-        }
-    }
-    return best;
-}
-
-/**
- * Half-width of the inner (mould) outline at body height `y`. The outline is
- * symmetric about x = 0 so the unmirrored arcs suffice. Returns null when the
- * station line misses the outline entirely (beyond the top/bottom caps).
- */
-export function innerHalfWidthAtY(p: EnricoCerutiParams, y: number): number | null {
-    return maxAbsXAtY(defineInnerArcs(p), y);
-}
-
-/**
- * Half-width of the finished plate edge (outer path) at body height `y`.
- * Requires p.outerCorners to be current (calculateOuterArcs) since the corner
- * region's outermost extent lies on the outer corner arcs.
- */
-export function outerHalfWidthAtY(p: EnricoCerutiParams, y: number, offset?: number): number | null {
-    offset ??= p.overhang + p.rib;
-    const arcs = [...defineOffsetArcs(p, offset), ...defineOuterCornerArcs(p, offset)];
-    return maxAbsXAtY(arcs, y);
-}
+// A station's half-width used to be read off the outline's arcs here. It is now
+// read off the sampled loop instead (`plateHalfChordAtY`), because the arcs
+// answer wrongly at the corners: the plate edge rounds each corner on a cubic
+// that no arc covers, and the bout arcs that do answer run past the corner they
+// were cut at. The loops are also what the surface model itself measures.
 

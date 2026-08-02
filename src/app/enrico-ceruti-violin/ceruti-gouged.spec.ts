@@ -766,7 +766,10 @@ describe('the crown', () => {
       return worst;
     };
     expect(worstCurvature(0.02)).toBeLessThan(worstCurvature(0.04) / 3);
-  });
+    // ~5s of solves at this step, which is the default timeout exactly — so it
+    // passes or fails on how loaded the machine is. The step is what makes the
+    // h² claim measurable, so the timeout gives way rather than the sampling.
+  }, 20_000);
 
   it('clamps the crown clear of the channel at a narrow station', () => {
     // The same percent is a far larger share of a narrow station. Left

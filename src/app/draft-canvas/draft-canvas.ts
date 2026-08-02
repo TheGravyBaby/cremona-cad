@@ -56,6 +56,11 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private toolRegistryUnsub?: () => void;
   public get activeTool(): DraftTool | null { return this.toolRegistry.activeTool; }
   private isAngleLockHeld = false;
+  /** True while the tangent-lock modifier (Ctrl) is held — see two-point-tool.ts's
+   * angleLockModifier. Separate from isAngleLockHeld/Shift so the two can be reached for
+   * independently: Shift always means the 30/45/90° grid, Ctrl always means "tangent to
+   * whatever the start point snapped onto", regardless of what the other key is doing. */
+  private isTangentLockHeld = false;
   private toolHost: DraftToolHost = {
     // Images are deliberately not stamped with a layer: they aren't layer members (see
     // ImageShape), and giving them one would make deleting that layer delete them.
@@ -67,6 +72,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     requestDraw: () => this.draw(),
     getSnapTangent: () => this.activeSnap?.tangent,
     isAngleLockHeld: () => this.isAngleLockHeld,
+    isTangentLockHeld: () => this.isTangentLockHeld,
     getSelectedShapes: () => this.selectedShapes,
     getPxPerMm: () => this.pxPerMm,
     hitTestShape: (pt) => this.hitTestToolboxShape(pt),
@@ -609,6 +615,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
   onPointerMove = (event: PointerEvent) => {
     this.isAngleLockHeld = event.shiftKey;
+    this.isTangentLockHeld = event.ctrlKey;
 
     // Update tracked position for this pointer
     if (this.activePointers.has(event.pointerId)) {
@@ -759,6 +766,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
   onPointerUp = (event: PointerEvent) => {
     this.isAngleLockHeld = event.shiftKey;
+    this.isTangentLockHeld = event.ctrlKey;
     this.activePointers.delete(event.pointerId);
     if (this.activePointers.size < 2) {
       this.lastPinchDist = 0;
@@ -944,6 +952,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
   onPointerDown(event: PointerEvent) {
     this.isAngleLockHeld = event.shiftKey;
+    this.isTangentLockHeld = event.ctrlKey;
     this.activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
     // Two fingers down — cancel any ongoing pan and enter pinch mode
@@ -965,7 +974,10 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     const isTouch = event.pointerType === 'touch';
 
     // Shift is reserved as the drafting angle-lock modifier (see isAngleLockHeld), so it
-    // must not block tool activation/selection the way Ctrl (kept free for future use) does.
+    // must not block tool activation/selection the way Ctrl does. Ctrl doubles as the
+    // tangent-lock modifier once a drag is already underway (see isTangentLockHeld), but at
+    // click time it's still left alone here — among other things, that's a Mac context-menu
+    // gesture, and nobody starts a drag by pressing Ctrl before the mouse button.
     const modifierHeld = event.ctrlKey;
 
     if (this.activeTool && isPrimary && !modifierHeld && !this.isSpaceDown) {

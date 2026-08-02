@@ -41,8 +41,8 @@
           Rather than a static trace, or a complex list of coordinates,
           CremonaCad defines instruments using a simple system of <strong>intersecting arcs</strong>.
           These patterns are historically informed by a drafting document found in
-          the workshop of <strong>Enrico Ceruti</strong>, as well as the research of American luthiers
-          <strong>David Beard</strong> and <strong>Kevin Kelly</strong>.
+          the workshop of <strong>Enrico Ceruti</strong>, as well as the research of American luthier
+          <strong>David Beard</strong>.
         </p>
         <p>
           Upload a historical instrument and use it as a reference,
@@ -77,7 +77,7 @@
           <dl class="keymap">
             <dt>Scroll / pinch</dt><dd>Zoom to cursor</dd>
             <dt><code>+</code> <code>-</code></dt><dd>Zoom to center</dd>
-            <dt>Space + drag, middle-drag,<br>two-finger scroll</dt><dd>Pan</dd>
+            <dt>Middle mouse, Two finger drag, <br>Space + mouse</dt><dd>Pan</dd>
             <dt>Arrows</dt><dd>Pan (Shift for larger steps)</dd>
             <dt><code>F</code></dt><dd>Fit design to view</dd>
           </dl>
@@ -91,42 +91,38 @@
           @if (tutorialTopic === 'drawing') {
           <h3>Drawing Tools</h3>
           <p>The toolbar on the left side is a drafting set, allowing you to mark up the canvas. Drawings you make save
-            save to your recipe file, but do not interact with the instrument render..</p>
+            save to your recipe file, but do not interact with the instrument render.</p>
 
           <h4>Drawing a shape</h4>
           <dl class="keymap">
-            <dt>Drag, or click–click</dt><dd>Draw. Arc tools take three separate clicks, never a drag</dd>
+            <dt>Drag or click</dt><dd>Most tools can be used by selecting the tool and then clicking on the canvas. </dd>
             <dt>Letter key</dt><dd><strong>L</strong>ine, <strong>A</strong>rc, <strong>C</strong>ircle,
               <strong>R</strong>ectangle, <strong>S</strong>ection, <strong>T</strong>ext, <strong>P</strong>oint,
-              <strong>O</strong>ffset, <strong>I</strong>mage. Press again to step through a button's variants; its
-              caret lists them</dd>
-            <dt>Shift</dt><dd>Lock a line to 30/45/90°, force a square, or ask an arc for its other solution</dd>
-            <dt>Escape</dt><dd>Abandon the shape, then back to <code>Select</code>, then clear the selection</dd>
+              <strong>O</strong>ffset, <strong>I</strong>mage. Press again to step through a button's variants.</dd>
+            <dt>Shift</dt><dd>Lock a line to 30/45/90°, force a square, or ask an arc for its other solution. </dd>
+            <dt>Escape</dt><dd>Abandon the shape, then back to <code>Select</code> or clear a selection. </dd>
           </dl>
-          <p>The <code>Color</code> swatch in the bottom settings bar sets the selected shape's colour, or the next
-            shape's if nothing is selected.</p>
+          <p>The <code>Color</code> swatch in the bottom settings bar sets the selected shape's color. </p>
 
           <h4>Snapping</h4>
-          <p>Points pull onto existing geometry — the recipe's arcs and your own. A green glyph names the catch:
-            <strong>square</strong> endpoint, <strong>crosshair</strong> centre, <strong>diamond</strong> point along a
-            path. A path snap also captures its direction, which is what the tangent arcs continue from.</p>
+          <p>Points pull onto existing geometry. A path snap also captures the path's direction, which is used for making tangent arcs and lines.</p>
 
           <h4>Arcs</h4>
           <ul class="tips-list">
-            <li><code>Arc</code> — centre, then radius/start, then end.</li>
-            <li><code>Arc (start first)</code> — same, with the first two clicks swapped.</li>
-            <li><code>Tangent Arc</code> — point on an existing curve, then an end point; the radius is solved for a
+            <li><code>Arc</code> — first select the center, then pick two points to draw the arc span. </li>
+            <li><code>Endpoint Arc</code> — same as the normal arc, except the edge is selected first and then radius.</li>
+            <li><code>Tangent Arc</code> — click on an existing curve, then an end point; the radius is solved for a
               smooth join.</li>
-            <li><code>Chained Tangent Arc</code> — each further click adds another tangent arc; Escape ends the chain.
+            <li><code>Chained Tangent Arc</code> — each click adds another tangent arc; Escape ends the chain.
               Each arc stays its own shape.</li>
             <li><code>Join Arc</code> — click an endpoint on two curves to bridge them. Shift cycles the
-              alternatives.</li>
+              join options.</li>
           </ul>
 
           <h4>Offset, dimensions, sections</h4>
           <ul class="tips-list">
-            <li><code>Offset</code> — select first, then take the tool, then click the side you want. Type a number and
-              press Enter for an exact distance. Shapes meeting end to end offset as one curve.</li>
+            <li><code>Offset</code> — select a shape or a group first, then click the offset tool. Move your mouse to select the amount of offset or type a number and
+              press Enter for an exact distance. Shapes meeting end to end offset as one path.</li>
             <li><code>Dimension</code> — a measured, labelled line between two points.</li>
             <li><code>Section</code> — divides a line into weighted parts in alternating colours; set them in the
               settings bar as <code>fraction</code> or a comma seperated list eg [<code>3,4,3</code>].</li>
@@ -139,12 +135,11 @@
             <dt>Arrows</dt><dd>Nudge (Shift for larger steps)</dd>
             <dt>Delete / Ctrl+Z</dt><dd>Remove / undo</dd>
           </dl>
-          <p>The settings bar shows the selected shape's numbers — endpoints and length, or centre, radius and angles —
-            and each can be typed into. <code>Compass</code> on a selected arc shows how it was struck.</p>
+          <p>The settings bar shows the selected shape's properties. These can be edited manually without the mouse. 
 
           <h4>Layers</h4>
-          <p>The <code>Layers</code> button lists your layers; new shapes land on the active one. Double-click to
-            rename, eye to hide, lock to protect. The eye on the button itself hides all your drawing at once.</p>
+          <p>The <code>Layers</code> button lists your layers; new shapes land on the active layer. Double-click to
+            rename, eye to hide, lock to protect. The eye button on the toolbar hides all your layers at once.</p>
           }
 
           @if (tutorialTopic === 'images') {
@@ -210,9 +205,8 @@
           <h3>Outer Path</h3>
           <p>The corner arcs and button that complete the outline.</p>
           <ul class="tips-list">
-            <li>The flate of the outer corners are defined by carving a line between the two corner circles.</li>
-            <li>The <strong>button</strong> is the semicircular tab at the neck joint. Back plate only; set its radius
-              here.</li>
+            <li>The shape of the outer corners are defined by cutting a line between the two corner circles.</li>
+            <li>The <strong>button</strong> is the semicircular tab at the neck joint of the back plate. </li>
           </ul>
           }
 
@@ -227,15 +221,13 @@
 
           @if (tutorialTopic === 'fluting') {
           <h3>Fluting Channel</h3>
-          <p>The small "moat" around the edge of the plate. It is gouged before the arch is carved, so it comes first.</p>
+          <p>The small "moat" around the edge of the plate. It is gouged before the arch is carved.</p>
           <ul class="tips-list">
-            <li><strong>Sweep</strong> radius and <strong>Depth</strong> describe the gouge and fix the section;
-              <strong>Width</strong> beside them is a reading, not a setting. The same gouge runs all the way round.
+            <li>IRL the fluting channel is carved with a gouge. Sweep defines the radius of the gounge you would use for this step. Depth defines the depth of the channel.
             </li>
-            <li><strong>Land Edge</strong> — where the channel starts, measured in from the plate edge. Set against the
-              purfling, which is drawn with it.</li>
+            <li><strong>Land Edge</strong> — where the channel starts, measured from the plate edge. </li>
             <li>The channel runs past the corners. <strong>Gouge Corners</strong> smooths the area between the fluting channel and the corners. This is useful for STL exports but is left optional.</li>
-            <li><strong>C Bout</strong> adds a second, narrower fluting channel through the Center Bout.</li>
+            <li> The <strong>C Bout</strong> button allows for a narrower fluting channel through the Center Bout.</li>
           </ul>
           }
 
@@ -244,11 +236,12 @@
           <p>The lengthwise profile of the plate.</p>
           <ul class="tips-list">
             <li>A <strong>Catenary</strong> is obtained by dangling a string between two points.
-              <strong>Spline</strong> allows to place control points, including asymmetric points.</li>
-            <li><strong>Arch Height</strong> — peak above the plate edge. <strong>Thickness</strong> — plate thickness
+              <strong>Spline</strong> allows you to place control points, including asymmetric points.</li>
+            <li><strong>Arch Height</strong> — peak height above the plate edge. 
+              </li><li><strong>Thickness</strong> — plate thickness
               at that edge.</li>
-            <li>A spline point's <code>Mirror</code> toggle repeats it at the opposite end. Turn it off and the upper
-              and lower halves can be shaped independently.</li>
+            <li>A spline point's <code>Mirror</code> toggle repeats it at the opposite end. Turn it off and the
+              two sides can be shaped independently.</li>
           </ul>
           }
 
@@ -257,25 +250,25 @@
           <p>The cross-section across the width of the plate.</p>
           <ul class="tips-list">
             <li>The <strong>Station</strong> slider previews the profile along the body. Its ticks are the five usual
-              sighting positions — two widest points, two corners, waist.</li>
+              sighting positions — the two widest points, two corners, waist.</li>
               <li>Cross arching can be defined using cycloid curves or splines.</li>
             <li><code>+ Set Station</code> pins the current cross-section at the height you are previewing. Each
               <strong>station</strong> holds its own shape and the surface flows between them — a rounder centre bout
-              and flatter ends, say.</li>
+              and flatter ends, for example.</li>
             <li><strong>Wireframe</strong> and <strong>Contour Map</strong> show the interpolated surface in 3D.</li>
           </ul>
           }
 
           @if (tutorialTopic === 'mould') {
           <h3>Mould</h3>
-          <p>The internal blocks the ribs are bent and glued around.</p>
+          <p>The strucure which the ribs are bent around.</p>
           <ul class="tips-list">
             <li>Four blocks — <strong>Upper</strong>, <strong>Upper Corner</strong>, <strong>Lower Corner</strong>,
               <strong>Lower</strong> — each with height and width.</li>
             <li>Corner <strong>Pad</strong> adds material at the corner point, which helps in placing the block against
               the mould.</li>
-            <li><code>Bit Diameter</code> avoids right angles at critical glue points when cutting on a CNC.</li>
-            <li>Clamping channels run parallel to the edges by default; a simple box cutout can be used instead.</li>
+            <li><code>Bit Diameter</code> if cutting on a CNC internal right angles are not possible, this adds a small radial cutout at these points.</li>
+            <li>Clamping channels run parallel to the edges by default. A simpler mould pattern can be defined with a box cutout instead.</li>
             <li>The bar at the foot of the panel draws the <strong>blocks</strong> and <strong>inner path</strong> over
               the mould.</li>
           </ul>
@@ -286,12 +279,7 @@
           <p>Traces, mould and block templates export as <strong>SVG</strong>, <strong>PDF</strong> and
             <strong>DXF</strong>; the arched plates export as <strong>STL</strong> for CNC carving.</p>
           <ul class="tips-list">
-            <li><strong>Arching templates</strong>: a long-arch blank per plate, and a cross-arch blank at each of the
-              five landmarks — <code>LB</code>, <code>LC</code>, <code>C</code>, <code>UC</code>, <code>UB</code> —
-              plus any station you set. Each plate has its own gouge and crown, so top and back blanks differ.</li>
-            <li>Every blank runs from the crown down to the bottom of the fluting trough and ends flat there — the
-              channel is already cut when you pick the template up, so there is a trough for it to sit in.</li>
-            <li>Contour sheets show outline and purfling only; depth and section live in the templates.</li>
+            <li><strong>Preview</strong> will render the selected section on the canvas for final review.</li>
           </ul>
           }
 
@@ -305,7 +293,7 @@
         <h2>Version</h2>
 
         <div class="changelog-entry">
-          <div class="changelog-version">v{{ appVersion }} <span class="changelog-date">— Aug 1, 2026</span></div>
+          <div class="changelog-version">v{{ appVersion }} <span class="changelog-date">— Aug 2, 2026</span></div>
           <p class="changelog-desc">Drawing toolbox.</p>
           <ul class="changelog-list">
             <li><strong>A drawing toolbox</strong> — now draw directly onto the canvas with lines, arcs, circles, boxes, points and text. Keep your work sorted on named layers.</li>
@@ -404,7 +392,7 @@
           <figcaption>Pictured: a man who should probably be practicing instead of coding x_x</figcaption>
         </figure>
         <p>
-          A musician and software engineer based out of New Haven, CT.
+          Hello there! I am a musician and software engineer based out of New Haven, CT.
         </p>
         <p>
           <strong>CremonaCad</strong> started as a personal tool to help me understand the geometry behind historical
