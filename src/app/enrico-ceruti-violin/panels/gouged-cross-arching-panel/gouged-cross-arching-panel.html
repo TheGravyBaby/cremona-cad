@@ -2,13 +2,23 @@
 
 <section class="ui-group">
     <div class="ui-group-title">Section</div>
-    <div class="input-group basic-row field-row" role="group">
+    <div class="input-group basic-row field-row station-row" role="group">
         <label class="field-cell">
             <span class="field-title">Station <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="5" min="0" [max]="params.height" [ngModel]="cursorY"
+            <input class="basic-input" type="number" step="1" min="0" [max]="params.height" [ngModel]="cursorY"
                 (ngModelChange)="setCursorY($event)" />
         </label>
         <div class="station-slider">
+            <div class="station-marks" aria-hidden="true">
+                @for (mark of stationMarks; track mark.key) {
+                <button type="button" class="station-mark" [style.left]="mark.left" [title]="mark.title"
+                    (click)="setCursorY(mark.y)">
+                    @for (plate of mark.plates; track plate.name) {
+                    <span class="station-mark-seg" [style.color]="plate.color"></span>
+                    }
+                </button>
+                }
+            </div>
             <input class="basic-input" type="range" step="1" min="0" [max]="params.height" [ngModel]="cursorY"
                 (ngModelChange)="setCursorY($event)" aria-label="Cross section station height" />
             <div class="station-ticks" aria-hidden="true">
@@ -140,7 +150,7 @@
         </label>
         <label class="field-cell">
             <span class="field-title">Percent <span class="unit-label">%</span></span>
-            <input class="basic-input" type="number" step="5" min="5" max="98" [ngModel]="cycloidPct('top')"
+            <input class="basic-input" type="number" step="5" min="5" max="100" [ngModel]="cycloidPct('top')"
                 (ngModelChange)="setCycloidPct('top', $event)" [style.border-color]="colors.archTop" />
         </label>
         <button type="button" class="info-icon" (click)="gougedCrossCycloidControlsInfo()"
@@ -251,7 +261,7 @@
         </label>
         <label class="field-cell">
             <span class="field-title">Percent <span class="unit-label">%</span></span>
-            <input class="basic-input" type="number" step="5" min="5" max="98" [ngModel]="cycloidPct('bottom')"
+            <input class="basic-input" type="number" step="5" min="5" max="100" [ngModel]="cycloidPct('bottom')"
                 (ngModelChange)="setCycloidPct('bottom', $event)" [style.border-color]="colors.archBack" />
         </label>
         <button type="button" class="info-icon" (click)="gougedCrossCycloidControlsInfo()"

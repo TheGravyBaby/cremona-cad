@@ -263,16 +263,63 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
    * waist is. All this adds is where to draw them.
    */
   get stationLandmarks(): { label: string; title: string; y: number; left: string }[] {
-    const lo = 0, hi = this.params.height;
-    if (hi <= lo) return [];
+    if (this.params.height <= 0) return [];
     return bodyLandmarks(this.params).map(m => ({
       label: m.code,
       title: `${m.name} — ${m.y}mm`,
       y: m.y,
-      // The thumb's centre never reaches the ends of the track, so a plain
-      // percentage would drift off the value it marks at both extremes.
-      left: `calc(${TICK_THUMB_PX / 2}px + (100% - ${TICK_THUMB_PX}px) * ${(m.y - lo) / (hi - lo)})`,
+      left: this.trackOffset(m.y),
     }));
+  }
+
+  /**
+   * The stations already authored, marked over the same track. The panel edits
+   * one plate at a time and a station is invisible from the other plate's
+   * fields, so the only standing record of what has been set is the tables
+   * further down the panel — which means nothing while dragging, exactly when
+   * it is wanted. These say where you have already been.
+   *
+   * Both plates share the one strip, one chevron per plate in that plate's own
+   * arch colour — the same two colours the section view and the overlays already
+   * use, so a mark names its plate without a legend. Where both plates carry a
+   * station at the same height the chevrons stack, top above back, which is the
+   * order the fields below are in.
+   */
+  get stationMarks(): { key: string; y: number; title: string; left: string; plates: { name: string; color: string }[] }[] {
+    if (this.params.height <= 0) return [];
+    const plates = [
+      ['top', 'Top Plate', this.colors.archTop],
+      ['bottom', 'Back Plate', this.colors.archBack],
+    ] as const;
+    const byY = new Map<string, { y: number; plates: { name: string; color: string }[] }>();
+    for (const [plate, name, color] of plates) {
+      for (const st of this.cross(plate).stations ?? []) {
+        // Keyed on the position rather than merged by {@link STATION_MERGE_EPS_MM}:
+        // two stations a hair apart are two marks, since seeing them overlap is
+        // the point of drawing them at all.
+        const key = st.y.toFixed(2);
+        const entry = byY.get(key) ?? { y: st.y, plates: [] };
+        entry.plates.push({ name, color });
+        byY.set(key, entry);
+      }
+    }
+    return [...byY].sort((a, b) => a[1].y - b[1].y).map(([key, e]) => ({
+      key,
+      y: e.y,
+      plates: e.plates,
+      title: `${e.plates.map(x => x.name).join(' + ')} station — ${+e.y.toFixed(1)}mm`,
+      left: this.trackOffset(e.y),
+    }));
+  }
+
+  /**
+   * Where a station height sits along the slider's track, as a CSS offset.
+   * The thumb's centre never reaches either end of the track, so a plain
+   * percentage would drift off the value it marks at both extremes.
+   */
+  private trackOffset(y: number): string {
+    const t = clamp(y, 0, this.params.height) / this.params.height;
+    return `calc(${TICK_THUMB_PX / 2}px + (100% - ${TICK_THUMB_PX}px) * ${t})`;
   }
 
   /** Moving the cursor abandons whatever preview was open at the old position. */

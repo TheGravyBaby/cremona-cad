@@ -29,9 +29,22 @@
  * Offsets come from the component (see `stationLandmarks`), which insets them
  * by half a thumb so a mark stays over the value it names at both ends.
  */
+/* The chevron strip already opens space above the track, and that space sits
+   directly under the group's title rule — so the title's own bottom margin is
+   given back here rather than paid twice. Space is at a premium in this panel:
+   the station row is the only thing between the header and four plates' worth
+   of fields. */
+.station-row {
+  margin-top: -4px;
+}
+
 .station-slider {
   flex: 1;
   min-width: 0;
+  /* Room for two nested chevrons, so a station on both plates does not spill
+     into the field above it. Fixed rather than fitted to what is there, so the
+     track sits still while stations are added and removed. */
+  padding-top: 14px;
   padding-bottom: 12px;
 }
 
@@ -43,6 +56,55 @@
 .station-ticks {
   position: relative;
   height: 0;
+}
+
+/*
+ * The stations already authored, marked over the track (see `stationMarks`) —
+ * above it, so they read as a record of what has been done rather than as more
+ * of the landmark strip below, which says what the body is. Zero-height and
+ * anchored by `bottom`, so the marks grow up into .station-slider's own
+ * padding-top and the track never moves as stations come and go.
+ *
+ * A chevron per plate, in that plate's arch colour, pointing down at the
+ * position it marks and stacked where both plates carry a station at the same
+ * height. Drawn as a square rotated 45° with two of its borders showing, which
+ * keeps the stroke weight even on both arms — a border-triangle would be a solid
+ * wedge, and a glyph would be at the mercy of the font. The rotation puts ~1.5px
+ * of each arm outside the element's own box, so a stack of two nests without any
+ * gap between them and still reads as two.
+ */
+.station-marks {
+  position: relative;
+  height: 0;
+}
+
+.station-mark {
+  position: absolute;
+  bottom: 2px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  width: 9px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  opacity: 0.85;
+}
+
+.station-mark:hover {
+  opacity: 1;
+}
+
+.station-mark-seg {
+  box-sizing: border-box;
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
 }
 
 .station-tick {
