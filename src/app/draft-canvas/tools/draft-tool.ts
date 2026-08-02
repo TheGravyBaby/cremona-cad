@@ -12,6 +12,10 @@ export interface DraftToolHost {
   getSnapTangent(): number | undefined;
   /** True while the angle-lock modifier (Shift) is held — see two-point-tool.ts's angle snapping. */
   isAngleLockHeld(): boolean;
+  /** True while the tangent-lock modifier (Ctrl) is held — locks onto the tangent of whatever
+   * the start point snapped onto, independently of isAngleLockHeld/Shift's 30/45/90° grid. See
+   * two-point-tool.ts's angleLockModifier. */
+  isTangentLockHeld(): boolean;
   /** The shapes currently selected in Select mode — only meaningful to tools with
    * `actsOnSelection: true`, which run against a selection made before they were activated. */
   getSelectedShapes(): DraftShape[];

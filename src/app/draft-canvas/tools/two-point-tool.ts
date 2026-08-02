@@ -2,7 +2,7 @@ import * as d3 from 'd3';
 import { Pt } from '../../models/types';
 import { DraftTool, DraftToolHost } from './draft-tool';
 import { DraftShape } from './toolbox-shape';
-import { snapToLockedAngle } from './angle-lock';
+import { snapToAngle, snapToLockedAngle } from './angle-lock';
 
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 
@@ -29,12 +29,23 @@ type PreviewRenderer = (gRoot: RootGroup, gUI: RootGroup, pxPerMm: number, start
 
 /** Transforms the live second point while the angle-lock modifier (Shift) is held — e.g.
  * snapping to a common angle (Line/Section) or forcing a square (Box/Rect). Applied uniformly
- * on every pointermove/pointerup so drag preview and the committed shape always agree. */
-export type TwoPointModifier = (start: Pt, pt: Pt, host: DraftToolHost) => Pt;
+ * on every pointermove/pointerup so drag preview and the committed shape always agree.
+ * `startTangent` is the tangent (if any) the start point snapped onto — see angleLockModifier. */
+export type TwoPointModifier = (start: Pt, pt: Pt, host: DraftToolHost, startTangent?: number) => Pt;
 
-/** The default angle-lock behavior shared by Line and Section — see angle-lock.ts. */
-export function angleLockModifier(start: Pt, pt: Pt, host: DraftToolHost): Pt {
-  return host.isAngleLockHeld() ? snapToLockedAngle(start, pt) : pt;
+/**
+ * The default angle-lock behavior shared by Line, Dimension and Section. Two independent
+ * modifiers, checked in priority order:
+ *  - Ctrl (tangent-lock) locks onto the tangent of whatever curve the start point snapped onto —
+ *    the same tangent inheritance TangentArcTool uses — so the shape comes out tangent to that
+ *    circle/arc/line. A no-op if the start point didn't land on anything with a tangent.
+ *  - Shift (angle-lock) locks onto the common 30/45/90° grid, same as ever.
+ * Both held at once prefers tangent, since it's the more specific constraint.
+ */
+export function angleLockModifier(start: Pt, pt: Pt, host: DraftToolHost, startTangent?: number): Pt {
+  if (startTangent !== undefined && host.isTangentLockHeld()) return snapToAngle(start, pt, startTangent);
+  if (host.isAngleLockHeld()) return snapToLockedAngle(start, pt);
+  return pt;
 }
 
 export function previewLine(gRoot: RootGroup, _gUI: RootGroup, _pxPerMm: number, start: Pt, end: Pt): void {
@@ -73,6 +84,10 @@ export class TwoPointTool implements DraftTool {
   private startPt: Pt | null = null;
   private currentPt: Pt | null = null;
   private awaitingSecondClick = false;
+  /** The tangent `startPt` snapped onto, if any — captured once when the point is planted (not
+   * re-read later, since by then the snap has moved on to wherever the pointer is now). See
+   * angleLockModifier. */
+  private startTangent: number | undefined;
 
   constructor(
     readonly id: string,
@@ -91,6 +106,7 @@ export class TwoPointTool implements DraftTool {
     }
     this.startPt = pt;
     this.currentPt = pt;
+    this.startTangent = host.getSnapTangent();
     this.awaitingSecondClick = false;
   }
 
@@ -130,7 +146,7 @@ export class TwoPointTool implements DraftTool {
 
   private applyModifier(pt: Pt, host: DraftToolHost): Pt {
     if (!this.modifier || !this.startPt) return pt;
-    return this.modifier(this.startPt, pt, host);
+    return this.modifier(this.startPt, pt, host, this.startTangent);
   }
 
   onKeyDown(event: KeyboardEvent): boolean {
@@ -149,6 +165,7 @@ export class TwoPointTool implements DraftTool {
   reset(): void {
     this.startPt = null;
     this.currentPt = null;
+    this.startTangent = undefined;
     this.awaitingSecondClick = false;
   }
 }

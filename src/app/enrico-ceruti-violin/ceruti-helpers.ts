@@ -147,11 +147,7 @@ export function archHeightInfo() {
 
 export function plateThicknessInfo() {
     info(
-        "The thickness of the plate at the outer edge.\n\n" +
-        "Typical edge thicknesses:\n" +
-        "- Violin top: 2.3–2.8 mm  |  back: 2.8–3.5 mm\n" +
-        "- Viola: slightly heavier than violin\n" +
-        "- Cello top: 4.0–5.0 mm  |  back: 5.0–6.0 mm",
+        "The thickness of the plate at the outer edge.\n\n",
         "Plate Thickness", defaultTTL, true
     )
 }
@@ -188,14 +184,15 @@ export function crossSectionStationInfo() {
     info(
         "Selects which cross section of the body you are viewing — the position along the body length (Y), " +
         "measured in mm from the bottom of the instrument.\n\n" +
-        "This is a view control only — it is not saved with the recipe.",
+        "This is a view control only — it is not saved with the recipe.\n\n" + 
+        "Note there can be some clipping around the corners, as some corners will intersect our cross section line at two points. This has no effect on the exported templates.",
         "Cross-Section Station", defaultTTL, true
     )
 }
 
 export function crossArchCycloidControlsInfo() {
     info(
-        "Factor (0–1): 0 is raised-cosine (gentler edge rise), 1 classic cycloid (steeper edge, flatter crest).\n\n" +
+        "Factor (0–1): 0 is raised-cosine (gentler edge rise), 1 is a classic cycloid (steeper edge, flatter crest).\n\n" +
         "Percent: how much of the full cycloid is stretched across the width. Lower trims the flat ends and steepens the edge takeoff.",
         "Cross-Arch Cycloid Controls", defaultTTL, true
     )
@@ -249,16 +246,15 @@ export function crossArchEdgeDepthInfo() {
 export function cornerCutoffInfo() {
     info(
         "Controls where the corner arc is trimmed, setting the final length of the corner tip. Shorter values produce blunter corners; longer values produce more pronounced points.\n\n" +
-        "When in doubt, leave the corner a little long — the tip gets slightly rounded during final fitting and varnishing.",
+        "When in doubt, leave the corner a little long — the tip gets slightly rounded during final fitting.",
         "Corner Cutoff", defaultTTL, true
     )
 }
 
 export function gougeSectionInfo() {
     info(
-        "The tool itself. Sweep and depth fix the channel's section completely, so its width is reported rather than set.\n\n" +
-        "Small sweep cuts deep and narrow, large sweep broad and shallow. Fluting gouges typically run 8–25 mm of sweep at 1–1.5 mm depth.\n\n" +
-        "Unlike the classic model, the sweep does not drift as it travels — one tool, run the whole way round.",
+        "Sweep corresponds to the sweep of a real gouge tool, which is used to carve the fluting channel. Depth refers to the fluting channel depth, so its width is reported rather than set.\n\n" +
+        "Small sweep cuts deep and narrow, large sweep broad and shallow. Fluting gouges typically run 8–25 mm of sweep at 1–1.5 mm depth.\n\n",
         "Gouge Section", defaultTTL, true
     )
 }
@@ -273,26 +269,22 @@ export function gougeCBoutInfo() {
 
 export function gougeCenterlineInfo() {
     info(
-        "Where the flat land ends and the channel begins, measured inward from the plate edge.\n\n" +
-        "The channel has no position of its own — it starts at this line and grows inward by whatever the gouge cuts. Both plates share it, since it belongs to the purfling rather than to either tool.\n\n" +
-        "The arching templates stop short of it, at the bottom of the trough — highest point of the arch to lowest, and nothing past it.",
+        "Defines the offset for the flat of the edge. This is where the fluting channel will end, leaving a flat surface around the very edge of the instrument.\n\n" + "Values typically range from 1-3mm.",
         "Land Edge", defaultTTL, true
     )
 }
 
 export function cornerGougeInfo() {
     info(
-        "The channel runs past the corners rather than steering into them, leaving a wedge of flat wood between it and the land edge. This gouges that wedge out as a second pass.\n\n" +
-        "Same tool, same depth, anchored to the land edge instead. Along the flanks the two lines coincide, so it finds nothing to cut and changes nothing; it only bites at the corners. Where the gap is wider than the gouge it takes as many passes as it needs, never going below the depth you set.\n\n" +
-        "Turn off to leave the corners as bare flat land.",
+        "Left on as a default. Typically, a fluting channel is gouged out around the corners, and later the corners are carved to smoothly meet the fluting channel. This option toggles that secondary carving, which can be useful for STL exports if you wish to do this step by hand.",
         "Gouge Corners", defaultTTL, true
     )
 }
 
 export function gougedCrossCurveTypeInfo() {
     info(
-        "Cycloid: a trochoid set by two numbers — the same family the classic cross arching offers.\n\n" +
-        "Spline: control points you place yourself, and the only way to make the two sides differ.\n\n" +
+        "Factor (0–1): 0 is raised-cosine (gentler edge rise), 1 is a classic cycloid (steeper edge, flatter crest). Percent: how much of the  cycloid is stretched across the width.\n\n" +
+        "Spline: control points you place yourself.\n\n" +
         "Switching replaces the shape rather than converting it; the two have no honest translation between them.",
         "Crown Curve", defaultTTL, true
     )
@@ -301,8 +293,7 @@ export function gougedCrossCurveTypeInfo() {
 export function gougedCrossCycloidControlsInfo() {
     info(
         "Factor: 0 is a raised cosine, 1 the standard cycloid. Higher fills the shoulders and tightens the crown.\n\n" +
-        "Percent: how much of the curve is used, trimmed evenly from both ends.\n\n" +
-        "Because the channel is already cut, how steeply the crown runs out decides where along the channel flank the two meet — gentle run-outs contact near the trough, steep ones high up. Which way Percent moves that depends on the Factor, so watch the section.",
+        "Percent: how much of the curve is used, trimmed evenly from both ends.\n\n",
         "Cycloid Crown", defaultTTL, true
     )
 }
@@ -328,10 +319,9 @@ export function gougedCrossPeakInfo() {
 
 export function gougedCrossStationInfo() {
     info(
-        "A station pins a different crown shape at one body position; the crown ramps smoothly from the plate's base shape through each station and back.\n\n" +
-        "To add: dial in the shape, move the section to where it applies, press Set Station. To change: move the section onto it, or click its row.\n\n" +
-        "What ramps is the sampled shape, not the numbers, so the fields cannot show a blend between two stations — they show the nearest, and editing opens a new station where you are. Two or three are usually plenty.",
-        "Crown Stations", defaultTTL, true
+        "This button fixes your arch shape to the selected station height. Multiple stations can be pinned, and the surface curve will (attempt ^_^) to smoothly join them.\n\n" +
+        "Arching on historical instruments varies about the body, but two or three stations are usually plenty to define a sensible surface.",
+        "Station Pinning", defaultTTL, true
     )
 }
 

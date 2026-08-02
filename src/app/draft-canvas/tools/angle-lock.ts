@@ -31,3 +31,28 @@ export function snapToLockedAngle(anchor: Pt, pt: Pt): Pt {
   const rad = best * Math.PI / 180;
   return { x: anchor.x + len * Math.cos(rad), y: anchor.y + len * Math.sin(rad) };
 }
+
+/** Snaps `pt` onto the line through `anchor` at a fixed angle (radians) — e.g. the tangent
+ * direction inherited from whatever curve `anchor` snapped onto, so the shape being drawn from it
+ * comes out tangent to that curve. Same distance-preserving projection as snapToLockedAngle, but
+ * against a single given angle (and its opposite, so either side of `anchor` still lies on the
+ * line) instead of searching the common-angle set. */
+export function snapToAngle(anchor: Pt, pt: Pt, angleRad: number): Pt {
+  const dx = pt.x - anchor.x;
+  const dy = pt.y - anchor.y;
+  const len = dist(pt, anchor);
+  if (len < 1e-9) return pt;
+
+  const angleDeg = Math.atan2(dy, dx) * 180 / Math.PI;
+  const baseDeg = angleRad * 180 / Math.PI;
+  const candidates = [baseDeg, baseDeg + 180];
+  let best = candidates[0];
+  let bestDiff = Infinity;
+  for (const candidate of candidates) {
+    const diff = Math.abs(signedDegreeDelta(angleDeg - candidate));
+    if (diff < bestDiff) { bestDiff = diff; best = candidate; }
+  }
+
+  const rad = best * Math.PI / 180;
+  return { x: anchor.x + len * Math.cos(rad), y: anchor.y + len * Math.sin(rad) };
+}

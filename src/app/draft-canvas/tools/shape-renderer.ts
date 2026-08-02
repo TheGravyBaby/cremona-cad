@@ -193,11 +193,19 @@ export type SectionParams = {
 const SECTION_THICKNESS_MM = 10;
 
 /**
- * Draws a line divided into weighted ratio segments, alternating color1/color2,
- * with boundary ticks and per-segment weight labels — ported from the recipe-side
- * helpers/renderFuncs.ts renderBoxLine. An invisible centerline is left snappable
- * (endpoints + along-path); the banding/outline/ticks are marked `data-no-snap`
- * so they don't flood the snap engine with quad-corner/tick candidates.
+ * Draws a line divided into weighted ratio segments, alternating color1/color2, with boundary
+ * ticks and per-segment weight labels — ported from the recipe-side helpers/renderFuncs.ts
+ * renderBoxLine. Section is really a thin rectangle, not a line, so both its long outer edges and
+ * its boundary ticks are left snappable alongside the invisible centerline — a user reaching for
+ * "the edge of this segment" gets the actual edge, not just the middle. Only the fill quads stay
+ * `data-no-snap`: their corners already coincide with the tick/outline candidates above, so
+ * indexing them too would just duplicate every point at higher cost.
+ *
+ * Each interior division point on the centerline additionally gets a zero-radius circle marker —
+ * the same trick shape-renderer.ts uses for Point/Text — so it's an exact 'center'-kind candidate
+ * rather than whatever the centerline's every-2mm path sampling happens to land near. Combined
+ * with the ticks' exact 'endpoint'-kind corners, every boundary now outranks plain along-edge
+ * samples (see snap-engine.ts's KIND_PRIORITY) — an intersection wins over a nearby edge point.
  */
 export function drawSection(gRoot: RootGroup, gUI: RootGroup, p: SectionParams, pxPerMm: number): void {
   const { start, end, weights, color1, color2, label } = p;
@@ -218,7 +226,6 @@ export function drawSection(gRoot: RootGroup, gUI: RootGroup, p: SectionParams, 
     .style('pointer-events', 'none');
 
   const outlineLine = (ox: number, oy: number) => gRoot.append('line')
-    .attr('data-no-snap', '')
     .attr('x1', start.x + ox).attr('y1', start.y + oy)
     .attr('x2', end.x + ox).attr('y2', end.y + oy)
     .attr('stroke', 'rgba(0,0,0,0.25)')
@@ -228,7 +235,6 @@ export function drawSection(gRoot: RootGroup, gUI: RootGroup, p: SectionParams, 
   outlineLine(-nx * halfT, -ny * halfT);
 
   const tickAt = (tx: number, ty: number) => gRoot.append('line')
-    .attr('data-no-snap', '')
     .attr('x1', tx + nx * halfT).attr('y1', ty + ny * halfT)
     .attr('x2', tx - nx * halfT).attr('y2', ty - ny * halfT)
     .attr('stroke', 'rgba(0,0,0,0.35)')
@@ -258,6 +264,14 @@ export function drawSection(gRoot: RootGroup, gUI: RootGroup, p: SectionParams, 
       .attr('opacity', 0.5);
 
     tickAt(ax, ay);
+
+    if (i > 0) {
+      // The i===0 boundary is `start` itself, already an endpoint candidate via the centerline.
+      gRoot.append('circle')
+        .attr('cx', ax).attr('cy', ay).attr('r', 0)
+        .attr('fill', 'none').attr('stroke', 'none')
+        .style('pointer-events', 'none');
+    }
 
     if (label) {
       const cx = (ax + bx) / 2, cy = (ay + by) / 2;

@@ -1241,9 +1241,14 @@ export function gougedCrossGuide(shape: GougedCrossShape, section: GougedCrossSe
 
 /**
  * Outermost |x| where a station line crosses a sampled loop, or null when it
- * misses. A local copy of the same query {@link PlateSurfaceModel} runs against
- * its own boundaries — kept here rather than imported so the gouged math stays
- * free of any dependency on the classic surface module.
+ * misses. Kept here rather than imported so the gouged math stays free of any
+ * dependency on the surface module.
+ *
+ * Deliberately the outermost crossing and not the run around the centerline,
+ * which is what the plate's own edge needs (`plateHalfChordAtY`): this is only
+ * ever asked of the channel centerline, and that loop is inset far enough that
+ * the corners round away entirely — it is a single span at every station on the
+ * body, so the two rules cannot disagree here.
  */
 export function loopHalfChordAtY(poly: Pt[], y: number): number | null {
   const xs: number[] = [];

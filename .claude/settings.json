@@ -26,7 +26,8 @@
       "Bash(sed -i '' \"s|^import { calculateCenterBout|import { it, expect } from 'vitest';\\\\nimport { calculateCenterBout|\" src/scratch/slope.spec.ts)",
       "Bash(sed -i '' \"s|'../../src/app|'../app|g\" src/scratch/slope.spec.ts)",
       "Bash(git checkout *)",
-      "Bash(grep -E \"ms$|grid|stations|Test Files|Tests \")"
+      "Bash(grep -E \"ms$|grid|stations|Test Files|Tests \")",
+      "Bash(awk -F: '$1>755')"
     ],
     "additionalDirectories": [
       "/tmp"
