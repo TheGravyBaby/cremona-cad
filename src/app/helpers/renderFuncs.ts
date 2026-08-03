@@ -445,60 +445,6 @@ export const renderDashedLine = (
         .attr("vector-effect", "non-scaling-stroke");
 };
 
-// 4) Measurement between two points: end ticks + label at midpoint
-export const renderMeasure = (
-    P: Pt,
-    Q: Pt,
-    label: string,
-    color: string,
-    tickSize: number = 6,
-    fontSize: number = 12,
-    offset: number = -10 // offset label along the normal
-) => (g: any, ui: any) => {
-    const dx = Q.x - P.x;
-    const dy = Q.y - P.y;
-    const len = Math.hypot(dx, dy) || 1;
-
-    // unit direction + normal
-    const ux = dx / len, uy = dy / len;
-    const nx = -uy, ny = ux;
-
-    // main line
-    g.append("line")
-        .attr("x1", P.x).attr("y1", P.y)
-        .attr("x2", Q.x).attr("y2", Q.y)
-        .attr("stroke", color)
-        .attr("stroke-width", 1)
-        .attr("vector-effect", "non-scaling-stroke")
-        .attr("opacity", 0.75);
-
-    // ticks at ends (perpendicular)
-    const tick = (A: Pt) => {
-        g.append("line")
-            .attr("x1", A.x + nx * tickSize).attr("y1", A.y + ny * tickSize)
-            .attr("x2", A.x - nx * tickSize).attr("y2", A.y - ny * tickSize)
-            .attr("stroke", color)
-            .attr("stroke-width", 2)
-            .attr("vector-effect", "non-scaling-stroke");
-    };
-    tick(P); tick(Q);
-
-    // label at midpoint, nudged along normal.
-    // Text goes to the ui layer with Y negated so it stays upright despite the grid's Y-flip.
-    const mx = (P.x + Q.x) / 2 + nx * offset;
-    const my = (P.y + Q.y) / 2 + ny * offset;
-
-    ui.append("text")
-        .text(label)
-        .attr("x", mx)
-        .attr("y", -my)
-        .attr("fill", color)
-        .attr("font-size", fontSize)
-        .attr("text-anchor", "middle")
-        .attr("dominant-baseline", "central");
-};
-
-
 export const renderRectFromPt = (P1: Pt, P2: Pt , fill: string, stroke: string) => (g: any, ui: any) => {
     const x = Math.min(P1.x, P2.x);
     const y = Math.min(P1.y, P2.y);

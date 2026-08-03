@@ -19,7 +19,7 @@ import {
   splinePointInfo, trochoidFactorInfo,
 } from '../../ceruti-helpers';
 import { HighlightedSplinePoint } from '../../renders/render-constants';
-import { renderSplineGuide, renderSplineHighlight, renderSplineMeasures } from '../../renders/long-arch.render';
+import { renderArchGuide, renderSplineHighlight } from '../../renders/long-arch.render';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 
 /**
@@ -269,10 +269,7 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
     renderPath(buildArchPathFor(lowered, span, yStart, xBase, sign), color, 1.5)(g, ui);
 
     if (this.flags.showModuleGuides) {
-      renderSplineGuide(lowered, span, yStart, xBase, sign, color)(g, ui);
-      if (lowered.type === 'spline') {
-        renderSplineMeasures(lowered, span, yStart, xBase, sign, color)(g, ui);
-      }
+      renderArchGuide(lowered, span, yStart, xBase, sign, color)(g, ui);
     }
   }
 }
