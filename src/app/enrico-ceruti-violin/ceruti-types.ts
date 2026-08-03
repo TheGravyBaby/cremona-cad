@@ -160,20 +160,17 @@ export interface ArchSpline {
 export type ArchCurve = ArchCatenary | ArchCycloid | ArchSpline;
 
 
-// ===== Gouged arching model =====
-// A second, parallel arching model that inverts the classic one's dependency.
-// There the gouge section is *derived* — flutingArc solves the unique circle
-// through both platform boundaries tangent to the arch, so its sweep radius
-// falls out of the arch and swings around the body (worst at the corners,
-// where the two boundary loops disagree about whether to follow or bypass
-// them). Here the gouge is the given: a real tool has one sweep and one
-// depth, and a maker just keeps running it. What gets solved instead is where
-// the arch stops being the template and starts being the transition into the
-// channel — a contact point free to slide along the channel's inner flank.
+// ===== Arching model =====
+// The gouge is the given: a real tool has one sweep and one depth, and a maker
+// just keeps running it, so the channel's section is the same everywhere. What
+// gets solved is where the arch stops being the template and starts being the
+// transition into the channel — a contact point free to slide along the
+// channel's inner flank.
 //
-// The knob count is unchanged; only which quantity is an input and which is
-// an output. Nothing here is read by the classic path, the exports, or the
-// physical templates — see the plan note in ceruti-gouged.ts.
+// This is the order of operations at the bench, and it is the reverse of the
+// obvious one: deriving the channel from the arch instead makes the gouge's
+// sweep an output that swings around the body, widest exactly at the corners,
+// where no maker's channel widens at all.
 
 /**
  * The gouge that cuts a plate's fluting channel, plus where it runs. A real
@@ -181,7 +178,7 @@ export type ArchCurve = ArchCatenary | ArchCycloid | ArchSpline;
  * the same everywhere — including through the corners, which the channel
  * bypasses rather than follows.
  */
-export interface GougedFlutingParams {
+export interface FlutingParams {
   /** Sweep radius of the gouge (mm). With `depth`, fixes the section entirely. */
   sweepRadius: number;
   /** Depth of the channel at its trough, below the plate outer surface (mm). */
@@ -217,17 +214,16 @@ export interface GougedFlutingParams {
 }
 
 /**
- * A gouged cross-arch control point, in millimetres — unlike the classic
- * {@link CrossArchSplinePoint}, whose `t`/`z` are fractions of the local
- * fluting chord and peak height.
+ * A cross-arch control point.
  *
- * Millimetres are the whole point: a fractional point describes a curve that
- * *stretches* station to station, so "the same cross arch" is physically a
- * different shape at the waist than at the widest bout. A template a maker
- * holds against the wood does not stretch. Only the skirt outside the last
- * control point adapts, and that part is solved rather than authored.
+ * Anchored to the crown rather than to the local fluting chord. A point that
+ * measures itself against the chord describes a curve that *stretches* station
+ * to station, so "the same cross arch" is physically a different shape at the
+ * waist than at the widest bout. A template a maker holds against the wood does
+ * not stretch. Only the skirt outside the last control point adapts, and that
+ * part is solved rather than authored.
  */
-export interface GougedCrossPoint {
+export interface CrossArchPoint {
   /**
    * Signed position across the plate as a fraction of this side's own crown:
    * 0 is the *joint*, ±1 the takeoff where the crown runs into the channel.
@@ -263,17 +259,14 @@ export interface GougedCrossPoint {
 }
 
 /**
- * A gouged cross-arch section shape built from control points: the crown
- * template only. Its peak sits at the long arch's height for that station; its
- * outer end is *not* here, because the takeoff point is solved for tangency
- * against the channel (see `solveGougedTakeoff`) rather than entered.
- *
- * The discriminator stays `'gouged'` rather than becoming `'gouged-spline'` so
- * templates saved before the trochoid existed still load as what they are.
+ * A cross-arch section shape built from control points: the crown template
+ * only. Its peak sits at the long arch's height for that station; its outer end
+ * is *not* here, because the takeoff point is solved for tangency against the
+ * channel (see `solveArchTakeoff`) rather than entered.
  */
-export interface GougedCrossSplineShape {
-  type: 'gouged';
-  points: GougedCrossPoint[];
+export interface CrossArchSplineShape {
+  type: 'spline';
+  points: CrossArchPoint[];
   /**
    * Where the crown sits across the plate, as a fraction of the full width
    * between the channel centerlines: 0.5 is the joint, below it the bass side.
@@ -281,7 +274,7 @@ export interface GougedCrossSplineShape {
    * Held well inside 0–1 — the crown has to stay an interior knot.
    *
    * Measured against the *centerline chord* rather than against the solved
-   * takeoffs, unlike {@link GougedCrossPoint.x}. A knot must not cross the
+   * takeoffs, unlike {@link CrossArchPoint.x}. A knot must not cross the
    * takeoff mid-solve, so it is anchored to it; the crown must not move at all
    * mid-solve, so it is anchored to something the solve does not touch.
    *
@@ -297,66 +290,61 @@ export interface GougedCrossSplineShape {
 }
 
 /**
- * A gouged cross-arch section shape built from a trochoid — the same curve
- * family the classic cross arch offers, so the two models can be compared
- * without also changing the crown's shape.
+ * A cross-arch section shape built from a trochoid. Symmetric by construction —
+ * asymmetry lives in the control-point form, where it is a property of the
+ * points rather than a second pair of curve settings.
  *
- * There is no `left`/`right` pair here, unlike {@link CrossArchCycloidShape}:
- * this is the symmetric form only. Note also what `pct` means in this model.
- * Classically it clips the flat cusp so the arch has a real grade where it
- * meets a channel *derived from that grade*; here the channel is already fixed
- * and `pct` decides how steeply the crown runs out, which is what sets where
- * along the channel flank the tangency lands. A flatter run-out (`pct` near 1)
- * can only meet the channel near its trough.
+ * `pct` clips the flat cusp, which decides how steeply the crown runs out, and
+ * that in turn sets where along the channel flank the tangency lands. A flatter
+ * run-out (`pct` near 1) can only meet the channel near its trough.
  */
-export interface GougedCrossCycloidShape {
-  type: 'gouged-cycloid';
+export interface CrossArchCycloidShape {
+  type: 'cycloid';
   /** Trochoid factor: 0 = raised cosine, 1 = standard cycloid (valid range 0–1). */
   d: number;
   /** Trochoid window: 1 = the full curve, <1 clips the flat cusp end for a steeper run-out (valid range 0.05–1). */
   pct: number;
 }
 
-/** A gouged cross-arch section shape: a trochoid or a control-point template. */
-export type GougedCrossShape = GougedCrossSplineShape | GougedCrossCycloidShape;
+/** A cross-arch section shape: a trochoid or a control-point template. */
+export type CrossArchShape = CrossArchSplineShape | CrossArchCycloidShape;
 
-/** A control-point gouged cross-arch shape pinned to one body-length position. */
-export type GougedCrossSplineStation = GougedCrossSplineShape & {
+/** A control-point cross-arch shape pinned to one body-length position. */
+export type CrossArchSplineStation = CrossArchSplineShape & {
   /** Body-length position in mm, held strictly inside the plate ends. */
   y: number;
 };
 
-/** A trochoid gouged cross-arch shape pinned to one body-length position. */
-export type GougedCrossCycloidStation = GougedCrossCycloidShape & {
+/** A trochoid cross-arch shape pinned to one body-length position. */
+export type CrossArchCycloidStation = CrossArchCycloidShape & {
   /** Body-length position in mm, held strictly inside the plate ends. */
   y: number;
 };
 
 /**
- * A gouged cross-arch shape pinned to one body-length position — either curve
- * type. Split per type rather than left as `GougedCrossShape & { y }` so a
+ * A cross-arch shape pinned to one body-length position — either curve
+ * type. Split per type rather than left as `CrossArchShape & { y }` so a
  * plate's station list narrows along with the plate: knowing a plate is a
  * trochoid should be enough to read `d` off its stations.
  */
-export type GougedCrossStation = GougedCrossSplineStation | GougedCrossCycloidStation;
+export type CrossArchStation = CrossArchSplineStation | CrossArchCycloidStation;
 
 /**
- * Gouged cross-arch parameters for one plate: a base template anchoring both
- * body ends, plus optional interior stations the shape ramps through — the
- * same edges-plus-interior-points relationship the classic cross arch has.
+ * Cross-arch parameters for one plate: a base template anchoring both body
+ * ends, plus optional interior stations the shape ramps through.
  *
- * Split by curve type the same way {@link CrossArchParams} is, so a plate's
- * `points` or `d`/`pct` are reachable without a cast once its type is known.
+ * Split by curve type, so a plate's `points` or `d`/`pct` are reachable without
+ * a cast once its type is known.
  */
-export type GougedCrossSplineParams = GougedCrossSplineShape & {
-  stations?: GougedCrossSplineStation[];
+export type CrossArchSplineParams = CrossArchSplineShape & {
+  stations?: CrossArchSplineStation[];
 };
 
-export type GougedCrossCycloidParams = GougedCrossCycloidShape & {
-  stations?: GougedCrossCycloidStation[];
+export type CrossArchCycloidParams = CrossArchCycloidShape & {
+  stations?: CrossArchCycloidStation[];
 };
 
-export type GougedCrossParams = GougedCrossSplineParams | GougedCrossCycloidParams;
+export type CrossArchParams = CrossArchSplineParams | CrossArchCycloidParams;
 
 export interface ArchPlate {
   arch: ArchCurve;
@@ -366,9 +354,9 @@ export interface ArchPlate {
    * on first use, so a recipe that predates the panel still opens on a sane
    * tool rather than on nothing.
    */
-  gougedFluting?: GougedFlutingParams;
+  fluting?: FlutingParams;
   /** The plate's cross-arch crown. Absent until authored. */
-  gougedCross?: GougedCrossParams;
+  cross?: CrossArchParams;
 }
 
 export interface ArchingParams {
@@ -398,7 +386,7 @@ export interface EnricoCerutiParams {
   /**
    * How far in from the plate edge the carved area begins, in mm. No longer
    * editable — the channel's own reach is an output of the gouge that cuts it,
-   * see {@link GougedChannelPaths.innerEdgeOffset} — but still the band the
+   * see {@link ChannelPaths.innerEdgeOffset} — but still the band the
    * long arch is spanned across, so it is defaulted on load and read by
    * {@link longArchHeightAt}. Retiring it would recompress every plate's arch,
    * which is a shape decision rather than a cleanup.

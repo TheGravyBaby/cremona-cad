@@ -1146,37 +1146,6 @@ function makeArchSplineZOf(
   return makeMonotoneSpline(ys, zs);
 }
 
-// ===== Cross-arch spline =====
-// The cross arch's peak height (hEff) and width (span) are *derived* per
-// body-length station (from the long arch and the fluting geometry there),
-// not user-entered constants — that's what lets a station system ramp a
-// trochoid's d/pct between stations at all, since those are portable ratios.
-// A spline cross-arch shape needs the same portability, so its control points
-// store z as a FRACTION of hEff rather than an absolute mm value (see
-// CrossArchSplinePoint in ceruti-types.ts) — reusing archSplineKnots/splineZAt
-// above with hEff=1, span=1 makes that fraction literally the function's
-// output. makeMonotoneSpline is homogeneous of degree 1 in its z-values (the
-// natural-slope solve is linear in them, and every branch of the Hyman filter —
-// the sign-based zero-slope test, the 3·min secant bound — is preserved by a
-// positive scaling), so
-// `splineZAt(1, 1, ...) * hEff` is exactly what a direct hEff evaluation would
-// give, not an approximation.
-
-/**
- * Column count for a cross-arch spline's sampled height profile (see
- * {@link crossArchSplineProfileGrid}). Fixed rather than instrument-size-scaled,
- * since the t-domain is already normalized 0..1 regardless of physical span.
- * Dense enough that linear interpolation between columns (crossArchSplineZAt)
- * doesn't visibly facet the curve — comparable to buildSplinePath's N=120
- * along-path samples and buildCycloidPathAcross's N=80.
- */
-export const CROSS_ARCH_SPLINE_GRID_N = 161;
-
-
-/** How far into the profile the edge-slope probe samples (normalized t). Held
- *  below archSplineKnots' SPLINE_POINT_MARGIN so the probe can never cross
- *  into a neighboring segment, even when a control point sits close to an edge. */
-const CROSS_ARCH_SPLINE_EDGE_PROBE_T = 1e-4;
 
 
 

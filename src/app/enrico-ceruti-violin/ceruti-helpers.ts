@@ -190,58 +190,11 @@ export function crossSectionStationInfo() {
     )
 }
 
-export function crossArchCycloidControlsInfo() {
-    info(
-        "Factor (0–1): 0 is raised-cosine (gentler edge rise), 1 is a classic cycloid (steeper edge, flatter crest).\n\n" +
-        "Percent: how much of the full cycloid is stretched across the width. Lower trims the flat ends and steepens the edge takeoff.",
-        "Cross-Arch Cycloid Controls", defaultTTL, true
-    )
-}
 
-export function asymmetricCrossArchInfo() {
-    info(
-        "By default the cross arch is the same shape on both sides of the centerline. Turning this on lets the left (x<0) and right (x>0) halves take independent Cycloid Factor / Percentage values instead.\n\n" +
-        "Both halves always meet the center at the same peak height with a level tangent regardless of how differently they're shaped, so there is never a seam at the centerline — only the takeoff shape on each side changes.",
-        "Asymmetric Cross Arch", defaultTTL, true
-    )
-}
 
-export function crossStationInfo() {
-    info(
-        "A station pins a different cross-arch shape at one body position; the arch ramps smoothly from the plate's own Factor/Percent through each station and back.\n\n" +
-        "To add: dial in the shape, move the section height to where it applies, press Set Station. To change: move the section onto it, or click its row.\n\n" +
-        "Corner sections tend to run flatter, the lower bout fuller. Two or three stations are usually plenty.",
-        "Cross-Arch Stations", defaultTTL, true
-    )
-}
 
-export function crossArchCurveTypeInfo() {
-    info(
-        "Two cross-arch profiles are available:\n\n" +
-        "Cycloid — a trochoid curve controlled by a Factor and Percent, always symmetric unless you turn on the separate Asymmetric toggle.\n\n" +
-        "Spline — a cubic spline through user-placed control points, with a movable Peak position and per-point Mirror flags instead of a separate asymmetric toggle. The peak's height is always the long arch's height at that body position — only its position across the width, and the shape of the rise to it, are yours to set.",
-        "Cross-Arch Curve Type", defaultTTL, true
-    )
-}
 
-export function crossArchSplinePointInfo() {
-    info(
-        "Position (0–100): across the width, 0 = left takeoff edge, 100 = right. Both edges are 0%.\n\n" +
-        "Height (0–100%): a fraction of the local peak height, not mm — the peak comes from the long arch and changes station to station.\n\n" +
-        "Peak: the first row, always 100%, movable across the width.\n\n" +
-        "Mirror: off shapes one side independently.",
-        "Cross-Arch Spline Control Point", defaultTTL, true
-    )
-}
 
-export function crossArchEdgeDepthInfo() {
-    info(
-        "Lowers the point where the long and cross arches take off from the plate edge, measured in mm below the plate outer surface.\n\n" +
-        "This is primarily used to control the degree of curvature along the fluting.\n\n" +
-        "Values of 0.5–2 mm are typical.",
-        "Edge Depth", defaultTTL, true
-    )
-}
 
 export function cornerCutoffInfo() {
     info(
@@ -281,7 +234,7 @@ export function cornerGougeInfo() {
     )
 }
 
-export function gougedCrossCurveTypeInfo() {
+export function crossArchCurveTypeInfo() {
     info(
         "Factor (0–1): 0 is raised-cosine (gentler edge rise), 1 is a classic cycloid (steeper edge, flatter crest). Percent: how much of the  cycloid is stretched across the width.\n\n" +
         "Spline: control points you place yourself.\n\n" +
@@ -290,7 +243,7 @@ export function gougedCrossCurveTypeInfo() {
     )
 }
 
-export function gougedCrossCycloidControlsInfo() {
+export function crossArchCycloidControlsInfo() {
     info(
         "Factor: 0 is a raised cosine, 1 the standard cycloid. Higher fills the shoulders and tightens the crown.\n\n" +
         "Percent: how much of the curve is used, trimmed evenly from both ends.\n\n",
@@ -298,14 +251,14 @@ export function gougedCrossCycloidControlsInfo() {
     )
 }
 
-export function gougedCrossTemplateInfo() {
+export function crossArchTemplateInfo() {
     info(
         "Position defines the position of your control point accross the body width, where 50% is dead center. Height works much the same. The long arch panel defines the peak height for this curve, so height is defined as a percentage of this peak.",
         "Cross-Arch Shape", defaultTTL, true
     )
 }
 
-export function gougedCrossPeakInfo() {
+export function crossArchPeakInfo() {
     info(
         "Where the peak of the curve fits along the body. Real plates rarely peak dead centre.\n\n" +
         "You can move the peak +/- from the center as needed, center is defined as 50%.",
@@ -313,7 +266,7 @@ export function gougedCrossPeakInfo() {
     )
 }
 
-export function gougedCrossStationInfo() {
+export function crossArchStationInfo() {
     info(
         "This button fixes your arch shape to the selected station height. Multiple stations can be pinned, and the surface curve will (attempt ^_^) to smoothly join them.\n\n" +
         "Arching on historical instruments varies about the body, but two or three stations are usually plenty to define a sensible surface.",
@@ -321,7 +274,7 @@ export function gougedCrossStationInfo() {
     )
 }
 
-export function gougedTransitionInfo() {
+export function transitionInfo() {
     info(
         "Where the arch stops being the template and becomes the run into the channel. Solved for, not set — tangency is one equation, and the contact point is its one unknown.\n\n" +
         "If no solution exists, the arch and channel genuinely cannot meet there. Lower the arch, move the channel outward, or widen the gouge.",
@@ -339,7 +292,7 @@ export function gougedTransitionInfo() {
  * rather than being left to notice. Titled per plate so both can be reported at
  * once; the panel decides when to raise it.
  */
-export function gougedTransitionError(plate: 'top' | 'bottom', y: number) {
+export function transitionError(plate: 'top' | 'bottom', y: number) {
     const label = plate === 'top' ? 'Top' : 'Back';
     error(
         `The ${label.toLowerCase()} plate's crown cannot meet its channel at station ${y.toFixed(0)} mm.\n\n` +

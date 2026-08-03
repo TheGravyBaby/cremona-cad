@@ -99,31 +99,31 @@
         </app-ceruti-mould-panel>
         }
 
-        @if (openPanel === 'gougedFluting') {
-        <app-ceruti-gouged-fluting-panel #panelRef
+        @if (openPanel === 'fluting') {
+        <app-ceruti-fluting-panel #panelRef
             [params]="d.params"
             [colors]="colors"
             [flags]="viewFlags"
             (panelUpdate)="onPanelRenderRequest($event)">
-        </app-ceruti-gouged-fluting-panel>
+        </app-ceruti-fluting-panel>
         }
 
-        @if (openPanel === 'gougedLongArching') {
-        <app-ceruti-gouged-long-arching-panel #panelRef
+        @if (openPanel === 'longArching') {
+        <app-ceruti-long-arching-panel #panelRef
             [params]="d.params"
             [colors]="colors"
             [flags]="viewFlags"
             (panelUpdate)="onPanelRenderRequest($event)">
-        </app-ceruti-gouged-long-arching-panel>
+        </app-ceruti-long-arching-panel>
         }
 
-        @if (openPanel === 'gougedCrossArching') {
-        <app-ceruti-gouged-cross-arching-panel #panelRef
+        @if (openPanel === 'crossArching') {
+        <app-ceruti-cross-arching-panel #panelRef
             [params]="d.params"
             [colors]="colors"
             [flags]="viewFlags"
             (panelUpdate)="onPanelRenderRequest($event)">
-        </app-ceruti-gouged-cross-arching-panel>
+        </app-ceruti-cross-arching-panel>
         }
 
         @if (openPanel === 'export') {

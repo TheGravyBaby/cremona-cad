@@ -1,16 +1,15 @@
 import { normalizeCrossArchStations, STATION_MERGE_EPS_MM } from './ceruti-arching';
-import { GougedCrossCycloidStation, GougedCrossSplineStation } from './ceruti-types';
+import { CrossArchCycloidStation, CrossArchSplineStation } from './ceruti-types';
 
-// `normalizeCrossArchStations` outlived the classic cross-arch engine it was
-// written for: it is generic over `{ y: number }`, and the gouged resolver,
-// `nearestGougedCrossShape` and the template station list all lean on it. These
-// cases came across from the two classic station specs when those were retired,
-// restated against gouged stations so the coverage follows the caller.
+// `normalizeCrossArchStations` is generic over `{ y: number }`, and the crown
+// resolver, `nearestCrossArchShape` and the template station list all lean on
+// it. These cases are stated against crown stations, so the coverage follows
+// the callers rather than the signature.
 
 const BODY = 350;
 
-const cyc = (y: number, d: number, pct = 0.9): GougedCrossCycloidStation =>
-  ({ y, type: 'gouged-cycloid', d, pct });
+const cyc = (y: number, d: number, pct = 0.9): CrossArchCycloidStation =>
+  ({ y, type: 'cycloid', d, pct });
 
 describe('normalizeCrossArchStations', () => {
   it('sorts by position and leaves the caller\'s array untouched', () => {
@@ -38,8 +37,8 @@ describe('normalizeCrossArchStations', () => {
   });
 
   it('preserves the station subtype through the call', () => {
-    const stations: GougedCrossSplineStation[] = [
-      { y: 120, type: 'gouged', peak: 0.55, points: [{ x: -0.34, z: 0.5, mirror: true }] },
+    const stations: CrossArchSplineStation[] = [
+      { y: 120, type: 'spline', peak: 0.55, points: [{ x: -0.34, z: 0.5, mirror: true }] },
     ];
     const out = normalizeCrossArchStations(stations, BODY);
     // Typed as the spline station it went in as, so `points` is reachable

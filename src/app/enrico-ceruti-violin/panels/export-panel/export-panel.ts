@@ -8,7 +8,7 @@ import { downloadStlFile } from '../../../helpers/stlExporter';
 import { renderPath, renderText } from '../../../helpers/renderFuncs';
 import { error } from '../../../shared/message-emitter';
 import { calculateCornerBlocks, calculateMould, calculateOuterArcs, ensureCenterBoutInnerPath, ensureOuterTracePaths } from '../../ceruti-calcs';
-import { defaultGougedCrossParams, defaultGougedFlutingParams } from '../../ceruti-gouged';
+import { defaultCrossArchParams, defaultFlutingParams } from '../../ceruti-gouged';
 import { buildPlateSurfaceModel, buildPlateStl, calculateCrossArchTemplates, calculateLongArchTemplates, TemplateShape } from '../../ceruti-surface';
 import { CerutiColors, EnricoCerutiParams, PathEntry } from '../../ceruti-types';
 
@@ -181,8 +181,8 @@ export class ExportPanel implements OnInit {
       return;
     }
     const plate = p.arching[side];
-    plate.gougedFluting ??= defaultGougedFlutingParams(p);
-    plate.gougedCross ??= defaultGougedCrossParams();
+    plate.fluting ??= defaultFlutingParams(p);
+    plate.cross ??= defaultCrossArchParams();
     calculateOuterArcs(p);
     const model = buildPlateSurfaceModel(p, side);
     if (!model) return;

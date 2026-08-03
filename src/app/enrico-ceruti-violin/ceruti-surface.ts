@@ -11,9 +11,9 @@ import {
 import { ArchCurve, ArchPlate, EnricoCerutiParams } from './ceruti-types';
 import { defineInsetPath, defineOuterPath } from './ceruti-paths';
 import {
-    buildGougedPlateGeometry, defaultGougedCrossParams, defaultGougedFlutingParams,
-    chordTrust, cornerGougeOn, cornerGougeZ, gougeAtY, GougedCrossSection, gougedCrossSectionAt,
-    gougedLongArchProfilePath, GougedPlateGeometry, gougeProfileZ, solveGougedLongArch,
+    buildPlateGeometry, defaultCrossArchParams, defaultFlutingParams,
+    chordTrust, cornerGougeOn, cornerGougeZ, gougeAtY, CrossArchSection, crossArchSectionAt,
+    longArchProfilePath, PlateGeometry, gougeProfileZ, solveLongArch,
 } from './ceruti-gouged';
 import {
     bodyLandmarks, longArchHeightAt, normalizeCrossArchStations, STATION_MERGE_EPS_MM,
@@ -33,7 +33,7 @@ import {
 // Which measure decides "how far across" differs between the two, deliberately:
 // the channel goes by true distance to the centerline loop (that is what keeps
 // the cut one gouge wide the whole way round, corners included) and the arch by
-// station chord. See `gougedZAt`, which blends them across the handover.
+// station chord. See `archedZAt`, which blends them across the handover.
 //
 // Heights are relative to the plate outer surface (ribHeight + top thickness);
 // the channel dips negative.
@@ -60,7 +60,7 @@ export interface PlateSurfaceModel {
      */
     signZ: 1 | -1;
     /** The channel loops, the gouge, and the crown resolver — what the height field is actually built from. */
-    gouged: GougedPlateGeometry;
+    geometry: PlateGeometry;
 }
 
 /**
@@ -75,13 +75,13 @@ export function buildPlateSurfaceModel(p: EnricoCerutiParams, side: 'top' | 'bot
     const a = p.arching;
     if (!a) return null;
     const plate = a[side];
-    const gouged = buildGougedPlateGeometry(
+    const geometry = buildPlateGeometry(
         p,
         plate.arch,
-        plate.gougedFluting ?? defaultGougedFlutingParams(p),
-        plate.gougedCross ?? defaultGougedCrossParams(),
+        plate.fluting ?? defaultFlutingParams(p),
+        plate.cross ?? defaultCrossArchParams(),
     );
-    if (!gouged) return null;
+    if (!geometry) return null;
     const platformOuter = samplePathToPolyline(defineInsetPath(p, p.outerFlutingDepth ?? 0));
     // The back plate carries the neck-root button in its outline; the top does not.
     const outerPlate = samplePathToPolyline(defineOuterPath(p, p.overhang + p.rib, true, side === 'bottom'));
@@ -92,7 +92,7 @@ export function buildPlateSurfaceModel(p: EnricoCerutiParams, side: 'top' | 'bot
         arch: plate.arch,
         zBase: side === 'top' ? a.ribHeight + plate.thickness : -plate.thickness,
         signZ: side === 'top' ? 1 : -1,
-        gouged,
+        geometry,
     };
 }
 
@@ -114,9 +114,9 @@ export interface StationChords {
      * where the plate has no arch — the cap bands past the long arch's reach,
      * which still carry a channel.
      */
-    gougedSection: GougedCrossSection | null;
+    crossSection: CrossArchSection | null;
     /** X-crossings of the channel centerline, for the inside/outside test. */
-    gougedCenterCrossings: number[];
+    channelCenterCrossings: number[];
 }
 
 export function stationChordsAt(p: EnricoCerutiParams, model: PlateSurfaceModel, y: number): StationChords {
@@ -128,8 +128,8 @@ export function stationChordsAt(p: EnricoCerutiParams, model: PlateSurfaceModel,
             : null,
         landCrossings,
         archH: longArchHeightAt(p, model.arch, y),
-        gougedSection: gougedCrossSectionAt(p, model.gouged, y),
-        gougedCenterCrossings: polylineCrossingsAtY(model.gouged.centerPoly, y),
+        crossSection: crossArchSectionAt(p, model.geometry, y),
+        channelCenterCrossings: polylineCrossingsAtY(model.geometry.centerPoly, y),
     };
 }
 
@@ -192,17 +192,17 @@ function insideCrossings(x: number, xs: number[]): boolean {
  * exactly where the arch hands over — never as a step, since both sides
  * evaluate the same channel there.
  */
-function gougedZAt(
-    p: EnricoCerutiParams, g: GougedPlateGeometry, chords: StationChords,
+function archedZAt(
+    p: EnricoCerutiParams, g: PlateGeometry, chords: StationChords,
     platformOuterIdx: PolylineIndex, x: number, y: number,
 ): number {
     // Signed distance from the channel centerline, positive toward the plate
     // centre. Inside the centerline loop is inward, which is the direction the
     // gouge section's own `s` runs.
     const dist = closestPointToPolylineIndexed({ x, y }, g.centerIdx).dist;
-    const s = insideCrossings(x, chords.gougedCenterCrossings ?? []) ? dist : -dist;
+    const s = insideCrossings(x, chords.channelCenterCrossings ?? []) ? dist : -dist;
 
-    const section = chords.gougedSection;
+    const section = chords.crossSection;
     if (section) {
         const contact = (x < 0 ? section.left : section.right)?.contactS ?? section.halfWidth;
         if (s >= contact) {
@@ -278,7 +278,7 @@ function gougedZAt(
  * all — hence the crossings test rather than a bare distance.
  */
 function withCornerPass(
-    p: EnricoCerutiParams, g: GougedPlateGeometry, chords: StationChords,
+    p: EnricoCerutiParams, g: PlateGeometry, chords: StationChords,
     platformOuterIdx: PolylineIndex, x: number, y: number, s: number, z: number,
 ): number {
     if (!cornerGougeOn(g.gouge)) return z;
@@ -306,7 +306,7 @@ function withCornerPass(
 export function topSurfaceZAt(p: EnricoCerutiParams, model: PlateSurfaceModel, x: number, y: number, chords?: StationChords): number | null {
     chords ??= stationChordsAt(p, model, y);
     if (chords.outerHalf === null || Math.abs(x) > chords.outerHalf) return null;
-    return gougedZAt(p, model.gouged, chords, model.platformOuterIdx, x, y);
+    return archedZAt(p, model.geometry, chords, model.platformOuterIdx, x, y);
 }
 
 /**
@@ -449,7 +449,7 @@ export interface TemplateStation {
 export function crossArchTemplateStations(p: EnricoCerutiParams, plate?: ArchPlate): TemplateStation[] {
     const landmarks: TemplateStation[] = bodyLandmarks(p).map(m => ({ y: m.y, code: m.code }));
     const authored = normalizeCrossArchStations(
-        plate?.gougedCross?.stations as Array<{ y: number }> | undefined, p.height,
+        plate?.cross?.stations as Array<{ y: number }> | undefined, p.height,
     )
         .map(s => Math.round(s.y))
         .filter(y => !landmarks.some(m => Math.abs(m.y - y) <= STATION_MERGE_EPS_MM))
@@ -539,10 +539,10 @@ const TEMPLATE_SIDES: Array<{ key: 'top' | 'bottom'; label: string }> =
     [{ key: 'bottom', label: 'Back' }, { key: 'top', label: 'Top' }];
 
 /** A plate's gouge and crown, seeded if the maker hasn't been into those panels yet. */
-function ensureGougedPlate(p: EnricoCerutiParams, key: 'top' | 'bottom'): ArchPlate {
+function ensureArchPlate(p: EnricoCerutiParams, key: 'top' | 'bottom'): ArchPlate {
     const plate = p.arching![key];
-    plate.gougedFluting ??= defaultGougedFlutingParams(p);
-    plate.gougedCross ??= defaultGougedCrossParams();
+    plate.fluting ??= defaultFlutingParams(p);
+    plate.cross ??= defaultCrossArchParams();
     return plate;
 }
 
@@ -558,7 +558,7 @@ function ensureGougedPlate(p: EnricoCerutiParams, key: 'top' | 'bottom'): ArchPl
 export function calculateCrossArchTemplates(p: EnricoCerutiParams): TemplateShape[] {
     if (!p.arching) return [];
     const templates = TEMPLATE_SIDES.flatMap(({ key, label }) => {
-        const plate = ensureGougedPlate(p, key);
+        const plate = ensureArchPlate(p, key);
         const model = buildPlateSurfaceModel(p, key);
         if (!model) return [];
         const shapes = calculateCrossArchTemplatesForSide(p, model, label, crossArchTemplateStations(p, plate));
@@ -574,7 +574,7 @@ export function calculateCrossArchTemplates(p: EnricoCerutiParams): TemplateShap
  * the back plate's blank is rotated 180° after the fact.
  *
  * Each plate's arch is terminated against its own channel by
- * {@link solveGougedLongArch} rather than at an entered edge depth, so the two
+ * {@link solveLongArch} rather than at an entered edge depth, so the two
  * blanks can differ in length as well as in height — a deeper gouge takes off
  * further in.
  *
@@ -586,11 +586,11 @@ export function calculateLongArchTemplates(p: EnricoCerutiParams): TemplateShape
     const a = p.arching;
     const templates: TemplateShape[] = [];
     for (const { key, label } of TEMPLATE_SIDES) {
-        const plate = ensureGougedPlate(p, key);
-        const gouge = plate.gougedFluting!;
+        const plate = ensureArchPlate(p, key);
+        const gouge = plate.fluting!;
         const sign: 1 | -1 = key === 'top' ? 1 : -1;
         const zBase = key === 'top' ? a.ribHeight + plate.thickness : -plate.thickness;
-        const swept = gougedLongArchProfilePath(p, gouge, solveGougedLongArch(p, plate.arch, gouge), zBase, sign);
+        const swept = longArchProfilePath(p, gouge, solveLongArch(p, plate.arch, gouge), zBase, sign);
         const profile = trimProfileToTroughs(swept, zBase, 'x', sign);
         if (!profile) continue;
         const { path, backing, positionMid } = closeProfileToBlank(profile, 'x', sign, TEMPLATE_MARGIN);
@@ -637,9 +637,8 @@ function computeArchContourRingsRaw(
         const chords = stationChordsAt(p, model, y);
         // Both halves, evaluated. The *outline* is x-symmetric, and this used to
         // sample x ≥ 0 and mirror on that basis — but the outline is not the
-        // surface. A cross arch can be asymmetric in either model: an unmirrored
-        // control point, a moved crown, or the classic model's own left/right
-        // cycloid pair. Mirroring then stamps the treble half onto the bass half
+        // surface. A cross arch can be asymmetric: an unmirrored control point
+        // or a moved crown. Mirroring then stamps the treble half onto the bass half
         // and leaves a seam down the joint where the two copies meet, which is
         // not in the height field at all — only in the picture of it. The saving
         // was half the samples on a grid that is already cached per recipe.
