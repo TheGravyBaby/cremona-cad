@@ -8,7 +8,7 @@ import { CERUTI_TEMPLATES } from './ceruti-templates';
 import { defineOuterPath, defineOuterPurflingPath, definePurflingPath } from './ceruti-paths';
 import { normalizeArchingParams } from './ceruti-arching';
 import { renderBounds } from './renders/guides.render';
-import { BasePanel } from './panels/base-panel/base-panel';
+import { dimensionInfo, insetInfo } from './ceruti-helpers';
 import { MainBoutsPanel } from './panels/main-bouts-panel/main-bouts-panel';
 import { CornersPanel } from './panels/corners-panel/corners-panel';
 import { CenterBoutPanel } from './panels/center-bout-panel/center-bout-panel';
@@ -38,10 +38,11 @@ function toggleRows(on: Partial<RenderToggleRows>): RenderToggleRows {
 
 @Component({
   selector: 'app-ceruti-violin',
-  imports: [FormsModule, BasePanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterTracePanel, MouldPanel, FlutingPanel, LongArchingPanel, CrossArchingPanel, ExportPanel, RecipeToolbarComponent, RenderToggles],
+  imports: [FormsModule, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterTracePanel, MouldPanel, FlutingPanel, LongArchingPanel, CrossArchingPanel, ExportPanel, RecipeToolbarComponent, RenderToggles],
   templateUrl: './ceruti-violin.html',
   styleUrls: ['../sidebar.css', './ceruti-violin.css'],
 })
+
 export class CerutiViolin extends RecipeComponentBase {
 
   // ===== Static config and theming =====
@@ -367,6 +368,12 @@ export class CerutiViolin extends RecipeComponentBase {
 
   // ===== UI helpers =====
 
+  // Used by the base-measurements section of ceruti-violin.html, which lives here rather than in
+  // its own panel component — see changeBaseMeasurements() below. (nearestFraction, also used
+  // there, comes from RecipeComponentBase.)
+  protected readonly dimensionInfo = dimensionInfo;
+  protected readonly insetInfo = insetInfo;
+
   protected override refreshBoundInputs(): void {
     queueMicrotask(() => {
       this.cdr.markForCheck();
@@ -409,7 +416,8 @@ export class CerutiViolin extends RecipeComponentBase {
   }
 
   /**
-   * Intentional exception: Base remains parent-owned because it is the
+   * Base Measurements' own change handler — the panel's markup lives inline in
+   * ceruti-violin.html rather than in a separate panel component, since it's the
    * landing panel and the simplest place to trace first-touch behavior.
    */
   changeBaseMeasurements(): void {
