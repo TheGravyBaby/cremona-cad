@@ -2,7 +2,7 @@ import { Component, Input, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Circle, Pt, Rectangle } from '../../../models/types';
 import {
-  renderCircle, renderCrosshair, renderLine, renderMeasure, renderPath, renderPointHalo, renderRect,
+  renderCircle, renderLine, renderPath, renderPointHalo, renderRect,
 } from '../../../helpers/renderFuncs';
 import { clamp } from '../../../helpers/draftMath';
 import { samplePathToPolyline } from '../../../helpers/svgPathMath';
@@ -31,6 +31,7 @@ import {
   computeSingleWireframeStrip, computeWireframeBounds, computeWireframeGeometry, projectWireframe,
   renderArch3dWireframe, WireframeGeometry,
 } from '../../renders/arch-3d-wireframe.render';
+import { renderGuideBaseline, renderGuideKnot, renderGuideMeasure } from '../../renders/module-guide.render';
 import { renderWireframeDragFrame } from '../../renders/wireframe-drag-frame.render';
 import { calculateOuterArcs } from '../../ceruti-calcs';
 import { defineInnerPath, defineOuterPath } from '../../ceruti-paths';
@@ -946,13 +947,17 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
       // The shape at the cursor, not the plate's base — so the crosshairs mark
       // whatever the panel's fields are showing, station or draft included.
       const guide = crossArchGuide(this.activeShape(plate), section);
+      for (const b of guide.baselines) {
+        const z = zBase + sign * b.z;
+        renderGuideBaseline(new Pt(b.fromX, z), new Pt(b.toX, z), color)(g, ui);
+      }
       for (const c of guide.circles) {
         renderCircle(new Circle(0, zBase + sign * c.centerZ, c.radius), color)(g, ui);
       }
       for (const k of guide.knots) {
         const at = new Pt(k.x, zBase + sign * k.z);
-        renderMeasure(new Pt(k.x, zBase + sign * k.base), at, (k.z - k.base).toFixed(1), color, 3, 7)(g, ui);
-        renderCrosshair(at, color, 2, 1.5, 1)(g, ui);
+        renderGuideMeasure(new Pt(k.x, zBase + sign * k.base), at, color)(g, ui);
+        renderGuideKnot(at, color)(g, ui);
       }
       renderCircle(new Circle(section.xPeak, zBase + sign * guide.peakZ, 1), color)(g, ui);
     }

@@ -462,11 +462,28 @@ describe('crossArchGuide', () => {
     }
   });
 
+  // One datum per side, not one across the section: the two takeoffs only share
+  // a level on a symmetric station, and the heights above them are counted
+  // separately either way.
+  it('runs a takeoff datum in from each side, each at its own level', () => {
+    const shape: CrossArchSplineShape = { type: 'spline', points: [{ x: 0.4, z: 0.57, mirror: true }] };
+    const section = sectionFor(rowOf(shape));
+    const guide = crossArchGuide(shape, section);
+    expect(guide.baselines.map(b => b.fromX)).toEqual([-section.xEndLeft, section.xEndRight]);
+    for (const b of guide.baselines) {
+      expect(b.z).toBeCloseTo(section.zAt(b.fromX), 9);
+      expect(b.toX).toBe(section.xPeak);
+    }
+  });
+
   it('draws generating circles for a trochoid, which has no control points to mark', () => {
     const shape: CrossArchCycloidShape = { type: 'cycloid', d: 0.4, pct: 0.9 };
     const guide = crossArchGuide(shape, sectionFor(rowOf(shape)));
     expect(guide.knots).toEqual([]);
     expect(guide.circles.length).toBe(2);
+    // The datum is what a trochoid's rise counts from too, so it is drawn
+    // whether or not there are knots sitting on it.
+    expect(guide.baselines.length).toBe(2);
     // radius = hEff / 2d, per side, off that side's own takeoff.
     const section = sectionFor(rowOf(shape));
     const hEff = section.archH - section.zAt(section.xEndRight);

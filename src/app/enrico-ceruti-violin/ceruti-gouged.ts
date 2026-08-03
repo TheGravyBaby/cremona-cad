@@ -1149,6 +1149,24 @@ export interface CrossArchGuideKnot {
 }
 
 /**
+ * One side's takeoff level, as a run from the takeoff itself in to the crown —
+ * the datum every height on that side is measured from.
+ *
+ * One per side rather than one across the section, because the two takeoffs are
+ * only at the same level on a symmetric station. Where they differ the two runs
+ * meet at the crown at a visible step, which is the asymmetry the model is
+ * about and a single line through the middle would hide.
+ */
+export interface CrossArchGuideBaseline {
+  /** Signed x of the takeoff end. */
+  fromX: number;
+  /** Signed x of the crown end, i.e. the peak. */
+  toX: number;
+  /** Height above the plate outer surface. */
+  z: number;
+}
+
+/**
  * A trochoid crown's generating circle on one side. Centered under the crown,
  * which for a trochoid is always the joint — the curve is symmetric by
  * construction, so there is no crown position to move.
@@ -1189,18 +1207,21 @@ export interface CrossArchGuideCircle {
 export interface CrossArchGuide {
   knots: CrossArchGuideKnot[];
   circles: CrossArchGuideCircle[];
+  /** Both takeoff levels, drawn whatever the curve type — a trochoid's rise counts from them too. */
+  baselines: CrossArchGuideBaseline[];
   /** The crown itself, always marked — at `section.xPeak`, which need not be the joint. */
   peakZ: number;
 }
 
 export function crossArchGuide(shape: CrossArchShape, section: CrossArchSection): CrossArchGuide {
-  const out: CrossArchGuide = { knots: [], circles: [], peakZ: section.archH };
+  const out: CrossArchGuide = { knots: [], circles: [], baselines: [], peakZ: section.archH };
 
   for (const side of [-1, 1] as const) {
     const xEnd = side < 0 ? section.xEndLeft : section.xEndRight;
     // The endpoint of the profile spline, which is exactly the takeoff.
     const base = section.zAt(side * xEnd);
     const hEff = section.archH - base;
+    out.baselines.push({ fromX: side * xEnd, toX: section.xPeak, z: base });
 
     if (shape.type === 'cycloid') {
       // A trochoid of rise `hEff` and factor `d` is traced by a circle of
