@@ -7,8 +7,8 @@ import {
   stationChordsAt, topSurfaceZAt, plateHalfChordAtY, PlateSurfaceModel, computeArchContourRings,
 } from './ceruti-surface';
 import {
-  defaultGougedCrossParams, defaultGougedFlutingParams, gougedCenterlineZAt, gougedCrossSectionAt,
-  gougeHalfWidth, solveGougedLongArch,
+  defaultCrossArchParams, defaultFlutingParams, channelCenterlineZAt, crossArchSectionAt,
+  gougeHalfWidth, solveLongArch,
 } from './ceruti-gouged';
 import { defineInnerPath } from './ceruti-paths';
 import { DefaultParams, EnricoCerutiParams } from './ceruti-types';
@@ -41,7 +41,7 @@ describe('top surface height field', () => {
   it('builds a model with sampled boundary loops', () => {
     expect(model).toBeTruthy();
     expect(model.platformOuter.length).toBeGreaterThan(100);
-    expect(model.gouged.centerPoly.length).toBeGreaterThan(100);
+    expect(model.geometry.centerPoly.length).toBeGreaterThan(100);
   });
 
   it('never voids a station row inside the body — including the corner bands', () => {
@@ -150,11 +150,11 @@ describe('arching templates', () => {
     // Between two landmarks, so it is nowhere near either.
     const between = Math.round((landmarks[0].y + landmarks[1].y) / 2);
     const onLandmark = landmarks[2].y;
-    plate.gougedCross = {
-      ...defaultGougedCrossParams(),
+    plate.cross = {
+      ...defaultCrossArchParams(),
       stations: [
-        { ...defaultGougedCrossParams(), y: between },
-        { ...defaultGougedCrossParams(), y: onLandmark },
+        { ...defaultCrossArchParams(), y: between },
+        { ...defaultCrossArchParams(), y: onLandmark },
       ],
     };
 
@@ -178,9 +178,9 @@ describe('arching templates', () => {
 
   it('gives each plate its own stations rather than pooling them', () => {
     const landmarks = crossArchTemplateStations(p, p.arching!.top);
-    p.arching!.bottom.gougedCross = {
-      ...defaultGougedCrossParams(),
-      stations: [{ ...defaultGougedCrossParams(), y: Math.round((landmarks[0].y + landmarks[1].y) / 2) }],
+    p.arching!.bottom.cross = {
+      ...defaultCrossArchParams(),
+      stations: [{ ...defaultCrossArchParams(), y: Math.round((landmarks[0].y + landmarks[1].y) / 2) }],
     };
     const shapes = calculateCrossArchTemplates(p);
     expect(shapes.filter(s => s.label.startsWith('Back')).length).toBe(landmarks.length + 1);
@@ -232,7 +232,7 @@ describe('arching templates', () => {
     // arithmetically instead (channel half-chord plus gouge half-width) is right
     // along a bout and wrong at a corner, where the surface reads its position
     // off a distance field rather than off the chord.
-    const gouge = defaultGougedFlutingParams(p);
+    const gouge = defaultFlutingParams(p);
     for (const key of ['top', 'bottom'] as const) {
       const model = buildPlateSurfaceModel(p, key)!;
       for (const { y } of crossArchTemplateStations(p, p.arching![key])) {
@@ -259,10 +259,10 @@ describe('arching templates', () => {
     // — channel half-chord plus gouge half-width — is right along a bout and
     // wrong at a corner, where the surface reads its position off a distance
     // field instead, so the corner blanks came out carrying flats.
-    const gouged = buildPlateSurfaceModel(p, 'top')!;
+    const geometry = buildPlateSurfaceModel(p, 'top')!;
     const blanks = calculateCrossArchTemplates(p);
     for (const { y, code } of crossArchTemplateStations(p, p.arching!.top)) {
-      const plateEdge = stationChordsAt(p, gouged, y).outerHalf!;
+      const plateEdge = stationChordsAt(p, geometry, y).outerHalf!;
       const width = pathsBounds([blanks.find(s => s.label === `Top ${code} ${y}mm`)!.path]).width;
       // Cut at the trough, so each side loses the land plus the channel's outer
       // flank — comfortably more than the land alone.
@@ -292,7 +292,7 @@ describe('arching templates', () => {
   it('runs the long-arch blank trough to trough, leaving the flat caps out', () => {
     // The trough sits a half-width in from the land edge at each cap, so the
     // blank is that much shorter again than the body between the land edges.
-    const gouge = defaultGougedFlutingParams(p);
+    const gouge = defaultFlutingParams(p);
     const trough = p.outerFlutingDepth! + gougeHalfWidth(gouge.sweepRadius, gouge.depth);
     // Closed against the x axis, so the strip's length is its y extent. Within
     // a sampling step rather than exactly — closeProfileToBlank re-samples at
@@ -304,10 +304,10 @@ describe('arching templates', () => {
 
   it('carries the centerline from land edge through the channel and onto the arch', () => {
     const plate = p.arching!.top;
-    const gouge = defaultGougedFlutingParams(p);
-    const la = solveGougedLongArch(p, plate.arch, gouge)!;
+    const gouge = defaultFlutingParams(p);
+    const la = solveLongArch(p, plate.arch, gouge)!;
     expect(la).toBeTruthy();
-    const z = (y: number) => gougedCenterlineZAt(p, gouge, la, y);
+    const z = (y: number) => channelCenterlineZAt(p, gouge, la, y);
 
     // Plate level right at the land edge, and full depth at the channel's
     // trough. The first is what makes the land edge the right place to end the
@@ -385,21 +385,21 @@ describe('back plate surface height field', () => {
   });
 });
 
-describe('gouged surface model', () => {
+describe('plate surface model', () => {
   /**
-   * The claim the gouged model exists to make: the channel is one gouge wide
-   * everywhere, because a maker has one gouge. The classic model cannot say
-   * this — there the width is the gap between two boundary loops that disagree
-   * about the corners, so it comes out as a value that drifts.
+   * The claim the model exists to make: the channel is one gouge wide
+   * everywhere, because a maker has one gouge. Derive the channel from the arch
+   * instead and the width becomes the gap between two boundary loops that
+   * disagree about the corners, so it drifts.
    *
    * Measured on the surface rather than on the parameters, since the surface is
    * what every consumer downstream actually reads.
    */
-  function gougedParams(): EnricoCerutiParams {
+  function flutingParams(): EnricoCerutiParams {
     const p = makeParams();
     for (const side of ['top', 'bottom'] as const) {
-      p.arching![side].gougedFluting = defaultGougedFlutingParams(p);
-      p.arching![side].gougedCross = defaultGougedCrossParams();
+      p.arching![side].fluting = defaultFlutingParams(p);
+      p.arching![side].cross = defaultCrossArchParams();
     }
     return p;
   }
@@ -407,13 +407,12 @@ describe('gouged surface model', () => {
   it('draws contours from both halves rather than mirroring one', () => {
     // The grid used to sample x >= 0 and mirror, on the grounds that the outline
     // is x-symmetric. The outline is; the surface need not be. A moved crown, an
-    // unmirrored control point, or the classic model's own left/right cycloid
-    // pair all break it — and the mirror then stamps the treble half onto the
-    // bass half, leaving a seam down the joint that is in the picture and not in
-    // the height field.
+    // unmirrored control point or a moved crown breaks it — and the mirror then
+    // stamps the treble half onto the bass half, leaving a seam down the joint
+    // that is in the picture and not in the height field.
     const centroidOfHighest = (peak: number): number => {
-      const p = gougedParams();
-      p.arching!.top.gougedCross = { ...defaultGougedCrossParams(), peak };
+      const p = flutingParams();
+      p.arching!.top.cross = { ...defaultCrossArchParams(), peak };
       const model = buildPlateSurfaceModel(p, 'top')!;
       const levels = computeArchContourRings(p, model, 1, 1);
       const top = levels[levels.length - 1];
@@ -429,15 +428,15 @@ describe('gouged surface model', () => {
   }, 20_000);
 
   it('cuts one constant channel section the whole way round', () => {
-    const p = gougedParams();
+    const p = flutingParams();
     const model = buildPlateSurfaceModel(p, 'top')!;
-    expect(model.gouged).toBeTruthy();
-    const depth = model.gouged!.gouge.depth;
+    expect(model.geometry).toBeTruthy();
+    const depth = model.geometry!.gouge.depth;
 
     // Walk the channel centerline itself. That is where the gouge's deepest
     // point runs, so every sample on it must sit at exactly the full cut depth
     // — including through the corners, which the channel bypasses.
-    const poly = model.gouged!.centerPoly;
+    const poly = model.geometry!.centerPoly;
     let checked = 0;
     for (let i = 0; i < poly.length; i += 7) {
       const z = topSurfaceZAt(p, model, poly[i].x, poly[i].y);
@@ -457,11 +456,11 @@ describe('gouged surface model', () => {
     // exactly what it carves: the channel bypasses the point, the platform
     // boundary follows it, and the wedge between them is the corner pass's whole
     // job. This is about the reach of the channel's own cut, which is unchanged.
-    const p = gougedParams();
-    for (const side of ['top', 'bottom'] as const) p.arching![side].gougedFluting!.cornerGouge = false;
+    const p = flutingParams();
+    for (const side of ['top', 'bottom'] as const) p.arching![side].fluting!.cornerGouge = false;
     const model = buildPlateSurfaceModel(p, 'top')!;
-    const poly = model.gouged!.centerPoly;
-    const w = gougeHalfWidth(model.gouged!.gouge.sweepRadius, model.gouged!.gouge.depth);
+    const poly = model.geometry!.centerPoly;
+    const w = gougeHalfWidth(model.geometry!.gouge.sweepRadius, model.geometry!.gouge.depth);
 
     let checked = 0;
     for (let i = 0; i < poly.length; i += 23) {
@@ -500,10 +499,10 @@ describe('gouged surface model', () => {
 
     function sweep() {
       if (cache) return cache;
-      const pOff = gougedParams();
-      for (const side of ['top', 'bottom'] as const) pOff.arching![side].gougedFluting!.cornerGouge = false;
+      const pOff = flutingParams();
+      for (const side of ['top', 'bottom'] as const) pOff.arching![side].fluting!.cornerGouge = false;
       const off = buildPlateSurfaceModel(pOff, 'top')!;
-      const pOn = gougedParams();
+      const pOn = flutingParams();
       const on = buildPlateSurfaceModel(pOn, 'top')!;
 
       const rows: { y: number; max: number }[] = [];
@@ -557,7 +556,7 @@ describe('gouged surface model', () => {
       // the second cut finds exactly what the first one left and the minimum is
       // inert. The residual is polyline sampling — both loops are sampled at
       // roughly 1 mm and a chord sits inside its arc — not geometry.
-      const p = gougedParams();
+      const p = flutingParams();
       const flanks = sweep().rows.filter(r => fromCorner(p, r.y) > 30);
       expect(flanks.length).toBeGreaterThan(100);
       expect(Math.max(...flanks.map(r => r.max))).toBeLessThan(0.01);
@@ -574,10 +573,10 @@ describe('gouged surface model', () => {
       // plate level on its way down to the channel, so isolated samples at zero
       // are expected on every station and mean nothing. A ridge is wide.
       const widestFlatPatch = (cornerGouge: boolean): number => {
-        const p = gougedParams();
-        for (const side of ['top', 'bottom'] as const) p.arching![side].gougedFluting!.cornerGouge = cornerGouge;
+        const p = flutingParams();
+        for (const side of ['top', 'bottom'] as const) p.arching![side].fluting!.cornerGouge = cornerGouge;
         const model = buildPlateSurfaceModel(p, 'top')!;
-        const depth = p.arching!.top.gougedFluting!.depth;
+        const depth = p.arching!.top.fluting!.depth;
         const step = 0.25;
         let widest = 0;
         for (const corner of [p.bouts.UCr!.y, p.bouts.LCr!.y]) {
@@ -609,8 +608,8 @@ describe('gouged surface model', () => {
       // The corner is where the channel bypasses and the platform boundary
       // follows, so the wedge between them is untouched wood under the channel
       // pass alone. Cut to depth here, which is what a maker takes it to.
-      const p = gougedParams();
-      const depth = p.arching!.top.gougedFluting!.depth;
+      const p = flutingParams();
+      const depth = p.arching!.top.fluting!.depth;
       for (const corner of [p.bouts.UCr!.y, p.bouts.LCr!.y]) {
         const band = sweep().rows.filter(r => Math.abs(r.y - corner) <= 12);
         expect(Math.max(...band.map(r => r.max))).toBeGreaterThan(0.9 * depth);
@@ -630,12 +629,12 @@ describe('gouged surface model', () => {
     // transversely and picks up its full flank slope; those steps are real
     // geometry. What separates a slope from a seam is refinement — halving the
     // step halves a slope's jump and leaves a discontinuity untouched.
-    const p = gougedParams();
+    const p = flutingParams();
     const model = buildPlateSurfaceModel(p, 'top')!;
 
     const xs = [0, 20, 40, 60];
     // One stationChordsAt per row, shared across the x samples — the same
-    // hoisting every real consumer does, and without it the gouged solve reruns
+    // hoisting every real consumer does, and without it the gouge solve reruns
     // per point and this takes minutes.
     const maxJumps = (step: number): number[] => {
       const worst = xs.map(() => 0);
@@ -671,18 +670,18 @@ describe('gouged surface model', () => {
     // waist especially — the nearest channel point is slightly closer than the
     // chord suggests, so the crown reads a hair low. On a violin that is a few
     // hundredths of a millimetre against a 15mm arch.
-    const p = gougedParams();
+    const p = flutingParams();
     const model = buildPlateSurfaceModel(p, 'top')!;
     const y = p.height / 2;
     const z = topSurfaceZAt(p, model, 0, y)!;
     expect(z).toBeGreaterThan(0);
-    expect(z).toBeCloseTo(stationChordsAt(p, model, y).gougedSection!.zAt(0), 1);
+    expect(z).toBeCloseTo(stationChordsAt(p, model, y).crossSection!.zAt(0), 1);
   });
 
   it('exports an STL through a builder that never asks which model it is', () => {
     // buildPlateStl only ever asks the model for heights. That is what let the
     // arching model underneath be replaced without it changing at all.
-    const p = gougedParams();
+    const p = flutingParams();
     const buf = buildPlateStl(p, buildPlateSurfaceModel(p, 'top')!, 'top', 2);
     const triCount = new DataView(buf).getUint32(80, true);
     expect(triCount).toBeGreaterThan(1000);

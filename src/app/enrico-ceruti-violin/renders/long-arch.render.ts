@@ -10,8 +10,7 @@ import { HighlightedSplinePoint } from './render-constants';
 //
 // All three take the curve and its frame rather than a panel or a plate, which
 // is what lets one set serve any panel that draws a long arch: they know how an
-// `ArchCurve` maps onto the screen and nothing about which model asked. They
-// lived in the classic long-arching panel until that panel was retired.
+// `ArchCurve` maps onto the screen and nothing about who asked.
 
 /**
  * Halo behind the spline control point whose textbox has focus. Drawn whether

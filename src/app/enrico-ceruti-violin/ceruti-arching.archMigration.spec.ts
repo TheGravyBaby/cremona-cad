@@ -134,3 +134,85 @@ describe('normalizeArchingParams', () => {
     expect(() => normalizeArchingParams(undefined)).not.toThrow();
   });
 });
+
+/**
+ * The other load-time migration: the gouge and crown blocks were `gougedFluting`
+ * and `gougedCross` while a retired model still held `fluting` and `cross`. What
+ * makes this worth testing is that both names can be present at once — a recipe
+ * saved during the overlap carries the retired model's blocks *and* the ones
+ * that replaced them, and reading the wrong pair silently loads someone else's
+ * geometry rather than failing.
+ */
+describe('normalizeArchingParams — plate blocks', () => {
+  const GOUGE = { sweepRadius: 12, depth: 1.2, sweepRadius_cBout: null };
+  const CROWN = { type: 'spline', points: [{ x: 0.66, z: 0.5, mirror: true }] };
+
+  function plateWith(extra: object): EnricoCerutiParams {
+    const plate = () => ({ arch: { type: 'catenary', archHeight: HEIGHT }, thickness: 3, ...extra });
+    return { arching: { top: plate(), bottom: plate(), ribHeight: 30 } } as unknown as EnricoCerutiParams;
+  }
+  const top = (p: EnricoCerutiParams) => p.arching!.top as any;
+
+  it('renames the gouge and crown blocks', () => {
+    const p = plateWith({ gougedFluting: GOUGE, gougedCross: CROWN });
+    normalizeArchingParams(p);
+    expect(top(p).fluting).toEqual(GOUGE);
+    expect(top(p).cross).toEqual(CROWN);
+    expect(top(p).gougedFluting).toBeUndefined();
+    expect(top(p).gougedCross).toBeUndefined();
+  });
+
+  // The overlap case, and the reason the two names cannot simply be merged:
+  // during the changeover a plate could carry both, and the retired model's
+  // pair is the one that has to lose.
+  it('prefers the gouged pair over the retired model\'s, not the other way round', () => {
+    const p = plateWith({
+      fluting: { innerDepth: 4, outerDepth: 2 },
+      cross: { type: 'cycloid', d: 0.9, pct: 1, left: { d: 0.2, pct: 0.5 } },
+      gougedFluting: GOUGE,
+      gougedCross: CROWN,
+    });
+    normalizeArchingParams(p);
+    expect(top(p).fluting).toEqual(GOUGE);
+    expect(top(p).cross).toEqual(CROWN);
+  });
+
+  // Dropped rather than reinterpreted: the retired crown's points were fractions
+  // of the local chord against a channel derived from the arch, which means
+  // nothing against a fixed gouge. Defaults are seeded downstream.
+  it('drops a retired-model block that has nothing to replace it', () => {
+    const p = plateWith({
+      fluting: { innerDepth: 4, outerDepth: 2 },
+      cross: { type: 'spline', points: [{ t: 0.4, z: 0.7 }] },
+    });
+    normalizeArchingParams(p);
+    expect(top(p).fluting).toBeUndefined();
+    expect(top(p).cross).toBeUndefined();
+  });
+
+  it('drops a crown block saved before curve types existed', () => {
+    const p = plateWith({ cross: { d: 0.4, pct: 0.9 } });
+    normalizeArchingParams(p);
+    expect(top(p).cross).toBeUndefined();
+  });
+
+  // Every recipe entering the app runs through this, including one migrated in
+  // an earlier session and saved back — so a second pass must be a no-op rather
+  // than deleting what the first pass just wrote.
+  it('is idempotent', () => {
+    const p = plateWith({ gougedFluting: GOUGE, gougedCross: CROWN });
+    normalizeArchingParams(p);
+    const once = JSON.stringify(p);
+    normalizeArchingParams(p);
+    expect(JSON.stringify(p)).toBe(once);
+    expect(top(p).fluting).toEqual(GOUGE);
+    expect(top(p).cross).toEqual(CROWN);
+  });
+
+  it('leaves a plate with neither block alone', () => {
+    const p = plateWith({});
+    expect(() => normalizeArchingParams(p)).not.toThrow();
+    expect('fluting' in top(p)).toBe(false);
+    expect('cross' in top(p)).toBe(false);
+  });
+});

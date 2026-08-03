@@ -7,17 +7,17 @@ import {
 import { clamp } from '../../../helpers/draftMath';
 import { samplePathToPolyline } from '../../../helpers/svgPathMath';
 import {
-  ArchingParams, ArchPlate, CerutiColors, CerutiViewFlags, EnricoCerutiParams, GougedCrossCycloidShape,
-  GougedCrossCycloidStation, GougedCrossParams, GougedCrossPoint, GougedCrossShape, GougedCrossSplineShape,
-  GougedCrossSplineStation, GougedCrossStation, GougedFlutingParams, PlateViewMode,
+  ArchingParams, ArchPlate, CerutiColors, CerutiViewFlags, EnricoCerutiParams, CrossArchCycloidShape,
+  CrossArchCycloidStation, CrossArchParams, CrossArchPoint, CrossArchShape, CrossArchSplineShape,
+  CrossArchSplineStation, CrossArchStation, FlutingParams, PlateViewMode,
 } from '../../ceruti-types';
 import {
   bodyLandmarks, contourSampleSteps, defaultArchingParams,
   STATION_MARGIN_MM, STATION_MERGE_EPS_MM, wireframeSampleSteps,
 } from '../../ceruti-arching';
 import {
-  defaultGougedCrossCycloidParams, defaultGougedCrossParams, defaultGougedFlutingParams, GougedCrossSection,
-  gougedCrossGuide, gougedCrossKnotX, gougedCrossSectionAt, gougedCrossSectionPath, nearestGougedCrossShape,
+  defaultCrossArchCycloidParams, defaultCrossArchParams, defaultFlutingParams, CrossArchSection,
+  crossArchGuide, crossArchKnotX, crossArchSectionAt, crossArchSectionPath, nearestCrossArchShape,
 } from '../../ceruti-gouged';
 import {
   ArchContourLevel, buildPlateSurfaceModel, buildPlateStl, computeArchContourRings, plateHalfChordAtY,
@@ -35,8 +35,8 @@ import { renderWireframeDragFrame } from '../../renders/wireframe-drag-frame.ren
 import { calculateOuterArcs } from '../../ceruti-calcs';
 import { defineInnerPath, defineOuterPath } from '../../ceruti-paths';
 import {
-  archContoursInfo, crossSectionStationInfo, gougedCrossCurveTypeInfo, gougedCrossCycloidControlsInfo,
-  gougedCrossPeakInfo, gougedCrossStationInfo, gougedCrossTemplateInfo, gougedTransitionError,
+  archContoursInfo, crossSectionStationInfo, crossArchCurveTypeInfo, crossArchCycloidControlsInfo,
+  crossArchPeakInfo, crossArchStationInfo, crossArchTemplateInfo, transitionError,
 } from '../../ceruti-helpers';
 import { CrossArchingRotationController } from './cross-arching-rotation-controller';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
@@ -104,41 +104,38 @@ function entered(v: number): boolean {
 const KNOT_MIN_FRAC = 0.02;
 
 /**
- * Step three of the gouged model: the crown across the plate, as a trochoid or
- * as control points.
+ * Step three: the crown across the plate, as a trochoid or as control points.
  *
  * The maker authors only the crown, in fractions of it. Where it stops — the
- * run out into the channel — is solved, not entered, which is what keeps this
- * model from costing more parameters than the classic one despite describing a
- * more physical process. The panel therefore *reports* the transition rather
- * than offering it for editing.
+ * run out into the channel — is solved, not entered, which is what keeps a more
+ * physical model from costing more parameters. The panel therefore *reports*
+ * the transition rather than offering it for editing.
  *
  * The plate's base shape anchors both body ends and stations override it in
- * between, the same arrangement the classic cross-arching panel uses — down to
- * the draft-preview mechanism, since the question "what am I looking at, and
- * what would an edit here change?" is the same one in both models.
+ * between, with a draft preview answering "what am I looking at, and what would
+ * an edit here change?" before anything is committed.
  */
 @Component({
-  selector: 'app-ceruti-gouged-cross-arching-panel',
+  selector: 'app-ceruti-cross-arching-panel',
   imports: [FormsModule],
-  templateUrl: './gouged-cross-arching-panel.html',
+  templateUrl: './cross-arching-panel.html',
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
-export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, OnDestroy {
+export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDestroy {
   @Input({ required: true }) params!: EnricoCerutiParams;
   @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;
 
   protected readonly crossSectionStationInfo = crossSectionStationInfo;
-  protected readonly gougedCrossCurveTypeInfo = gougedCrossCurveTypeInfo;
-  protected readonly gougedCrossCycloidControlsInfo = gougedCrossCycloidControlsInfo;
-  protected readonly gougedCrossTemplateInfo = gougedCrossTemplateInfo;
-  protected readonly gougedCrossStationInfo = gougedCrossStationInfo;
-  protected readonly gougedCrossPeakInfo = gougedCrossPeakInfo;
+  protected readonly crossArchCurveTypeInfo = crossArchCurveTypeInfo;
+  protected readonly crossArchCycloidControlsInfo = crossArchCycloidControlsInfo;
+  protected readonly crossArchTemplateInfo = crossArchTemplateInfo;
+  protected readonly crossArchStationInfo = crossArchStationInfo;
+  protected readonly crossArchPeakInfo = crossArchPeakInfo;
   protected readonly archContoursInfo = archContoursInfo;
 
   /** Solved section at the cursor per plate, filled by buildRun for the template to report. */
-  private section: { top: GougedCrossSection | null; bottom: GougedCrossSection | null } = { top: null, bottom: null };
+  private section: { top: CrossArchSection | null; bottom: CrossArchSection | null } = { top: null, bottom: null };
 
   /** Whether each plate's last solved station failed to reach its channel — the edge the warning fires on. */
   private unsolvable = { top: false, bottom: false };
@@ -167,8 +164,7 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
   private cache: { top: PlateCache | null; bottom: PlateCache | null } = { top: null, bottom: null };
 
   ngOnInit(): void {
-    // Ephemeral view state; default to the c-bout waist on first open, matching
-    // the classic cross-arching panel.
+    // Ephemeral view state; default to the c-bout waist on first open.
     this.flags.crossSectionY ??= Math.round(this.params.bouts.C0?.y ?? this.params.height / 2);
     this.rotation = new CrossArchingRotationController(this.flags, () => this.emitImmediate(false, false));
     this.emitImmediate();
@@ -341,25 +337,25 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
     this.emitImmediate();
   }
 
-  gouge(plate: 'top' | 'bottom'): GougedFlutingParams {
+  gouge(plate: 'top' | 'bottom'): FlutingParams {
     const plateParams = plate === 'top' ? this.arching.top : this.arching.bottom;
-    return (plateParams.gougedFluting ??= defaultGougedFlutingParams(this.params));
+    return (plateParams.fluting ??= defaultFlutingParams(this.params));
   }
 
-  cross(plate: 'top' | 'bottom'): GougedCrossParams {
+  cross(plate: 'top' | 'bottom'): CrossArchParams {
     const plateParams = plate === 'top' ? this.arching.top : this.arching.bottom;
-    return (plateParams.gougedCross ??= defaultGougedCrossParams());
+    return (plateParams.cross ??= defaultCrossArchParams());
   }
 
   /** The plate's stations, for the table. Empty rather than absent, so the template need not guard twice. */
-  splineStations(plate: 'top' | 'bottom'): GougedCrossSplineStation[] {
+  splineStations(plate: 'top' | 'bottom'): CrossArchSplineStation[] {
     const cross = this.cross(plate);
-    return cross.type === 'gouged' ? cross.stations ?? [] : [];
+    return cross.type === 'spline' ? cross.stations ?? [] : [];
   }
 
-  cycloidStations(plate: 'top' | 'bottom'): GougedCrossCycloidStation[] {
+  cycloidStations(plate: 'top' | 'bottom'): CrossArchCycloidStation[] {
     const cross = this.cross(plate);
-    return cross.type === 'gouged-cycloid' ? cross.stations ?? [] : [];
+    return cross.type === 'cycloid' ? cross.stations ?? [] : [];
   }
 
   /**
@@ -375,23 +371,23 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
    * vanish, depending on where the cursor happens to be. Every write goes
    * through {@link editTarget} instead.
    */
-  private activeShape(plate: 'top' | 'bottom'): GougedCrossShape {
+  private activeShape(plate: 'top' | 'bottom'): CrossArchShape {
     const cross = this.cross(plate);
     return this.stationAtCursor(plate)
       ?? this.draftFor(plate)
-      ?? (cross.stations?.length ? nearestGougedCrossShape(cross, this.cursorY, this.params.height) : cross);
+      ?? (cross.stations?.length ? nearestCrossArchShape(cross, this.cursorY, this.params.height) : cross);
   }
 
   /** The crown at the cursor when it is authored from control points, else null — the point editor's guard. */
-  crossSpline(plate: 'top' | 'bottom'): GougedCrossSplineShape | null {
+  crossSpline(plate: 'top' | 'bottom'): CrossArchSplineShape | null {
     const shape = this.activeShape(plate);
-    return shape.type === 'gouged' ? shape : null;
+    return shape.type === 'spline' ? shape : null;
   }
 
   /** The crown at the cursor when it is a trochoid, else null. */
-  crossCycloid(plate: 'top' | 'bottom'): GougedCrossCycloidShape | null {
+  crossCycloid(plate: 'top' | 'bottom'): CrossArchCycloidShape | null {
     const shape = this.activeShape(plate);
-    return shape.type === 'gouged-cycloid' ? shape : null;
+    return shape.type === 'cycloid' ? shape : null;
   }
 
   /**
@@ -401,14 +397,14 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
    * writing to the base at that point would only move the body ends and leave
    * the section the maker is looking at unchanged.
    */
-  private editTarget(plate: 'top' | 'bottom'): GougedCrossShape {
+  private editTarget(plate: 'top' | 'bottom'): CrossArchShape {
     const station = this.stationAtCursor(plate);
     if (station) return station;
     const cross = this.cross(plate);
     if (!cross.stations?.length) return cross;
     let draft = this.draftFor(plate);
     if (!draft) {
-      draft = { y: this.cursorY, ...cloneGougedShape(nearestGougedCrossShape(cross, this.cursorY, this.params.height)) };
+      draft = { y: this.cursorY, ...cloneCrossArchShape(nearestCrossArchShape(cross, this.cursorY, this.params.height)) };
       this.draft[plate] = draft;
     }
     return draft;
@@ -416,20 +412,19 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
 
   /**
    * Switches a plate's crown curve type, replacing the shape wholesale with a
-   * fresh default — the same thing the classic cross-arching panel's own
-   * `setCurveType` does, and for the same reason: `d`/`pct` and a control-point
-   * list describe the shape in ways that have no honest conversion between
-   * them, so carrying one across would be inventing data. Stations go with it,
+   * fresh default. `d`/`pct` and a control-point list describe the shape in
+   * ways that have no honest conversion between them, so carrying one across
+   * would be inventing data. Stations go with it,
    * since a station's shape is tied to its curve type, and so does any open
    * draft — it would otherwise be spliced into the render shaped like the type
    * the plate no longer is.
    */
-  setCurveType(plate: 'top' | 'bottom', type: GougedCrossShape['type']): void {
+  setCurveType(plate: 'top' | 'bottom', type: CrossArchShape['type']): void {
     if (this.cross(plate).type === type) return;
     const plateParams = plate === 'top' ? this.arching.top : this.arching.bottom;
-    plateParams.gougedCross = type === 'gouged-cycloid'
-      ? defaultGougedCrossCycloidParams()
-      : defaultGougedCrossParams();
+    plateParams.cross = type === 'cycloid'
+      ? defaultCrossArchCycloidParams()
+      : defaultCrossArchParams();
     this.draft[plate] = null;
     this.onChange();
   }
@@ -440,20 +435,20 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
   }
 
   /** The same, for a row of the station table. */
-  stationPct(st: GougedCrossCycloidStation): number {
+  stationPct(st: CrossArchCycloidStation): number {
     return Math.round(st.pct * 100);
   }
 
   setCycloidD(plate: 'top' | 'bottom', d: number): void {
     const target = this.editTarget(plate);
-    if (target.type !== 'gouged-cycloid' || !entered(d)) return;
+    if (target.type !== 'cycloid' || !entered(d)) return;
     target.d = clamp(d, 0, 1);
     this.onChange();
   }
 
   /**
-   * Sets the trochoid window. Held below 100% deliberately, unlike the classic
-   * panel: the full curve leaves the baseline tangent-flat, and a crown that
+   * Sets the trochoid window. Held below 100% deliberately: the full curve
+   * leaves the baseline tangent-flat, and a crown that
    * runs out flat can only meet the gouge where the gouge is flat too — its
    * trough. The tangency then has nowhere to slide, and the arch drops the full
    * channel depth in one unsupported step. Some grade at the run-out is what
@@ -461,7 +456,7 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
    */
   setCycloidPct(plate: 'top' | 'bottom', pct: number): void {
     const target = this.editTarget(plate);
-    if (target.type !== 'gouged-cycloid' || !entered(pct)) return;
+    if (target.type !== 'cycloid' || !entered(pct)) return;
     target.pct = clamp(pct, 5, 98) / 100;
     this.onChange();
   }
@@ -474,7 +469,7 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
   }
 
   /** The same, for a row of the station table. */
-  stationPeakPct(st: GougedCrossSplineStation): number {
+  stationPeakPct(st: CrossArchSplineStation): number {
     return Math.round((st.peak ?? 0.5) * 100);
   }
 
@@ -491,7 +486,7 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
    */
   setPeakPct(plate: 'top' | 'bottom', pct: number): void {
     const target = this.editTarget(plate);
-    if (target.type !== 'gouged' || !entered(pct)) return;
+    if (target.type !== 'spline' || !entered(pct)) return;
     target.peak = clamp(pct, 30, 70) / 100;
     this.onChange();
   }
@@ -505,18 +500,18 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
    * and 34 are plainly the same place on opposite flanks, where +66 and −66 in
    * the stored form require knowing that each side counts from the joint
    * outward in its own units. Storage keeps that signed per-side form, which is
-   * what the shape means (see {@link GougedCrossPoint.x}); this is only the
+   * what the shape means (see {@link CrossArchPoint.x}); this is only the
    * scale the panel speaks in.
    *
    * Half a percent of the full width is one percent of a side, so the field's
    * half-step moves a knot exactly as far as a whole step used to.
    */
-  pointXPct(pt: GougedCrossPoint): number {
+  pointXPct(pt: CrossArchPoint): number {
     return +(50 + pt.x * 50).toFixed(1);
   }
 
   /** A knot's height as a whole percent of the local arch height. */
-  pointZPct(pt: GougedCrossPoint): number {
+  pointZPct(pt: CrossArchPoint): number {
     return Math.round(pt.z * 100);
   }
 
@@ -530,9 +525,9 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
    * point order, so an index is a valid key into both — whereas the object the
    * row is displaying may belong to a station somewhere else on the body.
    */
-  private pointTarget(plate: 'top' | 'bottom', index: number): GougedCrossPoint | null {
+  private pointTarget(plate: 'top' | 'bottom', index: number): CrossArchPoint | null {
     const target = this.editTarget(plate);
-    return target.type === 'gouged' ? target.points[index] ?? null : null;
+    return target.type === 'spline' ? target.points[index] ?? null : null;
   }
 
   /**
@@ -558,12 +553,12 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
    * neighbour re-seated every input in the table under the maker's cursor —
    * the focused box would jump to some other knot's value and the next press
    * would edit that knot. Order carries no meaning to the geometry, which sorts
-   * for itself in {@link gougedCrossKnots} and again in `crossProfile`, so the
+   * for itself in {@link crossArchKnots} and again in `crossProfile`, so the
    * table simply keeps the order the points were added in.
    */
   setPointXPct(plate: 'top' | 'bottom', index: number, pct: number): void {
     const target = this.editTarget(plate);
-    if (target.type !== 'gouged') return;
+    if (target.type !== 'spline') return;
     const pt = target.points[index];
     if (!pt || !entered(pct)) return;
     const want = (clamp(pct, 0, 100) - 50) / 50;
@@ -578,8 +573,7 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
    * Sets a knot's height as a percent of the local arch height. 100 is the
    * ceiling because the crown always sits at the full height — a taller knot
    * would quietly become the real high spot and the entered arch height would
-   * stop describing the plate, the same invariant the classic spline arches
-   * carry.
+   * stop describing the plate — the same invariant the long-arch splines carry.
    */
   setPointZPct(plate: 'top' | 'bottom', index: number, pct: number): void {
     const pt = this.pointTarget(plate, index);
@@ -597,7 +591,7 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
 
   addPoint(plate: 'top' | 'bottom'): void {
     const target = this.editTarget(plate);
-    if (target.type !== 'gouged') return;
+    if (target.type !== 'spline') return;
     // Partway on toward the channel from the outermost knot, at a fraction of
     // its height — a plausible next knot outward rather than one landing on top
     // of an existing one.
@@ -613,7 +607,7 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
 
   removePoint(plate: 'top' | 'bottom', index: number): void {
     const target = this.editTarget(plate);
-    if (target.type !== 'gouged') return;
+    if (target.type !== 'spline') return;
     target.points.splice(index, 1);
     this.onChange();
   }
@@ -621,9 +615,7 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
   // ===== Stations =====
   // The base shape anchors both body ends; stations are interior overrides the
   // crown ramps through in between. The Section control at the top of the panel
-  // doubles as the cursor they are placed at. Same arrangement as the classic
-  // cross-arching panel, and the resolver behind this has ramped them since it
-  // was written — only the UI was missing.
+  // doubles as the cursor they are placed at.
 
   /**
    * Uncommitted station being previewed at the cursor, per plate. Editing any
@@ -632,16 +624,16 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
    * real. Never written into params — Set Station makes it permanent, moving the
    * cursor discards it.
    */
-  private draft: { top: GougedCrossStation | null; bottom: GougedCrossStation | null } = { top: null, bottom: null };
+  private draft: { top: CrossArchStation | null; bottom: CrossArchStation | null } = { top: null, bottom: null };
 
   /** The plate's live preview station, or null once the cursor has moved off it. */
-  draftFor(plate: 'top' | 'bottom'): GougedCrossStation | null {
+  draftFor(plate: 'top' | 'bottom'): CrossArchStation | null {
     const d = this.draft[plate];
     return d && Math.abs(d.y - this.cursorY) <= STATION_MERGE_EPS_MM ? d : null;
   }
 
   /** The station the cursor is sitting on, if any — what Set Station would overwrite. */
-  stationAtCursor(plate: 'top' | 'bottom'): GougedCrossStation | undefined {
+  stationAtCursor(plate: 'top' | 'bottom'): CrossArchStation | undefined {
     const y = this.cursorY;
     return this.cross(plate).stations?.find(s => Math.abs(s.y - y) <= STATION_MERGE_EPS_MM);
   }
@@ -660,16 +652,16 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
    */
   setStationHere(plate: 'top' | 'bottom'): void {
     const cross = this.cross(plate);
-    const shape = cloneGougedShape(this.activeShape(plate));
+    const shape = cloneCrossArchShape(this.activeShape(plate));
     const existing = this.stationAtCursor(plate);
     if (existing) {
       // Only reachable defensively — the button is hidden once a station is
       // here, since the fields then edit it directly. Same curve type either
       // way, activeShape having read it off that very station.
       Object.assign(existing, shape);
-    } else if (shape.type === 'gouged' && cross.type === 'gouged') {
+    } else if (shape.type === 'spline' && cross.type === 'spline') {
       pushStation(cross.stations ??= [], { y: this.cursorY, ...shape });
-    } else if (shape.type === 'gouged-cycloid' && cross.type === 'gouged-cycloid') {
+    } else if (shape.type === 'cycloid' && cross.type === 'cycloid') {
       pushStation(cross.stations ??= [], { y: this.cursorY, ...shape });
     }
     this.draft[plate] = null;
@@ -693,22 +685,21 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
    * preview folded in as though it were a committed station.
    *
    * Structurally shared apart from the objects that must differ, so the copy is
-   * cheap and untouched branches stay identity-equal — which matters here more
-   * than it does classically, because the surface cache is keyed on a
-   * stringification of this. Never assigned back to `this.params`: the preview
+   * cheap and untouched branches stay identity-equal — which matters because
+   * the surface cache is keyed on a stringification of this. Never assigned back to `this.params`: the preview
    * must not reach the recipe.
    */
   private paramsForRender(): EnricoCerutiParams {
     const drafts = { top: this.draftFor('top'), bottom: this.draftFor('bottom') };
     if (!drafts.top && !drafts.bottom) return this.params;
     const a = this.arching;
-    const withDraft = (plate: ArchPlate, draft: GougedCrossStation | null): ArchPlate =>
+    const withDraft = (plate: ArchPlate, draft: CrossArchStation | null): ArchPlate =>
       draft
         // The draft always matches the plate's own curve type by construction —
         // setCurveType clears any open draft, and editTarget seeds a new one
         // from the current shape — true at runtime even though the two union
         // arms aren't statically correlated here.
-        ? { ...plate, gougedCross: { ...plate.gougedCross!, stations: [...(plate.gougedCross!.stations ?? []), draft] } as GougedCrossParams }
+        ? { ...plate, cross: { ...plate.cross!, stations: [...(plate.cross!.stations ?? []), draft] } as CrossArchParams }
         : plate;
     return {
       ...this.params,
@@ -741,8 +732,8 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
 
     const y = this.cursorY;
     for (const plate of ['top', 'bottom'] as const) {
-      const gouged = this.plateCache(p, plate).model?.gouged;
-      this.section[plate] = gouged ? gougedCrossSectionAt(p, gouged, y) : null;
+      const geometry = this.plateCache(p, plate).model?.geometry;
+      this.section[plate] = geometry ? crossArchSectionAt(p, geometry, y) : null;
       this.reportTransition(plate, y);
     }
 
@@ -789,14 +780,13 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
     const unsolvable = !!section && (!section.left?.tangent || !section.right?.tangent);
     if (unsolvable === this.unsolvable[plate]) return;
     this.unsolvable[plate] = unsolvable;
-    if (unsolvable) gougedTransitionError(plate, y);
+    if (unsolvable) transitionError(plate, y);
   }
 
   /**
    * Contour map or oblique wireframe above the section, whichever the flags
-   * ask for. Every piece of this is the classic panel's — the ring builder, the
-   * projection, the renderers and the drag frame all take a
-   * {@link PlateSurfaceModel} and never ask which model filled it in.
+   * ask for. The ring builder, the projection, the renderers and the drag frame
+   * all take a {@link PlateSurfaceModel} and nothing more.
    */
   private overlayLayers(y: number): RenderLayer[] {
     const a = this.arching;
@@ -864,9 +854,8 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
   }
 
   /**
-   * The transverse section at the cursor, both plates in one frame — the same
-   * arrangement the classic cross-arching panel uses, since these are two faces
-   * of one instrument rather than two things to compare.
+   * The transverse section at the cursor, both plates in one frame: these are
+   * two faces of one instrument rather than two things to compare.
    */
   private sectionView(y: number): RenderLayer {
     const p = this.params;
@@ -928,7 +917,7 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
     }
     if (!section) return;
 
-    // Split by what carved it, the way the classic panel does: the flat land
+    // Split by what carved it: the flat land
     // and the plate edges in the trace colour, the gouged channel in the
     // fluting colour, the arch in the plate's own. The surface is still one
     // continuous function — the contact is only where the pen changes.
@@ -936,9 +925,9 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
     for (const side of [1, -1] as const) {
       renderLine(new Pt(side * outerHalf, zBase), new Pt(side * Math.min(landEdge, outerHalf), zBase), this.colors.innerTrace)(g, ui);
     }
-    renderPath(gougedCrossSectionPath(section, section.xEndRight, landEdge, zBase, sign), this.colors.fluting, 1.5)(g, ui);
-    renderPath(gougedCrossSectionPath(section, -landEdge, -section.xEndLeft, zBase, sign), this.colors.fluting, 1.5)(g, ui);
-    renderPath(gougedCrossSectionPath(section, -section.xEndLeft, section.xEndRight, zBase, sign), color, 1.5)(g, ui);
+    renderPath(crossArchSectionPath(section, section.xEndRight, landEdge, zBase, sign), this.colors.fluting, 1.5)(g, ui);
+    renderPath(crossArchSectionPath(section, -landEdge, -section.xEndLeft, zBase, sign), this.colors.fluting, 1.5)(g, ui);
+    renderPath(crossArchSectionPath(section, -section.xEndLeft, section.xEndRight, zBase, sign), color, 1.5)(g, ui);
 
     if (this.highlightedPlate === plate) {
       // Knots are fractions of this station's own crown, so they only become
@@ -956,7 +945,7 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
       // plate.
       // The shape at the cursor, not the plate's base — so the crosshairs mark
       // whatever the panel's fields are showing, station or draft included.
-      const guide = gougedCrossGuide(this.activeShape(plate), section);
+      const guide = crossArchGuide(this.activeShape(plate), section);
       for (const c of guide.circles) {
         renderCircle(new Circle(0, zBase + sign * c.centerZ, c.radius), color)(g, ui);
       }
@@ -974,17 +963,16 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
   // being settled, and the Export panel's job is to emit the geometry a maker
   // would cut. A plate exported from this button is for looking at.
 
-  /** Milled grid step (mm). Finer than the classic default, since the transition is the thing being judged. */
+  /** Milled grid step (mm). Fine, since the transition is the thing being judged. */
   stlGridMm = 0.4;
 
   exporting: 'top' | 'bottom' | null = null;
 
   /**
-   * Exports one plate as a binary STL straight off the gouged surface.
+   * Exports one plate as a binary STL straight off the surface.
    *
-   * Uses {@link buildPlateStl} unchanged — it only ever asks the model for
-   * heights, so it neither knows nor cares which model filled them in. That is
-   * the payoff of hanging the gouged geometry off a `PlateSurfaceModel` rather
+   * Uses {@link buildPlateStl}, which only ever asks the model for heights —
+   * the payoff of hanging the solved geometry off a `PlateSurfaceModel` rather
    * than inventing a parallel type for it.
    */
   exportStl(plate: 'top' | 'bottom'): void {
@@ -996,7 +984,7 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
     // should show it started rather than freezing mid-click.
     setTimeout(() => {
       try {
-        const name = `${this.params.height.toFixed(0)}mm-${plate === 'top' ? 'top' : 'back'}-plate-gouged.stl`;
+        const name = `${this.params.height.toFixed(0)}mm-${plate === 'top' ? 'top' : 'back'}-plate.stl`;
         // Built from the cached params rather than the recipe, so the mesh is
         // the surface on screen — preview station included, if one is open.
         downloadStlFile(name, buildPlateStl(cache.params, model, plate, this.stlGridMm));
@@ -1017,10 +1005,10 @@ export class GougedCrossArchingPanel extends CerutiPanelBase implements OnInit, 
    * channel at different points — which is the asymmetry the model exists to
    * show, so the halos should show it too.
    */
-  private highlightKnots(plate: 'top' | 'bottom', section: GougedCrossSection): number[] {
+  private highlightKnots(plate: 'top' | 'bottom', section: CrossArchSection): number[] {
     const pt = this.crossSpline(plate)?.points[this.highlightedIndex];
     if (!pt) return [];
-    const at = (side: 1 | -1) => gougedCrossKnotX(section, side, Math.abs(pt.x));
+    const at = (side: 1 | -1) => crossArchKnotX(section, side, Math.abs(pt.x));
     if (pt.mirror) return [at(1), at(-1)];
     return [at(pt.x < 0 ? -1 : 1)];
   }
@@ -1050,8 +1038,8 @@ function pushStation<T extends { y: number }>(stations: T[], station: T): void {
  * one station pulled its crown off the offset it had been given and back onto
  * the centre through the whole middle of the body.
  */
-function cloneGougedShape(shape: GougedCrossShape): GougedCrossShape {
-  return shape.type === 'gouged'
-    ? { type: 'gouged', points: shape.points.map(pt => ({ ...pt })), peak: shape.peak }
-    : { type: 'gouged-cycloid', d: shape.d, pct: shape.pct };
+function cloneCrossArchShape(shape: CrossArchShape): CrossArchShape {
+  return shape.type === 'spline'
+    ? { type: 'spline', points: shape.points.map(pt => ({ ...pt })), peak: shape.peak }
+    : { type: 'cycloid', d: shape.d, pct: shape.pct };
 }

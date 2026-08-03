@@ -1,23 +1,25 @@
 import { clamp } from "../helpers/draftMath";
 import { catenaryZAt, cycloidZAt, splineZAt } from "../helpers/svgPathMath";
-import { ArchCurve, ArchingParams, EnricoCerutiParams } from "./ceruti-types";
+import {
+  ArchCurve, ArchingParams, ArchPlate, CrossArchParams, CrossArchPoint, EnricoCerutiParams, FlutingParams,
+} from "./ceruti-types";
 
 // ===== Arching profile system =====
 // The long-arch height profile and the body-position queries every arching
 // consumer shares — a distinct concern from the flat 2D outline in
 // ceruti-calcs.ts/ceruti-paths.ts.
 //
-// The cross-arch shape and the channel section are the gouged model's, and live
-// in ceruti-gouged.ts. What stays here is what neither model owns: the long arch
-// (which they shared, and which outlived the split), the station list
-// normalizer, the body landmarks, and the *AtY half-width queries.
+// The cross-arch shape and the channel section live in ceruti-gouged.ts, with
+// the gouge they are solved against. What stays here is what stands apart from
+// the gouge: the long arch, the station list normalizer, the body landmarks,
+// and the *AtY half-width queries.
 
 /** Returns instrument-appropriate arching defaults based on body length (p.height). */
 export function defaultArchingParams(bodyHeight: number): ArchingParams {
   const cat = (archHeight: number) => ({ type: 'catenary' as const, archHeight });
   // The gouge and crown are seeded lazily, by whichever of the surface builder
-  // or the gouged panels reaches the plate first — both of which have the
-  // recipe on hand, which `defaultGougedFlutingParams` needs and this does not.
+  // or the arching panels reaches the plate first — both of which have the
+  // recipe on hand, which `defaultFlutingParams` needs and this does not.
   const plate = (archHeight: number, thickness: number) => ({
     arch: cat(archHeight), thickness,
   });
@@ -160,6 +162,52 @@ export function normalizeArchingParams(p: EnricoCerutiParams | undefined | null)
   if (!p?.arching) return;
   normalizeArchCurve(p.arching.top.arch);
   normalizeArchCurve(p.arching.bottom.arch);
+  normalizeArchPlate(p.arching.top);
+  normalizeArchPlate(p.arching.bottom);
+}
+
+/**
+ * Brings one plate's gouge and crown blocks up to the current names.
+ *
+ * There were two arching models for a few days, and the second one's blocks
+ * were called `gougedFluting` / `gougedCross` to sit alongside the first one's
+ * `fluting` / `cross`. Only the second survives, so it has the plain names now
+ * and a saved recipe can be carrying either.
+ *
+ * A leftover from the retired model is dropped rather than read: its crown was
+ * authored in fractions of the local chord against a channel derived from the
+ * arch, so nothing about it can be reinterpreted against a fixed gouge. The
+ * plate falls back to defaults, which is the honest outcome and the visible one.
+ *
+ * Recognising the current format positively — rather than assuming a bare
+ * `cross` is legacy — is what makes this safe to run twice, which it is: every
+ * recipe entering the app passes through here, including ones already migrated
+ * in an earlier session and saved back.
+ */
+function normalizeArchPlate(plate: ArchPlate): void {
+  const legacy = plate as ArchPlate & { gougedFluting?: FlutingParams; gougedCross?: CrossArchParams };
+
+  if (legacy.gougedFluting) plate.fluting = legacy.gougedFluting;
+  else if (plate.fluting && plate.fluting.sweepRadius === undefined) delete plate.fluting;
+  delete legacy.gougedFluting;
+
+  if (legacy.gougedCross) plate.cross = legacy.gougedCross;
+  else if (plate.cross && !isCurrentCrossArch(plate.cross)) delete plate.cross;
+  delete legacy.gougedCross;
+}
+
+/**
+ * Whether a crown block is in the current model's terms. The retired one shared
+ * both curve-type names, so the tell is inside the shape: its control points
+ * were `t`/`z` fractions of the chord where these are signed `x`, and its
+ * trochoid carried a `left`/`right` pair for asymmetry that this one expresses
+ * per point. Older still, the block carried no `type` at all.
+ */
+function isCurrentCrossArch(cross: CrossArchParams): boolean {
+  if (cross.type !== 'spline' && cross.type !== 'cycloid') return false;
+  return cross.type === 'spline'
+    ? cross.points.every(pt => typeof (pt as CrossArchPoint).x === 'number')
+    : !('left' in cross || 'right' in cross);
 }
 
 /**
@@ -168,9 +216,9 @@ export function normalizeArchingParams(p: EnricoCerutiParams | undefined | null)
  * Spanned between the channel's inner reach at each cap rather than the bare
  * body ends — the arch is a feature of the carved area, and starting it at the
  * outline would compress the whole curve toward the caps. Where that reach
- * *is* under the gouged model comes back out of {@link solveGougedLongArch};
- * this is the chord-wise height the cross-arch solve rides on, so it stays on
- * the authored band.
+ * actually falls comes back out of {@link solveLongArch}; this is the
+ * chord-wise height the cross-arch solve rides on, so it stays on the authored
+ * band.
  */
 export function longArchHeightAt(p: EnricoCerutiParams, arch: ArchCurve, y: number): number {
   const span   = p.height - 2 * (p.innerFlutingDepth ?? 0);
@@ -194,8 +242,8 @@ export const STATION_MARGIN_MM = 1;
  * sorted along the body, held inside both ends, and deduped.
  *
  * Generic over `{ y: number }` and returning the caller's own element type, so
- * a crown shape rides through untouched — the gouged resolver,
- * `nearestGougedCrossShape` and the template station list all lean on that.
+ * a crown shape rides through untouched — {@link makeCrossArchResolver},
+ * `nearestCrossArchShape` and the template station list all lean on that.
  * Non-mutating: the panel keeps its own row order deliberately, and normalizing
  * must not reorder the array behind it.
  */

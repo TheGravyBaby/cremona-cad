@@ -7,15 +7,15 @@ import { archSplineKnots, buildCatenaryPath, buildCycloidPath, buildSplinePath, 
 import { clamp } from '../../../helpers/draftMath';
 import {
   ArchCurve, ArchSpline, ArchSplinePoint, ArchingParams, CerutiColors, CerutiViewFlags,
-  EnricoCerutiParams, GougedFlutingParams,
+  EnricoCerutiParams, FlutingParams,
 } from '../../ceruti-types';
 import { clampSplinePointHeights, defaultArchingParams } from '../../ceruti-arching';
 import {
-  defaultGougedFlutingParams, gougedChannelCapPath, GougedLongArch, solveGougedLongArch,
+  defaultFlutingParams, channelCapPath, LongArchSolve, solveLongArch,
 } from '../../ceruti-gouged';
 import { calculateOuterArcs } from '../../ceruti-calcs';
 import {
-  archHeightInfo, curveTypeInfo, gougedTransitionInfo, plateThicknessInfo, ribHeightInfo,
+  archHeightInfo, curveTypeInfo, transitionInfo, plateThicknessInfo, ribHeightInfo,
   splinePointInfo, trochoidFactorInfo,
 } from '../../ceruti-helpers';
 import { HighlightedSplinePoint } from '../../renders/render-constants';
@@ -23,26 +23,19 @@ import { renderSplineGuide, renderSplineHighlight, renderSplineMeasures } from '
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 
 /**
- * Step two of the gouged model: the arch along the body.
+ * Step two: the arch along the body.
  *
- * The curve itself is the classic panel's, unchanged and *shared* — the very
- * same `arching[plate].arch`. A catenary or a spline over body length means the
- * same thing in either model, and holding one arch between the two is what
- * makes the comparison direct: one arch, two channel treatments.
- *
- * What differs is where it ends. The classic model stops it at the fluting
- * inner boundary and drops its takeoff by an entered `edgeDepth`. Here neither
- * number is entered: the arch runs *into* the channel's inner flank and stops
- * where it meets it tangentially, and both the takeoff depth and the span come
- * back out of that solve.
+ * Where it ends is not entered. The arch runs *into* the channel's inner flank
+ * and stops where it meets it tangentially, and both the takeoff depth and the
+ * span come back out of that solve.
  */
 @Component({
-  selector: 'app-ceruti-gouged-long-arching-panel',
+  selector: 'app-ceruti-long-arching-panel',
   imports: [FormsModule, DecimalPipe],
-  templateUrl: './gouged-long-arching-panel.html',
+  templateUrl: './long-arching-panel.html',
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
-export class GougedLongArchingPanel extends CerutiPanelBase implements OnInit {
+export class LongArchingPanel extends CerutiPanelBase implements OnInit {
   @Input({ required: true }) params!: EnricoCerutiParams;
   @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;
@@ -53,14 +46,14 @@ export class GougedLongArchingPanel extends CerutiPanelBase implements OnInit {
   protected readonly trochoidFactorInfo = trochoidFactorInfo;
   protected readonly curveTypeInfo = curveTypeInfo;
   protected readonly splinePointInfo = splinePointInfo;
-  protected readonly gougedTransitionInfo = gougedTransitionInfo;
+  protected readonly transitionInfo = transitionInfo;
   protected readonly peakSource = SPLINE_PEAK_SOURCE;
 
   private highlightedPlate: 'top' | 'bottom' | null = null;
   private highlightedSource = SPLINE_PEAK_SOURCE;
 
   /** Last solve per plate, kept so the template can report it without re-solving. */
-  private solved: { top: GougedLongArch | null; bottom: GougedLongArch | null } = { top: null, bottom: null };
+  private solved: { top: LongArchSolve | null; bottom: LongArchSolve | null } = { top: null, bottom: null };
 
   ngOnInit(): void {
     this.emitImmediate();
@@ -80,9 +73,9 @@ export class GougedLongArchingPanel extends CerutiPanelBase implements OnInit {
     return plate === 'top' ? this.topArch : this.bottomArch;
   }
 
-  gouge(plate: 'top' | 'bottom'): GougedFlutingParams {
+  gouge(plate: 'top' | 'bottom'): FlutingParams {
     const plateParams = plate === 'top' ? this.arching.top : this.arching.bottom;
-    return (plateParams.gougedFluting ??= defaultGougedFlutingParams(this.params));
+    return (plateParams.fluting ??= defaultFlutingParams(this.params));
   }
 
   /**
@@ -94,7 +87,7 @@ export class GougedLongArchingPanel extends CerutiPanelBase implements OnInit {
     return this.solved[plate] === null && this.archFor(plate).archHeight > 0;
   }
 
-  // ===== Arch editing — the same curve the classic panel writes =====
+  // ===== Arch editing =====
 
   setCurveType(plate: 'top' | 'bottom', type: ArchCurve['type']): void {
     const plateParams = plate === 'top' ? this.arching.top : this.arching.bottom;
@@ -206,14 +199,13 @@ export class GougedLongArchingPanel extends CerutiPanelBase implements OnInit {
     this.params.arching ??= defaultArchingParams(this.params.height);
     calculateOuterArcs(this.params);
     for (const plate of ['top', 'bottom'] as const) {
-      this.solved[plate] = solveGougedLongArch(this.params, this.archFor(plate), this.gouge(plate));
+      this.solved[plate] = solveLongArch(this.params, this.archFor(plate), this.gouge(plate));
     }
     return [this.section()];
   }
 
   /**
-   * The instrument's side profile, in the same frame the classic Long Arching
-   * panel uses: the rib between the two plates, the top growing up off it and
+   * The instrument's side profile: the rib between the two plates, the top growing up off it and
    * the back down. Both plates share one view — they are two faces of one
    * instrument here, not two objects to compare side by side the way the plan
    * views in the channel panel are.
@@ -266,8 +258,8 @@ export class GougedLongArchingPanel extends CerutiPanelBase implements OnInit {
     // because it is the tool rather than a curve fitted to the arch. Drawn only
     // as far as the arch's contact, where the arch takes over as the surface.
     const sEnd = solved?.takeoff.contactS;
-    renderPath(gougedChannelCapPath(p, gouge, outerZ, sign, true, sEnd), this.colors.fluting, 1.5)(g, ui);
-    renderPath(gougedChannelCapPath(p, gouge, outerZ, sign, false, sEnd), this.colors.fluting, 1.5)(g, ui);
+    renderPath(channelCapPath(p, gouge, outerZ, sign, true, sEnd), this.colors.fluting, 1.5)(g, ui);
+    renderPath(channelCapPath(p, gouge, outerZ, sign, false, sEnd), this.colors.fluting, 1.5)(g, ui);
 
     if (!solved) return;
     const { span, yStart, lowered, takeoff } = solved;

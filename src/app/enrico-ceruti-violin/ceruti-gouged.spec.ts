@@ -1,24 +1,24 @@
 import {
-  cornerGougeZ, gougeHalfWidth, gougeProfileSlope, gougeProfileZ, gougedCrossGuide, gougedCrossKnots,
-  chordTrust, crownOffsetTrust, GougedCrossSection, gougedCrossKnotX, makeGougedCrossResolver,
-  nearestGougedCrossShape,
-  solveGougedCrossSection,
-  solveGougedTakeoff,
+  cornerGougeZ, gougeHalfWidth, gougeProfileSlope, gougeProfileZ, crossArchGuide, crossArchKnots,
+  chordTrust, crownOffsetTrust, CrossArchSection, crossArchKnotX, makeCrossArchResolver,
+  nearestCrossArchShape,
+  solveCrossArchSection,
+  solveArchTakeoff,
 } from './ceruti-gouged';
 import { makeMonotoneSpline } from '../helpers/draftMath';
 import { trochoidNorm } from '../helpers/svgPathMath';
 import {
-  GougedCrossCycloidShape, GougedCrossParams, GougedCrossShape, GougedCrossSplineShape,
+  CrossArchCycloidShape, CrossArchParams, CrossArchShape, CrossArchSplineShape,
 } from './ceruti-types';
 
 /**
- * The gouged model's two load-bearing claims, in the order they matter:
+ * The arching model's two load-bearing claims, in the order they matter:
  *
  *  1. the channel section is decided by the tool alone, and
  *  2. where the arch meets it is *solved*, not entered.
  *
- * The second is what keeps this model from costing the maker more parameters
- * than the classic one, so it is worth pinning rather than eyeballing.
+ * The second is what keeps a more physical model from costing the maker more
+ * parameters, so it is worth pinning rather than eyeballing.
  */
 
 // A gouge that cuts 4mm wide at 1.2mm deep — the default seeding for a violin.
@@ -60,13 +60,13 @@ describe('gouge section', () => {
   });
 });
 
-describe('solveGougedTakeoff', () => {
+describe('solveArchTakeoff', () => {
   /** A stand-in arch that always arrives at a fixed grade, so the root is checkable by hand. */
   const constantSlope = (grade: number) => () => grade;
 
   it('lands where the channel matches the arch grade', () => {
     const grade = 0.187; // a violin long arch's takeoff slope over a ~348mm span
-    const t = solveGougedTakeoff(R, D, constantSlope(grade));
+    const t = solveArchTakeoff(R, D, constantSlope(grade));
     expect(t).not.toBeNull();
     // Tangency is the whole point: the channel's slope at the contact must be
     // the grade the arch arrived with.
@@ -76,7 +76,7 @@ describe('solveGougedTakeoff', () => {
   });
 
   it('reports a takeoff depth on the channel it contacts', () => {
-    const t = solveGougedTakeoff(R, D, constantSlope(0.187))!;
+    const t = solveArchTakeoff(R, D, constantSlope(0.187))!;
     expect(t.takeoffDepth).toBeCloseTo(-gougeProfileZ(t.contactS, R, D), 9);
     // A shallow arch contacts near the trough, so it takes off nearly full depth.
     expect(t.takeoffDepth).toBeGreaterThan(0);
@@ -86,8 +86,8 @@ describe('solveGougedTakeoff', () => {
   it('contacts further out as the arch arrives steeper', () => {
     // The physical claim behind the sliding contact point: a steeper arch meets
     // the channel higher up its inner flank, eating less of it.
-    const shallow = solveGougedTakeoff(R, D, constantSlope(0.2))!;
-    const steep = solveGougedTakeoff(R, D, constantSlope(1.0))!;
+    const shallow = solveArchTakeoff(R, D, constantSlope(0.2))!;
+    const steep = solveArchTakeoff(R, D, constantSlope(1.0))!;
     expect(steep.contactS).toBeGreaterThan(shallow.contactS);
     expect(steep.takeoffDepth).toBeLessThan(shallow.takeoffDepth);
   });
@@ -96,7 +96,7 @@ describe('solveGougedTakeoff', () => {
     const w = gougeHalfWidth(R, D);
     // Steeper than the channel ever gets, so the arch can never come tangent to it.
     const beyond = gougeProfileSlope(w * (1 - 1e-3), R, D) * 2;
-    const t = solveGougedTakeoff(R, D, constantSlope(beyond))!;
+    const t = solveArchTakeoff(R, D, constantSlope(beyond))!;
     expect(t).not.toBeNull();
     expect(t.tangent).toBe(false);
     // Nearest it can get is where the channel is steepest — its inner edge.
@@ -110,23 +110,23 @@ describe('solveGougedTakeoff', () => {
     // channel depth. Closest approach has to be continuous in the arch's grade.
     const w = gougeHalfWidth(R, D);
     const grade = gougeProfileSlope(w * 0.05, R, D);
-    const solved = solveGougedTakeoff(R, D, constantSlope(grade))!;
+    const solved = solveArchTakeoff(R, D, constantSlope(grade))!;
     expect(solved.tangent).toBe(true);
     // A shade too flat to reach even the shallowest part of the flank.
-    const missed = solveGougedTakeoff(R, D, constantSlope(-1e-6))!;
+    const missed = solveArchTakeoff(R, D, constantSlope(-1e-6))!;
     expect(missed.tangent).toBe(false);
     expect(Math.abs(missed.contactS - solved.contactS)).toBeLessThan(w * 0.1);
   });
 
   it('returns null for a tool that cuts nothing', () => {
-    expect(solveGougedTakeoff(1, 2, constantSlope(0.2))).toBeNull();
+    expect(solveArchTakeoff(1, 2, constantSlope(0.2))).toBeNull();
   });
 
   it('handles an arch whose grade depends on where it lands', () => {
     // The real callers do this: moving the contact changes the span and the
     // takeoff depth, which changes the slope the arch arrives with. The solver
     // brackets by scanning rather than assuming that stays monotone.
-    const t = solveGougedTakeoff(R, D, (takeoffDepth, contactS) => 0.15 + 0.3 * takeoffDepth - 0.05 * contactS);
+    const t = solveArchTakeoff(R, D, (takeoffDepth, contactS) => 0.15 + 0.3 * takeoffDepth - 0.05 * contactS);
     expect(t).not.toBeNull();
     const arrived = 0.15 + 0.3 * t!.takeoffDepth - 0.05 * t!.contactS;
     expect(gougeProfileSlope(t!.contactS, R, D)).toBeCloseTo(arrived, 5);
@@ -159,34 +159,34 @@ describe('cornerGougeZ', () => {
   });
 });
 
-describe('gougedCrossKnots', () => {
-  const shape = (points: GougedCrossSplineShape['points']): GougedCrossSplineShape => ({ type: 'gouged', points });
+describe('crossArchKnots', () => {
+  const shape = (points: CrossArchSplineShape['points']): CrossArchSplineShape => ({ type: 'spline', points });
 
   it('keeps both coordinates fractional, so the shape scales with the station', () => {
-    expect(gougedCrossKnots(shape([{ x: 0.45, z: 0.62, mirror: true }]), 1))
+    expect(crossArchKnots(shape([{ x: 0.45, z: 0.62, mirror: true }]), 1))
       .toEqual([{ x: 0.45, z: 0.62 }]);
   });
 
   it('mirrors a knot onto both sides', () => {
     const s = shape([{ x: 0.45, z: 0.62, mirror: true }]);
-    expect(gougedCrossKnots(s, 1)).toEqual(gougedCrossKnots(s, -1));
+    expect(crossArchKnots(s, 1)).toEqual(crossArchKnots(s, -1));
   });
 
   it('confines an unmirrored knot to its own side', () => {
     // The only source of asymmetry in this model, so it has to be exact.
     const s = shape([{ x: -0.4, z: 0.8 }, { x: 0.6, z: 0.3 }]);
-    expect(gougedCrossKnots(s, -1)).toEqual([{ x: 0.4, z: 0.8 }]);
-    expect(gougedCrossKnots(s, 1)).toEqual([{ x: 0.6, z: 0.3 }]);
+    expect(crossArchKnots(s, -1)).toEqual([{ x: 0.4, z: 0.8 }]);
+    expect(crossArchKnots(s, 1)).toEqual([{ x: 0.6, z: 0.3 }]);
   });
 
   it('sorts outward and collapses knots landing on one another', () => {
     const s = shape([{ x: 0.7, z: 0.3 }, { x: 0.45, z: 0.62 }, { x: 0.45, z: 0.1 }]);
-    expect(gougedCrossKnots(s, 1).map(k => k.x)).toEqual([0.45, 0.7]);
+    expect(crossArchKnots(s, 1).map(k => k.x)).toEqual([0.45, 0.7]);
   });
 });
 
 describe('the trochoid crown', () => {
-  const cyc = (d: number, pct: number): GougedCrossCycloidShape => ({ type: 'gouged-cycloid', d, pct });
+  const cyc = (d: number, pct: number): CrossArchCycloidShape => ({ type: 'cycloid', d, pct });
 
   /** The trochoid's own half, as fractional crown coordinates — what the knots are sampled from. */
   const exact = (d: number, pct: number, xFrac: number): number => {
@@ -204,14 +204,14 @@ describe('the trochoid crown', () => {
     // The last stretch is the transition and belongs to the solve. Authoring a
     // knot out there would also put one wherever the takeoff lands, and two
     // knots at one position carrying two heights is what the spline cannot do.
-    const knots = gougedCrossKnots(cyc(0.4, 0.9), 1);
+    const knots = crossArchKnots(cyc(0.4, 0.9), 1);
     expect(knots[0].x).toBeGreaterThan(0);
     expect(knots[knots.length - 1].x).toBeLessThan(1);
     expect(knots[knots.length - 1].x).toBeGreaterThan(0.9);
   });
 
   it('descends monotonically from the crown', () => {
-    const knots = gougedCrossKnots(cyc(0.7, 0.85), 1);
+    const knots = crossArchKnots(cyc(0.7, 0.85), 1);
     for (let i = 1; i < knots.length; i++) {
       expect(knots[i].x).toBeGreaterThan(knots[i - 1].x);
       expect(knots[i].z).toBeLessThan(knots[i - 1].z);
@@ -220,7 +220,7 @@ describe('the trochoid crown', () => {
 
   it('gives both sides the same shape', () => {
     const s = cyc(0.4, 0.9);
-    expect(gougedCrossKnots(s, 1)).toEqual(gougedCrossKnots(s, -1));
+    expect(crossArchKnots(s, 1)).toEqual(crossArchKnots(s, -1));
   });
 
   /**
@@ -235,7 +235,7 @@ describe('the trochoid crown', () => {
     // order slower there. Even so it is 2e-3 of the arch height — three
     // hundredths of a millimetre on a violin top, under the export grid.
     for (const [d, pct, tol] of [[0, 1, 1e-3], [0.4, 0.9, 1e-3], [0.6, 0.3, 1e-3], [1, 0.85, 3e-3]] as const) {
-      const knots = gougedCrossKnots(cyc(d, pct), 1);
+      const knots = crossArchKnots(cyc(d, pct), 1);
       const f = makeMonotoneSpline([0, ...knots.map(k => k.x)], [1, ...knots.map(k => k.z)]);
       // Only over the sampled span. Past the last knot the shape is deliberately
       // not the trochoid — that is the transition, which the tangency solve
@@ -251,8 +251,8 @@ describe('the trochoid crown', () => {
   });
 
   it('meets the channel like any other crown', () => {
-    const row = { left: gougedCrossKnots(cyc(0.4, 0.9), -1), right: gougedCrossKnots(cyc(0.4, 0.9), 1) };
-    const s = solveGougedCrossSection(15, 100, R, D, row)!;
+    const row = { left: crossArchKnots(cyc(0.4, 0.9), -1), right: crossArchKnots(cyc(0.4, 0.9), 1) };
+    const s = solveCrossArchSection(15, 100, R, D, row)!;
     expect(s).not.toBeNull();
     expect(gougeProfileSlope(s.right!.contactS, R, D)).toBeCloseTo(s.right!.slope, 9);
     expect(s.zAt(0)).toBeCloseTo(15, 9);
@@ -266,8 +266,8 @@ describe('the trochoid crown', () => {
    * the trough — i.e. a smaller contact `s`.
    */
   const contactAt = (d: number, pct: number, archH = 15, half = 100): number | null => {
-    const knots = gougedCrossKnots(cyc(d, pct), 1);
-    return solveGougedCrossSection(archH, half, R, D, { left: knots, right: knots })?.right?.contactS ?? null;
+    const knots = crossArchKnots(cyc(d, pct), 1);
+    return solveCrossArchSection(archH, half, R, D, { left: knots, right: knots })?.right?.contactS ?? null;
   };
 
   it('brings the contact outward as the run-out steepens', () => {
@@ -316,26 +316,26 @@ describe('the trochoid crown', () => {
   });
 });
 
-describe('makeGougedCrossResolver', () => {
+describe('makeCrossArchResolver', () => {
   const BODY = 356;
 
   it('holds the base shape everywhere when no station is set', () => {
-    const cross: GougedCrossParams = { type: 'gouged', points: [{ x: 0.45, z: 0.62, mirror: true }] };
-    const resolve = makeGougedCrossResolver(cross, BODY);
+    const cross: CrossArchParams = { type: 'spline', points: [{ x: 0.45, z: 0.62, mirror: true }] };
+    const resolve = makeCrossArchResolver(cross, BODY);
     for (const y of [10, 100, 178, 300]) {
       expect(resolve(y).right).toEqual([{ x: 0.45, z: 0.62 }]);
     }
   });
 
   it('ramps between stations without overshooting either', () => {
-    // Same shape-preserving guarantee the classic resolvers carry: an
-    // interpolated shape never swings outside the values the maker entered.
-    const cross: GougedCrossParams = {
-      type: 'gouged',
+    // The shape-preserving guarantee: an interpolated shape never swings
+    // outside the values the maker entered.
+    const cross: CrossArchParams = {
+      type: 'spline',
       points: [{ x: 0.45, z: 0.62, mirror: true }],
-      stations: [{ y: 178, type: 'gouged', points: [{ x: 0.45, z: 0.3, mirror: true }] }],
+      stations: [{ y: 178, type: 'spline', points: [{ x: 0.45, z: 0.3, mirror: true }] }],
     };
-    const resolve = makeGougedCrossResolver(cross, BODY);
+    const resolve = makeCrossArchResolver(cross, BODY);
     expect(resolve(178).right[0].z).toBeCloseTo(0.3, 6);
     expect(resolve(0).right[0].z).toBeCloseTo(0.62, 6); // base anchors both ends
     for (let y = 0; y <= BODY; y += 4) {
@@ -348,12 +348,12 @@ describe('makeGougedCrossResolver', () => {
   it('carries a station knot position the base does not have', () => {
     // Two stations can differ in knot count entirely, which is why the resolver
     // ramps over the union of their positions rather than pairing them up.
-    const cross: GougedCrossParams = {
-      type: 'gouged',
+    const cross: CrossArchParams = {
+      type: 'spline',
       points: [{ x: 0.45, z: 0.62, mirror: true }],
-      stations: [{ y: 178, type: 'gouged', points: [{ x: 0.45, z: 0.62, mirror: true }, { x: 0.8, z: 0.1, mirror: true }] }],
+      stations: [{ y: 178, type: 'spline', points: [{ x: 0.45, z: 0.62, mirror: true }, { x: 0.8, z: 0.1, mirror: true }] }],
     };
-    const resolve = makeGougedCrossResolver(cross, BODY);
+    const resolve = makeCrossArchResolver(cross, BODY);
     expect(resolve(178).right.map(k => k.x)).toEqual([0.45, 0.8]);
     expect(resolve(178).right[1].z).toBeCloseTo(0.1, 6);
     // The base has nothing at 0.8, so it reports what its own curve does out
@@ -368,12 +368,12 @@ describe('makeGougedCrossResolver', () => {
     // outermost height claims it is level out there. Two ramped columns then
     // arrive at nearly the same height and the monotone spline draws — quite
     // correctly — a flat shoulder between them, from a shape with one knot.
-    const cross: GougedCrossParams = {
-      type: 'gouged',
+    const cross: CrossArchParams = {
+      type: 'spline',
       points: [{ x: 0.7, z: 0.4, mirror: true }],
-      stations: [{ y: 103, type: 'gouged', points: [{ x: 0.41, z: 0.65, mirror: true }] }],
+      stations: [{ y: 103, type: 'spline', points: [{ x: 0.41, z: 0.65, mirror: true }] }],
     };
-    const resolve = makeGougedCrossResolver(cross, BODY);
+    const resolve = makeCrossArchResolver(cross, BODY);
     for (let y = 0; y <= BODY; y += 8) {
       const [inner, outer] = resolve(y).right;
       expect(outer.z).toBeLessThan(inner.z - 1e-3);
@@ -381,58 +381,58 @@ describe('makeGougedCrossResolver', () => {
   });
 });
 
-describe('nearestGougedCrossShape', () => {
+describe('nearestCrossArchShape', () => {
   const BODY = 356;
-  const base: GougedCrossParams = {
-    type: 'gouged',
+  const base: CrossArchParams = {
+    type: 'spline',
     points: [{ x: 0.45, z: 0.62, mirror: true }],
     stations: [
-      { y: 120, type: 'gouged', points: [{ x: 0.45, z: 0.3, mirror: true }] },
-      { y: 240, type: 'gouged', points: [{ x: 0.45, z: 0.9, mirror: true }] },
+      { y: 120, type: 'spline', points: [{ x: 0.45, z: 0.3, mirror: true }] },
+      { y: 240, type: 'spline', points: [{ x: 0.45, z: 0.9, mirror: true }] },
     ],
   };
 
   /** The one field these fixtures differ in. */
-  const heightOf = (shape: GougedCrossShape) => (shape as GougedCrossSplineShape).points[0].z;
+  const heightOf = (shape: CrossArchShape) => (shape as CrossArchSplineShape).points[0].z;
 
   it('picks the station the cursor is nearest', () => {
-    expect(heightOf(nearestGougedCrossShape(base, 118, BODY))).toBeCloseTo(0.3, 6);
-    expect(heightOf(nearestGougedCrossShape(base, 200, BODY))).toBeCloseTo(0.9, 6);
+    expect(heightOf(nearestCrossArchShape(base, 118, BODY))).toBeCloseTo(0.3, 6);
+    expect(heightOf(nearestCrossArchShape(base, 200, BODY))).toBeCloseTo(0.9, 6);
   });
 
   it('falls back to the base shape near the body ends, which it anchors', () => {
-    expect(heightOf(nearestGougedCrossShape(base, 5, BODY))).toBeCloseTo(0.62, 6);
-    expect(heightOf(nearestGougedCrossShape(base, BODY - 5, BODY))).toBeCloseTo(0.62, 6);
+    expect(heightOf(nearestCrossArchShape(base, 5, BODY))).toBeCloseTo(0.62, 6);
+    expect(heightOf(nearestCrossArchShape(base, BODY - 5, BODY))).toBeCloseTo(0.62, 6);
   });
 
   it('is the base shape everywhere when no station is set', () => {
-    const plain: GougedCrossParams = { type: 'gouged', points: [{ x: 0.45, z: 0.62, mirror: true }] };
-    for (const y of [10, 100, 178, 300]) expect(nearestGougedCrossShape(plain, y, BODY)).toBe(plain);
+    const plain: CrossArchParams = { type: 'spline', points: [{ x: 0.45, z: 0.62, mirror: true }] };
+    for (const y of [10, 100, 178, 300]) expect(nearestCrossArchShape(plain, y, BODY)).toBe(plain);
   });
 
   it('hands back a station as a copy, so the panel cannot edit one by browsing past it', () => {
     // normalizeCrossArchStations clamps into the body and returns copies. The
     // base shape is passed straight through, though, which is why the panel
     // treats everything from here as read-only rather than relying on that.
-    expect(nearestGougedCrossShape(base, 120, BODY)).not.toBe(base.stations![0]);
+    expect(nearestCrossArchShape(base, 120, BODY)).not.toBe(base.stations![0]);
   });
 });
 
-describe('gougedCrossGuide', () => {
+describe('crossArchGuide', () => {
   const R = 2.2667;
   const D = 1.2;
   const ARCH = 15;
   const HALF = 100;
   const sectionFor = (row: { left: { x: number; z: number }[]; right: { x: number; z: number }[] }) =>
-    solveGougedCrossSection(ARCH, HALF, R, D, row)!;
-  const rowOf = (shape: GougedCrossShape) => ({
-    left: gougedCrossKnots(shape, -1),
-    right: gougedCrossKnots(shape, 1),
+    solveCrossArchSection(ARCH, HALF, R, D, row)!;
+  const rowOf = (shape: CrossArchShape) => ({
+    left: crossArchKnots(shape, -1),
+    right: crossArchKnots(shape, 1),
   });
 
   it('marks one crosshair per side per authored knot', () => {
-    const shape: GougedCrossSplineShape = { type: 'gouged', points: [{ x: 0.4, z: 0.57, mirror: true }] };
-    expect(gougedCrossGuide(shape, sectionFor(rowOf(shape))).knots.length).toBe(2);
+    const shape: CrossArchSplineShape = { type: 'spline', points: [{ x: 0.4, z: 0.57, mirror: true }] };
+    expect(crossArchGuide(shape, sectionFor(rowOf(shape))).knots.length).toBe(2);
   });
 
   it('marks the shape it was given, not the wider set of columns the ramp uses', () => {
@@ -440,22 +440,22 @@ describe('gougedCrossGuide', () => {
     // station's knot positions, because that is how shapes with unrelated point
     // lists are ramped. Drawing the guide from that row put two crosshairs on
     // each side for one authored point.
-    const cross: GougedCrossParams = {
-      type: 'gouged',
+    const cross: CrossArchParams = {
+      type: 'spline',
       points: [{ x: 0.4, z: 0.57, mirror: true }],
-      stations: [{ y: 103, type: 'gouged', points: [{ x: 0.7, z: 0.4, mirror: true }] }],
+      stations: [{ y: 103, type: 'spline', points: [{ x: 0.7, z: 0.4, mirror: true }] }],
     };
-    const row = makeGougedCrossResolver(cross, 356)(199);
+    const row = makeCrossArchResolver(cross, 356)(199);
     expect(row.right.length).toBe(2); // the ramp really does carry both columns
 
-    const shape: GougedCrossSplineShape = { type: 'gouged', points: [{ x: 0.4, z: 0.57, mirror: true }] };
-    expect(gougedCrossGuide(shape, sectionFor(row)).knots.length).toBe(2);
+    const shape: CrossArchSplineShape = { type: 'spline', points: [{ x: 0.4, z: 0.57, mirror: true }] };
+    expect(crossArchGuide(shape, sectionFor(row)).knots.length).toBe(2);
   });
 
   it('places a knot against its own side takeoff, and measures its height from there', () => {
-    const shape: GougedCrossSplineShape = { type: 'gouged', points: [{ x: 0.4, z: 0.57, mirror: true }] };
+    const shape: CrossArchSplineShape = { type: 'spline', points: [{ x: 0.4, z: 0.57, mirror: true }] };
     const section = sectionFor(rowOf(shape));
-    for (const k of gougedCrossGuide(shape, section).knots) {
+    for (const k of crossArchGuide(shape, section).knots) {
       const xEnd = k.x < 0 ? section.xEndLeft : section.xEndRight;
       expect(Math.abs(k.x)).toBeCloseTo(0.4 * xEnd, 9);
       expect((k.z - k.base) / (section.archH - k.base)).toBeCloseTo(0.57, 9);
@@ -463,8 +463,8 @@ describe('gougedCrossGuide', () => {
   });
 
   it('draws generating circles for a trochoid, which has no control points to mark', () => {
-    const shape: GougedCrossCycloidShape = { type: 'gouged-cycloid', d: 0.4, pct: 0.9 };
-    const guide = gougedCrossGuide(shape, sectionFor(rowOf(shape)));
+    const shape: CrossArchCycloidShape = { type: 'cycloid', d: 0.4, pct: 0.9 };
+    const guide = crossArchGuide(shape, sectionFor(rowOf(shape)));
     expect(guide.knots).toEqual([]);
     expect(guide.circles.length).toBe(2);
     // radius = hEff / 2d, per side, off that side's own takeoff.
@@ -474,7 +474,7 @@ describe('gougedCrossGuide', () => {
   });
 });
 
-describe('solveGougedCrossSection', () => {
+describe('solveCrossArchSection', () => {
   const R = 2.2667;
   const D = 1.2;
   const ARCH = 15;
@@ -482,7 +482,7 @@ describe('solveGougedCrossSection', () => {
   const row = { left: [{ x: 0.45, z: 0.6 }], right: [{ x: 0.45, z: 0.6 }] };
 
   it('meets the channel tangentially on both sides', () => {
-    const s = solveGougedCrossSection(ARCH, HALF, R, D, row)!;
+    const s = solveCrossArchSection(ARCH, HALF, R, D, row)!;
     expect(s).not.toBeNull();
     for (const side of [s.left!, s.right!]) {
       expect(gougeProfileSlope(side.contactS, R, D)).toBeCloseTo(side.slope, 9);
@@ -492,7 +492,7 @@ describe('solveGougedCrossSection', () => {
   });
 
   it('is symmetric when the template is', () => {
-    const s = solveGougedCrossSection(ARCH, HALF, R, D, row)!;
+    const s = solveCrossArchSection(ARCH, HALF, R, D, row)!;
     expect(s.left!.contactS).toBeCloseTo(s.right!.contactS, 9);
     for (const x of [10, 45, 80, 99]) {
       expect(s.zAt(-x)).toBeCloseTo(s.zAt(x), 9);
@@ -502,14 +502,14 @@ describe('solveGougedCrossSection', () => {
   it('lands the contacts differently when the template is not', () => {
     // The observable this model exists for: a crisp constant channel outer
     // edge, with the recurve shoulder inside it varying.
-    const s = solveGougedCrossSection(ARCH, HALF, R, D, {
+    const s = solveCrossArchSection(ARCH, HALF, R, D, {
       left: [{ x: 0.45, z: 0.87 }], right: [{ x: 0.45, z: 0.27 }],
     })!;
     expect(s.left!.contactS).not.toBeCloseTo(s.right!.contactS, 3);
   });
 
   it('crowns at the arch height and reaches the channel trough', () => {
-    const s = solveGougedCrossSection(ARCH, HALF, R, D, row)!;
+    const s = solveCrossArchSection(ARCH, HALF, R, D, row)!;
     expect(s.zAt(0)).toBeCloseTo(ARCH, 9);
     // The trough sits at the centerline half-chord, full depth below the plate.
     expect(s.zAt(HALF)).toBeCloseTo(-D, 9);
@@ -520,15 +520,15 @@ describe('solveGougedCrossSection', () => {
   it('has no seam where the arch meets the channel', () => {
     // The transition is the template spline's own last segment, so there is no
     // join to line up — a step here would mean the two halves disagree.
-    const s = solveGougedCrossSection(ARCH, HALF, R, D, row)!;
+    const s = solveCrossArchSection(ARCH, HALF, R, D, row)!;
     const xEnd = HALF - s.right!.contactS;
     expect(s.zAt(xEnd - 1e-6)).toBeCloseTo(s.zAt(xEnd + 1e-6), 6);
   });
 
   it('returns null where the channel has no room', () => {
-    expect(solveGougedCrossSection(ARCH, 1, R, D, row)).toBeNull();
+    expect(solveCrossArchSection(ARCH, 1, R, D, row)).toBeNull();
     // Crown down at the trough: nothing left for the channel to run into.
-    expect(solveGougedCrossSection(-D, HALF, R, D, row)).toBeNull();
+    expect(solveCrossArchSection(-D, HALF, R, D, row)).toBeNull();
   });
 
   it('still solves where the crown sits below plate level', () => {
@@ -536,7 +536,7 @@ describe('solveGougedCrossSection', () => {
     // climbed clear of its own takeoff. Leaving these unsolved rendered a flat
     // ring around both caps with a straight seam where the height crossed zero.
     for (const archH of [-0.9, -0.4, 0, 0.4]) {
-      const s = solveGougedCrossSection(archH, HALF, R, D, row);
+      const s = solveCrossArchSection(archH, HALF, R, D, row);
       expect(s).not.toBeNull();
       expect(s!.zAt(0)).toBeCloseTo(archH, 9);
       // Still a dish: the trough is the low point, the crown the high one.
@@ -549,7 +549,7 @@ describe('solveGougedCrossSection', () => {
     // Heights are measured up from the takeoff, not up from the plate surface,
     // so a negative crown cannot lift a knot above it and invert the section.
     for (const archH of [-0.8, 12]) {
-      const s = solveGougedCrossSection(archH, HALF, R, D, row)!;
+      const s = solveCrossArchSection(archH, HALF, R, D, row)!;
       for (let x = 0; x <= HALF - s.right!.contactS; x += 1) {
         expect(s.zAt(x)).toBeLessThanOrEqual(archH + 1e-9);
         expect(s.zAt(x)).toBeGreaterThanOrEqual(-D - 1e-9);
@@ -590,7 +590,7 @@ describe('the crown', () => {
   };
 
   it('is flat at the centerline', () => {
-    const s = solveGougedCrossSection(ARCH, HALF, R, D, { left: knots, right: knots })!;
+    const s = solveCrossArchSection(ARCH, HALF, R, D, { left: knots, right: knots })!;
     for (const slope of crownSlopes(s)) expect(slope).toBeCloseTo(0, 6);
   });
 
@@ -598,7 +598,7 @@ describe('the crown', () => {
     // Asymmetry must not tilt the crown: a nonzero slope at x = 0 would put the
     // real high spot off the centerline and the entered arch height would stop
     // describing the plate.
-    const s = solveGougedCrossSection(ARCH, HALF, R, D, {
+    const s = solveCrossArchSection(ARCH, HALF, R, D, {
       left: [{ x: 0.4, z: 0.87 }],
       right: [{ x: 0.6, z: 0.33 }],
     })!;
@@ -606,7 +606,7 @@ describe('the crown', () => {
   });
 
   it('is the highest point of the section', () => {
-    const s = solveGougedCrossSection(ARCH, HALF, R, D, {
+    const s = solveCrossArchSection(ARCH, HALF, R, D, {
       left: [{ x: 0.4, z: 0.87 }],
       right: [{ x: 0.6, z: 0.33 }],
     })!;
@@ -618,7 +618,7 @@ describe('the crown', () => {
   it('rounds over rather than cornering', () => {
     // A ridge shows up as the section falling away linearly from the apex; a
     // real crown falls away quadratically, so the drop at 2ε is ~4× that at ε.
-    const s = solveGougedCrossSection(ARCH, HALF, R, D, { left: knots, right: knots })!;
+    const s = solveCrossArchSection(ARCH, HALF, R, D, { left: knots, right: knots })!;
     const e = 0.5;
     const ratio = (ARCH - s.zAt(2 * e)) / (ARCH - s.zAt(e));
     expect(ratio).toBeGreaterThan(3.5);
@@ -631,7 +631,7 @@ describe('the crown', () => {
 
   /** `peak` is a fraction of the full width, so 0.5 is the joint. */
   const moved = (peak: number, half = HALF, archH = ARCH) =>
-    solveGougedCrossSection(archH, half, R, D, { left: knots, right: knots, peak })!;
+    solveCrossArchSection(archH, half, R, D, { left: knots, right: knots, peak })!;
 
   it('puts the crown where it was asked to, at the full arch height', () => {
     const s = moved(0.6);
@@ -688,7 +688,7 @@ describe('the crown', () => {
     const off = moved(0.65);
     for (const side of [-1, 1] as const) {
       for (const frac of [0.45, 0.7]) {
-        expect(gougedCrossKnotX(off, side, frac)).toBeCloseTo(gougedCrossKnotX(centred, side, frac), 1);
+        expect(crossArchKnotX(off, side, frac)).toBeCloseTo(crossArchKnotX(centred, side, frac), 1);
       }
     }
   });
@@ -698,8 +698,8 @@ describe('the crown', () => {
     // the bass flank of a crown moved out past it. Dropping such a knot would be
     // a step change, and a step is what the tangency solve cannot survive.
     const inner = [{ x: 0.2, z: 0.75 }, { x: 0.6, z: 0.35 }];
-    const s = solveGougedCrossSection(ARCH, HALF, R, D, { left: inner, right: inner, peak: 0.65 })!;
-    const x = gougedCrossKnotX(s, 1, 0.2);
+    const s = solveCrossArchSection(ARCH, HALF, R, D, { left: inner, right: inner, peak: 0.65 })!;
+    const x = crossArchKnotX(s, 1, 0.2);
     expect(x).toBeLessThan(s.xPeak); // the knot really is inside the crown
 
     // And it is still pinning the curve: the section passes through the height
@@ -783,7 +783,7 @@ describe('the crown', () => {
 
   it('is unchanged from the centred solve when the crown is not moved', () => {
     // Old templates carry no peak at all, and must render exactly as before.
-    const before = solveGougedCrossSection(ARCH, HALF, R, D, { left: knots, right: knots })!;
+    const before = solveCrossArchSection(ARCH, HALF, R, D, { left: knots, right: knots })!;
     const after = moved(0.5);
     for (let x = -HALF; x <= HALF; x += 1) expect(after.zAt(x)).toBeCloseTo(before.zAt(x), 12);
   });
@@ -797,10 +797,10 @@ describe('the crown', () => {
 
   const one = [{ x: 0.7, z: 0.4 }];
   const withOneKnot = (peak: number, archH = ARCH) =>
-    solveGougedCrossSection(archH, HALF, R, D, { left: one, right: one, peak })!;
+    solveCrossArchSection(archH, HALF, R, D, { left: one, right: one, peak })!;
 
   /** One-sided curvatures at the crown, each measured wholly on its own flank. */
-  const crownCurvatures = (s: GougedCrossSection, h = 0.02): [number, number] => {
+  const crownCurvatures = (s: CrossArchSection, h = 0.02): [number, number] => {
     const side = (dir: 1 | -1) =>
       (s.zAt(s.xPeak + dir * h) - 2 * s.zAt(s.xPeak + dir * 2 * h) + s.zAt(s.xPeak + dir * 3 * h)) / (h * h);
     return [side(-1), side(1)];
@@ -833,7 +833,7 @@ describe('the crown', () => {
     ];
     for (const pts of templates) {
       for (const peak of [0.3, 0.35, 0.42, 0.46, 0.5, 0.58, 0.7]) {
-        const s = solveGougedCrossSection(ARCH, HALF, R, D, { left: pts, right: pts, peak })!;
+        const s = solveCrossArchSection(ARCH, HALF, R, D, { left: pts, right: pts, peak })!;
         expect(s).not.toBeNull();
         expect(s.zAt(s.xPeak)).toBeCloseTo(ARCH, 9);
         let max = -Infinity;

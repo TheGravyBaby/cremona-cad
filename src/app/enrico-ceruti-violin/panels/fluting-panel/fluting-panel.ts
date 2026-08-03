@@ -5,11 +5,11 @@ import { renderFilledPath, renderPath } from '../../../helpers/renderFuncs';
 import { translatePath } from '../../../helpers/svgPathMath';
 import { calculateOuterArcs } from '../../ceruti-calcs';
 import { defineOuterPath, defineOuterPurflingPath, definePurflingPath } from '../../ceruti-paths';
-import { ArchingParams, CerutiColors, CerutiViewFlags, EnricoCerutiParams, GougedFlutingParams } from '../../ceruti-types';
+import { ArchingParams, CerutiColors, CerutiViewFlags, EnricoCerutiParams, FlutingParams } from '../../ceruti-types';
 import { defaultArchingParams } from '../../ceruti-arching';
 import {
-  cornerGougeOn, defaultGougedFlutingParams, effectiveCBoutSweep, gougedChannelAreaPath,
-  gougedChannelPaths, gougedCornerJoinAreaPath, gougeHalfWidth, plateLayoutOffset,
+  cornerGougeOn, defaultFlutingParams, effectiveCBoutSweep, channelAreaPath,
+  channelPaths, cornerJoinAreaPath, gougeHalfWidth, plateLayoutOffset,
 } from '../../ceruti-gouged';
 import {
   cornerGougeInfo, gougeCBoutInfo, gougeCenterlineInfo, gougeSectionInfo,
@@ -17,21 +17,17 @@ import {
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 
 /**
- * Step one of the gouged model: carve the channel. It comes first because
- * that's the order at the bench — the channel is cut at constant section
- * before any arching exists to derive it from, which is exactly the dependency
- * the classic model has backwards.
- *
- * Nothing here reads or writes the classic `fluting`/`cross` params, so the
- * two models can be flipped between freely for comparison.
+ * Step one: carve the channel. It comes first because that is the order at the
+ * bench — the channel is cut at constant section before any arching exists to
+ * derive it from.
  */
 @Component({
-  selector: 'app-ceruti-gouged-fluting-panel',
+  selector: 'app-ceruti-fluting-panel',
   imports: [FormsModule, DecimalPipe],
-  templateUrl: './gouged-fluting-panel.html',
+  templateUrl: './fluting-panel.html',
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
-export class GougedFlutingPanel extends CerutiPanelBase implements OnInit {
+export class FlutingPanel extends CerutiPanelBase implements OnInit {
   @Input({ required: true }) params!: EnricoCerutiParams;
   @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;
@@ -56,9 +52,9 @@ export class GougedFlutingPanel extends CerutiPanelBase implements OnInit {
 
   get arching(): ArchingParams { return this.params.arching!; }
 
-  gouge(plate: 'top' | 'bottom'): GougedFlutingParams {
+  gouge(plate: 'top' | 'bottom'): FlutingParams {
     const plateParams = plate === 'top' ? this.arching.top : this.arching.bottom;
-    return (plateParams.gougedFluting ??= defaultGougedFlutingParams(this.params));
+    return (plateParams.fluting ??= defaultFlutingParams(this.params));
   }
 
   /** The cut's width at the set depth — derived from the tool, so read-only. */
@@ -180,7 +176,7 @@ export class GougedFlutingPanel extends CerutiPanelBase implements OnInit {
       if (purfling) layers.push(renderPath(at(purfling), this.colors.innerTrace, 1));
     }
 
-    const paths = gougedChannelPaths(this.params, this.gouge(plate));
+    const paths = channelPaths(this.params, this.gouge(plate));
     if (!paths) return layers;
 
     // Areas rather than outlines: the channel and the corner-join land are
@@ -197,11 +193,11 @@ export class GougedFlutingPanel extends CerutiPanelBase implements OnInit {
     // own outer edge, which this region by definition excludes.
     const carved = cornerGougeOn(this.gouge(plate));
     layers.push(renderFilledPath(
-      at(gougedCornerJoinAreaPath(this.params, paths)),
+      at(cornerJoinAreaPath(this.params, paths)),
       color,
       carved ? 0.3 : 0.2,
     ));
-    layers.push(renderFilledPath(at(gougedChannelAreaPath(paths)), color, 0.3));
+    layers.push(renderFilledPath(at(channelAreaPath(paths)), color, 0.3));
     return layers;
   }
 }

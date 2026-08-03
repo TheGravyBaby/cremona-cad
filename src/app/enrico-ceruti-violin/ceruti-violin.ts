@@ -14,9 +14,9 @@ import { CornersPanel } from './panels/corners-panel/corners-panel';
 import { CenterBoutPanel } from './panels/center-bout-panel/center-bout-panel';
 import { OuterTracePanel } from './panels/outer-trace-panel/outer-trace-panel';
 import { MouldPanel } from './panels/mould-panel/mould-panel';
-import { GougedFlutingPanel } from './panels/gouged-fluting-panel/gouged-fluting-panel';
-import { GougedLongArchingPanel } from './panels/gouged-long-arching-panel/gouged-long-arching-panel';
-import { GougedCrossArchingPanel } from './panels/gouged-cross-arching-panel/gouged-cross-arching-panel';
+import { FlutingPanel } from './panels/fluting-panel/fluting-panel';
+import { LongArchingPanel } from './panels/long-arching-panel/long-arching-panel';
+import { CrossArchingPanel } from './panels/cross-arching-panel/cross-arching-panel';
 import { ExportPanel } from './panels/export-panel/export-panel';
 import { RecipeToolbarComponent } from '../recipe-toolbar/recipe-toolbar';
 import { RenderToggles } from './render-toggles/render-toggles';
@@ -38,7 +38,7 @@ function toggleRows(on: Partial<RenderToggleRows>): RenderToggleRows {
 
 @Component({
   selector: 'app-ceruti-violin',
-  imports: [FormsModule, BasePanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterTracePanel, MouldPanel, GougedFlutingPanel, GougedLongArchingPanel, GougedCrossArchingPanel, ExportPanel, RecipeToolbarComponent, RenderToggles],
+  imports: [FormsModule, BasePanel, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterTracePanel, MouldPanel, FlutingPanel, LongArchingPanel, CrossArchingPanel, ExportPanel, RecipeToolbarComponent, RenderToggles],
   templateUrl: './ceruti-violin.html',
   styleUrls: ['../sidebar.css', './ceruti-violin.css'],
 })
@@ -54,12 +54,10 @@ export class CerutiViolin extends RecipeComponentBase {
     { id: 'outerTrace', label: 'Outer Path' },
     // The arching panels run in the order of operations at the bench: the
     // channel is gouged at constant section first, then the long arch is carved
-    // to a template, then the crown across. Ids still say `gouged` because a
-    // saved session restores its open panel by id; the model they belong to is
-    // simply the arching model now, so the labels don't qualify it.
-    { id: 'gougedFluting', label: 'Fluting Channel' },
-    { id: 'gougedLongArching', label: 'Long Arching' },
-    { id: 'gougedCrossArching', label: 'Cross Arching' },
+    // to a template, then the crown across.
+    { id: 'fluting', label: 'Fluting Channel' },
+    { id: 'longArching', label: 'Long Arching' },
+    { id: 'crossArching', label: 'Cross Arching' },
     { id: 'mould', label: 'Mould' },
     { id: 'export', label: 'Export' },
   ] as const;
@@ -152,9 +150,9 @@ export class CerutiViolin extends RecipeComponentBase {
     corners: toggleRows({ arcs: true, circles: true, guide: true, outerPath: true, allArcs: true, allCircles: true }),
     centerBout: toggleRows({ arcs: true, circles: true, guide: true, outerPath: true, allArcs: true, allCircles: true }),
     outerTrace: toggleRows({ arcs: true, circles: true }),
-    gougedFluting: toggleRows({ guide: true, allArcs: true, allCircles: true }),
-    gougedLongArching: toggleRows({ guide: true, allArcs: true, allCircles: true }),
-    gougedCrossArching: toggleRows({ guide: true, allArcs: true, allCircles: true }),
+    fluting: toggleRows({ guide: true, allArcs: true, allCircles: true }),
+    longArching: toggleRows({ guide: true, allArcs: true, allCircles: true }),
+    crossArching: toggleRows({ guide: true, allArcs: true, allCircles: true }),
     // The mould's two are what it draws *around* the mould — the blocks it is
     // built to hold and the inner path it is cut to. Same kind of thing as every
     // other row here: what appears on the canvas, not what the recipe is, so
@@ -332,9 +330,9 @@ export class CerutiViolin extends RecipeComponentBase {
       case 'centerBout': return this.hasCorners();
       case 'outerTrace': return this.hasCenterBout();
       case 'mould': return this.hasCenterBout();
-      case 'gougedFluting': return this.hasCenterBout();
-      case 'gougedLongArching': return this.hasCenterBout();
-      case 'gougedCrossArching': return this.hasCenterBout();
+      case 'fluting': return this.hasCenterBout();
+      case 'longArching': return this.hasCenterBout();
+      case 'crossArching': return this.hasCenterBout();
       case 'export': return this.hasCenterBout();
       default: return false;
     }

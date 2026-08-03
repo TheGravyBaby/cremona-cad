@@ -727,9 +727,9 @@ export function defineOuterPurflingPath(p: EnricoCerutiParams, offset: number): 
  *
  * Returns null before the outline is laid out. Tested through `purflingOffset`
  * because that is what the offset arcs are built against; the old test also
- * required `innerFlutingDepth`, which no longer decides anything here — under
- * the gouged model the channel's reach is an output of the gouge, and callers
- * pass the offset they want directly.
+ * required `innerFlutingDepth`, which no longer decides anything here: the
+ * channel's reach is an output of the gouge, and callers pass the offset they
+ * want directly.
  */
 export function defineFlutingPath(p: EnricoCerutiParams, offset: number, centerOffset?: number): string | null {
     if (p.purflingOffset === null) return null;
