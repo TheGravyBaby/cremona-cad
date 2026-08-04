@@ -6,7 +6,8 @@ import {
   stationChordsAt, topSurfaceZAt, plateHalfChordAtY, PlateSurfaceModel, computeArchContourRings,
 } from './ceruti-surface';
 import {
-  defaultCrossArchParams, defaultFlutingParams, channelCenterlineZAt, crossArchSectionAt,
+  defaultCrossArchParams, defaultCrossArchSplineParams, defaultFlutingParams,
+  channelCenterlineZAt, crossArchSectionAt,
   gougeHalfWidth, solveLongArch,
 } from './ceruti-arch-geometry';
 import { defineInnerPath } from './ceruti-paths';
@@ -408,7 +409,9 @@ describe('plate surface model', () => {
     // that is in the picture and not in the height field.
     const centroidOfHighest = (peak: number): number => {
       const p = flutingParams();
-      p.arching!.top.cross = { ...defaultCrossArchParams(), peak };
+      // A moved crown is a control-point property, so this one is authored as a
+      // spline whatever the seeded default is.
+      p.arching!.top.cross = { ...defaultCrossArchSplineParams(), peak };
       const model = buildPlateSurfaceModel(p, 'top')!;
       const levels = computeArchContourRings(p, model, 1, 1);
       const top = levels[levels.length - 1];

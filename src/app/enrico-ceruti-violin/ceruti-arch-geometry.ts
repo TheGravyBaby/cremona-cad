@@ -158,7 +158,21 @@ export function cornerGougeZ(edgeDist: number, sweepRadius: number, depth: numbe
 }
 
 /**
- * A default crown shape: one mirrored knot, part way out from the joint.
+ * The crown a plate is seeded with when it has none — a trochoid, to match the
+ * catenary long arch `defaultArchingParams` seeds alongside it.
+ *
+ * Both are one-line curves with nothing to author: no instrument in
+ * `ceruti-templates.ts` ships measured arching, so what the maker meets on
+ * opening a template should be the shape that states itself in two numbers
+ * rather than a control-point template inviting them to move knots around a
+ * curve nobody measured.
+ */
+export function defaultCrossArchParams(): CrossArchCycloidParams {
+  return defaultCrossArchCycloidParams();
+}
+
+/**
+ * A control-point crown: one mirrored knot, part way out from the joint.
  *
  * Deliberately a single point. The crown is anchored at both ends already — the
  * peak at the centerline and the solved takeoff at the channel — so one knot is
@@ -171,14 +185,14 @@ export function cornerGougeZ(edgeDist: number, sweepRadius: number, depth: numbe
  * height is already pinned, so a knot earns its place by saying where the arch
  * turns over into the run-out.
  */
-export function defaultCrossArchParams(): CrossArchSplineParams {
+export function defaultCrossArchSplineParams(): CrossArchSplineParams {
   return { type: 'spline', points: [{ x: 0.66, z: 0.5, mirror: true }] };
 }
 
 /**
- * A default trochoid crown, a little fuller than a raised cosine and clipped
- * just short of the flat cusp — a plate that reads as arched from the moment
- * the curve type is switched, rather than one the maker has to dial out of a
+ * A trochoid crown, a little fuller than a raised cosine and clipped just short
+ * of the flat cusp — a plate that reads as arched from the moment it is seeded
+ * or the curve type is switched, rather than one the maker has to dial out of a
  * degenerate shape.
  */
 export function defaultCrossArchCycloidParams(): CrossArchCycloidParams {
