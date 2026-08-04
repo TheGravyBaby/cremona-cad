@@ -12,7 +12,7 @@ import {
 import { clampSplinePointHeights, defaultArchingParams } from '../../ceruti-arching';
 import {
   defaultFlutingParams, channelCapPath, LongArchSolve, solveLongArch,
-} from '../../ceruti-gouged';
+} from '../../ceruti-arch-geometry';
 import { calculateOuterArcs } from '../../ceruti-calcs';
 import {
   archHeightInfo, curveTypeInfo, transitionInfo, plateThicknessInfo, ribHeightInfo,

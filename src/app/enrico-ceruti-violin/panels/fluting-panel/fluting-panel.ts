@@ -10,7 +10,7 @@ import { defaultArchingParams } from '../../ceruti-arching';
 import {
   cornerGougeOn, defaultFlutingParams, effectiveCBoutSweep, channelAreaPath,
   channelPaths, cornerJoinAreaPath, gougeHalfWidth, plateLayoutOffset,
-} from '../../ceruti-gouged';
+} from '../../ceruti-arch-geometry';
 import {
   cornerGougeInfo, gougeCBoutInfo, gougeCenterlineInfo, gougeSectionInfo,
 } from '../../ceruti-helpers';

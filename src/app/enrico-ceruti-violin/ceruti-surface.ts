@@ -14,7 +14,7 @@ import {
     buildPlateGeometry, defaultCrossArchParams, defaultFlutingParams,
     chordTrust, cornerGougeOn, cornerGougeZ, gougeAtY, CrossArchSection, crossArchSectionAt,
     longArchProfilePath, PlateGeometry, gougeProfileZ, solveLongArch,
-} from './ceruti-gouged';
+} from './ceruti-arch-geometry';
 import {
     bodyLandmarks, longArchHeightAt, normalizeCrossArchStations, STATION_MERGE_EPS_MM,
 } from './ceruti-arching';
@@ -177,7 +177,7 @@ function insideCrossings(x: number, xs: number[]): boolean {
 }
 
 /**
- * Gouged-model surface height at (x, y), relative to the plate outer surface.
+ * Surface height at (x, y), relative to the plate outer surface.
  *
  * Two measures, deliberately. The **channel** is measured by true distance to
  * the centerline loop, not by the station chord — that is what makes the cut

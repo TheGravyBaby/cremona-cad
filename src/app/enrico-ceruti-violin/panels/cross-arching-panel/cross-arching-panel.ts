@@ -18,7 +18,7 @@ import {
 import {
   defaultCrossArchCycloidParams, defaultCrossArchParams, defaultFlutingParams, CrossArchSection,
   crossArchGuide, crossArchKnotX, crossArchSectionAt, crossArchSectionPath, nearestCrossArchShape,
-} from '../../ceruti-gouged';
+} from '../../ceruti-arch-geometry';
 import {
   ArchContourLevel, buildPlateSurfaceModel, buildPlateStl, computeArchContourRings, plateHalfChordAtY,
   PlateSurfaceModel,
@@ -194,7 +194,7 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
    * How a value edit redraws — and it depends on what is on screen, because the
    * cost of a redraw here spans an order of magnitude.
    *
-   * Measured on a default violin, per params change: the two gouged surface
+   * Measured on a default violin, per params change: the two plates' surface
    * models are ~80ms (a root-find per side per station row, and unavoidable —
    * the section view needs them); a wireframe adds ~95ms on top; a contour map
    * adds ~380ms. Only one overlay can be open at a time, so those are the three

@@ -13,11 +13,17 @@ import {
 import { defineFlutingPath, defineInsetPath } from './ceruti-paths';
 import { archFromLoweredTakeoff, normalizeCrossArchStations } from './ceruti-arching';
 
-/**
- * The arching model's geometry — the half of it that concerns the channel
- * itself. See the block comment above {@link FlutingParams} for the order of
- * operations the whole model follows.
- */
+// ===== Arching geometry =====
+// The three things the arch is actually solved from: the gouge's own circular
+// section, the crown across the plate, and the tangency that joins them. Plus
+// the plate geometry that holds all of it together for a given recipe.
+//
+// See the block comment above {@link FlutingParams} for the order of operations
+// the whole model follows — it is the bench order, and this file follows it.
+//
+// The long-arch profile and the station bookkeeping live next door in
+// ceruti-arching.ts, which is the layer above: it decides *where* a section is
+// taken and how tall the arch stands there, and asks here for its shape.
 
 /** A gouge sweep this shallow relative to its depth isn't a real tool; guards the sqrt below. */
 const MIN_SWEEP_RATIO = 1.0001;

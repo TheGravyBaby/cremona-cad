@@ -4,7 +4,7 @@ import {
   nearestCrossArchShape,
   solveCrossArchSection,
   solveArchTakeoff,
-} from './ceruti-gouged';
+} from './ceruti-arch-geometry';
 import { makeMonotoneSpline } from '../helpers/draftMath';
 import { trochoidNorm } from '../helpers/svgPathMath';
 import {

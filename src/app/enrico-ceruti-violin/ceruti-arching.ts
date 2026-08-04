@@ -9,10 +9,10 @@ import {
 // consumer shares — a distinct concern from the flat 2D outline in
 // ceruti-calcs.ts/ceruti-paths.ts.
 //
-// The cross-arch shape and the channel section live in ceruti-gouged.ts, with
-// the gouge they are solved against. What stays here is what stands apart from
-// the gouge: the long arch, the station list normalizer, the body landmarks,
-// and the *AtY half-width queries.
+// The cross-arch shape and the channel section live in ceruti-arch-geometry.ts,
+// with the gouge they are solved against. What stays here is what stands apart
+// from the gouge: the long arch, the station list normalizer, the body
+// landmarks, and the *AtY half-width queries.
 
 /** Returns instrument-appropriate arching defaults based on body length (p.height). */
 export function defaultArchingParams(bodyHeight: number): ArchingParams {
