@@ -88,7 +88,18 @@ export class ExportPanel implements OnInit {
 
   ngOnInit(): void {
     this.ensureDerivedPaths();
-    this.previewExport('outerTrace');
+    this.previewExport(this.lastPreview);
+  }
+
+  /** Whatever is currently on the canvas. Only set once a preview actually draws, so an arching
+   * template refused for want of the arching modules doesn't become the thing redrawPreview
+   * re-fires (and re-errors on). */
+  private lastPreview: ExportType = 'outerTrace';
+
+  /** Redraws the current preview against the params as they now stand. For undo/redo, which
+   * changes the geometry under a preview this panel has no other reason to recompute. */
+  public redrawPreview(): void {
+    this.previewExport(this.lastPreview);
   }
 
   previewExport(type: ExportType): void {
@@ -130,7 +141,7 @@ export class ExportPanel implements OnInit {
       }
       case 'crossArchTemplates':
       case 'longArchTemplates': {
-        if (!this.requireArching()) { this.draftChange.emit([]); break; }
+        if (!this.requireArching()) { this.draftChange.emit([]); return; }
         const shapes = this.archTemplates(type);
         const renders = shapes.flatMap(s => [
           renderPath(s.path, this.colors.mouldTrace),
@@ -140,6 +151,7 @@ export class ExportPanel implements OnInit {
         break;
       }
     }
+    this.lastPreview = type;
   }
 
   downloadExport(type: ExportType): void {
