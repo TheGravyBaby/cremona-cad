@@ -12,6 +12,62 @@ import { EnricoCerutiParams } from "./ceruti-types";
 // "where do the arcs go" and "how do you turn solved arcs into a path string"
 // are different questions a reader is usually asking one at a time.
 
+/**
+ * The viol neck's top face meets the V0 sweep through a join arc of radius `viol.neckRadius`,
+ * and the offset of that join at distance d is the same arc at radius R + d.
+ *
+ * `calculateMainBouts` seats V0 against the join rather than against the face, so V0.start is
+ * already the tangency and needs no trimming: the centre sits (V0.r + R) along the start ray,
+ * which is also (V0.r - d) + (R + d) for every d. One centre, one pair of tangency rays, every
+ * offset — which is what makes the outer trace, the purfling, the channel and the inner trace
+ * all agree at the neck without each solving its own join.
+ *
+ * A corner still has to be rounded even at R = 0, because offsetting a convex corner outward
+ * cannot land the two offset pieces on one point: the arc's end slides along its own radial
+ * normal while the face slides straight up. At R = 0 the join centres on the corner itself, so
+ * the rib line keeps its mitre and only the offsets round it.
+ *
+ * Offsets far enough inward to use the join up (R + d <= 0, which the channel reaches) fall back
+ * to the crossing point of the two offsets, since inside a convex corner they meet rather than
+ * part. That is the one case where V0 does get trimmed.
+ *
+ * Returns null when there is no viol neck, or when the geometry leaves no face to run out onto.
+ */
+export function violNeckCap(p: EnricoCerutiParams, d: number): { v0Start: number; fillet: Arc | null; topX: number; topY: number } | null {
+    const V0 = p.viol?.V0;
+    if (!V0) return null;
+
+    const R = p.viol.neckRadius ?? 0;
+
+    if (R + d > 1e-9) {
+        // back down the start ray to the join's centre — the point V0 was seated against
+        const C = { x: V0.x + (V0.r + R) * Math.cos(V0.start), y: V0.y + (V0.r + R) * Math.sin(V0.start) };
+        if (C.x <= 0) return null;
+        return { v0Start: V0.start, fillet: new Arc(C.x, C.y, R + d, V0.start + Math.PI, Math.PI / 2), topX: C.x, topY: C.y + R + d };
+    }
+
+    const topY = V0.y + (V0.r + R) * Math.sin(V0.start) + R + d;
+    const P = neckSeat(V0, V0.r - d, topY, pointOnCircle(V0, V0.start));
+    if (!P || P.x <= 0) return null;
+    return { v0Start: angleFromCenter(V0, P), fillet: null, topX: P.x, topY };
+}
+
+/** Where a circle about V0's centre crosses a height, on whichever branch the neck sits on. */
+function neckSeat(V0: Arc, r: number, y: number, corner: Pt): Pt | null {
+    const dy = y - V0.y;
+    const span = r * r - dy * dy;
+    if (span <= 0) return null;
+    const root = Math.sqrt(span);
+    const x = Math.abs(V0.x - root - corner.x) <= Math.abs(V0.x + root - corner.x) ? V0.x - root : V0.x + root;
+    return { x, y };
+}
+
+/** The neck's top face at offset `d` — the segment that closes a loop across the neck. */
+function violNeckTopLine(p: EnricoCerutiParams, d: number): string | null {
+    const cap = violNeckCap(p, d);
+    return cap ? pathFromLine({ x: cap.topX, y: cap.topY }, { x: -cap.topX, y: cap.topY }) : null;
+}
+
 export function defineInnerArcs(p: EnricoCerutiParams): Arc[] {
     let fullPath = [];
     fullPath.push(p.bouts.L0, p.bouts.L1);
@@ -42,8 +98,13 @@ export function defineInnerArcs(p: EnricoCerutiParams): Arc[] {
     }
     fullPath.push(p.bouts.U1);
     fullPath.push(p.bouts.U0);
-    if (p.options.useViolNeck)
-        fullPath.push(p.viol?.V0!);
+    if (p.options.useViolNeck) {
+        // a copy, trimmed back to where the neck fillet takes over — p.viol.V0 itself is the
+        // authored arc and stays as the user set it
+        const cap = violNeckCap(p, 0);
+        fullPath.push(arcFromCircle(p.viol?.V0!, cap?.v0Start ?? p.viol!.V0!.start, p.viol!.V0!.end));
+        if (cap?.fillet) fullPath.push(cap.fillet);
+    }
 
     return fullPath;
 }
@@ -81,8 +142,13 @@ export function defineOffsetArcs(p: EnricoCerutiParams, offset?: number, corners
     }
     arcs.push(offsetArcRadius(p.bouts.U1, offset));
     arcs.push(offsetArcRadius(p.bouts.U0, offset));
-    if (p.options.useViolNeck)
-        arcs.push(offsetArcRadius(p.viol?.V0!, -offset));
+    if (p.options.useViolNeck) {
+        const cap = violNeckCap(p, offset);
+        const V0off = offsetArcRadius(p.viol?.V0!, -offset);
+        if (cap) V0off.start = cap.v0Start;
+        arcs.push(V0off);
+        if (cap?.fillet) arcs.push(cap.fillet);
+    }
 
     // if we include corners we need to calculate the new corner intersection point
     // these corners are distinct from the "outer corners" which have unique ends, and are joined by 
@@ -393,8 +459,8 @@ export function defineInnerPath(p: EnricoCerutiParams): string {
     let paths: string[] = arcs.map(arc => pathFromArc(arc));
 
     if (p.options.useViolNeck) {
-        let EndPt = pointOnCircle(p.viol?.V0!, p.viol?.V0.start ?? 0);
-        paths.push(pathFromLine(EndPt, flipPointAboutY(EndPt)))
+        const top = violNeckTopLine(p, 0);
+        if (top) paths.push(top);
     }
 
     let path = unifyConnectedSvgPaths(paths);
@@ -534,47 +600,36 @@ export function defineOuterPath(p: EnricoCerutiParams, offset?: number, closeArc
 
     paths.push(...arcs.map(arc => pathFromArc(arc)));
 
-     if (p.options.useViolNeck) {
+    // the neck's fillets already came through defineOffsetArcs above and were mirrored with the
+    // rest; all that is left is the top face they run out onto
+    const cap = p.options.useViolNeck ? violNeckCap(p, offset) : null;
+    if (cap) {
+        const faceEnd = { x: cap.topX, y: cap.topY };
         if (button) {
-            let offsetV0 = offsetArcRadius(p.viol?.V0!, - offset);
-            let EndPt = pointOnCircle(offsetV0, offsetV0.start ?? 0);
-            let EndPtOffset = {...EndPt, y: EndPt.y + offset} // we need to offset the end point so that the line doesn't intersect with the arc, but rather is tangent to it, which is more manufacturable
-            paths.push(pathFromLine(EndPt, EndPtOffset))
-            paths.push(pathFromLine(flipPointAboutY(EndPtOffset), flipPointAboutY(EndPt)))
+            p.button ??= new Rectangle(new Pt(10, cap.topY), new Pt(-10, cap.topY + 5));
+            // a button wider than the neck face has nothing to stand on, so it takes the face
+            const half = Math.min(p.button.width / 2, cap.topX);
 
-            p.button ??= new Rectangle(new Pt(10, EndPtOffset.y), new Pt(-10, EndPtOffset.y + 5));
-            buttonPaths.push(pathFromLine({x: p.button.width / 2, y: EndPtOffset.y}, {x: p.button.width / 2, y: EndPtOffset.y + p.button.height}));
-            buttonPaths.push(pathFromLine({x: -p.button.width / 2, y: EndPtOffset.y}, {x: -p.button.width / 2, y: EndPtOffset.y + p.button.height}));
+            paths.push(pathFromLine(faceEnd, { x: half, y: cap.topY }));
+            paths.push(pathFromLine(flipPointAboutY(faceEnd), { x: -half, y: cap.topY }));
 
-            let buttonCircle = {y: EndPtOffset.y + p.button.height, x: 0, r: p.button.width / 2};
-            let buttonArc = arcFromCircle(buttonCircle, 0, Math.PI)
-            buttonPaths.push(pathFromArc(buttonArc));
-
-            paths.push(pathFromLine(EndPtOffset, {x: p.button.width / 2, y: EndPtOffset.y}))
-            paths.push(pathFromLine(flipPointAboutY(EndPtOffset), {x: -p.button.width / 2, y: EndPtOffset.y}))
-
+            buttonPaths.push(pathFromLine({ x: half, y: cap.topY }, { x: half, y: cap.topY + p.button.height }));
+            buttonPaths.push(pathFromLine({ x: -half, y: cap.topY }, { x: -half, y: cap.topY + p.button.height }));
+            buttonPaths.push(pathFromArc(arcFromCircle({ y: cap.topY + p.button.height, x: 0, r: half }, 0, Math.PI)));
         }
         else {
-            let offsetV0 = offsetArcRadius(p.viol?.V0!, - offset);
-            let EndPt = pointOnCircle(offsetV0, offsetV0.start ?? 0);
-            let EndPtOffset = {...EndPt, y: EndPt.y + offset} // we need to offset the end point so that the line doesn't intersect with the arc, but rather is tangent to it, which is more manufacturable
-            // we need to make small risers for the offset
-            paths.push(pathFromLine(EndPt, EndPtOffset))
-
-            paths.push(pathFromLine(EndPtOffset, flipPointAboutY(EndPtOffset)))
-            paths.push(pathFromLine(flipPointAboutY(EndPtOffset), flipPointAboutY(EndPt)))
+            paths.push(pathFromLine(faceEnd, flipPointAboutY(faceEnd)));
         }
-
     }
-    
+
     let path = unifyConnectedSvgPaths([...paths, ...buttonPaths]);
     return path;
 }
 
 /**
  * Builds an inset path starting from the outer edge, offset inward by `delta`.
- * The cutoff connector at each corner is parallel to the outer cutoff line and
- * separated from it by exactly `delta` (perpendicular distance).
+ * This is expressly different from the inner path
+ * here we carry over the corner connectors and cutoff lines
  */
 export function defineInsetPath(p: EnricoCerutiParams, delta: number): string {
     const inset = p.overhang + p.rib;
@@ -691,6 +746,11 @@ export function defineInsetPath(p: EnricoCerutiParams, delta: number): string {
         paths.push(lcCornerPath(flipArcAboutY(lcTerm1), flipArcAboutY(lcTerm2)));
     }
 
+    if (p.options.useViolNeck) {
+        const top = violNeckTopLine(p, innerOffset);
+        if (top) paths.push(top);
+    }
+
     paths.push(...[...arcs, ...mirroredArcs].map(arc => pathFromArc(arc)));
     paths.push(...cornerArcs.map(arc => pathFromArc(arc)));
     return unifyConnectedSvgPaths(paths);
@@ -704,7 +764,12 @@ export function definePurflingPath(p: EnricoCerutiParams, offset: number): strin
     const purflingArcOffset = offset - p.purflingOffset;
     const arcs = defineOffsetArcs(p, purflingArcOffset, true);
     const mirrored = arcs.map(arc => flipArcAboutY(arc));
-    return unifyConnectedSvgPaths([...arcs, ...mirrored].map(arc => pathFromArc(arc)));
+    const paths = [...arcs, ...mirrored].map(arc => pathFromArc(arc));
+    if (p.options.useViolNeck) {
+        const top = violNeckTopLine(p, purflingArcOffset);
+        if (top) paths.push(top);
+    }
+    return unifyConnectedSvgPaths(paths);
 }
 
 /**
@@ -717,7 +782,12 @@ export function defineOuterPurflingPath(p: EnricoCerutiParams, offset: number): 
     const outerPurflingArcOffset = offset - p.purflingOffset + p.purflingChannelDepth;
     const arcs = defineOffsetArcs(p, outerPurflingArcOffset, true);
     const mirrored = arcs.map(arc => flipArcAboutY(arc));
-    return unifyConnectedSvgPaths([...arcs, ...mirrored].map(arc => pathFromArc(arc)));
+    const paths = [...arcs, ...mirrored].map(arc => pathFromArc(arc));
+    if (p.options.useViolNeck) {
+        const top = violNeckTopLine(p, outerPurflingArcOffset);
+        if (top) paths.push(top);
+    }
+    return unifyConnectedSvgPaths(paths);
 }
 
 /**
@@ -736,6 +806,11 @@ export function defineFlutingPath(p: EnricoCerutiParams, offset: number, centerO
     const centerFlutingOffet = centerOffset !== undefined ? centerOffset - p.rib - p.overhang : flutingOffset;
     const flutingArcs = defineFlutingArcs(p, -flutingOffset, -centerFlutingOffet);
     const mirrored = flutingArcs.map(arc => flipArcAboutY(arc));
-    return unifyConnectedSvgPaths([...flutingArcs, ...mirrored].map(arc => pathFromArc(arc)));
+    const paths = [...flutingArcs, ...mirrored].map(arc => pathFromArc(arc));
+    if (p.options.useViolNeck) {
+        const top = violNeckTopLine(p, -flutingOffset);
+        if (top) paths.push(top);
+    }
+    return unifyConnectedSvgPaths(paths);
 }
 

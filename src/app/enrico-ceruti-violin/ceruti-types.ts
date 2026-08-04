@@ -444,6 +444,7 @@ export interface EnricoCerutiParams {
   viol: {
     width: number | null;
     V0: Arc | null;
+    neckRadius?: number | null;
   },
   options: {
     useViolNeck: boolean,
@@ -570,7 +571,8 @@ export const DefaultParams: EnricoCerutiParams = {
   },
   viol: {
     width: null,
-    V0: null
+    V0: null,
+    neckRadius: null
   },
   button: null,
   outerCorners: {

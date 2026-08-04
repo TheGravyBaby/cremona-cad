@@ -2,15 +2,17 @@ import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { getArcEndDeg, getArcStartDeg, setArcEndDeg, setArcStartDeg } from '../../../helpers/arcDegrees';
 import {
-  flipAngleAboutYAxis, flipArcAboutY, flipCircleAboutY, flipPointAboutY, offsetArcRadius, pointOnCircle,
+  flipAngleAboutYAxis, flipArcAboutY, flipCircleAboutY, offsetArcRadius,
 } from '../../../helpers/draftMath';
 import { nearestFraction } from '../../../helpers/nearestFraction';
 import {
   renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderLine,
 } from '../../../helpers/renderFuncs';
 import { arcFromCircle, Arc } from '../../../models/types';
-import { calculateMainBouts } from '../../ceruti-calcs';
-import { boutWidthInfo, violNeckInfo } from '../../ceruti-helpers';
+import { calculateMainBouts, violNeckJoinLimit } from '../../ceruti-calcs';
+import { error } from '../../../shared/message-emitter';
+import { boutWidthInfo, violNeckInfo, violNeckJoinInfo } from '../../ceruti-helpers';
+import { violNeckCap } from '../../ceruti-paths';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams } from '../../ceruti-types';
 import { renderBounds, renderBoutBouts } from '../../renders/guides.render';
 import { HighlightedArc, PATH_STROKE_WIDTH } from '../../renders/render-constants';
@@ -39,6 +41,7 @@ export class MainBoutsPanel extends CerutiPanelBase implements OnInit {
   protected readonly nearestFraction = nearestFraction;
   protected readonly boutWidthInfo = boutWidthInfo;
   protected readonly violNeckInfo = violNeckInfo;
+  protected readonly violNeckJoinInfo = violNeckJoinInfo;
   protected readonly getArcStartDeg = getArcStartDeg;
   protected readonly setArcStartDeg = setArcStartDeg;
   protected readonly getArcEndDeg = getArcEndDeg;
@@ -58,7 +61,28 @@ export class MainBoutsPanel extends CerutiPanelBase implements OnInit {
   }
 
   onChange(): void {
+    this.reportViolNeckJoin();
     this.emitDebounced(true);
+  }
+
+  /**
+   * The neck can be driven wider than the upper bout can receive, and the outline doubles back
+   * on itself rather than failing — see `violNeckJoinLimit`. Reported rather than clamped: five
+   * fields feed it and any of them is a legitimate thing to have just changed, so which one to
+   * pull back is the maker's call. Messages dedupe by title, so this replaces itself as the
+   * number is dragged rather than stacking.
+   */
+  private reportViolNeckJoin(): void {
+    const join = violNeckJoinLimit(this.params);
+    if (!join || join.headroom >= 0) return;
+
+    error(
+      `The neck reaches ${(-join.headroom).toFixed(1)}mm further than the upper bout can recieve, ` +
+      `so U0 doubles back to meet U1, this should look pretty weird.\n\n` +
+      `You have some options. Narrow the neck, shorten V0's radius, or bring V0's end angle round further. ` +
+      `Widening the upper bout or shrinking U1 also buys room.`,
+      'Viol Neck Join',
+    );
   }
 
   onArcFocus(arc: Arc, color: string): void {
@@ -87,6 +111,43 @@ export class MainBoutsPanel extends CerutiPanelBase implements OnInit {
     ];
   }
 }
+
+/**
+ * Where the neck meets its top face at one offset: the join arc, mirrored, and the face itself.
+ *
+ * Both are derived rather than authored — no field places them — so they draw plain even in the
+ * module view, which is also where the join is worth seeing. At a join radius of 0 there is no
+ * inner arc to draw: the rib corner is sharp, and only the offsets round it.
+ */
+const renderViolNeckJoin = (p: EnricoCerutiParams, d: number, color: string) => (g: any, ui: any): void => {
+  const cap = violNeckCap(p, d);
+  if (!cap) return;
+
+  if (cap.fillet) {
+    renderArcFromArc(cap.fillet, color, PATH_STROKE_WIDTH)(g, ui);
+    renderArcFromArc(flipArcAboutY(cap.fillet), color, PATH_STROKE_WIDTH)(g, ui);
+  }
+
+  renderLine({ x: cap.topX, y: cap.topY }, { x: -cap.topX, y: cap.topY }, color, PATH_STROKE_WIDTH)(g, ui);
+};
+
+/**
+ * The whole neck at one offset — V0 trimmed back to the join, then the join itself.
+ *
+ * Goes through `violNeckCap` rather than drawing the raw V0 offset, so this preview shows the
+ * same join the outer trace will, which is the point of a Join Radius field living on this panel.
+ */
+const renderViolNeck = (p: EnricoCerutiParams, d: number, color: string) => (g: any, ui: any): void => {
+  const cap = violNeckCap(p, d);
+  if (!cap) return;
+
+  const V0 = offsetArcRadius(p.viol.V0!, -d);
+  V0.start = cap.v0Start;
+  renderArcFromArc(V0, color, PATH_STROKE_WIDTH)(g, ui);
+  renderArcFromArc(flipArcAboutY(V0), color, PATH_STROKE_WIDTH)(g, ui);
+
+  renderViolNeckJoin(p, d, color)(g, ui);
+};
 
 export const renderMainBouts = (
   params: EnricoCerutiParams,
@@ -124,6 +185,9 @@ export const renderMainBouts = (
       const mirrorV0 = flipArcAboutY(p.viol.V0!);
       renderArcFromArcFancy(p.viol.V0!, colors.violNeck)(g, ui);
       renderArcFromArcFancy(mirrorV0, colors.violNeck)(g, ui);
+      // V0 draws in full: it is seated against the join, so its start is the tangency and there
+      // is nothing for the join to trim off
+      renderViolNeckJoin(p, 0, colors.violNeck)(g, ui);
       const mirrorU0 = flipArcAboutY(p.bouts.U0!);
       renderArcFromArcFancy(p.bouts.U0!, colors.upperBout)(g, ui);
       renderArcFromArcFancy(mirrorU0, colors.upperBout)(g, ui);
@@ -138,16 +202,11 @@ export const renderMainBouts = (
     renderArcFromArcFancy(mirroredL1Arc, colors.lowerBoutOff)(g, ui);
   } else {
     if (params.options.useViolNeck) {
-      const mirrorV0 = flipArcAboutY(p.viol.V0!);
-      renderArcFromArc(p.viol.V0!, colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
-      renderArcFromArc(mirrorV0, colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
+      renderViolNeck(p, 0, colors.innerTrace)(g, ui);
 
       const mirrorU0 = flipArcAboutY(p.bouts.U0!);
       renderArcFromArc(p.bouts.U0!, colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
       renderArcFromArc(mirrorU0, colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
-
-      const endPt = pointOnCircle(p.viol.V0!, p.viol.V0?.start ?? 0);
-      renderLine(endPt, flipPointAboutY(endPt), colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
     } else {
       renderArcFromArc(wideTopArc, colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
     }
@@ -167,15 +226,10 @@ export const renderMainBouts = (
     const outerBotOffColor = m ? colors.lowerBoutOff : colors.outerTrace;
     const violNeckColor = m ? colors.violNeck : colors.outerTrace;
     if (params.options.useViolNeck) {
-      const mirrorV0 = flipArcAboutY(p.viol.V0!);
-      renderArcFromArc(offsetArcRadius(p.viol.V0!, -inset), violNeckColor, PATH_STROKE_WIDTH)(g, ui);
-      renderArcFromArc(offsetArcRadius(mirrorV0, -inset), violNeckColor, PATH_STROKE_WIDTH)(g, ui);
+      renderViolNeck(p, inset, violNeckColor)(g, ui);
       const mirrorU0 = flipArcAboutY(p.bouts.U0!);
       renderArcFromArc(offsetArcRadius(p.bouts.U0!, inset), outerTopColor, PATH_STROKE_WIDTH)(g, ui);
       renderArcFromArc(offsetArcRadius(mirrorU0, inset), outerTopColor, PATH_STROKE_WIDTH)(g, ui);
-
-      const endPt = pointOnCircle(p.viol.V0!, p.viol.V0?.start ?? 0);
-      renderLine(endPt, flipPointAboutY(endPt), colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
     } else {
       renderArcFromArc(offsetArcRadius(wideTopArc, inset), outerTopColor, PATH_STROKE_WIDTH)(g, ui);
     }

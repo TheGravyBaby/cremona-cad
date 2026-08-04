@@ -68,13 +68,19 @@ export function calculateMainBouts(p: EnricoCerutiParams): void {
 
     if (p.options.useViolNeck) {
         p.viol.width ??= p.bouts.UBW * .1
+        p.viol.neckRadius ??= 0
         let Vr = p.viol?.V0?.r ?? p.bouts.UBW / 5
         let start = p.viol?.V0?.start ?? Math.PI * 1.05
         let end =  p.viol?.V0?.end ?? 3/2 * Math.PI * .92
-        let neckEnd = new Pt(p.viol.width / 2, p.height - inset)
-        let VyDiff =  Math.sin(start) * Vr
-        let VxDiff = Math.cos(start) * Vr
-        p.viol.V0 = new Arc(neckEnd.x - VxDiff, neckEnd.y - VyDiff, Vr, start, end)
+        // the flat top face runs out to width/2, then a join of neckRadius turns the corner into
+        // the flank. V0 begins where that join ends, so its centre goes back (Vr + R) along the
+        // start ray from the join's centre — which puts V0.start *on* the tangency instead of
+        // somewhere the join later trims off. At R = 0 the join centre is the corner itself and
+        // this is the original placement.
+        let joinCenter = new Pt(p.viol.width / 2, p.height - inset - p.viol.neckRadius)
+        let VyDiff =  Math.sin(start) * (Vr + p.viol.neckRadius)
+        let VxDiff = Math.cos(start) * (Vr + p.viol.neckRadius)
+        p.viol.V0 = new Arc(joinCenter.x - VxDiff, joinCenter.y - VyDiff, Vr, start, end)
 
         let V0End = pointOnCircle(p.viol.V0,  p.viol.V0.end)
         
@@ -111,6 +117,37 @@ export function calculateMainBouts(p: EnricoCerutiParams): void {
         p.bouts.U1 = arcFromCircle(p.bouts.U1, U1Angle, 0);
     }
 
+}
+
+/**
+ * How far the viol neck may reach across before U0 can no longer carry the outline out to U1.
+ *
+ * The viol branch above seats U0 tangent to V0's end, then inscribes U1 in it at a fixed x. The
+ * point where U1 touches U0 moves *inward* as the neck grows, because a wider neck pushes U0's
+ * centre toward U1's. Once that touch falls behind V0's end, U0 has to sweep backwards to reach
+ * it and the outline doubles back on itself — a hook at the top of the upper bout. Nothing
+ * throws: every circle still intersects, they just intersect in the wrong order.
+ *
+ * `reach` is V0's end in x. `limit` is where U1 touches U0 along V0's own end direction, which is
+ * the furthest out that touch can ever be. Both are closed forms of the geometry solved above —
+ * no arcs need placing first, so this can gate an edit rather than only report on one.
+ *
+ * Everything the neck controls sits in `reach`: half the neck width, plus how far V0 swings out
+ * from the join (its radius and the join radius, through the start angle), less where its end
+ * lands. `limit` sees none of that — only the upper bout's own width, inset and U1 radius, and
+ * the angle V0 hands over at.
+ */
+export function violNeckJoinLimit(p: EnricoCerutiParams): { reach: number; limit: number; headroom: number } | null {
+    if (!p.options.useViolNeck || !p.viol?.V0 || !p.bouts.U1 || p.viol.width == null) return null;
+
+    const inset = p.overhang + p.rib;
+    const V0 = p.viol.V0;
+    const R = p.viol.neckRadius ?? 0;
+
+    const reach = p.viol.width / 2 - (V0.r + R) * Math.cos(V0.start) + V0.r * Math.cos(V0.end);
+    const limit = p.bouts.UBW / 2 - inset - p.bouts.U1.r * (1 + Math.cos(V0.end));
+
+    return { reach, limit, headroom: limit - reach };
 }
 
 export function calculateCorners(p: EnricoCerutiParams): void {
