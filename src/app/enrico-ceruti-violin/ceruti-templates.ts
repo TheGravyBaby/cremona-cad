@@ -2025,7 +2025,7 @@ const GuadagniniPiacenza = {
       "C11DoubleArc": false,
       "L31DoubleArc": false
     },
-    "purflingOffset": 4.7,
+    "purflingOffset": 5.6,
     "purflingChannelDepth": 1.2
   },
   "paths": []

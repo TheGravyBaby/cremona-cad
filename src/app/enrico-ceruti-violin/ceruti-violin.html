@@ -180,7 +180,7 @@
         }
 
         @if (openPanel === 'export') {
-        <app-ceruti-export-panel
+        <app-ceruti-export-panel #exportRef
             [params]="d.params"
             [colors]="colors"
             [paths]="d.paths"

@@ -171,6 +171,11 @@ export class CerutiViolin extends RecipeComponentBase {
    * — only one is ever in the DOM at a time, since they're behind mutually exclusive @if blocks. */
   @ViewChild('panelRef') private panelRef?: { requestViewRerender(): void };
 
+  /** Export is the one mounted panel with no #panelRef — it isn't a drafting step and composes its
+   * own preview instead of emitting a PanelRenderRequest, so it gets its own handle rather than
+   * being forced into the shape of the other eight. Undo is the only caller. */
+  @ViewChild('exportRef') private exportRef?: { redrawPreview(): void };
+
   /** The view-toggle bar is a single fixed instance shared across panels (see ceruti-violin.html),
    * not owned by any one of them — it redraws the active panel via requestViewRerender()
    * (CerutiPanelBase's public wrapper around emitImmediate) rather than onChange(), which
@@ -339,8 +344,20 @@ export class CerutiViolin extends RecipeComponentBase {
       this.changeBaseMeasurements();
       return;
     }
-    // Non-base panels are panel-owned; remount to replay their ngOnInit request.
-    this.remountActivePanel();
+    // Non-base panels are panel-owned, so the redraw has to come from the panel — but ask the
+    // mounted one to redraw rather than tearing it down and letting its ngOnInit do it. A remount
+    // throws away everything the panel holds that isn't in the recipe: which arc is highlighted,
+    // scroll position, focus, the export panel's chosen preview, the cross-arch rotation.
+    //
+    // Deferred by a macrotask because undo replaced `this.d` wholesale a moment ago and the
+    // panel's [params] binding still points at the pre-undo object until Angular's next change
+    // detection — which runs when this event handler returns, well before a setTimeout fires.
+    // Redrawing synchronously would draw the geometry the undo just discarded.
+    setTimeout(() => {
+      if (this._destroyed) return;
+      this.panelRef?.requestViewRerender();
+      this.exportRef?.redrawPreview();
+    });
   }
 
   override canOpenPanel(panel: string): boolean {
