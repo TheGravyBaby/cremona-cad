@@ -42,6 +42,14 @@ export function violNeckInfo() {
     )
 }
 
+export function violNeckJoinInfo() {
+    info(
+        "The join radius applies a rounding between the viol neck and the flat top of the instrument.\n\n" +
+        "Zero leaves it sharp at the rib line. A small radius (1–2 mm) is typical for a bass or gamba.",
+        "Neck Join Radius", defaultTTL, true
+    )
+}
+
 export function violCornerInfo() {
     info(
         "The gamba (bass) corner draws a single continuous arc from the bout to the corner tip, replacing the two-arc Cremonese corner. Common on viols and double basses.",

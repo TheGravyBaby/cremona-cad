@@ -1,5 +1,6 @@
 import { samplePathToPolyline } from '../helpers/svgPathMath';
-import { calculateCenterBout, calculateCorners, calculateMainBouts, calculateOuterArcs } from './ceruti-calcs';
+import { calculateCenterBout, calculateCorners, calculateMainBouts, calculateOuterArcs, violNeckJoinLimit } from './ceruti-calcs';
+import { pointOnCircle } from '../helpers/draftMath';
 import { defaultViolin, geometryDiff, layoutFrom, templateKeys, templateViolin } from './ceruti-fixtures';
 import { defineInnerPath, defineOuterPath } from './ceruti-paths';
 import { EnricoCerutiParams } from './ceruti-types';
@@ -162,5 +163,65 @@ describe.each(templateKeys())('template: %s', key => {
     const shipped = JSON.parse(JSON.stringify(p));
     layoutFrom(p);
     expect(geometryDiff(shipped, p)).toEqual([]);
+  });
+});
+
+/**
+ * The viol neck's reach into the upper bout.
+ *
+ * U0 is seated tangent to V0's end and U1 is inscribed in U0 at a fixed x, so the point where
+ * they touch travels inward as the neck grows. Push the neck far enough and that touch ends up
+ * behind V0's end: U0 sweeps backwards to reach it and the outline hooks. Nothing throws — the
+ * circles all still intersect — so `violNeckJoinLimit` is the only thing that catches it.
+ *
+ * What the two recipes below pin is that the closed form agrees with the solver: they were
+ * reported from a session, and each is checked both by its headroom and by the reversal it was
+ * reported for.
+ */
+describe('the viol neck against the upper bout', () => {
+  /** delGesù with the viol neck driven to the values a session reported the hook at. */
+  const reported = (width: number, neckRadius: number): EnricoCerutiParams => {
+    const base = templateViolin('delGesu');
+    return layoutFrom({
+      ...base,
+      viol: { width, neckRadius, V0: { ...base.viol.V0!, r: 32.2, start: 3.3161255787892263, end: 4.328416544945937 } },
+      options: { ...base.options, useViolNeck: true },
+    } as EnricoCerutiParams);
+  };
+
+  /** The direction U0 travels from V0's tangency. Negative is outward — the way the outline goes. */
+  const u0Sweep = (p: EnricoCerutiParams): number => p.bouts.U0!.end - p.bouts.U0!.start;
+
+  it.each([
+    ['a neck wider than the bout can take', 52, 0, -5.421],
+    ['a join radius that pushes it out', 18, 13.5, -1.716],
+  ])('reports %s', (_label, width, neckRadius, expected) => {
+    const p = reported(width, neckRadius);
+    const join = violNeckJoinLimit(p)!;
+
+    expect(join.headroom).toBeCloseTo(expected, 3);
+    expect(u0Sweep(p), 'U0 sweeps backwards, which is the hook').toBeGreaterThan(0);
+  });
+
+  it('leaves the same neck room at a width the bout can take', () => {
+    const p = reported(16.1, 0);
+    const join = violNeckJoinLimit(p)!;
+
+    expect(join.headroom).toBeGreaterThan(0);
+    expect(u0Sweep(p), 'U0 sweeps outward').toBeLessThan(0);
+  });
+
+  it('reads V0 end off the solved arc, not just the closed form', () => {
+    // The guard on the formula: `reach` has to be V0's end in x, or the limit is being compared
+    // against something else that happens to trend the same way.
+    for (const [w, R] of [[16.1, 0], [52, 0], [18, 13.5], [30, 6]] as const) {
+      const p = reported(w, R);
+      expect(violNeckJoinLimit(p)!.reach).toBeCloseTo(pointOnCircle(p.viol.V0!, p.viol.V0!.end).x, 9);
+    }
+  });
+
+  it.each(templateKeys())('ships %s with the neck inside its limit', key => {
+    const join = violNeckJoinLimit(templateViolin(key));
+    if (join) expect(join.headroom).toBeGreaterThan(0);
   });
 });

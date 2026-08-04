@@ -1,6 +1,8 @@
-import { defineOffsetArcs, defineOuterPurflingPath, definePurflingPath } from './ceruti-paths';
+import { defineFlutingPath, defineInnerPath, defineOffsetArcs, defineOuterPath, defineOuterPurflingPath, definePurflingPath } from './ceruti-paths';
 import { layoutFrom, templateKeys, templateViolin, violinFromRecipe } from './ceruti-fixtures';
 import { EnricoCerutiParams } from './ceruti-types';
+import { pointOnCircle } from '../helpers/draftMath';
+import { Pt } from '../models/types';
 
 /**
  * The purfling and channel lines, which are the inner arcs re-solved at a
@@ -110,5 +112,121 @@ describe('the recipe the whisker was reported from', () => {
     // passes while testing nothing.
     const p = reported();
     expect(p.purflingOffset).not.toBe(p.rib + p.overhang);
+  });
+});
+
+/**
+ * The viol neck, where V0 sweeps out of the neck's flat top face.
+ *
+ * That junction is the one hard corner in the outline, and offsetting a convex corner outward
+ * cannot land the two offset pieces on the same point — the arc's end slides along its own radial
+ * normal while the face slides straight up. `violNeckCap` bridges them with a fillet of radius
+ * R + d, so what these tests pin is that every line drawn at the neck agrees: same centre, radius
+ * differing by exactly the offset between them.
+ */
+
+/** Segment endpoints. The last two numbers of M/L/A/C/Q are the endpoint in every case. */
+function endpoints(d: string): Pt[] {
+  return (d.match(/[MLACQ][^MLACQ]*/g) ?? []).map((seg: string) => {
+    const n = seg.slice(1).trim().split(/[\s,]+/).map(Number);
+    return { x: n[n.length - 2], y: n[n.length - 1] };
+  });
+}
+
+/** The neck's top face is the highest thing on the instrument, so the top of the path is it. */
+const faceY = (d: string): number => Math.max(...endpoints(d).map(pt => pt.y));
+
+/** True when the path returns to where it started — an open chain still reads as one subpath. */
+function closes(d: string): boolean {
+  const pts = endpoints(d);
+  return (d.match(/M/g) ?? []).length === 1
+    && Math.hypot(pts[0].x - pts[pts.length - 1].x, pts[0].y - pts[pts.length - 1].y) < 1e-6;
+}
+
+const violNeckKeys = (): string[] => templateKeys().filter(k => templateViolin(k).options.useViolNeck);
+
+function violNeck(key: string, neckRadius: number): EnricoCerutiParams {
+  const p = templateViolin(key);
+  p.viol.neckRadius = neckRadius;
+  return layoutFrom(p);
+}
+
+// 0 is the sharp corner offset exactly; 6 is a fillet wide enough to move the face in visibly.
+const NECK_RADII = [0, 6];
+
+describe.each(NECK_RADII)('the viol neck with a %dmm join radius', R => {
+  it.each(violNeckKeys())('closes every line across the neck on %s', key => {
+    // The dangle this was reported for: the purfling ran up the V0 sweep and stopped, because
+    // the offset arcs carry no top face and nothing closed the loop over the neck.
+    const p = violNeck(key, R);
+    const inset = p.overhang + p.rib;
+
+    expect(closes(defineInnerPath(p)), 'inner trace').toBe(true);
+    expect(closes(defineOuterPath(p, inset, true, false)), 'outer trace').toBe(true);
+    expect(closes(defineOuterPath(p, inset, true, true)), 'outer trace with a button').toBe(true);
+    expect(closes(definePurflingPath(p, inset)!), 'purfling').toBe(true);
+    expect(closes(defineOuterPurflingPath(p, inset)!), 'purfling channel').toBe(true);
+    expect(closes(defineFlutingPath(p, inset + 3)!), 'fluting').toBe(true);
+  });
+
+  it.each(violNeckKeys())('stands the plate edge a full inset above the rib line on %s', key => {
+    // The face used to be built off the *offset* arc's endpoint rather than the corner, which put
+    // it an extra 1.1mm up on the Maggini — the plate overhanging its own ribs by more at the
+    // neck than anywhere else on the instrument.
+    const p = violNeck(key, R);
+    const inset = p.overhang + p.rib;
+
+    expect(faceY(defineOuterPath(p, inset, true, false))).toBeCloseTo(faceY(defineInnerPath(p)) + inset, 9);
+    expect(faceY(defineInnerPath(p))).toBeCloseTo(p.height - inset, 9);
+  });
+
+  it.each(violNeckKeys())('starts V0 exactly where its start angle says on %s', key => {
+    // The join is seated into the layout rather than carved out of it, so raising the radius
+    // must not move where V0 begins. Carving it did: the join's tangency landed short of
+    // V0.start, leaving the flank hanging past the outline by the amount it had eaten.
+    const p = violNeck(key, R);
+    const start = pointOnCircle(p.viol.V0!, p.viol.V0!.start);
+
+    // the inner trace passes through that point, mirrored, whatever the radius
+    const hits = endpoints(defineInnerPath(p))
+      .some(pt => Math.hypot(pt.x - start.x, pt.y - start.y) < 1e-9);
+    expect(hits, `V0.start at (${start.x}, ${start.y}) is on the inner trace`).toBe(true);
+
+    // and the face keeps the authored width, rather than the join eating into it
+    expect(Math.max(...endpoints(defineInnerPath(p)).filter(pt => pt.y > p.height - (p.overhang + p.rib) - 1e-9).map(pt => pt.x)))
+      .toBeCloseTo(p.viol.width! / 2, 9);
+  });
+});
+
+describe('the arcs joining the viol neck to its top face', () => {
+  /** The join arc at offset `d`, which follows V0 and is the one arc there not centred on it. */
+  function joinArc(p: EnricoCerutiParams, d: number) {
+    const last = defineOffsetArcs(p, d).at(-1)!;
+    const onV0 = Math.abs(last.x - p.viol.V0!.x) < 1e-9 && Math.abs(last.y - p.viol.V0!.y) < 1e-9;
+    return onV0 ? undefined : last;
+  }
+
+  it('centres every offset of the join on one point, radius apart by the offset', () => {
+    // The whole construction rests on this: the fillet centre and its two tangency rays do not
+    // move with the offset. If they did, each line would need its own join solved against its own
+    // neighbours, and they would stop meeting.
+    const p = violNeck('maggini-delmas', 6);
+    const centre = joinArc(p, 0)!;
+
+    for (const d of [0, 1.2, 4, 8]) {
+      const arc = joinArc(p, d)!;
+      expect(arc.x, `centre x at offset ${d}`).toBeCloseTo(centre.x, 9);
+      expect(arc.y, `centre y at offset ${d}`).toBeCloseTo(centre.y, 9);
+      expect(arc.r, `radius at offset ${d}`).toBeCloseTo(6 + d, 9);
+    }
+  });
+
+  it('drops the join once an inward offset has eaten the fillet', () => {
+    // Inside a convex corner the two offsets cross rather than part, so past R the join is a
+    // trim, not an arc. The channel reaches this: it runs in from the edge by more than R.
+    const p = violNeck('maggini-delmas', 6);
+    expect(joinArc(p, -6.5)).toBeUndefined();
+    // 14.5mm in from the edge is the same -6.5 once the inset comes off
+    expect(closes(defineFlutingPath(p, 14.5)!), 'the channel still closes without one').toBe(true);
   });
 });
