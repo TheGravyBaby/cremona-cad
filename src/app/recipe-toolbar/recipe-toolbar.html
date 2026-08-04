@@ -40,4 +40,9 @@
     <img src="upload.png" alt="" />
   </button>
   <input #fileInput class="toolbar-file-input" type="file" accept=".json,application/json" (change)="onFilePicked($event)" />
+
+  <!-- Debug, localhost only (see isLocalHost in helpers/debugDump.ts): the saved recipe JSON, to the clipboard. -->
+  @if (debugDumpEnabled) {
+  <button type="button" class="toolbar-btn debug-dump-btn" title="Copy recipe JSON" (click)="debugDump.emit()">/</button>
+  }
 </div>

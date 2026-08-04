@@ -195,7 +195,7 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
 
   // ===== Render =====
 
-  protected buildRun(): RenderLayer[] {
+  public buildRun(): RenderLayer[] {
     this.params.arching ??= defaultArchingParams(this.params.height);
     calculateOuterArcs(this.params);
     for (const plate of ['top', 'bottom'] as const) {

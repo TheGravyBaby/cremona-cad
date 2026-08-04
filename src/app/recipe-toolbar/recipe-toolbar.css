@@ -131,3 +131,15 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
+
+/* Debug only — the `/` dump button. Shown on localhost only; see isLocalHost in helpers/debugDump.ts. */
+.debug-dump-btn {
+  font-family: monospace;
+  font-size: 14px;
+  color: var(--ui-text-secondary, #888);
+  opacity: 0.6;
+}
+
+.debug-dump-btn:hover {
+  opacity: 1;
+}

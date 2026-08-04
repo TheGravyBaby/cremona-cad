@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { flipArcAboutY, flipCircleAboutY } from '../../../helpers/draftMath';
 import { adjustArcEnd } from '../../../helpers/arcDegrees';
 import { renderArcFromArcFancy, renderCircle, renderPath } from '../../../helpers/renderFuncs';
-import { calculateOuterArcs, ensureOuterTracePaths } from '../../ceruti-calcs';
+import { calculateOuterArcs, ensureOuterTracePaths, getPath, getPathOrNull } from '../../ceruti-calcs';
 import { buttonInfo, cornerCutoffInfo, purflingInfo } from '../../ceruti-helpers';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, PathEntry } from '../../ceruti-types';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
@@ -48,15 +48,7 @@ export class OuterTracePanel extends CerutiPanelBase implements OnInit {
     this.emitImmediate();
   }
 
-  private getPath(key: string): string {
-    return this.paths.find(entry => entry.key === key)!.path;
-  }
-
-  private getPathOrNull(key: string): string | null {
-    return this.paths.find(entry => entry.key === key)?.path ?? null;
-  }
-
-  protected buildRun(): RenderLayer[] {
+  public buildRun(): RenderLayer[] {
     const p = this.params;
 
     calculateOuterArcs(p);
@@ -66,11 +58,11 @@ export class OuterTracePanel extends CerutiPanelBase implements OnInit {
     // subject — it is cut against the purfling, so it belongs with the gouge
     // that cuts it rather than shaded in here where nothing can be set about it.
     const renders: RenderLayer[] = [
-      renderPath(this.getPath('back'), this.colors.outerTrace),
+      renderPath(getPath(this.paths, 'back'), this.colors.outerTrace),
     ];
-    const purflingPath = this.getPathOrNull('purfling');
+    const purflingPath = getPathOrNull(this.paths, 'purfling');
     if (purflingPath) renders.push(renderPath(purflingPath, this.colors.innerTrace, 1));
-    const outerPurflingPath = this.getPathOrNull('outerPurfling');
+    const outerPurflingPath = getPathOrNull(this.paths, 'outerPurfling');
     if (outerPurflingPath) renders.push(renderPath(outerPurflingPath, this.colors.innerTrace, 1));
     renders.push(renderOuterTraceGuides(p, this.colors, this.flags, true));
 

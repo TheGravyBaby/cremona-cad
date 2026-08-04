@@ -1,6 +1,7 @@
-import { calculateCenterBout, calculateCorners, calculateMainBouts, calculateOuterArcs, ensureOuterTracePaths } from './ceruti-calcs';
+import { ensureOuterTracePaths } from './ceruti-calcs';
 import { defaultArchingParams } from './ceruti-arching';
-import { DefaultParams, EnricoCerutiParams, PathEntry } from './ceruti-types';
+import { defaultViolin } from './ceruti-fixtures';
+import { PathEntry } from './ceruti-types';
 
 /**
  * The shared path cache is what the plan-view sheets are drawn and exported
@@ -9,14 +10,7 @@ import { DefaultParams, EnricoCerutiParams, PathEntry } from './ceruti-types';
  * geometry it shouldn't, or missing geometry it should — the harder one to
  * notice, and the reason this is tested at the cache rather than at the sheet.
  */
-function laidOut(): EnricoCerutiParams {
-  const p: EnricoCerutiParams = JSON.parse(JSON.stringify(DefaultParams));
-  calculateMainBouts(p);
-  calculateCorners(p);
-  calculateCenterBout(p);
-  calculateOuterArcs(p);
-  return p;
-}
+const laidOut = defaultViolin;
 
 const find = (paths: PathEntry[], key: string): string | undefined =>
   paths.find(e => e.key === key)?.path;

@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { RecipeInterface } from '../models/types';
 import { MessageService } from '../shared/message.service';
 import { RECIPE_SCHEMA_VERSION } from '../enrico-ceruti-violin/ceruti-types';
+import { isLocalHost } from '../helpers/debugDump';
 
 @Component({
   selector: 'app-recipe-toolbar',
@@ -23,6 +24,10 @@ export class RecipeToolbarComponent {
   @Output() loadFile = new EventEmitter<RecipeInterface>();
   @Output() templateSelect = new EventEmitter<string>();
   @Output() fileNameChange = new EventEmitter<string>();
+  /** The recipe serializes itself — this component has no idea what it holds. */
+  @Output() debugDump = new EventEmitter<void>();
+
+  protected readonly debugDumpEnabled = isLocalHost();
 
   private readonly host = inject(ElementRef<HTMLElement>);
 

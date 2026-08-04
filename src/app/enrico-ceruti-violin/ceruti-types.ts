@@ -480,9 +480,18 @@ export interface EnricoCerutiParams {
   arching?: ArchingParams;
 }
 
+/**
+ * The keys the shared path cache can hold. Enumerated rather than left as a
+ * bare string because the cache is filled by `ensure*` and read by `getPath`,
+ * which asserts — so a typo used to be a runtime crash on a panel nobody had
+ * opened yet. `purfling`/`outerPurfling` are the two that can legitimately be
+ * absent; read those through `getPathOrNull`.
+ */
+export type PathKey = 'inner' | 'top' | 'back' | 'purfling' | 'outerPurfling';
+
 /** A single named, precalculated SVG path — the shared cache read by export (and eventually render). */
 export interface PathEntry {
-  key: string;
+  key: PathKey;
   path: string;
 }
 

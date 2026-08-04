@@ -65,7 +65,7 @@ export class CornersPanel extends CerutiPanelBase implements OnInit {
     this.emitImmediate(false);
   }
 
-  protected buildRun(): RenderLayer[] {
+  public buildRun(): RenderLayer[] {
     const p = this.params;
     const c = this.colors;
     const f = this.flags;

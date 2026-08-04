@@ -143,7 +143,7 @@ export class FlutingPanel extends CerutiPanelBase implements OnInit {
     this.onChange();
   }
 
-  protected buildRun(): RenderLayer[] {
+  public buildRun(): RenderLayer[] {
     this.params.arching ??= defaultArchingParams(this.params.height);
     // The channel offsets are taken off the outer arcs, which must be current.
     calculateOuterArcs(this.params);

@@ -73,7 +73,7 @@ export class MainBoutsPanel extends CerutiPanelBase implements OnInit {
     this.emitImmediate(false);
   }
 
-  protected buildRun(): RenderLayer[] {
+  public buildRun(): RenderLayer[] {
     const p = this.params;
     const f = this.flags;
     const c = this.colors;
