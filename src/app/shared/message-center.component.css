@@ -1,5 +1,7 @@
-.message-center { position: fixed; left: 12px; top: 56px; width: 50%; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue'; z-index: 9999; pointer-events: none; }
+.message-center { position: fixed; left: 12px; top: 56px; width: 50%; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue'; z-index: 9999; pointer-events: none; display: flex; flex-direction: column; gap: 8px; }
 .toasts { display:flex; flex-direction:column; gap:8px; }
+/* with no toasts the chips take the top-left slot a toast would have had */
+.toasts:empty { display: none; }
 
 /* Default (dark mode) styles */
 .toast { display:flex; align-items:center; justify-content:space-between; padding:8px 12px; border-radius:6px; box-shadow: 0 2px 10px rgba(0,0,0,0.6); background: rgba(28,30,33,0.92); color: #eee; pointer-events: auto; position: relative; }
@@ -32,7 +34,9 @@
 	line-height: 1;
 }
 
-.toast .dismiss-ring {
+/* The countdown ring, shared by the toast's dismiss button and the chip's repeat count.
+   Fills whatever square it is dropped into. */
+.countdown-ring {
 	position: absolute;
 	inset: 0;
 	width: 100%;
@@ -41,17 +45,17 @@
 	transform: rotate(-90deg);
 }
 
-.toast .dismiss-ring-track,
-.toast .dismiss-ring-progress {
+.countdown-ring-track,
+.countdown-ring-progress {
 	fill: none;
 	stroke-width: 2;
 }
 
-.toast .dismiss-ring-track {
+.countdown-ring-track {
 	stroke: rgba(255, 255, 255, 0.25);
 }
 
-.toast .dismiss-ring-progress {
+.countdown-ring-progress {
 	stroke: rgba(255, 255, 255, 0.95);
 	stroke-dashoffset: 0;
 	animation-name: dismiss-ring-countdown;
@@ -66,19 +70,68 @@
 	to { stroke-dashoffset: 50.2654824574; }
 }
 
-.toast[data-severity='error'] .dismiss-ring-progress { stroke: #ff6b6b; }
-.toast[data-severity='warn'] .dismiss-ring-progress { stroke: #ffb86b; }
-.toast[data-severity='info'] .dismiss-ring-progress { stroke: #69c0ff; }
+[data-severity='error'] .countdown-ring-progress { stroke: #ff6b6b; }
+[data-severity='warn'] .countdown-ring-progress { stroke: #ffb86b; }
+[data-severity='info'] .countdown-ring-progress { stroke: #69c0ff; }
+
+/* Chips: a dismissed condition that is still reporting itself. Same left strip as the toast it
+   came from, one line, click to reopen. */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	pointer-events: auto;
+	cursor: pointer;
+	font: inherit;
+	font-size: 13px;
+	line-height: 1;
+	padding: 5px 9px;
+	border-radius: 6px;
+	border: none;
+	background: rgba(28,30,33,0.92);
+	color: #ccc;
+	box-shadow: 0 2px 10px rgba(0,0,0,0.6);
+}
+.chip[data-severity='error'] { border-left:6px solid #ff6b6b; }
+.chip[data-severity='warn'] { border-left:6px solid #ffb86b; }
+.chip[data-severity='info'] { border-left:6px solid #69c0ff; }
+.chip:hover { color: #f3f3f3; }
+
+.chip-count {
+	position: relative;
+	flex: none;
+	width: 20px;
+	height: 20px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+.chip-count-value {
+	position: relative;
+	z-index: 2;
+	font-size: 9px;
+	line-height: 1;
+	font-variant-numeric: tabular-nums;
+}
 
 /* Light mode overrides when document root has .day-mode */
 :host-context(.day-mode) .toast { background: rgba(255,255,255,0.96); color: #222; box-shadow: 0 2px 10px rgba(0,0,0,0.18); }
 :host-context(.day-mode) .toast .msg { color: #222; }
 :host-context(.day-mode) .toast .dismiss { color: #666; }
-:host-context(.day-mode) .toast .dismiss-ring-track { stroke: rgba(0, 0, 0, 0.25); }
+:host-context(.day-mode) .countdown-ring-track { stroke: rgba(0, 0, 0, 0.25); }
 :host-context(.day-mode) .toast[data-severity='error'] { border-left:6px solid #d9534f; }
 :host-context(.day-mode) .toast[data-severity='warn'] { border-left:6px solid #f0ad4e; }
 :host-context(.day-mode) .toast[data-severity='info'] { border-left:6px solid #5bc0de; }
 
+:host-context(.day-mode) .chip { background: rgba(255,255,255,0.96); color: #555; box-shadow: 0 2px 10px rgba(0,0,0,0.18); }
+:host-context(.day-mode) .chip:hover { color: #222; }
+:host-context(.day-mode) .chip[data-severity='error'] { border-left:6px solid #d9534f; }
+:host-context(.day-mode) .chip[data-severity='warn'] { border-left:6px solid #f0ad4e; }
+:host-context(.day-mode) .chip[data-severity='info'] { border-left:6px solid #5bc0de; }
+:host-context(.day-mode) [data-severity='error'] .countdown-ring-progress { stroke: #d9534f; }
+:host-context(.day-mode) [data-severity='warn'] .countdown-ring-progress { stroke: #f0ad4e; }
+:host-context(.day-mode) [data-severity='info'] .countdown-ring-progress { stroke: #5bc0de; }
+
 /* limit to a compact stack */
 .toasts { overflow: hidden; }
-

@@ -1,10 +1,21 @@
-import { Arc } from '../../models/types';
+import { Arc, Pt } from '../../models/types';
 
 /** Stroke width used for the "final" (non-module) trace lines across all panel renders. */
 export const PATH_STROKE_WIDTH = 2;
 
 export interface HighlightedArc {
   arc: Arc;
+  color: string;
+}
+
+/**
+ * A location marked on canvas while the textbox editing it has focus — the counterpart of
+ * {@link HighlightedArc} for fields that set a coordinate rather than an arc. The point is
+ * resolved by the panel at render time rather than captured on focus, so it survives a recalc
+ * replacing the object.
+ */
+export interface HighlightedPoint {
+  point: Pt;
   color: string;
 }
 

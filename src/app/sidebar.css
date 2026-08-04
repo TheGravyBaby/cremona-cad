@@ -640,23 +640,31 @@ select {
   height: 22px;
 }
 
+/* Same control as .toggle, without the checkbox: a sidebar button reads the same whether it
+   latches or fires once, so the two share their box, gradient, type and hover. */
 .recipe-btn {
-  padding: 3px 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 3px 8px;
   height: 26px;
   box-sizing: border-box;
   width: 100%;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ui-text-primary);
+  background: linear-gradient(180deg, var(--ui-canvas-btn-bg-start) 0%, var(--ui-canvas-btn-bg-end) 100%);
   border: 1px solid var(--ui-border-strong);
   border-radius: 4px;
-  background: var(--ui-bg-panel);
-  color: var(--ui-text-primary);
   cursor: pointer;
-  font-size: 0.875rem;
-  transition: background 0.15s, border-color 0.15s;
+  user-select: none;
+  transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease, color 120ms ease;
 }
 
 .recipe-btn:hover:not(:disabled) {
-  background: var(--ui-control-bg-hover);
-  border-color: var(--ui-border-elevated);
+  border-color: var(--ui-canvas-btn-border-hover);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }
 
 .recipe-btn:disabled {

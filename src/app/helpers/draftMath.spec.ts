@@ -1,7 +1,34 @@
 import {
-  buildPolylineIndex, distPointToPolyline, distPointToPolylineIndexed, makeC2SplineWithFlatKnot,
-  makeMonotoneSpline,
+  buildPolylineIndex, distPointToPolyline, distPointToPolylineIndexed, interceptCirclesAndPoint,
+  makeC2SplineWithFlatKnot, makeMonotoneSpline,
 } from './draftMath';
+import { Circle } from '../models/types';
+
+describe('interceptCirclesAndPoint', () => {
+  /**
+   * An unfittable corner has to come back as "no solutions", not as a pair of NaN centres.
+   * Nothing downstream tests for NaN — it survives arc construction, angle math and path building,
+   * and first surfaces as the browser refusing an SVG attribute, long after the render pass that
+   * could have reported it. Empty is what the caller already knows how to fail on.
+   */
+  it('returns both centres when a circle of that radius can be fitted', () => {
+    const solutions = interceptCirclesAndPoint(new Circle(0, 0, 100), { x: 130, y: 0 }, 20);
+    expect(solutions).toHaveLength(2);
+    for (const c of solutions) {
+      expect(Number.isFinite(c.x)).toBe(true);
+      expect(Number.isFinite(c.y)).toBe(true);
+    }
+  });
+
+  it('returns no solutions when the point is out of reach of that radius', () => {
+    // P sits far outside L, so no circle of radius 5 is both tangent to L and through P
+    expect(interceptCirclesAndPoint(new Circle(0, 0, 100), { x: 400, y: 0 }, 5)).toEqual([]);
+  });
+
+  it('returns no solutions rather than dividing by zero when the point is on L centre', () => {
+    expect(interceptCirclesAndPoint(new Circle(0, 0, 100), { x: 0, y: 0 }, 20)).toEqual([]);
+  });
+});
 
 describe('makeMonotoneSpline', () => {
   /**
