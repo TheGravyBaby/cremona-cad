@@ -191,8 +191,7 @@ export class CerutiViolin extends RecipeComponentBase {
   }
 
   get selectedTemplateKey(): string {
-    const current = JSON.stringify(this.d.params);
-    return this.templates.find(t => JSON.stringify(t.params) === current)?.key ?? '';
+    return this.templates.some(t => t.key === this.d.key) ? this.d.key : '';
   }
 
   /** The plain outer+inner silhouette shown when landing on a panel with nothing more specific to draw yet. */
