@@ -1,4 +1,4 @@
-import { ensureOuterTracePaths } from './ceruti-calcs';
+import { ensureCenterBoutInnerPath, ensureOuterTracePaths, getPath, getPathOrNull, upsertPathEntry } from './ceruti-calcs';
 import { defaultArchingParams } from './ceruti-arching';
 import { defaultViolin } from './ceruti-fixtures';
 import { PathEntry } from './ceruti-types';
@@ -53,5 +53,56 @@ describe('ensureOuterTracePaths', () => {
     const first = paths.length;
     ensureOuterTracePaths(p, paths);
     expect(paths.length).toBe(first);
+  });
+});
+
+describe('the cache accessors', () => {
+  // These replaced four hand-rolled copies of `.find(...)!` across the panels.
+  // The asserting one is deliberate: a missing `ensure*` should fail loudly at
+  // the read rather than draw nothing and leave a blank sheet to explain.
+  it('getPath returns what ensure* wrote', () => {
+    const p = laidOut();
+    const paths: PathEntry[] = [];
+    ensureOuterTracePaths(p, paths);
+    expect(getPath(paths, 'top')).toBe(find(paths, 'top'));
+    expect(getPath(paths, 'top')).toMatch(/^M/);
+  });
+
+  it('getPath throws on a cold cache rather than returning nothing', () => {
+    expect(() => getPath([], 'top')).toThrow();
+  });
+
+  it('getPathOrNull answers null for the entries that are legitimately absent', () => {
+    // `purfling` and `outerPurfling` are only written when configured, which is
+    // why they are read through the forgiving accessor everywhere.
+    expect(getPathOrNull([], 'purfling')).toBeNull();
+
+    const p = laidOut();
+    const paths: PathEntry[] = [];
+    ensureOuterTracePaths(p, paths);
+    expect(getPathOrNull(paths, 'purfling')).toBe(find(paths, 'purfling'));
+  });
+
+  it('upsertPathEntry replaces a key in place, keeping its position', () => {
+    const paths: PathEntry[] = [];
+    upsertPathEntry(paths, 'inner', 'M 0 0');
+    upsertPathEntry(paths, 'top', 'M 1 1');
+    upsertPathEntry(paths, 'inner', 'M 2 2');
+
+    expect(paths.map(e => e.key)).toEqual(['inner', 'top']);
+    expect(getPath(paths, 'inner')).toBe('M 2 2');
+  });
+
+  it('the two ensure* functions share one cache without clobbering each other', () => {
+    // Panels call both — the mould panel needs the inner path and the outline in
+    // the same array — so a second ensure* must not drop the first one's work.
+    const p = laidOut();
+    const paths: PathEntry[] = [];
+    ensureCenterBoutInnerPath(p, paths);
+    ensureOuterTracePaths(p, paths);
+
+    for (const key of ['inner', 'top', 'back'] as const) {
+      expect(getPath(paths, key), `${key} missing`).toBeTruthy();
+    }
   });
 });

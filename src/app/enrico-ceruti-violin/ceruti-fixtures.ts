@@ -13,6 +13,29 @@ import { DefaultParams, EnricoCerutiParams, EnricoCerutiTemplate } from './cerut
 // The deep clone is not incidental: the calcs mutate `p` in place, so a spec
 // sharing a params object with another spec would see the first one's edits.
 
+/**
+ * Every numeric field where two recipes disagree by more than `tolMm`, as
+ * readable `path: a -> b` lines.
+ *
+ * Recipes cannot be compared with `toEqual` or by stringifying: the C-bout and
+ * corner arcs are placed by iterative solvers, so re-solving the same
+ * instrument reproduces it to about 1e-8 rather than bit-exactly, and two of the
+ * bundled templates were saved before some of that arithmetic settled. The
+ * default tolerance is a nanometre — six orders of magnitude below anything a
+ * plate could express — so it tolerates that residue while still failing on any
+ * change a maker could measure.
+ */
+export function geometryDiff(a: unknown, b: unknown, tolMm = 1e-6, path = ''): string[] {
+  if (typeof a === 'number' && typeof b === 'number') {
+    return Math.abs(a - b) > tolMm ? [`${path}: ${a} -> ${b}`] : [];
+  }
+  if (a && b && typeof a === 'object' && typeof b === 'object') {
+    const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+    return [...keys].flatMap(k => geometryDiff((a as any)[k], (b as any)[k], tolMm, `${path}.${k}`));
+  }
+  return a === b ? [] : [`${path}: ${JSON.stringify(a)} -> ${JSON.stringify(b)}`];
+}
+
 /** Runs the 2D outline pipeline. Mutates and returns the same object, as the calcs do. */
 export function layoutFrom(p: EnricoCerutiParams): EnricoCerutiParams {
   calculateMainBouts(p);
