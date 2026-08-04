@@ -2,7 +2,7 @@ import { solveInscribedCircleAlongAxis, circleCircleIntersections, angleFromCent
 import { pathFromArc, pathFromLine, pathFromRoundedRect, pathFromCircle, pathFromRect, combinePathStrings, differenceFromManyPaths, intersectionFromTwoPaths, translatePath } from "../helpers/svgPathMath";
 import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Pt, Rectangle } from "../models/types";
 import { error } from "../shared/message-emitter";
-import { EnricoCerutiParams, PathEntry } from "./ceruti-types";
+import { EnricoCerutiParams, PathEntry, PathKey } from "./ceruti-types";
 import { defineInnerPath, defineOuterPath, definePurflingPath, defineOuterPurflingPath } from "./ceruti-paths";
 
 // ===== Outline solvers =====
@@ -738,7 +738,7 @@ export function calculateCornerBlocks(p: EnricoCerutiParams, innerPath: string, 
     return result;
 }
 
-export const upsertPathEntry = (paths: PathEntry[], key: string, path: string): void => {
+export const upsertPathEntry = (paths: PathEntry[], key: PathKey, path: string): void => {
   const entry = paths.find(p => p.key === key);
   if (entry) {
     entry.path = path;
@@ -746,6 +746,19 @@ export const upsertPathEntry = (paths: PathEntry[], key: string, path: string): 
   }
   paths.push({ key, path });
 };
+
+/**
+ * Reads a path the caller has already guaranteed is there by calling the
+ * matching `ensure*` first. Asserts, so a missing `ensure*` fails loudly at the
+ * read rather than drawing nothing — see the panel notes in this folder's
+ * CLAUDE.md. Lived as a private copy in four panels before this.
+ */
+export const getPath = (paths: PathEntry[], key: PathKey): string =>
+  paths.find(entry => entry.key === key)!.path;
+
+/** Same, for the keys that are legitimately absent (purfling not yet configured). */
+export const getPathOrNull = (paths: PathEntry[], key: PathKey): string | null =>
+  paths.find(entry => entry.key === key)?.path ?? null;
 
 export const ensureCenterBoutInnerPath = (
   params: EnricoCerutiParams,

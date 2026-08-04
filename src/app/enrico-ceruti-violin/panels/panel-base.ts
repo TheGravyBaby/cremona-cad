@@ -19,8 +19,14 @@ export type RenderLayer = (g: any, ui: any) => void;
 export abstract class CerutiPanelBase {
   @Output() panelUpdate = new EventEmitter<PanelRenderRequest>();
 
-  /** Builds this panel's render layer stack for its current state. */
-  protected abstract buildRun(): RenderLayer[];
+  /**
+   * Builds this panel's render layer stack for its current state.
+   *
+   * Public rather than protected so a test can call it directly — a panel's
+   * whole contract is "run the calc, return these layers", and asserting on that
+   * needs no canvas.
+   */
+  public abstract buildRun(): RenderLayer[];
 
   /**
    * Use for anything the user is watching happen live: hover/focus previews,

@@ -7,6 +7,7 @@ import { NamedConstant, DEFAULT_NAMED_CONSTANTS, nearestFraction } from '../help
 import { ToolboxStore } from '../draft-canvas/tools/toolbox-store';
 import { ImageAssetStore } from '../draft-canvas/tools/image-asset-store';
 import { PANEL_KEY, RECIPE_KEY, readWorkingState, writeWorkingState } from '../helpers/workingStorage';
+import { copyToClipboard } from '../helpers/debugDump';
 import {
   ReferenceImageSource, imageShapesFromRecipe, imageShapesToRecipe,
 } from '../draft-canvas/tools/reference-image-schema';
@@ -350,18 +351,56 @@ export abstract class RecipeComponentBase implements AfterViewInit {
   firstRender(canvas: any, ui: any) {
   }
 
-  saveToDisk() {
-    const safeName = (this.d.fileName?.trim() || 'untitled') + (this.d.fileName?.endsWith('.json') ? '' : '.json');
+  /**
+   * The recipe as a file, mirroring the canvas back into `this.d` first —
+   * `toolboxState` is only written here, so a plain stringify would carry
+   * whatever drawing state was current the last time something saved.
+   *
+   * Mutating, therefore save-only. The debug copy deliberately does not come
+   * through here; see copyRecipeToClipboard.
+   */
+  protected serializeRecipe(): string {
     this.d.toolboxState = this.toolbox.exportState();
     // Writes `referenceImages` in exactly the format every previous version of the app wrote, so
     // a file saved here still opens in an older build.
     this.syncReferenceImages();
-    const limitedJson = {
-      ...this.d,
-      paths: []
+    return this.stringifyRecipe(false);
+  }
 
-    }
-    const json = JSON.stringify(this.d, null, 2);
+  /**
+   * `stripImageData` drops the reference images' pixel payload only. An uploaded
+   * scan is a `data:` URL that can run to megabytes and says nothing about the
+   * drawing, while where it sits and what it is called is often the whole point
+   * of the question — so the placement fields stay and the bytes become a stub.
+   * The download never strips: a file has to reopen with its references intact.
+   */
+  private stringifyRecipe(stripImageData: boolean): string {
+    if (!stripImageData) return JSON.stringify(this.d, null, 2);
+    return JSON.stringify(this.d, (key, value) => {
+      if (key !== 'href' && key !== 'xlink:href') return value;
+      if (typeof value !== 'string') return value;
+      // A template's image is a short path like '/StradGoetz.jpg' — worth keeping as-is.
+      return value.startsWith('data:') ? `[image data stripped, ${value.length} chars]` : value;
+    }, 2);
+  }
+
+  /**
+   * Debug: the recipe on the clipboard, read without writing.
+   *
+   * Reads `this.d` as it stands rather than going through `serializeRecipe`,
+   * because that one mirrors the canvas back into the recipe first — and a
+   * button for inspecting state must not change the state being inspected.
+   * `referenceImages` is live regardless (the ToolboxStore subscription in
+   * ngOnInit keeps it so); the one field that can be stale here is
+   * `toolboxState`, and the canvas's own `/` reports drawn shapes live.
+   */
+  copyRecipeToClipboard(): void {
+    copyToClipboard('recipe', this.stringifyRecipe(true));
+  }
+
+  saveToDisk() {
+    const safeName = (this.d.fileName?.trim() || 'untitled') + (this.d.fileName?.endsWith('.json') ? '' : '.json');
+    const json = this.serializeRecipe();
 
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);

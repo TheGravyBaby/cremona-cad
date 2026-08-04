@@ -28,6 +28,7 @@ import { distanceToShape, shapeBounds } from './tools/shape-hit-test';
 import { translateShape } from './tools/shape-transform';
 import { moveGrabberPosition, endpointGrabbers, withEndpoint, EndpointKey } from './tools/shape-grabbers';
 import { snapToLockedAngle } from './tools/angle-lock';
+import { copyDebugDump, isLocalHost } from '../helpers/debugDump';
 import { DraftShape, TextShape } from './tools/toolbox-shape';
 import { HOTKEY_TOOL_CYCLE } from './tools/tool-hotkeys';
 import { ToolPaletteComponent } from './tool-palette/tool-palette';
@@ -104,7 +105,13 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private snapEngine = new SnapEngine();
   private snapDirty = true;
   private activeSnap: SnapCandidate | null = null;
-  // The most recently drawn `.snappable` layer — kept so an endpoint-drag (which happens in
+  /** The group holding everything in world space — the recipe's layers and the toolbox's shapes,
+   * and nothing else (the grid, reference images, halos and snap markers are all siblings of it).
+   * Named once because the debug dump finds this group by class: a rename at only one of the two
+   * sites would leave it silently reporting an empty drawing. */
+  private static readonly SCENE_GROUP_CLASS = 'snappable';
+
+  // The most recently drawn scene layer — kept so an endpoint-drag (which happens in
   // Select mode, with no active tool) can force an on-demand rebuild; see ensureSnapIndex().
   private snapLayer: d3.Selection<SVGGElement, unknown, null, undefined> | null = null;
 
@@ -375,7 +382,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       }
     }
 
-    const snapLayer = this.gRoot.append('g').attr('class', 'snappable');
+    const snapLayer = this.gRoot.append('g').attr('class', DraftCanvasComponent.SCENE_GROUP_CLASS);
     this.snapLayer = snapLayer;
     this.draftFuncs.map(f => {
       f(snapLayer, this.gUI)
@@ -564,6 +571,60 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
   public get selectedCount(): number {
     return this.selectedShapeIds.size;
+  }
+
+  // ===== Debug dump =====
+
+  protected readonly debugDumpEnabled = isLocalHost();
+
+  /** Geometry attributes worth carrying per tag. Presentation (stroke width, dash, opacity) is left out. */
+  private static readonly DUMP_ATTRS = [
+    'd', 'x1', 'y1', 'x2', 'y2', 'cx', 'cy', 'r', 'rx', 'ry', 'x', 'y',
+    'width', 'height', 'points', 'transform', 'stroke', 'fill',
+  ];
+
+  /**
+   * Everything drawn in world space, read back off the DOM.
+   *
+   * Read rather than recomputed: `draftFuncs` holds the recipe's render
+   * closures, and re-running them would re-run `firstRender` — which adopts
+   * stored recipes and emits, so it is not something a debug button may call.
+   * The DOM already has the answer and cannot disagree with what is on screen.
+   *
+   * Scoped to the scene group, which is where both the recipe's layers and the
+   * toolbox's shapes draw. That deliberately excludes the axis grid, reference
+   * images, selection halos and snap markers — none of which are the drawing.
+   *
+   * Coordinates are world millimetres with y positive up, the same frame the
+   * recipe works in. (`gRoot` carries a `scale(1,-1)`, so the numbers here need
+   * no unflipping — but text drawn into the UI overlay does negate its y.)
+   */
+  protected copyCanvasDebugDump(): void {
+    const host = this.host?.nativeElement;
+    const pxW = host?.clientWidth ?? 0;
+    const pxH = host?.clientHeight ?? 0;
+    const scene = host?.querySelector(`g.${DraftCanvasComponent.SCENE_GROUP_CLASS}`);
+    const drawn = scene ? Array.from(scene.querySelectorAll('path,line,circle,ellipse,rect,polyline,polygon,text')) : [];
+
+    copyDebugDump('canvas', {
+      viewport: {
+        pxPerMm: this.pxPerMm,
+        visibleMm: pxW && pxH ? this.camera.getViewBox(pxW, pxH) : null,
+      },
+      // The authored objects behind whatever the toolbox drew below — an arc's
+      // real centre, radius and angles rather than the path it rasterised to.
+      toolboxShapes: this.toolbox.getVisibleShapes().map(s => ({ ...s })),
+      drawnCount: drawn.length,
+      drawn: drawn.map(node => {
+        const out: Record<string, string> = { tag: node.tagName };
+        for (const name of DraftCanvasComponent.DUMP_ATTRS) {
+          const v = node.getAttribute(name);
+          if (v !== null) out[name] = v;
+        }
+        if (node.tagName === 'text' && node.textContent) out['text'] = node.textContent;
+        return out;
+      }),
+    });
   }
 
   // ===== Inline text editing (see the field comments above editingTextShapeId) =====

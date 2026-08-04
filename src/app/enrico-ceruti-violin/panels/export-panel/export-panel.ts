@@ -7,10 +7,10 @@ import { downloadDxfFile, DxfText } from '../../../helpers/dxfExporter';
 import { downloadStlFile } from '../../../helpers/stlExporter';
 import { renderPath, renderText } from '../../../helpers/renderFuncs';
 import { error } from '../../../shared/message-emitter';
-import { calculateCornerBlocks, calculateMould, calculateOuterArcs, ensureCenterBoutInnerPath, ensureOuterTracePaths } from '../../ceruti-calcs';
+import { calculateCornerBlocks, calculateMould, calculateOuterArcs, ensureCenterBoutInnerPath, ensureOuterTracePaths, getPath, getPathOrNull } from '../../ceruti-calcs';
 import { defaultCrossArchParams, defaultFlutingParams } from '../../ceruti-arch-geometry';
 import { buildPlateSurfaceModel, buildPlateStl, calculateCrossArchTemplates, calculateLongArchTemplates, TemplateShape } from '../../ceruti-surface';
-import { CerutiColors, EnricoCerutiParams, PathEntry } from '../../ceruti-types';
+import { CerutiColors, EnricoCerutiParams, PathEntry, PathKey } from '../../ceruti-types';
 
 type ExportType = 'innerTrace' | 'outerTrace' | 'back' | 'mould' | 'blocks' | 'crossArchTemplates' | 'longArchTemplates';
 
@@ -36,14 +36,12 @@ export class ExportPanel implements OnInit {
   /** Forwarded straight through to the canvas by the parent — this panel composes its own preview renders. */
   @Output() draftChange = new EventEmitter<Array<(g: any, ui: any) => void>>();
 
-  /** Looks up a precalculated path from the shared cache populated by panel updates/shared derivation helpers. */
-  private getPath(key: string): string {
-    return this.paths.find(entry => entry.key === key)!.path;
+  private getPath(key: PathKey): string {
+    return getPath(this.paths, key);
   }
 
-  /** Same, but for keys that are legitimately absent (e.g. purfling not yet configured). */
-  private getPathOrNull(key: string): string | null {
-    return this.paths.find(entry => entry.key === key)?.path ?? null;
+  private getPathOrNull(key: PathKey): string | null {
+    return getPathOrNull(this.paths, key);
   }
 
   /** Arching templates need the arching modules built, same precondition as STL export. */

@@ -8,7 +8,8 @@
             (newFile)="onNewClick()"
             (saveFile)="saveToDisk()"
             (loadFile)="loadFile($event)"
-            (templateSelect)="loadTemplate($event)">
+            (templateSelect)="loadTemplate($event)"
+            (debugDump)="copyRecipeToClipboard()">
         </app-recipe-toolbar>
         <section class="panel-nav" aria-label="Sidebar section navigation">
             <label class="ui-group-title">Select Recipe Step</label>

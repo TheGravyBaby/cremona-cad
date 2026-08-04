@@ -1,6 +1,5 @@
 import { pathsBounds, samplePathToPolyline } from '../helpers/svgPathMath';
-import { calculateCenterBout, calculateCorners, calculateMainBouts, calculateOuterArcs } from './ceruti-calcs';
-import { defaultArchingParams, longArchHeightAt } from './ceruti-arching';
+import { archedViolin } from './ceruti-fixtures';
 import {
   buildPlateStl, buildPlateSurfaceModel, calculateCrossArchTemplates, trimProfileToTroughs,
   calculateLongArchTemplates, computeArchContours, computeArchSectionProfile, crossArchTemplateStations,
@@ -11,7 +10,7 @@ import {
   gougeHalfWidth, solveLongArch,
 } from './ceruti-arch-geometry';
 import { defineInnerPath } from './ceruti-paths';
-import { DefaultParams, EnricoCerutiParams } from './ceruti-types';
+import { EnricoCerutiParams } from './ceruti-types';
 
 /** A polyline path's own vertices — not re-sampled, so a cut point stays where it was put. */
 function polyline(path: string): Array<{ x: number; y: number }> {
@@ -19,15 +18,7 @@ function polyline(path: string): Array<{ x: number; y: number }> {
 }
 
 /** A fully calculated default violin with arching + fluting configured. */
-function makeParams(): EnricoCerutiParams {
-  const p: EnricoCerutiParams = JSON.parse(JSON.stringify(DefaultParams));
-  calculateMainBouts(p);
-  calculateCorners(p);
-  calculateCenterBout(p);
-  calculateOuterArcs(p);
-  p.arching = defaultArchingParams(p.height);
-  return p;
-}
+const makeParams = archedViolin;
 
 describe('top surface height field', () => {
   let p: EnricoCerutiParams;

@@ -31,6 +31,10 @@
     </div>
 
     <div class="right">
+      <!-- Debug, localhost only (see isLocalHost in helpers/debugDump.ts): everything drawn, to the clipboard. -->
+      @if (debugDumpEnabled) {
+      <button type="button" class="btn debug-dump-btn" (click)="copyCanvasDebugDump()" title="Copy drawn geometry">/</button>
+      }
       <button type="button" class="btn theme-toggle-btn" (click)="nightModeChange.emit(!nightMode)"
         [attr.aria-pressed]="nightMode"
         [attr.aria-label]="nightMode ? 'Switch to day mode' : 'Switch to night mode'"

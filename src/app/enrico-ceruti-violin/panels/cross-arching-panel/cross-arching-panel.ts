@@ -721,7 +721,7 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
 
   // ===== Render =====
 
-  protected buildRun(): RenderLayer[] {
+  public buildRun(): RenderLayer[] {
     this.params.arching ??= defaultArchingParams(this.params.height);
     // The channel offsets and plate slabs chord the outer arcs, which must be current.
     calculateOuterArcs(this.params);

@@ -2,7 +2,7 @@ import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { flipRectAboutY } from '../../../helpers/draftMath';
 import { renderPath, renderRect } from '../../../helpers/renderFuncs';
-import { calculateMould, ensureCenterBoutInnerPath, ensureOuterTracePaths } from '../../ceruti-calcs';
+import { calculateMould, ensureCenterBoutInnerPath, ensureOuterTracePaths, getPath } from '../../ceruti-calcs';
 import { bitDiameterInfo, channelDepthInfo } from '../../ceruti-helpers';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, PathEntry } from '../../ceruti-types';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
@@ -30,16 +30,12 @@ export class MouldPanel extends CerutiPanelBase implements OnInit {
     this.emitDebounced();
   }
 
-  private getPath(key: string): string {
-    return this.paths.find(p => p.key === key)!.path;
-  }
-
-  protected buildRun(): RenderLayer[] {
+  public buildRun(): RenderLayer[] {
     const p = this.params;
     ensureCenterBoutInnerPath(p, this.paths);
     ensureOuterTracePaths(p, this.paths);
 
-    const innerPath = this.getPath('inner');
+    const innerPath = getPath(this.paths, 'inner');
     const previewMouldPath = calculateMould(p, false, this.flags.simpleClampBox);
 
     return [
