@@ -1,5 +1,5 @@
 import { defineOffsetArcs, defineOuterPurflingPath, definePurflingPath } from './ceruti-paths';
-import { layoutFrom, templateKeys, templateViolin } from './ceruti-fixtures';
+import { layoutFrom, templateKeys, templateViolin, violinFromRecipe } from './ceruti-fixtures';
 import { EnricoCerutiParams } from './ceruti-types';
 
 /**
@@ -79,5 +79,36 @@ describe('the arcs behind the purfling line', () => {
     const meets = arcs.some(a => a !== flank[0]
       && Math.hypot(a.x + a.r * Math.cos(a.end) - tip.x, a.y + a.r * Math.sin(a.end) - tip.y) < 1e-6);
     expect(meets, 'the viol flank ends where nothing else does').toBe(true);
+  });
+});
+
+describe('the recipe the whisker was reported from', () => {
+  /**
+   * The Ravatin cello as it stood in the session that reported this, reduced to
+   * what the bug turns on: a viol upper corner, and a purfling offset set well
+   * in from the outline. Reproducing it from the nearest template instead would
+   * have missed it — every bundled instrument with a viol corner leaves
+   * `purflingOffset` at its default, where the offset works out to zero and the
+   * untrimmed arc lands exactly on top of the trimmed one.
+   */
+  const reported = () => violinFromRecipe({
+    params: {
+      ...templateViolin('ravatinMans'),
+      purflingOffset: 10.8,
+      purflingChannelDepth: 1.2,
+      options: { ...templateViolin('ravatinMans').options, useViolCornerUC: true, useViolCornerLC: false },
+    },
+  });
+
+  it('draws its purfling as one closed loop', () => {
+    const p = reported();
+    expect(subpaths(definePurflingPath(p, p.overhang + p.rib)!)).toBe(1);
+  });
+
+  it('sets a purfling offset the outline can actually feel', () => {
+    // The guard on the fixture above: if this ever came out zero, the test
+    // passes while testing nothing.
+    const p = reported();
+    expect(p.purflingOffset).not.toBe(p.rib + p.overhang);
   });
 });
