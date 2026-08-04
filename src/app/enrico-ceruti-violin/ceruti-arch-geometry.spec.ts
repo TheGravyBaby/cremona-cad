@@ -304,7 +304,11 @@ describe('the trochoid crown', () => {
         prev = s;
       }
     }
-  });
+    // 140 tangency solves, and like the taper test below it sat just under the
+    // 5s default — close enough that it started timing out once the suite grew
+    // enough to compete for the machine. The sweep is what makes the continuity
+    // claim measurable, so the timeout gives way rather than the step size.
+  }, 20_000);
 
   it('solves on a narrow station as well as a wide one', () => {
     // The narrow stations are where the takeoff sits furthest in as a fraction

@@ -62,6 +62,22 @@ export class ExportPanel implements OnInit {
     ensureOuterTracePaths(this.params, this.paths);
   }
 
+  /**
+   * Seeds the corner blocks if nothing has yet.
+   *
+   * `calculateCornerBlocks` reads `params.blocks`, which is only ever written by
+   * `calculateMould` — and this panel unlocks on the same predicate the Mould
+   * panel does (`hasCenterBout`), so a recipe can arrive here having never
+   * opened it. Every bundled instrument ships blocks already, but the blank one
+   * does not, so the case is exactly "started from scratch, skipped to Export".
+   * Run at the low accuracy setting: the mould path itself is discarded here and
+   * only the block rectangles are wanted.
+   */
+  private cornerBlocks(): string[] {
+    if (!this.params.blocks?.CU) calculateMould(this.params, false, false);
+    return calculateCornerBlocks(this.params, getPath(this.paths, 'inner'));
+  }
+
   private toSvgTexts(shapes: TemplateShape[]): SvgTextExport[] {
     return shapes.map(s => ({ text: s.label, x: s.labelPos.x, y: s.labelPos.y, rotationDeg: s.labelRotation, fontSize: TEMPLATE_LABEL_SIZE }));
   }
@@ -108,7 +124,7 @@ export class ExportPanel implements OnInit {
         break;
       }
       case 'blocks': {
-        const renders = calculateCornerBlocks(p, this.getPath('inner')).map((block: string) => renderPath(block, this.colors.mouldTrace));
+        const renders = this.cornerBlocks().map((block: string) => renderPath(block, this.colors.mouldTrace));
         this.draftChange.emit(renders);
         break;
       }
@@ -153,7 +169,7 @@ export class ExportPanel implements OnInit {
         paths = [{ d: calculateMould(p, true, false), stroke: 'black', fill: 'none', strokeWidth: '.5' }];
         break;
       case 'blocks':
-        paths = [{ d: combinePathStrings(calculateCornerBlocks(p, this.getPath('inner'))), stroke: 'black', fill: 'none', strokeWidth: '.5' }];
+        paths = [{ d: combinePathStrings(this.cornerBlocks()), stroke: 'black', fill: 'none', strokeWidth: '.5' }];
         break;
       case 'crossArchTemplates':
       case 'longArchTemplates': {
@@ -213,7 +229,7 @@ export class ExportPanel implements OnInit {
         pathD = calculateMould(p, true, false);
         break;
       case 'blocks':
-        pathD = combinePathStrings(calculateCornerBlocks(p, this.getPath('inner')));
+        pathD = combinePathStrings(this.cornerBlocks());
         break;
       case 'crossArchTemplates':
       case 'longArchTemplates': {
@@ -263,7 +279,7 @@ export class ExportPanel implements OnInit {
         pdfPaths = [{ d: calculateMould(p, true, false), stroke: 'black', fill: 'none' }];
         break;
       case 'blocks':
-        pdfPaths = [{ d: combinePathStrings(calculateCornerBlocks(p, this.getPath('inner'))), stroke: 'black', fill: 'none' }];
+        pdfPaths = [{ d: combinePathStrings(this.cornerBlocks()), stroke: 'black', fill: 'none' }];
         break;
       case 'crossArchTemplates':
       case 'longArchTemplates': {
@@ -367,7 +383,7 @@ export class ExportPanel implements OnInit {
         description,
         width: p.width,
         height,
-        paths: calculateCornerBlocks(p, this.getPath('inner')).map((block: string) => ({ d: block, stroke: 'black', fill: 'none' })),
+        paths: this.cornerBlocks().map((block: string) => ({ d: block, stroke: 'black', fill: 'none' })),
       },
       // Arching templates need the arching modules built — omit these pages rather than
       // failing the whole plan when they haven't been opened yet.
