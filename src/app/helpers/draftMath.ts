@@ -812,7 +812,7 @@ export function makeMonotoneSpline(ys: number[], zs: number[]): (y: number) => n
  * The trade is real and the caller must be able to live with it. A natural
  * spline through steep or unevenly spaced data can rise above the knots it
  * passes through. Check the result — see `naturalSplineOvershoot` in
- * ceruti-gouged, which is what decides between the two there.
+ * ceruti-arch-geometry, which is what decides between the two there.
  */
 export function makeNaturalSpline(ys: number[], zs: number[]): (y: number) => number {
   const n = ys.length - 1;

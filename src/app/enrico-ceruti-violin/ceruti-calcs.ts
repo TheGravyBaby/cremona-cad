@@ -296,12 +296,10 @@ let lastWorkingC0: Arc | null = null;
 /** Reads/recalculates from `p.options.useKellyC0`; callers who need to force it toggle the flag first. */
 export function calculateCenterBout(p: EnricoCerutiParams): void {
     let inset = p.overhang + p.rib;
-    let UBWI = p.bouts.UBW - 2 * inset;
     let LBWI = p.bouts.LBW - 2 * inset;
-    let HI = p.height - 2 * inset;
 
     // initialize center bout if not already done
-    p.bouts.C0 ??= new Arc(0, Math.round(HI * p.ratios.C0YtoH) + inset, Math.round(LBWI * p.ratios.C0toLBW));
+    p.bouts.C0 ??= new Arc(0, Math.round(p.height * p.ratios.C0YtoH), Math.round(LBWI * p.ratios.C0toLBW));
 
     p.bouts.CBW ??= Math.round(p.bouts.LBW * p.ratios.CBWtoLBW);
 
@@ -352,10 +350,7 @@ export function calculateCenterBout(p: EnricoCerutiParams): void {
     }
 
     if (!p.options.useKellyC0) {
-        let c0Radius = p.bouts.C0?.r ?? Math.round(LBWI * p.ratios.C0toLBW);
-        let boutMid = ((p.height - p.bouts.UBW) - p.bouts.LBW) / 2 + p.bouts.LBW
-        let c0Y = p.bouts.C0?.y ?? boutMid;
-        p.bouts.C0 = new Arc(p.bouts.CBW / 2 - inset + c0Radius, c0Y, c0Radius);
+        p.bouts.C0 = new Arc(p.bouts.CBW / 2 - inset + p.bouts.C0.r, p.bouts.C0.y, p.bouts.C0.r);
         lastWorkingC0 = JSON.parse(JSON.stringify(p.bouts.C0));
     }
 
@@ -407,7 +402,7 @@ export function calculateCenterBout(p: EnricoCerutiParams): void {
     // recalculate display ratios
     p.ratios.CBWtoLBW = p.bouts.CBW / p.bouts.LBW;
     p.ratios.C0toLBW = p.bouts.C0.r / LBWI;
-    p.ratios.C0YtoH = p.bouts.C0.y / HI;
+    p.ratios.C0YtoH = p.bouts.C0.y / p.height;
     p.ratios.C2toLBW = p.bouts.C2.r / LBWI;
     p.ratios.C1toLBW = p.bouts.C1.r / LBWI;
 

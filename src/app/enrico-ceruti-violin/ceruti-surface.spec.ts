@@ -9,7 +9,7 @@ import {
 import {
   defaultCrossArchParams, defaultFlutingParams, channelCenterlineZAt, crossArchSectionAt,
   gougeHalfWidth, solveLongArch,
-} from './ceruti-gouged';
+} from './ceruti-arch-geometry';
 import { defineInnerPath } from './ceruti-paths';
 import { DefaultParams, EnricoCerutiParams } from './ceruti-types';
 
