@@ -3,11 +3,8 @@
     <div class="title">
       <img src="CremonaCadLogo.svg" alt="Cremona CAD" />
     </div>
-    <button class="btn icon-btn" (click)="aboutModal.open()" aria-label="About Cremona CAD">?</button>
-    <button class="btn icon-btn" [class.active]="nightMode" (click)="onNightModeToggle()"
-      [attr.aria-pressed]="nightMode" [attr.aria-label]="nightMode ? 'Switch to day mode' : 'Switch to night mode'">
-      {{ nightMode ? '☾' : '☀' }}
-    </button>
+    <button class="btn about-btn" (click)="aboutModal.open()" aria-label="About Cremona CAD"
+      title="About Cremona CAD">?</button>
   </div>
 
   <div class="controls">

@@ -17,9 +17,7 @@ import { MessageCenterComponent } from './shared/message-center.component';
     <div class="app">
      <app-top-bar class="top"
       [selectedRecipe]="selectedRecipe"
-      [nightMode]="nightMode"
-      (recipeChange)="selectRecipe($event)"
-      (nightModeChange)="onNightModeChange($event)">
+      (recipeChange)="selectRecipe($event)">
     </app-top-bar>
     <div class="top-spacer" aria-hidden="true"></div>
 
@@ -27,6 +25,8 @@ import { MessageCenterComponent } from './shared/message-center.component';
         <app-draft-canvas class="canvas"
           [draftFunctions]="draftArgs()"
           [fitRequest]="fitToken()"
+          [nightMode]="nightMode"
+          (nightModeChange)="onNightModeChange($event)"
           >
         </app-draft-canvas>
 
