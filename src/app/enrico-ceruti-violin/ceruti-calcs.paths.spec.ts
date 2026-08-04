@@ -1,6 +1,6 @@
 import { ensureCenterBoutInnerPath, ensureOuterTracePaths, getPath, getPathOrNull, upsertPathEntry } from './ceruti-calcs';
 import { defaultArchingParams } from './ceruti-arching';
-import { defaultViolin } from './ceruti-fixtures';
+import { defaultViolin, layoutFrom } from './ceruti-fixtures';
 import { PathEntry } from './ceruti-types';
 
 /**
@@ -104,5 +104,35 @@ describe('the cache accessors', () => {
     for (const key of ['inner', 'top', 'back'] as const) {
       expect(getPath(paths, key), `${key} missing`).toBeTruthy();
     }
+  });
+});
+
+describe('the cache across a whole session', () => {
+  it('never accumulates a second entry for a key', () => {
+    // Recipes exist carrying the same key three times over, each a snapshot of
+    // the outline at a different moment. Only the first is ever refreshed —
+    // `upsertPathEntry` matches by key and stops there — so the rest sit frozen
+    // in every saved file, invisible on screen and contradictory in a dump.
+    //
+    // They are not reachable from this code, and this is what says so: the
+    // ensure* functions re-run across the edits that change which arcs the
+    // outline is even built from (a viol corner swaps U2/U3 out for U4), with a
+    // save/load round trip between each, which is where a second array could
+    // enter. Any future write path that can append belongs behind this test.
+    let paths: PathEntry[] = [];
+    const p = laidOut();
+
+    for (const uc of [false, true, false]) {
+      for (const lc of [false, true]) {
+        p.options.useViolCornerUC = uc;
+        p.options.useViolCornerLC = lc;
+        layoutFrom(p);
+        ensureCenterBoutInnerPath(p, paths);
+        ensureOuterTracePaths(p, paths);
+        paths = JSON.parse(JSON.stringify(paths));
+      }
+    }
+
+    expect(paths.map(e => e.key)).toEqual([...new Set(paths.map(e => e.key))]);
   });
 });

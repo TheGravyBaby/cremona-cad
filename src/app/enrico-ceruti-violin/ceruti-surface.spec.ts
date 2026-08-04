@@ -44,7 +44,12 @@ describe('top surface height field', () => {
       expect(chords.outerHalf).not.toBeNull();
       expect(topSurfaceZAt(p, model, 0, y, chords)).not.toBeNull();
     }
-  });
+    // 344 stations, two surface queries each, and it sat just under the 5s
+    // default — close enough to time out once the suite grew enough to compete
+    // for the machine. Same call as the two sweeps in ceruti-arch-geometry.spec:
+    // a station step coarse enough to be fast is a step that can jump the shelf
+    // this exists to catch, so the timeout gives way rather than the sampling.
+  }, 20_000);
 
   it('keeps the plate edge outside the mould at every station', () => {
     // What the cross-arching section view draws its frame from, and the reason
