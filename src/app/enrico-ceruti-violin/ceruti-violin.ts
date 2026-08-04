@@ -8,6 +8,7 @@ import { CERUTI_TEMPLATES } from './ceruti-templates';
 import { defineOuterPath, defineOuterPurflingPath, definePurflingPath } from './ceruti-paths';
 import { normalizeArchingParams } from './ceruti-arching';
 import { renderBounds } from './renders/guides.render';
+import { PANEL_KEY, RECIPE_KEY, readWorkingState, writeWorkingState } from '../helpers/workingStorage';
 import { dimensionInfo, insetInfo } from './ceruti-helpers';
 import { MainBoutsPanel } from './panels/main-bouts-panel/main-bouts-panel';
 import { CornersPanel } from './panels/corners-panel/corners-panel';
@@ -186,8 +187,19 @@ export class CerutiViolin extends RecipeComponentBase {
     return JSON.stringify(this.d.params) !== this._lastLoadedParamsSnapshot;
   }
 
+  // The blank is the toolbar's own "Blank instrument" entry, so it isn't also offered as
+  // something to start from.
   get templateOptions(): Array<{ key: string; label: string }> {
-    return this.templates.map(t => ({ key: t.key, label: t.label }));
+    return this.templates
+      .filter(t => t.key !== CERUTI_TEMPLATES[0].key)
+      .map(t => ({ key: t.key, label: t.label }));
+  }
+
+  // Debounced like any other edit, so a recipe carrying reference images isn't re-serialized on
+  // every keystroke of its name, and so undo puts the old name back.
+  onFileNameChange(name: string): void {
+    this.d.fileName = name;
+    this.debounce(() => writeWorkingState(RECIPE_KEY, JSON.stringify(this.d)));
   }
 
   get selectedTemplateKey(): string {
@@ -223,7 +235,7 @@ export class CerutiViolin extends RecipeComponentBase {
 
     this.loadFile(JSON.parse(JSON.stringify(template)));
     this._lastLoadedParamsSnapshot = JSON.stringify(this.d.params);
-    sessionStorage.setItem('recipeData', JSON.stringify(this.d));
+    writeWorkingState(RECIPE_KEY, JSON.stringify(this.d));
     if (this.hasOuterTrace()) {
       this.draftChange.emit(this.renderOuterSilhouette());
     }
@@ -254,10 +266,10 @@ export class CerutiViolin extends RecipeComponentBase {
     this._lastLoadedParamsSnapshot = JSON.stringify(this.d.params);
     this.openPanel = 'base';
 
-    // Write to sessionStorage before emitting so firstRender reads the
+    // Write the working state before emitting so firstRender reads the
     // fresh template data (not the previous session's recipe/panel).
-    sessionStorage.setItem('recipeData', JSON.stringify(this.d));
-    sessionStorage.setItem('openPanel', 'base');
+    writeWorkingState(RECIPE_KEY, JSON.stringify(this.d));
+    writeWorkingState(PANEL_KEY, 'base');
 
     this.requestFit.emit();
     this.draftChange.emit([this.firstRender]);
@@ -267,7 +279,7 @@ export class CerutiViolin extends RecipeComponentBase {
     if (!this._firstRenderInitDone) {
       this._firstRenderInitDone = true;
 
-      const recipeData = this.loadMatchingSessionRecipe<EnricoCerutiTemplate>();
+      const recipeData = this.loadMatchingStoredRecipe<EnricoCerutiTemplate>();
       if (!recipeData) {
         // Nothing saved for this recipe yet — adopt the selected template's reference images
         // (e.g. StradGoetz's `/StradGoetz.jpg`) so a fresh session opens with them placed.
@@ -278,9 +290,9 @@ export class CerutiViolin extends RecipeComponentBase {
         this.d = recipeData;
         this.onRecipeAdopted();
         this.loadReferenceImages(recipeData);
-        // Restore the last open panel from its own sessionStorage key
+        // Restore the last open panel from its own key
         this.panelFlow?.refreshEnabledPanels();
-        const savedPanel = sessionStorage.getItem('openPanel');
+        const savedPanel = readWorkingState(PANEL_KEY);
         if (savedPanel && this.isPanelEnabled(savedPanel)) {
           this.openPanel = savedPanel;
         }
@@ -401,7 +413,7 @@ export class CerutiViolin extends RecipeComponentBase {
       }
       this.draftChange.emit(renders);
       if (request.persistSession !== false) {
-        sessionStorage.setItem('recipeData', JSON.stringify(this.d));
+        writeWorkingState(RECIPE_KEY, JSON.stringify(this.d));
       }
     });
 
@@ -428,7 +440,7 @@ export class CerutiViolin extends RecipeComponentBase {
 
       this.d.params.ratios.HtoW = this.d.params.height / this.d.params.width;
       this.draftChange.emit([renderBounds(this.d.params, true)]);
-      sessionStorage.setItem('recipeData', JSON.stringify(this.d));
+      writeWorkingState(RECIPE_KEY, JSON.stringify(this.d));
       // No re-frame here on purpose: resizing the plate is an edit, not a new drawing, and moving
       // the camera mid-keystroke would throw away the view the user set. `F` re-frames.
     }));

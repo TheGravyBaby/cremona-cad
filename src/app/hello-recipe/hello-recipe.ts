@@ -20,6 +20,7 @@ import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { renderCircle } from '../helpers/renderFuncs';
 import { RecipeToolbarComponent } from '../recipe-toolbar/recipe-toolbar';
+import { clearWorkingState, RECIPE_KEY } from '../helpers/workingStorage';
 
 // ─── Params type ────────────────────────────────────────────────────────────
 // Keep all recipe-specific values here so they survive save/load automatically.
@@ -47,7 +48,7 @@ export class HelloRecipe extends RecipeComponentBase {
   // params back to defaults.
   onNewClick(): void {
     this.d.params = { ...DEFAULTS };
-    sessionStorage.removeItem('recipeData');
+    clearWorkingState(RECIPE_KEY);
     this.render();
     // A blank file is a new drawing, not an edit — so this is one of the few places worth
     // re-framing the camera. Slider changes below deliberately leave the view alone.

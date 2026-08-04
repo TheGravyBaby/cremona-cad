@@ -1,4 +1,4 @@
-import { Component, ElementRef, EventEmitter, Input, Output, ViewChild, inject } from '@angular/core';
+import { Component, ElementRef, EventEmitter, HostListener, Input, Output, ViewChild, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RecipeInterface } from '../models/types';
 import { MessageService } from '../shared/message.service';
@@ -16,29 +16,56 @@ export class RecipeToolbarComponent {
 
   @Input() recipeName = '';
   @Input() templateOptions: Array<{ key: string; label: string }> = [];
-  @Input() activeTemplateKey = '';
+  @Input() fileName = '';
 
   @Output() newFile = new EventEmitter<void>();
   @Output() saveFile = new EventEmitter<void>();
   @Output() loadFile = new EventEmitter<RecipeInterface>();
   @Output() templateSelect = new EventEmitter<string>();
+  @Output() fileNameChange = new EventEmitter<string>();
+
+  private readonly host = inject(ElementRef<HTMLElement>);
 
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
 
-  onNewClick(): void {
-    const confirmed = confirm('Start a new file? Any unsaved work will be lost.');
-    if (confirmed) {
-      this.newFile.emit();
+  // Starting a new instrument is one action with a choice of starting point, so it is one
+  // control. A recipe with no templates to offer (see hello-recipe) skips the menu and starts
+  // blank on the click, which is the whole choice it has.
+  protected menuOpen = false;
+
+  protected onNewButtonClick(): void {
+    if (!this.templateOptions.length) {
+      this.startBlank();
+      return;
     }
+    this.menuOpen = !this.menuOpen;
+  }
+
+  protected startBlank(): void {
+    this.menuOpen = false;
+    const confirmed = confirm('Start a new instrument? Any work you have not downloaded will be lost.');
+    if (confirmed) this.newFile.emit();
+  }
+
+  protected startFromTemplate(key: string): void {
+    this.menuOpen = false;
+    // The parent asks about discarding work — it is the one that can tell whether there is any.
+    this.templateSelect.emit(key);
+  }
+
+  @HostListener('document:pointerdown', ['$event'])
+  protected onDocumentPointerDown(e: Event): void {
+    if (!this.menuOpen) return;
+    if (!this.host.nativeElement.contains(e.target as Node)) this.menuOpen = false;
+  }
+
+  @HostListener('document:keydown.escape')
+  protected onEscape(): void {
+    this.menuOpen = false;
   }
 
   onSaveClick(): void {
     this.saveFile.emit();
-  }
-
-  onTemplateSelect(key: string): void {
-    if (!key) return;
-    this.templateSelect.emit(key);
   }
 
   triggerFilePick(): void {

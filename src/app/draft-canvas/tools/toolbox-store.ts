@@ -2,14 +2,15 @@ import { Injectable, inject } from '@angular/core';
 import { DraftShape, ImageShape, DEFAULT_SHAPE_COLOR } from './toolbox-shape';
 import { Layer, DEFAULT_LAYER_ID, makeLayerId } from './layer';
 import { ImageAssetStore } from './image-asset-store';
+import { readWorkingState, writeWorkingState } from '../../helpers/workingStorage';
 
 const STORAGE_KEY = 'draft-canvas-toolbox-shapes';
 const MAX_HISTORY = 50;
 
 /**
- * Holds shapes drawn with the draft-canvas toolbox. Backed by sessionStorage
- * so shapes survive a reload but are gone once the tab/session closes —
- * this is a scratch annotation layer, not part of the saved recipe.
+ * Holds shapes drawn with the draft-canvas toolbox. Kept in the browser's working state
+ * alongside the recipe (see helpers/workingStorage.ts), so a drawing survives closing the tab —
+ * but still a scratch annotation layer, not part of the downloaded recipe unless saved with it.
  *
  * A root-provided singleton (rather than a plain class draft-canvas `new`s up)
  * so recipe-base's undo/redo keyboard handler can see the same shape history
@@ -17,7 +18,7 @@ const MAX_HISTORY = 50;
  *
  * Placed reference images (`ImageShape`) live in the same list, so they get selection, move,
  * delete, layers and undo from the same machinery. They are the one exception to the
- * sessionStorage backing: their durable home is the recipe's `referenceImages` field, so
+ * working-state backing: their durable home is the recipe's `referenceImages` field, so
  * exportState leaves them out and they are re-derived from the recipe on load.
  */
 @Injectable({ providedIn: 'root' })
@@ -341,7 +342,7 @@ export class ToolboxStore {
 
   private load(): void {
     try {
-      const raw = sessionStorage.getItem(STORAGE_KEY);
+      const raw = readWorkingState(STORAGE_KEY);
       if (!raw) return;
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
@@ -363,19 +364,19 @@ export class ToolboxStore {
         if (typeof parsed.showShapes === 'boolean') this._showShapes = parsed.showShapes;
       }
     } catch {
-      // ignore malformed/blocked sessionStorage
+      // ignore malformed stored state
     }
   }
 
   private persist(): void {
     try {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(this.exportState()));
+      writeWorkingState(STORAGE_KEY, JSON.stringify(this.exportState()));
     } catch {
       // ignore storage errors
     }
   }
 
-  /** Same shape persist() writes to sessionStorage — reused so the recipe file's saved/loaded
+  /** Same shape persist() writes to the working state — reused so the recipe file's saved/loaded
    * blob and the session's scratch copy can't drift apart.
    *
    * Images are filtered out of both destinations on purpose: the recipe's own `referenceImages`

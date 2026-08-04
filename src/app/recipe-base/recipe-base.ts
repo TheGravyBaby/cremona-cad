@@ -6,6 +6,7 @@ import { DebounceController } from '../helpers/debounce-controller';
 import { NamedConstant, DEFAULT_NAMED_CONSTANTS, nearestFraction } from '../helpers/nearestFraction';
 import { ToolboxStore } from '../draft-canvas/tools/toolbox-store';
 import { ImageAssetStore } from '../draft-canvas/tools/image-asset-store';
+import { PANEL_KEY, RECIPE_KEY, readWorkingState, writeWorkingState } from '../helpers/workingStorage';
 import {
   ReferenceImageSource, imageShapesFromRecipe, imageShapesToRecipe,
 } from '../draft-canvas/tools/reference-image-schema';
@@ -87,7 +88,7 @@ export abstract class RecipeComponentBase implements AfterViewInit {
 
   /**
    * Mirrors the canvas's placed images back into `this.d` so whichever code path persists the
-   * recipe next — a sessionStorage write, saveToDisk, a subclass's own snapshot — picks them up
+   * recipe next — a working-state write, saveToDisk, a subclass's own snapshot — picks them up
    * without having to know images exist. Subscribed to ToolboxStore so it can't be forgotten at
    * a call site.
    */
@@ -181,7 +182,7 @@ export abstract class RecipeComponentBase implements AfterViewInit {
       // The restored snapshot has no reference images in it (see pushHistory) — put the canvas's
       // current ones back before persisting, or this write would drop them from the session.
       this.syncReferenceImages();
-      sessionStorage.setItem('recipeData', JSON.stringify(this.d));
+      writeWorkingState(RECIPE_KEY, JSON.stringify(this.d));
       this.panelFlow?.refreshEnabledPanels();
       const current = this.panelFlow?.getCurrent(this.openPanel);
       if (current) this.openPanel = current;
@@ -246,7 +247,7 @@ export abstract class RecipeComponentBase implements AfterViewInit {
     setTimeout(() => {
       if (this._destroyed) return;
       this.openPanel = panel;
-      sessionStorage.setItem('openPanel', panel);
+      writeWorkingState(PANEL_KEY, panel);
       this.refreshBoundInputs();
     });
   }
@@ -290,18 +291,18 @@ export abstract class RecipeComponentBase implements AfterViewInit {
   protected activatePanel(panel: string): void {
     if (!this.isPanelEnabled(panel)) return;
     this.openPanel = panel;
-    sessionStorage.setItem('openPanel', panel);
+    writeWorkingState(PANEL_KEY, panel);
     this.onPanelActivated(panel);
   }
 
 
  ngOnInit() {
     // Keeps `d.referenceImages` current with whatever the canvas holds, so every existing
-    // persist path (sessionStorage writes, saveToDisk, subclass snapshots) serializes images
+    // persist path (working-state writes, saveToDisk, subclass snapshots) serializes images
     // without needing to know they exist. See syncReferenceImages.
     this.toolboxSyncUnsub = this.toolbox.onChange(() => this.syncReferenceImages());
 
-    const recipeData = this.loadMatchingSessionRecipe();
+    const recipeData = this.loadMatchingStoredRecipe();
     if (recipeData) {
       this.d = recipeData;
       this.onRecipeAdopted();
@@ -311,13 +312,12 @@ export abstract class RecipeComponentBase implements AfterViewInit {
   }
 
   /**
-   * Reads `recipeData` from sessionStorage, but only returns it if its
-   * `recipeName` matches this component's current recipe. Since every recipe
-   * shares the same sessionStorage key, this guards against e.g. switching
-   * between recipes and loading incompatible data
+   * Reads the stored working recipe, but only returns it if its `recipeName` matches this
+   * component's current recipe. Every recipe shares the one key, so this guards against e.g.
+   * switching between recipes and loading incompatible data.
    */
-  protected loadMatchingSessionRecipe<T extends RecipeInterface = RecipeInterface>(): T | null {
-    const saved = sessionStorage.getItem('recipeData');
+  protected loadMatchingStoredRecipe<T extends RecipeInterface = RecipeInterface>(): T | null {
+    const saved = readWorkingState(RECIPE_KEY);
     if (!saved) return null;
     try {
       const recipeData = JSON.parse(saved);
@@ -327,7 +327,7 @@ export abstract class RecipeComponentBase implements AfterViewInit {
       console.warn('Saved recipe does not match current recipe. Ignoring saved data.');
       return null;
     } catch (e) {
-      console.error('Failed to load from sessionStorage', e);
+      console.error('Failed to load stored recipe', e);
       return null;
     }
   }
@@ -343,8 +343,8 @@ export abstract class RecipeComponentBase implements AfterViewInit {
     this.debounceController?.destroy();
     this.syncReferenceImages();
     this.toolboxSyncUnsub?.();
-    sessionStorage.setItem('recipeData', JSON.stringify(this.d));
-    sessionStorage.setItem('openPanel', this.openPanel);
+    writeWorkingState(RECIPE_KEY, JSON.stringify(this.d));
+    writeWorkingState(PANEL_KEY, this.openPanel);
   }
 
   firstRender(canvas: any, ui: any) {
