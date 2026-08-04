@@ -3,7 +3,8 @@
         <app-recipe-toolbar
             [recipeName]="d.recipeName"
             [templateOptions]="templateOptions"
-            [activeTemplateKey]="selectedTemplateKey"
+            [fileName]="d.fileName"
+            (fileNameChange)="onFileNameChange($event)"
             (newFile)="onNewClick()"
             (saveFile)="saveToDisk()"
             (loadFile)="loadFile($event)"
@@ -45,12 +46,8 @@
              so the whole first touch of a recipe reads in one place. -->
         @if (openPanel === 'base') {
         <section class="ui-group">
+            <!-- The name itself is in the toolbar, where it stays visible from every panel. -->
             <div class="ui-group-title">File Properties</div>
-            <label>
-                File Name
-                <input type="text" class="textarea" [(ngModel)]="d.fileName" />
-            </label>
-
             <label>
                 Description
                 <textarea class="description-textarea" rows="1" maxlength="200"
