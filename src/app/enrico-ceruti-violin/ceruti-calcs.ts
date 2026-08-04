@@ -599,8 +599,10 @@ export function calculateMould(p: EnricoCerutiParams, useHighAccuracy = false, s
         }
 
         if (p.options.useViolNeck) {
+            // seed the block to the neck root: it hangs from where the neck join meets V0, and
+            // starts out spanning the neck plus 2mm each side. width is the user's from here on
             let endPt = pointOnCircle(p.viol!.V0, p.viol!.V0.start);
-            p.blocks.U = new Rectangle(new Pt(endPt.x+2, endPt.y), new Pt(-endPt.x - 2, endPt.y - p.blocks.U.height));
+            p.blocks.U = new Rectangle(new Pt(-endPt.x - 2, endPt.y - p.blocks.U.height), new Pt(endPt.x + 2, endPt.y));
         }
     }
     else {
@@ -611,8 +613,10 @@ export function calculateMould(p: EnricoCerutiParams, useHighAccuracy = false, s
 
 
         if (p.options.useViolNeck) {
+            // only the top edge is the neck's — it sits at the join tangency rather than at
+            // p.height - inset. the width stays whatever the mould panel was given
             let endPt = pointOnCircle(p.viol!.V0, p.viol!.V0.start);
-            p.blocks.U = new Rectangle(new Pt(endPt.x+2, endPt.y), new Pt(-endPt.x - 2, endPt.y - p.blocks.U.height));
+            p.blocks.U = new Rectangle(new Pt(-p.blocks.U.width / 2, endPt.y - p.blocks.U.height), new Pt(p.blocks.U.width / 2, endPt.y));
         }
     }
 

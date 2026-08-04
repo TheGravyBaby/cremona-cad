@@ -16,7 +16,8 @@ import {
   STATION_MARGIN_MM, STATION_MERGE_EPS_MM, wireframeSampleSteps,
 } from '../../ceruti-arching';
 import {
-  defaultCrossArchCycloidParams, defaultCrossArchParams, defaultFlutingParams, CrossArchSection,
+  defaultCrossArchCycloidParams, defaultCrossArchParams, defaultCrossArchSplineParams,
+  defaultFlutingParams, CrossArchSection,
   crossArchGuide, crossArchKnotX, crossArchSectionAt, crossArchSectionPath, nearestCrossArchShape,
 } from '../../ceruti-arch-geometry';
 import {
@@ -425,7 +426,7 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     const plateParams = plate === 'top' ? this.arching.top : this.arching.bottom;
     plateParams.cross = type === 'cycloid'
       ? defaultCrossArchCycloidParams()
-      : defaultCrossArchParams();
+      : defaultCrossArchSplineParams();
     this.draft[plate] = null;
     this.onChange();
   }
