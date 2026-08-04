@@ -14,9 +14,9 @@ Most files here carry a header comment explaining their own contract. Read it be
   where you register a new one; the palette and pointer routing pick it up automatically. One
   row = one palette row; a nested array = one button plus a caret holding variants of the same
   shape kind.
-- **`toolbox-store.ts`** — root singleton holding drawn shapes, with undo/redo. Backed by
-  **sessionStorage**: shapes survive reload, die with the tab. This is a scratch annotation layer,
-  deliberately not part of the saved recipe.
+- **`toolbox-store.ts`** — root singleton holding drawn shapes, with undo/redo. Persisted through
+  `helpers/workingStorage.ts`, so shapes survive closing the tab. Still a scratch annotation layer,
+  deliberately not part of the saved recipe — surviving is not the same as being in the file.
 - **`toolbox-shape.ts`** — `DraftShape`, the method-free plain-object union. See below.
 - **`snap-engine.ts`** — indexes snap candidates by reading the *rendered SVG*, not recipe data,
   so it works for any recipe and for toolbox shapes alike.
@@ -48,9 +48,9 @@ that one is lossy past 180° — don't write a blind converter.
 **Missing `layerId` means `DEFAULT_LAYER_ID`,** not a migration. Shapes persisted before layers
 existed land on the first layer for free. Keep it that way.
 
-**Reference images are the one exception to sessionStorage.** `ImageShape` lives in the same shape
-list — so it gets selection, move, delete, layers and undo for free — but its durable home is the
-recipe's `referenceImages` field. `exportState` leaves images out; they're re-derived from the
+**Reference images are the one shape the toolbox does not own.** `ImageShape` lives in the same
+shape list — so it gets selection, move, delete, layers and undo for free — but its durable home is
+the recipe's `referenceImages` field. `exportState` leaves images out; they're re-derived from the
 recipe on load. `reference-image-schema.ts` is the only place that translates between the frozen
 file format and the canvas object model, which is what lets the canvas side change freely. Keep
 the translation there, and keep emitting the same field so files stay openable in older builds.

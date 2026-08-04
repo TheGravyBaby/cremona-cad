@@ -32,6 +32,7 @@ string, it's `svgPathMath`. `svgPathMath` imports from `draftMath`, never the re
 | `nearestFraction.ts` | Decimal → fraction, plus `NamedConstant` defaults. |
 | `arcDegrees.ts` | Degree helpers for the arc input fields. |
 | `validators.ts` | `clampParam`, `safeRun`. |
+| `workingStorage.ts` | The one seam to browser storage for in-progress work. See root CLAUDE.md. |
 
 ## When adding here
 
