@@ -116,12 +116,13 @@ criteria.
 
 ## Notes
 
-- Three specs sweep densely enough to run several seconds and were flaky against vitest's 5s
-  default, so each carries an explicit 20s timeout. Keep them: in every case a step size coarse
+- Four specs sweep densely enough to run several seconds and were flaky against vitest's 5s
+  default, so each carries an explicit 20s timeout. Keep them: in every case a sweep coarse
   enough to fit the default is coarse enough to step over what the test exists to catch.
   - `ceruti-arch-geometry.spec.ts` — "eases into the taper without a kink", "moves the contact
     smoothly as the crown changes"
   - `ceruti-surface.spec.ts` — "never voids a station row inside the body"
+  - `panels/panels.spec.ts` — "draws every bundled instrument, not just the default"
 - Panels share `onArcFocus`/`onArcBlur`/`adjustArcStart`/`adjustArcEnd`/`nearestFraction`. If you
   add a sixth copy, hoist instead.
 - Help text style: what the concept *is* to a luthier, then what the field controls. Terse.

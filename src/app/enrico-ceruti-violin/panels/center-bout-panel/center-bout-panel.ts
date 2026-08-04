@@ -3,13 +3,13 @@ import { FormsModule } from '@angular/forms';
 import { adjustArcStart } from '../../../helpers/arcDegrees';
 import { flipArcAboutY, flipCircleAboutY, offsetArcRadius } from '../../../helpers/draftMath';
 import { nearestFraction } from '../../../helpers/nearestFraction';
-import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderCrosshair, renderDashedLine } from '../../../helpers/renderFuncs';
+import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderCrosshair, renderDashedLine, renderPointHalo } from '../../../helpers/renderFuncs';
 import { Arc } from '../../../models/types';
 import { ensureCenterBoutInnerPath } from '../../ceruti-calcs';
 import { centerBoutWidthInfo, cornerPositionInfo, fitC0Info } from '../../ceruti-helpers';
-import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, PathEntry } from '../../ceruti-types';
+import { CerutiColors, CerutiViewFlags, DefaultParams, EnricoCerutiParams, PathEntry } from '../../ceruti-types';
 import { renderBounds, renderBoutBouts, renderCornerGuides } from '../../renders/guides.render';
-import { HighlightedArc, PATH_STROKE_WIDTH } from '../../renders/render-constants';
+import { HighlightedArc, HighlightedPoint, PATH_STROKE_WIDTH } from '../../renders/render-constants';
 import { renderMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { renderCorners } from '../corners-panel/corners-panel';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
@@ -43,9 +43,20 @@ export class CenterBoutPanel extends CerutiPanelBase implements OnInit {
 
   private highlightedArc: Arc | null = null;
   private highlightedArcColor = '';
+  private highlightedCorner: 'upper' | 'lower' | null = null;
 
   private get highlighted(): HighlightedArc | null {
     return this.highlightedArc ? { arc: this.highlightedArc, color: this.highlightedArcColor } : null;
+  }
+
+  // Resolved at render time rather than captured on focus, so a reset replacing the Pt can't
+  // leave the halo sitting at the old position.
+  private get highlightedPoint(): HighlightedPoint | null {
+    if (!this.highlightedCorner) return null;
+    const upper = this.highlightedCorner === 'upper';
+    const point = upper ? this.params.bouts.UCr : this.params.bouts.LCr;
+    if (!point) return null;
+    return { point, color: upper ? this.colors.centerBoutUpOff2 : this.colors.centerBoutLowOff2 };
   }
 
   ngOnInit(): void {
@@ -68,10 +79,32 @@ export class CenterBoutPanel extends CerutiPanelBase implements OnInit {
     this.emitImmediate(false);
   }
 
+  onCornerFocus(corner: 'upper' | 'lower'): void {
+    this.highlightedCorner = corner;
+    this.emitImmediate(false);
+  }
+
+  // one blur for the panel: arc fields and corner fields both clear through here
   onArcBlur(): void {
     this.highlightedArc = null;
     this.highlightedArcColor = '';
+    this.highlightedCorner = null;
     this.emitImmediate(false);
+  }
+
+  /** Clearing the corner hands it back to the default solve in `calculateCorners`. The Y ratio
+   * goes back with it — it tracks whatever the corner was last set to, so leaving it would
+   * re-derive the corner at the same height it was just rescued from. */
+  resetCorner(corner: 'upper' | 'lower'): void {
+    if (corner === 'upper') {
+      this.params.bouts.UCr = null;
+      this.params.ratios.UCYtoH = DefaultParams.ratios.UCYtoH;
+    } else {
+      this.params.bouts.LCr = null;
+      this.params.ratios.LCYtoH = DefaultParams.ratios.LCYtoH;
+    }
+    this.highlightedCorner = null;
+    this.emitImmediate(true);
   }
 
   public buildRun(): RenderLayer[] {
@@ -88,7 +121,7 @@ export class CenterBoutPanel extends CerutiPanelBase implements OnInit {
       renderCornerGuides(p, f.showModuleGuides),
       renderMainBouts(p, c, f, false, highlighted),
       renderCorners(p, c, f, false, highlighted),
-      renderCenterBout(p, c, f, true, highlighted),
+      renderCenterBout(p, c, f, true, highlighted, true, this.highlightedPoint),
     ];
   }
 }
@@ -100,12 +133,23 @@ export const renderCenterBout = (
   currentModule: boolean,
   highlighted: HighlightedArc | null,
   renderOuterPathCorners = true,
+  highlightedPoint: HighlightedPoint | null = null,
 ) => (g: any, ui: any): void => {
   const p = params;
 
   if (highlighted) {
     renderArcHalo(highlighted.arc, highlighted.color)(g, ui);
     renderArcHalo(flipArcAboutY(highlighted.arc), highlighted.color)(g, ui);
+  }
+
+  // The focused corner's own crosshair goes down with the halo, so the mark reads even when the
+  // module crosshairs below are switched off.
+  if (highlightedPoint) {
+    const mirrored = { x: -highlightedPoint.point.x, y: highlightedPoint.point.y };
+    renderPointHalo(highlightedPoint.point, highlightedPoint.color)(g, ui);
+    renderPointHalo(mirrored, highlightedPoint.color)(g, ui);
+    renderCrosshair(highlightedPoint.point, highlightedPoint.color)(g, ui);
+    renderCrosshair(mirrored, highlightedPoint.color)(g, ui);
   }
 
   if ((currentModule && flags.showModuleCircles) || flags.showAllCircles) {

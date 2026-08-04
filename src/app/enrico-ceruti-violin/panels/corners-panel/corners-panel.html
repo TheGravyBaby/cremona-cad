@@ -27,14 +27,20 @@
         <label class="field-cell">
             <span class="field-title">X <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step=".25" [(ngModel)]="params.bouts.UCr!.x"
-                (input)="onChange()"  />
+                (input)="onChange(); onCornerFocus('upper')" [style.borderColor]="colors.centerBoutUpOff2"
+                (focus)="onCornerFocus('upper')" (blur)="onArcBlur()" />
         </label>
         <span class="field-separator" aria-hidden="true"></span>
         <label class="field-cell">
             <span class="field-title">Y <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step=".25" [(ngModel)]="params.bouts.UCr!.y"
-                (input)="onChange()"  />
+                (input)="onChange(); onCornerFocus('upper')" [style.borderColor]="colors.centerBoutUpOff2"
+                (focus)="onCornerFocus('upper')" (blur)="onArcBlur()" />
         </label>
+        <div class="field-cell">
+            <button type="button" class="recipe-btn" (click)="resetCorner('upper')"
+                title="Return the upper corner to its calculated position">Reset</button>
+        </div>
         <button type="button" class="info-icon" (click)="cornerPositionInfo()" title="More information"
             aria-label="Information">ⓘ</button>
     </div>
@@ -102,14 +108,20 @@
         <label class="field-cell">
             <span class="field-title">X <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step=".25" [(ngModel)]="params.bouts.LCr!.x"
-                (input)="onChange()" />
+                (input)="onChange(); onCornerFocus('lower')" [style.borderColor]="colors.centerBoutLowOff2"
+                (focus)="onCornerFocus('lower')" (blur)="onArcBlur()" />
         </label>
         <span class="field-separator" aria-hidden="true"></span>
         <label class="field-cell">
             <span class="field-title">Y <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step=".25" [(ngModel)]="params.bouts.LCr!.y"
-                (input)="onChange()" />
+                (input)="onChange(); onCornerFocus('lower')" [style.borderColor]="colors.centerBoutLowOff2"
+                (focus)="onCornerFocus('lower')" (blur)="onArcBlur()" />
         </label>
+        <div class="field-cell">
+            <button type="button" class="recipe-btn" (click)="resetCorner('lower')"
+                title="Return the lower corner to its calculated position">Reset</button>
+        </div>
         <button type="button" class="info-icon" (click)="cornerPositionInfo()" title="More information"
             aria-label="Information">ⓘ</button>
     </div>

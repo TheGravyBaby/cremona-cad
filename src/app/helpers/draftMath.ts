@@ -567,9 +567,17 @@ export function interceptCirclesAndPoint(L: Circle, P: Pt, Cr: number): Circle[]
   // we can define and angle gamma from L to P
   let gamma = Math.atan2(P.y - L.y, P.x - L.x);
 
-  // using law of cosines to find small angle phi, which relates 
+  // using law of cosines to find small angle phi, which relates
   // Cr^2 = LP^2 + CrLr^2 - 2*LP*CrLr*cos(phi)
-  let phi = Math.acos((LP*LP + LrCr*LrCr - Cr*Cr) / (2 * LP * LrCr));
+  let cosPhi = (LP*LP + LrCr*LrCr - Cr*Cr) / (2 * LP * LrCr);
+
+  // No triangle closes when that leaves the cosine domain — no circle of radius Cr is both tangent
+  // to L and through P. Report it as no solutions, the way interceptCirclesAndPointCompound does:
+  // Math.acos would hand back NaN instead, and a NaN centre travels all the way to the SVG before
+  // anything notices, so the caller never gets the chance to fail.
+  if (!Number.isFinite(cosPhi) || cosPhi < -1 || cosPhi > 1) return [];
+
+  let phi = Math.acos(cosPhi);
 
   // we know that the angle theta, which is the angle from L to C is both the difference and the sum of these angles
   let thetaBig = gamma + phi;

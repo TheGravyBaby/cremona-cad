@@ -4,6 +4,7 @@ import { pointOnCircle } from '../helpers/draftMath';
 import { defaultViolin, geometryDiff, layoutFrom, templateKeys, templateViolin } from './ceruti-fixtures';
 import { defineInnerPath, defineOuterPath } from './ceruti-paths';
 import { EnricoCerutiParams } from './ceruti-types';
+import { setGlobalEmitter } from '../shared/message-emitter';
 
 /**
  * The 2D outline pipeline — `ceruti-calcs.ts` into `ceruti-paths.ts`.
@@ -76,6 +77,72 @@ describe('the calc pass', () => {
     expect(p.ratios.LBtoH).toBeCloseTo(p.bouts.LBW! / p.height, 10);
     expect(p.ratios.U0toUBW).toBeCloseTo(p.bouts.U0!.r / UBWI, 10);
     expect(p.ratios.L0toLBW).toBeCloseTo(p.bouts.L0!.r / LBWI, 10);
+  });
+});
+
+/**
+ * A corner dragged where no arc can reach it is the most common way a recipe breaks, and it is
+ * also the quietest: the solvers return nothing rather than throwing, so the generic `safeRun`
+ * net never sees it. These pin the two things that make it recoverable — the message names the
+ * corner, and clearing a corner hands it back to the default solve.
+ */
+describe('a corner out of reach', () => {
+  const captureTitles = (): string[] => {
+    const titles: string[] = [];
+    setGlobalEmitter(m => { titles.push(m.title); });
+    return titles;
+  };
+
+  afterEach(() => setGlobalEmitter(null as any));
+
+  it('names which corner failed instead of leaving it to the generic catch', () => {
+    for (const [corner, expected] of [['UCr', 'Upper Corner Out of Reach'], ['LCr', 'Lower Corner Out of Reach']] as const) {
+      const titles = captureTitles();
+      const p = defaultViolin();
+      // well outside the plate, so no arc of that radius is both tangent to the bout and through it
+      p.bouts[corner]!.x = 400;
+      calculateCorners(p);
+      expect(titles).toContain(expected);
+    }
+  });
+
+  // The center bout reaches the same two corners from its own arcs, so it fails the same way and
+  // has to name the same corner — the corners panel is not the only place this is recoverable from.
+  it('names the corner when the center bout is the arc that cannot reach it', () => {
+    const titles = captureTitles();
+    const p = defaultViolin();
+    p.bouts.LCr!.x = 400;
+    calculateCenterBout(p);
+    expect(titles).toContain('Lower Corner Out of Reach');
+  });
+
+  it('leaves the previous geometry standing so there is something to steer by', () => {
+    captureTitles();
+    const p = defaultViolin();
+    const before = JSON.parse(JSON.stringify(p.bouts.U3));
+
+    p.bouts.UCr!.x = 400;
+    calculateCorners(p);
+
+    expect(p.bouts.U3).toEqual(before);
+  });
+
+  it('re-derives only the corner that was cleared', () => {
+    const p = defaultViolin();
+    const upper = { x: p.bouts.UCr!.x, y: p.bouts.UCr!.y };
+
+    // move both corners in, then hand back only the upper one
+    p.bouts.UCr!.x -= 8;
+    p.bouts.LCr!.x -= 8;
+    calculateCorners(p);
+    const movedLower = { x: p.bouts.LCr!.x, y: p.bouts.LCr!.y };
+
+    p.bouts.UCr = null;
+    calculateCorners(p);
+
+    expect(p.bouts.UCr!.x).toBeCloseTo(upper.x, 9);
+    expect(p.bouts.UCr!.y).toBeCloseTo(upper.y, 9);
+    expect(p.bouts.LCr).toEqual(expect.objectContaining(movedLower));
   });
 });
 

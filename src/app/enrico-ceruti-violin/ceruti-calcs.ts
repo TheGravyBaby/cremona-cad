@@ -150,6 +150,11 @@ export function violNeckJoinLimit(p: EnricoCerutiParams): { reach: number; limit
     return { reach, limit, headroom: limit - reach };
 }
 
+/**
+ * A corner placed where no arc of that radius can reach it is the most common way a recipe breaks,
+ * and the generic catch can only say that something went wrong. Name the corner and say which way
+ * to move it. Solving stops here, so the previous good geometry stays on the canvas to steer by.
+ */
 export function calculateCorners(p: EnricoCerutiParams): void {
     let inset = p.overhang + p.rib;
     let UBWI = p.bouts.UBW - 2 * inset;
@@ -161,26 +166,23 @@ export function calculateCorners(p: EnricoCerutiParams): void {
     if (p.bouts.L1?.r == p.bouts.L2?.r) {
         p.bouts.L2 = new Arc(p.bouts.L1.x, p.bouts.L1.y, p.bouts.L1.r);
     }
-    if (!p.bouts.UCr) {
+    // the two defaults are independent, and each guards its own corner, so clearing one corner
+    // re-derives just that one — which is what the panel's Reset button does
+    if (!p.bouts.LCr) {
         // we set a line at the ratio height of the body, then draw a guide circle from the bout to that line
         // the intersection defines the "default" corner position, courtesy of David Beard
         let lgPt = new Pt(-p.bouts.LBW / 2, p.bouts.L1.y);
-        let lgC = new Circle(lgPt.x, lgPt.y, p.bouts.LBW) 
+        let lgC = new Circle(lgPt.x, lgPt.y, p.bouts.LBW)
         let lgH = p.height * p.ratios.LCYtoH
-        let LCr = lineCircleIntersection({x:0, y:lgH}, {x:100, y:lgH}, lgC).sort((a, b) => a.x - b.x)[1] 
-        p.bouts.LCr = new Pt(LCr.x, LCr.y);
-
+        let LCr = lineCircleIntersection({x:0, y:lgH}, {x:100, y:lgH}, lgC).sort((a, b) => a.x - b.x)[1]
+        p.bouts.LCr = new Pt(Math.round(LCr.x * 10) / 10, Math.round(LCr.y * 10) / 10);
+    }
+    if (!p.bouts.UCr) {
         let ugPt = new Pt(-p.bouts.UBW / 2, p.bouts.U1.y);
         let ugC = new Circle(ugPt.x, ugPt.y, p.bouts.UBW)
         let ugH = p.height * p.ratios.UCYtoH
         let UCr = lineCircleIntersection({x:0, y:ugH}, {x:100, y:ugH}, ugC).sort((a, b) => a.x - b.x)[1]
-        p.bouts.UCr = new Pt(UCr.x, UCr.y);
-
-        p.bouts.UCr.x = Math.round(p.bouts.UCr.x * 10) / 10
-        p.bouts.UCr.y = Math.round(p.bouts.UCr.y * 10) / 10
-        p.bouts.LCr.x = Math.round(p.bouts.LCr.x * 10) / 10
-        p.bouts.UCr.y = Math.round(p.bouts.UCr.y * 10) / 10
-      
+        p.bouts.UCr = new Pt(Math.round(UCr.x * 10) / 10, Math.round(UCr.y * 10) / 10);
     }
 
     let U2R = p.bouts.U2?.r ?? Math.round(UBWI * p.ratios.U2toUBW);
@@ -244,6 +246,13 @@ export function calculateCorners(p: EnricoCerutiParams): void {
         let U31 =  p.bouts.U31.r
         let theta = p.bouts.U31.start ?? 17/16 * Math.PI
         let compoundCircles = interceptCirclesAndPointCompound(p.bouts.U2!, p.bouts.UCr, U3r, U31, theta).sort((a, b) => a.C1.y - b.C1.y)[1];
+        // A corner no arc can reach is the most common way a recipe breaks, and it never throws —
+        // the solvers just return nothing, so the generic catch never sees it. Solving stops here
+        // rather than pressing on, leaving the previous good geometry on canvas to steer by.
+        if (!compoundCircles) {
+            error('No arc of that radius reaches the upper corner from the bout. Bring the corner in toward the body, or give it a larger radius.', 'Upper Corner Out of Reach');
+            return;
+        }
         let U3start = circleCircleIntersections(compoundCircles.C1, p.bouts.U2)[0]
         let U31start = circleCircleIntersections(compoundCircles.C1, compoundCircles.C2)[0]
 
@@ -253,7 +262,12 @@ export function calculateCorners(p: EnricoCerutiParams): void {
     } 
     else {
         let U3R = p.bouts.U3?.r ?? Math.round(LBWI * p.ratios.U3toLBW);
-        p.bouts.U3 = arcFromCircle(interceptCirclesAndPoint(p.bouts.U2, p.bouts.UCr, U3R).sort((a, b) => a.y - b.y)[1]);
+        let U3Circle = interceptCirclesAndPoint(p.bouts.U2, p.bouts.UCr, U3R).sort((a, b) => a.y - b.y)[1];
+        if (!U3Circle) {
+            error('No arc of that radius reaches the upper corner from the bout. Bring the corner in toward the body, or give it a larger radius.', 'Upper Corner Out of Reach');
+            return;
+        }
+        p.bouts.U3 = arcFromCircle(U3Circle);
 
         let U2Intersect = circleCircleIntersections(p.bouts.U2, p.bouts.U3).sort((a, b) => a.y - b.y);
         let U2Angle = angleFromCenter(p.bouts.U2, U2Intersect[1]);
@@ -283,6 +297,10 @@ export function calculateCorners(p: EnricoCerutiParams): void {
         let L31r =  p.bouts.L31.r
         let theta = p.bouts.L31.start ?? 15/16 * Math.PI
         let compoundCircles = interceptCirclesAndPointCompound(p.bouts.L2!, p.bouts.LCr, L3r, L31r, theta).sort((a, b) => a.C1.y - b.C1.y)[0];
+        if (!compoundCircles) {
+            error('No arc of that radius reaches the lower corner from the bout. Bring the corner in toward the body, or give it a larger radius.', 'Lower Corner Out of Reach');
+            return;
+        }
         let L3start = circleCircleIntersections(compoundCircles.C1, p.bouts.L2)[0]
         let L31start = circleCircleIntersections(compoundCircles.C1, compoundCircles.C2)[0]
 
@@ -292,7 +310,12 @@ export function calculateCorners(p: EnricoCerutiParams): void {
     }
     else {
         let L3R = p.bouts.L3?.r ?? Math.round(LBWI * p.ratios.L3toLBW);
-        p.bouts.L3 = arcFromCircle(interceptCirclesAndPoint(p.bouts.L2, p.bouts.LCr, L3R).sort((a, b) => a.y - b.y)[0]);
+        let L3Circle = interceptCirclesAndPoint(p.bouts.L2, p.bouts.LCr, L3R).sort((a, b) => a.y - b.y)[0];
+        if (!L3Circle) {
+            error('No arc of that radius reaches the lower corner from the bout. Bring the corner in toward the body, or give it a larger radius.', 'Lower Corner Out of Reach');
+            return;
+        }
+        p.bouts.L3 = arcFromCircle(L3Circle);
 
         let L2Intersect = circleCircleIntersections(p.bouts.L2, p.bouts.L3).sort((a, b) => a.y - b.y)[0];
         let L2Angle = angleFromCenter(p.bouts.L2, L2Intersect);
@@ -404,6 +427,12 @@ export function calculateCenterBout(p: EnricoCerutiParams): void {
         let C21r =  p.bouts.C21.r
         let theta = p.bouts.C21.start ?? 15/16 * Math.PI
         let compoundCircles = interceptCirclesAndPointCompound(p.bouts.C0!, p.bouts.UCr, C2r, C21r, theta).sort((a, b) => a.C1.y - b.C1.y)[0];
+        // same silent failure as the corner solve above: nothing throws, the solver just has
+        // nothing to return, so stop here and leave the previous geometry standing
+        if (!compoundCircles) {
+            error('No arc of that radius reaches the upper corner from the center bout. Bring the corner in toward the body, or give it a larger radius.', 'Upper Corner Out of Reach');
+            return;
+        }
         CUIntercept = circleCircleIntersections(compoundCircles.C1, p.bouts.C0)[1]
         let C21start = circleCircleIntersections(compoundCircles.C1, compoundCircles.C2)[0]
 
@@ -413,6 +442,10 @@ export function calculateCenterBout(p: EnricoCerutiParams): void {
     }
     else {
         let CU = interceptCirclesAndPoint(p.bouts.C0, p.bouts.UCr!, cuRadius).sort((a, b) => b.y - a.y)[1];
+        if (!CU) {
+            error('No arc of that radius reaches the upper corner from the center bout. Bring the corner in toward the body, or give it a larger radius.', 'Upper Corner Out of Reach');
+            return;
+        }
         CUIntercept = circleCircleIntersections(p.bouts.C0, CU).sort((a, b) => b.y - a.y)[0];
         p.bouts.C2 = arcFromCircleAndPoints(CU, CUIntercept, p.bouts.UCr);
 
@@ -422,6 +455,10 @@ export function calculateCenterBout(p: EnricoCerutiParams): void {
         let C11r = p.bouts.C11.r
         let theta = p.bouts.C11.start ?? 17/16 * Math.PI
         let compoundCircles = interceptCirclesAndPointCompound(p.bouts.C0!, p.bouts.LCr, C1r, C11r, theta).sort((a, b) => a.C1.y - b.C1.y)[1];
+        if (!compoundCircles) {
+            error('No arc of that radius reaches the lower corner from the center bout. Bring the corner in toward the body, or give it a larger radius.', 'Lower Corner Out of Reach');
+            return;
+        }
         CLIntercept = circleCircleIntersections(compoundCircles.C1, p.bouts.C0)[1]
         let C11start = circleCircleIntersections(compoundCircles.C1, compoundCircles.C2)[0]
 
@@ -430,6 +467,10 @@ export function calculateCenterBout(p: EnricoCerutiParams): void {
     }
     else {
         let CL = interceptCirclesAndPoint(p.bouts.C0, p.bouts.LCr!, clRadius).sort((a, b) => a.y - b.y)[1];
+        if (!CL) {
+            error('No arc of that radius reaches the lower corner from the center bout. Bring the corner in toward the body, or give it a larger radius.', 'Lower Corner Out of Reach');
+            return;
+        }
         CLIntercept = circleCircleIntersections(p.bouts.C0, CL).sort((a, b) => a.y - b.y)[1];
         p.bouts.C1 = arcFromCircleAndPoints(CL, CLIntercept, p.bouts.LCr);
     }

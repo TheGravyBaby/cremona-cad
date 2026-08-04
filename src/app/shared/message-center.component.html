@@ -1,26 +1,51 @@
+<!-- One countdown graphic for both states: the toast's dismiss ring and the chip's expiry ring are
+     the same clock drawn at different sizes. The component decides duration and what ending means. -->
+<ng-template #countdown let-m>
+  <svg class="countdown-ring" viewBox="0 0 20 20" aria-hidden="true">
+    <circle class="countdown-ring-track" cx="10" cy="10" [attr.r]="ringRadius"></circle>
+    <circle
+      class="countdown-ring-progress"
+      cx="10"
+      cy="10"
+      [attr.r]="ringRadius"
+      [attr.stroke-dasharray]="ringCircumference"
+      (animationend)="onCountdownEnd(m)"
+      [ngStyle]="countdownStyle(m)">
+    </circle>
+  </svg>
+</ng-template>
+
 <div class="message-center">
   <div class="toasts">
-    <!-- show only the most recent 3 messages as toasts -->
-    <div *ngFor="let m of messages | slice:0:3; trackBy: trackByMessageId" class="toast" [attr.data-severity]="m.severity">
+    <div *ngFor="let m of toasts(); trackBy: trackByMessageId" class="toast" [attr.data-severity]="m.severity">
       <div class="msg">
         <strong *ngIf="m.title">{{m.title}}</strong>
         <span>{{m.message}}</span>
       </div>
       <button class="dismiss" (click)="dismiss(m.id)" aria-label="Dismiss message">
-        <svg *ngIf="hasCountdown(m)" class="dismiss-ring" viewBox="0 0 20 20" aria-hidden="true">
-          <circle class="dismiss-ring-track" cx="10" cy="10" [attr.r]="ringRadius"></circle>
-          <circle
-            class="dismiss-ring-progress"
-            cx="10"
-            cy="10"
-            [attr.r]="ringRadius"
-            [attr.stroke-dasharray]="ringCircumference"
-            (animationend)="onCountdownAnimationEnd(m)"
-            [ngStyle]="countdownAnimationStyle(m)">
-          </circle>
-        </svg>
+        <ng-container *ngIf="hasCountdown(m)"
+          [ngTemplateOutlet]="countdown"
+          [ngTemplateOutletContext]="{$implicit: m}">
+        </ng-container>
         <span class="dismiss-icon">✕</span>
       </button>
     </div>
+  </div>
+
+  <!-- dismissed conditions that are still reporting themselves; the ring is how long they have
+       left before they clear on their own -->
+  <div class="chips" *ngIf="chips().length">
+    <button *ngFor="let m of chips(); trackBy: trackByChip"
+      class="chip"
+      [attr.data-severity]="m.severity"
+      (click)="expand(m.id)"
+      [attr.title]="m.message"
+      [attr.aria-label]="'Reopen ' + m.title + ', reported ' + m.count + ' times'">
+      <span class="chip-label">{{m.title}}</span>
+      <span class="chip-count">
+        <ng-container [ngTemplateOutlet]="countdown" [ngTemplateOutletContext]="{$implicit: m}"></ng-container>
+        <span class="chip-count-value">{{m.count > 99 ? '99+' : m.count}}</span>
+      </span>
+    </button>
   </div>
 </div>
