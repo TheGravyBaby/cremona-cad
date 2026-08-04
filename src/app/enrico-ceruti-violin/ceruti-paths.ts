@@ -53,10 +53,11 @@ export function defineOffsetArcs(p: EnricoCerutiParams, offset?: number, corners
     let arcs = [];
 
 
+    // a viol corner's flank (L4/U4) is itself the arc that reaches the corner tip,
+    // so the `corners` block below pushes it trimmed to the new intersection.
+    // don't add it here as well — the untrimmed copy runs past the corner.
     arcs.push(offsetArcRadius(p.bouts.L0, offset), offsetArcRadius(p.bouts.L1, offset));
-    if (p.options.useViolCornerLC) {
-        corners && arcs.push(offsetArcRadius(p.bouts.L4, offset));
-    } else {
+    if (!p.options.useViolCornerLC) {
         arcs.push(offsetArcRadius(p.bouts.L2, offset));
         // corners && fullPath.push(offsetArcRadius(p.bouts.L3, -offset));
     }
@@ -74,9 +75,7 @@ export function defineOffsetArcs(p: EnricoCerutiParams, offset?: number, corners
     //     arcs.push(offsetArcRadius(p.bouts.C2, -offset));
     // }
 
-    if (p.options.useViolCornerUC) {
-       corners && arcs.push(offsetArcRadius(p.bouts.U4, offset));
-    } else {
+    if (!p.options.useViolCornerUC) {
         // corners && arcs.push(offsetArcRadius(p.bouts.U3, -offset));
         arcs.push(offsetArcRadius(p.bouts.U2, offset));
     }
