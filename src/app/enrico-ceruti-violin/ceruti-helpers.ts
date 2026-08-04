@@ -82,8 +82,8 @@ export function fitC0Info() {
 
 export function cornerPositionInfo() {
     info(
-        "The corner tip coordinates. The corner arcs are drawn to meet at this point.\n\n" +
-        "Corners are always positioned within the inset boundary — the tip sits on the mould outline, not the finished plate edge.",
+        "The XY coordinates for the corner tips. The corner arcs are drawn to meet at this point.\n\n" +
+        "The default position is a good starting point, or helpful to reset if your values get out of bounds.",
         "Corner Position", defaultTTL, true
     )
 }
