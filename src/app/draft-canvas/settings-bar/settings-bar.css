@@ -5,16 +5,24 @@
    grid-auto-flow: column packs each consecutive label+control pair into its own column,
    row 1 then row 2, in DOM order. Color swatches have no label, so they span both rows
    and get their own column via .color-swatch's explicit grid-row.
-   Wraps to a second row (the parent .ui-controls/.left grow to fit) when everything doesn't
-   fit on one line, rather than clipping or scrolling. A slightly different background than
-   the surrounding .ui-controls bar sets this off as its own group. */
+   The column flow never wraps, so a busy tool (Reference Image is the widest) can outgrow the
+   room on the bar. Its parent .left is positioned over the view controls for exactly that case
+   (see draft-canvas.css), so the background here has to stay opaque — it is what hides them —
+   and the right edge is bordered so the strip has a visible end. Past full width it scrolls
+   sideways. */
 .settings-bar {
   position: relative;
   padding: 4px 8px;
   /* border-radius: 6px; */
   background: var(--ui-bg-surface-2);
   min-width: 95px;
-
+  max-width: 100%;
+  box-sizing: border-box;
+  border-right: 1px solid var(--ui-border-soft);
+  /* full height of the bar, so no sliver of what's underneath shows above or below */
+  align-self: stretch;
+  display: flex;
+  align-items: center;
 }
 
 /* Names what the strip below applies to (e.g. "Line Settings") — the active tool or the
@@ -50,6 +58,10 @@
   align-items: center;
   column-gap: 8px;
   row-gap: 2px;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
 }
 
 /* Just the color, sized to match the row of other controls. Labeled like every other

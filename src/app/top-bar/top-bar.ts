@@ -10,16 +10,10 @@ import { AboutModalComponent } from '../about-modal/about-modal';
 })
 export class TopBarComponent {
   @Input() selectedRecipe: string = 'Beard';
-  @Input() nightMode = false;
   @Output() recipeChange = new EventEmitter<string>();
-  @Output() nightModeChange = new EventEmitter<boolean>();
 
   onSelectChange(event: Event) {
     const value = (event.target as HTMLSelectElement).value;
     this.recipeChange.emit(value);
-  }
-
-  onNightModeToggle() {
-    this.nightModeChange.emit(!this.nightMode);
   }
 }

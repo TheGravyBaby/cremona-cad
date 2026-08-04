@@ -17,6 +17,22 @@
   padding: 0;
 }
 
+/* same 28px footprint as Axis, so the right-hand clusters line up */
+.btn.theme-toggle-btn {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: var(--ui-text-muted);
+}
+
+.btn.theme-toggle-btn:hover {
+  color: var(--ui-text-primary);
+}
+
 .btn.active {
   background: var(--ui-accent);
   color: #fff;
@@ -136,11 +152,12 @@ svg {
 
 
 .ui-controls {
+  position: relative;
   flex: 0 0 auto;
   min-height: 42px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 12px;
   /* padding: 6px 10px; */
   padding-right: 10px;
@@ -155,7 +172,26 @@ svg {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+}
+
+/* Out of flow and on top, so a wide settings strip (Reference Image is the widest) simply covers
+   the view controls instead of displacing them. Settings only appear while a tool is active or a
+   shape is selected, and axis/zoom are one deselect away, so a temporary occlusion costs less
+   than controls that move. The bar's own opaque background does the hiding. */
+.left {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 2;
+  max-width: 100%;
+}
+
+/* Theme, axis and zoom are fixed-size view chrome and always in the same place. Never let them
+   shrink or break across rows: a control that moves is worse than one that is briefly hidden. */
+.right {
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
 }
 
 .btn {
