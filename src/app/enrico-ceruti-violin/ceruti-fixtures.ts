@@ -81,3 +81,29 @@ export function templateViolin(key: string, withArching = false): EnricoCerutiPa
   if (withArching && !p.arching) p.arching = defaultArchingParams(p.height);
   return p;
 }
+
+/**
+ * A recipe pasted out of a running session, solved — the exact instrument
+ * someone was looking at when something went wrong.
+ *
+ * The point is fidelity. Reproducing a report by taking the nearest template and
+ * toggling options toward it gives an instrument that resembles the one in the
+ * screenshot, and a bug that turns on a saved `purflingOffset` or an option
+ * combination nobody would think to set will not survive the approximation.
+ * Paste the recipe into a scratch spec, hand it here, and the failing case is
+ * the real one.
+ *
+ * Takes either a recipe file (`{ params: ... }`, which is what both the download
+ * and the `/` button produce) or a bare params object, and a string or an
+ * already-parsed object. `layoutFrom` re-solves it, which is also what restores
+ * the arc prototypes JSON.parse drops — see the `models/types.ts` header.
+ */
+export function violinFromRecipe(source: string | object): EnricoCerutiParams {
+  const parsed = typeof source === 'string' ? JSON.parse(source) : JSON.parse(JSON.stringify(source));
+  const params: EnricoCerutiParams = parsed?.params ?? parsed;
+  if (!params?.bouts || !params?.options) {
+    throw new Error('Not a Ceruti recipe: expected a `params` object carrying `bouts` and `options`.');
+  }
+  normalizeArchingParams(params);
+  return layoutFrom(params);
+}

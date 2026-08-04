@@ -12,7 +12,18 @@ export const setGlobalEmitter = (fn: (m: any) => void) => {
   globalEmitter = fn;
 }
 
+/**
+ * A read-only observer of every message, for the debug dump's message log.
+ * Separate from the emitter because that one *is* the UI — there can only be one
+ * of it, and a tap must not be able to take its place or swallow a toast.
+ */
+let messageTap: ((m: UserMessage) => void) | null = null;
+export const setMessageTap = (fn: ((m: UserMessage) => void) | null) => {
+  messageTap = fn;
+}
+
 export const emitGlobal = (m: any) => {
+  try { messageTap?.(m); } catch { /* a broken tap must never cost the user their message */ }
   if (globalEmitter) globalEmitter(m);
   else console.warn('No global message emitter registered', m);
 }

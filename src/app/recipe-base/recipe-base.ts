@@ -7,7 +7,7 @@ import { NamedConstant, DEFAULT_NAMED_CONSTANTS, nearestFraction } from '../help
 import { ToolboxStore } from '../draft-canvas/tools/toolbox-store';
 import { ImageAssetStore } from '../draft-canvas/tools/image-asset-store';
 import { PANEL_KEY, RECIPE_KEY, readWorkingState, writeWorkingState } from '../helpers/workingStorage';
-import { copyToClipboard } from '../helpers/debugDump';
+import { copyToClipboard, setDebugContext } from '../helpers/debugDump';
 import {
   ReferenceImageSource, imageShapesFromRecipe, imageShapesToRecipe,
 } from '../draft-canvas/tools/reference-image-schema';
@@ -302,6 +302,7 @@ export abstract class RecipeComponentBase implements AfterViewInit {
     // persist path (working-state writes, saveToDisk, subclass snapshots) serializes images
     // without needing to know they exist. See syncReferenceImages.
     this.toolboxSyncUnsub = this.toolbox.onChange(() => this.syncReferenceImages());
+    setDebugContext(() => this.debugViewContext());
 
     const recipeData = this.loadMatchingStoredRecipe();
     if (recipeData) {
@@ -344,6 +345,7 @@ export abstract class RecipeComponentBase implements AfterViewInit {
     this.debounceController?.destroy();
     this.syncReferenceImages();
     this.toolboxSyncUnsub?.();
+    setDebugContext(null);
     writeWorkingState(RECIPE_KEY, JSON.stringify(this.d));
     writeWorkingState(PANEL_KEY, this.openPanel);
   }
@@ -396,6 +398,18 @@ export abstract class RecipeComponentBase implements AfterViewInit {
    */
   copyRecipeToClipboard(): void {
     copyToClipboard('recipe', this.stringifyRecipe(true));
+  }
+
+  /**
+   * What the canvas dump reports under `view` — the state that decides what was
+   * drawn, as opposed to what was drawn. Deliberately not folded into
+   * copyRecipeToClipboard: that one's output has to stay a recipe file, so it
+   * can be pasted straight back in or turned into a test fixture.
+   *
+   * Override to add a recipe's own view toggles; call super and spread.
+   */
+  protected debugViewContext(): Record<string, unknown> {
+    return { openPanel: this.openPanel };
   }
 
   saveToDisk() {

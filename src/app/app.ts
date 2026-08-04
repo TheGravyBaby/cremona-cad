@@ -1,6 +1,7 @@
 import { DOCUMENT } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { setGlobalEmitter } from './shared/message-emitter';
+import { installDebugCapture, isLocalHost } from './helpers/debugDump';
 import { MessageService } from './shared/message.service';
 import { TopBarComponent } from './top-bar/top-bar';
 import { DraftCanvasComponent } from './draft-canvas/draft-canvas';
@@ -75,6 +76,11 @@ export class App {
 
     // wire global emitter to MessageService
     setGlobalEmitter((m) => this.messageService.emit(m));
+
+    // Records console output and toasts for the `/` dumps. Same gate as the
+    // buttons themselves — off a real host, nothing is patched and no buffer is
+    // kept.
+    if (isLocalHost()) installDebugCapture();
   }
 
   onNightModeChange(enabled: boolean) {

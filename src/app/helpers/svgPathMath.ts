@@ -406,25 +406,25 @@ export function unifyConnectedSvgPaths(paths: string[]): string {
       }
     }
 
-    let debug = true
+    // false fails closed — an unjoinable path throws rather than being drawn as
+    // disconnected pieces. True draws it anyway, which reads on the canvas as a
+    // stray whisker off whichever end was left stranded.
+    let debug = false; // set by developer
     if (!stitched) {
-      if (!debug) {
-        throw new Error("Could not unify all paths. Remaining paths do not share endpoints.");
-      }
-
-      console.log("Error: Could not unify all paths. Returning combined string without unification.");
-      console.log("Remaining paths end points:");
+      console.warn("Could not unify all paths. Remaining paths do not share endpoints.");
       remaining.forEach((path, index) => {
         const props = new svgPathProperties(path);
         const totalLength = props.getTotalLength();
         const startPt = props.getPointAtLength(0);
         const endPt = props.getPointAtLength(totalLength);
-        console.log(`  Path ${index}: start (${startPt.x}, ${startPt.y}), end (${endPt.x}, ${endPt.y})`);
+        console.warn(`  Path ${index}: start (${startPt.x}, ${startPt.y}), end (${endPt.x}, ${endPt.y})`);
       });
-      console.log({
-        unified,
-        remaining,
-      });
+
+      if (!debug) {
+        throw new Error("Could not unify all paths. Remaining paths do not share endpoints.");
+      }
+
+      console.log({ unified, remaining });
 
       let remainingPathsDeepCopy = [...remaining];
       remaining = [];
