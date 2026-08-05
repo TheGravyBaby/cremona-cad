@@ -96,15 +96,6 @@ export function bitDiameterInfo() {
     )
 }
 
-export function channelDepthInfo() {
-    info(
-        "Width of the solid rim along the edge of the mould.\n\n" +
-        "Larger values leave more material between the blocks; smaller values open the interior sooner.\n\n" +
-        "Ignored when 'Use Simple Clamp Box' is on — that swaps this arc-following cutout for a plain rectangular slot.",
-        "Channel Depth", defaultTTL, true
-    )
-}
-
 export function compoundArcInfo() {
     info(
         "A compound arc splits one corner arc into two, joined end-to-end. This allows more pronounced corner than a single arc permits.\n\n" +

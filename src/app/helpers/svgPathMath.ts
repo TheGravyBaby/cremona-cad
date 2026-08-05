@@ -1,7 +1,7 @@
 import { Pt, Circle, Rectangle, Arc } from "../models/types";
 import * as polygonClipping from 'polygon-clipping';
 import { svgPathProperties } from 'svg-path-properties';
-import { clamp, dist, angleFromCenter, pointOnCircle, intersectLines, lineCircleIntersection, circleCircleIntersections, solveCatenaryA, makeMonotoneSpline } from './draftMath';
+import { clamp, dist, angleFromCenter, pointOnCircle, intersectLines, lineCircleIntersection, circleCircleIntersections, solveCatenaryA, makeMonotoneSpline, flipArcAboutY, flipPointAboutY } from './draftMath';
 
 // This file holds everything oriented around building, combining, and boolean-diffing
 // SVG path *strings* — as opposed to draftMath.ts, which works with plain geometric
@@ -434,6 +434,21 @@ export function unifyConnectedSvgPaths(paths: string[]): string {
   }
 
   return unified;
+}
+
+/**
+ * Stitches a one-sided chain of arcs/line-segments, mirrored about the Y axis, into one closed
+ * loop — the shared shape behind every symmetric cutout in this app: only one half needs to be
+ * built, and the mirror plus the seam are handled here. `closers` are additional segments that
+ * already span both halves (e.g. a horizontal face crossing the centerline) and are added as-is,
+ * not mirrored. The chain and closers together must connect end-to-end once combined.
+ */
+export function mirroredLoop(chain: (Arc | [Pt, Pt])[], closers: [Pt, Pt][] = []): string {
+  const segs = chain.flatMap(seg => Array.isArray(seg)
+    ? [pathFromLine(seg[0], seg[1]), pathFromLine(flipPointAboutY(seg[0]), flipPointAboutY(seg[1]))]
+    : [pathFromArc(seg), pathFromArc(flipArcAboutY(seg))]);
+  for (const [a, b] of closers) segs.push(pathFromLine(a, b));
+  return unifyConnectedSvgPaths(segs);
 }
 
 // `differenceFromTwoPaths`/`intersectionFromTwoPaths` need polygon-clipping's robust

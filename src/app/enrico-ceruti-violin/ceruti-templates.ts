@@ -44,7 +44,6 @@ const StradGoetz = {
     "overhang": 3,
     "rib": 1,
     "bitDiameter": 6.35,
-    "clampChannelWidth": 5,
     "ratios": {
       "HtoW": 1.815,
       "UBtoLB": 0.8,
@@ -348,7 +347,6 @@ const RavatinMans = {
     "overhang": 5.5,
     "rib": 1.5,
     "bitDiameter": 6.35,
-    "clampChannelWidth": 8,
     "ratios": {
       "HtoW": 1.6571928290336686,
       "UBtoLB": 0.7673808482728466,
@@ -633,7 +631,6 @@ const DelGesuBaltic = {
     "overhang": 3,
     "rib": 1,
     "bitDiameter": 6.35,
-    "clampChannelWidth": 7,
     "ratios": {
       "HtoW": 1.6476190476190475,
       "UBtoLB": 0.7970297029702971,
@@ -936,7 +933,6 @@ const StradDavidoff =  {
     "overhang": 3.5,
     "rib": 1.5,
     "bitDiameter": 6.35,
-    "clampChannelWidth": 8,
     "ratios": {
       "HtoW": 1.734553775743707,
       "UBtoLB": 0.7958715596330275,
@@ -1262,7 +1258,6 @@ const MagginiDelmas = {
     "overhang": 5,
     "rib": 3,
     "bitDiameter": 6.35,
-    "clampChannelWidth": 5,
     "ratios": {
       "HtoW": 1.6824324324324325,
       "UBtoLB": 0.7398648648648649,
@@ -1523,7 +1518,6 @@ const MittenwaldBass = {
     "overhang": 4,
     "rib": 3,
     "bitDiameter": 6.35,
-    "clampChannelWidth": 5,
     "ratios": {
       "HtoW": 1.6716867469879517,
       "UBtoLB": 0.7439759036144579,
@@ -1798,7 +1792,6 @@ const GuadagniniPiacenza = {
     "overhang": 3.5,
     "rib": 1.2,
     "bitDiameter": 6.35,
-    "clampChannelWidth": 5,
     "ratios": {
       "HtoW": 1.7394957983193278,
       "UBtoLB": 0.8151260504201681,

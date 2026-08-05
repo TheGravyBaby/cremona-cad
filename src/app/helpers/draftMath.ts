@@ -649,6 +649,60 @@ export function inscribeCircleWithinCircle(outerCirle: Circle, innerCircleRadius
 
 }
 
+/**
+ * A circle of radius `radius`, tangent to circle `c` and to the line through `A` in direction
+ * `dir` (unit vector) — the fillet construction behind rounding a corner where a straight wall
+ * meets a curved boundary. `side` (+1/-1) picks which way along the line's left-normal the
+ * fillet sits. `internal` picks tangency from inside `c` (the fillet nests inside c's own
+ * radius: `reach = c.r - radius`, the case where the boundary curves away from the fillet) versus
+ * outside it (the fillet grows past c's radius: `reach = c.r + radius`, where the boundary curves
+ * toward it) — which applies depends on which way `c` curves relative to the fillet, not on the
+ * fillet itself, so the caller has to know its own geometry.
+ *
+ * The line has up to two tangent solutions; `near` picks whichever one's line-tangent point sits
+ * closest to it. Returns null when no such circle exists — too large a radius for the geometry,
+ * or a required reach that isn't positive.
+ */
+export function filletLineToCircle(
+  A: Pt, dir: Pt, side: 1 | -1, c: Circle, radius: number, internal: boolean, near: Pt,
+): { center: Pt; lineTangent: Pt; circleTangent: Pt; circleAngle: number } | null {
+  if (radius <= 0) return null;
+  const reach = internal ? c.r - radius : c.r + radius;
+  if (reach <= 0) return null;
+
+  const n: Pt = { x: -dir.y, y: dir.x }; // left normal of dir
+  const originX = A.x + side * radius * n.x;
+  const originY = A.y + side * radius * n.y; // the line offset by radius, at its own t=0
+
+  const qx = originX - c.x, qy = originY - c.y;
+  const b = qx * dir.x + qy * dir.y; // Q·dir
+  const disc = b * b - (qx * qx + qy * qy - reach * reach);
+  if (disc < 0) return null;
+  const s = Math.sqrt(disc);
+
+  const centerAt = (t: number): Pt => ({ x: originX + t * dir.x, y: originY + t * dir.y });
+  const c1 = centerAt(-b + s), c2 = centerAt(-b - s);
+  const center = dist(c1, near) <= dist(c2, near) ? c1 : c2;
+
+  const lineTangent: Pt = { x: center.x - side * radius * n.x, y: center.y - side * radius * n.y };
+  const circleAngle = angleFromCenter(c, center);
+  return { center, lineTangent, circleTangent: pointOnCircle(c, circleAngle), circleAngle };
+}
+
+/**
+ * Rounds a right-angle corner at `P` — where a vertical edge meets a horizontal one — with an
+ * arc of the given radius. `into` says which quadrant the round cuts into, relative to `P`: each
+ * component is +1 or -1, the direction (x, then y) from the corner toward the region being
+ * smoothed. Returns null when radius is non-positive.
+ */
+export function filletRightAngleCorner(P: Pt, into: Pt, radius: number): Arc | null {
+  if (radius <= 0) return null;
+  const center: Pt = { x: P.x + into.x * radius, y: P.y + into.y * radius };
+  const vTangent: Pt = { x: P.x, y: center.y };
+  const hTangent: Pt = { x: center.x, y: P.y };
+  return new Arc(center.x, center.y, radius, angleFromCenter(center, vTangent), angleFromCenter(center, hTangent));
+}
+
 // Biarc interpolation — connects two arc endpoints with a G1-continuous S-curve (two arcs tangent at a joint).
 // Assumes arcs sweep CCW (increasing angle). For arcs whose concave sides face each other, the result is
 // an S-curve: the two joining arcs are externally tangent at their shared joint point.
