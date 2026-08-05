@@ -29,23 +29,23 @@ describe('computeStepSize', () => {
 
 describe('stepAmountForKey', () => {
   it('scales the base step up with shift', () => {
-    expect(stepAmountForKey({ shiftKey: true, altKey: false, metaKey: false }, 2)).toBe(10);
+    expect(stepAmountForKey({ shiftKey: true, ctrlKey: false, metaKey: false }, 2)).toBe(10);
   });
 
-  it('takes the fixed fine step with alt or meta, ignoring baseStep', () => {
-    expect(stepAmountForKey({ shiftKey: false, altKey: true, metaKey: false }, 10, 0.25)).toBe(0.25);
-    expect(stepAmountForKey({ shiftKey: false, altKey: false, metaKey: true }, 10, 0.25)).toBe(0.25);
+  it('takes the fixed fine step with ctrl or meta, ignoring baseStep', () => {
+    expect(stepAmountForKey({ shiftKey: false, ctrlKey: true, metaKey: false }, 10, 0.25)).toBe(0.25);
+    expect(stepAmountForKey({ shiftKey: false, ctrlKey: false, metaKey: true }, 10, 0.25)).toBe(0.25);
   });
 
   it('defaults the fine step to 1', () => {
-    expect(stepAmountForKey({ shiftKey: false, altKey: true, metaKey: false }, 10)).toBe(1);
+    expect(stepAmountForKey({ shiftKey: false, ctrlKey: true, metaKey: false }, 10)).toBe(1);
   });
 
-  it('shift wins if somehow held alongside alt/meta', () => {
-    expect(stepAmountForKey({ shiftKey: true, altKey: true, metaKey: false }, 2)).toBe(10);
+  it('shift wins if somehow held alongside ctrl/meta', () => {
+    expect(stepAmountForKey({ shiftKey: true, ctrlKey: true, metaKey: false }, 2)).toBe(10);
   });
 
   it('is a no-op with no modifiers', () => {
-    expect(stepAmountForKey({ shiftKey: false, altKey: false, metaKey: false }, 2)).toBe(2);
+    expect(stepAmountForKey({ shiftKey: false, ctrlKey: false, metaKey: false }, 2)).toBe(2);
   });
 });

@@ -93,7 +93,7 @@
           <dl class="keymap">
             <dt>Arrows (in a field)</dt><dd>Step the value</dd>
             <dt>Shift + Arrow</dt><dd>Bigger step</dd>
-            <dt>Alt / ⌘ + Arrow</dt><dd>Small fixed nudge — usually 1mm, finer on delicate fields</dd>
+            <dt>Ctrl / ⌘ + Arrow</dt><dd>Small fixed nudge — usually 1mm, finer on delicate fields</dd>
           </dl>
           }
 
@@ -303,7 +303,16 @@
         <h2>Version</h2>
 
         <div class="changelog-entry">
-          <div class="changelog-version">v{{ appVersion }} <span class="changelog-date">— Aug 4, 2026</span></div>
+          <div class="changelog-version">v{{ appVersion }} <span class="changelog-date">— Aug 5, 2026</span></div>
+          <p class="changelog-desc">Viol geometry and field controls.</p>
+          <ul class="changelog-list">
+            <li><strong>Viol-neck geometry fixes</strong> — proper joins for the neck now carry through to purfling.</li>
+            <li><strong>Smarter number fields</strong> — fields step by a size-aware amount, with Shift/Ctrl(⌘)+Arrow for bigger or finer nudges, and panel undo/redo is more reliable.</li>
+          </ul>
+        </div>
+
+        <div class="changelog-entry">
+          <div class="changelog-version">v0.8.3.1 <span class="changelog-date">— Aug 4, 2026</span></div>
           <p class="changelog-desc">Files and view controls.</p>
           <ul class="changelog-list">
             <li><strong>Your work survives closing the tab</strong> — and the design name now lives in the toolbar, where the New button offers a blank instrument or any template.</li>

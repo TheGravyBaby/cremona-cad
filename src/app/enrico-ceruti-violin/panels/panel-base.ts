@@ -72,7 +72,7 @@ export abstract class CerutiPanelBase {
   /**
    * A step size scaled to `value`, biased toward whole numbers, floored at `floor` — the
    * field's own hand-tuned `step` literal. Bind to `[step]`; see helpers/stepSize.ts. Modified
-   * (Shift/Alt/Cmd+Arrow) stepping is handled once, up on RecipeComponentBase's host listener —
+   * (Shift/Ctrl/Cmd+Arrow) stepping is handled once, up on RecipeComponentBase's host listener —
    * a panel's inputs live in the real DOM under that host, so their keydowns bubble up to it.
    */
   protected stepFor(value: number, floor: number, percent?: number): number {

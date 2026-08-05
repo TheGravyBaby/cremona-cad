@@ -27,18 +27,20 @@ const SHIFT_MULTIPLIER = 5;
 
 /**
  * The step to take for one arrow-key press, given the field's plain (percent-scaled) step.
- * Shift scales that step up — still a percentage, so it stays proportionate on any field. Alt
- * or Cmd/Meta (either one) switches to a small fixed unit instead of scaling down `baseStep`:
- * a percentage of a percentage reads as an arbitrary decimal, where a fixed nudge (1mm by
- * default, 0.25 on fields already tuned finer — see each field's `data-fine-step`) is the
- * amount a hand actually reaches for.
+ * Shift scales that step up — still a percentage, so it stays proportionate on any field.
+ * Ctrl (Windows/Linux) or Cmd/Meta (Mac) — either one — switches to a small fixed unit instead
+ * of scaling down `baseStep`: a percentage of a percentage reads as an arbitrary decimal, where
+ * a fixed nudge (1mm by default, 0.25 on fields already tuned finer — see each field's
+ * `data-fine-step`) is the amount a hand actually reaches for. Not Alt: it isn't a conventional
+ * modifier for this on Windows/Linux the way Ctrl is, and it collides with OS/browser bindings
+ * there in a way Ctrl+Arrow on a focused number field doesn't.
  */
 export function stepAmountForKey(
-  e: { shiftKey: boolean; altKey: boolean; metaKey: boolean },
+  e: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean },
   baseStep: number,
   fineStep = 1,
 ): number {
   if (e.shiftKey) return baseStep * SHIFT_MULTIPLIER;
-  if (e.altKey || e.metaKey) return fineStep;
+  if (e.ctrlKey || e.metaKey) return fineStep;
   return baseStep;
 }
