@@ -22,6 +22,8 @@ export function translateShape(shape: DraftShape, dx: number, dy: number): Draft
     case 'text':
     case 'point':
       return { ...shape, position: shiftPt(shape.position, dx, dy) };
+    case 'freehand':
+      return { ...shape, points: shape.points.map(p => shiftPt(p, dx, dy)) };
     case 'image':
       return { ...shape, x: shape.x + dx, y: shape.y + dy };
   }

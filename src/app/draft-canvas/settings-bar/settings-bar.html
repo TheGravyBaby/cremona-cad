@@ -104,6 +104,38 @@
     </span>
   }
 
+  @if (showFreehandPanel) {
+    <span class="field"><span class="f-lbl">Width</span>
+      <input type="number" min="0.5" max="20" step="0.5" [value]="freehandWidth"
+        (change)="setFreehandWidth($any($event.target).valueAsNumber)" (keydown.enter)="$any($event.target).blur()"
+        title="Stroke width in screen pixels — constant at any zoom" />
+    </span>
+    <span class="field"><span class="f-lbl">Opacity</span>
+      <input type="number" min="0" max="1" step="0.05" [value]="freehandOpacity"
+        (change)="setFreehandOpacity($any($event.target).valueAsNumber)" (keydown.enter)="$any($event.target).blur()"
+        title="Opacity from 0 (invisible) to 1 (fully opaque) — dial down for a highlighter-style mark" />
+    </span>
+    <button type="button" class="settings-action" (click)="applyPenPreset()"
+      title="Back to an ordinary opaque line — resets Color/Width/Opacity to the default pen">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 3a2.83 2.83 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+        <path d="M15 5l4 4" />
+      </svg>
+      <span>Pen</span>
+    </button>
+    <button type="button" class="settings-action" (click)="applyHighlighterPreset()"
+      title="Sets the pen to a wide, translucent yellow stroke — a shortcut for Color+Width+Opacity, not a separate tool">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 11l6 6-3 3H8v-4l1-1" />
+        <path d="M14 6l4 4" />
+        <path d="M17.5 2.5l4 4L11 17l-6-6L15.5 2.5a2 2 0 0 1 2 0z" />
+      </svg>
+      <span>Highlighter</span>
+    </button>
+  }
+
   @if (showCirclePanel) {
     <span class="point-group">
       <span class="field"><span class="f-lbl">X</span>

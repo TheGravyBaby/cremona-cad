@@ -57,6 +57,16 @@ function distanceToText(p: Pt, position: Pt, text: string, pxPerMm: number): num
   return distanceToBoxInterior(p, box.x0, box.y0, box.x1, box.y1);
 }
 
+/** Shortest distance to any segment of a freehand stroke's raw polyline (not the smoothed
+ * render) — cheap, and close enough given the stroke is already jittery hand geometry. */
+function distanceToFreehand(p: Pt, points: Pt[]): number {
+  let best = Infinity;
+  for (let i = 0; i < points.length - 1; i++) {
+    best = Math.min(best, distPointToSegment(p, points[i], points[i + 1]));
+  }
+  return best;
+}
+
 /** Distance to a placed image, 0 anywhere inside it — the whole picture is the drag target, the
  * same interior-counts-as-a-hit rule text uses. Rotation is handled by mapping the probe point
  * back into the image's unrotated frame, so the box math stays axis-aligned. */
@@ -86,6 +96,8 @@ export function distanceToShape(p: Pt, shape: DraftShape, pxPerMm: number): numb
       return distanceToText(p, shape.position, shape.text, pxPerMm);
     case 'point':
       return dist(p, shape.position);
+    case 'freehand':
+      return distanceToFreehand(p, shape.points);
     case 'image':
       return distanceToImage(p, shape);
   }
@@ -136,6 +148,14 @@ export function shapeBounds(shape: DraftShape, pxPerMm: number): ShapeBounds {
       return textFootprint(shape.position, shape.text, pxPerMm);
     case 'point':
       return { x0: shape.position.x, x1: shape.position.x, y0: shape.position.y, y1: shape.position.y };
+    case 'freehand': {
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (const pt of shape.points) {
+        x0 = Math.min(x0, pt.x); x1 = Math.max(x1, pt.x);
+        y0 = Math.min(y0, pt.y); y1 = Math.max(y1, pt.y);
+      }
+      return { x0, y0, x1, y1 };
+    }
     case 'image': {
       // A rotated image's marquee bound is the box around its four rotated corners, not its
       // unrotated w×h — same reasoning as sampling an arc's actual sweep above.

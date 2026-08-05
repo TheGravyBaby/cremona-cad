@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { DraftShape, ImageShape, DEFAULT_SHAPE_COLOR } from './toolbox-shape';
+import { DraftShape, ImageShape, DEFAULT_SHAPE_COLOR, DEFAULT_FREEHAND_WIDTH } from './toolbox-shape';
 import { Layer, DEFAULT_LAYER_ID, makeLayerId } from './layer';
 import { ImageAssetStore } from './image-asset-store';
 import { readWorkingState, writeWorkingState } from '../../helpers/workingStorage';
@@ -34,6 +34,8 @@ export class ToolboxStore implements Undoable {
   private listeners = new Set<() => void>();
   private _currentColor: string = DEFAULT_SHAPE_COLOR;
   private _currentDashed = false;
+  private _currentStrokeWidth: number = DEFAULT_FREEHAND_WIDTH;
+  private _currentOpacity = 1;
   private _currentSectionColor2: string = '#93c5fd';
   private _currentSectionWeights: number[] = [1, 1, 1];
   private _layers: Layer[] = [{ id: DEFAULT_LAYER_ID, name: 'Layer 1', visible: true, locked: false }];
@@ -66,6 +68,24 @@ export class ToolboxStore implements Undoable {
   set currentDashed(value: boolean) {
     if (this._currentDashed === value) return;
     this._currentDashed = value;
+    this.persist();
+    this.notify();
+  }
+
+  /** The pen width (screen px) new Freehand strokes will use. */
+  get currentStrokeWidth(): number { return this._currentStrokeWidth; }
+  set currentStrokeWidth(value: number) {
+    if (this._currentStrokeWidth === value) return;
+    this._currentStrokeWidth = value;
+    this.persist();
+    this.notify();
+  }
+
+  /** The pen opacity (0–1) new Freehand strokes will use. */
+  get currentOpacity(): number { return this._currentOpacity; }
+  set currentOpacity(value: number) {
+    if (this._currentOpacity === value) return;
+    this._currentOpacity = value;
     this.persist();
     this.notify();
   }
@@ -357,6 +377,8 @@ export class ToolboxStore implements Undoable {
         if (Array.isArray(parsed.shapes)) this.shapes = parsed.shapes;
         if (typeof parsed.currentColor === 'string') this._currentColor = parsed.currentColor;
         if (typeof parsed.currentDashed === 'boolean') this._currentDashed = parsed.currentDashed;
+        if (typeof parsed.currentStrokeWidth === 'number') this._currentStrokeWidth = parsed.currentStrokeWidth;
+        if (typeof parsed.currentOpacity === 'number') this._currentOpacity = parsed.currentOpacity;
         if (typeof parsed.currentSectionColor2 === 'string') this._currentSectionColor2 = parsed.currentSectionColor2;
         if (Array.isArray(parsed.currentSectionWeights)) this._currentSectionWeights = parsed.currentSectionWeights;
         if (Array.isArray(parsed.layers) && parsed.layers.length > 0) {
@@ -393,6 +415,8 @@ export class ToolboxStore implements Undoable {
       shapes: this.shapes.filter(s => s.type !== 'image'),
       currentColor: this._currentColor,
       currentDashed: this._currentDashed,
+      currentStrokeWidth: this._currentStrokeWidth,
+      currentOpacity: this._currentOpacity,
       currentSectionColor2: this._currentSectionColor2,
       currentSectionWeights: this._currentSectionWeights,
       layers: this._layers,
@@ -445,6 +469,8 @@ export class ToolboxStore implements Undoable {
     if (Array.isArray(parsed['shapes'])) this.shapes = parsed['shapes'] as DraftShape[];
     if (typeof parsed['currentColor'] === 'string') this._currentColor = parsed['currentColor'] as string;
     if (typeof parsed['currentDashed'] === 'boolean') this._currentDashed = parsed['currentDashed'] as boolean;
+    if (typeof parsed['currentStrokeWidth'] === 'number') this._currentStrokeWidth = parsed['currentStrokeWidth'] as number;
+    if (typeof parsed['currentOpacity'] === 'number') this._currentOpacity = parsed['currentOpacity'] as number;
     if (typeof parsed['currentSectionColor2'] === 'string') this._currentSectionColor2 = parsed['currentSectionColor2'] as string;
     if (Array.isArray(parsed['currentSectionWeights'])) this._currentSectionWeights = parsed['currentSectionWeights'] as number[];
     if (Array.isArray(parsed['layers']) && (parsed['layers'] as unknown[]).length > 0) {
