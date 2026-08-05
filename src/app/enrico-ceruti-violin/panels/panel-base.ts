@@ -1,5 +1,6 @@
 import { Component, EventEmitter, Output } from '@angular/core';
 import { PanelRenderRequest } from '../ceruti-types';
+import { computeStepSize } from '../../helpers/stepSize';
 
 export type RenderLayer = (g: any, ui: any) => void;
 
@@ -66,6 +67,16 @@ export abstract class CerutiPanelBase {
    */
   protected emitCoalesced(refreshEnabledPanels = false, persistSession?: boolean): void {
     this.emit(false, refreshEnabledPanels, persistSession, true);
+  }
+
+  /**
+   * A step size scaled to `value`, biased toward whole numbers, floored at `floor` — the
+   * field's own hand-tuned `step` literal. Bind to `[step]`; see helpers/stepSize.ts. Modified
+   * (Shift/Alt/Cmd+Arrow) stepping is handled once, up on RecipeComponentBase's host listener —
+   * a panel's inputs live in the real DOM under that host, so their keydowns bubble up to it.
+   */
+  protected stepFor(value: number, floor: number, percent?: number): number {
+    return computeStepSize(value, floor, percent);
   }
 
   private emit(immediate: boolean, refreshEnabledPanels: boolean, persistSession?: boolean, coalesce = false): void {

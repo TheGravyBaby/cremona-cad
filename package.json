@@ -6,7 +6,14 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "test:fast": "ng test --watch=false --exclude \"src/app/enrico-ceruti-violin/ceruti-{arching,arch-geometry,surface}*.spec.ts\" --exclude \"src/app/enrico-ceruti-violin/panels/**/*.spec.ts\"",
+    "test:outline": "ng test --watch=false --include \"src/app/enrico-ceruti-violin/ceruti-{calcs,paths,serialization}*.spec.ts\"",
+    "test:arching": "ng test --watch=false --include \"src/app/enrico-ceruti-violin/ceruti-{arching,arch-geometry,surface}*.spec.ts\"",
+    "test:panels": "ng test --watch=false --include \"src/app/enrico-ceruti-violin/panels/**/*.spec.ts\"",
+    "test:draft-canvas": "ng test --watch=false --include \"src/app/draft-canvas/**/*.spec.ts\"",
+    "test:helpers": "ng test --watch=false --include \"src/app/helpers/**/*.spec.ts\"",
+    "test:shell": "ng test --watch=false --include \"src/app/app.spec.ts\" --include \"src/app/shared/**/*.spec.ts\" --include \"src/app/top-bar/**/*.spec.ts\""
   },
   "prettier": {
     "printWidth": 100,

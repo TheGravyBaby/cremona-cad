@@ -3,12 +3,12 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Width <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="params.button!.width"
+            <input type="number" class="basic-input" [step]="stepFor(params.button!.width, 1)" min="0" [(ngModel)]="params.button!.width"
                 (input)="onChange()" />
         </label>
         <label class="field-cell">
             <span class="field-title">Height <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="params.button!.height"
+            <input type="number" class="basic-input" [step]="stepFor(params.button!.height, 1)" min="0" [(ngModel)]="params.button!.height"
                 (input)="onChange()" />
         </label>
         <button type="button" class="info-icon" (click)="buttonInfo()" title="More information"
@@ -25,12 +25,12 @@
         <label class="field-cell">
             <span class="field-title">Top Cutoff <span class="unit-label">°</span></span>
             @if (params.options.U31DoubleArc) {
-            <input type="number" class="basic-input" step="1" [ngModel]="params.outerCorners.U31!.degreeDiff"
+            <input type="number" class="basic-input" [step]="stepFor(params.outerCorners.U31!.degreeDiff, 1)" [ngModel]="params.outerCorners.U31!.degreeDiff"
                 (ngModelChange)="adjustArcEnd(params.outerCorners.U31!, $event, onChange.bind(this)); onArcFocus()"
                 [style.borderColor]="colors.centerBoutUp"
                 (focus)="onArcFocus()" (blur)="onArcBlur()" />
             } @else {
-            <input type="number" class="basic-input" step="1" [ngModel]="params.outerCorners.U3!.degreeDiff"
+            <input type="number" class="basic-input" [step]="stepFor(params.outerCorners.U3!.degreeDiff, 1)" [ngModel]="params.outerCorners.U3!.degreeDiff"
                 (ngModelChange)="adjustArcEnd(params.outerCorners.U3!, $event, onChange.bind(this)); onArcFocus()"
                 [style.borderColor]="colors.centerBoutUp"
                 (focus)="onArcFocus()" (blur)="onArcBlur()" />
@@ -39,12 +39,12 @@
         <label class="field-cell">
             <span class="field-title">Bottom Cutoff <span class="unit-label">°</span></span>
             @if (params.options.C21DoubleArc) {
-            <input type="number" class="basic-input" step="1" [ngModel]="params.outerCorners.C21!.degreeDiff"
+            <input type="number" class="basic-input" [step]="stepFor(params.outerCorners.C21!.degreeDiff, 1)" [ngModel]="params.outerCorners.C21!.degreeDiff"
                 (ngModelChange)="adjustArcEnd(params.outerCorners.C21!, $event, onChange.bind(this)); onArcFocus()"
                 [style.borderColor]="colors.centerBoutUp"
                 (focus)="onArcFocus()" (blur)="onArcBlur()" />
             } @else {
-            <input type="number" class="basic-input" step="1" [ngModel]="params.outerCorners.C2!.degreeDiff"
+            <input type="number" class="basic-input" [step]="stepFor(params.outerCorners.C2!.degreeDiff, 1)" [ngModel]="params.outerCorners.C2!.degreeDiff"
                 (ngModelChange)="adjustArcEnd(params.outerCorners.C2!, $event, onChange.bind(this)); onArcFocus()"
                 [style.borderColor]="colors.centerBoutUp"
                 (focus)="onArcFocus()" (blur)="onArcBlur()" />
@@ -56,7 +56,7 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Rounding</span>
-            <input type="number" class="basic-input" step="0.01" min="0" max="1"
+            <input type="number" class="basic-input" [step]="stepFor(params.options.ucCornerSharpness ?? 0, 0.01)" data-fine-step="0.01" min="0" max="1"
                 [ngModel]="params.options.ucCornerSharpness ?? 0"
                 (ngModelChange)="params.options.ucCornerSharpness = $event; onChange()" />
         </label>
@@ -73,12 +73,12 @@
         <label class="field-cell">
             <span class="field-title">Top Cutoff <span class="unit-label">°</span></span>
             @if (params.options.C11DoubleArc) {
-            <input type="number" class="basic-input" step="1" [ngModel]="params.outerCorners.C11!.degreeDiff"
+            <input type="number" class="basic-input" [step]="stepFor(params.outerCorners.C11!.degreeDiff, 1)" [ngModel]="params.outerCorners.C11!.degreeDiff"
                 (ngModelChange)="adjustArcEnd(params.outerCorners.C11!, $event, onChange.bind(this)); onArcFocus()"
                 [style.borderColor]="colors.centerBoutLow"
                 (focus)="onArcFocus()" (blur)="onArcBlur()" />
             } @else {
-            <input type="number" class="basic-input" step="1" [ngModel]="params.outerCorners.C1!.degreeDiff"
+            <input type="number" class="basic-input" [step]="stepFor(params.outerCorners.C1!.degreeDiff, 1)" [ngModel]="params.outerCorners.C1!.degreeDiff"
                 (ngModelChange)="adjustArcEnd(params.outerCorners.C1!, $event, onChange.bind(this)); onArcFocus()"
                 [style.borderColor]="colors.centerBoutLow"
                 (focus)="onArcFocus()" (blur)="onArcBlur()" />
@@ -87,12 +87,12 @@
         <label class="field-cell">
             <span class="field-title">Bottom Cutoff <span class="unit-label">°</span></span>
             @if (params.options.L31DoubleArc) {
-            <input type="number" class="basic-input" step="1" [ngModel]="params.outerCorners.L31!.degreeDiff"
+            <input type="number" class="basic-input" [step]="stepFor(params.outerCorners.L31!.degreeDiff, 1)" [ngModel]="params.outerCorners.L31!.degreeDiff"
                 (ngModelChange)="adjustArcEnd(params.outerCorners.L31!, $event, onChange.bind(this)); onArcFocus()"
                 [style.borderColor]="colors.centerBoutLow"
                 (focus)="onArcFocus()" (blur)="onArcBlur(); " />
             } @else {
-            <input type="number" class="basic-input" step="1" [ngModel]="params.outerCorners.L3!.degreeDiff"
+            <input type="number" class="basic-input" [step]="stepFor(params.outerCorners.L3!.degreeDiff, 1)" [ngModel]="params.outerCorners.L3!.degreeDiff"
                 (ngModelChange)="adjustArcEnd(params.outerCorners.L3!, $event, onChange.bind(this)); onArcFocus()"
                 [style.borderColor]="colors.centerBoutLow"
                 (focus)="onArcFocus()" (blur)="onArcBlur()" />
@@ -104,7 +104,7 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Rounding</span>
-            <input type="number" class="basic-input" step="0.01" min="0" max="1"
+            <input type="number" class="basic-input" [step]="stepFor(params.options.lcCornerSharpness ?? 0, 0.01)" data-fine-step="0.01" min="0" max="1"
                 [ngModel]="params.options.lcCornerSharpness ?? 0"
                 (ngModelChange)="params.options.lcCornerSharpness = $event; onChange()" />
         </label>
@@ -117,12 +117,12 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Offset <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="0.1" min="0" [ngModel]="params.purflingOffset"
+            <input type="number" class="basic-input" [step]="stepFor(params.purflingOffset, 0.1)" data-fine-step="0.25" min="0" [ngModel]="params.purflingOffset"
                 (ngModelChange)="params.purflingOffset = $event; onChange()" />
         </label>
         <label class="field-cell">
             <span class="field-title">Width <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="0.1" min="0" [ngModel]="params.purflingChannelDepth"
+            <input type="number" class="basic-input" [step]="stepFor(params.purflingChannelDepth, 0.1)" data-fine-step="0.25" min="0" [ngModel]="params.purflingChannelDepth"
                 (ngModelChange)="params.purflingChannelDepth = $event; onChange()" />
         </label>
         <button type="button" class="info-icon" (click)="purflingInfo()" title="More information"

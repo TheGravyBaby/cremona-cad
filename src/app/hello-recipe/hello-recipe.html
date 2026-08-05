@@ -53,7 +53,7 @@
         [(ngModel)]="p.bodyLength"
         (ngModelChange)="onChange()"
         min="1"
-        step="1" />
+        [step]="stepFor(p.bodyLength, 1)" />
       <span class="field-unit">mm</span>
     </div>
 
@@ -66,7 +66,7 @@
         [(ngModel)]="p.bodyWidth"
         (ngModelChange)="onChange()"
         min="1"
-        step="1" />
+        [step]="stepFor(p.bodyWidth, 1)" />
       <span class="field-unit">mm</span>
     </div>
 

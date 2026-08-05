@@ -3,13 +3,13 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Height <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.blocks.U!.height"
+            <input class="basic-input" type="number" [step]="stepFor(params.blocks.U!.height, 1)" min="0" [(ngModel)]="params.blocks.U!.height"
                 (input)="onChange()" [style.borderColor]="colors.upperBoutOff" />
         </label>
         <span class="field-separator" aria-hidden="true"></span>
         <label class="field-cell">
             <span class="field-title">Width <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.blocks.U!.width"
+            <input class="basic-input" type="number" [step]="stepFor(params.blocks.U!.width, 1)" min="0" [(ngModel)]="params.blocks.U!.width"
                 (input)="onChange()" [style.borderColor]="colors.upperBoutOff" />
         </label>
     </div>
@@ -20,19 +20,19 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Height <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.blocks.CU!.height"
+            <input class="basic-input" type="number" [step]="stepFor(params.blocks.CU!.height, 1)" min="0" [(ngModel)]="params.blocks.CU!.height"
                 (input)="onChange()" [style.borderColor]="colors.centerBoutUp" />
         </label>
         <span class="field-separator" aria-hidden="true"></span>
         <label class="field-cell">
             <span class="field-title">Width <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.blocks.CU!.width"
+            <input class="basic-input" type="number" [step]="stepFor(params.blocks.CU!.width, 1)" min="0" [(ngModel)]="params.blocks.CU!.width"
                 (input)="onChange()" [style.borderColor]="colors.centerBoutUp" />
         </label>
         <span class="field-separator" aria-hidden="true"></span>
         <label class="field-cell">
             <span class="field-title">Pad <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.blocks.CUPad"
+            <input class="basic-input" type="number" [step]="stepFor(params.blocks.CUPad, 1)" min="0" [(ngModel)]="params.blocks.CUPad"
                 (input)="onChange()" [style.borderColor]="colors.centerBoutUp" />
         </label>
     </div>
@@ -43,19 +43,19 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Height <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.blocks.CL!.height"
+            <input class="basic-input" type="number" [step]="stepFor(params.blocks.CL!.height, 1)" min="0" [(ngModel)]="params.blocks.CL!.height"
                 (input)="onChange()" [style.borderColor]="colors.centerBoutLow" />
         </label>
         <span class="field-separator" aria-hidden="true"></span>
         <label class="field-cell">
             <span class="field-title">Width <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.blocks.CL!.width"
+            <input class="basic-input" type="number" [step]="stepFor(params.blocks.CL!.width, 1)" min="0" [(ngModel)]="params.blocks.CL!.width"
                 (input)="onChange()" [style.borderColor]="colors.centerBoutLow" />
         </label>
         <span class="field-separator" aria-hidden="true"></span>
         <label class="field-cell">
             <span class="field-title">Pad <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.blocks.CLPad"
+            <input class="basic-input" type="number" [step]="stepFor(params.blocks.CLPad, 1)" min="0" [(ngModel)]="params.blocks.CLPad"
                 (input)="onChange()" [style.borderColor]="colors.centerBoutLow" />
         </label>
     </div>
@@ -66,13 +66,13 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Height <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.blocks.L!.height"
+            <input class="basic-input" type="number" [step]="stepFor(params.blocks.L!.height, 1)" min="0" [(ngModel)]="params.blocks.L!.height"
                 (input)="onChange()" [style.borderColor]="colors.lowerBoutOff" />
         </label>
         <span class="field-separator" aria-hidden="true"></span>
         <label class="field-cell">
             <span class="field-title">Width <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="1" min="0" [(ngModel)]="params.blocks.L!.width"
+            <input class="basic-input" type="number" [step]="stepFor(params.blocks.L!.width, 1)" min="0" [(ngModel)]="params.blocks.L!.width"
                 (input)="onChange()" [style.borderColor]="colors.lowerBoutOff" />
         </label>
     </div>
@@ -82,7 +82,7 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Bit Diameter <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step=".1" min="0" [(ngModel)]="params.bitDiameter"
+            <input class="basic-input" type="number" [step]="stepFor(params.bitDiameter, .1)" data-fine-step="0.25" min="0" [(ngModel)]="params.bitDiameter"
                 (input)="onChange()" />
         </label>
         <button type="button" class="info-icon" (click)="bitDiameterInfo()" title="More information"

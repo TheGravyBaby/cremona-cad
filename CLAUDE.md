@@ -8,9 +8,30 @@ fluting, arching and the mould; designs export as SVG/PDF/DXF for templates and 
 
 ```bash
 ng serve        # dev server, localhost:4200
-ng test         # vitest, ~10s, 191 tests
+ng test         # vitest, ~40s wall, 466 tests — full suite, run before considering work done
 ng build
 ```
+
+### Scoped test runs
+
+The full suite is slow enough (most of it spent in the arching/STL math) that it's worth running
+only the area you touched while iterating, then the full `ng test` once before finishing. Each
+scoped script is `ng test --watch=false` with an `--include`/`--exclude` glob; see them in
+`package.json` if you need a variant. Timings are wall-clock, single run:
+
+| Script | Covers | Time |
+|---|---|---|
+| `npm run test:outline` | `ceruti-calcs*`, `ceruti-paths`, `ceruti-serialization` — the 2D outline pipeline | ~6s |
+| `npm run test:arching` | `ceruti-arching*`, `ceruti-arch-geometry`, `ceruti-surface` — the 3D arching pipeline, the specialist math | ~35-45s |
+| `npm run test:panels` | `enrico-ceruti-violin/panels/**` — panel wiring + SVG/DXF/STL export | ~15s |
+| `npm run test:draft-canvas` | `draft-canvas/**` — canvas, camera, snapping, tools | ~3s |
+| `npm run test:helpers` | `helpers/**` — instrument-agnostic math, renderers, exporters | ~4s |
+| `npm run test:shell` | `app.spec.ts`, `shared/**`, `top-bar/**` | ~4s |
+| `npm run test:fast` | everything except `test:arching` and `test:panels` | ~6s |
+
+These mirror the Layout table below plus the 2D/3D pipeline split documented in
+`enrico-ceruti-violin/CLAUDE.md`. If you add a spec file, check it lands in the group you'd
+expect — a stray file outside these globs only runs under the full `ng test`.
 
 ## Layout
 

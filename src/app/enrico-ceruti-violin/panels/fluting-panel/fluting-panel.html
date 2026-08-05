@@ -5,7 +5,7 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Land Edge <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.5" min="0"
+            <input class="basic-input" type="number" [step]="stepFor(params.outerFlutingDepth, 0.5)" data-fine-step="0.25" min="0"
                 [ngModel]="params.outerFlutingDepth" (ngModelChange)="setLandEdge($event)"
                 [style.border-color]="colors.innerTrace"
                 title="Where the flat land ends and the channel begins — shared by both plates, since it belongs to the outline and the purfling" />
@@ -28,14 +28,14 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Sweep <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.5" min="0.1"
+            <input class="basic-input" type="number" [step]="stepFor(gouge('top').sweepRadius, 0.5)" data-fine-step="0.25" min="0.1"
                 [ngModel]="gouge('top').sweepRadius" (ngModelChange)="setSweepRadius('top', $event)"
                 [style.border-color]="colors.archTop"
                 title="Sweep radius of the gouge" />
         </label>
         <label class="field-cell">
             <span class="field-title">Depth <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.1" min="0"
+            <input class="basic-input" type="number" [step]="stepFor(gouge('top').depth, 0.1)" data-fine-step="0.25" min="0"
                 [ngModel]="gouge('top').depth" (ngModelChange)="setDepth('top', $event)"
                 [style.border-color]="colors.archTop"
                 title="Depth at the trough — held below the sweep radius" />
@@ -56,7 +56,7 @@
         @if (cBoutGouge('top')) {
         <label class="field-cell">
             <span class="field-title">Sweep <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.5" min="0.1"
+            <input class="basic-input" type="number" [step]="stepFor(gouge('top').sweepRadius_cBout, 0.5)" data-fine-step="0.25" min="0.1"
                 [ngModel]="gouge('top').sweepRadius_cBout" (ngModelChange)="setSweepRadiusCBout('top', $event)"
                 [style.border-color]="colors.archTop"
                 title="Same land edge, same depth — only the inner edge moves" />
@@ -76,14 +76,14 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Sweep <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.5" min="0.1"
+            <input class="basic-input" type="number" [step]="stepFor(gouge('bottom').sweepRadius, 0.5)" data-fine-step="0.25" min="0.1"
                 [ngModel]="gouge('bottom').sweepRadius" (ngModelChange)="setSweepRadius('bottom', $event)"
                 [style.border-color]="colors.archBack"
                 title="Sweep radius of the gouge" />
         </label>
         <label class="field-cell">
             <span class="field-title">Depth <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.1" min="0"
+            <input class="basic-input" type="number" [step]="stepFor(gouge('bottom').depth, 0.1)" data-fine-step="0.25" min="0"
                 [ngModel]="gouge('bottom').depth" (ngModelChange)="setDepth('bottom', $event)"
                 [style.border-color]="colors.archBack"
                 title="Depth at the trough — held below the sweep radius" />
@@ -105,7 +105,7 @@
         @if (cBoutGouge('bottom')) {
         <label class="field-cell">
             <span class="field-title">Sweep <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.5" min="0.1"
+            <input class="basic-input" type="number" [step]="stepFor(gouge('bottom').sweepRadius_cBout, 0.5)" data-fine-step="0.25" min="0.1"
                 [ngModel]="gouge('bottom').sweepRadius_cBout" (ngModelChange)="setSweepRadiusCBout('bottom', $event)"
                 [style.border-color]="colors.archBack"
                 title="Same land edge, same depth — only the inner edge moves" />

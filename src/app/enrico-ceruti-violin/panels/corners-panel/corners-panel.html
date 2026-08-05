@@ -5,7 +5,7 @@
         [style.pointerEvents]="params.options.useViolCornerUC ? 'none' : 'auto'">
         <label class="field-cell">
             <span class="field-title">U2 Join Radius <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="params.bouts.U2!.r"
+            <input type="number" class="basic-input" [step]="stepFor(params.bouts.U2!.r, 1)" min="0" [(ngModel)]="params.bouts.U2!.r"
                 (input)="onChange(); onArcFocus(params.bouts.U2!, colors.upperBout)" [style.borderColor]="colors.upperBout"
                 (focus)="onArcFocus(params.bouts.U2!, colors.upperBout)" (blur)="onArcBlur()" />
         </label>
@@ -26,14 +26,14 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">X <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step=".25" [(ngModel)]="params.bouts.UCr!.x"
+            <input type="number" class="basic-input" [step]="stepFor(params.bouts.UCr!.x, .25)" data-fine-step="0.25" [(ngModel)]="params.bouts.UCr!.x"
                 (input)="onChange(); onCornerFocus('upper')" [style.borderColor]="colors.centerBoutUpOff2"
                 (focus)="onCornerFocus('upper')" (blur)="onArcBlur()" />
         </label>
         <span class="field-separator" aria-hidden="true"></span>
         <label class="field-cell">
             <span class="field-title">Y <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step=".25" [(ngModel)]="params.bouts.UCr!.y"
+            <input type="number" class="basic-input" [step]="stepFor(params.bouts.UCr!.y, .25)" data-fine-step="0.25" [(ngModel)]="params.bouts.UCr!.y"
                 (input)="onChange(); onCornerFocus('upper')" [style.borderColor]="colors.centerBoutUpOff2"
                 (focus)="onCornerFocus('upper')" (blur)="onArcBlur()" />
         </label>
@@ -51,7 +51,7 @@
             [style.pointerEvents]="params.options.useViolCornerUC ? 'none' : 'auto'">
             <label class="field-cell">
                 <span class="field-title">U3 Corner Radius <span class="unit-label">mm</span></span>
-                <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="params.bouts.U3!.r"
+                <input type="number" class="basic-input" [step]="stepFor(params.bouts.U3!.r, 1)" min="0" [(ngModel)]="params.bouts.U3!.r"
                     (input)="onChange(); onArcFocus(params.bouts.U3!, colors.centerBoutUp)" [style.borderColor]="colors.centerBoutUp"
                     (focus)="onArcFocus(params.bouts.U3!, colors.centerBoutUp)" (blur)="onArcBlur()" />
             </label>
@@ -73,13 +73,13 @@
             <div class="input-group basic-row field-row" role="group">
                 <label class="field-cell">
                     <span class="field-title">U31 Radius <span class="unit-label">mm</span></span>
-                    <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="params.bouts.U31!.r"
+                    <input type="number" class="basic-input" [step]="stepFor(params.bouts.U31!.r, 1)" min="0" [(ngModel)]="params.bouts.U31!.r"
                         (input)="onChange(); onArcFocus(params.bouts.U31!, colors.centerBoutUp)" [style.borderColor]="colors.centerBoutUp"
                         (focus)="onArcFocus(params.bouts.U31!, colors.centerBoutUp)" (blur)="onArcBlur()" />
                 </label>
                 <label class="field-cell">
                     <span class="field-title">Split Angle <span class="unit-label">°</span></span>
-                    <input type="number" class="basic-input" step="1" [ngModel]="params.bouts.U31!.degreeDiff"
+                    <input type="number" class="basic-input" [step]="stepFor(params.bouts.U31!.degreeDiff, 1)" [ngModel]="params.bouts.U31!.degreeDiff"
                         (ngModelChange)="adjustArcStart(params.bouts.U31!, $event, onChange.bind(this)); onArcFocus(params.bouts.U31!, colors.centerBoutUp)"
                         [style.borderColor]="colors.centerBoutUp"
                         (focus)="onArcFocus(params.bouts.U31!, colors.centerBoutUp)" (blur)="onArcBlur()" />
@@ -107,14 +107,14 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">X <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step=".25" [(ngModel)]="params.bouts.LCr!.x"
+            <input type="number" class="basic-input" [step]="stepFor(params.bouts.LCr!.x, .25)" data-fine-step="0.25" [(ngModel)]="params.bouts.LCr!.x"
                 (input)="onChange(); onCornerFocus('lower')" [style.borderColor]="colors.centerBoutLowOff2"
                 (focus)="onCornerFocus('lower')" (blur)="onArcBlur()" />
         </label>
         <span class="field-separator" aria-hidden="true"></span>
         <label class="field-cell">
             <span class="field-title">Y <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step=".25" [(ngModel)]="params.bouts.LCr!.y"
+            <input type="number" class="basic-input" [step]="stepFor(params.bouts.LCr!.y, .25)" data-fine-step="0.25" [(ngModel)]="params.bouts.LCr!.y"
                 (input)="onChange(); onCornerFocus('lower')" [style.borderColor]="colors.centerBoutLowOff2"
                 (focus)="onCornerFocus('lower')" (blur)="onArcBlur()" />
         </label>
@@ -131,7 +131,7 @@
             [style.pointerEvents]="params.options.useViolCornerLC ? 'none' : 'auto'">
             <label class="field-cell">
                 <span class="field-title">L3 Radius <span class="unit-label">mm</span></span>
-                <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="params.bouts.L3!.r"
+                <input type="number" class="basic-input" [step]="stepFor(params.bouts.L3!.r, 1)" min="0" [(ngModel)]="params.bouts.L3!.r"
                     (input)="onChange(); onArcFocus(params.bouts.L3!, colors.centerBoutLow)" [style.borderColor]="colors.centerBoutLow"
                     (focus)="onArcFocus(params.bouts.L3!, colors.centerBoutLow)" (blur)="onArcBlur()" />
             </label>
@@ -153,13 +153,13 @@
             <div class="input-group basic-row field-row" role="group">
                 <label class="field-cell">
                     <span class="field-title">L31 Radius <span class="unit-label">mm</span></span>
-                    <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="params.bouts.L31!.r"
+                    <input type="number" class="basic-input" [step]="stepFor(params.bouts.L31!.r, 1)" min="0" [(ngModel)]="params.bouts.L31!.r"
                         (input)="onChange(); onArcFocus(params.bouts.L31!, colors.centerBoutLow)" [style.borderColor]="colors.centerBoutLow"
                         (focus)="onArcFocus(params.bouts.L31!, colors.centerBoutLow)" (blur)="onArcBlur()" />
                 </label>
                 <label class="field-cell">
                     <span class="field-title">Split Angle <span class="unit-label">°</span></span>
-                    <input type="number" class="basic-input" step="1" [ngModel]="params.bouts.L31!.degreeDiff"
+                    <input type="number" class="basic-input" [step]="stepFor(params.bouts.L31!.degreeDiff, 1)" [ngModel]="params.bouts.L31!.degreeDiff"
                         (ngModelChange)="adjustArcStart(params.bouts.L31!, $event, onChange.bind(this)); onArcFocus(params.bouts.L31!, colors.centerBoutLow)"
                         [style.borderColor]="colors.centerBoutLow"
                         (focus)="onArcFocus(params.bouts.L31!, colors.centerBoutLow)" (blur)="onArcBlur()" />
@@ -187,7 +187,7 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">L2 Join Radius <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="params.bouts.L2!.r"
+            <input type="number" class="basic-input" [step]="stepFor(params.bouts.L2!.r, 1)" min="0" [(ngModel)]="params.bouts.L2!.r"
                 (input)="onChange(); onArcFocus(params.bouts.L2!, colors.lowerBout)" [style.borderColor]="colors.lowerBout"
                 (focus)="onArcFocus(params.bouts.L2!, colors.lowerBout)" (blur)="onArcBlur()" />
         </label>
@@ -207,7 +207,7 @@
         <div class="input-group basic-row field-row" role="group">
             <label class="field-cell">
                 <span class="field-title">L2 Radius <span class="unit-label">mm</span></span>
-                <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="params.bouts.L2!.r"
+                <input type="number" class="basic-input" [step]="stepFor(params.bouts.L2!.r, 1)" min="0" [(ngModel)]="params.bouts.L2!.r"
                     (input)="onChange(); onArcFocus(params.bouts.L2!, colors.lowerBout);" disabled [style.borderColor]="colors.lowerBout" />
             </label>
             <label class="field-cell">

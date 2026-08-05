@@ -116,6 +116,12 @@ criteria.
 
 ## Notes
 
+- `ceruti-surface.spec.ts` and `ceruti-arch-geometry.spec.ts` are most of the full suite's
+  runtime — the dense sweeps below are why. `npm run test:arching` (root CLAUDE.md) runs just
+  the 3D pipeline (`ceruti-arching*`, `ceruti-arch-geometry`, `ceruti-surface`) instead of the
+  full suite; `npm run test:outline` runs the 2D one. `npm run test:panels` covers `panels/panels.spec.ts`
+  and `export-panel.spec.ts`, which are slow for the same reason — they render every bundled
+  instrument through arching and STL export.
 - Four specs sweep densely enough to run several seconds and were flaky against vitest's 5s
   default, so each carries an explicit 20s timeout. Keep them: in every case a sweep coarse
   enough to fit the default is coarse enough to step over what the test exists to catch.
