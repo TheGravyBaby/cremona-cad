@@ -3,6 +3,7 @@ import { DraftShape, ImageShape, DEFAULT_SHAPE_COLOR } from './toolbox-shape';
 import { Layer, DEFAULT_LAYER_ID, makeLayerId } from './layer';
 import { ImageAssetStore } from './image-asset-store';
 import { readWorkingState, writeWorkingState } from '../../helpers/workingStorage';
+import { UndoCoordinator, Undoable } from '../../helpers/undoCoordinator';
 
 const STORAGE_KEY = 'draft-canvas-toolbox-shapes';
 const MAX_HISTORY = 50;
@@ -12,9 +13,10 @@ const MAX_HISTORY = 50;
  * alongside the recipe (see helpers/workingStorage.ts), so a drawing survives closing the tab —
  * but still a scratch annotation layer, not part of the downloaded recipe unless saved with it.
  *
- * A root-provided singleton (rather than a plain class draft-canvas `new`s up)
- * so recipe-base's undo/redo keyboard handler can see the same shape history
- * and defer to it — see recipe-base.ts `onUndoRedoKeyDown`.
+ * A root-provided singleton (rather than a plain class draft-canvas `new`s up) so it stays alive
+ * across recipe swaps. Implements `Undoable` and registers with `UndoCoordinator` (see
+ * helpers/undoCoordinator.ts), which is what lets Ctrl+Z reach whichever of this store or the open
+ * recipe's own history acted most recently, instead of one having fixed priority over the other.
  *
  * Placed reference images (`ImageShape`) live in the same list, so they get selection, move,
  * delete, layers and undo from the same machinery. They are the one exception to the
@@ -22,8 +24,10 @@ const MAX_HISTORY = 50;
  * exportState leaves them out and they are re-derived from the recipe on load.
  */
 @Injectable({ providedIn: 'root' })
-export class ToolboxStore {
+export class ToolboxStore implements Undoable {
+  readonly id = 'toolbox';
   private imageAssets = inject(ImageAssetStore);
+  private undoCoordinator = inject(UndoCoordinator);
   private shapes: DraftShape[] = [];
   private history: DraftShape[][] = [];
   private historyIndex = -1;
@@ -41,6 +45,7 @@ export class ToolboxStore {
     this.load();
     this.history = [this.shapes];
     this.historyIndex = 0;
+    this.undoCoordinator.register(this);
   }
 
   get canUndo(): boolean { return this.historyIndex > 0; }
@@ -334,6 +339,7 @@ export class ToolboxStore {
     this.historyIndex = this.history.length - 1;
     this.persist();
     this.notify();
+    this.undoCoordinator.notify(this.id);
   }
 
   private notify(): void {
@@ -405,6 +411,7 @@ export class ToolboxStore {
     this.shapes = [...images, ...this.shapes.filter(s => s.type !== 'image')];
     this.history = [this.shapes];
     this.historyIndex = 0;
+    this.undoCoordinator.reset(this.id);
     this.persist();
     this.notify();
   }
@@ -424,6 +431,7 @@ export class ToolboxStore {
     this._showShapes = true;
     this.history = [this.shapes];
     this.historyIndex = 0;
+    this.undoCoordinator.reset(this.id);
     this.persist();
     this.notify();
   }
@@ -450,6 +458,7 @@ export class ToolboxStore {
 
     this.history = [this.shapes];
     this.historyIndex = 0;
+    this.undoCoordinator.reset(this.id);
     this.persist();
     this.notify();
   }

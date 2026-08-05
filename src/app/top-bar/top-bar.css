@@ -92,6 +92,15 @@
   line-height: 1;
 }
 
+.icon-btn:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.icon-btn:disabled:hover {
+  background: var(--ui-topbar-control-bg);
+}
+
 .select {
   outline: none;
   appearance: none;
