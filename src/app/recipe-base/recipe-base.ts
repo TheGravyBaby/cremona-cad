@@ -7,6 +7,7 @@ import { NamedConstant, DEFAULT_NAMED_CONSTANTS, nearestFraction } from '../help
 import { computeStepSize, stepAmountForKey } from '../helpers/stepSize';
 import { ToolboxStore } from '../draft-canvas/tools/toolbox-store';
 import { ImageAssetStore } from '../draft-canvas/tools/image-asset-store';
+import { UndoCoordinator, Undoable } from '../helpers/undoCoordinator';
 import { PANEL_KEY, RECIPE_KEY, readWorkingState, writeWorkingState } from '../helpers/workingStorage';
 import { copyToClipboard, setDebugContext } from '../helpers/debugDump';
 import {
@@ -22,13 +23,17 @@ export type { NamedConstant };
   styleUrl: './recipe-base.css',
 })
 
-export abstract class RecipeComponentBase implements AfterViewInit {
+export abstract class RecipeComponentBase implements AfterViewInit, Undoable {
   static readonly DEFAULT_NAMED_CONSTANTS: readonly NamedConstant[] = DEFAULT_NAMED_CONSTANTS;
+
+  readonly id = 'recipe';
 
   private readonly injector = inject(Injector);
   protected readonly toolbox = inject(ToolboxStore);
   protected readonly imageAssets = inject(ImageAssetStore);
+  private readonly undoCoordinator = inject(UndoCoordinator);
   private toolboxSyncUnsub?: () => void;
+  private undoCoordinatorUnsub?: () => void;
 
   @Output() draftChange = new EventEmitter<Array<(g: any, ui: any) => void>>();
 
@@ -55,6 +60,11 @@ export abstract class RecipeComponentBase implements AfterViewInit {
 
     this.d = file;
     this.onRecipeAdopted();
+    // A freshly loaded file starts with nothing to undo past — otherwise Ctrl+Z could step back
+    // into a previous file's params. Same reason ToolboxStore resets its own history on load.
+    this._history = [];
+    this._historyIndex = -1;
+    this.undoCoordinator.reset(this.id);
     // Toolbox shapes are drawn separately from the recipe's own render pipeline (ToolboxStore is
     // a root singleton, not part of `this.d`) — always start from a clean slate, then restore
     // whatever this file itself saved (if anything), so drawings from a previously open file or
@@ -199,9 +209,9 @@ export abstract class RecipeComponentBase implements AfterViewInit {
     this._history.push(JSON.stringify(withoutCanvasState));
     if (this._history.length > this._maxHistory) {
       this._history.shift();
-    } else {
-      this._historyIndex = this._history.length - 1;
     }
+    this._historyIndex = this._history.length - 1;
+    this.undoCoordinator.notify(this.id);
   }
 
   undo(): void {
@@ -236,25 +246,22 @@ export abstract class RecipeComponentBase implements AfterViewInit {
     }
   }
 
+  // The draft-canvas toolbox (line/shape tools) keeps its own history, separate from this
+  // recipe's `d` snapshots. UndoCoordinator merges both into one chronological timeline, so
+  // Ctrl+Z reaches whichever acted most recently rather than one having fixed priority.
   @HostListener('window:keydown', ['$event'])
   onUndoRedoKeyDown(e: KeyboardEvent): void {
     const ctrl = e.ctrlKey || e.metaKey;
     if (!ctrl) return;
 
-    // The draft-canvas toolbox (line/shape tools) keeps its own history, separate
-    // from this recipe's `d` snapshots. It takes precedence whenever it has
-    // something to undo/redo, so a shape you just drew doesn't get skipped over.
     if (e.key === 'z' || e.key === 'Z') {
       if (e.shiftKey) {
-        if (this.toolbox.canRedo) { e.preventDefault(); this.toolbox.redo(); return; }
-        if (this.canRedo) { e.preventDefault(); this.redo(); }
+        if (this.undoCoordinator.canRedo()) { e.preventDefault(); this.undoCoordinator.redo(); }
       } else {
-        if (this.toolbox.canUndo) { e.preventDefault(); this.toolbox.undo(); return; }
-        if (this.canUndo) { e.preventDefault(); this.undo(); }
+        if (this.undoCoordinator.canUndo()) { e.preventDefault(); this.undoCoordinator.undo(); }
       }
     } else if (e.key === 'y' || e.key === 'Y') {
-      if (this.toolbox.canRedo) { e.preventDefault(); this.toolbox.redo(); return; }
-      if (this.canRedo) { e.preventDefault(); this.redo(); }
+      if (this.undoCoordinator.canRedo()) { e.preventDefault(); this.undoCoordinator.redo(); }
     }
   }
 
@@ -327,6 +334,7 @@ export abstract class RecipeComponentBase implements AfterViewInit {
     // persist path (working-state writes, saveToDisk, subclass snapshots) serializes images
     // without needing to know they exist. See syncReferenceImages.
     this.toolboxSyncUnsub = this.toolbox.onChange(() => this.syncReferenceImages());
+    this.undoCoordinatorUnsub = this.undoCoordinator.register(this);
     setDebugContext(() => this.debugViewContext());
 
     const recipeData = this.loadMatchingStoredRecipe();
@@ -370,6 +378,7 @@ export abstract class RecipeComponentBase implements AfterViewInit {
     this.debounceController?.destroy();
     this.syncReferenceImages();
     this.toolboxSyncUnsub?.();
+    this.undoCoordinatorUnsub?.();
     setDebugContext(null);
     writeWorkingState(RECIPE_KEY, JSON.stringify(this.d));
     writeWorkingState(PANEL_KEY, this.openPanel);
