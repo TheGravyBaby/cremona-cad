@@ -210,6 +210,11 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private activePointers = new Map<number, { x: number; y: number }>();
   private lastPinchDist = 0;
   private lastPinchMid = { x: 0, y: 0 };
+  // trackpad two-finger scroll fires as a rapid burst of wheel events; a real mouse wheel
+  // notch fires as an isolated event with deltaX always exactly 0. Classified once per burst
+  // (see onScrollWheel) rather than per event.
+  private wheelGestureIsPan = false;
+  private wheelGestureTimer: ReturnType<typeof setTimeout> | null = null;
   public isDarkMode = false;
   private isDragging = false;
   private isSpaceDown = false;
@@ -1163,13 +1168,27 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
-    // scroll wheels should have a 0 delta x value
-    const isMouseWheel = Math.abs(event.deltaX) === 0 //&& Number.isInteger(event.deltaY);
-    if (isMouseWheel) {
+    // Classify once per burst rather than per event: a straight vertical trackpad swipe
+    // reports deltaX === 0 on plenty of individual samples, which used to flip those
+    // samples over to the mouse-wheel-zoom branch below and make panning jerky. A gap of
+    // 150ms with no wheel events ends the burst; the first event of a new burst decides,
+    // and any nonzero deltaX seen mid-burst reclassifies it as a pan even if it started
+    // out looking like a mouse wheel notch.
+    const isNewGesture = this.wheelGestureTimer === null;
+    if (this.wheelGestureTimer !== null) clearTimeout(this.wheelGestureTimer);
+    this.wheelGestureTimer = setTimeout(() => { this.wheelGestureTimer = null; }, 150);
+
+    if (isNewGesture) {
+      this.wheelGestureIsPan = event.deltaX !== 0;
+    } else if (event.deltaX !== 0) {
+      this.wheelGestureIsPan = true;
+    }
+
+    if (!this.wheelGestureIsPan) {
+      // Real mouse wheel notch — zoom.
       const clampedDelta = Math.sign(event.deltaY);
       const zoomFactor = Math.pow(0.85, clampedDelta);
       const newPxPerMm = this.pxPerMm * zoomFactor;
-
 
       const pt = this.worldFromPointer(event as unknown as PointerEvent);
       pt.y = -pt.y;
