@@ -86,6 +86,15 @@
             <li><code>+</code> new, <code>↓</code> save, <code>↑</code> load, at the top right.</li>
             <li>Templates of historical instruments can be found on the top right.</li>
           </ul>
+
+          <h4>Number fields</h4>
+          <p>Every measurement field steps by a size scaled to its own value, so a click on the
+            spinner arrows moves it a sensible amount whether it's a 2mm rib or a 350mm height.</p>
+          <dl class="keymap">
+            <dt>Arrows (in a field)</dt><dd>Step the value</dd>
+            <dt>Shift + Arrow</dt><dd>Bigger step</dd>
+            <dt>Alt / ⌘ + Arrow</dt><dd>Small fixed nudge — usually 1mm, finer on delicate fields</dd>
+          </dl>
           }
 
           @if (tutorialTopic === 'drawing') {

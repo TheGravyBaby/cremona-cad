@@ -62,13 +62,13 @@
             <div class="input-group basic-row field-row" role="group">
                 <label class="field-cell">
                     <span class="field-title">Height <span class="unit-label">mm</span></span>
-                    <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="d.params.height"
+                    <input class="basic-input" type="number" [step]="stepFor(d.params.height, 1)" min="1" [(ngModel)]="d.params.height"
                         (input)="changeBaseMeasurements()" />
                 </label>
                 <span class="field-separator" aria-hidden="true"></span>
                 <label class="field-cell">
                     <span class="field-title">Width <span class="unit-label">mm</span></span>
-                    <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="d.params.width"
+                    <input class="basic-input" type="number" [step]="stepFor(d.params.width, 1)" min="1" [(ngModel)]="d.params.width"
                         (input)="changeBaseMeasurements()" />
                 </label>
                 <span class="field-separator" aria-hidden="true"></span>
@@ -84,13 +84,13 @@
             <div class="input-group basic-row field-row" role="group">
                 <label class="field-cell">
                     <span class="field-title">Overhang <span class="unit-label">mm</span></span>
-                    <input class="basic-input" type="number" step="0.1" min="0" [(ngModel)]="d.params.overhang"
+                    <input class="basic-input" type="number" [step]="stepFor(d.params.overhang, 0.1)" data-fine-step="0.25" min="0" [(ngModel)]="d.params.overhang"
                         (input)="changeBaseMeasurements()" />
                 </label>
                 <span class="field-separator" aria-hidden="true"></span>
                 <label class="field-cell">
                     <span class="field-title">Ribs <span class="unit-label">mm</span></span>
-                    <input class="basic-input" type="number" step="0.1" min="0" [(ngModel)]="d.params.rib"
+                    <input class="basic-input" type="number" [step]="stepFor(d.params.rib, 0.1)" data-fine-step="0.25" min="0" [(ngModel)]="d.params.rib"
                         (input)="changeBaseMeasurements()" />
                 </label>
                 <span class="field-separator" aria-hidden="true"></span>

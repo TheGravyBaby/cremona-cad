@@ -1,12 +1,18 @@
 export class DebounceController {
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
   private skipDebounce = false;
+  // Set only by a real arrow-key step, and — unlike skipDebounce — survives clearImmediate().
+  // A step should stay instant even in a panel that opted its other edits back into the delay
+  // (emitCoalesced), because a fixed keyboard nudge costs nothing like a held key or a fast typist.
+  private stepBypass = false;
   private destroyed = false;
 
   constructor(private readonly postRun?: () => void) {}
 
   markImmediateFromKey(event: KeyboardEvent): void {
-    this.skipDebounce = event.key === 'ArrowUp' || event.key === 'ArrowDown';
+    const isStep = event.key === 'ArrowUp' || event.key === 'ArrowDown';
+    this.skipDebounce = isStep;
+    if (isStep) this.stepBypass = true;
   }
 
   markImmediateFromMouse(event: MouseEvent): void {
@@ -43,8 +49,9 @@ export class DebounceController {
   run(fn: () => void, delay = 1000): void {
     if (this.destroyed) return;
 
-    if (this.skipDebounce) {
+    if (this.skipDebounce || this.stepBypass) {
       this.skipDebounce = false;
+      this.stepBypass = false;
       fn();
       this.postRun?.();
       return;
