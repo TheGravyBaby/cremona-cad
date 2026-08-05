@@ -4,7 +4,7 @@ import { DraftTool } from '../tools/draft-tool';
 import { ToolboxStore } from '../tools/toolbox-store';
 import {
   DraftShape, LineShape, DimensionShape, RectShape, TextShape, PointShape, CircleShape, ArcShape, SectionShape,
-  ImageShape, DEFAULT_IMAGE_OPACITY,
+  FreehandShape, ImageShape, DEFAULT_IMAGE_OPACITY, DEFAULT_SHAPE_COLOR, DEFAULT_FREEHAND_WIDTH,
 } from '../tools/toolbox-shape';
 import { normalizeDegrees, pointAtDistanceToward } from '../../helpers/draftMath';
 
@@ -80,7 +80,7 @@ export class SettingsBarComponent {
   /** Friendly name for each shape type, used by groupTitle when the settings reflect a selection. */
   private static readonly SHAPE_TYPE_LABELS: Record<DraftShape['type'], string> = {
     line: 'Line', arc: 'Arc', circle: 'Circle', dimension: 'Distance', rect: 'Box', section: 'Section', text: 'Text', point: 'Point',
-    image: 'Reference Image',
+    freehand: 'Drawing', image: 'Reference Image',
   };
 
   /** Heading shown above the settings strip so it's clear what "Color"/"Dashed"/etc. apply to —
@@ -235,6 +235,84 @@ export class SettingsBarComponent {
 
   setPointPosition(axis: 'x' | 'y', value: number): void {
     this.patchPointField(this.selectedPointShape, 'position', axis, value);
+  }
+
+  /** Every Freehand in the current selection, however many — same "group-editable" shape as
+   * selectedArcShapes/selectedSectionShapes above. */
+  private get selectedFreehandShapes(): FreehandShape[] {
+    return this.selectedShapes.filter((s): s is FreehandShape => s.type === 'freehand');
+  }
+
+  /** Shown for the active Freehand tool (so you can dial in a pen setting before drawing) or any
+   * Freehand selection — same condition shape as showSectionPanel. */
+  public get showFreehandPanel(): boolean {
+    return this.activeTool?.id === 'freehand' || this.selectedFreehandShapes.length > 0;
+  }
+
+  /** First selected stroke's width (same "first wins" convention as displayedColor), otherwise
+   * the pen default new strokes will use. */
+  public get freehandWidth(): number {
+    return this.selectedFreehandShapes[0]?.strokeWidth ?? this.toolbox.currentStrokeWidth;
+  }
+
+  /** Applies to every selected stroke at once (one history step via updateShapes), same as setColor. */
+  setFreehandWidth(value: number): void {
+    const v = Number(value);
+    if (!Number.isFinite(v) || v <= 0) return;
+    this.toolbox.currentStrokeWidth = v;
+    const shapes = this.selectedFreehandShapes;
+    if (shapes.length === 0) return;
+    const patches = new Map<string, Partial<DraftShape>>(shapes.map(s => [s.id, { strokeWidth: v }]));
+    this.toolbox.updateShapes(patches);
+  }
+
+  public get freehandOpacity(): number {
+    return this.selectedFreehandShapes[0]?.opacity ?? this.toolbox.currentOpacity;
+  }
+
+  setFreehandOpacity(value: number): void {
+    const v = Number(value);
+    if (!Number.isFinite(v)) return;
+    const clamped = Math.min(1, Math.max(0, v));
+    this.toolbox.currentOpacity = clamped;
+    const shapes = this.selectedFreehandShapes;
+    if (shapes.length === 0) return;
+    const patches = new Map<string, Partial<DraftShape>>(shapes.map(s => [s.id, { opacity: clamped }]));
+    this.toolbox.updateShapes(patches);
+  }
+
+  /** Shared by the Pen/Highlighter presets below: sets the pen defaults (for the next stroke)
+   * and, same as Color/Width/Opacity's own setters above, applies the same values to any
+   * Freehand already selected. */
+  private applyFreehandPreset(color: string, strokeWidth: number, opacity: number): void {
+    this.toolbox.currentColor = color;
+    this.toolbox.currentStrokeWidth = strokeWidth;
+    this.toolbox.currentOpacity = opacity;
+    const shapes = this.selectedFreehandShapes;
+    if (shapes.length === 0) return;
+    const patches = new Map<string, Partial<DraftShape>>(shapes.map(s => [s.id, { color, strokeWidth, opacity }]));
+    this.toolbox.updateShapes(patches);
+  }
+
+  // Back to an ordinary opaque line — the quick way out of Highlighter (or any manually-dialed-in
+  // look) without hand-resetting Color/Width/Opacity one field at a time.
+  private static readonly PEN_COLOR = DEFAULT_SHAPE_COLOR;
+  private static readonly PEN_WIDTH = DEFAULT_FREEHAND_WIDTH;
+  private static readonly PEN_OPACITY = 1;
+
+  applyPenPreset(): void {
+    this.applyFreehandPreset(SettingsBarComponent.PEN_COLOR, SettingsBarComponent.PEN_WIDTH, SettingsBarComponent.PEN_OPACITY);
+  }
+
+  // A wide, translucent yellow stroke — the look someone reaches for on every highlighter pass,
+  // so it's a shortcut for a Color+Width+Opacity combination rather than a fourth pen setting.
+  private static readonly HIGHLIGHTER_COLOR = '#fde047';
+  private static readonly HIGHLIGHTER_WIDTH = 14;
+  private static readonly HIGHLIGHTER_OPACITY = 0.35;
+
+  applyHighlighterPreset(): void {
+    this.applyFreehandPreset(
+      SettingsBarComponent.HIGHLIGHTER_COLOR, SettingsBarComponent.HIGHLIGHTER_WIDTH, SettingsBarComponent.HIGHLIGHTER_OPACITY);
   }
 
   private get selectedCircleShape(): CircleShape | undefined {

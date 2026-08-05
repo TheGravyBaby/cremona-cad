@@ -89,6 +89,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     getPxPerMm: () => this.pxPerMm,
     hitTestShape: (pt) => this.hitTestToolboxShape(pt),
     selectShape: (id) => this.setSelectedShape(id),
+    removeShape: (id) => this.toolbox.removeShape(id),
     returnToSelect: (selectShapeId) => {
       this.toolRegistry.selectTool(null);
       if (selectShapeId) this.setSelectedShape(selectShapeId);
@@ -465,7 +466,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
   /** Resolves a raw pointer point to a nearby snap candidate when a tool is active. */
   private resolveToolPoint(rawPt: Pt): Pt {
-    if (!this.activeTool) {
+    if (!this.activeTool || this.activeTool.disableSnapping) {
       this.activeSnap = null;
       return rawPt;
     }

@@ -30,6 +30,9 @@ export interface DraftToolHost {
   /** Replaces the whole selection with just this shape — same effect as a plain Select-mode
    * click on it, so a tool like Offset can adopt a shape the user clicked directly. */
   selectShape(id: string): void;
+  /** Deletes a toolbox shape by id (a no-op if it's already gone or its layer is locked) — each
+   * call is its own undo step, same as a Select-mode Delete keypress. See eraser-tool.ts. */
+  removeShape(id: string): void;
   /** Switches back to the Select tool, optionally with a just-created shape selected. For a tool
    * whose commit is asynchronous (see image-tool.ts) and so can't rely on draft-canvas's
    * synchronous `oneShot` handling to hand control back. */
@@ -59,6 +62,10 @@ export interface DraftTool {
    * clicking (e.g. Offset) — draft-canvas keeps the selection alive across activation for
    * these, instead of clearing it the way it does for ordinary drawing tools. */
   readonly actsOnSelection?: boolean;
+  /** True for tools whose points shouldn't snap to nearby geometry (e.g. Freehand) — snapping
+   * would flatten a natural pen stroke onto whatever construction geometry it passes near.
+   * Checked by draft-canvas.ts's resolveToolPoint before every onPointerDown/Move/Up call. */
+  readonly disableSnapping?: boolean;
   /** Runs the moment the tool is activated, before any pointer input. For tools whose input
    * isn't a click at all (see image-tool.ts, which opens a file dialog and hands control
    * straight back). Most tools don't need it. */

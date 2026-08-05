@@ -1,7 +1,7 @@
 import * as d3 from 'd3';
 import { Pt } from '../../models/types';
 import {
-  DraftShape, DEFAULT_SHAPE_COLOR, DEFAULT_IMAGE_OPACITY, ImageShape, imageCenter, imageCorners,
+  DraftShape, DEFAULT_SHAPE_COLOR, DEFAULT_IMAGE_OPACITY, DEFAULT_FREEHAND_WIDTH, ImageShape, imageCenter, imageCorners,
 } from './toolbox-shape';
 import { arcPathData, pointOnCircle } from '../../helpers/draftMath';
 import { GrabberKind } from './shape-grabbers';
@@ -9,6 +9,16 @@ import { GrabberKind } from './shape-grabbers';
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 
 const DASH_PATTERN = '4 3';
+
+// Catmull-Rom passes through every sampled point (unlike curveBasis, which only approaches
+// them) — keeps the rendered curve close to what distanceToShape/shapeBounds hit-test against.
+const freehandLine = d3.line<Pt>().x(p => p.x).y(p => p.y).curve(d3.curveCatmullRom.alpha(0.5));
+
+/** Shared by drawShape and drawSelectionHalo (and freehand-tool.ts's in-progress preview) so a
+ * scribble's committed, selected and in-progress renderings never disagree. */
+export function freehandPathData(points: Pt[]): string {
+  return freehandLine(points) ?? '';
+}
 
 /** Draws a single committed toolbox shape into gRoot (and gUI, for shapes with a text label). */
 export function drawShape(gRoot: RootGroup, gUI: RootGroup, shape: DraftShape, pxPerMm: number): void {
@@ -102,6 +112,20 @@ export function drawShape(gRoot: RootGroup, gUI: RootGroup, shape: DraftShape, p
       crossLine(shape.position.x, shape.position.y - half, shape.position.x, shape.position.y + half);
       break;
     }
+    case 'freehand':
+      // Not a snap candidate — a scribble isn't construction geometry (see SnapEngine's
+      // `[data-no-snap]` filter).
+      gRoot.append('path')
+        .attr('data-no-snap', '')
+        .attr('d', freehandPathData(shape.points))
+        .attr('fill', 'none')
+        .attr('stroke', color)
+        .attr('stroke-width', shape.strokeWidth ?? DEFAULT_FREEHAND_WIDTH)
+        .attr('stroke-linecap', 'round')
+        .attr('stroke-linejoin', 'round')
+        .attr('opacity', shape.opacity ?? 1)
+        .attr('vector-effect', 'non-scaling-stroke');
+      break;
     case 'image':
       // Drawn by drawImageShape in its own pass beneath everything else, and needing an href
       // resolved from ImageAssetStore that this DOM-only module has no business reaching for.
@@ -443,6 +467,9 @@ export function drawSelectionHalo(gRoot: RootGroup, gUI: RootGroup, shape: Draft
     case 'point':
       halo(gRoot.append('circle')
         .attr('cx', shape.position.x).attr('cy', shape.position.y).attr('r', 3));
+      break;
+    case 'freehand':
+      halo(gRoot.append('path').attr('d', freehandPathData(shape.points)));
       break;
     case 'image': {
       // An outline rather than a fill: a translucent wash over the picture would fight the

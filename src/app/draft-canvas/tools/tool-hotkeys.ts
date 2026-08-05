@@ -14,6 +14,8 @@ export const HOTKEY_TOOL_CYCLE: Record<string, string[]> = {
   KeyS: ['section'],
   KeyT: ['text'],
   KeyP: ['point'],
+  KeyF: ['freehand'],
+  KeyE: ['eraser'],
   KeyO: ['offset'],
   KeyI: ['image'],
 };

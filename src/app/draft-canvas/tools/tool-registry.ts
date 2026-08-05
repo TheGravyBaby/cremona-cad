@@ -14,6 +14,8 @@ import { createRectTool } from './rect-tool';
 import { createSectionTool } from './section-tool';
 import { createTextTool } from './text-tool';
 import { createPointTool } from './point-tool';
+import { createFreehandTool } from './freehand-tool';
+import { createEraserTool } from './eraser-tool';
 import { createOffsetTool } from './offset-tool';
 
 /**
@@ -54,6 +56,11 @@ export class ToolRegistryService {
     [createRectTool(this.toolbox)],
     [createTextTool()],
     [createPointTool()],
+    [createFreehandTool(this.toolbox)],
+    // Its own button, not folded into Draw's flyout: it deletes any toolbox shape it's dragged
+    // over (see eraser-tool.ts), not just Freehand strokes, so it reads as a general tool rather
+    // than a Draw accessory.
+    [createEraserTool()],
     // Modify tools — act on the current selection rather than drawing new shapes.
     [createOffsetTool()],
     // Reference images — placed from a file rather than drawn, but a placed image is an ordinary

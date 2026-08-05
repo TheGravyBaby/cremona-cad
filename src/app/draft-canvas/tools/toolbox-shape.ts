@@ -85,6 +85,24 @@ export type PointShape = ShapeBase & {
   position: Pt;
 };
 
+// A hand-drawn scribble — raw pointer positions sampled during a drag, rendered as a smoothed
+// polyline. Annotation only, like Text/Point: moved as a single rigid body rather than edited
+// point-by-point, and never a snap candidate (see shape-renderer.ts's `data-no-snap`) since a
+// scribble isn't construction geometry a later tool should click onto.
+export type FreehandShape = ShapeBase & {
+  type: 'freehand';
+  points: Pt[];
+  /** Screen-pixel stroke width — non-scaling like every other shape's outline (see
+   * shape-renderer.ts), so the pen reads the same thickness at any zoom. Undefined means
+   * DEFAULT_FREEHAND_WIDTH. */
+  strokeWidth?: number;
+  /** 0 (invisible) to 1 (opaque). Undefined means opaque — dials a stroke down toward a
+   * highlighter-style translucent mark without a separate tool. */
+  opacity?: number;
+};
+
+export const DEFAULT_FREEHAND_WIDTH = 2;
+
 // A photo or scan placed on the canvas to trace over — an instrument's plan view, a long-arch
 // profile, a drawing from a book. Geometry only: the pixels live in ImageAssetStore under
 // `imageRef`, so undo snapshots and sessionStorage writes stay cheap (see image-asset-store.ts).
@@ -153,7 +171,7 @@ export const DEFAULT_IMAGE_OPACITY = 0.25;
  */
 export type DraftShape =
   | LineShape | ArcShape | CircleShape | DimensionShape | RectShape | SectionShape | TextShape | PointShape
-  | ImageShape;
+  | FreehandShape | ImageShape;
 
 /** An image's box center, about which `rotationDeg` turns it. */
 export function imageCenter(shape: ImageShape): Pt {
