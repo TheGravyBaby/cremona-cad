@@ -380,7 +380,6 @@ export interface EnricoCerutiParams {
   overhang: number;
   rib: number;
   bitDiameter: number;
-  clampChannelWidth: number;
   purflingOffset: number | null;
   purflingChannelDepth: number | null;
   /**
@@ -516,7 +515,6 @@ export const DefaultParams: EnricoCerutiParams = {
   overhang: 3,
   rib: 1,
   bitDiameter: 6.35,
-  clampChannelWidth: 5,
   purflingOffset: null,
   purflingChannelDepth: null,
   innerFlutingDepth: null,

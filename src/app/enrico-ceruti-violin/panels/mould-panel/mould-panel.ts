@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { flipRectAboutY } from '../../../helpers/draftMath';
 import { renderPath, renderRect } from '../../../helpers/renderFuncs';
 import { calculateMould, ensureCenterBoutInnerPath, ensureOuterTracePaths, getPath } from '../../ceruti-calcs';
-import { bitDiameterInfo, channelDepthInfo } from '../../ceruti-helpers';
+import { bitDiameterInfo } from '../../ceruti-helpers';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, PathEntry } from '../../ceruti-types';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 
@@ -20,7 +20,6 @@ export class MouldPanel extends CerutiPanelBase implements OnInit {
   @Input({ required: true }) flags!: CerutiViewFlags;
 
   protected readonly bitDiameterInfo = bitDiameterInfo;
-  protected readonly channelDepthInfo = channelDepthInfo;
 
   ngOnInit(): void {
     this.emitImmediate();

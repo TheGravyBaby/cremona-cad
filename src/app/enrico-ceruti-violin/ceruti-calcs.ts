@@ -1,5 +1,5 @@
-import { solveInscribedCircleAlongAxis, circleCircleIntersections, angleFromCenter, interceptCirclesAndPoint, dist, pointOnCircle, offsetArcRadius, flipArcAboutY, flipPointAboutY, flipRectAboutY, lineCircleIntersection, redefineArcCircle, interceptCirclesAndPointCompound } from "../helpers/draftMath";
-import { pathFromArc, pathFromLine, pathFromRoundedRect, pathFromCircle, pathFromRect, combinePathStrings, differenceFromManyPaths, intersectionFromTwoPaths, translatePath } from "../helpers/svgPathMath";
+import { solveInscribedCircleAlongAxis, circleCircleIntersections, angleFromCenter, interceptCirclesAndPoint, dist, pointOnCircle, offsetArcRadius, flipPointAboutY, flipRectAboutY, lineCircleIntersection, redefineArcCircle, interceptCirclesAndPointCompound, filletLineToCircle, filletRightAngleCorner } from "../helpers/draftMath";
+import { pathFromRoundedRect, pathFromCircle, pathFromRect, combinePathStrings, differenceFromManyPaths, intersectionFromTwoPaths, translatePath, mirroredLoop } from "../helpers/svgPathMath";
 import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Pt, Rectangle } from "../models/types";
 import { error } from "../shared/message-emitter";
 import { EnricoCerutiParams, PathEntry, PathKey } from "./ceruti-types";
@@ -538,6 +538,9 @@ export function calculateOuterArcs(p: EnricoCerutiParams): void {
     }
 }
 
+// used to be a user-facing param; in practice one depth suited every instrument, so it's fixed
+const MOULD_CHANNEL_DEPTH = 4;
+
 export function calculateMould(p: EnricoCerutiParams, useHighAccuracy = false, simpleClampBox = false): string {
     let blocksInitialized = p.blocks.CU != null;
     let inset = p.overhang + p.rib;
@@ -551,7 +554,7 @@ export function calculateMould(p: EnricoCerutiParams, useHighAccuracy = false, s
         let isBass = p.height >= 800;
 
         if (isViolin) {
-            let pad = 2
+            let pad = 3
             let blockHeight = 20
             let blockWidth = 12
             p.blocks.U = new Rectangle(new Pt(-20, p.height - inset - 20), new Pt(20, p.height - inset))
@@ -563,7 +566,7 @@ export function calculateMould(p: EnricoCerutiParams, useHighAccuracy = false, s
         }
 
         if (isViola) {
-            let pad = 3
+            let pad = 4
             let blockHeight = 30
             let blockWidth = 18
             p.blocks.U = new Rectangle(new Pt(-25, p.height - inset - 25), new Pt(25, p.height - inset))
@@ -685,65 +688,99 @@ export function calculateMould(p: EnricoCerutiParams, useHighAccuracy = false, s
     
     }
     else {
-        let clampOffset = Math.max(p.blocks.U.height, p.blocks.L.height) + p.clampChannelWidth
-        if (p.options.useViolNeck) 
-            clampOffset = p.blocks.L.height + p.clampChannelWidth
-        let U1End = pointOnCircle(offsetArcRadius(p.bouts.U1, -clampOffset), offsetArcRadius(p.bouts.U1, -clampOffset).start);
-        let U2End = pointOnCircle(offsetArcRadius(p.bouts.U2, -clampOffset), offsetArcRadius(p.bouts.U2, -clampOffset).end);
-        let L1End = pointOnCircle(offsetArcRadius(p.bouts.L1, -clampOffset), offsetArcRadius(p.bouts.L1, -clampOffset).start);
-        let L2End = pointOnCircle(offsetArcRadius(p.bouts.L2, -clampOffset), offsetArcRadius(p.bouts.L2, -clampOffset).end);
+        let clampOffset = Math.max(p.blocks.U.height, p.blocks.L.height) + MOULD_CHANNEL_DEPTH
+        if (p.options.useViolNeck)
+            clampOffset = p.blocks.L.height + MOULD_CHANNEL_DEPTH
 
-        let V0;
-        let V0End;
-        if (p.options.useViolNeck) {
-            V0 = offsetArcRadius(p.viol.V0, clampOffset)
-            V0End = pointOnCircle(V0, V0.start);
+        // three closed windows rather than free chords: flanks ride the inset bout arcs, and
+        // the horizontal faces sit a fixed web back from every block face, so blocks always
+        // keep solid material behind them and the beams between windows contain the corner
+        // blocks. every line-arc junction is filleted, so the frame has no sharp corners.
+        const web = clampOffset / 2;
+        const rf = web; // fillet radius — comfortably above any sane bit radius
+
+        const rectYMin = (r: Rectangle) => Math.min(r.Pt1.y, r.Pt2.y);
+        const rectYMax = (r: Rectangle) => Math.max(r.Pt1.y, r.Pt2.y);
+
+        // builds the small fillet's own Arc from a filletLineToCircle result
+        const filletArc = (f: { center: Pt; lineTangent: Pt; circleTangent: Pt }, radius: number) =>
+            new Arc(f.center.x, f.center.y, radius, angleFromCenter(f.center, f.lineTangent), angleFromCenter(f.center, f.circleTangent));
+
+        clampBox = [];
+
+        // upper window: faces held web under the top block and web over the corner blocks,
+        // clamped to where the inset flank arcs themselves stop
+        const U1c = offsetArcRadius(p.bouts.U1, -clampOffset);
+        const U2c = offsetArcRadius(p.bouts.U2, -clampOffset);
+        const uTopY = Math.min(rectYMin(p.blocks.U) - web, pointOnCircle(U1c, U1c.start).y);
+        const uBotY = Math.max(rectYMax(p.blocks.CU) + web, pointOnCircle(U2c, U2c.end).y);
+        const uTop = filletLineToCircle(new Pt(0, uTopY), new Pt(1, 0), -1, U1c, rf, true, pointOnCircle(U1c, U1c.start));
+        const uBot = filletLineToCircle(new Pt(0, uBotY), new Pt(1, 0), 1, U2c, rf, true, pointOnCircle(U2c, U2c.end));
+        // the >rf checks mirror the old collision guard: a fillet whose tangent lands too close
+        // to the centerline would cross its own mirror image
+        if (uTop && uBot && uTop.lineTangent.x > rf && uBot.lineTangent.x > rf && uTopY - uBotY >= 2 * rf) {
+            clampBox.push(mirroredLoop(
+                [filletArc(uTop, rf),
+                 new Arc(U1c.x, U1c.y, U1c.r, uTop.circleAngle, U1c.end),
+                 new Arc(U2c.x, U2c.y, U2c.r, U2c.start, uBot.circleAngle),
+                 filletArc(uBot, rf)],
+                [[new Pt(-uTop.lineTangent.x, uTopY), new Pt(uTop.lineTangent.x, uTopY)],
+                 [new Pt(-uBot.lineTangent.x, uBotY), new Pt(uBot.lineTangent.x, uBotY)]]));
         }
 
-        let C0Clamp = offsetArcRadius(p.bouts.C0, clampOffset)
-        let C0UpPt = lineCircleIntersection(p.blocks.CU.Pt1, flipPointAboutY(p.blocks.CU.Pt1), C0Clamp).sort((a, b) => a.x - b.x)[0];
-        let C0LowPt = lineCircleIntersection(p.blocks.CL.Pt1, flipPointAboutY(p.blocks.CL.Pt1), C0Clamp).sort((a, b) => a.x - b.x)[0];
-        C0Clamp.end = angleFromCenter(C0Clamp, C0UpPt);
-        C0Clamp.start = angleFromCenter(C0Clamp, C0LowPt);
+        // center window: the registration geometry from the old system, kept as-is — a flat
+        // face flush with each corner block's outer edge, walled off from the C0 waist arc by a
+        // vertical run at the block's own x. That flat face is what a caul clamps against to
+        // press the corner block home, so its position and span aren't touched; only the two
+        // sharp corners on each side (arc-into-wall, wall-into-face) are eased, and only as far
+        // as their own leg lengths allow.
+        const C0Clamp = offsetArcRadius(p.bouts.C0, clampOffset);
+        const C0UpPt = lineCircleIntersection(p.blocks.CU.Pt1, flipPointAboutY(p.blocks.CU.Pt1), C0Clamp).sort((a, b) => a.x - b.x)[0];
+        const C0LowPt = lineCircleIntersection(p.blocks.CL.Pt1, flipPointAboutY(p.blocks.CL.Pt1), C0Clamp).sort((a, b) => a.x - b.x)[0];
+        const cTopY = C0UpPt.y + p.blocks.CU.height;
+        const cBotY = C0LowPt.y - p.blocks.CL.height;
+        const cTopR = Math.min(rf, p.blocks.CU.height / 3, C0UpPt.x / 3);
+        const cBotR = Math.min(rf, p.blocks.CL.height / 3, C0LowPt.x / 3);
 
-        clampBox = [
-            pathFromArc(offsetArcRadius(p.bouts.U1, -clampOffset)),
-            pathFromArc(offsetArcRadius(p.bouts.U2, -clampOffset)),
-            pathFromArc(flipArcAboutY(offsetArcRadius(p.bouts.U1, -clampOffset))),
-            pathFromArc(flipArcAboutY(offsetArcRadius(p.bouts.U2, -clampOffset))),
+        // C0's waist curves opposite U1/U2/L1/L2 (concave toward the centerline, not away from
+        // it), so this wall-to-arc fillet grows past C0Clamp's radius rather than nesting inside
+        // it — same call as the flank windows above, with internal tangency flipped off.
+        const cTopArc = filletLineToCircle(new Pt(C0UpPt.x, 0), new Pt(0, 1), 1, C0Clamp, cTopR, false, C0UpPt);
+        const cBotArc = filletLineToCircle(new Pt(C0LowPt.x, 0), new Pt(0, 1), 1, C0Clamp, cBotR, false, C0LowPt);
+        const cTopFace = filletRightAngleCorner(new Pt(C0UpPt.x, cTopY), new Pt(-1, -1), cTopR);
+        const cBotFace = filletRightAngleCorner(new Pt(C0LowPt.x, cBotY), new Pt(-1, 1), cBotR);
+        if (cTopArc && cTopFace && cBotArc && cBotFace) {
+            const chain: (Arc | [Pt, Pt])[] = [
+                cBotFace,
+                [new Pt(C0LowPt.x, cBotFace.y), new Pt(C0LowPt.x, cBotArc.lineTangent.y)],
+                filletArc(cBotArc, cBotR),
+                new Arc(C0Clamp.x, C0Clamp.y, C0Clamp.r, cBotArc.circleAngle, cTopArc.circleAngle),
+                filletArc(cTopArc, cTopR),
+                [new Pt(C0UpPt.x, cTopArc.lineTangent.y), new Pt(C0UpPt.x, cTopFace.y)],
+                cTopFace,
+            ];
+            clampBox.push(mirroredLoop(chain, [
+                [new Pt(cTopFace.x, cTopY), new Pt(-cTopFace.x, cTopY)],
+                [new Pt(cBotFace.x, cBotY), new Pt(-cBotFace.x, cBotY)],
+            ]));
+        }
 
-            pathFromArc(offsetArcRadius(p.bouts.L1, -clampOffset)),
-            pathFromArc(offsetArcRadius(p.bouts.L2, -clampOffset)),
-            pathFromArc(flipArcAboutY(offsetArcRadius(p.bouts.L1, -clampOffset))),
-            pathFromArc(flipArcAboutY(offsetArcRadius(p.bouts.L2, -clampOffset))),
-        ]
-        clampBox.push(pathFromLine(U1End, flipPointAboutY(U1End)));
-        clampBox.push(pathFromLine(U2End, flipPointAboutY(U2End)));
-        clampBox.push(pathFromLine(L1End, flipPointAboutY(L1End)));
-        clampBox.push(pathFromLine(L2End, flipPointAboutY(L2End)));
-
-        // clampBox.push(pathFromLine(p.blocks.CU.Pt1, flipPointAboutY(p.blocks.CU.Pt1)))
-        // clampBox.push(pathFromLine(p.blocks.CL.Pt1, flipPointAboutY(p.blocks.CL.Pt1)))
-        clampBox.push(pathFromArc(C0Clamp));
-        clampBox.push(pathFromArc(flipArcAboutY(C0Clamp)));
-
-        // TODO
-        // if (p.options.useViolNeck) {
-        //     clampBox.push(pathFromArc(V0));
-        //     clampBox.push(pathFromArc(flipArcAboutY(V0)));
-        //     clampBox.push(pathFromLine(V0End, flipPointAboutY(V0End)));
-        // }
-        // else {  
-        // }
-
-        clampBox.push(pathFromLine(C0UpPt, {... C0UpPt, y: C0UpPt.y + p.blocks.CU.height}));
-        clampBox.push(pathFromLine(C0LowPt, {... C0LowPt, y: C0LowPt.y - p.blocks.CL.height}));
-        clampBox.push(pathFromLine(flipPointAboutY(C0UpPt), {... flipPointAboutY(C0UpPt), y: C0UpPt.y + p.blocks.CU.height}));
-        clampBox.push(pathFromLine(flipPointAboutY(C0LowPt), {... flipPointAboutY(C0LowPt), y: C0LowPt.y - p.blocks.CL.height}));
-
-        clampBox.push(pathFromLine({... C0UpPt, y: C0UpPt.y + p.blocks.CU.height}, {... flipPointAboutY(C0UpPt), y: C0UpPt.y + p.blocks.CU.height}));
-        clampBox.push(pathFromLine({... C0LowPt, y: C0LowPt.y - p.blocks.CL.height}, {... flipPointAboutY(C0LowPt), y: C0LowPt.y - p.blocks.CL.height}));
-
+        // lower window: mirror of the upper — web over the bottom block, web under the corner blocks
+        const L1c = offsetArcRadius(p.bouts.L1, -clampOffset);
+        const L2c = offsetArcRadius(p.bouts.L2, -clampOffset);
+        const lTopY = Math.min(rectYMin(p.blocks.CL) - web, pointOnCircle(L2c, L2c.end).y);
+        const lBotY = Math.max(rectYMax(p.blocks.L) + web, pointOnCircle(L1c, L1c.start).y);
+        const lTop = filletLineToCircle(new Pt(0, lTopY), new Pt(1, 0), -1, L2c, rf, true, pointOnCircle(L2c, L2c.end));
+        const lBot = filletLineToCircle(new Pt(0, lBotY), new Pt(1, 0), 1, L1c, rf, true, pointOnCircle(L1c, L1c.start));
+        if (lTop && lBot && lTop.lineTangent.x > rf && lBot.lineTangent.x > rf && lTopY - lBotY >= 2 * rf) {
+            clampBox.push(mirroredLoop(
+                [filletArc(lTop, rf),
+                 new Arc(L2c.x, L2c.y, L2c.r, L2c.start, lTop.circleAngle),
+                 new Arc(L1c.x, L1c.y, L1c.r, lBot.circleAngle, L1c.end),
+                 filletArc(lBot, rf)],
+                [[new Pt(-lTop.lineTangent.x, lTopY), new Pt(lTop.lineTangent.x, lTopY)],
+                 [new Pt(-lBot.lineTangent.x, lBotY), new Pt(lBot.lineTangent.x, lBotY)]]));
+        }
     }
 
     return combinePathStrings([...clampBox, mouldPath]);
