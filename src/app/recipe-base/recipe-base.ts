@@ -134,16 +134,16 @@ export abstract class RecipeComponentBase implements AfterViewInit {
   }
 
   /**
-   * Shift/Alt/Cmd+Arrow on a number input takes a bigger/smaller step than a plain arrow press.
-   * Shift scales the live `[step]` binding up; Alt/Cmd switches to a fixed unit instead —
-   * `data-fine-step` on the input if a field opts into a finer one (see stepSize.ts), else 1.
-   * Only modified presses are intercepted — a plain arrow or a spinner click keeps using the
-   * browser's native stepping against `[step]`. A native spinner click can't expose
-   * modifier-key state to JS, so this is keyboard-only by design.
+   * Shift/Ctrl/Cmd+Arrow on a number input takes a bigger/smaller step than a plain arrow press.
+   * Shift scales the live `[step]` binding up; Ctrl (Windows/Linux) or Cmd (Mac) switches to a
+   * fixed unit instead — `data-fine-step` on the input if a field opts into a finer one (see
+   * stepSize.ts), else 1. Only modified presses are intercepted — a plain arrow or a spinner
+   * click keeps using the browser's native stepping against `[step]`. A native spinner click
+   * can't expose modifier-key state to JS, so this is keyboard-only by design.
    */
   private applyModifiedStep(e: KeyboardEvent): void {
     if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
-    if (!(e.shiftKey || e.altKey || e.metaKey)) return;
+    if (!(e.shiftKey || e.ctrlKey || e.metaKey)) return;
     const target = e.target;
     if (!(target instanceof HTMLInputElement) || target.type !== 'number') return;
 
