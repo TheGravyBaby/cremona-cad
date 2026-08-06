@@ -14,7 +14,9 @@ export const HOTKEY_TOOL_CYCLE: Record<string, string[]> = {
   KeyS: ['section'],
   KeyT: ['text'],
   KeyP: ['point'],
-  KeyF: ['freehand'],
+  // Not KeyF: that's already Fit-to-view (see draft-canvas.ts's onKeyDown) — matches the
+  // Photoshop/Illustrator/Procreate convention of B for the brush/freehand tool instead.
+  KeyB: ['freehand'],
   KeyE: ['eraser'],
   KeyO: ['offset'],
   KeyI: ['image'],
