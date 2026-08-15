@@ -10,8 +10,7 @@ A free and open source application for designing violin family instruments.
 ## About
 
 <img src="public/DrawingDemo2.png" alt="Cremona CAD" width="340" align="right" style="margin: 0 0 16px 24px;" />
-
-Rather than a static trace, or a complex list of coordinates, CremonaCad defines instruments using a simple system of **intersecting arcs**, historically informed by a drafting document found in the workshop of **Enrico Ceruti**, as well as the research of American luthiers **David Beard** and **Kevin Kelly**.
+CremonaCad draws instruments using a simple system of **intersecting arcs**, historically informed by a drafting document found in the workshop of **Enrico Ceruti**, as well as the research of American luthiers **David Beard** and **Kevin Kelly**.
 
 The outline is drawn from parameters — bout widths, corner placements, cutoff angles — which then carry through to purfling, fluting, long and cross arching, and the internal mould. A **drawing toolbox** sits alongside the recipe for sketching and tracing directly on the canvas, snapping to the geometry underneath. Finished designs export as SVG, PDF and DXF for templates and moulds, and as STL for CNC-carved plates.
 
