@@ -44,25 +44,37 @@
   display: none;
 }
 
-/* The collapse control, and the bar's divider against the canvas. Full height rather than a small
-   tab: it has to be findable and tappable with a thumb, and collapsed it's all that's left. */
+/* Keeps the bar's top-left cell empty for the toggle, which floats over it. Costs one cell rather
+   than the padding-top an overlaid button would otherwise need, which would shorten every column. */
+.tool-dock-spacer {
+  width: 49px;
+  height: 34px;
+}
+
+/* The toggle sits at the top-left of the canvas area, under the logo, and does not move when the
+   bar opens or closes — open it caps the first column, collapsed it's the only thing left. Pinned
+   to .tool-palette, whose left edge and height are the same in both states even though it has no
+   width when collapsed. */
 .tool-dock-handle {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 6;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex: 0 0 auto;
-  width: 20px;
+  width: 32px;
+  height: 32px;
   padding: 0;
-  border: none;
-  border-right: 1px solid var(--ui-border-strong);
-  background: var(--ui-bg-surface-2);
-  color: var(--ui-text-muted);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 4px;
+  background: linear-gradient(180deg, var(--ui-canvas-btn-bg-start) 0%, var(--ui-canvas-btn-bg-end) 100%);
+  color: var(--ui-text-primary);
   cursor: pointer;
 }
 
 .tool-dock-handle:hover {
-  background: var(--ui-bg-surface);
-  color: var(--ui-text-primary);
+  border-color: var(--ui-canvas-btn-border-hover);
 }
 
 /* the only thing that animates — the layout itself snaps */
@@ -175,8 +187,14 @@
     width: 67px; /* button 46px + sliver 21px */
   }
 
+  .tool-dock-spacer {
+    width: 67px;
+    height: 46px;
+  }
+
   .tool-dock-handle {
-    width: 28px;
+    width: 44px;
+    height: 44px;
   }
 }
 
