@@ -40,6 +40,29 @@ describe('ToolPaletteComponent', () => {
     expect(el('.tool-dock-body')).toBeTruthy();
   });
 
+  it('starts collapsed on a viewport too short to hold the bar', async () => {
+    const tall = window.innerHeight;
+    Object.defineProperty(window, 'innerHeight', { value: 393, configurable: true });
+    try {
+      await create();
+      expect(component.open).toBe(false);
+    } finally {
+      Object.defineProperty(window, 'innerHeight', { value: tall, configurable: true });
+    }
+  });
+
+  it('lets a stored preference win over the short-viewport default', async () => {
+    const tall = window.innerHeight;
+    Object.defineProperty(window, 'innerHeight', { value: 393, configurable: true });
+    sessionStorage.setItem(OPEN_KEY, 'true');
+    try {
+      await create();
+      expect(component.open).toBe(true);
+    } finally {
+      Object.defineProperty(window, 'innerHeight', { value: tall, configurable: true });
+    }
+  });
+
   it('honours a stored collapsed state', async () => {
     sessionStorage.setItem(OPEN_KEY, 'false');
     await create();
