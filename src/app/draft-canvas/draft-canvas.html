@@ -1,26 +1,29 @@
 <div class="canvas-shell" [class.dark-mode]="isDarkMode">
-  <div #host class="host" [class.drawing]="activeTool !== null" tabindex="0" aria-label="Draft canvas" (wheel)="onScrollWheel($event)"
-    (pointerdown)="onPointerDown($event)" (pointermove)="onPointerMove($event)" (pointerup)="onPointerUp($event)"
-    (pointerleave)="onPointerUp($event)" (keydown)="onKeyDown($event)" (dblclick)="onDoubleClick($event)">
-    @if (editingTextShapeId) {
-      <textarea #textEditArea class="text-edit-overlay"
-        [rows]="editingTextRows"
-        [style.left.px]="editingTextScreenX"
-        [style.top.px]="editingTextScreenY"
-        [style.color]="editingTextColor"
-        (input)="onTextEditInput($any($event.target).value)"
-        (keydown)="onTextEditKeyDown($event)"
-        (blur)="finishEditingText()"
-        (pointerdown)="$event.stopPropagation()"
-        (pointerup)="$event.stopPropagation()"
-        spellcheck="false"></textarea>
-    }
+  <!-- the docked tool bar and the drawing surface share a row; .ui-controls below spans both -->
+  <div class="canvas-body">
+    <app-tool-palette (selectImageRequested)="selectShapeById($event)"></app-tool-palette>
+
+    <div #host class="host" [class.drawing]="activeTool !== null" tabindex="0" aria-label="Draft canvas" (wheel)="onScrollWheel($event)"
+      (pointerdown)="onPointerDown($event)" (pointermove)="onPointerMove($event)" (pointerup)="onPointerUp($event)"
+      (pointerleave)="onPointerUp($event)" (keydown)="onKeyDown($event)" (dblclick)="onDoubleClick($event)">
+      @if (editingTextShapeId) {
+        <textarea #textEditArea class="text-edit-overlay"
+          [rows]="editingTextRows"
+          [style.left.px]="editingTextScreenX"
+          [style.top.px]="editingTextScreenY"
+          [style.color]="editingTextColor"
+          (input)="onTextEditInput($any($event.target).value)"
+          (keydown)="onTextEditKeyDown($event)"
+          (blur)="finishEditingText()"
+          (pointerdown)="$event.stopPropagation()"
+          (pointerup)="$event.stopPropagation()"
+          spellcheck="false"></textarea>
+      }
+    </div>
   </div>
 
   <input #imageFileInput type="file" accept="image/*" style="display:none"
     (change)="onImageFileSelected($event)" />
-
-  <app-tool-palette (selectImageRequested)="selectShapeById($event)"></app-tool-palette>
 
   <div class="ui-controls">
     <div class="left">

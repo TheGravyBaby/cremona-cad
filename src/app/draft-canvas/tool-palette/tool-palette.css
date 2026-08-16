@@ -1,47 +1,77 @@
-/* Floating drafting toolbox, dock-style: pinned it stays open; unpinned it's
-   fully rendered at all times but slides mostly behind the left edge, leaving
-   a sliver showing — hovering *anywhere* on that visible sliver (not just the
-   pin button) reveals the rest (see tool-palette.ts's `expanded`/`hovering`).
-   Collapsing only ever changes the translateX offset, instantly (no
-   transition), like a conventional OS dock's auto-hide. */
-.tool-palette {
-  position: absolute;
-  left: 0;
-  top: 47%;
-  transform: translateY(-50%);
-  z-index: 5;
+/* Drafting toolbox, docked down the left of the canvas: full height between the top bar and the
+   bottom bar, never over the drawing. The chevron rail collapses it to just that rail, handing the
+   width back to the canvas — instantly, with no width transition, since the canvas ResizeObserver
+   would otherwise redraw the whole SVG on every frame of it. */
+:host {
+  display: flex;
+  min-height: 0;
 }
 
+/* position: relative because every flyout popup anchors to the bar rather than to its own
+   button — see .tool-flyout-popup. */
+.tool-palette {
+  position: relative;
+  display: flex;
+  min-height: 0;
+}
+
+/* Fixed width so every column is the same, whether or not its rows carry a caret or eye sliver:
+   button 34px + sliver 15px. Plain buttons then line up on their left edges across columns. */
 .tool-row {
   display: flex;
   gap: 4px;
+  width: 49px;
 }
 
-/* The dock body: full-size and fully rendered at all times, so collapsing
-   never changes its shape or the pin button's position within it — only
-   translateX moves, leaving REVEAL px showing at the edge as a grip. */
+/* One column while there's vertical room, wrapping into more when there isn't. Column-wrap needs a
+   definite height, which `height: 100%` gives it — the chain up to .canvas-shell is definite, and
+   box-sizing keeps the 8px padding inside it. Grid (`grid-auto-flow: column` + auto-fill rows) is
+   the obvious alternative and does not work here: a grid's intrinsic width resolves before its
+   stretched height does, so auto-fill sees one row, assumes one column per tool, and sizes the bar
+   to ~780px. Flex derives the container width from the lines it actually wrapped into. */
 .tool-dock-body {
-  --reveal: 8px;
   display: flex;
-  flex-direction: column;
+  flex-flow: column wrap;
+  align-content: flex-start;
+  height: 100%;
+  box-sizing: border-box;
   gap: 4px;
   padding: 8px;
-  border: 1px solid var(--ui-border-strong);
-  border-left: none;
-  border-radius: 0 6px 6px 0;
   background: var(--ui-bg-surface-2);
-  box-shadow: var(--ui-shadow-pop);
-  transform: translateX(0);
 }
 
-.tool-dock-body.collapsed {
-  transform: translateX(calc(-100% + var(--reveal)));
+.tool-palette.collapsed .tool-dock-body {
+  display: none;
 }
 
-.tool-palette-sep {
-  height: 1px;
-  margin: 2px 4px;
-  background: var(--ui-border-elevated);
+/* The collapse control, and the bar's divider against the canvas. Full height rather than a small
+   tab: it has to be findable and tappable with a thumb, and collapsed it's all that's left. */
+.tool-dock-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 20px;
+  padding: 0;
+  border: none;
+  border-right: 1px solid var(--ui-border-strong);
+  background: var(--ui-bg-surface-2);
+  color: var(--ui-text-muted);
+  cursor: pointer;
+}
+
+.tool-dock-handle:hover {
+  background: var(--ui-bg-surface);
+  color: var(--ui-text-primary);
+}
+
+/* the only thing that animates — the layout itself snaps */
+.tool-dock-handle svg {
+  transition: transform 120ms ease;
+}
+
+.tool-palette.collapsed .tool-dock-handle svg {
+  transform: rotate(180deg);
 }
 
 .tool-btn {
@@ -70,9 +100,9 @@
   border-color: var(--ui-accent);
 }
 
-/* A flyout groups several construction methods behind one button + a caret */
+/* A flyout groups several construction methods behind one button + a caret. Deliberately not
+   positioned — its popup anchors to the whole bar instead, see .tool-flyout-popup. */
 .tool-flyout {
-  position: relative;
   display: flex;
 }
 
@@ -105,8 +135,8 @@
    of the same control rather than a bolted-on extra, and so both buttons look alike. Unlike a
    native checkbox there's no filled box behind the mark — just an eye glyph, kept as minimal as
    the caret it replaced. When on it fills with the accent color and the glyph goes white, exactly
-   like .tool-btn.active does for a selected tool or the pinned dock button, so "showing" reads the
-   same way "selected" does everywhere else in the dock. */
+   like .tool-btn.active does for a selected tool, so "showing" reads the same way "selected" does
+   everywhere else in the dock. */
 .tool-view-toggle {
   display: flex;
   align-items: center;
@@ -127,10 +157,41 @@
   color: var(--ui-text-primary);
 }
 
+/* Touch targets. 32px is fine under a mouse but well below the ~44px a thumb needs, so coarse
+   pointers get bigger buttons and the grid tracks that match them. Costs a column in phone
+   landscape, which is what the collapse rail is for. */
+@media (pointer: coarse) {
+  .tool-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .tool-flyout-caret,
+  .tool-view-toggle {
+    width: 20px;
+  }
+
+  .tool-row {
+    width: 67px; /* button 46px + sliver 21px */
+  }
+
+  .tool-dock-handle {
+    width: 28px;
+  }
+}
+
+/* Anchored to the bar, not to its own button. Once the bar wraps into columns, a popup hung off
+   its button opens over the neighbouring column, and a button low in a column opens off the bottom
+   of the screen; the bar's top-right corner is always clear and always on screen. box-sizing
+   because there's no global border-box — max-height: 100% would otherwise overflow by the padding
+   and borders. */
 .tool-flyout-popup {
   position: absolute;
   top: 0;
   left: calc(100% + 6px);
+  max-height: 100%;
+  overflow-y: auto;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -207,12 +268,7 @@
 
 /* Reuses the Layers popup's row markup (.layer-tab and friends), since an image row is the same
    thing: eye, name, lock, delete. Wider only because image names ("Long arch") run longer than
-   "Layer 1". Anchored from the bottom because its button sits low in the dock, so growing
-   downward from the top would push it off-screen. */
-.images-popup {
-  top: auto;
-  bottom: 0;
-}
+   "Layer 1". */
 
 .images-empty {
   font-size: 11px;

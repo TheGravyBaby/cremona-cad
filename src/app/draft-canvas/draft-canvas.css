@@ -73,10 +73,27 @@
   min-height: 0;
 }
 
+/* The drawing surface and the docked tool bar, side by side. The bottom bar stays a sibling of
+   this row rather than joining it, so a wide settings strip still gets the whole column. */
+.canvas-body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+}
+
+/* Sized by however many columns the bar wrapped into. Capped so a viewport too short to wrap into
+   can't let it crowd out the drawing. */
+app-tool-palette {
+  flex: 0 0 auto;
+  max-width: 50%;
+}
+
 .host {
   position: relative; /* positioning context for .text-edit-overlay */
   flex: 1 1 auto;
   min-height: 0;
+  min-width: 0; /* a row flex item now — without this the SVG refuses to shrink */
   touch-action: none; /* let pointer events handle all touch gestures (pinch, pan) */
   -webkit-tap-highlight-color: transparent;
   /* border: #444 1px solid; */
