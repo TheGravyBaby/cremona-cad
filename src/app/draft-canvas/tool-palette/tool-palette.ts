@@ -46,13 +46,21 @@ export class ToolPaletteComponent implements OnInit, OnDestroy {
    * any more, since a phone has no hover to peek with. */
   public open = true;
 
+  /** Below this the bar wraps to three columns and takes about half the canvas, so it starts
+   * collapsed instead. Only a phone held in landscape is this short — a phone in portrait or any
+   * tablet clears it comfortably. */
+  private static readonly SHORT_VIEWPORT_PX = 500;
+
   constructor() {
+    let stored: string | null = null;
     try {
-      const stored = sessionStorage.getItem(ToolPaletteComponent.OPEN_KEY);
-      this.open = stored === null ? true : stored === 'true';
+      stored = sessionStorage.getItem(ToolPaletteComponent.OPEN_KEY);
     } catch {
       // ignore blocked sessionStorage
     }
+    this.open = stored === null
+      ? window.innerHeight >= ToolPaletteComponent.SHORT_VIEWPORT_PX
+      : stored === 'true';
   }
 
   toggleOpen(): void {
