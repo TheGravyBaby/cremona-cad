@@ -8,7 +8,7 @@ import { Layer } from '../tools/layer';
 import { HOTKEY_LETTER_BY_TOOL } from '../tools/tool-hotkeys';
 
 /**
- * The floating drafting toolbox: tool selection and the Layers flyout. Per-shape-type settings
+ * The docked drafting toolbox: tool selection and the Layers flyout. Per-shape-type settings
  * live in the bottom bar instead — see settings-bar.ts. Everything here is either pure display
  * state (which popup is open, which flyout variant faces out) or a thin wrapper around
  * ToolboxStore (layer CRUD) — draft-canvas.ts keeps ownership of the actual tool
@@ -22,7 +22,7 @@ import { HOTKEY_LETTER_BY_TOOL } from '../tools/tool-hotkeys';
   styleUrls: ['./tool-palette.css'],
 })
 export class ToolPaletteComponent implements OnInit, OnDestroy {
-  private static readonly PINNED_KEY = 'draft-canvas-tool-palette-pinned';
+  private static readonly OPEN_KEY = 'draft-canvas-tool-palette-open';
 
   private toolbox = inject(ToolboxStore);
   private elRef = inject(ElementRef<HTMLElement>);
@@ -42,40 +42,32 @@ export class ToolPaletteComponent implements OnInit, OnDestroy {
   public editingLayerId: string | null = null;
   public editingImageId: string | null = null;
 
-  /** Pinned = always expanded, like a docked panel. Unpinned = a slim rail that
-   * expands only while the pointer is over it (see onDockMouseEnter/Leave) — no
-   * pin/unpin animation, it just shows or hides. */
-  public pinned = true;
-  public hovering = false;
+  /** Whether the bar is pushed open. Collapsed it's just the chevron rail — there's no hover-peek
+   * any more, since a phone has no hover to peek with. */
+  public open = true;
 
   constructor() {
     try {
-      const stored = sessionStorage.getItem(ToolPaletteComponent.PINNED_KEY);
-      this.pinned = stored === null ? true : stored === 'true';
+      const stored = sessionStorage.getItem(ToolPaletteComponent.OPEN_KEY);
+      this.open = stored === null ? true : stored === 'true';
     } catch {
       // ignore blocked sessionStorage
     }
   }
 
-  public get expanded(): boolean {
-    return this.pinned || this.hovering;
-  }
-
-  togglePinned(): void {
-    this.pinned = !this.pinned;
+  toggleOpen(): void {
+    this.open = !this.open;
+    // a popup left open behind a collapsed bar would reappear on the next expand
+    if (!this.open) {
+      this.openFlyout = null;
+      this.layersOpen = false;
+      this.imagesOpen = false;
+    }
     try {
-      sessionStorage.setItem(ToolPaletteComponent.PINNED_KEY, String(this.pinned));
+      sessionStorage.setItem(ToolPaletteComponent.OPEN_KEY, String(this.open));
     } catch {
       // ignore storage errors
     }
-  }
-
-  onDockMouseEnter(): void {
-    this.hovering = true;
-  }
-
-  onDockMouseLeave(): void {
-    this.hovering = false;
   }
 
   /** Reacts to the active tool changing for reasons outside this component (e.g. a hotkey) —
