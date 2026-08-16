@@ -82,11 +82,11 @@
   min-width: 0;
 }
 
-/* Sized by however many columns the bar wrapped into. Capped so a viewport too short to wrap into
-   can't let it crowd out the drawing. */
+/* Sized by however many columns the bar wrapped into, with no cap: a max-width here shrinks the
+   bar's box without shrinking the wrapped content inside it, so the buttons spill out past their
+   own background. The collapse toggle is what keeps the bar off the drawing, not a width limit. */
 app-tool-palette {
   flex: 0 0 auto;
-  max-width: 50%;
 }
 
 .host {

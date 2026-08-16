@@ -1,5 +1,8 @@
 <div class="tool-palette" [class.collapsed]="!open">
   <div class="tool-dock-body">
+    <!-- holds the top-left cell open for the toggle, which floats over it -->
+    <div class="tool-dock-spacer" aria-hidden="true"></div>
+
     <div class="tool-row">
       <button type="button" class="tool-btn" [class.active]="activeTool === null" (click)="selectTool(null)"
         title="Select (Esc / S)">
