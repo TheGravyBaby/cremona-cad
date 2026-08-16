@@ -37,6 +37,7 @@
   box-sizing: border-box;
   gap: 4px;
   padding: 8px;
+  border-right: 1px solid var(--ui-border-strong);
   background: var(--ui-bg-surface-2);
 }
 
@@ -44,36 +45,39 @@
   display: none;
 }
 
-/* Keeps the bar's top-left cell empty for the toggle, which floats over it. Costs one cell rather
-   than the padding-top an overlaid button would otherwise need, which would shorten every column. */
-.tool-dock-spacer {
-  width: 49px;
-  height: 34px;
-}
-
-/* The toggle sits at the top-left of the canvas area, under the logo, and does not move when the
-   bar opens or closes — open it caps the first column, collapsed it's the only thing left. Pinned
-   to .tool-palette, whose left edge and height are the same in both states even though it has no
-   width when collapsed. */
+/* A tab on the bar's outer edge, riding at left: 100% of a .tool-palette that is exactly as wide as
+   the bar — so it travels with the bar as columns come and go, and lands flush against the screen
+   edge when the bar collapses to nothing. Styled as part of the bar rather than as a tool button:
+   the bar's surface, and square where it meets the bar so the two read as one piece. A panel on
+   the right mirrors this by anchoring at right: 100% and rounding the other end. */
 .tool-dock-handle {
   position: absolute;
-  top: 8px;
-  left: 8px;
+  top: 0;
+  left: 100%;
   z-index: 6;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 20px;
+  height: 48px;
   padding: 0;
   border: 1px solid var(--ui-border-strong);
-  border-radius: 4px;
-  background: linear-gradient(180deg, var(--ui-canvas-btn-bg-start) 0%, var(--ui-canvas-btn-bg-end) 100%);
-  color: var(--ui-text-primary);
+  border-left: none;
+  border-radius: 0 4px 4px 0;
+  background: var(--ui-bg-surface-2);
+  color: var(--ui-text-muted);
   cursor: pointer;
 }
 
+/* sits over the bar's right border so the tab and the bar read as one piece rather than two boxes
+   with a seam. Only while open — collapsed there is no border to cover, and -1px would lift the
+   tab off the screen edge it is supposed to be flush with. */
+.tool-palette:not(.collapsed) .tool-dock-handle {
+  margin-left: -1px;
+}
+
 .tool-dock-handle:hover {
+  color: var(--ui-text-primary);
   border-color: var(--ui-canvas-btn-border-hover);
 }
 
@@ -187,14 +191,9 @@
     width: 67px; /* button 46px + sliver 21px */
   }
 
-  .tool-dock-spacer {
-    width: 67px;
-    height: 46px;
-  }
-
   .tool-dock-handle {
-    width: 44px;
-    height: 44px;
+    width: 28px;
+    height: 60px;
   }
 }
 
