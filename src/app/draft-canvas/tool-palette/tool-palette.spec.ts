@@ -5,10 +5,10 @@ import { ToolRegistryService } from '../tools/tool-registry';
 
 const OPEN_KEY = 'draft-canvas-tool-palette-open';
 
-/** jsdom has no layout engine, so nothing here can assert the column wrapping itself — that's
- * checked in a real browser. These cover the state the layout hangs off, and above all that a
- * collapsed bar can still be reopened: the floating dock it replaced could only be reopened by
- * hovering, which a touch device can't do, so collapsing it on a phone was a dead end. */
+/** jsdom has no layout engine, so nothing here can assert the column break itself — that's checked
+ * in a real browser. These cover the state the layout hangs off, and above all that a collapsed bar
+ * can still be reopened: the floating dock it replaced could only be reopened by hovering, which a
+ * touch device can't do, so collapsing it on a phone was a dead end. */
 describe('ToolPaletteComponent', () => {
   let component: ToolPaletteComponent;
   let fixture: ComponentFixture<ToolPaletteComponent>;
@@ -112,6 +112,17 @@ describe('ToolPaletteComponent', () => {
     expect(component.layersOpen).toBe(false);
     expect(component.imagesOpen).toBe(false);
     expect(component.openFlyout).toBeNull();
+  });
+
+  // layoutColumns() measures the bar and writes the column break onto the grid. jsdom reports every
+  // element as zero-height, which is the same shape as a collapsed bar: there is nothing to measure,
+  // so it must write nothing and leave the stylesheet's single-column fallback in charge rather than
+  // divide by a zero row height and break the bar into a column per tool.
+  it('leaves the grid alone when there is no height to measure', async () => {
+    await create();
+    const body = el('.tool-dock-body')!;
+    expect(body.style.gridTemplateRows).toBe('');
+    expect(body.style.gridAutoFlow).toBe('');
   });
 
   // Guards the two deletions the docked layout depends on: the separator cost a whole extra column
