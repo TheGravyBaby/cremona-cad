@@ -44,3 +44,76 @@
   border-left: 1px solid var(--ui-border-soft);
   background: var(--ui-bg-sidebar);
 }
+
+/* Holds whichever recipe is open plus its collapse tab. The grid columns and --sidebar-width are
+   deliberately left alone: .top-spacer keeps its 360px, which is the slot the recipe's fixed file
+   strip sits in, and .main spans both columns anyway so the canvas width comes from this flex row
+   rather than from the grid. */
+.sidebar-dock {
+  position: relative;
+  display: flex;
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
+/* Clipped to nothing rather than display: none, because the file strip is a position: fixed
+   descendant of the recipe and would go with it — fixed elements escape ancestor overflow, so this
+   hides the panel and leaves the strip up. Snapped, never transitioned: the canvas ResizeObserver
+   redraws the entire SVG on every frame of an animated width. */
+.sidebar-dock.collapsed .sidebar {
+  flex-basis: 0;
+  min-width: 0;
+  overflow: hidden;
+  /* the border is 1px of border box, which would leave the tab a pixel shy of the screen edge */
+  border-left: none;
+}
+
+/* The mirror of the tool bar's .tool-dock-handle, anchored on the other edge: it rides at
+   right: 100% of a dock exactly as wide as the panel, so it travels with the panel and lands flush
+   against the screen edge when the panel collapses to nothing. Kept as its own copy rather than
+   shared with the tool bar — the anchors are opposite and they live in different components. */
+.sidebar-dock-handle {
+  position: absolute;
+  top: 0;
+  right: 100%;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 48px;
+  padding: 0;
+  border: 1px solid var(--ui-border-strong);
+  border-right: none;
+  border-radius: 4px 0 0 4px;
+  background: var(--ui-bg-surface-2);
+  color: var(--ui-text-muted);
+  cursor: pointer;
+}
+
+/* covers .panel's left border so tab and panel read as one piece; only while open, since collapsed
+   there is no border to cover and -1px would lift the tab off the screen edge */
+.sidebar-dock:not(.collapsed) .sidebar-dock-handle {
+  margin-right: -1px;
+}
+
+.sidebar-dock-handle:hover {
+  color: var(--ui-text-primary);
+  border-color: var(--ui-canvas-btn-border-hover);
+}
+
+/* the only thing that animates — the layout itself snaps */
+.sidebar-dock-handle svg {
+  transition: transform 120ms ease;
+}
+
+.sidebar-dock.collapsed .sidebar-dock-handle svg {
+  transform: rotate(180deg);
+}
+
+@media (pointer: coarse) {
+  .sidebar-dock-handle {
+    width: 28px;
+    height: 60px;
+  }
+}
