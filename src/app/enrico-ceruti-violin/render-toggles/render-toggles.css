@@ -23,13 +23,6 @@
   background: var(--ui-bg-surface-2);
 }
 
-/* Panel furniture, so it goes when the panel does. Needs the ancestor class rather than app.css's
-   clip because this bar is position: fixed and escapes it. Keys off .app rather than the document
-   element the .day-mode context uses — this is layout state, not a theme. */
-:host-context(.sidebar-collapsed) .view-toggle-bar {
-  display: none;
-}
-
 .vt-group {
   display: flex;
 }
