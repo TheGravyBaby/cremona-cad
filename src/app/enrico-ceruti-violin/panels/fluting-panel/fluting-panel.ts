@@ -15,6 +15,7 @@ import {
   cornerGougeInfo, gougeCBoutInfo, gougeCenterlineInfo, gougeSectionInfo,
 } from '../../ceruti-helpers';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
+import { NumberStepperDirective } from '../../../shared/number-stepper';
 
 /**
  * Step one: carve the channel. It comes first because that is the order at the
@@ -23,7 +24,7 @@ import { CerutiPanelBase, RenderLayer } from '../panel-base';
  */
 @Component({
   selector: 'app-ceruti-fluting-panel',
-  imports: [FormsModule, DecimalPipe],
+  imports: [FormsModule, DecimalPipe, NumberStepperDirective],
   templateUrl: './fluting-panel.html',
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
