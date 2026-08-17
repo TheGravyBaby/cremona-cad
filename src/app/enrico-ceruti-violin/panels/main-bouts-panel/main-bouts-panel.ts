@@ -17,6 +17,7 @@ import { CerutiColors, CerutiViewFlags, EnricoCerutiParams } from '../../ceruti-
 import { renderBounds, renderBoutBouts } from '../../renders/guides.render';
 import { HighlightedArc, PATH_STROKE_WIDTH } from '../../renders/render-constants';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
+import { NumberStepperDirective } from '../../../shared/number-stepper';
 
 export interface MainBoutsViewFlags {
   showModuleCircles: boolean;
@@ -28,7 +29,7 @@ export interface MainBoutsViewFlags {
 
 @Component({
   selector: 'app-ceruti-main-bouts-panel',
-  imports: [FormsModule],
+  imports: [FormsModule, NumberStepperDirective],
   templateUrl: './main-bouts-panel.html',
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })

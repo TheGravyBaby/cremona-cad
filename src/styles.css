@@ -104,3 +104,58 @@ select,
 textarea {
   font-family: inherit;
 }
+
+/* Touch steppers for sidebar number fields — see shared/number-stepper.ts, which builds these
+   nodes and only on coarse pointers. Global rather than in sidebar.css because the directive
+   creates them at runtime, so they carry no component attribute for scoped styles to match.
+   Sized and inset to sit exactly where the desktop spin buttons do, inside .basic-input's 2px
+   border, so the field's own width and the row it sits in are unchanged. */
+.num-stepper {
+  position: relative;
+  display: flex;
+  width: 100%;
+}
+
+.num-stepper > input {
+  width: 100%;
+  padding-right: 36px;
+  /* tall enough to split into two tappable halves. Stated here rather than only on .basic-input so
+     a field styled some other way still gets usable buttons. */
+  height: 48px;
+  box-sizing: border-box;
+}
+
+.num-stepper-btns {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  bottom: 2px;
+  display: flex;
+  flex-direction: column;
+  width: 32px;
+  border-radius: 0 2px 2px 0;
+  overflow: hidden;
+}
+
+.num-stepper-btn {
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding: 0;
+  border: none;
+  border-left: 1px solid var(--ui-border-strong);
+  background: var(--ui-bg-surface);
+  color: var(--ui-text-primary);
+  cursor: pointer;
+}
+
+.num-stepper-btn + .num-stepper-btn {
+  border-top: 1px solid var(--ui-border-strong);
+}
+
+.num-stepper-btn:active {
+  background: var(--ui-accent);
+  color: #fff;
+}

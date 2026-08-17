@@ -21,6 +21,7 @@ import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { renderCircle } from '../helpers/renderFuncs';
 import { RecipeToolbarComponent } from '../recipe-toolbar/recipe-toolbar';
 import { clearWorkingState, RECIPE_KEY } from '../helpers/workingStorage';
+import { NumberStepperDirective } from '../shared/number-stepper';
 
 // ─── Params type ────────────────────────────────────────────────────────────
 // Keep all recipe-specific values here so they survive save/load automatically.
@@ -37,7 +38,7 @@ const DEFAULTS: HelloParams = {
 @Component({
   selector: 'app-hello-recipe',
   standalone: true,
-  imports: [FormsModule, RecipeToolbarComponent],
+  imports: [FormsModule, RecipeToolbarComponent, NumberStepperDirective],
   templateUrl: './hello-recipe.html',
   styleUrls: ['../sidebar.css', './hello-recipe.css'],
 })

@@ -474,6 +474,19 @@ select {
   box-shadow: 0 0 0 3px var(--ui-focus-ring);
 }
 
+/* Room for the touch steppers (shared/number-stepper.ts): the field grows tall enough to split
+   into two tappable halves, and wide enough that the value still reads with 36px given over to
+   them. Three cells at this width still fit a 360px panel. */
+@media (pointer: coarse) {
+  .basic-input {
+    height: 48px;
+  }
+
+  .field-cell {
+    width: 96px;
+  }
+}
+
 .basic-input[type="number"]::-webkit-inner-spin-button,
 .basic-input[type="number"]::-webkit-outer-spin-button {
   opacity: .8;

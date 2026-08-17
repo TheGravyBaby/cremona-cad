@@ -13,6 +13,7 @@ import { HighlightedArc, HighlightedPoint, PATH_STROKE_WIDTH } from '../../rende
 import { renderMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { renderCorners } from '../corners-panel/corners-panel';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
+import { NumberStepperDirective } from '../../../shared/number-stepper';
 
 export interface CenterBoutViewFlags {
   showModuleCircles: boolean;
@@ -25,7 +26,7 @@ export interface CenterBoutViewFlags {
 
 @Component({
   selector: 'app-ceruti-center-bout-panel',
-  imports: [FormsModule],
+  imports: [FormsModule, NumberStepperDirective],
   templateUrl: './center-bout-panel.html',
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
