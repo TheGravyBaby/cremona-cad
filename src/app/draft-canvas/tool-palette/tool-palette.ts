@@ -1,4 +1,4 @@
-import { Component, ElementRef, EventEmitter, OnDestroy, OnInit, Output, inject } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, EventEmitter, OnDestroy, OnInit, Output, ViewChild, inject } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { DraftTool } from '../tools/draft-tool';
 import { ToolRegistryService, ToolSlot } from '../tools/tool-registry';
@@ -21,7 +21,7 @@ import { HOTKEY_LETTER_BY_TOOL } from '../tools/tool-hotkeys';
   templateUrl: './tool-palette.html',
   styleUrls: ['./tool-palette.css'],
 })
-export class ToolPaletteComponent implements OnInit, OnDestroy {
+export class ToolPaletteComponent implements OnInit, AfterViewInit, OnDestroy {
   private static readonly OPEN_KEY = 'draft-canvas-tool-palette-open';
 
   private toolbox = inject(ToolboxStore);
@@ -46,10 +46,15 @@ export class ToolPaletteComponent implements OnInit, OnDestroy {
    * any more, since a phone has no hover to peek with. */
   public open = true;
 
-  /** Below this the bar wraps to three columns and takes about half the canvas, so it starts
+  /** Below this the bar breaks into three columns and takes about half the canvas, so it starts
    * collapsed instead. Only a phone held in landscape is this short — a phone in portrait or any
    * tablet clears it comfortably. */
   private static readonly SHORT_VIEWPORT_PX = 500;
+
+  @ViewChild('dockBody') private dockBody?: ElementRef<HTMLElement>;
+  private resizeObs?: ResizeObserver;
+  /** Rows per column, as last written onto the grid — see layoutColumns(). */
+  private rowsPerColumn = 0;
 
   constructor() {
     let stored: string | null = null;
@@ -85,8 +90,44 @@ export class ToolPaletteComponent implements OnInit, OnDestroy {
     this.toolRegistryUnsub = this.toolRegistry.onChange(() => { this.openFlyout = null; });
   }
 
+  /** Runs before the first paint, so the bar is never briefly laid out at the CSS fallback. */
+  ngAfterViewInit(): void {
+    this.layoutColumns();
+    if (typeof ResizeObserver === 'undefined') return;
+    // the bar, not the body: the body's width is what layoutColumns() ends up changing, and
+    // observing that would feed it back in. Height is what the column count actually depends on.
+    this.resizeObs = new ResizeObserver(() => this.layoutColumns());
+    this.resizeObs.observe(this.elRef.nativeElement);
+  }
+
   ngOnDestroy(): void {
     this.toolRegistryUnsub?.();
+    this.resizeObs?.disconnect();
+  }
+
+  /** How many rows fit in one column at the bar's current height, written onto the grid. See the
+   * .tool-dock-body comment for why the layout engine can't work this out for itself. Padding and
+   * gap are read back rather than restated here, so the stylesheet stays the one place they're set.
+   * Silent when the bar is collapsed or under jsdom — nothing has a height to measure, and the
+   * count from the last time it did is still the right one to keep. */
+  private layoutColumns(): void {
+    const body = this.dockBody?.nativeElement;
+    if (!body) return;
+    const rows = body.querySelectorAll<HTMLElement>('.tool-row');
+    const rowHeight = rows[0]?.offsetHeight ?? 0;
+    if (!rowHeight) return;
+
+    const style = getComputedStyle(body);
+    const gap = parseFloat(style.rowGap) || 0;
+    const inner = body.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+    // n rows stand n-1 gaps tall, so the last row needs no gap after it to fit
+    const fits = Math.floor((inner + gap) / (rowHeight + gap));
+    const perColumn = Math.min(rows.length, Math.max(1, fits));
+    if (perColumn === this.rowsPerColumn) return;
+
+    this.rowsPerColumn = perColumn;
+    body.style.gridAutoFlow = 'column';
+    body.style.gridTemplateRows = `repeat(${perColumn}, auto)`;
   }
 
   /** Pass null for the Select button — back to no active drafting tool. */

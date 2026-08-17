@@ -23,17 +23,28 @@
   width: 49px;
 }
 
-/* One column while there's vertical room, wrapping into more when there isn't. Column-wrap needs a
-   definite height, which `height: 100%` gives it — the chain up to .canvas-shell is definite, and
-   box-sizing keeps the 8px padding inside it. Grid (`grid-auto-flow: column` + auto-fill rows) is
-   the obvious alternative and does not work here: a grid's intrinsic width resolves before its
-   stretched height does, so auto-fill sees one row, assumes one column per tool, and sizes the bar
-   to ~780px. Flex derives the container width from the lines it actually wrapped into. */
+/* One column while there's vertical room, breaking into more when there isn't — but the break is
+   driven from tool-palette.ts, not by the layout engine, because neither CSS mechanism sizes this
+   box correctly on its own:
+
+   - `flex-flow: column wrap` lays the buttons out right everywhere, but WebKit measures the
+     container's intrinsic width as a single column no matter how many it wrapped into. The extra
+     columns then hang outside the bar's own background and border, floating over the canvas, with
+     the chevron tab (left: 100%) landing on top of them.
+   - Grid with `grid-auto-flow: column` + `repeat(auto-fill, ...)` rows is circular: the grid's
+     intrinsic width resolves before its stretched height does, so auto-fill sees one row, assumes
+     one column per tool, and sizes the bar to ~780px.
+
+   Given an explicit row count, though, the column count follows from the item count alone, so the
+   width is a plain sum with nothing to guess. That count is the one thing that genuinely needs the
+   measured height, and it is the one thing the component supplies: it sets grid-auto-flow and
+   grid-template-rows on this element. The declarations here are the un-measured fallback — a
+   single column, which is also what any viewport tall enough resolves to. */
 .tool-dock-body {
-  display: flex;
-  flex-flow: column wrap;
-  align-content: flex-start;
-  height: 100%;
+  display: grid;
+  grid-auto-flow: row;
+  align-content: start;
+  justify-content: start;
   box-sizing: border-box;
   gap: 4px;
   padding: 8px;

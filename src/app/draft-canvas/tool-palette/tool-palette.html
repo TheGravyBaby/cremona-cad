@@ -1,5 +1,5 @@
 <div class="tool-palette" [class.collapsed]="!open">
-  <div class="tool-dock-body">
+  <div #dockBody class="tool-dock-body">
 
     <div class="tool-row">
       <button type="button" class="tool-btn" [class.active]="activeTool === null" (click)="selectTool(null)"
