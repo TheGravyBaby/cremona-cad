@@ -56,16 +56,24 @@
   min-height: 0;
 }
 
-/* Clipped to nothing rather than display: none, because the file strip is a position: fixed
-   descendant of the recipe and would go with it — fixed elements escape ancestor overflow, so this
-   hides the panel and leaves the strip up. Snapped, never transitioned: the canvas ResizeObserver
-   redraws the entire SVG on every frame of an animated width. */
+/* Collapsed, the panel gives up its grid column as well as its place in the row. Keeping the column
+   reserved a 360px band across the top right for the recipe's fixed file strip; that band is dead
+   space on exactly the screens the collapse exists to free up, and the strip only survived there by
+   position: fixed escaping an ancestor's overflow, which WebKit does not do reliably. So the strip
+   goes with the panel, and save/load are one tap on the tab away. */
+.app.sidebar-collapsed {
+  --sidebar-width: 0px;
+}
+
+/* zero-width, but its border would still draw a 1px sliver down the right edge */
+.app.sidebar-collapsed .top-spacer {
+  display: none;
+}
+
+/* Snapped, never transitioned: the canvas ResizeObserver redraws the entire SVG on every frame of
+   an animated width. */
 .sidebar-dock.collapsed .sidebar {
-  flex-basis: 0;
-  min-width: 0;
-  overflow: hidden;
-  /* the border is 1px of border box, which would leave the tab a pixel shy of the screen edge */
-  border-left: none;
+  display: none;
 }
 
 /* The mirror of the tool bar's .tool-dock-handle, anchored on the other edge: it rides at
