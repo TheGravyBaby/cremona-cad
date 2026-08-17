@@ -15,7 +15,7 @@ import { MessageCenterComponent } from './shared/message-center.component';
   standalone: true,
   imports: [TopBarComponent, DraftCanvasComponent, CerutiViolin, HelloRecipe, MessageCenterComponent],
   template: `
-    <div class="app">
+    <div class="app" [class.sidebar-collapsed]="!sidebarOpen">
      <app-top-bar class="top"
       [selectedRecipe]="selectedRecipe"
       (recipeChange)="selectRecipe($event)">
@@ -31,22 +31,32 @@ import { MessageCenterComponent } from './shared/message-center.component';
           >
         </app-draft-canvas>
 
-        @if (selectedRecipe == "enrico-ceruti-violin") {
-         <app-ceruti-violin class="sidebar"
-          (draftChange)="onDraftChange($event)"
-          (requestFit)="requestFit()"
-          [nightMode]="nightMode">
-        </app-ceruti-violin>
-        }
+        <div class="sidebar-dock" [class.collapsed]="!sidebarOpen">
+          @if (selectedRecipe == "enrico-ceruti-violin") {
+           <app-ceruti-violin class="sidebar"
+            (draftChange)="onDraftChange($event)"
+            (requestFit)="requestFit()"
+            [nightMode]="nightMode">
+          </app-ceruti-violin>
+          }
 
-        @if (selectedRecipe == "hello-recipe") {
-         <app-hello-recipe class="sidebar"
-          (draftChange)="onDraftChange($event)"
-          (requestFit)="requestFit()">
-        </app-hello-recipe>
-        }
+          @if (selectedRecipe == "hello-recipe") {
+           <app-hello-recipe class="sidebar"
+            (draftChange)="onDraftChange($event)"
+            (requestFit)="requestFit()">
+          </app-hello-recipe>
+          }
 
-
+          <!-- Mirrors the tool bar's tab on the other edge: attached to the panel while it's open,
+               flush with the screen once it's shut. -->
+          <button type="button" class="sidebar-dock-handle" (click)="toggleSidebar()"
+            [attr.aria-expanded]="sidebarOpen" [title]="sidebarOpen ? 'Hide recipe' : 'Show recipe'">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 18l6-6-6-6" />
+            </svg>
+          </button>
+        </div>
       </div>
       <app-message-center></app-message-center>
     </div>
@@ -69,10 +79,31 @@ export class App {
 
   nightMode = true;
 
+  private static readonly SIDEBAR_OPEN_KEY = 'app-sidebar-open';
+
+  /** 360px of recipe panel is most of a phone held in landscape, so below this the panel starts
+   * out of the way. Any tablet or desktop clears it. Width rather than height, since what
+   * constrains a side panel is the width it takes — the tool bar thresholds on height instead. */
+  private static readonly NARROW_VIEWPORT_PX = 900;
+
+  /** Whether the recipe panel is pushed open. Collapsed it's just the chevron tab; the file strip
+   * stays up regardless, so saving and loading never need the panel expanded first. */
+  sidebarOpen = true;
+
   constructor() {
     const savedTheme = localStorage.getItem('themeMode');
     this.nightMode = savedTheme !== 'day';
     this.applyThemeClass();
+
+    let storedOpen: string | null = null;
+    try {
+      storedOpen = sessionStorage.getItem(App.SIDEBAR_OPEN_KEY);
+    } catch {
+      // ignore blocked sessionStorage
+    }
+    this.sidebarOpen = storedOpen === null
+      ? window.innerWidth >= App.NARROW_VIEWPORT_PX
+      : storedOpen === 'true';
 
     // wire global emitter to MessageService
     setGlobalEmitter((m) => this.messageService.emit(m));
@@ -81,6 +112,15 @@ export class App {
     // buttons themselves — off a real host, nothing is patched and no buffer is
     // kept.
     if (isLocalHost()) installDebugCapture();
+  }
+
+  toggleSidebar(): void {
+    this.sidebarOpen = !this.sidebarOpen;
+    try {
+      sessionStorage.setItem(App.SIDEBAR_OPEN_KEY, String(this.sidebarOpen));
+    } catch {
+      // ignore storage errors
+    }
   }
 
   onNightModeChange(enabled: boolean) {
