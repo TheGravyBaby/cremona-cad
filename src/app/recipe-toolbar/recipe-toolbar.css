@@ -1,10 +1,15 @@
+/* The sidebar's header strip: recipe name, new/save/load. A flex item of the sidebar column rather
+   than a fixed bar pinned to the top right — pinned, it was a position: fixed descendant of the
+   panel's overflow: auto, which iOS Safari clips to the scroller instead of letting it escape, so
+   the strip never drew on a phone at all. */
+:host {
+  display: block;
+  flex: 0 0 auto;
+}
+
 .toolbar {
-  position: fixed;
-  top: 0;
-  right: 0;
-  z-index: 10;
   box-sizing: border-box;
-  width: var(--sidebar-width);
+  width: 100%;
   height: 44px;
 
   display: flex;

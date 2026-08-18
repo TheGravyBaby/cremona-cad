@@ -20,7 +20,6 @@ import { MessageCenterComponent } from './shared/message-center.component';
       [selectedRecipe]="selectedRecipe"
       (recipeChange)="selectRecipe($event)">
     </app-top-bar>
-    <div class="top-spacer" aria-hidden="true"></div>
 
       <div class="main">
         <app-draft-canvas class="canvas"

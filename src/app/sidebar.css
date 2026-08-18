@@ -1,5 +1,8 @@
+/* The middle of the sidebar column and the only part of it that scrolls — the file strip above and
+   the render toggles below are siblings, not children, so they stay put as the fields move. */
 .panel {
-  height: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: auto;
   padding: 8px;
   padding-top: 0;
@@ -715,4 +718,12 @@ select {
   display: block;
   width: 100%;
   height: auto;
+}
+
+/* hello-recipe's equivalent of .panel: the scrolling middle of that sidebar, below its file strip.
+   Carries none of .panel's own padding or background — the demo recipe never had any. */
+.sidebar-inner {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
 }

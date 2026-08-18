@@ -11,15 +11,17 @@
     - Inputs bound with [(ngModel)] calling onChange() on every change
 -->
 
-<div class="sidebar-inner">
+<!-- ── Recipe toolbar (New / Save / Load) ───────────────────────────── -->
+<!-- Outside .sidebar-inner: it's the sidebar column's header, and inside a scrolling box it would
+     scroll away with the fields. See ceruti-violin.html. -->
+<app-recipe-toolbar
+  [recipeName]="d.recipeName"
+  (newFile)="onNewClick()"
+  (saveFile)="saveToDisk()"
+  (loadFile)="loadFile($event)">
+</app-recipe-toolbar>
 
-  <!-- ── Recipe toolbar (New / Save / Load) ───────────────────────────── -->
-  <app-recipe-toolbar
-    [recipeName]="d.recipeName"
-    (newFile)="onNewClick()"
-    (saveFile)="saveToDisk()"
-    (loadFile)="loadFile($event)">
-  </app-recipe-toolbar>
+<div class="sidebar-inner">
 
   <!-- ── Panel navigation strip ─────────────────────────────────────── -->
   <nav class="panel-nav">
