@@ -1,5 +1,7 @@
 import { Pt } from '../../models/types';
-import { DraftShape, ImageShape, imageCenter, imageCorners, imageEdgeMidpoints } from './toolbox-shape';
+import {
+  DraftShape, ImageShape, dimensionGeometry, dimensionOffsetAt, imageCenter, imageCorners, imageEdgeMidpoints,
+} from './toolbox-shape';
 import { angleFromCenter, dist, normalizeDegrees, normalizeRadians, pointOnCircle, rotatePointAbout } from '../../helpers/draftMath';
 
 /**
@@ -11,9 +13,15 @@ import { angleFromCenter, dist, normalizeDegrees, normalizeRadians, pointOnCircl
 export function moveGrabberPosition(shape: DraftShape): Pt | null {
   switch (shape.type) {
     case 'line':
-    case 'dimension':
     case 'section':
       return { x: (shape.start.x + shape.end.x) / 2, y: (shape.start.y + shape.end.y) / 2 };
+    case 'dimension':
+      // Null for a reason of its own: the midpoint of a dimension is where the offset handle has
+      // to go (it is the only point on the dimension line that isn't already an endpoint), and two
+      // handles cannot share a spot — at zero offset they would land on each other exactly. So the
+      // dimension line itself is the move target, the fallback Text/Point/Freehand/Image use, and
+      // the middle of it belongs to the offset.
+      return null;
     case 'circle':
       return { x: shape.center.x, y: shape.center.y };
     case 'rect':
@@ -45,6 +53,9 @@ function arcMidpoint(shape: Extract<DraftShape, { type: 'arc' }>): Pt {
 }
 
 // 'start'/'end' — Line/Dimension/Section's endpoints.
+// 'offset' — Dimension's dimension line, at its midpoint; only the drag point's distance
+//   perpendicular to the measurement matters, so the line slides off the measured points without
+//   changing what is being measured.
 // 'p1'/'p2' — Rect's corners (either can go anywhere; drawShape already takes the
 //   min/max of the two, so there's no "wrong" corner to drag).
 // 'radius' — Circle's edge, or Arc's midpoint; only the drag point's distance from center
@@ -55,7 +66,7 @@ function arcMidpoint(shape: Extract<DraftShape, { type: 'arc' }>): Pt {
 //   Named for the Y-up world, matching imageCorners/imageEdgeMidpoints.
 // 'rotate' — Image's rotation handle; only the drag point's angle about the box center matters.
 export type EndpointKey =
-  | 'start' | 'end' | 'p1' | 'p2' | 'radius' | 'startAngle' | 'endAngle'
+  | 'start' | 'end' | 'p1' | 'p2' | 'radius' | 'startAngle' | 'endAngle' | 'offset'
   | 'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'e' | 'w' | 'rotate';
 
 /** How a handle should be drawn (see shape-renderer.ts's drawEndpointGrabber). Defaults to
@@ -82,9 +93,13 @@ const ROTATE_GRABBER_OFFSET_PX = 26;
 export function endpointGrabbers(shape: DraftShape, pxPerMm: number): EndpointGrabber[] | null {
   switch (shape.type) {
     case 'line':
-    case 'dimension':
     case 'section':
       return [{ key: 'start', pos: shape.start }, { key: 'end', pos: shape.end }];
+    case 'dimension': {
+      const ends: EndpointGrabber[] = [{ key: 'start', pos: shape.start }, { key: 'end', pos: shape.end }];
+      const geo = dimensionGeometry(shape.start, shape.end, shape.offset);
+      return geo ? [...ends, { key: 'offset', pos: geo.mid }] : ends;
+    }
     case 'rect':
       return [{ key: 'p1', pos: shape.p1 }, { key: 'p2', pos: shape.p2 }];
     case 'circle':
@@ -122,9 +137,12 @@ export function endpointGrabbers(shape: DraftShape, pxPerMm: number): EndpointGr
 export function withEndpoint(shape: DraftShape, key: EndpointKey, pos: Pt): DraftShape {
   switch (shape.type) {
     case 'line':
-    case 'dimension':
     case 'section':
       if (key === 'start' || key === 'end') return { ...shape, [key]: pos };
+      return shape;
+    case 'dimension':
+      if (key === 'start' || key === 'end') return { ...shape, [key]: pos };
+      if (key === 'offset') return { ...shape, offset: dimensionOffsetAt(shape.start, shape.end, pos) };
       return shape;
     case 'rect':
       if (key === 'p1' || key === 'p2') return { ...shape, [key]: pos };
