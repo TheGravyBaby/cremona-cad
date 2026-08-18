@@ -8,10 +8,8 @@
 }
 
 /* position: relative because every flyout popup anchors to the bar rather than to its own
-   button — see .tool-flyout-popup. --tab-width is the collapse tab's, set here so the popups can
-   clear it instead of opening underneath it. */
+   button — see .tool-flyout-popup. */
 .tool-palette {
-  --tab-width: 20px;
   position: relative;
   display: flex;
   min-height: 0;
@@ -78,7 +76,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--tab-width);
+  width: 20px;
   height: 36px;
   padding: 0;
   border: 1px solid var(--ui-border-strong);
@@ -212,11 +210,8 @@
     width: 67px; /* button 46px + sliver 21px */
   }
 
-  .tool-palette {
-    --tab-width: 28px;
-  }
-
   .tool-dock-handle {
+    width: 28px;
     height: 44px;
   }
 
@@ -228,14 +223,17 @@
 
 /* Horizontally anchored to the bar rather than to its own button: once the bar wraps into columns,
    a popup hung off its button opens over the neighbouring column, while the far side of the bar is
-   always clear. Clearing the tab as well, so a popup level with it doesn't bury it. Vertically it
-   is placed by positionPopup(), which writes top/bottom/max-height inline; what's here is the
-   fallback for before that runs. box-sizing because there's no global border-box — max-height would
-   otherwise overflow by the padding and borders. z-index above the tab, which is also absolute. */
+   always clear. Butted right against that edge and squared off there — same surface as the bar and
+   no left border of its own, so it grows out of the bar's side rather than floating beside it, the
+   way .tool-flyout-main meets its caret. It crosses the tab on the way out, which is what the
+   z-index below is for. Vertically it is placed by positionPopup(), which writes
+   top/bottom/max-height inline; what's here is the fallback for before that runs. box-sizing
+   because there's no global border-box — max-height would otherwise overflow by the padding and
+   borders. */
 .tool-flyout-popup {
   position: absolute;
   top: 0;
-  left: calc(100% + var(--tab-width) + 6px);
+  left: 100%;
   max-height: 100%;
   overflow-y: auto;
   box-sizing: border-box;
@@ -245,7 +243,8 @@
   padding: 6px;
   min-width: 150px;
   border: 1px solid var(--ui-border-strong);
-  border-radius: 6px;
+  border-left: none;
+  border-radius: 0 6px 6px 0;
   background: var(--ui-bg-surface-2);
   box-shadow: var(--ui-shadow-pop);
   z-index: 7;
