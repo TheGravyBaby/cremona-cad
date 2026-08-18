@@ -49,6 +49,13 @@
         (change)="setLineLength($any($event.target).valueAsNumber)" (keydown.enter)="$any($event.target).blur()"
         title="Sets the distance from X1/Y1, keeping the current angle" />
     </span>
+    @if (showDimensionOffset) {
+      <span class="field"><span class="f-lbl">Offset</span>
+        <input type="number" step="any" [value]="dimensionOffset"
+          (change)="setDimensionOffset($any($event.target).valueAsNumber)" (keydown.enter)="$any($event.target).blur()"
+          title="How far the dimension line sits off the points it measures — negative puts it on the other side" />
+      </span>
+    }
   }
 
   @if (showRectPanel) {

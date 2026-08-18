@@ -68,8 +68,9 @@ export function previewRect(gRoot: RootGroup, _gUI: RootGroup, _pxPerMm: number,
 
 /** Same fixed pixel threshold draft-canvas.ts uses to tell a stationary click apart from a real
  * drag for its own Select-mode drags (endpoint/move/marquee) — kept independent here rather than
- * imported since draft-canvas's copy is a private component constant. */
-const CLICK_MOVE_THRESHOLD_PX = 3;
+ * imported since draft-canvas's copy is a private component constant. Exported for Distance, which
+ * runs the same press-drag-release-or-click-click gesture before its own third click. */
+export const CLICK_MOVE_THRESHOLD_PX = 3;
 
 /**
  * Shared interaction for any tool defined by exactly two points (a straight
@@ -78,7 +79,9 @@ const CLICK_MOVE_THRESHOLD_PX = 3;
  * same spot leaves the first point planted and waits for a second click to
  * finish the shape, which is friendlier on a trackpad. Only how the final
  * shape is built, and how the drag/hover preview looks, differs per use —
- * see line-tool.ts, circle-tool.ts, dimension-tool.ts.
+ * see line-tool.ts, circle-tool.ts, rect-tool.ts. Distance runs the same gesture but has a third
+ * click after it, so it drives its own state machine and borrows only the pieces (see
+ * dimension-tool.ts).
  */
 export class TwoPointTool implements DraftTool {
   private startPt: Pt | null = null;
