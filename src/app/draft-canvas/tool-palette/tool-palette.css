@@ -97,9 +97,13 @@
   border-color: var(--ui-canvas-btn-border-hover);
 }
 
+/* Same rendered height as the recipe tab's f-hole, so the two tabs read as one family. The box is
+   as wide as the tab itself; flex-shrink would squash it, and the drawn glyph is only about half
+   that wide, so nothing clips. */
 .dock-handle-icon {
-  width: 14px;
-  height: 14px;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
 }
 
 .tool-btn {
@@ -209,8 +213,8 @@
   }
 
   .dock-handle-icon {
-    width: 18px;
-    height: 18px;
+    width: 26px;
+    height: 26px;
   }
 }
 
