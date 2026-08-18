@@ -2,6 +2,7 @@ import { DOCUMENT } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { setGlobalEmitter } from './shared/message-emitter';
 import { installDebugCapture, isLocalHost } from './helpers/debugDump';
+import { isSmallViewport } from './helpers/viewport';
 import { MessageService } from './shared/message.service';
 import { TopBarComponent } from './top-bar/top-bar';
 import { DraftCanvasComponent } from './draft-canvas/draft-canvas';
@@ -18,16 +19,15 @@ import { MessageCenterComponent } from './shared/message-center.component';
     <div class="app" [class.sidebar-collapsed]="!sidebarOpen">
      <app-top-bar class="top"
       [selectedRecipe]="selectedRecipe"
-      (recipeChange)="selectRecipe($event)">
+      (recipeChange)="selectRecipe($event)"
+      [nightMode]="nightMode"
+      (nightModeChange)="onNightModeChange($event)">
     </app-top-bar>
 
       <div class="main">
         <app-draft-canvas class="canvas"
           [draftFunctions]="draftArgs()"
-          [fitRequest]="fitToken()"
-          [nightMode]="nightMode"
-          (nightModeChange)="onNightModeChange($event)"
-          >
+          [fitRequest]="fitToken()">
         </app-draft-canvas>
 
         <div class="sidebar-dock" [class.collapsed]="!sidebarOpen">
@@ -96,11 +96,6 @@ export class App {
 
   private static readonly SIDEBAR_OPEN_KEY = 'app-sidebar-open';
 
-  /** 360px of recipe panel is most of a phone held in landscape, so below this the panel starts
-   * out of the way. Any tablet or desktop clears it. Width rather than height, since what
-   * constrains a side panel is the width it takes — the tool bar thresholds on height instead. */
-  private static readonly NARROW_VIEWPORT_PX = 900;
-
   /** Whether the recipe panel is pushed open. Collapsed it's just the chevron tab; the file strip
    * stays up regardless, so saving and loading never need the panel expanded first. */
   sidebarOpen = true;
@@ -116,9 +111,9 @@ export class App {
     } catch {
       // ignore blocked sessionStorage
     }
-    this.sidebarOpen = storedOpen === null
-      ? window.innerWidth >= App.NARROW_VIEWPORT_PX
-      : storedOpen === 'true';
+    // Same test the tool bar uses (helpers/viewport.ts), so a small screen opens with neither bar
+    // over the drawing rather than one of them.
+    this.sidebarOpen = storedOpen === null ? !isSmallViewport() : storedOpen === 'true';
 
     // wire global emitter to MessageService
     setGlobalEmitter((m) => this.messageService.emit(m));
