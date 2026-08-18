@@ -18,21 +18,6 @@
 }
 
 /* same 28px footprint as Axis, so the right-hand clusters line up */
-.btn.theme-toggle-btn {
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  color: var(--ui-text-muted);
-}
-
-.btn.theme-toggle-btn:hover {
-  color: var(--ui-text-primary);
-}
-
 .btn.active {
   background: var(--ui-accent);
   color: #fff;

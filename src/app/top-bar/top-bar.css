@@ -101,6 +101,16 @@
   padding-right: 24px;
 }
 
+/* Muted like About: both are app chrome rather than document actions, so neither competes with
+   undo and redo beside them. */
+.theme-toggle-btn {
+  color: var(--ui-text-muted);
+}
+
+.theme-toggle-btn:hover {
+  color: var(--ui-text-primary);
+}
+
 /* ── About button ─────────────────────────────────────────── */
 .about-btn {
   width: 28px;

@@ -2,6 +2,7 @@ import { AfterViewInit, Component, ElementRef, EventEmitter, OnDestroy, OnInit, 
 import { NgTemplateOutlet } from '@angular/common';
 import { DraftTool } from '../tools/draft-tool';
 import { ToolRegistryService, ToolSlot } from '../tools/tool-registry';
+import { isSmallViewport } from '../../helpers/viewport';
 import { ToolboxStore } from '../tools/toolbox-store';
 import { ImageShape } from '../tools/toolbox-shape';
 import { Layer } from '../tools/layer';
@@ -46,11 +47,6 @@ export class ToolPaletteComponent implements OnInit, AfterViewInit, OnDestroy {
    * any more, since a phone has no hover to peek with. */
   public open = true;
 
-  /** Below this the bar breaks into three columns and takes about half the canvas, so it starts
-   * collapsed instead. Only a phone held in landscape is this short — a phone in portrait or any
-   * tablet clears it comfortably. */
-  private static readonly SHORT_VIEWPORT_PX = 500;
-
   @ViewChild('dockBody') private dockBody?: ElementRef<HTMLElement>;
   private resizeObs?: ResizeObserver;
   /** Rows per column, as last written onto the grid — see layoutColumns(). */
@@ -63,9 +59,9 @@ export class ToolPaletteComponent implements OnInit, AfterViewInit, OnDestroy {
     } catch {
       // ignore blocked sessionStorage
     }
-    this.open = stored === null
-      ? window.innerHeight >= ToolPaletteComponent.SHORT_VIEWPORT_PX
-      : stored === 'true';
+    // Same test the recipe panel uses (helpers/viewport.ts), so a small screen opens with neither
+    // bar over the drawing rather than one of them.
+    this.open = stored === null ? !isSmallViewport() : stored === 'true';
   }
 
   toggleOpen(): void {
