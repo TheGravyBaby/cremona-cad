@@ -4,7 +4,7 @@
        blank edge — the mirror of the recipe sidebar, where the f-hole tab is the left end of the
        file strip. Labels the tools below rather than the page, so it names the group instead of
        being a heading. -->
-  <div id="tool-dock-title" class="tool-dock-header">Toolbar</div>
+  <div id="tool-dock-title" class="tool-dock-header">Tools</div>
 
   <div #dockBody class="tool-dock-body" role="group" aria-labelledby="tool-dock-title">
 
@@ -85,20 +85,20 @@
         }
       </div>
       } @else {
-      <!-- Every other slot renders the same way; only the caret and its popup are conditional, so
-           a lone tool and a flyout's face are one piece of markup. tool-flyout-main squares off the
-           right corners to meet the caret, so it's applied only when there is one. -->
+      <!-- Every other slot renders the same way; only the mark and its popup are conditional, so
+           a lone tool and a flyout's face are one piece of markup. The button is identical either
+           way — what says "there are variants behind this" is the corner triangle, which sits
+           inside the button's own square rather than in a sliver beside it. -->
       <div class="tool-flyout">
-        <button type="button" class="tool-btn" [class.tool-flyout-main]="hasVariants(slot)"
+        <button type="button" class="tool-btn"
           [class.active]="activeTool === face" (click)="activateSlot(slot)"
           [title]="face.label + hotkeyHint(face.id)">
           <ng-container [ngTemplateOutlet]="toolIcon" [ngTemplateOutletContext]="{ id: face.id }" />
         </button>
         @if (hasVariants(slot)) {
         <button type="button" class="tool-flyout-caret" (click)="toggleFlyout(slot, $event)" title="More options">
-          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M6 9l6 6 6-6" />
+          <svg width="7" height="7" viewBox="0 0 8 8" aria-hidden="true">
+            <path d="M8 0v8H0z" fill="currentColor" />
           </svg>
         </button>
         @if (openFlyout === slot) {
