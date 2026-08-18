@@ -1,6 +1,8 @@
-<div class="panel">
-    <div class="panel-nav-wrap">
-        <app-recipe-toolbar
+<!-- The sidebar is a column of three: this strip, the scrolling panel, and the render toggles.
+     The strip and the toggles sit outside .panel deliberately — inside it they scrolled away with
+     the fields, and pinning them back with position: fixed left them clipped to the panel's
+     overflow on iOS Safari, which is why neither drew on a phone. -->
+<app-recipe-toolbar
             [recipeName]="d.recipeName"
             [templateOptions]="templateOptions"
             [fileName]="d.fileName"
@@ -10,7 +12,10 @@
             (loadFile)="loadFile($event)"
             (templateSelect)="loadTemplate($event)"
             (debugDump)="copyRecipeToClipboard()">
-        </app-recipe-toolbar>
+</app-recipe-toolbar>
+
+<div class="panel">
+    <div class="panel-nav-wrap">
         <section class="panel-nav" aria-label="Sidebar section navigation">
             <label class="ui-group-title">Select Recipe Step</label>
             <div class="panel-nav-controls">
@@ -190,9 +195,10 @@
         </app-ceruti-export-panel>
         }
     </div>
+</div>
 
-    @if (renderToggleRows; as rt) {
-    <app-ceruti-render-toggles
+@if (renderToggleRows; as rt) {
+<app-ceruti-render-toggles
         [flags]="viewFlags"
         [showArcsRow]="rt.arcs"
         [showCirclesRow]="rt.circles"
@@ -203,6 +209,5 @@
         [showBlocksRow]="rt.blocks"
         [showInnerPathRow]="rt.innerPath"
         (changed)="onRenderTogglesChanged()">
-    </app-ceruti-render-toggles>
-    }
-</div>
+</app-ceruti-render-toggles>
+}

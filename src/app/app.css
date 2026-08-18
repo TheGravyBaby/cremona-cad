@@ -1,32 +1,26 @@
+/* Two stacked rows: the top bar across the full width, then everything else. This was a two-column
+   grid, so that the recipe's file strip had a top-row cell of its own to sit in — but the strip
+   reached that cell by being position: fixed inside the scrolling panel, which iOS Safari clips to
+   the scroller and never draws. The strip is a plain flex item in the sidebar now, so the cell it
+   needed is gone and with it the reason for the grid. */
 .app {
   --sidebar-width: 360px;
 
   height: 100vh;
-  display: grid;
-  grid-template-columns: 1fr var(--sidebar-width);
-  grid-template-rows: auto 1fr;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   background: var(--ui-bg-app);
 }
 
 .top {
-  grid-column: 1;
-  grid-row: 1;
+  flex: 0 0 auto;
   min-width: 0;
 }
 
-.top-spacer {
-  grid-column: 2;
-  grid-row: 1;
-  background: var(--ui-bg-sidebar);
-  border-left: 1px solid var(--ui-border-soft);
-  border-bottom: 1px solid var(--ui-topbar-border);
-}
-
 .main {
-  grid-column: 1 / 3;
-  grid-row: 2;
   display: flex;
+  flex: 1 1 auto;
   min-height: 0;
   /* allows children to scroll properly */
 }
@@ -39,16 +33,19 @@
   border: 1px solid #b8b8b8; */
 }
 
+/* Whichever recipe is open. A column of three: the file strip, the scrolling panel, and the render
+   toggles — all in normal flow, so none of them depends on a fixed element escaping the panel's
+   overflow. min-height keeps the panel in the middle as the only part that scrolls. */
 .sidebar {
+  display: flex;
+  flex-direction: column;
   flex: 0 0 var(--sidebar-width);
+  min-height: 0;
   border-left: 1px solid var(--ui-border-soft);
   background: var(--ui-bg-sidebar);
 }
 
-/* Holds whichever recipe is open plus its collapse tab. The grid columns and --sidebar-width are
-   deliberately left alone: .top-spacer keeps its 360px, which is the slot the recipe's fixed file
-   strip sits in, and .main spans both columns anyway so the canvas width comes from this flex row
-   rather than from the grid. */
+/* Holds whichever recipe is open plus its collapse tab. */
 .sidebar-dock {
   position: relative;
   display: flex;
@@ -56,22 +53,9 @@
   min-height: 0;
 }
 
-/* Collapsed, the panel gives up its grid column as well as its place in the row. Keeping the column
-   reserved a 360px band across the top right for the recipe's fixed file strip; that band is dead
-   space on exactly the screens the collapse exists to free up, and the strip only survived there by
-   position: fixed escaping an ancestor's overflow, which WebKit does not do reliably. So the strip
-   goes with the panel, and save/load are one tap on the tab away. */
-.app.sidebar-collapsed {
-  --sidebar-width: 0px;
-}
-
-/* zero-width, but its border would still draw a 1px sliver down the right edge */
-.app.sidebar-collapsed .top-spacer {
-  display: none;
-}
-
-/* Snapped, never transitioned: the canvas ResizeObserver redraws the entire SVG on every frame of
-   an animated width. */
+/* Collapsed the panel goes entirely, taking the file strip and the render toggles with it, so
+   save/load are one tap on the tab away. Snapped, never transitioned: the canvas ResizeObserver
+   redraws the entire SVG on every frame of an animated width. */
 .sidebar-dock.collapsed .sidebar {
   display: none;
 }
