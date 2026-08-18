@@ -66,7 +66,10 @@
    shared with the tool bar — the anchors are opposite and they live in different components.
 
    Open top edge and square top corner for the same reason as the tool bar's tab: it starts at y=0
-   of the canvas row, so its top edge is the top bar's bottom edge. */
+   of the canvas row, so its top edge is the top bar's bottom edge.
+
+   Height and surface are shared with the file strip it sits beside (recipe-toolbar.css), so the two
+   read as one bar rather than a tab overhanging a strip. Both tabs use this height. */
 .sidebar-dock-handle {
   position: absolute;
   top: 0;
@@ -76,7 +79,7 @@
   align-items: center;
   justify-content: center;
   width: 20px;
-  height: 48px;
+  height: 44px;
   padding: 0;
   border: 1px solid var(--ui-border-strong);
   border-right: none;
@@ -110,7 +113,7 @@
 @media (pointer: coarse) {
   .sidebar-dock-handle {
     width: 28px;
-    height: 60px;
+    height: 52px;
   }
 
   .dock-handle-icon {
