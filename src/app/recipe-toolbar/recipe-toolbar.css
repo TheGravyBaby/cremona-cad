@@ -1,19 +1,34 @@
+/* The sidebar's header strip: recipe name, new/save/load. A flex item of the sidebar column rather
+   than a fixed bar pinned to the top right — pinned, it was a position: fixed descendant of the
+   panel's overflow: auto, which iOS Safari clips to the scroller instead of letting it escape, so
+   the strip never drew on a phone at all. */
+:host {
+  display: block;
+  flex: 0 0 auto;
+}
+
+/* Surface-2 like every other piece of chrome — the tool dock, the render toggles, both tabs.
+   Height is shared with .sidebar-dock-handle in app.css, which is the left end of this strip: any
+   difference shows as the tab hanging down over the panel nav below. */
 .toolbar {
-  position: fixed;
-  top: 0;
-  right: 0;
-  z-index: 10;
   box-sizing: border-box;
-  width: var(--sidebar-width);
-  height: 44px;
+  width: 100%;
+  height: 36px;
 
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
   padding-right: 12px;
-  /* border-left: 1px solid var(--ui-topbar-border); */
-  background: linear-gradient(180deg, var(--ui-topbar-grad-1), var(--ui-topbar-grad-2));
+  border-bottom: 1px solid var(--ui-border-strong);
+  background: var(--ui-bg-surface-2);
+}
+
+/* 44px under a thumb: the tab is the same height and that is the floor for a tap target. */
+@media (pointer: coarse) {
+  .toolbar {
+    height: 44px;
+  }
 }
 
 .toolbar-btn {

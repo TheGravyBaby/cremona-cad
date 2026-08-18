@@ -42,6 +42,7 @@ import {
 } from '../../ceruti-helpers';
 import { CrossArchingRotationController } from './cross-arching-rotation-controller';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
+import { NumberStepperDirective } from '../../../shared/number-stepper';
 
 /** Range-thumb width, in the px the browser actually draws it — see `stationLandmarks`. */
 const TICK_THUMB_PX = 14;
@@ -119,7 +120,7 @@ const KNOT_MIN_FRAC = 0.02;
  */
 @Component({
   selector: 'app-ceruti-cross-arching-panel',
-  imports: [FormsModule],
+  imports: [FormsModule, NumberStepperDirective],
   templateUrl: './cross-arching-panel.html',
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })

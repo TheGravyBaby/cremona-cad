@@ -1,7 +1,8 @@
 import * as d3 from 'd3';
 import { Pt } from '../../models/types';
 import {
-  DraftShape, DEFAULT_SHAPE_COLOR, DEFAULT_IMAGE_OPACITY, DEFAULT_FREEHAND_WIDTH, ImageShape, imageCenter, imageCorners,
+  DraftShape, DimensionShape, DEFAULT_SHAPE_COLOR, DEFAULT_IMAGE_OPACITY, DEFAULT_FREEHAND_WIDTH, ImageShape,
+  dimensionGeometry, imageCenter, imageCorners,
 } from './toolbox-shape';
 import { arcPathData, pointOnCircle } from '../../helpers/draftMath';
 import { GrabberKind } from './shape-grabbers';
@@ -57,7 +58,7 @@ export function drawShape(gRoot: RootGroup, gUI: RootGroup, shape: DraftShape, p
       break;
     }
     case 'dimension':
-      drawDimension(gRoot, gUI, shape.start, shape.end, color, pxPerMm);
+      drawDimension(gRoot, gUI, shape, color, pxPerMm);
       break;
     case 'rect': {
       const rect = gRoot.append('rect')
@@ -345,42 +346,92 @@ function drawArcCenterGuides(
     .attr('vector-effect', 'non-scaling-stroke');
 }
 
-function drawDimension(gRoot: RootGroup, gUI: RootGroup, start: Pt, end: Pt, color: string, pxPerMm: number): void {
-  const dx = end.x - start.x;
-  const dy = end.y - start.y;
-  const length = Math.hypot(dx, dy);
+/** Half-length of the ticks on the measured points and of the slashes on the dimension line, and
+ * how far an extension line runs past the dimension line — screen px, so the marks stay the same
+ * size at any zoom, like every other stroke here. */
+const DIM_TICK_HALF_PX = 4;
+const DIM_EXT_OVERSHOOT_PX = 5;
+/** How far the number floats off the dimension line, on the side away from the measurement. */
+const DIM_TEXT_GAP_PX = 8;
 
-  gRoot.append('line')
-    .attr('x1', start.x).attr('y1', start.y)
-    .attr('x2', end.x).attr('y2', end.y)
-    .attr('stroke', color)
-    .attr('stroke-width', 1)
-    .attr('vector-effect', 'non-scaling-stroke');
+/**
+ * A measured distance: ticks on the two points being measured, a dimension line carrying the
+ * number, and — once that line has been pushed off the measurement — extension lines joining the
+ * two. Offsetting is what lets several dimensions of the same feature stack clear of the drawing
+ * instead of lying across it.
+ *
+ * The terminators on the dimension line change with the offset, and have to. Flat on the
+ * measurement they are the perpendicular ticks this tool has always drawn; offset, those ticks
+ * would run along the extension lines and disappear into them, so the ends become the drafting
+ * slash at 45°, which no other line here is parallel to.
+ *
+ * Exported so dimension-tool.ts can draw its own in-progress preview through this exact function
+ * rather than a lookalike — with three clicks to get through, a preview that disagrees with the
+ * result is a preview that lies twice.
+ */
+export function drawDimension(
+  gRoot: RootGroup, gUI: RootGroup, shape: Pick<DimensionShape, 'start' | 'end' | 'offset'>,
+  color: string, pxPerMm: number, preview = false,
+): void {
+  const { start, end } = shape;
+  const offset = shape.offset ?? 0;
 
-  if (length < 1e-6) return;
+  const stroke = <E extends d3.BaseType>(sel: d3.Selection<E, unknown, null, undefined>) => {
+    sel.attr('stroke', color).attr('stroke-width', 1).attr('vector-effect', 'non-scaling-stroke');
+    if (preview) sel.attr('stroke-dasharray', DASH_PATTERN).style('pointer-events', 'none');
+    return sel;
+  };
+  const segment = (a: Pt, b: Pt) => stroke(gRoot.append('line')
+    .attr('x1', a.x).attr('y1', a.y).attr('x2', b.x).attr('y2', b.y));
 
-  const nx = -dy / length;
-  const ny = dx / length;
-  const tick = 4 / pxPerMm;
+  const geo = dimensionGeometry(start, end, offset);
+  if (!geo) {
+    // Nothing measured yet, and no direction to offset along — draw the degenerate segment so the
+    // shape still has a body to select and the first click still shows something.
+    segment(start, end);
+    return;
+  }
+  const { dir, normal, p1, p2, mid, length } = geo;
 
-  const drawTick = (p: Pt) => gRoot.append('line')
-    .attr('x1', p.x - nx * tick).attr('y1', p.y - ny * tick)
-    .attr('x2', p.x + nx * tick).attr('y2', p.y + ny * tick)
-    .attr('stroke', color).attr('stroke-width', 1)
-    .attr('vector-effect', 'non-scaling-stroke');
-  drawTick(start);
-  drawTick(end);
+  segment(p1, p2);
 
-  const midX = (start.x + end.x) / 2 + nx * (8 / pxPerMm);
-  const midY = (start.y + end.y) / 2 + ny * (8 / pxPerMm);
-  gUI.append('text')
-    .attr('x', midX).attr('y', -midY)
+  const tick = DIM_TICK_HALF_PX / pxPerMm;
+  const mark = (p: Pt, d: Pt) => segment(
+    { x: p.x - d.x * tick, y: p.y - d.y * tick },
+    { x: p.x + d.x * tick, y: p.y + d.y * tick },
+  );
+  mark(start, normal);
+  mark(end, normal);
+
+  // Which way is "away from the measurement" — for the extension lines' overshoot and for the
+  // number, so both clear the drawing on whichever side the dimension line was placed.
+  const side = offset < 0 ? -1 : 1;
+
+  if (offset !== 0) {
+    const over = (DIM_EXT_OVERSHOOT_PX / pxPerMm) * side;
+    // data-no-snap: an extension line is bookkeeping about where the number sits, not geometry
+    // anyone should be able to click onto. The ticks above stay snappable — they sit on the
+    // points actually being measured.
+    const extension = (from: Pt, to: Pt) => segment(from, { x: to.x + normal.x * over, y: to.y + normal.y * over })
+      .attr('data-no-snap', '');
+    extension(start, p1);
+    extension(end, p2);
+
+    const slash = { x: (dir.x + normal.x) / Math.SQRT2, y: (dir.y + normal.y) / Math.SQRT2 };
+    mark(p1, slash);
+    mark(p2, slash);
+  }
+
+  const textOff = (DIM_TEXT_GAP_PX / pxPerMm) * side;
+  const text = gUI.append('text')
+    .attr('x', mid.x + normal.x * textOff).attr('y', -(mid.y + normal.y * textOff))
     .attr('text-anchor', 'middle')
     .attr('dominant-baseline', 'central')
     .attr('fill', color)
     .attr('font-size', 12 / pxPerMm)
     .style('user-select', 'none')
     .text(`${length.toFixed(1)} mm`);
+  if (preview) text.style('pointer-events', 'none');
 }
 
 const SELECTION_HALO_COLOR = '#f59e0b';
@@ -397,11 +448,20 @@ export function drawSelectionHalo(gRoot: RootGroup, gUI: RootGroup, shape: Draft
 
   switch (shape.type) {
     case 'line':
-    case 'dimension':
       halo(gRoot.append('line')
         .attr('x1', shape.start.x).attr('y1', shape.start.y)
         .attr('x2', shape.end.x).attr('y2', shape.end.y));
       break;
+    case 'dimension': {
+      // Behind the dimension line where it was actually placed, not behind the measurement — the
+      // offset line is the part you clicked and the part you drag.
+      const geo = dimensionGeometry(shape.start, shape.end, shape.offset);
+      const a = geo?.p1 ?? shape.start;
+      const b = geo?.p2 ?? shape.end;
+      halo(gRoot.append('line')
+        .attr('x1', a.x).attr('y1', a.y).attr('x2', b.x).attr('y2', b.y));
+      break;
+    }
     case 'section': {
       const dx = shape.end.x - shape.start.x;
       const dy = shape.end.y - shape.start.y;

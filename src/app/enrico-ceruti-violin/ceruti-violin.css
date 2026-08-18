@@ -1,9 +1,3 @@
-/* Clears the fixed view-toggle bar (render-toggles.css's .view-toggle-bar, 44px tall) pinned
-   to the bottom of the sidebar, only added when that bar is actually showing for the open panel. */
-.panel-content.has-view-toggle-bar {
-  padding-bottom: 44px;
-}
-
 /* Spline control-point list (long-arching-panel): a table of many rows once
    asymmetric points are in play, so it trades the standard field spacing for
    a much tighter one to keep the list scannable without excess scrolling. */

@@ -44,10 +44,23 @@ export type CircleShape = ShapeBase & {
   dashed?: boolean;
 };
 
+// A measured distance. `start`/`end` are the two points being measured and are the only thing the
+// number reads from; the dimension line that carries that number is free to sit somewhere else.
 export type DimensionShape = ShapeBase & {
   type: 'dimension';
   start: Pt;
   end: Pt;
+  /**
+   * How far off the measured segment the dimension line and its text are drawn, in mm, signed
+   * along the segment's left normal (see dimensionGeometry). This is what lets several
+   * measurements of the same feature stack clear of the drawing and of each other instead of
+   * lying across it.
+   *
+   * Undefined means zero, which is exactly what a dimension drawn before the offset existed looks
+   * like — so old shapes need no migration, and the Distance tool still omits the field entirely
+   * when the third click lands back on the measurement.
+   */
+  offset?: number;
 };
 
 export type RectShape = ShapeBase & {
@@ -205,6 +218,39 @@ export function imageEdgeMidpoints(shape: ImageShape): Record<'n' | 's' | 'e' | 
     e: rotatePointAbout({ x: shape.x + shape.width, y: cy }, center, deg),
     w: rotatePointAbout({ x: shape.x, y: cy }, center, deg),
   };
+}
+
+/**
+ * Where a dimension actually draws, for a given measured pair and offset: the segment's unit
+ * direction and left normal, and the dimension line's two ends and midpoint pushed out along that
+ * normal. Null for a zero-length measurement, which has no direction to offset along.
+ *
+ * One definition because the renderer, the handles and hit-testing all have to agree on which side
+ * of the measurement a positive offset is, and they each derive it from a different starting point.
+ * Takes loose points rather than a shape so the Distance tool can call it mid-gesture, before there
+ * is a shape to pass.
+ */
+export function dimensionGeometry(start: Pt, end: Pt, offset = 0): {
+  dir: Pt; normal: Pt; p1: Pt; p2: Pt; mid: Pt; length: number;
+} | null {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const length = Math.hypot(dx, dy);
+  if (length < 1e-6) return null;
+
+  const dir = { x: dx / length, y: dy / length };
+  const normal = { x: -dir.y, y: dir.x };
+  const p1 = { x: start.x + normal.x * offset, y: start.y + normal.y * offset };
+  const p2 = { x: end.x + normal.x * offset, y: end.y + normal.y * offset };
+  return { dir, normal, p1, p2, mid: { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 }, length };
+}
+
+/** The offset that would put a dimension line under `pt` — the component of pt perpendicular to
+ * the measurement, so sliding the pointer along the measurement doesn't move the line. */
+export function dimensionOffsetAt(start: Pt, end: Pt, pt: Pt): number {
+  const geo = dimensionGeometry(start, end);
+  if (!geo) return 0;
+  return (pt.x - start.x) * geo.normal.x + (pt.y - start.y) * geo.normal.y;
 }
 
 let shapeIdSeq = 0;

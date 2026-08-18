@@ -12,6 +12,7 @@ import { renderBounds, renderBoutBouts, renderCornerGuides } from '../../renders
 import { renderMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { HighlightedArc, HighlightedPoint, PATH_STROKE_WIDTH } from '../../renders/render-constants';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
+import { NumberStepperDirective } from '../../../shared/number-stepper';
 
 export interface CornersViewFlags {
   showModuleCircles: boolean;
@@ -23,7 +24,7 @@ export interface CornersViewFlags {
 
 @Component({
   selector: 'app-ceruti-corners-panel',
-  imports: [FormsModule],
+  imports: [FormsModule, NumberStepperDirective],
   templateUrl: './corners-panel.html',
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })

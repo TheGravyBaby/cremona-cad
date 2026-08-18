@@ -1,19 +1,18 @@
-/* Fixed strip pinned to the bottom of the recipe sidebar, matching draft-canvas's own
+/* Strip at the bottom of the recipe sidebar, matching draft-canvas's own
    bottom bar (.ui-controls, min-height 42px) so the two read as one coherent system.
    Icon buttons mirror draft-canvas's tool-palette .tool-btn styling; the "All Arcs"/
    "All Circles" sub-toggles reuse its split-button sliver (.tool-view-toggle) shape to
    read as a modifier attached to the button on their left, rather than a peer control. */
 :host {
   display: block;
+  flex: 0 0 auto;
 }
 
+/* The foot of the sidebar column, in normal flow — see recipe-toolbar.css for why neither this nor
+   the file strip can be a position: fixed child of the scrolling panel. */
 .view-toggle-bar {
-  position: fixed;
-  bottom: 0;
-  right: 0;
-  z-index: 4;
   box-sizing: border-box;
-  width: var(--sidebar-width);
+  width: 100%;
   height: 43px;
   display: flex;
   align-items: center;

@@ -21,6 +21,7 @@ import { CrossArchingPanel } from './panels/cross-arching-panel/cross-arching-pa
 import { ExportPanel } from './panels/export-panel/export-panel';
 import { RecipeToolbarComponent } from '../recipe-toolbar/recipe-toolbar';
 import { RenderToggles } from './render-toggles/render-toggles';
+import { NumberStepperDirective } from '../shared/number-stepper';
 
 /** Which buttons the shared view-toggle bar shows for a panel. */
 interface RenderToggleRows {
@@ -39,7 +40,7 @@ function toggleRows(on: Partial<RenderToggleRows>): RenderToggleRows {
 
 @Component({
   selector: 'app-ceruti-violin',
-  imports: [FormsModule, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterTracePanel, MouldPanel, FlutingPanel, LongArchingPanel, CrossArchingPanel, ExportPanel, RecipeToolbarComponent, RenderToggles],
+  imports: [FormsModule, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterTracePanel, MouldPanel, FlutingPanel, LongArchingPanel, CrossArchingPanel, ExportPanel, RecipeToolbarComponent, RenderToggles, NumberStepperDirective],
   templateUrl: './ceruti-violin.html',
   styleUrls: ['../sidebar.css', './ceruti-violin.css'],
 })

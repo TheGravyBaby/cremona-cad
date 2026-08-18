@@ -1,26 +1,29 @@
 <div class="canvas-shell" [class.dark-mode]="isDarkMode">
-  <div #host class="host" [class.drawing]="activeTool !== null" tabindex="0" aria-label="Draft canvas" (wheel)="onScrollWheel($event)"
-    (pointerdown)="onPointerDown($event)" (pointermove)="onPointerMove($event)" (pointerup)="onPointerUp($event)"
-    (pointerleave)="onPointerUp($event)" (keydown)="onKeyDown($event)" (dblclick)="onDoubleClick($event)">
-    @if (editingTextShapeId) {
-      <textarea #textEditArea class="text-edit-overlay"
-        [rows]="editingTextRows"
-        [style.left.px]="editingTextScreenX"
-        [style.top.px]="editingTextScreenY"
-        [style.color]="editingTextColor"
-        (input)="onTextEditInput($any($event.target).value)"
-        (keydown)="onTextEditKeyDown($event)"
-        (blur)="finishEditingText()"
-        (pointerdown)="$event.stopPropagation()"
-        (pointerup)="$event.stopPropagation()"
-        spellcheck="false"></textarea>
-    }
+  <!-- the docked tool bar and the drawing surface share a row; .ui-controls below spans both -->
+  <div class="canvas-body">
+    <app-tool-palette></app-tool-palette>
+
+    <div #host class="host" [class.drawing]="activeTool !== null" tabindex="0" aria-label="Draft canvas" (wheel)="onScrollWheel($event)"
+      (pointerdown)="onPointerDown($event)" (pointermove)="onPointerMove($event)" (pointerup)="onPointerUp($event)"
+      (pointerleave)="onPointerUp($event)" (keydown)="onKeyDown($event)" (dblclick)="onDoubleClick($event)">
+      @if (editingTextShapeId) {
+        <textarea #textEditArea class="text-edit-overlay"
+          [rows]="editingTextRows"
+          [style.left.px]="editingTextScreenX"
+          [style.top.px]="editingTextScreenY"
+          [style.color]="editingTextColor"
+          (input)="onTextEditInput($any($event.target).value)"
+          (keydown)="onTextEditKeyDown($event)"
+          (blur)="finishEditingText()"
+          (pointerdown)="$event.stopPropagation()"
+          (pointerup)="$event.stopPropagation()"
+          spellcheck="false"></textarea>
+      }
+    </div>
   </div>
 
   <input #imageFileInput type="file" accept="image/*" style="display:none"
     (change)="onImageFileSelected($event)" />
-
-  <app-tool-palette (selectImageRequested)="selectShapeById($event)"></app-tool-palette>
 
   <div class="ui-controls">
     <div class="left">
@@ -35,23 +38,10 @@
       @if (debugDumpEnabled) {
       <button type="button" class="btn debug-dump-btn" (click)="copyCanvasDebugDump()" title="Copy drawn geometry">/</button>
       }
-      <button type="button" class="btn theme-toggle-btn" (click)="nightModeChange.emit(!nightMode)"
-        [attr.aria-pressed]="nightMode"
-        [attr.aria-label]="nightMode ? 'Switch to day mode' : 'Switch to night mode'"
-        [title]="nightMode ? 'Switch to day mode' : 'Switch to night mode'">
-        @if (nightMode) {
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
-          stroke-linecap="round" stroke-linejoin="round">
-          <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z" />
-        </svg>
-        } @else {
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
-          stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="4.2" />
-          <path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M18.7 5.3l-1.4 1.4M6.7 17.3l-1.4 1.4" />
-        </svg>
-        }
-      </button>
+      <!-- What is on the canvas and whether you can see it, next to how it is drawn (axis/grid) and
+           where you are looking (zoom). These lived in the tool palette until the bar got too wide
+           to justify — see layer-controls.ts. -->
+      <app-layer-controls (selectImageRequested)="selectShapeById($event)"></app-layer-controls>
 
        <div class="axis-controls">
         <button type="button" class="btn axis-toggle-btn" [class.active]="axisPopupOpen" (click)="toggleAxisPopup()"
