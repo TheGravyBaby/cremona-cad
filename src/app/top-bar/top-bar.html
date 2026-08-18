@@ -1,10 +1,6 @@
 <div class="bar">
-  <div class="brand">
-    <div class="title">
-      <img src="CremonaCadLogo.svg" alt="Cremona CAD" />
-    </div>
-    <button class="btn about-btn" (click)="aboutModal.open()" aria-label="About Cremona CAD"
-      title="About Cremona CAD">?</button>
+  <div class="title">
+    <img src="CremonaCadLogo.svg" alt="Cremona CAD" />
   </div>
 
   <div class="controls">
@@ -31,6 +27,11 @@
       <option value="enrico-ceruti-violin" [selected]="selectedRecipe === 'enrico-ceruti-violin'">Enrico Ceruti Violin</option>
       <option value="hello-recipe" [selected]="selectedRecipe === 'hello-recipe'">Hello Recipe</option>
     </select> -->
+
+    <!-- Last in the row, hard against the right edge: the bar is nothing but global controls now,
+         and About belongs with them rather than hanging off the wordmark. -->
+    <button class="btn about-btn" (click)="aboutModal.open()" aria-label="About Cremona CAD"
+      title="About Cremona CAD">?</button>
   </div>
 
 </div>

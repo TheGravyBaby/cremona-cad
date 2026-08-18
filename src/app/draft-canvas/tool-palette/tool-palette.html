@@ -343,12 +343,13 @@
     [title]="open ? 'Hide tools' : 'Show tools'">
     <svg class="dock-handle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <!-- hinge, the two legs, and the arc they scribe. The arc runs under the points rather than
-           across the legs — crossing them turns the whole glyph into a capital A at 14px. -->
+      <!-- hinge, the two legs, and the arc they scribe. The arc sits just above the points, low
+           enough not to read as a capital A's crossbar and high enough to leave the points showing
+           below it. -->
       <circle cx="12" cy="4.2" r="1.9" />
-      <path d="M10.9 5.9 5.4 18.4" />
-      <path d="M13.1 5.9 18.6 18.4" />
-      <path d="M4.2 18.4a18 18 0 0 1 15.6 0" />
+      <path d="M10.9 5.9 5.1 19.1" />
+      <path d="M13.1 5.9 18.9 19.1" />
+      <path d="M5.3 17.4a17 17 0 0 1 13.4 0" />
     </svg>
   </button>
 </div>

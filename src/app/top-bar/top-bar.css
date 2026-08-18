@@ -41,13 +41,6 @@
   filter: none;
 }
 
-/* wide gap so About reads as its own control rather than part of the wordmark */
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .controls {
   display: flex;
   align-items: center;

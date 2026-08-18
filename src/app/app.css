@@ -98,9 +98,12 @@
   border-color: var(--ui-canvas-btn-border-hover);
 }
 
+/* Sized by height, not by a square box: the f-hole is 3:4, so squaring it would leave the glyph
+   half the height the tab has room for. The 0.5 stroke on the path thickens the waist enough to
+   hold up at this size — filled alone it goes wispy. */
 .dock-handle-icon {
-  width: 14px;
-  height: 14px;
+  width: 16.5px;
+  height: 22px;
 }
 
 @media (pointer: coarse) {
@@ -110,7 +113,7 @@
   }
 
   .dock-handle-icon {
-    width: 18px;
-    height: 18px;
+    width: 21px;
+    height: 28px;
   }
 }
