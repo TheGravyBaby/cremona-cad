@@ -1,4 +1,4 @@
-<div class="tool-palette" [class.collapsed]="!open">
+<div #palette class="tool-palette" [class.collapsed]="!open">
   <div #dockBody class="tool-dock-body">
 
     <div class="tool-row">
@@ -24,7 +24,7 @@
       @if (face.id === 'image') {
       <div class="tool-flyout">
         <button type="button" class="tool-btn tool-flyout-main" [class.active]="imagesOpen"
-          (click)="toggleImages()" title="Reference images (I to upload)">
+          (click)="toggleImages($event)" title="Reference images (I to upload)">
           <ng-container [ngTemplateOutlet]="toolIcon" [ngTemplateOutletContext]="{ id: face.id }" />
         </button>
         <button type="button" class="tool-view-toggle" [class.on]="showImages"
@@ -33,7 +33,8 @@
           <ng-container [ngTemplateOutlet]="eyeIcon" [ngTemplateOutletContext]="{ on: showImages }" />
         </button>
         @if (imagesOpen) {
-        <div class="tool-flyout-popup images-popup">
+        <div class="tool-flyout-popup images-popup" [style.top]="popupTop" [style.bottom]="popupBottom"
+          [style.maxHeight]="popupMaxHeight">
           <div class="layer-tabs">
             @for (image of images; track image.id) {
             <div class="layer-tab" [class.locked]="isImageLocked(image)">
@@ -87,14 +88,15 @@
           <ng-container [ngTemplateOutlet]="toolIcon" [ngTemplateOutletContext]="{ id: face.id }" />
         </button>
         @if (hasVariants(slot)) {
-        <button type="button" class="tool-flyout-caret" (click)="toggleFlyout(slot)" title="More options">
+        <button type="button" class="tool-flyout-caret" (click)="toggleFlyout(slot, $event)" title="More options">
           <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
             stroke-linecap="round" stroke-linejoin="round">
             <path d="M6 9l6 6 6-6" />
           </svg>
         </button>
         @if (openFlyout === slot) {
-        <div class="tool-flyout-popup">
+        <div class="tool-flyout-popup" [style.top]="popupTop" [style.bottom]="popupBottom"
+          [style.maxHeight]="popupMaxHeight">
           @for (variant of variantsOf(slot); track variant.id) {
           <button type="button" class="tool-flyout-item" (click)="chooseFlyoutVariant(slot, variant)"
             [title]="variant.label + hotkeyHint(variant.id)">
@@ -268,7 +270,7 @@
 
     <div class="tool-row">
       <div class="tool-flyout">
-        <button type="button" class="tool-btn tool-flyout-main" [class.active]="layersOpen" (click)="toggleLayers()"
+        <button type="button" class="tool-btn tool-flyout-main" [class.active]="layersOpen" (click)="toggleLayers($event)"
           title="Layers">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round">
@@ -285,7 +287,8 @@
           <ng-container [ngTemplateOutlet]="eyeIcon" [ngTemplateOutletContext]="{ on: showShapes }" />
         </button>
         @if (layersOpen) {
-        <div class="tool-flyout-popup layers-popup">
+        <div class="tool-flyout-popup layers-popup" [style.top]="popupTop" [style.bottom]="popupBottom"
+          [style.maxHeight]="popupMaxHeight">
           <div class="layer-tabs">
             @for (layer of toolboxLayers; track layer.id) {
             <div class="layer-tab" [class.active]="layer.id === activeLayerId" [class.locked]="layer.locked"

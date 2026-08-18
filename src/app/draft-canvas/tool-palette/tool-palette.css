@@ -8,8 +8,10 @@
 }
 
 /* position: relative because every flyout popup anchors to the bar rather than to its own
-   button — see .tool-flyout-popup. */
+   button — see .tool-flyout-popup. --tab-width is the collapse tab's, set here so the popups can
+   clear it instead of opening underneath it. */
 .tool-palette {
+  --tab-width: 20px;
   position: relative;
   display: flex;
   min-height: 0;
@@ -43,7 +45,10 @@
 .tool-dock-body {
   display: grid;
   grid-auto-flow: row;
-  align-content: start;
+  /* centred rather than stacked from the top, so on a tall screen the tools sit at hand height
+     instead of stranded up by the top bar. Never overflows: layoutColumns() only ever writes a row
+     count that fits the measured height. */
+  align-content: center;
   justify-content: start;
   box-sizing: border-box;
   gap: 4px;
@@ -73,7 +78,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
+  width: var(--tab-width);
   height: 36px;
   padding: 0;
   border: 1px solid var(--ui-border-strong);
@@ -207,8 +212,11 @@
     width: 67px; /* button 46px + sliver 21px */
   }
 
+  .tool-palette {
+    --tab-width: 28px;
+  }
+
   .tool-dock-handle {
-    width: 28px;
     height: 44px;
   }
 
@@ -218,15 +226,16 @@
   }
 }
 
-/* Anchored to the bar, not to its own button. Once the bar wraps into columns, a popup hung off
-   its button opens over the neighbouring column, and a button low in a column opens off the bottom
-   of the screen; the bar's top-right corner is always clear and always on screen. box-sizing
-   because there's no global border-box — max-height: 100% would otherwise overflow by the padding
-   and borders. */
+/* Horizontally anchored to the bar rather than to its own button: once the bar wraps into columns,
+   a popup hung off its button opens over the neighbouring column, while the far side of the bar is
+   always clear. Clearing the tab as well, so a popup level with it doesn't bury it. Vertically it
+   is placed by positionPopup(), which writes top/bottom/max-height inline; what's here is the
+   fallback for before that runs. box-sizing because there's no global border-box — max-height would
+   otherwise overflow by the padding and borders. z-index above the tab, which is also absolute. */
 .tool-flyout-popup {
   position: absolute;
   top: 0;
-  left: calc(100% + 6px);
+  left: calc(100% + var(--tab-width) + 6px);
   max-height: 100%;
   overflow-y: auto;
   box-sizing: border-box;
@@ -239,7 +248,7 @@
   border-radius: 6px;
   background: var(--ui-bg-surface-2);
   box-shadow: var(--ui-shadow-pop);
-  z-index: 6;
+  z-index: 7;
 }
 
 .tool-flyout-item {

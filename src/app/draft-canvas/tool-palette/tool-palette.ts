@@ -47,10 +47,20 @@ export class ToolPaletteComponent implements OnInit, AfterViewInit, OnDestroy {
    * any more, since a phone has no hover to peek with. */
   public open = true;
 
+  @ViewChild('palette') private palette?: ElementRef<HTMLElement>;
   @ViewChild('dockBody') private dockBody?: ElementRef<HTMLElement>;
   private resizeObs?: ResizeObserver;
   /** Rows per column, as last written onto the grid — see layoutColumns(). */
   private rowsPerColumn = 0;
+
+  /** Inline placement for whichever popup is open, written by positionPopup(). Null leaves the
+   * stylesheet's fallback — the top of the bar — which is what jsdom gets, having no layout. */
+  public popupTop: string | null = null;
+  public popupBottom: string | null = null;
+  public popupMaxHeight: string | null = null;
+  /** The button the open popup belongs to. Kept as an element rather than a measurement because
+   * the rows are centred, so every button moves whenever the bar's height changes. */
+  private popupAnchor: HTMLElement | null = null;
 
   constructor() {
     let stored: string | null = null;
@@ -92,7 +102,7 @@ export class ToolPaletteComponent implements OnInit, AfterViewInit, OnDestroy {
     if (typeof ResizeObserver === 'undefined') return;
     // the bar, not the body: the body's width is what layoutColumns() ends up changing, and
     // observing that would feed it back in. Height is what the column count actually depends on.
-    this.resizeObs = new ResizeObserver(() => this.layoutColumns());
+    this.resizeObs = new ResizeObserver(() => { this.layoutColumns(); this.positionPopup(); });
     this.resizeObs.observe(this.elRef.nativeElement);
   }
 
@@ -126,6 +136,38 @@ export class ToolPaletteComponent implements OnInit, AfterViewInit, OnDestroy {
     body.style.gridTemplateRows = `repeat(${perColumn}, auto)`;
   }
 
+  /** Remembers which button a popup was opened from, then places the popup there. */
+  private anchorPopup(ev?: Event): void {
+    const target = ev?.currentTarget as HTMLElement | undefined;
+    this.popupAnchor = target ? target.closest<HTMLElement>('.tool-flyout') : null;
+    this.positionPopup();
+  }
+
+  /** Puts the open popup level with the button that opened it. The popup is a child of the bar
+   * rather than of its button (see .tool-flyout-popup), so the offset has to be written on. It
+   * anchors by its top from a button in the bar's upper half and by its bottom from one in the
+   * lower half, so there is always at least half the bar's height to grow into — a Layers popup
+   * hung off the bottom-most button would otherwise scroll inside a 40px sliver. */
+  private positionPopup(): void {
+    const bar = this.palette?.nativeElement;
+    if (!bar || !this.popupAnchor) return;
+    const barBox = bar.getBoundingClientRect();
+    const btnBox = this.popupAnchor.getBoundingClientRect();
+    if (!barBox.height || !btnBox.height) return;
+
+    const top = Math.max(0, btnBox.top - barBox.top);
+    const bottom = Math.max(0, barBox.bottom - btnBox.bottom);
+    if (top + btnBox.height / 2 <= barBox.height / 2) {
+      this.popupTop = `${top}px`;
+      this.popupBottom = 'auto';
+      this.popupMaxHeight = `${barBox.height - top}px`;
+    } else {
+      this.popupTop = 'auto';
+      this.popupBottom = `${bottom}px`;
+      this.popupMaxHeight = `${barBox.height - bottom}px`;
+    }
+  }
+
   /** Pass null for the Select button — back to no active drafting tool. */
   selectTool(tool: DraftTool | null): void {
     this.toolRegistry.selectTool(tool);
@@ -146,10 +188,11 @@ export class ToolPaletteComponent implements OnInit, AfterViewInit, OnDestroy {
     this.toolRegistry.selectTool(this.faceOf(slot));
   }
 
-  toggleFlyout(slot: ToolSlot): void {
+  toggleFlyout(slot: ToolSlot, ev?: Event): void {
     this.openFlyout = this.openFlyout === slot ? null : slot;
     this.layersOpen = false;
     this.imagesOpen = false;
+    this.anchorPopup(ev);
   }
 
   /** Picking a variant from the flyout both activates it and becomes the slot's new default face. */
@@ -164,10 +207,11 @@ export class ToolPaletteComponent implements OnInit, AfterViewInit, OnDestroy {
     return letter ? ` (${letter})` : '';
   }
 
-  toggleLayers(): void {
+  toggleLayers(ev?: Event): void {
     this.layersOpen = !this.layersOpen;
     this.openFlyout = null;
     this.imagesOpen = false;
+    this.anchorPopup(ev);
   }
 
   // ===== Master show/hide switches =====
@@ -249,10 +293,11 @@ export class ToolPaletteComponent implements OnInit, AfterViewInit, OnDestroy {
   /** Absent `locked` means locked — see ImageShape.locked. */
   public isImageLocked(image: ImageShape): boolean { return image.locked ?? true; }
 
-  toggleImages(): void {
+  toggleImages(ev?: Event): void {
     this.imagesOpen = !this.imagesOpen;
     this.openFlyout = null;
     this.layersOpen = false;
+    this.anchorPopup(ev);
   }
 
   /** Placing an image is the Image tool's job — this just activates it, exactly as its hotkey
