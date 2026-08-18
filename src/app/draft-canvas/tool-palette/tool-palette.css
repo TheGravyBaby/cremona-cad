@@ -60,7 +60,11 @@
    the bar — so it travels with the bar as columns come and go, and lands flush against the screen
    edge when the bar collapses to nothing. Styled as part of the bar rather than as a tool button:
    the bar's surface, and square where it meets the bar so the two read as one piece. A panel on
-   the right mirrors this by anchoring at right: 100% and rounding the other end. */
+   the right mirrors this by anchoring at right: 100% and rounding the other end.
+
+   Only the bottom outer corner rounds. The tab starts at y=0 of the canvas row, so its top edge is
+   the top bar's bottom edge — a border and a radius there would draw a second line just under the
+   bar's own and leave a notch of canvas showing through the curve. */
 .tool-dock-handle {
   position: absolute;
   top: 0;
@@ -74,7 +78,8 @@
   padding: 0;
   border: 1px solid var(--ui-border-strong);
   border-left: none;
-  border-radius: 0 4px 4px 0;
+  border-top: none;
+  border-radius: 0 0 4px 0;
   background: var(--ui-bg-surface-2);
   color: var(--ui-text-muted);
   cursor: pointer;
@@ -92,13 +97,9 @@
   border-color: var(--ui-canvas-btn-border-hover);
 }
 
-/* the only thing that animates — the layout itself snaps */
-.tool-dock-handle svg {
-  transition: transform 120ms ease;
-}
-
-.tool-palette.collapsed .tool-dock-handle svg {
-  transform: rotate(180deg);
+.dock-handle-icon {
+  width: 14px;
+  height: 14px;
 }
 
 .tool-btn {
@@ -205,6 +206,11 @@
   .tool-dock-handle {
     width: 28px;
     height: 60px;
+  }
+
+  .dock-handle-icon {
+    width: 18px;
+    height: 18px;
   }
 }
 

@@ -63,7 +63,10 @@
 /* The mirror of the tool bar's .tool-dock-handle, anchored on the other edge: it rides at
    right: 100% of a dock exactly as wide as the panel, so it travels with the panel and lands flush
    against the screen edge when the panel collapses to nothing. Kept as its own copy rather than
-   shared with the tool bar — the anchors are opposite and they live in different components. */
+   shared with the tool bar — the anchors are opposite and they live in different components.
+
+   Open top edge and square top corner for the same reason as the tool bar's tab: it starts at y=0
+   of the canvas row, so its top edge is the top bar's bottom edge. */
 .sidebar-dock-handle {
   position: absolute;
   top: 0;
@@ -77,7 +80,8 @@
   padding: 0;
   border: 1px solid var(--ui-border-strong);
   border-right: none;
-  border-radius: 4px 0 0 4px;
+  border-top: none;
+  border-radius: 0 0 0 4px;
   background: var(--ui-bg-surface-2);
   color: var(--ui-text-muted);
   cursor: pointer;
@@ -94,18 +98,19 @@
   border-color: var(--ui-canvas-btn-border-hover);
 }
 
-/* the only thing that animates — the layout itself snaps */
-.sidebar-dock-handle svg {
-  transition: transform 120ms ease;
-}
-
-.sidebar-dock.collapsed .sidebar-dock-handle svg {
-  transform: rotate(180deg);
+.dock-handle-icon {
+  width: 14px;
+  height: 14px;
 }
 
 @media (pointer: coarse) {
   .sidebar-dock-handle {
     width: 28px;
     height: 60px;
+  }
+
+  .dock-handle-icon {
+    width: 18px;
+    height: 18px;
   }
 }
