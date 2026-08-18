@@ -1,7 +1,5 @@
 <!-- The sidebar is a column of three: this strip, the scrolling panel, and the render toggles.
-     The strip and the toggles sit outside .panel deliberately — inside it they scrolled away with
-     the fields, and pinning them back with position: fixed left them clipped to the panel's
-     overflow on iOS Safari, which is why neither drew on a phone. -->
+     The strip and the toggles are siblings of .panel, not children — see recipe-toolbar.css. -->
 <app-recipe-toolbar
             [recipeName]="d.recipeName"
             [templateOptions]="templateOptions"
@@ -47,7 +45,7 @@
         </section>
     </div>
 
-    <div class="panel-content" [class.has-view-toggle-bar]="renderToggleRows">
+    <div class="panel-content">
         <!-- Base Measurements is the landing panel and stays inline here rather than in its own
              component: it is the one panel the parent drives directly (changeBaseMeasurements),
              so the whole first touch of a recipe reads in one place. -->

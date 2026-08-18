@@ -65,16 +65,11 @@
   display: none;
 }
 
-/* The mirror of the tool bar's .tool-dock-handle, anchored on the other edge: it rides at
-   right: 100% of a dock exactly as wide as the panel, so it travels with the panel and lands flush
-   against the screen edge when the panel collapses to nothing. Kept as its own copy rather than
-   shared with the tool bar — the anchors are opposite and they live in different components.
-
-   Open top edge and square top corner for the same reason as the tool bar's tab: it starts at y=0
-   of the canvas row, so its top edge is the top bar's bottom edge.
-
-   Height and surface are shared with the file strip it sits beside (recipe-toolbar.css), so the two
-   read as one bar rather than a tab overhanging a strip. Both tabs use this height. */
+/* The mirror of .tool-dock-handle in tool-palette.css, which carries the reasoning for the shape;
+   this one anchors at right: 100% instead, so it travels with the panel and lands flush against
+   the screen edge when the panel collapses. Its own copy rather than a shared rule — opposite
+   anchors, different components. Height and surface match the file strip beside it, so the two
+   read as one bar. */
 .sidebar-dock-handle {
   position: absolute;
   top: 0;

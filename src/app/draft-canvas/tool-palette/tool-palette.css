@@ -304,10 +304,6 @@
   gap: 8px;
 }
 
-/* Reuses the Layers popup's row markup (.layer-tab and friends), since an image row is the same
-   thing: eye, name, lock, delete. Wider only because image names ("Long arch") run longer than
-   "Layer 1". */
-
 .images-empty {
   font-size: 11px;
   color: var(--ui-text-muted);
