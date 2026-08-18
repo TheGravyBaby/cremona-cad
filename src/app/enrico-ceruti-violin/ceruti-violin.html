@@ -1,6 +1,6 @@
-<div class="panel">
-    <div class="panel-nav-wrap">
-        <app-recipe-toolbar
+<!-- The sidebar is a column of three: this strip, the scrolling panel, and the render toggles.
+     The strip and the toggles are siblings of .panel, not children — see recipe-toolbar.css. -->
+<app-recipe-toolbar
             [recipeName]="d.recipeName"
             [templateOptions]="templateOptions"
             [fileName]="d.fileName"
@@ -10,9 +10,13 @@
             (loadFile)="loadFile($event)"
             (templateSelect)="loadTemplate($event)"
             (debugDump)="copyRecipeToClipboard()">
-        </app-recipe-toolbar>
+</app-recipe-toolbar>
+
+<div class="panel">
+    <div class="panel-nav-wrap">
         <section class="panel-nav" aria-label="Sidebar section navigation">
-            <label class="ui-group-title">Select Recipe Step</label>
+            <!-- Unlabelled: Back / step / Next reads as what it is, and the aria-label carries the
+                 name for anyone who can't see the shape. -->
             <div class="panel-nav-controls">
                 <button type="button" class="panel-nav-btn panel-nav-btn--back" (click)="stepPanel(-1)"
                     title="Previous section" aria-label="Go to previous section" [disabled]="!canStepPanel(-1)">
@@ -41,7 +45,7 @@
         </section>
     </div>
 
-    <div class="panel-content" [class.has-view-toggle-bar]="renderToggleRows">
+    <div class="panel-content">
         <!-- Base Measurements is the landing panel and stays inline here rather than in its own
              component: it is the one panel the parent drives directly (changeBaseMeasurements),
              so the whole first touch of a recipe reads in one place. -->
@@ -190,9 +194,10 @@
         </app-ceruti-export-panel>
         }
     </div>
+</div>
 
-    @if (renderToggleRows; as rt) {
-    <app-ceruti-render-toggles
+@if (renderToggleRows; as rt) {
+<app-ceruti-render-toggles
         [flags]="viewFlags"
         [showArcsRow]="rt.arcs"
         [showCirclesRow]="rt.circles"
@@ -203,6 +208,5 @@
         [showBlocksRow]="rt.blocks"
         [showInnerPathRow]="rt.innerPath"
         (changed)="onRenderTogglesChanged()">
-    </app-ceruti-render-toggles>
-    }
-</div>
+</app-ceruti-render-toggles>
+}

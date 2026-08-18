@@ -182,6 +182,29 @@ export class SettingsBarComponent {
     this.toolbox.updateShape(shape.id, { end });
   }
 
+  /** How far a Distance's dimension line sits off the two points it measures, the third click's
+   * value made numeric — which is how you stack several measurements at even steps (10, 20, 30)
+   * rather than eyeballing each one. Signed, so the sign flips it to the other side. */
+  private get selectedDimensionShape(): DimensionShape | undefined {
+    return this.selectedShapeOfType('dimension');
+  }
+
+  public get showDimensionOffset(): boolean {
+    return !!this.selectedDimensionShape;
+  }
+
+  public get dimensionOffset(): number {
+    return this.round2(this.selectedDimensionShape?.offset ?? 0);
+  }
+
+  setDimensionOffset(value: number): void {
+    const shape = this.selectedDimensionShape;
+    if (!shape) return;
+    const v = Number(value);
+    if (!Number.isFinite(v)) return;
+    this.toolbox.updateShape(shape.id, { offset: v });
+  }
+
   /** Rect and Square both commit as a 'rect' shape (p1/p2 corners) — same panel edits either. */
   private get selectedRectShape(): RectShape | undefined {
     return this.selectedShapeOfType('rect');

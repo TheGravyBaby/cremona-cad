@@ -1,32 +1,26 @@
+/* Two stacked rows: the top bar across the full width, then everything else. This was a two-column
+   grid, so that the recipe's file strip had a top-row cell of its own to sit in — but the strip
+   reached that cell by being position: fixed inside the scrolling panel, which iOS Safari clips to
+   the scroller and never draws. The strip is a plain flex item in the sidebar now, so the cell it
+   needed is gone and with it the reason for the grid. */
 .app {
   --sidebar-width: 360px;
 
   height: 100vh;
-  display: grid;
-  grid-template-columns: 1fr var(--sidebar-width);
-  grid-template-rows: auto 1fr;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   background: var(--ui-bg-app);
 }
 
 .top {
-  grid-column: 1;
-  grid-row: 1;
+  flex: 0 0 auto;
   min-width: 0;
 }
 
-.top-spacer {
-  grid-column: 2;
-  grid-row: 1;
-  background: var(--ui-bg-sidebar);
-  border-left: 1px solid var(--ui-border-soft);
-  border-bottom: 1px solid var(--ui-topbar-border);
-}
-
 .main {
-  grid-column: 1 / 3;
-  grid-row: 2;
   display: flex;
+  flex: 1 1 auto;
   min-height: 0;
   /* allows children to scroll properly */
 }
@@ -39,8 +33,91 @@
   border: 1px solid #b8b8b8; */
 }
 
+/* Whichever recipe is open. A column of three: the file strip, the scrolling panel, and the render
+   toggles — all in normal flow, so none of them depends on a fixed element escaping the panel's
+   overflow. min-height keeps the panel in the middle as the only part that scrolls. */
 .sidebar {
+  display: flex;
+  flex-direction: column;
   flex: 0 0 var(--sidebar-width);
+  /* min-width because a flex item's automatic minimum size is its min-content width, which wins
+     over the basis: without this the sidebar was as wide as whichever panel was open needed, so it
+     changed width as you stepped through them. Anything that genuinely does not fit now scrolls
+     inside .panel instead of resizing the whole column. */
+  min-width: 0;
+  min-height: 0;
   border-left: 1px solid var(--ui-border-soft);
   background: var(--ui-bg-sidebar);
+}
+
+/* Holds whichever recipe is open plus its collapse tab. */
+.sidebar-dock {
+  position: relative;
+  display: flex;
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
+/* Collapsed the panel goes entirely, taking the file strip and the render toggles with it, so
+   save/load are one tap on the tab away. Snapped, never transitioned: the canvas ResizeObserver
+   redraws the entire SVG on every frame of an animated width. */
+.sidebar-dock.collapsed .sidebar {
+  display: none;
+}
+
+/* The mirror of .tool-dock-handle in tool-palette.css, which carries the reasoning for the shape;
+   this one anchors at right: 100% instead, so it travels with the panel and lands flush against
+   the screen edge when the panel collapses. Its own copy rather than a shared rule — opposite
+   anchors, different components. Height and surface match the file strip beside it, so the two
+   read as one bar. */
+.sidebar-dock-handle {
+  position: absolute;
+  top: 0;
+  right: 100%;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--ui-border-strong);
+  border-right: none;
+  border-top: none;
+  border-radius: 0 0 0 4px;
+  background: var(--ui-bg-surface-2);
+  color: var(--ui-text-muted);
+  cursor: pointer;
+}
+
+/* covers .panel's left border so tab and panel read as one piece; only while open, since collapsed
+   there is no border to cover and -1px would lift the tab off the screen edge */
+.sidebar-dock:not(.collapsed) .sidebar-dock-handle {
+  margin-right: -1px;
+}
+
+.sidebar-dock-handle:hover {
+  color: var(--ui-text-primary);
+  border-color: var(--ui-canvas-btn-border-hover);
+}
+
+/* Sized by height, not by a square box: squeezed the glyph is nearer 5:8, so a square box would
+   leave it half the height the tab has room for. The height matches the tool bar tab's compass —
+   both tabs are meant to carry the same weight of mark. */
+.dock-handle-icon {
+  flex: 0 0 auto;
+  width: 12.9px;
+  height: 20px;
+}
+
+@media (pointer: coarse) {
+  .sidebar-dock-handle {
+    width: 28px;
+    height: 44px;
+  }
+
+  .dock-handle-icon {
+    width: 16.8px;
+    height: 26px;
+  }
 }

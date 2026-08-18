@@ -41,13 +41,6 @@
   filter: none;
 }
 
-/* wide gap so About reads as its own control rather than part of the wordmark */
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .controls {
   display: flex;
   align-items: center;
@@ -106,6 +99,16 @@
   appearance: none;
   -webkit-appearance: none;
   padding-right: 24px;
+}
+
+/* Muted like About: both are app chrome rather than document actions, so neither competes with
+   undo and redo beside them. */
+.theme-toggle-btn {
+  color: var(--ui-text-muted);
+}
+
+.theme-toggle-btn:hover {
+  color: var(--ui-text-primary);
 }
 
 /* ── About button ─────────────────────────────────────────── */

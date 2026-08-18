@@ -1,47 +1,158 @@
-/* Floating drafting toolbox, dock-style: pinned it stays open; unpinned it's
-   fully rendered at all times but slides mostly behind the left edge, leaving
-   a sliver showing — hovering *anywhere* on that visible sliver (not just the
-   pin button) reveals the rest (see tool-palette.ts's `expanded`/`hovering`).
-   Collapsing only ever changes the translateX offset, instantly (no
-   transition), like a conventional OS dock's auto-hide. */
-.tool-palette {
-  position: absolute;
-  left: 0;
-  top: 47%;
-  transform: translateY(-50%);
-  z-index: 5;
+/* Drafting toolbox, laid over the left of the canvas: full height between the top bar and the
+   bottom bar. It floats rather than sitting beside the drawing so that the canvas keeps one frame
+   whether the bar is open or shut — the positioning, and the reasoning, live on app-tool-palette in
+   draft-canvas.css. The tab collapses it to just that tab, giving the drawing back the strip it
+   covers — instantly, with no width transition, since a bar that animates its width drags the
+   flyout popups and the tab along with it a frame at a time. */
+:host {
+  display: flex;
+  min-height: 0;
 }
 
+/* position: relative because every flyout popup anchors to the bar rather than to its own
+   button — see .tool-flyout-popup. */
+.tool-palette {
+  position: relative;
+  display: flex;
+  min-height: 0;
+}
+
+/* Fixed width so every column is the same, and now exactly one button across: the caret is a mark
+   inside the button and layers/reference images have moved to the bottom bar, so no row carries a
+   sliver any more. 32px and not 34: a <button> is border-box under the UA stylesheet even though
+   this project sets no global one, so .tool-btn's width already includes its border. */
 .tool-row {
   display: flex;
   gap: 4px;
+  width: 32px;
 }
 
-/* The dock body: full-size and fully rendered at all times, so collapsing
-   never changes its shape or the pin button's position within it — only
-   translateX moves, leaving REVEAL px showing at the edge as a grip. */
+/* One column while there's vertical room, breaking into more when there isn't — but the break is
+   driven from tool-palette.ts, not by the layout engine, because neither CSS mechanism sizes this
+   box correctly on its own:
+
+   - `flex-flow: column wrap` lays the buttons out right everywhere, but WebKit measures the
+     container's intrinsic width as a single column no matter how many it wrapped into. The extra
+     columns then hang outside the bar's own background and border, floating over the canvas, with
+     the chevron tab (left: 100%) landing on top of them.
+   - Grid with `grid-auto-flow: column` + `repeat(auto-fill, ...)` rows is circular: the grid's
+     intrinsic width resolves before its stretched height does, so auto-fill sees one row, assumes
+     one column per tool, and sizes the bar to ~780px.
+
+   Given an explicit row count, though, the column count follows from the item count alone, so the
+   width is a plain sum with nothing to guess. That count is the one thing that genuinely needs the
+   measured height, and it is the one thing the component supplies: it sets grid-auto-flow and
+   grid-template-rows on this element. The declarations here are the un-measured fallback — a
+   single column, which is also what any viewport tall enough resolves to. */
 .tool-dock-body {
-  --reveal: 8px;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-auto-flow: row;
+  /* centred rather than stacked from the top, so on a tall screen the tools sit at hand height
+     instead of stranded up by the top bar. Never overflows: layoutColumns() only ever writes a row
+     count that fits the measured height. */
+  align-content: center;
+  justify-content: start;
+  box-sizing: border-box;
   gap: 4px;
-  padding: 8px;
+  /* top padding clears .tool-dock-header, which is absolutely positioned and so occupies no space
+     of its own: 36px of band plus the 8px the other three sides get. layoutColumns() reads this
+     back off the computed style, so the row count follows without being told about the header. */
+  padding: 44px 8px 8px;
+  /* soft, matching .sidebar's edge against the canvas — strong drew a visibly darker line down
+     this side of the drawing than the sidebar draws down the other. */
+  border-right: 1px solid var(--ui-border-soft);
+  /* whatever the recipe panel is on, so the band above stands off its body by exactly the step the
+     sidebar's file strip stands off .panel. That is --ui-bg-app, not --ui-bg-sidebar: the panel
+     covers the sidebar's own background from edge to edge, so the token named for it is never
+     actually the colour anyone sees there. */
+  background: var(--ui-bg-app);
+}
+
+/* A band across the top of the dock on the tab's own surface, so the tab and the label read as one
+   strip with the compass at its outer end — the mirror of the recipe sidebar, where the f-hole tab
+   is the left end of the file strip (recipe-toolbar.css). Height is shared with .tool-dock-handle
+   below: any difference shows as the tab hanging past the band.
+
+   Absolutely positioned rather than a flex sibling of the body, because the bar is only as wide as
+   its widest child and the label must never be that child — one column is 65px across, and a longer
+   word or a substituted font would push the whole bar out over the canvas. The body reserves the
+   band with padding-top instead. */
+.tool-dock-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  box-sizing: border-box;
+  overflow: hidden;
+  border-right: 1px solid var(--ui-border-soft);
+  border-bottom: 1px solid var(--ui-border-strong);
+  background: var(--ui-bg-surface-2);
+  color: var(--ui-text-muted);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.tool-palette.collapsed .tool-dock-body,
+.tool-palette.collapsed .tool-dock-header {
+  display: none;
+}
+
+/* A tab on the bar's outer edge, riding at left: 100% of a .tool-palette that is exactly as wide as
+   the bar — so it travels with the bar as columns come and go, and lands flush against the screen
+   edge when the bar collapses to nothing. Styled as part of the bar rather than as a tool button:
+   the bar's surface, and square where it meets the bar so the two read as one piece. A panel on
+   the right mirrors this by anchoring at right: 100% and rounding the other end.
+
+   Only the bottom outer corner rounds. The tab starts at y=0 of the canvas row, so its top edge is
+   the top bar's bottom edge — a border and a radius there would draw a second line just under the
+   bar's own and leave a notch of canvas showing through the curve. */
+.tool-dock-handle {
+  position: absolute;
+  top: 0;
+  left: 100%;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 36px;
+  padding: 0;
   border: 1px solid var(--ui-border-strong);
   border-left: none;
-  border-radius: 0 6px 6px 0;
+  border-top: none;
+  border-radius: 0 0 4px 0;
   background: var(--ui-bg-surface-2);
-  box-shadow: var(--ui-shadow-pop);
-  transform: translateX(0);
+  color: var(--ui-text-muted);
+  cursor: pointer;
 }
 
-.tool-dock-body.collapsed {
-  transform: translateX(calc(-100% + var(--reveal)));
+/* sits over the bar's right border so the tab and the bar read as one piece rather than two boxes
+   with a seam. Only while open — collapsed there is no border to cover, and -1px would lift the
+   tab off the screen edge it is supposed to be flush with. */
+.tool-palette:not(.collapsed) .tool-dock-handle {
+  margin-left: -1px;
 }
 
-.tool-palette-sep {
-  height: 1px;
-  margin: 2px 4px;
-  background: var(--ui-border-elevated);
+.tool-dock-handle:hover {
+  color: var(--ui-text-primary);
+  border-color: var(--ui-canvas-btn-border-hover);
+}
+
+/* Same rendered height as the recipe tab's f-hole, so the two tabs read as one family. The box is
+   as wide as the tab itself; flex-shrink would squash it, and the drawn glyph is only about half
+   that wide, so nothing clips. */
+.dock-handle-icon {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
 }
 
 .tool-btn {
@@ -70,77 +181,113 @@
   border-color: var(--ui-accent);
 }
 
-/* A flyout groups several construction methods behind one button + a caret */
+/* A flyout groups several construction methods behind one button + a caret. Deliberately not
+   positioned — its popup anchors to the whole bar instead, see .tool-flyout-popup. */
 .tool-flyout {
-  position: relative;
   display: flex;
 }
 
-.tool-flyout-main {
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
-}
+/* "This button has variants", drawn in the button's own bottom-right corner rather than in a sliver
+   beside it — the tool-group triangle of every drafting toolbox, so it is a mark a CAD user already
+   reads and it costs the column no width at all.
 
+   Pulled back over the button by a negative left margin rather than absolutely positioned, because
+   .tool-flyout has to stay position: static: .tool-flyout-popup resolves against .tool-palette, the
+   whole bar, and giving the flyout a containing block would re-anchor every popup to its own button
+   (see .tool-flyout-popup for why that is wrong once the bar wraps into columns). The three margins
+   net to zero, so the flyout measures exactly its button and nothing downstream has to know the mark
+   is there. */
 .tool-flyout-caret {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 14px;
+  align-items: flex-end;
+  justify-content: flex-end;
+  align-self: flex-end;
+  width: 13px;
+  height: 13px;
+  margin: 0 2px 2px -15px;
   padding: 0;
-  border: 1px solid var(--ui-border-strong);
-  border-left: none;
-  border-top-right-radius: 4px;
-  border-bottom-right-radius: 4px;
-  background: linear-gradient(180deg, var(--ui-canvas-btn-bg-start) 0%, var(--ui-canvas-btn-bg-end) 100%);
+  border: none;
+  border-radius: 0;
+  background: none;
   color: var(--ui-text-primary);
   cursor: pointer;
 }
 
 .tool-flyout-caret:hover {
-  border-color: var(--ui-canvas-btn-border-hover);
+  color: var(--ui-accent);
 }
 
-/* The master show/hide switch carried by the Layers and Reference Image buttons. Same footprint
-   as .tool-flyout-caret (14px, flush against the main button, right-rounded), so it reads as part
-   of the same control rather than a bolted-on extra, and so both buttons look alike. Unlike a
-   native checkbox there's no filled box behind the mark — just an eye glyph, kept as minimal as
-   the caret it replaced. When on it fills with the accent color and the glyph goes white, exactly
-   like .tool-btn.active does for a selected tool or the pinned dock button, so "showing" reads the
-   same way "selected" does everywhere else in the dock. */
-.tool-view-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 14px;
-  padding: 0;
-  border: 1px solid var(--ui-border-strong);
-  border-left: none;
-  border-top-right-radius: 4px;
-  border-bottom-right-radius: 4px;
-  background: linear-gradient(180deg, var(--ui-canvas-btn-bg-start) 0%, var(--ui-canvas-btn-bg-end) 100%);
-  color: var(--ui-text);
-  cursor: pointer;
+/* The mark is a sibling of the button, not a child, so an active tool's white-on-accent has to be
+   handed across rather than inherited. */
+.tool-btn.active + .tool-flyout-caret {
+  color: #fff;
 }
 
-.tool-view-toggle:hover {
-  border-color: var(--ui-canvas-btn-border-hover);
-  color: var(--ui-text-primary);
+/* Touch targets. 32px is fine under a mouse but well below the ~44px a thumb needs, so coarse
+   pointers get bigger buttons and the grid tracks that match them. Costs a column in phone
+   landscape, which is what the collapse rail is for. */
+@media (pointer: coarse) {
+  .tool-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .tool-flyout-caret {
+    width: 18px;
+    height: 18px;
+    margin: 0 3px 3px -21px;
+  }
+
+  .tool-row {
+    width: 46px;
+  }
+
+  .tool-dock-handle {
+    width: 28px;
+    height: 44px;
+  }
+
+  .tool-dock-header {
+    height: 44px;
+  }
+
+  .tool-dock-body {
+    padding-top: 52px;
+  }
+
+  .dock-handle-icon {
+    width: 26px;
+    height: 26px;
+  }
 }
 
+/* Horizontally anchored to the bar rather than to its own button: once the bar wraps into columns,
+   a popup hung off its button opens over the neighbouring column, while the far side of the bar is
+   always clear. Butted right against that edge and squared off there — the same surface the header
+   and the tab are on, and no left border of its own, so it grows out of the bar's side rather than
+   floating beside it. It crosses the tab on the way out, which is what the
+   z-index below is for. Vertically it is placed by positionPopup(), which writes
+   top/bottom/max-height inline; what's here is the fallback for before that runs. box-sizing
+   because there's no global border-box — max-height would otherwise overflow by the padding and
+   borders. */
 .tool-flyout-popup {
   position: absolute;
   top: 0;
-  left: calc(100% + 6px);
+  left: 100%;
+  max-height: 100%;
+  overflow-y: auto;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 4px;
   padding: 6px;
   min-width: 150px;
   border: 1px solid var(--ui-border-strong);
-  border-radius: 6px;
+  border-left: none;
+  border-radius: 0 6px 6px 0;
   background: var(--ui-bg-surface-2);
   box-shadow: var(--ui-shadow-pop);
-  z-index: 6;
+  z-index: 7;
 }
 
 .tool-flyout-item {
@@ -171,20 +318,6 @@
   color: var(--ui-text-muted);
 }
 
-/* Consistent sizing for every text/number field in any flyout popup (settings, reference, ...),
-   so grids, pairs and standalone rows all line up regardless of which one renders them. */
-.tool-flyout-popup input[type="number"],
-.tool-flyout-popup input[type="text"] {
-  height: 22px;
-  padding: 2px 6px;
-  border: 1px solid var(--ui-border-strong);
-  border-radius: 4px;
-  background: var(--ui-bg-surface);
-  color: var(--ui-text-primary);
-  font-size: 11px;
-  box-sizing: border-box;
-}
-
 .settings-grid {
   display: grid;
   grid-template-columns: auto 1fr auto 1fr;
@@ -195,156 +328,4 @@
 .settings-grid input[type="number"] {
   width: 100%;
   min-width: 0;
-}
-
-/* One width for both popups so they line up with each other as you switch between them — image
-   names ("Long arch") set the floor, and Layers matches rather than being a little narrower. */
-.layers-popup,
-.images-popup {
-  min-width: 190px;
-  gap: 8px;
-}
-
-/* Reuses the Layers popup's row markup (.layer-tab and friends), since an image row is the same
-   thing: eye, name, lock, delete. Wider only because image names ("Long arch") run longer than
-   "Layer 1". Anchored from the bottom because its button sits low in the dock, so growing
-   downward from the top would push it off-screen. */
-.images-popup {
-  top: auto;
-  bottom: 0;
-}
-
-.images-empty {
-  font-size: 11px;
-  color: var(--ui-text-muted);
-  padding: 2px 2px 4px;
-}
-
-.layer-tabs {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  margin-bottom: 4px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--ui-border-soft);
-}
-
-.layer-tab {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px;
-  padding: 4px 7px;
-  border: 1px solid var(--ui-border-elevated);
-  border-radius: 4px;
-  background: var(--ui-bg-surface);
-  color: var(--ui-text-muted);
-  font-size: 11px;
-  cursor: pointer;
-  user-select: none;
-}
-
-.layer-tab:hover {
-  border-color: var(--ui-canvas-btn-border-hover);
-}
-
-.layer-tab.active {
-  border-color: var(--ui-accent);
-  color: var(--ui-text-primary);
-  background: color-mix(in srgb, var(--ui-accent) 12%, transparent);
-}
-
-.layer-tab.locked .layer-tab-label {
-  font-style: italic;
-  opacity: 0.75;
-}
-
-.layer-tab-icon-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  border: none;
-  background: none;
-  padding: 2px;
-  color: inherit;
-  cursor: pointer;
-}
-
-.layer-tab-icon-btn:hover {
-  color: var(--ui-text-primary);
-}
-
-.layer-tab-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1 1 auto;
-}
-
-.layer-tab-edit {
-  width: 100%;
-  min-width: 0;
-  box-sizing: border-box;
-  font-size: 11px;
-}
-
-.layer-tab-x {
-  border: none;
-  background: none;
-  padding: 0 2px;
-  line-height: 1;
-  font-size: 13px;
-  color: var(--ui-text-muted);
-  cursor: pointer;
-}
-
-.layer-tab-x:hover {
-  color: #bb1212;
-}
-
-.layer-tab-add {
-  border: 1px dashed var(--ui-border-elevated);
-  border-radius: 4px;
-  background: none;
-  color: var(--ui-text-muted);
-  font-size: 13px;
-  line-height: 1.4;
-  padding: 3px 7px;
-  cursor: pointer;
-}
-
-.layer-tab-add:hover {
-  border-color: var(--ui-canvas-btn-border-hover);
-  color: var(--ui-text-primary);
-}
-
-/* The full-width action at the foot of a popup: Clear Layer, Upload Image. Carries its own box
-   styling rather than leaning on the global `.btn` — that lives in draft-canvas.css, the parent
-   component's stylesheet, so Angular's view encapsulation never applies it in here and these
-   buttons would otherwise fall back to native browser chrome. */
-.layer-clear-btn,
-.image-upload-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: 100%;
-  padding: 5px 8px;
-  border: 1px solid var(--ui-border-strong);
-  border-radius: 4px;
-  background: linear-gradient(180deg, var(--ui-canvas-btn-bg-start) 0%, var(--ui-canvas-btn-bg-end) 100%);
-  color: var(--ui-text-primary);
-  font-size: 11px;
-  cursor: pointer;
-}
-
-.layer-clear-btn:hover,
-.image-upload-btn:hover {
-  border-color: var(--ui-canvas-btn-border-hover);
-}
-
-.layer-clear-btn svg,
-.image-upload-btn svg {
-  flex: 0 0 auto;
 }

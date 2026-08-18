@@ -1,0 +1,138 @@
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+
+import { ToolPaletteComponent } from './tool-palette';
+import { ToolRegistryService } from '../tools/tool-registry';
+
+const OPEN_KEY = 'draft-canvas-tool-palette-open';
+
+/** jsdom has no layout engine, so nothing here can assert the column break itself — that's checked
+ * in a real browser. These cover the state the layout hangs off, and above all that a collapsed bar
+ * can still be reopened: the floating dock it replaced could only be reopened by hovering, which a
+ * touch device can't do, so collapsing it on a phone was a dead end. */
+describe('ToolPaletteComponent', () => {
+  let component: ToolPaletteComponent;
+  let fixture: ComponentFixture<ToolPaletteComponent>;
+
+  async function create(): Promise<void> {
+    fixture = TestBed.createComponent(ToolPaletteComponent);
+    component = fixture.componentInstance;
+    await fixture.whenStable();
+  }
+
+  const el = (sel: string) => fixture.nativeElement.querySelector(sel) as HTMLElement | null;
+
+  beforeEach(async () => {
+    sessionStorage.clear();
+    await TestBed.configureTestingModule({ imports: [ToolPaletteComponent] }).compileComponents();
+  });
+
+  afterEach(() => sessionStorage.clear());
+
+  it('should create', async () => {
+    await create();
+    expect(component).toBeTruthy();
+  });
+
+  it('starts open with nothing stored', async () => {
+    await create();
+    expect(component.open).toBe(true);
+    expect(el('.tool-palette')?.classList.contains('collapsed')).toBe(false);
+    expect(el('.tool-dock-body')).toBeTruthy();
+  });
+
+  it('starts collapsed on a viewport too short to hold the bar', async () => {
+    const tall = window.innerHeight;
+    Object.defineProperty(window, 'innerHeight', { value: 393, configurable: true });
+    try {
+      await create();
+      expect(component.open).toBe(false);
+    } finally {
+      Object.defineProperty(window, 'innerHeight', { value: tall, configurable: true });
+    }
+  });
+
+  it('lets a stored preference win over the short-viewport default', async () => {
+    const tall = window.innerHeight;
+    Object.defineProperty(window, 'innerHeight', { value: 393, configurable: true });
+    sessionStorage.setItem(OPEN_KEY, 'true');
+    try {
+      await create();
+      expect(component.open).toBe(true);
+    } finally {
+      Object.defineProperty(window, 'innerHeight', { value: tall, configurable: true });
+    }
+  });
+
+  it('honours a stored collapsed state', async () => {
+    sessionStorage.setItem(OPEN_KEY, 'false');
+    await create();
+    expect(component.open).toBe(false);
+    expect(el('.tool-palette')?.classList.contains('collapsed')).toBe(true);
+  });
+
+  it('persists the collapsed state', async () => {
+    await create();
+    component.toggleOpen();
+    expect(sessionStorage.getItem(OPEN_KEY)).toBe('false');
+    component.toggleOpen();
+    expect(sessionStorage.getItem(OPEN_KEY)).toBe('true');
+  });
+
+  it('reopens from the handle while collapsed', async () => {
+    sessionStorage.setItem(OPEN_KEY, 'false');
+    await create();
+
+    const handle = el('.tool-dock-handle');
+    expect(handle).toBeTruthy();
+
+    handle!.click();
+    fixture.detectChanges();
+
+    expect(component.open).toBe(true);
+    expect(el('.tool-dock-body')).toBeTruthy();
+  });
+
+  it('does not reopen on hover', async () => {
+    sessionStorage.setItem(OPEN_KEY, 'false');
+    await create();
+
+    el('.tool-palette')!.dispatchEvent(new MouseEvent('mouseenter'));
+    fixture.detectChanges();
+
+    expect(component.open).toBe(false);
+  });
+
+  it('closes an open flyout when collapsing', async () => {
+    await create();
+    const registry = TestBed.inject(ToolRegistryService);
+    component.openFlyout = registry.toolRows.flat().find(s => registry.hasVariants(s))!;
+
+    component.toggleOpen();
+
+    expect(component.openFlyout).toBeNull();
+  });
+
+  // layoutColumns() measures the bar and writes the column break onto the grid. jsdom reports every
+  // element as zero-height, which is the same shape as a collapsed bar: there is nothing to measure,
+  // so it must write nothing and leave the stylesheet's single-column fallback in charge rather than
+  // divide by a zero row height and break the bar into a column per tool.
+  it('leaves the grid alone when there is no height to measure', async () => {
+    await create();
+    const body = el('.tool-dock-body')!;
+    expect(body.style.gridTemplateRows).toBe('');
+    expect(body.style.gridAutoFlow).toBe('');
+  });
+
+  // Guards the three deletions the docked layout depends on: the separator cost a whole extra
+  // column once the bar wraps, the pin button was replaced by the handle, and Layers moved out to
+  // the canvas bottom bar (layer-controls.ts) so that no row carries a sliver beside its button.
+  it('renders one row per tool plus Select, and nothing else', async () => {
+    await create();
+    const registry = TestBed.inject(ToolRegistryService);
+
+    expect(fixture.nativeElement.querySelectorAll('.tool-palette-sep').length).toBe(0);
+    expect(fixture.nativeElement.querySelectorAll('.tool-view-toggle').length).toBe(0);
+    expect(fixture.nativeElement.querySelectorAll('.tool-row').length)
+      .toBe(registry.toolRows.length + 1);
+  });
+});

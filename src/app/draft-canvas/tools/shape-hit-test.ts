@@ -1,5 +1,5 @@
 import { Pt } from '../../models/types';
-import { DraftShape, ImageShape, imageCenter, imageCorners } from './toolbox-shape';
+import { DraftShape, ImageShape, dimensionGeometry, imageCenter, imageCorners } from './toolbox-shape';
 import { angleFromCenter, angleWithinSweep, dist, distPointToSegment, normalizeRadians, pointOnCircle, rotatePointAbout } from '../../helpers/draftMath';
 import { TEXT_FONT_SIZE_PX, TEXT_LINE_HEIGHT_RATIO } from './shape-renderer';
 
@@ -83,9 +83,15 @@ function distanceToImage(p: Pt, shape: ImageShape): number {
 export function distanceToShape(p: Pt, shape: DraftShape, pxPerMm: number): number {
   switch (shape.type) {
     case 'line':
-    case 'dimension':
     case 'section':
       return distPointToSegment(p, shape.start, shape.end);
+    case 'dimension': {
+      // The dimension line where it was placed, not the measurement it reports: once the line is
+      // offset, the measured segment draws nothing but its two end ticks, so clicking the empty
+      // span between them would select something invisible.
+      const geo = dimensionGeometry(shape.start, shape.end, shape.offset);
+      return geo ? distPointToSegment(p, geo.p1, geo.p2) : distPointToSegment(p, shape.start, shape.end);
+    }
     case 'circle':
       return Math.abs(dist(p, shape.center) - shape.radius);
     case 'arc':
@@ -117,12 +123,19 @@ export interface ShapeBounds {
 export function shapeBounds(shape: DraftShape, pxPerMm: number): ShapeBounds {
   switch (shape.type) {
     case 'line':
-    case 'dimension':
     case 'section':
       return {
         x0: Math.min(shape.start.x, shape.end.x), x1: Math.max(shape.start.x, shape.end.x),
         y0: Math.min(shape.start.y, shape.end.y), y1: Math.max(shape.start.y, shape.end.y),
       };
+    case 'dimension': {
+      // Both segments: a marquee dragged around the offset dimension line has to catch it, and so
+      // does one dragged around the ticks it measures.
+      const geo = dimensionGeometry(shape.start, shape.end, shape.offset);
+      const xs = [shape.start.x, shape.end.x, ...(geo ? [geo.p1.x, geo.p2.x] : [])];
+      const ys = [shape.start.y, shape.end.y, ...(geo ? [geo.p1.y, geo.p2.y] : [])];
+      return { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
+    }
     case 'circle':
       return {
         x0: shape.center.x - shape.radius, x1: shape.center.x + shape.radius,

@@ -1,5 +1,8 @@
+/* The middle of the sidebar column and the only part of it that scrolls — the file strip above and
+   the render toggles below are siblings, not children, so they stay put as the fields move. */
 .panel {
-  height: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: auto;
   padding: 8px;
   padding-top: 0;
@@ -178,30 +181,20 @@ select {
   z-index: 4;
   flex: 0 0 auto;
   margin: -8px -8px 0;
-  padding: 2px 8px 2px;
+  padding: 2px 8px 0;
   background: var(--ui-bg-app);
 }
 
+/* No heading and no rule underneath: Back / step / Next needs no naming, and the progress bar
+   already draws the line that closes the strip off from the fields. */
 .panel-nav {
   border: none;
-  border-bottom: 1px solid var(--ui-border-soft);
   border-radius: 0;
   background: transparent;
-  padding: 5px 0;
-}
-
-.panel-nav-label {
-  display: block;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  color: var(--ui-text-secondary);
-  margin-bottom: 6px;
+  padding: 4px 0 0;
 }
 
 .panel-nav-controls {
-  padding-top: 4px;
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr) max-content;
   align-items: center;
@@ -353,8 +346,9 @@ select {
   border: none;
   border-radius: 0;
   background: transparent;
-  padding: 8px 0 0;
-  padding-bottom: 24px;
+  /* 14px of tail, not 24: the section title's rule already separates one group from the next, and
+     on a phone the difference is a visible slice of scroll depth back across every panel. */
+  padding: 8px 0 14px;
   margin-bottom: 0;
   display: flex;
   flex-direction: column;
@@ -472,6 +466,19 @@ select {
   outline: none;
   border-color: var(--ui-focus-border);
   box-shadow: 0 0 0 3px var(--ui-focus-ring);
+}
+
+/* Room for the touch steppers (shared/number-stepper.ts): the field grows tall enough to split
+   into two tappable halves, and wide enough that the value still reads with 36px given over to
+   them. Three cells at this width still fit a 360px panel. */
+@media (pointer: coarse) {
+  .basic-input {
+    height: 48px;
+  }
+
+  .field-cell {
+    width: 96px;
+  }
 }
 
 .basic-input[type="number"]::-webkit-inner-spin-button,
@@ -702,4 +709,12 @@ select {
   display: block;
   width: 100%;
   height: auto;
+}
+
+/* hello-recipe's equivalent of .panel: the scrolling middle of that sidebar, below its file strip.
+   Carries none of .panel's own padding or background — the demo recipe never had any. */
+.sidebar-inner {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
 }

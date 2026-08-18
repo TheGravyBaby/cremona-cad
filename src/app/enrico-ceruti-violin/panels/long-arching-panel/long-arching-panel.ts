@@ -21,6 +21,7 @@ import {
 import { HighlightedSplinePoint } from '../../renders/render-constants';
 import { renderArchGuide, renderSplineHighlight } from '../../renders/long-arch.render';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
+import { NumberStepperDirective } from '../../../shared/number-stepper';
 
 /**
  * Step two: the arch along the body.
@@ -31,7 +32,7 @@ import { CerutiPanelBase, RenderLayer } from '../panel-base';
  */
 @Component({
   selector: 'app-ceruti-long-arching-panel',
-  imports: [FormsModule, DecimalPipe],
+  imports: [FormsModule, DecimalPipe, NumberStepperDirective],
   templateUrl: './long-arching-panel.html',
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })

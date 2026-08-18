@@ -7,6 +7,7 @@ import { calculateOuterArcs, ensureOuterTracePaths, getPath, getPathOrNull } fro
 import { buttonInfo, cornerCutoffInfo, purflingInfo } from '../../ceruti-helpers';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, PathEntry } from '../../ceruti-types';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
+import { NumberStepperDirective } from '../../../shared/number-stepper';
 
 export interface OuterTraceViewFlags {
   showModuleArcs: boolean;
@@ -17,7 +18,7 @@ export interface OuterTraceViewFlags {
 
 @Component({
   selector: 'app-ceruti-outer-trace-panel',
-  imports: [FormsModule],
+  imports: [FormsModule, NumberStepperDirective],
   templateUrl: './outer-trace-panel.html',
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })

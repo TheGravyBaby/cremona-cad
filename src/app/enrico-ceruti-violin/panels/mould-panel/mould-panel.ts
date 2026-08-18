@@ -6,10 +6,11 @@ import { calculateMould, ensureCenterBoutInnerPath, ensureOuterTracePaths, getPa
 import { bitDiameterInfo } from '../../ceruti-helpers';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, PathEntry } from '../../ceruti-types';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
+import { NumberStepperDirective } from '../../../shared/number-stepper';
 
 @Component({
   selector: 'app-ceruti-mould-panel',
-  imports: [FormsModule],
+  imports: [FormsModule, NumberStepperDirective],
   templateUrl: './mould-panel.html',
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })

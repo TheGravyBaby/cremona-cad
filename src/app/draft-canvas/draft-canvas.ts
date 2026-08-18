@@ -2,10 +2,8 @@ import {
   AfterViewInit,
   Component,
   ElementRef,
-  EventEmitter,
   inject,
   OnDestroy,
-  Output,
   ViewChild,
 } from '@angular/core';
 import * as d3 from 'd3';
@@ -33,11 +31,12 @@ import { DraftShape, TextShape } from './tools/toolbox-shape';
 import { HOTKEY_TOOL_CYCLE } from './tools/tool-hotkeys';
 import { ToolPaletteComponent } from './tool-palette/tool-palette';
 import { SettingsBarComponent } from './settings-bar/settings-bar';
+import { LayerControlsComponent } from './layer-controls/layer-controls';
 
 @Component({
   selector: 'app-draft-canvas',
   standalone: true,
-  imports: [FormsModule, ToolPaletteComponent, SettingsBarComponent],
+  imports: [FormsModule, ToolPaletteComponent, SettingsBarComponent, LayerControlsComponent],
   templateUrl: './draft-canvas.html',
   styleUrls: ['./draft-canvas.css'],
 })
@@ -193,11 +192,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.autoFitPending = true;
     this.draw();
   }
-  /** Day/night lives beside zoom because it is the same kind of control: it changes how the
-   * drawing is looked at, not what the drawing is. The theme itself stays App's — this only
-   * asks. */
-  @Input() nightMode = true;
-  @Output() nightModeChange = new EventEmitter<boolean>();
   // expose pxPerMm for the template/readouts while keeping camera as source of truth
   public get pxPerMm() {
     return this.camera.pxPerMm;
