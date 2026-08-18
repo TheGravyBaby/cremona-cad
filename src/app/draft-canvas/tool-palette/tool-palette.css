@@ -1,7 +1,9 @@
-/* Drafting toolbox, docked down the left of the canvas: full height between the top bar and the
-   bottom bar, never over the drawing. The chevron rail collapses it to just that rail, handing the
-   width back to the canvas — instantly, with no width transition, since the canvas ResizeObserver
-   would otherwise redraw the whole SVG on every frame of it. */
+/* Drafting toolbox, laid over the left of the canvas: full height between the top bar and the
+   bottom bar. It floats rather than sitting beside the drawing so that the canvas keeps one frame
+   whether the bar is open or shut — the positioning, and the reasoning, live on app-tool-palette in
+   draft-canvas.css. The tab collapses it to just that tab, giving the drawing back the strip it
+   covers — instantly, with no width transition, since a bar that animates its width drags the
+   flyout popups and the tab along with it a frame at a time. */
 :host {
   display: flex;
   min-height: 0;
