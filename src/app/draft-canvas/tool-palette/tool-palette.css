@@ -188,28 +188,45 @@
   border-bottom-right-radius: 0;
 }
 
+/* "This button has variants", drawn in the button's own bottom-right corner rather than in a sliver
+   beside it — the tool-group triangle of every drafting toolbox, so it is a mark a CAD user already
+   reads and it costs the column no width at all.
+
+   Pulled back over the button by a negative left margin rather than absolutely positioned, because
+   .tool-flyout has to stay position: static: .tool-flyout-popup resolves against .tool-palette, the
+   whole bar, and giving the flyout a containing block would re-anchor every popup to its own button
+   (see .tool-flyout-popup for why that is wrong once the bar wraps into columns). The three margins
+   net to zero, so the flyout measures exactly its button and nothing downstream has to know the mark
+   is there. */
 .tool-flyout-caret {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 14px;
+  align-items: flex-end;
+  justify-content: flex-end;
+  align-self: flex-end;
+  width: 13px;
+  height: 13px;
+  margin: 0 2px 2px -15px;
   padding: 0;
-  border: 1px solid var(--ui-border-strong);
-  border-left: none;
-  border-top-right-radius: 4px;
-  border-bottom-right-radius: 4px;
-  background: linear-gradient(180deg, var(--ui-canvas-btn-bg-start) 0%, var(--ui-canvas-btn-bg-end) 100%);
+  border: none;
+  border-radius: 0;
+  background: none;
   color: var(--ui-text-primary);
   cursor: pointer;
 }
 
 .tool-flyout-caret:hover {
-  border-color: var(--ui-canvas-btn-border-hover);
+  color: var(--ui-accent);
 }
 
-/* The master show/hide switch carried by the Layers and Reference Image buttons. Same footprint
-   as .tool-flyout-caret (14px, flush against the main button, right-rounded), so it reads as part
-   of the same control rather than a bolted-on extra, and so both buttons look alike. Unlike a
+/* The mark is a sibling of the button, not a child, so an active tool's white-on-accent has to be
+   handed across rather than inherited. */
+.tool-btn.active + .tool-flyout-caret {
+  color: #fff;
+}
+
+/* The master show/hide switch carried by the Layers and Reference Image buttons: a 14px sliver
+   flush against the main button and rounded on the outer corners, so it reads as part of the same
+   control rather than a bolted-on extra, and so both buttons look alike. Unlike a
    native checkbox there's no filled box behind the mark — just an eye glyph, kept as minimal as
    the caret it replaced. When on it fills with the accent color and the glyph goes white, exactly
    like .tool-btn.active does for a selected tool, so "showing" reads the same way "selected" does
@@ -243,9 +260,14 @@
     height: 44px;
   }
 
-  .tool-flyout-caret,
   .tool-view-toggle {
     width: 20px;
+  }
+
+  .tool-flyout-caret {
+    width: 18px;
+    height: 18px;
+    margin: 0 3px 3px -21px;
   }
 
   .tool-row {
