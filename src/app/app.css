@@ -40,6 +40,11 @@
   display: flex;
   flex-direction: column;
   flex: 0 0 var(--sidebar-width);
+  /* min-width because a flex item's automatic minimum size is its min-content width, which wins
+     over the basis: without this the sidebar was as wide as whichever panel was open needed, so it
+     changed width as you stepped through them. Anything that genuinely does not fit now scrolls
+     inside .panel instead of resizing the whole column. */
+  min-width: 0;
   min-height: 0;
   border-left: 1px solid var(--ui-border-soft);
   background: var(--ui-bg-sidebar);
