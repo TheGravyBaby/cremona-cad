@@ -16,7 +16,7 @@ import { MessageCenterComponent } from './shared/message-center.component';
   standalone: true,
   imports: [TopBarComponent, DraftCanvasComponent, CerutiViolin, HelloRecipe, MessageCenterComponent],
   template: `
-    <div class="app" [class.sidebar-collapsed]="!sidebarOpen">
+    <div class="app">
      <app-top-bar class="top"
       [selectedRecipe]="selectedRecipe"
       (recipeChange)="selectRecipe($event)"
@@ -46,24 +46,13 @@ import { MessageCenterComponent } from './shared/message-center.component';
           </app-hello-recipe>
           }
 
-          <!-- Mirrors the tool bar's tab on the other edge: attached to the panel while it's open,
-               flush with the screen once it's shut. An f-hole rather than a chevron, matching the
-               compass on the tool bar's tab — each names what its drawer holds instead of which way
-               it swings, so neither flips when it closes. currentColor throughout, so it follows
-               the tab's own colour in either theme.
+          <!-- Mirrors the tool bar's tab on the other edge, and names what the drawer holds the
+               way the compass does, so neither flips when it closes.
 
-               The glyph is traced from public/fhole.jpeg, the reference already in this repo — a
-               filled silhouette with its real nicks and taper, not a drawn approximation. It is
-               machine output: to change it, re-trace, don't hand-edit the path.
-
-               What is hand-tunable is the pair of numbers that set its weight, and they were tuned
-               by measurement rather than by eye: rasterised at 16x and compared against the
-               compass, the waist wants to land on the compass's ~1.19px stroke. The squeeze does
-               most of that (the stem is near vertical at the waist, so scaling x thins the ink
-               almost one for one) and also makes the hole sit more like one on a plate than the
-               reference's italic-integral rendering; the small stroke puts back what the squeeze
-               overshot. viewBox width is 17.99 x the scale. Squeezing here rather than re-tracing
-               is what keeps both numbers adjustable. -->
+               The path is traced from public/fhole.jpeg and is machine output — re-trace rather
+               than hand-editing it. The scale and the stroke are the tunable pair: together they
+               set the glyph's weight, which is matched to the compass's stroke. viewBox width is
+               17.99 x the scale. -->
           <button type="button" class="sidebar-dock-handle" (click)="toggleSidebar()"
             [attr.aria-expanded]="sidebarOpen" [title]="sidebarOpen ? 'Hide recipe' : 'Show recipe'">
             <svg class="dock-handle-icon" viewBox="0 0 15.47 24" fill="currentColor"

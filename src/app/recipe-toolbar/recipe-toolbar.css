@@ -7,16 +7,9 @@
   flex: 0 0 auto;
 }
 
-/* Surface-2, flat, like the tool dock across the canvas and the render toggles at the foot of this
-   column — every piece of chrome wears the same surface. It carried the top bar's gradient back
-   when it was pinned to the top right and reading as part of that bar; the top bar spans the full
-   width now and this is an ordinary strip inside the sidebar, so the gradient was a leftover that
-   left it a shade off the collapse tab beside it.
-
-   Height is shared with .sidebar-dock-handle in app.css: the tab is the left end of this strip, and
-   any difference shows as the tab hanging down over the panel nav below. 36px is the 26px controls
-   plus even breathing room — the sidebar is short enough on a phone that the slack was worth more
-   as fields. */
+/* Surface-2 like every other piece of chrome — the tool dock, the render toggles, both tabs.
+   Height is shared with .sidebar-dock-handle in app.css, which is the left end of this strip: any
+   difference shows as the tab hanging down over the panel nav below. */
 .toolbar {
   box-sizing: border-box;
   width: 100%;

@@ -191,9 +191,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.autoFitPending = true;
     this.draw();
   }
-  /** Day/night lives beside zoom because it is the same kind of control: it changes how the
-   * drawing is looked at, not what the drawing is. The theme itself stays App's — this only
-   * asks. */
   // expose pxPerMm for the template/readouts while keeping camera as source of truth
   public get pxPerMm() {
     return this.camera.pxPerMm;

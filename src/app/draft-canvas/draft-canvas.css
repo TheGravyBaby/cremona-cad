@@ -17,7 +17,6 @@
   padding: 0;
 }
 
-/* same 28px footprint as Axis, so the right-hand clusters line up */
 .btn.active {
   background: var(--ui-accent);
   color: #fff;
