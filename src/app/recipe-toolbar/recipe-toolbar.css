@@ -7,6 +7,14 @@
   flex: 0 0 auto;
 }
 
+/* Surface-2, flat, like the tool dock across the canvas and the render toggles at the foot of this
+   column — every piece of chrome wears the same surface. It carried the top bar's gradient back
+   when it was pinned to the top right and reading as part of that bar; the top bar spans the full
+   width now and this is an ordinary strip inside the sidebar, so the gradient was a leftover that
+   left it a shade off the collapse tab beside it.
+
+   Height is shared with .sidebar-dock-handle in app.css: the tab is the left end of this strip, and
+   any difference shows as the tab hanging down over the panel nav below. */
 .toolbar {
   box-sizing: border-box;
   width: 100%;
@@ -17,8 +25,15 @@
   justify-content: flex-end;
   gap: 6px;
   padding-right: 12px;
-  /* border-left: 1px solid var(--ui-topbar-border); */
-  background: linear-gradient(180deg, var(--ui-topbar-grad-1), var(--ui-topbar-grad-2));
+  border-bottom: 1px solid var(--ui-border-strong);
+  background: var(--ui-bg-surface-2);
+}
+
+/* Taller under a thumb, which also gives the tab a taller grab. */
+@media (pointer: coarse) {
+  .toolbar {
+    height: 52px;
+  }
 }
 
 .toolbar-btn {
