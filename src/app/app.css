@@ -98,12 +98,13 @@
   border-color: var(--ui-canvas-btn-border-hover);
 }
 
-/* Sized by height, not by a square box: the f-hole is 3:4, so squaring it would leave the glyph
-   half the height the tab has room for. The 0.5 stroke on the path thickens the waist enough to
-   hold up at this size — filled alone it goes wispy. */
+/* Sized by height, not by a square box: squeezed the glyph is nearer 5:8, so a square box would
+   leave it half the height the tab has room for. The height matches the tool bar tab's compass —
+   both tabs are meant to carry the same weight of mark. */
 .dock-handle-icon {
-  width: 16.5px;
-  height: 22px;
+  flex: 0 0 auto;
+  width: 12.9px;
+  height: 20px;
 }
 
 @media (pointer: coarse) {
@@ -113,7 +114,7 @@
   }
 
   .dock-handle-icon {
-    width: 21px;
-    height: 28px;
+    width: 16.8px;
+    height: 26px;
   }
 }

@@ -341,15 +341,16 @@
        currentColor throughout, so it follows the tab's own colour in either theme. -->
   <button type="button" class="tool-dock-handle" (click)="toggleOpen()" [attr.aria-expanded]="open"
     [title]="open ? 'Hide tools' : 'Show tools'">
-    <svg class="dock-handle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+    <svg class="dock-handle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"
       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <!-- hinge, the two legs, and the arc they scribe. The arc sits just above the points, low
-           enough not to read as a capital A's crossbar and high enough to leave the points showing
-           below it. -->
-      <circle cx="12" cy="4.2" r="1.9" />
-      <path d="M10.9 5.9 5.1 19.1" />
-      <path d="M13.1 5.9 18.9 19.1" />
-      <path d="M5.3 17.4a17 17 0 0 1 13.4 0" />
+      <!-- Hinge, the quadrant, and two long legs. The quadrant rides high near the hinge, where a
+           real compass carries its adjuster: down between the points it read as a capital A's
+           crossbar, and what makes this a compass rather than a triangle is the length of leg
+           below it. Weight and height are matched to the f-hole on the panel's tab. -->
+      <circle cx="12" cy="3.2" r="2" />
+      <path d="M11 5 6 22.5" />
+      <path d="M13 5 18 22.5" />
+      <path d="M9.5 9.5a7 7 0 0 1 5 0" />
     </svg>
   </button>
 </div>

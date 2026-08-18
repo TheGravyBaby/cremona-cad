@@ -54,12 +54,21 @@ import { MessageCenterComponent } from './shared/message-center.component';
 
                The glyph is traced from public/fhole.jpeg, the reference already in this repo — a
                filled silhouette with its real nicks and taper, not a drawn approximation. It is
-               machine output: to change it, re-trace, don't hand-edit the path. -->
+               machine output: to change it, re-trace, don't hand-edit the path.
+
+               What is hand-tunable is the pair of numbers that set its weight, and they were tuned
+               by measurement rather than by eye: rasterised at 16x and compared against the
+               compass, the waist wants to land on the compass's ~1.19px stroke. The squeeze does
+               most of that (the stem is near vertical at the waist, so scaling x thins the ink
+               almost one for one) and also makes the hole sit more like one on a plate than the
+               reference's italic-integral rendering; the small stroke puts back what the squeeze
+               overshot. viewBox width is 17.99 x the scale. Squeezing here rather than re-tracing
+               is what keeps both numbers adjustable. -->
           <button type="button" class="sidebar-dock-handle" (click)="toggleSidebar()"
             [attr.aria-expanded]="sidebarOpen" [title]="sidebarOpen ? 'Hide recipe' : 'Show recipe'">
-            <svg class="dock-handle-icon" viewBox="0 0 17.99 24" fill="currentColor"
-              stroke="currentColor" stroke-width="0.5" stroke-linejoin="round" aria-hidden="true">
-              <path d="M15.1 0.6C15.8 0.4 16.3 0.4 16.6 0.6C17 0.8 17.4 1.3 17.4 1.6C17.4 1.9 17.4 2.2 16.8 2.2C16.2 2.3 14.5 1.7 13.8 1.9C13 2 13 1.6 12.4 3.1C11.8 4.7 10.5 9.7 10.1 11.1C9.7 12.5 10 11.4 10.1 11.6C10.2 11.8 10.8 12.1 10.7 12.3C10.7 12.4 10.1 11.9 9.7 12.8C9.4 13.6 9.1 16 8.7 17.1C8.4 18.2 8.2 18.8 7.9 19.4C7.6 20 7.4 20.3 7 20.8C6.6 21.2 5.9 21.9 5.5 22.3C5 22.6 4.7 22.8 4.2 23C3.8 23.2 3.3 23.4 2.7 23.4C2.2 23.4 1.3 23.4 1 23.3C0.6 23.2 0.7 23.1 0.6 22.9C0.5 22.7 0.5 22.3 0.6 22.1C0.7 22 0.4 21.8 1.1 21.8C1.8 21.7 3.8 22 4.6 21.9C5.4 21.8 5.5 21.5 5.9 21C6.2 20.6 6.2 20.5 6.6 19.1C7 17.8 7.9 14.2 8.1 13.1C8.4 12 8.3 12.9 8.1 12.6C8 12.4 7.2 12 7.2 11.7C7.3 11.5 8.1 12.1 8.6 11C9.1 9.8 9.8 6.2 10.2 4.9C10.7 3.5 10.9 3.6 11.2 3.1C11.6 2.6 12 2.1 12.6 1.7C13.3 1.3 14.5 0.8 15.1 0.6Z" />
+            <svg class="dock-handle-icon" viewBox="0 0 15.47 24" fill="currentColor"
+              stroke="currentColor" stroke-width="0.45" stroke-linejoin="round" aria-hidden="true">
+              <path transform="scale(0.86 1)" d="M15.1 0.6C15.8 0.4 16.3 0.4 16.6 0.6C17 0.8 17.4 1.3 17.4 1.6C17.4 1.9 17.4 2.2 16.8 2.2C16.2 2.3 14.5 1.7 13.8 1.9C13 2 13 1.6 12.4 3.1C11.8 4.7 10.5 9.7 10.1 11.1C9.7 12.5 10 11.4 10.1 11.6C10.2 11.8 10.8 12.1 10.7 12.3C10.7 12.4 10.1 11.9 9.7 12.8C9.4 13.6 9.1 16 8.7 17.1C8.4 18.2 8.2 18.8 7.9 19.4C7.6 20 7.4 20.3 7 20.8C6.6 21.2 5.9 21.9 5.5 22.3C5 22.6 4.7 22.8 4.2 23C3.8 23.2 3.3 23.4 2.7 23.4C2.2 23.4 1.3 23.4 1 23.3C0.6 23.2 0.7 23.1 0.6 22.9C0.5 22.7 0.5 22.3 0.6 22.1C0.7 22 0.4 21.8 1.1 21.8C1.8 21.7 3.8 22 4.6 21.9C5.4 21.8 5.5 21.5 5.9 21C6.2 20.6 6.2 20.5 6.6 19.1C7 17.8 7.9 14.2 8.1 13.1C8.4 12 8.3 12.9 8.1 12.6C8 12.4 7.2 12 7.2 11.7C7.3 11.5 8.1 12.1 8.6 11C9.1 9.8 9.8 6.2 10.2 4.9C10.7 3.5 10.9 3.6 11.2 3.1C11.6 2.6 12 2.1 12.6 1.7C13.3 1.3 14.5 0.8 15.1 0.6Z" />
             </svg>
           </button>
         </div>
