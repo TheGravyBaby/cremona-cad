@@ -1,5 +1,12 @@
 <div #palette class="tool-palette" [class.collapsed]="!open">
-  <div #dockBody class="tool-dock-body">
+
+  <!-- Names the bar, and turns the compass tab into the end of a strip rather than a lone tab on a
+       blank edge — the mirror of the recipe sidebar, where the f-hole tab is the left end of the
+       file strip. Labels the tools below rather than the page, so it names the group instead of
+       being a heading. -->
+  <div id="tool-dock-title" class="tool-dock-header">Toolbar</div>
+
+  <div #dockBody class="tool-dock-body" role="group" aria-labelledby="tool-dock-title">
 
     <div class="tool-row">
       <button type="button" class="tool-btn" [class.active]="activeTool === null" (click)="selectTool(null)"

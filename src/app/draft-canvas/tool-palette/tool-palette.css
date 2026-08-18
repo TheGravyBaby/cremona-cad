@@ -50,12 +50,51 @@
   justify-content: start;
   box-sizing: border-box;
   gap: 4px;
-  padding: 8px;
+  /* top padding clears .tool-dock-header, which is absolutely positioned and so occupies no space
+     of its own: 36px of band plus the 8px the other three sides get. layoutColumns() reads this
+     back off the computed style, so the row count follows without being told about the header. */
+  padding: 44px 8px 8px;
   border-right: 1px solid var(--ui-border-strong);
-  background: var(--ui-bg-surface-2);
+  /* the sidebar's surface rather than the chrome surface the tab is on, so the compass stands off
+     its background by the same step the f-hole does off the recipe panel's. Identical colours in
+     night mode; day mode is where the two differ and where the step reads. */
+  background: var(--ui-bg-sidebar);
 }
 
-.tool-palette.collapsed .tool-dock-body {
+/* A band across the top of the dock on the tab's own surface, so the tab and the label read as one
+   strip with the compass at its outer end — the mirror of the recipe sidebar, where the f-hole tab
+   is the left end of the file strip (recipe-toolbar.css). Height is shared with .tool-dock-handle
+   below: any difference shows as the tab hanging past the band.
+
+   Absolutely positioned rather than a flex sibling of the body, because the bar is only as wide as
+   its widest child and the label must never be that child — one column is 65px across, and a longer
+   word or a substituted font would push the whole bar out over the canvas. The body reserves the
+   band with padding-top instead. */
+.tool-dock-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  box-sizing: border-box;
+  overflow: hidden;
+  border-right: 1px solid var(--ui-border-strong);
+  border-bottom: 1px solid var(--ui-border-strong);
+  background: var(--ui-bg-surface-2);
+  color: var(--ui-text-muted);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.tool-palette.collapsed .tool-dock-body,
+.tool-palette.collapsed .tool-dock-header {
   display: none;
 }
 
@@ -215,6 +254,14 @@
     height: 44px;
   }
 
+  .tool-dock-header {
+    height: 44px;
+  }
+
+  .tool-dock-body {
+    padding-top: 52px;
+  }
+
   .dock-handle-icon {
     width: 26px;
     height: 26px;
@@ -223,9 +270,9 @@
 
 /* Horizontally anchored to the bar rather than to its own button: once the bar wraps into columns,
    a popup hung off its button opens over the neighbouring column, while the far side of the bar is
-   always clear. Butted right against that edge and squared off there — same surface as the bar and
-   no left border of its own, so it grows out of the bar's side rather than floating beside it, the
-   way .tool-flyout-main meets its caret. It crosses the tab on the way out, which is what the
+   always clear. Butted right against that edge and squared off there — the same surface the header
+   and the tab are on, and no left border of its own, so it grows out of the bar's side rather than
+   floating beside it, the way .tool-flyout-main meets its caret. It crosses the tab on the way out, which is what the
    z-index below is for. Vertically it is placed by positionPopup(), which writes
    top/bottom/max-height inline; what's here is the fallback for before that runs. box-sizing
    because there's no global border-box — max-height would otherwise overflow by the padding and
