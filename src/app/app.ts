@@ -47,12 +47,20 @@ import { MessageCenterComponent } from './shared/message-center.component';
           }
 
           <!-- Mirrors the tool bar's tab on the other edge: attached to the panel while it's open,
-               flush with the screen once it's shut. -->
+               flush with the screen once it's shut. An f-hole rather than a chevron, matching the
+               compass on the tool bar's tab — each names what its drawer holds instead of which way
+               it swings, so neither flips when it closes. currentColor throughout, so it follows
+               the tab's own colour in either theme. -->
           <button type="button" class="sidebar-dock-handle" (click)="toggleSidebar()"
             [attr.aria-expanded]="sidebarOpen" [title]="sidebarOpen ? 'Hide recipe' : 'Show recipe'">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M9 18l6-6-6-6" />
+            <svg class="dock-handle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <!-- upper eye toward the centre line, lower eye out toward the flank, the nicks
+                   crossing the stem at the waist — a bass-side hole, as it sits on the plate -->
+              <circle cx="15.4" cy="5.2" r="1.7" fill="currentColor" stroke="none" />
+              <circle cx="8.6" cy="18.8" r="2" fill="currentColor" stroke="none" />
+              <path d="M14.7 6.8c-2.6 2.1-1.4 4.5-2.7 5.9-1.3 1.4-2.9 1.6-2.9 4.2" />
+              <path d="M9.3 12.6h5.4" />
             </svg>
           </button>
         </div>

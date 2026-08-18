@@ -181,30 +181,20 @@ select {
   z-index: 4;
   flex: 0 0 auto;
   margin: -8px -8px 0;
-  padding: 2px 8px 2px;
+  padding: 2px 8px 0;
   background: var(--ui-bg-app);
 }
 
+/* No heading and no rule underneath: Back / step / Next needs no naming, and the progress bar
+   already draws the line that closes the strip off from the fields. */
 .panel-nav {
   border: none;
-  border-bottom: 1px solid var(--ui-border-soft);
   border-radius: 0;
   background: transparent;
-  padding: 5px 0;
-}
-
-.panel-nav-label {
-  display: block;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  color: var(--ui-text-secondary);
-  margin-bottom: 6px;
+  padding: 4px 0 0;
 }
 
 .panel-nav-controls {
-  padding-top: 4px;
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr) max-content;
   align-items: center;

@@ -17,7 +17,8 @@
 <div class="panel">
     <div class="panel-nav-wrap">
         <section class="panel-nav" aria-label="Sidebar section navigation">
-            <label class="ui-group-title">Select Recipe Step</label>
+            <!-- Unlabelled: Back / step / Next reads as what it is, and the aria-label carries the
+                 name for anyone who can't see the shape. -->
             <div class="panel-nav-controls">
                 <button type="button" class="panel-nav-btn panel-nav-btn--back" (click)="stepPanel(-1)"
                     title="Previous section" aria-label="Go to previous section" [disabled]="!canStepPanel(-1)">
