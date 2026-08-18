@@ -102,15 +102,13 @@ describe('ToolPaletteComponent', () => {
     expect(component.open).toBe(false);
   });
 
-  it('closes any open popup when collapsing', async () => {
+  it('closes an open flyout when collapsing', async () => {
     await create();
-    component.layersOpen = true;
-    component.imagesOpen = true;
+    const registry = TestBed.inject(ToolRegistryService);
+    component.openFlyout = registry.toolRows.flat().find(s => registry.hasVariants(s))!;
 
     component.toggleOpen();
 
-    expect(component.layersOpen).toBe(false);
-    expect(component.imagesOpen).toBe(false);
     expect(component.openFlyout).toBeNull();
   });
 
@@ -125,14 +123,16 @@ describe('ToolPaletteComponent', () => {
     expect(body.style.gridAutoFlow).toBe('');
   });
 
-  // Guards the two deletions the docked layout depends on: the separator cost a whole extra column
-  // once the bar wraps, and the pin button was replaced by the handle.
-  it('renders one row per tool plus Select and Layers, and no separator', async () => {
+  // Guards the three deletions the docked layout depends on: the separator cost a whole extra
+  // column once the bar wraps, the pin button was replaced by the handle, and Layers moved out to
+  // the canvas bottom bar (layer-controls.ts) so that no row carries a sliver beside its button.
+  it('renders one row per tool plus Select, and nothing else', async () => {
     await create();
     const registry = TestBed.inject(ToolRegistryService);
 
     expect(fixture.nativeElement.querySelectorAll('.tool-palette-sep').length).toBe(0);
+    expect(fixture.nativeElement.querySelectorAll('.tool-view-toggle').length).toBe(0);
     expect(fixture.nativeElement.querySelectorAll('.tool-row').length)
-      .toBe(registry.toolRows.length + 2);
+      .toBe(registry.toolRows.length + 1);
   });
 });
