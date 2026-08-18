@@ -74,7 +74,7 @@
   align-items: center;
   justify-content: center;
   width: 20px;
-  height: 44px;
+  height: 36px;
   padding: 0;
   border: 1px solid var(--ui-border-strong);
   border-left: none;
@@ -209,7 +209,7 @@
 
   .tool-dock-handle {
     width: 28px;
-    height: 52px;
+    height: 44px;
   }
 
   .dock-handle-icon {

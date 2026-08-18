@@ -14,11 +14,13 @@
    left it a shade off the collapse tab beside it.
 
    Height is shared with .sidebar-dock-handle in app.css: the tab is the left end of this strip, and
-   any difference shows as the tab hanging down over the panel nav below. */
+   any difference shows as the tab hanging down over the panel nav below. 36px is the 26px controls
+   plus even breathing room — the sidebar is short enough on a phone that the slack was worth more
+   as fields. */
 .toolbar {
   box-sizing: border-box;
   width: 100%;
-  height: 44px;
+  height: 36px;
 
   display: flex;
   align-items: center;
@@ -29,10 +31,10 @@
   background: var(--ui-bg-surface-2);
 }
 
-/* Taller under a thumb, which also gives the tab a taller grab. */
+/* 44px under a thumb: the tab is the same height and that is the floor for a tap target. */
 @media (pointer: coarse) {
   .toolbar {
-    height: 52px;
+    height: 44px;
   }
 }
 
