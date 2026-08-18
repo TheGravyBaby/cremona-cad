@@ -54,11 +54,14 @@
      of its own: 36px of band plus the 8px the other three sides get. layoutColumns() reads this
      back off the computed style, so the row count follows without being told about the header. */
   padding: 44px 8px 8px;
-  border-right: 1px solid var(--ui-border-strong);
-  /* the sidebar's surface rather than the chrome surface the tab is on, so the compass stands off
-     its background by the same step the f-hole does off the recipe panel's. Identical colours in
-     night mode; day mode is where the two differ and where the step reads. */
-  background: var(--ui-bg-sidebar);
+  /* soft, matching .sidebar's edge against the canvas — strong drew a visibly darker line down
+     this side of the drawing than the sidebar draws down the other. */
+  border-right: 1px solid var(--ui-border-soft);
+  /* whatever the recipe panel is on, so the band above stands off its body by exactly the step the
+     sidebar's file strip stands off .panel. That is --ui-bg-app, not --ui-bg-sidebar: the panel
+     covers the sidebar's own background from edge to edge, so the token named for it is never
+     actually the colour anyone sees there. */
+  background: var(--ui-bg-app);
 }
 
 /* A band across the top of the dock on the tab's own surface, so the tab and the label read as one
@@ -82,7 +85,7 @@
   height: 36px;
   box-sizing: border-box;
   overflow: hidden;
-  border-right: 1px solid var(--ui-border-strong);
+  border-right: 1px solid var(--ui-border-soft);
   border-bottom: 1px solid var(--ui-border-strong);
   background: var(--ui-bg-surface-2);
   color: var(--ui-text-muted);
