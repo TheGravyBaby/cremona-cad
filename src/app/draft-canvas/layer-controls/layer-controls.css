@@ -1,0 +1,234 @@
+/* Two segmented strips in the canvas bottom bar, sized and built like .zoom-controls beside them
+   (26px tall, one border round the pair, a divider between the cells) so the row reads as one set
+   of controls rather than as this component bolted on. Those rules live in draft-canvas.css, the
+   parent's stylesheet, so view encapsulation never reaches in here — everything the strips and
+   their popups need is restated below rather than inherited. */
+.layer-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The popup hangs off this, so the rounding-and-clipping is on .lc-strip inside rather than here:
+   overflow: hidden at this level would cut the popup off at the bar's edge. */
+.lc-group {
+  position: relative;
+  display: flex;
+}
+
+.lc-strip {
+  display: flex;
+  align-items: stretch;
+  height: 26px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 4px;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--ui-canvas-btn-bg-start) 0%, var(--ui-canvas-btn-bg-end) 100%);
+}
+
+.lc-btn,
+.lc-eye {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--ui-text-primary);
+  cursor: pointer;
+}
+
+.lc-btn {
+  width: 28px;
+}
+
+.lc-eye {
+  width: 22px;
+  border-left: 1px solid var(--ui-border-strong);
+  color: var(--ui-text-muted);
+}
+
+.lc-btn:hover,
+.lc-eye:hover {
+  background: var(--ui-canvas-btn-bg-active);
+  color: var(--ui-text-primary);
+}
+
+/* Open list and "showing" both fill with the accent, the same way a selected tool does in the
+   palette — so the state of either cell reads at a glance from across the bar. */
+.lc-btn.active,
+.lc-eye.on {
+  background: var(--ui-accent);
+  color: #fff;
+}
+
+/* Upwards out of the bottom bar, left-aligned to its own strip: the pair sits at the left end of
+   the view controls, so there is always room to its right and never any to its left. Height is
+   capped rather than left to the list, since layers and images both grow without limit. */
+.lc-popup {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 8px);
+  z-index: 10;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  min-width: 200px;
+  max-height: min(60vh, 340px);
+  overflow-y: auto;
+  border: 1px solid var(--ui-border-elevated);
+  border-radius: 6px;
+  background: var(--ui-bg-elevated);
+  box-shadow: var(--ui-shadow-pop);
+  color: var(--ui-text-primary);
+}
+
+.images-empty {
+  font-size: 11px;
+  color: var(--ui-text-muted);
+  padding: 2px 2px 4px;
+}
+
+.layer-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.layer-tab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 4px 7px;
+  border: 1px solid var(--ui-border-elevated);
+  border-radius: 4px;
+  background: var(--ui-bg-surface);
+  color: var(--ui-text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.layer-tab:hover {
+  border-color: var(--ui-canvas-btn-border-hover);
+}
+
+.layer-tab.active {
+  border-color: var(--ui-accent);
+  color: var(--ui-text-primary);
+  background: color-mix(in srgb, var(--ui-accent) 12%, transparent);
+}
+
+.layer-tab.locked .layer-tab-label {
+  font-style: italic;
+  opacity: 0.75;
+}
+
+.layer-tab-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border: none;
+  background: none;
+  padding: 2px;
+  color: inherit;
+  cursor: pointer;
+}
+
+.layer-tab-icon-btn:hover {
+  color: var(--ui-text-primary);
+}
+
+.layer-tab-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1 1 auto;
+}
+
+.layer-tab-edit {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  height: 22px;
+  padding: 2px 6px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 4px;
+  background: var(--ui-bg-surface);
+  color: var(--ui-text-primary);
+  font-size: 11px;
+}
+
+.layer-tab-x {
+  border: none;
+  background: none;
+  padding: 0 2px;
+  line-height: 1;
+  font-size: 13px;
+  color: var(--ui-text-muted);
+  cursor: pointer;
+}
+
+.layer-tab-x:hover {
+  color: #bb1212;
+}
+
+.layer-tab-add {
+  border: 1px dashed var(--ui-border-elevated);
+  border-radius: 4px;
+  background: none;
+  color: var(--ui-text-muted);
+  font-size: 13px;
+  line-height: 1.4;
+  padding: 3px 7px;
+  cursor: pointer;
+}
+
+.layer-tab-add:hover {
+  border-color: var(--ui-canvas-btn-border-hover);
+  color: var(--ui-text-primary);
+}
+
+/* The full-width action at the foot of a popup: Clear Layer, Upload Image. */
+.lc-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 4px;
+  background: linear-gradient(180deg, var(--ui-canvas-btn-bg-start) 0%, var(--ui-canvas-btn-bg-end) 100%);
+  color: var(--ui-text-primary);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.lc-action:hover {
+  border-color: var(--ui-canvas-btn-border-hover);
+}
+
+.lc-action svg {
+  flex: 0 0 auto;
+}
+
+/* Touch targets, matching what the palette does for its buttons: 26px is fine under a mouse and
+   well below what a thumb needs. */
+@media (pointer: coarse) {
+  .lc-strip {
+    height: 34px;
+  }
+
+  .lc-btn {
+    width: 36px;
+  }
+
+  .lc-eye {
+    width: 28px;
+  }
+}

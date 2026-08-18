@@ -15,12 +15,14 @@
   min-height: 0;
 }
 
-/* Fixed width so every column is the same, whether or not its rows carry a caret or eye sliver:
-   button 34px + sliver 15px. Plain buttons then line up on their left edges across columns. */
+/* Fixed width so every column is the same, and now exactly one button across: the caret is a mark
+   inside the button and layers/reference images have moved to the bottom bar, so no row carries a
+   sliver any more. 32px and not 34: a <button> is border-box under the UA stylesheet even though
+   this project sets no global one, so .tool-btn's width already includes its border. */
 .tool-row {
   display: flex;
   gap: 4px;
-  width: 49px;
+  width: 32px;
 }
 
 /* One column while there's vertical room, breaking into more when there isn't — but the break is
@@ -183,11 +185,6 @@
   display: flex;
 }
 
-.tool-flyout-main {
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
-}
-
 /* "This button has variants", drawn in the button's own bottom-right corner rather than in a sliver
    beside it — the tool-group triangle of every drafting toolbox, so it is a mark a CAD user already
    reads and it costs the column no width at all.
@@ -224,33 +221,6 @@
   color: #fff;
 }
 
-/* The master show/hide switch carried by the Layers and Reference Image buttons: a 14px sliver
-   flush against the main button and rounded on the outer corners, so it reads as part of the same
-   control rather than a bolted-on extra, and so both buttons look alike. Unlike a
-   native checkbox there's no filled box behind the mark — just an eye glyph, kept as minimal as
-   the caret it replaced. When on it fills with the accent color and the glyph goes white, exactly
-   like .tool-btn.active does for a selected tool, so "showing" reads the same way "selected" does
-   everywhere else in the dock. */
-.tool-view-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 14px;
-  padding: 0;
-  border: 1px solid var(--ui-border-strong);
-  border-left: none;
-  border-top-right-radius: 4px;
-  border-bottom-right-radius: 4px;
-  background: linear-gradient(180deg, var(--ui-canvas-btn-bg-start) 0%, var(--ui-canvas-btn-bg-end) 100%);
-  color: var(--ui-text);
-  cursor: pointer;
-}
-
-.tool-view-toggle:hover {
-  border-color: var(--ui-canvas-btn-border-hover);
-  color: var(--ui-text-primary);
-}
-
 /* Touch targets. 32px is fine under a mouse but well below the ~44px a thumb needs, so coarse
    pointers get bigger buttons and the grid tracks that match them. Costs a column in phone
    landscape, which is what the collapse rail is for. */
@@ -260,10 +230,6 @@
     height: 44px;
   }
 
-  .tool-view-toggle {
-    width: 20px;
-  }
-
   .tool-flyout-caret {
     width: 18px;
     height: 18px;
@@ -271,7 +237,7 @@
   }
 
   .tool-row {
-    width: 67px; /* button 46px + sliver 21px */
+    width: 46px;
   }
 
   .tool-dock-handle {
@@ -297,7 +263,7 @@
    a popup hung off its button opens over the neighbouring column, while the far side of the bar is
    always clear. Butted right against that edge and squared off there — the same surface the header
    and the tab are on, and no left border of its own, so it grows out of the bar's side rather than
-   floating beside it, the way .tool-flyout-main meets its caret. It crosses the tab on the way out, which is what the
+   floating beside it. It crosses the tab on the way out, which is what the
    z-index below is for. Vertically it is placed by positionPopup(), which writes
    top/bottom/max-height inline; what's here is the fallback for before that runs. box-sizing
    because there's no global border-box — max-height would otherwise overflow by the padding and
@@ -350,20 +316,6 @@
   color: var(--ui-text-muted);
 }
 
-/* Consistent sizing for every text/number field in any flyout popup (settings, reference, ...),
-   so grids, pairs and standalone rows all line up regardless of which one renders them. */
-.tool-flyout-popup input[type="number"],
-.tool-flyout-popup input[type="text"] {
-  height: 22px;
-  padding: 2px 6px;
-  border: 1px solid var(--ui-border-strong);
-  border-radius: 4px;
-  background: var(--ui-bg-surface);
-  color: var(--ui-text-primary);
-  font-size: 11px;
-  box-sizing: border-box;
-}
-
 .settings-grid {
   display: grid;
   grid-template-columns: auto 1fr auto 1fr;
@@ -374,147 +326,4 @@
 .settings-grid input[type="number"] {
   width: 100%;
   min-width: 0;
-}
-
-/* One width for both popups so they line up with each other as you switch between them — image
-   names ("Long arch") set the floor, and Layers matches rather than being a little narrower. */
-.layers-popup,
-.images-popup {
-  min-width: 190px;
-  gap: 8px;
-}
-
-.images-empty {
-  font-size: 11px;
-  color: var(--ui-text-muted);
-  padding: 2px 2px 4px;
-}
-
-.layer-tabs {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  margin-bottom: 4px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--ui-border-soft);
-}
-
-.layer-tab {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px;
-  padding: 4px 7px;
-  border: 1px solid var(--ui-border-elevated);
-  border-radius: 4px;
-  background: var(--ui-bg-surface);
-  color: var(--ui-text-muted);
-  font-size: 11px;
-  cursor: pointer;
-  user-select: none;
-}
-
-.layer-tab:hover {
-  border-color: var(--ui-canvas-btn-border-hover);
-}
-
-.layer-tab.active {
-  border-color: var(--ui-accent);
-  color: var(--ui-text-primary);
-  background: color-mix(in srgb, var(--ui-accent) 12%, transparent);
-}
-
-.layer-tab.locked .layer-tab-label {
-  font-style: italic;
-  opacity: 0.75;
-}
-
-.layer-tab-icon-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  border: none;
-  background: none;
-  padding: 2px;
-  color: inherit;
-  cursor: pointer;
-}
-
-.layer-tab-icon-btn:hover {
-  color: var(--ui-text-primary);
-}
-
-.layer-tab-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1 1 auto;
-}
-
-.layer-tab-edit {
-  width: 100%;
-  min-width: 0;
-  box-sizing: border-box;
-  font-size: 11px;
-}
-
-.layer-tab-x {
-  border: none;
-  background: none;
-  padding: 0 2px;
-  line-height: 1;
-  font-size: 13px;
-  color: var(--ui-text-muted);
-  cursor: pointer;
-}
-
-.layer-tab-x:hover {
-  color: #bb1212;
-}
-
-.layer-tab-add {
-  border: 1px dashed var(--ui-border-elevated);
-  border-radius: 4px;
-  background: none;
-  color: var(--ui-text-muted);
-  font-size: 13px;
-  line-height: 1.4;
-  padding: 3px 7px;
-  cursor: pointer;
-}
-
-.layer-tab-add:hover {
-  border-color: var(--ui-canvas-btn-border-hover);
-  color: var(--ui-text-primary);
-}
-
-/* The full-width action at the foot of a popup: Clear Layer, Upload Image. Carries its own box
-   styling rather than leaning on the global `.btn` — that lives in draft-canvas.css, the parent
-   component's stylesheet, so Angular's view encapsulation never applies it in here and these
-   buttons would otherwise fall back to native browser chrome. */
-.layer-clear-btn,
-.image-upload-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: 100%;
-  padding: 5px 8px;
-  border: 1px solid var(--ui-border-strong);
-  border-radius: 4px;
-  background: linear-gradient(180deg, var(--ui-canvas-btn-bg-start) 0%, var(--ui-canvas-btn-bg-end) 100%);
-  color: var(--ui-text-primary);
-  font-size: 11px;
-  cursor: pointer;
-}
-
-.layer-clear-btn:hover,
-.image-upload-btn:hover {
-  border-color: var(--ui-canvas-btn-border-hover);
-}
-
-.layer-clear-btn svg,
-.image-upload-btn svg {
-  flex: 0 0 auto;
 }

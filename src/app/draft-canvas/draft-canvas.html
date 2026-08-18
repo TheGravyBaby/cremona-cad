@@ -1,7 +1,7 @@
 <div class="canvas-shell" [class.dark-mode]="isDarkMode">
   <!-- the docked tool bar and the drawing surface share a row; .ui-controls below spans both -->
   <div class="canvas-body">
-    <app-tool-palette (selectImageRequested)="selectShapeById($event)"></app-tool-palette>
+    <app-tool-palette></app-tool-palette>
 
     <div #host class="host" [class.drawing]="activeTool !== null" tabindex="0" aria-label="Draft canvas" (wheel)="onScrollWheel($event)"
       (pointerdown)="onPointerDown($event)" (pointermove)="onPointerMove($event)" (pointerup)="onPointerUp($event)"
@@ -38,6 +38,11 @@
       @if (debugDumpEnabled) {
       <button type="button" class="btn debug-dump-btn" (click)="copyCanvasDebugDump()" title="Copy drawn geometry">/</button>
       }
+      <!-- What is on the canvas and whether you can see it, next to how it is drawn (axis/grid) and
+           where you are looking (zoom). These lived in the tool palette until the bar got too wide
+           to justify — see layer-controls.ts. -->
+      <app-layer-controls (selectImageRequested)="selectShapeById($event)"></app-layer-controls>
+
        <div class="axis-controls">
         <button type="button" class="btn axis-toggle-btn" [class.active]="axisPopupOpen" (click)="toggleAxisPopup()"
           title="Axis &amp; grid settings">
