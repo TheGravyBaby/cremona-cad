@@ -82,20 +82,48 @@
   }
 
   @if (showTextPanel) {
-    <span class="field text-field"><span class="f-lbl">Text</span>
-      <input #textContentInput type="text" [value]="textContent" (input)="setTextContent($any($event.target).value)"
-        (keydown.enter)="textContentInput.blur()" (keydown.escape)="textContentInput.blur()" placeholder="Text" />
-    </span>
+    @if (showTextShapeFields) {
+      <!-- A textarea, not an input: an <input> silently strips the newlines out of its value, so
+           editing a multi-line label through one flattened it to a single line. Committed on change
+           (i.e. on blur) rather than per keystroke, matching Name and Weights below — and leaving
+           Enter free to do what it does in a textarea. -->
+      <span class="field text-field"><span class="f-lbl">Text</span>
+        <textarea #textContentInput rows="1" [value]="textContent"
+          (change)="setTextContent(textContentInput.value)"
+          (keydown.escape)="textContentInput.value = textContent; textContentInput.blur()"
+          title="Label text — Enter adds a line, Escape reverts. Scrolls rather than growing; double-click the label on the canvas for a box that opens out." placeholder="Text"></textarea>
+      </span>
+    }
     <span class="point-group">
-      <span class="field"><span class="f-lbl">X</span>
-        <input type="number" [value]="textPositionX" (change)="setTextPosition('x', $any($event.target).valueAsNumber)"
-          (keydown.enter)="$any($event.target).blur()" />
+      <!-- Outside the gate above: Size is the pen setting, so it is here to be set before the
+           first click as well as to resize a placed label. -->
+      <span class="field"><span class="f-lbl">Size</span>
+        <input type="number" min="0.1" step="0.5" [value]="textFontSize"
+          (change)="setTextFontSize($any($event.target).valueAsNumber)"
+          (keydown.enter)="$any($event.target).blur()"
+          title="Font size in mm — measured on the drawing, so it holds its proportion through a zoom. Sets the size for new labels too." />
       </span>
-      <span class="field"><span class="f-lbl">Y</span>
-        <input type="number" [value]="textPositionY" (change)="setTextPosition('y', $any($event.target).valueAsNumber)"
-          (keydown.enter)="$any($event.target).blur()" />
-      </span>
+      @if (showTextShapeFields) {
+        <span class="field"><span class="f-lbl">Angle</span>
+          <input type="number" step="15" [value]="textRotation"
+            (change)="setTextRotation($any($event.target).valueAsNumber)"
+            (keydown.enter)="$any($event.target).blur()"
+            title="Degrees counterclockwise — or drag the round handle above a selected label" />
+        </span>
+      }
     </span>
+    @if (showTextShapeFields) {
+      <span class="point-group">
+        <span class="field"><span class="f-lbl">X</span>
+          <input type="number" [value]="textPositionX" (change)="setTextPosition('x', $any($event.target).valueAsNumber)"
+            (keydown.enter)="$any($event.target).blur()" />
+        </span>
+        <span class="field"><span class="f-lbl">Y</span>
+          <input type="number" [value]="textPositionY" (change)="setTextPosition('y', $any($event.target).valueAsNumber)"
+            (keydown.enter)="$any($event.target).blur()" />
+        </span>
+      </span>
+    }
   }
 
   @if (showPointPanel) {

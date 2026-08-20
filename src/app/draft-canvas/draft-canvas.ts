@@ -27,7 +27,7 @@ import { translateShape } from './tools/shape-transform';
 import { moveGrabberPosition, endpointGrabbers, withEndpoint, EndpointKey } from './tools/shape-grabbers';
 import { snapToLockedAngle } from './tools/angle-lock';
 import { copyDebugDump, isLocalHost } from '../helpers/debugDump';
-import { DraftShape, TextShape } from './tools/toolbox-shape';
+import { DEFAULT_TEXT_SIZE_MM, DraftShape, TextShape } from './tools/toolbox-shape';
 import { HOTKEY_TOOL_CYCLE } from './tools/tool-hotkeys';
 import { ToolPaletteComponent } from './tool-palette/tool-palette';
 import { SettingsBarComponent } from './settings-bar/settings-bar';
@@ -119,8 +119,12 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   // picked. Plain click replaces the selection; shift-click toggles a shape in/out of it.
   private static readonly SELECT_HIT_TOLERANCE_PX = 6;
   private static readonly MOVE_GRABBER_HIT_TOLERANCE_PX = 9;
-  private static readonly NUDGE_STEP_MM_FINE = 1;
+  // Three nudge steps on the same modifier ladder number fields use (see stepSize.ts's
+  // stepAmountForKey): plain, Shift for coarse, Ctrl/Cmd for fine. "Fine" means the Ctrl/Cmd
+  // step in both places.
+  private static readonly NUDGE_STEP_MM_BASE = 1;
   private static readonly NUDGE_STEP_MM_COARSE = 10;
+  private static readonly NUDGE_STEP_MM_FINE = 0.1;
   private static readonly ARROW_NUDGE_DIRECTION: Record<string, [number, number]> = {
     ArrowUp: [0, 1],
     ArrowDown: [0, -1],
@@ -169,14 +173,28 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     };
   }
 
-  // Inline text editing: placing (or later re-editing) a Text shape opens a plain <textarea>
-  // positioned directly over its on-canvas location, instead of routing through the settings
-  // panel — see startEditingText(). The Text tool stays active throughout, so consecutive
-  // clicks place more text boxes without having to reselect the tool each time.
+  // Inline text editing: placing a Text shape — or double-clicking, Enter-ing, or clicking with
+  // the Text tool on an existing one — opens a plain <textarea> positioned directly over its
+  // on-canvas location, instead of routing through the settings panel. See startEditingText().
+  // The Text tool stays active throughout, so consecutive clicks place more text boxes without
+  // having to reselect the tool each time.
+  //
+  // The typing is *staged* here and written to the store once, on finish. Going through
+  // updateShape per keystroke would push one undo entry per character (see ToolboxStore's
+  // applyMutation), quietly emptying a 50-deep history of real drawing work while someone types
+  // a label — and it is also what gives Escape something to discard.
   public editingTextShapeId: string | null = null;
   public editingTextScreenX = 0;
   public editingTextScreenY = 0;
+  public editingTextDraft = '';
+  /** Placed by this edit rather than opened for a second pass — an abandoned new label is
+   * removed on cancel instead of being left on the canvas reading "Text". */
+  private editingTextIsNew = false;
   @ViewChild('textEditArea') textEditAreaRef?: ElementRef<HTMLTextAreaElement>;
+
+  /** Floor for the editor's on-screen font size. The label's own mm size is untouched — this
+   * only stops the textarea from becoming unreadable when a small label is edited zoomed out. */
+  private static readonly MIN_TEXT_EDITOR_FONT_PX = 11;
 
   @ViewChild('host', { static: true }) host!: ElementRef<HTMLDivElement>;
   @Input() set draftFunctions(value: Array<(canvas: any, uiCan: any) => void>) {
@@ -367,11 +385,19 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.axisGrid.draw(this.gRoot, this.gUI, cv, this.pxPerMm);
 
     if (this.selectedShapeIds.size) {
+      // Handles are drawn only when they can actually be dragged. An armed drawing tool takes
+      // every click before Select mode's grabber hit-testing is reached (see onPointerDown), so
+      // with one active a handle is a control that does nothing — worse, clicking the Text tool
+      // on one would place a label there. A selection-acting tool (Offset) is the exception: it
+      // works *on* the selection, so its handles stay meaningful. The halo is unconditional
+      // either way — it says which shape the settings strip is describing.
+      const showHandles = !this.activeTool || !!this.activeTool.actsOnSelection;
       const editable = this.toolbox.getEditableShapes();
       for (const id of this.selectedShapeIds) {
         const shape = this.dragOverrides?.get(id) ?? editable.find(s => s.id === id);
         if (!shape) continue;
         drawSelectionHalo(this.gRoot, this.gUI, shape, this.pxPerMm);
+        if (!showHandles) continue;
         const grabberPos = moveGrabberPosition(shape);
         if (grabberPos) drawMoveGrabber(this.gRoot, grabberPos, this.pxPerMm);
         const endpoints = endpointGrabbers(shape, this.pxPerMm);
@@ -434,7 +460,9 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   /** Runs whenever the active tool changes, regardless of what triggered it (a click routed
    * through selectTool() above, tool-palette.ts calling the registry directly, or a hotkey). */
   private onActiveToolChanged(): void {
-    if (this.editingTextShapeId) this.editingTextShapeId = null; // e.g. switching tools mid-edit
+    // Commits rather than just closing: switching tools mid-edit is not a way to say "discard"
+    // (that is Escape), and the staged draft would otherwise be lost silently.
+    if (this.editingTextShapeId) this.finishEditingText();
     this.activeSnap = null;
     // Picking up a tool while the thing it produces is hidden would make it a silent no-op, so
     // activating one turns its master switch back on — the same reasoning as ToolboxStore's
@@ -484,7 +512,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       let bestId: string | null = null;
       let bestDist = Infinity;
       for (const shape of shapes) {
-        const dist = distanceToShape(pt, shape, this.pxPerMm);
+        const dist = distanceToShape(pt, shape);
         if (dist <= toleranceMm && dist < bestDist) {
           bestId = shape.id;
           bestDist = dist;
@@ -510,7 +538,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
         const dx = pos.x - pt.x;
         const dy = pos.y - pt.y;
         if (dx * dx + dy * dy <= grabberTol2) return true;
-      } else if (distanceToShape(pt, shape, this.pxPerMm) <= bodyToleranceMm) {
+      } else if (distanceToShape(pt, shape) <= bodyToleranceMm) {
         return true;
       }
     }
@@ -532,6 +560,16 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       }
     }
     return null;
+  }
+
+  /** The topmost *text* shape under `pt`, or undefined — what the double-click and Text-tool
+   * re-entry paths both ask before deciding whether a click is an edit. Goes through the same
+   * hitTestToolboxShape everything else uses, so a label is grabbed exactly where it looks
+   * grabbable, and returns nothing when the shape under the cursor is some other type. */
+  private textShapeAt(pt: Pt): TextShape | undefined {
+    const id = this.hitTestToolboxShape(pt);
+    const shape = id ? this.toolbox.getEditableShapes().find(s => s.id === id) : undefined;
+    return shape?.type === 'text' ? shape : undefined;
   }
 
   /** Plain click: replaces the whole selection with just `id` (or clears it if null). */
@@ -639,9 +677,32 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     return this.editingTextShape?.color ?? this.toolbox.currentColor;
   }
 
-  /** Grows the textarea by line count so Shift+Enter'd lines are all visible, not scrolled. */
+  /** Grows the textarea by line count so Shift+Enter'd lines are all visible, not scrolled.
+   * Reads the staged draft, not the shape — the shape doesn't change until the edit finishes. */
   public get editingTextRows(): number {
-    return Math.max(1, this.editingTextShape?.text.split('\n').length ?? 1);
+    return Math.max(1, this.editingTextDraft.split('\n').length);
+  }
+
+  /** Width in characters, for the same reason rows exists: the box tracks its content instead of
+   * sitting at a fixed pixel width that is too wide for a short label and too narrow for a long
+   * one. The floor leaves somewhere to type when the draft is empty. */
+  public get editingTextCols(): number {
+    return Math.max(6, ...this.editingTextDraft.split('\n').map(line => line.length + 1));
+  }
+
+  /** The label's mm size converted to screen px, so the editor shows the size the text will
+   * actually be rather than a fixed 14px that stops resembling the result the moment a label is
+   * sized or the camera moves. */
+  public get editingTextFontPx(): number {
+    const mm = this.editingTextShape?.fontSize ?? DEFAULT_TEXT_SIZE_MM;
+    return Math.max(DraftCanvasComponent.MIN_TEXT_EDITOR_FONT_PX, mm * this.pxPerMm);
+  }
+
+  /** CSS rotation for the overlay. Screen space turns clockwise-positive while the world turns
+   * counterclockwise-positive, so the sign flips — the same flip shape-renderer's
+   * textRotateTransform makes for the SVG side. */
+  public get editingTextRotation(): number {
+    return -(this.editingTextShape?.rotationDeg ?? 0);
   }
 
   /** Converts a world-mm point to pixels relative to the host div, via the SVG's own current
@@ -669,34 +730,79 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.editingTextScreenY = pos.y;
   }
 
-  private startEditingText(id: string): void {
+  private startEditingText(id: string, isNew = false): void {
+    // Close any edit already open before adopting the new shape, and close it by *blurring*: a
+    // click that lands on another label runs this handler before the browser performs the focus
+    // change it implies, so a blur left pending would arrive after the new session had started
+    // and shut it down again. Blurring here fires that commit now instead. The second check
+    // covers the case where the textarea wasn't focused, so no blur ran.
+    if (this.editingTextShapeId) {
+      this.textEditAreaRef?.nativeElement.blur();
+      if (this.editingTextShapeId) this.finishEditingText();
+    }
     this.editingTextShapeId = id;
+    this.editingTextIsNew = isNew;
+    this.editingTextDraft = this.editingTextShape?.text ?? '';
     this.updateEditingTextPosition();
-    // The <textarea> is created by this state change; focus (and select its placeholder
-    // content, so the first keystroke replaces it) next tick, once it exists in the DOM.
+    // The <textarea> is created by this state change; focus (and select its existing content, so
+    // the first keystroke replaces a placeholder) next tick, once it exists in the DOM.
     setTimeout(() => {
       const el = this.textEditAreaRef?.nativeElement;
       if (!el) return;
-      el.value = this.editingTextShape?.text ?? '';
+      el.value = this.editingTextDraft;
       el.focus();
       el.select();
     });
   }
 
+  /**
+   * Commits the staged draft as a single undo step and closes the editor — the blur handler, so
+   * clicking away keeps what was typed. A label emptied down to whitespace is removed rather
+   * than left on the canvas: it renders as nothing and is all but unselectable, so keeping it
+   * would only lose it. Undo brings it back either way.
+   */
   finishEditingText(): void {
+    const shape = this.editingTextShape;
+    const id = this.editingTextShapeId;
     this.editingTextShapeId = null;
+    this.editingTextIsNew = false;
+    if (shape && id) {
+      if (!this.editingTextDraft.trim()) this.toolbox.removeShape(id);
+      else if (this.editingTextDraft !== shape.text) this.toolbox.updateShape(id, { text: this.editingTextDraft });
+    }
+    this.draw();
+  }
+
+  /** Escape's path: nothing is written, so an existing label keeps the text it had. A label this
+   * edit placed is removed instead — otherwise backing out of a stray click leaves a "Text" on
+   * the drawing with no way to have refused it. */
+  private cancelEditingText(): void {
+    const id = this.editingTextShapeId;
+    const wasNew = this.editingTextIsNew;
+    this.editingTextShapeId = null;
+    this.editingTextIsNew = false;
+    if (id && wasNew) this.toolbox.removeShape(id);
     this.draw();
   }
 
   onTextEditInput(value: string): void {
     if (!this.editingTextShapeId) return;
-    this.toolbox.updateShape(this.editingTextShapeId, { text: value });
+    this.editingTextDraft = value;
   }
 
   /** Enter finishes editing (Text stays the active tool, ready for the next click); Shift+Enter
-   * is left alone so the browser inserts its normal newline in the textarea. */
+   * is left alone so the browser inserts its normal newline in the textarea. Escape abandons the
+   * edit — which is only possible because the typing was staged rather than written per key. */
   onTextEditKeyDown(event: KeyboardEvent): void {
-    if ((event.key === 'Enter' && !event.shiftKey) || event.key === 'Escape') {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      // Cancel first, then blur: blur commits, so doing it the other way round would write back
+      // the very draft Escape just refused. Clearing the id makes that blur a no-op.
+      this.cancelEditingText();
+      this.textEditAreaRef?.nativeElement.blur();
+      return;
+    }
+    if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
       this.finishEditingText();
     }
@@ -895,7 +1001,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       const box = this.isAreaSelecting ? this.areaSelectBox() : null;
       if (box) {
         const contained = this.toolbox.getEditableShapes().filter(shape => {
-          const b = shapeBounds(shape, this.pxPerMm);
+          const b = shapeBounds(shape);
           return b.x0 >= box.x0 && b.x1 <= box.x1 && b.y0 >= box.y0 && b.y1 <= box.y1;
         });
         this.selectedShapeIds = this.areaSelectAdditive
@@ -958,12 +1064,27 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       }
     }
 
+    // Select mode: Enter on a single selected label opens its editor — the keyboard route to
+    // the same thing double-click does, for someone who just arrow-nudged a label into place and
+    // does not want to go back to the mouse.
+    if (!this.activeTool && event.code === 'Enter' && this.selectedShapeIds.size === 1) {
+      const [only] = this.selectedShapes;
+      if (only?.type === 'text') {
+        this.startEditingText(only.id);
+        event.preventDefault();
+        return;
+      }
+    }
+
     // Select mode: arrow keys nudge every selected shape (in world mm) instead of panning
-    // the camera — Shift gives a coarser step, matching the pan/reference-nudge convention.
+    // the camera — Shift gives a coarser step, Ctrl (or Cmd on Mac) a finer one, matching how
+    // a number field steps. Shift wins when both are held, as it does there.
     if (!this.activeTool && this.selectedShapeIds.size) {
       const dir = DraftCanvasComponent.ARROW_NUDGE_DIRECTION[event.code];
       if (dir) {
-        const stepMm = event.shiftKey ? DraftCanvasComponent.NUDGE_STEP_MM_COARSE : DraftCanvasComponent.NUDGE_STEP_MM_FINE;
+        const stepMm = event.shiftKey ? DraftCanvasComponent.NUDGE_STEP_MM_COARSE
+          : (event.ctrlKey || event.metaKey) ? DraftCanvasComponent.NUDGE_STEP_MM_FINE
+            : DraftCanvasComponent.NUDGE_STEP_MM_BASE;
         const [dx, dy] = [dir[0] * stepMm, dir[1] * stepMm];
         const editable = this.toolbox.getEditableShapes();
         for (const id of this.selectedShapeIds) {
@@ -1069,17 +1190,47 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     const modifierHeld = event.ctrlKey;
 
     if (this.activeTool && isPrimary && !modifierHeld && !this.isSpaceDown) {
-      const pt = this.resolveToolPoint(this.worldFromPointer(event));
+      const rawPt = this.worldFromPointer(event);
+      const pt = this.resolveToolPoint(rawPt);
       const tool = this.activeTool;
+
+      // Text over an existing label edits that one. Dropping a second shape exactly on top of the
+      // first is never what the click meant, and the two then overprint into something unreadable
+      // that takes two deletes to clear. Handled here rather than inside the tool because it is
+      // draft-canvas that owns hit-testing and the editor, the same way the oneShot branch below
+      // already reaches for text specifically.
+      //
+      // Hit-tested against the raw cursor, not the snapped point: a snap can pull the placement
+      // point onto geometry some way off, and what the click landed on is a question about where
+      // the cursor actually was.
+      if (tool.id === 'text') {
+        const existing = this.textShapeAt(rawPt);
+        if (existing) {
+          // Selected as well as edited, so the settings strip offers the label's own fields
+          // (content, Size, Angle, X/Y) rather than just the pen's — reaching a label through the
+          // Text tool is still reaching that label, and it should not matter which tool got you
+          // there. Same pairing onDoubleClick makes.
+          this.setSelectedShape(existing.id);
+          this.startEditingText(existing.id);
+          this.host.nativeElement.setPointerCapture(event.pointerId);
+          return;
+        }
+      }
       tool.onPointerDown(pt, this.toolHost);
       this.host.nativeElement.setPointerCapture(event.pointerId);
       if (tool.oneShot) {
         // Commits immediately (e.g. Text, Point) but stays on its own tool rather than
         // switching to Select, so consecutive clicks keep placing more of them fluidly. Text
-        // also opens an inline on-canvas editor right away — see startEditingText.
+        // also opens an inline on-canvas editor right away — see startEditingText — and selects
+        // what it placed, for the same reason the re-edit path above does: the strip should be
+        // describing the label you are working on, not just the pen. The next click on empty
+        // canvas places another and takes the selection with it.
         const shapes = this.toolbox.getEditableShapes();
         const newest = shapes[shapes.length - 1];
-        if (newest?.type === 'text') this.startEditingText(newest.id);
+        if (newest?.type === 'text') {
+          this.setSelectedShape(newest.id);
+          this.startEditingText(newest.id, true);
+        }
         this.draw();
         return;
       }
@@ -1324,6 +1475,16 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     event.preventDefault();
 
     const pt = this.worldFromPointer(event);
+
+    // ...unless it landed on a label, where double-click means "edit this" in every drawing
+    // program. Only text intercepts, so double-click-to-zoom still works everywhere else,
+    // including on top of other shapes.
+    const doubleClicked = this.textShapeAt(pt);
+    if (doubleClicked) {
+      this.setSelectedShape(doubleClicked.id);
+      this.startEditingText(doubleClicked.id);
+      return;
+    }
     const el = this.host.nativeElement;
     const pxW = Math.max(1, el.clientWidth);
     const pxH = Math.max(1, el.clientHeight);

@@ -8,7 +8,7 @@ fluting, arching and the mould; designs export as SVG/PDF/DXF for templates and 
 
 ```bash
 ng serve        # dev server, localhost:4200
-ng test         # vitest, ~40s wall, 466 tests — full suite, run before considering work done
+ng test         # vitest, ~40s wall, 539 tests — full suite, run before considering work done
 ng build
 ```
 

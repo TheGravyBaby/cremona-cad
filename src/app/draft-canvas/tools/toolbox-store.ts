@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { DraftShape, ImageShape, DEFAULT_SHAPE_COLOR, DEFAULT_FREEHAND_WIDTH } from './toolbox-shape';
+import { DraftShape, ImageShape, DEFAULT_SHAPE_COLOR, DEFAULT_FREEHAND_WIDTH, DEFAULT_TEXT_SIZE_MM } from './toolbox-shape';
 import { Layer, DEFAULT_LAYER_ID, makeLayerId } from './layer';
 import { ImageAssetStore } from './image-asset-store';
 import { readWorkingState, writeWorkingState } from '../../helpers/workingStorage';
@@ -34,6 +34,7 @@ export class ToolboxStore implements Undoable {
   private listeners = new Set<() => void>();
   private _currentColor: string = DEFAULT_SHAPE_COLOR;
   private _currentDashed = false;
+  private _currentTextSize = DEFAULT_TEXT_SIZE_MM;
   private _currentStrokeWidth: number = DEFAULT_FREEHAND_WIDTH;
   private _currentOpacity = 1;
   private _currentSectionColor2: string = '#93c5fd';
@@ -68,6 +69,17 @@ export class ToolboxStore implements Undoable {
   set currentDashed(value: boolean) {
     if (this._currentDashed === value) return;
     this._currentDashed = value;
+    this.persist();
+    this.notify();
+  }
+
+  /** The size (world mm) new Text shapes are stamped with. Sticky rather than reset per label:
+   * once a drawing's annotations are at a size that reads well against it, the next one wants to
+   * match, and re-typing the number every time is the annoying part. */
+  get currentTextSize(): number { return this._currentTextSize; }
+  set currentTextSize(mm: number) {
+    if (!Number.isFinite(mm) || mm <= 0 || this._currentTextSize === mm) return;
+    this._currentTextSize = mm;
     this.persist();
     this.notify();
   }
@@ -377,6 +389,7 @@ export class ToolboxStore implements Undoable {
         if (Array.isArray(parsed.shapes)) this.shapes = parsed.shapes;
         if (typeof parsed.currentColor === 'string') this._currentColor = parsed.currentColor;
         if (typeof parsed.currentDashed === 'boolean') this._currentDashed = parsed.currentDashed;
+        if (typeof parsed.currentTextSize === 'number') this._currentTextSize = parsed.currentTextSize;
         if (typeof parsed.currentStrokeWidth === 'number') this._currentStrokeWidth = parsed.currentStrokeWidth;
         if (typeof parsed.currentOpacity === 'number') this._currentOpacity = parsed.currentOpacity;
         if (typeof parsed.currentSectionColor2 === 'string') this._currentSectionColor2 = parsed.currentSectionColor2;
@@ -415,6 +428,7 @@ export class ToolboxStore implements Undoable {
       shapes: this.shapes.filter(s => s.type !== 'image'),
       currentColor: this._currentColor,
       currentDashed: this._currentDashed,
+      currentTextSize: this._currentTextSize,
       currentStrokeWidth: this._currentStrokeWidth,
       currentOpacity: this._currentOpacity,
       currentSectionColor2: this._currentSectionColor2,
@@ -469,6 +483,7 @@ export class ToolboxStore implements Undoable {
     if (Array.isArray(parsed['shapes'])) this.shapes = parsed['shapes'] as DraftShape[];
     if (typeof parsed['currentColor'] === 'string') this._currentColor = parsed['currentColor'] as string;
     if (typeof parsed['currentDashed'] === 'boolean') this._currentDashed = parsed['currentDashed'] as boolean;
+    if (typeof parsed['currentTextSize'] === 'number') this._currentTextSize = parsed['currentTextSize'] as number;
     if (typeof parsed['currentStrokeWidth'] === 'number') this._currentStrokeWidth = parsed['currentStrokeWidth'] as number;
     if (typeof parsed['currentOpacity'] === 'number') this._currentOpacity = parsed['currentOpacity'] as number;
     if (typeof parsed['currentSectionColor2'] === 'string') this._currentSectionColor2 = parsed['currentSectionColor2'] as string;
