@@ -1,6 +1,7 @@
 import {
-  buildPolylineIndex, distPointToPolyline, distPointToPolylineIndexed, interceptCirclesAndPoint,
-  makeC2SplineWithFlatKnot, makeMonotoneSpline,
+  angleFromCenter, angleWithinSweep, buildPolylineIndex, distPointToPolyline,
+  distPointToPolylineIndexed, fitArcFromEndsAndCenter, fitArcThroughPoints, interceptCirclesAndPoint,
+  makeC2SplineWithFlatKnot, makeMonotoneSpline, normalizeRadians, pointOnCircle,
 } from './draftMath';
 import { Circle } from '../models/types';
 
@@ -202,5 +203,88 @@ describe('makeC2SplineWithFlatKnot', () => {
     expect(makeC2SplineWithFlatKnot([0, 1], [0, 1], 0)).toBeNull();
     expect(makeC2SplineWithFlatKnot([0, 1, 2], [0, 1, 0], 0)).toBeNull(); // pinned at an end
     expect(makeC2SplineWithFlatKnot([0, 1, 2], [0, 1, 0], 2)).toBeNull();
+  });
+});
+
+/** CCW sweep of a fit's boundary angles, the arcPathData convention both fits below return in. */
+function span(fit: { startAngle: number; endAngle: number }): number {
+  return normalizeRadians(fit.endAngle - fit.startAngle);
+}
+
+describe('fitArcThroughPoints', () => {
+  it('returns the circle through all three points, swept so it contains the through point', () => {
+    const through = { x: 0, y: 10 };
+    const fit = fitArcThroughPoints({ x: -10, y: 0 }, { x: 10, y: 0 }, through)!;
+    expect(fit.center.x).toBeCloseTo(0, 9);
+    expect(fit.center.y).toBeCloseTo(0, 9);
+    expect(fit.radius).toBeCloseTo(10, 9);
+    // which of the two arcs came back is the whole contract — a circle through three points is
+    // unique, but the sweep between two of them is not
+    expect(angleWithinSweep(angleFromCenter(fit.center, through), fit.startAngle, fit.endAngle)).toBe(true);
+    expect(span(fit)).toBeCloseTo(Math.PI, 9);
+  });
+
+  it('sweeps past 180° when the through point sits on the far side of the chord', () => {
+    const start = pointOnCircle({ x: 0, y: 0, r: 10 }, 0);
+    const end = pointOnCircle({ x: 0, y: 0, r: 10 }, Math.PI / 2);
+    const through = pointOnCircle({ x: 0, y: 0, r: 10 }, (200 * Math.PI) / 180);
+    const fit = fitArcThroughPoints(start, end, through)!;
+    expect(span(fit)).toBeCloseTo((270 * Math.PI) / 180, 9);
+    expect(angleWithinSweep(angleFromCenter(fit.center, through), fit.startAngle, fit.endAngle)).toBe(true);
+  });
+
+  it('gives the complementary arc — same circle, the part without the through point', () => {
+    const through = { x: 0, y: 10 };
+    const other = fitArcThroughPoints({ x: -10, y: 0 }, { x: 10, y: 0 }, through, true)!;
+    expect(other.radius).toBeCloseTo(10, 9);
+    expect(angleWithinSweep(angleFromCenter(other.center, through), other.startAngle, other.endAngle)).toBe(false);
+  });
+
+  it('still fits an arc flat enough to look like a line at drafting scale', () => {
+    // The collinearity guard is relative to the points' own spread for exactly this: a violin's
+    // long arch is a 200mm chord over a fraction of a millimetre of rise, and an absolute epsilon
+    // would refuse it while accepting rounding noise on a small drawing.
+    const fit = fitArcThroughPoints({ x: -100, y: 0 }, { x: 100, y: 0 }, { x: 0, y: 0.5 })!;
+    expect(fit).not.toBeNull();
+    expect(fit.radius).toBeCloseTo(10000.25, 6);
+  });
+
+  it('returns null when there is no circle to find', () => {
+    expect(fitArcThroughPoints({ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 4, y: 0 })).toBeNull(); // collinear
+    expect(fitArcThroughPoints({ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 })).toBeNull(); // coincident
+  });
+});
+
+describe('fitArcFromEndsAndCenter', () => {
+  it('projects the clicked center onto the bisector of the two ends', () => {
+    // (7, -20) is nowhere near equidistant from the ends; only its distance along the bisector
+    // can matter, so it lands at (0, -20) rather than being rejected
+    const fit = fitArcFromEndsAndCenter({ x: -10, y: 0 }, { x: 10, y: 0 }, { x: 7, y: -20 })!;
+    expect(fit.center.x).toBeCloseTo(0, 9);
+    expect(fit.center.y).toBeCloseTo(-20, 9);
+    expect(fit.radius).toBeCloseTo(Math.sqrt(500), 9);
+  });
+
+  it('bulges away from the center, and takes the major arc under preferLong', () => {
+    const minor = fitArcFromEndsAndCenter({ x: -10, y: 0 }, { x: 10, y: 0 }, { x: 0, y: -20 })!;
+    expect(span(minor)).toBeLessThanOrEqual(Math.PI);
+    const mid = pointOnCircle({ ...minor.center, r: minor.radius }, minor.startAngle + span(minor) / 2);
+    expect(mid.y).toBeGreaterThan(0);
+
+    const major = fitArcFromEndsAndCenter({ x: -10, y: 0 }, { x: 10, y: 0 }, { x: 0, y: -20 }, true)!;
+    expect(span(major)).toBeGreaterThan(Math.PI);
+    expect(major.center.y).toBeCloseTo(-20, 9);
+  });
+
+  it('makes a semicircle when the center lands on the chord itself', () => {
+    const fit = fitArcFromEndsAndCenter({ x: -10, y: 0 }, { x: 10, y: 0 }, { x: 3, y: 0 })!;
+    expect(fit.center.x).toBeCloseTo(0, 9);
+    expect(fit.center.y).toBeCloseTo(0, 9);
+    expect(fit.radius).toBeCloseTo(10, 9);
+    expect(span(fit)).toBeCloseTo(Math.PI, 9);
+  });
+
+  it('returns null when the two ends coincide, leaving no bisector', () => {
+    expect(fitArcFromEndsAndCenter({ x: 5, y: 5 }, { x: 5, y: 5 }, { x: 0, y: 0 })).toBeNull();
   });
 });

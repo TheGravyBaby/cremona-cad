@@ -1,6 +1,6 @@
 // Tool mnemonics: pressing the key activates the group's first variant, or
 // advances to the next one in the list on repeated presses. Order here should
-// match each tool's flyout order in draft-canvas.ts's toolRows.
+// match each tool's flyout order in tool-registry.ts's toolRows.
 //
 // Shared between draft-canvas.ts (which owns keyboard capture and actually
 // dispatches these) and tool-palette.ts (which only reads HOTKEY_LETTER_BY_TOOL
@@ -8,7 +8,7 @@
 export const HOTKEY_TOOL_CYCLE: Record<string, string[]> = {
   KeyL: ['line'],
   KeyD: ['dimension'],
-  KeyA: ['arc', 'arc-tangent', 'arc-start', 'arc-chain', 'join-arc'],
+  KeyA: ['arc', 'arc-start', 'arc-ends-center', 'arc-through', 'arc-tangent', 'arc-chain', 'join-arc'],
   KeyC: ['circle'],
   KeyR: ['rect'],
   KeyS: ['section'],

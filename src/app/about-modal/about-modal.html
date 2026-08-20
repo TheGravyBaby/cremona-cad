@@ -118,8 +118,14 @@
 
           <h4>Arcs</h4>
           <ul class="tips-list">
-            <li><code>Arc</code> — first select the center, then pick two points to draw the arc span. </li>
-            <li><code>Endpoint Arc</code> — same as the normal arc, except the edge is selected first and then radius.</li>
+            <li><code>Center–Start–End Arc</code> — click the center, then the arc's start, then its end.</li>
+            <li><code>Start–Center–End Arc</code> — the same three points, with the arc's start clicked before
+              the center.</li>
+            <li><code>Start–End–Center Arc</code> — click both ends of the arc, then its center. The center is
+              pulled onto the line halfway between the ends, so it only needs clicking by eye.</li>
+            <li><code>Start–End–Through Arc</code> — click both ends, then a point the curve passes through. No
+              center anywhere in it, which is what makes it the one to trace a shape you can see. Shift takes
+              the rest of the circle instead.</li>
             <li><code>Tangent Arc</code> — click on an existing curve, then an end point; the radius is solved for a
               smooth join.</li>
             <li><code>Chained Tangent Arc</code> — each click adds another tangent arc; Escape ends the chain.

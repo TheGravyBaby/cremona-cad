@@ -65,10 +65,48 @@
         <line x1="5" y1="19" x2="19" y2="5" />
       </svg>
       }
+      <!-- The four hand-placed arc constructions share one glyph and one grammar, so the flyout reads
+           as a family: solid dots are the points you click, dashed spokes are radii, and the hub is
+           filled when the center is the first click, hollow when it comes later, and absent entirely
+           from the one construction that never asks for a center. The marks migrate off the hub and
+           onto the curve as the center click moves later in the sequence. The hub is at 19,19 — the
+           quarter arc below bows away from it, so that corner is its center of curvature. -->
       @case ('arc') {
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
         stroke-linecap="round">
         <path d="M4 19a15 15 0 0 1 15-15" />
+        <path d="M15.8 19H4M19 15.8V4" stroke-width="1.1" stroke-dasharray="2 2.6" stroke-linecap="butt" />
+        <circle cx="19" cy="19" r="2" fill="currentColor" stroke="none" />
+      </svg>
+      }
+      @case ('arc-start') {
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round">
+        <path d="M4 19a15 15 0 0 1 15-15" />
+        <path d="M15.8 19H4" stroke-width="1.1" stroke-dasharray="2 2.6" stroke-linecap="butt" />
+        <circle cx="4" cy="19" r="2.2" fill="currentColor" stroke="none" />
+        <circle cx="19" cy="19" r="1.7" stroke-width="1.1" />
+      </svg>
+      }
+      @case ('arc-ends-center') {
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round">
+        <path d="M4 19a15 15 0 0 1 15-15" />
+        <path d="M15.8 19H4M19 15.8V4" stroke-width="1.1" stroke-dasharray="2 2.6" stroke-linecap="butt" />
+        <circle cx="4" cy="19" r="2.2" fill="currentColor" stroke="none" />
+        <circle cx="19" cy="4" r="2.2" fill="currentColor" stroke="none" />
+        <circle cx="19" cy="19" r="1.7" stroke-width="1.1" />
+      </svg>
+      }
+      <!-- No hub and no spokes at all: every point of this construction sits on the curve itself,
+           the third one at 8.4,8.4 — the arc's own midpoint. -->
+      @case ('arc-through') {
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round">
+        <path d="M4 19a15 15 0 0 1 15-15" />
+        <circle cx="4" cy="19" r="2.2" fill="currentColor" stroke="none" />
+        <circle cx="19" cy="4" r="2.2" fill="currentColor" stroke="none" />
+        <circle cx="8.4" cy="8.4" r="2.2" fill="currentColor" stroke="none" />
       </svg>
       }
       @case ('arc-tangent') {
@@ -77,13 +115,6 @@
         <path d="M3 15L10 15" />
         <path d="M10 15C16 15 20 11 20 5" />
         <circle cx="3" cy="15" r="1.4" fill="currentColor" stroke="none" />
-      </svg>
-      }
-      @case ('arc-start') {
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-        stroke-linecap="round">
-        <path d="M4 19a15 15 0 0 1 15-15" />
-        <circle cx="4" cy="19" r="1.4" fill="currentColor" stroke="none" />
       </svg>
       }
       @case ('arc-chain') {
