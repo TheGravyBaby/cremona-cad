@@ -505,6 +505,10 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
    * they render underneath everything. Their whole interior hit-tests at distance 0 (you grab a
    * photo by its middle, not its edge), so ranking them by distance alongside real geometry would
    * mean an image always won — making anything traced on top of it unselectable.
+   *
+   * Ties go to the *last* shape in the list, which is the one drawn on top (both passes iterate
+   * in render order). Stacks are common now that every visible layer is selectable at once, and
+   * inside the image pass a tie is the normal case rather than the edge one.
    */
   private hitTestToolboxShape(pt: Pt): string | null {
     const toleranceMm = DraftCanvasComponent.SELECT_HIT_TOLERANCE_PX / this.pxPerMm;
@@ -513,7 +517,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       let bestDist = Infinity;
       for (const shape of shapes) {
         const dist = distanceToShape(pt, shape);
-        if (dist <= toleranceMm && dist < bestDist) {
+        if (dist <= toleranceMm && dist <= bestDist) {
           bestId = shape.id;
           bestDist = dist;
         }
@@ -1225,7 +1229,10 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
         // what it placed, for the same reason the re-edit path above does: the strip should be
         // describing the label you are working on, not just the pen. The next click on empty
         // canvas places another and takes the selection with it.
-        const shapes = this.toolbox.getEditableShapes();
+        // getShapes(), not getEditableShapes(): this wants the shape just appended, and the
+        // editable list is filtered — drawing onto a layer hidden after it was made active would
+        // otherwise make "newest" some unrelated label on another layer and open *its* editor.
+        const shapes = this.toolbox.getShapes();
         const newest = shapes[shapes.length - 1];
         if (newest?.type === 'text') {
           this.setSelectedShape(newest.id);
