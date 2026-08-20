@@ -1,7 +1,7 @@
 import { Pt } from '../../models/types';
-import { DraftShape, ImageShape, dimensionGeometry, imageCenter, imageCorners } from './toolbox-shape';
+import { DEFAULT_TEXT_SIZE_MM, DraftShape, ImageShape, TextShape, dimensionGeometry, imageCenter, imageCorners } from './toolbox-shape';
 import { angleFromCenter, angleWithinSweep, dist, distPointToSegment, normalizeRadians, pointOnCircle, rotatePointAbout } from '../../helpers/draftMath';
-import { TEXT_FONT_SIZE_PX, TEXT_LINE_HEIGHT_RATIO } from './shape-renderer';
+import { TEXT_LINE_HEIGHT_RATIO } from './shape-renderer';
 
 function distanceToArc(p: Pt, center: Pt, radius: number, startAngle: number, endAngle: number): number {
   if (angleWithinSweep(angleFromCenter(center, p), startAngle, endAngle)) {
@@ -36,15 +36,19 @@ function distanceToBoxInterior(p: Pt, x0: number, y0: number, x1: number, y1: nu
 }
 
 /**
- * Estimates a text shape's world-mm footprint from its (constant on-screen) font size and
- * per-line character count — this module stays DOM-free (see the "generic math vs SVG
- * rendering" separation elsewhere in draft-canvas), so unlike the selection halo it can't
- * measure the actual rendered glyphs. Anchored at `position` per shape-renderer.ts's
- * text-anchor:start, and (for the whole multi-line block) dominant-baseline:central.
+ * Estimates a text shape's world-mm footprint from its font size and per-line character count —
+ * this module stays DOM-free (see the "generic math vs SVG rendering" separation elsewhere in
+ * draft-canvas), so unlike the selection halo it can't measure the actual rendered glyphs.
+ * Anchored at `position` per shape-renderer.ts's text-anchor:start, and (for the whole
+ * multi-line block) dominant-baseline:central.
+ *
+ * The box is the *unrotated* one — callers that care about a turned label work in its local
+ * frame instead (see distanceToText), which keeps one box definition serving both.
  */
-function textFootprint(position: Pt, text: string, pxPerMm: number): ShapeBounds {
-  const fontSizeMm = TEXT_FONT_SIZE_PX / pxPerMm;
-  const lines = text.split('\n');
+function textFootprint(shape: TextShape): ShapeBounds {
+  const { position } = shape;
+  const fontSizeMm = shape.fontSize ?? DEFAULT_TEXT_SIZE_MM;
+  const lines = shape.text.split('\n');
   const maxLineLen = Math.max(1, ...lines.map(line => line.length));
   const lineHeight = fontSizeMm * TEXT_LINE_HEIGHT_RATIO;
   const width = maxLineLen * fontSizeMm * 0.55;
@@ -52,9 +56,29 @@ function textFootprint(position: Pt, text: string, pxPerMm: number): ShapeBounds
   return { x0: position.x, y0: position.y - height / 2, x1: position.x + width, y1: position.y + height / 2 };
 }
 
-function distanceToText(p: Pt, position: Pt, text: string, pxPerMm: number): number {
-  const box = textFootprint(position, text, pxPerMm);
-  return distanceToBoxInterior(p, box.x0, box.y0, box.x1, box.y1);
+/** Turning the *point* into the label's frame rather than the box into the world's — the box
+ * stays axis-aligned, so this is one rotation instead of four corners plus a polygon test. */
+function distanceToText(p: Pt, shape: TextShape): number {
+  const deg = shape.rotationDeg ?? 0;
+  const local = deg ? rotatePointAbout(p, shape.position, -deg) : p;
+  const box = textFootprint(shape);
+  return distanceToBoxInterior(local, box.x0, box.y0, box.x1, box.y1);
+}
+
+/** Axis-aligned world bounds of a possibly-turned label — the extent of its four rotated
+ * corners, so a marquee contains a rotated label exactly when it covers what's drawn. */
+function textBounds(shape: TextShape): ShapeBounds {
+  const box = textFootprint(shape);
+  const deg = shape.rotationDeg ?? 0;
+  if (!deg) return box;
+  const corners = [
+    { x: box.x0, y: box.y0 }, { x: box.x1, y: box.y0 },
+    { x: box.x1, y: box.y1 }, { x: box.x0, y: box.y1 },
+  ].map(c => rotatePointAbout(c, shape.position, deg));
+  return {
+    x0: Math.min(...corners.map(c => c.x)), x1: Math.max(...corners.map(c => c.x)),
+    y0: Math.min(...corners.map(c => c.y)), y1: Math.max(...corners.map(c => c.y)),
+  };
 }
 
 /** Shortest distance to any segment of a freehand stroke's raw polyline (not the smoothed
@@ -79,8 +103,10 @@ function distanceToImage(p: Pt, shape: ImageShape): number {
   );
 }
 
-/** Shortest distance from a world-space point to a toolbox shape's geometry. */
-export function distanceToShape(p: Pt, shape: DraftShape, pxPerMm: number): number {
+/** Shortest distance from a world-space point to a toolbox shape's geometry. Zoom plays no
+ * part: every shape, text included, has a world-mm size of its own, so what is under the cursor
+ * does not change with the camera. */
+export function distanceToShape(p: Pt, shape: DraftShape): number {
   switch (shape.type) {
     case 'line':
     case 'section':
@@ -99,7 +125,7 @@ export function distanceToShape(p: Pt, shape: DraftShape, pxPerMm: number): numb
     case 'rect':
       return distanceToRect(p, shape.p1, shape.p2);
     case 'text':
-      return distanceToText(p, shape.position, shape.text, pxPerMm);
+      return distanceToText(p, shape);
     case 'point':
       return dist(p, shape.position);
     case 'freehand':
@@ -120,7 +146,7 @@ export interface ShapeBounds {
  * marquee/area selection (see draft-canvas.ts's onPointerDown/onPointerUp). Arc's bound is
  * sampled along its actual sweep rather than its full enclosing circle, so a marquee has to
  * cover the visible arc, not the untraced rest of the circle it sits on. */
-export function shapeBounds(shape: DraftShape, pxPerMm: number): ShapeBounds {
+export function shapeBounds(shape: DraftShape): ShapeBounds {
   switch (shape.type) {
     case 'line':
     case 'section':
@@ -158,7 +184,7 @@ export function shapeBounds(shape: DraftShape, pxPerMm: number): ShapeBounds {
         y0: Math.min(shape.p1.y, shape.p2.y), y1: Math.max(shape.p1.y, shape.p2.y),
       };
     case 'text':
-      return textFootprint(shape.position, shape.text, pxPerMm);
+      return textBounds(shape);
     case 'point':
       return { x0: shape.position.x, x1: shape.position.x, y0: shape.position.y, y1: shape.position.y };
     case 'freehand': {

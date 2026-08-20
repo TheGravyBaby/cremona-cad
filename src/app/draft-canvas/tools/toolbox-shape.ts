@@ -89,7 +89,24 @@ export type TextShape = ShapeBase & {
   type: 'text';
   position: Pt;
   text: string;
+  /**
+   * Font size in world mm. Deliberately *not* the screen-constant sizing Dimension and Section
+   * labels use: a label written onto a drawing is part of the drawing, so it has to hold its
+   * proportion against the geometry as the camera zooms. Undefined means DEFAULT_TEXT_SIZE_MM.
+   */
+  fontSize?: number;
+  /** Turned about `position`, degrees CCW in the Y-up world — for reading along a rib or a
+   * centerline. Undefined means level. */
+  rotationDeg?: number;
 };
+
+/**
+ * 14px at the default camera of 1.5 px/mm — the size every label happened to render at before
+ * text carried a size of its own. Chosen to keep existing annotations looking as they did at
+ * the zoom the canvas opens on; nothing records what mm size an older label *meant*, so at any
+ * other zoom it necessarily lands somewhere new.
+ */
+export const DEFAULT_TEXT_SIZE_MM = 9.3;
 
 // A single marked reference point — no geometry beyond its location, for calling
 // out or snapping to a spot that isn't already an endpoint/center of something else.

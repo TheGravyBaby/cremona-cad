@@ -59,7 +59,7 @@ export class ToolRegistryService {
       createTangentArcTool(), createChainedTangentArcTool(), createJoinArcTool()]],
     [createCircleTool(this.toolbox)],
     [createRectTool(this.toolbox)],
-    [createTextTool()],
+    [createTextTool(this.toolbox)],
     [createPointTool()],
     [createFreehandTool(this.toolbox)],
     // Its own button, not folded into Draw's flyout: it deletes any toolbox shape it's dragged
