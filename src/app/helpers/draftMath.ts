@@ -268,7 +268,9 @@ export function pickArcOrientation(a: number, b: number, preferLong: boolean): {
   return isMinor === !preferLong ? { startAngle: a, endAngle: b } : { startAngle: b, endAngle: a };
 }
 
-export type TangentArcFit = { center: Pt; radius: number; startAngle: number; endAngle: number };
+/** A solved arc in the CCW convention arcPathData and ArcShape share — what every fit function
+ * below returns, whatever constraints it solved from. */
+export type ArcFit = { center: Pt; radius: number; startAngle: number; endAngle: number };
 
 /**
  * The unique circle through `start` and `end` that is tangent to direction
@@ -281,7 +283,7 @@ export type TangentArcFit = { center: Pt; radius: number; startAngle: number; en
  * one returned by default. Pass `preferOther: true` (e.g. while an angle-lock-style modifier
  * is held) to deliberately take the other one instead, trading the smooth join for its sweep.
  */
-export function fitTangentArc(start: Pt, startTangent: number, end: Pt, preferOther = false): TangentArcFit | null {
+export function fitTangentArc(start: Pt, startTangent: number, end: Pt, preferOther = false): ArcFit | null {
   const tx = Math.cos(startTangent);
   const ty = Math.sin(startTangent);
   const nx = -ty; // normal to the tangent, rotated +90° (CCW)
@@ -310,6 +312,82 @@ export function fitTangentArc(start: Pt, startTangent: number, end: Pt, preferOt
   return useAsIs
     ? { center, radius, startAngle, endAngle }
     : { center, radius, startAngle: endAngle, endAngle: startAngle };
+}
+
+/**
+ * The unique circle through three points, returned as the arc that actually passes through
+ * `through` — the one arc construction that needs no center at all, which is what makes it the
+ * tool for tracing a curve you can see. Returns null when the three points are collinear (no
+ * finite circle fits) or two of them coincide.
+ *
+ * Which of that circle's two arcs comes back is decided by `through` itself rather than by any
+ * minor/major rule, so dragging the third point across the chord grows the sweep continuously
+ * past 180° instead of snapping back. `preferOther: true` takes the complementary arc — the same
+ * circle, swept the far way round, the part that does *not* contain `through`.
+ */
+export function fitArcThroughPoints(start: Pt, end: Pt, through: Pt, preferOther = false): ArcFit | null {
+  // Collinearity is measured against the points' own spread rather than an absolute epsilon:
+  // the determinant scales with area, so a fixed threshold would reject a genuinely flat arc
+  // (a violin's long arch is exactly that) at one drawing scale and accept noise at another.
+  const scale = Math.max(dist(start, end), dist(start, through), dist(end, through));
+  if (scale < 1e-9) return null;
+
+  // solved with `start` at the origin and translated back, rather than straight from world
+  // coordinates: the determinant differences the squares of the inputs, so a drawing sitting far
+  // from the origin would lose most of its precision to cancellation before the divide
+  const bx = end.x - start.x;
+  const by = end.y - start.y;
+  const cx = through.x - start.x;
+  const cy = through.y - start.y;
+  const d = 2 * (bx * cy - by * cx);
+  if (Math.abs(d) < 1e-9 * scale * scale) return null;
+
+  const b2 = bx * bx + by * by;
+  const c2 = cx * cx + cy * cy;
+  const center: Pt = {
+    x: start.x + (cy * b2 - by * c2) / d,
+    y: start.y + (bx * c2 - cx * b2) / d,
+  };
+  const radius = dist(center, start);
+  if (radius < 1e-6) return null;
+
+  const startAngle = angleFromCenter(center, start);
+  const endAngle = angleFromCenter(center, end);
+  const containsThrough = angleWithinSweep(angleFromCenter(center, through), startAngle, endAngle);
+  return containsThrough === !preferOther
+    ? { center, radius, startAngle, endAngle }
+    : { center, radius, startAngle: endAngle, endAngle: startAngle };
+}
+
+/**
+ * The arc ending at `start` and `end`, centered wherever on their perpendicular bisector sits
+ * nearest `centerHint`. A center equidistant from both ends can only lie on that bisector, so the
+ * third click is free to land anywhere and only its position *along* the bisector changes the
+ * radius — projecting rather than rejecting is what lets the center be clicked by eye. Returns
+ * null when the two ends coincide, leaving no bisector to project onto.
+ *
+ * The minor (<=180°) arc by default and the major one when `preferLong` is true, same as the
+ * center-first constructions — so the arc always bulges away from the center, and pulling the
+ * center further off widens the sweep rather than flipping it.
+ */
+export function fitArcFromEndsAndCenter(start: Pt, end: Pt, centerHint: Pt, preferLong = false): ArcFit | null {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const chordSq = dx * dx + dy * dy;
+  if (chordSq < 1e-12) return null;
+
+  // bisector runs through the chord's midpoint along the chord turned 90°, so projecting onto it
+  // is one dot product — no line-intersection needed
+  const mid: Pt = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
+  const t = ((centerHint.x - mid.x) * -dy + (centerHint.y - mid.y) * dx) / chordSq;
+  const center: Pt = { x: mid.x - dy * t, y: mid.y + dx * t };
+
+  const radius = dist(center, start);
+  if (radius < 1e-6) return null;
+
+  const { startAngle, endAngle } = pickArcOrientation(
+    angleFromCenter(center, start), angleFromCenter(center, end), preferLong);
+  return { center, radius, startAngle, endAngle };
 }
 
 /** True when `angle` lies on the CCW sweep from startAngle to endAngle — the arcPathData
