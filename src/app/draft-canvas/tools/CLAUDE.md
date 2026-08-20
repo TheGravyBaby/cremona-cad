@@ -45,6 +45,12 @@ major, so the value is self-contained and tools can draw >180° sweeps. `models/
 always renders the minor arc and needs an out-of-band flag for the major. Converting this type to
 that one is lossy past 180° — don't write a blind converter.
 
+**The active layer says where new shapes land, not what you can edit.** Anything on a visible,
+unlocked layer is selectable and editable, whichever layer happens to be active — hide or lock is
+how you put a layer out of reach. `getEditableShapes()` is the single gate; every selection path in
+`draft-canvas.ts` reads through it, and the store's own mutators gate on the shape's layer lock
+rather than the active layer. Keep those two agreeing.
+
 **Missing `layerId` means `DEFAULT_LAYER_ID`,** not a migration. Shapes persisted before layers
 existed land on the first layer for free. Keep it that way.
 
