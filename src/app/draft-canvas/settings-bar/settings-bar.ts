@@ -228,7 +228,16 @@ export class SettingsBarComponent {
     return this.selectedShapeOfType('text');
   }
 
+  /** Open for an armed Text tool as well as a selected label, so the size can be set *before*
+   * placing — same shape as Section's and Freehand's panels. Only Size is meaningful in the armed
+   * case, since it is a pen setting the store carries; everything else needs a shape to edit. */
   public get showTextPanel(): boolean {
+    return this.activeTool?.id === 'text' || !!this.selectedTextShape;
+  }
+
+  /** The fields that describe one label rather than the pen — hidden while the tool is merely
+   * armed, when there is nothing for them to read or write. */
+  public get showTextShapeFields(): boolean {
     return !!this.selectedTextShape;
   }
 
@@ -266,7 +275,9 @@ export class SettingsBarComponent {
   }
 
   /** Sizes the selected label *and* becomes the size the next one is placed at — settling on a
-   * size that reads against this drawing is a decision about the drawing, not about one label. */
+   * size that reads against this drawing is a decision about the drawing, not about one label.
+   * With the tool merely armed there is no label to patch and only the pen setting moves, which
+   * is what makes the field usable before the first click. */
   setTextFontSize(value: number): void {
     const v = Number(value);
     if (!Number.isFinite(v) || v <= 0) return;
