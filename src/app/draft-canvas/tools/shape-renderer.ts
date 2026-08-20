@@ -1,7 +1,8 @@
 import * as d3 from 'd3';
 import { Pt } from '../../models/types';
 import {
-  DraftShape, DimensionShape, DEFAULT_SHAPE_COLOR, DEFAULT_IMAGE_OPACITY, DEFAULT_FREEHAND_WIDTH, ImageShape,
+  DraftShape, DimensionShape, DEFAULT_SHAPE_COLOR, DEFAULT_IMAGE_OPACITY, DEFAULT_FREEHAND_WIDTH,
+  DEFAULT_TEXT_SIZE_MM, ImageShape, TextShape,
   dimensionGeometry, imageCenter, imageCorners,
 } from './toolbox-shape';
 import { arcPathData, pointOnCircle } from '../../helpers/draftMath';
@@ -87,12 +88,25 @@ export function drawShape(gRoot: RootGroup, gUI: RootGroup, shape: DraftShape, p
         .attr('fill', 'none').attr('stroke', 'none')
         .style('pointer-events', 'none');
       {
+        // Sized in mm rather than the screen-constant px Dimension/Section labels use, so a
+        // label holds its proportion against the drawing through a zoom — see TextShape.fontSize.
+        const fontSizeMm = shape.fontSize ?? DEFAULT_TEXT_SIZE_MM;
         const textEl = gUI.append('text')
           .attr('text-anchor', 'start')
           .attr('fill', color)
-          .attr('font-size', TEXT_FONT_SIZE_PX / pxPerMm)
-          .style('user-select', 'none');
-        appendTextLines(textEl, shape.position, shape.text, TEXT_FONT_SIZE_PX / pxPerMm);
+          .attr('font-family', TEXT_FONT_FAMILY)
+          .attr('font-size', fontSizeMm)
+          .style('user-select', 'none')
+          // Transparent to the mouse so double-click-to-edit works at all. draw() rebuilds every
+          // node in gUI, so selecting a label on the first click destroys the very element that
+          // click landed on — and a browser only reports a double-click when both clicks share a
+          // target. Leaving the events to reach the stable <svg> underneath sidesteps that
+          // entirely, and costs nothing: picking is done by math in shape-hit-test.ts, never by
+          // asking the DOM what was clicked.
+          .style('pointer-events', 'none');
+        const rotate = textRotateTransform(shape);
+        if (rotate) textEl.attr('transform', rotate);
+        appendTextLines(textEl, shape.position, shape.text, fontSizeMm);
       }
       break;
     case 'point': {
@@ -177,11 +191,25 @@ export function drawImageShape(gRoot: RootGroup, shape: ImageShape, href: string
 
 const POINT_MARKER_SIZE_PX = 5;
 
-// Constant on-screen size (annotation-style, like Dimension/Section labels), not to-scale mm.
-export const TEXT_FONT_SIZE_PX = 14;
 // Multiplies font size for per-line spacing — exported so shape-hit-test.ts's DOM-free
 // footprint estimate can stay in sync with the actual rendered line spacing here.
 export const TEXT_LINE_HEIGHT_RATIO = 1.2;
+// Named so the inline editor overlay (draft-canvas.ts) can type in the same face the canvas
+// renders in — an SVG <text> with no family set falls back to the UA default, which is not
+// necessarily the CSS one the textarea would pick.
+export const TEXT_FONT_FAMILY = 'sans-serif';
+
+/**
+ * The SVG transform that turns a label about its anchor. gUI is the *unflipped* overlay (world y
+ * negated), so a counterclockwise turn in the Y-up world is a negative rotation here — the same
+ * sign flip fileExporter's text markup makes inside its own Y-flipped group. Returns null when
+ * there is nothing to turn, so the common case sets no attribute at all.
+ */
+function textRotateTransform(shape: TextShape): string | null {
+  const deg = shape.rotationDeg ?? 0;
+  if (!deg) return null;
+  return `rotate(${-deg} ${shape.position.x} ${-shape.position.y})`;
+}
 
 /** Appends one tspan per '\n'-separated line, vertically centering the whole block on
  * `position` (matching the single-line dominant-baseline:central convention used everywhere
@@ -502,17 +530,21 @@ export function drawSelectionHalo(gRoot: RootGroup, gUI: RootGroup, shape: Draft
       // Measure the actual rendered text (a hidden throwaway node) rather than estimating
       // width from character count — gUI shares gRoot's mm-space coordinates (just unflipped),
       // so getBBox() here is already in the right units for a gUI-space halo rect.
-      const fontSizeMm = TEXT_FONT_SIZE_PX / pxPerMm;
+      const fontSizeMm = shape.fontSize ?? DEFAULT_TEXT_SIZE_MM;
       const probe = gUI.append('text')
         .attr('text-anchor', 'start')
+        .attr('font-family', TEXT_FONT_FAMILY)
         .attr('font-size', fontSizeMm)
         .style('visibility', 'hidden');
       appendTextLines(probe, shape.position, shape.text || ' ', fontSizeMm);
+      // Measured unrotated on purpose: getBBox reports a node's own user space and ignores its
+      // transform, so the halo rect takes the same rotate the text does rather than trying to
+      // bound a turned label with an upright box.
       const box = (probe.node() as SVGTextElement).getBBox();
       probe.remove();
 
       const pad = 3 / pxPerMm;
-      gUI.append('rect')
+      const haloRect = gUI.append('rect')
         .attr('x', box.x - pad).attr('y', box.y - pad)
         .attr('width', box.width + pad * 2).attr('height', box.height + pad * 2)
         .attr('fill', SELECTION_HALO_COLOR)
@@ -522,6 +554,8 @@ export function drawSelectionHalo(gRoot: RootGroup, gUI: RootGroup, shape: Draft
         .attr('opacity', 0.6)
         .attr('vector-effect', 'non-scaling-stroke')
         .style('pointer-events', 'none');
+      const haloRotate = textRotateTransform(shape);
+      if (haloRotate) haloRect.attr('transform', haloRotate);
       break;
     }
     case 'point':

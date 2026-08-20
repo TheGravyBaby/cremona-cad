@@ -118,8 +118,14 @@
 
           <h4>Arcs</h4>
           <ul class="tips-list">
-            <li><code>Arc</code> — first select the center, then pick two points to draw the arc span. </li>
-            <li><code>Endpoint Arc</code> — same as the normal arc, except the edge is selected first and then radius.</li>
+            <li><code>Center–Start–End Arc</code> — click the center, then the arc's start, then its end.</li>
+            <li><code>Start–Center–End Arc</code> — the same three points, with the arc's start clicked before
+              the center.</li>
+            <li><code>Start–End–Center Arc</code> — click both ends of the arc, then its center. The center is
+              pulled onto the line halfway between the ends, so it only needs clicking by eye.</li>
+            <li><code>Start–End–Through Arc</code> — click both ends, then a point the curve passes through. No
+              center anywhere in it, which is what makes it the one to trace a shape you can see. Shift takes
+              the rest of the circle instead.</li>
             <li><code>Tangent Arc</code> — click on an existing curve, then an end point; the radius is solved for a
               smooth join.</li>
             <li><code>Chained Tangent Arc</code> — each click adds another tangent arc; Escape ends the chain.
@@ -137,11 +143,23 @@
               settings bar as <code>fraction</code> or a comma seperated list eg [<code>3,4,3</code>].</li>
           </ul>
 
+          <h4>Text</h4>
+          <p>Click to place a label and type straight into it. Double-click an existing one to edit it
+            again, or press Enter with it selected. Enter finishes, Shift+Enter adds a line, Escape
+            discards what you typed.</p>
+          <ul class="tips-list">
+            <li><code>Size</code> — in millimetres, measured on the drawing rather than the screen, so a
+              label keeps its proportion as you zoom. The size you set becomes the size for new labels.</li>
+            <li><code>Angle</code> — degrees counterclockwise, for reading along a rib or a centreline.
+              A selected label also carries a round handle above it to turn by hand.</li>
+          </ul>
+
           <h4>Editing</h4>
           <dl class="keymap">
             <dt>Click / Shift-click / drag box</dt><dd>Select one, several, or everything inside the box</dd>
             <dt>Drag shape / drag endpoint</dt><dd>Move / reshape</dd>
-            <dt>Arrows</dt><dd>Nudge (Shift for larger steps)</dd>
+            <dt>Arrows</dt><dd>Nudge 1mm</dd>
+            <dt>Shift / Ctrl (⌘) + Arrow</dt><dd>Nudge 10mm / 0.1mm</dd>
             <dt>Delete / Ctrl+Z</dt><dd>Remove / undo</dd>
           </dl>
           <p>The settings bar shows the selected shape's properties. These can be edited manually without the mouse. 
@@ -302,7 +320,20 @@
         <h2>Version</h2>
 
         <div class="changelog-entry">
-          <div class="changelog-version">v{{ appVersion }} <span class="changelog-date">— Aug 18, 2026</span></div>
+          <div class="changelog-version">v{{ appVersion }} <span class="changelog-date">— Aug 20, 2026</span></div>
+          <p class="changelog-desc">Added more comprehensive arc tools, improvements made to the text tool, ctrl/cmd + arrow
+            keys now moves objects by a small degree.</p>
+          <ul class="changelog-list">
+            <li><strong>Two more arc tools</strong> — set both ends first, then either a point the arc passes through or
+              its centre. The four three-point arc tools renamed and re-drawn for the order you click them in.</li>
+            <li><strong>Text on the drawing, not the screen</strong> — labels take a size in millimetres and an angle,
+              double-click to edit in place, and line breaks are editable in the settings bar.</li>
+            <li><strong>Fine nudge</strong> — Ctrl(⌘)+Arrow moves a selection 0.1mm, beside the existing 1mm and 10mm steps.</li>
+          </ul>
+        </div>
+
+        <div class="changelog-entry">
+          <div class="changelog-version">v0.8.3.3 <span class="changelog-date">— Aug 18, 2026</span></div>
           <p class="changelog-desc">Room to draw on a small screen.</p>
           <ul class="changelog-list">
             <li><strong>Both bars fold away</strong> — layers and reference images moved to the bar under the canvas.</li>

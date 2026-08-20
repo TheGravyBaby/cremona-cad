@@ -105,20 +105,27 @@ app-tool-palette {
 }
 
 /* Inline Text-tool editor — positioned (via [style.left]/[style.top]) directly over the shape's
-   on-canvas location; see draft-canvas.ts's editingText* state. transform: translateY(-50%)
-   vertically centers it on that point, matching the SVG text's dominant-baseline:central. */
+   on-canvas location; see draft-canvas.ts's editingText* state.
+
+   The transform is set in the template, not here, because it carries the label's rotation as
+   well: `translateY(-50%) rotate(...)` about a `0 50%` origin puts the element's left-middle on
+   the anchor point (matching the SVG text's text-anchor:start + dominant-baseline:central) and
+   turns it about that same point — so the box sits exactly where the text will.
+
+   Font size is set in the template too, from the shape's mm size times the current zoom, so the
+   editor is the size of the result rather than a fixed 14px. Which is also why there is no
+   min-width any more: `cols` tracks the content instead, so a short label no longer opens a box
+   several times its own width. */
 .text-edit-overlay {
   position: absolute;
-  transform: translateY(-50%);
-  min-width: 120px;
+  transform-origin: 0 50%;
   padding: 1px 2px;
   margin: 0;
-  box-sizing: border-box;
+  box-sizing: content-box;
   border: 1px dashed rgba(37, 99, 235, 0.6);
   border-radius: 2px;
   background: rgba(255, 255, 255, 0.85);
   font-family: sans-serif;
-  font-size: 14px;
   line-height: 1.2;
   resize: none;
   overflow: hidden;

@@ -145,6 +145,31 @@
   box-sizing: border-box;
 }
 
+/* Text's content field. A textarea so line breaks survive being edited here (see the note in
+   settings-bar.html), but pinned to exactly one line — 22px, the same height as every input
+   beside it, with the box model worked out so the content area is one 16px line.
+
+   It scrolls rather than growing. A strip that changes height as a label gains lines shoves the
+   canvas around under the pointer, and on a small screen it eats space that isn't there to
+   spare. Multi-line editing has room on the canvas itself, where the inline editor does grow
+   (see draft-canvas.ts's editingTextRows) because it floats over the drawing and costs no
+   layout. */
+.text-field textarea {
+  width: 160px;
+  height: 22px;
+  padding: 2px 6px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 4px;
+  background: var(--ui-bg-surface-2);
+  color: var(--ui-text-primary);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 16px;
+  resize: none;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
 .weights-field input[type="text"] {
   width: 100px;
   height: 22px;

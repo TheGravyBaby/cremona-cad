@@ -5,6 +5,7 @@ import { ImageAssetStore } from './image-asset-store';
 import { createImageTool } from './image-tool';
 import { createLineTool } from './line-tool';
 import { createArcTool, createArcStartFirstTool } from './arc-tool';
+import { createEndsCenterArcTool, createThroughArcTool } from './two-end-arc-tool';
 import { createTangentArcTool } from './tangent-arc-tool';
 import { createChainedTangentArcTool } from './chained-tangent-arc-tool';
 import { createJoinArcTool } from './join-arc-tool';
@@ -51,10 +52,14 @@ export class ToolRegistryService {
     [createLineTool(this.toolbox)],
     [createDimensionTool()],
     [createSectionTool(this.toolbox)],
-    [[createArcTool(), createArcStartFirstTool(), createTangentArcTool(), createChainedTangentArcTool(), createJoinArcTool()]],
+    // Ordered by where the center click falls — first, second, third, never — then the three that
+    // solve themselves off geometry already on the canvas. Keep tool-hotkeys.ts's KeyA cycle in
+    // this same order.
+    [[createArcTool(), createArcStartFirstTool(), createEndsCenterArcTool(), createThroughArcTool(),
+      createTangentArcTool(), createChainedTangentArcTool(), createJoinArcTool()]],
     [createCircleTool(this.toolbox)],
     [createRectTool(this.toolbox)],
-    [createTextTool()],
+    [createTextTool(this.toolbox)],
     [createPointTool()],
     [createFreehandTool(this.toolbox)],
     // Its own button, not folded into Draw's flyout: it deletes any toolbox shape it's dragged
