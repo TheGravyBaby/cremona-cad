@@ -5,6 +5,7 @@ import { ToolboxStore } from '../tools/toolbox-store';
 import {
   DraftShape, LineShape, DimensionShape, RectShape, TextShape, PointShape, CircleShape, ArcShape, SectionShape,
   FreehandShape, ImageShape, DEFAULT_IMAGE_OPACITY, DEFAULT_SHAPE_COLOR, DEFAULT_FREEHAND_WIDTH,
+  DEFAULT_TEXT_SIZE_MM,
 } from '../tools/toolbox-shape';
 import { normalizeDegrees, pointAtDistanceToward } from '../../helpers/draftMath';
 
@@ -235,6 +236,25 @@ export class SettingsBarComponent {
   public get textPositionY(): number { return this.round2(this.selectedTextShape?.position.y ?? 0); }
   public get textContent(): string { return this.selectedTextShape?.text ?? ''; }
 
+  /** Falls back to the size new labels are being stamped with, so the field reads the same
+   * number whether a label is selected or the Text tool is simply armed. */
+  public get textFontSize(): number {
+    const shape = this.selectedTextShape;
+    // An older label carries no size of its own and renders at the default — report that, not
+    // the pen setting, or the field would claim a size the canvas isn't using.
+    return this.round2(shape ? shape.fontSize ?? DEFAULT_TEXT_SIZE_MM : this.toolbox.currentTextSize);
+  }
+
+  /** Grows the content box to fit a multi-line label, capped so a long one scrolls rather than
+   * pushing the whole settings strip open. */
+  public get textContentRows(): number {
+    return Math.min(4, Math.max(1, this.textContent.split('\n').length));
+  }
+
+  public get textRotation(): number {
+    return this.round2(this.selectedTextShape?.rotationDeg ?? 0);
+  }
+
   setTextPosition(axis: 'x' | 'y', value: number): void {
     this.patchPointField(this.selectedTextShape, 'position', axis, value);
   }
@@ -243,6 +263,19 @@ export class SettingsBarComponent {
     const shape = this.selectedTextShape;
     if (!shape) return;
     this.toolbox.updateShape(shape.id, { text });
+  }
+
+  /** Sizes the selected label *and* becomes the size the next one is placed at — settling on a
+   * size that reads against this drawing is a decision about the drawing, not about one label. */
+  setTextFontSize(value: number): void {
+    const v = Number(value);
+    if (!Number.isFinite(v) || v <= 0) return;
+    this.toolbox.currentTextSize = v;
+    this.patchNumberField(this.selectedTextShape, 'fontSize', v);
+  }
+
+  setTextRotation(value: number): void {
+    this.patchNumberField(this.selectedTextShape, 'rotationDeg', value, { transform: normalizeDegrees });
   }
 
   private get selectedPointShape(): PointShape | undefined {

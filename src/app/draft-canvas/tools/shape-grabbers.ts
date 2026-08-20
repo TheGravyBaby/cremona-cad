@@ -1,6 +1,7 @@
 import { Pt } from '../../models/types';
 import {
-  DraftShape, ImageShape, dimensionGeometry, dimensionOffsetAt, imageCenter, imageCorners, imageEdgeMidpoints,
+  DEFAULT_TEXT_SIZE_MM, DraftShape, ImageShape, TextShape,
+  dimensionGeometry, dimensionOffsetAt, imageCenter, imageCorners, imageEdgeMidpoints,
 } from './toolbox-shape';
 import { angleFromCenter, dist, normalizeDegrees, normalizeRadians, pointOnCircle, rotatePointAbout } from '../../helpers/draftMath';
 
@@ -64,7 +65,8 @@ function arcMidpoint(shape: Extract<DraftShape, { type: 'arc' }>): Pt {
 //   matters (radius is fixed), matching how the Arc tool's own third click behaves.
 // 'nw'…'w' — Image's box handles: corners resize proportionally, edges resize one dimension.
 //   Named for the Y-up world, matching imageCorners/imageEdgeMidpoints.
-// 'rotate' — Image's rotation handle; only the drag point's angle about the box center matters.
+// 'rotate' — Image's rotation handle (about the box center) or Text's (about its anchor);
+//   only the drag point's angle about that pivot matters.
 export type EndpointKey =
   | 'start' | 'end' | 'p1' | 'p2' | 'radius' | 'startAngle' | 'endAngle' | 'offset'
   | 'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'e' | 'w' | 'rotate';
@@ -84,11 +86,12 @@ const ROTATE_GRABBER_OFFSET_PX = 26;
 
 /**
  * The draggable endpoint handles for a shape — triangles, so they read as visually distinct
- * from the square move handle. Null for Text/Point, which have no geometry beyond the single
- * point the move handle already covers.
+ * from the square move handle. Null for Point and Freehand, which have no geometry beyond what
+ * the move handle already covers; Text has no endpoint either but does have an orientation, so
+ * it gets the rotation handle alone.
  *
  * `pxPerMm` is only consulted by handles whose position is a constant screen offset rather than
- * a point on the geometry itself (currently just Image's rotation handle).
+ * a point on the geometry itself — Image's and Text's rotation handles.
  */
 export function endpointGrabbers(shape: DraftShape, pxPerMm: number): EndpointGrabber[] | null {
   switch (shape.type) {
@@ -110,7 +113,16 @@ export function endpointGrabbers(shape: DraftShape, pxPerMm: number): EndpointGr
         { key: 'endAngle', pos: pointOnCircle({ ...shape.center, r: shape.radius }, shape.endAngle) },
         { key: 'radius', pos: arcMidpoint(shape) },
       ];
-    case 'text':
+    case 'text': {
+      // The one handle a label has: it is a single anchor point, so there is no endpoint to
+      // drag, but there is an orientation. Floats above the anchor and turns with the label, the
+      // same way the image handle rides above its box's north edge.
+      const deg = shape.rotationDeg ?? 0;
+      const above = (shape.fontSize ?? DEFAULT_TEXT_SIZE_MM) * 0.7 + ROTATE_GRABBER_OFFSET_PX / pxPerMm;
+      const pos = rotatePointAbout(
+        { x: shape.position.x, y: shape.position.y + above }, shape.position, deg);
+      return [{ key: 'rotate', pos, kind: 'rotate' }];
+    }
     case 'point':
     case 'freehand':
       return null;
@@ -163,11 +175,20 @@ export function withEndpoint(shape: DraftShape, key: EndpointKey, pos: Pt): Draf
         return { ...shape, radius };
       }
       return shape;
+    case 'text':
+      return key === 'rotate' ? withTextRotation(shape, pos) : shape;
     case 'image':
       return withImageHandle(shape, key, pos);
     default:
       return shape;
   }
+}
+
+/** The handle sits due north of the anchor when level, so the label's rotation is the cursor's
+ * bearing from the anchor less that quarter turn — same reading as the image handle. */
+function withTextRotation(shape: TextShape, pos: Pt): DraftShape {
+  const bearing = angleFromCenter(shape.position, pos) * 180 / Math.PI;
+  return { ...shape, rotationDeg: normalizeDegrees(bearing - 90) };
 }
 
 /**

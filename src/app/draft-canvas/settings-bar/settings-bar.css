@@ -145,6 +145,25 @@
   box-sizing: border-box;
 }
 
+/* Text's content field. A textarea so line breaks survive being edited here (see the note in
+   settings-bar.html), matched to the single-line inputs beside it: no resize grip, no scrollbar,
+   and a height that follows its row count so the strip only grows when the label actually has
+   more than one line in it. */
+.text-field textarea {
+  width: 160px;
+  padding: 2px 6px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 4px;
+  background: var(--ui-bg-surface-2);
+  color: var(--ui-text-primary);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 16px;
+  resize: none;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
 .weights-field input[type="text"] {
   width: 100px;
   height: 22px;

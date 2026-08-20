@@ -9,9 +9,12 @@
       @if (editingTextShapeId) {
         <textarea #textEditArea class="text-edit-overlay"
           [rows]="editingTextRows"
+          [cols]="editingTextCols"
           [style.left.px]="editingTextScreenX"
           [style.top.px]="editingTextScreenY"
           [style.color]="editingTextColor"
+          [style.fontSize.px]="editingTextFontPx"
+          [style.transform]="'translateY(-50%) rotate(' + editingTextRotation + 'deg)'"
           (input)="onTextEditInput($any($event.target).value)"
           (keydown)="onTextEditKeyDown($event)"
           (blur)="finishEditingText()"
