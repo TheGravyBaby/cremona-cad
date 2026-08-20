@@ -381,11 +381,19 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.axisGrid.draw(this.gRoot, this.gUI, cv, this.pxPerMm);
 
     if (this.selectedShapeIds.size) {
+      // Handles are drawn only when they can actually be dragged. An armed drawing tool takes
+      // every click before Select mode's grabber hit-testing is reached (see onPointerDown), so
+      // with one active a handle is a control that does nothing — worse, clicking the Text tool
+      // on one would place a label there. A selection-acting tool (Offset) is the exception: it
+      // works *on* the selection, so its handles stay meaningful. The halo is unconditional
+      // either way — it says which shape the settings strip is describing.
+      const showHandles = !this.activeTool || !!this.activeTool.actsOnSelection;
       const editable = this.toolbox.getEditableShapes();
       for (const id of this.selectedShapeIds) {
         const shape = this.dragOverrides?.get(id) ?? editable.find(s => s.id === id);
         if (!shape) continue;
         drawSelectionHalo(this.gRoot, this.gUI, shape, this.pxPerMm);
+        if (!showHandles) continue;
         const grabberPos = moveGrabberPosition(shape);
         if (grabberPos) drawMoveGrabber(this.gRoot, grabberPos, this.pxPerMm);
         const endpoints = endpointGrabbers(shape, this.pxPerMm);
@@ -1191,6 +1199,11 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       if (tool.id === 'text') {
         const existing = this.textShapeAt(rawPt);
         if (existing) {
+          // Selected as well as edited, so the settings strip offers the label's own fields
+          // (content, Size, Angle, X/Y) rather than just the pen's — reaching a label through the
+          // Text tool is still reaching that label, and it should not matter which tool got you
+          // there. Same pairing onDoubleClick makes.
+          this.setSelectedShape(existing.id);
           this.startEditingText(existing.id);
           this.host.nativeElement.setPointerCapture(event.pointerId);
           return;
@@ -1201,10 +1214,16 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       if (tool.oneShot) {
         // Commits immediately (e.g. Text, Point) but stays on its own tool rather than
         // switching to Select, so consecutive clicks keep placing more of them fluidly. Text
-        // also opens an inline on-canvas editor right away — see startEditingText.
+        // also opens an inline on-canvas editor right away — see startEditingText — and selects
+        // what it placed, for the same reason the re-edit path above does: the strip should be
+        // describing the label you are working on, not just the pen. The next click on empty
+        // canvas places another and takes the selection with it.
         const shapes = this.toolbox.getEditableShapes();
         const newest = shapes[shapes.length - 1];
-        if (newest?.type === 'text') this.startEditingText(newest.id, true);
+        if (newest?.type === 'text') {
+          this.setSelectedShape(newest.id);
+          this.startEditingText(newest.id, true);
+        }
         this.draw();
         return;
       }
