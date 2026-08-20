@@ -119,8 +119,12 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   // picked. Plain click replaces the selection; shift-click toggles a shape in/out of it.
   private static readonly SELECT_HIT_TOLERANCE_PX = 6;
   private static readonly MOVE_GRABBER_HIT_TOLERANCE_PX = 9;
-  private static readonly NUDGE_STEP_MM_FINE = 1;
+  // Three nudge steps on the same modifier ladder number fields use (see stepSize.ts's
+  // stepAmountForKey): plain, Shift for coarse, Ctrl/Cmd for fine. "Fine" means the Ctrl/Cmd
+  // step in both places.
+  private static readonly NUDGE_STEP_MM_BASE = 1;
   private static readonly NUDGE_STEP_MM_COARSE = 10;
+  private static readonly NUDGE_STEP_MM_FINE = 0.1;
   private static readonly ARROW_NUDGE_DIRECTION: Record<string, [number, number]> = {
     ArrowUp: [0, 1],
     ArrowDown: [0, -1],
@@ -1073,11 +1077,14 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     }
 
     // Select mode: arrow keys nudge every selected shape (in world mm) instead of panning
-    // the camera — Shift gives a coarser step, matching the pan/reference-nudge convention.
+    // the camera — Shift gives a coarser step, Ctrl (or Cmd on Mac) a finer one, matching how
+    // a number field steps. Shift wins when both are held, as it does there.
     if (!this.activeTool && this.selectedShapeIds.size) {
       const dir = DraftCanvasComponent.ARROW_NUDGE_DIRECTION[event.code];
       if (dir) {
-        const stepMm = event.shiftKey ? DraftCanvasComponent.NUDGE_STEP_MM_COARSE : DraftCanvasComponent.NUDGE_STEP_MM_FINE;
+        const stepMm = event.shiftKey ? DraftCanvasComponent.NUDGE_STEP_MM_COARSE
+          : (event.ctrlKey || event.metaKey) ? DraftCanvasComponent.NUDGE_STEP_MM_FINE
+            : DraftCanvasComponent.NUDGE_STEP_MM_BASE;
         const [dx, dy] = [dir[0] * stepMm, dir[1] * stepMm];
         const editable = this.toolbox.getEditableShapes();
         for (const id of this.selectedShapeIds) {
