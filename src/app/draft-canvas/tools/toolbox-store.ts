@@ -164,7 +164,8 @@ export class ToolboxStore implements Undoable {
   setActiveLayer(id: string): void {
     if (this._activeLayerId === id) return;
     this._activeLayerId = id;
-    // Switching onto a layer always shows it — otherwise you'd switch and see nothing.
+    // Switching onto a layer always shows it: the next thing you'll do is draw here, and a shape
+    // that lands somewhere invisible reads as a tool that didn't fire.
     this._layers = this._layers.map(l => l.id === id ? { ...l, visible: true } : l);
     this.persist();
     this.notify();
@@ -240,18 +241,22 @@ export class ToolboxStore implements Undoable {
   }
 
   /**
-   * Shapes that can be selected/edited right now. Drawn shapes: on the active layer, and only
-   * while it's unlocked. Images: any unlocked, visible image regardless of the active layer,
-   * since they aren't layer members — so adjusting a reference doesn't mean first hunting for
-   * which layer it happens to be on.
+   * Shapes that can be selected/edited right now. Drawn shapes: on any layer that is visible and
+   * unlocked — which layer is *active* says where new shapes land, not what you're allowed to
+   * touch, the way it works in other CAD. Hiding or locking a layer is how you put it out of
+   * reach. Images: any unlocked, visible image, which they already were, since they aren't layer
+   * members at all (see ImageShape).
+   *
+   * Editable is therefore always a subset of getVisibleShapes() — you can only edit what you can
+   * see, so there is no way to move something you have no way to look at.
    */
   getEditableShapes(): DraftShape[] {
     const images = this.getVisibleImages().filter(s => !this.isShapeLocked(s));
-    const active = this.activeLayer;
-    if (active.locked || !this._showShapes) return images;
+    if (!this._showShapes) return images;
+    const reachable = new Set(this._layers.filter(l => l.visible && !l.locked).map(l => l.id));
     return [
       ...images,
-      ...this.shapes.filter(s => s.type !== 'image' && (s.layerId ?? DEFAULT_LAYER_ID) === active.id),
+      ...this.shapes.filter(s => s.type !== 'image' && reachable.has(s.layerId ?? DEFAULT_LAYER_ID)),
     ];
   }
 
