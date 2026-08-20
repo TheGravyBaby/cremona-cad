@@ -88,10 +88,10 @@
            (i.e. on blur) rather than per keystroke, matching Name and Weights below — and leaving
            Enter free to do what it does in a textarea. -->
       <span class="field text-field"><span class="f-lbl">Text</span>
-        <textarea #textContentInput [rows]="textContentRows" [value]="textContent"
+        <textarea #textContentInput rows="1" [value]="textContent"
           (change)="setTextContent(textContentInput.value)"
           (keydown.escape)="textContentInput.value = textContent; textContentInput.blur()"
-          title="Label text — Enter adds a line, Escape reverts" placeholder="Text"></textarea>
+          title="Label text — Enter adds a line, Escape reverts. Scrolls rather than growing; double-click the label on the canvas for a box that opens out." placeholder="Text"></textarea>
       </span>
     }
     <span class="point-group">

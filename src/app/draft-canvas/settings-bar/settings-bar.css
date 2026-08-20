@@ -146,11 +146,17 @@
 }
 
 /* Text's content field. A textarea so line breaks survive being edited here (see the note in
-   settings-bar.html), matched to the single-line inputs beside it: no resize grip, no scrollbar,
-   and a height that follows its row count so the strip only grows when the label actually has
-   more than one line in it. */
+   settings-bar.html), but pinned to exactly one line — 22px, the same height as every input
+   beside it, with the box model worked out so the content area is one 16px line.
+
+   It scrolls rather than growing. A strip that changes height as a label gains lines shoves the
+   canvas around under the pointer, and on a small screen it eats space that isn't there to
+   spare. Multi-line editing has room on the canvas itself, where the inline editor does grow
+   (see draft-canvas.ts's editingTextRows) because it floats over the drawing and costs no
+   layout. */
 .text-field textarea {
   width: 160px;
+  height: 22px;
   padding: 2px 6px;
   border: 1px solid var(--ui-border-strong);
   border-radius: 4px;
@@ -160,7 +166,7 @@
   font-size: 12px;
   line-height: 16px;
   resize: none;
-  overflow: hidden;
+  overflow-y: auto;
   box-sizing: border-box;
 }
 

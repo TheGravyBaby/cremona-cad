@@ -254,12 +254,6 @@ export class SettingsBarComponent {
     return this.round2(shape ? shape.fontSize ?? DEFAULT_TEXT_SIZE_MM : this.toolbox.currentTextSize);
   }
 
-  /** Grows the content box to fit a multi-line label, capped so a long one scrolls rather than
-   * pushing the whole settings strip open. */
-  public get textContentRows(): number {
-    return Math.min(4, Math.max(1, this.textContent.split('\n').length));
-  }
-
   public get textRotation(): number {
     return this.round2(this.selectedTextShape?.rotationDeg ?? 0);
   }
