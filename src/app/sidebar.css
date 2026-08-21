@@ -82,8 +82,11 @@ select {
   opacity: 0.7;
 }
 
+/* Wraps, and on a wide panel that never comes up — a row only breaks when the alternative is a cell
+   or an info button hanging off the right edge of a phone-width panel. */
 .input-group {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
   margin-bottom: 4px;
@@ -470,7 +473,7 @@ select {
 
 /* Room for the touch steppers (shared/number-stepper.ts): the field grows tall enough to split
    into two tappable halves, and wide enough that the value still reads with 36px given over to
-   them. Three cells at this width still fit a 360px panel. */
+   them. Three cells at this width fit a full-width panel; narrower, .input-group wraps them. */
 @media (pointer: coarse) {
   .basic-input {
     height: 48px;
@@ -518,8 +521,11 @@ select {
   
 }
 
+/* 310 is the width on a full-size panel; the percentage is what keeps it inside a narrow one. */
 .description-textarea {
-  width: 310px;
+  width: 100%;
+  max-width: 310px;
+  box-sizing: border-box;
   min-height: 64px;
   padding: 8px 9px;
   margin-bottom: 12px;
