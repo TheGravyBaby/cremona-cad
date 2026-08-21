@@ -4,7 +4,11 @@
    the scroller and never draws. The strip is a plain flex item in the sidebar now, so the cell it
    needed is gone and with it the reason for the grid. */
 .app {
-  --sidebar-width: 360px;
+  /* Capped against the viewport, not just a fixed 360: on a phone 360 is wider than the screen has
+     left once the canvas keeps its two drawer tabs, and a panel that does not fit is a panel with
+     its Next button off the right edge. The 88px reserve is the two tabs (28 each) plus a sliver of
+     drawing, so both tabs stay tappable and the outline still updates as you type. */
+  --sidebar-width: min(360px, 100vw - 88px);
 
   height: 100vh;
   display: flex;
@@ -25,8 +29,11 @@
   /* allows children to scroll properly */
 }
 
+/* Basis 0, so the canvas is only ever the space the sidebar leaves rather than a competitor for it.
+   With basis auto its base size is the bottom bar's max-content — some 350px — and every layout
+   where that does not fit turns into a shrink both boxes share. */
 .canvas {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-width: 0;
   background: var(--ui-bg-canvas);
   /* margin: 12px;
@@ -39,28 +46,40 @@
 .sidebar {
   display: flex;
   flex-direction: column;
-  flex: 0 0 var(--sidebar-width);
-  /* min-width because a flex item's automatic minimum size is its min-content width, which wins
-     over the basis: without this the sidebar was as wide as whichever panel was open needed, so it
-     changed width as you stepped through them. Anything that genuinely does not fit now scrolls
-     inside .panel instead of resizing the whole column. */
+  /* Fills the dock, which is what decides the width. min-width because a flex item's automatic
+     minimum size is its min-content width, and anything that genuinely does not fit should scroll
+     inside .panel rather than widen the whole column. */
+  flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
   border-left: 1px solid var(--ui-border-soft);
   background: var(--ui-bg-sidebar);
 }
 
-/* Holds whichever recipe is open plus its collapse tab. */
+/* Holds whichever recipe is open plus its collapse tab, and carries the drawer's width. Both parts
+   of that basis are load-bearing.
+   A length rather than auto, because auto means max-content and a scroll container's max-content is
+   still its content's — the drawer came out 360 wide on Base and 328 on Outer Path, changing width
+   as you stepped through the panels.
+   Shrinkable, because unshrinkable a drawer wider than the space left ran off the right of the
+   screen taking Next with it, and nothing could scroll it back — .app is overflow: hidden. Shrunk,
+   the worst case is a narrower panel with every control still on it. */
 .sidebar-dock {
   position: relative;
   display: flex;
-  flex: 0 0 auto;
+  flex: 0 1 var(--sidebar-width);
+  min-width: 0;
   min-height: 0;
 }
 
 /* Collapsed the panel goes entirely, taking the file strip and the render toggles with it, so
-   save/load are one tap on the tab away. Snapped, never transitioned: the canvas ResizeObserver
+   save/load are one tap on the tab away. The dock gives up its basis with it, or the drawer's width
+   would still be held out of the canvas. Snapped, never transitioned: the canvas ResizeObserver
    redraws the entire SVG on every frame of an animated width. */
+.sidebar-dock.collapsed {
+  flex-basis: 0;
+}
+
 .sidebar-dock.collapsed .sidebar {
   display: none;
 }
