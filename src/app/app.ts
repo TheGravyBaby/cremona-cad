@@ -1,8 +1,8 @@
 import { DOCUMENT } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, OnDestroy, inject, signal } from '@angular/core';
 import { setGlobalEmitter } from './shared/message-emitter';
 import { installDebugCapture, isLocalHost } from './helpers/debugDump';
-import { isSmallViewport } from './helpers/viewport';
+import { isSmallViewport, trackViewportHeight } from './helpers/viewport';
 import { MessageService } from './shared/message.service';
 import { TopBarComponent } from './top-bar/top-bar';
 import { DraftCanvasComponent } from './draft-canvas/draft-canvas';
@@ -68,7 +68,7 @@ import { MessageCenterComponent } from './shared/message-center.component';
   styleUrl: './app.css',
 })
 
-export class App {
+export class App implements OnDestroy {
   private readonly doc = inject(DOCUMENT);
   // inject MessageService via Angular's injector
   private messageService = inject(MessageService);
@@ -84,6 +84,9 @@ export class App {
   nightMode = true;
 
   private static readonly SIDEBAR_OPEN_KEY = 'app-sidebar-open';
+
+  /** Stops the visual-viewport listeners; see trackViewportHeight in helpers/viewport.ts. */
+  private readonly releaseViewportHeight: () => void;
 
   /** Whether the recipe panel is pushed open. Collapsed it's just the chevron tab; the file strip
    * stays up regardless, so saving and loading never need the panel expanded first. */
@@ -111,6 +114,12 @@ export class App {
     // buttons themselves — off a real host, nothing is patched and no buffer is
     // kept.
     if (isLocalHost()) installDebugCapture();
+
+    this.releaseViewportHeight = trackViewportHeight();
+  }
+
+  ngOnDestroy(): void {
+    this.releaseViewportHeight();
   }
 
   toggleSidebar(): void {

@@ -12,3 +12,39 @@ const HEIGHT_PX = 500;
 export function isSmallViewport(): boolean {
   return window.innerWidth < WIDTH_PX || window.innerHeight < HEIGHT_PX;
 }
+
+/** Sizes the app to the viewport that is genuinely on show, published as `--app-viewport-height`.
+ *
+ * `100dvh` is meant to be this and mostly is, but Chrome for iOS floats a back/forward toolbar over
+ * the bottom of the page without taking it out of dvh, so the app runs a toolbar taller than the
+ * screen shows and its own bottom bar hides underneath. The visual viewport is the one measurement
+ * no browser fudges. app.css falls back to dvh, so nothing depends on this having run.
+ *
+ * Returns a teardown.
+ */
+export function trackViewportHeight(): () => void {
+  const vv = window.visualViewport;
+  if (!vv) return () => {};
+
+  const apply = () => {
+    // Pinch-zoom and the on-screen keyboard shrink the visual viewport without taking anything off
+    // the page. Following either would pull the layout out from under the finger or the caret — and
+    // every height change redraws the whole SVG — so both hold the last measurement instead.
+    if (vv.scale > 1.01) return;
+    const focused = document.activeElement?.tagName;
+    if (focused === 'INPUT' || focused === 'TEXTAREA' || focused === 'SELECT') return;
+    document.documentElement.style.setProperty('--app-viewport-height', `${Math.round(vv.height)}px`);
+  };
+
+  // a rotation settles a frame or two after the event fires, so measure late rather than at the turn
+  const onRotate = () => setTimeout(apply, 300);
+
+  apply();
+  vv.addEventListener('resize', apply);
+  window.addEventListener('orientationchange', onRotate);
+
+  return () => {
+    vv.removeEventListener('resize', apply);
+    window.removeEventListener('orientationchange', onRotate);
+  };
+}

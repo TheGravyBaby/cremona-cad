@@ -15,9 +15,14 @@
      bottom bar sits under the address bar. Reaching it meant scrolling the page, and every scroll
      that starts on the canvas or the drawer is caught by their own scrollers first. dvh is the
      viewport actually on show, and since the app then never overflows there is nothing to scroll
-     and nothing for the bars to react to — the height stays put. vh first as the fallback. */
+     and nothing for the bars to react to — the height stays put.
+     Chrome for iOS is the exception that needs the third line: its bottom toolbar floats over the
+     page and is not taken out of dvh either, so the app still ran a toolbar taller than the screen
+     showed. helpers/viewport.ts measures the visual viewport and publishes it here; the dvh and vh
+     lines are what applies before it runs and where it cannot. */
   height: 100vh;
   height: 100dvh;
+  height: var(--app-viewport-height, 100dvh);
   display: flex;
   flex-direction: column;
   overflow: hidden;
