@@ -10,7 +10,14 @@
      drawing, so both tabs stay tappable and the outline still updates as you type. */
   --sidebar-width: min(360px, 100vw - 88px);
 
+  /* dvh, not vh: on a phone the browser's own bars float over the page without taking anything out
+     of the viewport 100vh measures, so a 100vh app is taller than the screen shows and the canvas
+     bottom bar sits under the address bar. Reaching it meant scrolling the page, and every scroll
+     that starts on the canvas or the drawer is caught by their own scrollers first. dvh is the
+     viewport actually on show, and since the app then never overflows there is nothing to scroll
+     and nothing for the bars to react to — the height stays put. vh first as the fallback. */
   height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;

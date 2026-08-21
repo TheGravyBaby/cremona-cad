@@ -17,8 +17,10 @@
   /* Fixed width on every tab, so switching tabs or tutorial topics doesn't resize it. */
   width: min(880px, calc(100vw - 32px));
   max-height: 70vh;
+  max-height: 70dvh;
   align-self: flex-start;
   margin-top: 10vh;
+  margin-top: 10dvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -30,6 +32,7 @@
    would otherwise shrink the modal out from under the sidebar. */
 .modal:has(.tutorial-section) {
   height: 70vh;
+  height: 70dvh;
 }
 
 /* ── Modal header / tabs ──────────────────────────────────── */
