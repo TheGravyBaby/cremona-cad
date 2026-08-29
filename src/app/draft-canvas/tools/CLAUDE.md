@@ -15,8 +15,8 @@ Most files here carry a header comment explaining their own contract. Read it be
   row = one palette row; a nested array = one button plus a caret holding variants of the same
   shape kind.
 - **`toolbox-store.ts`** — root singleton holding drawn shapes, with undo/redo. Persisted through
-  `helpers/workingStorage.ts`, so shapes survive closing the tab. Still a scratch annotation layer,
-  deliberately not part of the saved recipe — surviving is not the same as being in the file.
+  `helpers/workingStorage.ts`, so shapes survive a reload but not the tab closing. Still a scratch
+  annotation layer, deliberately not part of the saved recipe.
 - **`toolbox-shape.ts`** — `DraftShape`, the method-free plain-object union. See below.
 - **`snap-engine.ts`** — indexes snap candidates by reading the *rendered SVG*, not recipe data,
   so it works for any recipe and for toolbox shapes alike.

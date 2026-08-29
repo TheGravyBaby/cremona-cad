@@ -97,9 +97,26 @@ export interface EnricoCerutiParams {
     L3toLBW: number;
     UCYtoH: number;
     LCYtoH: number;
+
+    FLtoH: number;
+    FUtoL: number;
   },
-  fhole?: FholeParams;
+  fHoles?: FholeParams;
   arching?: ArchingParams;
+}
+
+export interface ArchingParams {
+  surfaceMethod: 'proportional';
+  ribHeight: number;
+  top: ArchPlate;
+  bottom: ArchPlate;
+}
+
+export interface FholeParams { 
+  FU0: Circle | null;
+  Uy: number | null
+  FL0: Circle | null;
+  Ly: number | null;
 }
 
 /** Resolved palette returned by CerutiViolin's `colors` getter, threaded into every panel and render fn. */
@@ -126,6 +143,10 @@ export interface CerutiColors {
   fluting: string;
   archTop: string;
   archBack: string;
+  upperEye: string;
+  upperEyeOff: string;
+  lowerEye: string;
+  lowerEyeOff: string;
 }
 
 /** A plate's costly 3D/topo overlay is one-at-a-time: rendering both is what made the panel slow. */
@@ -476,18 +497,6 @@ export interface ArchPlate {
   cross?: CrossArchParams;
 }
 
-export interface ArchingParams {
-  surfaceMethod: 'proportional';
-  ribHeight: number;
-  top: ArchPlate;
-  bottom: ArchPlate;
-}
-
-export interface FholeParams { 
-  upperEye: Circle | null;
-  lowerEye: Circle | null;
-}
-
 /**
  * The keys the shared path cache can hold. Enumerated rather than left as a
  * bare string because the cache is filled by `ensure*` and read by `getPath`,
@@ -550,6 +559,9 @@ export const DefaultParams: EnricoCerutiParams = {
 
     UCYtoH: 2 / 3,
     LCYtoH: 6 / 15,
+
+    FLtoH: 1/72,
+    FUtoL: 4/5,
   },
   bouts: {
     UBW: undefined,

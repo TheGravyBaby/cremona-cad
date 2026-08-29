@@ -21,7 +21,7 @@ scoped script is `ng test --watch=false` with an `--include`/`--exclude` glob; s
 
 | Script | Covers | Time |
 |---|---|---|
-| `npm run test:outline` | `ceruti-calcs*`, `ceruti-paths`, `ceruti-serialization` — the 2D outline pipeline | ~6s |
+| `npm run test:outline` | `ceruti-calcs*`, `ceruti-paths`, `ceruti-serialization`, `ceruti-templates` — the 2D outline pipeline | ~6s |
 | `npm run test:arching` | `ceruti-arching*`, `ceruti-arch-geometry`, `ceruti-surface` — the 3D arching pipeline, the specialist math | ~35-45s |
 | `npm run test:panels` | `enrico-ceruti-violin/panels/**` — panel wiring + SVG/DXF/STL export | ~15s |
 | `npm run test:draft-canvas` | `draft-canvas/**` — canvas, camera, snapping, tools | ~3s |
@@ -118,6 +118,8 @@ don't pad the short ones.
   controls. Terse. No filler transitions, no elaboration past the information.
 - `ceruti-templates.ts` is append-only pasted recipe JSON. Add instruments; don't restructure it.
 - Working state (the open recipe, the open panel, drawn shapes) goes through
-  `helpers/workingStorage.ts`, never `localStorage`/`sessionStorage` directly. It reports quota
-  failures once and carries old sessionStorage over. The exception is `App`'s `themeMode`, which
-  is a browser preference rather than the user's work.
+  `helpers/workingStorage.ts`, never `localStorage`/`sessionStorage` directly. It is
+  **sessionStorage, so a tab is a workspace** — two windows hold two designs, and neither
+  survives its tab closing. Saving to disk is the durable copy. It reports quota failures once
+  and takes over an old localStorage copy on first load. The exception is `App`'s `themeMode`,
+  which is a browser preference rather than the user's work.

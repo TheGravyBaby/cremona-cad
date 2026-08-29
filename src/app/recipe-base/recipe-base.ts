@@ -335,7 +335,6 @@ export abstract class RecipeComponentBase implements AfterViewInit, Undoable {
     // without needing to know they exist. See syncReferenceImages.
     this.toolboxSyncUnsub = this.toolbox.onChange(() => this.syncReferenceImages());
     this.undoCoordinatorUnsub = this.undoCoordinator.register(this);
-    setDebugContext(() => this.debugViewContext());
 
     const recipeData = this.loadMatchingStoredRecipe();
     if (recipeData) {
@@ -432,18 +431,6 @@ export abstract class RecipeComponentBase implements AfterViewInit, Undoable {
    */
   copyRecipeToClipboard(): void {
     copyToClipboard('recipe', this.stringifyRecipe(true));
-  }
-
-  /**
-   * What the canvas dump reports under `view` — the state that decides what was
-   * drawn, as opposed to what was drawn. Deliberately not folded into
-   * copyRecipeToClipboard: that one's output has to stay a recipe file, so it
-   * can be pasted straight back in or turned into a test fixture.
-   *
-   * Override to add a recipe's own view toggles; call super and spread.
-   */
-  protected debugViewContext(): Record<string, unknown> {
-    return { openPanel: this.openPanel };
   }
 
   saveToDisk() {

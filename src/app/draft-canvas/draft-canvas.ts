@@ -139,6 +139,11 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   // uncommitted preview — and only written to the store as one batched update on pointerup, so
   // a whole drag is a single undo step instead of one per intermediate pointermove.
   private static readonly DRAG_MOVE_THRESHOLD_PX = 3;
+
+  /** Caps how much one ctrl+wheel event may zoom. A trackpad pinch reports deltaY in single
+   * digits, but a mouse wheel notch with ctrl held reports it in the hundreds — unclamped, one
+   * notch scaled the view by ~20x and a hard spin drove it straight into Camera's floor. */
+  private static readonly MAX_WHEEL_ZOOM_DELTA = 10;
   private dragAnchor: Pt | null = null;
   private dragOriginals: DraftShape[] = [];
   private dragOverrides: Map<string, DraftShape> | null = null;
@@ -215,7 +220,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     return this.camera.pxPerMm;
   }
   public set pxPerMm(v: number) {
-    this.camera.pxPerMm = v;
+    this.camera.pxPerMm = Camera.clampZoom(v);
   }
 
   private lastPxX = 0;
@@ -1304,7 +1309,10 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     // Pinch-to-zoom: browsers report pinch gestures as wheel events with ctrlKey=true.
     // This is a well-known convention used by both macOS trackpads and touch screens.
     if (event.ctrlKey) {
-      const delta = event.deltaY;
+      const delta = Math.max(
+        -DraftCanvasComponent.MAX_WHEEL_ZOOM_DELTA,
+        Math.min(DraftCanvasComponent.MAX_WHEEL_ZOOM_DELTA, event.deltaY),
+      );
       const zoomFactor = Math.pow(0.97, delta);
       const newPxPerMm = this.pxPerMm * zoomFactor;
 
