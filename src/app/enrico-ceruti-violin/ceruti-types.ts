@@ -1,4 +1,106 @@
-import { Arc, NamedReferenceImage, Pt, Rectangle, ReferenceImage } from "../models/types";
+import { Arc, Circle, NamedReferenceImage, Pt, Rectangle, ReferenceImage } from "../models/types";
+
+/**
+ * The recipe's saved parameters — serialized verbatim into the file's `params`.
+ *
+ * The `Arc`/`Rectangle`-typed fields below are class instances in memory but plain objects on
+ * disk, restored by ceruti-calcs.ts before anything renders. So a new field here is safe if it
+ * holds plain data; one holding a class whose behavior lives on the prototype is safe *only* if
+ * the calc pass reassigns it. See the header note in models/types.ts.
+ */
+export interface EnricoCerutiParams {
+  height: number;
+  width: number;
+  overhang: number;
+  rib: number;
+  bitDiameter: number;
+  purflingOffset: number | null;
+  purflingChannelDepth: number | null;
+  innerFlutingDepth: number | null;
+  outerFlutingDepth: number | null;
+  button: Rectangle | null,
+  bouts: {
+    UBW: number | null;
+    U0: Arc | null;
+    U1: Arc | null;
+    U2: Arc | null;
+    U3: Arc | null;
+    U31: Arc | null;
+    U4?: Arc | null;
+    CBW: number | null;
+    C2: Arc | null;
+    C21?: Arc | null;
+    C0: Arc | null;
+    C1: Arc | null;
+    C11: Arc | null;
+    LBW: number | null;
+    L4?: Arc | null;
+    L3: Arc | null;
+    L31: Arc | null;
+    L2: Arc | null;
+    L1: Arc | null;
+    L0: Arc | null;
+    UCr: Pt | null;
+    LCr: Pt | null;
+  },
+  outerCorners: {
+    U3 : Arc | null,
+    U31: Arc | null,
+    C2: Arc | null,
+    C21: Arc | null,
+    C1: Arc | null,
+    C11: Arc | null,
+    L3: Arc | null,
+    L31: Arc | null
+  },
+  blocks: {
+    U: Rectangle | null;
+    CU: Rectangle | null;
+    CUPad: number | null;
+    CL: Rectangle | null;
+    CLPad: number | null;
+    L: Rectangle | null;
+  },
+  viol: {
+    width: number | null;
+    V0: Arc | null;
+    neckRadius?: number | null;
+  },
+  options: {
+    useViolNeck: boolean,
+    useViolCornerUC: boolean,
+    useViolCornerLC: boolean,
+    useKellyC0: boolean // four circles based theory of clean intersection along center bout,
+    U31DoubleArc: boolean;
+    C21DoubleArc: boolean;
+    C11DoubleArc: boolean;
+    L31DoubleArc: boolean;
+    ucCornerSharpness?: number;
+    lcCornerSharpness?: number;
+  },
+  ratios: {
+    HtoW: number;
+    UBtoLB: number;
+    U0toUBW: number;
+    U1toUBW: number;
+    U2toUBW: number;
+    U3toLBW: number;
+    CBWtoLBW: number;
+    C0toLBW: number;
+    C0YtoH: number;
+    C2toLBW: number;
+    C1toLBW: number;
+    LBtoH: number;
+    L0toLBW: number;
+    L1toLBW: number;
+    L2toLBW: number;
+    L3toLBW: number;
+    UCYtoH: number;
+    LCYtoH: number;
+  },
+  fhole?: FholeParams;
+  arching?: ArchingParams;
+}
 
 /** Resolved palette returned by CerutiViolin's `colors` getter, threaded into every panel and render fn. */
 export interface CerutiColors {
@@ -381,118 +483,9 @@ export interface ArchingParams {
   bottom: ArchPlate;
 }
 
-/**
- * The recipe's saved parameters — serialized verbatim into the file's `params`.
- *
- * The `Arc`/`Rectangle`-typed fields below are class instances in memory but plain objects on
- * disk, restored by ceruti-calcs.ts before anything renders. So a new field here is safe if it
- * holds plain data; one holding a class whose behavior lives on the prototype is safe *only* if
- * the calc pass reassigns it. See the header note in models/types.ts.
- */
-export interface EnricoCerutiParams {
-  height: number;
-  width: number;
-  overhang: number;
-  rib: number;
-  bitDiameter: number;
-  purflingOffset: number | null;
-  purflingChannelDepth: number | null;
-  /**
-   * How far in from the plate edge the carved area begins, in mm. No longer
-   * editable — the channel's own reach is an output of the gouge that cuts it,
-   * see {@link ChannelPaths.innerEdgeOffset} — but still the band the
-   * long arch is spanned across, so it is defaulted on load and read by
-   * {@link longArchHeightAt}. Retiring it would recompress every plate's arch,
-   * which is a shape decision rather than a cleanup.
-   */
-  innerFlutingDepth: number | null;
-  /**
-   * Distance from the plate edge in to the edge of the flat land, where the
-   * channel starts. Live and current: it is what the gouge's outer flank is
-   * anchored to, set in the Fluting Channel panel as Land Edge.
-   */
-  outerFlutingDepth: number | null;
-  button: Rectangle | null,
-  bouts: {
-    UBW: number | null;
-    U0: Arc | null;
-    U1: Arc | null;
-    U2: Arc | null;
-    U3: Arc | null;
-    U31: Arc | null;
-    U4?: Arc | null;
-    CBW: number | null;
-    C2: Arc | null;
-    C21?: Arc | null;
-    C0: Arc | null;
-    C1: Arc | null;
-    C11: Arc | null;
-    LBW: number | null;
-    L4?: Arc | null;
-    L3: Arc | null;
-    L31: Arc | null;
-    L2: Arc | null;
-    L1: Arc | null;
-    L0: Arc | null;
-    UCr: Pt | null;
-    LCr: Pt | null;
-  },
-  outerCorners: {
-    U3 : Arc | null,
-    U31: Arc | null,
-    C2: Arc | null,
-    C21: Arc | null,
-    C1: Arc | null,
-    C11: Arc | null,
-    L3: Arc | null,
-    L31: Arc | null
-  },
-  blocks: {
-    U: Rectangle | null;
-    CU: Rectangle | null;
-    CUPad: number | null;
-    CL: Rectangle | null;
-    CLPad: number | null;
-    L: Rectangle | null;
-  },
-  viol: {
-    width: number | null;
-    V0: Arc | null;
-    neckRadius?: number | null;
-  },
-  options: {
-    useViolNeck: boolean,
-    useViolCornerUC: boolean,
-    useViolCornerLC: boolean,
-    useKellyC0: boolean // four circles based theory of clean intersection along center bout,
-    U31DoubleArc: boolean;
-    C21DoubleArc: boolean;
-    C11DoubleArc: boolean;
-    L31DoubleArc: boolean;
-    ucCornerSharpness?: number;
-    lcCornerSharpness?: number;
-  },
-  ratios: {
-    HtoW: number;
-    UBtoLB: number;
-    U0toUBW: number;
-    U1toUBW: number;
-    U2toUBW: number;
-    U3toLBW: number;
-    CBWtoLBW: number;
-    C0toLBW: number;
-    C0YtoH: number;
-    C2toLBW: number;
-    C1toLBW: number;
-    LBtoH: number;
-    L0toLBW: number;
-    L1toLBW: number;
-    L2toLBW: number;
-    L3toLBW: number;
-    UCYtoH: number;
-    LCYtoH: number;
-  };
-  arching?: ArchingParams;
+export interface FholeParams { 
+  upperEye: Circle | null;
+  lowerEye: Circle | null;
 }
 
 /**
