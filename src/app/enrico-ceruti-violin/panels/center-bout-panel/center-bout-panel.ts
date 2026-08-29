@@ -7,7 +7,7 @@ import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, r
 import { Arc } from '../../../models/types';
 import { ensureCenterBoutInnerPath } from '../../ceruti-calcs';
 import { centerBoutWidthInfo, cornerPositionInfo, fitC0Info } from '../../ceruti-helpers';
-import { CerutiColors, CerutiViewFlags, DefaultParams, EnricoCerutiParams, PathEntry } from '../../ceruti-types';
+import { CerutiColors, CerutiViewFlags, DefaultParams, EnricoCerutiParams, PathEntry, RenderToggleKey } from '../../ceruti-types';
 import { renderBounds, renderBoutBouts, renderCornerGuides } from '../../renders/guides.render';
 import { HighlightedArc, HighlightedPoint, PATH_STROKE_WIDTH } from '../../renders/render-constants';
 import { renderMainBouts } from '../main-bouts-panel/main-bouts-panel';
@@ -31,6 +31,8 @@ export interface CenterBoutViewFlags {
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class CenterBoutPanel extends CerutiPanelBase implements OnInit {
+  static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleArcs', 'showAllArcs', 'showModuleGuides', 'renderOuterPath'];
+
   @Input({ required: true }) params!: EnricoCerutiParams;
   @Input({ required: true }) paths!: PathEntry[];
   @Input({ required: true }) colors!: CerutiColors;

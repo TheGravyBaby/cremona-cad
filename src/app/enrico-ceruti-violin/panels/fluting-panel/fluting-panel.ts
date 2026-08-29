@@ -5,7 +5,7 @@ import { renderFilledPath, renderPath } from '../../../helpers/renderFuncs';
 import { translatePath } from '../../../helpers/svgPathMath';
 import { calculateOuterArcs } from '../../ceruti-calcs';
 import { defineOuterPath, defineOuterPurflingPath, definePurflingPath } from '../../ceruti-paths';
-import { ArchingParams, CerutiColors, CerutiViewFlags, EnricoCerutiParams, FlutingParams } from '../../ceruti-types';
+import { ArchingParams, CerutiColors, CerutiViewFlags, EnricoCerutiParams, FlutingParams, RenderToggleKey } from '../../ceruti-types';
 import { defaultArchingParams } from '../../ceruti-arching';
 import {
   cornerGougeOn, defaultFlutingParams, effectiveCBoutSweep, channelAreaPath,
@@ -29,6 +29,8 @@ import { NumberStepperDirective } from '../../../shared/number-stepper';
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class FlutingPanel extends CerutiPanelBase implements OnInit {
+  static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleGuides'];
+
   @Input({ required: true }) params!: EnricoCerutiParams;
   @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;

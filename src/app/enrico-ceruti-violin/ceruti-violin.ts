@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { applyTransforms, ColorTransform, renderPath } from '../helpers/renderFuncs';
 import { clampParam, safeRun } from '../helpers/validators';
-import { CerutiColors, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, EnricoCerutiTemplate, EnricoCerutiParams, PanelRenderRequest } from './ceruti-types';
+import { CerutiColors, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, EnricoCerutiTemplate, EnricoCerutiParams, PanelRenderRequest, RenderToggleKey } from './ceruti-types';
 import { CERUTI_TEMPLATES } from './ceruti-templates';
 import { defineOuterPath, defineOuterPurflingPath, definePurflingPath } from './ceruti-paths';
 import { normalizeArchingParams } from './ceruti-arching';
@@ -23,21 +23,6 @@ import { RecipeToolbarComponent } from '../recipe-toolbar/recipe-toolbar';
 import { RenderToggles } from './render-toggles/render-toggles';
 import { NumberStepperDirective } from '../shared/number-stepper';
 
-/** Which buttons the shared view-toggle bar shows for a panel. */
-interface RenderToggleRows {
-  arcs: boolean; circles: boolean; guide: boolean; outerPath: boolean;
-  allArcs: boolean; allCircles: boolean; blocks: boolean; innerPath: boolean;
-}
-
-/** A row set, everything unnamed off — so each panel's entry lists only what it actually offers. */
-function toggleRows(on: Partial<RenderToggleRows>): RenderToggleRows {
-  return {
-    arcs: false, circles: false, guide: false, outerPath: false,
-    allArcs: false, allCircles: false, blocks: false, innerPath: false,
-    ...on,
-  };
-}
-
 @Component({
   selector: 'app-ceruti-violin',
   imports: [FormsModule, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterTracePanel, MouldPanel, FlutingPanel, LongArchingPanel, CrossArchingPanel, ExportPanel, RecipeToolbarComponent, RenderToggles, NumberStepperDirective],
@@ -49,20 +34,24 @@ export class CerutiViolin extends RecipeComponentBase {
 
   // ===== Static config and theming =====
 
+  /** `toggles` is which buttons the view-toggle bar shows while that panel is open, taken from
+   *  the panel's own declaration (see `CerutiPanelBase.renderToggles`) — the bar reads it from
+   *  here rather than off the mounted panel, which is a timing trap panel-base.ts explains.
+   *  Base has no panel component, and Export isn't a drafting step; neither offers any. */
   protected readonly panelOrder = [
-    { id: 'base', label: 'Base Measurements' },
-    { id: 'mainBouts', label: 'Main Bouts' },
-    { id: 'corners', label: 'Corners' },
-    { id: 'centerBout', label: 'Center Bout' },
-    { id: 'outerTrace', label: 'Outer Path' },
+    { id: 'base', label: 'Base Measurements', toggles: [] },
+    { id: 'mainBouts', label: 'Main Bouts', toggles: MainBoutsPanel.renderToggles },
+    { id: 'corners', label: 'Corners', toggles: CornersPanel.renderToggles },
+    { id: 'centerBout', label: 'Center Bout', toggles: CenterBoutPanel.renderToggles },
+    { id: 'outerTrace', label: 'Outer Path', toggles: OuterTracePanel.renderToggles },
     // The arching panels run in the order of operations at the bench: the
     // channel is gouged at constant section first, then the long arch is carved
     // to a template, then the crown across.
-    { id: 'fluting', label: 'Fluting Channel' },
-    { id: 'longArching', label: 'Long Arching' },
-    { id: 'crossArching', label: 'Cross Arching' },
-    { id: 'mould', label: 'Mould' },
-    { id: 'export', label: 'Export' },
+    { id: 'fluting', label: 'Fluting Channel', toggles: FlutingPanel.renderToggles },
+    { id: 'longArching', label: 'Long Arching', toggles: LongArchingPanel.renderToggles },
+    { id: 'crossArching', label: 'Cross Arching', toggles: CrossArchingPanel.renderToggles },
+    { id: 'mould', label: 'Mould', toggles: MouldPanel.renderToggles },
+    { id: 'export', label: 'Export', toggles: [] },
   ] as const;
 
   @Input() nightMode = true;
@@ -143,29 +132,9 @@ export class CerutiViolin extends RecipeComponentBase {
   // Ephemeral view toggles shared by the panel components and threaded into the render functions below.
   viewFlags: CerutiViewFlags = { ...DEFAULT_CERUTI_VIEW_FLAGS };
 
-  /** Which render-toggle rows apply to each panel — mirrors the showXRow inputs each panel
-   * used to pass to its own <app-ceruti-render-toggles>, now that a single fixed instance
-   * (see ceruti-violin.html) serves every panel. `null` hides the bar entirely (base and
-   * export expose none of these view flags). */
-  private static readonly RENDER_TOGGLE_ROWS: Record<string, RenderToggleRows | null> = {
-    base: null,
-    mainBouts: toggleRows({ arcs: true, circles: true, guide: true, outerPath: true, allArcs: true, allCircles: true }),
-    corners: toggleRows({ arcs: true, circles: true, guide: true, outerPath: true, allArcs: true, allCircles: true }),
-    centerBout: toggleRows({ arcs: true, circles: true, guide: true, outerPath: true, allArcs: true, allCircles: true }),
-    outerTrace: toggleRows({ arcs: true, circles: true }),
-    fluting: toggleRows({ guide: true, allArcs: true, allCircles: true }),
-    longArching: toggleRows({ guide: true, allArcs: true, allCircles: true }),
-    crossArching: toggleRows({ guide: true, allArcs: true, allCircles: true }),
-    // The mould's two are what it draws *around* the mould — the blocks it is
-    // built to hold and the inner path it is cut to. Same kind of thing as every
-    // other row here: what appears on the canvas, not what the recipe is, so
-    // they belong on the bar rather than as checkboxes at the foot of the panel.
-    mould: toggleRows({ blocks: true, innerPath: true }),
-    export: null,
-  };
-
-  get renderToggleRows() {
-    return CerutiViolin.RENDER_TOGGLE_ROWS[this.openPanel] ?? null;
+  /** The open panel's toggle buttons; empty hides the bar. */
+  get renderToggleButtons(): readonly RenderToggleKey[] {
+    return this.panelOrder.find(panel => panel.id === this.openPanel)?.toggles ?? [];
   }
 
   /** Whichever of the 5 panel components is currently mounted (see #panelRef in ceruti-violin.html)

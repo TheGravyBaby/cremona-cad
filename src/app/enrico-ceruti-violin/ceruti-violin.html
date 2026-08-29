@@ -196,17 +196,10 @@
     </div>
 </div>
 
-@if (renderToggleRows; as rt) {
+@if (renderToggleButtons.length) {
 <app-ceruti-render-toggles
         [flags]="viewFlags"
-        [showArcsRow]="rt.arcs"
-        [showCirclesRow]="rt.circles"
-        [showGuideRow]="rt.guide"
-        [showOuterPathRow]="rt.outerPath"
-        [showAllArcs]="rt.allArcs"
-        [showAllCircles]="rt.allCircles"
-        [showBlocksRow]="rt.blocks"
-        [showInnerPathRow]="rt.innerPath"
+        [buttons]="renderToggleButtons"
         (changed)="onRenderTogglesChanged()">
 </app-ceruti-render-toggles>
 }

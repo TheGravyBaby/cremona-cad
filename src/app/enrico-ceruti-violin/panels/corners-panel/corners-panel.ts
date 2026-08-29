@@ -7,7 +7,7 @@ import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, r
 import { Arc } from '../../../models/types';
 import { calculateCorners } from '../../ceruti-calcs';
 import { compoundArcInfo, cornerPositionInfo, violCornerInfo } from '../../ceruti-helpers';
-import { CerutiColors, CerutiViewFlags, DefaultParams, EnricoCerutiParams } from '../../ceruti-types';
+import { CerutiColors, CerutiViewFlags, DefaultParams, EnricoCerutiParams, RenderToggleKey } from '../../ceruti-types';
 import { renderBounds, renderBoutBouts, renderCornerGuides } from '../../renders/guides.render';
 import { renderMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { HighlightedArc, HighlightedPoint, PATH_STROKE_WIDTH } from '../../renders/render-constants';
@@ -29,6 +29,8 @@ export interface CornersViewFlags {
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class CornersPanel extends CerutiPanelBase implements OnInit {
+  static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleArcs', 'showAllArcs', 'showModuleGuides', 'renderOuterPath'];
+
   @Input({ required: true }) params!: EnricoCerutiParams;
   @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;

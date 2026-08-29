@@ -1,7 +1,7 @@
 # enrico-ceruti-violin
 
 The one real instrument model. `CerutiViolin` (`ceruti-violin.ts`) is a shell: it owns the panel
-order, the color palette, view-toggle rows, and the geometry caches. Everything else is delegated.
+order, the color palette, and the geometry caches. Everything else is delegated.
 
 Each file below opens with a header comment stating its own boundary. Read that header before
 adding to a file — they are current and more specific than this page.
@@ -68,19 +68,20 @@ recognizes the current format *positively* so it stays idempotent; six tests in
 
 ## Adding a panel
 
-Six edits. Missing one fails quietly — usually a panel that never unlocks — so work the list.
+Five edits. Missing one fails quietly — usually a panel that never unlocks — so work the list.
 
 1. **`panels/<name>-panel/`** — just `.ts` and `.html`. No per-panel stylesheet: all nine share
    `styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css']`, and markup uses the shared
    `ui-group` / `field-row` / `basic-input` classes. Extend `CerutiPanelBase`, implement `OnInit`.
    Copy `panels/outer-trace-panel/` as the reference; `panels/mould-panel/` is the smallest.
-2. **`ceruti-violin.ts` → `panelOrder`** — id + label, positioned in bench order.
+   Declare `static readonly renderToggles` — which view-toggle buttons the bar shows while this
+   panel is open. There is no default to inherit, so omitting it fails the build at step 2.
+2. **`ceruti-violin.ts` → `panelOrder`** — id + label + `toggles: <Panel>.renderToggles`,
+   positioned in bench order. `toggles: []` for a panel that offers none.
 3. **`ceruti-violin.ts` → `canOpenPanel()`** — a case returning the right `hasX()` predicate. Add
    a new `hasX()` under *Panel gating* if no existing one fits.
-4. **`ceruti-violin.ts` → `RENDER_TOGGLE_ROWS`** — which view-toggle rows the bar shows.
-   `toggleRows({...})` with only what applies; `null` hides the bar.
-5. **`ceruti-violin.ts` → component `imports`** array.
-6. **`ceruti-violin.html`** — an `@if (openPanel === '<id>')` block with `#panelRef`,
+4. **`ceruti-violin.ts` → component `imports`** array.
+5. **`ceruti-violin.html`** — an `@if (openPanel === '<id>')` block with `#panelRef`,
    `[params]`/`[colors]`/`[flags]` (plus `[paths]` only if the panel reads the path cache), and
    `(panelUpdate)="onPanelRenderRequest($event)"`.
 

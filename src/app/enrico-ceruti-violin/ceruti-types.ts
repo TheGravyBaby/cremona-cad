@@ -59,6 +59,21 @@ export interface CerutiViewFlags {
 }
 
 /**
+ * The view flags the shared toggle bar has a button for. Each panel names the ones it offers in
+ * a `static readonly renderToggles: readonly RenderToggleKey[]`; the bar's own template fixes
+ * the order they appear in, so the strip reads the same from every panel.
+ *
+ * Static, and collected into `CerutiViolin.panelOrder` rather than read off the mounted panel:
+ * a view query for the open panel resolves *after* the bar's own binding has been evaluated, so
+ * reading it there throws NG0100 the moment you switch panels. Both `@ViewChild` and signal
+ * `viewChild()` do this — don't "simplify" it back. There is deliberately no default on
+ * `CerutiPanelBase`: a panel that declares none should fail the build at `panelOrder`, not
+ * inherit an empty list and quietly show no bar.
+ */
+export type RenderToggleKey = 'showModuleArcs' | 'showAllArcs' | 'showModuleCircles'
+  | 'showAllCircles' | 'showModuleGuides' | 'showBlocks' | 'showInnerPath' | 'renderOuterPath';
+
+/**
  * Generic panel-to-parent render request payload.
  * Panels describe how to build their render layers; the parent applies shared
  * policy (debounce/history/session/panel-flow) before executing it.
