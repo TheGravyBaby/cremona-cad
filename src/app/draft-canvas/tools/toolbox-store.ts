@@ -10,8 +10,9 @@ const MAX_HISTORY = 50;
 
 /**
  * Holds shapes drawn with the draft-canvas toolbox. Kept in the browser's working state
- * alongside the recipe (see helpers/workingStorage.ts), so a drawing survives closing the tab —
- * but still a scratch annotation layer, not part of the downloaded recipe unless saved with it.
+ * alongside the recipe (see helpers/workingStorage.ts), so a drawing survives a reload of the tab
+ * it was drawn in — but still a scratch annotation layer, not part of the downloaded recipe
+ * unless saved with it.
  *
  * A root-provided singleton (rather than a plain class draft-canvas `new`s up) so it stays alive
  * across recipe swaps. Implements `Undoable` and registers with `UndoCoordinator` (see

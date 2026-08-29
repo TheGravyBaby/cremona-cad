@@ -29,6 +29,15 @@ type PersistedAxisGridPreferences = Partial<AxisGridPreferences> & {
 export class AxisGridController {
   private static readonly MIN_GRID_STEP_MM = 0.1;
 
+  // Spacing floors in screen px. The loops below emit one element per grid step across the whole
+  // viewport, so a step that lands under these — a 0.1mm grid at any usable zoom, or an ordinary
+  // one at the far end of the zoom-out range — meant thousands of elements per redraw and a
+  // locked-up tab. Bounded by pixels rather than by a line count: lines = viewportPx / spacingPx,
+  // so the viewport itself caps the total.
+  private static readonly MIN_GRID_SPACING_PX = 4;
+  private static readonly MIN_TICK_SPACING_PX = 50;
+  private static readonly MAX_LINES_PER_AXIS = 1000;
+
   private preferences: AxisGridPreferences = {
     showGrid: false,
     showAxes: false,
@@ -106,7 +115,7 @@ export class AxisGridController {
   }
 
   draw(gRoot: RootGroup, gUI: RootGroup, cv: CanvasViewport, pxPerMm: number): void {
-    if (this.showGrid) this.drawGrid(gRoot, cv);
+    if (this.showGrid) this.drawGrid(gRoot, cv, pxPerMm);
     if (this.showAxes) {
       this.drawAxes(gRoot, cv);
       this.drawAxisLabels(gUI, cv, pxPerMm);
@@ -138,6 +147,52 @@ export class AxisGridController {
     } catch {
       // ignore storage errors
     }
+  }
+
+  /**
+   * The configured step, coarsened by the smallest 1/2/5x10^k multiple that keeps drawn lines at
+   * least `minPx` apart. Only ever coarsens, so a comfortable step passes through untouched; a
+   * multiple means every line drawn still sits on the user's own grid, just at a coarser
+   * subdivision, rather than on some step they never asked for.
+   */
+  private effectiveStep(stepMm: number, pxPerMm: number, minPx: number): number {
+    const spacingPx = stepMm * pxPerMm;
+    if (!Number.isFinite(spacingPx) || spacingPx <= 0) return stepMm;
+    if (spacingPx >= minPx) return stepMm;
+
+    const needed = minPx / spacingPx;
+    const decade = Math.pow(10, Math.floor(Math.log10(needed)));
+    const multiple = [1, 2, 5, 10].find(m => m * decade >= needed) ?? 10;
+    return stepMm * multiple * decade;
+  }
+
+  /**
+   * Every multiple of `step` inside [lo, hi]. Still anchored on the origin, so lines land where
+   * they always did — but walked across the visible span only. The loops used to start at 0 and
+   * run out to the viewport edge, so a view panned a few metres from the origin emitted every
+   * line in between, all of them off-screen. With this the count is span/step, which the spacing
+   * floors above turn into a bound in viewport pixels.
+   */
+  private stepValues(lo: number, hi: number, step: number): number[] {
+    if (!Number.isFinite(lo) || !Number.isFinite(hi) || !(step > 0)) return [];
+
+    const eps = step * 1e-6;
+    const first = Math.ceil((lo - eps) / step);
+    const last = Math.floor((hi + eps) / step);
+
+    const values: number[] = [];
+    // the spacing floors should keep this far under the cap; it's here so a future caller that
+    // skips them degrades to a sparse grid rather than a locked tab
+    for (let i = first; i <= last && values.length < AxisGridController.MAX_LINES_PER_AXIS; i++) {
+      values.push(i * step);
+    }
+    return values;
+  }
+
+  /** Multiplying out from the origin still lands on float dust for a fractional step
+   * (3 * 0.2 = 0.6000000000000001). Round it back out of the label. */
+  private formatTickLabel(mm: number): string {
+    return `${Math.round(mm * 1e6) / 1e6}`;
   }
 
   private drawAxisTicks(gRoot: RootGroup, gUI: RootGroup, cv: CanvasViewport, pxPerMm: number): void {
@@ -200,32 +255,30 @@ export class AxisGridController {
       }
     };
 
-    // Loop 1: Y ticks — downward from origin
-    for (let y = 0; y <= -cv.topBound; y += this.gridStepY) {
-      if (!this.showGridY) continue;
-      if (y === 0) continue;
-      drawYTick(y, `${y}`);
+    // Labels need far more room than grid lines do, so they thin out sooner. Coarsened up from
+    // the grid's own step rather than from the configured one, so every label still sits on a
+    // drawn grid line — the 1/2/5 ladder doesn't nest (a 2x grid and a 5x label step wouldn't).
+    const stepX = this.effectiveStep(
+      this.effectiveStep(this.gridStepX, pxPerMm, AxisGridController.MIN_GRID_SPACING_PX),
+      pxPerMm, AxisGridController.MIN_TICK_SPACING_PX);
+    const stepY = this.effectiveStep(
+      this.effectiveStep(this.gridStepY, pxPerMm, AxisGridController.MIN_GRID_SPACING_PX),
+      pxPerMm, AxisGridController.MIN_TICK_SPACING_PX);
+
+    // Y ticks, across the visible rows (gRoot y, so the viewport bounds come in negated)
+    if (this.showGridY) {
+      for (const y of this.stepValues(-cv.bottomBound, -cv.topBound, stepY)) {
+        if (y === 0) continue;
+        drawYTick(y, this.formatTickLabel(y));
+      }
     }
 
-    // Loop 2: Y ticks — upward from origin
-    for (let y = -this.gridStepY; y >= -cv.bottomBound; y -= this.gridStepY) {
-      if (!this.showGridY) continue;
-      if (y === 0) continue;
-      drawYTick(y, `${y}`);
-    }
-
-    // Loop 3: X ticks — rightward from origin
-    for (let x = -this.gridStepX; x <= cv.rightBound; x += this.gridStepX) {
-      if (!this.showGridX) continue;
-      if (x === 0) continue;
-      drawXTick(x, `${x}`);
-    }
-
-    // Loop 4: X ticks — leftward from origin
-    for (let x = -this.gridStepX; x >= cv.leftBound; x -= this.gridStepX) {
-      if (!this.showGridX) continue;
-      if (x === 0) continue;
-      drawXTick(x, `${x}`);
+    // X ticks, across the visible columns
+    if (this.showGridX) {
+      for (const x of this.stepValues(cv.leftBound, cv.rightBound, stepX)) {
+        if (x === 0) continue;
+        drawXTick(x, this.formatTickLabel(x));
+      }
     }
   }
 
@@ -336,62 +389,38 @@ export class AxisGridController {
     }
   }
 
-  private drawGrid(gRoot: RootGroup, cv: CanvasViewport, gridColor: string = '#85858543'): void {
+  private drawGrid(gRoot: RootGroup, cv: CanvasViewport, pxPerMm: number, gridColor: string = '#85858543'): void {
+    const stepX = this.effectiveStep(this.gridStepX, pxPerMm, AxisGridController.MIN_GRID_SPACING_PX);
+    const stepY = this.effectiveStep(this.gridStepY, pxPerMm, AxisGridController.MIN_GRID_SPACING_PX);
 
-    for (let y = 0; y <= -cv.topBound; y += this.gridStepY) {
-      if (!this.showGridY) continue;
-      if (y === 0 && this.showAxes) continue;
-      gRoot
-        .append('line')
-        .attr('x1', cv.leftBound)
-        .attr('y1', y)
-        .attr('x2', cv.rightBound)
-        .attr('y2', y)
-        .attr('stroke', gridColor)
-        .attr('stroke-width', 2)
-        .attr('vector-effect', 'non-scaling-stroke')
-    }
-    for (let y = -this.gridStepY; y >= -cv.bottomBound; y -= this.gridStepY) {
-      if (!this.showGridY) continue;
-      if (y === 0 && this.showAxes) continue;
-
-      gRoot
-        .append('line')
-        .attr('x1', cv.leftBound)
-        .attr('y1', y)
-        .attr('x2', cv.rightBound)
-        .attr('y2', y)
-        .attr('stroke', gridColor)
-        .attr('stroke-width', 2)
-        .attr('vector-effect', 'non-scaling-stroke')
+    if (this.showGridY) {
+      for (const y of this.stepValues(-cv.bottomBound, -cv.topBound, stepY)) {
+        if (y === 0 && this.showAxes) continue;
+        gRoot
+          .append('line')
+          .attr('x1', cv.leftBound)
+          .attr('y1', y)
+          .attr('x2', cv.rightBound)
+          .attr('y2', y)
+          .attr('stroke', gridColor)
+          .attr('stroke-width', 2)
+          .attr('vector-effect', 'non-scaling-stroke')
+      }
     }
 
-    for (let x = -this.gridStepX; x <= cv.rightBound; x += this.gridStepX) {
-      if (!this.showGridX) continue;
-      if (x === 0 && this.showAxes) continue;
-
-      gRoot
-        .append('line')
-        .attr('x1', x)
-        .attr('y1', -cv.topBound)
-        .attr('x2', x)
-        .attr('y2', -cv.bottomBound)
-        .attr('stroke', gridColor)
-        .attr('stroke-width', 2)
-        .attr('vector-effect', 'non-scaling-stroke')
-    }
-    for (let x = -this.gridStepX; x >= cv.leftBound; x -= this.gridStepX) {
-      if (!this.showGridX) continue;
-      if (x === 0 && this.showAxes) continue;
-      gRoot
-        .append('line')
-        .attr('x1', x)
-        .attr('y1', -cv.topBound)
-        .attr('x2', x)
-        .attr('y2', -cv.bottomBound)
-        .attr('stroke', gridColor)
-        .attr('stroke-width', 2)
-        .attr('vector-effect', 'non-scaling-stroke')
+    if (this.showGridX) {
+      for (const x of this.stepValues(cv.leftBound, cv.rightBound, stepX)) {
+        if (x === 0 && this.showAxes) continue;
+        gRoot
+          .append('line')
+          .attr('x1', x)
+          .attr('y1', -cv.topBound)
+          .attr('x2', x)
+          .attr('y2', -cv.bottomBound)
+          .attr('stroke', gridColor)
+          .attr('stroke-width', 2)
+          .attr('vector-effect', 'non-scaling-stroke')
+      }
     }
   }
 }

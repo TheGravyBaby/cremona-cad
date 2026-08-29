@@ -75,6 +75,8 @@ export class CerutiViolin extends RecipeComponentBase {
     fluting: '#478968ff',
     archTop: '#C47B3A',
     archBack: '#4D74A8',
+    upperEye: '#ae3d4e',
+    lowerEye: '#F08128',
   } as const;
 
   private makeColor(base: string, ...extra: ColorTransform[]): string {
@@ -112,6 +114,10 @@ export class CerutiViolin extends RecipeComponentBase {
       fluting: this.makeColor(p.fluting),
       archTop: this.makeColor(p.archTop),
       archBack: this.makeColor(p.archBack),
+      upperEye: this.makeColor(p.upperEye),
+      upperEyeOff: this.makeColor(p.upperEye, { type: 'greyOut', degree: this.offFactor }),
+      lowerEye: this.makeColor(p.lowerEye),
+      lowerEyeOff: this.makeColor(p.lowerEye, { type: 'greyOut', degree: this.offFactor }),
     };
   }
 
@@ -231,14 +237,6 @@ export class CerutiViolin extends RecipeComponentBase {
     normalizeArchingParams(this.d.params);
   }
 
-  /**
-   * Adds the view toggles to the canvas dump's `view` block. A flag that is off
-   * and a layer that drew nothing are the same picture, and only this tells them
-   * apart — the difference between a bug and a checkbox.
-   */
-  protected override debugViewContext(): Record<string, unknown> {
-    return { ...super.debugViewContext(), viewFlags: { ...this.viewFlags } };
-  }
 
   onNewClick(): void {
     const blank = JSON.parse(JSON.stringify(CERUTI_TEMPLATES[0])) as EnricoCerutiTemplate;

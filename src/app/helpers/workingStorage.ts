@@ -1,12 +1,12 @@
 import { error } from '../shared/message-emitter';
 
 // the browser's copy of whatever is currently being worked on — the recipe, the panel you left
-// open, the toolbox shapes. localStorage rather than sessionStorage: the app has no server and no
-// notion of a saved file, so this is the only live copy of a design until the user downloads a
-// snapshot, and losing it when a tab closes loses real work.
+// open, the toolbox shapes. sessionStorage rather than localStorage, so a tab is a workspace: two
+// windows hold two designs instead of fighting over one key, and closing a tab closes that piece
+// of work rather than leaving it to reappear under the next design you open.
 //
-// note this is deliberately *not* where a design is kept safe. it is one browser, one profile,
-// clearable by the user at any time. downloading the recipe is still the only durable copy.
+// note this is deliberately *not* where a design is kept safe, and less so than ever now that it
+// dies with the tab. saving the recipe to disk is the only durable copy.
 
 export const RECIPE_KEY = 'recipeData';
 export const PANEL_KEY = 'openPanel';
@@ -23,31 +23,40 @@ let quotaWarned = false;
  */
 export function writeWorkingState(key: string, value: string): void {
   try {
-    localStorage.setItem(key, value);
+    sessionStorage.setItem(key, value);
   } catch {
     if (quotaWarned) return;
     quotaWarned = true;
     error(
-      'Your browser\'s storage is full, so this design is no longer being kept between visits. ' +
-      'Download it to keep it. Large reference images are the usual cause.',
+      'Your browser\'s storage is full, so this design is no longer being kept while the tab ' +
+      'is open. Save it to keep it. Large reference images are the usual cause.',
       'Storage full', true,
     );
   }
 }
 
 /**
- * Reads, falling back once to the sessionStorage copy this used to be kept in and adopting it —
- * so a tab that was already open when the app updated carries its work over instead of coming
- * back blank.
+ * Reads, falling back once to the localStorage copy this used to be kept in — so a design that
+ * was open when the app updated carries over instead of coming back blank.
+ *
+ * The carry-over *takes* that copy rather than duplicating it: left in place it would seed every
+ * new tab with the same stale design, which is the thing per-tab state exists to avoid. So the
+ * first tab to load after the update inherits the work and later ones open fresh.
  */
 export function readWorkingState(key: string): string | null {
-  const stored = localStorage.getItem(key);
-  if (stored !== null) return stored;
-
   try {
-    const legacy = sessionStorage.getItem(key);
-    if (legacy !== null) writeWorkingState(key, legacy);
-    return legacy;
+    const stored = sessionStorage.getItem(key);
+    if (stored !== null) return stored;
+
+    const carried = localStorage.getItem(key);
+    if (carried === null) return null;
+    try {
+      sessionStorage.setItem(key, carried);
+      localStorage.removeItem(key);
+    } catch {
+      // couldn't take it over — leave the localStorage copy for the next load to try again
+    }
+    return carried;
   } catch {
     return null;
   }
@@ -55,8 +64,8 @@ export function readWorkingState(key: string): string | null {
 
 export function clearWorkingState(key: string): void {
   try {
-    localStorage.removeItem(key);
     sessionStorage.removeItem(key);
+    localStorage.removeItem(key);
   } catch {
     // nothing useful to do — a store that won't delete also won't have been written
   }
