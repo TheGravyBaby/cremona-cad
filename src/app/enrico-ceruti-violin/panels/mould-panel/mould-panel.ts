@@ -4,7 +4,7 @@ import { flipRectAboutY } from '../../../helpers/draftMath';
 import { renderPath, renderRect } from '../../../helpers/renderFuncs';
 import { calculateMould, ensureCenterBoutInnerPath, ensureOuterTracePaths, getPath } from '../../ceruti-calcs';
 import { bitDiameterInfo } from '../../ceruti-helpers';
-import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, PathEntry } from '../../ceruti-types';
+import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, PathEntry, RenderToggleKey } from '../../ceruti-types';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 
@@ -15,6 +15,11 @@ import { NumberStepperDirective } from '../../../shared/number-stepper';
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class MouldPanel extends CerutiPanelBase implements OnInit {
+  // What the mould is drawn *around* — the blocks it is built to hold, and the inner path it is
+  // cut to. What appears on the canvas rather than what the recipe is, so they belong on the
+  // toggle bar rather than as checkboxes at the foot of this panel.
+  static readonly renderToggles: readonly RenderToggleKey[] = ['showBlocks', 'showInnerPath'];
+
   @Input({ required: true }) params!: EnricoCerutiParams;
   @Input({ required: true }) paths!: PathEntry[];
   @Input({ required: true }) colors!: CerutiColors;

@@ -13,7 +13,7 @@ import { calculateMainBouts, violNeckJoinLimit } from '../../ceruti-calcs';
 import { error } from '../../../shared/message-emitter';
 import { boutWidthInfo, violNeckInfo, violNeckJoinInfo } from '../../ceruti-helpers';
 import { violNeckCap } from '../../ceruti-paths';
-import { CerutiColors, CerutiViewFlags, EnricoCerutiParams } from '../../ceruti-types';
+import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, RenderToggleKey } from '../../ceruti-types';
 import { renderBounds, renderBoutBouts } from '../../renders/guides.render';
 import { HighlightedArc, PATH_STROKE_WIDTH } from '../../renders/render-constants';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
@@ -35,6 +35,8 @@ export interface MainBoutsViewFlags {
 })
 
 export class MainBoutsPanel extends CerutiPanelBase implements OnInit {
+  static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleArcs', 'showAllArcs', 'showModuleGuides', 'renderOuterPath'];
+
   @Input({ required: true }) params!: EnricoCerutiParams;
   @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;

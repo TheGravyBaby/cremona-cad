@@ -7,7 +7,7 @@ import { archSplineKnots, buildCatenaryPath, buildCycloidPath, buildSplinePath, 
 import { clamp } from '../../../helpers/draftMath';
 import {
   ArchCurve, ArchSpline, ArchSplinePoint, ArchingParams, CerutiColors, CerutiViewFlags,
-  EnricoCerutiParams, FlutingParams,
+  EnricoCerutiParams, FlutingParams, RenderToggleKey,
 } from '../../ceruti-types';
 import { clampSplinePointHeights, defaultArchingParams } from '../../ceruti-arching';
 import {
@@ -37,6 +37,8 @@ import { NumberStepperDirective } from '../../../shared/number-stepper';
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class LongArchingPanel extends CerutiPanelBase implements OnInit {
+  static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleGuides'];
+
   @Input({ required: true }) params!: EnricoCerutiParams;
   @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;

@@ -9,7 +9,7 @@ import { samplePathToPolyline } from '../../../helpers/svgPathMath';
 import {
   ArchingParams, ArchPlate, CerutiColors, CerutiViewFlags, EnricoCerutiParams, CrossArchCycloidShape,
   CrossArchCycloidStation, CrossArchParams, CrossArchPoint, CrossArchShape, CrossArchSplineShape,
-  CrossArchSplineStation, CrossArchStation, FlutingParams, PlateViewMode,
+  CrossArchSplineStation, CrossArchStation, FlutingParams, PlateViewMode, RenderToggleKey,
 } from '../../ceruti-types';
 import {
   bodyLandmarks, contourSampleSteps, defaultArchingParams,
@@ -125,6 +125,8 @@ const KNOT_MIN_FRAC = 0.02;
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDestroy {
+  static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleGuides'];
+
   @Input({ required: true }) params!: EnricoCerutiParams;
   @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;
