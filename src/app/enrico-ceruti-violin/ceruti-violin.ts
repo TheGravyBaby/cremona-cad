@@ -18,6 +18,7 @@ import { MouldPanel } from './panels/mould-panel/mould-panel';
 import { FlutingPanel } from './panels/fluting-panel/fluting-panel';
 import { LongArchingPanel } from './panels/long-arching-panel/long-arching-panel';
 import { CrossArchingPanel } from './panels/cross-arching-panel/cross-arching-panel';
+import { FHolePlacementPanel } from './panels/f-hole-placement-panel/f-hole-placement-panel';
 import { ExportPanel } from './panels/export-panel/export-panel';
 import { RecipeToolbarComponent } from '../recipe-toolbar/recipe-toolbar';
 import { RenderToggles } from './render-toggles/render-toggles';
@@ -25,7 +26,7 @@ import { NumberStepperDirective } from '../shared/number-stepper';
 
 @Component({
   selector: 'app-ceruti-violin',
-  imports: [FormsModule, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterTracePanel, MouldPanel, FlutingPanel, LongArchingPanel, CrossArchingPanel, ExportPanel, RecipeToolbarComponent, RenderToggles, NumberStepperDirective],
+  imports: [FormsModule, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterTracePanel, MouldPanel, FlutingPanel, LongArchingPanel, CrossArchingPanel, FHolePlacementPanel, ExportPanel, RecipeToolbarComponent, RenderToggles, NumberStepperDirective],
   templateUrl: './ceruti-violin.html',
   styleUrls: ['../sidebar.css', './ceruti-violin.css'],
 })
@@ -50,6 +51,7 @@ export class CerutiViolin extends RecipeComponentBase {
     { id: 'fluting', label: 'Fluting Channel', toggles: FlutingPanel.renderToggles },
     { id: 'longArching', label: 'Long Arching', toggles: LongArchingPanel.renderToggles },
     { id: 'crossArching', label: 'Cross Arching', toggles: CrossArchingPanel.renderToggles },
+    { id: 'fHolePlacement', label: 'F-Hole Placement', toggles: FHolePlacementPanel.renderToggles },
     { id: 'mould', label: 'Mould', toggles: MouldPanel.renderToggles },
     { id: 'export', label: 'Export', toggles: [] },
   ] as const;
@@ -341,6 +343,7 @@ export class CerutiViolin extends RecipeComponentBase {
       case 'fluting': return this.hasCenterBout();
       case 'longArching': return this.hasCenterBout();
       case 'crossArching': return this.hasCenterBout();
+      case 'fHolePlacement': return this.hasCenterBout();
       case 'export': return this.hasCenterBout();
       default: return false;
     }

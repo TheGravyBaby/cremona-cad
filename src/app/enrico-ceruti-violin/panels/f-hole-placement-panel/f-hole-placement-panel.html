@@ -1,0 +1,43 @@
+<section class="ui-group">
+    <div class="ui-group-title">Upper Eye</div>
+    <label class="field-cell">
+        <span class="field-title">Radius <span class="unit-label">mm</span></span>
+        <input type="number" class="basic-input" [step]="stepFor(params.fhole!.upperEye.r, .25)" min="0"
+            [(ngModel)]="params.fhole!.upperEye.r" (input)="onChange()" />
+    </label>
+
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">X <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" [step]="stepFor(params.fhole!.upperEye.x, .25)" min="0"
+                [(ngModel)]="params.fhole!.upperEye.x" (input)="onChange()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Y <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" [step]="stepFor(params.fhole!.upperEye.y, .25)" min="0"
+                [(ngModel)]="params.fhole!.upperEye.y" (input)="onChange()" />
+        </label>
+    </div>
+
+</section>
+
+<section class="ui-group">
+    <div class="ui-group-title">Lower Eye</div>
+    <label class="field-cell">
+        <span class="field-title">Radius <span class="unit-label">mm</span></span>
+        <input type="number" class="basic-input" [step]="stepFor(params.fhole!.lowerEye.r, .25)" min="0"
+            [(ngModel)]="params.fhole!.lowerEye.r" (input)="onChange()" />
+    </label>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">X <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" [step]="stepFor(params.fhole!.lowerEye.x, .25)" min="0"
+                [(ngModel)]="params.fhole!.lowerEye.x" (input)="onChange()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Y <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" [step]="stepFor(params.fhole!.lowerEye.y, .25)" min="0"
+                [(ngModel)]="params.fhole!.lowerEye.y" (input)="onChange()" />
+        </label>
+    </div>
+</section>

@@ -183,6 +183,16 @@
         </app-ceruti-cross-arching-panel>
         }
 
+        @if (openPanel === 'fHolePlacement') {
+        <app-ceruti-f-hole-placement-panel #panelRef
+            [params]="d.params"
+            [paths]="d.paths"
+            [colors]="colors"
+            [flags]="viewFlags"
+            (panelUpdate)="onPanelRenderRequest($event)">
+        </app-ceruti-f-hole-placement-panel>
+        }
+
         @if (openPanel === 'export') {
         <app-ceruti-export-panel #exportRef
             [params]="d.params"
