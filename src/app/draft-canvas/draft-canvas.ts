@@ -586,7 +586,16 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private setSelectedShape(id: string | null): void {
     if (this.selectedShapeIds.size === (id ? 1 : 0) && (!id || this.selectedShapeIds.has(id))) return;
     this.selectedShapeIds = id ? new Set([id]) : new Set();
+    this.revealSelectedImage(id);
     this.draw();
+  }
+
+  /** A selected image shows even where its panel scoping would hide it, so that editing that
+   * scoping from the settings bar doesn't make the image and its controls disappear as you type.
+   * Selecting anything else ends it. See ToolboxStore.setRevealedImage. */
+  private revealSelectedImage(id: string | null): void {
+    const isImage = !!id && this.toolbox.getImageShapes().some(s => s.id === id);
+    this.toolbox.setRevealedImage(isImage ? id : null);
   }
 
   /** Shift-click: adds/removes one shape from the selection, leaving the rest untouched.
@@ -601,6 +610,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private clearSelection(): void {
     if (this.selectedShapeIds.size === 0) return;
     this.selectedShapeIds.clear();
+    this.toolbox.setRevealedImage(null);
     this.draw();
   }
 
@@ -1434,6 +1444,10 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   selectShapeById(id: string): void {
     this.toolRegistry.selectTool(null);
     this.setSelectedShape(id);
+    // setSelectedShape short-circuits when the shape is already the selection, which is exactly
+    // the case where the reveal has since been dropped (a panel change clears it). Asking again
+    // is cheap and the store ignores a repeat.
+    this.revealSelectedImage(id);
   }
 
   // ===== Image file picker =====

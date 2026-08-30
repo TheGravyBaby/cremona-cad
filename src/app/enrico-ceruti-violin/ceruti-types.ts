@@ -512,6 +512,51 @@ export interface PathEntry {
   path: string;
 }
 
+/**
+ * What a bundled instrument *is*, as distinct from what it measures — the maker, the object, and
+ * the public record it can be checked against.
+ *
+ * Kept off `params`, which is the frozen geometry contract, and off the reference images, which
+ * carry their own licence separately (see `ImageCredit`). Bout measurements are facts and carry
+ * no copyright while a photograph is expression and does, so an instrument's record and its
+ * photograph's terms are recorded apart rather than as one provenance.
+ *
+ * Absent on the blank template and on anything a user saved themselves.
+ */
+/**
+ * Every drafting panel, in bench order. Declared here rather than only in `ceruti-violin.ts`
+ * because panel ids became file-format vocabulary the moment a reference image could scope itself
+ * to particular panels (`NamedReferenceImage.panels`) — a template's saved JSON now names them,
+ * so a renamed panel is a migration, not a rename.
+ *
+ * `panelOrder` in `ceruti-violin.ts` is typed against this, so the two can't drift: adding a panel
+ * there without adding its id here fails the build.
+ */
+export const CERUTI_PANEL_IDS = [
+  'base', 'mainBouts', 'corners', 'centerBout', 'outerTrace',
+  'fluting', 'longArching', 'crossArching', 'fHolePlacement', 'mould', 'export',
+] as const;
+
+export type CerutiPanelId = typeof CERUTI_PANEL_IDS[number];
+
+export interface TemplateMeta {
+  maker: string;
+  /** The instrument, named as the record names it — 'Violin "Ole Bull"', 'Viola'. */
+  instrument: string;
+  /** As published: '1669', 'c.1730', '1610-20'. A string, not a year, because most are ranges
+   * or attributions rather than a date. */
+  date: string;
+  /** The public catalogue entry this instrument is drawn from, so a number can be rechecked. */
+  record: {
+    source: 'met' | 'si' | 'loc' | 'other';
+    /** The institution's own object id — Met 898377, SI nmah_833906, LoC ihas.200154811. */
+    objectId: string;
+    url: string;
+  };
+  /** Anything a reader of the numbers needs and the fields above don't say. */
+  notes?: string;
+}
+
 export interface EnricoCerutiTemplate {
   key: string;
   label: string;
@@ -519,6 +564,8 @@ export interface EnricoCerutiTemplate {
   fileName: string;
   version: string;
   description?: string;
+  /** Provenance of the instrument this template is drawn from — see TemplateMeta. */
+  meta?: TemplateMeta;
   params: EnricoCerutiParams;
   paths: PathEntry[];
   /** @deprecated legacy single-image field; migrated into `referenceImages` on load. */

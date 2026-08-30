@@ -227,3 +227,118 @@
   accent-color: var(--ui-accent);
   cursor: pointer;
 }
+
+/* Popups for Crop and Panel scoping. Siblings of .settings-grid rather than children, because
+   that grid scrolls sideways and would clip anything absolutely positioned inside it — so these
+   anchor to the bar's own left edge, not to the button that opened them. Upwards, like the
+   bottom bar's layer and image popups, and styled to match them: the two sets sit on the same
+   row of the screen and reading as one family is worth restating a few rules for. */
+.settings-popup {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 8px);
+  z-index: 10;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  min-width: 210px;
+  max-height: min(60vh, 340px);
+  max-height: min(60dvh, 340px);
+  overflow-y: auto;
+  border: 1px solid var(--ui-border-elevated);
+  border-radius: 6px;
+  background: var(--ui-bg-elevated);
+  box-shadow: var(--ui-shadow-pop);
+  color: var(--ui-text-primary);
+  font-size: 12px;
+}
+
+.settings-popup-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ui-text-muted);
+}
+
+/* States the one property of cropping that isn't obvious from watching it happen, so it doesn't
+   have to be discovered by trying it on an image already scaled to a measurement. */
+.settings-popup-note {
+  font-size: 11px;
+  color: var(--ui-text-muted);
+}
+
+.settings-popup-divider {
+  height: 1px;
+  background: var(--ui-border-soft);
+}
+
+/* Left/Right over Top/Bottom, so the four boxes read as the edges they trim rather than as a
+   list of numbers. */
+.crop-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 6px;
+}
+
+.crop-cell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.crop-cell span {
+  font-size: 11px;
+  color: var(--ui-text-muted);
+}
+
+.crop-cell input[type="number"] {
+  width: 56px;
+  height: 22px;
+  padding: 2px 4px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 4px;
+  background: var(--ui-bg-surface-2);
+  color: var(--ui-text-primary);
+  font-size: 12px;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.panel-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.panel-row input[type="checkbox"] {
+  width: 13px;
+  height: 13px;
+  margin: 0;
+  accent-color: var(--ui-accent);
+  cursor: pointer;
+}
+
+.settings-popup-action {
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 4px 9px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 4px;
+  background: linear-gradient(180deg, var(--ui-canvas-btn-bg-start) 0%, var(--ui-canvas-btn-bg-end) 100%);
+  color: var(--ui-text-primary);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.settings-popup-action:hover:not(:disabled) {
+  border-color: var(--ui-canvas-btn-border-hover);
+}
+
+.settings-popup-action:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

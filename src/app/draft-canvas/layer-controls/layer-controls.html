@@ -89,7 +89,7 @@
     <div class="lc-popup">
       <div class="layer-tabs">
         @for (image of images; track image.id) {
-        <div class="layer-tab" [class.locked]="isImageLocked(image)">
+        <div class="layer-tab" [class.locked]="isImageLocked(image)" [class.off-panel]="isImageOffPanel(image)">
           <button type="button" class="layer-tab-icon-btn" [class.on]="!image.hidden"
             (click)="toggleImageHidden(image); $event.stopPropagation()"
             [title]="image.hidden ? 'Show this image' : 'Hide this image'">
@@ -101,7 +101,7 @@
             (keydown.escape)="editingImageId = null" (blur)="commitRenameImage(image.id, imageRenameInput.value)" />
           } @else {
           <span class="layer-tab-label" (click)="editImage(image)" (dblclick)="startRenameImage(image.id)"
-            title="Click to select and unlock for editing; double-click to rename">{{ image.label }}</span>
+            [title]="imageRowTitle(image)">{{ image.label }}</span>
           <button type="button" class="layer-tab-icon-btn" (click)="toggleImageLocked(image); $event.stopPropagation()"
             [title]="isImageLocked(image) ? 'Unlock for editing' : 'Lock in place'">
             <ng-container [ngTemplateOutlet]="lockIcon" [ngTemplateOutletContext]="{ locked: isImageLocked(image) }" />

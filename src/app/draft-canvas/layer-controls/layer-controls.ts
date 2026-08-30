@@ -122,6 +122,31 @@ export class LayerControlsComponent {
   /** Absent `locked` means locked — see ImageShape.locked. */
   public isImageLocked(image: ImageShape): boolean { return image.locked ?? true; }
 
+  /**
+   * True when this image belongs to other panels than the one open, so it isn't being drawn even
+   * though its eye is on. The row stays in the list and says so rather than the image simply not
+   * appearing — an image you can't find is the failure this list exists to prevent.
+   */
+  public isImageOffPanel(image: ImageShape): boolean {
+    return !this.toolbox.imageMatchesActivePanel(image);
+  }
+
+  /** Row tooltip, naming the panels a scoped image does belong to. Panel *ids* are all the store
+   * holds — it never learns their display labels — so they're de-camel-cased here rather than
+   * looked up: 'crossArching' reads as 'Cross Arching' without the canvas importing anything
+   * instrument-specific. */
+  public imageRowTitle(image: ImageShape): string {
+    const edit = 'Click to show it here and unlock it for editing; double-click to rename';
+    if (!this.isImageOffPanel(image)) return edit;
+    // A stepped-aside default has no panel list to name — it's off because something else claimed
+    // this panel, which is the opposite reason and needs the opposite sentence.
+    if (!image.panels?.length) return `A more specific image is shown on this panel. ${edit}`;
+    const panels = image.panels
+      .map(id => id.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase()).trim())
+      .join(', ');
+    return `Shown on ${panels} — not on this panel. ${edit}`;
+  }
+
   toggleImages(): void {
     this.imagesOpen = !this.imagesOpen;
     this.layersOpen = false;
@@ -144,13 +169,20 @@ export class LayerControlsComponent {
   }
 
   /**
-   * "I want to work on this one": unlocks the image, makes sure it's visible, and selects it so
-   * its handles and settings-bar row are live immediately. Saves the unlock–then–hunt–for–it dance
-   * that having images locked by default would otherwise cost.
+   * "I want to work on this one": shows the image, unlocks it, and selects it so its handles and
+   * settings-bar row are live immediately. Saves the unlock–then–hunt–for–it dance that having
+   * images locked by default would otherwise cost.
+   *
+   * Showing it means clearing all three ways it could be invisible, not just its own eye: the
+   * master switch, and the panel scoping that would otherwise leave you looking at a row you just
+   * clicked and a canvas with nothing new on it. The scoping isn't edited, only overridden while
+   * this image is the selection — see ToolboxStore.setRevealedImage.
    */
   editImage(image: ImageShape): void {
     if (image.hidden) this.toolbox.setImageHidden(image.id, false);
+    if (!this.toolbox.showImages) this.toolbox.setShowImages(true);
     this.toolbox.setImageLocked(image.id, false);
+    this.toolbox.setRevealedImage(image.id);
     this.selectImageRequested.emit(image.id);
   }
 

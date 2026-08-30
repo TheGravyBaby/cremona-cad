@@ -61,3 +61,53 @@ recipe on load. `reference-image-schema.ts` is the only place that translates be
 file format and the canvas object model, which is what lets the canvas side change freely. Keep
 the translation there, and keep emitting the same field so files stay openable in older builds.
 The deprecated singular `referenceImage` still loads, folded into the array.
+
+**Every field on `NamedReferenceImage` must also exist on `ImageShape`.** The canvas is the live
+copy: recipe-base subscribes to this store and rewrites `referenceImages` from the placed shapes on
+every change, so a field that stops at the file type is erased the first time the user touches the
+canvas — and only visibly so after save-and-reopen. `panels`, `isDefault`, `crop` and `credit` are
+the shape of field this catches: authored in a template file rather than arrived at by dragging,
+and easy to leave out of `imageShapesToRecipe`.
+
+**Panel-scoped images.** An image's `panels` list names the recipe panels it belongs on; empty or
+absent means all of them. The recipe pushes the open panel through `setActivePanel` and
+`getVisibleImages` filters on it. The store only compares strings — it never learns what a panel is,
+which is what keeps this out of the canvas's instrument-agnostic boundary. `activePanel` is view
+state like the two masters: not persisted, not undo-tracked, and not cleared by `resetAll`, since
+the open panel outlives the file shown in it. A `null` panel filters nothing, so a recipe that
+forgets to push shows an image too widely rather than hiding one with no indication of why.
+
+**An `isDefault` image is the set's general view** — "Default" everywhere the user sees it; the
+field is spelled out because `default` alone reads as a keyword. Marked `isDefault` with no `panels`
+of its own, it shows on every panel no *other* image has claimed by name, and steps aside on the ones
+that have one. So `imageMatchesActivePanel` is a question about the image *and* its neighbours, not
+the image alone — which is the whole point: adding a scoped view is enough on its own, and the
+general view never has to enumerate the panels it's still wanted on. Hidden images don't displace it,
+so parking the specific view brings the general one back rather than leaving the panel bare. An
+unscoped image with no flag still shows everywhere, which is every image a user placed by hand.
+Naming panels and being the default are alternatives, and the settings bar clears one when you set
+the other: a default that named panels of its own could never be reached anywhere else.
+
+**The selected image is exempt from scoping.** `setRevealedImage` holds one id that
+`imageMatchesActivePanel` waves through — set when an image is picked from the bottom bar's list or
+clicked on the canvas, cleared when the selection moves on or the panel changes. Without it, picking
+a row scoped to another panel unlocks and selects something that never appears, and scoping the image
+you have selected takes the image and the controls you were using away mid-edit. It overrides
+scoping only; `hidden` and the master switch still apply, since those are the user's own switches
+rather than the recipe's.
+
+**Cropping trims the box, not the picture's scale.** `crop` holds fractions inset from each edge of
+the source, and `x`/`y`/`width`/`height` measure the **visible** rectangle — so grabbers, hit-testing,
+the halo and the settings bar's W/H all keep describing what you can see and need no crop-awareness.
+`drawImageShape` is the only reader that works back to the source, via `imageSourceBox`, and clips it
+to the box. The price is that a crop change has to move and resize the box in the same step so the
+retained picture stays exactly where it was, at the scale it was already set to: `applyImageCrop` is
+the only thing that should compute that, and `image-crop.spec.ts` pins the invariant (including under
+rotation, where the box centre the rotation turns about has itself moved). This is also why the
+`<image>` renders with `preserveAspectRatio="none"` — crop fractions only mean anything if the
+picture fills its rectangle.
+
+**Panel choices come from the recipe.** `setAvailablePanels` takes `{id, label}` from
+`RecipeComponentBase.initializePanelFlow`, so the settings bar can offer a scoping picker. The store
+still learns nothing about panels beyond two strings, and a host that ships none leaves the picker
+hidden rather than empty.
