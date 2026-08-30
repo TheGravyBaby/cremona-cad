@@ -3,7 +3,7 @@ import { Output, EventEmitter } from "@angular/core";
 import { RecipeInterface } from '../models/types';
 import { PanelFlow, PanelDefinition } from '../helpers/panelFlow';
 import { DebounceController } from '../helpers/debounce-controller';
-import { NamedConstant, DEFAULT_NAMED_CONSTANTS, nearestFraction } from '../helpers/nearestFraction';
+import { NamedConstant, DEFAULT_NAMED_CONSTANTS, nearestFraction, nearestSmallFraction } from '../helpers/nearestFraction';
 import { computeStepSize, stepAmountForKey } from '../helpers/stepSize';
 import { ToolboxStore } from '../draft-canvas/tools/toolbox-store';
 import { ImageAssetStore } from '../draft-canvas/tools/image-asset-store';
@@ -473,6 +473,15 @@ export abstract class RecipeComponentBase implements AfterViewInit, Undoable {
     namedConstants: ReadonlyArray<NamedConstant> = RecipeComponentBase.DEFAULT_NAMED_CONSTANTS,
   ): string {
     return nearestFraction(value, maxNumerator, maxDenominator, namedConstants);
+  }
+
+  nearestSmallFraction(
+    value: number,
+    maxNumerator: number = 12,
+    maxDenominator: number = 400,
+    namedConstants: ReadonlyArray<NamedConstant> = RecipeComponentBase.DEFAULT_NAMED_CONSTANTS,
+  ): string {
+    return nearestSmallFraction(value, maxNumerator, maxDenominator, namedConstants);
   }
 
 }

@@ -16,7 +16,7 @@ import { AxisGridController, AxisGridPreferences, CanvasViewport } from './axis-
 import { DraftTool, DraftToolHost } from './tools/draft-tool';
 import { ToolRegistryService } from './tools/tool-registry';
 import { ToolboxStore } from './tools/toolbox-store';
-import { ImageAssetStore } from './tools/image-asset-store';
+import { ImageAssetStore, prepareUploadedImage } from './tools/image-asset-store';
 import {
   drawShape, drawImageShape, drawSelectionHalo, drawMoveGrabber, drawEndpointGrabber, drawAreaSelectBox,
 } from './tools/shape-renderer';
@@ -27,6 +27,7 @@ import { translateShape } from './tools/shape-transform';
 import { moveGrabberPosition, endpointGrabbers, withEndpoint, EndpointKey } from './tools/shape-grabbers';
 import { snapToLockedAngle } from './tools/angle-lock';
 import { copyDebugDump, isLocalHost } from '../helpers/debugDump';
+import { info } from '../shared/message-emitter';
 import { DEFAULT_TEXT_SIZE_MM, DraftShape, TextShape } from './tools/toolbox-shape';
 import { HOTKEY_TOOL_CYCLE } from './tools/tool-hotkeys';
 import { ToolPaletteComponent } from './tool-palette/tool-palette';
@@ -1457,8 +1458,10 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     });
   }
 
-  /** Bound to the hidden input's `change` in the template. Reads the file and measures it, then
-   * settles whatever requestImageFile handed out. */
+  /** Bound to the hidden input's `change` in the template. Reads the file, scales it down if it's
+   * larger than a traced-over reference needs to be, and settles whatever requestImageFile handed
+   * out. The measuring that used to happen here comes back from prepareUploadedImage, which has
+   * had to decode the file anyway. */
   async onImageFileSelected(evt: Event): Promise<void> {
     const resolve = this.pendingImageFile;
     this.pendingImageFile = null;
@@ -1468,9 +1471,23 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     if (!file) { resolve?.(null); return; }
 
     try {
-      const dataUrl = await readFileAsDataUrl(file);
-      const { width, height } = await measureImage(dataUrl);
-      resolve?.({ dataUrl, width, height });
+      const raw = await readFileAsDataUrl(file);
+      const prepared = await prepareUploadedImage(raw, file.size);
+      resolve?.({ dataUrl: prepared.dataUrl, width: prepared.width, height: prepared.height });
+      // Say so rather than letting it be found by zooming in — this is a surface the user
+      // measures against, so it shouldn't quietly stop being the file they picked.
+      if (prepared.changed) {
+        const scaled = prepared.width !== prepared.sourceWidth;
+        info(
+          (scaled
+            ? `Reference image scaled from ${prepared.sourceWidth} × ${prepared.sourceHeight} to ` +
+              `${prepared.width} × ${prepared.height} px. `
+            : 'Reference image recompressed. ') +
+          'Full-resolution images fill the browser\'s working store and bloat the saved file; ' +
+          'scale the placed image to real dimensions as usual.',
+          'Image resized',
+        );
+      }
     } catch {
       resolve?.(null);
     } finally {
@@ -1522,14 +1539,5 @@ function readFileAsDataUrl(file: File): Promise<string> {
     reader.onload = () => resolve(String(reader.result));
     reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(file);
-  });
-}
-
-function measureImage(dataUrl: string): Promise<{ width: number; height: number }> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
-    img.onerror = reject;
-    img.src = dataUrl;
   });
 }

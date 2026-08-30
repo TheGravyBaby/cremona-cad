@@ -495,18 +495,38 @@ export function calculateOuterArcs(p: EnricoCerutiParams): void {
 
     p.button ??= new Rectangle(new Pt(-10, p.height - inset), new Pt(10, p.height - inset + 5));
 
+    let outerCornersNotDefined = !p.outerCorners.U3 && !p.outerCorners.C2 && !p.outerCorners.C1 && !p.outerCorners.L3;
+
     p.outerCorners.U3 = p.outerCorners.U3 ? redefineArcCircle(p.outerCorners.U3, p.bouts.U3, -inset) : offsetArcRadius(p.bouts.U3, -inset); // user might have redefined bouts
     p.outerCorners.C2 = p.outerCorners.C2 ? redefineArcCircle(p.outerCorners.C2, p.bouts.C2, -inset) : offsetArcRadius(p.bouts.C2, -inset);
     p.outerCorners.C1 = p.outerCorners.C1 ? redefineArcCircle(p.outerCorners.C1, p.bouts.C1, -inset) : offsetArcRadius(p.bouts.C1, -inset);
     p.outerCorners.L3 = p.outerCorners.L3 ? redefineArcCircle(p.outerCorners.L3, p.bouts.L3, -inset) : offsetArcRadius(p.bouts.L3, -inset);
+
+    // we want to add a few radians to give the corners a bit of pop here
+    const U3Pop = Math.PI / 72;
+    const C2Pop = -Math.PI / 18;
+    const C1Pop = Math.PI / 36;
+    const L3Pop = -Math.PI / 72;
+
+    if (outerCornersNotDefined) {
+        p.outerCorners.U3.end += U3Pop;
+        p.outerCorners.C2.end += C2Pop;
+        p.outerCorners.C1.end += C1Pop;
+        p.outerCorners.L3.end += L3Pop;
+    }
     
 
     if (p.options.U31DoubleArc) {
         // initialize the data if needed
+        let U31NotDefined = !p.outerCorners.U31;
         p.outerCorners.U31 = p.outerCorners.U31 ? redefineArcCircle(p.outerCorners.U31, p.bouts.U31, -inset) : offsetArcRadius(p.bouts.U31, -inset);
 
         // user may have changed things, make sure outer U3 is just inset U3 in this situation
         p.outerCorners.U3 = offsetArcRadius(p.bouts.U3, -inset);
+
+        // on a compound corner the tip rides on the secondary arc, so the pop belongs there.
+        // scaled by the radius ratio so the tip travels the same distance it would on the primary
+        if (U31NotDefined) p.outerCorners.U31.end += U3Pop * (p.outerCorners.U3.r / p.outerCorners.U31.r);
     }
     else if (p.outerCorners.U3.end === p.outerCorners.U31?.start) {
         // in this situation the user likely toggled back to 
@@ -514,24 +534,36 @@ export function calculateOuterArcs(p: EnricoCerutiParams): void {
     }
 
     if (p.options.C21DoubleArc) {
+        let C21NotDefined = !p.outerCorners.C21;
         p.outerCorners.C21 = p.outerCorners.C21 ? redefineArcCircle(p.outerCorners.C21, p.bouts.C21, -inset) : offsetArcRadius(p.bouts.C21, -inset);
         p.outerCorners.C2 = offsetArcRadius(p.bouts.C2, -inset);
+
+        // pop the secondary arc, as above
+        if (C21NotDefined) p.outerCorners.C21.end += C2Pop * (p.outerCorners.C2.r / p.outerCorners.C21.r);
     }
     else if (p.outerCorners.C2.end === p.outerCorners.C21?.start) {
         p.outerCorners.C2 = offsetArcRadius(p.bouts.C2, -inset);
     }
 
     if (p.options.C11DoubleArc) {
+        let C11NotDefined = !p.outerCorners.C11;
         p.outerCorners.C11 = p.outerCorners.C11 ? redefineArcCircle(p.outerCorners.C11, p.bouts.C11, -inset) : offsetArcRadius(p.bouts.C11, -inset);
         p.outerCorners.C1 = offsetArcRadius(p.bouts.C1, -inset);
+
+        // pop the secondary arc, as above
+        if (C11NotDefined) p.outerCorners.C11.end += C1Pop * (p.outerCorners.C1.r / p.outerCorners.C11.r);
     }
     else if (p.outerCorners.C1.end === p.outerCorners.C11?.start) {
         p.outerCorners.C1 = offsetArcRadius(p.bouts.C1, -inset);
     }
 
     if (p.options.L31DoubleArc) {
+        let L31NotDefined = !p.outerCorners.L31;
         p.outerCorners.L31 = p.outerCorners.L31 ? redefineArcCircle(p.outerCorners.L31, p.bouts.L31, -inset) : offsetArcRadius(p.bouts.L31, -inset);
         p.outerCorners.L3 = offsetArcRadius(p.bouts.L3, -inset);
+
+        // pop the secondary arc, as above
+        if (L31NotDefined) p.outerCorners.L31.end += L3Pop * (p.outerCorners.L3.r / p.outerCorners.L31.r);
     }
     else if (p.outerCorners.L3.end === p.outerCorners.L31?.start) {
         p.outerCorners.L3 = offsetArcRadius(p.bouts.L3, -inset);

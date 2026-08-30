@@ -3,8 +3,8 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Radius <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" [step]=".1" min="0"
-                [(ngModel)]="params.fHoles!.FU0.r" (input)="onChange()" [style.borderColor]="colors.upperEye" />
+            <input type="number" class="basic-input" [step]=".1" min="0" [(ngModel)]="params.fHoles!.FU0.r"
+                (input)="onChange()" [style.borderColor]="colors.upperEye" />
         </label>
         <label class="field-cell"></label>
         <label class='field-cell'>
@@ -17,17 +17,17 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">X <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" [step]=".1" min="0"
-                [(ngModel)]="params.fHoles!.FU0.x" (input)="onChange()" [style.borderColor]="colors.upperEyeOff" />
+            <input type="number" class="basic-input" [step]=".1" min="0" [(ngModel)]="params.fHoles!.FU0.x"
+                (input)="onChange()" [style.borderColor]="colors.upperEyeOff" />
         </label>
         <label class="field-cell">
             <span class="field-title">Y <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" [step]=".1" min="0"
-                [(ngModel)]="params.fHoles!.FU0.y" (input)="onChange()" [style.borderColor]="colors.upperEyeOff" />
+            <input type="number" class="basic-input" [step]=".1" min="0" [(ngModel)]="params.fHoles!.FU0.y"
+                (input)="onChange()" [style.borderColor]="colors.upperEyeOff" />
         </label>
     </div>
 
-    <div class="input-group basic-row field-row" role="group">  
+    <div class="input-group basic-row field-row" role="group">
 
     </div>
 
@@ -35,21 +35,30 @@
 
 <section class="ui-group" [style.border-color]="colors.lowerEye">
     <div class="ui-group-title">Lower Eye</div>
-    <label class="field-cell">
-        <span class="field-title">Radius <span class="unit-label">mm</span></span>
-        <input type="number" class="basic-input" [step]=".1" min="0"
-            [(ngModel)]="params.fHoles!.FL0.r" (input)="onChange()" [style.borderColor]="colors.lowerEye" />
-    </label>
+    <div class="input-group basic-row field-row" role="group">
+
+        <label class="field-cell">
+            <span class="field-title">Radius <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" [step]=".1" min="0" [(ngModel)]="params.fHoles!.FL0.r"
+                (input)="onChange()" [style.borderColor]="colors.lowerEye" />
+        </label>
+        <label class="field-cell"></label>
+        <label class='field-cell'>
+            <span class="field-title">FU to W</span>
+            <div class="basic-display" aria-label="Upper bout to upper bout width ratio value">{{
+                nearestSmallFraction(params.ratios.FLtoW) }}</div>
+        </label>
+    </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">X <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" [step]=".1" min="0"
-                [(ngModel)]="params.fHoles!.FL0.x" (input)="onChange()" [style.borderColor]="colors.lowerEyeOff" />
+            <input type="number" class="basic-input" [step]=".1" min="0" [(ngModel)]="params.fHoles!.FL0.x"
+                (input)="onChange()" [style.borderColor]="colors.lowerEyeOff" />
         </label>
         <label class="field-cell">
             <span class="field-title">Y <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" [step]=".1" min="0"
-                [(ngModel)]="params.fHoles!.FL0.y" (input)="onChange()" [style.borderColor]="colors.lowerEyeOff" />
+            <input type="number" class="basic-input" [step]=".1" min="0" [(ngModel)]="params.fHoles!.FL0.y"
+                (input)="onChange()" [style.borderColor]="colors.lowerEyeOff" />
         </label>
     </div>
 </section>
