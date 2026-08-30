@@ -14,7 +14,13 @@ import {
 // from the gouge: the long arch, the station list normalizer, the body
 // landmarks, and the *AtY half-width queries.
 
-/** Returns instrument-appropriate arching defaults based on body length (p.height). */
+/**
+ * Returns instrument-appropriate arching defaults based on body length (p.height).
+ *
+ * The rib pair carries a typical taper — roughly 0.6% of body length, which is
+ * the 2mm a violin usually loses between bottom block and top. These are generic
+ * defaults for a size class, not measurements of any instrument.
+ */
 export function defaultArchingParams(bodyHeight: number): ArchingParams {
   const cat = (archHeight: number) => ({ type: 'catenary' as const, archHeight });
   // The gouge and crown are seeded lazily, by whichever of the surface builder
@@ -26,21 +32,21 @@ export function defaultArchingParams(bodyHeight: number): ArchingParams {
 
   if (bodyHeight < 400) {
     // Violin
-    return { surfaceMethod: 'proportional', ribHeight: 32,
+    return { surfaceMethod: 'proportional', ribHeightLower: 32, ribHeightUpper: 30,
       top: plate(15, 3.5), bottom: plate(14, 3.5) };
   }
   if (bodyHeight < 500) {
     // Viola
-    return { surfaceMethod: 'proportional', ribHeight: 40,
+    return { surfaceMethod: 'proportional', ribHeightLower: 40, ribHeightUpper: 38,
       top: plate(20, 4.0), bottom: plate(18, 4.0) };
   }
   if (bodyHeight < 800) {
     // Cello
-    return { surfaceMethod: 'proportional', ribHeight: 120,
+    return { surfaceMethod: 'proportional', ribHeightLower: 120, ribHeightUpper: 116,
       top: plate(27, 6.0), bottom: plate(25, 6.0) };
   }
   // Double bass
-  return { surfaceMethod: 'proportional', ribHeight: 185,
+  return { surfaceMethod: 'proportional', ribHeightLower: 185, ribHeightUpper: 179,
     top: plate(55, 9.0), bottom: plate(50, 9.0) };
 }
 
@@ -160,10 +166,35 @@ export function clampSplinePointHeights(points: { z: number }[], peakZ: number):
  */
 export function normalizeArchingParams(p: EnricoCerutiParams | undefined | null): void {
   if (!p?.arching) return;
+  normalizeRibHeights(p.arching);
   normalizeArchCurve(p.arching.top.arch);
   normalizeArchCurve(p.arching.bottom.arch);
   normalizeArchPlate(p.arching.top);
   normalizeArchPlate(p.arching.bottom);
+}
+
+/**
+ * Splits a recipe's single `ribHeight` into the tapered pair.
+ *
+ * Both ends take the old value rather than a default taper: the number in the
+ * file is the one its author measured, and seeding a taper here would tilt
+ * somebody's saved instrument on load without them asking. An untapered pair
+ * reproduces exactly what that recipe drew before.
+ *
+ * Recognises the current format positively, like {@link normalizeArchPlate}, so
+ * running twice is a no-op.
+ */
+function normalizeRibHeights(a: ArchingParams): void {
+  const legacy = a as ArchingParams & { ribHeight?: number };
+  if (typeof legacy.ribHeight === 'number') {
+    a.ribHeightLower ??= legacy.ribHeight;
+    a.ribHeightUpper ??= legacy.ribHeight;
+    delete legacy.ribHeight;
+  }
+  // A pair with only one side written is half a plane; the missing end mirrors
+  // the one that is there, which is the untapered rib the recipe described.
+  a.ribHeightLower ??= a.ribHeightUpper;
+  a.ribHeightUpper ??= a.ribHeightLower;
 }
 
 /**
@@ -229,6 +260,97 @@ export function longArchHeightAt(p: EnricoCerutiParams, arch: ArchCurve, y: numb
     case 'cycloid':  return cycloidZAt(arch.archHeight, span, arch.d, s);
     case 'spline':   return splineZAt(arch.archHeight, span, arch.points, arch.peak ?? 0.5, s);
   }
+}
+
+// ===== Rib taper =====
+// The ribs are not the same height end to end. Once the back is glued on they
+// are planed down toward the upper block, so the back's gluing plane stays
+// square to the body and the top's tilts. Nothing in the arch, the channel or
+// the crown depends on this — a plate is carved against its own gluing plane,
+// and that is the frame the surface model, the templates and the STL all work
+// in. What the taper decides is where the top plate *sits*, which is why it
+// shows up in the two section views and nowhere else.
+//
+// Both entered heights are perpendicular to the rib's top edge — a caliper
+// across the stock — so they are shorter than the vertical rise by cos of the
+// tilt. That inverts in closed form rather than iteratively: a perpendicular
+// width is w = z·cosθ, and the plane rises z_lower − z_upper = L·tanθ over the
+// run L between the two, so w_lower − w_upper = L·sinθ. At violin scale the
+// correction is half a micron and at cello scale 26 — it is here because it is
+// the definition the numbers are quoted under, not because it moves anything.
+
+/** The tilted plane the top plate glues to, solved from the two entered rib heights. */
+export interface RibTaper {
+  /** Body positions the two heights are measured at. */
+  yLower: number;
+  yUpper: number;
+  /** Those heights as vertical rise above the back plane, which is what everything draws with. */
+  zLower: number;
+  zUpper: number;
+  /** Tilt of the top plane off the back plane, radians. Zero for untapered ribs. */
+  angle: number;
+}
+
+/**
+ * Body positions the two rib heights are measured at: the lower at the body
+ * datum, the upper at the rib's own top end, which is where the plate stops
+ * overhanging it. The one place either anchor is stated.
+ */
+function ribAnchors(p: EnricoCerutiParams): { yLower: number; yUpper: number } {
+  return { yLower: 0, yUpper: p.height - p.overhang };
+}
+
+export function solveRibTaper(p: EnricoCerutiParams): RibTaper {
+  const a = p.arching;
+  const { yLower, yUpper } = ribAnchors(p);
+  const wLower = a?.ribHeightLower ?? 0;
+  const wUpper = a?.ribHeightUpper ?? wLower;
+  const run = yUpper - yLower;
+  // A taper steeper than the body is long has no angle to solve, and asin would
+  // hand back a NaN that every height downstream would inherit.
+  const angle = run > 0 ? Math.asin(clamp((wLower - wUpper) / run, -1, 1)) : 0;
+  const cos = Math.cos(angle);
+  return { yLower, yUpper, zLower: wLower / cos, zUpper: wUpper / cos, angle };
+}
+
+/**
+ * The most the two rib heights may differ by before the taper stops describing
+ * an instrument.
+ *
+ * Tilting the rib's top edge lengthens it — it is the hypotenuse over the run
+ * between the two measurements, so it measures run/cosθ. At the point where
+ * that outgrows the body it belongs to, the top plate spanning it would have to
+ * be longer than the instrument, and the section view can only draw that by
+ * stretching the plate to reach. Solving run/cosθ = body length for the height
+ * difference is where this comes from.
+ *
+ * It is a long way past anything a maker would plane — tens of millimetres on a
+ * violin. The point is to keep an impossible garland out of the model, not to
+ * express a taste about how much ribs should taper.
+ */
+export function maxRibTaperMm(p: EnricoCerutiParams): number {
+  const { yLower, yUpper } = ribAnchors(p);
+  const run = yUpper - yLower;
+  // No run to tilt over, or a body no longer than the rib it carries: the only
+  // taper either can hold is none.
+  if (run <= 0 || p.height <= run) return 0;
+  const cosMin = run / p.height;
+  return run * Math.sqrt(1 - cosMin * cosMin);
+}
+
+/**
+ * Height of the top plate's gluing plane above the back plane at body position
+ * `y`, in vertical millimetres.
+ *
+ * Linear in y, and deliberately extrapolating past both anchors: the plane runs
+ * on past the rib it was measured from, and the plate overhangs onto it at each
+ * end. Pass a solved {@link RibTaper} when querying repeatedly.
+ */
+export function ribHeightAt(p: EnricoCerutiParams, y: number, taper?: RibTaper): number {
+  const t = taper ?? solveRibTaper(p);
+  const run = t.yUpper - t.yLower;
+  if (run <= 0) return t.zLower;
+  return t.zLower + (y - t.yLower) * (t.zUpper - t.zLower) / run;
 }
 
 /** Two stations closer together than this (mm) are the same station. */

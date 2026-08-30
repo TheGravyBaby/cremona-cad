@@ -122,12 +122,17 @@ export function archContoursInfo() {
 
 export function ribHeightInfo() {
     info(
-        "The height of the ribs — the side walls of the instrument body.\n" +
-        "Typical values:\n" +
+        "The height of the ribs — the side walls of the instrument body.\n\n" +
+        "Classical ribs taper: they are planed down toward the upper block once the back is glued on, " +
+        "so the back stays square to the body and the top plate glues onto a slight angle. " +
+        "Measure each end across the rib, square to its own top edge.\n\n" +
+        "Typical values, at the lower end:\n" +
         "- Violin: 29–32 mm\n" +
         "- Viola: 38–44 mm\n" +
         "- Cello: 115–130 mm\n" +
-        "- Bass: 175–215 mm",
+        "- Bass: 175–215 mm\n\n" +
+        "The upper end usually runs 1.5–2 mm shorter on a violin, and proportionally more on the larger instruments. " +
+        "Equal values give an untapered rib.",
         "Rib Height", defaultTTL, true
     )
 }

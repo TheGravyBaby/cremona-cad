@@ -12,7 +12,7 @@ import {
   CrossArchSplineStation, CrossArchStation, FlutingParams, PlateViewMode, RenderToggleKey,
 } from '../../ceruti-types';
 import {
-  bodyLandmarks, contourSampleSteps, defaultArchingParams,
+  bodyLandmarks, contourSampleSteps, defaultArchingParams, ribHeightAt, solveRibTaper,
   STATION_MARGIN_MM, STATION_MERGE_EPS_MM, wireframeSampleSteps,
 } from '../../ceruti-arching';
 import {
@@ -796,8 +796,11 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
   private overlayLayers(y: number): RenderLayer[] {
     const a = this.arching;
     const layers: RenderLayer[] = [];
-    // Lifts the overlay clear of the section view below it.
-    const yOffset = a.ribHeight + a.top.thickness + a.top.arch.archHeight + 15;
+    // Lifts the overlay clear of the section view below it. Off the taller end
+    // of the ribs, so it clears at every station and does not shift as the
+    // cursor is scrubbed along the body.
+    const taper = solveRibTaper(this.params);
+    const yOffset = Math.max(taper.zLower, taper.zUpper) + a.top.thickness + a.top.arch.archHeight + 15;
     const rotX = this.flags.plateRotXDeg ?? 0;
     const rotY = this.flags.plateRotYDeg ?? 0;
     const rotZ = this.flags.plateRotZDeg ?? 0;
@@ -881,6 +884,10 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     const mould = this.cache.top?.mouldPoly;
     const innerHalf = mould ? plateHalfChordAtY(mould, y) : null;
     const halves = { top: outerHalf('top'), bottom: outerHalf('bottom') };
+    // The ribs taper along the body, so their top edge sits at a different
+    // height at every station. Transverse to the taper, though, so the section
+    // is the same shape it always was — only lifted or dropped.
+    const ribZ = ribHeightAt(p, y);
 
     // At either end of the body the outline has no width to give, so there is
     // no section — not a thin one. Drawing the frame anyway would put a stack
@@ -892,25 +899,25 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     return (g: any, ui: any): void => {
       if (innerHalf !== null) {
         renderRect(
-          new Rectangle({ x: -(innerHalf + p.rib), y: 0 }, { x: innerHalf + p.rib, y: a.ribHeight }),
+          new Rectangle({ x: -(innerHalf + p.rib), y: 0 }, { x: innerHalf + p.rib, y: ribZ }),
           this.colors.mouldTrace,
         )(g, ui);
         for (const sx of [-1, 1]) {
-          renderLine(new Pt(sx * innerHalf, 0), new Pt(sx * innerHalf, a.ribHeight), this.colors.innerTrace)(g, ui);
+          renderLine(new Pt(sx * innerHalf, 0), new Pt(sx * innerHalf, ribZ), this.colors.innerTrace)(g, ui);
         }
       }
       for (const plate of ['top', 'bottom'] as const) {
-        if (halves[plate] !== null) this.platePart(g, ui, plate, halves[plate]!);
+        if (halves[plate] !== null) this.platePart(g, ui, plate, halves[plate]!, ribZ);
       }
     };
   }
 
-  private platePart(g: any, ui: any, plate: 'top' | 'bottom', outerHalf: number): void {
+  private platePart(g: any, ui: any, plate: 'top' | 'bottom', outerHalf: number, ribZ: number): void {
     const a = this.arching;
     const isTop = plate === 'top';
     const sign: 1 | -1 = isTop ? 1 : -1;
     const thickness = isTop ? a.top.thickness : a.bottom.thickness;
-    const innerZ = isTop ? a.ribHeight : 0;
+    const innerZ = isTop ? ribZ : 0;
     const zBase = innerZ + sign * thickness;
     const color = isTop ? this.colors.archTop : this.colors.archBack;
     const section = this.section[plate];

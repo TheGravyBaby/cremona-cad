@@ -66,6 +66,22 @@ recognizes the current format *positively* so it stays idempotent; six tests in
   plausible-looking crown on "Strad Goetz" is an invented measurement of a real object. What
   happens to the templates (new ones with public arching, added instruments, or leave as-is) is
   an open question, not a gap to be filled in.
+- **The rib taper is a placement fact, not a carving one.** Ribs are planed down toward the
+  upper block after the back is glued on, so `ribHeightLower`/`ribHeightUpper` tilt the plane the
+  top plate glues to while the back's stays square. Nothing in the arch, the channel, the crown,
+  the templates or the STL sees it — a plate is carved against its own gluing plane, and that is
+  the frame `PlateSurfaceModel` works in. The two section views apply the tilt at draw time, the
+  long-arching one by drawing the top plate in its own frame and placing it with a single rigid
+  rotation — centred on the rib line, so the plate overhangs the garland equally at both ends —
+  rather than by teaching every path builder about an angle. Rotated, not sheared: the plate is
+  one piece of wood and its section has to read as the one that was carved, which costs six
+  microns of plan foreshortening on a violin. Both heights are entered
+  perpendicular to the rib's top edge; `solveRibTaper` converts to vertical rise in closed form,
+  and the correction is half a micron on a violin. The acceptance property is that equal heights
+  reproduce an untapered instrument exactly, which is why the loader migration splits an old
+  `ribHeight` into an equal pair rather than seeding a default taper. `maxRibTaperMm` bounds the
+  pair at the point where the tilted rib line outgrows the body — the long arching panel rolls
+  an over-taper back rather than drawing a plate stretched to reach a garland that cannot exist.
 - **`innerFlutingDepth` stays.** It still sets the long-arch span via `longArchHeightAt`.
   Retiring it would recompress every plate's arch — a shape decision, not cleanup.
 - **Cross-arch templates cut at the five `bodyLandmarks`** plus any authored station further than
