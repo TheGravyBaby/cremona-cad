@@ -98,7 +98,7 @@ export interface EnricoCerutiParams {
     UCYtoH: number;
     LCYtoH: number;
 
-    FLtoH: number;
+    FLtoW: number;
     FUtoL: number;
   },
   fHoles?: FholeParams;
@@ -560,7 +560,7 @@ export const DefaultParams: EnricoCerutiParams = {
     UCYtoH: 2 / 3,
     LCYtoH: 6 / 15,
 
-    FLtoH: 1/72,
+    FLtoW: 1/50,
     FUtoL: 4/5,
   },
   bouts: {

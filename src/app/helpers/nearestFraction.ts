@@ -105,3 +105,122 @@ export function nearestFraction(
   if (isVeryClose) return `≈ ${fraction}`;
   return `~ ${fraction}`; // rough approximation
 }
+
+// companion to nearestFraction for ratios well below 1 — an f-hole eye against the body width
+// sits near 1/72, where the standard denominator limit collapses everything to 0/1. Differences:
+// the denominator limit is far larger, the plain reciprocal 1/round(1/value) is always a
+// candidate so any small value gets an answer at all, and closeness is judged relative to the
+// value rather than absolutely (0.001 off means nothing when the value itself is 0.014).
+export function nearestSmallFraction(
+  value: number,
+  maxNumerator: number = 12,
+  maxDenominator: number = 400,
+  namedConstants: ReadonlyArray<NamedConstant> = DEFAULT_NAMED_CONSTANTS,
+): string {
+  if (!Number.isFinite(value) || value === 0) return '0/1';
+
+  const signPrefix = value < 0 ? '-' : '';
+  const magnitude = Math.abs(value);
+  const numeratorLimit = Math.max(1, Math.floor(maxNumerator));
+  const denominatorLimit = Math.max(1, Math.floor(maxDenominator));
+
+  type Candidate = { numerator: number; denominator: number; error: number };
+  const candidates: Candidate[] = [];
+
+  const addCandidate = (rawNumerator: number, rawDenominator: number) => {
+    if (rawNumerator < 1 || rawDenominator < 1 || !Number.isFinite(rawDenominator)) return;
+    const divisor = greatestCommonDivisor(rawNumerator, rawDenominator);
+    const numerator = rawNumerator / divisor;
+    const denominator = rawDenominator / divisor;
+    candidates.push({
+      numerator,
+      denominator,
+      error: Math.abs(magnitude - numerator / denominator) / magnitude,
+    });
+  };
+
+  // the reciprocal is unbounded by the denominator limit, so 1/5000 still reads as 1/5000
+  addCandidate(1, Math.round(1 / magnitude));
+
+  // simplest first, so the search below can stop at the first fraction that is close enough
+  for (let denominator = 1; denominator <= denominatorLimit; denominator++) {
+    addCandidate(Math.min(numeratorLimit, Math.round(magnitude * denominator)), denominator);
+  }
+
+  // candidates were built simplest-first, so take the first one that is close enough rather than
+  // the outright closest: 0.0138 reads as "≈ 1/72", not "2/145", and stays legible while the
+  // radius is dragged. Only fall back to the closest when nothing is within budget.
+  const simplicityBudget = 0.01;
+  const best = candidates.find((candidate) => candidate.error <= simplicityBudget)
+    ?? candidates.reduce((a, b) => (b.error < a.error - 1e-12 ? b : a));
+
+  const fraction = `${signPrefix}${best.numerator}/${best.denominator}`;
+  const smallestError = best.error;
+  const isExact = smallestError < 0.001;
+  const isVeryClose = smallestError < simplicityBudget;
+
+  const defaultConstantTolerance = 0.005;
+  type NamedMatch = { expression: string; error: number; tolerance: number };
+  const namedCandidates: NamedMatch[] = [];
+
+  const usableConstants = namedConstants.filter(
+    (constant) => Number.isFinite(constant.value) && !!constant.label?.trim() && constant.value > 0,
+  );
+
+  // named forms stay on small integers — φ/117 lands near anything you like and reads as nothing
+  const namedDenominatorLimit = Math.min(denominatorLimit, 16);
+
+  for (const constant of usableConstants) {
+    const label = constant.label.trim();
+    const constantTolerance = constant.tolerance ?? defaultConstantTolerance;
+
+    for (let denominator = 1; denominator <= namedDenominatorLimit; denominator++) {
+      // value ≈ constant / integer
+      namedCandidates.push({
+        expression: `${label}/${denominator}`,
+        error: Math.abs(magnitude - constant.value / denominator) / magnitude,
+        tolerance: constantTolerance,
+      });
+
+      // value ≈ 1 / (integer · constant)
+      namedCandidates.push({
+        expression: denominator === 1 ? `1/${label}` : `1/(${denominator}${label})`,
+        error: Math.abs(magnitude - 1 / (denominator * constant.value)) / magnitude,
+        tolerance: constantTolerance,
+      });
+    }
+  }
+
+  const nearestNamedMatch = namedCandidates.sort((a, b) => a.error - b.error)[0];
+  const maybeNamedTag = nearestNamedMatch && nearestNamedMatch.error <= nearestNamedMatch.tolerance
+    ? `${signPrefix}${nearestNamedMatch.expression}`
+    : '';
+  // measured against the closest fraction, not the simplest one the budget settled on
+  const closestError = candidates.reduce((a, b) => (b.error < a.error ? b : a)).error;
+  const absoluteImprovement = nearestNamedMatch ? (closestError - nearestNamedMatch.error) : 0;
+  const relativeImprovement = nearestNamedMatch && closestError > 0
+    ? absoluteImprovement / closestError
+    : 0;
+
+  // same gate as nearestFraction: a named tag has to beat the plain fraction by a real margin
+  const isNamedBetterThanFraction = !!nearestNamedMatch
+    && absoluteImprovement > 0.002
+    && relativeImprovement > 0.25;
+
+  if (maybeNamedTag && isNamedBetterThanFraction) {
+    if (nearestNamedMatch.error < 0.001) return maybeNamedTag;
+    if (nearestNamedMatch.error < 0.01) return `≈ ${maybeNamedTag}`;
+    return `~ ${maybeNamedTag}`;
+  }
+
+  if (isExact) return fraction;
+  if (isVeryClose) return `≈ ${fraction}`;
+  return `~ ${fraction}`; // rough approximation
+}
+
+function greatestCommonDivisor(a: number, b: number): number {
+  let x = Math.abs(a);
+  let y = Math.abs(b);
+  while (y) [x, y] = [y, x % y];
+  return x || 1;
+}

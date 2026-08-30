@@ -5,9 +5,10 @@ import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { renderOuterTraceGuides } from '../outer-trace-panel/outer-trace-panel';
 import { renderCircle, renderPath } from '../../../helpers/renderFuncs';
 import { calculateOuterArcs, ensureOuterTracePaths, getPath, getPathOrNull } from '../../ceruti-calcs';
-import { Circle } from '../../../models/types';
-import { nearestFraction } from '../../../helpers/nearestFraction';
+import { Circle, Pt } from '../../../models/types';
+import { nearestFraction, nearestSmallFraction } from '../../../helpers/nearestFraction';
 import { renderBounds, renderBoutBouts } from '../../renders/guides.render';
+import { lineCircleIntersection } from '../../../helpers/draftMath';
 
 /** Where the two f-holes sit on the plate — the eyes first, everything else hung off them. */
 @Component({
@@ -25,6 +26,7 @@ export class FHolePlacementPanel extends CerutiPanelBase implements OnInit {
   @Input({ required: true }) flags!: CerutiViewFlags;
 
   protected readonly nearestFraction = nearestFraction;
+  protected readonly nearestSmallFraction = nearestSmallFraction;
   
 
   ngOnInit(): void {
@@ -55,7 +57,7 @@ export class FHolePlacementPanel extends CerutiPanelBase implements OnInit {
     // renders.push(renderBoutBouts(p, this.colors, true))
     
     
-    p.ratios.FLtoH = p.fHoles!.FL0.r / p.height;
+    p.ratios.FLtoW = p.fHoles!.FL0.r / p.width;
     p.ratios.FUtoL = p.fHoles!.FU0.r / p.fHoles!.FL0.r;
     
     renders.push(renderFholePlacementGuides(p, this.colors));
@@ -65,11 +67,27 @@ export class FHolePlacementPanel extends CerutiPanelBase implements OnInit {
 
   defaultFholePlacement(p: EnricoCerutiParams): FholeParams {
     let FUtoL = p.ratios.FUtoL ?? DefaultParams.ratios.FUtoL;
-    let FLtoH = p.ratios.FLtoH ?? DefaultParams.ratios.FLtoH;
+    let FLtoW = p.ratios.FLtoW ?? DefaultParams.ratios.FLtoW;
+    let lowerEyeR = p.width * FLtoW
 
-    let lowerEyeR = p.height * FLtoH
-    let lowerEye = new Circle(p.bouts.CBW * .5,  p.bouts.LCr.y - lowerEyeR, lowerEyeR);
-    let upperEye = new Circle(p.bouts.CBW * .25,  p.bouts.C0.y - 2 * lowerEyeR * FUtoL, lowerEyeR * FUtoL );
+    let lowerCorner = p.bouts.LCr;
+    let upperCorner = p.bouts.UCr;
+
+    let lowerEyeHeight = lowerCorner.y - lowerEyeR;
+    // I have a theory that the default strad position defined by this guide arc, 1/3 the lower corner distance from the middle
+    // or 1/6 the total corner width
+    let lowerEyeGuideCircle = new Circle(p.bouts.LCr.x, p.bouts.LCr.y, p.bouts.LCr.x / 3);
+
+    // the position of the eye is the intersection between the line defined by the corners and the guide circle
+    let lowerEyePosition = lineCircleIntersection(new Pt(0, lowerEyeHeight), new Pt(1000, lowerEyeHeight), lowerEyeGuideCircle)[1]
+    let lowerEye = new Circle(lowerEyePosition.x,  lowerEyePosition.y, lowerEyeR);
+
+    let cornerMidpoint = (upperCorner.y - lowerCorner.y) / 2 + lowerCorner.y;
+
+    // currently I hardcode this value based on the bout width, this is wrong
+    // for violins, strad and del gesu have distances about 62mm
+    // I need a value that is based on a proportion
+    let upperEye = new Circle(p.bouts.CBW * .25,  cornerMidpoint, lowerEyeR * FUtoL);
 
     let defaults = {
       FU0: upperEye,

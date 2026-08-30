@@ -24,6 +24,18 @@ const WHITE_THRESHOLD = 0.9;
 const WHITE_SOFTNESS = 0.08;
 const WHITE_SATURATION_GATE = 0.18;
 
+// Upload sizing. A reference image is traced over, not read — accuracy comes from scaling the
+// placed image to real mm, which is a float transform independent of pixel count. At this cap a
+// cello plate still lands near 0.3mm per pixel, finer than a pointer can be placed. What the cap
+// buys is that the base64 payload rides in `d.referenceImages` through every debounced
+// working-state write and into the saved file, and a phone's default 12MP is enough to pass the
+// ~5MB sessionStorage allows on its own (see helpers/workingStorage.ts).
+const UPLOAD_MAX_EDGE_PX = 2400;
+// Below this an upload passes through untouched: re-encoding a small, clean line drawing trades
+// sharp edges for JPEG ringing and saves nothing worth having.
+const UPLOAD_PASSTHROUGH_BYTES = 1_000_000;
+const UPLOAD_JPEG_QUALITY = 0.85;
+
 function smoothstep(edge0: number, edge1: number, x: number): number {
   const t = Math.max(0, Math.min(1, (x - edge0) / Math.max(1e-6, edge1 - edge0)));
   return t * t * (3 - 2 * t);
@@ -39,7 +51,9 @@ function smoothstep(edge0: number, edge1: number, x: number): number {
  * reference-image-schema.ts), and this table is rebuilt from it on load.
  *
  * Also owns the white-suppression cache: a suppressed variant is a property of the pixels, not of
- * any one shape placing them, so two shapes showing the same image share the work.
+ * any one shape placing them, so two shapes showing the same image share the work. Those variants
+ * are `blob:` URLs rather than `data:` ones — see buildSuppressedHref for why that matters to
+ * drag performance.
  */
 @Injectable({ providedIn: 'root' })
 export class ImageAssetStore {
@@ -47,6 +61,8 @@ export class ImageAssetStore {
   /** href -> ref, so re-interning the same image (a reload, or two shapes sharing it) reuses
    * one entry instead of duplicating the payload. */
   private refByHref = new Map<string, string>();
+  /** ref -> `blob:` URL of the white-suppressed variant. Revoked on resetAll so the blobs don't
+   * outlive the recipe they came from. */
   private suppressedHrefs = new Map<string, string>();
   private inFlight = new Set<string>();
   private listeners = new Set<() => void>();
@@ -108,10 +124,15 @@ export class ImageAssetStore {
       this.inFlight.add(ref);
       this.buildSuppressedHref(href)
         .then(result => {
-          if (result) {
-            this.suppressedHrefs.set(ref, result);
-            this.notify();
+          if (!result) return;
+          // A resetAll during the pass drops the ref; keeping the blob then would leak it past
+          // the recipe it belongs to, since resetAll has already been round to revoke.
+          if (!this.assets.has(ref)) {
+            URL.revokeObjectURL(result);
+            return;
           }
+          this.suppressedHrefs.set(ref, result);
+          this.notify();
         })
         .finally(() => this.inFlight.delete(ref));
     }
@@ -146,6 +167,7 @@ export class ImageAssetStore {
   resetAll(): void {
     this.assets.clear();
     this.refByHref.clear();
+    this.suppressedHrefs.forEach(url => URL.revokeObjectURL(url));
     this.suppressedHrefs.clear();
   }
 
@@ -153,6 +175,13 @@ export class ImageAssetStore {
    * Redraws the image onto an offscreen canvas with near-white pixels faded to transparent, so a
    * scanned drawing on white paper reads correctly against a dark canvas. Pixels with any real
    * saturation are skipped outright, so this only eats paper, not the drawing on it.
+   *
+   * Hands back a `blob:` URL, never `toDataURL`. draw() tears down and rebuilds the whole scene
+   * every pointermove, so the returned href is written into two attributes on every drag frame.
+   * As a data URL that's megabytes of base64 per frame with a fresh resource identity each time —
+   * a 3.8 MP cello scan drags visibly. A blob URL is a short, stable string the browser resolves
+   * to an already-decoded image. Display only: the save adapter writes the raw href
+   * (reference-image-schema.ts), so nothing durable ever holds one of these.
    */
   private async buildSuppressedHref(href: string): Promise<string | undefined> {
     try {
@@ -189,7 +218,8 @@ export class ImageAssetStore {
       }
 
       ctx.putImageData(imageData, 0, 0);
-      return canvas.toDataURL('image/png');
+      const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
+      return blob ? URL.createObjectURL(blob) : undefined;
     } catch {
       // A cross-origin image taints the canvas and getImageData throws — fall back to the raw
       // href rather than failing the draw.
@@ -206,4 +236,108 @@ function loadImage(src: string): Promise<HTMLImageElement> {
     img.onerror = reject;
     img.src = src;
   });
+}
+
+/** What prepareUploadedImage hands back — the pixels to intern, plus what was done to them. */
+export type PreparedUpload = {
+  dataUrl: string;
+  width: number;
+  height: number;
+  /** Natural size of the file the user picked. Differs from width/height when it was scaled. */
+  sourceWidth: number;
+  sourceHeight: number;
+  /** True when the returned pixels are not the file's own — scaled, re-encoded, or both. */
+  changed: boolean;
+};
+
+/**
+ * The size to re-encode an upload at, or null to keep the file exactly as picked.
+ *
+ * Split out from prepareUploadedImage because this is the part with a decision in it and the rest
+ * is canvas plumbing, which jsdom can't run. Returning the *same* dimensions is meaningful: it
+ * says re-encode without scaling, which is what a large image that's already under the cap needs.
+ */
+export function planUploadResize(
+  width: number,
+  height: number,
+  byteLength: number,
+): { width: number; height: number } | null {
+  if (!(width > 0) || !(height > 0)) return null;
+
+  const longEdge = Math.max(width, height);
+  if (longEdge <= UPLOAD_MAX_EDGE_PX && byteLength <= UPLOAD_PASSTHROUGH_BYTES) return null;
+
+  const scale = Math.min(1, UPLOAD_MAX_EDGE_PX / longEdge);
+  return {
+    width: Math.max(1, Math.round(width * scale)),
+    height: Math.max(1, Math.round(height * scale)),
+  };
+}
+
+/** Whether any pixel is less than fully opaque — decides PNG vs JPEG for the re-encode. */
+function hasTransparency(ctx: CanvasRenderingContext2D, width: number, height: number): boolean {
+  const { data } = ctx.getImageData(0, 0, width, height);
+  for (let i = 3; i < data.length; i += 4) if (data[i] < 255) return true;
+  return false;
+}
+
+/**
+ * Scales and re-encodes a freshly picked image file before it is interned, so a phone photo of a
+ * plate doesn't become a multi-megabyte base64 payload in the working store and the saved recipe.
+ *
+ * Runs on the *upload* path only, never in intern() — intern also runs when a recipe file is
+ * opened, and re-encoding there would degrade an already-saved image a little further on every
+ * open-and-save cycle.
+ *
+ * Falls back to the untouched file whenever the pass can't improve on it: no canvas, a re-encode
+ * that came out larger than the original, or a plan of null. Throws only if the file won't decode
+ * at all, which is the same failure the caller already handles as a dismissed pick.
+ */
+export async function prepareUploadedImage(
+  dataUrl: string,
+  byteLength: number,
+): Promise<PreparedUpload> {
+  const img = await loadImage(dataUrl);
+  const sourceWidth = img.naturalWidth || img.width;
+  const sourceHeight = img.naturalHeight || img.height;
+  const unchanged: PreparedUpload = {
+    dataUrl, width: sourceWidth, height: sourceHeight, sourceWidth, sourceHeight, changed: false,
+  };
+
+  const plan = planUploadResize(sourceWidth, sourceHeight, byteLength);
+  if (!plan) return unchanged;
+
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = plan.width;
+    canvas.height = plan.height;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return unchanged;
+
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, 0, 0, plan.width, plan.height);
+
+    // A JPEG source is opaque by definition, so skip the pixel scan for the common photo case.
+    const opaque = /^data:image\/jpe?g/i.test(dataUrl) || !hasTransparency(ctx, plan.width, plan.height);
+    const encoded = opaque
+      ? canvas.toDataURL('image/jpeg', UPLOAD_JPEG_QUALITY)
+      : canvas.toDataURL('image/png');
+
+    // Lossless line art can encode larger than it arrived. Keep whichever is smaller, unless we
+    // scaled — there the point was the pixel count, and the smaller raster wins regardless.
+    const scaled = plan.width !== sourceWidth || plan.height !== sourceHeight;
+    if (!scaled && encoded.length >= dataUrl.length) return unchanged;
+
+    return {
+      dataUrl: encoded,
+      width: plan.width,
+      height: plan.height,
+      sourceWidth,
+      sourceHeight,
+      changed: true,
+    };
+  } catch {
+    return unchanged;
+  }
 }
