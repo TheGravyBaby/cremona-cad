@@ -16,7 +16,7 @@ import {
     longArchProfilePath, PlateGeometry, gougeProfileZ, solveLongArch,
 } from './ceruti-arch-geometry';
 import {
-    bodyLandmarks, longArchHeightAt, normalizeCrossArchStations, STATION_MERGE_EPS_MM,
+    bodyLandmarks, longArchHeightAt, normalizeCrossArchStations, ribHeightAt, STATION_MERGE_EPS_MM,
 } from './ceruti-arching';
 
 // The evaluable plate surface: a height field z(x, y) over the plan view.
@@ -51,7 +51,16 @@ export interface PlateSurfaceModel {
     /** Spatial index over that loop — the corner pass's distance query runs per grid point. */
     platformOuterIdx: PolylineIndex;
     arch: ArchCurve;
-    /** Absolute Z of the plate outer surface: top = ribHeight + top thickness, back = −bottom thickness. */
+    /**
+     * Absolute Z of the plate outer surface: top = rib height + top thickness,
+     * back = −bottom thickness.
+     *
+     * A plate is carved against its own gluing plane, so this is the top plane
+     * taken flat at the body datum — the rib taper tilts where that plane
+     * *sits* in the assembled body, and a tilt is not something the height
+     * field, the templates or the STL can carry. The two section views apply it
+     * at draw time, and they are the only places that need to.
+     */
     zBase: number;
     /**
      * Direction the relative height field folds into absolute Z: top plate grows
@@ -90,7 +99,7 @@ export function buildPlateSurfaceModel(p: EnricoCerutiParams, side: 'top' | 'bot
         platformOuter,
         platformOuterIdx: buildPolylineIndex(platformOuter),
         arch: plate.arch,
-        zBase: side === 'top' ? a.ribHeight + plate.thickness : -plate.thickness,
+        zBase: side === 'top' ? ribHeightAt(p, 0) + plate.thickness : -plate.thickness,
         signZ: side === 'top' ? 1 : -1,
         geometry,
     };
@@ -583,13 +592,12 @@ export function calculateCrossArchTemplates(p: EnricoCerutiParams): TemplateShap
  */
 export function calculateLongArchTemplates(p: EnricoCerutiParams): TemplateShape[] {
     if (!p.arching) return [];
-    const a = p.arching;
     const templates: TemplateShape[] = [];
     for (const { key, label } of TEMPLATE_SIDES) {
         const plate = ensureArchPlate(p, key);
         const gouge = plate.fluting!;
         const sign: 1 | -1 = key === 'top' ? 1 : -1;
-        const zBase = key === 'top' ? a.ribHeight + plate.thickness : -plate.thickness;
+        const zBase = key === 'top' ? ribHeightAt(p, 0) + plate.thickness : -plate.thickness;
         const swept = longArchProfilePath(p, gouge, solveLongArch(p, plate.arch, gouge), zBase, sign);
         const profile = trimProfileToTroughs(swept, zBase, 'x', sign);
         if (!profile) continue;

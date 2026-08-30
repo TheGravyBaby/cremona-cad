@@ -1,9 +1,11 @@
+import { maxRibTaperMm, ribHeightAt, solveRibTaper } from '../ceruti-arching';
 import { recordLayers } from '../../helpers/layer-recorder';
 import { archedViolin, defaultViolin, templateKeys, templateViolin } from '../ceruti-fixtures';
 import { CerutiColors, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, EnricoCerutiParams, PathEntry } from '../ceruti-types';
 import { CenterBoutPanel } from './center-bout-panel/center-bout-panel';
 import { CornersPanel } from './corners-panel/corners-panel';
 import { FlutingPanel } from './fluting-panel/fluting-panel';
+import { LongArchingPanel } from './long-arching-panel/long-arching-panel';
 import { MainBoutsPanel } from './main-bouts-panel/main-bouts-panel';
 import { MouldPanel } from './mould-panel/mould-panel';
 import { OuterTracePanel } from './outer-trace-panel/outer-trace-panel';
@@ -138,5 +140,183 @@ describe('the fluting panel', () => {
   it('draws the channel on an arched plate', () => {
     const drawn = recordLayers(panel(FlutingPanel as any, archedViolin()).buildRun());
     expect(drawn.elements.length).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * The rib taper's limiter.
+ *
+ * Past `maxRibTaperMm` the tilted rib line is longer than the instrument, and
+ * the side view can only draw a top plate reaching it by stretching it — a
+ * picture of a garland that cannot be built. The panel puts the pair back
+ * rather than drawing it.
+ */
+describe('long arching panel — rib taper limit', () => {
+  const arched = (lower: number, upper: number): EnricoCerutiParams => {
+    const p = archedViolin();
+    p.arching!.ribHeightLower = lower;
+    p.arching!.ribHeightUpper = upper;
+    return p;
+  };
+
+  it('keeps a taper inside the bound', () => {
+    const p = arched(32, 30);
+    panel(LongArchingPanel, p).buildRun();
+    expect(p.arching!.ribHeightLower).toBe(32);
+    expect(p.arching!.ribHeightUpper).toBe(30);
+  });
+
+  it('puts back the pair it last accepted', () => {
+    const p = arched(32, 30);
+    const panelUnderTest = panel(LongArchingPanel, p);
+    panelUnderTest.buildRun();
+
+    // The edit that overruns the body, made the way the input would make it.
+    p.arching!.ribHeightUpper = 32 - maxRibTaperMm(p) - 1;
+    panelUnderTest.buildRun();
+
+    expect(p.arching!.ribHeightLower).toBe(32);
+    expect(p.arching!.ribHeightUpper).toBe(30);
+  });
+
+  it('refuses a taper the other way round too', () => {
+    const p = arched(30, 32);
+    const panelUnderTest = panel(LongArchingPanel, p);
+    panelUnderTest.buildRun();
+
+    p.arching!.ribHeightUpper = 30 + maxRibTaperMm(p) + 1;
+    panelUnderTest.buildRun();
+
+    expect(p.arching!.ribHeightUpper).toBe(32);
+  });
+
+  it('gives up the taper, not the measured height, on a recipe that arrives over the bound', () => {
+    const p = arched(32, 32 - maxRibTaperMm(archedViolin()) - 5);
+    panel(LongArchingPanel, p).buildRun();
+    // Nothing to roll back to, so the lower rib — the one a maker measures
+    // first — is the end that survives.
+    expect(p.arching!.ribHeightLower).toBe(32);
+    expect(p.arching!.ribHeightUpper).toBe(32);
+  });
+
+  it('leaves a field cleared mid-typing alone rather than snapping it back', () => {
+    const p = arched(32, 30);
+    const panelUnderTest = panel(LongArchingPanel, p);
+    panelUnderTest.buildRun();
+
+    // What ngModel writes when the input is emptied.
+    p.arching!.ribHeightUpper = null as unknown as number;
+    panelUnderTest.buildRun();
+    expect(p.arching!.ribHeightUpper).toBe(null);
+  });
+
+  it('still draws the section after a rollback', () => {
+    const p = arched(32, 30);
+    const panelUnderTest = panel(LongArchingPanel, p);
+    panelUnderTest.buildRun();
+    p.arching!.ribHeightUpper = -500;
+    const drawn = recordLayers(panelUnderTest.buildRun());
+    expect(drawn.elements.length).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * How the tilted top plate is placed.
+ *
+ * The plate is one piece of wood glued onto a rib line that is no longer
+ * parallel to the back's. It is drawn in its own frame and placed by a
+ * transform on the group it goes into, so what that transform is *is* the
+ * geometry — a shear here would lean the section that was carved, and a
+ * placement hung off one end would overhang the garland unevenly.
+ */
+describe('long arching panel — placing the tilted top plate', () => {
+  /** `translate(dx,dy) rotate(a,cx,cy)` as a point map, which is what SVG does with it. */
+  function readTransform(t: string): (x: number, y: number) => [number, number] {
+    const nums = (name: string) => {
+      const m = new RegExp(`${name}\\(([^)]*)\\)`).exec(t);
+      return m ? m[1].split(',').map(Number) : null;
+    };
+    const [dx, dy] = nums('translate') ?? [0, 0];
+    const [deg, cx, cy] = nums('rotate') ?? [0, 0, 0];
+    const a = deg * Math.PI / 180;
+    return (x, y) => {
+      const [px, py] = [x - cx, y - cy];
+      return [
+        px * Math.cos(a) - py * Math.sin(a) + cx + dx,
+        px * Math.sin(a) + py * Math.cos(a) + cy + dy,
+      ];
+    };
+  }
+
+  /** The transform on the group the top plate is drawn into. */
+  function topPlatePlacement(p: EnricoCerutiParams) {
+    const drawn = recordLayers(panel(LongArchingPanel, p).buildRun());
+    const group = drawn.elements.find(e => e.layer === 'g' && e.tag === 'g');
+    expect(group, 'the top plate should be drawn into a placed group').toBeTruthy();
+    return readTransform(String(group!.attrs['transform']));
+  }
+
+  /** The two ends of the plate's gluing face, in its own frame, as placed. */
+  function placedFace(p: EnricoCerutiParams): { low: [number, number]; high: [number, number] } {
+    const place = topPlatePlacement(p);
+    const faceZ = solveRibTaper(p).zLower;
+    return { low: place(faceZ, 0), high: place(faceZ, p.height) };
+  }
+
+  const ribEnds = (p: EnricoCerutiParams) => ({
+    low: [ribHeightAt(p, p.overhang), p.overhang] as [number, number],
+    high: [ribHeightAt(p, p.height - p.overhang), p.height - p.overhang] as [number, number],
+  });
+
+  const dist = (a: [number, number], b: [number, number]) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+
+  const tapered = (lower = 32, upper = 30): EnricoCerutiParams => {
+    const p = archedViolin();
+    p.arching!.ribHeightLower = lower;
+    p.arching!.ribHeightUpper = upper;
+    return p;
+  };
+
+  it('overhangs the garland by the same amount at each end', () => {
+    const p = tapered();
+    const face = placedFace(p);
+    const rib = ribEnds(p);
+    expect(dist(face.low, rib.low)).toBeCloseTo(dist(face.high, rib.high), 9);
+  });
+
+  it('keeps the plate rigid — its length is the body length, not stretched to reach', () => {
+    // The whole point of rotating rather than shearing: a shear would have to
+    // lengthen the plate to span a rib line that grew.
+    const p = tapered();
+    const face = placedFace(p);
+    expect(dist(face.low, face.high)).toBeCloseTo(p.height, 9);
+  });
+
+  it('lays the gluing face along the rib line rather than at an angle to it', () => {
+    const p = tapered();
+    const face = placedFace(p);
+    const rib = ribEnds(p);
+    const cross = (face.high[0] - face.low[0]) * (rib.high[1] - rib.low[1])
+      - (face.high[1] - face.low[1]) * (rib.high[0] - rib.low[0]);
+    expect(Math.abs(cross)).toBeLessThan(1e-6);
+  });
+
+  it('foreshortens the plate in plan rather than leaning its section', () => {
+    // A rigid turn shortens what the plate covers along the body; the amount is
+    // the cos of a third of a degree, which is what says it turned rather than
+    // leaned.
+    const p = tapered();
+    const face = placedFace(p);
+    const spanned = Math.abs(face.high[1] - face.low[1]);
+    expect(spanned).toBeLessThan(p.height);
+    expect(p.height - spanned).toBeCloseTo(p.height * (1 - Math.cos(solveRibTaper(p).angle)), 4);
+  });
+
+  it('places an untapered plate exactly where it always sat', () => {
+    const p = tapered(32, 32);
+    const face = placedFace(p);
+    const faceZ = solveRibTaper(p).zLower;
+    expect(face.low).toEqual([faceZ, 0]);
+    expect(face.high).toEqual([faceZ, p.height]);
   });
 });

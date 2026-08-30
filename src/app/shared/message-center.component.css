@@ -1,4 +1,4 @@
-.message-center { position: fixed; left: 12px; top: 56px; width: 50%; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue'; z-index: 9999; pointer-events: none; display: flex; flex-direction: column; gap: 8px; }
+.message-center { position: fixed; left: 72px; top: 48px; width: 50%; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue'; z-index: 9999; pointer-events: none; display: flex; flex-direction: column; gap: 8px; }
 .toasts { display:flex; flex-direction:column; gap:8px; }
 /* with no toasts the chips take the top-left slot a toast would have had */
 .toasts:empty { display: none; }

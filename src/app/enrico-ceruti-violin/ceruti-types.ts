@@ -107,7 +107,16 @@ export interface EnricoCerutiParams {
 
 export interface ArchingParams {
   surfaceMethod: 'proportional';
-  ribHeight: number;
+  /**
+   * Rib height at the lower end of the body, and at the upper. Classical ribs
+   * taper — they are planed down toward the upper block once the back is glued
+   * on — so the back's gluing plane stays square to the body while the top's
+   * tilts. Both are measured perpendicular to the rib's own top edge, which is
+   * how a caliper reads the stock; `ribHeightAt` in ceruti-arching.ts converts
+   * that to a vertical height above the back plane.
+   */
+  ribHeightLower: number;
+  ribHeightUpper: number;
   top: ArchPlate;
   bottom: ArchPlate;
 }

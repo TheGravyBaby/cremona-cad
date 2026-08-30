@@ -1,15 +1,17 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Pt, Rectangle } from '../../../models/types';
-import { renderLine, renderPath, renderRect } from '../../../helpers/renderFuncs';
+import { Pt } from '../../../models/types';
+import { renderLine, renderPath } from '../../../helpers/renderFuncs';
 import { archSplineKnots, buildCatenaryPath, buildCycloidPath, buildSplinePath, SPLINE_PEAK_SOURCE } from '../../../helpers/svgPathMath';
 import { clamp } from '../../../helpers/draftMath';
 import {
   ArchCurve, ArchSpline, ArchSplinePoint, ArchingParams, CerutiColors, CerutiViewFlags,
   EnricoCerutiParams, FlutingParams, RenderToggleKey,
 } from '../../ceruti-types';
-import { clampSplinePointHeights, defaultArchingParams } from '../../ceruti-arching';
+import {
+  clampSplinePointHeights, defaultArchingParams, maxRibTaperMm, ribHeightAt, RibTaper, solveRibTaper,
+} from '../../ceruti-arching';
 import {
   defaultFlutingParams, channelCapPath, LongArchSolve, solveLongArch,
 } from '../../ceruti-arch-geometry';
@@ -20,6 +22,7 @@ import {
 } from '../../ceruti-helpers';
 import { HighlightedSplinePoint } from '../../renders/render-constants';
 import { renderArchGuide, renderSplineHighlight } from '../../renders/long-arch.render';
+import { error } from '../../../shared/message-emitter';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 
@@ -57,6 +60,9 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
 
   /** Last solve per plate, kept so the template can report it without re-solving. */
   private solved: { top: LongArchSolve | null; bottom: LongArchSolve | null } = { top: null, bottom: null };
+
+  /** The rib pair as last accepted, so a taper that overruns the body can be put back. */
+  private acceptedRibHeights: { lower: number; upper: number } | null = null;
 
   ngOnInit(): void {
     this.emitImmediate();
@@ -200,11 +206,53 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
 
   public buildRun(): RenderLayer[] {
     this.params.arching ??= defaultArchingParams(this.params.height);
+    this.enforceRibTaper();
     calculateOuterArcs(this.params);
     for (const plate of ['top', 'bottom'] as const) {
       this.solved[plate] = solveLongArch(this.params, this.archFor(plate), this.gouge(plate));
     }
     return [this.section()];
+  }
+
+  /**
+   * Holds the rib taper to a garland that could exist.
+   *
+   * Past {@link maxRibTaperMm} the tilted rib line is longer than the
+   * instrument, and the section view can only draw a top plate reaching it by
+   * stretching it — a picture of something that cannot be built. Nothing
+   * downstream of the view is wrong yet, but the numbers are, and the arching
+   * data is meant to feed a model later.
+   *
+   * Rolled back rather than reported, which is the opposite of the Viol Neck
+   * Join in the main bouts panel: that one draws a legitimate if ugly outline
+   * and leaves the maker to decide which of five fields to pull, where this one
+   * has no drawable answer at all. Rolled back rather than clamped because two
+   * fields feed the one constraint and clamping would have to guess which of
+   * them just moved.
+   */
+  private enforceRibTaper(): void {
+    const a = this.arching;
+    const taper = a.ribHeightLower - a.ribHeightUpper;
+    // A field cleared mid-typing is not an over-taper. `clampParam` leaves those
+    // alone too, and the next keystroke settles it.
+    if (!Number.isFinite(taper)) return;
+
+    const max = maxRibTaperMm(this.params);
+    if (Math.abs(taper) <= max) {
+      this.acceptedRibHeights = { lower: a.ribHeightLower, upper: a.ribHeightUpper };
+      return;
+    }
+    // A recipe that arrived over the bound has nothing to go back to, so it
+    // gives up its taper rather than the height a maker actually measured.
+    const back = this.acceptedRibHeights ?? { lower: a.ribHeightLower, upper: a.ribHeightLower };
+    a.ribHeightLower = back.lower;
+    a.ribHeightUpper = back.upper;
+    this.acceptedRibHeights = back;
+    error(
+      `The ribs can taper by at most ${max.toFixed(1)}mm over a body this long. ` +
+      `Past that the rib line runs longer than the instrument itself, and there is no garland that shape.`,
+      'Invalid Rib Taper',
+    );
   }
 
   /**
@@ -215,18 +263,73 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
    */
   private section(): RenderLayer {
     const p = this.params;
-    const a = this.arching;
+    const taper = solveRibTaper(p);
+    // The garland, no longer a rectangle: the ribs are planed down toward the
+    // upper block, so the edge the top plate glues to runs at an angle to the
+    // one the back sits on. This is the view that shows it.
+    const rib: RibLine = {
+      yLow: p.overhang,
+      yHigh: p.height - p.overhang,
+      zLow: ribHeightAt(p, p.overhang, taper),
+      zHigh: ribHeightAt(p, p.height - p.overhang, taper),
+    };
     return (g: any, ui: any): void => {
-      renderRect(
-        new Rectangle({ x: 0, y: p.overhang }, { x: a.ribHeight, y: p.height - p.overhang }),
-        this.colors.mouldTrace,
+      renderPath(
+        `M 0 ${rib.yLow} L ${rib.zLow} ${rib.yLow} L ${rib.zHigh} ${rib.yHigh} L 0 ${rib.yHigh} Z`,
+        this.colors.mouldTrace, 1,
       )(g, ui);
       // The corner positions, to locate the C-bout against the profile.
       for (const corner of [p.bouts.UCr, p.bouts.LCr]) {
-        if (corner) renderLine(new Pt(0, corner.y), new Pt(a.ribHeight, corner.y), this.colors.mouldTrace)(g, ui);
+        if (corner) {
+          renderLine(
+            new Pt(0, corner.y), new Pt(ribHeightAt(p, corner.y, taper), corner.y), this.colors.mouldTrace,
+          )(g, ui);
+        }
       }
-      this.platePart(g, ui, 'top');
-      this.platePart(g, ui, 'bottom');
+      // The top plate is carved against its own gluing plane and glued onto a
+      // tilted one, so it is drawn in the frame it is carved in and placed onto
+      // the rib line by a single transform — rather than the arch, the channel
+      // and the guides behind them each learning about an angle they have no
+      // other use for.
+      const tilted = this.tiltedLayers(g, ui, taper, rib);
+      this.platePart(tilted.g, tilted.ui, 'top', taper);
+      this.platePart(g, ui, 'bottom', taper);
+    };
+  }
+
+  /**
+   * Both layers turned so the top plate lies on the tilted rib line.
+   *
+   * A rigid rotation, and deliberately not a shear. The plate is one piece of
+   * wood: its section has to read as the section that was carved, not a leaning
+   * copy of it, and a shear leans everything it carries. What the rotation
+   * costs instead is the plate's plan length foreshortening by cos of the tilt
+   * — six microns on a violin, against a lean a shear would have made visible
+   * in the very view the panel exists to show.
+   *
+   * Turned about the plate's own midpoint and moved onto the rib line's, which
+   * is what centres it: the plate overhangs the garland by the same amount at
+   * each end rather than hanging off one. The rib line is the longer of the two
+   * as soon as it tilts, so both overhangs close a little — {@link
+   * maxRibTaperMm} is what keeps them from closing entirely.
+   *
+   * The guide labels ride the UI layer, which is Y-flipped against the geometry
+   * one, so the same placement runs the other way along it. Left out, a label
+   * would stay put while the tick it names moved off under it.
+   */
+  private tiltedLayers(g: any, ui: any, taper: RibTaper, rib: RibLine): { g: any; ui: any } {
+    const run = rib.yHigh - rib.yLow;
+    if (run <= 0) return { g, ui };
+    const angle = Math.atan2(rib.zLow - rib.zHigh, run) * 180 / Math.PI;
+    // The pivot sits on the plate's own gluing face, at the middle of its
+    // length — the same face `platePart` draws at `taper.zLower`.
+    const pivotX = taper.zLower;
+    const pivotY = this.params.height / 2;
+    const dx = (rib.zLow + rib.zHigh) / 2 - pivotX;
+    const dy = (rib.yLow + rib.yHigh) / 2 - pivotY;
+    return {
+      g: g.append('g').attr('transform', `translate(${dx},${dy}) rotate(${angle},${pivotX},${pivotY})`),
+      ui: ui.append('g').attr('transform', `translate(${dx},${-dy}) rotate(${-angle},${pivotX},${-pivotY})`),
     };
   }
 
@@ -236,15 +339,16 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
    * plate's outer surface *is* the arch, so a rectangle drawn at plate level
    * would contradict the very curve the panel exists to show.
    */
-  private platePart(g: any, ui: any, plate: 'top' | 'bottom'): void {
+  private platePart(g: any, ui: any, plate: 'top' | 'bottom', taper: RibTaper): void {
     const p = this.params;
     const a = this.arching;
     const isTop = plate === 'top';
     const sign: 1 | -1 = isTop ? 1 : -1;
     const thickness = isTop ? a.top.thickness : a.bottom.thickness;
     // Inner face of the plate: the rib's top for the top plate, the mould line
-    // for the back. The outer face is one thickness beyond it.
-    const innerZ = isTop ? a.ribHeight : 0;
+    // for the back. The outer face is one thickness beyond it. Flat for both —
+    // the top plate's tilt is carried by the group it is drawn into.
+    const innerZ = isTop ? taper.zLower : 0;
     const outerZ = innerZ + sign * thickness;
     const color = isTop ? this.colors.archTop : this.colors.archBack;
     const gouge = this.gouge(plate);
@@ -275,6 +379,14 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
       renderArchGuide(lowered, span, yStart, xBase, sign, color)(g, ui);
     }
   }
+}
+
+/** The garland's top edge in the side view — the line the top plate glues to. */
+interface RibLine {
+  yLow: number;
+  yHigh: number;
+  zLow: number;
+  zHigh: number;
 }
 
 /** The arch path for whichever curve type the plate carries — mirrors ceruti-arching's private builder. */
