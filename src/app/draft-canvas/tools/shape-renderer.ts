@@ -174,10 +174,11 @@ export function drawShape(gRoot: RootGroup, gUI: RootGroup, shape: DraftShape, p
  *  4. The rotate group turns the box in world space, same as every other rotate-capable shape.
  *
  * `preserveAspectRatio` is `none` rather than `meet`: crop fractions are only meaningful if the
- * picture fills its rectangle exactly, and it also makes a typed W or H the size the picture
- * actually takes, which is what that field claims. Placement and corner-drags keep the natural
- * aspect anyway, so this only shows up when a dimension is typed on its own — where letterboxing
- * inside a box the handles and halo still traced was the wrong answer.
+ * picture fills its rectangle exactly. It is not what stops the picture stretching — every path
+ * that resizes an image takes the second dimension from imageAspect, so the box always carries
+ * the picture's own proportions and `none` and `meet` agree. What `none` buys is that a box which
+ * somehow doesn't (a hand-authored template) shows what it actually says, rather than letterboxing
+ * inside handles and a halo still tracing the box.
  */
 export function drawImageShape(gRoot: RootGroup, shape: ImageShape, href: string): void {
   const center = imageCenter(shape);

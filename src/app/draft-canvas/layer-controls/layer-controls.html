@@ -71,7 +71,7 @@
   <div class="lc-group">
     <div class="lc-strip">
       <button type="button" class="lc-btn" [class.active]="imagesOpen" (click)="toggleImages()"
-        title="Reference images (I to upload)">
+        title="Reference images">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
           stroke-linecap="round" stroke-linejoin="round">
           <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -115,15 +115,36 @@
       @if (images.length === 0) {
       <div class="images-empty">No reference images yet.</div>
       }
-      <button type="button" class="lc-action" (click)="addImage()" title="Choose an image file to place on the canvas">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-          <polyline points="17 8 12 3 7 8" />
-          <line x1="12" y1="3" x2="12" y2="15" />
-        </svg>
-        <span>Upload Image</span>
-      </button>
+      <!-- The two ways an image gets here. A file is the ordinary one and stays first; a link is
+           for a photo you are looking at on a museum page rather than one already on disk. -->
+      <div class="lc-action-row">
+        <button type="button" class="lc-action" (click)="addImage()" title="Choose an image file to place on the canvas">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+          <span>Upload</span>
+        </button>
+        <button type="button" class="lc-action" [class.active]="linkOpen" (click)="toggleLinkField()"
+          title="Place an image from a web address. Paste the link to the image file itself — the one behind &quot;Copy image address&quot; — not the page it sits on.">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7" />
+            <path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7" />
+          </svg>
+          <span>Link</span>
+        </button>
+      </div>
+      @if (linkOpen) {
+      <div class="image-link-row">
+        <input #imageLinkInput class="image-link-input" type="url" placeholder="https://…/photo.jpg"
+          (keydown.enter)="addImageFromLink(imageLinkInput.value)" (keydown.escape)="linkOpen = false" />
+        <button type="button" class="image-link-add" (click)="addImageFromLink(imageLinkInput.value)"
+          title="Place this image">Add</button>
+      </div>
+      }
     </div>
     }
   </div>

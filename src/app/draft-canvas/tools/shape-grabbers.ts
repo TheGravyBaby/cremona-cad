@@ -1,7 +1,7 @@
 import { Pt } from '../../models/types';
 import {
   DEFAULT_TEXT_SIZE_MM, DraftShape, ImageShape, TextShape,
-  dimensionGeometry, dimensionOffsetAt, imageCenter, imageCorners, imageEdgeMidpoints,
+  dimensionGeometry, dimensionOffsetAt, imageAspect, imageCenter, imageCorners, imageEdgeMidpoints,
 } from './toolbox-shape';
 import { angleFromCenter, dist, normalizeDegrees, normalizeRadians, pointOnCircle, rotatePointAbout } from '../../helpers/draftMath';
 
@@ -221,7 +221,7 @@ function withImageHandle(shape: ImageShape, key: EndpointKey, pos: Pt): DraftSha
   const y1 = shape.y + shape.height;
   const cx = shape.x + shape.width / 2;
   const cy = shape.y + shape.height / 2;
-  const aspect = Math.abs(shape.width / shape.height) || 1;
+  const aspect = imageAspect(shape);
 
   // The point that must stay fixed: the opposite corner, or the opposite edge's midpoint.
   const anchor: Pt =
@@ -254,24 +254,20 @@ function withImageHandle(shape: ImageShape, key: EndpointKey, pos: Pt): DraftSha
       width, height,
     };
   } else {
-    // One dimension follows the cursor. Growing past the original size falls back to
-    // proportional (re-centering on the anchor across the other axis) so an image can be scaled
-    // up from an edge without being stretched out of shape.
-    let { x, y, width, height } = { x: shape.x, y: shape.y, width: shape.width, height: shape.height };
+    // The dragged edge follows the cursor and the other axis follows the aspect, spread either
+    // side of the anchor edge's midpoint. Shrinking used to be exempt from that and squash the
+    // picture instead — the one place a resize could skew a reference image.
+    let x: number, y: number, width: number, height: number;
     if (key === 'n' || key === 's') {
       height = Math.max(MIN_IMAGE_MM, key === 'n' ? localPt.y - anchor.y : anchor.y - localPt.y);
       y = key === 'n' ? anchor.y : anchor.y - height;
-      if (height > shape.height) {
-        width = height * aspect;
-        x = anchor.x - width / 2;
-      }
+      width = height * aspect;
+      x = anchor.x - width / 2;
     } else {
       width = Math.max(MIN_IMAGE_MM, key === 'e' ? localPt.x - anchor.x : anchor.x - localPt.x);
       x = key === 'e' ? anchor.x : anchor.x - width;
-      if (width > shape.width) {
-        height = width / aspect;
-        y = anchor.y - height / 2;
-      }
+      height = width / aspect;
+      y = anchor.y - height / 2;
     }
     box = { x, y, width, height };
   }

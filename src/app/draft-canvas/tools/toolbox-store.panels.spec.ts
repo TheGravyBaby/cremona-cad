@@ -27,6 +27,10 @@ describe('ToolboxStore panel-scoped images', () => {
 
   const visible = () => toolbox.getVisibleImages().map(s => s.id);
 
+  const excluding = (id: string, excludePanels: string[], isDefault?: boolean): ImageShape => ({
+    ...image(id, undefined, isDefault), excludePanels,
+  });
+
   it('shows an unscoped image on every panel', () => {
     toolbox.loadImages([image('plan')]);
     toolbox.setActivePanel('base');
@@ -152,6 +156,49 @@ describe('ToolboxStore panel-scoped images', () => {
   // Picking an image out of the image list, or clicking it, shows it here whatever its scoping
   // says. Without this the list has a row you can click that appears to do nothing, and editing
   // the scoping of the image you have selected takes the image and its own controls away.
+  // A panel with no good reference for it should show nothing, rather than the general view of
+  // the instrument — which would be traced by mistake. Before excludePanels the format had no way
+  // to say that: a panel nothing claimed fell through to the default.
+  describe('a panel kept deliberately blank', () => {
+    it('keeps an excluded image off that panel and nowhere else', () => {
+      toolbox.loadImages([excluding('plan', ['crossArching'], true)]);
+
+      toolbox.setActivePanel('crossArching');
+      expect(visible()).toEqual([]);
+
+      toolbox.setActivePanel('longArching');
+      expect(visible()).toEqual(['plan']);
+    });
+
+    it('leaves the panel showing nothing when it is the only image', () => {
+      toolbox.loadImages([excluding('plan', ['crossArching'], true), image('flute', ['fluting'])]);
+      toolbox.setActivePanel('crossArching');
+      expect(visible()).toEqual([]);
+    });
+
+    it('still shows an image that names the panel outright', () => {
+      // excluding the general view is about the general view, not about the panel: adding a real
+      // reference for it later has to just work, with nothing to undo on the other entry
+      toolbox.loadImages([excluding('plan', ['crossArching'], true), image('section', ['crossArching'])]);
+      toolbox.setActivePanel('crossArching');
+      expect(visible()).toEqual(['section']);
+    });
+
+    it('beats the default flag rather than being overruled by it', () => {
+      // isDefault would otherwise claim this panel, since nothing else names it
+      toolbox.loadImages([excluding('plan', ['crossArching'], true)]);
+      toolbox.setActivePanel('crossArching');
+      expect(toolbox.imageMatchesActivePanel(toolbox.getImageShapes()[0])).toBe(false);
+    });
+
+    it('still gives way to the selection, so an excluded image can be edited', () => {
+      toolbox.loadImages([excluding('plan', ['crossArching'], true)]);
+      toolbox.setActivePanel('crossArching');
+      toolbox.setRevealedImage('plan');
+      expect(visible()).toEqual(['plan']);
+    });
+  });
+
   describe('the revealed image', () => {
     it('shows an off-panel image, without touching its scoping', () => {
       toolbox.loadImages([image('section', ['crossArching'])]);

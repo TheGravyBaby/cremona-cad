@@ -165,6 +165,12 @@ export type NamedReferenceImage = ReferenceImage & {
    * outline panels and a section photograph for the arching ones without the user parking each
    * by hand. See ToolboxStore.setActivePanel. */
   panels?: string[];
+  /** Panels this image is deliberately kept off, by panel id — the other way of saying the same
+   * thing as `panels`, for when the exception is shorter than the rule. Its point is a panel that
+   * should show *nothing*: an instrument with no usable cross-arch photograph excludes it from
+   * the default view rather than displaying a plan shot that would be traced by mistake. Absolute,
+   * so it wins over `isDefault`. See ToolboxStore.imageMatchesActivePanel. */
+  excludePanels?: string[];
   /** Marks this as the set's default view — "Default" in the UI: shown wherever no other image
    * names the panel, and stepped aside from on panels one does. Lets a set carry one general plan
    * photograph plus a few specific ones without listing every panel the general one belongs on.

@@ -228,10 +228,13 @@ export class ImageAssetStore {
   }
 }
 
-function loadImage(src: string): Promise<HTMLImageElement> {
+/** `crossOrigin` false loads an image that will only ever be displayed — a host that sends no
+ * CORS headers refuses the anonymous request outright, so asking is not free. See
+ * loadLinkedImage, which needs both. */
+function loadImage(src: string, crossOrigin = true): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
-    if (!src.startsWith('data:')) img.crossOrigin = 'anonymous';
+    if (crossOrigin && !src.startsWith('data:')) img.crossOrigin = 'anonymous';
     img.onload = () => resolve(img);
     img.onerror = reject;
     img.src = src;
@@ -307,37 +310,99 @@ export async function prepareUploadedImage(
   const plan = planUploadResize(sourceWidth, sourceHeight, byteLength);
   if (!plan) return unchanged;
 
+  // A JPEG source is opaque by definition, so skip the pixel scan for the common photo case.
+  const encoded = reencodeImage(img, plan, /^data:image\/jpe?g/i.test(dataUrl));
+  if (!encoded) return unchanged;
+
+  // Lossless line art can encode larger than it arrived. Keep whichever is smaller, unless we
+  // scaled — there the point was the pixel count, and the smaller raster wins regardless.
+  const scaled = plan.width !== sourceWidth || plan.height !== sourceHeight;
+  if (!scaled && encoded.length >= dataUrl.length) return unchanged;
+
+  return {
+    dataUrl: encoded,
+    width: plan.width,
+    height: plan.height,
+    sourceWidth,
+    sourceHeight,
+    changed: true,
+  };
+}
+
+/**
+ * Redraws an already-decoded image at `plan` size and encodes it as a data URL — JPEG when the
+ * pixels are opaque, PNG when any of them aren't.
+ *
+ * Returns undefined whenever the copy can't be made rather than throwing: no canvas to draw on,
+ * or pixels that can't be read back, which is what a cross-origin image without CORS headers
+ * does — it taints the canvas and getImageData throws. Both callers have something sensible to
+ * do with the original in that case.
+ */
+function reencodeImage(
+  img: HTMLImageElement,
+  plan: { width: number; height: number },
+  assumeOpaque: boolean,
+): string | undefined {
   try {
     const canvas = document.createElement('canvas');
     canvas.width = plan.width;
     canvas.height = plan.height;
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    if (!ctx) return unchanged;
+    if (!ctx) return undefined;
 
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(img, 0, 0, plan.width, plan.height);
 
-    // A JPEG source is opaque by definition, so skip the pixel scan for the common photo case.
-    const opaque = /^data:image\/jpe?g/i.test(dataUrl) || !hasTransparency(ctx, plan.width, plan.height);
-    const encoded = opaque
+    const opaque = assumeOpaque || !hasTransparency(ctx, plan.width, plan.height);
+    return opaque
       ? canvas.toDataURL('image/jpeg', UPLOAD_JPEG_QUALITY)
       : canvas.toDataURL('image/png');
-
-    // Lossless line art can encode larger than it arrived. Keep whichever is smaller, unless we
-    // scaled — there the point was the pixel count, and the smaller raster wins regardless.
-    const scaled = plan.width !== sourceWidth || plan.height !== sourceHeight;
-    if (!scaled && encoded.length >= dataUrl.length) return unchanged;
-
-    return {
-      dataUrl: encoded,
-      width: plan.width,
-      height: plan.height,
-      sourceWidth,
-      sourceHeight,
-      changed: true,
-    };
   } catch {
-    return unchanged;
+    return undefined;
   }
+}
+
+/** What prepareLinkedImage hands back. */
+export type PreparedLink = {
+  /** What to intern: a `data:` URL when the pixels could be copied, otherwise the link itself. */
+  href: string;
+  width: number;
+  height: number;
+  /** True when the picture now lives in the recipe. False means the recipe holds only the link,
+   * so it shows nothing the day that link stops resolving — worth telling the user about. */
+  inlined: boolean;
+};
+
+/**
+ * Resolves a pasted image link into something placeable, copying the pixels into the recipe when
+ * the host lets it.
+ *
+ * Inlining is the outcome worth having: a recipe that carries the picture opens the same in a
+ * year, on a machine that has never seen the link, and white-suppression needs readable pixels.
+ * So the load asks for CORS first. Plenty of hosts send no CORS headers, though, and an image
+ * that displays perfectly well is not worth rejecting over that — a refused anonymous request
+ * falls back to a plain load and the link itself becomes the href.
+ *
+ * Sizing follows the upload path: the pixels are about to ride in the saved file the same way, so
+ * the same cap applies. Unlike an upload there is no passthrough case, since copying through a
+ * canvas re-encodes whether or not it scales.
+ *
+ * Throws only if the URL doesn't decode as an image at all — the same failure a dismissed file
+ * dialog already leaves the caller handling.
+ */
+export async function prepareLinkedImage(url: string): Promise<PreparedLink> {
+  const img = await loadLinkedImage(url);
+  const width = img.naturalWidth || img.width;
+  const height = img.naturalHeight || img.height;
+
+  const plan = planUploadResize(width, height, Number.POSITIVE_INFINITY) ?? { width, height };
+  const encoded = reencodeImage(img, plan, false);
+  if (!encoded) return { href: url, width, height, inlined: false };
+
+  return { href: encoded, width: plan.width, height: plan.height, inlined: true };
+}
+
+function loadLinkedImage(url: string): Promise<HTMLImageElement> {
+  return loadImage(url).catch(() => loadImage(url, false));
 }

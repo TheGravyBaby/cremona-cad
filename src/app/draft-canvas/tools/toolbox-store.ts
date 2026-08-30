@@ -202,22 +202,29 @@ export class ToolboxStore implements Undoable {
   /**
    * Whether `image` belongs on the panel currently open.
    *
-   * Three cases, in the order they're tested. An image naming panels belongs on those. An image
-   * naming none belongs on all of them — every image a user placed by hand. An image naming none
-   * but marked `isDefault` ("Default" in the UI) belongs on the panels no *other* image has
-   * claimed by name, which is how a set swaps a general plan photograph out for a specific view on
-   * the panels that have one, without the general one having to list every panel it's still
-   * wanted on.
+   * Four cases, in the order they're tested. An `excludePanels` entry is absolute: the recipe is
+   * saying this panel should show nothing, so nothing else gets to overrule it. Otherwise an image
+   * naming panels belongs on those; an image naming none belongs on all of them — every image a
+   * user placed by hand; and an image naming none but marked `isDefault` ("Default" in the UI)
+   * belongs on the panels no *other* image has claimed by name, which is how a set swaps a general
+   * plan photograph out for a specific view on the panels that have one, without the general one
+   * having to list every panel it's still wanted on.
+   *
+   * `panels` and `excludePanels` are the same statement written from either end, and which one a
+   * set reaches for is whichever is shorter. Excluding is what makes a *blank* panel expressible
+   * at all: a panel nothing claims otherwise shows the default, and "nothing here" was previously
+   * something the format had no way to say.
    *
    * The default case reads the rest of the set, so this is a question about the image *and* its
    * neighbours, not about the image alone. That's what makes adding a scoped image enough on its
    * own: nothing has to be edited on the image it displaces.
    *
-   * The revealed image is exempt from all three — see setRevealedImage.
+   * The revealed image is exempt from all of it — see setRevealedImage.
    */
   imageMatchesActivePanel(image: ImageShape): boolean {
     if (image.id === this._revealedImageId) return true;
     if (this._activePanel === null) return true;
+    if (image.excludePanels?.includes(this._activePanel)) return false;
     if (image.panels?.length) return image.panels.includes(this._activePanel);
     if (!image.isDefault) return true;
     return !this.panelHasScopedImage(this._activePanel);

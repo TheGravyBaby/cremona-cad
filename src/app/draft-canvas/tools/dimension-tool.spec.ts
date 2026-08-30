@@ -22,8 +22,6 @@ function makeHost(): DraftToolHost & { added: DraftShape[] } {
     selectShape: () => { },
     removeShape: () => { },
     returnToSelect: () => { },
-    requestImageFile: async () => null,
-    getDesignBounds: () => null,
   };
 }
 

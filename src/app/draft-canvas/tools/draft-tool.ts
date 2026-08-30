@@ -33,18 +33,10 @@ export interface DraftToolHost {
   /** Deletes a toolbox shape by id (a no-op if it's already gone or its layer is locked) — each
    * call is its own undo step, same as a Select-mode Delete keypress. See eraser-tool.ts. */
   removeShape(id: string): void;
-  /** Switches back to the Select tool, optionally with a just-created shape selected. For a tool
-   * whose commit is asynchronous (see image-tool.ts) and so can't rely on draft-canvas's
-   * synchronous `oneShot` handling to hand control back. */
+  /** Switches back to the Select tool, optionally with a just-created shape selected — for a tool
+   * whose commit is asynchronous and so can't rely on draft-canvas's synchronous `oneShot`
+   * handling to hand control back. */
   returnToSelect(selectShapeId?: string): void;
-  /** Opens the canvas's image file picker and resolves to the chosen file as a data URL plus its
-   * natural pixel size — or null if the user dismissed the dialog. */
-  requestImageFile(): Promise<{ dataUrl: string; width: number; height: number } | null>;
-  /** Extents of the drawn design — measured from what the recipe actually rendered, not from its
-   * parameters — or null while the canvas is still empty. Used to size a placed image against the
-   * drawing it will be traced over. Placed images are excluded, so one scaled-up photo can't
-   * become the yardstick for the next; see draft-canvas's designBounds(). */
-  getDesignBounds(): { pt1: Pt; pt2: Pt } | null;
 }
 
 /**
@@ -66,9 +58,8 @@ export interface DraftTool {
    * would flatten a natural pen stroke onto whatever construction geometry it passes near.
    * Checked by draft-canvas.ts's resolveToolPoint before every onPointerDown/Move/Up call. */
   readonly disableSnapping?: boolean;
-  /** Runs the moment the tool is activated, before any pointer input. For tools whose input
-   * isn't a click at all (see image-tool.ts, which opens a file dialog and hands control
-   * straight back). Most tools don't need it. */
+  /** Runs the moment the tool is activated, before any pointer input. For a tool that has
+   * something to set up, or whose input isn't a click at all. Most tools don't need it. */
   onActivate?(host: DraftToolHost): void;
   onPointerDown(pt: Pt, host: DraftToolHost): void;
   onPointerMove(pt: Pt, host: DraftToolHost): void;

@@ -14,79 +14,234 @@
       "objectId": "2022560100",
       "url": "https://www.loc.gov/item/2022560100/"
     },
-    "notes": "Bout set and back length are the Library of Congress catalogue dimensions, verbatim: length of back 35.4 cm, upper bouts 16.6 cm, middle bouts 10.7 cm, lower bouts 20.6 cm. Everything else in params is unsolved and carries DefaultParams values - the outline arcs, corners and blocks are still to be traced. No arching: none is published. Licence differs from the CC0 corpus entries: the LoC record carries its educational-and-research rights statement rather than a public-domain dedication, so the images are linked at their IIIF addresses rather than inlined. The record holds 18 photographs; four are shipped here. The others are corner, edge, rib, scroll, pegbox and assembled-instrument views, plus sp=17 and sp=18, which are annotated measured drawings signed John Montgomery, January 2006 - a third party's own analysis, deliberately not shipped and not to be traced from. The top (sp=2) is marked isDefault - Default in the settings bar - making it the set's general view: it shows on every panel no other image has claimed, and steps aside on the ones that do. Scope another view to a panel and the top drops out of that panel on its own - nothing on the top entry needs editing. Of the two plan views the back (sp=1) is the cleaner outline source, being unobstructed by the neck, so it is the one to promote if you would rather trace the back. Reference images are placed at the fit the Image tool would give them - width set to the lower bout, centred on the body - so scale each to real dimensions before tracing."
+    "notes": "Bout set and back length are the Library of Congress catalogue dimensions, verbatim: length of back 35.4 cm, upper bouts 16.6 cm, middle bouts 10.7 cm, lower bouts 20.6 cm. Everything else in params is unsolved and carries DefaultParams values - the outline arcs, corners and blocks are still to be traced. No arching: none is published. Licence differs from the CC0 corpus entries: the LoC record carries its educational-and-research rights statement rather than a public-domain dedication, so the images are linked at their IIIF addresses rather than inlined. The record holds 18 photographs; four are shipped here. The others are corner, edge, rib, scroll, pegbox and assembled-instrument views, plus sp=17 and sp=18, which are annotated measured drawings signed John Montgomery, January 2006 - a third party's own analysis, deliberately not shipped and not to be traced from. The top (sp=2) is marked isDefault - Default in the settings bar - making it the set's general view: it shows on every panel no other image has claimed, and steps aside on the ones that do. Scope another view to a panel and the top drops out of that panel on its own - nothing on the top entry needs editing. Its excludePanels keeps it off crossArching, where this instrument has no usable reference: that panel shows nothing rather than a plan shot that would be traced by mistake. Uncheck a panel in the settings bar's panel picker to write one. Of the two plan views the back (sp=1) is the cleaner outline source, being unobstructed by the neck, so it is the one to promote if you would rather trace the back. Reference images are placed at the fit the Image tool would give them - width set to the lower bout, centred on the body - so scale each to real dimensions before tracing."
   },
   "params": {
-    "height": 354.0,
-    "width": 206.0,
-    "overhang": 3,
+    "height": 354,
+    "width": 206,
+    "overhang": 3.3,
     "rib": 1,
     "bitDiameter": 6.35,
-    "purflingOffset": null,
-    "purflingChannelDepth": null,
-    "innerFlutingDepth": null,
-    "outerFlutingDepth": null,
+    "purflingOffset": 4.9,
+    "purflingChannelDepth": 1,
+    "innerFlutingDepth": 8.6,
+    "outerFlutingDepth": 1.65,
     "ratios": {
       "HtoW": 1.7184466019417475,
-      "UBtoLB": 0.8058252427184466,
-      "CBWtoLBW": 0.5194174757281553,
-      "U0toUBW": 0.625,
-      "U1toUBW": 0.3333333333333333,
-      "U2toUBW": 0.5,
-      "U3toLBW": 0.125,
-      "C0YtoH": 0.5625,
-      "C0toLBW": 0.4444444444444444,
-      "C2toLBW": 0.08333333333333333,
-      "C1toLBW": 0.125,
-      "LBtoH": 0.5714285714285714,
-      "L0toLBW": 0.875,
-      "L1toLBW": 0.3333333333333333,
-      "L2toLBW": 0.5,
-      "L3toLBW": 0.125,
-      "UCYtoH": 0.6666666666666666,
-      "LCYtoH": 0.4,
+      "UBtoLB": 0.8009708737864077,
+      "CBWtoLBW": 0.5048543689320388,
+      "U0toUBW": 1.0038363171355498,
+      "U1toUBW": 0.3772378516624041,
+      "U2toUBW": 0.5754475703324808,
+      "U3toLBW": 1.519756838905775,
+      "C0YtoH": 0.5536723163841808,
+      "C0toLBW": 0.46099290780141844,
+      "C2toLBW": 0.08611955420466058,
+      "C1toLBW": 0.16717325227963525,
+      "LBtoH": 0.5819209039548022,
+      "L0toLBW": 1.6717325227963524,
+      "L1toLBW": 0.3394123606889564,
+      "L2toLBW": 0.40526849037487334,
+      "L3toLBW": 1.519756838905775,
+      "UCYtoH": 0.655367231638418,
+      "LCYtoH": 0.403954802259887,
       "FLtoW": 0.02,
       "FUtoL": 0.8
     },
     "bouts": {
-      "UBW": 166.0,
-      "CBW": 107.0,
-      "LBW": 206.0,
-      "U0": null,
-      "U1": null,
-      "U2": null,
-      "U3": null,
-      "U31": null,
+      "UBW": 165,
+      "CBW": 104,
+      "LBW": 206,
+      "U0": {
+        "x": 0,
+        "y": 192.7,
+        "r": 157,
+        "start": 1.5707963267948966,
+        "end": 1.3736024472442325
+      },
+      "U1": {
+        "x": 19.2,
+        "y": 288.80078043387573,
+        "r": 59,
+        "start": 1.3736024472442325,
+        "end": 0
+      },
+      "U2": {
+        "x": -11.8,
+        "y": 288.80078043387573,
+        "r": 90,
+        "start": 0,
+        "end": -0.3337802003314235
+      },
+      "U3": {
+        "x": 356.67615704761545,
+        "y": 161.03019818811362,
+        "r": 300,
+        "start": 2.8078125311832087,
+        "end": 2.844843829397074
+      },
+      "U31": {
+        "x": 89.87062583689794,
+        "y": 242.6133368588392,
+        "r": 21,
+        "start": 2.844843829397074,
+        "end": -2.611750674566094
+      },
       "U4": null,
-      "C2": null,
-      "C21": null,
-      "C0": null,
-      "C1": null,
-      "C11": null,
+      "C2": {
+        "x": 67.37207529538874,
+        "y": 215.70601830236913,
+        "r": 17,
+        "start": 2.872042828056576,
+        "end": 1.8053900804184833
+      },
+      "C21": {
+        "x": 67.13962748666854,
+        "y": 216.67862717350962,
+        "r": 16,
+        "start": 1.805390085376936,
+        "end": 1.278503788953221
+      },
+      "C0": {
+        "x": 138.7,
+        "y": 196,
+        "r": 91,
+        "start": 2.8720428280565766,
+        "end": -2.7503385461496834
+      },
+      "C1": {
+        "x": 85.08297070800936,
+        "y": 173.8818135937456,
+        "r": 33,
+        "start": -2.7503385277303996,
+        "end": -1.9203909579567828
+      },
+      "C11": {
+        "x": 79.6026989181283,
+        "y": 158.84962742176668,
+        "r": 17,
+        "start": -1.9203909579567828,
+        "end": -1.2008065012833273
+      },
       "L4": null,
-      "L3": null,
-      "L31": null,
-      "L2": null,
-      "L1": null,
-      "L0": null,
-      "UCr": null,
-      "LCr": null
+      "L3": {
+        "x": 362.7629737211666,
+        "y": 234.52666439010403,
+        "r": 300,
+        "start": -2.7031852806399237,
+        "end": -2.7658244676768766
+      },
+      "L31": {
+        "x": 102.29969876337032,
+        "y": 131.77024172826054,
+        "r": 20,
+        "start": -2.7658244676768766,
+        "end": 2.545409832619666
+      },
+      "L2": {
+        "x": 18.7,
+        "y": 73.21742685502733,
+        "r": 80,
+        "start": 0,
+        "end": 0.4384073729498693
+      },
+      "L1": {
+        "x": 31.7,
+        "y": 73.21742685502733,
+        "r": 67,
+        "start": -1.4499702330100173,
+        "end": 0
+      },
+      "L0": {
+        "x": 0,
+        "y": 334.3,
+        "r": 330,
+        "start": 4.71238898038469,
+        "end": -1.4499702330100173
+      },
+      "UCr": {
+        "x": 71.75,
+        "y": 232
+      },
+      "LCr": {
+        "x": 85.75,
+        "y": 143
+      }
     },
     "viol": {
       "width": null,
       "V0": null,
       "neckRadius": null
     },
-    "button": null,
+    "button": {
+      "Pt1": {
+        "x": -10,
+        "y": 349.7
+      },
+      "Pt2": {
+        "x": 10,
+        "y": 354.7
+      },
+      "height": 5,
+      "width": 20
+    },
     "outerCorners": {
-      "U3": null,
-      "U31": null,
-      "C2": null,
-      "C21": null,
-      "C1": null,
-      "C11": null,
-      "L3": null,
-      "L31": null
+      "U3": {
+        "x": 356.67615704761545,
+        "y": 161.03019818811362,
+        "r": 295.7,
+        "start": 2.8078125311832087,
+        "end": 2.844843829397074
+      },
+      "U31": {
+        "x": 89.87062583689794,
+        "y": 242.6133368588392,
+        "r": 16.7,
+        "start": 2.844843829397074,
+        "end": -2.6005834368252336
+      },
+      "C2": {
+        "x": 67.37207529538874,
+        "y": 215.70601830236913,
+        "r": 12.7,
+        "start": 2.872042828056576,
+        "end": 1.8053900804184833
+      },
+      "C21": {
+        "x": 67.13962748666854,
+        "y": 216.67862717350962,
+        "r": 11.7,
+        "start": 1.805390085376936,
+        "end": 1.072351545346248
+      },
+      "C1": {
+        "x": 85.08297070800936,
+        "y": 173.8818135937456,
+        "r": 28.7,
+        "start": -2.7503385277303996,
+        "end": -1.9203909579567828
+      },
+      "C11": {
+        "x": 79.6026989181283,
+        "y": 158.84962742176668,
+        "r": 12.7,
+        "start": -1.9203909579567828,
+        "end": -0.9604598693599016
+      },
+      "L3": {
+        "x": 362.7629737211666,
+        "y": 234.52666439010403,
+        "r": 295.7,
+        "start": -2.7031852806399237,
+        "end": -2.7658244676768766
+      },
+      "L31": {
+        "x": 102.29969876337032,
+        "y": 131.77024172826054,
+        "r": 15.7,
+        "start": -2.7658244676768766,
+        "end": 2.5050698733459984
+      }
     },
     "blocks": {
       "U": null,
@@ -101,29 +256,170 @@
       "useViolCornerUC": false,
       "useViolCornerLC": false,
       "useKellyC0": false,
-      "U31DoubleArc": false,
-      "C21DoubleArc": false,
-      "C11DoubleArc": false,
-      "L31DoubleArc": false,
-      "ucCornerSharpness": 0,
-      "lcCornerSharpness": 0
+      "U31DoubleArc": true,
+      "C21DoubleArc": true,
+      "C11DoubleArc": true,
+      "L31DoubleArc": true,
+      "ucCornerSharpness": 0.21,
+      "lcCornerSharpness": 0.1
+    },
+    "arching": {
+      "surfaceMethod": "proportional",
+      "ribHeight": 29,
+      "top": {
+        "arch": {
+          "type": "spline",
+          "archHeight": 12,
+          "peak": 0.5,
+          "points": [
+            {
+              "t": 0.15,
+              "z": 4.5,
+              "mirror": false
+            },
+            {
+              "t": 0.31,
+              "z": 10,
+              "mirror": false
+            },
+            {
+              "t": 0.76,
+              "z": 9.75,
+              "mirror": false
+            },
+            {
+              "t": 0.91,
+              "z": 3.05,
+              "mirror": false
+            }
+          ]
+        },
+        "thickness": 3.5,
+        "fluting": {
+          "sweepRadius": 5.63,
+          "depth": 1.2,
+          "sweepRadius_cBout": null,
+          "cornerGouge": true
+        },
+        "cross": {
+          "type": "cycloid",
+          "d": 0.4,
+          "pct": 0.9
+        }
+      },
+      "bottom": {
+        "arch": {
+          "type": "spline",
+          "archHeight": 11.25,
+          "peak": 0.5,
+          "points": [
+            {
+              "t": 0.15,
+              "z": 3.4,
+              "mirror": false
+            },
+            {
+              "t": 0.3,
+              "z": 9.5,
+              "mirror": false
+            },
+            {
+              "t": 0.625,
+              "z": 10.5,
+              "mirror": false
+            },
+            {
+              "t": 0.75,
+              "z": 8,
+              "mirror": false
+            },
+            {
+              "t": 0.875,
+              "z": 3.05,
+              "mirror": false
+            }
+          ]
+        },
+        "thickness": 3.5,
+        "fluting": {
+          "sweepRadius": 5.63,
+          "depth": 1.2,
+          "sweepRadius_cBout": null,
+          "cornerGouge": true
+        },
+        "cross": {
+          "type": "cycloid",
+          "d": 0.4,
+          "pct": 0.9
+        }
+      }
     }
   },
-  "paths": [],
+  "paths": [
+    {
+      "key": "inner",
+      "path": "M -30.75918367346938 346.657372735903 A 59 59 0 0 1 -78.2 288.80078043387573 A 90 90 0 0 1 -73.23295755125393 259.31525635702326 A 300 300 0 0 0 -69.78848907910196 248.75400321039905 A 21 21 0 0 0 -71.75000000000098 232.0000000000006 A 16 16 0 0 0 -63.42046123538868 232.24036879825525 A 17 17 0 0 0 -50.985930430815884 220.2330765610215 A 91 91 0 0 0 -54.57673026762757 161.29732734306313 A 33 33 0 0 0 -73.77991014137964 142.8779296140391 A 17 17 0 0 0 -85.75 142.99999999999997 A 20 20 0 0 0 -83.69517912352772 124.43049725241458 A 300 300 0 0 0 -91.13431025708775 107.17726633609594 A 80 80 0 0 1 -98.7 73.21742685502734 A 67 67 0 0 1 -39.775665399239564 6.705896814292842 A 330 330 0 0 1 -6.062001655779397e-14 4.300000000000011 A 330 330 0 0 1 39.77566539923954 6.705896814292885 A 67 67 0 0 1 98.7 73.21742685502733 A 80 80 0 0 1 91.13431025708772 107.1772663360961 A 300 300 0 0 0 83.69517912352774 124.43049725241457 A 20 20 0 0 0 85.75000000000003 142.99999999999997 A 17 17 0 0 0 73.77991014137967 142.8779296140391 A 33 33 0 0 0 54.57673026762756 161.2973273430632 A 91 91 0 0 0 50.985930430815884 220.2330765610215 A 17 17 0 0 0 63.42046123538868 232.24036879825525 A 16 16 0 0 0 71.75 232 A 21 21 0 0 0 69.78848907910199 248.7540032103992 A 300 300 0 0 0 73.23295755125417 259.3152563570232 A 90 90 0 0 1 78.2 288.80078043387573 A 59 59 0 0 1 30.7591836734694 346.657372735903 A 157 157 0 0 1 9.613477373306723e-15 349.7 A 157 157 0 0 1 -30.759183673469366 346.657372735903"
+    },
+    {
+      "key": "top",
+      "path": "M -89.6742692583112 141.1023652707766 C -91.09641137953338 143.02638128019444 -88.58302489897069 149.6325439835989 -86.8816176132416 148.44254605233704 A 12.7 12.7 0 0 1 -75.2527331849102 146.91782964775842 A 28.7 28.7 0 0 1 -58.55178584016217 162.93712403633393 A 86.7 86.7 0 0 1 -55.13066119067841 219.08799711912707 A 12.7 12.7 0 0 1 -64.4199871446828 228.05815073164877 A 11.7 11.7 0 0 1 -72.73293096881872 226.95505438127822 C -74.9368483261969 225.75549558714053 -77.16672791365063 231.33112601753342 -75.55556335800097 234.01281441975004 A 16.7 16.7 0 0 1 -73.90054565331737 247.49662867174644 A 295.7 295.7 0 0 1 -77.29564341070198 257.9065038566021 A 94.3 94.3 0 0 0 -82.5 288.80078043387573 A 63.3 63.3 0 0 0 -31.601632653061216 350.8740396324914 A 161.3 161.3 0 0 0 9.876776435123405e-15 354 A 161.3 161.3 0 0 0 31.601632653061262 350.8740396324914 A 63.3 63.3 0 0 0 82.5 288.80078043387573 A 94.3 94.3 0 0 0 77.29564330092495 257.9065035400181 A 295.7 295.7 0 0 1 73.90054565331735 247.49662867174646 A 16.7 16.7 0 0 1 75.55556335800097 234.01281441975007 C 77.16672791365065 231.33112601753345 74.93684832619688 225.7554955871405 72.7329309688187 226.95505438127822 A 11.7 11.7 0 0 1 64.41998716542014 228.05815073660486 A 12.7 12.7 0 0 1 55.13066119067843 219.0879971191271 A 86.7 86.7 0 0 1 58.55178587036602 162.93712396311622 A 28.7 28.7 0 0 1 75.2527331849102 146.91782964775842 A 12.7 12.7 0 0 1 86.88161761324162 148.44254605233704 C 88.5830248989707 149.6325439835989 91.09641137953338 143.02638128019444 89.6742692583112 141.1023652707766 A 15.7 15.7 0 0 1 87.69515084609388 126.00854231472147 A 295.7 295.7 0 0 1 95.02765443340616 109.00260770820354 A 84.3 84.3 0 0 0 103 73.21742685502733 A 71.3 71.3 0 0 0 40.293954372623574 2.4372463788427297 A 334.3 334.3 0 0 0 -6.140991374324403e-14 0 A 334.3 334.3 0 0 0 -40.293954372623695 2.437246378842758 A 71.3 71.3 0 0 0 -103 73.21742685502734 A 84.3 84.3 0 0 0 -95.02765443340616 109.00260770820358 A 295.7 295.7 0 0 1 -87.6951508460939 126.00854231472154 A 15.7 15.7 0 0 1 -89.6742692583112 141.1023652707766"
+    },
+    {
+      "key": "back",
+      "path": "M -10 358.6897201687114 A 10 10 0 0 0 10 358.6897201687114 L 10 353.6897201687114 A 161.3 161.3 0 0 0 31.601632653061262 350.8740396324914 A 63.3 63.3 0 0 0 82.5 288.80078043387573 A 94.3 94.3 0 0 0 77.29564330092495 257.9065035400181 A 295.7 295.7 0 0 1 73.90054565331735 247.49662867174646 A 16.7 16.7 0 0 1 75.55556335800097 234.01281441975007 C 77.16672791365065 231.33112601753345 74.93684832619688 225.7554955871405 72.7329309688187 226.95505438127822 A 11.7 11.7 0 0 1 64.41998716542014 228.05815073660486 A 12.7 12.7 0 0 1 55.13066119067843 219.0879971191271 A 86.7 86.7 0 0 1 58.55178587036602 162.93712396311622 A 28.7 28.7 0 0 1 75.2527331849102 146.91782964775842 A 12.7 12.7 0 0 1 86.88161761324162 148.44254605233704 C 88.5830248989707 149.6325439835989 91.09641137953338 143.02638128019444 89.6742692583112 141.1023652707766 A 15.7 15.7 0 0 1 87.69515084609388 126.00854231472147 A 295.7 295.7 0 0 1 95.02765443340616 109.00260770820354 A 84.3 84.3 0 0 0 103 73.21742685502733 A 71.3 71.3 0 0 0 40.293954372623574 2.4372463788427297 A 334.3 334.3 0 0 0 -6.140991374324403e-14 0 A 334.3 334.3 0 0 0 -40.293954372623695 2.437246378842758 A 71.3 71.3 0 0 0 -103 73.21742685502734 A 84.3 84.3 0 0 0 -95.02765443340616 109.00260770820358 A 295.7 295.7 0 0 1 -87.6951508460939 126.00854231472154 A 15.7 15.7 0 0 1 -89.6742692583112 141.1023652707766 C -91.09641137953338 143.02638128019444 -88.58302489897069 149.6325439835989 -86.8816176132416 148.44254605233704 A 12.7 12.7 0 0 1 -75.2527331849102 146.91782964775842 A 28.7 28.7 0 0 1 -58.55178584016217 162.93712403633393 A 86.7 86.7 0 0 1 -55.13066119067841 219.08799711912707 A 12.7 12.7 0 0 1 -64.4199871446828 228.05815073164877 A 11.7 11.7 0 0 1 -72.73293096881872 226.95505438127822 C -74.9368483261969 225.75549558714053 -77.16672791365063 231.33112601753342 -75.55556335800097 234.01281441975004 A 16.7 16.7 0 0 1 -73.90054565331737 247.49662867174644 A 295.7 295.7 0 0 1 -77.29564341070198 257.9065038566021 A 94.3 94.3 0 0 0 -82.5 288.80078043387573 A 63.3 63.3 0 0 0 -31.601632653061216 350.8740396324914 A 161.3 161.3 0 0 0 -10.000000000000025 353.68972016871135 L -10 358.6897201687114"
+    },
+    {
+      "key": "purfling",
+      "path": "M -84.36601484832572 141.90646297857228 A 20.6 20.6 0 0 0 -83.13704353433245 124.2103049181392 A 300.6 300.6 0 0 0 -90.59105293015955 106.92256753998791 A 79.4 79.4 0 0 1 -98.10000000000001 73.21742685502734 A 66.4 66.4 0 0 1 -39.70334600760459 7.30152245644868 A 329.4 329.4 0 0 1 -6.050979834587071e-14 4.900000000000034 A 329.4 329.4 0 0 1 39.70334600760456 7.3015224564487085 A 66.4 66.4 0 0 1 98.10000000000001 73.21742685502733 A 79.4 79.4 0 0 1 90.59105293015958 106.92256753998808 A 300.6 300.6 0 0 0 83.13704353433246 124.21030491813919 A 20.6 20.6 0 0 0 84.36601484832573 141.90646297857228 A 17.6 17.6 0 0 0 73.57439994925913 142.3142226325899 A 33.6 33.6 0 0 0 54.02207135052971 161.0685185021417 A 91.6 91.6 0 0 0 50.4075959061839 220.39285508779747 A 17.6 17.6 0 0 0 63.28099250385927 232.82393410987476 A 16.6 16.6 0 0 0 70.56735616851864 232.92087689710465 A 21.6 21.6 0 0 0 69.21471374316498 248.92945082044378 A 300.6 300.6 0 0 0 72.66607115226145 259.511826473361 A 89.4 89.4 0 0 1 77.60000000000001 288.80078043387573 A 58.4 58.4 0 0 1 30.641632653061237 346.0690006107976 A 156.4 156.4 0 0 1 9.576737969332302e-15 349.1 A 156.4 156.4 0 0 1 -30.6416326530612 346.0690006107977 A 58.4 58.4 0 0 1 -77.6 288.80078043387573 A 89.4 89.4 0 0 1 -72.66607116757892 259.5118265175356 A 300.6 300.6 0 0 0 -69.2147137431649 248.92945082044363 A 21.6 21.6 0 0 0 -70.56735616851863 232.92087689710468 A 16.6 16.6 0 0 0 -63.28099250096569 232.82393410918323 A 17.6 17.6 0 0 0 -50.4075959061839 220.39285508779747 A 91.6 91.6 0 0 0 -54.02207134631523 161.06851851235805 A 33.6 33.6 0 0 0 -73.57439994925912 142.3142226325899 A 17.6 17.6 0 0 0 -84.36601484832573 141.90646297857228"
+    },
+    {
+      "key": "outerPurfling",
+      "path": "M -86.95777039983466 143.9679970171709 A 19.6 19.6 0 0 0 -84.06726951632457 124.57729214193151 A 299.6 299.6 0 0 0 -91.49648180837318 107.34706553350127 A 80.4 80.4 0 0 1 -99.10000000000001 73.21742685502734 A 67.4 67.4 0 0 1 -39.82387832699622 6.308813052855626 A 330.4 330.4 0 0 1 -6.069349536574281e-14 3.900000000000034 A 330.4 330.4 0 0 1 39.823878326996194 6.308813052855669 A 67.4 67.4 0 0 1 99.10000000000001 73.21742685502733 A 80.4 80.4 0 0 1 91.49648180837316 107.34706553350145 A 299.6 299.6 0 0 0 84.06726951632459 124.57729214193148 A 19.6 19.6 0 0 0 86.95777039983466 143.9679970171709 A 16.6 16.6 0 0 0 73.9169169361267 143.25373426833858 A 32.6 32.6 0 0 0 54.94650287902613 161.4498665703442 A 90.6 90.6 0 0 0 51.371486780570535 220.12655754317086 A 16.6 16.6 0 0 0 63.513440389741625 231.85132525717557 A 15.600000000000001 15.600000000000001 0 0 0 72.68072341225918 231.26136546038163 A 20.6 20.6 0 0 0 70.17100596972668 248.63703813703614 A 299.6 299.6 0 0 0 73.61088181724932 259.184209612798 A 90.4 90.4 0 0 1 78.60000000000001 288.80078043387573 A 59.4 59.4 0 0 1 30.837551020408174 347.04962081930654 A 157.4 157.4 0 0 1 9.63797030928967e-15 350.1 A 157.4 157.4 0 0 1 -30.837551020408142 347.0496208193066 A 59.4 59.4 0 0 1 -78.6 288.80078043387573 A 90.4 90.4 0 0 1 -73.6108818070373 259.1842095833484 A 299.6 299.6 0 0 0 -70.1710059697266 248.63703813703603 A 20.6 20.6 0 0 0 -72.68072341225918 231.26136546038163 A 15.600000000000001 15.600000000000001 0 0 0 -63.51344039167068 231.85132525763663 A 16.6 16.6 0 0 0 -51.371486780570535 220.12655754317086 A 90.6 90.6 0 0 0 -54.9465028818358 161.4498665635332 A 32.6 32.6 0 0 0 -73.91691693612668 143.25373426833858 A 16.6 16.6 0 0 0 -86.95777039983467 143.9679970171709"
+    }
+  ],
   "referenceImages": [
     {
       "id": "ward-top",
       "label": "Top (sp=2)",
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154810:musihas-200154810.0002/full/pct:100.0/0/default.jpg",
       "xlink:href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154810:musihas-200154810.0002/full/pct:100.0/0/default.jpg",
-      "x": -103.0,
-      "y": 0.1734,
-      "width": 206.0,
-      "height": 353.6532,
+      "x": -107.33233320122301,
+      "y": -9.33460350036621,
+      "width": 217.06466640244588,
+      "height": 372.6486110687256,
       "rotationDeg": 0,
-      "opacity": 0.25,
+      "opacity": 0.65,
+      "suppressWhite": false,
       "locked": true,
       "isDefault": true,
+      "excludePanels": [
+        "crossArching"
+      ],
+      "credit": {
+        "source": "Library of Congress",
+        "imageId": "musihas-200154810.0002",
+        "licence": "Educational and research use",
+        "attribution": "Library of Congress, Music Division. Gift of Gertrude Clarke Whittall, 1936.",
+        "url": "https://www.loc.gov/resource/music.musihas-200154810/?sp=2&st=image"
+      }
+    },
+    {
+      "id": "ward-top-2",
+      "label": "Top (sp=2)",
+      "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154810:musihas-200154810.0002/full/pct:100.0/0/default.jpg",
+      "xlink:href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154810:musihas-200154810.0002/full/pct:100.0/0/default.jpg",
+      "x": 6.000000000000007,
+      "y": -9.33460350036621,
+      "width": 217.06466640244588,
+      "height": 372.6486110687256,
+      "rotationDeg": 0,
+      "opacity": 0.65,
+      "suppressWhite": false,
+      "locked": true,
+      "panels": [
+        "fluting"
+      ],
+      "isDefault": false,
       "credit": {
         "source": "Library of Congress",
         "imageId": "musihas-200154810.0002",
@@ -137,13 +433,14 @@
       "label": "Back (sp=1)",
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154810:musihas-200154810.0001/full/pct:100.0/0/default.jpg",
       "xlink:href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154810:musihas-200154810.0001/full/pct:100.0/0/default.jpg",
-      "x": -200,
-      "y": -9.8106,
-      "width": 206.0,
-      "height": 373.6212,
+      "x": -217.7283578406728,
+      "y": -7.251703262329102,
+      "width": 209.78003721454868,
+      "height": 380.47703514633173,
       "rotationDeg": 0,
-      "opacity": 0.25,
-      "locked": true,
+      "opacity": 0.65,
+      "suppressWhite": false,
+      "locked": false,
       "panels": [
         "fluting"
       ],
@@ -160,16 +457,23 @@
       "label": "Profiles, both sides (sp=3)",
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154810:musihas-200154810.0003/full/pct:100.0/0/default.jpg",
       "xlink:href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154810:musihas-200154810.0003/full/pct:100.0/0/default.jpg",
-      "x": -103.0,
-      "y": 17.8723,
-      "width": 206.0,
-      "height": 318.2554,
+      "x": -41.00670187611327,
+      "y": -3.827700000000001,
+      "width": 121.35340375222657,
+      "height": 382.6171592285156,
       "rotationDeg": 0,
-      "opacity": 0.25,
+      "opacity": 0.65,
+      "suppressWhite": false,
       "locked": true,
       "panels": [
         "longArching"
       ],
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0.51,
+        "bottom": 0
+      },
       "credit": {
         "source": "Library of Congress",
         "imageId": "musihas-200154810.0003",
@@ -178,5 +482,30 @@
         "url": "https://www.loc.gov/resource/music.musihas-200154810/?sp=3&st=image"
       }
     }
-  ]
+  ],
+  "toolboxState": {
+    "shapes": [],
+    "currentColor": "#1d4ed8",
+    "currentDashed": false,
+    "currentTextSize": 9.3,
+    "currentStrokeWidth": 2,
+    "currentOpacity": 1,
+    "currentSectionColor2": "#93c5fd",
+    "currentSectionWeights": [
+      1,
+      1,
+      1
+    ],
+    "layers": [
+      {
+        "id": "layer-default",
+        "name": "Layer 1",
+        "visible": true,
+        "locked": false
+      }
+    ],
+    "activeLayerId": "layer-default",
+    "showImages": true,
+    "showShapes": true
+  }
 }

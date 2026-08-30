@@ -21,7 +21,9 @@ Most files here carry a header comment explaining their own contract. Read it be
 - **`snap-engine.ts`** — indexes snap candidates by reading the *rendered SVG*, not recipe data,
   so it works for any recipe and for toolbox shapes alike.
 - **`shape-renderer.ts` / `shape-grabbers.ts` / `shape-hit-test.ts`** — drawing, handles, picking.
-- **`image-asset-store.ts` / `reference-image-schema.ts`** — reference images. See below.
+- **`image-asset-store.ts` / `reference-image-schema.ts` / `image-placement.ts`** — reference
+  images: the pixel table (plus the upload and paste-a-link passes that feed it), the file-format
+  translation, and where a newly added image lands. See below.
 
 ## Adding a tool
 
@@ -54,6 +56,16 @@ rather than the active layer. Keep those two agreeing.
 **Missing `layerId` means `DEFAULT_LAYER_ID`,** not a migration. Shapes persisted before layers
 existed land on the first layer for free. Keep it that way.
 
+**Adding a reference image is not a tool.** It was one until the reference-image controls were
+gathered into the bottom bar's image list, and it never fitted: its input is a file or a link
+rather than a click, so it did its whole job in `onActivate` and handed control straight back —
+and having it in the palette as well meant two entry points, only one of them beside the list of
+what you had already placed. `toolRows` has no image entry and `tool-hotkeys.ts` no `KeyI`.
+`draft-canvas`'s `placeImageFromFile`/`placeImageFromLink` are what the list's two buttons call;
+`image-placement.ts` holds the sizing. A pasted link is inlined into the recipe when the host
+sends CORS headers and kept as a bare link when it doesn't — `prepareLinkedImage` explains the
+trade, and the user is told which they got.
+
 **Reference images are the one shape the toolbox does not own.** `ImageShape` lives in the same
 shape list — so it gets selection, move, delete, layers and undo for free — but its durable home is
 the recipe's `referenceImages` field. `exportState` leaves images out; they're re-derived from the
@@ -65,8 +77,8 @@ The deprecated singular `referenceImage` still loads, folded into the array.
 **Every field on `NamedReferenceImage` must also exist on `ImageShape`.** The canvas is the live
 copy: recipe-base subscribes to this store and rewrites `referenceImages` from the placed shapes on
 every change, so a field that stops at the file type is erased the first time the user touches the
-canvas — and only visibly so after save-and-reopen. `panels`, `isDefault`, `crop` and `credit` are
-the shape of field this catches: authored in a template file rather than arrived at by dragging,
+canvas — and only visibly so after save-and-reopen. `panels`, `excludePanels`, `isDefault`, `crop` and `credit`
+are the shape of field this catches: authored in a template file rather than arrived at by dragging,
 and easy to leave out of `imageShapesToRecipe`.
 
 **Panel-scoped images.** An image's `panels` list names the recipe panels it belongs on; empty or
@@ -76,6 +88,16 @@ which is what keeps this out of the canvas's instrument-agnostic boundary. `acti
 state like the two masters: not persisted, not undo-tracked, and not cleared by `resetAll`, since
 the open panel outlives the file shown in it. A `null` panel filters nothing, so a recipe that
 forgets to push shows an image too widely rather than hiding one with no indication of why.
+
+**A panel can be deliberately blank.** `excludePanels` is `panels` written from the other end —
+"all but these" — and it's absolute: checked before `panels` and before `isDefault`, so nothing
+overrules it. It exists because a panel nothing claims falls through to the default view, and
+"this instrument has no usable cross-arch photograph" had no way to be said; showing the plan shot
+there instead invites tracing the wrong thing. Excluding is about the *image*, not the panel, so
+adding a real reference scoped to that panel later just works with nothing to undo. The settings
+bar hides the two encodings behind one checkbox per panel meaning "shown here", storing whichever
+list is shorter — see `writeImagePanels`, which also explains why the short list is the one that
+ages well.
 
 **An `isDefault` image is the set's general view** — "Default" everywhere the user sees it; the
 field is spelled out because `default` alone reads as a keyword. Marked `isDefault` with no `panels`
@@ -106,6 +128,16 @@ the only thing that should compute that, and `image-crop.spec.ts` pins the invar
 rotation, where the box centre the rotation turns about has itself moved). This is also why the
 `<image>` renders with `preserveAspectRatio="none"` — crop fractions only mean anything if the
 picture fills its rectangle.
+
+**A reference image is never skewed.** It's a photograph of a real object being measured against,
+so a stretched one is a wrong drawing rather than a look, and every way to notice is subtle — an
+arch reading a millimetre low, a corner at the wrong angle. All three resize paths (typed W/H via
+`applyImageSize`, corner drags, edge drags) take the second dimension from `imageAspect`, and
+there is deliberately no unlock. `imageAspect` reads the ratio off the *box* rather than the source
+pixels, which is what makes it survive cropping — a crop leaves the box at the cropped picture's
+proportions, and those are the ones the next resize should hold — and what lets a hand-authored
+template that arrived out of proportion keep what it has instead of jumping when first touched.
+`image-resize.spec.ts` pins it from each path.
 
 **Panel choices come from the recipe.** `setAvailablePanels` takes `{id, label}` from
 `RecipeComponentBase.initializePanelFlow`, so the settings bar can offer a scoping picker. The store

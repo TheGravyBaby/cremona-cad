@@ -5,7 +5,7 @@ import { ToolboxStore, PanelChoice } from '../tools/toolbox-store';
 import {
   DraftShape, LineShape, DimensionShape, RectShape, TextShape, PointShape, CircleShape, ArcShape, SectionShape,
   FreehandShape, ImageShape, DEFAULT_IMAGE_OPACITY, DEFAULT_SHAPE_COLOR, DEFAULT_FREEHAND_WIDTH,
-  DEFAULT_TEXT_SIZE_MM, applyImageCrop, isCropped,
+  DEFAULT_TEXT_SIZE_MM, applyImageCrop, applyImageSize, isCropped,
 } from '../tools/toolbox-shape';
 import { ImageCrop } from '../../models/types';
 import { normalizeDegrees, pointAtDistanceToward } from '../../helpers/draftMath';
@@ -554,8 +554,13 @@ export class SettingsBarComponent {
   /** Width and height are independent here, unlike a corner-handle drag — typing an exact
    * dimension is how you scale a photo to a real measurement, which is the whole point of a
    * reference image and would be defeated by silently correcting the other axis. */
+  /** W and H are one control: a reference image is never skewed, so setting either takes the
+   * other from the box's current proportions. See applyImageSize, which also explains why it
+   * scales about the centre. */
   setImageSize(key: 'width' | 'height', value: number): void {
-    this.patchNumberField(this.selectedImageShape, key, value, { validate: v => v > 0 });
+    const shape = this.selectedImageShape;
+    if (!shape || !Number.isFinite(value) || value <= 0) return;
+    this.toolbox.updateShape(shape.id, applyImageSize(shape, key, value) as Partial<DraftShape>);
   }
 
   setImageRotation(valueDeg: number): void {
@@ -650,37 +655,68 @@ export class SettingsBarComponent {
   /** "Default" is what the UI calls ImageShape.isDefault. */
   public get imageIsDefault(): boolean { return this.selectedImageShape?.isDefault ?? false; }
 
-  public isImageOnPanel(panelId: string): boolean {
-    return !!this.selectedImageShape?.panels?.includes(panelId);
-  }
-
-  /** Says what the scoping is on the closed button, so the popup is for changing it rather than
-   * for finding out. */
-  public get imageScopeSummary(): string {
-    const count = this.selectedImageShape?.panels?.length ?? 0;
-    if (count) return `${count} panel${count === 1 ? '' : 's'}`;
-    return this.imageIsDefault ? 'Default' : 'All panels';
-  }
-
   /**
-   * Adds or removes one panel from the image's list. An empty list is stored as no list at all,
-   * so "shows everywhere" has one representation rather than two that behave alike.
+   * Whether the image is wanted on `panelId` — what its checkbox shows.
    *
-   * Naming a panel clears Default, because the two are alternatives: Default means "wherever
-   * nothing else was named", so a default that also named panels of its own could never be
-   * reached on any other panel and would just be a confusing way to write a list.
+   * One question, two ways it can be written down: an image that names `panels` is wanted on
+   * those, and an image that names none is wanted everywhere it isn't excluded. The picker works
+   * in the set of wanted panels and lets writeImagePanels decide which way to store it, so the
+   * user never has to know there are two.
    */
+  public isImageOnPanel(panelId: string): boolean {
+    const shape = this.selectedImageShape;
+    if (!shape) return false;
+    if (shape.panels?.length) return shape.panels.includes(panelId);
+    return !shape.excludePanels?.includes(panelId);
+  }
+
+  /** Says what the scoping is on the button, so the popup is for changing it rather than for
+   * finding out. */
+  public get imageScopeSummary(): string {
+    const shape = this.selectedImageShape;
+    const named = shape?.panels?.length ?? 0;
+    if (named) return `${named} panel${named === 1 ? '' : 's'}`;
+    const base = this.imageIsDefault ? 'Default' : 'All panels';
+    const excluded = shape?.excludePanels?.length ?? 0;
+    return excluded ? `${base}, except ${excluded}` : base;
+  }
+
+  /** Checks or unchecks one panel. Unchecking the last panel an image was wanted on is allowed —
+   * it's a wordy way to hide it, and it undoes. */
   toggleImagePanel(panelId: string): void {
     const shape = this.selectedImageShape;
     if (!shape) return;
-    const current = shape.panels ?? [];
-    const next = current.includes(panelId)
-      ? current.filter(p => p !== panelId)
-      : [...current, panelId];
-    this.toolbox.updateShape(shape.id, {
-      panels: next.length ? next : undefined,
-      isDefault: next.length ? false : shape.isDefault,
-    } as Partial<DraftShape>);
+    const wanted = new Set(this.availablePanels.map(p => p.id).filter(id => this.isImageOnPanel(id)));
+    if (wanted.has(panelId)) wanted.delete(panelId);
+    else wanted.add(panelId);
+    this.writeImagePanels(shape, wanted);
+  }
+
+  /**
+   * Stores a set of wanted panels as whichever of the two lists is shorter.
+   *
+   * They say the same thing, so the choice is about what the file will still mean later: the short
+   * list is the one that reads as the exception, and it's also the one that stays right when the
+   * recipe grows a panel. "The general view, except cross arching" should pick up a tenth panel;
+   * a nine-panel enumeration written to mean the same thing would silently not.
+   *
+   * Naming panels clears Default, because those two are alternatives — Default means "wherever
+   * nothing else was named", so a default that named panels of its own could never be reached
+   * anywhere else. Excluding panels doesn't: "the general view, but not there" is exactly what a
+   * default with a gap in it is for, and it's the only way to ask for a panel that shows nothing.
+   */
+  private writeImagePanels(shape: ImageShape, wanted: Set<string>): void {
+    const all = this.availablePanels.map(p => p.id);
+    const named = all.filter(id => wanted.has(id));
+    const excluded = all.filter(id => !wanted.has(id));
+
+    const patch: Partial<ImageShape> = !excluded.length
+      ? { panels: undefined, excludePanels: undefined }
+      : excluded.length < named.length
+        ? { panels: undefined, excludePanels: excluded }
+        : { panels: named, excludePanels: undefined, isDefault: false };
+
+    this.toolbox.updateShape(shape.id, patch as Partial<DraftShape>);
   }
 
   setImageIsDefault(value: boolean): void {
@@ -688,15 +724,20 @@ export class SettingsBarComponent {
     if (!shape) return;
     this.toolbox.updateShape(shape.id, {
       isDefault: value,
+      // Default and a panel list are alternatives; Default and a gap in it are not, so an
+      // exclusion survives being made the default.
       panels: value ? undefined : shape.panels,
     } as Partial<DraftShape>);
   }
 
-  /** Neither scoped nor default — shown on every panel, which is what a hand-placed image is. */
+  /** Neither scoped nor default nor excluded — shown on every panel, which is what a hand-placed
+   * image is, and the way back out of a scoping you've lost track of. */
   showImageOnAllPanels(): void {
     const shape = this.selectedImageShape;
     if (!shape) return;
-    this.toolbox.updateShape(shape.id, { panels: undefined, isDefault: false } as Partial<DraftShape>);
+    this.toolbox.updateShape(shape.id, {
+      panels: undefined, excludePanels: undefined, isDefault: false,
+    } as Partial<DraftShape>);
   }
 
   /**

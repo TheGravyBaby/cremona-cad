@@ -44,7 +44,9 @@
       <!-- What is on the canvas and whether you can see it, next to how it is drawn (axis/grid) and
            where you are looking (zoom). These lived in the tool palette until the bar got too wide
            to justify — see layer-controls.ts. -->
-      <app-layer-controls (selectImageRequested)="selectShapeById($event)"></app-layer-controls>
+      <app-layer-controls (selectImageRequested)="selectShapeById($event)"
+        (uploadImageRequested)="placeImageFromFile()"
+        (linkImageRequested)="placeImageFromLink($event)"></app-layer-controls>
 
        <div class="axis-controls">
         <button type="button" class="btn axis-toggle-btn" [class.active]="axisPopupOpen" (click)="toggleAxisPopup()"

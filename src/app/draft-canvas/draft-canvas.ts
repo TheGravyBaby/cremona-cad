@@ -16,7 +16,7 @@ import { AxisGridController, AxisGridPreferences, CanvasViewport } from './axis-
 import { DraftTool, DraftToolHost } from './tools/draft-tool';
 import { ToolRegistryService } from './tools/tool-registry';
 import { ToolboxStore } from './tools/toolbox-store';
-import { ImageAssetStore, prepareUploadedImage } from './tools/image-asset-store';
+import { ImageAssetStore, prepareLinkedImage, prepareUploadedImage } from './tools/image-asset-store';
 import {
   drawShape, drawImageShape, drawSelectionHalo, drawMoveGrabber, drawEndpointGrabber, drawAreaSelectBox,
 } from './tools/shape-renderer';
@@ -27,8 +27,9 @@ import { translateShape } from './tools/shape-transform';
 import { moveGrabberPosition, endpointGrabbers, withEndpoint, EndpointKey } from './tools/shape-grabbers';
 import { snapToLockedAngle } from './tools/angle-lock';
 import { copyDebugDump, isLocalHost } from '../helpers/debugDump';
-import { info } from '../shared/message-emitter';
+import { info, warn } from '../shared/message-emitter';
 import { DEFAULT_TEXT_SIZE_MM, DraftShape, TextShape } from './tools/toolbox-shape';
+import { placedImageShape } from './tools/image-placement';
 import { HOTKEY_TOOL_CYCLE } from './tools/tool-hotkeys';
 import { ToolPaletteComponent } from './tool-palette/tool-palette';
 import { SettingsBarComponent } from './settings-bar/settings-bar';
@@ -95,8 +96,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       if (selectShapeId) this.setSelectedShape(selectShapeId);
       this.draw();
     },
-    requestImageFile: () => this.requestImageFile(),
-    getDesignBounds: () => this.designBounds(),
   };
 
   // Snapping: candidates are re-indexed from the rendered scene only when the
@@ -243,7 +242,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
    * by draw() once there is geometry to measure; re-armed through the `fitRequest` input above. */
   private autoFitPending = true;
   @ViewChild('imageFileInput') imageFileInputRef?: ElementRef<HTMLInputElement>;
-  /** Resolver for the picker promise handed to the Image tool — see requestImageFile. */
+  /** Resolver for the picker promise — see requestImageFile. */
   private pendingImageFile: ((file: { dataUrl: string; width: number; height: number } | null) => void) | null = null;
 
   public get showGrid(): boolean {
@@ -472,9 +471,9 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.activeSnap = null;
     // Picking up a tool while the thing it produces is hidden would make it a silent no-op, so
     // activating one turns its master switch back on — the same reasoning as ToolboxStore's
-    // setActiveLayer always revealing the layer you switch onto.
-    if (this.activeTool?.id === 'image') this.toolbox.setShowImages(true);
-    else if (this.activeTool) this.toolbox.setShowShapes(true);
+    // setActiveLayer always revealing the layer you switch onto. The image master gets the same
+    // treatment in placeReferenceImage, which is the only thing that produces images now.
+    if (this.activeTool) this.toolbox.setShowShapes(true);
     // Selection-acting tools (e.g. Offset) run against a selection made in Select mode before
     // they were activated, so it must survive activation — every other tool draws fresh shapes
     // and has no use for a stale selection.
@@ -1429,7 +1428,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   /** The extents a placed reference image is sized against — the drawn design, without the other
    * images. Sizing an image against the union would compound: place one, scale it up to match a
    * photo's real dimensions, and the next one would arrive sized to *that* rather than to the
-   * drawing. See image-tool.ts. */
+   * drawing. See image-placement.ts. */
   private designBounds(): Bounds | null {
     return unionRenderedBounds([this.snapLayer?.node()]);
   }
@@ -1450,11 +1449,71 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.revealSelectedImage(id);
   }
 
-  // ===== Image file picker =====
-  // The only image-specific code left in the canvas: a <input type="file"> can't be opened
-  // except by a real user gesture on a real element, so it has to live in this component's
-  // template. Everything about what happens to the chosen file — sizing, placement, interning —
-  // belongs to image-tool.ts, which consumes this through DraftToolHost.requestImageFile.
+  // ===== Adding a reference image =====
+  // Driven from the bottom bar's image list, where every other control for reference images
+  // already lives; the two methods below are what its Upload and Link actions call. The picker
+  // itself has to be here because an <input type="file"> can't be opened except by a real user
+  // gesture on a real element, so it lives in this component's template. What happens to the
+  // pixels once they arrive is image-asset-store.ts's, and where the shape lands is
+  // image-placement.ts's.
+
+  /** Picks a file and places it. Silent on a dismissed dialog — closing a file picker is not an
+   * error worth a toast. */
+  async placeImageFromFile(): Promise<void> {
+    const file = await this.requestImageFile();
+    if (!file) return;
+    this.placeReferenceImage(file.dataUrl, file.width, file.height);
+  }
+
+  /**
+   * Places an image from a pasted link, copying the pixels into the recipe wherever the host
+   * allows it (see prepareLinkedImage). Says which of the two happened: a link that couldn't be
+   * copied still draws, but the recipe now depends on it — a property of the saved file the user
+   * should learn now rather than the day the link rots.
+   */
+  async placeImageFromLink(url: string): Promise<void> {
+    const trimmed = url.trim();
+    if (!trimmed) return;
+
+    let linked;
+    try {
+      linked = await prepareLinkedImage(trimmed);
+    } catch {
+      warn(
+        'Nothing loaded from that address. It has to be a direct link to an image file — the one '
+        + 'behind "Copy image address", not the page the image sits on.',
+        'Image link failed',
+      );
+      return;
+    }
+
+    this.placeReferenceImage(linked.href, linked.width, linked.height);
+    if (!linked.inlined) {
+      info(
+        'That site does not allow its images to be copied, so the recipe holds the link rather '
+        + 'than the picture. It will show nothing on a machine that is offline, and nothing at '
+        + 'all once the link stops working — download the image and upload the file to keep it.',
+        'Linked, not copied',
+      );
+    }
+  }
+
+  /** Interns the pixels, places a shape sized to the drawing, and hands it over selected. Turns
+   * the reference-image master back on for the same reason activating a tool turns its own on:
+   * adding something you can't see would otherwise look like nothing happened. */
+  private placeReferenceImage(href: string, width: number, height: number): void {
+    const shape = placedImageShape(
+      this.imageAssets.intern(href, width, height),
+      width, height,
+      this.designBounds(),
+      this.toolbox.getImageShapes().length,
+    );
+    this.toolbox.setShowImages(true);
+    this.toolbox.addShape(shape);
+    this.toolRegistry.selectTool(null);
+    this.setSelectedShape(shape.id);
+    this.draw();
+  }
 
   /** Opens the hidden file input and resolves once the user picks a file (or dismisses). */
   private requestImageFile(): Promise<{ dataUrl: string; width: number; height: number } | null> {

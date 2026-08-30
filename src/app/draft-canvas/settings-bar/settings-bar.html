@@ -239,11 +239,11 @@
     <span class="point-group">
       <span class="field"><span class="f-lbl">W</span>
         <input type="number" min="0.01" [value]="imageWidth" (change)="setImageSize('width', $any($event.target).valueAsNumber)"
-          (keydown.enter)="$any($event.target).blur()" title="Width in mm — type a real measurement to scale the image to it" />
+          (keydown.enter)="$any($event.target).blur()" title="Width in mm — type a real measurement to scale the image to it. The height follows: a reference image is never stretched out of proportion." />
       </span>
       <span class="field"><span class="f-lbl">H</span>
         <input type="number" min="0.01" [value]="imageHeight" (change)="setImageSize('height', $any($event.target).valueAsNumber)"
-          (keydown.enter)="$any($event.target).blur()" title="Height in mm — type a real measurement to scale the image to it" />
+          (keydown.enter)="$any($event.target).blur()" title="Height in mm — type a real measurement to scale the image to it. The width follows: a reference image is never stretched out of proportion." />
       </span>
     </span>
     <span class="field"><span class="f-lbl">Rot°</span>
@@ -285,7 +285,7 @@
     </button>
     @if (availablePanels.length) {
       <button type="button" class="settings-action" [class.active]="panelsOpen" (click)="togglePanelsPopup()"
-        title="Which panels this image is shown on">
+        [title]="'Which panels this image is shown on — ' + imageScopeSummary">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
           stroke-linecap="round" stroke-linejoin="round">
           <rect x="3" y="4" width="18" height="16" rx="2" />
@@ -295,7 +295,7 @@
       </button>
     }
     <button type="button" class="settings-action" (click)="lockImage()"
-      title="Lock this image in place so it can't be selected or dragged on the canvas. Unlock it again from the Reference Images list in the tool palette.">
+      title="Lock this image in place so it can't be selected or dragged on the canvas. Unlock it again from the Reference Images list in this bar.">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
         stroke-linecap="round" stroke-linejoin="round">
         <rect x="4" y="11" width="16" height="9" rx="1.5" />
