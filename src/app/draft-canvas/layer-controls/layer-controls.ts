@@ -14,6 +14,11 @@ import { Layer } from '../tools/layer';
  * which is what the bottom bar is for. The palette paid for them twice over, since each carried
  * a master eye in a sliver beside its button and .tool-row fixes one width for every row.
  * Horizontally there is no such cost, so the eye simply sits next to the button.
+ *
+ * Adding an image followed them here later, for the same reason and one more: the palette's Image
+ * button was a file dialog wearing a tool's clothes, and it sat nowhere near the list of what you
+ * had already placed. Both ways in — a file, or a pasted link — are at the bottom of that list
+ * now, and there is no image tool.
  */
 @Component({
   selector: 'app-layer-controls',
@@ -30,12 +35,20 @@ export class LayerControlsComponent {
   /** Which shape is selected is draft-canvas state, not store state, so picking an image out of
    * the list has to ask the canvas to select it — see editImage. */
   @Output() selectImageRequested = new EventEmitter<string>();
+  /** Adding an image needs the file picker and the design bounds, both of which are the canvas's
+   * — so these two ask rather than do. See draft-canvas's placeImageFromFile/placeImageFromLink. */
+  @Output() uploadImageRequested = new EventEmitter<void>();
+  @Output() linkImageRequested = new EventEmitter<string>();
 
   /** One popup at a time: they open from adjacent buttons and would otherwise overlap. */
   public layersOpen = false;
   public imagesOpen = false;
   public editingLayerId: string | null = null;
   public editingImageId: string | null = null;
+  /** Whether the paste-a-link field is showing under the image list. Closed by default: a file is
+   * still the ordinary way in, and an always-visible URL box would be the widest thing in a popup
+   * built out of short rows. */
+  public linkOpen = false;
 
   // ===== Master show/hide switches =====
   // The quick "get this out of my way" pair, one per button. Both are ToolboxStore view state
@@ -66,9 +79,9 @@ export class LayerControlsComponent {
     this.startRenameLayer(id);
   }
 
-  /** Focuses a rename <input> the frame after the state change that creates it. The layer and
-   * image lists have their own marker class (they share only styling), so an open editor in one
-   * can't steal the focus meant for the other. */
+  /** Focuses an <input> the frame after the state change that creates it — the two rename boxes
+   * and the paste-a-link field. Each carries its own marker class (they share only styling), so an
+   * open editor in one list can't steal the focus meant for another. */
   private focusRenameInput(markerClass: string): void {
     setTimeout(() => {
       const el = (this.elRef.nativeElement as HTMLElement)
@@ -138,6 +151,12 @@ export class LayerControlsComponent {
   public imageRowTitle(image: ImageShape): string {
     const edit = 'Click to show it here and unlock it for editing; double-click to rename';
     if (!this.isImageOffPanel(image)) return edit;
+    // Three reasons an image can be off, and they need three different sentences. Deliberately
+    // kept off this one comes first, since it beats the other two.
+    const active = this.toolbox.activePanel;
+    if (active && image.excludePanels?.includes(active)) {
+      return `Deliberately kept off this panel. ${edit}`;
+    }
     // A stepped-aside default has no panel list to name — it's off because something else claimed
     // this panel, which is the opposite reason and needs the opposite sentence.
     if (!image.panels?.length) return `A more specific image is shown on this panel. ${edit}`;
@@ -150,14 +169,30 @@ export class LayerControlsComponent {
   toggleImages(): void {
     this.imagesOpen = !this.imagesOpen;
     this.layersOpen = false;
+    this.linkOpen = false;
   }
 
-  /** Placing an image is the Image tool's job — this just activates it, exactly as its palette
-   * button and its hotkey do. Closes the panel on the way, since the panel sits over the canvas
-   * and the next thing you'll do is position the image that lands there. */
+  /** Both add paths close the list on the way out, since it sits over the canvas and the next
+   * thing you'll do is position the image that lands underneath it. */
   addImage(): void {
     this.imagesOpen = false;
-    this.toolRegistry.activateById('image');
+    this.linkOpen = false;
+    this.uploadImageRequested.emit();
+  }
+
+  toggleLinkField(): void {
+    this.linkOpen = !this.linkOpen;
+    if (this.linkOpen) this.focusRenameInput('image-link-input');
+  }
+
+  /** A blank box is how you back out, so it closes rather than complaining. Whether the address
+   * actually resolves to an image is the canvas's to report — it's the one that tries to load it. */
+  addImageFromLink(url: string): void {
+    if (url.trim()) {
+      this.imagesOpen = false;
+      this.linkImageRequested.emit(url);
+    }
+    this.linkOpen = false;
   }
 
   toggleImageHidden(image: ImageShape): void {

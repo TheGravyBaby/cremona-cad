@@ -19,7 +19,6 @@ export const HOTKEY_TOOL_CYCLE: Record<string, string[]> = {
   KeyB: ['freehand'],
   KeyE: ['eraser'],
   KeyO: ['offset'],
-  KeyI: ['image'],
 };
 
 // Reverse of the above (tool id -> its group's letter), for tooltip hints.

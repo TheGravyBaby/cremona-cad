@@ -49,8 +49,10 @@ recognizes the current format *positively* so it stays idempotent; six tests in
   user placed by hand. `RecipeComponentBase.setOpenPanel` pushes the open panel to
   `ToolboxStore.setActivePanel`, and the store compares strings — it never learns what a panel is.
   Separate from the user's own `hidden` switch: both have to pass for an image to draw, and
-  scoping must never write through to `hidden`. An image marked `isDefault` with no `panels` is the
-  set's general view — "Default" in the UI: shown wherever nothing more specific is, stepped aside
+  scoping must never write through to `hidden`. `excludePanels` is the same list inverted, for
+  when the exception is shorter — and the only way to ask for a panel that shows *nothing*, which
+  is the honest answer for a view an instrument has no usable reference for. An image marked
+  `isDefault` with no `panels` is the set's general view — "Default" in the UI: shown wherever nothing more specific is, stepped aside
   from where something is. That is what keeps a set maintainable — adding a scoped view, or adding a
   panel, never means going back to relist the panels the general view still belongs on. Both are
   editable from the canvas settings bar as well as authored in a template, which is why

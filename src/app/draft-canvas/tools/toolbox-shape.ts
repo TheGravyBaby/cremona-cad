@@ -161,6 +161,11 @@ export type ImageShape = ShapeBase & {
    * the image belongs. Both have to pass for an image to draw.
    */
   panels?: string[];
+  /** Panels this image is deliberately kept off — `panels` inverted, for when the exception is
+   * the short list. Its point is a panel that should show nothing at all: a view this instrument
+   * has no usable reference for, where anything else on screen would get traced by mistake.
+   * Absolute — it beats `isDefault` and an empty `panels` alike. */
+  excludePanels?: string[];
   /**
    * Marks this as the set's default view — "Default" in the UI. An image with neither `panels`
    * nor this flag shows on every panel; with this flag it shows only on panels no *other* image
@@ -234,6 +239,41 @@ export type DraftShape =
 /** An image's box center, about which `rotationDeg` turns it. */
 export function imageCenter(shape: ImageShape): Pt {
   return { x: shape.x + shape.width / 2, y: shape.y + shape.height / 2 };
+}
+
+/**
+ * The box's own width:height — what every resize path reads the second dimension from.
+ *
+ * A reference image is never skewed. It is a photograph of a real object being measured against,
+ * so a stretched one is a wrong drawing rather than a stylistic choice, and the ways to notice
+ * are all subtle: an arch that reads a millimetre low, a corner at the wrong angle. There is
+ * deliberately no unlock for it.
+ *
+ * Reading the ratio off the *box* rather than off the source pixels is what makes this survive
+ * cropping — a crop leaves the box at the cropped picture's proportions (see applyImageCrop), and
+ * those are the proportions the next resize should hold. It also means an image that arrived
+ * out of proportion, from a hand-authored template, keeps whatever it has instead of jumping the
+ * first time it is touched.
+ */
+export function imageAspect(shape: ImageShape): number {
+  return Math.abs(shape.width / shape.height) || 1;
+}
+
+/**
+ * Resizes an image to a typed width or height, taking the other dimension from imageAspect.
+ *
+ * Sized about the centre, which is also the rotation pivot: a rotated image scaled to a
+ * measurement stays put instead of swinging off where it was lined up, and no rotation
+ * compensation is needed to say so.
+ */
+export function applyImageSize(
+  shape: ImageShape, key: 'width' | 'height', value: number,
+): Partial<ImageShape> {
+  const aspect = imageAspect(shape);
+  const width = key === 'width' ? value : value * aspect;
+  const height = key === 'width' ? value / aspect : value;
+  const center = imageCenter(shape);
+  return { x: center.x - width / 2, y: center.y - height / 2, width, height };
 }
 
 /** An image's four corners in world space, rotation applied. Named for the Y-up world, so `sw`

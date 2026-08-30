@@ -224,6 +224,53 @@
   flex: 0 0 auto;
 }
 
+.lc-action-row {
+  display: flex;
+  gap: 4px;
+}
+
+.lc-action.active {
+  border-color: var(--ui-canvas-btn-border-hover);
+  background: var(--ui-bg-elevated);
+}
+
+.image-link-row {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+/* Wide enough that a pasted URL shows more than its protocol, without letting the popup grow to
+   the length of one. */
+.image-link-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 190px;
+  box-sizing: border-box;
+  height: 24px;
+  padding: 2px 6px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 4px;
+  background: var(--ui-bg-surface);
+  color: var(--ui-text-primary);
+  font-size: 11px;
+}
+
+.image-link-add {
+  flex: 0 0 auto;
+  padding: 0 9px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 4px;
+  background: linear-gradient(180deg, var(--ui-canvas-btn-bg-start) 0%, var(--ui-canvas-btn-bg-end) 100%);
+  color: var(--ui-text-primary);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.image-link-add:hover {
+  border-color: var(--ui-canvas-btn-border-hover);
+}
+
 /* Touch targets, matching what the palette does for its buttons: 26px is fine under a mouse and
    well below what a thumb needs. */
 @media (pointer: coarse) {

@@ -1,8 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { DraftTool, DraftToolHost } from './draft-tool';
 import { ToolboxStore } from './toolbox-store';
-import { ImageAssetStore } from './image-asset-store';
-import { createImageTool } from './image-tool';
 import { createLineTool } from './line-tool';
 import { createArcTool, createArcStartFirstTool } from './arc-tool';
 import { createEndsCenterArcTool, createThroughArcTool } from './two-end-arc-tool';
@@ -37,7 +35,6 @@ export type ToolSlot = DraftTool | DraftTool[];
 @Injectable({ providedIn: 'root' })
 export class ToolRegistryService {
   private toolbox = inject(ToolboxStore);
-  private imageAssets = inject(ImageAssetStore);
   private listeners = new Set<() => void>();
   private _activeTool: DraftTool | null = null;
   /** Set once by draft-canvas so selectTool can run a tool's onActivate hook. Null until then;
@@ -68,9 +65,9 @@ export class ToolRegistryService {
     [createEraserTool()],
     // Modify tools — act on the current selection rather than drawing new shapes.
     [createOffsetTool()],
-    // Reference images — placed from a file rather than drawn, but a placed image is an ordinary
-    // selectable/movable shape from then on. See image-tool.ts.
-    [createImageTool(this.imageAssets, this.toolbox)],
+    // Reference images are deliberately not here. Placing one takes a file or a link rather than
+    // a click, and every other control for it — the list, the eyes, the locks — lives in the
+    // bottom bar's image list, so that is where adding one lives too. See image-placement.ts.
   ];
 
   /** Which variant currently faces out of a multi-variant slot, keyed by the slot itself. Absent

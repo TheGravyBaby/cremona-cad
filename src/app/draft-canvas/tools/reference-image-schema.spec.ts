@@ -182,8 +182,26 @@ describe('round-trip through the recipe field', () => {
       referenceImages: [{ id: 'a', label: 'A', href: '/a.jpg', x: 0, y: 0, width: 1, height: 1 }],
     }, assets), assets);
     expect(out[0].panels).toBeUndefined();
+    expect(out[0].excludePanels).toBeUndefined();
     expect(out[0].isDefault).toBeUndefined();
     expect(out[0].credit).toBeUndefined();
+  });
+
+  // The worst one to lose: a panel deliberately left blank quietly fills back in with the general
+  // view, which is the image the exclusion existed to keep out of a tracing.
+  it('preserves the panels an image is kept off', () => {
+    const assets = store();
+    const original: NamedReferenceImage[] = [{
+      id: 'r1', label: 'Plan', href: '/plan.jpg',
+      x: 0, y: 0, width: 100, height: 200, isDefault: true, excludePanels: ['crossArching'],
+    }];
+
+    const shapes = imageShapesFromRecipe({ referenceImages: original }, assets);
+    expect(shapes[0].excludePanels).toEqual(['crossArching']);
+    // copied, not shared: editing the shape must not reach back into a template constant
+    expect(shapes[0].excludePanels).not.toBe(original[0].excludePanels);
+
+    expect(imageShapesToRecipe(shapes, assets)[0].excludePanels).toEqual(['crossArching']);
   });
 
   // Same erasure risk as `panels`, and worse to diagnose: losing this doesn't hide the image, it
