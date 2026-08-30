@@ -1,0 +1,183 @@
+{
+  "key": "amati-brothers-cello-fleming",
+  "label": "Cello - Brothers Amati - Amaryllis Fleming",
+  "recipeName": "enrico-ceruti-violin",
+  "fileName": "Cello - Brothers Amati - Amaryllis Fleming",
+  "description": "1610-20, 5-string",
+  "version": "1",
+  "meta": {
+    "maker": "Brothers Amati",
+    "instrument": "Cello \"Amaryllis Fleming\", 5-string",
+    "date": "1610-20",
+    "record": {
+      "source": "met",
+      "objectId": "898377",
+      "url": "https://www.metmuseum.org/art/collection/search/898377"
+    },
+    "notes": "Bout set and back length are the Met's published dimensions, verbatim: length of back 70.7 cm, upper bouts 35.35 cm, middle bouts 23 cm, lower bouts 42.45 cm, vibrating string length 64 cm. Everything else in params is unsolved and carries DefaultParams values - the outline arcs, corners and blocks are still to be traced. No arching: none is published. Two further CC0 views are not shipped here - DP-29206-003 (three-quarter, not a tracing view) and DP-29206-005 (profile from the opposite side, the same information as 004). Reference images are placed at the fit the Image tool would give them; scale each to real dimensions before tracing."
+  },
+  "params": {
+    "height": 707.0,
+    "width": 424.5,
+    "overhang": 3,
+    "rib": 1,
+    "bitDiameter": 6.35,
+    "purflingOffset": null,
+    "purflingChannelDepth": null,
+    "innerFlutingDepth": null,
+    "outerFlutingDepth": null,
+    "ratios": {
+      "HtoW": 1.6654888103651355,
+      "UBtoLB": 0.8327444051825678,
+      "CBWtoLBW": 0.541813898704358,
+      "U0toUBW": 0.625,
+      "U1toUBW": 0.3333333333333333,
+      "U2toUBW": 0.5,
+      "U3toLBW": 0.125,
+      "C0YtoH": 0.5625,
+      "C0toLBW": 0.4444444444444444,
+      "C2toLBW": 0.08333333333333333,
+      "C1toLBW": 0.125,
+      "LBtoH": 0.5714285714285714,
+      "L0toLBW": 0.875,
+      "L1toLBW": 0.3333333333333333,
+      "L2toLBW": 0.5,
+      "L3toLBW": 0.125,
+      "UCYtoH": 0.6666666666666666,
+      "LCYtoH": 0.4,
+      "FLtoW": 0.02,
+      "FUtoL": 0.8
+    },
+    "bouts": {
+      "UBW": 353.5,
+      "CBW": 230.0,
+      "LBW": 424.5,
+      "U0": null,
+      "U1": null,
+      "U2": null,
+      "U3": null,
+      "U31": null,
+      "U4": null,
+      "C2": null,
+      "C21": null,
+      "C0": null,
+      "C1": null,
+      "C11": null,
+      "L4": null,
+      "L3": null,
+      "L31": null,
+      "L2": null,
+      "L1": null,
+      "L0": null,
+      "UCr": null,
+      "LCr": null
+    },
+    "viol": {
+      "width": null,
+      "V0": null,
+      "neckRadius": null
+    },
+    "button": null,
+    "outerCorners": {
+      "U3": null,
+      "U31": null,
+      "C2": null,
+      "C21": null,
+      "C1": null,
+      "C11": null,
+      "L3": null,
+      "L31": null
+    },
+    "blocks": {
+      "U": null,
+      "CU": null,
+      "CUPad": null,
+      "CL": null,
+      "CLPad": null,
+      "L": null
+    },
+    "options": {
+      "useViolNeck": false,
+      "useViolCornerUC": false,
+      "useViolCornerLC": false,
+      "useKellyC0": false,
+      "U31DoubleArc": false,
+      "C21DoubleArc": false,
+      "C11DoubleArc": false,
+      "L31DoubleArc": false,
+      "ucCornerSharpness": 0,
+      "lcCornerSharpness": 0
+    }
+  },
+  "paths": [],
+  "referenceImages": [
+    {
+      "id": "amati898377-top",
+      "label": "Top (DP-29206-001)",
+      "href": "https://images.metmuseum.org/CRDImages/mi/original/DP-29206-001.jpg",
+      "xlink:href": "https://images.metmuseum.org/CRDImages/mi/original/DP-29206-001.jpg",
+      "x": -212.25,
+      "y": 69.2683,
+      "width": 424.5,
+      "height": 568.4633,
+      "rotationDeg": 0,
+      "opacity": 0.25,
+      "locked": true,
+      "credit": {
+        "source": "The Metropolitan Museum of Art",
+        "imageId": "DP-29206-001",
+        "licence": "CC0",
+        "attribution": "The Metropolitan Museum of Art, New York. Public domain (CC0).",
+        "url": "https://www.metmuseum.org/art/collection/search/898377"
+      }
+    },
+    {
+      "id": "amati898377-back",
+      "label": "Back (DP-29206-002)",
+      "href": "https://images.metmuseum.org/CRDImages/mi/original/DP-29206-002.jpg",
+      "xlink:href": "https://images.metmuseum.org/CRDImages/mi/original/DP-29206-002.jpg",
+      "x": -212.25,
+      "y": 70.5,
+      "width": 424.5,
+      "height": 566.0,
+      "rotationDeg": 0,
+      "opacity": 0.25,
+      "locked": true,
+      "panels": [
+        "mould"
+      ],
+      "credit": {
+        "source": "The Metropolitan Museum of Art",
+        "imageId": "DP-29206-002",
+        "licence": "CC0",
+        "attribution": "The Metropolitan Museum of Art, New York. Public domain (CC0).",
+        "url": "https://www.metmuseum.org/art/collection/search/898377"
+      }
+    },
+    {
+      "id": "amati898377-profile",
+      "label": "Profile, bass side (DP-29206-004)",
+      "href": "https://images.metmuseum.org/CRDImages/mi/original/DP-29206-004.jpg",
+      "xlink:href": "https://images.metmuseum.org/CRDImages/mi/original/DP-29206-004.jpg",
+      "x": -212.25,
+      "y": 70.5,
+      "width": 424.5,
+      "height": 566.0,
+      "rotationDeg": 0,
+      "opacity": 0.25,
+      "locked": true,
+      "panels": [
+        "fluting",
+        "longArching",
+        "crossArching"
+      ],
+      "credit": {
+        "source": "The Metropolitan Museum of Art",
+        "imageId": "DP-29206-004",
+        "licence": "CC0",
+        "attribution": "The Metropolitan Museum of Art, New York. Public domain (CC0).",
+        "url": "https://www.metmuseum.org/art/collection/search/898377"
+      }
+    }
+  ]
+}

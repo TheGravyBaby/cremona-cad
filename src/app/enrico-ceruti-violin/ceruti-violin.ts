@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { applyTransforms, ColorTransform, renderPath } from '../helpers/renderFuncs';
 import { clampParam, safeRun } from '../helpers/validators';
-import { CerutiColors, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, EnricoCerutiTemplate, EnricoCerutiParams, PanelRenderRequest, RenderToggleKey } from './ceruti-types';
+import { CerutiColors, CerutiPanelId, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, EnricoCerutiTemplate, EnricoCerutiParams, PanelRenderRequest, RenderToggleKey } from './ceruti-types';
 import { CERUTI_TEMPLATES } from './ceruti-templates';
 import { defineOuterPath, defineOuterPurflingPath, definePurflingPath } from './ceruti-paths';
 import { normalizeArchingParams } from './ceruti-arching';
@@ -39,7 +39,7 @@ export class CerutiViolin extends RecipeComponentBase {
    *  the panel's own declaration (see `CerutiPanelBase.renderToggles`) — the bar reads it from
    *  here rather than off the mounted panel, which is a timing trap panel-base.ts explains.
    *  Base has no panel component, and Export isn't a drafting step; neither offers any. */
-  protected readonly panelOrder = [
+  protected readonly panelOrder: readonly { id: CerutiPanelId; label: string; toggles: readonly RenderToggleKey[] }[] = [
     { id: 'base', label: 'Base Measurements', toggles: [] },
     { id: 'mainBouts', label: 'Main Bouts', toggles: MainBoutsPanel.renderToggles },
     { id: 'corners', label: 'Corners', toggles: CornersPanel.renderToggles },
@@ -54,7 +54,7 @@ export class CerutiViolin extends RecipeComponentBase {
     { id: 'fHolePlacement', label: 'F-Hole Placement', toggles: FHolePlacementPanel.renderToggles },
     { id: 'mould', label: 'Mould', toggles: MouldPanel.renderToggles },
     { id: 'export', label: 'Export', toggles: [] },
-  ] as const;
+  ];
 
   @Input() nightMode = true;
   readonly lightDarkenDegree = 0.15;
@@ -223,7 +223,7 @@ export class CerutiViolin extends RecipeComponentBase {
       this.draftChange.emit(this.renderOuterSilhouette());
     }
     this.requestFit.emit();
-    this.openPanel = 'base';
+    this.setOpenPanel('base');
   }
 
   // ===== Lifecycle and bootstrap =====
@@ -248,7 +248,7 @@ export class CerutiViolin extends RecipeComponentBase {
     this.loadReferenceImages(blank);
     this._firstRenderInitDone = false;
     this._lastLoadedParamsSnapshot = JSON.stringify(this.d.params);
-    this.openPanel = 'base';
+    this.setOpenPanel('base');
 
     // Write the working state before emitting so firstRender reads the
     // fresh template data (not the previous session's recipe/panel).
@@ -281,6 +281,10 @@ export class CerutiViolin extends RecipeComponentBase {
           this.openPanel = savedPanel;
         }
       }
+
+      // Push whichever panel the two branches above settled on, so a template's panel-scoped
+      // reference images are filtered from the first draw rather than after the first click.
+      this.setOpenPanel(this.openPanel);
 
       // Runs inside a draw, so the re-frame lands on the next one — by which point the restored
       // session's shapes and reference images are on the canvas to be measured.

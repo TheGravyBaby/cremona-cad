@@ -64,6 +64,12 @@ export function imageShapesFromRecipe(
         // An absent `locked` means locked — so the built-in templates and every file saved before
         // the field existed open protected. See ImageShape.locked.
         locked: entry.locked ?? true,
+        // Copied rather than shared, so editing the shape can't reach back into the template
+        // constant every later load reads from.
+        panels: entry.panels ? [...entry.panels] : undefined,
+        isDefault: entry.isDefault,
+        crop: entry.crop ? { ...entry.crop } : undefined,
+        credit: entry.credit ? { ...entry.credit } : undefined,
       };
       return shape;
     });
@@ -102,6 +108,14 @@ export function imageShapesToRecipe(
       // Written explicitly rather than left absent, so an image the user deliberately unlocked
       // reopens unlocked instead of silently re-locking under the absent-means-locked default.
       locked: shape.locked ?? true,
+      // These four all have to come back out here: this function's result *replaces*
+      // `referenceImages` on every toolbox change (recipe-base's syncReferenceImages), so
+      // anything not written back is erased the first time the user touches the canvas. Credit is
+      // recipe-authored only; the other three are set from the settings bar as well.
+      panels: shape.panels ? [...shape.panels] : undefined,
+      isDefault: shape.isDefault,
+      crop: shape.crop ? { ...shape.crop } : undefined,
+      credit: shape.credit ? { ...shape.credit } : undefined,
     });
   }
   return out;

@@ -1,0 +1,182 @@
+{
+  "key": "stradivari-violin-ward",
+  "label": "Violin - Antonio Stradivari - Ward",
+  "recipeName": "enrico-ceruti-violin",
+  "fileName": "Violin - Antonio Stradivari - Ward",
+  "description": "Cremona, 1700",
+  "version": "1",
+  "meta": {
+    "maker": "Antonio Stradivari",
+    "instrument": "Violin \"Ward\"",
+    "date": "1700",
+    "record": {
+      "source": "loc",
+      "objectId": "2022560100",
+      "url": "https://www.loc.gov/item/2022560100/"
+    },
+    "notes": "Bout set and back length are the Library of Congress catalogue dimensions, verbatim: length of back 35.4 cm, upper bouts 16.6 cm, middle bouts 10.7 cm, lower bouts 20.6 cm. Everything else in params is unsolved and carries DefaultParams values - the outline arcs, corners and blocks are still to be traced. No arching: none is published. Licence differs from the CC0 corpus entries: the LoC record carries its educational-and-research rights statement rather than a public-domain dedication, so the images are linked at their IIIF addresses rather than inlined. The record holds 18 photographs; four are shipped here. The others are corner, edge, rib, scroll, pegbox and assembled-instrument views, plus sp=17 and sp=18, which are annotated measured drawings signed John Montgomery, January 2006 - a third party's own analysis, deliberately not shipped and not to be traced from. The top (sp=2) is marked isDefault - Default in the settings bar - making it the set's general view: it shows on every panel no other image has claimed, and steps aside on the ones that do. Scope another view to a panel and the top drops out of that panel on its own - nothing on the top entry needs editing. Of the two plan views the back (sp=1) is the cleaner outline source, being unobstructed by the neck, so it is the one to promote if you would rather trace the back. Reference images are placed at the fit the Image tool would give them - width set to the lower bout, centred on the body - so scale each to real dimensions before tracing."
+  },
+  "params": {
+    "height": 354.0,
+    "width": 206.0,
+    "overhang": 3,
+    "rib": 1,
+    "bitDiameter": 6.35,
+    "purflingOffset": null,
+    "purflingChannelDepth": null,
+    "innerFlutingDepth": null,
+    "outerFlutingDepth": null,
+    "ratios": {
+      "HtoW": 1.7184466019417475,
+      "UBtoLB": 0.8058252427184466,
+      "CBWtoLBW": 0.5194174757281553,
+      "U0toUBW": 0.625,
+      "U1toUBW": 0.3333333333333333,
+      "U2toUBW": 0.5,
+      "U3toLBW": 0.125,
+      "C0YtoH": 0.5625,
+      "C0toLBW": 0.4444444444444444,
+      "C2toLBW": 0.08333333333333333,
+      "C1toLBW": 0.125,
+      "LBtoH": 0.5714285714285714,
+      "L0toLBW": 0.875,
+      "L1toLBW": 0.3333333333333333,
+      "L2toLBW": 0.5,
+      "L3toLBW": 0.125,
+      "UCYtoH": 0.6666666666666666,
+      "LCYtoH": 0.4,
+      "FLtoW": 0.02,
+      "FUtoL": 0.8
+    },
+    "bouts": {
+      "UBW": 166.0,
+      "CBW": 107.0,
+      "LBW": 206.0,
+      "U0": null,
+      "U1": null,
+      "U2": null,
+      "U3": null,
+      "U31": null,
+      "U4": null,
+      "C2": null,
+      "C21": null,
+      "C0": null,
+      "C1": null,
+      "C11": null,
+      "L4": null,
+      "L3": null,
+      "L31": null,
+      "L2": null,
+      "L1": null,
+      "L0": null,
+      "UCr": null,
+      "LCr": null
+    },
+    "viol": {
+      "width": null,
+      "V0": null,
+      "neckRadius": null
+    },
+    "button": null,
+    "outerCorners": {
+      "U3": null,
+      "U31": null,
+      "C2": null,
+      "C21": null,
+      "C1": null,
+      "C11": null,
+      "L3": null,
+      "L31": null
+    },
+    "blocks": {
+      "U": null,
+      "CU": null,
+      "CUPad": null,
+      "CL": null,
+      "CLPad": null,
+      "L": null
+    },
+    "options": {
+      "useViolNeck": false,
+      "useViolCornerUC": false,
+      "useViolCornerLC": false,
+      "useKellyC0": false,
+      "U31DoubleArc": false,
+      "C21DoubleArc": false,
+      "C11DoubleArc": false,
+      "L31DoubleArc": false,
+      "ucCornerSharpness": 0,
+      "lcCornerSharpness": 0
+    }
+  },
+  "paths": [],
+  "referenceImages": [
+    {
+      "id": "ward-top",
+      "label": "Top (sp=2)",
+      "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154810:musihas-200154810.0002/full/pct:100.0/0/default.jpg",
+      "xlink:href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154810:musihas-200154810.0002/full/pct:100.0/0/default.jpg",
+      "x": -103.0,
+      "y": 0.1734,
+      "width": 206.0,
+      "height": 353.6532,
+      "rotationDeg": 0,
+      "opacity": 0.25,
+      "locked": true,
+      "isDefault": true,
+      "credit": {
+        "source": "Library of Congress",
+        "imageId": "musihas-200154810.0002",
+        "licence": "Educational and research use",
+        "attribution": "Library of Congress, Music Division. Gift of Gertrude Clarke Whittall, 1936.",
+        "url": "https://www.loc.gov/resource/music.musihas-200154810/?sp=2&st=image"
+      }
+    },
+    {
+      "id": "ward-back",
+      "label": "Back (sp=1)",
+      "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154810:musihas-200154810.0001/full/pct:100.0/0/default.jpg",
+      "xlink:href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154810:musihas-200154810.0001/full/pct:100.0/0/default.jpg",
+      "x": -200,
+      "y": -9.8106,
+      "width": 206.0,
+      "height": 373.6212,
+      "rotationDeg": 0,
+      "opacity": 0.25,
+      "locked": true,
+      "panels": [
+        "fluting"
+      ],
+      "credit": {
+        "source": "Library of Congress",
+        "imageId": "musihas-200154810.0001",
+        "licence": "Educational and research use",
+        "attribution": "Library of Congress, Music Division. Gift of Gertrude Clarke Whittall, 1936.",
+        "url": "https://www.loc.gov/resource/music.musihas-200154810/?sp=1&st=image"
+      }
+    },
+    {
+      "id": "ward-profiles",
+      "label": "Profiles, both sides (sp=3)",
+      "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154810:musihas-200154810.0003/full/pct:100.0/0/default.jpg",
+      "xlink:href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154810:musihas-200154810.0003/full/pct:100.0/0/default.jpg",
+      "x": -103.0,
+      "y": 17.8723,
+      "width": 206.0,
+      "height": 318.2554,
+      "rotationDeg": 0,
+      "opacity": 0.25,
+      "locked": true,
+      "panels": [
+        "longArching"
+      ],
+      "credit": {
+        "source": "Library of Congress",
+        "imageId": "musihas-200154810.0003",
+        "licence": "Educational and research use",
+        "attribution": "Library of Congress, Music Division. Gift of Gertrude Clarke Whittall, 1936.",
+        "url": "https://www.loc.gov/resource/music.musihas-200154810/?sp=3&st=image"
+      }
+    }
+  ]
+}

@@ -65,4 +65,37 @@ describe('LayerControlsComponent', () => {
     expect(all('.lc-popup').length).toBe(1);
     expect(all('.layer-tab').length).toBe(toolbox.layers.length);
   });
+
+  // An image scoped to another panel isn't drawn even with its eye on. It stays in this list —
+  // hiding the row would make it unreachable — but has to say why, or it reads as an image that
+  // won't come back.
+  it('marks an image scoped to another panel, and leaves the rest alone', () => {
+    toolbox.loadImages([
+      { id: 'plan', type: 'image', x: 0, y: 0, width: 1, height: 1, imageRef: 'a', label: 'Plan' },
+      {
+        id: 'section', type: 'image', x: 0, y: 0, width: 1, height: 1, imageRef: 'b',
+        label: 'Section', panels: ['crossArching'],
+      },
+    ]);
+    toolbox.setActivePanel('base');
+    all('.lc-btn')[1].click();
+    fixture.detectChanges();
+
+    const rows = all('.layer-tab');
+    expect(rows.length).toBe(2);
+    expect(rows[0].classList.contains('off-panel')).toBe(false);
+    expect(rows[1].classList.contains('off-panel')).toBe(true);
+    expect(component.imageRowTitle(component.images[1])).toContain('Cross Arching');
+
+    // Asserted through the predicate rather than the DOM: a store change doesn't mark this
+    // component dirty on its own (draft-canvas redraws off toolbox.onChange; this list re-renders
+    // on the user's next interaction), so re-checking the rendered class here would be testing
+    // change detection rather than the scoping.
+    toolbox.setActivePanel('crossArching');
+    expect(component.isImageOffPanel(component.images[1])).toBe(false);
+    expect(component.imageRowTitle(component.images[1])).not.toContain('Cross Arching');
+
+    toolbox.setActivePanel(null);
+    toolbox.resetAll();
+  });
 });

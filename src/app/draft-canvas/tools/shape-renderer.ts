@@ -3,7 +3,7 @@ import { Pt } from '../../models/types';
 import {
   DraftShape, DimensionShape, DEFAULT_SHAPE_COLOR, DEFAULT_IMAGE_OPACITY, DEFAULT_FREEHAND_WIDTH,
   DEFAULT_TEXT_SIZE_MM, ImageShape, TextShape,
-  dimensionGeometry, imageCenter, imageCorners,
+  dimensionGeometry, imageCenter, imageCorners, imageSourceBox, isCropped,
 } from './toolbox-shape';
 import { arcPathData, pointOnCircle } from '../../helpers/draftMath';
 import { GrabberKind } from './shape-grabbers';
@@ -154,38 +154,69 @@ export function drawShape(gRoot: RootGroup, gUI: RootGroup, shape: DraftShape, p
  * underneath the recipe's own geometry (you trace on top of a photo, not under it), and because
  * the href has to be resolved through ImageAssetStore first — see draft-canvas.ts's draw().
  *
+ * The `<image>` is drawn at the *source* rectangle — the whole picture, which is the box itself
+ * unless the shape is cropped — and a clip rectangle at the box cuts it back. So this is the one
+ * place that has to know what `crop` means; everything else keeps reading the box as the visible
+ * extent. See ImageCrop.
+ *
  * Nested layers, innermost first:
  *  1. The `<image>`'s own `translate(0 h) scale(1 -1)` undoes gRoot's `scale(1,-1)` for this
  *     element only — SVG `<image>` can't render bottom-up, so without it every photo appears
- *     upside down. A coordinate correction, not user-visible mirroring.
+ *     upside down. A coordinate correction, not user-visible mirroring. `h` is the *source*
+ *     height, since that is the element being flipped.
  *  2. When `mirrored`, a wrapping group flips the content about a world-space vertical line
  *     through the image's center (`2·center.x − x`). Inside the rotate group but outside the
  *     correction, so the mirror is a property of the content — rotating a mirrored image keeps it
  *     mirrored, like turning a face-down photo.
- *  3. The rotate group turns the box in world space, same as every other rotate-capable shape.
+ *  3. When cropped, a clip group holding the box. Its position relative to the mirror doesn't
+ *     matter — the mirror's axis is the box's own centre, so the box maps onto itself and only
+ *     the content inside it flips, which is what mirroring a cropped photo should do.
+ *  4. The rotate group turns the box in world space, same as every other rotate-capable shape.
+ *
+ * `preserveAspectRatio` is `none` rather than `meet`: crop fractions are only meaningful if the
+ * picture fills its rectangle exactly, and it also makes a typed W or H the size the picture
+ * actually takes, which is what that field claims. Placement and corner-drags keep the natural
+ * aspect anyway, so this only shows up when a dimension is typed on its own — where letterboxing
+ * inside a box the handles and halo still traced was the wrong answer.
  */
 export function drawImageShape(gRoot: RootGroup, shape: ImageShape, href: string): void {
   const center = imageCenter(shape);
+  const src = imageSourceBox(shape);
 
   const rotateGroup = gRoot.append('g')
     .attr('class', 'reference-image-group')
     .attr('transform', `rotate(${shape.rotationDeg ?? 0} ${center.x} ${center.y})`);
 
+  let content: RootGroup = rotateGroup;
+  if (isCropped(shape.crop)) {
+    // Ids have to survive two images sharing a picture, so they key off the shape, not the href.
+    const clipId = `image-crop-${shape.id}`;
+    rotateGroup.append('clipPath')
+      .attr('id', clipId)
+      .attr('clipPathUnits', 'userSpaceOnUse')
+      .append('rect')
+      .attr('x', shape.x)
+      .attr('y', shape.y)
+      .attr('width', shape.width)
+      .attr('height', shape.height);
+    content = rotateGroup.append('g').attr('clip-path', `url(#${clipId})`);
+  }
+
   const imageParent = shape.mirrored
-    ? rotateGroup.append('g').attr('transform', `translate(${2 * center.x} 0) scale(-1 1)`)
-    : rotateGroup;
+    ? content.append('g').attr('transform', `translate(${2 * center.x} 0) scale(-1 1)`)
+    : content;
 
   imageParent.append('image')
     .attr('class', 'reference-image')
     .attr('href', href)
     .attr('xlink:href', href)
-    .attr('transform', `translate(0 ${shape.height}) scale(1 -1)`)
-    .attr('x', shape.x)
-    .attr('y', -shape.y)
-    .attr('width', shape.width)
-    .attr('height', shape.height)
+    .attr('transform', `translate(0 ${src.height}) scale(1 -1)`)
+    .attr('x', src.x)
+    .attr('y', -src.y)
+    .attr('width', src.width)
+    .attr('height', src.height)
     .attr('opacity', shape.opacity ?? DEFAULT_IMAGE_OPACITY)
-    .attr('preserveAspectRatio', 'xMidYMid meet')
+    .attr('preserveAspectRatio', 'none')
     .style('pointer-events', 'none');
 }
 

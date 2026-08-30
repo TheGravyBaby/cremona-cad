@@ -262,7 +262,7 @@
         stroke-linecap="round" stroke-linejoin="round">
         <path d="M12 3c3.5 4 6 7.2 6 10.5a6 6 0 0 1-12 0C6 10.2 8.5 7 12 3z" />
       </svg>
-      <span>Drop white</span>
+      <!-- <span>Drop white</span> -->
     </button>
     <button type="button" class="settings-action" [class.active]="imageMirrored" (click)="toggleImageMirrored()"
       title="Mirror the image left-right — for a scan that came out reversed, or to compare against its opposite half. Combine with Rot° to mirror on any axis. The image's position, size and rotation are unaffected.">
@@ -272,8 +272,28 @@
         <path d="M16 7l4 5-4 5" />
         <path d="M8 7l-4 5 4 5" />
       </svg>
-      <span>Mirror</span>
+      <!-- <span>Mirror</span> -->
     </button>
+    <button type="button" class="settings-action" [class.active]="imageCropped" (click)="toggleCropPopup()"
+      title="Hide part of the picture — trim a side profile down to the half you are tracing. What's left keeps its place and its scale.">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 2v14a2 2 0 0 0 2 2h14" />
+        <path d="M2 6h14a2 2 0 0 1 2 2v14" />
+      </svg>
+      <!-- <span>Crop</span> -->
+    </button>
+    @if (availablePanels.length) {
+      <button type="button" class="settings-action" [class.active]="panelsOpen" (click)="togglePanelsPopup()"
+        title="Which panels this image is shown on">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="16" rx="2" />
+          <path d="M9 4v16" />
+        </svg>
+        <!-- <span>{{ imageScopeSummary }}</span> -->
+      </button>
+    }
     <button type="button" class="settings-action" (click)="lockImage()"
       title="Lock this image in place so it can't be selected or dragged on the canvas. Unlock it again from the Reference Images list in the tool palette.">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -281,7 +301,7 @@
         <rect x="4" y="11" width="16" height="9" rx="1.5" />
         <path d="M7 11V7a5 5 0 0 1 10 0v4" />
       </svg>
-      <span>Lock</span>
+      <!-- <span>Lock</span> -->
     </button>
   }
 
@@ -308,5 +328,60 @@
     }
   }
   </div>
+
+  <!-- Outside .settings-grid on purpose: that scrolls sideways, and anything absolutely
+       positioned inside it would be clipped at the strip's edge. Anchored to the bar rather than
+       to its own button for the same reason — the button's column may have scrolled away. -->
+  @if (showImagePanel && cropOpen) {
+    <div class="settings-popup">
+      <div class="settings-popup-title">Crop — how much of the picture to hide, in % from each edge</div>
+      <div class="crop-grid">
+        <label class="crop-cell"><span>Left</span>
+          <input type="number" min="0" max="100" step="1" [value]="imageCropPercent('left')"
+            (change)="setImageCropPercent('left', $any($event.target).valueAsNumber)"
+            (keydown.enter)="$any($event.target).blur()" />
+        </label>
+        <label class="crop-cell"><span>Right</span>
+          <input type="number" min="0" max="100" step="1" [value]="imageCropPercent('right')"
+            (change)="setImageCropPercent('right', $any($event.target).valueAsNumber)"
+            (keydown.enter)="$any($event.target).blur()" />
+        </label>
+        <label class="crop-cell"><span>Top</span>
+          <input type="number" min="0" max="100" step="1" [value]="imageCropPercent('top')"
+            (change)="setImageCropPercent('top', $any($event.target).valueAsNumber)"
+            (keydown.enter)="$any($event.target).blur()" />
+        </label>
+        <label class="crop-cell"><span>Bottom</span>
+          <input type="number" min="0" max="100" step="1" [value]="imageCropPercent('bottom')"
+            (change)="setImageCropPercent('bottom', $any($event.target).valueAsNumber)"
+            (keydown.enter)="$any($event.target).blur()" />
+        </label>
+      </div>
+      <div class="settings-popup-note">What you keep stays put — cropping never moves or rescales it.</div>
+      <button type="button" class="settings-popup-action" [disabled]="!imageCropped" (click)="clearImageCrop()">
+        Show the whole picture
+      </button>
+    </div>
+  }
+
+  @if (showImagePanel && panelsOpen) {
+    <div class="settings-popup">
+      <div class="settings-popup-title">Shown on</div>
+      <label class="panel-row">
+        <input type="checkbox" [checked]="imageIsDefault" (change)="setImageIsDefault($any($event.target).checked)" />
+        <span>Default — wherever no other image is named</span>
+      </label>
+      <div class="settings-popup-divider"></div>
+      @for (panel of availablePanels; track panel.id) {
+        <label class="panel-row">
+          <input type="checkbox" [checked]="isImageOnPanel(panel.id)" (change)="toggleImagePanel(panel.id)" />
+          <span>{{ panel.label }}</span>
+        </label>
+      }
+      <button type="button" class="settings-popup-action" (click)="showImageOnAllPanels()">
+        Show on every panel
+      </button>
+    </div>
+  }
 </div>
 }

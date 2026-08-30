@@ -237,7 +237,7 @@ export abstract class RecipeComponentBase implements AfterViewInit, Undoable {
       writeWorkingState(RECIPE_KEY, JSON.stringify(this.d));
       this.panelFlow?.refreshEnabledPanels();
       const current = this.panelFlow?.getCurrent(this.openPanel);
-      if (current) this.openPanel = current;
+      if (current) this.setOpenPanel(current);
       this.debounceController?.markImmediate();
       this.onStateRestored();
       this.refreshBoundInputs();
@@ -275,6 +275,10 @@ export abstract class RecipeComponentBase implements AfterViewInit, Undoable {
   protected initializePanelFlow(panelOrder: readonly PanelDefinition<string>[]): void {
     this.panelFlow = new PanelFlow<string>(panelOrder, (panel) => this.canOpenPanel(panel));
     this.panelFlow.refreshEnabledPanels();
+    // The same list the panel bar shows, handed to the canvas so its image settings can offer the
+    // panels an image may be scoped to. Every panel, not just the enabled ones: scoping an image
+    // to a panel you haven't unlocked yet is exactly the ordinary case.
+    this.toolbox.setAvailablePanels(panelOrder.map(p => ({ id: p.id, label: p.label ?? p.id })));
   }
 
   protected abstract canOpenPanel(panel: string): boolean;
@@ -323,9 +327,22 @@ export abstract class RecipeComponentBase implements AfterViewInit, Undoable {
 
   protected activatePanel(panel: string): void {
     if (!this.isPanelEnabled(panel)) return;
-    this.openPanel = panel;
+    this.setOpenPanel(panel);
     writeWorkingState(PANEL_KEY, panel);
     this.onPanelActivated(panel);
+  }
+
+  /**
+   * Assigns the open panel and tells the canvas which one it is, so reference images scoped to
+   * particular panels follow along (see ToolboxStore.setActivePanel and ImageShape.panels).
+   *
+   * Every runtime assignment to `openPanel` should come through here. Missing one leaves the
+   * canvas showing the previous panel's images — which looks like an image that won't hide
+   * rather than like a missed call, so it is worth routing even the one-line cases.
+   */
+  protected setOpenPanel(panel: string): void {
+    this.openPanel = panel;
+    this.toolbox.setActivePanel(panel);
   }
 
 
@@ -453,7 +470,7 @@ export abstract class RecipeComponentBase implements AfterViewInit, Undoable {
   onToggle(panel: string, event: Event) {
     const details = event.target as HTMLDetailsElement;
     if (details.open) {
-      this.openPanel = panel;
+      this.setOpenPanel(panel);
     }
   }
 

@@ -1,4 +1,4 @@
-import { Pt } from '../../models/types';
+import { ImageCredit, ImageCrop, Pt } from '../../models/types';
 import { rotatePointAbout } from '../../helpers/draftMath';
 
 export const DEFAULT_SHAPE_COLOR = '#1d4ed8';
@@ -151,6 +151,34 @@ export type ImageShape = ShapeBase & {
   /** Shown in the settings bar and written back out as the file's `label` — how the user tells
    * "plan view" from "long arch" when several are placed. */
   label: string;
+  /**
+   * Which recipe panels this image is shown on, by panel id. Absent or empty means every panel.
+   * The store matches it against whatever panel the recipe last pushed (ToolboxStore.activePanel)
+   * — the canvas never learns what a panel *is*, it only compares strings, so this stays as
+   * instrument-agnostic as the rest of the toolbox.
+   *
+   * Distinct from `hidden`: that is the user parking an image, this is the recipe saying where
+   * the image belongs. Both have to pass for an image to draw.
+   */
+  panels?: string[];
+  /**
+   * Marks this as the set's default view — "Default" in the UI. An image with neither `panels`
+   * nor this flag shows on every panel; with this flag it shows only on panels no *other* image
+   * has claimed by name. That way a set adds a specific view for one panel without also having to
+   * enumerate every panel the general view still belongs on. See
+   * ToolboxStore.imageMatchesActivePanel.
+   */
+  isDefault?: boolean;
+  /**
+   * Which part of the source picture is shown, as fractions inset from each of its edges. Absent
+   * means all of it. `x`/`y`/`width`/`height` above measure the *visible* rectangle, so every
+   * other reader of this shape — grabbers, hit-testing, the settings bar's W/H — needs no
+   * awareness of cropping at all. See ImageCrop, imageSourceBox and applyImageCrop.
+   */
+  crop?: ImageCrop;
+  /** Provenance and licence for the pixels — see ImageCredit. Absent on anything the user
+   * placed; carried here only so the round-trip back into the recipe doesn't drop it. */
+  credit?: ImageCredit;
   /** Per-image, unlike the single global slider the old reference popup had. Undefined means
    * DEFAULT_IMAGE_OPACITY, which is what every pre-existing recipe file effectively had. */
   opacity?: number;
@@ -221,6 +249,85 @@ export function imageCorners(shape: ImageShape): Record<'sw' | 'se' | 'nw' | 'ne
     nw: rotatePointAbout({ x: shape.x, y: y1 }, center, deg),
     ne: rotatePointAbout({ x: x1, y: y1 }, center, deg),
   };
+}
+
+// A crop can never take everything: opposite insets are scaled back to leave at least this much
+// of the picture showing. Zero would divide by zero in imageSourceBox and leave an image with no
+// visible box to grab and no way back.
+const MIN_CROP_SPAN = 0.02;
+
+/** True when a crop actually hides something — an all-zero crop is stored as no crop at all, so
+ * "is this image cropped" stays a plain presence check everywhere else. */
+export function isCropped(crop: ImageCrop | undefined): crop is ImageCrop {
+  return !!crop && (crop.left > 0 || crop.top > 0 || crop.right > 0 || crop.bottom > 0);
+}
+
+/** Each inset into 0..1, then opposite pairs scaled back together if they would between them
+ * leave less than MIN_CROP_SPAN. Scaling both rather than clamping the larger keeps the answer
+ * independent of which of the two the user just typed into. */
+function clampCropPair(a: number, b: number): [number, number] {
+  const lo = Math.max(0, Math.min(1, Number.isFinite(a) ? a : 0));
+  const hi = Math.max(0, Math.min(1, Number.isFinite(b) ? b : 0));
+  const total = lo + hi;
+  const max = 1 - MIN_CROP_SPAN;
+  return total <= max ? [lo, hi] : [lo * (max / total), hi * (max / total)];
+}
+
+/**
+ * Where the whole source picture sits in the shape's own unrotated frame — the rectangle the
+ * `<image>` element is drawn at before the crop clips it back to the box. Equal to the box when
+ * uncropped, which is why an uncropped image renders exactly as it always did.
+ */
+export function imageSourceBox(shape: ImageShape): { x: number; y: number; width: number; height: number } {
+  if (!isCropped(shape.crop)) {
+    return { x: shape.x, y: shape.y, width: shape.width, height: shape.height };
+  }
+  const [left, right] = clampCropPair(shape.crop.left, shape.crop.right);
+  const [top, bottom] = clampCropPair(shape.crop.top, shape.crop.bottom);
+  const width = shape.width / (1 - left - right);
+  const height = shape.height / (1 - top - bottom);
+  return {
+    x: shape.x - left * width,
+    // `top` is the picture's top, which is the *high*-y edge here, so it is `bottom` that says
+    // how far below the box the source starts.
+    y: shape.y - bottom * height,
+    width,
+    height,
+  };
+}
+
+/**
+ * The patch that gives `shape` the crop `crop`, leaving the part of the picture that survives
+ * exactly where it is now — same place on the canvas, same scale, same rotation. Pass `undefined`
+ * to uncrop back to the whole picture. The only thing that should write `crop`.
+ *
+ * Two steps. The source rectangle is what crop fractions are measured against and doesn't move,
+ * so the new box is read straight off it. Then the box is shifted, because rotation turns it
+ * about its own centre and that centre has just moved: rotating the new centre about the old one
+ * says where that point was being drawn before, and the difference puts every retained pixel
+ * back. One shift covers all of them — two rotations through the same angle about different
+ * centres differ only by a translation.
+ */
+export function applyImageCrop(shape: ImageShape, crop: ImageCrop | undefined): Partial<ImageShape> {
+  const src = imageSourceBox(shape);
+  const [left, right] = clampCropPair(crop?.left ?? 0, crop?.right ?? 0);
+  const [top, bottom] = clampCropPair(crop?.top ?? 0, crop?.bottom ?? 0);
+
+  const next = {
+    x: src.x + left * src.width,
+    y: src.y + bottom * src.height,
+    width: src.width * (1 - left - right),
+    height: src.height * (1 - top - bottom),
+  };
+
+  const oldCenter = imageCenter(shape);
+  const newCenter = { x: next.x + next.width / 2, y: next.y + next.height / 2 };
+  const spun = rotatePointAbout(newCenter, oldCenter, shape.rotationDeg ?? 0);
+  next.x += spun.x - newCenter.x;
+  next.y += spun.y - newCenter.y;
+
+  const clamped: ImageCrop = { left, top, right, bottom };
+  return { ...next, crop: isCropped(clamped) ? clamped : undefined };
 }
 
 /** An image's four edge midpoints in world space, rotation applied. */

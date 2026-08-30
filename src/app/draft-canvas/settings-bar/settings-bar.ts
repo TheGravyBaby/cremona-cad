@@ -1,12 +1,13 @@
 import { Component, Input } from '@angular/core';
 import { inject } from '@angular/core';
 import { DraftTool } from '../tools/draft-tool';
-import { ToolboxStore } from '../tools/toolbox-store';
+import { ToolboxStore, PanelChoice } from '../tools/toolbox-store';
 import {
   DraftShape, LineShape, DimensionShape, RectShape, TextShape, PointShape, CircleShape, ArcShape, SectionShape,
   FreehandShape, ImageShape, DEFAULT_IMAGE_OPACITY, DEFAULT_SHAPE_COLOR, DEFAULT_FREEHAND_WIDTH,
-  DEFAULT_TEXT_SIZE_MM,
+  DEFAULT_TEXT_SIZE_MM, applyImageCrop, isCropped,
 } from '../tools/toolbox-shape';
+import { ImageCrop } from '../../models/types';
 import { normalizeDegrees, pointAtDistanceToward } from '../../helpers/draftMath';
 
 /**
@@ -591,6 +592,111 @@ export class SettingsBarComponent {
     const shape = this.selectedImageShape;
     if (!shape) return;
     this.toolbox.updateShape(shape.id, { mirrored: !this.imageMirrored });
+  }
+
+  // ----- Crop and panel scoping -----
+  // Both live behind a button in a popup rather than inline. The strip is a single column flow
+  // that never wraps and Reference Image is already its widest case (see settings-bar.css), and
+  // neither of these is a value you nudge while watching the canvas the way X or Opacity is.
+  // One open at a time, like the bottom bar's own two popups.
+
+  public cropOpen = false;
+  public panelsOpen = false;
+
+  toggleCropPopup(): void {
+    this.cropOpen = !this.cropOpen;
+    this.panelsOpen = false;
+  }
+
+  togglePanelsPopup(): void {
+    this.panelsOpen = !this.panelsOpen;
+    this.cropOpen = false;
+  }
+
+  public get imageCropped(): boolean { return isCropped(this.selectedImageShape?.crop); }
+
+  /** Shown as a percentage of the picture rather than the stored fraction: "trim 20% off the
+   * left" is how cropping is thought about, and four adjacent boxes of leading zeros are not. */
+  public imageCropPercent(edge: keyof ImageCrop): number {
+    return this.round2((this.selectedImageShape?.crop?.[edge] ?? 0) * 100);
+  }
+
+  /**
+   * Writes one edge of the crop. Goes through applyImageCrop rather than patching the field on
+   * its own, because a crop also moves and resizes the box — that is what keeps the part of the
+   * picture you're keeping exactly where it was, at the scale you already set it to, instead of
+   * sliding and rescaling as you trim. See ImageCrop.
+   */
+  setImageCropPercent(edge: keyof ImageCrop, percent: number): void {
+    const shape = this.selectedImageShape;
+    if (!shape || !Number.isFinite(percent)) return;
+    const current: ImageCrop = shape.crop ?? { left: 0, top: 0, right: 0, bottom: 0 };
+    const next: ImageCrop = { ...current, [edge]: Math.max(0, Math.min(100, percent)) / 100 };
+    this.toolbox.updateShape(shape.id, applyImageCrop(shape, next) as Partial<DraftShape>);
+  }
+
+  /** Back to the whole picture, with the part that was showing left where it is — so undoing a
+   * crop grows the box outwards rather than rescaling what you had lined up. */
+  clearImageCrop(): void {
+    const shape = this.selectedImageShape;
+    if (!shape) return;
+    this.toolbox.updateShape(shape.id, applyImageCrop(shape, undefined) as Partial<DraftShape>);
+  }
+
+  /** The panels this recipe has, pushed down by RecipeComponentBase. Empty for a host with none,
+   * which hides the picker rather than offering an empty list. */
+  public get availablePanels(): readonly PanelChoice[] { return this.toolbox.availablePanels; }
+
+  /** "Default" is what the UI calls ImageShape.isDefault. */
+  public get imageIsDefault(): boolean { return this.selectedImageShape?.isDefault ?? false; }
+
+  public isImageOnPanel(panelId: string): boolean {
+    return !!this.selectedImageShape?.panels?.includes(panelId);
+  }
+
+  /** Says what the scoping is on the closed button, so the popup is for changing it rather than
+   * for finding out. */
+  public get imageScopeSummary(): string {
+    const count = this.selectedImageShape?.panels?.length ?? 0;
+    if (count) return `${count} panel${count === 1 ? '' : 's'}`;
+    return this.imageIsDefault ? 'Default' : 'All panels';
+  }
+
+  /**
+   * Adds or removes one panel from the image's list. An empty list is stored as no list at all,
+   * so "shows everywhere" has one representation rather than two that behave alike.
+   *
+   * Naming a panel clears Default, because the two are alternatives: Default means "wherever
+   * nothing else was named", so a default that also named panels of its own could never be
+   * reached on any other panel and would just be a confusing way to write a list.
+   */
+  toggleImagePanel(panelId: string): void {
+    const shape = this.selectedImageShape;
+    if (!shape) return;
+    const current = shape.panels ?? [];
+    const next = current.includes(panelId)
+      ? current.filter(p => p !== panelId)
+      : [...current, panelId];
+    this.toolbox.updateShape(shape.id, {
+      panels: next.length ? next : undefined,
+      isDefault: next.length ? false : shape.isDefault,
+    } as Partial<DraftShape>);
+  }
+
+  setImageIsDefault(value: boolean): void {
+    const shape = this.selectedImageShape;
+    if (!shape) return;
+    this.toolbox.updateShape(shape.id, {
+      isDefault: value,
+      panels: value ? undefined : shape.panels,
+    } as Partial<DraftShape>);
+  }
+
+  /** Neither scoped nor default — shown on every panel, which is what a hand-placed image is. */
+  showImageOnAllPanels(): void {
+    const shape = this.selectedImageShape;
+    if (!shape) return;
+    this.toolbox.updateShape(shape.id, { panels: undefined, isDefault: false } as Partial<DraftShape>);
   }
 
   /**

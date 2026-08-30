@@ -1,4 +1,5 @@
 import { EnricoCerutiTemplate, DefaultParams, EnricoCerutiParams, RECIPE_SCHEMA_VERSION } from "./ceruti-types";
+import { CORPUS_TEMPLATES } from "./corpus";
 
 /**
  * Converts a raw recipe object copied from session storage into an
@@ -20,6 +21,7 @@ function templateFromRecipeJson(raw: any): EnricoCerutiTemplate {
     fileName: raw.fileName ?? '',
     version: raw.version ?? RECIPE_SCHEMA_VERSION,
     description: raw.description ?? '',
+    meta: raw.meta,
     referenceImage: raw.referenceImage,
     referenceImages: raw.referenceImages,
     params: (raw.params ?? raw) as EnricoCerutiParams,
@@ -2790,12 +2792,15 @@ export const CERUTI_TEMPLATES: EnricoCerutiTemplate[] = [
     paths: [],
     referenceImages: [],
   },
-  templateFromRecipeJson(AmatiStoll),
-  templateFromRecipeJson(StradGoetz),
-  templateFromRecipeJson(DelGesuBaltic),
-  templateFromRecipeJson(GuadagniniPiacenza),
-  templateFromRecipeJson(StradDavidoff),
-  templateFromRecipeJson(RavatinMans),
-  templateFromRecipeJson(MagginiDelmas),
-  templateFromRecipeJson(MittenwaldBass)
+  // templateFromRecipeJson(AmatiStoll),
+  // templateFromRecipeJson(StradGoetz),
+  // templateFromRecipeJson(DelGesuBaltic),
+  // templateFromRecipeJson(GuadagniniPiacenza),
+  // templateFromRecipeJson(StradDavidoff),
+  // templateFromRecipeJson(RavatinMans),
+  // templateFromRecipeJson(MagginiDelmas),
+  // templateFromRecipeJson(MittenwaldBass),
+  // Instruments traced from open-licence museum records live in their own folder — see
+  // corpus/index.ts. Appended rather than interleaved, so this list stays in the order it grew.
+  ...CORPUS_TEMPLATES
 ];

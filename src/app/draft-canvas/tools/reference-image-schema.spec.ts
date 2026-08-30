@@ -131,6 +131,77 @@ describe('round-trip through the recipe field', () => {
     expect(out).toEqual(original.map(e => ({ ...e, 'xlink:href': e.href })));
   });
 
+  // The sync that makes this matter: recipe-base subscribes to ToolboxStore and rewrites
+  // `referenceImages` from the placed shapes on every change, so a field this pair doesn't carry
+  // both ways is erased the first time the user touches the canvas — and only visibly so after
+  // save-and-reopen. Both of these are recipe-authored and never edited on the canvas, which is
+  // exactly the shape of field that gets dropped.
+  it('preserves panel scoping and image credit, which nothing on the canvas ever rewrites', () => {
+    const assets = store();
+    const original: NamedReferenceImage[] = [{
+      id: 'r1', label: 'Cross section', href: '/section.jpg',
+      x: 0, y: 0, width: 100, height: 200, rotationDeg: 0, locked: true,
+      panels: ['longArching', 'crossArching'],
+      credit: {
+        source: 'The Metropolitan Museum of Art',
+        imageId: 'DP-1234-001',
+        licence: 'CC0',
+        attribution: 'The Metropolitan Museum of Art, Public Domain',
+        url: 'https://www.metmuseum.org/art/collection/search/898377',
+      },
+    }];
+
+    const shapes = imageShapesFromRecipe({ referenceImages: original }, assets);
+    expect(shapes[0].panels).toEqual(['longArching', 'crossArching']);
+    expect(shapes[0].credit?.licence).toBe('CC0');
+
+    const out = imageShapesToRecipe(shapes, assets);
+    expect(out).toEqual(original.map(e => ({ ...e, 'xlink:href': e.href })));
+  });
+
+  // A shape holding the template's own array would let a drag-and-save write back into the
+  // constant every later load reads from — the template would come back changed.
+  it('copies the arrays rather than sharing them with the template constant', () => {
+    const assets = store();
+    const original: NamedReferenceImage[] = [{
+      id: 'r1', label: 'A', href: '/a.jpg', x: 0, y: 0, width: 1, height: 1,
+      panels: ['base'], credit: { source: 'Met', licence: 'CC0', attribution: 'Met' },
+    }];
+    const shapes = imageShapesFromRecipe({ referenceImages: original }, assets);
+
+    shapes[0].panels!.push('mould');
+    shapes[0].credit!.licence = 'changed';
+
+    expect(original[0].panels).toEqual(['base']);
+    expect(original[0].credit!.licence).toBe('CC0');
+  });
+
+  it('leaves both absent on an image that has neither, which is every one placed by hand', () => {
+    const assets = store();
+    const out = imageShapesToRecipe(imageShapesFromRecipe({
+      referenceImages: [{ id: 'a', label: 'A', href: '/a.jpg', x: 0, y: 0, width: 1, height: 1 }],
+    }, assets), assets);
+    expect(out[0].panels).toBeUndefined();
+    expect(out[0].isDefault).toBeUndefined();
+    expect(out[0].credit).toBeUndefined();
+  });
+
+  // Same erasure risk as `panels`, and worse to diagnose: losing this doesn't hide the image, it
+  // shows it on panels a more specific view had taken over, which reads as scoping not working.
+  it('preserves the default-view flag', () => {
+    const assets = store();
+    const original: NamedReferenceImage[] = [{
+      id: 'r1', label: 'Plan', href: '/plan.jpg',
+      x: 0, y: 0, width: 100, height: 200, rotationDeg: 0, locked: true, isDefault: true,
+    }];
+
+    const shapes = imageShapesFromRecipe({ referenceImages: original }, assets);
+    expect(shapes[0].isDefault).toBe(true);
+
+    const out = imageShapesToRecipe(shapes, assets);
+    expect(out[0].isDefault).toBe(true);
+  });
+
   it('carries mirrored through unchanged, defaulting to unmirrored', () => {
     const assets = store();
     const shapes = imageShapesFromRecipe({

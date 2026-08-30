@@ -15,6 +15,7 @@ adding to a file — they are current and more specific than this page.
 | `ceruti-surface.ts` | The evaluable height field z(x,y) over the plan view. Cross-arch templates, STL. |
 | `ceruti-types.ts` | `EnricoCerutiParams` and the whole serialized shape. `CerutiColors`, view flags. |
 | `ceruti-templates.ts` | Bundled historical instruments (Strad Goetz, Del Gesu Baltic, …) as pasted recipe JSON. **Append-only** — add instruments, don't restructure. |
+| `corpus/` | Instruments traced from open-licence museum records — one `.json` file each, listed in `corpus/index.ts`. Same type as the templates above, but carrying a `TemplateMeta` and a per-image `ImageCredit` so the numbers and the pixels can each be rechecked. New instruments go here, not in `ceruti-templates.ts`. |
 | `ceruti-helpers.ts` | `*Info()` functions — the help text behind each field's info button. |
 | `panels/` | One folder per sidebar panel. Panels are thin; see the layer rule in the root CLAUDE.md. |
 | `renders/` | SVG emitters for the arching views, plus geometry that only serves one view. |
@@ -43,6 +44,18 @@ recognizes the current format *positively* so it stays idempotent; six tests in
 
 ## Settled decisions — don't re-litigate
 
+- **A reference image can be scoped to particular panels.** `NamedReferenceImage.panels` /
+  `ImageShape.panels` list panel ids; absent or empty means every panel, which is every image a
+  user placed by hand. `RecipeComponentBase.setOpenPanel` pushes the open panel to
+  `ToolboxStore.setActivePanel`, and the store compares strings — it never learns what a panel is.
+  Separate from the user's own `hidden` switch: both have to pass for an image to draw, and
+  scoping must never write through to `hidden`. An image marked `isDefault` with no `panels` is the
+  set's general view — "Default" in the UI: shown wherever nothing more specific is, stepped aside
+  from where something is. That is what keeps a set maintainable — adding a scoped view, or adding a
+  panel, never means going back to relist the panels the general view still belongs on. Both are
+  editable from the canvas settings bar as well as authored in a template, which is why
+  `initializePanelFlow` hands `panelOrder` down to `ToolboxStore.setAvailablePanels`: the picker
+  needs the labels, and this is the one place that already has them.
 - **Templates carry no `arching` block, on purpose.** They ship solved outline geometry (`bouts`,
   `outerCorners`, `blocks`) but no arching, so `normalizeArchingParams` early-returns and the
   plate is seeded from `defaultArchingParams` by whichever arching panel or the surface builder
@@ -68,20 +81,24 @@ recognizes the current format *positively* so it stays idempotent; six tests in
 
 ## Adding a panel
 
-Five edits. Missing one fails quietly — usually a panel that never unlocks — so work the list.
+Six edits. Missing one fails quietly — usually a panel that never unlocks — so work the list.
 
-1. **`panels/<name>-panel/`** — just `.ts` and `.html`. No per-panel stylesheet: all nine share
+1. **`ceruti-types.ts` → `CERUTI_PANEL_IDS`** — the id. `panelOrder` is typed against it, so this
+   one is loud: skip it and step 3 fails the build. It exists because panel ids are file-format
+   vocabulary now — a template's reference images scope themselves to panels by id
+   (`NamedReferenceImage.panels`), so renaming a panel is a migration rather than a rename.
+2. **`panels/<name>-panel/`** — just `.ts` and `.html`. No per-panel stylesheet: all nine share
    `styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css']`, and markup uses the shared
    `ui-group` / `field-row` / `basic-input` classes. Extend `CerutiPanelBase`, implement `OnInit`.
    Copy `panels/outer-trace-panel/` as the reference; `panels/mould-panel/` is the smallest.
    Declare `static readonly renderToggles` — which view-toggle buttons the bar shows while this
-   panel is open. There is no default to inherit, so omitting it fails the build at step 2.
-2. **`ceruti-violin.ts` → `panelOrder`** — id + label + `toggles: <Panel>.renderToggles`,
+   panel is open. There is no default to inherit, so omitting it fails the build at step 3.
+3. **`ceruti-violin.ts` → `panelOrder`** — id + label + `toggles: <Panel>.renderToggles`,
    positioned in bench order. `toggles: []` for a panel that offers none.
-3. **`ceruti-violin.ts` → `canOpenPanel()`** — a case returning the right `hasX()` predicate. Add
+4. **`ceruti-violin.ts` → `canOpenPanel()`** — a case returning the right `hasX()` predicate. Add
    a new `hasX()` under *Panel gating* if no existing one fits.
-4. **`ceruti-violin.ts` → component `imports`** array.
-5. **`ceruti-violin.html`** — an `@if (openPanel === '<id>')` block with `#panelRef`,
+5. **`ceruti-violin.ts` → component `imports`** array.
+6. **`ceruti-violin.html`** — an `@if (openPanel === '<id>')` block with `#panelRef`,
    `[params]`/`[colors]`/`[flags]` (plus `[paths]` only if the panel reads the path cache), and
    `(panelUpdate)="onPanelRenderRequest($event)"`.
 

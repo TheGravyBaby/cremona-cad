@@ -103,14 +103,78 @@ export type ReferenceImage = {
 }
 
 /**
+ * Where a reference image came from and under what terms it may be used. Carried per image
+ * rather than per recipe because one instrument's set can mix provenances — a CC0 museum
+ * photograph paired with a plate traced from a different source. Bout measurements are facts and
+ * carry no copyright; a photograph is expression and does, so the two are recorded separately
+ * (the image's terms here, the instrument's record on the template's `meta`).
+ *
+ * Absent on anything a user placed themselves, which is the common case — this exists for the
+ * bundled corpus, where the licence has to travel with the pixels rather than living in a README.
+ */
+export type ImageCredit = {
+  /** Holding institution or publisher, spelled as they ask to be credited. */
+  source: string;
+  /** The institution's own id for this image, where it has one separate from the object id. */
+  imageId?: string;
+  /** Licence or terms of use, verbatim and short — 'CC0', 'Public domain', 'Educational use'. */
+  licence: string;
+  /** The credit line to display. */
+  attribution: string;
+  /** Where the image or its record can be seen. */
+  url?: string;
+};
+
+/**
+ * How much of a reference image's source picture is hidden, as fractions inset from each edge:
+ * `{ left: 0.25, top: 0, right: 0, bottom: 0.1 }` hides the left quarter and the bottom tenth.
+ * Named for the picture as it reads on screen, so `top` is the high-y edge of the Y-up world.
+ * Absent means the whole picture.
+ *
+ * The image's `x`/`y`/`width`/`height` describe the **visible** rectangle rather than where the
+ * whole picture would sit. That is what keeps cropping from spreading: handles, hit-testing, the
+ * selection halo and the W/H fields you type a real measurement into all go on describing what
+ * you can actually see, and the renderer is the only thing that works back to the source. The
+ * cost is that changing a crop has to move and resize the box in the same step so the part you
+ * keep stays exactly where it was — see `applyImageCrop` in
+ * draft-canvas/tools/toolbox-shape.ts, which is the only thing that should compute that.
+ */
+export type ImageCrop = {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+};
+
+/**
  * One reference image as it appears in a recipe file or built-in template — the durable, on-disk
  * form. draft-canvas/tools/reference-image-schema.ts converts it to and from the canvas's own
  * `ImageShape`, and is the only code that should touch this type. Every field past
  * `href`/`x`/`y`/`width`/`height` is optional so older files keep loading unchanged.
+ *
+ * **Every field here must also exist on `ImageShape`.** The canvas is the live copy: recipe-base
+ * subscribes to ToolboxStore and rewrites `referenceImages` from the placed shapes on every
+ * change, so a field that stops at this type is erased the first time the user touches the
+ * canvas — and only visibly so after save-and-reopen.
  */
 export type NamedReferenceImage = ReferenceImage & {
   id?: string;
   label?: string;
+  /** Which recipe panels this image is shown on, by panel id. Absent or empty means every panel,
+   * which is what every image placed by hand is. Lets one instrument ship a plan view for the
+   * outline panels and a section photograph for the arching ones without the user parking each
+   * by hand. See ToolboxStore.setActivePanel. */
+  panels?: string[];
+  /** Marks this as the set's default view — "Default" in the UI: shown wherever no other image
+   * names the panel, and stepped aside from on panels one does. Lets a set carry one general plan
+   * photograph plus a few specific ones without listing every panel the general one belongs on.
+   * Only meaningful with `panels` absent. See ToolboxStore.imageMatchesActivePanel. */
+  isDefault?: boolean;
+  /** Which part of the source picture the box shows. Absent means all of it — see ImageCrop,
+   * which explains why the box measures the visible part rather than the whole. */
+  crop?: ImageCrop;
+  /** Provenance and licence — see ImageCredit. Absent on user-placed images. */
+  credit?: ImageCredit;
   /** Render opacity, 0–1. Was a single global setting; now per-image. Omitted means the default. */
   opacity?: number;
   /** Whether near-white pixels are faded out for dark-mode legibility. Omitted means on, which
