@@ -1,6 +1,7 @@
 import { calculateCenterBout, calculateCorners, calculateMainBouts, calculateOuterArcs } from './ceruti-calcs';
 import { defaultArchingParams, normalizeArchingParams } from './ceruti-arching';
 import { CERUTI_TEMPLATES } from './ceruti-templates';
+import { LEGACY_TEMPLATES } from './legacy';
 import { DefaultParams, EnricoCerutiParams, EnricoCerutiTemplate } from './ceruti-types';
 
 // Test fixtures. Not imported by the app.
@@ -57,9 +58,19 @@ export function archedViolin(): EnricoCerutiParams {
   return p;
 }
 
+/**
+ * Every instrument the suite sweeps: the ones the picker offers, plus the photo-traced set in
+ * `legacy/` that it no longer does. The legacy eight are the only instruments carrying a bass,
+ * a viol neck or viol corners, so dropping them here would quietly thin every `it.each` below
+ * rather than fail anything.
+ */
+function allTemplates(): EnricoCerutiTemplate[] {
+  return [...CERUTI_TEMPLATES, ...LEGACY_TEMPLATES];
+}
+
 /** Every bundled instrument, as `[key, factory]` — for `it.each` over the whole set. */
 export function templateKeys(): string[] {
-  return CERUTI_TEMPLATES.map(t => t.key);
+  return allTemplates().map(t => t.key);
 }
 
 /**
@@ -73,7 +84,7 @@ export function templateKeys(): string[] {
  * the generic defaults and say nothing about the real instrument.
  */
 export function templateViolin(key: string, withArching = false): EnricoCerutiParams {
-  const template = CERUTI_TEMPLATES.find(t => t.key === key);
+  const template = allTemplates().find(t => t.key === key);
   if (!template) throw new Error(`No such template: ${key}. Have: ${templateKeys().join(', ')}`);
   const copy: EnricoCerutiTemplate = JSON.parse(JSON.stringify(template));
   normalizeArchingParams(copy.params);

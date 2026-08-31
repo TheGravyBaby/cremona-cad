@@ -1,6 +1,7 @@
 import { imageShapesFromRecipe, imageShapesToRecipe } from './reference-image-schema';
 import { ImageAssetStore } from './image-asset-store';
 import { CERUTI_TEMPLATES } from '../../enrico-ceruti-violin/ceruti-templates';
+import { LEGACY_TEMPLATES } from '../../enrico-ceruti-violin/legacy';
 import { NamedReferenceImage } from '../../models/types';
 
 /** The store has no Angular dependencies of its own, so a plain instance is enough here. */
@@ -260,12 +261,16 @@ describe('round-trip through the recipe field', () => {
 });
 
 // The built-in templates are the compatibility contract this module exists to hold: they carry
-// reference images in the pre-refactor format and must keep loading untouched.
+// reference images in the pre-refactor format and must keep loading untouched. The legacy eight
+// are the ones still on the singular `referenceImage`, so they belong in this sweep even though
+// the picker no longer offers them.
+const BUNDLED = [...CERUTI_TEMPLATES, ...LEGACY_TEMPLATES];
+
 describe('the built-in Ceruti templates', () => {
   it('every template loads without error, and every image in one gets usable geometry', () => {
     // Collected rather than asserted per-image so a failure names which template broke.
     const bad: string[] = [];
-    for (const template of CERUTI_TEMPLATES) {
+    for (const template of BUNDLED) {
       const assets = store();
       for (const shape of imageShapesFromRecipe(template, assets)) {
         if (!assets.href(shape.imageRef)) bad.push(`${template.key}/${shape.label}: no href`);
@@ -277,7 +282,7 @@ describe('the built-in Ceruti templates', () => {
   });
 
   it('loads the reference image shipped with each template that has one', () => {
-    const withImages = CERUTI_TEMPLATES.filter(t => t.referenceImage?.href || t.referenceImages?.length);
+    const withImages = BUNDLED.filter(t => t.referenceImage?.href || t.referenceImages?.length);
     // Guards the assertion below against silently passing if the templates ever lose their images.
     expect(withImages.length).toBeGreaterThan(0);
     const empty = withImages
@@ -287,7 +292,7 @@ describe('the built-in Ceruti templates', () => {
   });
 
   it('round-trips a template through save and load unchanged', () => {
-    const template = CERUTI_TEMPLATES.find(t => t.referenceImage?.href)!;
+    const template = BUNDLED.find(t => t.referenceImage?.href)!;
     const assets = store();
     const saved = imageShapesToRecipe(imageShapesFromRecipe(template, assets), assets);
     const reloaded = imageShapesToRecipe(imageShapesFromRecipe({ referenceImages: saved }, assets), assets);

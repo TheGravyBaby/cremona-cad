@@ -1,0 +1,245 @@
+{
+  "key": "stradivari-violin-betts",
+  "label": "Violin - Antonio Stradivari - Betts",
+  "recipeName": "enrico-ceruti-violin",
+  "fileName": "Violin - Antonio Stradivari - Betts",
+  "description": "Cremona, 1704",
+  "version": "1",
+  "meta": {
+    "maker": "Antonio Stradivari",
+    "instrument": "Violin \"Betts\"",
+    "date": "1704",
+    "record": {
+      "source": "loc",
+      "objectId": "2022560101",
+      "url": "https://www.loc.gov/item/2022560101/"
+    },
+    "notes": "Bout set and back length are the Library of Congress catalogue dimensions, verbatim: length of back 35.5 cm, upper bouts 16.8 cm, middle bouts 10.8 cm, lower bouts 20.8 cm. Everything in params below the catalogue dimensions is unsolved and carries DefaultParams values - the outline arcs, corners, button and blocks are still to be traced. No arching: none is published. Licence differs from the CC0 corpus entries: the LoC record carries its educational-and-research rights statement rather than a public-domain dedication, so the images are linked at their IIIF addresses rather than inlined. Four views are shipped from the record: the top (sp=2) as the general view, marked Default, kept off the panels that have their own; the top and back (sp=1) side by side on fluting; and the profile plate (sp=3), which photographs both sides of the instrument, cropped to its left-hand half for longArching. crossArching is excluded outright - no section is published, and that panel shows nothing rather than a plan shot that would be traced by mistake. The rest of the record is corner, edge, rib, scroll and pegbox detail; where a set holds an annotated measured drawing it is a third party's own analysis, deliberately not shipped and not to be traced from. Reference images are placed to a nominal fit only - plan views at the catalogue lower-bout width, the profile at the catalogue back length, each held to its source proportions - so every one must be scaled against a known dimension before tracing."
+  },
+  "params": {
+    "height": 355,
+    "width": 208,
+    "overhang": 3,
+    "rib": 1,
+    "bitDiameter": 6.35,
+    "purflingOffset": null,
+    "purflingChannelDepth": null,
+    "innerFlutingDepth": null,
+    "outerFlutingDepth": null,
+    "ratios": {
+      "HtoW": 1.7067307692307692,
+      "UBtoLB": 0.8076923076923077,
+      "CBWtoLBW": 0.5192307692307693,
+      "U0toUBW": 0.625,
+      "U1toUBW": 0.3333333333333333,
+      "U2toUBW": 0.5,
+      "U3toLBW": 0.125,
+      "C0YtoH": 0.5625,
+      "C0toLBW": 0.4444444444444444,
+      "C2toLBW": 0.08333333333333333,
+      "C1toLBW": 0.125,
+      "LBtoH": 0.5859154929577465,
+      "L0toLBW": 0.875,
+      "L1toLBW": 0.3333333333333333,
+      "L2toLBW": 0.5,
+      "L3toLBW": 0.125,
+      "UCYtoH": 0.6666666666666666,
+      "LCYtoH": 0.4,
+      "FLtoW": 0.02,
+      "FUtoL": 0.8
+    },
+    "bouts": {
+      "UBW": 168,
+      "CBW": 108,
+      "LBW": 208,
+      "U0": null,
+      "U1": null,
+      "U2": null,
+      "U3": null,
+      "U31": null,
+      "U4": null,
+      "C2": null,
+      "C21": null,
+      "C0": null,
+      "C1": null,
+      "C11": null,
+      "L4": null,
+      "L3": null,
+      "L31": null,
+      "L2": null,
+      "L1": null,
+      "L0": null,
+      "UCr": null,
+      "LCr": null
+    },
+    "viol": {
+      "width": null,
+      "V0": null,
+      "neckRadius": null
+    },
+    "button": null,
+    "outerCorners": {
+      "U3": null,
+      "U31": null,
+      "C2": null,
+      "C21": null,
+      "C1": null,
+      "C11": null,
+      "L3": null,
+      "L31": null
+    },
+    "blocks": {
+      "U": null,
+      "CU": null,
+      "CUPad": null,
+      "CL": null,
+      "CLPad": null,
+      "L": null
+    },
+    "options": {
+      "useViolNeck": false,
+      "useViolCornerUC": false,
+      "useViolCornerLC": false,
+      "useKellyC0": false,
+      "U31DoubleArc": false,
+      "C21DoubleArc": false,
+      "C11DoubleArc": false,
+      "L31DoubleArc": false,
+      "ucCornerSharpness": 0,
+      "lcCornerSharpness": 0
+    }
+  },
+  "paths": [],
+  "referenceImages": [
+    {
+      "id": "stradivari-violin-betts-top",
+      "label": "Top (sp=2)",
+      "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154811:musihas-200154811.0002/full/pct:100.0/0/default.jpg",
+      "xlink:href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154811:musihas-200154811.0002/full/pct:100.0/0/default.jpg",
+      "x": -124.25,
+      "y": -8.875,
+      "width": 248.5,
+      "height": 372.75,
+      "rotationDeg": 0,
+      "opacity": 0.65,
+      "suppressWhite": false,
+      "locked": false,
+      "excludePanels": [
+        "fluting",
+        "longArching",
+        "crossArching"
+      ],
+      "isDefault": true,
+      "credit": {
+        "source": "Library of Congress",
+        "imageId": "musihas-200154811.0002",
+        "licence": "Educational and research use",
+        "attribution": "Library of Congress, Music Division. Gift of Gertrude Clarke Whittall, 1936.",
+        "url": "https://www.loc.gov/resource/music.musihas-200154811/?sp=2&st=image"
+      }
+    },
+    {
+      "id": "stradivari-violin-betts-top-fluting",
+      "label": "Top (sp=2)",
+      "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154811:musihas-200154811.0002/full/pct:100.0/0/default.jpg",
+      "xlink:href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154811:musihas-200154811.0002/full/pct:100.0/0/default.jpg",
+      "x": 6.0,
+      "y": -8.875,
+      "width": 248.5,
+      "height": 372.75,
+      "rotationDeg": 0,
+      "opacity": 0.65,
+      "suppressWhite": false,
+      "locked": false,
+      "panels": [
+        "fluting"
+      ],
+      "credit": {
+        "source": "Library of Congress",
+        "imageId": "musihas-200154811.0002",
+        "licence": "Educational and research use",
+        "attribution": "Library of Congress, Music Division. Gift of Gertrude Clarke Whittall, 1936.",
+        "url": "https://www.loc.gov/resource/music.musihas-200154811/?sp=2&st=image"
+      }
+    },
+    {
+      "id": "stradivari-violin-betts-back",
+      "label": "Back (sp=1)",
+      "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154811:musihas-200154811.0001/full/pct:100.0/0/default.jpg",
+      "xlink:href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154811:musihas-200154811.0001/full/pct:100.0/0/default.jpg",
+      "x": -254.5,
+      "y": -8.875,
+      "width": 248.5,
+      "height": 372.75,
+      "rotationDeg": 0,
+      "opacity": 0.65,
+      "suppressWhite": false,
+      "locked": false,
+      "panels": [
+        "fluting"
+      ],
+      "credit": {
+        "source": "Library of Congress",
+        "imageId": "musihas-200154811.0001",
+        "licence": "Educational and research use",
+        "attribution": "Library of Congress, Music Division. Gift of Gertrude Clarke Whittall, 1936.",
+        "url": "https://www.loc.gov/resource/music.musihas-200154811/?sp=1&st=image"
+      }
+    },
+    {
+      "id": "stradivari-violin-betts-profiles",
+      "label": "Profiles, both sides (sp=3)",
+      "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154811:musihas-200154811.0003/full/pct:100.0/0/default.jpg",
+      "xlink:href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154811:musihas-200154811.0003/full/pct:100.0/0/default.jpg",
+      "x": -60.2843,
+      "y": -8.875,
+      "width": 120.5685,
+      "height": 372.75,
+      "rotationDeg": 0,
+      "opacity": 0.65,
+      "suppressWhite": false,
+      "locked": false,
+      "panels": [
+        "longArching"
+      ],
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0.5,
+        "bottom": 0
+      },
+      "credit": {
+        "source": "Library of Congress",
+        "imageId": "musihas-200154811.0003",
+        "licence": "Educational and research use",
+        "attribution": "Library of Congress, Music Division. Gift of Gertrude Clarke Whittall, 1936.",
+        "url": "https://www.loc.gov/resource/music.musihas-200154811/?sp=3&st=image"
+      }
+    }
+  ],
+  "toolboxState": {
+    "shapes": [],
+    "currentColor": "#1d4ed8",
+    "currentDashed": false,
+    "currentTextSize": 9.3,
+    "currentStrokeWidth": 2,
+    "currentOpacity": 1,
+    "currentSectionColor2": "#93c5fd",
+    "currentSectionWeights": [
+      1,
+      1,
+      1
+    ],
+    "layers": [
+      {
+        "id": "layer-default",
+        "name": "Layer 1",
+        "visible": true,
+        "locked": false
+      }
+    ],
+    "activeLayerId": "layer-default",
+    "showImages": true,
+    "showShapes": true
+  }
+}
