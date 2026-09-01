@@ -1,15 +1,80 @@
-/* Spline control-point list (long-arching-panel): a table of many rows once
+/* Spline control-point list (long- and cross-arching panels): a table of many rows once
    asymmetric points are in play, so it trades the standard field spacing for
    a much tighter one to keep the list scannable without excess scrolling. */
 .spline-points {
   display: flex;
   flex-direction: column;
   gap: 1px;
+  /* The grip's gutter, reserved by every row in the table — including the
+     header and the peak, which have no grip — so one column of drag handles
+     doesn't leave the two that carry numbers out of line with their titles. */
+  --grip-col: 18px;
+}
+
+.spline-row {
+  position: relative;
+  padding-left: var(--grip-col);
 }
 
 .spline-row.spline-row--header {
-  padding: 0 2px;
+  padding: 0 2px 0 calc(var(--grip-col) + 2px);
   margin-bottom: 1px;
+}
+
+/* Drag handle for reordering control points (shared/row-reorder.ts). Sits in
+   the gutter its row reserves, stretched full height so it is grabbable
+   anywhere down the row's left edge rather than at one small mark. */
+.row-grip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: calc(var(--grip-col) - 4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: none;
+  color: var(--ui-text-secondary);
+  font-size: 11px;
+  line-height: 1;
+  opacity: 0.5;
+  cursor: grab;
+  /* A drag down the handle reorders; it must not also scroll the sidebar. */
+  touch-action: none;
+}
+
+.row-grip:hover {
+  opacity: 1;
+  background: var(--ui-control-bg-hover);
+}
+
+.row-grip:focus-visible {
+  opacity: 1;
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ui-focus-ring);
+}
+
+/* The row under the pointer mid-drag: lifted off the table so it reads as the
+   one being carried, and kept above the rows sliding past it. */
+.spline-row.reorder-dragging {
+  z-index: 2;
+  border-radius: 4px;
+  background: var(--ui-bg-panel);
+  box-shadow: var(--ui-shadow-pop);
+}
+
+.spline-row.reorder-dragging .row-grip {
+  opacity: 1;
+  cursor: grabbing;
+}
+
+@media (pointer: coarse) {
+  .spline-points {
+    --grip-col: 26px;
+  }
 }
 
 /*

@@ -11,6 +11,7 @@ import {
 } from '../../ceruti-types';
 import {
   clampSplinePointHeights, defaultArchingParams, maxRibTaperMm, ribHeightAt, RibTaper, solveRibTaper,
+  splinePeakRow,
 } from '../../ceruti-arching';
 import {
   defaultFlutingParams, channelCapPath, LongArchSolve, solveLongArch,
@@ -25,6 +26,14 @@ import { renderArchGuide, renderSplineHighlight } from '../../renders/long-arch.
 import { error } from '../../../shared/message-emitter';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
+import { applyRowMove, RowMove, RowReorderDirective } from '../../../shared/row-reorder';
+
+/** One row of a plate's spline table: a control point, or the peak among them. */
+interface SplineRow {
+  pt: ArchSplinePoint | null;
+  /** The point's index in `points`, or {@link SPLINE_PEAK_SOURCE} for the peak. */
+  index: number;
+}
 
 /**
  * Step two: the arch along the body.
@@ -35,7 +44,7 @@ import { NumberStepperDirective } from '../../../shared/number-stepper';
  */
 @Component({
   selector: 'app-ceruti-long-arching-panel',
-  imports: [FormsModule, DecimalPipe, NumberStepperDirective],
+  imports: [FormsModule, DecimalPipe, NumberStepperDirective, RowReorderDirective],
   templateUrl: './long-arching-panel.html',
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
@@ -82,6 +91,26 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
     return plate === 'top' ? this.topArch : this.bottomArch;
   }
 
+  /**
+   * The table's rows: the control points, with the peak listed among them
+   * wherever the maker has put it.
+   *
+   * The peak is a row like any other here — it is a knot on the same curve at
+   * the same kind of position, and the reason it used to sit pinned at the top
+   * is that it is stored apart from the points rather than anything about how
+   * an arch reads. A table whose rows run 15, 30, 50 (peak), 70, 85 is the
+   * curve written out; one that opens with the peak is a list of parts.
+   *
+   * `index` is the row's control point index, or {@link SPLINE_PEAK_SOURCE} for
+   * the peak — which is exactly what the highlight and the guide already call
+   * a knot's source, so a row hands its own index to both.
+   */
+  splineRows(arch: ArchSpline): SplineRow[] {
+    const rows: SplineRow[] = arch.points.map((pt, index) => ({ pt, index }));
+    rows.splice(splinePeakRow(arch), 0, { pt: null, index: SPLINE_PEAK_SOURCE });
+    return rows;
+  }
+
   gouge(plate: 'top' | 'bottom'): FlutingParams {
     const plateParams = plate === 'top' ? this.arching.top : this.arching.bottom;
     return (plateParams.fluting ??= defaultFlutingParams(this.params));
@@ -110,11 +139,23 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
         plateParams.arch = { type: 'cycloid', archHeight: h, d: 1 };
         break;
       case 'spline':
+        // Five stations along the plate — 87.5, 75, peak at 50, 25, 12.5 — none
+        // of them mirrored. A long arch is rarely symmetric end to end: the
+        // upper and lower bouts carry different amounts of wood, so a mirrored
+        // pair is a row the maker has to break before they can shape the two
+        // ends apart. Seeded symmetric in value and free in structure, which is
+        // an arch to start from rather than one to argue with.
+        //
+        // Listed high position first, because the world is y-up and the canvas
+        // therefore draws position 0 at the foot of the section: read down the
+        // table and you are reading down the arch beside it.
         plateParams.arch = {
-          type: 'spline', archHeight: h, peak: 0.5,
+          type: 'spline', archHeight: h, peak: 0.5, peakRow: 2,
           points: [
-            { t: 0.15, z: +(h * 0.8).toFixed(1), mirror: true },
-            { t: 0.3, z: h, mirror: true },
+            { t: 0.875, z: +(h * 0.55).toFixed(1), mirror: false },
+            { t: 0.75, z: +(h * 0.85).toFixed(1), mirror: false },
+            { t: 0.25, z: +(h * 0.85).toFixed(1), mirror: false },
+            { t: 0.125, z: +(h * 0.55).toFixed(1), mirror: false },
           ],
         };
         break;
@@ -168,8 +209,26 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
     }
     const t = +((boundaries[gapIdx].t + boundaries[gapIdx + 1].t) / 2).toFixed(3);
     const z = +((boundaries[gapIdx].z + boundaries[gapIdx + 1].z) / 2).toFixed(1);
-    arch.points.push({ t, z, mirror: Math.abs(t - 0.5) > 0.01 });
-    arch.points.sort((a, b) => a.t - b.t);
+
+    // Seated by position among the rows it belongs between, rather than by
+    // re-sorting the list: an order the maker has arranged by hand is theirs,
+    // and an ordered list stays ordered under this anyway. The peak counts as
+    // one of those rows, so a point that belongs above it lands above it.
+    //
+    // Which way the table runs is read off its own ends rather than assumed:
+    // it is seeded running down the plate the way the canvas draws it, and a
+    // maker who turns it around should not have points arriving upside down.
+    const rows = this.splineRows(arch);
+    const rowT = (row: SplineRow) => row.pt ? row.pt.t : arch.peak ?? 0.5;
+    const descending = rows.length > 1 && rowT(rows[0]) > rowT(rows[rows.length - 1]);
+    const at = rows.findIndex(row => descending ? rowT(row) < t : rowT(row) > t);
+    const row = at < 0 ? rows.length : at;
+    const peakRow = splinePeakRow(arch);
+    // Unmirrored, and explicitly so: a new point belongs to the end of the
+    // plate it was dropped on, and an absent flag reads as a legacy
+    // half-span point to the loader.
+    arch.points.splice(peakRow < row ? row - 1 : row, 0, { t, z, mirror: false });
+    if (row <= peakRow) arch.peakRow = peakRow + 1;
     this.onChange();
   }
 
@@ -177,6 +236,27 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
     const arch = this.archFor(plate);
     if (arch.type !== 'spline') return;
     arch.points.splice(index, 1);
+    // A row above the peak taken away lifts every row below it, so the peak
+    // stays with the points it was listed between rather than sliding down one.
+    const peakRow = splinePeakRow(arch);
+    if (index < peakRow) arch.peakRow = peakRow - 1;
+    this.onChange();
+  }
+
+  /**
+   * Takes a row out of the table and puts it back somewhere else — a control
+   * point, or the peak among them.
+   *
+   * Cosmetic to the geometry — {@link archSplineKnots} sorts by position before
+   * interpolating anything — and that is the point: a list that grows by
+   * appending and by hand-editing positions ends up in an order that says
+   * nothing, and there is no reading a curve off a table whose rows run 20, 65,
+   * 40. This is how the maker puts it back in the order the arch runs in.
+   */
+  moveSplineRow(plate: 'top' | 'bottom', move: RowMove): void {
+    const arch = this.archFor(plate);
+    if (arch.type !== 'spline') return;
+    arch.peakRow = applyRowMove(arch.points, splinePeakRow(arch), move);
     this.onChange();
   }
 
@@ -375,8 +455,11 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
     renderSplineHighlight(lowered, span, yStart, xBase, sign, this.splineHighlightFor(plate))(g, ui);
     renderPath(buildArchPathFor(lowered, span, yStart, xBase, sign), color, 1.5)(g, ui);
 
+    // The guide takes the arch as authored, against the plate surface: the
+    // heights it labels are then the ones typed into the boxes beside it,
+    // rather than those heights plus whatever takeoff this channel solved to.
     if (this.flags.showModuleGuides) {
-      renderArchGuide(lowered, span, yStart, xBase, sign, color)(g, ui);
+      renderArchGuide(this.archFor(plate), span, yStart, outerZ, sign, color)(g, ui);
     }
   }
 }

@@ -13,7 +13,7 @@ import {
 } from '../../ceruti-types';
 import {
   bodyLandmarks, contourSampleSteps, defaultArchingParams, ribHeightAt, solveRibTaper,
-  STATION_MARGIN_MM, STATION_MERGE_EPS_MM, wireframeSampleSteps,
+  splinePeakRow, STATION_MARGIN_MM, STATION_MERGE_EPS_MM, wireframeSampleSteps,
 } from '../../ceruti-arching';
 import {
   defaultCrossArchCycloidParams, defaultCrossArchParams, defaultCrossArchSplineParams,
@@ -43,6 +43,7 @@ import {
 import { CrossArchingRotationController } from './cross-arching-rotation-controller';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
+import { applyRowMove, RowMove, RowReorderDirective } from '../../../shared/row-reorder';
 
 /** Range-thumb width, in the px the browser actually draws it — see `stationLandmarks`. */
 const TICK_THUMB_PX = 14;
@@ -106,6 +107,13 @@ function entered(v: number): boolean {
  */
 const KNOT_MIN_FRAC = 0.02;
 
+/** One row of a plate's cross-arch table: a knot, or the crown among them. */
+interface CrossSplineRow {
+  pt: CrossArchPoint | null;
+  /** The knot's index in `points`, or −1 for the crown. */
+  index: number;
+}
+
 /**
  * Step three: the crown across the plate, as a trochoid or as control points.
  *
@@ -120,7 +128,7 @@ const KNOT_MIN_FRAC = 0.02;
  */
 @Component({
   selector: 'app-ceruti-cross-arching-panel',
-  imports: [FormsModule, NumberStepperDirective],
+  imports: [FormsModule, NumberStepperDirective, RowReorderDirective],
   templateUrl: './cross-arching-panel.html',
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
@@ -389,6 +397,22 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     return shape.type === 'spline' ? shape : null;
   }
 
+  /**
+   * The table's rows: the knots, with the crown listed among them wherever the
+   * maker has put it.
+   *
+   * The crown is a knot on the same section at the same kind of position, so it
+   * is a row like the rest — pinned at the top it reads as a separate thing,
+   * and a table running 34, 50 (peak), 66 is the section written across the
+   * plate. `index` is the knot's index in `points`, which is how every field in
+   * the row addresses it, or −1 for the crown, which has no index to address.
+   */
+  splineRows(shape: CrossArchSplineShape): CrossSplineRow[] {
+    const rows: CrossSplineRow[] = shape.points.map((pt, index) => ({ pt, index }));
+    rows.splice(splinePeakRow(shape), 0, { pt: null, index: -1 });
+    return rows;
+  }
+
   /** The crown at the cursor when it is a trochoid, else null. */
   crossCycloid(plate: 'top' | 'bottom'): CrossArchCycloidShape | null {
     const shape = this.activeShape(plate);
@@ -614,6 +638,32 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     const target = this.editTarget(plate);
     if (target.type !== 'spline') return;
     target.points.splice(index, 1);
+    // A row above the crown taken away lifts every row below it, so the crown
+    // stays with the knots it was listed between rather than sliding down one.
+    const peakRow = splinePeakRow(target);
+    if (index < peakRow) target.peakRow = peakRow - 1;
+    this.onChange();
+  }
+
+  /**
+   * Takes a row out of the table and puts it back somewhere else — a knot, or
+   * the crown among them.
+   *
+   * The list's order carries nothing to the geometry — {@link crossArchKnots}
+   * sorts across the plate for itself — and that is exactly why the maker needs
+   * this. Knots are appended as they are added and stay put as they are moved
+   * across the plate (both for the reason in {@link setPointXPct}), so a table
+   * of any size ends up in an order that reads as noise. Dragging a row is how
+   * it is put back into the order the section runs in.
+   *
+   * Through {@link editTarget} like every other edit here, so arranging the
+   * rows at a station the plate has no shape for opens the same draft that
+   * touching a number there would.
+   */
+  moveRow(plate: 'top' | 'bottom', move: RowMove): void {
+    const target = this.editTarget(plate);
+    if (target.type !== 'spline') return;
+    target.peakRow = applyRowMove(target.points, splinePeakRow(target), move);
     this.onChange();
   }
 
@@ -1056,6 +1106,6 @@ function pushStation<T extends { y: number }>(stations: T[], station: T): void {
  */
 function cloneCrossArchShape(shape: CrossArchShape): CrossArchShape {
   return shape.type === 'spline'
-    ? { type: 'spline', points: shape.points.map(pt => ({ ...pt })), peak: shape.peak }
+    ? { type: 'spline', points: shape.points.map(pt => ({ ...pt })), peak: shape.peak, peakRow: shape.peakRow }
     : { type: 'cycloid', d: shape.d, pct: shape.pct };
 }

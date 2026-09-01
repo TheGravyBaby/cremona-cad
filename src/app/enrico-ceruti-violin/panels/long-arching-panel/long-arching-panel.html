@@ -45,14 +45,36 @@
     }
 
     @if (topSpline) {
-    <div class="spline-points">
+    <div class="spline-points" appRowReorder (rowReorder)="moveSplineRow('top', $event)">
         <div class="input-group basic-row spline-row spline-row--header">
             <span class="field-cell">Position <span class="unit-label">%</span></span>
             <span class="field-separator" style="visibility:hidden" aria-hidden="true"></span>
             <span class="field-cell">Height <span class="unit-label">mm</span></span>
             <button type="button" class="info-icon" (click)="splinePointInfo()" title="More information">ⓘ</button>
         </div>
-        <div class="input-group basic-row field-row spline-row" role="group">
+        @for (row of splineRows(topSpline); track $index) {
+        <div class="input-group basic-row field-row spline-row" role="group" data-reorder-row>
+            <button type="button" class="row-grip" data-reorder-handle aria-label="Reorder row"
+                title="Drag to put this row in order, or move it with the arrow keys">⠿</button>
+            @if (row.pt; as pt) {
+            <div class="field-cell">
+                <input class="basic-input" type="number" [step]="stepFor(pt.t * 100, 1, 5)" min="1" max="99"
+                    [ngModel]="pt.t * 100 | number:'1.0-0'"
+                    (ngModelChange)="setSplinePointPosPct('top', pt, $event)"
+                    (focus)="onSplinePointFocus('top', row.index)" (blur)="onSplinePointBlur()" />
+            </div>
+            <span class="field-separator" aria-hidden="true"></span>
+            <div class="field-cell">
+                <input class="basic-input" type="number" [step]="stepFor(pt.z, 0.1, 5)" data-fine-step="0.25" min="0" [max]="topSpline.archHeight"
+                    [ngModel]="pt.z" (ngModelChange)="setSplinePointHeight('top', pt, $event)"
+                    (focus)="onSplinePointFocus('top', row.index)" (blur)="onSplinePointBlur()" />
+            </div>
+            <div class="toggle" title="Repeat this point at the opposite end of the plate">
+                <input type="checkbox" [checked]="pt.mirror" (change)="toggleSplineMirror(pt)" />
+                <span>Mirror</span>
+            </div>
+            <button class="info-icon" (click)="removeSplinePoint('top', row.index)" title="Remove point">×</button>
+            } @else {
             <div class="field-cell">
                 <input class="basic-input" type="number" [step]="stepFor(splinePeakPct(topSpline), 1, 5)" min="5" max="95"
                     [ngModel]="splinePeakPct(topSpline)" (ngModelChange)="setSplinePeakPct(topSpline, $event)"
@@ -67,26 +89,7 @@
             </div>
             <span>Peak</span>
             <button type="button" class="info-icon" (click)="archHeightInfo()" title="More information">ⓘ</button>
-        </div>
-        @for (pt of topSpline.points; track $index) {
-        <div class="input-group basic-row field-row spline-row" role="group">
-            <div class="field-cell">
-                <input class="basic-input" type="number" [step]="stepFor(pt.t * 100, 1, 5)" min="1" max="99"
-                    [ngModel]="pt.t * 100 | number:'1.0-0'"
-                    (ngModelChange)="setSplinePointPosPct('top', pt, $event)"
-                    (focus)="onSplinePointFocus('top', $index)" (blur)="onSplinePointBlur()" />
-            </div>
-            <span class="field-separator" aria-hidden="true"></span>
-            <div class="field-cell">
-                <input class="basic-input" type="number" [step]="stepFor(pt.z, 0.1, 5)" data-fine-step="0.25" min="0" [max]="topSpline.archHeight"
-                    [ngModel]="pt.z" (ngModelChange)="setSplinePointHeight('top', pt, $event)"
-                    (focus)="onSplinePointFocus('top', $index)" (blur)="onSplinePointBlur()" />
-            </div>
-            <div class="toggle" title="Repeat this point at the opposite end of the plate">
-                <input type="checkbox" [checked]="pt.mirror" (change)="toggleSplineMirror(pt)" />
-                <span>Mirror</span>
-            </div>
-            <button class="info-icon" (click)="removeSplinePoint('top', $index)" title="Remove point">×</button>
+            }
         </div>
         }
     </div>
@@ -141,14 +144,36 @@
     }
 
     @if (bottomSpline) {
-    <div class="spline-points">
+    <div class="spline-points" appRowReorder (rowReorder)="moveSplineRow('bottom', $event)">
         <div class="input-group basic-row spline-row spline-row--header">
             <span class="field-cell">Position <span class="unit-label">%</span></span>
             <span class="field-separator" style="visibility:hidden" aria-hidden="true"></span>
             <span class="field-cell">Height <span class="unit-label">mm</span></span>
             <button type="button" class="info-icon" (click)="splinePointInfo()" title="More information">ⓘ</button>
         </div>
-        <div class="input-group basic-row field-row spline-row" role="group">
+        @for (row of splineRows(bottomSpline); track $index) {
+        <div class="input-group basic-row field-row spline-row" role="group" data-reorder-row>
+            <button type="button" class="row-grip" data-reorder-handle aria-label="Reorder row"
+                title="Drag to put this row in order, or move it with the arrow keys">⠿</button>
+            @if (row.pt; as pt) {
+            <div class="field-cell">
+                <input class="basic-input" type="number" [step]="stepFor(pt.t * 100, 1, 5)" min="1" max="99"
+                    [ngModel]="pt.t * 100 | number:'1.0-0'"
+                    (ngModelChange)="setSplinePointPosPct('bottom', pt, $event)"
+                    (focus)="onSplinePointFocus('bottom', row.index)" (blur)="onSplinePointBlur()" />
+            </div>
+            <span class="field-separator" aria-hidden="true"></span>
+            <div class="field-cell">
+                <input class="basic-input" type="number" [step]="stepFor(pt.z, 0.1, 5)" data-fine-step="0.25" min="0" [max]="bottomSpline.archHeight"
+                    [ngModel]="pt.z" (ngModelChange)="setSplinePointHeight('bottom', pt, $event)"
+                    (focus)="onSplinePointFocus('bottom', row.index)" (blur)="onSplinePointBlur()" />
+            </div>
+            <div class="toggle" title="Repeat this point at the opposite end of the plate">
+                <input type="checkbox" [checked]="pt.mirror" (change)="toggleSplineMirror(pt)" />
+                <span>Mirror</span>
+            </div>
+            <button class="info-icon" (click)="removeSplinePoint('bottom', row.index)" title="Remove point">×</button>
+            } @else {
             <div class="field-cell">
                 <input class="basic-input" type="number" [step]="stepFor(splinePeakPct(bottomSpline), 1, 5)" min="5" max="95"
                     [ngModel]="splinePeakPct(bottomSpline)" (ngModelChange)="setSplinePeakPct(bottomSpline, $event)"
@@ -163,26 +188,7 @@
             </div>
             <span>Peak</span>
             <button type="button" class="info-icon" (click)="archHeightInfo()" title="More information">ⓘ</button>
-        </div>
-        @for (pt of bottomSpline.points; track $index) {
-        <div class="input-group basic-row field-row spline-row" role="group">
-            <div class="field-cell">
-                <input class="basic-input" type="number" [step]="stepFor(pt.t * 100, 1, 5)" min="1" max="99"
-                    [ngModel]="pt.t * 100 | number:'1.0-0'"
-                    (ngModelChange)="setSplinePointPosPct('bottom', pt, $event)"
-                    (focus)="onSplinePointFocus('bottom', $index)" (blur)="onSplinePointBlur()" />
-            </div>
-            <span class="field-separator" aria-hidden="true"></span>
-            <div class="field-cell">
-                <input class="basic-input" type="number" [step]="stepFor(pt.z, 0.1, 5)" data-fine-step="0.25" min="0" [max]="bottomSpline.archHeight"
-                    [ngModel]="pt.z" (ngModelChange)="setSplinePointHeight('bottom', pt, $event)"
-                    (focus)="onSplinePointFocus('bottom', $index)" (blur)="onSplinePointBlur()" />
-            </div>
-            <div class="toggle" title="Repeat this point at the opposite end of the plate">
-                <input type="checkbox" [checked]="pt.mirror" (change)="toggleSplineMirror(pt)" />
-                <span>Mirror</span>
-            </div>
-            <button class="info-icon" (click)="removeSplinePoint('bottom', $index)" title="Remove point">×</button>
+            }
         </div>
         }
     </div>

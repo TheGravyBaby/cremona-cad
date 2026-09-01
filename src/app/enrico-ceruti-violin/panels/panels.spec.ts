@@ -1,9 +1,12 @@
+import { TestBed } from '@angular/core/testing';
 import { maxRibTaperMm, ribHeightAt, solveRibTaper } from '../ceruti-arching';
+import { splineZAt } from '../../helpers/svgPathMath';
 import { recordLayers } from '../../helpers/layer-recorder';
 import { archedViolin, defaultViolin, templateKeys, templateViolin } from '../ceruti-fixtures';
 import { CerutiColors, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, EnricoCerutiParams, PathEntry } from '../ceruti-types';
 import { CenterBoutPanel } from './center-bout-panel/center-bout-panel';
 import { CornersPanel } from './corners-panel/corners-panel';
+import { CrossArchingPanel } from './cross-arching-panel/cross-arching-panel';
 import { FlutingPanel } from './fluting-panel/fluting-panel';
 import { LongArchingPanel } from './long-arching-panel/long-arching-panel';
 import { MainBoutsPanel } from './main-bouts-panel/main-bouts-panel';
@@ -318,5 +321,221 @@ describe('long arching panel — placing the tilted top plate', () => {
     const faceZ = solveRibTaper(p).zLower;
     expect(face.low).toEqual([faceZ, 0]);
     expect(face.high).toEqual([faceZ, p.height]);
+  });
+});
+
+/**
+ * The spline a long arch is seeded with when the maker switches curve type.
+ *
+ * Stations rather than a shape: five evenly placed rows, none of them mirrored,
+ * because a long arch is asymmetric end to end far more often than not and a
+ * mirrored pair has to be broken before the two ends can be shaped apart.
+ */
+describe('long arching panel — the spline it seeds', () => {
+  it('lays out five stations down the plate, peak among them', () => {
+    // High position first: the world is y-up, so the canvas draws position 0 at
+    // the foot of the section and the table reads the way the arch does.
+    const panelUnderTest = panel(LongArchingPanel, archedViolin());
+    panelUnderTest.setCurveType('top', 'spline');
+    const arch = panelUnderTest.topSpline!;
+
+    const rows = panelUnderTest.splineRows(arch);
+    expect(rows.map(row => Math.round((row.pt ? row.pt.t : arch.peak ?? 0.5) * 1000) / 10))
+      .toEqual([87.5, 75, 50, 25, 12.5]);
+  });
+
+  it('mirrors nothing, and says so rather than leaving it out', () => {
+    // An absent flag is what the loader reads as a legacy half-span point, so
+    // every seeded point carries the false — see normalizeArchCurve.
+    const panelUnderTest = panel(LongArchingPanel, archedViolin());
+    panelUnderTest.setCurveType('top', 'spline');
+    expect(panelUnderTest.topSpline!.points.map(pt => pt.mirror)).toEqual([false, false, false, false]);
+  });
+
+  it('adds unmirrored points too', () => {
+    const panelUnderTest = panel(LongArchingPanel, archedViolin());
+    panelUnderTest.setCurveType('top', 'spline');
+    panelUnderTest.addSplinePoint('top');
+    expect(panelUnderTest.topSpline!.points.every(pt => pt.mirror === false)).toBe(true);
+  });
+
+  it('keeps the arch inside the height it was entered at', () => {
+    const panelUnderTest = panel(LongArchingPanel, archedViolin());
+    panelUnderTest.setCurveType('top', 'spline');
+    const arch = panelUnderTest.topSpline!;
+    const span = 356;
+    let max = 0;
+    for (let i = 0; i <= 500; i++) {
+      max = Math.max(max, splineZAt(arch.archHeight, span, arch.points, arch.peak!, span * i / 500));
+    }
+    expect(max).toBeCloseTo(arch.archHeight, 6);
+  });
+});
+
+/**
+ * Arranging the spline tables by hand.
+ *
+ * The order of a spline's rows means nothing to the geometry — both knot
+ * builders sort for themselves — and it means everything to the maker reading
+ * the table, since rows are added and edited without the list ever resorting
+ * itself. They are dragged into order instead, the peak included: it is a knot
+ * on the same curve, and pinning it to the top was only ever an artefact of
+ * where it is stored. The grips are wired to the panels through
+ * {@link RowReorderDirective}, so these are the wiring tests.
+ */
+describe('arching panels — arranging spline rows', () => {
+  /** Row pitch the stubbed layout reports; jsdom measures everything as zero. */
+  const PITCH = 30;
+
+  /** A pointer event jsdom will construct — it has no PointerEvent of its own. */
+  function pointer(type: string, target: EventTarget, clientY: number): void {
+    const e = new MouseEvent(type, { bubbles: true, cancelable: true, clientY, button: 0 });
+    Object.assign(e, { pointerId: 1 });
+    target.dispatchEvent(e);
+  }
+
+  /** Drags the grip of row `from` down `places` rows, as a pointer would. */
+  function dragRow(fixture: { nativeElement: HTMLElement }, from: number, places: number): void {
+    const rows = Array.from(
+      fixture.nativeElement.querySelectorAll('.spline-points [data-reorder-row]') as NodeListOf<HTMLElement>,
+    );
+    rows.forEach((row, i) => {
+      row.getBoundingClientRect = () => ({ top: i * PITCH, height: PITCH }) as DOMRect;
+    });
+    pointer('pointerdown', rows[from].querySelector('[data-reorder-handle]')!, 0);
+    pointer('pointermove', document, PITCH * places);
+    pointer('pointerup', document, PITCH * places);
+  }
+
+  it('carries a long-arch peak down among the control points', async () => {
+    await TestBed.configureTestingModule({ imports: [LongArchingPanel] }).compileComponents();
+    const fixture = TestBed.createComponent(LongArchingPanel);
+    fixture.componentRef.setInput('params', archedViolin());
+    fixture.componentRef.setInput('colors', colors);
+    fixture.componentRef.setInput('flags', flags());
+
+    const panelUnderTest = fixture.componentInstance;
+    panelUnderTest.setCurveType('top', 'spline');
+    fixture.detectChanges();
+
+    const arch = panelUnderTest.topSpline!;
+    const before = arch.points.map(pt => pt.t);
+    const seated = arch.peakRow!;
+    // Every point is a row, and the peak is one more among them.
+    expect(fixture.nativeElement.querySelectorAll('.spline-points [data-reorder-row]').length)
+      .toBe(before.length + 1);
+
+    // From the row it is seeded in, down to the foot of the table.
+    dragRow(fixture, seated, before.length - seated);
+    expect(arch.peakRow).toBe(before.length);
+    expect(arch.points.map(pt => pt.t)).toEqual(before);
+  });
+
+  it('drags a control point past the peak', () => {
+    const p = archedViolin();
+    const panelUnderTest = panel(LongArchingPanel, p);
+    panelUnderTest.setCurveType('top', 'spline');
+    const arch = panelUnderTest.topSpline!;
+    const before = arch.points.map(pt => pt.t);
+    expect(before.length).toBe(4);
+
+    // Rows are [a, b, peak, c, d]; the last point up to the top of the table.
+    panelUnderTest.moveSplineRow('top', { from: 4, to: 0 });
+    expect(arch.points.map(pt => pt.t)).toEqual([before[3], before[0], before[1], before[2]]);
+    expect(arch.peakRow).toBe(3);
+  });
+
+  it('adds a point on the side of the peak its position falls', () => {
+    const p = archedViolin();
+    const panelUnderTest = panel(LongArchingPanel, p);
+    panelUnderTest.setCurveType('top', 'spline');
+    const arch = panelUnderTest.topSpline!;
+    const peakRow = arch.peakRow!;
+
+    panelUnderTest.addSplinePoint('top');
+    const rows = panelUnderTest.splineRows(arch);
+    const positions = rows.map(row => row.pt ? row.pt.t : arch.peak ?? 0.5);
+    // The table runs high position first, and the new row keeps it that way
+    // rather than being seated as if it ran the other direction.
+    expect(positions).toEqual([...positions].sort((a, b) => b - a));
+    // The widest gap on the seeded set falls below the peak, so the peak keeps
+    // its row and the point lands under it.
+    expect(arch.peakRow).toBe(peakRow);
+  });
+
+  it('seats an added point the way the table runs, not the way it was seeded', () => {
+    const panelUnderTest = panel(LongArchingPanel, archedViolin());
+    panelUnderTest.setCurveType('top', 'spline');
+    const arch = panelUnderTest.topSpline!;
+    // The same table turned around, as a maker who reads up the plate would
+    // leave it. The point still belongs between the rows it falls between.
+    arch.points.reverse();
+
+    panelUnderTest.addSplinePoint('top');
+    const positions = panelUnderTest.splineRows(arch)
+      .map(row => row.pt ? row.pt.t : arch.peak ?? 0.5);
+    expect(positions).toEqual([...positions].sort((a, b) => a - b));
+  });
+
+  it('keeps the peak between the same points when one above it goes', () => {
+    const p = archedViolin();
+    const panelUnderTest = panel(LongArchingPanel, p);
+    panelUnderTest.setCurveType('top', 'spline');
+    const arch = panelUnderTest.topSpline!;
+    // Rows [a, b, peak, c, d]: the peak has two points above it and two below.
+    expect(arch.peakRow).toBe(2);
+
+    panelUnderTest.removeSplinePoint('top', 0);
+    expect(arch.peakRow).toBe(1);
+    expect(panelUnderTest.splineRows(arch).map(row => !!row.pt))
+      .toEqual([true, false, true, true]);
+  });
+
+  it('leaves a spline alone when a row is dropped where it started', () => {
+    const p = archedViolin();
+    const panelUnderTest = panel(LongArchingPanel, p);
+    panelUnderTest.setCurveType('top', 'spline');
+    const arch = panelUnderTest.topSpline!;
+    const before = arch.points.map(pt => pt.t);
+
+    panelUnderTest.moveSplineRow('top', { from: 1, to: 1 });
+    expect(arch.points.map(pt => pt.t)).toEqual(before);
+    expect(arch.peakRow).toBe(2);
+  });
+
+  it('drags a cross-arch crown down among its knots', async () => {
+    await TestBed.configureTestingModule({ imports: [CrossArchingPanel] }).compileComponents();
+    const fixture = TestBed.createComponent(CrossArchingPanel);
+    fixture.componentRef.setInput('params', archedViolin());
+    fixture.componentRef.setInput('colors', colors);
+    fixture.componentRef.setInput('flags', flags());
+
+    const panelUnderTest = fixture.componentInstance;
+    panelUnderTest.setCurveType('top', 'spline');
+    panelUnderTest.addPoint('top');
+    panelUnderTest.addPoint('top');
+    fixture.detectChanges();
+
+    const shape = panelUnderTest.crossSpline('top')!;
+    const before = shape.points.map(pt => pt.x);
+    expect(before.length).toBe(3);
+
+    dragRow(fixture, 0, 2);
+    expect(panelUnderTest.crossSpline('top')!.peakRow).toBe(2);
+    expect(panelUnderTest.crossSpline('top')!.points.map(pt => pt.x)).toEqual(before);
+  });
+
+  it('moves a cross-arch knot between rows', () => {
+    const p = archedViolin();
+    const panelUnderTest = panel(CrossArchingPanel, p);
+    panelUnderTest.setCurveType('top', 'spline');
+    panelUnderTest.addPoint('top');
+    const shape = panelUnderTest.crossSpline('top')!;
+    const before = shape.points.map(pt => pt.x);
+
+    // Rows [crown, a, b]: the last knot to the top.
+    panelUnderTest.moveRow('top', { from: 2, to: 0 });
+    expect(shape.points.map(pt => pt.x)).toEqual([before[1], before[0]]);
+    expect(shape.peakRow).toBe(1);
   });
 });
