@@ -8,7 +8,7 @@ import { calculateOuterArcs, ensureOuterTracePaths, getPath, getPathOrNull } fro
 import { Circle, Pt } from '../../../models/types';
 import { nearestFraction, nearestSmallFraction } from '../../../helpers/nearestFraction';
 import { renderBounds, renderBoutBouts } from '../../renders/guides.render';
-import { lineCircleIntersection } from '../../../helpers/draftMath';
+import { intersectLines, lineCircleIntersection } from '../../../helpers/draftMath';
 
 /** Where the two f-holes sit on the plate — the eyes first, everything else hung off them. */
 @Component({
@@ -82,12 +82,23 @@ export class FHolePlacementPanel extends CerutiPanelBase implements OnInit {
     let lowerEyePosition = lineCircleIntersection(new Pt(0, lowerEyeHeight), new Pt(1000, lowerEyeHeight), lowerEyeGuideCircle)[1]
     let lowerEye = new Circle(lowerEyePosition.x,  lowerEyePosition.y, lowerEyeR);
 
-    let cornerMidpoint = (upperCorner.y - lowerCorner.y) / 2 + lowerCorner.y;
+    let upperEyeHeight = upperCorner.y * 4/5 // this is not exactly a rule as much as a guideline I have noticed
+
+    // line equation for a slope and a point, y-y1 = m(x-x1)
+    // so, for our 3/2 run y - lowerEye.y = -3/2 * (x - lowerEye.x)
+
+    let upperEyePosition = intersectLines(
+      new Pt(-1000, upperEyeHeight),
+      new Pt(1000, upperEyeHeight),
+      lowerEye,
+      new Pt(lowerEye.x + 10, lowerEye.y - 3/2 * 10) // move along 10 x units
+    );
+
 
     // currently I hardcode this value based on the bout width, this is wrong
     // for violins, strad and del gesu have distances about 62mm
     // I need a value that is based on a proportion
-    let upperEye = new Circle(p.bouts.CBW * .25,  cornerMidpoint, lowerEyeR * FUtoL);
+    let upperEye = new Circle(upperEyePosition.x, upperEyePosition.y, lowerEyeR * FUtoL);
 
     let defaults = {
       FU0: upperEye,
