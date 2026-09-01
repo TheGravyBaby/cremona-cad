@@ -85,16 +85,20 @@ export interface EnricoCerutiParams {
     U1toUBW: number;
     U2toUBW: number;
     U3toLBW: number;
+    U31toLBW: number;
     CBWtoLBW: number;
     C0toLBW: number;
     C0YtoH: number;
     C2toLBW: number;
+    C21toLBW: number;
     C1toLBW: number;
+    C11toLBW: number;
     LBtoH: number;
     L0toLBW: number;
     L1toLBW: number;
     L2toLBW: number;
     L3toLBW: number;
+    L31toLBW: number;
     UCYtoH: number;
     LCYtoH: number;
 
@@ -301,7 +305,17 @@ export interface ArchSpline {
    * off 0.5 is what makes the arch asymmetric end to end.
    */
   peak?: number;
-  points: ArchSplinePoint[]; // interior points only, t strictly in (0, 1), kept sorted by t
+  points: ArchSplinePoint[]; // interior points only, t strictly in (0, 1), in the order the panel lists them
+  /**
+   * Which row of the panel's table the peak is listed in — the number of
+   * control points above it, 0 (the default when absent) putting it first.
+   *
+   * Presentation, like the order of `points` itself: the knot builder sorts by
+   * position before interpolating anything. It is saved because the table is
+   * something the maker arranges, and an arrangement that came back scrambled
+   * after a reopen would be worse than not offering one.
+   */
+  peakRow?: number;
 }
 
 export type ArchCurve = ArchCatenary | ArchCycloid | ArchSpline;
@@ -434,6 +448,12 @@ export interface CrossArchSplineShape {
    * crown has to absorb that error somewhere else in the shape.
    */
   peak?: number;
+  /**
+   * Which row of the panel's table the crown is listed in — the number of
+   * knots above it, 0 (the default when absent) putting it first. Presentation
+   * only, exactly as in {@link ArchSpline.peakRow}.
+   */
+  peakRow?: number;
 }
 
 /**
@@ -600,18 +620,22 @@ export const DefaultParams: EnricoCerutiParams = {
     U1toUBW: 1 / 3,
     U2toUBW: 1 / 2,
     U3toLBW: 1 / 8,
+    U31toLBW: 1 / 16,
 
     CBWtoLBW: 1 / 2,
     C0YtoH: 9 / 16,
     C0toLBW: 4/9,
     C2toLBW: 1 / 12,
+    C21toLBW: 1 / 16,
     C1toLBW: 1 / 8,
+    C11toLBW: 1 / 16,
 
     LBtoH: 4 / 7,
     L0toLBW: 7 / 8,
     L1toLBW: 1 / 3,
     L2toLBW: 1 / 2,
     L3toLBW: 1 / 8,
+    L31toLBW: 1 / 16,
 
     UCYtoH: 2 / 3,
     LCYtoH: 6 / 15,

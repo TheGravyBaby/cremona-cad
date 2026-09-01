@@ -2,7 +2,7 @@ import { solveInscribedCircleAlongAxis, circleCircleIntersections, angleFromCent
 import { pathFromRoundedRect, pathFromCircle, pathFromRect, combinePathStrings, differenceFromManyPaths, intersectionFromTwoPaths, translatePath, mirroredLoop } from "../helpers/svgPathMath";
 import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Pt, Rectangle } from "../models/types";
 import { error } from "../shared/message-emitter";
-import { EnricoCerutiParams, PathEntry, PathKey } from "./ceruti-types";
+import { DefaultParams, EnricoCerutiParams, PathEntry, PathKey } from "./ceruti-types";
 import { defineInnerPath, defineOuterPath, definePurflingPath, defineOuterPurflingPath } from "./ceruti-paths";
 
 // ===== Outline solvers =====
@@ -188,8 +188,8 @@ export function calculateCorners(p: EnricoCerutiParams): void {
     let U2R = p.bouts.U2?.r ?? Math.round(UBWI * p.ratios.U2toUBW);
     let U2Y = p.bouts.U2?.y ?? p.bouts.U1.y;
             
-    p.bouts.U31 ??= new Arc(0,0,12, 17/16 * Math.PI)
-    p.bouts.L31 ??= new Arc(0,0,12, 15/16 * Math.PI)
+    p.bouts.U31 ??= new Arc(0, 0, Math.round(LBWI * (p.ratios.U31toLBW ?? DefaultParams.ratios.U31toLBW)), 17/16 * Math.PI)
+    p.bouts.L31 ??= new Arc(0, 0, Math.round(LBWI * (p.ratios.L31toLBW ?? DefaultParams.ratios.L31toLBW)), 15/16 * Math.PI)
 
     let U1U2Match = false
     let allowHeightFlex = false; // this is a fiddly feature that might be cool one day, needs more work for now
@@ -346,8 +346,10 @@ export function calculateCorners(p: EnricoCerutiParams): void {
     // recalculate display ratios
     p.ratios.U2toUBW = p.bouts.U2.r / UBWI;
     p.ratios.U3toLBW = p.bouts.U3.r / LBWI;
+    p.ratios.U31toLBW = p.bouts.U31.r / LBWI;
     p.ratios.L2toLBW = p.bouts.L2.r / LBWI;
     p.ratios.L3toLBW = p.bouts.L3.r / LBWI;
+    p.ratios.L31toLBW = p.bouts.L31.r / LBWI;
     p.ratios.UCYtoH = p.bouts.UCr.y / p.height;
     p.ratios.LCYtoH = p.bouts.LCr.y / p.height;
 }
@@ -415,8 +417,8 @@ export function calculateCenterBout(p: EnricoCerutiParams): void {
     }
 
     // initialize C11 and C21
-    p.bouts.C11 ??= new Arc(0,0,12, 24/16 * Math.PI)
-    p.bouts.C21 ??= new Arc(0,0,12, 8/16 * Math.PI)
+    p.bouts.C11 ??= new Arc(0, 0, Math.round(LBWI * (p.ratios.C11toLBW ?? DefaultParams.ratios.C11toLBW)), 24/16 * Math.PI)
+    p.bouts.C21 ??= new Arc(0, 0, Math.round(LBWI * (p.ratios.C21toLBW ?? DefaultParams.ratios.C21toLBW)), 8/16 * Math.PI)
     let cuRadius = p.bouts.C2?.r ?? Math.round((LBWI * p.ratios.C2toLBW));
     let clRadius = p.bouts.C1?.r ?? Math.round((LBWI * p.ratios.C1toLBW));
     let CUIntercept;
@@ -482,7 +484,9 @@ export function calculateCenterBout(p: EnricoCerutiParams): void {
     p.ratios.C0toLBW = p.bouts.C0.r / LBWI;
     p.ratios.C0YtoH = p.bouts.C0.y / p.height;
     p.ratios.C2toLBW = p.bouts.C2.r / LBWI;
+    p.ratios.C21toLBW = p.bouts.C21!.r / LBWI;
     p.ratios.C1toLBW = p.bouts.C1.r / LBWI;
+    p.ratios.C11toLBW = p.bouts.C11.r / LBWI;
 
 }
 

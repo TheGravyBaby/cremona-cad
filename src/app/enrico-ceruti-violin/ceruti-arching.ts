@@ -128,13 +128,18 @@ export function archFromLoweredTakeoff(arch: ArchCurve, edgeDepth: number): Arch
 export function normalizeArchCurve(arch: ArchCurve): void {
   if (arch.type !== 'spline') return;
   arch.peak ??= 0.5;
+  let migrated = false;
   for (const p of arch.points) {
     if (p.mirror === undefined) {
       p.t = p.t / 2;
       p.mirror = true;
+      migrated = true;
     }
   }
-  arch.points.sort((a, b) => a.t - b.t);
+  // only what the migration rewrote. A current recipe's order is the maker's
+  // arrangement of the table, and `peakRow` counts rows against it, so sorting
+  // on load would move the peak out from between the points it was listed with.
+  if (migrated) arch.points.sort((a, b) => a.t - b.t);
   clampSplinePointHeights(arch.points, arch.archHeight);
 }
 
@@ -152,6 +157,18 @@ export function normalizeArchCurve(arch: ArchCurve): void {
  */
 export function clampSplinePointHeights(points: { z: number }[], peakZ: number): void {
   for (const p of points) p.z = clamp(p.z, 0, peakZ);
+}
+
+/**
+ * Which row of a spline's table the peak is listed in, held inside the table.
+ *
+ * Shared by both arching panels, which list a peak among control points in the
+ * same way and store its place the same way — see {@link ArchSpline.peakRow}.
+ * Read through this rather than off the field: a recipe can carry a row that
+ * the points have since been deleted out from under.
+ */
+export function splinePeakRow(shape: { points: unknown[]; peakRow?: number }): number {
+  return clamp(Math.round(shape.peakRow ?? 0), 0, shape.points.length);
 }
 
 /**

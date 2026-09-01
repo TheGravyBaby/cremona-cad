@@ -178,8 +178,9 @@ export function splinePointInfo() {
     info(
         "Position (0–100): along the plate length, 0 = upper edge, 100 = lower edge. Both edges are z = 0.\n\n" +
         "Height (mm): above the plate outer edge, same unit as Arch Height.\n\n" +
-        "Peak: the first row, always at the Arch Height but movable along the plate. Off 50 gives an end-to-end asymmetric arch.\n\n" +
-        "Mirror: off shapes one end independently.",
+        "Peak: always at the Arch Height, movable along the plate. Off 50 gives an end-to-end asymmetric arch.\n\n" +
+        "Mirror: repeats the point at the same distance from the other edge. Off by default — the two ends of a plate are rarely the same arch.\n\n" +
+        "Order: drag a row by its grip, or arrow-key it. The peak moves with the rest. Order is for reading — the arch is the same either way.",
         "Spline Control Point", defaultTTL, true
     )
 }
@@ -257,7 +258,8 @@ export function crossArchCycloidControlsInfo() {
 
 export function crossArchTemplateInfo() {
     info(
-        "Position defines the position of your control point accross the body width, where 50% is dead center. Height works much the same. The long arch panel defines the peak height for this curve, so height is defined as a percentage of this peak.",
+        "Position defines the position of your control point accross the body width, where 50% is dead center. Height works much the same. The long arch panel defines the peak height for this curve, so height is defined as a percentage of this peak.\n\n" +
+        "Order: drag a row by its grip, or arrow-key it. The peak moves with the rest. Order is for reading — the section is the same either way.",
         "Cross-Arch Shape", defaultTTL, true
     )
 }

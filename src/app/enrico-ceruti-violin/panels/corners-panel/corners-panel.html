@@ -84,6 +84,11 @@
                         [style.borderColor]="colors.centerBoutUp"
                         (focus)="onArcFocus(params.bouts.U31!, colors.centerBoutUp)" (blur)="onArcBlur()" />
                 </label>
+                <label class="field-cell">
+                    <span class="field-title">U31 to LBW</span>
+                    <div class="basic-display" aria-label="Upper compound corner radius to lower bout width ratio value">{{
+                        nearestFraction(params.ratios.U31toLBW) }}</div>
+                </label>
                 <button type="button" class="info-icon" (click)="compoundArcInfo()" title="More information"
                     aria-label="Information">ⓘ</button>
             </div>
@@ -163,6 +168,11 @@
                         (ngModelChange)="adjustArcStart(params.bouts.L31!, $event, onChange.bind(this)); onArcFocus(params.bouts.L31!, colors.centerBoutLow)"
                         [style.borderColor]="colors.centerBoutLow"
                         (focus)="onArcFocus(params.bouts.L31!, colors.centerBoutLow)" (blur)="onArcBlur()" />
+                </label>
+                <label class="field-cell">
+                    <span class="field-title">L31 to LBW</span>
+                    <div class="basic-display" aria-label="Lower compound corner radius to lower bout width ratio value">{{
+                        nearestFraction(params.ratios.L31toLBW) }}</div>
                 </label>
                 <button type="button" class="info-icon" (click)="compoundArcInfo()" title="More information"
                     aria-label="Information">ⓘ</button>

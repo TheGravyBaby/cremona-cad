@@ -58,6 +58,12 @@
                         [style.borderColor]="colors.centerBoutUpOff"
                         (focus)="onArcFocus(params.bouts.C21!, colors.centerBoutUpOff)" (blur)="onArcBlur()" />
                 </label>
+                <label class="field-cell">
+                    <span class="field-title">C21 to LBW</span>
+                    <div class="basic-display"
+                        aria-label="Upper compound corner radius to lower bout width ratio value">{{
+                        nearestFraction(params.ratios.C21toLBW) }}</div>
+                </label>
             </div>
         </div>
         }
@@ -175,6 +181,12 @@
                         (ngModelChange)="adjustArcStart(params.bouts.C11!, $event, onChange.bind(this)); onArcFocus(params.bouts.C11!, colors.centerBoutLowOff)"
                         [style.borderColor]="colors.centerBoutLowOff"
                         (focus)="onArcFocus(params.bouts.C11!, colors.centerBoutLowOff)" (blur)="onArcBlur()" />
+                </label>
+                <label class="field-cell">
+                    <span class="field-title">C11 to LBW</span>
+                    <div class="basic-display"
+                        aria-label="Lower compound corner radius to lower bout width ratio value">{{
+                        nearestFraction(params.ratios.C11toLBW) }}</div>
                 </label>
             </div>
         </div>

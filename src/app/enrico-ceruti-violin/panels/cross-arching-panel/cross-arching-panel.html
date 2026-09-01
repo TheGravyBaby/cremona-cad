@@ -159,7 +159,7 @@
     }
 
     @if (crossSpline('top'); as spline) {
-    <div class="spline-points">
+    <div class="spline-points" appRowReorder (rowReorder)="moveRow('top', $event)">
         <div class="input-group basic-row spline-row spline-row--header">
             <span class="field-cell">Position <span class="unit-label">%</span></span>
             <span class="field-separator" style="visibility:hidden" aria-hidden="true"></span>
@@ -167,7 +167,29 @@
             <button type="button" class="info-icon" (click)="crossArchTemplateInfo()"
                 title="More information">ⓘ</button>
         </div>
-        <div class="input-group basic-row field-row spline-row" role="group">
+        @for (row of splineRows(spline); track $index) {
+        <div class="input-group basic-row field-row spline-row" role="group" data-reorder-row>
+            <button type="button" class="row-grip" data-reorder-handle aria-label="Reorder row"
+                title="Drag to put this row in order, or move it with the arrow keys">⠿</button>
+            @if (row.pt; as pt) {
+            <div class="field-cell">
+                <input class="basic-input" type="number" [step]="stepFor(pointXPct(pt), 0.5, 5)" data-fine-step="0.25" min="0" max="100" [ngModel]="pointXPct(pt)"
+                    (ngModelChange)="setPointXPct('top', row.index, $event)" (focus)="onPointFocus('top', row.index)"
+                    (blur)="onPointBlur()"
+                    title="Across the plate — 0 is the bass channel, 50 the joint, 100 the treble channel. A knot at 66 and one at 34 are the same place on opposite sides." />
+            </div>
+            <span class="field-separator" aria-hidden="true"></span>
+            <div class="field-cell">
+                <input class="basic-input" type="number" [step]="stepFor(pointZPct(pt), 1, 5)" min="0" max="100" [ngModel]="pointZPct(pt)"
+                    (ngModelChange)="setPointZPct('top', row.index, $event)" (focus)="onPointFocus('top', row.index)"
+                    (blur)="onPointBlur()" title="Percent of the local arch height — the crown always sits at 100" />
+            </div>
+            <div class="toggle" title="Repeat this knot on the other side of the centerline">
+                <input type="checkbox" [checked]="pt.mirror" (change)="toggleMirror('top', row.index)" />
+                <span>Mirror</span>
+            </div>
+            <button class="info-icon" (click)="removePoint('top', row.index)" title="Remove knot">×</button>
+            } @else {
             <div class="field-cell">
                 <input class="basic-input" type="number" [step]="stepFor(peakPct('top'), 1, 5)" min="30" max="70" [ngModel]="peakPct('top')"
                     (ngModelChange)="setPeakPct('top', $event)"
@@ -179,26 +201,7 @@
             </div>
             <span>Peak</span>
             <button type="button" class="info-icon" (click)="crossArchPeakInfo()" title="More information">ⓘ</button>
-        </div>
-        @for (pt of spline.points; track $index) {
-        <div class="input-group basic-row field-row spline-row" role="group">
-            <div class="field-cell">
-                <input class="basic-input" type="number" [step]="stepFor(pointXPct(pt), 0.5, 5)" data-fine-step="0.25" min="0" max="100" [ngModel]="pointXPct(pt)"
-                    (ngModelChange)="setPointXPct('top', $index, $event)" (focus)="onPointFocus('top', $index)"
-                    (blur)="onPointBlur()"
-                    title="Across the plate — 0 is the bass channel, 50 the joint, 100 the treble channel. A knot at 66 and one at 34 are the same place on opposite sides." />
-            </div>
-            <span class="field-separator" aria-hidden="true"></span>
-            <div class="field-cell">
-                <input class="basic-input" type="number" [step]="stepFor(pointZPct(pt), 1, 5)" min="0" max="100" [ngModel]="pointZPct(pt)"
-                    (ngModelChange)="setPointZPct('top', $index, $event)" (focus)="onPointFocus('top', $index)"
-                    (blur)="onPointBlur()" title="Percent of the local arch height — the crown always sits at 100" />
-            </div>
-            <div class="toggle" title="Repeat this knot on the other side of the centerline">
-                <input type="checkbox" [checked]="pt.mirror" (change)="toggleMirror('top', $index)" />
-                <span>Mirror</span>
-            </div>
-            <button class="info-icon" (click)="removePoint('top', $index)" title="Remove knot">×</button>
+            }
         </div>
         }
     </div>
@@ -270,7 +273,7 @@
     }
 
     @if (crossSpline('bottom'); as spline) {
-    <div class="spline-points">
+    <div class="spline-points" appRowReorder (rowReorder)="moveRow('bottom', $event)">
         <div class="input-group basic-row spline-row spline-row--header">
             <span class="field-cell">Position <span class="unit-label">%</span></span>
             <span class="field-separator" style="visibility:hidden" aria-hidden="true"></span>
@@ -278,7 +281,29 @@
             <button type="button" class="info-icon" (click)="crossArchTemplateInfo()"
                 title="More information">ⓘ</button>
         </div>
-        <div class="input-group basic-row field-row spline-row" role="group">
+        @for (row of splineRows(spline); track $index) {
+        <div class="input-group basic-row field-row spline-row" role="group" data-reorder-row>
+            <button type="button" class="row-grip" data-reorder-handle aria-label="Reorder row"
+                title="Drag to put this row in order, or move it with the arrow keys">⠿</button>
+            @if (row.pt; as pt) {
+            <div class="field-cell">
+                <input class="basic-input" type="number" [step]="stepFor(pointXPct(pt), 0.5, 5)" data-fine-step="0.25" min="0" max="100" [ngModel]="pointXPct(pt)"
+                    (ngModelChange)="setPointXPct('bottom', row.index, $event)" (focus)="onPointFocus('bottom', row.index)"
+                    (blur)="onPointBlur()"
+                    title="Across the plate — 0 is the bass channel, 50 the joint, 100 the treble channel. A knot at 66 and one at 34 are the same place on opposite sides." />
+            </div>
+            <span class="field-separator" aria-hidden="true"></span>
+            <div class="field-cell">
+                <input class="basic-input" type="number" [step]="stepFor(pointZPct(pt), 1, 5)" min="0" max="100" [ngModel]="pointZPct(pt)"
+                    (ngModelChange)="setPointZPct('bottom', row.index, $event)" (focus)="onPointFocus('bottom', row.index)"
+                    (blur)="onPointBlur()" title="Percent of the local arch height — the crown always sits at 100" />
+            </div>
+            <div class="toggle" title="Repeat this knot on the other side of the centerline">
+                <input type="checkbox" [checked]="pt.mirror" (change)="toggleMirror('bottom', row.index)" />
+                <span>Mirror</span>
+            </div>
+            <button class="info-icon" (click)="removePoint('bottom', row.index)" title="Remove knot">×</button>
+            } @else {
             <div class="field-cell">
                 <input class="basic-input" type="number" [step]="stepFor(peakPct('bottom'), 1, 5)" min="30" max="70" [ngModel]="peakPct('bottom')"
                     (ngModelChange)="setPeakPct('bottom', $event)"
@@ -290,26 +315,7 @@
             </div>
             <span>Peak</span>
             <button type="button" class="info-icon" (click)="crossArchPeakInfo()" title="More information">ⓘ</button>
-        </div>
-        @for (pt of spline.points; track $index) {
-        <div class="input-group basic-row field-row spline-row" role="group">
-            <div class="field-cell">
-                <input class="basic-input" type="number" [step]="stepFor(pointXPct(pt), 0.5, 5)" data-fine-step="0.25" min="0" max="100" [ngModel]="pointXPct(pt)"
-                    (ngModelChange)="setPointXPct('bottom', $index, $event)" (focus)="onPointFocus('bottom', $index)"
-                    (blur)="onPointBlur()"
-                    title="Across the plate — 0 is the bass channel, 50 the joint, 100 the treble channel. A knot at 66 and one at 34 are the same place on opposite sides." />
-            </div>
-            <span class="field-separator" aria-hidden="true"></span>
-            <div class="field-cell">
-                <input class="basic-input" type="number" [step]="stepFor(pointZPct(pt), 1, 5)" min="0" max="100" [ngModel]="pointZPct(pt)"
-                    (ngModelChange)="setPointZPct('bottom', $index, $event)" (focus)="onPointFocus('bottom', $index)"
-                    (blur)="onPointBlur()" title="Percent of the local arch height — the crown always sits at 100" />
-            </div>
-            <div class="toggle" title="Repeat this knot on the other side of the centerline">
-                <input type="checkbox" [checked]="pt.mirror" (change)="toggleMirror('bottom', $index)" />
-                <span>Mirror</span>
-            </div>
-            <button class="info-icon" (click)="removePoint('bottom', $index)" title="Remove knot">×</button>
+            }
         </div>
         }
     </div>
