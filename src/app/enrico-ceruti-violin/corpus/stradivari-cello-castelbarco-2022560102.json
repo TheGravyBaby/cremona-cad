@@ -45,8 +45,8 @@
       "L3toLBW": 0.47453703703703703,
       "UCYtoH": 0.6512717536813922,
       "LCYtoH": 0.42603748326639895,
-      "FLtoW": 0.02,
-      "FUtoL": 0.8,
+      "FLtoW": 0.021363636363636366,
+      "FUtoL": 0.6702127659574467,
       "U31toLBW": 0.0625,
       "L31toLBW": 0.0763888888888889,
       "C21toLBW": 0.0625,
@@ -300,6 +300,11 @@
           "depth": 1.2,
           "sweepRadius_cBout": null,
           "cornerGouge": true
+        },
+        "cross": {
+          "type": "cycloid",
+          "d": 0.4,
+          "pct": 0.9
         }
       },
       "bottom": {
@@ -337,8 +342,27 @@
           "depth": 1.2,
           "sweepRadius_cBout": null,
           "cornerGouge": true
+        },
+        "cross": {
+          "type": "cycloid",
+          "d": 0.4,
+          "pct": 0.9
         }
       }
+    },
+    "fHoles": {
+      "FU0": {
+        "x": 56,
+        "y": 394,
+        "r": 6.3
+      },
+      "FL0": {
+        "x": 115.4,
+        "y": 302.5,
+        "r": 9.4
+      },
+      "Uy": 5.866666666666667,
+      "Ly": 7.333333333333333
     }
   },
   "paths": [
@@ -375,7 +399,7 @@
       "height": 786.45,
       "rotationDeg": 0,
       "opacity": 0.65,
-      "suppressWhite": false,
+      "suppressWhite": true,
       "hidden": false,
       "locked": true,
       "excludePanels": [
@@ -404,7 +428,7 @@
       "rotationDeg": 0.2,
       "opacity": 0.65,
       "suppressWhite": false,
-      "locked": false,
+      "locked": true,
       "panels": [
         "longArching"
       ],
