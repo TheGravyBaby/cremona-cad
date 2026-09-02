@@ -127,9 +127,20 @@ export interface ArchingParams {
 
 export interface FholeParams { 
   FU0: Circle | null;
-  Uy: number | null
+  UH: number | null;
   FL0: Circle | null;
-  Ly: number | null;
+  LH: number | null;
+
+  stemCenter: Pt | null;
+  stemWidth: number | null;
+  stemSlope: number | null;
+
+  FU1: Arc | null;
+  FU2: Arc | null;
+  FU3: Arc | null;
+  FU4: Arc | null;
+  FUCutoff: Pt | null
+
 }
 
 /** Resolved palette returned by CerutiViolin's `colors` getter, threaded into every panel and render fn. */
