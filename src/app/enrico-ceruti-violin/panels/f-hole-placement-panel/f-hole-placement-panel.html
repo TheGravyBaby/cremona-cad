@@ -28,10 +28,44 @@
     </div>
 
     <div class="input-group basic-row field-row" role="group">
+         <label class="field-cell">
+            <span class="field-title">Arc Height <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" [step]=".1" min="0" [(ngModel)]="params.fHoles!.UH"
+                (input)="onChange()" />
+        </label>
 
     </div>
 
 </section>
+
+<section class="ui-group" [style.border-color]="colors.lowerEye">
+    <div class="ui-group-title">Stem</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">X <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" [step]=".1" min="0" [(ngModel)]="params.fHoles!.stemCenter.x"
+                (input)="onChange()"/>
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Y <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" [step]=".1" min="0" [(ngModel)]="params.fHoles!.stemCenter.y"
+                (input)="onChange()" />
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+          <label class="field-cell">
+            <span class="field-title">Width <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" [step]=".1" min="0" [(ngModel)]="params.fHoles!.stemWidth"
+                (input)="onChange()"/>
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Slope <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" [step]=".01" min="0" [(ngModel)]="params.fHoles!.stemSlope"
+                (input)="onChange()" />
+        </label>
+    </div>
+</section>
+
 
 <section class="ui-group" [style.border-color]="colors.lowerEye">
     <div class="ui-group-title">Lower Eye</div>
@@ -59,6 +93,15 @@
             <span class="field-title">Y <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" [step]=".1" min="0" [(ngModel)]="params.fHoles!.FL0.y"
                 (input)="onChange()" [style.borderColor]="colors.lowerEyeOff" />
+        </label>
+    </div>
+
+
+    <div class="input-group basic-row field-row" role="group">
+         <label class="field-cell">
+            <span class="field-title">Arc Height <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" [step]=".1" min="0" [(ngModel)]="params.fHoles!.LH"
+                (input)="onChange()" />
         </label>
     </div>
 </section>

@@ -3,9 +3,9 @@ import { FormsModule } from '@angular/forms';
 import { CerutiColors, CerutiViewFlags, DefaultParams, EnricoCerutiParams, FholeParams, PathEntry, RenderToggleKey } from '../../ceruti-types';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { renderOuterTraceGuides } from '../outer-trace-panel/outer-trace-panel';
-import { renderCircle, renderPath } from '../../../helpers/renderFuncs';
+import { renderCircle, renderCrosshair, renderLine, renderPath, renderRect } from '../../../helpers/renderFuncs';
 import { calculateOuterArcs, ensureOuterTracePaths, getPath, getPathOrNull } from '../../ceruti-calcs';
-import { Circle, Pt } from '../../../models/types';
+import { Circle, Pt, Rectangle } from '../../../models/types';
 import { nearestFraction, nearestSmallFraction } from '../../../helpers/nearestFraction';
 import { renderBounds, renderBoutBouts } from '../../renders/guides.render';
 import { intersectLines, lineCircleIntersection } from '../../../helpers/draftMath';
@@ -41,7 +41,7 @@ export class FHolePlacementPanel extends CerutiPanelBase implements OnInit {
     const p = this.params;
     calculateOuterArcs(p);
     ensureOuterTracePaths(p, this.paths);
-    p.fHoles ??= this.defaultFholePlacement(p);
+    p.fHoles ??= this.defaultFHole(p);
     
 
     const renders: RenderLayer[] = [
@@ -65,7 +65,7 @@ export class FHolePlacementPanel extends CerutiPanelBase implements OnInit {
     return renders;
   }
 
-  defaultFholePlacement(p: EnricoCerutiParams): FholeParams {
+  defaultFHole(p: EnricoCerutiParams): FholeParams {
     let FUtoL = p.ratios.FUtoL ?? DefaultParams.ratios.FUtoL;
     let FLtoW = p.ratios.FLtoW ?? DefaultParams.ratios.FLtoW;
     let lowerEyeR = p.width * FLtoW
@@ -99,12 +99,35 @@ export class FHolePlacementPanel extends CerutiPanelBase implements OnInit {
     // for violins, strad and del gesu have distances about 62mm
     // I need a value that is based on a proportion
     let upperEye = new Circle(upperEyePosition.x, upperEyePosition.y, lowerEyeR * FUtoL);
+    let upperHeight = upperEye.r * 5/6
+    let lowerHeight = lowerEye.r * 5/6;
 
-    let defaults = {
+
+    let topLeftPt = new Pt(upperEye.x - upperEye.r, upperEye.y + upperEye.r + upperHeight);
+    let lowerRightPt = new Pt(lowerEye.x + lowerEye.r, lowerEye.y - lowerEye.r - lowerHeight)
+
+    let stemOuter =  lowerRightPt.x - (lowerRightPt.x - topLeftPt.x) / 2
+    let stemInner = topLeftPt.x + (lowerRightPt.x - topLeftPt.x) / 3
+    let stemY = (topLeftPt.y + upperHeight - (lowerRightPt.y - lowerHeight)) / 2 + lowerRightPt.y - lowerHeight
+    let stemX = stemInner + (stemOuter - stemInner) / 2 
+
+    let stemCenter = new Pt(stemX, stemY);  
+
+    let defaults: FholeParams = {
       FU0: upperEye,
       FL0: lowerEye,
-      Uy: upperEye.r * 5/6,
-      Ly: lowerEye.r * 5/6
+      UH: upperHeight * 2,
+      LH: lowerHeight * 2,
+
+      stemCenter: stemCenter,
+      stemWidth: stemOuter - stemInner,
+      stemSlope: 0,
+      
+      FU1: undefined,
+      FU2: undefined,
+      FU3: undefined,
+      FU4: undefined,
+      FUCutoff: undefined
     };
     return defaults;
   }
@@ -114,6 +137,28 @@ export const renderFholePlacementGuides = (p: EnricoCerutiParams, colors: Ceruti
 
   renderCircle(p.fHoles!.FU0, colors.upperEye)(g, ui);
   renderCircle(p.fHoles!.FL0, colors.lowerEye)(g, ui);
+
+    let topLeftPt = new Pt(p.fHoles!.FU0.x - p.fHoles!.FU0.r, p.fHoles!.FU0.y + p.fHoles!.FU0.r + p.fHoles!.UH)
+    let lowerRightPt = new Pt(p.fHoles!.FL0.x + p.fHoles!.FL0.r, p.fHoles!.FL0.y - p.fHoles!.FL0.r - p.fHoles!.LH)
+
+    let slope = -p.fHoles.stemSlope
+    // y - y1 = m * (x - x1), so x = x1 + (y - y1) / m 
+    let solveX = (x1, y1, m) => x1 + (y1 - p.fHoles!.stemCenter.y) * slope
+
+    renderLine(new Pt(solveX(p.fHoles!.stemCenter.x - p.fHoles.stemWidth/2, topLeftPt.y, slope), topLeftPt.y), new Pt(solveX(p.fHoles!.stemCenter.x - p.fHoles.stemWidth/2, lowerRightPt.y, slope), lowerRightPt.y), 'grey')(g, ui);
+    renderLine(new Pt(solveX(p.fHoles!.stemCenter.x + p.fHoles.stemWidth/2, topLeftPt.y, slope), topLeftPt.y), new Pt(solveX(p.fHoles!.stemCenter.x + p.fHoles.stemWidth/2, lowerRightPt.y, slope), lowerRightPt.y), 'grey')(g, ui);  
+
+    // renderLine(new Pt(stemInner, topLeftPt.y), new Pt(stemInner, lowerRightPt.y), 'grey')(g, ui);
+    // renderLine(new Pt(stemOuter, topLeftPt.y), new Pt(stemOuter, lowerRightPt.y), 'grey')(g, ui);
+
+
+  let renderGuideRect = new Rectangle(topLeftPt, lowerRightPt);
+  renderRect(renderGuideRect, colors.innerTrace)(g, ui);
+  renderCrosshair(p.fHoles!.stemCenter, colors.innerTrace)(g, ui);
+}
+
+export const renderFholeContours = (p: EnricoCerutiParams, colors: CerutiColors) => (g: any, ui: any) => {
+
 }
 
 
