@@ -75,6 +75,9 @@ export interface EnricoCerutiParams {
     C21DoubleArc: boolean;
     C11DoubleArc: boolean;
     L31DoubleArc: boolean;
+    /** Whether each f-hole arm is split in two — off, the second arc stands in for both. */
+    upperArmDoubleArc?: boolean;
+    lowerArmDoubleArc?: boolean;
     ucCornerSharpness?: number;
     lcCornerSharpness?: number;
   },
@@ -125,25 +128,91 @@ export interface ArchingParams {
   bottom: ArchPlate;
 }
 
-export interface FholeParams { 
-  FU0: Circle | null;
-  UH: number | null;
-  FL0: Circle | null;
-  LH: number | null;
+/**
+ * One f-hole, named by where each piece is drawn rather than by which contour solves it.
+ *
+ * The hole has two edges, and each runs the whole length of it: the one springing off the upper
+ * eye crosses to the outer stem edge and ends at a tip beside the *lower* eye, and the other is
+ * that construction turned half a turn. So an edge is not a thing you can point at on the
+ * drawing, and naming after it puts the upper contour's wing down at the bottom of the picture.
+ *
+ * `upper` and `lower` instead hold what is drawn at each end of the hole — which means each one
+ * carries an arm off one edge and the far edge's wing, sitting side by side the way they do on
+ * the plate. The crossing lives in the solver, where it is a fixed rule, instead of in the names.
+ */
+export interface FholeParams {
+  upper: FholeEnd;
+  lower: FholeEnd;
+  stem: FholeStem;
+}
 
-  stemCenter: Pt | null;
-  stemWidth: number | null;
-  stemSlope: number | null;
+/** One end of the hole: an eye, the arm springing off it, and the far edge's wing reaching back
+ * up beside that same eye. Everything here is drawn within its own third of the drawing. */
+export interface FholeEnd {
+  eye: Circle | null;
+  /** How far past the eye the hole bulges — the gap between the eye and the bound the shoulder
+   * is tangent to, so it sets the widest point of this end. */
+  rise: number | null;
 
-  FU1: Arc | null;
-  FU2: Arc | null;
-  FU3: Arc | null;
-  FU4: Arc | null;
-  FU5: Arc | null;
-  FU6: Arc | null;
-  /** The wing tip past the stem, where a straight cut closes the contour into the lower eye. */
-  FUCutoff: Pt | null
+  /** Tangent to both the eye and the bound, so its radius alone places it. */
+  shoulder: Arc | null;
+  arm: Arc | null;
+  /** The arm's second half, present only when this end's arm is compound. */
+  arm2: Arc | null;
 
+  /** The flared blade past the stem. Its radius and its own two boundary angles are its whole
+   * shape; hanging its far end on `tip` is what places it. */
+  wing: Arc | null;
+  /** The straight cut that closes the outline back into the eye, and so places the tip. */
+  cut: FholeCut | null;
+  /** Where the wing stops and the cut begins. SOLVED from `cut` — kept so renders and exports
+   * needn't re-derive it. */
+  tip: Pt | null;
+}
+
+/**
+ * The straight cut closing one end of the hole: it runs from a point on the eye out to the wing's
+ * tip, and the eye's own rim carries the outline the rest of the way round to the shoulder.
+ *
+ * Where the cut starts and how far it runs are measured against the eye it is cut into, so the
+ * contour holds its shape wherever the placement panel puts that eye. The datum for `at` is the
+ * ray toward the *other* eye — the hole's own axis, fixed once the eyes are placed and unmoved by
+ * anything the contour panel does. Which way the cut runs is a plain plate angle; see `slope`.
+ */
+export interface FholeCut {
+  /** Where on the eye the cut lands, round from the ray toward the other eye. */
+  at: number | null;
+  /** Which way the cut runs, as a plain angle in the plate's own frame — the one number here that
+   * is not measured against the eye, deliberately: a slope read off the drawing has to keep its
+   * meaning while `at` slides the cut around the eye, or the two fields fight each other. It must
+   * still point out of the eye rather than back across it. */
+  slope: number | null;
+  /** How far the cut runs, from the eye out to the tip. */
+  length: number | null;
+}
+
+/**
+ * The straight middle, and the four arcs that get onto and off it. Each edge of the hole lands on
+ * one side of the stem and stays there — arrives, runs straight, leaves — so `outer*` is the whole
+ * passage of the contour from the upper eye and `inner*` the passage of the other.
+ *
+ * These four are the only arcs in the model with no number of their own: the stem line uses up the
+ * last freedom in each, which is why they draw in the stem's colour rather than either end's.
+ */
+export interface FholeStem {
+  center: Pt | null;
+  width: number | null;
+  /** Which way the stem runs, as a plain plate angle in radians — 90° stands it upright, and a
+   * violin's leans a few degrees past that. An angle rather than the run-per-rise it replaced in
+   * September 2026: a maker reads a stem off the drawing with a bevel, and every other angle in
+   * this model is already radians here and degrees in the field. Geometry wants the run, not the
+   * angle — take it from `stemRun`. */
+  angle: number | null;
+
+  outerUpper: Arc | null;
+  outerLower: Arc | null;
+  innerUpper: Arc | null;
+  innerLower: Arc | null;
 }
 
 /** Resolved palette returned by CerutiViolin's `colors` getter, threaded into every panel and render fn. */
@@ -170,12 +239,18 @@ export interface CerutiColors {
   fluting: string;
   archTop: string;
   archBack: string;
-  upperEye: string;
-  upperEyeOff: string;
-  lowerEye: string;
-  lowerEyeOff: string;
-  fHoleOuter: string;
+  /** The f-hole's two zones — everything drawn near the upper eye vs. near the lower one,
+   * independent of which eye's arc chain it's mathematically part of. */
+  fHoleUpper: string;
+  fHoleUpperOff: string;
+  fHoleLower: string;
+  fHoleLowerOff: string;
   fHoleStem: string;
+  fHoleStemOff: string;
+  /** The cut is a straight edge rather than an arc, so it is coloured away from either zone —
+   * warm at the top end, cool-yellow at the bottom, the same pair the center bout uses. */
+  fHoleCutUpper: string;
+  fHoleCutLower: string;
 }
 
 /** A plate's costly 3D/topo overlay is one-at-a-time: rendering both is what made the panel slow. */
@@ -579,7 +654,7 @@ export interface PathEntry {
  */
 export const CERUTI_PANEL_IDS = [
   'base', 'mainBouts', 'corners', 'centerBout', 'outerTrace',
-  'fluting', 'longArching', 'crossArching', 'fHolePlacement', 'mould', 'export',
+  'fluting', 'longArching', 'crossArching', 'fHolePlacement', 'fHoleContours', 'mould', 'export',
 ] as const;
 
 export type CerutiPanelId = typeof CERUTI_PANEL_IDS[number];
@@ -716,6 +791,8 @@ export const DefaultParams: EnricoCerutiParams = {
     C21DoubleArc: false,
     C11DoubleArc: false,
     L31DoubleArc: false,
+    upperArmDoubleArc: false,
+    lowerArmDoubleArc: false,
     ucCornerSharpness: 0,
     lcCornerSharpness: 0,
   }

@@ -403,6 +403,12 @@ export function travelAtArcEnd(arc: Arc): number {
   return arc.end + Math.sign(signedArcSweep(arc)) * Math.PI / 2;
 }
 
+/** The direction of travel where an Arc's drawn span begins — the tangent whatever runs into it
+ * has to hand over. */
+export function travelAtArcStart(arc: Arc): number {
+  return arc.start + Math.sign(signedArcSweep(arc)) * Math.PI / 2;
+}
+
 /**
  * The arc leaving `P` in direction `travel` with the given radius, turning by `sweep` — the
  * G1 chain step, where the center and both boundary angles fall out of the tangent rather than
@@ -446,49 +452,39 @@ export function arcTangentToLine(P: Pt, travel: number, A: Pt, lineDir: Pt): Arc
 }
 
 /**
- * Two arcs carrying a chain from the ray leaving `A` in direction `travel` to the point `target`,
- * where the chain may run straight along that ray first. Both radii are given, plus the *second*
- * arc's sweep; what comes back solved is how far the straight run goes and the first arc's sweep
- * — the two freedoms reaching a named point costs.
+ * A straight run along the ray leaving `A` in direction `travel`, then one arc onto `target`,
+ * arriving there travelling in direction `exit` — the closing step of a G1 chain, where naming
+ * the far end's direction rather than the arc's radius is what fixes the sweep. That leaves the
+ * run and the radius in a linear pair: one answer, and no root to choose between.
  *
- * `radius1` is signed, since with its sweep unknown nothing else says which way that arc turns
- * (positive turns counterclockwise); `radius2` takes its side from `sweep2` instead.
- *
- * With the first sweep unknown, the two arcs together contribute one vector of fixed length
- * rotated by that sweep, so closing on `target` reduces to a quadratic in the straight run. The
- * smaller root is the one taken — it runs to just short of the target and turns in; the larger
- * overshoots past it and has to swing back, which costs more than a half turn. Null when neither
- * root is real, or when even the near one would take the first arc more than a half turn.
+ * Null when the two directions are parallel and no finite radius bridges them, when closing would
+ * take more than a half turn (which Arc's boundary angles cannot name), and when it would need
+ * the run to go backwards down the ray — the honest picture of a target the chain has passed.
  */
-export function arcsReachingPoint(
-  A: Pt, travel: number, target: Pt, radius1: number, radius2: number, sweep2: number,
-): { run: number; first: Arc; second: Arc } | null {
-  const u = { x: Math.cos(travel), y: Math.sin(travel) };
-  const r2 = (Math.sign(sweep2) || 1) * radius2;
+export function arcBetweenTravels(
+  A: Pt, travel: number, target: Pt, exit: number,
+): { run: number; arc: Arc } | null {
+  const d = normalizeRadians(exit - travel);
+  const sweep = d > Math.PI ? d - TWO_PI : d;
 
-  // the rotating vector's components, and its (sweep-independent) length
-  const p = radius1 - r2 + r2 * Math.cos(sweep2);
-  const q = r2 * Math.sin(sweep2);
-  const m2 = p * p + q * q;
-  if (m2 < 1e-12) return null;
+  const ux = Math.cos(travel), uy = Math.sin(travel);
+  // where the arc carries the chain, per unit of signed radius — fixed, since the sweep is
+  const ex = Math.sin(travel + sweep) - Math.sin(travel);
+  const ey = Math.cos(travel) - Math.cos(travel + sweep);
 
-  const bx = target.x - A.x + radius1 * Math.sin(travel);
-  const by = target.y - A.y - radius1 * Math.cos(travel);
-  const bu = bx * u.x + by * u.y;
+  const denom = ux * ey - uy * ex;
+  if (Math.abs(denom) < 1e-9) return null;
 
-  const disc = bu * bu - (bx * bx + by * by) + m2;
-  if (disc < 0) return null;
-  const run = bu - Math.sqrt(disc);
+  const dx = target.x - A.x, dy = target.y - A.y;
+  const run = (dx * ey - dy * ex) / denom;
+  const radius = (dy * ux - dx * uy) / denom;
 
-  const vx = bx - run * u.x, vy = by - run * u.y;
-  let sweep1 = normalizeRadians(Math.atan2(vy, vx) - Math.atan2(-p, q) - travel);
-  if (radius1 < 0) sweep1 -= TWO_PI;
-  if (Math.abs(sweep1) >= Math.PI) return null;
+  // the centre sits on the side the sweep turns toward, so a radius solved against that sign is
+  // really asking for the major arc back the other way
+  if (run < -1e-9 || Math.sign(radius) !== Math.sign(sweep)) return null;
 
-  const P1 = { x: A.x + run * u.x, y: A.y + run * u.y };
-  const first = arcContinuingFrom(P1, travel, Math.abs(radius1), sweep1);
-  const second = arcContinuingFrom(pointOnCircle(first, first.end), travel + sweep1, radius2, sweep2);
-  return { run, first, second };
+  const P = { x: A.x + run * ux, y: A.y + run * uy };
+  return { run, arc: arcContinuingFrom(P, travel, Math.abs(radius), sweep) };
 }
 
 /** True when `angle` lies on the CCW sweep from startAngle to endAngle — the arcPathData

@@ -171,8 +171,8 @@ export function calculateCorners(p: EnricoCerutiParams): void {
     if (!p.bouts.LCr) {
         // we set a line at the ratio height of the body, then draw a guide circle from the bout to that line
         // the intersection defines the "default" corner position, courtesy of David Beard
-        let lgPt = new Pt(-p.bouts.LBW / 2, p.bouts.L1.y);
-        let lgC = new Circle(lgPt.x, lgPt.y, p.bouts.LBW)
+        let lgPt = new Pt(-(p.bouts.LBW - inset) / 2, p.bouts.L1.y);
+        let lgC = new Circle(lgPt.x, lgPt.y, p.bouts.LBW - inset)  
         let lgH = p.height * p.ratios.LCYtoH
         let LCr = lineCircleIntersection({x:0, y:lgH}, {x:100, y:lgH}, lgC).sort((a, b) => a.x - b.x)[1]
         p.bouts.LCr = new Pt(Math.round(LCr.x * 10) / 10, Math.round(LCr.y * 10) / 10);

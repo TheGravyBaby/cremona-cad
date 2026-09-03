@@ -104,6 +104,22 @@ export function compoundArcInfo() {
     )
 }
 
+export function fholeArmCompoundInfo() {
+    info(
+        "The arm is the run from the shoulder down to the stem. On most holes it reads as one bend, so it is drawn with a single arc.\n\n" +
+        "Compound splits that arc in two, joined end-to-end, for an arm that tightens as it comes down. The pair shares out the turn the single arc had, so the shape holds when you switch.",
+        "Compound Arm", defaultTTL, true
+    )
+}
+
+export function fholeCutInfo() {
+    info(
+        "The cut is the straight edge closing this end of the hole: it runs out of the eye to the wing's tip, and the eye's own rim carries the outline the rest of the way round to the shoulder.\n\n" +
+        "At turns round the eye from the line to the other eye, and sets where the cut leaves. Slope is the angle it runs at, read off the plate rather than off the eye, so moving At slides the cut without swinging it. Length runs it out to the tip.",
+        "The Cut", defaultTTL, true
+    )
+}
+
 export function purflingInfo() {
     info(
         "Offset: distance from the outer plate edge to the near wall of the channel.\n\n" +
