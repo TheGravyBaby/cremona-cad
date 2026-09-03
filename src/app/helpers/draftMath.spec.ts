@@ -1,9 +1,48 @@
 import {
-  angleFromCenter, angleWithinSweep, buildPolylineIndex, distPointToPolyline,
+  angleFromCenter, angleWithinSweep, arcBetweenTravels, arcContinuingFrom, buildPolylineIndex, distPointToPolyline,
   distPointToPolylineIndexed, fitArcFromEndsAndCenter, fitArcThroughPoints, interceptCirclesAndPoint,
-  makeC2SplineWithFlatKnot, makeMonotoneSpline, normalizeRadians, pointOnCircle,
+  makeC2SplineWithFlatKnot, makeMonotoneSpline, normalizeRadians, pointOnCircle, travelAtArcEnd,
 } from './draftMath';
 import { Circle } from '../models/types';
+
+describe('arcBetweenTravels', () => {
+  const deg = (d: number) => d * Math.PI / 180;
+  const A = { x: 3, y: -7 };
+  const travel = deg(25);
+
+  /**
+   * Built forward, then solved back. Naming the far end's direction instead of a radius is only
+   * worth anything if the pair it returns is the pair that was there — a run that lands the arc
+   * in the right place, and the one radius that arrives pointing the right way.
+   */
+  it('recovers the run and the radius a chain was built from', () => {
+    for (const [run, radius, sweep] of [[12, 40, deg(35)], [0, 25, deg(-80)], [50, 8, deg(150)]]) {
+      const start = { x: A.x + run * Math.cos(travel), y: A.y + run * Math.sin(travel) };
+      const built = arcContinuingFrom(start, travel, radius, sweep);
+
+      const solved = arcBetweenTravels(A, travel, pointOnCircle(built, built.end), travelAtArcEnd(built));
+      expect(solved).not.toBeNull();
+      expect(solved!.run).toBeCloseTo(run, 9);
+      expect(solved!.arc.r).toBeCloseTo(radius, 9);
+      expect(solved!.arc.x).toBeCloseTo(built.x, 9);
+      expect(solved!.arc.y).toBeCloseTo(built.y, 9);
+    }
+  });
+
+  /** A target behind the ray would need the run to go backwards down it, which is not a chain. */
+  it('refuses a target the ray has already passed', () => {
+    expect(arcBetweenTravels({ x: 0, y: 0 }, 0, { x: -50, y: 5 }, deg(20))).toBeNull();
+  });
+
+  /** Turning left onto a target lying right of the ray takes the major arc, which Arc cannot name. */
+  it('refuses a turn Arc cannot name', () => {
+    expect(arcBetweenTravels({ x: 0, y: 0 }, 0, { x: 10, y: -30 }, deg(100))).toBeNull();
+  });
+
+  it('refuses parallel directions, which no finite radius bridges', () => {
+    expect(arcBetweenTravels({ x: 0, y: 0 }, 0, { x: 40, y: 12 }, 0)).toBeNull();
+  });
+});
 
 describe('interceptCirclesAndPoint', () => {
   /**

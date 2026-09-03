@@ -193,6 +193,16 @@
         </app-ceruti-f-hole-placement-panel>
         }
 
+        @if (openPanel === 'fHoleContours') {
+        <app-ceruti-f-hole-contours-panel #panelRef
+            [params]="d.params"
+            [paths]="d.paths"
+            [colors]="colors"
+            [flags]="viewFlags"
+            (panelUpdate)="onPanelRenderRequest($event)">
+        </app-ceruti-f-hole-contours-panel>
+        }
+
         @if (openPanel === 'export') {
         <app-ceruti-export-panel #exportRef
             [params]="d.params"
