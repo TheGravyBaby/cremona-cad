@@ -4,7 +4,7 @@
         <label class="field-cell">
             <span class="field-title">Shoulder R <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.upper.shoulder!.r, 1)" min="0"
-                [(ngModel)]="params.fHoles!.upper.shoulder!.r" (input)="onChange(); onArcFocus('upper.shoulder')"
+                [ngModel]="round2(params.fHoles!.upper.shoulder!.r)" (ngModelChange)="params.fHoles!.upper.shoulder!.r = $event; onChange(); onArcFocus('upper.shoulder')"
                 [style.borderColor]="colors.fHoleUpper" (focus)="onArcFocus('upper.shoulder')" (blur)="onArcBlur()" />
         </label>
     </div>
@@ -12,7 +12,7 @@
         <label class="field-cell">
             <span class="field-title">Arm R <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.upper.arm!.r, 1)" min="0"
-                [(ngModel)]="params.fHoles!.upper.arm!.r" (input)="onChange(); onArcFocus('upper.arm')"
+                [ngModel]="round2(params.fHoles!.upper.arm!.r)" (ngModelChange)="params.fHoles!.upper.arm!.r = $event; onChange(); onArcFocus('upper.arm')"
                 [style.borderColor]="colors.fHoleUpper" (focus)="onArcFocus('upper.arm')" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">
@@ -24,19 +24,19 @@
         </label>
         <label class="field-cell">
             <div class="toggle">
-                <input type="checkbox" [(ngModel)]="params.options.upperArmDoubleArc"
+                <input type="checkbox" [(ngModel)]="params.options.FUArmDoubleArc"
                     (change)="onCompoundChange('upper')" /><span>Compound</span>
             </div>
         </label>
         <button type="button" class="info-icon" (click)="fholeArmCompoundInfo()" title="More information"
             aria-label="Information">ⓘ</button>
     </div>
-    @if (params.options.upperArmDoubleArc && params.fHoles!.upper.arm2) {
+    @if (params.options.FUArmDoubleArc && params.fHoles!.upper.arm2) {
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Arm 2 R <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.upper.arm2!.r, 1)" min="0"
-                [(ngModel)]="params.fHoles!.upper.arm2!.r" (input)="onChange(); onArcFocus('upper.arm2')"
+                [ngModel]="round2(params.fHoles!.upper.arm2!.r)" (ngModelChange)="params.fHoles!.upper.arm2!.r = $event; onChange(); onArcFocus('upper.arm2')"
                 [style.borderColor]="colors.fHoleUpper" (focus)="onArcFocus('upper.arm2')" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">
@@ -56,7 +56,7 @@
         <label class="field-cell">
             <span class="field-title">Wing R <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.upper.wing!.r, 1)" min="0"
-                [(ngModel)]="params.fHoles!.upper.wing!.r" (input)="onChange(); onArcFocus('upper.wing')"
+                [ngModel]="round2(params.fHoles!.upper.wing!.r)" (ngModelChange)="params.fHoles!.upper.wing!.r = $event; onChange(); onArcFocus('upper.wing')"
                 [style.borderColor]="colors.fHoleUpperOff" (focus)="onArcFocus('upper.wing')" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">
@@ -77,21 +77,21 @@
 
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title">Cut Length <span class="unit-label">mm</span></span>
+            <span class="field-title">Length <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.upper.cut!.length!, .25)"
-                data-fine-step="0.25" min="0" [(ngModel)]="params.fHoles!.upper.cut!.length"
-                (input)="onChange(); onArcFocus('upper.cut')" [style.borderColor]="colors.fHoleCutUpper"
+                data-fine-step="0.25" min="0" [ngModel]="round2(params.fHoles!.upper.cut!.length)"
+                (ngModelChange)="params.fHoles!.upper.cut!.length = $event; onChange(); onArcFocus('upper.cut')" [style.borderColor]="colors.fHoleCutUpper"
                 (focus)="onArcFocus('upper.cut')" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">
             <span class="field-title">Cut At <span class="unit-label">°</span></span>
-            <input type="number" class="basic-input" [step]="stepFor(getCutDeg(params.fHoles!.upper.cut!, 'at'), 1)"
-                [ngModel]="getCutDeg(params.fHoles!.upper.cut!, 'at')"
-                (ngModelChange)="setCutDeg(params.fHoles!.upper.cut!, 'at', $event); onArcFocus('upper.cut')"
+            <input type="number" class="basic-input" [step]="stepFor(getCutDeg(params.fHoles!.upper.cut!, 'angleOnEye'), 1)"
+                [ngModel]="getCutDeg(params.fHoles!.upper.cut!, 'angleOnEye')"
+                (ngModelChange)="setCutDeg(params.fHoles!.upper.cut!, 'angleOnEye', $event); onArcFocus('upper.cut')"
                 (focus)="onArcFocus('upper.cut')" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">
-            <span class="field-title">Cut Slope <span class="unit-label">°</span></span>
+            <span class="field-title">Slope <span class="unit-label">°</span></span>
             <input type="number" class="basic-input" [step]="stepFor(getCutDeg(params.fHoles!.upper.cut!, 'slope'), 1)"
                 [ngModel]="getCutDeg(params.fHoles!.upper.cut!, 'slope')"
                 (ngModelChange)="setCutDeg(params.fHoles!.upper.cut!, 'slope', $event); onArcFocus('upper.cut')"
@@ -110,7 +110,7 @@
         <label class="field-cell">
             <span class="field-title">Shoulder R <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.lower.shoulder!.r, 1)" min="0"
-                [(ngModel)]="params.fHoles!.lower.shoulder!.r" (input)="onChange(); onArcFocus('lower.shoulder')"
+                [ngModel]="round2(params.fHoles!.lower.shoulder!.r)" (ngModelChange)="params.fHoles!.lower.shoulder!.r = $event; onChange(); onArcFocus('lower.shoulder')"
                 [style.borderColor]="colors.fHoleLower" (focus)="onArcFocus('lower.shoulder')" (blur)="onArcBlur()" />
         </label>
     </div>
@@ -118,7 +118,7 @@
         <label class="field-cell">
             <span class="field-title">Arm R <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.lower.arm!.r, 1)" min="0"
-                [(ngModel)]="params.fHoles!.lower.arm!.r" (input)="onChange(); onArcFocus('lower.arm')"
+                [ngModel]="round2(params.fHoles!.lower.arm!.r)" (ngModelChange)="params.fHoles!.lower.arm!.r = $event; onChange(); onArcFocus('lower.arm')"
                 [style.borderColor]="colors.fHoleLower" (focus)="onArcFocus('lower.arm')" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">
@@ -130,19 +130,19 @@
         </label>
         <label class="field-cell">
             <div class="toggle">
-                <input type="checkbox" [(ngModel)]="params.options.lowerArmDoubleArc"
+                <input type="checkbox" [(ngModel)]="params.options.FLArmDoubleArc"
                     (change)="onCompoundChange('lower')" /><span>Compound</span>
             </div>
         </label>
         <button type="button" class="info-icon" (click)="fholeArmCompoundInfo()" title="More information"
             aria-label="Information">ⓘ</button>
     </div>
-    @if (params.options.lowerArmDoubleArc && params.fHoles!.lower.arm2) {
+    @if (params.options.FLArmDoubleArc && params.fHoles!.lower.arm2) {
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Arm 2 R <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.lower.arm2!.r, 1)" min="0"
-                [(ngModel)]="params.fHoles!.lower.arm2!.r" (input)="onChange(); onArcFocus('lower.arm2')"
+                [ngModel]="round2(params.fHoles!.lower.arm2!.r)" (ngModelChange)="params.fHoles!.lower.arm2!.r = $event; onChange(); onArcFocus('lower.arm2')"
                 [style.borderColor]="colors.fHoleLower" (focus)="onArcFocus('lower.arm2')" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">
@@ -162,7 +162,7 @@
         <label class="field-cell">
             <span class="field-title">Wing R <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.lower.wing!.r, 1)" min="0"
-                [(ngModel)]="params.fHoles!.lower.wing!.r" (input)="onChange(); onArcFocus('lower.wing')"
+                [ngModel]="round2(params.fHoles!.lower.wing!.r)" (ngModelChange)="params.fHoles!.lower.wing!.r = $event; onChange(); onArcFocus('lower.wing')"
                 [style.borderColor]="colors.fHoleLowerOff" (focus)="onArcFocus('lower.wing')" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">
@@ -182,21 +182,21 @@
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title">Cut Length <span class="unit-label">mm</span></span>
+            <span class="field-title">Length <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.lower.cut!.length!, .25)"
-                data-fine-step="0.25" min="0" [(ngModel)]="params.fHoles!.lower.cut!.length"
-                (input)="onChange(); onArcFocus('lower.cut')" [style.borderColor]="colors.fHoleCutLower"
+                data-fine-step="0.25" min="0" [ngModel]="round2(params.fHoles!.lower.cut!.length)"
+                (ngModelChange)="params.fHoles!.lower.cut!.length = $event; onChange(); onArcFocus('lower.cut')" [style.borderColor]="colors.fHoleCutLower"
                 (focus)="onArcFocus('lower.cut')" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">
             <span class="field-title">Cut At <span class="unit-label">°</span></span>
-            <input type="number" class="basic-input" [step]="stepFor(getCutDeg(params.fHoles!.lower.cut!, 'at'), 1)"
-                [ngModel]="getCutDeg(params.fHoles!.lower.cut!, 'at')"
-                (ngModelChange)="setCutDeg(params.fHoles!.lower.cut!, 'at', $event); onArcFocus('lower.cut')"
+            <input type="number" class="basic-input" [step]="stepFor(getCutDeg(params.fHoles!.lower.cut!, 'angleOnEye'), 1)"
+                [ngModel]="getCutDeg(params.fHoles!.lower.cut!, 'angleOnEye')"
+                (ngModelChange)="setCutDeg(params.fHoles!.lower.cut!, 'angleOnEye', $event); onArcFocus('lower.cut')"
                 (focus)="onArcFocus('lower.cut')" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">
-            <span class="field-title">Cut Slope <span class="unit-label">°</span></span>
+            <span class="field-title">Slope <span class="unit-label">°</span></span>
             <input type="number" class="basic-input" [step]="stepFor(getCutDeg(params.fHoles!.lower.cut!, 'slope'), 1)"
                 [ngModel]="getCutDeg(params.fHoles!.lower.cut!, 'slope')"
                 (ngModelChange)="setCutDeg(params.fHoles!.lower.cut!, 'slope', $event); onArcFocus('lower.cut')"

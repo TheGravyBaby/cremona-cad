@@ -36,8 +36,8 @@ export class FHolePlacementPanel extends CerutiPanelBase implements OnInit {
     this.emitDebounced();
   }
 
-  // two decimals rather than whole degrees: the field's fine step is a tenth, and a getter that
-  // rounded harder than the step would swallow every fine press
+  // two decimals rather than whole degrees: the field's fine step is a tenth, and rounding harder
+  // than the step would swallow every fine press
   getStemAngleDeg(stem: FholeStem): number {
     return Math.round(stem.angle! * 18000 / Math.PI) / 100;
   }
@@ -52,7 +52,7 @@ export class FHolePlacementPanel extends CerutiPanelBase implements OnInit {
     const p = this.params;
     calculateOuterArcs(p);
     ensureOuterTracePaths(p, this.paths);
-    p.fHoles = seedFHolePlacement(p);
+    p.fHoles ??= defaultFHolePlacement(p);
 
 
     const renders: RenderLayer[] = [
@@ -67,12 +67,13 @@ export class FHolePlacementPanel extends CerutiPanelBase implements OnInit {
 
     // renders.push(renderBoutBouts(p, this.colors, true))
     
+    // recalculate display ratios
     p.ratios.FLtoW = p.fHoles!.lower.eye!.r / p.width;
     p.ratios.FUtoL = p.fHoles!.upper.eye!.r / p.fHoles!.lower.eye!.r;
 
     renders.push(renderFholePlacementGuides(p, this.colors));
     renders.push(renderFholeRise(p, this.colors), renderFholeStem(p, this.colors));
-    renders.push(renderFholeAnchors(p, this.colors));
+    renders.push(renderFholeEyes(p, this.colors));
 
     return renders;
   }
@@ -81,21 +82,15 @@ export class FHolePlacementPanel extends CerutiPanelBase implements OnInit {
 
 /** How far past upright the stem leans, in degrees — the whole number nearest the traced Amati,
  * which reads 93.4. Positive leans the top of the stem toward the hole's upper eye. */
-const STEM_ANGLE = 93;
-
-/** How far the stem is allowed off upright. Vertical at one end — leaning the other way is a
- * different hole, not a badly drawn violin one — and 102° at the other, past anything traced. The
- * field carries these as min/max so the arrow keys stop there too, and the setter clamps for
- * anything typed straight in. */
+const STEM_ANGLE_DEFAULT = 93;
 const STEM_ANGLE_RANGE = [90, 102];
 
-/** The stem's lean as a run per unit of rise: the form every line through the stem wants, where
- * `angle` is the form a maker reads. */
+/** The stem's lean as a run per unit of rise — the form every line through the stem is drawn in. */
 export const stemRun = (stem: FholeStem): number => Math.cos(stem.angle!) / Math.sin(stem.angle!);
 
-/** The rise a hole starts at, against its own eye's radius. Read off a traced Amati, which sits at
- * 1.38 up top and 1.20 down below; one ratio for both ends until the eyes are better placed. */
-const RISE = 6 / 5;
+// the rise a hole starts at, against its own eye's radius. the traced Amati reads 1.38 up top and
+// 1.20 down below; one ratio for both ends until the eyes are better placed
+const FRisetoEye = 6 / 5;
 
 /** Eyes, bounds and stem placed from the corners alone — the seed both f-hole panels start from. */
 export const defaultFHolePlacement = (p: EnricoCerutiParams): FholeParams => {
@@ -127,7 +122,6 @@ export const defaultFHolePlacement = (p: EnricoCerutiParams): FholeParams => {
       new Pt(lowerEye.x + 10, lowerEye.y - 3/2 * 10) // move along 10 x units
     );
 
-
     // currently I hardcode this value based on the bout width, this is wrong
     // for violins, strad and del gesu have distances about 62mm
     // I need a value that is based on a proportion
@@ -149,20 +143,20 @@ export const defaultFHolePlacement = (p: EnricoCerutiParams): FholeParams => {
     let defaults: FholeParams = {
       upper: {
         eye: upperEye,
-        rise: upperEye.r * RISE,
+        rise: upperEye.r * FRisetoEye,
         shoulder: undefined, arm: undefined, arm2: undefined,
         wing: undefined, cut: undefined, tip: undefined,
       },
       lower: {
         eye: lowerEye,
-        rise: lowerEye.r * RISE,
+        rise: lowerEye.r * FRisetoEye,
         shoulder: undefined, arm: undefined, arm2: undefined,
         wing: undefined, cut: undefined, tip: undefined,
       },
       stem: {
         center: stemCenter,
         width: stemOuter - stemInner,
-        angle: STEM_ANGLE * Math.PI / 180,
+        angle: STEM_ANGLE_DEFAULT * Math.PI / 180,
         outerUpper: undefined, outerLower: undefined,
         innerUpper: undefined, innerLower: undefined,
       },
@@ -170,35 +164,9 @@ export const defaultFHolePlacement = (p: EnricoCerutiParams): FholeParams => {
     return defaults;
 }
 
-/** Fills in whatever placement a recipe didn't bring, rather than replacing the lot. Templates
- * carry the two eyes and nothing else — measured off the instrument — so an all-or-nothing seed
- * would either discard those or leave the stem undefined for the contour pass to trip over. */
-export const seedFHolePlacement = (p: EnricoCerutiParams): FholeParams => {
-    const seed = defaultFHolePlacement(p);
-    const f = p.fHoles;
-    if (!f) return seed;
 
-    for (const end of ['upper', 'lower'] as const) {
-      f[end] ??= seed[end];
-      f[end].eye ??= seed[end].eye;
-      // the rise is measured off the eye, so a recipe that named its own eye and not its rise
-      // wants one taken from that eye rather than from the default's
-      f[end].rise ??= f[end].eye!.r * RISE;
-    }
-    f.stem ??= seed.stem;
-    f.stem.center ??= seed.stem.center;
-    f.stem.width ??= seed.stem.width;
-    // recipes saved before the stem was an angle carry a run-per-rise under `slope`; the two are
-    // the same line, so convert rather than reseeding and moving the user's stem
-    const legacy = (f.stem as { slope?: number | null }).slope;
-    if (f.stem.angle == null && typeof legacy === 'number') f.stem.angle = Math.atan2(1, -legacy);
-    delete (f.stem as { slope?: number | null }).slope;
-    f.stem.angle ??= seed.stem.angle;
-    return f;
-}
-
-/** The derived box and the stem edges extended across it — construction, not shape, so they sit
- * behind showModuleGuides. Anything the user can actually edit is drawn by the contour pass. */
+/** The derived box and the stem edges across it — construction, not shape, so they sit behind
+ * showModuleGuides. Anything the user can edit is drawn by the contour pass. */
 export const renderFholePlacementGuides = (p: EnricoCerutiParams, colors: CerutiColors) => (g: any, ui: any) => {
   const f = p.fHoles!;
   const up = f.upper, low = f.lower, stem = f.stem;
@@ -215,10 +183,6 @@ export const renderFholePlacementGuides = (p: EnricoCerutiParams, colors: Ceruti
   renderRect(new Rectangle(topLeftPt, lowerRightPt), colors.innerTrace, 'none', 1, '4 4')(g, ui);
 }
 
-/** The rise drawn as what it is: the horizontal each shoulder tops out against, and the gap from
- * the eye that sets it. The line runs the eye's own diameter, squared off it — enough to read the
- * level from, without standing in for the guides box, which reaches the far eye and is
- * construction rather than a measurement. The gap is dashed: it is a dimension, not an edge. */
 export const renderFholeRise = (p: EnricoCerutiParams, colors: CerutiColors) => (g: any, ui: any) => {
   const f = p.fHoles!;
   for (const [end, side, color] of [[f.upper, 1, colors.fHoleUpper], [f.lower, -1, colors.fHoleLower]] as const) {
@@ -229,11 +193,6 @@ export const renderFholeRise = (p: EnricoCerutiParams, colors: CerutiColors) => 
   }
 }
 
-/** The stem itself, drawn whether or not the guides are up: its width laid out either side of the
- * centre, and a short run of each edge for the slope. Short on purpose — the guides layer already
- * carries these edges the length of the box, and this is meant to read as placement, not
- * construction. Long enough to see a slope of a few hundredths in, though, which a run of the
- * stem's own width would not be. */
 export const renderFholeStem = (p: EnricoCerutiParams, colors: CerutiColors) => (g: any, ui: any) => {
   const f = p.fHoles!, stem = f.stem, c = stem.center!;
   const half = stem.width! / 2;
@@ -251,12 +210,9 @@ export const renderFholeStem = (p: EnricoCerutiParams, colors: CerutiColors) => 
   }
 }
 
-/** The three things the contour is hung off — both eyes and the stem's centre. Drawn by whichever
- * panel is open, since neither page reads without them. */
-export const renderFholeAnchors = (p: EnricoCerutiParams, colors: CerutiColors, stemCenter = true) => (g: any, ui: any) => {
+export const renderFholeEyes = (p: EnricoCerutiParams, colors: CerutiColors) => (g: any, ui: any) => {
   const f = p.fHoles!;
   renderCircle(f.upper.eye!, colors.fHoleUpper)(g, ui);
   renderCircle(f.lower.eye!, colors.fHoleLower)(g, ui);
-  // the mark on the stem's centre is where it is placed from, so it belongs to that page alone
-  if (stemCenter) renderSmallCrosshair(f.stem.center!, colors.fHoleStem)(g, ui);
+  renderSmallCrosshair(f.stem.center!, colors.fHoleStem)(g, ui);
 }
