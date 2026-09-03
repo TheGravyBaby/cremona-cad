@@ -3,7 +3,7 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Radius <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" [step]=".1" min="0" [(ngModel)]="params.fHoles!.FU0.r"
+            <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.FU0.r, .25)" data-fine-step="0.25" min="0" [(ngModel)]="params.fHoles!.FU0.r"
                 (input)="onChange()" [style.borderColor]="colors.upperEye" />
         </label>
         <label class="field-cell"></label>
@@ -17,12 +17,12 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">X <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" [step]=".1" min="0" [(ngModel)]="params.fHoles!.FU0.x"
+            <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.FU0.x, .25)" data-fine-step="0.25" min="0" [(ngModel)]="params.fHoles!.FU0.x"
                 (input)="onChange()" [style.borderColor]="colors.upperEyeOff" />
         </label>
         <label class="field-cell">
             <span class="field-title">Y <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" [step]=".1" min="0" [(ngModel)]="params.fHoles!.FU0.y"
+            <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.FU0.y, .25)" data-fine-step="0.25" min="0" [(ngModel)]="params.fHoles!.FU0.y"
                 (input)="onChange()" [style.borderColor]="colors.upperEyeOff" />
         </label>
     </div>
@@ -30,7 +30,7 @@
     <div class="input-group basic-row field-row" role="group">
          <label class="field-cell">
             <span class="field-title">Arc Height <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" [step]=".1" min="0" [(ngModel)]="params.fHoles!.UH"
+            <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.UH, .25)" data-fine-step="0.25" min="0" [(ngModel)]="params.fHoles!.UH"
                 (input)="onChange()" />
         </label>
 
@@ -43,19 +43,19 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">X <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" [step]=".1" min="0" [(ngModel)]="params.fHoles!.stemCenter.x"
+            <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.stemCenter.x, .25)" data-fine-step="0.25" min="0" [(ngModel)]="params.fHoles!.stemCenter.x"
                 (input)="onChange()"/>
         </label>
         <label class="field-cell">
             <span class="field-title">Y <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" [step]=".1" min="0" [(ngModel)]="params.fHoles!.stemCenter.y"
+            <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.stemCenter.y, .25)" data-fine-step="0.25" min="0" [(ngModel)]="params.fHoles!.stemCenter.y"
                 (input)="onChange()" />
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
           <label class="field-cell">
             <span class="field-title">Width <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" [step]=".1" min="0" [(ngModel)]="params.fHoles!.stemWidth"
+            <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.stemWidth, .25)" data-fine-step="0.25" min="0" [(ngModel)]="params.fHoles!.stemWidth"
                 (input)="onChange()"/>
         </label>
         <label class="field-cell">
@@ -73,7 +73,7 @@
 
         <label class="field-cell">
             <span class="field-title">Radius <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" [step]=".1" min="0" [(ngModel)]="params.fHoles!.FL0.r"
+            <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.FL0.r, .25)" data-fine-step="0.25" min="0" [(ngModel)]="params.fHoles!.FL0.r"
                 (input)="onChange()" [style.borderColor]="colors.lowerEye" />
         </label>
         <label class="field-cell"></label>
@@ -86,12 +86,12 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">X <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" [step]=".1" min="0" [(ngModel)]="params.fHoles!.FL0.x"
+            <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.FL0.x, .25)" data-fine-step="0.25" min="0" [(ngModel)]="params.fHoles!.FL0.x"
                 (input)="onChange()" [style.borderColor]="colors.lowerEyeOff" />
         </label>
         <label class="field-cell">
             <span class="field-title">Y <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" [step]=".1" min="0" [(ngModel)]="params.fHoles!.FL0.y"
+            <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.FL0.y, .25)" data-fine-step="0.25" min="0" [(ngModel)]="params.fHoles!.FL0.y"
                 (input)="onChange()" [style.borderColor]="colors.lowerEyeOff" />
         </label>
     </div>
@@ -100,8 +100,95 @@
     <div class="input-group basic-row field-row" role="group">
          <label class="field-cell">
             <span class="field-title">Arc Height <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" [step]=".1" min="0" [(ngModel)]="params.fHoles!.LH"
+            <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.LH, .25)" data-fine-step="0.25" min="0" [(ngModel)]="params.fHoles!.LH"
                 (input)="onChange()" />
         </label>
     </div>
+</section>
+
+
+<section class="ui-group" [style.border-color]="colors.lowerEye">
+    <div class="ui-group-title">Outer Contour</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Radius <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.FU1.r, 1)" min="0" [(ngModel)]="params.fHoles!.FU1.r"
+                (input)="onChange(); onArcFocus('FU1')" [style.borderColor]="colors.fHoleOuter"
+                (focus)="onArcFocus('FU1')" (blur)="onArcBlur()" />
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">FU2 R <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.FU2!.r, 1)" min="0" [(ngModel)]="params.fHoles!.FU2!.r"
+                (input)="onChange(); onArcFocus('FU2')" [style.borderColor]="colors.fHoleOuter"
+                (focus)="onArcFocus('FU2')" (blur)="onArcBlur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">FU2 Sweep <span class="unit-label">°</span></span>
+            <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.FU2!.degreeDiff, 1)"
+                [ngModel]="params.fHoles!.FU2!.degreeDiff"
+                (ngModelChange)="adjustArcEnd(params.fHoles!.FU2!, $event, onChange.bind(this)); onArcFocus('FU2')"
+                [style.borderColor]="colors.fHoleOuter"
+                (focus)="onArcFocus('FU2')" (blur)="onArcBlur()" />
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">FU3 R <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.FU3!.r, 1)" min="0" [(ngModel)]="params.fHoles!.FU3!.r"
+                (input)="onChange(); onArcFocus('FU3')" [style.borderColor]="colors.fHoleOuter"
+                (focus)="onArcFocus('FU3')" (blur)="onArcBlur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">FU3 Sweep <span class="unit-label">°</span></span>
+            <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.FU3!.degreeDiff, 1)"
+                [ngModel]="params.fHoles!.FU3!.degreeDiff"
+                (ngModelChange)="adjustArcEnd(params.fHoles!.FU3!, $event, onChange.bind(this)); onArcFocus('FU3')"
+                [style.borderColor]="colors.fHoleOuter"
+                (focus)="onArcFocus('FU3')" (blur)="onArcBlur()" />
+        </label>
+    </div>
+    
+    @if (params.fHoles!.FU5 && params.fHoles!.FU6) {
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">FU5 R <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.FU5!.r, 1)" min="0" [(ngModel)]="params.fHoles!.FU5!.r"
+                (input)="onChange(); onArcFocus('FU5')" [style.borderColor]="colors.fHoleOuter"
+                (focus)="onArcFocus('FU5')" (blur)="onArcBlur()" />
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">FU6 R <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.FU6!.r, 1)" min="0" [(ngModel)]="params.fHoles!.FU6!.r"
+                (input)="onChange(); onArcFocus('FU6')" [style.borderColor]="colors.fHoleOuter"
+                (focus)="onArcFocus('FU6')" (blur)="onArcBlur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">FU6 Sweep <span class="unit-label">°</span></span>
+            <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.FU6!.degreeDiff, 1)"
+                [ngModel]="params.fHoles!.FU6!.degreeDiff"
+                (ngModelChange)="adjustArcEnd(params.fHoles!.FU6!, $event, onChange.bind(this)); onArcFocus('FU6')"
+                [style.borderColor]="colors.fHoleOuter"
+                (focus)="onArcFocus('FU6')" (blur)="onArcBlur()" />
+        </label>
+    </div>
+
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Tip X <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.FUCutoff!.x, .25)" data-fine-step="0.25" [(ngModel)]="params.fHoles!.FUCutoff!.x"
+                (input)="onChange(); onArcFocus('tip')" [style.borderColor]="colors.lowerEye"
+                (focus)="onArcFocus('tip')" (blur)="onArcBlur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Tip Y <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.FUCutoff!.y, .25)" data-fine-step="0.25" [(ngModel)]="params.fHoles!.FUCutoff!.y"
+                (input)="onChange(); onArcFocus('tip')" [style.borderColor]="colors.lowerEye"
+                (focus)="onArcFocus('tip')" (blur)="onArcBlur()" />
+        </label>
+    </div>
+    }
 </section>

@@ -139,6 +139,9 @@ export interface FholeParams {
   FU2: Arc | null;
   FU3: Arc | null;
   FU4: Arc | null;
+  FU5: Arc | null;
+  FU6: Arc | null;
+  /** The wing tip past the stem, where a straight cut closes the contour into the lower eye. */
   FUCutoff: Pt | null
 
 }
@@ -171,6 +174,8 @@ export interface CerutiColors {
   upperEyeOff: string;
   lowerEye: string;
   lowerEyeOff: string;
+  fHoleOuter: string;
+  fHoleStem: string;
 }
 
 /** A plate's costly 3D/topo overlay is one-at-a-time: rendering both is what made the panel slow. */
