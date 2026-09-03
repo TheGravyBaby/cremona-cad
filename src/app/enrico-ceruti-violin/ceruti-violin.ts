@@ -77,6 +77,8 @@ export class CerutiViolin extends RecipeComponentBase {
     archBack: '#4D74A8',
     upperEye: '#ae3d4e',
     lowerEye: '#F08128',
+    fHoleOuter: '#e0453c',
+    fHoleStem: '#c05ad0',
   } as const;
 
   private makeColor(base: string, ...extra: ColorTransform[]): string {
@@ -118,6 +120,8 @@ export class CerutiViolin extends RecipeComponentBase {
       upperEyeOff: this.makeColor(p.upperEye, { type: 'greyOut', degree: this.offFactor }),
       lowerEye: this.makeColor(p.lowerEye),
       lowerEyeOff: this.makeColor(p.lowerEye, { type: 'greyOut', degree: this.offFactor }),
+      fHoleOuter: this.makeColor(p.fHoleOuter),
+      fHoleStem: this.makeColor(p.fHoleStem),
     };
   }
 
