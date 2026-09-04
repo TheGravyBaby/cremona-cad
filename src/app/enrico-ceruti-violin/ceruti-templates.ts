@@ -22,7 +22,6 @@ export const CERUTI_TEMPLATES: EnricoCerutiTemplate[] = [
     paths: [],
     referenceImages: [],
   },
-  // Instruments traced from museum records live in their own folder — see corpus/index.ts.
-  // Appended rather than interleaved, so this list stays in the order it grew.
+  // museum-traced instruments live in corpus/index.ts, appended rather than interleaved.
   ...CORPUS_TEMPLATES
 ];

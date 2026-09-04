@@ -79,13 +79,8 @@ export abstract class CerutiPanelBase {
     return computeStepSize(value, floor, percent);
   }
 
-  /**
-   * What a number field shows: two decimals at most, so a solved value doesn't fill the box with
-   * float noise a maker can't work to anyway. Bind one-way through this and write the raw number
-   * back on `(ngModelChange)`, rather than `[(ngModel)]` — the stored value stays whatever the
-   * geometry made it, and only what the user types is ever theirs. A third decimal typed into the
-   * field does get snapped, which is the point.
-   */
+  // display only — bind one-way through this and write the raw number back on (ngModelChange),
+  // not [(ngModel)], so the stored value stays whatever the geometry made it.
   protected round2(value: number | null | undefined): number | null | undefined {
     return typeof value === 'number' && Number.isFinite(value) ? Math.round(value * 100) / 100 : value;
   }

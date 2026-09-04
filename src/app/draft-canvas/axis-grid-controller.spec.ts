@@ -2,9 +2,8 @@ import * as d3 from 'd3';
 import { AxisGridController, CanvasViewport } from './axis-grid-controller';
 import { Camera } from './camera';
 
-/** The grid and tick loops emit one element per step across the whole viewport, so a fine step —
- * or a coarse one at a far zoom-out — used to mean thousands of SVG nodes per redraw and a locked
- * up tab. They now coarsen the step to hold a minimum on-screen spacing. */
+// a too-fine step, or a coarse one at a far zoom-out, used to mean thousands of SVG nodes per
+// redraw; the step is now coarsened to hold a minimum on-screen spacing.
 describe('AxisGridController step coarsening', () => {
   const PX_W = 1200;
   const PX_H = 800;

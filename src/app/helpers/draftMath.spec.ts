@@ -10,11 +10,6 @@ describe('arcBetweenTravels', () => {
   const A = { x: 3, y: -7 };
   const travel = deg(25);
 
-  /**
-   * Built forward, then solved back. Naming the far end's direction instead of a radius is only
-   * worth anything if the pair it returns is the pair that was there — a run that lands the arc
-   * in the right place, and the one radius that arrives pointing the right way.
-   */
   it('recovers the run and the radius a chain was built from', () => {
     for (const [run, radius, sweep] of [[12, 40, deg(35)], [0, 25, deg(-80)], [50, 8, deg(150)]]) {
       const start = { x: A.x + run * Math.cos(travel), y: A.y + run * Math.sin(travel) };
@@ -29,12 +24,11 @@ describe('arcBetweenTravels', () => {
     }
   });
 
-  /** A target behind the ray would need the run to go backwards down it, which is not a chain. */
   it('refuses a target the ray has already passed', () => {
     expect(arcBetweenTravels({ x: 0, y: 0 }, 0, { x: -50, y: 5 }, deg(20))).toBeNull();
   });
 
-  /** Turning left onto a target lying right of the ray takes the major arc, which Arc cannot name. */
+  // target lies right of the ray, so turning left onto it takes the major arc
   it('refuses a turn Arc cannot name', () => {
     expect(arcBetweenTravels({ x: 0, y: 0 }, 0, { x: 10, y: -30 }, deg(100))).toBeNull();
   });

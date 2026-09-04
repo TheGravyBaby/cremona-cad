@@ -65,9 +65,8 @@ export class ToolRegistryService {
     [createEraserTool()],
     // Modify tools — act on the current selection rather than drawing new shapes.
     [createOffsetTool()],
-    // Reference images are deliberately not here. Placing one takes a file or a link rather than
-    // a click, and every other control for it — the list, the eyes, the locks — lives in the
-    // bottom bar's image list, so that is where adding one lives too. See image-placement.ts.
+    // Reference images are deliberately not here — they're added from the bottom bar's image
+    // list instead, alongside their other controls. See image-placement.ts.
   ];
 
   /** Which variant currently faces out of a multi-variant slot, keyed by the slot itself. Absent

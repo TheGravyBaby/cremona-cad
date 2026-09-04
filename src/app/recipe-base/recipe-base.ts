@@ -275,9 +275,7 @@ export abstract class RecipeComponentBase implements AfterViewInit, Undoable {
   protected initializePanelFlow(panelOrder: readonly PanelDefinition<string>[]): void {
     this.panelFlow = new PanelFlow<string>(panelOrder, (panel) => this.canOpenPanel(panel));
     this.panelFlow.refreshEnabledPanels();
-    // The same list the panel bar shows, handed to the canvas so its image settings can offer the
-    // panels an image may be scoped to. Every panel, not just the enabled ones: scoping an image
-    // to a panel you haven't unlocked yet is exactly the ordinary case.
+    // passes every panel, not just enabled ones — scoping an image to one not yet unlocked is the ordinary case
     this.toolbox.setAvailablePanels(panelOrder.map(p => ({ id: p.id, label: p.label ?? p.id })));
   }
 
@@ -332,14 +330,8 @@ export abstract class RecipeComponentBase implements AfterViewInit, Undoable {
     this.onPanelActivated(panel);
   }
 
-  /**
-   * Assigns the open panel and tells the canvas which one it is, so reference images scoped to
-   * particular panels follow along (see ToolboxStore.setActivePanel and ImageShape.panels).
-   *
-   * Every runtime assignment to `openPanel` should come through here. Missing one leaves the
-   * canvas showing the previous panel's images — which looks like an image that won't hide
-   * rather than like a missed call, so it is worth routing even the one-line cases.
-   */
+  // every assignment to `openPanel` must go through here, or panel-scoped reference images
+  // (ToolboxStore.setActivePanel / ImageShape.panels) keep showing the previous panel's images
   protected setOpenPanel(panel: string): void {
     this.openPanel = panel;
     this.toolbox.setActivePanel(panel);

@@ -254,9 +254,7 @@ function withImageHandle(shape: ImageShape, key: EndpointKey, pos: Pt): DraftSha
       width, height,
     };
   } else {
-    // The dragged edge follows the cursor and the other axis follows the aspect, spread either
-    // side of the anchor edge's midpoint. Shrinking used to be exempt from that and squash the
-    // picture instead — the one place a resize could skew a reference image.
+    // dragged edge follows the cursor; the other axis follows aspect, centered on the anchor edge.
     let x: number, y: number, width: number, height: number;
     if (key === 'n' || key === 's') {
       height = Math.max(MIN_IMAGE_MM, key === 'n' ? localPt.y - anchor.y : anchor.y - localPt.y);

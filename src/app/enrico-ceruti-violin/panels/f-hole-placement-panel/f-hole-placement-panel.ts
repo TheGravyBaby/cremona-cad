@@ -65,8 +65,6 @@ export class FHolePlacementPanel extends CerutiPanelBase implements OnInit {
     if (purflingPath) renders.push(renderPath(purflingPath, this.colors.innerTrace, 1));
     if (outerPurflingPath) renders.push(renderPath(outerPurflingPath, this.colors.innerTrace, 1));
 
-    // renders.push(renderBoutBouts(p, this.colors, true))
-    
     // recalculate display ratios
     p.ratios.FLtoW = p.fHoles!.lower.eye!.r / p.width;
     p.ratios.FUtoL = p.fHoles!.upper.eye!.r / p.fHoles!.lower.eye!.r;
@@ -106,7 +104,6 @@ export const defaultFHolePlacement = (p: EnricoCerutiParams): FholeParams => {
     // or 1/6 the total corner width
     let lowerEyeGuideCircle = new Circle(p.bouts.LCr.x, p.bouts.LCr.y, p.bouts.LCr.x / 3);
 
-    // the position of the eye is the intersection between the line defined by the corners and the guide circle
     let lowerEyePosition = lineCircleIntersection(new Pt(0, lowerEyeHeight), new Pt(1000, lowerEyeHeight), lowerEyeGuideCircle)[1]
     let lowerEye = new Circle(lowerEyePosition.x,  lowerEyePosition.y, lowerEyeR);
 

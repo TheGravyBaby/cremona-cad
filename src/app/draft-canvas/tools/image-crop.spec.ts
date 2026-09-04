@@ -2,16 +2,8 @@ import { ImageShape, applyImageCrop, imageCenter, imageSourceBox, isCropped } fr
 import { rotatePointAbout } from '../../helpers/draftMath';
 import { ImageCrop } from '../../models/types';
 
-/**
- * Cropping a reference image. The one property everything else rests on is that trimming an edge
- * doesn't move or rescale what's left — you scale a photo to a real measurement first and crop it
- * to fit a panel second, and a crop that slid or resized the picture would silently undo the
- * measurement you set.
- *
- * Expressed here as: whatever the crop, the source picture stays in the same place at the same
- * size. That is the whole invariant, since the box is derived from the source rather than the
- * other way round (see ImageCrop).
- */
+// trimming an edge must never move or rescale the source picture, only the visible box —
+// otherwise cropping would silently undo a measurement scale set earlier.
 describe('reference image cropping', () => {
   const shape = (over: Partial<ImageShape> = {}): ImageShape => ({
     id: 'img', type: 'image', x: 10, y: 20, width: 200, height: 120,
@@ -21,8 +13,7 @@ describe('reference image cropping', () => {
   const cropped = (base: ImageShape, crop: ImageCrop | undefined): ImageShape =>
     ({ ...base, ...applyImageCrop(base, crop) } as ImageShape);
 
-  /** Where a point of the source picture — given as fractions across and up it — lands on the
-   * canvas. This is what has to stay put, and it's the only thing that has to. */
+  // where a fractional point (u, v) of the source picture lands on the canvas.
   const worldPointInPicture = (s: ImageShape, u: number, v: number) => {
     const src = imageSourceBox(s);
     return rotatePointAbout(
@@ -69,8 +60,7 @@ describe('reference image cropping', () => {
     near(after.height, before.height);
   });
 
-  // The awkward case: rotation turns the box about its own centre, and cropping moves that
-  // centre. Without the correction in applyImageCrop the picture swings as you trim.
+  // rotation pivots on the box centre, which cropping moves — the tricky case.
   it('keeps it there on a rotated image too', () => {
     const base = shape({ rotationDeg: 37 });
     const before = worldPointInPicture(base, 0.8, 0.65);
@@ -101,8 +91,7 @@ describe('reference image cropping', () => {
     const s = cropped(shape(), { left: 0.9, top: 0, right: 0.9, bottom: 0 });
     expect(s.width).toBeGreaterThan(0);
     expect(s.crop!.left + s.crop!.right).toBeLessThan(1);
-    // Scaled back together rather than one clamped, so the answer doesn't depend on which edge
-    // was typed into last.
+    // scaled back together, not one clamped, so order-of-entry doesn't matter.
     near(s.crop!.left, s.crop!.right);
   });
 

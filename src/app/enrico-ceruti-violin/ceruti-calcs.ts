@@ -506,7 +506,6 @@ export function calculateOuterArcs(p: EnricoCerutiParams): void {
     p.outerCorners.C1 = p.outerCorners.C1 ? redefineArcCircle(p.outerCorners.C1, p.bouts.C1, -inset) : offsetArcRadius(p.bouts.C1, -inset);
     p.outerCorners.L3 = p.outerCorners.L3 ? redefineArcCircle(p.outerCorners.L3, p.bouts.L3, -inset) : offsetArcRadius(p.bouts.L3, -inset);
 
-    // we want to add a few radians to give the corners a bit of pop here
     const U3Pop = Math.PI / 72;
     const C2Pop = -Math.PI / 18;
     const C1Pop = Math.PI / 36;
@@ -528,8 +527,7 @@ export function calculateOuterArcs(p: EnricoCerutiParams): void {
         // user may have changed things, make sure outer U3 is just inset U3 in this situation
         p.outerCorners.U3 = offsetArcRadius(p.bouts.U3, -inset);
 
-        // on a compound corner the tip rides on the secondary arc, so the pop belongs there.
-        // scaled by the radius ratio so the tip travels the same distance it would on the primary
+        // pop rides on the secondary arc here, scaled by radius ratio to match the primary's travel
         if (U31NotDefined) p.outerCorners.U31.end += U3Pop * (p.outerCorners.U3.r / p.outerCorners.U31.r);
     }
     else if (p.outerCorners.U3.end === p.outerCorners.U31?.start) {
@@ -542,7 +540,6 @@ export function calculateOuterArcs(p: EnricoCerutiParams): void {
         p.outerCorners.C21 = p.outerCorners.C21 ? redefineArcCircle(p.outerCorners.C21, p.bouts.C21, -inset) : offsetArcRadius(p.bouts.C21, -inset);
         p.outerCorners.C2 = offsetArcRadius(p.bouts.C2, -inset);
 
-        // pop the secondary arc, as above
         if (C21NotDefined) p.outerCorners.C21.end += C2Pop * (p.outerCorners.C2.r / p.outerCorners.C21.r);
     }
     else if (p.outerCorners.C2.end === p.outerCorners.C21?.start) {
@@ -554,7 +551,6 @@ export function calculateOuterArcs(p: EnricoCerutiParams): void {
         p.outerCorners.C11 = p.outerCorners.C11 ? redefineArcCircle(p.outerCorners.C11, p.bouts.C11, -inset) : offsetArcRadius(p.bouts.C11, -inset);
         p.outerCorners.C1 = offsetArcRadius(p.bouts.C1, -inset);
 
-        // pop the secondary arc, as above
         if (C11NotDefined) p.outerCorners.C11.end += C1Pop * (p.outerCorners.C1.r / p.outerCorners.C11.r);
     }
     else if (p.outerCorners.C1.end === p.outerCorners.C11?.start) {
@@ -566,7 +562,6 @@ export function calculateOuterArcs(p: EnricoCerutiParams): void {
         p.outerCorners.L31 = p.outerCorners.L31 ? redefineArcCircle(p.outerCorners.L31, p.bouts.L31, -inset) : offsetArcRadius(p.bouts.L31, -inset);
         p.outerCorners.L3 = offsetArcRadius(p.bouts.L3, -inset);
 
-        // pop the secondary arc, as above
         if (L31NotDefined) p.outerCorners.L31.end += L3Pop * (p.outerCorners.L3.r / p.outerCorners.L31.r);
     }
     else if (p.outerCorners.L3.end === p.outerCorners.L31?.start) {

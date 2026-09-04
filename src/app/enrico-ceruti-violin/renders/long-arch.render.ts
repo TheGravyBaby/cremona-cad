@@ -37,16 +37,11 @@ export function renderSplineHighlight(
 }
 
 /**
- * The module guide: what the arch was built from, marked and measured on the
- * curve it produced.
+ * The module guide: what the arch was built from, marked and measured on the curve it produced.
  *
- * Measured from the plate's outer surface, which is the level every height in
- * the panel is entered against — so a measure reads back the number in the box
- * it came from. Pass the arch as authored and `xPlate` at that surface, not the
- * lowered arch against its takeoff: the takeoff moves with the channel and the
- * curve, so a guide counting from it would label a height nobody typed.
- * The knots land in the same place either way, since lowering adds the takeoff
- * depth to every height and subtracts it from the level they count from.
+ * Pass the arch as authored and `xPlate` at the plate's outer surface, not the lowered arch
+ * against its takeoff — the takeoff moves with the channel, so a guide counting from it would
+ * label a height nobody typed.
  */
 export function renderArchGuide(
   arch: ArchCurve,
@@ -57,9 +52,6 @@ export function renderArchGuide(
   color: string,
 ) {
   return (g: any, ui: any): void => {
-    // Carried over the arch's whole reach, where it continues the flat land the
-    // plate shows at each cap — the same surface, across the part of the body
-    // the arch has lifted off it.
     renderGuideBaseline(new Pt(xPlate, yStart), new Pt(xPlate, yStart + span), color)(g, ui);
     for (const knot of archGuideKnots(arch)) {
       const y = yStart + knot.t * span;

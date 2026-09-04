@@ -24,15 +24,9 @@ const WHITE_THRESHOLD = 0.9;
 const WHITE_SOFTNESS = 0.08;
 const WHITE_SATURATION_GATE = 0.18;
 
-// Upload sizing. A reference image is traced over, not read — accuracy comes from scaling the
-// placed image to real mm, which is a float transform independent of pixel count. At this cap a
-// cello plate still lands near 0.3mm per pixel, finer than a pointer can be placed. What the cap
-// buys is that the base64 payload rides in `d.referenceImages` through every debounced
-// working-state write and into the saved file, and a phone's default 12MP is enough to pass the
-// ~5MB sessionStorage allows on its own (see helpers/workingStorage.ts).
+// keeps a phone photo well under sessionStorage's ~5MB budget, still finer than placement needs.
 const UPLOAD_MAX_EDGE_PX = 2400;
-// Below this an upload passes through untouched: re-encoding a small, clean line drawing trades
-// sharp edges for JPEG ringing and saves nothing worth having.
+// below this, re-encoding only adds JPEG artifacts for no size win.
 const UPLOAD_PASSTHROUGH_BYTES = 1_000_000;
 const UPLOAD_JPEG_QUALITY = 0.85;
 
@@ -51,9 +45,7 @@ function smoothstep(edge0: number, edge1: number, x: number): number {
  * reference-image-schema.ts), and this table is rebuilt from it on load.
  *
  * Also owns the white-suppression cache: a suppressed variant is a property of the pixels, not of
- * any one shape placing them, so two shapes showing the same image share the work. Those variants
- * are `blob:` URLs rather than `data:` ones — see buildSuppressedHref for why that matters to
- * drag performance.
+ * any one shape placing them, so two shapes showing the same image share the work.
  */
 @Injectable({ providedIn: 'root' })
 export class ImageAssetStore {
@@ -61,8 +53,7 @@ export class ImageAssetStore {
   /** href -> ref, so re-interning the same image (a reload, or two shapes sharing it) reuses
    * one entry instead of duplicating the payload. */
   private refByHref = new Map<string, string>();
-  /** ref -> `blob:` URL of the white-suppressed variant. Revoked on resetAll so the blobs don't
-   * outlive the recipe they came from. */
+  /** ref -> `blob:` URL of the white-suppressed variant, revoked on resetAll. */
   private suppressedHrefs = new Map<string, string>();
   private inFlight = new Set<string>();
   private listeners = new Set<() => void>();
@@ -125,8 +116,7 @@ export class ImageAssetStore {
       this.buildSuppressedHref(href)
         .then(result => {
           if (!result) return;
-          // A resetAll during the pass drops the ref; keeping the blob then would leak it past
-          // the recipe it belongs to, since resetAll has already been round to revoke.
+          // resetAll may have run mid-flight; revoke rather than leak the blob.
           if (!this.assets.has(ref)) {
             URL.revokeObjectURL(result);
             return;
@@ -176,12 +166,9 @@ export class ImageAssetStore {
    * scanned drawing on white paper reads correctly against a dark canvas. Pixels with any real
    * saturation are skipped outright, so this only eats paper, not the drawing on it.
    *
-   * Hands back a `blob:` URL, never `toDataURL`. draw() tears down and rebuilds the whole scene
-   * every pointermove, so the returned href is written into two attributes on every drag frame.
-   * As a data URL that's megabytes of base64 per frame with a fresh resource identity each time —
-   * a 3.8 MP cello scan drags visibly. A blob URL is a short, stable string the browser resolves
-   * to an already-decoded image. Display only: the save adapter writes the raw href
-   * (reference-image-schema.ts), so nothing durable ever holds one of these.
+   * Returns a `blob:` URL, not a data URL — draw() rewrites it every pointermove, and a
+   * multi-MB base64 string there drags visibly. Display only; the save adapter writes the raw
+   * href instead.
    */
   private async buildSuppressedHref(href: string): Promise<string | undefined> {
     try {
@@ -228,9 +215,7 @@ export class ImageAssetStore {
   }
 }
 
-/** `crossOrigin` false loads an image that will only ever be displayed — a host that sends no
- * CORS headers refuses the anonymous request outright, so asking is not free. See
- * loadLinkedImage, which needs both. */
+// crossOrigin false skips the CORS request, for images that will only ever be displayed.
 function loadImage(src: string, crossOrigin = true): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -253,13 +238,8 @@ export type PreparedUpload = {
   changed: boolean;
 };
 
-/**
- * The size to re-encode an upload at, or null to keep the file exactly as picked.
- *
- * Split out from prepareUploadedImage because this is the part with a decision in it and the rest
- * is canvas plumbing, which jsdom can't run. Returning the *same* dimensions is meaningful: it
- * says re-encode without scaling, which is what a large image that's already under the cap needs.
- */
+// split out so the decision logic is testable under jsdom, which can't run the canvas plumbing.
+// returning the same width/height (not null) means: re-encode without scaling.
 export function planUploadResize(
   width: number,
   height: number,
@@ -284,18 +264,9 @@ function hasTransparency(ctx: CanvasRenderingContext2D, width: number, height: n
   return false;
 }
 
-/**
- * Scales and re-encodes a freshly picked image file before it is interned, so a phone photo of a
- * plate doesn't become a multi-megabyte base64 payload in the working store and the saved recipe.
- *
- * Runs on the *upload* path only, never in intern() — intern also runs when a recipe file is
- * opened, and re-encoding there would degrade an already-saved image a little further on every
- * open-and-save cycle.
- *
- * Falls back to the untouched file whenever the pass can't improve on it: no canvas, a re-encode
- * that came out larger than the original, or a plan of null. Throws only if the file won't decode
- * at all, which is the same failure the caller already handles as a dismissed pick.
- */
+// runs only on fresh uploads, not intern() — that also fires on recipe load, where re-encoding
+// would degrade an already-saved image further each open-save cycle. falls back to the original
+// whenever the re-encode doesn't actually improve on it.
 export async function prepareUploadedImage(
   dataUrl: string,
   byteLength: number,
@@ -314,8 +285,7 @@ export async function prepareUploadedImage(
   const encoded = reencodeImage(img, plan, /^data:image\/jpe?g/i.test(dataUrl));
   if (!encoded) return unchanged;
 
-  // Lossless line art can encode larger than it arrived. Keep whichever is smaller, unless we
-  // scaled — there the point was the pixel count, and the smaller raster wins regardless.
+  // keep whichever is smaller, unless we scaled — then the smaller raster wins regardless.
   const scaled = plan.width !== sourceWidth || plan.height !== sourceHeight;
   if (!scaled && encoded.length >= dataUrl.length) return unchanged;
 
@@ -329,15 +299,8 @@ export async function prepareUploadedImage(
   };
 }
 
-/**
- * Redraws an already-decoded image at `plan` size and encodes it as a data URL — JPEG when the
- * pixels are opaque, PNG when any of them aren't.
- *
- * Returns undefined whenever the copy can't be made rather than throwing: no canvas to draw on,
- * or pixels that can't be read back, which is what a cross-origin image without CORS headers
- * does — it taints the canvas and getImageData throws. Both callers have something sensible to
- * do with the original in that case.
- */
+// returns undefined (rather than throwing) when the redraw can't happen — no canvas, or a
+// cross-origin image tainting getImageData — so callers fall back to the original.
 function reencodeImage(
   img: HTMLImageElement,
   plan: { width: number; height: number },
@@ -369,28 +332,12 @@ export type PreparedLink = {
   href: string;
   width: number;
   height: number;
-  /** True when the picture now lives in the recipe. False means the recipe holds only the link,
-   * so it shows nothing the day that link stops resolving — worth telling the user about. */
+  /** False means the recipe holds only the link, and breaks if it stops resolving. */
   inlined: boolean;
 };
 
-/**
- * Resolves a pasted image link into something placeable, copying the pixels into the recipe when
- * the host lets it.
- *
- * Inlining is the outcome worth having: a recipe that carries the picture opens the same in a
- * year, on a machine that has never seen the link, and white-suppression needs readable pixels.
- * So the load asks for CORS first. Plenty of hosts send no CORS headers, though, and an image
- * that displays perfectly well is not worth rejecting over that — a refused anonymous request
- * falls back to a plain load and the link itself becomes the href.
- *
- * Sizing follows the upload path: the pixels are about to ride in the saved file the same way, so
- * the same cap applies. Unlike an upload there is no passthrough case, since copying through a
- * canvas re-encodes whether or not it scales.
- *
- * Throws only if the URL doesn't decode as an image at all — the same failure a dismissed file
- * dialog already leaves the caller handling.
- */
+// tries a CORS load first so the pixels can be copied in; falls back to a plain load (link kept
+// as the href) when the host refuses anonymous requests. sizing follows the upload cap.
 export async function prepareLinkedImage(url: string): Promise<PreparedLink> {
   const img = await loadLinkedImage(url);
   const width = img.naturalWidth || img.width;

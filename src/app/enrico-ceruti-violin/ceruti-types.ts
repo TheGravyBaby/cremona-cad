@@ -67,7 +67,7 @@ export interface EnricoCerutiParams {
     C21DoubleArc: boolean;
     C11DoubleArc: boolean;
     L31DoubleArc: boolean;
-    FUArmDoubleArc?: boolean; // some f holes require more arcs
+    FUArmDoubleArc?: boolean;
     FLArmDoubleArc?: boolean;
     ucCornerSharpness?: number;
     lcCornerSharpness?: number;
@@ -136,16 +136,11 @@ export interface FholeCut {
   length: number | null;
 }
 
-/**
- * The straight middle, and the four arcs onto and off it. `outer*` is the passage of the contour
- * from the upper eye, `inner*` the other. These four are the only arcs in the model with no number
- * of their own — the stem line uses up the last freedom in each.
- */
+// outer* traces from the upper eye, inner* from the lower; these four arcs have no number of their own.
 export interface FholeStem {
   center: Pt | null;
   width: number | null;
-  /** A plain plate angle in radians: 90° stands the stem upright, a violin's leans a few degrees
-   * past. Geometry wants the run rather than the angle — take it from `stemRun`. */
+  /** radians; geometry should read `stemRun`, not this. */
   angle: number | null;
 
   outerUpper: Arc | null;
@@ -213,16 +208,9 @@ export interface CerutiViewFlags {
   plateRotZDeg: number;
 }
 
-/**
- * The view flags the shared toggle bar has a button for; each panel names its own in a
- * `static readonly renderToggles`.
- *
- * Collected into `CerutiViolin.panelOrder` rather than read off the mounted panel: a view query
- * for the open panel resolves *after* the bar's binding is evaluated, so reading it there throws
- * NG0100 on every panel switch. `@ViewChild` and signal `viewChild()` both do this — don't
- * "simplify" it back. No default on `CerutiPanelBase`, so a panel declaring none fails the build
- * rather than quietly showing no bar.
- */
+// read off `CerutiViolin.panelOrder`, not the mounted panel: a view query for the open panel
+// resolves after the bar's binding evaluates, throwing NG0100 on switch — don't "simplify" this
+// back to @ViewChild/viewChild(). No default on CerutiPanelBase, so omitting renderToggles fails the build.
 export type RenderToggleKey = 'showModuleArcs' | 'showAllArcs' | 'showModuleCircles'
   | 'showAllCircles' | 'showModuleGuides' | 'showBlocks' | 'showInnerPath' | 'renderOuterPath';
 
@@ -295,8 +283,7 @@ export interface ArchSpline {
    * 0.5 is what makes the arch asymmetric end to end. */
   peak?: number;
   points: ArchSplinePoint[]; // interior points only, t strictly in (0, 1), in the panel's order
-  /** Which row of the panel's table the peak sits in. Presentation only — the knot builder sorts
-   * by position — but saved, since the maker arranged it. */
+  /** which panel row the peak sits in; cosmetic — the solve sorts by position — but saved since the maker arranged it. */
   peakRow?: number;
 }
 
@@ -344,14 +331,10 @@ export interface FlutingParams {
  */
 export interface CrossArchPoint {
   /**
-   * Signed position across the plate as a fraction of this side's own crown: 0 the joint, ±1 the
-   * takeoff into the channel, negative the bass side. The panel shows it as 0–100 with 50 at the
-   * joint. A fraction rather than millimetres, so it stays a shape as the station narrows.
-   *
-   * From the joint, not the crown, so a knot holds still while the ridge is dialled around it —
-   * which means it can land on the far side of the crown from the flank it was authored on, and
-   * `crossProfile` sorts rather than assuming. Against the takeoff rather than the channel
-   * centerline, since the takeoff is solved and could otherwise slide past a knot mid-solve.
+   * Fraction of this side's own crown: 0 the joint, ±1 the takeoff, negative the bass side —
+   * a fraction rather than mm so it stays a shape as the station narrows. From the joint, not
+   * the crown, so a knot can land on the far side of the crown from the flank it was authored
+   * on; `crossProfile` sorts rather than assuming.
    */
   x: number;
   /** Height as a fraction of the local arch height: 1 the crown, 0 the plate surface. */
@@ -369,14 +352,10 @@ export interface CrossArchSplineShape {
   type: 'spline';
   points: CrossArchPoint[];
   /**
-   * Where the crown sits across the plate, as a fraction of the width between the channel
-   * centerlines: 0.5 the joint, below it the bass side. 0.5 when absent. Held well inside 0–1,
-   * since the crown has to stay an interior knot. Real plates rarely peak on the joint.
-   *
-   * Against the *centerline chord* rather than the solved takeoffs, unlike
-   * {@link CrossArchPoint.x}: the crown must not move at all mid-solve, so it is anchored to
-   * something the solve does not touch. Reached only where there is arch to carry a ridge —
-   * toward the caps it eases back onto the joint, see `PEAK_TAPER_DEPTHS`.
+   * Fraction of the width between channel centerlines: 0.5 the joint, below it the bass side,
+   * 0.5 when absent. Against the centerline chord rather than the solved takeoffs (unlike
+   * {@link CrossArchPoint.x}) since the crown must not move mid-solve. Eases back onto the
+   * joint toward the caps — see `PEAK_TAPER_DEPTHS`.
    */
   peak?: number;
   /** Which row of the panel's table the crown sits in. Presentation only, as {@link ArchSpline.peakRow}. */
@@ -450,12 +429,8 @@ export interface PathEntry {
   path: string;
 }
 
-/**
- * Every drafting panel, in bench order. Declared here rather than only in `ceruti-violin.ts`
- * because panel ids are file-format vocabulary — a template's reference images scope themselves to
- * panels by id, so renaming one is a migration. `panelOrder` is typed against this, so adding a
- * panel there without adding its id here fails the build.
- */
+// panel ids are file-format vocabulary — templates scope reference images by id, so renaming one
+// is a migration; `panelOrder` is typed against this list.
 export const CERUTI_PANEL_IDS = [
   'base', 'mainBouts', 'corners', 'centerBout', 'outerTrace',
   'fluting', 'longArching', 'crossArching', 'fHolePlacement', 'fHoleContours', 'mould', 'export',
@@ -463,19 +438,14 @@ export const CERUTI_PANEL_IDS = [
 
 export type CerutiPanelId = typeof CERUTI_PANEL_IDS[number];
 
-/**
- * What a bundled instrument *is*, as distinct from what it measures. Kept off `params`, the frozen
- * geometry contract, and off the reference images, which carry their own licence (`ImageCredit`):
- * measurements are facts and carry no copyright, a photograph is expression and does. Absent on
- * the blank template and on anything a user saved themselves.
- */
+// kept off `params`: measurements are facts (no copyright), a photograph is expression (has its
+// own `ImageCredit`). Absent on the blank template and on anything a user saved themselves.
 export interface TemplateMeta {
   maker: string;
-  /** The instrument, named as the record names it — 'Violin "Ole Bull"', 'Viola'. */
+  /** named as the record names it — 'Violin "Ole Bull"', 'Viola'. */
   instrument: string;
-  /** As published: '1669', 'c.1730', '1610-20'. A string, not a year — most are ranges. */
+  /** as published: '1669', 'c.1730', '1610-20' — a string, not a year, since most are ranges. */
   date: string;
-  /** The public catalogue entry, so a number can be rechecked. */
   record: {
     source: 'met' | 'si' | 'loc' | 'other';
     /** The institution's own object id — Met 898377, SI nmah_833906, LoC ihas.200154811. */

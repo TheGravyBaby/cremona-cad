@@ -102,16 +102,8 @@ export type ReferenceImage = {
   href: string;
 }
 
-/**
- * Where a reference image came from and under what terms it may be used. Carried per image
- * rather than per recipe because one instrument's set can mix provenances — a CC0 museum
- * photograph paired with a plate traced from a different source. Bout measurements are facts and
- * carry no copyright; a photograph is expression and does, so the two are recorded separately
- * (the image's terms here, the instrument's record on the template's `meta`).
- *
- * Absent on anything a user placed themselves, which is the common case — this exists for the
- * bundled corpus, where the licence has to travel with the pixels rather than living in a README.
- */
+/** Where a reference image came from and under what terms it may be used. Per-image rather than
+ * per-recipe since one instrument's image set can mix provenances. Absent on user-placed images. */
 export type ImageCredit = {
   /** Holding institution or publisher, spelled as they ask to be credited. */
   source: string;
@@ -125,20 +117,10 @@ export type ImageCredit = {
   url?: string;
 };
 
-/**
- * How much of a reference image's source picture is hidden, as fractions inset from each edge:
- * `{ left: 0.25, top: 0, right: 0, bottom: 0.1 }` hides the left quarter and the bottom tenth.
- * Named for the picture as it reads on screen, so `top` is the high-y edge of the Y-up world.
- * Absent means the whole picture.
- *
- * The image's `x`/`y`/`width`/`height` describe the **visible** rectangle rather than where the
- * whole picture would sit. That is what keeps cropping from spreading: handles, hit-testing, the
- * selection halo and the W/H fields you type a real measurement into all go on describing what
- * you can actually see, and the renderer is the only thing that works back to the source. The
- * cost is that changing a crop has to move and resize the box in the same step so the part you
- * keep stays exactly where it was — see `applyImageCrop` in
- * draft-canvas/tools/toolbox-shape.ts, which is the only thing that should compute that.
- */
+/** How much of a reference image's source picture is hidden, as fractions inset from each edge.
+ * `top` is the high-y edge of the Y-up world. The image's own x/y/width/height describe the
+ * visible rectangle, not the whole picture — see `applyImageCrop` in toolbox-shape.ts, the only
+ * thing that should compute a crop change. */
 export type ImageCrop = {
   left: number;
   top: number;
@@ -152,32 +134,20 @@ export type ImageCrop = {
  * `ImageShape`, and is the only code that should touch this type. Every field past
  * `href`/`x`/`y`/`width`/`height` is optional so older files keep loading unchanged.
  *
- * **Every field here must also exist on `ImageShape`.** The canvas is the live copy: recipe-base
- * subscribes to ToolboxStore and rewrites `referenceImages` from the placed shapes on every
- * change, so a field that stops at this type is erased the first time the user touches the
- * canvas — and only visibly so after save-and-reopen.
+ * Every field here must also exist on `ImageShape` — recipe-base rewrites `referenceImages` from
+ * the canvas's placed shapes on every change, so a field that stops at this type is erased the
+ * first time the user touches the canvas.
  */
 export type NamedReferenceImage = ReferenceImage & {
   id?: string;
   label?: string;
-  /** Which recipe panels this image is shown on, by panel id. Absent or empty means every panel,
-   * which is what every image placed by hand is. Lets one instrument ship a plan view for the
-   * outline panels and a section photograph for the arching ones without the user parking each
-   * by hand. See ToolboxStore.setActivePanel. */
+  /** Recipe panels this image shows on, by id; absent/empty means every panel. */
   panels?: string[];
-  /** Panels this image is deliberately kept off, by panel id — the other way of saying the same
-   * thing as `panels`, for when the exception is shorter than the rule. Its point is a panel that
-   * should show *nothing*: an instrument with no usable cross-arch photograph excludes it from
-   * the default view rather than displaying a plan shot that would be traced by mistake. Absolute,
-   * so it wins over `isDefault`. See ToolboxStore.imageMatchesActivePanel. */
+  /** Panels this image is deliberately kept off; absolute — wins over isDefault. */
   excludePanels?: string[];
-  /** Marks this as the set's default view — "Default" in the UI: shown wherever no other image
-   * names the panel, and stepped aside from on panels one does. Lets a set carry one general plan
-   * photograph plus a few specific ones without listing every panel the general one belongs on.
-   * Only meaningful with `panels` absent. See ToolboxStore.imageMatchesActivePanel. */
+  /** Marks the set's default view: shown on any panel no other image has claimed by name. */
   isDefault?: boolean;
-  /** Which part of the source picture the box shows. Absent means all of it — see ImageCrop,
-   * which explains why the box measures the visible part rather than the whole. */
+  /** Which part of the source picture the box shows; absent means all of it. See ImageCrop. */
   crop?: ImageCrop;
   /** Provenance and licence — see ImageCredit. Absent on user-placed images. */
   credit?: ImageCredit;

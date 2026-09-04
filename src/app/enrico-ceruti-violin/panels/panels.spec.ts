@@ -146,14 +146,8 @@ describe('the fluting panel', () => {
   });
 });
 
-/**
- * The rib taper's limiter.
- *
- * Past `maxRibTaperMm` the tilted rib line is longer than the instrument, and
- * the side view can only draw a top plate reaching it by stretching it — a
- * picture of a garland that cannot be built. The panel puts the pair back
- * rather than drawing it.
- */
+// past maxRibTaperMm the tilted rib line is longer than the instrument; the panel rolls the
+// pair back rather than drawing a plate stretched to reach it
 describe('long arching panel — rib taper limit', () => {
   const arched = (lower: number, upper: number): EnricoCerutiParams => {
     const p = archedViolin();
@@ -174,7 +168,6 @@ describe('long arching panel — rib taper limit', () => {
     const panelUnderTest = panel(LongArchingPanel, p);
     panelUnderTest.buildRun();
 
-    // The edit that overruns the body, made the way the input would make it.
     p.arching!.ribHeightUpper = 32 - maxRibTaperMm(p) - 1;
     panelUnderTest.buildRun();
 
@@ -196,8 +189,7 @@ describe('long arching panel — rib taper limit', () => {
   it('gives up the taper, not the measured height, on a recipe that arrives over the bound', () => {
     const p = arched(32, 32 - maxRibTaperMm(archedViolin()) - 5);
     panel(LongArchingPanel, p).buildRun();
-    // Nothing to roll back to, so the lower rib — the one a maker measures
-    // first — is the end that survives.
+    // nothing to roll back to, so the lower rib survives
     expect(p.arching!.ribHeightLower).toBe(32);
     expect(p.arching!.ribHeightUpper).toBe(32);
   });
@@ -223,15 +215,8 @@ describe('long arching panel — rib taper limit', () => {
   });
 });
 
-/**
- * How the tilted top plate is placed.
- *
- * The plate is one piece of wood glued onto a rib line that is no longer
- * parallel to the back's. It is drawn in its own frame and placed by a
- * transform on the group it goes into, so what that transform is *is* the
- * geometry — a shear here would lean the section that was carved, and a
- * placement hung off one end would overhang the garland unevenly.
- */
+// the top plate is drawn in its own frame and placed by a rigid transform on its group — a
+// shear would lean the carved section instead of just tilting where it sits
 describe('long arching panel — placing the tilted top plate', () => {
   /** `translate(dx,dy) rotate(a,cx,cy)` as a point map, which is what SVG does with it. */
   function readTransform(t: string): (x: number, y: number) => [number, number] {
@@ -251,7 +236,6 @@ describe('long arching panel — placing the tilted top plate', () => {
     };
   }
 
-  /** The transform on the group the top plate is drawn into. */
   function topPlatePlacement(p: EnricoCerutiParams) {
     const drawn = recordLayers(panel(LongArchingPanel, p).buildRun());
     const group = drawn.elements.find(e => e.layer === 'g' && e.tag === 'g');
@@ -288,8 +272,6 @@ describe('long arching panel — placing the tilted top plate', () => {
   });
 
   it('keeps the plate rigid — its length is the body length, not stretched to reach', () => {
-    // The whole point of rotating rather than shearing: a shear would have to
-    // lengthen the plate to span a rib line that grew.
     const p = tapered();
     const face = placedFace(p);
     expect(dist(face.low, face.high)).toBeCloseTo(p.height, 9);
@@ -305,9 +287,6 @@ describe('long arching panel — placing the tilted top plate', () => {
   });
 
   it('foreshortens the plate in plan rather than leaning its section', () => {
-    // A rigid turn shortens what the plate covers along the body; the amount is
-    // the cos of a third of a degree, which is what says it turned rather than
-    // leaned.
     const p = tapered();
     const face = placedFace(p);
     const spanned = Math.abs(face.high[1] - face.low[1]);
@@ -324,17 +303,10 @@ describe('long arching panel — placing the tilted top plate', () => {
   });
 });
 
-/**
- * The spline a long arch is seeded with when the maker switches curve type.
- *
- * Stations rather than a shape: five evenly placed rows, none of them mirrored,
- * because a long arch is asymmetric end to end far more often than not and a
- * mirrored pair has to be broken before the two ends can be shaped apart.
- */
+// seeded unmirrored: a long arch is asymmetric end to end far more often than not
 describe('long arching panel — the spline it seeds', () => {
   it('lays out five stations down the plate, peak among them', () => {
-    // High position first: the world is y-up, so the canvas draws position 0 at
-    // the foot of the section and the table reads the way the arch does.
+    // high position first — the world is y-up
     const panelUnderTest = panel(LongArchingPanel, archedViolin());
     panelUnderTest.setCurveType('top', 'spline');
     const arch = panelUnderTest.topSpline!;
@@ -345,8 +317,7 @@ describe('long arching panel — the spline it seeds', () => {
   });
 
   it('mirrors nothing, and says so rather than leaving it out', () => {
-    // An absent flag is what the loader reads as a legacy half-span point, so
-    // every seeded point carries the false — see normalizeArchCurve.
+    // absent reads as legacy to the loader — see normalizeArchCurve
     const panelUnderTest = panel(LongArchingPanel, archedViolin());
     panelUnderTest.setCurveType('top', 'spline');
     expect(panelUnderTest.topSpline!.points.map(pt => pt.mirror)).toEqual([false, false, false, false]);
@@ -372,17 +343,8 @@ describe('long arching panel — the spline it seeds', () => {
   });
 });
 
-/**
- * Arranging the spline tables by hand.
- *
- * The order of a spline's rows means nothing to the geometry — both knot
- * builders sort for themselves — and it means everything to the maker reading
- * the table, since rows are added and edited without the list ever resorting
- * itself. They are dragged into order instead, the peak included: it is a knot
- * on the same curve, and pinning it to the top was only ever an artefact of
- * where it is stored. The grips are wired to the panels through
- * {@link RowReorderDirective}, so these are the wiring tests.
- */
+// row order means nothing to the geometry (both knot builders sort for themselves) but is
+// preserved for the maker reading the table; wiring tests for {@link RowReorderDirective}
 describe('arching panels — arranging spline rows', () => {
   /** Row pitch the stubbed layout reports; jsdom measures everything as zero. */
   const PITCH = 30;
@@ -394,7 +356,6 @@ describe('arching panels — arranging spline rows', () => {
     target.dispatchEvent(e);
   }
 
-  /** Drags the grip of row `from` down `places` rows, as a pointer would. */
   function dragRow(fixture: { nativeElement: HTMLElement }, from: number, places: number): void {
     const rows = Array.from(
       fixture.nativeElement.querySelectorAll('.spline-points [data-reorder-row]') as NodeListOf<HTMLElement>,
@@ -455,11 +416,9 @@ describe('arching panels — arranging spline rows', () => {
     panelUnderTest.addSplinePoint('top');
     const rows = panelUnderTest.splineRows(arch);
     const positions = rows.map(row => row.pt ? row.pt.t : arch.peak ?? 0.5);
-    // The table runs high position first, and the new row keeps it that way
-    // rather than being seated as if it ran the other direction.
+    // table runs high position first
     expect(positions).toEqual([...positions].sort((a, b) => b - a));
-    // The widest gap on the seeded set falls below the peak, so the peak keeps
-    // its row and the point lands under it.
+    // widest gap falls below the peak, so the peak keeps its row
     expect(arch.peakRow).toBe(peakRow);
   });
 
@@ -467,8 +426,7 @@ describe('arching panels — arranging spline rows', () => {
     const panelUnderTest = panel(LongArchingPanel, archedViolin());
     panelUnderTest.setCurveType('top', 'spline');
     const arch = panelUnderTest.topSpline!;
-    // The same table turned around, as a maker who reads up the plate would
-    // leave it. The point still belongs between the rows it falls between.
+    // same table turned around, as a maker reading up the plate would leave it
     arch.points.reverse();
 
     panelUnderTest.addSplinePoint('top');

@@ -51,16 +51,9 @@ export interface PlateSurfaceModel {
     /** Spatial index over that loop — the corner pass's distance query runs per grid point. */
     platformOuterIdx: PolylineIndex;
     arch: ArchCurve;
-    /**
-     * Absolute Z of the plate outer surface: top = rib height + top thickness,
-     * back = −bottom thickness.
-     *
-     * A plate is carved against its own gluing plane, so this is the top plane
-     * taken flat at the body datum — the rib taper tilts where that plane
-     * *sits* in the assembled body, and a tilt is not something the height
-     * field, the templates or the STL can carry. The two section views apply it
-     * at draw time, and they are the only places that need to.
-     */
+    /** Absolute Z of the plate outer surface: top = rib height + top thickness, back = −bottom
+     * thickness. Taken flat at the body datum — the rib taper is applied at draw time by the
+     * section views, not carried here. */
     zBase: number;
     /**
      * Direction the relative height field folds into absolute Z: top plate grows

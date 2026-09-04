@@ -26,16 +26,12 @@ describe('workingStorage', () => {
     expect(readWorkingState(RECIPE_KEY)).toBeNull();
   });
 
-  // the carry-over from when this was kept in localStorage: the first load after the update has to
-  // inherit whatever was open, or a design in progress comes back blank
   it('adopts an old localStorage copy on first read', () => {
     localStorage.setItem(RECIPE_KEY, 'legacy');
     expect(readWorkingState(RECIPE_KEY)).toBe('legacy');
     expect(sessionStorage.getItem(RECIPE_KEY)).toBe('legacy');
   });
 
-  // the point of the whole move — a copy left behind would re-seed every new tab with the same
-  // stale design, which is exactly what per-tab state exists to prevent
   it('takes the old copy rather than duplicating it, so a later tab opens fresh', () => {
     localStorage.setItem(RECIPE_KEY, 'legacy');
     readWorkingState(RECIPE_KEY);

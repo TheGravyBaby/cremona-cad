@@ -7,30 +7,20 @@ export interface RowMove {
   to: number;
 }
 
-/**
- * Applies one of those moves to a list that is shown with a further row spliced
- * into it — a spline's peak among its control points — and reports where that
- * row ends up. The list is reordered in place; `marker` is its row's index,
- * counted the same way the rows are.
- *
- * The row indices a drag speaks in are not indices into the list, and the two
- * only agree above the marker. Working it out at each call site is three
- * off-by-ones deep and gets it wrong in a different way each time, which is why
- * it lives here beside the directive that produces the move.
- */
+// applies a move to a list shown with an extra marker row spliced in (e.g. a spline's peak among
+// its control points) and reports where that row ends up. Drag indices only agree with list
+// indices above the marker, which is what this centralizes.
 export function applyRowMove<T>(items: T[], marker: number, move: RowMove): number {
   const rows = items.length;
   const pinned = clamp(marker, 0, rows);
   const from = clamp(move.from, 0, rows);
   const to = clamp(move.to, 0, rows);
-  // The marker's own row: the list is untouched and the row simply lands where
-  // it was dropped.
+  // the marker's own row: list untouched, it lands where dropped.
   if (from === pinned) return to;
 
   const [item] = items.splice(from < pinned ? from : from - 1, 1);
   if (item === undefined) return pinned;
-  // With the row lifted out, everything below where it came from has moved up a
-  // place — the marker included.
+  // lifting the row out moves everything below it up a place, marker included.
   const lifted = from < pinned ? pinned - 1 : pinned;
   const above = to <= lifted;
   items.splice(above ? to : to - 1, 0, item);
@@ -56,23 +46,12 @@ interface Drag {
 }
 
 /**
- * Drag-to-reorder for a list of sidebar rows.
- *
- * Applied to the list container, with each movable row marked `data-reorder-row`
- * and the grip inside it `data-reorder-handle`; rows are addressed by their
- * order under the container, so unmarked rows — a header, a peak row — sit in
- * the list without being counted or moved. Every move is reported as a
- * {@link RowMove} for the panel to apply to its own array: the directive never
- * touches the DOM order, which stays Angular's to own.
- *
- * The list reorders *during* the drag rather than on release. That is what
- * makes it an arranging tool rather than a guess — the maker sees the order
- * they are about to get while the pointer is still down. So a row is emitted
- * every time it passes a neighbour, and the rows are re-read from the DOM each
- * move rather than cached, since each emit re-renders the list.
- *
- * The grip also takes ArrowUp/ArrowDown while focused, which is both the
- * keyboard route and the way to nudge one row by one place without aiming.
+ * Drag-to-reorder for a list of sidebar rows. Movable rows are marked `data-reorder-row`, the
+ * grip inside each `data-reorder-handle`; unmarked rows (a header, a peak row) aren't counted or
+ * moved. Every move is emitted as a {@link RowMove} for the panel to apply — the directive never
+ * touches DOM order itself. Reorders live, during the drag, so a row is emitted each time it
+ * passes a neighbour; rows are re-read from the DOM each move since each emit re-renders the
+ * list. The grip also takes ArrowUp/ArrowDown while focused.
  */
 @Directive({
   selector: '[appRowReorder]',
@@ -93,16 +72,13 @@ export class RowReorderDirective implements OnDestroy {
     const from = rows.findIndex(r => r.contains(handle));
     if (from < 0 || rows.length < 2) return;
 
-    // One row's pitch, taken across the whole list so the gaps between rows are
-    // included without measuring one. A drag then lands on a row per pitch
-    // travelled, which is the only geometry the swap needs.
+    // pitch taken across the whole list, so inter-row gaps are included without measuring one.
     const first = rows[0].getBoundingClientRect();
     const last = rows[rows.length - 1].getBoundingClientRect();
     const step = (last.top - first.top) / (rows.length - 1) || first.height;
     if (!(step > 0)) return;
 
-    // Not a text selection and not a scroll, both of which a press-and-drag
-    // inside a panel of number fields would otherwise start.
+    // prevents text selection / scroll, which a press-and-drag over number fields would start.
     e.preventDefault();
     handle.setPointerCapture?.(e.pointerId);
     this.drag = { pointerId: e.pointerId, handle, step, startY: e.clientY, from, at: from };
@@ -114,12 +90,8 @@ export class RowReorderDirective implements OnDestroy {
     doc.addEventListener('pointercancel', this.onPointerUp);
   }
 
-  /**
-   * Where the row belongs now: whole pitches travelled from where it was
-   * grabbed. Counted from the grab rather than from the last swap, so a slow
-   * drag back over the same ground retraces the order it came through instead
-   * of ratcheting.
-   */
+  // whole pitches travelled from the grab point, not the last swap, so retracing the same ground
+  // undoes in order rather than ratcheting.
   private onPointerMove = (e: PointerEvent): void => {
     const d = this.drag;
     if (!d || e.pointerId !== d.pointerId) return;
@@ -133,8 +105,7 @@ export class RowReorderDirective implements OnDestroy {
       this.rowReorder.emit({ from: d.at, to });
       d.at = to;
     }
-    // Offset from the slot it now holds, so the row tracks the pointer while
-    // the ones it has passed sit where they will stay.
+    // offset from the slot it now holds, so it tracks the pointer while passed rows stay put.
     this.lift(rows[d.at], dy - (d.at - d.from) * d.step);
   };
 
@@ -154,9 +125,7 @@ export class RowReorderDirective implements OnDestroy {
 
     e.preventDefault();
     this.rowReorder.emit({ from, to });
-    // The rows stay put and their contents move, so the grip to keep the
-    // keyboard on is the one in the row the moved row landed in — otherwise a
-    // second press would move whichever row has arrived under the focus.
+    // rows stay put and contents move, so focus follows to where the moved row landed.
     rows[to].querySelector<HTMLElement>(HANDLE)?.focus();
   }
 

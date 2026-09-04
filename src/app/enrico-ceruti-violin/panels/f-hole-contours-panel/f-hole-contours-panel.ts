@@ -13,14 +13,12 @@ import { Circle, Pt, Arc } from '../../../models/types';
 import { error } from '../../../shared/message-emitter';
 import { HighlightedArc, HighlightedPoint } from '../../renders/render-constants';
 
-/** Which field currently has focus, for the halo — `<end>.<part>`, the same path the template
- * binds through, so a field and its highlight can never name different things. `tip` takes a
- * point halo; the rest take an arc halo. */
+// `<end>.<part>` — the path the template binds through, so a highlight can't name a different
+// field than the one focused. `tip` takes a point halo; the rest take an arc halo.
 export type FholeArcPart = 'shoulder' | 'arm' | 'arm2' | 'wing';
 export type FholeHighlightKey = `${'upper' | 'lower'}.${FholeArcPart | 'cut'}`;
 
-/** The arc chain itself — one edge of the hole, from the upper eye down past the stem to the tip.
- * Where the eyes and stem sit is the placement panel's job; this page only bends what runs between. */
+// eyes/stem placement is the placement panel's job; this page only bends what runs between
 @Component({
   selector: 'app-ceruti-f-hole-contours-panel',
   imports: [FormsModule],
@@ -65,9 +63,7 @@ export class FHoleContoursPanel extends CerutiPanelBase implements OnInit {
     this.emitDebounced();
   }
 
-  /** Split the arm in two, or fold it back into one. The pair shares out the turn the single arc
-   * had — in the proportion the defaults use — so the contour barely moves across the switch, and
-   * the solved fourth arc still finds the stem it was heading for. */
+  // splits/rejoins the arm; the pair shares out the single arc's turn so the contour barely moves
   onCompoundChange(end: 'upper' | 'lower'): void {
     let E = this.params.fHoles![end];
 
@@ -129,11 +125,8 @@ export class FHoleContoursPanel extends CerutiPanelBase implements OnInit {
 }
 
 
-// ===== F-hole contour solvers =====
-// The arc chain along one edge of the hole, and the cut that closes each end of
-// it. Where the eyes and the stem sit is the placement panel's solve, and these
-// read that placement without moving it. Everything here is seeded from the
-// stored arcs, so a hole the user has shaped re-solves to what they shaped.
+// eyes/stem placement is the placement panel's solve; these read it without moving it, seeded
+// from the stored arcs so a hole the user has shaped re-solves to what they shaped
 
 // one edge of the hole in the order it is drawn, but split across the two ends it passes through,
 // since that is how the parameters are stored. an edge springs from one end and reaches the other
@@ -171,11 +164,8 @@ const FUCutSlope = 1 / 3 * Math.PI;
 const FLCutSlope = -2 / 3 * Math.PI;
 const FCuttoEye = 1;
 
-/**
- * Where the cut meets the eye, and the direction it runs out to the tip. `at` turns round the eye
- * from the ray toward the other eye, which keeps the foot in place as the eyes move; `slope` is
- * read straight off the plate, so sliding the foot around does not swing the cut.
- */
+// `at` turns round the eye from the ray toward the other eye, keeping the foot in place as the
+// eyes move; `slope` reads straight off the plate, so sliding the foot doesn't swing the cut
 export function cutRay(eye: Circle, toward: Pt, cut: FholeCut): { foot: Pt; travel: number } {
   let at = Math.atan2(toward.y - eye.y, toward.x - eye.x) + cut.angleOnEye!;
   return { foot: pointOnCircle(eye, at), travel: cut.slope! };
@@ -187,12 +177,8 @@ export function cutTip(eye: Circle, toward: Pt, cut: FholeCut): Pt {
   return new Pt(foot.x + cut.length! * Math.cos(travel), foot.y + cut.length! * Math.sin(travel));
 }
 
-/**
- * The stretch of the eye's rim the outline runs along: from where the shoulder comes tangent,
- * counter-clockwise round to where the cut leaves. The rest of the circle is inside the hole, so
- * drawing it whole leaves the eye reading as a construction circle rather than as part of the
- * shape. Both ends run counter-clockwise, since the two are a point reflection of each other.
- */
+// the stretch of the eye's rim the outline runs along, tangent point to cut — the rest of the
+// circle is inside the hole, so drawing it whole would read as a construction circle
 export function eyeArc(end: FholeEnd, other: FholeEnd): Arc {
   let eye = end.eye!;
   // the shoulder is tangent inside its own eye, so its start point is the join, on both rims
@@ -202,12 +188,8 @@ export function eyeArc(end: FholeEnd, other: FholeEnd): Arc {
     angleFromCenter(eye, other.eye!) + end.cut!.angleOnEye!);
 }
 
-/**
- * One edge of the hole: an arm springing off `springEnd`'s eye, over the bound its rise sets, down
- * onto a stem edge, then a wing flaring past the stem to `reachEnd`'s tip. `side` is +1 for the
- * edge whose bound sits above its eye and -1 for the one turned half a turn against it, which is
- * the only difference between them.
- */
+// one edge: an arm off `springEnd`'s eye, over its rise bound, onto a stem edge, then a wing to
+// `reachEnd`'s tip. `side` (+1/-1) is the only difference between the two edges.
 function solveFholeEdge(
   stem: FholeStem, springEnd: FholeEnd, reachEnd: FholeEnd, side: 1 | -1, compound: boolean,
 ): FholeEdge {
@@ -215,15 +197,13 @@ function solveFholeEdge(
   let rise = springEnd.rise!;
   let bound = eye.y + side * (eye.r + rise);
 
-  // the two ends differ only in how wide they run and where the wing beside them sits. a wing
-  // takes the arm ratio of the end it is drawn beside, not the one its own edge sprang from
+  // a wing takes the arm ratio of the end it's drawn beside, not the one its edge sprang from
   let armToSh = side > 0 ? FUArmtoSh : FLArmtoSh;
   let wingToSh = side > 0 ? FLArmtoSh : FUArmtoSh;
   let wingStart = side > 0 ? FLWingStart : FUWingStart;
   let wingEnd = side > 0 ? FLWingEnd : FUWingEnd;
 
-  // the shoulder is tangent to the eye and tangent to the bound, so its radius alone places it.
-  // below eye.r + rise/2 the apex cannot reach the bound and the solve has no root
+  // shoulder is tangent to both eye and bound; below eye.r + rise/2 the solve has no root
   let shoulderR = springEnd.shoulder?.r ?? eye.r * FShtoEye;
   if (shoulderR < eye.r + rise / 2) {
     error('The shoulder is too tight to carry the outline from the eye out to its bound. Give it a larger radius, or take the rise down.', 'F-Hole Shoulder Too Tight');
@@ -236,13 +216,11 @@ function solveFholeEdge(
   let shoulder = new Arc(shoulderX, shoulderY, shoulderR, 0, side * Math.PI / 2); // end at the apex, on the bound
   shoulder.start = angleFromCenter(shoulder, eye); // tangent point, on the line of centers
 
-  // each arm arc picks up the tangent the one before it ended on, so radius and sweep are the only
-  // knobs and where they sit falls out. sweeps carry the sign of the shoulder's own turn
+  // each arm continues tangent from the last; sweep carries the shoulder's own turn sign
   let turn = Math.sign(signedArcSweep(shoulder));
   let sweepOf = (a: Arc | null | undefined, fallback: number) => a ? a.end - a.start : turn * fallback;
 
-  // the shoulder leaves its apex square to the bound and the stem lies all but square to that, so a
-  // third of a turn leaves the arm room to spare for the landing that follows it
+  // a third of a turn leaves the arm room to spare for the landing that follows it
   let armR = shoulderR * armToSh;
 
   let arm = arcContinuingFrom(
@@ -258,9 +236,8 @@ function solveFholeEdge(
 
   let lastArm = arm2 ?? arm;
 
-  // the landing has no radius of its own — settling tangent on the stem edge uses the last freedom.
-  // each edge crosses the near stem line and settles on the far one, so the slot ends up between
-  // the two contours rather than off to one side of both
+  // landing has no radius of its own; each edge crosses the near stem line and settles on the far
+  // one, so the slot ends up between the two contours rather than off to one side of both
   let approach = Math.sign(Math.cos(travelAtArcEnd(shoulder)));
   let stemEdge = new Pt(stem.center!.x + approach * stem.width! / 2, stem.center!.y);
   // each edge runs the stem toward the other eye, so it travels the stem line backwards
@@ -271,17 +248,14 @@ function solveFholeEdge(
   if (!landing)
     error('The arm turns too far to settle onto the stem. Take the arm sweep down, or bring the stem toward the eye.', 'F-Hole Arm Misses the Stem');
 
-  // the wing is placed outright rather than solved: its radius and two boundary angles are its
-  // shape, and hanging it off the tip fixes where it sits
+  // wing is placed outright (radius + two boundary angles), hung off the tip
   let wing = new Arc(0, 0, reachEnd.wing?.r ?? reachEnd.eye!.r * FShtoEye * wingToSh,
     reachEnd.wing?.start ?? wingStart,
     reachEnd.wing?.end ?? wingEnd);
   wing.x = reachEnd.tip!.x - wing.r * Math.cos(wing.end);
   wing.y = reachEnd.tip!.y - wing.r * Math.sin(wing.end);
 
-  // past the stem the contour runs straight a while, then flares back onto the wing — curvature
-  // reverses across the stem, and the flare's radius is whatever gets there. the wing stands
-  // whether or not the flare reaches it, since it is the user's numbers rather than a result
+  // flares back onto the wing past the stem; the wing stands even if the flare can't reach it
   let flare = landing && arcBetweenTravels(
     pointOnCircle(landing, landing.end), travelAtArcEnd(landing),
     pointOnCircle(wing, wing.start), travelAtArcStart(wing));
@@ -295,17 +269,15 @@ function solveFholeEdge(
 export function calculateFholeContours(p: EnricoCerutiParams): void {
   let f = p.fHoles!;
 
-  // the tip is no longer a place on the plate but the far end of the cut, so it is solved afresh
-  // each pass from the three numbers describing that cut against its own eye
+  // tip is the far end of the cut, solved afresh each pass from the cut's own three numbers
   f.upper.cut ??= { angleOnEye: FCutAt, slope: FUCutSlope, length: f.upper.eye!.r * FCuttoEye };
   f.lower.cut ??= { angleOnEye: FCutAt, slope: FLCutSlope, length: f.lower.eye!.r * FCuttoEye };
 
   f.upper.tip = cutTip(f.upper.eye!, f.lower.eye!, f.upper.cut);
   f.lower.tip = cutTip(f.lower.eye!, f.upper.eye!, f.lower.cut);
 
-  // each edge lands on one side of the stem and stays there, which is what makes inner/outer a name
-  // for the whole passage: the upper eye's edge runs the outer side down to the lower tip, the
-  // lower eye's runs the inner side up to the upper tip
+  // each edge stays on one side of the stem: upper's is the outer side to the lower tip, lower's
+  // is the inner side to the upper tip — where inner/outer as names come from
   let outer = solveFholeEdge(f.stem, f.upper, f.lower, 1, !!p.options.FUArmDoubleArc);
   let inner = solveFholeEdge(f.stem, f.lower, f.upper, -1, !!p.options.FLArmDoubleArc);
 
