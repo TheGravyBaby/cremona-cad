@@ -6,8 +6,7 @@ import { renderCircle, renderDashedLine, renderLine, renderPath, renderRect, ren
 import { calculateOuterArcs, ensureOuterTracePaths, getPath, getPathOrNull } from '../../ceruti-calcs';
 import { Circle, Pt, Rectangle } from '../../../models/types';
 import { nearestFraction, nearestSmallFraction } from '../../../helpers/nearestFraction';
-import { renderBoutBouts } from '../../renders/guides.render';
-import { clamp, intersectLines, lineCircleIntersection } from '../../../helpers/draftMath';
+import { clamp } from '../../../helpers/draftMath';
 
 /** Where the two f-holes sit on the plate — the eyes first, everything else hung off them. */
 @Component({
@@ -78,9 +77,10 @@ export class FHolePlacementPanel extends CerutiPanelBase implements OnInit {
 
 }
 
-/** How far past upright the stem leans, in degrees — the whole number nearest the traced Amati,
- * which reads 93.4. Positive leans the top of the stem toward the hole's upper eye. */
-const STEM_ANGLE_DEFAULT = 93;
+/** How far past upright the stem leans, in degrees — mean 91.8°, sd 0.7° across a 6-instrument
+ * survey (2026-09), the tightest constant found in that pass. Positive leans the top of the stem
+ * toward the hole's upper eye. */
+const STEM_ANGLE_DEFAULT = 92;
 const STEM_ANGLE_RANGE = [90, 102];
 
 /** The stem's lean as a run per unit of rise — the form every line through the stem is drawn in. */
@@ -99,29 +99,12 @@ export const defaultFHolePlacement = (p: EnricoCerutiParams): FholeParams => {
     let lowerCorner = p.bouts.LCr;
     let upperCorner = p.bouts.UCr;
 
-    let lowerEyeHeight = lowerCorner.y - lowerEyeR;
-    // I have a theory that the default strad position defined by this guide arc, 1/3 the lower corner distance from the middle
-    // or 1/6 the total corner width
-    let lowerEyeGuideCircle = new Circle(p.bouts.LCr.x, p.bouts.LCr.y, p.bouts.LCr.x / 3);
+    // both eye positions from a 10-instrument survey against traced templates (2026-09)
+    let lowerEye = new Circle(lowerCorner.x * 2/3, lowerCorner.y * 24/25, lowerEyeR);
 
-    let lowerEyePosition = lineCircleIntersection(new Pt(0, lowerEyeHeight), new Pt(1000, lowerEyeHeight), lowerEyeGuideCircle)[1]
-    let lowerEye = new Circle(lowerEyePosition.x,  lowerEyePosition.y, lowerEyeR);
+    let upperEyeHeight = upperCorner.y * 4/5;
+    let upperEyePosition = new Pt(upperCorner.x / 3, upperEyeHeight);
 
-    let upperEyeHeight = upperCorner.y * 4/5 // this is not exactly a rule as much as a guideline I have noticed
-
-    // line equation for a slope and a point, y-y1 = m(x-x1)
-    // so, for our 3/2 run y - lowerEye.y = -3/2 * (x - lowerEye.x)
-
-    let upperEyePosition = intersectLines(
-      new Pt(-1000, upperEyeHeight),
-      new Pt(1000, upperEyeHeight),
-      lowerEye,
-      new Pt(lowerEye.x + 10, lowerEye.y - 3/2 * 10) // move along 10 x units
-    );
-
-    // currently I hardcode this value based on the bout width, this is wrong
-    // for violins, strad and del gesu have distances about 62mm
-    // I need a value that is based on a proportion
     let upperEye = new Circle(upperEyePosition.x, upperEyePosition.y, lowerEyeR * FUtoL);
     let upperHeight = upperEye.r * 5/6
     let lowerHeight = lowerEye.r * 5/6;
