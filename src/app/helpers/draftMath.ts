@@ -630,6 +630,23 @@ export function circleCircleIntersections(C1: Circle, C2: Circle, approx: boolea
   ];
 }
 
+/**
+ * The two points on circle `C` where a line from external point `P` is tangent to it — PT ⊥ CT,
+ * so triangle P-C-T is right-angled at T, giving the tangent points' angle off `C` as
+ * `angleFromCenter(C, P) ± acos(C.r / dist(P, C))`. Returns `[]` when `P` is inside or on `C`
+ * (no tangent line exists).
+ */
+export function tangentPointsFromExternalPoint(P: Pt, C: Circle): Pt[] {
+  const d = dist(P, C);
+  if (d <= C.r) return [];
+  const baseAngle = angleFromCenter(C, P);
+  const beta = Math.acos(C.r / d);
+  return [
+    pointOnCircle(C, baseAngle + beta),
+    pointOnCircle(C, baseAngle - beta),
+  ];
+}
+
 // imagine a large outer circle, with a smaller inner circle
 // where the inner circle intersects the outer circle at a single tangent point
 // now, imagine that the inner circle also has a defined x or y coordinate that it must hit

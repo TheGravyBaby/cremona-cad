@@ -2,11 +2,12 @@ import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CerutiColors, CerutiViewFlags, DefaultParams, EnricoCerutiParams, FholeParams, FholeStem, PathEntry, RenderToggleKey } from '../../ceruti-types';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
-import { renderCircle, renderDashedLine, renderLine, renderPath, renderRect, renderSmallCrosshair } from '../../../helpers/renderFuncs';
+import { renderArcFromArcFancy, renderCircle, renderCrosshair, renderDashedLine, renderLine, renderPath, renderRect, renderSmallCrosshair } from '../../../helpers/renderFuncs';
 import { calculateOuterArcs, ensureOuterTracePaths, getPath, getPathOrNull } from '../../ceruti-calcs';
-import { Circle, Pt, Rectangle } from '../../../models/types';
+import { Arc, Circle, Pt, Rectangle } from '../../../models/types';
 import { nearestFraction, nearestSmallFraction } from '../../../helpers/nearestFraction';
-import { clamp } from '../../../helpers/draftMath';
+import { angleFromCenter, angleOnDrawnArc, arcHorizontalIntersections, circleCircleIntersections, clamp, dist, lineCircleIntersection, tangentPointsFromExternalPoint } from '../../../helpers/draftMath';
+import { defineInnerArcs } from '../../ceruti-paths';
 
 /** Where the two f-holes sit on the plate — the eyes first, everything else hung off them. */
 @Component({
@@ -16,10 +17,10 @@ import { clamp } from '../../../helpers/draftMath';
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class FHolePlacementPanel extends CerutiPanelBase implements OnInit {
-  static readonly renderToggles: readonly RenderToggleKey[] = [];
+  static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleGuides', 'showModuleArcs'];
 
   @Input({ required: true }) params!: EnricoCerutiParams;
-  @Input({ required: true }) paths!: PathEntry[];
+  @Input({ required: true }) paths!: PathEntry[]; 
   @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;
 
@@ -53,23 +54,26 @@ export class FHolePlacementPanel extends CerutiPanelBase implements OnInit {
     ensureOuterTracePaths(p, this.paths);
     p.fHoles ??= defaultFHolePlacement(p);
 
-
     const renders: RenderLayer[] = [
       renderPath(getPath(this.paths, 'top'), this.colors.outerTrace),
     ];
 
-    const purflingPath = getPathOrNull(this.paths, 'purfling');
-    const outerPurflingPath = getPathOrNull(this.paths, 'outerPurfling');
+    // const purflingPath = getPathOrNull(this.paths, 'purfling');
+    // const outerPurflingPath = getPathOrNull(this.paths, 'outerPurfling');
+    const innerPath = getPathOrNull(this.paths, 'inner');
 
-    if (purflingPath) renders.push(renderPath(purflingPath, this.colors.innerTrace, 1));
-    if (outerPurflingPath) renders.push(renderPath(outerPurflingPath, this.colors.innerTrace, 1));
+    // if (purflingPath) renders.push(renderPath(purflingPath, this.colors.innerTrace, 1));
+    // if (outerPurflingPath) renders.push(renderPath(outerPurflingPath, this.colors.innerTrace, 1));
+    if (innerPath) renders.push(renderPath(innerPath, this.colors.innerTrace, 1));
 
     // recalculate display ratios
     p.ratios.FLtoW = p.fHoles!.lower.eye!.r / p.width;
     p.ratios.FUtoL = p.fHoles!.upper.eye!.r / p.fHoles!.lower.eye!.r;
 
-    renders.push(renderFholePlacementGuides(p, this.colors));
-    renders.push(renderFholeRise(p, this.colors), renderFholeStem(p, this.colors));
+    this.flags.showModuleArcs && renders.push(renderCrazyGuides(p, this.colors));
+    this.flags.showModuleGuides && renders.push(renderFholePlacementGuides(p, this.colors));
+    // renders.push(renderFholeRise(p, this.colors));
+    renders.push(renderFholeStem(p, this.colors));
     renders.push(renderFholeEyes(p, this.colors));
 
     return renders;
@@ -95,20 +99,23 @@ export const defaultFHolePlacement = (p: EnricoCerutiParams): FholeParams => {
     let FUtoL = p.ratios.FUtoL ?? DefaultParams.ratios.FUtoL;
     let FLtoW = p.ratios.FLtoW ?? DefaultParams.ratios.FLtoW;
     let lowerEyeR = p.width * FLtoW
-
     let lowerCorner = p.bouts.LCr;
-    let upperCorner = p.bouts.UCr;
 
     // both eye positions from a 10-instrument survey against traced templates (2026-09)
     let lowerEye = new Circle(lowerCorner.x * 2/3, lowerCorner.y * 24/25, lowerEyeR);
 
-    let upperEyeHeight = upperCorner.y * 4/5;
-    let upperEyePosition = new Pt(upperCorner.x / 3, upperEyeHeight);
+    // new pet theory
+    // draw guide circles from the lower eye to the midpoint, then the midpoint 2/7 the waist dist
+    // intersection point is the upper eye
+    let waistMidpoint = new Pt(p.bouts.C0.x - p.bouts.C0.r, p.bouts.C0.y)
+    let distFromLowerEyeToWaist = dist(lowerEye, waistMidpoint);
+    let upperEyeGuideOne = new Circle(lowerEye.x, lowerEye.y, distFromLowerEyeToWaist);
+    let upperEyeGuideTwo = new Circle(waistMidpoint.x, waistMidpoint.y, 4/7 * waistMidpoint.x);
+    let upperEyeIntersectionPt = circleCircleIntersections(upperEyeGuideOne, upperEyeGuideTwo)[0];
+    let upperEye = new Circle(upperEyeIntersectionPt.x, upperEyeIntersectionPt.y, lowerEyeR * FUtoL);
 
-    let upperEye = new Circle(upperEyePosition.x, upperEyePosition.y, lowerEyeR * FUtoL);
     let upperHeight = upperEye.r * 5/6
     let lowerHeight = lowerEye.r * 5/6;
-
 
     let topLeftPt = new Pt(upperEye.x - upperEye.r, upperEye.y + upperEye.r + upperHeight);
     let lowerRightPt = new Pt(lowerEye.x + lowerEye.r, lowerEye.y - lowerEye.r - lowerHeight)
@@ -195,4 +202,58 @@ export const renderFholeEyes = (p: EnricoCerutiParams, colors: CerutiColors) => 
   renderCircle(f.upper.eye!, colors.fHoleUpper)(g, ui);
   renderCircle(f.lower.eye!, colors.fHoleLower)(g, ui);
   renderSmallCrosshair(f.stem.center!, colors.fHoleStem)(g, ui);
+}
+
+export const renderCrazyGuides = (p: EnricoCerutiParams, colors: CerutiColors) => (g: any, ui: any) => {
+  // lower corner line
+  renderDashedLine(new Pt(p.bouts.LCr.x, p.bouts.LCr.y), new Pt(-p.bouts.LCr.x, p.bouts.LCr.y), "red")(g, ui);
+  // the drop line
+  renderDashedLine(new Pt(p.bouts.LCr.x, p.fHoles.lower.eye.y), new Pt(-p.bouts.LCr.x, p.fHoles.lower.eye.y), "red")(g, ui);
+
+  // now I need to intersect the drop line with the inner path
+  let arcs = defineInnerArcs(p);
+  let intersectionPt: Pt;
+  for (const arc of arcs) {
+    let intersets = arcHorizontalIntersections(arc, p.fHoles.lower.eye.y)
+    if (intersets.length > 0) {
+      intersectionPt = intersets[0];
+      renderSmallCrosshair(intersectionPt, "red")(g, ui);
+      break;
+    }
+  }
+
+  // now, from this point, we need to draw a line which intersects with the
+  // center bout at a tangent. first, lets get all of the possibilities...
+  const centerBoutArcs = [
+    p.bouts.C0, p.bouts.C1, p.bouts.C2,
+    p.options.C21DoubleArc ? p.bouts.C21 : null,
+    p.options.C11DoubleArc ? p.bouts.C11 : null,
+  ].filter((arc): arc is Arc => arc != null);
+  let tangentPt: Pt | undefined;
+  for (const arc of centerBoutArcs) {
+    const candidates = tangentPointsFromExternalPoint(intersectionPt!, arc);
+    tangentPt = candidates.find(t => angleOnDrawnArc(arc, angleFromCenter(arc, t)));
+    if (tangentPt) break;
+  }
+  if (tangentPt) {
+    renderDashedLine(intersectionPt!, tangentPt, "red")(g, ui);
+    renderSmallCrosshair(tangentPt, "red")(g, ui);
+  }
+
+  let distToEyeFromTangent = dist(tangentPt!, p.fHoles.lower.eye);
+  let radForGuide = distToEyeFromTangent - p.fHoles.lower.eye.r;
+  let guideCircle = new Circle(tangentPt.x, tangentPt.y, radForGuide);
+  renderCircle(guideCircle, "red")(g, ui);
+
+  // now find the midpoint between the corners
+  let midpointBetweenCorners = p.bouts.LCr.y + (p.bouts.UCr.y - p.bouts.LCr.y)/2;
+  let waistMidPt = lineCircleIntersection(new Pt(0, midpointBetweenCorners), new Pt(1000, midpointBetweenCorners), p.bouts.C0)[1];
+  let distToUpperEyeFromTangent = dist(p.fHoles.upper.eye, waistMidPt);
+  let upperEyeGuide = new Arc(waistMidPt.x, waistMidPt.y, distToUpperEyeFromTangent, 150 * Math.PI / 180, 210 * Math.PI / 180);
+  // draw a fancy arc that spans 135 - 225 degrees
+  renderArcFromArcFancy(upperEyeGuide, "grey")(g, ui);
+
+  let distBetweenEyes = dist(p.fHoles.upper.eye, p.fHoles.lower.eye);
+  let upperEyeGuideTwo = new Arc(p.fHoles.lower.eye.x, p.fHoles.lower.eye.y, distBetweenEyes, Math.PI, Math.PI / 2);
+  renderArcFromArcFancy(upperEyeGuideTwo, "grey")(g, ui);
 }
