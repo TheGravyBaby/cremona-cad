@@ -132,11 +132,6 @@ describe('round-trip through the recipe field', () => {
     expect(out).toEqual(original.map(e => ({ ...e, 'xlink:href': e.href })));
   });
 
-  // The sync that makes this matter: recipe-base subscribes to ToolboxStore and rewrites
-  // `referenceImages` from the placed shapes on every change, so a field this pair doesn't carry
-  // both ways is erased the first time the user touches the canvas — and only visibly so after
-  // save-and-reopen. Both of these are recipe-authored and never edited on the canvas, which is
-  // exactly the shape of field that gets dropped.
   it('preserves panel scoping and image credit, which nothing on the canvas ever rewrites', () => {
     const assets = store();
     const original: NamedReferenceImage[] = [{
@@ -160,8 +155,6 @@ describe('round-trip through the recipe field', () => {
     expect(out).toEqual(original.map(e => ({ ...e, 'xlink:href': e.href })));
   });
 
-  // A shape holding the template's own array would let a drag-and-save write back into the
-  // constant every later load reads from — the template would come back changed.
   it('copies the arrays rather than sharing them with the template constant', () => {
     const assets = store();
     const original: NamedReferenceImage[] = [{
@@ -188,8 +181,6 @@ describe('round-trip through the recipe field', () => {
     expect(out[0].credit).toBeUndefined();
   });
 
-  // The worst one to lose: a panel deliberately left blank quietly fills back in with the general
-  // view, which is the image the exclusion existed to keep out of a tracing.
   it('preserves the panels an image is kept off', () => {
     const assets = store();
     const original: NamedReferenceImage[] = [{
@@ -205,8 +196,6 @@ describe('round-trip through the recipe field', () => {
     expect(imageShapesToRecipe(shapes, assets)[0].excludePanels).toEqual(['crossArching']);
   });
 
-  // Same erasure risk as `panels`, and worse to diagnose: losing this doesn't hide the image, it
-  // shows it on panels a more specific view had taken over, which reads as scoping not working.
   it('preserves the default-view flag', () => {
     const assets = store();
     const original: NamedReferenceImage[] = [{
@@ -261,9 +250,8 @@ describe('round-trip through the recipe field', () => {
 });
 
 // The built-in templates are the compatibility contract this module exists to hold: they carry
-// reference images in the pre-refactor format and must keep loading untouched. The legacy eight
-// are the ones still on the singular `referenceImage`, so they belong in this sweep even though
-// the picker no longer offers them.
+// reference images in the pre-refactor format and must keep loading untouched. Legacy templates
+// still use the singular `referenceImage`, so they belong in this sweep too.
 const BUNDLED = [...CERUTI_TEMPLATES, ...LEGACY_TEMPLATES];
 
 describe('the built-in Ceruti templates', () => {

@@ -3,11 +3,8 @@ import { CERUTI_TEMPLATES } from './ceruti-templates';
 import { CORPUS_TEMPLATES } from './corpus';
 import { CERUTI_PANEL_IDS } from './ceruti-types';
 
-// A template's `recipeName` is its identity: RecipeComponentBase.loadMatchingStoredRecipe compares
-// it to decide whether stored working state belongs to the open recipe, and saveToDisk writes it
-// into the file. A blank one fails that check on every refresh — the design silently reverts to
-// the default template — and travels on to disk in anything saved from it. The pasted-JSON
-// workflow has now dropped it twice, hence a test rather than a third hand-edit.
+// a blank recipeName fails the identity check on refresh and silently reverts to the default
+// template — pasted-JSON has dropped it twice already, hence a test rather than a third fix.
 describe('CERUTI_TEMPLATES', () => {
   it('gives every template a recipeName, so a design restores after a refresh', () => {
     const blank = CERUTI_TEMPLATES.filter(t => !t.recipeName).map(t => t.key);
@@ -25,10 +22,7 @@ describe('CERUTI_TEMPLATES', () => {
     expect(keys.every(k => k.length > 0)).toBe(true);
   });
 
-  // A reference image scoped to a panel that doesn't exist is never drawn, on any panel, with
-  // nothing to say why — the corpus is hand-pasted JSON, so a mistyped id is the likely mistake
-  // and it fails silently. Checked across every template, not just the corpus, since a saved
-  // recipe pasted in from anywhere can carry the field.
+  // a mistyped panel id in hand-pasted JSON means the image is never drawn, silently.
   it('scopes every reference image to panels that exist', () => {
     const valid = new Set<string>(CERUTI_PANEL_IDS);
     const bad = CERUTI_TEMPLATES.flatMap(t =>
@@ -38,11 +32,8 @@ describe('CERUTI_TEMPLATES', () => {
   });
 });
 
-/**
- * The open-licence corpus. Empty until the first instrument lands, and these hold from the first
- * one on: what makes a corpus template different from the older bundled ones is that its numbers
- * can be rechecked against a public record and its images say what may be done with them.
- */
+// unlike the older bundled templates, a corpus template's numbers can be rechecked against a
+// public record and its images state what may be done with them.
 describe('CORPUS_TEMPLATES', () => {
   it('is part of the bundled set', () => {
     const keys = new Set(CERUTI_TEMPLATES.map(t => t.key));
@@ -68,9 +59,7 @@ describe('CORPUS_TEMPLATES', () => {
     }
   });
 
-  // Published arching data for these instruments is scarce and mostly paywalled, and a
-  // plausible-looking crown on a named instrument is an invented measurement of a real object.
-  // The older templates carry no arching for the same reason.
+  // a plausible-looking crown on a named instrument is an invented measurement of a real object.
   it('invents no arching for a real instrument', () => {
     for (const t of CORPUS_TEMPLATES) {
       expect((t.params as { arching?: unknown }).arching, `${t.key} carries arching`).toBeUndefined();

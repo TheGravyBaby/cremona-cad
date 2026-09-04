@@ -140,9 +140,8 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   // a whole drag is a single undo step instead of one per intermediate pointermove.
   private static readonly DRAG_MOVE_THRESHOLD_PX = 3;
 
-  /** Caps how much one ctrl+wheel event may zoom. A trackpad pinch reports deltaY in single
-   * digits, but a mouse wheel notch with ctrl held reports it in the hundreds — unclamped, one
-   * notch scaled the view by ~20x and a hard spin drove it straight into Camera's floor. */
+  // a mouse wheel notch with ctrl held reports deltaY in the hundreds (vs single digits for a
+  // trackpad pinch) — unclamped, one notch could scale the view by ~20x.
   private static readonly MAX_WHEEL_ZOOM_DELTA = 10;
   private dragAnchor: Pt | null = null;
   private dragOriginals: DraftShape[] = [];
@@ -471,8 +470,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.activeSnap = null;
     // Picking up a tool while the thing it produces is hidden would make it a silent no-op, so
     // activating one turns its master switch back on — the same reasoning as ToolboxStore's
-    // setActiveLayer always revealing the layer you switch onto. The image master gets the same
-    // treatment in placeReferenceImage, which is the only thing that produces images now.
+    // setActiveLayer always revealing the layer you switch onto.
     if (this.activeTool) this.toolbox.setShowShapes(true);
     // Selection-acting tools (e.g. Offset) run against a selection made in Select mode before
     // they were activated, so it must survive activation — every other tool draws fresh shapes
@@ -589,9 +587,8 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.draw();
   }
 
-  /** A selected image shows even where its panel scoping would hide it, so that editing that
-   * scoping from the settings bar doesn't make the image and its controls disappear as you type.
-   * Selecting anything else ends it. See ToolboxStore.setRevealedImage. */
+  /** A selected image shows even where panel scoping would hide it, so editing its scoping
+   * doesn't make it and its controls disappear as you type. See ToolboxStore.setRevealedImage. */
   private revealSelectedImage(id: string | null): void {
     const isImage = !!id && this.toolbox.getImageShapes().some(s => s.id === id);
     this.toolbox.setRevealedImage(isImage ? id : null);
@@ -1443,34 +1440,24 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   selectShapeById(id: string): void {
     this.toolRegistry.selectTool(null);
     this.setSelectedShape(id);
-    // setSelectedShape short-circuits when the shape is already the selection, which is exactly
-    // the case where the reveal has since been dropped (a panel change clears it). Asking again
-    // is cheap and the store ignores a repeat.
+    // setSelectedShape short-circuits on an already-selected shape, which is exactly when a panel
+    // change may have dropped the reveal — ask again regardless.
     this.revealSelectedImage(id);
   }
 
-  // ===== Adding a reference image =====
-  // Driven from the bottom bar's image list, where every other control for reference images
-  // already lives; the two methods below are what its Upload and Link actions call. The picker
-  // itself has to be here because an <input type="file"> can't be opened except by a real user
-  // gesture on a real element, so it lives in this component's template. What happens to the
-  // pixels once they arrive is image-asset-store.ts's, and where the shape lands is
-  // image-placement.ts's.
+  // the file picker has to live here since an <input type="file"> can only be opened by a real
+  // user gesture on a real element; what happens to the pixels is image-asset-store.ts's, and
+  // where the shape lands is image-placement.ts's.
 
-  /** Picks a file and places it. Silent on a dismissed dialog — closing a file picker is not an
-   * error worth a toast. */
+  /** Picks a file and places it. Silent on a dismissed dialog. */
   async placeImageFromFile(): Promise<void> {
     const file = await this.requestImageFile();
     if (!file) return;
     this.placeReferenceImage(file.dataUrl, file.width, file.height);
   }
 
-  /**
-   * Places an image from a pasted link, copying the pixels into the recipe wherever the host
-   * allows it (see prepareLinkedImage). Says which of the two happened: a link that couldn't be
-   * copied still draws, but the recipe now depends on it — a property of the saved file the user
-   * should learn now rather than the day the link rots.
-   */
+  // copies pixels into the recipe when the host allows it (see prepareLinkedImage); otherwise
+  // still draws, but tells the user the recipe now depends on the link staying live.
   async placeImageFromLink(url: string): Promise<void> {
     const trimmed = url.trim();
     if (!trimmed) return;
@@ -1498,9 +1485,8 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  /** Interns the pixels, places a shape sized to the drawing, and hands it over selected. Turns
-   * the reference-image master back on for the same reason activating a tool turns its own on:
-   * adding something you can't see would otherwise look like nothing happened. */
+  /** Interns the pixels, places a shape sized to the drawing, and selects it — turning the
+   * reference-image master back on so adding one doesn't silently do nothing when hidden. */
   private placeReferenceImage(href: string, width: number, height: number): void {
     const shape = placedImageShape(
       this.imageAssets.intern(href, width, height),
@@ -1531,10 +1517,8 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     });
   }
 
-  /** Bound to the hidden input's `change` in the template. Reads the file, scales it down if it's
-   * larger than a traced-over reference needs to be, and settles whatever requestImageFile handed
-   * out. The measuring that used to happen here comes back from prepareUploadedImage, which has
-   * had to decode the file anyway. */
+  /** Bound to the hidden input's `change` in the template. Reads the file, scales it down via
+   * prepareUploadedImage if needed, and settles whatever requestImageFile handed out. */
   async onImageFileSelected(evt: Event): Promise<void> {
     const resolve = this.pendingImageFile;
     this.pendingImageFile = null;
@@ -1547,8 +1531,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       const raw = await readFileAsDataUrl(file);
       const prepared = await prepareUploadedImage(raw, file.size);
       resolve?.({ dataUrl: prepared.dataUrl, width: prepared.width, height: prepared.height });
-      // Say so rather than letting it be found by zooming in — this is a surface the user
-      // measures against, so it shouldn't quietly stop being the file they picked.
       if (prepared.changed) {
         const scaled = prepared.width !== prepared.sourceWidth;
         info(

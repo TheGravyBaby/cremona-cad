@@ -551,12 +551,8 @@ export class SettingsBarComponent {
     this.patchNumberField(this.selectedImageShape, axis, value);
   }
 
-  /** Width and height are independent here, unlike a corner-handle drag — typing an exact
-   * dimension is how you scale a photo to a real measurement, which is the whole point of a
-   * reference image and would be defeated by silently correcting the other axis. */
   /** W and H are one control: a reference image is never skewed, so setting either takes the
-   * other from the box's current proportions. See applyImageSize, which also explains why it
-   * scales about the centre. */
+   * other from the box's proportions. See applyImageSize. */
   setImageSize(key: 'width' | 'height', value: number): void {
     const shape = this.selectedImageShape;
     if (!shape || !Number.isFinite(value) || value <= 0) return;
@@ -599,11 +595,8 @@ export class SettingsBarComponent {
     this.toolbox.updateShape(shape.id, { mirrored: !this.imageMirrored });
   }
 
-  // ----- Crop and panel scoping -----
-  // Both live behind a button in a popup rather than inline. The strip is a single column flow
-  // that never wraps and Reference Image is already its widest case (see settings-bar.css), and
-  // neither of these is a value you nudge while watching the canvas the way X or Opacity is.
-  // One open at a time, like the bottom bar's own two popups.
+  // both behind a popup button rather than inline, since neither is a value nudged while watching
+  // the canvas the way X or Opacity is; one open at a time, like the bottom bar's own popups.
 
   public cropOpen = false;
   public panelsOpen = false;
@@ -620,18 +613,13 @@ export class SettingsBarComponent {
 
   public get imageCropped(): boolean { return isCropped(this.selectedImageShape?.crop); }
 
-  /** Shown as a percentage of the picture rather than the stored fraction: "trim 20% off the
-   * left" is how cropping is thought about, and four adjacent boxes of leading zeros are not. */
+  /** Shown as a percentage of the picture rather than the stored fraction. */
   public imageCropPercent(edge: keyof ImageCrop): number {
     return this.round2((this.selectedImageShape?.crop?.[edge] ?? 0) * 100);
   }
 
-  /**
-   * Writes one edge of the crop. Goes through applyImageCrop rather than patching the field on
-   * its own, because a crop also moves and resizes the box — that is what keeps the part of the
-   * picture you're keeping exactly where it was, at the scale you already set it to, instead of
-   * sliding and rescaling as you trim. See ImageCrop.
-   */
+  // goes through applyImageCrop, not a plain patch, so the box moves/resizes to keep the
+  // retained picture where it was, at the scale it was already set to.
   setImageCropPercent(edge: keyof ImageCrop, percent: number): void {
     const shape = this.selectedImageShape;
     if (!shape || !Number.isFinite(percent)) return;
@@ -640,29 +628,20 @@ export class SettingsBarComponent {
     this.toolbox.updateShape(shape.id, applyImageCrop(shape, next) as Partial<DraftShape>);
   }
 
-  /** Back to the whole picture, with the part that was showing left where it is — so undoing a
-   * crop grows the box outwards rather than rescaling what you had lined up. */
+  // uncrops without rescaling: the box grows back outward from what was showing.
   clearImageCrop(): void {
     const shape = this.selectedImageShape;
     if (!shape) return;
     this.toolbox.updateShape(shape.id, applyImageCrop(shape, undefined) as Partial<DraftShape>);
   }
 
-  /** The panels this recipe has, pushed down by RecipeComponentBase. Empty for a host with none,
-   * which hides the picker rather than offering an empty list. */
+  /** Panels this recipe has, pushed down by RecipeComponentBase; empty hides the picker. */
   public get availablePanels(): readonly PanelChoice[] { return this.toolbox.availablePanels; }
 
   /** "Default" is what the UI calls ImageShape.isDefault. */
   public get imageIsDefault(): boolean { return this.selectedImageShape?.isDefault ?? false; }
 
-  /**
-   * Whether the image is wanted on `panelId` — what its checkbox shows.
-   *
-   * One question, two ways it can be written down: an image that names `panels` is wanted on
-   * those, and an image that names none is wanted everywhere it isn't excluded. The picker works
-   * in the set of wanted panels and lets writeImagePanels decide which way to store it, so the
-   * user never has to know there are two.
-   */
+  /** Whether the image is wanted on `panelId` — what its checkbox shows. */
   public isImageOnPanel(panelId: string): boolean {
     const shape = this.selectedImageShape;
     if (!shape) return false;
@@ -670,8 +649,7 @@ export class SettingsBarComponent {
     return !shape.excludePanels?.includes(panelId);
   }
 
-  /** Says what the scoping is on the button, so the popup is for changing it rather than for
-   * finding out. */
+  /** Summarizes the scoping on the button itself, so the popup is for changing it, not checking it. */
   public get imageScopeSummary(): string {
     const shape = this.selectedImageShape;
     const named = shape?.panels?.length ?? 0;
@@ -681,8 +659,6 @@ export class SettingsBarComponent {
     return excluded ? `${base}, except ${excluded}` : base;
   }
 
-  /** Checks or unchecks one panel. Unchecking the last panel an image was wanted on is allowed —
-   * it's a wordy way to hide it, and it undoes. */
   toggleImagePanel(panelId: string): void {
     const shape = this.selectedImageShape;
     if (!shape) return;
@@ -692,19 +668,10 @@ export class SettingsBarComponent {
     this.writeImagePanels(shape, wanted);
   }
 
-  /**
-   * Stores a set of wanted panels as whichever of the two lists is shorter.
-   *
-   * They say the same thing, so the choice is about what the file will still mean later: the short
-   * list is the one that reads as the exception, and it's also the one that stays right when the
-   * recipe grows a panel. "The general view, except cross arching" should pick up a tenth panel;
-   * a nine-panel enumeration written to mean the same thing would silently not.
-   *
-   * Naming panels clears Default, because those two are alternatives — Default means "wherever
-   * nothing else was named", so a default that named panels of its own could never be reached
-   * anywhere else. Excluding panels doesn't: "the general view, but not there" is exactly what a
-   * default with a gap in it is for, and it's the only way to ask for a panel that shows nothing.
-   */
+  // stores whichever of panels/excludePanels is shorter — the short list both reads as the
+  // exception and stays correct when the recipe later grows a panel. Naming panels clears
+  // Default (the two are alternatives); excluding doesn't, since that's how a default expresses
+  // a gap.
   private writeImagePanels(shape: ImageShape, wanted: Set<string>): void {
     const all = this.availablePanels.map(p => p.id);
     const named = all.filter(id => wanted.has(id));
@@ -724,14 +691,12 @@ export class SettingsBarComponent {
     if (!shape) return;
     this.toolbox.updateShape(shape.id, {
       isDefault: value,
-      // Default and a panel list are alternatives; Default and a gap in it are not, so an
-      // exclusion survives being made the default.
+      // Default and a panel list are alternatives; an exclusion list is not, so it survives.
       panels: value ? undefined : shape.panels,
     } as Partial<DraftShape>);
   }
 
-  /** Neither scoped nor default nor excluded — shown on every panel, which is what a hand-placed
-   * image is, and the way back out of a scoping you've lost track of. */
+  /** Clears all scoping — shown on every panel, same as a hand-placed image. */
   showImageOnAllPanels(): void {
     const shape = this.selectedImageShape;
     if (!shape) return;

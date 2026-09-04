@@ -151,34 +151,18 @@ export function drawShape(gRoot: RootGroup, gUI: RootGroup, shape: DraftShape, p
 
 /**
  * Draws a placed image. Separate from drawShape because images render in their own pass
- * underneath the recipe's own geometry (you trace on top of a photo, not under it), and because
- * the href has to be resolved through ImageAssetStore first — see draft-canvas.ts's draw().
+ * underneath the recipe's own geometry, and because the href has to be resolved through
+ * ImageAssetStore first — see draft-canvas.ts's draw().
  *
- * The `<image>` is drawn at the *source* rectangle — the whole picture, which is the box itself
- * unless the shape is cropped — and a clip rectangle at the box cuts it back. So this is the one
- * place that has to know what `crop` means; everything else keeps reading the box as the visible
- * extent. See ImageCrop.
+ * The `<image>` is drawn at the source rectangle (the whole picture) and a clip rect at the box
+ * cuts it back — the one place that has to know what `crop` means. Nested layers, innermost
+ * first: the flip correction (undoes gRoot's Y flip, SVG `<image>` can't render bottom-up), the
+ * mirror group (about the box centre, so a rotated mirrored image stays mirrored), the crop clip,
+ * then the rotate group.
  *
- * Nested layers, innermost first:
- *  1. The `<image>`'s own `translate(0 h) scale(1 -1)` undoes gRoot's `scale(1,-1)` for this
- *     element only — SVG `<image>` can't render bottom-up, so without it every photo appears
- *     upside down. A coordinate correction, not user-visible mirroring. `h` is the *source*
- *     height, since that is the element being flipped.
- *  2. When `mirrored`, a wrapping group flips the content about a world-space vertical line
- *     through the image's center (`2·center.x − x`). Inside the rotate group but outside the
- *     correction, so the mirror is a property of the content — rotating a mirrored image keeps it
- *     mirrored, like turning a face-down photo.
- *  3. When cropped, a clip group holding the box. Its position relative to the mirror doesn't
- *     matter — the mirror's axis is the box's own centre, so the box maps onto itself and only
- *     the content inside it flips, which is what mirroring a cropped photo should do.
- *  4. The rotate group turns the box in world space, same as every other rotate-capable shape.
- *
- * `preserveAspectRatio` is `none` rather than `meet`: crop fractions are only meaningful if the
- * picture fills its rectangle exactly. It is not what stops the picture stretching — every path
- * that resizes an image takes the second dimension from imageAspect, so the box always carries
- * the picture's own proportions and `none` and `meet` agree. What `none` buys is that a box which
- * somehow doesn't (a hand-authored template) shows what it actually says, rather than letterboxing
- * inside handles and a halo still tracing the box.
+ * `preserveAspectRatio` is `none`, not `meet`: crop fractions only mean something if the picture
+ * fills its rectangle, and a hand-authored template box that isn't in proportion should show what
+ * it actually says rather than letterbox.
  */
 export function drawImageShape(gRoot: RootGroup, shape: ImageShape, href: string): void {
   const center = imageCenter(shape);
@@ -190,7 +174,7 @@ export function drawImageShape(gRoot: RootGroup, shape: ImageShape, href: string
 
   let content: RootGroup = rotateGroup;
   if (isCropped(shape.crop)) {
-    // Ids have to survive two images sharing a picture, so they key off the shape, not the href.
+    // keyed off the shape, not the href, so two images sharing a picture don't collide.
     const clipId = `image-crop-${shape.id}`;
     rotateGroup.append('clipPath')
       .attr('id', clipId)

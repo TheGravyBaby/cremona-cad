@@ -91,20 +91,8 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
     return plate === 'top' ? this.topArch : this.bottomArch;
   }
 
-  /**
-   * The table's rows: the control points, with the peak listed among them
-   * wherever the maker has put it.
-   *
-   * The peak is a row like any other here — it is a knot on the same curve at
-   * the same kind of position, and the reason it used to sit pinned at the top
-   * is that it is stored apart from the points rather than anything about how
-   * an arch reads. A table whose rows run 15, 30, 50 (peak), 70, 85 is the
-   * curve written out; one that opens with the peak is a list of parts.
-   *
-   * `index` is the row's control point index, or {@link SPLINE_PEAK_SOURCE} for
-   * the peak — which is exactly what the highlight and the guide already call
-   * a knot's source, so a row hands its own index to both.
-   */
+  // the peak is a knot like the rest, listed wherever the maker put it rather than pinned to the
+  // top; `index` doubles as the highlight/guide source, {@link SPLINE_PEAK_SOURCE} for the peak.
   splineRows(arch: ArchSpline): SplineRow[] {
     const rows: SplineRow[] = arch.points.map((pt, index) => ({ pt, index }));
     rows.splice(splinePeakRow(arch), 0, { pt: null, index: SPLINE_PEAK_SOURCE });
@@ -139,16 +127,8 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
         plateParams.arch = { type: 'cycloid', archHeight: h, d: 1 };
         break;
       case 'spline':
-        // Five stations along the plate — 87.5, 75, peak at 50, 25, 12.5 — none
-        // of them mirrored. A long arch is rarely symmetric end to end: the
-        // upper and lower bouts carry different amounts of wood, so a mirrored
-        // pair is a row the maker has to break before they can shape the two
-        // ends apart. Seeded symmetric in value and free in structure, which is
-        // an arch to start from rather than one to argue with.
-        //
-        // Listed high position first, because the world is y-up and the canvas
-        // therefore draws position 0 at the foot of the section: read down the
-        // table and you are reading down the arch beside it.
+        // unmirrored: a long arch is rarely symmetric end to end (upper/lower bouts carry
+        // different wood), so it's seeded free to shape apart rather than forcing a mirrored pair.
         plateParams.arch = {
           type: 'spline', archHeight: h, peak: 0.5, peakRow: 2,
           points: [
@@ -210,23 +190,15 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
     const t = +((boundaries[gapIdx].t + boundaries[gapIdx + 1].t) / 2).toFixed(3);
     const z = +((boundaries[gapIdx].z + boundaries[gapIdx + 1].z) / 2).toFixed(1);
 
-    // Seated by position among the rows it belongs between, rather than by
-    // re-sorting the list: an order the maker has arranged by hand is theirs,
-    // and an ordered list stays ordered under this anyway. The peak counts as
-    // one of those rows, so a point that belongs above it lands above it.
-    //
-    // Which way the table runs is read off its own ends rather than assumed:
-    // it is seeded running down the plate the way the canvas draws it, and a
-    // maker who turns it around should not have points arriving upside down.
+    // inserted between the rows it belongs among, rather than sorting the whole list, so a
+    // hand-arranged order survives. table direction is read off its own ends, not assumed.
     const rows = this.splineRows(arch);
     const rowT = (row: SplineRow) => row.pt ? row.pt.t : arch.peak ?? 0.5;
     const descending = rows.length > 1 && rowT(rows[0]) > rowT(rows[rows.length - 1]);
     const at = rows.findIndex(row => descending ? rowT(row) < t : rowT(row) > t);
     const row = at < 0 ? rows.length : at;
     const peakRow = splinePeakRow(arch);
-    // Unmirrored, and explicitly so: a new point belongs to the end of the
-    // plate it was dropped on, and an absent flag reads as a legacy
-    // half-span point to the loader.
+    // mirror explicitly false — an absent flag reads as a legacy half-span point to the loader.
     arch.points.splice(peakRow < row ? row - 1 : row, 0, { t, z, mirror: false });
     if (row <= peakRow) arch.peakRow = peakRow + 1;
     this.onChange();
@@ -236,23 +208,14 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
     const arch = this.archFor(plate);
     if (arch.type !== 'spline') return;
     arch.points.splice(index, 1);
-    // A row above the peak taken away lifts every row below it, so the peak
-    // stays with the points it was listed between rather than sliding down one.
+    // shift peakRow so the peak stays between the same points rather than sliding down one.
     const peakRow = splinePeakRow(arch);
     if (index < peakRow) arch.peakRow = peakRow - 1;
     this.onChange();
   }
 
-  /**
-   * Takes a row out of the table and puts it back somewhere else — a control
-   * point, or the peak among them.
-   *
-   * Cosmetic to the geometry — {@link archSplineKnots} sorts by position before
-   * interpolating anything — and that is the point: a list that grows by
-   * appending and by hand-editing positions ends up in an order that says
-   * nothing, and there is no reading a curve off a table whose rows run 20, 65,
-   * 40. This is how the maker puts it back in the order the arch runs in.
-   */
+  // row order carries nothing to the geometry — archSplineKnots sorts by position — this is
+  // purely so the maker can read the table back in the order the arch runs in.
   moveSplineRow(plate: 'top' | 'bottom', move: RowMove): void {
     const arch = this.archFor(plate);
     if (arch.type !== 'spline') return;
@@ -294,36 +257,19 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
     return [this.section()];
   }
 
-  /**
-   * Holds the rib taper to a garland that could exist.
-   *
-   * Past {@link maxRibTaperMm} the tilted rib line is longer than the
-   * instrument, and the section view can only draw a top plate reaching it by
-   * stretching it — a picture of something that cannot be built. Nothing
-   * downstream of the view is wrong yet, but the numbers are, and the arching
-   * data is meant to feed a model later.
-   *
-   * Rolled back rather than reported, which is the opposite of the Viol Neck
-   * Join in the main bouts panel: that one draws a legitimate if ugly outline
-   * and leaves the maker to decide which of five fields to pull, where this one
-   * has no drawable answer at all. Rolled back rather than clamped because two
-   * fields feed the one constraint and clamping would have to guess which of
-   * them just moved.
-   */
+  // rolls back past maxRibTaperMm rather than clamping: two fields feed the one constraint, and
+  // clamping would have to guess which one just moved.
   private enforceRibTaper(): void {
     const a = this.arching;
     const taper = a.ribHeightLower - a.ribHeightUpper;
-    // A field cleared mid-typing is not an over-taper. `clampParam` leaves those
-    // alone too, and the next keystroke settles it.
-    if (!Number.isFinite(taper)) return;
+    if (!Number.isFinite(taper)) return; // field cleared mid-typing, not an over-taper
 
     const max = maxRibTaperMm(this.params);
     if (Math.abs(taper) <= max) {
       this.acceptedRibHeights = { lower: a.ribHeightLower, upper: a.ribHeightUpper };
       return;
     }
-    // A recipe that arrived over the bound has nothing to go back to, so it
-    // gives up its taper rather than the height a maker actually measured.
+    // a recipe that arrived already over the bound has nothing to roll back to but its own height.
     const back = this.acceptedRibHeights ?? { lower: a.ribHeightLower, upper: a.ribHeightLower };
     a.ribHeightLower = back.lower;
     a.ribHeightUpper = back.upper;
@@ -344,9 +290,7 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
   private section(): RenderLayer {
     const p = this.params;
     const taper = solveRibTaper(p);
-    // The garland, no longer a rectangle: the ribs are planed down toward the
-    // upper block, so the edge the top plate glues to runs at an angle to the
-    // one the back sits on. This is the view that shows it.
+    // no longer a rectangle: the edge the top plate glues to runs at an angle to the back's.
     const rib: RibLine = {
       yLow: p.overhang,
       yHigh: p.height - p.overhang,
@@ -366,43 +310,21 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
           )(g, ui);
         }
       }
-      // The top plate is carved against its own gluing plane and glued onto a
-      // tilted one, so it is drawn in the frame it is carved in and placed onto
-      // the rib line by a single transform — rather than the arch, the channel
-      // and the guides behind them each learning about an angle they have no
-      // other use for.
+      // top plate drawn in its own carved frame, placed onto the tilted rib line by one transform,
+      // rather than teaching the arch/channel/guides each about an angle they have no other use for.
       const tilted = this.tiltedLayers(g, ui, taper, rib);
       this.platePart(tilted.g, tilted.ui, 'top', taper);
       this.platePart(g, ui, 'bottom', taper);
     };
   }
 
-  /**
-   * Both layers turned so the top plate lies on the tilted rib line.
-   *
-   * A rigid rotation, and deliberately not a shear. The plate is one piece of
-   * wood: its section has to read as the section that was carved, not a leaning
-   * copy of it, and a shear leans everything it carries. What the rotation
-   * costs instead is the plate's plan length foreshortening by cos of the tilt
-   * — six microns on a violin, against a lean a shear would have made visible
-   * in the very view the panel exists to show.
-   *
-   * Turned about the plate's own midpoint and moved onto the rib line's, which
-   * is what centres it: the plate overhangs the garland by the same amount at
-   * each end rather than hanging off one. The rib line is the longer of the two
-   * as soon as it tilts, so both overhangs close a little — {@link
-   * maxRibTaperMm} is what keeps them from closing entirely.
-   *
-   * The guide labels ride the UI layer, which is Y-flipped against the geometry
-   * one, so the same placement runs the other way along it. Left out, a label
-   * would stay put while the tick it names moved off under it.
-   */
+  // rigid rotation, not a shear, so the plate reads as carved rather than leaned; pivots on the
+  // plate's midpoint so it overhangs the garland equally at both ends. UI layer is Y-flipped
+  // against geometry, so its transform mirrors the sign.
   private tiltedLayers(g: any, ui: any, taper: RibTaper, rib: RibLine): { g: any; ui: any } {
     const run = rib.yHigh - rib.yLow;
     if (run <= 0) return { g, ui };
     const angle = Math.atan2(rib.zLow - rib.zHigh, run) * 180 / Math.PI;
-    // The pivot sits on the plate's own gluing face, at the middle of its
-    // length — the same face `platePart` draws at `taper.zLower`.
     const pivotX = taper.zLower;
     const pivotY = this.params.height / 2;
     const dx = (rib.zLow + rib.zHigh) / 2 - pivotX;
@@ -425,9 +347,7 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
     const isTop = plate === 'top';
     const sign: 1 | -1 = isTop ? 1 : -1;
     const thickness = isTop ? a.top.thickness : a.bottom.thickness;
-    // Inner face of the plate: the rib's top for the top plate, the mould line
-    // for the back. The outer face is one thickness beyond it. Flat for both —
-    // the top plate's tilt is carried by the group it is drawn into.
+    // flat for both — the top plate's tilt is carried by the group it's drawn into, not here.
     const innerZ = isTop ? taper.zLower : 0;
     const outerZ = innerZ + sign * thickness;
     const color = isTop ? this.colors.archTop : this.colors.archBack;
@@ -455,9 +375,6 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
     renderSplineHighlight(lowered, span, yStart, xBase, sign, this.splineHighlightFor(plate))(g, ui);
     renderPath(buildArchPathFor(lowered, span, yStart, xBase, sign), color, 1.5)(g, ui);
 
-    // The guide takes the arch as authored, against the plate surface: the
-    // heights it labels are then the ones typed into the boxes beside it,
-    // rather than those heights plus whatever takeoff this channel solved to.
     if (this.flags.showModuleGuides) {
       renderArchGuide(this.archFor(plate), span, yStart, outerZ, sign, color)(g, ui);
     }

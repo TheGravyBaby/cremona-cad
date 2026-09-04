@@ -58,12 +58,8 @@ export function archedViolin(): EnricoCerutiParams {
   return p;
 }
 
-/**
- * Every instrument the suite sweeps: the ones the picker offers, plus the photo-traced set in
- * `legacy/` that it no longer does. The legacy eight are the only instruments carrying a bass,
- * a viol neck or viol corners, so dropping them here would quietly thin every `it.each` below
- * rather than fail anything.
- */
+// includes `legacy/`, the only source with a bass, viol neck or viol corners — dropping it would
+// quietly thin every it.each below rather than fail anything.
 function allTemplates(): EnricoCerutiTemplate[] {
   return [...CERUTI_TEMPLATES, ...LEGACY_TEMPLATES];
 }

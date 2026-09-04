@@ -84,10 +84,8 @@ export function pathFromCornerCubic(arc1: Arc, arc2: Arc, sharpness: number): st
   const V = intersectLines(P1, T1, P2, T2);
   if (!V || !Number.isFinite(V.x) || !Number.isFinite(V.y)) return `M ${P1.x} ${P1.y} L ${P2.x} ${P2.y}`;
   const t = Number.isFinite(sharpness) ? Math.max(0, Math.min(1, sharpness)) : 0.1;
-  // when the two tangents are near-parallel the lines can meet *behind* both endpoints,
-  // which would slide the control points inward and invert the corner. The tangent unit
-  // vectors already point outward (arc1 forward, arc2 backward along its traversal), so
-  // keep V's distance but always travel along them, never against them.
+  // near-parallel tangents can put V behind an endpoint and invert the corner, so keep V's
+  // distance but always travel along the outward tangent, never against it
   const d1x = T1.x - P1.x, d1y = T1.y - P1.y;
   const d2x = T2.x - P2.x, d2y = T2.y - P2.y;
   const a = Math.abs((V.x - P1.x) * d1x + (V.y - P1.y) * d1y);

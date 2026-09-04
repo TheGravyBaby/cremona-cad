@@ -2,14 +2,8 @@ import { TestBed } from '@angular/core/testing';
 import { ToolboxStore } from './toolbox-store';
 import { ImageShape } from './toolbox-shape';
 
-/**
- * Panel-scoped reference images. An instrument's set can hold a plan view for the outline steps
- * and a section photograph for the arching ones; the recipe pushes whichever panel is open and the
- * store shows the images that belong to it.
- *
- * What's pinned here is the pair of things that make it safe: scoping is separate from the user's
- * own `hidden` switch, and an unpushed panel filters nothing rather than hiding everything.
- */
+// scoping is separate from the user's own `hidden` switch, and an unpushed panel filters nothing
+// rather than hiding everything.
 describe('ToolboxStore panel-scoped images', () => {
   let toolbox: ToolboxStore;
 
@@ -63,9 +57,6 @@ describe('ToolboxStore panel-scoped images', () => {
     expect(visible()).toEqual(['plan']);
   });
 
-  // Two different switches: `hidden` is the user parking an image, `panels` is the recipe saying
-  // where it belongs. Scoping must not write through to `hidden`, or returning to the right panel
-  // would leave the image still parked.
   it('leaves the user\'s own hide switch alone', () => {
     toolbox.loadImages([image('section', ['crossArching'])]);
     toolbox.setActivePanel('base');
@@ -89,8 +80,6 @@ describe('ToolboxStore panel-scoped images', () => {
     toolbox.setShowImages(true);
   });
 
-  // getEditableShapes derives from getVisibleImages, so this comes for free — pinned because the
-  // alternative is a selectable, draggable image the user cannot see.
   it('makes an off-panel image unselectable', () => {
     toolbox.loadImages([{ ...image('section', ['crossArching']), locked: false }]);
     toolbox.setActivePanel('base');
@@ -103,10 +92,6 @@ describe('ToolboxStore panel-scoped images', () => {
     expect(toolbox.getImageShapes().map(s => s.id)).toEqual(['plan', 'section']);
   });
 
-  // A default image is the set's general view: shown wherever nothing more specific is, and
-  // stepped aside from where something is. The point is that adding a scoped image is enough on
-  // its own — the general image never has to enumerate the panels it's still wanted on, so
-  // neither adding a panel nor adding an instrument view means revisiting it.
   describe('a default image', () => {
     it('shows on panels no other image claims, and steps aside on the ones that do', () => {
       toolbox.loadImages([image('plan', undefined, true), image('section', ['crossArching'])]);
@@ -153,12 +138,6 @@ describe('ToolboxStore panel-scoped images', () => {
     });
   });
 
-  // Picking an image out of the image list, or clicking it, shows it here whatever its scoping
-  // says. Without this the list has a row you can click that appears to do nothing, and editing
-  // the scoping of the image you have selected takes the image and its own controls away.
-  // A panel with no good reference for it should show nothing, rather than the general view of
-  // the instrument — which would be traced by mistake. Before excludePanels the format had no way
-  // to say that: a panel nothing claimed fell through to the default.
   describe('a panel kept deliberately blank', () => {
     it('keeps an excluded image off that panel and nowhere else', () => {
       toolbox.loadImages([excluding('plan', ['crossArching'], true)]);
@@ -177,8 +156,6 @@ describe('ToolboxStore panel-scoped images', () => {
     });
 
     it('still shows an image that names the panel outright', () => {
-      // excluding the general view is about the general view, not about the panel: adding a real
-      // reference for it later has to just work, with nothing to undo on the other entry
       toolbox.loadImages([excluding('plan', ['crossArching'], true), image('section', ['crossArching'])]);
       toolbox.setActivePanel('crossArching');
       expect(visible()).toEqual(['section']);

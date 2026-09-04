@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { placedImageShape } from './image-placement';
 
-// Where a newly added image lands. The rule is that it arrives fitted over the drawing it will be
-// traced against, so the first thing you do to it is scale it to a real measurement — not hunt
-// for it off-screen or shrink it back down from something absurd.
+// a newly added image arrives fitted over the drawing it will be traced against.
 describe('placedImageShape', () => {
   const bounds = { pt1: { x: -100, y: 0 }, pt2: { x: 100, y: 350 } };
 

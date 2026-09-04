@@ -29,11 +29,8 @@ type PersistedAxisGridPreferences = Partial<AxisGridPreferences> & {
 export class AxisGridController {
   private static readonly MIN_GRID_STEP_MM = 0.1;
 
-  // Spacing floors in screen px. The loops below emit one element per grid step across the whole
-  // viewport, so a step that lands under these — a 0.1mm grid at any usable zoom, or an ordinary
-  // one at the far end of the zoom-out range — meant thousands of elements per redraw and a
-  // locked-up tab. Bounded by pixels rather than by a line count: lines = viewportPx / spacingPx,
-  // so the viewport itself caps the total.
+  // spacing floors in screen px, coarsening a step that would otherwise emit one line per pixel
+  // and lock up the tab at a far zoom-out.
   private static readonly MIN_GRID_SPACING_PX = 4;
   private static readonly MIN_TICK_SPACING_PX = 50;
   private static readonly MAX_LINES_PER_AXIS = 1000;
@@ -149,12 +146,8 @@ export class AxisGridController {
     }
   }
 
-  /**
-   * The configured step, coarsened by the smallest 1/2/5x10^k multiple that keeps drawn lines at
-   * least `minPx` apart. Only ever coarsens, so a comfortable step passes through untouched; a
-   * multiple means every line drawn still sits on the user's own grid, just at a coarser
-   * subdivision, rather than on some step they never asked for.
-   */
+  // coarsens the configured step by the smallest 1/2/5x10^k multiple that keeps lines >= minPx
+  // apart, so every drawn line still lands on the user's own grid, just at a coarser subdivision.
   private effectiveStep(stepMm: number, pxPerMm: number, minPx: number): number {
     const spacingPx = stepMm * pxPerMm;
     if (!Number.isFinite(spacingPx) || spacingPx <= 0) return stepMm;
@@ -166,13 +159,9 @@ export class AxisGridController {
     return stepMm * multiple * decade;
   }
 
-  /**
-   * Every multiple of `step` inside [lo, hi]. Still anchored on the origin, so lines land where
-   * they always did — but walked across the visible span only. The loops used to start at 0 and
-   * run out to the viewport edge, so a view panned a few metres from the origin emitted every
-   * line in between, all of them off-screen. With this the count is span/step, which the spacing
-   * floors above turn into a bound in viewport pixels.
-   */
+  // every multiple of `step` inside [lo, hi], anchored on the origin but walked across the
+  // visible span only — a full 0-to-edge loop used to emit every off-screen line for a view
+  // panned metres away from the origin.
   private stepValues(lo: number, hi: number, step: number): number[] {
     if (!Number.isFinite(lo) || !Number.isFinite(hi) || !(step > 0)) return [];
 
@@ -181,8 +170,7 @@ export class AxisGridController {
     const last = Math.floor((hi + eps) / step);
 
     const values: number[] = [];
-    // the spacing floors should keep this far under the cap; it's here so a future caller that
-    // skips them degrades to a sparse grid rather than a locked tab
+    // belt-and-suspenders: a caller that skips the spacing floors still gets a sparse grid, not a locked tab
     for (let i = first; i <= last && values.length < AxisGridController.MAX_LINES_PER_AXIS; i++) {
       values.push(i * step);
     }
@@ -255,9 +243,8 @@ export class AxisGridController {
       }
     };
 
-    // Labels need far more room than grid lines do, so they thin out sooner. Coarsened up from
-    // the grid's own step rather than from the configured one, so every label still sits on a
-    // drawn grid line — the 1/2/5 ladder doesn't nest (a 2x grid and a 5x label step wouldn't).
+    // coarsened up from the grid's own step, not the configured one, so every label still sits
+    // on a drawn grid line.
     const stepX = this.effectiveStep(
       this.effectiveStep(this.gridStepX, pxPerMm, AxisGridController.MIN_GRID_SPACING_PX),
       pxPerMm, AxisGridController.MIN_TICK_SPACING_PX);

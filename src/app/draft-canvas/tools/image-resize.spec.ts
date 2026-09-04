@@ -2,9 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { ImageShape, applyImageCrop, applyImageSize, imageAspect } from './toolbox-shape';
 import { withEndpoint } from './shape-grabbers';
 
-// A reference image is a photograph of a real object being measured against, so it is never
-// skewed by a resize — every path that changes one dimension takes the other from the box's own
-// proportions. What's pinned here is that invariant, from each of the three ways to resize one.
+// a reference image is never skewed by a resize — every path pins the other dimension to the
+// box's own aspect ratio. checked here across all three ways to resize one.
 describe('resizing a reference image', () => {
   const base = (over: Partial<ImageShape> = {}): ImageShape => ({
     id: 'i1', type: 'image', x: 0, y: 0, width: 200, height: 100,
@@ -33,8 +32,7 @@ describe('resizing a reference image', () => {
     expect(next.y + next.height / 2).toBeCloseTo(40 + 50);
   });
 
-  // The reported bug: dragging an edge handle inwards squashed the picture, because shrinking
-  // was exempt from the proportional path that growing already took.
+  // regression: shrinking via an edge handle used to skip the proportional path growing took.
   it('holds the proportions when an edge handle is dragged inwards', () => {
     const shape = base();
     for (const [key, pos] of [
@@ -71,9 +69,8 @@ describe('resizing a reference image', () => {
     }
   });
 
-  // A crop leaves the box at the cropped picture's proportions, and those are what the next
-  // resize has to hold — reading the ratio off the box rather than the source pixels is what
-  // makes that work without cropping and resizing having to know about each other.
+  // aspect is read off the box, not the source pixels, so a crop's proportions are what a
+  // later resize holds — without resize needing to know cropping happened.
   it('holds the cropped proportions, not the original ones', () => {
     const cropped = { ...base(), ...applyImageCrop(base(), { left: 0.5, top: 0, right: 0, bottom: 0 }) };
     expect(imageAspect(cropped)).toBeCloseTo(1);

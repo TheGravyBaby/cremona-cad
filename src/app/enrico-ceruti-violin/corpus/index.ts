@@ -7,38 +7,29 @@ import stradivariCelloCastelbarco2022560102 from './stradivari-cello-castelbarco
 import stradivariViolinWard2022560100 from './stradivari-violin-ward-2022560100.json';
 
 /**
- * Instruments traced from public museum and library records, kept apart from
- * `ceruti-templates.ts`.
+ * Instruments traced from public museum/library records, kept apart from `ceruti-templates.ts` —
+ * same type as the photo-traced set in `legacy/`, split by where the numbers came from. Each
+ * carries a `TemplateMeta` (catalogue entry) and each reference image an `ImageCredit` (usage
+ * terms vary by holder — the LoC sets below are educational-and-research use, not open licence).
  *
- * Same type as the photo-traced set in `legacy/` — the split is by where an instrument's numbers
- * came from, not by what it is. Each carries a `TemplateMeta` naming the catalogue entry its
- * numbers can be rechecked against, and each reference image carries an `ImageCredit` naming the
- * terms it is used under, so both travel with the geometry rather than living in a README. Terms
- * vary by holder — the Library of Congress sets below are educational-and-research use, not an
- * open licence — which is why the credit is per-image rather than a blanket statement here.
- *
- * One `.json` file per instrument, rather than the pasted-`const` style the legacy set uses.
- * A template is data: as JSON it diffs cleanly, and there is no way to slip logic into it. The
- * cost is that JSON carries no comments — anything a reader of the numbers needs goes in
- * `meta.notes` — and no type checking, which `ceruti-templates.spec.ts` covers instead.
+ * One `.json` file per instrument rather than a pasted `const`: diffs cleanly, can't carry logic.
+ * Cost is no comments (put reader notes in `meta.notes`) and no type checking
+ * (`ceruti-templates.spec.ts` covers that instead).
  *
  * Adding one:
- *   1. Trace the instrument over its reference image as normal and save the recipe.
+ *   1. Trace over the reference image as normal and save the recipe.
  *   2. Save the recipe JSON here as `<maker>-<instrument>-<objectId>.json`.
  *   3. Add `meta`, and a `credit` on each reference image.
- *   4. Add `panels` to any image that belongs to particular drafting steps rather than all of
- *      them — a plan view usually wants none, a profile or section usually wants the arching
- *      panels. Ids come from `CERUTI_PANEL_IDS`; the spec checks every one of them exists.
- *      `excludePanels` is the inverse, for a default image that suits every panel but a few.
+ *   4. Scope images to panels via `panels`/`excludePanels` (ids from `CERUTI_PANEL_IDS`, checked
+ *      by the spec) — a plan view usually wants none, a profile usually wants the arching panels.
  *   5. Import it above and add it to the array below.
  *
- * Two rules: no `arching` block, and no measurement that isn't in the record. A plausible-looking
- * number on a real instrument is an invented measurement of a real object.
+ * No `arching` block, and no measurement that isn't in the record — a plausible number on a real
+ * instrument is an invented measurement of a real object.
  */
 export const CORPUS_TEMPLATES: EnricoCerutiTemplate[] = [
-  // Cast because a JSON import is inferred structurally: `meta.record.source` widens to `string`
-  // rather than the union, and the null-valued arc fields to `null`. The shape is pinned by
-  // ceruti-templates.spec.ts instead, which is also where a hand-authored file's mistakes show.
+  // cast because JSON imports infer structurally (source widens to string, arcs' nulls to null);
+  // shape is pinned by ceruti-templates.spec.ts instead.
   amatiViolinBrookings2022560097 as unknown as EnricoCerutiTemplate,
   stradivariViolinWard2022560100 as unknown as EnricoCerutiTemplate,
   stradivariViolinBetts2022560101 as unknown as EnricoCerutiTemplate,

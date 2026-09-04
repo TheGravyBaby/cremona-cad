@@ -151,38 +151,16 @@ export type ImageShape = ShapeBase & {
   /** Shown in the settings bar and written back out as the file's `label` — how the user tells
    * "plan view" from "long arch" when several are placed. */
   label: string;
-  /**
-   * Which recipe panels this image is shown on, by panel id. Absent or empty means every panel.
-   * The store matches it against whatever panel the recipe last pushed (ToolboxStore.activePanel)
-   * — the canvas never learns what a panel *is*, it only compares strings, so this stays as
-   * instrument-agnostic as the rest of the toolbox.
-   *
-   * Distinct from `hidden`: that is the user parking an image, this is the recipe saying where
-   * the image belongs. Both have to pass for an image to draw.
-   */
+  /** Recipe panels this image shows on, by id; absent/empty means every panel. */
   panels?: string[];
-  /** Panels this image is deliberately kept off — `panels` inverted, for when the exception is
-   * the short list. Its point is a panel that should show nothing at all: a view this instrument
-   * has no usable reference for, where anything else on screen would get traced by mistake.
-   * Absolute — it beats `isDefault` and an empty `panels` alike. */
+  /** Panels this image is deliberately kept off; absolute — beats isDefault and panels alike. */
   excludePanels?: string[];
-  /**
-   * Marks this as the set's default view — "Default" in the UI. An image with neither `panels`
-   * nor this flag shows on every panel; with this flag it shows only on panels no *other* image
-   * has claimed by name. That way a set adds a specific view for one panel without also having to
-   * enumerate every panel the general view still belongs on. See
-   * ToolboxStore.imageMatchesActivePanel.
-   */
+  /** Marks the set's default view: shows on any panel no other image has claimed by name. */
   isDefault?: boolean;
-  /**
-   * Which part of the source picture is shown, as fractions inset from each of its edges. Absent
-   * means all of it. `x`/`y`/`width`/`height` above measure the *visible* rectangle, so every
-   * other reader of this shape — grabbers, hit-testing, the settings bar's W/H — needs no
-   * awareness of cropping at all. See ImageCrop, imageSourceBox and applyImageCrop.
-   */
+  /** Part of the source picture shown, as fractions inset per edge; absent means all of it. See
+   * imageSourceBox and applyImageCrop. */
   crop?: ImageCrop;
-  /** Provenance and licence for the pixels — see ImageCredit. Absent on anything the user
-   * placed; carried here only so the round-trip back into the recipe doesn't drop it. */
+  /** Provenance and licence for the pixels — see ImageCredit. */
   credit?: ImageCredit;
   /** Per-image, unlike the single global slider the old reference popup had. Undefined means
    * DEFAULT_IMAGE_OPACITY, which is what every pre-existing recipe file effectively had. */
@@ -241,31 +219,14 @@ export function imageCenter(shape: ImageShape): Pt {
   return { x: shape.x + shape.width / 2, y: shape.y + shape.height / 2 };
 }
 
-/**
- * The box's own width:height — what every resize path reads the second dimension from.
- *
- * A reference image is never skewed. It is a photograph of a real object being measured against,
- * so a stretched one is a wrong drawing rather than a stylistic choice, and the ways to notice
- * are all subtle: an arch that reads a millimetre low, a corner at the wrong angle. There is
- * deliberately no unlock for it.
- *
- * Reading the ratio off the *box* rather than off the source pixels is what makes this survive
- * cropping — a crop leaves the box at the cropped picture's proportions (see applyImageCrop), and
- * those are the proportions the next resize should hold. It also means an image that arrived
- * out of proportion, from a hand-authored template, keeps whatever it has instead of jumping the
- * first time it is touched.
- */
+// reads the ratio off the box, not the source pixels, so it survives cropping (see
+// applyImageCrop) and a hand-authored template out of proportion keeps what it has.
 export function imageAspect(shape: ImageShape): number {
   return Math.abs(shape.width / shape.height) || 1;
 }
 
-/**
- * Resizes an image to a typed width or height, taking the other dimension from imageAspect.
- *
- * Sized about the centre, which is also the rotation pivot: a rotated image scaled to a
- * measurement stays put instead of swinging off where it was lined up, and no rotation
- * compensation is needed to say so.
- */
+// a reference image is never skewed — every resize takes its other dimension from imageAspect.
+// sized about the centre, which is also the rotation pivot, so a rotated image stays put.
 export function applyImageSize(
   shape: ImageShape, key: 'width' | 'height', value: number,
 ): Partial<ImageShape> {
@@ -291,20 +252,17 @@ export function imageCorners(shape: ImageShape): Record<'sw' | 'se' | 'nw' | 'ne
   };
 }
 
-// A crop can never take everything: opposite insets are scaled back to leave at least this much
-// of the picture showing. Zero would divide by zero in imageSourceBox and leave an image with no
-// visible box to grab and no way back.
+// opposite insets are scaled back to leave at least this much showing; zero divides by zero in
+// imageSourceBox and leaves nothing to grab.
 const MIN_CROP_SPAN = 0.02;
 
-/** True when a crop actually hides something — an all-zero crop is stored as no crop at all, so
- * "is this image cropped" stays a plain presence check everywhere else. */
+// an all-zero crop is stored as no crop, so "is this cropped" stays a plain presence check.
 export function isCropped(crop: ImageCrop | undefined): crop is ImageCrop {
   return !!crop && (crop.left > 0 || crop.top > 0 || crop.right > 0 || crop.bottom > 0);
 }
 
-/** Each inset into 0..1, then opposite pairs scaled back together if they would between them
- * leave less than MIN_CROP_SPAN. Scaling both rather than clamping the larger keeps the answer
- * independent of which of the two the user just typed into. */
+// scales both insets together (not clamping the larger) so the result doesn't depend on which
+// one the user just typed into.
 function clampCropPair(a: number, b: number): [number, number] {
   const lo = Math.max(0, Math.min(1, Number.isFinite(a) ? a : 0));
   const hi = Math.max(0, Math.min(1, Number.isFinite(b) ? b : 0));
@@ -313,11 +271,8 @@ function clampCropPair(a: number, b: number): [number, number] {
   return total <= max ? [lo, hi] : [lo * (max / total), hi * (max / total)];
 }
 
-/**
- * Where the whole source picture sits in the shape's own unrotated frame — the rectangle the
- * `<image>` element is drawn at before the crop clips it back to the box. Equal to the box when
- * uncropped, which is why an uncropped image renders exactly as it always did.
- */
+// the whole source picture's rectangle in the shape's unrotated frame, before crop clips it back
+// to the box; equal to the box when uncropped.
 export function imageSourceBox(shape: ImageShape): { x: number; y: number; width: number; height: number } {
   if (!isCropped(shape.crop)) {
     return { x: shape.x, y: shape.y, width: shape.width, height: shape.height };
@@ -328,26 +283,15 @@ export function imageSourceBox(shape: ImageShape): { x: number; y: number; width
   const height = shape.height / (1 - top - bottom);
   return {
     x: shape.x - left * width,
-    // `top` is the picture's top, which is the *high*-y edge here, so it is `bottom` that says
-    // how far below the box the source starts.
+    // top is the picture's top, the high-y edge here, so bottom is what's below the box.
     y: shape.y - bottom * height,
     width,
     height,
   };
 }
 
-/**
- * The patch that gives `shape` the crop `crop`, leaving the part of the picture that survives
- * exactly where it is now — same place on the canvas, same scale, same rotation. Pass `undefined`
- * to uncrop back to the whole picture. The only thing that should write `crop`.
- *
- * Two steps. The source rectangle is what crop fractions are measured against and doesn't move,
- * so the new box is read straight off it. Then the box is shifted, because rotation turns it
- * about its own centre and that centre has just moved: rotating the new centre about the old one
- * says where that point was being drawn before, and the difference puts every retained pixel
- * back. One shift covers all of them — two rotations through the same angle about different
- * centres differ only by a translation.
- */
+// gives `shape` crop `crop` (undefined to uncrop), leaving the retained picture in the same
+// place at the same scale and rotation. The only thing that should write `crop`.
 export function applyImageCrop(shape: ImageShape, crop: ImageCrop | undefined): Partial<ImageShape> {
   const src = imageSourceBox(shape);
   const [left, right] = clampCropPair(crop?.left ?? 0, crop?.right ?? 0);

@@ -1,12 +1,7 @@
 import { error } from '../shared/message-emitter';
 
-// the browser's copy of whatever is currently being worked on — the recipe, the panel you left
-// open, the toolbox shapes. sessionStorage rather than localStorage, so a tab is a workspace: two
-// windows hold two designs instead of fighting over one key, and closing a tab closes that piece
-// of work rather than leaving it to reappear under the next design you open.
-//
-// note this is deliberately *not* where a design is kept safe, and less so than ever now that it
-// dies with the tab. saving the recipe to disk is the only durable copy.
+// per-tab copy of the in-progress design (recipe, open panel, toolbox shapes) — sessionStorage,
+// so each tab is its own workspace but closing it discards the work. saving to disk is the only durable copy.
 
 export const RECIPE_KEY = 'recipeData';
 export const PANEL_KEY = 'openPanel';
@@ -35,14 +30,8 @@ export function writeWorkingState(key: string, value: string): void {
   }
 }
 
-/**
- * Reads, falling back once to the localStorage copy this used to be kept in — so a design that
- * was open when the app updated carries over instead of coming back blank.
- *
- * The carry-over *takes* that copy rather than duplicating it: left in place it would seed every
- * new tab with the same stale design, which is the thing per-tab state exists to avoid. So the
- * first tab to load after the update inherits the work and later ones open fresh.
- */
+// falls back once to the pre-migration localStorage copy, then takes it (removes from
+// localStorage) rather than copying it, so only the first tab to load inherits it.
 export function readWorkingState(key: string): string | null {
   try {
     const stored = sessionStorage.getItem(key);

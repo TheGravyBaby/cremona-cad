@@ -24,12 +24,7 @@ const MAX_HISTORY = 50;
  * working-state backing: their durable home is the recipe's `referenceImages` field, so
  * exportState leaves them out and they are re-derived from the recipe on load.
  */
-/**
- * One panel an image can be scoped to, as the settings bar offers it. Structural and declared
- * here rather than imported from the recipe framework, so the dependency stays one-way: the
- * recipe hands its panels down (RecipeComponentBase.initializePanelFlow) and the canvas still
- * knows nothing about panels beyond two strings.
- */
+// declared here rather than imported from the recipe framework, so the dependency stays one-way.
 export type PanelChoice = { id: string; label: string };
 
 @Injectable({ providedIn: 'root' })
@@ -52,13 +47,11 @@ export class ToolboxStore implements Undoable {
   private _activeLayerId: string = DEFAULT_LAYER_ID;
   private _showImages = true;
   private _showShapes = true;
-  /** The recipe panel currently open — see setActivePanel. Session-lifetime only. */
+  /** The recipe panel currently open — see setActivePanel. */
   private _activePanel: string | null = null;
-  /** Every panel the open recipe has, for the settings bar's scoping picker — see
-   * setAvailablePanels. Empty until a recipe pushes its own. */
+  /** Panels the open recipe has, for the settings bar's scoping picker. */
   private _availablePanels: PanelChoice[] = [];
-  /** One image shown regardless of scoping, because it is the one selected — see
-   * setRevealedImage. */
+  /** One image shown regardless of scoping, because it's the one selected. */
   private _revealedImageId: string | null = null;
 
   constructor() {
@@ -148,50 +141,27 @@ export class ToolboxStore implements Undoable {
     this.notify();
   }
 
-  /**
-   * Which recipe panel is open, pushed in by RecipeComponentBase — the canvas never learns what a
-   * panel is, it only holds the string to compare against each image's own `panels` list.
-   *
-   * View state like the two masters above: not persisted, not undo-tracked, and deliberately not
-   * cleared by resetAll, since the open panel outlives the file being shown in it.
-   *
-   * `null` means no panel has been pushed yet, and filters nothing. That is the safe direction to
-   * fail: a recipe that forgets to push shows an image too widely, which is visible and
-   * correctable, rather than hiding one with no indication of why.
-   */
+  /** Which recipe panel is open, pushed in by RecipeComponentBase. `null` (nothing pushed yet)
+   * filters nothing — fails open, so a missing push shows an image too widely rather than hiding
+   * it with no indication why. */
   get activePanel(): string | null { return this._activePanel; }
   setActivePanel(panel: string | null): void {
     if (this._activePanel === panel) return;
     this._activePanel = panel;
-    // Changing panel ends any reveal: it was a "show me this one here" about the panel you were
-    // on, and carrying it forward would look like scoping quietly failing on the next one.
+    // a reveal was about the old panel; carrying it forward would look like scoping failing.
     this._revealedImageId = null;
     this.notify();
   }
 
-  /**
-   * The panels an image may be scoped to, pushed in by RecipeComponentBase alongside the open one
-   * — the labels the settings bar's picker shows. Still only strings to the store, which is what
-   * keeps panels out of the canvas's instrument-agnostic boundary.
-   *
-   * Empty means the picker has nothing to offer and hides itself, which is the honest answer for
-   * a host that ships no panels rather than a reason to invent some.
-   */
+  /** Panels an image may be scoped to, for the settings bar's picker; empty hides it. */
   get availablePanels(): readonly PanelChoice[] { return this._availablePanels; }
   setAvailablePanels(panels: readonly PanelChoice[]): void {
     this._availablePanels = panels.map(p => ({ id: p.id, label: p.label }));
     this.notify();
   }
 
-  /**
-   * One image to show even where its scoping wouldn't: the one the user has deliberately picked,
-   * from the image list or by clicking it. Without this, picking an image scoped to another panel
-   * out of the list unlocks and selects something that never appears, and editing the scoping of
-   * the image you have selected makes it — and the controls you were using — vanish mid-edit.
-   *
-   * View state like the masters above: not persisted, not undo-tracked, and short-lived. Cleared
-   * when the selection moves on (draft-canvas's setSelectedShape) and when the panel changes.
-   */
+  /** The one image shown regardless of scoping, because the user deliberately picked it — without
+   * this, picking or editing a scoped image could make it (and its controls) vanish mid-edit. */
   get revealedImageId(): string | null { return this._revealedImageId; }
   setRevealedImage(id: string | null): void {
     if (this._revealedImageId === id) return;
@@ -199,28 +169,9 @@ export class ToolboxStore implements Undoable {
     this.notify();
   }
 
-  /**
-   * Whether `image` belongs on the panel currently open.
-   *
-   * Four cases, in the order they're tested. An `excludePanels` entry is absolute: the recipe is
-   * saying this panel should show nothing, so nothing else gets to overrule it. Otherwise an image
-   * naming panels belongs on those; an image naming none belongs on all of them — every image a
-   * user placed by hand; and an image naming none but marked `isDefault` ("Default" in the UI)
-   * belongs on the panels no *other* image has claimed by name, which is how a set swaps a general
-   * plan photograph out for a specific view on the panels that have one, without the general one
-   * having to list every panel it's still wanted on.
-   *
-   * `panels` and `excludePanels` are the same statement written from either end, and which one a
-   * set reaches for is whichever is shorter. Excluding is what makes a *blank* panel expressible
-   * at all: a panel nothing claims otherwise shows the default, and "nothing here" was previously
-   * something the format had no way to say.
-   *
-   * The default case reads the rest of the set, so this is a question about the image *and* its
-   * neighbours, not about the image alone. That's what makes adding a scoped image enough on its
-   * own: nothing has to be edited on the image it displaces.
-   *
-   * The revealed image is exempt from all of it — see setRevealedImage.
-   */
+  /** Whether `image` belongs on the open panel. Precedence: revealed image always matches;
+   * `excludePanels` always excludes; then `panels` if set; then `isDefault` images fill in
+   * wherever no other image has named the panel. */
   imageMatchesActivePanel(image: ImageShape): boolean {
     if (image.id === this._revealedImageId) return true;
     if (this._activePanel === null) return true;
@@ -230,9 +181,7 @@ export class ToolboxStore implements Undoable {
     return !this.panelHasScopedImage(this._activePanel);
   }
 
-  /** Whether some image names `panel` outright. Hidden images don't count — parking the specific
-   * view is a reasonable way to ask for the general one back, and the alternative is a panel
-   * showing nothing with no way to tell why. */
+  // hidden images don't count, so parking a specific view brings the default one back.
   private panelHasScopedImage(panel: string): boolean {
     return this.getImageShapes().some(s => !s.hidden && s.panels?.includes(panel));
   }

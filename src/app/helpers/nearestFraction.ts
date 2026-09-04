@@ -106,11 +106,9 @@ export function nearestFraction(
   return `~ ${fraction}`; // rough approximation
 }
 
-// companion to nearestFraction for ratios well below 1 — an f-hole eye against the body width
-// sits near 1/72, where the standard denominator limit collapses everything to 0/1. Differences:
-// the denominator limit is far larger, the plain reciprocal 1/round(1/value) is always a
-// candidate so any small value gets an answer at all, and closeness is judged relative to the
-// value rather than absolutely (0.001 off means nothing when the value itself is 0.014).
+// like nearestFraction but for ratios well below 1 (e.g. 1/72), where the standard denominator
+// limit collapses everything to 0/1: larger denominator limit, reciprocal always a candidate,
+// and closeness judged relative to the value rather than absolutely.
 export function nearestSmallFraction(
   value: number,
   maxNumerator: number = 12,
@@ -147,9 +145,7 @@ export function nearestSmallFraction(
     addCandidate(Math.min(numeratorLimit, Math.round(magnitude * denominator)), denominator);
   }
 
-  // candidates were built simplest-first, so take the first one that is close enough rather than
-  // the outright closest: 0.0138 reads as "≈ 1/72", not "2/145", and stays legible while the
-  // radius is dragged. Only fall back to the closest when nothing is within budget.
+  // simplest candidate within budget wins over the outright closest, so 0.0138 reads "≈ 1/72" not "2/145"
   const simplicityBudget = 0.01;
   const best = candidates.find((candidate) => candidate.error <= simplicityBudget)
     ?? candidates.reduce((a, b) => (b.error < a.error - 1e-12 ? b : a));
@@ -175,14 +171,12 @@ export function nearestSmallFraction(
     const constantTolerance = constant.tolerance ?? defaultConstantTolerance;
 
     for (let denominator = 1; denominator <= namedDenominatorLimit; denominator++) {
-      // value ≈ constant / integer
       namedCandidates.push({
         expression: `${label}/${denominator}`,
         error: Math.abs(magnitude - constant.value / denominator) / magnitude,
         tolerance: constantTolerance,
       });
 
-      // value ≈ 1 / (integer · constant)
       namedCandidates.push({
         expression: denominator === 1 ? `1/${label}` : `1/(${denominator}${label})`,
         error: Math.abs(magnitude - 1 / (denominator * constant.value)) / magnitude,
@@ -215,7 +209,7 @@ export function nearestSmallFraction(
 
   if (isExact) return fraction;
   if (isVeryClose) return `≈ ${fraction}`;
-  return `~ ${fraction}`; // rough approximation
+  return `~ ${fraction}`;
 }
 
 function greatestCommonDivisor(a: number, b: number): number {

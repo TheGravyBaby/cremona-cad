@@ -56,8 +56,7 @@ describe('RowReorderDirective', () => {
     fixture = TestBed.createComponent(HostComponent);
     host = fixture.componentInstance;
     fixture.detectChanges();
-    // Stack the rows on a uniform pitch, which is what the directive measures
-    // its one step from.
+    // stack the rows on a uniform pitch, which is what the directive measures its step from.
     rows().forEach((row, i) => {
       row.getBoundingClientRect = () => ({ top: i * PITCH, height: PITCH }) as DOMRect;
     });
@@ -66,10 +65,7 @@ describe('RowReorderDirective', () => {
   it('moves a row one place per row-height dragged', () => {
     dragTo(0, PITCH * 2 + 5);
     expect(host.items).toEqual(['b', 'c', 'a', 'd']);
-    // Reported as the drag goes rather than banked until the pointer lifts, so
-    // the list on screen is the list the maker is about to get. A move covers
-    // whatever ground one pointer event crossed — two rows here, since the test
-    // jumps where a real drag would report every few pixels.
+    // one move covering both rows, since the jump crosses them in a single pointer event
     expect(host.moves).toEqual([{ from: 0, to: 2 }]);
   });
 
@@ -121,11 +117,7 @@ describe('RowReorderDirective', () => {
   });
 });
 
-/**
- * The arithmetic behind a list shown with one extra row spliced into it — a
- * spline's peak among its control points. Written as row pictures rather than
- * index pairs: `*` is the extra row, and what the maker sees is the picture.
- */
+// written as row pictures rather than index pairs: `*` marks the extra row (e.g. a spline's peak).
 describe('applyRowMove', () => {
   /** Applies a move to `rows` and gives back the picture it leaves. */
   function moved(rows: string, move: RowMove): string {

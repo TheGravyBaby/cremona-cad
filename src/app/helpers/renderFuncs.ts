@@ -388,8 +388,7 @@ export const renderCrosshair = (
     }
 };
 
-/** A crosshair that only says "the point is here". The default one is 3mm across — most of an
- * f-hole eye — so anything marking a small feature wants this instead. */
+// smaller than renderCrosshair's default 3mm, which dwarfs a feature like an f-hole eye
 export const renderSmallCrosshair = (P: Pt, color: string, opacity: number = 1) =>
     renderCrosshair(P, color, 0.8, 1, opacity);
 

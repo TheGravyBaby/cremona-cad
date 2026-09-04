@@ -36,10 +36,7 @@ export class CerutiViolin extends RecipeComponentBase {
 
   // ===== Static config and theming =====
 
-  /** `toggles` is which buttons the view-toggle bar shows while that panel is open, taken from
-   *  the panel's own declaration (see `CerutiPanelBase.renderToggles`) — the bar reads it from
-   *  here rather than off the mounted panel, which is a timing trap panel-base.ts explains.
-   *  Base has no panel component, and Export isn't a drafting step; neither offers any. */
+  // toggles come from each panel's own `renderToggles`; Base and Export offer none.
   protected readonly panelOrder: readonly { id: CerutiPanelId; label: string; toggles: readonly RenderToggleKey[] }[] = [
     { id: 'base', label: 'Base Measurements', toggles: [] },
     { id: 'mainBouts', label: 'Main Bouts', toggles: MainBoutsPanel.renderToggles },
@@ -291,8 +288,7 @@ export class CerutiViolin extends RecipeComponentBase {
         }
       }
 
-      // Push whichever panel the two branches above settled on, so a template's panel-scoped
-      // reference images are filtered from the first draw rather than after the first click.
+      // so a template's panel-scoped reference images filter from the first draw, not after the first click.
       this.setOpenPanel(this.openPanel);
 
       // Runs inside a draw, so the re-frame lands on the next one — by which point the restored

@@ -397,16 +397,8 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     return shape.type === 'spline' ? shape : null;
   }
 
-  /**
-   * The table's rows: the knots, with the crown listed among them wherever the
-   * maker has put it.
-   *
-   * The crown is a knot on the same section at the same kind of position, so it
-   * is a row like the rest — pinned at the top it reads as a separate thing,
-   * and a table running 34, 50 (peak), 66 is the section written across the
-   * plate. `index` is the knot's index in `points`, which is how every field in
-   * the row addresses it, or −1 for the crown, which has no index to address.
-   */
+  // the crown is a knot at the same kind of position, so it's a row like the rest, listed wherever
+  // the maker put it rather than pinned to the top.
   splineRows(shape: CrossArchSplineShape): CrossSplineRow[] {
     const rows: CrossSplineRow[] = shape.points.map((pt, index) => ({ pt, index }));
     rows.splice(splinePeakRow(shape), 0, { pt: null, index: -1 });
@@ -638,28 +630,14 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     const target = this.editTarget(plate);
     if (target.type !== 'spline') return;
     target.points.splice(index, 1);
-    // A row above the crown taken away lifts every row below it, so the crown
-    // stays with the knots it was listed between rather than sliding down one.
+    // shift peakRow so the crown stays between the same knots rather than sliding down one.
     const peakRow = splinePeakRow(target);
     if (index < peakRow) target.peakRow = peakRow - 1;
     this.onChange();
   }
 
-  /**
-   * Takes a row out of the table and puts it back somewhere else — a knot, or
-   * the crown among them.
-   *
-   * The list's order carries nothing to the geometry — {@link crossArchKnots}
-   * sorts across the plate for itself — and that is exactly why the maker needs
-   * this. Knots are appended as they are added and stay put as they are moved
-   * across the plate (both for the reason in {@link setPointXPct}), so a table
-   * of any size ends up in an order that reads as noise. Dragging a row is how
-   * it is put back into the order the section runs in.
-   *
-   * Through {@link editTarget} like every other edit here, so arranging the
-   * rows at a station the plate has no shape for opens the same draft that
-   * touching a number there would.
-   */
+  // row order carries nothing to the geometry — crossArchKnots sorts for itself — so dragging is
+  // purely for readability, restoring the order the section runs in.
   moveRow(plate: 'top' | 'bottom', move: RowMove): void {
     const target = this.editTarget(plate);
     if (target.type !== 'spline') return;
@@ -846,9 +824,7 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
   private overlayLayers(y: number): RenderLayer[] {
     const a = this.arching;
     const layers: RenderLayer[] = [];
-    // Lifts the overlay clear of the section view below it. Off the taller end
-    // of the ribs, so it clears at every station and does not shift as the
-    // cursor is scrubbed along the body.
+    // off the taller rib end, so this clears at every station without shifting as the cursor scrubs.
     const taper = solveRibTaper(this.params);
     const yOffset = Math.max(taper.zLower, taper.zUpper) + a.top.thickness + a.top.arch.archHeight + 15;
     const rotX = this.flags.plateRotXDeg ?? 0;
@@ -934,9 +910,7 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     const mould = this.cache.top?.mouldPoly;
     const innerHalf = mould ? plateHalfChordAtY(mould, y) : null;
     const halves = { top: outerHalf('top'), bottom: outerHalf('bottom') };
-    // The ribs taper along the body, so their top edge sits at a different
-    // height at every station. Transverse to the taper, though, so the section
-    // is the same shape it always was — only lifted or dropped.
+    // the section is the same shape as always, just lifted or dropped by the rib's taper here.
     const ribZ = ribHeightAt(p, y);
 
     // At either end of the body the outline has no width to give, so there is

@@ -390,57 +390,40 @@ export function fitArcFromEndsAndCenter(start: Pt, end: Pt, centerHint: Pt, pref
   return { center, radius, startAngle, endAngle };
 }
 
-/** The signed sweep of the span an Arc actually draws (its minor one): negative clockwise,
- * positive counterclockwise. */
+/** signed sweep of an Arc's drawn (minor) span: negative clockwise, positive ccw. */
 export function signedArcSweep(arc: Arc): number {
   const d = normalizeRadians(arc.end - arc.start);
   return d > Math.PI ? d - TWO_PI : d;
 }
 
-/** The direction of travel where an Arc's drawn span ends — the tangent whatever follows it has
- * to pick up to join smoothly. */
+/** tangent direction at the end of an Arc's drawn span. */
 export function travelAtArcEnd(arc: Arc): number {
   return arc.end + Math.sign(signedArcSweep(arc)) * Math.PI / 2;
 }
 
-/** The direction of travel where an Arc's drawn span begins — the tangent whatever runs into it
- * has to hand over. */
+/** tangent direction at the start of an Arc's drawn span. */
 export function travelAtArcStart(arc: Arc): number {
   return arc.start + Math.sign(signedArcSweep(arc)) * Math.PI / 2;
 }
 
-/**
- * The arc leaving `P` in direction `travel` with the given radius, turning by `sweep` — the
- * G1 chain step, where the center and both boundary angles fall out of the tangent rather than
- * being placed. `sweep`'s sign picks the turn direction (negative clockwise); keep |sweep| under
- * 180°, since Arc's boundary angles can only name the minor span.
- */
+// G1 chain step: arc leaving P along `travel` with given radius, turning by `sweep` (negative
+// clockwise). keep |sweep| under 180°, since Arc's boundary angles can only name the minor span.
 export function arcContinuingFrom(P: Pt, travel: number, radius: number, sweep: number): Arc {
-  const start = travel - (Math.sign(sweep) || 1) * Math.PI / 2; // center → P, i.e. inward
+  const start = travel - (Math.sign(sweep) || 1) * Math.PI / 2;
   const cx = P.x - radius * Math.cos(start);
   const cy = P.y - radius * Math.sin(start);
   return new Arc(cx, cy, radius, start, start + sweep);
 }
 
-/**
- * The one arc that leaves `P` in direction `travel` and arrives tangent to the line through `A`
- * running in direction `lineDir` — the closing step of a G1 chain, where the radius is no longer
- * a choice but whatever value actually reaches the line. Where along the line it lands is free,
- * which is what leaves exactly one solution.
- *
- * Both the radius and the turn direction fall out of the same signed solve, so a chain that has
- * already overshot the line's direction still closes — as an inflection at the joint rather than
- * a failure, which is the honest picture of having overshot. Null when the entry tangent is
- * already parallel to the line, and when closing would take more than a half turn, which Arc's
- * boundary angles cannot name: drawing nothing beats silently drawing the complementary arc.
- */
+// G1 chain closing step: the one arc from P tangent to `travel` that lands tangent to the line
+// through A along lineDir; radius and turn direction fall out of a single signed solve, so an
+// overshot chain still closes (as an inflection). null if parallel or the turn exceeds 180°.
 export function arcTangentToLine(P: Pt, travel: number, A: Pt, lineDir: Pt): Arc | null {
   const exit = Math.atan2(lineDir.y, lineDir.x);
-  // centers sit one signed radius along the inward normal, so the exit point is
-  // P + r*(N(travel) - N(exit)); requiring that to satisfy the line equation leaves r linear
+  // exit point is P + r*(N(travel) - N(exit)); on the line, that's linear in r
   const nx = -Math.sin(travel) + Math.sin(exit);
   const ny = Math.cos(travel) - Math.cos(exit);
-  const mx = -lineDir.y, my = lineDir.x; // line normal, scale-free here
+  const mx = -lineDir.y, my = lineDir.x;
 
   const denom = mx * nx + my * ny;
   if (Math.abs(denom) < 1e-9) return null;
@@ -451,16 +434,9 @@ export function arcTangentToLine(P: Pt, travel: number, A: Pt, lineDir: Pt): Arc
   return arcContinuingFrom(P, travel, Math.abs(r), turn);
 }
 
-/**
- * A straight run along the ray leaving `A` in direction `travel`, then one arc onto `target`,
- * arriving there travelling in direction `exit` — the closing step of a G1 chain, where naming
- * the far end's direction rather than the arc's radius is what fixes the sweep. That leaves the
- * run and the radius in a linear pair: one answer, and no root to choose between.
- *
- * Null when the two directions are parallel and no finite radius bridges them, when closing would
- * take more than a half turn (which Arc's boundary angles cannot name), and when it would need
- * the run to go backwards down the ray — the honest picture of a target the chain has passed.
- */
+// G1 chain closing step: run along `travel` from A, then one arc onto target arriving along
+// `exit`; naming the exit direction fixes the sweep, leaving run/radius a linear pair with one
+// solution. null if parallel with no finite radius, turn exceeds 180°, or the run goes backwards.
 export function arcBetweenTravels(
   A: Pt, travel: number, target: Pt, exit: number,
 ): { run: number; arc: Arc } | null {
@@ -468,7 +444,6 @@ export function arcBetweenTravels(
   const sweep = d > Math.PI ? d - TWO_PI : d;
 
   const ux = Math.cos(travel), uy = Math.sin(travel);
-  // where the arc carries the chain, per unit of signed radius — fixed, since the sweep is
   const ex = Math.sin(travel + sweep) - Math.sin(travel);
   const ey = Math.cos(travel) - Math.cos(travel + sweep);
 
@@ -479,8 +454,7 @@ export function arcBetweenTravels(
   const run = (dx * ey - dy * ex) / denom;
   const radius = (dy * ux - dx * uy) / denom;
 
-  // the centre sits on the side the sweep turns toward, so a radius solved against that sign is
-  // really asking for the major arc back the other way
+  // radius solved with the wrong sign relative to sweep means the major arc, not this one
   if (run < -1e-9 || Math.sign(radius) !== Math.sign(sweep)) return null;
 
   const P = { x: A.x + run * ux, y: A.y + run * uy };
@@ -676,9 +650,8 @@ export function solveInscribedCircleAlongAxis(C: Circle, r: number, ax: Axis, va
   return pos ? Cunknown + s : Cunknown - s;
 }
 
-// the same construction inverted: here C is the *small* circle and we solve the position of the
-// larger circle of radius r that contains it and touches it at a single tangent point,
-// given one of the larger circle's coordinates
+// inverse of the above: C is the small circle, solve the position of the larger circle of
+// radius r that contains and is internally tangent to it
 export function solveCircumscribedCircleAlongAxis(C: Circle, r: number, ax: Axis, value: number, pos = true): number {
   const rPrime = r - C.r;
   if (rPrime < 0) throw new Error("No solution: circumscribing radius smaller than radius");
@@ -690,7 +663,7 @@ export function solveCircumscribedCircleAlongAxis(C: Circle, r: number, ax: Axis
   if (under < 0) throw new Error("No real solution: knownValue out of range");
 
   const s = Math.sqrt(under);
-  const Cunknown = ax === "x" ? C.y : C.x; // solving the other coordinate
+  const Cunknown = ax === "x" ? C.y : C.x;
   return pos ? Cunknown + s : Cunknown - s;
 }
 

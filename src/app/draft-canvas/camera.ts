@@ -3,9 +3,8 @@ import { Pt } from '../models/types';
 export type Bounds = { pt1: Pt; pt2: Pt };
 
 export class Camera {
-  // Zoom limits, px per world-mm. The floor is the one that matters: below it the viewport spans
-  // tens of metres, and the grid/tick loops in axis-grid-controller emit an SVG line per grid step
-  // across it, so a hard scroll used to take that count high enough to lock the tab up.
+  // zoom limits, px per world-mm. The floor matters most: below it the viewport spans tens of
+  // metres and axis-grid-controller's line count could lock the tab up.
   static readonly MIN_PX_PER_MM = 0.05;
   static readonly MAX_PX_PER_MM = 400;
 
@@ -102,8 +101,7 @@ export class Camera {
   applyZoomAt(anchor: Pt, newPxPerMm: number, pxW: number, pxH: number) {
     const oldPxPerMm = this.pxPerMm;
     if (!isFinite(newPxPerMm) || newPxPerMm <= 0) return;
-    // Clamp before the no-op check below: once a gesture is pushing past a limit, every
-    // further event is a no-op rather than one that leaves the zoom put but drags the offsets.
+    // clamp before the no-op check, or a gesture past the limit would drag the offsets with zoom pinned.
     newPxPerMm = Camera.clampZoom(newPxPerMm);
 
     // If pxPerMm didn't change, nothing to do
