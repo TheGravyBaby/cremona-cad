@@ -44,20 +44,11 @@ recognizes the current format *positively* so it stays idempotent; six tests in
 
 ## Settled decisions — don't re-litigate
 
-- **A reference image can be scoped to particular panels.** `NamedReferenceImage.panels` /
-  `ImageShape.panels` list panel ids; absent or empty means every panel, which is every image a
-  user placed by hand. `RecipeComponentBase.setOpenPanel` pushes the open panel to
-  `ToolboxStore.setActivePanel`, and the store compares strings — it never learns what a panel is.
-  Separate from the user's own `hidden` switch: both have to pass for an image to draw, and
-  scoping must never write through to `hidden`. `excludePanels` is the same list inverted, for
-  when the exception is shorter — and the only way to ask for a panel that shows *nothing*, which
-  is the honest answer for a view an instrument has no usable reference for. An image marked
-  `isDefault` with no `panels` is the set's general view — "Default" in the UI: shown wherever nothing more specific is, stepped aside
-  from where something is. That is what keeps a set maintainable — adding a scoped view, or adding a
-  panel, never means going back to relist the panels the general view still belongs on. Both are
-  editable from the canvas settings bar as well as authored in a template, which is why
-  `initializePanelFlow` hands `panelOrder` down to `ToolboxStore.setAvailablePanels`: the picker
-  needs the labels, and this is the one place that already has them.
+- **A reference image can be scoped to particular panels**, via `panels`/`excludePanels`/
+  `isDefault` on `NamedReferenceImage`/`ImageShape` — full mechanics are in
+  `draft-canvas/tools/CLAUDE.md`. What's specific to this model: `initializePanelFlow` hands
+  `panelOrder` down to `ToolboxStore.setAvailablePanels` so the settings-bar picker has real panel
+  labels, since this is the one place that already has them.
 - **Templates carry no `arching` block, on purpose.** They ship solved outline geometry (`bouts`,
   `outerCorners`, `blocks`) but no arching, so `normalizeArchingParams` early-returns and the
   plate is seeded from `defaultArchingParams` by whichever arching panel or the surface builder
@@ -143,12 +134,10 @@ legitimately optional (`purfling`, `outerPurfling`).
 
 ## Working in the arching files
 
-`ceruti-arching.ts`, `ceruti-arch-geometry.ts` and `ceruti-surface.ts` were built largely with
-agents, because the math is specialist. That means the usual safety net — the author spotting a
-wrong answer on sight — is thinner here than elsewhere in the codebase. Explain what a change
-does in bench terms, not just in code terms, and lean on the specs: they encode properties
-(slope-0 cut edges, idempotent migration, no kink at the taper) that are the real acceptance
-criteria.
+`ceruti-arching.ts`, `ceruti-arch-geometry.ts` and `ceruti-surface.ts` are the agent-built files
+root CLAUDE.md's "Keep it modifiable by hand" refers to. Explain a change in bench terms, not just
+code terms, and lean on the specs — they encode the real acceptance criteria (slope-0 cut edges,
+idempotent migration, no kink at the taper).
 
 ## Notes
 
@@ -167,4 +156,3 @@ criteria.
   - `panels/panels.spec.ts` — "draws every bundled instrument, not just the default"
 - Panels share `onArcFocus`/`onArcBlur`/`adjustArcStart`/`adjustArcEnd`/`nearestFraction`. If you
   add a sixth copy, hoist instead.
-- Help text style: what the concept *is* to a luthier, then what the field controls. Terse.

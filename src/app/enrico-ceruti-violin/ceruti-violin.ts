@@ -34,8 +34,6 @@ import { NumberStepperDirective } from '../shared/number-stepper';
 
 export class CerutiViolin extends RecipeComponentBase {
 
-  // ===== Static config and theming =====
-
   // toggles come from each panel's own `renderToggles`; Base and Export offer none.
   protected readonly panelOrder: readonly { id: CerutiPanelId; label: string; toggles: readonly RenderToggleKey[] }[] = [
     { id: 'base', label: 'Base Measurements', toggles: [] },
@@ -43,9 +41,6 @@ export class CerutiViolin extends RecipeComponentBase {
     { id: 'corners', label: 'Corners', toggles: CornersPanel.renderToggles },
     { id: 'centerBout', label: 'Center Bout', toggles: CenterBoutPanel.renderToggles },
     { id: 'outerTrace', label: 'Outer Path', toggles: OuterTracePanel.renderToggles },
-    // The arching panels run in the order of operations at the bench: the
-    // channel is gouged at constant section first, then the long arch is carved
-    // to a template, then the crown across.
     { id: 'fluting', label: 'Fluting Channel', toggles: FlutingPanel.renderToggles },
     { id: 'longArching', label: 'Long Arching', toggles: LongArchingPanel.renderToggles },
     { id: 'crossArching', label: 'Cross Arching', toggles: CrossArchingPanel.renderToggles },
@@ -127,15 +122,11 @@ export class CerutiViolin extends RecipeComponentBase {
     };
   }
 
-  // ===== Constructor =====
-
   constructor(private readonly cdr: ChangeDetectorRef) {
     super();
     this.initializePanelFlow(this.panelOrder);
     this.initializeDebounce(() => this.refreshBoundInputs());
   }
-
-  // ===== Component state =====
 
   readonly templates: EnricoCerutiTemplate[] = CERUTI_TEMPLATES;
   override openPanel = 'base';
@@ -143,27 +134,21 @@ export class CerutiViolin extends RecipeComponentBase {
     ...CERUTI_TEMPLATES[1],
   };
 
-  // Ephemeral view toggles shared by the panel components and threaded into the render functions below.
   viewFlags: CerutiViewFlags = { ...DEFAULT_CERUTI_VIEW_FLAGS };
 
-  /** The open panel's toggle buttons; empty hides the bar. */
   get renderToggleButtons(): readonly RenderToggleKey[] {
     return this.panelOrder.find(panel => panel.id === this.openPanel)?.toggles ?? [];
   }
 
-  /** Whichever of the 5 panel components is currently mounted (see #panelRef in ceruti-violin.html)
-   * — only one is ever in the DOM at a time, since they're behind mutually exclusive @if blocks. */
+  // only one panel component is ever mounted, behind mutually exclusive @if blocks in the template.
   @ViewChild('panelRef') private panelRef?: { requestViewRerender(): void };
 
-  /** Export is the one mounted panel with no #panelRef — it isn't a drafting step and composes its
-   * own preview instead of emitting a PanelRenderRequest, so it gets its own handle rather than
-   * being forced into the shape of the other eight. Undo is the only caller. */
+  // Export has no #panelRef — it isn't a drafting step and composes its own preview rather than
+  // emitting a PanelRenderRequest, so it needs its own handle. Undo is the only caller.
   @ViewChild('exportRef') private exportRef?: { redrawPreview(): void };
 
-  /** The view-toggle bar is a single fixed instance shared across panels (see ceruti-violin.html),
-   * not owned by any one of them — it redraws the active panel via requestViewRerender()
-   * (CerutiPanelBase's public wrapper around emitImmediate) rather than onChange(), which
-   * debounces and would leave the toggle looking unresponsive until some other edit flushed it. */
+  // Redraws via requestViewRerender() rather than onChange(), which debounces and would leave the
+  // toggle looking unresponsive until some other edit flushed it.
   onRenderTogglesChanged(): void {
     this.panelRef?.requestViewRerender();
   }
@@ -195,7 +180,7 @@ export class CerutiViolin extends RecipeComponentBase {
     return this.templates.some(t => t.key === this.d.key) ? this.d.key : '';
   }
 
-  /** The plain outer+inner silhouette shown when landing on a panel with nothing more specific to draw yet. */
+  // shown when landing on a panel with nothing more specific to draw yet.
   private renderOuterSilhouette(): Array<(g: any, ui: any) => void> {
     const p = this.d.params;
     const offset = p.overhang + p.rib;
@@ -232,24 +217,19 @@ export class CerutiViolin extends RecipeComponentBase {
     this.setOpenPanel('base');
   }
 
-  // ===== Lifecycle and bootstrap =====
-
-  /**
-   * Migrates arching saved in an older format the moment a recipe is adopted, rather than when the
-   * Long Arching panel happens to open — the surface builder, the 3D preview and the STL/template
-   * exports all read spline arches straight out of params, and any of them is reachable first.
-   */
+  // Migrates arching on adoption rather than on Long Arching panel open — the surface builder, 3D
+  // preview and STL/template exports all read spline arches straight from params, and any of them
+  // may be reached first.
   protected override onRecipeAdopted(): void {
     normalizeArchingParams(this.d.params);
   }
-
 
   onNewClick(): void {
     const blank = JSON.parse(JSON.stringify(CERUTI_TEMPLATES[0])) as EnricoCerutiTemplate;
     this.d = blank;
     this.onRecipeAdopted();
-    // resetAll() clears the image asset table too, so the new template's own images (the blank
-    // one has none, but that shouldn't be baked in as an assumption) have to be loaded after it.
+    // resetAll() clears the image asset table too, so the new template's own images have to be
+    // loaded after it, not assumed.
     this.toolbox.resetAll();
     this.loadReferenceImages(blank);
     this._firstRenderInitDone = false;
@@ -271,8 +251,7 @@ export class CerutiViolin extends RecipeComponentBase {
 
       const recipeData = this.loadMatchingStoredRecipe<EnricoCerutiTemplate>();
       if (!recipeData) {
-        // Nothing saved for this recipe yet — adopt the selected template's reference images
-        // (e.g. StradGoetz's `/StradGoetz.jpg`) so a fresh session opens with them placed.
+        // nothing saved yet — adopt the selected template's own reference images.
         const selectedTemplate = this.templates.find(t => t.key === this.selectedTemplateKey) ?? this.templates[0];
         this.loadReferenceImages(selectedTemplate);
       }
@@ -280,7 +259,6 @@ export class CerutiViolin extends RecipeComponentBase {
         this.d = recipeData;
         this.onRecipeAdopted();
         this.loadReferenceImages(recipeData);
-        // Restore the last open panel from its own key
         this.panelFlow?.refreshEnabledPanels();
         const savedPanel = readWorkingState(PANEL_KEY);
         if (savedPanel && this.isPanelEnabled(savedPanel)) {
@@ -308,8 +286,6 @@ export class CerutiViolin extends RecipeComponentBase {
     renderBounds(this.d.params, true)(g, ui);
   };
 
-  // ===== Panel lifecycle hooks =====
-
   protected override onPanelActivated(panel: string): void {
     if (panel === 'base') {
       this.debounceController?.markImmediate();
@@ -323,15 +299,10 @@ export class CerutiViolin extends RecipeComponentBase {
       this.changeBaseMeasurements();
       return;
     }
-    // Non-base panels are panel-owned, so the redraw has to come from the panel — but ask the
-    // mounted one to redraw rather than tearing it down and letting its ngOnInit do it. A remount
-    // throws away everything the panel holds that isn't in the recipe: which arc is highlighted,
-    // scroll position, focus, the export panel's chosen preview, the cross-arch rotation.
-    //
-    // Deferred by a macrotask because undo replaced `this.d` wholesale a moment ago and the
-    // panel's [params] binding still points at the pre-undo object until Angular's next change
-    // detection — which runs when this event handler returns, well before a setTimeout fires.
-    // Redrawing synchronously would draw the geometry the undo just discarded.
+    // Ask the mounted panel to redraw rather than remounting it — a remount would lose whatever
+    // it holds outside the recipe (highlighted arc, scroll, focus, export preview, arch rotation).
+    // Deferred a macrotask because undo just replaced `this.d` wholesale and the panel's [params]
+    // binding still points at the pre-undo object until Angular's next change detection runs.
     setTimeout(() => {
       if (this._destroyed) return;
       this.panelRef?.requestViewRerender();
@@ -357,11 +328,9 @@ export class CerutiViolin extends RecipeComponentBase {
     }
   }
 
-  // ===== Panel gating =====
-
   private hasBaseMeasurements(): boolean {
     const p = this.d.params;
-    return p.width > 0 && p.height > 0 // && p.inset >= 0;
+    return p.width > 0 && p.height > 0;
   }
 
   private hasMainBouts(): boolean {
@@ -384,11 +353,7 @@ export class CerutiViolin extends RecipeComponentBase {
     return !!(o.U3 || o.C2 || o.C1 || o.L3);
   }
 
-  // ===== UI helpers =====
-
-  // Used by the base-measurements section of ceruti-violin.html, which lives here rather than in
-  // its own panel component — see changeBaseMeasurements() below. (nearestFraction, also used
-  // there, comes from RecipeComponentBase.)
+  // used by the base-measurements section inlined in ceruti-violin.html — see changeBaseMeasurements().
   protected readonly dimensionInfo = dimensionInfo;
   protected readonly insetInfo = insetInfo;
 
@@ -407,10 +372,6 @@ export class CerutiViolin extends RecipeComponentBase {
   ): void {
     clampParam(this.d.params, key, min, max, tooSmallMsg, tooBigMsg);
   }
-
-  // ===== Request pipeline =====
-  // Panel modules now own geometry/render composition and emit PanelRenderRequest.
-  // The parent applies shared policy (debounce, panel refresh, session persistence).
 
   onPanelRenderRequest(request: PanelRenderRequest): void {
     const apply = () => safeRun(() => {
@@ -433,11 +394,8 @@ export class CerutiViolin extends RecipeComponentBase {
     this.debounce(apply);
   }
 
-  /**
-   * Base Measurements' own change handler — the panel's markup lives inline in
-   * ceruti-violin.html rather than in a separate panel component, since it's the
-   * landing panel and the simplest place to trace first-touch behavior.
-   */
+  // Base Measurements' markup lives inline in ceruti-violin.html rather than its own panel
+  // component, since it's the landing panel.
   changeBaseMeasurements(): void {
     this.debounce(() => safeRun(() => {
       this.clamp('height', 10, 3000, 'Height must be > 10mm', 'Height must be < 3000mm');
