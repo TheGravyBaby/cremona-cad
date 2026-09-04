@@ -103,10 +103,33 @@ drifts past the point where a person can open it and change something. So: when 
 made as a local edit or as a new layer of indirection, take the local edit. Raise sweeping
 structural changes before making them, not after.
 
-**Comments** are lowercase and brief, sitting inline above the section they describe rather than
-massed into a doc-brief at the top. The long headers that do exist (`models/types.ts`,
+**Comments default to zero.** Write one only when it carries a WHY the code can't: a hidden
+constraint, a workaround, a decision that looks wrong until you know the reason. If a comment
+just restates the line under it, or what a well-named function/variable/test already says, it
+doesn't clear that bar — delete it rather than shrink it. Comments are lowercase and brief,
+sitting inline above the section they describe. The long headers that do exist (`models/types.ts`,
 `draft-tool.ts`) earn their length by documenting a trap; don't add more of those by default, and
 don't pad the short ones.
+
+Banned outright, no exceptions — all pulled from a real cleanup pass on `fholes` (2026-09) where
+every one of these showed up across dozens of files:
+- Banner/divider comments (`===== Section =====`, `----- Section -----`). Blank lines and
+  function boundaries already do this job.
+- JSDoc/docstring blocks on functions, classes, or `describe`/`it` blocks by default. A docstring
+  longer than the code it sits on means the code needed no comment, not that the comment earned
+  its length.
+- Restating the next line (`// pop the secondary arc, as above` over a call that pops the
+  secondary arc). Read it without the comment — if nothing is lost, the comment was never load-
+  bearing.
+- The same explanation pasted into more than one file, or repeated more than once in one file.
+  Needing it twice means it belongs on a shared definition, not copy-pasted.
+- Commented-out code. Delete it — git history is where dead code lives.
+- A comment left stale after the code it describes changed. Update it or delete it; a comment
+  that contradicts the code below it is worse than no comment.
+
+Self-check before calling comment work done: for each one, could you delete it and have a reader
+end up in the same place? If yes, it goes. A future reader hitting a real, unmarked trap will
+complain loudly; nobody complains about a comment that wasn't there.
 
 ## Conventions
 

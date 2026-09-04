@@ -42,10 +42,10 @@ boundary that has no calc pass to rebuild prototypes — unlike recipe geometry,
 and don't reuse `models/types.ts` classes here. Sharing geometry *math* via `helpers/draftMath.ts`
 is encouraged; sharing those *types* is not.
 
-**`ArcShape` sweeps counterclockwise.** Ordering of `startAngle`/`endAngle` selects minor vs
-major, so the value is self-contained and tools can draw >180° sweeps. `models/types.ts` `Arc`
-always renders the minor arc and needs an out-of-band flag for the major. Converting this type to
-that one is lossy past 180° — don't write a blind converter.
+**`ArcShape` sweeps counterclockwise** (root CLAUDE.md's arc-sweep trap). Ordering of
+`startAngle`/`endAngle` alone selects minor vs major, so unlike `models/types.ts` `Arc`, tools can
+draw >180° sweeps with no out-of-band flag. Converting past 180° is lossy — don't write a blind
+converter.
 
 **The active layer says where new shapes land, not what you can edit.** Anything on a visible,
 unlocked layer is selectable and editable, whichever layer happens to be active — hide or lock is
@@ -100,15 +100,15 @@ list is shorter — see `writeImagePanels`, which also explains why the short li
 ages well.
 
 **An `isDefault` image is the set's general view** — "Default" everywhere the user sees it; the
-field is spelled out because `default` alone reads as a keyword. Marked `isDefault` with no `panels`
-of its own, it shows on every panel no *other* image has claimed by name, and steps aside on the ones
-that have one. So `imageMatchesActivePanel` is a question about the image *and* its neighbours, not
-the image alone — which is the whole point: adding a scoped view is enough on its own, and the
-general view never has to enumerate the panels it's still wanted on. Hidden images don't displace it,
-so parking the specific view brings the general one back rather than leaving the panel bare. An
-unscoped image with no flag still shows everywhere, which is every image a user placed by hand.
-Naming panels and being the default are alternatives, and the settings bar clears one when you set
-the other: a default that named panels of its own could never be reached anywhere else.
+field is spelled out because `default` alone reads as a keyword. With no `panels` of its own, it
+shows on every panel no *other* image has claimed by name and steps aside on the ones that have
+one — so `imageMatchesActivePanel` checks the image *and* its neighbours, and adding a scoped view
+is enough on its own: the general view never has to enumerate what it's still wanted on. Hidden
+images don't displace it, so parking the specific view brings the general one back rather than
+leaving the panel bare. An unscoped image with no flag still shows everywhere — every image a user
+placed by hand. Naming panels and being the default are alternatives; the settings bar clears one
+when you set the other, since a default that named panels of its own could never be reached
+anywhere else.
 
 **The selected image is exempt from scoping.** `setRevealedImage` holds one id that
 `imageMatchesActivePanel` waves through — set when an image is picked from the bottom bar's list or
