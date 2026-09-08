@@ -14,7 +14,7 @@
       "objectId": "2022560103",
       "url": "https://www.loc.gov/item/2022560103/"
     },
-    "notes": "Bout set and back length are the Library of Congress catalogue dimensions, verbatim: length of back 410.6 mm, upper bouts 183 mm, middle bouts 123 mm, lower bouts 237 mm. Everything in params below the catalogue dimensions is unsolved and carries DefaultParams values - the outline arcs, corners, button and blocks are still to be traced. No arching: none is published. Licence differs from the CC0 corpus entries: the LoC record carries its educational-and-research rights statement rather than a public-domain dedication, so the images are linked at their IIIF addresses rather than inlined. Four views are shipped from the record: the top (sp=2) as the general view, marked Default, kept off the panels that have their own; the top and back (sp=1) side by side on fluting; and the profile plate (sp=3), which photographs both sides of the instrument, cropped to its left-hand half for longArching. crossArching is excluded outright - no section is published, and that panel shows nothing rather than a plan shot that would be traced by mistake. The rest of the record is corner, edge, rib, scroll and pegbox detail; where a set holds an annotated measured drawing it is a third party's own analysis, deliberately not shipped and not to be traced from. Reference images are placed to a nominal fit only - plan views at the catalogue lower-bout width, the profile at the catalogue back length, each held to its source proportions - so every one must be scaled against a known dimension before tracing."
+    "notes": "Bout set and back length are the LoC catalogue dimensions, verbatim. No arching is published, and everything below them is unsolved."
   },
   "params": {
     "height": 410.6,
@@ -259,9 +259,7 @@
       "C11DoubleArc": true,
       "L31DoubleArc": false,
       "ucCornerSharpness": 0.06,
-      "lcCornerSharpness": 0.23,
-      "FUArmDoubleArc": true,
-      "FLArmDoubleArc": true
+      "lcCornerSharpness": 0.23
     },
     "arching": {
       "surfaceMethod": "proportional",
@@ -353,95 +351,35 @@
       }
     },
     "fHoles": {
-      "upper": {
-        "eye": {
-          "x": 29.5,
-          "y": 223.75,
-          "r": 4
-        },
-        "rise": 5.75,
-        "cut": {
-          "angleOnEye": 2.1816615649929116,
-          "slope": 0.6806784082777885,
-          "length": 6.5
-        },
-        "tip": {
-          "x": 36.02442830416547,
-          "y": 231.55949787178912
-        },
-        "shoulder": {
-          "x": 34.443429983321295,
-          "y": 224.5,
-          "r": 9,
-          "start": -2.991024380813107,
-          "end": 1.5707963267948966
-        },
-        "arm": {
-          "x": 34.443429983321295,
-          "y": 227.5,
-          "r": 6,
-          "start": 1.5707963267948966,
-          "end": 1.064650843716541
-        },
-        "arm2": {
-          "x": 29.110524160611586,
-          "y": 217.87918322146666,
-          "r": 17,
-          "start": 1.064650843716541,
-          "end": 0.3141592653589792
-        },
-        "wing": {
-          "x": 25.527483840317352,
-          "y": 219.48414458822478,
-          "r": 16,
-          "start": 0.12217304763960307,
-          "end": 0.8552113334772214
-        }
+      "UEye": {
+        "x": 29.5,
+        "y": 223.75,
+        "r": 4
       },
-      "lower": {
-        "eye": {
-          "x": 66.25,
-          "y": 168,
-          "r": 4.25
-        },
-        "rise": 7.75,
-        "cut": {
-          "angleOnEye": 2.443460952792061,
-          "slope": -2.2689280275926285,
-          "length": 8.25
-        },
-        "tip": {
-          "x": 60.45797291119412,
-          "y": 157.45836234917115
-        },
-        "shoulder": {
-          "x": 60.85903533678805,
-          "y": 166,
-          "r": 10,
-          "start": 0.35525140893823953,
-          "end": -1.5707963267948966
-        },
-        "arm": {
-          "x": 60.85903533678805,
-          "y": 165,
-          "r": 9,
-          "start": -1.5707963267948966,
-          "end": -2.2165681500327983
-        },
-        "arm2": {
-          "x": 70.48807570722082,
-          "y": 177.77816816075668,
-          "r": 25,
-          "start": -2.2165681500327983,
-          "end": -2.6529004630313806
-        },
-        "wing": {
-          "x": 71.355925201864,
-          "y": 173.022251190662,
-          "r": 19,
-          "start": -2.792526803190927,
-          "end": -2.181661564992912
-        }
+      "LEye": {
+        "x": 66.25,
+        "y": 168,
+        "r": 4.25
+      },
+      "URise": 5.75,
+      "LRise": 7.75,
+      "UCut": {
+        "angleOnEye": 2.1816615649929116,
+        "slope": 0.6806784082777885,
+        "length": 6.5
+      },
+      "LCut": {
+        "angleOnEye": 2.443460952792061,
+        "slope": -2.2689280275926285,
+        "length": 8.25
+      },
+      "UTip": {
+        "x": 36.02442830416547,
+        "y": 231.55949787178912
+      },
+      "LTip": {
+        "x": 60.45797291119412,
+        "y": 157.45836234917115
       },
       "stem": {
         "center": {
@@ -449,35 +387,77 @@
           "y": 195
         },
         "width": 6,
-        "angle": 1.605702911834783,
-        "outerUpper": {
-          "x": -28.061803443069778,
-          "y": 199.3027679035503,
-          "r": 77.1145427470457,
-          "start": 0.3141592653589793,
-          "end": 0.034906585039886195
-        },
-        "outerLower": {
-          "x": 116.00344001363204,
-          "y": 189.27261761610495,
-          "r": 66.51289285897262,
-          "start": -3.106686068549907,
-          "end": -2.792526803190927
-        },
-        "innerLower": {
-          "x": 84.62530922424097,
-          "y": 185.29506855935705,
-          "r": 41.01140728097428,
-          "start": -2.652900463031381,
-          "end": -3.106686068549907
-        },
-        "innerUpper": {
-          "x": -198.0674039051438,
-          "y": 192.03014447626418,
-          "r": 241.27404632592035,
-          "start": -6.2482787221397,
-          "end": -6.161012259539984
-        }
+        "angle": 1.605702911834783
+      },
+      "O1": {
+        "x": 34.443429983321295,
+        "y": 224.5,
+        "r": 9,
+        "start": -2.991024380813107,
+        "end": 1.064650843716541
+      },
+      "O2": {
+        "x": 29.110524160611586,
+        "y": 217.87918322146666,
+        "r": 17,
+        "start": 1.064650843716541,
+        "end": 0.3141592653589792
+      },
+      "O3": {
+        "x": -28.061803443069778,
+        "y": 199.3027679035503,
+        "r": 77.1145427470457,
+        "start": 0.3141592653589793,
+        "end": 0.034906585039886195
+      },
+      "O4": {
+        "x": 116.00344001363204,
+        "y": 189.27261761610495,
+        "r": 66.51289285897262,
+        "start": -3.106686068549907,
+        "end": -2.792526803190927
+      },
+      "O5": {
+        "x": 71.355925201864,
+        "y": 173.022251190662,
+        "r": 19,
+        "start": -2.792526803190927,
+        "end": -2.181661564992912
+      },
+      "I1": {
+        "x": 60.85903533678805,
+        "y": 166,
+        "r": 10,
+        "start": 0.35525140893823953,
+        "end": -2.2165681500327983
+      },
+      "I2": {
+        "x": 70.48807570722082,
+        "y": 177.77816816075668,
+        "r": 25,
+        "start": -2.2165681500327983,
+        "end": -2.6529004630313806
+      },
+      "I3": {
+        "x": 84.62530922424097,
+        "y": 185.29506855935705,
+        "r": 41.01140728097428,
+        "start": -2.652900463031381,
+        "end": -3.106686068549907
+      },
+      "I4": {
+        "x": -198.0674039051438,
+        "y": 192.03014447626418,
+        "r": 241.27404632592035,
+        "start": -6.2482787221397,
+        "end": -6.161012259539984
+      },
+      "I5": {
+        "x": 25.527483840317352,
+        "y": 219.48414458822478,
+        "r": 16,
+        "start": 0.12217304763960307,
+        "end": 0.8552113334772214
       }
     }
   },

@@ -67,8 +67,6 @@ export interface EnricoCerutiParams {
     C21DoubleArc: boolean;
     C11DoubleArc: boolean;
     L31DoubleArc: boolean;
-    FUArmDoubleArc?: boolean;
-    FLArmDoubleArc?: boolean;
     ucCornerSharpness?: number;
     lcCornerSharpness?: number;
   },
@@ -111,21 +109,34 @@ export interface ArchingParams {
   bottom: ArchPlate;
 }
 
+// eyes are shared by both edges, so they keep U/L (as `bouts` does); O1-O5 and I1-I5 are one edge
+// each, in drawing order — shoulder, arm, stem-tangent arc, stem-to-wing arc, wing. O springs from
+// UEye and reaches LTip; I is the same shape from LEye to UTip.
 export interface FholeParams {
-  upper: FholeEnd;
-  lower: FholeEnd;
-  stem: FholeStem;
-}
+  UEye: Circle | null;
+  LEye: Circle | null;
+  URise: number | null;
+  LRise: number | null;
+  UCut: FholeCut | null;
+  LCut: FholeCut | null;
+  /** Derived each pass from the eye + its own cut; not a free field. */
+  UTip: Pt | null;
+  LTip: Pt | null;
 
-export interface FholeEnd {
-  eye: Circle | null;
-  rise: number | null;
-  shoulder: Arc | null;
-  arm: Arc | null;
-  arm2: Arc | null;
-  wing: Arc | null;
-  cut: FholeCut | null;
-  tip: Pt | null;
+  stem: FholeStem;
+
+  /** `O1.end` is sticky past the apex — see getShoulderExtendDeg. */
+  O1: Arc | null;
+  O2: Arc | null;
+  O3: Arc | null;
+  O4: Arc | null;
+  O5: Arc | null;
+
+  I1: Arc | null;
+  I2: Arc | null;
+  I3: Arc | null;
+  I4: Arc | null;
+  I5: Arc | null;
 }
 
 /** The straight cut closing one end of the hole, from a point on the eye out to the wing's tip. */
@@ -136,17 +147,12 @@ export interface FholeCut {
   length: number | null;
 }
 
-// outer* traces from the upper eye, inner* from the lower; these four arcs have no number of their own.
+/** The shared reference frame both edges land their O3/I3 stem-tangent arc on. */
 export interface FholeStem {
   center: Pt | null;
   width: number | null;
   /** radians; geometry should read `stemRun`, not this. */
   angle: number | null;
-
-  outerUpper: Arc | null;
-  outerLower: Arc | null;
-  innerUpper: Arc | null;
-  innerLower: Arc | null;
 }
 
 /** Resolved palette from CerutiViolin's `colors` getter, threaded into every panel and render fn. */
@@ -568,8 +574,6 @@ export const DefaultParams: EnricoCerutiParams = {
     C21DoubleArc: false,
     C11DoubleArc: false,
     L31DoubleArc: false,
-    FUArmDoubleArc: false,
-    FLArmDoubleArc: false,
     ucCornerSharpness: 0,
     lcCornerSharpness: 0,
   }

@@ -461,6 +461,94 @@ export function arcBetweenTravels(
   return { run, arc: arcContinuingFrom(P, travel, Math.abs(radius), sweep) };
 }
 
+// inverse of arcTangentToLine: radius is given, sweep is the unknown. arcTangentToLine's raw
+// r = numer(travel)/denom(travel) is transcendental in the sweep that sets `travel` — but numer
+// and denom are each of the form a + b·cos(sweep) + c·sin(sweep), so their difference at a chosen
+// target radius is too. Three samples pin that harmonic exactly, turning "solve for sweep" into
+// "intersect a line with the unit circle" — closed form, no iteration.
+export function sweepForTangentLineRadius(
+  P: Pt, travel: number, radius: number, turnSign: 1 | -1,
+  A: Pt, lineDir: Pt, targetRadius: number,
+): number | null {
+  const start0 = travel - turnSign * Math.PI / 2;
+  const exit = Math.atan2(lineDir.y, lineDir.x);
+  const mx = -lineDir.y, my = lineDir.x;
+
+  const pointAt = (s: number): Pt =>
+    new Pt(P.x + radius * (Math.cos(start0 + s) - Math.cos(start0)), P.y + radius * (Math.sin(start0 + s) - Math.sin(start0)));
+
+  // numer(s) - target·denom(s), zero where the tangent-to-line solve's raw radius is `target`
+  const h = (s: number, target: number): number => {
+    const t = travel + s, pt = pointAt(s);
+    const nx = -Math.sin(t) + Math.sin(exit), ny = Math.cos(t) - Math.cos(exit);
+    return mx * (A.x - pt.x) + my * (A.y - pt.y) - target * (mx * nx + my * ny);
+  };
+
+  // fold into (-π, π]; a valid sweep shares turnSign's sign and stays short of a full reversal
+  const fold = (s: number): number => {
+    const n = normalizeRadians(s);
+    return n > Math.PI ? n - TWO_PI : n;
+  };
+  const EPS = 1e-6;
+  const inRange = (s: number) => Math.sign(s) === turnSign && Math.abs(s) > EPS && Math.abs(s) < Math.PI - EPS;
+
+  // the raw (signed) solve only ever hits +target on the direct branch; the reflex branch (the
+  // other tangent circle, arcTangentToLine's r < 0 case) shows up at -target instead
+  for (const target of [targetRadius, -targetRadius]) {
+    const a0 = h(0, target), aHalf = h(Math.PI / 2, target), aPi = h(Math.PI, target);
+    const a = (a0 + aPi) / 2, b = a0 - a, c = aHalf - a;
+    const R = Math.hypot(b, c);
+    if (R < 1e-9 || Math.abs(a) > R + 1e-9) continue;
+
+    const delta = Math.atan2(c, b);
+    const offset = Math.acos(clamp(-a / R, -1, 1));
+    const candidates = [fold(delta + offset), fold(delta - offset)].filter(inRange);
+    if (candidates.length) return candidates.reduce((best, s) => Math.abs(s) < Math.abs(best) ? s : best);
+  }
+  return null;
+}
+
+// inverse of arcBetweenTravels when the target is a point on a circle rather than a fixed point:
+// entry ray (P, travel) is fixed, target is pointOnCircle(circle, theta) with tangent theta +
+// turnSign·π/2 — theta is the unknown, angle rather than length or sweep this time, but the same
+// shape carries over: arcBetweenTravels' raw radius is numer(theta)/denom(theta) with both numer
+// and denom affine in (cos theta, sin theta), so the target-radius root is too. Found the same
+// closed-form way, then simply handed to arcBetweenTravels to confirm and build — cheaper and
+// safer than re-deriving its run/sign validity checks a second time.
+export function angleForBridgeRadius(
+  P: Pt, travel: number, circle: Circle, turnSign: 1 | -1, targetRadius: number,
+): number | null {
+  const ux = Math.cos(travel), uy = Math.sin(travel);
+
+  const pointAt = (theta: number): Pt =>
+    new Pt(circle.x + circle.r * Math.cos(theta), circle.y + circle.r * Math.sin(theta));
+
+  // raw numer/denom of arcBetweenTravels' radius, with the target point read off the circle
+  const h = (theta: number, target: number): number => {
+    const exit = theta + turnSign * Math.PI / 2, pt = pointAt(theta);
+    const ex = Math.sin(exit) - Math.sin(travel), ey = Math.cos(travel) - Math.cos(exit);
+    const denom = ux * ey - uy * ex;
+    const dx = pt.x - P.x, dy = pt.y - P.y;
+    return (dy * ux - dx * uy) - target * denom;
+  };
+
+  for (const target of [targetRadius, -targetRadius]) {
+    const a0 = h(0, target), aHalf = h(Math.PI / 2, target), aPi = h(Math.PI, target);
+    const a = (a0 + aPi) / 2, b = a0 - a, c = aHalf - a;
+    const R = Math.hypot(b, c);
+    if (R < 1e-9 || Math.abs(a) > R + 1e-9) continue;
+
+    const delta = Math.atan2(c, b);
+    const offset = Math.acos(clamp(-a / R, -1, 1));
+    for (const theta of [normalizeRadians(delta + offset), normalizeRadians(delta - offset)]) {
+      const exit = theta + turnSign * Math.PI / 2;
+      const bridged = arcBetweenTravels(P, travel, pointAt(theta), exit);
+      if (bridged && Math.abs(bridged.arc.r - Math.abs(targetRadius)) < 1e-6) return theta;
+    }
+  }
+  return null;
+}
+
 /** True when `angle` lies on the CCW sweep from startAngle to endAngle — the arcPathData
  * convention, and deliberately *not* angleOnDrawnArc's minor-sweep one. */
 export function angleWithinSweep(angle: number, startAngle: number, endAngle: number): boolean {
