@@ -217,9 +217,9 @@ export class CerutiViolin extends RecipeComponentBase {
     this.setOpenPanel('base');
   }
 
-  // Migrates arching on adoption rather than on Long Arching panel open — the surface builder, 3D
-  // preview and STL/template exports all read spline arches straight from params, and any of them
-  // may be reached first.
+  // Migrates arching on adoption rather than on the Long Arching panel opening — the surface
+  // builder, 3D preview and STL/template exports all read spline arches straight from params, and
+  // any of them may be reached first.
   protected override onRecipeAdopted(): void {
     normalizeArchingParams(this.d.params);
   }

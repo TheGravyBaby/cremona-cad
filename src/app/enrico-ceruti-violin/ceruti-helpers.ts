@@ -104,11 +104,11 @@ export function compoundArcInfo() {
     )
 }
 
-export function fholeArmCompoundInfo() {
+export function fholeShoulderExtendInfo() {
     info(
-        "The arm is the run from the shoulder down to the stem. On most holes it reads as one bend, so it is drawn with a single arc.\n\n" +
-        "Compound splits that arc in two, joined end-to-end, for an arm that tightens as it comes down. The pair shares out the turn the single arc had, so the shape holds when you switch.",
-        "Compound Arm", defaultTTL, true
+        "The shoulder runs from the eye out to where its curve stands square to the plate. On many holes the arm-to-shoulder transition sits a little past that point rather than right on it, so Extend lets the shoulder's own curve carry on past it before the arm takes over.\n\n" +
+        "The arm's sweep isn't set directly — it's solved so the arm lands exactly on the stem arc's radius, opposite it on the row below.",
+        "Shoulder Extend", defaultTTL, true
     )
 }
 

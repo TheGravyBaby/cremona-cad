@@ -14,7 +14,7 @@
       "objectId": "2022560097",
       "url": "https://www.loc.gov/item/2022560097/"
     },
-    "notes": "The Library of Congress record publishes NO dimensions for this instrument - no back length and no bouts - so height and width here are the DefaultParams 350 x 200, not measurements of the Brookings. Nothing traced off these images means anything in millimetres until a scale is established from outside this record. Everything in params below the catalogue dimensions is unsolved and carries DefaultParams values - the outline arcs, corners, button and blocks are still to be traced. No arching: none is published. Licence differs from the CC0 corpus entries: the LoC record carries its educational-and-research rights statement rather than a public-domain dedication, so the images are linked at their IIIF addresses rather than inlined. Four views are shipped from the record: the top (sp=2) as the general view, marked Default, kept off the panels that have their own; the top and back (sp=1) side by side on fluting; and the profile plate (sp=3), which photographs both sides of the instrument, cropped to its left-hand half for longArching. crossArching is excluded outright - no section is published, and that panel shows nothing rather than a plan shot that would be traced by mistake. The rest of the record is corner, edge, rib, scroll and pegbox detail; where a set holds an annotated measured drawing it is a third party's own analysis, deliberately not shipped and not to be traced from. Reference images are placed to a nominal fit only - plan views at the catalogue lower-bout width, the profile at the catalogue back length, each held to its source proportions - so every one must be scaled against a known dimension before tracing."
+    "notes": "The LoC record publishes no dimensions for this instrument — height and width here are DefaultParams placeholders, not real measurements, so nothing traced off these images means anything in millimetres until a scale is established elsewhere. No arching is published, and everything below the catalogue level is still untraced."
   },
   "params": {
     "height": 358,
@@ -351,83 +351,35 @@
       }
     },
     "fHoles": {
-      "upper": {
-        "eye": {
-          "x": 22.25,
-          "y": 190.75,
-          "r": 3
-        },
-        "rise": 5,
-        "cut": {
-          "angleOnEye": 2.0943951023931953,
-          "slope": 0.8552113334772214,
-          "length": 4.5
-        },
-        "tip": {
-          "x": 26.462420701795345,
-          "y": 196.8686936520825
-        },
-        "shoulder": {
-          "x": 28.166079783099615,
-          "y": 189.75,
-          "r": 9,
-          "start": 2.974144574370104,
-          "end": 1.5707963267948966
-        },
-        "arm": {
-          "x": 28.166079783099615,
-          "y": 189.75,
-          "r": 9,
-          "start": 1.5707963267948966,
-          "end": 0.767944870877505
-        },
-        "arm2": null,
-        "wing": {
-          "x": 23.430409787808355,
-          "y": 186.29481499676098,
-          "r": 11,
-          "start": 0.4188790204786391,
-          "end": 1.2915436464758039
-        }
+      "UEye": {
+        "x": 22.25,
+        "y": 190.75,
+        "r": 3
       },
-      "lower": {
-        "eye": {
-          "x": 58,
-          "y": 140,
-          "r": 5
-        },
-        "rise": 6,
-        "cut": {
-          "angleOnEye": 2.2689280275926285,
-          "slope": -1.9198621771937625,
-          "length": 4.5
-        },
-        "tip": {
-          "x": 55.18048731070849,
-          "y": 130.93811108621153
-        },
-        "shoulder": {
-          "x": 53.10102051443364,
-          "y": 139,
-          "r": 10,
-          "start": 0.20135792079033074,
-          "end": -1.5707963267948966
-        },
-        "arm": {
-          "x": 53.10102051443364,
-          "y": 143,
-          "r": 14,
-          "start": -1.5707963267948966,
-          "end": -2.617993877991494
-        },
-        "arm2": null,
-        "wing": {
-          "x": 57.12891072414941,
-          "y": 144.80186404859353,
-          "r": 14,
-          "start": -2.705260340591211,
-          "end": -1.710422666954443
-        }
+      "LEye": {
+        "x": 58,
+        "y": 140,
+        "r": 5
+      },
+      "URise": 5,
+      "LRise": 6,
+      "UCut": {
+        "angleOnEye": 2.0943951023931953,
+        "slope": 0.8552113334772214,
+        "length": 4.5
+      },
+      "LCut": {
+        "angleOnEye": 2.2689280275926285,
+        "slope": -1.9198621771937625,
+        "length": 4.5
+      },
+      "UTip": {
+        "x": 26.462420701795345,
+        "y": 196.8686936520825
+      },
+      "LTip": {
+        "x": 55.18048731070849,
+        "y": 130.93811108621153
       },
       "stem": {
         "center": {
@@ -435,35 +387,77 @@
           "y": 162.617
         },
         "width": 5.75,
-        "angle": 1.5882496193148399,
-        "outerUpper": {
-          "x": 16.830809514719753,
-          "y": 178.8036567424212,
-          "r": 24.757880021435543,
-          "start": 0.767944870877505,
-          "end": 0.017453292519942876
-        },
-        "outerLower": {
-          "x": 66.99001187077725,
-          "y": 149.40017103110713,
-          "r": 24.88052126184487,
-          "start": -3.12413936106985,
-          "end": -2.7052603405912103
-        },
-        "innerLower": {
-          "x": 71.27432656864436,
-          "y": 153.49236314246403,
-          "r": 34.98472628492802,
-          "start": -2.617993877991494,
-          "end": -3.12413936106985
-        },
-        "innerUpper": {
-          "x": 8.727498623158077,
-          "y": 179.74865718871555,
-          "r": 27.09433996047778,
-          "start": -6.265732014659643,
-          "end": -5.8643062867009474
-        }
+        "angle": 1.5882496193148399
+      },
+      "O1": {
+        "x": 28.166079783099615,
+        "y": 189.75,
+        "r": 9,
+        "start": 2.974144574370104,
+        "end": 1.5707963267948966
+      },
+      "O2": {
+        "x": 28.166079783099615,
+        "y": 189.75,
+        "r": 9,
+        "start": 1.5707963267948966,
+        "end": 0.767944870877505
+      },
+      "O3": {
+        "x": 16.830809514719753,
+        "y": 178.8036567424212,
+        "r": 24.757880021435543,
+        "start": 0.767944870877505,
+        "end": 0.017453292519942876
+      },
+      "O4": {
+        "x": 66.99001187077725,
+        "y": 149.40017103110713,
+        "r": 24.88052126184487,
+        "start": -3.12413936106985,
+        "end": -2.7052603405912103
+      },
+      "O5": {
+        "x": 57.12891072414941,
+        "y": 144.80186404859353,
+        "r": 14,
+        "start": -2.705260340591211,
+        "end": -1.710422666954443
+      },
+      "I1": {
+        "x": 53.10102051443364,
+        "y": 139,
+        "r": 10,
+        "start": 0.20135792079033074,
+        "end": -1.5707963267948966
+      },
+      "I2": {
+        "x": 53.10102051443364,
+        "y": 143,
+        "r": 14,
+        "start": -1.5707963267948966,
+        "end": -2.617993877991494
+      },
+      "I3": {
+        "x": 71.27432656864436,
+        "y": 153.49236314246403,
+        "r": 34.98472628492802,
+        "start": -2.617993877991494,
+        "end": -3.12413936106985
+      },
+      "I4": {
+        "x": 8.727498623158077,
+        "y": 179.74865718871555,
+        "r": 27.09433996047778,
+        "start": -6.265732014659643,
+        "end": -5.8643062867009474
+      },
+      "I5": {
+        "x": 23.430409787808355,
+        "y": 186.29481499676098,
+        "r": 11,
+        "start": 0.4188790204786391,
+        "end": 1.2915436464758039
       }
     }
   },

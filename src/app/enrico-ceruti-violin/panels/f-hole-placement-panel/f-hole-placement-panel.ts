@@ -67,8 +67,8 @@ export class FHolePlacementPanel extends CerutiPanelBase implements OnInit {
     if (innerPath) renders.push(renderPath(innerPath, this.colors.innerTrace, 1));
 
     // recalculate display ratios
-    p.ratios.FLtoW = p.fHoles!.lower.eye!.r / p.width;
-    p.ratios.FUtoL = p.fHoles!.upper.eye!.r / p.fHoles!.lower.eye!.r;
+    p.ratios.FLtoW = p.fHoles!.LEye!.r / p.width;
+    p.ratios.FUtoL = p.fHoles!.UEye!.r / p.fHoles!.LEye!.r;
 
     this.flags.showModuleArcs && renders.push(renderCrazyGuides(p, this.colors));
     this.flags.showModuleGuides && renders.push(renderFholePlacementGuides(p, this.colors));
@@ -128,25 +128,16 @@ export const defaultFHolePlacement = (p: EnricoCerutiParams): FholeParams => {
     let stemCenter = new Pt(stemX, stemY);  
 
     let defaults: FholeParams = {
-      upper: {
-        eye: upperEye,
-        rise: upperEye.r * FRisetoEye,
-        shoulder: undefined, arm: undefined, arm2: undefined,
-        wing: undefined, cut: undefined, tip: undefined,
-      },
-      lower: {
-        eye: lowerEye,
-        rise: lowerEye.r * FRisetoEye,
-        shoulder: undefined, arm: undefined, arm2: undefined,
-        wing: undefined, cut: undefined, tip: undefined,
-      },
+      UEye: upperEye, LEye: lowerEye,
+      URise: upperEye.r * FRisetoEye, LRise: lowerEye.r * FRisetoEye,
+      UCut: undefined, LCut: undefined, UTip: undefined, LTip: undefined,
       stem: {
         center: stemCenter,
         width: stemOuter - stemInner,
         angle: STEM_ANGLE_DEFAULT * Math.PI / 180,
-        outerUpper: undefined, outerLower: undefined,
-        innerUpper: undefined, innerLower: undefined,
       },
+      O1: undefined, O2: undefined, O3: undefined, O4: undefined, O5: undefined,
+      I1: undefined, I2: undefined, I3: undefined, I4: undefined, I5: undefined,
     };
     return defaults;
 }
@@ -156,9 +147,9 @@ export const defaultFHolePlacement = (p: EnricoCerutiParams): FholeParams => {
  * showModuleGuides. Anything the user can edit is drawn by the contour pass. */
 export const renderFholePlacementGuides = (p: EnricoCerutiParams, colors: CerutiColors) => (g: any, ui: any) => {
   const f = p.fHoles!;
-  const up = f.upper, low = f.lower, stem = f.stem;
-  const topLeftPt = new Pt(up.eye!.x - up.eye!.r, up.eye!.y + up.eye!.r + up.rise!);
-  const lowerRightPt = new Pt(low.eye!.x + low.eye!.r, low.eye!.y - low.eye!.r - low.rise!);
+  const stem = f.stem;
+  const topLeftPt = new Pt(f.UEye!.x - f.UEye!.r, f.UEye!.y + f.UEye!.r + f.URise!);
+  const lowerRightPt = new Pt(f.LEye!.x + f.LEye!.r, f.LEye!.y - f.LEye!.r - f.LRise!);
 
   const run = stemRun(stem);
   const edgeAt = (xBase: number, y: number) => new Pt(xBase + (y - stem.center!.y) * run, y);
@@ -172,9 +163,8 @@ export const renderFholePlacementGuides = (p: EnricoCerutiParams, colors: Ceruti
 
 export const renderFholeRise = (p: EnricoCerutiParams, colors: CerutiColors) => (g: any, ui: any) => {
   const f = p.fHoles!;
-  for (const [end, side, color] of [[f.upper, 1, colors.fHoleUpper], [f.lower, -1, colors.fHoleLower]] as const) {
-    const eye = end.eye!;
-    const boundY = eye.y + side * (eye.r + end.rise!);
+  for (const [eye, rise, side, color] of [[f.UEye!, f.URise!, 1, colors.fHoleUpper], [f.LEye!, f.LRise!, -1, colors.fHoleLower]] as const) {
+    const boundY = eye.y + side * (eye.r + rise);
     renderLine(new Pt(eye.x - eye.r, boundY), new Pt(eye.x + eye.r, boundY), color, 1)(g, ui);
     renderDashedLine(new Pt(eye.x, eye.y + side * eye.r), new Pt(eye.x, boundY), color, '2 2', 1, 0.9)(g, ui);
   }
@@ -187,8 +177,8 @@ export const renderFholeStem = (p: EnricoCerutiParams, colors: CerutiColors) => 
   const edgeAt = (xBase: number, y: number) => new Pt(xBase + (y - c.y) * run, y);
 
   // a twelfth of the height the hole occupies, either way off the centre
-  const reach = Math.abs((f.upper.eye!.y + f.upper.eye!.r + f.upper.rise!)
-    - (f.lower.eye!.y - f.lower.eye!.r - f.lower.rise!)) / 12;
+  const reach = Math.abs((f.UEye!.y + f.UEye!.r + f.URise!)
+    - (f.LEye!.y - f.LEye!.r - f.LRise!)) / 12;
 
   renderLine(new Pt(c.x - half, c.y), new Pt(c.x + half, c.y), colors.fHoleStem, 1)(g, ui);
   for (const side of [-1, 1]) {
@@ -201,21 +191,21 @@ export const renderFholeStem = (p: EnricoCerutiParams, colors: CerutiColors) => 
 
 export const renderFholeEyes = (p: EnricoCerutiParams, colors: CerutiColors) => (g: any, ui: any) => {
   const f = p.fHoles!;
-  renderCircle(f.upper.eye!, colors.fHoleUpper)(g, ui);
-  renderCircle(f.lower.eye!, colors.fHoleLower)(g, ui);
+  renderCircle(f.UEye!, colors.fHoleUpper)(g, ui);
+  renderCircle(f.LEye!, colors.fHoleLower)(g, ui);
 }
 
 export const renderCrazyGuides = (p: EnricoCerutiParams, colors: CerutiColors) => (g: any, ui: any) => {
   // lower corner line
   renderDashedLine(new Pt(p.bouts.LCr.x, p.bouts.LCr.y), new Pt(-p.bouts.LCr.x, p.bouts.LCr.y), "grey")(g, ui);
   // the drop line
-  renderDashedLine(new Pt(p.bouts.LCr.x, p.fHoles.lower.eye.y), new Pt(-p.bouts.LCr.x, p.fHoles.lower.eye.y), "grey")(g, ui);
+  renderDashedLine(new Pt(p.bouts.LCr.x, p.fHoles.LEye.y), new Pt(-p.bouts.LCr.x, p.fHoles.LEye.y), "grey")(g, ui);
 
   // now I need to intersect the drop line with the inner path
   let arcs = defineInnerArcs(p);
   let intersectionPt: Pt;
   for (const arc of arcs) {
-    let intersets = arcHorizontalIntersections(arc, p.fHoles.lower.eye.y)
+    let intersets = arcHorizontalIntersections(arc, p.fHoles.LEye.y)
     if (intersets.length > 0) {
       intersectionPt = intersets[0];
       renderSmallCrosshair(intersectionPt, "red")(g, ui);
@@ -241,20 +231,20 @@ export const renderCrazyGuides = (p: EnricoCerutiParams, colors: CerutiColors) =
     renderSmallCrosshair(tangentPt, "red")(g, ui);
   }
 
-  let distToEyeFromTangent = dist(tangentPt!, p.fHoles.lower.eye);
-  let radForGuide = distToEyeFromTangent - p.fHoles.lower.eye.r;
+  let distToEyeFromTangent = dist(tangentPt!, p.fHoles.LEye);
+  let radForGuide = distToEyeFromTangent - p.fHoles.LEye.r;
   let guideCircle = new Circle(tangentPt.x, tangentPt.y, radForGuide);
   renderCircle(guideCircle, "red")(g, ui);
 
   // now find the midpoint between the corners
   let midpointBetweenCorners = p.bouts.LCr.y + (p.bouts.UCr.y - p.bouts.LCr.y)/2;
   let waistMidPt = lineCircleIntersection(new Pt(0, midpointBetweenCorners), new Pt(1000, midpointBetweenCorners), p.bouts.C0)[1];
-  let distToUpperEyeFromTangent = dist(p.fHoles.upper.eye, waistMidPt);
+  let distToUpperEyeFromTangent = dist(p.fHoles.UEye, waistMidPt);
   let upperEyeGuide = new Arc(waistMidPt.x, waistMidPt.y, distToUpperEyeFromTangent, 150 * Math.PI / 180, 210 * Math.PI / 180);
   // draw a fancy arc that spans 135 - 225 degrees
   renderArcFromArcFancy(upperEyeGuide, "grey")(g, ui);
 
-  let distBetweenEyes = dist(p.fHoles.upper.eye, p.fHoles.lower.eye);
-  let upperEyeGuideTwo = new Arc(p.fHoles.lower.eye.x, p.fHoles.lower.eye.y, distBetweenEyes, Math.PI, Math.PI / 2);
+  let distBetweenEyes = dist(p.fHoles.UEye, p.fHoles.LEye);
+  let upperEyeGuideTwo = new Arc(p.fHoles.LEye.x, p.fHoles.LEye.y, distBetweenEyes, Math.PI, Math.PI / 2);
   renderArcFromArcFancy(upperEyeGuideTwo, "grey")(g, ui);
 }

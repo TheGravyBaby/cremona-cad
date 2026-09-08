@@ -3,9 +3,9 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Radius <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.upper.eye!.r, .25)" data-fine-step="0.25"
-                min="0" [ngModel]="round2(params.fHoles!.upper.eye!.r)"
-                (ngModelChange)="params.fHoles!.upper.eye!.r = $event; onChange()"
+            <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.UEye!.r, .25)" data-fine-step="0.25"
+                min="0" [ngModel]="round2(params.fHoles!.UEye!.r)"
+                (ngModelChange)="params.fHoles!.UEye!.r = $event; onChange()"
                 [style.borderColor]="colors.fHoleUpper" />
         </label>
         <label class="field-cell"></label>
@@ -19,16 +19,16 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">X <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.upper.eye!.x, .25)" data-fine-step="0.25"
-                min="0" [ngModel]="round2(params.fHoles!.upper.eye!.x)"
-                (ngModelChange)="params.fHoles!.upper.eye!.x = $event; onChange()"
+            <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.UEye!.x, .25)" data-fine-step="0.25"
+                min="0" [ngModel]="round2(params.fHoles!.UEye!.x)"
+                (ngModelChange)="params.fHoles!.UEye!.x = $event; onChange()"
                 [style.borderColor]="colors.fHoleUpperOff" />
         </label>
         <label class="field-cell">
             <span class="field-title">Y <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.upper.eye!.y, .25)" data-fine-step="0.25"
-                min="0" [ngModel]="round2(params.fHoles!.upper.eye!.y)"
-                (ngModelChange)="params.fHoles!.upper.eye!.y = $event; onChange()"
+            <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.UEye!.y, .25)" data-fine-step="0.25"
+                min="0" [ngModel]="round2(params.fHoles!.UEye!.y)"
+                (ngModelChange)="params.fHoles!.UEye!.y = $event; onChange()"
                 [style.borderColor]="colors.fHoleUpperOff" />
         </label>
     </div>
@@ -36,9 +36,9 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Rise <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.upper.rise, .25)" data-fine-step="0.25"
-                min="0" [ngModel]="round2(params.fHoles!.upper.rise)"
-                (ngModelChange)="params.fHoles!.upper.rise = $event; onChange()"/>
+            <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.URise, .25)" data-fine-step="0.25"
+                min="0" [ngModel]="round2(params.fHoles!.URise)"
+                (ngModelChange)="params.fHoles!.URise = $event; onChange()"/>
         </label>
 
     </div>
@@ -90,9 +90,9 @@
 
         <label class="field-cell">
             <span class="field-title">Radius <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.lower.eye!.r, .25)" data-fine-step="0.25"
-                min="0" [ngModel]="round2(params.fHoles!.lower.eye!.r)"
-                (ngModelChange)="params.fHoles!.lower.eye!.r = $event; onChange()"
+            <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.LEye!.r, .25)" data-fine-step="0.25"
+                min="0" [ngModel]="round2(params.fHoles!.LEye!.r)"
+                (ngModelChange)="params.fHoles!.LEye!.r = $event; onChange()"
                 [style.borderColor]="colors.fHoleLower" />
         </label>
         <label class="field-cell"></label>
@@ -105,16 +105,16 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">X <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.lower.eye!.x, .25)" data-fine-step="0.25"
-                min="0" [ngModel]="round2(params.fHoles!.lower.eye!.x)"
-                (ngModelChange)="params.fHoles!.lower.eye!.x = $event; onChange()"
+            <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.LEye!.x, .25)" data-fine-step="0.25"
+                min="0" [ngModel]="round2(params.fHoles!.LEye!.x)"
+                (ngModelChange)="params.fHoles!.LEye!.x = $event; onChange()"
                 [style.borderColor]="colors.fHoleLowerOff" />
         </label>
         <label class="field-cell">
             <span class="field-title">Y <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.lower.eye!.y, .25)" data-fine-step="0.25"
-                min="0" [ngModel]="round2(params.fHoles!.lower.eye!.y)"
-                (ngModelChange)="params.fHoles!.lower.eye!.y = $event; onChange()"
+            <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.LEye!.y, .25)" data-fine-step="0.25"
+                min="0" [ngModel]="round2(params.fHoles!.LEye!.y)"
+                (ngModelChange)="params.fHoles!.LEye!.y = $event; onChange()"
                 [style.borderColor]="colors.fHoleLowerOff" />
         </label>
     </div>
@@ -123,9 +123,9 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Rise <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.lower.rise, .25)" data-fine-step="0.25"
-                min="0" [ngModel]="round2(params.fHoles!.lower.rise)"
-                (ngModelChange)="params.fHoles!.lower.rise = $event; onChange()"/>
+            <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.LRise, .25)" data-fine-step="0.25"
+                min="0" [ngModel]="round2(params.fHoles!.LRise)"
+                (ngModelChange)="params.fHoles!.LRise = $event; onChange()"/>
         </label>
     </div>
 </section>
