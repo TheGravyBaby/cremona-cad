@@ -22,12 +22,12 @@ import { EnricoCerutiParams } from '../../ceruti-types';
 const solve = (shaped: boolean): EnricoCerutiParams => {
   const p = defaultViolin();
   p.fHoles = defaultFHolePlacement(p);
-  calculateFholeContours(p); // bootstrap pass: solves shoulder/arm/stem-arc from defaults alone
+  calculateFholeContours(p); // first pass: every radius, stem arcs included, off the defaults
 
   if (shaped) {
-    // mimics a user extending both shoulders past their apex, then dialling in stem-arc and
-    // stem (flare) radii distinct from whatever the bootstrap pass produced. turn is -1 both
-    // sides by construction here, so subtracting from `end` continues the shoulder's own turn.
+    // mimics a user extending both shoulders past their apex, then dialling all four stem arcs
+    // off the 40 they default to. turn is -1 both sides by construction here, so subtracting
+    // from `end` continues the shoulder's own turn.
     p.fHoles!.O1!.end -= 0.3;
     p.fHoles!.I1!.end -= 0.25;
     calculateFholeContours(p);
@@ -63,15 +63,15 @@ const PLAIN = {
     "angle": 1.6057,
   },
   "O1": { "x": 26.3829, "y": 186.0665, "r": 8, "start": 2.9402, "end": 1.5708 },
-  "O2": { "x": 26.3829, "y": 185.0665, "r": 9, "start": 1.5708, "end": 0.5236 },
-  "O3": { "x": -0.9546, "y": 169.2832, "r": 40.5667, "start": 0.5236, "end": 0.0349 },
-  "O4": { "x": 78.4847, "y": 150.3456, "r": 38.1633, "start": -3.1067, "end": -2.7053 },
-  "O5": { "x": 54.7726, "y": 139.2885, "r": 12, "start": -2.7053, "end": -1.6581 },
+  "O2": { "x": 26.3829, "y": 184.0665, "r": 10, "start": 1.5708, "end": 0.4648 },
+  "O3": { "x": -0.4343, "y": 170.6189, "r": 40, "start": 0.4648, "end": 0.0349 },
+  "O4": { "x": 80.3074, "y": 150.7765, "r": 40, "start": -3.1067, "end": -2.7188 },
+  "O5": { "x": 54.7726, "y": 139.2885, "r": 12, "start": 3.5644, "end": -1.6581 },
   "I1": { "x": 51.5879, "y": 135.6, "r": 10, "start": -0.2014, "end": -1.5708 },
-  "I2": { "x": 51.5879, "y": 137.6, "r": 12, "start": -1.5708, "end": -2.618 },
-  "I3": { "x": 80.1924, "y": 154.1148, "r": 45.0296, "start": -2.618, "end": -3.1067 },
-  "I4": { "x": -14.9535, "y": 169.9623, "r": 49.5053, "start": -6.2483, "end": -5.9341 },
-  "I5": { "x": 23.109, "y": 183.8159, "r": 9, "start": 0.3491, "end": 1.3963 },
+  "I2": { "x": 51.5879, "y": 137.6, "r": 12, "start": -1.5708, "end": -2.5749 },
+  "I3": { "x": 75.2115, "y": 152.6308, "r": 40, "start": -2.5749, "end": -3.1067 },
+  "I4": { "x": -5.5648, "y": 173.4638, "r": 40, "start": -6.2483, "end": -5.9656 },
+  "I5": { "x": 22.9353, "y": 182.8311, "r": 10, "start": 0.3176, "end": 1.3963 },
 };
 
 const SHAPED = {
@@ -89,15 +89,15 @@ const SHAPED = {
     "angle": 1.6057,
   },
   "O1": { "x": 26.3829, "y": 186.0665, "r": 8, "start": 2.9402, "end": 1.2708 },
-  "O2": { "x": 26.0874, "y": 185.1112, "r": 9, "start": 1.2708, "end": 0.4878 },
-  "O3": { "x": -8.8647, "y": 166.5673, "r": 48.5667, "start": 0.4878, "end": 0.0349 },
-  "O4": { "x": 72.5338, "y": 148.8331, "r": 32.1633, "start": -3.1067, "end": -2.6485 },
-  "O5": { "x": 54.7726, "y": 139.2885, "r": 12, "start": 3.6347, "end": -1.6581 },
+  "O2": { "x": 25.7919, "y": 184.1558, "r": 10, "start": 1.2708, "end": 0.4559 },
+  "O3": { "x": -8.3277, "y": 167.4269, "r": 48, "start": 0.4559, "end": 0.0349 },
+  "O4": { "x": 74.3548, "y": 149.3154, "r": 34, "start": -3.1067, "end": -2.6684 },
+  "O5": { "x": 54.7726, "y": 139.2885, "r": 12, "start": 3.6148, "end": -1.6581 },
   "I1": { "x": 51.5879, "y": 135.6, "r": 10, "start": -0.2014, "end": -1.8208 },
-  "I2": { "x": 52.0827, "y": 137.5378, "r": 12, "start": -1.8208, "end": -2.5415 },
-  "I3": { "x": 75.2155, "y": 153.3661, "r": 40.0296, "start": -2.5415, "end": -3.1067 },
-  "I4": { "x": -18.9295, "y": 169.2048, "r": 53.5053, "start": -6.2483, "end": -5.9487 },
-  "I5": { "x": 23.109, "y": 183.8159, "r": 9, "start": 0.3345, "end": 1.3963 },
+  "I2": { "x": 52.0827, "y": 137.5378, "r": 12, "start": -1.8208, "end": -2.4809 },
+  "I3": { "x": 70.2426, "y": 151.6522, "r": 35, "start": -2.4809, "end": -3.1067 },
+  "I4": { "x": -9.5431, "y": 172.7736, "r": 44, "start": -6.2483, "end": -5.9829 },
+  "I5": { "x": 22.9353, "y": 182.8311, "r": 10, "start": 0.3003, "end": 1.3963 },
 };
 
 describe('f-hole contours', () => {

@@ -6,7 +6,7 @@ import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderLine, ren
 import { ensureOuterTracePaths, calculateOuterArcs, getPath, getPathOrNull } from '../../ceruti-calcs';
 import { getArcEndDeg, setArcEndDeg } from '../../../helpers/arcDegrees';
 import { fholeCutInfo, fholeShoulderExtendInfo } from '../../ceruti-helpers';
-import { defaultFHolePlacement, renderFholePlacementGuides } from '../f-hole-placement-panel/f-hole-placement-panel';
+import { defaultFHolePlacement, renderFholeBounds } from '../f-hole-placement-panel/f-hole-placement-panel';
 import { angleForBridgeRadius, angleFromCenter, arcBetweenTravels, arcContinuingFrom, arcTangentToLine, normalizeRadians, pointOnCircle, signedArcSweep, solveCircumscribedCircleAlongAxis, sweepForTangentLineRadius } from '../../../helpers/draftMath';
 import { travelAtArcEnd, travelAtArcStart } from '../../../helpers/draftMath';
 import { Circle, Pt, Arc } from '../../../models/types';
@@ -24,7 +24,7 @@ export type FholeHighlightKey = 'O1' | 'O2' | 'O3' | 'O4' | 'O5' | 'I1' | 'I2' |
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class FHoleContoursPanel extends CerutiPanelBase implements OnInit {
-  static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleGuides', 'showModuleArcs'];
+  static readonly renderToggles: readonly RenderToggleKey[] = ['showFholeBounds', 'showModuleArcs'];
 
   @Input({ required: true }) params!: EnricoCerutiParams;
   @Input({ required: true }) paths!: PathEntry[];
@@ -114,7 +114,7 @@ export class FHoleContoursPanel extends CerutiPanelBase implements OnInit {
       null;
     let arc: Arc | null = key && key !== 'UCut' && key !== 'LCut' ? p.fHoles![key] : null;
 
-    if (this.flags.showModuleGuides) renders.push(renderFholePlacementGuides(p, this.colors));
+    if (this.flags.showFholeBounds) renders.push(renderFholeBounds(p, this.colors));
     renders.push(renderFholeContours(p, this.colors, this.flags.showModuleArcs, arc ? { arc, color } : null, tip));
 
     return renders;
@@ -140,11 +140,16 @@ type FholeEdgeSeed = {
 // default proportions, off a traced Amati. each radius runs against what came before it, and a
 // wing takes the arm ratio of the end it is drawn beside. the lower end runs wider than the upper
 const FShtoEye = 5 / 2;
-const FUArmtoSh = 9 / 8;
+const FUArmtoSh = 5 / 4;
 const FLArmtoSh = 6 / 5;
 
-// the turn a fresh arm takes before it has ever solved a landing — only the bootstrap first pass
-// uses this; every pass after reads the arm's sweep back from the stem-arc radius instead
+// both stem arcs on both edges start at one radius — the long run down the stem reads as one
+// curve when all four match. against the lower eye, the hole's own module, as every other
+// radius here is
+const FStemArctoLEye = 10;
+
+// the turn an arm falls back to when no sweep reaches the stem arc it was asked for; the sweep is
+// otherwise always read back from that radius
 const FArmTurn = 1 / 3 * Math.PI;
 
 // each wing's boundary angles on the plate. the wings reach past different eyes, so neither is
@@ -189,7 +194,7 @@ export function eyeArc(eye: Circle, shoulder: Arc, otherEye: Circle, cut: FholeC
 function solveFholeEdge(
   stem: FholeStem, side: 1 | -1,
   springEye: Circle, springRise: number, seed: FholeEdgeSeed,
-  reachEye: Circle, reachTip: Pt,
+  reachEye: Circle, reachTip: Pt, stemArcR: number,
 ): FholeEdge {
   let bound = springEye.y + side * (springEye.r + springRise);
 
@@ -227,20 +232,16 @@ function solveFholeEdge(
   let armEntry = pointOnCircle(shoulder, shoulder.end);
   let armEntryTravel = travelAtArcEnd(shoulder);
 
-  // the stem arc's radius is the free choice now, seeded from this edge's own last-solved landing.
-  // the arm's sweep is what used to be free — solved instead, so it lands exactly on that radius.
-  let arm: Arc;
-  if (seed.landing?.r != null) {
-    let sweep = sweepForTangentLineRadius(armEntry, armEntryTravel, armR, turn as 1 | -1, stemEdge, stemDir, seed.landing.r);
-    if (sweep == null) {
-      error('No arm sweep reaches a stem arc of this radius. Try a different arm radius, stem-arc radius, or stem position.', 'F-Hole Arm Misses the Stem');
-      sweep = turn * FArmTurn;
-    }
-    arm = arcContinuingFrom(armEntry, armEntryTravel, armR, sweep);
-  } else {
-    // nothing solved yet — the very first pass a fresh hole ever takes
-    arm = arcContinuingFrom(armEntry, armEntryTravel, armR, turn * FArmTurn);
+  // the stem arc's radius is the free choice now, seeded from this edge's own last-solved landing
+  // and falling back to the shared default. the arm's sweep is what used to be free — solved
+  // instead, so it lands exactly on that radius.
+  let landingR = seed.landing?.r ?? stemArcR;
+  let armSweep = sweepForTangentLineRadius(armEntry, armEntryTravel, armR, turn as 1 | -1, stemEdge, stemDir, landingR);
+  if (armSweep == null) {
+    error('No arm sweep reaches a stem arc of this radius. Try a different arm radius, stem-arc radius, or stem position.', 'F-Hole Arm Misses the Stem');
+    armSweep = turn * FArmTurn;
   }
+  let arm = arcContinuingFrom(armEntry, armEntryTravel, armR, armSweep);
 
   let landing = arcTangentToLine(pointOnCircle(arm, arm.end), travelAtArcEnd(arm), stemEdge, stemDir);
   if (!landing)
@@ -263,25 +264,21 @@ function solveFholeEdge(
     let landingEnd = pointOnCircle(landing, landing.end);
     let landingTravel = travelAtArcEnd(landing);
 
-    if (seed.flare?.r != null) {
-      let theta: number | null = null;
-      for (let trySign of [wingTurn, -wingTurn as 1 | -1]) {
-        let candidate = angleForBridgeRadius(landingEnd, landingTravel, wing, trySign, seed.flare.r);
-        // only counts if the wing would still turn its historical way from this point to its end
-        if (candidate != null && Math.sign(signedArcSweep(new Arc(0, 0, 0, candidate, wing.end))) === wingTurn) {
-          theta = candidate;
-          break;
-        }
+    let flareR = seed.flare?.r ?? stemArcR;
+    let flareTheta: number | null = null;
+    for (let trySign of [wingTurn, -wingTurn as 1 | -1]) {
+      let candidate = angleForBridgeRadius(landingEnd, landingTravel, wing, trySign, flareR);
+      // only counts if the wing would still turn its historical way from this point to its end
+      if (candidate != null && Math.sign(signedArcSweep(new Arc(0, 0, 0, candidate, wing.end))) === wingTurn) {
+        flareTheta = candidate;
+        break;
       }
-      if (theta == null) {
-        error('No point on the wing reaches a stem radius this size. Try a different stem radius, or bring the wing tip in.', 'F-Hole Wing Out of Reach');
-        theta = wingStart;
-      }
-      wing.start = theta;
-    } else {
-      // nothing solved yet — the very first pass a fresh hole ever takes
-      wing.start = wingStart;
     }
+    if (flareTheta == null) {
+      error('No point on the wing reaches a stem radius this size. Try a different stem radius, or bring the wing tip in.', 'F-Hole Wing Out of Reach');
+      flareTheta = wingStart;
+    }
+    wing.start = flareTheta;
 
     flare = arcBetweenTravels(landingEnd, landingTravel, pointOnCircle(wing, wing.start), travelAtArcStart(wing));
     if (!flare)
@@ -304,24 +301,29 @@ export function calculateFholeContours(p: EnricoCerutiParams): void {
   f.UTip = cutTip(f.UEye!, f.LEye!, f.UCut);
   f.LTip = cutTip(f.LEye!, f.UEye!, f.LCut);
 
+  // one radius for all four stem arcs until the user turns one of them
+  let stemArcR = f.LEye!.r * FStemArctoLEye;
+
   let outer = solveFholeEdge(f.stem, 1, f.UEye!, f.URise!,
     { shoulder: f.O1, arm: f.O2, landing: f.O3, flare: f.O4, wing: f.O5 },
-    f.LEye!, f.LTip);
+    f.LEye!, f.LTip, stemArcR);
   let inner = solveFholeEdge(f.stem, -1, f.LEye!, f.LRise!,
     { shoulder: f.I1, arm: f.I2, landing: f.I3, flare: f.I4, wing: f.I5 },
-    f.UEye!, f.UTip);
+    f.UEye!, f.UTip, stemArcR);
 
   // both read the stored arcs as seeds, so nothing is written back until both have been solved
   f.O1 = outer.shoulder; f.O2 = outer.arm; f.O3 = outer.landing; f.O4 = outer.flare; f.O5 = outer.wing;
   f.I1 = inner.shoulder; f.I2 = inner.arm; f.I3 = inner.landing; f.I4 = inner.flare; f.I5 = inner.wing;
 }
 
-/** The two edges as drawn, reassembled from their flat fields — each with the colour of the eye
- * it springs from and the "off" colour of the eye its wing reaches. */
-function drawnEdges(f: FholeParams, colors: CerutiColors): [FholeEdge, string, string][] {
+type EdgeTones = { dark: string; mid: string; muted: string; line: string; light: string };
+
+function drawnEdges(f: FholeParams, colors: CerutiColors): [FholeEdge, EdgeTones][] {
   return [
-    [{ shoulder: f.O1!, arm: f.O2!, landing: f.O3, flare: f.O4, wing: f.O5! }, colors.fHoleUpper, colors.fHoleLowerOff],
-    [{ shoulder: f.I1!, arm: f.I2!, landing: f.I3, flare: f.I4, wing: f.I5! }, colors.fHoleLower, colors.fHoleUpperOff],
+    [{ shoulder: f.O1!, arm: f.O2!, landing: f.O3, flare: f.O4, wing: f.O5! },
+      { dark: colors.fHoleOuterDark, mid: colors.fHoleOuter, muted: colors.fHoleOuterMuted, line: colors.fHoleOuterLine, light: colors.fHoleOuterLight }],
+    [{ shoulder: f.I1!, arm: f.I2!, landing: f.I3, flare: f.I4, wing: f.I5! },
+      { dark: colors.fHoleInnerDark, mid: colors.fHoleInner, muted: colors.fHoleInnerMuted, line: colors.fHoleInnerLine, light: colors.fHoleInnerLight }],
   ];
 }
 
@@ -343,26 +345,24 @@ export const renderFholeContours = (
     ? renderArcFromArcFancy(a, color)
     : renderArcFromArc(a, color, 2);
 
-  for (let [e, armColor, wingColor] of drawnEdges(f, colors)) {
-    // landing and flare are both stem-arc fields now — fancy, greyed as stem rather than either end
+  for (let [e, tone] of drawnEdges(f, colors)) {
     let inOrder: [Arc | null, string, boolean][] = [
-      [e.shoulder, armColor, true], [e.arm, armColor, true],
-      [e.landing, colors.fHoleStemOff, true], [e.flare, colors.fHoleStemOff, true],
-      [e.wing, wingColor, true],
+      [e.shoulder, tone.dark, true], [e.arm, tone.mid, true],
+      [e.landing, tone.muted, true], [e.flare, tone.muted, true],
+      [e.wing, tone.light, true],
     ];
 
     for (let [a, color, shaped] of inOrder) if (a) drawArc(a, color, shaped)(g, ui);
 
-    // the run along a stem edge is the only straight part of either contour, so it gets its own
     if (e.landing && e.flare)
-      renderLine(pointOnCircle(e.landing, e.landing.end), pointOnCircle(e.flare, e.flare.start), colors.fHoleStem, 2)(g, ui);
+      renderLine(pointOnCircle(e.landing, e.landing.end), pointOnCircle(e.flare, e.flare.start), tone.line, 2)(g, ui);
   }
 
   // the cut closes each end of the outline: out of the eye to the tip, where the wing meets it. the
   // tip carries no mark of its own — it is where three other numbers land
   for (let [eye, shoulder, otherEye, cut, tip, color, eyeColor] of [
-    [f.UEye!, f.O1!, f.LEye!, f.UCut!, f.UTip!, colors.fHoleCutUpper, colors.fHoleUpper],
-    [f.LEye!, f.I1!, f.UEye!, f.LCut!, f.LTip!, colors.fHoleCutLower, colors.fHoleLower],
+    [f.UEye!, f.O1!, f.LEye!, f.UCut!, f.UTip!, colors.fHoleStem, colors.fHoleOuterDeep],
+    [f.LEye!, f.I1!, f.UEye!, f.LCut!, f.LTip!, colors.fHoleStem, colors.fHoleInnerDeep],
   ] as const) {
     renderLine(cutRay(eye, otherEye, cut).foot, tip, color, 2)(g, ui);
 

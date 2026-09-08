@@ -179,15 +179,20 @@ export interface CerutiColors {
   fluting: string;
   archTop: string;
   archBack: string;
-  /** By where a piece is drawn — near the upper eye vs. the lower — not by which edge solves it. */
-  fHoleUpper: string;
-  fHoleUpperOff: string;
-  fHoleLower: string;
-  fHoleLowerOff: string;
+  fHoleOuterDeep: string;
+  fHoleOuterDark: string;
+  fHoleOuter: string;
+  fHoleOuterMuted: string;
+  fHoleOuterLine: string;
+  fHoleOuterLight: string;
+  fHoleInnerDeep: string;
+  fHoleInnerDark: string;
+  fHoleInner: string;
+  fHoleInnerMuted: string;
+  fHoleInnerLine: string;
+  fHoleInnerLight: string;
   fHoleStem: string;
   fHoleStemOff: string;
-  fHoleCutUpper: string;
-  fHoleCutLower: string;
 }
 
 /** A plate's 3D/topo overlay is one-at-a-time — rendering both is too slow. */
@@ -200,6 +205,8 @@ export interface CerutiViewFlags {
   showAllArcs: boolean;
   showAllCircles: boolean;
   showModuleGuides: boolean;
+  showFholeBounds: boolean;
+  showFholePlacementGuides: boolean;
   renderOuterPath: boolean;
   showBlocks: boolean;
   showInnerPath: boolean;
@@ -218,7 +225,8 @@ export interface CerutiViewFlags {
 // resolves after the bar's binding evaluates, throwing NG0100 on switch — don't "simplify" this
 // back to @ViewChild/viewChild(). No default on CerutiPanelBase, so omitting renderToggles fails the build.
 export type RenderToggleKey = 'showModuleArcs' | 'showAllArcs' | 'showModuleCircles'
-  | 'showAllCircles' | 'showModuleGuides' | 'showBlocks' | 'showInnerPath' | 'renderOuterPath';
+  | 'showAllCircles' | 'showModuleGuides' | 'showFholeBounds' | 'showFholePlacementGuides'
+  | 'showBlocks' | 'showInnerPath' | 'renderOuterPath';
 
 /**
  * A panel's render request. Panels describe how to build their layers; the parent applies shared
@@ -247,6 +255,8 @@ export const DEFAULT_CERUTI_VIEW_FLAGS: CerutiViewFlags = {
   showAllArcs: false,
   showAllCircles: false,
   showModuleGuides: false,
+  showFholeBounds: true,
+  showFholePlacementGuides: false,
   renderOuterPath: true,
   showBlocks: true,
   showInnerPath: false,

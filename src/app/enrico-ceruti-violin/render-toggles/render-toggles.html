@@ -59,6 +59,31 @@
     </button>
     }
 
+    @if (has('showFholeBounds')) {
+    <button type="button" class="vt-btn" [class.active]="flags.showFholeBounds"
+        (click)="toggle('showFholeBounds')" title="Show F-Hole Bounds" aria-label="Show F-Hole Bounds">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round">
+            <rect x="3" y="4" width="18" height="16" rx="1" stroke-dasharray="3 2.5" />
+            <line x1="11" y1="4" x2="9" y2="20" stroke-dasharray="2 2" />
+            <line x1="17" y1="4" x2="15" y2="20" stroke-dasharray="2 2" />
+        </svg>
+    </button>
+    }
+
+    @if (has('showFholePlacementGuides')) {
+    <button type="button" class="vt-btn" [class.active]="flags.showFholePlacementGuides"
+        (click)="toggle('showFholePlacementGuides')" title="Show Placement Guides"
+        aria-label="Show Placement Guides">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round">
+            <circle cx="8" cy="15" r="6" opacity="0.45" />
+            <circle cx="16" cy="13" r="7" opacity="0.45" />
+            <circle cx="12.4" cy="9.4" r="1.7" fill="currentColor" stroke="none" />
+        </svg>
+    </button>
+    }
+
     @if (has('showBlocks')) {
     <button type="button" class="vt-btn" [class.active]="flags.showBlocks" (click)="toggle('showBlocks')"
         title="Show Corner Blocks" aria-label="Show Corner Blocks">

@@ -1,4 +1,4 @@
-<section class="ui-group" [style.border-color]="colors.fHoleUpper">
+<section class="ui-group" [style.border-color]="colors.fHoleOuter">
     <div class="ui-group-title">Upper Eye</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
@@ -6,7 +6,7 @@
             <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.UEye!.r, .25)" data-fine-step="0.25"
                 min="0" [ngModel]="round2(params.fHoles!.UEye!.r)"
                 (ngModelChange)="params.fHoles!.UEye!.r = $event; onChange()"
-                [style.borderColor]="colors.fHoleUpper" />
+                [style.borderColor]="colors.fHoleOuter" />
         </label>
         <label class="field-cell"></label>
         <label class='field-cell'>
@@ -22,14 +22,14 @@
             <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.UEye!.x, .25)" data-fine-step="0.25"
                 min="0" [ngModel]="round2(params.fHoles!.UEye!.x)"
                 (ngModelChange)="params.fHoles!.UEye!.x = $event; onChange()"
-                [style.borderColor]="colors.fHoleUpperOff" />
+                [style.borderColor]="colors.fHoleOuterMuted" />
         </label>
         <label class="field-cell">
             <span class="field-title">Y <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.UEye!.y, .25)" data-fine-step="0.25"
                 min="0" [ngModel]="round2(params.fHoles!.UEye!.y)"
                 (ngModelChange)="params.fHoles!.UEye!.y = $event; onChange()"
-                [style.borderColor]="colors.fHoleUpperOff" />
+                [style.borderColor]="colors.fHoleOuterMuted" />
         </label>
     </div>
 
@@ -84,7 +84,7 @@
 </section>
 
 
-<section class="ui-group" [style.border-color]="colors.fHoleLower">
+<section class="ui-group" [style.border-color]="colors.fHoleInner">
     <div class="ui-group-title">Lower Eye</div>
     <div class="input-group basic-row field-row" role="group">
 
@@ -93,7 +93,7 @@
             <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.LEye!.r, .25)" data-fine-step="0.25"
                 min="0" [ngModel]="round2(params.fHoles!.LEye!.r)"
                 (ngModelChange)="params.fHoles!.LEye!.r = $event; onChange()"
-                [style.borderColor]="colors.fHoleLower" />
+                [style.borderColor]="colors.fHoleInner" />
         </label>
         <label class="field-cell"></label>
         <label class='field-cell'>
@@ -108,14 +108,14 @@
             <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.LEye!.x, .25)" data-fine-step="0.25"
                 min="0" [ngModel]="round2(params.fHoles!.LEye!.x)"
                 (ngModelChange)="params.fHoles!.LEye!.x = $event; onChange()"
-                [style.borderColor]="colors.fHoleLowerOff" />
+                [style.borderColor]="colors.fHoleInnerMuted" />
         </label>
         <label class="field-cell">
             <span class="field-title">Y <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.LEye!.y, .25)" data-fine-step="0.25"
                 min="0" [ngModel]="round2(params.fHoles!.LEye!.y)"
                 (ngModelChange)="params.fHoles!.LEye!.y = $event; onChange()"
-                [style.borderColor]="colors.fHoleLowerOff" />
+                [style.borderColor]="colors.fHoleInnerMuted" />
         </label>
     </div>
 
