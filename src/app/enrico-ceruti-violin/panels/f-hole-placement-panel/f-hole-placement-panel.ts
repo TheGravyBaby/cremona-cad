@@ -72,7 +72,7 @@ export class FHolePlacementPanel extends CerutiPanelBase implements OnInit {
 
     this.flags.showModuleArcs && renders.push(renderCrazyGuides(p, this.colors));
     this.flags.showModuleGuides && renders.push(renderFholePlacementGuides(p, this.colors));
-    // renders.push(renderFholeRise(p, this.colors));
+    renders.push(renderFholeRise(p, this.colors));
     renders.push(renderFholeStem(p, this.colors));
     renders.push(renderFholeEyes(p, this.colors));
 
@@ -195,20 +195,21 @@ export const renderFholeStem = (p: EnricoCerutiParams, colors: CerutiColors) => 
     const xBase = c.x + side * half;
     renderLine(edgeAt(xBase, c.y - reach), edgeAt(xBase, c.y + reach), colors.fHoleStem, 1.5)(g, ui);
   }
+  renderSmallCrosshair(f.stem.center!, colors.fHoleStem)(g, ui);
+
 }
 
 export const renderFholeEyes = (p: EnricoCerutiParams, colors: CerutiColors) => (g: any, ui: any) => {
   const f = p.fHoles!;
   renderCircle(f.upper.eye!, colors.fHoleUpper)(g, ui);
   renderCircle(f.lower.eye!, colors.fHoleLower)(g, ui);
-  renderSmallCrosshair(f.stem.center!, colors.fHoleStem)(g, ui);
 }
 
 export const renderCrazyGuides = (p: EnricoCerutiParams, colors: CerutiColors) => (g: any, ui: any) => {
   // lower corner line
-  renderDashedLine(new Pt(p.bouts.LCr.x, p.bouts.LCr.y), new Pt(-p.bouts.LCr.x, p.bouts.LCr.y), "red")(g, ui);
+  renderDashedLine(new Pt(p.bouts.LCr.x, p.bouts.LCr.y), new Pt(-p.bouts.LCr.x, p.bouts.LCr.y), "grey")(g, ui);
   // the drop line
-  renderDashedLine(new Pt(p.bouts.LCr.x, p.fHoles.lower.eye.y), new Pt(-p.bouts.LCr.x, p.fHoles.lower.eye.y), "red")(g, ui);
+  renderDashedLine(new Pt(p.bouts.LCr.x, p.fHoles.lower.eye.y), new Pt(-p.bouts.LCr.x, p.fHoles.lower.eye.y), "grey")(g, ui);
 
   // now I need to intersect the drop line with the inner path
   let arcs = defineInnerArcs(p);
