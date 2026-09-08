@@ -10,6 +10,8 @@ import { FlutingPanel } from '../panels/fluting-panel/fluting-panel';
 import { LongArchingPanel } from '../panels/long-arching-panel/long-arching-panel';
 import { CrossArchingPanel } from '../panels/cross-arching-panel/cross-arching-panel';
 import { MouldPanel } from '../panels/mould-panel/mould-panel';
+import { FHolePlacementPanel } from '../panels/f-hole-placement-panel/f-hole-placement-panel';
+import { FHoleContoursPanel } from '../panels/f-hole-contours-panel/f-hole-contours-panel';
 
 describe('RenderToggles', () => {
   let fixture: ComponentFixture<RenderToggles>;
@@ -76,6 +78,8 @@ describe('RenderToggles', () => {
     ['Long Arching', LongArchingPanel.renderToggles],
     ['Cross Arching', CrossArchingPanel.renderToggles],
     ['Mould', MouldPanel.renderToggles],
+    ['F-Hole Placement', FHolePlacementPanel.renderToggles],
+    ['F-Hole Contours', FHoleContoursPanel.renderToggles],
   ] as const;
 
   it.each(PANELS)('draws a button for every key %s asks for', (_label, buttons) => {

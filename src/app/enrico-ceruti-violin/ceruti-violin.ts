@@ -56,6 +56,7 @@ export class CerutiViolin extends RecipeComponentBase {
 
   offFactor = .5;
   off2Factor = .8;
+  lineFactor = .3;
   private readonly colorPalette = {
     upperBout: '#4D8660',
     centerBoutUp: '#C24B2E',
@@ -69,11 +70,15 @@ export class CerutiViolin extends RecipeComponentBase {
     fluting: '#478968ff',
     archTop: '#C47B3A',
     archBack: '#4D74A8',
-    fHoleUpper: '#3fa568',
-    fHoleLower: '#3f86c9',
-    fHoleStem: '#a969b4',
-    fHoleCutUpper: '#C24B2E',
-    fHoleCutLower: '#e1bf50ff',
+    fHoleOuterDeep: '#1b5637',
+    fHoleOuterDark: '#24714a',
+    fHoleOuter: '#3fa568',
+    fHoleOuterLight: '#7fd3a2',
+    fHoleInnerDeep: '#5c2c72',
+    fHoleInnerDark: '#7a3e95',
+    fHoleInner: '#a969b4',
+    fHoleInnerLight: '#d0a3de',
+    fHoleStem: '#8b939e',
   } as const;
 
   private makeColor(base: string, ...extra: ColorTransform[]): string {
@@ -111,14 +116,20 @@ export class CerutiViolin extends RecipeComponentBase {
       fluting: this.makeColor(p.fluting),
       archTop: this.makeColor(p.archTop),
       archBack: this.makeColor(p.archBack),
-      fHoleUpper: this.makeColor(p.fHoleUpper),
-      fHoleUpperOff: this.makeColor(p.fHoleUpper, { type: 'greyOut', degree: this.offFactor }),
-      fHoleLower: this.makeColor(p.fHoleLower),
-      fHoleLowerOff: this.makeColor(p.fHoleLower, { type: 'greyOut', degree: this.offFactor }),
+      fHoleOuterDeep: this.makeColor(p.fHoleOuterDeep),
+      fHoleOuterDark: this.makeColor(p.fHoleOuterDark),
+      fHoleOuter: this.makeColor(p.fHoleOuter),
+      fHoleOuterMuted: this.makeColor(p.fHoleOuter, { type: 'greyOut', degree: this.offFactor }),
+      fHoleOuterLine: this.makeColor(p.fHoleOuter, { type: 'greyOut', degree: this.lineFactor }),
+      fHoleOuterLight: this.makeColor(p.fHoleOuterLight),
+      fHoleInnerDeep: this.makeColor(p.fHoleInnerDeep),
+      fHoleInnerDark: this.makeColor(p.fHoleInnerDark),
+      fHoleInner: this.makeColor(p.fHoleInner),
+      fHoleInnerMuted: this.makeColor(p.fHoleInner, { type: 'greyOut', degree: this.offFactor }),
+      fHoleInnerLine: this.makeColor(p.fHoleInner, { type: 'greyOut', degree: this.lineFactor }),
+      fHoleInnerLight: this.makeColor(p.fHoleInnerLight),
       fHoleStem: this.makeColor(p.fHoleStem),
       fHoleStemOff: this.makeColor(p.fHoleStem, { type: 'greyOut', degree: this.offFactor }),
-      fHoleCutUpper: this.makeColor(p.fHoleCutUpper),
-      fHoleCutLower: this.makeColor(p.fHoleCutLower),
     };
   }
 
