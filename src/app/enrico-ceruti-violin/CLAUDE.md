@@ -15,8 +15,9 @@ adding to a file — they are current and more specific than this page.
 | `ceruti-surface.ts` | The evaluable height field z(x,y) over the plan view. Cross-arch templates, STL. |
 | `ceruti-types.ts` | `EnricoCerutiParams` and the whole serialized shape. `CerutiColors`, view flags. |
 | `ceruti-templates.ts` | Bundled historical instruments (Strad Goetz, Del Gesu Baltic, …) as pasted recipe JSON. **Append-only** — add instruments, don't restructure. |
-| `corpus/` | Instruments traced from open-licence museum records — one `.json` file each, listed in `corpus/index.ts`. Same type as the templates above, but carrying a `TemplateMeta` and a per-image `ImageCredit` so the numbers and the pixels can each be rechecked. New instruments go here, not in `ceruti-templates.ts`. |
-| `restricted/` | The same, where the reference image is under a commercial or otherwise restrictive licence and so cannot ship in an open build. Split by folder rather than by a field, so dropping the import drops every image whose terms are in question. The traces are held to the same provenance checks — `ceruti-templates.spec.ts` sweeps both sets. |
+| `templates/corpus/` | Instruments traced from open-licence museum records — one `.json` file each, listed in `templates/corpus/index.ts`. Same type as the templates above, but carrying a `TemplateMeta` and a per-image `ImageCredit` so the numbers and the pixels can each be rechecked. New instruments go here, not in `ceruti-templates.ts`. |
+| `templates/restricted/` | The same, where the reference image is under a commercial or otherwise restrictive licence and so cannot ship in an open build. Split by folder rather than by a field, so dropping the import drops every image whose terms are in question. The traces are held to the same provenance checks — `ceruti-templates.spec.ts` sweeps both sets. |
+| `templates/legacy/` | The eight eye-traced instruments, out of the picker but swept by the suite. See that folder's `index.ts`. |
 | `ceruti-helpers.ts` | `*Info()` functions — the help text behind each field's info button. |
 | `panels/` | One folder per sidebar panel. Panels are thin; see the layer rule in the root CLAUDE.md. |
 | `renders/` | SVG emitters for the arching views, plus geometry that only serves one view. |

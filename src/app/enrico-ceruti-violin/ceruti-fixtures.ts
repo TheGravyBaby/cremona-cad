@@ -1,7 +1,7 @@
 import { calculateCenterBout, calculateCorners, calculateMainBouts, calculateOuterArcs } from './ceruti-calcs';
 import { defaultArchingParams, normalizeArchingParams } from './ceruti-arching';
 import { CERUTI_TEMPLATES } from './ceruti-templates';
-import { LEGACY_TEMPLATES } from './legacy';
+import { LEGACY_TEMPLATES } from './templates/subPrime';
 import { DefaultParams, EnricoCerutiParams, EnricoCerutiTemplate } from './ceruti-types';
 
 // Test fixtures. Not imported by the app.
