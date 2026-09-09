@@ -5,6 +5,8 @@ import guarneriViolinKreisler2022560099 from './guarneri-violin-kreisler-2022560
 import stradivariViolaCassavetti2022560103 from './stradivari-viola-cassavetti-2022560103.json';
 import stradivariCelloCastelbarco2022560102 from './stradivari-cello-castelbarco-2022560102.json';
 import stradivariViolinWard2022560100 from './stradivari-violin-ward-2022560100.json';
+import rugeriCello from './rugeri-poplar1690.json'
+import guarneriViolinGoldbergBaronVitta2023870692 from './guarneri-violin-goldberg-baron-vitta-2023870692.json';
 
 /**
  * Instruments traced from public museum/library records, kept apart from `ceruti-templates.ts` —
@@ -34,6 +36,9 @@ export const CORPUS_TEMPLATES: EnricoCerutiTemplate[] = [
   stradivariViolinWard2022560100 as unknown as EnricoCerutiTemplate,
   stradivariViolinBetts2022560101 as unknown as EnricoCerutiTemplate,
   guarneriViolinKreisler2022560099 as unknown as EnricoCerutiTemplate,
+  guarneriViolinGoldbergBaronVitta2023870692 as unknown as EnricoCerutiTemplate,
   stradivariViolaCassavetti2022560103 as unknown as EnricoCerutiTemplate,
   stradivariCelloCastelbarco2022560102 as unknown as EnricoCerutiTemplate,
+  rugeriCello as unknown as EnricoCerutiTemplate,
+
 ];

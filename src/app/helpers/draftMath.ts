@@ -502,7 +502,10 @@ export function sweepForTangentLineRadius(
 
     const delta = Math.atan2(c, b);
     const offset = Math.acos(clamp(-a / R, -1, 1));
-    const candidates = [fold(delta + offset), fold(delta - offset)].filter(inRange);
+    // the raw solve hits the target radius on the reflex turn too, which arcTangentToLine cannot
+    // build — so a candidate only counts once that closing arc actually comes back
+    const candidates = [fold(delta + offset), fold(delta - offset)].filter(inRange)
+      .filter(s => arcTangentToLine(pointAt(s), travel + s, A, lineDir) != null);
     if (candidates.length) return candidates.reduce((best, s) => Math.abs(s) < Math.abs(best) ? s : best);
   }
   return null;

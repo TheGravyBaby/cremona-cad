@@ -24,24 +24,28 @@
                 [ngModel]="round2(params.fHoles!.O2!.r)" (ngModelChange)="params.fHoles!.O2!.r = $event; onChange(); onArcFocus('O2', colors.fHoleOuter)"
                 [style.borderColor]="colors.fHoleOuter" (focus)="onArcFocus('O2', colors.fHoleOuter)" (blur)="onArcBlur()" />
         </label>
+        @if (params.fHoles!.O3) {
         <label class="field-cell">
             <span class="field-title">O3 Radius<span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.O3!.r, 1)" min="0"
                 [ngModel]="round2(params.fHoles!.O3!.r)" (ngModelChange)="params.fHoles!.O3!.r = $event; onChange(); onArcFocus('O3', colors.fHoleOuterMuted)"
                 [style.borderColor]="colors.fHoleOuterMuted" (focus)="onArcFocus('O3', colors.fHoleOuterMuted)" (blur)="onArcBlur()" />
         </label>
+        }
     </div>
 </section>
 
 <section class="ui-group" [style.border-color]="colors.fHoleOuterLight">
     <div class="ui-group-title">Outer Wing</div>
     <div class="input-group basic-row field-row" role="group">
+        @if (params.fHoles!.O4) {
         <label class="field-cell">
             <span class="field-title">O4 Radius <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.O4!.r, 1)" min="0"
                 [ngModel]="round2(params.fHoles!.O4!.r)" (ngModelChange)="params.fHoles!.O4!.r = $event; onChange(); onArcFocus('O4', colors.fHoleOuterMuted)"
                 [style.borderColor]="colors.fHoleOuterMuted" (focus)="onArcFocus('O4', colors.fHoleOuterMuted)" (blur)="onArcBlur()" />
         </label>
+        }
         <label class="field-cell">
             <span class="field-title">O5 Radius <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.O5!.r, 1)" min="0"
@@ -112,12 +116,14 @@
                 [ngModel]="round2(params.fHoles!.I2!.r)" (ngModelChange)="params.fHoles!.I2!.r = $event; onChange(); onArcFocus('I2', colors.fHoleInner)"
                 [style.borderColor]="colors.fHoleInner" (focus)="onArcFocus('I2', colors.fHoleInner)" (blur)="onArcBlur()" />
         </label>
+        @if (params.fHoles!.I3) {
         <label class="field-cell">
             <span class="field-title">I3 Radius <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.I3!.r, 1)" min="0"
                 [ngModel]="round2(params.fHoles!.I3!.r)" (ngModelChange)="params.fHoles!.I3!.r = $event; onChange(); onArcFocus('I3', colors.fHoleInnerMuted)"
                 [style.borderColor]="colors.fHoleInnerMuted" (focus)="onArcFocus('I3', colors.fHoleInnerMuted)" (blur)="onArcBlur()" />
         </label>
+        }
     </div>
 </section>
 
@@ -125,12 +131,14 @@
 <section class="ui-group" [style.border-color]="colors.fHoleInnerLight">
     <div class="ui-group-title">Inner Wing</div>
     <div class="input-group basic-row field-row" role="group">
+        @if (params.fHoles!.I4) {
         <label class="field-cell">
             <span class="field-title">I4 Radius <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.I4!.r, 1)" min="0"
                 [ngModel]="round2(params.fHoles!.I4!.r)" (ngModelChange)="params.fHoles!.I4!.r = $event; onChange(); onArcFocus('I4', colors.fHoleInnerMuted)"
                 [style.borderColor]="colors.fHoleInnerMuted" (focus)="onArcFocus('I4', colors.fHoleInnerMuted)" (blur)="onArcBlur()" />
         </label>
+        }
         <label class="field-cell">
             <span class="field-title">I5 Radius <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" [step]="stepFor(params.fHoles!.I5!.r, 1)" min="0"
