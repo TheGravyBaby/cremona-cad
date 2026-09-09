@@ -25,17 +25,14 @@ const solve = (shaped: boolean): EnricoCerutiParams => {
   calculateFholeContours(p); // first pass: every radius, stem arcs included, off the defaults
 
   if (shaped) {
-    // mimics a user extending both shoulders past their apex, then dialling all four stem arcs
-    // off the 40 they default to. turn is -1 both sides by construction here, so subtracting
-    // from `end` continues the shoulder's own turn.
+    // mimics a user extending both shoulders past their apex, then dialling the stem's one
+    // shared arc radius off the 40 it defaults to. turn is -1 both sides by construction here,
+    // so subtracting from `end` continues the shoulder's own turn.
     p.fHoles!.O1!.end -= 0.3;
     p.fHoles!.I1!.end -= 0.25;
     calculateFholeContours(p);
 
-    p.fHoles!.O3!.r += 8; // outer's stem-tangent arc
-    p.fHoles!.I3!.r -= 5; // inner's stem-tangent arc
-    p.fHoles!.I4!.r += 4; // inner's stem-to-wing arc
-    p.fHoles!.O4!.r -= 6; // outer's stem-to-wing arc
+    p.fHoles!.stem.arcR! += 8; // all four of O3/O4/I3/I4 follow this one number
     calculateFholeContours(p);
   }
 
@@ -61,6 +58,7 @@ const PLAIN = {
     "center": { "x": 37.4577, "y": 159.6466 },
     "width": 5.0311,
     "angle": 1.6057,
+    "arcR": 40,
   },
   "O1": { "x": 26.3829, "y": 186.0665, "r": 8, "start": 2.9402, "end": 1.5708 },
   "O2": { "x": 26.3829, "y": 184.0665, "r": 10, "start": 1.5708, "end": 0.4648 },
@@ -87,17 +85,18 @@ const SHAPED = {
     "center": { "x": 37.4577, "y": 159.6466 },
     "width": 5.0311,
     "angle": 1.6057,
+    "arcR": 48,
   },
   "O1": { "x": 26.3829, "y": 186.0665, "r": 8, "start": 2.9402, "end": 1.2708 },
   "O2": { "x": 25.7919, "y": 184.1558, "r": 10, "start": 1.2708, "end": 0.4559 },
   "O3": { "x": -8.3277, "y": 167.4269, "r": 48, "start": 0.4559, "end": 0.0349 },
-  "O4": { "x": 74.3548, "y": 149.3154, "r": 34, "start": -3.1067, "end": -2.6684 },
-  "O5": { "x": 54.7726, "y": 139.2885, "r": 12, "start": 3.6148, "end": -1.6581 },
+  "O4": { "x": 88.2513, "y": 152.5241, "r": 48, "start": -3.1067, "end": -2.7651 },
+  "O5": { "x": 54.7726, "y": 139.2885, "r": 12, "start": 3.5181, "end": -1.6581 },
   "I1": { "x": 51.5879, "y": 135.6, "r": 10, "start": -0.2014, "end": -1.8208 },
-  "I2": { "x": 52.0827, "y": 137.5378, "r": 12, "start": -1.8208, "end": -2.4809 },
-  "I3": { "x": 70.2426, "y": 151.6522, "r": 35, "start": -2.4809, "end": -3.1067 },
-  "I4": { "x": -9.5431, "y": 172.7736, "r": 44, "start": -6.2483, "end": -5.9829 },
-  "I5": { "x": 22.9353, "y": 182.8311, "r": 10, "start": 0.3003, "end": 1.3963 },
+  "I2": { "x": 52.0827, "y": 137.5378, "r": 12, "start": -1.8208, "end": -2.6095 },
+  "I3": { "x": 83.1057, "y": 155.8019, "r": 48, "start": -2.6095, "end": -3.1067 },
+  "I4": { "x": -13.5225, "y": 172.1155, "r": 48, "start": -6.2483, "end": -5.9973 },
+  "I5": { "x": 22.9353, "y": 182.8311, "r": 10, "start": 0.2859, "end": 1.3963 },
 };
 
 describe('f-hole contours', () => {
@@ -185,13 +184,15 @@ describe('f-hole contour properties', () => {
 
   }
 
-  it('holds a stem arc and a stem R to the radii they were pinned at, once shaped', () => {
+  it('holds all four stem arcs to the one radius the stem was pinned at, once shaped', () => {
     const bootstrap = solve(false).fHoles!;
     const f = solve(true).fHoles!;
+    const pinned = bootstrap.stem.arcR! + 8;
 
-    expect(f.O3!.r).toBeCloseTo(bootstrap.O3!.r + 8, 6);
-    expect(f.I3!.r).toBeCloseTo(bootstrap.I3!.r - 5, 6);
-    expect(f.I4!.r).toBeCloseTo(bootstrap.I4!.r + 4, 6);
-    expect(f.O4!.r).toBeCloseTo(bootstrap.O4!.r - 6, 6);
+    expect(f.stem.arcR).toBeCloseTo(pinned, 6);
+    expect(f.O3!.r).toBeCloseTo(pinned, 6);
+    expect(f.O4!.r).toBeCloseTo(pinned, 6);
+    expect(f.I3!.r).toBeCloseTo(pinned, 6);
+    expect(f.I4!.r).toBeCloseTo(pinned, 6);
   });
 });

@@ -48,4 +48,8 @@ describe('stepAmountForKey', () => {
   it('is a no-op with no modifiers', () => {
     expect(stepAmountForKey({ shiftKey: false, ctrlKey: false, metaKey: false }, 2)).toBe(2);
   });
+
+  it('takes an explicit shiftStep over the baseStep scaling, for a flat step scheme', () => {
+    expect(stepAmountForKey({ shiftKey: true, ctrlKey: false, metaKey: false }, 1, 1, 10)).toBe(10);
+  });
 });

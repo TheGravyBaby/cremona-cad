@@ -153,6 +153,9 @@ export interface FholeStem {
   width: number | null;
   /** radians; geometry should read `stemRun`, not this. */
   angle: number | null;
+  /** Shared radius for all four stem-tangent/flare arcs (O3/O4/I3/I4) — one compass setting for
+   * the whole stem, the way a maker would actually fit it. */
+  arcR: number | null;
 }
 
 /** Resolved palette from CerutiViolin's `colors` getter, threaded into every panel and render fn. */
@@ -179,20 +182,21 @@ export interface CerutiColors {
   fluting: string;
   archTop: string;
   archBack: string;
-  fHoleOuterDeep: string;
-  fHoleOuterDark: string;
-  fHoleOuter: string;
-  fHoleOuterMuted: string;
-  fHoleOuterLine: string;
-  fHoleOuterLight: string;
-  fHoleInnerDeep: string;
-  fHoleInnerDark: string;
-  fHoleInner: string;
-  fHoleInnerMuted: string;
-  fHoleInnerLine: string;
-  fHoleInnerLight: string;
+  fHoleUpperDeep: string;
+  fHoleUpperDark: string;
+  fHoleUpper: string;
+  fHoleUpperMuted: string;
+  fHoleUpperLine: string;
+  fHoleUpperLight: string;
+  fHoleLowerDeep: string;
+  fHoleLowerDark: string;
+  fHoleLower: string;
+  fHoleLowerMuted: string;
+  fHoleLowerLine: string;
+  fHoleLowerLight: string;
   fHoleStem: string;
   fHoleStemOff: string;
+  fHoleStemLine: string;
 }
 
 /** A plate's 3D/topo overlay is one-at-a-time — rendering both is too slow. */
