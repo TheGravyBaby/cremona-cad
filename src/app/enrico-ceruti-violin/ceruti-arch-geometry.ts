@@ -69,32 +69,14 @@ export function gougeProfileSlope(s: number, sweepRadius: number, depth: number)
   return denom <= 0 ? 0 : s / denom;
 }
 
-/**
- * A starting gouge for a plate: one that cuts a channel of about the width the
- * outline itself implies, so the panel opens on something a maker recognises
- * and adjusts rather than on an arbitrary tool.
- *
- * The width comes from the plate's own edge geometry — the land edge outward of
- * the purfling, and twice the edge inset inward of it, which is where a channel
- * of ordinary proportions reaches on an instrument of this size. Given that
- * target half-width `w` and a depth `D`, R = (w² + D²) / 2D falls straight out
- * of the half-width formula and names the gouge that cuts it.
- *
- * Derived from the outline rather than from any stored channel reach: the
- * reach is an *output* of the tool here, so seeding the tool from one would run
- * the dependency backwards at the one moment it is most likely to be believed.
- */
+/** A starting gouge for a plate, sized by instrument family like {@link defaultArchingParams}. */
 export function defaultFlutingParams(p: EnricoCerutiParams): FlutingParams {
-  const inner = 2 * (p.overhang + p.rib);
-  const outer = p.outerFlutingDepth ?? p.overhang * 0.5;
-  const depth = 1.2;
-  const halfWidth = Math.max(Math.abs(inner - outer) / 2, 0.5);
-  return {
-    sweepRadius: +((halfWidth * halfWidth + depth * depth) / (2 * depth)).toFixed(2),
-    depth,
-    sweepRadius_cBout: null,
-    cornerGouge: true,
-  };
+  const [sweepRadius, depth, sweepRadius_cBout] =
+    p.height < 400 ? [15, 1, 7.5] :    // violin
+    p.height < 500 ? [18, 1.5, 9] :    // viola
+    p.height < 800 ? [28, 2, 14] :     // cello
+    [38, 2.5, 19];                     // bass
+  return { sweepRadius, depth, sweepRadius_cBout, cornerGouge: true };
 }
 
 /**
@@ -760,13 +742,27 @@ export function makeCrossArchResolver(
   return (y: number) => ({ left: read(left, y), right: read(right, y), peak: peakTrack(y) });
 }
 
-/** Which gouge is cutting at body station `y` — the C-bout tool between the corners, else the main one. */
+/**
+ * Which gouge is cutting at body station `y` — the C-bout tool between the
+ * corners, else the main one, eased across each corner over one gouge width
+ * rather than switched outright. A hard switch is a step in sweep radius at an
+ * arbitrary station, and since every per-station solve downstream (the takeoff,
+ * the tangency, the corner wedge) treats its inputs as varying continuously in
+ * y, that step becomes a seam in the surface exactly at the corner — invisible
+ * only while the two radii happened to be equal.
+ */
 export function gougeAtY(
   p: EnricoCerutiParams, g: FlutingParams, y: number,
 ): { sweepRadius: number; halfWidth: number } {
-  const corners = [p.bouts.UCr?.y, p.bouts.LCr?.y].filter((v): v is number => v !== null && v !== undefined);
-  const inCBout = corners.length === 2 && y >= Math.min(...corners) && y <= Math.max(...corners);
-  const sweepRadius = inCBout ? effectiveCBoutSweep(g) : g.sweepRadius;
+  const uc = p.bouts.UCr?.y, lc = p.bouts.LCr?.y;
+  if (uc == null || lc == null) {
+    return { sweepRadius: g.sweepRadius, halfWidth: gougeHalfWidth(g.sweepRadius, g.depth) };
+  }
+  const lo = Math.min(uc, lc), hi = Math.max(uc, lc);
+  const cSweep = effectiveCBoutSweep(g);
+  const band = Math.max(gougeHalfWidth(g.sweepRadius, g.depth), gougeHalfWidth(cSweep, g.depth));
+  const wC = smoothstep(y, lo - band, lo + band) * (1 - smoothstep(y, hi - band, hi + band));
+  const sweepRadius = g.sweepRadius + wC * (cSweep - g.sweepRadius);
   return { sweepRadius, halfWidth: gougeHalfWidth(sweepRadius, g.depth) };
 }
 

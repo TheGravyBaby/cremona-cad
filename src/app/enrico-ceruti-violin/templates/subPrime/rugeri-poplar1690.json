@@ -234,9 +234,9 @@
         },
         "thickness": 6,
         "fluting": {
-          "sweepRadius": 9.04,
-          "depth": 1.2,
-          "sweepRadius_cBout": null,
+          "sweepRadius": 28,
+          "depth": 2,
+          "sweepRadius_cBout": 14,
           "cornerGouge": true
         },
         "cross": {
@@ -252,9 +252,9 @@
         },
         "thickness": 6,
         "fluting": {
-          "sweepRadius": 9.04,
-          "depth": 1.2,
-          "sweepRadius_cBout": null,
+          "sweepRadius": 28,
+          "depth": 2,
+          "sweepRadius_cBout": 14,
           "cornerGouge": true
         },
         "cross": {

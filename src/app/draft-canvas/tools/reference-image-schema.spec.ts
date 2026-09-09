@@ -1,7 +1,7 @@
 import { imageShapesFromRecipe, imageShapesToRecipe } from './reference-image-schema';
 import { ImageAssetStore } from './image-asset-store';
 import { CERUTI_TEMPLATES } from '../../enrico-ceruti-violin/ceruti-templates';
-import { LEGACY_TEMPLATES } from '../../enrico-ceruti-violin/legacy';
+import { LEGACY_TEMPLATES } from '../../enrico-ceruti-violin/templates/subPrime';
 import { NamedReferenceImage } from '../../models/types';
 
 /** The store has no Angular dependencies of its own, so a plain instance is enough here. */
