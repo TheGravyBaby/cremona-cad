@@ -1,5 +1,6 @@
 import { EnricoCerutiTemplate, DefaultParams, RECIPE_SCHEMA_VERSION } from "./ceruti-types";
 import { CORPUS_TEMPLATES } from "./corpus";
+import { RESTRICTED_TEMPLATES } from "./templates/restricted";
 
 /**
  * The instruments the template picker offers.
@@ -23,5 +24,7 @@ export const CERUTI_TEMPLATES: EnricoCerutiTemplate[] = [
     referenceImages: [],
   },
   // museum-traced instruments live in corpus/index.ts, appended rather than interleaved.
-  ...CORPUS_TEMPLATES
+  // restricted/ holds the same kind of trace where the reference image is not open-licence.
+  ...CORPUS_TEMPLATES,
+  ...RESTRICTED_TEMPLATES,
 ];

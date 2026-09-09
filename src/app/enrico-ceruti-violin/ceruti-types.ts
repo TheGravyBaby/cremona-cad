@@ -463,7 +463,6 @@ export interface TemplateMeta {
   /** as published: '1669', 'c.1730', '1610-20' — a string, not a year, since most are ranges. */
   date: string;
   record: {
-    source: 'met' | 'si' | 'loc' | 'other';
     /** The institution's own object id — Met 898377, SI nmah_833906, LoC ihas.200154811. */
     objectId: string;
     url: string;

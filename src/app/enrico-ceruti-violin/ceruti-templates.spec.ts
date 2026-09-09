@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { CERUTI_TEMPLATES } from './ceruti-templates';
 import { CORPUS_TEMPLATES } from './corpus';
+import { RESTRICTED_TEMPLATES } from './templates/restricted';
 import { CERUTI_PANEL_IDS } from './ceruti-types';
 
 // a blank recipeName fails the identity check on refresh and silently reverts to the default
@@ -32,16 +33,19 @@ describe('CERUTI_TEMPLATES', () => {
   });
 });
 
-// unlike the older bundled templates, a corpus template's numbers can be rechecked against a
-// public record and its images state what may be done with them.
-describe('CORPUS_TEMPLATES', () => {
+// unlike the older bundled templates, these numbers can be rechecked against a public record and
+// their images state what may be done with them. restricted/ is held to the same standard — it is
+// separated by whether its images can ship, not by how well its provenance is documented.
+const TRACED_TEMPLATES = [...CORPUS_TEMPLATES, ...RESTRICTED_TEMPLATES];
+
+describe('TRACED_TEMPLATES', () => {
   it('is part of the bundled set', () => {
     const keys = new Set(CERUTI_TEMPLATES.map(t => t.key));
-    expect(CORPUS_TEMPLATES.every(t => keys.has(t.key))).toBe(true);
+    expect(TRACED_TEMPLATES.every(t => keys.has(t.key))).toBe(true);
   });
 
   it('names the record every instrument was traced from', () => {
-    for (const t of CORPUS_TEMPLATES) {
+    for (const t of TRACED_TEMPLATES) {
       expect(t.meta, `${t.key} has no meta`).toBeDefined();
       expect(t.meta!.maker.length).toBeGreaterThan(0);
       expect(t.meta!.record.objectId.length).toBeGreaterThan(0);
@@ -50,7 +54,7 @@ describe('CORPUS_TEMPLATES', () => {
   });
 
   it('states the licence on every reference image it ships', () => {
-    for (const t of CORPUS_TEMPLATES) {
+    for (const t of TRACED_TEMPLATES) {
       for (const img of t.referenceImages ?? []) {
         expect(img.credit, `${t.key} / ${img.label} has no credit`).toBeDefined();
         expect(img.credit!.licence.length).toBeGreaterThan(0);
@@ -61,7 +65,7 @@ describe('CORPUS_TEMPLATES', () => {
 
   // a plausible-looking crown on a named instrument is an invented measurement of a real object.
   it('invents no arching for a real instrument', () => {
-    for (const t of CORPUS_TEMPLATES) {
+    for (const t of TRACED_TEMPLATES) {
       expect((t.params as { arching?: unknown }).arching, `${t.key} carries arching`).toBeUndefined();
     }
   });
