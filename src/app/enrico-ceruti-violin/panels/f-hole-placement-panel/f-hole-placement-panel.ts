@@ -135,6 +135,7 @@ export const defaultFHolePlacement = (p: EnricoCerutiParams): FholeParams => {
         center: stemCenter,
         width: stemOuter - stemInner,
         angle: STEM_ANGLE_DEFAULT * Math.PI / 180,
+        arcR: undefined,
       },
       O1: undefined, O2: undefined, O3: undefined, O4: undefined, O5: undefined,
       I1: undefined, I2: undefined, I3: undefined, I4: undefined, I5: undefined,
@@ -163,7 +164,7 @@ export const renderFholeBounds = (p: EnricoCerutiParams, colors: CerutiColors) =
 
 export const renderFholeRise = (p: EnricoCerutiParams, colors: CerutiColors) => (g: any, ui: any) => {
   const f = p.fHoles!;
-  for (const [eye, rise, side, color] of [[f.UEye!, f.URise!, 1, colors.fHoleOuter], [f.LEye!, f.LRise!, -1, colors.fHoleInner]] as const) {
+  for (const [eye, rise, side, color] of [[f.UEye!, f.URise!, 1, colors.fHoleUpper], [f.LEye!, f.LRise!, -1, colors.fHoleLower]] as const) {
     const boundY = eye.y + side * (eye.r + rise);
     renderLine(new Pt(eye.x - eye.r, boundY), new Pt(eye.x + eye.r, boundY), color, 1)(g, ui);
     renderDashedLine(new Pt(eye.x, eye.y + side * eye.r), new Pt(eye.x, boundY), color, '2 2', 1, 0.9)(g, ui);
@@ -191,8 +192,8 @@ export const renderFholeStem = (p: EnricoCerutiParams, colors: CerutiColors) => 
 
 export const renderFholeEyes = (p: EnricoCerutiParams, colors: CerutiColors) => (g: any, ui: any) => {
   const f = p.fHoles!;
-  renderCircle(f.UEye!, colors.fHoleOuter)(g, ui);
-  renderCircle(f.LEye!, colors.fHoleInner)(g, ui);
+  renderCircle(f.UEye!, colors.fHoleUpper)(g, ui);
+  renderCircle(f.LEye!, colors.fHoleLower)(g, ui);
 }
 
 const GUIDE_NEUTRAL = '#7e7e7e';

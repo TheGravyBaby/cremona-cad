@@ -1,6 +1,6 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, FholeCut, FholeParams, FholeStem, PathEntry, RenderToggleKey } from '../../ceruti-types';
+import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, FholeCut, FholeStem, PathEntry, RenderToggleKey } from '../../ceruti-types';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderLine, renderPath, renderPointHalo } from '../../../helpers/renderFuncs';
 import { ensureOuterTracePaths, calculateOuterArcs, getPath, getPathOrNull } from '../../ceruti-calcs';
@@ -131,10 +131,10 @@ type FholeEdge = {
   landing: Arc | null; flare: Arc | null; wing: Arc;
 };
 
-// same 5 slots as read in on entry — nullable, since a fresh hole has solved none of them yet
+// shoulder/arm/wing seed from the last solve; landing/flare don't — their radius is now the
+// stem's single shared arcR, not read back per edge
 type FholeEdgeSeed = {
-  shoulder: Arc | null; arm: Arc | null;
-  landing: Arc | null; flare: Arc | null; wing: Arc | null;
+  shoulder: Arc | null; arm: Arc | null; wing: Arc | null;
 };
 
 // default proportions, off a traced Amati. every radius runs against its own eye and lands on a
@@ -266,11 +266,9 @@ function solveFholeEdge(
   let armEntry = pointOnCircle(shoulder, shoulder.end);
   let armEntryTravel = travelAtArcEnd(shoulder);
 
-  // the stem arc's radius is the free choice now, seeded from this edge's own last-solved landing
-  // and falling back to the shared default. the arm's sweep is what used to be free — solved
-  // instead, so it lands exactly on that radius.
-  let landingR = seed.landing?.r ?? stemArcR;
-  let armSweep = sweepForTangentLineRadius(armEntry, armEntryTravel, armR, turn as 1 | -1, stemEdge, stemDir, landingR);
+  // the stem arc's radius is fixed to the shared stemArcR; the arm's sweep is solved to land
+  // exactly on it
+  let armSweep = sweepForTangentLineRadius(armEntry, armEntryTravel, armR, turn as 1 | -1, stemEdge, stemDir, stemArcR);
   if (armSweep == null) {
     error('No arm sweep reaches a stem arc of this radius. Try a different arm radius, stem-arc radius, or stem position.', 'F-Hole Arm Misses the Stem');
     armSweep = turn * FArmTurn;
@@ -289,8 +287,8 @@ function solveFholeEdge(
   wing.x = reachTip.x - wing.r * Math.cos(wing.end);
   wing.y = reachTip.y - wing.r * Math.sin(wing.end);
 
-  // the far stem arc — flaring off the straight run onto the wing — gets a free radius the same
-  // way the near one (landing) does, seeded from wherever it last landed
+  // the far stem arc — flaring off the straight run onto the wing — is fixed to the same
+  // stemArcR as the near one
   let wingTurn = (side > 0 ? Math.sign(FLWingEnd - FLWingStart) : Math.sign(FUWingEnd - FUWingStart)) as 1 | -1;
 
   let flare: { run: number; arc: Arc } | null = null;
@@ -298,10 +296,9 @@ function solveFholeEdge(
     let landingEnd = pointOnCircle(landing, landing.end);
     let landingTravel = travelAtArcEnd(landing);
 
-    let flareR = seed.flare?.r ?? stemArcR;
     let flareTheta: number | null = null;
     for (let trySign of [wingTurn, -wingTurn as 1 | -1]) {
-      let candidate = angleForBridgeRadius(landingEnd, landingTravel, wing, trySign, flareR);
+      let candidate = angleForBridgeRadius(landingEnd, landingTravel, wing, trySign, stemArcR);
       // only counts if the wing would still turn its historical way from this point to its end
       if (candidate != null && Math.sign(signedArcSweep(new Arc(0, 0, 0, candidate, wing.end))) === wingTurn) {
         flareTheta = candidate;
@@ -335,30 +332,20 @@ export function calculateFholeContours(p: EnricoCerutiParams): void {
   f.UTip = cutTip(f.UEye!, f.LEye!, f.UCut);
   f.LTip = cutTip(f.LEye!, f.UEye!, f.LCut);
 
-  // one radius for all four stem arcs until the user turns one of them
-  let stemArcR = Math.round(f.LEye!.r * FStemArctoLEye);
+  // one radius for all four stem arcs, seeded once off the lower eye then held in the recipe
+  f.stem.arcR ??= Math.round(f.LEye!.r * FStemArctoLEye);
+  let stemArcR = f.stem.arcR;
 
   let outer = solveFholeEdge(f.stem, 1, f.UEye!, f.URise!,
-    { shoulder: f.O1, arm: f.O2, landing: f.O3, flare: f.O4, wing: f.O5 },
+    { shoulder: f.O1, arm: f.O2, wing: f.O5 },
     f.LEye!, f.LTip, stemArcR);
   let inner = solveFholeEdge(f.stem, -1, f.LEye!, f.LRise!,
-    { shoulder: f.I1, arm: f.I2, landing: f.I3, flare: f.I4, wing: f.I5 },
+    { shoulder: f.I1, arm: f.I2, wing: f.I5 },
     f.UEye!, f.UTip, stemArcR);
 
   // both read the stored arcs as seeds, so nothing is written back until both have been solved
   f.O1 = outer.shoulder; f.O2 = outer.arm; f.O3 = outer.landing; f.O4 = outer.flare; f.O5 = outer.wing;
   f.I1 = inner.shoulder; f.I2 = inner.arm; f.I3 = inner.landing; f.I4 = inner.flare; f.I5 = inner.wing;
-}
-
-type EdgeTones = { dark: string; mid: string; muted: string; line: string; light: string };
-
-function drawnEdges(f: FholeParams, colors: CerutiColors): [FholeEdge, EdgeTones][] {
-  return [
-    [{ shoulder: f.O1!, arm: f.O2!, landing: f.O3, flare: f.O4, wing: f.O5! },
-      { dark: colors.fHoleOuterDark, mid: colors.fHoleOuter, muted: colors.fHoleOuterMuted, line: colors.fHoleOuterLine, light: colors.fHoleOuterLight }],
-    [{ shoulder: f.I1!, arm: f.I2!, landing: f.I3, flare: f.I4, wing: f.I5! },
-      { dark: colors.fHoleInnerDark, mid: colors.fHoleInner, muted: colors.fHoleInnerMuted, line: colors.fHoleInnerLine, light: colors.fHoleInnerLight }],
-  ];
 }
 
 export const renderFholeContours = (
@@ -379,26 +366,35 @@ export const renderFholeContours = (
     ? renderArcFromArcFancy(a, color)
     : renderArcFromArc(a, color, 2);
 
-  for (let [e, tone] of drawnEdges(f, colors)) {
+  // each edge crosses both eyes — its shoulder/arm spring from one, its wing reaches the other —
+  // so color follows the physical side (upper/lower) rather than which edge drew the arc. the
+  // stem-tangent/flare pair is the one part that is genuinely shared, so both edges' land there
+  // in the one stem color.
+  for (let [e, shoulderColor, armColor, wingColor] of [
+    [{ shoulder: f.O1!, arm: f.O2!, landing: f.O3, flare: f.O4, wing: f.O5! },
+      colors.fHoleUpperDark, colors.fHoleUpper, colors.fHoleLowerLight],
+    [{ shoulder: f.I1!, arm: f.I2!, landing: f.I3, flare: f.I4, wing: f.I5! },
+      colors.fHoleLowerDark, colors.fHoleLower, colors.fHoleUpperLight],
+  ] as const) {
     let inOrder: [Arc | null, string, boolean][] = [
-      [e.shoulder, tone.dark, true], [e.arm, tone.mid, true],
-      [e.landing, tone.muted, true], [e.flare, tone.muted, true],
-      [e.wing, tone.light, true],
+      [e.shoulder, shoulderColor, true], [e.arm, armColor, true],
+      [e.landing, colors.fHoleStem, true], [e.flare, colors.fHoleStem, true],
+      [e.wing, wingColor, true],
     ];
 
     for (let [a, color, shaped] of inOrder) if (a) drawArc(a, color, shaped)(g, ui);
 
     if (e.landing && e.flare)
-      renderLine(pointOnCircle(e.landing, e.landing.end), pointOnCircle(e.flare, e.flare.start), tone.line, 2)(g, ui);
+      renderLine(pointOnCircle(e.landing, e.landing.end), pointOnCircle(e.flare, e.flare.start), colors.fHoleStemLine, 2)(g, ui);
   }
 
   // the cut closes each end of the outline: out of the eye to the tip, where the wing meets it. the
   // tip carries no mark of its own — it is where three other numbers land
-  for (let [eye, shoulder, otherEye, cut, tip, color, eyeColor] of [
-    [f.UEye!, f.O1!, f.LEye!, f.UCut!, f.UTip!, colors.fHoleStem, colors.fHoleOuterDeep],
-    [f.LEye!, f.I1!, f.UEye!, f.LCut!, f.LTip!, colors.fHoleStem, colors.fHoleInnerDeep],
+  for (let [eye, shoulder, otherEye, cut, tip, lineColor, eyeColor] of [
+    [f.UEye!, f.O1!, f.LEye!, f.UCut!, f.UTip!, colors.fHoleUpperLine, colors.fHoleUpperDeep],
+    [f.LEye!, f.I1!, f.UEye!, f.LCut!, f.LTip!, colors.fHoleLowerLine, colors.fHoleLowerDeep],
   ] as const) {
-    renderLine(cutRay(eye, otherEye, cut).foot, tip, color, 2)(g, ui);
+    renderLine(cutRay(eye, otherEye, cut).foot, tip, lineColor, 2)(g, ui);
 
     // longArc picks whichever of the two arcs is the counter-clockwise one, so moving the cut
     // round the eye slides the join rather than flipping which side of the rim is drawn

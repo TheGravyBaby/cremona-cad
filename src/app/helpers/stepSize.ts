@@ -27,7 +27,9 @@ const SHIFT_MULTIPLIER = 5;
 
 /**
  * The step to take for one arrow-key press, given the field's plain (percent-scaled) step.
- * Shift scales that step up — still a percentage, so it stays proportionate on any field.
+ * Shift scales that step up — still a percentage, so it stays proportionate on any field — unless
+ * the field opts into a fixed `shiftStep` of its own (see each field's `data-shift-step`), for a
+ * panel that wants a flat step scheme instead of the percent-scaled one.
  * Ctrl (Windows/Linux) or Cmd/Meta (Mac) — either one — switches to a small fixed unit instead
  * of scaling down `baseStep`: a percentage of a percentage reads as an arbitrary decimal, where
  * a fixed nudge (1mm by default, 0.25 on fields already tuned finer — see each field's
@@ -39,8 +41,9 @@ export function stepAmountForKey(
   e: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean },
   baseStep: number,
   fineStep = 1,
+  shiftStep?: number,
 ): number {
-  if (e.shiftKey) return baseStep * SHIFT_MULTIPLIER;
+  if (e.shiftKey) return shiftStep ?? baseStep * SHIFT_MULTIPLIER;
   if (e.ctrlKey || e.metaKey) return fineStep;
   return baseStep;
 }
