@@ -9,7 +9,7 @@
         </label>
         <label class="field-cell">
             <span class="field-title">Extend Angle<span class="unit-label">°</span></span>
-            <input type="number" class="basic-input" [step]="1" min="0"
+            <input type="number" class="basic-input" [step]="1"
                 [ngModel]="getShoulderExtendDeg(params.fHoles!.O1!, 1)"
                 (ngModelChange)="setShoulderExtendDeg(params.fHoles!.O1!, 1, $event); onArcFocus('O1', colors.fHoleOuterDark)"
                 (focus)="onArcFocus('O1', colors.fHoleOuterDark)" (blur)="onArcBlur()" />
@@ -101,7 +101,7 @@
         </label>
         <label class="field-cell">
             <span class="field-title">Extend Angle<span class="unit-label">°</span></span>
-            <input type="number" class="basic-input" [step]="1" min="0"
+            <input type="number" class="basic-input" [step]="1"
                 [ngModel]="getShoulderExtendDeg(params.fHoles!.I1!, -1)"
                 (ngModelChange)="setShoulderExtendDeg(params.fHoles!.I1!, -1, $event); onArcFocus('I1', colors.fHoleInnerDark)"
                 (focus)="onArcFocus('I1', colors.fHoleInnerDark)" (blur)="onArcBlur()" />

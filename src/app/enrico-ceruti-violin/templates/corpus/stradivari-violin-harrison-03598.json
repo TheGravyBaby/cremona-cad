@@ -13,7 +13,7 @@
       "objectId": "03598",
       "url": "https://emuseum.nmmusd.org/objects/7189/violin"
     },
-    "notes": "Antonio Stradivari, 1693, NMM 03598 — the \"Harrison\", one of the Long Pattern instruments. The record publishes back length 363, upper bout 161, centre 109 and lower 203 mm, and is internally consistent: scaled to the published 203 mm lower bout the top photograph measures 363.1 mm long. Height and lower bout width are the published figures; upper and centre bout are 161.8 and 109.2 read off the top photograph, which here agrees with the record more closely than the back does (162.7).\n\nBout radii, corner positions and the corner structure come from fitting the recipe solver to the right-hand silhouette at 9.8 px/mm: 0.34 mm mean deviation, the closest of the three traced in this pass, though the upper corner reaches 0.80 mm where the photograph shows structure behind the top plate's edge. Simple corners fitted best (0.331 mm) ahead of compound small arcs (0.346) and a compound straight run (0.423). The last is worth recording: a straight section into the corner is common in this period, and the variant is reachable on this instrument — it simply does not win on this silhouette. Right side only. No arching, no f-holes.\n\nArching measured off the two side-profile photographs (NMM 81922 and 81923, opposite sides of the same instrument), not from a published section. The method and its checks: body depth at the plate ends recovers a rib height of ~32.5 mm against the record's published 30.4-31.5, which is the test that the view is close enough to orthographic to read an arch from; the same test rejects the Sainton's profile outright. Arch heights are re-referenced so the curve returns to zero at innerFlutingDepth in from each end, as longArchHeightAt defines it.\n\nConfidence differs sharply between the two plates and neither is as good as a drawn section. The back is the clean silhouette: four views give 13.5, 15.0, 15.3 and 16.5 mm, so 15 is the middle of a ~3 mm spread. The top is occluded along its whole length by the fingerboard, bridge, strings and tailpiece; four views give 8.8-10.3 mm and the raw curve runs slightly negative near the neck end, which is unphysical and is clamped to 0.5 here. Read 9 as 'low, and lower than the Amati's 14', which is what the record's 'Arching: low' and 'relatively flat arching' say in words, rather than as a measurement good to a millimetre. The back's fullness toward the neck end (6.5 at t=0.91 against 2.3 at t=0.09) is the least certain feature of the shape and runs opposite to the Amati's. Rib heights are the published figures, not measured. Expect to correct all of this against the profile images in the long-arching panel."
+    "notes": "Antonio Stradivari, 1693, NMM 03598 — the \"Harrison\", one of the Long Pattern instruments. The record publishes back length 363, upper bout 161, centre 109 and lower 203 mm, and is internally consistent: scaled to the published 203 mm lower bout the top photograph measures 363.1 mm long. Height and lower bout width are the published figures; upper and centre bout are 161.8 and 109.2 read off the top photograph, which here agrees with the record more closely than the back does (162.7).\n\nBout radii, corner positions and the corner structure come from fitting the recipe solver to the right-hand silhouette at 9.8 px/mm: 0.34 mm mean deviation, the closest of the three traced in this pass, though the upper corner reaches 0.80 mm where the photograph shows structure behind the top plate's edge. Simple corners fitted best (0.331 mm) ahead of compound small arcs (0.346) and a compound straight run (0.423). The last is worth recording: a straight section into the corner is common in this period, and the variant is reachable on this instrument — it simply does not win on this silhouette. Right side only.\n\nArching measured off the side-profile photographs (NMM 81922 and 81923, opposite sides of the same instrument; only 81922 ships here), not from a published section. The method and its checks: body depth at the plate ends recovers a rib height of ~32.5 mm against the record's published 30.4-31.5, which is the test that the view is close enough to orthographic to read an arch from; the same test rejects the Sainton's profile outright. Arch heights are re-referenced so the curve returns to zero at innerFlutingDepth in from each end, as longArchHeightAt defines it.\n\nBoth plates stand at 10.5 mm over ribs 33 and 30.9, set by hand in the panel rather than taken from the extraction — which read the back at 15 and the top at 9. Neither reading is as good as a drawn section: the back's silhouette is clean but four views spread over ~3 mm, and the top is occluded along its whole length by the fingerboard, bridge, strings and tailpiece, with the raw curve running slightly negative near the neck end. Read the pair as 'low, and lower than the Amati's', which is what the record's 'Arching: low' and 'relatively flat arching' say in words, rather than as a measurement good to a millimetre.\n\nF-hole eyes, rises and stem are placed by hand on the top photograph; the eyes are centred between the notches and sized a hair large by preference. The contour arcs are fitted to the hole's own edge at 9.8 px/mm — 0.33 mm RMS, right-hand hole only — with every radius on a whole millimetre, every angle on a whole degree, and all four stem arcs sharing one 45 mm radius. That radius is exactly ten times the lower eye, so it lands on the panel's own default."
   },
   "params": {
     "height": 363,
@@ -48,8 +48,8 @@
       "L31toLBW": 0.12307692307692308,
       "UCYtoH": 0.6543140495867769,
       "LCYtoH": 0.41244903581267217,
-      "FLtoW": 0.0209756,
-      "FUtoL": 0.6395349
+      "FLtoW": 0.022167487684729065,
+      "FUtoL": 0.6666666666666666
     },
     "bouts": {
       "UBW": 161.8,
@@ -335,6 +335,116 @@
           "cornerGouge": true
         }
       }
+    },
+    "fHoles": {
+      "UEye": {
+        "x": 22.94,
+        "y": 193.32,
+        "r": 3
+      },
+      "LEye": {
+        "x": 58.8,
+        "y": 142.16,
+        "r": 4.5
+      },
+      "URise": 5.24,
+      "LRise": 6.59,
+      "stem": {
+        "center": {
+          "x": 39.6,
+          "y": 165.74
+        },
+        "width": 5.4,
+        "angle": 1.605702911834783
+      },
+      "UCut": {
+        "angleOnEye": 2.0943951023931953,
+        "slope": 1.2217304763960306,
+        "length": 3.25
+      },
+      "LCut": {
+        "angleOnEye": 2.4958208303518914,
+        "slope": -2.234021442552742,
+        "length": 6.25
+      },
+      "UTip": {
+        "x": 25.318087458611885,
+        "y": 199.09354547237476
+      },
+      "LTip": {
+        "x": 54.79727232785803,
+        "y": 132.73759763393815
+      },
+      "O1": {
+        "x": 28.89167203397499,
+        "y": 192.56,
+        "r": 9,
+        "start": 3.014584801730339,
+        "end": 1.413716694115407
+      },
+      "O2": {
+        "x": 28.57880310389453,
+        "y": 190.58462331880972,
+        "r": 11,
+        "start": 1.413716694115407,
+        "end": 0.3659228386236526
+      },
+      "O3": {
+        "x": -3.1701914290529842,
+        "y": 178.41904293204314,
+        "r": 45,
+        "start": 0.3659228386236526,
+        "end": 0.034906585039886195
+      },
+      "O4": {
+        "x": 87.56074591726168,
+        "y": 159.05869179257485,
+        "r": 45,
+        "start": -3.106686068549907,
+        "end": -2.6368588130536104
+      },
+      "O5": {
+        "x": 56.04983023649862,
+        "y": 141.65001025261228,
+        "r": 9,
+        "start": 3.6463264941259754,
+        "end": -1.710422666954443
+      },
+      "I1": {
+        "x": 53.40909098574276,
+        "y": 141.07,
+        "r": 10,
+        "start": 0.19950259699901832,
+        "end": -2.111848394913139
+      },
+      "I2": {
+        "x": 55.98428136029303,
+        "y": 145.35583650351055,
+        "r": 15,
+        "start": -2.111848394913139,
+        "end": -2.628775939225102
+      },
+      "I3": {
+        "x": 82.12526110461715,
+        "y": 160.07484387516575,
+        "r": 45,
+        "start": -2.628775939225102,
+        "end": -3.106686068549907
+      },
+      "I4": {
+        "x": -8.772671947153071,
+        "y": 184.21732633324703,
+        "r": 45,
+        "start": -6.2482787221397,
+        "end": -6.116102771983579
+      },
+      "I5": {
+        "x": 26.72599764397396,
+        "y": 190.20435040701852,
+        "r": 9,
+        "start": 0.16708253519600777,
+        "end": 1.7278759594743862
+      }
     }
   },
   "paths": [
@@ -399,12 +509,11 @@
       "rotationDeg": 0.4,
       "opacity": 0.4,
       "suppressWhite": true,
-      "locked": true,
+      "locked": false,
       "panels": [
-        "fluting",
-        "longArching",
-        "crossArching"
+        "longArching"
       ],
+      "isDefault": false,
       "credit": {
         "source": "National Music Museum, University of South Dakota",
         "imageId": "81922",

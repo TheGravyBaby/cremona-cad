@@ -19,14 +19,20 @@ import { DefaultParams, EnricoCerutiParams, EnricoCerutiTemplate } from './cerut
  * readable `path: a -> b` lines.
  *
  * Recipes cannot be compared with `toEqual` or by stringifying: the C-bout and
- * corner arcs are placed by iterative solvers, so re-solving the same
- * instrument reproduces it to about 1e-8 rather than bit-exactly, and two of the
- * bundled templates were saved before some of that arithmetic settled. The
- * default tolerance is a nanometre — six orders of magnitude below anything a
- * plate could express — so it tolerates that residue while still failing on any
- * change a maker could measure.
+ * corner arcs are placed by iterative solvers, so re-solving the same instrument
+ * reproduces it closely rather than bit-exactly, and two of the bundled templates
+ * were saved before some of that arithmetic settled.
+ *
+ * How close depends on the instrument. Simple corners settle to 1e-13; the
+ * Kreisler, whose four corners are all compound, does not converge to machine
+ * precision at all — it plateaus around 4e-7 mm and still moves 32 fields after
+ * ten passes, with a 1.06e-6 excursion at the second pass, which is the one the
+ * idempotency specs sample. So the tolerance is ten nanometres, not one: above
+ * the solvers' demonstrated settling floor, and still five orders of magnitude
+ * below anything a plate could express or a maker could measure. Tightening it
+ * back to 1e-6 fails the Kreisler on solver residue rather than on geometry.
  */
-export function geometryDiff(a: unknown, b: unknown, tolMm = 1e-6, path = ''): string[] {
+export function geometryDiff(a: unknown, b: unknown, tolMm = 1e-5, path = ''): string[] {
   if (typeof a === 'number' && typeof b === 'number') {
     return Math.abs(a - b) > tolMm ? [`${path}: ${a} -> ${b}`] : [];
   }
@@ -58,7 +64,7 @@ export function archedViolin(): EnricoCerutiParams {
   return p;
 }
 
-// includes `legacy/`, the only source with a bass, viol neck or viol corners — dropping it would
+// includes `subPrime/`, the only source with a bass, viol neck or viol corners — dropping it would
 // quietly thin every it.each below rather than fail anything.
 function allTemplates(): EnricoCerutiTemplate[] {
   return [...CERUTI_TEMPLATES, ...LEGACY_TEMPLATES];
@@ -72,12 +78,12 @@ export function templateKeys(): string[] {
 /**
  * A bundled historical instrument, solved.
  *
- * Templates ship `bouts`/`outerCorners`/`blocks` but deliberately no `arching`
- * block (see this folder's CLAUDE.md — the published arching data does not
- * exist and must not be invented), so this runs `normalizeArchingParams` for
- * the migration path and leaves `arching` undefined. Pass `withArching` only
- * where a test needs *some* arch to exercise the surface code; the values are
- * the generic defaults and say nothing about the real instrument.
+ * Templates always ship `bouts`/`outerCorners`/`blocks`. They carry `arching`
+ * only where the instrument also ships the side profile it was read off (see
+ * this folder's CLAUDE.md), so this runs `normalizeArchingParams` for the
+ * migration path and leaves whatever the template had. Pass `withArching` to
+ * seed the ones that have none — those values are the generic defaults and say
+ * nothing about the real instrument.
  */
 export function templateViolin(key: string, withArching = false): EnricoCerutiParams {
   const template = allTemplates().find(t => t.key === key);

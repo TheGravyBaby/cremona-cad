@@ -223,9 +223,8 @@ describe.each(templateKeys())('template: %s', key => {
     // geometry the app computes for the same instrument have diverged, and the
     // template is drawing something its own numbers no longer describe.
     //
-    // Compared numerically rather than exactly: strad-goetz and strad-davidoff
-    // were saved before the C-bout solver's last few digits settled and differ
-    // by ~1e-8 on those arcs. See geometryDiff.
+    // Compared numerically rather than exactly, and the tolerance is the solvers'
+    // own settling floor rather than a round number. See geometryDiff.
     const p = templateViolin(key);
     const shipped = JSON.parse(JSON.stringify(p));
     layoutFrom(p);

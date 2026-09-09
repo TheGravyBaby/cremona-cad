@@ -13,7 +13,7 @@
       "objectId": "03356",
       "url": "https://emuseum.nmmusd.org/objects/6572/violin"
     },
-    "notes": "Nicolo Amati, 1628, NMM 03356 — the \"Witten\" of the Witten-Rawlins Collection. That is a collection name, not a traditional instrument nickname; no established one was found. The record publishes back length 353, upper bout 168, centre 107 and lower 206 mm. Height and lower bout width here are those published figures. Upper and centre bout are 166.1 and 106.1, measured off the top-plate photograph rather than copied from the record, because the published widths are of the back: the back photograph measures 167.8/107.0 where the top measures 166.1/106.1. Scaled to the published 206 mm lower bout the top reads 352.0 mm long against the published 353.\n\nBout radii, corner positions and the corner structure come from fitting the recipe solver to the right-hand silhouette of the top photograph at 10.0 px/mm: 0.43 mm mean deviation overall, but unevenly spread — 0.14-0.16 mm along the bouts against 0.79-0.81 mm through the corners and centre bout, where the photograph shows the rib and back corner projecting past the top plate's edge, so the silhouette there is not the top's outline. The corner geometry is the weakest part of this entry. Simple corners fitted better than compound (0.436 vs 0.448 mm); the straight-run variant did not solve. Right side only. No arching, no f-holes."
+    "notes": "Nicolo Amati, 1628, NMM 03356 — the \"Witten\" of the Witten-Rawlins Collection. That is a collection name, not a traditional instrument nickname; no established one was found. The record publishes back length 353, upper bout 168, centre 107 and lower 206 mm. Height and lower bout width here are those published figures. Upper and centre bout are 166.1 and 106.1, measured off the top-plate photograph rather than copied from the record, because the published widths are of the back: the back photograph measures 167.8/107.0 where the top measures 166.1/106.1. Scaled to the published 206 mm lower bout the top reads 352.0 mm long against the published 353.\n\nBout radii, corner positions and the corner structure come from fitting the recipe solver to the right-hand silhouette of the top photograph at 10.0 px/mm: 0.43 mm mean deviation overall, but unevenly spread — 0.14-0.16 mm along the bouts against 0.79-0.81 mm through the corners and centre bout, where the photograph shows the rib and back corner projecting past the top plate's edge, so the silhouette there is not the top's outline. The corner geometry is the weakest part of this entry. Simple corners fitted better than compound (0.436 vs 0.448 mm); the straight-run variant did not solve. Right side only.\n\nLong arching — top 11.25, back 13.0 mm over ribs 30.75 and 28.5 — is set by hand against the side-profile photograph (NMM 86664) in the long-arching panel. Not fitted, and not from a published section.\n\nF-hole eyes, rises and stem are placed by hand on the top photograph; the eyes are centred between the notches and sized a hair large by preference. The contour arcs are fitted to the hole's own edge at 10.0 px/mm — 0.24 mm RMS, right-hand hole only — with every radius on a whole millimetre, every angle on a whole degree, and all four stem arcs sharing one 45 mm radius. That radius is 9.3x the lower eye against the panel's default of 10, and the fit is flat enough between 33 and 55 mm that it does not argue with the default."
   },
   "params": {
     "height": 351,
@@ -48,8 +48,8 @@
       "L31toLBW": 0.06060606060606061,
       "UCYtoH": 0.6543817663817664,
       "LCYtoH": 0.4062051282051282,
-      "FLtoW": 0.019417475728155338,
-      "FUtoL": 0.6395349
+      "FLtoW": 0.023543689320388347,
+      "FUtoL": 0.6185567010309279
     },
     "bouts": {
       "UBW": 166.1,
@@ -356,24 +356,112 @@
     },
     "fHoles": {
       "UEye": {
-        "x": 23.785343118691557,
-        "y": 179.017860872094,
-        "r": 2.5581396
+        "x": 22.14,
+        "y": 185.17,
+        "r": 3
       },
       "LEye": {
-        "x": 59.166666666666664,
-        "y": 136.87488000000002,
-        "r": 4
+        "x": 57.44,
+        "y": 135.29,
+        "r": 4.85
       },
-      "URise": 3.06976752,
-      "LRise": 4.8,
+      "URise": 4.92,
+      "LRise": 5.75,
       "stem": {
         "center": {
-          "x": 39.55469303034785,
-          "y": 156.02388990271368
+          "x": 38.18,
+          "y": 160.41
         },
-        "width": 5.284484124662519,
-        "angle": 1.605702911834783
+        "width": 4.89,
+        "angle": 1.5882496193148399
+      },
+      "UCut": {
+        "angleOnEye": 1.8325957145940461,
+        "slope": 1.117010721276371,
+        "length": 4
+      },
+      "LCut": {
+        "angleOnEye": 2.129301687433082,
+        "slope": -2.007128639793479,
+        "length": 4.5
+      },
+      "UTip": {
+        "x": 25.81031232957864,
+        "y": 191.07293947589181
+      },
+      "LTip": {
+        "x": 53.665557163713565,
+        "y": 126.73773050986289
+      },
+      "O1": {
+        "x": 26.032762515232598,
+        "y": 186.08999999999997,
+        "r": 7,
+        "start": -2.9095149707270833,
+        "end": 1.7976891295541595
+      },
+      "O2": {
+        "x": 27.157517786951924,
+        "y": 181.21814967607378,
+        "r": 12,
+        "start": 1.7976891295541595,
+        "end": 0.27664439728901336
+      },
+      "O3": {
+        "x": -4.587735276643976,
+        "y": 172.20488678585122,
+        "r": 45,
+        "start": 0.27664439728901336,
+        "end": 0.017453292519943098
+      },
+      "O4": {
+        "x": 85.77909948905511,
+        "y": 151.97435523528495,
+        "r": 45,
+        "start": -3.12413936106985,
+        "end": -2.7562393023925074
+      },
+      "O5": {
+        "x": 57.052463702108916,
+        "y": 140.32187067772685,
+        "r": 14,
+        "start": 3.526946004787079,
+        "end": -1.8151424220741028
+      },
+      "I1": {
+        "x": 51.303021916284855,
+        "y": 135.69,
+        "r": 11,
+        "start": -0.06508659468223282,
+        "end": -2.600540585471551
+      },
+      "I2": {
+        "x": 50.445854615582746,
+        "y": 135.17496192508995,
+        "r": 10,
+        "start": -2.600540585471551,
+        "end": -2.6251180983563636
+      },
+      "I3": {
+        "x": 80.88064734580172,
+        "y": 152.45857819798294,
+        "r": 45,
+        "start": -2.6251180983563636,
+        "end": -3.12413936106985
+      },
+      "I4": {
+        "x": -9.457482589775424,
+        "y": 171.04461113224482,
+        "r": 45,
+        "start": -6.265732014659643,
+        "end": -5.951939177106828
+      },
+      "I5": {
+        "x": 25.53111635595863,
+        "y": 183.07781285973905,
+        "r": 8,
+        "start": 0.3312461300727582,
+        "end": 1.53588974175501
       }
     }
   },
@@ -428,8 +516,8 @@
       }
     },
     {
-      "id": "shape-mttmuvhi-1",
-      "label": "Img 2",
+      "id": "amati-violin-witten-profile-86664",
+      "label": "Side profile, back at left",
       "href": "https://emuseum.nmmusd.org/internal/media/dispatcher/86664/full",
       "xlink:href": "https://emuseum.nmmusd.org/internal/media/dispatcher/86664/full",
       "x": -97.47675641380647,
@@ -441,7 +529,14 @@
       "panels": [
         "longArching"
       ],
-      "isDefault": false
+      "isDefault": false,
+      "credit": {
+        "source": "National Music Museum, University of South Dakota",
+        "imageId": "86664",
+        "licence": "Educational and research use; rights reserved by the museum",
+        "attribution": "National Music Museum, University of South Dakota. Witten-Rawlins Collection, 1984 (NMM 03356).",
+        "url": "https://emuseum.nmmusd.org/objects/6572/violin"
+      }
     }
   ]
 }
