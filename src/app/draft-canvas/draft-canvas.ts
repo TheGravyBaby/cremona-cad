@@ -1475,14 +1475,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     }
 
     this.placeReferenceImage(linked.href, linked.width, linked.height);
-    if (!linked.inlined) {
-      info(
-        'That site does not allow its images to be copied, so the recipe holds the link rather '
-        + 'than the picture. It will show nothing on a machine that is offline, and nothing at '
-        + 'all once the link stops working — download the image and upload the file to keep it.',
-        'Linked, not copied',
-      );
-    }
   }
 
   /** Interns the pixels, places a shape sized to the drawing, and selects it — turning the

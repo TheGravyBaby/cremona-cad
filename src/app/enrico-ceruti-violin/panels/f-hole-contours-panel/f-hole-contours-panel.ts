@@ -6,11 +6,11 @@ import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderLine, ren
 import { ensureOuterTracePaths, calculateOuterArcs, getPath, getPathOrNull } from '../../ceruti-calcs';
 import { getArcEndDeg, setArcEndDeg } from '../../../helpers/arcDegrees';
 import { fholeCutInfo, fholeShoulderExtendInfo } from '../../ceruti-helpers';
-import { defaultFHolePlacement, renderFholeBounds } from '../f-hole-placement-panel/f-hole-placement-panel';
+import { defaultFHolePlacement, renderFholeBounds, stemRun } from '../f-hole-placement-panel/f-hole-placement-panel';
 import { angleForBridgeRadius, angleFromCenter, arcBetweenTravels, arcContinuingFrom, arcTangentToLine, normalizeRadians, pointOnCircle, signedArcSweep, solveCircumscribedCircleAlongAxis, sweepForTangentLineRadius } from '../../../helpers/draftMath';
 import { travelAtArcEnd, travelAtArcStart } from '../../../helpers/draftMath';
 import { Circle, Pt, Arc } from '../../../models/types';
-import { error } from '../../../shared/message-emitter';
+import { error, warn } from '../../../shared/message-emitter';
 import { HighlightedArc, HighlightedPoint } from '../../renders/render-constants';
 
 // UCut/LCut take a point halo; the rest take an arc halo
@@ -137,15 +137,14 @@ type FholeEdgeSeed = {
   landing: Arc | null; flare: Arc | null; wing: Arc | null;
 };
 
-// default proportions, off a traced Amati. each radius runs against what came before it, and a
-// wing takes the arm ratio of the end it is drawn beside. the lower end runs wider than the upper
+// default proportions, off a traced Amati. every radius runs against its own eye and lands on a
+// whole millimetre: shoulder 5/2, arm 3, and a wing 3 against the eye it reaches rather than the
+// one its edge sprang from — which is what makes the lower end come out wider
 const FShtoEye = 5 / 2;
-const FUArmtoSh = 5 / 4;
-const FLArmtoSh = 6 / 5;
+const FArmtoEye = 3;
 
 // both stem arcs on both edges start at one radius — the long run down the stem reads as one
-// curve when all four match. against the lower eye, the hole's own module, as every other
-// radius here is
+// curve when all four match. against the lower eye, the hole's own module
 const FStemArctoLEye = 10;
 
 // the turn an arm falls back to when no sweep reaches the stem arc it was asked for; the sweep is
@@ -189,6 +188,32 @@ export function eyeArc(eye: Circle, shoulder: Arc, otherEye: Circle, cut: FholeC
     angleFromCenter(eye, otherEye) + cut.angleOnEye!);
 }
 
+// perpendicular room between the shoulder's apex and the stem edge the arm has to turn onto. the
+// apex slides along the bound as the shoulder radius changes, which is why shrinking the shoulder
+// buys room as well as spending less of it
+function stemRoomAtApex(
+  stem: FholeStem, side: 1 | -1, springEye: Circle, springRise: number, shoulderR: number,
+): number {
+  let bound = springEye.y + side * (springEye.r + springRise);
+  let stemEdgeX = stem.center!.x + side * stem.width! / 2 + (bound - stem.center!.y) * stemRun(stem);
+  let apexX = springEye.x + side * Math.sqrt(springRise * (2 * shoulderR - 2 * springEye.r - springRise));
+  return Math.abs(stemEdgeX - apexX) * Math.sin(stem.angle!);
+}
+
+// the whole turn onto the stem still lies ahead at the apex, and an arm of radius R spends
+// R * (1 - cos stemTurn) of the room above making it — so a hole whose eyes sit close to the stem
+// has to give somewhere, and the shoulder is what gives. defaults only: a seeded shoulder is the
+// user's own and is left where they put it.
+function fitShoulderToStem(
+  stem: FholeStem, side: 1 | -1, springEye: Circle, springRise: number, armR: number,
+): number {
+  let needed = armR * (1 - Math.cos(Math.PI - stem.angle!));
+  let tightest = Math.ceil(springEye.r + springRise / 2);
+  for (let shoulderR = Math.round(springEye.r * FShtoEye); shoulderR > tightest; shoulderR--)
+    if (stemRoomAtApex(stem, side, springEye, springRise, shoulderR) >= needed) return shoulderR;
+  return tightest;
+}
+
 // one edge: a shoulder off `springEye`'s rim, over its rise bound, an arm onto a stem edge, then
 // a wing to `reachTip`. `side` (+1/-1) is the only difference between the two edges.
 function solveFholeEdge(
@@ -198,17 +223,27 @@ function solveFholeEdge(
 ): FholeEdge {
   let bound = springEye.y + side * (springEye.r + springRise);
 
-  // a wing takes the arm ratio of the end it's drawn beside, not the one its edge sprang from
-  let armToSh = side > 0 ? FUArmtoSh : FLArmtoSh;
-  let wingToSh = side > 0 ? FLArmtoSh : FUArmtoSh;
   let wingStart = side > 0 ? FLWingStart : FUWingStart;
   let wingEnd = side > 0 ? FLWingEnd : FUWingEnd;
 
+  // arm before shoulder: the shoulder's default is fitted to the turn this arm has left to make
+  let armR = seed.arm?.r ?? Math.round(springEye.r * FArmtoEye);
+
   // shoulder is tangent to both eye and bound; below eye.r + rise/2 the solve has no root
-  let shoulderR = seed.shoulder?.r ?? springEye.r * FShtoEye;
+  let shoulderR = seed.shoulder?.r ?? fitShoulderToStem(stem, side, springEye, springRise, armR);
   if (shoulderR < springEye.r + springRise / 2) {
     error('The shoulder is too tight to carry the outline from the eye out to its bound. Give it a larger radius, or take the rise down.', 'F-Hole Shoulder Too Tight');
     shoulderR = springEye.r + springRise / 2;
+  }
+
+  // even the tightest shoulder leaves some holes no room for an arm this size — cut the arm back
+  // to what the gap takes and say so, rather than handing the rest of the solve a turn it can't make
+  if (!seed.arm) {
+    let armReach = Math.floor(stemRoomAtApex(stem, side, springEye, springRise, shoulderR) / (1 - Math.cos(Math.PI - stem.angle!)));
+    if (armReach < armR) {
+      warn('The eyes sit too close to the stem for arms this wide, so they have been cut back. Move the eyes further apart, take the stem angle back toward upright, or widen the stem.', 'F-Hole Arms Cut Back');
+      armR = armReach;
+    }
   }
 
   let shoulderY = bound - side * shoulderR;
@@ -222,7 +257,6 @@ function solveFholeEdge(
   shoulder.start = angleFromCenter(shoulder, springEye); // tangent point, on the line of centers
 
   let turn = Math.sign(signedArcSweep(shoulder));
-  let armR = seed.arm?.r ?? shoulderR * armToSh;
 
   let approach = Math.sign(Math.cos(travelAtArcEnd(shoulder)));
   let stemEdge = new Pt(stem.center!.x + approach * stem.width! / 2, stem.center!.y);
@@ -250,7 +284,7 @@ function solveFholeEdge(
   // wing's own shape (radius + far boundary, hung off the tip) is placed outright; its near
   // boundary — where the flare lands on it — is what moves from a stored angle to wherever the
   // stem radius below requires
-  let wing = new Arc(0, 0, seed.wing?.r ?? reachEye.r * FShtoEye * wingToSh, 0,
+  let wing = new Arc(0, 0, seed.wing?.r ?? Math.round(reachEye.r * FArmtoEye), 0,
     seed.wing?.end ?? wingEnd);
   wing.x = reachTip.x - wing.r * Math.cos(wing.end);
   wing.y = reachTip.y - wing.r * Math.sin(wing.end);
@@ -302,7 +336,7 @@ export function calculateFholeContours(p: EnricoCerutiParams): void {
   f.LTip = cutTip(f.LEye!, f.UEye!, f.LCut);
 
   // one radius for all four stem arcs until the user turns one of them
-  let stemArcR = f.LEye!.r * FStemArctoLEye;
+  let stemArcR = Math.round(f.LEye!.r * FStemArctoLEye);
 
   let outer = solveFholeEdge(f.stem, 1, f.UEye!, f.URise!,
     { shoulder: f.O1, arm: f.O2, landing: f.O3, flare: f.O4, wing: f.O5 },
