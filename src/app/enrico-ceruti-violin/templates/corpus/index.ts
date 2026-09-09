@@ -8,11 +8,12 @@ import stradivariViolinWard2022560100 from './stradivari-violin-ward-2022560100.
 import guarneriViolinGoldbergBaronVitta2023870692 from './guarneri-violin-goldberg-baron-vitta-2023870692.json';
 import amatiViolinWitten03356 from './amati-violin-witten-03356.json';
 import stradivariViolinHarrison03598 from './stradivari-violin-harrison-03598.json';
-import { LEGACY_TEMPLATES } from '../subPrime';
+import rugeriCello from '../subPrime/rugeri-poplar1690.json';
+import guarneriSainton from '../subPrime/guarneri-violin-sainton-betti-1744.json';
 
 /**
  * Instruments traced from public museum/library records, kept apart from `ceruti-templates.ts` —
- * same type as the photo-traced set in `../legacy/`, split by where the numbers came from. Each
+ * same type as the photo-traced set in `../subPrime/`, split by where the numbers came from. Each
  * carries a `TemplateMeta` (catalogue entry) and each reference image an `ImageCredit` (usage
  * terms vary by holder — the LoC sets below are educational-and-research use, not open licence).
  *
@@ -28,8 +29,9 @@ import { LEGACY_TEMPLATES } from '../subPrime';
  *      by the spec) — a plan view usually wants none, a profile usually wants the arching panels.
  *   5. Import it above and add it to the array below.
  *
- * No `arching` block, and no measurement that isn't in the record — a plausible number on a real
- * instrument is an invented measurement of a real object.
+ * No measurement that isn't in the record — a plausible number on a real instrument is an
+ * invented measurement of a real object. `arching` may be read off a side-profile image, and
+ * only then: the spec pairs an `arching` block with an image scoped to the `longArching` panel.
  */
 export const CORPUS_TEMPLATES: EnricoCerutiTemplate[] = [
   // cast because JSON imports infer structurally (arcs' nulls widen to null);
@@ -43,5 +45,15 @@ export const CORPUS_TEMPLATES: EnricoCerutiTemplate[] = [
   guarneriViolinGoldbergBaronVitta2023870692 as unknown as EnricoCerutiTemplate,
   stradivariViolaCassavetti2022560103 as unknown as EnricoCerutiTemplate,
   stradivariCelloCastelbarco2022560102 as unknown as EnricoCerutiTemplate,
-  ...LEGACY_TEMPLATES
+];
+
+/**
+ * Two `../subPrime/` instruments wanted in the picker without the rest of that folder coming
+ * with them. They are traced by eye and their images are uncredited, so they are deliberately
+ * *not* in `CORPUS_TEMPLATES` — that array is what `ceruti-templates.spec.ts` holds to the
+ * provenance rules above, and folding these into it would only cost the rules their teeth.
+ */
+export const SUBPRIME_PICKS: EnricoCerutiTemplate[] = [
+  rugeriCello as unknown as EnricoCerutiTemplate,
+  guarneriSainton as unknown as EnricoCerutiTemplate,
 ];

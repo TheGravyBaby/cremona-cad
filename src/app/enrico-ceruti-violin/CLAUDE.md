@@ -16,8 +16,7 @@ adding to a file — they are current and more specific than this page.
 | `ceruti-types.ts` | `EnricoCerutiParams` and the whole serialized shape. `CerutiColors`, view flags. |
 | `ceruti-templates.ts` | Bundled historical instruments (Strad Goetz, Del Gesu Baltic, …) as pasted recipe JSON. **Append-only** — add instruments, don't restructure. |
 | `templates/corpus/` | Instruments traced from open-licence museum records — one `.json` file each, listed in `templates/corpus/index.ts`. Same type as the templates above, but carrying a `TemplateMeta` and a per-image `ImageCredit` so the numbers and the pixels can each be rechecked. New instruments go here, not in `ceruti-templates.ts`. |
-| `templates/restricted/` | The same, where the reference image is under a commercial or otherwise restrictive licence and so cannot ship in an open build. Split by folder rather than by a field, so dropping the import drops every image whose terms are in question. The traces are held to the same provenance checks — `ceruti-templates.spec.ts` sweeps both sets. |
-| `templates/legacy/` | The eight eye-traced instruments, out of the picker but swept by the suite. See that folder's `index.ts`. |
+| `templates/subPrime/` | The eye-traced instruments, and any trace whose reference image is under a commercial licence and so cannot ship in an open build. Out of the picker and out of `CORPUS_TEMPLATES`, but swept by the suite. `SUBPRIME_PICKS` in `corpus/index.ts` is the handful pulled back into the picker by hand — they stay outside `CORPUS_TEMPLATES` so the provenance checks keep their teeth. See that folder's `index.ts`. |
 | `ceruti-helpers.ts` | `*Info()` functions — the help text behind each field's info button. |
 | `panels/` | One folder per sidebar panel. Panels are thin; see the layer rule in the root CLAUDE.md. |
 | `renders/` | SVG emitters for the arching views, plus geometry that only serves one view. |
@@ -51,14 +50,18 @@ recognizes the current format *positively* so it stays idempotent; six tests in
   `draft-canvas/tools/CLAUDE.md`. What's specific to this model: `initializePanelFlow` hands
   `panelOrder` down to `ToolboxStore.setAvailablePanels` so the settings-bar picker has real panel
   labels, since this is the one place that already has them.
-- **Templates carry no `arching` block, on purpose.** They ship solved outline geometry (`bouts`,
-  `outerCorners`, `blocks`) but no arching, so `normalizeArchingParams` early-returns and the
-  plate is seeded from `defaultArchingParams` by whichever arching panel or the surface builder
-  reaches it first. The reason is that published arching data for these historical instruments is
-  scarce and mostly paywalled. **Never fabricate arching values for a named instrument** — a
-  plausible-looking crown on "Strad Goetz" is an invented measurement of a real object. What
-  happens to the templates (new ones with public arching, added instruments, or leave as-is) is
-  an open question, not a gap to be filled in.
+- **A template carries `arching` only where it ships the profile that arching was read from.**
+  **Never fabricate arching values for a named instrument** — a plausible-looking crown on
+  "Strad Goetz" is an invented measurement of a real object, and published sections for these
+  instruments are scarce and mostly paywalled. What changed (2026-09) is that a museum side-view
+  photograph turns out to be a usable source: the long arch is read off the silhouette and then
+  corrected by hand in the panel. So the rule is now a pairing rather than a prohibition, and
+  `ceruti-templates.spec.ts` enforces it — a corpus template with an `arching` block must also
+  ship a reference image scoped to the `longArching` panel. A template with no such image still
+  carries no arching, `normalizeArchingParams` early-returns, and the plate is seeded from
+  `defaultArchingParams` by whichever arching panel or the surface builder reaches it first.
+  Each entry's `meta.notes` records how far to trust its numbers; the top plate is occluded by
+  the fingerboard and strings on every one of these views and is always the weaker of the two.
 - **The rib taper is a placement fact, not a carving one.** Ribs are planed down toward the
   upper block after the back is glued on, so `ribHeightLower`/`ribHeightUpper` tilt the plane the
   top plate glues to while the back's stays square. Nothing in the arch, the channel, the crown,

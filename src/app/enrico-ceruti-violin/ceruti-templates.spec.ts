@@ -59,10 +59,14 @@ describe('CORPUS_TEMPLATES', () => {
     }
   });
 
-  // a plausible-looking crown on a named instrument is an invented measurement of a real object.
-  it('invents no arching for a real instrument', () => {
+  // a plausible-looking crown on a named instrument is an invented measurement of a real object,
+  // so arching is allowed only where the instrument ships the side profile it was read off —
+  // which is the image scoped to the long-arching panel.
+  it('carries arching only where it ships the profile it was read from', () => {
     for (const t of CORPUS_TEMPLATES) {
-      expect((t.params as { arching?: unknown }).arching, `${t.key} carries arching`).toBeUndefined();
+      if (!(t.params as { arching?: unknown }).arching) continue;
+      const profiles = (t.referenceImages ?? []).filter(img => img.panels?.includes('longArching'));
+      expect(profiles.length, `${t.key} carries arching but ships no profile`).toBeGreaterThan(0);
     }
   });
 });
