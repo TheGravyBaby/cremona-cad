@@ -603,7 +603,7 @@
       "width": 157.33048417910652,
       "height": 615.8420162200928,
       "rotationDeg": 0,
-      "suppressWhite": false,
+      "suppressWhite": true,
       "locked": false,
       "panels": [
         "longArching"

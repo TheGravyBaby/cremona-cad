@@ -514,7 +514,7 @@
       "height": 375.8019311277587,
       "rotationDeg": 0,
       "opacity": 0.4,
-      "suppressWhite": false,
+      "suppressWhite": true,
       "locked": true,
       "excludePanels": [
         "fluting",

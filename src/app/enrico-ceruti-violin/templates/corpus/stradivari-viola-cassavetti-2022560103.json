@@ -522,7 +522,7 @@
       "height": 449.852646484375,
       "rotationDeg": 359.6,
       "opacity": 0.4,
-      "suppressWhite": false,
+      "suppressWhite": true,
       "locked": false,
       "panels": [
         "longArching"

@@ -409,6 +409,7 @@
       "height": 1273.515,
       "rotationDeg": 0,
       "opacity": 0.4,
+      "suppressWhite": true,
       "locked": true,
       "excludePanels": [
         "fluting",
@@ -428,6 +429,7 @@
       "height": 883.4754943847656,
       "rotationDeg": 359.9,
       "opacity": 0.4,
+      "suppressWhite": true,
       "mirrored": true,
       "locked": false,
       "panels": [

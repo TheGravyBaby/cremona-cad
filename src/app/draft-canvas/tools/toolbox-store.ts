@@ -526,10 +526,9 @@ export class ToolboxStore implements Undoable {
     this.shapes = [];
     this._layers = [{ id: DEFAULT_LAYER_ID, name: 'Layer 1', visible: true, locked: false }];
     this._activeLayerId = DEFAULT_LAYER_ID;
-    // Both masters back on, so a newly loaded file can't open looking empty because of a toggle
-    // flipped while the previous one was open.
-    this._showImages = true;
-    this._showShapes = true;
+    // currently leaving these toggles off, allowing the image and layer toggles to persist
+    // this._showImages = true;
+    // this._showShapes = true;
     this.history = [this.shapes];
     this.historyIndex = 0;
     this.undoCoordinator.reset(this.id);

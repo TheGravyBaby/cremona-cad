@@ -381,6 +381,7 @@
       "height": 448.5502183406114,
       "rotationDeg": 359.6,
       "opacity": 0.4,
+      "suppressWhite": true,
       "locked": true
     }
   ],
