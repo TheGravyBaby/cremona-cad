@@ -249,8 +249,7 @@ describe('round-trip through the recipe field', () => {
 });
 
 // The built-in templates are the compatibility contract this module exists to hold: they carry
-// reference images in the pre-refactor format and must keep loading untouched. CERUTI_TEMPLATES
-// already carries subPrime/'s legacy templates, which still use the singular `referenceImage`.
+// reference images in the pre-refactor format and must keep loading untouched.
 const BUNDLED = CERUTI_TEMPLATES;
 
 describe('the built-in Ceruti templates', () => {
@@ -279,7 +278,8 @@ describe('the built-in Ceruti templates', () => {
   });
 
   it('round-trips a template through save and load unchanged', () => {
-    const template = BUNDLED.find(t => t.referenceImage?.href)!;
+    const template = BUNDLED.find(t => t.referenceImage?.href || t.referenceImages?.length)!;
+    expect(template).toBeDefined();
     const assets = store();
     const saved = imageShapesToRecipe(imageShapesFromRecipe(template, assets), assets);
     const reloaded = imageShapesToRecipe(imageShapesFromRecipe({ referenceImages: saved }, assets), assets);

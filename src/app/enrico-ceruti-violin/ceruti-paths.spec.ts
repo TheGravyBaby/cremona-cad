@@ -3,6 +3,8 @@ import { layoutFrom, templateKeys, templateViolin, violinFromRecipe } from './ce
 import { EnricoCerutiParams } from './ceruti-types';
 import { pointOnCircle } from '../helpers/draftMath';
 import { Pt } from '../models/types';
+import ravatinMansParams from './templates/test-fixtures/ravatin-mans-params.json';
+import magginiDelmasParams from './templates/test-fixtures/maggini-delmas-params.json';
 
 /**
  * The purfling and channel lines, which are the inner arcs re-solved at a
@@ -29,9 +31,7 @@ function centresEmittedTwice(p: EnricoCerutiParams, offset: number): string[] {
   return [...seen].filter(([, n]) => n > 1).map(([key]) => key);
 }
 
-/** A solved instrument with the corner styles forced, rather than as the template saved them. */
-function withCorners(key: string, uc: boolean, lc: boolean): EnricoCerutiParams {
-  const p = templateViolin(key);
+function withCornersOn(p: EnricoCerutiParams, uc: boolean, lc: boolean): EnricoCerutiParams {
   p.options.useViolCornerUC = uc;
   p.options.useViolCornerLC = lc;
   // A viol corner sets the purfling arcs a real distance in from the outline;
@@ -39,6 +39,11 @@ function withCorners(key: string, uc: boolean, lc: boolean): EnricoCerutiParams 
   // the inner trace, which is exactly the case that hides an untrimmed end.
   p.purflingOffset = p.rib + p.overhang + 3.8;
   return layoutFrom(p);
+}
+
+/** A solved instrument with the corner styles forced, rather than as the template saved them. */
+function withCorners(key: string, uc: boolean, lc: boolean): EnricoCerutiParams {
+  return withCornersOn(templateViolin(key), uc, lc);
 }
 
 const CORNER_STYLES: [string, boolean, boolean][] = [
@@ -64,7 +69,7 @@ describe('the arcs behind the purfling line', () => {
     // corner tip, so the corner block emits it trimmed to the intersection it
     // just solved. It used to be pushed a second time untrimmed, which is what
     // produced the whisker: same circle, same start, an end 4mm further round.
-    const p = withCorners('ravatinMans', uc, lc);
+    const p = withCornersOn(violinFromRecipe({ params: ravatinMansParams }), uc, lc);
     expect(centresEmittedTwice(p, -3.8)).toEqual([]);
   });
 
@@ -72,7 +77,7 @@ describe('the arcs behind the purfling line', () => {
     // The end angle has to be the one solved against the neighbouring corner
     // arc. Compared as a point, since the two arcs meet in space and not at any
     // shared angle.
-    const p = withCorners('ravatinMans', true, false);
+    const p = withCornersOn(violinFromRecipe({ params: ravatinMansParams }), true, false);
     const arcs = defineOffsetArcs(p, -3.8, true);
     const flank = arcs.filter(a => Math.abs(a.r - (p.bouts.U4!.r - 3.8)) < 1e-9);
     expect(flank).toHaveLength(1);
@@ -95,10 +100,10 @@ describe('the recipe the whisker was reported from', () => {
    */
   const reported = () => violinFromRecipe({
     params: {
-      ...templateViolin('ravatinMans'),
+      ...ravatinMansParams,
       purflingOffset: 10.8,
       purflingChannelDepth: 1.2,
-      options: { ...templateViolin('ravatinMans').options, useViolCornerUC: true, useViolCornerLC: false },
+      options: { ...ravatinMansParams.options, useViolCornerUC: true, useViolCornerLC: false },
     },
   });
 
@@ -143,22 +148,28 @@ function closes(d: string): boolean {
     && Math.hypot(pts[0].x - pts[pts.length - 1].x, pts[0].y - pts[pts.length - 1].y) < 1e-6;
 }
 
-const violNeckKeys = (): string[] => templateKeys().filter(k => templateViolin(k).options.useViolNeck);
-
-function violNeck(key: string, neckRadius: number): EnricoCerutiParams {
-  const p = templateViolin(key);
+function violNeckOn(p: EnricoCerutiParams, neckRadius: number): EnricoCerutiParams {
   p.viol.neckRadius = neckRadius;
   return layoutFrom(p);
+}
+
+// No bundled template ships useViolNeck, so this sweep also draws on the Maggini fixture below —
+// otherwise it would run empty on every instrument the picker actually offers.
+function violNeckSources(): Array<[string, EnricoCerutiParams]> {
+  const bundled = templateKeys()
+    .filter(k => templateViolin(k).options.useViolNeck)
+    .map((k): [string, EnricoCerutiParams] => [k, templateViolin(k)]);
+  return [...bundled, ['maggini-delmas', violinFromRecipe({ params: magginiDelmasParams })]];
 }
 
 // 0 is the sharp corner offset exactly; 6 is a fillet wide enough to move the face in visibly.
 const NECK_RADII = [0, 6];
 
 describe.each(NECK_RADII)('the viol neck with a %dmm join radius', R => {
-  it.each(violNeckKeys())('closes every line across the neck on %s', key => {
+  it.each(violNeckSources())('closes every line across the neck on %s', (_label, base) => {
     // The dangle this was reported for: the purfling ran up the V0 sweep and stopped, because
     // the offset arcs carry no top face and nothing closed the loop over the neck.
-    const p = violNeck(key, R);
+    const p = violNeckOn(base, R);
     const inset = p.overhang + p.rib;
 
     expect(closes(defineInnerPath(p)), 'inner trace').toBe(true);
@@ -169,22 +180,22 @@ describe.each(NECK_RADII)('the viol neck with a %dmm join radius', R => {
     expect(closes(defineFlutingPath(p, inset + 3)!), 'fluting').toBe(true);
   });
 
-  it.each(violNeckKeys())('stands the plate edge a full inset above the rib line on %s', key => {
+  it.each(violNeckSources())('stands the plate edge a full inset above the rib line on %s', (_label, base) => {
     // The face used to be built off the *offset* arc's endpoint rather than the corner, which put
     // it an extra 1.1mm up on the Maggini — the plate overhanging its own ribs by more at the
     // neck than anywhere else on the instrument.
-    const p = violNeck(key, R);
+    const p = violNeckOn(base, R);
     const inset = p.overhang + p.rib;
 
     expect(faceY(defineOuterPath(p, inset, true, false))).toBeCloseTo(faceY(defineInnerPath(p)) + inset, 9);
     expect(faceY(defineInnerPath(p))).toBeCloseTo(p.height - inset, 9);
   });
 
-  it.each(violNeckKeys())('starts V0 exactly where its start angle says on %s', key => {
+  it.each(violNeckSources())('starts V0 exactly where its start angle says on %s', (_label, base) => {
     // The join is seated into the layout rather than carved out of it, so raising the radius
     // must not move where V0 begins. Carving it did: the join's tangency landed short of
     // V0.start, leaving the flank hanging past the outline by the amount it had eaten.
-    const p = violNeck(key, R);
+    const p = violNeckOn(base, R);
     const start = pointOnCircle(p.viol.V0!, p.viol.V0!.start);
 
     // the inner trace passes through that point, mirrored, whatever the radius
@@ -210,7 +221,7 @@ describe('the arcs joining the viol neck to its top face', () => {
     // The whole construction rests on this: the fillet centre and its two tangency rays do not
     // move with the offset. If they did, each line would need its own join solved against its own
     // neighbours, and they would stop meeting.
-    const p = violNeck('maggini-delmas', 6);
+    const p = violNeckOn(violinFromRecipe({ params: magginiDelmasParams }), 6);
     const centre = joinArc(p, 0)!;
 
     for (const d of [0, 1.2, 4, 8]) {
@@ -224,7 +235,7 @@ describe('the arcs joining the viol neck to its top face', () => {
   it('drops the join once an inward offset has eaten the fillet', () => {
     // Inside a convex corner the two offsets cross rather than part, so past R the join is a
     // trim, not an arc. The channel reaches this: it runs in from the edge by more than R.
-    const p = violNeck('maggini-delmas', 6);
+    const p = violNeckOn(violinFromRecipe({ params: magginiDelmasParams }), 6);
     expect(joinArc(p, -6.5)).toBeUndefined();
     // 14.5mm in from the edge is the same -6.5 once the inset comes off
     expect(closes(defineFlutingPath(p, 14.5)!), 'the channel still closes without one').toBe(true);

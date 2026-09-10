@@ -6,6 +6,7 @@ import { clampParam, safeRun } from '../helpers/validators';
 import { CerutiColors, CerutiPanelId, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, EnricoCerutiTemplate, EnricoCerutiParams, PanelRenderRequest, RenderToggleKey } from './ceruti-types';
 import { CERUTI_TEMPLATES } from './ceruti-templates';
 import { isLocSourced } from './templates/corpus';
+import { LOCAL_TEMPLATES } from './templates/local/generated-index';
 import { defineOuterPath, defineOuterPurflingPath, definePurflingPath } from './ceruti-paths';
 import { normalizeArchingParams } from './ceruti-arching';
 import { renderBounds } from './renders/guides.render';
@@ -137,7 +138,10 @@ export class CerutiViolin extends RecipeComponentBase {
     this.initializeDebounce(() => this.refreshBoundInputs());
   }
 
-  readonly templates: EnricoCerutiTemplate[] = CERUTI_TEMPLATES;
+  // LOCAL_TEMPLATES is appended here rather than folded into CERUTI_TEMPLATES itself, so the
+  // provenance sweeps in ceruti-templates.spec.ts/ceruti-fixtures.ts never see a developer's
+  // work-in-progress trace — the picker and loadTemplate are the only things that need it.
+  readonly templates: EnricoCerutiTemplate[] = [...CERUTI_TEMPLATES, ...LOCAL_TEMPLATES];
   override openPanel = 'base';
   override d: EnricoCerutiTemplate = {
     ...CERUTI_TEMPLATES[1],

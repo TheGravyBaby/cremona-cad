@@ -63,8 +63,6 @@ export function archedViolin(): EnricoCerutiParams {
   return p;
 }
 
-// CERUTI_TEMPLATES already carries subPrime/ (SUBPRIME_PICKS is all of LEGACY_TEMPLATES now),
-// the only source with a bass, viol neck or viol corners.
 function allTemplates(): EnricoCerutiTemplate[] {
   return CERUTI_TEMPLATES;
 }
