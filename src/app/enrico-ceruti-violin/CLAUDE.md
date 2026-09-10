@@ -16,7 +16,7 @@ adding to a file — they are current and more specific than this page.
 | `ceruti-types.ts` | `EnricoCerutiParams` and the whole serialized shape. `CerutiColors`, view flags. |
 | `ceruti-templates.ts` | Bundled historical instruments (Strad Goetz, Del Gesu Baltic, …) as pasted recipe JSON. **Append-only** — add instruments, don't restructure. |
 | `templates/corpus/` | Instruments traced from open-licence museum records — one `.json` file each, listed in `templates/corpus/index.ts`. Same type as the templates above, but carrying a `TemplateMeta` and a per-image `ImageCredit` so the numbers and the pixels can each be rechecked. New instruments go here, not in `ceruti-templates.ts`. |
-| `templates/subPrime/` | The eye-traced instruments, and any trace whose reference image is under a commercial licence and so cannot ship in an open build. Out of the picker and out of `CORPUS_TEMPLATES`, but swept by the suite. `SUBPRIME_PICKS` in `corpus/index.ts` is the handful pulled back into the picker by hand — they stay outside `CORPUS_TEMPLATES` so the provenance checks keep their teeth. See that folder's `index.ts`. |
+| `templates/local/` | Gitignored developer scratch space — traces and theories with no provenance to check, never shipped, never swept by the suite. Shows up in the picker only on a local dev build. See that folder's `README.md`. |
 | `ceruti-helpers.ts` | `*Info()` functions — the help text behind each field's info button. |
 | `panels/` | One folder per sidebar panel. Panels are thin; see the layer rule in the root CLAUDE.md. |
 | `renders/` | SVG emitters for the arching views, plus geometry that only serves one view. |

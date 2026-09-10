@@ -1,10 +1,11 @@
 import { samplePathToPolyline } from '../helpers/svgPathMath';
 import { calculateCenterBout, calculateCorners, calculateMainBouts, calculateOuterArcs, violNeckJoinLimit } from './ceruti-calcs';
 import { pointOnCircle } from '../helpers/draftMath';
-import { defaultViolin, geometryDiff, layoutFrom, templateKeys, templateViolin } from './ceruti-fixtures';
+import { defaultViolin, geometryDiff, layoutFrom, templateKeys, templateViolin, violinFromRecipe } from './ceruti-fixtures';
 import { defineInnerPath, defineOuterPath } from './ceruti-paths';
 import { EnricoCerutiParams } from './ceruti-types';
 import { setGlobalEmitter } from '../shared/message-emitter';
+import delGesuBalticParams from './templates/test-fixtures/del-gesu-baltic-params.json';
 
 /**
  * The 2D outline pipeline — `ceruti-calcs.ts` into `ceruti-paths.ts`.
@@ -247,7 +248,7 @@ describe.each(templateKeys())('template: %s', key => {
 describe('the viol neck against the upper bout', () => {
   /** delGesù with the viol neck driven to the values a session reported the hook at. */
   const reported = (width: number, neckRadius: number): EnricoCerutiParams => {
-    const base = templateViolin('delGesu');
+    const base = violinFromRecipe({ params: delGesuBalticParams });
     return layoutFrom({
       ...base,
       viol: { width, neckRadius, V0: { ...base.viol.V0!, r: 32.2, start: 3.3161255787892263, end: 4.328416544945937 } },

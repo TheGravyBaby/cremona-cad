@@ -54,7 +54,18 @@
             "development": {
               "optimization": false,
               "extractLicenses": false,
-              "sourceMap": true
+              "sourceMap": true,
+              "assets": [
+                {
+                  "glob": "**/*",
+                  "input": "public"
+                },
+                {
+                  "glob": "*.{jpg,jpeg,png,gif,webp}",
+                  "input": "src/app/enrico-ceruti-violin/templates/local",
+                  "output": "local"
+                }
+              ]
             }
           },
           "defaultConfiguration": "production"
