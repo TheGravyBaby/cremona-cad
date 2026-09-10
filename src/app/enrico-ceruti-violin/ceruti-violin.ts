@@ -56,7 +56,6 @@ export class CerutiViolin extends RecipeComponentBase {
 
   offFactor = .5;
   off2Factor = .8;
-  lineFactor = .3;
   private readonly colorPalette = {
     upperBout: '#4D8660',
     centerBoutUp: '#C24B2E',
@@ -70,15 +69,16 @@ export class CerutiViolin extends RecipeComponentBase {
     fluting: '#478968ff',
     archTop: '#C47B3A',
     archBack: '#4D74A8',
-    fHoleUpperDeep: '#1b5637',
     fHoleUpperDark: '#24714a',
     fHoleUpper: '#3fa568',
     fHoleUpperLight: '#7fd3a2',
-    fHoleLowerDeep: '#5c2c72',
     fHoleLowerDark: '#7a3e95',
     fHoleLower: '#a969b4',
     fHoleLowerLight: '#d0a3de',
     fHoleStem: '#8b939e',
+    // the cut is the only warm thing in the f-hole drawing, and the only straight line the maker
+    // actually cuts — everything either side of it is an arc
+    fHoleCut: '#e08a1e',
   } as const;
 
   private makeColor(base: string, ...extra: ColorTransform[]): string {
@@ -116,21 +116,17 @@ export class CerutiViolin extends RecipeComponentBase {
       fluting: this.makeColor(p.fluting),
       archTop: this.makeColor(p.archTop),
       archBack: this.makeColor(p.archBack),
-      fHoleUpperDeep: this.makeColor(p.fHoleUpperDeep),
       fHoleUpperDark: this.makeColor(p.fHoleUpperDark),
       fHoleUpper: this.makeColor(p.fHoleUpper),
       fHoleUpperMuted: this.makeColor(p.fHoleUpper, { type: 'greyOut', degree: this.offFactor }),
-      fHoleUpperLine: this.makeColor(p.fHoleUpper, { type: 'greyOut', degree: this.lineFactor }),
       fHoleUpperLight: this.makeColor(p.fHoleUpperLight),
-      fHoleLowerDeep: this.makeColor(p.fHoleLowerDeep),
       fHoleLowerDark: this.makeColor(p.fHoleLowerDark),
       fHoleLower: this.makeColor(p.fHoleLower),
       fHoleLowerMuted: this.makeColor(p.fHoleLower, { type: 'greyOut', degree: this.offFactor }),
-      fHoleLowerLine: this.makeColor(p.fHoleLower, { type: 'greyOut', degree: this.lineFactor }),
       fHoleLowerLight: this.makeColor(p.fHoleLowerLight),
       fHoleStem: this.makeColor(p.fHoleStem),
       fHoleStemOff: this.makeColor(p.fHoleStem, { type: 'greyOut', degree: this.offFactor }),
-      fHoleStemLine: this.makeColor(p.fHoleStem, { type: 'greyOut', degree: this.lineFactor }),
+      fHoleCut: this.makeColor(p.fHoleCut),
     };
   }
 

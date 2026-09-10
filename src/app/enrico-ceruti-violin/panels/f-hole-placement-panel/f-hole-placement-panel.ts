@@ -137,8 +137,9 @@ export const defaultFHolePlacement = (p: EnricoCerutiParams): FholeParams => {
         angle: STEM_ANGLE_DEFAULT * Math.PI / 180,
         arcR: undefined,
       },
-      O1: undefined, O2: undefined, O3: undefined, O4: undefined, O5: undefined,
-      I1: undefined, I2: undefined, I3: undefined, I4: undefined, I5: undefined,
+      U1: undefined, U2: undefined, U3: undefined,
+      L1: undefined, L2: undefined, L3: undefined,
+      S1: undefined, S2: undefined, S3: undefined, S4: undefined,
     };
     return defaults;
 }

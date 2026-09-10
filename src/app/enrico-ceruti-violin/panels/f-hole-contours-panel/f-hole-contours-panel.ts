@@ -14,7 +14,7 @@ import { error, warn } from '../../../shared/message-emitter';
 import { HighlightedArc, HighlightedPoint } from '../../renders/render-constants';
 
 // UCut/LCut take a point halo; the rest take an arc halo
-export type FholeHighlightKey = 'O1' | 'O2' | 'O3' | 'O4' | 'O5' | 'I1' | 'I2' | 'I3' | 'I4' | 'I5' | 'UCut' | 'LCut';
+export type FholeHighlightKey = 'U1' | 'U2' | 'U3' | 'L1' | 'L2' | 'L3' | 'S1' | 'S2' | 'S3' | 'S4' | 'UCut' | 'LCut';
 
 // eyes/stem placement is the placement panel's job; this page only bends what runs between
 @Component({
@@ -219,8 +219,9 @@ function fitShoulderToStem(
 function solveFholeEdge(
   stem: FholeStem, side: 1 | -1,
   springEye: Circle, springRise: number, seed: FholeEdgeSeed,
-  reachEye: Circle, reachTip: Pt, stemArcR: number,
+  reachEye: Circle, reachTip: Pt,
 ): FholeEdge {
+  let stemArcR = stem.arcR!;
   let bound = springEye.y + side * (springEye.r + springRise);
 
   let wingStart = side > 0 ? FLWingStart : FUWingStart;
@@ -334,18 +335,19 @@ export function calculateFholeContours(p: EnricoCerutiParams): void {
 
   // one radius for all four stem arcs, seeded once off the lower eye then held in the recipe
   f.stem.arcR ??= Math.round(f.LEye!.r * FStemArctoLEye);
-  let stemArcR = f.stem.arcR;
 
   let outer = solveFholeEdge(f.stem, 1, f.UEye!, f.URise!,
-    { shoulder: f.O1, arm: f.O2, wing: f.O5 },
-    f.LEye!, f.LTip, stemArcR);
+    { shoulder: f.U1, arm: f.U2, wing: f.L3 },
+    f.LEye!, f.LTip);
   let inner = solveFholeEdge(f.stem, -1, f.LEye!, f.LRise!,
-    { shoulder: f.I1, arm: f.I2, wing: f.I5 },
-    f.UEye!, f.UTip, stemArcR);
+    { shoulder: f.L1, arm: f.L2, wing: f.U3 },
+    f.UEye!, f.UTip);
 
-  // both read the stored arcs as seeds, so nothing is written back until both have been solved
-  f.O1 = outer.shoulder; f.O2 = outer.arm; f.O3 = outer.landing; f.O4 = outer.flare; f.O5 = outer.wing;
-  f.I1 = inner.shoulder; f.I2 = inner.arm; f.I3 = inner.landing; f.I4 = inner.flare; f.I5 = inner.wing;
+  // both read the stored arcs as seeds, so nothing is written back until both have been solved.
+  // each edge's landing/flare/wing scatter across S2/S4/L3 (springing from UEye) and S3/S1/U3
+  // (springing from LEye) — see the FholeParams header for why the letters cross over.
+  f.U1 = outer.shoulder; f.U2 = outer.arm; f.S2 = outer.landing; f.S4 = outer.flare; f.L3 = outer.wing;
+  f.L1 = inner.shoulder; f.L2 = inner.arm; f.S3 = inner.landing; f.S1 = inner.flare; f.U3 = inner.wing;
 }
 
 export const renderFholeContours = (
@@ -369,11 +371,12 @@ export const renderFholeContours = (
   // each edge crosses both eyes — its shoulder/arm spring from one, its wing reaches the other —
   // so color follows the physical side (upper/lower) rather than which edge drew the arc. the
   // stem-tangent/flare pair is the one part that is genuinely shared, so both edges' land there
-  // in the one stem color.
+  // in the one stem color, and the straight run between them takes it too — it is that same run
+  // continuing, not a feature of its own.
   for (let [e, shoulderColor, armColor, wingColor] of [
-    [{ shoulder: f.O1!, arm: f.O2!, landing: f.O3, flare: f.O4, wing: f.O5! },
+    [{ shoulder: f.U1!, arm: f.U2!, landing: f.S2, flare: f.S4, wing: f.L3! },
       colors.fHoleUpperDark, colors.fHoleUpper, colors.fHoleLowerLight],
-    [{ shoulder: f.I1!, arm: f.I2!, landing: f.I3, flare: f.I4, wing: f.I5! },
+    [{ shoulder: f.L1!, arm: f.L2!, landing: f.S3, flare: f.S1, wing: f.U3! },
       colors.fHoleLowerDark, colors.fHoleLower, colors.fHoleUpperLight],
   ] as const) {
     let inOrder: [Arc | null, string, boolean][] = [
@@ -385,16 +388,18 @@ export const renderFholeContours = (
     for (let [a, color, shaped] of inOrder) if (a) drawArc(a, color, shaped)(g, ui);
 
     if (e.landing && e.flare)
-      renderLine(pointOnCircle(e.landing, e.landing.end), pointOnCircle(e.flare, e.flare.start), colors.fHoleStemLine, 2)(g, ui);
+      renderLine(pointOnCircle(e.landing, e.landing.end), pointOnCircle(e.flare, e.flare.start), colors.fHoleStem, 2)(g, ui);
   }
 
   // the cut closes each end of the outline: out of the eye to the tip, where the wing meets it. the
-  // tip carries no mark of its own — it is where three other numbers land
-  for (let [eye, shoulder, otherEye, cut, tip, lineColor, eyeColor] of [
-    [f.UEye!, f.O1!, f.LEye!, f.UCut!, f.UTip!, colors.fHoleUpperLine, colors.fHoleUpperDeep],
-    [f.LEye!, f.I1!, f.UEye!, f.LCut!, f.LTip!, colors.fHoleLowerLine, colors.fHoleLowerDeep],
+  // tip carries no mark of its own — it is where three other numbers land. both cuts share one
+  // warm color against the cool arcs, since the straight run is the thing to pick out; the rim is
+  // drawn muted because it belongs to placement and is only here for the outline to close on.
+  for (let [eye, shoulder, otherEye, cut, tip, eyeColor] of [
+    [f.UEye!, f.U1!, f.LEye!, f.UCut!, f.UTip!, colors.fHoleUpperMuted],
+    [f.LEye!, f.L1!, f.UEye!, f.LCut!, f.LTip!, colors.fHoleLowerMuted],
   ] as const) {
-    renderLine(cutRay(eye, otherEye, cut).foot, tip, lineColor, 2)(g, ui);
+    renderLine(cutRay(eye, otherEye, cut).foot, tip, colors.fHoleCut, 2)(g, ui);
 
     // longArc picks whichever of the two arcs is the counter-clockwise one, so moving the cut
     // round the eye slides the join rather than flipping which side of the rim is drawn

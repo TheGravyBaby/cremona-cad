@@ -109,9 +109,12 @@ export interface ArchingParams {
   bottom: ArchPlate;
 }
 
-// eyes are shared by both edges, so they keep U/L (as `bouts` does); O1-O5 and I1-I5 are one edge
-// each, in drawing order — shoulder, arm, stem-tangent arc, stem-to-wing arc, wing. O springs from
-// UEye and reaches LTip; I is the same shape from LEye to UTip.
+// each of U1-U3/L1-L3/S1-S4 is named for where it physically sits, not which curve drew it — a
+// single outline edge crosses both halves. Springing from UEye: U1 shoulder, U2 arm, S2 the
+// stem-tangent arc, S4 the stem-to-wing arc, L3 the wing (it reaches down by LTip, so it takes
+// the L letter its position earns, not the U of the eye it left). Springing from LEye,
+// mirrored: L1, L2, S3, S1, U3. S1-S4 sit in the stem strip itself, named by quadrant —
+// S1 upper-left, S2 upper-right, S3 lower-left, S4 lower-right — see FholeStem.arcR.
 export interface FholeParams {
   UEye: Circle | null;
   LEye: Circle | null;
@@ -125,18 +128,26 @@ export interface FholeParams {
 
   stem: FholeStem;
 
-  /** `O1.end` is sticky past the apex — see getShoulderExtendDeg. */
-  O1: Arc | null;
-  O2: Arc | null;
-  O3: Arc | null;
-  O4: Arc | null;
-  O5: Arc | null;
+  /** `U1.end` is sticky past the apex — see getShoulderExtendDeg. */
+  U1: Arc | null;
+  U2: Arc | null;
+  /** The wing hung off UTip — belongs to the edge that springs from LEye, but named for where it
+   * sits, not where it started. */
+  U3: Arc | null;
 
-  I1: Arc | null;
-  I2: Arc | null;
-  I3: Arc | null;
-  I4: Arc | null;
-  I5: Arc | null;
+  L1: Arc | null;
+  L2: Arc | null;
+  /** The wing hung off LTip — belongs to the edge that springs from UEye. */
+  L3: Arc | null;
+
+  /** Upper-left stem-tangent/flare arc. */
+  S1: Arc | null;
+  /** Upper-right. */
+  S2: Arc | null;
+  /** Lower-left. */
+  S3: Arc | null;
+  /** Lower-right. */
+  S4: Arc | null;
 }
 
 /** The straight cut closing one end of the hole, from a point on the eye out to the wing's tip. */
@@ -147,13 +158,13 @@ export interface FholeCut {
   length: number | null;
 }
 
-/** The shared reference frame both edges land their O3/I3 stem-tangent arc on. */
+/** The shared reference frame both edges land their stem-tangent arc on. */
 export interface FholeStem {
   center: Pt | null;
   width: number | null;
   /** radians; geometry should read `stemRun`, not this. */
   angle: number | null;
-  /** Shared radius for all four stem-tangent/flare arcs (O3/O4/I3/I4) — one compass setting for
+  /** Shared radius for all four stem-tangent/flare arcs (S1-S4) — one compass setting for
    * the whole stem, the way a maker would actually fit it. */
   arcR: number | null;
 }
@@ -182,21 +193,17 @@ export interface CerutiColors {
   fluting: string;
   archTop: string;
   archBack: string;
-  fHoleUpperDeep: string;
   fHoleUpperDark: string;
   fHoleUpper: string;
   fHoleUpperMuted: string;
-  fHoleUpperLine: string;
   fHoleUpperLight: string;
-  fHoleLowerDeep: string;
   fHoleLowerDark: string;
   fHoleLower: string;
   fHoleLowerMuted: string;
-  fHoleLowerLine: string;
   fHoleLowerLight: string;
   fHoleStem: string;
   fHoleStemOff: string;
-  fHoleStemLine: string;
+  fHoleCut: string;
 }
 
 /** A plate's 3D/topo overlay is one-at-a-time — rendering both is too slow. */
