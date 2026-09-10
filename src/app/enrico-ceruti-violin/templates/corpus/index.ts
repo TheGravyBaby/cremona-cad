@@ -1,4 +1,5 @@
 import { EnricoCerutiTemplate } from '../../ceruti-types';
+import { referenceImagesOf } from '../../../models/types';
 import amatiViolinBrookings2022560097 from './amati-violin-brookings-2022560097.json';
 import stradivariViolinBetts2022560101 from './stradivari-violin-betts-2022560101.json';
 import guarneriViolinKreisler2022560099 from './guarneri-violin-kreisler-2022560099.json';
@@ -8,8 +9,7 @@ import stradivariViolinWard2022560100 from './stradivari-violin-ward-2022560100.
 import guarneriViolinGoldbergBaronVitta2023870692 from './guarneri-violin-goldberg-baron-vitta-2023870692.json';
 import amatiViolinWitten03356 from './amati-violin-witten-03356.json';
 import stradivariViolinHarrison03598 from './stradivari-violin-harrison-03598.json';
-import rugeriCello from '../subPrime/rugeri-poplar1690.json';
-import guarneriSainton from '../subPrime/guarneri-violin-sainton-betti-1744.json';
+import { LEGACY_TEMPLATES } from '../subPrime';
 
 /**
  * Instruments traced from public museum/library records, kept apart from `ceruti-templates.ts` —
@@ -48,12 +48,27 @@ export const CORPUS_TEMPLATES: EnricoCerutiTemplate[] = [
 ];
 
 /**
- * Two `../subPrime/` instruments wanted in the picker without the rest of that folder coming
- * with them. They are traced by eye and their images are uncredited, so they are deliberately
- * *not* in `CORPUS_TEMPLATES` — that array is what `ceruti-templates.spec.ts` holds to the
- * provenance rules above, and folding these into it would only cost the rules their teeth.
+ * Every `../subPrime/` instrument, traced by eye rather than from a record and uncredited, so
+ * deliberately *not* in `CORPUS_TEMPLATES` — that array is what `ceruti-templates.spec.ts` holds
+ * to the provenance rules above, and folding these in would only cost the rules their teeth. None
+ * of them is `isLocSourced`, so `templateOptions` (ceruti-violin.ts) only offers them on a local
+ * dev build — a deployed one never reaches an instrument this unverified, or a broken image link.
  */
-export const SUBPRIME_PICKS: EnricoCerutiTemplate[] = [
-  rugeriCello as unknown as EnricoCerutiTemplate,
-  guarneriSainton as unknown as EnricoCerutiTemplate,
-];
+export const SUBPRIME_PICKS: EnricoCerutiTemplate[] = LEGACY_TEMPLATES;
+
+const LOC_HOST = 'https://tile.loc.gov/';
+
+/**
+ * True when every reference image on this template is served by the Library of Congress's IIIF
+ * service, which sends the CORS header a browser needs to read an image's pixels. The other
+ * hosts among these templates (an emuseum.org install, a foundation's own site, a luthier's own
+ * site, or a `public/` path whose file was since removed) don't send one — the image still
+ * displays where it exists at all, but background suppression can never run on it, and the app
+ * can't tell which of those hosts will still be reachable. Used to keep the deployed picker to
+ * instruments a visitor can actually use fully, while a local dev build still offers the complete
+ * set for evaluating those templates. Reads referenceImagesOf rather than `referenceImages`
+ * directly so a template still on the deprecated singular `referenceImage` field isn't missed.
+ */
+export function isLocSourced(template: EnricoCerutiTemplate): boolean {
+  return referenceImagesOf(template).every(img => img.href.startsWith(LOC_HOST));
+}

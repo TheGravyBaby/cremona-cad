@@ -2,6 +2,7 @@ import { Component, Input } from '@angular/core';
 import { inject } from '@angular/core';
 import { DraftTool } from '../tools/draft-tool';
 import { ToolboxStore, PanelChoice } from '../tools/toolbox-store';
+import { ImageAssetStore } from '../tools/image-asset-store';
 import {
   DraftShape, LineShape, DimensionShape, RectShape, TextShape, PointShape, CircleShape, ArcShape, SectionShape,
   FreehandShape, ImageShape, DEFAULT_IMAGE_OPACITY, DEFAULT_SHAPE_COLOR, DEFAULT_FREEHAND_WIDTH,
@@ -25,6 +26,7 @@ import { normalizeDegrees, pointAtDistanceToward } from '../../helpers/draftMath
 })
 export class SettingsBarComponent {
   private toolbox = inject(ToolboxStore);
+  private imageAssets = inject(ImageAssetStore);
 
   @Input() activeTool: DraftTool | null = null;
   @Input() selectedShape: DraftShape | undefined = undefined;
@@ -574,6 +576,14 @@ export class SettingsBarComponent {
    * is white (a plaster cast, a light-varnished front). */
   public get imageSuppressWhite(): boolean {
     return this.selectedImageShape?.suppressWhite ?? true;
+  }
+
+  /** True once a suppression attempt on this image has actually failed — a host with no CORS
+   * header refuses to hand its pixels back to the browser at all. The toggle disables itself
+   * rather than offering a setting that can never take visible effect. */
+  public get imageSuppressionUnavailable(): boolean {
+    const shape = this.selectedImageShape;
+    return !!shape && !this.imageAssets.isSuppressible(shape.imageRef);
   }
 
   setImageSuppressWhite(value: boolean): void {

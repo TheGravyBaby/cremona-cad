@@ -10,10 +10,11 @@ import guadagniniPiacenza from './guadagnini-piacenza.json';
 import delGesuSainton from './guarneri-violin-sainton-betti-1744.json'
 import rugeriCello from './rugeri-poplar1690.json';
 
-// eight instruments traced by eye, not from a record — excluded from the template picker, kept
-// only because the suite's per-template sweeps need them: they're the only ones in the repo
-// exercising a bass, viol neck/corners and the double-arc options. Reference image hrefs point at
-// files removed from `public/`; restoring one to the picker means restoring its image too.
+// ten instruments traced by eye, not from a record — the only ones in the repo exercising a
+// bass, viol neck/corners and the double-arc options, so the suite's per-template sweeps need
+// them regardless of picker visibility. Most reference-image hrefs point at files removed from
+// `public/` and render broken; the params/paths are still real, usable geometry. Folded into the
+// picker via SUBPRIME_PICKS, but only for a local dev build — see isLocSourced.
 export const LEGACY_TEMPLATES: EnricoCerutiTemplate[] = [
   amatiStoll, stradGoetz, delGesuBaltic, delGesuSainton, guadagniniPiacenza, rugeriCello,
   stradDavidoff, ravatinMans, magginiDelmas, mittenwaldBass,

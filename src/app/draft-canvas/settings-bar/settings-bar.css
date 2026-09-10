@@ -205,8 +205,13 @@
   cursor: pointer;
 }
 
-.settings-action:hover {
+.settings-action:hover:not(:disabled) {
   border-color: var(--ui-canvas-btn-border-hover);
+}
+
+.settings-action:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 /* A toggleable action (currently Flip X/Y) reads as "on" the same way a selected tool does
