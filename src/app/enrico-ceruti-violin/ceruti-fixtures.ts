@@ -1,7 +1,6 @@
 import { calculateCenterBout, calculateCorners, calculateMainBouts, calculateOuterArcs } from './ceruti-calcs';
 import { defaultArchingParams, normalizeArchingParams } from './ceruti-arching';
 import { CERUTI_TEMPLATES } from './ceruti-templates';
-import { LEGACY_TEMPLATES } from './templates/subPrime';
 import { DefaultParams, EnricoCerutiParams, EnricoCerutiTemplate } from './ceruti-types';
 
 // Test fixtures. Not imported by the app.
@@ -64,10 +63,10 @@ export function archedViolin(): EnricoCerutiParams {
   return p;
 }
 
-// includes `subPrime/`, the only source with a bass, viol neck or viol corners — dropping it would
-// quietly thin every it.each below rather than fail anything.
+// CERUTI_TEMPLATES already carries subPrime/ (SUBPRIME_PICKS is all of LEGACY_TEMPLATES now),
+// the only source with a bass, viol neck or viol corners.
 function allTemplates(): EnricoCerutiTemplate[] {
-  return [...CERUTI_TEMPLATES, ...LEGACY_TEMPLATES];
+  return CERUTI_TEMPLATES;
 }
 
 /** Every bundled instrument, as `[key, factory]` — for `it.each` over the whole set. */

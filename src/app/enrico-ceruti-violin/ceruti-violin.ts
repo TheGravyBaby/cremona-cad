@@ -5,6 +5,7 @@ import { applyTransforms, ColorTransform, renderPath } from '../helpers/renderFu
 import { clampParam, safeRun } from '../helpers/validators';
 import { CerutiColors, CerutiPanelId, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, EnricoCerutiTemplate, EnricoCerutiParams, PanelRenderRequest, RenderToggleKey } from './ceruti-types';
 import { CERUTI_TEMPLATES } from './ceruti-templates';
+import { isLocSourced } from './templates/corpus';
 import { defineOuterPath, defineOuterPurflingPath, definePurflingPath } from './ceruti-paths';
 import { normalizeArchingParams } from './ceruti-arching';
 import { renderBounds } from './renders/guides.render';
@@ -170,11 +171,16 @@ export class CerutiViolin extends RecipeComponentBase {
   }
 
   // The blank is the toolbar's own "Blank instrument" entry, so it isn't also offered as
-  // something to start from.
+  // something to start from. Off localhost, templates carrying a non-LoC reference image are
+  // hidden too — their host may send no CORS header, or may not stay reachable at all — so a
+  // visitor doesn't reach for one that can't fully work; a dev running locally sees everything,
+  // with a "/ " prefix marking which ones a deployed build won't offer.
   get templateOptions(): Array<{ key: string; label: string }> {
+    const isLocalDev = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
     return this.templates
       .filter(t => t.key !== CERUTI_TEMPLATES[0].key)
-      .map(t => ({ key: t.key, label: t.label }));
+      .filter(t => isLocalDev || isLocSourced(t))
+      .map(t => ({ key: t.key, label: isLocSourced(t) ? t.label : `/ ${t.label}` }));
   }
 
   // Debounced like any other edit, so a recipe carrying reference images isn't re-serialized on

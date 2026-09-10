@@ -1,4 +1,4 @@
-import { NamedReferenceImage, ReferenceImage } from '../../models/types';
+import { NamedReferenceImage, ReferenceImage, referenceImagesOf } from '../../models/types';
 import { ImageShape, makeShapeId } from './toolbox-shape';
 import { ImageAssetStore } from './image-asset-store';
 
@@ -27,23 +27,15 @@ export type ReferenceImageSource = {
  * Reads a recipe's reference images into canvas shapes, interning each image's pixels into
  * `assets` and returning shapes that point at them. Never mutates `source`.
  *
- * A legacy singular `referenceImage` is folded in as a one-element list; a blank one (empty
- * `href`, which some older saves carry as a placeholder) is dropped rather than becoming an
- * invisible zero-size shape the user can't find.
+ * A legacy singular `referenceImage` is folded in as a one-element list (see referenceImagesOf);
+ * a blank one (empty `href`, which some older saves carry as a placeholder) is dropped rather
+ * than becoming an invisible zero-size shape the user can't find.
  */
 export function imageShapesFromRecipe(
   source: ReferenceImageSource | null | undefined,
   assets: ImageAssetStore,
 ): ImageShape[] {
-  if (!source) return [];
-
-  const entries: NamedReferenceImage[] = Array.isArray(source.referenceImages)
-    ? source.referenceImages
-    : source.referenceImage?.href
-      ? [source.referenceImage as NamedReferenceImage]
-      : [];
-
-  return entries
+  return referenceImagesOf(source)
     .filter(entry => !!entry?.href)
     .map((entry, i) => {
       const shape: ImageShape = {

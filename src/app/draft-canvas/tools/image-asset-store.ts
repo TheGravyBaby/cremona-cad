@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { applyWhiteSuppression } from './white-suppression';
+import { warn } from '../../shared/message-emitter';
 
 /** Pixel data for one interned image, keyed by `ref` in ImageAssetStore. */
 export type ImageAsset = {
@@ -46,6 +47,10 @@ export class ImageAssetStore {
   private refByHref = new Map<string, string>();
   /** ref -> `blob:` URL of the white-suppressed variant, revoked on resetAll. */
   private suppressedHrefs = new Map<string, string>();
+  /** Refs whose pixels the browser has refused to hand back — e.g. a host with no CORS header,
+   * so getImageData throws no matter how many times we ask. Cached so we stop retrying a fetch
+   * that can only ever fail, and so the UI can disable suppression for that image. */
+  private unsuppressible = new Set<string>();
   private inFlight = new Set<string>();
   private listeners = new Set<() => void>();
   // The per-pixel pass runs off the main thread when available (see getWorker), so a large image
@@ -102,14 +107,14 @@ export class ImageAssetStore {
    */
   displayHref(ref: string, suppressWhite: boolean): string | undefined {
     const href = this.href(ref);
-    if (!href || !suppressWhite) return href;
+    if (!href || !suppressWhite || this.unsuppressible.has(ref)) return href;
 
     const cached = this.suppressedHrefs.get(ref);
     if (cached) return cached;
 
     if (!this.inFlight.has(ref)) {
       this.inFlight.add(ref);
-      this.buildSuppressedHref(href)
+      this.buildSuppressedHref(ref, href)
         .then(result => {
           if (!result) return;
           // resetAll may have run mid-flight; revoke rather than leak the blob.
@@ -155,6 +160,7 @@ export class ImageAssetStore {
     this.refByHref.clear();
     this.suppressedHrefs.forEach(url => URL.revokeObjectURL(url));
     this.suppressedHrefs.clear();
+    this.unsuppressible.clear();
   }
 
   /**
@@ -166,8 +172,12 @@ export class ImageAssetStore {
    * main thread on a large image; falls back to doing it here — same algorithm, main-thread
    * canvas — when a worker isn't available or the transfer fails (e.g. jsdom in tests, or a
    * cross-origin image tainting the canvas).
+   *
+   * A thrown error here means the browser will never hand back this image's pixels — most often
+   * a host with no CORS header, which rejects the crossOrigin load outright — so it's cached as
+   * permanent via markUnsuppressible rather than retried on every render.
    */
-  private async buildSuppressedHref(href: string): Promise<string | undefined> {
+  private async buildSuppressedHref(ref: string, href: string): Promise<string | undefined> {
     try {
       const img = await loadImage(href);
       const width = img.naturalWidth || img.width;
@@ -177,8 +187,26 @@ export class ImageAssetStore {
       const blob = (await this.suppressViaWorker(img)) ?? (await this.suppressOnMainThread(img, width, height));
       return blob ? URL.createObjectURL(blob) : undefined;
     } catch {
+      this.markUnsuppressible(ref);
       return undefined;
     }
+  }
+
+  /** Whether displayHref can ever produce a suppressed variant for this ref — false once a
+   * suppression attempt has actually failed. Settings-bar disables the toggle off this. */
+  isSuppressible(ref: string): boolean {
+    return !this.unsuppressible.has(ref);
+  }
+
+  private markUnsuppressible(ref: string): void {
+    if (this.unsuppressible.has(ref)) return;
+    this.unsuppressible.add(ref);
+    warn(
+      "This image's source doesn't allow the browser to read its pixels, so its background can't "
+      + 'be faded. The image still displays normally.',
+      'Background suppression unavailable',
+    );
+    this.notify();
   }
 
   private suppressOnMainThread(img: HTMLImageElement, width: number, height: number): Promise<Blob | undefined> {

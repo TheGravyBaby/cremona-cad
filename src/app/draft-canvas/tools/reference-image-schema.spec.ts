@@ -1,7 +1,6 @@
 import { imageShapesFromRecipe, imageShapesToRecipe } from './reference-image-schema';
 import { ImageAssetStore } from './image-asset-store';
 import { CERUTI_TEMPLATES } from '../../enrico-ceruti-violin/ceruti-templates';
-import { LEGACY_TEMPLATES } from '../../enrico-ceruti-violin/templates/subPrime';
 import { NamedReferenceImage } from '../../models/types';
 
 /** The store has no Angular dependencies of its own, so a plain instance is enough here. */
@@ -250,9 +249,9 @@ describe('round-trip through the recipe field', () => {
 });
 
 // The built-in templates are the compatibility contract this module exists to hold: they carry
-// reference images in the pre-refactor format and must keep loading untouched. Legacy templates
-// still use the singular `referenceImage`, so they belong in this sweep too.
-const BUNDLED = [...CERUTI_TEMPLATES, ...LEGACY_TEMPLATES];
+// reference images in the pre-refactor format and must keep loading untouched. CERUTI_TEMPLATES
+// already carries subPrime/'s legacy templates, which still use the singular `referenceImage`.
+const BUNDLED = CERUTI_TEMPLATES;
 
 describe('the built-in Ceruti templates', () => {
   it('every template loads without error, and every image in one gets usable geometry', () => {

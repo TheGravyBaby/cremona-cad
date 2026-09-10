@@ -166,6 +166,21 @@ export type NamedReferenceImage = ReferenceImage & {
   locked?: boolean;
 }
 
+/** The reference images a recipe/template carries, folding the deprecated singular
+ * `referenceImage` in as a one-element list. Shared by the canvas side (reference-image-schema.ts,
+ * which places them) and anything that only needs to inspect them, e.g. checking image hosts —
+ * so neither has to re-derive the merge and risk missing the singular field. */
+export function referenceImagesOf(
+  source: { referenceImages?: NamedReferenceImage[] | null; referenceImage?: ReferenceImage | null } | null | undefined,
+): NamedReferenceImage[] {
+  if (!source) return [];
+  return Array.isArray(source.referenceImages)
+    ? source.referenceImages
+    : source.referenceImage?.href
+      ? [source.referenceImage as NamedReferenceImage]
+      : [];
+}
+
 export interface RecipeInterface {
     recipeName: string;
     fileName: string;
