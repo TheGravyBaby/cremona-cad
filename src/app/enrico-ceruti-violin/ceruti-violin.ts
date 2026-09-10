@@ -174,13 +174,14 @@ export class CerutiViolin extends RecipeComponentBase {
   // something to start from. Off localhost, templates carrying a non-LoC reference image are
   // hidden too — their host may send no CORS header, or may not stay reachable at all — so a
   // visitor doesn't reach for one that can't fully work; a dev running locally sees everything,
-  // with a "/ " prefix marking which ones a deployed build won't offer.
+  // with a "/ " prefix marking which ones a deployed build won't offer. Numbered 1..N over
+  // whatever's actually shown, so the count tracks the visible list rather than the full set.
   get templateOptions(): Array<{ key: string; label: string }> {
     const isLocalDev = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
     return this.templates
       .filter(t => t.key !== CERUTI_TEMPLATES[0].key)
       .filter(t => isLocalDev || isLocSourced(t))
-      .map(t => ({ key: t.key, label: isLocSourced(t) ? t.label : `/ ${t.label}` }));
+      .map((t, i) => ({ key: t.key, label: `${i + 1}. ${isLocSourced(t) ? '' : '/ '}${t.label}` }));
   }
 
   // Debounced like any other edit, so a recipe carrying reference images isn't re-serialized on
