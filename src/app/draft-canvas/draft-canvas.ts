@@ -28,7 +28,7 @@ import { moveGrabberPosition, endpointGrabbers, withEndpoint, EndpointKey } from
 import { snapToLockedAngle } from './tools/angle-lock';
 import { copyDebugDump, isLocalHost } from '../helpers/debugDump';
 import { info, warn } from '../shared/message-emitter';
-import { DEFAULT_TEXT_SIZE_MM, DraftShape, TextShape } from './tools/toolbox-shape';
+import { DEFAULT_TEXT_SIZE_MM, DraftShape, ImageShape, TextShape, imageRenderKey } from './tools/toolbox-shape';
 import { placedImageShape } from './tools/image-placement';
 import { HOTKEY_TOOL_CYCLE } from './tools/tool-hotkeys';
 import { ToolPaletteComponent } from './tool-palette/tool-palette';
@@ -54,8 +54,10 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private canvas!: d3.Selection<SVGSVGElement, unknown, null, undefined>;
   private gRoot!: d3.Selection<SVGGElement, unknown, null, undefined>;
   private gUI!: d3.Selection<SVGGElement, unknown, null, undefined>;
-  /** The reference-image layer from the most recent draw. Kept, like `snapLayer` below, because
-   * the camera fit is measured off the rendered SVG — see fitCamera(). */
+  /** Reference images' persistent layer — created once, not rebuilt by draw(), so a keyed join
+   * (renderImages()) can skip repainting an image that hasn't changed. Sits outside gRoot as its
+   * own sibling, painted first, so images stay under everything gRoot draws. Also read by
+   * fitCamera(), like `snapLayer` below. */
   private imageLayer: d3.Selection<SVGGElement, unknown, null, undefined> | null = null;
   private resizeObs?: ResizeObserver;
   private draftFuncs: Array<(canvas: any, uiCan: any) => void> = [];
@@ -106,7 +108,8 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private snapDirty = true;
   private activeSnap: SnapCandidate | null = null;
   /** The group holding everything in world space — the recipe's layers and the toolbox's shapes,
-   * and nothing else (the grid, reference images, halos and snap markers are all siblings of it).
+   * and nothing else (the grid, halos and snap markers are siblings of it inside gRoot; reference
+   * images render into their own persistent layer outside gRoot entirely — see imageLayer).
    * Named once because the debug dump finds this group by class: a rename at only one of the two
    * sites would leave it silently reporting an empty drawing. */
   private static readonly SCENE_GROUP_CLASS = 'snappable';
@@ -302,6 +305,8 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       .attr('width', '100%')
       .attr('height', '100%');
 
+    // Appended before gRoot so it paints underneath — see the imageLayer field doc.
+    this.imageLayer = this.canvas.append('g').attr('class', 'reference-images').attr('transform', 'scale(1,-1)');
     this.gRoot = this.canvas.append('g').attr('class', 'root');
     this.gUI = this.canvas.append('g').attr('class', 'ui');
 
@@ -372,19 +377,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       leftBound, rightBound, topBound, bottomBound, mmW, mmH
     };
 
-    // Reference images go down first, before the grid and before anything the recipe draws —
-    // you trace on top of a photo, not underneath it. (This replaces the old controller's
-    // append-then-`.lower()` trick, which only worked because it ran before everything else too.)
-    // They get their own group purely so the camera fit can measure them as a unit.
-    const imageLayer = this.gRoot.append('g').attr('class', 'reference-images');
-    this.imageLayer = imageLayer;
-    this.toolbox.getVisibleImages().forEach(image => {
-      // A live drag/resize renders from the uncommitted override, same as any other shape.
-      const dragged = this.dragOverrides?.get(image.id);
-      const shape = dragged?.type === 'image' ? dragged : image;
-      const href = this.imageAssets.displayHref(shape.imageRef, shape.suppressWhite ?? true);
-      if (href) drawImageShape(imageLayer, shape, href);
-    });
+    this.renderImages();
 
     this.axisGrid.draw(this.gRoot, this.gUI, cv, this.pxPerMm);
 
@@ -451,6 +444,35 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       this.autoFitPending = false;
       this.draw();
     }
+  }
+
+  /** Keyed join into the persistent imageLayer — skips redrawing an image whose href/geometry
+   * (imageRenderKey) hasn't changed since the last draw, so panning/zooming doesn't redecode a
+   * suppressed image's alpha PNG every frame. */
+  private renderImages(): void {
+    if (!this.imageLayer) return;
+    const entries = this.toolbox.getVisibleImages().flatMap(image => {
+      // A live drag/resize renders from the uncommitted override, same as any other shape.
+      const dragged = this.dragOverrides?.get(image.id);
+      const shape = dragged?.type === 'image' ? dragged : image;
+      const href = this.imageAssets.displayHref(shape.imageRef, shape.suppressWhite ?? true);
+      return href ? [{ shape, href }] : [];
+    });
+
+    const joined = this.imageLayer
+      .selectAll<SVGGElement, { shape: ImageShape; href: string }>('g.reference-image-group')
+      .data(entries, d => d.shape.id);
+    joined.exit().remove();
+
+    const merged = joined.enter().append('g').attr('class', 'reference-image-group').merge(joined);
+    merged.each(({ shape, href }, i, nodes) => {
+      const node = d3.select(nodes[i]);
+      const key = imageRenderKey(shape, href);
+      if (node.attr('data-render-key') === key) return;
+      drawImageShape(node, shape, href);
+      node.attr('data-render-key', key);
+    });
+    merged.order();
   }
 
   /** Pass null to switch to the default select tool (no active drafting tool). Thin wrapper

@@ -150,33 +150,29 @@ export function drawShape(gRoot: RootGroup, gUI: RootGroup, shape: DraftShape, p
 }
 
 /**
- * Draws a placed image. Separate from drawShape because images render in their own pass
- * underneath the recipe's own geometry, and because the href has to be resolved through
- * ImageAssetStore first — see draft-canvas.ts's draw().
+ * (Re)populates one placed image's already-joined `<g class="reference-image-group">` — see
+ * draft-canvas.ts's renderImages(), which only calls this for a shape that's new or changed.
  *
- * The `<image>` is drawn at the source rectangle (the whole picture) and a clip rect at the box
- * cuts it back — the one place that has to know what `crop` means. Nested layers, innermost
- * first: the flip correction (undoes gRoot's Y flip, SVG `<image>` can't render bottom-up), the
- * mirror group (about the box centre, so a rotated mirrored image stays mirrored), the crop clip,
- * then the rotate group.
+ * The `<image>` is drawn at the source rectangle and a clip rect at the box cuts it back — the
+ * one place that has to know what `crop` means. Nested layers, innermost first: the flip
+ * correction (undoes gRoot's Y flip), the mirror group, the crop clip, then `group` itself
+ * (rotation).
  *
- * `preserveAspectRatio` is `none`, not `meet`: crop fractions only mean something if the picture
- * fills its rectangle, and a hand-authored template box that isn't in proportion should show what
- * it actually says rather than letterbox.
+ * `preserveAspectRatio` is `none`: crop fractions only mean something if the picture fills its
+ * rectangle.
  */
-export function drawImageShape(gRoot: RootGroup, shape: ImageShape, href: string): void {
+export function drawImageShape(group: RootGroup, shape: ImageShape, href: string): void {
   const center = imageCenter(shape);
   const src = imageSourceBox(shape);
 
-  const rotateGroup = gRoot.append('g')
-    .attr('class', 'reference-image-group')
-    .attr('transform', `rotate(${shape.rotationDeg ?? 0} ${center.x} ${center.y})`);
+  group.selectAll('*').remove();
+  group.attr('transform', `rotate(${shape.rotationDeg ?? 0} ${center.x} ${center.y})`);
 
-  let content: RootGroup = rotateGroup;
+  let content: RootGroup = group;
   if (isCropped(shape.crop)) {
     // keyed off the shape, not the href, so two images sharing a picture don't collide.
     const clipId = `image-crop-${shape.id}`;
-    rotateGroup.append('clipPath')
+    group.append('clipPath')
       .attr('id', clipId)
       .attr('clipPathUnits', 'userSpaceOnUse')
       .append('rect')
@@ -184,7 +180,7 @@ export function drawImageShape(gRoot: RootGroup, shape: ImageShape, href: string
       .attr('y', shape.y)
       .attr('width', shape.width)
       .attr('height', shape.height);
-    content = rotateGroup.append('g').attr('clip-path', `url(#${clipId})`);
+    content = group.append('g').attr('clip-path', `url(#${clipId})`);
   }
 
   const imageParent = shape.mirrored

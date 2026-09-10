@@ -565,7 +565,7 @@
       "height": 373.4661463419784,
       "rotationDeg": 359.1,
       "opacity": 0.4,
-      "suppressWhite": false,
+      "suppressWhite": true,
       "locked": true,
       "excludePanels": [
         "fluting",
@@ -592,7 +592,7 @@
       "height": 388.3509033203125,
       "rotationDeg": 0,
       "opacity": 0.4,
-      "suppressWhite": false,
+      "suppressWhite": true,
       "locked": true,
       "panels": [
         "longArching"

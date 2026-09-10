@@ -359,6 +359,7 @@
       "width": 208.89924221655463,
       "height": 369.24768837833506,
       "rotationDeg": 0,
+      "suppressWhite": true,
       "locked": true
     }
   ]

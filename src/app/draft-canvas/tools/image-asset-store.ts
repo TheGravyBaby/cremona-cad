@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { applyWhiteSuppression } from './white-suppression';
 
 /** Pixel data for one interned image, keyed by `ref` in ImageAssetStore. */
 export type ImageAsset = {
@@ -17,23 +18,13 @@ function makeAssetRef(): string {
   return `img-${Date.now().toString(36)}-${assetRefSeq.toString(36)}`;
 }
 
-// White-suppression tuning. Raise the threshold to affect fewer pixels; increase softness for a
-// gentler fade; the saturation gate keeps genuinely colored pixels (varnish, pencil) untouched.
-// Code-controlled — the per-shape control is only the on/off toggle (see ImageShape.suppressWhite).
-const WHITE_THRESHOLD = 0.9;
-const WHITE_SOFTNESS = 0.08;
-const WHITE_SATURATION_GATE = 0.18;
-
 // keeps a phone photo well under sessionStorage's ~5MB budget, still finer than placement needs.
 const UPLOAD_MAX_EDGE_PX = 2400;
 // below this, re-encoding only adds JPEG artifacts for no size win.
 const UPLOAD_PASSTHROUGH_BYTES = 1_000_000;
 const UPLOAD_JPEG_QUALITY = 0.85;
 
-function smoothstep(edge0: number, edge1: number, x: number): number {
-  const t = Math.max(0, Math.min(1, (x - edge0) / Math.max(1e-6, edge1 - edge0)));
-  return t * t * (3 - 2 * t);
-}
+type WorkerResponse = { id: number; blob: Blob } | { id: number; error: string };
 
 /**
  * Owns image *pixels*, separately from the ImageShapes that place them on the canvas. Shapes
@@ -57,6 +48,11 @@ export class ImageAssetStore {
   private suppressedHrefs = new Map<string, string>();
   private inFlight = new Set<string>();
   private listeners = new Set<() => void>();
+  // The per-pixel pass runs off the main thread when available (see getWorker), so a large image
+  // doesn't visibly block/flash while it's first suppressed.
+  private worker: Worker | null | undefined;
+  private workerRequestSeq = 0;
+  private workerPending = new Map<number, (blob: Blob | undefined) => void>();
 
   /** Fired when an async white-suppression pass finishes and the canvas should redraw. */
   onChange(cb: () => void): () => void {
@@ -162,13 +158,14 @@ export class ImageAssetStore {
   }
 
   /**
-   * Redraws the image onto an offscreen canvas with near-white pixels faded to transparent, so a
-   * scanned drawing on white paper reads correctly against a dark canvas. Pixels with any real
-   * saturation are skipped outright, so this only eats paper, not the drawing on it.
+   * White-suppresses the image and returns a `blob:` URL, not a data URL — draw() rewrites it
+   * every pointermove, and a multi-MB base64 string there drags visibly. Display only; the save
+   * adapter writes the raw href instead.
    *
-   * Returns a `blob:` URL, not a data URL — draw() rewrites it every pointermove, and a
-   * multi-MB base64 string there drags visibly. Display only; the save adapter writes the raw
-   * href instead.
+   * Prefers a worker (see white-suppression.worker.ts) so the per-pixel pass doesn't block the
+   * main thread on a large image; falls back to doing it here — same algorithm, main-thread
+   * canvas — when a worker isn't available or the transfer fails (e.g. jsdom in tests, or a
+   * cross-origin image tainting the canvas).
    */
   private async buildSuppressedHref(href: string): Promise<string | undefined> {
     try {
@@ -177,41 +174,57 @@ export class ImageAssetStore {
       const height = img.naturalHeight || img.height;
       if (!width || !height) return undefined;
 
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d', { willReadFrequently: true });
-      if (!ctx) return undefined;
-
-      ctx.drawImage(img, 0, 0);
-      const imageData = ctx.getImageData(0, 0, width, height);
-      const data = imageData.data;
-
-      for (let i = 0; i < data.length; i += 4) {
-        const r = data[i] / 255;
-        const g = data[i + 1] / 255;
-        const b = data[i + 2] / 255;
-
-        const maxC = Math.max(r, g, b);
-        const minC = Math.min(r, g, b);
-        const saturation = maxC <= 1e-6 ? 0 : (maxC - minC) / maxC;
-        if (saturation > WHITE_SATURATION_GATE) continue;
-
-        const whiteness = 1 - Math.max(Math.abs(1 - r), Math.abs(1 - g), Math.abs(1 - b));
-        const fade = smoothstep(WHITE_THRESHOLD, WHITE_THRESHOLD + WHITE_SOFTNESS, whiteness);
-
-        const alpha = data[i + 3] / 255;
-        data[i + 3] = Math.max(0, Math.min(255, Math.round(alpha * (1 - fade) * 255)));
-      }
-
-      ctx.putImageData(imageData, 0, 0);
-      const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
+      const blob = (await this.suppressViaWorker(img)) ?? (await this.suppressOnMainThread(img, width, height));
       return blob ? URL.createObjectURL(blob) : undefined;
     } catch {
-      // A cross-origin image taints the canvas and getImageData throws — fall back to the raw
-      // href rather than failing the draw.
       return undefined;
     }
+  }
+
+  private suppressOnMainThread(img: HTMLImageElement, width: number, height: number): Promise<Blob | undefined> {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return Promise.resolve(undefined);
+
+    ctx.drawImage(img, 0, 0);
+    const imageData = ctx.getImageData(0, 0, width, height);
+    applyWhiteSuppression(imageData);
+    ctx.putImageData(imageData, 0, 0);
+
+    return new Promise(resolve => canvas.toBlob(blob => resolve(blob ?? undefined), 'image/png'));
+  }
+
+  private async suppressViaWorker(img: HTMLImageElement): Promise<Blob | undefined> {
+    const worker = this.getWorker();
+    if (!worker) return undefined;
+    const bitmap = await createImageBitmap(img);
+    const id = ++this.workerRequestSeq;
+    return new Promise(resolve => {
+      this.workerPending.set(id, resolve);
+      worker.postMessage({ id, bitmap }, [bitmap]);
+    });
+  }
+
+  private getWorker(): Worker | null {
+    if (this.worker !== undefined) return this.worker;
+    if (typeof Worker === 'undefined' || typeof createImageBitmap === 'undefined') {
+      this.worker = null;
+      return null;
+    }
+    const worker = new Worker(new URL('./white-suppression.worker', import.meta.url), { type: 'module' });
+    worker.onmessage = (e: MessageEvent<WorkerResponse>) => {
+      const resolve = this.workerPending.get(e.data.id);
+      this.workerPending.delete(e.data.id);
+      resolve?.('blob' in e.data ? e.data.blob : undefined);
+    };
+    worker.onerror = () => {
+      this.workerPending.forEach(resolve => resolve(undefined));
+      this.workerPending.clear();
+    };
+    this.worker = worker;
+    return worker;
   }
 }
 

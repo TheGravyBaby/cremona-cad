@@ -165,8 +165,8 @@ export type ImageShape = ShapeBase & {
   /** Per-image, unlike the single global slider the old reference popup had. Undefined means
    * DEFAULT_IMAGE_OPACITY, which is what every pre-existing recipe file effectively had. */
   opacity?: number;
-  /** Fades near-white pixels to transparent so a scan on white paper reads on a dark canvas.
-   * Undefined means on, matching the old always-on behavior. */
+  /** Fades the image's background to transparent so a scan reads on a dark canvas — see
+   * white-suppression.ts. Undefined means on, matching the old always-on behavior. */
   suppressWhite?: boolean;
   /**
    * Mirrors the image content left-right about its own center. No separate vertical mirror:
@@ -223,6 +223,17 @@ export function imageCenter(shape: ImageShape): Pt {
 // applyImageCrop) and a hand-authored template out of proportion keeps what it has.
 export function imageAspect(shape: ImageShape): number {
   return Math.abs(shape.width / shape.height) || 1;
+}
+
+/** Fingerprint of everything drawImageShape's output depends on — lets draft-canvas skip
+ * rebuilding (and redecoding) an image whose shape hasn't actually changed since the last draw. */
+export function imageRenderKey(shape: ImageShape, href: string): string {
+  const crop = shape.crop;
+  return [
+    href, shape.x, shape.y, shape.width, shape.height, shape.rotationDeg ?? 0,
+    shape.opacity ?? DEFAULT_IMAGE_OPACITY, shape.mirrored ?? false,
+    crop?.left ?? 0, crop?.top ?? 0, crop?.right ?? 0, crop?.bottom ?? 0,
+  ].join('|');
 }
 
 // a reference image is never skewed — every resize takes its other dimension from imageAspect.
