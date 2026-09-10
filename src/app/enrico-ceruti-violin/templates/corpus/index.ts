@@ -7,8 +7,6 @@ import stradivariViolaCassavetti2022560103 from './stradivari-viola-cassavetti-2
 import stradivariCelloCastelbarco2022560102 from './stradivari-cello-castelbarco-2022560102.json';
 import stradivariViolinWard2022560100 from './stradivari-violin-ward-2022560100.json';
 import guarneriViolinGoldbergBaronVitta2023870692 from './guarneri-violin-goldberg-baron-vitta-2023870692.json';
-import amatiViolinWitten03356 from './amati-violin-witten-03356.json';
-import stradivariViolinHarrison03598 from './stradivari-violin-harrison-03598.json';
 import { LEGACY_TEMPLATES } from '../subPrime';
 
 /**
@@ -37,10 +35,9 @@ export const CORPUS_TEMPLATES: EnricoCerutiTemplate[] = [
   // cast because JSON imports infer structurally (arcs' nulls widen to null);
   // shape is pinned by ceruti-templates.spec.ts instead.
   amatiViolinBrookings2022560097 as unknown as EnricoCerutiTemplate,
-  amatiViolinWitten03356 as unknown as EnricoCerutiTemplate,
+  
   stradivariViolinWard2022560100 as unknown as EnricoCerutiTemplate,
   stradivariViolinBetts2022560101 as unknown as EnricoCerutiTemplate,
-  stradivariViolinHarrison03598 as unknown as EnricoCerutiTemplate,
   guarneriViolinKreisler2022560099 as unknown as EnricoCerutiTemplate,
   guarneriViolinGoldbergBaronVitta2023870692 as unknown as EnricoCerutiTemplate,
   stradivariViolaCassavetti2022560103 as unknown as EnricoCerutiTemplate,
