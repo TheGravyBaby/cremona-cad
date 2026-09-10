@@ -28,11 +28,11 @@ const solve = (shaped: boolean): EnricoCerutiParams => {
     // mimics a user extending both shoulders past their apex, then dialling the stem's one
     // shared arc radius off the 40 it defaults to. turn is -1 both sides by construction here,
     // so subtracting from `end` continues the shoulder's own turn.
-    p.fHoles!.O1!.end -= 0.3;
-    p.fHoles!.I1!.end -= 0.25;
+    p.fHoles!.U1!.end -= 0.3;
+    p.fHoles!.L1!.end -= 0.25;
     calculateFholeContours(p);
 
-    p.fHoles!.stem.arcR! += 8; // all four of O3/O4/I3/I4 follow this one number
+    p.fHoles!.stem.arcR! += 8; // all four of S1/S2/S3/S4 follow this one number
     calculateFholeContours(p);
   }
 
@@ -60,16 +60,16 @@ const PLAIN = {
     "angle": 1.6057,
     "arcR": 40,
   },
-  "O1": { "x": 26.3829, "y": 186.0665, "r": 8, "start": 2.9402, "end": 1.5708 },
-  "O2": { "x": 26.3829, "y": 184.0665, "r": 10, "start": 1.5708, "end": 0.4648 },
-  "O3": { "x": -0.4343, "y": 170.6189, "r": 40, "start": 0.4648, "end": 0.0349 },
-  "O4": { "x": 80.3074, "y": 150.7765, "r": 40, "start": -3.1067, "end": -2.7188 },
-  "O5": { "x": 54.7726, "y": 139.2885, "r": 12, "start": 3.5644, "end": -1.6581 },
-  "I1": { "x": 51.5879, "y": 135.6, "r": 10, "start": -0.2014, "end": -1.5708 },
-  "I2": { "x": 51.5879, "y": 137.6, "r": 12, "start": -1.5708, "end": -2.5749 },
-  "I3": { "x": 75.2115, "y": 152.6308, "r": 40, "start": -2.5749, "end": -3.1067 },
-  "I4": { "x": -5.5648, "y": 173.4638, "r": 40, "start": -6.2483, "end": -5.9656 },
-  "I5": { "x": 22.9353, "y": 182.8311, "r": 10, "start": 0.3176, "end": 1.3963 },
+  "U1": { "x": 26.3829, "y": 186.0665, "r": 8, "start": 2.9402, "end": 1.5708 },
+  "U2": { "x": 26.3829, "y": 184.0665, "r": 10, "start": 1.5708, "end": 0.4648 },
+  "U3": { "x": 22.9353, "y": 182.8311, "r": 10, "start": 0.3176, "end": 1.3963 },
+  "L1": { "x": 51.5879, "y": 135.6, "r": 10, "start": -0.2014, "end": -1.5708 },
+  "L2": { "x": 51.5879, "y": 137.6, "r": 12, "start": -1.5708, "end": -2.5749 },
+  "L3": { "x": 54.7726, "y": 139.2885, "r": 12, "start": 3.5644, "end": -1.6581 },
+  "S1": { "x": -5.5648, "y": 173.4638, "r": 40, "start": -6.2483, "end": -5.9656 },
+  "S2": { "x": -0.4343, "y": 170.6189, "r": 40, "start": 0.4648, "end": 0.0349 },
+  "S3": { "x": 75.2115, "y": 152.6308, "r": 40, "start": -2.5749, "end": -3.1067 },
+  "S4": { "x": 80.3074, "y": 150.7765, "r": 40, "start": -3.1067, "end": -2.7188 },
 };
 
 const SHAPED = {
@@ -87,16 +87,16 @@ const SHAPED = {
     "angle": 1.6057,
     "arcR": 48,
   },
-  "O1": { "x": 26.3829, "y": 186.0665, "r": 8, "start": 2.9402, "end": 1.2708 },
-  "O2": { "x": 25.7919, "y": 184.1558, "r": 10, "start": 1.2708, "end": 0.4559 },
-  "O3": { "x": -8.3277, "y": 167.4269, "r": 48, "start": 0.4559, "end": 0.0349 },
-  "O4": { "x": 88.2513, "y": 152.5241, "r": 48, "start": -3.1067, "end": -2.7651 },
-  "O5": { "x": 54.7726, "y": 139.2885, "r": 12, "start": 3.5181, "end": -1.6581 },
-  "I1": { "x": 51.5879, "y": 135.6, "r": 10, "start": -0.2014, "end": -1.8208 },
-  "I2": { "x": 52.0827, "y": 137.5378, "r": 12, "start": -1.8208, "end": -2.6095 },
-  "I3": { "x": 83.1057, "y": 155.8019, "r": 48, "start": -2.6095, "end": -3.1067 },
-  "I4": { "x": -13.5225, "y": 172.1155, "r": 48, "start": -6.2483, "end": -5.9973 },
-  "I5": { "x": 22.9353, "y": 182.8311, "r": 10, "start": 0.2859, "end": 1.3963 },
+  "U1": { "x": 26.3829, "y": 186.0665, "r": 8, "start": 2.9402, "end": 1.2708 },
+  "U2": { "x": 25.7919, "y": 184.1558, "r": 10, "start": 1.2708, "end": 0.4559 },
+  "U3": { "x": 22.9353, "y": 182.8311, "r": 10, "start": 0.2859, "end": 1.3963 },
+  "L1": { "x": 51.5879, "y": 135.6, "r": 10, "start": -0.2014, "end": -1.8208 },
+  "L2": { "x": 52.0827, "y": 137.5378, "r": 12, "start": -1.8208, "end": -2.6095 },
+  "L3": { "x": 54.7726, "y": 139.2885, "r": 12, "start": 3.5181, "end": -1.6581 },
+  "S1": { "x": -13.5225, "y": 172.1155, "r": 48, "start": -6.2483, "end": -5.9973 },
+  "S2": { "x": -8.3277, "y": 167.4269, "r": 48, "start": 0.4559, "end": 0.0349 },
+  "S3": { "x": 83.1057, "y": 155.8019, "r": 48, "start": -2.6095, "end": -3.1067 },
+  "S4": { "x": 88.2513, "y": 152.5241, "r": 48, "start": -3.1067, "end": -2.7651 },
 };
 
 describe('f-hole contours', () => {
@@ -109,12 +109,13 @@ describe('f-hole contours', () => {
   });
 });
 
-/** The two edges as they are drawn, in the order the contour runs. */
+/** The two edges as they are drawn, in the order the contour runs — crossing U/L/S field names,
+ * since those now track physical position rather than which edge drew the arc. */
 const edgesOf = (p: EnricoCerutiParams): { name: string; chain: (Arc | null)[] }[] => {
   const f = p.fHoles!;
   return [
-    { name: 'outer', chain: [f.O1, f.O2, f.O3, f.O4, f.O5] },
-    { name: 'inner', chain: [f.I1, f.I2, f.I3, f.I4, f.I5] },
+    { name: 'springing from UEye', chain: [f.U1, f.U2, f.S2, f.S4, f.L3] },
+    { name: 'springing from LEye', chain: [f.L1, f.L2, f.S3, f.S1, f.U3] },
   ];
 };
 
@@ -150,7 +151,7 @@ describe('f-hole contour properties', () => {
 
     it(`seats each shoulder on its own eye and its own bound, ${label}`, () => {
       const f = solve(shaped).fHoles!;
-      for (const [eye, shoulder, rise, side] of [[f.UEye!, f.O1!, f.URise!, 1], [f.LEye!, f.I1!, f.LRise!, -1]] as const) {
+      for (const [eye, shoulder, rise, side] of [[f.UEye!, f.U1!, f.URise!, 1], [f.LEye!, f.L1!, f.LRise!, -1]] as const) {
         // tangent internally to the eye: centres one radius difference apart
         expect(dist(shoulder, eye)).toBeCloseTo(shoulder.r - eye.r, 6);
         // and its start is that very tangency, so the eye rim hands the outline over
@@ -176,8 +177,8 @@ describe('f-hole contour properties', () => {
 
     it(`lands each wing on the tip it is hung from, ${label}`, () => {
       const f = solve(shaped).fHoles!;
-      // O's wing reaches the lower tip, and I's the upper
-      for (const [wing, tip] of [[f.O5!, f.LTip!], [f.I5!, f.UTip!]] as const) {
+      // L3 springs from UEye's edge and reaches the lower tip; U3 springs from LEye's and reaches the upper
+      for (const [wing, tip] of [[f.L3!, f.LTip!], [f.U3!, f.UTip!]] as const) {
         expect(dist(pointOnCircle(wing, wing.end), tip)).toBeCloseTo(0, 6);
       }
     });
@@ -190,9 +191,9 @@ describe('f-hole contour properties', () => {
     const pinned = bootstrap.stem.arcR! + 8;
 
     expect(f.stem.arcR).toBeCloseTo(pinned, 6);
-    expect(f.O3!.r).toBeCloseTo(pinned, 6);
-    expect(f.O4!.r).toBeCloseTo(pinned, 6);
-    expect(f.I3!.r).toBeCloseTo(pinned, 6);
-    expect(f.I4!.r).toBeCloseTo(pinned, 6);
+    expect(f.S1!.r).toBeCloseTo(pinned, 6);
+    expect(f.S2!.r).toBeCloseTo(pinned, 6);
+    expect(f.S3!.r).toBeCloseTo(pinned, 6);
+    expect(f.S4!.r).toBeCloseTo(pinned, 6);
   });
 });

@@ -408,7 +408,7 @@
       "width": 849.01,
       "height": 1273.515,
       "rotationDeg": 0,
-      "opacity": 1,
+      "opacity": 0.4,
       "locked": true,
       "excludePanels": [
         "fluting",
@@ -427,7 +427,7 @@
       "width": 588.983662923177,
       "height": 883.4754943847656,
       "rotationDeg": 359.9,
-      "opacity": 0.65,
+      "opacity": 0.4,
       "mirrored": true,
       "locked": false,
       "panels": [
