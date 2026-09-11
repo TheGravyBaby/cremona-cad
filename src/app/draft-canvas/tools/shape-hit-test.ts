@@ -1,6 +1,6 @@
 import { Pt } from '../../models/types';
 import { DEFAULT_TEXT_SIZE_MM, DraftShape, ImageShape, TextShape, dimensionGeometry, imageCenter, imageCorners } from './toolbox-shape';
-import { angleFromCenter, angleWithinSweep, dist, distPointToSegment, normalizeRadians, pointOnCircle, rotatePointAbout } from '../../helpers/math/simpleGeometry';
+import { angleFromCenter, angleWithinSweep, closestPointOnSegment, dist, normalizeRadians, pointOnCircle, rotatePointAbout } from '../../helpers/math/simpleGeometry';
 import { TEXT_LINE_HEIGHT_RATIO } from './shape-renderer';
 
 function distanceToArc(p: Pt, center: Pt, radius: number, startAngle: number, endAngle: number): number {
@@ -22,7 +22,7 @@ function distanceToRect(p: Pt, p1: Pt, p2: Pt): number {
 
   let best = Infinity;
   for (let i = 0; i < 4; i++) {
-    best = Math.min(best, distPointToSegment(p, corners[i], corners[(i + 1) % 4]));
+    best = Math.min(best, closestPointOnSegment(p, corners[i], corners[(i + 1) % 4]).dist);
   }
   return best;
 }
@@ -59,8 +59,8 @@ function textFootprint(shape: TextShape): ShapeBounds {
 /** Turning the *point* into the label's frame rather than the box into the world's — the box
  * stays axis-aligned, so this is one rotation instead of four corners plus a polygon test. */
 function distanceToText(p: Pt, shape: TextShape): number {
-  const deg = shape.rotationDeg ?? 0;
-  const local = deg ? rotatePointAbout(p, shape.position, -deg) : p;
+  const angle = (shape.rotationDeg ?? 0) * Math.PI / 180;
+  const local = angle ? rotatePointAbout(p, shape.position, -angle) : p;
   const box = textFootprint(shape);
   return distanceToBoxInterior(local, box.x0, box.y0, box.x1, box.y1);
 }
@@ -69,12 +69,12 @@ function distanceToText(p: Pt, shape: TextShape): number {
  * corners, so a marquee contains a rotated label exactly when it covers what's drawn. */
 function textBounds(shape: TextShape): ShapeBounds {
   const box = textFootprint(shape);
-  const deg = shape.rotationDeg ?? 0;
-  if (!deg) return box;
+  const angle = (shape.rotationDeg ?? 0) * Math.PI / 180;
+  if (!angle) return box;
   const corners = [
     { x: box.x0, y: box.y0 }, { x: box.x1, y: box.y0 },
     { x: box.x1, y: box.y1 }, { x: box.x0, y: box.y1 },
-  ].map(c => rotatePointAbout(c, shape.position, deg));
+  ].map(c => rotatePointAbout(c, shape.position, angle));
   return {
     x0: Math.min(...corners.map(c => c.x)), x1: Math.max(...corners.map(c => c.x)),
     y0: Math.min(...corners.map(c => c.y)), y1: Math.max(...corners.map(c => c.y)),
@@ -86,7 +86,7 @@ function textBounds(shape: TextShape): ShapeBounds {
 function distanceToFreehand(p: Pt, points: Pt[]): number {
   let best = Infinity;
   for (let i = 0; i < points.length - 1; i++) {
-    best = Math.min(best, distPointToSegment(p, points[i], points[i + 1]));
+    best = Math.min(best, closestPointOnSegment(p, points[i], points[i + 1]).dist);
   }
   return best;
 }
@@ -95,7 +95,7 @@ function distanceToFreehand(p: Pt, points: Pt[]): number {
  * same interior-counts-as-a-hit rule text uses. Rotation is handled by mapping the probe point
  * back into the image's unrotated frame, so the box math stays axis-aligned. */
 function distanceToImage(p: Pt, shape: ImageShape): number {
-  const local = rotatePointAbout(p, imageCenter(shape), -(shape.rotationDeg ?? 0));
+  const local = rotatePointAbout(p, imageCenter(shape), -(shape.rotationDeg ?? 0) * Math.PI / 180);
   return distanceToBoxInterior(
     local,
     Math.min(shape.x, shape.x + shape.width), Math.min(shape.y, shape.y + shape.height),
@@ -110,13 +110,15 @@ export function distanceToShape(p: Pt, shape: DraftShape): number {
   switch (shape.type) {
     case 'line':
     case 'section':
-      return distPointToSegment(p, shape.start, shape.end);
+      return closestPointOnSegment(p, shape.start, shape.end).dist;
     case 'dimension': {
       // The dimension line where it was placed, not the measurement it reports: once the line is
       // offset, the measured segment draws nothing but its two end ticks, so clicking the empty
       // span between them would select something invisible.
       const geo = dimensionGeometry(shape.start, shape.end, shape.offset);
-      return geo ? distPointToSegment(p, geo.p1, geo.p2) : distPointToSegment(p, shape.start, shape.end);
+      return geo
+        ? closestPointOnSegment(p, geo.p1, geo.p2).dist
+        : closestPointOnSegment(p, shape.start, shape.end).dist;
     }
     case 'circle':
       return Math.abs(dist(p, shape.center) - shape.radius);

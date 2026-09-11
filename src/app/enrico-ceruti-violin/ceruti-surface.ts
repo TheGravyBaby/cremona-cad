@@ -8,7 +8,7 @@ import { buildPolylineIndex, closestPointToPolylineIndexed, PolylineIndex } from
 import { buildHeightFieldStl } from '../helpers/stlExporter';
 import {
     closeProfileToBlank, pathsBounds, rotatePath180, samplePathToPolyline, translatePath,
-} from '../helpers/math/svgPathMath';
+} from '../helpers/math/pathMath';
 import { ArchCurve, ArchPlate, EnricoCerutiParams } from './ceruti-types';
 import { defineInsetPath, defineOuterPath } from './ceruti-paths';
 import {

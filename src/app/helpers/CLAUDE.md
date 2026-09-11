@@ -25,13 +25,13 @@ before it:
   harmonic-fit closed-form inverses of the G1 chain functions, and the curve/spline machinery
   (catenary solving, monotone/natural/C2 splines, the Hyman filter). Imports from both
   `simpleGeometry` and `draftMath`.
-- **`svgPathMath.ts`** — building, combining and boolean-diffing SVG path *strings*. Sections:
+- **`pathMath.ts`** — building, combining and boolean-diffing SVG path *strings*. Sections:
   Path helpers, Path combinations, Arch curve path builders, Arch curve evaluators. Wraps
   `polygon-clipping` and `svg-path-properties`. Imports from all three of the above.
 
 If a function takes points and returns points, it belongs in one of the first three files, sorted
-by how far it is from hand-drafting. If it takes or returns a `d` string, it's `svgPathMath`.
-Nothing upstream of `svgPathMath` should import it back.
+by how far it is from hand-drafting. If it takes or returns a `d` string, it's `pathMath`.
+Nothing upstream of `pathMath` should import it back.
 
 Within each file, functions are grouped by the type they're about (points, then circles, then
 lines, then arcs) and roughly ordered by increasing complexity within each group — a family that

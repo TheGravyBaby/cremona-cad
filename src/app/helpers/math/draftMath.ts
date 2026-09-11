@@ -87,6 +87,79 @@ export function solveCircumscribedCircleAlongAxis(C: Circle, r: number, ax: Axis
   return pos ? Cunknown + s : Cunknown - s;
 }
 
+// T is a line, Q is a fixed circle, solve the position of P given a R where P is tangent to both T and Q
+// in this case m is a standard y/x slope
+export function solveTangentCircleAndLine(t: Line, Q: Circle, Pr: number, diff: boolean): Circle[] {
+  // we know that the line drawn from C center to the center of Q must have some properties
+  // if diff, dist = P.r - Q.r; if sum, dist = P.r +  Q.r
+  let PtoQ = diff ? Pr - Q.r : Pr + Q.r;
+
+  // we know that the circle P must be tangent to the line, which means its
+  // exists along a line parallel to our given line at some distance away
+  // so given the point for our line t, just move the xy components of r away from that
+  const perpendicularAngle = Math.atan(-1 / t.m)
+  const parallelLine: Line = { m: t.m, x: t.x - Pr * Math.cos(perpendicularAngle), y: t.y - Pr * Math.sin(perpendicularAngle) };
+
+  // now we need to solve for the point along Cy where the distance to Q is equal to dist
+  // first find the distance between the line t and the center of Q
+  let QtoT = shortestDistanceFromPtToLine(Q, parallelLine)
+
+  // we have two sides of a right triangle, we can solve for the third
+  let distanceAlongLine = Math.sqrt(PtoQ * PtoQ - QtoT * QtoT);
+
+  // so lets make vectors, we have angles and magnitudes
+  let unitVectAlongT = unitVectorFromLine(t)
+  let unitVectAgainstT = tangentUnitVectorFromLine(t)
+  let vectAlongT: Vect2D = { a: unitVectAlongT.a, b: unitVectAlongT.b, mag: distanceAlongLine }
+  let vectAgainstT: Vect2D = { a: unitVectAgainstT.a, b: unitVectAgainstT.b, mag: QtoT }
+
+  // now we just start at our reference point and apply the vectors to find the potential circle centers
+  let Cxy = moveInVectorSpace(Q, [vectAlongT, vectAgainstT])
+  let C = new Circle(Cxy.x, Cxy.y, Pr)
+  return [C];
+}
+
+/**
+ * A circle of radius `radius`, tangent to circle `c` and to the line through `A` in direction
+ * `dir` (unit vector) — the fillet construction behind rounding a corner where a straight wall
+ * meets a curved boundary. `side` (+1/-1) picks which way along the line's left-normal the
+ * fillet sits. `internal` picks tangency from inside `c` (the fillet nests inside c's own
+ * radius: `reach = c.r - radius`, the case where the boundary curves away from the fillet) versus
+ * outside it (the fillet grows past c's radius: `reach = c.r + radius`, where the boundary curves
+ * toward it) — which applies depends on which way `c` curves relative to the fillet, not on the
+ * fillet itself, so the caller has to know its own geometry.
+ *
+ * The line has up to two tangent solutions; `near` picks whichever one's line-tangent point sits
+ * closest to it. Returns null when no such circle exists — too large a radius for the geometry,
+ * or a required reach that isn't positive.
+ */
+export function filletLineToCircle(
+  A: Pt, dir: Pt, side: 1 | -1, c: Circle, radius: number, internal: boolean, near: Pt,
+): { center: Pt; lineTangent: Pt; circleTangent: Pt; circleAngle: number } | null {
+  if (radius <= 0) return null;
+  const reach = internal ? c.r - radius : c.r + radius;
+  if (reach <= 0) return null;
+
+  const n: Pt = { x: -dir.y, y: dir.x }; // left normal of dir
+  const originX = A.x + side * radius * n.x;
+  const originY = A.y + side * radius * n.y; // the line offset by radius, at its own t=0
+
+  const qx = originX - c.x, qy = originY - c.y;
+  const b = qx * dir.x + qy * dir.y; // Q·dir
+  const disc = b * b - (qx * qx + qy * qy - reach * reach);
+  if (disc < 0) return null;
+  const s = Math.sqrt(disc);
+
+  const centerAt = (t: number): Pt => ({ x: originX + t * dir.x, y: originY + t * dir.y });
+  const c1 = centerAt(-b + s), c2 = centerAt(-b - s);
+  const center = dist(c1, near) <= dist(c2, near) ? c1 : c2;
+
+  const lineTangent: Pt = { x: center.x - side * radius * n.x, y: center.y - side * radius * n.y };
+  const circleAngle = angleFromCenter(c, center);
+  return { center, lineTangent, circleTangent: pointOnCircle(c, circleAngle), circleAngle };
+}
+
+
 export function interceptCirclesAndPoint(L: Circle, P: Pt, Cr: number): Circle[] {
   //  P *
   //     /\ Cr
@@ -235,37 +308,6 @@ export function inscribeCircleWithinCircle(outerCirle: Circle, innerCircleRadius
 
 }
 
-// T is a line, Q is a fixed circle, solve the position of P given a R where P is tangent to both T and Q
-// in this case m is a standard y/x slope
-export function solveTangentCircleAndLine(t: Line, Q: Circle, Pr: number, diff: boolean): Circle[] {
-  // we know that the line drawn from C center to the center of Q must have some properties
-  // if diff, dist = P.r - Q.r; if sum, dist = P.r +  Q.r
-  let PtoQ = diff ? Pr - Q.r : Pr + Q.r;
-
-  // we know that the circle P must be tangent to the line, which means its
-  // exists along a line parallel to our given line at some distance away
-  // so given the point for our line t, just move the xy components of r away from that
-  const perpendicularAngle = Math.atan(-1 / t.m)
-  const parallelLine: Line = { m: t.m, x: t.x - Pr * Math.cos(perpendicularAngle), y: t.y - Pr * Math.sin(perpendicularAngle) };
-
-  // now we need to solve for the point along Cy where the distance to Q is equal to dist
-  // first find the distance between the line t and the center of Q
-  let QtoT = shortestDistanceFromPtToLine(Q, parallelLine)
-
-  // we have two sides of a right triangle, we can solve for the third
-  let distanceAlongLine = Math.sqrt(PtoQ * PtoQ - QtoT * QtoT);
-
-  // so lets make vectors, we have angles and magnitudes
-  let unitVectAlongT = unitVectorFromLine(t)
-  let unitVectAgainstT = tangentUnitVectorFromLine(t)
-  let vectAlongT: Vect2D = { a: unitVectAlongT.a, b: unitVectAlongT.b, mag: distanceAlongLine }
-  let vectAgainstT: Vect2D = { a: unitVectAgainstT.a, b: unitVectAgainstT.b, mag: QtoT }
-
-  // now we just start at our reference point and apply the vectors to find the potential circle centers
-  let Cxy = moveInVectorSpace(Q, [vectAlongT, vectAgainstT])
-  let C = new Circle(Cxy.x, Cxy.y, Pr)
-  return [C];
-}
 
 /**
  * Rounds a right-angle corner at `P` — where a vertical edge meets a horizontal one — with an
@@ -281,45 +323,6 @@ export function filletRightAngleCorner(P: Pt, into: Pt, radius: number): Arc | n
   return new Arc(center.x, center.y, radius, angleFromCenter(center, vTangent), angleFromCenter(center, hTangent));
 }
 
-/**
- * A circle of radius `radius`, tangent to circle `c` and to the line through `A` in direction
- * `dir` (unit vector) — the fillet construction behind rounding a corner where a straight wall
- * meets a curved boundary. `side` (+1/-1) picks which way along the line's left-normal the
- * fillet sits. `internal` picks tangency from inside `c` (the fillet nests inside c's own
- * radius: `reach = c.r - radius`, the case where the boundary curves away from the fillet) versus
- * outside it (the fillet grows past c's radius: `reach = c.r + radius`, where the boundary curves
- * toward it) — which applies depends on which way `c` curves relative to the fillet, not on the
- * fillet itself, so the caller has to know its own geometry.
- *
- * The line has up to two tangent solutions; `near` picks whichever one's line-tangent point sits
- * closest to it. Returns null when no such circle exists — too large a radius for the geometry,
- * or a required reach that isn't positive.
- */
-export function filletLineToCircle(
-  A: Pt, dir: Pt, side: 1 | -1, c: Circle, radius: number, internal: boolean, near: Pt,
-): { center: Pt; lineTangent: Pt; circleTangent: Pt; circleAngle: number } | null {
-  if (radius <= 0) return null;
-  const reach = internal ? c.r - radius : c.r + radius;
-  if (reach <= 0) return null;
-
-  const n: Pt = { x: -dir.y, y: dir.x }; // left normal of dir
-  const originX = A.x + side * radius * n.x;
-  const originY = A.y + side * radius * n.y; // the line offset by radius, at its own t=0
-
-  const qx = originX - c.x, qy = originY - c.y;
-  const b = qx * dir.x + qy * dir.y; // Q·dir
-  const disc = b * b - (qx * qx + qy * qy - reach * reach);
-  if (disc < 0) return null;
-  const s = Math.sqrt(disc);
-
-  const centerAt = (t: number): Pt => ({ x: originX + t * dir.x, y: originY + t * dir.y });
-  const c1 = centerAt(-b + s), c2 = centerAt(-b - s);
-  const center = dist(c1, near) <= dist(c2, near) ? c1 : c2;
-
-  const lineTangent: Pt = { x: center.x - side * radius * n.x, y: center.y - side * radius * n.y };
-  const circleAngle = angleFromCenter(c, center);
-  return { center, lineTangent, circleTangent: pointOnCircle(c, circleAngle), circleAngle };
-}
 
 // ===== Arc construction =====
 // These take center/radius/angles loose rather than an Arc, because their callers are the canvas

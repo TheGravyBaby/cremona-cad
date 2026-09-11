@@ -1,4 +1,4 @@
-import { cycloidZAt } from './svgPathMath';
+import { cycloidZAt } from './pathMath';
 
 describe('cycloidZAt windowed percentage', () => {
   const hEff = 12;

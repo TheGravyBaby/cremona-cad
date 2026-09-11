@@ -3,7 +3,7 @@ import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Pt } from '../../../models/types';
 import { renderLine, renderPath } from '../../../helpers/renderFuncs';
-import { archSplineKnots, buildCatenaryPath, buildCycloidPath, buildSplinePath, SPLINE_PEAK_SOURCE } from '../../../helpers/math/svgPathMath';
+import { archSplineKnots, buildCatenaryPath, buildCycloidPath, buildSplinePath, SPLINE_PEAK_SOURCE } from '../../../helpers/math/pathMath';
 import { clamp } from '../../../helpers/math/simpleGeometry';
 import {
   ArchCurve, ArchSpline, ArchSplinePoint, ArchingParams, CerutiColors, CerutiViewFlags,

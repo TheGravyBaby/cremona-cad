@@ -2,8 +2,9 @@ import * as d3 from 'd3';
 import { Pt } from '../../models/types';
 import { DraftTool, DraftToolHost } from './draft-tool';
 import { makeShapeId } from './toolbox-shape';
-import { dist, arcPathData } from '../../helpers/math/simpleGeometry';
+import { dist } from '../../helpers/math/simpleGeometry';
 import { ArcFit, fitArcFromEndsAndCenter, fitArcThroughPoints } from '../../helpers/math/draftMath';
+import { arcPathData } from '../../helpers/math/pathMath';
 
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 

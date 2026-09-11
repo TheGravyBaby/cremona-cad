@@ -1,6 +1,7 @@
 import * as d3 from 'd3';
 import { Arc, Circle, Pt } from '../../models/types';
-import { arcPathData, dist, offsetArcRadius, offsetCircleRadius, offsetLineByDistance, pointOnCircle } from '../../helpers/math/simpleGeometry';
+import { dist, lineFromTwoPoints, offsetArcRadius, offsetCircleRadius, pointOnCircle, tangentUnitVectorFromLine } from '../../helpers/math/simpleGeometry';
+import { arcPathData } from '../../helpers/math/pathMath';
 import { DraftTool, DraftToolHost } from './draft-tool';
 import { DraftShape, makeShapeId } from './toolbox-shape';
 import { PREVIEW_COLOR, stylePreview } from './two-point-tool';
@@ -25,13 +26,9 @@ function signedOffsetMetric(shape: DraftShape, pt: Pt): { abs: number; signed: n
     return { abs: Math.abs(signed), signed };
   }
   if (shape.type === 'line') {
-    const dx = shape.end.x - shape.start.x;
-    const dy = shape.end.y - shape.start.y;
-    const len = Math.hypot(dx, dy);
-    if (len < 1e-9) return null;
-    const nx = dy / len;
-    const ny = -dx / len;
-    const signed = (pt.x - shape.start.x) * nx + (pt.y - shape.start.y) * ny;
+    if (dist(shape.start, shape.end) < 1e-9) return null;
+    const normal = tangentUnitVectorFromLine(lineFromTwoPoints(shape.start, shape.end));
+    const signed = (pt.x - shape.start.x) * normal.a + (pt.y - shape.start.y) * normal.b;
     return { abs: Math.abs(signed), signed };
   }
   return null;
@@ -132,7 +129,9 @@ function tryOffsetShape(shape: DraftShape, distance: number): DraftShape | null 
       return { id: makeShapeId(), type: 'circle', center: { x: circle.x, y: circle.y }, radius: circle.r };
     }
     if (shape.type === 'line') {
-      const { start, end } = offsetLineByDistance(shape.start, shape.end, distance);
+      const normal = tangentUnitVectorFromLine(lineFromTwoPoints(shape.start, shape.end));
+      const start = { x: shape.start.x + normal.a * distance, y: shape.start.y + normal.b * distance };
+      const end = { x: shape.end.x + normal.a * distance, y: shape.end.y + normal.b * distance };
       return { id: makeShapeId(), type: 'line', start, end };
     }
   } catch {

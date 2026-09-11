@@ -1,7 +1,7 @@
 import { Pt, Circle, Rectangle, Arc } from "../../models/types";
 import * as polygonClipping from 'polygon-clipping';
 import { svgPathProperties } from 'svg-path-properties';
-import { clamp, dist, angleFromCenter, pointOnCircle, intersectLines, lineCircleIntersection, flipArcAboutY, flipPointAboutY } from './simpleGeometry';
+import { clamp, dist, angleFromCenter, normalizeRadians, pointOnCircle, intersectLines, lineCircleIntersection, lineFromTwoPoints, flipArcAboutY, flipPointAboutY } from './simpleGeometry';
 import { circleCircleIntersections } from './draftMath';
 import { solveCatenaryA, makeMonotoneSpline } from './vibeMath';
 
@@ -68,7 +68,7 @@ export function pathFromCornerBezier(arc1: Arc, arc2: Arc): string {
   const s2 = arcSweepSign(arc2);
   const T1: Pt = { x: P1.x - s1 * Math.sin(arc1.end), y: P1.y + s1 * Math.cos(arc1.end) };
   const T2: Pt = { x: P2.x - s2 * Math.sin(arc2.end), y: P2.y + s2 * Math.cos(arc2.end) };
-  const ctrl = intersectLines(P1, T1, P2, T2);
+  const ctrl = intersectLines(lineFromTwoPoints(P1, T1), lineFromTwoPoints(P2, T2));
   if (!ctrl) return `M ${P1.x} ${P1.y} L ${P2.x} ${P2.y}`;
   return `M ${P1.x} ${P1.y} Q ${ctrl.x} ${ctrl.y} ${P2.x} ${P2.y}`;
 }
@@ -83,7 +83,7 @@ export function pathFromCornerCubic(arc1: Arc, arc2: Arc, sharpness: number): st
   const s2 = arcSweepSign(arc2);
   const T1: Pt = { x: P1.x - s1 * Math.sin(arc1.end), y: P1.y + s1 * Math.cos(arc1.end) };
   const T2: Pt = { x: P2.x - s2 * Math.sin(arc2.end), y: P2.y + s2 * Math.cos(arc2.end) };
-  const V = intersectLines(P1, T1, P2, T2);
+  const V = intersectLines(lineFromTwoPoints(P1, T1), lineFromTwoPoints(P2, T2));
   if (!V || !Number.isFinite(V.x) || !Number.isFinite(V.y)) return `M ${P1.x} ${P1.y} L ${P2.x} ${P2.y}`;
   const t = Number.isFinite(sharpness) ? Math.max(0, Math.min(1, sharpness)) : 0.1;
   // near-parallel tangents can put V behind an endpoint and invert the corner, so keep V's
@@ -112,6 +112,22 @@ export function pathFromArc(arc: Arc): string {
   const sweepFlag = normalizedPositiveDiff <= Math.PI ? 1 : 0;
 
   return `M ${startPt.x} ${startPt.y} A ${arc.r} ${arc.r} 0 ${largeArcFlag} ${sweepFlag} ${endPt.x} ${endPt.y}`;
+}
+
+/**
+ * Builds an SVG arc path `d` sweeping counterclockwise from startAngle to
+ * endAngle — this app's existing convention for a "positive" sweep in its
+ * Y-up drafting space (see renderArcFromArc in helpers/renderFuncs.ts).
+ * Deliberately not pathFromArc's minor-sweep convention — see toolbox-shape.ts's
+ * ArcShape header for why the two conventions can't be blindly converted between.
+ */
+export function arcPathData(center: Pt, radius: number, startAngle: number, endAngle: number): string {
+  const span = normalizeRadians(endAngle - startAngle);
+  const largeArcFlag = span > Math.PI ? 1 : 0;
+  const sweepFlag = 1;
+  const start = pointOnCircle({ ...center, r: radius }, startAngle);
+  const end = pointOnCircle({ ...center, r: radius }, endAngle);
+  return `M ${start.x},${start.y} A ${radius},${radius} 0 ${largeArcFlag},${sweepFlag} ${end.x},${end.y}`;
 }
 
 export function arcPathFrom3Points(c: Pt, start: Pt, end: Pt, pickHigherArc?: boolean): string {
@@ -603,7 +619,7 @@ function exactIntersection(segA: PathSeg, segB: PathSeg, hint: [number, number])
   let candidates: Pt[];
 
   if (segA.type === 'line' && segB.type === 'line') {
-    const pt = intersectLines(segA.p0, segA.p1, segB.p0, segB.p1);
+    const pt = intersectLines(lineFromTwoPoints(segA.p0, segA.p1), lineFromTwoPoints(segB.p0, segB.p1));
     candidates = pt ? [pt] : [];
   } else if (segA.type === 'arc' && segB.type === 'arc') {
     candidates = circleCircleIntersections(
@@ -613,7 +629,7 @@ function exactIntersection(segA: PathSeg, segB: PathSeg, hint: [number, number])
   } else {
     const lineSeg = (segA.type === 'line' ? segA : segB) as PathLineSeg;
     const arcSeg = (segA.type === 'arc' ? segA : segB) as PathArcSeg;
-    candidates = lineCircleIntersection(lineSeg.p0, lineSeg.p1, { x: arcSeg.center.x, y: arcSeg.center.y, r: arcSeg.r });
+    candidates = lineCircleIntersection(lineFromTwoPoints(lineSeg.p0, lineSeg.p1), { x: arcSeg.center.x, y: arcSeg.center.y, r: arcSeg.r });
   }
 
   let best: Pt | null = null;

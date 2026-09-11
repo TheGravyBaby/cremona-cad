@@ -1,6 +1,6 @@
 import { solveInscribedCircleAlongAxis, circleCircleIntersections, interceptCirclesAndPoint, interceptCirclesAndPointCompound, filletLineToCircle, filletRightAngleCorner } from "../helpers/math/draftMath";
-import { angleFromCenter, dist, pointOnCircle, offsetArcRadius, flipPointAboutY, flipRectAboutY, lineCircleIntersection, redefineArcCircle } from "../helpers/math/simpleGeometry";
-import { pathFromRoundedRect, pathFromCircle, pathFromRect, combinePathStrings, differenceFromManyPaths, intersectionFromTwoPaths, translatePath, mirroredLoop } from "../helpers/math/svgPathMath";
+import { angleFromCenter, dist, pointOnCircle, offsetArcRadius, flipRectAboutY, lineCircleIntersection, lineFromPointAndSlope, redefineArcCircle } from "../helpers/math/simpleGeometry";
+import { pathFromRoundedRect, pathFromCircle, pathFromRect, combinePathStrings, differenceFromManyPaths, intersectionFromTwoPaths, translatePath, mirroredLoop } from "../helpers/math/pathMath";
 import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Pt, Rectangle } from "../models/types";
 import { error } from "../shared/message-emitter";
 import { DefaultParams, EnricoCerutiParams, PathEntry, PathKey } from "./ceruti-types";
@@ -175,14 +175,14 @@ export function calculateCorners(p: EnricoCerutiParams): void {
         let lgPt = new Pt(-(p.bouts.LBW - inset) / 2, p.bouts.L1.y);
         let lgC = new Circle(lgPt.x, lgPt.y, p.bouts.LBW - inset)  
         let lgH = p.height * p.ratios.LCYtoH
-        let LCr = lineCircleIntersection({x:0, y:lgH}, {x:100, y:lgH}, lgC).sort((a, b) => a.x - b.x)[1]
+        let LCr = lineCircleIntersection(lineFromPointAndSlope({x:0, y:lgH}, 0), lgC).sort((a, b) => a.x - b.x)[1]
         p.bouts.LCr = new Pt(Math.round(LCr.x * 10) / 10, Math.round(LCr.y * 10) / 10);
     }
     if (!p.bouts.UCr) {
         let ugPt = new Pt(-p.bouts.UBW / 2, p.bouts.U1.y);
         let ugC = new Circle(ugPt.x, ugPt.y, p.bouts.UBW)
         let ugH = p.height * p.ratios.UCYtoH
-        let UCr = lineCircleIntersection({x:0, y:ugH}, {x:100, y:ugH}, ugC).sort((a, b) => a.x - b.x)[1]
+        let UCr = lineCircleIntersection(lineFromPointAndSlope({x:0, y:ugH}, 0), ugC).sort((a, b) => a.x - b.x)[1]
         p.bouts.UCr = new Pt(Math.round(UCr.x * 10) / 10, Math.round(UCr.y * 10) / 10);
     }
 
@@ -767,8 +767,8 @@ export function calculateMould(p: EnricoCerutiParams, useHighAccuracy = false, s
         // sharp corners on each side (arc-into-wall, wall-into-face) are eased, and only as far
         // as their own leg lengths allow.
         const C0Clamp = offsetArcRadius(p.bouts.C0, clampOffset);
-        const C0UpPt = lineCircleIntersection(p.blocks.CU.Pt1, flipPointAboutY(p.blocks.CU.Pt1), C0Clamp).sort((a, b) => a.x - b.x)[0];
-        const C0LowPt = lineCircleIntersection(p.blocks.CL.Pt1, flipPointAboutY(p.blocks.CL.Pt1), C0Clamp).sort((a, b) => a.x - b.x)[0];
+        const C0UpPt = lineCircleIntersection(lineFromPointAndSlope(p.blocks.CU.Pt1, 0), C0Clamp).sort((a, b) => a.x - b.x)[0];
+        const C0LowPt = lineCircleIntersection(lineFromPointAndSlope(p.blocks.CL.Pt1, 0), C0Clamp).sort((a, b) => a.x - b.x)[0];
         const cTopY = C0UpPt.y + p.blocks.CU.height;
         const cBotY = C0LowPt.y - p.blocks.CL.height;
         const cTopR = Math.min(rf, p.blocks.CU.height / 3, C0UpPt.x / 3);

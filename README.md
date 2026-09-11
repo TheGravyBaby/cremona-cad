@@ -65,7 +65,7 @@ Recipe components follow the structure established in `recipe-base/`, which owns
 A few conventions worth knowing before editing geometry code:
 
 - **World space is Y-up and measured in millimetres.** The canvas root group carries a `scale(1,-1)`, so anything appended to it is written in ordinary maths coordinates rather than SVG's Y-down ones.
-- **Geometry math lives in `helpers/math/` (`simpleGeometry.ts`, `draftMath.ts`, `vibeMath.ts`).** Recipe calculations and canvas tools share it. `helpers/svgPathMath.ts` turns that geometry into path data; `helpers/renderFuncs.ts` draws it.
+- **Geometry math lives in `helpers/math/` (`simpleGeometry.ts`, `draftMath.ts`, `vibeMath.ts`).** Recipe calculations and canvas tools share it. `helpers/math/pathMath.ts` turns that geometry into path data; `helpers/renderFuncs.ts` draws it.
 - **`models/types.ts` and `draft-canvas/tools/toolbox-shape.ts` are deliberately separate.** The former holds the classes recipes use; the latter is a plain-object union for the toolbox, which round-trips through JSON on every edit and so cannot carry prototypes. They share math, not types — see the notes at the top of each file.
 
 ## Project Structure

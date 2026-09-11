@@ -6,7 +6,7 @@ import {
 } from '../helpers/math/vibeMath';
 import {
   catenaryZAt, cycloidZAt, samplePathToPolyline, splineZAt,
-} from '../helpers/math/svgPathMath';
+} from '../helpers/math/pathMath';
 import {
   ArchCurve, EnricoCerutiParams, CrossArchCycloidParams, CrossArchCycloidShape, CrossArchParams,
   CrossArchShape, CrossArchSplineParams, CrossArchStation, FlutingParams,

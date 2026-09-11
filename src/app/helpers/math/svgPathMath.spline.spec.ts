@@ -1,4 +1,4 @@
-import { archSplineKnots, splineZAt } from './svgPathMath';
+import { archSplineKnots, splineZAt } from './pathMath';
 
 describe('splineZAt shape preservation', () => {
   const span = 356;

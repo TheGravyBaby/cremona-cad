@@ -1,4 +1,4 @@
-import { Arc, setArcStartByDegreeDiff, setArcEndByDegreeDiff } from '../models/types';
+import { Arc, setArcStartByDegreeDiff, setArcEndByDegreeDiff } from '../../models/types';
 
 export function adjustArcStart(arc: Arc, degrees: number, changeFn: () => void): void {
   if (typeof degrees !== 'number') return;

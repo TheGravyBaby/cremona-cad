@@ -1,7 +1,7 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { flipArcAboutY, flipCircleAboutY } from '../../../helpers/math/simpleGeometry';
-import { adjustArcEnd } from '../../../helpers/arcDegrees';
+import { adjustArcEnd } from '../../../helpers/math/arcDegrees';
 import { renderArcFromArcFancy, renderCircle, renderPath } from '../../../helpers/renderFuncs';
 import { calculateOuterArcs, ensureOuterTracePaths, getPath, getPathOrNull } from '../../ceruti-calcs';
 import { buttonInfo, cornerCutoffInfo, purflingInfo } from '../../ceruti-helpers';

@@ -1,4 +1,4 @@
-import { pathsBounds, samplePathToPolyline } from '../helpers/math/svgPathMath';
+import { pathsBounds, samplePathToPolyline } from '../helpers/math/pathMath';
 import { archedViolin } from './ceruti-fixtures';
 import {
   buildPlateStl, buildPlateSurfaceModel, calculateCrossArchTemplates, trimProfileToTroughs,

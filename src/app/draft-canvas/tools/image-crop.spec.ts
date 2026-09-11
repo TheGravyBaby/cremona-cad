@@ -19,7 +19,7 @@ describe('reference image cropping', () => {
     return rotatePointAbout(
       { x: src.x + u * src.width, y: src.y + v * src.height },
       imageCenter(s),
-      s.rotationDeg ?? 0,
+      (s.rotationDeg ?? 0) * Math.PI / 180,
     );
   };
 

@@ -1,6 +1,6 @@
 import { circleCircleIntersections, findJoiningArcs } from "../helpers/math/draftMath";
-import { angleFromCenter, dist, pointOnCircle, offsetArcRadius, flipArcAboutY, flipPointAboutY, lineCircleIntersection } from "../helpers/math/simpleGeometry";
-import { pathFromArc, pathFromLine, pathFromCornerCubic, unifyConnectedSvgPaths } from "../helpers/math/svgPathMath";
+import { angleFromCenter, dist, pointOnCircle, offsetArcRadius, flipArcAboutY, flipPointAboutY, lineCircleIntersection, lineFromTwoPoints } from "../helpers/math/simpleGeometry";
+import { pathFromArc, pathFromLine, pathFromCornerCubic, unifyConnectedSvgPaths } from "../helpers/math/pathMath";
 import { Arc, arcFromCircle, Pt, Rectangle } from "../models/types";
 import { error } from "../shared/message-emitter";
 import { EnricoCerutiParams } from "./ceruti-types";
@@ -265,7 +265,7 @@ export function defineOffsetArcs(p: EnricoCerutiParams, offset?: number, corners
  * Falls back to `fallback` if no intersection exists.
  */
 function cutoffEndAtOffset(scaledArc: Arc, cutPt1: Pt, cutPt2: Pt, refPt: Pt, fallback: number): number {
-    const ints = lineCircleIntersection(cutPt1, cutPt2, scaledArc);
+    const ints = lineCircleIntersection(lineFromTwoPoints(cutPt1, cutPt2), scaledArc);
     if (ints.length === 0) return fallback;
     const best = ints.sort((a, b) => dist(a, refPt) - dist(b, refPt))[0];
     return angleFromCenter(scaledArc, best);
@@ -479,7 +479,7 @@ export function defineOuterPath(p: EnricoCerutiParams, offset?: number, closeArc
     let buttonPaths: string[] = [];
     if (button && !p.options.useViolNeck) {
         p.button ??= new Rectangle(new Pt(-10, p.height - offset), new Pt(10, p.height - offset + 5));
-        let U0Intersect = lineCircleIntersection(new Pt(p.button.width / 2, p.height), new Pt(p.button.width / 2, 0), U0ForButton).sort((a, b) => a.y - b.y)[1]; // long vertical line
+        let U0Intersect = lineCircleIntersection(lineFromTwoPoints(new Pt(p.button.width / 2, p.height), new Pt(p.button.width / 2, 0)), U0ForButton).sort((a, b) => a.y - b.y)[1]; // long vertical line
         buttonPaths.push(pathFromLine(U0Intersect, {...U0Intersect , y: U0Intersect.y + p.button.height}));
         buttonPaths.push(pathFromLine(flipPointAboutY(U0Intersect), flipPointAboutY({...U0Intersect , y: U0Intersect.y + p.button.height})));
         let buttonCircle = {y: U0Intersect.y + p.button.height, x: 0, r: p.button.width / 2};

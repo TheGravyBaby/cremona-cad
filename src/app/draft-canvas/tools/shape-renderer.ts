@@ -5,7 +5,8 @@ import {
   DEFAULT_TEXT_SIZE_MM, ImageShape, TextShape,
   dimensionGeometry, imageCenter, imageCorners, imageSourceBox, isCropped,
 } from './toolbox-shape';
-import { arcPathData, pointOnCircle } from '../../helpers/math/simpleGeometry';
+import { pointOnCircle } from '../../helpers/math/simpleGeometry';
+import { arcPathData } from '../../helpers/math/pathMath';
 import { GrabberKind } from './shape-grabbers';
 
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;

@@ -4,7 +4,7 @@ import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, FholeCut, FholeStem,
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderLine, renderPath, renderPointHalo } from '../../../helpers/renderFuncs';
 import { ensureOuterTracePaths, calculateOuterArcs, getPath, getPathOrNull } from '../../ceruti-calcs';
-import { getArcEndDeg, setArcEndDeg } from '../../../helpers/arcDegrees';
+import { getArcEndDeg, setArcEndDeg } from '../../../helpers/math/arcDegrees';
 import { fholeCutInfo, fholeShoulderExtendInfo } from '../../ceruti-helpers';
 import { defaultFHolePlacement, renderFholeBounds, renderFholeEyePlacementGuides, renderFholeEyes, stemRun } from '../f-hole-placement-panel/f-hole-placement-panel';
 import {
@@ -12,7 +12,7 @@ import {
   solveCircumscribedCircleAlongAxis, solveTangentCircleAndLine,
 } from '../../../helpers/math/draftMath';
 import {
-  angleFromCenter, lineCircleIntersection, lineCircleIntersectionBetter, lineFromPointAndSlope, moveInVectorSpace,
+  angleFromCenter, lineCircleIntersection, lineFromPointAndSlope, moveInVectorSpace,
   normalizeRadians, pointOnCircle, signedArcSweep, tangentAngleFromLine, tangentUnitVectorFromLine, unitVectorFromLine,
   travelAtArcEnd, travelAtArcStart,
 } from '../../../helpers/math/simpleGeometry';
@@ -122,7 +122,7 @@ export function calculateFholeContours(p: EnricoCerutiParams): void {
 
     let S2 = solveTangentCircleAndLine(outerStem, p.fHoles.U2, p.fHoles.stem.arcR, true)[0]
     let S2U2Intersect = circleCircleIntersections(S2, p.fHoles.U2);
-    let S2StemIntersect = lineCircleIntersectionBetter(outerStem, S2);
+    let S2StemIntersect = lineCircleIntersection(outerStem, S2);
 
     p.fHoles.U2.end = angleFromCenter(p.fHoles.U2, S2U2Intersect[0]);
     p.fHoles.U3 = new Arc(S2.x, S2.y, S2.r, p.fHoles.U2.end, angleFromCenter(S2, S2StemIntersect[0]))
