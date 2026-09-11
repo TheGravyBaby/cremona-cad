@@ -607,6 +607,13 @@ export function lineCircleIntersection(P1: Pt, P2: Pt, C: Circle): Pt[] {
   ];
 }
 
+export function lineCircleIntersectionBetter(L: Line, C: Circle): Pt[] {
+  // Convert the line to two points for the existing lineCircleIntersection function
+  const P1 = { x: 0, y: L.y };
+  const P2 = { x: 1, y: L.m + L.y };
+  return lineCircleIntersection(P1, P2, C);
+}
+
 export function lineFromTwoPoints(A: Pt, B: Pt): Line {
   let m = (B.y - A.y) / (B.x - A.x);
 
@@ -805,6 +812,44 @@ export function solveCircumscribedCircleAlongAxis(C: Circle, r: number, ax: Axis
   const s = Math.sqrt(under);
   const Cunknown = ax === "x" ? C.y : C.x;
   return pos ? Cunknown + s : Cunknown - s;
+}
+
+// T is a line, Q is a fixed circle, solve the position of P given a R where P is tangent to both T and Q
+// in this case m is a standard y/x slope
+export function solveTangentCircleAndLine(t: Line, Q: Circle, Pr: number, diff: boolean): Circle[] {
+  // we know that the line drawn from C center to the center of Q must have some properties
+  // if diff, dist = P.r - Q.r; if sum, dist = P.r +  Q.r
+  let PtoQ = diff ? Pr - Q.r : Pr + Q.r;
+
+  // we know that the circle P must be tangent to the line, which means its 
+  // exists along a line parallel to our given line at some distance away
+  // so given the point for our line t, just move the xy components of r away from that
+  const perpendicularAngle = Math.atan(-1 / t.m)
+  const parallelLine: Line = { m: t.m, x: t.x - Pr * Math.cos(perpendicularAngle), y: t.y - Pr * Math.sin(perpendicularAngle) };
+
+  // now we need to solve for the point along Cy where the distance to Q is equal to dist
+  // first find the distance between the line t and the center of Q
+  let QtoT = shortestDistanceFromPtToLine(Q, parallelLine)
+
+  // we have two sides of a right triangle, we can solve for the third
+  let distanceAlongLine = Math.sqrt(PtoQ * PtoQ - QtoT * QtoT);
+
+  // so lets make vectors, we have angles and magnitudes
+  let unitVectAlongT = unitVectorFromLine(t)
+  let unitVectAgainstT = tangentUnitVectorFromLine(t)
+  let vectAlongT: Vect2D = { a: unitVectAlongT.a, b: unitVectAlongT.b, mag: distanceAlongLine }
+  let vectAgainstT: Vect2D = { a: unitVectAgainstT.a, b: unitVectAgainstT.b, mag: QtoT }
+
+  // now we just start at our reference point and apply the vectors to find the potential circle centers
+  let Cxy = moveInVectorSpace(Q, [vectAlongT, vectAgainstT])
+  let C = new Circle(Cxy.x, Cxy.y, Pr)
+  return [C];
+}
+
+// https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line
+export function shortestDistanceFromPtToLine(P: Pt, L: Line): number {
+  // Distance from point to line formula: |m*Px - Py + (L.y - m*L.x)| / sqrt(m^2 + 1)
+  return Math.abs(L.m * P.x - P.y + (L.y - L.m * L.x)) / Math.sqrt(L.m * L.m + 1);
 }
 
 export function interceptCirclesAndPointCompound(L: Circle, P: Pt, Cr1: number, Cr2: number, Ctheta: number): {C1: Circle, C2: Circle}[] {
