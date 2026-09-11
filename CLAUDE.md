@@ -56,9 +56,11 @@ Sort by what the code knows, not by what feature it serves:
 
 - **`ceruti-calcs.ts` and friends** — math that knows it's a violin. Takes `EnricoCerutiParams`,
   encodes instrument proportions.
-- **`helpers/draftMath.ts`** — math that doesn't. Intersections, clamping, angle normalization,
-  spline/catenary solvers. If it doesn't need to know it's a violin, it goes here rather than
-  becoming a private method on a component.
+- **`helpers/math/` (`simpleGeometry.ts`, `draftMath.ts`, `vibeMath.ts`)** — math that doesn't.
+  Intersections, clamping, angle normalization, spline/catenary solvers, split by how far the
+  math is from something you could do with a compass and straightedge — see `helpers/CLAUDE.md`.
+  If it doesn't need to know it's a violin, it goes in one of these rather than becoming a private
+  method on a component.
 - **`helpers/renderFuncs.ts`, `renders/*.render.ts`** — SVG emission, plus geometry that exists
   only to serve one view (e.g. `arch-3d-wireframe.render.ts` holds both `computeWireframeGeometry`
   and its renderer, since that geometry has no life outside the render).
@@ -67,7 +69,7 @@ Sort by what the code knows, not by what feature it serves:
   Angular-lifecycle state: drag handlers, and caches keyed by a params hash
   (`archContourCache`, `wireframeCache`, `surfaceModelCache`).
 
-This split is meant to generalize to future instrument modules — `draftMath.ts` and
+This split is meant to generalize to future instrument modules — `helpers/math/` and
 `renderFuncs.ts` already sit outside any single model's folder.
 
 ## Two traps that cross the whole codebase
@@ -90,9 +92,8 @@ fails only after save-and-reopen. Full explanation in the `models/types.ts` head
 **Locality of behavior beats abstraction.** Code that reads clean as a dependency graph can still
 be worse for a human, who has to travel across many functions to understand one tool. Prefer
 keeping related behavior together. Don't extract a helper because a block got long, and don't
-split a file because it got big — `draftMath.ts` is deliberately long and centralized, and the
-arching files are large because the math is genuinely complex, not because they're awaiting a
-split.
+split a file because it got big — the arching files are large because the math is genuinely
+complex, not because they're awaiting a split.
 
 Splitting is right where the boundary is one a reader already thinks in: one panel per folder,
 and the four stages of the ceruti pipeline. Not where it only reduces file size.

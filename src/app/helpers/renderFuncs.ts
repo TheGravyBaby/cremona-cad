@@ -1,5 +1,5 @@
 import { Pt, Circle, Line, Rectangle, Arc } from "../models/types";
-import { pointOnCircle } from "./math/draftMath";
+import { pointOnCircle } from "./math/simpleGeometry";
 
 export const renderDistanceMeasurementLine = (P: Pt, Q: Pt, label: string, color: string) => (g: any, ui: any) => {
     const dx = Q.x - P.x;

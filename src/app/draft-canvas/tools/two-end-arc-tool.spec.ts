@@ -1,5 +1,5 @@
 import { Pt } from '../../models/types';
-import { normalizeRadians } from '../../helpers/math/draftMath';
+import { normalizeRadians } from '../../helpers/math/simpleGeometry';
 import { DraftToolHost } from './draft-tool';
 import { ArcShape, DraftShape } from './toolbox-shape';
 import { createEndsCenterArcTool, createThroughArcTool } from './two-end-arc-tool';

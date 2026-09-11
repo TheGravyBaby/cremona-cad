@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { defaultViolin, geometryDiff } from '../../ceruti-fixtures';
 import { defaultFHolePlacement } from '../f-hole-placement-panel/f-hole-placement-panel';
 import { calculateFholeContours } from './f-hole-contours-panel';
-import { pointOnCircle, travelAtArcEnd, travelAtArcStart, normalizeRadians, dist } from '../../../helpers/math/draftMath';
+import { pointOnCircle, travelAtArcEnd, travelAtArcStart, normalizeRadians, dist } from '../../../helpers/math/simpleGeometry';
 import { Arc, Pt } from '../../../models/types';
 import { EnricoCerutiParams } from '../../ceruti-types';
 

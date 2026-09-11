@@ -1,4 +1,5 @@
-import { circleCircleIntersections, angleFromCenter, dist, pointOnCircle, offsetArcRadius, flipArcAboutY, flipPointAboutY, lineCircleIntersection, findJoiningArcs } from "../helpers/math/draftMath";
+import { circleCircleIntersections, findJoiningArcs } from "../helpers/math/draftMath";
+import { angleFromCenter, dist, pointOnCircle, offsetArcRadius, flipArcAboutY, flipPointAboutY, lineCircleIntersection } from "../helpers/math/simpleGeometry";
 import { pathFromArc, pathFromLine, pathFromCornerCubic, unifyConnectedSvgPaths } from "../helpers/math/svgPathMath";
 import { Arc, arcFromCircle, Pt, Rectangle } from "../models/types";
 import { error } from "../shared/message-emitter";

@@ -1,6 +1,6 @@
 import { Pt } from '../../models/types';
 import { DEFAULT_TEXT_SIZE_MM, DraftShape, ImageShape, TextShape, dimensionGeometry, imageCenter, imageCorners } from './toolbox-shape';
-import { angleFromCenter, angleWithinSweep, dist, distPointToSegment, normalizeRadians, pointOnCircle, rotatePointAbout } from '../../helpers/math/draftMath';
+import { angleFromCenter, angleWithinSweep, dist, distPointToSegment, normalizeRadians, pointOnCircle, rotatePointAbout } from '../../helpers/math/simpleGeometry';
 import { TEXT_LINE_HEIGHT_RATIO } from './shape-renderer';
 
 function distanceToArc(p: Pt, center: Pt, radius: number, startAngle: number, endAngle: number): number {

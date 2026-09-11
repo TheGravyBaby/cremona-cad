@@ -1,4 +1,5 @@
-import { solveInscribedCircleAlongAxis, circleCircleIntersections, angleFromCenter, interceptCirclesAndPoint, dist, pointOnCircle, offsetArcRadius, flipPointAboutY, flipRectAboutY, lineCircleIntersection, redefineArcCircle, interceptCirclesAndPointCompound, filletLineToCircle, filletRightAngleCorner } from "../helpers/math/draftMath";
+import { solveInscribedCircleAlongAxis, circleCircleIntersections, interceptCirclesAndPoint, interceptCirclesAndPointCompound, filletLineToCircle, filletRightAngleCorner } from "../helpers/math/draftMath";
+import { angleFromCenter, dist, pointOnCircle, offsetArcRadius, flipPointAboutY, flipRectAboutY, lineCircleIntersection, redefineArcCircle } from "../helpers/math/simpleGeometry";
 import { pathFromRoundedRect, pathFromCircle, pathFromRect, combinePathStrings, differenceFromManyPaths, intersectionFromTwoPaths, translatePath, mirroredLoop } from "../helpers/math/svgPathMath";
 import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Pt, Rectangle } from "../models/types";
 import { error } from "../shared/message-emitter";

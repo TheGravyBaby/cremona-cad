@@ -1,7 +1,7 @@
 import { defineFlutingPath, defineInnerPath, defineOffsetArcs, defineOuterPath, defineOuterPurflingPath, definePurflingPath } from './ceruti-paths';
 import { layoutFrom, templateKeys, templateViolin, violinFromRecipe } from './ceruti-fixtures';
 import { EnricoCerutiParams } from './ceruti-types';
-import { pointOnCircle } from '../helpers/math/draftMath';
+import { pointOnCircle } from '../helpers/math/simpleGeometry';
 import { Pt } from '../models/types';
 import ravatinMansParams from './templates/test-fixtures/ravatin-mans-params.json';
 import magginiDelmasParams from './templates/test-fixtures/maggini-delmas-params.json';

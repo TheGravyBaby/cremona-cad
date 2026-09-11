@@ -6,8 +6,8 @@ export class Circle { x: number; y: number; r: number; constructor(x: number, y:
 /**
  * An **infinite** line in slope-intercept form (y = mx + b) — not a segment, and deliberately not
  * interchangeable with draft-canvas's `LineShape`. This one is for intersection/solving, a
- * segment is for drawing and hit-testing. Most segment-flavored math in helpers/draftMath.ts
- * takes two points rather than this type.
+ * segment is for drawing and hit-testing. Most segment-flavored math in helpers/math/ takes two
+ * points rather than this type.
  */
 
 export class Rectangle { Pt1: Pt; Pt2: Pt; height: number | null; width: number | null;

@@ -1,5 +1,5 @@
 import { ImageShape, applyImageCrop, imageCenter, imageSourceBox, isCropped } from './toolbox-shape';
-import { rotatePointAbout } from '../../helpers/math/draftMath';
+import { rotatePointAbout } from '../../helpers/math/simpleGeometry';
 import { ImageCrop } from '../../models/types';
 
 // trimming an edge must never move or rescale the source picture, only the visible box —

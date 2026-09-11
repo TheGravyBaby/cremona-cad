@@ -6,7 +6,8 @@ import { renderArcFromArcFancy, renderCircle, renderCrosshair, renderDashedLine,
 import { calculateOuterArcs, ensureOuterTracePaths, getPath, getPathOrNull } from '../../ceruti-calcs';
 import { Arc, Circle, Pt, Rectangle } from '../../../models/types';
 import { nearestFraction, nearestSmallFraction } from '../../../helpers/nearestFraction';
-import { angleFromCenter, angleOnDrawnArc, arcHorizontalIntersections, circleCircleIntersections, clamp, dist, lineCircleIntersection, tangentPointsFromExternalPoint } from '../../../helpers/math/draftMath';
+import { angleFromCenter, angleOnDrawnArc, arcHorizontalIntersections, clamp, dist, lineCircleIntersection } from '../../../helpers/math/simpleGeometry';
+import { circleCircleIntersections, tangentPointsFromExternalPoint } from '../../../helpers/math/draftMath';
 import { defineInnerArcs } from '../../ceruti-paths';
 
 /** Where the two f-holes sit on the plate — the eyes first, everything else hung off them. */

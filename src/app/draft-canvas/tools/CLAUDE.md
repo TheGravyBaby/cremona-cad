@@ -39,8 +39,8 @@ keeps the selection alive across activation, for transform tools like Offset.
 **`DraftShape` is a plain-object union with no methods, on purpose.** It crosses a serialization
 boundary that has no calc pass to rebuild prototypes — unlike recipe geometry, which
 `ceruti-calcs.ts` reassigns through real constructors on load. Don't put a getter or method on it,
-and don't reuse `models/types.ts` classes here. Sharing geometry *math* via `helpers/draftMath.ts`
-is encouraged; sharing those *types* is not.
+and don't reuse `models/types.ts` classes here. Sharing geometry *math* via `helpers/math/` is
+encouraged; sharing those *types* is not.
 
 **`ArcShape` sweeps counterclockwise** (root CLAUDE.md's arc-sweep trap). Ordering of
 `startAngle`/`endAngle` alone selects minor vs major, so unlike `models/types.ts` `Arc`, tools can

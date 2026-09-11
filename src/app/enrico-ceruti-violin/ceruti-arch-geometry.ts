@@ -1,8 +1,9 @@
 import { Pt } from '../models/types';
+import { clamp } from '../helpers/math/simpleGeometry';
 import {
-  buildPolylineIndex, clamp, closestPointToPolylineIndexed, makeC2SplineWithFlatKnot, makeMonotoneSpline,
+  buildPolylineIndex, closestPointToPolylineIndexed, makeC2SplineWithFlatKnot, makeMonotoneSpline,
   PolylineIndex,
-} from '../helpers/math/draftMath';
+} from '../helpers/math/vibeMath';
 import {
   catenaryZAt, cycloidZAt, samplePathToPolyline, splineZAt,
 } from '../helpers/math/svgPathMath';

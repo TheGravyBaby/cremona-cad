@@ -1,260 +1,331 @@
-import { Pt, Circle, Axis, Line, Rectangle, Arc, arcFromCircle, Vect2D } from "../../models/types";
+import { Pt, Circle, Axis, Line, Arc, Vect2D } from "../../models/types";
+import {
+  TWO_PI, dist, angleFromCenter, pointOnCircle, angleWithinSweep, unitVectorFromLine,
+  tangentUnitVectorFromLine, moveInVectorSpace, shortestDistanceFromPtToLine, normalizeRadians,
+} from "./simpleGeometry";
 
-const TWO_PI = Math.PI * 2;
-
-// ======= Simple Geometry =======
-export function dist(a: Pt, b: Pt) {
-  return Math.hypot(a.x - b.x, a.y - b.y);
-}
-
-export function clamp(v: number, min: number, max: number): number {
-  return Math.min(Math.max(v, min), max);
-}
-
-/** The point `distance` mm from `from`, along the direction toward `toward` — i.e. `from`
- * pushed out/in along the existing `from`→`toward` ray, preserving its angle. Falls back to
- * `toward` unchanged when the two points coincide (no direction to preserve). */
-export function pointAtDistanceToward(from: Pt, toward: Pt, distance: number): Pt {
-  const dx = toward.x - from.x;
-  const dy = toward.y - from.y;
-  const len = Math.hypot(dx, dy);
-  if (len < 1e-9) return toward;
-  return { x: from.x + (dx / len) * distance, y: from.y + (dy / len) * distance };
-}
-
-/** Wraps a degree value into [0, 360). */
-export function normalizeDegrees(deg: number): number {
-  const v = deg % 360;
-  return v < 0 ? v + 360 : v;
-}
-
-/** Wraps a radian value into [0, 2π). The radian twin of normalizeDegrees, and the canonical
- * spelling of the `((a % 2π) + 2π) % 2π` idiom that this codebase otherwise reinvents per file. */
-export function normalizeRadians(rad: number): number {
-  const v = rad % TWO_PI;
-  return v < 0 ? v + TWO_PI : v;
-}
-
-/** Wraps a degree *difference* into [-180, 180) — the signed shortest way round, as opposed to
- * normalizeDegrees' unsigned [0, 360). Use this when the sign means "which way to turn". */
-export function signedDegreeDelta(deg: number): number {
-  const v = normalizeDegrees(deg);
-  return v >= 180 ? v - 360 : v;
-}
-
-/** Rotates `p` about `center` by `deg` (counterclockwise, matching the Y-up world). Pass a
- * negative angle to map a world point back into an unrotated object's local frame. */
-export function rotatePointAbout(p: Pt, center: Pt, deg: number): Pt {
-  if (deg === 0) return { x: p.x, y: p.y };
-  const rad = deg * Math.PI / 180;
-  const c = Math.cos(rad);
-  const s = Math.sin(rad);
-  const dx = p.x - center.x;
-  const dy = p.y - center.y;
-  return {
-    x: center.x + (dx * c - dy * s),
-    y: center.y + (dx * s + dy * c),
-  };
-}
-
-export function distPointToSegment(p: Pt, a: Pt, b: Pt): number {
-  const abx = b.x - a.x, aby = b.y - a.y;
-  const lenSq = abx * abx + aby * aby;
-  const t = lenSq === 0 ? 0 : Math.min(Math.max(((p.x - a.x) * abx + (p.y - a.y) * aby) / lenSq, 0), 1);
-  return Math.hypot(p.x - (a.x + t * abx), p.y - (a.y + t * aby));
-}
-
-/** Distance from a point to a closed polyline (last point connects back to the first). */
-export function distPointToPolyline(p: Pt, poly: Pt[]): number {
-  let best = Infinity;
-  for (let i = 0; i < poly.length; i++) {
-    const d = distPointToSegment(p, poly[i], poly[(i + 1) % poly.length]);
-    if (d < best) best = d;
-  }
-  return best;
-}
+// ===== Circles =====
 
 /**
- * Uniform-grid spatial index over a closed polyline's segments. A single
- * distance query is O(N); dense batch queries (contour grids, wireframe
- * strips, STL export) make that quadratic, so they should build this once
- * and query cells instead of scanning every segment.
+ * The two points on circle `C` where a line from external point `P` is tangent to it — PT ⊥ CT,
+ * so triangle P-C-T is right-angled at T, giving the tangent points' angle off `C` as
+ * `angleFromCenter(C, P) ± acos(C.r / dist(P, C))`. Returns `[]` when `P` is inside or on `C`
+ * (no tangent line exists).
  */
-export interface PolylineIndex {
-  poly: Pt[];
-  cellSize: number;
-  minX: number;
-  minY: number;
-  cols: number;
-  rows: number;
-  /** Per-cell lists of segment start indices (segment i runs poly[i] → poly[(i+1) % n]). */
-  cells: number[][];
+export function tangentPointsFromExternalPoint(P: Pt, C: Circle): Pt[] {
+  const d = dist(P, C);
+  if (d <= C.r) return [];
+  const baseAngle = angleFromCenter(C, P);
+  const beta = Math.acos(C.r / d);
+  return [
+    pointOnCircle(C, baseAngle + beta),
+    pointOnCircle(C, baseAngle - beta),
+  ];
 }
 
-export function buildPolylineIndex(poly: Pt[], cellSize = 6): PolylineIndex {
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  for (const pt of poly) {
-    if (pt.x < minX) minX = pt.x;
-    if (pt.x > maxX) maxX = pt.x;
-    if (pt.y < minY) minY = pt.y;
-    if (pt.y > maxY) maxY = pt.y;
-  }
-  const cols = poly.length ? Math.max(1, Math.ceil((maxX - minX) / cellSize)) : 1;
-  const rows = poly.length ? Math.max(1, Math.ceil((maxY - minY) / cellSize)) : 1;
-  const cells: number[][] = Array.from({ length: cols * rows }, () => []);
-  for (let i = 0; i < poly.length; i++) {
-    const a = poly[i], b = poly[(i + 1) % poly.length];
-    const i0 = Math.min(cols - 1, Math.max(0, Math.floor((Math.min(a.x, b.x) - minX) / cellSize)));
-    const i1 = Math.min(cols - 1, Math.max(0, Math.floor((Math.max(a.x, b.x) - minX) / cellSize)));
-    const j0 = Math.min(rows - 1, Math.max(0, Math.floor((Math.min(a.y, b.y) - minY) / cellSize)));
-    const j1 = Math.min(rows - 1, Math.max(0, Math.floor((Math.max(a.y, b.y) - minY) / cellSize)));
-    for (let cj = j0; cj <= j1; cj++) {
-      for (let ci = i0; ci <= i1; ci++) cells[cj * cols + ci].push(i);
-    }
-  }
-  return { poly, cellSize, minX, minY, cols, rows, cells };
+export function circleCircleIntersections(C1: Circle, C2: Circle, approx: boolean = true): Pt[] {
+  const d = dist(C1, C2);
+
+  // tight, scale-aware tolerance (tweak 1e-12 -> 1e-11 if you still see misses)
+  const scale = Math.max(1, C1.r, C2.r, d);
+  const eps = approx ? 1e-6 * scale : 0;
+
+  // Only change: allow near-intersection by relaxing the bounds slightly
+  if (d > C1.r + C2.r + eps) return [];
+  if (d < Math.abs(C1.r - C2.r) - eps) return [];
+  if (d <= eps) return [];
+
+  const a = (C1.r * C1.r - C2.r * C2.r + d * d) / (2 * d);
+  const h = Math.sqrt(Math.abs(C1.r * C1.r - a * a));
+
+  const xm = C1.x + (a * (C2.x - C1.x)) / d;
+  const ym = C1.y + (a * (C2.y - C1.y)) / d;
+
+  const rx = -((C2.y - C1.y) * (h / d));
+  const ry =  ((C2.x - C1.x) * (h / d));
+
+  return [
+    { x: xm + rx, y: ym + ry },
+    { x: xm - rx, y: ym - ry },
+  ];
+}
+
+// imagine a large outer circle, with a smaller inner circle
+// where the inner circle intersects the outer circle at a single tangent point
+// now, imagine that the inner circle also has a defined x or y coordinate that it must hit
+// we want to solve the position of the inner circle given these conditions
+// vibe code I admit it X_X
+export function solveInscribedCircleAlongAxis(C: Circle, r: number, ax: Axis, value: number, pos = true): number {
+  const rPrime = C.r - r;
+  if (rPrime < 0) throw new Error("No solution: inset larger than radius");
+
+  const Cknown = ax === "x" ? C.x : C.y;
+  const d = value - Cknown;
+
+  const under = rPrime * rPrime - d * d;
+  if (under < 0) throw new Error("No real solution: knownValue out of range");
+
+  const s = Math.sqrt(under);
+  const Cunknown = ax === "x" ? C.y : C.x; // solving the other coordinate
+  return pos ? Cunknown + s : Cunknown - s;
+}
+
+// inverse of the above: C is the small circle, solve the position of the larger circle of
+// radius r that contains and is internally tangent to it
+export function solveCircumscribedCircleAlongAxis(C: Circle, r: number, ax: Axis, value: number, pos = true): number {
+  const rPrime = r - C.r;
+  if (rPrime < 0) throw new Error("No solution: circumscribing radius smaller than radius");
+
+  const Cknown = ax === "x" ? C.x : C.y;
+  const d = value - Cknown;
+
+  const under = rPrime * rPrime - d * d;
+  if (under < 0) throw new Error("No real solution: knownValue out of range");
+
+  const s = Math.sqrt(under);
+  const Cunknown = ax === "x" ? C.y : C.x;
+  return pos ? Cunknown + s : Cunknown - s;
+}
+
+export function interceptCirclesAndPoint(L: Circle, P: Pt, Cr: number): Circle[] {
+  //  P *
+  //     /\ Cr
+  //    / / Cr
+  //   / /
+  //  / /
+  //  //  <-phi inside that lil triangle
+  //  L
+
+  let LP = dist(L, P);
+  let outside = LP > L.r
+  let LrCr = outside ? Cr + L.r : Math.abs(L.r - Cr);
+
+  // we can define and angle gamma from L to P
+  let gamma = Math.atan2(P.y - L.y, P.x - L.x);
+
+  // using law of cosines to find small angle phi, which relates
+  // Cr^2 = LP^2 + CrLr^2 - 2*LP*CrLr*cos(phi)
+  let cosPhi = (LP*LP + LrCr*LrCr - Cr*Cr) / (2 * LP * LrCr);
+
+  // No triangle closes when that leaves the cosine domain — no circle of radius Cr is both tangent
+  // to L and through P. Report it as no solutions, the way interceptCirclesAndPointCompound does:
+  // Math.acos would hand back NaN instead, and a NaN centre travels all the way to the SVG before
+  // anything notices, so the caller never gets the chance to fail.
+  if (!Number.isFinite(cosPhi) || cosPhi < -1 || cosPhi > 1) return [];
+
+  let phi = Math.acos(cosPhi);
+
+  // we know that the angle theta, which is the angle from L to C is both the difference and the sum of these angles
+  let thetaBig = gamma + phi;
+  let thetaSmall = gamma - phi;
+
+  // we can then find the two possible centers for C using these angles and the distance CrLr
+  let C1 = { x: L.x + LrCr * Math.cos(thetaBig), y: L.y + LrCr * Math.sin(thetaBig) };
+  let C2 = { x: L.x + LrCr * Math.cos(thetaSmall), y: L.y + LrCr * Math.sin(thetaSmall) };
+
+  let solutions = [ { ...C1, r: Cr }, { ...C2, r: Cr } ];
+
+
+  return solutions;
+}
+
+export function interceptCirclesAndPointCompound(L: Circle, P: Pt, Cr1: number, Cr2: number, Ctheta: number): {C1: Circle, C2: Circle}[] {
+  // C1 is externally tangent to L, so its center is always at distance (L.r + Cr1) from L's center.
+  // C2 is internally tangent to C1 (since Cr2 < Cr1), so C2's center sits (Cr1 - Cr2) from C1's center
+  // along the direction Ctheta — the same direction as the tangent point T on C1's boundary.
+  //
+  //   T = C1.center + Cr1 * (cos Ctheta, sin Ctheta)       <- tangent point on C1
+  //   C2.center = C1.center + (Cr1 - Cr2) * (cos Ctheta, sin Ctheta)
+  //
+  // The final constraint is that C2 must reach P:
+  //   dist(C2.center, P) = Cr2
+  //
+  // Substituting C2.center = C1.center + offset:
+  //   dist(C1.center + offset, P) = Cr2
+  //   dist(C1.center, P - offset) = Cr2      <- shift P by -offset
+  //
+  // So C1's center must lie on TWO circles simultaneously:
+  //   1. Circle centered at L       with radius (L.r ± Cr1)   [tangent to L]
+  //        - P outside L → C1 outside L → external tangency → L.r + Cr1
+  //        - P inside  L → C1 inside  L → internal tangency → L.r - Cr1
+  //   2. Circle centered at Q=P-offset with radius Cr2        [C2 reaches P]
+  //
+  // Their intersections give the two possible C1 centers directly.
+
+  const offset: Pt = {
+    x: (Cr1 - Cr2) * Math.cos(Ctheta),
+    y: (Cr1 - Cr2) * Math.sin(Ctheta),
+  };
+
+  // Shift P back by the offset so we can solve for C1's center directly
+  const Q: Pt = { x: P.x - offset.x, y: P.y - offset.y };
+
+  const pInsideL = dist(L, P) < L.r;
+  const C1locusRadius = pInsideL ? L.r - Cr1 : L.r + Cr1;
+  const C1locus = new Circle(L.x, L.y, C1locusRadius);
+  const C2locus = new Circle(Q.x, Q.y, Cr2);
+
+  const C1centers = circleCircleIntersections(C1locus, C2locus);
+  if (C1centers.length === 0) return [];
+
+  return C1centers.map(c1Center => {
+    const C1: Circle = { ...c1Center, r: Cr1 };
+    const C2: Circle = {
+      x: c1Center.x + offset.x,
+      y: c1Center.y + offset.y,
+      r: Cr2,
+    };
+    return { C1, C2 };
+  });
+}
+
+// good math provided here
+// https://www.reddit.com/r/Geometry/comments/1k6slsb/how_do_i_create_this_orange_arc_so_that_it_is/
+export function findJoiningCircleFromCircleAndPoint(U: Circle, P: Pt): Circle {
+
+  const x = U.x - P.x;
+  const y = Math.abs(U.y - P.y);
+
+  // R=(x2+y2-r2)/(2(y-r))
+  let Cr = (x*x + y*y - U.r*U.r) / (2 * (y - U.r));
+  let Cx = P.x
+  let CyPlus = P.y + Cr;
+  let CyMinus = P.y - Cr
+
+  // use the Cy value closest to the center of U
+  let CyPlusDist = dist(U, {x: Cx, y: CyPlus});
+  let CyMinusDist = dist(U, {x: Cx, y: CyMinus});
+
+  let Cy = CyPlusDist < CyMinusDist ? CyPlus : CyMinus;
+
+  return { x: Cx, y: Cy, r: Cr };
+}
+
+export function findJoiningCircleOfKnownRadius(U: Circle, R: number, max: boolean = true): Circle {
+  //        C(0, Cy)
+  //        | \
+  //        |  \
+  // C.r- b |   \ C.r - U.r
+  //        |    \
+  //        |-----\ (U.x, U.y)
+  //     b  |  x   \ U.r
+  //        |
+  //        P(0, Cy-C.r)
+
+  // the length b is the defined by the "cutoff" from the center of U
+  // we make a right triangle above with two known sides, meaning we can solve the other
+  // (C.r-U.r)^2 = (C.r-b)^2 + x^2
+
+  let RadDiff = R - U.r
+  let bPlus = R + Math.sqrt(RadDiff*RadDiff - U.x*U.x);
+  let bMinus = R - Math.sqrt(RadDiff*RadDiff - U.x*U.x);
+  let b = max ? Math.max(bPlus, bMinus) : Math.min(bPlus, bMinus);
+  let Cy = U.y - b + R;
+
+  return { x: 0, y: Cy, r: R };
+}
+
+export function inscribeCircleWithinCircle(outerCirle: Circle, innerCircleRadius: number, angle: number): Circle {
+  const target = pointOnCircle(outerCirle, angle);
+  const distToTarget = dist(target, outerCirle);
+  const difference = distToTarget - innerCircleRadius;
+  let centerForNewCircle = pointOnCircle({ ...outerCirle, r: difference }, angle);
+  let innerCircle = { x: centerForNewCircle.x, y: centerForNewCircle.y, r: innerCircleRadius };
+  return innerCircle;
+
+}
+
+// T is a line, Q is a fixed circle, solve the position of P given a R where P is tangent to both T and Q
+// in this case m is a standard y/x slope
+export function solveTangentCircleAndLine(t: Line, Q: Circle, Pr: number, diff: boolean): Circle[] {
+  // we know that the line drawn from C center to the center of Q must have some properties
+  // if diff, dist = P.r - Q.r; if sum, dist = P.r +  Q.r
+  let PtoQ = diff ? Pr - Q.r : Pr + Q.r;
+
+  // we know that the circle P must be tangent to the line, which means its
+  // exists along a line parallel to our given line at some distance away
+  // so given the point for our line t, just move the xy components of r away from that
+  const perpendicularAngle = Math.atan(-1 / t.m)
+  const parallelLine: Line = { m: t.m, x: t.x - Pr * Math.cos(perpendicularAngle), y: t.y - Pr * Math.sin(perpendicularAngle) };
+
+  // now we need to solve for the point along Cy where the distance to Q is equal to dist
+  // first find the distance between the line t and the center of Q
+  let QtoT = shortestDistanceFromPtToLine(Q, parallelLine)
+
+  // we have two sides of a right triangle, we can solve for the third
+  let distanceAlongLine = Math.sqrt(PtoQ * PtoQ - QtoT * QtoT);
+
+  // so lets make vectors, we have angles and magnitudes
+  let unitVectAlongT = unitVectorFromLine(t)
+  let unitVectAgainstT = tangentUnitVectorFromLine(t)
+  let vectAlongT: Vect2D = { a: unitVectAlongT.a, b: unitVectAlongT.b, mag: distanceAlongLine }
+  let vectAgainstT: Vect2D = { a: unitVectAgainstT.a, b: unitVectAgainstT.b, mag: QtoT }
+
+  // now we just start at our reference point and apply the vectors to find the potential circle centers
+  let Cxy = moveInVectorSpace(Q, [vectAlongT, vectAgainstT])
+  let C = new Circle(Cxy.x, Cxy.y, Pr)
+  return [C];
 }
 
 /**
- * The first Chebyshev ring around cell (ci, cj) that can contain any in-bounds cell — the
- * Chebyshev distance from that cell to the grid box, and 0 for a query already inside it.
+ * Rounds a right-angle corner at `P` — where a vertical edge meets a horizontal one — with an
+ * arc of the given radius. `into` says which quadrant the round cuts into, relative to `P`: each
+ * component is +1 or -1, the direction (x, then y) from the corner toward the region being
+ * smoothed. Returns null when radius is non-positive.
+ */
+export function filletRightAngleCorner(P: Pt, into: Pt, radius: number): Arc | null {
+  if (radius <= 0) return null;
+  const center: Pt = { x: P.x + into.x * radius, y: P.y + into.y * radius };
+  const vTangent: Pt = { x: P.x, y: center.y };
+  const hTangent: Pt = { x: center.x, y: P.y };
+  return new Arc(center.x, center.y, radius, angleFromCenter(center, vTangent), angleFromCenter(center, hTangent));
+}
+
+/**
+ * A circle of radius `radius`, tangent to circle `c` and to the line through `A` in direction
+ * `dir` (unit vector) — the fillet construction behind rounding a corner where a straight wall
+ * meets a curved boundary. `side` (+1/-1) picks which way along the line's left-normal the
+ * fillet sits. `internal` picks tangency from inside `c` (the fillet nests inside c's own
+ * radius: `reach = c.r - radius`, the case where the boundary curves away from the fillet) versus
+ * outside it (the fillet grows past c's radius: `reach = c.r + radius`, where the boundary curves
+ * toward it) — which applies depends on which way `c` curves relative to the fillet, not on the
+ * fillet itself, so the caller has to know its own geometry.
  *
- * Rings below this one lie entirely outside the grid, so scanning them finds nothing while
- * still costing O(r) bounds checks each. The early-out in the scans below can't fire while
- * `best` is Infinity, so without this a distant query walks every empty ring in between.
+ * The line has up to two tangent solutions; `near` picks whichever one's line-tangent point sits
+ * closest to it. Returns null when no such circle exists — too large a radius for the geometry,
+ * or a required reach that isn't positive.
  */
-function ringReachingGrid(ci: number, cj: number, cols: number, rows: number): number {
-  const outX = Math.max(0 - ci, ci - (cols - 1), 0);
-  const outY = Math.max(0 - cj, cj - (rows - 1), 0);
-  return Math.max(outX, outY);
+export function filletLineToCircle(
+  A: Pt, dir: Pt, side: 1 | -1, c: Circle, radius: number, internal: boolean, near: Pt,
+): { center: Pt; lineTangent: Pt; circleTangent: Pt; circleAngle: number } | null {
+  if (radius <= 0) return null;
+  const reach = internal ? c.r - radius : c.r + radius;
+  if (reach <= 0) return null;
+
+  const n: Pt = { x: -dir.y, y: dir.x }; // left normal of dir
+  const originX = A.x + side * radius * n.x;
+  const originY = A.y + side * radius * n.y; // the line offset by radius, at its own t=0
+
+  const qx = originX - c.x, qy = originY - c.y;
+  const b = qx * dir.x + qy * dir.y; // Q·dir
+  const disc = b * b - (qx * qx + qy * qy - reach * reach);
+  if (disc < 0) return null;
+  const s = Math.sqrt(disc);
+
+  const centerAt = (t: number): Pt => ({ x: originX + t * dir.x, y: originY + t * dir.y });
+  const c1 = centerAt(-b + s), c2 = centerAt(-b - s);
+  const center = dist(c1, near) <= dist(c2, near) ? c1 : c2;
+
+  const lineTangent: Pt = { x: center.x - side * radius * n.x, y: center.y - side * radius * n.y };
+  const circleAngle = angleFromCenter(c, center);
+  return { center, lineTangent, circleTangent: pointOnCircle(c, circleAngle), circleAngle };
 }
 
-/**
- * Same result as `distPointToPolyline`, but resolved via the index: cells are
- * scanned ring by ring outward from the query point, stopping once every
- * unscanned cell is provably farther than the best segment found. A cell at
- * Chebyshev ring r is at least (r−1)·cellSize away, so after scanning ring r
- * the search ends when best ≤ r·cellSize.
- */
-export function distPointToPolylineIndexed(p: Pt, idx: PolylineIndex): number {
-  const { poly, cellSize, minX, minY, cols, rows, cells } = idx;
-  const ci = Math.floor((p.x - minX) / cellSize);
-  const cj = Math.floor((p.y - minY) / cellSize);
-  // Farthest ring that can still contain grid cells, even for off-grid query points.
-  const maxRing = Math.max(ci, cols - 1 - ci, cj, rows - 1 - cj);
-  let best = Infinity;
-
-  const scanCell = (x: number, y: number): void => {
-    for (const i of cells[y * cols + x]) {
-      const d = distPointToSegment(p, poly[i], poly[(i + 1) % poly.length]);
-      if (d < best) best = d;
-    }
-  };
-  const scanRow = (y: number, x0: number, x1: number): void => {
-    if (y < 0 || y >= rows) return;
-    for (let x = Math.max(x0, 0), xe = Math.min(x1, cols - 1); x <= xe; x++) scanCell(x, y);
-  };
-  const scanCol = (x: number, y0: number, y1: number): void => {
-    if (x < 0 || x >= cols) return;
-    for (let y = Math.max(y0, 0), ye = Math.min(y1, rows - 1); y <= ye; y++) scanCell(x, y);
-  };
-
-  for (let r = ringReachingGrid(ci, cj, cols, rows); r <= maxRing; r++) {
-    if (r === 0) {
-      if (ci >= 0 && ci < cols && cj >= 0 && cj < rows) scanCell(ci, cj);
-    } else {
-      scanRow(cj - r, ci - r, ci + r);
-      scanRow(cj + r, ci - r, ci + r);
-      scanCol(ci - r, cj - r + 1, cj + r - 1);
-      scanCol(ci + r, cj - r + 1, cj + r - 1);
-    }
-    if (best <= r * cellSize) break;
-  }
-  return best;
-}
-
-/** Closest point on segment a→b to p, with its distance. */
-export function closestPointOnSegment(p: Pt, a: Pt, b: Pt): { dist: number; point: Pt } {
-  const abx = b.x - a.x, aby = b.y - a.y;
-  const lenSq = abx * abx + aby * aby;
-  const t = lenSq === 0 ? 0 : Math.min(Math.max(((p.x - a.x) * abx + (p.y - a.y) * aby) / lenSq, 0), 1);
-  const point = { x: a.x + t * abx, y: a.y + t * aby };
-  return { dist: Math.hypot(p.x - point.x, p.y - point.y), point };
-}
-
-/**
- * Like {@link distPointToPolylineIndexed}, but also returns the closest point
- * itself — needed when the direction to the loop (not just the distance) matters,
- * e.g. sampling the arch surface's slope in the fluting channel's transverse
- * direction. Same outward ring scan and early-out bound.
- */
-export function closestPointToPolylineIndexed(p: Pt, idx: PolylineIndex): { dist: number; point: Pt } {
-  const { poly, cellSize, minX, minY, cols, rows, cells } = idx;
-  const ci = Math.floor((p.x - minX) / cellSize);
-  const cj = Math.floor((p.y - minY) / cellSize);
-  const maxRing = Math.max(ci, cols - 1 - ci, cj, rows - 1 - cj);
-  let best = Infinity;
-  let bestPt: Pt = poly[0] ?? p;
-
-  const scanCell = (x: number, y: number): void => {
-    for (const i of cells[y * cols + x]) {
-      const r = closestPointOnSegment(p, poly[i], poly[(i + 1) % poly.length]);
-      if (r.dist < best) { best = r.dist; bestPt = r.point; }
-    }
-  };
-  const scanRow = (y: number, x0: number, x1: number): void => {
-    if (y < 0 || y >= rows) return;
-    for (let x = Math.max(x0, 0), xe = Math.min(x1, cols - 1); x <= xe; x++) scanCell(x, y);
-  };
-  const scanCol = (x: number, y0: number, y1: number): void => {
-    if (x < 0 || x >= cols) return;
-    for (let y = Math.max(y0, 0), ye = Math.min(y1, rows - 1); y <= ye; y++) scanCell(x, y);
-  };
-
-  for (let r = ringReachingGrid(ci, cj, cols, rows); r <= maxRing; r++) {
-    if (r === 0) {
-      if (ci >= 0 && ci < cols && cj >= 0 && cj < rows) scanCell(ci, cj);
-    } else {
-      scanRow(cj - r, ci - r, ci + r);
-      scanRow(cj + r, ci - r, ci + r);
-      scanCol(ci - r, cj - r + 1, cj + r - 1);
-      scanCol(ci + r, cj - r + 1, cj + r - 1);
-    }
-    if (best <= r * cellSize) break;
-  }
-  return { dist: best, point: bestPt };
-}
-
-export function flipAngleAboutYAxis(theta: number): number {
-  return (Math.PI - theta + 2 * Math.PI) % (2 * Math.PI);
-}
-
-export function pointOnCircle(C: Circle,  θ: number): Pt {
-  return {
-    x: C.x + C.r * Math.cos(θ),
-    y: C.y + C.r * Math.sin(θ),
-  };
-}
-
-// ======= Arc construction =======
+// ===== Arc construction =====
 // These take center/radius/angles loose rather than an Arc, because their callers are the canvas
 // tools, whose ArcShape stores `center: Pt` and `radius` separately. Arc's own `start`/`end` carry
 // the *minor*-sweep convention of pathFromArc; the functions below sweep strictly CCW (see
 // arcPathData), so reusing Arc here would silently mix two conventions in one type.
-
-/**
- * Builds an SVG arc path `d` sweeping counterclockwise from startAngle to
- * endAngle — this app's existing convention for a "positive" sweep in its
- * Y-up drafting space (see renderArcFromArc in helpers/renderFuncs.ts).
- */
-export function arcPathData(center: Pt, radius: number, startAngle: number, endAngle: number): string {
-  const span = normalizeRadians(endAngle - startAngle);
-  const largeArcFlag = span > Math.PI ? 1 : 0;
-  const sweepFlag = 1;
-  const start = pointOnCircle({ ...center, r: radius }, startAngle);
-  const end = pointOnCircle({ ...center, r: radius }, endAngle);
-  return `M ${start.x},${start.y} A ${radius},${radius} 0 ${largeArcFlag},${sweepFlag} ${end.x},${end.y}`;
-}
 
 /**
  * Given two boundary angles on a circle, returns them as (startAngle, endAngle) oriented so
@@ -271,6 +342,37 @@ export function pickArcOrientation(a: number, b: number, preferLong: boolean): {
 /** A solved arc in the CCW convention arcPathData and ArcShape share — what every fit function
  * below returns, whatever constraints it solved from. */
 export type ArcFit = { center: Pt; radius: number; startAngle: number; endAngle: number };
+
+/**
+ * The arc ending at `start` and `end`, centered wherever on their perpendicular bisector sits
+ * nearest `centerHint`. A center equidistant from both ends can only lie on that bisector, so the
+ * third click is free to land anywhere and only its position *along* the bisector changes the
+ * radius — projecting rather than rejecting is what lets the center be clicked by eye. Returns
+ * null when the two ends coincide, leaving no bisector to project onto.
+ *
+ * The minor (<=180°) arc by default and the major one when `preferLong` is true, same as the
+ * center-first constructions — so the arc always bulges away from the center, and pulling the
+ * center further off widens the sweep rather than flipping it.
+ */
+export function fitArcFromEndsAndCenter(start: Pt, end: Pt, centerHint: Pt, preferLong = false): ArcFit | null {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const chordSq = dx * dx + dy * dy;
+  if (chordSq < 1e-12) return null;
+
+  // bisector runs through the chord's midpoint along the chord turned 90°, so projecting onto it
+  // is one dot product — no line-intersection needed
+  const mid: Pt = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
+  const t = ((centerHint.x - mid.x) * -dy + (centerHint.y - mid.y) * dx) / chordSq;
+  const center: Pt = { x: mid.x - dy * t, y: mid.y + dx * t };
+
+  const radius = dist(center, start);
+  if (radius < 1e-6) return null;
+
+  const { startAngle, endAngle } = pickArcOrientation(
+    angleFromCenter(center, start), angleFromCenter(center, end), preferLong);
+  return { center, radius, startAngle, endAngle };
+}
 
 /**
  * The unique circle through `start` and `end` that is tangent to direction
@@ -359,53 +461,6 @@ export function fitArcThroughPoints(start: Pt, end: Pt, through: Pt, preferOther
     : { center, radius, startAngle: endAngle, endAngle: startAngle };
 }
 
-/**
- * The arc ending at `start` and `end`, centered wherever on their perpendicular bisector sits
- * nearest `centerHint`. A center equidistant from both ends can only lie on that bisector, so the
- * third click is free to land anywhere and only its position *along* the bisector changes the
- * radius — projecting rather than rejecting is what lets the center be clicked by eye. Returns
- * null when the two ends coincide, leaving no bisector to project onto.
- *
- * The minor (<=180°) arc by default and the major one when `preferLong` is true, same as the
- * center-first constructions — so the arc always bulges away from the center, and pulling the
- * center further off widens the sweep rather than flipping it.
- */
-export function fitArcFromEndsAndCenter(start: Pt, end: Pt, centerHint: Pt, preferLong = false): ArcFit | null {
-  const dx = end.x - start.x;
-  const dy = end.y - start.y;
-  const chordSq = dx * dx + dy * dy;
-  if (chordSq < 1e-12) return null;
-
-  // bisector runs through the chord's midpoint along the chord turned 90°, so projecting onto it
-  // is one dot product — no line-intersection needed
-  const mid: Pt = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
-  const t = ((centerHint.x - mid.x) * -dy + (centerHint.y - mid.y) * dx) / chordSq;
-  const center: Pt = { x: mid.x - dy * t, y: mid.y + dx * t };
-
-  const radius = dist(center, start);
-  if (radius < 1e-6) return null;
-
-  const { startAngle, endAngle } = pickArcOrientation(
-    angleFromCenter(center, start), angleFromCenter(center, end), preferLong);
-  return { center, radius, startAngle, endAngle };
-}
-
-/** signed sweep of an Arc's drawn (minor) span: negative clockwise, positive ccw. */
-export function signedArcSweep(arc: Arc): number {
-  const d = normalizeRadians(arc.end - arc.start);
-  return d > Math.PI ? d - TWO_PI : d;
-}
-
-/** tangent direction at the end of an Arc's drawn span. */
-export function travelAtArcEnd(arc: Arc): number {
-  return arc.end + Math.sign(signedArcSweep(arc)) * Math.PI / 2;
-}
-
-/** tangent direction at the start of an Arc's drawn span. */
-export function travelAtArcStart(arc: Arc): number {
-  return arc.start + Math.sign(signedArcSweep(arc)) * Math.PI / 2;
-}
-
 // G1 chain step: arc leaving P along `travel` with given radius, turning by `sweep` (negative
 // clockwise). keep |sweep| under 180°, since Arc's boundary angles can only name the minor span.
 export function arcContinuingFrom(P: Pt, travel: number, radius: number, sweep: number): Arc {
@@ -461,599 +516,6 @@ export function arcBetweenTravels(
   return { run, arc: arcContinuingFrom(P, travel, Math.abs(radius), sweep) };
 }
 
-// inverse of arcTangentToLine: radius is given, sweep is the unknown. arcTangentToLine's raw
-// r = numer(travel)/denom(travel) is transcendental in the sweep that sets `travel` — but numer
-// and denom are each of the form a + b·cos(sweep) + c·sin(sweep), so their difference at a chosen
-// target radius is too. Three samples pin that harmonic exactly, turning "solve for sweep" into
-// "intersect a line with the unit circle" — closed form, no iteration.
-export function sweepForTangentLineRadius(
-  P: Pt, travel: number, radius: number, turnSign: 1 | -1,
-  A: Pt, lineDir: Pt, targetRadius: number,
-): number | null {
-  const start0 = travel - turnSign * Math.PI / 2;
-  const exit = Math.atan2(lineDir.y, lineDir.x);
-  const mx = -lineDir.y, my = lineDir.x;
-
-  const pointAt = (s: number): Pt =>
-    new Pt(P.x + radius * (Math.cos(start0 + s) - Math.cos(start0)), P.y + radius * (Math.sin(start0 + s) - Math.sin(start0)));
-
-  // numer(s) - target·denom(s), zero where the tangent-to-line solve's raw radius is `target`
-  const h = (s: number, target: number): number => {
-    const t = travel + s, pt = pointAt(s);
-    const nx = -Math.sin(t) + Math.sin(exit), ny = Math.cos(t) - Math.cos(exit);
-    return mx * (A.x - pt.x) + my * (A.y - pt.y) - target * (mx * nx + my * ny);
-  };
-
-  // fold into (-π, π]; a valid sweep shares turnSign's sign and stays short of a full reversal
-  const fold = (s: number): number => {
-    const n = normalizeRadians(s);
-    return n > Math.PI ? n - TWO_PI : n;
-  };
-  const EPS = 1e-6;
-  const inRange = (s: number) => Math.sign(s) === turnSign && Math.abs(s) > EPS && Math.abs(s) < Math.PI - EPS;
-
-  // the raw (signed) solve only ever hits +target on the direct branch; the reflex branch (the
-  // other tangent circle, arcTangentToLine's r < 0 case) shows up at -target instead
-  for (const target of [targetRadius, -targetRadius]) {
-    const a0 = h(0, target), aHalf = h(Math.PI / 2, target), aPi = h(Math.PI, target);
-    const a = (a0 + aPi) / 2, b = a0 - a, c = aHalf - a;
-    const R = Math.hypot(b, c);
-    if (R < 1e-9 || Math.abs(a) > R + 1e-9) continue;
-
-    const delta = Math.atan2(c, b);
-    const offset = Math.acos(clamp(-a / R, -1, 1));
-    // the raw solve hits the target radius on the reflex turn too, which arcTangentToLine cannot
-    // build — so a candidate only counts once that closing arc actually comes back
-    const candidates = [fold(delta + offset), fold(delta - offset)].filter(inRange)
-      .filter(s => arcTangentToLine(pointAt(s), travel + s, A, lineDir) != null);
-    if (candidates.length) return candidates.reduce((best, s) => Math.abs(s) < Math.abs(best) ? s : best);
-  }
-  return null;
-}
-
-// inverse of arcBetweenTravels when the target is a point on a circle rather than a fixed point:
-// entry ray (P, travel) is fixed, target is pointOnCircle(circle, theta) with tangent theta +
-// turnSign·π/2 — theta is the unknown, angle rather than length or sweep this time, but the same
-// shape carries over: arcBetweenTravels' raw radius is numer(theta)/denom(theta) with both numer
-// and denom affine in (cos theta, sin theta), so the target-radius root is too. Found the same
-// closed-form way, then simply handed to arcBetweenTravels to confirm and build — cheaper and
-// safer than re-deriving its run/sign validity checks a second time.
-export function angleForBridgeRadius(
-  P: Pt, travel: number, circle: Circle, turnSign: 1 | -1, targetRadius: number,
-): number | null {
-  const ux = Math.cos(travel), uy = Math.sin(travel);
-
-  const pointAt = (theta: number): Pt =>
-    new Pt(circle.x + circle.r * Math.cos(theta), circle.y + circle.r * Math.sin(theta));
-
-  // raw numer/denom of arcBetweenTravels' radius, with the target point read off the circle
-  const h = (theta: number, target: number): number => {
-    const exit = theta + turnSign * Math.PI / 2, pt = pointAt(theta);
-    const ex = Math.sin(exit) - Math.sin(travel), ey = Math.cos(travel) - Math.cos(exit);
-    const denom = ux * ey - uy * ex;
-    const dx = pt.x - P.x, dy = pt.y - P.y;
-    return (dy * ux - dx * uy) - target * denom;
-  };
-
-  for (const target of [targetRadius, -targetRadius]) {
-    const a0 = h(0, target), aHalf = h(Math.PI / 2, target), aPi = h(Math.PI, target);
-    const a = (a0 + aPi) / 2, b = a0 - a, c = aHalf - a;
-    const R = Math.hypot(b, c);
-    if (R < 1e-9 || Math.abs(a) > R + 1e-9) continue;
-
-    const delta = Math.atan2(c, b);
-    const offset = Math.acos(clamp(-a / R, -1, 1));
-    for (const theta of [normalizeRadians(delta + offset), normalizeRadians(delta - offset)]) {
-      const exit = theta + turnSign * Math.PI / 2;
-      const bridged = arcBetweenTravels(P, travel, pointAt(theta), exit);
-      if (bridged && Math.abs(bridged.arc.r - Math.abs(targetRadius)) < 1e-6) return theta;
-    }
-  }
-  return null;
-}
-
-/** True when `angle` lies on the CCW sweep from startAngle to endAngle — the arcPathData
- * convention, and deliberately *not* angleOnDrawnArc's minor-sweep one. */
-export function angleWithinSweep(angle: number, startAngle: number, endAngle: number): boolean {
-  return normalizeRadians(angle - startAngle) <= normalizeRadians(endAngle - startAngle);
-}
-
-export function intersectLines(A: Pt, B: Pt, C: Pt, D: Pt): Pt | null {
-  const x1 = A.x, y1 = A.y;
-  const x2 = B.x, y2 = B.y;
-  const x3 = C.x, y3 = C.y;
-  const x4 = D.x, y4 = D.y;
-
-  const denom = (x1 - x2) * (y3 - y4) -
-                (y1 - y2) * (x3 - x4);
-
-  if (denom === 0) return null; // parallel or coincident
-
-  const px =
-    ((x1*y2 - y1*x2) * (x3 - x4) -
-     (x1 - x2) * (x3*y4 - y3*x4)) / denom;
-
-  const py =
-    ((x1*y2 - y1*x2) * (y3 - y4) -
-     (y1 - y2) * (x3*y4 - y3*x4)) / denom;
-
-  return { x: px, y: py };
-}
-
-export function yInterceptFromTwoPoints(P1: Pt, P2: Pt): number | null {
-  if (P1.x === P2.x) return null; // vertical line, no y-intercept
-  const m = (P2.y - P1.y) / (P2.x - P1.x);
-  return P1.y - m * P1.x;
-}
-
-export function lineCircleIntersection(P1: Pt, P2: Pt, C: Circle): Pt[] {
-  const dx = P2.x - P1.x;
-  const dy = P2.y - P1.y;
-
-  const fx = P1.x - C.x;
-  const fy = P1.y - C.y;
-
-  const a = dx*dx + dy*dy;
-  const b = 2 * (fx*dx + fy*dy);
-  const c = fx*fx + fy*fy - C.r*C.r;
-
-  const disc = b*b - 4*a*c;
-  if (disc < 0) return [];
-
-  const s = Math.sqrt(disc);
-  return [
-    { x: P1.x + (-b + s)/(2*a) * dx, y: P1.y + (-b + s)/(2*a) * dy },
-    { x: P1.x + (-b - s)/(2*a) * dx, y: P1.y + (-b - s)/(2*a) * dy },
-  ];
-}
-
-export function lineCircleIntersectionBetter(L: Line, C: Circle): Pt[] {
-  // Convert the line to two points for the existing lineCircleIntersection function
-  const P1 = { x: 0, y: L.y };
-  const P2 = { x: 1, y: L.m + L.y };
-  return lineCircleIntersection(P1, P2, C);
-}
-
-export function lineFromTwoPoints(A: Pt, B: Pt): Line {
-  let m = (B.y - A.y) / (B.x - A.x);
-
-  // find y intercept 
-  // y = mx + b 
-  let b = A.y - m * A.x;
-
-  return { m, y: b, x: 0};
-}
-
-export function lineFromPointAndSlope(P: Pt, m: number): Line {
-  const y = P.y - m * P.x;
-  return { m, y, x: 0 };
-}
-
-export function unitVectorFromLine(L: Line): Vect2D {
-  const mag = Math.sqrt(1 + L.m * L.m);
-  return { a: 1 / mag, b: L.m / mag, mag: 1 };
-}
-
-export function tangentUnitVectorFromLine(L: Line): Vect2D {
-  const mag = Math.sqrt(1 + L.m * L.m);
-  return { a: L.m / mag, b: -1 / mag, mag: 1 };
-}
-
-export function angleFromLine(L: Line): number {
-  return Math.atan(L.m);
-}
-
-export function tangentAngleFromLine(L: Line): number {
-  return Math.atan(L.m) + Math.PI/2;
-}
-
-export function moveInVectorSpace(P: Pt, Vects: Vect2D[]): Pt {
-  let newX = P.x;
-  let newY = P.y;
-  for (const v of Vects) {
-    newX += v.a * v.mag;
-    newY += v.b * v.mag;
-  }
-  return { x: newX, y: newY };
-}
-
-export function angleFromCenter(C: Pt, P: Pt): number {
-  return Math.atan2(P.y - C.y, P.x - C.x);
-}
-
-export function offsetCircleRadius(C: Circle, offset: number): Circle {
-  const newR = C.r + offset;
-  if (newR < 0) {
-    throw new Error('Offset cannot be so negative that it produces a circle with negative radius.');
-  }
-  return { x: C.x, y: C.y, r: newR };
-}
-
-/**
- * Translates a line segment perpendicular to its own direction — the line equivalent of
- * offsetArcRadius/offsetCircleRadius. Positive `offset` moves it to the right of the a→b
- * direction (rotate the direction vector -90°), matching the "radially outward" convention
- * those two use for arcs/circles: at any point on a CCW arc the direction of travel is the
- * tangent angle +90°, so radially-outward there is -90° from travel — i.e. "right of travel".
- */
-export function offsetLineByDistance(a: Pt, b: Pt, offset: number): { start: Pt; end: Pt } {
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const len = Math.hypot(dx, dy);
-  if (len < 1e-9) return { start: { ...a }, end: { ...b } };
-  const nx = dy / len;
-  const ny = -dx / len;
-  return {
-    start: { x: a.x + nx * offset, y: a.y + ny * offset },
-    end: { x: b.x + nx * offset, y: b.y + ny * offset },
-  };
-}
-
-export function offsetArcRadius(arc: Arc, offset: number): Arc {
-  const newR = arc.r + offset;
-  if (newR < 0) 
-    throw new Error('Offset cannot be so negative that it produces an arc with negative radius.');
-
-  let C = new Circle(arc.x, arc.y, newR);
-  return arcFromCircle(C, arc.start, arc.end);
-}
-
-// this function exists because when defining outer corner arcs
-// the user might change the inner trace corner circle
-// which effects the outer circle
-// in those situations we need to recalculate that outer circle position and its start position
-// but we will keep the user 
-export function redefineArcCircle(arc: Arc, c: Arc, offset?: number): Arc {
-  if (offset !== undefined) {
-    c = offsetArcRadius(c, offset);
-  }
-
-  return arcFromCircle(c, c.start, arc.end);
-}
-
-export function flipArcAboutY(arc: Arc): Arc {
-  let mirroredArc = new Circle(-arc.x, arc.y, arc.r);
-  let mirroredU1Arc = arcFromCircle(mirroredArc, flipAngleAboutYAxis(arc.start), flipAngleAboutYAxis(arc.end));
-  return mirroredU1Arc;
-}
-
-export function flipCircleAboutY(C: Circle): Circle {
-  return { x: -C.x, y: C.y, r: C.r };
-}
-
-export function flipPointAboutY(P: Pt): Pt {
-  return { x: -P.x, y: P.y };
-}
-
-export function flipRectAboutY(R: Rectangle): Rectangle {
-  const flippedPt1 = flipPointAboutY(R.Pt1);
-  const flippedPt2 = flipPointAboutY(R.Pt2);
-  return new Rectangle(flippedPt1, flippedPt2);
-}
-
-
-// ======  Complex Geometry ======
-export function circleCircleIntersections(C1: Circle, C2: Circle, approx: boolean = true): Pt[] {
-  const d = dist(C1, C2);
-
-  // tight, scale-aware tolerance (tweak 1e-12 -> 1e-11 if you still see misses)
-  const scale = Math.max(1, C1.r, C2.r, d);
-  const eps = approx ? 1e-6 * scale : 0;
-
-  // Only change: allow near-intersection by relaxing the bounds slightly
-  if (d > C1.r + C2.r + eps) return [];
-  if (d < Math.abs(C1.r - C2.r) - eps) return [];
-  if (d <= eps) return [];
-
-  const a = (C1.r * C1.r - C2.r * C2.r + d * d) / (2 * d);
-  const h = Math.sqrt(Math.abs(C1.r * C1.r - a * a));
-
-  const xm = C1.x + (a * (C2.x - C1.x)) / d;
-  const ym = C1.y + (a * (C2.y - C1.y)) / d;
-
-  const rx = -((C2.y - C1.y) * (h / d));
-  const ry =  ((C2.x - C1.x) * (h / d));
-
-  return [
-    { x: xm + rx, y: ym + ry },
-    { x: xm - rx, y: ym - ry },
-  ];
-}
-
-/**
- * The two points on circle `C` where a line from external point `P` is tangent to it — PT ⊥ CT,
- * so triangle P-C-T is right-angled at T, giving the tangent points' angle off `C` as
- * `angleFromCenter(C, P) ± acos(C.r / dist(P, C))`. Returns `[]` when `P` is inside or on `C`
- * (no tangent line exists).
- */
-export function tangentPointsFromExternalPoint(P: Pt, C: Circle): Pt[] {
-  const d = dist(P, C);
-  if (d <= C.r) return [];
-  const baseAngle = angleFromCenter(C, P);
-  const beta = Math.acos(C.r / d);
-  return [
-    pointOnCircle(C, baseAngle + beta),
-    pointOnCircle(C, baseAngle - beta),
-  ];
-}
-
-// imagine a large outer circle, with a smaller inner circle
-// where the inner circle intersects the outer circle at a single tangent point
-// now, imagine that the inner circle also has a defined x or y coordinate that it must hit
-// we want to solve the position of the inner circle given these conditions 
-// vibe code I admit it X_X
-export function solveInscribedCircleAlongAxis(C: Circle, r: number, ax: Axis, value: number, pos = true): number {
-  const rPrime = C.r - r;
-  if (rPrime < 0) throw new Error("No solution: inset larger than radius");
-
-  const Cknown = ax === "x" ? C.x : C.y;
-  const d = value - Cknown;
-
-  const under = rPrime * rPrime - d * d;
-  if (under < 0) throw new Error("No real solution: knownValue out of range");
-
-  const s = Math.sqrt(under);
-  const Cunknown = ax === "x" ? C.y : C.x; // solving the other coordinate
-  return pos ? Cunknown + s : Cunknown - s;
-}
-
-// inverse of the above: C is the small circle, solve the position of the larger circle of
-// radius r that contains and is internally tangent to it
-export function solveCircumscribedCircleAlongAxis(C: Circle, r: number, ax: Axis, value: number, pos = true): number {
-  const rPrime = r - C.r;
-  if (rPrime < 0) throw new Error("No solution: circumscribing radius smaller than radius");
-
-  const Cknown = ax === "x" ? C.x : C.y;
-  const d = value - Cknown;
-
-  const under = rPrime * rPrime - d * d;
-  if (under < 0) throw new Error("No real solution: knownValue out of range");
-
-  const s = Math.sqrt(under);
-  const Cunknown = ax === "x" ? C.y : C.x;
-  return pos ? Cunknown + s : Cunknown - s;
-}
-
-// T is a line, Q is a fixed circle, solve the position of P given a R where P is tangent to both T and Q
-// in this case m is a standard y/x slope
-export function solveTangentCircleAndLine(t: Line, Q: Circle, Pr: number, diff: boolean): Circle[] {
-  // we know that the line drawn from C center to the center of Q must have some properties
-  // if diff, dist = P.r - Q.r; if sum, dist = P.r +  Q.r
-  let PtoQ = diff ? Pr - Q.r : Pr + Q.r;
-
-  // we know that the circle P must be tangent to the line, which means its 
-  // exists along a line parallel to our given line at some distance away
-  // so given the point for our line t, just move the xy components of r away from that
-  const perpendicularAngle = Math.atan(-1 / t.m)
-  const parallelLine: Line = { m: t.m, x: t.x - Pr * Math.cos(perpendicularAngle), y: t.y - Pr * Math.sin(perpendicularAngle) };
-
-  // now we need to solve for the point along Cy where the distance to Q is equal to dist
-  // first find the distance between the line t and the center of Q
-  let QtoT = shortestDistanceFromPtToLine(Q, parallelLine)
-
-  // we have two sides of a right triangle, we can solve for the third
-  let distanceAlongLine = Math.sqrt(PtoQ * PtoQ - QtoT * QtoT);
-
-  // so lets make vectors, we have angles and magnitudes
-  let unitVectAlongT = unitVectorFromLine(t)
-  let unitVectAgainstT = tangentUnitVectorFromLine(t)
-  let vectAlongT: Vect2D = { a: unitVectAlongT.a, b: unitVectAlongT.b, mag: distanceAlongLine }
-  let vectAgainstT: Vect2D = { a: unitVectAgainstT.a, b: unitVectAgainstT.b, mag: QtoT }
-
-  // now we just start at our reference point and apply the vectors to find the potential circle centers
-  let Cxy = moveInVectorSpace(Q, [vectAlongT, vectAgainstT])
-  let C = new Circle(Cxy.x, Cxy.y, Pr)
-  return [C];
-}
-
-// https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line
-export function shortestDistanceFromPtToLine(P: Pt, L: Line): number {
-  // Distance from point to line formula: |m*Px - Py + (L.y - m*L.x)| / sqrt(m^2 + 1)
-  return Math.abs(L.m * P.x - P.y + (L.y - L.m * L.x)) / Math.sqrt(L.m * L.m + 1);
-}
-
-export function interceptCirclesAndPointCompound(L: Circle, P: Pt, Cr1: number, Cr2: number, Ctheta: number): {C1: Circle, C2: Circle}[] {
-  // C1 is externally tangent to L, so its center is always at distance (L.r + Cr1) from L's center.
-  // C2 is internally tangent to C1 (since Cr2 < Cr1), so C2's center sits (Cr1 - Cr2) from C1's center
-  // along the direction Ctheta — the same direction as the tangent point T on C1's boundary.
-  //
-  //   T = C1.center + Cr1 * (cos Ctheta, sin Ctheta)       <- tangent point on C1
-  //   C2.center = C1.center + (Cr1 - Cr2) * (cos Ctheta, sin Ctheta)
-  //
-  // The final constraint is that C2 must reach P:
-  //   dist(C2.center, P) = Cr2
-  //
-  // Substituting C2.center = C1.center + offset:
-  //   dist(C1.center + offset, P) = Cr2
-  //   dist(C1.center, P - offset) = Cr2      <- shift P by -offset
-  //
-  // So C1's center must lie on TWO circles simultaneously:
-  //   1. Circle centered at L       with radius (L.r ± Cr1)   [tangent to L]
-  //        - P outside L → C1 outside L → external tangency → L.r + Cr1
-  //        - P inside  L → C1 inside  L → internal tangency → L.r - Cr1
-  //   2. Circle centered at Q=P-offset with radius Cr2        [C2 reaches P]
-  //
-  // Their intersections give the two possible C1 centers directly.
-
-  const offset: Pt = {
-    x: (Cr1 - Cr2) * Math.cos(Ctheta),
-    y: (Cr1 - Cr2) * Math.sin(Ctheta),
-  };
-
-  // Shift P back by the offset so we can solve for C1's center directly
-  const Q: Pt = { x: P.x - offset.x, y: P.y - offset.y };
-
-  const pInsideL = dist(L, P) < L.r;
-  const C1locusRadius = pInsideL ? L.r - Cr1 : L.r + Cr1;
-  const C1locus = new Circle(L.x, L.y, C1locusRadius);
-  const C2locus = new Circle(Q.x, Q.y, Cr2);
-
-  const C1centers = circleCircleIntersections(C1locus, C2locus);
-  if (C1centers.length === 0) return [];
-
-  return C1centers.map(c1Center => {
-    const C1: Circle = { ...c1Center, r: Cr1 };
-    const C2: Circle = {
-      x: c1Center.x + offset.x,
-      y: c1Center.y + offset.y,
-      r: Cr2,
-    };
-    return { C1, C2 };
-  });
-}
-
-export function interceptCirclesAndPoint(L: Circle, P: Pt, Cr: number): Circle[] {
-  //  P *
-  //     /\ Cr 
-  //    / / Cr
-  //   / /
-  //  / / 
-  //  //  <-phi inside that lil triangle
-  //  L
-
-  let LP = dist(L, P);
-  let outside = LP > L.r
-  let LrCr = outside ? Cr + L.r : Math.abs(L.r - Cr);
-  
-  // we can define and angle gamma from L to P
-  let gamma = Math.atan2(P.y - L.y, P.x - L.x);
-
-  // using law of cosines to find small angle phi, which relates
-  // Cr^2 = LP^2 + CrLr^2 - 2*LP*CrLr*cos(phi)
-  let cosPhi = (LP*LP + LrCr*LrCr - Cr*Cr) / (2 * LP * LrCr);
-
-  // No triangle closes when that leaves the cosine domain — no circle of radius Cr is both tangent
-  // to L and through P. Report it as no solutions, the way interceptCirclesAndPointCompound does:
-  // Math.acos would hand back NaN instead, and a NaN centre travels all the way to the SVG before
-  // anything notices, so the caller never gets the chance to fail.
-  if (!Number.isFinite(cosPhi) || cosPhi < -1 || cosPhi > 1) return [];
-
-  let phi = Math.acos(cosPhi);
-
-  // we know that the angle theta, which is the angle from L to C is both the difference and the sum of these angles
-  let thetaBig = gamma + phi;
-  let thetaSmall = gamma - phi;
-
-  // we can then find the two possible centers for C using these angles and the distance CrLr
-  let C1 = { x: L.x + LrCr * Math.cos(thetaBig), y: L.y + LrCr * Math.sin(thetaBig) };
-  let C2 = { x: L.x + LrCr * Math.cos(thetaSmall), y: L.y + LrCr * Math.sin(thetaSmall) };
-
-  let solutions = [ { ...C1, r: Cr }, { ...C2, r: Cr } ];
-
-
-  return solutions;
-}
-
-// good math provided here
-// https://www.reddit.com/r/Geometry/comments/1k6slsb/how_do_i_create_this_orange_arc_so_that_it_is/
-export function findJoiningCircleFromCircleAndPoint(U: Circle, P: Pt): Circle {
-
-  const x = U.x - P.x;
-  const y = Math.abs(U.y - P.y);
-
-  // R=(x2+y2-r2)/(2(y-r))
-  let Cr = (x*x + y*y - U.r*U.r) / (2 * (y - U.r));
-  let Cx = P.x
-  let CyPlus = P.y + Cr;
-  let CyMinus = P.y - Cr
-
-  // use the Cy value closest to the center of U
-  let CyPlusDist = dist(U, {x: Cx, y: CyPlus});
-  let CyMinusDist = dist(U, {x: Cx, y: CyMinus});
-  
-  let Cy = CyPlusDist < CyMinusDist ? CyPlus : CyMinus;
-
-  return { x: Cx, y: Cy, r: Cr };
-}
-
-export function findJoiningCircleOfKnownRadius(U: Circle, R: number, max: boolean = true): Circle {
-  //        C(0, Cy)
-  //        | \
-  //        |  \
-  // C.r- b |   \ C.r - U.r
-  //        |    \
-  //        |-----\ (U.x, U.y)
-  //     b  |  x   \ U.r
-  //        |       
-  //        P(0, Cy-C.r)
-
-  // the length b is the defined by the "cutoff" from the center of U
-  // we make a right triangle above with two known sides, meaning we can solve the other
-  // (C.r-U.r)^2 = (C.r-b)^2 + x^2 
-
-  let RadDiff = R - U.r
-  let bPlus = R + Math.sqrt(RadDiff*RadDiff - U.x*U.x);
-  let bMinus = R - Math.sqrt(RadDiff*RadDiff - U.x*U.x);
-  let b = max ? Math.max(bPlus, bMinus) : Math.min(bPlus, bMinus);
-  let Cy = U.y - b + R;
-
-  return { x: 0, y: Cy, r: R };
-}
-
-export function inscribeCircleWithinCircle(outerCirle: Circle, innerCircleRadius: number, angle: number): Circle {
-  const target = pointOnCircle(outerCirle, angle);
-  const distToTarget = dist(target, outerCirle);
-  const difference = distToTarget - innerCircleRadius;
-  let centerForNewCircle = pointOnCircle({ ...outerCirle, r: difference }, angle);
-  let innerCircle = { x: centerForNewCircle.x, y: centerForNewCircle.y, r: innerCircleRadius };
-  return innerCircle;
-
-}
-
-/**
- * A circle of radius `radius`, tangent to circle `c` and to the line through `A` in direction
- * `dir` (unit vector) — the fillet construction behind rounding a corner where a straight wall
- * meets a curved boundary. `side` (+1/-1) picks which way along the line's left-normal the
- * fillet sits. `internal` picks tangency from inside `c` (the fillet nests inside c's own
- * radius: `reach = c.r - radius`, the case where the boundary curves away from the fillet) versus
- * outside it (the fillet grows past c's radius: `reach = c.r + radius`, where the boundary curves
- * toward it) — which applies depends on which way `c` curves relative to the fillet, not on the
- * fillet itself, so the caller has to know its own geometry.
- *
- * The line has up to two tangent solutions; `near` picks whichever one's line-tangent point sits
- * closest to it. Returns null when no such circle exists — too large a radius for the geometry,
- * or a required reach that isn't positive.
- */
-export function filletLineToCircle(
-  A: Pt, dir: Pt, side: 1 | -1, c: Circle, radius: number, internal: boolean, near: Pt,
-): { center: Pt; lineTangent: Pt; circleTangent: Pt; circleAngle: number } | null {
-  if (radius <= 0) return null;
-  const reach = internal ? c.r - radius : c.r + radius;
-  if (reach <= 0) return null;
-
-  const n: Pt = { x: -dir.y, y: dir.x }; // left normal of dir
-  const originX = A.x + side * radius * n.x;
-  const originY = A.y + side * radius * n.y; // the line offset by radius, at its own t=0
-
-  const qx = originX - c.x, qy = originY - c.y;
-  const b = qx * dir.x + qy * dir.y; // Q·dir
-  const disc = b * b - (qx * qx + qy * qy - reach * reach);
-  if (disc < 0) return null;
-  const s = Math.sqrt(disc);
-
-  const centerAt = (t: number): Pt => ({ x: originX + t * dir.x, y: originY + t * dir.y });
-  const c1 = centerAt(-b + s), c2 = centerAt(-b - s);
-  const center = dist(c1, near) <= dist(c2, near) ? c1 : c2;
-
-  const lineTangent: Pt = { x: center.x - side * radius * n.x, y: center.y - side * radius * n.y };
-  const circleAngle = angleFromCenter(c, center);
-  return { center, lineTangent, circleTangent: pointOnCircle(c, circleAngle), circleAngle };
-}
-
-/**
- * Rounds a right-angle corner at `P` — where a vertical edge meets a horizontal one — with an
- * arc of the given radius. `into` says which quadrant the round cuts into, relative to `P`: each
- * component is +1 or -1, the direction (x, then y) from the corner toward the region being
- * smoothed. Returns null when radius is non-positive.
- */
-export function filletRightAngleCorner(P: Pt, into: Pt, radius: number): Arc | null {
-  if (radius <= 0) return null;
-  const center: Pt = { x: P.x + into.x * radius, y: P.y + into.y * radius };
-  const vTangent: Pt = { x: P.x, y: center.y };
-  const hTangent: Pt = { x: center.x, y: P.y };
-  return new Arc(center.x, center.y, radius, angleFromCenter(center, vTangent), angleFromCenter(center, hTangent));
-}
-
 // Biarc interpolation — connects two arc endpoints with a G1-continuous S-curve (two arcs tangent at a joint).
 // Assumes arcs sweep CCW (increasing angle). For arcs whose concave sides face each other, the result is
 // an S-curve: the two joining arcs are externally tangent at their shared joint point.
@@ -1102,7 +564,7 @@ export function findJoiningArcsFromTangents(P1: Pt, T1: number, P2: Pt, T2: numb
  * graceful/open one). Separate from findJoiningArcsFromTangents, which only exposes the
  * smaller root, so callers can compare candidates across roots and invert flags.
  */
-function solveBiarcRoots(P1: Pt, T1: number, P2: Pt, T2: number, invert1: boolean, invert2: boolean): { R: number; N1: Pt; N2: Pt }[] {
+export function solveBiarcRoots(P1: Pt, T1: number, P2: Pt, T2: number, invert1: boolean, invert2: boolean): { R: number; N1: Pt; N2: Pt }[] {
   const t1 = invert1 ? T1 + Math.PI : T1;
   const t2 = invert2 ? T2 + Math.PI : T2;
   const T1vec: Pt = { x: Math.cos(t1), y: Math.sin(t1) };
@@ -1136,7 +598,7 @@ function solveBiarcRoots(P1: Pt, T1: number, P2: Pt, T2: number, invert1: boolea
   return roots.filter(r => r > 1e-10).map(R => ({ R, N1, N2 }));
 }
 
-function biarcFromRoot(P1: Pt, P2: Pt, N1: Pt, N2: Pt, R: number): Arc[] {
+export function biarcFromRoot(P1: Pt, P2: Pt, N1: Pt, N2: Pt, R: number): Arc[] {
   const C1: Pt = { x: P1.x + R * N1.x, y: P1.y + R * N1.y };
   const C2: Pt = { x: P2.x + R * N2.x, y: P2.y + R * N2.y };
 
@@ -1156,291 +618,4 @@ function biarcFromRoot(P1: Pt, P2: Pt, N1: Pt, N2: Pt, R: number): Arc[] {
  */
 export function findAllJoiningArcsFromTangents(P1: Pt, T1: number, P2: Pt, T2: number, invert1 = false, invert2 = false): Arc[][] {
   return solveBiarcRoots(P1, T1, P2, T2, invert1, invert2).map(({ R, N1, N2 }) => biarcFromRoot(P1, P2, N1, N2, R));
-}
-
-// ===== Curve math =====
-
-/**
- * Solves the catenary shape parameter `a` for a given sag `H` and span `L`.
- * Uses bisection: a * (cosh(L / 2a) − 1) = H.
- */
-// Station sweeps re-solve the same arch hundreds of times per redraw; the
-// bisection is 64 cosh evaluations, so a single-entry memo pays for itself.
-let lastCatenary: { H: number; L: number; a: number } | null = null;
-export function solveCatenaryA(H: number, L: number): number {
-  if (lastCatenary && lastCatenary.H === H && lastCatenary.L === L) return lastCatenary.a;
-  const f = (a: number): number => a * (Math.cosh(L / (2 * a)) - 1) - H;
-  let lo = L * 1e-4;
-  let hi = L * 1e4;
-  for (let i = 0; i < 64; i++) {
-    const mid = (lo + hi) / 2;
-    f(mid) > 0 ? (lo = mid) : (hi = mid);
-  }
-  const a = (lo + hi) / 2;
-  lastCatenary = { H, L, a };
-  return a;
-}
-
-/**
- * 1-D shape-preserving cubic spline: given strictly-increasing `ys[]` and values
- * `zs[]`, returns z(y). Never overshoots the data, and is curvature-continuous
- * everywhere it can be.
- *
- * A plain natural cubic spline buys its C² continuity by rising above the knots
- * it passes through, turning three equal-height knots after a steep rise into a
- * hump-dip-hump ripple. Fritsch–Carlson (PCHIP) fixes that by deriving every
- * slope from the neighbouring secants, but only ever achieves C¹ — curvature
- * *steps* at each knot, which on a domed profile (a cross arch) reads as a
- * string of little bumps and dips no amount of control-point nudging removes.
- *
- * So: take the natural spline's C² slopes, then pass them through Hyman's
- * monotonicity filter (see {@link hymanFilterSlopes}). The filter only engages
- * where a natural spline would actually have overshot, so a flat run stays
- * genuinely flat and a dome comes out fully curvature-continuous.
- *
- * Reference: Hyman (1983), "Accurate Monotonicity Preserving Cubic Interpolation",
- * SIAM J. Sci. Stat. Comput. 4(4).
- */
-export function makeMonotoneSpline(ys: number[], zs: number[]): (y: number) => number {
-  const n = ys.length - 1;
-  if (n < 1) return () => zs[0] ?? 0;
-
-  const h: number[]     = ys.slice(0, n).map((v, i) => ys[i + 1] - v);
-  const delta: number[] = h.map((hi, i) => (zs[i + 1] - zs[i]) / hi);
-  return hermiteEvaluator(ys, zs, h, hymanFilterSlopes(naturalSplineSlopes(h, delta), h, delta));
-}
-
-/**
- * The same curve *before* the monotonicity filter: a natural cubic spline, C²
- * at every knot rather than only where the filter left it alone.
- *
- * The filter is not free, and what it costs is exactly curvature continuity —
- * it buys the no-overshoot guarantee by clamping knot slopes, and a clamped
- * slope is a knot where the second derivative steps. On a flat graph that is
- * invisible. On a rendered surface it is a crease running along the locus of
- * that knot, because specular shading reads curvature, and it is why an
- * asymmetric cross arch shows a line down its ridge while a symmetric one does
- * not: with symmetric data the filter has nothing to clamp.
- *
- * The trade is real and the caller must be able to live with it. A natural
- * spline through steep or unevenly spaced data can rise above the knots it
- * passes through. Check the result — see `naturalSplineOvershoot` in
- * ceruti-arch-geometry, which is what decides between the two there.
- */
-export function makeNaturalSpline(ys: number[], zs: number[]): (y: number) => number {
-  const n = ys.length - 1;
-  if (n < 1) return () => zs[0] ?? 0;
-
-  const h: number[]     = ys.slice(0, n).map((v, i) => ys[i + 1] - v);
-  const delta: number[] = h.map((hi, i) => (zs[i + 1] - zs[i]) / hi);
-  return hermiteEvaluator(ys, zs, h, naturalSplineSlopes(h, delta));
-}
-
-/**
- * Cubic spline through the data, C² at *every* knot, with the slope at knot
- * `flat` pinned to zero — a curvature-continuous curve with a genuine smooth
- * extremum exactly where the caller asked for one.
- *
- * The two conditions fight over the same freedom, and understanding why is the
- * whole design. A cubic Hermite has one slope unknown per knot; C² at each
- * interior knot plus one condition per end uses every one of them. Adding
- * `m[flat] = 0` is one equation too many, which is exactly why
- * {@link makeMonotoneSpline} cannot have both: its filter pins the slope and
- * *drops* C² there, leaving a curvature step that a rendered surface shows as a
- * crease along that knot.
- *
- * The room is made by giving up one end condition instead. That keeps C²
- * everywhere and the pinned slope, and costs only the natural (z''= 0)
- * behaviour at one end — no discontinuity, since an end condition sets how the
- * curve leaves the data rather than joining two pieces of it.
- *
- * Which end, though, is a choice the data does not make, and choosing one would
- * make a symmetric problem come out asymmetric. So it is solved both ways and
- * averaged. Both solutions satisfy every C² equation and the pinned slope, and
- * those are linear, so the average satisfies them too — it differs only in
- * meeting the average of the two end conditions. Symmetric data therefore gives
- * a symmetric curve, and the centred case comes out bit-identical to the
- * monotone spline.
- *
- * No overshoot guarantee whatsoever: that is what the filter was buying. The
- * caller must check the result and fall back.
- *
- * Returns null when the data is too short to constrain (fewer than two
- * intervals) or the system is singular.
- */
-export function makeC2SplineWithFlatKnot(
-  ys: number[], zs: number[], flat: number,
-): ((y: number) => number) | null {
-  const n = ys.length - 1;
-  if (n < 2 || flat <= 0 || flat >= n) return null;
-
-  const h: number[] = ys.slice(0, n).map((v, i) => ys[i + 1] - v);
-  const delta: number[] = h.map((hi, i) => (zs[i + 1] - zs[i]) / hi);
-
-  // C² at every interior knot, the pinned slope, and one end condition.
-  const solveWith = (naturalAtStart: boolean): number[] | null => {
-    const rows: number[][] = [];
-    const rhs: number[] = [];
-    if (naturalAtStart) {
-      const r = new Array<number>(n + 1).fill(0);
-      r[0] = 2; r[1] = 1;
-      rows.push(r); rhs.push(3 * delta[0]);
-    }
-    for (let i = 1; i < n; i++) {
-      const r = new Array<number>(n + 1).fill(0);
-      r[i - 1] = h[i];
-      r[i] = 2 * (h[i - 1] + h[i]);
-      r[i + 1] = h[i - 1];
-      rows.push(r); rhs.push(3 * (h[i] * delta[i - 1] + h[i - 1] * delta[i]));
-    }
-    if (!naturalAtStart) {
-      const r = new Array<number>(n + 1).fill(0);
-      r[n - 1] = 1; r[n] = 2;
-      rows.push(r); rhs.push(3 * delta[n - 1]);
-    }
-    const pin = new Array<number>(n + 1).fill(0);
-    pin[flat] = 1;
-    rows.push(pin); rhs.push(0);
-    return solveDense(rows, rhs);
-  };
-
-  const a = solveWith(true);
-  const b = solveWith(false);
-  if (!a || !b) return null;
-  const m = a.map((v, i) => (v + b[i]) / 2);
-  if (m.some(v => !Number.isFinite(v))) return null;
-  return hermiteEvaluator(ys, zs, h, m);
-}
-
-/**
- * Gauss–Jordan with partial pivoting. Dense on purpose: the pinned-slope row
- * destroys the tridiagonal structure the natural spline enjoys, and a cross
- * arch carries a handful of knots, so the cubic cost is nothing next to the
- * clarity of not maintaining a special-cased banded solver.
- */
-function solveDense(rows: number[][], rhs: number[]): number[] | null {
-  const n = rhs.length;
-  const m = rows.map((r, i) => [...r, rhs[i]]);
-  for (let col = 0; col < n; col++) {
-    let pivot = col;
-    for (let r = col + 1; r < n; r++) {
-      if (Math.abs(m[r][col]) > Math.abs(m[pivot][col])) pivot = r;
-    }
-    if (Math.abs(m[pivot][col]) < 1e-12) return null;
-    [m[col], m[pivot]] = [m[pivot], m[col]];
-    for (let r = 0; r < n; r++) {
-      if (r === col) continue;
-      const f = m[r][col] / m[col][col];
-      if (f === 0) continue;
-      for (let k = col; k <= n; k++) m[r][k] -= f * m[col][k];
-    }
-  }
-  return m.map((r, i) => r[n] / r[i]);
-}
-
-/** Piecewise cubic Hermite through `zs` with knot slopes `m` — the shared tail of both splines above. */
-function hermiteEvaluator(
-  ys: number[], zs: number[], h: number[], m: number[],
-): (y: number) => number {
-  const n = ys.length - 1;
-  return (y: number): number => {
-    let i = 0;
-    while (i < n - 1 && ys[i + 1] <= y) i++;
-    const hi = h[i];
-    const t  = (y - ys[i]) / hi;
-    const t2 = t * t;
-    const t3 = t2 * t;
-    // Cubic Hermite basis on the unit interval.
-    return (2 * t3 - 3 * t2 + 1) * zs[i]
-         + (t3 - 2 * t2 + t) * hi * m[i]
-         + (-2 * t3 + 3 * t2) * zs[i + 1]
-         + (t3 - t2) * hi * m[i + 1];
-  };
-}
-
-/**
- * Knot slopes of the natural cubic spline through the data — the C² choice, the
- * unfiltered half of {@link makeMonotoneSpline}. Takes the interval widths `h`
- * and secants `delta` the caller already computed.
- *
- * Enforcing C² across every knot gives one linear equation per knot, closed at
- * the two ends by the natural condition z''= 0. In slope form that system is
- * tridiagonal and strictly diagonally dominant, so the Thomas algorithm solves
- * it in one forward sweep and one back-substitution with no pivoting.
- */
-function naturalSplineSlopes(h: number[], delta: number[]): number[] {
-  const n = h.length;
-  const sub  = new Array<number>(n + 1).fill(0); // below the diagonal
-  const diag = new Array<number>(n + 1).fill(0);
-  const sup  = new Array<number>(n + 1).fill(0); // above the diagonal
-  const rhs  = new Array<number>(n + 1).fill(0);
-
-  // Natural end: 2·m₀ + m₁ = 3·δ₀, and its mirror at the far end.
-  diag[0] = 2 / h[0];   sup[0] = 1 / h[0];   rhs[0] = 3 * delta[0] / h[0];
-  for (let i = 1; i < n; i++) {
-    sub[i]  = 1 / h[i - 1];
-    diag[i] = 2 * (1 / h[i - 1] + 1 / h[i]);
-    sup[i]  = 1 / h[i];
-    rhs[i]  = 3 * (delta[i - 1] / h[i - 1] + delta[i] / h[i]);
-  }
-  sub[n] = 1 / h[n - 1];   diag[n] = 2 / h[n - 1];   rhs[n] = 3 * delta[n - 1] / h[n - 1];
-
-  for (let i = 1; i <= n; i++) {
-    const w = sub[i] / diag[i - 1];
-    diag[i] -= w * sup[i - 1];
-    rhs[i]  -= w * rhs[i - 1];
-  }
-  const m = new Array<number>(n + 1).fill(0);
-  m[n] = rhs[n] / diag[n];
-  for (let i = n - 1; i >= 0; i--) m[i] = (rhs[i] - sup[i] * m[i + 1]) / diag[i];
-  return m;
-}
-
-/**
- * Hyman's monotonicity filter: clips each slope to the largest magnitude that
- * still keeps its two adjoining segments monotone, and to zero at a local
- * extremum (where the secants change sign, or either one is flat).
- *
- * The bound is Fritsch–Carlson's sufficient condition — with every slope held to
- * 3·min(|δₗ|, |δᵣ|), both ends of any segment sit within 3·|δ| of it, which is
- * what rules out an interior overshoot. Slopes already inside the bound pass
- * through untouched, so a curve whose natural fit never overshot keeps its full
- * C² continuity; only the knots that would have rung are dropped to C¹.
- */
-function hymanFilterSlopes(m: number[], h: number[], delta: number[]): number[] {
-  const n = h.length;
-  const out = m.slice();
-  for (let i = 0; i <= n; i++) {
-    // The ends have one secant, so it stands in for both — matching the interior
-    // rule's behaviour of clipping to 3× the only secant that constrains it.
-    const dL = delta[i > 0 ? i - 1 : 0];
-    const dR = delta[i < n ? i : n - 1];
-    if (dL * dR <= 0) { out[i] = 0; continue; }
-    const bound = 3 * Math.min(Math.abs(dL), Math.abs(dR));
-    out[i] = Math.sign(dL) * Math.min(Math.abs(out[i]), bound);
-    if (out[i] * dL <= 0) out[i] = 0;
-  }
-  return out;
-}
-/** True when angle θ lies on the drawn (minor) span between the arc's start and end — see pathFromArc. */
-export function angleOnDrawnArc(arc: Arc, theta: number): boolean {
-  const diff = normalizeRadians(arc.end - arc.start);
-  const from = diff <= Math.PI ? arc.start : arc.end;
-  const span = diff <= Math.PI ? diff : TWO_PI - diff;
-  const rel = normalizeRadians(theta - from);
-  const eps = 1e-9;
-  return rel <= span + eps || rel >= TWO_PI - eps;
-}
-
-/**
- * Intersections of the horizontal line y = `y` with the drawn span of the arc.
- * Circle crossings are computed analytically, then filtered to the minor sweep
- * that pathFromArc actually renders.
- */
-export function arcHorizontalIntersections(arc: Arc, y: number): Pt[] {
-  const dy = y - arc.y;
-  if (Math.abs(dy) > arc.r) return [];
-  const xOff = Math.sqrt(arc.r * arc.r - dy * dy);
-  const candidates = [new Pt(arc.x + xOff, y), new Pt(arc.x - xOff, y)];
-  return candidates.filter(pt => angleOnDrawnArc(arc, angleFromCenter(arc, pt)));
 }

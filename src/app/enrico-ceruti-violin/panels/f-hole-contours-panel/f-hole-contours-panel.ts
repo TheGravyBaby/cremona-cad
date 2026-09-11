@@ -7,8 +7,16 @@ import { ensureOuterTracePaths, calculateOuterArcs, getPath, getPathOrNull } fro
 import { getArcEndDeg, setArcEndDeg } from '../../../helpers/arcDegrees';
 import { fholeCutInfo, fholeShoulderExtendInfo } from '../../ceruti-helpers';
 import { defaultFHolePlacement, renderFholeBounds, renderFholeEyePlacementGuides, renderFholeEyes, stemRun } from '../f-hole-placement-panel/f-hole-placement-panel';
-import { angleForBridgeRadius, angleFromCenter, arcBetweenTravels, arcContinuingFrom, arcTangentToLine, circleCircleIntersections, inscribeCircleWithinCircle, lineCircleIntersection, lineCircleIntersectionBetter, lineFromPointAndSlope, moveInVectorSpace, normalizeRadians, pointOnCircle, signedArcSweep, solveCircumscribedCircleAlongAxis, solveTangentCircleAndLine, sweepForTangentLineRadius, tangentAngleFromLine, tangentUnitVectorFromLine, unitVectorFromLine } from '../../../helpers/math/draftMath';
-import { travelAtArcEnd, travelAtArcStart } from '../../../helpers/math/draftMath';
+import {
+  arcBetweenTravels, arcContinuingFrom, arcTangentToLine, circleCircleIntersections, inscribeCircleWithinCircle,
+  solveCircumscribedCircleAlongAxis, solveTangentCircleAndLine,
+} from '../../../helpers/math/draftMath';
+import {
+  angleFromCenter, lineCircleIntersection, lineCircleIntersectionBetter, lineFromPointAndSlope, moveInVectorSpace,
+  normalizeRadians, pointOnCircle, signedArcSweep, tangentAngleFromLine, tangentUnitVectorFromLine, unitVectorFromLine,
+  travelAtArcEnd, travelAtArcStart,
+} from '../../../helpers/math/simpleGeometry';
+import { angleForBridgeRadius, sweepForTangentLineRadius } from '../../../helpers/math/vibeMath';
 import { Circle, Pt, Arc, Line, Vect2D } from '../../../models/types';
 import { HighlightedArc, HighlightedPoint } from '../../renders/render-constants';
 import { error } from '../../../shared/message-emitter';
