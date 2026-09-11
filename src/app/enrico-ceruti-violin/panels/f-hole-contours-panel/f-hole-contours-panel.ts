@@ -15,6 +15,7 @@ import {
   angleFromCenter, closestPointOnLine, lineCircleIntersection, lineFromPointAndSlope, moveInVectorSpace,
   normalizeRadians, pointOnCircle, signedArcSweep, tangentAngleFromLine, tangentUnitVectorFromLine, unitVectorFromLine,
   travelAtArcEnd, travelAtArcStart,
+  lineCircleIntersectionWithTolerance,
 } from '../../../helpers/math/simpleGeometry';
 import { angleForBridgeRadius, sweepForTangentLineRadius } from '../../../helpers/math/vibeMath';
 import { Pt, Arc, Line, Vect2D } from '../../../models/types';
@@ -124,20 +125,20 @@ export function calculateFholeContours(p: EnricoCerutiParams): void {
     let outerStemLine = lineFromPointAndSlope(outerStemPt, stemSlope)
     let S2 = solveTangentCircleAndLine(outerStemLine, p.fHoles.U2, p.fHoles.stem.arcR, true, 1, p.fHoles.stem.center);
     let S2U2Intersect = circleCircleIntersections(S2, p.fHoles.U2);
-    let S2StemIntersect = lineCircleIntersection(outerStemLine, S2);
+    let S2StemIntersect = lineCircleIntersectionWithTolerance(outerStemLine, S2); // we are just kissing the line, sometimes we miss due to floating points
+    let S2StemEndAngle = angleFromCenter(S2, S2StemIntersect[0])
 
     p.fHoles.U2.end = angleFromCenter(p.fHoles.U2, S2U2Intersect[0]);
-    p.fHoles.U3 = new Arc(S2.x, S2.y, S2.r, p.fHoles.U2.end, angleFromCenter(S2, S2StemIntersect[0]))
-  } catch {
-    error("The upper arm calculation failed.", "Error")
+    p.fHoles.U3 = new Arc(S2.x, S2.y, S2.r, p.fHoles.U2.end, S2StemEndAngle)
+  } catch (e) {
+    error("Upper arm calculation error", "Error")
   }
 
   // now we do the upper wing
   try {
+    let cutStart = pointOnCircle(p.fHoles.UEye, p.fHoles.UCut.angleOnEye);
 
-    let wingCutStart = p
-
-  } catch {
+  } catch (e) {
     error("Upper wing calculation error.", "Error")
   }
 

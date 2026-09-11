@@ -113,34 +113,12 @@ export function isVerticalLine(line: Line): boolean {
   return !Number.isFinite(line.m);
 }
 
-export function unitVectorFromLine(line: Line): Vect2D {
-  if (isVerticalLine(line)) return { a: 0, b: 1, mag: 1 };
-  const mag = Math.sqrt(1 + line.m * line.m);
-  return { a: 1 / mag, b: line.m / mag, mag: 1 };
-}
-
-export function tangentUnitVectorFromLine(line: Line): Vect2D {
-  if (isVerticalLine(line)) return { a: 1, b: 0, mag: 1 };
-  const mag = Math.sqrt(1 + line.m * line.m);
-  return { a: line.m / mag, b: -1 / mag, mag: 1 };
-}
-
 export function angleFromLine(line: Line): number {
   return Math.atan(line.m);
 }
 
 export function tangentAngleFromLine(line: Line): number {
   return Math.atan(line.m) + Math.PI / 2;
-}
-
-export function moveInVectorSpace(point: Pt, vectors: Vect2D[]): Pt {
-  let newX = point.x;
-  let newY = point.y;
-  for (const v of vectors) {
-    newX += v.a * v.mag;
-    newY += v.b * v.mag;
-  }
-  return { x: newX, y: newY };
 }
 
 /**
@@ -194,6 +172,54 @@ export function lineCircleIntersection(line: Line, circle: Circle): Pt[] {
   ];
 }
 
+// Helper function to find intersection with tolerance for floating point errors
+export function lineCircleIntersectionWithTolerance(line: Line, circle: Circle, tolerance = 1e-10): Pt[] {
+  if (isVerticalLine(line)) {
+    const dx = line.x - circle.x;
+    const under = circle.r * circle.r - dx * dx;
+
+    if (under < -tolerance) {
+      // No intersection
+      return [];
+    }
+
+    // Handle floating point errors by treating near-zero values as zero
+    if (under < tolerance) {
+      return [{ x: line.x, y: circle.y }];
+    }
+
+    const dy = Math.sqrt(under);
+    return [{ x: line.x, y: circle.y + dy }, { x: line.x, y: circle.y - dy }];
+  }
+
+  const d = line.y - circle.y;
+  const a = 1 + line.m * line.m;
+  const b = 2 * (line.m * d - circle.x);
+  const c = circle.x * circle.x + d * d - circle.r * circle.r;
+
+  const discriminant = b * b - 4 * a * c;
+
+  if (discriminant < -tolerance) {
+    // No intersection
+    return [];
+  }
+
+  // Handle floating point errors by treating near-zero discriminants as zero
+  if (discriminant < tolerance) {
+    const x = -b / (2 * a);
+    const y = line.m * x + line.y;
+    return [new Pt(x, y)];
+  }
+
+  const sqrt_discriminant = Math.sqrt(discriminant);
+  const x1 = (-b + sqrt_discriminant) / (2 * a);
+  const x2 = (-b - sqrt_discriminant) / (2 * a);
+  const y1 = line.m * x1 + line.y;
+  const y2 = line.m * x2 + line.y;
+
+  return [new Pt(x1, y1), new Pt(x2, y2)];
+}
+
 // https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line
 export function shortestDistanceFromPtToLine(point: Pt, line: Line): number {
   if (isVerticalLine(line)) return Math.abs(point.x - line.x);
@@ -224,6 +250,31 @@ export function closestPointOnSegment(point: Pt, a: Pt, b: Pt): { dist: number; 
   const closest = { x: a.x + t * abx, y: a.y + t * aby };
   return { dist: Math.hypot(point.x - closest.x, point.y - closest.y), point: closest };
 }
+
+
+// ===== Vectors =====
+export function unitVectorFromLine(line: Line): Vect2D {
+  if (isVerticalLine(line)) return { a: 0, b: 1, mag: 1 };
+  const mag = Math.sqrt(1 + line.m * line.m);
+  return { a: 1 / mag, b: line.m / mag, mag: 1 };
+}
+
+export function tangentUnitVectorFromLine(line: Line): Vect2D {
+  if (isVerticalLine(line)) return { a: 1, b: 0, mag: 1 };
+  const mag = Math.sqrt(1 + line.m * line.m);
+  return { a: line.m / mag, b: -1 / mag, mag: 1 };
+}
+
+export function moveInVectorSpace(point: Pt, vectors: Vect2D[]): Pt {
+  let newX = point.x;
+  let newY = point.y;
+  for (const v of vectors) {
+    newX += v.a * v.mag;
+    newY += v.b * v.mag;
+  }
+  return { x: newX, y: newY };
+}
+
 
 // ===== Arcs =====
 
