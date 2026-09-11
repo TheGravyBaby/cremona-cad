@@ -535,7 +535,7 @@ export const DefaultParams: EnricoCerutiParams = {
     LCYtoH: 6 / 15,
 
     FLtoW: 1/50,
-    FUtoL: 4/5,
+    FUtoL: 3/4,
   },
   bouts: {
     UBW: undefined,

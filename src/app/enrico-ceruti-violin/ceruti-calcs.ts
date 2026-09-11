@@ -1,7 +1,7 @@
-import { circleCircleIntersections, interceptCirclesAndPoint, interceptCirclesAndPointCompound, filletLineToCircle, filletRightAngleCorner } from "../helpers/math/draftMath";
-import { angleFromCenter, dist, pointOnCircle, offsetArcRadius, flipRectAboutY, lineCircleIntersection, lineFromPointAndSlope, redefineArcCircle } from "../helpers/math/simpleGeometry";
+import { circleCircleIntersections, interceptCirclesAndPoint, interceptCirclesAndPointCompound, solveTangentCircleAndLine, filletRightAngleCorner } from "../helpers/math/draftMath";
+import { angleFromCenter, dist, pointOnCircle, offsetArcRadius, flipRectAboutY, lineCircleIntersection, lineFromPointAndSlope, redefineArcCircle, tangentUnitVectorFromLine } from "../helpers/math/simpleGeometry";
 import { pathFromRoundedRect, pathFromCircle, pathFromRect, combinePathStrings, differenceFromManyPaths, intersectionFromTwoPaths, translatePath, mirroredLoop } from "../helpers/math/pathMath";
-import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Pt, Rectangle } from "../models/types";
+import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Line, Pt, Rectangle } from "../models/types";
 import { error } from "../shared/message-emitter";
 import { DefaultParams, EnricoCerutiParams, PathEntry, PathKey } from "./ceruti-types";
 import { defineInnerPath, defineOuterPath, definePurflingPath, defineOuterPurflingPath } from "./ceruti-paths";
@@ -749,7 +749,18 @@ export function calculateMould(p: EnricoCerutiParams, useHighAccuracy = false, s
         const rectYMin = (r: Rectangle) => Math.min(r.Pt1.y, r.Pt2.y);
         const rectYMax = (r: Rectangle) => Math.max(r.Pt1.y, r.Pt2.y);
 
-        // builds the small fillet's own Arc from a filletLineToCircle result
+        // wraps solveTangentCircleAndLine with the extra points this mould construction needs —
+        // where the fillet touches the wall and where it touches Q — that a bare circle doesn't carry
+        const fillet = (t: Line, Q: Circle, Pr: number, diff: boolean, side: 1 | -1, near: Pt) => {
+            const center = solveTangentCircleAndLine(t, Q, Pr, diff, side, near);
+            if (!center) return null;
+            const normal = tangentUnitVectorFromLine(t);
+            const lineTangent = new Pt(center.x - side * Pr * normal.a, center.y - side * Pr * normal.b);
+            const circleAngle = angleFromCenter(Q, center);
+            return { center, lineTangent, circleTangent: pointOnCircle(Q, circleAngle), circleAngle };
+        };
+
+        // builds the small fillet's own Arc from a fillet() result
         const filletArc = (f: { center: Pt; lineTangent: Pt; circleTangent: Pt }, radius: number) =>
             new Arc(f.center.x, f.center.y, radius, angleFromCenter(f.center, f.lineTangent), angleFromCenter(f.center, f.circleTangent));
 
@@ -761,8 +772,8 @@ export function calculateMould(p: EnricoCerutiParams, useHighAccuracy = false, s
         const U2c = offsetArcRadius(p.bouts.U2, -clampOffset);
         const uTopY = Math.min(rectYMin(p.blocks.U) - web, pointOnCircle(U1c, U1c.start).y);
         const uBotY = Math.max(rectYMax(p.blocks.CU) + web, pointOnCircle(U2c, U2c.end).y);
-        const uTop = filletLineToCircle(new Pt(0, uTopY), new Pt(1, 0), -1, U1c, rf, true, pointOnCircle(U1c, U1c.start));
-        const uBot = filletLineToCircle(new Pt(0, uBotY), new Pt(1, 0), 1, U2c, rf, true, pointOnCircle(U2c, U2c.end));
+        const uTop = fillet({ m: 0, y: uTopY, x: 0 }, U1c, rf, true, 1, pointOnCircle(U1c, U1c.start));
+        const uBot = fillet({ m: 0, y: uBotY, x: 0 }, U2c, rf, true, -1, pointOnCircle(U2c, U2c.end));
         // the >rf checks mirror the old collision guard: a fillet whose tangent lands too close
         // to the centerline would cross its own mirror image
         if (uTop && uBot && uTop.lineTangent.x > rf && uBot.lineTangent.x > rf && uTopY - uBotY >= 2 * rf) {
@@ -792,8 +803,8 @@ export function calculateMould(p: EnricoCerutiParams, useHighAccuracy = false, s
         // C0's waist curves opposite U1/U2/L1/L2 (concave toward the centerline, not away from
         // it), so this wall-to-arc fillet grows past C0Clamp's radius rather than nesting inside
         // it — same call as the flank windows above, with internal tangency flipped off.
-        const cTopArc = filletLineToCircle(new Pt(C0UpPt.x, 0), new Pt(0, 1), 1, C0Clamp, cTopR, false, C0UpPt);
-        const cBotArc = filletLineToCircle(new Pt(C0LowPt.x, 0), new Pt(0, 1), 1, C0Clamp, cBotR, false, C0LowPt);
+        const cTopArc = fillet({ m: Infinity, y: NaN, x: C0UpPt.x }, C0Clamp, cTopR, false, -1, C0UpPt);
+        const cBotArc = fillet({ m: Infinity, y: NaN, x: C0LowPt.x }, C0Clamp, cBotR, false, -1, C0LowPt);
         const cTopFace = filletRightAngleCorner(new Pt(C0UpPt.x, cTopY), new Pt(-1, -1), cTopR);
         const cBotFace = filletRightAngleCorner(new Pt(C0LowPt.x, cBotY), new Pt(-1, 1), cBotR);
         if (cTopArc && cTopFace && cBotArc && cBotFace) {
@@ -817,8 +828,8 @@ export function calculateMould(p: EnricoCerutiParams, useHighAccuracy = false, s
         const L2c = offsetArcRadius(p.bouts.L2, -clampOffset);
         const lTopY = Math.min(rectYMin(p.blocks.CL) - web, pointOnCircle(L2c, L2c.end).y);
         const lBotY = Math.max(rectYMax(p.blocks.L) + web, pointOnCircle(L1c, L1c.start).y);
-        const lTop = filletLineToCircle(new Pt(0, lTopY), new Pt(1, 0), -1, L2c, rf, true, pointOnCircle(L2c, L2c.end));
-        const lBot = filletLineToCircle(new Pt(0, lBotY), new Pt(1, 0), 1, L1c, rf, true, pointOnCircle(L1c, L1c.start));
+        const lTop = fillet({ m: 0, y: lTopY, x: 0 }, L2c, rf, true, 1, pointOnCircle(L2c, L2c.end));
+        const lBot = fillet({ m: 0, y: lBotY, x: 0 }, L1c, rf, true, -1, pointOnCircle(L1c, L1c.start));
         if (lTop && lBot && lTop.lineTangent.x > rf && lBot.lineTangent.x > rf && lTopY - lBotY >= 2 * rf) {
             clampBox.push(mirroredLoop(
                 [filletArc(lTop, rf),

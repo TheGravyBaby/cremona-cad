@@ -12,12 +12,12 @@ import {
   solveTangentCircleAndLine,
 } from '../../../helpers/math/draftMath';
 import {
-  angleFromCenter, lineCircleIntersection, lineFromPointAndSlope, moveInVectorSpace,
+  angleFromCenter, closestPointOnLine, lineCircleIntersection, lineFromPointAndSlope, moveInVectorSpace,
   normalizeRadians, pointOnCircle, signedArcSweep, tangentAngleFromLine, tangentUnitVectorFromLine, unitVectorFromLine,
   travelAtArcEnd, travelAtArcStart,
 } from '../../../helpers/math/simpleGeometry';
 import { angleForBridgeRadius, sweepForTangentLineRadius } from '../../../helpers/math/vibeMath';
-import { Circle, Pt, Arc, Line, Vect2D } from '../../../models/types';
+import { Pt, Arc, Line, Vect2D } from '../../../models/types';
 import { HighlightedArc, HighlightedPoint } from '../../renders/render-constants';
 import { error } from '../../../shared/message-emitter';
 
@@ -120,12 +120,11 @@ export function calculateFholeContours(p: EnricoCerutiParams): void {
     p.fHoles.U2 = new Arc(upperArm.x, upperArm.y, upperArm.r, upperShoulder.end, 0);
 
     let stemSlope = Math.tan(p.fHoles.stem.angle)
-    let stemPtOuter = new Pt(p.fHoles.stem.center.x + p.fHoles.stem.width / 2, p.fHoles.stem.center.y)
-    let outerStem = lineFromPointAndSlope(stemPtOuter, stemSlope)
-
-    let S2 = solveTangentCircleAndLine(outerStem, p.fHoles.U2, p.fHoles.stem.arcR, true)[0]
+    let outerStemPt = new Pt(p.fHoles.stem.center.x + p.fHoles.stem.width / 2, p.fHoles.stem.center.y)
+    let outerStemLine = lineFromPointAndSlope(outerStemPt, stemSlope)
+    let S2 = solveTangentCircleAndLine(outerStemLine, p.fHoles.U2, p.fHoles.stem.arcR, true, 1, p.fHoles.stem.center);
     let S2U2Intersect = circleCircleIntersections(S2, p.fHoles.U2);
-    let S2StemIntersect = lineCircleIntersection(outerStem, S2);
+    let S2StemIntersect = lineCircleIntersection(outerStemLine, S2);
 
     p.fHoles.U2.end = angleFromCenter(p.fHoles.U2, S2U2Intersect[0]);
     p.fHoles.U3 = new Arc(S2.x, S2.y, S2.r, p.fHoles.U2.end, angleFromCenter(S2, S2StemIntersect[0]))
@@ -154,24 +153,24 @@ export const renderFholeContours = (
 
   renderArcFromArc(p.fHoles.U1, colors.fHoleUpperDark, 2)(g, ui);
   renderArcFromArc(p.fHoles.U2, colors.fHoleUpper, 2)(g, ui);
-  renderArcFromArc(p.fHoles.U3, colors.fHoleStem)(g, ui);
+  renderArcFromArc(p.fHoles.U3, colors.fHoleStem, 2)(g, ui);
 
 }
 
 
 // only need to set the radii values and instantiate the angles
 export function setContourDefaults(p: EnricoCerutiParams) {
-  p.fHoles.U1 ??= new Arc(0, 0, p.fHoles.UEye.r * 3)
-  p.fHoles.L1 ??= new Arc(0, 0, p.fHoles.LEye.r * 3)
+  p.fHoles.U1 ??= new Arc(0, 0, Math.round(p.fHoles.UEye.r * 2.5))
+  p.fHoles.L1 ??= new Arc(0, 0, Math.round(p.fHoles.LEye.r * 2.5))
 
   // a 3/2 of the radius produces a nice scaling of the curvature
-  p.fHoles.U2 ??= new Arc(0, 0, p.fHoles.U1.r * 3 / 2)
-  p.fHoles.L2 ??= new Arc(0, 0, p.fHoles.L1.r * 3 / 2)
-  p.fHoles.U3 ??= new Arc(0, 0, p.fHoles.U2.r * 3 / 2)
-  p.fHoles.L3 ??= new Arc(0, 0, p.fHoles.L2.r * 3 / 2)
+  p.fHoles.U2 ??= new Arc(0, 0, Math.round(p.fHoles.U1.r * 3 / 2))
+  p.fHoles.L2 ??= new Arc(0, 0, Math.round(p.fHoles.L1.r * 3 / 2))
+  p.fHoles.U3 ??= new Arc(0, 0, Math.round(p.fHoles.U2.r * 3 / 2))
+  p.fHoles.L3 ??= new Arc(0, 0, Math.round(p.fHoles.L2.r * 3 / 2))
 
   // the stems can be another doubling
-  p.fHoles.stem.arcR ??= p.fHoles.L3.r * 2
+  p.fHoles.stem.arcR ??= Math.round(p.fHoles.L2.r * 3)  
   p.fHoles.S1 ??= new Arc(0, 0, p.fHoles.stem.arcR)
   p.fHoles.S2 ??= new Arc(0, 0, p.fHoles.stem.arcR)
   p.fHoles.S3 ??= new Arc(0, 0, p.fHoles.stem.arcR)
