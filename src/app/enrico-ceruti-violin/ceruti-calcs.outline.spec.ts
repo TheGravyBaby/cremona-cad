@@ -1,4 +1,4 @@
-import { samplePathToPolyline } from '../helpers/math/svgPathMath';
+import { samplePathToPolyline } from '../helpers/math/pathMath';
 import { calculateCenterBout, calculateCorners, calculateMainBouts, calculateOuterArcs, violNeckJoinLimit } from './ceruti-calcs';
 import { pointOnCircle } from '../helpers/math/simpleGeometry';
 import { defaultViolin, geometryDiff, layoutFrom, templateKeys, templateViolin, violinFromRecipe } from './ceruti-fixtures';

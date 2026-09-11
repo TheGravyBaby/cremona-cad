@@ -23,7 +23,7 @@ export type LineShape = ShapeBase & {
 /**
  * Counterclockwise-sweep convention: the arc runs CCW from `startAngle` to `endAngle`, so the
  * ordering of the two angles selects minor vs major between the same pair of boundary points —
- * swapping them gives the *other* arc. See arcPathData in helpers/math/simpleGeometry.ts and
+ * swapping them gives the *other* arc. See arcPathData in helpers/math/pathMath.ts and
  * pickArcOrientation in helpers/math/draftMath.ts.
  *
  * Deliberately **not** the convention of models/types.ts's `Arc`, which always renders the minor
@@ -253,14 +253,14 @@ export function applyImageSize(
  * is the low-x/low-y corner of the unrotated box. */
 export function imageCorners(shape: ImageShape): Record<'sw' | 'se' | 'nw' | 'ne', Pt> {
   const center = imageCenter(shape);
-  const deg = shape.rotationDeg ?? 0;
+  const angle = (shape.rotationDeg ?? 0) * Math.PI / 180;
   const x1 = shape.x + shape.width;
   const y1 = shape.y + shape.height;
   return {
-    sw: rotatePointAbout({ x: shape.x, y: shape.y }, center, deg),
-    se: rotatePointAbout({ x: x1, y: shape.y }, center, deg),
-    nw: rotatePointAbout({ x: shape.x, y: y1 }, center, deg),
-    ne: rotatePointAbout({ x: x1, y: y1 }, center, deg),
+    sw: rotatePointAbout({ x: shape.x, y: shape.y }, center, angle),
+    se: rotatePointAbout({ x: x1, y: shape.y }, center, angle),
+    nw: rotatePointAbout({ x: shape.x, y: y1 }, center, angle),
+    ne: rotatePointAbout({ x: x1, y: y1 }, center, angle),
   };
 }
 
@@ -318,7 +318,7 @@ export function applyImageCrop(shape: ImageShape, crop: ImageCrop | undefined): 
 
   const oldCenter = imageCenter(shape);
   const newCenter = { x: next.x + next.width / 2, y: next.y + next.height / 2 };
-  const spun = rotatePointAbout(newCenter, oldCenter, shape.rotationDeg ?? 0);
+  const spun = rotatePointAbout(newCenter, oldCenter, (shape.rotationDeg ?? 0) * Math.PI / 180);
   next.x += spun.x - newCenter.x;
   next.y += spun.y - newCenter.y;
 
@@ -329,14 +329,14 @@ export function applyImageCrop(shape: ImageShape, crop: ImageCrop | undefined): 
 /** An image's four edge midpoints in world space, rotation applied. */
 export function imageEdgeMidpoints(shape: ImageShape): Record<'n' | 's' | 'e' | 'w', Pt> {
   const center = imageCenter(shape);
-  const deg = shape.rotationDeg ?? 0;
+  const angle = (shape.rotationDeg ?? 0) * Math.PI / 180;
   const cx = shape.x + shape.width / 2;
   const cy = shape.y + shape.height / 2;
   return {
-    n: rotatePointAbout({ x: cx, y: shape.y + shape.height }, center, deg),
-    s: rotatePointAbout({ x: cx, y: shape.y }, center, deg),
-    e: rotatePointAbout({ x: shape.x + shape.width, y: cy }, center, deg),
-    w: rotatePointAbout({ x: shape.x, y: cy }, center, deg),
+    n: rotatePointAbout({ x: cx, y: shape.y + shape.height }, center, angle),
+    s: rotatePointAbout({ x: cx, y: shape.y }, center, angle),
+    e: rotatePointAbout({ x: shape.x + shape.width, y: cy }, center, angle),
+    w: rotatePointAbout({ x: shape.x, y: cy }, center, angle),
   };
 }
 

@@ -421,7 +421,7 @@ export class SettingsBarComponent {
     this.patchNumberField(this.selectedArcShape, 'radius', value, { validate: v => v > 0 });
   }
 
-  /** Angle fields are edited in degrees for readability; stored in radians, matching arcPathData's convention in helpers/math/simpleGeometry.ts. */
+  /** Angle fields are edited in degrees for readability; stored in radians, matching arcPathData's convention in helpers/math/pathMath.ts. */
   setArcAngle(which: 'start' | 'end', valueDeg: number): void {
     const key = which === 'start' ? 'startAngle' : 'endAngle';
     this.patchNumberField(this.selectedArcShape, key, valueDeg, { transform: v => v * Math.PI / 180 });

@@ -2,7 +2,7 @@ import { Component, Input, OnInit } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { renderFilledPath, renderPath } from '../../../helpers/renderFuncs';
-import { translatePath } from '../../../helpers/math/svgPathMath';
+import { translatePath } from '../../../helpers/math/pathMath';
 import { calculateOuterArcs } from '../../ceruti-calcs';
 import { defineOuterPath, defineOuterPurflingPath, definePurflingPath } from '../../ceruti-paths';
 import { ArchingParams, CerutiColors, CerutiViewFlags, EnricoCerutiParams, FlutingParams, RenderToggleKey } from '../../ceruti-types';

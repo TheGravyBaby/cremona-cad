@@ -1,4 +1,4 @@
-import { closeProfileToBlank, pathsBounds, samplePathToPolyline } from './svgPathMath';
+import { closeProfileToBlank, pathsBounds, samplePathToPolyline } from './pathMath';
 
 describe('closeProfileToBlank', () => {
   // A simple hump: flat (y=0) at both ends, peaking at y=3 in the middle — stands

@@ -5,7 +5,7 @@ import {
   renderCircle, renderLine, renderPath, renderPointHalo, renderRect,
 } from '../../../helpers/renderFuncs';
 import { clamp } from '../../../helpers/math/simpleGeometry';
-import { samplePathToPolyline } from '../../../helpers/math/svgPathMath';
+import { samplePathToPolyline } from '../../../helpers/math/pathMath';
 import {
   ArchingParams, ArchPlate, CerutiColors, CerutiViewFlags, EnricoCerutiParams, CrossArchCycloidShape,
   CrossArchCycloidStation, CrossArchParams, CrossArchPoint, CrossArchShape, CrossArchSplineShape,

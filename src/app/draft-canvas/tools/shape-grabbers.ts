@@ -117,10 +117,10 @@ export function endpointGrabbers(shape: DraftShape, pxPerMm: number): EndpointGr
       // The one handle a label has: it is a single anchor point, so there is no endpoint to
       // drag, but there is an orientation. Floats above the anchor and turns with the label, the
       // same way the image handle rides above its box's north edge.
-      const deg = shape.rotationDeg ?? 0;
+      const angle = (shape.rotationDeg ?? 0) * Math.PI / 180;
       const above = (shape.fontSize ?? DEFAULT_TEXT_SIZE_MM) * 0.7 + ROTATE_GRABBER_OFFSET_PX / pxPerMm;
       const pos = rotatePointAbout(
-        { x: shape.position.x, y: shape.position.y + above }, shape.position, deg);
+        { x: shape.position.x, y: shape.position.y + above }, shape.position, angle);
       return [{ key: 'rotate', pos, kind: 'rotate' }];
     }
     case 'point':
@@ -130,11 +130,11 @@ export function endpointGrabbers(shape: DraftShape, pxPerMm: number): EndpointGr
       const corners = imageCorners(shape);
       const mids = imageEdgeMidpoints(shape);
       const center = imageCenter(shape);
-      const deg = shape.rotationDeg ?? 0;
+      const angle = (shape.rotationDeg ?? 0) * Math.PI / 180;
       // Floats above the north edge, rotating with the box so it always reads as "the top".
       const rotatePos = rotatePointAbout(
         { x: center.x, y: shape.y + shape.height + ROTATE_GRABBER_OFFSET_PX / pxPerMm },
-        center, deg,
+        center, angle,
       );
       return [
         ...(['nw', 'ne', 'sw', 'se'] as const).map(key => ({ key, pos: corners[key], kind: 'corner' as const })),
@@ -202,7 +202,7 @@ function withTextRotation(shape: TextShape, pos: Pt): DraftShape {
  * image is rotated.
  */
 function withImageHandle(shape: ImageShape, key: EndpointKey, pos: Pt): DraftShape {
-  const deg = shape.rotationDeg ?? 0;
+  const angle = (shape.rotationDeg ?? 0) * Math.PI / 180;
   const center = imageCenter(shape);
 
   if (key === 'rotate') {
@@ -216,7 +216,7 @@ function withImageHandle(shape: ImageShape, key: EndpointKey, pos: Pt): DraftSha
   const isEdge = key === 'n' || key === 's' || key === 'e' || key === 'w';
   if (!isCorner && !isEdge) return shape;
 
-  const localPt = rotatePointAbout(pos, center, -deg);
+  const localPt = rotatePointAbout(pos, center, -angle);
   const x1 = shape.x + shape.width;
   const y1 = shape.y + shape.height;
   const cx = shape.x + shape.width / 2;
@@ -272,9 +272,9 @@ function withImageHandle(shape: ImageShape, key: EndpointKey, pos: Pt): DraftSha
 
   // Re-anchor in world space. Resizing moves the box center, and the center is the rotation
   // pivot — so without this the anchor would swing away as soon as the image is rotated.
-  const anchorWorld = rotatePointAbout(anchor, center, deg);
+  const anchorWorld = rotatePointAbout(anchor, center, angle);
   const newCenter = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
-  const anchorAfter = rotatePointAbout(anchor, newCenter, deg);
+  const anchorAfter = rotatePointAbout(anchor, newCenter, angle);
   return {
     ...shape,
     x: box.x + (anchorWorld.x - anchorAfter.x),

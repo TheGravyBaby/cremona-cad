@@ -1,7 +1,8 @@
 import * as d3 from 'd3';
 import { Pt } from '../../models/types';
-import { arcPathData, dist, normalizeRadians } from '../../helpers/math/simpleGeometry';
+import { dist, normalizeRadians } from '../../helpers/math/simpleGeometry';
 import { findAllJoiningArcsFromTangents, fitTangentArc } from '../../helpers/math/draftMath';
+import { arcPathData } from '../../helpers/math/pathMath';
 import { DraftTool, DraftToolHost } from './draft-tool';
 import { makeShapeId } from './toolbox-shape';
 

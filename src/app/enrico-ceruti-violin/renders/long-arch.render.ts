@@ -1,6 +1,6 @@
 import { Pt } from '../../models/types';
 import { renderPointHalo } from '../../helpers/renderFuncs';
-import { archSplineKnots } from '../../helpers/math/svgPathMath';
+import { archSplineKnots } from '../../helpers/math/pathMath';
 import { ArchCurve } from '../ceruti-types';
 import { renderGuideBaseline, renderGuideKnot, renderGuideMeasure } from './module-guide.render';
 import { HighlightedSplinePoint } from './render-constants';

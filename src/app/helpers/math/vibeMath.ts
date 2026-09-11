@@ -1,5 +1,5 @@
 import { Pt, Circle } from "../../models/types";
-import { TWO_PI, normalizeRadians, clamp, distPointToSegment, closestPointOnSegment } from "./simpleGeometry";
+import { TWO_PI, normalizeRadians, clamp, closestPointOnSegment } from "./simpleGeometry";
 import { arcTangentToLine, arcBetweenTravels } from "./draftMath";
 
 // ===== Arc/line closed-form inverses =====
@@ -107,7 +107,7 @@ export function angleForBridgeRadius(
 export function distPointToPolyline(p: Pt, poly: Pt[]): number {
   let best = Infinity;
   for (let i = 0; i < poly.length; i++) {
-    const d = distPointToSegment(p, poly[i], poly[(i + 1) % poly.length]);
+    const d = closestPointOnSegment(p, poly[i], poly[(i + 1) % poly.length]).dist;
     if (d < best) best = d;
   }
   return best;
@@ -185,7 +185,7 @@ export function distPointToPolylineIndexed(p: Pt, idx: PolylineIndex): number {
 
   const scanCell = (x: number, y: number): void => {
     for (const i of cells[y * cols + x]) {
-      const d = distPointToSegment(p, poly[i], poly[(i + 1) % poly.length]);
+      const d = closestPointOnSegment(p, poly[i], poly[(i + 1) % poly.length]).dist;
       if (d < best) best = d;
     }
   };

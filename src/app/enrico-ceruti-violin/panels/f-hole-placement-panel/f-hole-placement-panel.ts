@@ -6,7 +6,7 @@ import { renderArcFromArcFancy, renderCircle, renderCrosshair, renderDashedLine,
 import { calculateOuterArcs, ensureOuterTracePaths, getPath, getPathOrNull } from '../../ceruti-calcs';
 import { Arc, Circle, Pt, Rectangle } from '../../../models/types';
 import { nearestFraction, nearestSmallFraction } from '../../../helpers/nearestFraction';
-import { angleFromCenter, angleOnDrawnArc, arcHorizontalIntersections, clamp, dist, lineCircleIntersection } from '../../../helpers/math/simpleGeometry';
+import { angleFromCenter, angleOnDrawnArc, arcHorizontalIntersections, clamp, dist, lineCircleIntersection, lineFromPointAndSlope } from '../../../helpers/math/simpleGeometry';
 import { circleCircleIntersections, tangentPointsFromExternalPoint } from '../../../helpers/math/draftMath';
 import { defineInnerArcs } from '../../ceruti-paths';
 
@@ -244,7 +244,7 @@ export const renderFholeEyePlacementGuides = (p: EnricoCerutiParams, colors: Cer
 
   // now find the midpoint between the corners
   let midpointBetweenCorners = p.bouts.LCr.y + (p.bouts.UCr.y - p.bouts.LCr.y)/2;
-  let waistMidPt = lineCircleIntersection(new Pt(0, midpointBetweenCorners), new Pt(1000, midpointBetweenCorners), p.bouts.C0)[1];
+  let waistMidPt = lineCircleIntersection(lineFromPointAndSlope(new Pt(0, midpointBetweenCorners), 0), p.bouts.C0)[1];
   let distToUpperEyeFromTangent = dist(p.fHoles.UEye, waistMidPt);
   let upperEyeGuide = new Arc(waistMidPt.x, waistMidPt.y, distToUpperEyeFromTangent, 150 * Math.PI / 180, 210 * Math.PI / 180);
   // draw a fancy arc that spans 135 - 225 degrees

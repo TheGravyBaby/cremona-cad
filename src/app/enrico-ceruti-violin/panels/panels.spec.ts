@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { maxRibTaperMm, ribHeightAt, solveRibTaper } from '../ceruti-arching';
-import { splineZAt } from '../../helpers/math/svgPathMath';
+import { splineZAt } from '../../helpers/math/pathMath';
 import { recordLayers } from '../../helpers/layer-recorder';
 import { archedViolin, defaultViolin, templateKeys, templateViolin } from '../ceruti-fixtures';
 import { CerutiColors, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, EnricoCerutiParams, PathEntry } from '../ceruti-types';
