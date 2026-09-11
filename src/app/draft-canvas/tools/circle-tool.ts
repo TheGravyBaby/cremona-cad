@@ -1,5 +1,5 @@
 import { Pt } from '../../models/types';
-import { dist } from '../../helpers/draftMath';
+import { dist } from '../../helpers/math/draftMath';
 import { makeShapeId } from './toolbox-shape';
 import { TwoPointTool, previewCircle } from './two-point-tool';
 import { ToolboxStore } from './toolbox-store';

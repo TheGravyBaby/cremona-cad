@@ -9,7 +9,7 @@ import {
   DEFAULT_TEXT_SIZE_MM, applyImageCrop, applyImageSize, isCropped,
 } from '../tools/toolbox-shape';
 import { ImageCrop } from '../../models/types';
-import { normalizeDegrees, pointAtDistanceToward } from '../../helpers/draftMath';
+import { normalizeDegrees, pointAtDistanceToward } from '../../helpers/math/draftMath';
 
 /**
  * The Inkscape-style contextual settings strip along the bottom bar: color, then whichever

@@ -1,5 +1,5 @@
-import { clamp } from "../helpers/draftMath";
-import { catenaryZAt, cycloidZAt, splineZAt } from "../helpers/svgPathMath";
+import { clamp } from "../helpers/math/draftMath";
+import { catenaryZAt, cycloidZAt, splineZAt } from "../helpers/math/svgPathMath";
 import {
   ArchCurve, ArchingParams, ArchPlate, CrossArchParams, CrossArchPoint, EnricoCerutiParams, FlutingParams,
 } from "./ceruti-types";

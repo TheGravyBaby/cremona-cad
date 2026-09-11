@@ -1,25 +1,7 @@
-/**
- * ## Prototypes here are not durable — the calc pass restores them
- *
- * `Circle`, `Arc` and `Rectangle` instances are stored inside `EnricoCerutiParams` and
- * JSON-serialized into recipe files. `JSON.parse` returns **plain objects with no prototype**, so
- * on load `instanceof` is false and any class member that isn't an own data property is gone.
- * What hides this is ceruti-calcs.ts, which reassigns essentially every arc through real
- * constructors before anything renders — the only reason the getter `Arc.degreeDiff` resolves for
- * the ~13 number inputs across the corner/bout panels.
- *
- * Two rules follow, and breaking either fails only after a save-and-reopen:
- *  - Don't add a getter or method to these classes unless the calc pass reassigns every field
- *    that holds one. A plain data field is always safe; a prototype member is not.
- *  - Don't reuse these classes across a serialization boundary that has no calc pass. The
- *    draft-canvas toolbox is exactly such a boundary — hence DraftShape in
- *    draft-canvas/tools/toolbox-shape.ts is a method-free plain-object union. Sharing geometry
- *    *math* across the two is encouraged (helpers/draftMath.ts); sharing these *types* is not.
- *
- * The field names below are likewise effectively frozen: `Pt1`/`Pt2` and `start`/`end` appear
- * verbatim in every saved recipe, so renaming them needs a loader migration.
- */
 export class Pt { x: number; y: number; constructor(x: number, y: number) { this.x = x; this.y = y; } };
+export class Vect2D { a: number; b: number; mag: number; constructor(a: number, b: number, mag: number) { this.a = a; this.b = b; this.mag = mag; } }
+export class Line { m: number; y: number; x: number; constructor(m: number, y: number) { this.m = m; this.y = y; this.x = 0 } }
+
 export class Circle { x: number; y: number; r: number; constructor(x: number, y: number, r: number) { this.x = x; this.y = y; this.r = r; } }
 /**
  * An **infinite** line in slope-intercept form (y = mx + b) — not a segment, and deliberately not
@@ -27,11 +9,13 @@ export class Circle { x: number; y: number; r: number; constructor(x: number, y:
  * segment is for drawing and hit-testing. Most segment-flavored math in helpers/draftMath.ts
  * takes two points rather than this type.
  */
-export class SlopeInterceptLine { m: number; b: number; constructor(m: number, b: number) { this.m = m; this.b = b; } }
+
 export class Rectangle { Pt1: Pt; Pt2: Pt; height: number | null; width: number | null;
   constructor(Pt1: Pt, Pt2: Pt) { this.Pt1 = Pt1; this.Pt2 = Pt2; this.height = Math.abs(Pt2.y - Pt1.y); this.width = Math.abs(Pt2.x - Pt1.x); } 
 }
 export class Fraction { n: number; d: number; constructor(n: number, d: number) { this.n = n; this.d = d; } }
+
+
 
 /**
  * ## Minor-sweep convention — the opposite of draft-canvas's ArcShape

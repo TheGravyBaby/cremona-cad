@@ -1,5 +1,5 @@
 import { Pt } from '../../models/types';
-import { dist, signedDegreeDelta } from '../../helpers/draftMath';
+import { dist, signedDegreeDelta } from '../../helpers/math/draftMath';
 
 // Locking angle set = multiples of 30° union multiples of 45° (0, 30, 45, 60,
 // 90, 120, 135, 150, 180, ...) — matches how most CAD/drawing tools define

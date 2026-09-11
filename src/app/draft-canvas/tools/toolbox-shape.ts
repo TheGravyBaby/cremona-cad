@@ -1,5 +1,5 @@
 import { ImageCredit, ImageCrop, Pt } from '../../models/types';
-import { rotatePointAbout } from '../../helpers/draftMath';
+import { rotatePointAbout } from '../../helpers/math/draftMath';
 
 export const DEFAULT_SHAPE_COLOR = '#1d4ed8';
 

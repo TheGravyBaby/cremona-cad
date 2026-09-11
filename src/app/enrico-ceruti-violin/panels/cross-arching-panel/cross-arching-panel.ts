@@ -4,8 +4,8 @@ import { Circle, Pt, Rectangle } from '../../../models/types';
 import {
   renderCircle, renderLine, renderPath, renderPointHalo, renderRect,
 } from '../../../helpers/renderFuncs';
-import { clamp } from '../../../helpers/draftMath';
-import { samplePathToPolyline } from '../../../helpers/svgPathMath';
+import { clamp } from '../../../helpers/math/draftMath';
+import { samplePathToPolyline } from '../../../helpers/math/svgPathMath';
 import {
   ArchingParams, ArchPlate, CerutiColors, CerutiViewFlags, EnricoCerutiParams, CrossArchCycloidShape,
   CrossArchCycloidStation, CrossArchParams, CrossArchPoint, CrossArchShape, CrossArchSplineShape,

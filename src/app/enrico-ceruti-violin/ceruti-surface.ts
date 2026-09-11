@@ -3,11 +3,11 @@ import * as polygonClipping from 'polygon-clipping';
 import { Pt } from '../models/types';
 // polygon-clipping ships as either an ESM default or a CJS namespace depending on bundler.
 const polyClipper: any = (polygonClipping as any).default ?? polygonClipping;
-import { buildPolylineIndex, clamp, closestPointToPolylineIndexed, PolylineIndex } from '../helpers/draftMath';
+import { buildPolylineIndex, clamp, closestPointToPolylineIndexed, PolylineIndex } from '../helpers/math/draftMath';
 import { buildHeightFieldStl } from '../helpers/stlExporter';
 import {
     closeProfileToBlank, pathsBounds, rotatePath180, samplePathToPolyline, translatePath,
-} from '../helpers/svgPathMath';
+} from '../helpers/math/svgPathMath';
 import { ArchCurve, ArchPlate, EnricoCerutiParams } from './ceruti-types';
 import { defineInsetPath, defineOuterPath } from './ceruti-paths';
 import {

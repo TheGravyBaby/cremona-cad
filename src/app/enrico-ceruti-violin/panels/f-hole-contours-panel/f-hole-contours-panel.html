@@ -10,9 +10,8 @@
         <label class="field-cell">
             <span class="field-title">Extend Angle<span class="unit-label">°</span></span>
             <input type="number" class="basic-input" step="1" data-fine-step="0.1" data-shift-step="10"
-                [ngModel]="getShoulderExtendDeg(params.fHoles!.U1!, 1)"
-                (ngModelChange)="setShoulderExtendDeg(params.fHoles!.U1!, 1, $event); onArcFocus('U1', colors.fHoleUpperDark)"
-                (focus)="onArcFocus('U1', colors.fHoleUpperDark)" (blur)="onArcBlur()" />
+                [ngModel]="round2(params.fHoles!.U1!.end)"
+                (ngModelChange)="params.fHoles!.U1!.end = $event; onChange()" />
         </label>
         <button type="button" class="info-icon" (click)="fholeShoulderExtendInfo()" title="More information"
             aria-label="Information">ⓘ</button>
@@ -51,15 +50,11 @@
          <label class="field-cell">
             <span class="field-title">Slope <span class="unit-label">°</span></span>
             <input type="number" class="basic-input" step="1" data-fine-step="0.1" data-shift-step="10"
-                [ngModel]="getCutDeg(params.fHoles!.UCut!, 'slope')"
-                (ngModelChange)="setCutDeg(params.fHoles!.UCut!, 'slope', $event); onArcFocus('UCut', colors.fHoleCut)"
                 (focus)="onArcFocus('UCut', colors.fHoleCut)" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">
             <span class="field-title">Eye Angle <span class="unit-label">°</span></span>
             <input type="number" class="basic-input" step="1" data-fine-step="0.1" data-shift-step="10"
-                [ngModel]="getCutDeg(params.fHoles!.UCut!, 'angleOnEye')"
-                (ngModelChange)="setCutDeg(params.fHoles!.UCut!, 'angleOnEye', $event); onArcFocus('UCut', colors.fHoleCut)"
                 (focus)="onArcFocus('UCut', colors.fHoleCut)" (blur)="onArcBlur()" />
         </label>
         <button type="button" class="info-icon" (click)="fholeCutInfo()" title="More information"
@@ -91,8 +86,6 @@
         <label class="field-cell">
             <span class="field-title">Extend Angle<span class="unit-label">°</span></span>
             <input type="number" class="basic-input" step="1" data-fine-step="0.1" data-shift-step="10"
-                [ngModel]="getShoulderExtendDeg(params.fHoles!.L1!, -1)"
-                (ngModelChange)="setShoulderExtendDeg(params.fHoles!.L1!, -1, $event); onArcFocus('L1', colors.fHoleLowerDark)"
                 (focus)="onArcFocus('L1', colors.fHoleLowerDark)" (blur)="onArcBlur()" />
         </label>
         <button type="button" class="info-icon" (click)="fholeShoulderExtendInfo()" title="More information"
@@ -132,15 +125,11 @@
         <label class="field-cell">
             <span class="field-title">Slope <span class="unit-label">°</span></span>
             <input type="number" class="basic-input" step="1" data-fine-step="0.1" data-shift-step="10"
-                [ngModel]="getCutDeg(params.fHoles!.LCut!, 'slope')"
-                (ngModelChange)="setCutDeg(params.fHoles!.LCut!, 'slope', $event); onArcFocus('LCut', colors.fHoleCut)"
                 (focus)="onArcFocus('LCut', colors.fHoleCut)" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">
             <span class="field-title">Eye Angle <span class="unit-label">°</span></span>
             <input type="number" class="basic-input" step="1" data-fine-step="0.1" data-shift-step="10"
-                [ngModel]="getCutDeg(params.fHoles!.LCut!, 'angleOnEye')"
-                (ngModelChange)="setCutDeg(params.fHoles!.LCut!, 'angleOnEye', $event); onArcFocus('LCut', colors.fHoleCut)"
                 (focus)="onArcFocus('LCut', colors.fHoleCut)" (blur)="onArcBlur()" />
         </label>
 

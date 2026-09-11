@@ -1,6 +1,6 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { flipRectAboutY } from '../../../helpers/draftMath';
+import { flipRectAboutY } from '../../../helpers/math/draftMath';
 import { renderPath, renderRect } from '../../../helpers/renderFuncs';
 import { calculateMould, ensureCenterBoutInnerPath, ensureOuterTracePaths, getPath } from '../../ceruti-calcs';
 import { bitDiameterInfo } from '../../ceruti-helpers';

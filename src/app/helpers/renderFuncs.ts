@@ -1,5 +1,5 @@
-import { Pt, Circle, SlopeInterceptLine, Rectangle, Arc } from "../models/types";
-import { pointOnCircle } from "./draftMath";
+import { Pt, Circle, Line, Rectangle, Arc } from "../models/types";
+import { pointOnCircle } from "./math/draftMath";
 
 export const renderDistanceMeasurementLine = (P: Pt, Q: Pt, label: string, color: string) => (g: any, ui: any) => {
     const dx = Q.x - P.x;
@@ -257,16 +257,16 @@ export const renderDashLine = (
         .attr("vector-effect", "non-scaling-stroke");
 }
 
-export const renderDashLineMxB = (line: SlopeInterceptLine,  
+export const renderDashLineMxB = (line: Line,  
     color = "black",
     width = 1,
     dash = "4,4", 
 ) => (g: any, ui: any) => {
     // pick start and end points that are very large along the line
-    const starty = line.m * (-3000) + line.b;
-    const endy = line.m * 3000 + line.b;
-    const startx = (-3000 - line.b) / line.m;
-    const endx = (3000 - line.b) / line.m;
+    const starty = line.m * (-3000) + line.y;
+    const endy = line.m * 3000 + line.y;
+    const startx = (-3000 - line.y) / line.m;
+    const endx = (3000 - line.y) / line.m;
 
     const startPt = { x: startx, y: starty };
     const endPt = { x: endx, y: endy };

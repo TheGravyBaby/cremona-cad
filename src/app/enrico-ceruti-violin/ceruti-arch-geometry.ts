@@ -2,10 +2,10 @@ import { Pt } from '../models/types';
 import {
   buildPolylineIndex, clamp, closestPointToPolylineIndexed, makeC2SplineWithFlatKnot, makeMonotoneSpline,
   PolylineIndex,
-} from '../helpers/draftMath';
+} from '../helpers/math/draftMath';
 import {
   catenaryZAt, cycloidZAt, samplePathToPolyline, splineZAt,
-} from '../helpers/svgPathMath';
+} from '../helpers/math/svgPathMath';
 import {
   ArchCurve, EnricoCerutiParams, CrossArchCycloidParams, CrossArchCycloidShape, CrossArchParams,
   CrossArchShape, CrossArchSplineParams, CrossArchStation, FlutingParams,

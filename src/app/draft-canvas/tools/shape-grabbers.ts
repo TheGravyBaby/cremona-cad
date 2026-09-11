@@ -3,7 +3,7 @@ import {
   DEFAULT_TEXT_SIZE_MM, DraftShape, ImageShape, TextShape,
   dimensionGeometry, dimensionOffsetAt, imageAspect, imageCenter, imageCorners, imageEdgeMidpoints,
 } from './toolbox-shape';
-import { angleFromCenter, dist, normalizeDegrees, normalizeRadians, pointOnCircle, rotatePointAbout } from '../../helpers/draftMath';
+import { angleFromCenter, dist, normalizeDegrees, normalizeRadians, pointOnCircle, rotatePointAbout } from '../../helpers/math/draftMath';
 
 /**
  * Where the square "move" handle renders/hit-tests for a selected shape — grabbing it

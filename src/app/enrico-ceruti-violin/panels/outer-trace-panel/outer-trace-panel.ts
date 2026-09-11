@@ -1,6 +1,6 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { flipArcAboutY, flipCircleAboutY } from '../../../helpers/draftMath';
+import { flipArcAboutY, flipCircleAboutY } from '../../../helpers/math/draftMath';
 import { adjustArcEnd } from '../../../helpers/arcDegrees';
 import { renderArcFromArcFancy, renderCircle, renderPath } from '../../../helpers/renderFuncs';
 import { calculateOuterArcs, ensureOuterTracePaths, getPath, getPathOrNull } from '../../ceruti-calcs';

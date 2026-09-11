@@ -4,7 +4,7 @@ import {
   interceptCirclesAndPoint, makeC2SplineWithFlatKnot, makeMonotoneSpline, normalizeRadians, pointOnCircle,
   sweepForTangentLineRadius, travelAtArcEnd,
 } from './draftMath';
-import { Circle } from '../models/types';
+import { Circle } from '../../models/types';
 
 describe('arcBetweenTravels', () => {
   const deg = (d: number) => d * Math.PI / 180;

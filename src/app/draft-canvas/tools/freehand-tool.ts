@@ -1,6 +1,6 @@
 import * as d3 from 'd3';
 import { Pt } from '../../models/types';
-import { dist } from '../../helpers/draftMath';
+import { dist } from '../../helpers/math/draftMath';
 import { DraftTool, DraftToolHost } from './draft-tool';
 import { makeShapeId } from './toolbox-shape';
 import { ToolboxStore } from './toolbox-store';

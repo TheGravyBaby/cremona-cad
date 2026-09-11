@@ -1,4 +1,4 @@
-import { arcCenterFromEndpoints } from './svgPathMath';
+import { arcCenterFromEndpoints } from './math/svgPathMath';
 
 type DxfEntity =
   | { type: 'LINE'; x0: number; y0: number; x1: number; y1: number }
