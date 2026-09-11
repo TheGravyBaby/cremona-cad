@@ -1,7 +1,7 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { adjustArcStart } from '../../../helpers/arcDegrees';
-import { flipArcAboutY, flipCircleAboutY, offsetArcRadius } from '../../../helpers/math/draftMath';
+import { flipArcAboutY, flipCircleAboutY, offsetArcRadius } from '../../../helpers/math/simpleGeometry';
 import { nearestFraction } from '../../../helpers/nearestFraction';
 import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderCrosshair, renderPointHalo } from '../../../helpers/renderFuncs';
 import { Arc } from '../../../models/types';

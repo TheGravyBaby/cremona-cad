@@ -1,7 +1,9 @@
 import { Pt, Circle, Rectangle, Arc } from "../../models/types";
 import * as polygonClipping from 'polygon-clipping';
 import { svgPathProperties } from 'svg-path-properties';
-import { clamp, dist, angleFromCenter, pointOnCircle, intersectLines, lineCircleIntersection, circleCircleIntersections, solveCatenaryA, makeMonotoneSpline, flipArcAboutY, flipPointAboutY } from './draftMath';
+import { clamp, dist, angleFromCenter, pointOnCircle, intersectLines, lineCircleIntersection, flipArcAboutY, flipPointAboutY } from './simpleGeometry';
+import { circleCircleIntersections } from './draftMath';
+import { solveCatenaryA, makeMonotoneSpline } from './vibeMath';
 
 // This file holds everything oriented around building, combining, and boolean-diffing
 // SVG path *strings* — as opposed to draftMath.ts, which works with plain geometric

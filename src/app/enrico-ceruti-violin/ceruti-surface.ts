@@ -3,7 +3,8 @@ import * as polygonClipping from 'polygon-clipping';
 import { Pt } from '../models/types';
 // polygon-clipping ships as either an ESM default or a CJS namespace depending on bundler.
 const polyClipper: any = (polygonClipping as any).default ?? polygonClipping;
-import { buildPolylineIndex, clamp, closestPointToPolylineIndexed, PolylineIndex } from '../helpers/math/draftMath';
+import { clamp } from '../helpers/math/simpleGeometry';
+import { buildPolylineIndex, closestPointToPolylineIndexed, PolylineIndex } from '../helpers/math/vibeMath';
 import { buildHeightFieldStl } from '../helpers/stlExporter';
 import {
     closeProfileToBlank, pathsBounds, rotatePath180, samplePathToPolyline, translatePath,

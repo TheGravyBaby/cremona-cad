@@ -2,7 +2,8 @@ import * as d3 from 'd3';
 import { Pt } from '../../models/types';
 import { DraftTool, DraftToolHost } from './draft-tool';
 import { makeShapeId } from './toolbox-shape';
-import { angleFromCenter, arcPathData, dist, pickArcOrientation, pointOnCircle } from '../../helpers/math/draftMath';
+import { angleFromCenter, arcPathData, dist, pointOnCircle } from '../../helpers/math/simpleGeometry';
+import { pickArcOrientation } from '../../helpers/math/draftMath';
 
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 

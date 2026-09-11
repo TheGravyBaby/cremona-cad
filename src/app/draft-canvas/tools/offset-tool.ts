@@ -1,6 +1,6 @@
 import * as d3 from 'd3';
 import { Arc, Circle, Pt } from '../../models/types';
-import { arcPathData, dist, offsetArcRadius, offsetCircleRadius, offsetLineByDistance, pointOnCircle } from '../../helpers/math/draftMath';
+import { arcPathData, dist, offsetArcRadius, offsetCircleRadius, offsetLineByDistance, pointOnCircle } from '../../helpers/math/simpleGeometry';
 import { DraftTool, DraftToolHost } from './draft-tool';
 import { DraftShape, makeShapeId } from './toolbox-shape';
 import { PREVIEW_COLOR, stylePreview } from './two-point-tool';

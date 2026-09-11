@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { pointOnCircle } from '../../../helpers/math/draftMath';
+import { pointOnCircle } from '../../../helpers/math/simpleGeometry';
 import { combinePathStrings, pathsBounds } from '../../../helpers/math/svgPathMath';
 import { buildMirroredSvg, downloadFullPlanPdf, downloadSvgAsPdf, downloadSvgFile, PdfPage, SvgPathExport, SvgTextExport } from '../../../helpers/fileExporter';
 import { downloadDxfFile, DxfText } from '../../../helpers/dxfExporter';

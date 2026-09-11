@@ -9,7 +9,7 @@ import {
   DEFAULT_TEXT_SIZE_MM, applyImageCrop, applyImageSize, isCropped,
 } from '../tools/toolbox-shape';
 import { ImageCrop } from '../../models/types';
-import { normalizeDegrees, pointAtDistanceToward } from '../../helpers/math/draftMath';
+import { normalizeDegrees, pointAtDistanceToward } from '../../helpers/math/simpleGeometry';
 
 /**
  * The Inkscape-style contextual settings strip along the bottom bar: color, then whichever
@@ -421,7 +421,7 @@ export class SettingsBarComponent {
     this.patchNumberField(this.selectedArcShape, 'radius', value, { validate: v => v > 0 });
   }
 
-  /** Angle fields are edited in degrees for readability; stored in radians, matching arcPathData's convention in helpers/draftMath.ts. */
+  /** Angle fields are edited in degrees for readability; stored in radians, matching arcPathData's convention in helpers/math/simpleGeometry.ts. */
   setArcAngle(which: 'start' | 'end', valueDeg: number): void {
     const key = which === 'start' ? 'startAngle' : 'endAngle';
     this.patchNumberField(this.selectedArcShape, key, valueDeg, { transform: v => v * Math.PI / 180 });

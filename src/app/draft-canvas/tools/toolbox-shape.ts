@@ -1,5 +1,5 @@
 import { ImageCredit, ImageCrop, Pt } from '../../models/types';
-import { rotatePointAbout } from '../../helpers/math/draftMath';
+import { rotatePointAbout } from '../../helpers/math/simpleGeometry';
 
 export const DEFAULT_SHAPE_COLOR = '#1d4ed8';
 
@@ -23,7 +23,8 @@ export type LineShape = ShapeBase & {
 /**
  * Counterclockwise-sweep convention: the arc runs CCW from `startAngle` to `endAngle`, so the
  * ordering of the two angles selects minor vs major between the same pair of boundary points —
- * swapping them gives the *other* arc. See arcPathData and pickArcOrientation in draftMath.ts.
+ * swapping them gives the *other* arc. See arcPathData in helpers/math/simpleGeometry.ts and
+ * pickArcOrientation in helpers/math/draftMath.ts.
  *
  * Deliberately **not** the convention of models/types.ts's `Arc`, which always renders the minor
  * arc; converting this type to that one is lossy past 180°.
@@ -208,7 +209,7 @@ export const DEFAULT_IMAGE_OPACITY = 0.25;
  * prototype would survive until the first undo and then vanish. See the note in models/types.ts.
  *
  * Sharing geometry *math* between the two is encouraged: `{ ...center, r: radius }` is
- * structurally a `Circle`, so helpers/draftMath.ts solvers take canvas shapes as-is.
+ * structurally a `Circle`, so helpers/math/ solvers take canvas shapes as-is.
  */
 export type DraftShape =
   | LineShape | ArcShape | CircleShape | DimensionShape | RectShape | SectionShape | TextShape | PointShape

@@ -5,7 +5,7 @@ import {
   solveCrossArchSection,
   solveArchTakeoff,
 } from './ceruti-arch-geometry';
-import { makeMonotoneSpline } from '../helpers/math/draftMath';
+import { makeMonotoneSpline } from '../helpers/math/vibeMath';
 import { trochoidNorm } from '../helpers/math/svgPathMath';
 import {
   CrossArchCycloidShape, CrossArchParams, CrossArchShape, CrossArchSplineShape,

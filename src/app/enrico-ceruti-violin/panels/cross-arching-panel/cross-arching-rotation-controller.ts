@@ -1,4 +1,4 @@
-import { clamp, normalizeDegrees } from '../../../helpers/math/draftMath';
+import { clamp, normalizeDegrees } from '../../../helpers/math/simpleGeometry';
 import { CerutiViewFlags } from '../../ceruti-types';
 
 /**

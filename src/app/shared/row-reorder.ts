@@ -1,5 +1,5 @@
 import { Directive, ElementRef, EventEmitter, HostListener, OnDestroy, Output, inject } from '@angular/core';
-import { clamp } from '../helpers/math/draftMath';
+import { clamp } from '../helpers/math/simpleGeometry';
 
 /** A row taken from index `from` and put back at index `to`, both into the list as it stands. */
 export interface RowMove {
