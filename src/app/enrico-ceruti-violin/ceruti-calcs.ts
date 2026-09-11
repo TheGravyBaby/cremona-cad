@@ -1,4 +1,4 @@
-import { solveInscribedCircleAlongAxis, circleCircleIntersections, interceptCirclesAndPoint, interceptCirclesAndPointCompound, filletLineToCircle, filletRightAngleCorner } from "../helpers/math/draftMath";
+import { circleCircleIntersections, interceptCirclesAndPoint, interceptCirclesAndPointCompound, filletLineToCircle, filletRightAngleCorner } from "../helpers/math/draftMath";
 import { angleFromCenter, dist, pointOnCircle, offsetArcRadius, flipRectAboutY, lineCircleIntersection, lineFromPointAndSlope, redefineArcCircle } from "../helpers/math/simpleGeometry";
 import { pathFromRoundedRect, pathFromCircle, pathFromRect, combinePathStrings, differenceFromManyPaths, intersectionFromTwoPaths, translatePath, mirroredLoop } from "../helpers/math/pathMath";
 import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Pt, Rectangle } from "../models/types";
@@ -57,8 +57,17 @@ export function calculateMainBouts(p: EnricoCerutiParams): void {
     p.ratios.L1toLBW = p.bouts.L1.r / LBWI;
 
     p.bouts.L0.y = inset + p.bouts.L0.r;
+    // we know the second circle intersects the outer edge where theta = 0
+    // thus its x position MUST be R away from the edge
     p.bouts.L1.x = p.bouts.LBW / 2 - p.bouts.L1.r - inset;
-    p.bouts.L1.y = solveInscribedCircleAlongAxis(p.bouts.L0, p.bouts.L1.r, "x", p.bouts.L1.x, false);
+    //     therefore we have a vertical line where the circle could be
+    // in order to cleanly intersect L0 we know the center of U1 must be along a circle
+    // which is defined by being L1.r inset from L0
+    // therefore the intersection of these two constrains, a vertical line, and a circle within U0 gives us our point
+    p.bouts.L1.y = lineCircleIntersection(
+      { m: Infinity, y: NaN, x: p.bouts.L1.x },
+      { x: p.bouts.L0.x, y: p.bouts.L0.y, r: Math.abs(p.bouts.L0.r - p.bouts.L1.r) },
+    )[1].y;
 
     let lowerIntersect = circleCircleIntersections(p.bouts.L0, p.bouts.L1);
     let L0Angle = angleFromCenter(p.bouts.L0, lowerIntersect[0]);
@@ -94,7 +103,10 @@ export function calculateMainBouts(p: EnricoCerutiParams): void {
         p.bouts.U0.start = U0start
 
         let U1x = p.bouts.UBW / 2 - p.bouts.U1.r - inset;
-        let U1y = solveInscribedCircleAlongAxis(p.bouts.U0, p.bouts.U1.r, "x",  U1x)
+        let U1y = lineCircleIntersection(
+          { m: Infinity, y: NaN, x: U1x },
+          { x: p.bouts.U0.x, y: p.bouts.U0.y, r: Math.abs(p.bouts.U0.r - p.bouts.U1.r) },
+        )[0].y
 
         p.bouts.U1 = new Arc(U1x, U1y, p.bouts.U1.r)
         let U1U0Int = circleCircleIntersections(p.bouts.U1, p.bouts.U0)[0]
@@ -108,7 +120,10 @@ export function calculateMainBouts(p: EnricoCerutiParams): void {
         p.bouts.U0.y = p.height - inset - p.bouts.U0.r;
         p.bouts.U0.x = 0;
         p.bouts.U1.x = p.bouts.UBW / 2 - p.bouts.U1.r - inset;
-        p.bouts.U1.y = solveInscribedCircleAlongAxis(p.bouts.U0, p.bouts.U1.r, "x", p.bouts.U1.x, true);
+        p.bouts.U1.y = lineCircleIntersection(
+          { m: Infinity, y: NaN, x: p.bouts.U1.x },
+          { x: p.bouts.U0.x, y: p.bouts.U0.y, r: Math.abs(p.bouts.U0.r - p.bouts.U1.r) },
+        )[0].y;
 
         let upperIntersect = circleCircleIntersections(p.bouts.U0, p.bouts.U1);
         let U0Angle = angleFromCenter(p.bouts.U0, upperIntersect[0]);

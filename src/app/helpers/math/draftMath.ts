@@ -1,4 +1,4 @@
-import { Pt, Circle, Axis, Line, Arc, Vect2D } from "../../models/types";
+import { Pt, Circle, Line, Arc, Vect2D } from "../../models/types";
 import {
   TWO_PI, dist, angleFromCenter, pointOnCircle, angleWithinSweep, unitVectorFromLine,
   tangentUnitVectorFromLine, moveInVectorSpace, shortestDistanceFromPtToLine, normalizeRadians,
@@ -48,43 +48,6 @@ export function circleCircleIntersections(C1: Circle, C2: Circle, approx: boolea
     { x: xm + rx, y: ym + ry },
     { x: xm - rx, y: ym - ry },
   ];
-}
-
-// imagine a large outer circle, with a smaller inner circle
-// where the inner circle intersects the outer circle at a single tangent point
-// now, imagine that the inner circle also has a defined x or y coordinate that it must hit
-// we want to solve the position of the inner circle given these conditions
-// vibe code I admit it X_X
-export function solveInscribedCircleAlongAxis(C: Circle, r: number, ax: Axis, value: number, pos = true): number {
-  const rPrime = C.r - r;
-  if (rPrime < 0) throw new Error("No solution: inset larger than radius");
-
-  const Cknown = ax === "x" ? C.x : C.y;
-  const d = value - Cknown;
-
-  const under = rPrime * rPrime - d * d;
-  if (under < 0) throw new Error("No real solution: knownValue out of range");
-
-  const s = Math.sqrt(under);
-  const Cunknown = ax === "x" ? C.y : C.x; // solving the other coordinate
-  return pos ? Cunknown + s : Cunknown - s;
-}
-
-// inverse of the above: C is the small circle, solve the position of the larger circle of
-// radius r that contains and is internally tangent to it
-export function solveCircumscribedCircleAlongAxis(C: Circle, r: number, ax: Axis, value: number, pos = true): number {
-  const rPrime = r - C.r;
-  if (rPrime < 0) throw new Error("No solution: circumscribing radius smaller than radius");
-
-  const Cknown = ax === "x" ? C.x : C.y;
-  const d = value - Cknown;
-
-  const under = rPrime * rPrime - d * d;
-  if (under < 0) throw new Error("No real solution: knownValue out of range");
-
-  const s = Math.sqrt(under);
-  const Cunknown = ax === "x" ? C.y : C.x;
-  return pos ? Cunknown + s : Cunknown - s;
 }
 
 // T is a line, Q is a fixed circle, solve the position of P given a R where P is tangent to both T and Q

@@ -9,7 +9,7 @@ import { fholeCutInfo, fholeShoulderExtendInfo } from '../../ceruti-helpers';
 import { defaultFHolePlacement, renderFholeBounds, renderFholeEyePlacementGuides, renderFholeEyes, stemRun } from '../f-hole-placement-panel/f-hole-placement-panel';
 import {
   arcBetweenTravels, arcContinuingFrom, arcTangentToLine, circleCircleIntersections, inscribeCircleWithinCircle,
-  solveCircumscribedCircleAlongAxis, solveTangentCircleAndLine,
+  solveTangentCircleAndLine,
 } from '../../../helpers/math/draftMath';
 import {
   angleFromCenter, lineCircleIntersection, lineFromPointAndSlope, moveInVectorSpace,
@@ -103,7 +103,10 @@ export function calculateFholeContours(p: EnricoCerutiParams): void {
   try {
     // first we need to determine the placement of the arc that connects to each eye
     let upperBound = p.fHoles.UEye.y + p.fHoles.UEye.r + p.fHoles.URise
-    let upperShoulderX = solveCircumscribedCircleAlongAxis(p.fHoles.UEye, p.fHoles.U1.r, "y", upperBound - p.fHoles.U1.r)
+    let upperShoulderX = lineCircleIntersection(
+      { m: 0, y: upperBound - p.fHoles.U1.r, x: 0 },
+      { x: p.fHoles.UEye.x, y: p.fHoles.UEye.y, r: Math.abs(p.fHoles.U1.r - p.fHoles.UEye.r) },
+    )[0].x
     let upperShoulder = new Arc(upperShoulderX, upperBound - p.fHoles.U1.r, p.fHoles.U1.r)
     let upperShoulderStartPt = circleCircleIntersections(p.fHoles.UEye, upperShoulder);
     let upperShoulderStartAngle = angleFromCenter(upperShoulder, upperShoulderStartPt[0]);
