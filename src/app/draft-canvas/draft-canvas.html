@@ -1,8 +1,6 @@
 <div class="canvas-shell" [class.dark-mode]="isDarkMode">
   <!-- the docked tool bar and the drawing surface share a row; .ui-controls below spans both -->
   <div class="canvas-body">
-    <app-tool-palette></app-tool-palette>
-
     <div #host class="host" [class.drawing]="activeTool !== null" tabindex="0" aria-label="Draft canvas" (wheel)="onScrollWheel($event)"
       (pointerdown)="onPointerDown($event)" (pointermove)="onPointerMove($event)" (pointerup)="onPointerUp($event)"
       (pointerleave)="onPointerUp($event)" (keydown)="onKeyDown($event)" (dblclick)="onDoubleClick($event)">

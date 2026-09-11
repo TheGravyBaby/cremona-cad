@@ -137,6 +137,7 @@ export function calculateFholeContours(p: EnricoCerutiParams): void {
   // now we do the upper wing
   try {
     let cutStart = pointOnCircle(p.fHoles.UEye, p.fHoles.UCut.angleOnEye);
+    // let cutVector = con
 
   } catch (e) {
     error("Upper wing calculation error.", "Error")

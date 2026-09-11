@@ -31,14 +31,13 @@ import { info, warn } from '../shared/message-emitter';
 import { DEFAULT_TEXT_SIZE_MM, DraftShape, ImageShape, TextShape, imageRenderKey } from './tools/toolbox-shape';
 import { placedImageShape } from './tools/image-placement';
 import { HOTKEY_TOOL_CYCLE } from './tools/tool-hotkeys';
-import { ToolPaletteComponent } from './tool-palette/tool-palette';
 import { SettingsBarComponent } from './settings-bar/settings-bar';
 import { LayerControlsComponent } from './layer-controls/layer-controls';
 
 @Component({
   selector: 'app-draft-canvas',
   standalone: true,
-  imports: [FormsModule, ToolPaletteComponent, SettingsBarComponent, LayerControlsComponent],
+  imports: [FormsModule, SettingsBarComponent, LayerControlsComponent],
   templateUrl: './draft-canvas.html',
   styleUrls: ['./draft-canvas.css'],
 })
@@ -60,6 +59,10 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
    * fitCamera(), like `snapLayer` below. */
   private imageLayer: d3.Selection<SVGGElement, unknown, null, undefined> | null = null;
   private resizeObs?: ResizeObserver;
+  /** .host's last known screen position, so a resize triggered by a sibling changing size (the
+   * tool palette, to the left) can be told apart from one that only changed .host's own width —
+   * see onHostResize(). */
+  private lastHostRect: DOMRect | null = null;
   private draftFuncs: Array<(canvas: any, uiCan: any) => void> = [];
   private camera = new Camera();
   private axisGrid = new AxisGridController(DraftCanvasComponent.DISPLAY_PREFS_KEY, () => this.draw());
@@ -312,7 +315,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
     // Guarded for test environments (jsdom) that don't implement ResizeObserver.
     if (typeof ResizeObserver !== 'undefined') {
-      this.resizeObs = new ResizeObserver(() => this.draw());
+      this.resizeObs = new ResizeObserver(() => this.onHostResize());
       this.resizeObs.observe(el);
     }
     // White suppression happens off the main thread of the draw loop (an offscreen canvas pass
@@ -338,6 +341,23 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.toolRegistry.setHost(this.toolHost);
 
     this.initialized = true;
+    this.draw();
+  }
+
+  /** A sibling changing size (the tool palette dock, in app.ts) can move .host's own on-screen
+   * position rather than just its size — unlike the recipe sidebar, which sits on the far edge and
+   * so never does. camera.offsetX/offsetY are world coordinates of .host's own top-left corner
+   * (camera.ts), so left unchanged they'd let already-drawn geometry visibly slide with the box.
+   * panByPx cancels exactly that shift, so toggling the tool palette matches the sidebar: more or
+   * less of the world becomes visible, but nothing already on screen moves. */
+  private onHostResize(): void {
+    const rect = this.host.nativeElement.getBoundingClientRect();
+    if (this.lastHostRect) {
+      const dxPx = rect.left - this.lastHostRect.left;
+      const dyPx = rect.top - this.lastHostRect.top;
+      if (dxPx !== 0 || dyPx !== 0) this.camera.panByPx(-dxPx, -dyPx);
+    }
+    this.lastHostRect = rect;
     this.draw();
   }
 
@@ -1427,12 +1447,14 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
    * Returns false — leaving the camera untouched — when there is nothing on the canvas to frame,
    * or when the canvas has no size yet to frame it into.
    */
+
   fitCamera(): boolean {
     // A zero-width host is a real state at startup: the first draw can land before layout has
     // sized this element. Fitting into it would derive a nonsense zoom, and (worse, for the
     // startup auto-fit) claim the frame was done — so report failure and let the ResizeObserver's
     // redraw try again once there's a viewport.
     const el = this.host.nativeElement;
+
     const pxW = el.clientWidth;
     const pxH = el.clientHeight;
     if (pxW < 1 || pxH < 1) return false;

@@ -57,40 +57,16 @@
   min-height: 0;
 }
 
-/* The drawing surface, with the tool bar laid over its left edge. The bottom bar stays a sibling of
-   this row rather than joining it, so a wide settings strip still gets the whole column.
-   position: relative so the bar has this row — the band between the top bar and the bottom bar — as
-   its containing block. */
+/* The drawing surface. The bottom bar stays a sibling of this row rather than joining it, so a wide
+   settings strip still gets the whole column. The tool palette used to live here too, overlaid on
+   the left edge — it's now a flex sibling of app-draft-canvas in app.ts (app.css's .tool-dock), so
+   .host's clientWidth already reflects the space it leaves rather than needing a manual offset in
+   fitCamera(). */
 .canvas-body {
-  position: relative;
   display: flex;
   flex: 1 1 auto;
   min-height: 0;
   min-width: 0;
-}
-
-/* Over the canvas rather than beside it, and this is the whole reason the bar is positioned at all.
-   As a flex item it took width from .host, and .host's left edge is the camera's origin — offsetX is
-   the world coordinate at x=0 of that element (camera.ts). So collapsing the bar slid the entire
-   drawing 49px left, and the frame that F fits into changed size under the same click. The recipe
-   panel never showed either symptom despite also being a drawer: it grows the far edge, which moves
-   nothing and only reveals more world.
-
-   Out of flow, .host is always the full width of the row, so the camera sees one frame no matter
-   what the bar is doing, and the ResizeObserver no longer redraws the whole SVG on a toggle. Width
-   is left to shrink-wrap: however many columns the bar wrapped into, with no cap, since a max-width
-   shrinks the bar's box without shrinking the wrapped content inside it and the buttons spill out
-   past their own background.
-
-   z-index because the bar comes first in the markup — it is the first thing you tab to — while
-   .host is positioned too (for the text editor overlay), so painting order alone would put the
-   drawing on top of the bar. */
-app-tool-palette {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 2;
 }
 
 .host {
