@@ -6,6 +6,7 @@ import { isSmallViewport, trackViewportHeight } from './helpers/viewport';
 import { MessageService } from './shared/message.service';
 import { TopBarComponent } from './top-bar/top-bar';
 import { DraftCanvasComponent } from './draft-canvas/draft-canvas';
+import { ToolPaletteComponent } from './draft-canvas/tool-palette/tool-palette';
 import { ToolboxStore } from './draft-canvas/tools/toolbox-store';
 import { CerutiViolin } from './enrico-ceruti-violin/ceruti-violin';
 import { HelloRecipe } from './hello-recipe/hello-recipe';
@@ -14,7 +15,7 @@ import { MessageCenterComponent } from './shared/message-center.component';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [TopBarComponent, DraftCanvasComponent, CerutiViolin, HelloRecipe, MessageCenterComponent],
+  imports: [TopBarComponent, DraftCanvasComponent, ToolPaletteComponent, CerutiViolin, HelloRecipe, MessageCenterComponent],
   template: `
     <div class="app">
      <app-top-bar class="top"
@@ -25,6 +26,8 @@ import { MessageCenterComponent } from './shared/message-center.component';
     </app-top-bar>
 
       <div class="main">
+        <app-tool-palette class="tool-dock"></app-tool-palette>
+
         <app-draft-canvas class="canvas"
           [draftFunctions]="draftArgs()"
           [fitRequest]="fitToken()">

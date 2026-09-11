@@ -41,6 +41,13 @@
   /* allows children to scroll properly */
 }
 
+/* The drafting toolbox. Fixed to its own content width — however many columns it wraps into — and
+   never grows or shrinks, so .canvas next to it is the one flexible item on this side of the row. */
+.tool-dock {
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
 /* Basis 0, so the canvas is only ever the space the sidebar leaves rather than a competitor for it.
    With basis auto its base size is the bottom bar's max-content — some 350px — and every layout
    where that does not fit turns into a shrink both boxes share. */
