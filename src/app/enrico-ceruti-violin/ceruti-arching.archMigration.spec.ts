@@ -2,7 +2,7 @@ import {
   clampSplinePointHeights, normalizeArchCurve, normalizeArchingParams,
 } from './ceruti-arching';
 import { ArchCatenary, ArchSpline, EnricoCerutiParams } from './ceruti-types';
-import { splineZAt } from '../helpers/svgPathMath';
+import { splineZAt } from '../helpers/math/svgPathMath';
 
 /**
  * Guards the load-time migration of spline arches. The format changed with

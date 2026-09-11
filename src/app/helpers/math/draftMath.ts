@@ -1,4 +1,4 @@
-import { Pt, Circle, Axis, SlopeInterceptLine, Rectangle, Arc, arcFromCircle } from "../models/types";
+import { Pt, Circle, Axis, Line, Rectangle, Arc, arcFromCircle, Vect2D } from "../../models/types";
 
 const TWO_PI = Math.PI * 2;
 
@@ -607,15 +607,47 @@ export function lineCircleIntersection(P1: Pt, P2: Pt, C: Circle): Pt[] {
   ];
 }
 
-
-export function lineFromTwoPoints(A: Pt, B: Pt): SlopeInterceptLine {
+export function lineFromTwoPoints(A: Pt, B: Pt): Line {
   let m = (B.y - A.y) / (B.x - A.x);
 
   // find y intercept 
   // y = mx + b 
   let b = A.y - m * A.x;
 
-  return { m, b: b };
+  return { m, y: b, x: 0};
+}
+
+export function lineFromPointAndSlope(P: Pt, m: number): Line {
+  const y = P.y - m * P.x;
+  return { m, y, x: 0 };
+}
+
+export function unitVectorFromLine(L: Line): Vect2D {
+  const mag = Math.sqrt(1 + L.m * L.m);
+  return { a: 1 / mag, b: L.m / mag, mag: 1 };
+}
+
+export function tangentUnitVectorFromLine(L: Line): Vect2D {
+  const mag = Math.sqrt(1 + L.m * L.m);
+  return { a: L.m / mag, b: -1 / mag, mag: 1 };
+}
+
+export function angleFromLine(L: Line): number {
+  return Math.atan(L.m);
+}
+
+export function tangentAngleFromLine(L: Line): number {
+  return Math.atan(L.m) + Math.PI/2;
+}
+
+export function moveInVectorSpace(P: Pt, Vects: Vect2D[]): Pt {
+  let newX = P.x;
+  let newY = P.y;
+  for (const v of Vects) {
+    newX += v.a * v.mag;
+    newY += v.b * v.mag;
+  }
+  return { x: newX, y: newY };
 }
 
 export function angleFromCenter(C: Pt, P: Pt): number {

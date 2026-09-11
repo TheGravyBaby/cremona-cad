@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { getArcEndDeg, getArcStartDeg, setArcEndDeg, setArcStartDeg } from '../../../helpers/arcDegrees';
 import {
   flipAngleAboutYAxis, flipArcAboutY, flipCircleAboutY, offsetArcRadius,
-} from '../../../helpers/draftMath';
+} from '../../../helpers/math/draftMath';
 import { nearestFraction } from '../../../helpers/nearestFraction';
 import {
   renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderLine,

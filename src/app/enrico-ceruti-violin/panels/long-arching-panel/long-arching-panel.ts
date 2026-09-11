@@ -3,8 +3,8 @@ import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Pt } from '../../../models/types';
 import { renderLine, renderPath } from '../../../helpers/renderFuncs';
-import { archSplineKnots, buildCatenaryPath, buildCycloidPath, buildSplinePath, SPLINE_PEAK_SOURCE } from '../../../helpers/svgPathMath';
-import { clamp } from '../../../helpers/draftMath';
+import { archSplineKnots, buildCatenaryPath, buildCycloidPath, buildSplinePath, SPLINE_PEAK_SOURCE } from '../../../helpers/math/svgPathMath';
+import { clamp } from '../../../helpers/math/draftMath';
 import {
   ArchCurve, ArchSpline, ArchSplinePoint, ArchingParams, CerutiColors, CerutiViewFlags,
   EnricoCerutiParams, FlutingParams, RenderToggleKey,
