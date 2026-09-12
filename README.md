@@ -56,7 +56,7 @@ Unit tests run under [Vitest](https://vitest.dev/) via `@angular/build:unit-test
 
 ## For Developers
 
-The `src/app/hello-recipe/` component is a minimal working recipe — a good starting point if you want to experiment with building your own.
+The `src/app/hello-world-recipe/` component is a minimal working recipe — the four-circle theory of violin outlines, in about 150 lines. A good starting point if you want to experiment with building your own.
 
 The `examples/` directory contains the archived Beard and Kelly violin recipes. These are not wired into the main application but are useful as reference implementations.
 
@@ -82,7 +82,7 @@ src/app/
 │   ├── renders/           #   Arching, 3D preview and guide renderers
 │   └── render-toggles/    #   Module and view visibility controls
 ├── helpers/               # Math, render functions, SVG/PDF/DXF/STL export
-├── hello-recipe/          # Minimal recipe for experimentation
+├── hello-world-recipe/    # Minimal recipe for experimentation
 ├── models/                # Shared TypeScript types
 ├── recipe-base/           # Base class shared across all recipes
 ├── recipe-toolbar/        # New/save/load and template selection

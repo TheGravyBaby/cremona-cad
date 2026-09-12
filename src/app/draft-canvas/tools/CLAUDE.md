@@ -42,10 +42,8 @@ boundary that has no calc pass to rebuild prototypes — unlike recipe geometry,
 and don't reuse `models/types.ts` classes here. Sharing geometry *math* via `helpers/math/` is
 encouraged; sharing those *types* is not.
 
-**`ArcShape` sweeps counterclockwise** (root CLAUDE.md's arc-sweep trap). Ordering of
-`startAngle`/`endAngle` alone selects minor vs major, so unlike `models/types.ts` `Arc`, tools can
-draw >180° sweeps with no out-of-band flag. Converting past 180° is lossy — don't write a blind
-converter.
+**`ArcShape` sweeps counterclockwise**, unlike `models/types.ts` `Arc` (root CLAUDE.md's arc-sweep
+trap) — don't write a blind converter between them.
 
 **The active layer says where new shapes land, not what you can edit.** Anything on a visible,
 unlocked layer is selectable and editable, whichever layer happens to be active — hide or lock is

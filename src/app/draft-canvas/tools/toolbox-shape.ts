@@ -20,15 +20,8 @@ export type LineShape = ShapeBase & {
   dashed?: boolean;
 };
 
-/**
- * Counterclockwise-sweep convention: the arc runs CCW from `startAngle` to `endAngle`, so the
- * ordering of the two angles selects minor vs major between the same pair of boundary points —
- * swapping them gives the *other* arc. See arcPathData in helpers/math/pathMath.ts and
- * pickArcOrientation in helpers/math/draftMath.ts.
- *
- * Deliberately **not** the convention of models/types.ts's `Arc`, which always renders the minor
- * arc; converting this type to that one is lossy past 180°.
- */
+/** Sweeps counterclockwise from `startAngle` to `endAngle`, so order alone picks minor vs major —
+ * unlike models/types.ts's `Arc`, which always renders the minor arc; don't write a blind converter. */
 export type ArcShape = ShapeBase & {
   type: 'arc';
   center: Pt;

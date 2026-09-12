@@ -16,7 +16,7 @@
     "test:panels": "ng test --watch=false --include \"src/app/enrico-ceruti-violin/panels/**/*.spec.ts\"",
     "test:draft-canvas": "ng test --watch=false --include \"src/app/draft-canvas/**/*.spec.ts\"",
     "test:helpers": "ng test --watch=false --include \"src/app/helpers/**/*.spec.ts\"",
-    "test:shell": "ng test --watch=false --include \"src/app/app.spec.ts\" --include \"src/app/shared/**/*.spec.ts\" --include \"src/app/top-bar/**/*.spec.ts\""
+    "test:shell": "ng test --watch=false --include \"src/app/app.spec.ts\" --include \"src/app/shared/**/*.spec.ts\" --include \"src/app/top-bar/**/*.spec.ts\" --include \"src/app/hello-world-recipe/**/*.spec.ts\""
   },
   "prettier": {
     "printWidth": 100,

@@ -65,6 +65,9 @@ export abstract class RecipeComponentBase implements AfterViewInit, Undoable {
     this._history = [];
     this._historyIndex = -1;
     this.undoCoordinator.reset(this.id);
+    // ...and the file's own starting point becomes that floor, so the first edit made to it has
+    // something to undo back to. Without this, canUndo stays false until a *second* edit lands.
+    this.pushHistory();
     // Toolbox shapes are drawn separately from the recipe's own render pipeline (ToolboxStore is
     // a root singleton, not part of `this.d`) — always start from a clean slate, then restore
     // whatever this file itself saved (if anything), so drawings from a previously open file or
@@ -354,6 +357,9 @@ export abstract class RecipeComponentBase implements AfterViewInit, Undoable {
       this.loadReferenceImages(recipeData);
       this.panelFlow?.refreshEnabledPanels();
     }
+    // whatever `this.d` holds now — a restored session, or just the field initializer — is where
+    // this mount starts, and that floor is what the first edit needs something to undo back to.
+    this.pushHistory();
   }
 
   /**

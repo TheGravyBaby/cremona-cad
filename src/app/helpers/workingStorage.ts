@@ -5,6 +5,7 @@ import { error } from '../shared/message-emitter';
 
 export const RECIPE_KEY = 'recipeData';
 export const PANEL_KEY = 'openPanel';
+export const SELECTED_RECIPE_KEY = 'selectedRecipe';
 
 let quotaWarned = false;
 
