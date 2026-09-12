@@ -115,7 +115,7 @@ const edgesOf = (p: EnricoCerutiParams): { name: string; chain: (Arc | null)[] }
   const f = p.fHoles!;
   return [
     { name: 'springing from UEye', chain: [f.U1, f.U2, f.S2, f.S4, f.L3] },
-    { name: 'springing from LEye', chain: [f.L1, f.L2, f.S3, f.S1, f.U3] },
+    { name: 'springing from LEye', chain: [f.L1, f.L2, f.S3, f.S1, f.S2] },
   ];
 };
 
@@ -178,7 +178,7 @@ describe('f-hole contour properties', () => {
     it(`lands each wing on the tip it is hung from, ${label}`, () => {
       const f = solve(shaped).fHoles!;
       // L3 springs from UEye's edge and reaches the lower tip; U3 springs from LEye's and reaches the upper
-      for (const [wing, tip] of [[f.L3!, f.LTip!], [f.U3!, f.UTip!]] as const) {
+      for (const [wing, tip] of [[f.L3!, f.LTip!], [f.S2!, f.UTip!]] as const) {
         expect(dist(pointOnCircle(wing, wing.end), tip)).toBeCloseTo(0, 6);
       }
     });

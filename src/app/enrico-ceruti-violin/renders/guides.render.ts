@@ -1,5 +1,5 @@
 import { Rectangle } from '../../models/types';
-import { renderRect, renderLine, renderDashedLineLong } from '../../helpers/renderFuncs';
+import { renderRect, renderSegment, renderDashedLineLong } from '../../helpers/renderFuncs';
 import { CerutiColors, EnricoCerutiParams } from '../ceruti-types';
 
 export const renderBounds = (params: EnricoCerutiParams, render: boolean) => (g: any, ui: any): void => {
@@ -23,11 +23,11 @@ export const renderBoutBouts = (params: EnricoCerutiParams, colors: CerutiColors
   const inset = params.overhang + params.rib;
 
   renderRect(lowerBoutSquare, colors.lowerBoutOff)(g, ui);
-  renderLine({ x: -p.bouts.LBW / 2 + inset, y: 0 }, { x: -p.bouts.LBW / 2 + inset, y: p.bouts.LBW }, colors.lowerBoutOff)(g, ui);
-  renderLine({ x: p.bouts.LBW / 2 - inset, y: 0 }, { x: p.bouts.LBW / 2 - inset, y: p.bouts.LBW }, colors.lowerBoutOff)(g, ui);
+  renderSegment({ x: -p.bouts.LBW / 2 + inset, y: 0 }, { x: -p.bouts.LBW / 2 + inset, y: p.bouts.LBW }, colors.lowerBoutOff)(g, ui);
+  renderSegment({ x: p.bouts.LBW / 2 - inset, y: 0 }, { x: p.bouts.LBW / 2 - inset, y: p.bouts.LBW }, colors.lowerBoutOff)(g, ui);
   renderRect(upperBoutSquare, colors.upperBoutOff)(g, ui);
-  renderLine({ x: -p.bouts.UBW / 2 + inset, y: p.height - p.bouts.UBW }, { x: -p.bouts.UBW / 2 + inset, y: p.height }, colors.upperBoutOff)(g, ui);
-  renderLine({ x: p.bouts.UBW / 2 - inset, y: p.height - p.bouts.UBW }, { x: p.bouts.UBW / 2 - inset, y: p.height }, colors.upperBoutOff)(g, ui);
+  renderSegment({ x: -p.bouts.UBW / 2 + inset, y: p.height - p.bouts.UBW }, { x: -p.bouts.UBW / 2 + inset, y: p.height }, colors.upperBoutOff)(g, ui);
+  renderSegment({ x: p.bouts.UBW / 2 - inset, y: p.height - p.bouts.UBW }, { x: p.bouts.UBW / 2 - inset, y: p.height }, colors.upperBoutOff)(g, ui);
 };
 
 export const renderCornerGuides = (params: EnricoCerutiParams, render: boolean) => (g: any, ui: any): void => {

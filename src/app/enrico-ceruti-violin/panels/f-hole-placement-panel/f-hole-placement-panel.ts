@@ -2,7 +2,7 @@ import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CerutiColors, CerutiViewFlags, DefaultParams, EnricoCerutiParams, FholeParams, FholeStem, PathEntry, RenderToggleKey } from '../../ceruti-types';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
-import { renderArcFromArcFancy, renderCircle, renderCrosshair, renderDashedLine, renderLine, renderPath, renderRect, renderSmallCrosshair } from '../../../helpers/renderFuncs';
+import { renderArcFromArcFancy, renderCircle, renderCrosshair, renderDashedLine, renderSegment, renderPath, renderRect, renderSmallCrosshair } from '../../../helpers/renderFuncs';
 import { calculateOuterArcs, ensureOuterTracePaths, getPath, getPathOrNull } from '../../ceruti-calcs';
 import { Arc, Circle, Pt, Rectangle } from '../../../models/types';
 import { nearestFraction, nearestSmallFraction } from '../../../helpers/nearestFraction';
@@ -168,7 +168,7 @@ export const renderFholeRise = (p: EnricoCerutiParams, colors: CerutiColors) => 
   const f = p.fHoles!;
   for (const [eye, rise, side, color] of [[f.UEye!, f.URise!, 1, colors.fHoleUpper], [f.LEye!, f.LRise!, -1, colors.fHoleLower]] as const) {
     const boundY = eye.y + side * (eye.r + rise);
-    renderLine(new Pt(eye.x - eye.r, boundY), new Pt(eye.x + eye.r, boundY), color, 1)(g, ui);
+    renderSegment(new Pt(eye.x - eye.r, boundY), new Pt(eye.x + eye.r, boundY), color, 1)(g, ui);
     renderDashedLine(new Pt(eye.x, eye.y + side * eye.r), new Pt(eye.x, boundY), color, '2 2', 1, 0.9)(g, ui);
   }
 }
@@ -183,10 +183,10 @@ export const renderFholeStem = (p: EnricoCerutiParams, colors: CerutiColors) => 
   const reach = Math.abs((f.UEye!.y + f.UEye!.r + f.URise!)
     - (f.LEye!.y - f.LEye!.r - f.LRise!)) / 12;
 
-  renderLine(new Pt(c.x - half, c.y), new Pt(c.x + half, c.y), colors.fHoleStem, 1)(g, ui);
+  renderSegment(new Pt(c.x - half, c.y), new Pt(c.x + half, c.y), colors.fHoleStem, 1)(g, ui);
   for (const side of [-1, 1]) {
     const xBase = c.x + side * half;
-    renderLine(edgeAt(xBase, c.y - reach), edgeAt(xBase, c.y + reach), colors.fHoleStem, 1.5)(g, ui);
+    renderSegment(edgeAt(xBase, c.y - reach), edgeAt(xBase, c.y + reach), colors.fHoleStem, 1.5)(g, ui);
   }
   renderSmallCrosshair(f.stem.center!, colors.fHoleStem)(g, ui);
 

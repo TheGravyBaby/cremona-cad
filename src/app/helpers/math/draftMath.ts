@@ -72,9 +72,14 @@ export function solveTangentCircleAndLine(t: Line, Q: Circle, Pr: number, diff: 
   let QtoT = (Qfoot.x - Q.x) * unitVectAgainstT.a + (Qfoot.y - Q.y) * unitVectAgainstT.b
 
   // we have two sides of a right triangle, we can solve for the third
+  // scale-aware tolerance so a genuinely-tangent case doesn't get knocked negative
+  // by floating point noise and reported as "no solution" (same idea as
+  // circleCircleIntersections' eps and lineCircleIntersectionWithTolerance)
   let discriminant = PtoQ * PtoQ - QtoT * QtoT;
-  if (discriminant < 0) return null;
-  let distanceAlongLine = Math.sqrt(discriminant);
+  let scale = Math.max(1, Math.abs(PtoQ), Math.abs(QtoT));
+  let eps = 1e-9 * scale * scale;
+  if (discriminant < -eps) return null;
+  let distanceAlongLine = Math.sqrt(Math.max(discriminant, 0));
 
   // so lets make vectors, we have angles and magnitudes — two candidate centers, one each
   // direction along the line; near picks which one actually gets returned
