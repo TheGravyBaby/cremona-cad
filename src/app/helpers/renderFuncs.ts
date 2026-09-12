@@ -336,7 +336,7 @@ export const renderCircle = (C: Circle, color: string, mirrorY?: boolean) => (g:
     }
 }
 
-export const renderLine = (P: Pt, Q: Pt, color: string, strokeWidth: number = 1, opacity: boolean = false) => (g: any, ui: any) => {
+export const renderSegment = (P: Pt, Q: Pt, color: string, strokeWidth: number = 1, opacity: boolean = false) => (g: any, ui: any) => {
     g.append("line")
         .attr("x1", Q.x)
         .attr("y1", Q.y)
@@ -348,6 +348,19 @@ export const renderLine = (P: Pt, Q: Pt, color: string, strokeWidth: number = 1,
         .attr('opacity', opacity ? 0.25 : 1);
 }
 
+export const renderLine = (line: Line, color: string, strokeWidth: number = 1, opacity: boolean = false) => (g: any, ui: any) => {
+    let lineStartAtHighValue: Pt = { x: line.x -1000, y: line.y - 1000 * line.m };
+    let lineEndAtLowValue: Pt = { x: line.x + 1000, y: line.y + 1000 * line.m }; 
+    g.append("line")
+        .attr("x1", lineStartAtHighValue.x)
+        .attr("y1", lineStartAtHighValue.y)
+        .attr("x2", lineEndAtLowValue.x)
+        .attr("y2", lineEndAtLowValue.y)
+        .attr("stroke", color)
+        .attr('stroke-width', strokeWidth)
+        .attr('vector-effect', 'non-scaling-stroke')
+        .attr('opacity', opacity ? 0.25 : 1);
+}
 
 // 1) Crosshair point marker (+ optional dot)
 export const renderCrosshair = (

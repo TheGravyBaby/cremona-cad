@@ -6,7 +6,7 @@ import {
 } from '../../../helpers/math/simpleGeometry';
 import { nearestFraction } from '../../../helpers/nearestFraction';
 import {
-  renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderLine,
+  renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderSegment,
 } from '../../../helpers/renderFuncs';
 import { arcFromCircle, Arc } from '../../../models/types';
 import { calculateMainBouts, violNeckJoinLimit } from '../../ceruti-calcs';
@@ -131,7 +131,7 @@ const renderViolNeckJoin = (p: EnricoCerutiParams, d: number, color: string) => 
     renderArcFromArc(flipArcAboutY(cap.fillet), color, PATH_STROKE_WIDTH)(g, ui);
   }
 
-  renderLine({ x: cap.topX, y: cap.topY }, { x: -cap.topX, y: cap.topY }, color, PATH_STROKE_WIDTH)(g, ui);
+  renderSegment({ x: cap.topX, y: cap.topY }, { x: -cap.topX, y: cap.topY }, color, PATH_STROKE_WIDTH)(g, ui);
 };
 
 /**

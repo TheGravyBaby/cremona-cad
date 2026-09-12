@@ -2,7 +2,7 @@ import { Component, Input, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Circle, Pt, Rectangle } from '../../../models/types';
 import {
-  renderCircle, renderLine, renderPath, renderPointHalo, renderRect,
+  renderCircle, renderSegment, renderPath, renderPointHalo, renderRect,
 } from '../../../helpers/renderFuncs';
 import { clamp } from '../../../helpers/math/simpleGeometry';
 import { samplePathToPolyline } from '../../../helpers/math/pathMath';
@@ -927,7 +927,7 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
           this.colors.mouldTrace,
         )(g, ui);
         for (const sx of [-1, 1]) {
-          renderLine(new Pt(sx * innerHalf, 0), new Pt(sx * innerHalf, ribZ), this.colors.innerTrace)(g, ui);
+          renderSegment(new Pt(sx * innerHalf, 0), new Pt(sx * innerHalf, ribZ), this.colors.innerTrace)(g, ui);
         }
       }
       for (const plate of ['top', 'bottom'] as const) {
@@ -947,9 +947,9 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     const section = this.section[plate];
 
     // Plate underside, flat across the section, and the thickness at each edge.
-    renderLine(new Pt(-outerHalf, innerZ), new Pt(outerHalf, innerZ), this.colors.innerTrace)(g, ui);
+    renderSegment(new Pt(-outerHalf, innerZ), new Pt(outerHalf, innerZ), this.colors.innerTrace)(g, ui);
     for (const side of [1, -1] as const) {
-      renderLine(new Pt(side * outerHalf, innerZ), new Pt(side * outerHalf, zBase), this.colors.innerTrace)(g, ui);
+      renderSegment(new Pt(side * outerHalf, innerZ), new Pt(side * outerHalf, zBase), this.colors.innerTrace)(g, ui);
     }
     if (!section) return;
 
@@ -959,7 +959,7 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     // continuous function — the contact is only where the pen changes.
     const landEdge = section.centerHalf + section.halfWidth;
     for (const side of [1, -1] as const) {
-      renderLine(new Pt(side * outerHalf, zBase), new Pt(side * Math.min(landEdge, outerHalf), zBase), this.colors.innerTrace)(g, ui);
+      renderSegment(new Pt(side * outerHalf, zBase), new Pt(side * Math.min(landEdge, outerHalf), zBase), this.colors.innerTrace)(g, ui);
     }
     renderPath(crossArchSectionPath(section, section.xEndRight, landEdge, zBase, sign), this.colors.fluting, 1.5)(g, ui);
     renderPath(crossArchSectionPath(section, -landEdge, -section.xEndLeft, zBase, sign), this.colors.fluting, 1.5)(g, ui);

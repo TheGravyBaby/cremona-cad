@@ -2,7 +2,7 @@ import { Component, Input, OnInit } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Pt } from '../../../models/types';
-import { renderLine, renderPath } from '../../../helpers/renderFuncs';
+import { renderSegment, renderPath } from '../../../helpers/renderFuncs';
 import { archSplineKnots, buildCatenaryPath, buildCycloidPath, buildSplinePath, SPLINE_PEAK_SOURCE } from '../../../helpers/math/pathMath';
 import { clamp } from '../../../helpers/math/simpleGeometry';
 import {
@@ -305,7 +305,7 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
       // The corner positions, to locate the C-bout against the profile.
       for (const corner of [p.bouts.UCr, p.bouts.LCr]) {
         if (corner) {
-          renderLine(
+          renderSegment(
             new Pt(0, corner.y), new Pt(ribHeightAt(p, corner.y, taper), corner.y), this.colors.mouldTrace,
           )(g, ui);
         }
@@ -355,10 +355,10 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
     const solved = this.solved[plate];
     const landEdge = p.outerFlutingDepth ?? 0;
 
-    renderLine(new Pt(innerZ, 0), new Pt(innerZ, p.height), this.colors.innerTrace)(g, ui);
+    renderSegment(new Pt(innerZ, 0), new Pt(innerZ, p.height), this.colors.innerTrace)(g, ui);
     for (const [yEnd, yLand] of [[0, landEdge], [p.height, p.height - landEdge]] as const) {
-      renderLine(new Pt(innerZ, yEnd), new Pt(outerZ, yEnd), this.colors.innerTrace)(g, ui);
-      renderLine(new Pt(outerZ, yEnd), new Pt(outerZ, yLand), this.colors.innerTrace)(g, ui);
+      renderSegment(new Pt(innerZ, yEnd), new Pt(outerZ, yEnd), this.colors.innerTrace)(g, ui);
+      renderSegment(new Pt(outerZ, yEnd), new Pt(outerZ, yLand), this.colors.innerTrace)(g, ui);
     }
 
     // The channel at both caps — identical at each end and at every station,

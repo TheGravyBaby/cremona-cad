@@ -1,10 +1,10 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, FholeCut, FholeStem, PathEntry, RenderToggleKey } from '../../ceruti-types';
+import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, FholeStem, PathEntry, RenderToggleKey } from '../../ceruti-types';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
-import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderLine, renderPath, renderPointHalo } from '../../../helpers/renderFuncs';
+import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderSegment, renderPath, renderPointHalo, renderLine } from '../../../helpers/renderFuncs';
 import { ensureOuterTracePaths, calculateOuterArcs, getPath, getPathOrNull } from '../../ceruti-calcs';
-import { getArcEndDeg, setArcEndDeg } from '../../../helpers/math/arcDegrees';
+import { getArcEndDeg, getFieldDeg, setArcEndDeg, setFieldDeg } from '../../../helpers/math/arcDegrees';
 import { fholeCutInfo, fholeShoulderExtendInfo } from '../../ceruti-helpers';
 import { defaultFHolePlacement, renderFholeBounds, renderFholeEyePlacementGuides, renderFholeEyes, stemRun } from '../f-hole-placement-panel/f-hole-placement-panel';
 import {
@@ -12,10 +12,12 @@ import {
   solveTangentCircleAndLine,
 } from '../../../helpers/math/draftMath';
 import {
-  angleFromCenter, closestPointOnLine, lineCircleIntersection, lineFromPointAndSlope, moveInVectorSpace,
+  angleFromCenter, closestPointOnLine, lineFromPointAndSlope, moveInVectorSpace,
   normalizeRadians, pointOnCircle, signedArcSweep, tangentAngleFromLine, tangentUnitVectorFromLine, unitVectorFromLine,
   travelAtArcEnd, travelAtArcStart,
   lineCircleIntersectionWithTolerance,
+  vectorFromSlope,
+  placeCircleOnPointAtAngle,
 } from '../../../helpers/math/simpleGeometry';
 import { angleForBridgeRadius, sweepForTangentLineRadius } from '../../../helpers/math/vibeMath';
 import { Pt, Arc, Line, Vect2D } from '../../../models/types';
@@ -42,6 +44,8 @@ export class FHoleContoursPanel extends CerutiPanelBase implements OnInit {
 
   protected readonly getArcEndDeg = getArcEndDeg;
   protected readonly setArcEndDeg = setArcEndDeg;
+  protected readonly getFieldDeg = getFieldDeg;
+  protected readonly setFieldDeg = setFieldDeg;
   protected readonly fholeShoulderExtendInfo = fholeShoulderExtendInfo;
   protected readonly fholeCutInfo = fholeCutInfo;
 
@@ -101,10 +105,17 @@ export function calculateFholeContours(p: EnricoCerutiParams): void {
   if (!p.fHoles.U1)
     setContourDefaults(p);
 
+  let stemSlope = Math.tan(p.fHoles.stem.angle)
+  let outerStemPt = new Pt(p.fHoles.stem.center.x + p.fHoles.stem.width / 2, p.fHoles.stem.center.y)
+  let outerStemLine = lineFromPointAndSlope(outerStemPt, stemSlope)
+  let innerStemPt = new Pt(p.fHoles.stem.center.x - p.fHoles.stem.width / 2, p.fHoles.stem.center.y)
+  let innerStemLine = lineFromPointAndSlope(innerStemPt, stemSlope)
+
+  // first the upper curve that connects to the eye
   try {
     // first we need to determine the placement of the arc that connects to each eye
     let upperBound = p.fHoles.UEye.y + p.fHoles.UEye.r + p.fHoles.URise
-    let upperShoulderX = lineCircleIntersection(
+    let upperShoulderX = lineCircleIntersectionWithTolerance(
       { m: 0, y: upperBound - p.fHoles.U1.r, x: 0 },
       { x: p.fHoles.UEye.x, y: p.fHoles.UEye.y, r: Math.abs(p.fHoles.U1.r - p.fHoles.UEye.r) },
     )[0].x
@@ -120,16 +131,13 @@ export function calculateFholeContours(p: EnricoCerutiParams): void {
     let upperArm = inscribeCircleWithinCircle(upperShoulder, p.fHoles.U2.r, upperShoulder.end)
     p.fHoles.U2 = new Arc(upperArm.x, upperArm.y, upperArm.r, upperShoulder.end, 0);
 
-    let stemSlope = Math.tan(p.fHoles.stem.angle)
-    let outerStemPt = new Pt(p.fHoles.stem.center.x + p.fHoles.stem.width / 2, p.fHoles.stem.center.y)
-    let outerStemLine = lineFromPointAndSlope(outerStemPt, stemSlope)
     let S2 = solveTangentCircleAndLine(outerStemLine, p.fHoles.U2, p.fHoles.stem.arcR, true, 1, p.fHoles.stem.center);
     let S2U2Intersect = circleCircleIntersections(S2, p.fHoles.U2);
     let S2StemIntersect = lineCircleIntersectionWithTolerance(outerStemLine, S2); // we are just kissing the line, sometimes we miss due to floating points
     let S2StemEndAngle = angleFromCenter(S2, S2StemIntersect[0])
 
     p.fHoles.U2.end = angleFromCenter(p.fHoles.U2, S2U2Intersect[0]);
-    p.fHoles.U3 = new Arc(S2.x, S2.y, S2.r, p.fHoles.U2.end, S2StemEndAngle)
+    p.fHoles.S2 = new Arc(S2.x, S2.y, S2.r, p.fHoles.U2.end, S2StemEndAngle)
   } catch (e) {
     error("Upper arm calculation error", "Error")
   }
@@ -137,11 +145,22 @@ export function calculateFholeContours(p: EnricoCerutiParams): void {
   // now we do the upper wing
   try {
     let cutStart = pointOnCircle(p.fHoles.UEye, p.fHoles.UCut.angleOnEye);
-    // let cutVector = con
+    let cutVector = vectorFromSlope(p.fHoles.UCut.slope);
+    cutVector.mag = p.fHoles.UCut.length;
+    let cutEnd = moveInVectorSpace(cutStart, [cutVector]);
+    let cutCircle = placeCircleOnPointAtAngle(p.fHoles.U3.r, cutEnd, p.fHoles.U3.end);
+    let S1 = solveTangentCircleAndLine(innerStemLine, cutCircle, p.fHoles.stem.arcR, true, 1, p.fHoles.stem.center);
+    let S1U3Pt = circleCircleIntersections(S1, cutCircle);
+    let S1StemIntersect = lineCircleIntersectionWithTolerance(innerStemLine, S1);
+    let S1StemEndAngle = angleFromCenter(S1, S1StemIntersect[0]);
 
+    p.fHoles.U3 = new Arc(cutCircle.x, cutCircle.y, cutCircle.r, angleFromCenter(cutCircle, S1U3Pt[0]), p.fHoles.U3.end);
+    p.fHoles.S1 = new Arc(S1.x, S1.y, S1.r, angleFromCenter(S1, S1U3Pt[0]), S1StemEndAngle);
   } catch (e) {
     error("Upper wing calculation error.", "Error")
   }
+
+
 
 
 }
@@ -155,7 +174,26 @@ export const renderFholeContours = (
 
   renderArcFromArc(p.fHoles.U1, colors.fHoleUpperDark, 2)(g, ui);
   renderArcFromArc(p.fHoles.U2, colors.fHoleUpper, 2)(g, ui);
-  renderArcFromArc(p.fHoles.U3, colors.fHoleStem, 2)(g, ui);
+  renderArcFromArc(p.fHoles.U3, colors.fHoleUpperLight, 2)(g, ui);
+  renderArcFromArc(p.fHoles.S2, colors.fHoleStem, 2)(g, ui);
+  renderArcFromArc(p.fHoles.S1, colors.fHoleStem, 2)(g, ui);
+
+  let stemSlope = Math.tan(p.fHoles.stem.angle)
+  let innerStemPt = new Pt(p.fHoles.stem.center.x - p.fHoles.stem.width / 2, p.fHoles.stem.center.y)
+  let innerStemLine = lineFromPointAndSlope(innerStemPt, stemSlope)
+
+  renderLine(innerStemLine, colors.fHoleStem, .5)(g, ui);
+
+  let cutStart = pointOnCircle(p.fHoles.UEye, p.fHoles.UCut.angleOnEye);
+  let cutVector = vectorFromSlope(p.fHoles.UCut.slope);
+  cutVector.mag = p.fHoles.UCut.length;
+  let cutEnd = moveInVectorSpace(cutStart, [cutVector]);
+  let cutCircle = placeCircleOnPointAtAngle(p.fHoles.U3.r, cutEnd, p.fHoles.U3.end);
+
+
+  renderSegment(cutStart, cutEnd, colors.fHoleCut, 2)(g, ui);
+  // renderCircle(cutCircle, colors.fHoleStem)(g, ui);
+
 
 }
 
@@ -168,11 +206,11 @@ export function setContourDefaults(p: EnricoCerutiParams) {
   // a 3/2 of the radius produces a nice scaling of the curvature
   p.fHoles.U2 ??= new Arc(0, 0, Math.round(p.fHoles.U1.r * 3 / 2))
   p.fHoles.L2 ??= new Arc(0, 0, Math.round(p.fHoles.L1.r * 3 / 2))
-  p.fHoles.U3 ??= new Arc(0, 0, Math.round(p.fHoles.U2.r * 3 / 2))
-  p.fHoles.L3 ??= new Arc(0, 0, Math.round(p.fHoles.L2.r * 3 / 2))
+  p.fHoles.U3 ??= new Arc(0, 0, Math.round(p.fHoles.U1.r * 3 / 2))
+  p.fHoles.L3 ??= new Arc(0, 0, Math.round(p.fHoles.L1.r * 3 / 2))
 
   // the stems can be another doubling
-  p.fHoles.stem.arcR ??= Math.round(p.fHoles.L2.r * 3)  
+  p.fHoles.stem.arcR ??= Math.round(p.fHoles.L2.r * 3)
   p.fHoles.S1 ??= new Arc(0, 0, p.fHoles.stem.arcR)
   p.fHoles.S2 ??= new Arc(0, 0, p.fHoles.stem.arcR)
   p.fHoles.S3 ??= new Arc(0, 0, p.fHoles.stem.arcR)
@@ -180,12 +218,12 @@ export function setContourDefaults(p: EnricoCerutiParams) {
 
   p.fHoles.UCut = {
     angleOnEye: Math.PI * 1 / 3,
-    length: p.fHoles.U3.r * 2,
+    length: p.fHoles.UEye.r,
     slope: Math.PI * 1 / 3
   }
   p.fHoles.LCut = {
     angleOnEye: Math.PI * 4 / 3,
-    length: p.fHoles.L3.r * 2,
+    length: p.fHoles.LEye.r,
     slope: Math.PI * 4 / 3
   }
 

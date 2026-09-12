@@ -91,6 +91,14 @@ export function flipCircleAboutY(circle: Circle): Circle {
   return { x: -circle.x, y: circle.y, r: circle.r };
 }
 
+export function placeCircleOnPointAtAngle(r: number, point: Pt, angle: number): Circle {
+  return {
+    x: point.x - r * Math.cos(angle),
+    y: point.y - r * Math.sin(angle),
+    r,
+  };
+}
+
 // ===== Lines =====
 //
 // A Line is slope-intercept (m, y) with the x field unused — except for a vertical line, which
@@ -275,6 +283,9 @@ export function moveInVectorSpace(point: Pt, vectors: Vect2D[]): Pt {
   return { x: newX, y: newY };
 }
 
+export function vectorFromSlope(theta: number): Vect2D {
+  return { a: Math.cos(theta), b: Math.sin(theta), mag: 1 };
+}
 
 // ===== Arcs =====
 
