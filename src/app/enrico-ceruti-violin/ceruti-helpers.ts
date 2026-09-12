@@ -104,22 +104,6 @@ export function compoundArcInfo() {
     )
 }
 
-export function fholeShoulderExtendInfo() {
-    info(
-        "The shoulder runs from the eye out to where its curve stands square to the plate. On many holes the arm-to-shoulder transition sits a little past that point rather than right on it, so Extend lets the shoulder's own curve carry on past it before the arm takes over.\n\n" +
-        "The arm's sweep isn't set directly — it's solved so the arm lands exactly on the stem arc's radius, opposite it on the row below.",
-        "Shoulder Extend", defaultTTL, true
-    )
-}
-
-export function fholeCutInfo() {
-    info(
-        "The cut is the straight edge closing this end of the hole: it runs out of the eye to the wing's tip, and the eye's own rim carries the outline the rest of the way round to the shoulder.\n\n" +
-        "At turns round the eye from the line to the other eye, and sets where the cut leaves. Slope is the angle it runs at, read off the plate rather than off the eye, so moving At slides the cut without swinging it. Length runs it out to the tip.",
-        "The Cut", defaultTTL, true
-    )
-}
-
 export function purflingInfo() {
     info(
         "Offset: distance from the outer plate edge to the near wall of the channel.\n\n" +

@@ -5,7 +5,6 @@ import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { renderArcFromArc, renderArcHalo, renderSegment, renderPath, renderPointHalo, renderArcFromArcFancy } from '../../../helpers/renderFuncs';
 import { ensureOuterTracePaths, ensureFholePath, calculateOuterArcs, getPath, getPathOrNull } from '../../ceruti-calcs';
 import { getArcEndDeg, getFieldDeg, setArcEndDeg, setFieldDeg } from '../../../helpers/math/arcDegrees';
-import { fholeCutInfo, fholeShoulderExtendInfo } from '../../ceruti-helpers';
 import { defaultFHolePlacement, renderFholeBounds } from '../f-hole-placement-panel/f-hole-placement-panel';
 import { circleCircleIntersections } from '../../../helpers/math/draftMath';
 import { angleFromCenter, dist, pointOnCircle } from '../../../helpers/math/simpleGeometry';
@@ -34,8 +33,6 @@ export class FHoleContoursPanel extends CerutiPanelBase implements OnInit {
   protected readonly setArcEndDeg = setArcEndDeg;
   protected readonly getFieldDeg = getFieldDeg;
   protected readonly setFieldDeg = setFieldDeg;
-  protected readonly fholeShoulderExtendInfo = fholeShoulderExtendInfo;
-  protected readonly fholeCutInfo = fholeCutInfo;
 
   // held as a key rather than the Arc itself: ensureFholePath rebuilds every arc on each pass,
   // so an object captured on focus is stale by the time it would be drawn
