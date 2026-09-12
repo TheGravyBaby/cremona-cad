@@ -180,19 +180,24 @@ export function lineCircleIntersection(line: Line, circle: Circle): Pt[] {
   ];
 }
 
-// Helper function to find intersection with tolerance for floating point errors
-export function lineCircleIntersectionWithTolerance(line: Line, circle: Circle, tolerance = 1e-10): Pt[] {
+// scale-aware tolerance, same idea as circleCircleIntersections' eps and solveTangentCircleAndLine's:
+// a steep line (large m) blows up a/b/c into the thousands or millions, so a fixed absolute
+// tolerance gets swamped by ordinary floating-point noise long before it catches a genuine miss —
+// a circle built tangent to this very line by solveTangentCircleAndLine can come back with a
+// discriminant of -1e-6 for what is mathematically exactly 0
+export function lineCircleIntersectionWithTolerance(line: Line, circle: Circle, tolerance = 1e-9): Pt[] {
   if (isVerticalLine(line)) {
     const dx = line.x - circle.x;
     const under = circle.r * circle.r - dx * dx;
+    const eps = tolerance * Math.max(1, circle.r * circle.r, dx * dx);
 
-    if (under < -tolerance) {
+    if (under < -eps) {
       // No intersection
       return [];
     }
 
     // Handle floating point errors by treating near-zero values as zero
-    if (under < tolerance) {
+    if (under < eps) {
       return [{ x: line.x, y: circle.y }];
     }
 
@@ -206,14 +211,15 @@ export function lineCircleIntersectionWithTolerance(line: Line, circle: Circle, 
   const c = circle.x * circle.x + d * d - circle.r * circle.r;
 
   const discriminant = b * b - 4 * a * c;
+  const eps = tolerance * Math.max(1, Math.abs(b * b), Math.abs(4 * a * c));
 
-  if (discriminant < -tolerance) {
+  if (discriminant < -eps) {
     // No intersection
     return [];
   }
 
   // Handle floating point errors by treating near-zero discriminants as zero
-  if (discriminant < tolerance) {
+  if (discriminant < eps) {
     const x = -b / (2 * a);
     const y = line.m * x + line.y;
     return [new Pt(x, y)];
