@@ -14,8 +14,6 @@
                 (ngModelChange)="setArcEndDeg(params.fHoles!.U1!, $event, onChange.bind(this)); onArcFocus('U1', colors.fHoleUpper)"
                 (focus)="onArcFocus('U1', colors.fHoleUpperLight)" (blur)="onArcBlur()" />
         </label>
-        <button type="button" class="info-icon" (click)="fholeShoulderExtendInfo()" title="More information"
-            aria-label="Information">ⓘ</button>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
@@ -63,8 +61,6 @@
                 (ngModelChange)="setFieldDeg(params.fHoles!.UCut!, 'angleOnEye', $event, onChange.bind(this))"
                 (focus)="onArcFocus('UCut', colors.fHoleCut)" (blur)="onArcBlur()" />
         </label>
-        <button type="button" class="info-icon" (click)="fholeCutInfo()" title="More information"
-            aria-label="Information">ⓘ</button>
     </div>
 </section>
 
@@ -96,8 +92,6 @@
                 (ngModelChange)="setArcEndDeg(params.fHoles!.L1!, $event, onChange.bind(this)); onArcFocus('L1', colors.fHoleUpper)"
                 (focus)="onArcFocus('L1', colors.fHoleUpperLight)" (blur)="onArcBlur()" />
         </label>
-        <button type="button" class="info-icon" (click)="fholeShoulderExtendInfo()" title="More information"
-            aria-label="Information">ⓘ</button>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
@@ -144,8 +138,5 @@
                 (ngModelChange)="setFieldDeg(params.fHoles!.LCut!, 'angleOnEye', $event, onChange.bind(this))"
                 (focus)="onArcFocus('LCut', colors.fHoleCut)" (blur)="onArcBlur()" />
         </label>
-
-        <button type="button" class="info-icon" (click)="fholeCutInfo()" title="More information"
-            aria-label="Information">ⓘ</button>
     </div>
 </section>
