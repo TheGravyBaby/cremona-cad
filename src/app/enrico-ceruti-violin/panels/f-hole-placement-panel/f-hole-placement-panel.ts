@@ -29,6 +29,9 @@ export class FHolePlacementPanel extends CerutiPanelBase implements OnInit {
   protected readonly nearestFraction = nearestFraction;
   protected readonly nearestSmallFraction = nearestSmallFraction;
 
+  distanceBetweenEyes() { return this.round2(dist(this.params.fHoles.UEye, this.params.fHoles.LEye))};
+
+
   ngOnInit(): void {
     this.emitImmediate();
   }
