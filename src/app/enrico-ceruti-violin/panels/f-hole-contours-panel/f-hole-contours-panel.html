@@ -22,7 +22,30 @@
                 [ngModel]="round2(params.fHoles!.U2!.r)" (ngModelChange)="params.fHoles!.U2!.r = $event; onChange(); onArcFocus('U2', colors.fHoleUpper)"
                 [style.borderColor]="colors.fHoleUpper" (focus)="onArcFocus('U2', colors.fHoleUpper)" (blur)="onArcBlur()" />
         </label>
+        <label class="field-cell">
+            <div class="toggle">
+                <input type="checkbox" [(ngModel)]="params.options.U21DoubleArc"
+                    (change)="onChange()" /><span>Compound</span>
+            </div>
+        </label>
     </div>
+    @if (params.options.U21DoubleArc) {
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">U21 Radius<span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" data-fine-step="0.1" data-shift-step="10" min="0"
+                [ngModel]="round2(params.fHoles!.U21!.r)" (ngModelChange)="params.fHoles!.U21!.r = $event; onChange(); onArcFocus('U21', colors.fHoleUpperDark)"
+                [style.borderColor]="colors.fHoleUpperDark" (focus)="onArcFocus('U21', colors.fHoleUpperDark)" (blur)="onArcBlur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Split Angle<span class="unit-label">°</span></span>
+            <input type="number" class="basic-input" step="1" data-fine-step="0.1" data-shift-step="10"
+                [ngModel]="getArcStartDeg(params.fHoles!.U21!)"
+                (ngModelChange)="setArcStartDeg(params.fHoles!.U21!, $event, onChange.bind(this)); onArcFocus('U21', colors.fHoleUpperDark)"
+                (focus)="onArcFocus('U21', colors.fHoleUpperDark)" (blur)="onArcBlur()" />
+        </label>
+    </div>
+    }
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">U3 Radius <span class="unit-label">mm</span></span>
@@ -100,7 +123,30 @@
                 [ngModel]="round2(params.fHoles!.L2!.r)" (ngModelChange)="params.fHoles!.L2!.r = $event; onChange(); onArcFocus('L2', colors.fHoleLower)"
                 [style.borderColor]="colors.fHoleLower" (focus)="onArcFocus('L2', colors.fHoleLower)" (blur)="onArcBlur()" />
         </label>
+        <label class="field-cell">
+            <div class="toggle">
+                <input type="checkbox" [(ngModel)]="params.options.L21DoubleArc"
+                    (change)="onChange()" /><span>Compound</span>
+            </div>
+        </label>
     </div>
+    @if (params.options.L21DoubleArc) {
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">L21 Radius <span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" data-fine-step="0.1" data-shift-step="10" min="0"
+                [ngModel]="round2(params.fHoles!.L21!.r)" (ngModelChange)="params.fHoles!.L21!.r = $event; onChange(); onArcFocus('L21', colors.fHoleLowerDark)"
+                [style.borderColor]="colors.fHoleLowerDark" (focus)="onArcFocus('L21', colors.fHoleLowerDark)" (blur)="onArcBlur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Split Angle <span class="unit-label">°</span></span>
+            <input type="number" class="basic-input" step="1" data-fine-step="0.1" data-shift-step="10"
+                [ngModel]="getArcStartDeg(params.fHoles!.L21!)"
+                (ngModelChange)="setArcStartDeg(params.fHoles!.L21!, $event, onChange.bind(this)); onArcFocus('L21', colors.fHoleLowerDark)"
+                (focus)="onArcFocus('L21', colors.fHoleLowerDark)" (blur)="onArcBlur()" />
+        </label>
+    </div>
+    }
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">L3 Radius <span class="unit-label">mm</span></span>

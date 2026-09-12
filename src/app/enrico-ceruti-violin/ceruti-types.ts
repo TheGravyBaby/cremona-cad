@@ -67,6 +67,8 @@ export interface EnricoCerutiParams {
     C21DoubleArc: boolean;
     C11DoubleArc: boolean;
     L31DoubleArc: boolean;
+    U21DoubleArc?: boolean;
+    L21DoubleArc?: boolean;
     ucCornerSharpness?: number;
     lcCornerSharpness?: number;
   },
@@ -131,12 +133,15 @@ export interface FholeParams {
   /** Stopping `U1.end` short of the apex hands the top of the hole to U2 — see shoulderReach. */
   U1: Arc | null;
   U2: Arc | null;
+  /** Second half of the arm when `options.U21DoubleArc`; its `start` is the split angle on U2. */
+  U21?: Arc | null;
   /** The wing hung off UTip — belongs to the edge that springs from LEye, but named for where it
    * sits, not where it started. */
   U3: Arc | null;
 
   L1: Arc | null;
   L2: Arc | null;
+  L21?: Arc | null;
   /** The wing hung off LTip — belongs to the edge that springs from UEye. */
   L3: Arc | null;
 
@@ -594,6 +599,8 @@ export const DefaultParams: EnricoCerutiParams = {
     C21DoubleArc: false,
     C11DoubleArc: false,
     L31DoubleArc: false,
+    U21DoubleArc: false,
+    L21DoubleArc: false,
     ucCornerSharpness: 0,
     lcCornerSharpness: 0,
   }

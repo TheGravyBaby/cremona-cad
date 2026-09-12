@@ -19,7 +19,7 @@ import { EnricoCerutiParams } from '../../ceruti-types';
  * tip is where the cut says it is. Those hold for any f-hole, not just this one.
  */
 
-type Shape = 'plain' | 'extended' | 'short';
+type Shape = 'plain' | 'extended' | 'short' | 'compound';
 
 const solve = (shape: Shape): EnricoCerutiParams => {
   const p = defaultViolin();
@@ -45,6 +45,17 @@ const solve = (shape: Shape): EnricoCerutiParams => {
     p.fHoles!.U2!.r = p.fHoles!.U1!.r / 2;
     p.fHoles!.L1!.end += 0.3;
     p.fHoles!.L2!.r = p.fHoles!.L1!.r * 0.75;
+    calculateFholeContours(p);
+  }
+
+  if (shape === 'compound') {
+    // split each arm in two, one tightening and one opening, so the stem arc lands on the
+    // second half. the seed pass leaves the outline alone; the radii are what move it
+    p.options.U21DoubleArc = true;
+    p.options.L21DoubleArc = true;
+    calculateFholeContours(p);
+    p.fHoles!.U21!.r = p.fHoles!.U2!.r * 0.6;
+    p.fHoles!.L21!.r = p.fHoles!.L2!.r * 1.4;
     calculateFholeContours(p);
   }
 
@@ -126,8 +137,8 @@ describe('f-hole contours', () => {
 const edgesOf = (p: EnricoCerutiParams): { name: string; chain: (Arc | null)[] }[] => {
   const f = p.fHoles!;
   return [
-    { name: 'springing from UEye', chain: [f.U1, f.U2, f.S2, f.S4, f.L3] },
-    { name: 'springing from LEye', chain: [f.L1, f.L2, f.S3, f.S1, f.U3] },
+    { name: 'springing from UEye', chain: [f.U1, f.U2, p.options.U21DoubleArc ? f.U21! : null, f.S2, f.S4, f.L3] },
+    { name: 'springing from LEye', chain: [f.L1, f.L2, p.options.L21DoubleArc ? f.L21! : null, f.S3, f.S1, f.U3] },
   ];
 };
 
@@ -142,8 +153,9 @@ describe('f-hole contour properties', () => {
     plain: 'with the plain default',
     extended: 'with the shoulders extended and a stem arc pinned',
     short: 'with the shoulders stopped short of their apex',
+    compound: 'with both arms split in two',
   };
-  for (const shaped of ['plain', 'extended', 'short'] as const) {
+  for (const shaped of ['plain', 'extended', 'short', 'compound'] as const) {
     const label = labels[shaped];
 
     it(`runs every joint tangent-continuous, ${label}`, () => {
@@ -173,8 +185,11 @@ describe('f-hole contour properties', () => {
     });
 
     it(`seats each shoulder on its own eye and the outline on its own bound, ${label}`, () => {
-      const f = solve(shaped).fHoles!;
-      for (const [eye, shoulder, arm, rise, side] of [[f.UEye!, f.U1!, f.U2!, f.URise!, 1], [f.LEye!, f.L1!, f.L2!, f.LRise!, -1]] as const) {
+      const p = solve(shaped);
+      const f = p.fHoles!;
+      const upperArm2 = p.options.U21DoubleArc ? f.U21! : null;
+      const lowerArm2 = p.options.L21DoubleArc ? f.L21! : null;
+      for (const [eye, shoulder, arm, arm2, rise, side] of [[f.UEye!, f.U1!, f.U2!, upperArm2, f.URise!, 1], [f.LEye!, f.L1!, f.L2!, lowerArm2, f.LRise!, -1]] as const) {
         // tangent internally to the eye: centres one radius difference apart
         expect(dist(shoulder, eye)).toBeCloseTo(shoulder.r - eye.r, 6);
         // and its start is that very tangency, so the eye rim hands the outline over
@@ -185,11 +200,12 @@ describe('f-hole contour properties', () => {
         // apex on the bound, and nothing drawn along shoulder or arm crosses it
         const extreme = side * Math.PI / 2;
         const bound = eye.y + side * (eye.r + rise);
-        const shoulderReaches = shoulder.end <= extreme;
-        expect(pointOnCircle(shoulderReaches ? shoulder : arm, extreme).y).toBeCloseTo(bound, 6);
-        const farthest = Math.max(...[shoulder, arm].flatMap(a => sampleArc(a).map(pt => side * (pt.y - bound))));
+        const chain = [shoulder, arm, arm2].filter((a): a is Arc => !!a);
+        const owner = chain.find(a => a.end <= extreme)!;
+        expect(pointOnCircle(owner, extreme).y).toBeCloseTo(bound, 6);
+        const farthest = Math.max(...chain.flatMap(a => sampleArc(a).map(pt => side * (pt.y - bound))));
         expect(farthest).toBeLessThan(1e-6);
-        if (shaped === 'short') expect(shoulderReaches, 'short scenario must stop the shoulder short').toBe(false);
+        if (shaped === 'short') expect(owner, 'short scenario must stop the shoulder short').not.toBe(shoulder);
       }
     });
 
@@ -215,6 +231,23 @@ describe('f-hole contour properties', () => {
     });
 
   }
+
+  it('leaves the outline alone when an arm is split, until its radius moves', () => {
+    const plain = solve('plain');
+    const split = solve('plain');
+    split.options.U21DoubleArc = true;
+    split.options.L21DoubleArc = true;
+    calculateFholeContours(split);
+
+    // the second half seeds on the arm's own circle, so the stem arcs it feeds don't move
+    for (const key of ['U2', 'L2'] as const) {
+      const second = split.fHoles![key === 'U2' ? 'U21' : 'L21']!;
+      expect(dist(second, plain.fHoles![key]!)).toBeCloseTo(0, 6);
+      expect(second.r).toBeCloseTo(plain.fHoles![key]!.r, 6);
+    }
+    expect(geometryDiff(round4(split.fHoles!.S2), round4(plain.fHoles!.S2), 1e-9)).toEqual([]);
+    expect(geometryDiff(round4(split.fHoles!.S3), round4(plain.fHoles!.S3), 1e-9)).toEqual([]);
+  });
 
   it('holds all four stem arcs to the one radius the stem was pinned at, once shaped', () => {
     const bootstrap = solve('plain').fHoles!;

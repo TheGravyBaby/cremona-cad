@@ -628,13 +628,17 @@ export function setContourDefaults(p: EnricoCerutiParams) {
 // in this situation, it is not the shoulder that hits the upper peak, but the arm
 // this method solves the difference in bounds, we can simply take he difference in height
 // and get a new bounds for the shoulder height
-function shoulderReach(shoulder: Arc, arm: Arc, extreme: number): number {
+function shoulderReach(shoulder: Arc, arm: Arc, arm2: Arc | null, extreme: number): number {
   if (shoulder.end <= extreme) return shoulder.r;
 
   // sin of the shoulder represents the y component of the rise 
   // multiply by the difference in the circles yields the rise in the arm
   let armCentreRise = (shoulder.r - arm.r) * Math.abs(Math.sin(shoulder.end));
-  return armCentreRise + arm.r;
+  if (!arm2 || arm2.start <= extreme) return armCentreRise + arm.r;
+
+  // a compound arm split before the peak hands it on once more, by the same rule
+  let arm2CentreRise = armCentreRise + (arm.r - arm2.r) * Math.abs(Math.sin(arm2.start));
+  return arm2CentreRise + arm2.r;
 }
 
 export function calculateFholeContours(p: EnricoCerutiParams): void {
@@ -649,9 +653,15 @@ export function calculateFholeContours(p: EnricoCerutiParams): void {
 
   // first the upper curve that connects to the eye
   try {
+    // a compound arm seeds on the arm's own circle, split halfway along the sweep the arm last
+    // drew, so switching it on changes nothing until a number does
+    if (p.options.U21DoubleArc)
+      p.fHoles.U21 ??= new Arc(0, 0, p.fHoles.U2.r, (p.fHoles.U2.start + p.fHoles.U2.end) / 2)
+    let upperArm2 = p.options.U21DoubleArc ? p.fHoles.U21! : null;
+
     // first we need to determine the placement of the arc that connects to each eye
     let upperBound = p.fHoles.UEye.y + p.fHoles.UEye.r + p.fHoles.URise
-    let upperShoulderY = upperBound - shoulderReach(p.fHoles.U1, p.fHoles.U2, Math.PI / 2)
+    let upperShoulderY = upperBound - shoulderReach(p.fHoles.U1, p.fHoles.U2, upperArm2, Math.PI / 2)
     let upperShoulderX = lineCircleIntersectionWithTolerance(
       { m: 0, y: upperShoulderY, x: 0 },
       { x: p.fHoles.UEye.x, y: p.fHoles.UEye.y, r: Math.abs(p.fHoles.U1.r - p.fHoles.UEye.r) },
@@ -667,13 +677,22 @@ export function calculateFholeContours(p: EnricoCerutiParams): void {
     let upperArm = inscribeCircleWithinCircle(upperShoulder, p.fHoles.U2.r, upperShoulder.end)
     p.fHoles.U2 = new Arc(upperArm.x, upperArm.y, upperArm.r, upperShoulder.end, 0);
 
-    let S2 = solveTangentCircleAndLine(outerStemLine, p.fHoles.U2, p.fHoles.stem.arcR, true, 1, p.fHoles.stem.center);
-    let S2U2Intersect = circleCircleIntersections(S2, p.fHoles.U2);
+    // the arc the stem arc has to reach: the arm, or its second half once split
+    let upperStemReach = p.fHoles.U2;
+    if (upperArm2) {
+      p.fHoles.U2.end = upperArm2.start;
+      let secondArm = inscribeCircleWithinCircle(p.fHoles.U2, upperArm2.r, upperArm2.start)
+      p.fHoles.U21 = new Arc(secondArm.x, secondArm.y, secondArm.r, upperArm2.start, 0);
+      upperStemReach = p.fHoles.U21;
+    }
+
+    let S2 = solveTangentCircleAndLine(outerStemLine, upperStemReach, p.fHoles.stem.arcR, true, 1, p.fHoles.stem.center);
     let S2StemIntersect = lineCircleIntersectionWithTolerance(outerStemLine, S2); // we are just kissing the line, sometimes we miss due to floating points
     let S2StemEndAngle = angleFromCenter(S2, S2StemIntersect[0])
 
-    p.fHoles.U2.end = angleFromCenter(p.fHoles.U2, S2U2Intersect[0]);
-    p.fHoles.S2 = new Arc(S2.x, S2.y, S2.r, p.fHoles.U2.end, S2StemEndAngle)
+    // tangent by construction, so the join sits on the line of centres: one angle serves both circles
+    upperStemReach.end = angleFromCenter(S2, upperStemReach);
+    p.fHoles.S2 = new Arc(S2.x, S2.y, S2.r, upperStemReach.end, S2StemEndAngle)
   } catch (e) {
     error("Upper arm calculation error", "Error")
   }
@@ -699,8 +718,12 @@ export function calculateFholeContours(p: EnricoCerutiParams): void {
 
   // now the lower arm, upside down: bound drops below the eye, and the arm meets the inner stem
   try {
+    if (p.options.L21DoubleArc)
+      p.fHoles.L21 ??= new Arc(0, 0, p.fHoles.L2.r, (p.fHoles.L2.start + p.fHoles.L2.end) / 2)
+    let lowerArm2 = p.options.L21DoubleArc ? p.fHoles.L21! : null;
+
     let lowerBound = p.fHoles.LEye.y - p.fHoles.LEye.r - p.fHoles.LRise
-    let lowerShoulderY = lowerBound + shoulderReach(p.fHoles.L1, p.fHoles.L2, -Math.PI / 2)
+    let lowerShoulderY = lowerBound + shoulderReach(p.fHoles.L1, p.fHoles.L2, lowerArm2, -Math.PI / 2)
     let lowerShoulderX = lineCircleIntersectionWithTolerance(
       { m: 0, y: lowerShoulderY, x: 0 },
       { x: p.fHoles.LEye.x, y: p.fHoles.LEye.y, r: Math.abs(p.fHoles.L1.r - p.fHoles.LEye.r) },
@@ -715,13 +738,20 @@ export function calculateFholeContours(p: EnricoCerutiParams): void {
     let lowerArm = inscribeCircleWithinCircle(lowerShoulder, p.fHoles.L2.r, lowerShoulder.end)
     p.fHoles.L2 = new Arc(lowerArm.x, lowerArm.y, lowerArm.r, lowerShoulder.end, 0);
 
-    let S3 = solveTangentCircleAndLine(innerStemLine, p.fHoles.L2, p.fHoles.stem.arcR, true, -1, p.fHoles.stem.center);
-    let S3L2Intersect = circleCircleIntersections(S3, p.fHoles.L2);
+    let lowerStemReach = p.fHoles.L2;
+    if (lowerArm2) {
+      p.fHoles.L2.end = lowerArm2.start;
+      let secondArm = inscribeCircleWithinCircle(p.fHoles.L2, lowerArm2.r, lowerArm2.start)
+      p.fHoles.L21 = new Arc(secondArm.x, secondArm.y, secondArm.r, lowerArm2.start, 0);
+      lowerStemReach = p.fHoles.L21;
+    }
+
+    let S3 = solveTangentCircleAndLine(innerStemLine, lowerStemReach, p.fHoles.stem.arcR, true, -1, p.fHoles.stem.center);
     let S3StemIntersect = lineCircleIntersectionWithTolerance(innerStemLine, S3);
     let S3StemEndAngle = angleFromCenter(S3, S3StemIntersect[0])
 
-    p.fHoles.L2.end = angleFromCenter(p.fHoles.L2, S3L2Intersect[0]);
-    p.fHoles.S3 = new Arc(S3.x, S3.y, S3.r, p.fHoles.L2.end, S3StemEndAngle)
+    lowerStemReach.end = angleFromCenter(S3, lowerStemReach);
+    p.fHoles.S3 = new Arc(S3.x, S3.y, S3.r, lowerStemReach.end, S3StemEndAngle)
   } catch (e) {
     error("Lower arm calculation error", "Error")
   }
