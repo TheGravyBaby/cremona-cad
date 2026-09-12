@@ -87,15 +87,16 @@ describe.each(PANELS)('%s panel', (_name, Ctor) => {
     expect(second.paths).toEqual(first.paths);
   });
 
-  // 20s like the arching sweeps: the mould panel boolean-diffs a whole plate per template, which
-  // sits close enough to vitest's 5s default to fail on a loaded machine. Narrowing the sweep to
-  // fit the default would mean dropping templates, which is the thing the test is for.
-  it('draws every bundled instrument, not just the default', () => {
-    for (const key of templateKeys()) {
-      const drawn = recordLayers(panel(Ctor as any, templateViolin(key)).buildRun());
-      expect(drawn.elements.length, `${key} drew nothing`).toBeGreaterThan(0);
-    }
-  }, 20000);
+  // One test per template rather than one test looping over all of them — the
+  // mould panel boolean-diffs a whole plate per template, and that used to sit
+  // close enough to vitest's 5s default (bundled into one shared timeout) to
+  // time out on a loaded machine. Splitting means each template gets its own
+  // budget and its own pass/fail, and the corpus can keep growing without this
+  // needing a bigger override to match.
+  it.each(templateKeys())('draws %s, not just the default', key => {
+    const drawn = recordLayers(panel(Ctor as any, templateViolin(key)).buildRun());
+    expect(drawn.elements.length, `${key} drew nothing`).toBeGreaterThan(0);
+  });
 });
 
 describe('view flags gate what is drawn', () => {

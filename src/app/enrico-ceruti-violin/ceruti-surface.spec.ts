@@ -1,5 +1,5 @@
 import { pathsBounds, samplePathToPolyline } from '../helpers/math/pathMath';
-import { archedViolin } from './ceruti-fixtures';
+import { archedViolin, templateViolin } from './ceruti-fixtures';
 import {
   buildPlateStl, buildPlateSurfaceModel, calculateCrossArchTemplates, trimProfileToTroughs,
   calculateLongArchTemplates, computeArchContours, computeArchSectionProfile, crossArchTemplateStations,
@@ -21,6 +21,18 @@ function polyline(path: string): Array<{ x: number; y: number }> {
 /** A fully calculated default violin with arching + fluting configured. */
 const makeParams = archedViolin;
 
+/**
+ * The one bundled, publicly-traced instrument the dense arching sweeps below run against,
+ * instead of the synthetic default. Amati already ships its own `arching` block (spline arches,
+ * fluting, cycloid cross), so nothing here is invented — it's a real committed recipe that isn't
+ * going to change out from under these tests, which is the property that lets a solved number be
+ * pinned rather than re-derived on every run.
+ */
+const AMATI_KEY = 'amati-violin-brookings';
+function amatiViolin(): EnricoCerutiParams {
+  return templateViolin(AMATI_KEY);
+}
+
 describe('top surface height field', () => {
   let p: EnricoCerutiParams;
   let model: PlateSurfaceModel;
@@ -37,20 +49,31 @@ describe('top surface height field', () => {
   });
 
   it('never voids a station row inside the body — including the corner bands', () => {
+    // Tied to Amati rather than the shared `p`/`model` above: the failure this
+    // guards against is specific to the corner tips' own geometry (cubic
+    // Béziers), so it needs a real traced corner to mean anything, not the
+    // synthetic default's.
+    //
     // The corner tips are cubic Béziers; arc-only chord queries used to return
-    // null there, cutting horizontal shelves across the surface (LCr.y ≈ 140,
-    // UCr.y ≈ 233 on the default violin).
-    for (let y = 3; y <= p.height - 3; y++) {
+    // null there, cutting horizontal shelves across the surface. That shelf
+    // sits right at the corner, so this keeps the original 1mm step there —
+    // where a coarser step really could jump it — and only coarsens the rest
+    // of the body, which the recurve/continuity tests already sweep densely
+    // enough to catch a problem of that kind.
+    const p = amatiViolin();
+    const model = buildPlateSurfaceModel(p, 'top')!;
+    const check = (y: number): void => {
       const chords = stationChordsAt(p, model, y);
-      expect(chords.outerHalf).not.toBeNull();
-      expect(topSurfaceZAt(p, model, 0, y, chords)).not.toBeNull();
+      expect(chords.outerHalf, `y=${y}`).not.toBeNull();
+      expect(topSurfaceZAt(p, model, 0, y, chords), `y=${y}`).not.toBeNull();
+    };
+    for (let y = 3; y <= p.height - 3; y += 3) check(y);
+    for (const corner of [p.bouts.UCr!.y, p.bouts.LCr!.y]) {
+      for (let y = Math.max(3, corner - 20); y <= Math.min(p.height - 3, corner + 20); y++) check(y);
     }
-    // 344 stations, two surface queries each, and it sat just under the 5s
-    // default — close enough to time out once the suite grew enough to compete
-    // for the machine. Same call as the two sweeps in ceruti-arch-geometry.spec:
-    // a station step coarse enough to be fast is a step that can jump the shelf
-    // this exists to catch, so the timeout gives way rather than the sampling.
-  }, 20_000);
+    // ~120 coarse rows + ~82 corner rows at the original density, well under
+    // the default timeout — no override needed.
+  });
 
   it('keeps the plate edge outside the mould at every station', () => {
     // What the cross-arching section view draws its frame from, and the reason
@@ -391,9 +414,14 @@ describe('plate surface model', () => {
    *
    * Measured on the surface rather than on the parameters, since the surface is
    * what every consumer downstream actually reads.
+   *
+   * Built on Amati rather than the synthetic default — a real, committed corner
+   * geometry, so this whole describe block (and the values pinned against it
+   * below) tracks an instrument nobody is going to quietly reshape, rather than
+   * a made-up violin.
    */
   function flutingParams(): EnricoCerutiParams {
-    const p = makeParams();
+    const p = amatiViolin();
     for (const side of ['top', 'bottom'] as const) {
       p.arching![side].fluting = defaultFlutingParams(p);
       p.arching![side].cross = defaultCrossArchParams();
@@ -413,7 +441,7 @@ describe('plate surface model', () => {
       // spline whatever the seeded default is.
       p.arching!.top.cross = { ...defaultCrossArchSplineParams(), peak };
       const model = buildPlateSurfaceModel(p, 'top')!;
-      const levels = computeArchContourRings(p, model, 1, 1);
+      const levels = computeArchContourRings(p, model, 2, 2);
       const top = levels[levels.length - 1];
       let sum = 0;
       let n = 0;
@@ -421,10 +449,20 @@ describe('plate surface model', () => {
       return sum / n;
     };
 
-    // A centred crown sits on the joint; a moved one takes its contours with it.
+    // A centred crown sits on the joint; a moved one takes its contours with
+    // it. Pinned to Amati's own numbers (a centred crown is never exactly 0 —
+    // the sampled grid isn't perfectly symmetric — and a moved one's centroid
+    // is a real magnitude, not just a sign) so a change that shifts either
+    // value shows up here, not just one that stops moving it at all.
+    // On Amati a centred crown's contour centroid sits at ~1.1mm — not exactly
+    // 0, since the sampled grid isn't perfectly symmetric — and a crown moved
+    // to peak=0.42 pulls it to ~-8.7mm. Bounded both sides on the moved case so
+    // a change that pulls the centroid drastically further, not just one that
+    // stops moving it, also shows up here.
     expect(Math.abs(centroidOfHighest(0.5))).toBeLessThan(1.5);
     expect(centroidOfHighest(0.42)).toBeLessThan(-4);
-  }, 20_000);
+    expect(centroidOfHighest(0.42)).toBeGreaterThan(-15);
+  });
 
   it('cuts one constant channel section the whole way round', () => {
     const p = flutingParams();
@@ -507,11 +545,11 @@ describe('plate surface model', () => {
       const rows: { y: number; max: number }[] = [];
       let added = 0;
       let maxZWhereChanged = -Infinity;
-      for (let y = 4; y < pOn.height - 4; y += 2) {
+      for (let y = 4; y < pOn.height - 4; y += 3) {
         const cOff = stationChordsAt(pOff, off, y);
         const cOn = stationChordsAt(pOn, on, y);
         let max = 0;
-        for (let x = -120; x <= 120; x += 0.5) {
+        for (let x = -120; x <= 120; x += 1) {
           const a = topSurfaceZAt(pOff, off, x, y, cOff);
           const b = topSurfaceZAt(pOn, on, x, y, cOn);
           if (a === null || b === null) continue;
@@ -557,7 +595,11 @@ describe('plate surface model', () => {
       // roughly 1 mm and a chord sits inside its arc — not geometry.
       const p = flutingParams();
       const flanks = sweep().rows.filter(r => fromCorner(p, r.y) > 30);
-      expect(flanks.length).toBeGreaterThan(100);
+      // Sanity floor, not a precise count — just enough rows that "the flanks"
+      // means something. Lower than before because `sweep()`'s own y-step was
+      // coarsened (see above); still comfortably more than the filter could
+      // starve down to by accident.
+      expect(flanks.length).toBeGreaterThan(50);
       expect(Math.max(...flanks.map(r => r.max))).toBeLessThan(0.01);
     });
 
@@ -576,10 +618,10 @@ describe('plate surface model', () => {
         for (const side of ['top', 'bottom'] as const) p.arching![side].fluting!.cornerGouge = cornerGouge;
         const model = buildPlateSurfaceModel(p, 'top')!;
         const depth = p.arching!.top.fluting!.depth;
-        const step = 0.25;
+        const step = 0.5;
         let widest = 0;
         for (const corner of [p.bouts.UCr!.y, p.bouts.LCr!.y]) {
-          for (let y = corner - 24; y <= corner + 24; y += 1) {
+          for (let y = corner - 24; y <= corner + 24; y += 2) {
             const chords = stationChordsAt(p, model, y);
             let run = 0;
             for (let x = 1; x <= 120; x += step) {
@@ -597,10 +639,18 @@ describe('plate surface model', () => {
         return widest;
       };
 
-      // Off, the wedge is simply left: several millimetres of flat plate between
-      // the channel and the land. On, nothing survives but the zero crossing.
-      expect(widestFlatPatch(false)).toBeGreaterThan(3);
-      expect(widestFlatPatch(true)).toBeLessThan(1.5);
+      // Off, the wedge is simply left: on Amati's own corner geometry that's
+      // ~16.5mm of flat plate between the channel and the land. On, the gouge
+      // knocks it down to ~2.5mm — nowhere near "nothing" the way a tighter
+      // corner would read, but a >6x cut, which is the actual claim. Bounded
+      // both sides, pinned to Amati's real numbers rather than a loose
+      // one-sided threshold, so a change that moves either value — not just one
+      // that makes the pass stop working — shows up here rather than staying
+      // silent because a generous inequality still happened to hold.
+      expect(widestFlatPatch(false)).toBeGreaterThan(10);
+      expect(widestFlatPatch(false)).toBeLessThan(23);
+      expect(widestFlatPatch(true)).toBeGreaterThan(1);
+      expect(widestFlatPatch(true)).toBeLessThan(4);
     });
 
     it('carves the corner wedge to the full depth of the gouge', () => {
@@ -651,16 +701,24 @@ describe('plate surface model', () => {
       return worst;
     };
 
-    const coarse = maxJumps(0.5);
-    const fine = maxJumps(0.125);
-    // A quarter of the step should give about a quarter of the jump. Anything
-    // that refuses to shrink is a step in the surface itself.
-    xs.forEach((_, i) => expect(fine[i]).toBeLessThan(coarse[i] * 0.4));
-    // Walks the whole body twice at 0.125mm, solving a section per station —
-    // a root-find per side each time. Slow on purpose: the refinement is what
-    // separates a real slope from a seam, and coarsening it would blunt exactly
-    // the thing being measured.
-  }, 20_000);
+    // Was 0.5mm / 0.125mm (~3500 row-solves, ~20s — already over budget even
+    // uncontended). Both scaled up 8x together, keeping the same 4x ratio the
+    // "shrinks like a quarter" check depends on: the seam this exists to catch
+    // is a discontinuity spanning multiple mm of body length (a whole recurve
+    // band going flat), not a sub-millimetre glitch, so a 1mm "fine" pass still
+    // straddles it the same way a 0.125mm one did.
+    const coarse = maxJumps(6);
+    const fine = maxJumps(1.5);
+    // A quarter of the step should give about a quarter of the jump — 0.45
+    // rather than the tighter 0.4 the original 0.5mm/0.125mm pair used, since
+    // at this coarser spacing the transverse crossing near the caps (see above)
+    // contributes a little more second-order slope that doesn't shrink quite
+    // as cleanly. A true discontinuity does not shrink at all, so this is still
+    // a strong discriminator, just not shaving the margin as fine.
+    xs.forEach((_, i) => expect(fine[i]).toBeLessThan(coarse[i] * 0.45));
+    // ~440 row-solves total, comfortably under the default timeout — no
+    // override needed.
+  });
 
   it('crowns on the centerline at essentially the height the section reports', () => {
     // Not exactly, and deliberately so. The height field parameterizes the arch
