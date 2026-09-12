@@ -8,6 +8,7 @@ import { CERUTI_TEMPLATES } from './ceruti-templates';
 import { isLocSourced } from './templates/corpus';
 import { LOCAL_TEMPLATES } from './templates/local/generated-index';
 import { defineOuterPath, defineOuterPurflingPath, definePurflingPath } from './ceruti-paths';
+import { ensureFholePath, getPath } from './ceruti-calcs';
 import { normalizeArchingParams } from './ceruti-arching';
 import { renderBounds } from './renders/guides.render';
 import { PANEL_KEY, RECIPE_KEY, readWorkingState, writeWorkingState } from '../helpers/workingStorage';
@@ -20,7 +21,7 @@ import { MouldPanel } from './panels/mould-panel/mould-panel';
 import { FlutingPanel } from './panels/fluting-panel/fluting-panel';
 import { LongArchingPanel } from './panels/long-arching-panel/long-arching-panel';
 import { CrossArchingPanel } from './panels/cross-arching-panel/cross-arching-panel';
-import { FHolePlacementPanel } from './panels/f-hole-placement-panel/f-hole-placement-panel';
+import { defaultFHolePlacement, FHolePlacementPanel } from './panels/f-hole-placement-panel/f-hole-placement-panel';
 import { FHoleContoursPanel } from './panels/f-hole-contours-panel/f-hole-contours-panel';
 import { ExportPanel } from './panels/export-panel/export-panel';
 import { RecipeToolbarComponent } from '../recipe-toolbar/recipe-toolbar';
@@ -210,6 +211,11 @@ export class CerutiViolin extends RecipeComponentBase {
       if (purflingPath) renders.push(renderPath(purflingPath, this.colors.innerTrace, 1));
       const outerPurflingPath = defineOuterPurflingPath(p, offset);
       if (outerPurflingPath) renders.push(renderPath(outerPurflingPath, this.colors.innerTrace, 1));
+
+      p.fHoles ??= defaultFHolePlacement(p);
+      ensureFholePath(p, this.d.paths);
+      renders.push(renderPath(getPath(this.d.paths, 'fHole'), this.colors.outerTrace));
+
       return renders;
     } catch {
       return [silhouette];

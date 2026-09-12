@@ -10,7 +10,7 @@
         </label>
         <label class="field-cell"></label>
         <label class='field-cell'>
-            <span class="field-title">U to L</span>
+            <span class="field-title">Ur to Lr</span>
             <div class="basic-display" aria-label="Upper bout to upper bout width ratio value">{{
                 nearestFraction(params.ratios.FUtoL) }}</div>
         </label>
@@ -30,6 +30,11 @@
                 min="0" [ngModel]="round2(params.fHoles!.UEye!.y)"
                 (ngModelChange)="params.fHoles!.UEye!.y = $event; onChange()"
                 [style.borderColor]="colors.fHoleUpperMuted" />
+        </label>
+         <label class='field-cell'>
+            <span class="field-title">Eye Distance</span>
+            <div class="basic-display" aria-label="Upper bout to upper bout width ratio value">{{
+                distanceBetweenEyes() }}</div>
         </label>
     </div>
 
@@ -116,6 +121,11 @@
                 min="0" [ngModel]="round2(params.fHoles!.LEye!.y)"
                 (ngModelChange)="params.fHoles!.LEye!.y = $event; onChange()"
                 [style.borderColor]="colors.fHoleLowerMuted" />
+        </label>
+        <label class='field-cell'>
+            <span class="field-title">Eye Distance</span>
+            <div class="basic-display" aria-label="Upper bout to upper bout width ratio value">{{
+                distanceBetweenEyes() }}</div>
         </label>
     </div>
 

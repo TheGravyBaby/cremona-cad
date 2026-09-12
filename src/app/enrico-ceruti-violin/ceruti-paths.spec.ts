@@ -1,5 +1,7 @@
-import { defineFlutingPath, defineInnerPath, defineOffsetArcs, defineOuterPath, defineOuterPurflingPath, definePurflingPath } from './ceruti-paths';
-import { layoutFrom, templateKeys, templateViolin, violinFromRecipe } from './ceruti-fixtures';
+import { defineFholePath, defineFlutingPath, defineInnerPath, defineOffsetArcs, defineOuterPath, defineOuterPurflingPath, definePurflingPath } from './ceruti-paths';
+import { defaultViolin, layoutFrom, templateKeys, templateViolin, violinFromRecipe } from './ceruti-fixtures';
+import { calculateFholeContours } from './ceruti-calcs';
+import { defaultFHolePlacement } from './panels/f-hole-placement-panel/f-hole-placement-panel';
 import { EnricoCerutiParams } from './ceruti-types';
 import { pointOnCircle } from '../helpers/math/simpleGeometry';
 import { Pt } from '../models/types';
@@ -86,6 +88,27 @@ describe('the arcs behind the purfling line', () => {
     const meets = arcs.some(a => a !== flank[0]
       && Math.hypot(a.x + a.r * Math.cos(a.end) - tip.x, a.y + a.r * Math.sin(a.end) - tip.y) < 1e-6);
     expect(meets, 'the viol flank ends where nothing else does').toBe(true);
+  });
+});
+
+describe('the f-hole outline', () => {
+  it('draws two separate closed loops, one per side', () => {
+    const p = defaultViolin();
+    p.fHoles = defaultFHolePlacement(p);
+    calculateFholeContours(p);
+
+    expect(subpaths(defineFholePath(p))).toBe(2);
+  });
+
+  it('mirrors the treble-side hole onto the bass side', () => {
+    const p = defaultViolin();
+    p.fHoles = defaultFHolePlacement(p);
+    calculateFholeContours(p);
+
+    const trebleTip = p.fHoles!.UTip!;
+    const hits = endpoints(defineFholePath(p))
+      .some(pt => Math.hypot(pt.x - -trebleTip.x, pt.y - trebleTip.y) < 1e-6);
+    expect(hits, 'the mirrored UTip lands on the bass-side loop').toBe(true);
   });
 });
 

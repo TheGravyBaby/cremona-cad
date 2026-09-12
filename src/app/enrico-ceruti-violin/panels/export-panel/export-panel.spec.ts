@@ -109,6 +109,67 @@ describe('previewing an export', () => {
   });
 });
 
+describe('f-holes on the top plate only', () => {
+  it('seeds placement and draws both mirrored holes when previewing the outer trace', () => {
+    const panel = makePanel(defaultViolin());
+    panel.previewExport('outerTrace');
+
+    expect(panel.params.fHoles).toBeDefined();
+    // two separate closed loops in the cached path — one hole per side, not just the treble side
+    expect(panel.paths.find(e => e.key === 'fHole')?.path.match(/M/g)).toHaveLength(2);
+  });
+
+  it('leaves f-hole placement and the path cache untouched when previewing the back trace', () => {
+    const panel = makePanel(defaultViolin());
+    panel.previewExport('back');
+
+    expect(panel.params.fHoles).toBeUndefined();
+    expect(panel.paths.find(e => e.key === 'fHole')).toBeUndefined();
+  });
+});
+
+/** Segment endpoints, same extraction ceruti-paths.spec.ts uses on drafting-side `d` strings. */
+function pathEndpoints(d: string): { x: number; y: number }[] {
+  return (d.match(/[MLACQ][^MLACQ]*/g) ?? []).map((seg: string) => {
+    const n = seg.slice(1).trim().split(/[\s,]+/).map(Number);
+    return { x: n[n.length - 2], y: n[n.length - 1] };
+  });
+}
+
+describe('the f-hole cutting template', () => {
+  it('draws exactly one unmirrored hole, sized to its own bounds rather than the plan', async () => {
+    const p = defaultViolin();
+    const result = await captured(() => makePanel(p).downloadExport('fholeTemplate'));
+    const doc = new DOMParser().parseFromString(result!.text, 'image/svg+xml');
+    const paths = [...doc.querySelectorAll('path')];
+
+    expect(paths).toHaveLength(1);
+    expect(paths[0].getAttribute('d')?.match(/M/g)).toHaveLength(1);
+
+    const viewBox = doc.documentElement.getAttribute('viewBox')!.split(' ').map(Number);
+    expect(viewBox[2]).toBeLessThan(p.width);
+  });
+
+  it('actually lands inside the sheet it is sized to, not off at the hole\'s real plate position', async () => {
+    // The hole itself sits wherever it does on the plate — near the corner, so its own y can run
+    // into the hundreds of mm. A template sheet sized to the hole's bounds but never translated
+    // onto them draws a geometrically valid, entirely off-sheet path: a blank page, not a thrown
+    // error, which is why the SVG/PDF sizing tests above didn't already catch it.
+    const result = await captured(() => makePanel(archedViolin()).downloadExport('fholeTemplate'));
+    const doc = new DOMParser().parseFromString(result!.text, 'image/svg+xml');
+    const d = doc.querySelector('path')!.getAttribute('d')!;
+    const [vx, vy, vw, vh] = doc.documentElement.getAttribute('viewBox')!.split(' ').map(Number);
+
+    const tolerance = 1; // mm — the true bbox can bulge slightly past its arcs' own endpoints
+    for (const { x, y } of pathEndpoints(d)) {
+      expect(x).toBeGreaterThanOrEqual(vx - tolerance);
+      expect(x).toBeLessThanOrEqual(vx + vw + tolerance);
+      expect(y).toBeGreaterThanOrEqual(vy - tolerance);
+      expect(y).toBeLessThanOrEqual(vy + vh + tolerance);
+    }
+  });
+});
+
 describe('the SVG a download writes', () => {
   it.each(PLAIN_EXPORTS)('%s is a parseable sheet named after the recipe', async type => {
     const result = await captured(() => makePanel(defaultViolin()).downloadExport(type));

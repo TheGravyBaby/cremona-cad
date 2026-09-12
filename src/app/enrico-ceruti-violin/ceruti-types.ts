@@ -448,7 +448,7 @@ export interface ArchPlate {
  * type error. `purfling`/`outerPurfling` can legitimately be absent; read those with
  * `getPathOrNull`.
  */
-export type PathKey = 'inner' | 'top' | 'back' | 'purfling' | 'outerPurfling';
+export type PathKey = 'inner' | 'top' | 'back' | 'purfling' | 'outerPurfling' | 'fHole';
 
 /** One named, precalculated SVG path — the shared cache read by export. */
 export interface PathEntry {

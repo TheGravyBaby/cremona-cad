@@ -1,18 +1,20 @@
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { pointOnCircle } from '../../../helpers/math/simpleGeometry';
-import { combinePathStrings, pathsBounds } from '../../../helpers/math/pathMath';
+import { combinePathStrings, pathsBounds, translatePath } from '../../../helpers/math/pathMath';
 import { buildMirroredSvg, downloadFullPlanPdf, downloadSvgAsPdf, downloadSvgFile, PdfPage, SvgPathExport, SvgTextExport } from '../../../helpers/fileExporter';
 import { downloadDxfFile, DxfText } from '../../../helpers/dxfExporter';
 import { downloadStlFile } from '../../../helpers/stlExporter';
 import { renderPath, renderText } from '../../../helpers/renderFuncs';
 import { error } from '../../../shared/message-emitter';
-import { calculateCornerBlocks, calculateMould, calculateOuterArcs, ensureCenterBoutInnerPath, ensureOuterTracePaths, getPath, getPathOrNull } from '../../ceruti-calcs';
+import { calculateCornerBlocks, calculateMould, calculateOuterArcs, ensureCenterBoutInnerPath, ensureFholePath, ensureOuterTracePaths, getPath, getPathOrNull } from '../../ceruti-calcs';
+import { defineOneFholePath } from '../../ceruti-paths';
 import { defaultCrossArchParams, defaultFlutingParams } from '../../ceruti-arch-geometry';
 import { buildPlateSurfaceModel, buildPlateStl, calculateCrossArchTemplates, calculateLongArchTemplates, TemplateShape } from '../../ceruti-surface';
 import { CerutiColors, EnricoCerutiParams, PathEntry, PathKey } from '../../ceruti-types';
+import { defaultFHolePlacement } from '../f-hole-placement-panel/f-hole-placement-panel';
 
-type ExportType = 'innerTrace' | 'outerTrace' | 'back' | 'mould' | 'blocks' | 'crossArchTemplates' | 'longArchTemplates';
+type ExportType = 'innerTrace' | 'outerTrace' | 'back' | 'mould' | 'blocks' | 'crossArchTemplates' | 'longArchTemplates' | 'fholeTemplate';
 
 /** Templates are laid out in their own coordinate frame (not the violin's plan-view box), so their
  *  export sheet is sized from the actual combined geometry rather than the shared plan dimensions. */
@@ -60,6 +62,30 @@ export class ExportPanel implements OnInit {
   private ensureDerivedPaths(): void {
     ensureCenterBoutInnerPath(this.params, this.paths);
     ensureOuterTracePaths(this.params, this.paths);
+  }
+
+  /** Seeds f-hole placement if this recipe never opened those panels, same guard the dedicated
+   * f-hole panels use, then caches the mirrored pair under 'fHole'. Only the top plate carries
+   * f-holes, so callers gate this to the 'outerTrace'/'fholeTemplate' cases. */
+  private ensureFholes(): void {
+    this.params.fHoles ??= defaultFHolePlacement(this.params);
+    ensureFholePath(this.params, this.paths);
+  }
+
+  /**
+   * The single-hole cutting template, moved off the plate's real coordinates onto its own sheet.
+   * `defineOneFholePath` sits wherever the treble-side hole actually is on the plate (near the
+   * corner, so y is in the hundreds of mm) — every sheet frame in this file (`buildMirroredSvg`,
+   * `downloadSvgAsPdf`, `templatePage`) assumes its content is centred on x=0 and starts at y=0,
+   * same as `calculateCrossArchTemplates`/`calculateLongArchTemplates` already re-centre their own
+   * shapes before handing them here. Skipping this left the template page geometrically valid but
+   * entirely outside the sheet's viewBox — a blank page, not a thrown error.
+   */
+  private fholeTemplatePath(): string {
+    this.ensureFholes();
+    const raw = defineOneFholePath(this.params, false);
+    const bounds = pathsBounds([raw]);
+    return translatePath(raw, -(bounds.minX + bounds.maxX) / 2, -bounds.minY);
   }
 
   /**
@@ -125,7 +151,15 @@ export class ExportPanel implements OnInit {
         if (purflingPath) renders.push(renderPath(purflingPath, this.colors.innerTrace, 1));
         const outerPurflingPath = this.getPathOrNull('outerPurfling');
         if (outerPurflingPath) renders.push(renderPath(outerPurflingPath, this.colors.innerTrace, 1));
+        if (type === 'outerTrace') {
+          this.ensureFholes();
+          renders.push(renderPath(this.getPath('fHole'), this.colors.outerTrace));
+        }
         this.draftChange.emit(renders);
+        break;
+      }
+      case 'fholeTemplate': {
+        this.draftChange.emit([renderPath(this.fholeTemplatePath(), this.colors.outerTrace)]);
         break;
       }
       case 'mould': {
@@ -175,6 +209,10 @@ export class ExportPanel implements OnInit {
         if (purflingPath) paths.push({ d: purflingPath, stroke: 'black', fill: 'none', strokeWidth: '.5' });
         const outerPurflingPath = this.getPathOrNull('outerPurfling');
         if (outerPurflingPath) paths.push({ d: outerPurflingPath, stroke: 'black', fill: 'none', strokeWidth: '.5' });
+        if (type === 'outerTrace') {
+          this.ensureFholes();
+          paths.push({ d: this.getPath('fHole'), stroke: 'black', fill: 'none', strokeWidth: '.5' });
+        }
         break;
       }
       case 'mould':
@@ -183,6 +221,14 @@ export class ExportPanel implements OnInit {
       case 'blocks':
         paths = [{ d: combinePathStrings(this.cornerBlocks()), stroke: 'black', fill: 'none', strokeWidth: '.5' }];
         break;
+      case 'fholeTemplate': {
+        const onePath = this.fholeTemplatePath();
+        const bounds = pathsBounds([onePath]);
+        sheetWidth = bounds.width + TEMPLATE_SHEET_PAD;
+        sheetHeight = bounds.height + TEMPLATE_SHEET_PAD;
+        paths = [{ d: onePath, stroke: 'black', fill: 'none', strokeWidth: '.5' }];
+        break;
+      }
       case 'crossArchTemplates':
       case 'longArchTemplates': {
         if (!this.requireArching()) return;
@@ -234,6 +280,10 @@ export class ExportPanel implements OnInit {
         if (purflingPath) dxfPaths.push(purflingPath);
         const outerPurflingPath = this.getPathOrNull('outerPurfling');
         if (outerPurflingPath) dxfPaths.push(outerPurflingPath);
+        if (type === 'outerTrace') {
+          this.ensureFholes();
+          dxfPaths.push(this.getPath('fHole'));
+        }
         pathD = combinePathStrings(dxfPaths);
         break;
       }
@@ -242,6 +292,9 @@ export class ExportPanel implements OnInit {
         break;
       case 'blocks':
         pathD = combinePathStrings(this.cornerBlocks());
+        break;
+      case 'fholeTemplate':
+        pathD = this.fholeTemplatePath();
         break;
       case 'crossArchTemplates':
       case 'longArchTemplates': {
@@ -264,6 +317,7 @@ export class ExportPanel implements OnInit {
       innerTrace: 'Inner Contour',
       outerTrace: 'Outer Contour',
       mould: 'Mould Path',
+      fholeTemplate: 'F-Hole Template',
       crossArchTemplates: 'Cross Arch Templates',
       longArchTemplates: 'Long Arch Templates',
     };
@@ -285,6 +339,10 @@ export class ExportPanel implements OnInit {
         if (purflingPath) pdfPaths.push({ d: purflingPath, stroke: 'black', fill: 'none' });
         const outerPurflingPath = this.getPathOrNull('outerPurfling');
         if (outerPurflingPath) pdfPaths.push({ d: outerPurflingPath, stroke: 'black', fill: 'none' });
+        if (type === 'outerTrace') {
+          this.ensureFholes();
+          pdfPaths.push({ d: this.getPath('fHole'), stroke: 'black', fill: 'none' });
+        }
         break;
       }
       case 'mould':
@@ -293,6 +351,14 @@ export class ExportPanel implements OnInit {
       case 'blocks':
         pdfPaths = [{ d: combinePathStrings(this.cornerBlocks()), stroke: 'black', fill: 'none' }];
         break;
+      case 'fholeTemplate': {
+        const onePath = this.fholeTemplatePath();
+        const bounds = pathsBounds([onePath]);
+        sheetWidth = bounds.width + TEMPLATE_SHEET_PAD;
+        sheetHeight = bounds.height + TEMPLATE_SHEET_PAD;
+        pdfPaths = [{ d: onePath, stroke: 'black', fill: 'none' }];
+        break;
+      }
       case 'crossArchTemplates':
       case 'longArchTemplates': {
         if (!this.requireArching()) return;
@@ -332,6 +398,9 @@ export class ExportPanel implements OnInit {
 
     const purflingPath = this.getPathOrNull('purfling');
     const outerPurflingPath = this.getPathOrNull('outerPurfling');
+    const fholeTemplatePath = this.fholeTemplatePath();
+    const fholePath = this.getPath('fHole');
+    const fholeTemplateBounds = pathsBounds([fholeTemplatePath]);
 
     // Arching templates sit in their own coordinate frame, so their page is sized from the
     // actual combined geometry rather than the shared plan width/height used above.
@@ -367,6 +436,7 @@ export class ExportPanel implements OnInit {
           { d: this.getPath('top'), stroke: 'black', fill: 'none' },
           ...(purflingPath ? [{ d: purflingPath, stroke: 'black', fill: 'none' }] : []),
           ...(outerPurflingPath ? [{ d: outerPurflingPath, stroke: 'black', fill: 'none' }] : []),
+          { d: fholePath, stroke: 'black', fill: 'none' },
         ],
       },
       {
@@ -396,6 +466,14 @@ export class ExportPanel implements OnInit {
         width: p.width,
         height,
         paths: this.cornerBlocks().map((block: string) => ({ d: block, stroke: 'black', fill: 'none' })),
+      },
+      {
+        label: 'F-Hole Template',
+        fileName: baseName,
+        description,
+        width: fholeTemplateBounds.width + TEMPLATE_SHEET_PAD,
+        height: fholeTemplateBounds.height + TEMPLATE_SHEET_PAD,
+        paths: [{ d: fholeTemplatePath, stroke: 'black', fill: 'none' }],
       },
       // Arching templates need the arching modules built — omit these pages rather than
       // failing the whole plan when they haven't been opened yet.

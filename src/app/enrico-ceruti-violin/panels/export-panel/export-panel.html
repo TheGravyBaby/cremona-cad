@@ -80,6 +80,18 @@
         </div>
         <div class="export-row">
             <div class="export-row__label">
+                <span class="export-row__name">F-Hole Template</span>
+                <span class="export-row__desc">Single unmirrored f-hole, for cutting or tracing</span>
+            </div>
+            <div class="export-row__actions">
+                <button type="button" class="recipe-btn" (click)="previewExport('fholeTemplate')">Preview</button>
+                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('fholeTemplate')">SVG</button>
+                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('fholeTemplate')">PDF</button>
+                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadDxf('fholeTemplate')">DXF</button>
+            </div>
+        </div>
+        <div class="export-row">
+            <div class="export-row__label">
                 <span class="export-row__name">Long Arch Templates</span>
                 <span class="export-row__desc">Centerline profile strips, top and back</span>
             </div>

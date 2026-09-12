@@ -1,6 +1,6 @@
 import { circleCircleIntersections, findJoiningArcs } from "../helpers/math/draftMath";
 import { angleFromCenter, dist, pointOnCircle, offsetArcRadius, flipArcAboutY, flipPointAboutY, lineCircleIntersection, lineFromTwoPoints } from "../helpers/math/simpleGeometry";
-import { pathFromArc, pathFromLine, pathFromCornerCubic, unifyConnectedSvgPaths } from "../helpers/math/pathMath";
+import { pathFromArc, pathFromLine, pathFromCornerCubic, unifyConnectedSvgPaths, combinePathStrings } from "../helpers/math/pathMath";
 import { Arc, arcFromCircle, Pt, Rectangle } from "../models/types";
 import { error } from "../shared/message-emitter";
 import { EnricoCerutiParams } from "./ceruti-types";
@@ -813,5 +813,86 @@ export function defineFlutingPath(p: EnricoCerutiParams, offset: number, centerO
         if (top) paths.push(top);
     }
     return unifyConnectedSvgPaths(paths);
+}
+
+/**
+ * An eye's visible rim runs the long way around, from the point where its shoulder arc peels off
+ * tangentially to the point where the cut departs — the short arc between those two points is the
+ * notch the wing cuts into, and isn't drawn. `pathFromArc` always takes the short way, so this
+ * forces the complementary sweep instead — the path-string counterpart of `renderArcFromArc`'s
+ * `longArc` flag.
+ */
+function pathFromArcLongWay(arc: Arc): string {
+    const startPt = pointOnCircle(arc, arc.start);
+    const endPt = pointOnCircle(arc, arc.end);
+
+    const TWO_PI = Math.PI * 2;
+    const normalizedPositiveDiff = ((arc.end - arc.start) % TWO_PI + TWO_PI) % TWO_PI;
+    const largeArcFlag = 1;
+    const sweepFlag = normalizedPositiveDiff <= Math.PI ? 0 : 1;
+
+    return `M ${startPt.x} ${startPt.y} A ${arc.r} ${arc.r} 0 ${largeArcFlag} ${sweepFlag} ${endPt.x} ${endPt.y}`;
+}
+
+/**
+ * Stitches one f-hole's already-solved arcs (`calculateFholeContours` in ceruti-calcs.ts) into a
+ * single closed outline, the way `renderFholeContours` draws them but as one path string instead
+ * of ten colored segments — `flip` mirrors it to the bass side. The eye arcs aren't stored on
+ * `p.fHoles` — like `violNeckCap`'s fillet, they're cheap to re-derive from what's already solved,
+ * and it keeps the eye-rim geometry here with the rest of the path assembly rather than splitting
+ * it across two files.
+ *
+ * Exported (rather than folded into `defineFholePath`) for the cutting-template export, which
+ * wants one unmirrored hole on its own sheet, not the pair `defineFholePath` draws on the plate.
+ */
+export function defineOneFholePath(p: EnricoCerutiParams, flip: boolean): string {
+    const f = p.fHoles!;
+    const xf = flip ? flipArcAboutY : (arc: Arc) => arc;
+    const pxf = flip ? flipPointAboutY : (pt: Pt) => pt;
+
+    const upperEyeJoin = circleCircleIntersections(f.UEye!, f.U1!)[0];
+    const upperEyeArc = new Arc(f.UEye!.x, f.UEye!.y, f.UEye!.r, angleFromCenter(f.UEye!, upperEyeJoin), f.UCut!.angleOnEye!);
+    const upperCutPt = pointOnCircle(f.UEye!, f.UCut!.angleOnEye!);
+
+    const lowerEyeJoin = circleCircleIntersections(f.LEye!, f.L1!)[0];
+    const lowerEyeArc = new Arc(f.LEye!.x, f.LEye!.y, f.LEye!.r, angleFromCenter(f.LEye!, lowerEyeJoin), f.LCut!.angleOnEye!);
+    const lowerCutPt = pointOnCircle(f.LEye!, f.LCut!.angleOnEye!);
+
+    const outerStemTop = pointOnCircle(f.S2!, f.S2!.end);
+    const outerStemBottom = pointOnCircle(f.S4!, f.S4!.start);
+    const innerStemTop = pointOnCircle(f.S1!, f.S1!.start);
+    const innerStemBottom = pointOnCircle(f.S3!, f.S3!.end);
+
+    const paths = [
+        pathFromArcLongWay(xf(upperEyeArc)),
+        pathFromArc(xf(f.U1!)),
+        pathFromArc(xf(f.U2!)),
+        pathFromArc(xf(f.S2!)),
+        pathFromLine(pxf(outerStemTop), pxf(outerStemBottom)),
+        pathFromArc(xf(f.S4!)),
+        pathFromArc(xf(f.L3!)),
+        pathFromLine(pxf(f.LTip!), pxf(lowerCutPt)),
+        pathFromArcLongWay(xf(lowerEyeArc)),
+        pathFromArc(xf(f.L1!)),
+        pathFromArc(xf(f.L2!)),
+        pathFromArc(xf(f.S3!)),
+        pathFromLine(pxf(innerStemBottom), pxf(innerStemTop)),
+        pathFromArc(xf(f.S1!)),
+        pathFromArc(xf(f.U3!)),
+        pathFromLine(pxf(f.UTip!), pxf(upperCutPt)),
+    ];
+
+    return unifyConnectedSvgPaths(paths);
+}
+
+/**
+ * Both f-holes, as they sit on the actual plate — `p.fHoles` is authored once on the treble
+ * (positive-x) side, same as every bout arc, so the bass-side hole is its mirror rather than a
+ * second solve. The two loops don't meet, so they're joined by plain concatenation rather than
+ * `unifyConnectedSvgPaths`, which would (rightly) throw trying to stitch two disconnected shapes
+ * into one.
+ */
+export function defineFholePath(p: EnricoCerutiParams): string {
+    return combinePathStrings([defineOneFholePath(p, false), defineOneFholePath(p, true)]);
 }
 
