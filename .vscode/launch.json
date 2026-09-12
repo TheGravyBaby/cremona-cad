@@ -8,8 +8,7 @@
       "request": "launch",
       "preLaunchTask": "npm: start",
       "url": "http://localhost:4200/",
-      "runtimeExecutable": "/snap/bin/chromium",
-      "userDataDir": "/home/aargraves/chromium-debug-profile"
+      "userDataDir": "${workspaceFolder}/.vscode/chrome-debug-profile"
     },
     {
       "name": "ng test",
@@ -17,8 +16,7 @@
       "request": "launch",
       "preLaunchTask": "npm: test",
       "url": "http://localhost:9876/debug.html",
-      "runtimeExecutable": "/snap/bin/chromium",
-      "userDataDir": "/home/aargraves/chromium-debug-profile"
+      "userDataDir": "${workspaceFolder}/.vscode/chrome-debug-profile"
     }
   ]
 }

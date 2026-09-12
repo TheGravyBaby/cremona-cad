@@ -152,7 +152,7 @@ export interface FholeParams {
 
 /** The straight cut closing one end of the hole, from a point on the eye out to the wing's tip. */
 export interface FholeCut {
-  /** Where on the eye the cut lands, round from the ray toward the other eye. */
+  /** Where on the eye the cut lands, absolute in the plate's frame. */
   angleOnEye: number | null;
   slope: number | null;
   length: number | null;

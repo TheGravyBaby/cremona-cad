@@ -8,10 +8,11 @@
                 [style.borderColor]="colors.fHoleUpperDark" (focus)="onArcFocus('U1', colors.fHoleUpperDark)" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">
-            <span class="field-title">Extend Angle<span class="unit-label">°</span></span>
+            <span class="field-title">End Angle<span class="unit-label">°</span></span>
             <input type="number" class="basic-input" step="1" data-fine-step="0.1" data-shift-step="10"
-                [ngModel]="round2(params.fHoles!.U1!.end)"
-                (ngModelChange)="params.fHoles!.U1!.end = $event; onChange()" />
+                [ngModel]="getArcEndDeg(params.fHoles!.U1!)"
+                (ngModelChange)="setArcEndDeg(params.fHoles!.U1!, $event, onChange.bind(this)); onArcFocus('U1', colors.fHoleUpper)"
+                (focus)="onArcFocus('U1', colors.fHoleUpperLight)" (blur)="onArcBlur()" />
         </label>
         <button type="button" class="info-icon" (click)="fholeShoulderExtendInfo()" title="More information"
             aria-label="Information">ⓘ</button>
@@ -89,11 +90,11 @@
                 [style.borderColor]="colors.fHoleLowerDark" (focus)="onArcFocus('L1', colors.fHoleLowerDark)" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">
-            <span class="field-title">Extend Angle<span class="unit-label">°</span></span>
+            <span class="field-title">End Angle<span class="unit-label">°</span></span>
             <input type="number" class="basic-input" step="1" data-fine-step="0.1" data-shift-step="10"
-                [ngModel]="round2(params.fHoles!.L1!.end)"
-                (ngModelChange)="params.fHoles!.L1!.end = $event; onChange()"
-                (focus)="onArcFocus('L1', colors.fHoleLowerDark)" (blur)="onArcBlur()" />
+                [ngModel]="getArcEndDeg(params.fHoles!.L1!)"
+                (ngModelChange)="setArcEndDeg(params.fHoles!.L1!, $event, onChange.bind(this)); onArcFocus('L1', colors.fHoleUpper)"
+                (focus)="onArcFocus('L1', colors.fHoleUpperLight)" (blur)="onArcBlur()" />
         </label>
         <button type="button" class="info-icon" (click)="fholeShoulderExtendInfo()" title="More information"
             aria-label="Information">ⓘ</button>
