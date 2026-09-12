@@ -1,0 +1,98 @@
+<!-- the sidebar is a column of three: this strip, the scrolling panel, and the view toggles -->
+<app-recipe-toolbar
+  [recipeName]="d.recipeName"
+  [fileName]="d.fileName"
+  (fileNameChange)="d.fileName = $event"
+  (newFile)="onNewClick()"
+  (saveFile)="saveToDisk()"
+  (loadFile)="loadFile($event)"
+  (debugDump)="copyRecipeToClipboard()">
+</app-recipe-toolbar>
+
+<div class="panel">
+  <div class="panel-content">
+
+    <section class="ui-group">
+      <div class="ui-group-title">Hello World</div>
+      <p class="hint">
+        Oh wow, you found this hidden section. You must be a some kind of coder!
+        This is a simple example recipe to demonstrate some of the basics of CremonaCad.
+      </p>
+      <p class="hint">
+        Below is a simple four circle theory: an upper bout circle, a lower bout circle, and a centre 
+        bout circle on each side. This forms a nice peanut body which can be the start of several instruments. 
+        The math here is fairly straight forward geometry. Hopefully it gives an idea of
+        the conventions used in the broader program.
+      </p>
+    </section>
+
+
+    <section class="ui-group">
+      <div class="ui-group-title">Body</div>
+      <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+          <span class="field-title">Length <span class="unit-label">mm</span></span>
+          <input class="basic-input" type="number" [step]="stepFor(d.params.bodyLength, 1)" min="1"
+            [(ngModel)]="d.params.bodyLength" (input)="onChange()" />
+        </label>
+        <span class="field-separator" aria-hidden="true"></span>
+
+      </div>
+    </section>
+
+    <section class="ui-group">
+      <div class="ui-group-title">Four Circles</div>
+      <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+          <span class="field-title">Upper Radius <span class="unit-label">mm</span></span>
+          <input class="basic-input" type="number" [step]="stepFor(d.params.upperR, 1)" min="1"
+            [(ngModel)]="d.params.upperR" (input)="onChange()" style="border-color: #4D8660" />
+        </label>
+        <span class="field-separator" aria-hidden="true"></span>
+        <label class="field-cell">
+          <span class="field-title">Upper to Lower</span>
+          <div class="basic-display" aria-label="Upper radius to lower radius ratio">{{ nearestFraction(d.params.upperR / d.params.lowerR) }}</div>
+        </label>
+      </div>
+      <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+          <span class="field-title">Centre Radius <span class="unit-label">mm</span></span>
+          <input class="basic-input" type="number" [step]="stepFor(d.params.centerR, 1)" min="1"
+            [(ngModel)]="d.params.centerR" (input)="onChange()" style="border-color: #A97645" />
+        </label>
+        <span class="field-separator" aria-hidden="true"></span>
+        <label class="field-cell">
+          <span class="field-title">Centre to Lower</span>
+          <div class="basic-display" aria-label="Centre radius to lower radius ratio">{{ nearestFraction(d.params.centerR / d.params.lowerR) }}</div>
+        </label>
+      </div>
+      <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+          <span class="field-title">Lower Radius <span class="unit-label">mm</span></span>
+          <input class="basic-input" type="number" [step]="stepFor(d.params.lowerR, 1)" min="1"
+            [(ngModel)]="d.params.lowerR" (input)="onChange()" style="border-color: #4D74A8" />
+        </label>
+        <span class="field-separator" aria-hidden="true"></span>
+        <label class="field-cell"></label>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="view-toggle-bar">
+  <button type="button" class="vt-btn" [class.active]="flags.showCircles" (click)="toggle('showCircles')"
+    title="Show Circles" aria-label="Show Circles">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <circle cx="12" cy="7" r="5" />
+      <circle cx="12" cy="17" r="6" />
+    </svg>
+  </button>
+  <button type="button" class="vt-btn" [class.active]="flags.showArcs" (click)="toggle('showArcs')"
+    title="Show Arcs" aria-label="Show Arcs">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <path d="M4 19a15 15 0 0 1 15-15" />
+      <line x1="4" y1="19" x2="19" y2="19" opacity="0.25" />
+      <line x1="19" y1="4" x2="19" y2="19" opacity="0.25" />
+    </svg>
+  </button>
+</div>

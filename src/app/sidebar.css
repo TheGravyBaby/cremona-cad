@@ -80,6 +80,7 @@ select {
   color: var(--ui-text-secondary);
   font-size: 13px;
   opacity: 0.7;
+  margin: 2px;
 }
 
 /* Wraps, and on a wide panel that never comes up — a row only breaks when the alternative is a cell

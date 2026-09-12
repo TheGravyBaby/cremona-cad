@@ -74,11 +74,10 @@ This split is meant to generalize to future instrument modules — `helpers/math
 
 ## Two traps that cross the whole codebase
 
-**Arc sweep conventions differ by type, and converting is lossy.** `models/types.ts` `Arc` stores
-boundary angles and every renderer draws the *minor* arc between them — swapping `start`/`end`
-draws the same curve, and the major arc needs an out-of-band flag. `tools/toolbox-shape.ts`
-`ArcShape` stores the same four numbers but sweeps strictly counterclockwise, so ordering picks
-minor vs major and the value stands alone. Don't write a blind converter between them.
+**Arc sweep conventions differ by type, and converting is lossy.** `models/types.ts` `Arc` always
+renders the minor arc regardless of `start`/`end` order, while `tools/toolbox-shape.ts` `ArcShape`
+sweeps counterclockwise from `startAngle` to `endAngle`, so order alone picks minor vs major —
+don't write a blind converter between them.
 
 **Recipe geometry loses its prototypes on load.** `Pt`/`Circle`/`Arc`/`Rectangle` are
 JSON-serialized into recipe files; `JSON.parse` returns prototype-less objects. What hides this is

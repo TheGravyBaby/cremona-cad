@@ -8,14 +8,15 @@ import { TopBarComponent } from './top-bar/top-bar';
 import { DraftCanvasComponent } from './draft-canvas/draft-canvas';
 import { ToolPaletteComponent } from './draft-canvas/tool-palette/tool-palette';
 import { ToolboxStore } from './draft-canvas/tools/toolbox-store';
+import { readWorkingState, SELECTED_RECIPE_KEY, writeWorkingState } from './helpers/workingStorage';
 import { CerutiViolin } from './enrico-ceruti-violin/ceruti-violin';
-import { HelloRecipe } from './hello-recipe/hello-recipe';
+import { HelloWorldRecipe } from './hello-world-recipe/hello-world-recipe';
 import { MessageCenterComponent } from './shared/message-center.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [TopBarComponent, DraftCanvasComponent, ToolPaletteComponent, CerutiViolin, HelloRecipe, MessageCenterComponent],
+  imports: [TopBarComponent, DraftCanvasComponent, ToolPaletteComponent, CerutiViolin, HelloWorldRecipe, MessageCenterComponent],
   template: `
     <div class="app">
      <app-top-bar class="top"
@@ -42,11 +43,11 @@ import { MessageCenterComponent } from './shared/message-center.component';
           </app-ceruti-violin>
           }
 
-          @if (selectedRecipe == "hello-recipe") {
-           <app-hello-recipe class="sidebar"
+          @if (selectedRecipe == "hello-world-recipe") {
+           <app-hello-world-recipe class="sidebar"
             (draftChange)="onDraftChange($event)"
             (requestFit)="requestFit()">
-          </app-hello-recipe>
+          </app-hello-world-recipe>
           }
 
           <!-- Mirrors the tool bar's tab on the other edge, and names what the drawer holds the
@@ -119,6 +120,12 @@ export class App implements OnDestroy {
     if (isLocalHost()) installDebugCapture();
 
     this.releaseViewportHeight = trackViewportHeight();
+
+    // a recipe is part of the tab's work like the design it holds: without this a reload always mounts
+    // the violin, whose own session write then buries the other recipe's. checked against the names
+    // the top bar offers, since a stale name would mount nothing at all.
+    const stored = readWorkingState(SELECTED_RECIPE_KEY);
+    if (stored === 'enrico-ceruti-violin' || stored === 'hello-world-recipe') this.selectedRecipe = stored;
   }
 
   ngOnDestroy(): void {
@@ -158,6 +165,7 @@ export class App implements OnDestroy {
   selectRecipe(recipe: string): void {
     if (recipe === this.selectedRecipe) return;
     this.selectedRecipe = recipe;
+    writeWorkingState(SELECTED_RECIPE_KEY, recipe);
     this.toolbox.resetAll();
     // A different recipe draws a different thing at a different size — frame it rather than
     // leaving the camera parked where the old one was.

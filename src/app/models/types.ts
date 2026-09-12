@@ -17,20 +17,9 @@ export class Fraction { n: number; d: number; constructor(n: number, d: number) 
 
 
 
-/**
- * ## Minor-sweep convention — the opposite of draft-canvas's ArcShape
- *
- * `start`/`end` are boundary angles in radians, and every renderer of this type draws the
- * **minor (<=180°) arc between them**, whichever way round that is. Swapping `start` and `end`
- * therefore does *not* select the other arc — it draws the same curve. The major arc needs an
- * out-of-band argument (`renderArcFromArc`'s `longArc`), so an Arc value alone does not determine
- * what appears on screen.
- *
- * draft-canvas's `ArcShape` stores the same four numbers but sweeps strictly counterclockwise, so
- * the ordering itself chooses minor vs major and the value is self-contained — which is why its
- * tools can draw >180° sweeps and this type cannot. Converting an ArcShape into this type is
- * lossy past 180°, so don't write a blind converter; go through the renderers' flags instead.
- */
+/** `start`/`end` are boundary angles in radians; every renderer draws the minor arc between them
+ * regardless of order (the major arc needs `renderArcFromArc`'s `longArc` flag) — the opposite of
+ * draft-canvas's counterclockwise-sweeping `ArcShape`, so don't write a blind converter. */
 export class Arc extends Circle {
   start: number;
   end: number;
