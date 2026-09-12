@@ -624,6 +624,19 @@ export function setContourDefaults(p: EnricoCerutiParams) {
 
 }
 
+// on some weird f-holes, we need to pull back the shoulder end angle from a simple 90 deg peak
+// in this situation, it is not the shoulder that hits the upper peak, but the arm
+// this method solves the difference in bounds, we can simply take he difference in height
+// and get a new bounds for the shoulder height
+function shoulderReach(shoulder: Arc, arm: Arc, extreme: number): number {
+  if (shoulder.end <= extreme) return shoulder.r;
+
+  // sin of the shoulder represents the y component of the rise 
+  // multiply by the difference in the circles yields the rise in the arm
+  let armCentreRise = (shoulder.r - arm.r) * Math.abs(Math.sin(shoulder.end));
+  return armCentreRise + arm.r;
+}
+
 export function calculateFholeContours(p: EnricoCerutiParams): void {
   if (!p.fHoles.U1)
     setContourDefaults(p);
@@ -638,11 +651,12 @@ export function calculateFholeContours(p: EnricoCerutiParams): void {
   try {
     // first we need to determine the placement of the arc that connects to each eye
     let upperBound = p.fHoles.UEye.y + p.fHoles.UEye.r + p.fHoles.URise
+    let upperShoulderY = upperBound - shoulderReach(p.fHoles.U1, p.fHoles.U2, Math.PI / 2)
     let upperShoulderX = lineCircleIntersectionWithTolerance(
-      { m: 0, y: upperBound - p.fHoles.U1.r, x: 0 },
+      { m: 0, y: upperShoulderY, x: 0 },
       { x: p.fHoles.UEye.x, y: p.fHoles.UEye.y, r: Math.abs(p.fHoles.U1.r - p.fHoles.UEye.r) },
     )[0].x
-    let upperShoulder = new Arc(upperShoulderX, upperBound - p.fHoles.U1.r, p.fHoles.U1.r)
+    let upperShoulder = new Arc(upperShoulderX, upperShoulderY, p.fHoles.U1.r)
     let upperShoulderStartPt = circleCircleIntersections(p.fHoles.UEye, upperShoulder);
     let upperShoulderStartAngle = angleFromCenter(upperShoulder, upperShoulderStartPt[0]);
     upperShoulder.start = upperShoulderStartAngle;
@@ -686,11 +700,12 @@ export function calculateFholeContours(p: EnricoCerutiParams): void {
   // now the lower arm, upside down: bound drops below the eye, and the arm meets the inner stem
   try {
     let lowerBound = p.fHoles.LEye.y - p.fHoles.LEye.r - p.fHoles.LRise
+    let lowerShoulderY = lowerBound + shoulderReach(p.fHoles.L1, p.fHoles.L2, -Math.PI / 2)
     let lowerShoulderX = lineCircleIntersectionWithTolerance(
-      { m: 0, y: lowerBound + p.fHoles.L1.r, x: 0 },
+      { m: 0, y: lowerShoulderY, x: 0 },
       { x: p.fHoles.LEye.x, y: p.fHoles.LEye.y, r: Math.abs(p.fHoles.L1.r - p.fHoles.LEye.r) },
     )[1].x
-    let lowerShoulder = new Arc(lowerShoulderX, lowerBound + p.fHoles.L1.r, p.fHoles.L1.r)
+    let lowerShoulder = new Arc(lowerShoulderX, lowerShoulderY, p.fHoles.L1.r)
     let lowerShoulderStartPt = circleCircleIntersections(p.fHoles.LEye, lowerShoulder);
     let lowerShoulderStartAngle = angleFromCenter(lowerShoulder, lowerShoulderStartPt[0]);
     lowerShoulder.start = lowerShoulderStartAngle;

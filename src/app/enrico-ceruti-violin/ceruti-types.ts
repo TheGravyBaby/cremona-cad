@@ -128,7 +128,7 @@ export interface FholeParams {
 
   stem: FholeStem;
 
-  /** `U1.end` is sticky past the apex — see getShoulderExtendDeg. */
+  /** Stopping `U1.end` short of the apex hands the top of the hole to U2 — see shoulderReach. */
   U1: Arc | null;
   U2: Arc | null;
   /** The wing hung off UTip — belongs to the edge that springs from LEye, but named for where it

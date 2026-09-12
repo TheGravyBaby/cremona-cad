@@ -19,12 +19,14 @@ import { EnricoCerutiParams } from '../../ceruti-types';
  * tip is where the cut says it is. Those hold for any f-hole, not just this one.
  */
 
-const solve = (shaped: boolean): EnricoCerutiParams => {
+type Shape = 'plain' | 'extended' | 'short';
+
+const solve = (shape: Shape): EnricoCerutiParams => {
   const p = defaultViolin();
   p.fHoles = defaultFHolePlacement(p);
   calculateFholeContours(p); // first pass: every radius, stem arcs included, off the defaults
 
-  if (shaped) {
+  if (shape === 'extended') {
     // mimics a user extending both shoulders past their apex, then dialling the stem's one
     // shared arc radius off the 40 it defaults to. turn is -1 both sides by construction here,
     // so subtracting from `end` continues the shoulder's own turn.
@@ -33,6 +35,16 @@ const solve = (shaped: boolean): EnricoCerutiParams => {
     calculateFholeContours(p);
 
     p.fHoles!.stem.arcR! += 8; // all four of S1/S2/S3/S4 follow this one number
+    calculateFholeContours(p);
+  }
+
+  if (shape === 'short') {
+    // the late del Gesu move: stop each shoulder before its apex and let a tighter arm take
+    // the top of the hole. adding to `end` backs the shoulder up toward the eye.
+    p.fHoles!.U1!.end += 0.7;
+    p.fHoles!.U2!.r = p.fHoles!.U1!.r / 2;
+    p.fHoles!.L1!.end += 0.3;
+    p.fHoles!.L2!.r = p.fHoles!.L1!.r * 0.75;
     calculateFholeContours(p);
   }
 
@@ -101,11 +113,11 @@ const SHAPED = {
 
 describe('f-hole contours', () => {
   it('solves the default violin to the geometry it was pinned at', () => {
-    expect(geometryDiff(round4(solve(false).fHoles), PLAIN, 1e-9)).toEqual([]);
+    expect(geometryDiff(round4(solve('plain').fHoles), PLAIN, 1e-9)).toEqual([]);
   });
 
   it('solves the same hole with both shoulders extended and a stem-arc radius pinned', () => {
-    expect(geometryDiff(round4(solve(true).fHoles), SHAPED, 1e-9)).toEqual([]);
+    expect(geometryDiff(round4(solve('extended').fHoles), SHAPED, 1e-9)).toEqual([]);
   });
 });
 
@@ -119,9 +131,20 @@ const edgesOf = (p: EnricoCerutiParams): { name: string; chain: (Arc | null)[] }
   ];
 };
 
+// the minor sweep between start and end, as every renderer draws it
+const sampleArc = (a: Arc, n = 200): Pt[] => {
+  const delta = normalizeRadians(a.end - a.start + Math.PI) - Math.PI;
+  return Array.from({ length: n + 1 }, (_, i) => pointOnCircle(a, a.start + delta * i / n));
+};
+
 describe('f-hole contour properties', () => {
-  for (const shaped of [false, true]) {
-    const label = shaped ? 'with the shoulders extended and a stem arc pinned' : 'with the plain default';
+  const labels: Record<Shape, string> = {
+    plain: 'with the plain default',
+    extended: 'with the shoulders extended and a stem arc pinned',
+    short: 'with the shoulders stopped short of their apex',
+  };
+  for (const shaped of ['plain', 'extended', 'short'] as const) {
+    const label = labels[shaped];
 
     it(`runs every joint tangent-continuous, ${label}`, () => {
       for (const { name, chain } of edgesOf(solve(shaped))) {
@@ -149,17 +172,24 @@ describe('f-hole contour properties', () => {
       }
     });
 
-    it(`seats each shoulder on its own eye and its own bound, ${label}`, () => {
+    it(`seats each shoulder on its own eye and the outline on its own bound, ${label}`, () => {
       const f = solve(shaped).fHoles!;
-      for (const [eye, shoulder, rise, side] of [[f.UEye!, f.U1!, f.URise!, 1], [f.LEye!, f.L1!, f.LRise!, -1]] as const) {
+      for (const [eye, shoulder, arm, rise, side] of [[f.UEye!, f.U1!, f.U2!, f.URise!, 1], [f.LEye!, f.L1!, f.L2!, f.LRise!, -1]] as const) {
         // tangent internally to the eye: centres one radius difference apart
         expect(dist(shoulder, eye)).toBeCloseTo(shoulder.r - eye.r, 6);
         // and its start is that very tangency, so the eye rim hands the outline over
         expect(dist(pointOnCircle(shoulder, shoulder.start), pointOnCircle(eye, shoulder.start))).toBeCloseTo(0, 6);
-        // the apex — where the shoulder's tangent is horizontal — sits on the bound the rise
-        // sets. that's a fixed point on the shoulder's circle, not necessarily its `end`: once
-        // extended, the shoulder runs on past the apex rather than stopping there.
-        expect(pointOnCircle(shoulder, side * Math.PI / 2).y).toBeCloseTo(eye.y + side * (eye.r + rise), 6);
+
+        // the bound is tangent to the outline: whichever arc runs through the extreme — the
+        // shoulder if its sweep reaches there, else the arm that continues past it — has its
+        // apex on the bound, and nothing drawn along shoulder or arm crosses it
+        const extreme = side * Math.PI / 2;
+        const bound = eye.y + side * (eye.r + rise);
+        const shoulderReaches = shoulder.end <= extreme;
+        expect(pointOnCircle(shoulderReaches ? shoulder : arm, extreme).y).toBeCloseTo(bound, 6);
+        const farthest = Math.max(...[shoulder, arm].flatMap(a => sampleArc(a).map(pt => side * (pt.y - bound))));
+        expect(farthest).toBeLessThan(1e-6);
+        if (shaped === 'short') expect(shoulderReaches, 'short scenario must stop the shoulder short').toBe(false);
       }
     });
 
@@ -187,8 +217,8 @@ describe('f-hole contour properties', () => {
   }
 
   it('holds all four stem arcs to the one radius the stem was pinned at, once shaped', () => {
-    const bootstrap = solve(false).fHoles!;
-    const f = solve(true).fHoles!;
+    const bootstrap = solve('plain').fHoles!;
+    const f = solve('extended').fHoles!;
     const pinned = bootstrap.stem.arcR! + 8;
 
     expect(f.stem.arcR).toBeCloseTo(pinned, 6);
