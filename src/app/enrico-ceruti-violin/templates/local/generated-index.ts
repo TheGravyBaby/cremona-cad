@@ -2,5 +2,8 @@
 // Regenerate with `npm run sync-local-templates`. See ../local/README.md.
 
 import { EnricoCerutiTemplate } from '../../ceruti-types';
+import { templateFromRecipeJson } from '../recipe-json';
+import raw_0_guadagnini_piacenza from './guadagnini-piacenza.json';
+import raw_1_guarneri_violin_sainton_betti_1744 from './guarneri-violin-sainton-betti-1744.json';
 
-export const LOCAL_TEMPLATES: EnricoCerutiTemplate[] = [];
+export const LOCAL_TEMPLATES: EnricoCerutiTemplate[] = [raw_0_guadagnini_piacenza, raw_1_guarneri_violin_sainton_betti_1744].map(templateFromRecipeJson);
