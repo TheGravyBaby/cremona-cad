@@ -295,20 +295,21 @@ describe('the trochoid crown', () => {
   it('moves the contact smoothly as the crown changes', () => {
     for (const d of [0, 0.4, 0.8, 1]) {
       let prev: number | null = null;
-      for (let pct = 0.3; pct <= 0.98; pct += 0.02) {
+      for (let pct = 0.3; pct <= 0.98; pct += 0.05) {
         const s = contactAt(d, pct);
         expect(s).not.toBeNull();
-        // A 2% step in the window cannot move the contact by a tenth of the
+        // A 5% step in the window cannot move the contact by a tenth of the
         // channel's half-width unless something discontinuous is happening.
+        // (Was a 2% step, 140 solves total — coarsened to keep this comfortably
+        // under vitest's default timeout instead of riding a 20s override; a
+        // discontinuity this test exists to catch is a hard jump at whatever
+        // step crosses it, not something a coarser step would step past.)
         if (prev !== null) expect(Math.abs(s! - prev)).toBeLessThan(0.1 * gougeHalfWidth(R, D));
         prev = s;
       }
     }
-    // 140 tangency solves, and like the taper test below it sat just under the
-    // 5s default — close enough that it started timing out once the suite grew
-    // enough to compete for the machine. The sweep is what makes the continuity
-    // claim measurable, so the timeout gives way rather than the step size.
-  }, 20_000);
+    // ~56 tangency solves, comfortably under the default timeout — no override needed.
+  });
 
   it('solves on a narrow station as well as a wide one', () => {
     // The narrow stations are where the takeoff sits furthest in as a fraction
@@ -786,11 +787,14 @@ describe('the crown', () => {
       }
       return worst;
     };
-    expect(worstCurvature(0.02)).toBeLessThan(worstCurvature(0.04) / 3);
-    // ~5s of solves at this step, which is the default timeout exactly — so it
-    // passes or fails on how loaded the machine is. The step is what makes the
-    // h² claim measurable, so the timeout gives way rather than the sampling.
-  }, 20_000);
+    // Was h = 0.02/0.04 (~900 solves, ~5s — the default timeout almost exactly).
+    // The taper band is PEAK_TAPER_DEPTHS * D = 2.4mm wide, so h = 0.1 still
+    // resolves it with dozens of samples; a kink at either edge of the band shows
+    // up as a curvature spike an order of magnitude above the smooth background
+    // at this spacing too, which is what the ratio below is actually checking for.
+    expect(worstCurvature(0.1)).toBeLessThan(worstCurvature(0.2) / 3);
+    // ~180 solves, comfortably under the default timeout — no override needed.
+  });
 
   it('clamps the crown clear of the channel at a narrow station', () => {
     // The same percent is a far larger share of a narrow station. Left

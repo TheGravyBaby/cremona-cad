@@ -16,8 +16,8 @@ import {
   splinePeakRow, STATION_MARGIN_MM, STATION_MERGE_EPS_MM, wireframeSampleSteps,
 } from '../../ceruti-arching';
 import {
-  defaultCrossArchCycloidParams, defaultCrossArchParams, defaultCrossArchSplineParams,
-  defaultFlutingParams, CrossArchSection,
+  defaultCrossArchCatenaryShape, defaultCrossArchCycloidParams, defaultCrossArchParams,
+  defaultCrossArchSplineParams, defaultFlutingParams, CrossArchSection,
   crossArchGuide, crossArchKnotX, crossArchSectionAt, crossArchSectionPath, nearestCrossArchShape,
 } from '../../ceruti-arch-geometry';
 import {
@@ -422,10 +422,16 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     const station = this.stationAtCursor(plate);
     if (station) return station;
     const cross = this.cross(plate);
-    if (!cross.stations?.length) return cross;
+    // A catenary always edits its own (stationless) base shape — see activeShape.
+    if (cross.type === 'catenary' || !cross.stations?.length) return cross;
     let draft = this.draftFor(plate);
     if (!draft) {
-      draft = { y: this.cursorY, ...cloneCrossArchShape(nearestCrossArchShape(cross, this.cursorY, this.params.height)) };
+      // cross is spline/cycloid here (catenary returned above), so this is always a
+      // real station shape — nearestCrossArchShape's return type just doesn't say so.
+      draft = {
+        y: this.cursorY,
+        ...cloneCrossArchShape(nearestCrossArchShape(cross, this.cursorY, this.params.height)),
+      } as CrossArchStation;
       this.draft[plate] = draft;
     }
     return draft;
@@ -445,6 +451,8 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     const plateParams = plate === 'top' ? this.arching.top : this.arching.bottom;
     plateParams.cross = type === 'cycloid'
       ? defaultCrossArchCycloidParams()
+      : type === 'catenary'
+      ? defaultCrossArchCatenaryShape()
       : defaultCrossArchSplineParams();
     this.draft[plate] = null;
     this.onChange();
@@ -1079,7 +1087,8 @@ function pushStation<T extends { y: number }>(stations: T[], station: T): void {
  * the centre through the whole middle of the body.
  */
 function cloneCrossArchShape(shape: CrossArchShape): CrossArchShape {
-  return shape.type === 'spline'
-    ? { type: 'spline', points: shape.points.map(pt => ({ ...pt })), peak: shape.peak, peakRow: shape.peakRow }
-    : { type: 'cycloid', d: shape.d, pct: shape.pct };
+  if (shape.type === 'spline') {
+    return { type: 'spline', points: shape.points.map(pt => ({ ...pt })), peak: shape.peak, peakRow: shape.peakRow };
+  }
+  return shape.type === 'cycloid' ? { type: 'cycloid', d: shape.d, pct: shape.pct } : { type: 'catenary' };
 }

@@ -407,8 +407,23 @@ export interface CrossArchCycloidShape {
   pct: number;
 }
 
-/** A cross-arch section shape: a trochoid or a control-point template. */
-export type CrossArchShape = CrossArchSplineShape | CrossArchCycloidShape;
+/**
+ * The catenary crown: fully determined by the long arch's height and the width available at each
+ * station, so there is nothing to author — no points, no factor, and (unlike spline/cycloid) no
+ * per-station override, since every station already gets exactly this shape.
+ */
+export interface CrossArchCatenaryShape {
+  type: 'catenary';
+  /**
+   * Never populated — kept as `never` rather than absent so the generic `.stations` reads shared
+   * across all three curve types (the panel's station marks, `activeShape`, `editTarget`, …) keep
+   * type-checking without a per-call guard.
+   */
+  stations?: never;
+}
+
+/** A cross-arch section shape: a trochoid, a control-point template, or a catenary. */
+export type CrossArchShape = CrossArchSplineShape | CrossArchCycloidShape | CrossArchCatenaryShape;
 
 /** A control-point cross-arch shape pinned to one body-length position. */
 export type CrossArchSplineStation = CrossArchSplineShape & {
@@ -436,7 +451,7 @@ export type CrossArchCycloidParams = CrossArchCycloidShape & {
   stations?: CrossArchCycloidStation[];
 };
 
-export type CrossArchParams = CrossArchSplineParams | CrossArchCycloidParams;
+export type CrossArchParams = CrossArchSplineParams | CrossArchCycloidParams | CrossArchCatenaryShape;
 
 export interface ArchPlate {
   arch: ArchCurve;

@@ -129,6 +129,11 @@
     <div class="ui-group-title">Top Plate</div>
     <div class="input-group basic-row field-row" role="group">
         <div class="toggle">
+            <input type="radio" name="top-cross-curve-type" [checked]="cross('top').type === 'catenary'"
+                (change)="setCurveType('top', 'catenary')" />
+            <span>Catenary</span>
+        </div>
+        <div class="toggle">
             <input type="radio" name="top-cross-curve-type" [checked]="cross('top').type === 'cycloid'"
                 (change)="setCurveType('top', 'cycloid')" />
             <span>Cycloid</span>
@@ -210,6 +215,7 @@
     </div>
     }
 
+    @if (cross('top').type !== 'catenary') {
     <div class="input-group basic-row field-row" role="group">
         @if (stationAtCursor('top'); as st) {
         <span class="station-note">Top Plate fields edit station {{ st.y }}mm</span>
@@ -221,6 +227,7 @@
         }
         <button type="button" class="info-icon" (click)="crossArchStationInfo()" title="More information">ⓘ</button>
     </div>
+    }
 
     <div class="input-group basic-row field-row" role="group">
         <div class="toggle">
@@ -241,6 +248,12 @@
 <section class="ui-group" [style.border-color]="colors.archBack">
     <div class="ui-group-title">Back Plate</div>
     <div class="input-group basic-row field-row" role="group">
+        <div class="toggle">
+            <input type="radio" name="back-cross-curve-type"
+                [checked]="cross('bottom').type === 'catenary'"
+                (change)="setCurveType('bottom', 'catenary')" />
+            <span>Catenary</span>
+        </div>
         <div class="toggle">
             <input type="radio" name="back-cross-curve-type"
                 [checked]="cross('bottom').type === 'cycloid'"
@@ -323,6 +336,7 @@
         <button class="panel-nav-btn" (click)="addPoint('bottom')">+ Add Point</button>
     </div>
     }
+    @if (cross('bottom').type !== 'catenary') {
     <div class="input-group basic-row field-row" role="group">
         @if (stationAtCursor('bottom'); as st) {
         <span class="station-note">Back Plate fields edit station {{ st.y }}mm</span>
@@ -334,6 +348,7 @@
         }
         <button type="button" class="info-icon" (click)="crossArchStationInfo()" title="More information">ⓘ</button>
     </div>
+    }
 
     <div class="input-group basic-row field-row" role="group">
         <div class="toggle">

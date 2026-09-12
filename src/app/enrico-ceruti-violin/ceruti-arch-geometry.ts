@@ -8,8 +8,8 @@ import {
   catenaryZAt, cycloidZAt, samplePathToPolyline, splineZAt,
 } from '../helpers/math/pathMath';
 import {
-  ArchCurve, EnricoCerutiParams, CrossArchCycloidParams, CrossArchCycloidShape, CrossArchParams,
-  CrossArchShape, CrossArchSplineParams, CrossArchStation, FlutingParams,
+  ArchCurve, EnricoCerutiParams, CrossArchCatenaryShape, CrossArchCycloidParams, CrossArchCycloidShape,
+  CrossArchParams, CrossArchShape, CrossArchSplineParams, CrossArchStation, FlutingParams,
 } from './ceruti-types';
 import { defineFlutingPath, defineInsetPath } from './ceruti-paths';
 import { archFromLoweredTakeoff, normalizeCrossArchStations } from './ceruti-arching';
@@ -180,6 +180,11 @@ export function defaultCrossArchSplineParams(): CrossArchSplineParams {
  */
 export function defaultCrossArchCycloidParams(): CrossArchCycloidParams {
   return { type: 'cycloid', d: 0.4, pct: 0.9 };
+}
+
+/** The catenary crown — see {@link CrossArchCatenaryShape}, nothing to seed beyond the tag. */
+export function defaultCrossArchCatenaryShape(): CrossArchCatenaryShape {
+  return { type: 'catenary' };
 }
 
 /**
@@ -564,6 +569,9 @@ export interface CrossArchKnot {
 export function crossArchKnots(shape: CrossArchShape, side: 1 | -1): CrossArchKnot[] {
   // A trochoid is symmetric about the crown, so `side` has nothing to select.
   if (shape.type === 'cycloid') return cycloidCrownKnots(shape);
+  // Never actually reached — solveCrossArchSection and crossArchGuide both branch around the
+  // knot pipeline for a catenary — but the type is still CrossArchShape here.
+  if (shape.type === 'catenary') return [];
 
   const out: CrossArchKnot[] = [];
   for (const pt of shape.points) {
@@ -630,6 +638,8 @@ function cycloidCrownKnots(shape: CrossArchCycloidShape): CrossArchKnot[] {
 export function nearestCrossArchShape(
   cross: CrossArchParams, y: number, bodyHeight: number,
 ): CrossArchShape {
+  // A catenary has no stations to be nearer to — it is the same shape everywhere.
+  if (cross.type === 'catenary') return cross;
   // Widened explicitly: `stations` is a union of two arrays, and inference
   // would otherwise pin the type parameter to whichever arm comes first.
   const stations = normalizeCrossArchStations<CrossArchStation>(cross.stations, bodyHeight);
@@ -669,7 +679,14 @@ function knotFunction(knots: CrossArchKnot[]): (x: number) => number {
   return x => f(clamp(x, 0, 1));
 }
 
-/** A crown shape resolved to one body station: its knots on each side, still fractional. */
+/**
+ * A crown shape resolved to one body station: its knots on each side, still fractional.
+ *
+ * A catenary row carries no knots at all — `left`/`right` sit empty and `catenary` is what
+ * `solveCrossArchSection` actually branches on. Folded into this one shape rather than a
+ * separate union member so the resolver keeps one return type regardless of curve type, and so
+ * every existing `{ left, right, peak? }` call site (the specs included) stays a valid row.
+ */
 export interface CrossArchRow {
   left: CrossArchKnot[];
   right: CrossArchKnot[];
@@ -679,6 +696,8 @@ export interface CrossArchRow {
    * means centred, which is what every row meant before the crown could move.
    */
   peak?: number;
+  /** True for a catenary crown — see the type header. */
+  catenary?: boolean;
 }
 
 export type CrossArchResolver = (y: number) => CrossArchRow;
@@ -703,6 +722,8 @@ export type CrossArchResolver = (y: number) => CrossArchRow;
 export function makeCrossArchResolver(
   cross: CrossArchParams, bodyHeight: number,
 ): CrossArchResolver {
+  // A catenary has nothing to ramp — every station gets the same computed shape.
+  if (cross.type === 'catenary') return () => ({ left: [], right: [], catenary: true });
   // Widened explicitly: `stations` is a union of two arrays, and inference
   // would otherwise pin the type parameter to whichever arm comes first.
   const stations = normalizeCrossArchStations<CrossArchStation>(cross.stations, bodyHeight);
@@ -932,6 +953,23 @@ function overshoots(f: (x: number) => number, xs: number[], zs: number[], archH:
   return false;
 }
 
+/**
+ * Height at `x` (measured from the crown, which sits at `archH`) along a one-sided catenary
+ * running out to `xEnd`, where it meets the channel at `zEnd`.
+ *
+ * The catenary counterpart of `crossProfile`, evaluated directly rather than through a knot
+ * spline. A catenary's normalized shape depends on the height/span ratio — unlike a trochoid's,
+ * which is scale-invariant and so can be sampled once into fixed knots — and the span here is
+ * exactly what {@link solveArchTakeoff}'s tangency search is hunting for. So this is re-evaluated
+ * at whatever `xEnd` the search is currently trying, via `catenaryZAt`'s own span parameter,
+ * rather than precomputed. Each side stands alone: there is no crown offset to author for a
+ * catenary, so a side's shape depends only on its own solved width, never the other side's.
+ */
+function catenarySideZAt(archH: number, zEnd: number, xEnd: number, x: number): number {
+  if (xEnd <= 0) return archH;
+  return zEnd + catenaryZAt(archH - zEnd, 2 * xEnd, xEnd - Math.abs(x));
+}
+
 /** A plate's transverse surface at one body station, with the transition solved on both sides. */
 export interface CrossArchSection {
   /** Channel centerline half-chord here. */
@@ -1048,6 +1086,7 @@ export function solveCrossArchSection(
   // Requiring a positive crown here instead is what left a flat ring around
   // both caps, with a straight seam where the height crossed zero.
   if (halfWidth <= 0 || centerHalf <= halfWidth || archH <= -depth) return null;
+  const isCatenary = !!row.catenary;
 
   // The crown, in millimetres. Anchored to the centerline half-chord — a
   // quantity the solve never touches — so it holds still while both takeoffs
@@ -1116,12 +1155,15 @@ export function solveCrossArchSection(
     const slopeAt = (takeoffDepth: number, contactS: number): number => {
       const mine: SideEnd = { xEnd: centerHalf - contactS, zEnd: -takeoffDepth };
       if (mine.xEnd <= 1e-3) return 0;
-      const f = side === 1
-        ? crossProfile(archH, xPeak, row.left, row.right, endL, mine)
-        : crossProfile(archH, xPeak, row.left, row.right, mine, endR);
       const eps = Math.max(mine.xEnd * 1e-4, 1e-6);
       // Measured inward, matching the channel's own slope convention: `s` grows
       // toward the centerline, so a rising arch reads positive on both.
+      if (isCatenary) {
+        return (catenarySideZAt(archH, mine.zEnd, mine.xEnd, side * (mine.xEnd - eps)) - mine.zEnd) / eps;
+      }
+      const f = side === 1
+        ? crossProfile(archH, xPeak, row.left, row.right, endL, mine)
+        : crossProfile(archH, xPeak, row.left, row.right, mine, endR);
       return (f(side * (mine.xEnd - eps)) - mine.zEnd) / eps;
     };
     return solveArchTakeoff(sweepRadius, depth, slopeAt);
@@ -1139,9 +1181,13 @@ export function solveCrossArchSection(
     if (takeL) endL = endAt(takeL.contactS);
   }
 
-  const profile = crossProfile(archH, xPeak, row.left, row.right, endL, endR);
+  const profile = isCatenary ? null : crossProfile(archH, xPeak, row.left, row.right, endL, endR);
   const zAt = (x: number): number => {
-    if (x >= -endL.xEnd && x <= endR.xEnd) return profile(x);
+    if (x >= -endL.xEnd && x <= endR.xEnd) {
+      return isCatenary
+        ? catenarySideZAt(archH, x < 0 ? endL.zEnd : endR.zEnd, x < 0 ? endL.xEnd : endR.xEnd, x)
+        : profile!(x);
+    }
     // Past the arch's reach the channel is the surface, and past that the flat
     // land — both of which {@link gougeProfileZ} already describes, measured
     // inward from the centerline on whichever side we are.
@@ -1247,11 +1293,13 @@ export function crossArchGuide(shape: CrossArchShape, section: CrossArchSection)
       // there is nothing honest left to draw.
       const d = clamp(shape.d, 0, 1);
       if (d > 0.01) out.circles.push({ centerZ: base + hEff / 2, radius: hEff / (2 * d) });
-    } else {
+    } else if (shape.type === 'spline') {
       for (const k of crossArchKnots(shape, side)) {
         out.knots.push({ x: crossArchKnotX(section, side, k.x), z: base + k.z * hEff, base });
       }
     }
+    // A catenary has nothing to mark beyond the baseline above and the crown apex
+    // every curve type gets from `peakZ` — see archGuideKnots' long-arch counterpart.
   }
   return out;
 }

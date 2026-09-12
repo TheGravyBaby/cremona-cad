@@ -243,7 +243,8 @@ export function crossArchCurveTypeInfo() {
     info(
         "Factor (0–1): 0 is raised-cosine (gentler edge rise), 1 is a classic cycloid (steeper edge, flatter crest). Percent: how much of the  cycloid is stretched across the width.\n\n" +
         "Spline: control points you place yourself.\n\n" +
-        "Switching replaces the shape rather than converting it; the two have no honest translation between them.",
+        "Catenary: an inverted hanging chain. No fields — the crown height comes from the long arch and the width from what's available at each station, so it's solved rather than authored, and it carries no stations of its own.\n\n" +
+        "Switching replaces the shape rather than converting it; these have no honest translation between them.",
         "Crown Curve", defaultTTL, true
     )
 }
