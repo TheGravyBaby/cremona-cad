@@ -468,10 +468,16 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     return Math.round(st.pct * 100);
   }
 
-  setCycloidD(plate: 'top' | 'bottom', d: number): void {
+  /** The trochoid blend factor as a whole percent, for the panel's input — 0 = raised cosine,
+   * 100 = standard cycloid. */
+  cycloidDPct(plate: 'top' | 'bottom'): number {
+    return Math.round((this.crossCycloid(plate)?.d ?? 0) * 100);
+  }
+
+  setCycloidDPct(plate: 'top' | 'bottom', pct: number): void {
     const target = this.editTarget(plate);
-    if (target.type !== 'cycloid' || !entered(d)) return;
-    target.d = clamp(d, 0, 1);
+    if (target.type !== 'cycloid' || !entered(pct)) return;
+    target.d = clamp(pct / 100, 0, 1);
     this.onChange();
   }
 

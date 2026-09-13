@@ -32,7 +32,7 @@
       <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
           <span class="field-title">Length <span class="unit-label">mm</span></span>
-          <input class="basic-input" type="number" [step]="stepFor(d.params.bodyLength, 1)" min="1"
+          <input class="basic-input" type="number" step="1" min="1"
             [(ngModel)]="d.params.bodyLength" (input)="onChange()" />
         </label>
         <span class="field-separator" aria-hidden="true"></span>
@@ -45,7 +45,7 @@
       <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
           <span class="field-title">Upper Radius <span class="unit-label">mm</span></span>
-          <input class="basic-input" type="number" [step]="stepFor(d.params.upperR, 1)" min="1"
+          <input class="basic-input" type="number" step="1" min="1"
             [(ngModel)]="d.params.upperR" (input)="onChange()" style="border-color: #4D8660" />
         </label>
         <span class="field-separator" aria-hidden="true"></span>
@@ -57,7 +57,7 @@
       <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
           <span class="field-title">Centre Radius <span class="unit-label">mm</span></span>
-          <input class="basic-input" type="number" [step]="stepFor(d.params.centerR, 1)" min="1"
+          <input class="basic-input" type="number" step="1" min="1"
             [(ngModel)]="d.params.centerR" (input)="onChange()" style="border-color: #A97645" />
         </label>
         <span class="field-separator" aria-hidden="true"></span>
@@ -69,7 +69,7 @@
       <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
           <span class="field-title">Lower Radius <span class="unit-label">mm</span></span>
-          <input class="basic-input" type="number" [step]="stepFor(d.params.lowerR, 1)" min="1"
+          <input class="basic-input" type="number" step="1" min="1"
             [(ngModel)]="d.params.lowerR" (input)="onChange()" style="border-color: #4D74A8" />
         </label>
         <span class="field-separator" aria-hidden="true"></span>
