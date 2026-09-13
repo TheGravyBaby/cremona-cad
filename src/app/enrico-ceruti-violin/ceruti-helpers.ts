@@ -251,7 +251,7 @@ export function crossArchCurveTypeInfo() {
 
 export function crossArchCycloidControlsInfo() {
     info(
-        "Factor: 0 is a raised cosine, 1 the standard cycloid. Higher fills the shoulders and tightens the crown.\n\n" +
+        "Factor: 0% is a raised cosine, 100% the standard cycloid. Higher fills the shoulders and tightens the crown.\n\n" +
         "Percent: how much of the curve is used, trimmed evenly from both ends.\n\n",
         "Cycloid Crown", defaultTTL, true
     )

@@ -11,9 +11,8 @@ import { Directive, ElementRef, OnDestroy, OnInit, inject } from '@angular/core'
  * Applied by element selector rather than per-input, since there are 130-odd of these across the
  * panels: a component gets steppers on all its number fields by importing the directive, with no
  * template change. Stepping goes through the browser's own stepUp/stepDown so `step`, `min` and
- * `max` keep the exact meaning they have for the desktop spinners — including the per-field
- * `stepFor()` sizes bound in the templates — then fires `input` so ngModel and the panel's
- * `onChange()` run as if the value had been typed.
+ * `max` keep the exact meaning they have for the desktop spinners, then fires `input` so ngModel
+ * and the panel's `onChange()` run as if the value had been typed.
  */
 @Directive({
   // every number input in a component that imports this — the import is the opt-in, so keying on a

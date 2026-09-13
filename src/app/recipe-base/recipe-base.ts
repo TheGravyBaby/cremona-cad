@@ -4,7 +4,7 @@ import { RecipeInterface } from '../models/types';
 import { PanelFlow, PanelDefinition } from '../helpers/panelFlow';
 import { DebounceController } from '../helpers/debounce-controller';
 import { NamedConstant, DEFAULT_NAMED_CONSTANTS, nearestFraction, nearestSmallFraction } from '../helpers/nearestFraction';
-import { computeStepSize, stepAmountForKey } from '../helpers/stepSize';
+import { stepAmountForKey } from '../helpers/stepSize';
 import { ToolboxStore } from '../draft-canvas/tools/toolbox-store';
 import { ImageAssetStore } from '../draft-canvas/tools/image-asset-store';
 import { UndoCoordinator, Undoable } from '../helpers/undoCoordinator';
@@ -147,13 +147,11 @@ export abstract class RecipeComponentBase implements AfterViewInit, Undoable {
   }
 
   /**
-   * Shift/Ctrl/Cmd+Arrow on a number input takes a bigger/smaller step than a plain arrow press.
-   * Shift scales the live `[step]` binding up, unless the field pins its own `data-shift-step`;
-   * Ctrl (Windows/Linux) or Cmd (Mac) switches to a fixed unit instead — `data-fine-step` on the
-   * input if a field opts into a finer one (see stepSize.ts), else 1. Only modified presses are
-   * intercepted — a plain arrow or a spinner click keeps using the browser's native stepping
-   * against `[step]`. A native spinner click can't expose modifier-key state to JS, so this is
-   * keyboard-only by design.
+   * Shift/Ctrl/Cmd+Arrow on a number input takes a bigger/smaller step than a plain arrow press:
+   * 10 with Shift, 0.1 with Ctrl (Windows/Linux) or Cmd (Mac) — see stepSize.ts. Only modified
+   * presses are intercepted — a plain arrow or a spinner click keeps using the browser's native
+   * stepping against `step="1"`. A native spinner click can't expose modifier-key state to JS,
+   * so this is keyboard-only by design.
    */
   private applyModifiedStep(e: KeyboardEvent): void {
     if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
@@ -165,10 +163,7 @@ export abstract class RecipeComponentBase implements AfterViewInit, Undoable {
     const current = target.valueAsNumber;
     if (Number.isNaN(current)) return;
 
-    const baseStep = Number(target.step) || 1;
-    const fineStep = Number(target.dataset['fineStep']) || 1;
-    const shiftStep = target.dataset['shiftStep'] ? Number(target.dataset['shiftStep']) : undefined;
-    const delta = stepAmountForKey(e, baseStep, fineStep, shiftStep);
+    const delta = stepAmountForKey(e);
     let next = current + (e.key === 'ArrowUp' ? delta : -delta);
     if (target.min !== '') next = Math.max(next, Number(target.min));
     if (target.max !== '') next = Math.min(next, Number(target.max));
@@ -176,15 +171,6 @@ export abstract class RecipeComponentBase implements AfterViewInit, Undoable {
 
     target.value = String(next);
     target.dispatchEvent(new Event('input', { bubbles: true }));
-  }
-
-  /**
-   * A step size scaled to `value`, biased toward whole numbers, floored at `floor` — the
-   * field's own hand-tuned `step` literal. Bind to `[step]` so both native arrow-key stepping
-   * and spinner clicks pick it up; see helpers/stepSize.ts.
-   */
-  protected stepFor(value: number, floor: number, percent?: number): number {
-    return computeStepSize(value, floor, percent);
   }
 
   @HostListener('mousedown', ['$event'])
