@@ -62,7 +62,10 @@
 
   --ui-text-primary: #202122;
   --ui-text-secondary: #54595d;
-  --ui-text-muted: #72777d;
+  /* #72777d read at ~2.9:1 against the surfaces it's actually used on (topbar controls, zoom
+     readout, panel labels) — under the 3:1 floor for icons/UI text. This clears ~3.9:1 on all of
+     them while staying visibly lighter than --ui-text-secondary. */
+  --ui-text-muted: #5f6368;
 
   --ui-focus-border: #3366cc;
   --ui-focus-ring: rgba(51, 102, 204, 0.22);

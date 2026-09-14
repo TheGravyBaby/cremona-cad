@@ -684,7 +684,12 @@ export const renderPointHalo = (P: Pt, color: string, haloR = 3, opacity = .33) 
 export type ColorTransform =
     | { type: 'greyOut'; degree: number }
     | { type: 'darken'; degree: number }
-    | { type: 'saturate'; degree: number };
+    | { type: 'saturate'; degree: number }
+    // pulls the color's HSL lightness toward whichever extreme has headroom until it clears
+    // minRatio against `against`, preferring the smaller move. Use for a background that isn't
+    // near-black or near-white, where a fixed darken/lighten amount can't target a real contrast
+    // floor — see ceruti-violin.ts's light-mode makeColor.
+    | { type: 'ensureContrast'; against: string; minRatio: number };
 
 function parsedColor(s: string): { r: number; g: number; b: number; a: number } | null {
     const hexShort = /^#([0-9a-f]{3})$/i.exec(s);
@@ -751,19 +756,67 @@ function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: n
     return { r: to255(rn), g: to255(gn), b: to255(bn) };
 }
 
+// WCAG relative luminance / contrast ratio (https://www.w3.org/TR/WCAG21/#dfn-relative-luminance).
+function relativeLuminance(r: number, g: number, b: number): number {
+    const lin = (v: number) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+    return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+}
+
+export function contrastRatio(a: { r: number; g: number; b: number }, bg: { r: number; g: number; b: number }): number {
+    const lA = relativeLuminance(a.r, a.g, a.b), lBg = relativeLuminance(bg.r, bg.g, bg.b);
+    const lighter = Math.max(lA, lBg), darker = Math.min(lA, lBg);
+    return (lighter + 0.05) / (darker + 0.05);
+}
+
 function applyOneTransform(r: number, g: number, b: number, t: ColorTransform): { r: number; g: number; b: number } {
     const clamp = (v: number) => Math.max(0, Math.min(255, Math.round(v)));
-    const degree = Math.max(0, Math.min(1, Number.isFinite(t.degree) ? t.degree : 0));
     switch (t.type) {
         case 'greyOut': {
+            const degree = Math.max(0, Math.min(1, Number.isFinite(t.degree) ? t.degree : 0));
             const lum = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
             return { r: clamp(r * (1 - degree) + lum * degree), g: clamp(g * (1 - degree) + lum * degree), b: clamp(b * (1 - degree) + lum * degree) };
         }
-        case 'darken':
+        case 'darken': {
+            const degree = Math.max(0, Math.min(1, Number.isFinite(t.degree) ? t.degree : 0));
             return { r: clamp(r * (1 - degree)), g: clamp(g * (1 - degree)), b: clamp(b * (1 - degree)) };
+        }
         case 'saturate': {
+            const degree = Math.max(0, Math.min(1, Number.isFinite(t.degree) ? t.degree : 0));
             const { h, s, l } = rgbToHsl(r, g, b);
             return hslToRgb(h, Math.min(1, s + degree), l);
+        }
+        case 'ensureContrast': {
+            const bg = parsedColor(t.against.trim());
+            if (!bg) return { r, g, b };
+            const minRatio = Math.max(1, t.minRatio);
+            const { h, s, l } = rgbToHsl(r, g, b);
+            if (contrastRatio(hslToRgb(h, s, l), bg) >= minRatio) return { r, g, b };
+
+            // finds the lightness between `l` and `extreme` closest to `l` that still clears
+            // minRatio, assuming contrast rises monotonically from `l` toward `extreme`. Returns
+            // null if even `extreme` itself falls short.
+            const nearestSatisfying = (extreme: number): { l: number; ratio: number } | null => {
+                if (contrastRatio(hslToRgb(h, s, extreme), bg) < minRatio) return null;
+                let satisfy = extreme, fail = l;
+                for (let i = 0; i < 24; i++) {
+                    const mid = (satisfy + fail) / 2;
+                    if (contrastRatio(hslToRgb(h, s, mid), bg) >= minRatio) satisfy = mid; else fail = mid;
+                }
+                return { l: satisfy, ratio: contrastRatio(hslToRgb(h, s, satisfy), bg) };
+            };
+            const darker = nearestSatisfying(0.02);
+            const lighter = nearestSatisfying(0.98);
+            if (darker || lighter) {
+                const chosen = darker && lighter
+                    ? (Math.abs(darker.l - l) <= Math.abs(lighter.l - l) ? darker : lighter)
+                    : (darker ?? lighter)!;
+                return hslToRgb(h, s, chosen.l);
+            }
+            // neither extreme reaches minRatio — fall back to whichever gets closer.
+            const darkExtreme = { l: 0.02, ratio: contrastRatio(hslToRgb(h, s, 0.02), bg) };
+            const lightExtreme = { l: 0.98, ratio: contrastRatio(hslToRgb(h, s, 0.98), bg) };
+            const best = darkExtreme.ratio >= lightExtreme.ratio ? darkExtreme : lightExtreme;
+            return hslToRgb(h, s, best.l);
         }
     }
 }
