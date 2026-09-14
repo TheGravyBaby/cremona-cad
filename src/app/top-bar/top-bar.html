@@ -20,13 +20,14 @@
         <path d="M4 20v-7a4 4 0 0 1 4-4h12" />
       </svg>
     </button>
+    
     <!-- this is commented out until more recipes are developed
      there is a hello world recipe if you are interested in experimenting
      and two archived recipes in the examples directory -->
-    <select class="select" (change)="onSelectChange($event)">
+    <!-- <select class="select" (change)="onSelectChange($event)">
       <option value="enrico-ceruti-violin" [selected]="selectedRecipe === 'enrico-ceruti-violin'">Enrico Ceruti Violin</option>
       <option value="hello-world-recipe" [selected]="selectedRecipe === 'hello-world-recipe'">Hello World Recipe</option>
-    </select>
+    </select> -->
 
     <button class="btn icon-btn theme-toggle-btn" (click)="nightModeChange.emit(!nightMode)"
       [attr.aria-pressed]="nightMode"

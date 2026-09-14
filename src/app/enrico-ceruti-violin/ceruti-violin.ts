@@ -54,8 +54,19 @@ export class CerutiViolin extends RecipeComponentBase {
   ];
 
   @Input() nightMode = true;
-  readonly lightDarkenDegree = 0.15;
   readonly lightSaturateDegree = 0.4;
+  // must track --ui-bg-canvas under :root.day-mode in styles.css — the only place that color is
+  // otherwise defined. If that variable changes, this drifts out of sync silently.
+  private static readonly lightModeCanvasBg = '#c3bfb3';
+  // WCAG non-text contrast floor (1.4.11) for strokes against the day-mode canvas.
+  private static readonly lightContrastMin = 3.0;
+  // centerBoutLow/fHoleUpperLight/fHoleLowerLight are the pale end of a dark/mid/light triad and
+  // sit at nearly the same lightness as the day-mode canvas itself. Holding them to the same 3:1
+  // floor as everything else would push them down onto their "mid" sibling's lightness — in
+  // f-hole-contours-panel.ts, U1/U2/U3 and L1/L2/L3 are adjacent arcs told apart by this triad
+  // while editing, so collapsing it isn't just a cosmetic loss. This lower floor keeps them
+  // visibly the lightest of their triad at the cost of falling short of full AA contrast.
+  private static readonly lightContrastMinPale = 2.0;
 
   offFactor = .5;
   off2Factor = .8;
@@ -85,10 +96,17 @@ export class CerutiViolin extends RecipeComponentBase {
   } as const;
 
   private makeColor(base: string, ...extra: ColorTransform[]): string {
+    return this.makeColorWithFloor(base, CerutiViolin.lightContrastMin, this.lightSaturateDegree, ...extra);
+  }
+
+  // saturateDegree is 0 for the neutral trace greys — boosting saturation on an almost-hueless
+  // color just amplifies whatever tiny rounding bias its hex happens to carry, tinting a
+  // reference line an arbitrary color instead of keeping it neutral.
+  private makeColorWithFloor(base: string, minRatio: number, saturateDegree: number, ...extra: ColorTransform[]): string {
     const transforms: ColorTransform[] = [];
     if (!this.nightMode) {
-      transforms.push({ type: 'darken', degree: this.lightDarkenDegree });
-      transforms.push({ type: 'saturate', degree: this.lightSaturateDegree });
+      if (saturateDegree > 0) transforms.push({ type: 'saturate', degree: saturateDegree });
+      transforms.push({ type: 'ensureContrast', against: CerutiViolin.lightModeCanvasBg, minRatio });
     }
     transforms.push(...extra);
     return applyTransforms(base, ...transforms);
@@ -106,27 +124,27 @@ export class CerutiViolin extends RecipeComponentBase {
       centerBout: this.makeColor(p.centerBout),
       centerBoutOff: this.makeColor(p.centerBout, { type: 'greyOut', degree: this.offFactor }),
       centerBoutOff2: this.makeColor(p.centerBout, { type: 'greyOut', degree: this.off2Factor }),
-      centerBoutLow: this.makeColor(p.centerBoutLow),
-      centerBoutLowOff: this.makeColor(p.centerBoutLow, { type: 'greyOut', degree: this.offFactor }),
-      centerBoutLowOff2: this.makeColor(p.centerBoutLow, { type: 'greyOut', degree: this.off2Factor }),
+      centerBoutLow: this.makeColorWithFloor(p.centerBoutLow, CerutiViolin.lightContrastMinPale, this.lightSaturateDegree),
+      centerBoutLowOff: this.makeColorWithFloor(p.centerBoutLow, CerutiViolin.lightContrastMinPale, this.lightSaturateDegree, { type: 'greyOut', degree: this.offFactor }),
+      centerBoutLowOff2: this.makeColorWithFloor(p.centerBoutLow, CerutiViolin.lightContrastMinPale, this.lightSaturateDegree, { type: 'greyOut', degree: this.off2Factor }),
       lowerBout: this.makeColor(p.lowerBout),
       lowerBoutOff: this.makeColor(p.lowerBout, { type: 'greyOut', degree: this.offFactor }),
       lowerBoutOff2: this.makeColor(p.lowerBout, { type: 'greyOut', degree: this.off2Factor }),
       violNeck: this.makeColor(p.violNeck),
-      innerTrace: p.innerTrace,
-      outerTrace: p.outerTrace,
-      mouldTrace: p.mouldTrace,
+      innerTrace: this.makeColorWithFloor(p.innerTrace, CerutiViolin.lightContrastMin, 0),
+      outerTrace: this.makeColorWithFloor(p.outerTrace, CerutiViolin.lightContrastMin, 0),
+      mouldTrace: this.makeColorWithFloor(p.mouldTrace, CerutiViolin.lightContrastMin, 0),
       fluting: this.makeColor(p.fluting),
       archTop: this.makeColor(p.archTop),
       archBack: this.makeColor(p.archBack),
       fHoleUpperDark: this.makeColor(p.fHoleUpperDark),
       fHoleUpper: this.makeColor(p.fHoleUpper),
       fHoleUpperMuted: this.makeColor(p.fHoleUpper, { type: 'greyOut', degree: this.offFactor }),
-      fHoleUpperLight: this.makeColor(p.fHoleUpperLight),
+      fHoleUpperLight: this.makeColorWithFloor(p.fHoleUpperLight, CerutiViolin.lightContrastMinPale, this.lightSaturateDegree),
       fHoleLowerDark: this.makeColor(p.fHoleLowerDark),
       fHoleLower: this.makeColor(p.fHoleLower),
       fHoleLowerMuted: this.makeColor(p.fHoleLower, { type: 'greyOut', degree: this.offFactor }),
-      fHoleLowerLight: this.makeColor(p.fHoleLowerLight),
+      fHoleLowerLight: this.makeColorWithFloor(p.fHoleLowerLight, CerutiViolin.lightContrastMinPale, this.lightSaturateDegree),
       fHoleStem: this.makeColor(p.fHoleStem),
       fHoleStemOff: this.makeColor(p.fHoleStem, { type: 'greyOut', degree: this.offFactor }),
       fHoleCut: this.makeColor(p.fHoleCut),
