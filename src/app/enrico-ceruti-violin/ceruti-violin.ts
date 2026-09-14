@@ -168,7 +168,7 @@ export class CerutiViolin extends RecipeComponentBase {
     return this.templates
       .filter(t => t.key !== CERUTI_TEMPLATES[0].key)
       .filter(t => isLocalDev || isLocSourced(t))
-      .map((t, i) => ({ key: t.key, label: `${i + 1}. ${isLocSourced(t) ? '' : '/ '}${t.label}` }));
+      .map((t, i) => ({ key: t.key, label: `[${i + 1}]  ${isLocSourced(t) ? '' : '/ '}${t.label}` }));
   }
 
   // Debounced like any other edit, so a recipe carrying reference images isn't re-serialized on
