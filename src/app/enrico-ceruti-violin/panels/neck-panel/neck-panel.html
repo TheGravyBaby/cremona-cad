@@ -1,0 +1,128 @@
+@if (params.neck) {
+
+<section class="ui-group" [style.border-color]="colors.neckOff">
+    <div class="ui-group-title">Neck Root</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Mortise <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.5" min="0"
+                [(ngModel)]="neck.mortiseDepth" (input)="onChange()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Button Height <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.5" min="0"
+                [(ngModel)]="params.button.height" (input)="onChange()" />
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Overstand <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.5" min="0"
+                [(ngModel)]="neck.overstand" (input)="onChange()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Angle <span class="unit-label">°</span></span>
+            <input class="basic-input" type="number" step="0.5" min="0" max="30"
+                [ngModel]="angleDeg" (ngModelChange)="setAngleDeg($event)" />
+        </label>
+    </div>
+</section>
+
+<section class="ui-group" [style.border-color]="colors.neck">
+    <div class="ui-group-title">Neck</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Stop Length <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="1" min="1"
+                [(ngModel)]="neck.stopLength" (input)="onChange()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Nut Height <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.25" min="0"
+                [(ngModel)]="neck.nutHeight" (input)="onChange()" />
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Thickness; Root, Nut <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.5" min="1"
+                [(ngModel)]="neck.thicknessRoot" (input)="onChange()" />
+        </label>
+        <label class="field-cell">
+            <input class="basic-input" type="number" step="0.5" min="1"
+                [(ngModel)]="neck.thicknessNut" (input)="onChange()" />
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Heel Radius <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="1" min="1"
+                [(ngModel)]="neck.heelRadius" (input)="onChange()" />
+        </label>
+    </div>
+    @if (solved && !solved.nut) {
+    <div class="input-group basic-row field-row" role="group">
+        <span class="station-note">No nut — the string cannot reach its stop length from the bridge. Lengthen the stop.</span>
+    </div>
+    }
+</section>
+
+<section class="ui-group" [style.border-color]="colors.bridge">
+    <div class="ui-group-title">Bridge</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Body Stop <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="1" min="1"
+                [(ngModel)]="neck.bodyStop" (input)="onChange()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Height <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.5" min="0"
+                [(ngModel)]="neck.bridgeHeight" (input)="onChange()" />
+        </label>
+    </div>
+</section>
+
+<section class="ui-group" [style.border-color]="colors.fingerboard">
+    <div class="ui-group-title">Fingerboard</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Length <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="1" min="1"
+                [(ngModel)]="neck.fingerboard.length" (input)="onChange()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Thickness <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.5" min="0"
+                [(ngModel)]="neck.fingerboard.thickness" (input)="onChange()" />
+        </label>
+    </div>
+</section>
+
+@if (solved; as s) {
+<section class="ui-group">
+    <div class="ui-group-title">Readouts</div>
+    <div class="input-group basic-row field-row" role="group">
+        <span class="field-cell">
+            <span class="field-title">Neck Stop <span class="unit-label">mm</span></span>
+            <span class="readout">{{ s.nut ? (s.nut.neckStop | number:'1.1-1') : '—' }}</span>
+        </span>
+        <span class="field-cell">
+            <span class="field-title">Projection <span class="unit-label">mm</span></span>
+            <span class="readout">{{ s.projection !== null ? (s.projection | number:'1.1-1') : '—' }}</span>
+        </span>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <span class="field-cell">
+            <span class="field-title">Over FB End <span class="unit-label">mm</span></span>
+            <span class="readout">{{ s.stringOverFingerboardEnd !== null ? (s.stringOverFingerboardEnd | number:'1.1-1') : '—' }}</span>
+        </span>
+        <span class="field-cell">
+            <span class="field-title">Depth at Root <span class="unit-label">mm</span></span>
+            <span class="readout">{{ s.bodyDepthAtRoot | number:'1.1-1' }}</span>
+        </span>
+    </div>
+</section>
+}
+
+}

@@ -1,9 +1,9 @@
 import { circleCircleIntersections, findJoiningArcs } from "../helpers/math/draftMath";
 import { angleFromCenter, dist, pointOnCircle, offsetArcRadius, flipArcAboutY, flipPointAboutY, lineCircleIntersection, lineFromTwoPoints } from "../helpers/math/simpleGeometry";
 import { pathFromArc, pathFromLine, pathFromCornerCubic, unifyConnectedSvgPaths, combinePathStrings } from "../helpers/math/pathMath";
-import { Arc, arcFromCircle, Pt, Rectangle } from "../models/types";
+import { Arc, arcFromCircle, Pt } from "../models/types";
 import { error } from "../shared/message-emitter";
-import { EnricoCerutiParams } from "./ceruti-types";
+import { ButtonParams, EnricoCerutiParams } from "./ceruti-types";
 
 // ===== Path/contour builders =====
 // Takes the outline already solved by ceruti-calcs.ts (calculateMainBouts,
@@ -468,6 +468,46 @@ export function defineInnerPath(p: EnricoCerutiParams): string {
     return path;
 }
 
+/** Violin numbers scaled by body length, so the larger sizes get a button in proportion. */
+export function defaultButton(p: EnricoCerutiParams): ButtonParams {
+    const k = p.height / 355;
+    return { width: Math.round(20 * k * 2) / 2, height: Math.round(14 * k * 2) / 2 };
+}
+
+/** The cap's circle: one radius short of the tip, on the centreline. */
+function buttonCap(b: ButtonParams, plateEndY: number): { x: number; y: number; r: number } {
+    return { x: 0, y: plateEndY + b.height - b.width / 2, r: b.width / 2 };
+}
+
+// the button is built from its tip down: a cap circle, and vertical walls dropped from its
+// equator to wherever the plate's edge crosses them. A height under the cap's radius puts the
+// equator below the edge, so the walls vanish and the cap itself is trimmed against the edge — a
+// circular segment. `wallHit` gives the edge under a wall at x; `capHit` the cap's own crossing
+// of the edge on the right, or null when the cap never clears it. `leaves` is where the edge
+// hands over to the button, for the caller to trim the edge at.
+function buttonShape(
+    b: ButtonParams, plateEndY: number,
+    wallHit: (x: number) => Pt | null, capHit: () => Pt | null,
+): { paths: string[]; leaves: Pt } | null {
+    const cap = buttonCap(b, plateEndY);
+    const foot = wallHit(cap.r);
+    if (foot && cap.y >= foot.y) {
+        const shoulder = { x: cap.r, y: cap.y };
+        return {
+            leaves: foot,
+            paths: [
+                pathFromLine(foot, shoulder),
+                pathFromLine(flipPointAboutY(foot), flipPointAboutY(shoulder)),
+                pathFromArc(arcFromCircle(cap, 0, Math.PI)),
+            ],
+        };
+    }
+    const hit = capHit();
+    if (!hit) return null;
+    const from = angleFromCenter(cap, hit);
+    return { leaves: hit, paths: [pathFromArc(arcFromCircle(cap, from, Math.PI - from))] };
+}
+
 // offset should be positive to go outside of the inner path,
 // but technically its up to the caller
 // this is technically an outer path function due to the corner logic
@@ -475,23 +515,15 @@ export function defineOuterPath(p: EnricoCerutiParams, offset?: number, closeArc
     offset ??= p.overhang + p.rib;
     let arcs = defineOffsetArcs(p, offset);
 
-    let U0ForButton = offsetArcRadius(p.bouts.U0, offset);
     let buttonPaths: string[] = [];
-    if (button && !p.options.useViolNeck) {
-        p.button ??= new Rectangle(new Pt(-10, p.height - offset), new Pt(10, p.height - offset + 5));
-        let U0Intersect = lineCircleIntersection(lineFromTwoPoints(new Pt(p.button.width / 2, p.height), new Pt(p.button.width / 2, 0)), U0ForButton).sort((a, b) => a.y - b.y)[1]; // long vertical line
-        buttonPaths.push(pathFromLine(U0Intersect, {...U0Intersect , y: U0Intersect.y + p.button.height}));
-        buttonPaths.push(pathFromLine(flipPointAboutY(U0Intersect), flipPointAboutY({...U0Intersect , y: U0Intersect.y + p.button.height})));
-        let buttonCircle = {y: U0Intersect.y + p.button.height, x: 0, r: p.button.width / 2};
-        let buttonArc = arcFromCircle(buttonCircle, 0, Math.PI)
-
-        buttonPaths.push(pathFromArc(buttonArc));
-
-        // we need to edit U0 as well
-        // TODO, perhaps vesica if the join is weird?
-        // U0 should be the final arc
-        let U0Angle = angleFromCenter(U0ForButton, U0Intersect);
-        arcs[arcs.length - 1].start = U0Angle
+    if (button && !p.options.useViolNeck && p.button && p.button.height > 0) {
+        const U0ForButton = offsetArcRadius(p.bouts.U0, offset);
+        const b = buttonShape(p.button, p.height, x => lineCircleIntersection(lineFromTwoPoints(new Pt(x, p.height), new Pt(x, 0)), U0ForButton).sort((a, c) => a.y - c.y).pop() ?? null,
+            () => circleCircleIntersections(buttonCap(p.button!, p.height), U0ForButton).find(h => h.x > 0) ?? null);
+        if (b) {
+            buttonPaths.push(...b.paths);
+            arcs[arcs.length - 1].start = angleFromCenter(U0ForButton, b.leaves);
+        }
     }
 
     let mirroredArcs = arcs.map(arc => flipArcAboutY(arc));
@@ -606,17 +638,18 @@ export function defineOuterPath(p: EnricoCerutiParams, offset?: number, closeArc
     const cap = p.options.useViolNeck ? violNeckCap(p, offset) : null;
     if (cap) {
         const faceEnd = { x: cap.topX, y: cap.topY };
-        if (button) {
-            p.button ??= new Rectangle(new Pt(10, cap.topY), new Pt(-10, cap.topY + 5));
-            // a button wider than the neck face has nothing to stand on, so it takes the face
-            const half = Math.min(p.button.width / 2, cap.topX);
-
-            paths.push(pathFromLine(faceEnd, { x: half, y: cap.topY }));
-            paths.push(pathFromLine(flipPointAboutY(faceEnd), { x: -half, y: cap.topY }));
-
-            buttonPaths.push(pathFromLine({ x: half, y: cap.topY }, { x: half, y: cap.topY + p.button.height }));
-            buttonPaths.push(pathFromLine({ x: -half, y: cap.topY }, { x: -half, y: cap.topY + p.button.height }));
-            buttonPaths.push(pathFromArc(arcFromCircle({ y: cap.topY + p.button.height, x: 0, r: half }, 0, Math.PI)));
+        // a button wider than the neck face has nothing to stand on, so it takes the face
+        const fits = button && p.button && p.button.height > 0
+            ? { width: Math.min(p.button.width, 2 * cap.topX), height: p.button.height } : null;
+        const onFace = fits && buttonShape(fits, cap.topY, x => ({ x, y: cap.topY }), () => {
+            const c = buttonCap(fits, cap.topY);
+            const dy = cap.topY - c.y;
+            return dy < c.r ? { x: Math.sqrt(c.r * c.r - dy * dy), y: cap.topY } : null;
+        });
+        if (onFace) {
+            paths.push(pathFromLine(faceEnd, onFace.leaves));
+            paths.push(pathFromLine(flipPointAboutY(faceEnd), flipPointAboutY(onFace.leaves)));
+            buttonPaths.push(...onFace.paths);
         }
         else {
             paths.push(pathFromLine(faceEnd, flipPointAboutY(faceEnd)));

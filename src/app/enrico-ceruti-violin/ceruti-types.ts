@@ -1,5 +1,13 @@
 import { Arc, Circle, NamedReferenceImage, Pt, Rectangle, ReferenceImage } from "../models/types";
 
+/** The back plate's tab under the neck heel. Drawn in plan by ceruti-paths, read as a tip by the neck. */
+export interface ButtonParams {
+  /** Diameter of the semicircular cap (mm). */
+  width: number;
+  /** How far the tip stands beyond the plate's end on the centreline (mm). */
+  height: number;
+}
+
 export interface EnricoCerutiParams {
   height: number;
   width: number;
@@ -10,7 +18,7 @@ export interface EnricoCerutiParams {
   purflingChannelDepth: number | null;
   innerFlutingDepth: number | null;
   outerFlutingDepth: number | null;
-  button: Rectangle | null,
+  button: ButtonParams | null,
   bouts: {
     UBW: number | null;
     U0: Arc | null;
@@ -101,6 +109,38 @@ export interface EnricoCerutiParams {
   },
   fHoles?: FholeParams;
   arching?: ArchingParams;
+  neck?: NeckParams;
+}
+
+// the neck set, in the side elevation. the fingerboard plane leaves the top plate's edge
+// `overstand` proud of it and tilts back toward the nut by `angle`; the nut lands wherever the
+// string from the bridge reaches `stopLength`, so the neck stop is read off, not entered.
+export interface NeckParams {
+  /** Plate edge to the bridge line, down the body (mm). */
+  bodyStop: number;
+  /** Feet to string notches, on the centreline (mm). */
+  bridgeHeight: number;
+  /** How far the foot sits inside the rib's outer face (mm). */
+  mortiseDepth: number;
+  /** Fingerboard underside above the top plate's edge at the root (mm). */
+  overstand: number;
+  /** Radians. Tilt of the fingerboard plane off the body axis, nut end toward the back. */
+  angle: number;
+  /** String above the fingerboard at the nut (mm). */
+  nutHeight: number;
+  /** Nut to bridge along the string (mm). */
+  stopLength: number;
+  /** The neck wood alone, fingerboard plane to the back, at the rib's outer face (mm). */
+  thicknessRoot: number;
+  /** The same at the nut (mm). */
+  thicknessNut: number;
+  /** The cove from the neck's back down to the button tip (mm). */
+  heelRadius: number;
+  fingerboard: {
+    length: number;
+    /** Centreline thickness, taken as uniform along the board's length (mm). */
+    thickness: number;
+  };
 }
 
 export interface ArchingParams {
@@ -209,6 +249,10 @@ export interface CerutiColors {
   fHoleStem: string;
   fHoleStemOff: string;
   fHoleCut: string;
+  neck: string;
+  neckOff: string;
+  fingerboard: string;
+  bridge: string;
 }
 
 /** A plate's 3D/topo overlay is one-at-a-time — rendering both is too slow. */
@@ -482,7 +526,7 @@ export interface PathEntry {
 // is a migration; `panelOrder` is typed against this list.
 export const CERUTI_PANEL_IDS = [
   'base', 'mainBouts', 'corners', 'centerBout', 'outerTrace',
-  'fluting', 'longArching', 'crossArching', 'fHolePlacement', 'fHoleContours', 'mould', 'export',
+  'fluting', 'longArching', 'crossArching', 'fHolePlacement', 'fHoleContours', 'neck', 'mould', 'export',
 ] as const;
 
 export type CerutiPanelId = typeof CERUTI_PANEL_IDS[number];

@@ -21,7 +21,7 @@ scoped script is `ng test --watch=false` with an `--include`/`--exclude` glob; s
 
 | Script | Covers | Time |
 |---|---|---|
-| `npm run test:outline` | `ceruti-calcs*`, `ceruti-paths`, `ceruti-serialization`, `ceruti-templates` — the 2D outline pipeline | ~6s |
+| `npm run test:outline` | `ceruti-calcs*`, `ceruti-paths`, `ceruti-serialization`, `ceruti-templates`, `ceruti-neck` — the 2D outline pipeline, plus the neck set | ~6s |
 | `npm run test:arching` | `ceruti-arching*`, `ceruti-arch-geometry`, `ceruti-surface` — the 3D arching pipeline, the specialist math | ~35-45s |
 | `npm run test:panels` | `enrico-ceruti-violin/panels/**` — panel wiring + SVG/DXF/STL export | ~15s |
 | `npm run test:draft-canvas` | `draft-canvas/**` — canvas, camera, snapping, tools | ~3s |

@@ -1,10 +1,11 @@
-import { defineFholePath, defineFlutingPath, defineInnerPath, defineOffsetArcs, defineOuterPath, defineOuterPurflingPath, definePurflingPath } from './ceruti-paths';
+import { defineFholePath, defineFlutingPath, defineInnerPath, defineOffsetArcs, defineOuterPath, defineOuterPurflingPath, definePurflingPath, violNeckCap } from './ceruti-paths';
 import { defaultViolin, layoutFrom, templateKeys, templateViolin, violinFromRecipe } from './ceruti-fixtures';
-import { calculateFholeContours } from './ceruti-calcs';
+import { calculateFholeContours, calculateOuterArcs } from './ceruti-calcs';
 import { defaultFHolePlacement } from './panels/f-hole-placement-panel/f-hole-placement-panel';
 import { EnricoCerutiParams } from './ceruti-types';
-import { pointOnCircle } from '../helpers/math/simpleGeometry';
-import { Pt } from '../models/types';
+import { lineCircleIntersection, lineFromTwoPoints, offsetArcRadius, pointOnCircle } from '../helpers/math/simpleGeometry';
+import { samplePathToPolyline } from '../helpers/math/pathMath';
+import { Pt, Rectangle } from '../models/types';
 import ravatinMansParams from './templates/test-fixtures/ravatin-mans-params.json';
 import magginiDelmasParams from './templates/test-fixtures/maggini-delmas-params.json';
 
@@ -262,5 +263,66 @@ describe('the arcs joining the viol neck to its top face', () => {
     expect(joinArc(p, -6.5)).toBeUndefined();
     // 14.5mm in from the edge is the same -6.5 once the inset comes off
     expect(closes(defineFlutingPath(p, 14.5)!), 'the channel still closes without one').toBe(true);
+  });
+});
+
+describe('the button', () => {
+  // the back's outer trace, with the button, as points — its top is the button tip
+  function backTrace(p: EnricoCerutiParams): Pt[] {
+    return samplePathToPolyline(defineOuterPath(p, p.overhang + p.rib, true, true), 0.25);
+  }
+  const topY = (pts: Pt[]) => Math.max(...pts.map(q => q.y));
+
+  it('stands its height beyond the plate, whether it has walls or is only a segment', () => {
+    const p = defaultViolin();
+    for (const height of [0.5, 2, 6, 9.5, 10, 10.5, 14, 20]) {
+      p.button = { width: 20, height };
+      const path = defineOuterPath(p, p.overhang + p.rib, true, true);
+      expect(subpaths(path), `one loop at height ${height}`).toBe(1);
+      expect(topY(samplePathToPolyline(path, 0.25)), `tip at height ${height}`).toBeCloseTo(p.height + height, 1);
+    }
+  });
+
+  it('drops straight walls from the cap only while the height clears the cap radius', () => {
+    const p = defaultViolin();
+    const onWall = (pts: Pt[]) => pts.filter(q => Math.abs(q.x - 10) < 1e-6 && q.y > p.height - 3);
+    p.button = { width: 20, height: 14 };
+    expect(onWall(backTrace(p)).length).toBeGreaterThan(8);
+    p.button = { width: 20, height: 6 };
+    expect(onWall(backTrace(p)).length).toBeLessThanOrEqual(1);
+  });
+
+  it('draws nothing at zero height', () => {
+    const p = defaultViolin();
+    p.button = { width: 20, height: 0 };
+    const path = defineOuterPath(p, p.overhang + p.rib, true, true);
+    expect(subpaths(path)).toBe(1);
+    expect(topY(samplePathToPolyline(path, 0.25))).toBeCloseTo(p.height, 1);
+  });
+
+  it('migrates a saved Rectangle so the tip lands where its walls used to put it', () => {
+    const p = defaultViolin();
+    const inset = p.overhang + p.rib;
+    const wallHit = lineCircleIntersection(
+      lineFromTwoPoints(new Pt(10, p.height), new Pt(10, 0)), offsetArcRadius(p.bouts.U0!, inset),
+    ).sort((a, b) => a.y - b.y).pop()!;
+    (p as unknown as { button: unknown }).button = new Rectangle(new Pt(-10, p.height - inset), new Pt(10, p.height - inset + 5));
+
+    calculateOuterArcs(p);
+
+    expect('Pt1' in p.button!).toBe(false);
+    expect(p.button!.width).toBe(20);
+    expect(topY(backTrace(p))).toBeCloseTo(wallHit.y + 5 + 10, 1);
+  });
+
+  it('stands off a viol neck\'s face by the same rule', () => {
+    const p = violNeckOn(violinFromRecipe({ params: magginiDelmasParams }), 6);
+    const face = violNeckCap(p, p.overhang + p.rib)!.topY;
+    for (const height of [3, 14]) {
+      p.button = { width: 20, height };
+      const path = defineOuterPath(p, p.overhang + p.rib, true, true);
+      expect(subpaths(path), `one loop at height ${height}`).toBe(1);
+      expect(topY(samplePathToPolyline(path, 0.25)), `tip at height ${height}`).toBeCloseTo(face + height, 1);
+    }
   });
 });

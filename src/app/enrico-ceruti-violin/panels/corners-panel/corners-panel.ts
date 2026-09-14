@@ -6,7 +6,6 @@ import { nearestFraction } from '../../../helpers/nearestFraction';
 import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderCrosshair, renderPointHalo } from '../../../helpers/renderFuncs';
 import { Arc } from '../../../models/types';
 import { calculateCorners } from '../../ceruti-calcs';
-import { compoundArcInfo, cornerPositionInfo, violCornerInfo } from '../../ceruti-helpers';
 import { CerutiColors, CerutiViewFlags, DefaultParams, EnricoCerutiParams, RenderToggleKey } from '../../ceruti-types';
 import { renderBounds, renderBoutBouts, renderCornerGuides } from '../../renders/guides.render';
 import { renderMainBouts } from '../main-bouts-panel/main-bouts-panel';
@@ -36,9 +35,6 @@ export class CornersPanel extends CerutiPanelBase implements OnInit {
   @Input({ required: true }) flags!: CerutiViewFlags;
 
   protected readonly nearestFraction = nearestFraction;
-  protected readonly cornerPositionInfo = cornerPositionInfo;
-  protected readonly violCornerInfo = violCornerInfo;
-  protected readonly compoundArcInfo = compoundArcInfo;
   protected readonly adjustArcStart = adjustArcStart;
 
   private highlightedArc: Arc | null = null;

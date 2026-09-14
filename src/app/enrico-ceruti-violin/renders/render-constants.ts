@@ -45,6 +45,9 @@ export const CERUTI_COLOR_PALETTE = {
   // the cut is the only warm thing in the f-hole drawing, and the only straight line the maker
   // actually cuts — everything either side of it is an arc
   fHoleCut: '#e08a1e',
+  neck: '#b07a3c',
+  fingerboard: '#6f4d9a',
+  bridge: '#5f8fa3',
 } as const;
 
 /** Degree of {@link https://en.wikipedia.org/wiki/HSL_and_HSV|greyOut} for a de-emphasized

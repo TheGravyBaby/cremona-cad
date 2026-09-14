@@ -31,7 +31,6 @@
                 }
             </div>
         </div>
-        <button type="button" class="info-icon" (click)="crossSectionStationInfo()" title="More information">ⓘ</button>
     </div>
     @if (cycloidStations('top'); as stations) {
     @if (stations.length) {
@@ -68,7 +67,6 @@
     </div>
     }
     }
-
 
     @if (cycloidStations('bottom'); as stations) {
     @if (stations.length) {
@@ -143,7 +141,6 @@
                 (change)="setCurveType('top', 'spline')" />
             <span>Spline</span>
         </div>
-        <button type="button" class="info-icon" (click)="crossArchCurveTypeInfo()" title="More information">ⓘ</button>
     </div>
 
     @if (crossCycloid('top')) {
@@ -158,8 +155,6 @@
             <input class="basic-input" type="number" step="1" min="5" max="100" [ngModel]="cycloidPct('top')"
                 (ngModelChange)="setCycloidPct('top', $event)" [style.border-color]="colors.archTop" />
         </label>
-        <button type="button" class="info-icon" (click)="crossArchCycloidControlsInfo()"
-            title="More information">ⓘ</button>
     </div>
     }
 
@@ -169,8 +164,6 @@
             <span class="field-cell">Position <span class="unit-label">%</span></span>
             <span class="field-separator" style="visibility:hidden" aria-hidden="true"></span>
             <span class="field-cell">Height <span class="unit-label">%</span></span>
-            <button type="button" class="info-icon" (click)="crossArchTemplateInfo()"
-                title="More information">ⓘ</button>
         </div>
         @for (row of splineRows(spline); track $index) {
         <div class="input-group basic-row field-row spline-row" role="group" data-reorder-row>
@@ -205,7 +198,6 @@
                 <span class="basic-display" title="The crown always sits at the local long-arch height">100</span>
             </div>
             <span>Peak</span>
-            <button type="button" class="info-icon" (click)="crossArchPeakInfo()" title="More information">ⓘ</button>
             }
         </div>
         }
@@ -225,7 +217,6 @@
             + Set Station at {{ cursorY }}mm
         </button>
         }
-        <button type="button" class="info-icon" (click)="crossArchStationInfo()" title="More information">ⓘ</button>
     </div>
     }
 
@@ -240,7 +231,6 @@
                 (change)="togglePlateView('top', 'wireframe')" />
             <span>Wireframe</span>
         </div>
-        <button type="button" class="info-icon" (click)="archContoursInfo()" title="More information">ⓘ</button>
     </div>
 
 </section>
@@ -265,7 +255,6 @@
                 (change)="setCurveType('bottom', 'spline')" />
             <span>Spline</span>
         </div>
-        <button type="button" class="info-icon" (click)="crossArchCurveTypeInfo()" title="More information">ⓘ</button>
     </div>
 
     @if (crossCycloid('bottom')) {
@@ -280,8 +269,6 @@
             <input class="basic-input" type="number" step="1" min="5" max="100" [ngModel]="cycloidPct('bottom')"
                 (ngModelChange)="setCycloidPct('bottom', $event)" [style.border-color]="colors.archBack" />
         </label>
-        <button type="button" class="info-icon" (click)="crossArchCycloidControlsInfo()"
-            title="More information">ⓘ</button>
     </div>
     }
 
@@ -291,8 +278,6 @@
             <span class="field-cell">Position <span class="unit-label">%</span></span>
             <span class="field-separator" style="visibility:hidden" aria-hidden="true"></span>
             <span class="field-cell">Height <span class="unit-label">%</span></span>
-            <button type="button" class="info-icon" (click)="crossArchTemplateInfo()"
-                title="More information">ⓘ</button>
         </div>
         @for (row of splineRows(spline); track $index) {
         <div class="input-group basic-row field-row spline-row" role="group" data-reorder-row>
@@ -327,7 +312,6 @@
                 <span class="basic-display" title="The crown always sits at the local long-arch height">100</span>
             </div>
             <span>Peak</span>
-            <button type="button" class="info-icon" (click)="crossArchPeakInfo()" title="More information">ⓘ</button>
             }
         </div>
         }
@@ -346,7 +330,6 @@
             + Set Station at {{ cursorY }}mm
         </button>
         }
-        <button type="button" class="info-icon" (click)="crossArchStationInfo()" title="More information">ⓘ</button>
     </div>
     }
 
@@ -361,7 +344,6 @@
                 (change)="togglePlateView('back', 'wireframe')" />
             <span>Wireframe</span>
         </div>
-        <button type="button" class="info-icon" (click)="archContoursInfo()" title="More information">ⓘ</button>
     </div>
 
 </section>

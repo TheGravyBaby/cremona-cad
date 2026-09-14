@@ -13,13 +13,14 @@ adding to a file — they are current and more specific than this page.
 | `ceruti-arching.ts` | Long-arch height profile, station normalization, `bodyLandmarks`, the `*AtY` half-width queries. The layer that decides *where* a section is taken and how tall the arch stands there. |
 | `ceruti-arch-geometry.ts` | The gouge's circular section, the crown, and the tangency joining them. Answers "what shape is the section here". |
 | `ceruti-surface.ts` | The evaluable height field z(x,y) over the plan view. Cross-arch templates, STL. |
+| `ceruti-neck.ts` | The neck set in the side elevation: where the nut, fingerboard, heel and bridge stand, and the readouts (neck stop, projection). Hangs off the top plate's edge via `topPlatePlacement`, so the rib taper carries through. |
 | `ceruti-types.ts` | `EnricoCerutiParams` and the whole serialized shape. `CerutiColors`, view flags. |
 | `ceruti-templates.ts` | Bundled historical instruments (Strad Goetz, Del Gesu Baltic, …) as pasted recipe JSON. **Append-only** — add instruments, don't restructure. |
 | `templates/corpus/` | Instruments traced from open-licence museum records — one `.json` file each, listed in `templates/corpus/index.ts`. Same type as the templates above, but carrying a `TemplateMeta` and a per-image `ImageCredit` so the numbers and the pixels can each be rechecked. New instruments go here, not in `ceruti-templates.ts`. |
 | `templates/local/` | Gitignored developer scratch space — traces and theories with no provenance to check, never shipped, never swept by the suite. Shows up in the picker only on a local dev build. See that folder's `README.md`. |
 | `ceruti-helpers.ts` | `*Info()` functions — the help text behind each field's info button. |
 | `panels/` | One folder per sidebar panel. Panels are thin; see the layer rule in the root CLAUDE.md. |
-| `renders/` | SVG emitters for the arching views, plus geometry that only serves one view. |
+| `renders/` | SVG emitters for the arching views, plus geometry that only serves one view. `body-section.render.ts` is the side elevation both the long-arching and neck panels draw on. |
 
 `ceruti-calcs.ts` → `ceruti-paths.ts` is the 2D outline pipeline; `ceruti-arching.ts` →
 `ceruti-arch-geometry.ts` → `ceruti-surface.ts` is the 3D one. The split between the last two is
@@ -62,6 +63,28 @@ recognizes the current format *positively* so it stays idempotent; six tests in
   `defaultArchingParams` by whichever arching panel or the surface builder reaches it first.
   Each entry's `meta.notes` records how far to trust its numbers; the top plate is occluded by
   the fingerboard and strings on every one of these views and is always the weaker of the two.
+- **The heel is a cove, on purpose.** A convex arc tangent to the neck's back can never reach
+  the button tip, which sits outside that line's extension — so the side silhouette of a heel is
+  necessarily concave where it leaves the neck. `solveHeel` draws it as one arc tangent to the
+  back from the outside; a wide radius reaches the tip on its own, a tight one stops where it
+  runs square to the body and a flat face carries on to the tip, so the cove never pockets a
+  thumb. The convex nose a hand feels is a cross-section fact, not a silhouette one.
+- **The button is built from its tip.** `button.height` is how far the tip stands beyond the
+  plate's end on the centreline, so the neck's side view needs nothing from the plan: the heel
+  foot ends at `height + button.height`. `ceruti-paths` drops the walls from the cap circle down
+  to the edge, and trims the cap itself against the edge once the height is under the cap's
+  radius. Recipes saved as a `Rectangle` stored the wall's length instead; `calculateOuterArcs`
+  converts them, telling them apart by the corner points they carry.
+- **The fingerboard's thickness is one number, not two.** It runs parallel to the neck at a
+  uniform `thickness` — a real board is planed thicker toward the body as the crown rises under
+  it, but that's not worth a second variable here. Recipes saved with the old `thicknessNut`/
+  `thicknessEnd` pair are migrated by `normalizeNeckParams`, preferring the end value: the far
+  end anchors the fingerboard's top line, so it's what the projection and string-clearance
+  readouts actually turn on, and the nut end barely levers it.
+- **A panel's help-text info icons are added by hand, not by an agent.** Every `ⓘ` button
+  wired to a `*Info()` help function was pulled from every panel (2026-09-14) — the write-ups in
+  `ceruti-helpers.ts` stayed as reference text, but no panel binds them any more. Don't add a new
+  one when adding a field; leave that to a human pass.
 - **The rib taper is a placement fact, not a carving one.** Ribs are planed down toward the
   upper block after the back is glued on, so `ribHeightLower`/`ribHeightUpper` tilt the plane the
   top plate glues to while the back's stays square. Nothing in the arch, the channel, the crown,
@@ -101,7 +124,7 @@ Six edits. Missing one fails quietly — usually a panel that never unlocks — 
    one is loud: skip it and step 3 fails the build. It exists because panel ids are file-format
    vocabulary now — a template's reference images scope themselves to panels by id
    (`NamedReferenceImage.panels`), so renaming a panel is a migration rather than a rename.
-2. **`panels/<name>-panel/`** — just `.ts` and `.html`. No per-panel stylesheet: all nine share
+2. **`panels/<name>-panel/`** — just `.ts` and `.html`. No per-panel stylesheet: all of them share
    `styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css']`, and markup uses the shared
    `ui-group` / `field-row` / `basic-input` classes. Extend `CerutiPanelBase`, implement `OnInit`.
    Copy `panels/outer-trace-panel/` as the reference; `panels/mould-panel/` is the smallest.
