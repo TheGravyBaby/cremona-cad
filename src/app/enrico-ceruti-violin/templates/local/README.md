@@ -6,9 +6,9 @@ credit, no `meta`, no licence to check. Unlike `../corpus/`, nothing here goes i
 
 ## One-time setup, per clone
 
-`generated-index.ts` in this folder is committed (so a fresh checkout always builds) but is
-regenerated locally every time you sync — without this, git would show it modified constantly.
-Run once per clone:
+`generated-index.ts` in this folder is committed as the empty-array fallback (so a fresh checkout
+always builds) but is regenerated locally every time you sync — without this, git would show it
+modified constantly. Run once per clone:
 
     git update-index --skip-worktree src/app/enrico-ceruti-violin/templates/local/generated-index.ts
 
@@ -21,8 +21,10 @@ Run once per clone:
    automatically) to regenerate `generated-index.ts`.
 3. It shows up in the "New instrument" picker, marked with a `/ ` prefix — only when running on
    localhost. A deployed build never offers it and never carries its images: `angular.json` only
-   serves this folder's images under the `development` configuration, and `npm run build` clears
-   `generated-index.ts` back to empty first regardless of what's sitting in this folder.
+   serves this folder's images under the `development` configuration, and the `production`
+   configuration's `fileReplacements` swaps `generated-index.ts` for `empty-index.ts` at the
+   builder level — so a production build (`ng build`, with or without `npm run`) never depends on
+   what's sitting in this folder or on whether `sync-local-templates` ever ran.
 
 Nothing here is swept by the test suite the way `corpus/` is — this is scratch space, not a
 quality bar to clear. If a template graduates into something worth keeping, move its JSON (and
