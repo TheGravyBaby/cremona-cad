@@ -18,6 +18,7 @@ import { Pt } from '../../models/types';
 import { CerutiColors } from '../ceruti-types';
 import { ArchContourLevel } from '../ceruti-surface';
 import { buildProjection } from './oblique-projection';
+import { STROKE_WEIGHT } from './render-constants';
 
 export interface ProjectedContourLevel {
   level: number;
@@ -116,7 +117,7 @@ export function renderArchContours3d(
       g.append('path')
         .attr('d', outlinePath)
         .attr('stroke', colors.outerTrace)
-        .attr('stroke-width', 1)
+        .attr('stroke-width', STROKE_WEIGHT.guide)
         .attr('fill', 'none')
         .attr('opacity', 0.6)
         .attr('vector-effect', 'non-scaling-stroke');
@@ -126,7 +127,7 @@ export function renderArchContours3d(
       g.append('path')
         .attr('d', path)
         .attr('stroke', isChannel ? colors.fluting : domeColor)
-        .attr('stroke-width', 1)
+        .attr('stroke-width', STROKE_WEIGHT.guide)
         .attr('fill', 'none')
         .attr('opacity', isChannel ? 0.9 : 0.7)
         .attr('vector-effect', 'non-scaling-stroke');

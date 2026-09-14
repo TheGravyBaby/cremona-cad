@@ -9,7 +9,7 @@ import { ensureCenterBoutInnerPath } from '../../ceruti-calcs';
 import { centerBoutWidthInfo, cornerPositionInfo, fitC0Info } from '../../ceruti-helpers';
 import { CerutiColors, CerutiViewFlags, DefaultParams, EnricoCerutiParams, PathEntry, RenderToggleKey } from '../../ceruti-types';
 import { renderBounds, renderBoutBouts, renderCornerGuides } from '../../renders/guides.render';
-import { HighlightedArc, HighlightedPoint, PATH_STROKE_WIDTH } from '../../renders/render-constants';
+import { HighlightedArc, HighlightedPoint, STROKE_WEIGHT } from '../../renders/render-constants';
 import { renderMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { renderCorners } from '../corners-panel/corners-panel';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
@@ -197,21 +197,21 @@ export const renderCenterBout = (
     p.options.C11DoubleArc && renderArcFromArcFancy(flipArcAboutY(p.bouts.C11!), colors.centerBoutLow)(g, ui);
     renderArcFromArcFancy(flipArcAboutY(p.bouts.C0!), colors.centerBout)(g, ui);
   } else {
-    renderArcFromArc(p.bouts.C2!, colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
-    renderArcFromArc(p.bouts.C1!, colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
-    renderArcFromArc(p.bouts.C0!, colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
-    renderArcFromArc(flipArcAboutY(p.bouts.C2!), colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
-    renderArcFromArc(flipArcAboutY(p.bouts.C1!), colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
-    renderArcFromArc(flipArcAboutY(p.bouts.C0!), colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
+    renderArcFromArc(p.bouts.C2!, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+    renderArcFromArc(p.bouts.C1!, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+    renderArcFromArc(p.bouts.C0!, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+    renderArcFromArc(flipArcAboutY(p.bouts.C2!), colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+    renderArcFromArc(flipArcAboutY(p.bouts.C1!), colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+    renderArcFromArc(flipArcAboutY(p.bouts.C0!), colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
 
-    p.options.C21DoubleArc && renderArcFromArc(p.bouts.C21!, colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
-    p.options.C11DoubleArc && renderArcFromArc(p.bouts.C11!, colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
-    p.options.L31DoubleArc && renderArcFromArc(p.bouts.L31!, colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
-    p.options.U31DoubleArc && renderArcFromArc(p.bouts.U31!, colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
-    p.options.C21DoubleArc && renderArcFromArc(flipArcAboutY(p.bouts.C21!), colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
-    p.options.C11DoubleArc && renderArcFromArc(flipArcAboutY(p.bouts.C11!), colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
-    p.options.L31DoubleArc && renderArcFromArc(flipArcAboutY(p.bouts.L31!), colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
-    p.options.U31DoubleArc && renderArcFromArc(flipArcAboutY(p.bouts.U31!), colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
+    p.options.C21DoubleArc && renderArcFromArc(p.bouts.C21!, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+    p.options.C11DoubleArc && renderArcFromArc(p.bouts.C11!, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+    p.options.L31DoubleArc && renderArcFromArc(p.bouts.L31!, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+    p.options.U31DoubleArc && renderArcFromArc(p.bouts.U31!, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+    p.options.C21DoubleArc && renderArcFromArc(flipArcAboutY(p.bouts.C21!), colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+    p.options.C11DoubleArc && renderArcFromArc(flipArcAboutY(p.bouts.C11!), colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+    p.options.L31DoubleArc && renderArcFromArc(flipArcAboutY(p.bouts.L31!), colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+    p.options.U31DoubleArc && renderArcFromArc(flipArcAboutY(p.bouts.U31!), colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
   }
 
   if (flags.renderOuterPath && renderOuterPathCorners) {
@@ -221,15 +221,15 @@ export const renderCenterBout = (
     const cBoutLow = m ? colors.centerBoutLow : colors.outerTrace;
     const inset = p.overhang + p.rib;
 
-    renderArcFromArc(offsetArcRadius(p.bouts.C2!, -inset), cBoutUp, PATH_STROKE_WIDTH)(g, ui);
-    p.options.C21DoubleArc && renderArcFromArc(offsetArcRadius(p.bouts.C21!, -inset), cBoutUp, PATH_STROKE_WIDTH)(g, ui);
-    renderArcFromArc(offsetArcRadius(p.bouts.C1!, -inset), cBoutLow, PATH_STROKE_WIDTH)(g, ui);
-    p.options.C11DoubleArc && renderArcFromArc(offsetArcRadius(p.bouts.C11!, -inset), cBoutLow, PATH_STROKE_WIDTH)(g, ui);
-    renderArcFromArc(offsetArcRadius(p.bouts.C0!, -inset), cBout, PATH_STROKE_WIDTH)(g, ui);
-    renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.C2!), -inset), cBoutUp, PATH_STROKE_WIDTH)(g, ui);
-    p.options.C21DoubleArc && renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.C21!), -inset), cBoutUp, PATH_STROKE_WIDTH)(g, ui);
-    renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.C1!), -inset), cBoutLow, PATH_STROKE_WIDTH)(g, ui);
-    p.options.C11DoubleArc && renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.C11!), -inset), cBoutLow, PATH_STROKE_WIDTH)(g, ui);
-    renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.C0!), -inset), cBout, PATH_STROKE_WIDTH)(g, ui);
+    renderArcFromArc(offsetArcRadius(p.bouts.C2!, -inset), cBoutUp, STROKE_WEIGHT.trace)(g, ui);
+    p.options.C21DoubleArc && renderArcFromArc(offsetArcRadius(p.bouts.C21!, -inset), cBoutUp, STROKE_WEIGHT.trace)(g, ui);
+    renderArcFromArc(offsetArcRadius(p.bouts.C1!, -inset), cBoutLow, STROKE_WEIGHT.trace)(g, ui);
+    p.options.C11DoubleArc && renderArcFromArc(offsetArcRadius(p.bouts.C11!, -inset), cBoutLow, STROKE_WEIGHT.trace)(g, ui);
+    renderArcFromArc(offsetArcRadius(p.bouts.C0!, -inset), cBout, STROKE_WEIGHT.trace)(g, ui);
+    renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.C2!), -inset), cBoutUp, STROKE_WEIGHT.trace)(g, ui);
+    p.options.C21DoubleArc && renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.C21!), -inset), cBoutUp, STROKE_WEIGHT.trace)(g, ui);
+    renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.C1!), -inset), cBoutLow, STROKE_WEIGHT.trace)(g, ui);
+    p.options.C11DoubleArc && renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.C11!), -inset), cBoutLow, STROKE_WEIGHT.trace)(g, ui);
+    renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.C0!), -inset), cBout, STROKE_WEIGHT.trace)(g, ui);
   }
 };

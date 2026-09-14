@@ -6,9 +6,10 @@ import { renderArcFromArcFancy, renderCircle, renderCrosshair, renderDashedLine,
 import { calculateOuterArcs, ensureOuterTracePaths, getPath, getPathOrNull } from '../../ceruti-calcs';
 import { Arc, Circle, Pt, Rectangle } from '../../../models/types';
 import { nearestFraction, nearestSmallFraction } from '../../../helpers/nearestFraction';
-import { angleFromCenter, angleOnDrawnArc, arcHorizontalIntersections, clamp, dist, lineCircleIntersection, lineFromPointAndSlope } from '../../../helpers/math/simpleGeometry';
+import { angleFromCenter, angleOnDrawnArc, arcHorizontalIntersections, clamp, dist, flipCircleAboutY, flipPointAboutY, flipRectAboutY, lineCircleIntersection, lineFromPointAndSlope } from '../../../helpers/math/simpleGeometry';
 import { circleCircleIntersections, tangentPointsFromExternalPoint } from '../../../helpers/math/draftMath';
 import { defineInnerArcs } from '../../ceruti-paths';
+import { STROKE_WEIGHT } from '../../renders/render-constants';
 
 /** Where the two f-holes sit on the plate — the eyes first, everything else hung off them. */
 @Component({
@@ -30,6 +31,11 @@ export class FHolePlacementPanel extends CerutiPanelBase implements OnInit {
   protected readonly nearestSmallFraction = nearestSmallFraction;
 
   distanceBetweenEyes() { return this.round2(dist(this.params.fHoles.UEye, this.params.fHoles.LEye))};
+
+  boundsHeightToWidth(): string {
+    const rect = fholeBoundsRect(this.params.fHoles!);
+    return this.nearestFraction(rect.height! / rect.width!);
+  }
 
 
   ngOnInit(): void {
@@ -68,7 +74,7 @@ export class FHolePlacementPanel extends CerutiPanelBase implements OnInit {
 
     // if (purflingPath) renders.push(renderPath(purflingPath, this.colors.innerTrace, 1));
     // if (outerPurflingPath) renders.push(renderPath(outerPurflingPath, this.colors.innerTrace, 1));
-    if (innerPath) renders.push(renderPath(innerPath, this.colors.innerTrace, 1));
+    if (innerPath) renders.push(renderPath(innerPath, this.colors.innerTrace, STROKE_WEIGHT.guide));
 
     // recalculate display ratios
     p.ratios.FLtoW = p.fHoles!.LEye!.r / p.width;
@@ -149,30 +155,49 @@ export const defaultFHolePlacement = (p: EnricoCerutiParams): FholeParams => {
 }
 
 
+/** The box each eye's radius and rise carve out — top-left from the upper eye, bottom-right from
+ * the lower one. Shared with the Hto W display so the ratio always matches what's drawn. */
+export const fholeBoundsRect = (f: FholeParams): Rectangle => {
+  const topLeftPt = new Pt(f.UEye!.x - f.UEye!.r, f.UEye!.y + f.UEye!.r + f.URise!);
+  const lowerRightPt = new Pt(f.LEye!.x + f.LEye!.r, f.LEye!.y - f.LEye!.r - f.LRise!);
+  return new Rectangle(topLeftPt, lowerRightPt);
+};
+
 /** The derived box and the stem edges across it — construction, not shape, so they sit behind
  * showFholeBounds. Anything the user can edit is drawn by the contour pass. */
 export const renderFholeBounds = (p: EnricoCerutiParams, colors: CerutiColors) => (g: any, ui: any) => {
   const f = p.fHoles!;
   const stem = f.stem;
-  const topLeftPt = new Pt(f.UEye!.x - f.UEye!.r, f.UEye!.y + f.UEye!.r + f.URise!);
-  const lowerRightPt = new Pt(f.LEye!.x + f.LEye!.r, f.LEye!.y - f.LEye!.r - f.LRise!);
+  const rect = fholeBoundsRect(f);
+  const topLeftPt = rect.Pt1;
+  const lowerRightPt = rect.Pt2;
 
   const run = stemRun(stem);
   const edgeAt = (xBase: number, y: number) => new Pt(xBase + (y - stem.center!.y) * run, y);
   for (const side of [-1, 1]) {
     const xBase = stem.center!.x + side * stem.width! / 2;
-    renderDashedLine(edgeAt(xBase, topLeftPt.y), edgeAt(xBase, lowerRightPt.y), colors.fHoleStem, '4 4', 1)(g, ui);
+    const edgeTop = edgeAt(xBase, topLeftPt.y);
+    const edgeBottom = edgeAt(xBase, lowerRightPt.y);
+    renderDashedLine(edgeTop, edgeBottom, colors.fHoleStem, '4 4', STROKE_WEIGHT.guide)(g, ui);
+    renderDashedLine(flipPointAboutY(edgeTop), flipPointAboutY(edgeBottom), colors.fHoleStem, '4 4', STROKE_WEIGHT.guide)(g, ui);
   }
 
-  renderRect(new Rectangle(topLeftPt, lowerRightPt), colors.innerTrace, 'none', 1, '4 4')(g, ui);
+  renderRect(rect, colors.innerTrace, 'none', STROKE_WEIGHT.guide, '4 4')(g, ui);
+  renderRect(flipRectAboutY(rect), colors.innerTrace, 'none', STROKE_WEIGHT.guide, '4 4')(g, ui);
 }
 
 export const renderFholeRise = (p: EnricoCerutiParams, colors: CerutiColors) => (g: any, ui: any) => {
   const f = p.fHoles!;
   for (const [eye, rise, side, color] of [[f.UEye!, f.URise!, 1, colors.fHoleUpper], [f.LEye!, f.LRise!, -1, colors.fHoleLower]] as const) {
     const boundY = eye.y + side * (eye.r + rise);
-    renderSegment(new Pt(eye.x - eye.r, boundY), new Pt(eye.x + eye.r, boundY), color, 1)(g, ui);
-    renderDashedLine(new Pt(eye.x, eye.y + side * eye.r), new Pt(eye.x, boundY), color, '2 2', 1, 0.9)(g, ui);
+    const boundLeft = new Pt(eye.x - eye.r, boundY);
+    const boundRight = new Pt(eye.x + eye.r, boundY);
+    renderSegment(boundLeft, boundRight, color, STROKE_WEIGHT.guide)(g, ui);
+    renderSegment(flipPointAboutY(boundLeft), flipPointAboutY(boundRight), color, STROKE_WEIGHT.guide)(g, ui);
+    const dropTop = new Pt(eye.x, eye.y + side * eye.r);
+    const dropBottom = new Pt(eye.x, boundY);
+    renderDashedLine(dropTop, dropBottom, color, '2 2', STROKE_WEIGHT.guide, 0.9)(g, ui);
+    renderDashedLine(flipPointAboutY(dropTop), flipPointAboutY(dropBottom), color, '2 2', STROKE_WEIGHT.guide, 0.9)(g, ui);
   }
 }
 
@@ -186,19 +211,28 @@ export const renderFholeStem = (p: EnricoCerutiParams, colors: CerutiColors) => 
   const reach = Math.abs((f.UEye!.y + f.UEye!.r + f.URise!)
     - (f.LEye!.y - f.LEye!.r - f.LRise!)) / 12;
 
-  renderSegment(new Pt(c.x - half, c.y), new Pt(c.x + half, c.y), colors.fHoleStem, 1)(g, ui);
+  const centerLeft = new Pt(c.x - half, c.y);
+  const centerRight = new Pt(c.x + half, c.y);
+  renderSegment(centerLeft, centerRight, colors.fHoleStem, STROKE_WEIGHT.guide)(g, ui);
+  renderSegment(flipPointAboutY(centerLeft), flipPointAboutY(centerRight), colors.fHoleStem, STROKE_WEIGHT.guide)(g, ui);
   for (const side of [-1, 1]) {
     const xBase = c.x + side * half;
-    renderSegment(edgeAt(xBase, c.y - reach), edgeAt(xBase, c.y + reach), colors.fHoleStem, 1.5)(g, ui);
+    const edgeTop = edgeAt(xBase, c.y - reach);
+    const edgeBottom = edgeAt(xBase, c.y + reach);
+    renderSegment(edgeTop, edgeBottom, colors.fHoleStem, 1.5)(g, ui);
+    renderSegment(flipPointAboutY(edgeTop), flipPointAboutY(edgeBottom), colors.fHoleStem, 1.5)(g, ui);
   }
   renderSmallCrosshair(f.stem.center!, colors.fHoleStem)(g, ui);
+  renderSmallCrosshair(flipPointAboutY(f.stem.center!), colors.fHoleStem)(g, ui);
 
 }
 
 export const renderFholeEyes = (p: EnricoCerutiParams, colors: CerutiColors) => (g: any, ui: any) => {
   const f = p.fHoles!;
   renderCircle(f.UEye!, colors.fHoleUpper)(g, ui);
+  renderCircle(flipCircleAboutY(f.UEye!), colors.fHoleUpper)(g, ui);
   renderCircle(f.LEye!, colors.fHoleLower)(g, ui);
+  renderCircle(flipCircleAboutY(f.LEye!), colors.fHoleLower)(g, ui);
 }
 
 const GUIDE_NEUTRAL = '#7e7e7e';
@@ -206,9 +240,9 @@ const GUIDE_ACCENT = '#b5675a';
 
 export const renderFholeEyePlacementGuides = (p: EnricoCerutiParams, colors: CerutiColors) => (g: any, ui: any) => {
   // lower corner line
-  renderDashedLine(new Pt(p.bouts.LCr.x, p.bouts.LCr.y), new Pt(-p.bouts.LCr.x, p.bouts.LCr.y), GUIDE_NEUTRAL, '6 6', 1 )(g, ui);
+  renderDashedLine(new Pt(p.bouts.LCr.x, p.bouts.LCr.y), new Pt(-p.bouts.LCr.x, p.bouts.LCr.y), GUIDE_NEUTRAL, '6 6', STROKE_WEIGHT.guide)(g, ui);
   // the drop line
-  renderDashedLine(new Pt(p.bouts.LCr.x, p.fHoles.LEye.y), new Pt(-p.bouts.LCr.x, p.fHoles.LEye.y), GUIDE_NEUTRAL, '6 6', 1)(g, ui);
+  renderDashedLine(new Pt(p.bouts.LCr.x, p.fHoles.LEye.y), new Pt(-p.bouts.LCr.x, p.fHoles.LEye.y), GUIDE_NEUTRAL, '6 6', STROKE_WEIGHT.guide)(g, ui);
 
   // now I need to intersect the drop line with the inner path
   let arcs = defineInnerArcs(p);
@@ -236,7 +270,7 @@ export const renderFholeEyePlacementGuides = (p: EnricoCerutiParams, colors: Cer
     if (tangentPt) break;
   }
   if (tangentPt) {
-    renderDashedLine(intersectionPt!, tangentPt, GUIDE_ACCENT, '6 6', 1)(g, ui);
+    renderDashedLine(intersectionPt!, tangentPt, GUIDE_ACCENT, '6 6', STROKE_WEIGHT.guide)(g, ui);
     renderSmallCrosshair(tangentPt, GUIDE_ACCENT)(g, ui);
   }
 

@@ -11,6 +11,7 @@
  * the drag start inside the wireframe's bounds".
  */
 import { CerutiColors } from '../ceruti-types';
+import { STROKE_WEIGHT } from './render-constants';
 
 export function renderWireframeDragFrame(
   bounds: { minX: number; minY: number; maxX: number; maxY: number },
@@ -27,7 +28,7 @@ export function renderWireframeDragFrame(
       .attr('height', (bounds.maxY - bounds.minY) + pad * 2)
       .attr('fill', 'transparent')
       .attr('stroke', colors.mouldTrace)
-      .attr('stroke-width', 1)
+      .attr('stroke-width', STROKE_WEIGHT.guide)
       .attr('stroke-dasharray', '4 3')
       .attr('vector-effect', 'non-scaling-stroke')
       .style('pointer-events', 'all')

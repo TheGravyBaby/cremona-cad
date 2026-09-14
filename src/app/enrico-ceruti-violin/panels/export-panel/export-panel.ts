@@ -13,6 +13,7 @@ import { defaultCrossArchParams, defaultFlutingParams } from '../../ceruti-arch-
 import { buildPlateSurfaceModel, buildPlateStl, calculateCrossArchTemplates, calculateLongArchTemplates, TemplateShape } from '../../ceruti-surface';
 import { CerutiColors, EnricoCerutiParams, PathEntry, PathKey } from '../../ceruti-types';
 import { defaultFHolePlacement } from '../f-hole-placement-panel/f-hole-placement-panel';
+import { STROKE_WEIGHT } from '../../renders/render-constants';
 
 type ExportType = 'innerTrace' | 'outerTrace' | 'back' | 'mould' | 'blocks' | 'crossArchTemplates' | 'longArchTemplates' | 'fholeTemplate';
 
@@ -134,7 +135,7 @@ export class ExportPanel implements OnInit {
 
     switch (type) {
       case 'innerTrace': {
-        this.draftChange.emit([renderPath(this.getPath('inner'), this.colors.innerTrace)]);
+        this.draftChange.emit([renderPath(this.getPath('inner'), this.colors.innerTrace, STROKE_WEIGHT.trace)]);
         break;
       }
       case 'outerTrace':
@@ -145,31 +146,31 @@ export class ExportPanel implements OnInit {
         // whole. A rim pair on a contour sheet would be a second, weaker
         // account of geometry that is stated exactly elsewhere.
         const renders: Array<(g: any, ui: any) => void> = [
-          renderPath(this.getPath(type === 'back' ? 'back' : 'top'), this.colors.outerTrace),
+          renderPath(this.getPath(type === 'back' ? 'back' : 'top'), this.colors.outerTrace, STROKE_WEIGHT.trace),
         ];
         const purflingPath = this.getPathOrNull('purfling');
-        if (purflingPath) renders.push(renderPath(purflingPath, this.colors.innerTrace, 1));
+        if (purflingPath) renders.push(renderPath(purflingPath, this.colors.innerTrace, STROKE_WEIGHT.guide));
         const outerPurflingPath = this.getPathOrNull('outerPurfling');
-        if (outerPurflingPath) renders.push(renderPath(outerPurflingPath, this.colors.innerTrace, 1));
+        if (outerPurflingPath) renders.push(renderPath(outerPurflingPath, this.colors.innerTrace, STROKE_WEIGHT.guide));
         if (type === 'outerTrace') {
           this.ensureFholes();
-          renders.push(renderPath(this.getPath('fHole'), this.colors.outerTrace));
+          renders.push(renderPath(this.getPath('fHole'), this.colors.outerTrace, STROKE_WEIGHT.trace));
         }
         this.draftChange.emit(renders);
         break;
       }
       case 'fholeTemplate': {
-        this.draftChange.emit([renderPath(this.fholeTemplatePath(), this.colors.outerTrace)]);
+        this.draftChange.emit([renderPath(this.fholeTemplatePath(), this.colors.outerTrace, STROKE_WEIGHT.trace)]);
         break;
       }
       case 'mould': {
         // Computed directly rather than read from the cache — it's export-only and
         // too expensive (10x denser boolean diff) to keep current on every edit.
-        this.draftChange.emit([renderPath(calculateMould(p, true, false), this.colors.mouldTrace)]);
+        this.draftChange.emit([renderPath(calculateMould(p, true, false), this.colors.mouldTrace, STROKE_WEIGHT.trace)]);
         break;
       }
       case 'blocks': {
-        const renders = this.cornerBlocks().map((block: string) => renderPath(block, this.colors.mouldTrace));
+        const renders = this.cornerBlocks().map((block: string) => renderPath(block, this.colors.mouldTrace, STROKE_WEIGHT.trace));
         this.draftChange.emit(renders);
         break;
       }
@@ -178,7 +179,7 @@ export class ExportPanel implements OnInit {
         if (!this.requireArching()) { this.draftChange.emit([]); return; }
         const shapes = this.archTemplates(type);
         const renders = shapes.flatMap(s => [
-          renderPath(s.path, this.colors.mouldTrace),
+          renderPath(s.path, this.colors.mouldTrace, STROKE_WEIGHT.trace),
           renderText(s.labelPos, s.label, this.colors.mouldTrace, TEMPLATE_LABEL_SIZE, s.labelRotation),
         ]);
         this.draftChange.emit(renders);

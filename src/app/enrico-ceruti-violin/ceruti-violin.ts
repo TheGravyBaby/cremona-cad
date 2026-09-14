@@ -11,6 +11,10 @@ import { defineOuterPath, defineOuterPurflingPath, definePurflingPath } from './
 import { ensureFholePath, getPath } from './ceruti-calcs';
 import { normalizeArchingParams } from './ceruti-arching';
 import { renderBounds } from './renders/guides.render';
+import {
+  CERUTI_COLOR_PALETTE, LIGHT_CONTRAST_MIN, LIGHT_CONTRAST_MIN_PALE, LIGHT_MODE_CANVAS_BG,
+  LIGHT_SATURATE_DEGREE, OFF2_FACTOR, OFF_FACTOR,
+} from './renders/render-constants';
 import { PANEL_KEY, RECIPE_KEY, readWorkingState, writeWorkingState } from '../helpers/workingStorage';
 import { dimensionInfo, insetInfo } from './ceruti-helpers';
 import { MainBoutsPanel } from './panels/main-bouts-panel/main-bouts-panel';
@@ -54,49 +58,9 @@ export class CerutiViolin extends RecipeComponentBase {
   ];
 
   @Input() nightMode = true;
-  readonly lightSaturateDegree = 0.4;
-  // must track --ui-bg-canvas under :root.day-mode in styles.css — the only place that color is
-  // otherwise defined. If that variable changes, this drifts out of sync silently.
-  private static readonly lightModeCanvasBg = '#c3bfb3';
-  // WCAG non-text contrast floor (1.4.11) for strokes against the day-mode canvas.
-  private static readonly lightContrastMin = 3.0;
-  // centerBoutLow/fHoleUpperLight/fHoleLowerLight are the pale end of a dark/mid/light triad and
-  // sit at nearly the same lightness as the day-mode canvas itself. Holding them to the same 3:1
-  // floor as everything else would push them down onto their "mid" sibling's lightness — in
-  // f-hole-contours-panel.ts, U1/U2/U3 and L1/L2/L3 are adjacent arcs told apart by this triad
-  // while editing, so collapsing it isn't just a cosmetic loss. This lower floor keeps them
-  // visibly the lightest of their triad at the cost of falling short of full AA contrast.
-  private static readonly lightContrastMinPale = 2.0;
-
-  offFactor = .5;
-  off2Factor = .8;
-  private readonly colorPalette = {
-    upperBout: '#4D8660',
-    centerBoutUp: '#C24B2E',
-    centerBout: '#A97645',
-    centerBoutLow: '#e1bf50ff',
-    lowerBout: '#4D74A8',
-    violNeck: '#248f48ff',
-    innerTrace: '#868484ff',
-    outerTrace: '#868484ff',
-    mouldTrace: '#81887eff',
-    fluting: '#478968ff',
-    archTop: '#C47B3A',
-    archBack: '#4D74A8',
-    fHoleUpperDark: '#24714a',
-    fHoleUpper: '#3fa568',
-    fHoleUpperLight: '#7fd3a2',
-    fHoleLowerDark: '#7a3e95',
-    fHoleLower: '#a969b4',
-    fHoleLowerLight: '#d0a3de',
-    fHoleStem: '#8b939e',
-    // the cut is the only warm thing in the f-hole drawing, and the only straight line the maker
-    // actually cuts — everything either side of it is an arc
-    fHoleCut: '#e08a1e',
-  } as const;
 
   private makeColor(base: string, ...extra: ColorTransform[]): string {
-    return this.makeColorWithFloor(base, CerutiViolin.lightContrastMin, this.lightSaturateDegree, ...extra);
+    return this.makeColorWithFloor(base, LIGHT_CONTRAST_MIN, LIGHT_SATURATE_DEGREE, ...extra);
   }
 
   // saturateDegree is 0 for the neutral trace greys — boosting saturation on an almost-hueless
@@ -106,47 +70,47 @@ export class CerutiViolin extends RecipeComponentBase {
     const transforms: ColorTransform[] = [];
     if (!this.nightMode) {
       if (saturateDegree > 0) transforms.push({ type: 'saturate', degree: saturateDegree });
-      transforms.push({ type: 'ensureContrast', against: CerutiViolin.lightModeCanvasBg, minRatio });
+      transforms.push({ type: 'ensureContrast', against: LIGHT_MODE_CANVAS_BG, minRatio });
     }
     transforms.push(...extra);
     return applyTransforms(base, ...transforms);
   }
 
   get colors(): CerutiColors {
-    const p = this.colorPalette;
+    const p = CERUTI_COLOR_PALETTE;
     return {
       upperBout: this.makeColor(p.upperBout),
-      upperBoutOff: this.makeColor(p.upperBout, { type: 'greyOut', degree: this.offFactor }),
-      upperBoutOff2: this.makeColor(p.upperBout, { type: 'greyOut', degree: this.off2Factor }),
+      upperBoutOff: this.makeColor(p.upperBout, { type: 'greyOut', degree: OFF_FACTOR }),
+      upperBoutOff2: this.makeColor(p.upperBout, { type: 'greyOut', degree: OFF2_FACTOR }),
       centerBoutUp: this.makeColor(p.centerBoutUp),
-      centerBoutUpOff: this.makeColor(p.centerBoutUp, { type: 'greyOut', degree: this.offFactor }),
-      centerBoutUpOff2: this.makeColor(p.centerBoutUp, { type: 'greyOut', degree: this.off2Factor }),
+      centerBoutUpOff: this.makeColor(p.centerBoutUp, { type: 'greyOut', degree: OFF_FACTOR }),
+      centerBoutUpOff2: this.makeColor(p.centerBoutUp, { type: 'greyOut', degree: OFF2_FACTOR }),
       centerBout: this.makeColor(p.centerBout),
-      centerBoutOff: this.makeColor(p.centerBout, { type: 'greyOut', degree: this.offFactor }),
-      centerBoutOff2: this.makeColor(p.centerBout, { type: 'greyOut', degree: this.off2Factor }),
-      centerBoutLow: this.makeColorWithFloor(p.centerBoutLow, CerutiViolin.lightContrastMinPale, this.lightSaturateDegree),
-      centerBoutLowOff: this.makeColorWithFloor(p.centerBoutLow, CerutiViolin.lightContrastMinPale, this.lightSaturateDegree, { type: 'greyOut', degree: this.offFactor }),
-      centerBoutLowOff2: this.makeColorWithFloor(p.centerBoutLow, CerutiViolin.lightContrastMinPale, this.lightSaturateDegree, { type: 'greyOut', degree: this.off2Factor }),
+      centerBoutOff: this.makeColor(p.centerBout, { type: 'greyOut', degree: OFF_FACTOR }),
+      centerBoutOff2: this.makeColor(p.centerBout, { type: 'greyOut', degree: OFF2_FACTOR }),
+      centerBoutLow: this.makeColorWithFloor(p.centerBoutLow, LIGHT_CONTRAST_MIN_PALE, LIGHT_SATURATE_DEGREE),
+      centerBoutLowOff: this.makeColorWithFloor(p.centerBoutLow, LIGHT_CONTRAST_MIN_PALE, LIGHT_SATURATE_DEGREE, { type: 'greyOut', degree: OFF_FACTOR }),
+      centerBoutLowOff2: this.makeColorWithFloor(p.centerBoutLow, LIGHT_CONTRAST_MIN_PALE, LIGHT_SATURATE_DEGREE, { type: 'greyOut', degree: OFF2_FACTOR }),
       lowerBout: this.makeColor(p.lowerBout),
-      lowerBoutOff: this.makeColor(p.lowerBout, { type: 'greyOut', degree: this.offFactor }),
-      lowerBoutOff2: this.makeColor(p.lowerBout, { type: 'greyOut', degree: this.off2Factor }),
+      lowerBoutOff: this.makeColor(p.lowerBout, { type: 'greyOut', degree: OFF_FACTOR }),
+      lowerBoutOff2: this.makeColor(p.lowerBout, { type: 'greyOut', degree: OFF2_FACTOR }),
       violNeck: this.makeColor(p.violNeck),
-      innerTrace: this.makeColorWithFloor(p.innerTrace, CerutiViolin.lightContrastMin, 0),
-      outerTrace: this.makeColorWithFloor(p.outerTrace, CerutiViolin.lightContrastMin, 0),
-      mouldTrace: this.makeColorWithFloor(p.mouldTrace, CerutiViolin.lightContrastMin, 0),
+      innerTrace: this.makeColorWithFloor(p.innerTrace, LIGHT_CONTRAST_MIN, 0),
+      outerTrace: this.makeColorWithFloor(p.outerTrace, LIGHT_CONTRAST_MIN, 0),
+      mouldTrace: this.makeColorWithFloor(p.mouldTrace, LIGHT_CONTRAST_MIN, 0),
       fluting: this.makeColor(p.fluting),
       archTop: this.makeColor(p.archTop),
       archBack: this.makeColor(p.archBack),
       fHoleUpperDark: this.makeColor(p.fHoleUpperDark),
       fHoleUpper: this.makeColor(p.fHoleUpper),
-      fHoleUpperMuted: this.makeColor(p.fHoleUpper, { type: 'greyOut', degree: this.offFactor }),
-      fHoleUpperLight: this.makeColorWithFloor(p.fHoleUpperLight, CerutiViolin.lightContrastMinPale, this.lightSaturateDegree),
+      fHoleUpperMuted: this.makeColor(p.fHoleUpper, { type: 'greyOut', degree: OFF_FACTOR }),
+      fHoleUpperLight: this.makeColorWithFloor(p.fHoleUpperLight, LIGHT_CONTRAST_MIN_PALE, LIGHT_SATURATE_DEGREE),
       fHoleLowerDark: this.makeColor(p.fHoleLowerDark),
       fHoleLower: this.makeColor(p.fHoleLower),
-      fHoleLowerMuted: this.makeColor(p.fHoleLower, { type: 'greyOut', degree: this.offFactor }),
-      fHoleLowerLight: this.makeColorWithFloor(p.fHoleLowerLight, CerutiViolin.lightContrastMinPale, this.lightSaturateDegree),
+      fHoleLowerMuted: this.makeColor(p.fHoleLower, { type: 'greyOut', degree: OFF_FACTOR }),
+      fHoleLowerLight: this.makeColorWithFloor(p.fHoleLowerLight, LIGHT_CONTRAST_MIN_PALE, LIGHT_SATURATE_DEGREE),
       fHoleStem: this.makeColor(p.fHoleStem),
-      fHoleStemOff: this.makeColor(p.fHoleStem, { type: 'greyOut', degree: this.offFactor }),
+      fHoleStemOff: this.makeColor(p.fHoleStem, { type: 'greyOut', degree: OFF_FACTOR }),
       fHoleCut: this.makeColor(p.fHoleCut),
     };
   }

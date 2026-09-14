@@ -1,5 +1,6 @@
 import { Pt } from '../../models/types';
 import { renderCrosshair, renderDashedLine } from '../../helpers/renderFuncs';
+import { STROKE_WEIGHT } from './render-constants';
 
 // ===== Module-guide marks =====
 // The crosshair and the height measure a spline's authored knots are read with,
@@ -32,7 +33,7 @@ const LABEL_GAP_MM = CROSS_MM + LABEL_MM * 0.75;
  * datum and not an edge: nothing is cut along it.
  */
 export const renderGuideBaseline = (from: Pt, to: Pt, color: string) =>
-  renderDashedLine(from, to, color, '1 3', 1, 0.55);
+  renderDashedLine(from, to, color, '1 3', STROKE_WEIGHT.guide, 0.55);
 
 /**
  * Marks one authored knot. Deliberately small: the crosshair answers "the point
@@ -40,7 +41,7 @@ export const renderGuideBaseline = (from: Pt, to: Pt, color: string) =>
  * either side of it — which is the shape the panel exists to judge.
  */
 export const renderGuideKnot = (at: Pt, color: string) =>
-  renderCrosshair(at, color, CROSS_MM, 1, 0.9);
+  renderCrosshair(at, color, CROSS_MM, STROKE_WEIGHT.guide, 0.9);
 
 /**
  * A knot's height, drawn as a capped dimension from the level it counts from up
@@ -70,7 +71,7 @@ export const renderGuideMeasure = (base: Pt, at: Pt, color: string) => (g: any, 
     .attr('x1', base.x).attr('y1', base.y)
     .attr('x2', at.x).attr('y2', at.y)
     .attr('stroke', color)
-    .attr('stroke-width', 1)
+    .attr('stroke-width', STROKE_WEIGHT.guide)
     .attr('opacity', 0.5)
     .attr('vector-effect', 'non-scaling-stroke');
 
@@ -79,7 +80,7 @@ export const renderGuideMeasure = (base: Pt, at: Pt, color: string) => (g: any, 
       .attr('x1', P.x + nx * TICK_MM).attr('y1', P.y + ny * TICK_MM)
       .attr('x2', P.x - nx * TICK_MM).attr('y2', P.y - ny * TICK_MM)
       .attr('stroke', color)
-      .attr('stroke-width', 1)
+      .attr('stroke-width', STROKE_WEIGHT.guide)
       .attr('opacity', 0.5)
       .attr('vector-effect', 'non-scaling-stroke');
   }
