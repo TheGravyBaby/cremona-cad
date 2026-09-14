@@ -286,6 +286,32 @@
           </ul>
           }
 
+          @if (tutorialTopic === 'fHolePlacement') {
+          <h3>F-Hole Placement</h3>
+          <p>This panel places the eyes and the central stem of he f-holes.</p>
+          <ul class="tips-list">
+            <li><strong>Upper Eye</strong> / <strong>Lower Eye</strong> — radius and center (X/Y) of each eye
+              circle. <code>Eye Distance</code> and <code>Ur to Lr</code> ratio are calculated display values.</li>
+            <li><strong>Rise</strong> — how far the f-hole's bounding box extends past each eye, top and bottom.
+              <code>H to W</code> is that box's height-to-width ratio.</li>
+            <li><strong>Stem</strong> — width, center, and lean <strong>Angle</strong> of the straight section
+              joining the eyes.</li>
+          </ul>
+          }
+
+          @if (tutorialTopic === 'fHoleContours') {
+          <h3>F-Hole Contours</h3>
+          <p>This panel defines the arcs that join the eyes and give the f-hole its characteristic shape.</p>
+          <ul class="tips-list">
+            <li>Each side runs two arc chains that reach from the eye to the stem. The arc groups are split into uper,
+              lower and stem sections. A compound arc can be added to the system if a more complex shape is required.
+            </li>
+            <li>The Wing is defined by a straight cut to the eye which leaves a small flap. You can set the wings length,
+              the position along the eye which it intersects, as well as its slope.
+            </li>
+          </ul>
+          }
+
           @if (tutorialTopic === 'mould') {
           <h3>Mould</h3>
           <p>The strucure which the ribs are bent around.</p>
@@ -314,13 +340,25 @@
       </section>
       }
 
+      0.8.3.4
 
       @if (activeTab === 'version') {
       <section class="info-section">
         <h2>Version</h2>
+         <div class="changelog-entry">
+          <div class="changelog-version">v{{ appVersion }} <span class="changelog-date">— Sep 14, 2026</span></div>
+          <p class="changelog-desc">New panels for designing f-holes.</p>
+          <ul class="changelog-list">
+            <li><strong>F-Hole Placement</strong> panel allows for the sizing and placement of the eyes and stem.</li>
+            <li><strong>F-Hole Contours</strong> panel allows for the shaping of f-hole curves through familiar arc geometry.</li>
+            <li><strong>High Quality Templates</strong> have been added from the Library of Congress collections.</li>
+            <li><strong>Automatic Image Cycling</strong> per panel, so you can display relevant images on the panel you need it on. See the image setting menu.</li>
+            <li><strong>UI improvements</strong>Many small updates to the UI to improve the experience, particularly in light mode.  </li>
+          </ul>
+        </div>
 
         <div class="changelog-entry">
-          <div class="changelog-version">v{{ appVersion }} <span class="changelog-date">— Aug 20, 2026</span></div>
+          <div class="changelog-version">v0.8.3.4 <span class="changelog-date">— Aug 20, 2026</span></div>
           <p class="changelog-desc">Added more comprehensive arc tools, improvements made to the text tool, ctrl/cmd + arrow
             keys now moves objects by a small degree.</p>
           <ul class="changelog-list">
