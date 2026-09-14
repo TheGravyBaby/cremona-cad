@@ -16,6 +16,7 @@ import {
 } from '../../ceruti-helpers';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
+import { STROKE_WEIGHT } from '../../renders/render-constants';
 
 /**
  * Step one: carve the channel. It comes first because that is the order at the
@@ -167,7 +168,10 @@ export class FlutingPanel extends CerutiPanelBase implements OnInit {
     const color = plate === 'top' ? this.colors.archTop : this.colors.archBack;
     const inset = this.params.overhang + this.params.rib;
     const layers: RenderLayer[] = [
-      renderPath(at(defineOuterPath(this.params, undefined, true, plate === 'bottom')), this.colors.outerTrace, 1),
+      // Cosmetic context only — the channel fills below are this panel's actual subject, so the
+      // outer path is drawn at guide weight even though it's the same "outerTrace" line other
+      // panels draw as their primary trace.
+      renderPath(at(defineOuterPath(this.params, undefined, true, plate === 'bottom')), this.colors.outerTrace, STROKE_WEIGHT.guide),
     ];
 
     // Cosmetic only — nothing here reads the purfling. It is drawn because the
@@ -176,7 +180,7 @@ export class FlutingPanel extends CerutiPanelBase implements OnInit {
     // Both lines come from the Outer Path panel's own path functions rather
     // than a copy, so they cannot drift from what that panel shows.
     for (const purfling of [definePurflingPath(this.params, inset), defineOuterPurflingPath(this.params, inset)]) {
-      if (purfling) layers.push(renderPath(at(purfling), this.colors.innerTrace, 1));
+      if (purfling) layers.push(renderPath(at(purfling), this.colors.innerTrace, STROKE_WEIGHT.guide));
     }
 
     const paths = channelPaths(this.params, this.gouge(plate));

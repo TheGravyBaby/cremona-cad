@@ -7,9 +7,9 @@ import { ensureOuterTracePaths, ensureFholePath, calculateOuterArcs, getPath, ge
 import { getArcEndDeg, getArcStartDeg, getFieldDeg, setArcEndDeg, setArcStartDeg, setFieldDeg } from '../../../helpers/math/arcDegrees';
 import { defaultFHolePlacement, renderFholeBounds } from '../f-hole-placement-panel/f-hole-placement-panel';
 import { circleCircleIntersections } from '../../../helpers/math/draftMath';
-import { angleFromCenter, dist, pointOnCircle } from '../../../helpers/math/simpleGeometry';
+import { angleFromCenter, dist, flipArcAboutY, flipPointAboutY, pointOnCircle } from '../../../helpers/math/simpleGeometry';
 import { Arc } from '../../../models/types';
-import { HighlightedArc, HighlightedPoint } from '../../renders/render-constants';
+import { HighlightedArc, HighlightedPoint, STROKE_WEIGHT } from '../../renders/render-constants';
 
 // UCut/LCut take a point halo; the rest take an arc halo
 export type FholeHighlightKey = 'U1' | 'U2' | 'U21' | 'U3' | 'L1' | 'L2' | 'L21' | 'L3' | 'S1' | 'S2' | 'S3' | 'S4' | 'UCut' | 'LCut';
@@ -22,7 +22,7 @@ export type FholeHighlightKey = 'U1' | 'U2' | 'U21' | 'U3' | 'L1' | 'L2' | 'L21'
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class FHoleContoursPanel extends CerutiPanelBase implements OnInit {
-  static readonly renderToggles: readonly RenderToggleKey[] = ['showFholeBounds', 'showModuleArcs'];
+  static readonly renderToggles: readonly RenderToggleKey[] = ['showFholeBounds', 'showFholeArcs'];
 
   @Input({ required: true }) params!: EnricoCerutiParams;
   @Input({ required: true }) paths!: PathEntry[];
@@ -74,8 +74,8 @@ export class FHoleContoursPanel extends CerutiPanelBase implements OnInit {
     let purflingPath = getPathOrNull(this.paths, 'purfling');
     let outerPurflingPath = getPathOrNull(this.paths, 'outerPurfling');
 
-    if (purflingPath) renders.push(renderPath(purflingPath, this.colors.innerTrace, 1));
-    if (outerPurflingPath) renders.push(renderPath(outerPurflingPath, this.colors.innerTrace, 1));
+    if (purflingPath) renders.push(renderPath(purflingPath, this.colors.innerTrace, STROKE_WEIGHT.guide));
+    if (outerPurflingPath) renders.push(renderPath(outerPurflingPath, this.colors.innerTrace, STROKE_WEIGHT.guide));
 
     ensureFholePath(p, this.paths);
 
@@ -90,7 +90,7 @@ export class FHoleContoursPanel extends CerutiPanelBase implements OnInit {
 
     if (this.flags.showFholeBounds) renders.push(renderFholeBounds(p, this.colors));
     // renders.push(renderFholeEyes(p, this.colors));
-    renders.push(renderFholeContours(p, this.colors, this.flags.showModuleArcs, arc ? { arc, color } : null, tip));
+    renders.push(renderFholeContours(p, this.colors, this.flags.showFholeArcs, arc ? { arc, color } : null, tip));
 
     return renders;
   }
@@ -105,64 +105,100 @@ export const renderFholeContours = (
   highlightedPoint: HighlightedPoint | null,
 ) => (g: any, ui: any): void => {
 
-  if (highlighted) renderArcHalo(highlighted.arc, highlighted.color)(g, ui);
-  if (highlightedPoint) renderPointHalo(highlightedPoint.point, highlightedPoint.color)(g, ui);
+  if (highlighted) {
+    renderArcHalo(highlighted.arc, highlighted.color)(g, ui);
+    renderArcHalo(flipArcAboutY(highlighted.arc), highlighted.color)(g, ui);
+  }
+  if (highlightedPoint) {
+    renderPointHalo(highlightedPoint.point, highlightedPoint.color)(g, ui);
+    renderPointHalo(flipPointAboutY(highlightedPoint.point), highlightedPoint.color)(g, ui);
+  }
 
-  renderArcFromArc(p.fHoles.U1, colors.fHoleUpperDark, 2)(g, ui);
-  renderArcFromArc(p.fHoles.U2, colors.fHoleUpper, 2)(g, ui);
-  p.options.U21DoubleArc && renderArcFromArc(p.fHoles.U21!, colors.fHoleUpperDark, 2)(g, ui);
-  renderArcFromArc(p.fHoles.U3, colors.fHoleUpperLight, 2)(g, ui);
-  renderArcFromArc(p.fHoles.S2, colors.fHoleStem, 2)(g, ui);
-  renderArcFromArc(p.fHoles.S1, colors.fHoleStem, 2)(g, ui);
+  renderArcFromArc(p.fHoles.U1, colors.fHoleUpperDark, STROKE_WEIGHT.trace)(g, ui);
+  renderArcFromArc(flipArcAboutY(p.fHoles.U1), colors.fHoleUpperDark, STROKE_WEIGHT.trace)(g, ui);
+  renderArcFromArc(p.fHoles.U2, colors.fHoleUpper, STROKE_WEIGHT.trace)(g, ui);
+  renderArcFromArc(flipArcAboutY(p.fHoles.U2), colors.fHoleUpper, STROKE_WEIGHT.trace)(g, ui);
+  p.options.U21DoubleArc && renderArcFromArc(p.fHoles.U21!, colors.fHoleUpperDark, STROKE_WEIGHT.trace)(g, ui);
+  p.options.U21DoubleArc && renderArcFromArc(flipArcAboutY(p.fHoles.U21!), colors.fHoleUpperDark, STROKE_WEIGHT.trace)(g, ui);
+  renderArcFromArc(p.fHoles.U3, colors.fHoleUpperLight, STROKE_WEIGHT.trace)(g, ui);
+  renderArcFromArc(flipArcAboutY(p.fHoles.U3), colors.fHoleUpperLight, STROKE_WEIGHT.trace)(g, ui);
+  renderArcFromArc(p.fHoles.S2, colors.fHoleStem, STROKE_WEIGHT.trace)(g, ui);
+  renderArcFromArc(flipArcAboutY(p.fHoles.S2), colors.fHoleStem, STROKE_WEIGHT.trace)(g, ui);
+  renderArcFromArc(p.fHoles.S1, colors.fHoleStem, STROKE_WEIGHT.trace)(g, ui);
+  renderArcFromArc(flipArcAboutY(p.fHoles.S1), colors.fHoleStem, STROKE_WEIGHT.trace)(g, ui);
 
-  renderArcFromArc(p.fHoles.L1, colors.fHoleLowerDark, 2)(g, ui);
-  renderArcFromArc(p.fHoles.L2, colors.fHoleLower, 2)(g, ui);
-  p.options.L21DoubleArc && renderArcFromArc(p.fHoles.L21!, colors.fHoleLowerDark, 2)(g, ui);
-  renderArcFromArc(p.fHoles.L3, colors.fHoleLowerLight, 2)(g, ui);
-  renderArcFromArc(p.fHoles.S4, colors.fHoleStem, 2)(g, ui);
-  renderArcFromArc(p.fHoles.S3, colors.fHoleStem, 2)(g, ui);
+  renderArcFromArc(p.fHoles.L1, colors.fHoleLowerDark, STROKE_WEIGHT.trace)(g, ui);
+  renderArcFromArc(flipArcAboutY(p.fHoles.L1), colors.fHoleLowerDark, STROKE_WEIGHT.trace)(g, ui);
+  renderArcFromArc(p.fHoles.L2, colors.fHoleLower, STROKE_WEIGHT.trace)(g, ui);
+  renderArcFromArc(flipArcAboutY(p.fHoles.L2), colors.fHoleLower, STROKE_WEIGHT.trace)(g, ui);
+  p.options.L21DoubleArc && renderArcFromArc(p.fHoles.L21!, colors.fHoleLowerDark, STROKE_WEIGHT.trace)(g, ui);
+  p.options.L21DoubleArc && renderArcFromArc(flipArcAboutY(p.fHoles.L21!), colors.fHoleLowerDark, STROKE_WEIGHT.trace)(g, ui);
+  renderArcFromArc(p.fHoles.L3, colors.fHoleLowerLight, STROKE_WEIGHT.trace)(g, ui);
+  renderArcFromArc(flipArcAboutY(p.fHoles.L3), colors.fHoleLowerLight, STROKE_WEIGHT.trace)(g, ui);
+  renderArcFromArc(p.fHoles.S4, colors.fHoleStem, STROKE_WEIGHT.trace)(g, ui);
+  renderArcFromArc(flipArcAboutY(p.fHoles.S4), colors.fHoleStem, STROKE_WEIGHT.trace)(g, ui);
+  renderArcFromArc(p.fHoles.S3, colors.fHoleStem, STROKE_WEIGHT.trace)(g, ui);
+  renderArcFromArc(flipArcAboutY(p.fHoles.S3), colors.fHoleStem, STROKE_WEIGHT.trace)(g, ui);
 
   let cutStart = pointOnCircle(p.fHoles.UEye, p.fHoles.UCut.angleOnEye);
-  renderSegment(cutStart, p.fHoles.UTip, colors.fHoleCut, 2)(g, ui);
+  renderSegment(cutStart, p.fHoles.UTip, colors.fHoleCut, STROKE_WEIGHT.trace)(g, ui);
+  renderSegment(flipPointAboutY(cutStart), flipPointAboutY(p.fHoles.UTip), colors.fHoleCut, STROKE_WEIGHT.trace)(g, ui);
 
   let lowerCutStart = pointOnCircle(p.fHoles.LEye, p.fHoles.LCut.angleOnEye);
-  renderSegment(lowerCutStart, p.fHoles.LTip, colors.fHoleCut, 2)(g, ui);
+  renderSegment(lowerCutStart, p.fHoles.LTip, colors.fHoleCut, STROKE_WEIGHT.trace)(g, ui);
+  renderSegment(flipPointAboutY(lowerCutStart), flipPointAboutY(p.fHoles.LTip), colors.fHoleCut, STROKE_WEIGHT.trace)(g, ui);
 
   // now we need to render the segments between the arc ends
   let outerStemTop = pointOnCircle(p.fHoles.S2, p.fHoles.S2.end);
   let outerStemBottom = pointOnCircle(p.fHoles.S4, p.fHoles.S4.start);
-  renderSegment(outerStemTop, outerStemBottom, colors.fHoleStem, 2)(g, ui);
+  renderSegment(outerStemTop, outerStemBottom, colors.fHoleStem, STROKE_WEIGHT.trace)(g, ui);
+  renderSegment(flipPointAboutY(outerStemTop), flipPointAboutY(outerStemBottom), colors.fHoleStem, STROKE_WEIGHT.trace)(g, ui);
 
   let innerStemTop = pointOnCircle(p.fHoles.S1, p.fHoles.S1.start);
   let innerStemBottom = pointOnCircle(p.fHoles.S3, p.fHoles.S3.end);
-  renderSegment(innerStemTop, innerStemBottom, colors.fHoleStem, 2)(g, ui);
+  renderSegment(innerStemTop, innerStemBottom, colors.fHoleStem, STROKE_WEIGHT.trace)(g, ui);
+  renderSegment(flipPointAboutY(innerStemTop), flipPointAboutY(innerStemBottom), colors.fHoleStem, STROKE_WEIGHT.trace)(g, ui);
 
   // now we render the eyes as arcs, not just circles
   let UpperEyeStartPt = circleCircleIntersections(p.fHoles.UEye, p.fHoles.U1)[0];
   let UpperEyeStartAngle = angleFromCenter(p.fHoles.UEye, UpperEyeStartPt);
   let eyeArc = new Arc(p.fHoles.UEye.x, p.fHoles.UEye.y, p.fHoles.UEye.r, UpperEyeStartAngle, p.fHoles.UCut.angleOnEye);
-  renderArcFromArc(eyeArc, colors.fHoleUpper, 2, true)(g, ui);
+  renderArcFromArc(eyeArc, colors.fHoleUpper, STROKE_WEIGHT.trace, true)(g, ui);
+  renderArcFromArc(flipArcAboutY(eyeArc), colors.fHoleUpper, STROKE_WEIGHT.trace, true)(g, ui);
 
   let LowerEyeStartPt = circleCircleIntersections(p.fHoles.LEye, p.fHoles.L1)[0];
   let LowerEyeStartAngle = angleFromCenter(p.fHoles.LEye, LowerEyeStartPt);
   let lowerEyeArc = new Arc(p.fHoles.LEye.x, p.fHoles.LEye.y, p.fHoles.LEye.r, LowerEyeStartAngle, p.fHoles.LCut.angleOnEye);
-  renderArcFromArc(lowerEyeArc, colors.fHoleLower, 2, true)(g, ui);
+  renderArcFromArc(lowerEyeArc, colors.fHoleLower, STROKE_WEIGHT.trace, true)(g, ui);
+  renderArcFromArc(flipArcAboutY(lowerEyeArc), colors.fHoleLower, STROKE_WEIGHT.trace, true)(g, ui);
 
   // then we render the fancy arcs
   if (showArcs) {
     renderArcFromArcFancy(p.fHoles.U1, colors.fHoleUpperDark)(g, ui);
+    renderArcFromArcFancy(flipArcAboutY(p.fHoles.U1), colors.fHoleUpperDark)(g, ui);
     renderArcFromArcFancy(p.fHoles.U2, colors.fHoleUpper)(g, ui);
+    renderArcFromArcFancy(flipArcAboutY(p.fHoles.U2), colors.fHoleUpper)(g, ui);
     p.options.U21DoubleArc && renderArcFromArcFancy(p.fHoles.U21!, colors.fHoleUpperDark)(g, ui);
+    p.options.U21DoubleArc && renderArcFromArcFancy(flipArcAboutY(p.fHoles.U21!), colors.fHoleUpperDark)(g, ui);
     renderArcFromArcFancy(p.fHoles.U3, colors.fHoleUpperLight)(g, ui);
+    renderArcFromArcFancy(flipArcAboutY(p.fHoles.U3), colors.fHoleUpperLight)(g, ui);
     renderArcFromArcFancy(p.fHoles.S2, colors.fHoleStem)(g, ui);
+    renderArcFromArcFancy(flipArcAboutY(p.fHoles.S2), colors.fHoleStem)(g, ui);
     renderArcFromArcFancy(p.fHoles.S1, colors.fHoleStem)(g, ui);
+    renderArcFromArcFancy(flipArcAboutY(p.fHoles.S1), colors.fHoleStem)(g, ui);
 
     renderArcFromArcFancy(p.fHoles.L1, colors.fHoleLowerDark)(g, ui);
+    renderArcFromArcFancy(flipArcAboutY(p.fHoles.L1), colors.fHoleLowerDark)(g, ui);
     renderArcFromArcFancy(p.fHoles.L2, colors.fHoleLower)(g, ui);
+    renderArcFromArcFancy(flipArcAboutY(p.fHoles.L2), colors.fHoleLower)(g, ui);
     p.options.L21DoubleArc && renderArcFromArcFancy(p.fHoles.L21!, colors.fHoleLowerDark)(g, ui);
+    p.options.L21DoubleArc && renderArcFromArcFancy(flipArcAboutY(p.fHoles.L21!), colors.fHoleLowerDark)(g, ui);
     renderArcFromArcFancy(p.fHoles.L3, colors.fHoleLowerLight)(g, ui);
+    renderArcFromArcFancy(flipArcAboutY(p.fHoles.L3), colors.fHoleLowerLight)(g, ui);
     renderArcFromArcFancy(p.fHoles.S4, colors.fHoleStem)(g, ui);
+    renderArcFromArcFancy(flipArcAboutY(p.fHoles.S4), colors.fHoleStem)(g, ui);
     renderArcFromArcFancy(p.fHoles.S3, colors.fHoleStem)(g, ui);
+    renderArcFromArcFancy(flipArcAboutY(p.fHoles.S3), colors.fHoleStem)(g, ui);
 
   }
 }

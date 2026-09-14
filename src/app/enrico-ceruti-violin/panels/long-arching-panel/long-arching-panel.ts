@@ -21,7 +21,7 @@ import {
   archHeightInfo, curveTypeInfo, transitionInfo, plateThicknessInfo, ribHeightInfo,
   splinePointInfo, trochoidFactorInfo,
 } from '../../ceruti-helpers';
-import { HighlightedSplinePoint } from '../../renders/render-constants';
+import { HighlightedSplinePoint, STROKE_WEIGHT } from '../../renders/render-constants';
 import { renderArchGuide, renderSplineHighlight } from '../../renders/long-arch.render';
 import { error } from '../../../shared/message-emitter';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
@@ -300,13 +300,13 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
     return (g: any, ui: any): void => {
       renderPath(
         `M 0 ${rib.yLow} L ${rib.zLow} ${rib.yLow} L ${rib.zHigh} ${rib.yHigh} L 0 ${rib.yHigh} Z`,
-        this.colors.mouldTrace, 1,
+        this.colors.mouldTrace, STROKE_WEIGHT.guide,
       )(g, ui);
       // The corner positions, to locate the C-bout against the profile.
       for (const corner of [p.bouts.UCr, p.bouts.LCr]) {
         if (corner) {
           renderSegment(
-            new Pt(0, corner.y), new Pt(ribHeightAt(p, corner.y, taper), corner.y), this.colors.mouldTrace,
+            new Pt(0, corner.y), new Pt(ribHeightAt(p, corner.y, taper), corner.y), this.colors.mouldTrace, STROKE_WEIGHT.guide,
           )(g, ui);
         }
       }
@@ -355,25 +355,25 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
     const solved = this.solved[plate];
     const landEdge = p.outerFlutingDepth ?? 0;
 
-    renderSegment(new Pt(innerZ, 0), new Pt(innerZ, p.height), this.colors.innerTrace)(g, ui);
+    renderSegment(new Pt(innerZ, 0), new Pt(innerZ, p.height), this.colors.innerTrace, STROKE_WEIGHT.guide)(g, ui);
     for (const [yEnd, yLand] of [[0, landEdge], [p.height, p.height - landEdge]] as const) {
-      renderSegment(new Pt(innerZ, yEnd), new Pt(outerZ, yEnd), this.colors.innerTrace)(g, ui);
-      renderSegment(new Pt(outerZ, yEnd), new Pt(outerZ, yLand), this.colors.innerTrace)(g, ui);
+      renderSegment(new Pt(innerZ, yEnd), new Pt(outerZ, yEnd), this.colors.innerTrace, STROKE_WEIGHT.guide)(g, ui);
+      renderSegment(new Pt(outerZ, yEnd), new Pt(outerZ, yLand), this.colors.innerTrace, STROKE_WEIGHT.guide)(g, ui);
     }
 
     // The channel at both caps — identical at each end and at every station,
     // because it is the tool rather than a curve fitted to the arch. Drawn only
     // as far as the arch's contact, where the arch takes over as the surface.
     const sEnd = solved?.takeoff.contactS;
-    renderPath(channelCapPath(p, gouge, outerZ, sign, true, sEnd), this.colors.fluting, 1.5)(g, ui);
-    renderPath(channelCapPath(p, gouge, outerZ, sign, false, sEnd), this.colors.fluting, 1.5)(g, ui);
+    renderPath(channelCapPath(p, gouge, outerZ, sign, true, sEnd), this.colors.fluting, STROKE_WEIGHT.section)(g, ui);
+    renderPath(channelCapPath(p, gouge, outerZ, sign, false, sEnd), this.colors.fluting, STROKE_WEIGHT.section)(g, ui);
 
     if (!solved) return;
     const { span, yStart, lowered, takeoff } = solved;
     const xBase = outerZ - sign * takeoff.takeoffDepth;
 
     renderSplineHighlight(lowered, span, yStart, xBase, sign, this.splineHighlightFor(plate))(g, ui);
-    renderPath(buildArchPathFor(lowered, span, yStart, xBase, sign), color, 1.5)(g, ui);
+    renderPath(buildArchPathFor(lowered, span, yStart, xBase, sign), color, STROKE_WEIGHT.section)(g, ui);
 
     if (this.flags.showModuleGuides) {
       renderArchGuide(this.archFor(plate), span, yStart, outerZ, sign, color)(g, ui);

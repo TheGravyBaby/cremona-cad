@@ -17,6 +17,7 @@
 import { CerutiColors, EnricoCerutiParams } from '../ceruti-types';
 import { PlateSurfaceModel, StationChords, stationChordsAt, topSurfaceZAt } from '../ceruti-surface';
 import { buildProjection } from './oblique-projection';
+import { STROKE_WEIGHT } from './render-constants';
 
 // ===== Data types =====
 
@@ -234,12 +235,12 @@ export function renderArch3dWireframe(
   domeColor: string = colors.archTop,
 ): (g: any, ui: any) => void {
   return (g: any, ui: any): void => {
-    // Longitudinal ribs — faint
+    // Longitudinal ribs — faint background context, thinner than a regular strip.
     for (const rib of ribs) {
       g.append('path')
         .attr('d', rib)
         .attr('stroke', colors.mouldTrace)
-        .attr('stroke-width', 0.6)
+        .attr('stroke-width', STROKE_WEIGHT.guide * 0.6)
         .attr('fill', 'none')
         .attr('opacity', 0.45)
         .attr('vector-effect', 'non-scaling-stroke');
@@ -253,18 +254,19 @@ export function renderArch3dWireframe(
       g.append('path')
         .attr('d', path)
         .attr('stroke', color)
-        .attr('stroke-width', 0.75)
+        .attr('stroke-width', STROKE_WEIGHT.guide * 0.75)
         .attr('fill', 'none')
         .attr('opacity', opacity)
         .attr('vector-effect', 'non-scaling-stroke');
     }
 
-    // Highlighted station (current cross-section from the section view below)
+    // Highlighted station (current cross-section from the section view below) — matches
+    // STROKE_WEIGHT.section, the weight the same station is drawn at in the 2D section view.
     if (highlightedStrip) {
       g.append('path')
         .attr('d', highlightedStrip.path)
         .attr('stroke', colors.mouldTrace)
-        .attr('stroke-width', 1.5)
+        .attr('stroke-width', STROKE_WEIGHT.section)
         .attr('fill', 'none')
         .attr('opacity', 1)
         .attr('vector-effect', 'non-scaling-stroke');

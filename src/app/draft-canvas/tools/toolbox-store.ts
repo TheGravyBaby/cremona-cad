@@ -556,8 +556,10 @@ export class ToolboxStore implements Undoable {
       }));
     }
     if (typeof parsed['activeLayerId'] === 'string') this._activeLayerId = parsed['activeLayerId'] as string;
-    if (typeof parsed['showImages'] === 'boolean') this._showImages = parsed['showImages'] as boolean;
-    if (typeof parsed['showShapes'] === 'boolean') this._showShapes = parsed['showShapes'] as boolean;
+    // showImages/showShapes are deliberately not restored from the file: they're the user's
+    // current view preference (see resetAll's matching comment), and a template's own toolboxState
+    // reflects whatever its author's toolbox looked like when it was traced, not a choice this
+    // user made about it.
 
     this.history = [this.shapes];
     this.historyIndex = 0;

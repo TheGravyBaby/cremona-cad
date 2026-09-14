@@ -10,7 +10,7 @@ import { compoundArcInfo, cornerPositionInfo, violCornerInfo } from '../../cerut
 import { CerutiColors, CerutiViewFlags, DefaultParams, EnricoCerutiParams, RenderToggleKey } from '../../ceruti-types';
 import { renderBounds, renderBoutBouts, renderCornerGuides } from '../../renders/guides.render';
 import { renderMainBouts } from '../main-bouts-panel/main-bouts-panel';
-import { HighlightedArc, HighlightedPoint, PATH_STROKE_WIDTH } from '../../renders/render-constants';
+import { HighlightedArc, HighlightedPoint, STROKE_WEIGHT } from '../../renders/render-constants';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 
@@ -186,23 +186,23 @@ export const renderCorners = (
     p.options.useViolCornerUC && renderArcFromArcFancy(p.bouts.U4!, colors.upperBoutOff)(g, ui);
     p.options.useViolCornerUC && renderArcFromArcFancy(flipArcAboutY(p.bouts.U4!), colors.upperBoutOff)(g, ui);
   } else {
-    !p.options.useViolCornerLC && renderArcFromArc(p.bouts.L2!, colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
-    !p.options.useViolCornerLC && renderArcFromArc(p.bouts.L3!, colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
-    !p.options.useViolCornerLC && p.options.L31DoubleArc && renderArcFromArc(p.bouts.L31!, colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
-    !p.options.useViolCornerLC && renderArcFromArc(flipArcAboutY(p.bouts.L2!), colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
-    !p.options.useViolCornerLC && renderArcFromArc(flipArcAboutY(p.bouts.L3!), colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
-    !p.options.useViolCornerLC && p.options.L31DoubleArc && renderArcFromArc(flipArcAboutY(p.bouts.L31!), colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
-    p.options.useViolCornerLC && renderArcFromArc(p.bouts.L4!, colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
-    p.options.useViolCornerLC && renderArcFromArc(flipArcAboutY(p.bouts.L4!), colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
+    !p.options.useViolCornerLC && renderArcFromArc(p.bouts.L2!, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+    !p.options.useViolCornerLC && renderArcFromArc(p.bouts.L3!, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+    !p.options.useViolCornerLC && p.options.L31DoubleArc && renderArcFromArc(p.bouts.L31!, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+    !p.options.useViolCornerLC && renderArcFromArc(flipArcAboutY(p.bouts.L2!), colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+    !p.options.useViolCornerLC && renderArcFromArc(flipArcAboutY(p.bouts.L3!), colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+    !p.options.useViolCornerLC && p.options.L31DoubleArc && renderArcFromArc(flipArcAboutY(p.bouts.L31!), colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+    p.options.useViolCornerLC && renderArcFromArc(p.bouts.L4!, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+    p.options.useViolCornerLC && renderArcFromArc(flipArcAboutY(p.bouts.L4!), colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
 
-    !p.options.useViolCornerUC && renderArcFromArc(p.bouts.U2!, colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
-    !p.options.useViolCornerUC && renderArcFromArc(p.bouts.U3!, colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
-    !p.options.useViolCornerUC && p.options.U31DoubleArc && renderArcFromArc(p.bouts.U31!, colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
-    !p.options.useViolCornerUC && renderArcFromArc(flipArcAboutY(p.bouts.U2!), colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
-    !p.options.useViolCornerUC && renderArcFromArc(flipArcAboutY(p.bouts.U3!), colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
-    !p.options.useViolCornerUC && p.options.U31DoubleArc && renderArcFromArc(flipArcAboutY(p.bouts.U31!), colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
-    p.options.useViolCornerUC && renderArcFromArc(p.bouts.U4!, colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
-    p.options.useViolCornerUC && renderArcFromArc(flipArcAboutY(p.bouts.U4!), colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
+    !p.options.useViolCornerUC && renderArcFromArc(p.bouts.U2!, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+    !p.options.useViolCornerUC && renderArcFromArc(p.bouts.U3!, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+    !p.options.useViolCornerUC && p.options.U31DoubleArc && renderArcFromArc(p.bouts.U31!, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+    !p.options.useViolCornerUC && renderArcFromArc(flipArcAboutY(p.bouts.U2!), colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+    !p.options.useViolCornerUC && renderArcFromArc(flipArcAboutY(p.bouts.U3!), colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+    !p.options.useViolCornerUC && p.options.U31DoubleArc && renderArcFromArc(flipArcAboutY(p.bouts.U31!), colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+    p.options.useViolCornerUC && renderArcFromArc(p.bouts.U4!, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+    p.options.useViolCornerUC && renderArcFromArc(flipArcAboutY(p.bouts.U4!), colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
   }
 
   if (flags.renderOuterPath && renderOuterPathCorners) {
@@ -213,22 +213,22 @@ export const renderCorners = (
     const cBoutUp = m ? colors.centerBoutUp : colors.outerTrace;
     const inset = p.overhang + p.rib;
 
-    !p.options.useViolCornerLC && renderArcFromArc(offsetArcRadius(p.bouts.L2!, inset), lBoutOff, PATH_STROKE_WIDTH)(g, ui);
-    !p.options.useViolCornerLC && renderArcFromArc(offsetArcRadius(p.bouts.L3!, -inset), cBoutLow, PATH_STROKE_WIDTH)(g, ui);
-    !p.options.useViolCornerLC && p.options.L31DoubleArc && renderArcFromArc(offsetArcRadius(p.bouts.L31!, -inset), cBoutLow, PATH_STROKE_WIDTH)(g, ui);
-    !p.options.useViolCornerLC && renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.L2!), inset), lBoutOff, PATH_STROKE_WIDTH)(g, ui);
-    !p.options.useViolCornerLC && renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.L3!), -inset), cBoutLow, PATH_STROKE_WIDTH)(g, ui);
-    !p.options.useViolCornerLC && p.options.L31DoubleArc && renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.L31!), -inset), cBoutLow, PATH_STROKE_WIDTH)(g, ui);
-    p.options.useViolCornerLC && renderArcFromArc(offsetArcRadius(p.bouts.L4!, inset), lBoutOff, PATH_STROKE_WIDTH)(g, ui);
-    p.options.useViolCornerLC && renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.L4!), inset), lBoutOff, PATH_STROKE_WIDTH)(g, ui);
+    !p.options.useViolCornerLC && renderArcFromArc(offsetArcRadius(p.bouts.L2!, inset), lBoutOff, STROKE_WEIGHT.trace)(g, ui);
+    !p.options.useViolCornerLC && renderArcFromArc(offsetArcRadius(p.bouts.L3!, -inset), cBoutLow, STROKE_WEIGHT.trace)(g, ui);
+    !p.options.useViolCornerLC && p.options.L31DoubleArc && renderArcFromArc(offsetArcRadius(p.bouts.L31!, -inset), cBoutLow, STROKE_WEIGHT.trace)(g, ui);
+    !p.options.useViolCornerLC && renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.L2!), inset), lBoutOff, STROKE_WEIGHT.trace)(g, ui);
+    !p.options.useViolCornerLC && renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.L3!), -inset), cBoutLow, STROKE_WEIGHT.trace)(g, ui);
+    !p.options.useViolCornerLC && p.options.L31DoubleArc && renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.L31!), -inset), cBoutLow, STROKE_WEIGHT.trace)(g, ui);
+    p.options.useViolCornerLC && renderArcFromArc(offsetArcRadius(p.bouts.L4!, inset), lBoutOff, STROKE_WEIGHT.trace)(g, ui);
+    p.options.useViolCornerLC && renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.L4!), inset), lBoutOff, STROKE_WEIGHT.trace)(g, ui);
 
-    !p.options.useViolCornerUC && renderArcFromArc(offsetArcRadius(p.bouts.U2!, inset), uBoutOff, PATH_STROKE_WIDTH)(g, ui);
-    !p.options.useViolCornerUC && renderArcFromArc(offsetArcRadius(p.bouts.U3!, -inset), cBoutUp, PATH_STROKE_WIDTH)(g, ui);
-    !p.options.useViolCornerUC && p.options.U31DoubleArc && renderArcFromArc(offsetArcRadius(p.bouts.U31!, -inset), cBoutUp, PATH_STROKE_WIDTH)(g, ui);
-    !p.options.useViolCornerUC && renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.U2!), inset), uBoutOff, PATH_STROKE_WIDTH)(g, ui);
-    !p.options.useViolCornerUC && renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.U3!), -inset), cBoutUp, PATH_STROKE_WIDTH)(g, ui);
-    !p.options.useViolCornerUC && p.options.U31DoubleArc && renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.U31!), -inset), cBoutUp, PATH_STROKE_WIDTH)(g, ui);
-    p.options.useViolCornerUC && renderArcFromArc(offsetArcRadius(p.bouts.U4!, inset), uBoutOff, PATH_STROKE_WIDTH)(g, ui);
-    p.options.useViolCornerUC && renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.U4!), inset), uBoutOff, PATH_STROKE_WIDTH)(g, ui);
+    !p.options.useViolCornerUC && renderArcFromArc(offsetArcRadius(p.bouts.U2!, inset), uBoutOff, STROKE_WEIGHT.trace)(g, ui);
+    !p.options.useViolCornerUC && renderArcFromArc(offsetArcRadius(p.bouts.U3!, -inset), cBoutUp, STROKE_WEIGHT.trace)(g, ui);
+    !p.options.useViolCornerUC && p.options.U31DoubleArc && renderArcFromArc(offsetArcRadius(p.bouts.U31!, -inset), cBoutUp, STROKE_WEIGHT.trace)(g, ui);
+    !p.options.useViolCornerUC && renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.U2!), inset), uBoutOff, STROKE_WEIGHT.trace)(g, ui);
+    !p.options.useViolCornerUC && renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.U3!), -inset), cBoutUp, STROKE_WEIGHT.trace)(g, ui);
+    !p.options.useViolCornerUC && p.options.U31DoubleArc && renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.U31!), -inset), cBoutUp, STROKE_WEIGHT.trace)(g, ui);
+    p.options.useViolCornerUC && renderArcFromArc(offsetArcRadius(p.bouts.U4!, inset), uBoutOff, STROKE_WEIGHT.trace)(g, ui);
+    p.options.useViolCornerUC && renderArcFromArc(offsetArcRadius(flipArcAboutY(p.bouts.U4!), inset), uBoutOff, STROKE_WEIGHT.trace)(g, ui);
   }
 };

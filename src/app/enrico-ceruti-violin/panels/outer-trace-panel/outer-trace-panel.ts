@@ -8,6 +8,7 @@ import { buttonInfo, cornerCutoffInfo, purflingInfo } from '../../ceruti-helpers
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, PathEntry, RenderToggleKey } from '../../ceruti-types';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
+import { STROKE_WEIGHT } from '../../renders/render-constants';
 
 export interface OuterTraceViewFlags {
   showModuleArcs: boolean;
@@ -61,12 +62,12 @@ export class OuterTracePanel extends CerutiPanelBase implements OnInit {
     // subject — it is cut against the purfling, so it belongs with the gouge
     // that cuts it rather than shaded in here where nothing can be set about it.
     const renders: RenderLayer[] = [
-      renderPath(getPath(this.paths, 'back'), this.colors.outerTrace),
+      renderPath(getPath(this.paths, 'back'), this.colors.outerTrace, STROKE_WEIGHT.trace),
     ];
     const purflingPath = getPathOrNull(this.paths, 'purfling');
-    if (purflingPath) renders.push(renderPath(purflingPath, this.colors.innerTrace, 1));
+    if (purflingPath) renders.push(renderPath(purflingPath, this.colors.innerTrace, STROKE_WEIGHT.guide));
     const outerPurflingPath = getPathOrNull(this.paths, 'outerPurfling');
-    if (outerPurflingPath) renders.push(renderPath(outerPurflingPath, this.colors.innerTrace, 1));
+    if (outerPurflingPath) renders.push(renderPath(outerPurflingPath, this.colors.innerTrace, STROKE_WEIGHT.guide));
     renders.push(renderOuterTraceGuides(p, this.colors, this.flags, true));
 
     return renders;

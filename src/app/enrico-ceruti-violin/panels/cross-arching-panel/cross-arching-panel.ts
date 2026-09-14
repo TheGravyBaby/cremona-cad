@@ -25,6 +25,7 @@ import {
   PlateSurfaceModel,
 } from '../../ceruti-surface';
 import { downloadStlFile } from '../../../helpers/stlExporter';
+import { STROKE_WEIGHT } from '../../renders/render-constants';
 import {
   computeArchContourBounds, projectArchContourRings, projectFlatPolyline, renderArchContours3d,
 } from '../../renders/arch-contours.render';
@@ -938,10 +939,10 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
       if (innerHalf !== null) {
         renderRect(
           new Rectangle({ x: -(innerHalf + p.rib), y: 0 }, { x: innerHalf + p.rib, y: ribZ }),
-          this.colors.mouldTrace,
+          this.colors.mouldTrace, 'none', STROKE_WEIGHT.guide,
         )(g, ui);
         for (const sx of [-1, 1]) {
-          renderSegment(new Pt(sx * innerHalf, 0), new Pt(sx * innerHalf, ribZ), this.colors.innerTrace)(g, ui);
+          renderSegment(new Pt(sx * innerHalf, 0), new Pt(sx * innerHalf, ribZ), this.colors.innerTrace, STROKE_WEIGHT.guide)(g, ui);
         }
       }
       for (const plate of ['top', 'bottom'] as const) {
@@ -961,9 +962,9 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     const section = this.section[plate];
 
     // Plate underside, flat across the section, and the thickness at each edge.
-    renderSegment(new Pt(-outerHalf, innerZ), new Pt(outerHalf, innerZ), this.colors.innerTrace)(g, ui);
+    renderSegment(new Pt(-outerHalf, innerZ), new Pt(outerHalf, innerZ), this.colors.innerTrace, STROKE_WEIGHT.guide)(g, ui);
     for (const side of [1, -1] as const) {
-      renderSegment(new Pt(side * outerHalf, innerZ), new Pt(side * outerHalf, zBase), this.colors.innerTrace)(g, ui);
+      renderSegment(new Pt(side * outerHalf, innerZ), new Pt(side * outerHalf, zBase), this.colors.innerTrace, STROKE_WEIGHT.guide)(g, ui);
     }
     if (!section) return;
 
@@ -973,11 +974,11 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     // continuous function — the contact is only where the pen changes.
     const landEdge = section.centerHalf + section.halfWidth;
     for (const side of [1, -1] as const) {
-      renderSegment(new Pt(side * outerHalf, zBase), new Pt(side * Math.min(landEdge, outerHalf), zBase), this.colors.innerTrace)(g, ui);
+      renderSegment(new Pt(side * outerHalf, zBase), new Pt(side * Math.min(landEdge, outerHalf), zBase), this.colors.innerTrace, STROKE_WEIGHT.guide)(g, ui);
     }
-    renderPath(crossArchSectionPath(section, section.xEndRight, landEdge, zBase, sign), this.colors.fluting, 1.5)(g, ui);
-    renderPath(crossArchSectionPath(section, -landEdge, -section.xEndLeft, zBase, sign), this.colors.fluting, 1.5)(g, ui);
-    renderPath(crossArchSectionPath(section, -section.xEndLeft, section.xEndRight, zBase, sign), color, 1.5)(g, ui);
+    renderPath(crossArchSectionPath(section, section.xEndRight, landEdge, zBase, sign), this.colors.fluting, STROKE_WEIGHT.section)(g, ui);
+    renderPath(crossArchSectionPath(section, -landEdge, -section.xEndLeft, zBase, sign), this.colors.fluting, STROKE_WEIGHT.section)(g, ui);
+    renderPath(crossArchSectionPath(section, -section.xEndLeft, section.xEndRight, zBase, sign), color, STROKE_WEIGHT.section)(g, ui);
 
     if (this.highlightedPlate === plate) {
       // Knots are fractions of this station's own crown, so they only become

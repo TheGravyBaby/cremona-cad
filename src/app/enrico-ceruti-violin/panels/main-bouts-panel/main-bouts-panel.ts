@@ -15,7 +15,7 @@ import { boutWidthInfo, violNeckInfo, violNeckJoinInfo } from '../../ceruti-help
 import { violNeckCap } from '../../ceruti-paths';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, RenderToggleKey } from '../../ceruti-types';
 import { renderBounds, renderBoutBouts } from '../../renders/guides.render';
-import { HighlightedArc, PATH_STROKE_WIDTH } from '../../renders/render-constants';
+import { HighlightedArc, STROKE_WEIGHT } from '../../renders/render-constants';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 
@@ -127,11 +127,11 @@ const renderViolNeckJoin = (p: EnricoCerutiParams, d: number, color: string) => 
   if (!cap) return;
 
   if (cap.fillet) {
-    renderArcFromArc(cap.fillet, color, PATH_STROKE_WIDTH)(g, ui);
-    renderArcFromArc(flipArcAboutY(cap.fillet), color, PATH_STROKE_WIDTH)(g, ui);
+    renderArcFromArc(cap.fillet, color, STROKE_WEIGHT.trace)(g, ui);
+    renderArcFromArc(flipArcAboutY(cap.fillet), color, STROKE_WEIGHT.trace)(g, ui);
   }
 
-  renderSegment({ x: cap.topX, y: cap.topY }, { x: -cap.topX, y: cap.topY }, color, PATH_STROKE_WIDTH)(g, ui);
+  renderSegment({ x: cap.topX, y: cap.topY }, { x: -cap.topX, y: cap.topY }, color, STROKE_WEIGHT.trace)(g, ui);
 };
 
 /**
@@ -146,8 +146,8 @@ const renderViolNeck = (p: EnricoCerutiParams, d: number, color: string) => (g: 
 
   const V0 = offsetArcRadius(p.viol.V0!, -d);
   V0.start = cap.v0Start;
-  renderArcFromArc(V0, color, PATH_STROKE_WIDTH)(g, ui);
-  renderArcFromArc(flipArcAboutY(V0), color, PATH_STROKE_WIDTH)(g, ui);
+  renderArcFromArc(V0, color, STROKE_WEIGHT.trace)(g, ui);
+  renderArcFromArc(flipArcAboutY(V0), color, STROKE_WEIGHT.trace)(g, ui);
 
   renderViolNeckJoin(p, d, color)(g, ui);
 };
@@ -208,17 +208,17 @@ export const renderMainBouts = (
       renderViolNeck(p, 0, colors.innerTrace)(g, ui);
 
       const mirrorU0 = flipArcAboutY(p.bouts.U0!);
-      renderArcFromArc(p.bouts.U0!, colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
-      renderArcFromArc(mirrorU0, colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
+      renderArcFromArc(p.bouts.U0!, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+      renderArcFromArc(mirrorU0, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
     } else {
-      renderArcFromArc(wideTopArc, colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
+      renderArcFromArc(wideTopArc, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
     }
 
-    renderArcFromArc(p.bouts.U1!, colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
-    renderArcFromArc(mirroredU1Arc, colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
-    renderArcFromArc(wideBottomArc, colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
-    renderArcFromArc(p.bouts.L1!, colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
-    renderArcFromArc(mirroredL1Arc, colors.innerTrace, PATH_STROKE_WIDTH)(g, ui);
+    renderArcFromArc(p.bouts.U1!, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+    renderArcFromArc(mirroredU1Arc, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+    renderArcFromArc(wideBottomArc, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+    renderArcFromArc(p.bouts.L1!, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+    renderArcFromArc(mirroredL1Arc, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
   }
 
   if (flags.renderOuterPath) {
@@ -231,16 +231,16 @@ export const renderMainBouts = (
     if (params.options.useViolNeck) {
       renderViolNeck(p, inset, violNeckColor)(g, ui);
       const mirrorU0 = flipArcAboutY(p.bouts.U0!);
-      renderArcFromArc(offsetArcRadius(p.bouts.U0!, inset), outerTopColor, PATH_STROKE_WIDTH)(g, ui);
-      renderArcFromArc(offsetArcRadius(mirrorU0, inset), outerTopColor, PATH_STROKE_WIDTH)(g, ui);
+      renderArcFromArc(offsetArcRadius(p.bouts.U0!, inset), outerTopColor, STROKE_WEIGHT.trace)(g, ui);
+      renderArcFromArc(offsetArcRadius(mirrorU0, inset), outerTopColor, STROKE_WEIGHT.trace)(g, ui);
     } else {
-      renderArcFromArc(offsetArcRadius(wideTopArc, inset), outerTopColor, PATH_STROKE_WIDTH)(g, ui);
+      renderArcFromArc(offsetArcRadius(wideTopArc, inset), outerTopColor, STROKE_WEIGHT.trace)(g, ui);
     }
 
-    renderArcFromArc(offsetArcRadius(p.bouts.U1!, inset), outerTopOffColor, PATH_STROKE_WIDTH)(g, ui);
-    renderArcFromArc(offsetArcRadius(mirroredU1Arc, inset), outerTopOffColor, PATH_STROKE_WIDTH)(g, ui);
-    renderArcFromArc(offsetArcRadius(wideBottomArc, inset), outerBotColor, PATH_STROKE_WIDTH)(g, ui);
-    renderArcFromArc(offsetArcRadius(p.bouts.L1!, inset), outerBotOffColor, PATH_STROKE_WIDTH)(g, ui);
-    renderArcFromArc(offsetArcRadius(mirroredL1Arc, inset), outerBotOffColor, PATH_STROKE_WIDTH)(g, ui);
+    renderArcFromArc(offsetArcRadius(p.bouts.U1!, inset), outerTopOffColor, STROKE_WEIGHT.trace)(g, ui);
+    renderArcFromArc(offsetArcRadius(mirroredU1Arc, inset), outerTopOffColor, STROKE_WEIGHT.trace)(g, ui);
+    renderArcFromArc(offsetArcRadius(wideBottomArc, inset), outerBotColor, STROKE_WEIGHT.trace)(g, ui);
+    renderArcFromArc(offsetArcRadius(p.bouts.L1!, inset), outerBotOffColor, STROKE_WEIGHT.trace)(g, ui);
+    renderArcFromArc(offsetArcRadius(mirroredL1Arc, inset), outerBotOffColor, STROKE_WEIGHT.trace)(g, ui);
   }
 };
