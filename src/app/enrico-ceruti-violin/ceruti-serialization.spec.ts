@@ -117,7 +117,7 @@ describe('the geometry classes that ride in a recipe', () => {
   // The rule from the types.ts header, made executable: a prototype member is
   // only safe on a class the calc pass reassigns every instance of. `Arc` earns
   // its `degreeDiff` that way. Nothing reconstructs a `Pt` (see the corner tips
-  // above) or a `Rectangle` (`blocks`, `button`), so a member added to either
+  // above) or a `Rectangle` (`blocks`), so a member added to either
   // would resolve in a fresh session and be gone after a reopen.
   it.each([
     ['Pt', Pt],

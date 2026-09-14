@@ -193,7 +193,7 @@ export class ExportPanel implements OnInit {
     this.ensureDerivedPaths();
     const p = this.params;
     const baseName = this.fileName?.trim() || 'ceruti-violin';
-    const height = p.height + 2 * p.button!.height + p.button!.width / 2;
+    const height = p.height + 2 * p.button!.height;
 
     let paths: SvgPathExport[];
     let texts: SvgTextExport[] = [];
@@ -323,7 +323,7 @@ export class ExportPanel implements OnInit {
       longArchTemplates: 'Long Arch Templates',
     };
 
-    const height = p.height + 2 * p.button!.height + p.button!.width / 2;
+    const height = p.height + 2 * p.button!.height;
 
     let pdfPaths: SvgPathExport[];
     let texts: SvgTextExport[] = [];
@@ -393,9 +393,9 @@ export class ExportPanel implements OnInit {
     const baseName = this.fileName?.trim() || 'ceruti-violin';
     const description = this.description ?? '';
     const inset = p.overhang + p.rib;
-    let height = p.height + 2 * p.button!.height + p.button!.width / 2;
+    let height = p.height + 2 * p.button!.height;
     if (p.options.useViolNeck)
-      height = pointOnCircle(p.viol.V0!, 0).y + 2 * p.button!.height + p.button!.width / 2 + inset;
+      height = pointOnCircle(p.viol.V0!, 0).y + 2 * p.button!.height + inset;
 
     const purflingPath = this.getPathOrNull('purfling');
     const outerPurflingPath = this.getPathOrNull('outerPurfling');

@@ -1,28 +1,22 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Pt } from '../../../models/types';
-import { renderSegment, renderPath } from '../../../helpers/renderFuncs';
-import { archSplineKnots, buildCatenaryPath, buildCycloidPath, buildSplinePath, SPLINE_PEAK_SOURCE } from '../../../helpers/math/pathMath';
+import { archSplineKnots, SPLINE_PEAK_SOURCE } from '../../../helpers/math/pathMath';
 import { clamp } from '../../../helpers/math/simpleGeometry';
 import {
   ArchCurve, ArchSpline, ArchSplinePoint, ArchingParams, CerutiColors, CerutiViewFlags,
   EnricoCerutiParams, FlutingParams, RenderToggleKey,
 } from '../../ceruti-types';
 import {
-  clampSplinePointHeights, defaultArchingParams, maxRibTaperMm, ribHeightAt, RibTaper, solveRibTaper,
-  splinePeakRow,
+  clampSplinePointHeights, defaultArchingParams, maxRibTaperMm, splinePeakRow,
 } from '../../ceruti-arching';
-import {
-  defaultFlutingParams, channelCapPath, LongArchSolve, solveLongArch,
-} from '../../ceruti-arch-geometry';
+import { defaultFlutingParams, LongArchSolve, solveLongArch } from '../../ceruti-arch-geometry';
 import { calculateOuterArcs } from '../../ceruti-calcs';
 import {
-  archHeightInfo, curveTypeInfo, transitionInfo, plateThicknessInfo, ribHeightInfo,
-  splinePointInfo, trochoidFactorInfo,
+  archHeightInfo,
 } from '../../ceruti-helpers';
-import { HighlightedSplinePoint, STROKE_WEIGHT } from '../../renders/render-constants';
-import { renderArchGuide, renderSplineHighlight } from '../../renders/long-arch.render';
+import { HighlightedSplinePoint } from '../../renders/render-constants';
+import { renderBodySection } from '../../renders/body-section.render';
 import { error } from '../../../shared/message-emitter';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
@@ -54,14 +48,6 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
   @Input({ required: true }) params!: EnricoCerutiParams;
   @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;
-
-  protected readonly ribHeightInfo = ribHeightInfo;
-  protected readonly archHeightInfo = archHeightInfo;
-  protected readonly plateThicknessInfo = plateThicknessInfo;
-  protected readonly trochoidFactorInfo = trochoidFactorInfo;
-  protected readonly curveTypeInfo = curveTypeInfo;
-  protected readonly splinePointInfo = splinePointInfo;
-  protected readonly transitionInfo = transitionInfo;
   protected readonly peakSource = SPLINE_PEAK_SOURCE;
 
   private highlightedPlate: 'top' | 'bottom' | null = null;
@@ -254,7 +240,12 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
     for (const plate of ['top', 'bottom'] as const) {
       this.solved[plate] = solveLongArch(this.params, this.archFor(plate), this.gouge(plate));
     }
-    return [this.section()];
+    return [renderBodySection(this.params, this.colors, {
+      solved: this.solved,
+      gouge: { top: this.gouge('top'), bottom: this.gouge('bottom') },
+      highlight: plate => this.splineHighlightFor(plate),
+      showGuides: this.flags.showModuleGuides,
+    })];
   }
 
   // rolls back past maxRibTaperMm rather than clamping: two fields feed the one constraint, and
@@ -279,121 +270,5 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
       `Past that the rib line runs longer than the instrument itself, and there is no garland that shape.`,
       'Invalid Rib Taper',
     );
-  }
-
-  /**
-   * The instrument's side profile: the rib between the two plates, the top growing up off it and
-   * the back down. Both plates share one view — they are two faces of one
-   * instrument here, not two objects to compare side by side the way the plan
-   * views in the channel panel are.
-   */
-  private section(): RenderLayer {
-    const p = this.params;
-    const taper = solveRibTaper(p);
-    // no longer a rectangle: the edge the top plate glues to runs at an angle to the back's.
-    const rib: RibLine = {
-      yLow: p.overhang,
-      yHigh: p.height - p.overhang,
-      zLow: ribHeightAt(p, p.overhang, taper),
-      zHigh: ribHeightAt(p, p.height - p.overhang, taper),
-    };
-    return (g: any, ui: any): void => {
-      renderPath(
-        `M 0 ${rib.yLow} L ${rib.zLow} ${rib.yLow} L ${rib.zHigh} ${rib.yHigh} L 0 ${rib.yHigh} Z`,
-        this.colors.mouldTrace, STROKE_WEIGHT.guide,
-      )(g, ui);
-      // The corner positions, to locate the C-bout against the profile.
-      for (const corner of [p.bouts.UCr, p.bouts.LCr]) {
-        if (corner) {
-          renderSegment(
-            new Pt(0, corner.y), new Pt(ribHeightAt(p, corner.y, taper), corner.y), this.colors.mouldTrace, STROKE_WEIGHT.guide,
-          )(g, ui);
-        }
-      }
-      // top plate drawn in its own carved frame, placed onto the tilted rib line by one transform,
-      // rather than teaching the arch/channel/guides each about an angle they have no other use for.
-      const tilted = this.tiltedLayers(g, ui, taper, rib);
-      this.platePart(tilted.g, tilted.ui, 'top', taper);
-      this.platePart(g, ui, 'bottom', taper);
-    };
-  }
-
-  // rigid rotation, not a shear, so the plate reads as carved rather than leaned; pivots on the
-  // plate's midpoint so it overhangs the garland equally at both ends. UI layer is Y-flipped
-  // against geometry, so its transform mirrors the sign.
-  private tiltedLayers(g: any, ui: any, taper: RibTaper, rib: RibLine): { g: any; ui: any } {
-    const run = rib.yHigh - rib.yLow;
-    if (run <= 0) return { g, ui };
-    const angle = Math.atan2(rib.zLow - rib.zHigh, run) * 180 / Math.PI;
-    const pivotX = taper.zLower;
-    const pivotY = this.params.height / 2;
-    const dx = (rib.zLow + rib.zHigh) / 2 - pivotX;
-    const dy = (rib.yLow + rib.yHigh) / 2 - pivotY;
-    return {
-      g: g.append('g').attr('transform', `translate(${dx},${dy}) rotate(${angle},${pivotX},${pivotY})`),
-      ui: ui.append('g').attr('transform', `translate(${dx},${-dy}) rotate(${-angle},${pivotX},${-pivotY})`),
-    };
-  }
-
-  /**
-   * One plate: its inner face, the flat land at each cap, the channel, and the
-   * arch. No slab outline — over everything but the last few millimetres the
-   * plate's outer surface *is* the arch, so a rectangle drawn at plate level
-   * would contradict the very curve the panel exists to show.
-   */
-  private platePart(g: any, ui: any, plate: 'top' | 'bottom', taper: RibTaper): void {
-    const p = this.params;
-    const a = this.arching;
-    const isTop = plate === 'top';
-    const sign: 1 | -1 = isTop ? 1 : -1;
-    const thickness = isTop ? a.top.thickness : a.bottom.thickness;
-    // flat for both — the top plate's tilt is carried by the group it's drawn into, not here.
-    const innerZ = isTop ? taper.zLower : 0;
-    const outerZ = innerZ + sign * thickness;
-    const color = isTop ? this.colors.archTop : this.colors.archBack;
-    const gouge = this.gouge(plate);
-    const solved = this.solved[plate];
-    const landEdge = p.outerFlutingDepth ?? 0;
-
-    renderSegment(new Pt(innerZ, 0), new Pt(innerZ, p.height), this.colors.innerTrace, STROKE_WEIGHT.guide)(g, ui);
-    for (const [yEnd, yLand] of [[0, landEdge], [p.height, p.height - landEdge]] as const) {
-      renderSegment(new Pt(innerZ, yEnd), new Pt(outerZ, yEnd), this.colors.innerTrace, STROKE_WEIGHT.guide)(g, ui);
-      renderSegment(new Pt(outerZ, yEnd), new Pt(outerZ, yLand), this.colors.innerTrace, STROKE_WEIGHT.guide)(g, ui);
-    }
-
-    // The channel at both caps — identical at each end and at every station,
-    // because it is the tool rather than a curve fitted to the arch. Drawn only
-    // as far as the arch's contact, where the arch takes over as the surface.
-    const sEnd = solved?.takeoff.contactS;
-    renderPath(channelCapPath(p, gouge, outerZ, sign, true, sEnd), this.colors.fluting, STROKE_WEIGHT.section)(g, ui);
-    renderPath(channelCapPath(p, gouge, outerZ, sign, false, sEnd), this.colors.fluting, STROKE_WEIGHT.section)(g, ui);
-
-    if (!solved) return;
-    const { span, yStart, lowered, takeoff } = solved;
-    const xBase = outerZ - sign * takeoff.takeoffDepth;
-
-    renderSplineHighlight(lowered, span, yStart, xBase, sign, this.splineHighlightFor(plate))(g, ui);
-    renderPath(buildArchPathFor(lowered, span, yStart, xBase, sign), color, STROKE_WEIGHT.section)(g, ui);
-
-    if (this.flags.showModuleGuides) {
-      renderArchGuide(this.archFor(plate), span, yStart, outerZ, sign, color)(g, ui);
-    }
-  }
-}
-
-/** The garland's top edge in the side view — the line the top plate glues to. */
-interface RibLine {
-  yLow: number;
-  yHigh: number;
-  zLow: number;
-  zHigh: number;
-}
-
-/** The arch path for whichever curve type the plate carries — mirrors ceruti-arching's private builder. */
-function buildArchPathFor(arch: ArchCurve, span: number, yStart: number, xBase: number, sign: 1 | -1): string {
-  switch (arch.type) {
-    case 'catenary': return buildCatenaryPath(arch.archHeight, span, yStart, xBase, sign);
-    case 'cycloid':  return buildCycloidPath(arch.archHeight, span, yStart, xBase, sign, arch.d);
-    case 'spline':   return buildSplinePath(arch.archHeight, span, yStart, xBase, sign, arch.points, arch.peak);
   }
 }

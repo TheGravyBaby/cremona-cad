@@ -11,7 +11,6 @@ import {
 import { arcFromCircle, Arc } from '../../../models/types';
 import { calculateMainBouts, violNeckJoinLimit } from '../../ceruti-calcs';
 import { error } from '../../../shared/message-emitter';
-import { boutWidthInfo, violNeckInfo, violNeckJoinInfo } from '../../ceruti-helpers';
 import { violNeckCap } from '../../ceruti-paths';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, RenderToggleKey } from '../../ceruti-types';
 import { renderBounds, renderBoutBouts } from '../../renders/guides.render';
@@ -42,9 +41,6 @@ export class MainBoutsPanel extends CerutiPanelBase implements OnInit {
   @Input({ required: true }) flags!: CerutiViewFlags;
 
   protected readonly nearestFraction = nearestFraction;
-  protected readonly boutWidthInfo = boutWidthInfo;
-  protected readonly violNeckInfo = violNeckInfo;
-  protected readonly violNeckJoinInfo = violNeckJoinInfo;
   protected readonly getArcStartDeg = getArcStartDeg;
   protected readonly setArcStartDeg = setArcStartDeg;
   protected readonly getArcEndDeg = getArcEndDeg;

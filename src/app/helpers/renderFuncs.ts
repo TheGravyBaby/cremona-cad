@@ -292,6 +292,19 @@ export const renderPath = (path: string, color: string, strokeWidth: number = 2,
         .attr('vector-effect', 'non-scaling-stroke');;
 };
 
+/** A closed shape from its corners, in order — the drafting-table equivalent of connecting the
+ * dots and closing back to the first one. Unfilled by default; pass `fill` for a solid shape. */
+export const renderPolygon = (points: Pt[], color: string, strokeWidth: number = 2, opacity: number = 1, fill: string = "none") => (g: any, ui: any) => {
+    const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ') + ' Z';
+    g.append("path")
+        .attr("d", d)
+        .attr("fill", fill)
+        .attr("stroke", color)
+        .attr("stroke-width", strokeWidth)
+        .attr("opacity", opacity)
+        .attr('vector-effect', 'non-scaling-stroke');
+};
+
 /** Plain centered label at a drafting point, upright regardless of the canvas Y-flip (and rotation, if given). */
 export const renderText = (P: Pt, label: string, color: string = 'black', fontSize: number = 5, rotationDeg: number = 0) => (g: any, ui: any) => {
     ui.append("text")

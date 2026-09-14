@@ -2,5 +2,18 @@
 // Regenerate with `npm run sync-local-templates`. See ../local/README.md.
 
 import { EnricoCerutiTemplate } from '../../ceruti-types';
+import { templateFromRecipeJson } from '../recipe-json';
+import raw_0_amati_stoll from './amati-stoll.json';
+import raw_1_amati_violin_witten_03356 from './amati-violin-witten-03356.json';
+import raw_2_del_gesu_baltic from './del-gesu-baltic.json';
+import raw_3_guadagnini_piacenza from './guadagnini-piacenza.json';
+import raw_4_guarneri_violin_sainton_betti_1744 from './guarneri-violin-sainton-betti-1744.json';
+import raw_5_maggini_delmas from './maggini-delmas.json';
+import raw_6_mittenwald_bass from './mittenwald-bass.json';
+import raw_7_ravatin_mans from './ravatin-mans.json';
+import raw_8_rugeri_poplar1690 from './rugeri-poplar1690.json';
+import raw_9_strad_davidoff from './strad-davidoff.json';
+import raw_10_strad_goetz from './strad-goetz.json';
+import raw_11_stradivari_violin_harrison_03598 from './stradivari-violin-harrison-03598.json';
 
-export const LOCAL_TEMPLATES: EnricoCerutiTemplate[] = [];
+export const LOCAL_TEMPLATES: EnricoCerutiTemplate[] = [raw_0_amati_stoll, raw_1_amati_violin_witten_03356, raw_2_del_gesu_baltic, raw_3_guadagnini_piacenza, raw_4_guarneri_violin_sainton_betti_1744, raw_5_maggini_delmas, raw_6_mittenwald_bass, raw_7_ravatin_mans, raw_8_rugeri_poplar1690, raw_9_strad_davidoff, raw_10_strad_goetz, raw_11_stradivari_violin_harrison_03598].map(templateFromRecipeJson);

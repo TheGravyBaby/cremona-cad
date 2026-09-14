@@ -11,6 +11,7 @@ import { FlutingPanel } from './fluting-panel/fluting-panel';
 import { LongArchingPanel } from './long-arching-panel/long-arching-panel';
 import { MainBoutsPanel } from './main-bouts-panel/main-bouts-panel';
 import { MouldPanel } from './mould-panel/mould-panel';
+import { NeckPanel } from './neck-panel/neck-panel';
 import { OuterTracePanel } from './outer-trace-panel/outer-trace-panel';
 
 /**
@@ -52,6 +53,7 @@ const PANELS = [
   ['center bout', CenterBoutPanel],
   ['outer trace', OuterTracePanel],
   ['mould', MouldPanel],
+  ['neck', NeckPanel],
 ] as const;
 
 describe.each(PANELS)('%s panel', (_name, Ctor) => {

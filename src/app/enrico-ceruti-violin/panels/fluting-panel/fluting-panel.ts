@@ -11,9 +11,6 @@ import {
   cornerGougeOn, defaultFlutingParams, effectiveCBoutSweep, channelAreaPath,
   channelPaths, cornerJoinAreaPath, gougeHalfWidth, plateLayoutOffset,
 } from '../../ceruti-arch-geometry';
-import {
-  cornerGougeInfo, gougeCBoutInfo, gougeCenterlineInfo, gougeSectionInfo,
-} from '../../ceruti-helpers';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../renders/render-constants';
@@ -35,11 +32,6 @@ export class FlutingPanel extends CerutiPanelBase implements OnInit {
   @Input({ required: true }) params!: EnricoCerutiParams;
   @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;
-
-  protected readonly gougeSectionInfo = gougeSectionInfo;
-  protected readonly gougeCBoutInfo = gougeCBoutInfo;
-  protected readonly gougeCenterlineInfo = gougeCenterlineInfo;
-  protected readonly cornerGougeInfo = cornerGougeInfo;
 
   ngOnInit(): void {
     this.emitImmediate();

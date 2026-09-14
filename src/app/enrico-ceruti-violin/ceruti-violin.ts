@@ -27,6 +27,7 @@ import { LongArchingPanel } from './panels/long-arching-panel/long-arching-panel
 import { CrossArchingPanel } from './panels/cross-arching-panel/cross-arching-panel';
 import { defaultFHolePlacement, FHolePlacementPanel } from './panels/f-hole-placement-panel/f-hole-placement-panel';
 import { FHoleContoursPanel } from './panels/f-hole-contours-panel/f-hole-contours-panel';
+import { NeckPanel } from './panels/neck-panel/neck-panel';
 import { ExportPanel } from './panels/export-panel/export-panel';
 import { RecipeToolbarComponent } from '../recipe-toolbar/recipe-toolbar';
 import { RenderToggles } from './render-toggles/render-toggles';
@@ -34,7 +35,7 @@ import { NumberStepperDirective } from '../shared/number-stepper';
 
 @Component({
   selector: 'app-ceruti-violin',
-  imports: [FormsModule, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterTracePanel, MouldPanel, FlutingPanel, LongArchingPanel, CrossArchingPanel, FHolePlacementPanel, FHoleContoursPanel, ExportPanel, RecipeToolbarComponent, RenderToggles, NumberStepperDirective],
+  imports: [FormsModule, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterTracePanel, MouldPanel, FlutingPanel, LongArchingPanel, CrossArchingPanel, FHolePlacementPanel, FHoleContoursPanel, NeckPanel, ExportPanel, RecipeToolbarComponent, RenderToggles, NumberStepperDirective],
   templateUrl: './ceruti-violin.html',
   styleUrls: ['../sidebar.css', './ceruti-violin.css'],
 })
@@ -53,6 +54,7 @@ export class CerutiViolin extends RecipeComponentBase {
     { id: 'crossArching', label: 'Cross Arching', toggles: CrossArchingPanel.renderToggles },
     { id: 'fHolePlacement', label: 'F-Hole Placement', toggles: FHolePlacementPanel.renderToggles },
     { id: 'fHoleContours', label: 'F-Hole Contours', toggles: FHoleContoursPanel.renderToggles },
+    { id: 'neck', label: 'Neck', toggles: NeckPanel.renderToggles },
     { id: 'mould', label: 'Mould', toggles: MouldPanel.renderToggles },
     { id: 'export', label: 'Export', toggles: [] },
   ];
@@ -112,6 +114,10 @@ export class CerutiViolin extends RecipeComponentBase {
       fHoleStem: this.makeColor(p.fHoleStem),
       fHoleStemOff: this.makeColor(p.fHoleStem, { type: 'greyOut', degree: OFF_FACTOR }),
       fHoleCut: this.makeColor(p.fHoleCut),
+      neck: this.makeColor(p.neck),
+      neckOff: this.makeColor(p.neck, { type: 'greyOut', degree: OFF_FACTOR }),
+      fingerboard: this.makeColor(p.fingerboard),
+      bridge: this.makeColor(p.bridge),
     };
   }
 
@@ -330,6 +336,7 @@ export class CerutiViolin extends RecipeComponentBase {
       case 'crossArching': return this.hasCenterBout();
       case 'fHolePlacement': return this.hasCenterBout();
       case 'fHoleContours': return this.hasCenterBout();
+      case 'neck': return this.hasCenterBout();
       case 'export': return this.hasCenterBout();
       default: return false;
     }

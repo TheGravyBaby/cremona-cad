@@ -4,7 +4,6 @@ import { flipArcAboutY, flipCircleAboutY } from '../../../helpers/math/simpleGeo
 import { adjustArcEnd } from '../../../helpers/math/arcDegrees';
 import { renderArcFromArcFancy, renderCircle, renderPath } from '../../../helpers/renderFuncs';
 import { calculateOuterArcs, ensureOuterTracePaths, getPath, getPathOrNull } from '../../ceruti-calcs';
-import { buttonInfo, cornerCutoffInfo, purflingInfo } from '../../ceruti-helpers';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, PathEntry, RenderToggleKey } from '../../ceruti-types';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
@@ -30,10 +29,6 @@ export class OuterTracePanel extends CerutiPanelBase implements OnInit {
   @Input({ required: true }) paths!: PathEntry[];
   @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;
-
-  protected readonly buttonInfo = buttonInfo;
-  protected readonly cornerCutoffInfo = cornerCutoffInfo;
-  protected readonly purflingInfo = purflingInfo;
   protected readonly adjustArcEnd = adjustArcEnd;
 
   ngOnInit(): void {

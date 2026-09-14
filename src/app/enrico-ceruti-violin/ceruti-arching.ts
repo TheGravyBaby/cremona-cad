@@ -1,3 +1,4 @@
+import { Pt } from "../models/types";
 import { clamp } from "../helpers/math/simpleGeometry";
 import { catenaryZAt, cycloidZAt, splineZAt } from "../helpers/math/pathMath";
 import {
@@ -312,6 +313,60 @@ export function ribHeightAt(p: EnricoCerutiParams, y: number, taper?: RibTaper):
   const run = t.yUpper - t.yLower;
   if (run <= 0) return t.zLower;
   return t.zLower + (y - t.yLower) * (t.zUpper - t.zLower) / run;
+}
+
+/** The garland's top edge in the side view — the line the top plate glues to. */
+export interface RibLine {
+  yLow: number;
+  yHigh: number;
+  zLow: number;
+  zHigh: number;
+}
+
+export function ribLine(p: EnricoCerutiParams, taper: RibTaper = solveRibTaper(p)): RibLine {
+  return {
+    yLow: p.overhang,
+    yHigh: p.height - p.overhang,
+    zLow: ribHeightAt(p, p.overhang, taper),
+    zHigh: ribHeightAt(p, p.height - p.overhang, taper),
+  };
+}
+
+/** `translate(dx,dy) rotate(angleDeg,pivotX,pivotY)`, in SVG's own terms. */
+export interface TopPlatePlacement {
+  dx: number;
+  dy: number;
+  angleDeg: number;
+  pivotX: number;
+  pivotY: number;
+}
+
+// rigid rotation, not a shear, so the plate reads as carved rather than leaned; pivots on the
+// plate's midpoint so it overhangs the garland equally at both ends.
+export function topPlatePlacement(p: EnricoCerutiParams, taper: RibTaper = solveRibTaper(p)): TopPlatePlacement {
+  const rib = ribLine(p, taper);
+  const run = rib.yHigh - rib.yLow;
+  const pivotX = taper.zLower;
+  const pivotY = p.height / 2;
+  if (run <= 0) return { dx: 0, dy: 0, angleDeg: 0, pivotX, pivotY };
+  return {
+    dx: (rib.zLow + rib.zHigh) / 2 - pivotX,
+    dy: (rib.yLow + rib.yHigh) / 2 - pivotY,
+    angleDeg: Math.atan2(rib.zLow - rib.zHigh, run) * 180 / Math.PI,
+    pivotX,
+    pivotY,
+  };
+}
+
+/** A point in the top plate's carved frame, where it lands in the section view. */
+export function placeOnTopPlate(pl: TopPlatePlacement, pt: Pt): Pt {
+  const a = pl.angleDeg * Math.PI / 180;
+  const px = pt.x - pl.pivotX;
+  const py = pt.y - pl.pivotY;
+  return new Pt(
+    px * Math.cos(a) - py * Math.sin(a) + pl.pivotX + pl.dx,
+    px * Math.sin(a) + py * Math.cos(a) + pl.pivotY + pl.dy,
+  );
 }
 
 /** Two stations closer together than this (mm) are the same station. */

@@ -59,8 +59,10 @@ export function violCornerInfo() {
 
 export function buttonInfo() {
     info(
-        "The button is the small semicircular tab at the top of the upper bout on the back plate. It reinforces the neck joint.\n\n" +
-        "It appears only on the back — not on the top plate.",
+        "The button is the small semicircular tab at the top of the upper bout on the back plate. It reinforces the neck joint, and the heel is finished flush to it.\n\n" +
+        "Width is the cap's diameter. Height is how far the tip stands beyond the plate's end on the centreline — the same number the neck panel shows as the heel foot's reach. " +
+        "A height under half the width has no straight walls: the cap alone breaks the edge, as a segment.\n\n" +
+        "Violin: 20–22 wide, 13–14 high. It appears only on the back — not on the top plate.",
         "Button", defaultTTL, true
     )
 }
@@ -306,4 +308,103 @@ export function transitionError(plate: 'top' | 'bottom', y: number) {
         "This isn't a big deal, don't worry. All it means is that a curve cannot be drawn at this point which will be tangent to the fluting edge. Usually it will be pretty close, and can be smoothed out. If you wanted to resolve this, adjust the curve so it isn't so steep at the edge.",
         `${label} Plate Transition`
     )
+}
+
+export function bodyStopInfo() {
+    info(
+        "The body stop is the distance from the top plate's upper edge down to the bridge line. " +
+        "On a violin it is 195 mm, and the f-hole notches are cut on that line.\n\n" +
+        "The neck stop (edge to nut) follows from it and the stop length rather than being entered.",
+        "Body Stop", defaultTTL, true
+    );
+}
+
+export function bridgeHeightInfo() {
+    info(
+        "The bridge's height from its feet to the string notches, on the centreline. " +
+        "The feet stand on the arch at the bridge line, so the strings stand arch plus bridge above the edge.\n\n" +
+        "Violin bridges finish around 33 mm. Raise it and the strings sit higher over the fingerboard's end.",
+        "Bridge Height", defaultTTL, true
+    );
+}
+
+export function mortiseDepthInfo() {
+    info(
+        "The mortise is the pocket cut through the ribs into the upper block that the neck's foot sits in. " +
+        "Its depth is measured from the rib's outer face.\n\n" +
+        "Violin: 6–7 mm. With the button, it sets how long the heel's foot is.",
+        "Mortise Depth", defaultTTL, true
+    );
+}
+
+export function overstandInfo() {
+    info(
+        "The overstand (appui) is how far the fingerboard's underside stands above the top plate's edge at the neck root, " +
+        "measured square to the plate.\n\n" +
+        "Violin: 6–7 mm. It fixes where the neck leaves the body; the angle fixes where it points.",
+        "Overstand", defaultTTL, true
+    );
+}
+
+export function neckAngleInfo() {
+    info(
+        "The tilt of the fingerboard plane off the body's axis, nut end leaning toward the back. " +
+        "Makers set it by projection — a straightedge on the fingerboard should clear the top at the bridge line by about 27 mm on a violin — " +
+        "and the projection readout below shows what this angle gives.",
+        "Neck Angle", defaultTTL, true
+    );
+}
+
+export function nutHeightInfo() {
+    info(
+        "How far the string stands above the fingerboard's surface where it leaves the nut.\n\n" +
+        "Violin: about 0.5 mm under the E rising to 1 mm under the G.",
+        "Nut Height", defaultTTL, true
+    );
+}
+
+export function stopLengthInfo() {
+    info(
+        "The vibrating string, nut to bridge, measured along the string.\n\n" +
+        "Violin: 325–328 mm. The nut is placed where a string of this length from the bridge meets the neck, " +
+        "so the neck stop reads out at about 130 mm for a 195 mm body stop — the classical 2:3.",
+        "Stop Length", defaultTTL, true
+    );
+}
+
+export function neckThicknessInfo() {
+    info(
+        "The neck wood alone, from the plane the fingerboard glues to down to the back. " +
+        "Entered at the rib's outer face and at the nut; the back runs straight between them until the heel departs it.\n\n" +
+        "Violin: about 12–13 mm near the nut and 14–16 mm toward the root, which with the fingerboard gives the bench's 19 and 21.",
+        "Neck Thickness", defaultTTL, true
+    );
+}
+
+export function heelRadiusInfo() {
+    info(
+        "The heel is the cove sweeping from the neck's back down to the button, drawn as one arc tangent to the back.\n\n" +
+        "A wide radius reaches the button's tip on its own. A tight one stops where it runs square to the body and a flat face carries on to the tip, " +
+        "so the cove never pockets under the thumb.",
+        "Heel Radius", defaultTTL, true
+    );
+}
+
+export function fingerboardInfo() {
+    info(
+        "The fingerboard runs from the nut down over the body, parallel to the neck. Thickness is taken as uniform along its length — " +
+        "a real board is planed thicker toward the body as the crown rises under it, but that's not worth a second variable here.\n\n" +
+        "Violin: 270 mm long, about 10 mm thick.",
+        "Fingerboard", defaultTTL, true
+    );
+}
+
+export function neckReadoutInfo() {
+    info(
+        "Neck stop: plate edge to the nut along the fingerboard. Violin: 130 mm.\n\n" +
+        "Projection: the fingerboard's top carried to the bridge line, above the top there. Violin: 27 mm.\n\n" +
+        "String over fingerboard end: clearance where the board stops. Violin: 3.5–5.5 mm.\n\n" +
+        "Body depth at root: ribs and both plates, which is what the heel's foot spans.",
+        "Neck Readouts", defaultTTL, true
+    );
 }

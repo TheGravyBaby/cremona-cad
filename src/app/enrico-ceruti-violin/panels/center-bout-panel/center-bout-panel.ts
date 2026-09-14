@@ -6,7 +6,6 @@ import { nearestFraction } from '../../../helpers/nearestFraction';
 import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderCrosshair, renderDashedLine, renderPointHalo } from '../../../helpers/renderFuncs';
 import { Arc } from '../../../models/types';
 import { ensureCenterBoutInnerPath } from '../../ceruti-calcs';
-import { centerBoutWidthInfo, cornerPositionInfo, fitC0Info } from '../../ceruti-helpers';
 import { CerutiColors, CerutiViewFlags, DefaultParams, EnricoCerutiParams, PathEntry, RenderToggleKey } from '../../ceruti-types';
 import { renderBounds, renderBoutBouts, renderCornerGuides } from '../../renders/guides.render';
 import { HighlightedArc, HighlightedPoint, STROKE_WEIGHT } from '../../renders/render-constants';
@@ -39,10 +38,7 @@ export class CenterBoutPanel extends CerutiPanelBase implements OnInit {
   @Input({ required: true }) flags!: CerutiViewFlags;
 
   protected readonly nearestFraction = nearestFraction;
-  protected readonly centerBoutWidthInfo = centerBoutWidthInfo;
-  protected readonly fitC0Info = fitC0Info;
   protected readonly adjustArcStart = adjustArcStart;
-  protected readonly cornerPositionInfo = cornerPositionInfo;
 
   private highlightedArc: Arc | null = null;
   private highlightedArcColor = '';

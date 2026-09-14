@@ -1,10 +1,10 @@
 import { circleCircleIntersections, inscribeCircleWithinCircle, interceptCirclesAndPoint, interceptCirclesAndPointCompound, solveTangentCircleAndLine, filletRightAngleCorner } from "../helpers/math/draftMath";
-import { angleFromCenter, dist, pointOnCircle, offsetArcRadius, flipRectAboutY, lineCircleIntersection, lineCircleIntersectionWithTolerance, lineFromPointAndSlope, moveInVectorSpace, placeCircleOnPointAtAngle, redefineArcCircle, tangentUnitVectorFromLine, vectorFromSlope } from "../helpers/math/simpleGeometry";
+import { angleFromCenter, dist, pointOnCircle, offsetArcRadius, flipRectAboutY, lineCircleIntersection, lineCircleIntersectionWithTolerance, lineFromPointAndSlope, lineFromTwoPoints, moveInVectorSpace, placeCircleOnPointAtAngle, redefineArcCircle, tangentUnitVectorFromLine, vectorFromSlope } from "../helpers/math/simpleGeometry";
 import { pathFromRoundedRect, pathFromCircle, pathFromRect, combinePathStrings, differenceFromManyPaths, intersectionFromTwoPaths, translatePath, mirroredLoop } from "../helpers/math/pathMath";
 import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Line, Pt, Rectangle } from "../models/types";
 import { error } from "../shared/message-emitter";
 import { DefaultParams, EnricoCerutiParams, PathEntry, PathKey } from "./ceruti-types";
-import { defineFholePath, defineInnerPath, defineOuterPath, definePurflingPath, defineOuterPurflingPath } from "./ceruti-paths";
+import { defaultButton, defineFholePath, defineInnerPath, defineOuterPath, definePurflingPath, defineOuterPurflingPath } from "./ceruti-paths";
 
 // ===== Outline solvers =====
 // Solve where the violin body's bouts/corners/center-bout arcs actually sit.
@@ -513,7 +513,17 @@ export function calculateOuterArcs(p: EnricoCerutiParams): void {
     p.innerFlutingDepth ??= inset * 2;
     p.outerFlutingDepth ??=  p.overhang * .5;
 
-    p.button ??= new Rectangle(new Pt(-10, p.height - inset), new Pt(10, p.height - inset + 5));
+    // recipes saved as a Rectangle (the corner points give them away) stored the wall's length
+    // from where the edge crossed it, not the tip's stand beyond the plate
+    if (p.button && 'Pt1' in p.button) {
+        const { width, height } = p.button as { width: number; height: number };
+        const half = width / 2;
+        const hit = p.options.useViolNeck || !p.bouts.U0 ? null
+            : lineCircleIntersection(lineFromTwoPoints(new Pt(half, p.height), new Pt(half, 0)), offsetArcRadius(p.bouts.U0, inset)).sort((a, b) => a.y - b.y).pop();
+        const sag = hit ? p.height - hit.y : 0;
+        p.button = { width, height: Math.round((height + half - sag) * 100) / 100 };
+    }
+    p.button ??= defaultButton(p);
 
     let outerCornersNotDefined = !p.outerCorners.U3 && !p.outerCorners.C2 && !p.outerCorners.C1 && !p.outerCorners.L3;
 
