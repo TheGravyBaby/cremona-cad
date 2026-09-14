@@ -45,6 +45,13 @@ export class AboutModalComponent {
       ],
     },
     {
+      label: 'F-Holes',
+      topics: [
+        { id: 'fHolePlacement', label: 'F-Hole Placement' },
+        { id: 'fHoleContours', label: 'F-Hole Contours' },
+      ],
+    },
+    {
       label: 'Output',
       topics: [
         { id: 'mould', label: 'Mould' },
