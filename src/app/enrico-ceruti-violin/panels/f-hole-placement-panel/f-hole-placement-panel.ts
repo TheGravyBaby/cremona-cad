@@ -10,6 +10,7 @@ import { angleFromCenter, angleOnDrawnArc, arcHorizontalIntersections, clamp, di
 import { circleCircleIntersections, tangentPointsFromExternalPoint } from '../../../helpers/math/draftMath';
 import { defineInnerArcs } from '../../ceruti-paths';
 import { STROKE_WEIGHT } from '../../renders/render-constants';
+import { renderBoutBouts } from '../../renders/guides.render';
 
 /** Where the two f-holes sit on the plate — the eyes first, everything else hung off them. */
 @Component({
@@ -19,7 +20,7 @@ import { STROKE_WEIGHT } from '../../renders/render-constants';
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class FHolePlacementPanel extends CerutiPanelBase implements OnInit {
-  static readonly renderToggles: readonly RenderToggleKey[] = ['showFholeBounds', 'showFholePlacementGuides'];
+  static readonly renderToggles: readonly RenderToggleKey[] = ['showFholeBounds', 'showFholePlacementGuides', 'showModuleGuides'];
 
   @Input({ required: true }) params!: EnricoCerutiParams;
   @Input({ required: true }) paths!: PathEntry[]; 
@@ -82,6 +83,7 @@ export class FHolePlacementPanel extends CerutiPanelBase implements OnInit {
 
     this.flags.showFholePlacementGuides && renders.push(renderFholeEyePlacementGuides(p, this.colors));
     this.flags.showFholeBounds && renders.push(renderFholeBounds(p, this.colors));
+    this.flags.showModuleGuides && renders.push(renderBoutBouts(p, this.colors, true));
     renders.push(renderFholeRise(p, this.colors));
     renders.push(renderFholeStem(p, this.colors));
     renders.push(renderFholeEyes(p, this.colors));

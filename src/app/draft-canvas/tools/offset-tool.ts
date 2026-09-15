@@ -1,6 +1,6 @@
 import * as d3 from 'd3';
-import { Arc, Circle, Pt } from '../../models/types';
-import { dist, lineFromTwoPoints, offsetArcRadius, offsetCircleRadius, pointOnCircle, tangentUnitVectorFromLine } from '../../helpers/math/simpleGeometry';
+import { Arc, Circle, Pt, Rectangle } from '../../models/types';
+import { dist, lineFromTwoPoints, offsetArcRadius, offsetCircleRadius, offsetRectangle, pointOnCircle, tangentUnitVectorFromLine } from '../../helpers/math/simpleGeometry';
 import { arcPathData } from '../../helpers/math/pathMath';
 import { DraftTool, DraftToolHost } from './draft-tool';
 import { DraftShape, makeShapeId } from './toolbox-shape';
@@ -8,10 +8,10 @@ import { PREVIEW_COLOR, stylePreview } from './two-point-tool';
 
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 
-/** The shape types with a defined offset. Rect/section/text/point have no meaningful parallel
- * copy, so they're filtered out of the selection rather than silently ignored downstream. */
+/** The shape types with a defined offset. Section/text/point have no meaningful parallel copy,
+ * so they're filtered out of the selection rather than silently ignored downstream. */
 function supportedShapes(shapes: DraftShape[]): DraftShape[] {
-  return shapes.filter(s => s.type === 'arc' || s.type === 'circle' || s.type === 'line');
+  return shapes.filter(s => s.type === 'arc' || s.type === 'circle' || s.type === 'line' || s.type === 'rect');
 }
 
 /**
@@ -30,6 +30,18 @@ function signedOffsetMetric(shape: DraftShape, pt: Pt): { abs: number; signed: n
     const normal = tangentUnitVectorFromLine(lineFromTwoPoints(shape.start, shape.end));
     const signed = (pt.x - shape.start.x) * normal.a + (pt.y - shape.start.y) * normal.b;
     return { abs: Math.abs(signed), signed };
+  }
+  if (shape.type === 'rect') {
+    const x0 = Math.min(shape.p1.x, shape.p2.x), x1 = Math.max(shape.p1.x, shape.p2.x);
+    const y0 = Math.min(shape.p1.y, shape.p2.y), y1 = Math.max(shape.p1.y, shape.p2.y);
+    const dx = Math.max(x0 - pt.x, pt.x - x1, 0);
+    const dy = Math.max(y0 - pt.y, pt.y - y1, 0);
+    if (dx > 0 || dy > 0) {
+      const outside = Math.hypot(dx, dy);
+      return { abs: outside, signed: outside };
+    }
+    const inside = Math.min(pt.x - x0, x1 - pt.x, pt.y - y0, y1 - pt.y);
+    return { abs: inside, signed: -inside };
   }
   return null;
 }
@@ -133,6 +145,10 @@ function tryOffsetShape(shape: DraftShape, distance: number): DraftShape | null 
       const start = { x: shape.start.x + normal.a * distance, y: shape.start.y + normal.b * distance };
       const end = { x: shape.end.x + normal.a * distance, y: shape.end.y + normal.b * distance };
       return { id: makeShapeId(), type: 'line', start, end };
+    }
+    if (shape.type === 'rect') {
+      const rect = offsetRectangle(new Rectangle(new Pt(shape.p1.x, shape.p1.y), new Pt(shape.p2.x, shape.p2.y)), distance);
+      return { id: makeShapeId(), type: 'rect', p1: { x: rect.Pt1.x, y: rect.Pt1.y }, p2: { x: rect.Pt2.x, y: rect.Pt2.y } };
     }
   } catch {
     return null;
@@ -303,6 +319,10 @@ export class OffsetTool implements DraftTool {
       stylePreview(gRoot.append('line')
         .attr('x1', shape.start.x).attr('y1', shape.start.y)
         .attr('x2', shape.end.x).attr('y2', shape.end.y));
+    } else if (shape.type === 'rect') {
+      stylePreview(gRoot.append('rect')
+        .attr('x', Math.min(shape.p1.x, shape.p2.x)).attr('y', Math.min(shape.p1.y, shape.p2.y))
+        .attr('width', Math.abs(shape.p2.x - shape.p1.x)).attr('height', Math.abs(shape.p2.y - shape.p1.y)));
     }
   }
 }

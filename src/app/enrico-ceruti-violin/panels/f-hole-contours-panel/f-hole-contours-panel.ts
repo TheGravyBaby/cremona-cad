@@ -10,6 +10,7 @@ import { circleCircleIntersections } from '../../../helpers/math/draftMath';
 import { angleFromCenter, dist, flipArcAboutY, flipPointAboutY, pointOnCircle } from '../../../helpers/math/simpleGeometry';
 import { Arc } from '../../../models/types';
 import { HighlightedArc, HighlightedPoint, STROKE_WEIGHT } from '../../renders/render-constants';
+import { renderBoutBouts } from '../../renders/guides.render';
 
 // UCut/LCut take a point halo; the rest take an arc halo
 export type FholeHighlightKey = 'U1' | 'U2' | 'U21' | 'U3' | 'L1' | 'L2' | 'L21' | 'L3' | 'S1' | 'S2' | 'S3' | 'S4' | 'UCut' | 'LCut';
@@ -22,7 +23,7 @@ export type FholeHighlightKey = 'U1' | 'U2' | 'U21' | 'U3' | 'L1' | 'L2' | 'L21'
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class FHoleContoursPanel extends CerutiPanelBase implements OnInit {
-  static readonly renderToggles: readonly RenderToggleKey[] = ['showFholeBounds', 'showFholeArcs'];
+  static readonly renderToggles: readonly RenderToggleKey[] = ['showFholeBounds', 'showFholeArcs', 'showModuleGuides'];
 
   @Input({ required: true }) params!: EnricoCerutiParams;
   @Input({ required: true }) paths!: PathEntry[];
@@ -88,7 +89,9 @@ export class FHoleContoursPanel extends CerutiPanelBase implements OnInit {
       null;
     let arc: Arc | null = key && key !== 'UCut' && key !== 'LCut' ? p.fHoles![key] ?? null : null;
 
-    if (this.flags.showFholeBounds) renders.push(renderFholeBounds(p, this.colors));
+    this.flags.showFholeBounds && renders.push(renderFholeBounds(p, this.colors));
+    this.flags.showModuleGuides && renders.push(renderBoutBouts(p, this.colors, true));
+    
     // renders.push(renderFholeEyes(p, this.colors));
     renders.push(renderFholeContours(p, this.colors, this.flags.showFholeArcs, arc ? { arc, color } : null, tip));
 

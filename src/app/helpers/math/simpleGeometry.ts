@@ -370,3 +370,17 @@ export function flipRectAboutY(rect: Rectangle): Rectangle {
   const flippedPt2 = flipPointAboutY(rect.Pt2);
   return new Rectangle(flippedPt1, flippedPt2);
 }
+
+/** Grows or shrinks an axis-aligned rectangle by moving all four edges outward (positive
+ * `offset`) or inward (negative) by that distance — the rectangle equivalent of
+ * offsetCircleRadius/offsetLineByDistance. Pt1/Pt2 need not already be in min/max order. */
+export function offsetRectangle(rect: Rectangle, offset: number): Rectangle {
+  const x0 = Math.min(rect.Pt1.x, rect.Pt2.x) - offset;
+  const x1 = Math.max(rect.Pt1.x, rect.Pt2.x) + offset;
+  const y0 = Math.min(rect.Pt1.y, rect.Pt2.y) - offset;
+  const y1 = Math.max(rect.Pt1.y, rect.Pt2.y) + offset;
+  if (x1 - x0 <= 0 || y1 - y0 <= 0) {
+    throw new Error('Offset cannot be so negative that it produces a rectangle with non-positive width or height.');
+  }
+  return new Rectangle(new Pt(x0, y0), new Pt(x1, y1));
+}
