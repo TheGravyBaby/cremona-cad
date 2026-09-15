@@ -256,7 +256,7 @@ export type SectionParams = {
 };
 
 // Fixed for now — see the Section "full integration" plan for making these configurable.
-const SECTION_THICKNESS_MM = 10;
+export const SECTION_THICKNESS_MM = 10;
 
 /**
  * Draws a line divided into weighted ratio segments, alternating color1/color2, with boundary

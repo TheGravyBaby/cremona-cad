@@ -1,7 +1,7 @@
 import { Pt } from '../../models/types';
 import { DEFAULT_TEXT_SIZE_MM, DraftShape, ImageShape, TextShape, dimensionGeometry, imageCenter, imageCorners } from './toolbox-shape';
 import { angleFromCenter, angleWithinSweep, closestPointOnSegment, dist, normalizeRadians, pointOnCircle, rotatePointAbout } from '../../helpers/math/simpleGeometry';
-import { TEXT_LINE_HEIGHT_RATIO } from './shape-renderer';
+import { SECTION_THICKNESS_MM, TEXT_LINE_HEIGHT_RATIO } from './shape-renderer';
 
 function distanceToArc(p: Pt, center: Pt, radius: number, startAngle: number, endAngle: number): number {
   if (angleWithinSweep(angleFromCenter(center, p), startAngle, endAngle)) {
@@ -103,14 +103,32 @@ function distanceToImage(p: Pt, shape: ImageShape): number {
   );
 }
 
+/** Distance to a section, 0 anywhere inside its rendered band — like text/image, section draws
+ * as a filled ~10mm-wide strip (see drawSection), not a stroke, so the whole band should be
+ * clickable rather than just its centerline. Probed in the band's local (along, across) frame,
+ * which turns it into the same box-interior test distanceToBoxInterior already does for text. */
+function distanceToSection(p: Pt, start: Pt, end: Pt): number {
+  const dx = end.x - start.x, dy = end.y - start.y;
+  const len = Math.hypot(dx, dy);
+  if (len < 1e-6) return dist(p, start);
+  const ux = dx / len, uy = dy / len;
+  const nx = -uy, ny = ux;
+  const relX = p.x - start.x, relY = p.y - start.y;
+  const along = relX * ux + relY * uy;
+  const across = relX * nx + relY * ny;
+  const halfT = SECTION_THICKNESS_MM / 2;
+  return distanceToBoxInterior({ x: along, y: across }, 0, -halfT, len, halfT);
+}
+
 /** Shortest distance from a world-space point to a toolbox shape's geometry. Zoom plays no
  * part: every shape, text included, has a world-mm size of its own, so what is under the cursor
  * does not change with the camera. */
 export function distanceToShape(p: Pt, shape: DraftShape): number {
   switch (shape.type) {
     case 'line':
-    case 'section':
       return closestPointOnSegment(p, shape.start, shape.end).dist;
+    case 'section':
+      return distanceToSection(p, shape.start, shape.end);
     case 'dimension': {
       // The dimension line where it was placed, not the measurement it reports: once the line is
       // offset, the measured segment draws nothing but its two end ticks, so clicking the empty
@@ -151,11 +169,23 @@ export interface ShapeBounds {
 export function shapeBounds(shape: DraftShape): ShapeBounds {
   switch (shape.type) {
     case 'line':
-    case 'section':
       return {
         x0: Math.min(shape.start.x, shape.end.x), x1: Math.max(shape.start.x, shape.end.x),
         y0: Math.min(shape.start.y, shape.end.y), y1: Math.max(shape.start.y, shape.end.y),
       };
+    case 'section': {
+      // Bounds of the rendered band's four corners, not just its centerline endpoints — same
+      // reasoning as sampling an arc's actual sweep or a rotated image's corners below.
+      const dx = shape.end.x - shape.start.x, dy = shape.end.y - shape.start.y;
+      const len = Math.hypot(dx, dy);
+      if (len < 1e-6) {
+        return { x0: shape.start.x, x1: shape.start.x, y0: shape.start.y, y1: shape.start.y };
+      }
+      const nx = -(dy / len) * (SECTION_THICKNESS_MM / 2), ny = (dx / len) * (SECTION_THICKNESS_MM / 2);
+      const xs = [shape.start.x + nx, shape.start.x - nx, shape.end.x + nx, shape.end.x - nx];
+      const ys = [shape.start.y + ny, shape.start.y - ny, shape.end.y + ny, shape.end.y - ny];
+      return { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
+    }
     case 'dimension': {
       // Both segments: a marquee dragged around the offset dimension line has to catch it, and so
       // does one dragged around the ticks it measures.
