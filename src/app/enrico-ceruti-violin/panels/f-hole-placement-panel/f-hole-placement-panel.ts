@@ -6,8 +6,8 @@ import { renderArcFromArcFancy, renderCircle, renderCrosshair, renderDashedLine,
 import { calculateOuterArcs, ensureOuterTracePaths, getPath, getPathOrNull } from '../../ceruti-calcs';
 import { Arc, Circle, Pt, Rectangle } from '../../../models/types';
 import { nearestFraction, nearestSmallFraction } from '../../../helpers/nearestFraction';
-import { angleFromCenter, angleOnDrawnArc, arcHorizontalIntersections, clamp, dist, flipCircleAboutY, flipPointAboutY, flipRectAboutY, lineCircleIntersection, lineFromPointAndSlope } from '../../../helpers/math/simpleGeometry';
-import { circleCircleIntersections, tangentPointsFromExternalPoint } from '../../../helpers/math/draftMath';
+import { angleFromCenter, angleOnDrawnArc, arcHorizontalIntersections, clamp, dist, flipCircleAboutY, flipPointAboutY, flipRectAboutY, lineCircleIntersection, lineFromPointAndSlope, pointOnCircle } from '../../../helpers/math/simpleGeometry';
+import { circleCircleIntersections } from '../../../helpers/math/draftMath';
 import { defineInnerArcs } from '../../ceruti-paths';
 import { STROKE_WEIGHT } from '../../renders/render-constants';
 import { renderBoutBouts } from '../../renders/guides.render';
@@ -238,6 +238,8 @@ export const renderFholeEyes = (p: EnricoCerutiParams, colors: CerutiColors) => 
 }
 
 const GUIDE_NEUTRAL = '#7e7e7e';
+// same guide colour, faded for constructions that sit behind the main placement guides
+const GUIDE_NEUTRAL_FAINT = '#7e7e7e91';
 const GUIDE_ACCENT = '#b5675a';
 
 export const renderFholeEyePlacementGuides = (p: EnricoCerutiParams, colors: CerutiColors) => (g: any, ui: any) => {
@@ -257,29 +259,28 @@ export const renderFholeEyePlacementGuides = (p: EnricoCerutiParams, colors: Cer
       break;
     }
   }
-
-  // now, from this point, we need to draw a line which intersects with the
-  // center bout at a tangent. first, lets get all of the possibilities...
-  const centerBoutArcs = [
-    p.bouts.C0, p.bouts.C1, p.bouts.C2,
-    p.options.C21DoubleArc ? p.bouts.C21 : null,
-    p.options.C11DoubleArc ? p.bouts.C11 : null,
-  ].filter((arc): arc is Arc => arc != null);
-  let tangentPt: Pt | undefined;
-  for (const arc of centerBoutArcs) {
-    const candidates = tangentPointsFromExternalPoint(intersectionPt!, arc);
-    tangentPt = candidates.find(t => angleOnDrawnArc(arc, angleFromCenter(arc, t)));
-    if (tangentPt) break;
+  // the red guide circle: the shortest distance from the eye to the inner edge, not a tangent
+  // construction — the nearest point across every inner arc, sized to just touch the eye
+  let nearestEdgePt: Pt | undefined;
+  let nearestEdgeDist = Infinity;
+  for (const arc of arcs) {
+    const angleToEye = angleFromCenter(arc, p.fHoles.LEye);
+    const ends = [pointOnCircle(arc, arc.start), pointOnCircle(arc, arc.end)];
+    const candidate = angleOnDrawnArc(arc, angleToEye)
+      ? pointOnCircle(arc, angleToEye)
+      : (dist(ends[0], p.fHoles.LEye) <= dist(ends[1], p.fHoles.LEye) ? ends[0] : ends[1]);
+    const candidateDist = dist(candidate, p.fHoles.LEye);
+    if (candidateDist < nearestEdgeDist) {
+      nearestEdgeDist = candidateDist;
+      nearestEdgePt = candidate;
+    }
   }
-  if (tangentPt) {
-    renderDashedLine(intersectionPt!, tangentPt, GUIDE_ACCENT, '6 6', STROKE_WEIGHT.guide)(g, ui);
-    renderSmallCrosshair(tangentPt, GUIDE_ACCENT)(g, ui);
+  if (nearestEdgePt) {
+    let radForGuide = nearestEdgeDist - p.fHoles.LEye.r;
+    let guideCircle = new Circle(nearestEdgePt.x, nearestEdgePt.y, radForGuide);
+    renderCircle(guideCircle, GUIDE_ACCENT)(g, ui);
+    renderSmallCrosshair(nearestEdgePt, GUIDE_ACCENT)(g, ui);
   }
-
-  let distToEyeFromTangent = dist(tangentPt!, p.fHoles.LEye);
-  let radForGuide = distToEyeFromTangent - p.fHoles.LEye.r;
-  let guideCircle = new Circle(tangentPt.x, tangentPt.y, radForGuide);
-  renderCircle(guideCircle, GUIDE_ACCENT)(g, ui);
 
   // now find the midpoint between the corners
   let midpointBetweenCorners = p.bouts.LCr.y + (p.bouts.UCr.y - p.bouts.LCr.y)/2;
@@ -287,9 +288,9 @@ export const renderFholeEyePlacementGuides = (p: EnricoCerutiParams, colors: Cer
   let distToUpperEyeFromTangent = dist(p.fHoles.UEye, waistMidPt);
   let upperEyeGuide = new Arc(waistMidPt.x, waistMidPt.y, distToUpperEyeFromTangent, 150 * Math.PI / 180, 210 * Math.PI / 180);
   // draw a fancy arc that spans 135 - 225 degrees
-  renderArcFromArcFancy(upperEyeGuide, GUIDE_NEUTRAL + '4d')(g, ui);
+  renderArcFromArcFancy(upperEyeGuide, GUIDE_NEUTRAL_FAINT)(g, ui);
 
   let distBetweenEyes = dist(p.fHoles.UEye, p.fHoles.LEye);
   let upperEyeGuideTwo = new Arc(p.fHoles.LEye.x, p.fHoles.LEye.y, distBetweenEyes, Math.PI, Math.PI / 2);
-  renderArcFromArcFancy(upperEyeGuideTwo, GUIDE_NEUTRAL + '4d')(g, ui);
+  renderArcFromArcFancy(upperEyeGuideTwo, GUIDE_NEUTRAL_FAINT)(g, ui);
 }
