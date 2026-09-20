@@ -355,14 +355,6 @@ export function neckAngleInfo() {
     );
 }
 
-export function nutHeightInfo() {
-    info(
-        "How far the string stands above the fingerboard's surface where it leaves the nut.\n\n" +
-        "Violin: about 0.5 mm under the E rising to 1 mm under the G.",
-        "Nut Height", defaultTTL, true
-    );
-}
-
 export function stopLengthInfo() {
     info(
         "The vibrating string, nut to bridge, measured along the string — read off, not entered.\n\n" +

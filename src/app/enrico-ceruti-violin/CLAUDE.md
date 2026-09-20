@@ -94,23 +94,78 @@ recognizes the current format *positively* so it stays idempotent; six tests in
 - **The neck's own `length` places the nut; the string figures are read off, not dialed.**
   `length` is the mortise floor to the nut, along the neck — `nutAt = gluingAtMortise` moved
   `length` toward the nut, one `moveInVectorSpace` call, no intersection needed. `stringLength`
-  (nut to bridge, the classical figure that should land near 325–328 mm) and `nut.neckStop` (root
-  to nut, the classical 130 mm) are both derived from it rather than the other way around, so the
-  nut can no longer fail to place — `NeckSolve.nut`/`.nutBlock`/`.fingerboard`/`.back`/`.scroll`
-  are non-nullable for exactly that reason. This replaced an earlier design where the nut-to-bridge
-  distance was entered and the nut was solved backward off a circle around the bridge top — that
-  circle could come up empty, which is the failure mode the non-nullability above retires. As of
-  2026-09-20 the neck feature has shipped in no template and carries no migration for this rename;
-  the usual "frozen field name" rule (root CLAUDE.md) applies again once it does.
-- **The neck panel's readouts are the two a maker checks with a ruler, nothing else.**
+  (nut to bridge, the classical figure that should land near 325–328 mm) is derived from it rather
+  than the other way around, so the nut can no longer fail to place —
+  `NeckSolve.nut`/`.nutBlock`/`.fingerboard`/`.back`/`.scroll` are non-nullable for exactly that
+  reason. This replaced an earlier design where the nut-to-bridge distance was entered and the nut
+  was solved backward off a circle around the bridge top — that circle could come up empty, which
+  is the failure mode the non-nullability above retires. As of 2026-09-20 the neck feature has
+  shipped in no template and carries no migration for this rename; the usual "frozen field name"
+  rule (root CLAUDE.md) applies again once it does. (`nut.neckStop`, root to nut and once quoted
+  here as the classical 130 mm figure, was cut the same day — see the next bullet.)
+- **The neck panel's one readout is the figure a maker checks with a ruler, nothing else.**
   `stringLength` (straight-line nut to bridge — noted as approximate since the fingerboard and
-  bridge are curved and a 2D side elevation can't give a real string length) and
-  `stringAngleDeg` (the acute angle between the string and the bridge's own axis, aimed at ~79°)
-  are the only two shown, added 2026-09-20. `nut.neckStop`, `projection`/`projectionHit` and
-  `stringOverFingerboardEnd` are still solved — `projectionHit` feeds a render guide, the rest
-  back the bench-figure tests — but none of the three are surfaced in the panel any more.
-  `bodyDepthAtRoot` had neither a render nor a test depending on it, so it was deleted outright
-  rather than kept as an unused field.
+  bridge are curved and a 2D side elevation can't give a real string length) was joined briefly
+  by `stringAngleDeg` (2026-09-20), then `stringAngleDeg` was cut outright the same day — string
+  length alone was judged enough, and the field was removed from `NeckSolve` entirely rather than
+  just hidden, since nothing else read it. It's shown as a `.basic-display` (the same "computed
+  mm value" styling `fluting-panel`/`center-bout-panel` use for non-ratio readouts), not the
+  `.readout` span the panel used briefly — that class has no other panel consumer any more once
+  this one stopped using it. `nut.neckStop` (root to nut) and `projection`/`projectionHit` (the
+  fingerboard's top line carried on to the bridge axis, with its render guide) were cut outright
+  the same day for the same reason: solved but not shown, kept alive only by their own
+  bench-figure tests. `stringOverFingerboardEnd` is still solved and still backs a bench-figure
+  test, but isn't surfaced in the panel either — the difference is nobody's asked to cut that one
+  yet. `bodyDepthAtRoot` had neither a render nor a test depending on it, so it was deleted
+  outright rather than kept as an unused field. The pattern going in: a `NeckSolve` field earns
+  its keep by feeding either the drawing or the panel, not just a test — losing the last one gets
+  it deleted, not just unhooked.
+- **Fingerboard and nut are reference geometry, not template inputs — and `nutHeight` didn't
+  even earn that.** Nothing in `fingerboard.length`/`.thickness` touches the neck's own carved
+  shape (`back`, `heel`, `buttonProfile`, mortise) — they exist only to draw the fingerboard/nut
+  and feed the string readouts, since fingerboards and nuts are fitted/interchanged independently
+  of any template this app produces. `nutHeight` (string standing proud of the fingerboard at the
+  nut) went further and was removed outright (2026-09-20): a real nut has some height, but at
+  ~1 mm on a violin it moved `stringLength`/`stringAngleDeg` by an amount the classical figures
+  don't care about, so the string now runs flush with the fingerboard's own top corner —
+  `NeckSolve.nut.top` is both the fingerboard's top corner and where the string sits, and there's
+  no `nut.string` any more. The nut block still draws as a little box past the fingerboard end
+  (`nutBlock`), it just doesn't peak above the fingerboard's own surface. `fingerboard.length`/
+  `.thickness` stay as fields for now since they still meaningfully move the readouts and the
+  drawing; if that stops being true, treat them the same way.
+- **Fingerboard, bridge and the readouts share one "String Setup" section.** Since none of the
+  three feed the neck's own template geometry (previous bullet), they don't need their own
+  section headers the way "Neck"/"Neck Root" do — merged 2026-09-20 to cut the vertical space
+  three `ui-group` headers cost. The section itself carries no `[style.border-color]` (it mixes
+  fingerboard purple and bridge off-white); each input still carries its own part's color, same
+  as "Readouts" was already uncolored while its neighbors were.
+- **The button draws in the back plate's own color, not the neck's.** `buttonProfile` is carved
+  from the back plate carried on past its edge (see the button bullet above), so it renders in
+  `colors.archBack` — the same color the long-/cross-arching panels already use for "Back Plate" —
+  and the Button Height field's border matches it, rather than both drawing in `colors.neck` as
+  they did before 2026-09-20. The heel arc and the mortise/overstand lines render in
+  `colors.neckRoot` for the same reason: those are the "Neck Root" section's fields (Heel Radius,
+  Mortise, Overstand), and the drawing had been rendering the whole neck — root included — in the
+  plain `colors.neck` used by the "Neck" section's own fields (Length, Thickness), so the root
+  never read as visually distinct from the body it's attached to. The mortise/overstand pair
+  started out dashed (`renderDashedLine`, a "hidden line" convention) and was switched to solid
+  the same day the fingerboard toggle shipped (next bullet) — with the fingerboard now optional,
+  the neck needed to read as one coherent piece whether or not the board is showing, and a dashed
+  segment sitting mid-drawing read as an unfinished edge rather than a deliberate one.
+- **Fingerboard length is a standard size by instrument, not a free parameter — and the board
+  itself is now a view toggle, defaulted on.** `NeckParams.fingerboard` lost its `length` field
+  (2026-09-20); `calculateNeck` looks it up instead from `standardFingerboardLength(p.height)`,
+  the same body-height thresholds `calculateMould` already uses to tell violin/viola/cello/bass
+  apart (`<400`/`<500`/`<800`/else — 270/310/580/850 mm). Modern fingerboards really do come in a
+  handful of stock lengths, so entering one was never a real degree of freedom. The render call
+  for the fingerboard polygon (`[fb.end, fb.endTop, fb.nutTop, s.nut.at]`, in `colors.fingerboard`)
+  had existed only as a commented-out line in `neck-panel.ts` since some earlier pass — it's now
+  live, gated behind a new `showFingerboard` render-toggle-bar flag (`CerutiViewFlags`/
+  `RenderToggleKey`, default `true` in `DEFAULT_CERUTI_VIEW_FLAGS`) so the board can be hidden
+  without losing any geometry that depends on it (`fingerboardEnd`/`fingerboardEndTop` still feed
+  `stringOverFingerboardEnd`). The "String Setup" section's "FB Thickness, Length" shared-title
+  field row lost its second cell along with the field — it's just "FB Thickness" now, thickness
+  being the one fingerboard number still worth dialing by hand.
 - **A panel's section color has to be restated on every input inside it, not just the
   `<section>` wrapper.** `.ui-group` sets `border: none`, so a bare
   `[style.border-color]="colors.x"` on the section has no border-style/width to tint and renders
