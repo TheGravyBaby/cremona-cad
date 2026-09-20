@@ -5,7 +5,7 @@ import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, FlutingParams, NeckP
 import { defaultArchingParams } from '../../ceruti-arching';
 import { defaultFlutingParams, LongArchSolve, solveLongArch } from '../../ceruti-arch-geometry';
 import { calculateOuterArcs } from '../../ceruti-calcs';
-import { defaultNeckParams, NeckSolve, normalizeNeckParams, solveNeck } from '../../ceruti-neck';
+import { defaultNeckParams, NeckSolve, solveNeck } from '../../ceruti-neck';
 import { renderBodySection } from '../../renders/body-section.render';
 import { renderNeck } from '../../renders/neck.render';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
@@ -52,7 +52,6 @@ export class NeckPanel extends CerutiPanelBase implements OnInit {
     const p = this.params;
     p.arching ??= defaultArchingParams(p.height);
     calculateOuterArcs(p);
-    normalizeNeckParams(p);
     p.neck ??= defaultNeckParams(p);
 
     const gouge: Record<'top' | 'bottom', FlutingParams> = {

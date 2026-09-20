@@ -29,46 +29,42 @@ export function renderNeck(s: NeckSolve, colors: CerutiColors, showGuides: boole
     // the bridge blank, standing on the arch
     renderPolygon(s.bridgeWedge, colors.bridge, STROKE_WEIGHT.section)(g, ui);
 
-    if (s.nut && s.fingerboard && s.back && s.nutBlock) {
-      // the neck's own boundary where the fingerboard glues on — independent of whatever the
-      // fingerboard itself ends up being, since that's still an open question
-      seg(s.root, s.nut.at);
+    // the neck's own boundary where the fingerboard glues on — independent of whatever the
+    // fingerboard itself ends up being, since that's still an open question
+    seg(s.root, s.nut.at);
 
-      const fb = s.fingerboard;
-      renderPolygon([fb.end, fb.endTop, fb.nutTop, s.nut.at], colors.fingerboard, STROKE_WEIGHT.section)(g, ui);
+    const fb = s.fingerboard;
+    renderPolygon([fb.end, fb.endTop, fb.nutTop, s.nut.at], colors.fingerboard, STROKE_WEIGHT.section)(g, ui);
 
-      // the nut, on the fingerboard plane just past the board
-      renderPolygon(s.nutBlock, colors.fingerboard, STROKE_WEIGHT.section)(g, ui);
+    // the nut, on the fingerboard plane just past the board
+    renderPolygon(s.nutBlock, colors.fingerboard, STROKE_WEIGHT.section)(g, ui);
 
-      // the neck itself: nut-end wall, the back, and the heel down to the button
-      seg(s.nut.at, s.back.nut);
-      const heel = s.heel;
-      if (heel) {
-        seg(s.back.nut, heel.start);
-        renderPath(pathFromArc(heel.arc), colors.neck, STROKE_WEIGHT.section)(g, ui);
-        if (heel.face) seg(heel.end, heel.face);
-      } else {
-        seg(s.back.nut, s.back.root);
-      }
-
-      seg(s.nut.string, s.bridge.top, colors.innerTrace);
-
-      // pegbox and scroll, boxed until their panel exists
-      if (s.scroll && s.scrollLabelAngleDeg !== null) {
-        renderPolygon(s.scroll, colors.neckOff, STROKE_WEIGHT.guide, 0.7)(g, ui);
-        const mid = new Pt((s.scroll[0].x + s.scroll[2].x) / 2, (s.scroll[0].y + s.scroll[2].y) / 2);
-        renderText(mid, 'scroll', colors.neckOff, 5, s.scrollLabelAngleDeg)(g, ui);
-      }
+    // the neck itself: nut-end wall, the back, and the heel down to the button
+    seg(s.nut.at, s.back.nut);
+    const heel = s.heel;
+    if (heel) {
+      seg(s.back.nut, heel.start);
+      renderPath(pathFromArc(heel.arc), colors.neck, STROKE_WEIGHT.section)(g, ui);
+      if (heel.face) seg(heel.end, heel.face);
+    } else {
+      seg(s.back.nut, s.back.root);
     }
+
+    seg(s.nut.string, s.bridge.top, colors.innerTrace);
+
+    // pegbox and scroll, boxed until their panel exists
+    renderPolygon(s.scroll, colors.neckOff, STROKE_WEIGHT.guide, 0.7)(g, ui);
+    const mid = new Pt((s.scroll[0].x + s.scroll[2].x) / 2, (s.scroll[0].y + s.scroll[2].y) / 2);
+    renderText(mid, 'scroll', colors.neckOff, 5, s.scrollLabelAngleDeg)(g, ui);
 
     if (!showGuides) return;
     const guide = colors.neckOff;
     renderGuideMeasure(s.edge, s.root, guide)(g, ui);
     renderGuideBaseline(new Pt(0, s.rootPlaneY), new Pt(s.gluingAtMortise.x, s.rootPlaneY), guide)(g, ui);
     renderGuideMeasure(new Pt(s.gluingAtMortise.x, s.rootPlaneY), s.gluingAtMortise, guide)(g, ui);
-    if (s.nut && s.projectionHit) {
-      renderGuideMeasure(s.root, s.nut.at, guide)(g, ui);
-      renderGuideBaseline(s.fingerboard!.endTop, s.projectionHit, guide)(g, ui);
+    renderGuideMeasure(s.root, s.nut.at, guide)(g, ui);
+    if (s.projectionHit) {
+      renderGuideBaseline(fb.endTop, s.projectionHit, guide)(g, ui);
       renderGuideMeasure(s.bridge.foot, s.projectionHit, guide)(g, ui);
     }
   };

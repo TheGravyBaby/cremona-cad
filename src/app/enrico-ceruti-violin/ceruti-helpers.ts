@@ -314,7 +314,7 @@ export function bodyStopInfo() {
     info(
         "The body stop is the distance from the top plate's upper edge down to the bridge line. " +
         "On a violin it is 195 mm, and the f-hole notches are cut on that line.\n\n" +
-        "The neck stop (edge to nut) follows from it and the stop length rather than being entered.",
+        "The neck stop (edge to nut) and the stop length (nut to bridge) both follow from the neck's own length rather than being entered.",
         "Body Stop", defaultTTL, true
     );
 }
@@ -365,18 +365,18 @@ export function nutHeightInfo() {
 
 export function stopLengthInfo() {
     info(
-        "The vibrating string, nut to bridge, measured along the string.\n\n" +
-        "Violin: 325–328 mm. The nut is placed where a string of this length from the bridge meets the neck, " +
-        "so the neck stop reads out at about 130 mm for a 195 mm body stop — the classical 2:3.",
+        "The vibrating string, nut to bridge, measured along the string — read off, not entered.\n\n" +
+        "The nut sits wherever the neck's own length puts it; this reports what that gives, which should land near " +
+        "325–328 mm on a violin, the classical 2:3 against a 195 mm body stop.",
         "Stop Length", defaultTTL, true
     );
 }
 
 export function neckThicknessInfo() {
     info(
-        "The neck wood alone, from the plane the fingerboard glues to down to the back. " +
-        "Entered at the rib's outer face and at the nut; the back runs straight between them until the heel departs it.\n\n" +
-        "Violin: about 12–13 mm near the nut and 14–16 mm toward the root, which with the fingerboard gives the bench's 19 and 21.",
+        "The neck wood alone, from the plane the fingerboard glues to down to the back — taken as uniform along " +
+        "its length, root to nut, rather than tapering.\n\n" +
+        "Violin: about 13 mm, which with the fingerboard gives the bench's 19–21 mm.",
         "Neck Thickness", defaultTTL, true
     );
 }
@@ -402,6 +402,7 @@ export function fingerboardInfo() {
 export function neckReadoutInfo() {
     info(
         "Neck stop: plate edge to the nut along the fingerboard. Violin: 130 mm.\n\n" +
+        "Stop length: nut to bridge along the string. Violin: 325–328 mm, the classical 2:3 against the body stop.\n\n" +
         "Projection: the fingerboard's top carried to the bridge line, above the top there. Violin: 27 mm.\n\n" +
         "String over fingerboard end: clearance where the board stops. Violin: 3.5–5.5 mm.\n\n" +
         "Body depth at root: ribs and both plates, which is what the heel's foot spans.",
