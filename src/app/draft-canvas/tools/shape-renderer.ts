@@ -256,7 +256,7 @@ export type SectionParams = {
 };
 
 // Fixed for now — see the Section "full integration" plan for making these configurable.
-const SECTION_THICKNESS_MM = 10;
+export const SECTION_THICKNESS_MM = 10;
 
 /**
  * Draws a line divided into weighted ratio segments, alternating color1/color2, with boundary
@@ -387,24 +387,26 @@ function drawArcCenterGuides(
     .attr('vector-effect', 'non-scaling-stroke');
 }
 
-/** Half-length of the ticks on the measured points and of the slashes on the dimension line, and
- * how far an extension line runs past the dimension line — screen px, so the marks stay the same
- * size at any zoom, like every other stroke here. */
+/** Half-length of the ticks on the measured points, the size of the arrowheads terminating the
+ * dimension line, and how far an extension line runs past it — screen px, so the marks stay the
+ * same size at any zoom, like every other stroke here. */
 const DIM_TICK_HALF_PX = 4;
+const DIM_ARROW_LEN_PX = 9;
+const DIM_ARROW_HALF_WIDTH_PX = 3;
 const DIM_EXT_OVERSHOOT_PX = 5;
-/** How far the number floats off the dimension line, on the side away from the measurement. */
-const DIM_TEXT_GAP_PX = 8;
+/** How far the number floats off the dimension line, on the side away from the measurement —
+ * clear of both the line and an arrowhead's width. */
+const DIM_TEXT_GAP_PX = 14;
 
 /**
- * A measured distance: ticks on the two points being measured, a dimension line carrying the
- * number, and — once that line has been pushed off the measurement — extension lines joining the
- * two. Offsetting is what lets several dimensions of the same feature stack clear of the drawing
- * instead of lying across it.
+ * A measured distance: a dimension line carrying the number, arrowheads at its ends, and — once
+ * that line has been pushed off the measurement — ticks on the two points actually measured with
+ * extension lines joining them to the arrowheads. Offsetting is what lets several dimensions of
+ * the same feature stack clear of the drawing instead of lying across it.
  *
- * The terminators on the dimension line change with the offset, and have to. Flat on the
- * measurement they are the perpendicular ticks this tool has always drawn; offset, those ticks
- * would run along the extension lines and disappear into them, so the ends become the drafting
- * slash at 45°, which no other line here is parallel to.
+ * The number sits parallel to the dimension line rather than always horizontal, and off to one
+ * side of it rather than centered on it — centered-on-a-diagonal-line is what used to leave the
+ * line cutting through the digits.
  *
  * Exported so dimension-tool.ts can draw its own in-progress preview through this exact function
  * rather than a lookalike — with three clicks to get through, a preview that disagrees with the
@@ -436,36 +438,56 @@ export function drawDimension(
 
   segment(p1, p2);
 
-  const tick = DIM_TICK_HALF_PX / pxPerMm;
-  const mark = (p: Pt, d: Pt) => segment(
-    { x: p.x - d.x * tick, y: p.y - d.y * tick },
-    { x: p.x + d.x * tick, y: p.y + d.y * tick },
-  );
-  mark(start, normal);
-  mark(end, normal);
+  // Filled triangle, tip at `tip` pointing along `dir` — data-no-snap because the line above
+  // already contributes p1/p2 as endpoint candidates; the triangle would only add path-sample
+  // noise circling its own outline.
+  const arrowLen = DIM_ARROW_LEN_PX / pxPerMm;
+  const arrowHalfWidth = DIM_ARROW_HALF_WIDTH_PX / pxPerMm;
+  const arrow = (tip: Pt, d: Pt) => {
+    const base = { x: tip.x - d.x * arrowLen, y: tip.y - d.y * arrowLen };
+    const wing = { x: -d.y * arrowHalfWidth, y: d.x * arrowHalfWidth };
+    const poly = gRoot.append('polygon')
+      .attr('points', `${tip.x},${tip.y} ${base.x + wing.x},${base.y + wing.y} ${base.x - wing.x},${base.y - wing.y}`)
+      .attr('fill', color)
+      .attr('data-no-snap', '');
+    if (preview) poly.style('pointer-events', 'none');
+  };
+  arrow(p1, { x: -dir.x, y: -dir.y });
+  arrow(p2, dir);
 
   // Which way is "away from the measurement" — for the extension lines' overshoot and for the
   // number, so both clear the drawing on whichever side the dimension line was placed.
   const side = offset < 0 ? -1 : 1;
 
   if (offset !== 0) {
+    const tick = DIM_TICK_HALF_PX / pxPerMm;
+    // Snappable, unlike the extension lines below — these sit exactly on the points measured.
+    const mark = (p: Pt) => segment(
+      { x: p.x - normal.x * tick, y: p.y - normal.y * tick },
+      { x: p.x + normal.x * tick, y: p.y + normal.y * tick },
+    );
+    mark(start);
+    mark(end);
+
     const over = (DIM_EXT_OVERSHOOT_PX / pxPerMm) * side;
     // data-no-snap: an extension line is bookkeeping about where the number sits, not geometry
-    // anyone should be able to click onto. The ticks above stay snappable — they sit on the
-    // points actually being measured.
+    // anyone should be able to click onto.
     const extension = (from: Pt, to: Pt) => segment(from, { x: to.x + normal.x * over, y: to.y + normal.y * over })
       .attr('data-no-snap', '');
     extension(start, p1);
     extension(end, p2);
-
-    const slash = { x: (dir.x + normal.x) / Math.SQRT2, y: (dir.y + normal.y) / Math.SQRT2 };
-    mark(p1, slash);
-    mark(p2, slash);
   }
 
+  // Parallel to the dimension line, flipped upright so it never reads upside down.
+  const angleDeg = Math.atan2(dir.y, dir.x) * 180 / Math.PI;
+  const uprightDeg = angleDeg > 90 ? angleDeg - 180 : angleDeg < -90 ? angleDeg + 180 : angleDeg;
+
   const textOff = (DIM_TEXT_GAP_PX / pxPerMm) * side;
+  const textX = mid.x + normal.x * textOff;
+  const textY = -(mid.y + normal.y * textOff);
   const text = gUI.append('text')
-    .attr('x', mid.x + normal.x * textOff).attr('y', -(mid.y + normal.y * textOff))
+    .attr('x', textX).attr('y', textY)
+    .attr('transform', `rotate(${-uprightDeg} ${textX} ${textY})`)
     .attr('text-anchor', 'middle')
     .attr('dominant-baseline', 'central')
     .attr('fill', color)
