@@ -670,7 +670,7 @@ export const renderArcFromArcFancy = (arc: Arc, color: string) => (g: any, ui: a
     renderArcFromArc(arc, color, 2, false)(g, ui);
     renderDashLine(arc, start, color)(g, ui);
     renderDashLine(arc, end, color)(g, ui);
-    renderCrosshair(arc, color)(g, ui);
+    renderSmallCrosshair(arc, color)(g, ui);
 
 }
 
