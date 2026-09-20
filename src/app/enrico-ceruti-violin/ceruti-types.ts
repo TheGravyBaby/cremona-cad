@@ -113,8 +113,8 @@ export interface EnricoCerutiParams {
 }
 
 // the neck set, in the side elevation. the fingerboard plane leaves the top plate's edge
-// `overstand` proud of it and tilts back toward the nut by `angle`; the nut lands wherever the
-// string from the bridge reaches `stopLength`, so the neck stop is read off, not entered.
+// `overstand` proud of it and tilts back toward the nut by `angle`; the nut sits `length` from
+// the mortise along the neck, so the stop length (nut to bridge) is read off, not entered.
 export interface NeckParams {
   /** Plate edge to the bridge line, down the body (mm). */
   bodyStop: number;
@@ -126,14 +126,12 @@ export interface NeckParams {
   overstand: number;
   /** Radians. Tilt of the fingerboard plane off the body axis, nut end toward the back. */
   angle: number;
+  /** Mortise floor to the nut, along the neck (mm). Fixes where the nut lands. */
+  length: number;
   /** String above the fingerboard at the nut (mm). */
   nutHeight: number;
-  /** Nut to bridge along the string (mm). */
-  stopLength: number;
-  /** The neck wood alone, fingerboard plane to the back, at the rib's outer face (mm). */
-  thicknessRoot: number;
-  /** The same at the nut (mm). */
-  thicknessNut: number;
+  /** The neck wood alone, fingerboard plane to the back — uniform along the neck's length (mm). */
+  thickness: number;
   /** The cove from the neck's back down to the button tip (mm). */
   heelRadius: number;
   fingerboard: {
@@ -251,6 +249,7 @@ export interface CerutiColors {
   fHoleCut: string;
   neck: string;
   neckOff: string;
+  neckRoot: string;
   fingerboard: string;
   bridge: string;
 }

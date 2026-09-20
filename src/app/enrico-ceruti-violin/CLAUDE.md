@@ -77,14 +77,47 @@ recognizes the current format *positively* so it stays idempotent; six tests in
   converts them, telling them apart by the corner points they carry.
 - **The fingerboard's thickness is one number, not two.** It runs parallel to the neck at a
   uniform `thickness` — a real board is planed thicker toward the body as the crown rises under
-  it, but that's not worth a second variable here. Recipes saved with the old `thicknessNut`/
-  `thicknessEnd` pair are migrated by `normalizeNeckParams`, preferring the end value: the far
-  end anchors the fingerboard's top line, so it's what the projection and string-clearance
-  readouts actually turn on, and the nut end barely levers it.
+  it, but that's not worth a second variable here.
+- **The neck wood's thickness is one number too, root to nut.** `NeckParams.thickness` sets
+  `back.nut` and `back.root` equally; templates read as uniform enough here that carrying
+  separate root/nut values wasn't earning its keep. Entered once, under the "Neck" section.
+- **The scroll continues the neck's own plane; the nut sits proud of it.** The scroll box in
+  `solveNeck` starts at `nutAt` (the fingerboard-plane point), not `nutString` (the string
+  contact point, raised by `stringHeightAtNut`) — the pegbox/scroll is flush with the neck as it
+  runs on past the nut, and the nut itself is the thing standing proud, not a step the scroll
+  itself takes. Building the scroll off `nutString` looks tempting since it's the point closest
+  at hand, but it makes the scroll box jump up to string height at the nut and is wrong.
 - **A panel's help-text info icons are added by hand, not by an agent.** Every `ⓘ` button
   wired to a `*Info()` help function was pulled from every panel (2026-09-14) — the write-ups in
   `ceruti-helpers.ts` stayed as reference text, but no panel binds them any more. Don't add a new
   one when adding a field; leave that to a human pass.
+- **The neck's own `length` places the nut; the string figures are read off, not dialed.**
+  `length` is the mortise floor to the nut, along the neck — `nutAt = gluingAtMortise` moved
+  `length` toward the nut, one `moveInVectorSpace` call, no intersection needed. `stringLength`
+  (nut to bridge, the classical figure that should land near 325–328 mm) and `nut.neckStop` (root
+  to nut, the classical 130 mm) are both derived from it rather than the other way around, so the
+  nut can no longer fail to place — `NeckSolve.nut`/`.nutBlock`/`.fingerboard`/`.back`/`.scroll`
+  are non-nullable for exactly that reason. This replaced an earlier design where the nut-to-bridge
+  distance was entered and the nut was solved backward off a circle around the bridge top — that
+  circle could come up empty, which is the failure mode the non-nullability above retires. As of
+  2026-09-20 the neck feature has shipped in no template and carries no migration for this rename;
+  the usual "frozen field name" rule (root CLAUDE.md) applies again once it does.
+- **The neck panel's readouts are the two a maker checks with a ruler, nothing else.**
+  `stringLength` (straight-line nut to bridge — noted as approximate since the fingerboard and
+  bridge are curved and a 2D side elevation can't give a real string length) and
+  `stringAngleDeg` (the acute angle between the string and the bridge's own axis, aimed at ~79°)
+  are the only two shown, added 2026-09-20. `nut.neckStop`, `projection`/`projectionHit` and
+  `stringOverFingerboardEnd` are still solved — `projectionHit` feeds a render guide, the rest
+  back the bench-figure tests — but none of the three are surfaced in the panel any more.
+  `bodyDepthAtRoot` had neither a render nor a test depending on it, so it was deleted outright
+  rather than kept as an unused field.
+- **A panel's section color has to be restated on every input inside it, not just the
+  `<section>` wrapper.** `.ui-group` sets `border: none`, so a bare
+  `[style.border-color]="colors.x"` on the section has no border-style/width to tint and renders
+  nothing — `.basic-input` already carries a real 2px border, so the same binding on each
+  `<input>` is what actually shows. `fluting-panel`/`cross-arching-panel`/`long-arching-panel`
+  already did this; the neck panel's own first coloring pass (2026-09-14) colored only the
+  section wrapper and was invisible until this was corrected (2026-09-20).
 - **The rib taper is a placement fact, not a carving one.** Ribs are planed down toward the
   upper block after the back is glued on, so `ribHeightLower`/`ribHeightUpper` tilt the plane the
   top plate glues to while the back's stays square. Nothing in the arch, the channel, the crown,

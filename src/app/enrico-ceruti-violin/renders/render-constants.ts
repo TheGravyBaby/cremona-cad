@@ -46,8 +46,9 @@ export const CERUTI_COLOR_PALETTE = {
   // actually cuts — everything either side of it is an arc
   fHoleCut: '#e08a1e',
   neck: '#b07a3c',
+  neckRoot: '#d2691e',
   fingerboard: '#6f4d9a',
-  bridge: '#5f8fa3',
+  bridge: '#d9d2c0',
 } as const;
 
 /** Degree of {@link https://en.wikipedia.org/wiki/HSL_and_HSV|greyOut} for a de-emphasized
