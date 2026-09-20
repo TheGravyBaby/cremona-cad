@@ -2,14 +2,13 @@ import { Pt } from '../models/types';
 import { archedViolin } from './ceruti-fixtures';
 import { EnricoCerutiParams } from './ceruti-types';
 import { defaultFlutingParams, solveLongArch } from './ceruti-arch-geometry';
-import { defaultNeckParams, NeckSolve, solveNeck } from './ceruti-neck';
+import { defaultNeckParams, NeckSolve, calculateNeck } from './ceruti-neck';
 
 /**
  * The neck set. The properties here are the ones a maker would check with a
- * ruler on the finished instrument: the neck's own length places the nut, the
- * neck stop that results lands at the classical 2:3 against the body stop,
+ * ruler on the finished instrument: the neck's own length places the nut,
  * the heel is one arc tangent to the neck's back and reaching the button, and
- * the readouts describe the drawing they sit beside.
+ * the readout describes the drawing it sits beside.
  */
 
 function neckedViolin(): EnricoCerutiParams {
@@ -20,7 +19,7 @@ function neckedViolin(): EnricoCerutiParams {
 
 function solve(p: EnricoCerutiParams): NeckSolve {
   const gouge = (p.arching!.top.fluting ??= defaultFlutingParams(p));
-  return solveNeck(p, solveLongArch(p, p.arching!.top.arch, gouge), gouge);
+  return calculateNeck(p, solveLongArch(p, p.arching!.top.arch, gouge), gouge);
 }
 
 const dist = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -32,19 +31,10 @@ describe('the nut', () => {
     expect(dist(s.gluingAtMortise, s.nut.at)).toBeCloseTo(p.neck!.length, 9);
   });
 
-  it('lands the neck stop at the classical 2:3 against the body stop', () => {
+  it('runs the string flush with the fingerboard top, no separate nut height', () => {
     const p = neckedViolin();
     const s = solve(p);
-    const ratio = s.nut.neckStop / p.neck!.bodyStop;
-    expect(ratio).toBeGreaterThan(0.64);
-    expect(ratio).toBeLessThan(0.69);
-  });
-
-  it('stands the string nut height above the fingerboard', () => {
-    const p = neckedViolin();
-    const s = solve(p);
-    expect(dist(s.nut.string, s.nut.top)).toBeCloseTo(p.neck!.nutHeight, 9);
-    expect(dist(s.nut.top, s.nut.at)).toBeCloseTo(p.neck!.fingerboard.thickness, 9);
+    expect(dist(s.nut.top, s.nut.at)).toBeCloseTo(p.neck!.nutThickness, 9);
   });
 });
 
@@ -146,7 +136,7 @@ describe('the neck wood', () => {
   it('is the entered thickness, uniform along the neck, whatever the fingerboard is', () => {
     const thin = neckedViolin();
     const thick = neckedViolin();
-    thick.neck!.fingerboard.thickness += 3;
+    thick.neck!.nutThickness += 3;
     for (const [p, s] of [[thin, solve(thin)], [thick, solve(thick)]] as const) {
       // the back sits the entered thickness under the fingerboard plane at both ends
       const under = (pt: Pt) => (pt.x - s.root.x) * -s.normal.a + (pt.y - s.root.y) * -s.normal.b;
@@ -163,22 +153,6 @@ describe('the neck wood', () => {
 });
 
 describe('the readouts', () => {
-  it('give a violin projection near the bench figure at the default set', () => {
-    const s = solve(neckedViolin());
-    expect(s.projection!).toBeGreaterThan(24);
-    expect(s.projection!).toBeLessThan(30);
-  });
-
-  it('measure the projection along the bridge, from the arch to the fingerboard line', () => {
-    const p = neckedViolin();
-    const s = solve(p);
-    const hit = new Pt(s.bridge.foot.x + s.bridge.axis.a * s.projection!, s.bridge.foot.y + s.bridge.axis.b * s.projection!);
-    const fb = s.fingerboard;
-    const d = new Pt(fb.nutTop.x - fb.endTop.x, fb.nutTop.y - fb.endTop.y);
-    const off = ((hit.x - fb.endTop.x) * d.y - (hit.y - fb.endTop.y) * d.x) / Math.hypot(d.x, d.y);
-    expect(Math.abs(off)).toBeLessThan(1e-9);
-  });
-
   it('put the string a few millimetres over the fingerboard end, and the bridge on the arch', () => {
     const p = neckedViolin();
     const s = solve(p);
@@ -194,12 +168,6 @@ describe('the readouts', () => {
     expect(s.stringLength).toBeLessThan(340);
   });
 
-  it('reads a string angle near the recommended 79 degrees, and acute, at the default set', () => {
-    const s = solve(neckedViolin());
-    expect(s.stringAngleDeg).toBeGreaterThan(75);
-    expect(s.stringAngleDeg).toBeLessThan(88);
-  });
-
   it('scale the defaults with the body', () => {
     const p = archedViolin();
     p.height = 750;
@@ -207,6 +175,16 @@ describe('the readouts', () => {
     const violin = defaultNeckParams(archedViolin());
     expect(cello.bodyStop / violin.bodyStop).toBeCloseTo(750 / 350, 1);
     expect(cello.angle).toBe(violin.angle);
+  });
+
+  it('runs the fingerboard a standard length by instrument size, not an entered value', () => {
+    const sizes: [number, number][] = [[350, 270], [450, 310], [650, 580], [900, 850]];
+    for (const [height, length] of sizes) {
+      const p = neckedViolin();
+      p.height = height;
+      const s = solve(p);
+      expect(dist(s.nut.at, s.fingerboard.end)).toBeCloseTo(length, 9);
+    }
   });
 });
 

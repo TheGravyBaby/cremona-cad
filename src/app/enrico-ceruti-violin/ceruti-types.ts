@@ -128,17 +128,12 @@ export interface NeckParams {
   angle: number;
   /** Mortise floor to the nut, along the neck (mm). Fixes where the nut lands. */
   length: number;
-  /** String above the fingerboard at the nut (mm). */
-  nutHeight: number;
   /** The neck wood alone, fingerboard plane to the back — uniform along the neck's length (mm). */
   thickness: number;
   /** The cove from the neck's back down to the button tip (mm). */
   heelRadius: number;
-  fingerboard: {
-    length: number;
-    /** Centreline thickness, taken as uniform along the board's length (mm). */
-    thickness: number;
-  };
+  /** Fingerboard thickness at the nut, uniform along its length (mm). */
+  nutThickness: number;
 }
 
 export interface ArchingParams {
@@ -264,6 +259,7 @@ export interface CerutiViewFlags {
   showAllArcs: boolean;
   showAllCircles: boolean;
   showModuleGuides: boolean;
+  showFingerboard: boolean;
   showFholeBounds: boolean;
   showFholeArcs: boolean;
   showFholePlacementGuides: boolean;
@@ -285,7 +281,7 @@ export interface CerutiViewFlags {
 // resolves after the bar's binding evaluates, throwing NG0100 on switch — don't "simplify" this
 // back to @ViewChild/viewChild(). No default on CerutiPanelBase, so omitting renderToggles fails the build.
 export type RenderToggleKey = 'showModuleArcs' | 'showAllArcs' | 'showModuleCircles'
-  | 'showAllCircles' | 'showModuleGuides' | 'showFholeBounds' | 'showFholeArcs' | 'showFholePlacementGuides'
+  | 'showAllCircles' | 'showModuleGuides' | 'showFingerboard' | 'showFholeBounds' | 'showFholeArcs' | 'showFholePlacementGuides'
   | 'showBlocks' | 'showInnerPath' | 'renderOuterPath';
 
 /**
@@ -315,6 +311,7 @@ export const DEFAULT_CERUTI_VIEW_FLAGS: CerutiViewFlags = {
   showAllArcs: false,
   showAllCircles: false,
   showModuleGuides: false,
+  showFingerboard: true,
   showFholeBounds: true,
   showFholeArcs: false,
   showFholePlacementGuides: false,
