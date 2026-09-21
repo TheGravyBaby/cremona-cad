@@ -309,6 +309,7 @@ export interface CerutiViewFlags {
   showAllCircles: boolean;
   showModuleGuides: boolean;
   showFingerboard: boolean;
+  showFretMarks: boolean;
   showFholeBounds: boolean;
   showFholeArcs: boolean;
   showFholePlacementGuides: boolean;
@@ -330,7 +331,7 @@ export interface CerutiViewFlags {
 // resolves after the bar's binding evaluates, throwing NG0100 on switch — don't "simplify" this
 // back to @ViewChild/viewChild(). No default on CerutiPanelBase, so omitting renderToggles fails the build.
 export type RenderToggleKey = 'showModuleArcs' | 'showAllArcs' | 'showModuleCircles'
-  | 'showAllCircles' | 'showModuleGuides' | 'showFingerboard' | 'showFholeBounds' | 'showFholeArcs' | 'showFholePlacementGuides'
+  | 'showAllCircles' | 'showModuleGuides' | 'showFingerboard' | 'showFretMarks' | 'showFholeBounds' | 'showFholeArcs' | 'showFholePlacementGuides'
   | 'showBlocks' | 'showInnerPath' | 'renderOuterPath';
 
 /**
@@ -361,6 +362,7 @@ export const DEFAULT_CERUTI_VIEW_FLAGS: CerutiViewFlags = {
   showAllCircles: false,
   showModuleGuides: false,
   showFingerboard: true,
+  showFretMarks: true,
   showFholeBounds: true,
   showFholeArcs: false,
   showFholePlacementGuides: false,

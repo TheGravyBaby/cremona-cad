@@ -133,18 +133,14 @@ export function calculateNeck(p: EnricoCerutiParams, topArch: LongArchSolve | nu
   };
   const heel = calculateHeel(back, buttonTip, nk.heelRadius);
 
-  // the scroll continues the neck's own plane out past the nut block — the nut itself sits
-  // proud of it, raised by the fingerboard thickness, so the scroll box starts at
-  // `nutBlockFar`, not `nutTop`, picking up where the nut's own 6mm span ends rather than
-  // overlapping it.
   const k = p.height / REFERENCE_BODY_HEIGHT;
   const scrollLength = SCROLL_LENGTH_MM * k;
   const scrollDepth = SCROLL_DEPTH_MM * k;
-  const scrollFront1 = moveInVectorSpace(nutBlockFar, [{ ...direction, mag: scrollLength }]);
+  const scrollFront1 = moveInVectorSpace(nutAt, [{ ...direction, mag: scrollLength }]);
   const scroll: [Pt, Pt, Pt, Pt] = [
-    nutBlockFar, scrollFront1,
+    nutAt, scrollFront1,
     moveInVectorSpace(scrollFront1, [{ ...normal, mag: -scrollDepth }]),
-    moveInVectorSpace(nutBlockFar, [{ ...normal, mag: -scrollDepth }]),
+    moveInVectorSpace(nutAt, [{ ...normal, mag: -scrollDepth }]),
   ];
   const scrollLabelAngleDeg = 90 - Math.atan2(direction.b, direction.a) * 180 / Math.PI;
 
