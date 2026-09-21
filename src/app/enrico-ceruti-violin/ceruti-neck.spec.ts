@@ -26,10 +26,27 @@ function solve(p: EnricoCerutiParams): NeckParams {
 const dist = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.y - b.y);
 
 describe('the nut', () => {
-  it('sits `length` mm up the neck from the root', () => {
+  it('sits `length` mm from heelBottom, along the back, not from the root', () => {
     const p = neckedViolin();
     const s = solve(p);
-    expect(dist(s.root, s.nut.at)).toBeCloseTo(p.neck!.length, 9);
+    // heelBottom to the back corner at the nut is the actual `length` run, straight along the
+    // neck; nut.at sits off that same line by the neck's thickness, so it's a hair over `length`
+    expect(dist(s.heelBottom, s.back.nut)).toBeCloseTo(p.neck!.length, 9);
+    expect(dist(s.heelBottom, s.nut.at)).toBeGreaterThan(p.neck!.length);
+    // the two references genuinely differ — this would pass by accident against `root` alone
+    expect(dist(s.root, s.back.nut)).not.toBeCloseTo(p.neck!.length, 1);
+  });
+
+  it('places heelBottom from the back line and the button\'s height alone, whether or not the heel radius can stand on its own', () => {
+    const p = neckedViolin();
+    const withHeel = solve(p);
+    const heelBottomWithHeel = withHeel.heelBottom;
+
+    p.neck!.heelRadius = 0;
+    const withoutHeel = solve(p);
+    expect(withoutHeel.heel).toBeNull();
+    expect(withoutHeel.heelBottom).toEqual(heelBottomWithHeel);
+    expect(withoutHeel.heelBottom!.y).toBeCloseTo(withoutHeel.buttonTip!.y, 9);
   });
 
   it('runs the string flush with the fingerboard top, no separate nut height', () => {

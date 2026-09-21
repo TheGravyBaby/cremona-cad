@@ -56,8 +56,18 @@ export const renderGuideKnot = (at: Pt, color: string) =>
  * The number is the distance between the two points rather than something the
  * caller passes alongside them, so a measure cannot end up reporting a height
  * it isn't drawn at.
+ *
+ * `offset` parks the dimension line off the measurement by that many mm along
+ * its own perpendicular — the same move the Distance tool's third click makes
+ * (see `dimensionOffsetAt`/`dimensionGeometry` in toolbox-shape.ts) — with thin
+ * extension lines carrying it back to the two points actually measured.
+ * Several of these sit right along the geometry they measure (a neck's own
+ * length is drawn as an edge in the first place); left at zero, the dimension
+ * line lands exactly on top of that edge and the label lands wherever the
+ * drawing happens to be busiest. A module guide has no third click to give it
+ * an offset interactively, so the caller picks one that clears the drawing.
  */
-export const renderGuideMeasure = (base: Pt, at: Pt, color: string) => (g: any, ui: any): void => {
+export const renderGuideMeasure = (base: Pt, at: Pt, color: string, offset = 0) => (g: any, ui: any): void => {
   const dx = at.x - base.x;
   const dy = at.y - base.y;
   const len = Math.hypot(dx, dy);
@@ -67,15 +77,23 @@ export const renderGuideMeasure = (base: Pt, at: Pt, color: string) => (g: any, 
   const ux = dx / len, uy = dy / len;
   const nx = -uy, ny = ux;
 
-  g.append('line')
-    .attr('x1', base.x).attr('y1', base.y)
-    .attr('x2', at.x).attr('y2', at.y)
+  const line = (a: Pt, b: Pt, opacity: number) => g.append('line')
+    .attr('x1', a.x).attr('y1', a.y).attr('x2', b.x).attr('y2', b.y)
     .attr('stroke', color)
     .attr('stroke-width', STROKE_WEIGHT.guide)
-    .attr('opacity', 0.5)
+    .attr('opacity', opacity)
     .attr('vector-effect', 'non-scaling-stroke');
 
-  for (const P of [base, at]) {
+  const from = { x: base.x + nx * offset, y: base.y + ny * offset };
+  const to = { x: at.x + nx * offset, y: at.y + ny * offset };
+
+  if (offset) {
+    line(base, from, 0.3);
+    line(at, to, 0.3);
+  }
+  line(from, to, 0.5);
+
+  for (const P of [from, to]) {
     g.append('line')
       .attr('x1', P.x + nx * TICK_MM).attr('y1', P.y + ny * TICK_MM)
       .attr('x2', P.x - nx * TICK_MM).attr('y2', P.y - ny * TICK_MM)
@@ -91,8 +109,8 @@ export const renderGuideMeasure = (base: Pt, at: Pt, color: string) => (g: any, 
   ui.append('text')
     .text(`${len.toFixed(1)}mm`)
     // The ui layer is not Y-flipped, so the text stays upright.
-    .attr('x', at.x + ux * LABEL_GAP_MM)
-    .attr('y', -(at.y + uy * LABEL_GAP_MM))
+    .attr('x', to.x + ux * LABEL_GAP_MM)
+    .attr('y', -(to.y + uy * LABEL_GAP_MM))
     .attr('fill', color)
     .attr('font-size', LABEL_MM)
     .attr('text-anchor', alongX ? (ux > 0 ? 'start' : 'end') : 'middle')

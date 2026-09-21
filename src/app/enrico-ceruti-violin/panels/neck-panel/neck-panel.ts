@@ -124,10 +124,14 @@ export function renderNeck(p: EnricoCerutiParams, colors: CerutiColors, showGuid
 
     if (!showGuides) return;
     const guide = colors.neckOff;
-    renderGuideMeasure(s.edge, s.root, guide)(g, ui);
+    // offsets scale with the neck's own wood thickness rather than a fixed mm, so the parked
+    // dimension lines clear the drawing the same way on a cello neck as on a violin's.
+    renderGuideMeasure(s.edge, s.root, guide, -s.thickness)(g, ui);
     renderGuideBaseline(new Pt(0, s.rootPlaneY), new Pt(s.gluingAtMortise.x, s.rootPlaneY), guide)(g, ui);
-    renderGuideMeasure(new Pt(s.gluingAtMortise.x, s.rootPlaneY), s.gluingAtMortise, guide)(g, ui);
-    // renderGuideMeasure(s.root, s.nut.at, guide)(g, ui);
+    renderGuideMeasure(new Pt(s.gluingAtMortise.x, s.rootPlaneY), s.gluingAtMortise, guide, 2* s.thickness)(g, ui);
+    // the neck's own length runs along the back, heelBottom to back.nut — not root to nut.at, and
+    // not to nut.at itself, which sits off that line by the neck's thickness (see `length`'s header)
+    renderGuideMeasure(s.heelBottom, s.back.nut, guide, -2 * (s.thickness + s.nutThickness))(g, ui);
   };
   
 }

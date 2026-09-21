@@ -132,8 +132,9 @@ export interface NeckParams {
   overstand: number;
   /** Radians. Tilt of the fingerboard plane off the body axis, nut end toward the back. */
   angle: number;
-  /** Root to the nut, along the neck (mm) — the visible neck's own length, independent of how
-   * deep the mortise is cut. Fixes where the nut lands. */
+  /** The neck's own length as felt in hand (mm): the back's top corner at the nut, down along the
+   * neck to a level line at the button's height — not root to nut, and independent of how deep the
+   * mortise is cut. Fixes where the nut lands: see `heelBottom`. */
   length: number;
   /** The neck wood alone, fingerboard plane to the back — uniform along the neck's length (mm). */
   thickness: number;
@@ -144,7 +145,7 @@ export interface NeckParams {
 
   /** The top plate's outer edge at the neck end. */
   edge: Pt | null;
-  /** The fingerboard's underside at the plate edge — where the neck stop counts from. */
+  /** The fingerboard's underside at the plate edge. */
   root: Pt | null;
   /** Unit vector along the neck toward the nut, and its normal away from the back. */
   direction: Vect2D | null;
@@ -175,6 +176,12 @@ export interface NeckParams {
    * on from the arc to it; `arc` is the same curve, ready to draw. Null before the first solve,
    * or when the heel radius can't stand on its own — see calculateHeel. */
   heel: { center: Pt; r: number; start: Pt; end: Pt; face: Pt | null; arc: Arc } | null;
+  /** Where `length` is measured from: the back line (root's line, carried onto the back) crossed
+   * with a level line at the button's height. A construction line, not a point on the heel's own
+   * arc — the heel curve can undercut or overshoot it depending on its radius, same as the back's
+   * straight run does against the rib line at `back.root`. Solved independently of `heel`/`back`,
+   * since it's what places the nut that those are built from. */
+  heelBottom: Pt | null;
   /** Stand-in for the pegbox and scroll, beyond the nut: front-nut, front-far, back-far, back-nut. */
   scroll: [Pt, Pt, Pt, Pt] | null;
   /** Rotation, in degrees, that sits the scroll's label along the neck. */
