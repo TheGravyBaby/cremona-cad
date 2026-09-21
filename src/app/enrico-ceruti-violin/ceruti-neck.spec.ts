@@ -146,9 +146,9 @@ describe('the neck wood', () => {
     }
   });
 
-  it('boxes a scroll beyond the nut block, continuing the neck plane rather than the proud nut', () => {
+  it('boxes a scroll sharing the nut block\'s own near corner, so it intercepts the neck instead of floating past it', () => {
     const s = solve(neckedViolin());
-    expect(s.scroll[0]).toEqual(s.nutBlock[1]);
+    expect(s.scroll[0]).toEqual(s.nutBlock[0]);
     expect(s.scroll[1].y).toBeGreaterThan(s.scroll[0].y);
   });
 });

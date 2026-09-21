@@ -10,8 +10,9 @@ import { renderBodySection } from '../../renders/body-section.render';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { pathFromArc } from '../../../helpers/math/pathMath';
+import { dist, moveInVectorSpace } from '../../../helpers/math/simpleGeometry';
 import { renderSegment, renderPolygon, renderPath, renderText } from '../../../helpers/renderFuncs';
-import { Pt } from '../../../models/types';
+import { Pt, Vect2D } from '../../../models/types';
 import { renderGuideMeasure, renderGuideBaseline } from '../../renders/module-guide.render';
 import { STROKE_WEIGHT } from '../../renders/render-constants';
 
@@ -23,7 +24,7 @@ import { STROKE_WEIGHT } from '../../renders/render-constants';
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class NeckPanel extends CerutiPanelBase implements OnInit {
-  static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleGuides', 'showFingerboard'];
+  static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleGuides', 'showFingerboard', 'showFretMarks'];
 
   @Input({ required: true }) params!: EnricoCerutiParams;
   @Input({ required: true }) paths!: PathEntry[];
@@ -69,13 +70,13 @@ export class NeckPanel extends CerutiPanelBase implements OnInit {
 
     return [
       renderBodySection(p, this.colors, { solved, gouge, color: this.colors.outerTrace }),
-      renderNeck(p, this.colors, this.flags.showModuleGuides, this.flags.showFingerboard),
+      renderNeck(p, this.colors, this.flags.showModuleGuides, this.flags.showFingerboard, this.flags.showFretMarks),
     ];
   }
 
 }
 
-export function renderNeck(p: EnricoCerutiParams, colors: CerutiColors, showGuides: boolean, showFingerboard: boolean) {
+export function renderNeck(p: EnricoCerutiParams, colors: CerutiColors, showGuides: boolean, showFingerboard: boolean, showFretMarks: boolean) {
   const s = p.neck!;
   return (g: any, ui: any): void => {
     const seg = (a: Pt, b: Pt, color = colors.neck) => renderSegment(a, b, color, STROKE_WEIGHT.section)(g, ui);
@@ -114,6 +115,7 @@ export function renderNeck(p: EnricoCerutiParams, colors: CerutiColors, showGuid
     }
 
     seg(s.nut.top, s.bridge.top, colors.innerTrace);
+    if (showFretMarks) renderFretTicks(s.nut.top, s.bridge.top, dist(s.nut.at, s.fingerboard.end))(g, ui);
 
     // pegbox and scroll, boxed until their panel exists
     renderPolygon(s.scroll, colors.neckOff, STROKE_WEIGHT.guide, 0.7)(g, ui);
@@ -126,5 +128,55 @@ export function renderNeck(p: EnricoCerutiParams, colors: CerutiColors, showGuid
     renderGuideBaseline(new Pt(0, s.rootPlaneY), new Pt(s.gluingAtMortise.x, s.rootPlaneY), guide)(g, ui);
     renderGuideMeasure(new Pt(s.gluingAtMortise.x, s.rootPlaneY), s.gluingAtMortise, guide)(g, ui);
     // renderGuideMeasure(s.root, s.nut.at, guide)(g, ui);
+  };
+  
+}
+
+
+
+/** Fret marks, scratch: how many semitones up the string to mark, and how far each tick reaches
+ * either side of the string line. Bounded to the fingerboard's own length below. Plain semitones
+ * stay small so they read as a scale rather than competing with the landmark intervals. */
+const FRET_MARK_SEMITONES = 12;
+const FRET_TICK_HALF_LENGTH_MM = 1;
+const LANDMARK_TICK_HALF_LENGTH_MM = 3;
+const FRET_TICK_COLOR = '#2e9e44';
+
+/** Semitone counts of the intervals worth calling out against the plain fret color, above the
+ * open string: perfect fourth, perfect fifth, octave. */
+const INTERVAL_TICK_COLORS: Record<number, string> = {
+  5: '#b08d1f',
+  7: '#c24b2e',
+  12: '#3a6ea5',
+};
+
+/** Twelve-tone equal temperament: each semitone shortens the vibrating length by a factor of the
+ * 12th root of 2, so fret n sits `stringLength * (1 - 2^(-n/12))` from the nut. Returns one
+ * distance per semitone, 1..semitones. */
+function equalTemperamentPositions(stringLength: number, semitones: number): number[] {
+  const positions: number[] = [];
+  for (let n = 1; n <= semitones; n++) {
+    positions.push(stringLength * (1 - 2 ** (-n / 12)));
+  }
+  return positions;
+}
+
+function renderFretTicks(nut: Pt, bridge: Pt, maxDistance: number) {
+  const stringLength = dist(nut, bridge);
+  const along: Vect2D = { a: (bridge.x - nut.x) / stringLength, b: (bridge.y - nut.y) / stringLength, mag: 1 };
+  const across: Vect2D = { a: -along.b, b: along.a, mag: 1 };
+  const positions = equalTemperamentPositions(stringLength, FRET_MARK_SEMITONES);
+
+  return (g: any, ui: any): void => {
+    positions.forEach((d, i) => {
+      if (d > maxDistance) return;
+      const semitone = i + 1;
+      const landmarkColor = INTERVAL_TICK_COLORS[semitone];
+      const halfLength = landmarkColor ? LANDMARK_TICK_HALF_LENGTH_MM : FRET_TICK_HALF_LENGTH_MM;
+      const center = moveInVectorSpace(nut, [{ ...along, mag: d }]);
+      const a = moveInVectorSpace(center, [{ ...across, mag: halfLength }]);
+      const b = moveInVectorSpace(center, [{ ...across, mag: -halfLength }]);
+      renderSegment(a, b, landmarkColor ?? FRET_TICK_COLOR, STROKE_WEIGHT.guide)(g, ui);
+    });
   };
 }
