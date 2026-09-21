@@ -15,7 +15,7 @@ import { CerutiColors, EnricoCerutiParams, PathEntry, PathKey } from '../../ceru
 import { defaultFHolePlacement } from '../f-hole-placement-panel/f-hole-placement-panel';
 import { STROKE_WEIGHT } from '../../renders/render-constants';
 
-type ExportType = 'innerTrace' | 'outerTrace' | 'back' | 'mould' | 'blocks' | 'crossArchTemplates' | 'longArchTemplates' | 'fholeTemplate';
+type ExportType = 'innerTrace' | 'outerTrace' | 'back' | 'mould' | 'blocks' | 'crossArchTemplates' | 'longArchTemplates' | 'fholeTemplate' | 'fholeTemplateNoEyes';
 
 /** Templates are laid out in their own coordinate frame (not the violin's plan-view box), so their
  *  export sheet is sized from the actual combined geometry rather than the shared plan dimensions. */
@@ -82,9 +82,9 @@ export class ExportPanel implements OnInit {
    * shapes before handing them here. Skipping this left the template page geometrically valid but
    * entirely outside the sheet's viewBox — a blank page, not a thrown error.
    */
-  private fholeTemplatePath(): string {
+  private fholeTemplatePath(renderEyes = true): string {
     this.ensureFholes();
-    const raw = defineOneFholePath(this.params, false);
+    const raw = defineOneFholePath(this.params, false, renderEyes);
     const bounds = pathsBounds([raw]);
     return translatePath(raw, -(bounds.minX + bounds.maxX) / 2, -bounds.minY);
   }
@@ -159,8 +159,9 @@ export class ExportPanel implements OnInit {
         this.draftChange.emit(renders);
         break;
       }
-      case 'fholeTemplate': {
-        this.draftChange.emit([renderPath(this.fholeTemplatePath(), this.colors.outerTrace, STROKE_WEIGHT.trace)]);
+      case 'fholeTemplate':
+      case 'fholeTemplateNoEyes': {
+        this.draftChange.emit([renderPath(this.fholeTemplatePath(type === 'fholeTemplate'), this.colors.outerTrace, STROKE_WEIGHT.trace)]);
         break;
       }
       case 'mould': {
@@ -222,8 +223,9 @@ export class ExportPanel implements OnInit {
       case 'blocks':
         paths = [{ d: combinePathStrings(this.cornerBlocks()), stroke: 'black', fill: 'none', strokeWidth: '.5' }];
         break;
-      case 'fholeTemplate': {
-        const onePath = this.fholeTemplatePath();
+      case 'fholeTemplate':
+      case 'fholeTemplateNoEyes': {
+        const onePath = this.fholeTemplatePath(type === 'fholeTemplate');
         const bounds = pathsBounds([onePath]);
         sheetWidth = bounds.width + TEMPLATE_SHEET_PAD;
         sheetHeight = bounds.height + TEMPLATE_SHEET_PAD;
@@ -295,7 +297,8 @@ export class ExportPanel implements OnInit {
         pathD = combinePathStrings(this.cornerBlocks());
         break;
       case 'fholeTemplate':
-        pathD = this.fholeTemplatePath();
+      case 'fholeTemplateNoEyes':
+        pathD = this.fholeTemplatePath(type === 'fholeTemplate');
         break;
       case 'crossArchTemplates':
       case 'longArchTemplates': {
@@ -319,6 +322,7 @@ export class ExportPanel implements OnInit {
       outerTrace: 'Outer Contour',
       mould: 'Mould Path',
       fholeTemplate: 'F-Hole Template',
+      fholeTemplateNoEyes: 'F-Hole Template (No Eyes)',
       crossArchTemplates: 'Cross Arch Templates',
       longArchTemplates: 'Long Arch Templates',
     };
@@ -352,8 +356,9 @@ export class ExportPanel implements OnInit {
       case 'blocks':
         pdfPaths = [{ d: combinePathStrings(this.cornerBlocks()), stroke: 'black', fill: 'none' }];
         break;
-      case 'fholeTemplate': {
-        const onePath = this.fholeTemplatePath();
+      case 'fholeTemplate':
+      case 'fholeTemplateNoEyes': {
+        const onePath = this.fholeTemplatePath(type === 'fholeTemplate');
         const bounds = pathsBounds([onePath]);
         sheetWidth = bounds.width + TEMPLATE_SHEET_PAD;
         sheetHeight = bounds.height + TEMPLATE_SHEET_PAD;
@@ -400,8 +405,10 @@ export class ExportPanel implements OnInit {
     const purflingPath = this.getPathOrNull('purfling');
     const outerPurflingPath = this.getPathOrNull('outerPurfling');
     const fholeTemplatePath = this.fholeTemplatePath();
+    const fholeTemplateNoEyesPath = this.fholeTemplatePath(false);
     const fholePath = this.getPath('fHole');
     const fholeTemplateBounds = pathsBounds([fholeTemplatePath]);
+    const fholeTemplateNoEyesBounds = pathsBounds([fholeTemplateNoEyesPath]);
 
     // Arching templates sit in their own coordinate frame, so their page is sized from the
     // actual combined geometry rather than the shared plan width/height used above.
@@ -475,6 +482,14 @@ export class ExportPanel implements OnInit {
         width: fholeTemplateBounds.width + TEMPLATE_SHEET_PAD,
         height: fholeTemplateBounds.height + TEMPLATE_SHEET_PAD,
         paths: [{ d: fholeTemplatePath, stroke: 'black', fill: 'none' }],
+      },
+      {
+        label: 'F-Hole Template (No Eyes)',
+        fileName: baseName,
+        description,
+        width: fholeTemplateNoEyesBounds.width + TEMPLATE_SHEET_PAD,
+        height: fholeTemplateNoEyesBounds.height + TEMPLATE_SHEET_PAD,
+        paths: [{ d: fholeTemplateNoEyesPath, stroke: 'black', fill: 'none' }],
       },
       // Arching templates need the arching modules built — omit these pages rather than
       // failing the whole plan when they haven't been opened yet.
