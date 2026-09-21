@@ -240,7 +240,7 @@ function archedZAt(
             // and distance cannot tell the two sides of the joint apart: the
             // return below picks a flank by the sign of x, and the two flanks of
             // an asymmetric crown disagree. That is a step down the joint —
-            // which is why the weight is {@link chordTrust}, the same curve the
+            // which is why the weight is `chordTrust`, the same curve the
             // crown-offset taper is scaled by. The crown is centred wherever
             // this leans on distance, so there the two flanks agree and the sign
             // of x stops mattering. Change one and the other must follow, so
@@ -340,10 +340,9 @@ export function computeArchSectionProfile(
     return pts.length ? pts.join(' ') : null;
 }
 
-// ===== Arching templates =====
 // Physical cutout templates for traditional hand-carving: a rectangular blank
-// with one edge cut to an arch profile, built from {@link computeArchSectionProfile}
-// (cross arch) or {@link calculateLongArch} (long arch) via {@link closeProfileToBlank}.
+// with one edge cut to an arch profile, built from `computeArchSectionProfile`
+// (cross arch) or `calculateLongArch` (long arch) via `closeProfileToBlank`.
 
 const TEMPLATE_GAP = 5;    // mm between laid-out template blanks, so a combined export doesn't overlap.
 const TEMPLATE_MARGIN = 10; // mm of backing past the arch's peak — must match closeProfileToBlank's default.
@@ -660,9 +659,7 @@ function computeArchContourRingsRaw(
     const toLocalRings = (rings: number[][][][]): [number, number][][] =>
         rings.flat().map(ring => ring.map(([cx, cy]) => [-xMax + cx * gridMm, yMin + cy * gridMm] as [number, number]));
 
-    // Build the outline clip polygon in grid-index coordinates so marching-squares
-    // contour rings are clipped to the exact instrument boundary rather than the
-    // quantised grid staircase.
+    // outline clip polygon, in the same grid-index coordinates as the contour rings.
     const toGridI = (x: number) => (x + xMax) / gridMm;
     const toGridJ = (y: number) => (y - yMin) / gridMm;
     const outlineRing: [number, number][] = model.outerPlate.map(

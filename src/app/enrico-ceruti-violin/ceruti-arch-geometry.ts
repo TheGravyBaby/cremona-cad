@@ -14,7 +14,6 @@ import {
 import { defineFlutingPath, defineInsetPath } from './ceruti-paths';
 import { archFromLoweredTakeoff, normalizeCrossArchStations } from './ceruti-arching';
 
-// ===== Arching geometry =====
 // The three things the arch is actually solved from: the gouge's own circular
 // section, the crown across the plate, and the tangency that joins them. Plus
 // the plate geometry that holds all of it together for a given recipe.
@@ -101,35 +100,26 @@ export function cornerGougeOn(g: FlutingParams): boolean {
  * outer edge on the *platform boundary* rather than on the channel's own outer
  * loop.
  *
- * `edgeDist` is distance inward from that boundary, so the cut's outer flank
- * starts at 0 there and its trough sits a half-width in. Two consequences fall
- * straight out of that anchoring, and both are the point:
+ * `edgeDist` is distance inward from that boundary. Along the flanks the
+ * platform boundary and the channel's outer loop are the same curve, so this
+ * returns exactly what the channel already returns — the second pass is a
+ * no-op wherever there was nothing left to cut. At a corner the platform
+ * boundary *follows* the point while the channel bypasses it, so the cut wraps
+ * the corner on its own, and the wedge between the two loops is carved by
+ * construction.
  *
- * - Along the flanks the platform boundary and the channel's outer loop are the
- *   same curve, so this returns exactly what the channel already returns and
- *   composing the two changes nothing. No band to feather, no weight to tune —
- *   the second pass is a no-op wherever there was nothing left to cut.
- * - At a corner the platform boundary *follows* the point while the channel
- *   bypasses it, so the cut wraps the corner on its own, and the wedge between
- *   the two loops — the region the panel shades — is carved by construction.
+ * Composed with {@link Math.min}: two passes of a gouge leave the deeper of
+ * the two, which is also what makes this incapable of adding material
+ * anywhere. Returns 0 past its own reach, so the minimum is inert there.
  *
- * Composed with {@link Math.min}: two passes of a gouge leave the deeper of the
- * two, which is also what makes this incapable of adding material anywhere.
- * Returns 0 past its own reach, so the minimum is inert there.
- *
- * `wedge` is how much wider than one gouge the gap is here, and it is what makes
- * this a *pass count* rather than a single cut. One pass anchored on the
- * boundary and one on the channel leaves a ridge of untouched wood between them
- * wherever the two loops are further apart than 2w — measurably so: about 5 mm
- * of full-height plate at the widest part of a violin corner. A maker meeting
- * that keeps taking passes until the two runs join. Sliding the same tool across
- * the gap sweeps a flat floor at its own depth with its own radius left standing
- * at either wall, which is exactly this: the arc, opened at the trough.
- *
- * The floor is at the gouge's depth and no deeper — the tool cannot be pushed
- * past its setting, however many passes it makes — so this stays a statement
- * about the tool rather than about the gap it happens to be crossing. At
- * `wedge = 0` it is the single cut again, term for term.
+ * `wedge` is how much wider than one gouge the gap is — about 5mm of
+ * full-height plate at the widest part of a violin corner. A maker meeting
+ * that keeps taking passes until the two runs join; sliding the same tool
+ * across the gap sweeps a flat floor at its own depth with the arc left
+ * standing at either wall, which is exactly this: the arc, opened at the
+ * trough. The floor stays at the gouge's depth and no deeper however many
+ * passes it takes, so this remains a statement about the tool rather than
+ * about the gap it's crossing. At `wedge = 0` it is the single cut again.
  */
 export function cornerGougeZ(edgeDist: number, sweepRadius: number, depth: number, wedge = 0): number {
   const w = gougeHalfWidth(sweepRadius, depth);
@@ -274,7 +264,6 @@ export function cornerJoinAreaPath(p: EnricoCerutiParams, paths: ChannelPaths): 
   return `${defineInsetPath(p, p.outerFlutingDepth ?? 0)} Z ${paths.outer} Z`;
 }
 
-// ===== The transition solve =====
 // Where the arch stops being the template and becomes the run into the channel.
 //
 // The whole model turns on this staying an *answer* rather than a question. A
@@ -314,39 +303,38 @@ function takeoffDepthAt(s: number, sweepRadius: number, depth: number): number {
 /**
  * Solves for the contact point where an arch meets the channel tangentially.
  *
- * `archSlopeAt` reports the slope the arch would arrive with if it took off at
- * a given contact — supplied by the caller, since the long arch and the cross
- * arch build their curves differently while sharing this geometry exactly.
- * The residual is that slope minus the channel's own, and a root of it is a
+ * `archSlopeAt` reports the slope the arch would arrive with at a given
+ * contact — supplied by the caller, since the long arch and the cross arch
+ * build their curves differently while sharing this geometry exactly. The
+ * residual is that slope minus the channel's own, and a root of it is a
  * tangent meeting.
  *
- * Bracketed by a coarse scan before bisecting rather than assuming the residual
- * is monotone: it is generically well-behaved (at the trough the channel is
- * flat while the arch arrives steep; at the inner edge the channel is at its
- * steepest while the arch has the shortest drop) but both the span and the
- * takeoff depth move with the contact, so monotonicity is not something to
- * bet the geometry on.
+ * Bracketed by a coarse scan before bisecting rather than assuming the
+ * residual is monotone: it is generically well-behaved (at the trough the
+ * channel is flat while the arch arrives steep; at the inner edge the channel
+ * is at its steepest while the arch has the shortest drop) but both the span
+ * and the takeoff depth move with the contact, so monotonicity isn't
+ * something to bet the geometry on.
  *
- * When no root exists the closest approach is returned instead, flagged
+ * When no root exists, the closest approach is returned instead, flagged
  * `tangent: false` — the arch and channel genuinely cannot meet, which is real
- * information about an unbuildable instrument, but it is information for the
- * *panel* to report rather than grounds for handing back no geometry at all.
+ * information about an unbuildable instrument, but it's for the *panel* to
+ * report rather than grounds for handing back no geometry at all.
  *
- * That distinction is the whole reason this does not simply return null. The
- * residual here is a difference of two small slopes, and near the body caps —
- * where the long arch has barely climbed clear of the channel — both terms go
- * to zero together and whether the difference crosses zero comes down to the
- * last few digits. Solvability then flickers off for a single station between
- * two that solve perfectly well, which is not a fact about the instrument.
+ * That's why this doesn't just return null. The residual is a difference of
+ * two small slopes, and near the body caps — where the long arch has barely
+ * climbed clear of the channel — both terms go to zero together, so whether
+ * the difference crosses zero comes down to the last few digits. Solvability
+ * then flickers off for a single station between two that solve fine, which
+ * is not a fact about the instrument.
  *
- * The old fallback made that flicker visible in the worst possible way. A
- * station with no root was pinned at the channel's *inner edge* — s ≈ w, the
- * top of the flank — while its neighbours had solved to s ≈ 0.02·w, down at the
- * trough. Opposite ends of the same flank, so the surface stepped by nearly the
- * full channel depth at one station and rang a seam round the cap. Closest
- * approach lands beside the neighbours instead, because a residual that only
- * just fails to cross zero is nearest to zero right about where it would have
- * crossed.
+ * The old fallback made that flicker visible badly: a station with no root
+ * was pinned at the channel's inner edge (s ≈ w, the top of the flank) while
+ * its neighbours had solved to s ≈ 0.02·w, down at the trough — opposite ends
+ * of the same flank, so the surface stepped by nearly the full channel depth
+ * at one station and rang a seam round the cap. Closest approach lands beside
+ * the neighbours instead, because a residual that only just fails to cross
+ * zero is nearest to zero right about where it would have crossed.
  *
  * Null is now reserved for a channel with no flank to land on at all.
  */
@@ -527,25 +515,23 @@ export function channelCapPath(
   return pts.join(' ');
 }
 
-// ===== The cross-arch template =====
-
 /**
  * How many knots a trochoid crown is sampled into, evenly across the crown's
- * span. Enough that re-splining them reproduces the curve closely, and small
- * enough that the transition solve — which rebuilds this spline at every
- * bisection step — stays cheap.
+ * span. Enough that re-splining reproduces the curve closely, and small enough
+ * that the transition solve — which rebuilds this spline at every bisection
+ * step — stays cheap.
  *
- * Evenly, and *stopping short of the channel*, both matter. The takeoff can
- * only ever land within a gouge half-width of the centerline, which on a real
- * plate is the outermost couple of percent of the half-width. Bunching knots
- * there — which sampling by the trochoid's own parameter does, since that is
- * where it bends hardest — drops them into the one region the solve moves
- * through. Each knot the takeoff passes leaves the spline, so the arrival slope
- * steps rather than varies, and the bisection is left hunting a root on a
- * staircase: it finds one on either side of a step and misses the middle.
+ * Evenly, and stopping short of the channel, both matter. The takeoff can only
+ * land within a gouge half-width of the centerline, which on a real plate is
+ * the outermost couple of percent of the half-width. Bunching knots there —
+ * which sampling by the trochoid's own parameter does, since that's where it
+ * bends hardest — drops them into the one region the solve moves through. Each
+ * knot the takeoff passes leaves the spline, so the arrival slope steps rather
+ * than varies, and bisection is left hunting a root on a staircase: it finds
+ * one on either side of a step and misses the middle.
  *
- * The last sampled knot therefore sits at N/(N+1) of the way out, leaving the
- * final stretch unauthored — which is what this model says it is anyway.
+ * The last sampled knot sits at N/(N+1) of the way out, leaving the final
+ * stretch unauthored — which is what this model says it is anyway.
  */
 const CYCLOID_CROWN_KNOTS = 24;
 
@@ -591,22 +577,23 @@ export function crossArchKnots(shape: CrossArchShape, side: 1 | -1): CrossArchKn
  * Half a trochoid, sampled into the same fractional knots an authored template
  * carries — crown outward to the channel centerline.
  *
- * Sampling rather than evaluating is deliberate, and it is what makes this a
- * small change instead of a second code path. Everything downstream of the
+ * Sampling rather than evaluating is deliberate: everything downstream of the
  * knots — the station ramp, the full-width spline, the tangency solve, the
  * surface — already works in terms of a knot list and needs no notion of which
- * curve family produced it. A shape can even ramp from a trochoid station to an
- * authored one, because the resolver interpolates positions, not parameters.
+ * curve family produced it. A shape can even ramp from a trochoid station to
+ * an authored one, because the resolver interpolates positions, not
+ * parameters.
  *
- * The price is that the curve the surface actually carries is a monotone cubic
- * *through* the trochoid rather than the trochoid itself. At this knot count
- * the two are indistinguishable next to the wood, and the reconstruction is
- * strictly better behaved: the spline cannot overshoot, whereas a true d=1 cusp
- * has an infinite edge slope for the solve to run into.
+ * The price is that the curve the surface actually carries is a monotone
+ * cubic *through* the trochoid rather than the trochoid itself. At this knot
+ * count the two are indistinguishable next to the wood, and the
+ * reconstruction is strictly better behaved: the spline cannot overshoot,
+ * whereas a true d=1 cusp has an infinite edge slope for the solve to run
+ * into.
  *
  * Positions are walked evenly and stop short of the channel — see
- * {@link CYCLOID_CROWN_KNOTS} for why that is a correctness matter and not a
- * question of sampling taste.
+ * {@link CYCLOID_CROWN_KNOTS} for why that's a correctness matter, not
+ * sampling taste.
  */
 function cycloidCrownKnots(shape: CrossArchCycloidShape): CrossArchKnot[] {
   const d = clamp(shape.d, 0, 1);
@@ -838,32 +825,28 @@ function crossProfile(
   archH: number, xPeak: number,
   left: CrossArchKnot[], right: CrossArchKnot[], endL: SideEnd, endR: SideEnd,
 ): (x: number) => number {
-  // Fractions become millimetres here and nowhere else, and *both* axes are
+  // Fractions become millimetres here and nowhere else, and both axes are
   // measured against that side's own takeoff: position from the crown out to
   // it, height up from it toward the crown.
   //
-  // Measuring height from the takeoff is what lets the recurve bands near the
-  // body caps work at all. There the crown sits below plate level, so `archH`
-  // is negative, and scaling a knot as `z × archH` would lift it *above* the
-  // crown and invert the section. Measured from the takeoff the shape stays
-  // right whichever side of plate level the crown is on.
+  // Height from the takeoff, not from plate level, because near the body caps
+  // the crown sits below plate level and `archH` goes negative — scaling a
+  // knot as `z × archH` there would lift it above the crown and invert the
+  // section. Measured from the takeoff the shape stays right on either side
+  // of plate level.
   //
-  // Measuring position from the takeoff — rather than from the channel
-  // centerline, with knots outside the takeoff discarded — is what makes the
-  // tangency solvable. Discarding is a step change: the solve moves the takeoff
-  // inward looking for its root, and each knot it passes leaves the spline, so
-  // the slope it arrives with jumps rather than varies. Bisection on a staircase
-  // does not find roots, it finds risers — it converges neatly onto the drop
-  // point and reports a tangency that isn't one. Stretching the shape instead
-  // means no knot ever crosses the takeoff, the arrival slope moves smoothly,
-  // and the root is a root. It is also the more honest reading of a fractional
-  // template: the shape spans the part of the plate the maker actually carves,
-  // which ends where the channel begins.
+  // Position from the takeoff too, rather than from the channel centerline
+  // with knots beyond the takeoff discarded, because discarding is a step
+  // change: as the solve moves the takeoff hunting for its root, each knot it
+  // passes leaves the spline, so the arrival slope jumps instead of varying,
+  // and bisection finds a riser instead of a root. Stretching the shape means
+  // no knot ever crosses the takeoff and the root is a real root — also the
+  // more honest reading of a fractional template, since the shape spans only
+  // the part of the plate the maker actually carves.
   //
-  // Positions run from the joint, not from the crown — see {@link knotXAt} for
-  // why. So the crown is not necessarily between the two runs of knots: move it
-  // and a knot authored on the treble side can end up on the bass flank of it.
-  // The list is therefore sorted rather than assembled in assumed order.
+  // Positions run from the joint, not the crown (see {@link knotXAt}), so a
+  // knot authored on one side can end up on the other flank once the crown
+  // moves — hence the sort below rather than assuming order.
   const heightAt = (z: number, end: SideEnd) => end.zEnd + z * (archH - end.zEnd);
   const place = (knots: CrossArchKnot[], end: SideEnd, side: 1 | -1) => knots
     .map(k => ({ x: knotXAt(end.xEnd, side, k.x), z: heightAt(k.z, end) }))
@@ -872,11 +855,11 @@ function crossProfile(
 
   const inner = [...place(left, endL, -1), ...place(right, endR, 1)].sort((a, b) => a.x - b.x);
 
-  // A knot landing *on* the crown would hand the spline a zero-width interval.
-  // It is held clear rather than dropped: dropping is a step change, and a step
-  // is what the tangency solve cannot survive — the same lesson the takeoff
-  // anchoring above records. At this gap the nudge is far below anything the
-  // wood or the mesh could resolve.
+  // A knot landing on the crown would hand the spline a zero-width interval.
+  // Held clear rather than dropped, for the same reason as the takeoff
+  // anchoring above — a dropped knot is a step, which the tangency solve
+  // can't survive. The gap is far below anything the wood or the mesh
+  // resolves.
   const CROWN_GAP = 1e-4;
   const xs: number[] = [-endL.xEnd];
   const zs: number[] = [endL.zEnd];
@@ -892,11 +875,10 @@ function crossProfile(
   xs.push(endR.xEnd);
   zs.push(endR.zEnd);
 
-  // A centred crown is already curvature-continuous: the two flanks are mirror
-  // images, so the monotone spline's filter has nothing asymmetric to clamp and
-  // its second derivatives match across the crown by symmetry. Taking the plain
-  // path here is not just an optimisation — it guarantees that adding this
-  // machinery changed nothing for every recipe that does not use a moved crown.
+  // A centred crown is already curvature-continuous: the two flanks mirror
+  // each other, so the monotone spline's filter has nothing asymmetric to
+  // clamp. Branching here isn't just an optimisation — it guarantees this
+  // machinery changed nothing for any recipe that doesn't use a moved crown.
   if (Math.abs(xPeak) < 1e-9) return makeMonotoneSpline(xs, zs);
 
   const smooth = makeC2SplineWithFlatKnot(xs, zs, crown);
@@ -1088,42 +1070,35 @@ export function solveCrossArchSection(
   if (halfWidth <= 0 || centerHalf <= halfWidth || archH <= -depth) return null;
   const isCatenary = !!row.catenary;
 
-  // The crown, in millimetres. Anchored to the centerline half-chord — a
-  // quantity the solve never touches — so it holds still while both takeoffs
+  // The crown, in millimetres, anchored to the centerline half-chord — a
+  // quantity the solve never touches, so it holds still while both takeoffs
   // hunt for their contacts.
   //
-  // Tapered by how much crown there is to move. The ridge line's path along the
-  // body is `(peak − ½)·2·centerHalf(y)`, so an offset crown inherits every
-  // property of `centerHalf` — a chord read off a sampled loop that runs nearly
-  // horizontal at the caps, where it therefore swings fastest per mm of body and
-  // carries the most of the sampling's own wobble. The ridge is a curvature
-  // feature of the section; steering one with that folds the surface. Centred,
-  // the whole term is zero and none of it can reach the plate, which is why this
-  // only ever appeared once the crown could move.
+  // Tapered by how much crown there is to move. The ridge line's path along
+  // the body is `(peak − ½)·2·centerHalf(y)`, so an offset crown inherits
+  // every property of `centerHalf` — a chord read off a sampled loop that
+  // runs nearly horizontal at the caps, where it swings fastest per mm of
+  // body and carries the most sampling wobble. The ridge is a curvature
+  // feature of the section; steering one with that folds the surface.
+  // Centred, the whole term is zero and none of it can reach the plate,
+  // which is why this only appeared once the crown could move.
   //
-  // Tapering on the arch height fixes it at the cause and says something true
-  // besides: where the long arch has not yet climbed clear of the channel there
-  // is no crown, and a ridge is a feature of a crown. It costs nothing to plumb,
-  // since `archH` is already the first thing this function is handed.
+  // Tapering on the arch height fixes it at the cause: where the long arch
+  // hasn't yet climbed clear of the channel there is no crown, and a ridge is
+  // a feature of a crown. Costs nothing to plumb since `archH` is already the
+  // first argument here.
   //
-  // Smoothstepped rather than clamped. A clamp is C⁰ in slope at both ends of
-  // the band, and a kink in the ridge line is precisely the fold this exists to
-  // remove — it would move the problem inward rather than solve it.
+  // Smoothstepped rather than clamped, since a clamp is C⁰ in slope at both
+  // ends of the band and a kink in the ridge line is exactly the fold this
+  // exists to remove.
   //
-  // Two conditions, both about whether an offset ridge means anything here, and
-  // both multiplied in because either one alone is a reason to be centred:
-  //
-  //   how much crown there is — a ridge is a feature of a crown, and near the
-  //   caps the arch has barely climbed clear of the channel; and
-  //
-  //   how much the station chord describes — see {@link crownOffsetTrust}. This is
-  //   the one that keeps the *surface* whole rather than the section pretty:
-  //   where the height field falls back on distance it cannot tell one side of
-  //   the joint from the other, so it picks a flank by the sign of x. An
-  //   asymmetric crown makes those two flanks disagree, and the disagreement
-  //   lands as a step down the joint. Centring the crown there is not a
-  //   cosmetic choice — it is the condition under which the sign of x stops
-  //   mattering.
+  // Two conditions multiplied in, because either alone is a reason to stay
+  // centred: how much crown there is to feature a ridge at all, and how much
+  // the station chord describes (see {@link crownOffsetTrust}) — where the
+  // height field falls back on distance it can't tell one side of the joint
+  // from the other, so it picks a flank by the sign of x. An asymmetric crown
+  // makes the two flanks disagree, landing as a step down the joint; centring
+  // there is the condition under which the sign of x stops mattering.
   const t = clamp(archH / (PEAK_TAPER_DEPTHS * depth), 0, 1);
   const taper = t * t * (3 - 2 * t) * crownOffsetTrust(chordFrac);
 

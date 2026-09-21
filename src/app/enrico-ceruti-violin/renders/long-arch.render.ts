@@ -5,7 +5,6 @@ import { ArchCurve } from '../ceruti-types';
 import { renderGuideBaseline, renderGuideKnot, renderGuideMeasure } from './module-guide.render';
 import { HighlightedSplinePoint } from './render-constants';
 
-// ===== Long-arch overlays =====
 // The crosshairs, halos and height labels a long arch is read with, in the side
 // elevation both arching panels draw it in.
 //

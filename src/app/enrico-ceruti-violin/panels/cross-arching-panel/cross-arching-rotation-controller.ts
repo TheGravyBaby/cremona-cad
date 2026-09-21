@@ -1,11 +1,6 @@
 import { clamp, normalizeDegrees } from '../../../helpers/math/simpleGeometry';
 import { CerutiViewFlags } from '../../ceruti-types';
 
-/**
- * Pointer-driven plate rotation controller used by cross-arching overlays.
- * Owns drag state and window-level pointer listeners; the host provides the
- * mutable view flags and redraw callback.
- */
 export class CrossArchingRotationController {
   private static readonly PLATE_DEG_PER_PX = 0.4;
 

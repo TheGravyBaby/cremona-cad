@@ -1,17 +1,11 @@
 /**
- * Orthographic wireframe of the top-plate arch surface.
+ * Orthographic wireframe of the top-plate arch surface, sliced into cross-section strips
+ * every `stationStepMm` and projected via the shared oblique projection (oblique-projection.ts).
  *
- * The surface is sliced into cross-section strips every `stationStepMm` of
- * body length. Each strip is projected via the shared oblique projection
- * (see oblique-projection.ts) after applying independent rotations around
- * the X, Y, and Z axes.
- *
- * The pipeline is split so rotation stays cheap:
- *   computeWireframeGeometry — samples the surface (stationChordsAt +
- *     topSurfaceZAt per point). Depends only on params; cache the result
- *     against `JSON.stringify(params)`.
- *   projectWireframe — turns cached geometry into SVG paths for one set of
- *     rotation angles. A few thousand multiply-adds; run it every redraw.
+ * Split so rotation stays cheap: computeWireframeGeometry samples the surface and depends
+ * only on params, so cache it against `JSON.stringify(params)`; projectWireframe turns
+ * cached geometry into SVG paths for one set of rotation angles and is cheap enough to run
+ * every redraw.
  */
 
 import { CerutiColors, EnricoCerutiParams } from '../ceruti-types';
@@ -19,14 +13,12 @@ import { PlateSurfaceModel, StationChords, stationChordsAt, topSurfaceZAt } from
 import { buildProjection } from './oblique-projection';
 import { STROKE_WEIGHT } from './render-constants';
 
-// ===== Data types =====
-
 export interface WireframeStrip {
-  /** Pre-projected SVG path string for this cross-section strip. */
+  /** pre-projected SVG path for this strip. */
   path: string;
-  /** Maximum z value across the strip (used for colour selection). */
+  /** max z across the strip — used to pick channel vs. dome colour. */
   maxZ: number;
-  /** Body-Y coordinate of this station (mm). */
+  /** body-y of this station. */
   y: number;
 }
 
@@ -47,9 +39,6 @@ export interface WireframeGeometry {
   ribs: RibPt[][];
 }
 
-// ===== Geometry computation (expensive — cache the result) =====
-
-/** Sample one cross-section at body-y `y` from precomputed station chords. */
 function stripGeomFromChords(
   p: EnricoCerutiParams,
   model: PlateSurfaceModel,
@@ -77,14 +66,7 @@ function stripGeomFromChords(
   return { y, xs, zs, maxZ };
 }
 
-/**
- * Sample all wireframe geometry: cross-section strips every `stationStepMm`
- * plus longitudinal ribs at fixed fractions of the half-width. Strips and
- * ribs share one `stationChordsAt` per station. Depends only on params —
- * cache the result and re-project on rotation changes.
- *
- * @param ribFractions - fractional half-widths to sample (e.g. [0, 0.5, 1.0])
- */
+// strips and ribs share one stationChordsAt call per station, rather than each sampling it separately.
 export function computeWireframeGeometry(
   p: EnricoCerutiParams,
   model: PlateSurfaceModel,
@@ -121,8 +103,6 @@ export function computeWireframeGeometry(
   return { strips, ribs: ribs.filter(rib => rib.length > 1) };
 }
 
-// ===== Projection to SVG paths (cheap — run every redraw) =====
-
 function projectStripGeom(
   strip: WireframeStripGeom,
   proj: (x: number, y: number, z: number) => [number, number],
@@ -135,7 +115,6 @@ function projectStripGeom(
   return { path: pts.join(' '), maxZ: strip.maxZ, y: strip.y };
 }
 
-/** Project cached geometry for one set of rotation angles. */
 export function projectWireframe(
   geom: WireframeGeometry,
   bodyHeight: number,
@@ -197,7 +176,6 @@ export function computeWireframeBounds(
   return { minX, minY, maxX, maxY };
 }
 
-/** Build the SVG path for a single cross-section at body-y `y`. */
 export function computeSingleWireframeStrip(
   p: EnricoCerutiParams,
   model: PlateSurfaceModel,
@@ -217,16 +195,9 @@ export function computeSingleWireframeStrip(
   return projectStripGeom(strip, proj);
 }
 
-// ===== Render function (cheap — only SVG I/O) =====
-
-/**
- * Render the oblique wireframe.  All geometry is pre-computed; this function
- * only writes SVG path elements so it stays fast for station-slider drags.
- *
- * Draw order: all regular strips first (back-to-front, but without fill the
- * order doesn't matter for a wireframe), then the highlighted station strip
- * on top so it's always visible.
- */
+// pre-computed geometry only — this just writes SVG paths, kept fast for station-slider drags.
+// regular strips draw first; without a fill their order among themselves doesn't matter, but the
+// highlighted strip draws last so it's always on top.
 export function renderArch3dWireframe(
   colors: CerutiColors,
   strips: WireframeStrip[],
@@ -235,7 +206,7 @@ export function renderArch3dWireframe(
   domeColor: string = colors.archTop,
 ): (g: any, ui: any) => void {
   return (g: any, ui: any): void => {
-    // Longitudinal ribs — faint background context, thinner than a regular strip.
+    // longitudinal ribs — faint background context, thinner than a regular strip.
     for (const rib of ribs) {
       g.append('path')
         .attr('d', rib)
@@ -246,7 +217,6 @@ export function renderArch3dWireframe(
         .attr('vector-effect', 'non-scaling-stroke');
     }
 
-    // Cross-section strips
     for (const { path, maxZ } of strips) {
       const isChannel = maxZ < -0.01;
       const color     = isChannel ? colors.fluting : domeColor;
@@ -260,7 +230,7 @@ export function renderArch3dWireframe(
         .attr('vector-effect', 'non-scaling-stroke');
     }
 
-    // Highlighted station (current cross-section from the section view below) — matches
+    // highlighted station (current cross-section from the section view below) — matches
     // STROKE_WEIGHT.section, the weight the same station is drawn at in the 2D section view.
     if (highlightedStrip) {
       g.append('path')

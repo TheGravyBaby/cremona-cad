@@ -99,8 +99,6 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
     return this.solved[plate] === null && this.archFor(plate).archHeight > 0;
   }
 
-  // ===== Arch editing =====
-
   setCurveType(plate: 'top' | 'bottom', type: ArchCurve['type']): void {
     const plateParams = plate === 'top' ? this.arching.top : this.arching.bottom;
     if (plateParams.arch.type === type) return;
@@ -230,8 +228,6 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
       ? { source: this.highlightedSource, color: plate === 'top' ? this.colors.archTop : this.colors.archBack }
       : null;
   }
-
-  // ===== Render =====
 
   public buildRun(): RenderLayer[] {
     this.params.arching ??= defaultArchingParams(this.params.height);
