@@ -1,8 +1,8 @@
 import { Pt } from '../models/types';
 import { archedViolin } from './ceruti-fixtures';
-import { EnricoCerutiParams } from './ceruti-types';
+import { EnricoCerutiParams, NeckParams } from './ceruti-types';
 import { defaultFlutingParams, solveLongArch } from './ceruti-arch-geometry';
-import { defaultNeckParams, NeckSolve, calculateNeck } from './ceruti-neck';
+import { defaultNeckParams, calculateNeck } from './ceruti-neck';
 
 /**
  * The neck set. The properties here are the ones a maker would check with a
@@ -17,18 +17,19 @@ function neckedViolin(): EnricoCerutiParams {
   return p;
 }
 
-function solve(p: EnricoCerutiParams): NeckSolve {
+function solve(p: EnricoCerutiParams): NeckParams {
   const gouge = (p.arching!.top.fluting ??= defaultFlutingParams(p));
-  return calculateNeck(p, solveLongArch(p, p.arching!.top.arch, gouge), gouge);
+  calculateNeck(p, solveLongArch(p, p.arching!.top.arch, gouge), gouge);
+  return p.neck!;
 }
 
 const dist = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.y - b.y);
 
 describe('the nut', () => {
-  it('sits `length` mm up the neck from the mortise floor', () => {
+  it('sits `length` mm up the neck from the root', () => {
     const p = neckedViolin();
     const s = solve(p);
-    expect(dist(s.gluingAtMortise, s.nut.at)).toBeCloseTo(p.neck!.length, 9);
+    expect(dist(s.root, s.nut.at)).toBeCloseTo(p.neck!.length, 9);
   });
 
   it('runs the string flush with the fingerboard top, no separate nut height', () => {
@@ -71,13 +72,13 @@ describe('the root', () => {
 
 describe('the heel', () => {
   // the back line, as direction and inward normal
-  function backLine(s: NeckSolve) {
+  function backLine(s: NeckParams) {
     const b = s.back!;
     const len = Math.hypot(b.nut.x - b.root.x, b.nut.y - b.root.y);
     return { root: b.root, ub: new Pt((b.nut.x - b.root.x) / len, (b.nut.y - b.root.y) / len) };
   }
 
-  function expectTangentToBack(s: NeckSolve): void {
+  function expectTangentToBack(s: NeckParams): void {
     const h = s.heel!;
     const { root, ub } = backLine(s);
     const off = (h.start.x - root.x) * ub.y - (h.start.y - root.y) * ub.x;
@@ -145,9 +146,9 @@ describe('the neck wood', () => {
     }
   });
 
-  it('boxes a scroll beyond the nut, continuing the neck plane rather than the proud nut', () => {
+  it('boxes a scroll beyond the nut block, continuing the neck plane rather than the proud nut', () => {
     const s = solve(neckedViolin());
-    expect(s.scroll[0]).toEqual(s.nut.at);
+    expect(s.scroll[0]).toEqual(s.nutBlock[1]);
     expect(s.scroll[1].y).toBeGreaterThan(s.scroll[0].y);
   });
 });

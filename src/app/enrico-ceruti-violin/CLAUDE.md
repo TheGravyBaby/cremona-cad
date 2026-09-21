@@ -65,7 +65,7 @@ recognizes the current format *positively* so it stays idempotent; six tests in
   the fingerboard and strings on every one of these views and is always the weaker of the two.
 - **The heel is a cove, on purpose.** A convex arc tangent to the neck's back can never reach
   the button tip, which sits outside that line's extension — so the side silhouette of a heel is
-  necessarily concave where it leaves the neck. `solveHeel` draws it as one arc tangent to the
+  necessarily concave where it leaves the neck. `calculateHeel` draws it as one arc tangent to the
   back from the outside; a wide radius reaches the tip on its own, a tight one stops where it
   runs square to the body and a flat face carries on to the tip, so the cove never pockets a
   thumb. The convex nose a hand feels is a cross-section fact, not a silhouette one.
@@ -92,34 +92,51 @@ recognizes the current format *positively* so it stays idempotent; six tests in
   `ceruti-helpers.ts` stayed as reference text, but no panel binds them any more. Don't add a new
   one when adding a field; leave that to a human pass.
 - **The neck's own `length` places the nut; the string figures are read off, not dialed.**
-  `length` is the mortise floor to the nut, along the neck — `nutAt = gluingAtMortise` moved
-  `length` toward the nut, one `moveInVectorSpace` call, no intersection needed. `stringLength`
-  (nut to bridge, the classical figure that should land near 325–328 mm) is derived from it rather
-  than the other way around, so the nut can no longer fail to place —
-  `NeckSolve.nut`/`.nutBlock`/`.fingerboard`/`.back`/`.scroll` are non-nullable for exactly that
-  reason. This replaced an earlier design where the nut-to-bridge distance was entered and the nut
-  was solved backward off a circle around the bridge top — that circle could come up empty, which
-  is the failure mode the non-nullability above retires. As of 2026-09-20 the neck feature has
-  shipped in no template and carries no migration for this rename; the usual "frozen field name"
-  rule (root CLAUDE.md) applies again once it does. (`nut.neckStop`, root to nut and once quoted
-  here as the classical 130 mm figure, was cut the same day — see the next bullet.)
+  `length` is the root to the nut, along the neck — `nutAt = root` moved `length` toward the nut,
+  one `moveInVectorSpace` call, no intersection needed. `stringLength` (nut to bridge, the
+  classical figure that should land near 325–328 mm) is derived from it rather than the other way
+  around, so the nut can no longer fail to place. This replaced an earlier design where the
+  nut-to-bridge distance was entered and the nut was solved backward off a circle around the
+  bridge top — that circle could come up empty, which the current design retires by construction.
+  As of 2026-09-20 the neck feature has shipped in no template and carries no migration for this
+  rename; the usual "frozen field name" rule (root CLAUDE.md) applies again once it does.
+  (`nut.neckStop`, root to nut and once quoted here as the classical 130 mm figure, was cut the
+  same day — see the next bullet.)
+- **`calculateNeck` writes its solved geometry onto `p.neck`, not a returned struct.** (2026-09-21)
+  `NeckSolve` — a separate interface `calculateNeck` used to return and every render/test held
+  onto — is gone. `NeckParams` now carries both the nine authored inputs and the solved fields
+  (`edge`, `root`, `bridge`, `nutBlock`, `heel`, `scroll`, `stringLength`, …), nullable until the
+  first solve and commented as derived, the same split `FholeParams` already uses for `U1`/`UTip`
+  next to `UEye`/`stem`. This brought the neck in line with how `calculateFholeContours`/
+  `calculateOuterArcs` already work: calc mutates params, `renderNeck(p, colors, ...)` reads
+  `p.neck` directly instead of taking a solve object as its argument. Unlike f-hole's arcs,
+  nothing in the neck's solved geometry is hand-tunable per-shape — it's recomputed and
+  overwritten every pass, closer in character to `LongArchSolve` (never persisted) than to a
+  traced f-hole arc. Merging it into `NeckParams` anyway was a deliberate call for one consistent
+  pattern across the 2D panels, accepting the redundancy of persisting recomputed values in every
+  saved recipe. `ceruti-paths.ts` gained a matching `defineNeckPath`/`ensureNeckPath` (`PathKey`
+  `'neck'`) that traces the same boundary `renderNeck` draws, root to the heel's end/face — it
+  stops there rather than closing a loop, since the block's own foot inside the mortise has no
+  back-face point solved yet. It isn't wired into on-screen rendering (which still needs its
+  root/heel vs. neck two-color split, segment by segment) or into the export panel yet; it exists
+  so a future neck template export has a real path to start from.
 - **The neck panel's one readout is the figure a maker checks with a ruler, nothing else.**
   `stringLength` (straight-line nut to bridge — noted as approximate since the fingerboard and
   bridge are curved and a 2D side elevation can't give a real string length) was joined briefly
   by `stringAngleDeg` (2026-09-20), then `stringAngleDeg` was cut outright the same day — string
-  length alone was judged enough, and the field was removed from `NeckSolve` entirely rather than
-  just hidden, since nothing else read it. It's shown as a `.basic-display` (the same "computed
-  mm value" styling `fluting-panel`/`center-bout-panel` use for non-ratio readouts), not the
-  `.readout` span the panel used briefly — that class has no other panel consumer any more once
-  this one stopped using it. `nut.neckStop` (root to nut) and `projection`/`projectionHit` (the
-  fingerboard's top line carried on to the bridge axis, with its render guide) were cut outright
-  the same day for the same reason: solved but not shown, kept alive only by their own
-  bench-figure tests. `stringOverFingerboardEnd` is still solved and still backs a bench-figure
-  test, but isn't surfaced in the panel either — the difference is nobody's asked to cut that one
-  yet. `bodyDepthAtRoot` had neither a render nor a test depending on it, so it was deleted
-  outright rather than kept as an unused field. The pattern going in: a `NeckSolve` field earns
-  its keep by feeding either the drawing or the panel, not just a test — losing the last one gets
-  it deleted, not just unhooked.
+  length alone was judged enough, and the field was removed from the solved neck geometry
+  entirely rather than just hidden, since nothing else read it. It's shown as a `.basic-display`
+  (the same "computed mm value" styling `fluting-panel`/`center-bout-panel` use for non-ratio
+  readouts), not the `.readout` span the panel used briefly — that class has no other panel
+  consumer any more once this one stopped using it. `nut.neckStop` (root to nut) and
+  `projection`/`projectionHit` (the fingerboard's top line carried on to the bridge axis, with its
+  render guide) were cut outright the same day for the same reason: solved but not shown, kept
+  alive only by their own bench-figure tests. `stringOverFingerboardEnd` is still solved and still
+  backs a bench-figure test, but isn't surfaced in the panel either — the difference is nobody's
+  asked to cut that one yet. `bodyDepthAtRoot` had neither a render nor a test depending on it, so
+  it was deleted outright rather than kept as an unused field. The pattern going in: a solved
+  `NeckParams` field earns its keep by feeding either the drawing or the panel, not just a test —
+  losing the last one gets it deleted, not just unhooked.
 - **Fingerboard and nut are reference geometry, not template inputs — and `nutHeight` didn't
   even earn that.** Nothing in `fingerboard.length`/`.thickness` touches the neck's own carved
   shape (`back`, `heel`, `buttonProfile`, mortise) — they exist only to draw the fingerboard/nut
@@ -128,8 +145,8 @@ recognizes the current format *positively* so it stays idempotent; six tests in
   nut) went further and was removed outright (2026-09-20): a real nut has some height, but at
   ~1 mm on a violin it moved `stringLength`/`stringAngleDeg` by an amount the classical figures
   don't care about, so the string now runs flush with the fingerboard's own top corner —
-  `NeckSolve.nut.top` is both the fingerboard's top corner and where the string sits, and there's
-  no `nut.string` any more. The nut block still draws as a little box past the fingerboard end
+  `nut.top` (on `p.neck`, solved by `calculateNeck`) is both the fingerboard's top corner and
+  where the string sits, and there's no `nut.string` any more. The nut block still draws as a little box past the fingerboard end
   (`nutBlock`), it just doesn't peak above the fingerboard's own surface. `fingerboard.length`/
   `.thickness` stay as fields for now since they still meaningfully move the readouts and the
   drawing; if that stops being true, treat them the same way.

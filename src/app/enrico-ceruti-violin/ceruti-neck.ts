@@ -1,4 +1,4 @@
-import { Arc, arcFromCircle, Circle, Pt, Vect2D } from '../models/types';
+import { arcFromCircle, Circle, Pt, Vect2D } from '../models/types';
 import {
   angleFromCenter, dist, intersectLines, lineFromTwoPoints,
   moveInVectorSpace, pointAtDistanceToward, shortestDistanceFromPtToLine, vectorFromSlope,
@@ -13,9 +13,10 @@ import { channelCenterlineZAt, LongArchSolve } from './ceruti-arch-geometry';
 // end at y = height. Everything hangs off the top plate's edge at the neck end, so the rib taper
 // carries through — the edge point is read off the same placement the section draws with.
 //
-// This file only solves geometry: every shape it hands back (bridge wedge, nut block, heel arc,
-// scroll box) is already the exact points or Arc the renderer draws, so `renders/neck.render.ts`
-// never has to do its own trigonometry.
+// `calculateNeck` only solves geometry: every shape it writes back onto `p.neck` (bridge wedge,
+// nut block, heel arc, scroll box) is already the exact points or Arc the neck panel's render
+// function draws, reading `p.neck` straight off params the way calculateFholeContours/
+// calculateOuterArcs already work — see NeckParams' own header.
 
 const REFERENCE_BODY_HEIGHT = 355;
 /** Violin pegbox and scroll beyond the nut, as a box until the scroll panel draws them. */
@@ -25,7 +26,8 @@ const SCROLL_DEPTH_MM = 40;
 const BRIDGE_FOOT_HALF_WIDTH_RATIO = 0.07;
 const BRIDGE_TOP_TO_FOOT_WIDTH_RATIO = 1 / 3;
 
-/** Violin numbers, scaled by body length for the larger sizes — generic for the size class rather than measured. */
+/** Violin numbers, scaled by body length for the larger sizes — generic for the size class rather
+ * than measured. The solved fields start undefined; `calculateNeck` fills them on the first pass. */
 export function defaultNeckParams(p: EnricoCerutiParams): NeckParams {
   const k = p.height / REFERENCE_BODY_HEIGHT;
   const mm = (v: number) => Math.round(v * k * 2) / 2;
@@ -39,6 +41,14 @@ export function defaultNeckParams(p: EnricoCerutiParams): NeckParams {
     thickness: mm(13),
     heelRadius: mm(20),
     nutThickness: mm(10),
+
+    edge: undefined, root: undefined, direction: undefined, normal: undefined,
+    rootPlaneY: undefined, mortiseFloorY: undefined, gluingAtMortise: undefined,
+    plateEndY: undefined, buttonTip: undefined, backThickness: undefined, buttonProfile: undefined,
+    nutLength: undefined, bridge: undefined, bridgeWedge: undefined,
+    nut: undefined, nutBlock: undefined, fingerboard: undefined, back: undefined, heel: null,
+    scroll: undefined, scrollLabelAngleDeg: undefined,
+    stringLength: undefined, stringOverFingerboardEnd: undefined,
   };
 }
 
@@ -51,50 +61,9 @@ function standardFingerboardLength(bodyHeight: number): number {
   return 850; // bass
 }
 
-export interface NeckSolve {
-  /** The top plate's outer edge at the neck end. */
-  edge: Pt;
-  /** The fingerboard's underside at the plate edge — where the neck stop counts from. */
-  root: Pt;
-  /** Unit vector along the neck toward the nut, and its normal away from the back. */
-  direction: Vect2D;
-  normal: Vect2D;
-  /** The rib's outer face, and the mortise floor inside it. */
-  rootPlaneY: number;
-  mortiseFloorY: number;
-  /** The fingerboard plane where it crosses the mortise floor. */
-  gluingAtMortise: Pt;
-  /** Where the plates end, and the button's tip on the centreline beyond it; the heel foot ends there. */
-  plateEndY: number;
-  buttonTip: Pt;
-  backThickness: number;
-  /** The back plate carried on past its edge, drawn as a rectangle: plate end/tip, front/back face. */
-  buttonProfile: [Pt, Pt, Pt, Pt];
-  /** Along the neck, past the fingerboard. */
-  nutLength: number;
-  bridge: { foot: Pt; top: Pt; axis: Vect2D };
-  /** The bridge blank's four corners, foot-left, foot-right, top-right, top-left. */
-  bridgeWedge: [Pt, Pt, Pt, Pt];
-  nut: { at: Pt; top: Pt };
-  /** The little block of wood past the fingerboard end, where the string rides over the nut. */
-  nutBlock: [Pt, Pt, Pt, Pt];
-  fingerboard: { nutTop: Pt; end: Pt; endTop: Pt };
-  /** The neck's back, nut end to root end; the heel departs it at `heel.start`. */
-  back: { nut: Pt; root: Pt };
-  /** The cove from `start` on the back to `end`; `face` is the button tip when a square face runs on from the arc to it; `arc` is the same curve, ready to draw. Null when the heel radius can't stand on its own — see calculateHeel. */
-  heel: { center: Pt; r: number; start: Pt; end: Pt; face: Pt | null; arc: Arc } | null;
-  /** Stand-in for the pegbox and scroll, beyond the nut: front-nut, front-far, back-far, back-nut. */
-  scroll: [Pt, Pt, Pt, Pt];
-  /** Rotation, in degrees, that sits the scroll's label along the neck. */
-  scrollLabelAngleDeg: number;
-  /** Nut to bridge, straight-line (mm) — the string's approximate length. Actual length runs a
-   * little longer once the fingerboard and bridge curvature are accounted for. */
-  stringLength: number;
-  stringOverFingerboardEnd: number;
-}
-
-/** `p.arching`, `p.neck` and `p.button` must already be in place — the panel seeds them. */
-export function calculateNeck(p: EnricoCerutiParams, topArch: LongArchSolve | null, topGouge: FlutingParams): NeckSolve {
+/** `p.arching`, `p.neck` and `p.button` must already be in place — the panel seeds them. Writes
+ * every solved shape back onto `p.neck` rather than returning it — see that interface's header. */
+export function calculateNeck(p: EnricoCerutiParams, topArch: LongArchSolve | null, topGouge: FlutingParams): void {
   const nk = p.neck!;
   const a = p.arching!;
   const taper = solveRibTaper(p);
@@ -140,12 +109,13 @@ export function calculateNeck(p: EnricoCerutiParams, topArch: LongArchSolve | nu
   ];
   const bridge = { foot: bridgeFoot, top: bridgeTop, axis: bridgeAxis };
 
-  // the nut sits `length` mm from the mortise floor, straight up the neck centreline — that
-  // same line already carries `root` and `gluingAtMortise`, so this is a single move rather
-  // than another intersection. The string runs flush with the fingerboard's own surface at the
-  // nut, no separate nut height, so `nutTop` is both the fingerboard's top corner and where the
+  // the nut sits `length` mm from the root, straight up the neck centreline — the visible
+  // neck's own gluing length, independent of how deep the mortise happens to be cut. That same
+  // line already carries `root` and `gluingAtMortise`, so this is a single move rather than
+  // another intersection. The string runs flush with the fingerboard's own surface at the nut,
+  // no separate nut height, so `nutTop` is both the fingerboard's top corner and where the
   // string sits.
-  const nutAt = moveInVectorSpace(gluingAtMortise, [{ ...direction, mag: nk.length }]);
+  const nutAt = moveInVectorSpace(root, [{ ...direction, mag: nk.length }]);
   const nutTop = moveInVectorSpace(nutAt, [{ ...normal, mag: nk.nutThickness }]);
   const nut = { at: nutAt, top: nutTop };
 
@@ -163,31 +133,34 @@ export function calculateNeck(p: EnricoCerutiParams, topArch: LongArchSolve | nu
   };
   const heel = calculateHeel(back, buttonTip, nk.heelRadius);
 
-  // the scroll continues the neck's own plane out past the nut — the nut itself sits proud of
-  // it, raised by the fingerboard thickness, so the scroll box starts at `nutAt`, not `nutTop`.
+  // the scroll continues the neck's own plane out past the nut block — the nut itself sits
+  // proud of it, raised by the fingerboard thickness, so the scroll box starts at
+  // `nutBlockFar`, not `nutTop`, picking up where the nut's own 6mm span ends rather than
+  // overlapping it.
   const k = p.height / REFERENCE_BODY_HEIGHT;
   const scrollLength = SCROLL_LENGTH_MM * k;
   const scrollDepth = SCROLL_DEPTH_MM * k;
-  const scrollFront1 = moveInVectorSpace(nutAt, [{ ...direction, mag: scrollLength }]);
+  const scrollFront1 = moveInVectorSpace(nutBlockFar, [{ ...direction, mag: scrollLength }]);
   const scroll: [Pt, Pt, Pt, Pt] = [
-    nutAt, scrollFront1,
+    nutBlockFar, scrollFront1,
     moveInVectorSpace(scrollFront1, [{ ...normal, mag: -scrollDepth }]),
-    moveInVectorSpace(nutAt, [{ ...normal, mag: -scrollDepth }]),
+    moveInVectorSpace(nutBlockFar, [{ ...normal, mag: -scrollDepth }]),
   ];
   const scrollLabelAngleDeg = 90 - Math.atan2(direction.b, direction.a) * 180 / Math.PI;
 
   const stringOverFingerboardEnd = shortestDistanceFromPtToLine(fingerboardEndTop, lineFromTwoPoints(nutTop, bridgeTop));
   const stringLength = dist(nutTop, bridgeTop);
 
-  return {
-    edge, root, direction, normal, rootPlaneY, mortiseFloorY, gluingAtMortise,
-    plateEndY, buttonTip, backThickness, buttonProfile, bridge, bridgeWedge,
-    nutLength, nut, nutBlock, fingerboard, back, heel,
-    scroll, scrollLabelAngleDeg, stringLength, stringOverFingerboardEnd,
-  };
+  nk.edge = edge; nk.root = root; nk.direction = direction; nk.normal = normal;
+  nk.rootPlaneY = rootPlaneY; nk.mortiseFloorY = mortiseFloorY; nk.gluingAtMortise = gluingAtMortise;
+  nk.plateEndY = plateEndY; nk.buttonTip = buttonTip; nk.backThickness = backThickness; nk.buttonProfile = buttonProfile;
+  nk.bridge = bridge; nk.bridgeWedge = bridgeWedge;
+  nk.nutLength = nutLength; nk.nut = nut; nk.nutBlock = nutBlock; nk.fingerboard = fingerboard; nk.back = back; nk.heel = heel;
+  nk.scroll = scroll; nk.scrollLabelAngleDeg = scrollLabelAngleDeg;
+  nk.stringLength = stringLength; nk.stringOverFingerboardEnd = stringOverFingerboardEnd;
 }
 
-function calculateHeel(back: { nut: Pt; root: Pt }, tip: Pt, radius: number): NeckSolve['heel'] {
+function calculateHeel(back: { nut: Pt; root: Pt }, tip: Pt, radius: number): NeckParams['heel'] {
   const backRunLength = dist(back.root, back.nut);
   if (!(radius > 0) || backRunLength < 1e-9) return null;
 
