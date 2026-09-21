@@ -37,7 +37,7 @@ export function defaultNeckParams(p: EnricoCerutiParams): NeckParams {
     mortiseDepth: mm(6.5),
     overstand: mm(6.5),
     angle: 7.5 * Math.PI / 180,
-    length: mm(136),
+    length: mm(120),
     thickness: mm(13),
     heelRadius: mm(20),
     nutThickness: mm(10),
@@ -46,7 +46,7 @@ export function defaultNeckParams(p: EnricoCerutiParams): NeckParams {
     rootPlaneY: undefined, mortiseFloorY: undefined, gluingAtMortise: undefined,
     plateEndY: undefined, buttonTip: undefined, backThickness: undefined, buttonProfile: undefined,
     nutLength: undefined, bridge: undefined, bridgeWedge: undefined,
-    nut: undefined, nutBlock: undefined, fingerboard: undefined, back: undefined, heel: null,
+    nut: undefined, nutBlock: undefined, fingerboard: undefined, back: undefined, heel: null, heelBottom: undefined,
     scroll: undefined, scrollLabelAngleDeg: undefined,
     stringLength: undefined, stringOverFingerboardEnd: undefined,
   };
@@ -109,13 +109,22 @@ export function calculateNeck(p: EnricoCerutiParams, topArch: LongArchSolve | nu
   ];
   const bridge = { foot: bridgeFoot, top: bridgeTop, axis: bridgeAxis };
 
-  // the nut sits `length` mm from the root, straight up the neck centreline — the visible
-  // neck's own gluing length, independent of how deep the mortise happens to be cut. That same
-  // line already carries `root` and `gluingAtMortise`, so this is a single move rather than
-  // another intersection. The string runs flush with the fingerboard's own surface at the nut,
-  // no separate nut height, so `nutTop` is both the fingerboard's top corner and where the
-  // string sits.
-  const nutAt = moveInVectorSpace(root, [{ ...direction, mag: nk.length }]);
+  // `length` is the neck as felt in hand: the back's own top-left corner (at the nut) down to a
+  // level line at the button's height — not root to nut, and not a straight-line reach to the
+  // heel's curve either, since a maker's ruler runs along the neck, not through it. The back line
+  // (root's line carried onto the back, before the nut is known) crosses that level first; the nut
+  // is `length` further up it, and everything else — nutAt, back.nut — follows in the fingerboard
+  // plane from there. The heel's own arc still departs the back line below the nut, same as always,
+  // it just draws a curve rather than deciding where the nut sits.
+  const backRoot = moveInVectorSpace(neckAtRootPlane, [{ ...normal, mag: -nk.thickness }]);
+  const backLine = lineFromTwoPoints(backRoot, moveInVectorSpace(backRoot, [{ ...direction, mag: 1 }]));
+  const buttonPlane = lineFromTwoPoints(new Pt(0, buttonTip.y), new Pt(1, buttonTip.y));
+  const heelBottom = intersectLines(backLine, buttonPlane)!;
+  const backNut = moveInVectorSpace(heelBottom, [{ ...direction, mag: nk.length }]);
+
+  // The string runs flush with the fingerboard's own surface at the nut, no separate nut height,
+  // so `nutTop` is both the fingerboard's top corner and where the string sits.
+  const nutAt = moveInVectorSpace(backNut, [{ ...normal, mag: nk.thickness }]);
   const nutTop = moveInVectorSpace(nutAt, [{ ...normal, mag: nk.nutThickness }]);
   const nut = { at: nutAt, top: nutTop };
 
@@ -127,10 +136,7 @@ export function calculateNeck(p: EnricoCerutiParams, topArch: LongArchSolve | nu
   const fingerboardEndTop = moveInVectorSpace(fingerboardEnd, [{ ...normal, mag: nk.nutThickness }]);
   const fingerboard = { nutTop, end: fingerboardEnd, endTop: fingerboardEndTop };
 
-  const back = {
-    nut: moveInVectorSpace(nutAt, [{ ...normal, mag: -nk.thickness }]),
-    root: moveInVectorSpace(neckAtRootPlane, [{ ...normal, mag: -nk.thickness }]),
-  };
+  const back = { nut: backNut, root: backRoot };
   const heel = calculateHeel(back, buttonTip, nk.heelRadius);
 
   const k = p.height / REFERENCE_BODY_HEIGHT;
@@ -152,6 +158,7 @@ export function calculateNeck(p: EnricoCerutiParams, topArch: LongArchSolve | nu
   nk.plateEndY = plateEndY; nk.buttonTip = buttonTip; nk.backThickness = backThickness; nk.buttonProfile = buttonProfile;
   nk.bridge = bridge; nk.bridgeWedge = bridgeWedge;
   nk.nutLength = nutLength; nk.nut = nut; nk.nutBlock = nutBlock; nk.fingerboard = fingerboard; nk.back = back; nk.heel = heel;
+  nk.heelBottom = heelBottom;
   nk.scroll = scroll; nk.scrollLabelAngleDeg = scrollLabelAngleDeg;
   nk.stringLength = stringLength; nk.stringOverFingerboardEnd = stringOverFingerboardEnd;
 }
