@@ -5,7 +5,6 @@ import {
   ArchCurve, ArchingParams, ArchPlate, CrossArchParams, CrossArchPoint, EnricoCerutiParams, FlutingParams,
 } from "./ceruti-types";
 
-// ===== Arching profile system =====
 // The long-arch height profile and the body-position queries every arching
 // consumer shares — a distinct concern from the flat 2D outline in
 // ceruti-calcs.ts/ceruti-paths.ts.
@@ -46,31 +45,24 @@ export function defaultArchingParams(bodyHeight: number): ArchingParams {
     top: plate(55, 9.0), bottom: plate(50, 9.0) };
 }
 
-/**
- * The wireframe/contour step sizes below were tuned by eye against a standard
- * violin. Body dimensions vary a lot across the instrument family, so a cello
- * on fixed mm steps would render 2-3x the wires and contours of a violin.
- * Scaling each step against these reference dimensions keeps rendered density
- * roughly constant across the size range.
- */
+// step sizes below were tuned by eye against a standard violin; scaling each
+// against these reference dimensions keeps rendered density roughly constant
+// across the size range — fixed mm steps would render a cello at 2-3x a
+// violin's wires and contours.
 const REFERENCE_BODY_HEIGHT = 350; // mm, violin body length
 const REFERENCE_BODY_WIDTH = 200;  // mm, violin body width
 const REFERENCE_ARCH_HEIGHT = 15;  // mm, violin top-plate default
 const REFERENCE_STATION_STEP_MM = 4;
 const REFERENCE_SAMPLE_STEP_MM = 1.5;
-/**
- * Marching-squares grid for the contour map.
- *
- * Held against the level spacing rather than chosen for its own sake: the rings
- * are drawn 1mm apart in height, and a grid finer than the features those rings
- * can express is just samples that cost time and change nothing on screen. At
- * 2mm a violin plate is ~17,000 samples where 1.25mm was ~45,000, and the map
- * that comes out is the same map — this is the single most expensive number in
- * the arching panels, at roughly 380ms per rebuild before the change.
- *
- * It is *only* the contour preview. The STL carries its own grid (finer, and
- * set per export), and the template blanks are read off the surface directly.
- */
+// marching-squares grid for the contour map, held against the level spacing
+// rather than chosen for its own sake: rings are drawn 1mm apart in height, and
+// a grid finer than that just costs time without changing the map that comes
+// out — at 2mm a violin plate is ~17,000 samples where 1.25mm was ~45,000, for
+// the same map. This was the single most expensive number in the arching
+// panels, at roughly 380ms per rebuild before the change.
+//
+// Only the contour preview — the STL carries its own (finer) grid, set per
+// export, and the template blanks read the surface directly.
 const REFERENCE_GRID_MM = 2;
 const REFERENCE_LEVEL_STEP_MM = 1;
 

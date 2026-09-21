@@ -113,16 +113,12 @@ interface CrossSplineRow {
 }
 
 /**
- * Step three: the crown across the plate, as a trochoid or as control points.
+ * The crown across the plate, as a trochoid or as control points.
  *
- * The maker authors only the crown, in fractions of it. Where it stops — the
- * run out into the channel — is solved, not entered, which is what keeps a more
- * physical model from costing more parameters. The panel therefore *reports*
- * the transition rather than offering it for editing.
- *
- * The plate's base shape anchors both body ends and stations override it in
- * between, with a draft preview answering "what am I looking at, and what would
- * an edit here change?" before anything is committed.
+ * The maker authors only the crown; where it stops — the run-out into the
+ * channel — is solved, not entered, since a more physical model would cost
+ * more parameters. The panel therefore reports the transition rather than
+ * offering it for editing.
  */
 @Component({
   selector: 'app-ceruti-cross-arching-panel',
@@ -177,12 +173,7 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     this.rotation?.dispose();
   }
 
-  /**
-   * Toggles a plate's overlay: clicking the active mode turns it off, clicking
-   * the other switches to it. Only one plate may show one at a time — the
-   * contour and wireframe sampling is one-at-a-time across both plates, not
-   * just within one.
-   */
+  /** Only one plate may show an overlay at a time — the contour/wireframe sampling is one-at-a-time across both plates, not just within one. */
   togglePlateView(plate: 'top' | 'back', mode: PlateViewMode): void {
     const key = plate === 'top' ? 'topPlateView' : 'backPlateView';
     const otherKey = plate === 'top' ? 'backPlateView' : 'topPlateView';
@@ -486,8 +477,6 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     this.onChange();
   }
 
-  // ===== Template editing =====
-
   /** The crown's position across the plate as a whole percent, 50 being the joint. */
   peakPct(plate: 'top' | 'bottom'): number {
     return Math.round((this.crossSpline(plate)?.peak ?? 0.5) * 100);
@@ -617,9 +606,7 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
   addPoint(plate: 'top' | 'bottom'): void {
     const target = this.editTarget(plate);
     if (target.type !== 'spline') return;
-    // Partway on toward the channel from the outermost knot, at a fraction of
-    // its height — a plausible next knot outward rather than one landing on top
-    // of an existing one.
+    // partway toward the channel from the outermost knot, not on top of it.
     const outermost = target.points.reduce((m, p) => Math.max(m, Math.abs(p.x)), 0);
     const outer = target.points.find(p => Math.abs(p.x) === outermost);
     const x = outermost > 0 ? clamp((outermost + 1) / 2, KNOT_MIN_FRAC, 0.99) : 0.5;
@@ -649,7 +636,6 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     this.onChange();
   }
 
-  // ===== Stations =====
   // The base shape anchors both body ends; stations are interior overrides the
   // crown ramps through in between. The Section control at the top of the panel
   // doubles as the cursor they are placed at.
@@ -755,8 +741,6 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     this.emitImmediate(false);
   }
 
-  // ===== Render =====
-
   public buildRun(): RenderLayer[] {
     this.params.arching ??= defaultArchingParams(this.params.height);
     // The channel offsets and plate slabs chord the outer arcs, which must be current.
@@ -820,11 +804,7 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     if (unsolvable) transitionError(plate, y);
   }
 
-  /**
-   * Contour map or oblique wireframe above the section, whichever the flags
-   * ask for. The ring builder, the projection, the renderers and the drag frame
-   * all take a {@link PlateSurfaceModel} and nothing more.
-   */
+  // Ring builder, projection, renderers and drag frame all take just a {@link PlateSurfaceModel}.
   private overlayLayers(y: number): RenderLayer[] {
     const a = this.arching;
     const layers: RenderLayer[] = [];
@@ -950,7 +930,6 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     const color = isTop ? this.colors.archTop : this.colors.archBack;
     const section = this.section[plate];
 
-    // Plate underside, flat across the section, and the thickness at each edge.
     renderSegment(new Pt(-outerHalf, innerZ), new Pt(outerHalf, innerZ), this.colors.innerTrace, STROKE_WEIGHT.guide)(g, ui);
     for (const side of [1, -1] as const) {
       renderSegment(new Pt(side * outerHalf, innerZ), new Pt(side * outerHalf, zBase), this.colors.innerTrace, STROKE_WEIGHT.guide)(g, ui);
@@ -1002,7 +981,6 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     }
   }
 
-  // ===== STL export =====
   // Deliberately here rather than in the Export panel: this model is still
   // being settled, and the Export panel's job is to emit the geometry a maker
   // would cut. A plate exported from this button is for looking at.
@@ -1058,10 +1036,7 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
   }
 }
 
-/**
- * Adds a station to a plate's list, keeping it sorted by body position — the
- * order the resolver reads them in.
- */
+/** Adds a station to a plate's list, sorted by body position — the order the resolver reads them in. */
 function pushStation<T extends { y: number }>(stations: T[], station: T): void {
   stations.push(station);
   stations.sort((a, b) => a.y - b.y);

@@ -25,7 +25,6 @@ export interface ProjectedContourLevel {
   path: string;
 }
 
-/** Projects raw contour rings through the shared oblique projection; z = each ring's level. */
 export function projectArchContourRings(
   levels: ArchContourLevel[],
   bodyHeight: number,
@@ -49,7 +48,6 @@ export function projectArchContourRings(
   }));
 }
 
-/** Projects a flat (z = 0) polyline — used for the outline context line. */
 export function projectFlatPolyline(
   pts: Pt[],
   bodyHeight: number,
@@ -102,10 +100,7 @@ export function computeArchContourBounds(
   return { minX, minY, maxX, maxY };
 }
 
-/**
- * Render the (already-projected) contour map. Channel levels (z ≤ 0) draw
- * fainter than the arch levels, matching the flat map's convention.
- */
+/** channel levels (z ≤ 0) draw fainter than arch levels, matching the flat map's convention. */
 export function renderArchContours3d(
   colors: CerutiColors,
   levels: ProjectedContourLevel[],

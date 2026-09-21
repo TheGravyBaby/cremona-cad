@@ -82,7 +82,6 @@ export class FlutingPanel extends CerutiPanelBase implements OnInit {
     this.onToggle();
   }
 
-  /** Whether a second gouge is set for the waist at all. */
   cBoutGouge(plate: 'top' | 'bottom'): boolean {
     return this.gouge(plate).sweepRadius_cBout !== null;
   }
@@ -154,7 +153,6 @@ export class FlutingPanel extends CerutiPanelBase implements OnInit {
     return renders;
   }
 
-  /** One plate's channel, shifted into its own half of the view. */
   private plateLayers(plate: 'top' | 'bottom', dx: number): RenderLayer[] {
     const at = (path: string): string => translatePath(path, dx, 0);
     const color = plate === 'top' ? this.colors.archTop : this.colors.archBack;
