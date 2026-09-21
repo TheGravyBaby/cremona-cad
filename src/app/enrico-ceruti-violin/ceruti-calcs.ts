@@ -4,7 +4,7 @@ import { pathFromRoundedRect, pathFromCircle, pathFromRect, combinePathStrings, 
 import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Line, Pt, Rectangle } from "../models/types";
 import { error } from "../shared/message-emitter";
 import { DefaultParams, EnricoCerutiParams, PathEntry, PathKey } from "./ceruti-types";
-import { defaultButton, defineFholePath, defineInnerPath, defineOuterPath, definePurflingPath, defineOuterPurflingPath } from "./ceruti-paths";
+import { defaultButton, defineFholePath, defineInnerPath, defineNeckPath, defineOuterPath, definePurflingPath, defineOuterPurflingPath } from "./ceruti-paths";
 
 // ===== Outline solvers =====
 // Solve where the violin body's bouts/corners/center-bout arcs actually sit.
@@ -1175,5 +1175,15 @@ export const ensureFholePath = (
 ): void => {
   calculateFholeContours(params);
   upsertPathEntry(paths, 'fHole', defineFholePath(params));
+};
+
+/** Unlike the other ensure* functions, this doesn't call its own calc step: calculateNeck needs
+ * arch geometry (topArch/topGouge) the panel has already solved for its own render pass, so the
+ * panel calls calculateNeck itself before this. */
+export const ensureNeckPath = (
+  params: EnricoCerutiParams,
+  paths: PathEntry[],
+): void => {
+  upsertPathEntry(paths, 'neck', defineNeckPath(params));
 };
 

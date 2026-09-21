@@ -1,11 +1,11 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, FlutingParams, NeckParams, RenderToggleKey } from '../../ceruti-types';
+import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, FlutingParams, NeckParams, PathEntry, RenderToggleKey } from '../../ceruti-types';
 import { defaultArchingParams } from '../../ceruti-arching';
 import { defaultFlutingParams, LongArchSolve, solveLongArch } from '../../ceruti-arch-geometry';
-import { calculateOuterArcs } from '../../ceruti-calcs';
-import { defaultNeckParams, NeckSolve, calculateNeck } from '../../ceruti-neck';
+import { calculateOuterArcs, ensureNeckPath } from '../../ceruti-calcs';
+import { defaultNeckParams, calculateNeck } from '../../ceruti-neck';
 import { renderBodySection } from '../../renders/body-section.render';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
@@ -26,11 +26,9 @@ export class NeckPanel extends CerutiPanelBase implements OnInit {
   static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleGuides', 'showFingerboard'];
 
   @Input({ required: true }) params!: EnricoCerutiParams;
+  @Input({ required: true }) paths!: PathEntry[];
   @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;
-
-  /** Last solve, kept so the template can report it without re-solving. */
-  protected solved: NeckSolve | null = null;
 
   ngOnInit(): void {
     this.emitImmediate();
@@ -66,17 +64,19 @@ export class NeckPanel extends CerutiPanelBase implements OnInit {
       top: solveLongArch(p, p.arching.top.arch, gouge.top),
       bottom: solveLongArch(p, p.arching.bottom.arch, gouge.bottom),
     };
-    this.solved = calculateNeck(p, solved.top, gouge.top);
+    calculateNeck(p, solved.top, gouge.top);
+    ensureNeckPath(p, this.paths);
 
     return [
       renderBodySection(p, this.colors, { solved, gouge, color: this.colors.outerTrace }),
-      renderNeck(this.solved, this.colors, this.flags.showModuleGuides, this.flags.showFingerboard),
+      renderNeck(p, this.colors, this.flags.showModuleGuides, this.flags.showFingerboard),
     ];
   }
-  
+
 }
 
-export function renderNeck(s: NeckSolve, colors: CerutiColors, showGuides: boolean, showFingerboard: boolean) {
+export function renderNeck(p: EnricoCerutiParams, colors: CerutiColors, showGuides: boolean, showFingerboard: boolean) {
+  const s = p.neck!;
   return (g: any, ui: any): void => {
     const seg = (a: Pt, b: Pt, color = colors.neck) => renderSegment(a, b, color, STROKE_WEIGHT.section)(g, ui);
 

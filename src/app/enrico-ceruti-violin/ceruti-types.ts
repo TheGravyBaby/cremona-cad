@@ -1,4 +1,4 @@
-import { Arc, Circle, NamedReferenceImage, Pt, Rectangle, ReferenceImage } from "../models/types";
+import { Arc, Circle, NamedReferenceImage, Pt, Rectangle, ReferenceImage, Vect2D } from "../models/types";
 
 /** The back plate's tab under the neck heel. Drawn in plan by ceruti-paths, read as a tip by the neck. */
 export interface ButtonParams {
@@ -114,7 +114,13 @@ export interface EnricoCerutiParams {
 
 // the neck set, in the side elevation. the fingerboard plane leaves the top plate's edge
 // `overstand` proud of it and tilts back toward the nut by `angle`; the nut sits `length` from
-// the mortise along the neck, so the stop length (nut to bridge) is read off, not entered.
+// the root along the neck, so the stop length (nut to bridge) is read off, not entered.
+//
+// The fields below the inputs are solved each pass by `calculateNeck` in ceruti-neck.ts — not
+// free fields, null until the first solve — same split as FholeParams mixing UEye/stem (authored)
+// with U1/UTip (derived). Nothing here is hand-tunable per-shape the way an f-hole arc is; they're
+// carried on NeckParams anyway so the render function and the neck path builder can read them
+// straight off params, matching how every other panel's calc/render pair works.
 export interface NeckParams {
   /** Plate edge to the bridge line, down the body (mm). */
   bodyStop: number;
@@ -126,7 +132,8 @@ export interface NeckParams {
   overstand: number;
   /** Radians. Tilt of the fingerboard plane off the body axis, nut end toward the back. */
   angle: number;
-  /** Mortise floor to the nut, along the neck (mm). Fixes where the nut lands. */
+  /** Root to the nut, along the neck (mm) — the visible neck's own length, independent of how
+   * deep the mortise is cut. Fixes where the nut lands. */
   length: number;
   /** The neck wood alone, fingerboard plane to the back — uniform along the neck's length (mm). */
   thickness: number;
@@ -134,6 +141,48 @@ export interface NeckParams {
   heelRadius: number;
   /** Fingerboard thickness at the nut, uniform along its length (mm). */
   nutThickness: number;
+
+  /** The top plate's outer edge at the neck end. */
+  edge: Pt | null;
+  /** The fingerboard's underside at the plate edge — where the neck stop counts from. */
+  root: Pt | null;
+  /** Unit vector along the neck toward the nut, and its normal away from the back. */
+  direction: Vect2D | null;
+  normal: Vect2D | null;
+  /** The rib's outer face, and the mortise floor inside it. */
+  rootPlaneY: number | null;
+  mortiseFloorY: number | null;
+  /** The fingerboard plane where it crosses the mortise floor. */
+  gluingAtMortise: Pt | null;
+  /** Where the plates end, and the button's tip on the centreline beyond it; the heel foot ends there. */
+  plateEndY: number | null;
+  buttonTip: Pt | null;
+  backThickness: number | null;
+  /** The back plate carried on past its edge, drawn as a rectangle: plate end/tip, front/back face. */
+  buttonProfile: [Pt, Pt, Pt, Pt] | null;
+  /** Along the neck, past the fingerboard — the nut block's own span. */
+  nutLength: number | null;
+  bridge: { foot: Pt; top: Pt; axis: Vect2D } | null;
+  /** The bridge blank's four corners, foot-left, foot-right, top-right, top-left. */
+  bridgeWedge: [Pt, Pt, Pt, Pt] | null;
+  nut: { at: Pt; top: Pt } | null;
+  /** The little block of wood past the fingerboard end, where the string rides over the nut. */
+  nutBlock: [Pt, Pt, Pt, Pt] | null;
+  fingerboard: { nutTop: Pt; end: Pt; endTop: Pt } | null;
+  /** The neck's back, nut end to root end; the heel departs it at `heel.start`. */
+  back: { nut: Pt; root: Pt } | null;
+  /** The cove from `start` on the back to `end`; `face` is the button tip when a square face runs
+   * on from the arc to it; `arc` is the same curve, ready to draw. Null before the first solve,
+   * or when the heel radius can't stand on its own — see calculateHeel. */
+  heel: { center: Pt; r: number; start: Pt; end: Pt; face: Pt | null; arc: Arc } | null;
+  /** Stand-in for the pegbox and scroll, beyond the nut: front-nut, front-far, back-far, back-nut. */
+  scroll: [Pt, Pt, Pt, Pt] | null;
+  /** Rotation, in degrees, that sits the scroll's label along the neck. */
+  scrollLabelAngleDeg: number | null;
+  /** Nut to bridge, straight-line (mm) — the string's approximate length. Actual length runs a
+   * little longer once the fingerboard and bridge curvature are accounted for. */
+  stringLength: number | null;
+  stringOverFingerboardEnd: number | null;
 }
 
 export interface ArchingParams {
@@ -510,7 +559,7 @@ export interface ArchPlate {
  * type error. `purfling`/`outerPurfling` can legitimately be absent; read those with
  * `getPathOrNull`.
  */
-export type PathKey = 'inner' | 'top' | 'back' | 'purfling' | 'outerPurfling' | 'fHole';
+export type PathKey = 'inner' | 'top' | 'back' | 'purfling' | 'outerPurfling' | 'fHole' | 'neck';
 
 /** One named, precalculated SVG path — the shared cache read by export. */
 export interface PathEntry {

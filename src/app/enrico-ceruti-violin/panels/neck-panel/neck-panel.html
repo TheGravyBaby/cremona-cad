@@ -66,11 +66,11 @@
                 [(ngModel)]="neck.bridgeHeight" (input)="onChange()" />
         </label>
         <label class="field-cell">
-            @if (solved; as s) {
+            @if (neck.stringLength != null) {
             <div class="input-group basic-row field-row" role="group">
                 <label class="field-cell">
                     <span class="field-title">String Length <span class="unit-label">mm</span></span>
-                    <div class="basic-display" aria-label="String length value">{{ s.stringLength | number:'1.1-1' }}
+                    <div class="basic-display" aria-label="String length value">{{ neck.stringLength | number:'1.1-1' }}
                     </div>
                 </label>
             </div>

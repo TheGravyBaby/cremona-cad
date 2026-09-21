@@ -931,3 +931,29 @@ export function defineFholePath(p: EnricoCerutiParams): string {
     return combinePathStrings([defineOneFholePath(p, false), defineOneFholePath(p, true)]);
 }
 
+/**
+ * The neck's own visible boundary, root to heel — the same points `renderNeck` plots today, one
+ * continuous path (`calculateNeck` must already have run). It stops at `heel.end`/`.face` rather
+ * than closing a loop back to the root: the block's own foot inside the mortise has no back-face
+ * point solved yet, so there's nothing honest to close it with. Fingerboard, nut block, bridge
+ * wedge, button and scroll are separate parts (see the module CLAUDE.md) and aren't part of it.
+ */
+export function defineNeckPath(p: EnricoCerutiParams): string {
+    const nk = p.neck!;
+    const segments = [
+        pathFromLine(new Pt(0, nk.mortiseFloorY!), nk.gluingAtMortise!),
+        pathFromLine(nk.gluingAtMortise!, nk.root!),
+        pathFromLine(nk.root!, nk.nut!.at),
+        pathFromLine(nk.nut!.at, nk.back!.nut),
+    ];
+    const heel = nk.heel;
+    if (heel) {
+        segments.push(pathFromLine(nk.back!.nut, heel.start));
+        segments.push(pathFromArc(heel.arc));
+        if (heel.face) segments.push(pathFromLine(heel.end, heel.face));
+    } else {
+        segments.push(pathFromLine(nk.back!.nut, nk.back!.root));
+    }
+    return unifyConnectedSvgPaths(segments);
+}
+
