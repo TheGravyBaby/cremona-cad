@@ -563,14 +563,6 @@ select {
   color: var(--ui-text-secondary);
 }
 
-.export-row {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
 .export-view-toggle {
   margin-left: auto;
   white-space: nowrap;
@@ -580,8 +572,6 @@ select {
   display: block;
 }
 
-/* ===== Export panel ===== */
-
 .export-description {
   margin: 0 0 8px;
   font-size: 0.85rem;
@@ -589,66 +579,98 @@ select {
   line-height: 1.4;
 }
 
-.export-table {
+.export-groups {
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  border: 1px solid var(--ui-border-soft);
-  border-radius: 5px;
-  overflow: hidden;
+  gap: 6px;
   width: 100%;
-  box-sizing: border-box;
+}
+
+.export-group {
+  border: 1px solid var(--ui-border-soft);
+  border-radius: 6px;
+  background: var(--ui-bg-section);
+  padding: 0;
+  overflow: hidden;
+  transition: border-color 140ms ease, background-color 140ms ease;
+}
+
+.export-group[open] {
+  border-color: var(--ui-border-strong);
+  background: var(--ui-bg-section-open);
+}
+
+.export-group > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-text-primary);
+}
+
+.export-group > summary::-webkit-details-marker {
+  display: none;
+}
+
+.export-group__chevron {
+  font-size: 10px;
+  color: var(--ui-text-secondary);
+  transition: transform 120ms ease;
+}
+
+.export-group[open] > summary .export-group__chevron {
+  transform: rotate(90deg);
+}
+
+.export-group__count {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ui-text-secondary);
+}
+
+.export-group__body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 6px 6px;
 }
 
 .export-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  padding: 5px 8px;
-  background: var(--ui-bg-surface);
-  box-sizing: border-box;
-  min-width: 0;
-}
-
-.export-row + .export-row {
-  border-top: 1px solid var(--ui-border-soft);
-}
-
-.export-row__label {
-  display: flex;
   flex-direction: column;
-  gap: 1px;
-  min-width: 0;
-  overflow: hidden;
-  flex: 1 1 0;
+  gap: 3px;
+  padding: 6px 8px;
+  background: var(--ui-bg-surface);
+  border: 1px solid var(--ui-border-soft);
+  border-radius: 5px;
+  box-sizing: border-box;
 }
 
 .export-row__name {
   font-size: 0.82rem;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--ui-text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .export-row__desc {
   font-size: 0.72rem;
   color: var(--ui-text-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.35;
 }
 
 .export-row__actions {
   display: flex;
-  gap: 3px;
-  flex-shrink: 0;
+  gap: 4px;
 }
 
 .export-row__actions .recipe-btn {
   width: auto;
+  flex: 1 1 0;
   padding: 2px 6px;
   font-size: 0.78rem;
   height: 22px;

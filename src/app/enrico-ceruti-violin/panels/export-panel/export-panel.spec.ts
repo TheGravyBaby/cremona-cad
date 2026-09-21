@@ -17,7 +17,7 @@ import { ExportPanel } from './export-panel';
 
 const colors = new Proxy({}, { get: () => '#888888' }) as CerutiColors;
 
-/** The eight export buttons, and which of them need an arched plate. */
+/** The plain export buttons (excluding the f-hole templates, covered below), and which of them need an arched plate. */
 const PLAIN_EXPORTS = ['innerTrace', 'outerTrace', 'back', 'mould', 'blocks'] as const;
 const ARCHING_EXPORTS = ['crossArchTemplates', 'longArchTemplates'] as const;
 
@@ -161,6 +161,47 @@ describe('the f-hole cutting template', () => {
     const [vx, vy, vw, vh] = doc.documentElement.getAttribute('viewBox')!.split(' ').map(Number);
 
     const tolerance = 1; // mm — the true bbox can bulge slightly past its arcs' own endpoints
+    for (const { x, y } of pathEndpoints(d)) {
+      expect(x).toBeGreaterThanOrEqual(vx - tolerance);
+      expect(x).toBeLessThanOrEqual(vx + vw + tolerance);
+      expect(y).toBeGreaterThanOrEqual(vy - tolerance);
+      expect(y).toBeLessThanOrEqual(vy + vh + tolerance);
+    }
+  });
+});
+
+/** SVG large-arc-flags off every `A` command in a path, in order — see `pathFromArc`/
+ * `pathFromArcLongWay` in ceruti-paths.ts for what the flag means here. */
+function largeArcFlags(d: string): number[] {
+  return [...d.matchAll(/A\s+[\d.eE+-]+\s+[\d.eE+-]+\s+0\s+(\d)\s+\d/g)].map(m => Number(m[1]));
+}
+
+describe('the f-hole cutting template with no eyes', () => {
+  it('closes both eyes with the short arc instead of drawing their long rim', async () => {
+    const p = defaultViolin();
+    const withEyes = await captured(() => makePanel(p).downloadExport('fholeTemplate'));
+    const withoutEyes = await captured(() => makePanel(p).downloadExport('fholeTemplateNoEyes'));
+
+    const doc = new DOMParser().parseFromString(withoutEyes!.text, 'image/svg+xml');
+    const paths = [...doc.querySelectorAll('path')];
+    expect(paths).toHaveLength(1);
+    expect(paths[0].getAttribute('d')?.match(/M/g)).toHaveLength(1);
+
+    // The eyed template has exactly two long-way arcs (upper and lower eye); the
+    // no-eyes template uses the short way for every arc, itself included.
+    const eyedD = withEyes!.text.match(/d="([^"]+)"/)![1];
+    const noEyesD = paths[0].getAttribute('d')!;
+    expect(largeArcFlags(eyedD).filter(f => f === 1)).toHaveLength(2);
+    expect(largeArcFlags(noEyesD).filter(f => f === 1)).toHaveLength(0);
+  });
+
+  it('lands inside the sheet it is sized to', async () => {
+    const result = await captured(() => makePanel(archedViolin()).downloadExport('fholeTemplateNoEyes'));
+    const doc = new DOMParser().parseFromString(result!.text, 'image/svg+xml');
+    const d = doc.querySelector('path')!.getAttribute('d')!;
+    const [vx, vy, vw, vh] = doc.documentElement.getAttribute('viewBox')!.split(' ').map(Number);
+
+    const tolerance = 1;
     for (const { x, y } of pathEndpoints(d)) {
       expect(x).toBeGreaterThanOrEqual(vx - tolerance);
       expect(x).toBeLessThanOrEqual(vx + vw + tolerance);

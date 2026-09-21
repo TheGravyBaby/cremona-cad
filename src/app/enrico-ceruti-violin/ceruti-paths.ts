@@ -878,7 +878,7 @@ function pathFromArcLongWay(arc: Arc): string {
  * Exported (rather than folded into `defineFholePath`) for the cutting-template export, which
  * wants one unmirrored hole on its own sheet, not the pair `defineFholePath` draws on the plate.
  */
-export function defineOneFholePath(p: EnricoCerutiParams, flip: boolean): string {
+export function defineOneFholePath(p: EnricoCerutiParams, flip: boolean, renderEyes: boolean = true): string {
     const f = p.fHoles!;
     const xf = flip ? flipArcAboutY : (arc: Arc) => arc;
     const pxf = flip ? flipPointAboutY : (pt: Pt) => pt;
@@ -897,7 +897,7 @@ export function defineOneFholePath(p: EnricoCerutiParams, flip: boolean): string
     const innerStemBottom = pointOnCircle(f.S3!, f.S3!.end);
 
     const paths = [
-        pathFromArcLongWay(xf(upperEyeArc)),
+        renderEyes ? pathFromArcLongWay(xf(upperEyeArc)) : pathFromArc(xf(upperEyeArc)),
         pathFromArc(xf(f.U1!)),
         pathFromArc(xf(f.U2!)),
         ...(p.options.U21DoubleArc ? [pathFromArc(xf(f.U21!))] : []),
@@ -906,7 +906,7 @@ export function defineOneFholePath(p: EnricoCerutiParams, flip: boolean): string
         pathFromArc(xf(f.S4!)),
         pathFromArc(xf(f.L3!)),
         pathFromLine(pxf(f.LTip!), pxf(lowerCutPt)),
-        pathFromArcLongWay(xf(lowerEyeArc)),
+        renderEyes ? pathFromArcLongWay(xf(lowerEyeArc)) : pathFromArc(xf(lowerEyeArc)),
         pathFromArc(xf(f.L1!)),
         pathFromArc(xf(f.L2!)),
         ...(p.options.L21DoubleArc ? [pathFromArc(xf(f.L21!))] : []),

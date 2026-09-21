@@ -1,119 +1,138 @@
 <section class="ui-group">
-    <div class="export-table">
-        <div class="export-row">
-            <div class="export-row__label">
-                <span class="export-row__name">Inner Trace</span>
-                <span class="export-row__desc">Inner body outline for mould &amp; rib bending</span>
+    <div class="export-groups">
+        <details class="export-group" open>
+            <summary><span class="export-group__chevron">▶</span>Contours<span class="export-group__count">3</span></summary>
+            <div class="export-group__body">
+                <div class="export-row">
+                    <span class="export-row__name">Inner Trace</span>
+                    <span class="export-row__desc">Inner body outline for mould &amp; rib bending</span>
+                    <div class="export-row__actions">
+                        <button type="button" class="recipe-btn" (click)="previewExport('innerTrace')">Preview</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('innerTrace')">SVG</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('innerTrace')">PDF</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadDxf('innerTrace')">DXF</button>
+                    </div>
+                </div>
+                <div class="export-row">
+                    <span class="export-row__name">Top Plate</span>
+                    <span class="export-row__desc">Top of the instrument</span>
+                    <div class="export-row__actions">
+                        <button type="button" class="recipe-btn" (click)="previewExport('outerTrace')">Preview</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('outerTrace')">SVG</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('outerTrace')">PDF</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadDxf('outerTrace')">DXF</button>
+                    </div>
+                </div>
+                <div class="export-row">
+                    <span class="export-row__name">Back Plate</span>
+                    <span class="export-row__desc">Back of the instrument, with button</span>
+                    <div class="export-row__actions">
+                        <button type="button" class="recipe-btn" (click)="previewExport('back')">Preview</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('back')">SVG</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('back')">PDF</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadDxf('back')">DXF</button>
+                    </div>
+                </div>
             </div>
-            <div class="export-row__actions">
-                <button type="button" class="recipe-btn" (click)="previewExport('innerTrace')">Preview</button>
-                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('innerTrace')">SVG</button>
-                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('innerTrace')">PDF</button>
-                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadDxf('innerTrace')">DXF</button>
+        </details>
+
+        <details class="export-group">
+            <summary><span class="export-group__chevron">▶</span>Arch Templates<span class="export-group__count">2</span></summary>
+            <div class="export-group__body">
+                <div class="export-row">
+                    <span class="export-row__name">Long Arch Templates</span>
+                    <span class="export-row__desc">Centerline profile strips, top and back</span>
+                    <div class="export-row__actions">
+                        <button type="button" class="recipe-btn" (click)="previewExport('longArchTemplates')">Preview</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('longArchTemplates')">SVG</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('longArchTemplates')">PDF</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadDxf('longArchTemplates')">DXF</button>
+                    </div>
+                </div>
+                <div class="export-row">
+                    <span class="export-row__name">Cross Arch Templates</span>
+                    <span class="export-row__desc">5 cross-section strips per plate, evenly spaced</span>
+                    <div class="export-row__actions">
+                        <button type="button" class="recipe-btn" (click)="previewExport('crossArchTemplates')">Preview</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('crossArchTemplates')">SVG</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('crossArchTemplates')">PDF</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadDxf('crossArchTemplates')">DXF</button>
+                    </div>
+                </div>
             </div>
-        </div>
-        <div class="export-row">
-            <div class="export-row__label">
-                <span class="export-row__name">Top Trace</span>
-                <span class="export-row__desc">Top of the instrument</span>
+        </details>
+
+        <details class="export-group">
+            <summary><span class="export-group__chevron">▶</span>F-Hole Templates<span class="export-group__count">2</span></summary>
+            <div class="export-group__body">
+                <div class="export-row">
+                    <span class="export-row__name">F-Hole Template</span>
+                    <span class="export-row__desc">Single unmirrored f-hole, for cutting or tracing</span>
+                    <div class="export-row__actions">
+                        <button type="button" class="recipe-btn" (click)="previewExport('fholeTemplate')">Preview</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('fholeTemplate')">SVG</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('fholeTemplate')">PDF</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadDxf('fholeTemplate')">DXF</button>
+                    </div>
+                </div>
+                <div class="export-row">
+                    <span class="export-row__name">F-Hole(No Eyes)</span>
+                    <span class="export-row__desc">Single unmirrored f-hole, eyes closed with a short arc for hand-cut eyes</span>
+                    <div class="export-row__actions">
+                        <button type="button" class="recipe-btn" (click)="previewExport('fholeTemplateNoEyes')">Preview</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('fholeTemplateNoEyes')">SVG</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('fholeTemplateNoEyes')">PDF</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadDxf('fholeTemplateNoEyes')">DXF</button>
+                    </div>
+                </div>
             </div>
-            <div class="export-row__actions">
-                <button type="button" class="recipe-btn" (click)="previewExport('outerTrace')">Preview</button>
-                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('outerTrace')">SVG</button>
-                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('outerTrace')">PDF</button>
-                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadDxf('outerTrace')">DXF</button>
+        </details>
+
+        <details class="export-group">
+            <summary><span class="export-group__chevron">▶</span>Mould<span class="export-group__count">2</span></summary>
+            <div class="export-group__body">
+                <div class="export-row">
+                    <span class="export-row__name">Mould</span>
+                    <span class="export-row__desc">Mould for creating the rib structure</span>
+                    <div class="export-row__actions">
+                        <button type="button" class="recipe-btn" (click)="previewExport('mould')">Preview</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('mould')">SVG</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('mould')">PDF</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadDxf('mould')">DXF</button>
+                    </div>
+                </div>
+                <div class="export-row">
+                    <span class="export-row__name">Block Templates</span>
+                    <span class="export-row__desc">Individual block templates</span>
+                    <div class="export-row__actions">
+                        <button type="button" class="recipe-btn" (click)="previewExport('blocks')">Preview</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('blocks')">SVG</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('blocks')">PDF</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadDxf('blocks')">DXF</button>
+                    </div>
+                </div>
             </div>
-        </div>
-        <div class="export-row">
-            <div class="export-row__label">
-                <span class="export-row__name">Back Trace</span>
-                <span class="export-row__desc">Back of the instrument, with button</span>
+        </details>
+
+        <details class="export-group">
+            <summary><span class="export-group__chevron">▶</span>CNC<span class="export-group__count">2</span></summary>
+            <div class="export-group__body">
+                <div class="export-row">
+                    <span class="export-row__name">Top Plate 3D</span>
+                    <span class="export-row__desc">Arched top surface with fluting channel, for CNC</span>
+                    <div class="export-row__actions">
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadStl('top')">STL</button>
+                    </div>
+                </div>
+                <div class="export-row">
+                    <span class="export-row__name">Back Plate 3D</span>
+                    <span class="export-row__desc">Arched back surface with fluting channel, for CNC</span>
+                    <div class="export-row__actions">
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadStl('bottom')">STL</button>
+                    </div>
+                </div>
             </div>
-            <div class="export-row__actions">
-                <button type="button" class="recipe-btn" (click)="previewExport('back')">Preview</button>
-                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('back')">SVG</button>
-                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('back')">PDF</button>
-                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadDxf('back')">DXF</button>
-            </div>
-        </div>
-        <div class="export-row">
-            <div class="export-row__label">
-                <span class="export-row__name">Mould</span>
-                <span class="export-row__desc">Mould for creating the rib structure</span>
-            </div>
-            <div class="export-row__actions">
-                <button type="button" class="recipe-btn" (click)="previewExport('mould')">Preview</button>
-                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('mould')">SVG</button>
-                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('mould')">PDF</button>
-                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadDxf('mould')">DXF</button>
-            </div>
-        </div>
-        <div class="export-row">
-            <div class="export-row__label">
-                <span class="export-row__name">Top Plate 3D</span>
-                <span class="export-row__desc">Arched top surface with fluting channel, for CNC</span>
-            </div>
-            <div class="export-row__actions">
-                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadStl('top')">STL</button>
-            </div>
-        </div>
-        <div class="export-row">
-            <div class="export-row__label">
-                <span class="export-row__name">Back Plate 3D</span>
-                <span class="export-row__desc">Arched back surface with fluting channel, for CNC</span>
-            </div>
-            <div class="export-row__actions">
-                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadStl('bottom')">STL</button>
-            </div>
-        </div>
-        <div class="export-row">
-            <div class="export-row__label">
-                <span class="export-row__name">Block Templates</span>
-                <span class="export-row__desc">Individual block templates</span>
-            </div>
-            <div class="export-row__actions">
-                <button type="button" class="recipe-btn" (click)="previewExport('blocks')">Preview</button>
-                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('blocks')">SVG</button>
-                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('blocks')">PDF</button>
-                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadDxf('blocks')">DXF</button>
-            </div>
-        </div>
-        <div class="export-row">
-            <div class="export-row__label">
-                <span class="export-row__name">F-Hole Template</span>
-                <span class="export-row__desc">Single unmirrored f-hole, for cutting or tracing</span>
-            </div>
-            <div class="export-row__actions">
-                <button type="button" class="recipe-btn" (click)="previewExport('fholeTemplate')">Preview</button>
-                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('fholeTemplate')">SVG</button>
-                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('fholeTemplate')">PDF</button>
-                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadDxf('fholeTemplate')">DXF</button>
-            </div>
-        </div>
-        <div class="export-row">
-            <div class="export-row__label">
-                <span class="export-row__name">Long Arch Templates</span>
-                <span class="export-row__desc">Centerline profile strips, top and back</span>
-            </div>
-            <div class="export-row__actions">
-                <button type="button" class="recipe-btn" (click)="previewExport('longArchTemplates')">Preview</button>
-                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('longArchTemplates')">SVG</button>
-                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('longArchTemplates')">PDF</button>
-                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadDxf('longArchTemplates')">DXF</button>
-            </div>
-        </div>
-        <div class="export-row">
-            <div class="export-row__label">
-                <span class="export-row__name">Cross Arch Templates</span>
-                <span class="export-row__desc">5 cross-section strips per plate, evenly spaced</span>
-            </div>
-            <div class="export-row__actions">
-                <button type="button" class="recipe-btn" (click)="previewExport('crossArchTemplates')">Preview</button>
-                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('crossArchTemplates')">SVG</button>
-                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('crossArchTemplates')">PDF</button>
-                <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadDxf('crossArchTemplates')">DXF</button>
-            </div>
-        </div>
+        </details>
     </div>
 </section>
 
