@@ -1,13 +1,16 @@
 import { defineFholePath, defineFlutingPath, defineInnerPath, defineOffsetArcs, defineOuterPath, defineOuterPurflingPath, definePurflingPath, violNeckCap } from './ceruti-paths';
 import { defaultViolin, layoutFrom, templateKeys, templateViolin, violinFromRecipe } from './ceruti-fixtures';
 import { calculateFholeContours, calculateOuterArcs } from './ceruti-calcs';
+import { channelPaths } from './ceruti-arch-geometry';
 import { defaultFHolePlacement } from './panels/f-hole-placement-panel/f-hole-placement-panel';
 import { EnricoCerutiParams } from './ceruti-types';
 import { lineCircleIntersection, lineFromTwoPoints, offsetArcRadius, pointOnCircle } from '../helpers/math/simpleGeometry';
 import { samplePathToPolyline } from '../helpers/math/pathMath';
 import { Pt, Rectangle } from '../models/types';
+import { setGlobalEmitter } from '../shared/message-emitter';
 import ravatinMansParams from './templates/test-fixtures/ravatin-mans-params.json';
 import magginiDelmasParams from './templates/test-fixtures/maggini-delmas-params.json';
+import amatiBrookingsParams from './templates/test-fixtures/amati-brookings-params.json';
 
 /**
  * The purfling and channel lines, which are the inner arcs re-solved at a
@@ -263,6 +266,73 @@ describe('the arcs joining the viol neck to its top face', () => {
     expect(joinArc(p, -6.5)).toBeUndefined();
     // 14.5mm in from the edge is the same -6.5 once the inset comes off
     expect(closes(defineFlutingPath(p, 14.5)!), 'the channel still closes without one').toBe(true);
+  });
+});
+
+/**
+ * Reported on the Amati Brookings recipe: a main-body gouge wide enough relative to a narrow
+ * c-bout gouge (sweepRadius vs sweepRadius_cBout) leaves no *reasonable* biarc able to bridge the
+ * two channel edges at their nominal endpoints. findJoiningArcs still finds a mathematically valid
+ * equal-radius root there — both roots of the quadratic blow up together as the tangent directions
+ * go near-parallel, so there's no smaller root to prefer instead — but the radius is thousands of
+ * times the gap it's meant to bridge, which draws as a loop swinging meters off the plate (the
+ * crossing lines in the screenshot) rather than a gouge cut.
+ *
+ * joinFlutingTransition now does what a maker actually would: blend the transition in earlier
+ * along the c-bout rather than insist on meeting exactly at the nominal corner. It walks the
+ * c-bout arc's own endpoint back a degree at a time (the main-body arc stays put) and only falls
+ * back to reporting "Fluting Error" and dropping the channel once MAX_CBOUT_RETREAT_DEG is
+ * exhausted with nothing reasonable found.
+ */
+describe('a c-bout gouge too narrow to join the main-body one at its nominal endpoint', () => {
+  const captureTitles = (): string[] => {
+    const titles: string[] = [];
+    setGlobalEmitter(m => { titles.push(m.title); });
+    return titles;
+  };
+
+  afterEach(() => setGlobalEmitter(null as any));
+
+  // the Amati Brookings recipe as reported: sweepRadius 47.1 on the main body against
+  // sweepRadius_cBout 2.1 through the waist
+  function amatiTopGouge(): EnricoCerutiParams {
+    return violinFromRecipe({ params: amatiBrookingsParams });
+  }
+
+  it('finds a shallower join within the retreat budget instead of reporting an error', () => {
+    const titles = captureTitles();
+    const p = amatiTopGouge();
+
+    const paths = channelPaths(p, p.arching!.top.fluting!);
+
+    expect(paths).not.toBeNull();
+    expect(subpaths(paths!.center)).toBe(1);
+    expect(subpaths(paths!.inner)).toBe(1);
+    expect(titles).not.toContain('Fluting Error');
+  });
+
+  it('still reports "Fluting Error" and drops the channel when no join is possible even retreated', () => {
+    const titles = captureTitles();
+    const p = amatiTopGouge();
+    // pushed well past what 20° of retreat can rescue
+    p.arching!.top.fluting!.sweepRadius = 80;
+    p.arching!.top.fluting!.sweepRadius_cBout = 1.05;
+
+    const paths = channelPaths(p, p.arching!.top.fluting!);
+
+    expect(paths).toBeNull();
+    expect(titles).toContain('Fluting Error');
+  });
+
+  it('still joins fine once the c-bout gouge is close enough to the main one', () => {
+    const titles = captureTitles();
+    const p = amatiTopGouge();
+    p.arching!.top.fluting!.sweepRadius_cBout = p.arching!.top.fluting!.sweepRadius;
+
+    const paths = channelPaths(p, p.arching!.top.fluting!);
+
+    expect(paths).not.toBeNull();
+    expect(titles).not.toContain('Fluting Error');
   });
 });
 

@@ -1039,9 +1039,10 @@ export function buildSplinePath(
   points: ArchSplineControlPoint[],
   peak = 0.5,
   N = 120,
+  endZ = 0,
 ): string {
   if (hEff <= 0 || span <= 0) return '';
-  const zOf = makeArchSplineZOf(hEff, span, points, peak);
+  const zOf = makeArchSplineZOf(hEff, span, points, peak, endZ);
   const pts: string[] = [];
   for (let i = 0; i <= N; i++) {
     const y = (i / N) * span;
@@ -1160,16 +1161,18 @@ export function archSplineKnots(
   return knots;
 }
 
-/** Arch height at position s ∈ [0, span] along a spline arch. */
+/** Arch height at position s ∈ [0, span] along a spline arch; `endZ` is the far end's height, 0 unless it lands elsewhere. */
 export function splineZAt(
   hEff: number,
   span: number,
   points: ArchSplineControlPoint[],
   peak: number,
   s: number,
+  endZ = 0,
 ): number {
-  if (hEff <= 0 || span <= 0 || s <= 0 || s >= span) return 0;
-  return makeArchSplineZOf(hEff, span, points, peak)(s);
+  if (hEff <= 0 || span <= 0 || s <= 0) return 0;
+  if (s >= span) return endZ;
+  return makeArchSplineZOf(hEff, span, points, peak, endZ)(s);
 }
 
 /** Spline evaluator z(s) over [0, span] — shared by buildSplinePath and splineZAt. */
@@ -1178,10 +1181,11 @@ function makeArchSplineZOf(
   span: number,
   points: ArchSplineControlPoint[],
   peak: number,
+  endZ = 0,
 ): (s: number) => number {
   const knots = archSplineKnots(hEff, points, peak);
   const ys = [0, ...knots.map(k => k.t * span), span];
-  const zs = [0, ...knots.map(k => k.z),       0];
+  const zs = [0, ...knots.map(k => k.z),       endZ];
   return makeMonotoneSpline(ys, zs);
 }
 

@@ -67,7 +67,7 @@ export const renderGuideKnot = (at: Pt, color: string) =>
  * drawing happens to be busiest. A module guide has no third click to give it
  * an offset interactively, so the caller picks one that clears the drawing.
  */
-export const renderGuideMeasure = (base: Pt, at: Pt, color: string, offset = 0) => (g: any, ui: any): void => {
+export const renderGuideMeasure = (base: Pt, at: Pt, color: string, offset = 0, value?: number) => (g: any, ui: any): void => {
   const dx = at.x - base.x;
   const dy = at.y - base.y;
   const len = Math.hypot(dx, dy);
@@ -107,7 +107,7 @@ export const renderGuideMeasure = (base: Pt, at: Pt, color: string, offset = 0) 
   // keeps the gap clearing the crosshair whichever way the measure runs.
   const alongX = Math.abs(ux) > Math.abs(uy);
   ui.append('text')
-    .text(`${len.toFixed(1)}mm`)
+    .text(`${(value ?? len).toFixed(1)}mm`)
     // The ui layer is not Y-flipped, so the text stays upright.
     .attr('x', to.x + ux * LABEL_GAP_MM)
     .attr('y', -(to.y + uy * LABEL_GAP_MM))

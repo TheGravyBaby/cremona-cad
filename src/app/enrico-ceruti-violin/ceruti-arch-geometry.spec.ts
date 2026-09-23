@@ -250,6 +250,26 @@ describe('the trochoid crown', () => {
     }
   });
 
+  it('curls under the takeoff past 100%, by tan² of the rise', () => {
+    const lowest = (pct: number) => Math.min(...crossArchKnots(cyc(0.4, pct), 1).map(k => k.z));
+    expect(lowest(1)).toBeGreaterThanOrEqual(0);
+    expect(lowest(1.2)).toBeCloseTo(-0.106, 1);
+    expect(lowest(1.3)).toBeLessThan(lowest(1.2));
+  });
+
+  it('meets the outer flank once the window passes 100%', () => {
+    const knots = crossArchKnots(cyc(0.4, 1.3), 1);
+    const s = solveCrossArchSection(15, 100, R, D, { left: knots, right: knots })!;
+    for (const side of [s.left!, s.right!]) {
+      expect(side.tangent).toBe(true);
+      expect(side.contactS).toBeLessThan(0);
+    }
+    let min = 0;
+    for (let x = 0; x <= s.xEndRight; x += 0.25) min = Math.min(min, s.zAt(x));
+    expect(min).toBeLessThan(-D);
+    expect(s.zAt(s.xEndRight - 1e-6)).toBeCloseTo(s.zAt(s.xEndRight + 1e-6), 4);
+  });
+
   it('meets the channel like any other crown', () => {
     const row = { left: crossArchKnots(cyc(0.4, 0.9), -1), right: crossArchKnots(cyc(0.4, 0.9), 1) };
     const s = solveCrossArchSection(15, 100, R, D, row)!;
@@ -549,8 +569,40 @@ describe('solveCrossArchSection', () => {
 
   it('returns null where the channel has no room', () => {
     expect(solveCrossArchSection(ARCH, 1, R, D, row)).toBeNull();
-    // Crown down at the trough: nothing left for the channel to run into.
-    expect(solveCrossArchSection(-D, HALF, R, D, row)).toBeNull();
+  });
+
+  it('meets the outer flank when a knot dips under the takeoff, and runs below the trough', () => {
+    const dip = { left: [{ x: 0.9, z: -0.1 }], right: [{ x: 0.9, z: -0.1 }] };
+    const s = solveCrossArchSection(ARCH, HALF, R, D, dip)!;
+    for (const side of [s.left!, s.right!]) {
+      expect(side.tangent).toBe(true);
+      expect(side.contactS).toBeLessThan(0);
+    }
+    let min = 0;
+    for (let x = 0; x <= s.xEndRight; x += 0.25) min = Math.min(min, s.zAt(x));
+    expect(min).toBeLessThan(-D);
+    expect(s.zAt(s.xEndRight - 1e-6)).toBeCloseTo(s.zAt(s.xEndRight + 1e-6), 6);
+  });
+
+  it('keeps a below-takeoff knot through the station ramp', () => {
+    const cross: CrossArchParams = {
+      type: 'spline', points: [{ x: 0.9, z: -0.1, mirror: true }],
+      stations: [{ y: 100, type: 'spline', points: [{ x: 0.9, z: -0.05, mirror: true }] }],
+    } as CrossArchParams;
+    const at = makeCrossArchResolver(cross, 350)(50);
+    expect(at.right[0].z).toBeLessThan(0);
+  });
+
+  it('solves a crown below the trough, meeting each outer flank', () => {
+    const s = solveCrossArchSection(-2 * D, HALF, R, D, row)!;
+    expect(s).not.toBeNull();
+    expect(s.zAt(0)).toBeCloseTo(-2 * D, 9);
+    for (const side of [s.left!, s.right!]) {
+      expect(side.tangent).toBe(true);
+      expect(side.contactS).toBeLessThan(0);
+    }
+    const xEnd = s.xEndRight;
+    expect(s.zAt(xEnd - 1e-6)).toBeCloseTo(s.zAt(xEnd + 1e-6), 6);
   });
 
   it('still solves where the crown sits below plate level', () => {

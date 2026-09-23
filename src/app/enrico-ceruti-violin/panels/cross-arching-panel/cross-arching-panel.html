@@ -152,7 +152,7 @@
         </label>
         <label class="field-cell">
             <span class="field-title">Percent <span class="unit-label">%</span></span>
-            <input class="basic-input" type="number" step="1" min="5" max="100" [ngModel]="cycloidPct('top')"
+            <input class="basic-input" type="number" step="1" min="5" [max]="cycloidPctMax('top')" [ngModel]="cycloidPct('top')"
                 (ngModelChange)="setCycloidPct('top', $event)" [style.border-color]="colors.archTop" />
         </label>
     </div>
@@ -178,7 +178,7 @@
             </div>
             <span class="field-separator" aria-hidden="true"></span>
             <div class="field-cell">
-                <input class="basic-input" type="number" step="1" min="0" max="100" [ngModel]="pointZPct(pt)"
+                <input class="basic-input" type="number" step="1" [min]="pointZFloorPct('top')" max="100" [ngModel]="pointZPct(pt)"
                     (ngModelChange)="setPointZPct('top', row.index, $event)" (focus)="onPointFocus('top', row.index)"
                     (blur)="onPointBlur()" title="Percent of the local arch height — the crown always sits at 100" />
             </div>
@@ -266,7 +266,7 @@
         </label>
         <label class="field-cell">
             <span class="field-title">Percent <span class="unit-label">%</span></span>
-            <input class="basic-input" type="number" step="1" min="5" max="100" [ngModel]="cycloidPct('bottom')"
+            <input class="basic-input" type="number" step="1" min="5" [max]="cycloidPctMax('bottom')" [ngModel]="cycloidPct('bottom')"
                 (ngModelChange)="setCycloidPct('bottom', $event)" [style.border-color]="colors.archBack" />
         </label>
     </div>
@@ -292,7 +292,7 @@
             </div>
             <span class="field-separator" aria-hidden="true"></span>
             <div class="field-cell">
-                <input class="basic-input" type="number" step="1" min="0" max="100" [ngModel]="pointZPct(pt)"
+                <input class="basic-input" type="number" step="1" [min]="pointZFloorPct('bottom')" max="100" [ngModel]="pointZPct(pt)"
                     (ngModelChange)="setPointZPct('bottom', row.index, $event)" (focus)="onPointFocus('bottom', row.index)"
                     (blur)="onPointBlur()" title="Percent of the local arch height — the crown always sits at 100" />
             </div>

@@ -55,7 +55,7 @@ export function renderArchGuide(
     for (const knot of archGuideKnots(arch)) {
       const y = yStart + knot.t * span;
       const at = new Pt(xPlate + sign * knot.z, y);
-      renderGuideMeasure(new Pt(xPlate, y), at, color)(g, ui);
+      renderGuideMeasure(new Pt(xPlate, y), at, color, 0, knot.z)(g, ui);
       renderGuideKnot(at, color)(g, ui);
     }
   };

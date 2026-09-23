@@ -401,7 +401,7 @@ export interface ArchCycloid {
 
 export interface ArchSplinePoint {
   t: number; // normalized full-span position: 0 = upper plate edge, 1 = lower plate edge
-  z: number; // arch height at this point (mm above the plate edge)
+  z: number; // arch height at this point (mm above the plate edge; negative down to the plate thickness)
   /** Repeats at 1 − t, mirrored about the plate's mid-length, not about the off-centre peak.
    * Absent marks a pre-asymmetric point whose `t` was a half-span position — see
    * `normalizeArchCurve`. */
@@ -469,7 +469,7 @@ export interface CrossArchPoint {
    * on; `crossProfile` sorts rather than assuming.
    */
   x: number;
-  /** Height as a fraction of the local arch height: 1 the crown, 0 the plate surface. */
+  /** Height as a fraction of the local rise from the takeoff: 1 the crown, 0 the takeoff level, negative below it. */
   z: number;
   /** Repeats at −x. Leaving it off confines the point to its own side — the source of asymmetry. */
   mirror?: boolean;
@@ -503,7 +503,7 @@ export interface CrossArchCycloidShape {
   type: 'cycloid';
   /** Trochoid factor: 0 = raised cosine, 1 = standard cycloid (valid range 0–1). */
   d: number;
-  /** Trochoid window: 1 = the full curve, <1 clips the flat cusp end for a steeper run-out (valid range 0.05–1). */
+  /** Trochoid window: 1 = the full curve, <1 clips the flat cusp end for a steeper run-out, >1 curls the ends under the takeoff so the arch can meet the channel's outer flank (valid range 0.05–1.5). */
   pct: number;
 }
 

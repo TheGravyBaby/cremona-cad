@@ -5,7 +5,7 @@ import {
   PolylineIndex,
 } from '../helpers/math/vibeMath';
 import {
-  catenaryZAt, cycloidZAt, samplePathToPolyline, splineZAt,
+  archSplineKnots, catenaryZAt, cycloidZAt, samplePathToPolyline, splineZAt,
 } from '../helpers/math/pathMath';
 import {
   ArchCurve, EnricoCerutiParams, CrossArchCatenaryShape, CrossArchCycloidParams, CrossArchCycloidShape,
@@ -278,7 +278,7 @@ export function cornerJoinAreaPath(p: EnricoCerutiParams, paths: ChannelPaths): 
 
 /** Where an arch lands on the channel, and how deep it is when it gets there. */
 export interface ArchTakeoff {
-  /** Distance from the channel centerline to the contact point (mm); 0 is the trough. */
+  /** Distance from the channel centerline to the contact point (mm); 0 is the trough, negative on the outer flank. */
   contactS: number;
   /** How far below the plate surface the arch takes off (mm) — 0 at the channel's inner edge. */
   takeoffDepth: number;
@@ -361,20 +361,27 @@ export function solveArchTakeoff(
     tangent,
   });
 
-  let aS = lo, aR = residual(lo);
   // Tracked alongside the bracket hunt rather than in a second pass, so the
   // fallback costs nothing when a root is found and no extra residuals when it
   // is not — each one rebuilds the profile spline, which is the expensive part.
-  let nearest = { s: lo, mag: Math.abs(aR) };
-  let bracket: [number, number] | null = null;
-  for (let i = 1; i <= scanSteps; i++) {
-    const s = lo + ((hi - lo) * i) / scanSteps;
-    const r = residual(s);
-    if (Math.abs(r) < nearest.mag) nearest = { s, mag: Math.abs(r) };
-    if (aR === 0) { bracket = [aS, aS]; break; }
-    if (aR * r < 0) { bracket = [aS, s]; break; }
-    aS = s; aR = r;
-  }
+  let nearest = { s: lo, mag: Infinity };
+  // The inner flank first, so every arch that already met it lands where it did.
+  // An arch that arrives sloping down — its first knot below the takeoff — has
+  // no tangent there, and meets the outer flank instead, past the trough.
+  const bracketOn = (dir: 1 | -1): [number, number] | null => {
+    let aS = dir * lo, aR = residual(aS);
+    if (Math.abs(aR) < nearest.mag) nearest = { s: aS, mag: Math.abs(aR) };
+    for (let i = 1; i <= scanSteps; i++) {
+      const s = dir * (lo + ((hi - lo) * i) / scanSteps);
+      const r = residual(s);
+      if (Math.abs(r) < nearest.mag) nearest = { s, mag: Math.abs(r) };
+      if (aR === 0) return [aS, aS];
+      if (aR * r < 0) return [Math.min(aS, s), Math.max(aS, s)];
+      aS = s; aR = r;
+    }
+    return null;
+  };
+  const bracket = bracketOn(1) ?? bracketOn(-1);
   if (!bracket) return takeoffAt(nearest.s, false);
 
   let [x0, x1] = bracket;
@@ -386,11 +393,11 @@ export function solveArchTakeoff(
 }
 
 /** Arch height at `s` along a span, for whichever curve type the plate carries. */
-function archZAt(arch: ArchCurve, span: number, s: number): number {
+function archZAt(arch: ArchCurve, span: number, s: number, endZ = 0): number {
   switch (arch.type) {
     case 'catenary': return catenaryZAt(arch.archHeight, span, s);
     case 'cycloid':  return cycloidZAt(arch.archHeight, span, arch.d, s);
-    case 'spline':   return splineZAt(arch.archHeight, span, arch.points, arch.peak ?? 0.5, s);
+    case 'spline':   return splineZAt(arch.archHeight, span, arch.points, arch.peak ?? 0.5, s, endZ);
   }
 }
 
@@ -404,10 +411,30 @@ function archZAt(arch: ArchCurve, span: number, s: number): number {
 export interface LongArchSolve {
   span: number;
   yStart: number;
-  /** The plate-surface-relative Z the arch takes off from, i.e. −takeoffDepth. */
+  yEnd: number;
+  /** The start end's landing; the plate-surface-relative Z the arch takes off from is −takeoffDepth. */
   takeoff: ArchTakeoff;
-  /** The arch restated against its solved takeoff, ready for the path builders. */
+  /** The far end's landing. It differs from `takeoff` only for an arch that is not symmetric end to end. */
+  farTakeoff: ArchTakeoff;
+  /** The arch restated against the start takeoff, ready for the path builders. */
   lowered: ArchCurve;
+  /** The far end's height in the `lowered` frame — zero when both ends land alike. */
+  farZ: number;
+}
+
+function isSymmetric(arch: ArchCurve): boolean {
+  if (arch.type !== 'spline') return true;
+  const k = archSplineKnots(arch.archHeight, arch.points, arch.peak ?? 0.5);
+  return k.every((a, i) => {
+    const b = k[k.length - 1 - i];
+    return Math.abs(a.t + b.t - 1) < 1e-9 && Math.abs(a.z - b.z) < 1e-9;
+  });
+}
+
+function mirrored(arch: ArchCurve): ArchCurve {
+  return arch.type === 'spline'
+    ? { ...arch, peak: 1 - (arch.peak ?? 0.5), points: arch.points.map(pt => ({ ...pt, t: 1 - pt.t })) }
+    : arch;
 }
 
 export function solveLongArch(
@@ -416,26 +443,43 @@ export function solveLongArch(
   const w = gougeHalfWidth(g.sweepRadius, g.depth);
   if (w <= 0 || arch.archHeight <= 0) return null;
   // Channel centerline at the caps. The C-bout gouge never applies here — it
-  // only ever affects the waist — so the main sweep governs at both ends, and
-  // the two ends solve identically by symmetry.
+  // only ever affects the waist — so the main sweep governs at both ends.
   const centerY = (p.outerFlutingDepth ?? 0) + w;
   const eps = Math.max(p.height * 1e-5, 1e-4);
 
-  const archSlopeAt = (takeoffDepth: number, contactS: number): number => {
-    const span = p.height - 2 * (centerY + contactS);
-    if (span <= 0) return 0;
-    const lowered = archFromLoweredTakeoff(arch, takeoffDepth);
-    // Forward difference from the takeoff, which sits at exactly 0 in the
-    // lowered arch's own frame — no cancellation to worry about.
-    return archZAt(lowered, span, eps) / eps;
-  };
+  // Each end is solved as the start of its own view of the arch, against
+  // wherever the other end currently lands; the far end sees the mirrored arch.
+  const solveEnd = (a: ArchCurve, other: ArchTakeoff | null): ArchTakeoff | null =>
+    solveArchTakeoff(g.sweepRadius, g.depth, (takeoffDepth, contactS) => {
+      const o = other ?? { takeoffDepth, contactS };
+      const span = p.height - 2 * centerY - contactS - o.contactS;
+      if (span <= 0) return 0;
+      const lowered = archFromLoweredTakeoff(a, takeoffDepth);
+      // Forward difference from the takeoff, which sits at exactly 0 in the
+      // lowered arch's own frame — no cancellation to worry about.
+      return archZAt(lowered, span, eps, takeoffDepth - o.takeoffDepth) / eps;
+    });
 
-  const takeoff = solveArchTakeoff(g.sweepRadius, g.depth, archSlopeAt);
-  if (!takeoff) return null;
-  const yStart = centerY + takeoff.contactS;
-  const span = p.height - 2 * yStart;
+  let start = solveEnd(arch, null);
+  if (!start) return null;
+  let far = start;
+  if (!isSymmetric(arch)) {
+    // the ends nudge each other's span and level only weakly, so a few sweeps settle it
+    const flipped = mirrored(arch);
+    for (let i = 0; i < 3; i++) {
+      far = solveEnd(flipped, start) ?? far;
+      start = solveEnd(arch, far) ?? start;
+    }
+  }
+  const yStart = centerY + start.contactS;
+  const yEnd = p.height - centerY - far.contactS;
+  const span = yEnd - yStart;
   if (span <= 0) return null;
-  return { span, yStart, takeoff, lowered: archFromLoweredTakeoff(arch, takeoff.takeoffDepth) };
+  return {
+    span, yStart, yEnd, takeoff: start, farTakeoff: far,
+    lowered: archFromLoweredTakeoff(arch, start.takeoffDepth),
+    farZ: start.takeoffDepth - far.takeoffDepth,
+  };
 }
 
 /**
@@ -462,8 +506,8 @@ export function channelCenterlineZAt(
   // same arithmetic — the caps are identical by symmetry, and the C-bout gouge
   // never reaches either of them.
   const s = Math.min(y, p.height - y) - centerY;
-  if (la && y > la.yStart && y < p.height - la.yStart) {
-    return archZAt(la.lowered, la.span, y - la.yStart) - la.takeoff.takeoffDepth;
+  if (la && y > la.yStart && y < la.yEnd) {
+    return archZAt(la.lowered, la.span, y - la.yStart, la.farZ) - la.takeoff.takeoffDepth;
   }
   return s <= -w ? 0 : gougeProfileZ(Math.min(s, w), g.sweepRadius, g.depth);
 }
@@ -535,6 +579,9 @@ export function channelCapPath(
  */
 const CYCLOID_CROWN_KNOTS = 24;
 
+// past 1 the window runs beyond the cusp, so the ends curl under the takeoff and back up; 1.5 dips a full rise
+export const CYCLOID_MAX_PCT = 1.5;
+
 
 /** One authored knot of a crown shape, both coordinates as fractions. */
 export interface CrossArchKnot {
@@ -597,14 +644,14 @@ export function crossArchKnots(shape: CrossArchShape, side: 1 | -1): CrossArchKn
  */
 function cycloidCrownKnots(shape: CrossArchCycloidShape): CrossArchKnot[] {
   const d = clamp(shape.d, 0, 1);
-  const pct = clamp(shape.pct, 0.05, 1);
+  const pct = clamp(shape.pct, 0.05, CYCLOID_MAX_PCT);
   const n = CYCLOID_CROWN_KNOTS;
   const out: CrossArchKnot[] = [];
   for (let i = 1; i <= n; i++) {
     // Crown fraction (0 = crown, 1 = channel centerline) back onto the
     // trochoid's own span, where 0.5 is the peak and 0 the outer end.
     const x = i / (n + 1);
-    out.push({ x, z: clamp(cycloidZAt(1, 1, d, 0.5 * (1 - x), pct), 0, 1) });
+    out.push({ x, z: clamp(cycloidZAt(1, 1, d, 0.5 * (1 - x), pct), -1, 1) });
   }
   return out;
 }
@@ -736,7 +783,7 @@ export function makeCrossArchResolver(
   const right = sideTracks(1);
   const left = sideTracks(-1);
   const read = (s: { xs: number[]; tracks: ((y: number) => number)[] }, y: number): CrossArchKnot[] =>
-    s.xs.map((x, i) => ({ x, z: clamp(s.tracks[i](y), 0, 1) }));
+    s.xs.map((x, i) => ({ x, z: Math.min(s.tracks[i](y), 1) }));
 
   // Only a template carries a crown position; a trochoid is symmetric by
   // construction and peaks where its two halves meet.
@@ -909,7 +956,7 @@ const PROFILE_OVERSHOOT_TOLERANCE = 0.02;
  * there would not merely look wrong, it would move the contact.
  */
 function overshoots(f: (x: number) => number, xs: number[], zs: number[], archH: number): boolean {
-  const rise = Math.max(archH - Math.min(zs[0], zs[zs.length - 1]), 1e-6);
+  const rise = Math.max(Math.abs(archH - Math.min(zs[0], zs[zs.length - 1])), 1e-6);
   const tol = PROFILE_OVERSHOOT_TOLERANCE * rise;
   // The takeoffs are the profile's lowest points by construction — knots are
   // fractions of the rise *up* from one — and dipping under them is not wander
@@ -921,7 +968,8 @@ function overshoots(f: (x: number) => number, xs: number[], zs: number[], archH:
   // rather than at the channel's inner edge (see {@link solveArchTakeoff}):
   // with the endpoint at −depth instead of ≈0, a swing that used to be a
   // harmless dip in mid-flank became a breach of the trough.
-  const floor = Math.min(zs[0], zs[zs.length - 1]);
+  // Authored knots and a low crown may sit below the takeoffs; those are the floor then.
+  const floor = Math.min(...zs);
   for (let i = 0; i < xs.length - 1; i++) {
     const lo = Math.min(zs[i], zs[i + 1]) - tol;
     const hi = Math.max(zs[i], zs[i + 1]) + tol;
@@ -949,7 +997,10 @@ function overshoots(f: (x: number) => number, xs: number[], zs: number[], archH:
  */
 function catenarySideZAt(archH: number, zEnd: number, xEnd: number, x: number): number {
   if (xEnd <= 0) return archH;
-  return zEnd + catenaryZAt(archH - zEnd, 2 * xEnd, xEnd - Math.abs(x));
+  const rise = archH - zEnd;
+  return rise >= 0
+    ? zEnd + catenaryZAt(rise, 2 * xEnd, xEnd - Math.abs(x))
+    : zEnd - catenaryZAt(-rise, 2 * xEnd, xEnd - Math.abs(x));
 }
 
 /** A plate's transverse surface at one body station, with the transition solved on both sides. */
@@ -1062,12 +1113,11 @@ export function solveCrossArchSection(
 ): CrossArchSection | null {
   const halfWidth = gougeHalfWidth(sweepRadius, depth);
   // The crown may sit *below* plate level — that is the recurve band near each
-  // body cap, where the long arch has not yet climbed clear of its own takeoff.
-  // A station is only genuinely archless once the crown reaches the channel's
-  // trough, at which point there is nothing left for the channel to run into.
+  // body cap, where the long arch has not yet climbed clear of its own takeoff —
+  // and even below the trough, where both sides meet the channel's outer flank.
   // Requiring a positive crown here instead is what left a flat ring around
   // both caps, with a straight seam where the height crossed zero.
-  if (halfWidth <= 0 || centerHalf <= halfWidth || archH <= -depth) return null;
+  if (halfWidth <= 0 || centerHalf <= halfWidth) return null;
   const isCatenary = !!row.catenary;
 
   // The crown, in millimetres, anchored to the centerline half-chord — a
@@ -1372,8 +1422,9 @@ export function solvedLongArchHeightAt(geo: PlateGeometry, y: number): number {
   const la = geo.longArch;
   if (!la) return 0;
   const s = y - la.yStart;
-  if (s <= 0 || s >= la.span) return -la.takeoff.takeoffDepth;
-  return archZAt(la.lowered, la.span, s) - la.takeoff.takeoffDepth;
+  if (s <= 0) return -la.takeoff.takeoffDepth;
+  if (s >= la.span) return -la.farTakeoff.takeoffDepth;
+  return archZAt(la.lowered, la.span, s, la.farZ) - la.takeoff.takeoffDepth;
 }
 
 /** The solved transverse section at station `y`, or null where the plate has no arch there. */
