@@ -61,7 +61,7 @@
             </div>
             <span class="field-separator" aria-hidden="true"></span>
             <div class="field-cell">
-                <input class="basic-input" type="number" step="1" min="0" [max]="topSpline.archHeight"
+                <input class="basic-input" type="number" step="0.1" [min]="splineFloor('top')" [max]="topSpline.archHeight"
                     [ngModel]="pt.z" (ngModelChange)="setSplinePointHeight('top', pt, $event)"
                     (focus)="onSplinePointFocus('top', row.index)" (blur)="onSplinePointBlur()" />
             </div>
@@ -104,6 +104,12 @@
     @if (unsolvable('top')) {
     <div class="input-group basic-row field-row" role="group">
         <span class="station-note">No tangent meeting — lower the arch, or widen the gouge.</span>
+    </div>
+    }
+
+    @if (cornered('top')) {
+    <div class="input-group basic-row field-row" role="group">
+        <span class="station-note">The arch meets the channel at a corner — ease the knot nearest the end.</span>
     </div>
     }
 </section>
@@ -154,7 +160,7 @@
             </div>
             <span class="field-separator" aria-hidden="true"></span>
             <div class="field-cell">
-                <input class="basic-input" type="number" step="1" min="0" [max]="bottomSpline.archHeight"
+                <input class="basic-input" type="number" step="0.1" [min]="splineFloor('bottom')" [max]="bottomSpline.archHeight"
                     [ngModel]="pt.z" (ngModelChange)="setSplinePointHeight('bottom', pt, $event)"
                     (focus)="onSplinePointFocus('bottom', row.index)" (blur)="onSplinePointBlur()" />
             </div>
@@ -197,6 +203,12 @@
     @if (unsolvable('bottom')) {
     <div class="input-group basic-row field-row" role="group">
         <span class="station-note">No tangent meeting — lower the arch, or widen the gouge.</span>
+    </div>
+    }
+
+    @if (cornered('bottom')) {
+    <div class="input-group basic-row field-row" role="group">
+        <span class="station-note">The arch meets the channel at a corner — ease the knot nearest the end.</span>
     </div>
     }
 </section>

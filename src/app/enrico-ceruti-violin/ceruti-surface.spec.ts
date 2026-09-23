@@ -746,3 +746,86 @@ describe('plate surface model', () => {
   });
 
 });
+
+describe('a long-arch knot below the plate edge', () => {
+  const dip = (z: number, depth = 1) => {
+    const p = makeParams();
+    const g = { ...defaultFlutingParams(p), depth };
+    p.arching!.top.fluting = g;
+    p.arching!.top.arch = {
+      type: 'spline', archHeight: 15, peak: 0.5,
+      points: [{ t: 0.06, z, mirror: true }, { t: 0.2, z: 8, mirror: true }],
+    };
+    return { p, g };
+  };
+
+  // slope of the centerline just either side of where the arch takes over from the channel
+  const slopeJump = (z: number) => {
+    const { p, g } = dip(z);
+    const la = solveLongArch(p, p.arching!.top.arch, g)!;
+    const h = 0.01;
+    const at = (y: number) => channelCenterlineZAt(p, g, la, y);
+    const before = (at(la.yStart) - at(la.yStart - h)) / h;
+    const after = (at(la.yStart + h) - at(la.yStart)) / h;
+    return { la, jump: Math.abs(after - before) };
+  };
+
+  it.each([-0.5, -0.95, -1.5, -3.5])('meets the channel tangentially with a knot at %s mm', z => {
+    const { la, jump } = slopeJump(z);
+    expect(la.takeoff.tangent).toBe(true);
+    expect(jump).toBeLessThan(0.02);
+  });
+
+  it('meets the outer flank, past the trough, once the knot is below the channel', () => {
+    expect(slopeJump(-0.5).la.takeoff.contactS).toBeGreaterThan(0);
+    expect(slopeJump(-1.5).la.takeoff.contactS).toBeLessThan(0);
+  });
+
+  it('dips below the trough and gives the surface a section at every station', () => {
+    const { p, g } = dip(-2.5);
+    const la = solveLongArch(p, p.arching!.top.arch, g)!;
+    let min = 0;
+    for (let y = la.yStart; y < p.height / 2; y += 0.5) min = Math.min(min, channelCenterlineZAt(p, g, la, y));
+    expect(min).toBeLessThan(-g.depth - 0.5);
+
+    const model = buildPlateSurfaceModel(p, 'top')!;
+    for (const y of [12, 16, 20, 30]) {
+      expect(stationChordsAt(p, model, y).crossSection).not.toBeNull();
+      expect(topSurfaceZAt(p, model, 0, y)!).toBeLessThan(-g.depth);
+    }
+  });
+
+  describe('at one end only', () => {
+    // a single unmirrored knot near the far end, so the two ends arrive differently
+    const oneEnd = (t: number, z: number) => {
+      const { p, g } = dip(-1);
+      p.arching!.top.arch = { type: 'spline', archHeight: 11, peak: 0.5, points: [{ t, z, mirror: false }] };
+      const la = solveLongArch(p, p.arching!.top.arch, g)!;
+      const h = 0.01;
+      const at = (y: number) => channelCenterlineZAt(p, g, la, y);
+      const jump = (y: number) => Math.abs(((at(y + h) - at(y)) - (at(y) - at(y - h))) / h);
+      return { la, start: jump(la.yStart), far: jump(la.yEnd) };
+    };
+
+    it.each([[0.97, -1.9], [0.9, -1.9], [0.99, -1.2]])('meets the channel tangentially at both ends, knot t=%s z=%s', (t, z) => {
+      const { la, start, far } = oneEnd(t, z);
+      expect(la.takeoff.tangent).toBe(true);
+      expect(la.farTakeoff.tangent).toBe(true);
+      expect(start).toBeLessThan(0.02);
+      expect(far).toBeLessThan(0.02);
+    });
+
+    it('lands the two ends differently, and reports a dip the gouge cannot meet', () => {
+      const { la } = oneEnd(0.97, -1.9);
+      expect(la.farTakeoff.contactS).not.toBeCloseTo(la.takeoff.contactS, 1);
+      expect(oneEnd(0.99, -1.9).la.farTakeoff.tangent).toBe(false);
+    });
+
+    it('lands both ends alike on a symmetric arch', () => {
+      const { p, g } = dip(-0.5);
+      const sym = solveLongArch(p, p.arching!.top.arch, g)!;
+      expect(sym.farTakeoff.contactS).toBe(sym.takeoff.contactS);
+      expect(sym.farZ).toBe(0);
+    });
+  });
+});

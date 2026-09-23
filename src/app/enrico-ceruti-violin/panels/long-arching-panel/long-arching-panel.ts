@@ -85,6 +85,10 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
     return rows;
   }
 
+  splineFloor(plate: 'top' | 'bottom'): number {
+    return -(plate === 'top' ? this.arching.top : this.arching.bottom).thickness;
+  }
+
   gouge(plate: 'top' | 'bottom'): FlutingParams {
     const plateParams = plate === 'top' ? this.arching.top : this.arching.bottom;
     return (plateParams.fluting ??= defaultFlutingParams(this.params));
@@ -97,6 +101,12 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
    */
   unsolvable(plate: 'top' | 'bottom'): boolean {
     return this.solved[plate] === null && this.archFor(plate).archHeight > 0;
+  }
+
+  /** The arch reaches the channel at a corner, because no tangent exists at one of its ends. */
+  cornered(plate: 'top' | 'bottom'): boolean {
+    const s = this.solved[plate];
+    return !!s && !(s.takeoff.tangent && s.farTakeoff.tangent);
   }
 
   setCurveType(plate: 'top' | 'bottom', type: ArchCurve['type']): void {
@@ -131,14 +141,14 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
   setArchHeight(plate: 'top' | 'bottom', mm: number): void {
     const arch = this.archFor(plate);
     arch.archHeight = Math.max(mm || 0, 0);
-    if (arch.type === 'spline') clampSplinePointHeights(arch.points, arch.archHeight);
+    if (arch.type === 'spline') clampSplinePointHeights(arch.points, arch.archHeight, this.splineFloor(plate));
     this.onChange();
   }
 
   setSplinePointHeight(plate: 'top' | 'bottom', pt: ArchSplinePoint, mm: number): void {
     const arch = this.archFor(plate);
     if (arch.type !== 'spline') return;
-    pt.z = clamp(mm || 0, 0, arch.archHeight);
+    pt.z = clamp(mm || 0, this.splineFloor(plate), arch.archHeight);
     this.onChange();
   }
 

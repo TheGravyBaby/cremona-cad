@@ -206,6 +206,16 @@ recognizes the current format *positively* so it stays idempotent; six tests in
   `ribHeight` into an equal pair rather than seeding a default taper. `maxRibTaperMm` bounds the
   pair at the point where the tilted rib line outgrows the body — the long arching panel rolls
   an over-taper back rather than drawing a plate stretched to reach a garland that cannot exist.
+- **A long-arch spline knot may sit below the plate edge, down to the plate thickness — even below
+  the channel's trough.** An arch that arrives sloping down has no tangent on the channel's inner
+  flank, so `solveArchTakeoff` looks on the outer flank, past the trough (`contactS` goes negative)
+  and the arch runs on below the gouge. It tries the inner flank first, so arches that already met
+  it don't move. Each end of the long arch solves its own takeoff (`takeoff`/`farTakeoff`), since an
+  unmirrored knot near one end makes the two arrive differently. The cross-arch solve rides the same function, and a station's crown may sit below
+  the trough for the same reason. A cross-arch cycloid gets there with `pct` above 100%, which
+  curls its ends under the takeoff (long-arch cycloid has no UI, so it has no such field). Near the caps the surface reads the arch by distance to the
+  wrapping channel, so an STL's centerline there is shallower than the long-arch section; the
+  section and the long-arch templates are exact.
 - **`innerFlutingDepth` stays.** It still sets the long-arch span via `longArchHeightAt`.
   Retiring it would recompress every plate's arch — a shape decision, not cleanup.
 - **Cross-arch templates cut at the five `bodyLandmarks`** plus any authored station further than

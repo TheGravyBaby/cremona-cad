@@ -126,7 +126,8 @@ export function normalizeArchCurve(arch: ArchCurve): void {
   }
   // sort only when migrated — peakRow counts rows against a current recipe's own order.
   if (migrated) arch.points.sort((a, b) => a.t - b.t);
-  clampSplinePointHeights(arch.points, arch.archHeight);
+  // no floor here: the loader has no thickness in scope; the panel enforces it.
+  clampSplinePointHeights(arch.points, arch.archHeight, -Infinity);
 }
 
 /**
@@ -140,10 +141,13 @@ export function normalizeArchCurve(arch: ArchCurve): void {
  * number the maker typed. Lowering the peak therefore drags any point above it
  * down with it; raising the peak again leaves them where they landed, since
  * nothing records which of them the maker wanted brought back up.
+ *
+ * `floorZ` is zero unless the caller says otherwise; a long arch passes minus the plate thickness.
  */
-export function clampSplinePointHeights(points: { z: number }[], peakZ: number): void {
-  for (const p of points) p.z = clamp(p.z, 0, peakZ);
+export function clampSplinePointHeights(points: { z: number }[], peakZ: number, floorZ = 0): void {
+  for (const p of points) p.z = clamp(p.z, floorZ, peakZ);
 }
+
 
 /**
  * Which row of a spline's table the peak is listed in, held inside the table.

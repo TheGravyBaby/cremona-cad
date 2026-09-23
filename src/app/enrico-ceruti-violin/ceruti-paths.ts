@@ -384,6 +384,54 @@ function angleBeforeEnd(arc: Arc, degrees: number): number {
     return arc.end - dir * degrees * Math.PI / 180;
 }
 
+
+// some center bout / main bout fluting combinations degenerate, this catches those
+const MAX_JOIN_RADIUS_TO_CHORD = 10;
+// how far the search below is willing to walk the c-bout arc's own endpoint back before
+// admitting no join is possible and falling back to the error
+const MAX_CBOUT_RETREAT_DEG = 20;
+
+/** A biarc join, or null when its radius blows up relative to the chord it's meant to bridge. */
+function attemptJoin(arc1: Arc, side1: "start" | "end", arc2: Arc, side2: "start" | "end", invert: boolean): Arc[] | null {
+    const join = findJoiningArcs(arc1, side1, arc2, side2, invert);
+    const chord = dist(pointOnCircle(arc1, side1 === "end" ? arc1.end : arc1.start), pointOnCircle(arc2, side2 === "end" ? arc2.end : arc2.start));
+    return join.length > 0 && join[0].r <= MAX_JOIN_RADIUS_TO_CHORD * chord ? join : null;
+}
+
+function retreatAngle(startAngle: number, endAngle: number, side: "start" | "end", degrees: number): number {
+    const delta = Math.atan2(Math.sin(endAngle - startAngle), Math.cos(endAngle - startAngle));
+    const dir = Math.sign(delta) || 1;
+    return side === "end" ? endAngle - dir * degrees * Math.PI / 180 : startAngle + dir * degrees * Math.PI / 180;
+}
+
+// some arcs cannot be joined given their ends, this system will recursively "peel back" until a suitable 
+// angle is found for a joi
+function joinFlutingTransition(
+    arc1: Arc, side1: "start" | "end",
+    arc2: Arc, side2: "start" | "end",
+    invert = false,
+    cBoutSide: 1 | 2 = 2,
+): Arc[] {
+    const cBoutArc = cBoutSide === 1 ? arc1 : arc2;
+    const cBoutJoinSide = cBoutSide === 1 ? side1 : side2;
+    const originalStart = cBoutArc.start;
+    const originalEnd = cBoutArc.end;
+
+    for (let degrees = 0; degrees <= MAX_CBOUT_RETREAT_DEG; degrees++) {
+        if (degrees > 0) {
+            const angle = retreatAngle(originalStart, originalEnd, cBoutJoinSide, degrees);
+            if (cBoutJoinSide === "end") cBoutArc.end = angle; else cBoutArc.start = angle;
+        }
+        const join = attemptJoin(arc1, side1, arc2, side2, invert);
+        if (join) return join;
+    }
+
+    cBoutArc.start = originalStart;
+    cBoutArc.end = originalEnd;
+    error("Cannot join fluting on main body and c-bout, as the difference in fluting width is too large", "Fluting Error");
+    return [];
+}
+
 export function defineFlutingArcs(p: EnricoCerutiParams, offset: number, centerOffset?: number): Arc[] {
     const flutingArcs = defineOffsetArcs(p, offset, false, centerOffset);
     // flutingArcs[2] is always C0off here: whichever side is viol, its corner arc(s)
@@ -392,7 +440,7 @@ export function defineFlutingArcs(p: EnricoCerutiParams, offset: number, centerO
     if (p.options.useViolCornerLC && p.options.useViolCornerUC) {
         let U4Offset = offsetArcRadius(p.bouts.U4!, offset);
         U4Offset.end = angleBeforeEnd(U4Offset, 10);
-        let upperJoin = findJoiningArcs(flutingArcs[2], "start", U4Offset, "end", true)
+        let upperJoin = joinFlutingTransition(flutingArcs[2], "start", U4Offset, "end", true, 1)
         flutingArcs.push(U4Offset);
         for (const arc of upperJoin) {
             flutingArcs.push(arc);
@@ -400,7 +448,7 @@ export function defineFlutingArcs(p: EnricoCerutiParams, offset: number, centerO
 
         let L4Offset = offsetArcRadius(p.bouts.L4!, offset);
         L4Offset.end = angleBeforeEnd(L4Offset, 10);
-        let lowerJoin = findJoiningArcs(L4Offset, "end", flutingArcs[2], "end", false)
+        let lowerJoin = joinFlutingTransition(L4Offset, "end", flutingArcs[2], "end", false, 2)
         flutingArcs.push(L4Offset);
         for (const arc of lowerJoin) {
             flutingArcs.push(arc);
@@ -410,13 +458,13 @@ export function defineFlutingArcs(p: EnricoCerutiParams, offset: number, centerO
 
 
     if (p.options.useViolCornerUC){
-        let lowerJoin = findJoiningArcs(flutingArcs[2], "end", flutingArcs[3], "end", false)
+        let lowerJoin = joinFlutingTransition(flutingArcs[2], "end", flutingArcs[3], "end", false, 2)
         for (const arc of lowerJoin) {
             flutingArcs.push(arc);
         }
         let U4Offset = offsetArcRadius(p.bouts.U4!, offset);
         U4Offset.end = angleBeforeEnd(U4Offset, 12);
-        let upperJoin = findJoiningArcs(flutingArcs[3], "start", U4Offset, "end", true)
+        let upperJoin = joinFlutingTransition(flutingArcs[3], "start", U4Offset, "end", true, 1)
         flutingArcs.push(U4Offset);
         for (const arc of upperJoin) {
             flutingArcs.push(arc);
@@ -424,13 +472,13 @@ export function defineFlutingArcs(p: EnricoCerutiParams, offset: number, centerO
         return flutingArcs;
     }
     if (p.options.useViolCornerLC) {
-        let upperJoin = findJoiningArcs(flutingArcs[2], "start", flutingArcs[3], "end", true)
+        let upperJoin = joinFlutingTransition(flutingArcs[2], "start", flutingArcs[3], "end", true, 1)
         for (const arc of upperJoin) {
             flutingArcs.push(arc);
         }
         let L4Offset = offsetArcRadius(p.bouts.L4!, offset);
         L4Offset.end = angleBeforeEnd(L4Offset, 12);
-        let lowerJoin = findJoiningArcs(L4Offset, "end", flutingArcs[2], "end", false)
+        let lowerJoin = joinFlutingTransition(L4Offset, "end", flutingArcs[2], "end", false, 2)
         flutingArcs.push(L4Offset);
         for (const arc of lowerJoin) {
             flutingArcs.push(arc);
@@ -439,12 +487,12 @@ export function defineFlutingArcs(p: EnricoCerutiParams, offset: number, centerO
         return flutingArcs;
     }
 
-    let lowerJoin = findJoiningArcs(flutingArcs[2], "end", flutingArcs[3], "end")
+    let lowerJoin = joinFlutingTransition(flutingArcs[2], "end", flutingArcs[3], "end", false, 2)
     for (const arc of lowerJoin) {
         flutingArcs.push(arc);
     }
 
-    let upperJoin = findJoiningArcs(flutingArcs[3], "start", flutingArcs[4], "end", true)
+    let upperJoin = joinFlutingTransition(flutingArcs[3], "start", flutingArcs[4], "end", true, 1)
     for (const arc of upperJoin) {
         flutingArcs.push(arc);
     }
@@ -845,7 +893,14 @@ export function defineFlutingPath(p: EnricoCerutiParams, offset: number, centerO
         const top = violNeckTopLine(p, -flutingOffset);
         if (top) paths.push(top);
     }
-    return unifyConnectedSvgPaths(paths);
+    try {
+        return unifyConnectedSvgPaths(paths);
+    } catch {
+        // joinFlutingTransition already reported why (a c-bout/main-body join too degenerate to
+        // draw) and dropped the connecting arc, which is what leaves this gap. Null hands the
+        // panel the same "nothing to draw yet" case it already has for an unconfigured channel.
+        return null;
+    }
 }
 
 /**

@@ -80,16 +80,15 @@ export function renderBodySection(p: EnricoCerutiParams, colors: CerutiColors, o
 
     // the channel at both caps — identical at each end and at every station, because it is the
     // tool rather than a curve fitted to the arch. drawn only as far as the arch's contact.
-    const sEnd = solved?.takeoff.contactS;
-    renderPath(channelCapPath(p, gouge, outerZ, sign, true, sEnd), channel, STROKE_WEIGHT.section)(g, ui);
-    renderPath(channelCapPath(p, gouge, outerZ, sign, false, sEnd), channel, STROKE_WEIGHT.section)(g, ui);
+    renderPath(channelCapPath(p, gouge, outerZ, sign, true, solved?.takeoff.contactS), channel, STROKE_WEIGHT.section)(g, ui);
+    renderPath(channelCapPath(p, gouge, outerZ, sign, false, solved?.farTakeoff.contactS), channel, STROKE_WEIGHT.section)(g, ui);
 
     if (!solved) return;
-    const { span, yStart, lowered, takeoff } = solved;
+    const { span, yStart, lowered, takeoff, farZ } = solved;
     const xBase = outerZ - sign * takeoff.takeoffDepth;
 
     renderSplineHighlight(lowered, span, yStart, xBase, sign, opts.highlight?.(plate) ?? null)(g, ui);
-    renderPath(buildArchPathFor(lowered, span, yStart, xBase, sign), color, STROKE_WEIGHT.section)(g, ui);
+    renderPath(buildArchPathFor(lowered, span, yStart, xBase, sign, farZ), color, STROKE_WEIGHT.section)(g, ui);
 
     if (opts.showGuides) {
       const authored = isTop ? a.top.arch : a.bottom.arch;
@@ -99,10 +98,10 @@ export function renderBodySection(p: EnricoCerutiParams, colors: CerutiColors, o
 }
 
 /** The arch path for whichever curve type the plate carries — mirrors ceruti-arching's private builder. */
-function buildArchPathFor(arch: ArchCurve, span: number, yStart: number, xBase: number, sign: 1 | -1): string {
+function buildArchPathFor(arch: ArchCurve, span: number, yStart: number, xBase: number, sign: 1 | -1, farZ: number): string {
   switch (arch.type) {
     case 'catenary': return buildCatenaryPath(arch.archHeight, span, yStart, xBase, sign);
     case 'cycloid':  return buildCycloidPath(arch.archHeight, span, yStart, xBase, sign, arch.d);
-    case 'spline':   return buildSplinePath(arch.archHeight, span, yStart, xBase, sign, arch.points, arch.peak);
+    case 'spline':   return buildSplinePath(arch.archHeight, span, yStart, xBase, sign, arch.points, arch.peak, undefined, farZ);
   }
 }

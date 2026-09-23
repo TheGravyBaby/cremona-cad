@@ -17,7 +17,7 @@ import {
 } from '../../ceruti-arching';
 import {
   defaultCrossArchCatenaryShape, defaultCrossArchCycloidParams, defaultCrossArchParams,
-  defaultCrossArchSplineParams, defaultFlutingParams, CrossArchSection,
+  defaultCrossArchSplineParams, defaultFlutingParams, CrossArchSection, CYCLOID_MAX_PCT,
   crossArchGuide, crossArchKnotX, crossArchSectionAt, crossArchSectionPath, nearestCrossArchShape,
 } from '../../ceruti-arch-geometry';
 import {
@@ -463,17 +463,18 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
   }
 
   /**
-   * Sets the trochoid window. Held below 100% deliberately: the full curve
-   * leaves the baseline tangent-flat, and a crown that
-   * runs out flat can only meet the gouge where the gouge is flat too — its
-   * trough. The tangency then has nowhere to slide, and the arch drops the full
-   * channel depth in one unsupported step. Some grade at the run-out is what
-   * gives the solve a contact point to find.
+   * Past 100% the ends curl under the takeoff, dipping by tan²(q·π/2) of the rise for q = pct − 1.
+   * Held where the deepest station's dip reaches the plate thickness, like a knot's height floor.
    */
+  cycloidPctMax(plate: 'top' | 'bottom'): number {
+    const dip = -this.pointZFloorPct(plate) / 100;
+    return Math.round(100 * Math.min(1 + (2 / Math.PI) * Math.atan(Math.sqrt(dip)), CYCLOID_MAX_PCT));
+  }
+
   setCycloidPct(plate: 'top' | 'bottom', pct: number): void {
     const target = this.editTarget(plate);
     if (target.type !== 'cycloid' || !entered(pct)) return;
-    target.pct = clamp(pct, 5, 98) / 100;
+    target.pct = clamp(pct, 5, this.cycloidPctMax(plate)) / 100;
     this.onChange();
   }
 
@@ -522,6 +523,15 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
    */
   pointXPct(pt: CrossArchPoint): number {
     return +(50 + pt.x * 50).toFixed(1);
+  }
+
+  /**
+   * Lowest a knot's height may go, as a percent of the rise: the plate thickness over the tallest
+   * rise a station can have, so no station's dip below the takeoff ever exceeds the thickness.
+   */
+  pointZFloorPct(plate: 'top' | 'bottom'): number {
+    const plateParams = plate === 'top' ? this.arching.top : this.arching.bottom;
+    return -100 * plateParams.thickness / (plateParams.arch.archHeight + this.gouge(plate).depth);
   }
 
   /** A knot's height as a whole percent of the local arch height. */
@@ -584,7 +594,8 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
   }
 
   /**
-   * Sets a knot's height as a percent of the local arch height. 100 is the
+   * Sets a knot's height as a percent of the local arch height. Below zero the knot dips under the
+   * takeoff, and the section meets the channel's outer flank instead. 100 is the
    * ceiling because the crown always sits at the full height — a taller knot
    * would quietly become the real high spot and the entered arch height would
    * stop describing the plate — the same invariant the long-arch splines carry.
@@ -592,7 +603,7 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
   setPointZPct(plate: 'top' | 'bottom', index: number, pct: number): void {
     const pt = this.pointTarget(plate, index);
     if (!pt || !entered(pct)) return;
-    pt.z = clamp(pct, 0, 100) / 100;
+    pt.z = clamp(pct, this.pointZFloorPct(plate), 100) / 100;
     this.onChange();
   }
 

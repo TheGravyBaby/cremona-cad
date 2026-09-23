@@ -95,6 +95,12 @@ describe('clampSplinePointHeights', () => {
     expect(points.map(p => p.z)).toEqual([3, 15, 15, 0]);
   });
 
+  it('floors at the given level instead of zero', () => {
+    const points = [{ z: -0.4 }, { z: -9 }];
+    clampSplinePointHeights(points, HEIGHT, -3.5);
+    expect(points.map(p => p.z)).toEqual([-0.4, -3.5]);
+  });
+
   // The invariant this exists to protect: the peak is what pins the arch's
   // height, so a taller control point would quietly become the real high spot
   // and the entered Arch Height would stop describing the curve.
@@ -117,6 +123,16 @@ describe('clampSplinePointHeights', () => {
 });
 
 describe('normalizeArchingParams', () => {
+  it('leaves a knot below the plate edge where the maker put it', () => {
+    const arch: ArchSpline = {
+      type: 'spline', archHeight: HEIGHT, peak: 0.5, points: [{ t: 0.1, z: -0.5, mirror: true }],
+    };
+    const p = paramsWith(arch);
+    normalizeArchingParams(JSON.parse(JSON.stringify(p)));
+    normalizeArchingParams(p);
+    expect((p.arching!.top.arch as ArchSpline).points[0].z).toBe(-0.5);
+  });
+
   it('migrates both plates, so exports never read legacy coordinates', () => {
     const p = paramsWith(legacySpline());
     normalizeArchingParams(p);
