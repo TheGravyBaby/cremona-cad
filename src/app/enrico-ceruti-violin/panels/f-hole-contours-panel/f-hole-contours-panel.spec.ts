@@ -260,4 +260,27 @@ describe('f-hole contour properties', () => {
     expect(f.S3!.r).toBeCloseTo(pinned, 6);
     expect(f.S4!.r).toBeCloseTo(pinned, 6);
   });
+
+  it('lets each stem arc take its own radius once the stem is set to individual radii', () => {
+    const p = solve('plain');
+    const shared = p.fHoles!.stem.arcR!;
+    p.options.stemArcsIndependent = true;
+    p.fHoles!.S1!.r = shared + 2;
+    p.fHoles!.S2!.r = shared + 4;
+    p.fHoles!.S3!.r = shared + 6;
+    p.fHoles!.S4!.r = shared + 8;
+    calculateFholeContours(p);
+    calculateFholeContours(p);
+
+    const f = p.fHoles!;
+    expect(f.S1!.r).toBeCloseTo(shared + 2, 6);
+    expect(f.S2!.r).toBeCloseTo(shared + 4, 6);
+    expect(f.S3!.r).toBeCloseTo(shared + 6, 6);
+    expect(f.S4!.r).toBeCloseTo(shared + 8, 6);
+    expect(f.stem.arcR).toBeCloseTo(shared, 6);
+
+    p.options.stemArcsIndependent = false;
+    calculateFholeContours(p);
+    for (const a of [f.S1!, f.S2!, f.S3!, f.S4!]) expect(a.r).toBeCloseTo(shared, 6);
+  });
 });

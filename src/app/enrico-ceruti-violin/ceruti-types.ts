@@ -77,6 +77,7 @@ export interface EnricoCerutiParams {
     L31DoubleArc: boolean;
     U21DoubleArc?: boolean;
     L21DoubleArc?: boolean;
+    stemArcsIndependent?: boolean;
     ucCornerSharpness?: number;
     lcCornerSharpness?: number;
   },
@@ -259,7 +260,8 @@ export interface FholeStem {
   /** radians; geometry should read `stemRun`, not this. */
   angle: number | null;
   /** Shared radius for all four stem-tangent/flare arcs (S1-S4) — one compass setting for
-   * the whole stem, the way a maker would actually fit it. */
+   * the whole stem, the way a maker would actually fit it. Ignored once
+   * `options.stemArcsIndependent` hands each arc its own `r`. */
   arcR: number | null;
 }
 
@@ -716,6 +718,7 @@ export const DefaultParams: EnricoCerutiParams = {
     L31DoubleArc: false,
     U21DoubleArc: false,
     L21DoubleArc: false,
+    stemArcsIndependent: false,
     ucCornerSharpness: 0,
     lcCornerSharpness: 0,
   }
