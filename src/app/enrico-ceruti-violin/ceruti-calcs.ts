@@ -661,6 +661,9 @@ export function calculateFholeContours(p: EnricoCerutiParams): void {
   let innerStemPt = new Pt(p.fHoles.stem.center.x - p.fHoles.stem.width / 2, p.fHoles.stem.center.y)
   let innerStemLine = lineFromPointAndSlope(innerStemPt, stemSlope)
 
+  // each solve rebuilds its S arc, so the last radius survives on the arc itself
+  let stemR = (s: Arc | null) => p.options.stemArcsIndependent ? s?.r ?? p.fHoles.stem.arcR : p.fHoles.stem.arcR
+
   // first the upper curve that connects to the eye
   try {
     // a compound arm seeds on the arm's own circle, split halfway along the sweep the arm last
@@ -696,7 +699,7 @@ export function calculateFholeContours(p: EnricoCerutiParams): void {
       upperStemReach = p.fHoles.U21;
     }
 
-    let S2 = solveTangentCircleAndLine(outerStemLine, upperStemReach, p.fHoles.stem.arcR, true, 1, p.fHoles.stem.center);
+    let S2 = solveTangentCircleAndLine(outerStemLine, upperStemReach, stemR(p.fHoles.S2), true, 1, p.fHoles.stem.center);
     let S2StemIntersect = lineCircleIntersectionWithTolerance(outerStemLine, S2); // we are just kissing the line, sometimes we miss due to floating points
     let S2StemEndAngle = angleFromCenter(S2, S2StemIntersect[0])
 
@@ -715,7 +718,7 @@ export function calculateFholeContours(p: EnricoCerutiParams): void {
     let cutEnd = moveInVectorSpace(cutStart, [cutVector]);
     p.fHoles.UTip = cutEnd;
     let cutCircle = placeCircleOnPointAtAngle(p.fHoles.U3.r, cutEnd, p.fHoles.U3.end);
-    let S1 = solveTangentCircleAndLine(innerStemLine, cutCircle, p.fHoles.stem.arcR, true, 1, p.fHoles.stem.center);
+    let S1 = solveTangentCircleAndLine(innerStemLine, cutCircle, stemR(p.fHoles.S1), true, 1, p.fHoles.stem.center);
     let S1U3Pt = circleCircleIntersections(S1, cutCircle);
     let S1StemIntersect = lineCircleIntersectionWithTolerance(innerStemLine, S1);
     let S1StemEndAngle = angleFromCenter(S1, S1StemIntersect[0]);
@@ -756,7 +759,7 @@ export function calculateFholeContours(p: EnricoCerutiParams): void {
       lowerStemReach = p.fHoles.L21;
     }
 
-    let S3 = solveTangentCircleAndLine(innerStemLine, lowerStemReach, p.fHoles.stem.arcR, true, -1, p.fHoles.stem.center);
+    let S3 = solveTangentCircleAndLine(innerStemLine, lowerStemReach, stemR(p.fHoles.S3), true, -1, p.fHoles.stem.center);
     let S3StemIntersect = lineCircleIntersectionWithTolerance(innerStemLine, S3);
     let S3StemEndAngle = angleFromCenter(S3, S3StemIntersect[0])
 
@@ -774,7 +777,7 @@ export function calculateFholeContours(p: EnricoCerutiParams): void {
     let cutEnd = moveInVectorSpace(cutStart, [cutVector]);
     p.fHoles.LTip = cutEnd;
     let cutCircle = placeCircleOnPointAtAngle(p.fHoles.L3.r, cutEnd, p.fHoles.L3.end);
-    let S4 = solveTangentCircleAndLine(outerStemLine, cutCircle, p.fHoles.stem.arcR, true, -1, p.fHoles.stem.center);
+    let S4 = solveTangentCircleAndLine(outerStemLine, cutCircle, stemR(p.fHoles.S4), true, -1, p.fHoles.stem.center);
     let S4L3Pt = circleCircleIntersections(S4, cutCircle);
     let S4StemIntersect = lineCircleIntersectionWithTolerance(outerStemLine, S4);
     let S4StemEndAngle = angleFromCenter(S4, S4StemIntersect[0]);

@@ -89,6 +89,42 @@
 
 <section class="ui-group" [style.border-color]="colors.fHoleStem">
     <div class="ui-group-title">Stem</div>
+    @if (params.options.stemArcsIndependent) {
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">S1 Radius<span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0"
+                [ngModel]="round2(params.fHoles!.S1!.r)" (ngModelChange)="params.fHoles!.S1!.r = $event; onChange(); onArcFocus('S1', colors.fHoleStem)"
+                [style.borderColor]="colors.fHoleStem" (focus)="onArcFocus('S1', colors.fHoleStem)" (blur)="onArcBlur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">S2 Radius<span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0"
+                [ngModel]="round2(params.fHoles!.S2!.r)" (ngModelChange)="params.fHoles!.S2!.r = $event; onChange(); onArcFocus('S2', colors.fHoleStem)"
+                [style.borderColor]="colors.fHoleStem" (focus)="onArcFocus('S2', colors.fHoleStem)" (blur)="onArcBlur()" />
+        </label>
+        <label class="field-cell">
+            <div class="toggle">
+                <input type="checkbox" [(ngModel)]="params.options.stemArcsIndependent"
+                    (change)="onChange()" /><span>Unique radii</span>
+            </div>
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">S3 Radius<span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0"
+                [ngModel]="round2(params.fHoles!.S3!.r)" (ngModelChange)="params.fHoles!.S3!.r = $event; onChange(); onArcFocus('S3', colors.fHoleStem)"
+                [style.borderColor]="colors.fHoleStem" (focus)="onArcFocus('S3', colors.fHoleStem)" (blur)="onArcBlur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">S4 Radius<span class="unit-label">mm</span></span>
+            <input type="number" class="basic-input" step="1" min="0"
+                [ngModel]="round2(params.fHoles!.S4!.r)" (ngModelChange)="params.fHoles!.S4!.r = $event; onChange(); onArcFocus('S4', colors.fHoleStem)"
+                [style.borderColor]="colors.fHoleStem" (focus)="onArcFocus('S4', colors.fHoleStem)" (blur)="onArcBlur()" />
+        </label>
+    </div>
+    } @else {
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title">Arc Radius<span class="unit-label">mm</span></span>
@@ -96,7 +132,14 @@
                 [ngModel]="round2(params.fHoles!.stem.arcR)" (ngModelChange)="params.fHoles!.stem.arcR = $event; onChange()"
                 [style.borderColor]="colors.fHoleStem" />
         </label>
+        <label class="field-cell">
+            <div class="toggle">
+                <input type="checkbox" [(ngModel)]="params.options.stemArcsIndependent"
+                    (change)="onChange()" /><span>Unique radii</span>
+            </div>
+        </label>
     </div>
+    }
 </section>
 
 <section class="ui-group" [style.border-color]="colors.fHoleLower">
