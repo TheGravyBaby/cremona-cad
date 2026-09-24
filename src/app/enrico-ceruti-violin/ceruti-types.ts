@@ -115,12 +115,14 @@ export interface EnricoCerutiParams {
 }
 
 /** The scroll's spiral. The eye is the raised disc at its centre; the rule that winds outward from it is the style. */
-export type VoluteStyle = 'serlio';
+export type VoluteStyle = 'serlio' | 'salviati';
 
 export interface VoluteParams {
   /** Radius of the eye (mm). */
   eyeRadius: number;
   style: VoluteStyle;
+  /** Turn of the spiral about the eye, counterclockwise, on top of the style's own orientation (degrees). */
+  rotationDeg: number;
 }
 
 // the neck set, in the side elevation. the fingerboard plane leaves the top plate's edge

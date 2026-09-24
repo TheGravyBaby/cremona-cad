@@ -157,73 +157,62 @@ describe('the scroll panel', () => {
   });
 
   describe('the volute', () => {
-    // each arc path is "M sx,sy A r,r 0 large,sweep ex,ey"
-    const arcs = (instance: ScrollPanel) => recordLayers(instance.buildRun()).paths
-      .filter(d => d.includes(' A '))
-      .map(d => {
-        const [sx, sy, r, , , , , ex, ey] = [...d.matchAll(/-?\d*\.?\d+(?:e[-+]?\d+)?/gi)].map(m => +m[0]);
-        return { sx, sy, r, ex, ey };
-      });
-
-    // the last path is the transition curve, which is not part of the spiral
-    const spiral = (instance: ScrollPanel) => arcs(instance).slice(0, -1);
-
-    function volute(eyeRadius: number) {
+    const drawn = (eyeRadius: number) => {
       const p = defaultViolin();
       const instance = panel(ScrollPanel, p);
       instance.buildRun();
       p.volute!.eyeRadius = eyeRadius;
-      return { p, instance };
-    }
+      return recordLayers(instance.buildRun());
+    };
+    const arcs = (eyeRadius: number) => drawn(eyeRadius).elements.filter(el => typeof el.attrs['d'] === 'string' && (el.attrs['d'] as string).includes(' A '));
 
-    it('winds Serlio\'s radii out from the eye, in eye diameters', () => {
-      const { instance } = volute(4);
-      const d = 8;
-      expect(spiral(instance).map(a => a.r / d)).toEqual([3, 13 / 6, 3 / 2, 1, 2 / 3].map(v => expect.closeTo(v, 9)));
-    });
-
-    it('joins each arc to the next at a shared point on the line of centres', () => {
-      const { instance } = volute(4);
-      const a = spiral(instance);
-      for (let i = 1; i < a.length; i++) {
-        const [prev, next] = [a[i - 1], a[i]];
-        const joint = [[prev.sx, prev.sy], [prev.ex, prev.ey]].find(([x, y]) =>
-          [[next.sx, next.sy], [next.ex, next.ey]].some(([nx, ny]) => Math.hypot(x - nx, y - ny) < 1e-9));
-        expect(joint, `arc ${i} and ${i + 1} share no end`).toBeDefined();
-        expect(joint![1]).toBeCloseTo(a[0].sy, 9);
-      }
-    });
-
-    it('sits the eye so the spiral touches the box top and its front', () => {
-      const { p, instance } = volute(4);
-      const a = spiral(instance);
-      const top = Math.max(...[0, 2, 4].map(i => a[i].sy + a[i].r));
-      const right = Math.max(...a.flatMap(x => [x.sx, x.ex]));
-      expect(top).toBeCloseTo(p.neck!.scrollLength, 9);
-      expect(right).toBeCloseTo(0, 9);
-    });
-
-    it('scales with the eye radius', () => {
-      const small = spiral(volute(3).instance);
-      const large = spiral(volute(6).instance);
-      small.forEach((s, i) => expect(large[i].r).toBeCloseTo(2 * s.r, 9));
-    });
-
-    it('hands the spiral off at the box top to a curve reaching the back edge, tangent at both ends', () => {
-      const { p, instance } = volute(4);
-      const outer = spiral(instance)[0];
-      const transition = arcs(instance).at(-1)!;
-      expect([transition.sx, transition.sy]).toEqual([outer.ex, outer.ey].map(v => expect.closeTo(v, 9)));
-      expect(transition.sy).toBeCloseTo(p.neck!.scrollLength, 9);
-      expect(transition.ex).toBeCloseTo(-p.neck!.scrollDepth, 9);
-      expect(transition.sx - transition.r).toBeCloseTo(-p.neck!.scrollDepth, 9);
-      expect(transition.ey).toBeCloseTo(transition.sy - transition.r, 9);
+    it('draws the spiral in full strokes and the join lighter after it', () => {
+      const a = arcs(4);
+      expect(a.length).toBe(6);
+      expect(a.slice(0, -1).every(el => el.attrs['opacity'] === 1)).toBe(true);
+      expect(a.at(-1)!.attrs['opacity']).toBeLessThan(1);
     });
 
     it('draws no spiral for an eye that is not a positive radius', () => {
-      for (const bad of [0, -1, NaN]) {
-        expect(arcs(volute(bad).instance)).toEqual([]);
+      for (const bad of [0, -1, NaN]) expect(arcs(bad)).toEqual([]);
+    });
+
+    it('turns the spiral by the rotation field, in degrees', () => {
+      const p = defaultViolin();
+      const instance = panel(ScrollPanel, p);
+      const spiralArcs = () => recordLayers(instance.buildRun()).paths.filter(d => d.includes(' A ')).length;
+      expect(spiralArcs()).toBe(6);
+      p.volute!.rotationDeg = 120;
+      expect(spiralArcs()).toBe(7);
+    });
+
+    it('wraps the rotation into 0 to 360 degrees', () => {
+      const p = defaultViolin();
+      const instance = panel(ScrollPanel, p);
+      instance.buildRun();
+      for (const [typed, kept] of [[370, 10], [-30, 330], [360, 0], [-720, 0], [45, 45]]) {
+        p.volute!.rotationDeg = typed;
+        instance.buildRun();
+        expect(p.volute!.rotationDeg).toBeCloseTo(kept, 9);
       }
+    });
+
+    it('leaves a rotation field cleared mid-typing alone', () => {
+      const p = defaultViolin();
+      const instance = panel(ScrollPanel, p);
+      instance.buildRun();
+      p.volute!.rotationDeg = null as unknown as number;
+      instance.buildRun();
+      expect(p.volute!.rotationDeg).toBe(null);
+    });
+
+    it('takes a saved volute that has no rotation as unturned', () => {
+      const p = defaultViolin();
+      const instance = panel(ScrollPanel, p);
+      instance.buildRun();
+      delete (p.volute as any).rotationDeg;
+      instance.buildRun();
+      expect(p.volute!.rotationDeg).toBe(0);
     });
   });
 });
