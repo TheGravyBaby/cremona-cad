@@ -52,6 +52,27 @@
     </div>
 </section>
 
+<section class="ui-group" [style.border-color]="colors.neckOff">
+    <div class="ui-group-title">Scroll</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Length <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="1" min="1" [style.border-color]="colors.neckOff"
+                [(ngModel)]="neck.scrollLength" (input)="onChange()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">Depth <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="1" min="1" [style.border-color]="colors.neckOff"
+                [(ngModel)]="neck.scrollDepth" (input)="onChange()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title">L to D</span>
+            <div class="basic-display" aria-label="Scroll length to depth ratio value">{{
+                nearestFraction(neck.scrollLength / neck.scrollDepth) }}</div>
+        </label>
+    </div>
+</section>
+
 <section class="ui-group">
     <div class="ui-group-title">String Setup</div>
    

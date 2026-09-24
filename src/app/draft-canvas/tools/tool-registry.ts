@@ -11,6 +11,7 @@ import { createCircleTool } from './circle-tool';
 import { createDimensionTool } from './dimension-tool';
 import { createRectTool } from './rect-tool';
 import { createSectionTool } from './section-tool';
+import { createTicksTool } from './ticks-tool';
 import { createTextTool } from './text-tool';
 import { createPointTool } from './point-tool';
 import { createFreehandTool } from './freehand-tool';
@@ -49,6 +50,7 @@ export class ToolRegistryService {
     [createLineTool(this.toolbox)],
     [createDimensionTool()],
     [createSectionTool(this.toolbox)],
+    [createTicksTool(this.toolbox)],
     // Ordered by where the center click falls — first, second, third, never — then the three that
     // solve themselves off geometry already on the canvas. Keep tool-hotkeys.ts's KeyA cycle in
     // this same order.

@@ -13,6 +13,7 @@ export function translateShape(shape: DraftShape, dx: number, dy: number): Draft
     case 'line':
     case 'dimension':
     case 'section':
+    case 'ticks':
       return { ...shape, start: shiftPt(shape.start, dx, dy), end: shiftPt(shape.end, dx, dy) };
     case 'arc':
     case 'circle':

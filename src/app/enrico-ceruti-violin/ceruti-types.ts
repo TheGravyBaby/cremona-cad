@@ -111,6 +111,16 @@ export interface EnricoCerutiParams {
   fHoles?: FholeParams;
   arching?: ArchingParams;
   neck?: NeckParams;
+  volute?: VoluteParams;
+}
+
+/** The scroll's spiral. The eye is the raised disc at its centre; the rule that winds outward from it is the style. */
+export type VoluteStyle = 'serlio';
+
+export interface VoluteParams {
+  /** Radius of the eye (mm). */
+  eyeRadius: number;
+  style: VoluteStyle;
 }
 
 // the neck set, in the side elevation. the fingerboard plane leaves the top plate's edge
@@ -143,6 +153,10 @@ export interface NeckParams {
   heelRadius: number;
   /** Fingerboard thickness at the nut, uniform along its length (mm). */
   nutThickness: number;
+  /** The scroll's bounding box along the neck, nut to the volute's far edge (mm). */
+  scrollLength: number;
+  /** The scroll's bounding box across the neck, from the fingerboard plane toward the back (mm). */
+  scrollDepth: number;
 
   /** The top plate's outer edge at the neck end. */
   edge: Pt | null;
@@ -582,7 +596,7 @@ export interface PathEntry {
 // is a migration; `panelOrder` is typed against this list.
 export const CERUTI_PANEL_IDS = [
   'base', 'mainBouts', 'corners', 'centerBout', 'outerTrace',
-  'fluting', 'longArching', 'crossArching', 'fHolePlacement', 'fHoleContours', 'neck', 'mould', 'export',
+  'fluting', 'longArching', 'crossArching', 'fHolePlacement', 'fHoleContours', 'neck', 'scroll', 'mould', 'export',
 ] as const;
 
 export type CerutiPanelId = typeof CERUTI_PANEL_IDS[number];

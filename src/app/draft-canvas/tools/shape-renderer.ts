@@ -79,6 +79,9 @@ export function drawShape(gRoot: RootGroup, gUI: RootGroup, shape: DraftShape, p
         color1: color, color2: shape.color2, label: shape.label,
       }, pxPerMm);
       break;
+    case 'ticks':
+      drawTicks(gRoot, shape.start, shape.end, shape.weights, color);
+      break;
     case 'text':
       // Zero-radius circle: gets picked up by snap-engine.ts's `circle` branch as a plain
       // 'center' point candidate, without also contributing along-path samples (getTotalLength
@@ -356,6 +359,53 @@ export function drawSection(gRoot: RootGroup, gUI: RootGroup, p: SectionParams, 
   tickAt(end.x, end.y);
 }
 
+const TICK_MAX_MM = 4;
+const TICK_LENGTH_RATIO = 0.05;
+
+// a fraction of the line so a short line doesn't sprout oversized ticks, capped so a long one doesn't either
+export function tickLengthMm(lineLength: number): number {
+  return Math.min(TICK_MAX_MM, lineLength * TICK_LENGTH_RATIO);
+}
+
+export function drawTicks(gRoot: RootGroup, start: Pt, end: Pt, weights: number[], color: string): void {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const len = Math.hypot(dx, dy);
+  if (len < 1e-6 || weights.length === 0) return;
+
+  const ux = dx / len, uy = dy / len;
+  const halfTick = tickLengthMm(len) / 2;
+  const total = weights.reduce((a, b) => a + b, 0);
+
+  gRoot.append('line')
+    .attr('x1', start.x).attr('y1', start.y).attr('x2', end.x).attr('y2', end.y)
+    .attr('stroke', color)
+    .attr('stroke-width', 1)
+    .attr('vector-effect', 'non-scaling-stroke');
+
+  let cursor = 0;
+  for (let i = 0; i <= weights.length; i++) {
+    const tx = start.x + ux * cursor * len / total;
+    const ty = start.y + uy * cursor * len / total;
+    gRoot.append('line')
+      .attr('data-no-snap', '')
+      .attr('x1', tx - uy * halfTick).attr('y1', ty + ux * halfTick)
+      .attr('x2', tx + uy * halfTick).attr('y2', ty - ux * halfTick)
+      .attr('stroke', color)
+      .attr('stroke-width', 1.5)
+      .attr('vector-effect', 'non-scaling-stroke');
+
+    // ends are already snappable through the baseline; interior ticks need their own exact point
+    if (i > 0 && i < weights.length) {
+      gRoot.append('circle')
+        .attr('cx', tx).attr('cy', ty).attr('r', 0)
+        .attr('fill', 'none').attr('stroke', 'none')
+        .style('pointer-events', 'none');
+    }
+    cursor += weights[i] ?? 0;
+  }
+}
+
 function drawArcCenterGuides(
   gRoot: RootGroup, center: Pt, radius: number, startAngle: number, endAngle: number, color: string, pxPerMm: number,
 ): void {
@@ -511,6 +561,7 @@ export function drawSelectionHalo(gRoot: RootGroup, gUI: RootGroup, shape: Draft
 
   switch (shape.type) {
     case 'line':
+    case 'ticks':
       halo(gRoot.append('line')
         .attr('x1', shape.start.x).attr('y1', shape.start.y)
         .attr('x2', shape.end.x).attr('y2', shape.end.y));

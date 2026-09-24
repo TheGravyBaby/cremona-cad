@@ -19,9 +19,6 @@ import { channelCenterlineZAt, LongArchSolve } from './ceruti-arch-geometry';
 // calculateOuterArcs already work — see NeckParams' own header.
 
 const REFERENCE_BODY_HEIGHT = 355;
-/** Violin pegbox and scroll beyond the nut, as a box until the scroll panel draws them. */
-const SCROLL_LENGTH_MM = 110;
-const SCROLL_DEPTH_MM = 40;
 /** The bridge's blank, drawn as a wedge: how much narrower the feet are than the body stop line, and the top than the feet. */
 const BRIDGE_FOOT_HALF_WIDTH_RATIO = 0.07;
 const BRIDGE_TOP_TO_FOOT_WIDTH_RATIO = 1 / 3;
@@ -41,6 +38,8 @@ export function defaultNeckParams(p: EnricoCerutiParams): NeckParams {
     thickness: mm(13),
     heelRadius: mm(20),
     nutThickness: mm(10),
+    scrollLength: mm(110),
+    scrollDepth: mm(40),
 
     edge: undefined, root: undefined, direction: undefined, normal: undefined,
     rootPlaneY: undefined, mortiseFloorY: undefined, gluingAtMortise: undefined,
@@ -59,6 +58,11 @@ function standardFingerboardLength(bodyHeight: number): number {
   if (bodyHeight < 500) return 310; // viola
   if (bodyHeight < 800) return 580; // cello
   return 850; // bass
+}
+
+/** The nut's span along the neck, scaled from the violin's 6 mm by body length. */
+export function standardNutLength(bodyHeight: number): number {
+  return 6 * bodyHeight / REFERENCE_BODY_HEIGHT;
 }
 
 /** `p.arching`, `p.neck` and `p.button` must already be in place — the panel seeds them. Writes
@@ -128,7 +132,7 @@ export function calculateNeck(p: EnricoCerutiParams, topArch: LongArchSolve | nu
   const nutTop = moveInVectorSpace(nutAt, [{ ...normal, mag: nk.nutThickness }]);
   const nut = { at: nutAt, top: nutTop };
 
-  const nutLength = 6 * p.height / REFERENCE_BODY_HEIGHT;
+  const nutLength = standardNutLength(p.height);
   const nutBlockFar = moveInVectorSpace(nutAt, [{ ...direction, mag: nutLength }]);
   const nutBlock: [Pt, Pt, Pt, Pt] = [nutAt, nutBlockFar, moveInVectorSpace(nutBlockFar, [{ ...normal, mag: nk.nutThickness }]), nutTop];
 
@@ -139,14 +143,11 @@ export function calculateNeck(p: EnricoCerutiParams, topArch: LongArchSolve | nu
   const back = { nut: backNut, root: backRoot };
   const heel = calculateHeel(back, buttonTip, nk.heelRadius);
 
-  const k = p.height / REFERENCE_BODY_HEIGHT;
-  const scrollLength = SCROLL_LENGTH_MM * k;
-  const scrollDepth = SCROLL_DEPTH_MM * k;
-  const scrollFront1 = moveInVectorSpace(nutAt, [{ ...direction, mag: scrollLength }]);
+  const scrollFront1 = moveInVectorSpace(nutAt, [{ ...direction, mag: nk.scrollLength }]);
   const scroll: [Pt, Pt, Pt, Pt] = [
     nutAt, scrollFront1,
-    moveInVectorSpace(scrollFront1, [{ ...normal, mag: -scrollDepth }]),
-    moveInVectorSpace(nutAt, [{ ...normal, mag: -scrollDepth }]),
+    moveInVectorSpace(scrollFront1, [{ ...normal, mag: -nk.scrollDepth }]),
+    moveInVectorSpace(nutAt, [{ ...normal, mag: -nk.scrollDepth }]),
   ];
   const scrollLabelAngleDeg = 90 - Math.atan2(direction.b, direction.a) * 180 / Math.PI;
 

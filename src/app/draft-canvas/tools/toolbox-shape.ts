@@ -77,6 +77,15 @@ export type SectionShape = ShapeBase & {
   label: boolean;
 };
 
+// Section without the band: a hairline with a tick at each weighted division, for marking
+// positions while drafting rather than illustrating a ratio.
+export type TicksShape = ShapeBase & {
+  type: 'ticks';
+  start: Pt;
+  end: Pt;
+  weights: number[];
+};
+
 // A free-floating text annotation, anchored at a single point — independent
 // of any other shape, unlike the auto-generated labels on Dimension/Section.
 export type TextShape = ShapeBase & {
@@ -205,7 +214,7 @@ export const DEFAULT_IMAGE_OPACITY = 0.25;
  * structurally a `Circle`, so helpers/math/ solvers take canvas shapes as-is.
  */
 export type DraftShape =
-  | LineShape | ArcShape | CircleShape | DimensionShape | RectShape | SectionShape | TextShape | PointShape
+  | LineShape | ArcShape | CircleShape | DimensionShape | RectShape | SectionShape | TicksShape | TextShape | PointShape
   | FreehandShape | ImageShape;
 
 /** An image's box center, about which `rotationDeg` turns it. */

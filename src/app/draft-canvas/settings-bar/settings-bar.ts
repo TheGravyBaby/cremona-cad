@@ -4,7 +4,7 @@ import { DraftTool } from '../tools/draft-tool';
 import { ToolboxStore, PanelChoice } from '../tools/toolbox-store';
 import { ImageAssetStore } from '../tools/image-asset-store';
 import {
-  DraftShape, LineShape, DimensionShape, RectShape, TextShape, PointShape, CircleShape, ArcShape, SectionShape,
+  DraftShape, LineShape, DimensionShape, RectShape, TextShape, PointShape, CircleShape, ArcShape, SectionShape, TicksShape,
   FreehandShape, ImageShape, DEFAULT_IMAGE_OPACITY, DEFAULT_SHAPE_COLOR, DEFAULT_FREEHAND_WIDTH,
   DEFAULT_TEXT_SIZE_MM, applyImageCrop, applyImageSize, isCropped,
 } from '../tools/toolbox-shape';
@@ -83,7 +83,7 @@ export class SettingsBarComponent {
 
   /** Friendly name for each shape type, used by groupTitle when the settings reflect a selection. */
   private static readonly SHAPE_TYPE_LABELS: Record<DraftShape['type'], string> = {
-    line: 'Line', arc: 'Arc', circle: 'Circle', dimension: 'Distance', rect: 'Box', section: 'Section', text: 'Text', point: 'Point',
+    line: 'Line', arc: 'Arc', circle: 'Circle', dimension: 'Distance', rect: 'Box', section: 'Section', ticks: 'Ticks', text: 'Text', point: 'Point',
     freehand: 'Drawing', image: 'Reference Image',
   };
 
@@ -147,13 +147,13 @@ export class SettingsBarComponent {
     this.toolbox.updateShapes(patches);
   }
 
-  /** Line, Dimension and Section all carry the same start+end geometry, so one panel edits any of
-   * them numerically once a shape is selected — Section's own panel further down adds only the
-   * controls unique to it (weights/count). Unlike the pen color there's no "pen position" default,
-   * so none of this shows for a merely-active tool. */
-  private get selectedLineLikeShape(): LineShape | DimensionShape | SectionShape | undefined {
+  /** Line, Dimension, Section and Ticks all carry the same start+end geometry, so one panel edits
+   * any of them numerically once a shape is selected — the weights panel further down adds only
+   * the controls unique to Section and Ticks (weights/count). Unlike the pen color there's no
+   * "pen position" default, so none of this shows for a merely-active tool. */
+  private get selectedLineLikeShape(): LineShape | DimensionShape | SectionShape | TicksShape | undefined {
     const s = this.selectedShape;
-    return (s?.type === 'line' || s?.type === 'dimension' || s?.type === 'section') ? s : undefined;
+    return (s?.type === 'line' || s?.type === 'dimension' || s?.type === 'section' || s?.type === 'ticks') ? s : undefined;
   }
 
   public get showLinePanel(): boolean {
@@ -308,7 +308,7 @@ export class SettingsBarComponent {
   }
 
   /** Shown for the active Freehand tool (so you can dial in a pen setting before drawing) or any
-   * Freehand selection — same condition shape as showSectionPanel. */
+   * Freehand selection — same condition shape as showWeightsPanel. */
   public get showFreehandPanel(): boolean {
     return this.activeTool?.id === 'freehand' || this.selectedFreehandShapes.length > 0;
   }
@@ -453,9 +453,31 @@ export class SettingsBarComponent {
     this.toolbox.updateShapes(patches);
   }
 
-  /** Section has extra per-shape settings (a second color + segment weights) that don't fit the single color swatch. */
-  public get showSectionPanel(): boolean {
-    return this.activeTool?.id === 'section' || this.selectedShape?.type === 'section';
+  /** Section and Ticks share the weights/count controls, each with its own pen default. */
+  private get weightsShape(): SectionShape | TicksShape | undefined {
+    const s = this.selectedShape;
+    return (s?.type === 'section' || s?.type === 'ticks') ? s : undefined;
+  }
+
+  private get weightsKind(): 'section' | 'ticks' | undefined {
+    const id = this.weightsShape?.type ?? this.activeTool?.id;
+    return (id === 'section' || id === 'ticks') ? id : undefined;
+  }
+
+  public get showWeightsPanel(): boolean {
+    return !!this.weightsKind;
+  }
+
+  private get displayedWeights(): number[] {
+    return this.weightsShape?.weights
+      ?? (this.weightsKind === 'ticks' ? this.toolbox.currentTickWeights : this.toolbox.currentSectionWeights);
+  }
+
+  private applyWeights(weights: number[]): void {
+    if (this.weightsKind === 'ticks') this.toolbox.currentTickWeights = weights;
+    else this.toolbox.currentSectionWeights = weights;
+    const shape = this.weightsShape;
+    if (shape) this.toolbox.updateShape(shape.id, { weights });
   }
 
   /** Every Section in the current selection, however many — this drives Color2 so it stays
@@ -466,7 +488,7 @@ export class SettingsBarComponent {
 
   /** Broader than showSectionPanel: Color2 also shows for a multi-selection of Sections (whose
    * individual X/Y/weights controls don't make sense as a group and stay gated behind
-   * showSectionPanel), same reasoning as the primary color swatch's showColorSwatch. */
+   * showWeightsPanel), same reasoning as the primary color swatch's showColorSwatch. */
   public get showSectionColor2(): boolean {
     return this.activeTool?.id === 'section' || this.selectedSectionShapes.length > 0;
   }
@@ -480,23 +502,19 @@ export class SettingsBarComponent {
     return this.selectedSectionShapes[0]?.color2 ?? this.toolbox.currentSectionColor2;
   }
 
-  public get displayedSectionWeightsText(): string {
-    const shape = this.selectedShape;
-    const weights = (shape?.type === 'section' ? shape.weights : undefined) ?? this.toolbox.currentSectionWeights;
-    return weights.join(',');
+  public get displayedWeightsText(): string {
+    return this.displayedWeights.join(',');
   }
 
   /** Segment count when using the "equal segments" input mode — just the number of weights,
-   * since that mode only ever produces equal (all-1) weights; see setSectionSegmentCount. */
-  public get displayedSectionSegmentCount(): number {
-    const shape = this.selectedShape;
-    const weights = (shape?.type === 'section' ? shape.weights : undefined) ?? this.toolbox.currentSectionWeights;
-    return weights.length;
+   * since that mode only ever produces equal (all-1) weights; see setWeightsCount. */
+  public get displayedWeightsCount(): number {
+    return this.displayedWeights.length;
   }
 
   /** Toggles the Weights row between a free-form comma list and a simple equal-segment count —
    * pure UI/input-mode state, not persisted per-shape, so switching shapes doesn't reset it. */
-  public sectionUseSegmentCount = false;
+  public weightsUseCount = false;
 
   /** Applies to every selected Section at once (one history step via updateShapes), same as setColor. */
   setSectionColor2(color: string): void {
@@ -507,14 +525,10 @@ export class SettingsBarComponent {
     this.toolbox.updateShapes(patches);
   }
 
-  setSectionWeightsText(text: string): void {
+  setWeightsText(text: string): void {
     const weights = text.split(',').map(s => Number(s.trim())).filter(n => Number.isFinite(n) && n > 0);
     if (weights.length === 0) return;
-    this.toolbox.currentSectionWeights = weights;
-    const shape = this.selectedShape;
-    if (shape?.type === 'section') {
-      this.toolbox.updateShape(shape.id, { weights });
-    }
+    this.applyWeights(weights);
   }
 
   // ===== Reference image =====
@@ -731,14 +745,9 @@ export class SettingsBarComponent {
 
   /** Equal-segments mode: N segments all weighted 1 — e.g. 16 for showing sixteenths, without
    * typing out "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1" by hand. */
-  setSectionSegmentCount(count: number): void {
+  setWeightsCount(count: number): void {
     const n = Math.round(count);
     if (!Number.isFinite(n) || n < 1) return;
-    const weights = new Array(n).fill(1);
-    this.toolbox.currentSectionWeights = weights;
-    const shape = this.selectedShape;
-    if (shape?.type === 'section') {
-      this.toolbox.updateShape(shape.id, { weights });
-    }
+    this.applyWeights(new Array(n).fill(1));
   }
 }

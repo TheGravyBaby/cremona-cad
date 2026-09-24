@@ -1,7 +1,7 @@
 import { Pt } from '../../models/types';
 import { DEFAULT_TEXT_SIZE_MM, DraftShape, ImageShape, TextShape, dimensionGeometry, imageCenter, imageCorners } from './toolbox-shape';
 import { angleFromCenter, angleWithinSweep, closestPointOnSegment, dist, normalizeRadians, pointOnCircle, rotatePointAbout } from '../../helpers/math/simpleGeometry';
-import { SECTION_THICKNESS_MM, TEXT_LINE_HEIGHT_RATIO } from './shape-renderer';
+import { SECTION_THICKNESS_MM, TEXT_LINE_HEIGHT_RATIO, tickLengthMm } from './shape-renderer';
 
 function distanceToArc(p: Pt, center: Pt, radius: number, startAngle: number, endAngle: number): number {
   if (angleWithinSweep(angleFromCenter(center, p), startAngle, endAngle)) {
@@ -126,6 +126,7 @@ function distanceToSection(p: Pt, start: Pt, end: Pt): number {
 export function distanceToShape(p: Pt, shape: DraftShape): number {
   switch (shape.type) {
     case 'line':
+    case 'ticks':
       return closestPointOnSegment(p, shape.start, shape.end).dist;
     case 'section':
       return distanceToSection(p, shape.start, shape.end);
@@ -173,6 +174,13 @@ export function shapeBounds(shape: DraftShape): ShapeBounds {
         x0: Math.min(shape.start.x, shape.end.x), x1: Math.max(shape.start.x, shape.end.x),
         y0: Math.min(shape.start.y, shape.end.y), y1: Math.max(shape.start.y, shape.end.y),
       };
+    case 'ticks': {
+      const pad = tickLengthMm(Math.hypot(shape.end.x - shape.start.x, shape.end.y - shape.start.y)) / 2;
+      return {
+        x0: Math.min(shape.start.x, shape.end.x) - pad, x1: Math.max(shape.start.x, shape.end.x) + pad,
+        y0: Math.min(shape.start.y, shape.end.y) - pad, y1: Math.max(shape.start.y, shape.end.y) + pad,
+      };
+    }
     case 'section': {
       // Bounds of the rendered band's four corners, not just its centerline endpoints — same
       // reasoning as sampling an arc's actual sweep or a rotated image's corners below.

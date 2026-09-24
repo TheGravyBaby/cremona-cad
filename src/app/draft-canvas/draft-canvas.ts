@@ -927,7 +927,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       // two-point-tool.ts) — measured from the *other* end, since that's the segment whose
       // angle is being locked. Dimension is excluded: its drawing tool doesn't angle-lock either.
       const original = this.dragEndpoint.original;
-      if ((original.type === 'line' || original.type === 'section') && this.isAngleLockHeld
+      if ((original.type === 'line' || original.type === 'section' || original.type === 'ticks') && this.isAngleLockHeld
         && (this.dragEndpoint.key === 'start' || this.dragEndpoint.key === 'end')) {
         const anchor = this.dragEndpoint.key === 'start' ? original.end : original.start;
         pt = snapToLockedAngle(anchor, pt);
