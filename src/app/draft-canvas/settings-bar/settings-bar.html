@@ -307,24 +307,24 @@
     </button>
   }
 
-  <!-- Endpoints and Distance for a selected Section come from the shared line-like panel above. -->
-  @if (showSectionPanel) {
+  <!-- Endpoints and Distance for a selected Section or Ticks come from the shared line-like panel above. -->
+  @if (showWeightsPanel) {
     <label class="toggle">
       <span class="f-lbl">Fraction</span>
-      <input type="checkbox" [checked]="sectionUseSegmentCount" (change)="sectionUseSegmentCount = $any($event.target).checked" />
+      <input type="checkbox" [checked]="weightsUseCount" (change)="weightsUseCount = $any($event.target).checked" />
     </label>
-    @if (sectionUseSegmentCount) {
+    @if (weightsUseCount) {
       <span class="field"><span class="f-lbl">Count</span>
-        <input type="number" min="1" step="1" [value]="displayedSectionSegmentCount"
-          (change)="setSectionSegmentCount($any($event.target).valueAsNumber)" (keydown.enter)="$any($event.target).blur()"
+        <input type="number" min="1" step="1" [value]="displayedWeightsCount"
+          (change)="setWeightsCount($any($event.target).valueAsNumber)" (keydown.enter)="$any($event.target).blur()"
           title="Number of equal segments (e.g. 16 for sixteenths)" />
       </span>
     } @else {
       <span class="field weights-field"><span class="f-lbl">Weights</span>
-        <input #sectionWeightsInput type="text" [value]="displayedSectionWeightsText"
-          (change)="setSectionWeightsText($any($event.target).value)"
-          (keydown.enter)="setSectionWeightsText(sectionWeightsInput.value); sectionWeightsInput.blur()"
-          (keydown.escape)="sectionWeightsInput.value = displayedSectionWeightsText; sectionWeightsInput.blur()"
+        <input #weightsInput type="text" [value]="displayedWeightsText"
+          (change)="setWeightsText($any($event.target).value)"
+          (keydown.enter)="setWeightsText(weightsInput.value); weightsInput.blur()"
+          (keydown.escape)="weightsInput.value = displayedWeightsText; weightsInput.blur()"
           title="Segment weights, comma-separated (e.g. 1,1,1 or 3,4,3) — Enter to apply" placeholder="1,1,1" />
       </span>
     }

@@ -13,6 +13,7 @@ import { MainBoutsPanel } from './main-bouts-panel/main-bouts-panel';
 import { MouldPanel } from './mould-panel/mould-panel';
 import { NeckPanel } from './neck-panel/neck-panel';
 import { OuterTracePanel } from './outer-trace-panel/outer-trace-panel';
+import { ScrollPanel } from './scroll-panel/scroll-panel';
 
 /**
  * What the panels actually draw.
@@ -54,6 +55,7 @@ const PANELS = [
   ['outer trace', OuterTracePanel],
   ['mould', MouldPanel],
   ['neck', NeckPanel],
+  ['scroll', ScrollPanel],
 ] as const;
 
 describe.each(PANELS)('%s panel', (_name, Ctor) => {
@@ -118,6 +120,111 @@ describe('view flags gate what is drawn', () => {
     const off = recordLayers(panel(MouldPanel, defaultViolin(), flags({ showBlocks: false })).buildRun());
     const on = recordLayers(panel(MouldPanel, defaultViolin(), flags({ showBlocks: true })).buildRun());
     expect(on.elements.length).toBeGreaterThan(off.elements.length);
+  });
+});
+
+describe('the scroll panel', () => {
+  it('draws its bounding box square to the axes, sized by the neck panel\'s length and depth', () => {
+    const p = defaultViolin();
+    const instance = panel(ScrollPanel, p);
+    instance.buildRun();
+    p.neck!.scrollLength = 95;
+    p.neck!.scrollDepth = 33;
+    const box = recordLayers(instance.buildRun()).paths[1];
+    const xs = [...box.matchAll(/[ML] (-?[\d.]+) (-?[\d.]+)/g)].map(m => [+m[1], +m[2]]);
+    expect(xs.length).toBe(4);
+    expect(Math.max(...xs.map(c => c[1])) - Math.min(...xs.map(c => c[1]))).toBeCloseTo(95, 9);
+    expect(Math.max(...xs.map(c => c[0])) - Math.min(...xs.map(c => c[0]))).toBeCloseTo(33, 9);
+    expect(new Set(xs.map(c => c[0])).size).toBe(2);
+    expect(new Set(xs.map(c => c[1])).size).toBe(2);
+  });
+
+  it('draws the nut beside the box and the neck below it, stopping short', () => {
+    const p = defaultViolin();
+    const drawn = recordLayers(panel(ScrollPanel, p).buildRun());
+    const nut = [...drawn.paths[0].matchAll(/[ML] (-?[\d.]+) (-?[\d.]+)/g)].map(m => [+m[1], +m[2]]);
+    expect(Math.min(...nut.map(c => c[0]))).toBe(0);
+    expect(Math.max(...nut.map(c => c[0]))).toBeCloseTo(p.neck!.nutThickness, 9);
+    expect(Math.min(...nut.map(c => c[1]))).toBe(0);
+
+    const lines = drawn.elements.filter(el => el.tag === 'line').map(el => el.attrs);
+    expect(lines.length).toBe(3);
+    const lowest = Math.min(...lines.flatMap(l => [l['y1'] as number, l['y2'] as number]));
+    expect(lowest).toBeLessThan(0);
+    expect(-lowest).toBeLessThan(p.neck!.scrollLength);
+    const leftmost = Math.min(...lines.flatMap(l => [l['x1'] as number, l['x2'] as number]));
+    expect(-leftmost).toBeCloseTo(p.neck!.thickness, 9);
+  });
+
+  describe('the volute', () => {
+    // each arc path is "M sx,sy A r,r 0 large,sweep ex,ey"
+    const arcs = (instance: ScrollPanel) => recordLayers(instance.buildRun()).paths
+      .filter(d => d.includes(' A '))
+      .map(d => {
+        const [sx, sy, r, , , , , ex, ey] = [...d.matchAll(/-?\d*\.?\d+(?:e[-+]?\d+)?/gi)].map(m => +m[0]);
+        return { sx, sy, r, ex, ey };
+      });
+
+    // the last path is the transition curve, which is not part of the spiral
+    const spiral = (instance: ScrollPanel) => arcs(instance).slice(0, -1);
+
+    function volute(eyeRadius: number) {
+      const p = defaultViolin();
+      const instance = panel(ScrollPanel, p);
+      instance.buildRun();
+      p.volute!.eyeRadius = eyeRadius;
+      return { p, instance };
+    }
+
+    it('winds Serlio\'s radii out from the eye, in eye diameters', () => {
+      const { instance } = volute(4);
+      const d = 8;
+      expect(spiral(instance).map(a => a.r / d)).toEqual([3, 13 / 6, 3 / 2, 1, 2 / 3].map(v => expect.closeTo(v, 9)));
+    });
+
+    it('joins each arc to the next at a shared point on the line of centres', () => {
+      const { instance } = volute(4);
+      const a = spiral(instance);
+      for (let i = 1; i < a.length; i++) {
+        const [prev, next] = [a[i - 1], a[i]];
+        const joint = [[prev.sx, prev.sy], [prev.ex, prev.ey]].find(([x, y]) =>
+          [[next.sx, next.sy], [next.ex, next.ey]].some(([nx, ny]) => Math.hypot(x - nx, y - ny) < 1e-9));
+        expect(joint, `arc ${i} and ${i + 1} share no end`).toBeDefined();
+        expect(joint![1]).toBeCloseTo(a[0].sy, 9);
+      }
+    });
+
+    it('sits the eye so the spiral touches the box top and its front', () => {
+      const { p, instance } = volute(4);
+      const a = spiral(instance);
+      const top = Math.max(...[0, 2, 4].map(i => a[i].sy + a[i].r));
+      const right = Math.max(...a.flatMap(x => [x.sx, x.ex]));
+      expect(top).toBeCloseTo(p.neck!.scrollLength, 9);
+      expect(right).toBeCloseTo(0, 9);
+    });
+
+    it('scales with the eye radius', () => {
+      const small = spiral(volute(3).instance);
+      const large = spiral(volute(6).instance);
+      small.forEach((s, i) => expect(large[i].r).toBeCloseTo(2 * s.r, 9));
+    });
+
+    it('hands the spiral off at the box top to a curve reaching the back edge, tangent at both ends', () => {
+      const { p, instance } = volute(4);
+      const outer = spiral(instance)[0];
+      const transition = arcs(instance).at(-1)!;
+      expect([transition.sx, transition.sy]).toEqual([outer.ex, outer.ey].map(v => expect.closeTo(v, 9)));
+      expect(transition.sy).toBeCloseTo(p.neck!.scrollLength, 9);
+      expect(transition.ex).toBeCloseTo(-p.neck!.scrollDepth, 9);
+      expect(transition.sx - transition.r).toBeCloseTo(-p.neck!.scrollDepth, 9);
+      expect(transition.ey).toBeCloseTo(transition.sy - transition.r, 9);
+    });
+
+    it('draws no spiral for an eye that is not a positive radius', () => {
+      for (const bad of [0, -1, NaN]) {
+        expect(arcs(volute(bad).instance)).toEqual([]);
+      }
+    });
   });
 });
 

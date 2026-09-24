@@ -15,6 +15,7 @@ export function moveGrabberPosition(shape: DraftShape): Pt | null {
   switch (shape.type) {
     case 'line':
     case 'section':
+    case 'ticks':
       return { x: (shape.start.x + shape.end.x) / 2, y: (shape.start.y + shape.end.y) / 2 };
     case 'dimension':
       // Null for a reason of its own: the midpoint of a dimension is where the offset handle has
@@ -53,7 +54,7 @@ function arcMidpoint(shape: Extract<DraftShape, { type: 'arc' }>): Pt {
   return pointOnCircle({ ...shape.center, r: shape.radius }, midAngle);
 }
 
-// 'start'/'end' — Line/Dimension/Section's endpoints.
+// 'start'/'end' — Line/Dimension/Section/Ticks' endpoints.
 // 'offset' — Dimension's dimension line, at its midpoint; only the drag point's distance
 //   perpendicular to the measurement matters, so the line slides off the measured points without
 //   changing what is being measured.
@@ -97,6 +98,7 @@ export function endpointGrabbers(shape: DraftShape, pxPerMm: number): EndpointGr
   switch (shape.type) {
     case 'line':
     case 'section':
+    case 'ticks':
       return [{ key: 'start', pos: shape.start }, { key: 'end', pos: shape.end }];
     case 'dimension': {
       const ends: EndpointGrabber[] = [{ key: 'start', pos: shape.start }, { key: 'end', pos: shape.end }];
@@ -150,6 +152,7 @@ export function withEndpoint(shape: DraftShape, key: EndpointKey, pos: Pt): Draf
   switch (shape.type) {
     case 'line':
     case 'section':
+    case 'ticks':
       if (key === 'start' || key === 'end') return { ...shape, [key]: pos };
       return shape;
     case 'dimension':

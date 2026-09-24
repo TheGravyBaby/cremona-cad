@@ -43,6 +43,7 @@ export class ToolboxStore implements Undoable {
   private _currentOpacity = 1;
   private _currentSectionColor2: string = '#93c5fd';
   private _currentSectionWeights: number[] = [1, 1, 1];
+  private _currentTickWeights: number[] = [1, 1, 1];
   private _layers: Layer[] = [{ id: DEFAULT_LAYER_ID, name: 'Layer 1', visible: true, locked: false }];
   private _activeLayerId: string = DEFAULT_LAYER_ID;
   private _showImages = true;
@@ -125,6 +126,14 @@ export class ToolboxStore implements Undoable {
   get currentSectionWeights(): number[] { return this._currentSectionWeights; }
   set currentSectionWeights(weights: number[]) {
     this._currentSectionWeights = weights;
+    this.persist();
+    this.notify();
+  }
+
+  /** The segment weights new Ticks shapes will use. */
+  get currentTickWeights(): number[] { return this._currentTickWeights; }
+  set currentTickWeights(weights: number[]) {
+    this._currentTickWeights = weights;
     this.persist();
     this.notify();
   }
@@ -454,6 +463,7 @@ export class ToolboxStore implements Undoable {
         if (typeof parsed.currentOpacity === 'number') this._currentOpacity = parsed.currentOpacity;
         if (typeof parsed.currentSectionColor2 === 'string') this._currentSectionColor2 = parsed.currentSectionColor2;
         if (Array.isArray(parsed.currentSectionWeights)) this._currentSectionWeights = parsed.currentSectionWeights;
+        if (Array.isArray(parsed.currentTickWeights)) this._currentTickWeights = parsed.currentTickWeights;
         if (Array.isArray(parsed.layers) && parsed.layers.length > 0) {
           // Normalize layers saved before visible/locked existed.
           this._layers = parsed.layers.map((l: Partial<Layer> & { id: string; name: string }) => ({
@@ -493,6 +503,7 @@ export class ToolboxStore implements Undoable {
       currentOpacity: this._currentOpacity,
       currentSectionColor2: this._currentSectionColor2,
       currentSectionWeights: this._currentSectionWeights,
+      currentTickWeights: this._currentTickWeights,
       layers: this._layers,
       activeLayerId: this._activeLayerId,
       showImages: this._showImages,
@@ -550,6 +561,7 @@ export class ToolboxStore implements Undoable {
     if (typeof parsed['currentOpacity'] === 'number') this._currentOpacity = parsed['currentOpacity'] as number;
     if (typeof parsed['currentSectionColor2'] === 'string') this._currentSectionColor2 = parsed['currentSectionColor2'] as string;
     if (Array.isArray(parsed['currentSectionWeights'])) this._currentSectionWeights = parsed['currentSectionWeights'] as number[];
+    if (Array.isArray(parsed['currentTickWeights'])) this._currentTickWeights = parsed['currentTickWeights'] as number[];
     if (Array.isArray(parsed['layers']) && (parsed['layers'] as unknown[]).length > 0) {
       this._layers = (parsed['layers'] as Array<Partial<Layer> & { id: string; name: string }>).map(l => ({
         id: l.id, name: l.name, visible: l.visible ?? true, locked: l.locked ?? false,

@@ -9,6 +9,7 @@ import { defaultNeckParams, calculateNeck } from '../../ceruti-neck';
 import { renderBodySection } from '../../renders/body-section.render';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
+import { nearestFraction } from '../../../helpers/nearestFraction';
 import { pathFromArc } from '../../../helpers/math/pathMath';
 import { dist, moveInVectorSpace } from '../../../helpers/math/simpleGeometry';
 import { renderSegment, renderPolygon, renderPath, renderText } from '../../../helpers/renderFuncs';
@@ -38,6 +39,8 @@ export class NeckPanel extends CerutiPanelBase implements OnInit {
   onChange(): void {
     this.emitDebounced();
   }
+
+  protected readonly nearestFraction = nearestFraction;
 
   get neck(): NeckParams { return this.params.neck!; }
 

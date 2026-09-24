@@ -168,6 +168,18 @@ describe('the neck wood', () => {
     expect(s.scroll[0]).toEqual(s.nutBlock[0]);
     expect(s.scroll[1].y).toBeGreaterThan(s.scroll[0].y);
   });
+
+  it('sizes the scroll box from its own length and depth, square to the neck', () => {
+    const p = neckedViolin();
+    p.neck!.scrollLength = 95;
+    p.neck!.scrollDepth = 33;
+    const s = solve(p);
+    expect(dist(s.scroll[0], s.scroll[1])).toBeCloseTo(95, 9);
+    expect(dist(s.scroll[1], s.scroll[2])).toBeCloseTo(33, 9);
+    const along = (s.scroll[1].x - s.scroll[0].x) * (s.scroll[2].x - s.scroll[1].x)
+      + (s.scroll[1].y - s.scroll[0].y) * (s.scroll[2].y - s.scroll[1].y);
+    expect(along).toBeCloseTo(0, 9);
+  });
 });
 
 describe('the readouts', () => {

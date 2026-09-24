@@ -12,6 +12,7 @@ export const HOTKEY_TOOL_CYCLE: Record<string, string[]> = {
   KeyC: ['circle'],
   KeyR: ['rect'],
   KeyS: ['section'],
+  KeyK: ['ticks'],
   KeyT: ['text'],
   KeyP: ['point'],
   // Not KeyF: that's already Fit-to-view (see draft-canvas.ts's onKeyDown) — matches the
