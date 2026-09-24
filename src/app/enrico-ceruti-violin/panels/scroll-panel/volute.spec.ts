@@ -57,6 +57,13 @@ describe.each(Object.keys(VOLUTE_STYLES) as VoluteStyle[])('the %s volute', styl
       expect(right).toBeCloseTo(0, 9);
     });
 
+    it('leaves the eye, on its edge, at the angle it is turned to', () => {
+      const { eye, spiral } = layout(style, 4, rotation)!;
+      const [x, y] = at(spiral.at(-1)!, spiral.at(-1)!.from);
+      expect(Math.hypot(x - eye.x, y - eye.y)).toBeCloseTo(4, 9);
+      expect(Math.cos(Math.atan2(y - eye.y, x - eye.x) - rotation)).toBeCloseTo(1, 9);
+    });
+
     it('joins from the outermost arc\'s top to the box\'s back edge, tangent to the arc and the box', () => {
       const { spiral, join } = layout(style, 4, rotation)!;
       const [x, y] = at(spiral[0], spiral[0].to);
@@ -119,9 +126,11 @@ describe('the Salviati volute', () => {
     expect(Math.hypot(x, y)).toBeCloseTo(4, 9);
   });
 
-  it('draws all twelve when unturned or turned a little the other way, nine when turned a little back', () => {
+  it('draws all twelve when turned to start at the angle its top falls on, or a little on, nine a little short', () => {
+    const [x, y] = at(arcs[11], arcs[11].from);
+    const start = Math.atan2(y, x);
     const arcCount = (rotation: number) => layout('salviati', 4, rotation)!.spiral.length;
-    expect([0, 0.2].map(arcCount)).toEqual([12, 12]);
-    expect(arcCount(-0.2)).toBe(9);
+    expect([start, start + 0.2].map(arcCount)).toEqual([12, 12]);
+    expect(arcCount(start - 0.2)).toBe(9);
   });
 });
