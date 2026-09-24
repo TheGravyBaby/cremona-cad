@@ -29,8 +29,17 @@
         <label class="field-cell">
             <span class="field-title">Style</span>
             <select [style.border-color]="colors.outerTrace" [(ngModel)]="volute.style" (change)="onChange()">
-                <option value="serlio">Serlio</option>
+                @for (s of styles; track s.id) {
+                <option [value]="s.id">{{ s.label }}</option>
+                }
             </select>
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Rotation <span class="unit-label">°</span></span>
+            <input class="basic-input" type="number" step="1" [style.border-color]="colors.outerTrace"
+                [(ngModel)]="volute.rotationDeg" (input)="onChange()" />
         </label>
     </div>
 </section>
