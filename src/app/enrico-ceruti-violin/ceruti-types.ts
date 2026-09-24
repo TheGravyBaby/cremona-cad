@@ -121,7 +121,7 @@ export interface VoluteParams {
   /** Radius of the eye (mm). */
   eyeRadius: number;
   style: VoluteStyle;
-  /** Turn of the spiral about the eye, counterclockwise, on top of the style's own orientation (degrees). */
+  /** Where the spiral leaves the eye: the angle about its centre, counterclockwise from its right side (degrees). */
   rotationDeg: number;
 }
 

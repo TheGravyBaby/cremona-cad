@@ -8,13 +8,13 @@ export type VoluteArc = { center: Pt; r: number; from: number; to: number };
 // A style draws the whole construction in the eye's own frame (origin at the eye's centre) from
 // the eye radius alone, arcs outermost first. Counterclockwise is the way it winds outward, so an
 // arc runs from its inner neighbour's end to its own end. Neighbours share that point (inner.to =
-// outer.from) and are tangent there. `rotation` (radians, counterclockwise) turns the method's
-// own orientation to the scroll's; the user's turn is added to it. The style draws further out than it may be used: layoutVolute
-// cuts the spiral where the turned drawing reaches its top heading left, so the arcs beyond
-// that point go unused and turning the drawing draws more or less of it.
+// outer.from) and are tangent there. The style's own orientation doesn't matter: layoutVolute turns
+// the drawing until its innermost arc leaves the eye at the angle asked for, so every style starts
+// in the same place. It draws further out than it may be used: layoutVolute cuts the spiral where
+// the turned drawing reaches its top heading left, so the arcs beyond that point go unused and
+// turning the drawing draws more or less of it.
 export interface VoluteStyleDef {
   label: string;
-  rotation: number;
   arcs: (eyeRadius: number) => VoluteArc[];
 }
 
@@ -32,7 +32,6 @@ const SERLIO_ARCS: readonly { center: number; radius: number; side: 'up' | 'down
 
 const serlio: VoluteStyleDef = {
   label: 'Serlio',
-  rotation: 0,
   arcs: eyeRadius => {
     const d = 2 * eyeRadius;
     return SERLIO_ARCS.map(({ center, radius, side }) => {
@@ -50,7 +49,6 @@ const serlio: VoluteStyleDef = {
 // the two arcs there run a little long and a little short to stay tangent.
 const salviati: VoluteStyleDef = {
   label: 'Salviati',
-  rotation: 0,
   arcs: eyeRadius => {
     const g = eyeRadius * Math.SQRT2 / 6;
     const centers = Array.from({ length: 12 }, (_, i) => {
@@ -115,9 +113,11 @@ export interface PlacedVolute {
 export function layoutVolute(style: VoluteStyle, eyeRadius: number, rotation: number, scrollLength: number, scrollDepth: number): PlacedVolute | null {
   if (!(eyeRadius > 0)) return null;
 
-  // 1. draw: the style's arcs around the eye, turned to the scroll's orientation
-  const def = VOLUTE_STYLES[style];
-  const drawn = def.arcs(eyeRadius).map(a => turn(a, def.rotation + rotation));
+  // 1. draw: the style's arcs around the eye, turned so the innermost leaves the eye at `rotation`
+  const arcs = VOLUTE_STYLES[style].arcs(eyeRadius);
+  const innermost = arcs[arcs.length - 1];
+  const start = Math.atan2(innermost.center.y + innermost.r * Math.sin(innermost.from), innermost.center.x + innermost.r * Math.cos(innermost.from));
+  const drawn = arcs.map(a => turn(a, rotation - start));
 
   // 2. fit: cut the spiral where it turns left at its top, then slide the eye until that point
   // touches the box's top and the spiral's right side the box's front
