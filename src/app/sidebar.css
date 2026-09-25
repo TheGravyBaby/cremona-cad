@@ -444,6 +444,8 @@ select {
 }
 
 .field-cell > .basic-input { width: 100%; }
+.field-cell.field-cell--full { width: 100%; }
+.basic-input:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .field-separator {
   color: var(--ui-text-secondary);
