@@ -163,7 +163,9 @@ export abstract class RecipeComponentBase implements AfterViewInit, Undoable {
     const current = target.valueAsNumber;
     if (Number.isNaN(current)) return;
 
-    const delta = stepAmountForKey(e);
+    // a field can set its own ladder with data-step-shift / data-step-fine
+    const own = e.shiftKey ? target.dataset['stepShift'] : target.dataset['stepFine'];
+    const delta = own !== undefined ? Number(own) : stepAmountForKey(e);
     let next = current + (e.key === 'ArrowUp' ? delta : -delta);
     if (target.min !== '') next = Math.max(next, Number(target.min));
     if (target.max !== '') next = Math.min(next, Number(target.max));

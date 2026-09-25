@@ -114,15 +114,20 @@ export interface EnricoCerutiParams {
   volute?: VoluteParams;
 }
 
-/** The scroll's spiral. The eye is the raised disc at its centre; the rule that winds outward from it is the style. */
-export type VoluteStyle = 'serlio' | 'salviati';
+/** The scroll's spiral. The eye is the raised disc at its centre; the rule that winds outward from it is the style, each a Renaissance architect's way of laying out the Ionic volute. */
+export type VoluteStyle = 'alberti' | 'serlio' | 'philandrier' | 'salviati' | 'goldmann' | 'fourPoint';
 
 export interface VoluteParams {
   /** Radius of the eye (mm). */
   eyeRadius: number;
   style: VoluteStyle;
-  /** Where the spiral leaves the eye: the angle about its centre, counterclockwise from its right side (degrees). */
-  rotationDeg: number;
+  /** Four point only: the radius of each quarter arc, innermost first, four to a turn, eleven to the front since the twelfth is the crown (mm). Each has to be more than the last. */
+  arcRadii: number[];
+  /** On, the eye is slid each pass so the spiral's front touches the box's front, its height left to eyeY; off, it sits where eyeX and eyeY put it. */
+  fitToBox: boolean;
+  /** Eye centre measured right (x) and up (y) from the scroll box's top left corner as drawn (mm), so y is negative inside the box. x is rewritten by the fit while it is on; y is set once from the fit when the volute is first made and is the user's from then on, since it shapes the crown. */
+  eyeX: number;
+  eyeY: number;
 }
 
 // the neck set, in the side elevation. the fingerboard plane leaves the top plate's edge
