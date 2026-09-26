@@ -14,7 +14,7 @@ import { MouldPanel } from './mould-panel/mould-panel';
 import { NeckPanel } from './neck-panel/neck-panel';
 import { OuterTracePanel } from './outer-trace-panel/outer-trace-panel';
 import { ScrollPanel } from './scroll-panel/scroll-panel';
-import { VOLUTE_STYLES } from './scroll-panel/volute';
+import { naturalArcRadii, VOLUTE_STYLES } from './scroll-panel/volute';
 import { VoluteStyle } from '../ceruti-types';
 
 /**
@@ -185,6 +185,7 @@ describe('the scroll panel', () => {
       instance.buildRun();
       for (const style of Object.keys(VOLUTE_STYLES) as VoluteStyle[]) {
         p.volute!.style = style;
+        instance.onStyleChange();
         const spiral = recordLayers(instance.buildRun()).paths.filter(d => d.includes(' A '));
         expect(spiral.length, style).toBeGreaterThan(3);
       }
@@ -244,42 +245,83 @@ describe('the scroll panel', () => {
       expect(on.paths.filter(d => d.includes(' A ')).length).toBe(off.paths.filter(d => d.includes(' A ')).length);
     });
 
+    // the spiral's own arcs: the crown and throat draw lighter, the halo wider
+    const spiralArcs = (instance: ScrollPanel) => recordLayers(instance.buildRun()).elements
+      .filter(el => typeof el.attrs['d'] === 'string' && (el.attrs['d'] as string).includes(' A ') && el.attrs['opacity'] === 1);
+    const choose = (instance: ScrollPanel, style: VoluteStyle) => {
+      instance.params.volute!.style = style;
+      instance.onStyleChange();
+    };
+
     it('draws the four point spiral from its arc radii, and nothing once they stop growing', () => {
       const p = defaultViolin();
       const instance = panel(ScrollPanel, p);
       instance.buildRun();
-      p.volute!.style = 'fourPoint';
-      const spiral = () => recordLayers(instance.buildRun()).paths.filter(d => d.includes(' A '));
-      const before = spiral();
-      expect(before.length).toBe(13);
+      choose(instance, 'fourPoint');
+      p.volute!.customTurns = true;
+      const before = spiralArcs(instance).map(el => el.attrs['d']);
+      expect(before.length).toBe(11);
       p.volute!.arcRadii[10] += 3;
-      expect(spiral()).not.toEqual(before);
+      expect(spiralArcs(instance).map(el => el.attrs['d'])).not.toEqual(before);
       p.volute!.arcRadii[9] = p.volute!.arcRadii[10];
-      expect(spiral()).toEqual([]);
+      expect(spiralArcs(instance)).toEqual([]);
     });
 
-    it('colours the four point arcs by turn and quarter, the historical styles in one colour', () => {
+    it('colours the point spiral arcs by turn and arc, the historical styles in one colour', () => {
       const p = defaultViolin();
       const instance = panel(ScrollPanel, p);
       instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
-      const strokes = () => recordLayers(instance.buildRun()).elements
-        .filter(el => typeof el.attrs['d'] === 'string' && (el.attrs['d'] as string).includes(' A ') && el.attrs['opacity'] === 1)
-        .map(el => el.attrs['stroke']);
+      const strokes = () => spiralArcs(instance).map(el => el.attrs['stroke']);
       expect(new Set(strokes())).toEqual(new Set(['outerTrace']));
-      p.volute!.style = 'fourPoint';
+      choose(instance, 'fourPoint');
       expect(strokes()).toEqual([
         'upperBout', 'upperBoutOff', 'upperBoutOff2', 'upperBoutOff',
         'centerBout', 'centerBoutOff', 'centerBoutOff2', 'centerBoutOff',
         'lowerBout', 'lowerBoutOff', 'lowerBoutOff2',
       ]);
+      choose(instance, 'twoPoint');
+      expect(strokes()).toEqual(['upperBout', 'upperBoutOff', 'centerBout', 'centerBoutOff', 'lowerBout', 'lowerBoutOff']);
+      choose(instance, 'threePoint');
+      expect(strokes()).toHaveLength(9);
     });
 
-    it('haloes the four point arc whose field has focus, and nothing once it blurs', () => {
+    it('grows a point spiral naturally from the eye by default, leaving the radii to tune once off', () => {
       const p = defaultViolin();
       const instance = panel(ScrollPanel, p);
-      p.volute = undefined;
       instance.buildRun();
-      p.volute!.style = 'fourPoint';
+      expect(p.volute!.customTurns).toBe(false);
+      choose(instance, 'threePoint');
+      instance.buildRun();
+      expect(p.volute!.arcRadii).toEqual(naturalArcRadii(p.volute!.eyeRadius, 3));
+      p.volute!.eyeRadius = 1.2;
+      instance.buildRun();
+      expect(p.volute!.arcRadii).toEqual(naturalArcRadii(1.2, 3));
+      p.volute!.customTurns = true;
+      p.volute!.arcRadii[8] += 1;
+      instance.buildRun();
+      expect(p.volute!.arcRadii[8]).toBeCloseTo(naturalArcRadii(1.2, 3)[8] + 1, 9);
+    });
+
+    it('keeps tuned radii through a historical style, and starts a point spiral with another count from its natural growth', () => {
+      const p = defaultViolin();
+      const instance = panel(ScrollPanel, p);
+      instance.buildRun();
+      p.volute!.customTurns = true;
+      choose(instance, 'threePoint');
+      p.volute!.arcRadii[8] += 1;
+      const tuned = [...p.volute!.arcRadii];
+      choose(instance, 'salviati');
+      choose(instance, 'threePoint');
+      expect(p.volute!.arcRadii).toEqual(tuned);
+      choose(instance, 'twoPoint');
+      expect(p.volute!.arcRadii).toEqual(naturalArcRadii(p.volute!.eyeRadius, 2));
+    });
+
+    it('haloes the point spiral arc whose field has focus, and nothing once it blurs', () => {
+      const p = defaultViolin();
+      const instance = panel(ScrollPanel, p);
+      instance.buildRun();
+      choose(instance, 'fourPoint');
       const halos = () => recordLayers(instance.buildRun()).elements.filter(el => el.attrs['stroke-width'] === 12);
       expect(halos()).toHaveLength(0);
       instance.onArcFocus(3);
@@ -288,6 +330,19 @@ describe('the scroll panel', () => {
       expect(halo.attrs['stroke']).toBe(instance.arcColor(3));
       instance.onArcBlur();
       expect(halos()).toHaveLength(0);
+    });
+
+    it('sets a four point turn from its one field, haloing the whole turn', () => {
+      const p = defaultViolin();
+      const instance = panel(ScrollPanel, p);
+      instance.buildRun();
+      choose(instance, 'fourPoint');
+      p.volute!.customTurns = true;
+      const end = p.volute!.arcRadii[7] + 1;
+      instance.setTurn(1, end);
+      expect(p.volute!.arcRadii[7]).toBe(Math.round(end * 100) / 100);
+      expect(recordLayers(instance.buildRun()).elements.filter(el => el.attrs['stroke-width'] === 12)).toHaveLength(4);
+      expect(spiralArcs(instance)).toHaveLength(11);
     });
 
     it('ignores the rotation and turns a recipe saved before they were cut', () => {

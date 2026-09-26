@@ -5,21 +5,23 @@ import { VoluteParams, VoluteStyle } from '../../ceruti-types';
 // One arc of the spiral, swept counterclockwise from `from` to `to`.
 export type VoluteArc = { center: Pt; r: number; from: number; to: number };
 
-// what a style draws from: the eye, and for the four point style the arc radii
+// what a style draws from: the eye, and for the point spirals the arc radii
 export type VoluteSpec = Pick<VoluteParams, 'style' | 'eyeRadius' | 'arcRadii'>;
 
 // A style draws the whole construction in the eye's own frame (origin at the eye's centre), arcs
 // outermost first, in the orientation its author drew it: every one of them set the volute
 // against a column and started the spiral at the top of the eye, on the vertical through its
-// centre, so that is where the innermost arc leaves the eye, heading left, and the four point
-// spiral follows suit. Counterclockwise is the way it winds outward, so an arc runs from its
+// centre, so that is where the innermost arc leaves the eye, heading left, and the point spirals
+// follow suit. Counterclockwise is the way it winds outward, so an arc runs from its
 // inner neighbour's end to its own end. Neighbours share that point (inner.to = outer.from) and
 // are tangent there. layoutVolute cuts the spiral where it last reaches its front heading up, a
 // quarter turn short of the historical authors' end at the top, and the crown takes over there;
-// the four point is drawn only that far to begin with. `guides` is the figure the centres are
-// found on, as polylines in the same frame, for the guides view.
+// the point spirals carry only the arcs that reach that far. `guides` is the figure the centres
+// are found on, as polylines in the same frame, for the guides view. `points` marks a point
+// spiral, drawn from the user's arc radii, that many arcs to a turn.
 export interface VoluteStyleDef {
   label: string;
+  points?: number;
   arcs: (v: VoluteSpec) => VoluteArc[];
   guides: (v: VoluteSpec) => Pt[][];
 }
@@ -166,41 +168,94 @@ const goldmann: VoluteStyleDef = {
   ],
 };
 
-// Four point: the spiral drawn about a square's corners, every arc an exact quarter, each
-// centre on the line through the last centre and the joint so the arcs stay tangent. It leaves
-// the top of the eye heading left like the rest, so the first centre sits straight below that
-// point, the first radius down. From there each arc's radius is the user's, since old scrolls
-// rarely open evenly, and each centre steps back from the last joint by the growth, which is
-// what keeps the joint on the line between the two. With every arc a side longer than the last
-// the centres are the corners of one square hung from the top of the eye, as the old figure has
-// it; with the growth a real scroll has, a millimetre or two an arc, they stay close about it.
-// Eleven quarters reach the front; the twelfth is the crown, so it has no radius here.
-const fourPointCentres = (eyeRadius: number, arcRadii: number[]) => {
+// Two, three and four point: the spiral drawn about the corners of a seed figure inside the eye,
+// every arc an exact 1/points of a turn. It leaves the top of the eye heading left like the rest,
+// so the first centre sits straight below that point, the first radius down, and the first arc
+// runs on tangent to the eye; a centre on the eye's edge would kink it off the eye instead, as
+// every figure but the two point's does once turned to put a corner at the top. Each centre steps
+// back from the last joint by the growth, which keeps the joint on the line between the two and
+// the arcs tangent. With the natural growth the centres are the figure's own corners every turn;
+// the user's radii move them off it, since old scrolls rarely open evenly.
+const pointCentres = (eyeRadius: number, arcRadii: number[], points: number) => {
   const centers = [new Pt(0, eyeRadius - arcRadii[0])];
   arcRadii.slice(1).forEach((r, i) => {
-    const [last, grow, joint] = [centers[i], r - arcRadii[i], (i + 2) * Math.PI / 2];
+    const [last, grow, joint] = [centers[i], r - arcRadii[i], Math.PI / 2 + (i + 1) * 2 * Math.PI / points];
     centers.push(new Pt(last.x - grow * Math.cos(joint), last.y - grow * Math.sin(joint)));
   });
   return centers;
 };
-const fourPoint: VoluteStyleDef = {
-  label: 'Four point',
-  arcs: ({ eyeRadius, arcRadii }) => {
-    if (!arcRadii.length || !arcRadii.every((r, i) => r > (arcRadii[i - 1] ?? 0))) return [];
-    return fourPointCentres(eyeRadius, arcRadii).map((center, i) => {
-      const from = ((i + 1) % 4) * Math.PI / 2;
-      return { center, r: arcRadii[i], from, to: from + Math.PI / 2 };
-    }).reverse();
-  },
-  guides: v => [...axis(v), v.arcRadii.length ? fourPointCentres(v.eyeRadius, v.arcRadii) : []],
+
+// the seed figure: the regular polygon the walk of centres goes round (for two points, a line),
+// which puts one side on the eye's vertical diameter with the figure to its right. That side is
+// centred on the eye's centre, as Goldmann's squares are, and the figure made as large as the eye
+// holds, its far corners on the eye's edge; for two points it is the diameter itself
+const seedFigure = (eyeRadius: number, points: number) => {
+  // the walk at a unit side, starting half a side below the centre
+  const unit = pointCentres(0.5, Array.from({ length: points }, (_, i) => i + 1), points);
+  const side = eyeRadius / Math.max(...unit.map(p => Math.hypot(p.x, p.y)));
+  return unit.map(p => new Pt(p.x * side, p.y * side));
 };
 
-// Salviati's radii at the same eye, so the four point spiral starts out as the one that has
-// fitted real scrolls best, and every field is then a nudge from a known shape
-export const defaultArcRadii = (eyeRadius: number): number[] =>
-  salviati.arcs({ style: 'salviati', eyeRadius, arcRadii: [] }).map(a => Math.round(a.r * 100) / 100).reverse().slice(0, 11);
+const pointSpiral = (points: number, label: string): VoluteStyleDef => ({
+  label,
+  points,
+  arcs: ({ eyeRadius, arcRadii }) => {
+    if (!arcRadii.length || !arcRadii.every((r, i) => r > (arcRadii[i - 1] ?? 0))) return [];
+    const step = 2 * Math.PI / points;
+    return pointCentres(eyeRadius, arcRadii, points).map((center, i) => {
+      const from = normalizeRadians(Math.PI / 2 + i * step);
+      return { center, r: arcRadii[i], from, to: from + step };
+    }).reverse();
+  },
+  guides: ({ eyeRadius, arcRadii }) => {
+    const figure = seedFigure(eyeRadius, points);
+    return [[...figure, figure[0]], arcRadii.length ? pointCentres(eyeRadius, arcRadii, points) : []];
+  },
+});
 
-export const VOLUTE_STYLES: Record<VoluteStyle, VoluteStyleDef> = { alberti, serlio, philandrier, salviati, goldmann, fourPoint };
+// three turns less the crown's quarter: the arcs up to the one that last reaches the front, so
+// every radius drives something. Four points end on the front exactly, eleven quarters; two and
+// three cut their last arc short there
+export const pointArcCount = (points: number): number => Math.ceil(11 * points / 4);
+
+// the growth the figure gives by itself: the first arc from the top of the eye down to the
+// figure's first corner, each after it a side longer, so the centres come back round the same
+// corners every turn and the turns lie evenly spaced. Two points makes Alberti's figure, carried on
+// to three turns. Rounded to the hundredth like the fields, which shifts the figure by no more
+// than that
+export const naturalArcRadii = (eyeRadius: number, points: number): number[] => {
+  const [first, second] = seedFigure(eyeRadius, points);
+  const side = dist(first, second);
+  return Array.from({ length: pointArcCount(points) }, (_, i) => Math.round((eyeRadius - first.y + i * side) * 100) / 100);
+};
+
+// a point spiral's arcs by turn, innermost first, `points` to a turn
+export const pointTurns = (points: number, arcCount: number): number[][] =>
+  [0, 1, 2].map(t => Array.from({ length: points }, (_, k) => points * t + k).filter(i => i < arcCount));
+
+// sets where a turn ends, its last arc's radius, keeping the shape of the growth: the turn's
+// arcs stretch between its start and the new end, and the next turn's between the new end and
+// its own, so every other turn's end stays where the user put it. The first turn starts from
+// nothing, so it scales whole. To the hundredth, like the fields
+export function setTurnRadius(arcRadii: number[], points: number, turn: number, radius: number): void {
+  if (!Number.isFinite(radius)) return;
+  const turns = pointTurns(points, arcRadii.length);
+  const ends = [0, ...turns.map(arcs => arcRadii[arcs.at(-1)!])];
+  // turn t's arcs, taken from running ends[t] to ends[t + 1] to running start to end
+  const stretch = (t: number, start: number, end: number) => {
+    const [from, to] = [ends[t], ends[t + 1]];
+    for (const i of turns[t]) arcRadii[i] = Math.round((start + (arcRadii[i] - from) * (end - start) / (to - from)) * 100) / 100;
+  };
+  stretch(turn, ends[turn], radius);
+  if (turn + 1 < turns.length) stretch(turn + 1, radius, ends[turn + 2]);
+}
+
+export const VOLUTE_STYLES: Record<VoluteStyle, VoluteStyleDef> = {
+  alberti, serlio, philandrier, salviati, goldmann,
+  twoPoint: pointSpiral(2, 'Two Point (custom)'),
+  threePoint: pointSpiral(3, 'Three Point (custom)'),
+  fourPoint: pointSpiral(4, 'Four Point (custom)'),
+};
 
 // the outermost arc that reaches the front heading up is cut there, and everything outside it dropped
 function cutAtFront(arcs: VoluteArc[]): VoluteArc[] | null {

@@ -30,7 +30,7 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell field-cell--full">
             <span class="field-title">Style</span>
-            <select [style.border-color]="colors.outerTrace" [(ngModel)]="volute.style" (change)="onChange()">
+            <select [style.border-color]="colors.outerTrace" [(ngModel)]="volute.style" (change)="onStyleChange()">
                 @for (s of styles; track s.id) {
                 <option [value]="s.id">{{ s.label }}</option>
                 }
@@ -58,33 +58,48 @@
         <label class="field-cell">
             <div class="toggle" title="Slide the eye so the spiral's front touches the box's front, Eye Y still setting its height. Off, Eye X is yours too">
                 <input type="checkbox" [(ngModel)]="volute.fitToBox" (ngModelChange)="onChange()" />
-                <span>Fit to Front</span>
+                <span>Fit to Bounds</span>
+            </div>
+        </label>
+        @if (points) {
+        <label class="field-cell">
+            <div class="toggle" title="Set each turn's radius yourself, starting from the spiral the eye's figure draws by itself. Off, that natural spiral: the first arc from the top of the eye down to a corner of the seed figure inside it, each after it a side longer, so the eye's radius sizes it">
+                <input type="checkbox" [(ngModel)]="volute.customTurns" (ngModelChange)="onChange()" />
+                <span>Custom Turns</span>
+            </div>
+        </label>
+        }
+    </div>
+    @if (points && volute.customTurns) {
+    @for (arcs of turns; track $index; let t = $index) {
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title" [style.color]="arcColor(arcs[0])" title="The turn's radius where it ends, its arcs opening in the shape they already have. Each radius must be more than the last. Turn 3 ends at the front, where the crown takes over, shaped by Eye Y">Turn {{ t + 1 }} <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.1" data-step-shift="1" data-step-fine="0.01" min="0.1" [style.border-color]="arcColor(arcs[0])"
+                [disabled]="openTurns.has(t)" [ngModel]="volute.arcRadii[arcs[arcs.length - 1]]" (ngModelChange)="setTurn(t, $event)"
+                (focus)="onTurnFocus(t)" (blur)="onArcBlur()" />
+        </label>
+        <label class="field-cell">
+            <div class="toggle" title="Tune this turn's arcs one by one; the turn's radius follows its last">
+                <input type="checkbox" [ngModel]="openTurns.has(t)" (ngModelChange)="$event ? openTurns.add(t) : openTurns.delete(t)" />
+                <span>{{ parts[points].name }}</span>
             </div>
         </label>
     </div>
-</section>
-
-@if (volute.style === 'fourPoint') {
-<section class="ui-group">
-    <div class="ui-group-title" title="Each quarter arc's radius, innermost first. Each must be more than the last; the centre steps back from the last joint by the growth, which keeps the arcs tangent. The last quarter of turn 3 is the crown, shaped by Eye Y">Arc Radii</div>
-    @for (t of [0, 1, 2]; track t) {
-    <div class="section-label" [style.color]="arcColor(4 * t)">
-        Turn {{ t + 1 }}
-        <div class="input-group basic-row field-row" role="group">
-            @for (q of ['¼', '½', '¾', '1']; track q; let i = $index) {
-            @if (4 * t + i < 11) {
-            <label class="field-cell">
-                <span class="field-title">{{ q }} <span class="unit-label">mm</span></span>
-                <input class="basic-input" type="number" step="0.1" data-step-shift="1" data-step-fine="0.01" min="0.1" [style.border-color]="arcColor(4 * t + i)"
-                    [(ngModel)]="volute.arcRadii[4 * t + i]" (input)="onChange(); onArcFocus(4 * t + i)"
-                    (focus)="onArcFocus(4 * t + i)" (blur)="onArcBlur()" />
-            </label>
-            }
-            }
-        </div>
+    @if (openTurns.has(t)) {
+    <div class="input-group basic-row field-row" role="group">
+        @for (i of arcs; track i; let q = $index) {
+        <label class="field-cell field-cell--arc">
+            <span class="field-title">{{ parts[points].ends[q] }} <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.1" data-step-shift="1" data-step-fine="0.01" min="0.1" [style.border-color]="arcColor(i)"
+                [(ngModel)]="volute.arcRadii[i]" (input)="onChange(); onArcFocus(i)"
+                (focus)="onArcFocus(i)" (blur)="onArcBlur()" />
+        </label>
+        }
     </div>
     }
+    }
+    }
 </section>
-}
 
 }

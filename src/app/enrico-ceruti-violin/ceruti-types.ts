@@ -115,14 +115,16 @@ export interface EnricoCerutiParams {
 }
 
 /** The scroll's spiral. The eye is the raised disc at its centre; the rule that winds outward from it is the style, each a Renaissance architect's way of laying out the Ionic volute. */
-export type VoluteStyle = 'alberti' | 'serlio' | 'philandrier' | 'salviati' | 'goldmann' | 'fourPoint';
+export type VoluteStyle = 'alberti' | 'serlio' | 'philandrier' | 'salviati' | 'goldmann' | 'twoPoint' | 'threePoint' | 'fourPoint';
 
 export interface VoluteParams {
   /** Radius of the eye (mm). */
   eyeRadius: number;
   style: VoluteStyle;
-  /** Four point only: the radius of each quarter arc, innermost first, four to a turn, eleven to the front since the twelfth is the crown (mm). Each has to be more than the last. */
+  /** Point spirals only: the radius of each arc, innermost first, as many to a turn as the style has points, up to the one that reaches the front (6, 9 or 11) (mm). Each has to be more than the last. */
   arcRadii: number[];
+  /** Point spirals only. Off, arcRadii are rewritten each pass from the eye, the natural growth: the first arc from the top of the eye to the seed figure's first corner, each after it a side longer. On, they are the user's, starting from where the growth left them. */
+  customTurns: boolean;
   /** On, the eye is slid each pass so the spiral's front touches the box's front, its height left to eyeY; off, it sits where eyeX and eyeY put it. */
   fitToBox: boolean;
   /** Eye centre measured right (x) and up (y) from the scroll box's top left corner as drawn (mm), so y is negative inside the box. x is rewritten by the fit while it is on; y is set once from the fit when the volute is first made and is the user's from then on, since it shapes the crown. */
