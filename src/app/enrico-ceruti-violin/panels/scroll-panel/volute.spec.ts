@@ -1,4 +1,4 @@
-import { defaultArcRadii, fitVolute, layoutVolute, VoluteArc, VoluteSpec, VOLUTE_STYLES } from './volute';
+import { fitVolute, layoutVolute, naturalArcRadii, pointArcCount, pointTurns, setTurnRadius, VoluteArc, VoluteSpec, VOLUTE_STYLES } from './volute';
 import { VoluteStyle } from '../../ceruti-types';
 import { angleWithinSweep } from '../../../helpers/math/simpleGeometry';
 import { Pt } from '../../../models/types';
@@ -21,7 +21,7 @@ const layout = (style: VoluteStyle, eyeRadius: number, depth = DEPTH) => {
 const sweep = (arcs: VoluteArc[]) => arcs.reduce((sum, a) => sum + a.to - a.from, 0);
 
 const STYLES = Object.keys(VOLUTE_STYLES) as VoluteStyle[];
-const HISTORICAL = STYLES.filter(s => s !== 'fourPoint');
+const HISTORICAL = STYLES.filter(s => !VOLUTE_STYLES[s].points);
 
 describe.each(STYLES)('the %s volute', style => {
   const def = VOLUTE_STYLES[style];
@@ -309,16 +309,26 @@ describe('the Salviati volute', () => {
   });
 });
 
-describe('the four point volute', () => {
+// each seed figure at a unit side, first corner first: one side on the eye's vertical diameter,
+// centred on the eye's centre, and how large a side the eye holds
+describe.each([
+  { style: 'twoPoint', points: 2, count: 6, turns: [[0, 1], [2, 3], [4, 5]], unit: [[0, -1 / 2], [0, 1 / 2]], fits: 2 },
+  { style: 'threePoint', points: 3, count: 9, turns: [[0, 1, 2], [3, 4, 5], [6, 7, 8]], unit: [[0, -1 / 2], [Math.sqrt(3) / 2, 0], [0, 1 / 2]], fits: 2 / Math.sqrt(3) },
+  { style: 'fourPoint', points: 4, count: 11, turns: [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10]], unit: [[0, -1 / 2], [1, -1 / 2], [1, 1 / 2], [0, 1 / 2]], fits: 2 / Math.sqrt(5) },
+] as const)('the $style volute', ({ style, points, count, turns, unit, fits }) => {
+  const def = VOLUTE_STYLES[style];
   const r = 4;
-  const radii = [5, 6, 8, 9, 12, 13, 15, 18, 20, 23, 24];
-  const arcs = VOLUTE_STYLES.fourPoint.arcs(spec('fourPoint', r, radii));
+  const radii = [5, 6, 8, 9, 12, 13, 15, 18, 20, 23, 24].slice(0, count);
+  const arcs = def.arcs(spec(style, r, radii));
   const inward = [...arcs].reverse();
+  const step = 2 * Math.PI / points;
+  const side = fits * r;
+  const figure = unit.map(([x, y]) => [x * side, y * side]);
 
-  it('draws one exact quarter per radius, innermost first, about a first centre straight below the top of the eye', () => {
+  it('draws one exact 1/points of a turn per radius, innermost first, about a first centre straight below the top of the eye', () => {
     expect(inward.map(a => a.r)).toEqual(radii);
-    for (const a of arcs) expect(a.to - a.from).toBeCloseTo(Math.PI / 2, 9);
-    inward.forEach((a, i) => expect(a.from).toBeCloseTo(((i + 1) % 4) * Math.PI / 2, 9));
+    for (const a of arcs) expect(a.to - a.from).toBeCloseTo(step, 9);
+    inward.forEach((a, i) => expect(Math.cos(a.from - Math.PI / 2 - i * step)).toBeCloseTo(1, 9));
     expect([inward[0].center.x, inward[0].center.y]).toEqual([expect.closeTo(0, 9), expect.closeTo(r - radii[0], 9)]);
   });
 
@@ -331,40 +341,119 @@ describe('the four point volute', () => {
     });
   });
 
-  it('is the old figure when every arc is a side longer than the last: one square hung from the top of the eye', () => {
-    const side = 3;
-    const classic = VOLUTE_STYLES.fourPoint.arcs(spec('fourPoint', r, Array.from({ length: 12 }, (_, i) => (i + 1) * side))).reverse();
-    const corners = [[0, r - side], [side, r - side], [side, r], [0, r]];
-    classic.forEach((a, i) => expect([a.center.x, a.center.y]).toEqual(corners[i % 4].map(v => expect.closeTo(v, 9))));
+  it('seeds from a figure inside the eye, a side on its vertical diameter centred on its centre, its far corners on the edge', () => {
+    const [seed] = def.guides(spec(style, r, radii));
+    expect(seed).toEqual([...figure, figure[0]].map(([x, y]) => expect.objectContaining({ x: expect.closeTo(x, 9), y: expect.closeTo(y, 9) })));
+    const reach = figure.map(([x, y]) => Math.hypot(x, y));
+    for (const d of reach) expect(d).toBeLessThanOrEqual(r + 1e-9);
+    expect(Math.max(...reach)).toBeCloseTo(r, 9);
   });
 
-  it('draws eleven quarters, ending at its front heading up, so the cut drops nothing and the crown is the twelfth', () => {
-    expect(sweep(arcs)).toBeCloseTo(11 * Math.PI / 2, 9);
-    expect(Math.cos(arcs[0].to)).toBeCloseTo(1, 9);
-    const { spiral, crown } = layout('fourPoint', r)!;
-    expect(spiral).toHaveLength(11);
-    expect(crown!.r).toBeCloseTo(spiral[0].r, 9);
+  it('grown a side an arc from the first corner, centres every arc on the figure\'s corners, the first inside the eye below its centre', () => {
+    const natural = def.arcs(spec(style, r, Array.from({ length: count }, (_, i) => r + side / 2 + i * side))).reverse();
+    natural.forEach((a, i) => expect([a.center.x, a.center.y]).toEqual(figure[i % points].map(v => expect.closeTo(v, 9))));
+    if (points > 2) expect(Math.hypot(natural[0].center.x, natural[0].center.y)).toBeLessThan(r);
+    expect(natural[0].center.y).toBeLessThan(0);
+  });
+
+  it(`draws ${count} arcs, the last reaching the front heading up, so the cut keeps every one and the crown carries on from it`, () => {
+    expect(pointArcCount(points)).toBe(count);
+    const v = spec(style, r, radii);
+    const placed = layoutVolute(v, fitVolute(v, LENGTH)!, LENGTH, DEPTH)!;
+    expect(placed.spiral).toHaveLength(count);
+    expect(placed.spiral[0].r).toBe(radii.at(-1));
+    expect(placed.crown!.r).toBeCloseTo(placed.spiral[0].r, 9);
   });
 
   it('draws nothing unless every radius is more than the last', () => {
     for (const bad of [[], [5, 5, 8], [5, 8, 7], [0, 5, 8], [5, NaN, 8]]) {
-      expect(VOLUTE_STYLES.fourPoint.arcs(spec('fourPoint', r, bad))).toEqual([]);
-      expect(fitVolute(spec('fourPoint', r, bad), LENGTH)).toBeNull();
+      expect(def.arcs(spec(style, r, bad))).toEqual([]);
+      expect(fitVolute(spec(style, r, bad), LENGTH)).toBeNull();
     }
   });
 
-  it('guides with the eye\'s vertical and the walk of centres', () => {
-    const guides = VOLUTE_STYLES.fourPoint.guides(spec('fourPoint', r, radii));
+  it('guides with the seed figure and the walk of centres', () => {
+    const guides = def.guides(spec(style, r, radii));
     expect(guides).toHaveLength(2);
-    expect(guides[0]).toEqual([expect.objectContaining({ x: 0, y: -r }), expect.objectContaining({ x: 0, y: r })]);
     expect(guides[1]).toEqual(inward.map(a => expect.objectContaining({ x: expect.closeTo(a.center.x, 9), y: expect.closeTo(a.center.y, 9) })));
   });
 
-  it('defaults to Salviati\'s eleven radii to the front at the same eye, innermost first, to the hundredth', () => {
-    const defaults = defaultArcRadii(1.7);
-    const salviati = VOLUTE_STYLES.salviati.arcs(spec('salviati', 1.7)).map(a => a.r).reverse();
-    expect(defaults).toHaveLength(11);
-    defaults.forEach((d, i) => expect(d).toBeCloseTo(salviati[i], 2));
-    for (const d of defaults) expect(d * 100).toBeCloseTo(Math.round(d * 100), 9);
+  it('groups its arcs by turn', () => {
+    expect(pointTurns(points, count)).toEqual(turns);
+  });
+
+  it('grows naturally from the top of the eye down to the figure\'s first corner, each arc a side longer', () => {
+    const natural = naturalArcRadii(r, points);
+    expect(natural).toHaveLength(count);
+    natural.forEach((n, i) => expect(Math.abs(n - (r + side / 2 + i * side))).toBeLessThanOrEqual(0.005));
+    expect(def.arcs(spec(style, r, natural))).toHaveLength(count);
+    expect(naturalArcRadii(2 * r, points)[count - 1]).toBeCloseTo(2 * natural[count - 1], 1);
+  });
+});
+
+describe('the two point volute', () => {
+  it('grows naturally into Alberti\'s figure, carried on past his two turns', () => {
+    const alberti = VOLUTE_STYLES.alberti.arcs(spec('alberti', 4)).reverse();
+    const natural = VOLUTE_STYLES.twoPoint.arcs(spec('twoPoint', 4, naturalArcRadii(4, 2))).reverse();
+    alberti.forEach((a, i) => {
+      const n = natural[i];
+      expect([n.center.x, n.center.y, n.r]).toEqual([a.center.x, a.center.y, a.r].map(v => expect.closeTo(v, 9)));
+      expect(Math.cos(n.from - a.from)).toBeCloseTo(1, 9);
+    });
+  });
+});
+
+describe('the four point volute', () => {
+  describe('set by the turn', () => {
+    const base = [2, 3, 4, 6, 7, 8, 10, 12, 13, 15, 18];
+
+    it('ends the turn where asked, its quarters keeping their share of its growth', () => {
+      const radii = [...base];
+      setTurnRadius(radii, 4, 1, 16);
+      expect(radii[7]).toBe(16);
+      // turn 2 ran 6 to 12 in steps of 1, 1, 2, 2; now 6 to 16, the same shares
+      expect(radii.slice(4, 8)).toEqual([7 + 2 / 3, 9 + 1 / 3, 12 + 2 / 3, 16].map(v => expect.closeTo(v, 2)));
+      expect(radii.slice(0, 4)).toEqual(base.slice(0, 4));
+    });
+
+    it('keeps the next turn\'s end, its quarters stretched from the new start', () => {
+      const radii = [...base];
+      setTurnRadius(radii, 4, 1, 14);
+      expect(radii[10]).toBe(18);
+      // turn 3 ran 12 to 18 in 1, 2, 3; now 14 to 18, the same shares
+      expect(radii.slice(8, 11)).toEqual([14 + 4 / 6, 14 + 2, 18].map(v => expect.closeTo(v, 2)));
+    });
+
+    it('scales the first turn whole, since it starts from nothing', () => {
+      const radii = [...base];
+      setTurnRadius(radii, 4, 0, 9);
+      expect(radii.slice(0, 4)).toEqual([3, 4.5, 6, 9]);
+      expect(radii[7]).toBe(12);
+    });
+
+    it('moves only the last turn when that is the one set', () => {
+      const radii = [...base];
+      setTurnRadius(radii, 4, 2, 24);
+      expect(radii.slice(0, 8)).toEqual(base.slice(0, 8));
+      expect(radii[10]).toBe(24);
+    });
+
+    it('leaves the radii alone for a field left empty', () => {
+      const radii = [...base];
+      setTurnRadius(radii, 4, 1, NaN);
+      expect(radii).toEqual(base);
+    });
+
+    it('keeps a spiral that was drawable drawable, for any end between its neighbours', () => {
+      const radii = naturalArcRadii(1.7, 4);
+      setTurnRadius(radii, 4, 1, (radii[3] + radii[10]) / 2);
+      expect(VOLUTE_STYLES.fourPoint.arcs(spec('fourPoint', 1.7, radii))).toHaveLength(11);
+    });
+
+    it('takes a turn as two halves on the two point', () => {
+      const radii = [2, 3, 4, 6, 8, 10];
+      setTurnRadius(radii, 2, 1, 9);
+      expect(radii).toEqual([2, 3, 5, 9, 9.5, 10]);
+    });
   });
 });

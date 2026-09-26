@@ -77,6 +77,14 @@
   }
 }
 
+/* a scroll turn's arcs, narrowed so a four point's quarters share one row where three cells is the
+   rule; touch keeps the full width for its steppers and wraps */
+@media (pointer: fine) {
+  .field-cell.field-cell--arc {
+    width: 76px;
+  }
+}
+
 /*
  * The station slider, with the body's own landmarks marked under it: the two
  * widest points, the two corners, and the waist. They are the positions a maker
