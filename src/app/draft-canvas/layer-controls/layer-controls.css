@@ -128,6 +128,19 @@
   opacity: 0.75;
 }
 
+/* The Recipe row isn't somewhere you draw: no click-to-activate, so no hover affordance, and
+   a blank cell where the eye would be so its label lines up with the layers under it. */
+.layer-tab.recipe,
+.layer-tab.recipe:hover {
+  cursor: default;
+  border-color: var(--ui-border-elevated);
+}
+
+.recipe-spacer {
+  min-width: 18px;
+  cursor: default;
+}
+
 /* Scoped to another panel, so it isn't drawn even with its eye on. Dimmed rather than removed:
    the eye is still the user's own switch, and hiding the row would make the image unreachable. */
 .layer-tab.off-panel {

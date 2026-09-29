@@ -3,7 +3,7 @@
   <div class="canvas-body">
     <div #host class="host" [class.drawing]="activeTool !== null" tabindex="0" aria-label="Draft canvas" (wheel)="onScrollWheel($event)"
       (pointerdown)="onPointerDown($event)" (pointermove)="onPointerMove($event)" (pointerup)="onPointerUp($event)"
-      (pointerleave)="onPointerUp($event)" (keydown)="onKeyDown($event)" (dblclick)="onDoubleClick($event)">
+      (pointerleave)="onPointerUp($event)" (dblclick)="onDoubleClick($event)">
       @if (editingTextShapeId) {
         <textarea #textEditArea class="text-edit-overlay"
           [rows]="editingTextRows"
@@ -30,7 +30,7 @@
     <div class="left">
       <!-- <button type="button" class="btn" (click)="darkMode()">Dark Mode</button> -->
 
-      <app-settings-bar [activeTool]="activeTool"></app-settings-bar>
+      <app-settings-bar [activeTool]="activeTool" (duplicateRequested)="duplicateSelection()"></app-settings-bar>
     </div>
 
     <div class="right">

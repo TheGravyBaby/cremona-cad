@@ -48,6 +48,8 @@ export class ToolboxStore implements Undoable {
   private _activeLayerId: string = DEFAULT_LAYER_ID;
   private _showImages = true;
   private _showShapes = true;
+  /** Whether the recipe's own geometry is out of reach of selection — see recipeLocked. */
+  private _recipeLocked = false;
   /** The recipe panel currently open — see setActivePanel. */
   private _activePanel: string | null = null;
   /** Panels the open recipe has, for the settings bar's scoping picker. */
@@ -201,6 +203,18 @@ export class ToolboxStore implements Undoable {
   setShowShapes(value: boolean): void {
     if (this._showShapes === value) return;
     this._showShapes = value;
+    this.persist();
+    this.notify();
+  }
+
+  /** The recipe's rendered geometry behaves like one more layer for selection: locked, a click or
+   * marquee passes straight through it to whatever is drawn; unlocked, it can be picked, read
+   * off and duplicated (never edited — it's derived from the params). A view preference like the
+   * masters above, so not undo-tracked. */
+  get recipeLocked(): boolean { return this._recipeLocked; }
+  setRecipeLocked(value: boolean): void {
+    if (this._recipeLocked === value) return;
+    this._recipeLocked = value;
     this.persist();
     this.notify();
   }
@@ -485,6 +499,7 @@ export class ToolboxStore implements Undoable {
         if (typeof parsed.activeLayerId === 'string') this._activeLayerId = parsed.activeLayerId;
         if (typeof parsed.showImages === 'boolean') this._showImages = parsed.showImages;
         if (typeof parsed.showShapes === 'boolean') this._showShapes = parsed.showShapes;
+        if (typeof parsed.recipeLocked === 'boolean') this._recipeLocked = parsed.recipeLocked;
       }
     } catch {
       // ignore malformed stored state
@@ -520,6 +535,7 @@ export class ToolboxStore implements Undoable {
       activeLayerId: this._activeLayerId,
       showImages: this._showImages,
       showShapes: this._showShapes,
+      recipeLocked: this._recipeLocked,
     };
   }
 

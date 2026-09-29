@@ -189,6 +189,17 @@
 
 /* A push-button action rather than a value to edit (currently just Reference Image's Lock).
    Spans both rows like .point-group, since it has no separate label above it. */
+/* A recipe piece's numbers, read-only: plain text in the strip rather than inputs that would
+   look editable and then refuse. */
+.scene-readout {
+  grid-row: 1 / span 2;
+  align-self: center;
+  font-size: 12px;
+  color: var(--ui-text-primary);
+  white-space: nowrap;
+  user-select: text;
+}
+
 .settings-action {
   grid-row: 1 / span 2;
   align-self: center;

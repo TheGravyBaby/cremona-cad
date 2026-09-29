@@ -16,7 +16,8 @@ import { AxisGridController, AxisGridPreferences, CanvasViewport } from './axis-
 import { DraftTool, DraftToolHost } from './tools/draft-tool';
 import { ToolRegistryService } from './tools/tool-registry';
 import { ToolboxStore } from './tools/toolbox-store';
-import { SelectionStore, toolboxRef } from './tools/selection-store';
+import { SelectionRef, SelectionStore, sceneRef, toolboxRef } from './tools/selection-store';
+import { SceneStore } from './tools/scene-index';
 import { ImageAssetStore, prepareLinkedImage, prepareUploadedImage } from './tools/image-asset-store';
 import {
   drawShape, drawImageShape, drawSelectionHalo, drawMoveGrabber, drawEndpointGrabber, drawAreaSelectBox,
@@ -29,7 +30,7 @@ import { moveGrabberPosition, endpointGrabbers, withEndpoint, EndpointKey } from
 import { snapToLockedAngle } from './tools/angle-lock';
 import { copyDebugDump, isLocalHost } from '../helpers/debugDump';
 import { info, warn } from '../shared/message-emitter';
-import { DEFAULT_TEXT_SIZE_MM, DraftShape, ImageShape, TextShape, imageRenderKey } from './tools/toolbox-shape';
+import { DEFAULT_TEXT_SIZE_MM, DraftShape, ImageShape, TextShape, imageRenderKey, makeShapeId } from './tools/toolbox-shape';
 import { placedImageShape } from './tools/image-placement';
 import { HOTKEY_TOOL_CYCLE } from './tools/tool-hotkeys';
 import { SettingsBarComponent } from './settings-bar/settings-bar';
@@ -73,6 +74,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private toolboxUnsub?: () => void;
   private selection = inject(SelectionStore);
   private selectionUnsub?: () => void;
+  private scene = inject(SceneStore);
   private toolRegistry = inject(ToolRegistryService);
   private toolRegistryUnsub?: () => void;
   public get activeTool(): DraftTool | null { return this.toolRegistry.activeTool; }
@@ -212,6 +214,9 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.draftFuncs = value
     this.snapDirty = true;
     this.draw();
+    // after the draw, so a recipe's first-render bookkeeping (see CerutiViolin.firstRender) has
+    // already run against the real canvas by the time the index re-runs the layers
+    this.scene.setLayers(value);
   }
   /** Bumped by whoever replaced the drawing wholesale — a new file, a loaded template, a recipe
    * switch — to re-arm the auto-fit. It carries no geometry: the camera frames what gets rendered
@@ -302,6 +307,9 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   ngAfterViewInit(): void {
     const el = this.host.nativeElement;
     this.host.nativeElement.addEventListener('keyup', this.onKeyUp);
+    // on document, not the host, so hotkeys work after a click on the palette or bottom bar has
+    // taken focus — and only here: a second (keydown) on the host would run every shortcut twice
+    // whenever the canvas itself is focused
     document.addEventListener('keydown', this.onKeyDown);
 
     this.canvas = d3.select(el)
@@ -411,10 +419,12 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       // works *on* the selection, so its handles stay meaningful. The halo is unconditional
       // either way — it says which shape the settings strip is describing.
       const showHandles = !this.activeTool || !!this.activeTool.actsOnSelection;
+      const editableIds = new Set(this.selection.toolboxShapes.map(s => s.id));
       for (const selectedShape of selected) {
         const shape = this.dragOverrides?.get(selectedShape.id) ?? selectedShape;
         drawSelectionHalo(this.gRoot, this.gUI, shape, this.pxPerMm);
-        if (!showHandles) continue;
+        // recipe geometry gets the halo and nothing to drag: it's read-only
+        if (!showHandles || !editableIds.has(shape.id)) continue;
         const grabberPos = moveGrabberPosition(shape);
         if (grabberPos) drawMoveGrabber(this.gRoot, grabberPos, this.pxPerMm);
         const endpoints = endpointGrabbers(shape, this.pxPerMm);
@@ -557,22 +567,26 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
    */
   private hitTestToolboxShape(pt: Pt): string | null {
     const toleranceMm = DraftCanvasComponent.SELECT_HIT_TOLERANCE_PX / this.pxPerMm;
-    const nearestOf = (shapes: DraftShape[]): string | null => {
-      let bestId: string | null = null;
-      let bestDist = Infinity;
-      for (const shape of shapes) {
-        const dist = distanceToShape(pt, shape);
-        if (dist <= toleranceMm && dist <= bestDist) {
-          bestId = shape.id;
-          bestDist = dist;
-        }
-      }
-      return bestId;
-    };
-
     const editable = this.toolbox.getEditableShapes();
-    return nearestOf(editable.filter(s => s.type !== 'image'))
-      ?? nearestOf(editable.filter(s => s.type === 'image'));
+    return nearestShapeId(pt, editable.filter(s => s.type !== 'image'), toleranceMm)
+      ?? nearestShapeId(pt, editable.filter(s => s.type === 'image'), toleranceMm);
+  }
+
+  /** What a Select-mode click lands on, in paint order from the top: a drawn shape, then a piece
+   * of the recipe (while the Recipe row is unlocked), then a reference image underneath it all.
+   * Only the plain-click path asks this; tools and the text editor keep to hitTestToolboxShape,
+   * since a recipe piece is nothing they can act on. */
+  private hitTestAt(pt: Pt): SelectionRef | null {
+    const toleranceMm = DraftCanvasComponent.SELECT_HIT_TOLERANCE_PX / this.pxPerMm;
+    const editable = this.toolbox.getEditableShapes();
+    const drawn = nearestShapeId(pt, editable.filter(s => s.type !== 'image'), toleranceMm);
+    if (drawn) return toolboxRef(drawn);
+    if (!this.toolbox.recipeLocked) {
+      const piece = nearestShapeId(pt, this.scene.shapes, toleranceMm);
+      if (piece) return sceneRef(piece);
+    }
+    const image = nearestShapeId(pt, editable.filter(s => s.type === 'image'), toleranceMm);
+    return image ? toolboxRef(image) : null;
   }
 
   /** True if `pt` (world mm) grabs a move handle of a currently selected shape — the square
@@ -621,8 +635,30 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     return shape?.type === 'text' ? shape : undefined;
   }
 
+  /** The editable part of the selection — what handles, drags, nudges and Delete act on. */
   private get selectedShapes(): DraftShape[] {
-    return this.selection.shapes;
+    return this.selection.toolboxShapes;
+  }
+
+  /**
+   * Copies of the selection onto the active layer, selected in their place. A piece of the recipe
+   * becomes a drawn shape in the pen colour, which is the one way to get an editable version of
+   * the instrument's own geometry; a drawn shape gets a twin exactly over itself, Inkscape-style.
+   * Images are skipped — one comes in through the image list, not by copying.
+   */
+  duplicateSelection(): void {
+    const layerId = this.toolbox.activeLayerId;
+    if (this.toolbox.layers.find(l => l.id === layerId)?.locked) {
+      warn('The active layer is locked — unlock it or switch layers to duplicate onto it.', 'Duplicate');
+      return;
+    }
+    const copies = this.selection.shapes
+      .filter(s => s.type !== 'image')
+      .map(s => ({ ...s, id: makeShapeId(), color: s.color ?? this.toolbox.currentColor, layerId }) as DraftShape);
+    if (copies.length === 0) return;
+    this.toolbox.setShowShapes(true);
+    this.toolbox.addShapes(copies);
+    this.selection.set(copies.map(c => toolboxRef(c.id)));
   }
 
   // ===== Debug dump =====
@@ -1014,11 +1050,14 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     if (this.areaSelectAnchor) {
       const box = this.isAreaSelecting ? this.areaSelectBox() : null;
       if (box) {
-        const contained = this.toolbox.getEditableShapes().filter(shape => {
+        const inBox = (shape: DraftShape) => {
           const b = shapeBounds(shape);
           return b.x0 >= box.x0 && b.x1 <= box.x1 && b.y0 >= box.y0 && b.y1 <= box.y1;
-        });
-        const refs = contained.map(s => toolboxRef(s.id));
+        };
+        const refs = [
+          ...this.toolbox.getEditableShapes().filter(inBox).map(s => toolboxRef(s.id)),
+          ...(this.toolbox.recipeLocked ? [] : this.scene.shapes.filter(inBox).map(s => sceneRef(s.id))),
+        ];
         if (this.areaSelectAdditive) this.selection.add(refs);
         else this.selection.set(refs);
       } else if (!this.areaSelectAdditive) {
@@ -1108,12 +1147,22 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       }
     }
 
+    // Ctrl/Cmd+D duplicates the selection onto the active layer — see duplicateSelection. Left
+    // to the browser when there's nothing to act on.
+    const commandHeld = event.ctrlKey || event.metaKey;
+    if (commandHeld && event.code === 'KeyD' && !this.activeTool && this.selection.size) {
+      this.duplicateSelection();
+      event.preventDefault();
+      return;
+    }
+
     // Tool mnemonics: each letter activates that tool group's first variant, or cycles to
     // the next variant in the group on repeated presses (so there's no need for a separate
     // "alternate" modifier — see HOTKEY_TOOL_CYCLE below). Escape (above) is the way back
-    // to Select — there's no dedicated select-tool key, matching AutoCAD/Fusion 360.
+    // to Select — there's no dedicated select-tool key, matching AutoCAD/Fusion 360. A held
+    // Ctrl/Cmd/Alt means a browser or app shortcut, never a tool.
     const cycle = HOTKEY_TOOL_CYCLE[event.code];
-    if (cycle) {
+    if (cycle && !commandHeld && !event.altKey) {
       const currentIdx = this.activeTool ? cycle.indexOf(this.activeTool.id) : -1;
       const nextId = cycle[(currentIdx + 1) % cycle.length];
       this.toolRegistry.activateById(nextId);
@@ -1277,10 +1326,10 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
         this.isDraggingSelection = false;
         this.host.nativeElement.setPointerCapture(event.pointerId);
       } else {
-        const hitId = this.hitTestToolboxShape(pt);
-        if (hitId) {
-          if (event.shiftKey) this.selection.toggle(toolboxRef(hitId));
-          else this.selection.select(toolboxRef(hitId));
+        const hit = this.hitTestAt(pt);
+        if (hit) {
+          if (event.shiftKey) this.selection.toggle(hit);
+          else this.selection.select(hit);
         } else if (isTouch) {
           // Touch keeps its existing immediate-click behavior — it also falls through to the
           // pan-arming block below, so a marquee drag would conflict with that single-finger pan.
@@ -1573,6 +1622,21 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.camera.applyZoomAt(pt, newPxPerMm, pxW, pxH);
     this.draw();
   }
+}
+
+/** Nearest of `shapes` to `pt` within `toleranceMm`, or null. Ties go to the *last* shape in the
+ * list, which is the one drawn on top when the list is in render order. */
+function nearestShapeId(pt: Pt, shapes: DraftShape[], toleranceMm: number): string | null {
+  let bestId: string | null = null;
+  let bestDist = Infinity;
+  for (const shape of shapes) {
+    const dist = distanceToShape(pt, shape);
+    if (dist <= toleranceMm && dist <= bestDist) {
+      bestId = shape.id;
+      bestDist = dist;
+    }
+  }
+  return bestId;
 }
 
 function readFileAsDataUrl(file: File): Promise<string> {

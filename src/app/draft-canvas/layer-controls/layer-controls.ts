@@ -56,6 +56,10 @@ export class LayerControlsComponent {
   public get showShapes(): boolean { return this.toolbox.showShapes; }
   toggleShowShapes(): void { this.toolbox.setShowShapes(!this.toolbox.showShapes); }
 
+  /** The recipe's geometry as one more selectable layer — see ToolboxStore.recipeLocked. */
+  public get recipeLocked(): boolean { return this.toolbox.recipeLocked; }
+  toggleRecipeLocked(): void { this.toolbox.setRecipeLocked(!this.toolbox.recipeLocked); }
+
   // ===== Layers =====
 
   toggleLayers(): void {

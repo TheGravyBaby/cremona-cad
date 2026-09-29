@@ -103,7 +103,7 @@ export const renderBoxLine = (
     const unit = len / total; // length per "part"
 
     if (outlineOn) {
-        const outline = g.append("g").attr("class", "boxline-outline");
+        const outline = g.append("g").attr("class", "boxline-outline").attr("data-decoration", "");
         outline.append("line")
             .attr("x1", start.x + nx * halfT)
             .attr("y1", start.y + ny * halfT)
@@ -123,7 +123,7 @@ export const renderBoxLine = (
             .attr("vector-effect", "non-scaling-stroke");
     }
 
-    const segGroup = g.append("g").attr("class", "boxline-segments");
+    const segGroup = g.append("g").attr("class", "boxline-segments").attr("data-decoration", "");
     const textGroup = ui.append("g").attr("class", "boxline-labels");
 
     // running distance along the line
@@ -388,8 +388,11 @@ export const renderCrosshair = (
     showDot: boolean = false,
     dotR: number = 2
 ) => (g: any, ui: any) => {
+    // data-decoration: not geometry — the scene index (draft-canvas/tools/scene-index.ts) skips
+    // anything under it, so a crosshair or halo can't be selected as if it were a drawn shape
     const grp = g.append("g")
         .attr("class", "draft-crosshair")
+        .attr("data-decoration", "")
         .attr("transform", `translate(${P.x},${P.y})`)
         .attr("opacity", opacity);
 
@@ -678,7 +681,7 @@ export const renderArcFromArcFancy = (arc: Arc, color: string) => (g: any, ui: a
 }
 
 export const renderArcHalo = (arc: Arc, color: string, haloWidth = 12, opacity = .33) => (g: any, ui: any) => {
-    const group = g.append("g").attr("opacity", opacity);
+    const group = g.append("g").attr("opacity", opacity).attr("data-decoration", "");
     renderArcFromArc(arc, color, haloWidth, false)(group, ui);
 }
 
@@ -690,6 +693,7 @@ export const renderArcHalo = (arc: Arc, color: string, haloWidth = 12, opacity =
  */
 export const renderPointHalo = (P: Pt, color: string, haloR = 3, opacity = .33) => (g: any, ui: any) => {
     g.append("circle")
+        .attr("data-decoration", "")
         .attr("cx", P.x)
         .attr("cy", P.y)
         .attr("r", haloR)
