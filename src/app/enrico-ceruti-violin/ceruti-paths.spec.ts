@@ -1,16 +1,18 @@
-import { defineFholePath, defineFlutingPath, defineInnerPath, defineOffsetArcs, defineOuterPath, defineOuterPurflingPath, definePurflingPath, violNeckCap } from './ceruti-paths';
+import { defineFholePath, defineFlutingArcs, defineFlutingPath, defineInnerPath, defineInsetPath, defineOffsetArcs, defineOuterPath, defineOuterPurflingPath, definePurflingPath, violNeckCap } from './ceruti-paths';
 import { defaultViolin, layoutFrom, templateKeys, templateViolin, violinFromRecipe } from './ceruti-fixtures';
 import { calculateFholeContours, calculateOuterArcs } from './ceruti-calcs';
-import { channelPaths } from './ceruti-arch-geometry';
+import { channelPaths, defaultFlutingParams } from './ceruti-arch-geometry';
 import { defaultFHolePlacement } from './panels/f-hole-placement-panel/f-hole-placement-panel';
-import { EnricoCerutiParams } from './ceruti-types';
-import { lineCircleIntersection, lineFromTwoPoints, offsetArcRadius, pointOnCircle } from '../helpers/math/simpleGeometry';
+import { EnricoCerutiParams, FlutingParams } from './ceruti-types';
+import { closestPointOnSegment, lineCircleIntersection, lineFromTwoPoints, offsetArcRadius, pointInPolygon, pointOnCircle } from '../helpers/math/simpleGeometry';
 import { samplePathToPolyline } from '../helpers/math/pathMath';
 import { Pt, Rectangle } from '../models/types';
 import { setGlobalEmitter } from '../shared/message-emitter';
 import ravatinMansParams from './templates/test-fixtures/ravatin-mans-params.json';
 import magginiDelmasParams from './templates/test-fixtures/maggini-delmas-params.json';
 import amatiBrookingsParams from './templates/test-fixtures/amati-brookings-params.json';
+import invertedCornersFlutingParams from './templates/test-fixtures/inverted-corners-fluting-params.json';
+import { findJoiningArcs } from '../helpers/math/draftMath';
 
 /**
  * The purfling and channel lines, which are the inner arcs re-solved at a
@@ -311,17 +313,18 @@ describe('a c-bout gouge too narrow to join the main-body one at its nominal end
     expect(titles).not.toContain('Fluting Error');
   });
 
-  it('still reports "Fluting Error" and drops the channel when no join is possible even retreated', () => {
+  // this pair once exhausted the retreat and reported "Fluting Error"; the mirrored S now bridges it
+  it('joins a gouge pair far more lopsided than the reported one', () => {
     const titles = captureTitles();
     const p = amatiTopGouge();
-    // pushed well past what 20° of retreat can rescue
     p.arching!.top.fluting!.sweepRadius = 80;
     p.arching!.top.fluting!.sweepRadius_cBout = 1.05;
 
     const paths = channelPaths(p, p.arching!.top.fluting!);
 
-    expect(paths).toBeNull();
-    expect(titles).toContain('Fluting Error');
+    expect(paths).not.toBeNull();
+    for (const d of [paths!.outer, paths!.center, paths!.inner]) expect(subpaths(d)).toBe(1);
+    expect(titles).not.toContain('Fluting Error');
   });
 
   it('still joins fine once the c-bout gouge is close enough to the main one', () => {
@@ -333,6 +336,92 @@ describe('a c-bout gouge too narrow to join the main-body one at its nominal end
 
     expect(paths).not.toBeNull();
     expect(titles).not.toContain('Fluting Error');
+  });
+});
+
+// how far the channel's outer edge strays past the land it's meant to be cut inside. the land is
+// sampled finely, since a coarse sampling shaves the corner tips and reads as a stray of its own
+function channelBeyondLand(p: EnricoCerutiParams, fluting: FlutingParams): number {
+  const land = samplePathToPolyline(defineInsetPath(p, p.outerFlutingDepth ?? 0), 0.1);
+  const outer = samplePathToPolyline(channelPaths(p, fluting)!.outer, 0.5);
+  return Math.max(0, ...outer.filter(q => !pointInPolygon(q, land))
+    .map(q => Math.min(...land.slice(1).map((a, i) => closestPointOnSegment(q, land[i], a).dist))));
+}
+
+// with both corners wrapped around C0, C0's ends are carried round into the corners and past the
+// chord to L2 and U2, so the join there has to bend the other way from an ordinary violin's
+describe('a channel past corners that wrap around the center bout', () => {
+  const inverted = () => violinFromRecipe({ params: JSON.parse(JSON.stringify(invertedCornersFlutingParams)) });
+
+  afterEach(() => setGlobalEmitter(null as any));
+
+  it('closes every edge without an error', () => {
+    const titles: string[] = [];
+    setGlobalEmitter(m => { titles.push(m.title); });
+    const p = inverted();
+    for (const plate of ['top', 'bottom'] as const) {
+      const paths = channelPaths(p, p.arching![plate].fluting!)!;
+      expect(paths).not.toBeNull();
+      for (const d of [paths.outer, paths.center, paths.inner]) expect(subpaths(d)).toBe(1);
+    }
+    expect(titles).not.toContain('Fluting Error');
+  });
+
+  it('keeps the joins out of the waist rather than looping inward', () => {
+    const p = inverted();
+    const C0 = p.bouts.C0!;
+    for (const plate of ['top', 'bottom'] as const) {
+      const paths = channelPaths(p, p.arching![plate].fluting!)!;
+      const waist = C0.x - C0.r + p.overhang + p.rib - paths.innerEdgeOffset_cBout;
+      const alongC0 = samplePathToPolyline(paths.inner).filter(q => Math.abs(q.y - C0.y) < C0.r);
+      expect(Math.min(...alongC0.map(q => Math.abs(q.x)))).toBeGreaterThan(waist - 0.5);
+    }
+  });
+
+  it('keeps the channel inside the land where it bypasses the corners', () => {
+    const p = inverted();
+    for (const plate of ['top', 'bottom'] as const)
+      expect(channelBeyondLand(p, p.arching![plate].fluting!)).toBeLessThan(0.1);
+  });
+
+  it('keeps the channel inside the land past a viol lower corner', () => {
+    const params = JSON.parse(JSON.stringify(invertedCornersFlutingParams));
+    params.options.useViolCornerLC = true;
+    const p = violinFromRecipe({ params });
+    expect(channelBeyondLand(p, p.arching!.top.fluting!)).toBeLessThan(0.1);
+  });
+
+  it('joins C0 where it heads along with the bout arc, the same place on every edge of the channel', () => {
+    const p = inverted();
+    const gap = (a: number, b: number) => Math.abs(Math.atan2(Math.sin(2 * (a - b)), Math.cos(2 * (a - b))) / 2) * 180 / Math.PI;
+    const edges = [2.5, -3, -8].map(offset => defineFlutingArcs(p, offset));
+    for (const arcs of edges) {
+      const [L2, C0, U2] = arcs.slice(2, 5);
+      expect(gap(C0.end, L2.end)).toBeLessThan(4 + 1e-6);
+      expect(gap(C0.start, U2.end)).toBeLessThan(4 + 1e-6);
+    }
+    for (const arcs of edges.slice(1)) {
+      expect(arcs[3].start).toBeCloseTo(edges[0][3].start, 9);
+      expect(arcs[3].end).toBeCloseTo(edges[0][3].end, 9);
+    }
+  });
+
+  it('leaves an ordinary corner joined the way it was', () => {
+    const arcs = defineFlutingArcs(defaultViolin(), -2);
+    const [L2, C0, U2] = arcs.slice(2, 5);
+    expect(arcs.slice(-4)).toEqual([...findJoiningArcs(L2, 'end', C0, 'end', false), ...findJoiningArcs(C0, 'start', U2, 'end', true)]);
+  });
+});
+
+// a viol flank is joined from a fixed angle back from the corner, and the viola's U4 is a long flat
+// arc only 3° round, so that angle once reached far up the upper bout for the join
+describe('a viol flank shorter than the angle the channel is joined back from', () => {
+  it('joins from the flank rather than past it, keeping the channel on the plate', () => {
+    const template = templateViolin('stradivari-viola-cassavetti');
+    template.options.useViolCornerUC = true;
+    const p = layoutFrom(template);
+    calculateOuterArcs(p);
+    expect(channelBeyondLand(p, defaultFlutingParams(p))).toBeLessThan(0.1);
   });
 });
 

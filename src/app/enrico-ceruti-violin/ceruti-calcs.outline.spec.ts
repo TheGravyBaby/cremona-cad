@@ -1,11 +1,13 @@
 import { samplePathToPolyline } from '../helpers/math/pathMath';
-import { calculateCenterBout, calculateCorners, calculateMainBouts, calculateOuterArcs, violNeckJoinLimit } from './ceruti-calcs';
-import { pointOnCircle } from '../helpers/math/simpleGeometry';
+import { calculateCenterBout, calculateCorners, calculateMainBouts, calculateOuterArcs, ensureCenterBoutInnerPath, ensureOuterTracePaths, violNeckJoinLimit } from './ceruti-calcs';
+import { dist, offsetArcRadius, pointOnCircle } from '../helpers/math/simpleGeometry';
 import { defaultViolin, geometryDiff, layoutFrom, templateKeys, templateViolin, violinFromRecipe } from './ceruti-fixtures';
-import { defineInnerPath, defineOuterPath } from './ceruti-paths';
-import { EnricoCerutiParams } from './ceruti-types';
+import { cornerOffsetSign, defineInnerPath, defineOffsetArcs, defineOuterPath, definePurflingPath } from './ceruti-paths';
+import { EnricoCerutiParams, PathEntry } from './ceruti-types';
 import { setGlobalEmitter } from '../shared/message-emitter';
 import delGesuBalticParams from './templates/test-fixtures/del-gesu-baltic-params.json';
+import invertedLowerCornerParams from './templates/test-fixtures/inverted-lower-corner-params.json';
+import invertedCornersParams from './templates/test-fixtures/inverted-corners-params.json';
 
 /**
  * The 2D outline pipeline — `ceruti-calcs.ts` into `ceruti-paths.ts`.
@@ -97,14 +99,55 @@ describe('a corner out of reach', () => {
   afterEach(() => setGlobalEmitter(null as any));
 
   it('names which corner failed instead of leaving it to the generic catch', () => {
-    for (const [corner, expected] of [['UCr', 'Upper Corner Out of Reach'], ['LCr', 'Lower Corner Out of Reach']] as const) {
+    for (const [corner, expected] of [['UCr', 'Upper corner'], ['LCr', 'Lower corner']] as const) {
       const titles = captureTitles();
       const p = defaultViolin();
       // well outside the plate, so no arc of that radius is both tangent to the bout and through it
       p.bouts[corner]!.x = 400;
-      calculateCorners(p);
-      expect(titles).toContain(expected);
+      const failures = calculateCorners(p);
+      expect(titles).toEqual(['Corners']);
+      expect(failures).toHaveLength(1);
+      expect(failures[0].message).toContain(expected);
     }
+  });
+
+  it('still solves the other corner', () => {
+    captureTitles();
+    const p = defaultViolin();
+    const lower = JSON.parse(JSON.stringify(p.bouts.L3));
+
+    p.bouts.UCr!.x = 400;
+    const failures = calculateCorners(p);
+
+    expect(failures[0].unsolved).toEqual(['U2', 'U3', 'U31', 'U4']);
+    expect(geometryDiff(p.bouts.L3, lower)).toEqual([]);
+  });
+
+  it('quotes the smallest arc that reaches the corner, and that arc does', () => {
+    captureTitles();
+    const p = defaultViolin();
+    p.options.U31DoubleArc = false;
+    p.bouts.U3!.r = 1;
+    const failures = calculateCorners(p);
+    const needed = Math.abs(Math.hypot(p.bouts.UCr!.x - p.bouts.U2!.x, p.bouts.UCr!.y - p.bouts.U2!.y) - p.bouts.U2!.r) / 2;
+
+    expect(failures[0].message).toContain(`at least ${needed.toFixed(1)}mm`);
+    expect(failures[0].points).toEqual([p.bouts.UCr]);
+
+    p.bouts.U3!.r = needed + 0.05;
+    expect(calculateCorners(p)).toEqual([]);
+  });
+
+  it('keeps the last good inner outline while a corner is out of reach', () => {
+    captureTitles();
+    const p = defaultViolin();
+    const paths: PathEntry[] = [];
+    ensureCenterBoutInnerPath(p, paths);
+    const good = paths.find(e => e.key === 'inner')!.path;
+
+    p.bouts.UCr!.x = 400;
+    expect(() => ensureCenterBoutInnerPath(p, paths)).not.toThrow();
+    expect(paths.find(e => e.key === 'inner')!.path).toBe(good);
   });
 
   // The center bout reaches the same two corners from its own arcs, so it fails the same way and
@@ -113,8 +156,39 @@ describe('a corner out of reach', () => {
     const titles = captureTitles();
     const p = defaultViolin();
     p.bouts.LCr!.x = 400;
-    calculateCenterBout(p);
-    expect(titles).toContain('Lower Corner Out of Reach');
+    const failures = calculateCenterBout(p);
+    expect(titles).toEqual(['Center Bout']);
+    expect(failures.map(f => f.unsolved)).toEqual([['C0', 'C1', 'C11']]);
+    expect(failures[0].message).toContain("C1 can't reach the corner from C0");
+  });
+
+  it('quotes the smallest center-bout arc that reaches the corner, and that arc does', () => {
+    captureTitles();
+    const p = defaultViolin();
+    p.options.C21DoubleArc = false;
+    p.bouts.C2!.r = 1;
+    const failures = calculateCenterBout(p);
+    const needed = Math.abs(Math.hypot(p.bouts.UCr!.x - p.bouts.C0!.x, p.bouts.UCr!.y - p.bouts.C0!.y) - p.bouts.C0!.r) / 2;
+
+    expect(failures[0].message).toContain(`at least ${needed.toFixed(1)}mm`);
+
+    p.bouts.C2!.r = needed + 0.05;
+    expect(calculateCenterBout(p)).toEqual([]);
+  });
+
+  it('falls back to placing C0 by hand when the fit cannot touch both bouts, and says so once', () => {
+    const titles = captureTitles();
+    const p = defaultViolin();
+    p.options.useKellyC0 = true;
+    p.bouts.C0!.r = 1;
+    const failures = calculateCenterBout(p);
+
+    expect(titles).toEqual(['Center Bout']);
+    expect(failures).toHaveLength(1);
+    expect(failures[0].message).toContain('Fit C0 to Bouts');
+    expect(failures[0].circles).toEqual([p.bouts.U2, p.bouts.L2]);
+    expect(p.options.useKellyC0).toBe(false);
+    expect(Number.isFinite(p.bouts.C0!.x)).toBe(true);
   });
 
   it('leaves the previous geometry standing so there is something to steer by', () => {
@@ -144,6 +218,46 @@ describe('a corner out of reach', () => {
     expect(p.bouts.UCr!.x).toBeCloseTo(upper.x, 9);
     expect(p.bouts.UCr!.y).toBeCloseTo(upper.y, 9);
     expect(p.bouts.LCr).toEqual(expect.objectContaining(movedLower));
+  });
+});
+
+describe('a main bout that cannot reach its width', () => {
+  afterEach(() => setGlobalEmitter(null as any));
+
+  const innerHalf = (p: EnricoCerutiParams, width: number) => (width - 2 * (p.overhang + p.rib)) / 2;
+
+  it('names the lower bout and the radius it needs, and leaves the upper bout solved', () => {
+    const titles: string[] = [];
+    setGlobalEmitter(m => { titles.push(m.title); });
+    const p = defaultViolin();
+    const upper = JSON.parse(JSON.stringify(p.bouts.U1));
+    p.bouts.L0!.r = innerHalf(p, p.bouts.LBW) - 10;
+
+    const failures = calculateMainBouts(p);
+
+    expect(failures).toHaveLength(1);
+    expect(failures[0].unsolved).toEqual(['L0', 'L1']);
+    expect(failures[0].message).toContain(`at least ${innerHalf(p, p.bouts.LBW).toFixed(1)}mm`);
+    expect(failures[0].segments[0][0].x).toBeCloseTo(innerHalf(p, p.bouts.LBW), 9);
+    expect(titles).toEqual(['Main Bouts']);
+    expect(geometryDiff(p.bouts.U1, upper)).toEqual([]);
+  });
+
+  it('names the upper bout the same way', () => {
+    const p = defaultViolin();
+    p.bouts.U0!.r = innerHalf(p, p.bouts.UBW) - 5;
+
+    const failures = calculateMainBouts(p);
+
+    expect(failures.map(f => f.unsolved)).toEqual([['U0', 'U1']]);
+    expect(failures[0].message).toContain("U0 can't reach the upper bout width");
+  });
+
+  it('says the small arc has to be the smaller one when it has caught up', () => {
+    const p = defaultViolin();
+    p.bouts.L1!.r = p.bouts.L0!.r;
+
+    expect(calculateMainBouts(p)[0].message).toContain('L1 has to be smaller than L0');
   });
 });
 
@@ -199,6 +313,98 @@ describe('the solved outline', () => {
  * still answer for a 1110mm body. Until the fixtures existed, no test had ever
  * loaded one of these.
  */
+// with the lower corner outside C0's circle, C1 wraps around C0 rather than sitting inside it —
+// an S into the corner, as on a Prescott bass — and its offsets have to grow where they'd shrink
+describe('a lower corner that wraps around the center bout', () => {
+  const inverted = () => violinFromRecipe({ params: invertedLowerCornerParams });
+
+  it('is told apart from the usual corner', () => {
+    expect(cornerOffsetSign(defaultViolin(), 'C1')).toBe(-1);
+    expect(cornerOffsetSign(inverted(), 'C1')).toBe(1);
+  });
+
+  it('keeps the outer C1 tangent to the outer C0', () => {
+    const p = inverted();
+    const C0 = offsetArcRadius(p.bouts.C0!, -(p.overhang + p.rib));
+    const C1 = p.outerCorners.C1!;
+    expect(dist(C0, C1)).toBeCloseTo(C0.r + C1.r, 6);
+  });
+
+  it('brings the purfling into the corner rather than to the far crossing of L3 and C1', () => {
+    const p = inverted();
+    const arcs = defineOffsetArcs(p, p.overhang + p.rib - p.purflingOffset!, true);
+    const [L3, C1] = arcs.slice(-2);
+    const tip = pointOnCircle(L3, L3.end);
+
+    expect(dist(tip, pointOnCircle(C1, C1.end))).toBeLessThan(1e-6);
+    expect(dist(tip, p.bouts.LCr!)).toBeLessThan(p.purflingOffset!);
+  });
+
+  it('closes its outer and purfling outlines', () => {
+    const p = inverted();
+    const offset = p.overhang + p.rib;
+    for (const [name, d] of [['outer', outerOf(p)], ['purfling', definePurflingPath(p, offset)!]] as const) {
+      const a = pathStart(d);
+      const b = pathEnd(d);
+      expect(Math.hypot(b.x - a.x, b.y - a.y), `${name} path does not close`).toBeLessThan(1e-6);
+    }
+  });
+
+  it('carries the inversion through a compound C11', () => {
+    const params = JSON.parse(JSON.stringify(invertedLowerCornerParams));
+    params.options.C11DoubleArc = true;
+    const p = violinFromRecipe({ params });
+    const offset = p.overhang + p.rib;
+    const { C1, C11 } = p.outerCorners;
+    expect(dist(C1!, C11!)).toBeCloseTo(C1!.r - C11!.r, 6);
+
+    for (const [name, d] of [['outer', outerOf(p)], ['purfling', definePurflingPath(p, offset)!]] as const) {
+      const a = pathStart(d);
+      const b = pathEnd(d);
+      expect(Math.hypot(b.x - a.x, b.y - a.y), `${name} path does not close`).toBeLessThan(1e-6);
+    }
+  });
+});
+
+// saved from the app with both corners inverted, and its outer C2 saved before the upper one was
+// recognized, so that arc's end sits on the far side of the corner
+describe('an upper corner that wraps around the center bout', () => {
+  const inverted = () => violinFromRecipe({ params: JSON.parse(JSON.stringify(invertedCornersParams)) });
+
+  it('is told apart from the usual corner', () => {
+    expect(cornerOffsetSign(defaultViolin(), 'C2')).toBe(-1);
+    expect(cornerOffsetSign(inverted(), 'C2')).toBe(1);
+  });
+
+  it('keeps the outer C2 tangent to the outer C0', () => {
+    const p = inverted();
+    const C0 = offsetArcRadius(p.bouts.C0!, -(p.overhang + p.rib));
+    const C2 = p.outerCorners.C2!;
+    expect(dist(C0, C2)).toBeCloseTo(C0.r + C2.r, 6);
+  });
+
+  it('starts over an outer C2 saved before the corner inverted', () => {
+    const p = inverted();
+    const C2 = p.outerCorners.C2!;
+    expect(dist(pointOnCircle(C2, C2.end), p.bouts.UCr!)).toBeLessThan(2 * (p.overhang + p.rib));
+  });
+
+  it('brings the purfling into the corner', () => {
+    const p = inverted();
+    const purfling = samplePathToPolyline(definePurflingPath(p, p.overhang + p.rib)!);
+    const nearest = Math.min(...purfling.map(q => dist(q, p.bouts.UCr!)));
+    expect(nearest).toBeLessThan(p.purflingOffset!);
+  });
+
+  it('builds the outer trace panel\'s paths', () => {
+    const p = inverted();
+    const paths: PathEntry[] = [];
+    calculateOuterArcs(p);
+    ensureOuterTracePaths(p, paths);
+    expect(paths.map(e => e.key)).toEqual(expect.arrayContaining(['back', 'purfling', 'outerPurfling']));
+  });
+});
+
 describe.each(templateKeys())('template: %s', key => {
   it('solves to a closed, finite, symmetric outline', () => {
     const p = templateViolin(key);

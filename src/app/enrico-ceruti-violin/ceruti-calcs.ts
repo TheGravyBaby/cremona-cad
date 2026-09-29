@@ -3,8 +3,9 @@ import { angleFromCenter, dist, pointOnCircle, offsetArcRadius, flipRectAboutY, 
 import { pathFromRoundedRect, pathFromCircle, pathFromRect, combinePathStrings, differenceFromManyPaths, intersectionFromTwoPaths, translatePath, mirroredLoop } from "../helpers/math/pathMath";
 import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Line, Pt, Rectangle } from "../models/types";
 import { error } from "../shared/message-emitter";
+import { reportFailures, SolveFailure, solveSection } from "../helpers/validators";
 import { DefaultParams, EnricoCerutiParams, PathEntry, PathKey } from "./ceruti-types";
-import { defaultButton, defineFholePath, defineInnerPath, defineNeckPath, defineOuterPath, definePurflingPath, defineOuterPurflingPath } from "./ceruti-paths";
+import { cornerOffsetSign, defaultButton, defineFholePath, defineInnerPath, defineNeckPath, defineOuterPath, definePurflingPath, defineOuterPurflingPath } from "./ceruti-paths";
 
 // ===== Outline solvers =====
 // Solve where the violin body's bouts/corners/center-bout arcs actually sit.
@@ -15,7 +16,10 @@ import { defaultButton, defineFholePath, defineInnerPath, defineNeckPath, define
 // the long-arch/cross-arch/fluting-channel profile system lives in
 // ceruti-arching.ts.
 
-export function calculateMainBouts(p: EnricoCerutiParams): void {
+export type MainBoutKey = 'U0' | 'U1' | 'L0' | 'L1';
+export type MainBoutFailure = SolveFailure<MainBoutKey>;
+
+export function calculateMainBouts(p: EnricoCerutiParams): MainBoutFailure[] {
     let inset = p.overhang + p.rib;
 
     // initialize bouts if not already done
@@ -56,83 +60,124 @@ export function calculateMainBouts(p: EnricoCerutiParams): void {
     p.ratios.L0toLBW = p.bouts.L0.r / LBWI;
     p.ratios.L1toLBW = p.bouts.L1.r / LBWI;
 
-    p.bouts.L0.y = inset + p.bouts.L0.r;
-    // we know the second circle intersects the outer edge where theta = 0
-    // thus its x position MUST be R away from the edge
-    p.bouts.L1.x = p.bouts.LBW / 2 - p.bouts.L1.r - inset;
-    //     therefore we have a vertical line where the circle could be
-    // in order to cleanly intersect L0 we know the center of U1 must be along a circle
-    // which is defined by being L1.r inset from L0
-    // therefore the intersection of these two constrains, a vertical line, and a circle within U0 gives us our point
-    p.bouts.L1.y = lineCircleIntersection(
-      { m: Infinity, y: NaN, x: p.bouts.L1.x },
-      { x: p.bouts.L0.x, y: p.bouts.L0.y, r: Math.abs(p.bouts.L0.r - p.bouts.L1.r) },
-    )[1].y;
+    // the one way a main bout breaks: the big arc can't reach far enough out for the small one
+    // to both touch it from inside and sit on the bout's width line
+    let boutMiss = (
+        bigKey: 'U0' | 'L0',
+        smallKey: 'U1' | 'L1',
+        boutName: string,
+        edgeX: number,
+        bottom: number,
+        top: number,
+    ): MainBoutFailure => {
+        let big = p.bouts[bigKey]!
+        let small = p.bouts[smallKey]!
+        let atLeast = big.x === 0 ? ` (at least ${edgeX.toFixed(1)}mm)` : ''
+        return {
+            message: small.r >= big.r
+                ? `${bigKey}/${smallKey}: ${smallKey} has to be smaller than ${bigKey} to turn out to the ${boutName} width.`
+                : `${bigKey}/${smallKey}: ${bigKey} can't reach the ${boutName} width. Enlarge ${bigKey}${atLeast}, or narrow the ${boutName}.`,
+            unsolved: [bigKey, smallKey],
+            circles: [big],
+            segments: [[new Pt(edgeX, bottom), new Pt(edgeX, top)]],
+        }
+    }
 
-    let lowerIntersect = circleCircleIntersections(p.bouts.L0, p.bouts.L1);
-    let L0Angle = angleFromCenter(p.bouts.L0, lowerIntersect[0]);
-    let L1Angle = angleFromCenter(p.bouts.L1, lowerIntersect[0]);
+    let failures: MainBoutFailure[] = []
 
-    p.bouts.L0 = arcFromCircle(p.bouts.L0, 3 / 2 * Math.PI, L0Angle);
-    p.bouts.L1 = arcFromCircle(p.bouts.L1, L1Angle, 0);
+    solveSection(failures, 'Lower bout', ['L0', 'L1'], () => {
+        p.bouts.L0.y = inset + p.bouts.L0.r;
+        // we know the second circle intersects the outer edge where theta = 0
+        // thus its x position MUST be R away from the edge
+        p.bouts.L1.x = p.bouts.LBW / 2 - p.bouts.L1.r - inset;
+        //     therefore we have a vertical line where the circle could be
+        // in order to cleanly intersect L0 we know the center of U1 must be along a circle
+        // which is defined by being L1.r inset from L0
+        // therefore the intersection of these two constrains, a vertical line, and a circle within U0 gives us our point
+        let L1Ys = lineCircleIntersection(
+          { m: Infinity, y: NaN, x: p.bouts.L1.x },
+          { x: p.bouts.L0.x, y: p.bouts.L0.y, r: Math.abs(p.bouts.L0.r - p.bouts.L1.r) },
+        )
+        if (!L1Ys.length)
+            return boutMiss('L0', 'L1', 'lower bout', LBWI / 2, 0, p.bouts.LBW)
+        p.bouts.L1.y = L1Ys[1].y;
 
-    if (p.options.useViolNeck) {
-        p.viol.width ??= p.bouts.UBW * .1
-        p.viol.neckRadius ??= 0
-        let Vr = p.viol?.V0?.r ?? p.bouts.UBW / 5
-        let start = p.viol?.V0?.start ?? Math.PI * 1.05
-        let end =  p.viol?.V0?.end ?? 3/2 * Math.PI * .92
-        // the flat top face runs out to width/2, then a join of neckRadius turns the corner into
-        // the flank. V0 begins where that join ends, so its centre goes back (Vr + R) along the
-        // start ray from the join's centre — which puts V0.start *on* the tangency instead of
-        // somewhere the join later trims off. At R = 0 the join centre is the corner itself and
-        // this is the original placement.
-        let joinCenter = new Pt(p.viol.width / 2, p.height - inset - p.viol.neckRadius)
-        let VyDiff =  Math.sin(start) * (Vr + p.viol.neckRadius)
-        let VxDiff = Math.cos(start) * (Vr + p.viol.neckRadius)
-        p.viol.V0 = new Arc(joinCenter.x - VxDiff, joinCenter.y - VyDiff, Vr, start, end)
+        let lowerIntersect = circleCircleIntersections(p.bouts.L0, p.bouts.L1);
+        let L0Angle = angleFromCenter(p.bouts.L0, lowerIntersect[0]);
+        let L1Angle = angleFromCenter(p.bouts.L1, lowerIntersect[0]);
 
-        let V0End = pointOnCircle(p.viol.V0,  p.viol.V0.end)
+        p.bouts.L0 = arcFromCircle(p.bouts.L0, 3 / 2 * Math.PI, L0Angle);
+        p.bouts.L1 = arcFromCircle(p.bouts.L1, L1Angle, 0);
+        return null
+    })
+
+    solveSection(failures, 'Upper bout', ['U0', 'U1'], () => {
+        if (p.options.useViolNeck) {
+            p.viol.width ??= p.bouts.UBW * .1
+            p.viol.neckRadius ??= 0
+            let Vr = p.viol?.V0?.r ?? p.bouts.UBW / 5
+            let start = p.viol?.V0?.start ?? Math.PI * 1.05
+            let end =  p.viol?.V0?.end ?? 3/2 * Math.PI * .92
+            // the flat top face runs out to width/2, then a join of neckRadius turns the corner into
+            // the flank. V0 begins where that join ends, so its centre goes back (Vr + R) along the
+            // start ray from the join's centre — which puts V0.start *on* the tangency instead of
+            // somewhere the join later trims off. At R = 0 the join centre is the corner itself and
+            // this is the original placement.
+            let joinCenter = new Pt(p.viol.width / 2, p.height - inset - p.viol.neckRadius)
+            let VyDiff =  Math.sin(start) * (Vr + p.viol.neckRadius)
+            let VxDiff = Math.cos(start) * (Vr + p.viol.neckRadius)
+            p.viol.V0 = new Arc(joinCenter.x - VxDiff, joinCenter.y - VyDiff, Vr, start, end)
+
+            let V0End = pointOnCircle(p.viol.V0,  p.viol.V0.end)
         
-        // we know that U0 start is -Pi from V0 end
-        let U0start = p.viol.V0.end - Math.PI
-        let U0YDiff = Math.sin(U0start) * p.bouts.U0.r
-        let U0XDiff = Math.cos(U0start) * p.bouts.U0.r
-        p.bouts.U0.x = V0End.x - U0XDiff
-        p.bouts.U0.y = V0End.y - U0YDiff
-        p.bouts.U0.start = U0start
+            // we know that U0 start is -Pi from V0 end
+            let U0start = p.viol.V0.end - Math.PI
+            let U0YDiff = Math.sin(U0start) * p.bouts.U0.r
+            let U0XDiff = Math.cos(U0start) * p.bouts.U0.r
+            p.bouts.U0.x = V0End.x - U0XDiff
+            p.bouts.U0.y = V0End.y - U0YDiff
+            p.bouts.U0.start = U0start
 
-        let U1x = p.bouts.UBW / 2 - p.bouts.U1.r - inset;
-        let U1y = lineCircleIntersection(
-          { m: Infinity, y: NaN, x: U1x },
-          { x: p.bouts.U0.x, y: p.bouts.U0.y, r: Math.abs(p.bouts.U0.r - p.bouts.U1.r) },
-        )[0].y
+            let U1x = p.bouts.UBW / 2 - p.bouts.U1.r - inset;
+            let U1Ys = lineCircleIntersection(
+              { m: Infinity, y: NaN, x: U1x },
+              { x: p.bouts.U0.x, y: p.bouts.U0.y, r: Math.abs(p.bouts.U0.r - p.bouts.U1.r) },
+            )
+            if (!U1Ys.length)
+                return boutMiss('U0', 'U1', 'upper bout', UBWI / 2, p.height - p.bouts.UBW, p.height)
 
-        p.bouts.U1 = new Arc(U1x, U1y, p.bouts.U1.r)
-        let U1U0Int = circleCircleIntersections(p.bouts.U1, p.bouts.U0)[0]
-        let U1start = angleFromCenter(p.bouts.U1, U1U0Int)
-        let U0End = angleFromCenter(p.bouts.U0, U1U0Int)
-        p.bouts.U0.end = U0End
-        p.bouts.U1.start = U1start
-        p.bouts.U1.end = 0
-    }
-    else {
-        p.bouts.U0.y = p.height - inset - p.bouts.U0.r;
-        p.bouts.U0.x = 0;
-        p.bouts.U1.x = p.bouts.UBW / 2 - p.bouts.U1.r - inset;
-        p.bouts.U1.y = lineCircleIntersection(
-          { m: Infinity, y: NaN, x: p.bouts.U1.x },
-          { x: p.bouts.U0.x, y: p.bouts.U0.y, r: Math.abs(p.bouts.U0.r - p.bouts.U1.r) },
-        )[0].y;
+            p.bouts.U1 = new Arc(U1x, U1Ys[0].y, p.bouts.U1.r)
+            let U1U0Int = circleCircleIntersections(p.bouts.U1, p.bouts.U0)[0]
+            let U1start = angleFromCenter(p.bouts.U1, U1U0Int)
+            let U0End = angleFromCenter(p.bouts.U0, U1U0Int)
+            p.bouts.U0.end = U0End
+            p.bouts.U1.start = U1start
+            p.bouts.U1.end = 0
+        }
+        else {
+            p.bouts.U0.y = p.height - inset - p.bouts.U0.r;
+            p.bouts.U0.x = 0;
+            p.bouts.U1.x = p.bouts.UBW / 2 - p.bouts.U1.r - inset;
+            let U1Ys = lineCircleIntersection(
+              { m: Infinity, y: NaN, x: p.bouts.U1.x },
+              { x: p.bouts.U0.x, y: p.bouts.U0.y, r: Math.abs(p.bouts.U0.r - p.bouts.U1.r) },
+            )
+            if (!U1Ys.length)
+                return boutMiss('U0', 'U1', 'upper bout', UBWI / 2, p.height - p.bouts.UBW, p.height)
+            p.bouts.U1.y = U1Ys[0].y;
 
-        let upperIntersect = circleCircleIntersections(p.bouts.U0, p.bouts.U1);
-        let U0Angle = angleFromCenter(p.bouts.U0, upperIntersect[0]);
-        let U1Angle = angleFromCenter(p.bouts.U1, upperIntersect[0]);
+            let upperIntersect = circleCircleIntersections(p.bouts.U0, p.bouts.U1);
+            let U0Angle = angleFromCenter(p.bouts.U0, upperIntersect[0]);
+            let U1Angle = angleFromCenter(p.bouts.U1, upperIntersect[0]);
 
-        p.bouts.U0 = arcFromCircle(p.bouts.U0, 1 / 2 * Math.PI, U0Angle);
-        p.bouts.U1 = arcFromCircle(p.bouts.U1, U1Angle, 0);
-    }
+            p.bouts.U0 = arcFromCircle(p.bouts.U0, 1 / 2 * Math.PI, U0Angle);
+            p.bouts.U1 = arcFromCircle(p.bouts.U1, U1Angle, 0);
+        }
+        return null
+    })
 
+    reportFailures(failures, 'Main Bouts')
+    return failures
 }
 
 /**
@@ -166,12 +211,33 @@ export function violNeckJoinLimit(p: EnricoCerutiParams): { reach: number; limit
     return { reach, limit, headroom: limit - reach };
 }
 
-/**
- * A corner placed where no arc of that radius can reach it is the most common way a recipe breaks,
- * and the generic catch can only say that something went wrong. Name the corner and say which way
- * to move it. Solving stops here, so the previous good geometry stays on the canvas to steer by.
- */
-export function calculateCorners(p: EnricoCerutiParams): void {
+// an arc of radius r tangent to `from` and through the corner needs r to span half the gap
+// between them; the compound pair has no closed form, so it only gets the generic advice
+function cornerMiss<K extends string>(
+    section: string,
+    fromKey: K,
+    from: Circle,
+    arcKey: K,
+    corner: Pt,
+    compound: boolean,
+    unsolved: K[],
+): SolveFailure<K> {
+    let needed = Math.abs(dist(from, corner) - from.r) / 2
+    return {
+        message: compound
+            ? `${section}: no ${arcKey} of that radius reaches the corner from ${fromKey}. Bring the corner in toward the body, or give it a larger radius.`
+            : `${section}: ${arcKey} can't reach the corner from ${fromKey}. Enlarge ${arcKey} (at least ${needed.toFixed(1)}mm), or bring the corner in toward the body.`,
+        unsolved,
+        circles: [from],
+        segments: [],
+        points: [corner],
+    }
+}
+
+export type CornerKey = 'U2' | 'U3' | 'U31' | 'U4' | 'L2' | 'L3' | 'L31' | 'L4';
+export type CornerFailure = SolveFailure<CornerKey>;
+
+export function calculateCorners(p: EnricoCerutiParams): CornerFailure[] {
     let inset = p.overhang + p.rib;
     let UBWI = p.bouts.UBW - 2 * inset;
     let LBWI = p.bouts.LBW - 2 * inset;
@@ -257,98 +323,45 @@ export function calculateCorners(p: EnricoCerutiParams): void {
         p.bouts.L2 = new Arc(p.bouts.LBW / 2 - L2R - inset, p.bouts.L1.y, L2R);
     }
 
-    if (p.options.U31DoubleArc) {
-        let U3r = p.bouts.U3.r
-        let U31 =  p.bouts.U31.r
-        let theta = p.bouts.U31.start ?? 17/16 * Math.PI
-        let compoundCircles = interceptCirclesAndPointCompound(p.bouts.U2!, p.bouts.UCr, U3r, U31, theta).sort((a, b) => a.C1.y - b.C1.y)[1];
-        // A corner no arc can reach is the most common way a recipe breaks, and it never throws —
-        // the solvers just return nothing, so the generic catch never sees it. Solving stops here
-        // rather than pressing on, leaving the previous good geometry on canvas to steer by.
-        if (!compoundCircles) {
-            error('No arc of that radius reaches the upper corner from the bout. Bring the corner in toward the body, or give it a larger radius.', 'Upper Corner Out of Reach');
-            return;
+    let failures: CornerFailure[] = []
+
+    solveSection(failures, 'Upper corner', ['U2', 'U3', 'U31', 'U4'], () => {
+        if (p.options.U31DoubleArc) {
+            let U3r = p.bouts.U3.r
+            let U31 =  p.bouts.U31.r
+            let theta = p.bouts.U31.start ?? 17/16 * Math.PI
+            let compoundCircles = interceptCirclesAndPointCompound(p.bouts.U2!, p.bouts.UCr, U3r, U31, theta).sort((a, b) => a.C1.y - b.C1.y)[1];
+            if (!compoundCircles)
+                return cornerMiss('Upper corner', 'U2', p.bouts.U2, 'U3', p.bouts.UCr, true, ['U2', 'U3', 'U31', 'U4'])
+            let U3start = circleCircleIntersections(compoundCircles.C1, p.bouts.U2)[0]
+            let U31start = circleCircleIntersections(compoundCircles.C1, compoundCircles.C2)[0]
+
+            p.bouts.U2 = arcFromCircle(p.bouts.U2, p.bouts.U2.start, angleFromCenter(p.bouts.U2, U3start));
+            p.bouts.U3 = arcFromCircleAndPoints(compoundCircles.C1, U3start, U31start);
+            p.bouts.U31 = arcFromCircleAndPoints(compoundCircles.C2, U31start, p.bouts.UCr);
+        } 
+        else {
+            let U3R = p.bouts.U3?.r ?? Math.round(LBWI * p.ratios.U3toLBW);
+            let U3Circle = interceptCirclesAndPoint(p.bouts.U2, p.bouts.UCr, U3R).sort((a, b) => a.y - b.y)[1];
+            if (!U3Circle)
+                return cornerMiss('Upper corner', 'U2', p.bouts.U2, 'U3', p.bouts.UCr, false, ['U2', 'U3', 'U31', 'U4'])
+            p.bouts.U3 = arcFromCircle(U3Circle);
+
+            let U2Intersect = circleCircleIntersections(p.bouts.U2, p.bouts.U3).sort((a, b) => a.y - b.y);
+            let U2Angle = angleFromCenter(p.bouts.U2, U2Intersect[1]);
+            let U2StartAngle = angleFromCenter(p.bouts.U2, p.bouts.U1);
+            if (p.bouts.U2.r < p.bouts.U1.r) 
+                U2StartAngle -= Math.PI
+
+            if (!U1U2Match) {
+                let newU1Intersect = circleCircleIntersections(p.bouts.U1, p.bouts.U2).sort((a, b) => a.y - b.y);
+                let U1EndAngle = angleFromCenter(p.bouts.U1, newU1Intersect[0]); // we might have to recalculate the angle if we altered the Y height of
+                p.bouts.U1.end = U1EndAngle
+            }
+            p.bouts.U2 = arcFromCircle(p.bouts.U2, U2StartAngle, U2Angle);
+            p.bouts.U3 = arcFromCircleAndPoints(p.bouts.U3, U2Intersect[1], p.bouts.UCr);
         }
-        let U3start = circleCircleIntersections(compoundCircles.C1, p.bouts.U2)[0]
-        let U31start = circleCircleIntersections(compoundCircles.C1, compoundCircles.C2)[0]
-
-        p.bouts.U2 = arcFromCircle(p.bouts.U2, p.bouts.U2.start, angleFromCenter(p.bouts.U2, U3start));
-        p.bouts.U3 = arcFromCircleAndPoints(compoundCircles.C1, U3start, U31start);
-        p.bouts.U31 = arcFromCircleAndPoints(compoundCircles.C2, U31start, p.bouts.UCr);
-    } 
-    else {
-        let U3R = p.bouts.U3?.r ?? Math.round(LBWI * p.ratios.U3toLBW);
-        let U3Circle = interceptCirclesAndPoint(p.bouts.U2, p.bouts.UCr, U3R).sort((a, b) => a.y - b.y)[1];
-        if (!U3Circle) {
-            error('No arc of that radius reaches the upper corner from the bout. Bring the corner in toward the body, or give it a larger radius.', 'Upper Corner Out of Reach');
-            return;
-        }
-        p.bouts.U3 = arcFromCircle(U3Circle);
-
-        let U2Intersect = circleCircleIntersections(p.bouts.U2, p.bouts.U3).sort((a, b) => a.y - b.y);
-        let U2Angle = angleFromCenter(p.bouts.U2, U2Intersect[1]);
-        let U2StartAngle = angleFromCenter(p.bouts.U2, p.bouts.U1);
-        if (p.bouts.U2.r < p.bouts.U1.r) 
-            U2StartAngle -= Math.PI
-
-        if (!U1U2Match) {
-            let newU1Intersect = circleCircleIntersections(p.bouts.U1, p.bouts.U2).sort((a, b) => a.y - b.y);
-            let U1EndAngle = angleFromCenter(p.bouts.U1, newU1Intersect[0]); // we might have to recalculate the angle if we altered the Y height of
-            p.bouts.U1.end = U1EndAngle
-        }
-        p.bouts.U2 = arcFromCircle(p.bouts.U2, U2StartAngle, U2Angle);
-        p.bouts.U3 = arcFromCircleAndPoints(p.bouts.U3, U2Intersect[1], p.bouts.UCr);
-    }
-    if (p.options.useViolCornerLC) {
-        let L1EndPt = pointOnCircle(p.bouts.L1!, p.bouts.L1.end);
-        let a = p.bouts.LCr.y - L1EndPt.y
-        let b = L1EndPt.x - p.bouts.LCr.x
-        let L4r = (a * a + b * b) / (2 * b)
-
-        let l4 = new Circle(L1EndPt.x - L4r, L1EndPt.y, L4r);
-        p.bouts.L4 = arcFromCircleAndPoints(l4, L1EndPt, p.bouts.LCr);
-    }
-    if (p.options.L31DoubleArc) {
-        let L3r = p.bouts.L3.r
-        let L31r =  p.bouts.L31.r
-        let theta = p.bouts.L31.start ?? 15/16 * Math.PI
-        let compoundCircles = interceptCirclesAndPointCompound(p.bouts.L2!, p.bouts.LCr, L3r, L31r, theta).sort((a, b) => a.C1.y - b.C1.y)[0];
-        if (!compoundCircles) {
-            error('No arc of that radius reaches the lower corner from the bout. Bring the corner in toward the body, or give it a larger radius.', 'Lower Corner Out of Reach');
-            return;
-        }
-        let L3start = circleCircleIntersections(compoundCircles.C1, p.bouts.L2)[0]
-        let L31start = circleCircleIntersections(compoundCircles.C1, compoundCircles.C2)[0]
-
-        p.bouts.L2 = arcFromCircle(p.bouts.L2, p.bouts.L2.start, angleFromCenter(p.bouts.L2, L3start));
-        p.bouts.L3 = arcFromCircleAndPoints(compoundCircles.C1, L3start, L31start);
-        p.bouts.L31 = arcFromCircleAndPoints(compoundCircles.C2, L31start, p.bouts.LCr);
-    }
-    else {
-        let L3R = p.bouts.L3?.r ?? Math.round(LBWI * p.ratios.L3toLBW);
-        let L3Circle = interceptCirclesAndPoint(p.bouts.L2, p.bouts.LCr, L3R).sort((a, b) => a.y - b.y)[0];
-        if (!L3Circle) {
-            error('No arc of that radius reaches the lower corner from the bout. Bring the corner in toward the body, or give it a larger radius.', 'Lower Corner Out of Reach');
-            return;
-        }
-        p.bouts.L3 = arcFromCircle(L3Circle);
-
-        let L2Intersect = circleCircleIntersections(p.bouts.L2, p.bouts.L3).sort((a, b) => a.y - b.y)[0];
-        let L2Angle = angleFromCenter(p.bouts.L2, L2Intersect);
-        let L2StartAngle = angleFromCenter(p.bouts.L2, p.bouts.L1);
-         if (p.bouts.L2.r < p.bouts.L1.r) 
-            L2StartAngle -= Math.PI
-
-        if (!L2U1Match) {
-            let newL1Intersect = circleCircleIntersections(p.bouts.L1, p.bouts.L2).sort((a, b) => a.y - b.y)[0];
-            let L1EndAngle = angleFromCenter(p.bouts.L1, newL1Intersect);
-            p.bouts.L1.end = L1EndAngle // we might have to recalculate the angle if we altered the Y height of
-        }
-
-        p.bouts.L2 = arcFromCircle(p.bouts.L2, L2StartAngle, L2Angle);
-        p.bouts.L3 = arcFromCircleAndPoints(p.bouts.L3, L2Intersect, p.bouts.LCr);
-    }
-    if (p.options.useViolCornerUC) {
+        if (p.options.useViolCornerUC) {
             let U1EndPt = pointOnCircle(p.bouts.U1!, p.bouts.U1.end);
             let a = p.bouts.UCr.y - U1EndPt.y
             let b = U1EndPt.x - p.bouts.UCr.x
@@ -357,7 +370,58 @@ export function calculateCorners(p: EnricoCerutiParams): void {
             let u4 = new Circle(U1EndPt.x - U4r, U1EndPt.y, U4r);
             p.bouts.U4 = arcFromCircleAndPoints(u4, U1EndPt, p.bouts.UCr);
         }
-   
+        return null
+    })
+
+    solveSection(failures, 'Lower corner', ['L2', 'L3', 'L31', 'L4'], () => {
+        // L4 reads L1's end from before the solve below moves it, as it always has
+        if (p.options.useViolCornerLC) {
+            let L1EndPt = pointOnCircle(p.bouts.L1!, p.bouts.L1.end);
+            let a = p.bouts.LCr.y - L1EndPt.y
+            let b = L1EndPt.x - p.bouts.LCr.x
+            let L4r = (a * a + b * b) / (2 * b)
+
+            let l4 = new Circle(L1EndPt.x - L4r, L1EndPt.y, L4r);
+            p.bouts.L4 = arcFromCircleAndPoints(l4, L1EndPt, p.bouts.LCr);
+        }
+        if (p.options.L31DoubleArc) {
+            let L3r = p.bouts.L3.r
+            let L31r =  p.bouts.L31.r
+            let theta = p.bouts.L31.start ?? 15/16 * Math.PI
+            let compoundCircles = interceptCirclesAndPointCompound(p.bouts.L2!, p.bouts.LCr, L3r, L31r, theta).sort((a, b) => a.C1.y - b.C1.y)[0];
+            if (!compoundCircles)
+                return cornerMiss('Lower corner', 'L2', p.bouts.L2, 'L3', p.bouts.LCr, true, ['L2', 'L3', 'L31', 'L4'])
+            let L3start = circleCircleIntersections(compoundCircles.C1, p.bouts.L2)[0]
+            let L31start = circleCircleIntersections(compoundCircles.C1, compoundCircles.C2)[0]
+
+            p.bouts.L2 = arcFromCircle(p.bouts.L2, p.bouts.L2.start, angleFromCenter(p.bouts.L2, L3start));
+            p.bouts.L3 = arcFromCircleAndPoints(compoundCircles.C1, L3start, L31start);
+            p.bouts.L31 = arcFromCircleAndPoints(compoundCircles.C2, L31start, p.bouts.LCr);
+        }
+        else {
+            let L3R = p.bouts.L3?.r ?? Math.round(LBWI * p.ratios.L3toLBW);
+            let L3Circle = interceptCirclesAndPoint(p.bouts.L2, p.bouts.LCr, L3R).sort((a, b) => a.y - b.y)[0];
+            if (!L3Circle)
+                return cornerMiss('Lower corner', 'L2', p.bouts.L2, 'L3', p.bouts.LCr, false, ['L2', 'L3', 'L31', 'L4'])
+            p.bouts.L3 = arcFromCircle(L3Circle);
+
+            let L2Intersect = circleCircleIntersections(p.bouts.L2, p.bouts.L3).sort((a, b) => a.y - b.y)[0];
+            let L2Angle = angleFromCenter(p.bouts.L2, L2Intersect);
+            let L2StartAngle = angleFromCenter(p.bouts.L2, p.bouts.L1);
+            if (p.bouts.L2.r < p.bouts.L1.r) 
+                L2StartAngle -= Math.PI
+
+            if (!L2U1Match) {
+                let newL1Intersect = circleCircleIntersections(p.bouts.L1, p.bouts.L2).sort((a, b) => a.y - b.y)[0];
+                let L1EndAngle = angleFromCenter(p.bouts.L1, newL1Intersect);
+                p.bouts.L1.end = L1EndAngle // we might have to recalculate the angle if we altered the Y height of
+            }
+
+            p.bouts.L2 = arcFromCircle(p.bouts.L2, L2StartAngle, L2Angle);
+            p.bouts.L3 = arcFromCircleAndPoints(p.bouts.L3, L2Intersect, p.bouts.LCr);
+        }
+        return null
+    })
 
     // recalculate display ratios
     p.ratios.U2toUBW = p.bouts.U2.r / UBWI;
@@ -368,11 +432,17 @@ export function calculateCorners(p: EnricoCerutiParams): void {
     p.ratios.L31toLBW = p.bouts.L31.r / LBWI;
     p.ratios.UCYtoH = p.bouts.UCr.y / p.height;
     p.ratios.LCYtoH = p.bouts.LCr.y / p.height;
+
+    reportFailures(failures, 'Corners')
+    return failures
 }
 
 let lastWorkingC0: Arc | null = null;
+export type CenterBoutKey = 'C0' | 'C1' | 'C11' | 'C2' | 'C21';
+export type CenterBoutFailure = SolveFailure<CenterBoutKey>;
+
 /** Reads/recalculates from `p.options.useKellyC0`; callers who need to force it toggle the flag first. */
-export function calculateCenterBout(p: EnricoCerutiParams): void {
+export function calculateCenterBout(p: EnricoCerutiParams): CenterBoutFailure[] {
     let inset = p.overhang + p.rib;
     let LBWI = p.bouts.LBW - 2 * inset;
 
@@ -381,13 +451,24 @@ export function calculateCenterBout(p: EnricoCerutiParams): void {
 
     p.bouts.CBW ??= Math.round(p.bouts.LBW * p.ratios.CBWtoLBW);
 
+    let failures: CenterBoutFailure[] = []
+
     if (p.options.useKellyC0) {
-        try {
+        let kellyMiss: CenterBoutFailure = {
+            message: `Fit C0 to Bouts: no C0 of this radius touches both U2 and L2, so C0 is placed by hand again. Enlarge C0, then fit it again.`,
+            unsolved: [],
+            circles: [p.bouts.U2, p.bouts.L2],
+            segments: [],
+        }
+        solveSection(failures, 'Fit C0 to Bouts', [], () => {
             let UtoL = dist(p.bouts.U2!, p.bouts.L2!);  // these joining circles are the ones that must intercept with C0, modified kelly theory
             let UtoC = p.bouts.U2.r + p.bouts.C0.r;
             let LtoC = p.bouts.L2.r + p.bouts.C0.r;
 
             let theta = Math.acos((UtoL * UtoL + UtoC * UtoC - LtoC * LtoC) / (2 * UtoL * UtoC));  // angle off U2 to C0, but with the Y axis as the line from U2 to L2
+            // outside acos's domain no triangle closes, and the NaN would sail past the distance check below
+            if (!Number.isFinite(theta))
+                return kellyMiss
 
             // now we need to begin converting this to the proper coordinate space
             // first, the above theta needs to be referenced added to 3/2 pi, as it is pointing down
@@ -404,26 +485,25 @@ export function calculateCenterBout(p: EnricoCerutiParams): void {
             p.bouts.C0.x = Math.abs(p.bouts.U2.x + Math.cos(theta) * UtoC);
             p.bouts.C0.y = Math.abs(p.bouts.U2.y + Math.sin(theta) * UtoC);
 
-            // if the above calculations result in a C0 that doesn't intersect with L2, then we have an impossible C0 and should throw an error
             let C0toL2 = dist(p.bouts.C0, p.bouts.L2!);
             let C0toU2 = dist(p.bouts.C0, p.bouts.U2!);
             let C0rU2r = p.bouts.C0.r + p.bouts.L2.r
             let C0rL2r = p.bouts.C0.r + p.bouts.U2.r
             let tolerance = .1
             if (C0toL2 > C0rU2r + tolerance || C0toU2 > C0rL2r + tolerance)
-                throw new Error("Given the radii of C0, L2 and U2, there is no condition where C0 can be fit. Likely, you can increase the radius of C0 and try again.");
+                return kellyMiss
 
             // makes sense to recalculate center bout width here
             p.bouts.CBW = (p.bouts.C0.x - p.bouts.C0.r + inset) * 2;
             lastWorkingC0 = JSON.parse(JSON.stringify(p.bouts.C0));
-        }
-        catch (e) {
-            p.options.useKellyC0 = false; // if we fail to solve for C0 using the kelly method, we should turn it off so that the user can still get a valid C0 by adjusting the main bouts and corners
-            error("Given the radii of C0, L2 and U2, there is no condition where C0 can be fit. Likely, you can increase the radius of C0 and try again.", "Failed to fit C0.");
+            return null
+        })
+
+        // a fit that misses falls back to placing C0 by hand, so the outline still solves
+        if (failures.length) {
+            p.options.useKellyC0 = false;
             if (lastWorkingC0)
                 p.bouts.C0 = JSON.parse(JSON.stringify(lastWorkingC0));
-
-            return calculateCenterBout(p); // recalculate now that useKellyC0 is disabled above
         }
     }
 
@@ -437,63 +517,59 @@ export function calculateCenterBout(p: EnricoCerutiParams): void {
     p.bouts.C21 ??= new Arc(0, 0, Math.round(LBWI * (p.ratios.C21toLBW ?? DefaultParams.ratios.C21toLBW)), 8/16 * Math.PI)
     let cuRadius = p.bouts.C2?.r ?? Math.round((LBWI * p.ratios.C2toLBW));
     let clRadius = p.bouts.C1?.r ?? Math.round((LBWI * p.ratios.C1toLBW));
-    let CUIntercept;
-    let CLIntercept;
+    let CUIntercept: Pt | undefined;
+    let CLIntercept: Pt | undefined;
 
-    if (p.options.C21DoubleArc) {
-        let C2r = p.bouts.C2.r
-        let C21r =  p.bouts.C21.r
-        let theta = p.bouts.C21.start ?? 15/16 * Math.PI
-        let compoundCircles = interceptCirclesAndPointCompound(p.bouts.C0!, p.bouts.UCr, C2r, C21r, theta).sort((a, b) => a.C1.y - b.C1.y)[0];
-        // same silent failure as the corner solve above: nothing throws, the solver just has
-        // nothing to return, so stop here and leave the previous geometry standing
-        if (!compoundCircles) {
-            error('No arc of that radius reaches the upper corner from the center bout. Bring the corner in toward the body, or give it a larger radius.', 'Upper Corner Out of Reach');
-            return;
+    solveSection(failures, 'Upper corner', ['C0', 'C2', 'C21'], () => {
+        if (p.options.C21DoubleArc) {
+            let C2r = p.bouts.C2.r
+            let C21r =  p.bouts.C21.r
+            let theta = p.bouts.C21.start ?? 15/16 * Math.PI
+            let compoundCircles = interceptCirclesAndPointCompound(p.bouts.C0!, p.bouts.UCr, C2r, C21r, theta).sort((a, b) => a.C1.y - b.C1.y)[0];
+            if (!compoundCircles)
+                return cornerMiss('Upper corner', 'C0', p.bouts.C0, 'C2', p.bouts.UCr, true, ['C0', 'C2', 'C21'])
+            CUIntercept = circleCircleIntersections(compoundCircles.C1, p.bouts.C0)[1]
+            let C21start = circleCircleIntersections(compoundCircles.C1, compoundCircles.C2)[0]
+
+            p.bouts.C2 = arcFromCircleAndPoints(compoundCircles.C1, CUIntercept, C21start);
+            p.bouts.C21 = arcFromCircleAndPoints(compoundCircles.C2, C21start, p.bouts.UCr);
         }
-        CUIntercept = circleCircleIntersections(compoundCircles.C1, p.bouts.C0)[1]
-        let C21start = circleCircleIntersections(compoundCircles.C1, compoundCircles.C2)[0]
-
-        p.bouts.C2 = arcFromCircleAndPoints(compoundCircles.C1, CUIntercept, C21start);
-        p.bouts.C21 = arcFromCircleAndPoints(compoundCircles.C2, C21start, p.bouts.UCr);
-
-    }
-    else {
-        let CU = interceptCirclesAndPoint(p.bouts.C0, p.bouts.UCr!, cuRadius).sort((a, b) => b.y - a.y)[1];
-        if (!CU) {
-            error('No arc of that radius reaches the upper corner from the center bout. Bring the corner in toward the body, or give it a larger radius.', 'Upper Corner Out of Reach');
-            return;
+        else {
+            let CU = interceptCirclesAndPoint(p.bouts.C0, p.bouts.UCr!, cuRadius).sort((a, b) => b.y - a.y)[1];
+            if (!CU)
+                return cornerMiss('Upper corner', 'C0', p.bouts.C0, 'C2', p.bouts.UCr, false, ['C0', 'C2', 'C21'])
+            CUIntercept = circleCircleIntersections(p.bouts.C0, CU).sort((a, b) => b.y - a.y)[0];
+            p.bouts.C2 = arcFromCircleAndPoints(CU, CUIntercept, p.bouts.UCr);
         }
-        CUIntercept = circleCircleIntersections(p.bouts.C0, CU).sort((a, b) => b.y - a.y)[0];
-        p.bouts.C2 = arcFromCircleAndPoints(CU, CUIntercept, p.bouts.UCr);
+        return null
+    })
 
-    }
-    if (p.options.C11DoubleArc) {
-        let C1r = p.bouts.C1.r
-        let C11r = p.bouts.C11.r
-        let theta = p.bouts.C11.start ?? 17/16 * Math.PI
-        let compoundCircles = interceptCirclesAndPointCompound(p.bouts.C0!, p.bouts.LCr, C1r, C11r, theta).sort((a, b) => a.C1.y - b.C1.y)[1];
-        if (!compoundCircles) {
-            error('No arc of that radius reaches the lower corner from the center bout. Bring the corner in toward the body, or give it a larger radius.', 'Lower Corner Out of Reach');
-            return;
+    solveSection(failures, 'Lower corner', ['C0', 'C1', 'C11'], () => {
+        if (p.options.C11DoubleArc) {
+            let C1r = p.bouts.C1.r
+            let C11r = p.bouts.C11.r
+            let theta = p.bouts.C11.start ?? 17/16 * Math.PI
+            let compoundCircles = interceptCirclesAndPointCompound(p.bouts.C0!, p.bouts.LCr, C1r, C11r, theta).sort((a, b) => a.C1.y - b.C1.y)[1];
+            if (!compoundCircles)
+                return cornerMiss('Lower corner', 'C0', p.bouts.C0, 'C1', p.bouts.LCr, true, ['C0', 'C1', 'C11'])
+            CLIntercept = circleCircleIntersections(compoundCircles.C1, p.bouts.C0)[1]
+            let C11start = circleCircleIntersections(compoundCircles.C1, compoundCircles.C2)[0]
+
+            p.bouts.C1 = arcFromCircleAndPoints(compoundCircles.C1, CLIntercept, C11start);
+            p.bouts.C11 = arcFromCircleAndPoints(compoundCircles.C2, C11start, p.bouts.LCr);
         }
-        CLIntercept = circleCircleIntersections(compoundCircles.C1, p.bouts.C0)[1]
-        let C11start = circleCircleIntersections(compoundCircles.C1, compoundCircles.C2)[0]
-
-        p.bouts.C1 = arcFromCircleAndPoints(compoundCircles.C1, CLIntercept, C11start);
-        p.bouts.C11 = arcFromCircleAndPoints(compoundCircles.C2, C11start, p.bouts.LCr);
-    }
-    else {
-        let CL = interceptCirclesAndPoint(p.bouts.C0, p.bouts.LCr!, clRadius).sort((a, b) => a.y - b.y)[1];
-        if (!CL) {
-            error('No arc of that radius reaches the lower corner from the center bout. Bring the corner in toward the body, or give it a larger radius.', 'Lower Corner Out of Reach');
-            return;
+        else {
+            let CL = interceptCirclesAndPoint(p.bouts.C0, p.bouts.LCr!, clRadius).sort((a, b) => a.y - b.y)[1];
+            if (!CL)
+                return cornerMiss('Lower corner', 'C0', p.bouts.C0, 'C1', p.bouts.LCr, false, ['C0', 'C1', 'C11'])
+            CLIntercept = circleCircleIntersections(p.bouts.C0, CL).sort((a, b) => a.y - b.y)[1];
+            p.bouts.C1 = arcFromCircleAndPoints(CL, CLIntercept, p.bouts.LCr);
         }
-        CLIntercept = circleCircleIntersections(p.bouts.C0, CL).sort((a, b) => a.y - b.y)[1];
-        p.bouts.C1 = arcFromCircleAndPoints(CL, CLIntercept, p.bouts.LCr);
-    }
+        return null
+    })
 
-    p.bouts.C0 = arcFromCircleAndPoints(p.bouts.C0, CUIntercept, CLIntercept);
+    if (CUIntercept && CLIntercept)
+        p.bouts.C0 = arcFromCircleAndPoints(p.bouts.C0, CUIntercept, CLIntercept);
 
     // recalculate display ratios
     p.ratios.CBWtoLBW = p.bouts.CBW / p.bouts.LBW;
@@ -504,6 +580,8 @@ export function calculateCenterBout(p: EnricoCerutiParams): void {
     p.ratios.C1toLBW = p.bouts.C1.r / LBWI;
     p.ratios.C11toLBW = p.bouts.C11.r / LBWI;
 
+    reportFailures(failures, 'Center Bout')
+    return failures
 }
 
 export function calculateOuterArcs(p: EnricoCerutiParams): void {
@@ -527,22 +605,35 @@ export function calculateOuterArcs(p: EnricoCerutiParams): void {
 
     let outerCornersNotDefined = !p.outerCorners.U3 && !p.outerCorners.C2 && !p.outerCorners.C1 && !p.outerCorners.L3;
 
+    const C2Sign = cornerOffsetSign(p, 'C2');
+    const C1Sign = cornerOffsetSign(p, 'C1');
+    // an outer arc saved before its corner inverted has its end on the far side of the corner, so it starts over
+    const stale = (key: 'C2' | 'C21' | 'C1' | 'C11', sign: number) =>
+        !!p.outerCorners[key] && Math.sign(p.outerCorners[key]!.r - p.bouts[key]!.r) !== sign;
+    const C2Stale = stale('C2', C2Sign);
+    const C1Stale = stale('C1', C1Sign);
+    if (C2Stale) p.outerCorners.C2 = null;
+    if (stale('C21', C2Sign)) p.outerCorners.C21 = null;
+    if (C1Stale) p.outerCorners.C1 = null;
+    if (stale('C11', C1Sign)) p.outerCorners.C11 = null;
+
     p.outerCorners.U3 = p.outerCorners.U3 ? redefineArcCircle(p.outerCorners.U3, p.bouts.U3, -inset) : offsetArcRadius(p.bouts.U3, -inset); // user might have redefined bouts
-    p.outerCorners.C2 = p.outerCorners.C2 ? redefineArcCircle(p.outerCorners.C2, p.bouts.C2, -inset) : offsetArcRadius(p.bouts.C2, -inset);
-    p.outerCorners.C1 = p.outerCorners.C1 ? redefineArcCircle(p.outerCorners.C1, p.bouts.C1, -inset) : offsetArcRadius(p.bouts.C1, -inset);
+    p.outerCorners.C2 = p.outerCorners.C2 ? redefineArcCircle(p.outerCorners.C2, p.bouts.C2, C2Sign * inset) : offsetArcRadius(p.bouts.C2, C2Sign * inset);
+    p.outerCorners.C1 = p.outerCorners.C1 ? redefineArcCircle(p.outerCorners.C1, p.bouts.C1, C1Sign * inset) : offsetArcRadius(p.bouts.C1, C1Sign * inset);
     p.outerCorners.L3 = p.outerCorners.L3 ? redefineArcCircle(p.outerCorners.L3, p.bouts.L3, -inset) : offsetArcRadius(p.bouts.L3, -inset);
 
     const U3Pop = Math.PI / 72;
-    const C2Pop = -Math.PI / 18;
-    const C1Pop = Math.PI / 36;
+    // an inverted C1 or C2 travels the other way round its circle, and the pop has to follow it
+    const C2Pop = Math.PI / 18 * C2Sign;
+    const C1Pop = Math.PI / 36 * -C1Sign;
     const L3Pop = -Math.PI / 72;
 
     if (outerCornersNotDefined) {
         p.outerCorners.U3.end += U3Pop;
-        p.outerCorners.C2.end += C2Pop;
-        p.outerCorners.C1.end += C1Pop;
         p.outerCorners.L3.end += L3Pop;
     }
+    if (outerCornersNotDefined || C2Stale) p.outerCorners.C2.end += C2Pop;
+    if (outerCornersNotDefined || C1Stale) p.outerCorners.C1.end += C1Pop;
     
 
     if (p.options.U31DoubleArc) {
@@ -563,24 +654,24 @@ export function calculateOuterArcs(p: EnricoCerutiParams): void {
 
     if (p.options.C21DoubleArc) {
         let C21NotDefined = !p.outerCorners.C21;
-        p.outerCorners.C21 = p.outerCorners.C21 ? redefineArcCircle(p.outerCorners.C21, p.bouts.C21, -inset) : offsetArcRadius(p.bouts.C21, -inset);
-        p.outerCorners.C2 = offsetArcRadius(p.bouts.C2, -inset);
+        p.outerCorners.C21 = p.outerCorners.C21 ? redefineArcCircle(p.outerCorners.C21, p.bouts.C21, C2Sign * inset) : offsetArcRadius(p.bouts.C21, C2Sign * inset);
+        p.outerCorners.C2 = offsetArcRadius(p.bouts.C2, C2Sign * inset);
 
         if (C21NotDefined) p.outerCorners.C21.end += C2Pop * (p.outerCorners.C2.r / p.outerCorners.C21.r);
     }
     else if (p.outerCorners.C2.end === p.outerCorners.C21?.start) {
-        p.outerCorners.C2 = offsetArcRadius(p.bouts.C2, -inset);
+        p.outerCorners.C2 = offsetArcRadius(p.bouts.C2, C2Sign * inset);
     }
 
     if (p.options.C11DoubleArc) {
         let C11NotDefined = !p.outerCorners.C11;
-        p.outerCorners.C11 = p.outerCorners.C11 ? redefineArcCircle(p.outerCorners.C11, p.bouts.C11, -inset) : offsetArcRadius(p.bouts.C11, -inset);
-        p.outerCorners.C1 = offsetArcRadius(p.bouts.C1, -inset);
+        p.outerCorners.C11 = p.outerCorners.C11 ? redefineArcCircle(p.outerCorners.C11, p.bouts.C11, C1Sign * inset) : offsetArcRadius(p.bouts.C11, C1Sign * inset);
+        p.outerCorners.C1 = offsetArcRadius(p.bouts.C1, C1Sign * inset);
 
         if (C11NotDefined) p.outerCorners.C11.end += C1Pop * (p.outerCorners.C1.r / p.outerCorners.C11.r);
     }
     else if (p.outerCorners.C1.end === p.outerCorners.C11?.start) {
-        p.outerCorners.C1 = offsetArcRadius(p.bouts.C1, -inset);
+        p.outerCorners.C1 = offsetArcRadius(p.bouts.C1, C1Sign * inset);
     }
 
     if (p.options.L31DoubleArc) {
@@ -651,7 +742,11 @@ function shoulderReach(shoulder: Arc, arm: Arc, arm2: Arc | null, extreme: numbe
   return arm2CentreRise + arm2.r;
 }
 
-export function calculateFholeContours(p: EnricoCerutiParams): void {
+export type FholeArcKey = 'U1' | 'U2' | 'U21' | 'U3' | 'L1' | 'L2' | 'L21' | 'L3' | 'S1' | 'S2' | 'S3' | 'S4';
+
+export type FholeFailure = SolveFailure<FholeArcKey>;
+
+export function calculateFholeContours(p: EnricoCerutiParams): FholeFailure[] {
   if (!p.fHoles.U1)
     setContourDefaults(p);
 
@@ -664,8 +759,62 @@ export function calculateFholeContours(p: EnricoCerutiParams): void {
   // each solve rebuilds its S arc, so the last radius survives on the arc itself
   let stemR = (s: Arc | null) => p.options.stemArcsIndependent ? s?.r ?? p.fHoles.stem.arcR : p.fHoles.stem.arcR
 
+  let stemHalf = dist(p.fHoles.UEye, p.fHoles.LEye) / 2
+  let stemEdge = (pt: Pt): [Pt, Pt] => [
+    new Pt(pt.x - Math.cos(p.fHoles.stem.angle) * stemHalf, pt.y - Math.sin(p.fHoles.stem.angle) * stemHalf),
+    new Pt(pt.x + Math.cos(p.fHoles.stem.angle) * stemHalf, pt.y + Math.sin(p.fHoles.stem.angle) * stemHalf),
+  ]
+
+  let shoulderMiss = (
+    section: string,
+    key: 'U1' | 'L1',
+    eye: Circle,
+    shoulderY: number,
+    bound: number,
+    up: 1 | -1,
+    unsolved: FholeArcKey[],
+  ): FholeFailure => {
+    let shoulder = p.fHoles[key]!
+    return {
+      message: up * (shoulderY - eye.y) > 0
+        ? `${section}: ${key} can't touch the eye and still reach the rise. Reduce Rise, or enlarge ${key}.`
+        : `${section}: the rise is too small for ${key} to touch the eye. Increase Rise.`,
+      unsolved,
+      circles: [new Circle(eye.x, eye.y + up * Math.abs(shoulder.r - eye.r), shoulder.r)],
+      segments: [[new Pt(eye.x - shoulder.r, bound), new Pt(eye.x + shoulder.r, bound)]],
+    }
+  }
+
+  // the stem arc wraps `reach` from `side` of the edge, so it can only fail two ways: `reach`
+  // already pokes across the edge, or it sits clear and the stem arc is too small to span the gap
+  let stemMiss = (
+    section: string,
+    reachKey: FholeArcKey,
+    stemKey: FholeArcKey,
+    edge: Line,
+    edgePt: Pt,
+    edgeName: string,
+    side: 1 | -1,
+    shrink: string,
+  ): FholeFailure => {
+    let reach = p.fHoles[reachKey]!
+    let normal = tangentUnitVectorFromLine(edge)
+    let clearance = side * (reach.x * normal.a + (reach.y - edge.y) * normal.b) - reach.r
+    let stemName = p.options.stemArcsIndependent ? stemKey : 'the stem Arc Radius'
+    return {
+      message: clearance < 0
+        ? `${section}: ${reachKey} crosses the ${edgeName} stem edge before it can turn onto it. ${shrink}, or widen the stem.`
+        : `${section}: ${stemKey} can't bridge from ${reachKey} to the ${edgeName} stem edge. Enlarge ${stemName}.`,
+      unsolved: [reachKey, stemKey],
+      circles: [reach],
+      segments: [stemEdge(edgePt)],
+    }
+  }
+
+  let failures: FholeFailure[] = []
+
   // first the upper curve that connects to the eye
-  try {
+  solveSection(failures, 'Upper arm', ['U1', 'U2', 'U21', 'S2'], () => {
     // a compound arm seeds on the arm's own circle, split halfway along the sweep the arm last
     // drew, so switching it on changes nothing until a number does
     if (p.options.U21DoubleArc)
@@ -675,11 +824,14 @@ export function calculateFholeContours(p: EnricoCerutiParams): void {
     // first we need to determine the placement of the arc that connects to each eye
     let upperBound = p.fHoles.UEye.y + p.fHoles.UEye.r + p.fHoles.URise
     let upperShoulderY = upperBound - shoulderReach(p.fHoles.U1, p.fHoles.U2, upperArm2, Math.PI / 2)
-    let upperShoulderX = lineCircleIntersectionWithTolerance(
+    let upperShoulderXs = lineCircleIntersectionWithTolerance(
       { m: 0, y: upperShoulderY, x: 0 },
       { x: p.fHoles.UEye.x, y: p.fHoles.UEye.y, r: Math.abs(p.fHoles.U1.r - p.fHoles.UEye.r) },
-    )[0].x
-    let upperShoulder = new Arc(upperShoulderX, upperShoulderY, p.fHoles.U1.r)
+    )
+    if (!upperShoulderXs.length)
+      return shoulderMiss('Upper arm', 'U1', p.fHoles.UEye, upperShoulderY, upperBound, 1, ['U1', 'U2', 'U21', 'S2'])
+
+    let upperShoulder = new Arc(upperShoulderXs[0].x, upperShoulderY, p.fHoles.U1.r)
     let upperShoulderStartPt = circleCircleIntersections(p.fHoles.UEye, upperShoulder);
     let upperShoulderStartAngle = angleFromCenter(upperShoulder, upperShoulderStartPt[0]);
     upperShoulder.start = upperShoulderStartAngle;
@@ -700,48 +852,60 @@ export function calculateFholeContours(p: EnricoCerutiParams): void {
     }
 
     let S2 = solveTangentCircleAndLine(outerStemLine, upperStemReach, stemR(p.fHoles.S2), true, 1, p.fHoles.stem.center);
+    if (!S2)
+      return upperArm2
+        ? stemMiss('Upper arm', 'U21', 'S2', outerStemLine, outerStemPt, 'outer', 1, 'Shrink U1, U2 or U21')
+        : stemMiss('Upper arm', 'U2', 'S2', outerStemLine, outerStemPt, 'outer', 1, 'Shrink U1 or U2')
+
     let S2StemIntersect = lineCircleIntersectionWithTolerance(outerStemLine, S2); // we are just kissing the line, sometimes we miss due to floating points
     let S2StemEndAngle = angleFromCenter(S2, S2StemIntersect[0])
 
     // tangent by construction, so the join sits on the line of centres: one angle serves both circles
     upperStemReach.end = angleFromCenter(S2, upperStemReach);
     p.fHoles.S2 = new Arc(S2.x, S2.y, S2.r, upperStemReach.end, S2StemEndAngle)
-  } catch (e) {
-    error("Upper arm calculation error", "Error")
-  }
+    return null
+  })
 
   // now we do the upper wing
-  try {
+  solveSection(failures, 'Upper wing', ['U3', 'S1'], () => {
     let cutStart = pointOnCircle(p.fHoles.UEye, p.fHoles.UCut.angleOnEye);
     let cutVector = vectorFromSlope(p.fHoles.UCut.slope);
     cutVector.mag = p.fHoles.UCut.length;
     let cutEnd = moveInVectorSpace(cutStart, [cutVector]);
     p.fHoles.UTip = cutEnd;
     let cutCircle = placeCircleOnPointAtAngle(p.fHoles.U3.r, cutEnd, p.fHoles.U3.end);
+    p.fHoles.U3 = new Arc(cutCircle.x, cutCircle.y, cutCircle.r, p.fHoles.U3.start, p.fHoles.U3.end);
+
     let S1 = solveTangentCircleAndLine(innerStemLine, cutCircle, stemR(p.fHoles.S1), true, 1, p.fHoles.stem.center);
+    if (!S1)
+      return stemMiss('Upper wing', 'U3', 'S1', innerStemLine, innerStemPt, 'inner', 1, 'Shrink U3 or move its tip with Wing and Slope')
+
     let S1U3Pt = circleCircleIntersections(S1, cutCircle);
     let S1StemIntersect = lineCircleIntersectionWithTolerance(innerStemLine, S1);
     let S1StemEndAngle = angleFromCenter(S1, S1StemIntersect[0]);
 
-    p.fHoles.U3 = new Arc(cutCircle.x, cutCircle.y, cutCircle.r, angleFromCenter(cutCircle, S1U3Pt[0]), p.fHoles.U3.end);
+    p.fHoles.U3.start = angleFromCenter(cutCircle, S1U3Pt[0]);
     p.fHoles.S1 = new Arc(S1.x, S1.y, S1.r, S1StemEndAngle, angleFromCenter(S1, S1U3Pt[0]));
-  } catch (e) {
-    error("Upper wing calculation error.", "Error")
-  }
+    return null
+  })
 
   // now the lower arm, upside down: bound drops below the eye, and the arm meets the inner stem
-  try {
+  solveSection(failures, 'Lower arm', ['L1', 'L2', 'L21', 'S3'], () => {
     if (p.options.L21DoubleArc)
       p.fHoles.L21 ??= new Arc(0, 0, p.fHoles.L2.r, (p.fHoles.L2.start + p.fHoles.L2.end) / 2)
     let lowerArm2 = p.options.L21DoubleArc ? p.fHoles.L21! : null;
 
     let lowerBound = p.fHoles.LEye.y - p.fHoles.LEye.r - p.fHoles.LRise
     let lowerShoulderY = lowerBound + shoulderReach(p.fHoles.L1, p.fHoles.L2, lowerArm2, -Math.PI / 2)
-    let lowerShoulderX = lineCircleIntersectionWithTolerance(
+    let lowerShoulderXs = lineCircleIntersectionWithTolerance(
       { m: 0, y: lowerShoulderY, x: 0 },
       { x: p.fHoles.LEye.x, y: p.fHoles.LEye.y, r: Math.abs(p.fHoles.L1.r - p.fHoles.LEye.r) },
-    )[1].x
-    let lowerShoulder = new Arc(lowerShoulderX, lowerShoulderY, p.fHoles.L1.r)
+    )
+    if (!lowerShoulderXs.length)
+      return shoulderMiss('Lower arm', 'L1', p.fHoles.LEye, lowerShoulderY, lowerBound, -1, ['L1', 'L2', 'L21', 'S3'])
+
+    // a tangent miss comes back as one point, so the far side falls back to it
+    let lowerShoulder = new Arc((lowerShoulderXs[1] ?? lowerShoulderXs[0]).x, lowerShoulderY, p.fHoles.L1.r)
     let lowerShoulderStartPt = circleCircleIntersections(p.fHoles.LEye, lowerShoulder);
     let lowerShoulderStartAngle = angleFromCenter(lowerShoulder, lowerShoulderStartPt[0]);
     lowerShoulder.start = lowerShoulderStartAngle;
@@ -760,33 +924,44 @@ export function calculateFholeContours(p: EnricoCerutiParams): void {
     }
 
     let S3 = solveTangentCircleAndLine(innerStemLine, lowerStemReach, stemR(p.fHoles.S3), true, -1, p.fHoles.stem.center);
+    if (!S3)
+      return lowerArm2
+        ? stemMiss('Lower arm', 'L21', 'S3', innerStemLine, innerStemPt, 'inner', -1, 'Shrink L1, L2 or L21')
+        : stemMiss('Lower arm', 'L2', 'S3', innerStemLine, innerStemPt, 'inner', -1, 'Shrink L1 or L2')
+
     let S3StemIntersect = lineCircleIntersectionWithTolerance(innerStemLine, S3);
     let S3StemEndAngle = angleFromCenter(S3, S3StemIntersect[0])
 
     lowerStemReach.end = angleFromCenter(S3, lowerStemReach);
     p.fHoles.S3 = new Arc(S3.x, S3.y, S3.r, lowerStemReach.end, S3StemEndAngle)
-  } catch (e) {
-    error("Lower arm calculation error", "Error")
-  }
+    return null
+  })
 
   // now the lower wing, which connects to the outer stem
-  try {
+  solveSection(failures, 'Lower wing', ['L3', 'S4'], () => {
     let cutStart = pointOnCircle(p.fHoles.LEye, p.fHoles.LCut.angleOnEye);
     let cutVector = vectorFromSlope(p.fHoles.LCut.slope);
     cutVector.mag = p.fHoles.LCut.length;
     let cutEnd = moveInVectorSpace(cutStart, [cutVector]);
     p.fHoles.LTip = cutEnd;
     let cutCircle = placeCircleOnPointAtAngle(p.fHoles.L3.r, cutEnd, p.fHoles.L3.end);
+    p.fHoles.L3 = new Arc(cutCircle.x, cutCircle.y, cutCircle.r, p.fHoles.L3.start, p.fHoles.L3.end);
+
     let S4 = solveTangentCircleAndLine(outerStemLine, cutCircle, stemR(p.fHoles.S4), true, -1, p.fHoles.stem.center);
+    if (!S4)
+      return stemMiss('Lower wing', 'L3', 'S4', outerStemLine, outerStemPt, 'outer', -1, 'Shrink L3 or move its tip with Wing and Slope')
+
     let S4L3Pt = circleCircleIntersections(S4, cutCircle);
     let S4StemIntersect = lineCircleIntersectionWithTolerance(outerStemLine, S4);
     let S4StemEndAngle = angleFromCenter(S4, S4StemIntersect[0]);
 
-    p.fHoles.L3 = new Arc(cutCircle.x, cutCircle.y, cutCircle.r, angleFromCenter(cutCircle, S4L3Pt[0]), p.fHoles.L3.end);
+    p.fHoles.L3.start = angleFromCenter(cutCircle, S4L3Pt[0]);
     p.fHoles.S4 = new Arc(S4.x, S4.y, S4.r, S4StemEndAngle, angleFromCenter(S4, S4L3Pt[0]));
-  } catch (e) {
-    error("Lower wing calculation error.", "Error")
-  }
+    return null
+  })
+
+  reportFailures(failures, 'F-hole Contour')
+  return failures
 }
 
 // used to be a user-facing param; in practice one depth suited every instrument, so it's fixed
@@ -1144,10 +1319,10 @@ export const getPathOrNull = (paths: PathEntry[], key: PathKey): string | null =
 export const ensureCenterBoutInnerPath = (
   params: EnricoCerutiParams,
   paths: PathEntry[],
-): void => {
-  calculateCorners(params);
-  calculateCenterBout(params);
-  upsertPathEntry(paths, 'inner', defineInnerPath(params));
+): SolveFailure<CornerKey | CenterBoutKey>[] => {
+  const failures = [...calculateCorners(params), ...calculateCenterBout(params)];
+  if (!failures.length) upsertPathEntry(paths, 'inner', defineInnerPath(params));
+  return failures;
 };
 
 export const ensureOuterTracePaths = (
@@ -1175,9 +1350,11 @@ export const ensureOuterTracePaths = (
 export const ensureFholePath = (
   params: EnricoCerutiParams,
   paths: PathEntry[],
-): void => {
-  calculateFholeContours(params);
-  upsertPathEntry(paths, 'fHole', defineFholePath(params));
+): FholeFailure[] => {
+  const failures = calculateFholeContours(params);
+  // a half-solved hole won't close, so the last good outline stands until this one does
+  if (!failures.length) upsertPathEntry(paths, 'fHole', defineFholePath(params));
+  return failures;
 };
 
 /** Unlike the other ensure* functions, this doesn't call its own calc step: calculateNeck needs

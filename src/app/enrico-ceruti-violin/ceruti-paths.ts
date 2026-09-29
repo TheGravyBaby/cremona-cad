@@ -1,6 +1,6 @@
 import { circleCircleIntersections, findJoiningArcs } from "../helpers/math/draftMath";
-import { angleFromCenter, dist, pointOnCircle, offsetArcRadius, flipArcAboutY, flipPointAboutY, lineCircleIntersection, lineFromTwoPoints } from "../helpers/math/simpleGeometry";
-import { pathFromArc, pathFromLine, pathFromCornerCubic, unifyConnectedSvgPaths, combinePathStrings } from "../helpers/math/pathMath";
+import { angleFromCenter, dist, pointOnCircle, offsetArcRadius, flipArcAboutY, flipPointAboutY, lineCircleIntersection, lineFromTwoPoints, pointInPolygon, closestPointOnSegment } from "../helpers/math/simpleGeometry";
+import { pathFromArc, pathFromLine, pathFromCornerCubic, unifyConnectedSvgPaths, combinePathStrings, samplePathToPolyline } from "../helpers/math/pathMath";
 import { Arc, arcFromCircle, Pt } from "../models/types";
 import { error } from "../shared/message-emitter";
 import { ButtonParams, EnricoCerutiParams } from "./ceruti-types";
@@ -12,6 +12,14 @@ import { ButtonParams, EnricoCerutiParams } from "./ceruti-types";
 // outer trace, insets, purfling, fluting. Split out of ceruti-calcs.ts because
 // "where do the arcs go" and "how do you turn solved arcs into a path string"
 // are different questions a reader is usually asking one at a time.
+
+// C1 and C2 normally curl the same way as C0, their centres outside the body. When a corner sits
+// outside C0's circle the solve wraps its arc around C0 instead (a Prescott-style S into the
+// corner), the centre lands inside the body, and every outward offset of it changes sign. C11 and
+// C21 sit inside their arc and curl with it, so they take the same sign
+export function cornerOffsetSign(p: EnricoCerutiParams, key: 'C1' | 'C2'): 1 | -1 {
+    return dist(p.bouts[key]!, p.bouts.C0!) > p.bouts.C0!.r ? 1 : -1;
+}
 
 /**
  * The viol neck's top face meets the V0 sweep through a join arc of radius `viol.neckRadius`,
@@ -159,40 +167,43 @@ export function defineOffsetArcs(p: EnricoCerutiParams, offset?: number, corners
     if (corners) {
         let U3Offset = offsetArcRadius(p.bouts.U3, -offset);
         let U31Offset = p.options.U31DoubleArc ? offsetArcRadius(p.bouts.U31, -offset) : null;
-        let C2Offset = offsetArcRadius(p.bouts.C2, -offset);
-        let C21Offset = p.options.C21DoubleArc ?  offsetArcRadius(p.bouts.C21!, -offset) : null;
+        let C2Offset = offsetArcRadius(p.bouts.C2, cornerOffsetSign(p, 'C2') * offset);
+        let C21Offset = p.options.C21DoubleArc ?  offsetArcRadius(p.bouts.C21!, cornerOffsetSign(p, 'C2') * offset) : null;
         let L3Offset = offsetArcRadius(p.bouts.L3, -offset);
         let L31Offset = p.options.L31DoubleArc ? offsetArcRadius(p.bouts.L31!, -offset) : null;
-        let C1Offset = offsetArcRadius(p.bouts.C1, -offset);
-        let C11Offset = p.options.C11DoubleArc ? offsetArcRadius(p.bouts.C11!, -offset) : null;
+        let C1Offset = offsetArcRadius(p.bouts.C1, cornerOffsetSign(p, 'C1') * offset);
+        let C11Offset = p.options.C11DoubleArc ? offsetArcRadius(p.bouts.C11!, cornerOffsetSign(p, 'C1') * offset) : null;
 
         let U4Offset = p.options.useViolCornerUC ? offsetArcRadius(p.bouts.U4!, offset) : null;
         let L4Offset = p.options.useViolCornerLC ? offsetArcRadius(p.bouts.L4!, offset) : null;
 
         // the end state of our new corner will depend on which arcs we are using
+        // leftmost stops being the corner once C1 or C2 wraps around C0, but nearest the tip always is
+        let nearUpperCorner = (a: Pt, b: Pt) => dist(a, p.bouts.UCr) - dist(b, p.bouts.UCr);
         let upperCorner;
         if (p.options.useViolCornerUC)
             upperCorner = circleCircleIntersections(U4Offset, C2Offset).sort((a, b) => a.x - b.x)[1];
         else if (p.options.U31DoubleArc && p.options.C21DoubleArc)
-            upperCorner = circleCircleIntersections(U31Offset, C21Offset).sort((a, b) => a.x - b.x)[0];
+            upperCorner = circleCircleIntersections(U31Offset, C21Offset).sort(nearUpperCorner)[0];
         else if (p.options.U31DoubleArc)
-            upperCorner = circleCircleIntersections(U31Offset, C2Offset).sort((a, b) => a.x - b.x)[0];
+            upperCorner = circleCircleIntersections(U31Offset, C2Offset).sort(nearUpperCorner)[0];
         else if (p.options.C21DoubleArc)
-            upperCorner = circleCircleIntersections(U3Offset, C21Offset).sort((a, b) => a.x - b.x)[0];
+            upperCorner = circleCircleIntersections(U3Offset, C21Offset).sort(nearUpperCorner)[0];
         else
-            upperCorner = circleCircleIntersections(U3Offset, C2Offset).sort((a, b) => a.x - b.x)[0];
+            upperCorner = circleCircleIntersections(U3Offset, C2Offset).sort(nearUpperCorner)[0];
 
+        let nearLowerCorner = (a: Pt, b: Pt) => dist(a, p.bouts.LCr) - dist(b, p.bouts.LCr);
         let lowerCorner;
         if (p.options.useViolCornerLC)
             lowerCorner = circleCircleIntersections(L4Offset, C1Offset).sort((a, b) => a.x - b.x)[1];
         else if (p.options.L31DoubleArc && p.options.C11DoubleArc)
-            lowerCorner = circleCircleIntersections(L31Offset, C11Offset).sort((a, b) => a.x - b.x)[0];
+            lowerCorner = circleCircleIntersections(L31Offset, C11Offset).sort(nearLowerCorner)[0];
         else if (p.options.L31DoubleArc)
-            lowerCorner = circleCircleIntersections(L31Offset, C1Offset).sort((a, b) => a.x - b.x)[0];
+            lowerCorner = circleCircleIntersections(L31Offset, C1Offset).sort(nearLowerCorner)[0];
         else if (p.options.C11DoubleArc)
-            lowerCorner = circleCircleIntersections(L3Offset, C11Offset).sort((a, b) => a.x - b.x)[0];
+            lowerCorner = circleCircleIntersections(L3Offset, C11Offset).sort(nearLowerCorner)[0];
         else
-            lowerCorner = circleCircleIntersections(L3Offset, C1Offset).sort((a, b) => a.x - b.x)[0];
+            lowerCorner = circleCircleIntersections(L3Offset, C1Offset).sort(nearLowerCorner)[0];
 
         if(!upperCorner || !lowerCorner) {
             error("The offset is too small, and the corner circles no longer intersect. Try reducing the purfling offset.", "Purfling Error");
@@ -305,8 +316,8 @@ export function defineOuterCornerArcs(p: EnricoCerutiParams, offset: number): Ar
             ? pointOnCircle(offsetArcRadius(p.bouts.U31, -inset), p.outerCorners.U31!.end)
             : pointOnCircle(offsetArcRadius(p.bouts.U3, -inset), p.outerCorners.U3.end);
         const ucPt2 = p.options.C21DoubleArc
-            ? pointOnCircle(offsetArcRadius(p.bouts.C21, -inset), p.outerCorners.C21!.end)
-            : pointOnCircle(offsetArcRadius(p.bouts.C2, -inset), p.outerCorners.C2.end);
+            ? pointOnCircle(offsetArcRadius(p.bouts.C21, cornerOffsetSign(p, 'C2') * inset), p.outerCorners.C21!.end)
+            : pointOnCircle(offsetArcRadius(p.bouts.C2, cornerOffsetSign(p, 'C2') * inset), p.outerCorners.C2.end);
 
         const U3off = offsetArcRadius(p.bouts.U3, -offset);
         if (!p.options.U31DoubleArc) U3off.end = cutoffEndAtOffset(U3off, ucPt1, ucPt2, ucPt1, p.outerCorners.U3.end);
@@ -318,12 +329,12 @@ export function defineOuterCornerArcs(p: EnricoCerutiParams, offset: number): Ar
             arcs.push(U31off);
             arcs.push(flipArcAboutY(U31off));
         }
-        const C2off = offsetArcRadius(p.bouts.C2, -offset);
+        const C2off = offsetArcRadius(p.bouts.C2, cornerOffsetSign(p, 'C2') * offset);
         if (!p.options.C21DoubleArc) C2off.end = cutoffEndAtOffset(C2off, ucPt1, ucPt2, ucPt2, p.outerCorners.C2.end);
         arcs.push(C2off);
         arcs.push(flipArcAboutY(C2off));
         if (p.options.C21DoubleArc) {
-            const C21off = offsetArcRadius(p.bouts.C21, -offset);
+            const C21off = offsetArcRadius(p.bouts.C21, cornerOffsetSign(p, 'C2') * offset);
             C21off.end = cutoffEndAtOffset(C21off, ucPt1, ucPt2, ucPt2, p.outerCorners.C21!.end);
             arcs.push(C21off);
             arcs.push(flipArcAboutY(C21off));
@@ -345,18 +356,18 @@ export function defineOuterCornerArcs(p: EnricoCerutiParams, offset: number): Ar
     else {
         const inset = p.overhang + p.rib;
         const lcPt1 = p.options.C11DoubleArc
-            ? pointOnCircle(offsetArcRadius(p.bouts.C11, -inset), p.outerCorners.C11!.end)
-            : pointOnCircle(offsetArcRadius(p.bouts.C1, -inset), p.outerCorners.C1.end);
+            ? pointOnCircle(offsetArcRadius(p.bouts.C11, cornerOffsetSign(p, 'C1') * inset), p.outerCorners.C11!.end)
+            : pointOnCircle(offsetArcRadius(p.bouts.C1, cornerOffsetSign(p, 'C1') * inset), p.outerCorners.C1.end);
         const lcPt2 = p.options.L31DoubleArc
             ? pointOnCircle(offsetArcRadius(p.bouts.L31, -inset), p.outerCorners.L31!.end)
             : pointOnCircle(offsetArcRadius(p.bouts.L3, -inset), p.outerCorners.L3.end);
 
-        const C1off = offsetArcRadius(p.bouts.C1, -offset);
+        const C1off = offsetArcRadius(p.bouts.C1, cornerOffsetSign(p, 'C1') * offset);
         if (!p.options.C11DoubleArc) C1off.end = cutoffEndAtOffset(C1off, lcPt1, lcPt2, lcPt1, p.outerCorners.C1.end);
         arcs.push(C1off);
         arcs.push(flipArcAboutY(C1off));
         if (p.options.C11DoubleArc) {
-            const C11off = offsetArcRadius(p.bouts.C11, -offset);
+            const C11off = offsetArcRadius(p.bouts.C11, cornerOffsetSign(p, 'C1') * offset);
             C11off.end = cutoffEndAtOffset(C11off, lcPt1, lcPt2, lcPt1, p.outerCorners.C11!.end);
             arcs.push(C11off);
             arcs.push(flipArcAboutY(C11off));
@@ -378,10 +389,12 @@ export function defineOuterCornerArcs(p: EnricoCerutiParams, offset: number): Ar
 
 // Returns the angle `degrees` back from arc.end, moving toward arc.start along
 // whichever direction the arc actually sweeps (sign of the shortest start->end delta).
+// a long flat flank can be shorter than that, and going past its start would join from
+// somewhere up the next bout, so it stops there
 function angleBeforeEnd(arc: Arc, degrees: number): number {
     const delta = Math.atan2(Math.sin(arc.end - arc.start), Math.cos(arc.end - arc.start));
     const dir = Math.sign(delta) || 1;
-    return arc.end - dir * degrees * Math.PI / 180;
+    return arc.end - dir * Math.min(degrees * Math.PI / 180, Math.abs(delta));
 }
 
 
@@ -389,13 +402,56 @@ function angleBeforeEnd(arc: Arc, degrees: number): number {
 const MAX_JOIN_RADIUS_TO_CHORD = 10;
 // how far the search below is willing to walk the c-bout arc's own endpoint back before
 // admitting no join is possible and falling back to the error
-const MAX_CBOUT_RETREAT_DEG = 20;
+const MAX_CBOUT_RETREAT_DEG = 45;
 
-/** A biarc join, or null when its radius blows up relative to the chord it's meant to bridge. */
-function attemptJoin(arc1: Arc, side1: "start" | "end", arc2: Arc, side2: "start" | "end", invert: boolean): Arc[] | null {
-    const join = findJoiningArcs(arc1, side1, arc2, side2, invert);
-    const chord = dist(pointOnCircle(arc1, side1 === "end" ? arc1.end : arc1.start), pointOnCircle(arc2, side2 === "end" ? arc2.end : arc2.start));
-    return join.length > 0 && join[0].r <= MAX_JOIN_RADIUS_TO_CHORD * chord ? join : null;
+// the join is an S, and which way round depends on which side of the chord each tangent falls. an
+// inverted corner swings C0's end past the chord and the usual S loops out to reach it, its joint
+// straying off the chord; flipping both inverts mirrors the S, and that's tried only then, so
+// anything the usual S handled is left to it. a join tighter than half its chord curls into the
+// corner the channel is meant to bypass, and one that crosses the land's edge at the corner is cut
+// outside the land it bypasses
+function attemptJoin(arc1: Arc, side1: "start" | "end", arc2: Arc, side2: "start" | "end", invert: boolean, land: Pt[] | null): Arc[] | null {
+    const P1 = pointOnCircle(arc1, side1 === "end" ? arc1.end : arc1.start);
+    const P2 = pointOnCircle(arc2, side2 === "end" ? arc2.end : arc2.start);
+    const chord = dist(P1, P2);
+    const mid = new Pt((P1.x + P2.x) / 2, (P1.y + P2.y) / 2);
+    const loops = (join: Arc[]) => dist(pointOnCircle(join[0], join[0].end), mid) > chord / 2;
+    const fits = (join: Arc[]) => join[0].r <= MAX_JOIN_RADIUS_TO_CHORD * chord && join[0].r >= chord / 2;
+    const outside = (q: Pt) => !pointInPolygon(q, land!)
+        && land!.every((a, i) => i === 0 || closestPointOnSegment(q, land![i - 1], a).dist > 0.01);
+    const crosses = (join: Arc[]) => land !== null && join.some(arc => {
+        const sweep = Math.atan2(Math.sin(arc.end - arc.start), Math.cos(arc.end - arc.start));
+        const steps = Math.max(16, Math.ceil(arc.r * Math.abs(sweep) / 0.5));
+        return Array.from({ length: steps + 1 }, (_, i) => pointOnCircle(arc, arc.start + sweep * i / steps)).some(outside);
+    });
+
+    let join = findJoiningArcs(arc1, side1, arc2, side2, invert);
+    if (join.length === 0) return null;
+    if (loops(join)) join = findJoiningArcs(arc1, side1, arc2, side2, !invert, true);
+    return join.length > 0 && !loops(join) && fits(join) && !crosses(join) ? join : null;
+}
+
+// a c-bout usually ends heading within a few degrees of the bout arc it joins, but one whose corner
+// wraps around it ends turned out towards the corner, and a join from there scoops. past the
+// trigger its end is drawn back along C0 until the headings agree to the target, though no further
+// than the given share of the way to the waist. the trigger sits clear of every ordinary corner
+const JOIN_HEADING_TRIGGER_DEG = 15;
+const JOIN_HEADING_TARGET_DEG = 4;
+const MAX_CBOUT_EASE_TO_WAIST = 0.8;
+
+function easeCBoutEnd(cBout: Arc, side: "start" | "end", bout: Arc, boutSide: "start" | "end"): void {
+    // tangents are square to their radii, so two headings differ by the angle between the radii, mod pi
+    let gap = ((side === "end" ? cBout.end : cBout.start) - (boutSide === "end" ? bout.end : bout.start)) % Math.PI;
+    if (gap > Math.PI / 2) gap -= Math.PI;
+    if (gap < -Math.PI / 2) gap += Math.PI;
+    if (Math.abs(gap) <= JOIN_HEADING_TRIGGER_DEG * Math.PI / 180) return;
+
+    const span = Math.atan2(Math.sin(cBout.end - cBout.start), Math.cos(cBout.end - cBout.start));
+    const inward = side === "end" ? -Math.sign(span) : Math.sign(span);
+    const move = Math.sign(gap) * JOIN_HEADING_TARGET_DEG * Math.PI / 180 - gap;
+    if (Math.sign(move) !== inward) return;
+    const eased = Math.sign(move) * Math.min(Math.abs(move), Math.abs(span) / 2 * MAX_CBOUT_EASE_TO_WAIST);
+    if (side === "end") cBout.end += eased; else cBout.start += eased;
 }
 
 function retreatAngle(startAngle: number, endAngle: number, side: "start" | "end", degrees: number): number {
@@ -411,6 +467,7 @@ function joinFlutingTransition(
     arc2: Arc, side2: "start" | "end",
     invert = false,
     cBoutSide: 1 | 2 = 2,
+    land: Pt[] | null = null,
 ): Arc[] {
     const cBoutArc = cBoutSide === 1 ? arc1 : arc2;
     const cBoutJoinSide = cBoutSide === 1 ? side1 : side2;
@@ -422,7 +479,7 @@ function joinFlutingTransition(
             const angle = retreatAngle(originalStart, originalEnd, cBoutJoinSide, degrees);
             if (cBoutJoinSide === "end") cBoutArc.end = angle; else cBoutArc.start = angle;
         }
-        const join = attemptJoin(arc1, side1, arc2, side2, invert);
+        const join = attemptJoin(arc1, side1, arc2, side2, invert, land);
         if (join) return join;
     }
 
@@ -432,15 +489,27 @@ function joinFlutingTransition(
     return [];
 }
 
+// the platform edge at the channel edge's own offset, which the corner joins mustn't cross; taken at
+// the outer of the two offsets when the c-bout's differs, or C0's own end would sit outside it. an
+// offset too far in for the corner arcs to exist has no land to check against
+function flutingLand(p: EnricoCerutiParams, offset: number): Pt[] | null {
+    try {
+        return samplePathToPolyline(defineInsetPath(p, p.overhang + p.rib - offset), 0.5);
+    } catch {
+        return null;
+    }
+}
+
 export function defineFlutingArcs(p: EnricoCerutiParams, offset: number, centerOffset?: number): Arc[] {
     const flutingArcs = defineOffsetArcs(p, offset, false, centerOffset);
     // flutingArcs[2] is always C0off here: whichever side is viol, its corner arc(s)
     // (L2/U2) drop out of defineOffsetArcs, leaving C0 adjacent to L1/U1 in the array.
+    const land = flutingLand(p, Math.max(offset, centerOffset ?? offset));
 
     if (p.options.useViolCornerLC && p.options.useViolCornerUC) {
         let U4Offset = offsetArcRadius(p.bouts.U4!, offset);
         U4Offset.end = angleBeforeEnd(U4Offset, 10);
-        let upperJoin = joinFlutingTransition(flutingArcs[2], "start", U4Offset, "end", true, 1)
+        let upperJoin = joinFlutingTransition(flutingArcs[2], "start", U4Offset, "end", true, 1, land)
         flutingArcs.push(U4Offset);
         for (const arc of upperJoin) {
             flutingArcs.push(arc);
@@ -448,7 +517,7 @@ export function defineFlutingArcs(p: EnricoCerutiParams, offset: number, centerO
 
         let L4Offset = offsetArcRadius(p.bouts.L4!, offset);
         L4Offset.end = angleBeforeEnd(L4Offset, 10);
-        let lowerJoin = joinFlutingTransition(L4Offset, "end", flutingArcs[2], "end", false, 2)
+        let lowerJoin = joinFlutingTransition(L4Offset, "end", flutingArcs[2], "end", false, 2, land)
         flutingArcs.push(L4Offset);
         for (const arc of lowerJoin) {
             flutingArcs.push(arc);
@@ -458,13 +527,14 @@ export function defineFlutingArcs(p: EnricoCerutiParams, offset: number, centerO
 
 
     if (p.options.useViolCornerUC){
-        let lowerJoin = joinFlutingTransition(flutingArcs[2], "end", flutingArcs[3], "end", false, 2)
+        easeCBoutEnd(flutingArcs[3], "end", flutingArcs[2], "end");
+        let lowerJoin = joinFlutingTransition(flutingArcs[2], "end", flutingArcs[3], "end", false, 2, land)
         for (const arc of lowerJoin) {
             flutingArcs.push(arc);
         }
         let U4Offset = offsetArcRadius(p.bouts.U4!, offset);
         U4Offset.end = angleBeforeEnd(U4Offset, 12);
-        let upperJoin = joinFlutingTransition(flutingArcs[3], "start", U4Offset, "end", true, 1)
+        let upperJoin = joinFlutingTransition(flutingArcs[3], "start", U4Offset, "end", true, 1, land)
         flutingArcs.push(U4Offset);
         for (const arc of upperJoin) {
             flutingArcs.push(arc);
@@ -472,13 +542,14 @@ export function defineFlutingArcs(p: EnricoCerutiParams, offset: number, centerO
         return flutingArcs;
     }
     if (p.options.useViolCornerLC) {
-        let upperJoin = joinFlutingTransition(flutingArcs[2], "start", flutingArcs[3], "end", true, 1)
+        easeCBoutEnd(flutingArcs[2], "start", flutingArcs[3], "end");
+        let upperJoin = joinFlutingTransition(flutingArcs[2], "start", flutingArcs[3], "end", true, 1, land)
         for (const arc of upperJoin) {
             flutingArcs.push(arc);
         }
         let L4Offset = offsetArcRadius(p.bouts.L4!, offset);
         L4Offset.end = angleBeforeEnd(L4Offset, 12);
-        let lowerJoin = joinFlutingTransition(L4Offset, "end", flutingArcs[2], "end", false, 2)
+        let lowerJoin = joinFlutingTransition(L4Offset, "end", flutingArcs[2], "end", false, 2, land)
         flutingArcs.push(L4Offset);
         for (const arc of lowerJoin) {
             flutingArcs.push(arc);
@@ -487,12 +558,14 @@ export function defineFlutingArcs(p: EnricoCerutiParams, offset: number, centerO
         return flutingArcs;
     }
 
-    let lowerJoin = joinFlutingTransition(flutingArcs[2], "end", flutingArcs[3], "end", false, 2)
+    easeCBoutEnd(flutingArcs[3], "end", flutingArcs[2], "end");
+    easeCBoutEnd(flutingArcs[3], "start", flutingArcs[4], "end");
+    let lowerJoin = joinFlutingTransition(flutingArcs[2], "end", flutingArcs[3], "end", false, 2, land)
     for (const arc of lowerJoin) {
         flutingArcs.push(arc);
     }
 
-    let upperJoin = joinFlutingTransition(flutingArcs[3], "start", flutingArcs[4], "end", true, 1)
+    let upperJoin = joinFlutingTransition(flutingArcs[3], "start", flutingArcs[4], "end", true, 1, land)
     for (const arc of upperJoin) {
         flutingArcs.push(arc);
     }
@@ -599,13 +672,13 @@ export function defineOuterPath(p: EnricoCerutiParams, offset?: number, closeArc
             ? pointOnCircle(offsetArcRadius(p.bouts.U31, -inset), p.outerCorners.U31!.end)
             : pointOnCircle(offsetArcRadius(p.bouts.U3, -inset), p.outerCorners.U3.end);
         const ucPt2 = p.options.C21DoubleArc
-            ? pointOnCircle(offsetArcRadius(p.bouts.C21, -inset), p.outerCorners.C21!.end)
-            : pointOnCircle(offsetArcRadius(p.bouts.C2, -inset), p.outerCorners.C2.end);
+            ? pointOnCircle(offsetArcRadius(p.bouts.C21, cornerOffsetSign(p, 'C2') * inset), p.outerCorners.C21!.end)
+            : pointOnCircle(offsetArcRadius(p.bouts.C2, cornerOffsetSign(p, 'C2') * inset), p.outerCorners.C2.end);
 
         if (p.options.U31DoubleArc && p.options.C21DoubleArc) {
             const U31c = offsetArcRadius(p.bouts.U31, -offset);
             U31c.end = cutoffEndAtOffset(U31c, ucPt1, ucPt2, ucPt1, p.outerCorners.U31!.end);
-            const C21c = offsetArcRadius(p.bouts.C21, -offset);
+            const C21c = offsetArcRadius(p.bouts.C21, cornerOffsetSign(p, 'C2') * offset);
             C21c.end = cutoffEndAtOffset(C21c, ucPt1, ucPt2, ucPt2, p.outerCorners.C21!.end);
             paths.push(ucCornerPath(U31c, C21c));
             paths.push(ucCornerPath(flipArcAboutY(U31c), flipArcAboutY(C21c)));
@@ -613,7 +686,7 @@ export function defineOuterPath(p: EnricoCerutiParams, offset?: number, closeArc
         else if (p.options.U31DoubleArc) {
             const U31c = offsetArcRadius(p.bouts.U31, -offset);
             U31c.end = cutoffEndAtOffset(U31c, ucPt1, ucPt2, ucPt1, p.outerCorners.U31!.end);
-            const C2c = offsetArcRadius(p.bouts.C2, -offset);
+            const C2c = offsetArcRadius(p.bouts.C2, cornerOffsetSign(p, 'C2') * offset);
             C2c.end = cutoffEndAtOffset(C2c, ucPt1, ucPt2, ucPt2, p.outerCorners.C2.end);
             paths.push(ucCornerPath(U31c, C2c));
             paths.push(ucCornerPath(flipArcAboutY(U31c), flipArcAboutY(C2c)));
@@ -621,7 +694,7 @@ export function defineOuterPath(p: EnricoCerutiParams, offset?: number, closeArc
         else if (p.options.C21DoubleArc) {
             const U3c = offsetArcRadius(p.bouts.U3, -offset);
             U3c.end = cutoffEndAtOffset(U3c, ucPt1, ucPt2, ucPt1, p.outerCorners.U3.end);
-            const C21c = offsetArcRadius(p.bouts.C21, -offset);
+            const C21c = offsetArcRadius(p.bouts.C21, cornerOffsetSign(p, 'C2') * offset);
             C21c.end = cutoffEndAtOffset(C21c, ucPt1, ucPt2, ucPt2, p.outerCorners.C21!.end);
             paths.push(ucCornerPath(U3c, C21c));
             paths.push(ucCornerPath(flipArcAboutY(U3c), flipArcAboutY(C21c)));
@@ -629,7 +702,7 @@ export function defineOuterPath(p: EnricoCerutiParams, offset?: number, closeArc
         else {
             const U3c = offsetArcRadius(p.bouts.U3, -offset);
             U3c.end = cutoffEndAtOffset(U3c, ucPt1, ucPt2, ucPt1, p.outerCorners.U3.end);
-            const C2c = offsetArcRadius(p.bouts.C2, -offset);
+            const C2c = offsetArcRadius(p.bouts.C2, cornerOffsetSign(p, 'C2') * offset);
             C2c.end = cutoffEndAtOffset(C2c, ucPt1, ucPt2, ucPt2, p.outerCorners.C2.end);
             paths.push(ucCornerPath(U3c, C2c));
             paths.push(ucCornerPath(flipArcAboutY(U3c), flipArcAboutY(C2c)));
@@ -639,14 +712,14 @@ export function defineOuterPath(p: EnricoCerutiParams, offset?: number, closeArc
     if (closeArcs && !p.options.useViolCornerLC) {
         const inset = p.overhang + p.rib;
         const lcPt1 = p.options.C11DoubleArc
-            ? pointOnCircle(offsetArcRadius(p.bouts.C11, -inset), p.outerCorners.C11!.end)
-            : pointOnCircle(offsetArcRadius(p.bouts.C1, -inset), p.outerCorners.C1.end);
+            ? pointOnCircle(offsetArcRadius(p.bouts.C11, cornerOffsetSign(p, 'C1') * inset), p.outerCorners.C11!.end)
+            : pointOnCircle(offsetArcRadius(p.bouts.C1, cornerOffsetSign(p, 'C1') * inset), p.outerCorners.C1.end);
         const lcPt2 = p.options.L31DoubleArc
             ? pointOnCircle(offsetArcRadius(p.bouts.L31, -inset), p.outerCorners.L31!.end)
             : pointOnCircle(offsetArcRadius(p.bouts.L3, -inset), p.outerCorners.L3.end);
 
         if (p.options.C11DoubleArc && p.options.L31DoubleArc) {
-            const C11c = offsetArcRadius(p.bouts.C11, -offset);
+            const C11c = offsetArcRadius(p.bouts.C11, cornerOffsetSign(p, 'C1') * offset);
             C11c.end = cutoffEndAtOffset(C11c, lcPt1, lcPt2, lcPt1, p.outerCorners.C11!.end);
             const L31c = offsetArcRadius(p.bouts.L31, -offset);
             L31c.end = cutoffEndAtOffset(L31c, lcPt1, lcPt2, lcPt2, p.outerCorners.L31!.end);
@@ -654,7 +727,7 @@ export function defineOuterPath(p: EnricoCerutiParams, offset?: number, closeArc
             paths.push(lcCornerPath(flipArcAboutY(C11c), flipArcAboutY(L31c)));
         }
         else if (p.options.C11DoubleArc) {
-            const C11c = offsetArcRadius(p.bouts.C11, -offset);
+            const C11c = offsetArcRadius(p.bouts.C11, cornerOffsetSign(p, 'C1') * offset);
             C11c.end = cutoffEndAtOffset(C11c, lcPt1, lcPt2, lcPt1, p.outerCorners.C11!.end);
             const L3c = offsetArcRadius(p.bouts.L3, -offset);
             L3c.end = cutoffEndAtOffset(L3c, lcPt1, lcPt2, lcPt2, p.outerCorners.L3.end);
@@ -662,7 +735,7 @@ export function defineOuterPath(p: EnricoCerutiParams, offset?: number, closeArc
             paths.push(lcCornerPath(flipArcAboutY(C11c), flipArcAboutY(L3c)));
         }
         else if (p.options.L31DoubleArc) {
-            const C1c = offsetArcRadius(p.bouts.C1, -offset);
+            const C1c = offsetArcRadius(p.bouts.C1, cornerOffsetSign(p, 'C1') * offset);
             C1c.end = cutoffEndAtOffset(C1c, lcPt1, lcPt2, lcPt1, p.outerCorners.C1.end);
             const L31c = offsetArcRadius(p.bouts.L31, -offset);
             L31c.end = cutoffEndAtOffset(L31c, lcPt1, lcPt2, lcPt2, p.outerCorners.L31!.end);
@@ -670,7 +743,7 @@ export function defineOuterPath(p: EnricoCerutiParams, offset?: number, closeArc
             paths.push(lcCornerPath(flipArcAboutY(C1c), flipArcAboutY(L31c)));
         }
         else {
-            const C1c = offsetArcRadius(p.bouts.C1, -offset);
+            const C1c = offsetArcRadius(p.bouts.C1, cornerOffsetSign(p, 'C1') * offset);
             C1c.end = cutoffEndAtOffset(C1c, lcPt1, lcPt2, lcPt1, p.outerCorners.C1.end);
             const L3c = offsetArcRadius(p.bouts.L3, -offset);
             L3c.end = cutoffEndAtOffset(L3c, lcPt1, lcPt2, lcPt2, p.outerCorners.L3.end);
@@ -734,7 +807,7 @@ export function defineInsetPath(p: EnricoCerutiParams, delta: number): string {
 
     if (p.options.useViolCornerUC) {
         const U4off = offsetArcRadius(p.bouts.U4!, innerOffset);
-        const C2off = offsetArcRadius(p.bouts.C2, -innerOffset);
+        const C2off = offsetArcRadius(p.bouts.C2, cornerOffsetSign(p, 'C2') * innerOffset);
         const int = circleCircleIntersections(U4off, C2off);
         U4off.end = angleFromCenter(U4off, int[0]);
         C2off.end = angleFromCenter(C2off, int[0]);
@@ -744,8 +817,8 @@ export function defineInsetPath(p: EnricoCerutiParams, delta: number): string {
             ? pointOnCircle(offsetArcRadius(p.bouts.U31, -inset), p.outerCorners.U31!.end)
             : pointOnCircle(offsetArcRadius(p.bouts.U3, -inset), p.outerCorners.U3.end);
         const ucPt2 = p.options.C21DoubleArc
-            ? pointOnCircle(offsetArcRadius(p.bouts.C21, -inset), p.outerCorners.C21!.end)
-            : pointOnCircle(offsetArcRadius(p.bouts.C2, -inset), p.outerCorners.C2.end);
+            ? pointOnCircle(offsetArcRadius(p.bouts.C21, cornerOffsetSign(p, 'C2') * inset), p.outerCorners.C21!.end)
+            : pointOnCircle(offsetArcRadius(p.bouts.C2, cornerOffsetSign(p, 'C2') * inset), p.outerCorners.C2.end);
         const ucLine = insetCutoffLine(ucPt1, ucPt2, delta, p.bouts.C0);
 
         const U3off = offsetArcRadius(p.bouts.U3, -innerOffset);
@@ -761,7 +834,7 @@ export function defineInsetPath(p: EnricoCerutiParams, delta: number): string {
             cornerArcs.push(U31off, flipArcAboutY(U31off));
         }
 
-        const C2off = offsetArcRadius(p.bouts.C2, -innerOffset);
+        const C2off = offsetArcRadius(p.bouts.C2, cornerOffsetSign(p, 'C2') * innerOffset);
         let C21off: Arc | null = null;
         if (!p.options.C21DoubleArc) {
             C2off.end = cutoffEndAtOffset(C2off, ucLine.p1, ucLine.p2, ucLine.p2, p.outerCorners.C2.end);
@@ -769,7 +842,7 @@ export function defineInsetPath(p: EnricoCerutiParams, delta: number): string {
         cornerArcs.push(C2off, flipArcAboutY(C2off));
 
         if (p.options.C21DoubleArc) {
-            C21off = offsetArcRadius(p.bouts.C21, -innerOffset);
+            C21off = offsetArcRadius(p.bouts.C21, cornerOffsetSign(p, 'C2') * innerOffset);
             C21off.end = cutoffEndAtOffset(C21off, ucLine.p1, ucLine.p2, ucLine.p2, p.outerCorners.C21!.end);
             cornerArcs.push(C21off, flipArcAboutY(C21off));
         }
@@ -782,21 +855,21 @@ export function defineInsetPath(p: EnricoCerutiParams, delta: number): string {
 
     if (p.options.useViolCornerLC) {
         const L4off = offsetArcRadius(p.bouts.L4!, innerOffset);
-        const C1off = offsetArcRadius(p.bouts.C1, -innerOffset);
+        const C1off = offsetArcRadius(p.bouts.C1, cornerOffsetSign(p, 'C1') * innerOffset);
         const int = circleCircleIntersections(L4off, C1off);
         L4off.end = angleFromCenter(L4off, int[1]);
         C1off.end = angleFromCenter(C1off, int[1]);
         cornerArcs.push(L4off, flipArcAboutY(L4off), C1off, flipArcAboutY(C1off));
     } else {
         const lcPt1 = p.options.C11DoubleArc
-            ? pointOnCircle(offsetArcRadius(p.bouts.C11, -inset), p.outerCorners.C11!.end)
-            : pointOnCircle(offsetArcRadius(p.bouts.C1, -inset), p.outerCorners.C1.end);
+            ? pointOnCircle(offsetArcRadius(p.bouts.C11, cornerOffsetSign(p, 'C1') * inset), p.outerCorners.C11!.end)
+            : pointOnCircle(offsetArcRadius(p.bouts.C1, cornerOffsetSign(p, 'C1') * inset), p.outerCorners.C1.end);
         const lcPt2 = p.options.L31DoubleArc
             ? pointOnCircle(offsetArcRadius(p.bouts.L31, -inset), p.outerCorners.L31!.end)
             : pointOnCircle(offsetArcRadius(p.bouts.L3, -inset), p.outerCorners.L3.end);
         const lcLine = insetCutoffLine(lcPt1, lcPt2, delta, p.bouts.C0);
 
-        const C1off = offsetArcRadius(p.bouts.C1, -innerOffset);
+        const C1off = offsetArcRadius(p.bouts.C1, cornerOffsetSign(p, 'C1') * innerOffset);
         let C11off: Arc | null = null;
         if (!p.options.C11DoubleArc) {
             C1off.end = cutoffEndAtOffset(C1off, lcLine.p1, lcLine.p2, lcLine.p1, p.outerCorners.C1.end);
@@ -804,7 +877,7 @@ export function defineInsetPath(p: EnricoCerutiParams, delta: number): string {
         cornerArcs.push(C1off, flipArcAboutY(C1off));
 
         if (p.options.C11DoubleArc) {
-            C11off = offsetArcRadius(p.bouts.C11, -innerOffset);
+            C11off = offsetArcRadius(p.bouts.C11, cornerOffsetSign(p, 'C1') * innerOffset);
             C11off.end = cutoffEndAtOffset(C11off, lcLine.p1, lcLine.p2, lcLine.p1, p.outerCorners.C11!.end);
             cornerArcs.push(C11off, flipArcAboutY(C11off));
         }

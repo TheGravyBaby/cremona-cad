@@ -1,5 +1,6 @@
 import { Pt, Circle, Line, Rectangle, Arc } from "../models/types";
 import { pointOnCircle } from "./math/simpleGeometry";
+import { SolveFailure } from "./validators";
 
 export const renderDistanceMeasurementLine = (P: Pt, Q: Pt, label: string, color: string) => (g: any, ui: any) => {
     const dx = Q.x - P.x;
@@ -327,7 +328,7 @@ export const renderFilledPath = (path: string, fill: string, opacity: number = 0
         .attr("vector-effect", "non-scaling-stroke");
 };
 
-export const renderCircle = (C: Circle, color: string, mirrorY?: boolean) => (g: any, ui: any) => {
+export const renderCircle = (C: Circle, color: string, mirrorY?: boolean, dash?: string) => (g: any, ui: any) => {
     g.append('circle')
         .attr('cx', C.x)
         .attr('cy', C.y)
@@ -335,6 +336,7 @@ export const renderCircle = (C: Circle, color: string, mirrorY?: boolean) => (g:
         .attr('stroke', color)
         .attr('fill', 'none')
         .attr('stroke-width', 1)
+        .attr('stroke-dasharray', dash ?? null)
         .attr('vector-effect', 'non-scaling-stroke');
 
     if (mirrorY) {
@@ -345,6 +347,7 @@ export const renderCircle = (C: Circle, color: string, mirrorY?: boolean) => (g:
             .attr('stroke', color)
             .attr('fill', 'none')
             .attr('stroke-width', 1)
+            .attr('stroke-dasharray', dash ?? null)
             .attr('vector-effect', 'non-scaling-stroke');
     }
 }
@@ -849,4 +852,19 @@ export function applyTransforms(color: string, ...transforms: ColorTransform[]):
 
 export function greyOut(color: string, degree: number): string {
     return applyTransforms(color, { type: 'greyOut', degree });
+}
+export const renderSolveFailures = (failures: SolveFailure[], color: string, mirrorY = false) => (g: any, ui: any) => {
+    for (let failure of failures) {
+        for (let circle of failure.circles) {
+            renderCircle(circle, color, mirrorY, '4 4')(g, ui);
+        }
+        for (let [a, b] of failure.segments) {
+            renderDashedLine(a, b, color, '4 4', 2, 1)(g, ui);
+            if (mirrorY) renderDashedLine({ x: -a.x, y: a.y }, { x: -b.x, y: b.y }, color, '4 4', 2, 1)(g, ui);
+        }
+        for (let point of failure.points ?? []) {
+            renderCrosshair(point, color, 4)(g, ui);
+            if (mirrorY) renderCrosshair({ x: -point.x, y: point.y }, color, 4)(g, ui);
+        }
+    }
 }

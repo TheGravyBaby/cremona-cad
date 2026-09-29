@@ -323,6 +323,7 @@ export interface CerutiColors {
   fHoleStem: string;
   fHoleStemOff: string;
   fHoleCut: string;
+  pathError: string;
   neck: string;
   neckOff: string;
   neckRoot: string;
