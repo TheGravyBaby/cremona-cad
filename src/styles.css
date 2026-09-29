@@ -162,3 +162,16 @@ textarea {
   background: var(--ui-accent);
   color: #fff;
 }
+
+/* the xy point field's halves are borderless inside one shared border, so the buttons sit flush */
+.xy-field .num-stepper {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.xy-field .num-stepper-btns {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 0;
+}

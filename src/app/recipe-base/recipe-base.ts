@@ -146,33 +146,75 @@ export abstract class RecipeComponentBase implements AfterViewInit, Undoable {
     this.applyModifiedStep(e);
   }
 
+  // a [data-xy-point] box holds two number inputs (data-xy="x" / "y"): typing edits one axis,
+  // the arrows move the point from either, and Esc puts back both axes as they were on entry
+  @HostListener('focusin', ['$event'])
+  onHostFocusIn(e: FocusEvent) {
+    const target = e.target;
+    if (!(target instanceof HTMLInputElement)) return;
+    const point = target.closest<HTMLElement>('[data-xy-point]');
+    if (!point) return;
+    if (!(e.relatedTarget instanceof Node && point.contains(e.relatedTarget))) {
+      point.querySelectorAll<HTMLInputElement>('input[data-xy]').forEach(input => {
+        input.dataset['xyOriginal'] = input.value;
+      });
+    }
+    target.select();
+  }
+
   /**
    * Shift/Ctrl/Cmd+Arrow on a number input takes a bigger/smaller step than a plain arrow press:
-   * 10 with Shift, 0.1 with Ctrl (Windows/Linux) or Cmd (Mac) — see stepSize.ts. Only modified
-   * presses are intercepted — a plain arrow or a spinner click keeps using the browser's native
-   * stepping against `step="1"`. A native spinner click can't expose modifier-key state to JS,
-   * so this is keyboard-only by design.
+   * 10 with Shift, 0.1 with Ctrl (Windows/Linux) or Cmd (Mac) — see stepSize.ts. A plain arrow or
+   * a spinner click keeps the browser's native stepping against `step="1"`, except inside an xy
+   * point, which takes every arrow so Left/Right can reach x.
    */
   private applyModifiedStep(e: KeyboardEvent): void {
-    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
-    if (!(e.shiftKey || e.ctrlKey || e.metaKey)) return;
     const target = e.target;
     if (!(target instanceof HTMLInputElement) || target.type !== 'number') return;
+    const point = target.closest<HTMLElement>('[data-xy-point]');
+    const modified = e.shiftKey || e.ctrlKey || e.metaKey;
+
+    let input: HTMLInputElement | null = null;
+    let sign = 0;
+    if (point) {
+      const x = point.querySelector<HTMLInputElement>('input[data-xy="x"]');
+      const y = point.querySelector<HTMLInputElement>('input[data-xy="y"]');
+      switch (e.key) {
+        case 'ArrowRight': input = x; sign = 1; break;
+        case 'ArrowLeft': input = x; sign = -1; break;
+        case 'ArrowUp': input = y; sign = 1; break;
+        case 'ArrowDown': input = y; sign = -1; break;
+        case 'Escape':
+          for (const half of [x, y]) {
+            const original = half?.dataset['xyOriginal'];
+            if (!half || original === undefined || original === half.value) continue;
+            half.value = original;
+            half.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+          target.select();
+          return;
+      }
+    } else if (modified && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+      input = target;
+      sign = e.key === 'ArrowUp' ? 1 : -1;
+    }
+    if (!input) return;
 
     e.preventDefault();
-    const current = target.valueAsNumber;
+    const current = input.valueAsNumber;
     if (Number.isNaN(current)) return;
 
     // a field can set its own ladder with data-step-shift / data-step-fine
-    const own = e.shiftKey ? target.dataset['stepShift'] : target.dataset['stepFine'];
+    const own = !modified ? undefined : e.shiftKey ? input.dataset['stepShift'] : input.dataset['stepFine'];
     const delta = own !== undefined ? Number(own) : stepAmountForKey(e);
-    let next = current + (e.key === 'ArrowUp' ? delta : -delta);
-    if (target.min !== '') next = Math.max(next, Number(target.min));
-    if (target.max !== '') next = Math.min(next, Number(target.max));
+    let next = current + sign * delta;
+    if (input.min !== '') next = Math.max(next, Number(input.min));
+    if (input.max !== '') next = Math.min(next, Number(input.max));
     next = Math.round(next * 1e6) / 1e6;
 
-    target.value = String(next);
-    target.dispatchEvent(new Event('input', { bubbles: true }));
+    input.value = String(next);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    if (point) target.select();
   }
 
   @HostListener('mousedown', ['$event'])

@@ -26,7 +26,7 @@ scoped script is `ng test --watch=false` with an `--include`/`--exclude` glob; s
 | `npm run test:panels` | `enrico-ceruti-violin/panels/**` — panel wiring + SVG/DXF/STL export | ~15s |
 | `npm run test:draft-canvas` | `draft-canvas/**` — canvas, camera, snapping, tools | ~3s |
 | `npm run test:helpers` | `helpers/**` — instrument-agnostic math, renderers, exporters | ~4s |
-| `npm run test:shell` | `app.spec.ts`, `shared/**`, `top-bar/**` | ~4s |
+| `npm run test:shell` | `app.spec.ts`, `shared/**`, `top-bar/**`, `recipe-base/**` | ~4s |
 | `npm run test:fast` | everything except `test:arching` and `test:panels` | ~6s |
 
 These mirror the Layout table below plus the 2D/3D pipeline split documented in

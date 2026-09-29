@@ -10,7 +10,9 @@ export class DebounceController {
   constructor(private readonly postRun?: () => void) {}
 
   markImmediateFromKey(event: KeyboardEvent): void {
-    const isStep = event.key === 'ArrowUp' || event.key === 'ArrowDown';
+    const onPoint = event.target instanceof Element && !!event.target.closest('[data-xy-point]');
+    const isStep = event.key === 'ArrowUp' || event.key === 'ArrowDown'
+      || (onPoint && (event.key === 'ArrowLeft' || event.key === 'ArrowRight'));
     this.skipDebounce = isStep;
     if (isStep) this.stepBypass = true;
   }

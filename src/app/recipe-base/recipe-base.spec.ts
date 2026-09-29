@@ -1,0 +1,73 @@
+import { Component } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { RecipeComponentBase } from './recipe-base';
+
+@Component({
+  selector: 'app-point-host',
+  template: `
+    <div data-xy-point>
+      <input type="number" data-xy="x" value="10" />
+      <input type="number" data-xy="y" value="20" />
+    </div>`,
+})
+class PointHost extends RecipeComponentBase {
+  protected canOpenPanel(): boolean { return true; }
+}
+
+describe('xy point keys', () => {
+  let x: HTMLInputElement;
+  let y: HTMLInputElement;
+  let changes: string[];
+
+  const press = (target: HTMLInputElement, key: string, mods: KeyboardEventInit = {}) => {
+    const e = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...mods });
+    target.dispatchEvent(e);
+    return e;
+  };
+
+  beforeEach(() => {
+    const fixture = TestBed.createComponent(PointHost);
+    fixture.detectChanges();
+    const host: HTMLElement = fixture.nativeElement;
+    document.body.appendChild(host);
+    x = host.querySelector('[data-xy="x"]')!;
+    y = host.querySelector('[data-xy="y"]')!;
+    changes = [];
+    host.addEventListener('input', e => {
+      const input = e.target as HTMLInputElement;
+      changes.push(`${input.dataset['xy']}=${input.value}`);
+    });
+    x.focus();
+  });
+
+  it('moves both axes from either half on the modifier ladder', () => {
+    expect(press(x, 'ArrowRight').defaultPrevented).toBe(true);
+    press(x, 'ArrowUp');
+    y.focus();
+    press(y, 'ArrowLeft', { shiftKey: true });
+    press(y, 'ArrowDown', { ctrlKey: true });
+    expect(changes).toEqual(['x=11', 'y=21', 'x=1', 'y=20.9']);
+  });
+
+  it('leaves an empty half alone, and still blocks the native step', () => {
+    x.value = '';
+    expect(press(x, 'ArrowRight').defaultPrevented).toBe(true);
+    expect(press(x, 'ArrowUp').defaultPrevented).toBe(true);
+    expect(x.value).toBe('');
+    expect(changes).toEqual(['y=21']);
+  });
+
+  it('lets ordinary typing through', () => {
+    expect(press(x, '7').defaultPrevented).toBe(false);
+    expect(press(x, 'Home').defaultPrevented).toBe(false);
+  });
+
+  it('restores both axes to when focus entered the point on Escape', () => {
+    press(x, 'ArrowRight');
+    y.focus();
+    press(y, 'ArrowUp');
+    press(y, 'Escape');
+    expect([x.value, y.value]).toEqual(['10', '20']);
+  });
+});
