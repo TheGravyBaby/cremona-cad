@@ -2,10 +2,11 @@ import { Component, Input } from '@angular/core';
 import { inject } from '@angular/core';
 import { DraftTool } from '../tools/draft-tool';
 import { ToolboxStore, PanelChoice } from '../tools/toolbox-store';
+import { SelectionStore } from '../tools/selection-store';
 import { ImageAssetStore } from '../tools/image-asset-store';
 import {
   DraftShape, LineShape, DimensionShape, RectShape, TextShape, PointShape, CircleShape, ArcShape, SectionShape, TicksShape,
-  FreehandShape, ImageShape, DEFAULT_IMAGE_OPACITY, DEFAULT_SHAPE_COLOR, DEFAULT_FREEHAND_WIDTH,
+  FreehandShape, PathShape, ImageShape, DEFAULT_IMAGE_OPACITY, DEFAULT_SHAPE_COLOR, DEFAULT_FREEHAND_WIDTH,
   DEFAULT_TEXT_SIZE_MM, applyImageCrop, applyImageSize, isCropped,
 } from '../tools/toolbox-shape';
 import { ImageCrop } from '../../models/types';
@@ -15,7 +16,8 @@ import { normalizeDegrees, pointAtDistanceToward } from '../../helpers/math/simp
  * The Inkscape-style contextual settings strip along the bottom bar: color, then whichever
  * shape-type panel's numeric fields apply (based on the active tool or the current selection),
  * then simple toggles (Dashed, Compass, Equal segments). Everything here is a thin wrapper
- * around ToolboxStore — draft-canvas.ts only needs to pass down activeTool/selectedShape.
+ * around ToolboxStore, reading the selection straight from SelectionStore — draft-canvas.ts only
+ * needs to pass down activeTool.
  */
 @Component({
   selector: 'app-settings-bar',
@@ -27,12 +29,15 @@ import { normalizeDegrees, pointAtDistanceToward } from '../../helpers/math/simp
 export class SettingsBarComponent {
   private toolbox = inject(ToolboxStore);
   private imageAssets = inject(ImageAssetStore);
+  private selection = inject(SelectionStore);
 
   @Input() activeTool: DraftTool | null = null;
-  @Input() selectedShape: DraftShape | undefined = undefined;
-  /** The full selection, however many shapes — unlike `selectedShape` (only set for exactly
-   * one), this drives group-editable settings like color that apply across a multi-selection. */
-  @Input() selectedShapes: DraftShape[] = [];
+
+  /** Set only for exactly one selected shape — what the per-type numeric panels edit. */
+  public get selectedShape(): DraftShape | undefined { return this.selection.shape; }
+  /** The full selection, however many shapes — drives group-editable settings like color that
+   * apply across a multi-selection. */
+  public get selectedShapes(): DraftShape[] { return this.selection.shapes; }
 
   /** Narrows the current selection to one shape type, for a settings panel's own `selectedXShape` getter. */
   private selectedShapeOfType<T extends DraftShape['type']>(type: T): Extract<DraftShape, { type: T }> | undefined {
@@ -84,7 +89,7 @@ export class SettingsBarComponent {
   /** Friendly name for each shape type, used by groupTitle when the settings reflect a selection. */
   private static readonly SHAPE_TYPE_LABELS: Record<DraftShape['type'], string> = {
     line: 'Line', arc: 'Arc', circle: 'Circle', dimension: 'Distance', rect: 'Box', section: 'Section', ticks: 'Ticks', text: 'Text', point: 'Point',
-    freehand: 'Drawing', image: 'Reference Image',
+    freehand: 'Drawing', path: 'Path', image: 'Reference Image',
   };
 
   /** Heading shown above the settings strip so it's clear what "Color"/"Dashed"/etc. apply to —
@@ -118,13 +123,14 @@ export class SettingsBarComponent {
     this.toolbox.updateShapes(patches);
   }
 
-  /** Dashed applies to Line, Rect and Circle — a shared pen setting (like currentColor), not a
-   * per-tool one, so it's one common control rather than three near-identical toggles. */
+  /** Dashed applies to Line, Rect, Circle and Path — a shared pen setting (like currentColor), not
+   * a per-tool one, so it's one common control rather than several near-identical toggles. */
   private static readonly DASHABLE_TOOL_IDS = new Set(['line', 'rect', 'circle']);
 
-  private get selectedDashableShapes(): (LineShape | RectShape | CircleShape)[] {
+  private get selectedDashableShapes(): (LineShape | RectShape | CircleShape | PathShape)[] {
     return this.selectedShapes.filter(
-      (s): s is LineShape | RectShape | CircleShape => s.type === 'line' || s.type === 'rect' || s.type === 'circle');
+      (s): s is LineShape | RectShape | CircleShape | PathShape =>
+        s.type === 'line' || s.type === 'rect' || s.type === 'circle' || s.type === 'path');
   }
 
   public get showDashedToggle(): boolean {

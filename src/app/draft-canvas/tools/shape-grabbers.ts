@@ -34,6 +34,7 @@ export function moveGrabberPosition(shape: DraftShape): Pt | null {
     case 'point':
       return null;
     case 'freehand':
+    case 'path':
       // Null for the same reason as Text/Point: the stroke itself is the unambiguous drag
       // target (hitTestMoveHandle falls back to distanceToShape when this is null), and a
       // scribble has no natural "center" a handle should sit at anyway.
@@ -127,6 +128,7 @@ export function endpointGrabbers(shape: DraftShape, pxPerMm: number): EndpointGr
     }
     case 'point':
     case 'freehand':
+    case 'path':
       return null;
     case 'image': {
       const corners = imageCorners(shape);

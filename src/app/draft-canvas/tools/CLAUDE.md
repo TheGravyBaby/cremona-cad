@@ -15,9 +15,18 @@ Most files here carry a header comment explaining their own contract. Read it be
   row = one palette row; a nested array = one button plus a caret holding variants of the same
   shape kind.
 - **`toolbox-store.ts`** — root singleton holding drawn shapes, with undo/redo. Persisted through
-  `helpers/workingStorage.ts`, so shapes survive a reload but not the tab closing. Still a scratch
-  annotation layer, deliberately not part of the saved recipe.
+  `helpers/workingStorage.ts`, so shapes survive a reload but not the tab closing, and written
+  into the recipe file as `toolboxState` on save (see `RecipeComponentBase.serializeRecipe`).
+  `addShapes`/`removeShapes`/`updateShapes` are the batched forms: one history step for a whole
+  selection, which is what paste, Delete and a nudge want.
+- **`selection-store.ts`** — root singleton holding what is selected, as refs rather than shapes.
+  Read by the canvas, the settings bar and anything that acts on a selection; only the canvas
+  writes it. Prunes itself when a shape stops being editable. The `scene` ref source is
+  reserved for recipe geometry once the scene index exists.
 - **`toolbox-shape.ts`** — `DraftShape`, the method-free plain-object union. See below.
+  `PathShape` is the catch-all: absolute M/L/C/Q/A/Z path data, hit-tested and bounded off a
+  sampled polyline, moved as one rigid body. Nothing draws one yet; it exists for copied recipe
+  geometry, imported curves and rects rotated off-axis.
 - **`snap-engine.ts`** — indexes snap candidates by reading the *rendered SVG*, not recipe data,
   so it works for any recipe and for toolbox shapes alike.
 - **`shape-renderer.ts` / `shape-grabbers.ts` / `shape-hit-test.ts`** — drawing, handles, picking.

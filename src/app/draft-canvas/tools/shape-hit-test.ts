@@ -2,6 +2,28 @@ import { Pt } from '../../models/types';
 import { DEFAULT_TEXT_SIZE_MM, DraftShape, ImageShape, TextShape, dimensionGeometry, imageCenter, imageCorners } from './toolbox-shape';
 import { angleFromCenter, angleWithinSweep, closestPointOnSegment, dist, normalizeRadians, pointOnCircle, rotatePointAbout } from '../../helpers/math/simpleGeometry';
 import { SECTION_THICKNESS_MM, TEXT_LINE_HEIGHT_RATIO, tickLengthMm } from './shape-renderer';
+import { samplePathToPolyline } from '../../helpers/math/pathMath';
+
+// sampled once per distinct `d`: a pointerdown probes every shape and a marquee bounds every
+// shape, so a long outline would otherwise be re-walked on each click. Keyed by the string
+// rather than the shape, since every store patch makes a new shape object around the same `d`.
+const PATH_SAMPLE_STEP_MM = 1;
+const PATH_SAMPLE_CACHE_MAX = 256;
+const pathSampleCache = new Map<string, Pt[]>();
+
+function pathSamples(d: string): Pt[] {
+  const cached = pathSampleCache.get(d);
+  if (cached) return cached;
+  let pts: Pt[];
+  try {
+    pts = samplePathToPolyline(d, PATH_SAMPLE_STEP_MM, true);
+  } catch {
+    pts = [];
+  }
+  if (pathSampleCache.size >= PATH_SAMPLE_CACHE_MAX) pathSampleCache.clear();
+  pathSampleCache.set(d, pts);
+  return pts;
+}
 
 function distanceToArc(p: Pt, center: Pt, radius: number, startAngle: number, endAngle: number): number {
   if (angleWithinSweep(angleFromCenter(center, p), startAngle, endAngle)) {
@@ -151,6 +173,8 @@ export function distanceToShape(p: Pt, shape: DraftShape): number {
       return dist(p, shape.position);
     case 'freehand':
       return distanceToFreehand(p, shape.points);
+    case 'path':
+      return distanceToFreehand(p, pathSamples(shape.d));
     case 'image':
       return distanceToImage(p, shape);
   }
@@ -161,6 +185,18 @@ export interface ShapeBounds {
   y0: number;
   x1: number;
   y1: number;
+}
+
+// an empty list (a path that failed to parse) bounds to a point at the origin, which a marquee
+// there would catch — harmless, since such a path draws nothing to select
+function pointsBounds(points: Pt[]): ShapeBounds {
+  if (points.length === 0) return { x0: 0, y0: 0, x1: 0, y1: 0 };
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const pt of points) {
+    x0 = Math.min(x0, pt.x); x1 = Math.max(x1, pt.x);
+    y0 = Math.min(y0, pt.y); y1 = Math.max(y1, pt.y);
+  }
+  return { x0, y0, x1, y1 };
 }
 
 /** Axis-aligned bounding box of a toolbox shape's geometry, in world mm — used for
@@ -227,14 +263,10 @@ export function shapeBounds(shape: DraftShape): ShapeBounds {
       return textBounds(shape);
     case 'point':
       return { x0: shape.position.x, x1: shape.position.x, y0: shape.position.y, y1: shape.position.y };
-    case 'freehand': {
-      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-      for (const pt of shape.points) {
-        x0 = Math.min(x0, pt.x); x1 = Math.max(x1, pt.x);
-        y0 = Math.min(y0, pt.y); y1 = Math.max(y1, pt.y);
-      }
-      return { x0, y0, x1, y1 };
-    }
+    case 'freehand':
+      return pointsBounds(shape.points);
+    case 'path':
+      return pointsBounds(pathSamples(shape.d));
     case 'image': {
       // A rotated image's marquee bound is the box around its four rotated corners, not its
       // unrotated w×h — same reasoning as sampling an arc's actual sweep above.

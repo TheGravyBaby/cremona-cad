@@ -1,5 +1,6 @@
 import { Pt } from '../../models/types';
 import { DraftShape } from './toolbox-shape';
+import { translatePath } from '../../helpers/math/pathMath';
 
 function shiftPt(p: Pt, dx: number, dy: number): Pt {
   return { x: p.x + dx, y: p.y + dy };
@@ -25,6 +26,8 @@ export function translateShape(shape: DraftShape, dx: number, dy: number): Draft
       return { ...shape, position: shiftPt(shape.position, dx, dy) };
     case 'freehand':
       return { ...shape, points: shape.points.map(p => shiftPt(p, dx, dy)) };
+    case 'path':
+      return { ...shape, d: translatePath(shape.d, dx, dy) };
     case 'image':
       return { ...shape, x: shape.x + dx, y: shape.y + dy };
   }

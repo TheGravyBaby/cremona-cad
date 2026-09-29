@@ -325,16 +325,28 @@ export class ToolboxStore implements Undoable {
   }
 
   addShape(shape: DraftShape): void {
-    // A brand-new shape has no lock of its own to consult; what matters is whether the layer it
-    // would land on accepts it. Images don't land on one, so they're always accepted.
-    if (shape.type !== 'image' && this.layerFor(shape)?.locked) return;
-    this.applyMutation([...this.shapes, shape]);
+    this.addShapes([shape]);
+  }
+
+  /** One history step for the lot — a paste, a duplicate, an ungroup. A brand-new shape has no
+   * lock of its own to consult; what matters is whether the layer it would land on accepts it.
+   * Images don't land on one, so they're always accepted. */
+  addShapes(shapes: DraftShape[]): void {
+    const accepted = shapes.filter(s => s.type === 'image' || !this.layerFor(s)?.locked);
+    if (accepted.length === 0) return;
+    this.applyMutation([...this.shapes, ...accepted]);
   }
 
   removeShape(id: string): void {
-    const shape = this.shapes.find(s => s.id === id);
-    if (!shape || this.isShapeLocked(shape)) return;
-    this.applyMutation(this.shapes.filter(s => s.id !== id));
+    this.removeShapes([id]);
+  }
+
+  /** One history step for the lot — Delete on a multi-selection. Locked shapes stay. */
+  removeShapes(ids: string[]): void {
+    const wanted = new Set(ids);
+    const next = this.shapes.filter(s => !wanted.has(s.id) || this.isShapeLocked(s));
+    if (next.length === this.shapes.length) return;
+    this.applyMutation(next);
   }
 
   // ===== Per-image view state =====
