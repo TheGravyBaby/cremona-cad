@@ -131,6 +131,16 @@ export function drawShape(gRoot: RootGroup, gUI: RootGroup, shape: DraftShape, p
       crossLine(shape.position.x, shape.position.y - half, shape.position.x, shape.position.y + half);
       break;
     }
+    case 'path': {
+      const path = gRoot.append('path')
+        .attr('d', shape.d)
+        .attr('fill', 'none')
+        .attr('stroke', color)
+        .attr('stroke-width', 1.5)
+        .attr('vector-effect', 'non-scaling-stroke');
+      if (shape.dashed) path.attr('stroke-dasharray', DASH_PATTERN);
+      break;
+    }
     case 'freehand':
       // Not a snap candidate — a scribble isn't construction geometry (see SnapEngine's
       // `[data-no-snap]` filter).
@@ -650,6 +660,9 @@ export function drawSelectionHalo(gRoot: RootGroup, gUI: RootGroup, shape: Draft
       break;
     case 'freehand':
       halo(gRoot.append('path').attr('d', freehandPathData(shape.points)));
+      break;
+    case 'path':
+      halo(gRoot.append('path').attr('d', shape.d));
       break;
     case 'image': {
       // An outline rather than a fill: a translucent wash over the picture would fight the

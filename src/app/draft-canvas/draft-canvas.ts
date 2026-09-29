@@ -16,6 +16,7 @@ import { AxisGridController, AxisGridPreferences, CanvasViewport } from './axis-
 import { DraftTool, DraftToolHost } from './tools/draft-tool';
 import { ToolRegistryService } from './tools/tool-registry';
 import { ToolboxStore } from './tools/toolbox-store';
+import { SelectionStore, toolboxRef } from './tools/selection-store';
 import { ImageAssetStore, prepareLinkedImage, prepareUploadedImage } from './tools/image-asset-store';
 import {
   drawShape, drawImageShape, drawSelectionHalo, drawMoveGrabber, drawEndpointGrabber, drawAreaSelectBox,
@@ -70,6 +71,8 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private imageAssetsUnsub?: () => void;
   private toolbox = inject(ToolboxStore);
   private toolboxUnsub?: () => void;
+  private selection = inject(SelectionStore);
+  private selectionUnsub?: () => void;
   private toolRegistry = inject(ToolRegistryService);
   private toolRegistryUnsub?: () => void;
   public get activeTool(): DraftTool | null { return this.toolRegistry.activeTool; }
@@ -91,14 +94,14 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     getSnapTangent: () => this.activeSnap?.tangent,
     isAngleLockHeld: () => this.isAngleLockHeld,
     isTangentLockHeld: () => this.isTangentLockHeld,
-    getSelectedShapes: () => this.selectedShapes,
+    getSelectedShapes: () => this.selection.shapes,
     getPxPerMm: () => this.pxPerMm,
     hitTestShape: (pt) => this.hitTestToolboxShape(pt),
-    selectShape: (id) => this.setSelectedShape(id),
+    selectShape: (id) => this.selection.select(toolboxRef(id)),
     removeShape: (id) => this.toolbox.removeShape(id),
     returnToSelect: (selectShapeId) => {
       this.toolRegistry.selectTool(null);
-      if (selectShapeId) this.setSelectedShape(selectShapeId);
+      if (selectShapeId) this.selection.select(toolboxRef(selectShapeId));
       this.draw();
     },
   };
@@ -121,8 +124,8 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   // Select mode, with no active tool) can force an on-demand rebuild; see ensureSnapIndex().
   private snapLayer: d3.Selection<SVGGElement, unknown, null, undefined> | null = null;
 
-  // Selection (Select tool, i.e. activeTool === null): which toolbox shape(s), if any, are
-  // picked. Plain click replaces the selection; shift-click toggles a shape in/out of it.
+  // Selection (Select tool, i.e. activeTool === null) lives in SelectionStore: a plain click
+  // replaces it and shift-click toggles a shape in or out — see onPointerDown.
   private static readonly SELECT_HIT_TOLERANCE_PX = 6;
   private static readonly MOVE_GRABBER_HIT_TOLERANCE_PX = 9;
   // Three nudge steps on the same modifier ladder number fields use (see stepSize.ts's
@@ -137,8 +140,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     ArrowLeft: [-1, 0],
     ArrowRight: [1, 0],
   };
-  private selectedShapeIds = new Set<string>();
-
   // Drag-to-move: pointerdown on an already-selected shape arms a potential move; it only
   // becomes a real drag once the pointer clears a small threshold (so a plain click still just
   // selects). While dragging, the moved shapes are rendered from `dragOverrides` — a live,
@@ -328,12 +329,11 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     // (e.g. recipe-base's undo/redo keyboard handler)
     this.toolboxUnsub = this.toolbox.onChange(() => {
       this.snapDirty = true;
-      const editableIds = new Set(this.toolbox.getEditableShapes().map(s => s.id));
-      for (const id of this.selectedShapeIds) {
-        if (!editableIds.has(id)) this.selectedShapeIds.delete(id);
-      }
       this.draw();
     });
+    // the selection prunes itself when a shape stops being editable (see SelectionStore); this
+    // only keeps the halos and handles in step with it
+    this.selectionUnsub = this.selection.onChange(() => this.draw());
 
     this.toolRegistryUnsub = this.toolRegistry.onChange(() => this.onActiveToolChanged());
     // Lets a tool activated from the palette or a hotkey reach the canvas from its onActivate
@@ -366,6 +366,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.host.nativeElement.removeEventListener('keyup', this.onKeyUp);
     document.removeEventListener('keydown', this.onKeyDown);
     this.toolboxUnsub?.();
+    this.selectionUnsub?.();
     this.imageAssetsUnsub?.();
     this.toolRegistryUnsub?.();
   }
@@ -401,7 +402,8 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
     this.axisGrid.draw(this.gRoot, this.gUI, cv, this.pxPerMm);
 
-    if (this.selectedShapeIds.size) {
+    const selected = this.selection.shapes;
+    if (selected.length) {
       // Handles are drawn only when they can actually be dragged. An armed drawing tool takes
       // every click before Select mode's grabber hit-testing is reached (see onPointerDown), so
       // with one active a handle is a control that does nothing — worse, clicking the Text tool
@@ -409,10 +411,8 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       // works *on* the selection, so its handles stay meaningful. The halo is unconditional
       // either way — it says which shape the settings strip is describing.
       const showHandles = !this.activeTool || !!this.activeTool.actsOnSelection;
-      const editable = this.toolbox.getEditableShapes();
-      for (const id of this.selectedShapeIds) {
-        const shape = this.dragOverrides?.get(id) ?? editable.find(s => s.id === id);
-        if (!shape) continue;
+      for (const selectedShape of selected) {
+        const shape = this.dragOverrides?.get(selectedShape.id) ?? selectedShape;
         drawSelectionHalo(this.gRoot, this.gUI, shape, this.pxPerMm);
         if (!showHandles) continue;
         const grabberPos = moveGrabberPosition(shape);
@@ -517,7 +517,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     // Selection-acting tools (e.g. Offset) run against a selection made in Select mode before
     // they were activated, so it must survive activation — every other tool draws fresh shapes
     // and has no use for a stale selection.
-    if (this.activeTool && !this.activeTool.actsOnSelection) this.selectedShapeIds.clear();
+    if (this.activeTool && !this.activeTool.actsOnSelection) this.selection.clear();
     this.draw();
   }
 
@@ -621,52 +621,8 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     return shape?.type === 'text' ? shape : undefined;
   }
 
-  /** Plain click: replaces the whole selection with just `id` (or clears it if null). */
-  private setSelectedShape(id: string | null): void {
-    if (this.selectedShapeIds.size === (id ? 1 : 0) && (!id || this.selectedShapeIds.has(id))) return;
-    this.selectedShapeIds = id ? new Set([id]) : new Set();
-    this.revealSelectedImage(id);
-    this.draw();
-  }
-
-  /** A selected image shows even where panel scoping would hide it, so editing its scoping
-   * doesn't make it and its controls disappear as you type. See ToolboxStore.setRevealedImage. */
-  private revealSelectedImage(id: string | null): void {
-    const isImage = !!id && this.toolbox.getImageShapes().some(s => s.id === id);
-    this.toolbox.setRevealedImage(isImage ? id : null);
-  }
-
-  /** Shift-click: adds/removes one shape from the selection, leaving the rest untouched.
-   * A shift-click on empty space (id === null) is a no-op — it doesn't clear anything. */
-  private toggleSelected(id: string | null): void {
-    if (!id) return;
-    if (this.selectedShapeIds.has(id)) this.selectedShapeIds.delete(id);
-    else this.selectedShapeIds.add(id);
-    this.draw();
-  }
-
-  private clearSelection(): void {
-    if (this.selectedShapeIds.size === 0) return;
-    this.selectedShapeIds.clear();
-    this.toolbox.setRevealedImage(null);
-    this.draw();
-  }
-
-  /** The single selected shape, or undefined when zero or more than one are selected —
-   * per-shape-type settings panels only make sense for exactly one shape (see tool-palette.ts). */
-  public get selectedShape(): DraftShape | undefined {
-    if (this.selectedShapeIds.size !== 1) return undefined;
-    const [id] = this.selectedShapeIds;
-    return this.toolbox.getEditableShapes().find(s => s.id === id);
-  }
-
-  public get selectedShapes(): DraftShape[] {
-    if (this.selectedShapeIds.size === 0) return [];
-    return this.toolbox.getEditableShapes().filter(s => this.selectedShapeIds.has(s.id));
-  }
-
-  public get selectedCount(): number {
-    return this.selectedShapeIds.size;
+  private get selectedShapes(): DraftShape[] {
+    return this.selection.shapes;
   }
 
   // ===== Debug dump =====
@@ -1062,11 +1018,11 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
           const b = shapeBounds(shape);
           return b.x0 >= box.x0 && b.x1 <= box.x1 && b.y0 >= box.y0 && b.y1 <= box.y1;
         });
-        this.selectedShapeIds = this.areaSelectAdditive
-          ? new Set([...this.selectedShapeIds, ...contained.map(s => s.id)])
-          : new Set(contained.map(s => s.id));
+        const refs = contained.map(s => toolboxRef(s.id));
+        if (this.areaSelectAdditive) this.selection.add(refs);
+        else this.selection.set(refs);
       } else if (!this.areaSelectAdditive) {
-        this.selectedShapeIds.clear();
+        this.selection.clear();
       }
       this.areaSelectAnchor = null;
       this.areaSelectCurrent = null;
@@ -1105,18 +1061,17 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     if (event.key === 'Escape') {
       if (this.activeTool) {
         this.selectTool(null);
-      } else if (this.selectedShapeIds.size) {
-        this.clearSelection();
+      } else if (this.selection.size) {
+        this.selection.clear();
       }
       event.preventDefault();
       return;
     }
 
-    // Select mode: Delete/Backspace removes the current selection
-    if (!this.activeTool && this.selectedShapeIds.size) {
+    // Select mode: Delete/Backspace removes the current selection as one undo step
+    if (!this.activeTool && this.selection.size) {
       if (event.code === 'Delete' || event.code === 'Backspace') {
-        for (const id of this.selectedShapeIds) this.toolbox.removeShape(id);
-        this.selectedShapeIds.clear();
+        this.toolbox.removeShapes(this.selectedShapes.map(s => s.id));
         event.preventDefault();
         return;
       }
@@ -1125,7 +1080,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     // Select mode: Enter on a single selected label opens its editor — the keyboard route to
     // the same thing double-click does, for someone who just arrow-nudged a label into place and
     // does not want to go back to the mouse.
-    if (!this.activeTool && event.code === 'Enter' && this.selectedShapeIds.size === 1) {
+    if (!this.activeTool && event.code === 'Enter' && this.selection.size === 1) {
       const [only] = this.selectedShapes;
       if (only?.type === 'text') {
         this.startEditingText(only.id);
@@ -1137,18 +1092,17 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     // Select mode: arrow keys nudge every selected shape (in world mm) instead of panning
     // the camera — Shift gives a coarser step, Ctrl (or Cmd on Mac) a finer one, matching how
     // a number field steps. Shift wins when both are held, as it does there.
-    if (!this.activeTool && this.selectedShapeIds.size) {
+    if (!this.activeTool && this.selection.size) {
       const dir = DraftCanvasComponent.ARROW_NUDGE_DIRECTION[event.code];
       if (dir) {
         const stepMm = event.shiftKey ? DraftCanvasComponent.NUDGE_STEP_MM_COARSE
           : (event.ctrlKey || event.metaKey) ? DraftCanvasComponent.NUDGE_STEP_MM_FINE
             : DraftCanvasComponent.NUDGE_STEP_MM_BASE;
         const [dx, dy] = [dir[0] * stepMm, dir[1] * stepMm];
-        const editable = this.toolbox.getEditableShapes();
-        for (const id of this.selectedShapeIds) {
-          const shape = editable.find(s => s.id === id);
-          if (shape) this.toolbox.updateShape(id, translateShape(shape, dx, dy));
-        }
+        // one history step for the whole selection, like a drag-move
+        const patches = new Map<string, Partial<DraftShape>>(
+          this.selectedShapes.map(s => [s.id, translateShape(s, dx, dy)]));
+        this.toolbox.updateShapes(patches);
         event.preventDefault();
         return;
       }
@@ -1268,7 +1222,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
           // (content, Size, Angle, X/Y) rather than just the pen's — reaching a label through the
           // Text tool is still reaching that label, and it should not matter which tool got you
           // there. Same pairing onDoubleClick makes.
-          this.setSelectedShape(existing.id);
+          this.selection.select(toolboxRef(existing.id));
           this.startEditingText(existing.id);
           this.host.nativeElement.setPointerCapture(event.pointerId);
           return;
@@ -1289,7 +1243,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
         const shapes = this.toolbox.getShapes();
         const newest = shapes[shapes.length - 1];
         if (newest?.type === 'text') {
-          this.setSelectedShape(newest.id);
+          this.selection.select(toolboxRef(newest.id));
           this.startEditingText(newest.id, true);
         }
         this.draw();
@@ -1308,7 +1262,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     // excluded from arming either drag so single-finger touch keeps its existing "always pans" behavior.
     if (!this.activeTool && isPrimary && !modifierHeld && !this.isSpaceDown) {
       const pt = this.worldFromPointer(event);
-      const endpointHit = !event.shiftKey && !isTouch && this.selectedShapeIds.size
+      const endpointHit = !event.shiftKey && !isTouch && this.selection.size
         ? this.hitTestEndpointGrabber(pt) : null;
       if (endpointHit) {
         const shape = this.selectedShapes.find(s => s.id === endpointHit.shapeId)!;
@@ -1317,7 +1271,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
         this.activeSnap = null;
         this.ensureSnapIndex();
         this.host.nativeElement.setPointerCapture(event.pointerId);
-      } else if (!event.shiftKey && !isTouch && this.selectedShapeIds.size && this.hitTestMoveHandle(pt)) {
+      } else if (!event.shiftKey && !isTouch && this.selection.size && this.hitTestMoveHandle(pt)) {
         this.dragAnchor = pt;
         this.dragOriginals = this.selectedShapes;
         this.isDraggingSelection = false;
@@ -1325,12 +1279,12 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       } else {
         const hitId = this.hitTestToolboxShape(pt);
         if (hitId) {
-          if (event.shiftKey) this.toggleSelected(hitId);
-          else this.setSelectedShape(hitId);
+          if (event.shiftKey) this.selection.toggle(toolboxRef(hitId));
+          else this.selection.select(toolboxRef(hitId));
         } else if (isTouch) {
           // Touch keeps its existing immediate-click behavior — it also falls through to the
           // pan-arming block below, so a marquee drag would conflict with that single-finger pan.
-          if (!event.shiftKey) this.setSelectedShape(null);
+          if (!event.shiftKey) this.selection.clear();
         } else {
           // Empty space: arm a potential marquee rather than deciding now — onPointerUp
           // resolves it as either a plain click (never dragged) or an area-select (dragged
@@ -1483,10 +1437,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
    * a drawing tool being active would hide the selection it just made. */
   selectShapeById(id: string): void {
     this.toolRegistry.selectTool(null);
-    this.setSelectedShape(id);
-    // setSelectedShape short-circuits on an already-selected shape, which is exactly when a panel
-    // change may have dropped the reveal — ask again regardless.
-    this.revealSelectedImage(id);
+    this.selection.select(toolboxRef(id));
   }
 
   // the file picker has to live here since an <input type="file"> can only be opened by a real
@@ -1533,7 +1484,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.toolbox.setShowImages(true);
     this.toolbox.addShape(shape);
     this.toolRegistry.selectTool(null);
-    this.setSelectedShape(shape.id);
+    this.selection.select(toolboxRef(shape.id));
     this.draw();
   }
 
@@ -1604,7 +1555,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     // including on top of other shapes.
     const doubleClicked = this.textShapeAt(pt);
     if (doubleClicked) {
-      this.setSelectedShape(doubleClicked.id);
+      this.selection.select(toolboxRef(doubleClicked.id));
       this.startEditingText(doubleClicked.id);
       return;
     }

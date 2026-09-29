@@ -136,6 +136,17 @@ export type FreehandShape = ShapeBase & {
 
 export const DEFAULT_FREEHAND_WIDTH = 2;
 
+// Any geometry at all, as absolute SVG path data in world mm — the catch-all. What a copied piece
+// of recipe output becomes, what an imported curve becomes, what a rect turns into once rotated
+// off-axis. Moves as one rigid body with no endpoint handles. Only the M, L, C, Q, A and Z
+// commands, absolute: the subset every path helper in helpers/math/pathMath.ts understands, so
+// keep whatever writes `d` inside it.
+export type PathShape = ShapeBase & {
+  type: 'path';
+  d: string;
+  dashed?: boolean;
+};
+
 // A photo or scan placed on the canvas to trace over — an instrument's plan view, a long-arch
 // profile, a drawing from a book. Geometry only: the pixels live in ImageAssetStore under
 // `imageRef`, so undo snapshots and sessionStorage writes stay cheap (see image-asset-store.ts).
@@ -215,7 +226,7 @@ export const DEFAULT_IMAGE_OPACITY = 0.25;
  */
 export type DraftShape =
   | LineShape | ArcShape | CircleShape | DimensionShape | RectShape | SectionShape | TicksShape | TextShape | PointShape
-  | FreehandShape | ImageShape;
+  | FreehandShape | PathShape | ImageShape;
 
 /** An image's box center, about which `rotationDeg` turns it. */
 export function imageCenter(shape: ImageShape): Pt {

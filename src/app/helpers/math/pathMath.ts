@@ -871,9 +871,10 @@ export function rotatePath180(path: string): string {
 /**
  * Sample an SVG path string into a polyline at roughly `stepMm` spacing.
  * The path is assumed closed (or close to it); the duplicate closing point
- * is not emitted, so consumers can treat the result as a closed loop.
+ * is not emitted, so consumers can treat the result as a closed loop —
+ * unless `includeEnd` is set, for an open path whose far end matters.
  */
-export function samplePathToPolyline(path: string, stepMm = 1): Pt[] {
+export function samplePathToPolyline(path: string, stepMm = 1, includeEnd = false): Pt[] {
   const props = new svgPathProperties(path.trim());
   const len = props.getTotalLength();
   const n = Math.max(8, Math.ceil(len / stepMm));
@@ -881,6 +882,10 @@ export function samplePathToPolyline(path: string, stepMm = 1): Pt[] {
   for (let i = 0; i < n; i++) {
     const pt = props.getPointAtLength((i / n) * len);
     pts.push({ x: pt.x, y: pt.y });
+  }
+  if (includeEnd) {
+    const end = props.getPointAtLength(len);
+    pts.push({ x: end.x, y: end.y });
   }
   return pts;
 }
