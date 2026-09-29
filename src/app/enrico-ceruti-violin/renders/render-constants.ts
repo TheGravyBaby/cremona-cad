@@ -24,9 +24,9 @@ export const STROKE_WEIGHT = {
  *  contrast/saturation adjustment for the current theme — nothing here is drawn as-is. */
 export const CERUTI_COLOR_PALETTE = {
   upperBout: '#4D8660',
-  centerBoutUp: '#C24B2E',
+  centerBoutUp: '#c2642e',
   centerBout: '#A97645',
-  centerBoutLow: '#e1bf50ff',
+  centerBoutLow: 'rgb(225, 174, 80)',
   lowerBout: '#4D74A8',
   violNeck: '#248f48ff',
   innerTrace: '#868484ff',
@@ -45,6 +45,7 @@ export const CERUTI_COLOR_PALETTE = {
   // the cut is the only warm thing in the f-hole drawing, and the only straight line the maker
   // actually cuts — everything either side of it is an arc
   fHoleCut: '#e08a1e',
+  pathError: '#d62828',
   neck: '#b07a3c',
   neckRoot: '#d2691e',
   fingerboard: '#6f4d9a',

@@ -1,10 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { defaultViolin, geometryDiff } from '../../ceruti-fixtures';
 import { defaultFHolePlacement } from '../f-hole-placement-panel/f-hole-placement-panel';
-import { calculateFholeContours } from '../../ceruti-calcs';
+import { calculateFholeContours, ensureFholePath, getPath } from '../../ceruti-calcs';
 import { pointOnCircle, travelAtArcEnd, travelAtArcStart, normalizeRadians, dist } from '../../../helpers/math/simpleGeometry';
 import { Arc, Pt } from '../../../models/types';
-import { EnricoCerutiParams } from '../../ceruti-types';
+import { EnricoCerutiParams, PathEntry } from '../../ceruti-types';
+import { setGlobalEmitter } from '../../../shared/message-emitter';
 
 /**
  * The f-hole contour, pinned.
@@ -282,5 +283,60 @@ describe('f-hole contour properties', () => {
     p.options.stemArcsIndependent = false;
     calculateFholeContours(p);
     for (const a of [f.S1!, f.S2!, f.S3!, f.S4!]) expect(a.r).toBeCloseTo(shared, 6);
+  });
+});
+
+describe('f-hole contour failures', () => {
+  afterEach(() => setGlobalEmitter(null as any));
+
+  it('names the rise and the shoulder when the rise outruns the shoulder', () => {
+    const plain = solve('plain');
+    const p = solve('plain');
+    p.fHoles!.URise = 100;
+    const failures = calculateFholeContours(p);
+
+    expect(failures).toHaveLength(1);
+    expect(failures[0].message).toContain('Reduce Rise, or enlarge U1');
+    expect(failures[0].unsolved).toEqual(['U1', 'U2', 'U21', 'S2']);
+    expect(geometryDiff(round4(p.fHoles!.L2), round4(plain.fHoles!.L2), 1e-9)).toEqual([]);
+    expect(geometryDiff(round4(p.fHoles!.S1), round4(plain.fHoles!.S1), 1e-9)).toEqual([]);
+  });
+
+  it('says the arm crosses the stem edge when it is too wide to turn onto it', () => {
+    const p = solve('plain');
+    p.fHoles!.U2!.r *= 3;
+    const failures = calculateFholeContours(p);
+
+    expect(failures).toHaveLength(1);
+    expect(failures[0].message).toContain('U2 crosses the outer stem edge');
+    expect(failures[0].unsolved).toEqual(['U2', 'S2']);
+    expect(failures[0].circles).toEqual([p.fHoles!.U2]);
+  });
+
+  it('says the stem arc cannot bridge when it is too small', () => {
+    const p = solve('plain');
+    p.fHoles!.stem.arcR = 12;
+    const failures = calculateFholeContours(p);
+
+    expect(failures.map(f => f.unsolved)).toEqual([['L2', 'S3'], ['L3', 'S4']]);
+    expect(failures[0].message).toContain("S3 can't bridge from L2");
+  });
+
+  it('raises one message for a failed pass and keeps the last good outline', () => {
+    const p = solve('plain');
+    const paths: PathEntry[] = [];
+    ensureFholePath(p, paths);
+    const good = getPath(paths, 'fHole');
+
+    const messages: string[] = [];
+    setGlobalEmitter(m => messages.push(m.message));
+    p.fHoles!.URise = 100;
+    p.fHoles!.stem.arcR = 12;
+    expect(() => ensureFholePath(p, paths)).not.toThrow();
+
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toContain('Upper arm');
+    expect(messages[0]).toContain('Lower wing');
+    expect(getPath(paths, 'fHole')).toBe(good);
   });
 });

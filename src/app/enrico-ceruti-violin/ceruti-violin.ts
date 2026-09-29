@@ -116,6 +116,7 @@ export class CerutiViolin extends RecipeComponentBase {
       fHoleStem: this.makeColor(p.fHoleStem),
       fHoleStemOff: this.makeColor(p.fHoleStem, { type: 'greyOut', degree: OFF_FACTOR }),
       fHoleCut: this.makeColor(p.fHoleCut),
+      pathError: this.makeColor(p.pathError),
       neck: this.makeColor(p.neck),
       neckOff: this.makeColor(p.neck, { type: 'greyOut', degree: OFF_FACTOR }),
       neckRoot: this.makeColor(p.neckRoot),

@@ -62,6 +62,16 @@ export function flipPointAboutY(point: Pt): Pt {
   return { x: -point.x, y: point.y };
 }
 
+export function pointInPolygon(point: Pt, polygon: Pt[]): boolean {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const a = polygon[i], b = polygon[j];
+    if ((a.y > point.y) !== (b.y > point.y) && point.x < (b.x - a.x) * (point.y - a.y) / (b.y - a.y) + a.x)
+      inside = !inside;
+  }
+  return inside;
+}
+
 // ===== Circles =====
 
 export function pointOnCircle(circle: Circle, angle: number): Pt {

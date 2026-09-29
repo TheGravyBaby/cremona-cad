@@ -50,7 +50,7 @@ being resorted to fit that rule exactly.
 | `debounce-controller.ts` | Used by `change*()` methods before recalculating. |
 | `nearestFraction.ts` | Decimal → fraction, plus `NamedConstant` defaults. |
 | `arcDegrees.ts` | Degree helpers for the arc input fields. |
-| `validators.ts` | `clampParam`, `safeRun`. |
+| `validators.ts` | `clampParam`, `safeRun`, and `SolveFailure`/`solveSection`/`reportFailures` — the contract a sectioned calc reports through instead of throwing. `renderSolveFailures` draws it. |
 | `workingStorage.ts` | The one seam to per-tab browser storage for in-progress work. See root CLAUDE.md. |
 
 ## When adding here
