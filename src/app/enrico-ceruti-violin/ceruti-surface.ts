@@ -13,7 +13,7 @@ import { ArchCurve, ArchPlate, EnricoCerutiParams } from './ceruti-types';
 import { defineInsetPath, defineOuterPath } from './ceruti-paths';
 import {
     buildPlateGeometry, defaultCrossArchParams, defaultFlutingParams,
-    chordTrust, cornerGougeOn, cornerGougeZ, gougeAtY, CrossArchSection, crossArchSectionAt,
+    chordTrust, cornerGougeOn, cornerSmoothZ, gougeAtY, CrossArchSection, crossArchSectionAt,
     longArchProfilePath, PlateGeometry, gougeProfileZ, solveLongArch,
 } from './ceruti-arch-geometry';
 import {
@@ -29,7 +29,7 @@ import {
 //   outboard of it                 → the gouge's own circular section, which
 //                                    flattens to 0 of its own accord at the cut's
 //                                    edge, so the flat edge land needs no case
-// with a second gouging pass laid over the channel side at the corners.
+// with the corners smoothed down by hand to meet the channel's outer flank.
 //
 // Which measure decides "how far across" differs between the two, deliberately:
 // the channel goes by true distance to the centerline loop (that is what keeps
@@ -199,15 +199,10 @@ function archedZAt(
     p: EnricoCerutiParams, g: PlateGeometry, chords: StationChords,
     platformOuterIdx: PolylineIndex, x: number, y: number,
 ): number {
-    // Signed distance from the channel centerline, positive toward the plate
-    // centre. Inside the centerline loop is inward, which is the direction the
-    // gouge section's own `s` runs.
-    const dist = closestPointToPolylineIndexed({ x, y }, g.centerIdx).dist;
-    const s = insideCrossings(x, chords.channelCenterCrossings ?? []) ? dist : -dist;
-
+    const s = channelS(g, chords, x, y);
     const section = chords.crossSection;
     if (section) {
-        const contact = (x < 0 ? section.left : section.right)?.contactS ?? section.halfWidth;
+        const contact = archContactS(section, x);
         if (s >= contact) {
             // Two ways to say "how far across the arch am I", each right in one
             // place and wrong in the other, blended between.
@@ -266,39 +261,38 @@ function archedZAt(
     return withCornerPass(p, g, chords, platformOuterIdx, x, y, s, capZ);
 }
 
+// signed distance from the channel centerline, positive toward the plate centre —
+// inside the centerline loop is inward, the direction the gouge section's own `s` runs.
+function channelS(g: PlateGeometry, chords: StationChords, x: number, y: number): number {
+    const dist = closestPointToPolylineIndexed({ x, y }, g.centerIdx).dist;
+    return insideCrossings(x, chords.channelCenterCrossings ?? []) ? dist : -dist;
+}
+
+function archContactS(section: CrossArchSection, x: number): number {
+    return (x < 0 ? section.left : section.right)?.contactS ?? section.halfWidth;
+}
+
 /**
- * The corner pass applied over whatever the channel left — the second gouging,
- * run to meet a channel that is already established.
+ * The corner smoothing applied over whatever the channel left — wood taken down
+ * by hand to meet a channel that is already established.
  *
  * Called only from the two channel-side returns above, never from the arch
- * branch, and that placement is the whole guarantee. A maker gouging corners
- * does take wood out of the channel where the two meet, but they are not
- * re-cutting the arch, and neither is this: the takeoff, the tangency solve and
- * every station's section are decided before it runs and cannot be moved by it.
- * A `Math.min` here can only deepen, and only outboard of the contact.
+ * branch, and that placement is the whole guarantee: the takeoff, the tangency
+ * solve and every station's section are decided before it runs and cannot be
+ * moved by it. A `Math.min` here can only deepen, and only outboard of the
+ * trough, so the gouge's arc against the arch is left as it was cut.
  *
- * Outside the platform boundary is the flat edge land, which is not gouged at
+ * Outside the platform boundary is the flat edge land, which is not touched at
  * all — hence the crossings test rather than a bare distance.
  */
 function withCornerPass(
     p: EnricoCerutiParams, g: PlateGeometry, chords: StationChords,
     platformOuterIdx: PolylineIndex, x: number, y: number, s: number, z: number,
 ): number {
-    if (!cornerGougeOn(g.gouge)) return z;
+    if (s >= 0 || !cornerGougeOn(g.gouge)) return z;
     if (!insideCrossings(x, chords.landCrossings)) return z;
-    const { sweepRadius, halfWidth } = gougeAtY(p, g.gouge, y);
     const edgeDist = closestPointToPolylineIndexed({ x, y }, platformOuterIdx).dist;
-    // Nothing this far in is reachable by the pass however wide the wedge gets,
-    // and that is most of the plate — so the arithmetic below runs only near the
-    // edge, where it means something.
-    if (edgeDist > 2 * halfWidth + g.cornerWedgeMax) return z;
-    // How much wider than one gouge the gap is *here*: distance to the boundary
-    // plus distance outboard of the channel's own outer edge, which is −(s + w).
-    // Identically zero along the flanks, where the boundary and that edge are
-    // the same curve — so the extra passes appear only where wood is left.
-    // Clamped to the plate's own maximum so no local estimate can run away.
-    const wedge = clamp(edgeDist - halfWidth - s, 0, g.cornerWedgeMax);
-    return Math.min(z, cornerGougeZ(edgeDist, sweepRadius, g.gouge.depth, wedge));
+    return Math.min(z, cornerSmoothZ(s, edgeDist, gougeAtY(p, g.gouge, y).sweepRadius, g.gouge.depth));
 }
 
 /**
@@ -338,6 +332,49 @@ export function computeArchSectionProfile(
         pts.push(`${pts.length === 0 ? 'M' : 'L'} ${x} ${model.zBase + model.signZ * z}`);
     }
     return pts.length ? pts.join(' ') : null;
+}
+
+/** What cut a stretch of the surface: the crown, the gouge (channel and corner pass), or neither. */
+export type SurfacePart = 'arch' | 'channel' | 'land';
+
+/** A contiguous stretch of one part, x across the plate and z relative to the plate outer surface. */
+export interface SectionRun {
+    part: SurfacePart;
+    pts: Pt[];
+}
+
+/**
+ * The surface at station `y`, edge to edge, split into runs by what carved each one —
+ * the same height field the wireframe and contours slice, so the section view cannot
+ * disagree with them at the corners the way the station's own chord-wise solve does.
+ * Heights are relative, so a caller can place the plate on a tapered rib.
+ */
+export function sampleArchSectionRuns(
+    p: EnricoCerutiParams, model: PlateSurfaceModel, y: number, stepMm = 0.25,
+): SectionRun[] {
+    const chords = stationChordsAt(p, model, y);
+    const half = chords.outerHalf;
+    if (half === null) return [];
+    const g = model.geometry;
+    const section = chords.crossSection;
+    const n = Math.max(8, Math.ceil((2 * half) / stepMm));
+    const runs: SectionRun[] = [];
+    for (let i = 0; i <= n; i++) {
+        const x = -half + (2 * half * i) / n;
+        const z = archedZAt(p, g, chords, model.platformOuterIdx, x, y);
+        const part: SurfacePart =
+            !insideCrossings(x, chords.landCrossings) ? 'land'
+            : section && channelS(g, chords, x, y) >= archContactS(section, x) ? 'arch'
+            : 'channel';
+        const pt = new Pt(x, z);
+        const last = runs[runs.length - 1];
+        if (last?.part === part) last.pts.push(pt);
+        else {
+            // each run starts on the previous one's last vertex, so the pen changes without a gap
+            runs.push({ part, pts: last ? [last.pts[last.pts.length - 1], pt] : [pt] });
+        }
+    }
+    return runs;
 }
 
 // Physical cutout templates for traditional hand-carving: a rectangular blank

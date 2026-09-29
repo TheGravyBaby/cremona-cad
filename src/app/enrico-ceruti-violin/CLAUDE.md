@@ -215,7 +215,22 @@ recognizes the current format *positively* so it stays idempotent; six tests in
   the trough for the same reason. A cross-arch cycloid gets there with `pct` above 100%, which
   curls its ends under the takeoff (long-arch cycloid has no UI, so it has no such field). Near the caps the surface reads the arch by distance to the
   wrapping channel, so an STL's centerline there is shallower than the long-arch section; the
-  section and the long-arch templates are exact.
+  long-arch templates are exact.
+- **Cross-arch knots are measured against the wood before the cross arch, never the solved
+  takeoff** (2026-09-29). Position is a fraction of the way from the joint to the channel's inner
+  edge; height a fraction of the crown above plate level, the datum `archHeight` uses. A takeoff
+  always lands outboard of the inner edge, so it can move without passing or moving a knot. Authored
+  spline knots only: a trochoid or catenary is a generated curve whose end *is* the takeoff, so it
+  keeps measuring from each side's takeoff (`fromTakeoff`) — in the fixed frame its end stopped at
+  the inner edge and a second curve bridged to the channel, a visible bump past 100%. Recipes
+  saved before this read differently; no migration, by choice. The smooth crown spline is kept
+  unless it rises above the crown or sinks below the trough (`breaksSpec`), and then the monotone
+  one is used — so a moved crown can show a faint curvature line along its ridge.
+- **The cross-arching section view slices the surface, not the station solve.** It draws
+  `sampleArchSectionRuns`, the same height field the wireframe and contours read. `section.zAt`
+  places the channel by chord, one gouge wide on the station line, with no corner pass — so at a
+  corner it drew a flat where the wedge is carved. Knot halos and module guides still sit on
+  `section.zAt` (the crown as authored) and can float a fraction of a mm off the drawn curve there.
 - **`innerFlutingDepth` stays.** It still sets the long-arch span via `longArchHeightAt`.
   Retiring it would recompress every plate's arch — a shape decision, not cleanup.
 - **Cross-arch templates cut at the five `bodyLandmarks`** plus any authored station further than

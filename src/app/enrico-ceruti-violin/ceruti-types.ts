@@ -473,29 +473,29 @@ export interface FlutingParams {
    */
   sweepRadius_cBout: number | null;
   /**
-   * Runs the gouge into the corners as a second pass, carving the wedge of flat wood the
-   * bypassing channel leaves against the platform boundary.
+   * Smooths the wedge of flat wood the bypassing channel leaves at each corner down to meet the
+   * channel's outer flank. Named for the gouge pass it replaced; the field name is frozen.
    *
-   * A second *cut*, not a redefinition: it only removes material, and only on the channel side of
-   * the arch's takeoff, so nothing solved upstream moves. Absent reads as on.
+   * Only removes material, and only outboard of the channel's trough, so nothing solved upstream
+   * moves. Absent reads as on.
    */
   cornerGouge?: boolean;
 }
 
 /**
- * A cross-arch control point, anchored to the crown rather than the local fluting chord. A point
- * measured against the chord describes a curve that *stretches* station to station; a template a
- * maker holds against the wood does not.
+ * A cross-arch control point, measured against the wood as it stands before the cross arch is
+ * carved — the joint, the channel's inner edge, plate level and the crown — so it never moves
+ * when the solved takeoff does. See `KnotFrame` in `ceruti-arch-geometry.ts`.
  */
 export interface CrossArchPoint {
   /**
-   * Fraction of this side's own crown: 0 the joint, ±1 the takeoff, negative the bass side —
-   * a fraction rather than mm so it stays a shape as the station narrows. From the joint, not
-   * the crown, so a knot can land on the far side of the crown from the flank it was authored
-   * on; `crossProfile` sorts rather than assuming.
+   * Fraction of the way from the joint to the channel's inner edge: 0 the joint, ±1 the inner
+   * edge, negative the bass side — a fraction rather than mm so it stays a shape as the station
+   * narrows. From the joint, not the crown, so a knot can land on the far side of the crown from
+   * the flank it was authored on; `crossProfile` sorts rather than assuming.
    */
   x: number;
-  /** Height as a fraction of the local rise from the takeoff: 1 the crown, 0 the takeoff level, negative below it. */
+  /** Height above plate level as a fraction of the local arch height: 1 the crown, 0 plate level, negative below it. */
   z: number;
   /** Repeats at −x. Leaving it off confines the point to its own side — the source of asymmetry. */
   mirror?: boolean;

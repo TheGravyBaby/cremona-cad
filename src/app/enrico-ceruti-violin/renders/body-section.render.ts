@@ -92,7 +92,7 @@ export function renderBodySection(p: EnricoCerutiParams, colors: CerutiColors, o
 
     if (opts.showGuides) {
       const authored = isTop ? a.top.arch : a.bottom.arch;
-      renderArchGuide(authored, span, yStart, outerZ, sign, color)(g, ui);
+      renderArchGuide(authored, span, yStart, outerZ, sign, color, p.height)(g, ui);
     }
   }
 }

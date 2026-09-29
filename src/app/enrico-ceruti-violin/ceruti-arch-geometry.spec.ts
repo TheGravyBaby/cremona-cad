@@ -1,5 +1,5 @@
 import {
-  cornerGougeZ, gougeHalfWidth, gougeProfileSlope, gougeProfileZ, crossArchGuide, crossArchKnots,
+  cornerSmoothZ, gougeHalfWidth, gougeProfileSlope, gougeProfileZ, crossArchGuide, crossArchKnots,
   chordTrust, crownOffsetTrust, CrossArchSection, crossArchKnotX, makeCrossArchResolver,
   nearestCrossArchShape,
   solveCrossArchSection,
@@ -133,29 +133,34 @@ describe('solveArchTakeoff', () => {
   });
 });
 
-describe('cornerGougeZ', () => {
+describe('cornerSmoothZ', () => {
   const R = 14, D = 1.2;
   const w = gougeHalfWidth(R, D);
 
-  it('is the same cut, re-anchored so its outer edge sits on the boundary', () => {
-    // The corner pass differs from the channel in one thing only: what it is
-    // measured from. Same tool, same depth, same arc — the outer flank starts
-    // where the land ends instead of a half-width further in.
-    expect(cornerGougeZ(0, R, D)).toBeCloseTo(0, 12);
-    expect(cornerGougeZ(w, R, D)).toBeCloseTo(-D, 12);
-    expect(cornerGougeZ(2 * w, R, D)).toBeCloseTo(0, 12);
-    for (const d of [0.4, 1.3, 2.7, 4.1]) {
-      expect(cornerGougeZ(d, R, D)).toBeCloseTo(gougeProfileZ(d - w, R, D), 12);
+  it('is the channel\'s own outer flank where the land edge sits one half-width out', () => {
+    for (const s of [-0.4, -1.3, -2.7, -4.1]) {
+      expect(cornerSmoothZ(s, w + s, R, D)).toBeCloseTo(gougeProfileZ(s, R, D), 12);
     }
   });
 
-  it('is inert past its own reach, so composing it by minimum cannot bite there', () => {
-    // What lets the caller take an unconditional minimum instead of masking the
-    // band by hand: outside the cut it returns plate level, and the channel it
-    // is composed against is never above plate level.
-    for (const d of [-3, -0.01, 2 * w + 0.01, 2 * w + 5]) {
-      expect(cornerGougeZ(d, R, D)).toBe(0);
+  it('stretches that flank from the trough to wherever the land edge has moved', () => {
+    const wedge = 6;
+    const run = w + wedge;
+    expect(cornerSmoothZ(-1e-9, run, R, D)).toBeCloseTo(-D, 6);
+    expect(cornerSmoothZ(-run, 0, R, D)).toBe(0);
+    let prev = -Infinity;
+    for (let s = -0.25; s > -run; s -= 0.25) {
+      const z = cornerSmoothZ(s, run + s, R, D);
+      expect(z).toBeLessThanOrEqual(gougeProfileZ(s, R, D) + 1e-12);
+      expect(z).toBeGreaterThan(prev);
+      prev = z;
     }
+  });
+
+  it('is inert inboard of the trough and past the land edge', () => {
+    for (const s of [0, 0.5, 3]) expect(cornerSmoothZ(s, 10, R, D)).toBe(0);
+    expect(cornerSmoothZ(-2, 0, R, D)).toBe(0);
+    expect(cornerSmoothZ(-2, -1, R, D)).toBe(0);
   });
 });
 
@@ -259,7 +264,7 @@ describe('the trochoid crown', () => {
 
   it('meets the outer flank once the window passes 100%', () => {
     const knots = crossArchKnots(cyc(0.4, 1.3), 1);
-    const s = solveCrossArchSection(15, 100, R, D, { left: knots, right: knots })!;
+    const s = solveCrossArchSection(15, 100, R, D, { left: knots, right: knots, fromTakeoff: true })!;
     for (const side of [s.left!, s.right!]) {
       expect(side.tangent).toBe(true);
       expect(side.contactS).toBeLessThan(0);
@@ -271,7 +276,7 @@ describe('the trochoid crown', () => {
   });
 
   it('meets the channel like any other crown', () => {
-    const row = { left: crossArchKnots(cyc(0.4, 0.9), -1), right: crossArchKnots(cyc(0.4, 0.9), 1) };
+    const row = { left: crossArchKnots(cyc(0.4, 0.9), -1), right: crossArchKnots(cyc(0.4, 0.9), 1), fromTakeoff: true };
     const s = solveCrossArchSection(15, 100, R, D, row)!;
     expect(s).not.toBeNull();
     expect(gougeProfileSlope(s.right!.contactS, R, D)).toBeCloseTo(s.right!.slope, 9);
@@ -287,8 +292,20 @@ describe('the trochoid crown', () => {
    */
   const contactAt = (d: number, pct: number, archH = 15, half = 100): number | null => {
     const knots = crossArchKnots(cyc(d, pct), 1);
-    return solveCrossArchSection(archH, half, R, D, { left: knots, right: knots })?.right?.contactS ?? null;
+    return solveCrossArchSection(archH, half, R, D, { left: knots, right: knots, fromTakeoff: true })?.right?.contactS ?? null;
   };
+
+  it('runs its own end into the takeoff past 100%, with no second curve on to the channel', () => {
+    // the trochoid's end is the takeoff; measured against the channel's inner edge instead, it
+    // ended at plate level there and a separate run bridged down to the channel, leaving a bump
+    const knots = crossArchKnots(cyc(0.3, 1.17), 1);
+    const s = solveCrossArchSection(11, 100, R, D, { left: knots, right: knots, fromTakeoff: true })!;
+    const step = 0.1;
+    for (let x = step; x < s.xEndRight - step; x += step) {
+      const isBump = s.zAt(x) > s.zAt(x - step) && s.zAt(x) > s.zAt(x + step);
+      expect(isBump, `x=${x}`).toBe(false);
+    }
+  });
 
   it('brings the contact outward as the run-out steepens', () => {
     // At low d the trochoid's outer end flattens as the window opens, so the
@@ -448,11 +465,12 @@ describe('crossArchGuide', () => {
   const D = 1.2;
   const ARCH = 15;
   const HALF = 100;
-  const sectionFor = (row: { left: { x: number; z: number }[]; right: { x: number; z: number }[] }) =>
+  const sectionFor = (row: { left: { x: number; z: number }[]; right: { x: number; z: number }[]; fromTakeoff?: boolean }) =>
     solveCrossArchSection(ARCH, HALF, R, D, row)!;
   const rowOf = (shape: CrossArchShape) => ({
     left: crossArchKnots(shape, -1),
     right: crossArchKnots(shape, 1),
+    fromTakeoff: shape.type === 'cycloid',
   });
 
   it('marks one crosshair per side per authored knot', () => {
@@ -477,41 +495,40 @@ describe('crossArchGuide', () => {
     expect(crossArchGuide(shape, sectionFor(row)).knots.length).toBe(2);
   });
 
-  it('places a knot against its own side takeoff, and measures its height from there', () => {
+  it('places a knot against the channel\'s inner edge, and measures its height from plate level', () => {
     const shape: CrossArchSplineShape = { type: 'spline', points: [{ x: 0.4, z: 0.57, mirror: true }] };
     const section = sectionFor(rowOf(shape));
     for (const k of crossArchGuide(shape, section).knots) {
-      const xEnd = k.x < 0 ? section.xEndLeft : section.xEndRight;
-      expect(Math.abs(k.x)).toBeCloseTo(0.4 * xEnd, 9);
-      expect((k.z - k.base) / (section.archH - k.base)).toBeCloseTo(0.57, 9);
+      expect(Math.abs(k.x)).toBeCloseTo(0.4 * section.innerEdge, 9);
+      expect(k.base).toBe(0);
+      expect(k.z).toBeCloseTo(0.57 * ARCH, 9);
+      expect(section.zAt(k.x)).toBeCloseTo(k.z, 9);
     }
   });
 
-  // One datum per side, not one across the section: the two takeoffs only share
-  // a level on a symmetric station, and the heights above them are counted
-  // separately either way.
-  it('runs a takeoff datum in from each side, each at its own level', () => {
+  it('runs the datum at plate level from each inner edge, and marks the takeoffs apart from it', () => {
     const shape: CrossArchSplineShape = { type: 'spline', points: [{ x: 0.4, z: 0.57, mirror: true }] };
     const section = sectionFor(rowOf(shape));
     const guide = crossArchGuide(shape, section);
-    expect(guide.baselines.map(b => b.fromX)).toEqual([-section.xEndLeft, section.xEndRight]);
+    expect(guide.baselines.map(b => b.fromX)).toEqual([-section.innerEdge, section.innerEdge]);
     for (const b of guide.baselines) {
-      expect(b.z).toBeCloseTo(section.zAt(b.fromX), 9);
+      expect(b.z).toBe(0);
       expect(b.toX).toBe(section.xPeak);
     }
+    expect(guide.takeoffs.map(t => t.x)).toEqual([-section.xEndLeft, section.xEndRight]);
+    for (const t of guide.takeoffs) expect(t.y).toBeCloseTo(section.zAt(t.x), 9);
   });
 
   it('draws generating circles for a trochoid, which has no control points to mark', () => {
     const shape: CrossArchCycloidShape = { type: 'cycloid', d: 0.4, pct: 0.9 };
-    const guide = crossArchGuide(shape, sectionFor(rowOf(shape)));
+    const section = sectionFor(rowOf(shape));
+    const guide = crossArchGuide(shape, section);
     expect(guide.knots).toEqual([]);
     expect(guide.circles.length).toBe(2);
-    // The datum is what a trochoid's rise counts from too, so it is drawn
-    // whether or not there are knots sitting on it.
-    expect(guide.baselines.length).toBe(2);
-    // radius = hEff / 2d, per side, off that side's own takeoff.
-    const section = sectionFor(rowOf(shape));
+    // a trochoid's rise counts from its own takeoff, so that is where its datum runs from
+    expect(guide.baselines.map(b => b.fromX)).toEqual([-section.xEndLeft, section.xEndRight]);
     const hEff = section.archH - section.zAt(section.xEndRight);
+    expect(guide.baselines[1].z).toBeCloseTo(section.zAt(section.xEndRight), 9);
     expect(guide.circles[1].radius).toBeCloseTo(hEff / (2 * 0.4), 6);
   });
 });
@@ -538,6 +555,17 @@ describe('solveCrossArchSection', () => {
     expect(s.left!.contactS).toBeCloseTo(s.right!.contactS, 9);
     for (const x of [10, 45, 80, 99]) {
       expect(s.zAt(-x)).toBeCloseTo(s.zAt(x), 9);
+    }
+  });
+
+  it('holds a knot where it was put while each side\'s takeoff lands differently', () => {
+    // the frame is the wood before the cross arch, so a takeoff moving cannot move a knot
+    const s = solveCrossArchSection(ARCH, HALF, R, D, {
+      left: [{ x: 0.3, z: 0.9 }, { x: 0.6, z: 0.8 }], right: [{ x: 0.3, z: 0.9 }, { x: 0.6, z: 0.2 }],
+    })!;
+    expect(s.left!.contactS).not.toBeCloseTo(s.right!.contactS, 3);
+    for (const side of [-1, 1] as const) {
+      expect(s.zAt(crossArchKnotX(s, side, 0.3))).toBeCloseTo(0.9 * ARCH, 9);
     }
   });
 
@@ -779,8 +807,7 @@ describe('the crown', () => {
     // And it is still pinning the curve: the section passes through the height
     // it was given, then climbs on to the crown. Were it dropped the curve would
     // run free from the crown down to the takeoff and sit higher here.
-    const base = s.zAt(s.xEndRight);
-    expect(s.zAt(x)).toBeCloseTo(base + 0.75 * (ARCH - base), 6);
+    expect(s.zAt(x)).toBeCloseTo(0.75 * ARCH, 6);
     expect(s.zAt(x)).toBeLessThan(s.zAt((x + s.xPeak) / 2));
   });
 
@@ -884,8 +911,12 @@ describe('the crown', () => {
   };
 
   it('joins the two flanks with matching curvature at a moved crown', () => {
+    // a knot low and near the channel, so the smooth curve stays inside the spec and is kept.
+    // `one` sags below the trough on its long run into the channel at these peaks, so it falls
+    // back to the monotone spline — see 'keeps the crown exact whichever spline it settles on'.
+    const low = [{ x: 0.8, z: 0.2 }];
     for (const peak of [0.44, 0.46, 0.48]) {
-      const [l, r] = crownCurvatures(withOneKnot(peak));
+      const [l, r] = crownCurvatures(solveCrossArchSection(ARCH, HALF, R, D, { left: low, right: low, peak })!);
       expect(Math.abs(l - r) / Math.abs(r)).toBeLessThan(0.02);
     }
   });
