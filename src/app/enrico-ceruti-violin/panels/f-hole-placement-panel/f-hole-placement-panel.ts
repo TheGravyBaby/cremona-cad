@@ -11,11 +11,12 @@ import { circleCircleIntersections } from '../../../helpers/math/draftMath';
 import { defineInnerArcs } from '../../ceruti-paths';
 import { STROKE_WEIGHT } from '../../renders/render-constants';
 import { renderBoutBouts } from '../../renders/guides.render';
+import { NumberStepperDirective } from '../../../shared/number-stepper';
 
 /** Where the two f-holes sit on the plate — the eyes first, everything else hung off them. */
 @Component({
   selector: 'app-ceruti-f-hole-placement-panel',
-  imports: [FormsModule],
+  imports: [FormsModule, NumberStepperDirective],
   templateUrl: './f-hole-placement-panel.html',
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })

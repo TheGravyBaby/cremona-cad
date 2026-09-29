@@ -15,18 +15,20 @@
     </div>
 
     <div class="input-group basic-row field-row" role="group">
-        <label class="field-cell">
-            <span class="field-title">X <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="1" min="0" [ngModel]="round2(params.fHoles!.UEye!.x)"
-                (ngModelChange)="params.fHoles!.UEye!.x = $event; onChange()"
-                [style.borderColor]="colors.fHoleUpperMuted" />
-        </label>
-        <label class="field-cell">
-            <span class="field-title">Y <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="1" min="0" [ngModel]="round2(params.fHoles!.UEye!.y)"
-                (ngModelChange)="params.fHoles!.UEye!.y = $event; onChange()"
-                [style.borderColor]="colors.fHoleUpperMuted" />
-        </label>
+        <div class="field-cell field-cell--xy">
+            <div class="xy-titles">
+                <span class="field-title">X <span class="unit-label">mm</span></span>
+                <span class="field-title">Y <span class="unit-label">mm</span></span>
+            </div>
+            <div class="xy-field" data-xy-point role="group" aria-label="Upper eye position"
+                [style.borderColor]="colors.fHoleUpperMuted"
+                title="Arrow keys move the eye from either box">
+                <input type="number" class="basic-input" step="1" min="0" data-xy="x" aria-label="Upper eye X"
+                    [ngModel]="round2(params.fHoles!.UEye!.x)" (ngModelChange)="params.fHoles!.UEye!.x = $event; onChange()" />
+                <input type="number" class="basic-input" step="1" min="0" data-xy="y" aria-label="Upper eye Y"
+                    [ngModel]="round2(params.fHoles!.UEye!.y)" (ngModelChange)="params.fHoles!.UEye!.y = $event; onChange()" />
+            </div>
+        </div>
         <label class='field-cell'>
             <span class="field-title">Eye Distance</span>
             <div class="basic-display" aria-label="Upper bout to upper bout width ratio value">{{
@@ -63,18 +65,20 @@
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
-        <label class="field-cell">
-            <span class="field-title">X <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="1" min="0" [ngModel]="round2(params.fHoles!.stem.center!.x)"
-                (ngModelChange)="params.fHoles!.stem.center!.x = $event; onChange()"
-                [style.borderColor]="colors.fHoleStemOff" />
-        </label>
-        <label class="field-cell">
-            <span class="field-title">Y <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="1" min="0" [ngModel]="round2(params.fHoles!.stem.center!.y)"
-                (ngModelChange)="params.fHoles!.stem.center!.y = $event; onChange()"
-                [style.borderColor]="colors.fHoleStemOff" />
-        </label>
+        <div class="field-cell field-cell--xy">
+            <div class="xy-titles">
+                <span class="field-title">X <span class="unit-label">mm</span></span>
+                <span class="field-title">Y <span class="unit-label">mm</span></span>
+            </div>
+            <div class="xy-field" data-xy-point role="group" aria-label="Stem centre position"
+                [style.borderColor]="colors.fHoleStemOff"
+                title="Arrow keys move the stem from either box">
+                <input type="number" class="basic-input" step="1" min="0" data-xy="x" aria-label="Stem centre X"
+                    [ngModel]="round2(params.fHoles!.stem.center!.x)" (ngModelChange)="params.fHoles!.stem.center!.x = $event; onChange()" />
+                <input type="number" class="basic-input" step="1" min="0" data-xy="y" aria-label="Stem centre Y"
+                    [ngModel]="round2(params.fHoles!.stem.center!.y)" (ngModelChange)="params.fHoles!.stem.center!.y = $event; onChange()" />
+            </div>
+        </div>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
@@ -104,18 +108,20 @@
         </label> -->
     </div>
     <div class="input-group basic-row field-row" role="group">
-        <label class="field-cell">
-            <span class="field-title">X <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="1" min="0" [ngModel]="round2(params.fHoles!.LEye!.x)"
-                (ngModelChange)="params.fHoles!.LEye!.x = $event; onChange()"
-                [style.borderColor]="colors.fHoleLowerMuted" />
-        </label>
-        <label class="field-cell">
-            <span class="field-title">Y <span class="unit-label">mm</span></span>
-            <input type="number" class="basic-input" step="1" min="0" [ngModel]="round2(params.fHoles!.LEye!.y)"
-                (ngModelChange)="params.fHoles!.LEye!.y = $event; onChange()"
-                [style.borderColor]="colors.fHoleLowerMuted" />
-        </label>
+        <div class="field-cell field-cell--xy">
+            <div class="xy-titles">
+                <span class="field-title">X <span class="unit-label">mm</span></span>
+                <span class="field-title">Y <span class="unit-label">mm</span></span>
+            </div>
+            <div class="xy-field" data-xy-point role="group" aria-label="Lower eye position"
+                [style.borderColor]="colors.fHoleLowerMuted"
+                title="Arrow keys move the eye from either box">
+                <input type="number" class="basic-input" step="1" min="0" data-xy="x" aria-label="Lower eye X"
+                    [ngModel]="round2(params.fHoles!.LEye!.x)" (ngModelChange)="params.fHoles!.LEye!.x = $event; onChange()" />
+                <input type="number" class="basic-input" step="1" min="0" data-xy="y" aria-label="Lower eye Y"
+                    [ngModel]="round2(params.fHoles!.LEye!.y)" (ngModelChange)="params.fHoles!.LEye!.y = $event; onChange()" />
+            </div>
+        </div>
         <label class='field-cell'>
             <span class="field-title">Eye Distance</span>
             <div class="basic-display" aria-label="Upper bout to upper bout width ratio value">{{
