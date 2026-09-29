@@ -66,7 +66,7 @@ export class FlutingPanel extends CerutiPanelBase implements OnInit {
   }
 
   /**
-   * One toggle for both plates. The corners are gouged out at the bench in a
+   * One toggle for both plates. The corners are smoothed out at the bench in a
    * single operation with the plate in front of you either way, so a top that
    * had them and a back that didn't would be describing two different methods
    * rather than two different tools. Reads as on if either plate has it, so an
@@ -182,17 +182,15 @@ export class FlutingPanel extends CerutiPanelBase implements OnInit {
     // sampled boundary test. Each plate carries its own colour so a top and a
     // back with different gouges can be told apart at a glance.
     //
-    // With the pass on, the corner region is the channel — same tool, same
-    // depth, just anchored to the land edge instead — so it is drawn as the
-    // channel, with no weight of its own to suggest otherwise. Off, it drops
-    // back to marking wood that is being left rather than taken. It understates
-    // the cut either way: the pass also takes wood from inside the channel's
-    // own outer edge, which this region by definition excludes.
+    // The corner region is a separate operation from the channel — smoothed
+    // down to meet it after the gouge has run — so it is always drawn lighter
+    // than the channel, and lighter still with the corner pass off, when it
+    // marks wood being left rather than taken.
     const carved = cornerGougeOn(this.gouge(plate));
     layers.push(renderFilledPath(
       at(cornerJoinAreaPath(this.params, paths)),
       color,
-      carved ? 0.3 : 0.2,
+      carved ? 0.15 : 0.08,
     ));
     layers.push(renderFilledPath(at(channelAreaPath(paths)), color, 0.3));
     return layers;

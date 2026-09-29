@@ -18,11 +18,11 @@ import {
 import {
   defaultCrossArchCatenaryShape, defaultCrossArchCycloidParams, defaultCrossArchParams,
   defaultCrossArchSplineParams, defaultFlutingParams, CrossArchSection, CYCLOID_MAX_PCT,
-  crossArchGuide, crossArchKnotX, crossArchSectionAt, crossArchSectionPath, nearestCrossArchShape,
+  crossArchGuide, crossArchKnotX, crossArchSectionAt, nearestCrossArchShape,
 } from '../../ceruti-arch-geometry';
 import {
   ArchContourLevel, buildPlateSurfaceModel, buildPlateStl, computeArchContourRings, plateHalfChordAtY,
-  PlateSurfaceModel,
+  PlateSurfaceModel, sampleArchSectionRuns,
 } from '../../ceruti-surface';
 import { downloadStlFile } from '../../../helpers/stlExporter';
 import { STROKE_WEIGHT } from '../../renders/render-constants';
@@ -185,26 +185,20 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
 
   /**
    * How a value edit redraws — and it depends on what is on screen, because the
-   * cost of a redraw here spans an order of magnitude.
+   * cost of a redraw here spans several times over.
    *
-   * Measured on a default violin, per params change: the two plates' surface
-   * models are ~80ms (a root-find per side per station row, and unavoidable —
-   * the section view needs them); a wireframe adds ~95ms on top; a contour map
-   * adds ~380ms. Only one overlay can be open at a time, so those are the three
-   * cases and not a combination of them.
+   * Measured on a default violin (2026-09-29), per params change: a plate's
+   * surface model is ~65ms (the section view needs it); a wireframe adds ~170ms
+   * on top; a contour map adds ~350ms. Only one overlay can be open at a time, so
+   * those are the three cases and not a combination of them.
    *
-   * At ~80ms, and even at ~175ms, the parent's immediate bypass is the right
-   * behaviour and the one every other panel gets: an arrow key or a spinner
-   * click is a maker saying "show me this move", and debouncing it makes the
-   * panel feel unresponsive to no purpose. At ~460ms it stops being possible —
-   * key repeat arrives every ~30ms, so each press would queue another half
-   * second of work and the drawing would fall further behind the field with
-   * every one. There `emitCoalesced` declines the bypass, and a burst of nudges
-   * costs one recompute at the end instead of one per press.
-   *
-   * So the rule is the contour map specifically, not "an overlay is open".
-   * Typing is debounced either way; this only decides whether a *stepped* edit
-   * gets to skip the wait.
+   * Up to a wireframe, the parent's immediate bypass is the right behaviour and
+   * the one every other panel gets: an arrow key or a spinner click is a maker
+   * saying "show me this move". With the contour map it isn't — key repeat
+   * arrives every ~30ms, so each press would queue more work than it takes to
+   * arrive. There `emitCoalesced` declines the bypass: a spinner click waits a
+   * brief moment so a burst of them costs one recompute (see
+   * `DebounceController.clearImmediate`), and typing waits as it always does.
    *
    * Neither path touches focus halos, view toggles or the first draw — those
    * still go through `emitImmediate` and cost nothing extra, since all three
@@ -526,12 +520,12 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
   }
 
   /**
-   * Lowest a knot's height may go, as a percent of the rise: the plate thickness over the tallest
-   * rise a station can have, so no station's dip below the takeoff ever exceeds the thickness.
+   * Lowest a knot's height may go, as a percent of the arch height: the plate thickness over the
+   * tallest crown a station can have, so no station's dip below plate level ever exceeds the thickness.
    */
   pointZFloorPct(plate: 'top' | 'bottom'): number {
     const plateParams = plate === 'top' ? this.arching.top : this.arching.bottom;
-    return -100 * plateParams.thickness / (plateParams.arch.archHeight + this.gouge(plate).depth);
+    return -100 * plateParams.thickness / Math.max(plateParams.arch.archHeight, plateParams.thickness);
   }
 
   /** A knot's height as a whole percent of the local arch height. */
@@ -594,8 +588,8 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
   }
 
   /**
-   * Sets a knot's height as a percent of the local arch height. Below zero the knot dips under the
-   * takeoff, and the section meets the channel's outer flank instead. 100 is the
+   * Sets a knot's height above plate level as a percent of the local arch height. Below zero the
+   * knot dips under the plate, and the section may meet the channel's outer flank instead. 100 is the
    * ceiling because the crown always sits at the full height — a taller knot
    * would quietly become the real high spot and the entered arch height would
    * stop describing the plate — the same invariant the long-arch splines carry.
@@ -915,23 +909,27 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     // honest picture, and it is what the overlay's station line already does.
     if (halves.top === null && halves.bottom === null) return () => {};
 
+    // everything is computed here, once per build: the canvas replays the returned
+    // layer on every pan and zoom, so it must only draw.
+    const parts: RenderLayer[] = [];
+    if (innerHalf !== null) {
+      parts.push(renderRect(
+        new Rectangle({ x: -(innerHalf + p.rib), y: 0 }, { x: innerHalf + p.rib, y: ribZ }),
+        this.colors.mouldTrace, 'none', STROKE_WEIGHT.guide,
+      ));
+      for (const sx of [-1, 1]) {
+        parts.push(renderSegment(new Pt(sx * innerHalf, 0), new Pt(sx * innerHalf, ribZ), this.colors.innerTrace, STROKE_WEIGHT.guide));
+      }
+    }
+    for (const plate of ['top', 'bottom'] as const) {
+      if (halves[plate] !== null) parts.push(...this.platePart(plate, halves[plate]!, ribZ, y));
+    }
     return (g: any, ui: any): void => {
-      if (innerHalf !== null) {
-        renderRect(
-          new Rectangle({ x: -(innerHalf + p.rib), y: 0 }, { x: innerHalf + p.rib, y: ribZ }),
-          this.colors.mouldTrace, 'none', STROKE_WEIGHT.guide,
-        )(g, ui);
-        for (const sx of [-1, 1]) {
-          renderSegment(new Pt(sx * innerHalf, 0), new Pt(sx * innerHalf, ribZ), this.colors.innerTrace, STROKE_WEIGHT.guide)(g, ui);
-        }
-      }
-      for (const plate of ['top', 'bottom'] as const) {
-        if (halves[plate] !== null) this.platePart(g, ui, plate, halves[plate]!, ribZ);
-      }
+      for (const part of parts) part(g, ui);
     };
   }
 
-  private platePart(g: any, ui: any, plate: 'top' | 'bottom', outerHalf: number, ribZ: number): void {
+  private platePart(plate: 'top' | 'bottom', outerHalf: number, ribZ: number, y: number): RenderLayer[] {
     const a = this.arching;
     const isTop = plate === 'top';
     const sign: 1 | -1 = isTop ? 1 : -1;
@@ -940,56 +938,63 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     const zBase = innerZ + sign * thickness;
     const color = isTop ? this.colors.archTop : this.colors.archBack;
     const section = this.section[plate];
+    const parts: RenderLayer[] = [];
 
-    renderSegment(new Pt(-outerHalf, innerZ), new Pt(outerHalf, innerZ), this.colors.innerTrace, STROKE_WEIGHT.guide)(g, ui);
+    parts.push(renderSegment(new Pt(-outerHalf, innerZ), new Pt(outerHalf, innerZ), this.colors.innerTrace, STROKE_WEIGHT.guide));
     for (const side of [1, -1] as const) {
-      renderSegment(new Pt(side * outerHalf, innerZ), new Pt(side * outerHalf, zBase), this.colors.innerTrace, STROKE_WEIGHT.guide)(g, ui);
+      parts.push(renderSegment(new Pt(side * outerHalf, innerZ), new Pt(side * outerHalf, zBase), this.colors.innerTrace, STROKE_WEIGHT.guide));
     }
-    if (!section) return;
-
     // Split by what carved it: the flat land
     // and the plate edges in the trace colour, the gouged channel in the
     // fluting colour, the arch in the plate's own. The surface is still one
     // continuous function — the contact is only where the pen changes.
-    const landEdge = section.centerHalf + section.halfWidth;
-    for (const side of [1, -1] as const) {
-      renderSegment(new Pt(side * outerHalf, zBase), new Pt(side * Math.min(landEdge, outerHalf), zBase), this.colors.innerTrace, STROKE_WEIGHT.guide)(g, ui);
+    const c = this.cache[plate];
+    if (c?.model) {
+      const pen = {
+        land: [this.colors.innerTrace, STROKE_WEIGHT.guide],
+        channel: [this.colors.fluting, STROKE_WEIGHT.section],
+        arch: [color, STROKE_WEIGHT.section],
+      } as const;
+      for (const run of sampleArchSectionRuns(c.params, c.model, y)) {
+        const d = run.pts.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt.x} ${zBase + sign * pt.y}`).join(' ');
+        parts.push(renderPath(d, pen[run.part][0], pen[run.part][1]));
+      }
     }
-    renderPath(crossArchSectionPath(section, section.xEndRight, landEdge, zBase, sign), this.colors.fluting, STROKE_WEIGHT.section)(g, ui);
-    renderPath(crossArchSectionPath(section, -landEdge, -section.xEndLeft, zBase, sign), this.colors.fluting, STROKE_WEIGHT.section)(g, ui);
-    renderPath(crossArchSectionPath(section, -section.xEndLeft, section.xEndRight, zBase, sign), color, STROKE_WEIGHT.section)(g, ui);
+    if (!section) return parts;
 
     if (this.highlightedPlate === plate) {
-      // Knots are fractions of this station's own crown, so they only become
-      // screen positions once scaled by where that crown ends.
       for (const x of this.highlightKnots(plate, section)) {
-        renderPointHalo(new Pt(x, zBase + sign * section.zAt(x)), color)(g, ui);
+        parts.push(renderPointHalo(new Pt(x, zBase + sign * section.zAt(x)), color));
       }
     }
 
     if (this.flags.showModuleGuides) {
       // What the crown was built from — control points, or the circle that
-      // generates the trochoid. Heights are measured from each side's own
-      // takeoff, which is the level the percentages actually count from, so the
-      // measure reads as the number in the box rather than as height above the
-      // plate.
+      // generates the trochoid — measured up from plate level, the level the
+      // percentages count from, so each measure reads as the number in its box.
       // The shape at the cursor, not the plate's base — so the crosshairs mark
       // whatever the panel's fields are showing, station or draft included.
       const guide = crossArchGuide(this.activeShape(plate), section);
+      // a knot datum is plate level, so it is carried on out to the plate edge; a
+      // trochoid's or catenary's is its takeoff, and starts there
+      const toEdge = this.activeShape(plate).type === 'spline';
       for (const b of guide.baselines) {
         const z = zBase + sign * b.z;
-        renderGuideBaseline(new Pt(b.fromX, z), new Pt(b.toX, z), color)(g, ui);
+        const from = toEdge ? Math.sign(b.fromX) * outerHalf : b.fromX;
+        parts.push(renderGuideBaseline(new Pt(from, z), new Pt(b.toX, z), color));
       }
-      for (const c of guide.circles) {
-        renderCircle(new Circle(0, zBase + sign * c.centerZ, c.radius), color)(g, ui);
+      for (const circle of guide.circles) {
+        parts.push(renderCircle(new Circle(0, zBase + sign * circle.centerZ, circle.radius), color));
       }
       for (const k of guide.knots) {
         const at = new Pt(k.x, zBase + sign * k.z);
-        renderGuideMeasure(new Pt(k.x, zBase + sign * k.base), at, color)(g, ui);
-        renderGuideKnot(at, color)(g, ui);
+        parts.push(renderGuideMeasure(new Pt(k.x, zBase + sign * k.base), at, color));
+        parts.push(renderGuideKnot(at, color));
       }
-      renderCircle(new Circle(section.xPeak, zBase + sign * guide.peakZ, 1), color)(g, ui);
+      parts.push(renderCircle(new Circle(section.xPeak, zBase + sign * guide.peakZ, 1), color));
+      for (const t of guide.takeoffs) parts.push(renderCircle(new Circle(t.x, zBase + sign * t.y, 0.6), color));
     }
+    return parts;
   }
 
   // Deliberately here rather than in the Export panel: this model is still
@@ -1031,12 +1036,6 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
   /**
    * Where the focused knot sits across this station — both places when
    * mirrored, one otherwise.
-   *
-   * Scaled by each side's own takeoff rather than by the half-width, matching
-   * how the profile places them. A mirrored knot can therefore land at two
-   * positions that are not quite reflections, whenever the two sides meet the
-   * channel at different points — which is the asymmetry the model exists to
-   * show, so the halos should show it too.
    */
   private highlightKnots(plate: 'top' | 'bottom', section: CrossArchSection): number[] {
     const pt = this.crossSpline(plate)?.points[this.highlightedIndex];

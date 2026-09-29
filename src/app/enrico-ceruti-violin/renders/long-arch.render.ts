@@ -40,7 +40,8 @@ export function renderSplineHighlight(
  *
  * Pass the arch as authored and `xPlate` at the plate's outer surface, not the lowered arch
  * against its takeoff — the takeoff moves with the channel, so a guide counting from it would
- * label a height nobody typed.
+ * label a height nobody typed. `plateLength` carries the datum out to both plate ends, so it
+ * reads as the edge's own surface.
  */
 export function renderArchGuide(
   arch: ArchCurve,
@@ -49,9 +50,10 @@ export function renderArchGuide(
   xPlate: number,
   sign: 1 | -1,
   color: string,
+  plateLength: number,
 ) {
   return (g: any, ui: any): void => {
-    renderGuideBaseline(new Pt(xPlate, yStart), new Pt(xPlate, yStart + span), color)(g, ui);
+    renderGuideBaseline(new Pt(xPlate, 0), new Pt(xPlate, plateLength), color)(g, ui);
     for (const knot of archGuideKnots(arch)) {
       const y = yStart + knot.t * span;
       const at = new Pt(xPlate + sign * knot.z, y);

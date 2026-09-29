@@ -1,3 +1,5 @@
+const STEP_COALESCE_MS = 150;
+
 export class DebounceController {
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
   private skipDebounce = false;
@@ -5,6 +7,9 @@ export class DebounceController {
   // A step should stay instant even in a panel that opted its other edits back into the delay
   // (emitCoalesced), because a fixed keyboard nudge costs nothing like a held key or a fast typist.
   private stepBypass = false;
+  // A spinner click whose bypass clearImmediate() withdrew. Still a step the user is watching, so it
+  // waits only long enough to coalesce a burst of clicks, not the full typing delay.
+  private withdrawnStep = false;
   private destroyed = false;
 
   constructor(private readonly postRun?: () => void) {}
@@ -45,6 +50,7 @@ export class DebounceController {
    * repeat.
    */
   clearImmediate(): void {
+    this.withdrawnStep = this.skipDebounce;
     this.skipDebounce = false;
   }
 
@@ -57,6 +63,11 @@ export class DebounceController {
       fn();
       this.postRun?.();
       return;
+    }
+
+    if (this.withdrawnStep) {
+      this.withdrawnStep = false;
+      delay = Math.min(delay, STEP_COALESCE_MS);
     }
 
     if (this.debounceTimer !== null) {

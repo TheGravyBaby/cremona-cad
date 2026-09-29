@@ -1,9 +1,11 @@
 import { pathsBounds, samplePathToPolyline } from '../helpers/math/pathMath';
+import { closestPointToPolylineIndexed } from '../helpers/math/vibeMath';
 import { archedViolin, templateViolin } from './ceruti-fixtures';
 import {
   buildPlateStl, buildPlateSurfaceModel, calculateCrossArchTemplates, trimProfileToTroughs,
   calculateLongArchTemplates, computeArchContours, computeArchSectionProfile, crossArchTemplateStations,
   stationChordsAt, topSurfaceZAt, plateHalfChordAtY, PlateSurfaceModel, computeArchContourRings,
+  sampleArchSectionRuns,
 } from './ceruti-surface';
 import {
   defaultCrossArchParams, defaultCrossArchSplineParams, defaultFlutingParams,
@@ -144,6 +146,26 @@ describe('arching templates', () => {
     const nearest = samples.reduce((a, b) => Math.abs(b.x) < Math.abs(a.x) ? b : a);
     expect(nearest.x).toBeCloseTo(0, 0);
     expect(nearest.z).toBeCloseTo(model.zBase + model.signZ * z, 2);
+  });
+
+  it('carries the corner pass into the section, rather than a flat past one gouge width', () => {
+    const y = p.bouts.LCr!.y - 5;
+    const chords = stationChordsAt(p, model, y);
+    const s = chords.crossSection!;
+    const chordEdge = s.centerHalf + s.halfWidth;
+    expect(chords.platformOuterHalf! - chordEdge).toBeGreaterThan(5);
+
+    const runs = sampleArchSectionRuns(p, model, y);
+    const pts = runs.flatMap(r => r.pts.map(pt => ({ ...pt, part: r.part })));
+    const wedge = pts.filter(pt => pt.x > chordEdge + 0.5 && pt.x < chords.platformOuterHalf! - 0.5);
+    expect(wedge.length).toBeGreaterThan(10);
+    for (const pt of wedge) {
+      expect(pt.part).toBe('channel');
+      expect(pt.y).toBeLessThan(0);
+    }
+    expect(runs[0].part).toBe('land');
+    expect(runs[runs.length - 1].part).toBe('land');
+    expect(runs.some(r => r.part === 'arch')).toBe(true);
   });
 
   it('returns null off the plate', () => {
@@ -456,11 +478,13 @@ describe('plate surface model', () => {
     // value shows up here, not just one that stops moving it at all.
     // On Amati a centred crown's contour centroid sits at ~1.1mm — not exactly
     // 0, since the sampled grid isn't perfectly symmetric — and a crown moved
-    // to peak=0.42 pulls it to ~-8.7mm. Bounded both sides on the moved case so
+    // to peak=0.42 pulls it to ~-2.7mm. Smaller than a smooth ridge would give:
+    // the smooth spline sags through the trough at many of these stations, so
+    // they fall back to the monotone one. Bounded both sides on the moved case so
     // a change that pulls the centroid drastically further, not just one that
     // stops moving it, also shows up here.
     expect(Math.abs(centroidOfHighest(0.5))).toBeLessThan(1.5);
-    expect(centroidOfHighest(0.42)).toBeLessThan(-4);
+    expect(centroidOfHighest(0.42)).toBeLessThan(-1.8);
     expect(centroidOfHighest(0.42)).toBeGreaterThan(-15);
   });
 
@@ -577,7 +601,7 @@ describe('plate surface model', () => {
 
     it('only ever removes wood, and never above the plate surface', () => {
       // Both halves of the claim that lets this run after the channel is
-      // settled. A second pass of a gouge can deepen and nothing else, so the
+      // settled. Smoothing the corner can deepen and nothing else, so the
       // composition is a minimum; and it is called only from the channel-side
       // returns, so nothing standing proud of the plate — the whole arch — is
       // reachable by it. The takeoff and every station's section are decided
@@ -590,7 +614,7 @@ describe('plate surface model', () => {
     it('changes nothing along the flanks, where the two loops are the same curve', () => {
       // The reason the pass needs no blend band and no weight. Away from the
       // corners the platform boundary and the channel's outer loop coincide, so
-      // the second cut finds exactly what the first one left and the minimum is
+      // the smoothing finds nothing the channel left standing and the minimum is
       // inert. The residual is polyline sampling — both loops are sampled at
       // roughly 1 mm and a chord sits inside its arc — not geometry.
       const p = flutingParams();
@@ -626,9 +650,11 @@ describe('plate surface model', () => {
             let run = 0;
             for (let x = 1; x <= 120; x += step) {
               // Inside the platform boundary and clear of its walls, where the
-              // gouge's own flank is legitimately close to plate level.
+              // flank is legitimately close to plate level. True distance, not
+              // along the station: at a corner the station line can graze the
+              // land edge's own turn and run beside it for several mm.
               const clear = insideLandCrossings(x, chords.landCrossings)
-                && Math.min(...chords.landCrossings.map(c => Math.abs(c - x))) > 1.5;
+                && closestPointToPolylineIndexed({ x, y }, model.platformOuterIdx).dist > 1.5;
               const z = clear ? topSurfaceZAt(p, model, x, y, chords) : null;
               // Above plate level is the arch, which is not this pass's business.
               run = z !== null && z <= 0.02 && z > -0.05 * depth ? run + step : 0;
@@ -640,29 +666,52 @@ describe('plate surface model', () => {
       };
 
       // Off, the wedge is simply left: on Amati's own corner geometry that's
-      // ~16.5mm of flat plate between the channel and the land. On, the gouge
-      // knocks it down to ~2.5mm — nowhere near "nothing" the way a tighter
-      // corner would read, but a >6x cut, which is the actual claim. Bounded
-      // both sides, pinned to Amati's real numbers rather than a loose
+      // ~16.5mm of flat plate between the channel and the land. On, the
+      // smoothing leaves ~0.5mm — one sample step, where the flank rounds over
+      // onto the land. Pinned to Amati's real numbers rather than a loose
       // one-sided threshold, so a change that moves either value — not just one
       // that makes the pass stop working — shows up here rather than staying
       // silent because a generous inequality still happened to hold.
       expect(widestFlatPatch(false)).toBeGreaterThan(10);
       expect(widestFlatPatch(false)).toBeLessThan(23);
-      expect(widestFlatPatch(true)).toBeGreaterThan(1);
-      expect(widestFlatPatch(true)).toBeLessThan(4);
+      expect(widestFlatPatch(true)).toBeLessThan(1.5);
     });
 
-    it('carves the corner wedge to the full depth of the gouge', () => {
-      // The corner is where the channel bypasses and the platform boundary
-      // follows, so the wedge between them is untouched wood under the channel
-      // pass alone. Cut to depth here, which is what a maker takes it to.
+    it('takes the corner wedge most of the way down, without flooring it at full depth', () => {
       const p = flutingParams();
       const depth = p.arching!.top.fluting!.depth;
       for (const corner of [p.bouts.UCr!.y, p.bouts.LCr!.y]) {
         const band = sweep().rows.filter(r => Math.abs(r.y - corner) <= 12);
-        expect(Math.max(...band.map(r => r.max))).toBeGreaterThan(0.9 * depth);
+        const deepest = Math.max(...band.map(r => r.max));
+        expect(deepest).toBeGreaterThan(0.6 * depth);
+        expect(deepest).toBeLessThan(0.95 * depth);
       }
+    });
+
+    it('leaves the gouge arc against the arch exactly as it was cut', () => {
+      // the smoothing only reaches outboard of the trough, so the inner flank the arch
+      // is solved tangent to is the gouge's own circle, corners included.
+      const pOff = flutingParams();
+      for (const side of ['top', 'bottom'] as const) pOff.arching![side].fluting!.cornerGouge = false;
+      const off = buildPlateSurfaceModel(pOff, 'top')!;
+      const pOn = flutingParams();
+      const on = buildPlateSurfaceModel(pOn, 'top')!;
+      let checked = 0;
+      for (const corner of [pOn.bouts.UCr!.y, pOn.bouts.LCr!.y]) {
+        for (let y = corner - 12; y <= corner + 12; y += 2) {
+          const cOff = stationChordsAt(pOff, off, y);
+          const cOn = stationChordsAt(pOn, on, y);
+          for (let x = 0; x <= 120; x += 0.5) {
+            if (!insideLandCrossings(x, cOn.channelCenterCrossings)) continue;
+            const a = topSurfaceZAt(pOff, off, x, y, cOff);
+            const b = topSurfaceZAt(pOn, on, x, y, cOn);
+            if (a === null || b === null) continue;
+            expect(b).toBe(a);
+            checked++;
+          }
+        }
+      }
+      expect(checked).toBeGreaterThan(100);
     });
   });
 

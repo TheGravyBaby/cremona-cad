@@ -96,38 +96,24 @@ export function cornerGougeOn(g: FlutingParams): boolean {
 }
 
 /**
- * The corner pass, as a height field: the same gouge run a second time with its
- * outer edge on the *platform boundary* rather than on the channel's own outer
- * loop.
+ * The corner smoothing, as a height field: the wedge of flat wood the bypassing
+ * channel leaves at each corner, taken down by hand to meet the channel.
  *
- * `edgeDist` is distance inward from that boundary. Along the flanks the
- * platform boundary and the channel's outer loop are the same curve, so this
- * returns exactly what the channel already returns — the second pass is a
- * no-op wherever there was nothing left to cut. At a corner the platform
- * boundary *follows* the point while the channel bypasses it, so the cut wraps
- * the corner on its own, and the wedge between the two loops is carved by
- * construction.
+ * The gouge's own arc stays where it was cut — on the inner flank, against the
+ * arch. What the maker smooths is the outer flank: from the trough out to the
+ * land edge, however far that has become. So this is the channel's outer flank
+ * stretched across the run from the trough (`s`, negative outboard of it) to the
+ * land edge (`edgeDist` inward from it). Along the flanks that run is exactly one
+ * half-width and the stretch is 1, so this returns what the channel already
+ * does; it only departs from it where the corner has pulled the land edge away.
  *
- * Composed with {@link Math.min}: two passes of a gouge leave the deeper of
- * the two, which is also what makes this incapable of adding material
- * anywhere. Returns 0 past its own reach, so the minimum is inert there.
- *
- * `wedge` is how much wider than one gouge the gap is — about 5mm of
- * full-height plate at the widest part of a violin corner. A maker meeting
- * that keeps taking passes until the two runs join; sliding the same tool
- * across the gap sweeps a flat floor at its own depth with the arc left
- * standing at either wall, which is exactly this: the arc, opened at the
- * trough. The floor stays at the gouge's depth and no deeper however many
- * passes it takes, so this remains a statement about the tool rather than
- * about the gap it's crossing. At `wedge = 0` it is the single cut again.
+ * Never above the channel's own outer flank, so composing it by minimum can only
+ * remove wood, and is inert inboard of the trough and past the land edge.
  */
-export function cornerGougeZ(edgeDist: number, sweepRadius: number, depth: number, wedge = 0): number {
+export function cornerSmoothZ(s: number, edgeDist: number, sweepRadius: number, depth: number): number {
   const w = gougeHalfWidth(sweepRadius, depth);
-  if (w <= 0) return 0;
-  const flat = Math.max(wedge, 0);
-  if (edgeDist <= w) return gougeProfileZ(edgeDist - w, sweepRadius, depth);
-  if (edgeDist <= w + flat) return -depth;
-  return gougeProfileZ(edgeDist - w - flat, sweepRadius, depth);
+  if (w <= 0 || s >= 0 || edgeDist <= 0) return 0;
+  return gougeProfileZ((s * w) / Math.max(edgeDist - s, w), sweepRadius, depth);
 }
 
 /**
@@ -148,12 +134,12 @@ export function defaultCrossArchParams(): CrossArchCycloidParams {
  * A control-point crown: one mirrored knot, part way out from the joint.
  *
  * Deliberately a single point. The crown is anchored at both ends already — the
- * peak at the centerline and the solved takeoff at the channel — so one knot is
+ * peak at the centerline and the solved takeoff in the channel — so one knot is
  * all it takes to describe a curve, and it is the shortest route to seeing what
  * the knot does. Points are cheap to add; a default that arrives pre-shaped
  * mostly gives the maker someone else's arch to argue with.
  *
- * Out near the takeoff rather than in near the joint, which is where a maker
+ * Out toward the channel rather than in near the joint, which is where a maker
  * reading a section would put the one point they were given: the crown's own
  * height is already pinned, so a knot earns its place by saying where the arch
  * turns over into the run-out.
@@ -385,9 +371,11 @@ export function solveArchTakeoff(
   if (!bracket) return takeoffAt(nearest.s, false);
 
   let [x0, x1] = bracket;
+  let r0 = residual(x0);
   for (let i = 0; i < 60 && x1 - x0 > 1e-9; i++) {
     const mid = (x0 + x1) / 2;
-    if (residual(x0) * residual(mid) <= 0) x1 = mid; else x0 = mid;
+    const rMid = residual(mid);
+    if (r0 * rMid <= 0) x1 = mid; else { x0 = mid; r0 = rMid; }
   }
   return takeoffAt((x0 + x1) / 2, true);
 }
@@ -565,17 +553,8 @@ export function channelCapPath(
  * that the transition solve — which rebuilds this spline at every bisection
  * step — stays cheap.
  *
- * Evenly, and stopping short of the channel, both matter. The takeoff can only
- * land within a gouge half-width of the centerline, which on a real plate is
- * the outermost couple of percent of the half-width. Bunching knots there —
- * which sampling by the trochoid's own parameter does, since that's where it
- * bends hardest — drops them into the one region the solve moves through. Each
- * knot the takeoff passes leaves the spline, so the arrival slope steps rather
- * than varies, and bisection is left hunting a root on a staircase: it finds
- * one on either side of a step and misses the middle.
- *
- * The last sampled knot sits at N/(N+1) of the way out, leaving the final
- * stretch unauthored — which is what this model says it is anyway.
+ * The last sampled knot sits at N/(N+1) of the way to the takeoff, leaving
+ * the final stretch into the channel to the solve.
  */
 const CYCLOID_CROWN_KNOTS = 24;
 
@@ -585,9 +564,9 @@ export const CYCLOID_MAX_PCT = 1.5;
 
 /** One authored knot of a crown shape, both coordinates as fractions. */
 export interface CrossArchKnot {
-  /** Distance from the centerline as a fraction of the local half-width — positive; sides are resolved first. */
+  /** Distance from the joint as a fraction of the way to the channel's inner edge — positive; sides are resolved first. */
   x: number;
-  /** Height as a fraction of the local arch height. */
+  /** Height above plate level as a fraction of the local arch height. */
   z: number;
 }
 
@@ -622,7 +601,7 @@ export function crossArchKnots(shape: CrossArchShape, side: 1 | -1): CrossArchKn
 
 /**
  * Half a trochoid, sampled into the same fractional knots an authored template
- * carries — crown outward to the channel centerline.
+ * carries — crown outward to the takeoff.
  *
  * Sampling rather than evaluating is deliberate: everything downstream of the
  * knots — the station ramp, the full-width spline, the tangency solve, the
@@ -638,9 +617,8 @@ export function crossArchKnots(shape: CrossArchShape, side: 1 | -1): CrossArchKn
  * whereas a true d=1 cusp has an infinite edge slope for the solve to run
  * into.
  *
- * Positions are walked evenly and stop short of the channel — see
- * {@link CYCLOID_CROWN_KNOTS} for why that's a correctness matter, not
- * sampling taste.
+ * Positions are walked evenly and stop short of the takeoff — see
+ * {@link CYCLOID_CROWN_KNOTS}.
  */
 function cycloidCrownKnots(shape: CrossArchCycloidShape): CrossArchKnot[] {
   const d = clamp(shape.d, 0, 1);
@@ -690,12 +668,10 @@ export function nearestCrossArchShape(
  * A shape's height fraction as a continuous function of position fraction,
  * anchored at *both* ends.
  *
- * Those anchors are not assumptions, they are what the fractional form means:
- * `x` is measured from the crown out to the takeoff and `z` up from the takeoff
- * to the crown, so (0, 1) and (1, 0) are true of every shape by definition.
- * With both in place this is exactly the curve {@link crossProfile} draws, since
- * that builds the same knots plus the same two endpoints and only scales the
- * axes — an affine map a spline is indifferent to.
+ * Those anchors are what the frame means (see {@link KnotFrame}): the crown at
+ * (0, 1), and the channel's inner edge, which is at plate level, at (1, 0). The
+ * profile itself runs on past that edge to the solved takeoff, but a shape read
+ * at another shape's knot position only ever needs the part inside the frame.
  *
  * It used to hold flat past the outermost knot on the grounds that nothing is
  * authored out there. Alone that was harmless, but it made the resolver invent
@@ -703,7 +679,7 @@ export function nearestCrossArchShape(
  * report a height there, and a held-flat answer claims "level with my outermost
  * knot" — a definite statement the shape never made. Two ramped columns then
  * land at nearly equal heights and the monotone spline, correctly, draws a flat
- * between them. Descending toward the takeoff instead says what the shape
+ * between them. Descending toward the channel instead says what the shape
  * actually does out there.
  */
 function knotFunction(knots: CrossArchKnot[]): (x: number) => number {
@@ -732,6 +708,11 @@ export interface CrossArchRow {
   peak?: number;
   /** True for a catenary crown — see the type header. */
   catenary?: boolean;
+  /**
+   * True for a trochoid: its knots are sampled from a curve whose end *is* the takeoff, so they
+   * are fractions of each side's takeoff rather than of the fixed frame (see {@link KnotFrame}).
+   */
+  fromTakeoff?: boolean;
 }
 
 export type CrossArchResolver = (y: number) => CrossArchRow;
@@ -795,7 +776,8 @@ export function makeCrossArchResolver(
     )
     : () => peakOf(shapes[0]);
 
-  return (y: number) => ({ left: read(left, y), right: read(right, y), peak: peakTrack(y) });
+  const fromTakeoff = cross.type === 'cycloid';
+  return (y: number) => ({ left: read(left, y), right: read(right, y), peak: peakTrack(y), fromTakeoff });
 }
 
 /**
@@ -826,28 +808,47 @@ export function gougeAtY(
 interface SideEnd { xEnd: number; zEnd: number; }
 
 /**
- * Where a knot fraction lands across the plate: `frac` measured from the joint
- * out to this side's takeoff at `side * xEnd`.
+ * What a crown's knots are measured against at one station — the wood as it stands before the
+ * cross arch is carved, so the frame never moves when a knot does.
  *
- * Measured from the joint rather than from the crown, so moving the crown does
- * not drag every knot along with it. A knot is a place on the section — the
- * position a maker read off a scan, or off a plate with a caliper — and it
- * should stay there while the ridge is dialled into place around it.
+ * Across: from the joint out to the channel's inner edge. A takeoff can only land on the
+ * channel's flank, outboard of that edge, so every knot inside the frame is inboard of whatever
+ * takeoff the solve finds — the takeoff is an output, not part of the ruler.
  *
- * The consequence is that a knot can end up on the far side of the crown from
- * the one it was authored on; see {@link crossProfile}, which sorts rather than
- * assuming.
+ * Height: up from plate level, the same datum the long arch's height is measured from, as a
+ * fraction of the crown's height here. Where the crown hasn't climbed a couple of gouge depths
+ * clear of the plate (the cap recurve bands) a fraction of it means nothing — it goes to zero
+ * and then negative, and would invert the section — so over that band the datum eases down
+ * onto each side's takeoff. `lift` is how far it has eased: 1 is plate level.
  *
- * The single place the fractional form becomes a position, so the profile, the
- * module guide and the panel's halos cannot drift apart about it.
+ * Authored knots only. A trochoid or catenary is a generated curve whose end is the takeoff, so
+ * with `fromTakeoff` both axes run to each side's takeoff instead, and the curve lands on it.
  */
-function knotXAt(xEnd: number, side: 1 | -1, frac: number): number {
-  return side * frac * xEnd;
+interface KnotFrame {
+  innerEdge: number;
+  lift: number;
+  fromTakeoff: boolean;
+  /** The channel's floor, −depth: the lowest a smooth profile may go unless a knot asks for lower. */
+  trough: number;
 }
 
-/** {@link knotXAt} against a solved station — what the guide and the panel's halos use. */
+/** A knot's height above the plate, on the side whose takeoff is `end`. */
+function knotHeight(archH: number, frame: KnotFrame, end: SideEnd, z: number): number {
+  const datum = frame.fromTakeoff ? end.zEnd : (1 - frame.lift) * end.zEnd;
+  return datum + z * (archH - datum);
+}
+
+/**
+ * Where a knot fraction lands across the plate. Measured from the joint rather than from the
+ * crown, so moving the crown does not drag every knot along with it — a knot can therefore end
+ * up on the far side of the crown from the one it was authored on; see {@link crossProfile},
+ * which sorts rather than assuming.
+ *
+ * The single place the fractional form becomes a position, so the profile, the module guide and
+ * the panel's halos cannot drift apart about it.
+ */
 export function crossArchKnotX(section: CrossArchSection, side: 1 | -1, frac: number): number {
-  return knotXAt(side < 0 ? section.xEndLeft : section.xEndRight, side, frac);
+  return side * frac * section.innerEdge;
 }
 
 /**
@@ -869,43 +870,24 @@ export function crossArchKnotX(section: CrossArchSection, side: 1 | -1, frac: nu
  * there is no blend.
  */
 function crossProfile(
-  archH: number, xPeak: number,
+  archH: number, xPeak: number, frame: KnotFrame,
   left: CrossArchKnot[], right: CrossArchKnot[], endL: SideEnd, endR: SideEnd,
 ): (x: number) => number {
-  // Fractions become millimetres here and nowhere else, and both axes are
-  // measured against that side's own takeoff: position from the crown out to
-  // it, height up from it toward the crown.
-  //
-  // Height from the takeoff, not from plate level, because near the body caps
-  // the crown sits below plate level and `archH` goes negative — scaling a
-  // knot as `z × archH` there would lift it above the crown and invert the
-  // section. Measured from the takeoff the shape stays right on either side
-  // of plate level.
-  //
-  // Position from the takeoff too, rather than from the channel centerline
-  // with knots beyond the takeoff discarded, because discarding is a step
-  // change: as the solve moves the takeoff hunting for its root, each knot it
-  // passes leaves the spline, so the arrival slope jumps instead of varying,
-  // and bisection finds a riser instead of a root. Stretching the shape means
-  // no knot ever crosses the takeoff and the root is a real root — also the
-  // more honest reading of a fractional template, since the shape spans only
-  // the part of the plate the maker actually carves.
-  //
-  // Positions run from the joint, not the crown (see {@link knotXAt}), so a
-  // knot authored on one side can end up on the other flank once the crown
-  // moves — hence the sort below rather than assuming order.
-  const heightAt = (z: number, end: SideEnd) => end.zEnd + z * (archH - end.zEnd);
+  // Fractions become millimetres here and nowhere else, against the fixed
+  // frame (see {@link KnotFrame}). Because every knot sits inboard of the
+  // channel's inner edge and every takeoff outboard of it, the solve can slide
+  // a takeoff anywhere along the flank without ever passing a knot — so the
+  // arrival slope varies continuously and bisection finds a real root.
   const place = (knots: CrossArchKnot[], end: SideEnd, side: 1 | -1) => knots
-    .map(k => ({ x: knotXAt(end.xEnd, side, k.x), z: heightAt(k.z, end) }))
+    .map(k => ({ x: side * k.x * (frame.fromTakeoff ? end.xEnd : frame.innerEdge), z: knotHeight(archH, frame, end, k.z) }))
     // Defensive: authored fractions are held below 1, so this never fires.
     .filter(k => k.x > -endL.xEnd + 1e-6 && k.x < endR.xEnd - 1e-6);
 
   const inner = [...place(left, endL, -1), ...place(right, endR, 1)].sort((a, b) => a.x - b.x);
 
   // A knot landing on the crown would hand the spline a zero-width interval.
-  // Held clear rather than dropped, for the same reason as the takeoff
-  // anchoring above — a dropped knot is a step, which the tangency solve
-  // can't survive. The gap is far below anything the wood or the mesh
+  // Held clear rather than dropped: a dropped knot is a step in the arrival
+  // slope, which the tangency solve can't survive. The gap is far below anything the wood or the mesh
   // resolves.
   const CROWN_GAP = 1e-4;
   const xs: number[] = [-endL.xEnd];
@@ -929,55 +911,33 @@ function crossProfile(
   if (Math.abs(xPeak) < 1e-9) return makeMonotoneSpline(xs, zs);
 
   const smooth = makeC2SplineWithFlatKnot(xs, zs, crown);
-  if (smooth && !overshoots(smooth, xs, zs, archH)) return smooth;
+  if (smooth && !breaksSpec(smooth, xs, zs, frame.trough)) return smooth;
   return makeMonotoneSpline(xs, zs);
 }
 
 /**
- * How far a profile may stray outside the knots bracketing it, as a fraction of
- * the crown's own rise, before it is judged unusable.
+ * Whether a smooth profile carves outside what the maker specified — the only
+ * reason to give up its smoothness for the monotone spline.
  *
- * Generous on purpose. The curvature-continuous spline buys its smoothness by
- * giving up the no-overshoot guarantee, and a fraction of a millimetre of
- * wander on a 15mm arch is far below what the wood, the mesh or the eye
- * resolves — whereas the crease it removes is plainly visible. This is the
- * "nudge the curve to make it smooth" trade, with a number on it.
- */
-const PROFILE_OVERSHOOT_TOLERANCE = 0.02;
-
-/**
- * Whether a profile wanders outside the knots it passes through.
+ * The knots are abstractions; the spec is the arch height and the channel. So
+ * the curve may wander off its knots as it likes, but it may not rise above the
+ * highest height asked for (normally the crown — the arch height stays exact),
+ * nor sink below the channel's trough, which would cut the channel deeper than
+ * the gouge did. A knot or crown deliberately set below the trough lowers that
+ * floor to itself.
  *
- * Checked per interval rather than against the crown alone, because the
- * curvature-continuous spline does not misbehave where one would expect. Its
- * crown is exact by construction; where it can swing is the outermost interval,
- * the long unauthored run from the last knot down into the channel — which is
- * also the stretch the tangency solve reads its arrival slope from, so a swing
- * there would not merely look wrong, it would move the contact.
+ * Sampled about every millimetre rather than at a few points per interval: the
+ * run from the last knot into the channel can be tens of millimetres long, and
+ * a sag through the trough fits between quarter points of it.
  */
-function overshoots(f: (x: number) => number, xs: number[], zs: number[], archH: number): boolean {
-  const rise = Math.max(Math.abs(archH - Math.min(zs[0], zs[zs.length - 1])), 1e-6);
-  const tol = PROFILE_OVERSHOOT_TOLERANCE * rise;
-  // The takeoffs are the profile's lowest points by construction — knots are
-  // fractions of the rise *up* from one — and dipping under them is not wander
-  // to be traded against smoothness, it is the arch cutting through the channel
-  // it is supposed to land on. Wood the gouge never removed. So this floor gets
-  // no tolerance, unlike the per-interval bounds below.
-  //
-  // It only started to bite once an unsolved side began landing near the trough
-  // rather than at the channel's inner edge (see {@link solveArchTakeoff}):
-  // with the endpoint at −depth instead of ≈0, a swing that used to be a
-  // harmless dip in mid-flank became a breach of the trough.
-  // Authored knots and a low crown may sit below the takeoffs; those are the floor then.
-  const floor = Math.min(...zs);
+function breaksSpec(f: (x: number) => number, xs: number[], zs: number[], trough: number): boolean {
+  const ceiling = Math.max(...zs) + 1e-4;
+  const floor = Math.min(...zs, trough) - 1e-4;
   for (let i = 0; i < xs.length - 1; i++) {
-    const lo = Math.min(zs[i], zs[i + 1]) - tol;
-    const hi = Math.max(zs[i], zs[i + 1]) + tol;
-    // A cubic's extremum on an interval is interior; quarter points catch any
-    // excursion big enough to matter at this tolerance.
-    for (const t of [0.25, 0.5, 0.75]) {
-      const v = f(xs[i] + t * (xs[i + 1] - xs[i]));
-      if (v < lo || v > hi || v < floor) return true;
+    const n = Math.max(4, Math.ceil(xs[i + 1] - xs[i]));
+    for (let j = 1; j < n; j++) {
+      const v = f(xs[i] + (j / n) * (xs[i + 1] - xs[i]));
+      if (v > ceiling || v < floor) return true;
     }
   }
   return false;
@@ -1018,6 +978,11 @@ export interface CrossArchSection {
   /** |x| where the arch hands over to the channel on each side — where one is drawn in place of the other. */
   xEndLeft: number;
   xEndRight: number;
+  /** |x| of the channel's inner edge — what knot positions are fractions of. */
+  innerEdge: number;
+  /** The height knot heights count up from on each side: plate level, except in the cap recurve bands. */
+  datumLeft: number;
+  datumRight: number;
   /** Surface height above the plate outer surface at transverse position `x`. */
   zAt: (x: number) => number;
 }
@@ -1150,7 +1115,12 @@ export function solveCrossArchSection(
   // makes the two flanks disagree, landing as a step down the joint; centring
   // there is the condition under which the sign of x stops mattering.
   const t = clamp(archH / (PEAK_TAPER_DEPTHS * depth), 0, 1);
-  const taper = t * t * (3 - 2 * t) * crownOffsetTrust(chordFrac);
+  const lift = t * t * (3 - 2 * t);
+  const taper = lift * crownOffsetTrust(chordFrac);
+  // the same band decides when there is enough crown to measure knot heights against
+  const frame: KnotFrame = {
+    innerEdge: centerHalf - halfWidth, lift, trough: -depth, fromTakeoff: !!row.fromTakeoff || isCatenary,
+  };
 
   // Held well inside the channel's inner edge, which is the innermost a takeoff
   // can ever land. The crown has to stay a strictly interior knot: landing it on
@@ -1187,8 +1157,8 @@ export function solveCrossArchSection(
         return (catenarySideZAt(archH, mine.zEnd, mine.xEnd, side * (mine.xEnd - eps)) - mine.zEnd) / eps;
       }
       const f = side === 1
-        ? crossProfile(archH, xPeak, row.left, row.right, endL, mine)
-        : crossProfile(archH, xPeak, row.left, row.right, mine, endR);
+        ? crossProfile(archH, xPeak, frame, row.left, row.right, endL, mine)
+        : crossProfile(archH, xPeak, frame, row.left, row.right, mine, endR);
       return (f(side * (mine.xEnd - eps)) - mine.zEnd) / eps;
     };
     return solveArchTakeoff(sweepRadius, depth, slopeAt);
@@ -1200,13 +1170,16 @@ export function solveCrossArchSection(
   // between the two ends — so a few sweeps settle it, and a symmetric template
   // converges on the first.
   for (let i = 0; i < 4; i++) {
+    const before = [takeR?.contactS, takeL?.contactS];
     takeR = solveSide(1);
     if (takeR) endR = endAt(takeR.contactS);
     takeL = solveSide(-1);
     if (takeL) endL = endAt(takeL.contactS);
+    // settled: another sweep would re-solve the same two landings
+    if (before[0] === takeR?.contactS && before[1] === takeL?.contactS) break;
   }
 
-  const profile = isCatenary ? null : crossProfile(archH, xPeak, row.left, row.right, endL, endR);
+  const profile = isCatenary ? null : crossProfile(archH, xPeak, frame, row.left, row.right, endL, endR);
   const zAt = (x: number): number => {
     if (x >= -endL.xEnd && x <= endR.xEnd) {
       return isCatenary
@@ -1223,6 +1196,8 @@ export function solveCrossArchSection(
     centerHalf, halfWidth, sweepRadius, archH, xPeak,
     left: takeL, right: takeR,
     xEndLeft: endL.xEnd, xEndRight: endR.xEnd,
+    innerEdge: frame.innerEdge,
+    datumLeft: knotHeight(archH, frame, endL, 0), datumRight: knotHeight(archH, frame, endR, 0),
     zAt,
   };
 }
@@ -1232,21 +1207,18 @@ export interface CrossArchGuideKnot {
   x: number;
   /** Height above the plate outer surface. */
   z: number;
-  /** This side's takeoff level: the zero the knot's height percentage counts up from. */
+  /** The datum the knot's height percentage counts up from — plate level through the body. */
   base: number;
 }
 
 /**
- * One side's takeoff level, as a run from the takeoff itself in to the crown —
- * the datum every height on that side is measured from.
- *
- * One per side rather than one across the section, because the two takeoffs are
- * only at the same level on a symmetric station. Where they differ the two runs
- * meet at the crown at a visible step, which is the asymmetry the model is
- * about and a single line through the middle would hide.
+ * One side's height datum, run from the channel's inner edge in to the crown —
+ * the frame every knot on that side is measured in. Plate level through the
+ * body, so the two sides meet as one line; only in the cap recurve bands does
+ * each ease down toward its own takeoff.
  */
 export interface CrossArchGuideBaseline {
-  /** Signed x of the takeoff end. */
+  /** Signed x of the channel's inner edge, the outer end of the knot frame. */
   fromX: number;
   /** Signed x of the crown end, i.e. the peak. */
   toX: number;
@@ -1280,12 +1252,9 @@ export interface CrossArchGuideCircle {
  * crosshairs per side for one authored point. The guide marks what was
  * authored, so it agrees with the panel's own rows.
  *
- * Their placement is still read off the *solved* station: positions are
- * fractions of this side's crown and heights fractions of its rise from the
- * takeoff, so neither means anything in millimetres until the transition has
- * been solved. Each side is placed against its own takeoff, so an asymmetric
- * template puts its mirrored knots at two heights — the model's whole subject,
- * and a guide that hid it would be lying.
+ * Placement is read off the station's fixed frame (see {@link KnotFrame}), not
+ * off the solved takeoff, so a knot's crosshair stays put while the transition
+ * moves around it. The takeoffs are marked separately, as where the solve landed.
  *
  * Between stations, `shape` is the nearest authored one while the curve drawn
  * is a ramp through it, so the crosshairs can sit a little off the section.
@@ -1295,21 +1264,25 @@ export interface CrossArchGuideCircle {
 export interface CrossArchGuide {
   knots: CrossArchGuideKnot[];
   circles: CrossArchGuideCircle[];
-  /** Both takeoff levels, drawn whatever the curve type — a trochoid's rise counts from them too. */
+  /** Both sides' datums, drawn whatever the curve type — a trochoid's rise counts from them too. */
   baselines: CrossArchGuideBaseline[];
+  /** Where each side's arch was solved to meet the channel — an output, marked apart from the frame. */
+  takeoffs: Pt[];
   /** The crown itself, always marked — at `section.xPeak`, which need not be the joint. */
   peakZ: number;
 }
 
 export function crossArchGuide(shape: CrossArchShape, section: CrossArchSection): CrossArchGuide {
-  const out: CrossArchGuide = { knots: [], circles: [], baselines: [], peakZ: section.archH };
+  const out: CrossArchGuide = { knots: [], circles: [], baselines: [], takeoffs: [], peakZ: section.archH };
 
   for (const side of [-1, 1] as const) {
     const xEnd = side < 0 ? section.xEndLeft : section.xEndRight;
-    // The endpoint of the profile spline, which is exactly the takeoff.
-    const base = section.zAt(side * xEnd);
+    const base = side < 0 ? section.datumLeft : section.datumRight;
     const hEff = section.archH - base;
-    out.baselines.push({ fromX: side * xEnd, toX: section.xPeak, z: base });
+    // a generated curve's rise counts from its takeoff; authored knots from the fixed frame
+    const frameEnd = shape.type === 'spline' ? section.innerEdge : xEnd;
+    out.baselines.push({ fromX: side * frameEnd, toX: section.xPeak, z: base });
+    out.takeoffs.push(new Pt(side * xEnd, section.zAt(side * xEnd)));
 
     if (shape.type === 'cycloid') {
       // A trochoid of rise `hEff` and factor `d` is traced by a circle of
@@ -1361,36 +1334,6 @@ export interface PlateGeometry {
   resolveCross: CrossArchResolver;
   /** The plate's long arch, already terminated against the channel at the caps. */
   longArch: LongArchSolve | null;
-  /**
-   * The widest the corner wedge gets anywhere on this plate — how much further
-   * apart than one gouge the platform boundary and the channel ever run.
-   *
-   * Zero on the flanks by construction, so this is a pure corner measurement.
-   * It bounds the corner pass in both directions: nothing further inside the
-   * boundary than `2w + this` can be reached by it, which lets the height field
-   * skip the query outright over most of the plate, and no local wedge estimate
-   * is allowed to exceed it, which makes a runaway floor impossible rather than
-   * merely unlikely.
-   */
-  cornerWedgeMax: number;
-}
-
-/**
- * How far the channel runs from the platform boundary, in excess of the one
- * gouge width that separates them along the flanks.
- *
- * Measured *at the boundary* rather than at an arbitrary point, because the gap
- * is a property of the two loops and not of whoever is asking. Sampled coarsely:
- * this only sets a bound, and the corner is tens of millimetres of arc.
- */
-function maxCornerWedge(p: EnricoCerutiParams, g: FlutingParams, centerIdx: PolylineIndex): number {
-  const boundary = samplePathToPolyline(defineInsetPath(p, p.outerFlutingDepth ?? 0), 2);
-  let max = 0;
-  for (const v of boundary) {
-    const gap = closestPointToPolylineIndexed(v, centerIdx).dist - gougeAtY(p, g, v.y).halfWidth;
-    if (gap > max) max = gap;
-  }
-  return max;
 }
 
 export function buildPlateGeometry(
@@ -1406,7 +1349,6 @@ export function buildPlateGeometry(
     centerIdx,
     resolveCross: makeCrossArchResolver(cross, p.height),
     longArch: solveLongArch(p, arch, g),
-    cornerWedgeMax: cornerGougeOn(g) ? maxCornerWedge(p, g, centerIdx) : 0,
   };
 }
 
@@ -1444,27 +1386,6 @@ export function crossArchSectionAt(
     solvedLongArchHeightAt(geo, y), centerHalf, sweepRadius, geo.gouge.depth, geo.resolveCross(y),
     chordFrac,
   );
-}
-
-/**
- * The full-width section at a station, in section coordinates (canvas X =
- * violin X, canvas Y = absolute Z) — crown, both transitions, both channels and
- * the flat land beyond, as one continuous curve.
- *
- * Sampled from {@link CrossArchSection.zAt} rather than assembled piecewise,
- * so what is drawn is exactly the surface the model evaluates. There is no seam
- * to line up: the arch and the channel are one function.
- */
-export function crossArchSectionPath(
-  section: CrossArchSection, xFrom: number, xTo: number, zBase: number, sign: 1 | -1, n = 160,
-): string {
-  if (!(xTo > xFrom)) return '';
-  const pts: string[] = [];
-  for (let i = 0; i <= n; i++) {
-    const x = xFrom + ((xTo - xFrom) * i) / n;
-    pts.push(`${i === 0 ? 'M' : 'L'} ${x} ${zBase + sign * section.zAt(x)}`);
-  }
-  return pts.join(' ');
 }
 
 /**
