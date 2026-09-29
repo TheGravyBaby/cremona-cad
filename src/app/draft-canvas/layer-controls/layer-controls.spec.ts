@@ -63,7 +63,21 @@ describe('LayerControlsComponent', () => {
     fixture.detectChanges();
 
     expect(all('.lc-popup').length).toBe(1);
-    expect(all('.layer-tab').length).toBe(toolbox.layers.length);
+    // one row per layer, plus the Recipe row at the top
+    expect(all('.layer-tab').length).toBe(toolbox.layers.length + 1);
+    expect(all('.layer-tab.recipe').length).toBe(1);
+  });
+
+  it('locks and unlocks recipe geometry from its row', () => {
+    toolbox.setRecipeLocked(false);
+    all('.lc-btn')[0].click();
+    fixture.detectChanges();
+
+    const lock = all('.layer-tab.recipe button')[0] as HTMLButtonElement;
+    lock.click();
+    expect(toolbox.recipeLocked).toBe(true);
+    lock.click();
+    expect(toolbox.recipeLocked).toBe(false);
   });
 
   // An image scoped to another panel isn't drawn even with its eye on. It stays in this list —

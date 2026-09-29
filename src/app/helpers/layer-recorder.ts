@@ -19,6 +19,9 @@ export interface RecordedElement {
   tag: string;
   attrs: Record<string, unknown>;
   text?: string;
+  /** The group it was appended into, or undefined at the root — so a reader can compose the
+   * `transform`s above it and see markers like `data-decoration` set on an enclosing group. */
+  parent?: RecordedElement;
 }
 
 class FakeSelection {
@@ -29,7 +32,7 @@ class FakeSelection {
   ) {}
 
   append(tag: string): FakeSelection {
-    const element: RecordedElement = { layer: this.layer, tag, attrs: {} };
+    const element: RecordedElement = { layer: this.layer, tag, attrs: {}, parent: this.element };
     this.sink.push(element);
     return new FakeSelection(this.sink, this.layer, element);
   }

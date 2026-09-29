@@ -24,6 +24,19 @@
     @if (layersOpen) {
     <div class="lc-popup">
       <div class="layer-tabs">
+        <!-- The instrument itself, as one more row. No eye (the render toggles decide what the
+             recipe draws) and never the active layer (nothing is drawn onto it) — just the lock
+             that says whether a click or marquee can pick a piece of it to read off or duplicate. -->
+        <div class="layer-tab recipe" [class.locked]="recipeLocked">
+          <span class="layer-tab-icon-btn recipe-spacer"></span>
+          <span class="layer-tab-label"
+            title="What the recipe draws. Unlocked, its pieces can be selected, read and duplicated — never edited.">Recipe</span>
+          <button type="button" class="layer-tab-icon-btn"
+            (click)="toggleRecipeLocked(); $event.stopPropagation()"
+            [title]="recipeLocked ? 'Unlock recipe geometry for selection' : 'Lock recipe geometry'">
+            <ng-container [ngTemplateOutlet]="lockIcon" [ngTemplateOutletContext]="{ locked: recipeLocked }" />
+          </button>
+        </div>
         @for (layer of toolboxLayers; track layer.id) {
         <div class="layer-tab" [class.active]="layer.id === activeLayerId" [class.locked]="layer.locked"
           (click)="selectLayer(layer.id)">

@@ -1,6 +1,6 @@
 import { Pt } from '../../models/types';
 
-type PathCommand = { type: string; args: number[] };
+export type PathCommand = { type: string; args: number[] };
 
 const COMMAND_LETTERS = 'MmLlHhVvCcSsQqTtAaZz';
 
@@ -14,7 +14,7 @@ const ARG_COUNTS: Record<string, number> = {
 };
 
 /** Minimal SVG path `d` tokenizer — just enough to track the current point and read arc params. */
-function tokenizePathData(d: string): PathCommand[] {
+export function tokenizePathData(d: string): PathCommand[] {
   const commands: PathCommand[] = [];
   const n = d.length;
   let i = 0;
@@ -204,4 +204,97 @@ export function extractArcCenters(d: string): Pt[] {
   }
 
   return centers;
+}
+
+const fmt = (n: number): string => String(Math.round(n * 1e6) / 1e6);
+
+/**
+ * Rewrites any SVG path data as absolute M, L, C, Q, A and Z — the subset every helper in
+ * helpers/math/pathMath.ts understands. Relative commands are resolved against the current
+ * point, H and V become L, and S and T get their reflected control point spelled out. A path
+ * that is already in that subset comes back with the same commands and numbers.
+ */
+export function absolutePathData(d: string): string {
+  const out: string[] = [];
+  let cur: Pt = { x: 0, y: 0 };
+  let subpathStart: Pt = { x: 0, y: 0 };
+  // the control point S/T reflect, valid only straight after a C/S or Q/T respectively
+  let lastCubicControl: Pt | null = null;
+  let lastQuadControl: Pt | null = null;
+
+  for (const { type, args } of tokenizePathData(d)) {
+    const rel = type === type.toLowerCase();
+    const letter = type.toUpperCase();
+    const abs = (x: number, y: number): Pt => rel ? { x: cur.x + x, y: cur.y + y } : { x, y };
+    let cubic: Pt | null = null;
+    let quad: Pt | null = null;
+
+    switch (letter) {
+      case 'M': {
+        cur = abs(args[0], args[1]);
+        subpathStart = cur;
+        out.push(`M ${fmt(cur.x)} ${fmt(cur.y)}`);
+        break;
+      }
+      case 'L': {
+        cur = abs(args[0], args[1]);
+        out.push(`L ${fmt(cur.x)} ${fmt(cur.y)}`);
+        break;
+      }
+      case 'H': {
+        cur = { x: rel ? cur.x + args[0] : args[0], y: cur.y };
+        out.push(`L ${fmt(cur.x)} ${fmt(cur.y)}`);
+        break;
+      }
+      case 'V': {
+        cur = { x: cur.x, y: rel ? cur.y + args[0] : args[0] };
+        out.push(`L ${fmt(cur.x)} ${fmt(cur.y)}`);
+        break;
+      }
+      case 'C': {
+        const c1 = abs(args[0], args[1]);
+        const c2 = abs(args[2], args[3]);
+        cur = abs(args[4], args[5]);
+        cubic = c2;
+        out.push(`C ${fmt(c1.x)} ${fmt(c1.y)} ${fmt(c2.x)} ${fmt(c2.y)} ${fmt(cur.x)} ${fmt(cur.y)}`);
+        break;
+      }
+      case 'S': {
+        const c1 = lastCubicControl ? { x: 2 * cur.x - lastCubicControl.x, y: 2 * cur.y - lastCubicControl.y } : cur;
+        const c2 = abs(args[0], args[1]);
+        cur = abs(args[2], args[3]);
+        cubic = c2;
+        out.push(`C ${fmt(c1.x)} ${fmt(c1.y)} ${fmt(c2.x)} ${fmt(c2.y)} ${fmt(cur.x)} ${fmt(cur.y)}`);
+        break;
+      }
+      case 'Q': {
+        const c = abs(args[0], args[1]);
+        cur = abs(args[2], args[3]);
+        quad = c;
+        out.push(`Q ${fmt(c.x)} ${fmt(c.y)} ${fmt(cur.x)} ${fmt(cur.y)}`);
+        break;
+      }
+      case 'T': {
+        const c = lastQuadControl ? { x: 2 * cur.x - lastQuadControl.x, y: 2 * cur.y - lastQuadControl.y } : cur;
+        cur = abs(args[0], args[1]);
+        quad = c;
+        out.push(`Q ${fmt(c.x)} ${fmt(c.y)} ${fmt(cur.x)} ${fmt(cur.y)}`);
+        break;
+      }
+      case 'A': {
+        const [rx, ry, rot, large, sweep, x, y] = args;
+        cur = abs(x, y);
+        out.push(`A ${fmt(rx)} ${fmt(ry)} ${fmt(rot)} ${large} ${sweep} ${fmt(cur.x)} ${fmt(cur.y)}`);
+        break;
+      }
+      case 'Z': {
+        cur = subpathStart;
+        out.push('Z');
+        break;
+      }
+    }
+    lastCubicControl = cubic;
+    lastQuadControl = quad;
+  }
+  return out.join(' ');
 }

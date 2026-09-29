@@ -1,11 +1,14 @@
 import { TestBed } from '@angular/core/testing';
-import { SelectionStore, toolboxRef } from './selection-store';
+import { SelectionStore, sceneRef, toolboxRef } from './selection-store';
 import { ToolboxStore } from './toolbox-store';
+import { SceneStore } from './scene-index';
 import { DraftShape, ImageShape, LineShape } from './toolbox-shape';
+import { renderSegment } from '../../helpers/renderFuncs';
 
 describe('SelectionStore', () => {
   let toolbox: ToolboxStore;
   let selection: SelectionStore;
+  let scene: SceneStore;
 
   const line = (id: string, layerId?: string): LineShape => ({
     id, type: 'line', start: { x: 0, y: 0 }, end: { x: 10, y: 0 }, layerId,
@@ -19,6 +22,8 @@ describe('SelectionStore', () => {
     TestBed.configureTestingModule({});
     toolbox = TestBed.inject(ToolboxStore);
     selection = TestBed.inject(SelectionStore);
+    scene = TestBed.inject(SceneStore);
+    scene.setLayers([]);
     toolbox.resetAll();
     toolbox.setActivePanel(null);
     selection.clear();
@@ -108,5 +113,33 @@ describe('SelectionStore', () => {
     selection.select(toolboxRef('section'));
     expect(toolbox.revealedImageId).toBe('section');
     expect(ids(selection.shapes)).toEqual(['section']);
+  });
+
+  it('resolves a scene ref through the scene index, apart from the editable shapes', () => {
+    scene.setLayers([renderSegment({ x: 0, y: 0 }, { x: 10, y: 0 }, '#000')]);
+    const [piece] = scene.shapes;
+    toolbox.addShape(line('a'));
+    selection.set([toolboxRef('a'), sceneRef(piece.id)]);
+
+    expect(ids(selection.shapes)).toEqual(['a', piece.id]);
+    expect(ids(selection.toolboxShapes)).toEqual(['a']);
+    expect(ids(selection.sceneShapes)).toEqual([piece.id]);
+    expect(selection.shape).toBeUndefined();
+
+    selection.select(sceneRef(piece.id));
+    expect(selection.shape?.id).toBe(piece.id);
+    expect(selection.toolboxShape).toBeUndefined();
+  });
+
+  it('drops a scene ref when the recipe stops drawing that piece, and keeps one it redraws', () => {
+    scene.setLayers([renderSegment({ x: 0, y: 0 }, { x: 10, y: 0 }, '#000')]);
+    const [piece] = scene.shapes;
+    selection.select(sceneRef(piece.id));
+
+    scene.setLayers([renderSegment({ x: 0, y: 0 }, { x: 10, y: 0 }, '#f00')]);
+    expect(selection.size).toBe(1);
+
+    scene.setLayers([renderSegment({ x: 0, y: 0 }, { x: 12, y: 0 }, '#000')]);
+    expect(selection.size).toBe(0);
   });
 });

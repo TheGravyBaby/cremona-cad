@@ -21,8 +21,16 @@ Most files here carry a header comment explaining their own contract. Read it be
   selection, which is what paste, Delete and a nudge want.
 - **`selection-store.ts`** — root singleton holding what is selected, as refs rather than shapes.
   Read by the canvas, the settings bar and anything that acts on a selection; only the canvas
-  writes it. Prunes itself when a shape stops being editable. The `scene` ref source is
-  reserved for recipe geometry once the scene index exists.
+  writes it. A ref is a toolbox shape or a piece of the recipe (`scene`); `toolboxShapes` is
+  the editable part, `shapes` is everything. Prunes itself when a shape stops being editable or
+  the recipe stops drawing a piece.
+- **`scene-index.ts`** — `SceneStore`, the recipe's rendered geometry as read-only `DraftShape`s.
+  Runs the recipe's render layers through `helpers/layer-recorder.ts` (never the DOM), composes
+  group transforms, skips anything marked `data-decoration`/`data-no-snap`, and fingerprints
+  ids off the geometry so a selection survives a redraw of the same arc. Lazy: rebuilt only when
+  something asks. A recipe piece can be hit-tested, haloed, read off in the settings bar and
+  duplicated (Ctrl+D) with the same code drawn shapes use — never edited. The Recipe row in the
+  layers popup (`ToolboxStore.recipeLocked`) takes it out of reach of clicks and marquees.
 - **`toolbox-shape.ts`** — `DraftShape`, the method-free plain-object union. See below.
   `PathShape` is the catch-all: absolute M/L/C/Q/A/Z path data, hit-tested and bounded off a
   sampled polyline, moved as one rigid body. Nothing draws one yet; it exists for copied recipe

@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { inject } from '@angular/core';
 import { DraftTool } from '../tools/draft-tool';
 import { ToolboxStore, PanelChoice } from '../tools/toolbox-store';
@@ -11,6 +11,7 @@ import {
 } from '../tools/toolbox-shape';
 import { ImageCrop } from '../../models/types';
 import { normalizeDegrees, pointAtDistanceToward } from '../../helpers/math/simpleGeometry';
+import { shapeBounds } from '../tools/shape-hit-test';
 
 /**
  * The Inkscape-style contextual settings strip along the bottom bar: color, then whichever
@@ -32,12 +33,17 @@ export class SettingsBarComponent {
   private selection = inject(SelectionStore);
 
   @Input() activeTool: DraftTool | null = null;
+  /** Duplicating lands shapes on the canvas, so the canvas does it — see
+   * DraftCanvasComponent.duplicateSelection. */
+  @Output() duplicateRequested = new EventEmitter<void>();
 
-  /** Set only for exactly one selected shape — what the per-type numeric panels edit. */
-  public get selectedShape(): DraftShape | undefined { return this.selection.shape; }
-  /** The full selection, however many shapes — drives group-editable settings like color that
-   * apply across a multi-selection. */
-  public get selectedShapes(): DraftShape[] { return this.selection.shapes; }
+  /** Set only for exactly one selected, editable shape — what the per-type numeric panels edit. */
+  public get selectedShape(): DraftShape | undefined { return this.selection.toolboxShape; }
+  /** The editable selection, however many shapes — drives group-editable settings like color
+   * that apply across a multi-selection. Recipe geometry is left out: nothing here can change it. */
+  public get selectedShapes(): DraftShape[] { return this.selection.toolboxShapes; }
+  /** Selected pieces of the recipe's own geometry — described, never edited. */
+  private get sceneShapes(): DraftShape[] { return this.selection.sceneShapes; }
 
   /** Narrows the current selection to one shape type, for a settings panel's own `selectedXShape` getter. */
   private selectedShapeOfType<T extends DraftShape['type']>(type: T): Extract<DraftShape, { type: T }> | undefined {
@@ -83,7 +89,21 @@ export class SettingsBarComponent {
   /** Whether the bar has anything at all to show — used to hide the whole strip (rather than
    * render an empty, oddly-backgrounded box) when there's no active tool and no selection. */
   public get hasContent(): boolean {
-    return this.showColorSwatch;
+    return this.showColorSwatch || this.sceneShapes.length > 0;
+  }
+
+  /** One line of numbers for a selected piece of the recipe, or a count for several — the
+   * measuring-without-drawing that makes recipe geometry worth selecting at all. */
+  public get sceneReadout(): string | undefined {
+    const scene = this.sceneShapes;
+    if (scene.length === 0) return undefined;
+    if (scene.length > 1) return `${scene.length} recipe shapes`;
+    return describeShape(scene[0]);
+  }
+
+  /** Anything but a reference image can be duplicated onto the active layer. */
+  public get showDuplicate(): boolean {
+    return this.selection.shapes.some(s => s.type !== 'image');
   }
 
   /** Friendly name for each shape type, used by groupTitle when the settings reflect a selection. */
@@ -97,12 +117,12 @@ export class SettingsBarComponent {
    * mixed), otherwise the active drawing tool's own label. Undefined exactly when hasContent is
    * false, so there's never a heading over an empty bar. */
   public get groupTitle(): string | undefined {
-    if (this.selectedShapes.length > 0) {
-      const types = new Set(this.selectedShapes.map(s => s.type));
-      const label = types.size === 1
-        ? SettingsBarComponent.SHAPE_TYPE_LABELS[this.selectedShapes[0].type]
-        : 'Selection';
-      return `${label} Settings`;
+    const all = this.selection.shapes;
+    if (all.length > 0) {
+      const types = new Set(all.map(s => s.type));
+      const label = types.size === 1 ? SettingsBarComponent.SHAPE_TYPE_LABELS[all[0].type] : 'Selection';
+      // a recipe piece has no settings to speak of — the title says what it is instead
+      return this.selectedShapes.length === 0 ? `Recipe ${label}` : `${label} Settings`;
     }
     return this.activeTool ? `${this.activeTool.label} Settings` : undefined;
   }
@@ -755,5 +775,32 @@ export class SettingsBarComponent {
     const n = Math.round(count);
     if (!Number.isFinite(n) || n < 1) return;
     this.applyWeights(new Array(n).fill(1));
+  }
+}
+
+const mm = (v: number): string => (Math.round(v * 100) / 100).toFixed(2);
+const pt = (p: { x: number; y: number }): string => `${mm(p.x)}, ${mm(p.y)}`;
+const deg = (rad: number): string => normalizeDegrees(rad * 180 / Math.PI).toFixed(1);
+
+function describeShape(shape: DraftShape): string {
+  switch (shape.type) {
+    case 'line':
+    case 'section':
+    case 'ticks':
+    case 'dimension':
+      return `${pt(shape.start)} → ${pt(shape.end)} · ${mm(Math.hypot(shape.end.x - shape.start.x, shape.end.y - shape.start.y))} mm`;
+    case 'arc':
+      return `Center ${pt(shape.center)} · R ${mm(shape.radius)} · ${deg(shape.startAngle)}° → ${deg(shape.endAngle)}°`;
+    case 'circle':
+      return `Center ${pt(shape.center)} · R ${mm(shape.radius)}`;
+    case 'rect':
+      return `${pt(shape.p1)} → ${pt(shape.p2)} · ${mm(Math.abs(shape.p2.x - shape.p1.x))} × ${mm(Math.abs(shape.p2.y - shape.p1.y))} mm`;
+    case 'point':
+    case 'text':
+      return pt(shape.position);
+    default: {
+      const b = shapeBounds(shape);
+      return `${pt({ x: b.x0, y: b.y0 })} → ${pt({ x: b.x1, y: b.y1 })} · ${mm(b.x1 - b.x0)} × ${mm(b.y1 - b.y0)} mm`;
+    }
   }
 }

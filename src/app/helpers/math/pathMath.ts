@@ -833,6 +833,101 @@ export function translatePath(path: string, dx: number, dy: number): string {
   });
 }
 
+/** A 2D affine matrix in SVG's own order: x' = a·x + c·y + e, y' = b·x + d·y + f. */
+export type Matrix2D = [number, number, number, number, number, number];
+
+export const IDENTITY_MATRIX: Matrix2D = [1, 0, 0, 1, 0, 0];
+
+/** `m` applied after `n` — the product an SVG `transform="m n"` list means. */
+export function multiplyMatrices(m: Matrix2D, n: Matrix2D): Matrix2D {
+  return [
+    m[0] * n[0] + m[2] * n[1], m[1] * n[0] + m[3] * n[1],
+    m[0] * n[2] + m[2] * n[3], m[1] * n[2] + m[3] * n[3],
+    m[0] * n[4] + m[2] * n[5] + m[4], m[1] * n[4] + m[3] * n[5] + m[5],
+  ];
+}
+
+export function applyMatrix(m: Matrix2D, p: Pt): Pt {
+  return { x: m[0] * p.x + m[2] * p.y + m[4], y: m[1] * p.x + m[3] * p.y + m[5] };
+}
+
+/**
+ * Parses an SVG `transform` attribute — translate, rotate (about an optional pivot), scale and
+ * matrix, left to right as the attribute means them. Skews aren't parsed: nothing in this app
+ * emits one, and a skewed arc isn't an arc.
+ */
+export function parseSvgTransform(transform: string | null | undefined): Matrix2D {
+  let result = IDENTITY_MATRIX;
+  if (!transform) return result;
+  const re = /(translate|rotate|scale|matrix)\s*\(([^)]*)\)/g;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(transform))) {
+    const v = match[2].trim().split(/[\s,]+/).filter(s => s.length > 0).map(Number);
+    let m: Matrix2D;
+    switch (match[1]) {
+      case 'translate':
+        m = [1, 0, 0, 1, v[0] ?? 0, v[1] ?? 0];
+        break;
+      case 'scale':
+        m = [v[0] ?? 1, 0, 0, v[1] ?? v[0] ?? 1, 0, 0];
+        break;
+      case 'rotate': {
+        const a = ((v[0] ?? 0) * Math.PI) / 180;
+        const cos = Math.cos(a), sin = Math.sin(a);
+        const cx = v[1] ?? 0, cy = v[2] ?? 0;
+        m = [cos, sin, -sin, cos, cx - cos * cx + sin * cy, cy - sin * cx - cos * cy];
+        break;
+      }
+      case 'matrix':
+        m = [v[0] ?? 1, v[1] ?? 0, v[2] ?? 0, v[3] ?? 1, v[4] ?? 0, v[5] ?? 0];
+        break;
+      default:
+        continue;
+    }
+    result = multiplyMatrices(result, m);
+  }
+  return result;
+}
+
+/**
+ * Applies an affine matrix to an absolute SVG path string (M, L, C, Q, A, Z). Arcs are taken as
+ * circular and the matrix as a similarity — rotation, uniform scale, translation, mirror —
+ * which is all this app's renders ever apply: the radius scales with the matrix and a mirror
+ * flips the sweep flag. A non-uniform scale would turn the arc into an ellipse and isn't
+ * represented; the endpoints still land where they should.
+ */
+export function transformPath(path: string, m: Matrix2D): string {
+  const det = m[0] * m[3] - m[1] * m[2];
+  const radiusScale = Math.sqrt(Math.abs(det));
+  const mirrored = det < 0;
+  const point = (x: number, y: number): [number, number] => {
+    const p = applyMatrix(m, { x, y });
+    return [p.x, p.y];
+  };
+  const out: string[] = [];
+  for (const [, cmd, args] of path.matchAll(/([A-DF-Za-df-z])([^A-DF-Za-df-z]*)/g)) {
+    const nums = args.trim().split(/[\s,]+/).filter((s: string) => s.length > 0).map(Number);
+    switch (cmd.toUpperCase()) {
+      case 'M':
+      case 'L':
+      case 'C':
+      case 'Q':
+        for (let i = 0; i + 1 < nums.length; i += 2) [nums[i], nums[i + 1]] = point(nums[i], nums[i + 1]);
+        break;
+      case 'A':
+        for (let i = 0; i + 6 < nums.length; i += 7) {
+          nums[i] *= radiusScale;
+          nums[i + 1] *= radiusScale;
+          if (mirrored) nums[i + 4] = nums[i + 4] ? 0 : 1;
+          [nums[i + 5], nums[i + 6]] = point(nums[i + 5], nums[i + 6]);
+        }
+        break;
+    }
+    out.push(nums.length ? `${cmd} ${nums.join(' ')}` : cmd);
+  }
+  return out.join(' ');
+}
+
 /**
  * Rotates an absolute SVG path string 180° about the origin. Unlike a mirror, a
  * point rotation preserves concavity, so it re-orients a shape without flipping
