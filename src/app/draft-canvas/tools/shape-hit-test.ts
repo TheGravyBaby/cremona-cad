@@ -187,6 +187,14 @@ export interface ShapeBounds {
   y1: number;
 }
 
+export function unionBounds(boxes: ShapeBounds[]): ShapeBounds | null {
+  if (boxes.length === 0) return null;
+  return {
+    x0: Math.min(...boxes.map(b => b.x0)), x1: Math.max(...boxes.map(b => b.x1)),
+    y0: Math.min(...boxes.map(b => b.y0)), y1: Math.max(...boxes.map(b => b.y1)),
+  };
+}
+
 // an empty list (a path that failed to parse) bounds to a point at the origin, which a marquee
 // there would catch — harmless, since such a path draws nothing to select
 function pointsBounds(points: Pt[]): ShapeBounds {

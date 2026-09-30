@@ -150,7 +150,7 @@ export class LayerControlsComponent {
     const file = input.files?.[0];
     input.value = '';
     if (!file) return;
-    if (!this.actions.paste(await file.text())) warn(`Nothing in ${file.name} could be read as a shape.`, 'Import SVG');
+    if (!this.actions.import(await file.text())) warn(`Nothing in ${file.name} could be read as a shape.`, 'Import SVG');
   }
 
   // images belong to no layer, so they never move

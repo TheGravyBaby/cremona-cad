@@ -17,7 +17,7 @@ import { createPointTool } from './point-tool';
 import { createFreehandTool } from './freehand-tool';
 import { createEraserTool } from './eraser-tool';
 import { createOffsetTool } from './offset-tool';
-import { createMirrorLineTool, createRotateTool, createScaleTool } from './transform-tools';
+import { createMirrorLineTool, createMoveTool, createRotateTool, createScaleTool } from './transform-tools';
 import { SelectionActions } from './selection-actions';
 
 /**
@@ -76,6 +76,7 @@ export class ToolRegistryService {
   // (flip, align, ...) aren't tools; the palette lays them out among these, and they run through
   // selection-actions.ts.
   readonly modifyRows: ToolSlot[][] = [
+    [createMoveTool(this.actions)],
     [createMirrorLineTool(this.actions)],
     [createRotateTool(this.actions)],
     [createScaleTool(this.actions)],

@@ -26,6 +26,19 @@
     </label>
   }
 
+  @if (showBoundsPanel) {
+    <span class="point-group">
+      <span class="field"><span class="f-lbl">X</span>
+        <input type="number" [value]="boundsX" (change)="setBoundsCentre('x', $any($event.target).valueAsNumber)"
+          (keydown.enter)="$any($event.target).blur()" title="Centre of the selection — type to move everything selected" />
+      </span>
+      <span class="field"><span class="f-lbl">Y</span>
+        <input type="number" [value]="boundsY" (change)="setBoundsCentre('y', $any($event.target).valueAsNumber)"
+          (keydown.enter)="$any($event.target).blur()" title="Centre of the selection — type to move everything selected" />
+      </span>
+    </span>
+  }
+
   @if (showLinePanel) {
     <span class="point-group">
       <span class="field"><span class="f-lbl">X1</span>

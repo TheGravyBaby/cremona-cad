@@ -59,6 +59,7 @@ export class ToolPaletteComponent implements OnInit, AfterViewInit, OnDestroy {
     const align = () => a.canAlign;
     const reorder = () => a.canReorder;
     return [
+      slot('move'),
       {
         commands: [
           cmd('flip-h', "Flip horizontal, across the selection's centre", mirror, () => a.mirror('horizontal')),

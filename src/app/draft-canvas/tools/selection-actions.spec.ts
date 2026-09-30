@@ -29,7 +29,7 @@ describe('SelectionActions', () => {
 
   const ids = () => toolbox.getShapes().map(s => s.id);
 
-  it('copies as SVG and pastes a fresh, selected copy in place on the active layer', () => {
+  it('copies as SVG and pastes a fresh, selected copy a step over on the active layer, fanning out on repeat', () => {
     toolbox.addShape(line('a'));
     selection.select(toolboxRef('a'));
     expect(actions.canCopy).toBe(true);
@@ -42,8 +42,26 @@ describe('SelectionActions', () => {
     expect(actions.paste()).toBe(true);
     const pasted = toolbox.getShapes().filter(s => s.id !== 'a');
     expect(pasted.length).toBe(1);
-    expect(pasted[0]).toMatchObject({ type: 'line', start: { x: 0, y: 0 }, end: { x: 10, y: 0 }, color: '#abcdef', layerId: layer });
+    expect(pasted[0]).toMatchObject({ type: 'line', start: { x: 5, y: -5 }, end: { x: 15, y: -5 }, color: '#abcdef', layerId: layer });
     expect(selection.toolboxShapes.map(s => s.id)).toEqual([pasted[0].id]);
+
+    expect(actions.paste()).toBe(true);
+    expect(toolbox.getShapes().at(-1)).toMatchObject({ start: { x: 10, y: -10 } });
+    actions.copy();
+    expect(actions.paste()).toBe(true);
+    expect(toolbox.getShapes().at(-1)).toMatchObject({ start: { x: 15, y: -15 } });
+  });
+
+  it('imports a file where the file has it, and duplicates in place', () => {
+    toolbox.addShape(line('a'));
+    selection.select(toolboxRef('a'));
+    const svg = actions.copy()!;
+    expect(actions.import(svg)).toBe(true);
+    expect(toolbox.getShapes().at(-1)).toMatchObject({ start: { x: 0, y: 0 } });
+    expect(actions.import('just a paragraph')).toBe(false);
+    selection.select(toolboxRef('a'));
+    expect(actions.duplicate()).toBe(true);
+    expect(toolbox.getShapes().at(-1)).toMatchObject({ start: { x: 0, y: 0 } });
   });
 
   it('pastes SVG text handed to it, and refuses other text', () => {
@@ -143,6 +161,24 @@ describe('SelectionActions', () => {
     expect(Math.max(b.start.y, b.end.y)).toBeCloseTo(50, 9);
     expect(b.start.x).toBe(5);
     expect(scene.shapes.length).toBe(1);
+  });
+
+  it('aligns a group as one thing, its members keeping their places in it', () => {
+    toolbox.addShape({ ...line('a'), groupId: 'g' });
+    toolbox.addShape({ ...line('b'), start: { x: 0, y: 10 }, end: { x: 10, y: 10 }, groupId: 'g' });
+    toolbox.addShape({ ...line('c'), start: { x: 0, y: 50 }, end: { x: 10, y: 50 } });
+    selection.set([toolboxRef('a'), toolboxRef('c')]);
+    expect(actions.align('top')).toBe(true);
+    const [a, b, c] = toolbox.getShapes() as LineShape[];
+    expect(a.start.y).toBe(40);
+    expect(b.start.y).toBe(50);
+    expect(c.start.y).toBe(50);
+    expect(actions.canDistribute).toBe(false);
+
+    selection.enter(toolboxRef('a'));
+    selection.set([toolboxRef('a'), toolboxRef('b')]);
+    expect(actions.align('bottom')).toBe(true);
+    expect((toolbox.getShapes()[1] as LineShape).start.y).toBe(40);
   });
 
   it('needs two shapes, one of them drawn, to align', () => {

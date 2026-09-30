@@ -10,7 +10,8 @@ import {
 } from '../tools/toolbox-shape';
 import { ImageCrop } from '../../models/types';
 import { normalizeDegrees, pointAtDistanceToward } from '../../helpers/math/simpleGeometry';
-import { shapeBounds } from '../tools/shape-hit-test';
+import { shapeBounds, unionBounds } from '../tools/shape-hit-test';
+import { translateShape } from '../tools/shape-transform';
 
 /**
  * The Inkscape-style contextual settings strip along the bottom bar: color, then whichever
@@ -112,7 +113,9 @@ export class SettingsBarComponent {
     const all = this.selection.shapes;
     if (all.length > 0) {
       const types = new Set(all.map(s => s.type));
-      const label = types.size === 1 ? SettingsBarComponent.SHAPE_TYPE_LABELS[all[0].type] : 'Selection';
+      const groupId = this.selectedShapes[0]?.groupId;
+      const isGroup = all.length > 1 && groupId !== undefined && all.every(s => s.groupId === groupId);
+      const label = isGroup ? 'Group' : types.size === 1 ? SettingsBarComponent.SHAPE_TYPE_LABELS[all[0].type] : 'Selection';
       // a recipe piece has no settings to speak of — the title says what it is instead
       return this.selectedShapes.length === 0 ? `Recipe ${label}` : `${label} Settings`;
     }
@@ -163,6 +166,32 @@ export class SettingsBarComponent {
     if (shapes.length === 0) return;
     const patches = new Map<string, Partial<DraftShape>>(shapes.map(s => [s.id, { dashed: value }]));
     this.toolbox.updateShapes(patches);
+  }
+
+  /** Where the selection is when nothing else says: the centre of its bounding box, editable.
+   * Only for a selection with no position fields of its own — several shapes, a group, a drawing
+   * or a path — so a lone arc isn't described twice. Recipe pieces in a mixed selection are left
+   * out, since typing a new X can't move them. */
+  private get selectionBox() {
+    return unionBounds(this.selectedShapes.map(shapeBounds));
+  }
+
+  public get showBoundsPanel(): boolean {
+    const shapes = this.selectedShapes;
+    return shapes.length > 1 || shapes[0]?.type === 'freehand' || shapes[0]?.type === 'path';
+  }
+
+  public get boundsX(): number { const b = this.selectionBox; return b ? this.round2((b.x0 + b.x1) / 2) : 0; }
+  public get boundsY(): number { const b = this.selectionBox; return b ? this.round2((b.y0 + b.y1) / 2) : 0; }
+
+  /** Moves the whole selection so its box is centred on the typed coordinate — one history step. */
+  setBoundsCentre(axis: 'x' | 'y', value: number): void {
+    const b = this.selectionBox;
+    const v = Number(value);
+    if (!b || !Number.isFinite(v)) return;
+    const shift = v - (axis === 'x' ? (b.x0 + b.x1) / 2 : (b.y0 + b.y1) / 2);
+    if (shift === 0) return;
+    this.toolbox.replaceShapes(this.selectedShapes.map(s => axis === 'x' ? translateShape(s, shift, 0) : translateShape(s, 0, shift)));
   }
 
   /** Line, Dimension, Section and Ticks all carry the same start+end geometry, so one panel edits

@@ -40,6 +40,10 @@ function trig(angle: number): [number, number] {
   return [snap(Math.cos(angle)), snap(Math.sin(angle))];
 }
 
+export function translation(dx: number, dy: number): Matrix2D {
+  return [1, 0, 0, 1, dx, dy];
+}
+
 /** Reflection across the line through `p` at `angle` radians. */
 export function reflectAcross(p: Pt, angle: number): Matrix2D {
   const [cos, sin] = trig(2 * angle);
