@@ -1,35 +1,16 @@
 import { Pt } from '../../models/types';
-import { DraftToolHost } from './draft-tool';
+import { fakeToolHost } from './fake-tool-host';
 import { AngleShape, DraftShape, angleSweep } from './toolbox-shape';
 import { createAngleTool } from './angle-tool';
 import { withEndpoint } from './shape-grabbers';
 import { transformShape } from './shape-transform';
-
-function makeHost(): DraftToolHost & { added: DraftShape[] } {
-  const added: DraftShape[] = [];
-  return {
-    added,
-    addShape: (s: DraftShape) => { added.push(s); },
-    requestDraw: () => { },
-    getSnapTangent: () => undefined,
-    isAngleLockHeld: () => false,
-    isTangentLockHeld: () => false,
-    getSelectedShapes: () => [],
-    getPxPerMm: () => 1,
-    hitTestShape: () => null,
-    curveAt: () => null,
-    selectShape: () => { },
-    removeShape: () => { },
-    returnToSelect: () => { },
-  };
-}
 
 const at = (x: number, y: number): Pt => ({ x, y });
 const degrees = (s: AngleShape) => angleSweep(s.vertex, s.start, s.end).sweep * 180 / Math.PI;
 
 function measure(place: Pt): AngleShape {
   const tool = createAngleTool();
-  const host = makeHost();
+  const host = fakeToolHost();
   for (const p of [at(0, 0), at(10, 0), at(0, 10)]) {
     tool.onPointerDown(p, host);
     tool.onPointerUp(p, host);

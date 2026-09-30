@@ -2,10 +2,9 @@ import { Pt } from '../../models/types';
 import {
   DEFAULT_TEXT_SIZE_MM, DraftShape, ImageShape, TextShape,
   angleSweep, dimensionGeometry, dimensionOffsetAt, imageAspect, imageCenter, imageCorners, imageEdgeMidpoints,
-  placeAngle,
+  pathFromSource, placeAngle,
 } from './toolbox-shape';
 import { angleFromCenter, dist, normalizeDegrees, normalizeRadians, pointOnCircle, rotatePointAbout } from '../../helpers/math/simpleGeometry';
-import { battenPath } from '../../helpers/math/pathMath';
 
 /** The point on an arc's circle midway (by angle) between its start and end — where the
  * radius-resize handle sits, since it's the most "on the arc" point to grab. */
@@ -97,7 +96,7 @@ export function endpointGrabbers(shape: DraftShape, pxPerMm: number): EndpointGr
       return [{ key: 'rotate', pos, kind: 'rotate' }];
     }
     case 'path':
-      return shape.batten ? shape.batten.pins.map((pos, i) => ({ key: `pin-${i}` as const, pos })) : null;
+      return shape.source?.kind === 'batten' ? shape.source.pins.map((pos, i) => ({ key: `pin-${i}` as const, pos })) : null;
     case 'point':
     case 'freehand':
     case 'curve-length':
@@ -163,9 +162,9 @@ export function withEndpoint(shape: DraftShape, key: EndpointKey, pos: Pt): Draf
       return withImageHandle(shape, key, pos);
     case 'path': {
       const i = key.startsWith('pin-') ? Number(key.slice(4)) : -1;
-      if (!shape.batten || !(i in shape.batten.pins)) return shape;
-      const batten = { ...shape.batten, pins: shape.batten.pins.map((p, j) => j === i ? pos : p) };
-      return { ...shape, batten, d: battenPath(batten.pins, batten.closed) };
+      if (shape.source?.kind !== 'batten' || !(i in shape.source.pins)) return shape;
+      const source = { ...shape.source, pins: shape.source.pins.map((p, j) => j === i ? pos : p) };
+      return { ...shape, source, d: pathFromSource(source) };
     }
     default:
       return shape;

@@ -5,6 +5,7 @@ import { SceneStore } from './scene-index';
 import { ToolboxStore } from './toolbox-store';
 import { LineShape } from './toolbox-shape';
 import { DraftToolHost } from './draft-tool';
+import { fakeToolHost } from './fake-tool-host';
 import { createMirrorLineTool, createMoveTool, createRotateTool, createScaleTool } from './transform-tools';
 
 describe('transform tools', () => {
@@ -22,14 +23,7 @@ describe('transform tools', () => {
     TestBed.inject(SceneStore).setLayers([]);
     toolbox.addShape({ id: 'a', type: 'line', start: { x: 10, y: 0 }, end: { x: 20, y: 0 } });
     selection.select(toolboxRef('a'));
-    host = {
-      requestDraw: () => { },
-      getSelectedShapes: () => selection.shapes,
-      isAngleLockHeld: () => false,
-      hitTestShape: () => null,
-    curveAt: () => null,
-      selectShape: () => { },
-    } as unknown as DraftToolHost;
+    host = fakeToolHost({ getSelectedShapes: () => selection.shapes });
   });
 
   const a = () => toolbox.getShapes()[0] as LineShape;

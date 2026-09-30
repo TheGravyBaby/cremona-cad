@@ -1,29 +1,10 @@
 import { Pt } from '../../models/types';
 import { normalizeRadians } from '../../helpers/math/simpleGeometry';
-import { DraftToolHost } from './draft-tool';
+import { fakeToolHost } from './fake-tool-host';
 import { ArcShape, DraftShape } from './toolbox-shape';
 import { createEndsCenterArcTool, createThroughArcTool } from './two-end-arc-tool';
 
-/** Only the host calls these tools actually make. `shift` stands in for the angle-lock modifier,
- * which is what asks either tool for its other solution. */
-function makeHost(shift = false): DraftToolHost & { added: DraftShape[] } {
-  const added: DraftShape[] = [];
-  return {
-    added,
-    addShape: (s: DraftShape) => { added.push(s); },
-    requestDraw: () => { },
-    getSnapTangent: () => undefined,
-    isAngleLockHeld: () => shift,
-    isTangentLockHeld: () => false,
-    getSelectedShapes: () => [],
-    getPxPerMm: () => 1,
-    hitTestShape: () => null,
-    curveAt: () => null,
-    selectShape: () => { },
-    removeShape: () => { },
-    returnToSelect: () => { },
-  };
-}
+const makeHost = (shift = false) => fakeToolHost({ isAngleLockHeld: () => shift });
 
 const at = (x: number, y: number): Pt => ({ x, y });
 

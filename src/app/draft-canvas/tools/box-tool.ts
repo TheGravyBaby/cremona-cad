@@ -1,7 +1,7 @@
 import { Pt } from '../../models/types';
 import { pathFromPolygon } from '../../helpers/math/pathMath';
 import { makeShapeId } from './toolbox-shape';
-import { TwoPointTool, previewRect, stylePreview } from './two-point-tool';
+import { TwoPointTool, previewRect, stylePreview, typedBoxCorner } from './two-point-tool';
 import { DraftToolHost } from './draft-tool';
 import { ToolboxStore } from './toolbox-store';
 
@@ -29,7 +29,7 @@ export function createRectTool(toolbox: ToolboxStore): TwoPointTool {
     p1,
     p2,
     dashed: toolbox.currentDashed,
-  }), previewRect, squareLockModifier);
+  }), previewRect, squareLockModifier, typedBoxCorner);
 }
 
 // the right angle sits on the first click, the one corner placed deliberately, so it can be
@@ -46,5 +46,5 @@ export function createRightTriangleTool(toolbox: ToolboxStore): TwoPointTool {
     dashed: toolbox.currentDashed,
   }), (gRoot, _gUI, _pxPerMm, p1, p2) => {
     stylePreview(gRoot.append('path').attr('d', rightTrianglePath(p1, p2)));
-  }, squareLockModifier);
+  }, squareLockModifier, typedBoxCorner);
 }

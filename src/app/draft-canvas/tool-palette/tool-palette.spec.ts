@@ -193,7 +193,9 @@ describe('ToolPaletteComponent', () => {
     fixture.detectChanges();
     const actions = TestBed.inject(SelectionActions);
     const group = component.modifyLayout.find(row => row.commands?.some(c => c.id === 'align-top'))!.commands!;
-    expect((el('.tool-row:nth-child(3) .tool-btn') as HTMLButtonElement).disabled).toBe(true);
+    const button = [...(fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('.tool-row .tool-btn')]
+      .find(b => b.title.startsWith(component.commandFace(group).label))!;
+    expect(button.disabled).toBe(true);
 
     const align = vi.spyOn(actions, 'align').mockReturnValue(true);
     component.runCommand(group, group.find(c => c.id === 'align-top')!);

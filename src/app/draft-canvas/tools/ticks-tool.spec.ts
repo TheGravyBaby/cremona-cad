@@ -1,7 +1,6 @@
 import * as d3 from 'd3';
-import { TestBed } from '@angular/core/testing';
 import { Pt } from '../../models/types';
-import { DraftToolHost } from './draft-tool';
+import { fakeToolHost } from './fake-tool-host';
 import { TicksShape } from './toolbox-shape';
 import { drawTicks, tickLengthMm } from './shape-renderer';
 import { distanceToShape, shapeBounds } from './shape-hit-test';
@@ -87,18 +86,9 @@ describe('Ticks shape', () => {
 
 describe('createTicksTool', () => {
   it('commits a shape carrying the pen weights', () => {
-    const toolbox = TestBed.inject(ToolboxStore);
-    toolbox.currentTickWeights = [3, 4, 3];
-    const added: TicksShape[] = [];
-    const host = {
-      addShape: (s: TicksShape) => { added.push(s); },
-      requestDraw: () => { },
-      getSnapTangent: () => undefined,
-      isAngleLockHeld: () => false,
-      isTangentLockHeld: () => false,
-      getPxPerMm: () => 1,
-      returnToSelect: () => { },
-    } as unknown as DraftToolHost;
+    const toolbox = { currentTickWeights: [3, 4, 3] } as ToolboxStore;
+    const host = fakeToolHost();
+    const added = host.added as TicksShape[];
 
     const tool = createTicksTool(toolbox);
     tool.onPointerDown(at(0, 0), host);

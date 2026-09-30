@@ -3,8 +3,7 @@ import { SettingsBarComponent } from './settings-bar';
 import { ToolboxStore } from '../tools/toolbox-store';
 import { SelectionStore, toolboxRef } from '../tools/selection-store';
 import { SceneStore } from '../tools/scene-index';
-import { LineShape, PathShape } from '../tools/toolbox-shape';
-import { cycloidPathData } from '../tools/math-curve-tools';
+import { LineShape, PathShape, PathSource, pathFromSource } from '../tools/toolbox-shape';
 
 describe('SettingsBarComponent', () => {
   let toolbox: ToolboxStore;
@@ -54,8 +53,8 @@ describe('SettingsBarComponent', () => {
   });
 
   it('reshapes a selected cycloid in place from its factor and percent', () => {
-    const cycloid = { start: { x: 0, y: 0 }, end: { x: 100, y: 0 }, depth: 30, factor: 1, pct: 1 };
-    toolbox.addShape({ id: 'c', type: 'path', d: cycloidPathData(cycloid), cycloid });
+    const source: PathSource = { kind: 'cycloid', start: { x: 0, y: 0 }, end: { x: 100, y: 0 }, depth: 30, factor: 1, pct: 1 };
+    toolbox.addShape({ id: 'c', type: 'path', d: pathFromSource(source), source });
     selection.set([toolboxRef('c')]);
     const fixture = TestBed.createComponent(SettingsBarComponent);
     fixture.detectChanges();
@@ -65,9 +64,24 @@ describe('SettingsBarComponent', () => {
     bar.setCycloidFactorPct(40);
     bar.setCycloidPct(80);
     const shape = toolbox.getShapes().find(s => s.id === 'c') as PathShape;
-    const reshaped = { ...cycloid, factor: 0.4, pct: 0.8 };
-    expect(shape.cycloid).toEqual(reshaped);
-    expect(shape.d).toBe(cycloidPathData(reshaped));
+    const reshaped = { ...source, factor: 0.4, pct: 0.8 };
+    expect(shape.source).toEqual(reshaped);
+    expect(shape.d).toBe(pathFromSource(reshaped));
     expect(toolbox.currentCycloidFactor).toBe(0.4);
+  });
+
+  it('sets a catenary\'s depth without changing the side it hangs to', () => {
+    const source: PathSource = { kind: 'catenary', start: { x: 0, y: 0 }, end: { x: 100, y: 0 }, depth: -30 };
+    toolbox.addShape({ id: 'k', type: 'path', d: pathFromSource(source), source });
+    selection.set([toolboxRef('k')]);
+    const fixture = TestBed.createComponent(SettingsBarComponent);
+    fixture.detectChanges();
+    const bar = fixture.componentInstance;
+    expect(bar.curveDepth).toBe(30);
+
+    bar.setCurveDepth(12);
+    const shape = toolbox.getShapes().find(s => s.id === 'k') as PathShape;
+    expect(shape.source).toEqual({ ...source, depth: -12 });
+    expect(shape.d).toBe(pathFromSource({ ...source, depth: -12 }));
   });
 });

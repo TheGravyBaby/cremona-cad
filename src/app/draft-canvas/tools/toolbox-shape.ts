@@ -1,5 +1,6 @@
 import { ImageCredit, ImageCrop, Pt } from '../../models/types';
 import { angleFromCenter, angleWithinSweep, dist, normalizeRadians, rotatePointAbout } from '../../helpers/math/simpleGeometry';
+import { battenPath, catenaryBetween, cycloidBetween } from '../../helpers/math/pathMath';
 
 export const DEFAULT_SHAPE_COLOR = '#1d4ed8';
 
@@ -168,25 +169,45 @@ export type FreehandShape = ShapeBase & {
 
 export const DEFAULT_FREEHAND_WIDTH = 2;
 
+// What a curve tool drew a path from, so it can be redrawn once it is down: the settings bar
+// reshapes a catenary or cycloid, and a batten's pins are its handles. Moves, turns, scales and
+// flips carry it along (see shape-transform.ts), and anything that redraws `d` from it goes through
+// pathFromSource. Depth is to the left of start→end, as catenaryBetween and cycloidBetween take it.
+export type PathSource =
+  | { kind: 'catenary'; start: Pt; end: Pt; depth: number }
+  | { kind: 'cycloid'; start: Pt; end: Pt; depth: number; factor: number; pct: number }
+  | { kind: 'batten'; pins: Pt[]; closed: boolean };
+
+export function pathFromSource(source: PathSource): string {
+  switch (source.kind) {
+    case 'catenary': return catenaryBetween(source.start, source.end, source.depth);
+    case 'cycloid': return cycloidBetween(source.start, source.end, source.depth, source.factor, source.pct);
+    case 'batten': return battenPath(source.pins, source.closed);
+  }
+}
+
+// cycloids and battens saved on the day they were added carried their source under their own names
+export function withPathSource(shape: DraftShape): DraftShape {
+  if (shape.type !== 'path' || shape.source) return shape;
+  const { cycloid, batten, ...rest } = shape as PathShape & {
+    cycloid?: Omit<Extract<PathSource, { kind: 'cycloid' }>, 'kind'>;
+    batten?: Omit<Extract<PathSource, { kind: 'batten' }>, 'kind'>;
+  };
+  if (cycloid) return { ...rest, source: { kind: 'cycloid', ...cycloid } };
+  if (batten) return { ...rest, source: { kind: 'batten', ...batten } };
+  return shape;
+}
+
 // Any geometry at all, as absolute SVG path data in world mm — the catch-all. What a copied piece
 // of recipe output becomes, what an imported curve becomes, what a rect turns into once rotated
 // off-axis. Moves as one rigid body with no endpoint handles. Only the M, L, C, Q, A and Z
 // commands, absolute: the subset every path helper in helpers/math/pathMath.ts understands, so
 // keep whatever writes `d` inside it.
-// what a Cycloid was drawn from, so the settings bar can redraw it with a new factor or percent.
-// Moves, turns, scales and flips carry it along (see shape-transform.ts); depth is to the left of
-// start→end, as cycloidBetween takes it.
-export type CycloidSpec = { start: Pt; end: Pt; depth: number; factor: number; pct: number };
-
-// the pins a Batten was bent through; each is a handle, and dragging one re-fairs the curve
-export type BattenSpec = { pins: Pt[]; closed: boolean };
-
 export type PathShape = ShapeBase & {
   type: 'path';
   d: string;
   dashed?: boolean;
-  cycloid?: CycloidSpec;
-  batten?: BattenSpec;
+  source?: PathSource;
 };
 
 // A photo or scan placed on the canvas to trace over — an instrument's plan view, a long-arch
