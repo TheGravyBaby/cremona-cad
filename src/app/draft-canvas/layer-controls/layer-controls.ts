@@ -1,9 +1,10 @@
-import { Component, ElementRef, EventEmitter, Output, inject } from '@angular/core';
+import { Component, ElementRef, EventEmitter, HostListener, inject, Output } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { ToolRegistryService } from '../tools/tool-registry';
 import { ToolboxStore } from '../tools/toolbox-store';
 import { DraftShape, ImageShape } from '../tools/toolbox-shape';
 import { DEFAULT_LAYER_ID, Layer } from '../tools/layer';
+import { PanelChoice } from '../tools/toolbox-store';
 import { SelectionStore } from '../tools/selection-store';
 import { SelectionActions } from '../tools/selection-actions';
 import { downloadSvgFile } from '../../helpers/fileExporter';
@@ -48,9 +49,24 @@ export class LayerControlsComponent {
   public layersOpen = false;
   public imagesOpen = false;
   public editingLayerId: string | null = null;
+  /** Which layer's panel checklist is open; one at a time, like renaming. */
+  public panelsLayerId: string | null = null;
   public editingImageId: string | null = null;
   /** Whether the paste-a-link field is showing; closed by default. */
   public linkOpen = false;
+
+  // a press anywhere outside — the canvas above all — takes an open list down, and with it the
+  // link field and any panel checklist, so the next open starts clean
+  @HostListener('document:pointerdown', ['$event'])
+  onDocumentPointerDown(event: PointerEvent): void {
+    if (!this.layersOpen && !this.imagesOpen) return;
+    if (this.elRef.nativeElement.contains(event.target as Node)) return;
+    this.layersOpen = false;
+    this.imagesOpen = false;
+    this.linkOpen = false;
+    this.panelsLayerId = null;
+    this.panelsImageId = null;
+  }
 
   // ===== Master show/hide switches =====
   // The quick "get this out of my way" pair, one per button. Both are ToolboxStore view state
@@ -78,6 +94,45 @@ export class LayerControlsComponent {
 
   selectLayer(id: string): void {
     this.toolbox.setActiveLayer(id);
+  }
+
+  // ===== Which panels a layer shows on =====
+  // The same idea as an image's scoping, in the row rather than the settings bar: a layer is never
+  // "selected", so the list it lives in is the one place to reach it.
+
+  public get availablePanels(): readonly PanelChoice[] { return this.toolbox.availablePanels; }
+
+  togglePanels(id: string): void {
+    this.panelsLayerId = this.panelsLayerId === id ? null : id;
+  }
+
+  /** True when the layer isn't drawn on the open panel despite its eye being on. */
+  public isLayerOffPanel(layer: Layer): boolean {
+    return !this.toolbox.layerMatchesActivePanel(layer);
+  }
+
+  public isLayerOnPanel(layer: Layer, panelId: string): boolean {
+    return !layer.panels?.length || layer.panels.includes(panelId);
+  }
+
+  toggleLayerPanel(layer: Layer, panelId: string): void {
+    const wanted = new Set(this.availablePanels.map(p => p.id).filter(id => this.isLayerOnPanel(layer, id)));
+    if (wanted.has(panelId)) wanted.delete(panelId);
+    else wanted.add(panelId);
+    // every panel ticked is stored as no list at all, so a panel the recipe grows later is included
+    const all = this.availablePanels.map(p => p.id);
+    this.toolbox.setLayerPanels(layer.id, all.every(id => wanted.has(id)) ? undefined : all.filter(id => wanted.has(id)));
+  }
+
+  showLayerOnAllPanels(id: string): void {
+    this.toolbox.setLayerPanels(id, undefined);
+  }
+
+  /** What the row's scoping button says: where the layer shows, and that it isn't shown here. */
+  public layerScopeTitle(layer: Layer): string {
+    if (!layer.panels?.length) return 'Shown on every panel';
+    const names = layer.panels.map(id => this.availablePanels.find(p => p.id === id)?.label ?? id).join(', ');
+    return this.isLayerOffPanel(layer) ? `Shown on ${names} — not on this panel` : `Shown on ${names}`;
   }
 
   get canExport(): boolean { return this.selection.size > 0 || this.toolbox.getVisibleShapes().length > 0; }
@@ -176,6 +231,74 @@ export class LayerControlsComponent {
    * listed and says so rather than the image just silently not appearing. */
   public isImageOffPanel(image: ImageShape): boolean {
     return !this.toolbox.imageMatchesActivePanel(image);
+  }
+
+  // ===== Which panels an image shows on =====
+  // The layer control above, for images: same button, same checklist, plus the Default row and the
+  // short-list storage a template image needs (see ImageShape.panels/excludePanels/isDefault).
+
+  public panelsImageId: string | null = null;
+
+  toggleImagePanels(id: string): void {
+    this.panelsImageId = this.panelsImageId === id ? null : id;
+  }
+
+  /** Whether the image is wanted on `panelId` — what its checkbox shows. */
+  public isImageOnPanel(image: ImageShape, panelId: string): boolean {
+    if (image.panels?.length) return image.panels.includes(panelId);
+    return !image.excludePanels?.includes(panelId);
+  }
+
+  toggleImagePanel(image: ImageShape, panelId: string): void {
+    const wanted = new Set(this.availablePanels.map(p => p.id).filter(id => this.isImageOnPanel(image, id)));
+    if (wanted.has(panelId)) wanted.delete(panelId);
+    else wanted.add(panelId);
+    this.writeImagePanels(image, wanted);
+  }
+
+  // stores whichever of panels/excludePanels is shorter — the short list both reads as the
+  // exception and stays correct when the recipe later grows a panel. Naming panels clears
+  // Default (the two are alternatives); excluding doesn't, since that's how a default expresses
+  // a gap.
+  private writeImagePanels(image: ImageShape, wanted: Set<string>): void {
+    const all = this.availablePanels.map(p => p.id);
+    const named = all.filter(id => wanted.has(id));
+    const excluded = all.filter(id => !wanted.has(id));
+    this.toolbox.setImageScope(image.id, !excluded.length
+      ? { panels: undefined, excludePanels: undefined, isDefault: image.isDefault }
+      : excluded.length < named.length
+        ? { panels: undefined, excludePanels: excluded, isDefault: image.isDefault }
+        : { panels: named, excludePanels: undefined, isDefault: false });
+  }
+
+  setImageIsDefault(image: ImageShape, value: boolean): void {
+    this.toolbox.setImageScope(image.id, {
+      isDefault: value,
+      // Default and a panel list are alternatives; an exclusion list is not, so it survives.
+      panels: value ? undefined : image.panels,
+      excludePanels: image.excludePanels,
+    });
+  }
+
+  /** Clears all scoping — shown on every panel, same as a hand-placed image. */
+  showImageOnAllPanels(image: ImageShape): void {
+    this.toolbox.setImageScope(image.id, { panels: undefined, excludePanels: undefined, isDefault: false });
+  }
+
+  public isImageScoped(image: ImageShape): boolean {
+    return !!(image.panels?.length || image.excludePanels?.length || image.isDefault);
+  }
+
+  /** What the row's scoping button says: where the image shows, and that it isn't shown here. */
+  public imageScopeTitle(image: ImageShape): string {
+    const label = (id: string) => this.availablePanels.find(p => p.id === id)?.label ?? id;
+    let where: string;
+    if (image.panels?.length) where = `Shown on ${image.panels.map(label).join(', ')}`;
+    else {
+      where = image.isDefault ? 'Default — shown wherever no other image is named' : 'Shown on every panel';
+      if (image.excludePanels?.length) where += `, except ${image.excludePanels.map(label).join(', ')}`;
+    }
+    return this.isImageOffPanel(image) ? `${where} — not on this panel` : where;
   }
 
   /** Row tooltip naming the panels a scoped image belongs to. Panel ids are de-camel-cased here

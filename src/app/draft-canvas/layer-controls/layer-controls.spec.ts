@@ -129,4 +129,68 @@ describe('LayerControlsComponent', () => {
     offered[0].click();
     expect(toolbox.getShapes()[0].layerId).toBe(other);
   });
+
+  it('lets a layer be scoped to panels from its row, once the recipe has offered some', () => {
+    toolbox.resetAll();
+    toolbox.setAvailablePanels([{ id: 'base', label: 'Base' }, { id: 'crossArching', label: 'Cross Arching' }]);
+    toolbox.setActivePanel('base');
+    all('.lc-btn')[0].click();
+    fixture.detectChanges();
+
+    const scopeBtn = all('.layer-tab:not(.recipe) .layer-tab-icon-btn')[1];
+    expect(scopeBtn.getAttribute('title')).toBe('Shown on every panel');
+    scopeBtn.click();
+    fixture.detectChanges();
+
+    const boxes = all('.layer-panels input') as NodeListOf<HTMLInputElement>;
+    expect(boxes.length).toBe(2);
+    expect([...boxes].every(b => b.checked)).toBe(true);
+    boxes[0].click();
+    expect(toolbox.layers[0].panels).toEqual(['crossArching']);
+    expect(component.isLayerOffPanel(toolbox.layers[0])).toBe(true);
+    expect(component.layerScopeTitle(toolbox.layers[0])).toBe('Shown on Cross Arching — not on this panel');
+
+    component.showLayerOnAllPanels(toolbox.layers[0].id);
+    expect(toolbox.layers[0].panels).toBeUndefined();
+    toolbox.setAvailablePanels([]);
+    toolbox.setActivePanel(null);
+  });
+
+  it('scopes an image from its row too, keeping the short list and the Default switch', () => {
+    toolbox.resetAll();
+    toolbox.loadImages([{ id: 'plan', type: 'image', x: 0, y: 0, width: 1, height: 1, imageRef: 'a', label: 'Plan' }]);
+    toolbox.setAvailablePanels([{ id: 'base', label: 'Base' }, { id: 'cross', label: 'Cross' }, { id: 'long', label: 'Long' }]);
+    toolbox.setActivePanel('base');
+    all('.lc-btn')[1].click();
+    fixture.detectChanges();
+
+    const scopeBtn = all('.layer-tab .layer-tab-icon-btn')[1];
+    scopeBtn.click();
+    fixture.detectChanges();
+    const boxes = all('.layer-panels input') as NodeListOf<HTMLInputElement>;
+    expect(boxes.length).toBe(4);
+
+    boxes[1].click();
+    expect(component.images[0].excludePanels).toEqual(['base']);
+    expect(component.images[0].panels).toBeUndefined();
+    expect(component.imageScopeTitle(component.images[0])).toBe('Shown on every panel, except Base — not on this panel');
+
+    component.setImageIsDefault(component.images[0], true);
+    expect(component.images[0].isDefault).toBe(true);
+    component.showImageOnAllPanels(component.images[0]);
+    expect(component.isImageScoped(component.images[0])).toBe(false);
+    toolbox.setAvailablePanels([]);
+    toolbox.setActivePanel(null);
+    toolbox.resetAll();
+  });
+
+  it('closes an open list on a press outside it, and not on one inside it', () => {
+    all('.lc-btn')[0].click();
+    fixture.detectChanges();
+    all('.lc-popup')[0].dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    expect(component.layersOpen).toBe(true);
+
+    document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    expect(component.layersOpen).toBe(false);
+  });
 });

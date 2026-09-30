@@ -1,4 +1,4 @@
-import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, Injector, OnDestroy, OnInit, ViewChild, afterNextRender, inject } from '@angular/core';
+import { afterNextRender, AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostListener, inject, Injector, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { DraftTool } from '../tools/draft-tool';
 import { ToolRegistryService, ToolSlot } from '../tools/tool-registry';
@@ -150,6 +150,13 @@ export class ToolPaletteComponent implements OnInit, AfterViewInit, OnDestroy {
   /** Reacts to the active tool changing for reasons outside this component (e.g. a hotkey) —
    * mirrors what activateSlot()/chooseFlyoutVariant() already do locally, so both paths close
    * an open flyout identically. */
+  // a press anywhere outside the bar — the canvas above all — takes an open flyout down, as every
+  // popup in the app does; presses inside it are the bar's own buttons, which close it themselves
+  @HostListener('document:pointerdown', ['$event'])
+  onDocumentPointerDown(event: PointerEvent): void {
+    if (this.openFlyout && !this.elRef.nativeElement.contains(event.target as Node)) this.openFlyout = null;
+  }
+
   // captured on window so it runs ahead of the canvas's own Escape: closing a flyout is one step
   // back, and the canvas would otherwise also drop the selection or the tool with the same press
   private closeFlyoutOnEscape = (event: KeyboardEvent): void => {

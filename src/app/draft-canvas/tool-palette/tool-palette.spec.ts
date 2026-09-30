@@ -203,4 +203,16 @@ describe('ToolPaletteComponent', () => {
     vi.spyOn(actions, 'canUngroup', 'get').mockReturnValue(true);
     expect(component.commandFace(group).id).toBe('ungroup');
   });
+
+  it('closes an open flyout on a press outside the bar, and not on one inside it', async () => {
+    await create();
+    const registry = TestBed.inject(ToolRegistryService);
+    const slot = registry.toolRows.flat().find(s => registry.hasVariants(s))!;
+    component.openFlyout = slot;
+    el('.tool-dock-body')!.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    expect(component.openFlyout).toBe(slot);
+
+    document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    expect(component.openFlyout).toBeNull();
+  });
 });
