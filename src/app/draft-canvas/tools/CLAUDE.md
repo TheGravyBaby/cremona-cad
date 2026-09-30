@@ -80,8 +80,11 @@ Most files here carry a header comment explaining their own contract. Read it be
 
 Write `createXTool(...)` returning a `DraftTool`, then add it to `toolRows` or `modifyRows` in
 `tool-registry.ts`.
-Nothing else needs touching. `two-point-tool.ts` is the base for anything drawn from two clicks
-and handles angle-lock (Shift) and tangent-lock (Ctrl/⌘) for you.
+Nothing else needs touching. `two-point-tool.ts` holds the shared gestures: `TwoPointTool` for
+anything drawn from two clicks, `ThreePointTool` for two clicks plus a placing click (Distance,
+Catenary, Cycloid); `ChainTool` in `line-variant-tools.ts` for click-after-click chains (Polyline,
+Batten). All handle angle-lock (Shift) and tangent-lock (Ctrl/⌘) for you, and TwoPointTool also
+takes a typed size.
 
 Flags worth knowing: `oneShot` commits on a single click and returns to Select; `actsOnSelection`
 keeps the selection alive across activation, for transform tools like Offset.

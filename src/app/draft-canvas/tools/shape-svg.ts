@@ -1,12 +1,13 @@
 import { Pt } from '../../models/types';
-import { Matrix2D, applyMatrix, multiplyMatrices, parseSvgTransform, transformPath } from '../../helpers/math/pathMath';
+import { Matrix2D, applyMatrix, multiplyMatrices, parseSvgTransform, pathFromPolyline, transformPath } from '../../helpers/math/pathMath';
+import { polylineCumulativeLengths } from '../../helpers/math/vibeMath';
 import { pointOnCircle, normalizeRadians } from '../../helpers/math/simpleGeometry';
 import { RecordedElement } from '../../helpers/layer-recorder';
 import {
   DEFAULT_SHAPE_COLOR, DEFAULT_TEXT_SIZE_MM, DraftShape, TextShape, angleSweep, dimensionGeometry,
 } from './toolbox-shape';
 import {
-  SECTION_THICKNESS_MM, TEXT_LINE_HEIGHT_RATIO, curveDivisions, freehandPathData, polylinePathData, tickLengthMm,
+  SECTION_THICKNESS_MM, TEXT_LINE_HEIGHT_RATIO, curveDivisions, freehandPathData, tickLengthMm,
 } from './shape-renderer';
 import { composedTransform, shapeFromElement } from './scene-index';
 import { shapeBounds } from './shape-hit-test';
@@ -151,18 +152,17 @@ function shapeToSvg(shape: DraftShape): string {
       const tick = (d: { at: Pt; normal: Pt }) => svgLine(
         { x: d.at.x - d.normal.x, y: d.at.y - d.normal.y }, { x: d.at.x + d.normal.x, y: d.at.y + d.normal.y }, style);
       const labelPos = { x: mid.at.x + mid.normal.x * 2, y: mid.at.y + mid.normal.y * 2 };
-      return `<g><path${attr('d', transformPath(polylinePathData(shape.points), TO_SVG))}${style}/>${tick(first)}${tick(last)}`
+      return `<g><path${attr('d', transformPath(pathFromPolyline(shape.points), TO_SVG))}${style}/>${tick(first)}${tick(last)}`
         + `${svgText(labelPos, `${shape.length.toFixed(1)} mm`, 3, color, 0)}</g>`;
     }
     case 'curve-ticks': {
       const divisions = curveDivisions(shape.points, shape.weights.filter(w => Number.isFinite(w) && w > 0));
       if (divisions.length === 0) return '';
       const style = stroke({ color });
-      const lengths = shape.points.slice(1).reduce((sum, p, i) => sum + Math.hypot(p.x - shape.points[i].x, p.y - shape.points[i].y), 0);
-      const half = tickLengthMm(lengths) / 2;
+      const half = tickLengthMm(polylineCumulativeLengths(shape.points).at(-1)!) / 2;
       const ticks = divisions.map(({ at, normal }) => svgLine(
         { x: at.x + normal.x * half, y: at.y + normal.y * half }, { x: at.x - normal.x * half, y: at.y - normal.y * half }, style));
-      return `<g><path${attr('d', transformPath(polylinePathData(shape.points), TO_SVG))}${style}/>${ticks.join('')}</g>`;
+      return `<g><path${attr('d', transformPath(pathFromPolyline(shape.points), TO_SVG))}${style}/>${ticks.join('')}</g>`;
     }
     case 'section': {
       const dx = shape.end.x - shape.start.x, dy = shape.end.y - shape.start.y;

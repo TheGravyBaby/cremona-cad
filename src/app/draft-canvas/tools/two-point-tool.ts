@@ -89,6 +89,14 @@ export function drawTypedLabel(gUI: RootGroup, pt: Pt, text: string, pxPerMm: nu
     .text(text);
 }
 
+// one key of a number typed mid-placement: the buffer after it, or null when the key wasn't part
+// of one. `accept` says which characters count; a minus only leads.
+export function typedKey(buffer: string, key: string, accept: RegExp): string | null {
+  if (accept.test(key) && !(key === '-' && buffer)) return buffer + key;
+  if (key === 'Backspace' && buffer) return buffer.slice(0, -1);
+  return null;
+}
+
 /** Where the second point lands for numbers typed after the first — null while they don't make
  * one yet. `toward` is the pointer, with any Shift/Ctrl lock already applied. */
 export type TypedEnd = (start: Pt, toward: Pt, values: number[]) => Pt | null;
@@ -210,13 +218,9 @@ export class TwoPointTool implements DraftTool {
       host.requestDraw();
       return true;
     }
-    if (/^[0-9.,]$/.test(event.key)) {
-      this.typed += event.key;
-      host.requestDraw();
-      return true;
-    }
-    if (event.key === 'Backspace' && this.typed) {
-      this.typed = this.typed.slice(0, -1);
+    const typed = typedKey(this.typed, event.key, /^[0-9.,]$/);
+    if (typed !== null) {
+      this.typed = typed;
       host.requestDraw();
       return true;
     }
@@ -244,5 +248,96 @@ export class TwoPointTool implements DraftTool {
     this.startTangent = undefined;
     this.awaitingSecondClick = false;
     this.typed = '';
+  }
+}
+
+type ThirdPointPreview = (gRoot: RootGroup, gUI: RootGroup, pxPerMm: number, start: Pt, end: Pt, third: Pt | null) => void;
+
+/**
+ * TwoPointTool's gesture for the first two points, then a third click to place something about
+ * them — where a dimension line parks, how deep a curve hangs. The preview gets the live pointer
+ * as `end` until the second point is down, then as `third`. Ends on top of each other span
+ * nothing, so that click is ignored rather than taken as the end.
+ */
+export class ThreePointTool implements DraftTool {
+  private startPt: Pt | null = null;
+  private endPt: Pt | null = null;
+  private currentPt: Pt | null = null;
+  private awaitingSecondClick = false;
+  private startTangent: number | undefined;
+
+  constructor(
+    readonly id: string,
+    readonly label: string,
+    private readonly buildShape: (start: Pt, end: Pt, third: Pt) => DraftShape,
+    private readonly renderPreviewShape: ThirdPointPreview,
+  ) { }
+
+  onPointerDown(pt: Pt, host: DraftToolHost): void {
+    if (this.startPt && this.endPt) {
+      host.addShape(this.buildShape(this.startPt, this.endPt, pt));
+      this.reset();
+      host.requestDraw();
+      return;
+    }
+    if (this.startPt && this.awaitingSecondClick) {
+      this.fixEnd(this.applyModifier(pt, host), host);
+      return;
+    }
+    this.startPt = pt;
+    this.currentPt = pt;
+    this.startTangent = host.getSnapTangent();
+    this.awaitingSecondClick = false;
+  }
+
+  onPointerMove(pt: Pt, host: DraftToolHost): void {
+    if (!this.startPt) return;
+    this.currentPt = this.endPt ? pt : this.applyModifier(pt, host);
+    host.requestDraw();
+  }
+
+  onPointerUp(pt: Pt, host: DraftToolHost): void {
+    if (!this.startPt || this.endPt || this.awaitingSecondClick) return;
+    const end = this.applyModifier(pt, host);
+    if (Math.hypot(end.x - this.startPt.x, end.y - this.startPt.y) * host.getPxPerMm() < CLICK_MOVE_THRESHOLD_PX) {
+      this.awaitingSecondClick = true;
+      host.requestDraw();
+      return;
+    }
+    this.fixEnd(end, host);
+  }
+
+  private fixEnd(end: Pt, host: DraftToolHost): void {
+    if (!this.startPt || (end.x === this.startPt.x && end.y === this.startPt.y)) return;
+    this.endPt = end;
+    this.currentPt = end;
+    this.awaitingSecondClick = false;
+    host.requestDraw();
+  }
+
+  private applyModifier(pt: Pt, host: DraftToolHost): Pt {
+    if (!this.startPt) return pt;
+    return angleLockModifier(this.startPt, pt, host, this.startTangent);
+  }
+
+  onKeyDown(event: KeyboardEvent): boolean {
+    if (event.key === 'Escape' && this.startPt) {
+      this.reset();
+      return true;
+    }
+    return false;
+  }
+
+  renderPreview(gRoot: RootGroup, gUI: RootGroup, pxPerMm: number): void {
+    if (!this.startPt || !this.currentPt) return;
+    this.renderPreviewShape(gRoot, gUI, pxPerMm, this.startPt, this.endPt ?? this.currentPt, this.endPt ? this.currentPt : null);
+  }
+
+  reset(): void {
+    this.startPt = null;
+    this.endPt = null;
+    this.currentPt = null;
+    this.startTangent = undefined;
+    this.awaitingSecondClick = false;
   }
 }

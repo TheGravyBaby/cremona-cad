@@ -140,8 +140,8 @@ export class SettingsBarComponent {
     this.toolbox.updateShapes(patches);
   }
 
-  /** Dashed applies to Line, Rect, Circle and Path — a shared pen setting (like currentColor), not
-   * a per-tool one, so it's one common control rather than several near-identical toggles. */
+  /** The tools that stamp `currentDashed` on what they draw — every line, outline and curve tool,
+   * but not Freehand. A shared pen setting (like currentColor), so it's one control, not several. */
   private static readonly DASHABLE_TOOL_IDS = new Set([
     'line', 'polyline', 'line-tangent', 'line-perpendicular', 'rect', 'right-triangle', 'circle', 'polygon-3', 'polygon-4', 'polygon-5', 'polygon-6', 'polygon-8',
     'batten', 'catenary', 'cycloid',

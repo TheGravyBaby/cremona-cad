@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { DraftShape, ImageShape, withPathSource, DEFAULT_SHAPE_COLOR, DEFAULT_FREEHAND_WIDTH, DEFAULT_TEXT_SIZE_MM } from './toolbox-shape';
+import { DraftShape, ImageShape, DEFAULT_SHAPE_COLOR, DEFAULT_FREEHAND_WIDTH, DEFAULT_TEXT_SIZE_MM } from './toolbox-shape';
 import { Layer, DEFAULT_LAYER_ID, makeLayerId } from './layer';
 import { ImageAssetStore } from './image-asset-store';
 import { readWorkingState, writeWorkingState } from '../../helpers/workingStorage';
@@ -583,7 +583,7 @@ export class ToolboxStore implements Undoable {
       if (Array.isArray(parsed)) {
         this.shapes = parsed; // legacy format, from before currentColor existed
       } else if (parsed && typeof parsed === 'object') {
-        if (Array.isArray(parsed.shapes)) this.shapes = parsed.shapes.map(withPathSource);
+        if (Array.isArray(parsed.shapes)) this.shapes = parsed.shapes;
         if (typeof parsed.currentColor === 'string') this._currentColor = parsed.currentColor;
         if (typeof parsed.currentDashed === 'boolean') this._currentDashed = parsed.currentDashed;
         if (typeof parsed.currentTextSize === 'number') this._currentTextSize = parsed.currentTextSize;
@@ -689,7 +689,7 @@ export class ToolboxStore implements Undoable {
   loadState(state: unknown): void {
     if (!state || typeof state !== 'object') return;
     const parsed = state as Record<string, unknown>;
-    if (Array.isArray(parsed['shapes'])) this.shapes = (parsed['shapes'] as DraftShape[]).map(withPathSource);
+    if (Array.isArray(parsed['shapes'])) this.shapes = parsed['shapes'] as DraftShape[];
     if (typeof parsed['currentColor'] === 'string') this._currentColor = parsed['currentColor'] as string;
     if (typeof parsed['currentDashed'] === 'boolean') this._currentDashed = parsed['currentDashed'] as boolean;
     if (typeof parsed['currentTextSize'] === 'number') this._currentTextSize = parsed['currentTextSize'] as number;

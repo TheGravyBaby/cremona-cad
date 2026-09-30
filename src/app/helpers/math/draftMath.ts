@@ -307,7 +307,7 @@ export function filletBetween(a: FilletPiece, b: FilletPiece, r: number, pickA: 
       return [{ line: offsetLineByDistance(line, r) }, { line: offsetLineByDistance(line, -r) }];
     }
     const c = p.circle;
-    return [{ circle: { x: c.x, y: c.y, r: c.r + r } as Circle }, ...(c.r - r > 1e-9 ? [{ circle: { x: c.x, y: c.y, r: c.r - r } as Circle }] : [])];
+    return [{ circle: { x: c.x, y: c.y, r: c.r + r } }, ...(c.r - r > 1e-9 ? [{ circle: { x: c.x, y: c.y, r: c.r - r } }] : [])];
   };
   const crossings = (u: Offset, v: Offset): Pt[] => {
     if ('line' in u && 'line' in v) {

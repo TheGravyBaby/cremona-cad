@@ -1,5 +1,5 @@
 import { Pt, Circle } from "../../models/types";
-import { TWO_PI, normalizeRadians, clamp, closestPointOnSegment } from "./simpleGeometry";
+import { TWO_PI, normalizeRadians, clamp, closestPointOnSegment, cubicBezierPoint } from "./simpleGeometry";
 import { arcTangentToLine, arcBetweenTravels } from "./draftMath";
 
 // ===== Arc/line closed-form inverses =====
@@ -290,12 +290,13 @@ export function pointAtPolylineLength(poly: Pt[], cum: number[], s: number): Pt 
 
 // the curve's direction at each sample, off the samples either side, set against the way to `p`
 // by `measure` — whose sign changes then mark where the two line up the way that was asked for
-function samplesAgainstPoint(p: Pt, poly: Pt[], measure: (toP: Pt, dir: Pt) => number): number[] {
-  const n = poly.length;
-  return poly.map((q, i) => {
-    const a = poly[Math.max(0, i - 1)], b = poly[Math.min(n - 1, i + 1)];
-    return measure({ x: q.x - p.x, y: q.y - p.y }, { x: b.x - a.x, y: b.y - a.y });
-  });
+function samplesAgainstPoint(p: Pt, poly: Pt[], measure: (vx: number, vy: number, dx: number, dy: number) => number): number[] {
+  const n = poly.length, out = new Array<number>(n);
+  for (let i = 0; i < n; i++) {
+    const q = poly[i], a = poly[Math.max(0, i - 1)], b = poly[Math.min(n - 1, i + 1)];
+    out[i] = measure(q.x - p.x, q.y - p.y, b.x - a.x, b.y - a.y);
+  }
+  return out;
 }
 
 /**
@@ -306,7 +307,7 @@ function samplesAgainstPoint(p: Pt, poly: Pt[], measure: (toP: Pt, dir: Pt) => n
  */
 export function tangentPointsFromPointToPolyline(p: Pt, poly: Pt[]): Pt[] {
   if (poly.length < 3) return [];
-  return signChanges(poly, samplesAgainstPoint(p, poly, (v, d) => v.x * d.y - v.y * d.x));
+  return signChanges(poly, samplesAgainstPoint(p, poly, (vx, vy, dx, dy) => vx * dy - vy * dx));
 }
 
 /**
@@ -318,7 +319,7 @@ export function tangentPointsFromPointToPolyline(p: Pt, poly: Pt[]): Pt[] {
  */
 export function perpendicularFeetOnPolyline(p: Pt, poly: Pt[]): Pt[] {
   if (poly.length < 3) return [];
-  return signChanges(poly, samplesAgainstPoint(p, poly, (v, d) => v.x * d.x + v.y * d.y));
+  return signChanges(poly, samplesAgainstPoint(p, poly, (vx, vy, dx, dy) => vx * dx + vy * dy));
 }
 
 function signChanges(poly: Pt[], f: number[]): Pt[] {
@@ -417,11 +418,7 @@ export function battenBeziers(pins: Pt[], closed: boolean): [Pt, Pt, Pt, Pt][] {
     h = beziers.map(([a, c1, c2, b]) => {
       let len = 0, prev = a;
       for (let k = 1; k <= 16; k++) {
-        const t = k / 16, s = 1 - t;
-        const p = {
-          x: s * s * s * a.x + 3 * s * s * t * c1.x + 3 * s * t * t * c2.x + t * t * t * b.x,
-          y: s * s * s * a.y + 3 * s * s * t * c1.y + 3 * s * t * t * c2.y + t * t * t * b.y,
-        };
+        const p = cubicBezierPoint(a, c1, c2, b, k / 16);
         len += Math.hypot(p.x - prev.x, p.y - prev.y);
         prev = p;
       }

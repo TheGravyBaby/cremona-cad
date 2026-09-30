@@ -1,6 +1,6 @@
 import { Pt } from '../../models/types';
 import { DEFAULT_TEXT_SIZE_MM, DraftShape, PathSource, imageCenter } from './toolbox-shape';
-import { Matrix2D, applyMatrix, transformPath, translatePath } from '../../helpers/math/pathMath';
+import { Matrix2D, applyMatrix, pathFromPolygon, transformPath, translatePath } from '../../helpers/math/pathMath';
 
 function shiftPt(p: Pt, dx: number, dy: number): Pt {
   return { x: p.x + dx, y: p.y + dy };
@@ -123,7 +123,7 @@ export function transformShape(shape: DraftShape, m: Matrix2D): DraftShape | nul
       const corners = [shape.p1, { x: shape.p2.x, y: shape.p1.y }, shape.p2, { x: shape.p1.x, y: shape.p2.y }].map(pt);
       return {
         id: shape.id, type: 'path', color: shape.color, layerId: shape.layerId, dashed: shape.dashed,
-        d: `M ${corners.map(c => `${c.x} ${c.y}`).join(' L ')} Z`,
+        d: pathFromPolygon(corners),
       };
     }
     case 'point':

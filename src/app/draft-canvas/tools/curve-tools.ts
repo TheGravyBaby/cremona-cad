@@ -1,7 +1,7 @@
 import * as d3 from 'd3';
 import { Pt } from '../../models/types';
 import { dist, normalizeRadians, pointOnCircle } from '../../helpers/math/simpleGeometry';
-import { samplePathToPolyline } from '../../helpers/math/pathMath';
+import { samplePathToPolyline, splitPathStrings } from '../../helpers/math/pathMath';
 import { polylineCumulativeLengths, projectOntoPolyline, slicePolyline } from '../../helpers/math/vibeMath';
 import { DraftTool, DraftToolHost } from './draft-tool';
 import { DraftShape, makeShapeId } from './toolbox-shape';
@@ -14,13 +14,24 @@ type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 const SAMPLE_STEP_MM = 0.25;
 const STORED_STEP_MM = 1;
 
-const pathCurveCache = new Map<string, { points: Pt[]; closed: boolean }[]>();
-const PATH_CURVE_CACHE_MAX = 64;
+export type ShapeCurve = { points: Pt[]; closed: boolean };
+
+// shapes are immutable plain objects, so a sampling is good for as long as the object is
+const curveCache = new WeakMap<DraftShape, ShapeCurve[]>();
 
 // the course of every curve a shape draws, sampled finely enough to measure along — several for a
-// path of separate pieces. A closed one repeats its first point at the end. Paths are cached by
-// their data, since a tool asks again on every pointer move and a whole outline is slow to sample.
-export function shapeCurves(shape: DraftShape): { points: Pt[]; closed: boolean }[] {
+// path of separate pieces. A closed one repeats its first point at the end. Cached per shape,
+// since a tool asks again on every pointer move and a whole outline is slow to sample.
+export function shapeCurves(shape: DraftShape): ShapeCurve[] {
+  let curves = curveCache.get(shape);
+  if (!curves) {
+    curves = sampleShape(shape);
+    curveCache.set(shape, curves);
+  }
+  return curves;
+}
+
+function sampleShape(shape: DraftShape): ShapeCurve[] {
   switch (shape.type) {
     case 'line':
       return [{ points: [shape.start, shape.end], closed: false }];
@@ -51,22 +62,16 @@ export function shapeCurves(shape: DraftShape): { points: Pt[]; closed: boolean 
       })];
       return [{ points, closed: true }];
     }
-    case 'path': {
-      const cached = pathCurveCache.get(shape.d);
-      if (cached) return cached;
-      const curves = shape.d.split(/(?=M)/).filter(part => part.trim()).flatMap(part => {
+    case 'path':
+      return splitPathStrings(shape.d).flatMap(part => {
         let points: Pt[];
         try {
           points = samplePathToPolyline(part, SAMPLE_STEP_MM, true);
         } catch {
           return [];
         }
-        return [{ points, closed: /Z\s*$/i.test(part.trim()) || dist(points[0], points[points.length - 1]) < 1e-6 }];
+        return [{ points, closed: /Z$/i.test(part) || dist(points[0], points[points.length - 1]) < 1e-6 }];
       });
-      if (pathCurveCache.size >= PATH_CURVE_CACHE_MAX) pathCurveCache.clear();
-      pathCurveCache.set(shape.d, curves);
-      return curves;
-    }
     case 'freehand':
     case 'curve-length':
     case 'curve-ticks':
@@ -74,6 +79,17 @@ export function shapeCurves(shape: DraftShape): { points: Pt[]; closed: boolean 
     default:
       return [];
   }
+}
+
+// the curve of a shape nearest `pt`, with the foot of `pt` on it
+export function nearestCurve(shape: DraftShape, pt: Pt): { curve: ShapeCurve; cum: number[]; s: number; dist: number } | null {
+  let best: { curve: ShapeCurve; cum: number[]; s: number; dist: number } | null = null;
+  for (const curve of shapeCurves(shape)) {
+    const cum = polylineCumulativeLengths(curve.points);
+    const foot = projectOntoPolyline(pt, curve.points, cum);
+    if (!best || foot.dist < best.dist) best = { curve, cum, ...foot };
+  }
+  return best;
 }
 
 // every STORED_STEP_MM or so, ends kept exact — the fine samples are for measuring, not for
@@ -126,14 +142,9 @@ export class CurveStretchTool implements DraftTool {
       return;
     }
     const shape = host.curveAt(pt);
-    if (!shape) return;
-    const curves = shapeCurves(shape);
-    if (curves.length === 0) return;
-    const nearest = curves.reduce((best, c) => {
-      const d = projectOntoPolyline(pt, c.points, polylineCumulativeLengths(c.points)).dist;
-      return d < best.d ? { c, d } : best;
-    }, { c: curves[0], d: Infinity }).c;
-    this.track = trackFor(nearest, pt);
+    const nearest = shape && nearestCurve(shape, pt);
+    if (!nearest) return;
+    this.track = trackFor(nearest.curve, pt);
     this.s = this.track.s0;
     this.awaitingSecondClick = false;
     host.requestDraw();
@@ -194,7 +205,7 @@ export class CurveStretchTool implements DraftTool {
 
   renderPreview(gRoot: RootGroup, gUI: RootGroup, pxPerMm: number): void {
     const stretch = this.stretch();
-    if (stretch) this.drawStretch(gRoot, gUI, pxPerMm, stretch.points, stretch.length);
+    if (stretch) this.drawStretch(gRoot, gUI, pxPerMm, thin(stretch.points), stretch.length);
   }
 
   reset(): void {

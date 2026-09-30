@@ -186,18 +186,6 @@ export function pathFromSource(source: PathSource): string {
   }
 }
 
-// cycloids and battens saved on the day they were added carried their source under their own names
-export function withPathSource(shape: DraftShape): DraftShape {
-  if (shape.type !== 'path' || shape.source) return shape;
-  const { cycloid, batten, ...rest } = shape as PathShape & {
-    cycloid?: Omit<Extract<PathSource, { kind: 'cycloid' }>, 'kind'>;
-    batten?: Omit<Extract<PathSource, { kind: 'batten' }>, 'kind'>;
-  };
-  if (cycloid) return { ...rest, source: { kind: 'cycloid', ...cycloid } };
-  if (batten) return { ...rest, source: { kind: 'batten', ...batten } };
-  return shape;
-}
-
 // Any geometry at all, as absolute SVG path data in world mm — the catch-all. What a copied piece
 // of recipe output becomes, what an imported curve becomes, what a rect turns into once rotated
 // off-axis. Moves as one rigid body with no endpoint handles. Only the M, L, C, Q, A and Z

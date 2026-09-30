@@ -1,6 +1,6 @@
 import * as d3 from 'd3';
-import { Circle, Pt } from '../../models/types';
-import { angleFromCenter, dist, pointOnCircle } from '../../helpers/math/simpleGeometry';
+import { Pt } from '../../models/types';
+import { angleFromCenter, closestPointOnLine, dist, lineFromTwoPoints, pointOnCircle } from '../../helpers/math/simpleGeometry';
 import { FilletPiece, filletBetween } from '../../helpers/math/draftMath';
 import { arcPathData } from '../../helpers/math/pathMath';
 import { DraftTool, DraftToolHost } from './draft-tool';
@@ -13,16 +13,12 @@ type Filletable = LineShape | ArcShape | Extract<DraftShape, { type: 'circle' }>
 
 function asPiece(shape: Filletable): FilletPiece {
   if (shape.type === 'line') return { line: [shape.start, shape.end] };
-  return { circle: { x: shape.center.x, y: shape.center.y, r: shape.radius } as Circle };
+  return { circle: { ...shape.center, r: shape.radius } };
 }
 
 // the point on the piece nearest the click, so "which part to keep" is read off the piece itself
 function onPiece(shape: Filletable, pt: Pt): Pt {
-  if (shape.type === 'line') {
-    const d = { x: shape.end.x - shape.start.x, y: shape.end.y - shape.start.y };
-    const t = ((pt.x - shape.start.x) * d.x + (pt.y - shape.start.y) * d.y) / (d.x * d.x + d.y * d.y || 1);
-    return { x: shape.start.x + t * d.x, y: shape.start.y + t * d.y };
-  }
+  if (shape.type === 'line') return closestPointOnLine(pt, lineFromTwoPoints(shape.start, shape.end)).point;
   return pointOnCircle({ ...shape.center, r: shape.radius }, angleFromCenter(shape.center, pt));
 }
 

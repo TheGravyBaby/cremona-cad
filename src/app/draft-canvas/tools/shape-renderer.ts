@@ -6,7 +6,7 @@ import {
   angleSweep, dimensionGeometry, imageCenter, imageCorners, imageSourceBox, isCropped,
 } from './toolbox-shape';
 import { pointOnCircle } from '../../helpers/math/simpleGeometry';
-import { arcPathData } from '../../helpers/math/pathMath';
+import { arcPathData, pathFromPolyline } from '../../helpers/math/pathMath';
 import { pointAtPolylineLength, polylineCumulativeLengths } from '../../helpers/math/vibeMath';
 import { GrabberKind } from './shape-grabbers';
 
@@ -388,42 +388,7 @@ export function tickLengthMm(lineLength: number): number {
 }
 
 export function drawTicks(gRoot: RootGroup, start: Pt, end: Pt, weights: number[], color: string): void {
-  const dx = end.x - start.x;
-  const dy = end.y - start.y;
-  const len = Math.hypot(dx, dy);
-  if (len < 1e-6 || weights.length === 0) return;
-
-  const ux = dx / len, uy = dy / len;
-  const halfTick = tickLengthMm(len) / 2;
-  const total = weights.reduce((a, b) => a + b, 0);
-
-  gRoot.append('line')
-    .attr('x1', start.x).attr('y1', start.y).attr('x2', end.x).attr('y2', end.y)
-    .attr('stroke', color)
-    .attr('stroke-width', 1)
-    .attr('vector-effect', 'non-scaling-stroke');
-
-  let cursor = 0;
-  for (let i = 0; i <= weights.length; i++) {
-    const tx = start.x + ux * cursor * len / total;
-    const ty = start.y + uy * cursor * len / total;
-    gRoot.append('line')
-      .attr('data-no-snap', '')
-      .attr('x1', tx - uy * halfTick).attr('y1', ty + ux * halfTick)
-      .attr('x2', tx + uy * halfTick).attr('y2', ty - ux * halfTick)
-      .attr('stroke', color)
-      .attr('stroke-width', 1.5)
-      .attr('vector-effect', 'non-scaling-stroke');
-
-    // ends are already snappable through the baseline; interior ticks need their own exact point
-    if (i > 0 && i < weights.length) {
-      gRoot.append('circle')
-        .attr('cx', tx).attr('cy', ty).attr('r', 0)
-        .attr('fill', 'none').attr('stroke', 'none')
-        .style('pointer-events', 'none');
-    }
-    cursor += weights[i] ?? 0;
-  }
+  drawCurveTicks(gRoot, [start, end], weights, color);
 }
 
 function drawArcCenterGuides(
@@ -631,10 +596,6 @@ export function drawAngle(
   if (preview) text.style('pointer-events', 'none');
 }
 
-export function polylinePathData(points: Pt[]): string {
-  return points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
-}
-
 // where along a stretch each division falls, with the unit normal there — read off a short chord
 // either side, since a single thinned segment can be turned well off the curve's true direction
 export function curveDivisions(points: Pt[], weights: number[]): { at: Pt; normal: Pt }[] {
@@ -662,12 +623,12 @@ export function drawCurveLength(
 ): void {
   const { points } = shape;
   if (points.length < 2) return;
-  const path = gRoot.append('path').attr('d', polylinePathData(points))
+  const path = gRoot.append('path').attr('d', pathFromPolyline(points))
     .attr('fill', 'none').attr('stroke', color).attr('stroke-width', 2.5).attr('vector-effect', 'non-scaling-stroke');
   if (preview) path.attr('stroke-dasharray', DASH_PATTERN).style('pointer-events', 'none');
 
   const tick = (DIM_TICK_HALF_PX * 1.5) / pxPerMm;
-  const [first, , last] = curveDivisions(points, [1, 1]);
+  const [first, mid, last] = curveDivisions(points, [1, 1]);
   for (const { at, normal } of [first, last]) {
     gRoot.append('line')
       .attr('x1', at.x - normal.x * tick).attr('y1', at.y - normal.y * tick)
@@ -677,7 +638,6 @@ export function drawCurveLength(
       .style('pointer-events', preview ? 'none' : null);
   }
 
-  const mid = curveDivisions(points, [1, 1])[1];
   const chordMid = { x: (points[0].x + points[points.length - 1].x) / 2, y: (points[0].y + points[points.length - 1].y) / 2 };
   const bulge = { x: mid.at.x - chordMid.x, y: mid.at.y - chordMid.y };
   const bulgeLen = Math.hypot(bulge.x, bulge.y);
@@ -698,10 +658,10 @@ export function drawCurveLength(
 // drawTicks bent along a curve: the same tick size and the same zero-radius circles making the
 // interior divisions snappable.
 export function drawCurveTicks(gRoot: RootGroup, points: Pt[], weights: number[], color: string): void {
-  if (points.length < 2) return;
-  gRoot.append('path').attr('d', polylinePathData(points))
+  const divisions = points.length < 2 ? [] : curveDivisions(points, weights);
+  if (divisions.length === 0) return;
+  gRoot.append('path').attr('d', pathFromPolyline(points))
     .attr('fill', 'none').attr('stroke', color).attr('stroke-width', 1).attr('vector-effect', 'non-scaling-stroke');
-  const divisions = curveDivisions(points, weights);
   const cum = polylineCumulativeLengths(points);
   const halfTick = tickLengthMm(cum[cum.length - 1]) / 2;
   divisions.forEach(({ at, normal }, i) => {
@@ -752,7 +712,7 @@ export function drawSelectionHalo(gRoot: RootGroup, gUI: RootGroup, shape: Draft
     }
     case 'curve-length':
     case 'curve-ticks':
-      halo(gRoot.append('path').attr('d', polylinePathData(shape.points)));
+      halo(gRoot.append('path').attr('d', pathFromPolyline(shape.points)));
       break;
     case 'angle': {
       const { startAngle, endAngle } = angleSweep(shape.vertex, shape.start, shape.end);

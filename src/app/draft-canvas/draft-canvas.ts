@@ -107,7 +107,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       color: shape.color ?? this.toolbox.currentColor,
       layerId: shape.layerId ?? this.toolbox.activeLayerId,
     }),
-    requestDraw: () => this.draw(),
+    requestDraw: () => this.requestDraw(),
     getSnapTangent: () => this.activeSnap?.tangent,
     isAngleLockHeld: () => this.isAngleLockHeld,
     isTangentLockHeld: () => this.isTangentLockHeld,
@@ -390,6 +390,18 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.selectionUnsub?.();
     this.imageAssetsUnsub?.();
     this.toolRegistryUnsub?.();
+    if (this.drawFrame !== null) cancelAnimationFrame(this.drawFrame);
+  }
+
+  // one draw per frame however many times a pointer move asks — the canvas asks once after the
+  // tool's onPointerMove, and nearly every tool asks again inside it
+  private drawFrame: number | null = null;
+  private requestDraw(): void {
+    if (this.drawFrame !== null) return;
+    this.drawFrame = requestAnimationFrame(() => {
+      this.drawFrame = null;
+      this.draw();
+    });
   }
 
   draw(): void {
@@ -1097,7 +1109,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     if (this.activeTool && !this.isDragging) {
       const pt = this.resolveToolPoint(this.worldFromPointer(event));
       this.activeTool.onPointerMove(pt, this.toolHost);
-      this.draw(); // updates the snap-indicator glyph even before a shape is started
+      this.requestDraw(); // updates the snap-indicator glyph even before a shape is started
       event.preventDefault();
       return;
     }

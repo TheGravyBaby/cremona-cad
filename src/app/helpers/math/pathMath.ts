@@ -1,7 +1,7 @@
 import { Pt, Circle, Rectangle, Arc } from "../../models/types";
 import * as polygonClipping from 'polygon-clipping';
 import { svgPathProperties } from 'svg-path-properties';
-import { clamp, dist, angleFromCenter, normalizeRadians, pointOnCircle, intersectLines, lineCircleIntersection, lineFromTwoPoints, flipArcAboutY, flipPointAboutY } from './simpleGeometry';
+import { dist, angleFromCenter, normalizeRadians, pointOnCircle, intersectLines, lineCircleIntersection, lineFromTwoPoints, flipArcAboutY, flipPointAboutY, cubicBezierPoint, signedPolygonArea } from './simpleGeometry';
 import { circleCircleIntersections } from './draftMath';
 import { solveCatenaryA, makeMonotoneSpline, battenBeziers } from './vibeMath';
 
@@ -102,8 +102,12 @@ export function pathFromRect(R: Rectangle): string {
   return `M ${Pt1.x} ${Pt1.y} L ${Pt2.x} ${Pt1.y} L ${Pt2.x} ${Pt2.y} L ${Pt1.x} ${Pt2.y} Z`;
 }
 
+export function pathFromPolyline(points: Pt[], closed = false): string {
+  return `M ${points.map(p => `${p.x} ${p.y}`).join(' L ')}${closed ? ' Z' : ''}`;
+}
+
 export function pathFromPolygon(points: Pt[]): string {
-  return `M ${points.map(p => `${p.x} ${p.y}`).join(' L ')} Z`;
+  return pathFromPolyline(points, true);
 }
 
 export function pathFromArc(arc: Arc): string {
@@ -948,11 +952,7 @@ const lerpPt = (a: Pt, b: Pt, t: number): Pt => ({ x: a.x + (b.x - a.x) * t, y: 
 function pieceAt(p: PathPiece, t: number): Pt {
   if (p.kind === 'line') return lerpPt(p.a, p.b, t);
   if (p.kind === 'arc') return pointOnCircle({ ...p.c, r: p.r }, p.t0 + p.dt * t);
-  const s = 1 - t;
-  return {
-    x: s * s * s * p.a.x + 3 * s * s * t * p.c1.x + 3 * s * t * t * p.c2.x + t * t * t * p.b.x,
-    y: s * s * s * p.a.y + 3 * s * s * t * p.c1.y + 3 * s * t * t * p.c2.y + t * t * t * p.b.y,
-  };
+  return cubicBezierPoint(p.a, p.c1, p.c2, p.b, t);
 }
 
 function pieceVelocity(p: PathPiece, t: number): Pt {
@@ -1126,24 +1126,32 @@ function offsetPiece(p: PathPiece, left: number): PathPiece[] | null {
 // where the end of chain `x` first crosses the start of chain `y`, walking out from the corner
 // they share; sampled to find it, then settled by Newton on the two pieces
 function trimAtCrossing(x: PathPiece[], y: PathPiece[]): [PathPiece[], PathPiece[]] | null {
-  const segments = (chain: PathPiece[]) => chain.flatMap((p, piece) => {
-    const steps = p.kind === 'line' ? 1 : 24;
-    return Array.from({ length: steps }, (_, k) => ({
-      piece, t0: k / steps, t1: (k + 1) / steps, a: pieceAt(p, k / steps), b: pieceAt(p, (k + 1) / steps),
-    }));
-  });
-  const xs = segments(x), ys = segments(y);
-  const lengths = (segs: typeof xs) => segs.map(s => dist(s.a, s.b));
-  const xLen = lengths(xs), yLen = lengths(ys);
-  const xFromEnd = xLen.map((_, i) => xLen.slice(i + 1).reduce((a, b) => a + b, 0));
-  const yFromStart = yLen.map((_, i) => yLen.slice(0, i).reduce((a, b) => a + b, 0));
-
-  const boxes = (chain: PathPiece[], segs: typeof xs) => chain.map((_, piece) => {
-    const pts = segs.filter(s => s.piece === piece).flatMap(s => [s.a, s.b]);
-    const px = pts.map(p => p.x), py = pts.map(p => p.y);
-    return { x0: Math.min(...px), x1: Math.max(...px), y0: Math.min(...py), y1: Math.max(...py) };
-  });
-  const xBox = boxes(x, xs), yBox = boxes(y, ys);
+  type Seg = { piece: number; t0: number; t1: number; a: Pt; b: Pt };
+  type Box = { x0: number; x1: number; y0: number; y1: number };
+  const segments = (chain: PathPiece[]): { segs: Seg[]; boxes: Box[] } => {
+    const segs: Seg[] = [], boxes: Box[] = [];
+    chain.forEach((p, piece) => {
+      const steps = p.kind === 'line' ? 1 : 24;
+      const box = { x0: Infinity, x1: -Infinity, y0: Infinity, y1: -Infinity };
+      let a = pieceAt(p, 0);
+      for (let k = 0; k < steps; k++) {
+        const b = pieceAt(p, (k + 1) / steps);
+        segs.push({ piece, t0: k / steps, t1: (k + 1) / steps, a, b });
+        for (const q of [a, b]) {
+          box.x0 = Math.min(box.x0, q.x); box.x1 = Math.max(box.x1, q.x);
+          box.y0 = Math.min(box.y0, q.y); box.y1 = Math.max(box.y1, q.y);
+        }
+        a = b;
+      }
+      boxes.push(box);
+    });
+    return { segs, boxes };
+  };
+  const { segs: xs, boxes: xBox } = segments(x), { segs: ys, boxes: yBox } = segments(y);
+  const xLen = xs.map(s => dist(s.a, s.b)), yLen = ys.map(s => dist(s.a, s.b));
+  const xFromEnd = new Array<number>(xs.length), yFromStart = new Array<number>(ys.length);
+  for (let i = xs.length - 1, run = 0; i >= 0; i--) { xFromEnd[i] = run; run += xLen[i]; }
+  for (let j = 0, run = 0; j < ys.length; j++) { yFromStart[j] = run; run += yLen[j]; }
 
   let best: { i: number; j: number; u: number; v: number; score: number } | null = null;
   for (let i = 0; i < xs.length; i++) {
@@ -1240,11 +1248,7 @@ export function offsetPath(d: string, distance: number): string | null {
         const steps = p.kind === 'line' ? 1 : 16;
         return Array.from({ length: steps }, (_, k) => pieceAt(p, k / steps));
       });
-      const area = ring.reduce((sum: number, p, k) => {
-        const q = ring[(k + 1) % ring.length];
-        return sum + p.x * q.y - q.x * p.y;
-      }, 0);
-      if (area < 0) left = distance;
+      if (signedPolygonArea(ring) < 0) left = distance;
     }
     const offset = offsetSubpath(pieces, closed, left);
     if (!offset) return null;
@@ -1395,10 +1399,21 @@ export function buildCatenaryPath(
   return pts.join(' ');
 }
 
+// cubic pieces between the parameter steps `us`, each carrying the curve's own tangent at its ends;
+// the last one is pinned to `end` so the curve closes on the click exactly
+function hermitePath(start: Pt, end: Pt, us: number[], at: (u: number) => Pt, slope: (u: number) => Pt): string {
+  const parts = [`M ${start.x} ${start.y}`];
+  for (let i = 0; i + 1 < us.length; i++) {
+    const u0 = us[i], u1 = us[i + 1], h = (u1 - u0) / 3;
+    const p0 = at(u0), p1 = i === us.length - 2 ? end : at(u1), d0 = slope(u0), d1 = slope(u1);
+    parts.push(`C ${p0.x + d0.x * h} ${p0.y + d0.y * h} ${p1.x - d1.x * h} ${p1.y - d1.y * h} ${p1.x} ${p1.y}`);
+  }
+  return parts.join(' ');
+}
+
 // a chain hung from start and end, its axis square to the chord and its lowest point `sag` off the
-// chord's middle — positive sags to the left of start→end. Cubic pieces with the curve's own
-// tangents at even steps of arc length, so a deep U is followed as closely at its steep ends as at
-// the bottom.
+// chord's middle — positive sags to the left of start→end. Steps are even in arc length, so a deep
+// U is followed as closely at its steep ends as at the bottom.
 export function catenaryBetween(start: Pt, end: Pt, sag: number, segments = 16): string {
   const L = dist(start, end);
   if (L < 1e-9 || Math.abs(sag) < 1e-9) return `M ${start.x} ${start.y} L ${end.x} ${end.y}`;
@@ -1419,14 +1434,7 @@ export function catenaryBetween(start: Pt, end: Pt, sag: number, segments = 16):
   const sinhH = Math.sinh(h / a);
   const us = Array.from({ length: segments + 1 }, (_, i) =>
     i === 0 ? -h : i === segments ? h : a * Math.asinh(sinhH * (2 * i / segments - 1)));
-  const parts = [`M ${start.x} ${start.y}`];
-  for (let i = 0; i < segments; i++) {
-    const u0 = us[i], u1 = us[i + 1], du = (u1 - u0) / 3;
-    const p0 = at(u0), p1 = at(u1), d0 = slope(u0), d1 = slope(u1);
-    const last = i === segments - 1 ? end : p1;
-    parts.push(`C ${p0.x + d0.x * du} ${p0.y + d0.y * du} ${p1.x - d1.x * du} ${p1.y - d1.y * du} ${last.x} ${last.y}`);
-  }
-  return parts.join(' ');
+  return hermitePath(start, end, us, at, slope);
 }
 
 export function battenPath(pins: Pt[], closed: boolean): string {
@@ -1437,8 +1445,8 @@ export function battenPath(pins: Pt[], closed: boolean): string {
 }
 
 // the trochoid arch of trochoidNorm stood on the chord from start to end, its crown `depth` off the
-// chord's middle — positive to the left of start→end. Cubic pieces at even steps of the rolling
-// angle, which crowds them towards the ends where a full cycloid turns hardest.
+// chord's middle — positive to the left of start→end. Steps are even in the rolling angle, which
+// crowds them towards the ends where a full cycloid turns hardest.
 export function cycloidBetween(start: Pt, end: Pt, depth: number, factor: number, pct: number, segments = 24): string {
   const L = dist(start, end);
   if (L < 1e-9 || Math.abs(depth) < 1e-9) return `M ${start.x} ${start.y} L ${end.x} ${end.y}`;
@@ -1457,13 +1465,7 @@ export function cycloidBetween(start: Pt, end: Pt, depth: number, factor: number
     const dz = Math.sin(th) / zSpan * (t1 - t0) * depth;
     return { x: dx * t.x + dz * n.x, y: dx * t.y + dz * n.y };
   };
-  const parts = [`M ${start.x} ${start.y}`];
-  for (let i = 0; i < segments; i++) {
-    const f0 = i / segments, f1 = (i + 1) / segments, h = (f1 - f0) / 3;
-    const p0 = at(f0), p1 = i === segments - 1 ? end : at(f1), d0 = slope(f0), d1 = slope(f1);
-    parts.push(`C ${p0.x + d0.x * h} ${p0.y + d0.y * h} ${p1.x - d1.x * h} ${p1.y - d1.y * h} ${p1.x} ${p1.y}`);
-  }
-  return parts.join(' ');
+  return hermitePath(start, end, Array.from({ length: segments + 1 }, (_, i) => i / segments), at, slope);
 }
 
 /**
