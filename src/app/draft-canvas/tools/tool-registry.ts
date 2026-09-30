@@ -91,9 +91,6 @@ export class ToolRegistryService {
     // list instead, alongside their other controls. See image-placement.ts.
   ];
 
-  // The dock's Bench tab: tools that act on the selection rather than draw. Its instant commands
-  // (flip, align, ...) aren't tools; the palette lays them out among these, and they run through
-  // selection-actions.ts.
   readonly modifyRows: ToolSlot[][] = [
     [createMoveTool(this.actions)],
     [createOffsetTool()],

@@ -5,7 +5,7 @@ import { arcPathData, offsetPath } from '../../helpers/math/pathMath';
 import { polylineCumulativeLengths, projectOntoPolyline } from '../../helpers/math/vibeMath';
 import { DraftTool, DraftToolHost } from './draft-tool';
 import { DraftShape, makeShapeId } from './toolbox-shape';
-import { PREVIEW_COLOR, stylePreview } from './two-point-tool';
+import { drawTypedLabel, stylePreview } from './two-point-tool';
 import { shapeCurves } from './curve-tools';
 
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
@@ -297,17 +297,7 @@ export class OffsetTool implements DraftTool {
       this.drawPreviewShape(gRoot, offsetShape);
     }
 
-    const label = this.typedBuffer || `${resolved.rawDistance.toFixed(1)} mm`;
-    gUI.append('text')
-      .attr('x', this.lastPt.x)
-      .attr('y', -this.lastPt.y - 12 / pxPerMm)
-      .attr('text-anchor', 'middle')
-      .attr('dominant-baseline', 'central')
-      .attr('fill', PREVIEW_COLOR)
-      .attr('font-size', 12 / pxPerMm)
-      .style('pointer-events', 'none')
-      .style('user-select', 'none')
-      .text(label);
+    drawTypedLabel(gUI, this.lastPt, this.typedBuffer || `${resolved.rawDistance.toFixed(1)} mm`, pxPerMm);
   }
 
   reset(): void {

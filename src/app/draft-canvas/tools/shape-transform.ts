@@ -1,9 +1,14 @@
 import { Pt } from '../../models/types';
-import { DEFAULT_TEXT_SIZE_MM, DraftShape, imageCenter } from './toolbox-shape';
+import { DEFAULT_TEXT_SIZE_MM, DraftShape, PathSource, imageCenter } from './toolbox-shape';
 import { Matrix2D, applyMatrix, transformPath, translatePath } from '../../helpers/math/pathMath';
 
 function shiftPt(p: Pt, dx: number, dy: number): Pt {
   return { x: p.x + dx, y: p.y + dy };
+}
+
+function mapSource(source: PathSource, pt: (p: Pt) => Pt, depthScale: number): PathSource {
+  if (source.kind === 'batten') return { ...source, pins: source.pins.map(pt) };
+  return { ...source, start: pt(source.start), end: pt(source.end), depth: source.depth * depthScale };
 }
 
 /** Returns a copy of `shape` translated by (dx, dy) mm — every shape type keeps its
@@ -31,12 +36,8 @@ export function translateShape(shape: DraftShape, dx: number, dy: number): Draft
     case 'curve-ticks':
       return { ...shape, points: shape.points.map(p => shiftPt(p, dx, dy)) };
     case 'path': {
-      const c = shape.cycloid;
-      return {
-        ...shape, d: translatePath(shape.d, dx, dy),
-        cycloid: c && { ...c, start: shiftPt(c.start, dx, dy), end: shiftPt(c.end, dx, dy) },
-        batten: shape.batten && { ...shape.batten, pins: shape.batten.pins.map(p => shiftPt(p, dx, dy)) },
-      };
+      const source = shape.source && mapSource(shape.source, p => shiftPt(p, dx, dy), 1);
+      return { ...shape, d: translatePath(shape.d, dx, dy), ...(source && { source }) };
     }
     case 'image':
       return { ...shape, x: shape.x + dx, y: shape.y + dy };
@@ -140,12 +141,8 @@ export function transformShape(shape: DraftShape, m: Matrix2D): DraftShape | nul
       return { ...shape, points: shape.points.map(pt), length: shape.length * k };
     // a mirror turns the chord's left to its right, as for a dimension's offset
     case 'path': {
-      const c = shape.cycloid;
-      return {
-        ...shape, d: transformPath(shape.d, m),
-        cycloid: c && { ...c, start: pt(c.start), end: pt(c.end), depth: c.depth * k * (mirrored ? -1 : 1) },
-        batten: shape.batten && { ...shape.batten, pins: shape.batten.pins.map(pt) },
-      };
+      const source = shape.source && mapSource(shape.source, pt, mirrored ? -k : k);
+      return { ...shape, d: transformPath(shape.d, m), ...(source && { source }) };
     }
     case 'image': {
       if (mirrored) return null;

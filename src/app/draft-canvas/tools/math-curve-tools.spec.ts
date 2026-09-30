@@ -1,31 +1,12 @@
 import { Pt } from '../../models/types';
 import { battenPath, catenaryBetween, cycloidBetween, samplePathToPolyline, trochoidNorm } from '../../helpers/math/pathMath';
 import { battenBeziers, polylineCumulativeLengths, projectOntoPolyline } from '../../helpers/math/vibeMath';
-import { DraftToolHost } from './draft-tool';
-import { DraftShape, PathShape } from './toolbox-shape';
+import { fakeToolHost } from './fake-tool-host';
+import { PathShape, PathSource, pathFromSource, withPathSource } from './toolbox-shape';
 import { ToolboxStore } from './toolbox-store';
-import { createBattenTool, createCatenaryTool, createCycloidTool, cycloidPathData } from './math-curve-tools';
+import { createBattenTool, createCatenaryTool, createCycloidTool } from './math-curve-tools';
 import { endpointGrabbers, withEndpoint } from './shape-grabbers';
 import { reflectAcross, rotateAbout, transformShape, translateShape } from './shape-transform';
-
-function makeHost(): DraftToolHost & { added: DraftShape[] } {
-  const added: DraftShape[] = [];
-  return {
-    added,
-    addShape: (s: DraftShape) => { added.push(s); },
-    requestDraw: () => { },
-    getSnapTangent: () => undefined,
-    isAngleLockHeld: () => false,
-    isTangentLockHeld: () => false,
-    getSelectedShapes: () => [],
-    getPxPerMm: () => 1,
-    hitTestShape: () => null,
-    curveAt: () => null,
-    selectShape: () => { },
-    removeShape: () => { },
-    returnToSelect: () => { },
-  };
-}
 
 const at = (x: number, y: number): Pt => ({ x, y });
 const toolbox = { currentDashed: false } as ToolboxStore;
@@ -65,7 +46,7 @@ describe('catenaryBetween', () => {
 
 describe('Catenary tool', () => {
   it('takes the ends, then the depth from how far the third click stands off the chord', () => {
-    const host = makeHost();
+    const host = fakeToolHost();
     const tool = createCatenaryTool(toolbox);
     tool.onPointerDown(at(0, 0), host);
     tool.onPointerUp(at(0, 0), host);
@@ -76,7 +57,7 @@ describe('Catenary tool', () => {
   });
 
   it('takes the ends from a drag', () => {
-    const host = makeHost();
+    const host = fakeToolHost();
     const tool = createCatenaryTool(toolbox);
     tool.onPointerDown(at(0, 0), host);
     tool.onPointerUp(at(100, 0), host);
@@ -110,7 +91,7 @@ describe('cycloidBetween', () => {
 
 describe('Cycloid tool', () => {
   it('draws with the factor and percent set in the toolbox', () => {
-    const host = makeHost();
+    const host = fakeToolHost();
     const pen = { currentDashed: false, currentCycloidFactor: 0.5, currentCycloidPct: 0.8 } as ToolboxStore;
     const tool = createCycloidTool(pen);
     tool.onPointerDown(at(0, 0), host);
@@ -118,25 +99,7 @@ describe('Cycloid tool', () => {
     tool.onPointerDown(at(40, 25), host);
     const placed = host.added[0] as PathShape;
     expect(placed.d).toBe(cycloidBetween(at(0, 0), at(100, 0), 25, 0.5, 0.8));
-    expect(placed.cycloid).toEqual({ start: at(0, 0), end: at(100, 0), depth: 25, factor: 0.5, pct: 0.8 });
-  });
-
-  // redrawn from what it carries, a moved, turned or flipped cycloid lands on itself
-  it('keeps what it was drawn from true through a move, a turn and a flip', () => {
-    const cycloid = { start: at(0, 0), end: at(100, 0), depth: 25, factor: 0.7, pct: 0.9 };
-    const shape: PathShape = { id: 'c', type: 'path', d: cycloidPathData(cycloid), cycloid };
-    const moved = [
-      translateShape(shape, 5, -3),
-      transformShape(shape, rotateAbout(at(10, 20), 0.6)),
-      transformShape(shape, reflectAcross(at(0, 50), 0.3)),
-    ] as PathShape[];
-    for (const m of moved) {
-      const a = samplePathToPolyline(m.d, 1, true), b = samplePathToPolyline(cycloidPathData(m.cycloid!), 1, true);
-      a.forEach((p, i) => {
-        expect(p.x).toBeCloseTo(b[i].x, 6);
-        expect(p.y).toBeCloseTo(b[i].y, 6);
-      });
-    }
+    expect(placed.source).toEqual({ kind: 'cycloid', start: at(0, 0), end: at(100, 0), depth: 25, factor: 0.5, pct: 0.8 });
   });
 });
 
@@ -180,7 +143,7 @@ describe('battenBeziers', () => {
 
 describe('Batten tool', () => {
   const place = (points: Pt[]) => {
-    const host = makeHost();
+    const host = fakeToolHost();
     const tool = createBattenTool(toolbox);
     for (const p of points) tool.onPointerDown(p, host);
     return { host, tool };
@@ -190,13 +153,13 @@ describe('Batten tool', () => {
     const { host, tool } = place([at(0, 0), at(30, 12), at(60, 5)]);
     tool.onKeyDown(new KeyboardEvent('keydown', { key: 'Enter' }), host);
     const shape = host.added[0] as PathShape;
-    expect(shape.batten).toEqual({ pins: [at(0, 0), at(30, 12), at(60, 5)], closed: false });
-    expect(shape.d).toBe(battenPath(shape.batten!.pins, false));
+    expect(shape.source).toEqual({ kind: 'batten', pins: [at(0, 0), at(30, 12), at(60, 5)], closed: false });
+    expect(shape.d).toBe(battenPath([at(0, 0), at(30, 12), at(60, 5)], false));
   });
 
   it('closes into a loop when the first pin is clicked again', () => {
     const { host } = place([at(0, 0), at(30, 0), at(15, 20), at(0, 0)]);
-    expect((host.added[0] as PathShape).batten!.closed).toBe(true);
+    expect((host.added[0] as PathShape).source).toMatchObject({ kind: 'batten', closed: true });
     expect((host.added[0] as PathShape).d).toMatch(/Z$/);
   });
 
@@ -204,18 +167,42 @@ describe('Batten tool', () => {
     const { host, tool } = place([at(0, 0), at(30, 12), at(60, 5)]);
     tool.onKeyDown(new KeyboardEvent('keydown', { key: 'Enter' }), host);
     const shape = host.added[0] as PathShape;
-    expect(endpointGrabbers(shape, 1)!.map(g => g.pos)).toEqual(shape.batten!.pins);
+    expect(endpointGrabbers(shape, 1)!.map(g => g.pos)).toEqual([at(0, 0), at(30, 12), at(60, 5)]);
     const moved = withEndpoint(shape, 'pin-1', at(30, 25)) as PathShape;
-    expect(moved.batten!.pins[1]).toEqual(at(30, 25));
+    expect(moved.source).toMatchObject({ pins: [at(0, 0), at(30, 25), at(60, 5)] });
     expect(moved.d).toBe(battenPath([at(0, 0), at(30, 25), at(60, 5)], false));
   });
+});
 
-  it('keeps its pins on the curve through a turn and a flip', () => {
-    const batten = { pins: [at(0, 0), at(30, 12), at(60, 5)], closed: false };
-    const shape: PathShape = { id: 'b', type: 'path', d: battenPath(batten.pins, false), batten };
-    for (const m of [transformShape(shape, rotateAbout(at(5, 5), 1)), transformShape(shape, reflectAcross(at(0, 0), 0.4))] as PathShape[]) {
-      const a = samplePathToPolyline(m.d, 1, true), b = samplePathToPolyline(battenPath(m.batten!.pins, false), 1, true);
-      a.forEach((p, i) => { expect(p.x).toBeCloseTo(b[i].x, 6); expect(p.y).toBeCloseTo(b[i].y, 6); });
+describe('curve sources', () => {
+  const sources: PathSource[] = [
+    { kind: 'catenary', start: at(0, 0), end: at(100, 0), depth: 25 },
+    { kind: 'cycloid', start: at(0, 0), end: at(100, 0), depth: 25, factor: 0.7, pct: 0.9 },
+    { kind: 'batten', pins: [at(0, 0), at(30, 12), at(60, 5)], closed: false },
+  ];
+
+  // redrawn from what it carries, a moved, turned or flipped curve lands on itself
+  it('stay true to their curve through a move, a turn and a flip', () => {
+    for (const source of sources) {
+      const shape: PathShape = { id: 's', type: 'path', d: pathFromSource(source), source };
+      const moved = [
+        translateShape(shape, 5, -3),
+        transformShape(shape, rotateAbout(at(10, 20), 0.6)),
+        transformShape(shape, reflectAcross(at(0, 50), 0.3)),
+      ] as PathShape[];
+      for (const m of moved) {
+        const a = samplePathToPolyline(m.d, 1, true), b = samplePathToPolyline(pathFromSource(m.source!), 1, true);
+        a.forEach((p, i) => {
+          expect(p.x).toBeCloseTo(b[i].x, 6);
+          expect(p.y).toBeCloseTo(b[i].y, 6);
+        });
+      }
     }
+  });
+
+  it('read cycloids and battens saved under their old names', () => {
+    const pins = [at(0, 0), at(10, 5)];
+    const old = { id: 'b', type: 'path', d: 'M 0 0', batten: { pins, closed: false } } as unknown as PathShape;
+    expect(withPathSource(old)).toEqual({ id: 'b', type: 'path', d: 'M 0 0', source: { kind: 'batten', pins, closed: false } });
   });
 });

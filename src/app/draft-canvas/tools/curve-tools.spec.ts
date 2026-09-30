@@ -1,28 +1,12 @@
 import { Pt } from '../../models/types';
 import { DraftToolHost } from './draft-tool';
+import { fakeToolHost } from './fake-tool-host';
 import { CurveLengthShape, CurveTicksShape, DraftShape } from './toolbox-shape';
 import { ToolboxStore } from './toolbox-store';
 import { createCurveLengthTool, createCurveTicksTool } from './curve-tools';
 import { curveDivisions } from './shape-renderer';
 
-function makeHost(curve: DraftShape | null): DraftToolHost & { added: DraftShape[] } {
-  const added: DraftShape[] = [];
-  return {
-    added,
-    addShape: (s: DraftShape) => { added.push(s); },
-    requestDraw: () => { },
-    getSnapTangent: () => undefined,
-    isAngleLockHeld: () => false,
-    isTangentLockHeld: () => false,
-    getSelectedShapes: () => [],
-    getPxPerMm: () => 1,
-    hitTestShape: () => null,
-    curveAt: () => curve,
-    selectShape: () => { },
-    removeShape: () => { },
-    returnToSelect: () => { },
-  };
-}
+const makeHost = (curve: DraftShape | null) => fakeToolHost({ curveAt: () => curve });
 
 const circle: DraftShape = { id: 'c', type: 'circle', center: { x: 0, y: 0 }, radius: 10 };
 const onCircle = (deg: number): Pt => ({ x: 10 * Math.cos(deg * Math.PI / 180), y: 10 * Math.sin(deg * Math.PI / 180) });

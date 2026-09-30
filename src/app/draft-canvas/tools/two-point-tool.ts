@@ -75,6 +75,41 @@ export function previewRect(gRoot: RootGroup, _gUI: RootGroup, _pxPerMm: number,
  * runs the same press-drag-release-or-click-click gesture before its own third click. */
 export const CLICK_MOVE_THRESHOLD_PX = 3;
 
+// a number being typed mid-placement, drawn just above the pointer
+export function drawTypedLabel(gUI: RootGroup, pt: Pt, text: string, pxPerMm: number): void {
+  gUI.append('text')
+    .attr('x', pt.x)
+    .attr('y', -pt.y - 12 / pxPerMm)
+    .attr('text-anchor', 'middle')
+    .attr('dominant-baseline', 'central')
+    .attr('fill', PREVIEW_COLOR)
+    .attr('font-size', 12 / pxPerMm)
+    .style('pointer-events', 'none')
+    .style('user-select', 'none')
+    .text(text);
+}
+
+/** Where the second point lands for numbers typed after the first — null while they don't make
+ * one yet. `toward` is the pointer, with any Shift/Ctrl lock already applied. */
+export type TypedEnd = (start: Pt, toward: Pt, values: number[]) => Pt | null;
+
+// "length", or "length,angle" with the angle in degrees counterclockwise from the +x axis;
+// without one the pointer gives the direction
+export function typedAlongPointer(start: Pt, toward: Pt, [length, angleDeg]: number[]): Pt | null {
+  if (!(length > 0)) return null;
+  const angle = angleDeg !== undefined
+    ? angleDeg * Math.PI / 180
+    : Math.hypot(toward.x - start.x, toward.y - start.y) > 1e-9 ? Math.atan2(toward.y - start.y, toward.x - start.x) : 0;
+  return { x: start.x + length * Math.cos(angle), y: start.y + length * Math.sin(angle) };
+}
+
+// "width,height", or one number for a square; the pointer's side of the first corner picks which
+// way each runs
+export function typedBoxCorner(start: Pt, toward: Pt, [width, height = width]: number[]): Pt | null {
+  if (!(width > 0) || !(height > 0)) return null;
+  return { x: start.x + (toward.x < start.x ? -width : width), y: start.y + (toward.y < start.y ? -height : height) };
+}
+
 /**
  * Shared interaction for any tool defined by exactly two points (a straight
  * segment, or a center + radius point). Supports both gestures side by side:
@@ -85,6 +120,9 @@ export const CLICK_MOVE_THRESHOLD_PX = 3;
  * see line-tool.ts, polygon-tool.ts, box-tool.ts. Distance runs the same gesture but has a third
  * click after it, so it drives its own state machine and borrows only the pieces (see
  * dimension-tool.ts).
+ *
+ * Once the first point is down, typing numbers sets the second instead of the pointer — see
+ * TypedEnd — and Enter places it. Escape clears what was typed before it cancels the shape.
  */
 export class TwoPointTool implements DraftTool {
   private startPt: Pt | null = null;
@@ -94,6 +132,7 @@ export class TwoPointTool implements DraftTool {
    * re-read later, since by then the snap has moved on to wherever the pointer is now). See
    * angleLockModifier. */
   private startTangent: number | undefined;
+  private typed = '';
 
   constructor(
     readonly id: string,
@@ -101,6 +140,7 @@ export class TwoPointTool implements DraftTool {
     private readonly buildShape: (start: Pt, end: Pt) => DraftShape,
     private readonly renderPreviewShape: PreviewRenderer = previewLine,
     private readonly modifier?: TwoPointModifier,
+    private readonly typedEnd: TypedEnd = typedAlongPointer,
   ) { }
 
   onPointerDown(pt: Pt, host: DraftToolHost): void {
@@ -155,9 +195,38 @@ export class TwoPointTool implements DraftTool {
     return this.modifier(this.startPt, pt, host, this.startTangent);
   }
 
-  onKeyDown(event: KeyboardEvent): boolean {
-    if (event.key === 'Escape' && this.startPt) {
-      this.reset();
+  private typedPoint(): Pt | null {
+    if (!this.startPt || !this.typed) return null;
+    const values = this.typed.split(',').map(v => v.trim() === '' ? NaN : Number(v));
+    if (values.some(v => !Number.isFinite(v))) return null;
+    return this.typedEnd(this.startPt, this.currentPt ?? this.startPt, values);
+  }
+
+  onKeyDown(event: KeyboardEvent, host: DraftToolHost): boolean {
+    if (!this.startPt) return false;
+    if (event.key === 'Escape') {
+      if (this.typed) this.typed = '';
+      else this.reset();
+      host.requestDraw();
+      return true;
+    }
+    if (/^[0-9.,]$/.test(event.key)) {
+      this.typed += event.key;
+      host.requestDraw();
+      return true;
+    }
+    if (event.key === 'Backspace' && this.typed) {
+      this.typed = this.typed.slice(0, -1);
+      host.requestDraw();
+      return true;
+    }
+    if (event.key === 'Enter' && this.typed) {
+      const end = this.typedPoint();
+      if (end) {
+        host.addShape(this.buildShape(this.startPt, end));
+        this.reset();
+      }
+      host.requestDraw();
       return true;
     }
     return false;
@@ -165,7 +234,8 @@ export class TwoPointTool implements DraftTool {
 
   renderPreview(gRoot: RootGroup, gUI: RootGroup, pxPerMm: number): void {
     if (!this.startPt || !this.currentPt) return;
-    this.renderPreviewShape(gRoot, gUI, pxPerMm, this.startPt, this.currentPt);
+    this.renderPreviewShape(gRoot, gUI, pxPerMm, this.startPt, this.typedPoint() ?? this.currentPt);
+    if (this.typed) drawTypedLabel(gUI, this.currentPt, this.typed, pxPerMm);
   }
 
   reset(): void {
@@ -173,5 +243,6 @@ export class TwoPointTool implements DraftTool {
     this.currentPt = null;
     this.startTangent = undefined;
     this.awaitingSecondClick = false;
+    this.typed = '';
   }
 }

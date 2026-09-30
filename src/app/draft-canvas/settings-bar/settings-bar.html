@@ -97,6 +97,14 @@
     </span>
   }
 
+  @if (showCurveDepth) {
+    <span class="field"><span class="f-lbl">Depth</span>
+      <input type="number" min="0.1" step="1" [value]="curveDepth"
+        (change)="setCurveDepth($any($event.target).valueAsNumber)" (keydown.enter)="$any($event.target).blur()"
+        title="How far the curve stands off the line between its ends, in mm" />
+    </span>
+  }
+
   @if (showCycloidPanel) {
     <span class="point-group">
       <span class="field"><span class="f-lbl">Factor %</span>

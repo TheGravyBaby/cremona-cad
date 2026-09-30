@@ -62,9 +62,9 @@ Most files here carry a header comment explaining their own contract. Read it be
   `PathShape` is the catch-all: absolute M/L/C/Q/A/Z path data, hit-tested and bounded off a
   sampled polyline, moved as one rigid body. The regular polygons, the right triangle and the mathematical curves commit
   as one, as do copied recipe geometry, imported curves and rects rotated off-axis.
-  A cycloid also carries the `CycloidSpec` it was drawn from, and a batten its pins
-  (`BattenSpec`), both kept true through transforms: the settings bar redraws a cycloid with a new
-  factor or percent, and a batten's pins are its handles.
+  A curve tool's path also carries its `source` — a catenary's or cycloid's ends and depth, a
+  batten's pins — kept true through transforms, so the settings bar can reshape it and a batten's
+  pins are its handles. `pathFromSource` is the one way back to `d`.
 - **`snap-engine.ts`** — indexes snap candidates by reading the *rendered SVG*, not recipe data,
   so it works for any recipe and for toolbox shapes alike. An on-path snap is the exact closest
   point of the curve: the 2 mm samples only find the neighbourhood, and the winner is refined by

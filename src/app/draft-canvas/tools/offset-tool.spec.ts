@@ -1,28 +1,10 @@
 import { Pt } from '../../models/types';
-import { DraftToolHost } from './draft-tool';
+import { fakeToolHost } from './fake-tool-host';
 import { OffsetTool } from './offset-tool';
 import { DraftShape, LineShape, PathShape, RectShape } from './toolbox-shape';
 import { samplePathToPolyline } from '../../helpers/math/pathMath';
 
-/** Only the handful of host calls OffsetTool actually makes. pxPerMm is 1 so distances read in mm. */
-function makeHost(selected: DraftShape[]): DraftToolHost & { added: DraftShape[] } {
-  const added: DraftShape[] = [];
-  return {
-    added,
-    addShape: (s: DraftShape) => { added.push(s); },
-    requestDraw: () => { },
-    getSnapTangent: () => undefined,
-    isAngleLockHeld: () => false,
-    isTangentLockHeld: () => false,
-    getSelectedShapes: () => selected,
-    getPxPerMm: () => 1,
-    hitTestShape: () => null,
-    curveAt: () => null,
-    selectShape: () => { },
-    removeShape: () => { },
-    returnToSelect: () => { },
-  };
-}
+const makeHost = (selected: DraftShape[]) => fakeToolHost({ getSelectedShapes: () => selected });
 
 const at = (x: number, y: number): Pt => ({ x, y });
 

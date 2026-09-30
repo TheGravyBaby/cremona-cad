@@ -2,30 +2,15 @@ import { Pt } from '../../models/types';
 import { dist } from '../../helpers/math/simpleGeometry';
 import { commonTangents } from '../../helpers/math/draftMath';
 import { DraftToolHost } from './draft-tool';
+import { fakeToolHost } from './fake-tool-host';
 import { DraftShape, LineShape, PathShape } from './toolbox-shape';
 import { ToolboxStore } from './toolbox-store';
 import { createPolylineTool, perpendicularLine, tangentLine } from './line-variant-tools';
 import { angleLockModifier } from './two-point-tool';
 import { shapeCurves } from './curve-tools';
 
-function makeHost(mods: { shift?: boolean; ctrl?: boolean } = {}): DraftToolHost & { added: DraftShape[] } {
-  const added: DraftShape[] = [];
-  return {
-    added,
-    addShape: (s: DraftShape) => { added.push(s); },
-    requestDraw: () => { },
-    getSnapTangent: () => undefined,
-    isAngleLockHeld: () => !!mods.shift,
-    isTangentLockHeld: () => !!mods.ctrl,
-    getSelectedShapes: () => [],
-    getPxPerMm: () => 1,
-    hitTestShape: () => null,
-    curveAt: () => null,
-    selectShape: () => { },
-    removeShape: () => { },
-    returnToSelect: () => { },
-  };
-}
+const makeHost = (mods: { shift?: boolean; ctrl?: boolean } = {}) =>
+  fakeToolHost({ isAngleLockHeld: () => !!mods.shift, isTangentLockHeld: () => !!mods.ctrl });
 
 const at = (x: number, y: number): Pt => ({ x, y });
 const toolbox = { currentDashed: false } as ToolboxStore;

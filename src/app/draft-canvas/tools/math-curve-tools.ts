@@ -1,9 +1,9 @@
 import * as d3 from 'd3';
 import { Pt } from '../../models/types';
 import { dist } from '../../helpers/math/simpleGeometry';
-import { battenPath, catenaryBetween, cycloidBetween } from '../../helpers/math/pathMath';
+import { battenPath } from '../../helpers/math/pathMath';
 import { DraftTool, DraftToolHost } from './draft-tool';
-import { CycloidSpec, PathShape, makeShapeId } from './toolbox-shape';
+import { PathSource, makeShapeId, pathFromSource } from './toolbox-shape';
 import { CLICK_MOVE_THRESHOLD_PX, PREVIEW_COLOR, angleLockModifier, stylePreview } from './two-point-tool';
 import { ToolboxStore } from './toolbox-store';
 
@@ -16,12 +16,14 @@ export function chordOffset(start: Pt, end: Pt, pt: Pt): number {
   return ((end.x - start.x) * (pt.y - start.y) - (end.y - start.y) * (pt.x - start.x)) / L;
 }
 
+const withSource = (source: PathSource) => ({ d: pathFromSource(source), source });
+
 /**
  * Three clicks: the two ends, then how deep the curve runs. The ends keep Distance's gesture and
  * its Shift/Ctrl locks; the third click only counts for its distance off the chord, and which side
  * it lands on is the side the curve bows to — so the same tool hangs a chain or raises an arch.
- * Commits a path, which moves and snaps like any other outline; a cycloid's also keeps what it was
- * drawn from, so its factor and percent can be changed once it is down.
+ * Commits a path, which moves and snaps like any other outline, keeping what it was drawn from so
+ * the settings bar can reshape it once it is down.
  */
 export class ChordCurveTool implements DraftTool {
   private startPt: Pt | null = null;
@@ -34,7 +36,7 @@ export class ChordCurveTool implements DraftTool {
     readonly id: string,
     readonly label: string,
     private readonly toolbox: ToolboxStore,
-    private readonly curve: (start: Pt, end: Pt, depth: number) => Pick<PathShape, 'd' | 'cycloid'>,
+    private readonly source: (start: Pt, end: Pt, depth: number) => PathSource,
   ) { }
 
   onPointerDown(pt: Pt, host: DraftToolHost): void {
@@ -88,7 +90,7 @@ export class ChordCurveTool implements DraftTool {
     host.addShape({
       id: makeShapeId(),
       type: 'path',
-      ...this.curve(this.startPt, this.endPt, chordOffset(this.startPt, this.endPt, pt)),
+      ...withSource(this.source(this.startPt, this.endPt, chordOffset(this.startPt, this.endPt, pt))),
       dashed: this.toolbox.currentDashed,
     });
     this.reset();
@@ -107,7 +109,7 @@ export class ChordCurveTool implements DraftTool {
     const start = this.startPt, current = this.currentPt;
     if (!start || !current) return;
     const d = this.endPt
-      ? this.curve(start, this.endPt, chordOffset(start, this.endPt, current)).d
+      ? pathFromSource(this.source(start, this.endPt, chordOffset(start, this.endPt, current)))
       : `M ${start.x} ${start.y} L ${current.x} ${current.y}`;
     stylePreview(gRoot.append('path').attr('d', d));
   }
@@ -122,19 +124,13 @@ export class ChordCurveTool implements DraftTool {
 }
 
 export function createCatenaryTool(toolbox: ToolboxStore): ChordCurveTool {
-  return new ChordCurveTool('catenary', 'Catenary', toolbox, (start, end, depth) => ({ d: catenaryBetween(start, end, depth) }));
-}
-
-export function cycloidPathData(c: CycloidSpec): string {
-  return cycloidBetween(c.start, c.end, c.depth, c.factor, c.pct);
+  return new ChordCurveTool('catenary', 'Catenary', toolbox, (start, end, depth) => ({ kind: 'catenary', start, end, depth }));
 }
 
 // reads the factor and percent at every draw, so the settings bar's fields reshape the preview as they change
 export function createCycloidTool(toolbox: ToolboxStore): ChordCurveTool {
-  return new ChordCurveTool('cycloid', 'Cycloid', toolbox, (start, end, depth) => {
-    const cycloid = { start, end, depth, factor: toolbox.currentCycloidFactor, pct: toolbox.currentCycloidPct };
-    return { d: cycloidPathData(cycloid), cycloid };
-  });
+  return new ChordCurveTool('cycloid', 'Cycloid', toolbox, (start, end, depth) =>
+    ({ kind: 'cycloid', start, end, depth, factor: toolbox.currentCycloidFactor, pct: toolbox.currentCycloidPct }));
 }
 
 /**
@@ -193,8 +189,7 @@ export class BattenTool implements DraftTool {
 
   private finish(host: DraftToolHost, closed: boolean): void {
     if (this.pins.length >= 2) {
-      const batten = { pins: this.pins, closed };
-      host.addShape({ id: makeShapeId(), type: 'path', d: battenPath(batten.pins, closed), batten, dashed: this.toolbox.currentDashed });
+      host.addShape({ id: makeShapeId(), type: 'path', ...withSource({ kind: 'batten', pins: this.pins, closed }), dashed: this.toolbox.currentDashed });
     }
     this.reset();
     host.requestDraw();

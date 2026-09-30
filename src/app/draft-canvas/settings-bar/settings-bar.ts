@@ -5,14 +5,13 @@ import { SelectionStore } from '../tools/selection-store';
 import { ImageAssetStore } from '../tools/image-asset-store';
 import {
   DraftShape, LineShape, DimensionShape, RectShape, TextShape, PointShape, CircleShape, ArcShape, SectionShape, TicksShape,
-  FreehandShape, PathShape, CycloidSpec, ImageShape, CurveTicksShape, DEFAULT_IMAGE_OPACITY, DEFAULT_SHAPE_COLOR, DEFAULT_FREEHAND_WIDTH,
-  DEFAULT_TEXT_SIZE_MM, angleSweep, applyImageCrop, applyImageSize, isCropped,
+  FreehandShape, PathShape, PathSource, ImageShape, CurveTicksShape, DEFAULT_IMAGE_OPACITY, DEFAULT_SHAPE_COLOR, DEFAULT_FREEHAND_WIDTH,
+  DEFAULT_TEXT_SIZE_MM, angleSweep, applyImageCrop, applyImageSize, isCropped, pathFromSource,
 } from '../tools/toolbox-shape';
 import { ImageCrop } from '../../models/types';
 import { clamp, normalizeDegrees, pointAtDistanceToward } from '../../helpers/math/simpleGeometry';
 import { shapeBounds, unionBounds } from '../tools/shape-hit-test';
 import { translateShape } from '../tools/shape-transform';
-import { cycloidPathData } from '../tools/math-curve-tools';
 
 /**
  * The Inkscape-style contextual settings strip along the bottom bar: color, then whichever
@@ -118,8 +117,7 @@ export class SettingsBarComponent {
       const groupId = this.selectedShapes[0]?.groupId;
       const isGroup = all.length > 1 && groupId !== undefined && all.every(s => s.groupId === groupId);
       const label = isGroup ? 'Group'
-        : all.every(s => s.type === 'path' && s.cycloid) ? 'Cycloid'
-        : types.size === 1 ? SettingsBarComponent.SHAPE_TYPE_LABELS[all[0].type] : 'Selection';
+        : sourceLabel(all) ?? (types.size === 1 ? SettingsBarComponent.SHAPE_TYPE_LABELS[all[0].type] : 'Selection');
       // a recipe piece has no settings to speak of — the title says what it is instead
       return this.selectedShapes.length === 0 ? `Recipe ${label}` : `${label} Settings`;
     }
@@ -285,40 +283,56 @@ export class SettingsBarComponent {
     return this.selectedShapeOfType('text');
   }
 
-  private get selectedCycloids(): (PathShape & { cycloid: CycloidSpec })[] {
-    return this.selectedShapes.filter((s): s is PathShape & { cycloid: CycloidSpec } => s.type === 'path' && !!s.cycloid);
+  private selectedSources<K extends PathSource['kind']>(...kinds: K[]): (PathShape & { source: Extract<PathSource, { kind: K }> })[] {
+    return this.selectedShapes.filter((s): s is PathShape & { source: Extract<PathSource, { kind: K }> } =>
+      s.type === 'path' && !!s.source && (kinds as string[]).includes(s.source.kind));
   }
 
   public get showCycloidPanel(): boolean {
-    return this.activeTool?.id === 'cycloid' || this.selectedCycloids.length > 0;
+    return this.activeTool?.id === 'cycloid' || this.selectedSources('cycloid').length > 0;
   }
 
   public get cycloidFactorPct(): number {
-    return Math.round((this.selectedCycloids[0]?.cycloid.factor ?? this.toolbox.currentCycloidFactor) * 100);
+    return Math.round((this.selectedSources('cycloid')[0]?.source.factor ?? this.toolbox.currentCycloidFactor) * 100);
   }
 
   public get cycloidPct(): number {
-    return Math.round((this.selectedCycloids[0]?.cycloid.pct ?? this.toolbox.currentCycloidPct) * 100);
+    return Math.round((this.selectedSources('cycloid')[0]?.source.pct ?? this.toolbox.currentCycloidPct) * 100);
   }
 
   // like Text's size: reshapes what is selected and becomes the setting for the next one
   setCycloidFactorPct(value: number): void {
     if (!Number.isFinite(value)) return;
     this.toolbox.currentCycloidFactor = clamp(value, 0, 100) / 100;
-    this.reshapeCycloids({ factor: this.toolbox.currentCycloidFactor });
+    this.reshape(this.selectedSources('cycloid'), s => ({ ...s, factor: this.toolbox.currentCycloidFactor }));
   }
 
   setCycloidPct(value: number): void {
     if (!Number.isFinite(value)) return;
     this.toolbox.currentCycloidPct = clamp(value, 5, 150) / 100;
-    this.reshapeCycloids({ pct: this.toolbox.currentCycloidPct });
+    this.reshape(this.selectedSources('cycloid'), s => ({ ...s, pct: this.toolbox.currentCycloidPct }));
   }
 
-  private reshapeCycloids(patch: Partial<CycloidSpec>): void {
+  // depth is set by the third click, so there is no pen setting to show before one is placed
+  public get showCurveDepth(): boolean {
+    return this.selectedSources('catenary', 'cycloid').length > 0;
+  }
+
+  public get curveDepth(): number {
+    return this.round2(Math.abs(this.selectedSources('catenary', 'cycloid')[0]?.source.depth ?? 0));
+  }
+
+  // typed as a size; each curve keeps the side it bows to
+  setCurveDepth(value: number): void {
+    if (!Number.isFinite(value) || value <= 0) return;
+    this.reshape(this.selectedSources('catenary', 'cycloid'), s => ({ ...s, depth: (Math.sign(s.depth) || 1) * value }));
+  }
+
+  private reshape<S extends PathSource>(shapes: (PathShape & { source: S })[], change: (source: S) => S): void {
     const patches = new Map<string, Partial<DraftShape>>();
-    for (const shape of this.selectedCycloids) {
-      const cycloid = { ...shape.cycloid, ...patch };
-      patches.set(shape.id, { cycloid, d: cycloidPathData(cycloid) });
+    for (const shape of shapes) {
+      const source = change(shape.source);
+      patches.set(shape.id, { source, d: pathFromSource(source) });
     }
     this.toolbox.updateShapes(patches);
   }
@@ -781,6 +795,15 @@ export class SettingsBarComponent {
 const mm = (v: number): string => (Math.round(v * 100) / 100).toFixed(2);
 const pt = (p: { x: number; y: number }): string => `${mm(p.x)}, ${mm(p.y)}`;
 const deg = (rad: number): string => normalizeDegrees(rad * 180 / Math.PI).toFixed(1);
+
+const SOURCE_LABELS: Record<PathSource['kind'], string> = { catenary: 'Catenary', cycloid: 'Cycloid', batten: 'Batten' };
+
+// the curve tool that drew every shape selected, when they were all drawn by the same one
+function sourceLabel(shapes: DraftShape[]): string | undefined {
+  const kinds = new Set(shapes.map(s => s.type === 'path' ? s.source?.kind : undefined));
+  const [kind] = kinds;
+  return kinds.size === 1 && kind ? SOURCE_LABELS[kind] : undefined;
+}
 
 function describeShape(shape: DraftShape): string {
   switch (shape.type) {
