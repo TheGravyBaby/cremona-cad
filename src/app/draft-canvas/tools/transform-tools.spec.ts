@@ -5,7 +5,7 @@ import { SceneStore } from './scene-index';
 import { ToolboxStore } from './toolbox-store';
 import { LineShape } from './toolbox-shape';
 import { DraftToolHost } from './draft-tool';
-import { createMirrorLineTool, createRotateTool, createScaleTool } from './transform-tools';
+import { createMirrorLineTool, createMoveTool, createRotateTool, createScaleTool } from './transform-tools';
 
 describe('transform tools', () => {
   let toolbox: ToolboxStore;
@@ -34,6 +34,23 @@ describe('transform tools', () => {
   const a = () => toolbox.getShapes()[0] as LineShape;
   const key = (tool: { onKeyDown(e: KeyboardEvent, h: DraftToolHost): boolean }, keys: string) =>
     [...keys].forEach(k => tool.onKeyDown(new KeyboardEvent('keydown', { key: k === '\n' ? 'Enter' : k }), host));
+
+  it('moves from a picked point to the pointer', () => {
+    const tool = createMoveTool(actions);
+    tool.onPointerDown({ x: 10, y: 0 }, host);
+    tool.onPointerMove({ x: 15, y: 7 }, host);
+    tool.onPointerDown({ x: 15, y: 7 }, host);
+    expect(a().start).toEqual({ x: 15, y: 7 });
+    expect(a().end).toEqual({ x: 25, y: 7 });
+  });
+
+  it("moves a typed distance along the pointer's direction", () => {
+    const tool = createMoveTool(actions);
+    tool.onPointerDown({ x: 10, y: 0 }, host);
+    tool.onPointerMove({ x: 10, y: 3 }, host);
+    key(tool, '4\n');
+    expect(a().start).toEqual({ x: 10, y: 4 });
+  });
 
   it('mirrors across a line through a clicked point and the pointer', () => {
     const tool = createMirrorLineTool(actions);

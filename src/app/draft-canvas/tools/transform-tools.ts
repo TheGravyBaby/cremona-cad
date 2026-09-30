@@ -2,7 +2,7 @@ import * as d3 from 'd3';
 import { Pt } from '../../models/types';
 import { Matrix2D } from '../../helpers/math/pathMath';
 import { DraftTool, DraftToolHost } from './draft-tool';
-import { reflectAcross, rotateAbout, scaleAbout, transformShape } from './shape-transform';
+import { reflectAcross, rotateAbout, scaleAbout, transformShape, translation } from './shape-transform';
 import { drawShape } from './shape-renderer';
 import { snapToLockedAngle } from './angle-lock';
 import { PREVIEW_COLOR, stylePreview } from './two-point-tool';
@@ -153,6 +153,33 @@ export class TransformTool implements DraftTool {
 
 const deg = (rad: number) => rad * 180 / Math.PI;
 const bearing = (from: Pt, to: Pt) => Math.atan2(to.y - from.y, to.x - from.x);
+
+/** From a point to a point: click the point on the selection to carry (a corner, an arc's end),
+ * then where it lands, both snapped — how a copied piece is set down exactly on the recipe's
+ * geometry, which a drag by the outline can't do. Shift holds the common angles; a typed number
+ * is the distance along the pointer's direction. */
+export function createMoveTool(actions: SelectionActions): TransformTool {
+  const shift = (picks: Pt[], pointer: Pt, typed: number | null, host: DraftToolHost): Pt | null => {
+    const to = host.isAngleLockHeld() ? snapToLockedAngle(picks[0], pointer) : pointer;
+    const dx = to.x - picks[0].x, dy = to.y - picks[0].y;
+    if (typed === null) return { x: dx, y: dy };
+    const len = Math.hypot(dx, dy);
+    return len < 1e-9 ? null : { x: dx * typed / len, y: dy * typed / len };
+  };
+  return new TransformTool({
+    id: 'move', label: 'Move', picks: 1,
+    transform: (picks, pointer, typed, host) => {
+      const d = shift(picks, pointer, typed, host);
+      return d && translation(d.x, d.y);
+    },
+    readout: (picks, pointer, typed, host) => {
+      if (picks.length === 0) return 'Click the point to move from';
+      if (typed) return `${typed} mm`;
+      const d = shift(picks, pointer, null, host)!;
+      return `${Math.hypot(d.x, d.y).toFixed(2)} mm`;
+    },
+  }, actions);
+}
 
 /** Across a line: click one point on it, then the line follows the pointer (Shift for the common
  * angles), or type its angle in degrees. */

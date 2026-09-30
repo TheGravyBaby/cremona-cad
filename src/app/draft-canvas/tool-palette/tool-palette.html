@@ -335,6 +335,16 @@
         <line x1="6" y1="20.5" x2="19" y2="20.5" />
       </svg>
       }
+      <!-- Dashed where it was, solid where it lands, the carried corner marked at both ends. -->
+      @case ('move') {
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="9" height="9" stroke-width="1.1" stroke-dasharray="2 2.2" />
+        <rect x="12" y="12" width="9" height="9" />
+        <path d="M6 6l6 6" stroke-width="1.1" />
+        <circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none" />
+      </svg>
+      }
       <!-- The shape (a triangle, as on the flips) and its image either side of a slanted axis. -->
       @case ('mirror-line') {
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"

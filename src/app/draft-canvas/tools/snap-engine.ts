@@ -10,13 +10,18 @@ export type SnapKind = 'endpoint' | 'center' | 'path';
 // line/arc/circle has a well-defined tangent direction — but not for
 // centers, which have none. Lets a tool starting at a snapped point (e.g.
 // TangentArcTool) continue smoothly from the geometry it snapped to.
-export type SnapCandidate = { kind: SnapKind; pt: Pt; tangent?: number };
+// `along` is where an on-path sample came from, so nearest() can slide it to the exact closest
+// point of the curve rather than settling for the sample.
+export type SnapCandidate = {
+  kind: SnapKind; pt: Pt; tangent?: number;
+  along?: { el: SVGGeometryElement; s: number; step: number; total: number };
+};
 
 // Lower wins ties when multiple candidate kinds fall within tolerance.
 const KIND_PRIORITY: Record<SnapKind, number> = { endpoint: 0, center: 1, path: 2 };
 
 const ALONG_PATH_STEP_MM = 2;
-const MAX_SAMPLES_PER_ELEMENT = 150;
+const MAX_SAMPLES_PER_ELEMENT = 400;
 
 /**
  * Reads the shapes actually rendered into a layer (recipe draft functions'
@@ -42,9 +47,11 @@ export class SnapEngine {
     this.candidates = candidates;
   }
 
-  /** Nearest candidate within `toleranceMm`, preferring endpoints/centers over on-path points. */
+  /** Nearest candidate within `toleranceMm`, preferring endpoints/centers over on-path points.
+   * An on-path hit is the exact closest point of the curve, not the nearest sample: the curve
+   * may pass within tolerance between two samples that both miss it, so samples are gathered
+   * from half a step further out and the winner is refined before the tolerance is applied. */
   nearest(pt: Pt, toleranceMm: number): SnapCandidate | null {
-    const tol2 = toleranceMm * toleranceMm;
     let best: SnapCandidate | null = null;
     let bestDist2 = Infinity;
 
@@ -52,7 +59,8 @@ export class SnapEngine {
       const dx = c.pt.x - pt.x;
       const dy = c.pt.y - pt.y;
       const d2 = dx * dx + dy * dy;
-      if (d2 > tol2) continue;
+      const reach = toleranceMm + (c.along ? c.along.step / 2 : 0);
+      if (d2 > reach * reach) continue;
 
       const priority = KIND_PRIORITY[c.kind];
       const bestPriority = best ? KIND_PRIORITY[best.kind] : Infinity;
@@ -62,8 +70,37 @@ export class SnapEngine {
       }
     }
 
-    return best;
+    if (!best?.along) return best;
+    const refined = closestOnPath(best.along, pt);
+    return Math.hypot(refined.pt.x - pt.x, refined.pt.y - pt.y) <= toleranceMm ? refined : null;
   }
+}
+
+// golden-section search over one step either side of the sample: the distance to a curve that
+// smooth is unimodal there, and 24 halvings put the point well under a micron along it
+function closestOnPath(along: NonNullable<SnapCandidate['along']>, pt: Pt): SnapCandidate {
+  const { el, total } = along;
+  const dist2 = (s: number) => {
+    const p = el.getPointAtLength(s);
+    return (p.x - pt.x) ** 2 + (p.y - pt.y) ** 2;
+  };
+  let lo = Math.max(0, along.s - along.step);
+  let hi = Math.min(total, along.s + along.step);
+  const phi = (Math.sqrt(5) - 1) / 2;
+  let a = hi - phi * (hi - lo), b = lo + phi * (hi - lo);
+  let fa = dist2(a), fb = dist2(b);
+  for (let i = 0; i < 24; i++) {
+    if (fa < fb) {
+      hi = b; b = a; fb = fa;
+      a = hi - phi * (hi - lo); fa = dist2(a);
+    } else {
+      lo = a; a = b; fa = fb;
+      b = lo + phi * (hi - lo); fb = dist2(b);
+    }
+  }
+  const s = (lo + hi) / 2;
+  const p = el.getPointAtLength(s);
+  return { kind: 'path', pt: { x: p.x, y: p.y }, tangent: tangentAt(el, s, total) };
 }
 
 function collectFromElement(el: SVGGeometryElement, out: SnapCandidate[]): void {
@@ -109,7 +146,7 @@ function collectFromElement(el: SVGGeometryElement, out: SnapCandidate[]): void 
   const step = total / sampleCount;
   for (let s = step; s < total; s += step) {
     const p = el.getPointAtLength(s);
-    out.push({ kind: 'path', pt: { x: p.x, y: p.y }, tangent: tangentAt(el, s, total) });
+    out.push({ kind: 'path', pt: { x: p.x, y: p.y }, tangent: tangentAt(el, s, total), along: { el, s, step, total } });
   }
 }
 

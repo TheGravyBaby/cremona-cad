@@ -5,7 +5,7 @@ import { ToolboxStore } from './toolbox-store';
 import { SelectionStore, toolboxRef } from './selection-store';
 import { shapesToSvg, svgToShapes } from './shape-svg';
 import { reflectAcross, rotateAbout, transformShape, translateShape } from './shape-transform';
-import { ShapeBounds, shapeBounds } from './shape-hit-test';
+import { ShapeBounds, shapeBounds, unionBounds } from './shape-hit-test';
 import { Matrix2D } from '../../helpers/math/pathMath';
 import { Pt } from '../../models/types';
 
@@ -24,6 +24,10 @@ export class SelectionActions {
   private toolbox = inject(ToolboxStore);
   private selection = inject(SelectionStore);
   private clipboard: DraftShape[] = [];
+  // pastes since the last copy: each lands a step further down and to the right, so a run of
+  // pastes fans out instead of stacking where nothing shows more than one arrived
+  private pastes = 0;
+  private static readonly PASTE_OFFSET_MM = 5;
 
   /** Anything but a reference image can be copied, a recipe piece included. */
   get canCopy(): boolean { return this.selection.shapes.some(s => s.type !== 'image'); }
@@ -36,8 +40,8 @@ export class SelectionActions {
   get canTransform(): boolean { return this.selection.size > 0; }
   /** Needs something to line up against: two shapes, at least one of them free to move. */
   get canAlign(): boolean { return this.selection.shapes.length > 1 && this.selection.toolboxShapes.length > 0; }
-  /** Three or more drawn shapes: the outer two hold still and the rest space out between them. */
-  get canDistribute(): boolean { return this.groupable.length > 2; }
+  /** Three or more drawn things: the outer two hold still and the rest space out between them. */
+  get canDistribute(): boolean { return this.units.length > 2; }
   get canReorder(): boolean { return this.selection.toolboxShapes.some(s => s.type !== 'image'); }
   /** Two or more drawn shapes that aren't already one group. Images stay out: they belong to no
    * layer and sit beneath everything, so a group holding one would move as two things. */
@@ -48,6 +52,21 @@ export class SelectionActions {
   get canUngroup(): boolean { return this.selection.toolboxShapes.some(s => s.groupId); }
 
   private get groupable(): DraftShape[] { return this.selection.toolboxShapes.filter(s => s.type !== 'image'); }
+
+  /** What align and distribute move as one: a group whole, so its members keep their places
+   * in it, and every other shape by itself. Inside an entered group the members are the things. */
+  private get units(): DraftShape[][] {
+    const entered = this.selection.enteredGroup;
+    const byGroup = new Map<string, DraftShape[]>();
+    const units: DraftShape[][] = [];
+    for (const s of this.groupable) {
+      if (!s.groupId || s.groupId === entered) { units.push([s]); continue; }
+      const members = byGroup.get(s.groupId);
+      if (members) members.push(s);
+      else { const unit = [s]; byGroup.set(s.groupId, unit); units.push(unit); }
+    }
+    return units;
+  }
 
   /** Makes the selection one group. Members of other groups leave them: flat groups can't nest. */
   group(): void {
@@ -74,6 +93,7 @@ export class SelectionActions {
     const shapes = this.selection.shapes.filter(s => s.type !== 'image');
     if (shapes.length === 0) return null;
     this.clipboard = shapes.map(s => ({ ...s, color: s.color ?? this.toolbox.currentColor }));
+    this.pastes = 0;
     return shapesToSvg(this.clipboard);
   }
 
@@ -88,10 +108,11 @@ export class SelectionActions {
   }
 
   /**
-   * Places what's on the clipboard, in place, on the active layer, and selects it. Given text
-   * (from a clipboard event or a read of the system clipboard) it pastes that when it parses as
-   * SVG and refuses when it's some other text — pasting a paragraph must not drop stale shapes.
-   * Given nothing, it pastes the internal copy. Returns whether anything landed.
+   * Places what's on the clipboard on the active layer, a little down and to the right of where
+   * it was copied, and selects it. Given text (from a clipboard event or a read of the system
+   * clipboard) it pastes that when it parses as SVG and refuses when it's some other text —
+   * pasting a paragraph must not drop stale shapes. Given nothing, it pastes the internal copy.
+   * Returns whether anything landed.
    */
   paste(text: string | null = null): boolean {
     let shapes: DraftShape[] | null;
@@ -101,7 +122,18 @@ export class SelectionActions {
     } else {
       shapes = this.clipboard;
     }
-    return this.place(shapes);
+    if (shapes.length === 0) return false;
+    const step = (this.pastes + 1) * SelectionActions.PASTE_OFFSET_MM;
+    if (!this.place(shapes.map(s => translateShape(s, step, -step)))) return false;
+    this.pastes++;
+    return true;
+  }
+
+  /** A file's shapes, exactly where the file has them: a drawing comes back at its own
+   * coordinates, unlike a paste. */
+  import(text: string): boolean {
+    const shapes = svgToShapes(text);
+    return shapes !== null && this.place(shapes);
   }
 
   /** A copy of the selection over itself, Inkscape-style. A recipe piece becomes a drawn shape in
@@ -175,27 +207,27 @@ export class SelectionActions {
       }
     };
     const horizontal = edge === 'left' || edge === 'centre' || edge === 'right';
-    const moved = movers.map(s => {
-      const shift = along(target) - along(shapeBounds(s));
-      return horizontal ? translateShape(s, shift, 0) : translateShape(s, 0, shift);
+    const moved = this.units.flatMap(unit => {
+      const shift = along(target) - along(unionBounds(unit.map(shapeBounds))!);
+      return unit.map(s => horizontal ? translateShape(s, shift, 0) : translateShape(s, 0, shift));
     });
     this.toolbox.replaceShapes(moved);
     return true;
   }
 
-  /** Spaces the drawn shapes' centres evenly between the two outermost, which stay put. */
+  /** Spaces the drawn things' centres evenly between the two outermost, which stay put. */
   distribute(along: 'horizontal' | 'vertical'): boolean {
     if (!this.canDistribute) return false;
-    const centre = (s: DraftShape): number => {
-      const b = shapeBounds(s);
+    const centre = (unit: DraftShape[]): number => {
+      const b = unionBounds(unit.map(shapeBounds))!;
       return along === 'horizontal' ? (b.x0 + b.x1) / 2 : (b.y0 + b.y1) / 2;
     };
-    const ordered = [...this.groupable].sort((a, b) => centre(a) - centre(b));
+    const ordered = [...this.units].sort((a, b) => centre(a) - centre(b));
     const first = centre(ordered[0]);
     const step = (centre(ordered[ordered.length - 1]) - first) / (ordered.length - 1);
-    const moved = ordered.map((s, i) => {
-      const shift = first + i * step - centre(s);
-      return along === 'horizontal' ? translateShape(s, shift, 0) : translateShape(s, 0, shift);
+    const moved = ordered.flatMap((unit, i) => {
+      const shift = first + i * step - centre(unit);
+      return unit.map(s => along === 'horizontal' ? translateShape(s, shift, 0) : translateShape(s, 0, shift));
     });
     this.toolbox.replaceShapes(moved);
     return true;
@@ -236,14 +268,6 @@ export class SelectionActions {
     warn('The active layer is locked — unlock it or switch layers first.', action);
     return false;
   }
-}
-
-function unionBounds(boxes: ShapeBounds[]): ShapeBounds | null {
-  if (boxes.length === 0) return null;
-  return {
-    x0: Math.min(...boxes.map(b => b.x0)), x1: Math.max(...boxes.map(b => b.x1)),
-    y0: Math.min(...boxes.map(b => b.y0)), y1: Math.max(...boxes.map(b => b.y1)),
-  };
 }
 
 /**

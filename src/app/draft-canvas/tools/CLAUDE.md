@@ -38,14 +38,18 @@ Most files here carry a header comment explaining their own contract. Read it be
   a transformed drawn copy since the piece itself can't change.
 - **`shape-transform.ts`** — `transformShape`, one function for move, rotate, uniform scale and
   mirror on every shape type, plus the matrix builders. A rect turned off the axes becomes a path.
-- **`transform-tools.ts`** — Mirror across a line, Rotate and Scale by hand: pick points, then a
-  click or a typed number applies it. Scale's typed number after the reference click is the length
+- **`transform-tools.ts`** — Move, Mirror across a line, Rotate and Scale by hand: pick points,
+  then a click or a typed number applies it. Move is the snapped way to set a piece down exactly
+  (a drag by the outline doesn't snap). Scale's typed number after the reference click is the length
   the reference should become, which is how a traced drawing is brought to size. Run by the top bar's buttons and by the canvas's keyboard and clipboard
   events alike; the system clipboard is written and read by those callers, since only a DOM
   clipboard event or a button's gesture may touch it.
 - **`shape-svg.ts`** — `shapesToSvg`/`svgToShapes`: the one format for the clipboard and for the
   layers list's Import and Export (`../layer-controls/`, beside the image list's Upload — files
-  come and go through the bottom bar's lists), which are a paste from a file and a copy to one.
+  come and go through the bottom bar's lists), which are a paste from a file and a copy to one —
+  except that an import lands where the file has it, while a paste steps 5 mm down and to the
+  right, further on each repeat, so a copy never hides on top of its original. Duplicate stays in
+  place, Inkscape-style: it's the deliberate copy-over-itself.
   The Edit menu (`../edit-menu/`, shown by the top bar and by right-click) is clipboard and edits
   only. Groups go out as `<g>` and a foreign `<g>` round two or more shapes comes in as a group;
   Inkscape's layer `<g>`s don't. Millimetre user units, the Y flip baked into the coordinates and arc sweeps, and a `<metadata>` block carrying
@@ -57,7 +61,9 @@ Most files here carry a header comment explaining their own contract. Read it be
   sampled polyline, moved as one rigid body. Nothing draws one yet; it exists for copied recipe
   geometry, imported curves and rects rotated off-axis.
 - **`snap-engine.ts`** — indexes snap candidates by reading the *rendered SVG*, not recipe data,
-  so it works for any recipe and for toolbox shapes alike.
+  so it works for any recipe and for toolbox shapes alike. An on-path snap is the exact closest
+  point of the curve: the 2 mm samples only find the neighbourhood, and the winner is refined by
+  arc length before the tolerance is applied.
 - **`shape-renderer.ts` / `shape-grabbers.ts` / `shape-hit-test.ts`** — drawing, handles, picking.
 - **`image-asset-store.ts` / `reference-image-schema.ts` / `image-placement.ts`** — reference
   images: the pixel table (plus the upload and paste-a-link passes that feed it), the file-format
@@ -93,7 +99,7 @@ rather than the active layer. Keep those two agreeing.
 **A group is a `groupId` shared by its members, nothing more.** No group object, no nesting.
 `SelectionStore` expands any grouped ref to the whole group, so every path that selects — click,
 marquee, paste — gets the group whole, and the canvas shows a member no handles, so a group moves
-as one. A double-click enters it (`SelectionStore.enter`): members then select singly with their
+as one — align and distribute too treat it as one thing, so its members keep their places in it. A double-click enters it (`SelectionStore.enter`): members then select singly with their
 handles until nothing in the group is selected. Paste gives a copied group a fresh id, and
 `removeShapes` dissolves a group left with one member. Images never join one.
 
