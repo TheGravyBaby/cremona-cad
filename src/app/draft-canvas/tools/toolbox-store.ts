@@ -427,6 +427,45 @@ export class ToolboxStore implements Undoable {
     this.applyMutation(next);
   }
 
+  /** Swaps shapes for new versions of themselves by id, whole rather than merged since a transform
+   * can change a shape's type (a turned rect becomes a path), and adds `added` on addShapes' terms
+   * — one history step, for a transform that also copies recipe pieces. */
+  replaceShapes(replacements: DraftShape[], added: DraftShape[] = []): void {
+    const byId = new Map(replacements.map(s => [s.id, s]));
+    let changed = false;
+    const next = this.shapes.map(s => {
+      const replacement = byId.get(s.id);
+      if (!replacement || this.isShapeLocked(s)) return s;
+      changed = true;
+      return replacement;
+    });
+    const accepted = added.filter(s => s.type === 'image' || !this.layerFor(s)?.locked);
+    if (!changed && accepted.length === 0) return;
+    this.applyMutation([...next, ...accepted]);
+  }
+
+  /** Moves shapes to the end of the drawing order (drawn last, so on top) or the start, keeping
+   * their order among themselves. */
+  reorderShapes(ids: string[], to: 'front' | 'back'): void {
+    const wanted = new Set(ids);
+    const moving = this.shapes.filter(s => wanted.has(s.id) && !this.isShapeLocked(s));
+    if (moving.length === 0) return;
+    const rest = this.shapes.filter(s => !moving.includes(s));
+    const next = to === 'front' ? [...rest, ...moving] : [...moving, ...rest];
+    if (next.every((s, i) => s === this.shapes[i])) return;
+    this.applyMutation(next);
+  }
+
+  /** Refuses a locked target, the same as drawing onto one. Images belong to no layer and stay. */
+  moveShapesToLayer(ids: string[], layerId: string): void {
+    if (this._layers.find(l => l.id === layerId)?.locked !== false) return;
+    const patches = new Map<string, Partial<DraftShape>>();
+    for (const s of this.shapes) {
+      if (ids.includes(s.id) && s.type !== 'image' && (s.layerId ?? DEFAULT_LAYER_ID) !== layerId) patches.set(s.id, { layerId });
+    }
+    this.updateShapes(patches);
+  }
+
   /** Clears only the active layer's drawn shapes — Clear is scoped per layer, and never touches
    * placed images, which aren't layer members and are removed from the image list instead. */
   clearActiveLayer(): void {

@@ -10,10 +10,10 @@ Most files here carry a header comment explaining their own contract. Read it be
 - **`draft-tool.ts`** — the `DraftTool` interface and `DraftToolHost`, the narrow subset of
   draft-canvas a tool may touch. Tools receive points already in world (mm) space; draft-canvas
   owns pointer routing and the render loop.
-- **`tool-registry.ts`** — root singleton holding every tool and which is active. `toolRows` is
-  where you register a new one; the palette and pointer routing pick it up automatically. One
-  row = one palette row; a nested array = one button plus a caret holding variants of the same
-  shape kind.
+- **`tool-registry.ts`** — root singleton holding every tool and which is active. `toolRows` (the
+  dock's Draw tab) or `modifyRows` (its Modify tab, for tools that act on the selection) is where
+  you register a new one; the palette and pointer routing pick it up automatically. One row = one
+  palette row; a nested array = one button plus a caret holding variants of the same shape kind.
 - **`toolbox-store.ts`** — root singleton holding drawn shapes, with undo/redo. Persisted through
   `helpers/workingStorage.ts`, so shapes survive a reload but not the tab closing, and written
   into the recipe file as `toolboxState` on save (see `RecipeComponentBase.serializeRecipe`).
@@ -31,15 +31,23 @@ Most files here carry a header comment explaining their own contract. Read it be
   something asks. A recipe piece can be hit-tested, haloed, read off in the settings bar and
   duplicated (Ctrl+D) with the same code drawn shapes use — never edited. The Recipe row in the
   layers popup (`ToolboxStore.recipeLocked`) takes it out of reach of clicks and marquees.
-- **`selection-actions.ts`** — cut, copy, paste, duplicate, delete on the selection, with the
-  internal clipboard. Run by the top bar's buttons and by the canvas's keyboard and clipboard
+- **`selection-actions.ts`** — everything that acts on the selection as a whole: the edit verbs
+  with the internal clipboard, and the Modify tab's flips, quarter turns, align and stacking
+  order. Those are commands, laid out in the palette's `modifyLayout`, not tools: they act at once
+  and never go active. Every transform goes through `transform(matrix)`, which gives a recipe piece
+  a transformed drawn copy since the piece itself can't change.
+- **`shape-transform.ts`** — `transformShape`, one function for move, rotate, uniform scale and
+  mirror on every shape type, plus the matrix builders. A rect turned off the axes becomes a path.
+- **`transform-tools.ts`** — Mirror across a line, Rotate and Scale by hand: pick points, then a
+  click or a typed number applies it. Scale's typed number after the reference click is the length
+  the reference should become, which is how a traced drawing is brought to size. Run by the top bar's buttons and by the canvas's keyboard and clipboard
   events alike; the system clipboard is written and read by those callers, since only a DOM
   clipboard event or a button's gesture may touch it.
 - **`shape-svg.ts`** — `shapesToSvg`/`svgToShapes`: the clipboard's one format, millimetre user
   units, the Y flip baked into the coordinates and arc sweeps, and a `<metadata>` block carrying
   the shapes as they are so a paste back is lossless. Foreign SVG is read best-effort: transforms
-  composed, `style` honoured, units from width and viewBox. Pastes into Inkscape at real size —
-  on macOS only from Chrome, which can write it as an SVG image (`writeSvgToSystemClipboard`).
+  composed, `style` honoured, units from width and viewBox. Inkscape 1.4 on macOS can't paste
+  it: it reads the clipboard by MIME names the Mac clipboard never lists, as text or as an image.
 - **`toolbox-shape.ts`** — `DraftShape`, the method-free plain-object union. See below.
   `PathShape` is the catch-all: absolute M/L/C/Q/A/Z path data, hit-tested and bounded off a
   sampled polyline, moved as one rigid body. Nothing draws one yet; it exists for copied recipe
@@ -53,7 +61,8 @@ Most files here carry a header comment explaining their own contract. Read it be
 
 ## Adding a tool
 
-Write `createXTool(...)` returning a `DraftTool`, then add it to `toolRows` in `tool-registry.ts`.
+Write `createXTool(...)` returning a `DraftTool`, then add it to `toolRows` or `modifyRows` in
+`tool-registry.ts`.
 Nothing else needs touching. `two-point-tool.ts` is the base for anything drawn from two clicks
 and handles angle-lock (Shift) and tangent-lock (Ctrl/⌘) for you.
 

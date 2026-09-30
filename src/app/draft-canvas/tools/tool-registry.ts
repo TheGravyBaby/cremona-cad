@@ -17,6 +17,8 @@ import { createPointTool } from './point-tool';
 import { createFreehandTool } from './freehand-tool';
 import { createEraserTool } from './eraser-tool';
 import { createOffsetTool } from './offset-tool';
+import { createMirrorLineTool, createRotateTool, createScaleTool } from './transform-tools';
+import { SelectionActions } from './selection-actions';
 
 /**
  * One button's worth of space in a palette row: a lone tool written as itself, or an array
@@ -36,6 +38,7 @@ export type ToolSlot = DraftTool | DraftTool[];
 @Injectable({ providedIn: 'root' })
 export class ToolRegistryService {
   private toolbox = inject(ToolboxStore);
+  private actions = inject(SelectionActions);
   private listeners = new Set<() => void>();
   private _activeTool: DraftTool | null = null;
   /** Set once by draft-canvas so selectTool can run a tool's onActivate hook. Null until then;
@@ -65,10 +68,18 @@ export class ToolRegistryService {
     // over (see eraser-tool.ts), not just Freehand strokes, so it reads as a general tool rather
     // than a Draw accessory.
     [createEraserTool()],
-    // Modify tools — act on the current selection rather than drawing new shapes.
-    [createOffsetTool()],
     // Reference images are deliberately not here — they're added from the bottom bar's image
     // list instead, alongside their other controls. See image-placement.ts.
+  ];
+
+  // The dock's Modify tab: tools that act on the selection rather than draw. Its instant commands
+  // (flip, align, ...) aren't tools; the palette lays them out among these, and they run through
+  // selection-actions.ts.
+  readonly modifyRows: ToolSlot[][] = [
+    [createMirrorLineTool(this.actions)],
+    [createRotateTool(this.actions)],
+    [createScaleTool(this.actions)],
+    [createOffsetTool()],
   ];
 
   /** Which variant currently faces out of a multi-variant slot, keyed by the slot itself. Absent
@@ -121,9 +132,9 @@ export class ToolRegistryService {
     this.selectTool(tool);
   }
 
-  /** Activates a tool by id from anywhere in toolRows — used by the hotkey mnemonics. */
+  /** Activates a tool by id from either tab — used by the hotkey mnemonics. */
   activateById(id: string): void {
-    for (const row of this.toolRows) {
+    for (const row of [...this.toolRows, ...this.modifyRows]) {
       for (const slot of row) {
         const tool = this.variantsOf(slot).find(t => t.id === id);
         if (tool) { this.selectVariant(slot, tool); return; }

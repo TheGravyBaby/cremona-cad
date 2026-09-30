@@ -1,7 +1,9 @@
+import { vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { ToolPaletteComponent } from './tool-palette';
 import { ToolRegistryService } from '../tools/tool-registry';
+import { SelectionActions } from '../tools/selection-actions';
 
 const OPEN_KEY = 'draft-canvas-tool-palette-open';
 
@@ -134,5 +136,62 @@ describe('ToolPaletteComponent', () => {
     expect(fixture.nativeElement.querySelectorAll('.tool-view-toggle').length).toBe(0);
     expect(fixture.nativeElement.querySelectorAll('.tool-row').length)
       .toBe(registry.toolRows.length + 1);
+  });
+
+  it('switches tabs from the handles, and closes when the showing tab is clicked again', async () => {
+    await create();
+    const registry = TestBed.inject(ToolRegistryService);
+    el('.modify-handle')!.click();
+    fixture.detectChanges();
+
+    expect(component.tab).toBe('modify');
+    expect(el('.tool-dock-header')!.textContent).toContain('Modify');
+    expect(el('.modify-handle')!.classList.contains('top')).toBe(true);
+    expect(el('.tool-dock-handle:not(.modify-handle)')!.classList.contains('top')).toBe(false);
+    expect(fixture.nativeElement.querySelectorAll('.tool-row').length).toBe(component.modifyLayout.length + 1);
+    expect(registry.modifyRows.flat().every(slot => component.modifyLayout.some(row => row.slot === slot))).toBe(true);
+
+    el('.modify-handle')!.click();
+    fixture.detectChanges();
+    expect(component.open).toBe(false);
+  });
+
+  it('shows the tab a hotkeyed tool lives on', async () => {
+    await create();
+    const registry = TestBed.inject(ToolRegistryService);
+    registry.activateById('offset');
+    expect(component.tab).toBe('modify');
+    registry.activateById('line');
+    expect(component.tab).toBe('draw');
+    registry.selectTool(null);
+    expect(component.tab).toBe('draw');
+  });
+
+  it('runs a command from its group and faces it out, greyed while nothing is selected', async () => {
+    await create();
+    el('.modify-handle')!.click();
+    fixture.detectChanges();
+    const actions = TestBed.inject(SelectionActions);
+    const group = component.modifyLayout.find(row => row.commands?.some(c => c.id === 'align-top'))!.commands!;
+    expect((el('.tool-row:nth-child(2) .tool-btn') as HTMLButtonElement).disabled).toBe(true);
+
+    const align = vi.spyOn(actions, 'align').mockReturnValue(true);
+    component.runCommand(group, group.find(c => c.id === 'align-top')!);
+    expect(align).toHaveBeenCalledWith('top');
+    expect(component.commandFace(group).id).toBe('align-top');
+  });
+
+  it('closes an open flyout on Escape, and only the flyout', async () => {
+    await create();
+    const registry = TestBed.inject(ToolRegistryService);
+    component.openFlyout = registry.toolRows.flat().find(s => registry.hasVariants(s))!;
+    const later = vi.fn();
+    document.addEventListener('keydown', later);
+
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+    expect(component.openFlyout).toBeNull();
+    expect(later).not.toHaveBeenCalled();
+    document.removeEventListener('keydown', later);
   });
 });
