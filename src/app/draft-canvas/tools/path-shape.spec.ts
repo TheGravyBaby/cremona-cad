@@ -1,7 +1,7 @@
 import { PathShape } from './toolbox-shape';
 import { distanceToShape, shapeBounds } from './shape-hit-test';
 import { translateShape } from './shape-transform';
-import { endpointGrabbers, moveGrabberPosition } from './shape-grabbers';
+import { endpointGrabbers } from './shape-grabbers';
 
 describe('PathShape', () => {
   // a quarter circle of radius 10 about the origin, from (10,0) up to (0,10)
@@ -35,7 +35,6 @@ describe('PathShape', () => {
   });
 
   it('moves as a rigid body with no handles', () => {
-    expect(moveGrabberPosition(square)).toBeNull();
     expect(endpointGrabbers(square, 1.5)).toBeNull();
   });
 

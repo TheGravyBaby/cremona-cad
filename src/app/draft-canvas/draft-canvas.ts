@@ -18,19 +18,20 @@ import { ToolRegistryService } from './tools/tool-registry';
 import { ToolboxStore } from './tools/toolbox-store';
 import { SelectionRef, SelectionStore, sceneRef, toolboxRef } from './tools/selection-store';
 import { SceneStore } from './tools/scene-index';
+import { SelectionActions, writeSvgToSystemClipboard } from './tools/selection-actions';
 import { ImageAssetStore, prepareLinkedImage, prepareUploadedImage } from './tools/image-asset-store';
 import {
-  drawShape, drawImageShape, drawSelectionHalo, drawMoveGrabber, drawEndpointGrabber, drawAreaSelectBox,
+  drawShape, drawImageShape, drawSelectionHalo, drawEndpointGrabber, drawAreaSelectBox,
 } from './tools/shape-renderer';
 import { SnapCandidate, SnapEngine } from './tools/snap-engine';
 import { drawSnapMarker } from './tools/snap-marker-renderer';
 import { distanceToShape, shapeBounds } from './tools/shape-hit-test';
 import { translateShape } from './tools/shape-transform';
-import { moveGrabberPosition, endpointGrabbers, withEndpoint, EndpointKey } from './tools/shape-grabbers';
+import { endpointGrabbers, withEndpoint, EndpointKey } from './tools/shape-grabbers';
 import { snapToLockedAngle } from './tools/angle-lock';
 import { copyDebugDump, isLocalHost } from '../helpers/debugDump';
 import { info, warn } from '../shared/message-emitter';
-import { DEFAULT_TEXT_SIZE_MM, DraftShape, ImageShape, TextShape, imageRenderKey, makeShapeId } from './tools/toolbox-shape';
+import { DEFAULT_TEXT_SIZE_MM, DraftShape, ImageShape, TextShape, imageRenderKey } from './tools/toolbox-shape';
 import { placedImageShape } from './tools/image-placement';
 import { HOTKEY_TOOL_CYCLE } from './tools/tool-hotkeys';
 import { SettingsBarComponent } from './settings-bar/settings-bar';
@@ -75,6 +76,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private selection = inject(SelectionStore);
   private selectionUnsub?: () => void;
   private scene = inject(SceneStore);
+  private actions = inject(SelectionActions);
   private toolRegistry = inject(ToolRegistryService);
   private toolRegistryUnsub?: () => void;
   public get activeTool(): DraftTool | null { return this.toolRegistry.activeTool; }
@@ -129,7 +131,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   // Selection (Select tool, i.e. activeTool === null) lives in SelectionStore: a plain click
   // replaces it and shift-click toggles a shape in or out — see onPointerDown.
   private static readonly SELECT_HIT_TOLERANCE_PX = 6;
-  private static readonly MOVE_GRABBER_HIT_TOLERANCE_PX = 9;
+  private static readonly GRABBER_HIT_TOLERANCE_PX = 9;
   // Three nudge steps on the same modifier ladder number fields use (see stepSize.ts's
   // stepAmountForKey): plain, Shift for coarse, Ctrl/Cmd for fine. "Fine" means the Ctrl/Cmd
   // step in both places.
@@ -311,6 +313,9 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     // taken focus — and only here: a second (keydown) on the host would run every shortcut twice
     // whenever the canvas itself is focused
     document.addEventListener('keydown', this.onKeyDown);
+    // the clipboard is reachable only from inside these events (see SelectionActions), and the
+    // browser fires them for Ctrl+C/X/V wherever focus is — so on document, like keydown
+    for (const type of CLIPBOARD_EVENTS) document.addEventListener(type, this.onClipboard);
 
     this.canvas = d3.select(el)
       .append('svg')
@@ -373,6 +378,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.resizeObs?.disconnect();
     this.host.nativeElement.removeEventListener('keyup', this.onKeyUp);
     document.removeEventListener('keydown', this.onKeyDown);
+    for (const type of CLIPBOARD_EVENTS) document.removeEventListener(type, this.onClipboard);
     this.toolboxUnsub?.();
     this.selectionUnsub?.();
     this.imageAssetsUnsub?.();
@@ -425,8 +431,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
         drawSelectionHalo(this.gRoot, this.gUI, shape, this.pxPerMm);
         // recipe geometry gets the halo and nothing to drag: it's read-only
         if (!showHandles || !editableIds.has(shape.id)) continue;
-        const grabberPos = moveGrabberPosition(shape);
-        if (grabberPos) drawMoveGrabber(this.gRoot, grabberPos, this.pxPerMm);
         const endpoints = endpointGrabbers(shape, this.pxPerMm);
         const rotationDeg = shape.type === 'image' ? (shape.rotationDeg ?? 0) : 0;
         if (endpoints) {
@@ -589,29 +593,24 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     return image ? toolboxRef(image) : null;
   }
 
-  /** True if `pt` (world mm) grabs a move handle of a currently selected shape — the square
-   * for shapes that have one, or the shape body itself for Text/Point (see moveGrabberPosition). */
-  private hitTestMoveHandle(pt: Pt): boolean {
-    const grabberToleranceMm = DraftCanvasComponent.MOVE_GRABBER_HIT_TOLERANCE_PX / this.pxPerMm;
-    const grabberTol2 = grabberToleranceMm * grabberToleranceMm;
-    const bodyToleranceMm = DraftCanvasComponent.SELECT_HIT_TOLERANCE_PX / this.pxPerMm;
-    for (const shape of this.selectedShapes) {
-      const pos = moveGrabberPosition(shape);
-      if (pos) {
-        const dx = pos.x - pt.x;
-        const dy = pos.y - pt.y;
-        if (dx * dx + dy * dy <= grabberTol2) return true;
-      } else if (distanceToShape(pt, shape) <= bodyToleranceMm) {
-        return true;
-      }
-    }
-    return false;
+  private armSelectionDrag(pt: Pt, pointerId: number): void {
+    this.dragAnchor = pt;
+    this.dragOriginals = this.selectedShapes;
+    this.isDraggingSelection = false;
+    this.host.nativeElement.setPointerCapture(pointerId);
+  }
+
+  /** True if `pt` (world mm) is on a selected shape's outline. Asked before hitTestAt so a
+   * multi-selection drags by any of its members, even where an unselected shape lies closer. */
+  private hitTestSelectedBody(pt: Pt): boolean {
+    const toleranceMm = DraftCanvasComponent.SELECT_HIT_TOLERANCE_PX / this.pxPerMm;
+    return this.selectedShapes.some(shape => distanceToShape(pt, shape) <= toleranceMm);
   }
 
   /** True if `pt` (world mm) grabs an endpoint handle of a currently selected shape — checked
-   * before hitTestMoveHandle since it's the more specific target. */
+   * before hitTestSelectedBody since it's the more specific target. */
   private hitTestEndpointGrabber(pt: Pt): { shapeId: string; key: EndpointKey } | null {
-    const toleranceMm = DraftCanvasComponent.MOVE_GRABBER_HIT_TOLERANCE_PX / this.pxPerMm;
+    const toleranceMm = DraftCanvasComponent.GRABBER_HIT_TOLERANCE_PX / this.pxPerMm;
     const tol2 = toleranceMm * toleranceMm;
     for (const shape of this.selectedShapes) {
       const grabbers = endpointGrabbers(shape, this.pxPerMm);
@@ -640,26 +639,25 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     return this.selection.toolboxShapes;
   }
 
-  /**
-   * Copies of the selection onto the active layer, selected in their place. A piece of the recipe
-   * becomes a drawn shape in the pen colour, which is the one way to get an editable version of
-   * the instrument's own geometry; a drawn shape gets a twin exactly over itself, Inkscape-style.
-   * Images are skipped — one comes in through the image list, not by copying.
-   */
-  duplicateSelection(): void {
-    const layerId = this.toolbox.activeLayerId;
-    if (this.toolbox.layers.find(l => l.id === layerId)?.locked) {
-      warn('The active layer is locked — unlock it or switch layers to duplicate onto it.', 'Duplicate');
+  /** Ctrl+C/X/V. Left alone while typing in a field, so text still copies and pastes there. On
+   * copy the selection goes out as SVG text (see shape-svg.ts); on paste, SVG text comes in as
+   * shapes, and anything else on the clipboard leaves the browser's own behaviour untouched. */
+  private onClipboard = (event: ClipboardEvent) => {
+    const target = event.target as HTMLElement | null;
+    const tag = target?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable) return;
+    const data = event.clipboardData;
+    if (!data) return;
+    if (event.type === 'paste') {
+      if (this.actions.paste(data.getData('text/plain'))) event.preventDefault();
       return;
     }
-    const copies = this.selection.shapes
-      .filter(s => s.type !== 'image')
-      .map(s => ({ ...s, id: makeShapeId(), color: s.color ?? this.toolbox.currentColor, layerId }) as DraftShape);
-    if (copies.length === 0) return;
-    this.toolbox.setShowShapes(true);
-    this.toolbox.addShapes(copies);
-    this.selection.set(copies.map(c => toolboxRef(c.id)));
-  }
+    const svg = event.type === 'cut' ? this.actions.cut() : this.actions.copy();
+    if (!svg) return;
+    data.setData('text/plain', svg);
+    event.preventDefault();
+    writeSvgToSystemClipboard(svg);
+  };
 
   // ===== Debug dump =====
 
@@ -1110,7 +1108,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     // Select mode: Delete/Backspace removes the current selection as one undo step
     if (!this.activeTool && this.selection.size) {
       if (event.code === 'Delete' || event.code === 'Backspace') {
-        this.toolbox.removeShapes(this.selectedShapes.map(s => s.id));
+        this.actions.delete();
         event.preventDefault();
         return;
       }
@@ -1147,11 +1145,11 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       }
     }
 
-    // Ctrl/Cmd+D duplicates the selection onto the active layer — see duplicateSelection. Left
-    // to the browser when there's nothing to act on.
+    // Ctrl/Cmd+D duplicates the selection onto the active layer — see SelectionActions. Left to
+    // the browser when there's nothing to act on. Ctrl+C/X/V arrive as clipboard events instead.
     const commandHeld = event.ctrlKey || event.metaKey;
-    if (commandHeld && event.code === 'KeyD' && !this.activeTool && this.selection.size) {
-      this.duplicateSelection();
+    if (commandHeld && event.code === 'KeyD' && !this.activeTool && this.actions.canDuplicate) {
+      this.actions.duplicate();
       event.preventDefault();
       return;
     }
@@ -1303,12 +1301,11 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     }
 
     // Select tool: grabbing a selected shape's endpoint (triangle) arms an endpoint-only drag —
-    // checked first since it's the most specific target. Otherwise grabbing its move handle (the
-    // square, or the shape body itself for Text/Point — see hitTestMoveHandle) arms a whole-shape
-    // drag. Either way this takes priority over re-selecting, since the handles only exist for
-    // shapes already selected. Otherwise a plain click picks (or clears) the shape under it, and
-    // shift-click toggles it in/out of the current selection instead, for multi-select. Touch is
-    // excluded from arming either drag so single-finger touch keeps its existing "always pans" behavior.
+    // checked first since it's the most specific target. Otherwise pressing on a selected shape's
+    // outline arms a drag of the whole selection. Otherwise a plain press picks (or clears) the
+    // shape under it and, when that's a drawn shape, arms the same drag, so one press-and-drag
+    // moves an unselected shape; shift-click toggles it in/out of the selection instead. Touch is
+    // excluded from arming any drag so single-finger touch keeps its existing "always pans" behavior.
     if (!this.activeTool && isPrimary && !modifierHeld && !this.isSpaceDown) {
       const pt = this.worldFromPointer(event);
       const endpointHit = !event.shiftKey && !isTouch && this.selection.size
@@ -1320,16 +1317,17 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
         this.activeSnap = null;
         this.ensureSnapIndex();
         this.host.nativeElement.setPointerCapture(event.pointerId);
-      } else if (!event.shiftKey && !isTouch && this.selection.size && this.hitTestMoveHandle(pt)) {
-        this.dragAnchor = pt;
-        this.dragOriginals = this.selectedShapes;
-        this.isDraggingSelection = false;
-        this.host.nativeElement.setPointerCapture(event.pointerId);
+      } else if (!event.shiftKey && !isTouch && this.selection.size && this.hitTestSelectedBody(pt)) {
+        this.armSelectionDrag(pt, event.pointerId);
       } else {
         const hit = this.hitTestAt(pt);
         if (hit) {
-          if (event.shiftKey) this.selection.toggle(hit);
-          else this.selection.select(hit);
+          if (event.shiftKey) {
+            this.selection.toggle(hit);
+          } else {
+            this.selection.select(hit);
+            if (hit.source === 'toolbox' && !isTouch) this.armSelectionDrag(pt, event.pointerId);
+          }
         } else if (isTouch) {
           // Touch keeps its existing immediate-click behavior — it also falls through to the
           // pan-arming block below, so a marquee drag would conflict with that single-finger pan.
@@ -1623,6 +1621,8 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.draw();
   }
 }
+
+const CLIPBOARD_EVENTS = ['copy', 'cut', 'paste'] as const;
 
 /** Nearest of `shapes` to `pt` within `toleranceMm`, or null. Ties go to the *last* shape in the
  * list, which is the one drawn on top when the list is in render order. */

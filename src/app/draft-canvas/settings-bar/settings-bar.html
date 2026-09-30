@@ -5,7 +5,7 @@
   }
   <div class="settings-grid">
   @if (sceneReadout) {
-    <span class="scene-readout" title="Read-only: the recipe draws this from its parameters. Duplicate it for an editable copy.">{{ sceneReadout }}</span>
+    <span class="scene-readout" title="Read-only: the recipe draws this from its parameters. Duplicate it (Ctrl+D) for an editable copy.">{{ sceneReadout }}</span>
   }
   @if (showColorSwatch) {
     <span class="field"><span class="f-lbl">Color</span>
@@ -331,17 +331,6 @@
           title="Segment weights, comma-separated (e.g. 1,1,1 or 3,4,3) — Enter to apply" placeholder="1,1,1" />
       </span>
     }
-  }
-  @if (showDuplicate) {
-    <button type="button" class="settings-action" (click)="duplicateRequested.emit()"
-      title="Duplicate onto the active layer (Ctrl+D). A recipe piece becomes an editable drawn shape.">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-        stroke-linecap="round" stroke-linejoin="round">
-        <rect x="9" y="9" width="12" height="12" rx="2" />
-        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-      </svg>
-      <span>Duplicate</span>
-    </button>
   }
   </div>
 

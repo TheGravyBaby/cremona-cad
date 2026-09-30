@@ -101,7 +101,7 @@ function isDecoration(el: RecordedElement): boolean {
   return el.attrs['stroke'] === 'none' && (el.attrs['fill'] === 'none' || el.attrs['fill'] === undefined);
 }
 
-function composedTransform(el: RecordedElement): Matrix2D {
+export function composedTransform(el: RecordedElement): Matrix2D {
   const chain: RecordedElement[] = [];
   for (let node: RecordedElement | undefined = el; node; node = node.parent) chain.unshift(node);
   let m = IDENTITY_MATRIX;
@@ -126,8 +126,9 @@ function pointsPath(points: Pt[], close: boolean): string {
 }
 
 // colour is deliberately left off: a scene shape is never drawn through shape-renderer.ts, and
-// a duplicate of one should take the pen colour like any newly drawn shape
-function shapeFromElement(el: RecordedElement, m: Matrix2D): ShapeBody | null {
+// a duplicate of one should take the pen colour like any newly drawn shape. Also the reader
+// shape-svg.ts's import goes through, which adds the colour back itself.
+export function shapeFromElement(el: RecordedElement, m: Matrix2D): ShapeBody | null {
   const a = el.attrs;
   const dashed = typeof a['stroke-dasharray'] === 'string' && a['stroke-dasharray'] !== '' ? true : undefined;
   switch (el.tag) {
@@ -146,7 +147,13 @@ function shapeFromElement(el: RecordedElement, m: Matrix2D): ShapeBody | null {
       if (w <= 0 || h <= 0) return null;
       const corners = [{ x, y }, { x: x + w, y }, { x: x + w, y: y + h }, { x, y: y + h }].map(p => applyMatrix(m, p));
       if (isRotated(m)) return { type: 'path', d: pointsPath(corners, true), dashed };
-      return { type: 'rect', p1: corners[0], p2: corners[2], dashed };
+      // low corner to high corner, whichever way the matrix turned the box
+      const xs = corners.map(c => c.x), ys = corners.map(c => c.y);
+      return {
+        type: 'rect', dashed,
+        p1: { x: Math.min(...xs), y: Math.min(...ys) },
+        p2: { x: Math.max(...xs), y: Math.max(...ys) },
+      };
     }
     case 'polygon':
     case 'polyline': {

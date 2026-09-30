@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, Input } from '@angular/core';
 import { inject } from '@angular/core';
 import { DraftTool } from '../tools/draft-tool';
 import { ToolboxStore, PanelChoice } from '../tools/toolbox-store';
@@ -33,9 +33,6 @@ export class SettingsBarComponent {
   private selection = inject(SelectionStore);
 
   @Input() activeTool: DraftTool | null = null;
-  /** Duplicating lands shapes on the canvas, so the canvas does it — see
-   * DraftCanvasComponent.duplicateSelection. */
-  @Output() duplicateRequested = new EventEmitter<void>();
 
   /** Set only for exactly one selected, editable shape — what the per-type numeric panels edit. */
   public get selectedShape(): DraftShape | undefined { return this.selection.toolboxShape; }
@@ -93,17 +90,13 @@ export class SettingsBarComponent {
   }
 
   /** One line of numbers for a selected piece of the recipe, or a count for several — the
-   * measuring-without-drawing that makes recipe geometry worth selecting at all. */
+   * measuring-without-drawing that makes recipe geometry worth selecting at all. Editing and
+   * duplicating it are the top bar's job. */
   public get sceneReadout(): string | undefined {
     const scene = this.sceneShapes;
     if (scene.length === 0) return undefined;
     if (scene.length > 1) return `${scene.length} recipe shapes`;
     return describeShape(scene[0]);
-  }
-
-  /** Anything but a reference image can be duplicated onto the active layer. */
-  public get showDuplicate(): boolean {
-    return this.selection.shapes.some(s => s.type !== 'image');
   }
 
   /** Friendly name for each shape type, used by groupTitle when the settings reflect a selection. */

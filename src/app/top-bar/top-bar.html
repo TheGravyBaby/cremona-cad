@@ -20,7 +20,75 @@
         <path d="M4 20v-7a4 4 0 0 1 4-4h12" />
       </svg>
     </button>
-    
+
+    <!-- The edit menu: acts on the canvas selection. A menu rather than a row of buttons so the
+         bar stays short as edit verbs arrive; rows grey out like undo when there's nothing to act
+         on. Paste stays live — what's on the system clipboard can't be known until it's read, and
+         the internal copy is a fallback either way. -->
+    <span class="edit-menu">
+      <button class="btn edit-btn" [class.active]="editOpen" (click)="editOpen = !editOpen"
+        aria-haspopup="menu" [attr.aria-expanded]="editOpen" title="Edit the selection">
+        Edit
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
+          stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+      @if (editOpen) {
+      <div class="edit-popup" role="menu">
+        <button class="menu-row" role="menuitem" (click)="cut(); editOpen = false" [disabled]="!actions.canCut">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="6" cy="6" r="3" />
+            <circle cx="6" cy="18" r="3" />
+            <line x1="20" y1="4" x2="8.12" y2="15.88" />
+            <line x1="14.47" y1="14.48" x2="20" y2="20" />
+            <line x1="8.12" y1="8.12" x2="12" y2="12" />
+          </svg>
+          <span class="menu-label">Cut</span><kbd>Ctrl+X</kbd>
+        </button>
+        <button class="menu-row" role="menuitem" (click)="copy(); editOpen = false" [disabled]="!actions.canCopy"
+          title="As SVG text, at real size">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          </svg>
+          <span class="menu-label">Copy</span><kbd>Ctrl+C</kbd>
+        </button>
+        <button class="menu-row" role="menuitem" (click)="paste(); editOpen = false"
+          title="In place, onto the active layer">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+            <rect x="8" y="2" width="8" height="4" rx="1" />
+          </svg>
+          <span class="menu-label">Paste</span><kbd>Ctrl+V</kbd>
+        </button>
+        <button class="menu-row" role="menuitem" (click)="actions.duplicate(); editOpen = false"
+          [disabled]="!actions.canDuplicate"
+          title="A copy over the original, on the active layer; a recipe piece becomes an editable shape">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="11" height="11" rx="2" />
+            <rect x="10" y="10" width="11" height="11" rx="2" />
+          </svg>
+          <span class="menu-label">Duplicate</span><kbd>Ctrl+D</kbd>
+        </button>
+        <button class="menu-row" role="menuitem" (click)="actions.delete(); editOpen = false"
+          [disabled]="!actions.canDelete">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6" />
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+            <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+          </svg>
+          <span class="menu-label">Delete</span><kbd>Del</kbd>
+        </button>
+      </div>
+      }
+    </span>
+
     <!-- this is commented out until more recipes are developed
      there is a hello world recipe if you are interested in experimenting
      and two archived recipes in the examples directory -->

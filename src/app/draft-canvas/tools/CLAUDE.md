@@ -31,6 +31,15 @@ Most files here carry a header comment explaining their own contract. Read it be
   something asks. A recipe piece can be hit-tested, haloed, read off in the settings bar and
   duplicated (Ctrl+D) with the same code drawn shapes use — never edited. The Recipe row in the
   layers popup (`ToolboxStore.recipeLocked`) takes it out of reach of clicks and marquees.
+- **`selection-actions.ts`** — cut, copy, paste, duplicate, delete on the selection, with the
+  internal clipboard. Run by the top bar's buttons and by the canvas's keyboard and clipboard
+  events alike; the system clipboard is written and read by those callers, since only a DOM
+  clipboard event or a button's gesture may touch it.
+- **`shape-svg.ts`** — `shapesToSvg`/`svgToShapes`: the clipboard's one format, millimetre user
+  units, the Y flip baked into the coordinates and arc sweeps, and a `<metadata>` block carrying
+  the shapes as they are so a paste back is lossless. Foreign SVG is read best-effort: transforms
+  composed, `style` honoured, units from width and viewBox. Pastes into Inkscape at real size —
+  on macOS only from Chrome, which can write it as an SVG image (`writeSvgToSystemClipboard`).
 - **`toolbox-shape.ts`** — `DraftShape`, the method-free plain-object union. See below.
   `PathShape` is the catch-all: absolute M/L/C/Q/A/Z path data, hit-tested and bounded off a
   sampled polyline, moved as one rigid body. Nothing draws one yet; it exists for copied recipe

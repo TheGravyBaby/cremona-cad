@@ -681,27 +681,13 @@ export function drawSelectionHalo(gRoot: RootGroup, gUI: RootGroup, shape: Draft
   }
 }
 
-const MOVE_GRABBER_SIZE_PX = 9;
-const MOVE_GRABBER_FILL = '#f59e0b';
-const MOVE_GRABBER_STROKE = '#78350f';
-
-/** Draws the square "move" handle at `pos` (world mm) — constant on-screen size, like the
- * point marker/dimension ticks. See shape-grabbers.ts for where `pos` comes from per shape type. */
-export function drawMoveGrabber(gRoot: RootGroup, pos: Pt, pxPerMm: number): void {
-  const half = MOVE_GRABBER_SIZE_PX / 2 / pxPerMm;
-  gRoot.append('rect')
-    .attr('x', pos.x - half).attr('y', pos.y - half)
-    .attr('width', half * 2).attr('height', half * 2)
-    .attr('fill', MOVE_GRABBER_FILL)
-    .attr('stroke', MOVE_GRABBER_STROKE)
-    .attr('stroke-width', 1)
-    .attr('vector-effect', 'non-scaling-stroke');
-}
+const GRABBER_FILL = '#f59e0b';
+const GRABBER_STROKE = '#78350f';
 
 const ENDPOINT_GRABBER_SIZE_PX = 10;
 
 /**
- * Draws an endpoint handle at `pos` (world mm), constant on-screen size like drawMoveGrabber.
+ * Draws an endpoint handle at `pos` (world mm), constant on-screen size like the point marker.
  * The glyph depends on what the handle does, so a box's eight resize handles don't read as eight
  * interchangeable endpoints:
  *   point  — triangle (default): edit this one point of the geometry
@@ -715,8 +701,8 @@ export function drawEndpointGrabber(
 ): void {
   const r = ENDPOINT_GRABBER_SIZE_PX / 2 / pxPerMm;
   const styled = (sel: d3.Selection<any, unknown, null, undefined>, hollow = false) => sel
-    .attr('fill', hollow ? '#fff' : MOVE_GRABBER_FILL)
-    .attr('stroke', MOVE_GRABBER_STROKE)
+    .attr('fill', hollow ? '#fff' : GRABBER_FILL)
+    .attr('stroke', GRABBER_STROKE)
     .attr('stroke-width', hollow ? 2 : 1)
     .attr('vector-effect', 'non-scaling-stroke')
     .style('pointer-events', 'none');

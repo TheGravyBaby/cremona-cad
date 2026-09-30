@@ -76,7 +76,9 @@ export function tokenizePathData(d: string): PathCommand[] {
       continue;
     }
 
-    // Bare command letters implicitly repeat until the next command letter.
+    // Bare command letters implicitly repeat until the next command letter — except after a
+    // moveto, where the extra pairs are linetos (SVG 1.1 §8.3.2; Inkscape writes `m 0,0 10,0`).
+    let repeat = type;
     while (true) {
       skipSeparators();
       if (i >= n || COMMAND_LETTERS.includes(d[i])) break;
@@ -89,7 +91,9 @@ export function tokenizePathData(d: string): PathCommand[] {
         args.push(val);
       }
       if (!ok) break;
-      commands.push({ type, args });
+      commands.push({ type: repeat, args });
+      if (repeat === 'M') repeat = 'L';
+      else if (repeat === 'm') repeat = 'l';
     }
   }
 
