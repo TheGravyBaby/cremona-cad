@@ -193,10 +193,10 @@ export class TwoEndArcTool implements DraftTool {
 
 /** Both ends first, then a point the arc passes through — no center anywhere in the construction. */
 export function createThroughArcTool(): TwoEndArcTool {
-  return new TwoEndArcTool('arc-through', 'Start–End–Through Arc', 'through');
+  return new TwoEndArcTool('arc-through', 'Three Point', 'through');
 }
 
 /** Both ends first, then the circle's center, projected onto the bisector between them. */
 export function createEndsCenterArcTool(): TwoEndArcTool {
-  return new TwoEndArcTool('arc-ends-center', 'Start–End–Center Arc', 'center');
+  return new TwoEndArcTool('arc-ends-center', 'Center Last', 'center');
 }

@@ -10,7 +10,7 @@ import { Matrix2D } from '../../helpers/math/pathMath';
 import { Pt } from '../../models/types';
 
 /**
- * The actions that act on the selection as a whole — the edit verbs, and the Modify tab's transforms,
+ * The actions that act on the selection as a whole — the edit verbs, and the Bench tab's transforms,
  * alignment and stacking order.
  * A root singleton so the top bar's buttons and the canvas's keyboard and clipboard events run
  * the same code; neither owns the selection, SelectionStore does.

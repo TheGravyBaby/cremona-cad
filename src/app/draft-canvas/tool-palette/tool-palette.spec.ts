@@ -145,11 +145,12 @@ describe('ToolPaletteComponent', () => {
     fixture.detectChanges();
 
     expect(component.tab).toBe('modify');
-    expect(el('.tool-dock-header')!.textContent).toContain('Modify');
+    expect(el('.tool-dock-header')!.textContent).toContain('Bench');
     expect(el('.modify-handle')!.classList.contains('top')).toBe(true);
     expect(el('.tool-dock-handle:not(.modify-handle)')!.classList.contains('top')).toBe(false);
     expect(fixture.nativeElement.querySelectorAll('.tool-row').length).toBe(component.modifyLayout.length + 1);
-    expect(registry.modifyRows.flat().every(slot => component.modifyLayout.some(row => row.slot === slot))).toBe(true);
+    const laidOut = component.modifyLayout.flatMap(row => row.slot ? registry.variantsOf(row.slot) : row.commands!.flatMap(c => c.tool ?? []));
+    expect(registry.modifyRows.flat().flatMap(slot => registry.variantsOf(slot)).every(tool => laidOut.includes(tool))).toBe(true);
 
     el('.modify-handle')!.click();
     fixture.detectChanges();
@@ -193,6 +194,16 @@ describe('ToolPaletteComponent', () => {
     expect(component.openFlyout).toBeNull();
     expect(later).not.toHaveBeenCalled();
     document.removeEventListener('keydown', later);
+  });
+
+  it('files Rotate among the quarter turns and faces it out while it is active', async () => {
+    await create();
+    const registry = TestBed.inject(ToolRegistryService);
+    const group = component.modifyLayout.find(row => row.commands?.some(c => c.id === 'rotate-cw'))!.commands!;
+    expect(group.some(c => c.tool?.id === 'rotate')).toBe(true);
+    component.runCommand(group, group.find(c => c.id === 'rotate-cw')!);
+    registry.activateById('rotate');
+    expect(component.commandFace(group).id).toBe('rotate');
   });
 
   it('faces a group button toward whichever of its commands applies', async () => {

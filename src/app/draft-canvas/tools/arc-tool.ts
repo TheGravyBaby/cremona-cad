@@ -165,10 +165,10 @@ export class ArcTool implements DraftTool {
 }
 
 export function createArcTool(): ArcTool {
-  return new ArcTool('arc', 'Center–Start–End Arc');
+  return new ArcTool('arc', 'Center First');
 }
 
 /** Same 3-click construction, but the first click sets the arc's start point rather than the circle's center. */
 export function createArcStartFirstTool(): ArcTool {
-  return new ArcTool('arc-start', 'Start–Center–End Arc', true);
+  return new ArcTool('arc-start', 'Center Second', true);
 }

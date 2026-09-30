@@ -11,7 +11,7 @@ Most files here carry a header comment explaining their own contract. Read it be
   draft-canvas a tool may touch. Tools receive points already in world (mm) space; draft-canvas
   owns pointer routing and the render loop.
 - **`tool-registry.ts`** — root singleton holding every tool and which is active. `toolRows` (the
-  dock's Draw tab) or `modifyRows` (its Modify tab, for tools that act on the selection) is where
+  dock's Draw tab) or `modifyRows` (its Bench tab, for tools that act on the selection) is where
   you register a new one; the palette and pointer routing pick it up automatically. One row = one
   palette row; a nested array = one button plus a caret holding variants of the same shape kind.
 - **`toolbox-store.ts`** — root singleton holding drawn shapes, with undo/redo. Persisted through
@@ -32,13 +32,14 @@ Most files here carry a header comment explaining their own contract. Read it be
   duplicated (Ctrl+D) with the same code drawn shapes use — never edited. The Recipe row in the
   layers popup (`ToolboxStore.recipeLocked`) takes it out of reach of clicks and marquees.
 - **`selection-actions.ts`** — everything that acts on the selection as a whole: the edit verbs
-  with the internal clipboard, group and ungroup, and the Modify tab's flips, quarter turns,
+  with the internal clipboard, group and ungroup, and the Bench tab's flips, quarter turns,
   align, distribute and stacking order. Those are commands, laid out in the palette's `modifyLayout`, not tools: they act at once
-  and never go active. Every transform goes through `transform(matrix)`, which gives a recipe piece
+  and never go active. A group of them can also hold a tool that belongs with it (Mirror Line among
+  the flips, Rotate among the quarter turns). Every transform goes through `transform(matrix)`, which gives a recipe piece
   a transformed drawn copy since the piece itself can't change.
 - **`shape-transform.ts`** — `transformShape`, one function for move, rotate, uniform scale and
   mirror on every shape type, plus the matrix builders. A rect turned off the axes becomes a path.
-- **`transform-tools.ts`** — Move, Mirror across a line, Rotate and Scale by hand: pick points,
+- **`transform-tools.ts`** — Move, Mirror Line, Rotate and Scale by hand: pick points,
   then a click or a typed number applies it. Move is the snapped way to set a piece down exactly
   (a drag by the outline doesn't snap). Scale's typed number after the reference click is the length
   the reference should become, which is how a traced drawing is brought to size. Run by the top bar's buttons and by the canvas's keyboard and clipboard
@@ -63,7 +64,9 @@ Most files here carry a header comment explaining their own contract. Read it be
 - **`snap-engine.ts`** — indexes snap candidates by reading the *rendered SVG*, not recipe data,
   so it works for any recipe and for toolbox shapes alike. An on-path snap is the exact closest
   point of the curve: the 2 mm samples only find the neighbourhood, and the winner is refined by
-  arc length before the tolerance is applied.
+  arc length before the tolerance is applied. Kept in two parts, the recipe's and the
+  toolbox's, each re-sampled only when the canvas redraws that group — see the `layers` field in
+  `draft-canvas.ts`, which is also why a pointer move redraws the tool preview and nothing else.
 - **`shape-renderer.ts` / `shape-grabbers.ts` / `shape-hit-test.ts`** — drawing, handles, picking.
 - **`image-asset-store.ts` / `reference-image-schema.ts` / `image-placement.ts`** — reference
   images: the pixel table (plus the upload and paste-a-link passes that feed it), the file-format

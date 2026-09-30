@@ -26,7 +26,7 @@ type Stage = 'idle' | 'first-set' | 'second-set' | 'chaining';
  */
 export class ChainedTangentArcTool implements DraftTool {
   readonly id = 'arc-chain';
-  readonly label = 'Chained Tangent Arc';
+  readonly label = 'Chained Arc';
 
   private stage: Stage = 'idle';
   private pt1: Pt | null = null; // first arc's center

@@ -6,12 +6,13 @@ type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 
 export type SnapKind = 'endpoint' | 'center' | 'path';
 
-// `tangent` (radians) is set for endpoint/path candidates — any point on a
-// line/arc/circle has a well-defined tangent direction — but not for
-// centers, which have none. Lets a tool starting at a snapped point (e.g.
-// TangentArcTool) continue smoothly from the geometry it snapped to.
-// `along` is where an on-path sample came from, so nearest() can slide it to the exact closest
-// point of the curve rather than settling for the sample.
+// `tangent` (radians) is set on what nearest() returns for an endpoint or on-path candidate — any
+// point on a line/arc/circle has a well-defined tangent direction — but not for centers, which
+// have none. Lets a tool starting at a snapped point (e.g. TangentArcTool) continue smoothly from
+// the geometry it snapped to. `along` is where a sample came from on its element: what nearest()
+// slides an on-path hit to the exact closest point with, and what the tangent is measured from —
+// for the one winner only, since measuring it for every sample tripled the calls into the
+// browser's path geometry and made each new shape a visible pause.
 export type SnapCandidate = {
   kind: SnapKind; pt: Pt; tangent?: number;
   along?: { el: SVGGeometryElement; s: number; step: number; total: number };
@@ -31,9 +32,12 @@ const MAX_SAMPLES_PER_ELEMENT = 400;
  * and to toolbox shapes alike.
  */
 export class SnapEngine {
-  private candidates: SnapCandidate[] = [];
+  private parts = new Map<string, SnapCandidate[]>();
 
-  rebuild(layer: RootGroup): void {
+  /** Indexes what `layer` holds as `part`, replacing only that part: the recipe's many long paths
+   * and the handful of drawn shapes are indexed separately, so drawing a line beside the recipe
+   * doesn't re-sample the recipe. */
+  rebuild(layer: RootGroup, part = 'all'): void {
     const candidates: SnapCandidate[] = [];
     // `[data-no-snap]` marks purely decorative sub-elements (e.g. a Section's
     // banding/ticks) that would otherwise flood candidates with noise — only
@@ -44,7 +48,7 @@ export class SnapEngine {
       .each(function () {
         collectFromElement(this, candidates);
       });
-    this.candidates = candidates;
+    this.parts.set(part, candidates);
   }
 
   /** Nearest candidate within `toleranceMm`, preferring endpoints/centers over on-path points.
@@ -55,24 +59,30 @@ export class SnapEngine {
     let best: SnapCandidate | null = null;
     let bestDist2 = Infinity;
 
-    for (const c of this.candidates) {
-      const dx = c.pt.x - pt.x;
-      const dy = c.pt.y - pt.y;
-      const d2 = dx * dx + dy * dy;
-      const reach = toleranceMm + (c.along ? c.along.step / 2 : 0);
-      if (d2 > reach * reach) continue;
+    for (const candidates of this.parts.values()) {
+      for (const c of candidates) {
+        const dx = c.pt.x - pt.x;
+        const dy = c.pt.y - pt.y;
+        const d2 = dx * dx + dy * dy;
+        const reach = toleranceMm + (c.kind === 'path' && c.along ? c.along.step / 2 : 0);
+        if (d2 > reach * reach) continue;
 
-      const priority = KIND_PRIORITY[c.kind];
-      const bestPriority = best ? KIND_PRIORITY[best.kind] : Infinity;
-      if (!best || priority < bestPriority || (priority === bestPriority && d2 < bestDist2)) {
-        best = c;
-        bestDist2 = d2;
+        const priority = KIND_PRIORITY[c.kind];
+        const bestPriority = best ? KIND_PRIORITY[best.kind] : Infinity;
+        if (!best || priority < bestPriority || (priority === bestPriority && d2 < bestDist2)) {
+          best = c;
+          bestDist2 = d2;
+        }
       }
     }
 
     if (!best?.along) return best;
-    const refined = closestOnPath(best.along, pt);
-    return Math.hypot(refined.pt.x - pt.x, refined.pt.y - pt.y) <= toleranceMm ? refined : null;
+    if (best.kind === 'path') {
+      const refined = closestOnPath(best.along, pt);
+      return Math.hypot(refined.pt.x - pt.x, refined.pt.y - pt.y) <= toleranceMm ? refined : null;
+    }
+    const { el, s, total } = best.along;
+    return { ...best, tangent: tangentAt(el, s, total) };
   }
 }
 
@@ -137,16 +147,15 @@ function collectFromElement(el: SVGGeometryElement, out: SnapCandidate[]): void 
   }
   if (!Number.isFinite(total) || total <= 0) return;
 
-  const start = el.getPointAtLength(0);
-  const end = el.getPointAtLength(total);
-  out.push({ kind: 'endpoint', pt: { x: start.x, y: start.y }, tangent: tangentAt(el, 0, total) });
-  out.push({ kind: 'endpoint', pt: { x: end.x, y: end.y }, tangent: tangentAt(el, total, total) });
-
   const sampleCount = Math.min(MAX_SAMPLES_PER_ELEMENT, Math.max(1, Math.round(total / ALONG_PATH_STEP_MM)));
   const step = total / sampleCount;
+  const start = el.getPointAtLength(0);
+  const end = el.getPointAtLength(total);
+  out.push({ kind: 'endpoint', pt: { x: start.x, y: start.y }, along: { el, s: 0, step, total } });
+  out.push({ kind: 'endpoint', pt: { x: end.x, y: end.y }, along: { el, s: total, step, total } });
   for (let s = step; s < total; s += step) {
     const p = el.getPointAtLength(s);
-    out.push({ kind: 'path', pt: { x: p.x, y: p.y }, tangent: tangentAt(el, s, total), along: { el, s, step, total } });
+    out.push({ kind: 'path', pt: { x: p.x, y: p.y }, along: { el, s, step, total } });
   }
 }
 
