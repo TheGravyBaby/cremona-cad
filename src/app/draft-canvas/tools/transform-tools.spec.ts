@@ -27,6 +27,7 @@ describe('transform tools', () => {
       getSelectedShapes: () => selection.shapes,
       isAngleLockHeld: () => false,
       hitTestShape: () => null,
+    curveAt: () => null,
       selectShape: () => { },
     } as unknown as DraftToolHost;
   });

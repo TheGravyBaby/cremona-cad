@@ -1,7 +1,8 @@
 import { Pt } from '../../models/types';
 import { DraftToolHost } from './draft-tool';
 import { OffsetTool } from './offset-tool';
-import { DraftShape, RectShape } from './toolbox-shape';
+import { DraftShape, LineShape, PathShape, RectShape } from './toolbox-shape';
+import { samplePathToPolyline } from '../../helpers/math/pathMath';
 
 /** Only the handful of host calls OffsetTool actually makes. pxPerMm is 1 so distances read in mm. */
 function makeHost(selected: DraftShape[]): DraftToolHost & { added: DraftShape[] } {
@@ -16,6 +17,7 @@ function makeHost(selected: DraftShape[]): DraftToolHost & { added: DraftShape[]
     getSelectedShapes: () => selected,
     getPxPerMm: () => 1,
     hitTestShape: () => null,
+    curveAt: () => null,
     selectShape: () => { },
     removeShape: () => { },
     returnToSelect: () => { },
@@ -74,5 +76,48 @@ describe('OffsetTool on rectangles', () => {
     tool.onPointerDown(at(-10, 25), host);
 
     expect(host.added.map(s => s.type).sort()).toEqual(['line', 'rect']);
+  });
+});
+
+describe('OffsetTool on paths', () => {
+  const square: DraftShape = { id: 'p1', type: 'path', d: 'M 0 0 L 10 0 L 10 10 L 0 10 Z' };
+  const bounds = (s: DraftShape) => {
+    const pts = samplePathToPolyline((s as PathShape).d, 0.5, true);
+    const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+    return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)].map(v => +v.toFixed(6));
+  };
+
+  it('grows a closed path from a click outside and shrinks it from one inside', () => {
+    const host = makeHost([square]);
+    const tool = new OffsetTool();
+    tool.onPointerDown(at(-3, 5), host);
+    tool.onPointerDown(at(2, 5), host);
+    expect(bounds(host.added[0])).toEqual([-3, -3, 13, 13]);
+    expect(bounds(host.added[1])).toEqual([2, 2, 8, 8]);
+  });
+
+  it('offers nothing where the offset would fold', () => {
+    const host = makeHost([square]);
+    new OffsetTool().onPointerDown(at(5, 5), host);
+    expect(host.added).toEqual([]);
+  });
+
+  it('carries a line joined to the end of an open path round with it', () => {
+    const path: DraftShape = { id: 'p2', type: 'path', d: 'M 0 0 L 10 0 L 10 10' };
+    // drawn back towards the joint, so it only follows if its side is read from its slope
+    const line: DraftShape = { id: 'l1', type: 'line', start: at(10, 30), end: at(10, 10) };
+    const host = makeHost([path, line]);
+    new OffsetTool().onPointerDown(at(5, -2), host);
+    const moved = host.added.find(s => s.type === 'line') as LineShape;
+    expect(moved.start.x).toBeCloseTo(12, 6);
+    expect(bounds(host.added.find(s => s.type === 'path')!)).toEqual([0, -2, 12, 10]);
+  });
+
+  it('keeps an arc and the line leaving it leftward together', () => {
+    const arc: DraftShape = { id: 'a1', type: 'arc', center: at(0, 0), radius: 10, startAngle: 0, endAngle: Math.PI / 2 };
+    const line: DraftShape = { id: 'l2', type: 'line', start: at(0, 10), end: at(-20, 10) };
+    const host = makeHost([arc, line]);
+    new OffsetTool().onPointerDown(at(12, 0), host);
+    expect((host.added.find(s => s.type === 'line') as LineShape).start.y).toBeCloseTo(12, 6);
   });
 });

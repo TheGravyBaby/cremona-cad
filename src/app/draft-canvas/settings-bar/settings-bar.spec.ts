@@ -3,7 +3,8 @@ import { SettingsBarComponent } from './settings-bar';
 import { ToolboxStore } from '../tools/toolbox-store';
 import { SelectionStore, toolboxRef } from '../tools/selection-store';
 import { SceneStore } from '../tools/scene-index';
-import { LineShape } from '../tools/toolbox-shape';
+import { LineShape, PathShape } from '../tools/toolbox-shape';
+import { cycloidPathData } from '../tools/math-curve-tools';
 
 describe('SettingsBarComponent', () => {
   let toolbox: ToolboxStore;
@@ -50,5 +51,23 @@ describe('SettingsBarComponent', () => {
     expect(b.end).toEqual({ x: 25, y: 0 });
     toolbox.undo();
     expect((toolbox.getShapes()[0] as LineShape).start).toEqual({ x: 15, y: 0 });
+  });
+
+  it('reshapes a selected cycloid in place from its factor and percent', () => {
+    const cycloid = { start: { x: 0, y: 0 }, end: { x: 100, y: 0 }, depth: 30, factor: 1, pct: 1 };
+    toolbox.addShape({ id: 'c', type: 'path', d: cycloidPathData(cycloid), cycloid });
+    selection.set([toolboxRef('c')]);
+    const fixture = TestBed.createComponent(SettingsBarComponent);
+    fixture.detectChanges();
+    const bar = fixture.componentInstance;
+    expect([bar.cycloidFactorPct, bar.cycloidPct]).toEqual([100, 100]);
+
+    bar.setCycloidFactorPct(40);
+    bar.setCycloidPct(80);
+    const shape = toolbox.getShapes().find(s => s.id === 'c') as PathShape;
+    const reshaped = { ...cycloid, factor: 0.4, pct: 0.8 };
+    expect(shape.cycloid).toEqual(reshaped);
+    expect(shape.d).toBe(cycloidPathData(reshaped));
+    expect(toolbox.currentCycloidFactor).toBe(0.4);
   });
 });

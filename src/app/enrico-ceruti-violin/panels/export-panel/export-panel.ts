@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { pointOnCircle } from '../../../helpers/math/simpleGeometry';
-import { combinePathStrings, pathsBounds, translatePath } from '../../../helpers/math/pathMath';
+import { combinePathStrings, pathsBounds, splitPathStrings, translatePath } from '../../../helpers/math/pathMath';
 import { buildMirroredSvg, downloadFullPlanPdf, downloadSvgAsPdf, downloadSvgFile, PdfPage, SvgPathExport, SvgTextExport } from '../../../helpers/fileExporter';
 import { downloadDxfFile, DxfText } from '../../../helpers/dxfExporter';
 import { downloadStlFile } from '../../../helpers/stlExporter';
@@ -154,7 +154,7 @@ export class ExportPanel implements OnInit {
         if (outerPurflingPath) renders.push(renderPath(outerPurflingPath, this.colors.innerTrace, STROKE_WEIGHT.guide));
         if (type === 'outerTrace') {
           this.ensureFholes();
-          renders.push(renderPath(this.getPath('fHole'), this.colors.outerTrace, STROKE_WEIGHT.trace));
+          for (const hole of splitPathStrings(this.getPath('fHole'))) renders.push(renderPath(hole, this.colors.outerTrace, STROKE_WEIGHT.trace));
         }
         this.draftChange.emit(renders);
         break;

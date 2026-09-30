@@ -58,6 +58,11 @@ export function rotatePointAbout(point: Pt, center: Pt, angle: number): Pt {
   };
 }
 
+/** The corners of a regular polygon, counterclockwise from `vertex`, which also sets the size. */
+export function regularPolygonVertices(center: Pt, vertex: Pt, sides: number): Pt[] {
+  return Array.from({ length: sides }, (_, i) => rotatePointAbout(vertex, center, i * TWO_PI / sides));
+}
+
 export function flipPointAboutY(point: Pt): Pt {
   return { x: -point.x, y: point.y };
 }

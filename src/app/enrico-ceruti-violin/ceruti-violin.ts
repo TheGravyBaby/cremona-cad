@@ -2,6 +2,7 @@ import { ChangeDetectorRef, Component, Input, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { applyTransforms, ColorTransform, renderPath } from '../helpers/renderFuncs';
+import { splitPathStrings } from '../helpers/math/pathMath';
 import { clampParam, safeRun } from '../helpers/validators';
 import { CerutiColors, CerutiPanelId, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, EnricoCerutiTemplate, EnricoCerutiParams, PanelRenderRequest, RenderToggleKey } from './ceruti-types';
 import { CERUTI_TEMPLATES } from './ceruti-templates';
@@ -206,7 +207,8 @@ export class CerutiViolin extends RecipeComponentBase {
 
       p.fHoles ??= defaultFHolePlacement(p);
       ensureFholePath(p, this.d.paths);
-      renders.push(renderPath(getPath(this.d.paths, 'fHole'), this.colors.outerTrace));
+      // one element per hole, so canvas tools can pick either one on its own
+      for (const hole of splitPathStrings(getPath(this.d.paths, 'fHole'))) renders.push(renderPath(hole, this.colors.outerTrace));
 
       return renders;
     } catch {

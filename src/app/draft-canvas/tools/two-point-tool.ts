@@ -40,10 +40,13 @@ export type TwoPointModifier = (start: Pt, pt: Pt, host: DraftToolHost, startTan
  *    the same tangent inheritance TangentArcTool uses — so the shape comes out tangent to that
  *    circle/arc/line. A no-op if the start point didn't land on anything with a tangent.
  *  - Shift (angle-lock) locks onto the common 30/45/90° grid, same as ever.
- * Both held at once prefers tangent, since it's the more specific constraint.
+ * Both held at once turns square to the curve instead — its normal, the one angle off the curve
+ * that isn't on the grid and so has no other way to be reached.
  */
 export function angleLockModifier(start: Pt, pt: Pt, host: DraftToolHost, startTangent?: number): Pt {
-  if (startTangent !== undefined && host.isTangentLockHeld()) return snapToAngle(start, pt, startTangent);
+  if (startTangent !== undefined && host.isTangentLockHeld()) {
+    return snapToAngle(start, pt, host.isAngleLockHeld() ? startTangent + Math.PI / 2 : startTangent);
+  }
   if (host.isAngleLockHeld()) return snapToLockedAngle(start, pt);
   return pt;
 }
@@ -79,7 +82,7 @@ export const CLICK_MOVE_THRESHOLD_PX = 3;
  * same spot leaves the first point planted and waits for a second click to
  * finish the shape, which is friendlier on a trackpad. Only how the final
  * shape is built, and how the drag/hover preview looks, differs per use —
- * see line-tool.ts, circle-tool.ts, rect-tool.ts. Distance runs the same gesture but has a third
+ * see line-tool.ts, polygon-tool.ts, box-tool.ts. Distance runs the same gesture but has a third
  * click after it, so it drives its own state machine and borrows only the pieces (see
  * dimension-tool.ts).
  */

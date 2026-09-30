@@ -2,14 +2,18 @@ import { Injectable, inject } from '@angular/core';
 import { DraftTool, DraftToolHost } from './draft-tool';
 import { ToolboxStore } from './toolbox-store';
 import { createLineTool } from './line-tool';
+import { createPerpendicularLineTool, createPolylineTool, createTangentLineTool } from './line-variant-tools';
 import { createArcTool, createArcStartFirstTool } from './arc-tool';
 import { createEndsCenterArcTool, createThroughArcTool } from './two-end-arc-tool';
 import { createTangentArcTool } from './tangent-arc-tool';
 import { createChainedTangentArcTool } from './chained-tangent-arc-tool';
 import { createJoinArcTool } from './join-arc-tool';
-import { createCircleTool } from './circle-tool';
+import { createCircleTool, createRegularPolygonTools } from './polygon-tool';
 import { createDimensionTool } from './dimension-tool';
-import { createRectTool } from './rect-tool';
+import { createAngleTool } from './angle-tool';
+import { createCurveLengthTool, createCurveTicksTool } from './curve-tools';
+import { createRectTool, createRightTriangleTool } from './box-tool';
+import { createBattenTool, createCatenaryTool, createCycloidTool } from './math-curve-tools';
 import { createSectionTool } from './section-tool';
 import { createTicksTool } from './ticks-tool';
 import { createTextTool } from './text-tool';
@@ -21,12 +25,18 @@ import { createMirrorLineTool, createMoveTool, createRotateTool, createScaleTool
 import { SelectionActions } from './selection-actions';
 
 /**
- * One button's worth of space in a palette row: a lone tool written as itself, or an array
- * grouping several variants of the same kind of shape (e.g. Arc's construction methods) behind
- * one button plus a caret, so the palette doesn't grow a permanent icon per method. Which
- * variant currently faces out is registry state, not part of the slot — see faceOf.
+ * One button's worth of space in a palette row: a lone tool written as itself, or a named group
+ * of several variants of the same kind of shape (e.g. Arc's construction methods) behind one
+ * button plus a caret, so the palette doesn't grow a permanent icon per method. The label heads
+ * the group's flyout. Which variant currently faces out is registry state, not part of the slot —
+ * see faceOf.
  */
-export type ToolSlot = DraftTool | DraftTool[];
+export type ToolGroup = { label: string; tools: DraftTool[] };
+export type ToolSlot = DraftTool | ToolGroup;
+
+function isGroup(slot: ToolSlot): slot is ToolGroup {
+  return 'tools' in slot;
+}
 
 /**
  * Owns the set of drafting tools and which one is active — a root-provided singleton, same
@@ -46,24 +56,33 @@ export class ToolRegistryService {
   private host: DraftToolHost | null = null;
 
   // Add new tools here. Each entry is one palette row; put several tools in a row to make the
-  // dock wider rather than taller. A *nested* array is one slot holding several variants of the
-  // same kind of shape (styles and construction methods alike), collapsed behind one button +
-  // caret — see ToolSlot. The toolbar and pointer routing pick all of it up automatically.
+  // dock wider rather than taller. A group is one slot holding several variants of the same kind
+  // of shape (styles and construction methods alike), collapsed behind one button + caret — see
+  // ToolSlot. The toolbar and pointer routing pick all of it up automatically.
   readonly toolRows: ToolSlot[][] = [
-    [createLineTool(this.toolbox)],
-    [createDimensionTool()],
-    [createSectionTool(this.toolbox)],
-    [createTicksTool(this.toolbox)],
+    // Freehand is the loose end of the family: a line drawn by hand rather than placed.
+    [{
+      label: 'Lines', tools: [createLineTool(this.toolbox), createPolylineTool(this.toolbox),
+        createTangentLineTool(this.toolbox), createPerpendicularLineTool(this.toolbox), createFreehandTool(this.toolbox)],
+    }],
+    // Measure and divide: what reads a number off the drawing, then what marks a line into parts.
+    [{
+      label: 'Measure & Divide', tools: [createDimensionTool(), createSectionTool(this.toolbox), createTicksTool(this.toolbox),
+        createAngleTool(), createCurveLengthTool(),createCurveTicksTool(this.toolbox)],
+    }],
     // Ordered by where the center click falls — first, second, third, never — then the three that
     // solve themselves off geometry already on the canvas. Keep tool-hotkeys.ts's KeyA cycle in
     // this same order.
-    [[createArcTool(), createArcStartFirstTool(), createEndsCenterArcTool(), createThroughArcTool(),
-      createTangentArcTool(), createChainedTangentArcTool(), createJoinArcTool()]],
-    [createCircleTool(this.toolbox)],
-    [createRectTool(this.toolbox)],
+    [{
+      label: 'Arcs', tools: [createArcTool(), createArcStartFirstTool(), createEndsCenterArcTool(), createThroughArcTool(),
+        createTangentArcTool(), createChainedTangentArcTool(), createJoinArcTool()],
+    }],
+    // Keep tool-hotkeys.ts's KeyC and KeyR cycles in the same order as these two.
+    [{ label: 'Circle & Polygons', tools: [createCircleTool(this.toolbox), ...createRegularPolygonTools(this.toolbox)] }],
+    [{ label: 'Boxed Shapes', tools: [createRectTool(this.toolbox), createRightTriangleTool(this.toolbox)] }],
+    [{ label: 'Mathematical Curves', tools: [createBattenTool(this.toolbox), createCatenaryTool(this.toolbox), createCycloidTool(this.toolbox)] }],
     [createTextTool(this.toolbox)],
     [createPointTool()],
-    [createFreehandTool(this.toolbox)],
     // Its own button, not folded into Draw's flyout: it deletes any toolbox shape it's dragged
     // over (see eraser-tool.ts), not just Freehand strokes, so it reads as a general tool rather
     // than a Draw accessory.
@@ -77,10 +96,10 @@ export class ToolRegistryService {
   // selection-actions.ts.
   readonly modifyRows: ToolSlot[][] = [
     [createMoveTool(this.actions)],
-    [createMirrorLineTool(this.actions)],
-    [createRotateTool(this.actions)],
-    [createScaleTool(this.actions)],
     [createOffsetTool()],
+    [createScaleTool(this.actions)],
+    [createRotateTool(this.actions)],
+    [createMirrorLineTool(this.actions)],
   ];
 
   /** Which variant currently faces out of a multi-variant slot, keyed by the slot itself. Absent
@@ -111,25 +130,30 @@ export class ToolRegistryService {
 
   /** Every tool in a slot — a one-element list for a lone tool, so callers can treat both alike. */
   variantsOf(slot: ToolSlot): DraftTool[] {
-    return Array.isArray(slot) ? slot : [slot];
+    return isGroup(slot) ? slot.tools : [slot];
   }
 
   /** The tool a slot's button shows and activates: its only tool, or whichever variant was last
    * picked out of its flyout. */
   faceOf(slot: ToolSlot): DraftTool {
-    if (!Array.isArray(slot)) return slot;
-    return this.flyoutFaces.get(slot) ?? slot[0];
+    if (!isGroup(slot)) return slot;
+    return this.flyoutFaces.get(slot) ?? slot.tools[0];
+  }
+
+  /** What a group's flyout is headed with; null for a lone tool, which has no flyout. */
+  groupLabel(slot: ToolSlot): string | null {
+    return isGroup(slot) ? slot.label : null;
   }
 
   /** Whether a slot has alternatives worth showing a caret for. */
   hasVariants(slot: ToolSlot): boolean {
-    return Array.isArray(slot) && slot.length > 1;
+    return isGroup(slot) && slot.tools.length > 1;
   }
 
   /** Activates one of a slot's tools and makes it that slot's new face, so the button keeps
    * showing what you last used regardless of whether a hotkey or a flyout click chose it. */
   selectVariant(slot: ToolSlot, tool: DraftTool): void {
-    if (Array.isArray(slot)) this.flyoutFaces.set(slot, tool);
+    if (isGroup(slot)) this.flyoutFaces.set(slot, tool);
     this.selectTool(tool);
   }
 

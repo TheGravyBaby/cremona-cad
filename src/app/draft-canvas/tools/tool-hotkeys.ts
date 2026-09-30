@@ -6,13 +6,14 @@
 // dispatches these) and tool-palette.ts (which only reads HOTKEY_LETTER_BY_TOOL
 // to show a tooltip hint) — kept in one file so the two can't drift apart.
 export const HOTKEY_TOOL_CYCLE: Record<string, string[]> = {
-  KeyL: ['line'],
-  KeyD: ['dimension'],
+  KeyL: ['line', 'polyline', 'line-tangent', 'line-perpendicular'],
+  KeyD: ['dimension', 'angle', 'curve-length'],
   KeyA: ['arc', 'arc-start', 'arc-ends-center', 'arc-through', 'arc-tangent', 'arc-chain', 'join-arc'],
-  KeyC: ['circle'],
-  KeyR: ['rect'],
+  KeyC: ['circle', 'polygon-3', 'polygon-4', 'polygon-5', 'polygon-6', 'polygon-8'],
+  KeyR: ['rect', 'right-triangle'],
+  KeyH: ['batten', 'catenary', 'cycloid'],
   KeyS: ['section'],
-  KeyK: ['ticks'],
+  KeyK: ['ticks', 'curve-ticks'],
   KeyT: ['text'],
   KeyP: ['point'],
   // Not KeyF: that's already Fit-to-view (see draft-canvas.ts's onKeyDown) — matches the

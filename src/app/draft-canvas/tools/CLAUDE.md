@@ -13,7 +13,8 @@ Most files here carry a header comment explaining their own contract. Read it be
 - **`tool-registry.ts`** — root singleton holding every tool and which is active. `toolRows` (the
   dock's Draw tab) or `modifyRows` (its Bench tab, for tools that act on the selection) is where
   you register a new one; the palette and pointer routing pick it up automatically. One row = one
-  palette row; a nested array = one button plus a caret holding variants of the same shape kind.
+  palette row; a `{ label, tools }` group = one button plus a caret holding variants of the same
+  shape kind, with the label heading its flyout.
 - **`toolbox-store.ts`** — root singleton holding drawn shapes, with undo/redo. Persisted through
   `helpers/workingStorage.ts`, so shapes survive a reload but not the tab closing, and written
   into the recipe file as `toolboxState` on save (see `RecipeComponentBase.serializeRecipe`).
@@ -51,7 +52,7 @@ Most files here carry a header comment explaining their own contract. Read it be
   except that an import lands where the file has it, while a paste steps 5 mm down and to the
   right, further on each repeat, so a copy never hides on top of its original. Duplicate stays in
   place, Inkscape-style: it's the deliberate copy-over-itself.
-  The Edit menu (`../edit-menu/`, shown by the top bar and by right-click) is clipboard and edits
+  The Edit menu (`../edit-menu/`, shown by right-click in Select mode) is clipboard and edits
   only. Groups go out as `<g>` and a foreign `<g>` round two or more shapes comes in as a group;
   Inkscape's layer `<g>`s don't. Millimetre user units, the Y flip baked into the coordinates and arc sweeps, and a `<metadata>` block carrying
   the shapes as they are so a paste back is lossless. Foreign SVG is read best-effort: transforms
@@ -59,8 +60,11 @@ Most files here carry a header comment explaining their own contract. Read it be
   it: it reads the clipboard by MIME names the Mac clipboard never lists, as text or as an image.
 - **`toolbox-shape.ts`** — `DraftShape`, the method-free plain-object union. See below.
   `PathShape` is the catch-all: absolute M/L/C/Q/A/Z path data, hit-tested and bounded off a
-  sampled polyline, moved as one rigid body. Nothing draws one yet; it exists for copied recipe
-  geometry, imported curves and rects rotated off-axis.
+  sampled polyline, moved as one rigid body. The regular polygons, the right triangle and the mathematical curves commit
+  as one, as do copied recipe geometry, imported curves and rects rotated off-axis.
+  A cycloid also carries the `CycloidSpec` it was drawn from, and a batten its pins
+  (`BattenSpec`), both kept true through transforms: the settings bar redraws a cycloid with a new
+  factor or percent, and a batten's pins are its handles.
 - **`snap-engine.ts`** — indexes snap candidates by reading the *rendered SVG*, not recipe data,
   so it works for any recipe and for toolbox shapes alike. An on-path snap is the exact closest
   point of the curve: the 2 mm samples only find the neighbourhood, and the winner is refined by

@@ -32,6 +32,7 @@ import { distanceToShape, shapeBounds } from './tools/shape-hit-test';
 import { translateShape } from './tools/shape-transform';
 import { endpointGrabbers, withEndpoint, EndpointGrabber, EndpointKey } from './tools/shape-grabbers';
 import { snapToLockedAngle } from './tools/angle-lock';
+import { dist } from '../helpers/math/simpleGeometry';
 import { copyDebugDump, isLocalHost } from '../helpers/debugDump';
 import { info, warn } from '../shared/message-emitter';
 import { DEFAULT_TEXT_SIZE_MM, DraftShape, ImageShape, TextShape, imageRenderKey } from './tools/toolbox-shape';
@@ -113,6 +114,12 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     getSelectedShapes: () => this.selection.shapes,
     getPxPerMm: () => this.pxPerMm,
     hitTestShape: (pt) => this.hitTestToolboxShape(pt),
+    curveAt: (pt) => {
+      const toleranceMm = DraftCanvasComponent.SELECT_HIT_TOLERANCE_PX / this.pxPerMm;
+      const drawn = this.toolbox.getVisibleShapes().filter(s => s.type !== 'image');
+      const id = nearestShapeId(pt, drawn, toleranceMm) ?? nearestShapeId(pt, this.scene.shapes, toleranceMm);
+      return [...drawn, ...this.scene.shapes].find(s => s.id === id) ?? null;
+    },
     selectShape: (id) => this.selection.select(toolboxRef(id)),
     removeShape: (id) => this.toolbox.removeShape(id),
     returnToSelect: (selectShapeId) => {
@@ -642,6 +649,15 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     return image ? toolboxRef(image) : null;
   }
 
+  private armEndpointDrag(hit: { shapeId: string; key: EndpointKey }, pointerId: number): void {
+    const shape = this.selectedShapes.find(s => s.id === hit.shapeId)!;
+    this.dragEndpoint = { shapeId: hit.shapeId, key: hit.key, original: shape };
+    this.isDraggingEndpoint = false;
+    this.activeSnap = null;
+    this.refreshSnapIndex();
+    this.host.nativeElement.setPointerCapture(pointerId);
+  }
+
   private armSelectionDrag(pt: Pt, pointerId: number): void {
     this.dragAnchor = pt;
     this.dragOriginals = this.selectedShapes;
@@ -973,12 +989,23 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
       // Shift-lock to common angles, same as drawing a fresh Line/Section (see
       // two-point-tool.ts) — measured from the *other* end, since that's the segment whose
-      // angle is being locked. Dimension is excluded: its drawing tool doesn't angle-lock either.
+      // angle is being locked. Ctrl instead keeps the angle the segment already has: the end slides
+      // along its own line, taking the pointer's (or snap's) foot on it, so a line can be run out to
+      // meet something without being turned.
       const original = this.dragEndpoint.original;
-      if ((original.type === 'line' || original.type === 'section' || original.type === 'ticks') && this.isAngleLockHeld
-        && (this.dragEndpoint.key === 'start' || this.dragEndpoint.key === 'end')) {
-        const anchor = this.dragEndpoint.key === 'start' ? original.end : original.start;
-        pt = snapToLockedAngle(anchor, pt);
+      const key = this.dragEndpoint.key;
+      if ((original.type === 'line' || original.type === 'dimension' || original.type === 'section' || original.type === 'ticks')
+        && (key === 'start' || key === 'end')) {
+        const anchor = key === 'start' ? original.end : original.start;
+        const moving = key === 'start' ? original.start : original.end;
+        const len = dist(anchor, moving);
+        if (this.isTangentLockHeld && len > 1e-9) {
+          const dir = { x: (moving.x - anchor.x) / len, y: (moving.y - anchor.y) / len };
+          const along = (pt.x - anchor.x) * dir.x + (pt.y - anchor.y) * dir.y;
+          pt = { x: anchor.x + dir.x * along, y: anchor.y + dir.y * along };
+        } else if (this.isAngleLockHeld) {
+          pt = snapToLockedAngle(anchor, pt);
+        }
       }
 
       if (!this.isDraggingEndpoint) {
@@ -1142,10 +1169,17 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
    * every drawing program does, so the verbs act on what was clicked. */
   onContextMenu(event: MouseEvent): void {
     event.preventDefault();
-    if (!this.activeTool) {
-      const hit = this.hitTestAt(this.worldFromPointer(event));
-      if (hit && !this.selection.has(hit)) this.selection.select(hit);
+    // with a tool out, right-click is Escape: it cancels the placement, then steps back to Select
+    if (this.activeTool) {
+      if (this.activeTool.onKeyDown?.(new KeyboardEvent('keydown', { key: 'Escape' }), this.toolHost)) {
+        this.draw();
+      } else {
+        this.selectTool(null);
+      }
+      return;
     }
+    const hit = this.hitTestAt(this.worldFromPointer(event));
+    if (hit && !this.selection.has(hit)) this.selection.select(hit);
     const box = this.host.nativeElement.getBoundingClientRect();
     this.contextMenu = { x: event.clientX - box.left, y: event.clientY - box.top };
     this.cdr.markForCheck();
@@ -1399,6 +1433,16 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     // shape under it and, when that's a drawn shape, arms the same drag, so one press-and-drag
     // moves an unselected shape; shift-click toggles it in/out of the selection instead. Touch is
     // excluded from arming any drag so single-finger touch keeps its existing "always pans" behavior.
+    // Ctrl keeps a line's angle while its end is dragged (see the endpoint drag), so a Ctrl press on
+    // a handle arms that drag; anywhere else a Ctrl press still does nothing in Select
+    if (!this.activeTool && isPrimary && modifierHeld && !this.isSpaceDown && !isTouch && this.selection.size) {
+      const endpointHit = this.hitTestEndpointGrabber(this.worldFromPointer(event));
+      if (endpointHit) {
+        this.armEndpointDrag(endpointHit, event.pointerId);
+        return;
+      }
+    }
+
     if (!this.activeTool && isPrimary && !modifierHeld && !this.isSpaceDown) {
       const pt = this.worldFromPointer(event);
       const hit = this.hitTestAt(pt);
@@ -1425,12 +1469,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       const endpointHit = !event.shiftKey && !isTouch && this.selection.size
         ? this.hitTestEndpointGrabber(pt) : null;
       if (endpointHit) {
-        const shape = this.selectedShapes.find(s => s.id === endpointHit.shapeId)!;
-        this.dragEndpoint = { shapeId: endpointHit.shapeId, key: endpointHit.key, original: shape };
-        this.isDraggingEndpoint = false;
-        this.activeSnap = null;
-        this.refreshSnapIndex();
-        this.host.nativeElement.setPointerCapture(event.pointerId);
+        this.armEndpointDrag(endpointHit, event.pointerId);
       } else if (!event.shiftKey && !isTouch && this.selection.size && this.hitTestSelectedBody(pt)) {
         this.armSelectionDrag(pt, event.pointerId);
       } else {
@@ -1738,6 +1777,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     // double-click zooms in at the clicked point; hold Shift/Ctrl/Alt/Meta to zoom out
     event.preventDefault();
     if (performance.now() - this.enteredGroupAt < DraftCanvasComponent.DOUBLE_PRESS_MS) return;
+    if (this.activeTool?.claimsDoubleClick) return;
 
     const pt = this.worldFromPointer(event);
 

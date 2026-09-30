@@ -1,6 +1,7 @@
 import { Pt } from '../../models/types';
+import { pathFromPolygon } from '../../helpers/math/pathMath';
 import { makeShapeId } from './toolbox-shape';
-import { TwoPointTool, previewRect } from './two-point-tool';
+import { TwoPointTool, previewRect, stylePreview } from './two-point-tool';
 import { DraftToolHost } from './draft-tool';
 import { ToolboxStore } from './toolbox-store';
 
@@ -22,11 +23,28 @@ function squareLockModifier(p1: Pt, p2: Pt, host: DraftToolHost): Pt {
  * separate tool — see the Dashed checkbox in the Box settings panel. Holding Shift while
  * dragging constrains it to a square (see squareLockModifier) instead of needing a separate tool. */
 export function createRectTool(toolbox: ToolboxStore): TwoPointTool {
-  return new TwoPointTool('rect', 'Box', (p1, p2) => ({
+  return new TwoPointTool('rect', 'Rectangle', (p1, p2) => ({
     id: makeShapeId(),
     type: 'rect',
     p1,
     p2,
     dashed: toolbox.currentDashed,
   }), previewRect, squareLockModifier);
+}
+
+// the right angle sits on the first click, the one corner placed deliberately, so it can be
+// snapped onto a point; the drag direction picks which way the legs run.
+function rightTrianglePath(p1: Pt, p2: Pt): string {
+  return pathFromPolygon([p1, { x: p2.x, y: p1.y }, { x: p1.x, y: p2.y }]);
+}
+
+export function createRightTriangleTool(toolbox: ToolboxStore): TwoPointTool {
+  return new TwoPointTool('right-triangle', 'Right Triangle', (p1, p2) => ({
+    id: makeShapeId(),
+    type: 'path',
+    d: rightTrianglePath(p1, p2),
+    dashed: toolbox.currentDashed,
+  }), (gRoot, _gUI, _pxPerMm, p1, p2) => {
+    stylePreview(gRoot.append('path').attr('d', rightTrianglePath(p1, p2)));
+  }, squareLockModifier);
 }

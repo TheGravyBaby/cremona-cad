@@ -3,7 +3,8 @@
 .panel {
   flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: 8px;
   padding-top: 0;
   display: flex;
@@ -443,7 +444,8 @@ select {
   color: color-mix(in srgb, var(--ui-text-secondary) 72%, transparent);
 }
 
-.field-cell > .basic-input { width: 100%; }
+/* descendant, not child: on touch the stepper wraps the input in a .num-stepper span */
+.field-cell .basic-input { width: 100%; }
 .field-cell.field-cell--full { width: 100%; }
 .basic-input:disabled { opacity: 0.45; cursor: not-allowed; }
 
