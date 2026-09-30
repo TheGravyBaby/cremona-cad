@@ -39,7 +39,7 @@
         </div>
         @for (layer of toolboxLayers; track layer.id) {
         <div class="layer-tab" [class.active]="layer.id === activeLayerId" [class.locked]="layer.locked"
-          (click)="selectLayer(layer.id)">
+          [class.off-panel]="isLayerOffPanel(layer)" (click)="selectLayer(layer.id)">
           <button type="button" class="layer-tab-icon-btn" [class.on]="layer.visible"
             (click)="toggleLayerVisible(layer.id); $event.stopPropagation()"
             [title]="layer.visible ? 'Hide layer' : 'Show layer'">
@@ -52,6 +52,16 @@
           } @else {
           <span class="layer-tab-label" (dblclick)="startRenameLayer(layer.id)" title="Double-click to rename">{{
             layer.name }}</span>
+          @if (availablePanels.length) {
+          <button type="button" class="layer-tab-icon-btn" [class.open]="panelsLayerId === layer.id"
+            (click)="togglePanels(layer.id); $event.stopPropagation()" [title]="layerScopeTitle(layer)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="16" rx="2" />
+              <path d="M9 4v16" />
+            </svg>
+          </button>
+          }
           @if (canMoveSelectionTo(layer)) {
           <button type="button" class="layer-tab-icon-btn move-here"
             (click)="moveSelectionTo(layer.id); $event.stopPropagation()" title="Move the selection to this layer">
@@ -73,6 +83,20 @@
           }
           }
         </div>
+        @if (panelsLayerId === layer.id) {
+        <div class="layer-panels">
+          <div class="layer-panels-title">Shown on</div>
+          @for (panel of availablePanels; track panel.id) {
+          <label class="panel-row">
+            <input type="checkbox" [checked]="isLayerOnPanel(layer, panel.id)" (change)="toggleLayerPanel(layer, panel.id)" />
+            <span>{{ panel.label }}</span>
+          </label>
+          }
+          @if (layer.panels?.length) {
+          <button type="button" class="layer-panels-all" (click)="showLayerOnAllPanels(layer.id)">Show on every panel</button>
+          }
+        </div>
+        }
         }
         <button type="button" class="layer-tab-add" title="Add layer" (click)="addLayer()">+</button>
       </div>
@@ -152,6 +176,16 @@
           } @else {
           <span class="layer-tab-label" (click)="editImage(image)" (dblclick)="startRenameImage(image.id)"
             [title]="imageRowTitle(image)">{{ image.label }}</span>
+          @if (availablePanels.length) {
+          <button type="button" class="layer-tab-icon-btn" [class.open]="panelsImageId === image.id"
+            (click)="toggleImagePanels(image.id); $event.stopPropagation()" [title]="imageScopeTitle(image)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="16" rx="2" />
+              <path d="M9 4v16" />
+            </svg>
+          </button>
+          }
           <button type="button" class="layer-tab-icon-btn" (click)="toggleImageLocked(image); $event.stopPropagation()"
             [title]="isImageLocked(image) ? 'Unlock for editing' : 'Lock in place'">
             <ng-container [ngTemplateOutlet]="lockIcon" [ngTemplateOutletContext]="{ locked: isImageLocked(image) }" />
@@ -160,6 +194,25 @@
             (click)="deleteImage(image.id); $event.stopPropagation()">×</button>
           }
         </div>
+        @if (panelsImageId === image.id) {
+        <div class="layer-panels">
+          <div class="layer-panels-title">Shown on</div>
+          <label class="panel-row">
+            <input type="checkbox" [checked]="image.isDefault ?? false"
+              (change)="setImageIsDefault(image, $any($event.target).checked)" />
+            <span>Default — wherever no other image is named</span>
+          </label>
+          @for (panel of availablePanels; track panel.id) {
+          <label class="panel-row">
+            <input type="checkbox" [checked]="isImageOnPanel(image, panel.id)" (change)="toggleImagePanel(image, panel.id)" />
+            <span>{{ panel.label }}</span>
+          </label>
+          }
+          @if (isImageScoped(image)) {
+          <button type="button" class="layer-panels-all" (click)="showImageOnAllPanels(image)">Show on every panel</button>
+          }
+        </div>
+        }
         }
       </div>
       @if (images.length === 0) {

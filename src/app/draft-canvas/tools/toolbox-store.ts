@@ -27,6 +27,12 @@ const MAX_HISTORY = 50;
 // declared here rather than imported from the recipe framework, so the dependency stays one-way.
 export type PanelChoice = { id: string; label: string };
 
+// a stored layer's panel list, or none for a layer saved before scoping existed or scoped nowhere
+function layerPanels(l: Partial<Layer>): string[] | undefined {
+  const panels = Array.isArray(l.panels) ? l.panels.filter(p => typeof p === 'string') : [];
+  return panels.length ? panels : undefined;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ToolboxStore implements Undoable {
   readonly id = 'toolbox';
@@ -192,6 +198,16 @@ export class ToolboxStore implements Undoable {
     return !this.panelHasScopedImage(this._activePanel);
   }
 
+  /** Whether `layer` belongs on the open panel. A `null` panel filters nothing, as for images. */
+  layerMatchesActivePanel(layer: Layer): boolean {
+    return this._activePanel === null || !layer.panels?.length || layer.panels.includes(this._activePanel);
+  }
+
+  // what the eye and the panel scoping agree to show; hidden either way is hidden
+  private layerShown(layer: Layer): boolean {
+    return layer.visible && this.layerMatchesActivePanel(layer);
+  }
+
   // hidden images don't count, so parking a specific view brings the default one back.
   private panelHasScopedImage(panel: string): boolean {
     return this.getImageShapes().some(s => !s.hidden && s.panels?.includes(panel));
@@ -281,6 +297,15 @@ export class ToolboxStore implements Undoable {
    * to delete the last or a locked layer. Placed images survive regardless: they carry no
    * `layerId`, so without the guard here deleting layer 1 would take every reference image with
    * it — they'd fall into its id by default. */
+  /** Not undo-tracked, like the eye and the lock: where a layer shows is a view preference.
+   * An empty list is stored as none, so "every panel" stays a plain absence. */
+  setLayerPanels(id: string, panels: string[] | undefined): void {
+    const next = panels?.length ? [...panels] : undefined;
+    this._layers = this._layers.map(l => l.id === id ? { ...l, panels: next } : l);
+    this.persist();
+    this.notify();
+  }
+
   removeLayer(id: string): void {
     const layer = this._layers.find(l => l.id === id);
     if (this._layers.length <= 1 || layer?.locked) return;
@@ -300,7 +325,7 @@ export class ToolboxStore implements Undoable {
    * isn't geometry worth snapping to). See getVisibleImages and draft-canvas.ts's draw(). */
   getVisibleShapes(): DraftShape[] {
     if (!this._showShapes) return [];
-    const visibleIds = new Set(this._layers.filter(l => l.visible).map(l => l.id));
+    const visibleIds = new Set(this._layers.filter(l => this.layerShown(l)).map(l => l.id));
     return this.shapes.filter(s => s.type !== 'image' && visibleIds.has(s.layerId ?? DEFAULT_LAYER_ID));
   }
 
@@ -331,7 +356,7 @@ export class ToolboxStore implements Undoable {
   getEditableShapes(): DraftShape[] {
     const images = this.getVisibleImages().filter(s => !this.isShapeLocked(s));
     if (!this._showShapes) return images;
-    const reachable = new Set(this._layers.filter(l => l.visible && !l.locked).map(l => l.id));
+    const reachable = new Set(this._layers.filter(l => this.layerShown(l) && !l.locked).map(l => l.id));
     return [
       ...images,
       ...this.shapes.filter(s => s.type !== 'image' && reachable.has(s.layerId ?? DEFAULT_LAYER_ID)),
@@ -392,6 +417,12 @@ export class ToolboxStore implements Undoable {
    * through updateShape. */
   setImageLocked(id: string, locked: boolean): void {
     this.patchImage(id, { locked });
+  }
+
+  /** Where an image shows. Bypasses the lock like the switches above: a template image is
+   * locked by default, and choosing its panels from the list shouldn't need it unlocked first. */
+  setImageScope(id: string, scope: Pick<ImageShape, 'panels' | 'excludePanels' | 'isDefault'>): void {
+    this.patchImage(id, scope);
   }
 
   renameImage(id: string, label: string): void {
@@ -535,7 +566,7 @@ export class ToolboxStore implements Undoable {
         if (Array.isArray(parsed.layers) && parsed.layers.length > 0) {
           // Normalize layers saved before visible/locked existed.
           this._layers = parsed.layers.map((l: Partial<Layer> & { id: string; name: string }) => ({
-            id: l.id, name: l.name, visible: l.visible ?? true, locked: l.locked ?? false,
+            id: l.id, name: l.name, visible: l.visible ?? true, locked: l.locked ?? false, panels: layerPanels(l),
           }));
         }
         if (typeof parsed.activeLayerId === 'string') this._activeLayerId = parsed.activeLayerId;
@@ -634,7 +665,7 @@ export class ToolboxStore implements Undoable {
     if (Array.isArray(parsed['currentTickWeights'])) this._currentTickWeights = parsed['currentTickWeights'] as number[];
     if (Array.isArray(parsed['layers']) && (parsed['layers'] as unknown[]).length > 0) {
       this._layers = (parsed['layers'] as Array<Partial<Layer> & { id: string; name: string }>).map(l => ({
-        id: l.id, name: l.name, visible: l.visible ?? true, locked: l.locked ?? false,
+        id: l.id, name: l.name, visible: l.visible ?? true, locked: l.locked ?? false, panels: layerPanels(l),
       }));
     }
     if (typeof parsed['activeLayerId'] === 'string') this._activeLayerId = parsed['activeLayerId'] as string;

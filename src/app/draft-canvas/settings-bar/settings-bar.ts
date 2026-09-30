@@ -1,7 +1,6 @@
-import { Component, Input } from '@angular/core';
-import { inject } from '@angular/core';
+import { Component, ElementRef, HostListener, inject, Input } from '@angular/core';
 import { DraftTool } from '../tools/draft-tool';
-import { ToolboxStore, PanelChoice } from '../tools/toolbox-store';
+import { ToolboxStore } from '../tools/toolbox-store';
 import { SelectionStore } from '../tools/selection-store';
 import { ImageAssetStore } from '../tools/image-asset-store';
 import {
@@ -638,20 +637,22 @@ export class SettingsBarComponent {
     this.toolbox.updateShape(shape.id, { mirrored: !this.imageMirrored });
   }
 
-  // both behind a popup button rather than inline, since neither is a value nudged while watching
-  // the canvas the way X or Opacity is; one open at a time, like the bottom bar's own popups.
+  // behind a popup button rather than inline, since it isn't a value nudged while watching the
+  // canvas the way X or Opacity is. Which panels an image shows on is set from its row in the
+  // bottom bar's image list, beside the same control for layers (layer-controls.ts).
 
   public cropOpen = false;
-  public panelsOpen = false;
+  private elRef = inject(ElementRef<HTMLElement>);
 
   toggleCropPopup(): void {
     this.cropOpen = !this.cropOpen;
-    this.panelsOpen = false;
   }
 
-  togglePanelsPopup(): void {
-    this.panelsOpen = !this.panelsOpen;
-    this.cropOpen = false;
+  // a press anywhere outside the bar — the canvas above all — takes the popup down, as every popup
+  // in the app does
+  @HostListener('document:pointerdown', ['$event'])
+  onDocumentPointerDown(event: PointerEvent): void {
+    if (this.cropOpen && !this.elRef.nativeElement.contains(event.target as Node)) this.cropOpen = false;
   }
 
   public get imageCropped(): boolean { return isCropped(this.selectedImageShape?.crop); }
@@ -676,76 +677,6 @@ export class SettingsBarComponent {
     const shape = this.selectedImageShape;
     if (!shape) return;
     this.toolbox.updateShape(shape.id, applyImageCrop(shape, undefined) as Partial<DraftShape>);
-  }
-
-  /** Panels this recipe has, pushed down by RecipeComponentBase; empty hides the picker. */
-  public get availablePanels(): readonly PanelChoice[] { return this.toolbox.availablePanels; }
-
-  /** "Default" is what the UI calls ImageShape.isDefault. */
-  public get imageIsDefault(): boolean { return this.selectedImageShape?.isDefault ?? false; }
-
-  /** Whether the image is wanted on `panelId` — what its checkbox shows. */
-  public isImageOnPanel(panelId: string): boolean {
-    const shape = this.selectedImageShape;
-    if (!shape) return false;
-    if (shape.panels?.length) return shape.panels.includes(panelId);
-    return !shape.excludePanels?.includes(panelId);
-  }
-
-  /** Summarizes the scoping on the button itself, so the popup is for changing it, not checking it. */
-  public get imageScopeSummary(): string {
-    const shape = this.selectedImageShape;
-    const named = shape?.panels?.length ?? 0;
-    if (named) return `${named} panel${named === 1 ? '' : 's'}`;
-    const base = this.imageIsDefault ? 'Default' : 'All panels';
-    const excluded = shape?.excludePanels?.length ?? 0;
-    return excluded ? `${base}, except ${excluded}` : base;
-  }
-
-  toggleImagePanel(panelId: string): void {
-    const shape = this.selectedImageShape;
-    if (!shape) return;
-    const wanted = new Set(this.availablePanels.map(p => p.id).filter(id => this.isImageOnPanel(id)));
-    if (wanted.has(panelId)) wanted.delete(panelId);
-    else wanted.add(panelId);
-    this.writeImagePanels(shape, wanted);
-  }
-
-  // stores whichever of panels/excludePanels is shorter — the short list both reads as the
-  // exception and stays correct when the recipe later grows a panel. Naming panels clears
-  // Default (the two are alternatives); excluding doesn't, since that's how a default expresses
-  // a gap.
-  private writeImagePanels(shape: ImageShape, wanted: Set<string>): void {
-    const all = this.availablePanels.map(p => p.id);
-    const named = all.filter(id => wanted.has(id));
-    const excluded = all.filter(id => !wanted.has(id));
-
-    const patch: Partial<ImageShape> = !excluded.length
-      ? { panels: undefined, excludePanels: undefined }
-      : excluded.length < named.length
-        ? { panels: undefined, excludePanels: excluded }
-        : { panels: named, excludePanels: undefined, isDefault: false };
-
-    this.toolbox.updateShape(shape.id, patch as Partial<DraftShape>);
-  }
-
-  setImageIsDefault(value: boolean): void {
-    const shape = this.selectedImageShape;
-    if (!shape) return;
-    this.toolbox.updateShape(shape.id, {
-      isDefault: value,
-      // Default and a panel list are alternatives; an exclusion list is not, so it survives.
-      panels: value ? undefined : shape.panels,
-    } as Partial<DraftShape>);
-  }
-
-  /** Clears all scoping — shown on every panel, same as a hand-placed image. */
-  showImageOnAllPanels(): void {
-    const shape = this.selectedImageShape;
-    if (!shape) return;
-    this.toolbox.updateShape(shape.id, {
-      panels: undefined, excludePanels: undefined, isDefault: false,
-    } as Partial<DraftShape>);
   }
 
   /**

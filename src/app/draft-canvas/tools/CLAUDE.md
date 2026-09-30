@@ -97,6 +97,13 @@ as one. A double-click enters it (`SelectionStore.enter`): members then select s
 handles until nothing in the group is selected. Paste gives a copied group a fresh id, and
 `removeShapes` dissolves a group left with one member. Images never join one.
 
+**A layer can be scoped to panels too** — `Layer.panels`, a plain "shown on" list set from its
+row in the layers popup, with none meaning every panel. Off the open panel a layer counts as
+hidden: `layerShown` gates `getVisibleShapes` and `getEditableShapes` alike, so its shapes are
+neither drawn nor reachable there, and its row dims like an off-panel image's. Deliberately
+simpler than an image's `excludePanels`/`isDefault`: a layer is the user's own, so where they
+want it is the whole story.
+
 **Missing `layerId` means `DEFAULT_LAYER_ID`,** not a migration. Shapes persisted before layers
 existed land on the first layer for free. Keep it that way.
 
@@ -138,10 +145,12 @@ forgets to push shows an image too widely rather than hiding one with no indicat
 overrules it. It exists because a panel nothing claims falls through to the default view, and
 "this instrument has no usable cross-arch photograph" had no way to be said; showing the plan shot
 there instead invites tracing the wrong thing. Excluding is about the *image*, not the panel, so
-adding a real reference scoped to that panel later just works with nothing to undo. The settings
-bar hides the two encodings behind one checkbox per panel meaning "shown here", storing whichever
-list is shorter — see `writeImagePanels`, which also explains why the short list is the one that
-ages well.
+adding a real reference scoped to that panel later just works with nothing to undo. The image
+list in the bottom bar (`layer-controls.ts`) hides the two encodings behind one checkbox per panel
+meaning "shown here", from the same row button and checklist a layer has, storing whichever list
+is shorter — see `writeImagePanels`, which also explains why the short list is the one that ages
+well. It writes through `setImageScope`, which bypasses the lock: a template image is locked by
+default and scoping it shouldn't need it unlocked.
 
 **An `isDefault` image is the set's general view** — "Default" everywhere the user sees it; the
 field is spelled out because `default` alone reads as a keyword. With no `panels` of its own, it
@@ -184,6 +193,6 @@ template that arrived out of proportion keep what it has instead of jumping when
 `image-resize.spec.ts` pins it from each path.
 
 **Panel choices come from the recipe.** `setAvailablePanels` takes `{id, label}` from
-`RecipeComponentBase.initializePanelFlow`, so the settings bar can offer a scoping picker. The store
+`RecipeComponentBase.initializePanelFlow`, so the bottom bar's lists can offer a scoping picker. The store
 still learns nothing about panels beyond two strings, and a host that ships none leaves the picker
 hidden rather than empty.

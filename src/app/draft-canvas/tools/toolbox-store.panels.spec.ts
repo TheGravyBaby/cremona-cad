@@ -220,4 +220,28 @@ describe('ToolboxStore panel-scoped images', () => {
       expect(visible()).toEqual([]);
     });
   });
+
+  // layers scope the same way, with a plain "shown on" list: off the open panel a layer is as
+  // good as hidden — not drawn, not editable — and the list survives a save.
+  it('shows a scoped layer only on the panels it names, and keeps the list through a save', () => {
+    const scoped = toolbox.addLayer();
+    toolbox.addShape({ id: 'a', type: 'line', start: { x: 0, y: 0 }, end: { x: 1, y: 0 }, layerId: scoped });
+    toolbox.setLayerPanels(scoped, ['crossArching']);
+
+    toolbox.setActivePanel('base');
+    expect(toolbox.getVisibleShapes()).toEqual([]);
+    expect(toolbox.getEditableShapes()).toEqual([]);
+    toolbox.setActivePanel('crossArching');
+    expect(toolbox.getVisibleShapes().map(s => s.id)).toEqual(['a']);
+    toolbox.setActivePanel(null);
+    expect(toolbox.getVisibleShapes().map(s => s.id)).toEqual(['a']);
+
+    const saved = JSON.parse(JSON.stringify(toolbox.exportState()));
+    toolbox.resetAll();
+    toolbox.loadState(saved);
+    expect(toolbox.layers.find(l => l.id === scoped)?.panels).toEqual(['crossArching']);
+
+    toolbox.setLayerPanels(scoped, []);
+    expect(toolbox.layers.find(l => l.id === scoped)?.panels).toBeUndefined();
+  });
 });

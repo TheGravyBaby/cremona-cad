@@ -159,7 +159,8 @@
   cursor: pointer;
 }
 
-.layer-tab-icon-btn:hover {
+.layer-tab-icon-btn:hover,
+.layer-tab-icon-btn.open {
   color: var(--ui-text-primary);
 }
 
@@ -303,4 +304,53 @@
   .lc-eye {
     width: 28px;
   }
+}
+
+/* A layer's panel checklist, under its row: the settings bar's image scoping popup, inline. */
+.layer-panels {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 0 4px 22px;
+  padding: 4px 8px;
+  border-left: 2px solid var(--ui-border-soft);
+  font-size: 11px;
+}
+
+.layer-panels-title {
+  color: var(--ui-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 10px;
+}
+
+.panel-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.panel-row input[type="checkbox"] {
+  width: 13px;
+  height: 13px;
+  margin: 0;
+  accent-color: var(--ui-accent);
+  cursor: pointer;
+}
+
+.layer-panels-all {
+  align-self: flex-start;
+  padding: 2px 6px;
+  border: 1px solid var(--ui-border-soft);
+  border-radius: 3px;
+  background: none;
+  color: var(--ui-text-muted);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.layer-panels-all:hover {
+  color: var(--ui-text-primary);
 }
