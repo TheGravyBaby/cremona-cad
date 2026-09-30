@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import { calculateMould } from '../enrico-ceruti-violin/ceruti-calcs';
+import { calculateMould } from './ceruti-calcs';
 
 const bouts: any = {
   UBW: 168, CBW: 108, LBW: 209,
@@ -24,8 +24,10 @@ const bouts: any = {
   UCr: { x: 76, y: 234.25 }, LCr: { x: 89.5, y: 147.25 },
 };
 
-describe('scratch', () => {
-  it('mould', () => {
+describe('calculateMould', () => {
+  // a recipe where the relief circle at the upper corner block clips U3 just past a sample
+  // point, which used to flip that run's sweep and draw U3's major arc as a bubble
+  it('keeps every corner arc to its minor sweep after the block cutouts', () => {
     const p: any = {
       height: 358, width: 209, overhang: 3, rib: 1, bitDiameter: 6.35, bouts,
       viol: { width: null, V0: null, neckRadius: null },
@@ -38,6 +40,7 @@ describe('scratch', () => {
       options: { useViolNeck: false, useViolCornerUC: false, useViolCornerLC: false, U31DoubleArc: false, C21DoubleArc: true, C11DoubleArc: true, L31DoubleArc: true },
     };
     const d = calculateMould(p, false, true);
-    expect('DUMP<'+d+'>DUMP').toBe('');
+    expect(d).toMatch(/A 26 26 0 0 0 /);
+    expect(d).not.toMatch(/A [\d.e]+ [\d.e]+ 0 1 /);
   });
 });
