@@ -104,6 +104,26 @@ describe('ToolPaletteComponent', () => {
     expect(component.open).toBe(false);
   });
 
+  it('heads every open flyout with its group, draw and modify alike', async () => {
+    await create();
+    const registry = TestBed.inject(ToolRegistryService);
+    const headings = () => {
+      fixture.detectChanges();
+      return [...fixture.nativeElement.querySelectorAll('.tool-flyout-caret')].map((caret: HTMLElement) => {
+        caret.click();
+        fixture.detectChanges();
+        const title = el('.tool-flyout-title')?.textContent?.trim();
+        caret.click();
+        fixture.detectChanges();
+        return title;
+      });
+    };
+
+    expect(headings()).toEqual(registry.toolRows.flat().filter(s => registry.hasVariants(s)).map(s => registry.groupLabel(s)));
+    el('.modify-handle')!.click();
+    expect(headings()).toEqual(component.modifyLayout.filter(r => (r.commands?.length ?? 0) > 1).map(r => r.label));
+  });
+
   it('closes an open flyout when collapsing', async () => {
     await create();
     const registry = TestBed.inject(ToolRegistryService);

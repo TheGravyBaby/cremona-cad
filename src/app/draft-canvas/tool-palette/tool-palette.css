@@ -320,6 +320,16 @@
   z-index: 7;
 }
 
+.tool-flyout-title {
+  padding: 2px 8px 4px;
+  border-bottom: 1px solid var(--ui-border-strong);
+  color: var(--ui-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .tool-flyout-item {
   display: flex;
   align-items: center;

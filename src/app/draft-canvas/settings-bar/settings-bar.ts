@@ -5,13 +5,14 @@ import { SelectionStore } from '../tools/selection-store';
 import { ImageAssetStore } from '../tools/image-asset-store';
 import {
   DraftShape, LineShape, DimensionShape, RectShape, TextShape, PointShape, CircleShape, ArcShape, SectionShape, TicksShape,
-  FreehandShape, PathShape, ImageShape, DEFAULT_IMAGE_OPACITY, DEFAULT_SHAPE_COLOR, DEFAULT_FREEHAND_WIDTH,
-  DEFAULT_TEXT_SIZE_MM, applyImageCrop, applyImageSize, isCropped,
+  FreehandShape, PathShape, CycloidSpec, ImageShape, CurveTicksShape, DEFAULT_IMAGE_OPACITY, DEFAULT_SHAPE_COLOR, DEFAULT_FREEHAND_WIDTH,
+  DEFAULT_TEXT_SIZE_MM, angleSweep, applyImageCrop, applyImageSize, isCropped,
 } from '../tools/toolbox-shape';
 import { ImageCrop } from '../../models/types';
-import { normalizeDegrees, pointAtDistanceToward } from '../../helpers/math/simpleGeometry';
+import { clamp, normalizeDegrees, pointAtDistanceToward } from '../../helpers/math/simpleGeometry';
 import { shapeBounds, unionBounds } from '../tools/shape-hit-test';
 import { translateShape } from '../tools/shape-transform';
+import { cycloidPathData } from '../tools/math-curve-tools';
 
 /**
  * The Inkscape-style contextual settings strip along the bottom bar: color, then whichever
@@ -101,7 +102,8 @@ export class SettingsBarComponent {
 
   /** Friendly name for each shape type, used by groupTitle when the settings reflect a selection. */
   private static readonly SHAPE_TYPE_LABELS: Record<DraftShape['type'], string> = {
-    line: 'Line', arc: 'Arc', circle: 'Circle', dimension: 'Distance', rect: 'Box', section: 'Section', ticks: 'Ticks', text: 'Text', point: 'Point',
+    line: 'Line', arc: 'Arc', circle: 'Circle', dimension: 'Distance', angle: 'Angle',
+    'curve-length': 'Curve Length', 'curve-ticks': 'Curve Ticks', rect: 'Rectangle', section: 'Section', ticks: 'Ticks', text: 'Text', point: 'Point',
     freehand: 'Drawing', path: 'Path', image: 'Reference Image',
   };
 
@@ -115,7 +117,9 @@ export class SettingsBarComponent {
       const types = new Set(all.map(s => s.type));
       const groupId = this.selectedShapes[0]?.groupId;
       const isGroup = all.length > 1 && groupId !== undefined && all.every(s => s.groupId === groupId);
-      const label = isGroup ? 'Group' : types.size === 1 ? SettingsBarComponent.SHAPE_TYPE_LABELS[all[0].type] : 'Selection';
+      const label = isGroup ? 'Group'
+        : all.every(s => s.type === 'path' && s.cycloid) ? 'Cycloid'
+        : types.size === 1 ? SettingsBarComponent.SHAPE_TYPE_LABELS[all[0].type] : 'Selection';
       // a recipe piece has no settings to speak of — the title says what it is instead
       return this.selectedShapes.length === 0 ? `Recipe ${label}` : `${label} Settings`;
     }
@@ -140,7 +144,10 @@ export class SettingsBarComponent {
 
   /** Dashed applies to Line, Rect, Circle and Path — a shared pen setting (like currentColor), not
    * a per-tool one, so it's one common control rather than several near-identical toggles. */
-  private static readonly DASHABLE_TOOL_IDS = new Set(['line', 'rect', 'circle']);
+  private static readonly DASHABLE_TOOL_IDS = new Set([
+    'line', 'polyline', 'line-tangent', 'line-perpendicular', 'rect', 'right-triangle', 'circle', 'polygon-3', 'polygon-4', 'polygon-5', 'polygon-6', 'polygon-8',
+    'batten', 'catenary', 'cycloid',
+  ]);
 
   private get selectedDashableShapes(): (LineShape | RectShape | CircleShape | PathShape)[] {
     return this.selectedShapes.filter(
@@ -276,6 +283,44 @@ export class SettingsBarComponent {
 
   private get selectedTextShape(): TextShape | undefined {
     return this.selectedShapeOfType('text');
+  }
+
+  private get selectedCycloids(): (PathShape & { cycloid: CycloidSpec })[] {
+    return this.selectedShapes.filter((s): s is PathShape & { cycloid: CycloidSpec } => s.type === 'path' && !!s.cycloid);
+  }
+
+  public get showCycloidPanel(): boolean {
+    return this.activeTool?.id === 'cycloid' || this.selectedCycloids.length > 0;
+  }
+
+  public get cycloidFactorPct(): number {
+    return Math.round((this.selectedCycloids[0]?.cycloid.factor ?? this.toolbox.currentCycloidFactor) * 100);
+  }
+
+  public get cycloidPct(): number {
+    return Math.round((this.selectedCycloids[0]?.cycloid.pct ?? this.toolbox.currentCycloidPct) * 100);
+  }
+
+  // like Text's size: reshapes what is selected and becomes the setting for the next one
+  setCycloidFactorPct(value: number): void {
+    if (!Number.isFinite(value)) return;
+    this.toolbox.currentCycloidFactor = clamp(value, 0, 100) / 100;
+    this.reshapeCycloids({ factor: this.toolbox.currentCycloidFactor });
+  }
+
+  setCycloidPct(value: number): void {
+    if (!Number.isFinite(value)) return;
+    this.toolbox.currentCycloidPct = clamp(value, 5, 150) / 100;
+    this.reshapeCycloids({ pct: this.toolbox.currentCycloidPct });
+  }
+
+  private reshapeCycloids(patch: Partial<CycloidSpec>): void {
+    const patches = new Map<string, Partial<DraftShape>>();
+    for (const shape of this.selectedCycloids) {
+      const cycloid = { ...shape.cycloid, ...patch };
+      patches.set(shape.id, { cycloid, d: cycloidPathData(cycloid) });
+    }
+    this.toolbox.updateShapes(patches);
   }
 
   /** Open for an armed Text tool as well as a selected label, so the size can be set *before*
@@ -500,15 +545,17 @@ export class SettingsBarComponent {
     this.toolbox.updateShapes(patches);
   }
 
-  /** Section and Ticks share the weights/count controls, each with its own pen default. */
-  private get weightsShape(): SectionShape | TicksShape | undefined {
+  /** Section and Ticks share the weights/count controls, each with its own pen default; Curve
+   * Ticks shares Ticks' default, being the same marks laid along a curve. */
+  private get weightsShape(): SectionShape | TicksShape | CurveTicksShape | undefined {
     const s = this.selectedShape;
-    return (s?.type === 'section' || s?.type === 'ticks') ? s : undefined;
+    return (s?.type === 'section' || s?.type === 'ticks' || s?.type === 'curve-ticks') ? s : undefined;
   }
 
   private get weightsKind(): 'section' | 'ticks' | undefined {
     const id = this.weightsShape?.type ?? this.activeTool?.id;
-    return (id === 'section' || id === 'ticks') ? id : undefined;
+    if (id === 'section') return 'section';
+    return (id === 'ticks' || id === 'curve-ticks') ? 'ticks' : undefined;
   }
 
   public get showWeightsPanel(): boolean {
@@ -746,6 +793,12 @@ function describeShape(shape: DraftShape): string {
       return `Center ${pt(shape.center)} · R ${mm(shape.radius)} · ${deg(shape.startAngle)}° → ${deg(shape.endAngle)}°`;
     case 'circle':
       return `Center ${pt(shape.center)} · R ${mm(shape.radius)}`;
+    case 'curve-length':
+      return `${mm(shape.length)} mm along the curve`;
+    case 'angle': {
+      const { sweep } = angleSweep(shape.vertex, shape.start, shape.end);
+      return `Vertex ${pt(shape.vertex)} · ${(sweep * 180 / Math.PI).toFixed(1)}°`;
+    }
     case 'rect':
       return `${pt(shape.p1)} → ${pt(shape.p2)} · ${mm(Math.abs(shape.p2.x - shape.p1.x))} × ${mm(Math.abs(shape.p2.y - shape.p1.y))} mm`;
     case 'point':

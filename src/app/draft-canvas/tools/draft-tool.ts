@@ -27,6 +27,9 @@ export interface DraftToolHost {
    * lets a selection-based tool (e.g. Offset) hit-test a click itself, without needing its own
    * copy of every shape or the select tolerance constant. */
   hitTestShape(pt: Pt): string | null;
+  /** The curve under `pt` for a tool that works along one — a drawn shape, or failing that a piece
+   * of the recipe, which can be measured even while the Recipe row keeps it from being selected. */
+  curveAt(pt: Pt): DraftShape | null;
   /** Replaces the whole selection with just this shape — same effect as a plain Select-mode
    * click on it, so a tool like Offset can adopt a shape the user clicked directly. */
   selectShape(id: string): void;
@@ -58,6 +61,8 @@ export interface DraftTool {
    * would flatten a natural pen stroke onto whatever construction geometry it passes near.
    * Checked by draft-canvas.ts's resolveToolPoint before every onPointerDown/Move/Up call. */
   readonly disableSnapping?: boolean;
+  /** True for a tool that finishes on a double-click (Polyline), so the canvas doesn't also zoom. */
+  readonly claimsDoubleClick?: boolean;
   /** Runs the moment the tool is activated, before any pointer input. For a tool that has
    * something to set up, or whose input isn't a click at all. Most tools don't need it. */
   onActivate?(host: DraftToolHost): void;

@@ -1,5 +1,5 @@
 import { Pt } from '../../models/types';
-import { DEFAULT_TEXT_SIZE_MM, DraftShape, ImageShape, TextShape, dimensionGeometry, imageCenter, imageCorners } from './toolbox-shape';
+import { DEFAULT_TEXT_SIZE_MM, DraftShape, ImageShape, TextShape, angleSweep, dimensionGeometry, imageCenter, imageCorners } from './toolbox-shape';
 import { angleFromCenter, angleWithinSweep, closestPointOnSegment, dist, normalizeRadians, pointOnCircle, rotatePointAbout } from '../../helpers/math/simpleGeometry';
 import { SECTION_THICKNESS_MM, TEXT_LINE_HEIGHT_RATIO, tickLengthMm } from './shape-renderer';
 import { samplePathToPolyline } from '../../helpers/math/pathMath';
@@ -161,6 +161,14 @@ export function distanceToShape(p: Pt, shape: DraftShape): number {
         ? closestPointOnSegment(p, geo.p1, geo.p2).dist
         : closestPointOnSegment(p, shape.start, shape.end).dist;
     }
+    case 'angle': {
+      const { startAngle, endAngle } = angleSweep(shape.vertex, shape.start, shape.end);
+      return Math.min(
+        distanceToArc(p, shape.vertex, shape.radius, startAngle, endAngle),
+        closestPointOnSegment(p, shape.vertex, shape.start).dist,
+        closestPointOnSegment(p, shape.vertex, shape.end).dist,
+      );
+    }
     case 'circle':
       return Math.abs(dist(p, shape.center) - shape.radius);
     case 'arc':
@@ -172,6 +180,8 @@ export function distanceToShape(p: Pt, shape: DraftShape): number {
     case 'point':
       return dist(p, shape.position);
     case 'freehand':
+    case 'curve-length':
+    case 'curve-ticks':
       return distanceToFreehand(p, shape.points);
     case 'path':
       return distanceToFreehand(p, pathSamples(shape.d));
@@ -246,6 +256,12 @@ export function shapeBounds(shape: DraftShape): ShapeBounds {
       const ys = [shape.start.y, shape.end.y, ...(geo ? [geo.p1.y, geo.p2.y] : [])];
       return { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
     }
+    case 'angle': {
+      const { startAngle, sweep } = angleSweep(shape.vertex, shape.start, shape.end);
+      const arc = Array.from({ length: 17 }, (_, i) =>
+        pointOnCircle({ ...shape.vertex, r: shape.radius }, startAngle + (sweep * i) / 16));
+      return pointsBounds([shape.vertex, shape.start, shape.end, ...arc]);
+    }
     case 'circle':
       return {
         x0: shape.center.x - shape.radius, x1: shape.center.x + shape.radius,
@@ -272,6 +288,8 @@ export function shapeBounds(shape: DraftShape): ShapeBounds {
     case 'point':
       return { x0: shape.position.x, x1: shape.position.x, y0: shape.position.y, y1: shape.position.y };
     case 'freehand':
+    case 'curve-length':
+    case 'curve-ticks':
       return pointsBounds(shape.points);
     case 'path':
       return pointsBounds(pathSamples(shape.d));

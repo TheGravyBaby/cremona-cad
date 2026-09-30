@@ -23,6 +23,33 @@ export function tangentPointsFromExternalPoint(P: Pt, C: Circle): Pt[] {
   ];
 }
 
+/**
+ * Every line tangent to both circles, as its pair of tangent points `[onC1, onC2]` — the two
+ * outer tangents, then the two crossing between the circles. With the line's unit normal `n`, the
+ * points are `C1 + r1·n` and `C2 ± r2·n`, and the line being square to `n` pins `n`'s component
+ * along the centre line to `(r1 ∓ r2) / d`. Pairs that can't exist (one circle inside the other,
+ * or overlapping for the crossing pair) are left out.
+ */
+export function commonTangents(C1: Circle, C2: Circle): [Pt, Pt][] {
+  const d = dist(C1, C2);
+  if (d < 1e-9) return [];
+  const u = { x: (C2.x - C1.x) / d, y: (C2.y - C1.y) / d };
+  const out: [Pt, Pt][] = [];
+  for (const s of [1, -1]) {
+    const c = (C1.r - s * C2.r) / d;
+    if (c * c > 1) continue;
+    const h = Math.sqrt(1 - c * c);
+    for (const k of [1, -1]) {
+      const n = { x: c * u.x - k * h * u.y, y: c * u.y + k * h * u.x };
+      out.push([
+        { x: C1.x + C1.r * n.x, y: C1.y + C1.r * n.y },
+        { x: C2.x + s * C2.r * n.x, y: C2.y + s * C2.r * n.y },
+      ]);
+    }
+  }
+  return out;
+}
+
 export function circleCircleIntersections(C1: Circle, C2: Circle, approx: boolean = true): Pt[] {
   const d = dist(C1, C2);
 

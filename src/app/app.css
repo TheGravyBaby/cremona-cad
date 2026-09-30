@@ -4,11 +4,11 @@
    the scroller and never draws. The strip is a plain flex item in the sidebar now, so the cell it
    needed is gone and with it the reason for the grid. */
 .app {
-  /* Capped against the viewport, not just a fixed 360: on a phone 360 is wider than the screen has
+  /* Capped against the viewport, not just a fixed 368: on a phone 368 is wider than the screen has
      left once the canvas keeps its two drawer tabs, and a panel that does not fit is a panel with
      its Next button off the right edge. The 88px reserve is the two tabs (28 each) plus a sliver of
      drawing, so both tabs stay tappable and the outline still updates as you type. */
-  --sidebar-width: min(360px, 100vw - 88px);
+  --sidebar-width: min(368px, 100vw - 88px);
 
   /* dvh, not vh: on a phone the browser's own bars float over the page without taking anything out
      of the viewport 100vh measures, so a 100vh app is taller than the screen shows and the canvas
@@ -66,8 +66,8 @@
   display: flex;
   flex-direction: column;
   /* Fills the dock, which is what decides the width. min-width because a flex item's automatic
-     minimum size is its min-content width, and anything that genuinely does not fit should scroll
-     inside .panel rather than widen the whole column. */
+     minimum size is its min-content width, and anything that genuinely does not fit should be
+     clipped by .panel rather than widen the whole column. */
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;

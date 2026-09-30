@@ -1,9 +1,11 @@
 import { Pt } from '../../models/types';
 import {
   DEFAULT_TEXT_SIZE_MM, DraftShape, ImageShape, TextShape,
-  dimensionGeometry, dimensionOffsetAt, imageAspect, imageCenter, imageCorners, imageEdgeMidpoints,
+  angleSweep, dimensionGeometry, dimensionOffsetAt, imageAspect, imageCenter, imageCorners, imageEdgeMidpoints,
+  placeAngle,
 } from './toolbox-shape';
 import { angleFromCenter, dist, normalizeDegrees, normalizeRadians, pointOnCircle, rotatePointAbout } from '../../helpers/math/simpleGeometry';
+import { battenPath } from '../../helpers/math/pathMath';
 
 /** The point on an arc's circle midway (by angle) between its start and end — where the
  * radius-resize handle sits, since it's the most "on the arc" point to grab. */
@@ -17,6 +19,8 @@ function arcMidpoint(shape: Extract<DraftShape, { type: 'arc' }>): Pt {
 // 'offset' — Dimension's dimension line, at its midpoint; only the drag point's distance
 //   perpendicular to the measurement matters, so the line slides off the measured points without
 //   changing what is being measured.
+// 'vertex'/'radius' — Angle's vertex, and its arc at the midpoint, which also picks the side
+//   measured: dragged outside the arms it reads the reflex angle (see placeAngle).
 // 'p1'/'p2' — Rect's corners (either can go anywhere; drawShape already takes the
 //   min/max of the two, so there's no "wrong" corner to drag).
 // 'radius' — Circle's edge, or Arc's midpoint; only the drag point's distance from center
@@ -27,9 +31,10 @@ function arcMidpoint(shape: Extract<DraftShape, { type: 'arc' }>): Pt {
 //   Named for the Y-up world, matching imageCorners/imageEdgeMidpoints.
 // 'rotate' — Image's rotation handle (about the box center) or Text's (about its anchor);
 //   only the drag point's angle about that pivot matters.
+// 'pin-N' — a Batten's Nth pin; the curve re-fairs through wherever it is dropped.
 export type EndpointKey =
-  | 'start' | 'end' | 'p1' | 'p2' | 'radius' | 'startAngle' | 'endAngle' | 'offset'
-  | 'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'e' | 'w' | 'rotate';
+  | 'start' | 'end' | 'vertex' | 'p1' | 'p2' | 'radius' | 'startAngle' | 'endAngle' | 'offset'
+  | 'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'e' | 'w' | 'rotate' | `pin-${number}`;
 
 /** How a handle should be drawn (see shape-renderer.ts's drawEndpointGrabber). Defaults to
  * `point` — the triangle every pre-image shape uses. */
@@ -64,6 +69,13 @@ export function endpointGrabbers(shape: DraftShape, pxPerMm: number): EndpointGr
       const geo = dimensionGeometry(shape.start, shape.end, shape.offset);
       return geo ? [...ends, { key: 'offset', pos: geo.mid }] : ends;
     }
+    case 'angle': {
+      const { startAngle, sweep } = angleSweep(shape.vertex, shape.start, shape.end);
+      return [
+        { key: 'vertex', pos: shape.vertex }, { key: 'start', pos: shape.start }, { key: 'end', pos: shape.end },
+        { key: 'radius', pos: pointOnCircle({ ...shape.vertex, r: shape.radius }, startAngle + sweep / 2) },
+      ];
+    }
     case 'rect':
       return [{ key: 'p1', pos: shape.p1 }, { key: 'p2', pos: shape.p2 }];
     case 'circle':
@@ -84,9 +96,12 @@ export function endpointGrabbers(shape: DraftShape, pxPerMm: number): EndpointGr
         { x: shape.position.x, y: shape.position.y + above }, shape.position, angle);
       return [{ key: 'rotate', pos, kind: 'rotate' }];
     }
+    case 'path':
+      return shape.batten ? shape.batten.pins.map((pos, i) => ({ key: `pin-${i}` as const, pos })) : null;
     case 'point':
     case 'freehand':
-    case 'path':
+    case 'curve-length':
+    case 'curve-ticks':
       return null;
     case 'image': {
       const corners = imageCorners(shape);
@@ -119,6 +134,10 @@ export function withEndpoint(shape: DraftShape, key: EndpointKey, pos: Pt): Draf
       if (key === 'start' || key === 'end') return { ...shape, [key]: pos };
       if (key === 'offset') return { ...shape, offset: dimensionOffsetAt(shape.start, shape.end, pos) };
       return shape;
+    case 'angle':
+      if (key === 'vertex' || key === 'start' || key === 'end') return { ...shape, [key]: pos };
+      if (key === 'radius') return { ...shape, ...placeAngle(shape.vertex, shape.start, shape.end, pos) };
+      return shape;
     case 'rect':
       if (key === 'p1' || key === 'p2') return { ...shape, [key]: pos };
       return shape;
@@ -142,6 +161,12 @@ export function withEndpoint(shape: DraftShape, key: EndpointKey, pos: Pt): Draf
       return key === 'rotate' ? withTextRotation(shape, pos) : shape;
     case 'image':
       return withImageHandle(shape, key, pos);
+    case 'path': {
+      const i = key.startsWith('pin-') ? Number(key.slice(4)) : -1;
+      if (!shape.batten || !(i in shape.batten.pins)) return shape;
+      const batten = { ...shape.batten, pins: shape.batten.pins.map((p, j) => j === i ? pos : p) };
+      return { ...shape, batten, d: battenPath(batten.pins, batten.closed) };
+    }
     default:
       return shape;
   }

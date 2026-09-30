@@ -16,6 +16,8 @@ export function translateShape(shape: DraftShape, dx: number, dy: number): Draft
     case 'section':
     case 'ticks':
       return { ...shape, start: shiftPt(shape.start, dx, dy), end: shiftPt(shape.end, dx, dy) };
+    case 'angle':
+      return { ...shape, vertex: shiftPt(shape.vertex, dx, dy), start: shiftPt(shape.start, dx, dy), end: shiftPt(shape.end, dx, dy) };
     case 'arc':
     case 'circle':
       return { ...shape, center: shiftPt(shape.center, dx, dy) };
@@ -25,9 +27,17 @@ export function translateShape(shape: DraftShape, dx: number, dy: number): Draft
     case 'point':
       return { ...shape, position: shiftPt(shape.position, dx, dy) };
     case 'freehand':
+    case 'curve-length':
+    case 'curve-ticks':
       return { ...shape, points: shape.points.map(p => shiftPt(p, dx, dy)) };
-    case 'path':
-      return { ...shape, d: translatePath(shape.d, dx, dy) };
+    case 'path': {
+      const c = shape.cycloid;
+      return {
+        ...shape, d: translatePath(shape.d, dx, dy),
+        cycloid: c && { ...c, start: shiftPt(c.start, dx, dy), end: shiftPt(c.end, dx, dy) },
+        batten: shape.batten && { ...shape.batten, pins: shape.batten.pins.map(p => shiftPt(p, dx, dy)) },
+      };
+    }
     case 'image':
       return { ...shape, x: shape.x + dx, y: shape.y + dy };
   }
@@ -93,6 +103,11 @@ export function transformShape(shape: DraftShape, m: Matrix2D): DraftShape | nul
       const offset = shape.offset === undefined ? undefined : shape.offset * k * (mirrored ? -1 : 1);
       return { ...shape, start: pt(shape.start), end: pt(shape.end), offset };
     }
+    // a mirror reverses the counterclockwise sweep, so the arms swap to keep measuring the same side.
+    case 'angle': {
+      const [a, b] = mirrored ? [shape.end, shape.start] : [shape.start, shape.end];
+      return { ...shape, vertex: pt(shape.vertex), start: pt(a), end: pt(b), radius: shape.radius * k };
+    }
     // a mirror reverses the counterclockwise sweep, so the ends swap as well as move.
     case 'arc': {
       const [a, b] = mirrored ? [shape.endAngle, shape.startAngle] : [shape.startAngle, shape.endAngle];
@@ -119,9 +134,19 @@ export function transformShape(shape: DraftShape, m: Matrix2D): DraftShape | nul
       return { ...shape, position: pt(shape.position), fontSize, rotationDeg: Math.abs(deg) < EPS ? undefined : deg };
     }
     case 'freehand':
+    case 'curve-ticks':
       return { ...shape, points: shape.points.map(pt) };
-    case 'path':
-      return { ...shape, d: transformPath(shape.d, m) };
+    case 'curve-length':
+      return { ...shape, points: shape.points.map(pt), length: shape.length * k };
+    // a mirror turns the chord's left to its right, as for a dimension's offset
+    case 'path': {
+      const c = shape.cycloid;
+      return {
+        ...shape, d: transformPath(shape.d, m),
+        cycloid: c && { ...c, start: pt(c.start), end: pt(c.end), depth: c.depth * k * (mirrored ? -1 : 1) },
+        batten: shape.batten && { ...shape.batten, pins: shape.batten.pins.map(pt) },
+      };
+    }
     case 'image': {
       if (mirrored) return null;
       const center = pt(imageCenter(shape));

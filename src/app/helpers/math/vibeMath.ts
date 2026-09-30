@@ -255,6 +255,101 @@ export function closestPointToPolylineIndexed(p: Pt, idx: PolylineIndex): { dist
   return { dist: best, point: bestPt };
 }
 
+/** Running length along an open polyline: `cum[i]` is how far poly[i] is from poly[0]. */
+export function polylineCumulativeLengths(poly: Pt[]): number[] {
+  const cum = [0];
+  for (let i = 1; i < poly.length; i++) cum.push(cum[i - 1] + Math.hypot(poly[i].x - poly[i - 1].x, poly[i].y - poly[i - 1].y));
+  return cum;
+}
+
+/** The nearest point of an open polyline to `p`, given as its length along the polyline. */
+export function projectOntoPolyline(p: Pt, poly: Pt[], cum: number[]): { s: number; dist: number } {
+  let best = { s: 0, dist: poly.length ? Math.hypot(p.x - poly[0].x, p.y - poly[0].y) : Infinity };
+  for (let i = 0; i < poly.length - 1; i++) {
+    const r = closestPointOnSegment(p, poly[i], poly[i + 1]);
+    if (r.dist < best.dist) {
+      best = { s: cum[i] + Math.hypot(r.point.x - poly[i].x, r.point.y - poly[i].y), dist: r.dist };
+    }
+  }
+  return best;
+}
+
+/** The point `s` along an open polyline, clamped to its ends. */
+export function pointAtPolylineLength(poly: Pt[], cum: number[], s: number): Pt {
+  const total = cum[cum.length - 1];
+  const t = clamp(s, 0, total);
+  let lo = 0, hi = cum.length - 1;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (cum[mid] <= t) lo = mid; else hi = mid;
+  }
+  const span = cum[hi] - cum[lo];
+  const f = span > 0 ? (t - cum[lo]) / span : 0;
+  return { x: poly[lo].x + (poly[hi].x - poly[lo].x) * f, y: poly[lo].y + (poly[hi].y - poly[lo].y) * f };
+}
+
+// the curve's direction at each sample, off the samples either side, set against the way to `p`
+// by `measure` — whose sign changes then mark where the two line up the way that was asked for
+function samplesAgainstPoint(p: Pt, poly: Pt[], measure: (toP: Pt, dir: Pt) => number): number[] {
+  const n = poly.length;
+  return poly.map((q, i) => {
+    const a = poly[Math.max(0, i - 1)], b = poly[Math.min(n - 1, i + 1)];
+    return measure({ x: q.x - p.x, y: q.y - p.y }, { x: b.x - a.x, y: b.y - a.y });
+  });
+}
+
+/**
+ * Where a line from `p` just touches a sampled curve: the places the curve's own direction lines
+ * up with the way back to `p`, found as sign changes of their cross product and placed between
+ * the two samples by interpolating it. A point on the curve itself isn't reported — the cross
+ * product only touches zero there, it doesn't change sign.
+ */
+export function tangentPointsFromPointToPolyline(p: Pt, poly: Pt[]): Pt[] {
+  if (poly.length < 3) return [];
+  return signChanges(poly, samplesAgainstPoint(p, poly, (v, d) => v.x * d.y - v.y * d.x));
+}
+
+/**
+ * Where a line from `p` meets a sampled curve square: the same search as the tangent one, on the
+ * dot product instead. Not a per-segment projection test — seen from near its centre of
+ * curvature, a whole run of a curve's segments would each pass that, the true foot among them.
+ * Needs samples close together along straight stretches too, so a corner's chord doesn't stand in
+ * for the edges either side of it.
+ */
+export function perpendicularFeetOnPolyline(p: Pt, poly: Pt[]): Pt[] {
+  if (poly.length < 3) return [];
+  return signChanges(poly, samplesAgainstPoint(p, poly, (v, d) => v.x * d.x + v.y * d.y));
+}
+
+function signChanges(poly: Pt[], f: number[]): Pt[] {
+  const n = poly.length;
+  const out: Pt[] = [];
+  for (let i = 0; i < n - 1; i++) {
+    if (f[i] === 0) continue;
+    // a zero on a sample only counts if the sign really changes across it
+    if (f[i + 1] === 0) {
+      if (i + 2 < n && f[i + 2] !== 0 && Math.sign(f[i + 2]) !== Math.sign(f[i])) out.push(poly[i + 1]);
+      continue;
+    }
+    if (Math.sign(f[i]) === Math.sign(f[i + 1])) continue;
+    const t = f[i] / (f[i] - f[i + 1]);
+    out.push({ x: poly[i].x + (poly[i + 1].x - poly[i].x) * t, y: poly[i].y + (poly[i + 1].y - poly[i].y) * t });
+  }
+  return out;
+}
+
+/** The stretch of an open polyline from length `a` to length `b`, walked in that order — so
+ * `b < a` comes back reversed. */
+export function slicePolyline(poly: Pt[], cum: number[], a: number, b: number): Pt[] {
+  const lo = Math.min(a, b), hi = Math.max(a, b);
+  const out = [pointAtPolylineLength(poly, cum, lo)];
+  for (let i = 0; i < poly.length; i++) {
+    if (cum[i] > lo && cum[i] < hi) out.push(poly[i]);
+  }
+  out.push(pointAtPolylineLength(poly, cum, hi));
+  return b < a ? out.reverse() : out;
+}
+
 // ===== Curve math =====
 
 /**
@@ -276,6 +371,64 @@ export function solveCatenaryA(H: number, L: number): number {
   const a = (lo + hi) / 2;
   lastCatenary = { H, L, a };
   return a;
+}
+
+// The fair curve a thin even strip takes bent through pins, as cubic Bézier spans [from, c1, c2, to].
+// A spline parametrised by length along the strip with free ends (no bend past the end pins),
+// or wrapped round for a loop. Each pass re-fits against the length the last pass actually ran
+// between pins, which moves it off the chord-length first guess towards the strip's own shape.
+export function battenBeziers(pins: Pt[], closed: boolean): [Pt, Pt, Pt, Pt][] {
+  const pts = pins.filter((p, i) => i === 0 || Math.hypot(p.x - pins[i - 1].x, p.y - pins[i - 1].y) > 1e-9);
+  if (closed && pts.length > 1 && Math.hypot(pts[0].x - pts[pts.length - 1].x, pts[0].y - pts[pts.length - 1].y) < 1e-9) pts.pop();
+  if (pts.length < 2) return [];
+  const loop = closed && pts.length >= 3;
+  const spans = loop ? pts.length : pts.length - 1;
+  const knot = (i: number) => pts[i % pts.length];
+  if (spans === 1) {
+    const [a, b] = pts;
+    return [[a, { x: a.x + (b.x - a.x) / 3, y: a.y + (b.y - a.y) / 3 }, { x: a.x + 2 * (b.x - a.x) / 3, y: a.y + 2 * (b.y - a.y) / 3 }, b]];
+  }
+
+  const slopes = (h: number[], values: number[]): number[] => {
+    const delta = h.map((hi, i) => (values[(i + 1) % values.length] - values[i]) / hi);
+    if (!loop) return naturalSplineSlopes(h, delta);
+    const n = values.length;
+    const rows = Array.from({ length: n }, () => new Array<number>(n).fill(0));
+    const rhs = new Array<number>(n).fill(0);
+    for (let i = 0; i < n; i++) {
+      const prev = (i + n - 1) % n;
+      rows[i][prev] += 1 / h[prev];
+      rows[i][i] += 2 * (1 / h[prev] + 1 / h[i]);
+      rows[i][(i + 1) % n] += 1 / h[i];
+      rhs[i] = 3 * (delta[prev] / h[prev] + delta[i] / h[i]);
+    }
+    return solveDense(rows, rhs) ?? new Array<number>(n).fill(0);
+  };
+
+  let h = Array.from({ length: spans }, (_, i) => Math.hypot(knot(i + 1).x - knot(i).x, knot(i + 1).y - knot(i).y));
+  let beziers: [Pt, Pt, Pt, Pt][] = [];
+  for (let pass = 0; pass < 4; pass++) {
+    const mx = slopes(h, pts.map(p => p.x)), my = slopes(h, pts.map(p => p.y));
+    beziers = h.map((hi, i) => {
+      const j = (i + 1) % pts.length;
+      const a = knot(i), b = knot(i + 1);
+      return [a, { x: a.x + mx[i] * hi / 3, y: a.y + my[i] * hi / 3 }, { x: b.x - mx[j] * hi / 3, y: b.y - my[j] * hi / 3 }, b];
+    });
+    h = beziers.map(([a, c1, c2, b]) => {
+      let len = 0, prev = a;
+      for (let k = 1; k <= 16; k++) {
+        const t = k / 16, s = 1 - t;
+        const p = {
+          x: s * s * s * a.x + 3 * s * s * t * c1.x + 3 * s * t * t * c2.x + t * t * t * b.x,
+          y: s * s * s * a.y + 3 * s * s * t * c1.y + 3 * s * t * t * c2.y + t * t * t * b.y,
+        };
+        len += Math.hypot(p.x - prev.x, p.y - prev.y);
+        prev = p;
+      }
+      return len;
+    });
+  }
+  return beziers;
 }
 
 /** Piecewise cubic Hermite through `zs` with knot slopes `m` — the shared tail of both splines below. */

@@ -1,11 +1,11 @@
-import { defineFholePath, defineFlutingArcs, defineFlutingPath, defineInnerPath, defineInsetPath, defineOffsetArcs, defineOuterPath, defineOuterPurflingPath, definePurflingPath, violNeckCap } from './ceruti-paths';
+import { defineFholePath, defineOneFholePath, defineFlutingArcs, defineFlutingPath, defineInnerPath, defineInsetPath, defineOffsetArcs, defineOuterPath, defineOuterPurflingPath, definePurflingPath, violNeckCap } from './ceruti-paths';
 import { defaultViolin, layoutFrom, templateKeys, templateViolin, violinFromRecipe } from './ceruti-fixtures';
 import { calculateFholeContours, calculateOuterArcs } from './ceruti-calcs';
 import { channelPaths, defaultFlutingParams } from './ceruti-arch-geometry';
 import { defaultFHolePlacement } from './panels/f-hole-placement-panel/f-hole-placement-panel';
 import { EnricoCerutiParams, FlutingParams } from './ceruti-types';
 import { closestPointOnSegment, lineCircleIntersection, lineFromTwoPoints, offsetArcRadius, pointInPolygon, pointOnCircle } from '../helpers/math/simpleGeometry';
-import { samplePathToPolyline } from '../helpers/math/pathMath';
+import { samplePathToPolyline, splitPathStrings } from '../helpers/math/pathMath';
 import { Pt, Rectangle } from '../models/types';
 import { setGlobalEmitter } from '../shared/message-emitter';
 import ravatinMansParams from './templates/test-fixtures/ravatin-mans-params.json';
@@ -104,6 +104,15 @@ describe('the f-hole outline', () => {
     calculateFholeContours(p);
 
     expect(subpaths(defineFholePath(p))).toBe(2);
+  });
+
+  it('splits back into one path per hole, each a single loop', () => {
+    const p = defaultViolin();
+    p.fHoles = defaultFHolePlacement(p);
+    calculateFholeContours(p);
+
+    const holes = splitPathStrings(defineFholePath(p));
+    expect(holes).toEqual([defineOneFholePath(p, false), defineOneFholePath(p, true)]);
   });
 
   it('mirrors the treble-side hole onto the bass side', () => {

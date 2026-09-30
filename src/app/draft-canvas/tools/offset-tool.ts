@@ -1,17 +1,19 @@
 import * as d3 from 'd3';
 import { Arc, Circle, Pt, Rectangle } from '../../models/types';
 import { dist, lineFromTwoPoints, offsetArcRadius, offsetCircleRadius, offsetRectangle, pointOnCircle, tangentUnitVectorFromLine } from '../../helpers/math/simpleGeometry';
-import { arcPathData } from '../../helpers/math/pathMath';
+import { arcPathData, offsetPath } from '../../helpers/math/pathMath';
+import { polylineCumulativeLengths, projectOntoPolyline } from '../../helpers/math/vibeMath';
 import { DraftTool, DraftToolHost } from './draft-tool';
 import { DraftShape, makeShapeId } from './toolbox-shape';
 import { PREVIEW_COLOR, stylePreview } from './two-point-tool';
+import { shapeCurves } from './curve-tools';
 
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 
 /** The shape types with a defined offset. Section/text/point have no meaningful parallel copy,
  * so they're filtered out of the selection rather than silently ignored downstream. */
 function supportedShapes(shapes: DraftShape[]): DraftShape[] {
-  return shapes.filter(s => s.type === 'arc' || s.type === 'circle' || s.type === 'line' || s.type === 'rect');
+  return shapes.filter(s => s.type === 'arc' || s.type === 'circle' || s.type === 'line' || s.type === 'rect' || s.type === 'path');
 }
 
 /**
@@ -43,7 +45,30 @@ function signedOffsetMetric(shape: DraftShape, pt: Pt): { abs: number; signed: n
     const inside = Math.min(pt.x - x0, x1 - pt.x, pt.y - y0, y1 - pt.y);
     return { abs: inside, signed: -inside };
   }
+  if (shape.type === 'path') {
+    let best: { abs: number; signed: number } | null = null;
+    for (const { points, closed } of shapeCurves(shape)) {
+      const cum = polylineCumulativeLengths(points);
+      const foot = projectOntoPolyline(pt, points, cum);
+      if (best && foot.dist >= best.abs) continue;
+      const i = Math.max(0, Math.min(points.length - 2, cum.findIndex(c => c >= foot.s) - 1));
+      const a = points[i], b = points[i + 1];
+      const right = (b.x - a.x) * (pt.y - a.y) - (b.y - a.y) * (pt.x - a.x) < 0;
+      let signed = right ? foot.dist : -foot.dist;
+      // a loop drawn clockwise has its outside on the left
+      if (closed && polygonArea(points) < 0) signed = -signed;
+      best = { abs: foot.dist, signed };
+    }
+    return best;
+  }
   return null;
+}
+
+function polygonArea(points: Pt[]): number {
+  return points.reduce((sum, p, i) => {
+    const q = points[(i + 1) % points.length];
+    return sum + p.x * q.y - q.x * p.y;
+  }, 0);
 }
 
 /** The nearest selected shape to `pt`, plus that shape's own raw signed offset metric. */
@@ -72,9 +97,20 @@ function boundaryPoints(shape: DraftShape): { pt: Pt; tangentAngle: number }[] |
       { pt: pointOnCircle({ ...shape.center, r: shape.radius }, shape.endAngle), tangentAngle: shape.endAngle + Math.PI / 2 },
     ];
   }
+  // a line's positive side is fixed by its slope, not by which end it was drawn from, so its
+  // direction here is the one that side is the right of
   if (shape.type === 'line') {
-    const angle = Math.atan2(shape.end.y - shape.start.y, shape.end.x - shape.start.x);
+    if (dist(shape.start, shape.end) < 1e-9) return null;
+    const normal = tangentUnitVectorFromLine(lineFromTwoPoints(shape.start, shape.end));
+    const angle = Math.atan2(normal.a, -normal.b);
     return [{ pt: shape.start, tangentAngle: angle }, { pt: shape.end, tangentAngle: angle }];
+  }
+  if (shape.type === 'path') {
+    const curves = shapeCurves(shape);
+    if (curves.length !== 1 || curves[0].closed) return null;
+    const pts = curves[0].points, n = pts.length;
+    const along = (a: Pt, b: Pt) => Math.atan2(b.y - a.y, b.x - a.x);
+    return [{ pt: pts[0], tangentAngle: along(pts[0], pts[1]) }, { pt: pts[n - 1], tangentAngle: along(pts[n - 2], pts[n - 1]) }];
   }
   return null;
 }
@@ -149,6 +185,10 @@ function tryOffsetShape(shape: DraftShape, distance: number): DraftShape | null 
     if (shape.type === 'rect') {
       const rect = offsetRectangle(new Rectangle(new Pt(shape.p1.x, shape.p1.y), new Pt(shape.p2.x, shape.p2.y)), distance);
       return { id: makeShapeId(), type: 'rect', p1: { x: rect.Pt1.x, y: rect.Pt1.y }, p2: { x: rect.Pt2.x, y: rect.Pt2.y } };
+    }
+    if (shape.type === 'path') {
+      const d = offsetPath(shape.d, distance);
+      return d ? { id: makeShapeId(), type: 'path', d } : null;
     }
   } catch {
     return null;
@@ -323,6 +363,8 @@ export class OffsetTool implements DraftTool {
       stylePreview(gRoot.append('rect')
         .attr('x', Math.min(shape.p1.x, shape.p2.x)).attr('y', Math.min(shape.p1.y, shape.p2.y))
         .attr('width', Math.abs(shape.p2.x - shape.p1.x)).attr('height', Math.abs(shape.p2.y - shape.p1.y)));
+    } else if (shape.type === 'path') {
+      stylePreview(gRoot.append('path').attr('d', shape.d));
     }
   }
 }

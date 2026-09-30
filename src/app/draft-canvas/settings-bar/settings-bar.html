@@ -97,6 +97,21 @@
     </span>
   }
 
+  @if (showCycloidPanel) {
+    <span class="point-group">
+      <span class="field"><span class="f-lbl">Factor %</span>
+        <input type="number" min="0" max="100" step="5" [value]="cycloidFactorPct"
+          (change)="setCycloidFactorPct($any($event.target).valueAsNumber)" (keydown.enter)="$any($event.target).blur()"
+          title="How far out on the rolling circle the drawing point sits — 100 is a true cycloid, 0 a plain cosine hump" />
+      </span>
+      <span class="field"><span class="f-lbl">Percent</span>
+        <input type="number" min="5" max="150" step="1" [value]="cycloidPct"
+          (change)="setCycloidPct($any($event.target).valueAsNumber)" (keydown.enter)="$any($event.target).blur()"
+          title="How much of the full arch spans the chord — below 100 trims the flat ends so it meets the chord at an angle, above 100 curls them under it" />
+      </span>
+    </span>
+  }
+
   @if (showTextPanel) {
     @if (showTextShapeFields) {
       <!-- A textarea, not an input: an <input> silently strips the newlines out of its value, so

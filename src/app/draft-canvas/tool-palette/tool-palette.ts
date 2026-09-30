@@ -11,9 +11,9 @@ import { SelectionActions } from '../tools/selection-actions';
  * turns), which activates instead. */
 type SelectionCommand = { id: string; label: string; enabled: () => boolean; run: () => void; tool?: DraftTool };
 
-/** One Bench-tab row: a tool slot, or a group of commands behind one button, facing out whichever
- * was last used the way a tool flyout does. */
-type ModifyRow = { slot?: ToolSlot; commands?: SelectionCommand[] };
+/** One Bench-tab row: a tool slot, or a named group of commands behind one button, facing out
+ * whichever was last used the way a tool flyout does. */
+type ModifyRow = { slot?: ToolSlot; label?: string; commands?: SelectionCommand[] };
 
 /**
  * The docked drafting toolbox: nothing but tool selection. Per-shape-type settings live in the
@@ -66,7 +66,10 @@ export class ToolPaletteComponent implements OnInit, AfterViewInit, OnDestroy {
     const reorder = () => a.canReorder;
     return [
       slot('move'),
+      slot('scale'),
+      slot('offset'),
       {
+        label: 'Mirror',
         commands: [
           cmd('flip-h', 'Flip Horizontal', mirror, () => a.mirror('horizontal')),
           cmd('flip-v', 'Flip Vertical', mirror, () => a.mirror('vertical')),
@@ -75,14 +78,15 @@ export class ToolPaletteComponent implements OnInit, AfterViewInit, OnDestroy {
         ],
       },
       {
+        label: 'Rotate',
         commands: [
           tool('rotate'),
           cmd('rotate-ccw', 'Rotate Left', transform, () => a.rotate90('ccw')),
           cmd('rotate-cw', 'Rotate Right', transform, () => a.rotate90('cw')),
         ],
       },
-      slot('scale'),
       {
+        label: 'Align & Distribute',
         commands: [
           cmd('align-left', 'Align Left', align, () => a.align('left')),
           cmd('align-centre', 'Align Centre', align, () => a.align('centre')),
@@ -95,18 +99,19 @@ export class ToolPaletteComponent implements OnInit, AfterViewInit, OnDestroy {
         ],
       },
       {
+        label: 'Stacking Order',
         commands: [
           cmd('front', 'To Front', reorder, () => a.reorder('front')),
           cmd('back', 'To Back', reorder, () => a.reorder('back')),
         ],
       },
       {
+        label: 'Group',
         commands: [
           cmd('group', 'Group', () => a.canGroup, () => a.group()),
           cmd('ungroup', 'Ungroup', () => a.canUngroup, () => a.ungroup()),
         ],
       },
-      slot('offset'),
     ];
   })();
 
@@ -289,6 +294,8 @@ export class ToolPaletteComponent implements OnInit, AfterViewInit, OnDestroy {
   variantsOf(slot: ToolSlot): DraftTool[] { return this.toolRegistry.variantsOf(slot); }
 
   hasVariants(slot: ToolSlot): boolean { return this.toolRegistry.hasVariants(slot); }
+
+  groupLabel(slot: ToolSlot): string | null { return this.toolRegistry.groupLabel(slot); }
 
   /** Activates whichever tool the slot's button is currently showing. */
   activateSlot(slot: ToolSlot): void {

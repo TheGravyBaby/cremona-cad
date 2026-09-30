@@ -3,7 +3,7 @@ import * as polygonClipping from 'polygon-clipping';
 import { svgPathProperties } from 'svg-path-properties';
 import { clamp, dist, angleFromCenter, normalizeRadians, pointOnCircle, intersectLines, lineCircleIntersection, lineFromTwoPoints, flipArcAboutY, flipPointAboutY } from './simpleGeometry';
 import { circleCircleIntersections } from './draftMath';
-import { solveCatenaryA, makeMonotoneSpline } from './vibeMath';
+import { solveCatenaryA, makeMonotoneSpline, battenBeziers } from './vibeMath';
 
 // This file holds everything oriented around building, combining, and boolean-diffing
 // SVG path *strings* — as opposed to draftMath.ts, which works with plain geometric
@@ -102,6 +102,10 @@ export function pathFromRect(R: Rectangle): string {
   return `M ${Pt1.x} ${Pt1.y} L ${Pt2.x} ${Pt1.y} L ${Pt2.x} ${Pt2.y} L ${Pt1.x} ${Pt2.y} Z`;
 }
 
+export function pathFromPolygon(points: Pt[]): string {
+  return `M ${points.map(p => `${p.x} ${p.y}`).join(' L ')} Z`;
+}
+
 export function pathFromArc(arc: Arc): string {
   const startPt = pointOnCircle(arc, arc.start);
   const endPt = pointOnCircle(arc, arc.end);
@@ -195,6 +199,11 @@ export function flipLineAboutYAxis(P1: Pt, P2: Pt): string {
 // ====== PATH COMBINATIONS ======
 export function combinePathStrings(paths: string[]): string {
   return paths.map(p => p.trim()).join(' ');
+}
+
+// only undoes combinePathStrings on absolute-coordinate pieces: a relative `m` would lose its origin
+export function splitPathStrings(path: string): string[] {
+  return path.split(/(?=M)/).map(p => p.trim()).filter(Boolean);
 }
 
 export function unifyTwoConnectedPaths(path1: string, path2: string): string {
@@ -929,6 +938,322 @@ export function transformPath(path: string, m: Matrix2D): string {
   return out.join(' ');
 }
 
+type PathPiece =
+  | { kind: 'line'; a: Pt; b: Pt }
+  | { kind: 'arc'; c: Pt; r: number; t0: number; dt: number }
+  | { kind: 'cubic'; a: Pt; c1: Pt; c2: Pt; b: Pt };
+
+const lerpPt = (a: Pt, b: Pt, t: number): Pt => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+
+function pieceAt(p: PathPiece, t: number): Pt {
+  if (p.kind === 'line') return lerpPt(p.a, p.b, t);
+  if (p.kind === 'arc') return pointOnCircle({ ...p.c, r: p.r }, p.t0 + p.dt * t);
+  const s = 1 - t;
+  return {
+    x: s * s * s * p.a.x + 3 * s * s * t * p.c1.x + 3 * s * t * t * p.c2.x + t * t * t * p.b.x,
+    y: s * s * s * p.a.y + 3 * s * s * t * p.c1.y + 3 * s * t * t * p.c2.y + t * t * t * p.b.y,
+  };
+}
+
+function pieceVelocity(p: PathPiece, t: number): Pt {
+  if (p.kind === 'line') return { x: p.b.x - p.a.x, y: p.b.y - p.a.y };
+  if (p.kind === 'arc') {
+    const th = p.t0 + p.dt * t;
+    return { x: -p.dt * p.r * Math.sin(th), y: p.dt * p.r * Math.cos(th) };
+  }
+  const s = 1 - t;
+  return {
+    x: 3 * (s * s * (p.c1.x - p.a.x) + 2 * s * t * (p.c2.x - p.c1.x) + t * t * (p.b.x - p.c2.x)),
+    y: 3 * (s * s * (p.c1.y - p.a.y) + 2 * s * t * (p.c2.y - p.c1.y) + t * t * (p.b.y - p.c2.y)),
+  };
+}
+
+// a cubic whose control point sits on its end has no velocity there, so step inside for the direction
+function pieceTangent(p: PathPiece, t: number): Pt {
+  let v = pieceVelocity(p, t);
+  if (Math.hypot(v.x, v.y) < 1e-12) v = pieceVelocity(p, t < 0.5 ? t + 1e-4 : t - 1e-4);
+  const len = Math.hypot(v.x, v.y) || 1;
+  return { x: v.x / len, y: v.y / len };
+}
+
+function splitPiece(p: PathPiece, t: number): [PathPiece, PathPiece] {
+  if (p.kind === 'line') {
+    const m = lerpPt(p.a, p.b, t);
+    return [{ kind: 'line', a: p.a, b: m }, { kind: 'line', a: m, b: p.b }];
+  }
+  if (p.kind === 'arc') return [{ ...p, dt: p.dt * t }, { ...p, t0: p.t0 + p.dt * t, dt: p.dt * (1 - t) }];
+  const ab = lerpPt(p.a, p.c1, t), bc = lerpPt(p.c1, p.c2, t), cd = lerpPt(p.c2, p.b, t);
+  const abc = lerpPt(ab, bc, t), bcd = lerpPt(bc, cd, t), m = lerpPt(abc, bcd, t);
+  return [{ kind: 'cubic', a: p.a, c1: ab, c2: abc, b: m }, { kind: 'cubic', a: m, c1: bcd, c2: cd, b: p.b }];
+}
+
+// absolute M/L/H/V/C/Q/A/Z, the forms the toolbox stores; null for anything else (relative
+// commands, elliptical arcs) rather than offsetting it wrongly
+function pathPieces(d: string): { pieces: PathPiece[]; closed: boolean }[] | null {
+  const subpaths: { pieces: PathPiece[]; closed: boolean }[] = [];
+  let pieces: PathPiece[] = [];
+  let cur: Pt = { x: 0, y: 0 }, start = cur;
+  const finish = (closed: boolean) => {
+    if (pieces.length) subpaths.push({ pieces, closed });
+    pieces = [];
+  };
+  const add = (p: PathPiece, end: Pt) => {
+    if (dist(cur, end) > 1e-9 || (p.kind === 'cubic' && dist(p.a, p.c1) + dist(p.c1, p.c2) > 1e-9)) pieces.push(p);
+    cur = end;
+  };
+  for (const [, cmd, args] of d.matchAll(/([A-DF-Za-df-z])([^A-DF-Za-df-z]*)/g)) {
+    const n = (args.match(/-?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?/gi) ?? []).map(Number);
+    switch (cmd) {
+      case 'M':
+        finish(false);
+        cur = start = { x: n[0], y: n[1] };
+        for (let i = 2; i + 1 < n.length; i += 2) add({ kind: 'line', a: cur, b: { x: n[i], y: n[i + 1] } }, { x: n[i], y: n[i + 1] });
+        break;
+      case 'L':
+        for (let i = 0; i + 1 < n.length; i += 2) add({ kind: 'line', a: cur, b: { x: n[i], y: n[i + 1] } }, { x: n[i], y: n[i + 1] });
+        break;
+      case 'H':
+        for (const x of n) add({ kind: 'line', a: cur, b: { x, y: cur.y } }, { x, y: cur.y });
+        break;
+      case 'V':
+        for (const y of n) add({ kind: 'line', a: cur, b: { x: cur.x, y } }, { x: cur.x, y });
+        break;
+      case 'C':
+        for (let i = 0; i + 5 < n.length; i += 6) {
+          const b = { x: n[i + 4], y: n[i + 5] };
+          add({ kind: 'cubic', a: cur, c1: { x: n[i], y: n[i + 1] }, c2: { x: n[i + 2], y: n[i + 3] }, b }, b);
+        }
+        break;
+      case 'Q':
+        for (let i = 0; i + 3 < n.length; i += 4) {
+          const q = { x: n[i], y: n[i + 1] }, b = { x: n[i + 2], y: n[i + 3] };
+          add({ kind: 'cubic', a: cur, c1: lerpPt(cur, q, 2 / 3), c2: lerpPt(b, q, 2 / 3), b }, b);
+        }
+        break;
+      case 'A':
+        for (let i = 0; i + 6 < n.length; i += 7) {
+          const [rx, ry, , large, sweep] = n.slice(i, i + 5);
+          const b = { x: n[i + 5], y: n[i + 6] };
+          if (dist(cur, b) < 1e-9) continue;
+          if (rx === 0 || ry === 0) {
+            add({ kind: 'line', a: cur, b }, b);
+            continue;
+          }
+          if (Math.abs(rx - ry) > 1e-6 * Math.max(rx, ry)) return null;
+          const r = Math.max(Math.abs(rx), dist(cur, b) / 2);
+          const c = arcCenterFromEndpoints(cur, b, r, large, sweep);
+          const t0 = Math.atan2(cur.y - c.y, cur.x - c.x), t1 = Math.atan2(b.y - c.y, b.x - c.x);
+          const dt = sweep ? normalizeRadians(t1 - t0) || 2 * Math.PI : -(normalizeRadians(t0 - t1) || 2 * Math.PI);
+          add({ kind: 'arc', c, r, t0, dt }, b);
+        }
+        break;
+      case 'Z':
+      case 'z':
+        add({ kind: 'line', a: cur, b: start }, start);
+        finish(true);
+        break;
+      default:
+        return null;
+    }
+  }
+  finish(false);
+  return subpaths;
+}
+
+function pieceToPath(p: PathPiece): string {
+  const b = pieceAt(p, 1);
+  if (p.kind === 'line') return `L ${b.x} ${b.y}`;
+  if (p.kind === 'arc') return `A ${p.r} ${p.r} 0 ${Math.abs(p.dt) > Math.PI ? 1 : 0} ${p.dt > 0 ? 1 : 0} ${b.x} ${b.y}`;
+  return `C ${p.c1.x} ${p.c1.y} ${p.c2.x} ${p.c2.y} ${b.x} ${b.y}`;
+}
+
+const leftOf = (t: Pt): Pt => ({ x: -t.y, y: t.x });
+
+function cubicCurvature(p: PathPiece & { kind: 'cubic' }, t: number): number {
+  const v = pieceVelocity(p, t);
+  const speed = Math.hypot(v.x, v.y);
+  if (speed < 1e-9) return 0;
+  const s = 1 - t;
+  const acc = {
+    x: 6 * (s * (p.c2.x - 2 * p.c1.x + p.a.x) + t * (p.b.x - 2 * p.c2.x + p.c1.x)),
+    y: 6 * (s * (p.c2.y - 2 * p.c1.y + p.a.y) + t * (p.b.y - 2 * p.c2.y + p.c1.y)),
+  };
+  return (v.x * acc.y - v.y * acc.x) / (speed * speed * speed);
+}
+
+// `left` to the left of travel. A line shifts and an arc keeps its centre, both exactly; a cubic
+// is rebuilt from pieces carrying the offset's own tangent, which runs parallel to the original's
+// and is scaled by 1 − left·κ — the factor that reaching zero means the offset has folded.
+function offsetPiece(p: PathPiece, left: number): PathPiece[] | null {
+  if (p.kind === 'line') {
+    const n = leftOf(pieceTangent(p, 0));
+    return [{ kind: 'line', a: { x: p.a.x + n.x * left, y: p.a.y + n.y * left }, b: { x: p.b.x + n.x * left, y: p.b.y + n.y * left } }];
+  }
+  if (p.kind === 'arc') {
+    const r = p.r - Math.sign(p.dt) * left;
+    return r > 1e-9 ? [{ ...p, r }] : null;
+  }
+  const SAMPLES = 64;
+  let turning = 0;
+  let prev = pieceTangent(p, 0);
+  for (let i = 1; i <= SAMPLES; i++) {
+    const t = i / SAMPLES;
+    if (1 - left * cubicCurvature(p, t) <= 1e-9) return null;
+    const next = pieceTangent(p, t);
+    turning += Math.abs(Math.atan2(prev.x * next.y - prev.y * next.x, prev.x * next.x + prev.y * next.y));
+    prev = next;
+  }
+  if (1 - left * cubicCurvature(p, 0) <= 1e-9) return null;
+  const count = Math.min(32, Math.max(2, Math.ceil(turning / (Math.PI / 16))));
+  const at = (t: number) => {
+    const pt = pieceAt(p, t), n = leftOf(pieceTangent(p, t));
+    const v = pieceVelocity(p, t), k = 1 - left * cubicCurvature(p, t);
+    return { pt: { x: pt.x + n.x * left, y: pt.y + n.y * left }, v: { x: v.x * k, y: v.y * k } };
+  };
+  const out: PathPiece[] = [];
+  for (let i = 0; i < count; i++) {
+    const t0 = i / count, t1 = (i + 1) / count, h = (t1 - t0) / 3;
+    const q0 = at(t0), q1 = at(t1);
+    out.push({
+      kind: 'cubic', a: q0.pt, b: q1.pt,
+      c1: { x: q0.pt.x + q0.v.x * h, y: q0.pt.y + q0.v.y * h },
+      c2: { x: q1.pt.x - q1.v.x * h, y: q1.pt.y - q1.v.y * h },
+    });
+  }
+  return out;
+}
+
+// where the end of chain `x` first crosses the start of chain `y`, walking out from the corner
+// they share; sampled to find it, then settled by Newton on the two pieces
+function trimAtCrossing(x: PathPiece[], y: PathPiece[]): [PathPiece[], PathPiece[]] | null {
+  const segments = (chain: PathPiece[]) => chain.flatMap((p, piece) => {
+    const steps = p.kind === 'line' ? 1 : 24;
+    return Array.from({ length: steps }, (_, k) => ({
+      piece, t0: k / steps, t1: (k + 1) / steps, a: pieceAt(p, k / steps), b: pieceAt(p, (k + 1) / steps),
+    }));
+  });
+  const xs = segments(x), ys = segments(y);
+  const lengths = (segs: typeof xs) => segs.map(s => dist(s.a, s.b));
+  const xLen = lengths(xs), yLen = lengths(ys);
+  const xFromEnd = xLen.map((_, i) => xLen.slice(i + 1).reduce((a, b) => a + b, 0));
+  const yFromStart = yLen.map((_, i) => yLen.slice(0, i).reduce((a, b) => a + b, 0));
+
+  const boxes = (chain: PathPiece[], segs: typeof xs) => chain.map((_, piece) => {
+    const pts = segs.filter(s => s.piece === piece).flatMap(s => [s.a, s.b]);
+    const px = pts.map(p => p.x), py = pts.map(p => p.y);
+    return { x0: Math.min(...px), x1: Math.max(...px), y0: Math.min(...py), y1: Math.max(...py) };
+  });
+  const xBox = boxes(x, xs), yBox = boxes(y, ys);
+
+  let best: { i: number; j: number; u: number; v: number; score: number } | null = null;
+  for (let i = 0; i < xs.length; i++) {
+    const p = xs[i], r = { x: p.b.x - p.a.x, y: p.b.y - p.a.y }, bx = xBox[p.piece];
+    for (let j = 0; j < ys.length; j++) {
+      const q = ys[j], by = yBox[q.piece];
+      if (bx.x1 < by.x0 - 1e-9 || by.x1 < bx.x0 - 1e-9 || bx.y1 < by.y0 - 1e-9 || by.y1 < bx.y0 - 1e-9) continue;
+      const s = { x: q.b.x - q.a.x, y: q.b.y - q.a.y };
+      const den = r.x * s.y - r.y * s.x;
+      if (Math.abs(den) < 1e-15) continue;
+      const w = { x: q.a.x - p.a.x, y: q.a.y - p.a.y };
+      const u = (w.x * s.y - w.y * s.x) / den, v = (w.x * r.y - w.y * r.x) / den;
+      if (u < -1e-9 || u > 1 + 1e-9 || v < -1e-9 || v > 1 + 1e-9) continue;
+      const score = xFromEnd[i] + (1 - u) * xLen[i] + yFromStart[j] + v * yLen[j];
+      if (!best || score < best.score) best = { i, j, u, v, score };
+    }
+  }
+  if (!best) return null;
+
+  const sx = xs[best.i], sy = ys[best.j];
+  const px = x[sx.piece], py = y[sy.piece];
+  let tx = sx.t0 + best.u * (sx.t1 - sx.t0), ty = sy.t0 + best.v * (sy.t1 - sy.t0);
+  for (let k = 0; k < 8; k++) {
+    const a = pieceAt(px, tx), b = pieceAt(py, ty);
+    const fx = a.x - b.x, fy = a.y - b.y;
+    if (Math.hypot(fx, fy) < 1e-12) break;
+    const va = pieceVelocity(px, tx), vb = pieceVelocity(py, ty);
+    const det = -va.x * vb.y + va.y * vb.x;
+    if (Math.abs(det) < 1e-15) break;
+    tx = Math.min(1, Math.max(0, tx - (-fx * vb.y + fy * vb.x) / det));
+    ty = Math.min(1, Math.max(0, ty - (va.x * fy - va.y * fx) / det));
+  }
+  return [
+    [...x.slice(0, sx.piece), splitPiece(px, tx)[0]],
+    [splitPiece(py, ty)[1], ...y.slice(sy.piece + 1)],
+  ];
+}
+
+const MITRE_LIMIT = 4;
+
+function offsetSubpath(pieces: PathPiece[], closed: boolean, left: number): PathPiece[] | null {
+  const chains: PathPiece[][] = [];
+  for (const p of pieces) {
+    const chain = offsetPiece(p, left);
+    if (!chain) return null;
+    chains.push(chain);
+  }
+  const joins: PathPiece[][] = chains.map(() => []);
+  const corners = closed ? pieces.length : pieces.length - 1;
+  for (let i = 0; i < corners; i++) {
+    const j = (i + 1) % pieces.length;
+    const tA = pieceTangent(pieces[i], 1), tB = pieceTangent(pieces[j], 0);
+    const cross = tA.x * tB.y - tA.y * tB.x, dot = tA.x * tB.x + tA.y * tB.y;
+    if (Math.abs(Math.atan2(cross, dot)) < 1e-3) continue;
+    // the offset on the inside of a turn overlaps itself, and is cut back to where its two sides cross
+    if (cross * left > 0 && Math.abs(cross) > 1e-9) {
+      if (i === j) return null;
+      const trimmed = trimAtCrossing(chains[i], chains[j]);
+      if (!trimmed) return null;
+      [chains[i], chains[j]] = trimmed;
+      continue;
+    }
+    const corner = pieceAt(pieces[i], 1);
+    const nA = leftOf(tA), nB = leftOf(tB);
+    const from = pieceAt(chains[i][chains[i].length - 1], 1), to = pieceAt(chains[j][0], 0);
+    const den = 1 + nA.x * nB.x + nA.y * nB.y;
+    const mitre = den > 1e-9
+      ? { x: corner.x + (nA.x + nB.x) * left / den, y: corner.y + (nA.y + nB.y) * left / den }
+      : null;
+    // past the limit a near-hairpin's point would run off to nowhere, so it is squared off instead
+    joins[i] = mitre && dist(mitre, corner) <= MITRE_LIMIT * Math.abs(left)
+      ? [{ kind: 'line', a: from, b: mitre }, { kind: 'line', a: mitre, b: to }]
+      : [{ kind: 'line', a: from, b: to }];
+  }
+  // a side trimmed away to nothing means the offset has shrunk through itself
+  if (chains.some(chain => chain.every(p => p.kind === 'arc' ? p.r * Math.abs(p.dt) < 1e-9 : dist(pieceAt(p, 0), pieceAt(p, 1)) < 1e-9))) return null;
+  return chains.flatMap((chain, i) => [...chain, ...joins[i]]);
+}
+
+/**
+ * A parallel copy of a path `distance` away: positive grows a closed loop and moves an open run to
+ * the right of its travel, the same side a positive offset takes an arc drawn counterclockwise.
+ * Corners are mitred. Null when the offset would fold over itself — an inward step deeper than
+ * a bend or past a corner's neighbours — or when the path holds something it can't offset.
+ */
+export function offsetPath(d: string, distance: number): string | null {
+  const subpaths = pathPieces(d);
+  if (!subpaths || subpaths.length === 0) return null;
+  const out: string[] = [];
+  for (const { pieces, closed } of subpaths) {
+    let left = -distance;
+    if (closed) {
+      const ring = pieces.flatMap(p => {
+        const steps = p.kind === 'line' ? 1 : 16;
+        return Array.from({ length: steps }, (_, k) => pieceAt(p, k / steps));
+      });
+      const area = ring.reduce((sum: number, p, k) => {
+        const q = ring[(k + 1) % ring.length];
+        return sum + p.x * q.y - q.x * p.y;
+      }, 0);
+      if (area < 0) left = distance;
+    }
+    const offset = offsetSubpath(pieces, closed, left);
+    if (!offset) return null;
+    const start = pieceAt(offset[0], 0);
+    out.push(`M ${start.x} ${start.y} ${offset.map(pieceToPath).join(' ')}${closed ? ' Z' : ''}`);
+  }
+  return out.join(' ');
+}
+
 /**
  * Rotates an absolute SVG path string 180° about the origin. Unlike a mirror, a
  * point rotation preserves concavity, so it re-orients a shape without flipping
@@ -1068,6 +1393,77 @@ export function buildCatenaryPath(
     pts.push(`${i === 0 ? 'M' : 'L'} ${xBase + sign * z} ${yStart + yLocal}`);
   }
   return pts.join(' ');
+}
+
+// a chain hung from start and end, its axis square to the chord and its lowest point `sag` off the
+// chord's middle — positive sags to the left of start→end. Cubic pieces with the curve's own
+// tangents at even steps of arc length, so a deep U is followed as closely at its steep ends as at
+// the bottom.
+export function catenaryBetween(start: Pt, end: Pt, sag: number, segments = 16): string {
+  const L = dist(start, end);
+  if (L < 1e-9 || Math.abs(sag) < 1e-9) return `M ${start.x} ${start.y} L ${end.x} ${end.y}`;
+  const h = L / 2;
+  const a = solveCatenaryA(Math.abs(sag), L);
+  const side = Math.sign(sag);
+  const t = { x: (end.x - start.x) / L, y: (end.y - start.y) / L };
+  const n = { x: -t.y, y: t.x };
+  const mid = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
+  const at = (u: number): Pt => {
+    const off = side * a * (Math.cosh(h / a) - Math.cosh(u / a));
+    return { x: mid.x + u * t.x + off * n.x, y: mid.y + u * t.y + off * n.y };
+  };
+  const slope = (u: number): Pt => {
+    const k = -side * Math.sinh(u / a);
+    return { x: t.x + k * n.x, y: t.y + k * n.y };
+  };
+  const sinhH = Math.sinh(h / a);
+  const us = Array.from({ length: segments + 1 }, (_, i) =>
+    i === 0 ? -h : i === segments ? h : a * Math.asinh(sinhH * (2 * i / segments - 1)));
+  const parts = [`M ${start.x} ${start.y}`];
+  for (let i = 0; i < segments; i++) {
+    const u0 = us[i], u1 = us[i + 1], du = (u1 - u0) / 3;
+    const p0 = at(u0), p1 = at(u1), d0 = slope(u0), d1 = slope(u1);
+    const last = i === segments - 1 ? end : p1;
+    parts.push(`C ${p0.x + d0.x * du} ${p0.y + d0.y * du} ${p1.x - d1.x * du} ${p1.y - d1.y * du} ${last.x} ${last.y}`);
+  }
+  return parts.join(' ');
+}
+
+export function battenPath(pins: Pt[], closed: boolean): string {
+  const spans = battenBeziers(pins, closed);
+  if (spans.length === 0) return pins.length ? `M ${pins[0].x} ${pins[0].y}` : '';
+  const cubics = spans.map(([, c1, c2, b]) => `C ${c1.x} ${c1.y} ${c2.x} ${c2.y} ${b.x} ${b.y}`);
+  return `M ${spans[0][0].x} ${spans[0][0].y} ${cubics.join(' ')}${closed && spans.length > 2 ? ' Z' : ''}`;
+}
+
+// the trochoid arch of trochoidNorm stood on the chord from start to end, its crown `depth` off the
+// chord's middle — positive to the left of start→end. Cubic pieces at even steps of the rolling
+// angle, which crowds them towards the ends where a full cycloid turns hardest.
+export function cycloidBetween(start: Pt, end: Pt, depth: number, factor: number, pct: number, segments = 24): string {
+  const L = dist(start, end);
+  if (L < 1e-9 || Math.abs(depth) < 1e-9) return `M ${start.x} ${start.y} L ${end.x} ${end.y}`;
+  const t = { x: (end.x - start.x) / L, y: (end.y - start.y) / L };
+  const n = { x: -t.y, y: t.x };
+  const t0 = (1 - pct) * Math.PI, t1 = 2 * Math.PI - t0;
+  const xSpan = (t1 - factor * Math.sin(t1)) - (t0 - factor * Math.sin(t0));
+  const zSpan = Math.cos(t0) + 1;
+  const at = (frac: number): Pt => {
+    const { x, z } = trochoidNorm(frac, factor, pct);
+    return { x: start.x + x * L * t.x + z * depth * n.x, y: start.y + x * L * t.y + z * depth * n.y };
+  };
+  const slope = (frac: number): Pt => {
+    const th = t0 + frac * (t1 - t0);
+    const dx = (1 - factor * Math.cos(th)) / xSpan * (t1 - t0) * L;
+    const dz = Math.sin(th) / zSpan * (t1 - t0) * depth;
+    return { x: dx * t.x + dz * n.x, y: dx * t.y + dz * n.y };
+  };
+  const parts = [`M ${start.x} ${start.y}`];
+  for (let i = 0; i < segments; i++) {
+    const f0 = i / segments, f1 = (i + 1) / segments, h = (f1 - f0) / 3;
+    const p0 = at(f0), p1 = i === segments - 1 ? end : at(f1), d0 = slope(f0), d1 = slope(f1);
+    parts.push(`C ${p0.x + d0.x * h} ${p0.y + d0.y * h} ${p1.x - d1.x * h} ${p1.y - d1.y * h} ${p1.x} ${p1.y}`);
+  }
+  return parts.join(' ');
 }
 
 /**

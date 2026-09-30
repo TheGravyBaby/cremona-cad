@@ -3,9 +3,11 @@ import { Matrix2D, applyMatrix, multiplyMatrices, parseSvgTransform, transformPa
 import { pointOnCircle, normalizeRadians } from '../../helpers/math/simpleGeometry';
 import { RecordedElement } from '../../helpers/layer-recorder';
 import {
-  DEFAULT_SHAPE_COLOR, DEFAULT_TEXT_SIZE_MM, DraftShape, TextShape, dimensionGeometry,
+  DEFAULT_SHAPE_COLOR, DEFAULT_TEXT_SIZE_MM, DraftShape, TextShape, angleSweep, dimensionGeometry,
 } from './toolbox-shape';
-import { SECTION_THICKNESS_MM, TEXT_LINE_HEIGHT_RATIO, freehandPathData, tickLengthMm } from './shape-renderer';
+import {
+  SECTION_THICKNESS_MM, TEXT_LINE_HEIGHT_RATIO, curveDivisions, freehandPathData, polylinePathData, tickLengthMm,
+} from './shape-renderer';
 import { composedTransform, shapeFromElement } from './scene-index';
 import { shapeBounds } from './shape-hit-test';
 
@@ -132,6 +134,36 @@ function shapeToSvg(shape: DraftShape): string {
       return `<g>${svgLine(geo.p1, geo.p2, style)}${svgLine(shape.start, geo.p1, style)}${svgLine(shape.end, geo.p2, style)}`
         + `${svgText(labelPos, label, 3, color, upright)}</g>`;
     }
+    case 'angle': {
+      const { startAngle, endAngle, sweep } = angleSweep(shape.vertex, shape.start, shape.end);
+      const style = stroke({ color });
+      const a = pointOnCircle({ ...shape.vertex, r: shape.radius }, startAngle);
+      const b = pointOnCircle({ ...shape.vertex, r: shape.radius }, endAngle);
+      const d = transformPath(`M ${a.x} ${a.y} A ${shape.radius} ${shape.radius} 0 ${sweep > Math.PI ? 1 : 0} 1 ${b.x} ${b.y}`, TO_SVG);
+      const labelPos = pointOnCircle({ ...shape.vertex, r: shape.radius + 2 }, startAngle + sweep / 2);
+      return `<g>${svgLine(shape.vertex, shape.start, style)}${svgLine(shape.vertex, shape.end, style)}<path${attr('d', d)}${style}/>`
+        + `${svgText(labelPos, `${(sweep * 180 / Math.PI).toFixed(1)}°`, 3, color, 0)}</g>`;
+    }
+    case 'curve-length': {
+      const [first, mid, last] = curveDivisions(shape.points, [1, 1]);
+      if (!mid) return '';
+      const style = stroke({ color });
+      const tick = (d: { at: Pt; normal: Pt }) => svgLine(
+        { x: d.at.x - d.normal.x, y: d.at.y - d.normal.y }, { x: d.at.x + d.normal.x, y: d.at.y + d.normal.y }, style);
+      const labelPos = { x: mid.at.x + mid.normal.x * 2, y: mid.at.y + mid.normal.y * 2 };
+      return `<g><path${attr('d', transformPath(polylinePathData(shape.points), TO_SVG))}${style}/>${tick(first)}${tick(last)}`
+        + `${svgText(labelPos, `${shape.length.toFixed(1)} mm`, 3, color, 0)}</g>`;
+    }
+    case 'curve-ticks': {
+      const divisions = curveDivisions(shape.points, shape.weights.filter(w => Number.isFinite(w) && w > 0));
+      if (divisions.length === 0) return '';
+      const style = stroke({ color });
+      const lengths = shape.points.slice(1).reduce((sum, p, i) => sum + Math.hypot(p.x - shape.points[i].x, p.y - shape.points[i].y), 0);
+      const half = tickLengthMm(lengths) / 2;
+      const ticks = divisions.map(({ at, normal }) => svgLine(
+        { x: at.x + normal.x * half, y: at.y + normal.y * half }, { x: at.x - normal.x * half, y: at.y - normal.y * half }, style));
+      return `<g><path${attr('d', transformPath(polylinePathData(shape.points), TO_SVG))}${style}/>${ticks.join('')}</g>`;
+    }
     case 'section': {
       const dx = shape.end.x - shape.start.x, dy = shape.end.y - shape.start.y;
       const len = Math.hypot(dx, dy);
@@ -207,7 +239,7 @@ function parseSvg(text: string): Document | null {
 }
 
 const KNOWN_TYPES = new Set<DraftShape['type']>([
-  'line', 'arc', 'circle', 'dimension', 'rect', 'section', 'ticks', 'text', 'point', 'freehand', 'path',
+  'line', 'arc', 'circle', 'dimension', 'angle', 'curve-length', 'curve-ticks', 'rect', 'section', 'ticks', 'text', 'point', 'freehand', 'path',
 ]);
 
 /**

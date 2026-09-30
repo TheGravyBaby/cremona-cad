@@ -5,8 +5,8 @@ import { UndoCoordinator } from '../../helpers/undoCoordinator';
 /**
  * The document-wide edit verbs — undo and redo, clipboard, file, duplicate, group, delete — as a
  * menu, and the only place they have buttons: a tablet has no Ctrl key, but a row of them on the
- * top bar was more chrome than a drawing wants. Shown by
- * the top bar's Edit button and by a right-click on the canvas; whoever shows it places it and
+ * top bar was more chrome than a drawing wants. Shown by a right-click on the canvas in Select
+ * mode (with a tool out, right-click cancels instead); whoever shows it places it and
  * listens for `done` to take it down. Holds the system-clipboard and file plumbing because only a
  * button's own gesture may touch either; the verbs themselves are SelectionActions'.
  */

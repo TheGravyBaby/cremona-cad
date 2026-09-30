@@ -1,12 +1,13 @@
 import * as d3 from 'd3';
 import { Pt } from '../../models/types';
 import {
-  DraftShape, DimensionShape, DEFAULT_SHAPE_COLOR, DEFAULT_IMAGE_OPACITY, DEFAULT_FREEHAND_WIDTH,
+  DraftShape, DimensionShape, AngleShape, CurveLengthShape, DEFAULT_SHAPE_COLOR, DEFAULT_IMAGE_OPACITY, DEFAULT_FREEHAND_WIDTH,
   DEFAULT_TEXT_SIZE_MM, ImageShape, TextShape,
-  dimensionGeometry, imageCenter, imageCorners, imageSourceBox, isCropped,
+  angleSweep, dimensionGeometry, imageCenter, imageCorners, imageSourceBox, isCropped,
 } from './toolbox-shape';
 import { pointOnCircle } from '../../helpers/math/simpleGeometry';
 import { arcPathData } from '../../helpers/math/pathMath';
+import { pointAtPolylineLength, polylineCumulativeLengths } from '../../helpers/math/vibeMath';
 import { GrabberKind } from './shape-grabbers';
 
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
@@ -61,6 +62,15 @@ export function drawShape(gRoot: RootGroup, gUI: RootGroup, shape: DraftShape, p
     }
     case 'dimension':
       drawDimension(gRoot, gUI, shape, color, pxPerMm);
+      break;
+    case 'angle':
+      drawAngle(gRoot, gUI, shape, color, pxPerMm);
+      break;
+    case 'curve-length':
+      drawCurveLength(gRoot, gUI, shape, color, pxPerMm);
+      break;
+    case 'curve-ticks':
+      drawCurveTicks(gRoot, shape.points, shape.weights, color);
       break;
     case 'rect': {
       const rect = gRoot.append('rect')
@@ -557,6 +567,160 @@ export function drawDimension(
   if (preview) text.style('pointer-events', 'none');
 }
 
+// the arms run out to the arc when it sits past the points measured; that overrun is only there
+// to carry the eye to the number, so it doesn't snap, while the arms up to those points do.
+// Exported for angle-tool.ts's preview, for the same reason drawDimension is.
+export function drawAngle(
+  gRoot: RootGroup, gUI: RootGroup, shape: Pick<AngleShape, 'vertex' | 'start' | 'end' | 'radius'>,
+  color: string, pxPerMm: number, preview = false,
+): void {
+  const { vertex, start, end, radius } = shape;
+
+  const stroke = <E extends d3.BaseType>(sel: d3.Selection<E, unknown, null, undefined>) => {
+    sel.attr('fill', 'none').attr('stroke', color).attr('stroke-width', 1).attr('vector-effect', 'non-scaling-stroke');
+    if (preview) sel.attr('stroke-dasharray', DASH_PATTERN).style('pointer-events', 'none');
+    return sel;
+  };
+  const segment = (a: Pt, b: Pt) => stroke(gRoot.append('line')
+    .attr('x1', a.x).attr('y1', a.y).attr('x2', b.x).attr('y2', b.y));
+
+  const { startAngle, endAngle, sweep } = angleSweep(vertex, start, end);
+  const reach = radius + DIM_EXT_OVERSHOOT_PX / pxPerMm;
+  for (const [arm, angle] of [[start, startAngle], [end, endAngle]] as const) {
+    segment(vertex, arm);
+    if (Math.hypot(arm.x - vertex.x, arm.y - vertex.y) < reach) {
+      segment(arm, pointOnCircle({ ...vertex, r: reach }, angle)).attr('data-no-snap', '');
+    }
+  }
+  if (sweep < 1e-6) return;
+
+  stroke(gRoot.append('path').attr('d', arcPathData(vertex, radius, startAngle, endAngle)));
+
+  // skipped on an arc too short to hold both heads without them overlapping
+  const arrowLen = DIM_ARROW_LEN_PX / pxPerMm;
+  const arrowHalfWidth = DIM_ARROW_HALF_WIDTH_PX / pxPerMm;
+  if (radius * sweep > arrowLen * 2.5) {
+    const arrow = (angle: number, turn: 1 | -1) => {
+      const tip = pointOnCircle({ ...vertex, r: radius }, angle);
+      const d = { x: -Math.sin(angle) * turn, y: Math.cos(angle) * turn };
+      const base = { x: tip.x - d.x * arrowLen, y: tip.y - d.y * arrowLen };
+      const wing = { x: -d.y * arrowHalfWidth, y: d.x * arrowHalfWidth };
+      const poly = gRoot.append('polygon')
+        .attr('points', `${tip.x},${tip.y} ${base.x + wing.x},${base.y + wing.y} ${base.x - wing.x},${base.y - wing.y}`)
+        .attr('fill', color)
+        .attr('data-no-snap', '');
+      if (preview) poly.style('pointer-events', 'none');
+    };
+    arrow(startAngle, -1);
+    arrow(endAngle, 1);
+  }
+
+  // level rather than turned along the arc, anchored on the side facing away from the vertex so
+  // the number grows outward instead of back across the arc
+  const bisector = startAngle + sweep / 2;
+  const at = pointOnCircle({ ...vertex, r: radius + DIM_TEXT_GAP_PX / pxPerMm }, bisector);
+  const cos = Math.cos(bisector);
+  const text = gUI.append('text')
+    .attr('x', at.x).attr('y', -at.y)
+    .attr('text-anchor', cos > 0.3 ? 'start' : cos < -0.3 ? 'end' : 'middle')
+    .attr('dominant-baseline', 'central')
+    .attr('fill', color)
+    .attr('font-size', 12 / pxPerMm)
+    .style('user-select', 'none')
+    .text(`${(sweep * 180 / Math.PI).toFixed(1)}°`);
+  if (preview) text.style('pointer-events', 'none');
+}
+
+export function polylinePathData(points: Pt[]): string {
+  return points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+}
+
+// where along a stretch each division falls, with the unit normal there — read off a short chord
+// either side, since a single thinned segment can be turned well off the curve's true direction
+export function curveDivisions(points: Pt[], weights: number[]): { at: Pt; normal: Pt }[] {
+  const cum = polylineCumulativeLengths(points);
+  const total = cum[cum.length - 1];
+  const sum = weights.reduce((a, b) => a + b, 0);
+  if (!(total > 0) || !(sum > 0)) return [];
+  const eps = Math.min(0.5, total / 4);
+  let cursor = 0;
+  return [0, ...weights].map(w => {
+    cursor += w;
+    const s = (cursor / sum) * total;
+    const a = pointAtPolylineLength(points, cum, s - eps);
+    const b = pointAtPolylineLength(points, cum, s + eps);
+    const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+    return { at: pointAtPolylineLength(points, cum, s), normal: { x: -(b.y - a.y) / len, y: (b.x - a.x) / len } };
+  });
+}
+
+// the stretch overlays the curve it was measured on, so it's drawn heavier to read as the
+// measurement; the number sits off its middle on the outside of the bend, where the curve isn't.
+export function drawCurveLength(
+  gRoot: RootGroup, gUI: RootGroup, shape: Pick<CurveLengthShape, 'points' | 'length'>,
+  color: string, pxPerMm: number, preview = false,
+): void {
+  const { points } = shape;
+  if (points.length < 2) return;
+  const path = gRoot.append('path').attr('d', polylinePathData(points))
+    .attr('fill', 'none').attr('stroke', color).attr('stroke-width', 2.5).attr('vector-effect', 'non-scaling-stroke');
+  if (preview) path.attr('stroke-dasharray', DASH_PATTERN).style('pointer-events', 'none');
+
+  const tick = (DIM_TICK_HALF_PX * 1.5) / pxPerMm;
+  const [first, , last] = curveDivisions(points, [1, 1]);
+  for (const { at, normal } of [first, last]) {
+    gRoot.append('line')
+      .attr('x1', at.x - normal.x * tick).attr('y1', at.y - normal.y * tick)
+      .attr('x2', at.x + normal.x * tick).attr('y2', at.y + normal.y * tick)
+      .attr('stroke', color).attr('stroke-width', 1.5).attr('vector-effect', 'non-scaling-stroke')
+      .attr('data-no-snap', '')
+      .style('pointer-events', preview ? 'none' : null);
+  }
+
+  const mid = curveDivisions(points, [1, 1])[1];
+  const chordMid = { x: (points[0].x + points[points.length - 1].x) / 2, y: (points[0].y + points[points.length - 1].y) / 2 };
+  const bulge = { x: mid.at.x - chordMid.x, y: mid.at.y - chordMid.y };
+  const bulgeLen = Math.hypot(bulge.x, bulge.y);
+  const away = bulgeLen > 1e-3 ? { x: bulge.x / bulgeLen, y: bulge.y / bulgeLen } : mid.normal;
+  const gap = DIM_TEXT_GAP_PX / pxPerMm;
+  const textX = mid.at.x + away.x * gap, textY = -(mid.at.y + away.y * gap);
+  const text = gUI.append('text')
+    .attr('x', textX).attr('y', textY)
+    .attr('text-anchor', away.x > 0.3 ? 'start' : away.x < -0.3 ? 'end' : 'middle')
+    .attr('dominant-baseline', 'central')
+    .attr('fill', color)
+    .attr('font-size', 12 / pxPerMm)
+    .style('user-select', 'none')
+    .text(`${shape.length.toFixed(1)} mm`);
+  if (preview) text.style('pointer-events', 'none');
+}
+
+// drawTicks bent along a curve: the same tick size and the same zero-radius circles making the
+// interior divisions snappable.
+export function drawCurveTicks(gRoot: RootGroup, points: Pt[], weights: number[], color: string): void {
+  if (points.length < 2) return;
+  gRoot.append('path').attr('d', polylinePathData(points))
+    .attr('fill', 'none').attr('stroke', color).attr('stroke-width', 1).attr('vector-effect', 'non-scaling-stroke');
+  const divisions = curveDivisions(points, weights);
+  const cum = polylineCumulativeLengths(points);
+  const halfTick = tickLengthMm(cum[cum.length - 1]) / 2;
+  divisions.forEach(({ at, normal }, i) => {
+    gRoot.append('line')
+      .attr('data-no-snap', '')
+      .attr('x1', at.x - normal.x * halfTick).attr('y1', at.y - normal.y * halfTick)
+      .attr('x2', at.x + normal.x * halfTick).attr('y2', at.y + normal.y * halfTick)
+      .attr('stroke', color)
+      .attr('stroke-width', 1.5)
+      .attr('vector-effect', 'non-scaling-stroke');
+    if (i > 0 && i < divisions.length - 1) {
+      gRoot.append('circle')
+        .attr('cx', at.x).attr('cy', at.y).attr('r', 0)
+        .attr('fill', 'none').attr('stroke', 'none')
+        .style('pointer-events', 'none');
+    }
+  });
+}
+
 const SELECTION_HALO_COLOR = '#f59e0b';
 
 /** Draws a soft highlight behind a selected shape — append before drawShape so it sits underneath. */
@@ -584,6 +748,19 @@ export function drawSelectionHalo(gRoot: RootGroup, gUI: RootGroup, shape: Draft
       const b = geo?.p2 ?? shape.end;
       halo(gRoot.append('line')
         .attr('x1', a.x).attr('y1', a.y).attr('x2', b.x).attr('y2', b.y));
+      break;
+    }
+    case 'curve-length':
+    case 'curve-ticks':
+      halo(gRoot.append('path').attr('d', polylinePathData(shape.points)));
+      break;
+    case 'angle': {
+      const { startAngle, endAngle } = angleSweep(shape.vertex, shape.start, shape.end);
+      halo(gRoot.append('path').attr('d', arcPathData(shape.vertex, shape.radius, startAngle, endAngle)));
+      for (const arm of [shape.start, shape.end]) {
+        halo(gRoot.append('line')
+          .attr('x1', shape.vertex.x).attr('y1', shape.vertex.y).attr('x2', arm.x).attr('y2', arm.y));
+      }
       break;
     }
     case 'section': {

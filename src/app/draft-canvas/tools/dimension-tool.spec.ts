@@ -19,6 +19,7 @@ function makeHost(): DraftToolHost & { added: DraftShape[] } {
     getSelectedShapes: () => [],
     getPxPerMm: () => 1,
     hitTestShape: () => null,
+    curveAt: () => null,
     selectShape: () => { },
     removeShape: () => { },
     returnToSelect: () => { },

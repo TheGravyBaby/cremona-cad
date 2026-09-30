@@ -49,6 +49,9 @@
         @if (openFlyout === commands) {
         <div class="tool-flyout-popup" [style.top]="popupTop" [style.bottom]="popupBottom"
           [style.maxHeight]="popupMaxHeight">
+          @if (row.label) {
+          <div class="tool-flyout-title">{{ row.label }}</div>
+          }
           @for (command of commands; track command.id) {
           <button type="button" class="tool-flyout-item" (click)="runCommand(commands, command)"
             [disabled]="!command.enabled()" [title]="command.label + hotkeyHint(command.id)">
@@ -87,6 +90,9 @@
         @if (openFlyout === slot) {
         <div class="tool-flyout-popup" [style.top]="popupTop" [style.bottom]="popupBottom"
           [style.maxHeight]="popupMaxHeight">
+          @if (groupLabel(slot); as label) {
+          <div class="tool-flyout-title">{{ label }}</div>
+          }
           @for (variant of variantsOf(slot); track variant.id) {
           <button type="button" class="tool-flyout-item" (click)="chooseFlyoutVariant(slot, variant)"
             [title]="variant.label + hotkeyHint(variant.id)">
@@ -200,6 +206,27 @@
         <line x1="5" y1="19" x2="19" y2="5" />
       </svg>
       }
+      @case ('polyline') {
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 18L9 7L15 15L20 6" />
+      </svg>
+      }
+      @case ('line-tangent') {
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round">
+        <circle cx="14" cy="14" r="6" stroke-width="1.4" />
+        <line x1="3.76" y1="15.76" x2="16.76" y2="2.76" />
+        <circle cx="9.76" cy="9.76" r="1.6" fill="currentColor" stroke="none" />
+      </svg>
+      }
+      @case ('line-perpendicular') {
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round">
+        <path d="M3 19H21M12 19V4" />
+        <path d="M12 14.5H16.5V19" stroke-width="1.4" />
+      </svg>
+      }
       <!-- The four hand-placed arc constructions share one glyph and one grammar, so the flyout reads
            as a family: solid dots are the points you click, dashed spokes are radii, and the hub is
            filled when the center is the first click, hollow when it comes later, and absent entirely
@@ -274,6 +301,64 @@
         <circle cx="12" cy="12" r="8" />
       </svg>
       }
+      @case ('polygon-3') {
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linejoin="round">
+        <polygon points="12,4.5 19.79,18 4.21,18" />
+      </svg>
+      }
+      @case ('polygon-4') {
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linejoin="round">
+        <rect x="5.5" y="5.5" width="13" height="13" />
+      </svg>
+      }
+      @case ('polygon-5') {
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linejoin="round">
+        <polygon points="12,3.5 20.08,9.37 17,18.88 7,18.88 3.92,9.37" />
+      </svg>
+      }
+      @case ('polygon-6') {
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linejoin="round">
+        <polygon points="12,3.5 19.36,7.75 19.36,16.25 12,20.5 4.64,16.25 4.64,7.75" />
+      </svg>
+      }
+      @case ('polygon-8') {
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linejoin="round">
+        <polygon points="8.75,4.15 15.25,4.15 19.85,8.75 19.85,15.25 15.25,19.85 8.75,19.85 4.15,15.25 4.15,8.75" />
+      </svg>
+      }
+      @case ('catenary') {
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round">
+        <path d="M4 5C6.5 21 17.5 21 20 5" />
+        <circle cx="4" cy="5" r="1.8" fill="currentColor" stroke="none" />
+        <circle cx="20" cy="5" r="1.8" fill="currentColor" stroke="none" />
+      </svg>
+      }
+      <!-- a strip bent through three pins, running on straight past the end ones -->
+      @case ('batten') {
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round">
+        <path d="M1.9 18.7L3 17C5.8 12.6 8.6 8.2 12 8C14.7 7.8 17.9 10.4 21 13L22.5 14.3" />
+        <circle cx="3" cy="17" r="2" fill="currentColor" stroke="none" />
+        <circle cx="12" cy="8" r="2" fill="currentColor" stroke="none" />
+        <circle cx="21" cy="13" r="2" fill="currentColor" stroke="none" />
+      </svg>
+      }
+      <!-- a true cycloid, traced by the point on the rim of the circle rolling along the baseline -->
+      @case ('cycloid') {
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M1 19H23" stroke-width="1.4" />
+        <circle cx="15.00" cy="12.00" r="7" stroke-width="1.4" />
+        <path d="M1.00 19.00 L1.01 18.86 L1.07 18.45 L1.25 17.78 L1.58 16.88 L2.11 15.78 L2.88 14.54 L3.90 13.19 L5.20 11.80 L6.78 10.41 L8.63 9.09" />
+        <circle cx="8.63" cy="9.09" r="1.8" fill="currentColor" stroke="none" />
+      </svg>
+      }
       @case ('dimension') {
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
         stroke-linecap="round">
@@ -282,10 +367,37 @@
         <line x1="20" y1="7" x2="20" y2="17" />
       </svg>
       }
+      @case ('angle') {
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 20H4L15 6" />
+        <path d="M13 20A9 9 0 0 0 9.56 12.93" stroke-width="1.4" />
+      </svg>
+      }
+      @case ('curve-length') {
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round">
+        <path d="M4 18C8 8 16 8 20 18" />
+        <path d="M1.2 16.9L6.8 19.1M17.2 19.1L22.8 16.9" stroke-width="1.4" />
+      </svg>
+      }
+      @case ('curve-ticks') {
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round">
+        <path d="M4 18C8 8 16 8 20 18" stroke-width="1.4" />
+        <path d="M1.2 16.9L6.8 19.1M5.9 10.5L9.3 14.2M12 8V13M18.1 10.5L14.7 14.2M17.2 19.1L22.8 16.9" />
+      </svg>
+      }
       @case ('rect') {
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
         stroke-linecap="round" stroke-linejoin="round">
         <rect x="4" y="6" width="16" height="12" />
+      </svg>
+      }
+      @case ('right-triangle') {
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linejoin="round">
+        <polygon points="5,5 5,19 19,19" />
       </svg>
       }
       @case ('section') {
@@ -351,12 +463,14 @@
         <path d="M3 21 21 3" stroke-width="1.1" stroke-dasharray="2 2.6" stroke-linecap="butt" />
       </svg>
       }
-      <!-- Dashed where it was, solid where it turns to, about the dot it turns on. -->
+      <!-- A turn swept from a spoke about the dot it turns on — the pivot is what sets it apart from
+           the quarter turns beside it, which turn about the selection's own centre. -->
       @case ('rotate') {
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
         stroke-linecap="round" stroke-linejoin="round">
-        <rect x="4" y="8" width="16" height="8" stroke-width="1.1" stroke-dasharray="2 2.2" />
-        <rect x="4" y="8" width="16" height="8" transform="rotate(-35 12 12)" />
+        <path d="M20 12A8 8 0 1 1 12 4" />
+        <path d="M9.5 1.5L12.5 4L9.5 6.5" />
+        <path d="M12 12H20" stroke-width="1.1" stroke-dasharray="2 2.2" stroke-linecap="butt" />
         <circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none" />
       </svg>
       }

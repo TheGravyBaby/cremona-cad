@@ -1,5 +1,5 @@
 import { ImageCredit, ImageCrop, Pt } from '../../models/types';
-import { rotatePointAbout } from '../../helpers/math/simpleGeometry';
+import { angleFromCenter, angleWithinSweep, dist, normalizeRadians, rotatePointAbout } from '../../helpers/math/simpleGeometry';
 
 export const DEFAULT_SHAPE_COLOR = '#1d4ed8';
 
@@ -59,6 +59,34 @@ export type DimensionShape = ShapeBase & {
    * when the third click lands back on the measurement.
    */
   offset?: number;
+};
+
+// A measured angle at `vertex`, between the arms through `start` and `end`. Sweeps
+// counterclockwise from the `start` arm to the `end` arm, like ArcShape, so swapping the arms is
+// what reads the reflex angle instead of the inside one. `radius` is where the arc carrying the
+// number is drawn, and says nothing about the measurement.
+export type AngleShape = ShapeBase & {
+  type: 'angle';
+  vertex: Pt;
+  start: Pt;
+  end: Pt;
+  radius: number;
+};
+
+// A stretch measured along a curve, kept as the points it runs through rather than a link back to
+// the curve — like Distance's two points, it reads what the curve was when it was measured.
+// `length` is taken off the curve itself; `points` are thinned for storage and only draw it.
+export type CurveLengthShape = ShapeBase & {
+  type: 'curve-length';
+  points: Pt[];
+  length: number;
+};
+
+// Ticks along a curve: the stretch divided by `weights`, measured along its length.
+export type CurveTicksShape = ShapeBase & {
+  type: 'curve-ticks';
+  points: Pt[];
+  weights: number[];
 };
 
 export type RectShape = ShapeBase & {
@@ -145,10 +173,20 @@ export const DEFAULT_FREEHAND_WIDTH = 2;
 // off-axis. Moves as one rigid body with no endpoint handles. Only the M, L, C, Q, A and Z
 // commands, absolute: the subset every path helper in helpers/math/pathMath.ts understands, so
 // keep whatever writes `d` inside it.
+// what a Cycloid was drawn from, so the settings bar can redraw it with a new factor or percent.
+// Moves, turns, scales and flips carry it along (see shape-transform.ts); depth is to the left of
+// start→end, as cycloidBetween takes it.
+export type CycloidSpec = { start: Pt; end: Pt; depth: number; factor: number; pct: number };
+
+// the pins a Batten was bent through; each is a handle, and dragging one re-fairs the curve
+export type BattenSpec = { pins: Pt[]; closed: boolean };
+
 export type PathShape = ShapeBase & {
   type: 'path';
   d: string;
   dashed?: boolean;
+  cycloid?: CycloidSpec;
+  batten?: BattenSpec;
 };
 
 // A photo or scan placed on the canvas to trace over — an instrument's plan view, a long-arch
@@ -229,7 +267,7 @@ export const DEFAULT_IMAGE_OPACITY = 0.25;
  * structurally a `Circle`, so helpers/math/ solvers take canvas shapes as-is.
  */
 export type DraftShape =
-  | LineShape | ArcShape | CircleShape | DimensionShape | RectShape | SectionShape | TicksShape | TextShape | PointShape
+  | LineShape | ArcShape | CircleShape | DimensionShape | AngleShape | CurveLengthShape | CurveTicksShape | RectShape | SectionShape | TicksShape | TextShape | PointShape
   | FreehandShape | PathShape | ImageShape;
 
 /** An image's box center, about which `rotationDeg` turns it. */
@@ -388,6 +426,22 @@ export function dimensionOffsetAt(start: Pt, end: Pt, pt: Pt): number {
   const geo = dimensionGeometry(start, end);
   if (!geo) return 0;
   return (pt.x - start.x) * geo.normal.x + (pt.y - start.y) * geo.normal.y;
+}
+
+export function angleSweep(vertex: Pt, start: Pt, end: Pt): { startAngle: number; endAngle: number; sweep: number } {
+  const startAngle = angleFromCenter(vertex, start);
+  const endAngle = angleFromCenter(vertex, end);
+  return { startAngle, endAngle, sweep: normalizeRadians(endAngle - startAngle) };
+}
+
+// the arms ordered so the sweep takes in `pt`, and the arc run through it — the Angle tool's last
+// click and the arc's handle both place a measurement this way, so either can pick the reflex side.
+export function placeAngle(vertex: Pt, start: Pt, end: Pt, pt: Pt): Pick<AngleShape, 'start' | 'end' | 'radius'> {
+  const { startAngle, endAngle } = angleSweep(vertex, start, end);
+  const radius = Math.max(dist(vertex, pt), 1e-3);
+  return angleWithinSweep(angleFromCenter(vertex, pt), startAngle, endAngle)
+    ? { start, end, radius }
+    : { start: end, end: start, radius };
 }
 
 let shapeIdSeq = 0;
