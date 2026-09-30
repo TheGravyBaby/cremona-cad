@@ -52,6 +52,7 @@ export class ToolboxStore implements Undoable {
   private _currentTickWeights: number[] = [1, 1, 1];
   private _currentCycloidFactor = 1;
   private _currentCycloidPct = 1;
+  private _currentFilletRadius = 5;
   private _layers: Layer[] = [{ id: DEFAULT_LAYER_ID, name: 'Layer 1', visible: true, locked: false }];
   private _activeLayerId: string = DEFAULT_LAYER_ID;
   private _showImages = true;
@@ -162,6 +163,14 @@ export class ToolboxStore implements Undoable {
   set currentCycloidPct(value: number) {
     if (this._currentCycloidPct === value) return;
     this._currentCycloidPct = value;
+    this.persist();
+    this.notify();
+  }
+
+  get currentFilletRadius(): number { return this._currentFilletRadius; }
+  set currentFilletRadius(value: number) {
+    if (!(value > 0) || this._currentFilletRadius === value) return;
+    this._currentFilletRadius = value;
     this.persist();
     this.notify();
   }
@@ -585,6 +594,7 @@ export class ToolboxStore implements Undoable {
         if (Array.isArray(parsed.currentTickWeights)) this._currentTickWeights = parsed.currentTickWeights;
         if (typeof parsed.currentCycloidFactor === 'number') this._currentCycloidFactor = parsed.currentCycloidFactor;
         if (typeof parsed.currentCycloidPct === 'number') this._currentCycloidPct = parsed.currentCycloidPct;
+        if (typeof parsed.currentFilletRadius === 'number') this._currentFilletRadius = parsed.currentFilletRadius;
         if (Array.isArray(parsed.layers) && parsed.layers.length > 0) {
           // Normalize layers saved before visible/locked existed.
           this._layers = parsed.layers.map((l: Partial<Layer> & { id: string; name: string }) => ({
@@ -628,6 +638,7 @@ export class ToolboxStore implements Undoable {
       currentTickWeights: this._currentTickWeights,
       currentCycloidFactor: this._currentCycloidFactor,
       currentCycloidPct: this._currentCycloidPct,
+      currentFilletRadius: this._currentFilletRadius,
       layers: this._layers,
       activeLayerId: this._activeLayerId,
       showImages: this._showImages,
@@ -689,6 +700,7 @@ export class ToolboxStore implements Undoable {
     if (Array.isArray(parsed['currentTickWeights'])) this._currentTickWeights = parsed['currentTickWeights'] as number[];
     if (typeof parsed['currentCycloidFactor'] === 'number') this._currentCycloidFactor = parsed['currentCycloidFactor'] as number;
     if (typeof parsed['currentCycloidPct'] === 'number') this._currentCycloidPct = parsed['currentCycloidPct'] as number;
+    if (typeof parsed['currentFilletRadius'] === 'number') this._currentFilletRadius = parsed['currentFilletRadius'] as number;
     if (Array.isArray(parsed['layers']) && (parsed['layers'] as unknown[]).length > 0) {
       this._layers = (parsed['layers'] as Array<Partial<Layer> & { id: string; name: string }>).map(l => ({
         id: l.id, name: l.name, visible: l.visible ?? true, locked: l.locked ?? false, panels: layerPanels(l),

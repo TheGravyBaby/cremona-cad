@@ -288,6 +288,16 @@ export class SettingsBarComponent {
       s.type === 'path' && !!s.source && (kinds as string[]).includes(s.source.kind));
   }
 
+  public get showFilletPanel(): boolean {
+    return this.activeTool?.id === 'fillet';
+  }
+
+  public get filletRadius(): number { return this.round2(this.toolbox.currentFilletRadius); }
+
+  setFilletRadius(value: number): void {
+    if (Number.isFinite(value) && value > 0) this.toolbox.currentFilletRadius = value;
+  }
+
   public get showCycloidPanel(): boolean {
     return this.activeTool?.id === 'cycloid' || this.selectedSources('cycloid').length > 0;
   }

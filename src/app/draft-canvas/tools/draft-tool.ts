@@ -36,6 +36,10 @@ export interface DraftToolHost {
   /** Deletes a toolbox shape by id (a no-op if it's already gone or its layer is locked) — each
    * call is its own undo step, same as a Select-mode Delete keypress. See eraser-tool.ts. */
   removeShape(id: string): void;
+  /** Swaps drawn shapes for edited versions of themselves and adds new ones, as one undo step — for
+   * a tool that reshapes what is already there, like Fillet trimming two pieces to its round. A
+   * recipe piece among the replacements is left as it is, since the recipe can't be edited. */
+  replaceShapes(replacements: DraftShape[], added: DraftShape[]): void;
   /** Switches back to the Select tool, optionally with a just-created shape selected — for a tool
    * whose commit is asynchronous and so can't rely on draft-canvas's synchronous `oneShot`
    * handling to hand control back. */

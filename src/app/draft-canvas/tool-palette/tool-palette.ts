@@ -68,6 +68,7 @@ export class ToolPaletteComponent implements OnInit, AfterViewInit, OnDestroy {
       slot('move'),
       slot('scale'),
       slot('offset'),
+      slot('fillet'),
       {
         label: 'Mirror',
         commands: [

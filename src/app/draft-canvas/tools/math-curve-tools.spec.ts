@@ -5,7 +5,7 @@ import { fakeToolHost } from './fake-tool-host';
 import { PathShape, PathSource, pathFromSource, withPathSource } from './toolbox-shape';
 import { ToolboxStore } from './toolbox-store';
 import { createBattenTool, createCatenaryTool, createCycloidTool } from './math-curve-tools';
-import { endpointGrabbers, withEndpoint } from './shape-grabbers';
+import { endpointGrabbers, withBattenPinAdded, withBattenPinRemoved, withEndpoint } from './shape-grabbers';
 import { reflectAcross, rotateAbout, transformShape, translateShape } from './shape-transform';
 
 const at = (x: number, y: number): Pt => ({ x, y });
@@ -171,6 +171,28 @@ describe('Batten tool', () => {
     const moved = withEndpoint(shape, 'pin-1', at(30, 25)) as PathShape;
     expect(moved.source).toMatchObject({ pins: [at(0, 0), at(30, 25), at(60, 5)] });
     expect(moved.d).toBe(battenPath([at(0, 0), at(30, 25), at(60, 5)], false));
+  });
+
+  const batten = (pins: Pt[], closed = false): PathShape =>
+    ({ id: 'b', type: 'path', d: battenPath(pins, closed), source: { kind: 'batten', pins, closed } });
+
+  it('takes a new pin on the curve, in the span it was put in', () => {
+    const shape = batten([at(0, 0), at(30, 12), at(60, 5)]);
+    const added = withBattenPinAdded(shape, at(45, 11));
+    const pins = (added.source as { pins: Pt[] }).pins;
+    expect(pins).toHaveLength(4);
+    expect([pins[0], pins[1], pins[3]]).toEqual([at(0, 0), at(30, 12), at(60, 5)]);
+    const onCurve = samplePathToPolyline(shape.d, 0.05, true);
+    expect(projectOntoPolyline(pins[2], onCurve, polylineCumulativeLengths(onCurve)).dist).toBeLessThan(0.05);
+    expect(added.d).toBe(battenPath(pins, false));
+  });
+
+  it('gives up a pin, but never below two, or three for a loop', () => {
+    const removed = withBattenPinRemoved(batten([at(0, 0), at(30, 12), at(60, 5)]), 1)!;
+    expect(removed.source).toMatchObject({ pins: [at(0, 0), at(60, 5)] });
+    expect(removed.d).toBe(battenPath([at(0, 0), at(60, 5)], false));
+    expect(withBattenPinRemoved(batten([at(0, 0), at(60, 5)]), 0)).toBeNull();
+    expect(withBattenPinRemoved(batten([at(0, 0), at(30, 0), at(15, 20)], true), 0)).toBeNull();
   });
 });
 

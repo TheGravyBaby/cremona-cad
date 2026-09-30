@@ -137,7 +137,8 @@ export function createCycloidTool(toolbox: ToolboxStore): ChordCurveTool {
  * Click to set each pin; the curve is the one a thin strip takes bent through them, running on
  * straight past the end pins. Clicking the last pin again (a double-click does) or Enter, Escape
  * or right-click finishes it; clicking the first pin closes it into a loop. Backspace pulls the
- * last pin. Its pins stay on as handles, so a placed batten is faired by moving them.
+ * last pin. Its pins stay on as handles, so a placed batten is faired by moving them; a double-click
+ * on the curve adds one there and on a pin takes it out (see the canvas's editBattenPins).
  */
 export class BattenTool implements DraftTool {
   readonly id = 'batten';

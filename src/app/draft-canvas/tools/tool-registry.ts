@@ -21,6 +21,7 @@ import { createPointTool } from './point-tool';
 import { createFreehandTool } from './freehand-tool';
 import { createEraserTool } from './eraser-tool';
 import { createOffsetTool } from './offset-tool';
+import { createFilletTool } from './fillet-tool';
 import { createMirrorLineTool, createMoveTool, createRotateTool, createScaleTool } from './transform-tools';
 import { SelectionActions } from './selection-actions';
 
@@ -94,6 +95,7 @@ export class ToolRegistryService {
   readonly modifyRows: ToolSlot[][] = [
     [createMoveTool(this.actions)],
     [createOffsetTool()],
+    [createFilletTool(this.toolbox)],
     [createScaleTool(this.actions)],
     [createRotateTool(this.actions)],
     [createMirrorLineTool(this.actions)],

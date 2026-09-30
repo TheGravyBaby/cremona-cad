@@ -2,6 +2,7 @@ import { Pt, Circle, Line, Arc, Vect2D } from "../../models/types";
 import {
   TWO_PI, dist, angleFromCenter, pointOnCircle, angleWithinSweep, unitVectorFromLine,
   tangentUnitVectorFromLine, offsetLineByDistance, closestPointOnLine, moveInVectorSpace, normalizeRadians,
+  lineFromTwoPoints, intersectLines, lineCircleIntersection,
 } from "./simpleGeometry";
 
 // ===== Circles =====
@@ -285,6 +286,72 @@ export function filletRightAngleCorner(P: Pt, into: Pt, radius: number): Arc | n
   const vTangent: Pt = { x: P.x, y: center.y };
   const hTangent: Pt = { x: center.x, y: P.y };
   return new Arc(center.x, center.y, radius, angleFromCenter(center, vTangent), angleFromCenter(center, hTangent));
+}
+
+export type FilletPiece = { line: [Pt, Pt] } | { circle: Circle };
+
+/**
+ * A round of radius `r` tangent to two pieces — lines taken as running on past their ends, arcs as
+ * their whole circle — with each clicked (`pickA`, `pickB`) on the part to keep. Its centre sits
+ * where the two pieces, each moved `r` towards it, cross; of those crossings the one wanted is the
+ * one that makes a smooth run from pickA along A, round the fillet, and along B to pickB. Ties go
+ * to the shortest round. Null when nothing fits.
+ */
+export function filletBetween(a: FilletPiece, b: FilletPiece, r: number, pickA: Pt, pickB: Pt):
+  { center: Pt; atA: Pt; atB: Pt; ccw: boolean; sweep: number } | null {
+  if (!(r > 0)) return null;
+  type Offset = { line: Line } | { circle: Circle };
+  const offsets = (p: FilletPiece): Offset[] => {
+    if ('line' in p) {
+      const line = lineFromTwoPoints(p.line[0], p.line[1]);
+      return [{ line: offsetLineByDistance(line, r) }, { line: offsetLineByDistance(line, -r) }];
+    }
+    const c = p.circle;
+    return [{ circle: { x: c.x, y: c.y, r: c.r + r } as Circle }, ...(c.r - r > 1e-9 ? [{ circle: { x: c.x, y: c.y, r: c.r - r } as Circle }] : [])];
+  };
+  const crossings = (u: Offset, v: Offset): Pt[] => {
+    if ('line' in u && 'line' in v) {
+      const p = intersectLines(u.line, v.line);
+      return p ? [p] : [];
+    }
+    if ('line' in u) return lineCircleIntersection(u.line, (v as { circle: Circle }).circle);
+    if ('line' in v) return lineCircleIntersection(v.line, u.circle);
+    return circleCircleIntersections(u.circle, v.circle);
+  };
+  const touch = (p: FilletPiece, center: Pt): Pt => {
+    if ('line' in p) return closestPointOnLine(center, lineFromTwoPoints(p.line[0], p.line[1])).point;
+    return pointOnCircle(p.circle, angleFromCenter(p.circle, center));
+  };
+  // the way along a piece from one of its points to another, as its direction at `where`: a
+  // line's own direction, an arc's shorter way round
+  const travel = (p: FilletPiece, from: Pt, to: Pt, where: Pt): Pt | null => {
+    if ('line' in p) {
+      const d = { x: p.line[1].x - p.line[0].x, y: p.line[1].y - p.line[0].y };
+      const along = (to.x - from.x) * d.x + (to.y - from.y) * d.y;
+      if (Math.abs(along) < 1e-12) return null;
+      const len = Math.hypot(d.x, d.y) * Math.sign(along);
+      return { x: d.x / len, y: d.y / len };
+    }
+    const turn = normalizeRadians(angleFromCenter(p.circle, to) - angleFromCenter(p.circle, from) + Math.PI) - Math.PI;
+    if (Math.abs(turn) < 1e-12) return null;
+    const at = angleFromCenter(p.circle, where), s = Math.sign(turn);
+    return { x: -Math.sin(at) * s, y: Math.cos(at) * s };
+  };
+
+  let best: { center: Pt; atA: Pt; atB: Pt; ccw: boolean; sweep: number } | null = null;
+  for (const u of offsets(a)) for (const v of offsets(b)) for (const center of crossings(u, v)) {
+    const atA = touch(a, center), atB = touch(b, center);
+    const inA = travel(a, pickA, atA, atA), outB = travel(b, atB, pickB, atB);
+    if (!inA || !outB) continue;
+    const ccwTangent = (p: Pt) => { const q = angleFromCenter(center, p); return { x: -Math.sin(q), y: Math.cos(q) }; };
+    const tA = ccwTangent(atA), tB = ccwTangent(atB);
+    const s = Math.sign(inA.x * tA.x + inA.y * tA.y);
+    if (s === 0 || s * (outB.x * tB.x + outB.y * tB.y) < 0.99) continue;
+    const qA = angleFromCenter(center, atA), qB = angleFromCenter(center, atB);
+    const sweep = normalizeRadians(s > 0 ? qB - qA : qA - qB);
+    if (!best || sweep < best.sweep) best = { center, atA, atB, ccw: s > 0, sweep };
+  }
+  return best;
 }
 
 
