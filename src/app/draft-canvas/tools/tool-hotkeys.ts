@@ -1,6 +1,6 @@
 // Tool mnemonics: pressing the key activates the group's first variant, or
-// advances to the next one in the list on repeated presses. Order here should
-// match each tool's flyout order in tool-registry.ts's toolRows or modifyRows.
+// advances to the next one in the list on repeated presses. Each cycle runs in
+// palette order — tool-hotkeys.spec.ts holds it to tool-registry.ts.
 //
 // Shared between draft-canvas.ts (which owns keyboard capture and actually
 // dispatches these) and tool-palette.ts (which only reads HOTKEY_LETTER_BY_TOOL

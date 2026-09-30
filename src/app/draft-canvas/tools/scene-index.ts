@@ -5,6 +5,7 @@ import {
   IDENTITY_MATRIX, Matrix2D, applyMatrix, arcCenterFromEndpoints, multiplyMatrices, parseSvgTransform, transformPath,
 } from '../../helpers/math/pathMath';
 import { angleFromCenter } from '../../helpers/math/simpleGeometry';
+import { pathFromPolyline } from '../../helpers/math/pathMath';
 import { DraftShape } from './toolbox-shape';
 import { absolutePathData, tokenizePathData } from './svg-path-arcs';
 
@@ -121,10 +122,6 @@ function isRotated(m: Matrix2D): boolean {
   return Math.abs(m[1]) > 1e-9 || Math.abs(m[2]) > 1e-9;
 }
 
-function pointsPath(points: Pt[], close: boolean): string {
-  return points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ') + (close ? ' Z' : '');
-}
-
 // colour is deliberately left off: a scene shape is never drawn through shape-renderer.ts, and
 // a duplicate of one should take the pen colour like any newly drawn shape. Also the reader
 // shape-svg.ts's import goes through, which adds the colour back itself.
@@ -146,7 +143,7 @@ export function shapeFromElement(el: RecordedElement, m: Matrix2D): ShapeBody | 
       const x = num(a['x']), y = num(a['y']), w = num(a['width']), h = num(a['height']);
       if (w <= 0 || h <= 0) return null;
       const corners = [{ x, y }, { x: x + w, y }, { x: x + w, y: y + h }, { x, y: y + h }].map(p => applyMatrix(m, p));
-      if (isRotated(m)) return { type: 'path', d: pointsPath(corners, true), dashed };
+      if (isRotated(m)) return { type: 'path', d: pathFromPolyline(corners, true), dashed };
       // low corner to high corner, whichever way the matrix turned the box
       const xs = corners.map(c => c.x), ys = corners.map(c => c.y);
       return {
@@ -161,7 +158,7 @@ export function shapeFromElement(el: RecordedElement, m: Matrix2D): ShapeBody | 
       const points: Pt[] = [];
       for (let i = 0; i + 1 < nums.length; i += 2) points.push(applyMatrix(m, { x: nums[i], y: nums[i + 1] }));
       if (points.length < 2) return null;
-      return { type: 'path', d: pointsPath(points, el.tag === 'polygon'), dashed };
+      return { type: 'path', d: pathFromPolyline(points, el.tag === 'polygon'), dashed };
     }
     case 'path': {
       const raw = typeof a['d'] === 'string' ? a['d'] : '';

@@ -67,6 +67,24 @@ export function flipPointAboutY(point: Pt): Pt {
   return { x: -point.x, y: point.y };
 }
 
+export function cubicBezierPoint(a: Pt, c1: Pt, c2: Pt, b: Pt, t: number): Pt {
+  const s = 1 - t;
+  return {
+    x: s * s * s * a.x + 3 * s * s * t * c1.x + 3 * s * t * t * c2.x + t * t * t * b.x,
+    y: s * s * s * a.y + 3 * s * s * t * c1.y + 3 * s * t * t * c2.y + t * t * t * b.y,
+  };
+}
+
+// twice the enclosed area, positive for a counterclockwise ring
+export function signedPolygonArea(points: Pt[]): number {
+  let sum = 0;
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i], q = points[(i + 1) % points.length];
+    sum += p.x * q.y - q.x * p.y;
+  }
+  return sum;
+}
+
 export function pointInPolygon(point: Pt, polygon: Pt[]): boolean {
   let inside = false;
   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {

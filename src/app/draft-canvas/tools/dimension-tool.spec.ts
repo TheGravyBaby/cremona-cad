@@ -1,21 +1,22 @@
 import { Pt } from '../../models/types';
 import { DraftToolHost } from './draft-tool';
 import { fakeToolHost } from './fake-tool-host';
-import { DimensionTool } from './dimension-tool';
+import { DraftTool } from './draft-tool';
+import { createDimensionTool } from './dimension-tool';
 import { DimensionShape, DraftShape, dimensionGeometry } from './toolbox-shape';
 import { endpointGrabbers, withEndpoint } from './shape-grabbers';
 
 const at = (x: number, y: number): Pt => ({ x, y });
 
 /** Press and release at the same spot — the click half of the click-click gesture. */
-function click(tool: DimensionTool, host: DraftToolHost, pt: Pt): void {
+function click(tool: DraftTool, host: DraftToolHost, pt: Pt): void {
   tool.onPointerDown(pt, host);
   tool.onPointerUp(pt, host);
 }
 
 describe('DimensionTool', () => {
   it('needs a third click before it commits anything', () => {
-    const tool = new DimensionTool();
+    const tool = createDimensionTool();
     const host = fakeToolHost();
 
     click(tool, host, at(0, 0));
@@ -25,7 +26,7 @@ describe('DimensionTool', () => {
   });
 
   it('stores the third click as a perpendicular offset', () => {
-    const tool = new DimensionTool();
+    const tool = createDimensionTool();
     const host = fakeToolHost();
 
     click(tool, host, at(0, 0));
@@ -43,7 +44,7 @@ describe('DimensionTool', () => {
   });
 
   it('signs the offset by which side of the measurement the click lands on', () => {
-    const tool = new DimensionTool();
+    const tool = createDimensionTool();
     const host = fakeToolHost();
 
     click(tool, host, at(0, 0));
@@ -56,7 +57,7 @@ describe('DimensionTool', () => {
   // The field is absent, not zero, so a flat dimension serializes exactly as it did before the
   // third click existed — see DimensionShape.offset.
   it('omits the offset entirely when the line lands back on the measurement', () => {
-    const tool = new DimensionTool();
+    const tool = createDimensionTool();
     const host = fakeToolHost();
 
     click(tool, host, at(0, 0));
@@ -67,7 +68,7 @@ describe('DimensionTool', () => {
   });
 
   it('takes the measurement from a press-drag-release too, then still waits for the click', () => {
-    const tool = new DimensionTool();
+    const tool = createDimensionTool();
     const host = fakeToolHost();
 
     tool.onPointerDown(at(0, 0), host);
@@ -85,7 +86,7 @@ describe('DimensionTool', () => {
   });
 
   it('cancels the whole dimension on Escape, at either stage', () => {
-    const tool = new DimensionTool();
+    const tool = createDimensionTool();
     const host = fakeToolHost();
 
     click(tool, host, at(0, 0));

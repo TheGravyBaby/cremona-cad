@@ -5,7 +5,7 @@ import { DraftTool, DraftToolHost } from './draft-tool';
 import { reflectAcross, rotateAbout, scaleAbout, transformShape, translation } from './shape-transform';
 import { drawShape } from './shape-renderer';
 import { snapToLockedAngle } from './angle-lock';
-import { PREVIEW_COLOR, stylePreview } from './two-point-tool';
+import { PREVIEW_COLOR, stylePreview, typedKey } from './two-point-tool';
 import { SelectionActions } from './selection-actions';
 
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
@@ -86,13 +86,9 @@ export class TransformTool implements DraftTool {
       this.apply(host);
       return true;
     }
-    if (event.key === 'Backspace') {
-      this.typed = this.typed.slice(0, -1);
-      host.requestDraw();
-      return true;
-    }
-    if (/^[0-9.]$/.test(event.key) || (event.key === '-' && this.typed === '')) {
-      this.typed += event.key;
+    const typed = typedKey(this.typed, event.key, /^[0-9.-]$/);
+    if (typed !== null) {
+      this.typed = typed;
       host.requestDraw();
       return true;
     }

@@ -1,12 +1,11 @@
 import * as d3 from 'd3';
 import { Arc, Circle, Pt, Rectangle } from '../../models/types';
-import { dist, lineFromTwoPoints, offsetArcRadius, offsetCircleRadius, offsetRectangle, pointOnCircle, tangentUnitVectorFromLine } from '../../helpers/math/simpleGeometry';
+import { dist, lineFromTwoPoints, offsetArcRadius, offsetCircleRadius, offsetRectangle, pointOnCircle, signedPolygonArea, tangentUnitVectorFromLine } from '../../helpers/math/simpleGeometry';
 import { arcPathData, offsetPath } from '../../helpers/math/pathMath';
-import { polylineCumulativeLengths, projectOntoPolyline } from '../../helpers/math/vibeMath';
 import { DraftTool, DraftToolHost } from './draft-tool';
 import { DraftShape, makeShapeId } from './toolbox-shape';
-import { drawTypedLabel, stylePreview } from './two-point-tool';
-import { shapeCurves } from './curve-tools';
+import { drawTypedLabel, stylePreview, typedKey } from './two-point-tool';
+import { nearestCurve, shapeCurves } from './curve-tools';
 
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 
@@ -46,29 +45,18 @@ function signedOffsetMetric(shape: DraftShape, pt: Pt): { abs: number; signed: n
     return { abs: inside, signed: -inside };
   }
   if (shape.type === 'path') {
-    let best: { abs: number; signed: number } | null = null;
-    for (const { points, closed } of shapeCurves(shape)) {
-      const cum = polylineCumulativeLengths(points);
-      const foot = projectOntoPolyline(pt, points, cum);
-      if (best && foot.dist >= best.abs) continue;
-      const i = Math.max(0, Math.min(points.length - 2, cum.findIndex(c => c >= foot.s) - 1));
-      const a = points[i], b = points[i + 1];
-      const right = (b.x - a.x) * (pt.y - a.y) - (b.y - a.y) * (pt.x - a.x) < 0;
-      let signed = right ? foot.dist : -foot.dist;
-      // a loop drawn clockwise has its outside on the left
-      if (closed && polygonArea(points) < 0) signed = -signed;
-      best = { abs: foot.dist, signed };
-    }
-    return best;
+    const nearest = nearestCurve(shape, pt);
+    if (!nearest) return null;
+    const { points, closed } = nearest.curve;
+    const i = Math.max(0, Math.min(points.length - 2, nearest.cum.findIndex(c => c >= nearest.s) - 1));
+    const a = points[i], b = points[i + 1];
+    const right = (b.x - a.x) * (pt.y - a.y) - (b.y - a.y) * (pt.x - a.x) < 0;
+    let signed = right ? nearest.dist : -nearest.dist;
+    // a loop drawn clockwise has its outside on the left
+    if (closed && signedPolygonArea(points) < 0) signed = -signed;
+    return { abs: nearest.dist, signed };
   }
   return null;
-}
-
-function polygonArea(points: Pt[]): number {
-  return points.reduce((sum, p, i) => {
-    const q = points[(i + 1) % points.length];
-    return sum + p.x * q.y - q.x * p.y;
-  }, 0);
 }
 
 /** The nearest selected shape to `pt`, plus that shape's own raw signed offset metric. */
@@ -271,13 +259,9 @@ export class OffsetTool implements DraftTool {
       if (this.lastPt) this.onPointerDown(this.lastPt, host);
       return true;
     }
-    if (event.key === 'Backspace') {
-      this.typedBuffer = this.typedBuffer.slice(0, -1);
-      host.requestDraw();
-      return true;
-    }
-    if (/^[0-9.]$/.test(event.key) || (event.key === '-' && this.typedBuffer === '')) {
-      this.typedBuffer += event.key;
+    const typed = typedKey(this.typedBuffer, event.key, /^[0-9.-]$/);
+    if (typed !== null) {
+      this.typedBuffer = typed;
       host.requestDraw();
       return true;
     }

@@ -1,39 +1,43 @@
 import * as d3 from 'd3';
 import { Circle, Pt } from '../../models/types';
-import { angleFromCenter, dist, pointOnCircle } from '../../helpers/math/simpleGeometry';
+import { angleFromCenter, closestPointOnLine, dist, lineFromTwoPoints, pointOnCircle } from '../../helpers/math/simpleGeometry';
 import { commonTangents, tangentPointsFromExternalPoint } from '../../helpers/math/draftMath';
 import {
-  perpendicularFeetOnPolyline, polylineCumulativeLengths, projectOntoPolyline, tangentPointsFromPointToPolyline,
+  perpendicularFeetOnPolyline, tangentPointsFromPointToPolyline,
 } from '../../helpers/math/vibeMath';
-import { shapeCurves } from './curve-tools';
-import { pathFromPolygon } from '../../helpers/math/pathMath';
+import { nearestCurve } from './curve-tools';
+import { pathFromPolyline } from '../../helpers/math/pathMath';
 import { DraftTool, DraftToolHost } from './draft-tool';
-import { makeShapeId } from './toolbox-shape';
+import { DraftShape, makeShapeId } from './toolbox-shape';
 import { CLICK_MOVE_THRESHOLD_PX, angleLockModifier, stylePreview } from './two-point-tool';
 import { ToolboxStore } from './toolbox-store';
 
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 
+type ChainSpec = {
+  /** Shift and Ctrl lock each segment off the corner before it, as they do for Line. */
+  lock?: boolean;
+  build: (points: Pt[], closed: boolean) => DraftShape | null;
+  preview: (gRoot: RootGroup, points: Pt[], pxPerMm: number) => void;
+};
+
 /**
- * Click to place each corner; Shift and Ctrl lock each segment off the corner before it, as they
- * do for Line. Clicking the last corner again (a double-click does) or Enter, Escape or
- * right-click finishes it; clicking the first corner closes it. Backspace takes back a corner.
+ * Click to place each point. Clicking the last one again (a double-click does) or Enter, Escape
+ * or right-click finishes; clicking the first closes the chain. Backspace takes back a point.
  * Finishing keeps what was placed rather than throwing it away — undo is there for that.
  */
-export class PolylineTool implements DraftTool {
-  readonly id = 'polyline';
-  readonly label = 'Polyline';
+export class ChainTool implements DraftTool {
   readonly claimsDoubleClick = true;
 
   private points: Pt[] = [];
   private tangents: (number | undefined)[] = [];
   private currentPt: Pt | null = null;
 
-  constructor(private readonly toolbox: ToolboxStore) { }
+  constructor(readonly id: string, readonly label: string, private readonly spec: ChainSpec) { }
 
   private locked(pt: Pt, host: DraftToolHost): Pt {
     const last = this.points[this.points.length - 1];
-    return last ? angleLockModifier(last, pt, host, this.tangents[this.tangents.length - 1]) : pt;
+    return last && this.spec.lock ? angleLockModifier(last, pt, host, this.tangents[this.tangents.length - 1]) : pt;
   }
 
   onPointerDown(pt: Pt, host: DraftToolHost): void {
@@ -77,24 +81,16 @@ export class PolylineTool implements DraftTool {
     return false;
   }
 
-  // two corners are just a line, kept as one so it gets a line's handles
   private finish(host: DraftToolHost, closed: boolean): void {
-    const pts = this.points;
-    const dashed = this.toolbox.currentDashed;
-    if (pts.length === 2) {
-      host.addShape({ id: makeShapeId(), type: 'line', start: pts[0], end: pts[1], dashed });
-    } else if (pts.length > 2) {
-      const d = closed ? pathFromPolygon(pts) : pathFromPolygon(pts).replace(/ Z$/, '');
-      host.addShape({ id: makeShapeId(), type: 'path', d, dashed });
-    }
+    const shape = this.spec.build(this.points, closed);
+    if (shape) host.addShape(shape);
     this.reset();
     host.requestDraw();
   }
 
-  renderPreview(gRoot: RootGroup): void {
+  renderPreview(gRoot: RootGroup, _gUI: RootGroup, pxPerMm: number): void {
     if (this.points.length === 0 || !this.currentPt) return;
-    const d = [...this.points, this.currentPt].map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
-    stylePreview(gRoot.append('path').attr('d', d));
+    this.spec.preview(gRoot, [...this.points, this.currentPt], pxPerMm);
   }
 
   reset(): void {
@@ -102,6 +98,20 @@ export class PolylineTool implements DraftTool {
     this.tangents = [];
     this.currentPt = null;
   }
+}
+
+// two corners are just a line, kept as one so it gets a line's handles
+export function createPolylineTool(toolbox: ToolboxStore): ChainTool {
+  return new ChainTool('polyline', 'Polyline', {
+    lock: true,
+    build: (pts, closed) => {
+      const dashed = toolbox.currentDashed;
+      if (pts.length === 2) return { id: makeShapeId(), type: 'line', start: pts[0], end: pts[1], dashed };
+      if (pts.length > 2) return { id: makeShapeId(), type: 'path', d: pathFromPolyline(pts, closed), dashed };
+      return null;
+    },
+    preview: (gRoot, points) => { stylePreview(gRoot.append('path').attr('d', pathFromPolyline(points))); },
+  });
 }
 
 // a click on something a line can be solved against — a circle, arc or path, and for Perpendicular
@@ -114,12 +124,8 @@ function endAt(pt: Pt, host: DraftToolHost, straight: boolean): End {
   if (shape?.type === 'circle' || shape?.type === 'arc') return { pt, circle: { ...shape.center, r: shape.radius } };
   if (straight && shape?.type === 'line') return { pt, line: [shape.start, shape.end] };
   if (shape?.type !== 'path' && !(straight && shape?.type === 'rect')) return { pt };
-  const pieces = shapeCurves(shape).map(c => c.points);
-  const curve = pieces.reduce<Pt[] | null>((best, c) => {
-    const d = projectOntoPolyline(pt, c, polylineCumulativeLengths(c)).dist;
-    return !best || d < projectOntoPolyline(pt, best, polylineCumulativeLengths(best)).dist ? c : best;
-  }, null);
-  return curve ? { pt, curve } : { pt };
+  const nearest = nearestCurve(shape, pt);
+  return nearest ? { pt, curve: nearest.curve.points } : { pt };
 }
 
 function nearestTo(click: Pt, candidates: Pt[]): Pt | null {
@@ -138,11 +144,8 @@ function tangentFoot(from: Pt, end: End): Pt | null {
 function perpendicularFoot(from: Pt, end: End): Pt | null {
   if (end.line) {
     const [a, b] = end.line;
-    const dx = b.x - a.x, dy = b.y - a.y;
-    const len2 = dx * dx + dy * dy;
-    if (len2 < 1e-18) return null;
-    const t = ((from.x - a.x) * dx + (from.y - a.y) * dy) / len2;
-    return { x: a.x + t * dx, y: a.y + t * dy };
+    if (dist(a, b) < 1e-9) return null;
+    return closestPointOnLine(from, lineFromTwoPoints(a, b)).point;
   }
   if (end.circle) {
     if (dist(from, end.circle) < 1e-9) return null;
@@ -267,10 +270,6 @@ export class SolvedLineTool implements DraftTool {
     this.current = null;
     this.awaitingSecondClick = false;
   }
-}
-
-export function createPolylineTool(toolbox: ToolboxStore): PolylineTool {
-  return new PolylineTool(toolbox);
 }
 
 export function createTangentLineTool(toolbox: ToolboxStore): SolvedLineTool {

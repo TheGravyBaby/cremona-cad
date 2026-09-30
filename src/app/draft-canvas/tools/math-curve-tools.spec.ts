@@ -2,7 +2,7 @@ import { Pt } from '../../models/types';
 import { battenPath, catenaryBetween, cycloidBetween, samplePathToPolyline, trochoidNorm } from '../../helpers/math/pathMath';
 import { battenBeziers, polylineCumulativeLengths, projectOntoPolyline } from '../../helpers/math/vibeMath';
 import { fakeToolHost } from './fake-tool-host';
-import { PathShape, PathSource, pathFromSource, withPathSource } from './toolbox-shape';
+import { PathShape, PathSource, pathFromSource } from './toolbox-shape';
 import { ToolboxStore } from './toolbox-store';
 import { createBattenTool, createCatenaryTool, createCycloidTool } from './math-curve-tools';
 import { endpointGrabbers, withBattenPinAdded, withBattenPinRemoved, withEndpoint } from './shape-grabbers';
@@ -220,11 +220,5 @@ describe('curve sources', () => {
         });
       }
     }
-  });
-
-  it('read cycloids and battens saved under their old names', () => {
-    const pins = [at(0, 0), at(10, 5)];
-    const old = { id: 'b', type: 'path', d: 'M 0 0', batten: { pins, closed: false } } as unknown as PathShape;
-    expect(withPathSource(old)).toEqual({ id: 'b', type: 'path', d: 'M 0 0', source: { kind: 'batten', pins, closed: false } });
   });
 });

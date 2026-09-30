@@ -4,7 +4,7 @@ import {
   angleSweep, dimensionGeometry, dimensionOffsetAt, imageAspect, imageCenter, imageCorners, imageEdgeMidpoints,
   pathFromSource, placeAngle,
 } from './toolbox-shape';
-import { angleFromCenter, dist, normalizeDegrees, normalizeRadians, pointOnCircle, rotatePointAbout } from '../../helpers/math/simpleGeometry';
+import { angleFromCenter, cubicBezierPoint, dist, normalizeDegrees, normalizeRadians, pointOnCircle, rotatePointAbout } from '../../helpers/math/simpleGeometry';
 import { battenBeziers } from '../../helpers/math/vibeMath';
 
 /** The point on an arc's circle midway (by angle) between its start and end — where the
@@ -281,11 +281,7 @@ export function withBattenPinAdded(shape: PathShape, pt: Pt): PathShape {
   let best = { span: 0, at: pins[0], d: Infinity };
   battenBeziers(pins, closed).forEach(([a, c1, c2, b], span) => {
     for (let k = 0; k <= 64; k++) {
-      const t = k / 64, s = 1 - t;
-      const p = {
-        x: s * s * s * a.x + 3 * s * s * t * c1.x + 3 * s * t * t * c2.x + t * t * t * b.x,
-        y: s * s * s * a.y + 3 * s * s * t * c1.y + 3 * s * t * t * c2.y + t * t * t * b.y,
-      };
+      const p = cubicBezierPoint(a, c1, c2, b, k / 64);
       const d = dist(p, pt);
       if (d < best.d) best = { span, at: p, d };
     }

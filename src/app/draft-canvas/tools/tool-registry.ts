@@ -72,21 +72,18 @@ export class ToolRegistryService {
         createAngleTool(), createCurveLengthTool(),createCurveTicksTool(this.toolbox)],
     }],
     // Ordered by where the center click falls — first, second, third, never — then the three that
-    // solve themselves off geometry already on the canvas. Keep tool-hotkeys.ts's KeyA cycle in
-    // this same order.
+    // solve themselves off geometry already on the canvas.
     [{
       label: 'Arcs', tools: [createArcTool(), createArcStartFirstTool(), createEndsCenterArcTool(), createThroughArcTool(),
         createTangentArcTool(), createChainedTangentArcTool(), createJoinArcTool()],
     }],
-    // Keep tool-hotkeys.ts's KeyC and KeyR cycles in the same order as these two.
     [{ label: 'Circle & Polygons', tools: [createCircleTool(this.toolbox), ...createRegularPolygonTools(this.toolbox)] }],
     [{ label: 'Boxed Shapes', tools: [createRectTool(this.toolbox), createRightTriangleTool(this.toolbox)] }],
     [{ label: 'Mathematical Curves', tools: [createBattenTool(this.toolbox), createCatenaryTool(this.toolbox), createCycloidTool(this.toolbox)] }],
     [createTextTool(this.toolbox)],
     [createPointTool()],
-    // Its own button, not folded into Draw's flyout: it deletes any toolbox shape it's dragged
-    // over (see eraser-tool.ts), not just Freehand strokes, so it reads as a general tool rather
-    // than a Draw accessory.
+    // Its own button rather than a Lines variant: it deletes any toolbox shape it's dragged over
+    // (see eraser-tool.ts), not just Freehand strokes.
     [createEraserTool()],
     // Reference images are deliberately not here — they're added from the bottom bar's image
     // list instead, alongside their other controls. See image-placement.ts.
