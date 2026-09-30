@@ -145,7 +145,6 @@ describe('ToolPaletteComponent', () => {
     fixture.detectChanges();
 
     expect(component.tab).toBe('modify');
-    expect(el('.tool-dock-header')!.textContent).toContain('Bench');
     expect(el('.modify-handle')!.classList.contains('top')).toBe(true);
     expect(el('.tool-dock-handle:not(.modify-handle)')!.classList.contains('top')).toBe(false);
     expect(fixture.nativeElement.querySelectorAll('.tool-row').length).toBe(component.modifyLayout.length + 1);

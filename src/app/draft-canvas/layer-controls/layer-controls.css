@@ -1,8 +1,8 @@
-/* Two segmented strips in the canvas bottom bar, sized and built like .zoom-controls beside them
+/* Segmented strips in the canvas bottom bar, sized and built like .zoom-controls beside them
    (26px tall, one border round the pair, a divider between the cells) so the row reads as one set
    of controls rather than as this component bolted on. Those rules live in draft-canvas.css, the
    parent's stylesheet, so view encapsulation never reaches in here — everything the strips and
-   their popups need is restated below rather than inherited. */
+   their popups need is restated below rather than inherited. axis-controls loads this file too. */
 .layer-controls {
   display: flex;
   align-items: center;

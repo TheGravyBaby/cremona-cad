@@ -688,6 +688,32 @@ describe('plate surface model', () => {
       }
     });
 
+    it('carries an arch landed past the trough on through the corner without a step', () => {
+      // a cycloid past 100% dips under the trough and lands on the channel's outer flank — the
+      // flank the corner smoothing lowers. smoothing from the trough regardless left a 0.5mm step
+      // down at the contact all round each corner; it has to run from the landing itself.
+      const p = makeParams();
+      p.arching!.top.cross = { type: 'cycloid', d: 0.6, pct: 1.14 };
+      const model = buildPlateSurfaceModel(p, 'top')!;
+      let landedPastTrough = 0;
+      let worstJump = 0;
+      for (const corner of [p.bouts.UCr!.y, p.bouts.LCr!.y]) {
+        for (let y = corner - 15; y <= corner + 15; y += 1) {
+          const chords = stationChordsAt(p, model, y);
+          if ((chords.crossSection?.right?.contactS ?? 0) < 0) landedPastTrough++;
+          let prev: number | null = null;
+          for (let x = 0; x <= chords.outerHalf!; x += 0.1) {
+            const z = topSurfaceZAt(p, model, x, y, chords)!;
+            if (prev !== null) worstJump = Math.max(worstJump, Math.abs(z - prev));
+            prev = z;
+          }
+        }
+      }
+      expect(landedPastTrough).toBeGreaterThan(40);
+      // the arch's own steepest flank moves ~0.07mm per 0.1mm; the step was 0.5mm in one sample
+      expect(worstJump).toBeLessThan(0.15);
+    });
+
     it('leaves the gouge arc against the arch exactly as it was cut', () => {
       // the smoothing only reaches outboard of the trough, so the inner flank the arch
       // is solved tangent to is the gouge's own circle, corners included.

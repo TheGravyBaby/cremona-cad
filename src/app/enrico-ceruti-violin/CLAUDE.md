@@ -226,6 +226,12 @@ recognizes the current format *positively* so it stays idempotent; six tests in
   saved before this read differently; no migration, by choice. The smooth crown spline is kept
   unless it rises above the crown or sinks below the trough (`breaksSpec`), and then the monotone
   one is used — so a moved crown can show a faint curvature line along its ridge.
+- **The arch meets the channel first; the corners are smoothed from wherever it landed.**
+  `cornerSmoothZ` stretches the channel's outer flank across the corner wedge starting at the
+  arch's contact (`from`), which is past the trough for a cross arch over 100%. Stretching from
+  the trough regardless lowered the flank under the arch's landing and left a step at every
+  corner. The stretch eases out from a landing up the flank so the arch's grade carries on
+  rather than creasing; from the trough it stays uniform, the shape settled first.
 - **The cross-arching section view slices the surface, not the station solve.** It draws
   `sampleArchSectionRuns`, the same height field the wireframe and contours read. `section.zAt`
   places the channel by chord, one gouge wide on the station line, with no corner pass — so at a

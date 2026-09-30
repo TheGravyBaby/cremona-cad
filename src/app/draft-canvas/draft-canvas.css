@@ -1,54 +1,3 @@
-.axis-controls {
-  position: relative;
-  display: inline-block;
-}
-
-/* Icon-only, sized to match .zoom-controls' 28px outer footprint (26px content + 1px border
-   each side) so the two sit flush together. box-sizing pinned so the 28px is the actual
-   rendered size regardless of .btn's own padding; ".btn.axis-toggle-btn" (not just
-   ".axis-toggle-btn") so this wins over .btn's padding despite matching specificity. */
-.btn.axis-toggle-btn {
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-}
-
-.btn.active {
-  background: var(--ui-accent);
-  color: #fff;
-}
-
-.axis-popup {
-  position: absolute;
-  right: 0px;
-  background: var(--ui-bg-elevated);
-  border: 1px solid var(--ui-border-elevated);
-  border-radius: 4px;
-  box-shadow: var(--ui-shadow-pop);
-  padding: 10px;
-  z-index: 10;
-  min-width: 220px;
-  color: var(--ui-text-primary);
-  bottom: 40px;
-  min-width: 180px;
-}
-
-.axis-popup .row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin: 6px 0;
-}
-
-.axis-popup input[type="number"] {
-  width: 80px;
-}
-
 .canvas-shell {
   position: relative;
   height: 100%;
@@ -272,22 +221,77 @@ svg {
   justify-content: center;
   min-width: 32px;
   padding: 0 4px;
+  border: none;
+  background: none;
   font-size: 11px;
   color: var(--ui-text-muted);
   user-select: none;
+  cursor: pointer;
 }
 
-.chk {
+.zoom-readout:hover {
+  background: var(--ui-canvas-btn-bg-active);
+  color: var(--ui-text-primary);
+}
+
+.zoom-readout.active {
+  background: var(--ui-accent);
+  color: #fff;
+}
+
+.zoom-group {
+  position: relative;
+  display: flex;
+}
+
+/* the bar's right end, so it opens leftwards; styled as layer-controls' .lc-popup */
+.view-popup {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--ui-border-elevated);
+  border-radius: 6px;
+  background: var(--ui-bg-elevated);
+  box-shadow: var(--ui-shadow-pop);
+  color: var(--ui-text-primary);
+  font-size: 11px;
+}
+
+.view-row {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 8px;
-  /* border: 1px solid var(--ui-border-elevated);
-  border-radius: 4px; */
-  /* background: var(--ui-bg-surface); */
-  color: var(--ui-text-primary);
-  user-select: none;
+  white-space: nowrap;
 }
+
+.view-row > span:first-child {
+  flex: 1 1 auto;
+  min-width: 52px;
+}
+
+.view-row input {
+  width: 64px;
+  height: 20px;
+  box-sizing: border-box;
+  padding: 1px 4px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 4px;
+  background: var(--ui-bg-surface-2);
+  color: var(--ui-text-primary);
+  font-size: 11px;
+  text-align: right;
+}
+
+.view-unit {
+  width: 30px;
+  color: var(--ui-text-muted);
+}
+
 /* Dark mode styles */
 .canvas-shell.dark-mode {
   background-color: #1e1e1e;
@@ -372,25 +376,6 @@ svg {
 
 .canvas-shell.dark-mode .sep {
   background: #444;
-}
-
-.canvas-shell.dark-mode .chk {
-  border-color: #444;
-  background: #3a3a3a;
-  color: #e0e0e0;
-}
-
-.canvas-shell.dark-mode .axis-popup {
-  background: #3a3a3a;
-  border-color: #555;
-  color: #e0e0e0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
-.canvas-shell.dark-mode .axis-popup input[type="number"] {
-  background: #2f2f2f;
-  color: #e0e0e0;
-  border-color: #555;
 }
 
 .canvas-shell.dark-mode input[type="checkbox"] {

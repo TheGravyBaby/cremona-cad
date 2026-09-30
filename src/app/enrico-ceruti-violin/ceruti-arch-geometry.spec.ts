@@ -162,6 +162,31 @@ describe('cornerSmoothZ', () => {
     expect(cornerSmoothZ(-2, 0, R, D)).toBe(0);
     expect(cornerSmoothZ(-2, -1, R, D)).toBe(0);
   });
+
+  it('runs from an arch landed up the outer flank, leaving at the flank\'s own grade', () => {
+    // an arch past 100% lands past the trough; the smoothing must start where it landed, not at
+    // the trough under it, or the corner steps down at the contact — and must leave at the
+    // grade the arch arrived with, or it creases there instead
+    const from = -0.6 * w;
+    const run = 3 * (w + from);
+    const edgeAt = (s: number) => run + s - from;
+    expect(cornerSmoothZ(from - 1e-9, edgeAt(from), R, D, from)).toBeCloseTo(gougeProfileZ(from, R, D), 6);
+    const h = 1e-4;
+    const grade = (cornerSmoothZ(from - h, edgeAt(from - h), R, D, from) - gougeProfileZ(from, R, D)) / -h;
+    expect(grade).toBeCloseTo(gougeProfileSlope(from, R, D), 3);
+    expect(cornerSmoothZ(from - run, 0, R, D, from)).toBe(0);
+    let prev = -Infinity;
+    for (let s = from - 0.1; s > from - run; s -= 0.1) {
+      const z = cornerSmoothZ(s, edgeAt(s), R, D, from);
+      expect(z).toBeLessThanOrEqual(gougeProfileZ(s, R, D) + 1e-12);
+      expect(z).toBeGreaterThan(prev);
+      prev = z;
+    }
+    // and along the flanks, where the land edge sits where the gouge left it, it is still the gouge
+    for (const s of [from - 0.3, from - 1, -0.95 * w]) {
+      expect(cornerSmoothZ(s, w + s, R, D, from)).toBeCloseTo(gougeProfileZ(s, R, D), 12);
+    }
+  });
 });
 
 describe('crossArchKnots', () => {

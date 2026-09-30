@@ -43,50 +43,17 @@
       @if (debugDumpEnabled) {
       <button type="button" class="btn debug-dump-btn" (click)="copyCanvasDebugDump()" title="Copy drawn geometry">/</button>
       }
-      <!-- What is on the canvas and whether you can see it, next to how it is drawn (axis/grid) and
+      <!-- What is on the canvas and whether you can see it, next to how it is drawn (axes/grid) and
            where you are looking (zoom). These lived in the tool palette until the bar got too wide
            to justify — see layer-controls.ts. -->
       <app-layer-controls (selectImageRequested)="selectShapeById($event)"
         (uploadImageRequested)="placeImageFromFile()"
         (linkImageRequested)="placeImageFromLink($event)"></app-layer-controls>
 
-       <div class="axis-controls">
-        <button type="button" class="btn axis-toggle-btn" [class.active]="axisPopupOpen" (click)="toggleAxisPopup()"
-          title="Axis &amp; grid settings">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 20V4" />
-            <path d="M1.5 8L4 4l2.5 4" />
-            <path d="M4 20h16" />
-            <path d="M16 22.5L20 20l-4-2.5" />
-          </svg>
-        </button>
-        @if(axisPopupOpen) {
-        <div class="axis-popup">
-          <div class="row">
-            <label>X Step (mm)</label>
-            <input type="number" min="0.1" step="0.1" [ngModel]="gridStepX" (ngModelChange)="gridStepX = $event" />
-          </div>
-          <div class="row">
-            <label>Y Step (mm)</label>
-            <input type="number" min="0.1" step="0.1" [ngModel]="gridStepY" (ngModelChange)="gridStepY = $event" />
-          </div>
-          <label class="chk">
-            <input type="checkbox" [ngModel]="showAxes" (ngModelChange)="showAxes = $event" />
-            Axis
-          </label>
-          <label class="chk">
-            <input type="checkbox" [ngModel]="showGridX" (ngModelChange)="showGridX = $event" />
-            X Lines
-          </label>
-          <label class="chk">
-            <input type="checkbox" [ngModel]="showGridY" (ngModelChange)="showGridY = $event" />
-            Y Lines
-          </label>
-        </div>
-        }
-      </div>
-            <div class="zoom-controls">
+      <app-axis-controls [axisGrid]="axisGrid"></app-axis-controls>
+
+      <div #zoomGroup class="zoom-group">
+      <div class="zoom-controls">
         <button type="button" class="zoom-btn" (click)="fitCamera(); draw()" title="Fit to view (F)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round">
@@ -102,7 +69,8 @@
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
         </button>
-        <span class="zoom-readout" title="Zoom (px/mm)">{{ pxPerMm.toFixed(1) }}</span>
+        <button type="button" class="zoom-readout" [class.active]="viewOpen" (click)="viewOpen = !viewOpen"
+          title="Zoom (px/mm). Click to set the view by number.">{{ pxPerMm.toFixed(1) }}</button>
         <button type="button" class="zoom-btn" (click)="applyZoom(pxPerMm * 1.1)" title="Zoom in">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round">
@@ -110,6 +78,28 @@
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
         </button>
+      </div>
+
+      @if (viewOpen) {
+      <div class="view-popup">
+        <label class="view-row" title="Horizontal position of the view's centre, as the X axis numbers it.">
+          <span>Centre X</span>
+          <input #viewX type="number" step="1" [value]="viewField('x')" (change)="setViewField('x', viewX)" />
+          <span class="view-unit">mm</span>
+        </label>
+        <label class="view-row" title="Vertical position of the view's centre, as the Y axis numbers it.">
+          <span>Centre Y</span>
+          <input #viewY type="number" step="1" [value]="viewField('y')" (change)="setViewField('y', viewY)" />
+          <span class="view-unit">mm</span>
+        </label>
+        <label class="view-row" title="Screen pixels per millimetre of drawing, held about the centre.">
+          <span>Zoom</span>
+          <input #viewZoom type="number" step="0.1" min="0.05" [value]="viewField('zoom')"
+            (change)="setViewField('zoom', viewZoom)" />
+          <span class="view-unit">px/mm</span>
+        </label>
+      </div>
+      }
       </div>
 
     </div>

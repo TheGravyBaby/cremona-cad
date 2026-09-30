@@ -42,6 +42,11 @@
   --ui-canvas-btn-bg-active: #2a2a2f;
   --ui-canvas-btn-border-hover: #6a6a72;
 
+  --ui-canvas-axis: #adadad;
+  --ui-canvas-axis-label: #8a8a8a;
+  --ui-canvas-grid: rgba(133, 133, 133, 0.26);
+  --ui-canvas-tick: #888888;
+
   --ui-color-scheme: dark;
 }
 
@@ -90,6 +95,11 @@
   --ui-canvas-btn-bg-end: #d8dce2;
   --ui-canvas-btn-bg-active: #b4b9c0;
   --ui-canvas-btn-border-hover: #72777d;
+
+  --ui-canvas-axis: #6f6a5c;
+  --ui-canvas-axis-label: #5f6368;
+  --ui-canvas-grid: rgba(90, 84, 70, 0.22);
+  --ui-canvas-tick: #5f6368;
 
   --ui-color-scheme: light;
 }
