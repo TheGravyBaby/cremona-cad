@@ -55,7 +55,7 @@ export class ToolboxStore implements Undoable {
   private _showImages = true;
   private _showShapes = true;
   /** Whether the recipe's own geometry is out of reach of selection — see recipeLocked. */
-  private _recipeLocked = false;
+  private _recipeLocked = true;
   /** The recipe panel currently open — see setActivePanel. */
   private _activePanel: string | null = null;
   /** Panels the open recipe has, for the settings bar's scoping picker. */
