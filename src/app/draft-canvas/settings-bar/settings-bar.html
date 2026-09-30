@@ -97,6 +97,14 @@
     </span>
   }
 
+  @if (showFilletPanel) {
+    <span class="field"><span class="f-lbl">Radius</span>
+      <input type="number" min="0.1" step="0.5" [value]="filletRadius"
+        (change)="setFilletRadius($any($event.target).valueAsNumber)" (keydown.enter)="$any($event.target).blur()"
+        title="Radius of the round, in mm" />
+    </span>
+  }
+
   @if (showCurveDepth) {
     <span class="field"><span class="f-lbl">Depth</span>
       <input type="number" min="0.1" step="1" [value]="curveDepth"

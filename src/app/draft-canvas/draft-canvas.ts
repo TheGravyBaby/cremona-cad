@@ -30,12 +30,12 @@ import { SnapCandidate, SnapEngine } from './tools/snap-engine';
 import { drawSnapMarker } from './tools/snap-marker-renderer';
 import { distanceToShape, shapeBounds } from './tools/shape-hit-test';
 import { translateShape } from './tools/shape-transform';
-import { endpointGrabbers, withEndpoint, EndpointGrabber, EndpointKey } from './tools/shape-grabbers';
+import { endpointGrabbers, withBattenPinAdded, withBattenPinRemoved, withEndpoint, EndpointGrabber, EndpointKey } from './tools/shape-grabbers';
 import { snapToLockedAngle } from './tools/angle-lock';
 import { dist } from '../helpers/math/simpleGeometry';
 import { copyDebugDump, isLocalHost } from '../helpers/debugDump';
 import { info, warn } from '../shared/message-emitter';
-import { DEFAULT_TEXT_SIZE_MM, DraftShape, ImageShape, TextShape, imageRenderKey } from './tools/toolbox-shape';
+import { DEFAULT_TEXT_SIZE_MM, DraftShape, ImageShape, PathShape, TextShape, imageRenderKey } from './tools/toolbox-shape';
 import { placedImageShape } from './tools/image-placement';
 import { HOTKEY_TOOL_CYCLE } from './tools/tool-hotkeys';
 import { SettingsBarComponent } from './settings-bar/settings-bar';
@@ -122,6 +122,11 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     },
     selectShape: (id) => this.selection.select(toolboxRef(id)),
     removeShape: (id) => this.toolbox.removeShape(id),
+    replaceShapes: (replacements, added) => this.toolbox.replaceShapes(replacements, added.map(shape => ({
+      ...shape,
+      color: shape.color ?? this.toolbox.currentColor,
+      layerId: shape.layerId ?? this.toolbox.activeLayerId,
+    }))),
     returnToSelect: (selectShapeId) => {
       this.toolRegistry.selectTool(null);
       if (selectShapeId) this.selection.select(toolboxRef(selectShapeId));
@@ -177,14 +182,14 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   // uncommitted preview — and only written to the store as one batched update on pointerup, so
   // a whole drag is a single undo step instead of one per intermediate pointermove.
   private static readonly DRAG_MOVE_THRESHOLD_PX = 3;
-  /** How close two presses must be to count as a double-click on a group. Wider than the drag
+  /** How close two presses must be to count as a double-click on a group or a batten. Wider than the drag
    * threshold on purpose: a trackpad double-tap drifts, and this is judged before any drag. */
   private static readonly DOUBLE_PRESS_MS = 400;
   private static readonly DOUBLE_PRESS_REACH_PX = 12;
-  private lastPress: { time: number; x: number; y: number; ref: SelectionRef | null } | null = null;
+  private lastPress: { time: number; x: number; y: number; pt: Pt; ref: SelectionRef | null } | null = null;
   /** Where the right-click menu is open, in canvas pixels; null when closed. */
   contextMenu: { x: number; y: number } | null = null;
-  private enteredGroupAt = -Infinity;
+  private doublePressHandledAt = -Infinity;
 
   // a mouse wheel notch with ctrl held reports deltaY in the hundreds (vs single digits for a
   // trackpad pinch) — unclamped, one notch could scale the view by ~20x.
@@ -694,6 +699,25 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       }
     }
     return null;
+  }
+
+  // a double press on a selected batten: on a pin takes it out, on the curve puts one in. True when
+  // the double press was the batten's, even if it was already down to its last pins.
+  private editBattenPins(pt: Pt): boolean {
+    const pin = this.hitTestEndpointGrabber(pt);
+    if (pin?.key.startsWith('pin-')) {
+      const shape = this.selectedShapes.find(s => s.id === pin.shapeId) as PathShape;
+      const next = withBattenPinRemoved(shape, Number(pin.key.slice(4)));
+      if (next) this.toolbox.updateShape(shape.id, { source: next.source, d: next.d });
+      return true;
+    }
+    const toleranceMm = DraftCanvasComponent.SELECT_HIT_TOLERANCE_PX / this.pxPerMm;
+    const batten = this.selectedShapes.find((s): s is PathShape => s.type === 'path' && s.source?.kind === 'batten'
+      && !!this.handlesFor(s) && distanceToShape(pt, s) <= toleranceMm);
+    if (!batten) return false;
+    const next = withBattenPinAdded(batten, pt);
+    this.toolbox.updateShape(batten.id, { source: next.source, d: next.d });
+    return true;
   }
 
   /** The topmost *text* shape under `pt`, or undefined — what the double-click and Text-tool
@@ -1452,14 +1476,21 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       // tap lands a few pixels off, enough to miss a thin line's hit test on the second click.
       const prev = this.lastPress;
       const now = performance.now();
-      this.lastPress = { time: now, x: event.clientX, y: event.clientY, ref: hit ?? prev?.ref ?? null };
+      this.lastPress = { time: now, x: event.clientX, y: event.clientY, pt, ref: hit ?? prev?.ref ?? null };
       if (prev && !isTouch && !event.shiftKey && now - prev.time < DraftCanvasComponent.DOUBLE_PRESS_MS
         && Math.hypot(event.clientX - prev.x, event.clientY - prev.y) < DraftCanvasComponent.DOUBLE_PRESS_REACH_PX) {
+        // a batten's pins are edited the same way, and tried at the first press too for the same drift
+        if (this.editBattenPins(prev.pt) || this.editBattenPins(pt)) {
+          this.doublePressHandledAt = now;
+          this.lastPress = null;
+          this.draw();
+          return;
+        }
         const ref = hit ?? prev.ref;
         const shape = ref?.source === 'toolbox' ? this.toolbox.getEditableShapes().find(s => s.id === ref.id) : undefined;
         if (shape?.groupId && shape.groupId !== this.selection.enteredGroup) {
           this.selection.enter(ref!);
-          this.enteredGroupAt = now;
+          this.doublePressHandledAt = now;
           this.lastPress = null;
           this.draw();
           return;
@@ -1776,12 +1807,12 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   onDoubleClick(event: MouseEvent): void {
     // double-click zooms in at the clicked point; hold Shift/Ctrl/Alt/Meta to zoom out
     event.preventDefault();
-    if (performance.now() - this.enteredGroupAt < DraftCanvasComponent.DOUBLE_PRESS_MS) return;
+    if (performance.now() - this.doublePressHandledAt < DraftCanvasComponent.DOUBLE_PRESS_MS) return;
     if (this.activeTool?.claimsDoubleClick) return;
 
     const pt = this.worldFromPointer(event);
 
-    // ...unless the presses just opened a group (see onPointerDown), which is what the double-click
+    // ...unless the presses just opened a group or edited a batten (see onPointerDown), which is what the double-click
     // meant; or it landed on a label, where double-click means "edit this" in every drawing program. Only text
     // intercepts, so double-click-to-zoom still works everywhere else, including on top of other
     // shapes.

@@ -1,10 +1,11 @@
 import { Pt } from '../../models/types';
 import {
-  DEFAULT_TEXT_SIZE_MM, DraftShape, ImageShape, TextShape,
+  DEFAULT_TEXT_SIZE_MM, DraftShape, ImageShape, PathShape, TextShape,
   angleSweep, dimensionGeometry, dimensionOffsetAt, imageAspect, imageCenter, imageCorners, imageEdgeMidpoints,
   pathFromSource, placeAngle,
 } from './toolbox-shape';
 import { angleFromCenter, dist, normalizeDegrees, normalizeRadians, pointOnCircle, rotatePointAbout } from '../../helpers/math/simpleGeometry';
+import { battenBeziers } from '../../helpers/math/vibeMath';
 
 /** The point on an arc's circle midway (by angle) between its start and end — where the
  * radius-resize handle sits, since it's the most "on the arc" point to grab. */
@@ -269,4 +270,32 @@ function withImageHandle(shape: ImageShape, key: EndpointKey, pos: Pt): DraftSha
     width: box.width,
     height: box.height,
   };
+}
+
+// a double-click's edits to a batten. A new pin goes on the curve where it was hit, in the span it
+// was hit in, so the strip barely moves until the pin is dragged; a batten keeps at least two pins,
+// three for a loop, and null means there was nothing to take out.
+export function withBattenPinAdded(shape: PathShape, pt: Pt): PathShape {
+  if (shape.source?.kind !== 'batten') return shape;
+  const { pins, closed } = shape.source;
+  let best = { span: 0, at: pins[0], d: Infinity };
+  battenBeziers(pins, closed).forEach(([a, c1, c2, b], span) => {
+    for (let k = 0; k <= 64; k++) {
+      const t = k / 64, s = 1 - t;
+      const p = {
+        x: s * s * s * a.x + 3 * s * s * t * c1.x + 3 * s * t * t * c2.x + t * t * t * b.x,
+        y: s * s * s * a.y + 3 * s * s * t * c1.y + 3 * s * t * t * c2.y + t * t * t * b.y,
+      };
+      const d = dist(p, pt);
+      if (d < best.d) best = { span, at: p, d };
+    }
+  });
+  const source = { ...shape.source, pins: [...pins.slice(0, best.span + 1), best.at, ...pins.slice(best.span + 1)] };
+  return { ...shape, source, d: pathFromSource(source) };
+}
+
+export function withBattenPinRemoved(shape: PathShape, index: number): PathShape | null {
+  if (shape.source?.kind !== 'batten' || shape.source.pins.length <= (shape.source.closed ? 3 : 2)) return null;
+  const source = { ...shape.source, pins: shape.source.pins.filter((_, i) => i !== index) };
+  return { ...shape, source, d: pathFromSource(source) };
 }
