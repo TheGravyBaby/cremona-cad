@@ -76,19 +76,46 @@
         }
         <button type="button" class="layer-tab-add" title="Add layer" (click)="addLayer()">+</button>
       </div>
-      <button type="button" class="lc-action" (click)="clearActiveLayer()" title="Clear this layer's shapes">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="3 6 5 6 21 6" />
-          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-          <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-          <line x1="10" y1="11" x2="10" y2="17" />
-          <line x1="14" y1="11" x2="14" y2="17" />
-        </svg>
-        <span>Clear Layer</span>
-      </button>
+      <!-- Files come and go through this list, as images do through theirs: the same Upload
+           row, then the drawing out, then the layer cleared. -->
+      <div class="lc-action-row">
+        <button type="button" class="lc-action" (click)="svgFileInput.click()"
+          title="Import an SVG file onto the active layer, in place">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+          <span>Import</span>
+        </button>
+        <button type="button" class="lc-action" (click)="exportSvg()" [disabled]="!canExport"
+          title="Save as SVG at real size: the selection, or the whole drawing when nothing is selected">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          <span>Export</span>
+        </button>
+        <button type="button" class="lc-action" (click)="clearActiveLayer()" title="Clear this layer's shapes">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6" />
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+            <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            <line x1="10" y1="11" x2="10" y2="17" />
+            <line x1="14" y1="11" x2="14" y2="17" />
+          </svg>
+          <span>Clear</span>
+        </button>
+      </div>
     </div>
     }
+    <!-- outside the popup, which is torn down when it closes; a file dialog can only be opened
+         by a real click, and this is the element it opens from -->
+    <input #svgFileInput type="file" accept=".svg,image/svg+xml" style="display:none" (change)="importSvg(svgFileInput)" />
   </div>
 
   <div class="lc-group">

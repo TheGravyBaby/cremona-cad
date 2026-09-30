@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { warn } from '../../shared/message-emitter';
-import { DraftShape, makeShapeId } from './toolbox-shape';
+import { DraftShape, makeGroupId, makeShapeId } from './toolbox-shape';
 import { ToolboxStore } from './toolbox-store';
 import { SelectionStore, toolboxRef } from './selection-store';
 import { shapesToSvg, svgToShapes } from './shape-svg';
@@ -36,7 +36,37 @@ export class SelectionActions {
   get canTransform(): boolean { return this.selection.size > 0; }
   /** Needs something to line up against: two shapes, at least one of them free to move. */
   get canAlign(): boolean { return this.selection.shapes.length > 1 && this.selection.toolboxShapes.length > 0; }
+  /** Three or more drawn shapes: the outer two hold still and the rest space out between them. */
+  get canDistribute(): boolean { return this.groupable.length > 2; }
   get canReorder(): boolean { return this.selection.toolboxShapes.some(s => s.type !== 'image'); }
+  /** Two or more drawn shapes that aren't already one group. Images stay out: they belong to no
+   * layer and sit beneath everything, so a group holding one would move as two things. */
+  get canGroup(): boolean {
+    const shapes = this.groupable;
+    return shapes.length > 1 && (shapes[0].groupId === undefined || shapes.some(s => s.groupId !== shapes[0].groupId));
+  }
+  get canUngroup(): boolean { return this.selection.toolboxShapes.some(s => s.groupId); }
+
+  private get groupable(): DraftShape[] { return this.selection.toolboxShapes.filter(s => s.type !== 'image'); }
+
+  /** Makes the selection one group. Members of other groups leave them: flat groups can't nest. */
+  group(): void {
+    if (!this.canGroup) return;
+    const groupId = makeGroupId();
+    this.toolbox.updateShapes(new Map(this.groupable.map(s => [s.id, { groupId }])));
+  }
+
+  ungroup(): void {
+    const grouped = this.selection.toolboxShapes.filter(s => s.groupId);
+    this.toolbox.updateShapes(new Map(grouped.map(s => [s.id, { groupId: undefined }])));
+  }
+
+  /** The selection as SVG text — or, with nothing selected, every drawn shape in view — for
+   * saving to a file. Null when there's nothing to write. */
+  exportSvg(): string | null {
+    const shapes = (this.selection.size ? this.selection.shapes : this.toolbox.getVisibleShapes()).filter(s => s.type !== 'image');
+    return shapes.length ? shapesToSvg(shapes) : null;
+  }
 
   /** Copies the selection and returns it as SVG text for the system clipboard, or null when
    * there was nothing to copy. */
@@ -153,6 +183,24 @@ export class SelectionActions {
     return true;
   }
 
+  /** Spaces the drawn shapes' centres evenly between the two outermost, which stay put. */
+  distribute(along: 'horizontal' | 'vertical'): boolean {
+    if (!this.canDistribute) return false;
+    const centre = (s: DraftShape): number => {
+      const b = shapeBounds(s);
+      return along === 'horizontal' ? (b.x0 + b.x1) / 2 : (b.y0 + b.y1) / 2;
+    };
+    const ordered = [...this.groupable].sort((a, b) => centre(a) - centre(b));
+    const first = centre(ordered[0]);
+    const step = (centre(ordered[ordered.length - 1]) - first) / (ordered.length - 1);
+    const moved = ordered.map((s, i) => {
+      const shift = first + i * step - centre(s);
+      return along === 'horizontal' ? translateShape(s, shift, 0) : translateShape(s, 0, shift);
+    });
+    this.toolbox.replaceShapes(moved);
+    return true;
+  }
+
   /** To the top or bottom of the drawing order. Images always sit beneath everything, so they
    * stay out of it. */
   reorder(to: 'front' | 'back'): void {
@@ -161,7 +209,14 @@ export class SelectionActions {
 
   private place(shapes: DraftShape[]): boolean {
     if (shapes.length === 0 || !this.activeLayerAccepts('Paste')) return false;
-    const placed = shapes.map(s => this.stamp(s));
+    // groups come along, as new groups: a second paste must not join the first
+    const groupIds = new Map<string, string>();
+    const placed = shapes.map(s => {
+      const stamped = this.stamp(s);
+      if (!s.groupId) return stamped;
+      if (!groupIds.has(s.groupId)) groupIds.set(s.groupId, makeGroupId());
+      return { ...stamped, groupId: groupIds.get(s.groupId) } as DraftShape;
+    });
     this.toolbox.setShowShapes(true);
     this.toolbox.addShapes(placed);
     this.selection.set(placed.map(s => toolboxRef(s.id)));

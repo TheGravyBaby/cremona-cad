@@ -32,8 +32,8 @@ Most files here carry a header comment explaining their own contract. Read it be
   duplicated (Ctrl+D) with the same code drawn shapes use — never edited. The Recipe row in the
   layers popup (`ToolboxStore.recipeLocked`) takes it out of reach of clicks and marquees.
 - **`selection-actions.ts`** — everything that acts on the selection as a whole: the edit verbs
-  with the internal clipboard, and the Modify tab's flips, quarter turns, align and stacking
-  order. Those are commands, laid out in the palette's `modifyLayout`, not tools: they act at once
+  with the internal clipboard, group and ungroup, and the Modify tab's flips, quarter turns,
+  align, distribute and stacking order. Those are commands, laid out in the palette's `modifyLayout`, not tools: they act at once
   and never go active. Every transform goes through `transform(matrix)`, which gives a recipe piece
   a transformed drawn copy since the piece itself can't change.
 - **`shape-transform.ts`** — `transformShape`, one function for move, rotate, uniform scale and
@@ -43,8 +43,12 @@ Most files here carry a header comment explaining their own contract. Read it be
   the reference should become, which is how a traced drawing is brought to size. Run by the top bar's buttons and by the canvas's keyboard and clipboard
   events alike; the system clipboard is written and read by those callers, since only a DOM
   clipboard event or a button's gesture may touch it.
-- **`shape-svg.ts`** — `shapesToSvg`/`svgToShapes`: the clipboard's one format, millimetre user
-  units, the Y flip baked into the coordinates and arc sweeps, and a `<metadata>` block carrying
+- **`shape-svg.ts`** — `shapesToSvg`/`svgToShapes`: the one format for the clipboard and for the
+  layers list's Import and Export (`../layer-controls/`, beside the image list's Upload — files
+  come and go through the bottom bar's lists), which are a paste from a file and a copy to one.
+  The Edit menu (`../edit-menu/`, shown by the top bar and by right-click) is clipboard and edits
+  only. Groups go out as `<g>` and a foreign `<g>` round two or more shapes comes in as a group;
+  Inkscape's layer `<g>`s don't. Millimetre user units, the Y flip baked into the coordinates and arc sweeps, and a `<metadata>` block carrying
   the shapes as they are so a paste back is lossless. Foreign SVG is read best-effort: transforms
   composed, `style` honoured, units from width and viewBox. Inkscape 1.4 on macOS can't paste
   it: it reads the clipboard by MIME names the Mac clipboard never lists, as text or as an image.
@@ -85,6 +89,13 @@ unlocked layer is selectable and editable, whichever layer happens to be active 
 how you put a layer out of reach. `getEditableShapes()` is the single gate; every selection path in
 `draft-canvas.ts` reads through it, and the store's own mutators gate on the shape's layer lock
 rather than the active layer. Keep those two agreeing.
+
+**A group is a `groupId` shared by its members, nothing more.** No group object, no nesting.
+`SelectionStore` expands any grouped ref to the whole group, so every path that selects — click,
+marquee, paste — gets the group whole, and the canvas shows a member no handles, so a group moves
+as one. A double-click enters it (`SelectionStore.enter`): members then select singly with their
+handles until nothing in the group is selected. Paste gives a copied group a fresh id, and
+`removeShapes` dissolves a group left with one member. Images never join one.
 
 **Missing `layerId` means `DEFAULT_LAYER_ID`,** not a migration. Shapes persisted before layers
 existed land on the first layer for free. Keep it that way.

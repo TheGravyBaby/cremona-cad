@@ -355,12 +355,15 @@ export class ToolboxStore implements Undoable {
     this.removeShapes([id]);
   }
 
-  /** One history step for the lot — Delete on a multi-selection. Locked shapes stay. */
+  /** One history step for the lot — Delete on a multi-selection. Locked shapes stay. A group
+   * left with one member is dissolved: a group of one would only ever hide that shape's handles. */
   removeShapes(ids: string[]): void {
     const wanted = new Set(ids);
-    const next = this.shapes.filter(s => !wanted.has(s.id) || this.isShapeLocked(s));
-    if (next.length === this.shapes.length) return;
-    this.applyMutation(next);
+    const kept = this.shapes.filter(s => !wanted.has(s.id) || this.isShapeLocked(s));
+    if (kept.length === this.shapes.length) return;
+    const members = new Map<string, number>();
+    for (const s of kept) if (s.groupId) members.set(s.groupId, (members.get(s.groupId) ?? 0) + 1);
+    this.applyMutation(kept.map(s => s.groupId && members.get(s.groupId) === 1 ? { ...s, groupId: undefined } : s));
   }
 
   // ===== Per-image view state =====

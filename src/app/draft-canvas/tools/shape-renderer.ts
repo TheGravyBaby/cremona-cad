@@ -746,3 +746,18 @@ export function drawAreaSelectBox(gRoot: RootGroup, box: { x0: number; y0: numbe
     .attr('vector-effect', 'non-scaling-stroke')
     .style('pointer-events', 'none');
 }
+
+/** A dashed box round a selected group, so a group reads as one thing among its members' halos. */
+export function drawGroupOutline(gRoot: RootGroup, box: { x0: number; y0: number; x1: number; y1: number }, pxPerMm: number): void {
+  const pad = 4 / pxPerMm;
+  gRoot.append('rect')
+    .attr('x', box.x0 - pad).attr('y', box.y0 - pad)
+    .attr('width', box.x1 - box.x0 + pad * 2).attr('height', box.y1 - box.y0 + pad * 2)
+    .attr('fill', 'none')
+    .attr('stroke', SELECTION_HALO_COLOR)
+    .attr('stroke-width', 1)
+    .attr('stroke-dasharray', DASH_PATTERN)
+    .attr('opacity', 0.7)
+    .attr('vector-effect', 'non-scaling-stroke')
+    .style('pointer-events', 'none');
+}

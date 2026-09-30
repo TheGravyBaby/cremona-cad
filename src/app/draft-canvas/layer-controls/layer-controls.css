@@ -229,7 +229,12 @@
   cursor: pointer;
 }
 
-.lc-action:hover {
+.lc-action:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.lc-action:hover:not(:disabled) {
   border-color: var(--ui-canvas-btn-border-hover);
 }
 

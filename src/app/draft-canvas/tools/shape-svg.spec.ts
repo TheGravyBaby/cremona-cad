@@ -82,4 +82,26 @@ describe('shapesToSvg / svgToShapes', () => {
     expect(svgToShapes('<div>not svg</div>')).toBeNull();
     expect(svgToShapes('')).toBeNull();
   });
+
+  it('writes a group as a <g> and reads a foreign <g> back as one, ignoring wrappers and layers', () => {
+    const grouped: DraftShape[] = [
+      { id: 'a', type: 'line', start: { x: 0, y: 0 }, end: { x: 1, y: 0 }, groupId: 'g' },
+      { id: 'b', type: 'circle', center: { x: 5, y: 5 }, radius: 1 },
+      { id: 'c', type: 'line', start: { x: 0, y: 1 }, end: { x: 1, y: 1 }, groupId: 'g' },
+    ];
+    const svg = withoutMetadata(shapesToSvg(grouped));
+    expect(svg).toMatch(/<g><line[^>]*\/><line[^>]*\/><\/g>\s*<circle/);
+
+    const back = svgToShapes(`<svg xmlns="http://www.w3.org/2000/svg" width="10mm" viewBox="0 0 10 10">
+      <g inkscape:groupmode="layer" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape">
+        <g><line x1="0" y1="0" x2="1" y2="0"/><line x1="0" y1="1" x2="1" y2="1"/></g>
+        <g><circle cx="5" cy="5" r="1"/></g>
+        <line x1="2" y1="2" x2="3" y2="2"/>
+      </g></svg>`)!;
+    expect(back.length).toBe(4);
+    expect(back[0].groupId).toBeTruthy();
+    expect(back[1].groupId).toBe(back[0].groupId);
+    expect(back[2].groupId).toBeUndefined();
+    expect(back[3].groupId).toBeUndefined();
+  });
 });

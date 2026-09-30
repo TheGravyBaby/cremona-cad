@@ -182,4 +182,58 @@ describe('SelectionActions', () => {
     toolbox.moveShapesToLayer(['a'], locked);
     expect(toolbox.getShapes()[0].layerId).toBe(other);
   });
+
+  it('groups the selection, and ungroups it', () => {
+    toolbox.addShapes([line('a'), line('b')]);
+    selection.select(toolboxRef('a'));
+    expect(actions.canGroup).toBe(false);
+    selection.set([toolboxRef('a'), toolboxRef('b')]);
+    expect(actions.canGroup).toBe(true);
+
+    actions.group();
+    const [a, b] = toolbox.getShapes();
+    expect(a.groupId).toBeTruthy();
+    expect(b.groupId).toBe(a.groupId);
+    expect(actions.canGroup).toBe(false);
+    expect(actions.canUngroup).toBe(true);
+
+    actions.ungroup();
+    expect(toolbox.getShapes().every(s => !s.groupId)).toBe(true);
+  });
+
+  it('pastes a group as a new group, and dissolves a group cut down to one member', () => {
+    toolbox.addShapes([{ ...line('a'), groupId: 'g' }, { ...line('b'), groupId: 'g' }]);
+    selection.select(toolboxRef('a'));
+    actions.copy();
+    actions.paste();
+    const pasted = toolbox.getShapes().slice(2);
+    expect(pasted.length).toBe(2);
+    expect(pasted[0].groupId).toBeTruthy();
+    expect(pasted[0].groupId).not.toBe('g');
+    expect(pasted[1].groupId).toBe(pasted[0].groupId);
+
+    toolbox.removeShapes(['a']);
+    expect(toolbox.getShapes().find(s => s.id === 'b')!.groupId).toBeUndefined();
+  });
+
+  it('exports the selection, or every drawn shape in view when nothing is selected', () => {
+    expect(actions.exportSvg()).toBeNull();
+    toolbox.addShapes([line('a'), line('b')]);
+    expect(actions.exportSvg()!.match(/<line/g)!.length).toBe(2);
+    selection.select(toolboxRef('a'));
+    expect(actions.exportSvg()!.match(/<line/g)!.length).toBe(1);
+  });
+
+  it('distributes three or more shapes evenly between the outer two', () => {
+    toolbox.addShapes([line('a'), { ...line('b'), start: { x: 2, y: 0 }, end: { x: 12, y: 0 } }, { ...line('c'), start: { x: 30, y: 0 }, end: { x: 40, y: 0 } }]);
+    selection.set([toolboxRef('a'), toolboxRef('b')]);
+    expect(actions.canDistribute).toBe(false);
+    selection.set([toolboxRef('a'), toolboxRef('b'), toolboxRef('c')]);
+
+    expect(actions.distribute('horizontal')).toBe(true);
+    const [a, b, c] = toolbox.getShapes() as LineShape[];
+    expect(a.start.x).toBe(0);
+    expect(b.start.x).toBeCloseTo(15, 9);
+    expect(c.start.x).toBe(30);
+  });
 });

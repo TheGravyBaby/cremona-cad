@@ -29,10 +29,10 @@ describe('TopBarComponent', () => {
     (el.querySelector('.edit-btn') as HTMLButtonElement).click();
     fixture.detectChanges();
     const rows = el.querySelectorAll<HTMLButtonElement>('.menu-row');
-    expect([...rows].map(r => r.querySelector('.menu-label')!.textContent)).toEqual(['Cut', 'Copy', 'Paste', 'Duplicate', 'Delete']);
-    expect(rows[0].disabled).toBe(true);
+    expect([...rows].map(r => r.querySelector('.menu-label')!.textContent)).toEqual(['Undo', 'Redo', 'Cut', 'Copy', 'Paste', 'Duplicate', 'Group', 'Ungroup', 'Delete']);
+    expect(rows[2].disabled).toBe(true);
 
-    rows[2].click();
+    rows[4].click();
     fixture.detectChanges();
     expect(el.querySelector('.edit-popup')).toBeNull();
 

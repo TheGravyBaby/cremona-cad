@@ -160,6 +160,25 @@
         <rect x="6" y="4" width="4" height="12" rx="1" />
         <rect x="14" y="9" width="4" height="7" rx="1" />
         }
+        @case ('group') {
+        <rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="3 2.5" />
+        <rect x="7" y="7" width="4" height="4" />
+        <circle cx="15" cy="15" r="2.2" />
+        }
+        @case ('ungroup') {
+        <rect x="4" y="4" width="6" height="6" />
+        <circle cx="16.5" cy="16.5" r="3" />
+        }
+        @case ('distribute-h') {
+        <path d="M3 4v16M21 4v16" />
+        <rect x="7" y="8" width="3" height="8" rx="1" />
+        <rect x="14" y="8" width="3" height="8" rx="1" />
+        }
+        @case ('distribute-v') {
+        <path d="M4 3h16M4 21h16" />
+        <rect x="8" y="7" width="8" height="3" rx="1" />
+        <rect x="8" y="14" width="8" height="3" rx="1" />
+        }
         <!-- The filled square is the selection; which one overlaps the other says where it goes. -->
         @case ('front') {
         <rect x="3" y="3" width="12" height="12" rx="1" />

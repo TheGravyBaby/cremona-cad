@@ -142,4 +142,41 @@ describe('SelectionStore', () => {
     scene.setLayers([renderSegment({ x: 0, y: 0 }, { x: 12, y: 0 }, '#000')]);
     expect(selection.size).toBe(0);
   });
+
+  it('selects a whole group from any member, and toggles it as one', () => {
+    toolbox.addShapes([{ ...line('a'), groupId: 'g' }, { ...line('b'), groupId: 'g' }, line('c')]);
+    selection.select(toolboxRef('a'));
+    expect(ids(selection.shapes)).toEqual(['a', 'b']);
+
+    selection.toggle(toolboxRef('c'));
+    selection.toggle(toolboxRef('b'));
+    expect(ids(selection.shapes)).toEqual(['c']);
+
+    selection.toggle(toolboxRef('b'));
+    expect(ids(selection.shapes)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('leaves a group member on a locked layer out of the group it would bring', () => {
+    const locked = toolbox.addLayer();
+    toolbox.addShapes([{ ...line('a'), groupId: 'g' }, { ...line('b', locked), groupId: 'g' }]);
+    toolbox.toggleLayerLocked(locked);
+    selection.select(toolboxRef('a'));
+    expect(ids(selection.shapes)).toEqual(['a']);
+  });
+
+  it('enters a group on request, selecting members singly until nothing in it is selected', () => {
+    toolbox.addShapes([{ ...line('a'), groupId: 'g' }, { ...line('b'), groupId: 'g' }, line('c')]);
+    selection.enter(toolboxRef('b'));
+    expect(selection.enteredGroup).toBe('g');
+    expect(ids(selection.shapes)).toEqual(['b']);
+
+    selection.select(toolboxRef('a'));
+    expect(ids(selection.shapes)).toEqual(['a']);
+    expect(selection.enteredGroup).toBe('g');
+
+    selection.select(toolboxRef('c'));
+    expect(selection.enteredGroup).toBeNull();
+    selection.select(toolboxRef('a'));
+    expect(ids(selection.shapes)).toEqual(['a', 'b']);
+  });
 });

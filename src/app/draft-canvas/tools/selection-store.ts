@@ -37,6 +37,9 @@ export class SelectionStore {
   private scene = inject(SceneStore);
   private refs = new Map<string, SelectionRef>();
   private listeners = new Set<() => void>();
+  /** The group a double-click opened: its members select one at a time and show their handles
+   * while it stays open. Left the moment nothing in it is selected. */
+  private _enteredGroup: string | null = null;
 
   constructor() {
     this.toolbox.onChange(() => this.retainEditable());
@@ -78,11 +81,13 @@ export class SelectionStore {
     return this.refs.size === 1 ? this.toolboxShapes[0] : undefined;
   }
 
-  /** Replaces the selection. */
+  /** Replaces the selection. A grouped shape brings its whole group: the group is the unit every
+   * selection path — click, marquee, paste — hands out, so nothing downstream has to know. */
   set(refs: SelectionRef[]): void {
-    const next = new Map(refs.map(r => [keyOf(r), r]));
+    const next = new Map(this.withGroups(refs).map(r => [keyOf(r), r]));
     const changed = next.size !== this.refs.size || [...next.keys()].some(k => !this.refs.has(k));
     this.refs = next;
+    this.leaveGroupIfEmpty();
     // asked even when nothing changed: a panel switch drops the reveal (ToolboxStore.setActivePanel),
     // and re-selecting the same image from the layer list is how it asks for it back
     this.reveal();
@@ -94,13 +99,40 @@ export class SelectionStore {
     this.set(ref ? [ref] : []);
   }
 
-  /** Shift-click: in if out, out if in, the rest untouched. */
+  /** Shift-click: in if out, out if in, the rest untouched — the whole group, for a grouped shape. */
   toggle(ref: SelectionRef): void {
-    const key = keyOf(ref);
-    if (this.refs.has(key)) this.refs.delete(key);
-    else this.refs.set(key, ref);
+    const refs = this.withGroups([ref]);
+    const out = this.refs.has(keyOf(ref));
+    for (const r of refs) {
+      if (out) this.refs.delete(keyOf(r));
+      else this.refs.set(keyOf(r), r);
+    }
+    this.leaveGroupIfEmpty();
     this.reveal();
     this.notify();
+  }
+
+  get enteredGroup(): string | null { return this._enteredGroup; }
+
+  /** Opens the group `ref` belongs to and selects `ref` alone within it. */
+  enter(ref: SelectionRef): void {
+    const shape = this.toolbox.getEditableShapes().find(s => s.id === ref.id);
+    if (ref.source !== 'toolbox' || !shape?.groupId) return;
+    this._enteredGroup = shape.groupId;
+    this.set([ref]);
+  }
+
+  private withGroups(refs: SelectionRef[]): SelectionRef[] {
+    const editable = this.toolbox.getEditableShapes();
+    const groups = new Set(refs.filter(r => r.source === 'toolbox')
+      .map(r => editable.find(s => s.id === r.id)?.groupId)
+      .filter(g => g !== undefined && g !== this._enteredGroup));
+    if (groups.size === 0) return refs;
+    return [...refs, ...editable.filter(s => s.groupId && groups.has(s.groupId)).map(s => toolboxRef(s.id))];
+  }
+
+  private leaveGroupIfEmpty(): void {
+    if (this._enteredGroup && !this.toolboxShapes.some(s => s.groupId === this._enteredGroup)) this._enteredGroup = null;
   }
 
   add(refs: SelectionRef[]): void {
@@ -154,6 +186,7 @@ export class SelectionStore {
         changed = true;
       }
     }
+    this.leaveGroupIfEmpty();
     if (changed) this.notify();
   }
 
