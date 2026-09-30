@@ -97,4 +97,89 @@ describe('SelectionActions', () => {
     expect(actions.duplicate()).toBe(false);
     expect(ids()).toEqual(['a']);
   });
+
+  it('mirrors drawn shapes in place across the selection centre, as one undo step', () => {
+    toolbox.addShapes([line('a'), { ...line('b'), start: { x: 20, y: 0 }, end: { x: 30, y: 10 } }]);
+    selection.set([toolboxRef('a'), toolboxRef('b')]);
+
+    expect(actions.mirror('horizontal')).toBe(true);
+    const [a, b] = toolbox.getShapes() as LineShape[];
+    expect(a).toMatchObject({ id: 'a', start: { x: 30, y: 0 }, end: { x: 20, y: 0 } });
+    expect(b).toMatchObject({ id: 'b', start: { x: 10, y: 0 }, end: { x: 0, y: 10 } });
+
+    toolbox.undo();
+    expect((toolbox.getShapes()[0] as LineShape).start).toEqual({ x: 0, y: 0 });
+  });
+
+  it('mirrors a recipe piece across the centreline as a selected copy, beside a drawn shape', () => {
+    scene.setLayers([renderSegment({ x: 5, y: 0 }, { x: 15, y: 5 }, '#000')]);
+    const [piece] = scene.shapes;
+    toolbox.addShape(line('a'));
+    selection.set([toolboxRef('a'), sceneRef(piece.id)]);
+
+    expect(actions.mirror('centreline')).toBe(true);
+    const [a, copy] = toolbox.getShapes() as LineShape[];
+    expect(a.end).toEqual({ x: -10, y: 0 });
+    expect(copy.type).toBe('line');
+    expect([copy.start, copy.end]).toEqual(expect.arrayContaining([{ x: -5, y: 0 }, { x: -15, y: 5 }]));
+    expect(selection.toolboxShapes.map(s => s.id)).toEqual(['a', copy.id]);
+    expect(selection.sceneShapes).toEqual([]);
+    expect(scene.shapes.length).toBe(1);
+
+    toolbox.undo();
+    expect(ids()).toEqual(['a']);
+    expect((toolbox.getShapes()[0] as LineShape).end).toEqual({ x: 10, y: 0 });
+  });
+
+  it('aligns drawn shapes to a selected recipe piece, which stays put', () => {
+    scene.setLayers([renderSegment({ x: 0, y: 40 }, { x: 10, y: 50 }, '#000')]);
+    const [piece] = scene.shapes;
+    toolbox.addShapes([line('a'), { ...line('b'), start: { x: 5, y: 0 }, end: { x: 5, y: 20 } }]);
+    selection.set([toolboxRef('a'), toolboxRef('b'), sceneRef(piece.id)]);
+
+    expect(actions.align('top')).toBe(true);
+    const [a, b] = toolbox.getShapes() as LineShape[];
+    expect(a.start.y).toBeCloseTo(50, 9);
+    expect(Math.max(b.start.y, b.end.y)).toBeCloseTo(50, 9);
+    expect(b.start.x).toBe(5);
+    expect(scene.shapes.length).toBe(1);
+  });
+
+  it('needs two shapes, one of them drawn, to align', () => {
+    toolbox.addShape(line('a'));
+    selection.select(toolboxRef('a'));
+    expect(actions.canAlign).toBe(false);
+    expect(actions.align('left')).toBe(false);
+  });
+
+  it('turns the selection a quarter about its centre', () => {
+    toolbox.addShape(line('a'));
+    selection.select(toolboxRef('a'));
+    actions.rotate90('ccw');
+    const [a] = toolbox.getShapes() as LineShape[];
+    expect(a.start).toEqual({ x: 5, y: -5 });
+    expect(a.end).toEqual({ x: 5, y: 5 });
+  });
+
+  it('brings shapes to the front and sends them to the back, keeping their own order', () => {
+    toolbox.addShapes([line('a'), line('b'), line('c')]);
+    selection.set([toolboxRef('a'), toolboxRef('b')]);
+    actions.reorder('front');
+    expect(ids()).toEqual(['c', 'a', 'b']);
+    selection.select(toolboxRef('b'));
+    actions.reorder('back');
+    expect(ids()).toEqual(['b', 'c', 'a']);
+  });
+
+  it('moves shapes to another layer, but not onto a locked one', () => {
+    toolbox.addShape(line('a'));
+    const other = toolbox.addLayer();
+    toolbox.moveShapesToLayer(['a'], other);
+    expect(toolbox.getShapes()[0].layerId).toBe(other);
+
+    const locked = toolbox.addLayer();
+    toolbox.toggleLayerLocked(locked);
+    toolbox.moveShapesToLayer(['a'], locked);
+    expect(toolbox.getShapes()[0].layerId).toBe(other);
+  });
 });

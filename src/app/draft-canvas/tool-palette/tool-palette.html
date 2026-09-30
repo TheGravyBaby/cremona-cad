@@ -4,7 +4,7 @@
        blank edge — the mirror of the recipe sidebar, where the f-hole tab is the left end of the
        file strip. Labels the tools below rather than the page, so it names the group instead of
        being a heading. -->
-  <div id="tool-dock-title" class="tool-dock-header">Tools</div>
+  <div id="tool-dock-title" class="tool-dock-header">{{ tab === 'draw' ? 'Tools' : 'Modify' }}</div>
 
   <div #dockBody class="tool-dock-body" role="group" aria-labelledby="tool-dock-title">
 
@@ -18,9 +18,54 @@
       </button>
     </div>
 
+    @if (tab === 'draw') {
     @for (row of toolRows; track $index) {
     <div class="tool-row">
       @for (slot of row; track $index) {
+      <ng-container [ngTemplateOutlet]="slotTpl" [ngTemplateOutletContext]="{ slot }" />
+      }
+    </div>
+    }
+    } @else {
+    @for (row of modifyLayout; track $index) {
+    <div class="tool-row">
+      @if (row.slot; as slot) {
+      <ng-container [ngTemplateOutlet]="slotTpl" [ngTemplateOutletContext]="{ slot }" />
+      } @else if (row.commands; as commands) {
+      <!-- Commands, not tools: each acts on the selection once, at once, so none goes active. A
+           group's button repeats whichever was last used, like a tool flyout's face. -->
+      @let face = commandFace(commands);
+      <div class="tool-flyout">
+        <button type="button" class="tool-btn" (click)="runCommand(commands, face)" [disabled]="!face.enabled()"
+          [title]="face.label">
+          <ng-container [ngTemplateOutlet]="commandIcon" [ngTemplateOutletContext]="{ id: face.id }" />
+        </button>
+        @if (commands.length > 1) {
+        <button type="button" class="tool-flyout-caret" (click)="toggleFlyout(commands, $event)" title="More options">
+          <svg width="7" height="7" viewBox="0 0 8 8" aria-hidden="true">
+            <path d="M8 0v8H0z" fill="currentColor" />
+          </svg>
+        </button>
+        @if (openFlyout === commands) {
+        <div class="tool-flyout-popup" [style.top]="popupTop" [style.bottom]="popupBottom"
+          [style.maxHeight]="popupMaxHeight">
+          @for (command of commands; track command.id) {
+          <button type="button" class="tool-flyout-item" (click)="runCommand(commands, command)"
+            [disabled]="!command.enabled()" [title]="command.label">
+            <ng-container [ngTemplateOutlet]="commandIcon" [ngTemplateOutletContext]="{ id: command.id }" />
+            <span>{{ command.label }}</span>
+          </button>
+          }
+        </div>
+        }
+        }
+      </div>
+      }
+    </div>
+    }
+    }
+
+    <ng-template #slotTpl let-slot="slot">
       <!-- Whichever tool the slot is currently showing — its only one, or the variant last picked
            out of its flyout. See ToolSlot in tool-registry.ts. -->
       @let face = faceOf(slot);
@@ -53,9 +98,80 @@
         }
         }
       </div>
-      }
-    </div>
-    }
+    </ng-template>
+
+    <ng-template #commandIcon let-id="id">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        @switch (id) {
+        @case ('flip-h') {
+        <path d="M9 6v12H3z" />
+        <path d="M15 6v12h6z" />
+        <path d="M12 3v18" stroke-width="1.1" stroke-dasharray="2 2.6" stroke-linecap="butt" />
+        }
+        @case ('flip-v') {
+        <path d="M6 9h12V3z" />
+        <path d="M6 15h12v6z" />
+        <path d="M3 12h18" stroke-width="1.1" stroke-dasharray="2 2.6" stroke-linecap="butt" />
+        }
+        <!-- Half a body and its dashed mirror either side of a drafting centreline (long dash,
+             short dash): the other half of the instrument. -->
+        @case ('flip-centreline') {
+        <path d="M10.5 2.5C7 2.5 4.5 3.8 4.5 6.5C4.5 9 7.5 9.5 7.5 12C7.5 14.5 3.5 14.8 3.5 17.8C3.5 20.5 7 21.5 10.5 21.5" />
+        <path d="M13.5 2.5C17 2.5 19.5 3.8 19.5 6.5C19.5 9 16.5 9.5 16.5 12C16.5 14.5 20.5 14.8 20.5 17.8C20.5 20.5 17 21.5 13.5 21.5"
+          stroke-dasharray="2.4 2.2" />
+        <path d="M12 1v22" stroke-width="1.1" stroke-dasharray="4 1.6 1 1.6" stroke-linecap="butt" />
+        }
+        @case ('rotate-ccw') {
+        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+        <path d="M3 3v5h5" />
+        }
+        @case ('rotate-cw') {
+        <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+        <path d="M21 3v5h-5" />
+        }
+        @case ('align-left') {
+        <path d="M4 3v18" />
+        <rect x="8" y="6" width="12" height="4" rx="1" />
+        <rect x="8" y="14" width="7" height="4" rx="1" />
+        }
+        @case ('align-centre') {
+        <path d="M12 3v3M12 10v4M12 18v3" />
+        <rect x="5" y="6" width="14" height="4" rx="1" />
+        <rect x="8" y="14" width="8" height="4" rx="1" />
+        }
+        @case ('align-right') {
+        <path d="M20 3v18" />
+        <rect x="4" y="6" width="12" height="4" rx="1" />
+        <rect x="9" y="14" width="7" height="4" rx="1" />
+        }
+        @case ('align-top') {
+        <path d="M3 4h18" />
+        <rect x="6" y="8" width="4" height="12" rx="1" />
+        <rect x="14" y="8" width="4" height="7" rx="1" />
+        }
+        @case ('align-middle') {
+        <path d="M3 12h3M10 12h4M18 12h3" />
+        <rect x="6" y="5" width="4" height="14" rx="1" />
+        <rect x="14" y="8" width="4" height="8" rx="1" />
+        }
+        @case ('align-bottom') {
+        <path d="M3 20h18" />
+        <rect x="6" y="4" width="4" height="12" rx="1" />
+        <rect x="14" y="9" width="4" height="7" rx="1" />
+        }
+        <!-- The filled square is the selection; which one overlaps the other says where it goes. -->
+        @case ('front') {
+        <rect x="3" y="3" width="12" height="12" rx="1" />
+        <rect x="9" y="9" width="12" height="12" rx="1" fill="currentColor" />
+        }
+        @case ('back') {
+        <rect x="9" y="9" width="12" height="12" rx="1" fill="currentColor" />
+        <rect x="3" y="3" width="12" height="12" rx="1" fill="var(--ui-canvas-btn-bg-end)" />
+        }
+        }
+      </svg>
+    </ng-template>
 
     <ng-template #toolIcon let-id="id">
       @switch (id) {
@@ -200,6 +316,32 @@
         <line x1="6" y1="20.5" x2="19" y2="20.5" />
       </svg>
       }
+      <!-- The shape (a triangle, as on the flips) and its image either side of a slanted axis. -->
+      @case ('mirror-line') {
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 4h8L3 12z" />
+        <path d="M20 21v-8l-8 8z" />
+        <path d="M3 21 21 3" stroke-width="1.1" stroke-dasharray="2 2.6" stroke-linecap="butt" />
+      </svg>
+      }
+      <!-- Dashed where it was, solid where it turns to, about the dot it turns on. -->
+      @case ('rotate') {
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="8" width="16" height="8" stroke-width="1.1" stroke-dasharray="2 2.2" />
+        <rect x="4" y="8" width="16" height="8" transform="rotate(-35 12 12)" />
+        <circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none" />
+      </svg>
+      }
+      @case ('scale') {
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="13" width="8" height="8" stroke-width="1.1" stroke-dasharray="2 2" />
+        <path d="M3 9V3h18v18h-6" />
+        <path d="M11 13l7-7M13 6h5v5" />
+      </svg>
+      }
       @case ('offset') {
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
         stroke-linecap="round">
@@ -213,11 +355,12 @@
   </div>
 
   <!-- Present in both states: a collapsed bar has to be reopenable by touch, and a phone has no
-       hover to reopen it with. A drafting compass rather than a chevron — the tab names what it
-       holds instead of which way it swings, which is why it doesn't flip when the bar closes.
-       currentColor throughout, so it follows the tab's own colour in either theme. -->
-  <button type="button" class="tool-dock-handle" (click)="toggleOpen()" [attr.aria-expanded]="open"
-    [title]="open ? 'Hide tools' : 'Show tools'">
+       hover to reopen it with. Each tab names what it holds instead of which way it swings, which
+       is why neither flips when the bar closes. currentColor throughout, so they follow the tab's
+       own colour in either theme. -->
+  <button type="button" class="tool-dock-handle" [class.top]="tab === 'draw'" [class.current]="open && tab === 'draw'"
+    (click)="showTab('draw')"
+    [attr.aria-expanded]="open && tab === 'draw'" [title]="open && tab === 'draw' ? 'Hide tools' : 'Draw'">
     <svg class="dock-handle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"
       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <!-- Hinge, the quadrant, and two long legs. The quadrant rides high near the hinge, where a
@@ -228,6 +371,19 @@
       <path d="M11 5 6 22.5" />
       <path d="M13 5 18 22.5" />
       <path d="M9.5 9.5a7 7 0 0 1 5 0" />
+    </svg>
+  </button>
+  <!-- A body outline on its drafting centreline, for the tab whose work is mirroring and offsetting
+       outlines. Drawn to the compass's height, width and stroke so the two tabs carry the same
+       weight of mark; the centreline is thinner, as it is on a drawing. -->
+  <button type="button" class="tool-dock-handle modify-handle" [class.top]="tab === 'modify'"
+    [class.current]="open && tab === 'modify'"
+    (click)="showTab('modify')" [attr.aria-expanded]="open && tab === 'modify'"
+    [title]="open && tab === 'modify' ? 'Hide tools' : 'Modify'">
+    <svg class="dock-handle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"
+      stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M12 2.5C9 2.5 6.5 3.5 6.5 6.5C6.5 9 9 9.5 9 12C9 14.5 5.5 14.5 5.5 18C5.5 20.5 8.5 21.5 12 21.5C15.5 21.5 18.5 20.5 18.5 18C18.5 14.5 15 14.5 15 12C15 9.5 17.5 9 17.5 6.5C17.5 3.5 15 2.5 12 2.5Z" />
+      <path d="M12 0.8v22.4" stroke-width="0.8" stroke-dasharray="3.5 1.4 0.8 1.4" stroke-linecap="butt" />
     </svg>
   </button>
 </div>

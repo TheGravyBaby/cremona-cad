@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { LayerControlsComponent } from './layer-controls';
 import { ToolboxStore } from '../tools/toolbox-store';
+import { SelectionStore, toolboxRef } from '../tools/selection-store';
 
 /** These moved out of the tool palette, so what's covered here is what the move had to preserve:
  * the two masters still write to the store draft-canvas draws from, and the two lists still can't
@@ -111,5 +112,19 @@ describe('LayerControlsComponent', () => {
 
     toolbox.setActivePanel(null);
     toolbox.resetAll();
+  });
+
+  it('offers to move the selection onto the other layers, and moves it', () => {
+    toolbox.resetAll();
+    toolbox.addShape({ id: 'a', type: 'line', start: { x: 0, y: 0 }, end: { x: 1, y: 0 } });
+    const other = toolbox.addLayer();
+    TestBed.inject(SelectionStore).select(toolboxRef('a'));
+    all('.lc-btn')[0].click();
+    fixture.detectChanges();
+
+    const offered = all('.move-here');
+    expect(offered.length).toBe(1);
+    offered[0].click();
+    expect(toolbox.getShapes()[0].layerId).toBe(other);
   });
 });

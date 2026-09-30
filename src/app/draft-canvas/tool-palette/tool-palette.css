@@ -132,15 +132,36 @@
   cursor: pointer;
 }
 
-/* sits over the bar's right border so the tab and the bar read as one piece rather than two boxes
-   with a seam. Only while open — collapsed there is no border to cover, and -1px would lift the
-   tab off the screen edge it is supposed to be flush with. */
-.tool-palette:not(.collapsed) .tool-dock-handle {
+/* the top tab sits over the bar's right border so the tab and the bar read as one piece rather
+   than two boxes with a seam. Only while open — collapsed there is no border to cover, and -1px
+   would lift the tab off the screen edge it is supposed to be flush with. The tab beneath leaves
+   the border showing, which is what keeps it from reading as part of the tray it doesn't open. */
+.tool-palette:not(.collapsed) .tool-dock-handle.top {
   margin-left: -1px;
 }
 
+/* The tabs stack like cards: the one last chosen sits on top, where the header strip ends, and
+   pokes out further; the other tucks under its lower edge. Swapped by class, not DOM order, so
+   focus order holds still when the tabs trade places. */
+.tool-dock-handle:not(.top) {
+  top: 32px;
+  z-index: 5;
+  width: 16px;
+  height: 40px;
+  /* centres the icon in the part left showing below the top tab */
+  padding-top: 4px;
+}
+
+.tool-palette:not(.collapsed) .tool-dock-handle:not(.current) {
+  background: var(--ui-bg-app);
+}
+
+.tool-dock-handle.current,
 .tool-dock-handle:hover {
   color: var(--ui-text-primary);
+}
+
+.tool-dock-handle:hover {
   border-color: var(--ui-canvas-btn-border-hover);
 }
 
@@ -171,6 +192,13 @@
 .tool-btn:hover {
   border-color: var(--ui-canvas-btn-border-hover);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.tool-btn:disabled {
+  cursor: default;
+  opacity: 0.4;
+  box-shadow: none;
+  border-color: var(--ui-border-strong);
 }
 
 .tool-btn.active {
@@ -249,6 +277,12 @@
     height: 44px;
   }
 
+  .tool-dock-handle:not(.top) {
+    top: 40px;
+    width: 22px;
+    height: 48px;
+  }
+
   .tool-dock-body {
     padding-top: 52px;
   }
@@ -302,7 +336,12 @@
   text-align: left;
 }
 
-.tool-flyout-item:hover {
+.tool-flyout-item:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.tool-flyout-item:hover:not(:disabled) {
   border-color: var(--ui-border-strong);
   background: var(--ui-bg-surface);
 }

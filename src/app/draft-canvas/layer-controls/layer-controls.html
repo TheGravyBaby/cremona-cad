@@ -52,6 +52,16 @@
           } @else {
           <span class="layer-tab-label" (dblclick)="startRenameLayer(layer.id)" title="Double-click to rename">{{
             layer.name }}</span>
+          @if (canMoveSelectionTo(layer)) {
+          <button type="button" class="layer-tab-icon-btn move-here"
+            (click)="moveSelectionTo(layer.id); $event.stopPropagation()" title="Move the selection to this layer">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3v11M7 9l5 5 5-5" />
+              <path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" />
+            </svg>
+          </button>
+          }
           <button type="button" class="layer-tab-icon-btn"
             (click)="toggleLayerLocked(layer.id); $event.stopPropagation()"
             [title]="layer.locked ? 'Unlock layer' : 'Lock layer'">

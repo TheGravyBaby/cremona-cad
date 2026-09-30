@@ -1,9 +1,17 @@
-import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, Injector, OnDestroy, OnInit, ViewChild, afterNextRender, inject } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { DraftTool } from '../tools/draft-tool';
 import { ToolRegistryService, ToolSlot } from '../tools/tool-registry';
 import { isSmallViewport } from '../../helpers/viewport';
 import { HOTKEY_LETTER_BY_TOOL } from '../tools/tool-hotkeys';
+import { SelectionActions } from '../tools/selection-actions';
+
+/** A button that acts on the selection once, at once — it never goes active the way a tool does. */
+type SelectionCommand = { id: string; label: string; enabled: () => boolean; run: () => void };
+
+/** One Modify-tab row: a tool slot, or a group of commands behind one button, facing out whichever
+ * was last used the way a tool flyout does. */
+type ModifyRow = { slot?: ToolSlot; commands?: SelectionCommand[] };
 
 /**
  * The docked drafting toolbox: nothing but tool selection. Per-shape-type settings live in the
@@ -23,13 +31,71 @@ export class ToolPaletteComponent implements OnInit, AfterViewInit, OnDestroy {
   private static readonly OPEN_KEY = 'draft-canvas-tool-palette-open';
 
   private elRef = inject(ElementRef<HTMLElement>);
+  private injector = inject(Injector);
+  private cdr = inject(ChangeDetectorRef);
   private toolRegistry = inject(ToolRegistryService);
   private toolRegistryUnsub?: () => void;
+  protected readonly actions = inject(SelectionActions);
+
+  /** Which tab the dock shows: tools that draw, or tools and commands that change the selection. */
+  public tab: 'draw' | 'modify' = 'draw';
 
   public get toolRows(): ToolSlot[][] { return this.toolRegistry.toolRows; }
   public get activeTool(): DraftTool | null { return this.toolRegistry.activeTool; }
 
-  public openFlyout: ToolSlot | null = null;
+  public openFlyout: ToolSlot | SelectionCommand[] | null = null;
+
+  // Laid out here rather than in the registry because the commands are UI over SelectionActions,
+  // not tools; the registry still owns the tools, found here by id.
+  readonly modifyLayout: ModifyRow[] = (() => {
+    const a = this.actions;
+    const slot = (id: string): ModifyRow => ({
+      slot: this.toolRegistry.modifyRows.flat().find(s => this.variantsOf(s).some(t => t.id === id))!,
+    });
+    const cmd = (id: string, label: string, enabled: () => boolean, run: () => void): SelectionCommand =>
+      ({ id, label, enabled, run });
+    const mirror = () => a.canMirror;
+    const transform = () => a.canTransform;
+    const align = () => a.canAlign;
+    const reorder = () => a.canReorder;
+    return [
+      {
+        commands: [
+          cmd('flip-h', "Flip horizontal, across the selection's centre", mirror, () => a.mirror('horizontal')),
+          cmd('flip-v', "Flip vertical, across the selection's centre", mirror, () => a.mirror('vertical')),
+          cmd('flip-centreline', 'Mirror across the centreline; a recipe piece gets a mirrored copy', mirror, () => a.mirror('centreline')),
+        ],
+      },
+      slot('mirror-line'),
+      {
+        commands: [
+          cmd('rotate-ccw', 'Rotate 90° counterclockwise', transform, () => a.rotate90('ccw')),
+          cmd('rotate-cw', 'Rotate 90° clockwise', transform, () => a.rotate90('cw')),
+        ],
+      },
+      slot('rotate'),
+      slot('scale'),
+      {
+        commands: [
+          cmd('align-left', 'Align left edges', align, () => a.align('left')),
+          cmd('align-centre', 'Centre on a vertical axis', align, () => a.align('centre')),
+          cmd('align-right', 'Align right edges', align, () => a.align('right')),
+          cmd('align-top', 'Align top edges', align, () => a.align('top')),
+          cmd('align-middle', 'Centre on a horizontal axis', align, () => a.align('middle')),
+          cmd('align-bottom', 'Align bottom edges', align, () => a.align('bottom')),
+        ],
+      },
+      {
+        commands: [
+          cmd('front', 'Bring to front', reorder, () => a.reorder('front')),
+          cmd('back', 'Send to back', reorder, () => a.reorder('back')),
+        ],
+      },
+      slot('offset'),
+    ];
+  })();
+
+  private commandFaces = new Map<SelectionCommand[], SelectionCommand>();
 
   /** Whether the bar is pushed open. Collapsed it's just the chevron rail — there's no hover-peek
    * any more, since a phone has no hover to peek with. */
@@ -76,8 +142,26 @@ export class ToolPaletteComponent implements OnInit, AfterViewInit, OnDestroy {
   /** Reacts to the active tool changing for reasons outside this component (e.g. a hotkey) —
    * mirrors what activateSlot()/chooseFlyoutVariant() already do locally, so both paths close
    * an open flyout identically. */
+  // captured on window so it runs ahead of the canvas's own Escape: closing a flyout is one step
+  // back, and the canvas would otherwise also drop the selection or the tool with the same press
+  private closeFlyoutOnEscape = (event: KeyboardEvent): void => {
+    if (event.key !== 'Escape' || !this.openFlyout) return;
+    this.openFlyout = null;
+    this.cdr.markForCheck();
+    event.stopPropagation();
+    event.preventDefault();
+  };
+
   ngOnInit(): void {
-    this.toolRegistryUnsub = this.toolRegistry.onChange(() => { this.openFlyout = null; });
+    window.addEventListener('keydown', this.closeFlyoutOnEscape, { capture: true });
+    this.toolRegistryUnsub = this.toolRegistry.onChange(() => {
+      this.openFlyout = null;
+      // a hotkey can pick a tool from the other tab; show the tab it lives on
+      const tool = this.activeTool;
+      const has = (rows: ToolSlot[][]) => !!tool && rows.some(row => row.some(slot => this.variantsOf(slot).includes(tool)));
+      const tab = has(this.toolRegistry.modifyRows) ? 'modify' : has(this.toolRegistry.toolRows) ? 'draw' : this.tab;
+      if (tab !== this.tab) this.switchTab(tab);
+    });
   }
 
   /** Runs before the first paint, so the bar is never briefly laid out at the CSS fallback. */
@@ -91,6 +175,7 @@ export class ToolPaletteComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    window.removeEventListener('keydown', this.closeFlyoutOnEscape, { capture: true });
     this.toolRegistryUnsub?.();
     this.resizeObs?.disconnect();
   }
@@ -152,6 +237,23 @@ export class ToolPaletteComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  /** A tab's handle opens the dock on that tab, or closes it if that tab is already showing. */
+  showTab(tab: 'draw' | 'modify'): void {
+    if (this.open && this.tab === tab) {
+      this.toggleOpen();
+      return;
+    }
+    if (!this.open) this.toggleOpen();
+    this.switchTab(tab);
+  }
+
+  // the two tabs hold different numbers of rows, so the column break is measured again
+  private switchTab(tab: 'draw' | 'modify'): void {
+    this.tab = tab;
+    this.openFlyout = null;
+    afterNextRender(() => this.layoutColumns(), { injector: this.injector });
+  }
+
   /** Pass null for the Select button — back to no active drafting tool. */
   selectTool(tool: DraftTool | null): void {
     this.toolRegistry.selectTool(tool);
@@ -172,7 +274,18 @@ export class ToolPaletteComponent implements OnInit, AfterViewInit, OnDestroy {
     this.toolRegistry.selectTool(this.faceOf(slot));
   }
 
-  toggleFlyout(slot: ToolSlot, ev?: Event): void {
+  commandFace(group: SelectionCommand[]): SelectionCommand {
+    return this.commandFaces.get(group) ?? group[0];
+  }
+
+  /** Runs a command, and makes it the face of its group so the button repeats what was last done. */
+  runCommand(group: SelectionCommand[], command: SelectionCommand): void {
+    this.openFlyout = null;
+    this.commandFaces.set(group, command);
+    command.run();
+  }
+
+  toggleFlyout(slot: ToolSlot | SelectionCommand[], ev?: Event): void {
     this.openFlyout = this.openFlyout === slot ? null : slot;
     this.anchorPopup(ev);
   }

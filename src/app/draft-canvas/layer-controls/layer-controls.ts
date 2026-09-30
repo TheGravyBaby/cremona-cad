@@ -2,8 +2,9 @@ import { Component, ElementRef, EventEmitter, Output, inject } from '@angular/co
 import { NgTemplateOutlet } from '@angular/common';
 import { ToolRegistryService } from '../tools/tool-registry';
 import { ToolboxStore } from '../tools/toolbox-store';
-import { ImageShape } from '../tools/toolbox-shape';
-import { Layer } from '../tools/layer';
+import { DraftShape, ImageShape } from '../tools/toolbox-shape';
+import { DEFAULT_LAYER_ID, Layer } from '../tools/layer';
+import { SelectionStore } from '../tools/selection-store';
 
 /**
  * Layers and reference images, in the canvas bottom bar beside the axis and zoom controls.
@@ -28,6 +29,7 @@ import { Layer } from '../tools/layer';
 export class LayerControlsComponent {
   private toolbox = inject(ToolboxStore);
   private toolRegistry = inject(ToolRegistryService);
+  private selection = inject(SelectionStore);
   private elRef = inject(ElementRef<HTMLElement>);
 
   /** Which shape is selected is draft-canvas state, not store state, so picking an image out of
@@ -72,6 +74,20 @@ export class LayerControlsComponent {
 
   selectLayer(id: string): void {
     this.toolbox.setActiveLayer(id);
+  }
+
+  // images belong to no layer, so they never move
+  private get movableSelection(): DraftShape[] {
+    return this.selection.toolboxShapes.filter(s => s.type !== 'image');
+  }
+
+  /** Offered on an unlocked layer when some of the selected drawn shapes live elsewhere. */
+  canMoveSelectionTo(layer: Layer): boolean {
+    return !layer.locked && this.movableSelection.some(s => (s.layerId ?? DEFAULT_LAYER_ID) !== layer.id);
+  }
+
+  moveSelectionTo(id: string): void {
+    this.toolbox.moveShapesToLayer(this.movableSelection.map(s => s.id), id);
   }
 
   addLayer(): void {
