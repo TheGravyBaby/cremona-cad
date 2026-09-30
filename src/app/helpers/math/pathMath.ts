@@ -711,15 +711,16 @@ function ringToPrimitivePath(ring: [number, number][], segments: PathSeg[], look
     }
 
     const { center, r } = seg;
-    const [firstX, firstY] = run.points[0];
-    const [secondX, secondY] = run.points[1];
-    const a0 = Math.atan2(firstY - center.y, firstX - center.x);
-    const a1 = Math.atan2(secondY - center.y, secondX - center.x);
-    const aEnd = Math.atan2(last[1] - center.y, last[0] - center.x);
+    const angleOf = (p: [number, number]) => Math.atan2(p[1] - center.y, p[0] - center.x);
+    const a0 = angleOf(first);
+    const aEnd = angleOf(last);
 
-    // Consecutive sample points step in small increments in the run's true travel
-    // direction, so whichever rotation gets from a0 to a1 the "short way" is correct.
-    const ccw = ccwSpan(a0, a1) <= Math.PI;
+    // direction comes from an interior sample, not points[1]: a run's first point is the
+    // clip crossing (approximate, then snapped exact), which can land just past points[1] —
+    // the first step then reads backwards, flipping the sweep and drawing the major arc
+    const ccw = run.points.length > 2
+      ? ccwSpan(a0, angleOf(run.points[Math.floor(run.points.length / 2)])) <= ccwSpan(a0, aEnd)
+      : ccwSpan(a0, aEnd) <= Math.PI;
     const span = ccw ? ccwSpan(a0, aEnd) : ccwSpan(aEnd, a0);
     const largeArcFlag = span > Math.PI ? 1 : 0;
     const sweepFlag = ccw ? 1 : 0;
