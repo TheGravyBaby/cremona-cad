@@ -5,48 +5,6 @@ import {
 } from './toolbox-shape';
 import { angleFromCenter, dist, normalizeDegrees, normalizeRadians, pointOnCircle, rotatePointAbout } from '../../helpers/math/simpleGeometry';
 
-/**
- * Where the square "move" handle renders/hit-tests for a selected shape — grabbing it
- * translates the whole shape, as opposed to grabbing an endpoint to edit just that point (see
- * endpointGrabbers below). Null for Text/Point, which are already a single anchor point: the
- * shape body itself is the unambiguous drag target, so a separate handle would be redundant.
- */
-export function moveGrabberPosition(shape: DraftShape): Pt | null {
-  switch (shape.type) {
-    case 'line':
-    case 'section':
-    case 'ticks':
-      return { x: (shape.start.x + shape.end.x) / 2, y: (shape.start.y + shape.end.y) / 2 };
-    case 'dimension':
-      // Null for a reason of its own: the midpoint of a dimension is where the offset handle has
-      // to go (it is the only point on the dimension line that isn't already an endpoint), and two
-      // handles cannot share a spot — at zero offset they would land on each other exactly. So the
-      // dimension line itself is the move target, the fallback Text/Point/Freehand/Image use, and
-      // the middle of it belongs to the offset.
-      return null;
-    case 'circle':
-      return { x: shape.center.x, y: shape.center.y };
-    case 'rect':
-      return { x: (shape.p1.x + shape.p2.x) / 2, y: (shape.p1.y + shape.p2.y) / 2 };
-    case 'arc':
-      return { x: shape.center.x, y: shape.center.y };
-    case 'text':
-    case 'point':
-      return null;
-    case 'freehand':
-    case 'path':
-      // Null for the same reason as Text/Point: the stroke itself is the unambiguous drag
-      // target (hitTestMoveHandle falls back to distanceToShape when this is null), and a
-      // scribble has no natural "center" a handle should sit at anyway.
-      return null;
-    case 'image':
-      // Null for the same reason as Text/Point: the whole picture is already an unambiguous
-      // drag target (distanceToShape returns 0 inside it), so a handle in the middle would just
-      // sit on top of what the user is trying to trace.
-      return null;
-  }
-}
-
 /** The point on an arc's circle midway (by angle) between its start and end — where the
  * radius-resize handle sits, since it's the most "on the arc" point to grab. */
 function arcMidpoint(shape: Extract<DraftShape, { type: 'arc' }>): Pt {
@@ -87,10 +45,10 @@ const MIN_IMAGE_MM = 10;
 const ROTATE_GRABBER_OFFSET_PX = 26;
 
 /**
- * The draggable endpoint handles for a shape — triangles, so they read as visually distinct
- * from the square move handle. Null for Point and Freehand, which have no geometry beyond what
- * the move handle already covers; Text has no endpoint either but does have an orientation, so
- * it gets the rotation handle alone.
+ * The draggable endpoint handles for a shape; the shape's own outline is what moves it whole.
+ * Null for Point and Freehand, which have no geometry beyond what dragging the outline already
+ * covers; Text has no endpoint either but does have an orientation, so it gets the rotation
+ * handle alone.
  *
  * `pxPerMm` is only consulted by handles whose position is a constant screen offset rather than
  * a point on the geometry itself — Image's and Text's rotation handles.

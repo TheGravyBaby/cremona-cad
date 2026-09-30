@@ -2,7 +2,7 @@ import { Pt } from '../../models/types';
 import { DraftToolHost } from './draft-tool';
 import { DimensionTool } from './dimension-tool';
 import { DimensionShape, DraftShape, dimensionGeometry } from './toolbox-shape';
-import { endpointGrabbers, moveGrabberPosition, withEndpoint } from './shape-grabbers';
+import { endpointGrabbers, withEndpoint } from './shape-grabbers';
 
 /** Only the handful of host calls DimensionTool actually makes — the rest of DraftToolHost is
  * stubbed to the shape of "nothing snapped, no modifier held". pxPerMm is 1 so the click-vs-drag
@@ -128,13 +128,6 @@ describe('dimension handles', () => {
     const grabbers = endpointGrabbers(shape, 1)!;
     const offsetGrabber = grabbers.find(g => g.key === 'offset')!;
     expect(offsetGrabber.pos).toEqual(at(50, 20));
-  });
-
-  // Two handles can't share a spot, and at zero offset the move square and the offset handle
-  // would land on each other exactly — so the dimension line itself is the move target.
-  it('has no move square, leaving its middle to the offset handle', () => {
-    expect(moveGrabberPosition(shape)).toBeNull();
-    expect(moveGrabberPosition({ ...shape, offset: 0 })).toBeNull();
   });
 
   it('keeps the measurement fixed when the offset handle is dragged', () => {
