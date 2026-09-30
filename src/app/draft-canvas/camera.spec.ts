@@ -57,3 +57,40 @@ describe('Camera zoom limits', () => {
     expect(cam.pxPerMm).toBe(4);
   });
 });
+
+describe('Camera typed views', () => {
+  it('reads back the centre it was pointed at', () => {
+    const cam = new Camera();
+    cam.lookAt(new Pt(12.5, -180), 3, 1000, 800);
+
+    expect(cam.pxPerMm).toBe(3);
+    expect(cam.centre(1000, 800).x).toBeCloseTo(12.5, 9);
+    expect(cam.centre(1000, 800).y).toBeCloseTo(-180, 9);
+  });
+
+  it('centres on the same drawing point whatever the window size', () => {
+    const a = new Camera();
+    const b = new Camera();
+    a.lookAt(new Pt(40, 90), 2, 1000, 800);
+    b.lookAt(new Pt(40, 90), 2, 1600, 500);
+
+    const midA = a.getViewBox(1000, 800);
+    const midB = b.getViewBox(1600, 500);
+    expect(midA.leftBound + midA.mmW / 2).toBeCloseTo(midB.leftBound + midB.mmW / 2, 9);
+    expect(midA.topBound + midA.mmH / 2).toBeCloseTo(midB.topBound + midB.mmH / 2, 9);
+  });
+
+  // y up, as the axis numbers read: a positive centre puts the view above the X axis
+  it('takes y up', () => {
+    const cam = new Camera();
+    cam.lookAt(new Pt(0, 500), 2, 1000, 800);
+
+    expect(-cam.getViewBox(1000, 800).bottomBound).toBeGreaterThan(0);
+  });
+
+  it('clamps a typed zoom', () => {
+    const cam = new Camera();
+    cam.lookAt(new Pt(0, 0), -5, 1000, 800);
+    expect(cam.pxPerMm).toBe(Camera.MIN_PX_PER_MM);
+  });
+});

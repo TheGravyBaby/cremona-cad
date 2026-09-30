@@ -1,0 +1,30 @@
+/* last before zoom, near the bar's right end, so the popup opens leftwards over its cousins */
+.lc-popup {
+  left: auto;
+  right: 0;
+}
+
+.axis-row,
+.axis-row:hover {
+  cursor: default;
+  border-color: var(--ui-border-elevated);
+}
+
+.axis-step {
+  flex: 0 0 auto;
+  width: 56px;
+  height: 20px;
+  box-sizing: border-box;
+  padding: 1px 4px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 4px;
+  background: var(--ui-bg-surface-2);
+  color: var(--ui-text-primary);
+  font-size: 11px;
+  text-align: right;
+}
+
+.axis-unit {
+  flex: 0 0 auto;
+  color: var(--ui-text-muted);
+}

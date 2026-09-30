@@ -250,7 +250,7 @@ function archedZAt(
         }
         // Channel, then flat land beyond it — gougeProfileZ already flattens to
         // 0 once past the cut's own edge, so the land needs no separate case.
-        return withCornerPass(p, g, chords, platformOuterIdx, x, y, s, gougeProfileZ(s, section.sweepRadius, g.gouge.depth));
+        return withCornerPass(p, g, chords, platformOuterIdx, x, y, s, gougeProfileZ(s, section.sweepRadius, g.gouge.depth), Math.min(contact, 0));
     }
 
     // Past the long arch's reach — the cap bands beyond where it met the
@@ -279,20 +279,21 @@ function archContactS(section: CrossArchSection, x: number): number {
  * Called only from the two channel-side returns above, never from the arch
  * branch, and that placement is the whole guarantee: the takeoff, the tangency
  * solve and every station's section are decided before it runs and cannot be
- * moved by it. A `Math.min` here can only deepen, and only outboard of the
- * trough, so the gouge's arc against the arch is left as it was cut.
+ * moved by it. A `Math.min` here can only deepen, and only outboard of where the
+ * arch landed (`from`, the trough at the latest), so the arch and the gouge's
+ * arc against it are left as they were cut.
  *
  * Outside the platform boundary is the flat edge land, which is not touched at
  * all — hence the crossings test rather than a bare distance.
  */
 function withCornerPass(
     p: EnricoCerutiParams, g: PlateGeometry, chords: StationChords,
-    platformOuterIdx: PolylineIndex, x: number, y: number, s: number, z: number,
+    platformOuterIdx: PolylineIndex, x: number, y: number, s: number, z: number, from = 0,
 ): number {
-    if (s >= 0 || !cornerGougeOn(g.gouge)) return z;
+    if (s >= from || !cornerGougeOn(g.gouge)) return z;
     if (!insideCrossings(x, chords.landCrossings)) return z;
     const edgeDist = closestPointToPolylineIndexed({ x, y }, platformOuterIdx).dist;
-    return Math.min(z, cornerSmoothZ(s, edgeDist, gougeAtY(p, g.gouge, y).sweepRadius, g.gouge.depth));
+    return Math.min(z, cornerSmoothZ(s, edgeDist, gougeAtY(p, g.gouge, y).sweepRadius, g.gouge.depth, from));
 }
 
 /**

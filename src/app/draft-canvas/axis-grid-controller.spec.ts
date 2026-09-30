@@ -19,11 +19,12 @@ describe('AxisGridController step coarsening', () => {
   function draw(
     stepMm: number,
     pxPerMm: number,
-    { cv = viewport(pxPerMm), showAxes = true }: { cv?: CanvasViewport; showAxes?: boolean } = {},
+    { cv = viewport(pxPerMm), visible = true, showAxes = true, showGrid = true }:
+      { cv?: CanvasViewport; visible?: boolean; showAxes?: boolean; showGrid?: boolean } = {},
   ) {
     const controller = new AxisGridController(`axis-grid-spec-${Math.random()}`);
     controller.updatePreferences({
-      showGrid: true, showAxes, showGridX: true, showGridY: true,
+      visible, showAxes, showGridX: showGrid, showGridY: showGrid,
       gridStepX: stepMm, gridStepY: stepMm,
     });
 
@@ -126,5 +127,30 @@ describe('AxisGridController step coarsening', () => {
       if (!/^-?[\d.]+$/.test(text)) continue; // axis names, not tick values
       expect(text).toMatch(/^-?\d+(\.\d{1,6})?$/);
     }
+  });
+
+  it('draws nothing with the master eye off, whatever the rows say', () => {
+    const { lines, labels } = draw(50, 1.5, { visible: false });
+
+    expect(lines.length).toBe(0);
+    expect(labels.length).toBe(0);
+  });
+
+  it('numbers the axes with the grid lines off', () => {
+    const { lines, labels } = draw(50, 1.5, { showGrid: false });
+
+    expect(lines.length).toBe(2);
+    expect(labels.some(t => /^-?[\d.]+$/.test(t.textContent ?? ''))).toBe(true);
+  });
+
+  // the nudge off the grid line used to be a bare 4 in world units, so the gap grew with zoom
+  it('holds tick labels a fixed screen distance off their line', () => {
+    const offsetPx = (pxPerMm: number) => {
+      const { labels } = draw(50, pxPerMm);
+      const label = labels.find(t => t.getAttribute('text-anchor') === 'middle')!;
+      return (Number(label.getAttribute('x')) - Number(label.textContent)) * pxPerMm;
+    };
+
+    expect(offsetPx(1.5)).toBeCloseTo(offsetPx(20), 6);
   });
 });

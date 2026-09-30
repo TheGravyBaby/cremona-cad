@@ -119,6 +119,19 @@ export class Camera {
     this.offsetY = anchor.y - ((anchor.y - oldOffsetY) * oldPxPerMm) / newPxPerMm;
   }
 
+  // the view's centre in drawing coordinates (y up, as the axis numbers read). The centre rather
+  // than offsetX/offsetY is what a typed view restores, since the corner moves with the window size.
+  centre(pxW: number, pxH: number): Pt {
+    const { leftBound, topBound, mmW, mmH } = this.getViewBox(pxW, pxH);
+    return new Pt(leftBound + mmW / 2, -(topBound + mmH / 2));
+  }
+
+  lookAt(centre: Pt, pxPerMm: number, pxW: number, pxH: number) {
+    this.pxPerMm = Camera.clampZoom(pxPerMm);
+    this.offsetX = centre.x - pxW / this.pxPerMm / 2;
+    this.offsetY = -centre.y - pxH / this.pxPerMm / 2;
+  }
+
   panByPx(dxPx: number, dyPx: number) {
     const dxMm = dxPx / this.pxPerMm;
     const dyMm = dyPx / this.pxPerMm;

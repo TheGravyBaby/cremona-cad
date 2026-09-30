@@ -99,22 +99,49 @@ export function cornerGougeOn(g: FlutingParams): boolean {
  * The corner smoothing, as a height field: the wedge of flat wood the bypassing
  * channel leaves at each corner, taken down by hand to meet the channel.
  *
- * The gouge's own arc stays where it was cut — on the inner flank, against the
- * arch. What the maker smooths is the outer flank: from the trough out to the
- * land edge, however far that has become. So this is the channel's outer flank
- * stretched across the run from the trough (`s`, negative outboard of it) to the
- * land edge (`edgeDist` inward from it). Along the flanks that run is exactly one
- * half-width and the stretch is 1, so this returns what the channel already
- * does; it only departs from it where the corner has pulled the land edge away.
+ * The arch meets the channel first, and the smoothing runs from wherever that
+ * is out to the land edge, however far that has become. So this is the
+ * channel's outer flank stretched across the run from `from` (the arch's
+ * contact when it lands past the trough, else the trough itself; `s` is negative
+ * outboard) to the land edge (`edgeDist` inward from it). Along the flanks that
+ * run is exactly the flank's own length and the stretch is 1, so this returns
+ * what the channel already does; it only departs from it where the corner has
+ * pulled the land edge away.
+ *
+ * Starting at the contact rather than always at the trough is what keeps the
+ * surface whole there: an arch past 100% lands on the outer flank, and a flank
+ * lowered under its landing left a step down at the corners.
+ *
+ * Stretched uniformly from the trough, where the flank is level and any stretch
+ * leaves it level. From a landing up the flank the arch arrives at a grade, and
+ * a uniform stretch of what is left flattens that grade into a crease. So the
+ * stretch eases out instead — leaving at the flank's own grade and flattening
+ * toward the land edge — by exactly as much as the landing is up the flank. A
+ * maker carries the arch's climb on and lets it run out flat across the wedge.
  *
  * Never above the channel's own outer flank, so composing it by minimum can only
- * remove wood, and is inert inboard of the trough and past the land edge.
+ * remove wood, and is inert inboard of `from` and past the land edge.
  */
-export function cornerSmoothZ(s: number, edgeDist: number, sweepRadius: number, depth: number): number {
+export function cornerSmoothZ(s: number, edgeDist: number, sweepRadius: number, depth: number, from = 0): number {
   const w = gougeHalfWidth(sweepRadius, depth);
-  if (w <= 0 || s >= 0 || edgeDist <= 0) return 0;
-  return gougeProfileZ((s * w) / Math.max(edgeDist - s, w), sweepRadius, depth);
+  if (w <= 0 || s >= from || edgeDist <= 0) return 0;
+  // the flank left to climb from the landing, and how long that climb is here, wedge included
+  const left = w + from;
+  const run = Math.max(edgeDist - s + from, left);
+  const u = (from - s) / run;
+  const stretch = run / left;
+  const ease = 1 + (stretch - 1) * smoothstep(-from, 0, CORNER_EASE_BAND * w);
+  return gougeProfileZ(from - left * (1 - Math.pow(1 - u, ease)), sweepRadius, depth);
 }
+
+/**
+ * How far up the outer flank a landing must sit, in half-widths, before the
+ * corner stretch eases out fully. Under this the flank is nearly level at the
+ * landing, so a uniform stretch leaves next to no crease — and the ease has to
+ * come in gradually, since a landing crossing the trough between two stations
+ * would otherwise switch the wedge's whole shape between them.
+ */
+const CORNER_EASE_BAND = 0.25;
 
 /**
  * The crown a plate is seeded with when it has none — a trochoid, to match the

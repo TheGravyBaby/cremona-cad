@@ -12,18 +12,12 @@ export type CanvasViewport = {
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 
 export type AxisGridPreferences = {
-  showGrid: boolean;
+  visible: boolean;
   showAxes: boolean;
   showGridX: boolean;
   showGridY: boolean;
   gridStepX: number;
   gridStepY: number;
-};
-
-type PersistedAxisGridPreferences = Partial<AxisGridPreferences> & {
-  showAxes?: boolean;
-  showXAxis?: boolean;
-  showYAxis?: boolean;
 };
 
 export class AxisGridController {
@@ -35,11 +29,12 @@ export class AxisGridController {
   private static readonly MIN_TICK_SPACING_PX = 50;
   private static readonly MAX_LINES_PER_AXIS = 1000;
 
+  // off as a whole but with every row on, so the first click of the master eye shows something
   private preferences: AxisGridPreferences = {
-    showGrid: false,
-    showAxes: false,
-    showGridX: false,
-    showGridY: false,
+    visible: false,
+    showAxes: true,
+    showGridX: true,
+    showGridY: true,
     gridStepX: 50,
     gridStepY: 50,
   };
@@ -49,8 +44,8 @@ export class AxisGridController {
     private readonly onVisualChange: () => void = () => { },
   ) { }
 
-  get showGrid(): boolean {
-    return true //this.preferences.showGrid;
+  get visible(): boolean {
+    return this.preferences.visible;
   }
 
   get showAxes(): boolean {
@@ -77,53 +72,39 @@ export class AxisGridController {
     try {
       const raw = sessionStorage.getItem(this.storageKey);
       if (!raw) return;
-
-      const parsed = JSON.parse(raw) as PersistedAxisGridPreferences;
-
-      this.preferences = {
-        showGrid: typeof parsed.showGrid === 'boolean' ? parsed.showGrid : this.preferences.showGrid,
-        showAxes: this.resolveAxisPreference(parsed.showAxes, parsed.showXAxis, this.preferences.showAxes),
-        showGridX: typeof parsed.showGridX === 'boolean'
-          ? parsed.showGridX
-          : this.resolveAxisPreference(parsed.showXAxis, parsed.showAxes, this.preferences.showGridX),
-        showGridY: typeof parsed.showGridY === 'boolean'
-          ? parsed.showGridY
-          : this.resolveAxisPreference(parsed.showYAxis, parsed.showAxes, this.preferences.showGridY),
-        gridStepX: this.sanitizeStep(parsed.gridStepX, this.preferences.gridStepX),
-        gridStepY: this.sanitizeStep(parsed.gridStepY, this.preferences.gridStepY),
-      };
+      this.preferences = this.merged(JSON.parse(raw) as Partial<AxisGridPreferences>);
     } catch {
       // ignore malformed/blocked sessionStorage
     }
   }
 
   updatePreferences(next: Partial<AxisGridPreferences>): void {
-    this.preferences = {
-      showGrid: typeof next.showGrid === 'boolean' ? next.showGrid : this.preferences.showGrid,
-      showAxes: typeof next.showAxes === 'boolean' ? next.showAxes : this.preferences.showAxes,
-      showGridX: typeof next.showGridX === 'boolean' ? next.showGridX : this.preferences.showGridX,
-      showGridY: typeof next.showGridY === 'boolean' ? next.showGridY : this.preferences.showGridY,
-      gridStepX: next.gridStepX !== undefined ? this.sanitizeStep(next.gridStepX, this.preferences.gridStepX) : this.preferences.gridStepX,
-      gridStepY: next.gridStepY !== undefined ? this.sanitizeStep(next.gridStepY, this.preferences.gridStepY) : this.preferences.gridStepY,
-    };
-
+    this.preferences = this.merged(next);
     this.persistPreferences();
     this.onVisualChange();
   }
 
   draw(gRoot: RootGroup, gUI: RootGroup, cv: CanvasViewport, pxPerMm: number): void {
-    if (this.showGrid) this.drawGrid(gRoot, cv, pxPerMm);
+    if (!this.visible) return;
+    this.drawGrid(gRoot, cv, pxPerMm);
     if (this.showAxes) {
       this.drawAxes(gRoot, cv);
       this.drawAxisLabels(gUI, cv, pxPerMm);
-      this.drawAxisTicks(gRoot, gUI, cv, pxPerMm);
+      this.drawAxisTicks(gUI, cv, pxPerMm);
     }
   }
 
-  private resolveAxisPreference(value: boolean | undefined, legacyValue: boolean | undefined, fallback: boolean): boolean {
-    if (typeof value === 'boolean') return value;
-    if (typeof legacyValue === 'boolean') return legacyValue;
-    return fallback;
+  private merged(next: Partial<AxisGridPreferences>): AxisGridPreferences {
+    const p = this.preferences;
+    const bool = (value: unknown, fallback: boolean) => typeof value === 'boolean' ? value : fallback;
+    return {
+      visible: bool(next.visible, p.visible),
+      showAxes: bool(next.showAxes, p.showAxes),
+      showGridX: bool(next.showGridX, p.showGridX),
+      showGridY: bool(next.showGridY, p.showGridY),
+      gridStepX: this.sanitizeStep(next.gridStepX, p.gridStepX),
+      gridStepY: this.sanitizeStep(next.gridStepY, p.gridStepY),
+    };
   }
 
   private sanitizeStep(value: number | undefined, fallback: number): number {
@@ -134,13 +115,7 @@ export class AxisGridController {
 
   private persistPreferences(): void {
     try {
-      const existingRaw = sessionStorage.getItem(this.storageKey);
-      const existing = existingRaw ? JSON.parse(existingRaw) as Record<string, unknown> : {};
-
-      sessionStorage.setItem(this.storageKey, JSON.stringify({
-        ...existing,
-        ...this.preferences,
-      }));
+      sessionStorage.setItem(this.storageKey, JSON.stringify(this.preferences));
     } catch {
       // ignore storage errors
     }
@@ -177,70 +152,24 @@ export class AxisGridController {
     return values;
   }
 
-  /** Multiplying out from the origin still lands on float dust for a fractional step
-   * (3 * 0.2 = 0.6000000000000001). Round it back out of the label. */
+  // multiplying out from the origin lands on float dust for a fractional step
+  // (3 * 0.2 = 0.6000000000000001)
   private formatTickLabel(mm: number): string {
     return `${Math.round(mm * 1e6) / 1e6}`;
   }
 
-  private drawAxisTicks(gRoot: RootGroup, gUI: RootGroup, cv: CanvasViewport, pxPerMm: number): void {
-    const tickLen = 5 / pxPerMm;
+  private drawAxisTicks(gUI: RootGroup, cv: CanvasViewport, pxPerMm: number): void {
+    const inset = 7 / pxPerMm;
     const fontSize = 13 / pxPerMm;
-    const labelGap = 2 / pxPerMm;
-    const tickColor = '#888';
 
-    // Both Y edges: always draw on left and right bounds
-    const yEdges: { x: number; dir: number }[] = [
-      { x: cv.leftBound, dir: 1 },   // left edge, tick points right
-      { x: cv.rightBound, dir: -1 }, // right edge, tick points left
-    ];
-
-    // Both X edges: always draw on top and bottom bounds
-    // gUI y = viewport coords (y+ down); gRoot y = flipped (y+ up)
-    const xEdges: { edgeY: number; rootEdgeY: number; baseline: string }[] = [
-      { edgeY: cv.topBound, rootEdgeY: -cv.topBound, baseline: 'hanging' },       // top edge
-      { edgeY: cv.bottomBound, rootEdgeY: -cv.bottomBound, baseline: 'ideographic' }, // bottom edge
-    ];
-
-    // Helper to draw a tick mark and label for a Y-axis row
-    const drawYTick = (y: number, label: string) => {
-      for (const { x, dir } of yEdges) {
-        // gRoot.append('line')
-        //   .attr('x1', x).attr('y1', y)
-        //   .attr('x2', x + dir * tickLen).attr('y2', y)
-        //   .attr('stroke', tickColor).attr('stroke-width', 1)
-        //   .attr('vector-effect', 'non-scaling-stroke');
-        gUI.append('text')
-          .attr('x', x + dir * (tickLen + labelGap)).attr('y', -y - 3)
-          .attr('text-anchor', dir > 0 ? 'start' : 'end').attr('dominant-baseline', 'middle')
-          .attr('fill', tickColor).attr('font-size', fontSize)
-          .attr('vector-effect', 'non-scaling-stroke')
-          .text(label).style('user-select', 'none');
-      }
-    };
-
-    // Helper to draw a tick mark and label for an X-axis column
-    const drawXTick = (x: number, label: string) => {
-      for (const { edgeY, rootEdgeY, baseline } of xEdges) {
-        // Tick points inward: top edge tick goes down (rootEdgeY dir = -1 in gRoot), bottom edge goes up (+1)
-        const tickDir = baseline === 'hanging' ? -1 : 1; // gRoot: top edge y increases downward from -cv.topBound
-        // gRoot.append('line')
-        //   .attr('x1', x).attr('y1', rootEdgeY)
-        //   .attr('x2', x).attr('y2', rootEdgeY + tickDir * tickLen)
-        //   .attr('stroke', tickColor).attr('stroke-width', 1)
-        //   .attr('vector-effect', 'non-scaling-stroke');
-        // Label offset: pull inside the viewport by labelGap
-        const labelY = baseline === 'hanging'
-          ? edgeY + (tickLen + labelGap)  // top edge: below the tick
-          : edgeY - (tickLen + labelGap); // bottom edge: above the tick, with padding
-        gUI.append('text')
-          .attr('x', x + 4).attr('y', labelY)
-          .attr('text-anchor', 'middle')
-          .attr('dominant-baseline', baseline)
-          .attr('fill', tickColor).attr('font-size', fontSize)
-          .attr('vector-effect', 'non-scaling-stroke')
-          .text(label).style('user-select', 'none');
-      }
+    // gUI is viewport coords (y+ down), so a world y goes in negated
+    const tickLabel = (x: number, y: number, anchor: string, baseline: string, mm: number) => {
+      gUI.append('text')
+        .attr('x', x).attr('y', y)
+        .attr('text-anchor', anchor).attr('dominant-baseline', baseline)
+        .attr('font-size', fontSize)
+        .style('fill', 'var(--ui-canvas-tick)')
+        .text(this.formatTickLabel(mm)).style('user-select', 'none');
     };
 
     // coarsened up from the grid's own step, not the configured one, so every label still sits
@@ -252,49 +181,31 @@ export class AxisGridController {
       this.effectiveStep(this.gridStepY, pxPerMm, AxisGridController.MIN_GRID_SPACING_PX),
       pxPerMm, AxisGridController.MIN_TICK_SPACING_PX);
 
-    // Y ticks, across the visible rows (gRoot y, so the viewport bounds come in negated)
-    if (this.showGridY) {
-      for (const y of this.stepValues(-cv.bottomBound, -cv.topBound, stepY)) {
-        if (y === 0) continue;
-        drawYTick(y, this.formatTickLabel(y));
-      }
+    for (const y of this.stepValues(-cv.bottomBound, -cv.topBound, stepY)) {
+      if (y === 0) continue;
+      const labelY = -y - 3 / pxPerMm;
+      tickLabel(cv.leftBound + inset, labelY, 'start', 'middle', y);
+      tickLabel(cv.rightBound - inset, labelY, 'end', 'middle', y);
     }
 
-    // X ticks, across the visible columns
-    if (this.showGridX) {
-      for (const x of this.stepValues(cv.leftBound, cv.rightBound, stepX)) {
-        if (x === 0) continue;
-        drawXTick(x, this.formatTickLabel(x));
-      }
+    for (const x of this.stepValues(cv.leftBound, cv.rightBound, stepX)) {
+      if (x === 0) continue;
+      const labelX = x + 4 / pxPerMm;
+      tickLabel(labelX, cv.topBound + inset, 'middle', 'hanging', x);
+      tickLabel(labelX, cv.bottomBound - inset, 'middle', 'ideographic', x);
     }
   }
 
   private drawAxes(gRoot: RootGroup, cv: CanvasViewport): void {
-    const lineColor = '#adadadff';
-
-    if (this.showAxes) {
-      gRoot
-        .append('line')
-        .attr('x1', 0)
-        .attr('y1', -cv.topBound)
-        .attr('x2', 0)
-        .attr('y2', -cv.bottomBound)
-        .attr('stroke', lineColor)
+    const axisLine = (x1: number, y1: number, x2: number, y2: number) => {
+      gRoot.append('line')
+        .attr('x1', x1).attr('y1', y1).attr('x2', x2).attr('y2', y2)
         .attr('stroke-width', 2)
-        .attr('vector-effect', 'non-scaling-stroke');
-    }
-
-    if (this.showAxes) {
-      gRoot
-        .append('line')
-        .attr('x1', cv.leftBound)
-        .attr('y1', 0)
-        .attr('x2', cv.rightBound)
-        .attr('y2', 0)
-        .attr('stroke', lineColor)
-        .attr('stroke-width', 2)
-        .attr('vector-effect', 'non-scaling-stroke');
-    }
+        .attr('vector-effect', 'non-scaling-stroke')
+        .style('stroke', 'var(--ui-canvas-axis)');
+    };
+    axisLine(0, -cv.topBound, 0, -cv.bottomBound);
+    axisLine(cv.leftBound, 0, cv.rightBound, 0);
   }
 
   private drawAxisLabels(gUI: RootGroup, cv: CanvasViewport, pxPerMm: number): void {
@@ -319,64 +230,60 @@ export class AxisGridController {
     if (renderXAxisAt !== null && renderXAxisAt > 0) xLabelY += 20 / pxPerMm;
     if (renderYAxisAt !== null && renderYAxisAt < 0) yLabelX -= 80 / pxPerMm;
 
-    if (this.showAxes && cv.rightBound > 0) {
+    if (cv.rightBound > 0) {
       gUI
         .append('text')
         .attr('x', cv.rightBound)
         .attr('y', xLabelY)
         .attr('text-anchor', 'end')
         .attr('dominant-baseline', 'ideographic')
-        .attr('fill', '#666')
         .attr('font-size', fontSizePx)
-        .attr('vector-effect', 'non-scaling-stroke')
+        .style('fill', 'var(--ui-canvas-axis-label)')
         .text(`${Math.round(cv.rightBound)} mm`)
         .style('user-select', 'none');
     }
 
-    if (this.showAxes && cv.leftBound < 0) {
+    if (cv.leftBound < 0) {
       gUI
         .append('text')
         .attr('x', cv.leftBound)
         .attr('y', xLabelY)
         .attr('text-anchor', 'start')
         .attr('dominant-baseline', 'ideographic')
-        .attr('fill', '#666')
         .attr('font-size', fontSizePx)
-        .attr('vector-effect', 'non-scaling-stroke')
+        .style('fill', 'var(--ui-canvas-axis-label)')
         .text(`${Math.round(cv.leftBound)} mm`)
         .style('user-select', 'none');
     }
 
-    if (this.showAxes && cv.topBound < 0) {
+    if (cv.topBound < 0) {
       gUI
         .append('text')
         .attr('x', yLabelX)
         .attr('y', cv.topBound + 20 / pxPerMm)
         .attr('text-anchor', 'start')
         .attr('dominant-baseline', 'auto')
-        .attr('fill', '#666')
         .attr('font-size', fontSizePx)
-        .attr('vector-effect', 'non-scaling-stroke')
+        .style('fill', 'var(--ui-canvas-axis-label)')
         .text(`${Math.round(-cv.topBound)} mm`)
         .style('user-select', 'none');
     }
 
-    if (this.showAxes && cv.bottomBound > 0) {
+    if (cv.bottomBound > 0) {
       gUI
         .append('text')
         .attr('x', yLabelX)
         .attr('y', cv.bottomBound - 20 / pxPerMm)
         .attr('text-anchor', 'start')
         .attr('dominant-baseline', 'hanging')
-        .attr('fill', '#666')
         .attr('font-size', fontSizePx)
-        .attr('vector-effect', 'non-scaling-stroke')
+        .style('fill', 'var(--ui-canvas-axis-label)')
         .text(`${Math.round(-cv.bottomBound)} mm`)
         .style('user-select', 'none');
     }
   }
 
-  private drawGrid(gRoot: RootGroup, cv: CanvasViewport, pxPerMm: number, gridColor: string = '#85858543'): void {
+  private drawGrid(gRoot: RootGroup, cv: CanvasViewport, pxPerMm: number): void {
     const stepX = this.effectiveStep(this.gridStepX, pxPerMm, AxisGridController.MIN_GRID_SPACING_PX);
     const stepY = this.effectiveStep(this.gridStepY, pxPerMm, AxisGridController.MIN_GRID_SPACING_PX);
 
@@ -389,9 +296,9 @@ export class AxisGridController {
           .attr('y1', y)
           .attr('x2', cv.rightBound)
           .attr('y2', y)
-          .attr('stroke', gridColor)
           .attr('stroke-width', 2)
           .attr('vector-effect', 'non-scaling-stroke')
+          .style('stroke', 'var(--ui-canvas-grid)');
       }
     }
 
@@ -404,9 +311,9 @@ export class AxisGridController {
           .attr('y1', -cv.topBound)
           .attr('x2', x)
           .attr('y2', -cv.bottomBound)
-          .attr('stroke', gridColor)
           .attr('stroke-width', 2)
           .attr('vector-effect', 'non-scaling-stroke')
+          .style('stroke', 'var(--ui-canvas-grid)');
       }
     }
   }

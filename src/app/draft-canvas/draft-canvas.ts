@@ -3,17 +3,18 @@ import {
   ChangeDetectorRef,
   Component,
   ElementRef,
+  HostListener,
   inject,
   OnDestroy,
   ViewChild,
 } from '@angular/core';
 import * as d3 from 'd3';
-import { FormsModule } from '@angular/forms';
 import { Input } from '@angular/core';
 import { Pt } from '../models/types';
 import { Bounds, Camera } from './camera';
 import { unionRenderedBounds } from './scene-bounds';
-import { AxisGridController, AxisGridPreferences, CanvasViewport } from './axis-grid-controller';
+import { AxisGridController, CanvasViewport } from './axis-grid-controller';
+import { AxisControlsComponent } from './axis-controls/axis-controls';
 import { DraftTool, DraftToolHost } from './tools/draft-tool';
 import { ToolRegistryService } from './tools/tool-registry';
 import { ToolboxStore } from './tools/toolbox-store';
@@ -47,7 +48,7 @@ type LayerPair = { g: SvgGroup; ui: SvgGroup };
 @Component({
   selector: 'app-draft-canvas',
   standalone: true,
-  imports: [FormsModule, SettingsBarComponent, LayerControlsComponent, EditMenuComponent],
+  imports: [SettingsBarComponent, LayerControlsComponent, AxisControlsComponent, EditMenuComponent],
   templateUrl: './draft-canvas.html',
   styleUrls: ['./draft-canvas.css'],
 })
@@ -75,7 +76,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private lastHostRect: DOMRect | null = null;
   private draftFuncs: Array<(canvas: any, uiCan: any) => void> = [];
   private camera = new Camera();
-  private axisGrid = new AxisGridController(DraftCanvasComponent.DISPLAY_PREFS_KEY, () => {
+  readonly axisGrid = new AxisGridController(DraftCanvasComponent.DISPLAY_PREFS_KEY, () => {
     this.versions.grid++;
     this.draw();
   });
@@ -276,7 +277,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   public isDarkMode = false;
   private isDragging = false;
   private isSpaceDown = false;
-  public axisPopupOpen = false;
   /** Set while the camera still owes the scene a fit — starts true so the first draw with anything
    * in it frames the drawing, instead of leaving the user at Camera's arbitrary default. Consumed
    * by draw() once there is geometry to measure; re-armed through the `fitRequest` input above. */
@@ -284,54 +284,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   @ViewChild('imageFileInput') imageFileInputRef?: ElementRef<HTMLInputElement>;
   /** Resolver for the picker promise — see requestImageFile. */
   private pendingImageFile: ((file: { dataUrl: string; width: number; height: number } | null) => void) | null = null;
-
-  public get showGrid(): boolean {
-    return this.axisGrid.showGrid;
-  }
-
-  public set showGrid(value: boolean) {
-    this.axisGrid.updatePreferences({ showGrid: value });
-  }
-
-  public get showAxes(): boolean {
-    return this.axisGrid.showAxes;
-  }
-
-  public set showAxes(value: boolean) {
-    this.axisGrid.updatePreferences({ showAxes: value });
-  }
-
-  public get showGridX(): boolean {
-    return this.axisGrid.showGridX;
-  }
-
-  public set showGridX(value: boolean) {
-    this.axisGrid.updatePreferences({ showGridX: value });
-  }
-
-  public get showGridY(): boolean {
-    return this.axisGrid.showGridY;
-  }
-
-  public set showGridY(value: boolean) {
-    this.axisGrid.updatePreferences({ showGridY: value });
-  }
-
-  public get gridStepX(): number {
-    return this.axisGrid.gridStepX;
-  }
-
-  public set gridStepX(value: number) {
-    this.axisGrid.updatePreferences({ gridStepX: value });
-  }
-
-  public get gridStepY(): number {
-    return this.axisGrid.gridStepY;
-  }
-
-  public set gridStepY(value: number) {
-    this.axisGrid.updatePreferences({ gridStepY: value });
-  }
 
   ngAfterViewInit(): void {
     const el = this.host.nativeElement;
@@ -1584,6 +1536,40 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     }
   };
 
+  public viewOpen = false;
+  @ViewChild('zoomGroup') zoomGroupRef?: ElementRef<HTMLElement>;
+
+  @HostListener('document:pointerdown', ['$event'])
+  onDocumentPointerDown(event: PointerEvent): void {
+    if (!this.viewOpen) return;
+    if (this.zoomGroupRef?.nativeElement.contains(event.target as Node)) return;
+    this.viewOpen = false;
+  }
+
+  // rounded so what's shown is what retyping restores
+  public viewField(key: 'x' | 'y' | 'zoom'): number {
+    if (key === 'zoom') return Number(this.pxPerMm.toFixed(2));
+    const el = this.host.nativeElement;
+    const centre = this.camera.centre(Math.max(1, el.clientWidth), Math.max(1, el.clientHeight));
+    return Number(centre[key].toFixed(1));
+  }
+
+  setViewField(key: 'x' | 'y' | 'zoom', input: HTMLInputElement): void {
+    const v = input.valueAsNumber;
+    if (Number.isFinite(v)) {
+      const el = this.host.nativeElement;
+      const pxW = Math.max(1, el.clientWidth);
+      const pxH = Math.max(1, el.clientHeight);
+      const centre = this.camera.centre(pxW, pxH);
+      if (key === 'x') centre.x = v;
+      if (key === 'y') centre.y = v;
+      this.camera.lookAt(centre, key === 'zoom' ? v : this.pxPerMm, pxW, pxH);
+      this.draw();
+    }
+    // a rejected or clamped entry can leave the bound value unchanged, and the typed text standing
+    input.value = String(this.viewField(key));
+  }
+
   applyZoom(newPxPerMm: number): void {
     const el = this.host.nativeElement;
     const pxW = Math.max(1, el.clientWidth);
@@ -1634,10 +1620,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
    * drawing. See image-placement.ts. */
   private designBounds(): Bounds | null {
     return unionRenderedBounds([this.layers.scene.node()]);
-  }
-
-  toggleAxisPopup(): void {
-    this.axisPopupOpen = !this.axisPopupOpen;
   }
 
   /** Selects a shape by id from outside the canvas — the tool palette's image list uses this to
