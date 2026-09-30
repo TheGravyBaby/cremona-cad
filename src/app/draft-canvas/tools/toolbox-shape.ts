@@ -11,6 +11,10 @@ type ShapeBase = {
   // Missing on shapes persisted before layers existed — treat as DEFAULT_LAYER_ID
   // (see layer.ts) rather than migrating stored data.
   layerId?: string;
+  // Shapes sharing one select and move as a single thing (see SelectionStore). Flat on purpose:
+  // no nesting, no group object to keep in step with its members, and a shape whose group has
+  // one member left is simply ungrouped by the store.
+  groupId?: string;
 };
 
 export type LineShape = ShapeBase & {
@@ -391,4 +395,9 @@ let shapeIdSeq = 0;
 export function makeShapeId(): string {
   shapeIdSeq += 1;
   return `shape-${Date.now().toString(36)}-${shapeIdSeq.toString(36)}`;
+}
+
+export function makeGroupId(): string {
+  shapeIdSeq += 1;
+  return `group-${Date.now().toString(36)}-${shapeIdSeq.toString(36)}`;
 }

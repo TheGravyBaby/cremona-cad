@@ -194,4 +194,13 @@ describe('ToolPaletteComponent', () => {
     expect(later).not.toHaveBeenCalled();
     document.removeEventListener('keydown', later);
   });
+
+  it('faces a group button toward whichever of its commands applies', async () => {
+    await create();
+    const actions = TestBed.inject(SelectionActions);
+    const group = component.modifyLayout.find(row => row.commands?.some(c => c.id === 'group'))!.commands!;
+    vi.spyOn(actions, 'canGroup', 'get').mockReturnValue(false);
+    vi.spyOn(actions, 'canUngroup', 'get').mockReturnValue(true);
+    expect(component.commandFace(group).id).toBe('ungroup');
+  });
 });

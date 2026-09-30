@@ -64,6 +64,8 @@ describe('LayerControlsComponent', () => {
     fixture.detectChanges();
 
     expect(all('.lc-popup').length).toBe(1);
+    // files in and out live here, beside Clear, as the image list's Upload does
+    expect([...all('.lc-action')].map(b => b.textContent!.trim())).toEqual(['Import', 'Export', 'Clear']);
     // one row per layer, plus the Recipe row at the top
     expect(all('.layer-tab').length).toBe(toolbox.layers.length + 1);
     expect(all('.layer-tab.recipe').length).toBe(1);

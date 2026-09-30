@@ -5,6 +5,9 @@ import { ToolboxStore } from '../tools/toolbox-store';
 import { DraftShape, ImageShape } from '../tools/toolbox-shape';
 import { DEFAULT_LAYER_ID, Layer } from '../tools/layer';
 import { SelectionStore } from '../tools/selection-store';
+import { SelectionActions } from '../tools/selection-actions';
+import { downloadSvgFile } from '../../helpers/fileExporter';
+import { warn } from '../../shared/message-emitter';
 
 /**
  * Layers and reference images, in the canvas bottom bar beside the axis and zoom controls.
@@ -30,6 +33,7 @@ export class LayerControlsComponent {
   private toolbox = inject(ToolboxStore);
   private toolRegistry = inject(ToolRegistryService);
   private selection = inject(SelectionStore);
+  private actions = inject(SelectionActions);
   private elRef = inject(ElementRef<HTMLElement>);
 
   /** Which shape is selected is draft-canvas state, not store state, so picking an image out of
@@ -74,6 +78,24 @@ export class LayerControlsComponent {
 
   selectLayer(id: string): void {
     this.toolbox.setActiveLayer(id);
+  }
+
+  get canExport(): boolean { return this.selection.size > 0 || this.toolbox.getVisibleShapes().length > 0; }
+
+  /** The selection, or the whole drawing when nothing is selected, as a real-size SVG file. The
+   * drawn shapes only: the recipe has its own export panels. */
+  exportSvg(): void {
+    const svg = this.actions.exportSvg();
+    if (svg) downloadSvgFile(this.selection.size ? 'selection.svg' : 'drawing.svg', svg);
+  }
+
+  /** Reads a picked SVG file onto the active layer, in place, as a paste would. Silent on a
+   * dismissed dialog. */
+  async importSvg(input: HTMLInputElement): Promise<void> {
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    if (!this.actions.paste(await file.text())) warn(`Nothing in ${file.name} could be read as a shape.`, 'Import SVG');
   }
 
   // images belong to no layer, so they never move

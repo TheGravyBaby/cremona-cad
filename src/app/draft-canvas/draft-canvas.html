@@ -3,7 +3,12 @@
   <div class="canvas-body">
     <div #host class="host" [class.drawing]="activeTool !== null" tabindex="0" aria-label="Draft canvas" (wheel)="onScrollWheel($event)"
       (pointerdown)="onPointerDown($event)" (pointermove)="onPointerMove($event)" (pointerup)="onPointerUp($event)"
-      (pointerleave)="onPointerUp($event)" (dblclick)="onDoubleClick($event)">
+      (pointerleave)="onPointerUp($event)" (dblclick)="onDoubleClick($event)" (contextmenu)="onContextMenu($event)">
+      @if (contextMenu) {
+        <!-- pointerdown is swallowed so the canvas neither closes the menu nor pans under it -->
+        <app-edit-menu class="context-menu" [style.left.px]="contextMenu.x" [style.top.px]="contextMenu.y"
+          (pointerdown)="$event.stopPropagation()" (done)="contextMenu = null" />
+      }
       @if (editingTextShapeId) {
         <textarea #textEditArea class="text-edit-overlay"
           [rows]="editingTextRows"

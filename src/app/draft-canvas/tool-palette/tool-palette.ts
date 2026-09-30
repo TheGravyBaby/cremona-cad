@@ -83,12 +83,20 @@ export class ToolPaletteComponent implements OnInit, AfterViewInit, OnDestroy {
           cmd('align-top', 'Align top edges', align, () => a.align('top')),
           cmd('align-middle', 'Centre on a horizontal axis', align, () => a.align('middle')),
           cmd('align-bottom', 'Align bottom edges', align, () => a.align('bottom')),
+          cmd('distribute-h', 'Distribute horizontally — even spacing between the outer two', () => a.canDistribute, () => a.distribute('horizontal')),
+          cmd('distribute-v', 'Distribute vertically — even spacing between the outer two', () => a.canDistribute, () => a.distribute('vertical')),
         ],
       },
       {
         commands: [
           cmd('front', 'Bring to front', reorder, () => a.reorder('front')),
           cmd('back', 'Send to back', reorder, () => a.reorder('back')),
+        ],
+      },
+      {
+        commands: [
+          cmd('group', 'Group — selects and moves as one thing (Ctrl+G)', () => a.canGroup, () => a.group()),
+          cmd('ungroup', 'Ungroup (Ctrl+Shift+G)', () => a.canUngroup, () => a.ungroup()),
         ],
       },
       slot('offset'),
@@ -274,8 +282,11 @@ export class ToolPaletteComponent implements OnInit, AfterViewInit, OnDestroy {
     this.toolRegistry.selectTool(this.faceOf(slot));
   }
 
+  /** The last used, unless only another in the group applies now — Ungroup faces out over a
+   * selected group, since Group can't act on one. */
   commandFace(group: SelectionCommand[]): SelectionCommand {
-    return this.commandFaces.get(group) ?? group[0];
+    const face = this.commandFaces.get(group) ?? group[0];
+    return face.enabled() ? face : group.find(c => c.enabled()) ?? face;
   }
 
   /** Runs a command, and makes it the face of its group so the button repeats what was last done. */

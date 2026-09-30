@@ -1,5 +1,6 @@
 import {
   AfterViewInit,
+  ChangeDetectorRef,
   Component,
   ElementRef,
   inject,
@@ -22,12 +23,13 @@ import { SelectionActions, writeSvgToSystemClipboard } from './tools/selection-a
 import { ImageAssetStore, prepareLinkedImage, prepareUploadedImage } from './tools/image-asset-store';
 import {
   drawShape, drawImageShape, drawSelectionHalo, drawEndpointGrabber, drawAreaSelectBox,
+  drawGroupOutline,
 } from './tools/shape-renderer';
 import { SnapCandidate, SnapEngine } from './tools/snap-engine';
 import { drawSnapMarker } from './tools/snap-marker-renderer';
 import { distanceToShape, shapeBounds } from './tools/shape-hit-test';
 import { translateShape } from './tools/shape-transform';
-import { endpointGrabbers, withEndpoint, EndpointKey } from './tools/shape-grabbers';
+import { endpointGrabbers, withEndpoint, EndpointGrabber, EndpointKey } from './tools/shape-grabbers';
 import { snapToLockedAngle } from './tools/angle-lock';
 import { copyDebugDump, isLocalHost } from '../helpers/debugDump';
 import { info, warn } from '../shared/message-emitter';
@@ -36,11 +38,12 @@ import { placedImageShape } from './tools/image-placement';
 import { HOTKEY_TOOL_CYCLE } from './tools/tool-hotkeys';
 import { SettingsBarComponent } from './settings-bar/settings-bar';
 import { LayerControlsComponent } from './layer-controls/layer-controls';
+import { EditMenuComponent } from './edit-menu/edit-menu';
 
 @Component({
   selector: 'app-draft-canvas',
   standalone: true,
-  imports: [FormsModule, SettingsBarComponent, LayerControlsComponent],
+  imports: [FormsModule, SettingsBarComponent, LayerControlsComponent, EditMenuComponent],
   templateUrl: './draft-canvas.html',
   styleUrls: ['./draft-canvas.css'],
 })
@@ -70,6 +73,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private camera = new Camera();
   private axisGrid = new AxisGridController(DraftCanvasComponent.DISPLAY_PREFS_KEY, () => this.draw());
   private imageAssets = inject(ImageAssetStore);
+  private cdr = inject(ChangeDetectorRef);
   private imageAssetsUnsub?: () => void;
   private toolbox = inject(ToolboxStore);
   private toolboxUnsub?: () => void;
@@ -150,6 +154,14 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   // uncommitted preview — and only written to the store as one batched update on pointerup, so
   // a whole drag is a single undo step instead of one per intermediate pointermove.
   private static readonly DRAG_MOVE_THRESHOLD_PX = 3;
+  /** How close two presses must be to count as a double-click on a group. Wider than the drag
+   * threshold on purpose: a trackpad double-tap drifts, and this is judged before any drag. */
+  private static readonly DOUBLE_PRESS_MS = 400;
+  private static readonly DOUBLE_PRESS_REACH_PX = 12;
+  private lastPress: { time: number; x: number; y: number; ref: SelectionRef | null } | null = null;
+  /** Where the right-click menu is open, in canvas pixels; null when closed. */
+  contextMenu: { x: number; y: number } | null = null;
+  private enteredGroupAt = -Infinity;
 
   // a mouse wheel notch with ctrl held reports deltaY in the hundreds (vs single digits for a
   // trackpad pinch) — unclamped, one notch could scale the view by ~20x.
@@ -313,6 +325,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     // taken focus — and only here: a second (keydown) on the host would run every shortcut twice
     // whenever the canvas itself is focused
     document.addEventListener('keydown', this.onKeyDown);
+    document.addEventListener('pointerdown', this.closeContextMenu);
     // the clipboard is reachable only from inside these events (see SelectionActions), and the
     // browser fires them for Ctrl+C/X/V wherever focus is — so on document, like keydown
     for (const type of CLIPBOARD_EVENTS) document.addEventListener(type, this.onClipboard);
@@ -378,6 +391,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.resizeObs?.disconnect();
     this.host.nativeElement.removeEventListener('keyup', this.onKeyUp);
     document.removeEventListener('keydown', this.onKeyDown);
+    document.removeEventListener('pointerdown', this.closeContextMenu);
     for (const type of CLIPBOARD_EVENTS) document.removeEventListener(type, this.onClipboard);
     this.toolboxUnsub?.();
     this.selectionUnsub?.();
@@ -426,16 +440,28 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       // either way — it says which shape the settings strip is describing.
       const showHandles = !this.activeTool || !!this.activeTool.actsOnSelection;
       const editableIds = new Set(this.selection.toolboxShapes.map(s => s.id));
+      const groups = new Map<string, DraftShape[]>();
       for (const selectedShape of selected) {
+        if (selectedShape.groupId) groups.set(selectedShape.groupId, [...groups.get(selectedShape.groupId) ?? [], selectedShape]);
         const shape = this.dragOverrides?.get(selectedShape.id) ?? selectedShape;
         drawSelectionHalo(this.gRoot, this.gUI, shape, this.pxPerMm);
         // recipe geometry gets the halo and nothing to drag: it's read-only
         if (!showHandles || !editableIds.has(shape.id)) continue;
-        const endpoints = endpointGrabbers(shape, this.pxPerMm);
+        const endpoints = this.handlesFor(shape);
         const rotationDeg = shape.type === 'image' ? (shape.rotationDeg ?? 0) : 0;
         if (endpoints) {
           for (const g of endpoints) drawEndpointGrabber(this.gRoot, g.pos, this.pxPerMm, g.kind, rotationDeg);
         }
+      }
+      // an open group is outlined whole, so what the one selected member belongs to stays visible
+      const entered = this.selection.enteredGroup;
+      if (entered) groups.set(entered, this.toolbox.getEditableShapes().filter(s => s.groupId === entered));
+      for (const members of groups.values()) {
+        const boxes = members.map(s => shapeBounds(this.dragOverrides?.get(s.id) ?? s));
+        drawGroupOutline(this.gRoot, {
+          x0: Math.min(...boxes.map(b => b.x0)), y0: Math.min(...boxes.map(b => b.y0)),
+          x1: Math.max(...boxes.map(b => b.x1)), y1: Math.max(...boxes.map(b => b.y1)),
+        }, this.pxPerMm);
       }
     }
 
@@ -607,13 +633,20 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     return this.selectedShapes.some(shape => distanceToShape(pt, shape) <= toleranceMm);
   }
 
+  /** A shape's handles, or none for a member of a group that hasn't been entered: a group moves
+   * as one thing until a double-click opens it (see SelectionStore.enter). */
+  private handlesFor(shape: DraftShape): EndpointGrabber[] | null {
+    if (shape.groupId && shape.groupId !== this.selection.enteredGroup) return null;
+    return endpointGrabbers(shape, this.pxPerMm);
+  }
+
   /** True if `pt` (world mm) grabs an endpoint handle of a currently selected shape — checked
    * before hitTestSelectedBody since it's the more specific target. */
   private hitTestEndpointGrabber(pt: Pt): { shapeId: string; key: EndpointKey } | null {
     const toleranceMm = DraftCanvasComponent.GRABBER_HIT_TOLERANCE_PX / this.pxPerMm;
     const tol2 = toleranceMm * toleranceMm;
     for (const shape of this.selectedShapes) {
-      const grabbers = endpointGrabbers(shape, this.pxPerMm);
+      const grabbers = this.handlesFor(shape);
       if (!grabbers) continue;
       for (const g of grabbers) {
         const dx = g.pos.x - pt.x;
@@ -1080,10 +1113,37 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     }
   };
 
+  /** The edit menu at the pointer. A right-click on an unselected shape selects it first, as
+   * every drawing program does, so the verbs act on what was clicked. */
+  onContextMenu(event: MouseEvent): void {
+    event.preventDefault();
+    if (!this.activeTool) {
+      const hit = this.hitTestAt(this.worldFromPointer(event));
+      if (hit && !this.selection.has(hit)) this.selection.select(hit);
+    }
+    const box = this.host.nativeElement.getBoundingClientRect();
+    this.contextMenu = { x: event.clientX - box.left, y: event.clientY - box.top };
+    this.cdr.markForCheck();
+  }
+
+  // on document, so a press anywhere — the top bar included — takes the menu down; the menu's
+  // own presses don't reach here (see the template)
+  private closeContextMenu = (): void => {
+    if (!this.contextMenu) return;
+    this.contextMenu = null;
+    this.cdr.markForCheck();
+  };
+
   onKeyDown = (event: KeyboardEvent) => {
     // Don't intercept shortcuts when the user is typing in an input field
     const tag = (event.target as HTMLElement)?.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+    if (event.key === 'Escape' && this.contextMenu) {
+      this.closeContextMenu();
+      event.preventDefault();
+      return;
+    }
 
     // let the active tool handle its own keys first (e.g. Escape cancels a line in progress)
     if (this.activeTool?.onKeyDown?.(event, this.toolHost)) {
@@ -1152,6 +1212,14 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       this.actions.duplicate();
       event.preventDefault();
       return;
+    }
+    // Ctrl/Cmd+G groups, with Shift ungroups — Inkscape's pair
+    if (commandHeld && event.code === 'KeyG' && !this.activeTool) {
+      if (event.shiftKey ? this.actions.canUngroup : this.actions.canGroup) {
+        if (event.shiftKey) this.actions.ungroup(); else this.actions.group();
+        event.preventDefault();
+        return;
+      }
     }
 
     // Tool mnemonics: each letter activates that tool group's first variant, or cycles to
@@ -1308,6 +1376,27 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     // excluded from arming any drag so single-finger touch keeps its existing "always pans" behavior.
     if (!this.activeTool && isPrimary && !modifierHeld && !this.isSpaceDown) {
       const pt = this.worldFromPointer(event);
+      const hit = this.hitTestAt(pt);
+
+      // A second press on a group member within a double-click's time and reach opens the group.
+      // Judged here, on what the first press hit, rather than on the browser's dblclick: a trackpad
+      // tap lands a few pixels off, enough to miss a thin line's hit test on the second click.
+      const prev = this.lastPress;
+      const now = performance.now();
+      this.lastPress = { time: now, x: event.clientX, y: event.clientY, ref: hit ?? prev?.ref ?? null };
+      if (prev && !isTouch && !event.shiftKey && now - prev.time < DraftCanvasComponent.DOUBLE_PRESS_MS
+        && Math.hypot(event.clientX - prev.x, event.clientY - prev.y) < DraftCanvasComponent.DOUBLE_PRESS_REACH_PX) {
+        const ref = hit ?? prev.ref;
+        const shape = ref?.source === 'toolbox' ? this.toolbox.getEditableShapes().find(s => s.id === ref.id) : undefined;
+        if (shape?.groupId && shape.groupId !== this.selection.enteredGroup) {
+          this.selection.enter(ref!);
+          this.enteredGroupAt = now;
+          this.lastPress = null;
+          this.draw();
+          return;
+        }
+      }
+
       const endpointHit = !event.shiftKey && !isTouch && this.selection.size
         ? this.hitTestEndpointGrabber(pt) : null;
       if (endpointHit) {
@@ -1320,7 +1409,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       } else if (!event.shiftKey && !isTouch && this.selection.size && this.hitTestSelectedBody(pt)) {
         this.armSelectionDrag(pt, event.pointerId);
       } else {
-        const hit = this.hitTestAt(pt);
         if (hit) {
           if (event.shiftKey) {
             this.selection.toggle(hit);
@@ -1594,12 +1682,14 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   onDoubleClick(event: MouseEvent): void {
     // double-click zooms in at the clicked point; hold Shift/Ctrl/Alt/Meta to zoom out
     event.preventDefault();
+    if (performance.now() - this.enteredGroupAt < DraftCanvasComponent.DOUBLE_PRESS_MS) return;
 
     const pt = this.worldFromPointer(event);
 
-    // ...unless it landed on a label, where double-click means "edit this" in every drawing
-    // program. Only text intercepts, so double-click-to-zoom still works everywhere else,
-    // including on top of other shapes.
+    // ...unless the presses just opened a group (see onPointerDown), which is what the double-click
+    // meant; or it landed on a label, where double-click means "edit this" in every drawing program. Only text
+    // intercepts, so double-click-to-zoom still works everywhere else, including on top of other
+    // shapes.
     const doubleClicked = this.textShapeAt(pt);
     if (doubleClicked) {
       this.selection.select(toolboxRef(doubleClicked.id));

@@ -41,7 +41,17 @@ function detached(shape: DraftShape): Omit<DraftShape, 'id' | 'layerId'> {
 
 export function shapesToSvg(shapes: DraftShape[]): string {
   const exportable = shapes.filter(s => s.type !== 'image');
-  const body = exportable.map(shapeToSvg).filter(s => s.length > 0);
+  // a group goes out as a <g>, where its first member falls, so it stays a group in Inkscape
+  const body: string[] = [];
+  const emitted = new Set<string>();
+  for (const shape of exportable) {
+    if (!shape.groupId) {
+      body.push(shapeToSvg(shape));
+    } else if (!emitted.has(shape.groupId)) {
+      emitted.add(shape.groupId);
+      body.push(`<g>${exportable.filter(s => s.groupId === shape.groupId).map(shapeToSvg).join('')}</g>`);
+    }
+  }
   const bounds = svgBounds(body.join(''));
   const metadata = JSON.stringify({ version: 1, shapes: exportable.map(detached) });
   return [
@@ -231,11 +241,30 @@ export function svgToShapes(text: string): DraftShape[] | null {
   const scale = userUnitMm(root);
   const base = multiplyMatrices([1, 0, 0, -1, 0, 0], [scale, 0, 0, scale, 0, 0]);
   const shapes: DraftShape[] = [];
+  const members = new Map<string, number>();
   for (const el of Array.from(root.querySelectorAll('*'))) {
-    for (const shape of shapesFromSvgElement(el, base)) shapes.push({ ...shape, id: '' } as DraftShape);
+    const groupId = groupOf(el, root);
+    for (const shape of shapesFromSvgElement(el, base)) {
+      shapes.push({ ...shape, id: '', groupId } as DraftShape);
+      if (groupId) members.set(groupId, (members.get(groupId) ?? 0) + 1);
+    }
   }
-  return shapes;
+  // a <g> round one shape is wrapping, not a group
+  return shapes.map(s => s.groupId && members.get(s.groupId) === 1 ? { ...s, groupId: undefined } : s);
 }
+
+/** The nearest <g> above `el` that stands for a group: not the root, and not one of Inkscape's
+ * layers, which are <g>s too. Flat, like the store's groups, so the innermost wins. */
+function groupOf(el: Element, root: Element): string | undefined {
+  for (let g = el.parentElement; g && g !== root; g = g.parentElement) {
+    if (g.tagName.toLowerCase() !== 'g' || g.getAttribute('inkscape:groupmode') === 'layer') continue;
+    if (!g.hasAttribute('data-cremona-group')) g.setAttribute('data-cremona-group', `svg-group-${groupSeq++}`);
+    return g.getAttribute('data-cremona-group')!;
+  }
+  return undefined;
+}
+
+let groupSeq = 0;
 
 const MM_PER_UNIT: Record<string, number> = { mm: 1, cm: 10, in: 25.4, px: 25.4 / 96, pt: 25.4 / 72, pc: 25.4 / 6, '': 25.4 / 96 };
 
