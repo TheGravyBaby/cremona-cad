@@ -4,7 +4,7 @@
        blank edge — the mirror of the recipe sidebar, where the f-hole tab is the left end of the
        file strip. Labels the tools below rather than the page, so it names the group instead of
        being a heading. -->
-  <div id="tool-dock-title" class="tool-dock-header">{{ tab === 'draw' ? 'Tools' : 'Modify' }}</div>
+  <div id="tool-dock-title" class="tool-dock-header">{{ tab === 'draw' ? 'Draw' : 'Modify' }}</div>
 
   <div #dockBody class="tool-dock-body" role="group" aria-labelledby="tool-dock-title">
 
@@ -36,9 +36,9 @@
            group's button repeats whichever was last used, like a tool flyout's face. -->
       @let face = commandFace(commands);
       <div class="tool-flyout">
-        <button type="button" class="tool-btn" (click)="runCommand(commands, face)" [disabled]="!face.enabled()"
-          [title]="face.label">
-          <ng-container [ngTemplateOutlet]="commandIcon" [ngTemplateOutletContext]="{ id: face.id }" />
+        <button type="button" class="tool-btn" [class.active]="face.tool && face.tool === activeTool"
+          (click)="runCommand(commands, face)" [disabled]="!face.enabled()" [title]="face.label + hotkeyHint(face.id)">
+          <ng-container [ngTemplateOutlet]="face.tool ? toolIcon : commandIcon" [ngTemplateOutletContext]="{ id: face.id }" />
         </button>
         @if (commands.length > 1) {
         <button type="button" class="tool-flyout-caret" (click)="toggleFlyout(commands, $event)" title="More options">
@@ -51,8 +51,8 @@
           [style.maxHeight]="popupMaxHeight">
           @for (command of commands; track command.id) {
           <button type="button" class="tool-flyout-item" (click)="runCommand(commands, command)"
-            [disabled]="!command.enabled()" [title]="command.label">
-            <ng-container [ngTemplateOutlet]="commandIcon" [ngTemplateOutletContext]="{ id: command.id }" />
+            [disabled]="!command.enabled()" [title]="command.label + hotkeyHint(command.id)">
+            <ng-container [ngTemplateOutlet]="command.tool ? toolIcon : commandIcon" [ngTemplateOutletContext]="{ id: command.id }" />
             <span>{{ command.label }}</span>
           </button>
           }
@@ -335,14 +335,11 @@
         <line x1="6" y1="20.5" x2="19" y2="20.5" />
       </svg>
       }
-      <!-- Dashed where it was, solid where it lands, the carried corner marked at both ends. -->
       @case ('move') {
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
         stroke-linecap="round" stroke-linejoin="round">
-        <rect x="3" y="3" width="9" height="9" stroke-width="1.1" stroke-dasharray="2 2.2" />
-        <rect x="12" y="12" width="9" height="9" />
-        <path d="M6 6l6 6" stroke-width="1.1" />
-        <circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none" />
+        <path d="M12 3v18M3 12h18" />
+        <path d="M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3" />
       </svg>
       }
       <!-- The shape (a triangle, as on the flips) and its image either side of a slanted axis. -->
@@ -402,17 +399,17 @@
       <path d="M9.5 9.5a7 7 0 0 1 5 0" />
     </svg>
   </button>
-  <!-- A body outline on its drafting centreline, for the tab whose work is mirroring and offsetting
-       outlines. Drawn to the compass's height, width and stroke so the two tabs carry the same
-       weight of mark; the centreline is thinner, as it is on a drawing. -->
+  <!-- A cabinetmaker's cross-pein hammer, for the bench, where a piece already drawn is worked on.
+       Stood upright and kept to two marks, head and handle, at the compass's height and stroke, so
+       the tabs carry the same weight. -->
   <button type="button" class="tool-dock-handle modify-handle" [class.top]="tab === 'modify'"
     [class.current]="open && tab === 'modify'"
     (click)="showTab('modify')" [attr.aria-expanded]="open && tab === 'modify'"
-    [title]="open && tab === 'modify' ? 'Hide tools' : 'Modify'">
+    [title]="open && tab === 'modify' ? 'Hide bench' : 'Bench'">
     <svg class="dock-handle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"
       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M12 2.5C9 2.5 6.5 3.5 6.5 6.5C6.5 9 9 9.5 9 12C9 14.5 5.5 14.5 5.5 18C5.5 20.5 8.5 21.5 12 21.5C15.5 21.5 18.5 20.5 18.5 18C18.5 14.5 15 14.5 15 12C15 9.5 17.5 9 17.5 6.5C17.5 3.5 15 2.5 12 2.5Z" />
-      <path d="M12 0.8v22.4" stroke-width="0.8" stroke-dasharray="3.5 1.4 0.8 1.4" stroke-linecap="butt" />
+      <path d="M4 2.5h4.5v1.3h6l5.5 1.4-5.5 1.4h-6V8H4z" />
+      <path d="M11 6.6V22.5" />
     </svg>
   </button>
 </div>

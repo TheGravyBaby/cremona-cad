@@ -40,6 +40,10 @@ import { SettingsBarComponent } from './settings-bar/settings-bar';
 import { LayerControlsComponent } from './layer-controls/layer-controls';
 import { EditMenuComponent } from './edit-menu/edit-menu';
 
+type SvgGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
+/** A world-space group and its unflipped overlay twin, the two selections every renderer draws into. */
+type LayerPair = { g: SvgGroup; ui: SvgGroup };
+
 @Component({
   selector: 'app-draft-canvas',
   standalone: true,
@@ -62,7 +66,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   /** Reference images' persistent layer — created once, not rebuilt by draw(), so a keyed join
    * (renderImages()) can skip repainting an image that hasn't changed. Sits outside gRoot as its
    * own sibling, painted first, so images stay under everything gRoot draws. Also read by
-   * fitCamera(), like `snapLayer` below. */
+   * fitCamera(), like `layers.scene` below. */
   private imageLayer: d3.Selection<SVGGElement, unknown, null, undefined> | null = null;
   private resizeObs?: ResizeObserver;
   /** .host's last known screen position, so a resize triggered by a sibling changing size (the
@@ -71,7 +75,10 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private lastHostRect: DOMRect | null = null;
   private draftFuncs: Array<(canvas: any, uiCan: any) => void> = [];
   private camera = new Camera();
-  private axisGrid = new AxisGridController(DraftCanvasComponent.DISPLAY_PREFS_KEY, () => this.draw());
+  private axisGrid = new AxisGridController(DraftCanvasComponent.DISPLAY_PREFS_KEY, () => {
+    this.versions.grid++;
+    this.draw();
+  });
   private imageAssets = inject(ImageAssetStore);
   private cdr = inject(ChangeDetectorRef);
   private imageAssetsUnsub?: () => void;
@@ -114,12 +121,11 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     },
   };
 
-  // Snapping: candidates are re-indexed from the rendered scene only when the
-  // underlying geometry changes (draftFunctions/toolbox shapes), not on every
-  // hover redraw — see `snapDirty` below.
+  // Snapping: each half of the index is re-sampled only when its group is redrawn (see draw()),
+  // and only once something needs it — see refreshSnapIndex().
   private static readonly SNAP_TOLERANCE_PX = 10;
   private snapEngine = new SnapEngine();
-  private snapDirty = true;
+  private snapDirty = { recipe: true, toolbox: true };
   private activeSnap: SnapCandidate | null = null;
   /** The group holding everything in world space — the recipe's layers and the toolbox's shapes,
    * and nothing else (the grid, halos and snap markers are siblings of it inside gRoot; reference
@@ -128,9 +134,18 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
    * sites would leave it silently reporting an empty drawing. */
   private static readonly SCENE_GROUP_CLASS = 'snappable';
 
-  // The most recently drawn scene layer — kept so an endpoint-drag (which happens in
-  // Select mode, with no active tool) can force an on-demand rebuild; see ensureSnapIndex().
-  private snapLayer: d3.Selection<SVGGElement, unknown, null, undefined> | null = null;
+  /** Fixed groups in paint order, each rebuilt only when what it shows has changed. A pointer move
+   * with a tool active used to tear down and redraw the whole SVG — every recipe path, every grid
+   * line — on each event, and every new line then re-sampled all of it for snapping; now a move
+   * redraws the preview alone, and a new shape redraws and re-samples the toolbox's shapes alone.
+   * `scene` is the world-space group above, holding `recipe` and `toolbox`. */
+  private layers!: {
+    grid: LayerPair; halo: LayerPair; scene: SvgGroup; recipe: LayerPair; toolbox: LayerPair; overlay: LayerPair;
+  };
+  /** What each group was last drawn from, so draw() can tell whether it needs redrawing. */
+  private drawn = { grid: '', recipe: '', toolbox: '', halo: '' };
+  /** Bumped by whatever invalidates a group: the recipe re-emitting, a store change, a drag step. */
+  private versions = { recipe: 0, toolbox: 0, selection: 0, drag: 0, grid: 0 };
 
   // Selection (Select tool, i.e. activeTool === null) lives in SelectionStore: a plain click
   // replaces it and shift-click toggles a shape in or out — see onPointerDown.
@@ -226,7 +241,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   @ViewChild('host', { static: true }) host!: ElementRef<HTMLDivElement>;
   @Input() set draftFunctions(value: Array<(canvas: any, uiCan: any) => void>) {
     this.draftFuncs = value
-    this.snapDirty = true;
+    this.versions.recipe++;
     this.draw();
     // after the draw, so a recipe's first-render bookkeeping (see CerutiViolin.firstRender) has
     // already run against the real canvas by the time the index re-runs the layers
@@ -326,6 +341,11 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     // whenever the canvas itself is focused
     document.addEventListener('keydown', this.onKeyDown);
     document.addEventListener('pointerdown', this.closeContextMenu);
+    // bound here rather than in the template: a template listener schedules change detection over
+    // the whole app on every event, and nothing bound in a template follows the pointer. The two
+    // things that do — the zoom readout under a pinch and the text editor's box under a pan —
+    // ask for it themselves.
+    el.addEventListener('pointermove', this.onPointerMove);
     // the clipboard is reachable only from inside these events (see SelectionActions), and the
     // browser fires them for Ctrl+C/X/V wherever focus is — so on document, like keydown
     for (const type of CLIPBOARD_EVENTS) document.addEventListener(type, this.onClipboard);
@@ -339,6 +359,11 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.imageLayer = this.canvas.append('g').attr('class', 'reference-images').attr('transform', 'scale(1,-1)');
     this.gRoot = this.canvas.append('g').attr('class', 'root');
     this.gUI = this.canvas.append('g').attr('class', 'ui');
+    const pair = (g: SvgGroup = this.gRoot): LayerPair => ({ g: g.append('g'), ui: this.gUI.append('g') });
+    const grid = pair();
+    const halo = pair();
+    const scene = this.gRoot.append('g').attr('class', DraftCanvasComponent.SCENE_GROUP_CLASS);
+    this.layers = { grid, halo, scene, recipe: pair(scene), toolbox: pair(scene), overlay: pair() };
 
     // Guarded for test environments (jsdom) that don't implement ResizeObserver.
     if (typeof ResizeObserver !== 'undefined') {
@@ -354,12 +379,15 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     // redraw when the toolbox shape history changes from outside this component
     // (e.g. recipe-base's undo/redo keyboard handler)
     this.toolboxUnsub = this.toolbox.onChange(() => {
-      this.snapDirty = true;
+      this.versions.toolbox++;
       this.draw();
     });
     // the selection prunes itself when a shape stops being editable (see SelectionStore); this
     // only keeps the halos and handles in step with it
-    this.selectionUnsub = this.selection.onChange(() => this.draw());
+    this.selectionUnsub = this.selection.onChange(() => {
+      this.versions.selection++;
+      this.draw();
+    });
 
     this.toolRegistryUnsub = this.toolRegistry.onChange(() => this.onActiveToolChanged());
     // Lets a tool activated from the palette or a hotkey reach the canvas from its onActivate
@@ -390,6 +418,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   ngOnDestroy(): void {
     this.resizeObs?.disconnect();
     this.host.nativeElement.removeEventListener('keyup', this.onKeyUp);
+    this.host.nativeElement.removeEventListener('pointermove', this.onPointerMove);
     document.removeEventListener('keydown', this.onKeyDown);
     document.removeEventListener('pointerdown', this.closeContextMenu);
     for (const type of CLIPBOARD_EVENTS) document.removeEventListener(type, this.onClipboard);
@@ -402,9 +431,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   draw(): void {
     if (!this.initialized)
       return
-
-    this.gRoot.selectAll('*').remove();
-    this.gUI.selectAll('*').remove();
 
     const el = this.host.nativeElement;
     const pxW = Math.max(1, el.clientWidth);
@@ -428,71 +454,69 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
 
     this.renderImages();
 
-    this.axisGrid.draw(this.gRoot, this.gUI, cv, this.pxPerMm);
+    const { grid, halo, recipe, toolbox, overlay } = this.layers;
+    const clear = (layer: LayerPair) => {
+      layer.g.selectAll('*').remove();
+      layer.ui.selectAll('*').remove();
+    };
 
-    const selected = this.selection.shapes;
-    if (selected.length) {
-      // Handles are drawn only when they can actually be dragged. An armed drawing tool takes
-      // every click before Select mode's grabber hit-testing is reached (see onPointerDown), so
-      // with one active a handle is a control that does nothing — worse, clicking the Text tool
-      // on one would place a label there. A selection-acting tool (Offset) is the exception: it
-      // works *on* the selection, so its handles stay meaningful. The halo is unconditional
-      // either way — it says which shape the settings strip is describing.
-      const showHandles = !this.activeTool || !!this.activeTool.actsOnSelection;
-      const editableIds = new Set(this.selection.toolboxShapes.map(s => s.id));
-      const groups = new Map<string, DraftShape[]>();
-      for (const selectedShape of selected) {
-        if (selectedShape.groupId) groups.set(selectedShape.groupId, [...groups.get(selectedShape.groupId) ?? [], selectedShape]);
-        const shape = this.dragOverrides?.get(selectedShape.id) ?? selectedShape;
-        drawSelectionHalo(this.gRoot, this.gUI, shape, this.pxPerMm);
-        // recipe geometry gets the halo and nothing to drag: it's read-only
-        if (!showHandles || !editableIds.has(shape.id)) continue;
-        const endpoints = this.handlesFor(shape);
-        const rotationDeg = shape.type === 'image' ? (shape.rotationDeg ?? 0) : 0;
-        if (endpoints) {
-          for (const g of endpoints) drawEndpointGrabber(this.gRoot, g.pos, this.pxPerMm, g.kind, rotationDeg);
-        }
-      }
-      // an open group is outlined whole, so what the one selected member belongs to stays visible
-      const entered = this.selection.enteredGroup;
-      if (entered) groups.set(entered, this.toolbox.getEditableShapes().filter(s => s.groupId === entered));
-      for (const members of groups.values()) {
-        const boxes = members.map(s => shapeBounds(this.dragOverrides?.get(s.id) ?? s));
-        drawGroupOutline(this.gRoot, {
-          x0: Math.min(...boxes.map(b => b.x0)), y0: Math.min(...boxes.map(b => b.y0)),
-          x1: Math.max(...boxes.map(b => b.x1)), y1: Math.max(...boxes.map(b => b.y1)),
-        }, this.pxPerMm);
-      }
+    const gridKey = `${this.versions.grid}|${leftBound}|${topBound}|${mmW}|${mmH}|${this.pxPerMm}`;
+    if (gridKey !== this.drawn.grid) {
+      clear(grid);
+      this.axisGrid.draw(grid.g, grid.ui, cv, this.pxPerMm);
+      this.drawn.grid = gridKey;
     }
 
-    const snapLayer = this.gRoot.append('g').attr('class', DraftCanvasComponent.SCENE_GROUP_CLASS);
-    this.snapLayer = snapLayer;
-    this.draftFuncs.map(f => {
-      f(snapLayer, this.gUI)
-    })
-    this.toolbox.getVisibleShapes().forEach(s => {
-      if (s.id === this.editingTextShapeId) return; // shown via the inline textarea instead
-      const shape = this.dragOverrides?.get(s.id) ?? s;
-      drawShape(snapLayer, this.gUI, shape, this.pxPerMm);
-    });
+    const recipeKey = String(this.versions.recipe);
+    if (recipeKey !== this.drawn.recipe) {
+      clear(recipe);
+      for (const f of this.draftFuncs) f(recipe.g, recipe.ui);
+      this.drawn.recipe = recipeKey;
+      this.snapDirty.recipe = true;
+    }
+
+    // a shape mid-drag is left out here and drawn in the overlay instead: this group is what the
+    // snap index samples, and an endpoint being pulled must not snap onto the shape it belongs to
+    const dragging = this.dragOverrides ? [...this.dragOverrides.keys()].join(',') : '';
+    const toolboxKey = `${this.versions.toolbox}|${this.pxPerMm}|${this.editingTextShapeId}|${dragging}`;
+    if (toolboxKey !== this.drawn.toolbox) {
+      clear(toolbox);
+      for (const s of this.toolbox.getVisibleShapes()) {
+        if (s.id === this.editingTextShapeId || this.dragOverrides?.has(s.id)) continue;
+        drawShape(toolbox.g, toolbox.ui, s, this.pxPerMm);
+      }
+      this.drawn.toolbox = toolboxKey;
+      this.snapDirty.toolbox = true;
+    }
+
+    const showHandles = !this.activeTool || !!this.activeTool.actsOnSelection;
+    const haloKey = [
+      this.versions.selection, this.versions.toolbox, this.versions.recipe, this.versions.drag,
+      this.pxPerMm, showHandles, this.selection.enteredGroup,
+    ].join('|');
+    if (haloKey !== this.drawn.halo) {
+      clear(halo);
+      this.drawSelection(halo, showHandles);
+      this.drawn.halo = haloKey;
+    }
+
+    clear(overlay);
+    for (const shape of this.dragOverrides?.values() ?? []) drawShape(overlay.g, overlay.ui, shape, this.pxPerMm);
 
     // Candidates are only ever read from resolveToolPoint() and (on-demand, via
-    // ensureSnapIndex()) an in-progress endpoint-drag — both no-ops the rest of the time
+    // refreshSnapIndex()) an in-progress endpoint-drag — both no-ops the rest of the time
     // (e.g. while editing a selected shape's properties in Select mode, or typing into the
     // inline text editor, which also leaves the Text tool "active" without needing snapping)
-    // — so skip the (potentially large, whole-scene) rebuild until something actually needs
-    // it. `snapDirty` stays set, so the next thing that does need it still rebuilds first.
-    if (this.snapDirty && (this.activeTool || this.dragEndpoint) && !this.editingTextShapeId) {
-      this.snapEngine.rebuild(snapLayer);
-      this.snapDirty = false;
-    }
+    // — so skip the rebuild until something actually needs it. `snapDirty` stays set, so the
+    // next thing that does need it still rebuilds first.
+    if ((this.activeTool || this.dragEndpoint) && !this.editingTextShapeId) this.refreshSnapIndex();
 
-    this.activeTool?.renderPreview(this.gRoot, this.gUI, this.pxPerMm);
+    this.activeTool?.renderPreview(overlay.g, overlay.ui, this.pxPerMm);
     if ((this.activeTool || this.isDraggingEndpoint) && this.activeSnap) {
-      drawSnapMarker(this.gRoot, this.activeSnap, this.pxPerMm);
+      drawSnapMarker(overlay.g, this.activeSnap, this.pxPerMm);
     }
     const marquee = this.isAreaSelecting ? this.areaSelectBox() : null;
-    if (marquee) drawAreaSelectBox(this.gRoot, marquee);
+    if (marquee) drawAreaSelectBox(overlay.g, marquee);
 
     if (this.editingTextShapeId) this.updateEditingTextPosition();
 
@@ -503,6 +527,42 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     if (this.autoFitPending && this.fitCamera()) {
       this.autoFitPending = false;
       this.draw();
+    }
+  }
+
+  private drawSelection(halo: LayerPair, showHandles: boolean): void {
+    const selected = this.selection.shapes;
+    if (selected.length) {
+      // Handles are drawn only when they can actually be dragged. An armed drawing tool takes
+      // every click before Select mode's grabber hit-testing is reached (see onPointerDown), so
+      // with one active a handle is a control that does nothing — worse, clicking the Text tool
+      // on one would place a label there. A selection-acting tool (Offset) is the exception: it
+      // works *on* the selection, so its handles stay meaningful. The halo is unconditional
+      // either way — it says which shape the settings strip is describing.
+      const editableIds = new Set(this.selection.toolboxShapes.map(s => s.id));
+      const groups = new Map<string, DraftShape[]>();
+      for (const selectedShape of selected) {
+        if (selectedShape.groupId) groups.set(selectedShape.groupId, [...groups.get(selectedShape.groupId) ?? [], selectedShape]);
+        const shape = this.dragOverrides?.get(selectedShape.id) ?? selectedShape;
+        drawSelectionHalo(halo.g, halo.ui, shape, this.pxPerMm);
+        // recipe geometry gets the halo and nothing to drag: it's read-only
+        if (!showHandles || !editableIds.has(shape.id)) continue;
+        const endpoints = this.handlesFor(shape);
+        const rotationDeg = shape.type === 'image' ? (shape.rotationDeg ?? 0) : 0;
+        if (endpoints) {
+          for (const g of endpoints) drawEndpointGrabber(halo.g, g.pos, this.pxPerMm, g.kind, rotationDeg);
+        }
+      }
+      // an open group is outlined whole, so what the one selected member belongs to stays visible
+      const entered = this.selection.enteredGroup;
+      if (entered) groups.set(entered, this.toolbox.getEditableShapes().filter(s => s.groupId === entered));
+      for (const members of groups.values()) {
+        const boxes = members.map(s => shapeBounds(this.dragOverrides?.get(s.id) ?? s));
+        drawGroupOutline(halo.g, {
+          x0: Math.min(...boxes.map(b => b.x0)), y0: Math.min(...boxes.map(b => b.y0)),
+          x1: Math.max(...boxes.map(b => b.x1)), y1: Math.max(...boxes.map(b => b.y1)),
+        }, this.pxPerMm);
+      }
     }
   }
 
@@ -561,14 +621,25 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.draw();
   }
 
-  /** Rebuilds the snap index right now if it's stale — used when arming an endpoint-drag,
-   * since that starts in Select mode (no active tool), where draw()'s own rebuild would
-   * otherwise wait until the next draw() call, one tick too late for that drag's first move. */
-  private ensureSnapIndex(): void {
-    if (this.snapDirty && this.snapLayer) {
-      this.snapEngine.rebuild(this.snapLayer);
-      this.snapDirty = false;
+  /** Re-samples whichever half of the index is stale. Also called directly when arming an
+   * endpoint-drag, since that starts in Select mode (no active tool), where draw()'s own call
+   * would otherwise wait until the next draw() — one tick too late for that drag's first move. */
+  private refreshSnapIndex(): void {
+    if (!this.initialized) return;
+    if (this.snapDirty.recipe) {
+      this.snapEngine.rebuild(this.layers.recipe.g, 'recipe');
+      this.snapDirty.recipe = false;
     }
+    if (this.snapDirty.toolbox) {
+      this.snapEngine.rebuild(this.layers.toolbox.g, 'toolbox');
+      this.snapDirty.toolbox = false;
+    }
+  }
+
+  /** The live preview of a drag, or null once it is committed or abandoned; see dragOverrides. */
+  private setDragOverrides(overrides: Map<string, DraftShape> | null): void {
+    this.dragOverrides = overrides;
+    this.versions.drag++;
   }
 
   /** Resolves a raw pointer point to a nearby snap candidate when a tool is active. */
@@ -809,6 +880,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     const pos = this.worldToHostPx(shape.position);
     this.editingTextScreenX = pos.x;
     this.editingTextScreenY = pos.y;
+    this.cdr.markForCheck();
   }
 
   private startEditingText(id: string, isNew = false): void {
@@ -917,6 +989,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
         const zoomPt = this.worldFromPointer(fakeEvt);
         zoomPt.y = -zoomPt.y;
         this.camera.applyZoomAt(zoomPt, newPxPerMm, pxW, pxH);
+        this.cdr.markForCheck();
 
         // Pan by midpoint delta
         const dxPx = midX - this.lastPinchMid.x;
@@ -966,7 +1039,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
         this.isDraggingEndpoint = true;
       }
       const updated = withEndpoint(this.dragEndpoint.original, this.dragEndpoint.key, pt);
-      this.dragOverrides = new Map([[this.dragEndpoint.shapeId, updated]]);
+      this.setDragOverrides(new Map([[this.dragEndpoint.shapeId, updated]]));
       event.preventDefault();
       this.draw();
       return;
@@ -992,7 +1065,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       for (const shape of this.dragOriginals) {
         overrides.set(shape.id, translateShape(shape, dxMm, dyMm));
       }
-      this.dragOverrides = overrides;
+      this.setDragOverrides(overrides);
       event.preventDefault();
       this.draw();
       return;
@@ -1066,7 +1139,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       this.dragAnchor = null;
       this.dragOriginals = [];
       this.dragEndpoint = null;
-      this.dragOverrides = null;
+      this.setDragOverrides(null);
       this.isDraggingSelection = false;
       this.isDraggingEndpoint = false;
       this.activeSnap = null;
@@ -1404,7 +1477,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
         this.dragEndpoint = { shapeId: endpointHit.shapeId, key: endpointHit.key, original: shape };
         this.isDraggingEndpoint = false;
         this.activeSnap = null;
-        this.ensureSnapIndex();
+        this.refreshSnapIndex();
         this.host.nativeElement.setPointerCapture(event.pointerId);
       } else if (!event.shiftKey && !isTouch && this.selection.size && this.hitTestSelectedBody(pt)) {
         this.armSelectionDrag(pt, event.pointerId);
@@ -1548,7 +1621,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     const pxH = el.clientHeight;
     if (pxW < 1 || pxH < 1) return false;
 
-    const box = unionRenderedBounds([this.imageLayer?.node(), this.snapLayer?.node()]);
+    const box = unionRenderedBounds([this.imageLayer?.node(), this.layers.scene.node()]);
     if (!box) return false;
 
     this.camera.fitToBounds(box, pxW, pxH);
@@ -1560,7 +1633,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
    * photo's real dimensions, and the next one would arrive sized to *that* rather than to the
    * drawing. See image-placement.ts. */
   private designBounds(): Bounds | null {
-    return unionRenderedBounds([this.snapLayer?.node()]);
+    return unionRenderedBounds([this.layers.scene.node()]);
   }
 
   toggleAxisPopup(): void {

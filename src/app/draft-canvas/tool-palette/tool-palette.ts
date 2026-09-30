@@ -6,10 +6,12 @@ import { isSmallViewport } from '../../helpers/viewport';
 import { HOTKEY_LETTER_BY_TOOL } from '../tools/tool-hotkeys';
 import { SelectionActions } from '../tools/selection-actions';
 
-/** A button that acts on the selection once, at once — it never goes active the way a tool does. */
-type SelectionCommand = { id: string; label: string; enabled: () => boolean; run: () => void };
+/** A button that acts on the selection once, at once — it never goes active the way a tool does.
+ * Or, with `tool` set, a tool filed among the commands it belongs with (Rotate beside the quarter
+ * turns), which activates instead. */
+type SelectionCommand = { id: string; label: string; enabled: () => boolean; run: () => void; tool?: DraftTool };
 
-/** One Modify-tab row: a tool slot, or a group of commands behind one button, facing out whichever
+/** One Bench-tab row: a tool slot, or a group of commands behind one button, facing out whichever
  * was last used the way a tool flyout does. */
 type ModifyRow = { slot?: ToolSlot; commands?: SelectionCommand[] };
 
@@ -54,6 +56,10 @@ export class ToolPaletteComponent implements OnInit, AfterViewInit, OnDestroy {
     });
     const cmd = (id: string, label: string, enabled: () => boolean, run: () => void): SelectionCommand =>
       ({ id, label, enabled, run });
+    const tool = (id: string): SelectionCommand => {
+      const t = this.toolRegistry.modifyRows.flat().flatMap(s => this.variantsOf(s)).find(v => v.id === id)!;
+      return { id, label: t.label, enabled: () => true, run: () => this.toolRegistry.selectTool(t), tool: t };
+    };
     const mirror = () => a.canMirror;
     const transform = () => a.canTransform;
     const align = () => a.canAlign;
@@ -62,42 +68,42 @@ export class ToolPaletteComponent implements OnInit, AfterViewInit, OnDestroy {
       slot('move'),
       {
         commands: [
-          cmd('flip-h', "Flip horizontal, across the selection's centre", mirror, () => a.mirror('horizontal')),
-          cmd('flip-v', "Flip vertical, across the selection's centre", mirror, () => a.mirror('vertical')),
-          cmd('flip-centreline', 'Mirror across the centreline; a recipe piece gets a mirrored copy', mirror, () => a.mirror('centreline')),
+          cmd('flip-h', 'Flip Horizontal', mirror, () => a.mirror('horizontal')),
+          cmd('flip-v', 'Flip Vertical', mirror, () => a.mirror('vertical')),
+          cmd('flip-centreline', 'Mirror Centreline', mirror, () => a.mirror('centreline')),
+          tool('mirror-line'),
         ],
       },
-      slot('mirror-line'),
       {
         commands: [
-          cmd('rotate-ccw', 'Rotate 90° counterclockwise', transform, () => a.rotate90('ccw')),
-          cmd('rotate-cw', 'Rotate 90° clockwise', transform, () => a.rotate90('cw')),
+          tool('rotate'),
+          cmd('rotate-ccw', 'Rotate Left', transform, () => a.rotate90('ccw')),
+          cmd('rotate-cw', 'Rotate Right', transform, () => a.rotate90('cw')),
         ],
       },
-      slot('rotate'),
       slot('scale'),
       {
         commands: [
-          cmd('align-left', 'Align left edges', align, () => a.align('left')),
-          cmd('align-centre', 'Centre on a vertical axis', align, () => a.align('centre')),
-          cmd('align-right', 'Align right edges', align, () => a.align('right')),
-          cmd('align-top', 'Align top edges', align, () => a.align('top')),
-          cmd('align-middle', 'Centre on a horizontal axis', align, () => a.align('middle')),
-          cmd('align-bottom', 'Align bottom edges', align, () => a.align('bottom')),
-          cmd('distribute-h', 'Distribute horizontally — even spacing between the outer two', () => a.canDistribute, () => a.distribute('horizontal')),
-          cmd('distribute-v', 'Distribute vertically — even spacing between the outer two', () => a.canDistribute, () => a.distribute('vertical')),
+          cmd('align-left', 'Align Left', align, () => a.align('left')),
+          cmd('align-centre', 'Align Centre', align, () => a.align('centre')),
+          cmd('align-right', 'Align Right', align, () => a.align('right')),
+          cmd('align-top', 'Align Top', align, () => a.align('top')),
+          cmd('align-middle', 'Align Middle', align, () => a.align('middle')),
+          cmd('align-bottom', 'Align Bottom', align, () => a.align('bottom')),
+          cmd('distribute-h', 'Distribute Across', () => a.canDistribute, () => a.distribute('horizontal')),
+          cmd('distribute-v', 'Distribute Down', () => a.canDistribute, () => a.distribute('vertical')),
         ],
       },
       {
         commands: [
-          cmd('front', 'Bring to front', reorder, () => a.reorder('front')),
-          cmd('back', 'Send to back', reorder, () => a.reorder('back')),
+          cmd('front', 'To Front', reorder, () => a.reorder('front')),
+          cmd('back', 'To Back', reorder, () => a.reorder('back')),
         ],
       },
       {
         commands: [
-          cmd('group', 'Group — selects and moves as one thing (Ctrl+G)', () => a.canGroup, () => a.group()),
-          cmd('ungroup', 'Ungroup (Ctrl+Shift+G)', () => a.canUngroup, () => a.ungroup()),
+          cmd('group', 'Group', () => a.canGroup, () => a.group()),
+          cmd('ungroup', 'Ungroup', () => a.canUngroup, () => a.ungroup()),
         ],
       },
       slot('offset'),
@@ -293,8 +299,11 @@ export class ToolPaletteComponent implements OnInit, AfterViewInit, OnDestroy {
   /** The last used, unless only another in the group applies now — Ungroup faces out over a
    * selected group, since Group can't act on one. */
   commandFace(group: SelectionCommand[]): SelectionCommand {
+    const active = group.find(c => c.tool && c.tool === this.activeTool);
+    if (active) return active;
     const face = this.commandFaces.get(group) ?? group[0];
-    return face.enabled() ? face : group.find(c => c.enabled()) ?? face;
+    // a tool is always enabled, so it never takes over the face just because the selection emptied
+    return face.enabled() ? face : group.find(c => !c.tool && c.enabled()) ?? face;
   }
 
   /** Runs a command, and makes it the face of its group so the button repeats what was last done. */
@@ -315,9 +324,11 @@ export class ToolPaletteComponent implements OnInit, AfterViewInit, OnDestroy {
     this.toolRegistry.selectVariant(slot, tool);
   }
 
-  /** The hotkey letter for a tool id, formatted for a tooltip (e.g. " (L)"), or '' if it has none. */
-  public hotkeyHint(toolId: string): string {
-    const letter = HOTKEY_LETTER_BY_TOOL[toolId];
-    return letter ? ` (${letter})` : '';
+  /** The hotkey for a tool or command id, formatted for a tooltip (e.g. " (L)"), or '' if it has none. */
+  public hotkeyHint(id: string): string {
+    const key = HOTKEY_LETTER_BY_TOOL[id] ?? ToolPaletteComponent.COMMAND_SHORTCUTS[id];
+    return key ? ` (${key})` : '';
   }
+
+  private static readonly COMMAND_SHORTCUTS: Record<string, string> = { group: 'Ctrl+G', ungroup: 'Ctrl+Shift+G' };
 }

@@ -7,7 +7,7 @@
     <!-- Every document verb, undo included, is a row of this one menu rather than a button of its
          own, so the bar stays this short. See edit-menu.ts, which the canvas's right-click shows
          too. -->
-    <span class="edit-menu">
+    <!-- <span class="edit-menu">
       <button class="btn edit-btn" [class.active]="editOpen" (click)="editOpen = !editOpen"
         aria-haspopup="menu" [attr.aria-expanded]="editOpen" title="Edit the selection">
         Edit
@@ -19,7 +19,7 @@
       @if (editOpen) {
       <app-edit-menu class="edit-popup-host" (done)="editOpen = false" />
       }
-    </span>
+    </span> -->
 
     <!-- this is commented out until more recipes are developed
      there is a hello world recipe if you are interested in experimenting

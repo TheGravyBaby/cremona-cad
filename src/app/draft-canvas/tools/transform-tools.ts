@@ -189,7 +189,7 @@ export function createMirrorLineTool(actions: SelectionActions): TransformTool {
     return bearing(picks[0], host.isAngleLockHeld() ? snapToLockedAngle(picks[0], pointer) : pointer);
   };
   return new TransformTool({
-    id: 'mirror-line', label: 'Mirror across a line', picks: 1,
+    id: 'mirror-line', label: 'Mirror Line', picks: 1,
     transform: (picks, pointer, typed, host) => reflectAcross(picks[0], angleOf(picks, pointer, typed, host)),
     readout: (picks, pointer, typed, host) => picks.length === 0 ? 'Click a point on the mirror line'
       : typed ? `${typed}°` : `${deg(angleOf(picks, pointer, null, host)).toFixed(1)}°`,
