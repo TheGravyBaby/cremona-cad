@@ -3,7 +3,7 @@ import { circleCircleIntersections } from '../helpers/math/draftMath';
 import { reportFailures, SolveFailure, solveSection } from '../helpers/validators';
 import { Arc, Pt } from '../models/types';
 import { EnricoCerutiParams, VoluteParams, VoluteStyle } from './ceruti-types';
-import { standardNutLength } from './ceruti-neck';
+import { defaultNeckParams, standardNutLength } from './ceruti-neck';
 
 // The scroll in its own side-view frame: the nut at the origin on the neck's front, up the neck +y,
 // toward the back -x. The volute's spiral styles about the eye, and `calculateScroll`, which lays
@@ -284,41 +284,39 @@ export function voluteGuides(v: VoluteParams): Pt[][] {
 // about the Salviati's own opening, its front as far out
 export const defaultPitch = (eyeRadius: number) => Math.round(1.9 * eyeRadius * 10) / 10;
 
-// a Salviati as wide as the one that fitted the Betts scroll, on a 2.6 mm eye 96 mm up from the
-// nut; everything defaults from there. The back is in proportion to the spiral's outermost arc,
-// widest at the front and tightening over the back, a quarter turn each up to the top and over to
-// the back, then an eighth on down, S3 bringing it round to run straight down parallel to the neck.
-// The front is in proportion to the rise from the top of the nut to the bottom of the spiral,
-// which it has to climb: F0 turning back by a twelfth of a turn leaves the straight aimed in under
-// the volute for F1 to meet it
+// after Stradivari's Betts, in whole millimetres on the default 350 mm body and scaled by body
+// length for the larger sizes. The eye is 7 mm across and S0, S1, S2 run 3 : 4 : 5 of it, S3
+// matching S2. S2 leaves the back straight 35° off the neck, S3 turns it a sixth of a turn down
+// to the nut, and the front straight splays 10° off it, the throat wider at the bottom. F0 shares
+// S3's centre, as on the Betts, so its radius and the flat are read off the solved back
 export function defaultVoluteParams(p: EnricoCerutiParams): VoluteParams {
-  let k = p.height / 355;
-  let eyeRadius = Math.round(2.6 * k * 10) / 10;
-  let v: VoluteSpec = { style: 'salviati', eyeRadius, arcRadii: [], pitch: defaultPitch(eyeRadius), seedLength: eyeRadius };
-  let eye = new Pt(Math.round((flushVolute(v) ?? 0) * 100) / 100, Math.round(96 * k * 10) / 10);
+  let k = p.height / 350;
+  let mm = (v: number) => Math.round(v * k);
+  let deg = (d: number) => d * Math.PI / 180;
+  let eyeRadius = Math.round(3.5 * k * 4) / 4;
+  let spec: VoluteSpec = { style: 'salviati', eyeRadius, arcRadii: [], pitch: defaultPitch(eyeRadius), seedLength: eyeRadius };
 
-  let spiral = drawn(v) ?? [];
-  let outer = spiral[0]?.r ?? 0;
-  let back = (ratio: number) => Math.round(ratio * outer * 10) / 10;
-
-  let bottom = Math.min(...spiral.map(a => eye.y + a.y - a.r));
-  let rise = bottom - standardNutLength(p.height);
-  let front = (ratio: number) => Number.isFinite(rise) ? Math.round(ratio * rise * 10) / 10 : 0;
-
-  return {
-    style: v.style, eyeRadius, eye, flushWithNeck: true, pitch: v.pitch, seedLength: v.seedLength, arcRadii: [],
+  let v: VoluteParams = {
+    ...spec,
+    eye: new Pt(Math.round((flushVolute(spec) ?? 0) * 100) / 100, mm(83)),
+    flushWithNeck: true,
     spiral: null,
-    S0: new Arc(0, 0, back(1.4), 0, Math.PI / 2),
-    S1: new Arc(0, 0, back(1.2), 0, Math.PI),
-    S2: new Arc(0, 0, back(1), 0, 5 * Math.PI / 4),
-    backStraight: back(0.5),
-    S3: new Arc(0, 0, back(1), 0, 0),
-    nape: new Arc(0, 0, back(0.3), 0, Math.PI / 2),
-    flat: front(0.45),
-    F0: new Arc(0, 0, front(0.4), 0, Math.PI / 6),
-    frontStraight: front(0.3),
-    F1: new Arc(0, 0, front(0.15), 0, 0),
+    S0: new Arc(0, 0, mm(21), 0, deg(80)),
+    S1: new Arc(0, 0, mm(28), 0, deg(165)),
+    S2: new Arc(0, 0, mm(35), 0, deg(215)),
+    backStraight: mm(25),
+    S3: new Arc(0, 0, mm(35), deg(-25), 0),
+    nape: new Arc(0, 0, mm(10), 0, Math.PI / 2),
+    flat: 0,
+    F0: new Arc(0, 0, mm(60), 0, deg(45)),
+    frontStraight: mm(18),
+    F1: new Arc(0, 0, mm(9), 0, 0),
   };
+
+  calculateScroll({ ...p, neck: p.neck ?? defaultNeckParams(p), volute: v });
+  v.F0 = new Arc(0, 0, Math.round(-v.S3.x), 0, v.F0.end);
+  v.flat = Math.round(v.S3.y - standardNutLength(p.height));
+  return v;
 }
 
 // the straight run on from an arc's end, along its heading

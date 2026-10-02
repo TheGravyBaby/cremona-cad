@@ -477,8 +477,8 @@ describe('the scroll panel', () => {
       const instance = scroll(p);
       instance.buildRun();
       const v = p.volute!;
-      expect(v.S0.r).toBeGreaterThan(v.S1.r);
-      expect(v.S1.r).toBeGreaterThan(v.S2.r);
+      expect(v.S1.r).toBeGreaterThan(v.S0.r);
+      expect(v.S2.r).toBeGreaterThan(v.S1.r);
       const drawn = () => spiralArcs(instance).slice(8).map(el => el.attrs['d']);
       const before = drawn();
       // read off params each time: the calc puts a new arc there every pass
@@ -533,13 +533,17 @@ describe('the scroll panel', () => {
       const instance = scroll(p, { showModuleArcs: true, showModuleGuides: false, showVoluteConstruction: false });
       instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
       const drawn = () => recordLayers(instance.buildRun()).elements;
+      const carried = (els: ReturnType<typeof drawn>) => els.filter(el => el.tag === 'line' && el.attrs['stroke'] === 'neckOff'
+        && el.attrs['x1'] === -p.neck!.thickness && el.attrs['x2'] === -p.neck!.thickness
+        && Math.min(el.attrs['y1'] as number, el.attrs['y2'] as number) === 0
+        && Math.max(el.attrs['y1'] as number, el.attrs['y2'] as number) > 0);
+      // the default duck tail sits on the nut line, so its nape meets the neck's back below the nut
+      expect(carried(drawn())).toEqual([]);
+      p.volute!.eye.y += 20;
       const naped = drawn();
-      const back = -p.neck!.thickness;
       const nape = naped.filter(el => el.attrs['stroke'] === 'scrollNape' && String(el.attrs['d'] ?? '').includes(' A '));
       expect(nape).toHaveLength(1);
-      const carried = naped.filter(el => el.tag === 'line' && el.attrs['stroke'] === 'neckOff' && el.attrs['x1'] === back && el.attrs['x2'] === back
-        && Math.min(el.attrs['y1'] as number, el.attrs['y2'] as number) === 0);
-      expect(carried.some(el => Math.max(el.attrs['y1'] as number, el.attrs['y2'] as number) > 0)).toBe(true);
+      expect(carried(naped)).toHaveLength(1);
       p.volute!.nape.r = 1000;
       expect(drawn().filter(el => el.attrs['stroke'] === 'scrollNape')).toEqual([]);
     });
