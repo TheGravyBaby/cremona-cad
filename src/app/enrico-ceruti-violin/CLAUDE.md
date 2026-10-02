@@ -126,10 +126,13 @@ recognizes the current format *positively* so it stays idempotent; six tests in
 - **`calculateScroll` writes onto `p.volute` the same way.** (2026-10-02) The scroll started life
   the other way round — `layoutVolute`/`layoutBack`/`layoutFront` returned `Placed*` structs and
   `renderScroll` ran all three itself — and was brought in line with the neck: `VoluteParams` now
-  carries the spiral and every arc and line by name (`S0`–`S3`, `nape`, `F0`, `F1`,
-  `backStraightLine`, `square`, `flatLine`, `frontStraightLine`), each arc holding its authored
-  `r` and the one angle its field sets, the rest solved each pass and reassigned through
-  `new Arc`. A miss comes back as a `ScrollFailure` through `solveSection`, listing the parts
+  carries the spiral and every arc by name (`spiral`, `S0`–`S3`, `nape`, `F0`, `F1`), each arc
+  holding its authored `r` and the one angle its field sets, the rest solved each pass and
+  reassigned through `new Arc`. The straights, the flat and the square line are deliberately not
+  stored (2026-10-02): each runs between arcs that are, so `scrollLines` reads them off the arcs
+  for the render and the highlight, the way the f-hole render draws its stem between arc ends. The
+  spiral stays stored even though the style and the eye determine it, as the arcs are expected to
+  be useful downstream. A miss comes back as a `ScrollFailure` through `solveSection`, listing the parts
   after it as unsolved, rather than the run silently stopping. The arcs are plain `Arc`s, but read
   counterclockwise from `start` to `end`: a scroll arc can pass a half turn, so the scroll render
   passes `longArc` when it does. A separate swept-arc type was tried for this and dropped as one

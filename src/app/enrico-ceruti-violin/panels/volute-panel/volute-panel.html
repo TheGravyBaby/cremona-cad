@@ -27,9 +27,9 @@
                 [style.borderColor]="colors.neckOff"
                 title="Arrow keys move the eye from either box">
                 <input type="number" class="basic-input" step="0.25" data-step-shift="1" data-step-fine="0.1" data-xy="x" aria-label="Eye X"
-                    [disabled]="volute.flushWithNeck" [ngModel]="round2(volute.eyeX)" (ngModelChange)="volute.eyeX = $event; onChange()" />
+                    [disabled]="volute.flushWithNeck" [ngModel]="round2(volute.eye.x)" (ngModelChange)="volute.eye.x = $event; onChange()" />
                 <input type="number" class="basic-input" step="0.25" data-step-shift="1" data-step-fine="0.1" data-xy="y" aria-label="Eye Y"
-                    [ngModel]="round2(volute.eyeY)" (ngModelChange)="volute.eyeY = $event; onChange()" />
+                    [ngModel]="round2(volute.eye.y)" (ngModelChange)="volute.eye.y = $event; onChange()" />
             </div>
         </div>
     </div>

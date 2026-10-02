@@ -721,8 +721,10 @@
     "volute": {
       "style": "kelly",
       "eyeRadius": 4.3,
-      "eyeX": -15.49,
-      "eyeY": 90.31,
+      "eye": {
+        "x": -15.49,
+        "y": 90.31
+      },
       "flushWithNeck": false,
       "pitch": 8.2,
       "seedLength": 4.3,
@@ -750,7 +752,6 @@
         "end": 3.7000980142279785
       },
       "backStraight": 21.5,
-      "backStraightLine": null,
       "S3": {
         "x": 0,
         "y": 0,
@@ -758,7 +759,6 @@
         "start": -0.5934119456780721,
         "end": 0
       },
-      "square": null,
       "nape": {
         "x": 0,
         "y": 0,
@@ -767,7 +767,6 @@
         "end": 1.5707963267948966
       },
       "flat": 30.4,
-      "flatLine": null,
       "F0": {
         "x": 0,
         "y": 0,
@@ -776,7 +775,6 @@
         "end": 0.5235987755982988
       },
       "frontStraight": 20.2,
-      "frontStraightLine": null,
       "F1": {
         "x": 0,
         "y": 0,

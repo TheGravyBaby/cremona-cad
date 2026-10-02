@@ -1,9 +1,9 @@
-import { normalizeRadians } from '../../helpers/math/simpleGeometry';
+import { dist, normalizeRadians } from '../../helpers/math/simpleGeometry';
 import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderDashLine, renderPolygon, renderSegment, renderSegmentHalo } from '../../helpers/renderFuncs';
 import { Arc, Pt } from '../../models/types';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams } from '../ceruti-types';
 import { standardNutLength } from '../ceruti-neck';
-import { ScrollFailure, ScrollKey, voluteGuides } from '../ceruti-scroll';
+import { ScrollFailure, ScrollKey, scrollLines, voluteGuides } from '../ceruti-scroll';
 import { HighlightedArc, HighlightedSegment, STROKE_WEIGHT } from './render-constants';
 
 // the scroll in ceruti-scroll.ts's frame, the neck's tilt taken out, read off p.volute as
@@ -45,7 +45,7 @@ export const renderScrollNeck = (p: EnricoCerutiParams, colors: CerutiColors, sh
 
   if (!showGuides) return;
   const reach = [...v.spiral ?? [], v.S0, v.S1, v.S2].map(a => a.y + a.r).filter(Number.isFinite);
-  const top = Math.max(nutLength, v.eyeY + v.eyeRadius, ...reach) + thickness;
+  const top = Math.max(nutLength, v.eye.y + v.eyeRadius, ...reach) + thickness;
   renderDashLine(new Pt(0, 0), new Pt(0, top), colors.neck, STROKE_WEIGHT.guide)(g, ui);
   renderDashLine(new Pt(-thickness, 0), new Pt(-thickness, top), colors.neck, STROKE_WEIGHT.guide)(g, ui);
 };
@@ -68,7 +68,7 @@ export const renderVolute = (
   if (highlighted) renderArcHalo(highlighted.arc, highlighted.color, undefined, undefined, longArc(highlighted.arc))(g, ui);
 
   if (!solved('spiral')) return;
-  renderCircle({ x: v.eyeX, y: v.eyeY, r: v.eyeRadius }, colors.neckOff)(g, ui);
+  renderCircle({ ...v.eye, r: v.eyeRadius }, colors.neckOff)(g, ui);
   if (currentModule && flags.showVoluteConstruction) {
     for (const line of voluteGuides(v)) {
       for (let i = 1; i < line.length; i++) renderSegment(line[i - 1], line[i], colors.neckOff, STROKE_WEIGHT.guide, true)(g, ui);
@@ -111,8 +111,11 @@ export const renderScroll = (
   solved('F0') && scrollArc(v.F0, colors.scrollFront, fancy)(g, ui);
   solved('F1') && scrollArc(v.F1, colors.scrollFrontLight, fancy)(g, ui);
 
-  if (v.backStraightLine) renderSegment(...v.backStraightLine, colors.scrollBackLight, STROKE_WEIGHT.trace)(g, ui);
-  if (v.square) renderSegment(...v.square, colors.scrollNape, STROKE_WEIGHT.trace)(g, ui);
-  if (v.flatLine) renderSegment(...v.flatLine, colors.scrollFrontLight, STROKE_WEIGHT.trace)(g, ui);
-  if (v.frontStraightLine) renderSegment(...v.frontStraightLine, colors.scrollFront, STROKE_WEIGHT.trace)(g, ui);
+  // a straight of no length, or a duck tail already at the nape, has nothing to draw
+  const line = ([a, b]: [Pt, Pt], color: string) => dist(a, b) > 1e-9 && renderSegment(a, b, color, STROKE_WEIGHT.trace)(g, ui);
+  const lines = scrollLines(p);
+  solved('backStraight') && line(lines.backStraight, colors.scrollBackLight);
+  solved('nape') && line(lines.square, colors.scrollNape);
+  solved('flat') && line(lines.flat, colors.scrollFrontLight);
+  solved('frontStraight') && line(lines.frontStraight, colors.scrollFront);
 };

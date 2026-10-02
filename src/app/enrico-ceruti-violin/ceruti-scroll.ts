@@ -278,7 +278,7 @@ export function flushVolute(v: VoluteSpec): number | null {
 
 // the figure the style finds its centres on, carried to the eye, for the construction view
 export function voluteGuides(v: VoluteParams): Pt[][] {
-  return VOLUTE_STYLES[v.style].guides(v).map(line => line.map(pt => new Pt(v.eyeX + pt.x, v.eyeY + pt.y)));
+  return VOLUTE_STYLES[v.style].guides(v).map(line => line.map(pt => new Pt(v.eye.x + pt.x, v.eye.y + pt.y)));
 }
 
 // about the Salviati's own opening, its front as far out
@@ -295,37 +295,57 @@ export function defaultVoluteParams(p: EnricoCerutiParams): VoluteParams {
   let k = p.height / 355;
   let eyeRadius = Math.round(2.6 * k * 10) / 10;
   let v: VoluteSpec = { style: 'salviati', eyeRadius, arcRadii: [], pitch: defaultPitch(eyeRadius), seedLength: eyeRadius };
-  let eyeX = Math.round((flushVolute(v) ?? 0) * 100) / 100;
-  let eyeY = Math.round(96 * k * 10) / 10;
+  let eye = new Pt(Math.round((flushVolute(v) ?? 0) * 100) / 100, Math.round(96 * k * 10) / 10);
 
   let spiral = drawn(v) ?? [];
   let outer = spiral[0]?.r ?? 0;
   let back = (ratio: number) => Math.round(ratio * outer * 10) / 10;
 
-  let bottom = Math.min(...spiral.map(a => eyeY + a.y - a.r));
+  let bottom = Math.min(...spiral.map(a => eye.y + a.y - a.r));
   let rise = bottom - standardNutLength(p.height);
   let front = (ratio: number) => Number.isFinite(rise) ? Math.round(ratio * rise * 10) / 10 : 0;
 
   return {
-    style: v.style, eyeRadius, eyeX, eyeY, flushWithNeck: true, pitch: v.pitch, seedLength: v.seedLength, arcRadii: [],
+    style: v.style, eyeRadius, eye, flushWithNeck: true, pitch: v.pitch, seedLength: v.seedLength, arcRadii: [],
     spiral: null,
     S0: new Arc(0, 0, back(1.4), 0, Math.PI / 2),
     S1: new Arc(0, 0, back(1.2), 0, Math.PI),
     S2: new Arc(0, 0, back(1), 0, 5 * Math.PI / 4),
-    backStraight: back(0.5), backStraightLine: null,
+    backStraight: back(0.5),
     S3: new Arc(0, 0, back(1), 0, 0),
-    square: null,
     nape: new Arc(0, 0, back(0.3), 0, Math.PI / 2),
-    flat: front(0.45), flatLine: null,
+    flat: front(0.45),
     F0: new Arc(0, 0, front(0.4), 0, Math.PI / 6),
-    frontStraight: front(0.3), frontStraightLine: null,
+    frontStraight: front(0.3),
     F1: new Arc(0, 0, front(0.15), 0, 0),
   };
 }
 
-export type ScrollKey = 'spiral' | 'S0' | 'S1' | 'S2' | 'backStraight' | 'S3' | 'square' | 'nape' | 'flat' | 'F0' | 'frontStraight' | 'F1';
+// the straight run on from an arc's end, along its heading
+export function straightOn(arc: Arc, length: number): [Pt, Pt] {
+  let joint = pointOnCircle(arc, arc.end);
+  let heading = vectorFromSlope(arc.end + Math.PI / 2);
+  return [joint, moveInVectorSpace(joint, [{ ...heading, mag: length }])];
+}
+
+export type ScrollLine = 'backStraight' | 'square' | 'flat' | 'frontStraight';
+
+// the straights, the flat and the square line are not stored: each runs between arcs that are, so
+// the render and the highlight read them off the arcs as calculateScroll left them
+export function scrollLines(p: EnricoCerutiParams): Record<ScrollLine, [Pt, Pt]> {
+  let v = p.volute!;
+  let nutTop = new Pt(0, standardNutLength(p.height));
+  return {
+    backStraight: straightOn(v.S2, v.backStraight),
+    square: [pointOnCircle(v.S3, v.S3.start), pointOnCircle(v.nape, Math.PI / 2)],
+    flat: [nutTop, new Pt(nutTop.x, nutTop.y + v.flat)],
+    frontStraight: straightOn(v.F0, v.frontStraight),
+  };
+}
+
+export type ScrollKey = 'spiral' | 'S0' | 'S1' | 'S2' | 'backStraight' | 'S3' | 'nape' | 'flat' | 'F0' | 'frontStraight' | 'F1';
 export type ScrollFailure = SolveFailure<ScrollKey>;
-const BACK_KEYS: ScrollKey[] = ['S0', 'S1', 'S2', 'backStraight', 'S3', 'square', 'nape'];
+const BACK_KEYS: ScrollKey[] = ['S0', 'S1', 'S2', 'backStraight', 'S3', 'nape'];
 const FRONT_KEYS: ScrollKey[] = ['flat', 'F0', 'frontStraight', 'F1'];
 const ALL_KEYS: ScrollKey[] = ['spiral', ...BACK_KEYS, ...FRONT_KEYS];
 
@@ -342,17 +362,13 @@ export function calculateScroll(p: EnricoCerutiParams): ScrollFailure[] {
   // flush rewrites Eye X to the hundredth every pass it is on, so turning it off leaves the eye where it was
   if (v.flushWithNeck) {
     let flushX = flushVolute(v);
-    if (flushX !== null) v.eyeX = Math.round(flushX * 100) / 100;
+    if (flushX !== null) v.eye = new Pt(Math.round(flushX * 100) / 100, v.eye.y);
   }
 
   let neckBack = -p.neck!.thickness;
   let nutTop = new Pt(0, standardNutLength(p.height));
 
   v.spiral = null;
-  v.backStraightLine = null;
-  v.square = null;
-  v.flatLine = null;
-  v.frontStraightLine = null;
 
   // a run ends at the first part that isn't a positive radius, a forward sweep of up to a full
   // turn, or a length; everything after it stays unsolved
@@ -373,7 +389,7 @@ export function calculateScroll(p: EnricoCerutiParams): ScrollFailure[] {
   solveSection(failures, 'Volute', ALL_KEYS, () => {
     if (!(v.eyeRadius > 0))
       return { message: 'Volute: the eye needs a radius.', unsolved: ALL_KEYS, circles: [], segments: [] };
-    if (!Number.isFinite(v.eyeX) || !Number.isFinite(v.eyeY))
+    if (!Number.isFinite(v.eye.x) || !Number.isFinite(v.eye.y))
       return { message: 'Volute: the eye needs a position.', unsolved: ALL_KEYS, circles: [], segments: [] };
     let arcs = drawn(v);
     if (!arcs)
@@ -386,7 +402,7 @@ export function calculateScroll(p: EnricoCerutiParams): ScrollFailure[] {
         unsolved: ALL_KEYS, circles: [], segments: [],
       };
     // the drawing is in the eye's own frame, so the eye's centre carries it into the scroll's
-    v.spiral = arcs.map(a => new Arc(a.x + v.eyeX, a.y + v.eyeY, a.r, a.start, a.end));
+    v.spiral = arcs.map(a => new Arc(a.x + v.eye.x, a.y + v.eye.y, a.r, a.start, a.end));
     return null;
   });
   if (!v.spiral) {
@@ -413,13 +429,9 @@ export function calculateScroll(p: EnricoCerutiParams): ScrollFailure[] {
     if (!(v.S2.r > 0) || !(v.S2.end > v.S1.end) || v.S2.end - v.S1.end > TWO_PI) return badArc('Back', 'S2', v.S2, after(BACK_KEYS, 'S2'));
     let S2 = placeCircleOnPointAtAngle(v.S2.r, joint, v.S1.end);
     v.S2 = new Arc(S2.x, S2.y, S2.r, v.S1.end, v.S2.end);
-    joint = pointOnCircle(v.S2, v.S2.end);
 
-    // the straight runs on along S2's heading
     if (!(v.backStraight >= 0)) return badLength('Back', 'backStraight', after(BACK_KEYS, 'backStraight'));
-    let heading = vectorFromSlope(v.S2.end + Math.PI / 2);
-    let foot = moveInVectorSpace(joint, [{ ...heading, mag: v.backStraight }]);
-    if (v.backStraight > 0) v.backStraightLine = [joint, foot];
+    let foot = straightOn(v.S2, v.backStraight)[1];
 
     // S3 turns the other way off the foot, clockwise about a centre on the far side, so as a
     // counterclockwise sweep it runs from the duck tail round to the foot
@@ -434,15 +446,14 @@ export function calculateScroll(p: EnricoCerutiParams): ScrollFailure[] {
     // that corner
     let duckTail = pointOnCircle(v.S3, v.S3.start);
     let napeStart = neckBack - v.nape.r;
-    if (!(v.nape.r > 0)) return badArc('Back', 'nape', v.nape, after(BACK_KEYS, 'square'));
+    if (!(v.nape.r > 0)) return badArc('Back', 'nape', v.nape, after(BACK_KEYS, 'nape'));
     if (duckTail.x > napeStart)
       return {
         message: `Back: the duck tail sits too far forward for a nape of ${v.nape.r}mm to fit before the neck's back. Shrink the nape, or move the duck tail back with S3 or the straight.`,
-        unsolved: after(BACK_KEYS, 'square'),
+        unsolved: after(BACK_KEYS, 'nape'),
         circles: [{ x: napeStart, y: duckTail.y - v.nape.r, r: v.nape.r }],
         segments: [[duckTail, new Pt(neckBack, duckTail.y)]],
       };
-    if (duckTail.x < napeStart) v.square = [duckTail, new Pt(napeStart, duckTail.y)];
     v.nape = new Arc(napeStart, duckTail.y - v.nape.r, v.nape.r, 0, Math.PI / 2);
     return null;
   });
@@ -451,19 +462,14 @@ export function calculateScroll(p: EnricoCerutiParams): ScrollFailure[] {
     // the front rises from the top of the nut on the neck's front: the flat straight up
     if (!(v.flat >= 0)) return badLength('Front', 'flat', after(FRONT_KEYS, 'flat'));
     let top = new Pt(nutTop.x, nutTop.y + v.flat);
-    if (v.flat > 0) v.flatLine = [nutTop, top];
 
     // F0 turns toward the back to its end angle
     if (!(v.F0.r > 0) || !(v.F0.end > 0) || v.F0.end > TWO_PI) return badArc('Front', 'F0', v.F0, after(FRONT_KEYS, 'F0'));
     let F0 = placeCircleOnPointAtAngle(v.F0.r, top, 0);
     v.F0 = new Arc(F0.x, F0.y, F0.r, 0, v.F0.end);
-    let joint = pointOnCircle(v.F0, v.F0.end);
 
-    // the straight on along its heading
     if (!(v.frontStraight >= 0)) return badLength('Front', 'frontStraight', after(FRONT_KEYS, 'frontStraight'));
-    let heading = vectorFromSlope(v.F0.end + Math.PI / 2);
-    let foot = moveInVectorSpace(joint, [{ ...heading, mag: v.frontStraight }]);
-    if (v.frontStraight > 0) v.frontStraightLine = [joint, foot];
+    let foot = straightOn(v.F0, v.frontStraight)[1];
 
     // F1 curves back toward the volute, clockwise about a centre on the far side, until it first
     // crosses a drawn arc of the spiral

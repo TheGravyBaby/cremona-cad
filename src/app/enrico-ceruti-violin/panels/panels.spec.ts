@@ -139,7 +139,7 @@ describe('the scroll panel', () => {
     for (const l of guides) {
       const [low, high] = [l['y1'], l['y2']].sort((m, n) => (m as number) - (n as number)) as number[];
       expect(low).toBe(0);
-      expect(high).toBeGreaterThan(p.volute!.eyeY);
+      expect(high).toBeGreaterThan(p.volute!.eye.y);
     }
   });
 
@@ -160,7 +160,7 @@ describe('the scroll panel', () => {
     expect(lines.length).toBe(3);
     const lowest = Math.min(...lines.flatMap(l => [l['y1'] as number, l['y2'] as number]));
     expect(lowest).toBeLessThan(0);
-    expect(-lowest).toBeLessThan(p.volute!.eyeY);
+    expect(-lowest).toBeLessThan(p.volute!.eye.y);
     const leftmost = Math.min(...lines.flatMap(l => [l['x1'] as number, l['x2'] as number]));
     expect(-leftmost).toBeCloseTo(p.neck!.thickness, 9);
   });
@@ -193,25 +193,25 @@ describe('the scroll panel', () => {
       const instance = scroll(p);
       instance.buildRun();
       expect(p.volute!.flushWithNeck).toBe(true);
-      const { eyeX, eyeY } = p.volute!;
+      const { x: eyeX, y: eyeY } = p.volute!.eye;
       expect(eyeX).toBeLessThan(0);
       expect(eyeY).toBeGreaterThan(0);
-      expect(eyeX! * 100).toBeCloseTo(Math.round(eyeX! * 100), 9);
+      expect(eyeX * 100).toBeCloseTo(Math.round(eyeX * 100), 9);
       const eye = recordLayers(instance.buildRun()).elements.find(el => el.tag === 'circle')!.attrs;
       expect([eye['cx'], eye['cy']]).toEqual([eyeX, eyeY]);
-      p.volute!.eyeX = 1;
+      p.volute!.eye.x = 1;
       instance.buildRun();
-      expect(p.volute!.eyeX).toBe(eyeX);
+      expect(p.volute!.eye.x).toBe(eyeX);
     });
 
     it('keeps a typed eye height while flush, the flush X the same at any height', () => {
       const p = defaultViolin();
       const instance = scroll(p);
       instance.buildRun();
-      const { eyeX, eyeY } = p.volute!;
-      p.volute!.eyeY = eyeY - 5;
+      const { x: eyeX, y: eyeY } = p.volute!.eye;
+      p.volute!.eye.y = eyeY - 5;
       instance.buildRun();
-      expect([p.volute!.eyeX, p.volute!.eyeY]).toEqual([eyeX, eyeY - 5]);
+      expect([p.volute!.eye.x, p.volute!.eye.y]).toEqual([eyeX, eyeY - 5]);
     });
 
     it('leaves the eye where the fields put it once flush is off, and moves the spiral with it', () => {
@@ -221,8 +221,8 @@ describe('the scroll panel', () => {
       const eye = (d: ReturnType<typeof recordLayers>) => d.elements.find(el => el.tag === 'circle')!.attrs;
       const flush = eye(recordLayers(instance.buildRun()));
       p.volute!.flushWithNeck = false;
-      p.volute!.eyeX = (p.volute!.eyeX as number) - 3;
-      p.volute!.eyeY = (p.volute!.eyeY as number) - 4;
+      p.volute!.eye.x -= 3;
+      p.volute!.eye.y -= 4;
       const drawnFree = recordLayers(instance.buildRun());
       const moved = eye(drawnFree);
       expect(moved['cx']).toBeCloseTo((flush['cx'] as number) - 3, 9);
