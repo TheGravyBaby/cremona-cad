@@ -114,8 +114,8 @@ export interface EnricoCerutiParams {
   volute?: VoluteParams;
 }
 
-/** The scroll's spiral. The eye is the raised disc at its centre; the rule that winds outward from it is the style, each a Renaissance architect's way of laying out the Ionic volute. */
-export type VoluteStyle = 'archimedean' | 'serlio' | 'philandrier' | 'salviati' | 'goldmann' | 'kelly' | 'fourPoint';
+/** The scroll's spiral. The eye is the raised disc at its centre; the rule that winds outward from it is the style: the custom four point, the plain Archimedean spiral, or a historical layout of the Ionic volute. */
+export type VoluteStyle = 'fourPoint' | 'archimedean' | 'serlio' | 'salviati' | 'goldmann' | 'kelly';
 
 export interface VoluteParams {
   /** Radius of the eye (mm). */
@@ -123,10 +123,18 @@ export interface VoluteParams {
   style: VoluteStyle;
   /** Archimedean only: how much the spiral's radius grows each full turn, so the even spacing between turns (mm). */
   pitch: number;
-  /** The size of the figure a historical style finds its centres on, each style measuring it its own way (mm). Its own size, not the eye's; the four point and the Archimedean have none. */
-  seed: number;
-  /** Four point only: the radius of each of its seven quarter-turn arcs, a turn and three quarters out to the front, innermost first (mm). Each has to be at least the last. */
+  /** Four point only: the radius of each of its eight quarter-turn arcs, two turns out to the front, innermost first (mm). Each has to be at least the last. */
   arcRadii: number[];
+  /** S0, S1, S2: the top of the scroll and on down its back, arcs each tangent to the last from the spiral's front, each swept counterclockwise to its `end`, the angle round its own centre from the front, π/2 the top and π the back (mm, radians). */
+  back: { r: number; end: number }[];
+  /** The straight run on down the back of the scroll from S2's end, along its heading (mm). */
+  straight: number;
+  /** S3, where the scroll's back turns into the pegbox's: an arc curving the other way off the straight's end, swept clockwise to its `end`, measured as S0–S2's are (mm, radians). Its end is the duck tail. */
+  hollow: { r: number; end: number };
+  /** The fillet joining the back to the neck's back, from a line run square to the neck from the duck tail (mm). */
+  nape: number;
+  /** The front of the pegbox, up the neck's front from the top of the nut: the flat straight up, F0 turning toward the back, swept counterclockwise to its `end` measured as the back's arcs are, the straight on along its heading, and F1 curving back toward the volute until it meets the spiral, which sets its end (mm, radians). */
+  front: { flat: number; f0: { r: number; end: number }; straight: number; f1: { r: number } };
   /** On, the eye is slid each pass so the spiral's front is flush with the neck's front, its height left to eyeY; off, it sits where eyeX and eyeY put it. */
   flushWithNeck: boolean;
   /** Eye centre from the nut on the neck's front (mm): x toward the front, so negative behind it, y up the neck. x is rewritten while flush is on. */
@@ -324,6 +332,10 @@ export interface CerutiColors {
   pathError: string;
   neck: string;
   neckOff: string;
+  scrollBackUpper: string;
+  scrollBackUpperOff: string;
+  scrollBackLower: string;
+  scrollBackLowerOff: string;
   neckRoot: string;
   fingerboard: string;
   bridge: string;
@@ -344,7 +356,7 @@ export interface CerutiViewFlags {
   showFholeBounds: boolean;
   showFholeArcs: boolean;
   showFholePlacementGuides: boolean;
-  showVoluteEye: boolean;
+  showVoluteConstruction: boolean;
   renderOuterPath: boolean;
   showBlocks: boolean;
   showInnerPath: boolean;
@@ -364,7 +376,7 @@ export interface CerutiViewFlags {
 // back to @ViewChild/viewChild(). No default on CerutiPanelBase, so omitting renderToggles fails the build.
 export type RenderToggleKey = 'showModuleArcs' | 'showAllArcs' | 'showModuleCircles'
   | 'showAllCircles' | 'showModuleGuides' | 'showFingerboard' | 'showFretMarks' | 'showFholeBounds' | 'showFholeArcs' | 'showFholePlacementGuides'
-  | 'showVoluteEye' | 'showBlocks' | 'showInnerPath' | 'renderOuterPath';
+  | 'showVoluteConstruction' | 'showBlocks' | 'showInnerPath' | 'renderOuterPath';
 
 /**
  * A panel's render request. Panels describe how to build their layers; the parent applies shared
@@ -398,7 +410,7 @@ export const DEFAULT_CERUTI_VIEW_FLAGS: CerutiViewFlags = {
   showFholeBounds: true,
   showFholeArcs: false,
   showFholePlacementGuides: false,
-  showVoluteEye: true,
+  showVoluteConstruction: true,
   renderOuterPath: true,
   showBlocks: true,
   showInnerPath: false,
@@ -606,7 +618,7 @@ export interface PathEntry {
 // is a migration; `panelOrder` is typed against this list.
 export const CERUTI_PANEL_IDS = [
   'base', 'mainBouts', 'corners', 'centerBout', 'outerTrace',
-  'fluting', 'longArching', 'crossArching', 'fHolePlacement', 'fHoleContours', 'neck', 'scroll', 'mould', 'export',
+  'fluting', 'longArching', 'crossArching', 'fHolePlacement', 'fHoleContours', 'neck', 'volute', 'scroll', 'mould', 'export',
 ] as const;
 
 export type CerutiPanelId = typeof CERUTI_PANEL_IDS[number];

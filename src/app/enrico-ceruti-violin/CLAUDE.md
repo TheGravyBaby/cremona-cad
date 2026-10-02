@@ -14,13 +14,14 @@ adding to a file — they are current and more specific than this page.
 | `ceruti-arch-geometry.ts` | The gouge's circular section, the crown, and the tangency joining them. Answers "what shape is the section here". |
 | `ceruti-surface.ts` | The evaluable height field z(x,y) over the plan view. Cross-arch templates, STL. |
 | `ceruti-neck.ts` | The neck set in the side elevation: where the nut, fingerboard, heel and bridge stand, and the readouts (neck stop, projection). Hangs off the top plate's edge via `topPlatePlacement`, so the rib taper carries through. |
+| `ceruti-scroll.ts` | The scroll in its own side-view frame: the volute's spiral styles about the eye, the back and front run off it, and their defaults. Edited by two panels, volute then scroll; both draw through `renders/scroll.render.ts`. |
 | `ceruti-types.ts` | `EnricoCerutiParams` and the whole serialized shape. `CerutiColors`, view flags. |
 | `ceruti-templates.ts` | Bundled historical instruments (Strad Goetz, Del Gesu Baltic, …) as pasted recipe JSON. **Append-only** — add instruments, don't restructure. |
 | `templates/corpus/` | Instruments traced from open-licence museum records — one `.json` file each, listed in `templates/corpus/index.ts`. Same type as the templates above, but carrying a `TemplateMeta` and a per-image `ImageCredit` so the numbers and the pixels can each be rechecked. New instruments go here, not in `ceruti-templates.ts`. |
 | `templates/local/` | Gitignored developer scratch space — traces and theories with no provenance to check, never shipped, never swept by the suite. Shows up in the picker only on a local dev build. See that folder's `README.md`. |
 | `ceruti-helpers.ts` | `*Info()` functions — the help text behind each field's info button. |
 | `panels/` | One folder per sidebar panel. Panels are thin; see the layer rule in the root CLAUDE.md. |
-| `renders/` | SVG emitters for the arching views, plus geometry that only serves one view. `body-section.render.ts` is the side elevation both the long-arching and neck panels draw on. |
+| `renders/` | SVG emitters for the arching views, plus geometry that only serves one view. `body-section.render.ts` is the side elevation both the long-arching and neck panels draw on; `scroll.render.ts` the same for the volute and scroll panels. |
 
 `ceruti-calcs.ts` → `ceruti-paths.ts` is the 2D outline pipeline; `ceruti-arching.ts` →
 `ceruti-arch-geometry.ts` → `ceruti-surface.ts` is the 3D one. The split between the last two is
