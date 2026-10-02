@@ -49,13 +49,11 @@ describe('MessageService', () => {
     expect(msgs[0].count).toBe(2);
   });
 
-  it('collapses a dismissed condition instead of clearing it, and keeps it collapsed', () => {
+  it('brings a condition in as a chip, and keeps it one as it re-reports', () => {
     svc.emit(condition());
-    svc.dismiss(current(svc)[0].id);
-
     expect(current(svc)[0].collapsed).toBe(true);
 
-    // still being reported as the maker drags the number — must not pop back open
+    // still being reported as the maker drags the number — must not pop open into a toast
     svc.emit(condition('3.1mm over'));
     const msgs = current(svc);
     expect(msgs).toHaveLength(1);
@@ -65,7 +63,6 @@ describe('MessageService', () => {
 
   it('expires a chip once the condition stops reporting', () => {
     svc.emit(condition());
-    svc.dismiss(current(svc)[0].id);
 
     vi.advanceTimersByTime(5000);
     svc.emit(condition());
@@ -77,11 +74,23 @@ describe('MessageService', () => {
     expect(current(svc)).toHaveLength(0);
   });
 
-  it('gives a chip its full window from the moment it collapses, not the last report', () => {
+  it('folds a reopened condition back into a chip when dismissed', () => {
     svc.emit(condition());
+    const id = current(svc)[0].id;
+    svc.expand(id);
+    expect(current(svc)[0].collapsed).toBe(false);
+
+    svc.dismiss(id);
+    expect(current(svc)[0].collapsed).toBe(true);
+  });
+
+  it('gives a chip its full window from the moment it folds back, not the last report', () => {
+    svc.emit(condition());
+    const id = current(svc)[0].id;
+    svc.expand(id);
     // read it for a while first — the condition is not re-reporting, nothing is being edited
     vi.advanceTimersByTime(20000);
-    svc.dismiss(current(svc)[0].id);
+    svc.dismiss(id);
 
     // the chip has to survive being born, or it vanishes before the maker sees where it went
     expect(current(svc)[0].collapsed).toBe(true);
@@ -89,9 +98,8 @@ describe('MessageService', () => {
     expect(current(svc)).toHaveLength(1);
   });
 
-  it('brings a dismissed condition back as a chip, never as a toast again', () => {
+  it('brings a condition back as a chip after its last one expired', () => {
     svc.emit(condition());
-    svc.dismiss(current(svc)[0].id);
 
     // long enough that the chip has expired — the maker was thinking, not editing
     vi.advanceTimersByTime(30000);
@@ -101,17 +109,6 @@ describe('MessageService', () => {
     const back = current(svc)[0];
     expect(back.collapsed).toBe(true);
     expect(back.message).toBe('still 2.4mm over');
-  });
-
-  it('lets a condition interrupt again after the maker reopens it', () => {
-    svc.emit(condition());
-    const id = current(svc)[0].id;
-    svc.dismiss(id);
-    svc.expand(id);
-    svc.clear(id);
-
-    svc.emit(condition());
-    expect(current(svc)[0].collapsed).toBeFalsy();
   });
 
   it('clears an untitled or info message outright', () => {
@@ -125,7 +122,6 @@ describe('MessageService', () => {
   it('reopens a chip without a countdown', () => {
     svc.emit(condition());
     const id = current(svc)[0].id;
-    svc.dismiss(id);
     svc.expand(id);
 
     const m = current(svc)[0];
@@ -136,7 +132,6 @@ describe('MessageService', () => {
 
   it('does not let an exclusive message kick the chips', () => {
     svc.emit(condition());
-    svc.dismiss(current(svc)[0].id);
 
     svc.emit({ severity: 'error', message: 'something else broke', exclusive: true });
 

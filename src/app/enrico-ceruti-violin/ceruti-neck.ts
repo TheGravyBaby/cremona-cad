@@ -36,7 +36,7 @@ export function defaultNeckParams(p: EnricoCerutiParams): NeckParams {
     length: mm(120),
     thickness: mm(13),
     heelRadius: mm(20),
-    nutThickness: mm(10),
+    nutThickness: mm(6),
 
     root: null, nut: null, backRoot: null, backNut: null, heel: null,
     bridgeFoot: null, bridgeTop: null, stringLength: null,

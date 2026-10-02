@@ -1,8 +1,8 @@
-/* Two stacked rows: the top bar across the full width, then everything else. This was a two-column
-   grid, so that the recipe's file strip had a top-row cell of its own to sit in — but the strip
-   reached that cell by being position: fixed inside the scrolling panel, which iOS Safari clips to
-   the scroller and never draws. The strip is a plain flex item in the sidebar now, so the cell it
-   needed is gone and with it the reason for the grid. */
+/* The recipe dock runs the full height of the right edge, so its own header sits level with the top
+   bar and the two read as one bar; the top bar and the canvas share the column to its left.
+   An earlier grid like this one was dropped because the recipe's strip reached its top-row cell by
+   being position: fixed inside the scrolling panel, which iOS Safari clips to the scroller. Here the
+   dock owns the whole column, so everything in it stays in normal flow. */
 .app {
   /* Capped against the viewport, not just a fixed 368: on a phone 368 is wider than the screen has
      left once the canvas keeps its two drawer tabs, and a panel that does not fit is a panel with
@@ -23,22 +23,49 @@
   height: 100vh;
   height: 100dvh;
   height: var(--app-viewport-height, 100dvh);
-  display: flex;
-  flex-direction: column;
+  /* how much of the layout the bar takes: all of it pinned, none when it auto-hides */
+  --bar-space: var(--app-bar-height);
+
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: var(--bar-space) minmax(0, 1fr);
+  grid-template-areas:
+    "top  dock"
+    "main dock";
   overflow: hidden;
   background: var(--ui-bg-app);
 }
 
 .top {
-  flex: 0 0 auto;
+  grid-area: top;
   min-width: 0;
 }
 
 .main {
+  grid-area: main;
   display: flex;
-  flex: 1 1 auto;
   min-height: 0;
   /* allows children to scroll properly */
+}
+
+/* Auto-hidden, the bar keeps its size but leaves the layout: laid over the canvas and slid up off
+   the screen until revealed. A transform rather than a row that grows, so showing it never resizes
+   the canvas, whose ResizeObserver redraws the entire SVG. The recipe's header does the same in
+   recipe-toolbar.css. */
+.app.bar-autohide {
+  --bar-space: 0px;
+}
+
+.app.bar-autohide .top {
+  position: relative;
+  z-index: 20;
+  height: var(--app-bar-height);
+  transform: translateY(calc(-1 * var(--app-bar-height)));
+  transition: transform 150ms ease;
+}
+
+.app.bar-autohide.bar-revealed .top {
+  transform: none;
 }
 
 /* The drafting toolbox. Fixed to its own content width — however many columns it wraps into — and
@@ -59,9 +86,9 @@
   border: 1px solid #b8b8b8; */
 }
 
-/* Whichever recipe is open. A column of three: the file strip, the scrolling panel, and the render
-   toggles — all in normal flow, so none of them depends on a fixed element escaping the panel's
-   overflow. min-height keeps the panel in the middle as the only part that scrolls. */
+/* Whichever recipe is open. A column: the file header, the panel nav strip, the scrolling panel,
+   and the render toggles — all in normal flow, so none of them depends on a fixed element escaping
+   the panel's overflow. min-height keeps the panel as the only part that scrolls. */
 .sidebar {
   display: flex;
   flex-direction: column;
@@ -75,42 +102,36 @@
   background: var(--ui-bg-sidebar);
 }
 
-/* Holds whichever recipe is open plus its collapse tab, and carries the drawer's width. Both parts
-   of that basis are load-bearing.
-   A length rather than auto, because auto means max-content and a scroll container's max-content is
-   still its content's — the drawer came out 360 wide on Base and 328 on Outer Path, changing width
-   as you stepped through the panels.
-   Shrinkable, because unshrinkable a drawer wider than the space left ran off the right of the
-   screen taking Next with it, and nothing could scroll it back — .app is overflow: hidden. Shrunk,
-   the worst case is a narrower panel with every control still on it. */
+/* Holds whichever recipe is open plus its collapse tab, and carries the drawer's width — a length
+   rather than auto, because auto means max-content and a scroll container's max-content is still its
+   content's: the drawer came out 360 wide on Base and 328 on Outer Path, changing width as you
+   stepped through the panels. */
 .sidebar-dock {
+  grid-area: dock;
   position: relative;
   display: flex;
-  flex: 0 1 var(--sidebar-width);
-  min-width: 0;
+  width: var(--sidebar-width);
   min-height: 0;
 }
 
-/* Collapsed the panel goes entirely, taking the file strip and the render toggles with it, so
-   save/load are one tap on the tab away. The dock gives up its basis with it, or the drawer's width
-   would still be held out of the canvas. Snapped, never transitioned: the canvas ResizeObserver
-   redraws the entire SVG on every frame of an animated width. */
-.sidebar-dock.collapsed {
-  flex-basis: 0;
-}
-
-.sidebar-dock.collapsed .sidebar {
-  display: none;
+/* Collapsed, the dock shrinks to its file header in the top row and the canvas takes the full row
+   beneath; the recipe hides everything but the header itself (see sidebar.css). Snapped, never
+   transitioned: the canvas ResizeObserver redraws the entire SVG on every frame of an animated
+   width. */
+.app.sidebar-collapsed {
+  grid-template-areas:
+    "top  dock"
+    "main main";
 }
 
 /* The mirror of .tool-dock-handle in tool-palette.css, which carries the reasoning for the shape;
-   this one anchors at right: 100% instead, so it travels with the panel and lands flush against
-   the screen edge when the panel collapses. Its own copy rather than a shared rule — opposite
-   anchors, different components. Height and surface match the file strip beside it, so the two
-   read as one bar. */
+   this one anchors at right: 100% instead, so it travels with the panel. Its own copy rather than a shared rule — opposite
+   anchors, different components. Height and surface match the panel nav strip beside it, so the
+   two read as one bar; it starts below the recipe header the way the compass starts below the
+   top bar. */
 .sidebar-dock-handle {
   position: absolute;
-  top: 0;
+  top: var(--bar-space);
   right: 100%;
   z-index: 6;
   display: flex;
@@ -130,8 +151,14 @@
 
 /* covers .panel's left border so tab and panel read as one piece; only while open, since collapsed
    there is no border to cover and -1px would lift the tab off the screen edge */
-.sidebar-dock:not(.collapsed) .sidebar-dock-handle {
+.app:not(.sidebar-collapsed) .sidebar-dock-handle {
   margin-right: -1px;
+}
+
+/* the dock is still full width up in the header row, so the tab is pinned to the screen edge
+   rather than hung off the dock's left */
+.sidebar-collapsed .sidebar-dock-handle {
+  right: 0;
 }
 
 .sidebar-dock-handle:hover {

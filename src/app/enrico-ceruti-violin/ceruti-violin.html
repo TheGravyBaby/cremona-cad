@@ -1,5 +1,5 @@
-<!-- The sidebar is a column of three: this strip, the scrolling panel, and the render toggles.
-     The strip and the toggles are siblings of .panel, not children — see recipe-toolbar.css. -->
+<!-- The file header, the nav strip and the render toggles are siblings of .panel, not children, so
+     only the panel scrolls — see recipe-toolbar.css. -->
 <app-recipe-toolbar
             [recipeName]="d.recipeName"
             [templateOptions]="templateOptions"
@@ -12,39 +12,39 @@
             (debugDump)="copyRecipeToClipboard()">
 </app-recipe-toolbar>
 
-<div class="panel">
-    <div class="panel-nav-wrap">
-        <section class="panel-nav" aria-label="Sidebar section navigation">
-            <!-- Unlabelled: Back / step / Next reads as what it is, and the aria-label carries the
-                 name for anyone who can't see the shape. -->
-            <div class="panel-nav-controls">
-                <button type="button" class="panel-nav-btn panel-nav-btn--back" (click)="stepPanel(-1)"
-                    title="Previous section" aria-label="Go to previous section" [disabled]="!canStepPanel(-1)">
-                    Back
-                </button>
-                <div class="panel-select-wrap">
-                    <select id="panel-selector" class="panel-select" [ngModel]="openPanel"
-                        (ngModelChange)="onPanelSelect($event)">
-                        @for (panel of panelOrder; track panel.id) {
-                        <option [value]="panel.id" [disabled]="!isPanelEnabled(panel.id)">
-                            {{ panel.label }}@if (!isPanelEnabled(panel.id)) { (Locked) }
-                        </option>
-                        }
-                    </select>
-                    <span class="panel-select-caret" aria-hidden="true">&#x25BE;</span>
-                </div>
-                <button type="button" class="panel-nav-btn panel-nav-btn--next" (click)="stepPanel(1)"
-                    title="Next section" aria-label="Go to next section" [disabled]="!canStepPanel(1)">
-                    Next
-                </button>
+<div class="panel-nav-wrap">
+    <section class="panel-nav" aria-label="Sidebar section navigation">
+        <!-- Unlabelled: Back / step / Next reads as what it is, and the aria-label carries the
+             name for anyone who can't see the shape. -->
+        <div class="panel-nav-controls">
+            <button type="button" class="panel-nav-btn panel-nav-btn--back" (click)="stepPanel(-1)"
+                title="Previous section" aria-label="Go to previous section" [disabled]="!canStepPanel(-1)">
+                Back
+            </button>
+            <div class="panel-select-wrap">
+                <select id="panel-selector" class="panel-select" [ngModel]="openPanel"
+                    (ngModelChange)="onPanelSelect($event)">
+                    @for (panel of panelOrder; track panel.id) {
+                    <option [value]="panel.id" [disabled]="!isPanelEnabled(panel.id)">
+                        {{ panel.label }}@if (!isPanelEnabled(panel.id)) { (Locked) }
+                    </option>
+                    }
+                </select>
+                <span class="panel-select-caret" aria-hidden="true">&#x25BE;</span>
             </div>
-            <div class="panel-progress" role="progressbar" aria-label="Section progress" aria-valuemin="1"
-                [attr.aria-valuemax]="panelProgressMax" [attr.aria-valuenow]="panelProgressNow">
-                <div class="panel-progress-fill" [style.width.%]="panelProgressPercent"></div>
-            </div>
-        </section>
-    </div>
+            <button type="button" class="panel-nav-btn panel-nav-btn--next" (click)="stepPanel(1)"
+                title="Next section" aria-label="Go to next section" [disabled]="!canStepPanel(1)">
+                Next
+            </button>
+        </div>
+        <div class="panel-progress" role="progressbar" aria-label="Section progress" aria-valuemin="1"
+            [attr.aria-valuemax]="panelProgressMax" [attr.aria-valuenow]="panelProgressNow">
+            <div class="panel-progress-fill" [style.width.%]="panelProgressPercent"></div>
+        </div>
+    </section>
+</div>
 
+<div class="panel">
     <div class="panel-content">
         <!-- Base Measurements is the landing panel and stays inline here rather than in its own
              component: it is the one panel the parent drives directly (changeBaseMeasurements),

@@ -54,8 +54,9 @@ function makeMessage(input: MessageInput): Message {
 /**
  * A titled error or warn describes a *condition* rather than an event — the recipe re-reports it
  * on every recompute for as long as it holds, so it can't be cleared by being read. Those messages
- * collapse to a chip when dismissed instead of vanishing, and the chip expires on its own once the
- * condition stops re-reporting. Untitled and info messages are events, and behave as they always did.
+ * arrive as a chip rather than a toast, so a drag that trips one doesn't bury the drawing in text;
+ * opening the chip shows the full message, and dismissing that folds it back. The chip expires on
+ * its own once the condition stops re-reporting. Untitled and info messages are events, and toast.
  */
 function collapsible(m: Message): boolean {
   return m.severity !== 'info' && !!m.title && m.title.trim().length > 0;
@@ -66,13 +67,6 @@ export class MessageService implements OnDestroy {
   private _messages: Message[] = [];
   private messagesSubject = new BehaviorSubject<Message[]>(this._messages);
   private sweepTimer: ReturnType<typeof setInterval> | null = null;
-
-  /** Titles the user has dismissed at least once this session. Silence is not the same as
-   * resolution here — the recipe only re-reports a condition when something makes it recompute, so
-   * a chip that expires while the maker sits and thinks tells us nothing about whether the problem
-   * is still there. A dismissed title therefore never gets to interrupt again: it comes straight
-   * back as a chip. Reopening one clears the mark, since that is the maker asking to see it. */
-  private dismissedTitles = new Set<string>();
 
   // observable stream of current messages (most recent first)
   messages$: Observable<Message[]> = this.messagesSubject.asObservable();
@@ -94,8 +88,7 @@ export class MessageService implements OnDestroy {
       return;
     }
 
-    // already dismissed once, so it reappears as a chip rather than reopening the toast
-    if (collapsible(m) && this.dismissedTitles.has(m.title!)) m.collapsed = true;
+    if (collapsible(m)) m.collapsed = true;
 
     if (m.exclusive) {
       // kicks every other message of the same severity, regardless of title — but not the chips,
@@ -121,7 +114,6 @@ export class MessageService implements OnDestroy {
       // the chip's clock starts now, not at the last report — otherwise a message dismissed after
       // reading it is already past its expiry the moment it becomes a chip, and vanishes on sight
       m.lastSeen = Date.now();
-      this.dismissedTitles.add(m.title!);
       this.publish();
       return;
     }
@@ -136,7 +128,6 @@ export class MessageService implements OnDestroy {
 
     m.collapsed = false;
     m.autoDismiss = false;
-    if (m.title) this.dismissedTitles.delete(m.title);
     this.publish();
   }
 
@@ -144,7 +135,6 @@ export class MessageService implements OnDestroy {
   clear(id?: string) {
     if (!id) {
       this._messages = [];
-      this.dismissedTitles.clear();
     } else {
       this._messages = this._messages.filter(m => m.id !== id);
     }

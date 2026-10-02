@@ -37,33 +37,41 @@ describe('MessageCenterComponent', () => {
    * every unanticipated failure falls back on, so it is the one that must not be quietly broken by
    * work on the layers above it.
    */
-  it('puts a toast on screen when safeRun catches a throw', () => {
+  it('puts a chip on screen when safeRun catches a throw', () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     setGlobalEmitter(m => ms.emit(m));
 
     safeRun(() => { throw new Error('no real solution'); });
     fixture.detectChanges();
 
-    const toasts = el('.toast');
-    expect(toasts).toHaveLength(1);
-    expect(toasts[0].getAttribute('data-severity')).toBe('error');
-    expect(toasts[0].textContent).toContain('An Error Occurred');
+    const chips = el('.chip');
+    expect(chips).toHaveLength(1);
+    expect(chips[0].getAttribute('data-severity')).toBe('error');
+    expect(chips[0].textContent).toContain('An Error Occurred');
     // the thrown error still reaches the console for the stack
     expect(consoleError).toHaveBeenCalled();
   });
 
-  it('draws a chip once a condition is dismissed', () => {
+  it('draws a condition as a chip, and as a toast only once reopened', () => {
     ms.emit({ severity: 'error', title: 'Viol Neck Join', message: 'the neck runs long', autoDismiss: 10000 });
     fixture.detectChanges();
-    expect(el('.toast')).toHaveLength(1);
-    expect(el('.chip')).toHaveLength(0);
-
-    ms.dismiss(fixture.componentInstance.toasts()[0].id);
-    fixture.detectChanges();
-
     expect(el('.toast')).toHaveLength(0);
     expect(el('.chip')).toHaveLength(1);
     expect(el('.chip .countdown-ring')).toHaveLength(1);
+
+    ms.expand(fixture.componentInstance.chips()[0].id);
+    fixture.detectChanges();
+
+    expect(el('.toast')).toHaveLength(1);
+    expect(el('.chip')).toHaveLength(0);
+  });
+
+  it('puts an info message up as a toast', () => {
+    ms.emit({ severity: 'info', title: 'Dimensions', message: 'the outer dimensions of the body', autoDismiss: 15000 });
+    fixture.detectChanges();
+
+    expect(el('.toast')).toHaveLength(1);
+    expect(el('.chip')).toHaveLength(0);
   });
 
   it('keeps drawing the chip as the condition re-reports, with a rising count', () => {
@@ -71,10 +79,6 @@ describe('MessageCenterComponent', () => {
       ms.emit({ severity: 'error', title: 'Viol Neck Join', message: 'the neck runs long', autoDismiss: 10000 });
 
     report();
-    fixture.detectChanges();
-    ms.dismiss(fixture.componentInstance.toasts()[0].id);
-    fixture.detectChanges();
-
     report();
     report();
     fixture.detectChanges();

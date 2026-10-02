@@ -32,8 +32,8 @@
     </div>
   </div>
 
-  <!-- dismissed conditions that are still reporting themselves; the ring is how long they have
-       left before they clear on their own -->
+  <!-- conditions still reporting themselves; the ring is how long they have left before they
+       clear on their own -->
   <div class="chips" *ngIf="chips().length">
     <button *ngFor="let m of chips(); trackBy: trackByChip"
       class="chip"
