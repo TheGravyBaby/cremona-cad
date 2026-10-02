@@ -58,6 +58,14 @@ describe('xy point keys', () => {
     expect(changes).toEqual(['y=21']);
   });
 
+  it('leaves a disabled half where it is, the other still moving', () => {
+    x.disabled = true;
+    y.focus();
+    expect(press(y, 'ArrowRight').defaultPrevented).toBe(false);
+    press(y, 'ArrowUp');
+    expect([x.value, changes]).toEqual(['10', ['y=21']]);
+  });
+
   it('lets ordinary typing through', () => {
     expect(press(x, '7').defaultPrevented).toBe(false);
     expect(press(x, 'Home').defaultPrevented).toBe(false);

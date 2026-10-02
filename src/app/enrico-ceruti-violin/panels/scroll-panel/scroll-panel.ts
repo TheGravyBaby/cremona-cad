@@ -1,15 +1,14 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, NeckParams, RenderToggleKey, VoluteParams } from '../../ceruti-types';
+import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, RenderToggleKey, VoluteParams, VoluteStyle } from '../../ceruti-types';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
-import { nearestFraction } from '../../../helpers/nearestFraction';
 import { defaultNeckParams, standardNutLength } from '../../ceruti-neck';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { arcPathData } from '../../../helpers/math/pathMath';
-import { renderCircle, renderCrosshair, renderPath, renderPolygon, renderSegment } from '../../../helpers/renderFuncs';
+import { renderCircle, renderDashLine, renderPath, renderPolygon, renderSegment, renderSmallCrosshair } from '../../../helpers/renderFuncs';
 import { Pt } from '../../../models/types';
 import { STROKE_WEIGHT } from '../../renders/render-constants';
-import { fitVolute, layoutVolute, naturalArcRadii, pointArcCount, pointTurns, setTurnRadius, VOLUTE_STYLES } from './volute';
+import { flushVolute, layoutVolute, naturalArcRadii, TO_FRONT, VoluteArc, VOLUTE_STYLES } from './volute';
 
 @Component({
   selector: 'app-ceruti-scroll-panel',
@@ -18,7 +17,7 @@ import { fitVolute, layoutVolute, naturalArcRadii, pointArcCount, pointTurns, se
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class ScrollPanel extends CerutiPanelBase implements OnInit {
-  static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleGuides'];
+  static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleArcs', 'showModuleGuides', 'showVoluteEye'];
 
   @Input({ required: true }) params!: EnricoCerutiParams;
   @Input({ required: true }) colors!: CerutiColors;
@@ -34,54 +33,48 @@ export class ScrollPanel extends CerutiPanelBase implements OnInit {
 
   protected readonly styles = Object.entries(VOLUTE_STYLES).map(([id, { label }]) => ({ id, label }));
 
-  protected readonly nearestFraction = nearestFraction;
-
-  get neck(): NeckParams { return this.params.neck!; }
   get volute(): VoluteParams { return this.params.volute!; }
-  get points(): number | undefined { return VOLUTE_STYLES[this.volute.style].points; }
-  arcColor(i: number): string { return arcColor(this.colors, i, this.points!); }
-  get turns(): number[][] { return pointTurns(this.points!, this.volute.arcRadii.length); }
+  get custom(): boolean { return !!VOLUTE_STYLES[this.volute.style].custom; }
+  get archimedean(): boolean { return this.volute.style === 'archimedean'; }
+  get seedDef() { return VOLUTE_STYLES[this.volute.style].seed; }
+  arcColor(i: number): string { return arcColor(this.colors, i); }
 
-  // each arc field's name, as the part of its turn it ends at
-  protected readonly parts: Record<number, { name: string; ends: string[] }> = {
-    2: { name: 'Halves', ends: ['½', '1'] },
-    3: { name: 'Thirds', ends: ['⅓', '⅔', '1'] },
-    4: { name: 'Quarters', ends: ['¼', '½', '¾', '1'] },
-  };
-
-  // turns tuned arc by arc, their turn field locked to its last; a view choice, so not saved
-  protected readonly openTurns = new Set<number>();
-
-  // each point spiral has its own count of arcs, so moving to one with a different count starts
-  // it from its natural growth
-  onStyleChange(): void {
-    const points = this.points;
-    if (points && this.volute.arcRadii.length !== pointArcCount(points)) {
-      this.volute.arcRadii = naturalArcRadii(this.volute.eyeRadius, points);
-    }
+  setStyle(style: VoluteStyle): void {
+    this.volute.style = style;
+    if (style === 'archimedean' && !(this.volute.pitch > 0)) this.volute.pitch = defaultPitch(this.volute.eyeRadius);
+    if (VOLUTE_STYLES[style].seed) this.volute.seed = naturalSeed(style, this.volute.eyeRadius);
     this.onChange();
   }
 
-  setTurn(t: number, radius: number): void {
-    setTurnRadius(this.volute.arcRadii, this.points!, t, radius);
+  // the arc fields four to a row, a turn of the spiral each
+  get arcRows(): number[][] {
+    const rows: number[][] = [];
+    this.volute.arcRadii.forEach((_, i) => i % 4 === 0 ? rows.push([i]) : rows.at(-1)!.push(i));
+    return rows;
+  }
+
+  // an arc field's name: how many turns out from the eye its arc ends
+  arcEnd(i: number): string { return turnsLabel((i + 1) / 4); }
+
+  // the radii have to open outward, so one set past those after it carries them up to it
+  setArcRadius(i: number, radius: number): void {
+    const radii = this.volute.arcRadii;
+    radii[i] = radius;
+    if (Number.isFinite(radius)) for (let j = i + 1; j < radii.length && radii[j] < radius; j++) radii[j] = radius;
     this.onChange();
-    this.onTurnFocus(t);
+    this.onArcFocus(i);
   }
 
-  onTurnFocus(t: number): void {
-    this.onArcFocus(...this.turns[t]);
-  }
+  // the four point arc whose field has focus, innermost first
+  private highlightedArc: number | null = null;
 
-  // the point spiral's arcs whose field has focus, innermost first: one arc, or a whole turn
-  private highlightedArcs: number[] = [];
-
-  onArcFocus(...arcs: number[]): void {
-    this.highlightedArcs = arcs;
+  onArcFocus(i: number): void {
+    this.highlightedArc = i;
     this.emitImmediate(false);
   }
 
   onArcBlur(): void {
-    this.highlightedArcs = [];
+    this.highlightedArc = null;
     this.emitImmediate(false);
   }
 
@@ -89,106 +82,107 @@ export class ScrollPanel extends CerutiPanelBase implements OnInit {
     const p = this.params;
     p.neck ??= defaultNeckParams(p);
     p.volute ??= defaultVoluteParams(p);
-    growNaturally(p.volute);
-    fitEye(p);
-    return [renderScroll(p, this.colors, this.flags.showModuleGuides, this.highlightedArcs)];
+    // the four point's fields start from the even growth once, and are the user's after
+    if (VOLUTE_STYLES[p.volute.style].custom && !p.volute.arcRadii.length) p.volute.arcRadii = naturalArcRadii(p.volute.eyeRadius, TO_FRONT);
+    flushEye(p.volute);
+    return [renderScroll(p, this.colors, this.flags, this.highlightedArc)];
   }
 }
 
-// a point spiral arc's colour, innermost first: each turn a bout's colour, its arcs stepping
-// through that colour's off shades so neighbours in a turn read apart
-export function arcColor(colors: CerutiColors, i: number, points: number): string {
+// a spiral arc's colour as a module arc and in the four point's fields, innermost first: each turn a bout's colour, its arcs stepping
+// through that colour's off shades so neighbours in a turn read apart, the bouts coming round
+// again past three turns
+export function arcColor(colors: CerutiColors, i: number): string {
   const turns = [
     [colors.upperBout, colors.upperBoutOff, colors.upperBoutOff2],
     [colors.centerBout, colors.centerBoutOff, colors.centerBoutOff2],
     [colors.lowerBout, colors.lowerBoutOff, colors.lowerBoutOff2],
   ];
-  return turns[Math.floor(i / points)][[0, 1, 2, 1][i % points]];
+  return turns[Math.floor(i / 4) % 3][[0, 1, 2, 1][i % 4]];
 }
 
-// a Salviati on a 1.7 mm eye is what fitted the Betts scroll; everything defaults from there
+// a count of turns in quarters, as the luthier says it
+const turnsLabel = (turns: number) => {
+  const [whole, quarter] = [Math.floor(turns), Math.round(turns * 4) % 4];
+  return `${whole || ''}${['', '¼', '½', '¾'][quarter]}`;
+};
+
+// about the Salviati's own opening, its front as far out
+const defaultPitch = (eyeRadius: number) => Math.round(1.9 * eyeRadius * 10) / 10;
+// each style's seed means a different measure, so a style starts from its author's proportion to
+// the eye, to the hundredth like the field
+const naturalSeed = (style: VoluteStyle, eyeRadius: number) => Math.round(VOLUTE_STYLES[style].seed!.natural(eyeRadius) * 100) / 100;
+
+// a Salviati as wide as the one that fitted the Betts scroll, on a 3.1 mm eye 96 mm up from the
+// nut; everything defaults from there
 export function defaultVoluteParams(p: EnricoCerutiParams): VoluteParams {
-  const { scrollLength, scrollDepth } = p.neck!;
-  const eyeRadius = Math.round(1.7 * (p.height / 355) * 10) / 10;
-  const v = { style: 'salviati' as const, eyeRadius, arcRadii: [] };
-  // the height where the crown starts as the spiral's own next quarter; the field is the user's after this
-  const eye = fitVolute(v, scrollLength) ?? new Pt(-scrollDepth, scrollLength);
-  return {
-    ...v, customTurns: false, fitToBox: true,
-    eyeX: Math.round((scrollDepth + eye.x) * 100) / 100,
-    eyeY: Math.round((eye.y - scrollLength) * 100) / 100,
-  };
+  const k = p.height / 355;
+  const eyeRadius = Math.round(3.1 * k * 10) / 10;
+  const v = { style: 'salviati' as const, eyeRadius, arcRadii: [], pitch: defaultPitch(eyeRadius), seed: naturalSeed('salviati', eyeRadius) };
+  return { ...v, flushWithNeck: true, eyeX: Math.round((flushVolute(v) ?? 0) * 100) / 100, eyeY: Math.round(96 * k * 10) / 10 };
 }
 
-// writes a point spiral's natural radii into its fields every pass until custom turns are on, so
-// turning them on starts the tuning from there
-export function growNaturally(v: VoluteParams): void {
-  const points = VOLUTE_STYLES[v.style].points;
-  if (points && !v.customTurns) v.arcRadii = naturalArcRadii(v.eyeRadius, points);
+// writes the flush Eye X into its field, to the hundredth, every pass flush is on, so turning it
+// off leaves the eye where it was
+export function flushEye(v: VoluteParams): void {
+  const eyeX = v.flushWithNeck ? flushVolute(v) : null;
+  if (eyeX !== null) v.eyeX = Math.round(eyeX * 100) / 100;
 }
 
-// writes the fitted Eye X into its field, to the hundredth, every pass the fit is on, so turning
-// it off leaves the eye where it was
-export function fitEye(p: EnricoCerutiParams): void {
-  const v = p.volute!;
-  const eye = v.fitToBox ? fitVolute(v, p.neck!.scrollLength) : null;
-  if (eye) v.eyeX = Math.round((p.neck!.scrollDepth + eye.x) * 100) / 100;
-}
-
-// the scroll in its own frame: the nut at the origin, length up +y, depth toward -x (the back's
-// side, as in the neck panel), so the box sits square to the axes with the neck's tilt taken out.
-// The nut and the neck's end are drawn for context only — the neck open at the bottom, stopping
-// a little way down. The guides are the style's construction: the figure its centres are found on,
-// and each arc's centre with the two radii that bound it, the way the compass swept it, the crown
-// and throat included.
-export function renderScroll(p: EnricoCerutiParams, colors: CerutiColors, showGuides: boolean, highlightedArcs: number[] = []) {
-  const { scrollLength, scrollDepth, thickness, nutThickness } = p.neck!;
+// the scroll in its own frame: the nut at the origin on the neck's front, up the neck +y, toward
+// the back -x (as in the neck panel), the neck's tilt taken out. The nut and the neck's end are
+// drawn for context only — the neck open at the bottom, stopping a little way down. The spiral
+// always draws; module arcs draws it the way the other panels draw their arcs, each in its colour
+// with its centre and the two radii that bound it, the way the compass swept it. Module guides
+// carries the neck's front and back on up past the spiral, and the eye toggle the eye with the
+// seed figure its centres are found on.
+type ScrollFlags = Pick<CerutiViewFlags, 'showModuleArcs' | 'showModuleGuides' | 'showVoluteEye'>;
+export function renderScroll(p: EnricoCerutiParams, colors: CerutiColors, flags: ScrollFlags, highlightedArc: number | null = null) {
+  const { thickness, nutThickness } = p.neck!;
   const { eyeRadius, eyeX, eyeY } = p.volute!;
   const nutLength = standardNutLength(p.height);
-  const neckStub = 0.25 * scrollLength;
+  const neckStub = 2 * thickness;
 
-  const box = [new Pt(0, 0), new Pt(0, scrollLength), new Pt(-scrollDepth, scrollLength), new Pt(-scrollDepth, 0)];
   const nut = [new Pt(0, 0), new Pt(0, nutLength), new Pt(nutThickness, nutLength), new Pt(nutThickness, 0)];
   const neck = [new Pt(0, -neckStub), new Pt(0, 0), new Pt(-thickness, 0), new Pt(-thickness, -neckStub)];
 
-  const eye = new Pt(eyeX - scrollDepth, scrollLength + eyeY);
-  const volute = layoutVolute(p.volute!, eye, scrollLength, scrollDepth);
+  const eye = new Pt(eyeX, eyeY);
+  const volute = layoutVolute(p.volute!, eye);
+  const top = Math.max(nutLength, eye.y + eyeRadius, ...(volute?.spiral ?? []).map(a => a.center.y + a.r)) + thickness;
 
   return (g: any, ui: any): void => {
     renderPolygon(nut, colors.fingerboard, STROKE_WEIGHT.section)(g, ui);
     neck.slice(1).forEach((pt, i) => renderSegment(neck[i], pt, colors.neckOff, STROKE_WEIGHT.section)(g, ui));
-    renderPolygon(box, colors.neck, STROKE_WEIGHT.section)(g, ui);
+    if (flags.showModuleGuides) {
+      for (const x of [0, -thickness]) renderDashLine(new Pt(x, 0), new Pt(x, top), colors.neck, STROKE_WEIGHT.guide)(g, ui);
+    }
 
     if (!volute) return;
-    const { spiral, crown, throat, guides } = volute;
-    renderCircle({ x: eye.x, y: eye.y, r: eyeRadius }, colors.neckOff)(g, ui);
-    // a point spiral's arcs wear their fields' colours; the fixed historical ones need no telling apart
-    const points = VOLUTE_STYLES[p.volute!.style].points;
-    const inward = [...spiral].reverse();
-    for (const i of points ? highlightedArcs : []) {
-      const lit = inward[i];
-      if (lit) renderPath(arcPathData(lit.center, lit.r, lit.from, lit.to), arcColor(colors, i, points!), 12, 0.33)(g, ui);
-    }
-    inward.forEach(({ center, r, from, to }, i) => {
-      renderPath(arcPathData(center, r, from, to), points ? arcColor(colors, i, points) : colors.outerTrace, STROKE_WEIGHT.trace)(g, ui);
-    });
-    // lighter: the crown and throat belong to the scroll's body, not the spiral
-    const body = [crown, throat].filter(a => a !== null);
-    for (const { center, r, from, to } of body) {
-      renderPath(arcPathData(center, r, from, to), colors.outerTrace, STROKE_WEIGHT.trace, 0.55)(g, ui);
-    }
-
-    if (!showGuides) return;
+    const { spiral, guides } = volute;
     const guide = colors.neckOff;
-    for (const line of guides) {
-      line.slice(1).forEach((pt, i) => renderSegment(line[i], pt, guide, STROKE_WEIGHT.guide, true)(g, ui));
-    }
-    for (const { center, r, from, to } of [...spiral, ...body]) {
-      // small enough that Goldmann's innermost four, a third of the eye's radius apart, stay distinct
-      renderCrosshair(center, guide, eyeRadius / 12, 1, 0.8)(g, ui);
-      for (const a of [from, to]) {
-        renderSegment(center, new Pt(center.x + r * Math.cos(a), center.y + r * Math.sin(a)), guide, STROKE_WEIGHT.guide, true)(g, ui);
+    if (flags.showVoluteEye) {
+      renderCircle({ x: eye.x, y: eye.y, r: eyeRadius }, colors.neckOff)(g, ui);
+      for (const line of guides) {
+        line.slice(1).forEach((pt, i) => renderSegment(line[i], pt, guide, STROKE_WEIGHT.guide, true)(g, ui));
       }
+    }
+    const inward = [...spiral].reverse();
+    const lit = VOLUTE_STYLES[p.volute!.style].custom && highlightedArc !== null ? inward[highlightedArc] : undefined;
+    if (lit) renderPath(arcPathData(lit.center, lit.r, lit.from, lit.to), arcColor(colors, highlightedArc!), 12, 0.33)(g, ui);
+
+    // module arcs: renderArcFromArcFancy's look, drawn here since a models/types Arc only takes the
+    // minor arc and an arc of the spiral can sweep more than half a turn
+    const fancy = (a: VoluteArc, color: string) => {
+      renderPath(arcPathData(a.center, a.r, a.from, a.to), color, 2)(g, ui);
+      for (const t of [a.from, a.to]) renderDashLine(a.center, new Pt(a.center.x + a.r * Math.cos(t), a.center.y + a.r * Math.sin(t)), color)(g, ui);
+      renderSmallCrosshair(a.center, color)(g, ui);
+    };
+    if (flags.showModuleArcs) {
+      inward.forEach((a, i) => fancy(a, arcColor(colors, i)));
+      return;
+    }
+    for (const { center, r, from, to } of inward) {
+      renderPath(arcPathData(center, r, from, to), colors.outerTrace, STROKE_WEIGHT.trace)(g, ui);
     }
   };
 }

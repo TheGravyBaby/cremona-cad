@@ -117,21 +117,22 @@ describe('the heel', () => {
     expectTangentToBack(s);
   });
 
-  it('stops square to the body and runs a flat face to the tip when the radius is tight', () => {
+  it('fillets onto a flat foot square to the neck, rising off the tip at the neck angle, when the radius is tight', () => {
     const p = neckedViolin();
     p.neck!.heelRadius = 8;
     const s = solve(p);
     const h = s.heel!;
     expect(h.r).toBe(8);
     expect(h.face).toEqual(s.buttonTip);
-    // the arc ends at its lowest point, level with the tip, so the face is square to the body axis
-    expect(h.end.y).toBeCloseTo(s.buttonTip.y, 9);
-    expect(h.end.x).toBeCloseTo(h.center.x, 9);
-    expect(h.end.x).toBeGreaterThan(s.buttonTip.x);
+    const foot = new Pt(h.end.x - s.buttonTip.x, h.end.y - s.buttonTip.y);
+    expect(Math.atan2(foot.y, foot.x)).toBeCloseTo(p.neck!.angle, 9);
+    // tangent to the foot as well as the back: the radius at the arc's end runs along the neck
+    const radial = new Pt(h.end.x - h.center.x, h.end.y - h.center.y);
+    expect(Math.abs(radial.x * s.normal.a + radial.y * s.normal.b)).toBeLessThan(1e-9);
     expectTangentToBack(s);
   });
 
-  it('never pockets: no point of the cove sits below the button tip', () => {
+  it('never pockets: no point of the cove dips below the foot line', () => {
     for (const radius of [3, 8, 15, 20, 25, 40, 80]) {
       const p = neckedViolin();
       p.neck!.heelRadius = radius;
@@ -144,7 +145,9 @@ describe('the heel', () => {
       while (a1 - a0 < -Math.PI) a1 += 2 * Math.PI;
       for (let i = 0; i <= 64; i++) {
         const a = a0 + (a1 - a0) * i / 64;
-        expect(h.center.y + h.r * Math.sin(a), `r=${radius}`).toBeGreaterThanOrEqual(s.buttonTip.y - 1e-9);
+        const x = h.center.x + h.r * Math.cos(a) - s.buttonTip.x;
+        const y = h.center.y + h.r * Math.sin(a) - s.buttonTip.y;
+        expect(x * s.direction.a + y * s.direction.b, `r=${radius}`).toBeGreaterThanOrEqual(-1e-9);
       }
     }
   });
@@ -169,13 +172,10 @@ describe('the neck wood', () => {
     expect(s.scroll[1].y).toBeGreaterThan(s.scroll[0].y);
   });
 
-  it('sizes the scroll box from its own length and depth, square to the neck', () => {
-    const p = neckedViolin();
-    p.neck!.scrollLength = 95;
-    p.neck!.scrollDepth = 33;
-    const s = solve(p);
-    expect(dist(s.scroll[0], s.scroll[1])).toBeCloseTo(95, 9);
-    expect(dist(s.scroll[1], s.scroll[2])).toBeCloseTo(33, 9);
+  it('stands the scroll in as a box twice as long as it is deep, square to the neck', () => {
+    const s = solve(neckedViolin());
+    expect(dist(s.scroll[0], s.scroll[1])).toBeGreaterThan(0);
+    expect(dist(s.scroll[0], s.scroll[1])).toBeCloseTo(2 * dist(s.scroll[1], s.scroll[2]), 9);
     const along = (s.scroll[1].x - s.scroll[0].x) * (s.scroll[2].x - s.scroll[1].x)
       + (s.scroll[1].y - s.scroll[0].y) * (s.scroll[2].y - s.scroll[1].y);
     expect(along).toBeCloseTo(0, 9);

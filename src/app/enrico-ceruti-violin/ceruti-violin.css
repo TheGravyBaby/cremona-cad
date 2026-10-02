@@ -77,7 +77,7 @@
   }
 }
 
-/* a scroll turn's arcs, narrowed so a four point's quarters share one row where three cells is the
+/* a scroll turn's arcs, narrowed so its four quarters share one row where three cells is the
    rule; touch keeps the full width for its steppers and wraps */
 @media (pointer: fine) {
   .field-cell.field-cell--arc {
