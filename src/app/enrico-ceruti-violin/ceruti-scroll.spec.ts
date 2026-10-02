@@ -1,4 +1,4 @@
-import { calculateScroll, defaultVoluteParams, flushVolute, kellyArcRadii, ScrollKey, TO_FRONT, voluteGuides, VoluteSpec, VOLUTE_STYLES } from './ceruti-scroll';
+import { calculateScroll, defaultVoluteParams, flushVolute, kellyArcRadii, ScrollKey, scrollLines, TO_FRONT, voluteGuides, VoluteSpec, VOLUTE_STYLES } from './ceruti-scroll';
 import { defaultNeckParams, standardNutLength } from './ceruti-neck';
 import { defaultViolin } from './ceruti-fixtures';
 import { EnricoCerutiParams, VoluteParams, VoluteStyle } from './ceruti-types';
@@ -19,7 +19,8 @@ const scrolled = (style: VoluteStyle, eyeRadius: number, over: Partial<VolutePar
   const p = defaultViolin();
   p.neck = defaultNeckParams(p);
   p.neck.thickness = 0;
-  p.volute = { ...defaultVoluteParams(p), ...spec(style, eyeRadius, radii), eyeY: EYE_Y, flushWithNeck: true, ...over };
+  p.volute = { ...defaultVoluteParams(p), ...spec(style, eyeRadius, radii), flushWithNeck: true, ...over };
+  p.volute.eye = new Pt(p.volute.eye.x, over.eye?.y ?? EYE_Y);
   const failures = calculateScroll(p);
   return { p, v: p.volute, failures };
 };
@@ -114,13 +115,13 @@ describe.each(STYLES)('the %s volute', style => {
       tangentAt(arcs[i], a, a.start);
     });
     expect(arcs.map(a => a.r)).toEqual([30, 20, 15]);
-    expect(failures.flatMap(f => f.unsolved)).toEqual(['backStraight', 'S3', 'square', 'nape']);
+    expect(failures.flatMap(f => f.unsolved)).toEqual(['backStraight', 'S3', 'nape']);
   });
 
   it('runs the straight on along S2\'s heading, then S3 curving back the other way to its end', () => {
-    const { v } = scrolled(style, 4, BACK);
+    const { p, v } = scrolled(style, 4, BACK);
     const [s2, s3] = [v.S2, v.S3];
-    const [top, foot] = v.backStraightLine!;
+    const [top, foot] = scrollLines(p).backStraight;
     expect([top.x, top.y]).toEqual(at(s2, 4).map(c => expect.closeTo(c, 9)));
     expect(dist(top, foot)).toBeCloseTo(6, 9);
     expect((foot.x - top.x) * Math.cos(4) + (foot.y - top.y) * Math.sin(4)).toBeCloseTo(0, 9);
@@ -134,8 +135,9 @@ describe.each(STYLES)('the %s volute', style => {
   });
 
   it('puts S3 straight on S2 with no straight between', () => {
-    const { v } = scrolled(style, 4, { ...BACK, backStraight: 0 });
-    expect(v.backStraightLine).toBeNull();
+    const { p, v } = scrolled(style, 4, { ...BACK, backStraight: 0 });
+    const [top, foot] = scrollLines(p).backStraight;
+    expect(dist(top, foot)).toBeCloseTo(0, 9);
     expect(at(v.S3, v.S3.end)).toEqual(at(v.S2, v.S2.end).map(c => expect.closeTo(c, 9)));
     tangentAt(v.S2, v.S3, v.S2.end);
   });
@@ -146,7 +148,7 @@ describe.each(STYLES)('the %s volute', style => {
     const neckBack = x + 10;
     p.neck!.thickness = -neckBack;
     expect(unsolved(p)).toEqual([]);
-    expect(v.square!.map(q => [q.x, q.y])).toEqual([[x, y], [neckBack - 3, y]].map(q => q.map(c => expect.closeTo(c, 9))));
+    expect(scrollLines(p).square.map(q => [q.x, q.y])).toEqual([[x, y], [neckBack - 3, y]].map(q => q.map(c => expect.closeTo(c, 9))));
     expect(v.nape.r).toBe(3);
     expect([v.nape.start, v.nape.end]).toEqual([0, Math.PI / 2]);
     expect(at(v.nape, Math.PI / 2)).toEqual([neckBack - 3, y].map(c => expect.closeTo(c, 9)));
@@ -154,15 +156,14 @@ describe.each(STYLES)('the %s volute', style => {
 
     p.neck!.thickness = -(x + 3);
     expect(unsolved(p)).toEqual([]);
-    expect(v.square).toBeNull();
+    expect(dist(...scrollLines(p).square)).toBeCloseTo(0, 9);
     expect(at(v.nape, Math.PI / 2)).toEqual([x, y].map(c => expect.closeTo(c, 9)));
 
     p.neck!.thickness = -(x + 2);
-    expect(unsolved(p)).toEqual(['nape', 'square']);
-    expect(v.square).toBeNull();
+    expect(unsolved(p)).toEqual(['nape']);
     p.neck!.thickness = -neckBack;
     v.nape.r = 0;
-    expect(unsolved(p)).toEqual(['nape', 'square']);
+    expect(unsolved(p)).toEqual(['nape']);
     expect([v.S3.start, v.S3.end]).toEqual([0.2, 4 - Math.PI]);
   });
 
@@ -181,13 +182,13 @@ describe.each(STYLES)('the %s volute', style => {
     const { p, v } = scrolled(style, 4, BACK);
     const nutTop = standardNutLength(p.height);
     const rise = withFront(p);
-    expect(unsolved(p).filter(k => k !== 'nape' && k !== 'square')).toEqual([]);
+    expect(unsolved(p).filter(k => k !== 'nape')).toEqual([]);
     const [f0, f1] = [v.F0, v.F1];
-    expect(v.flatLine!.map(q => [q.x, q.y])).toEqual([[0, nutTop], [0, nutTop + 0.45 * rise]].map(q => q.map(c => expect.closeTo(c, 9))));
+    expect(scrollLines(p).flat.map(q => [q.x, q.y])).toEqual([[0, nutTop], [0, nutTop + 0.45 * rise]].map(q => q.map(c => expect.closeTo(c, 9))));
     expect(at(f0, 0)).toEqual([0, nutTop + 0.45 * rise].map(c => expect.closeTo(c, 9)));
     expect(f0.x).toBeLessThan(0);
     expect([f0.start, f0.end, f0.r]).toEqual([0, Math.PI / 6, 0.4 * rise]);
-    const [top, foot] = v.frontStraightLine!;
+    const [top, foot] = scrollLines(p).frontStraight;
     expect([top.x, top.y]).toEqual(at(f0, f0.end).map(c => expect.closeTo(c, 9)));
     expect(dist(top, foot)).toBeCloseTo(0.3 * rise, 9);
     expect(foot.x).toBeLessThan(top.x);
@@ -210,19 +211,18 @@ describe.each(STYLES)('the %s volute', style => {
     const front = (over: Partial<VoluteParams>) => {
       withFront(p);
       Object.assign(v, over);
-      return unsolved(p).filter(k => k !== 'nape' && k !== 'square');
+      return unsolved(p).filter(k => k !== 'nape');
     };
     expect(front({ flat: 0.01 })).toEqual(['F1']);
     expect(front({ flat: 0 })).not.toContain('flat');
-    expect(v.flatLine).toBeNull();
+    expect(dist(...scrollLines(p).flat)).toBeCloseTo(0, 9);
     expect(front({ flat: -1 })).toEqual(['F0', 'F1', 'flat', 'frontStraight']);
-    expect([v.flatLine, v.frontStraightLine]).toEqual([null, null]);
     for (const f0 of [arc(0, 0, 1), arc(10, 0, 0), arc(10, 0, 7)]) {
       expect(front({ F0: f0 })).toEqual(['F0', 'F1', 'frontStraight']);
-      expect(v.flatLine).not.toBeNull();
+      expect(dist(...scrollLines(p).flat)).toBeCloseTo(0.45 * rise, 9);
     }
     expect(front({ frontStraight: -1 })).toEqual(['F1', 'frontStraight']);
-    expect([v.F0.r, v.frontStraightLine]).toEqual([0.4 * rise, null]);
+    expect(v.F0.r).toBe(0.4 * rise);
     expect(front({ F1: arc(0, 0, 0) })).toEqual(['F1']);
   });
 
@@ -233,14 +233,14 @@ describe.each(STYLES)('the %s volute', style => {
       return unsolved(p);
     };
     for (const bad of [arc(0, 0, Math.PI), arc(20, 0, Math.PI / 2), arc(20, 0, Math.PI / 2 + 7), arc(20, 0, NaN)]) {
-      expect(back({ S1: bad })).toEqual(['S1', 'S2', 'S3', 'backStraight', 'nape', 'square']);
-      expect([v.S0.r, v.S0.end, v.backStraightLine]).toEqual([30, Math.PI / 2, null]);
+      expect(back({ S1: bad })).toEqual(['S1', 'S2', 'S3', 'backStraight', 'nape']);
+      expect([v.S0.r, v.S0.end]).toEqual([30, Math.PI / 2]);
     }
-    expect(back({ backStraight: -1 })).toEqual(['S3', 'backStraight', 'nape', 'square']);
-    expect([v.S2.end, v.backStraightLine]).toEqual([4, null]);
+    expect(back({ backStraight: -1 })).toEqual(['S3', 'backStraight', 'nape']);
+    expect(v.S2.end).toBe(4);
     for (const hollow of [arc(0, 0, 0), arc(12, 4 - Math.PI, 0), arc(12, 4 - 3 * Math.PI - 0.1, 0)]) {
-      expect(back({ S3: hollow })).toEqual(['S3', 'nape', 'square']);
-      expect(v.backStraightLine).not.toBeNull();
+      expect(back({ S3: hollow })).toEqual(['S3', 'nape']);
+      expect(dist(...scrollLines(p).backStraight)).toBeCloseTo(6, 9);
     }
   });
 
@@ -249,12 +249,12 @@ describe.each(STYLES)('the %s volute', style => {
     const guides = voluteGuides(v);
     const drawn = def.guides(spec(style, 4));
     drawn.forEach((line, i) => line.forEach((p, j) => {
-      expect(guides[i][j].x).toBeCloseTo(v.eyeX + p.x, 9);
-      expect(guides[i][j].y).toBeCloseTo(v.eyeY + p.y, 9);
+      expect(guides[i][j].x).toBeCloseTo(v.eye.x + p.x, 9);
+      expect(guides[i][j].y).toBeCloseTo(v.eye.y + p.y, 9);
     }));
     const arcs = def.arcs(spec(style, 4));
     const inner = v.spiral!.at(-1)!;
-    expect(inner.x).toBeCloseTo(v.eyeX + arcs[arcs.length - 1].x, 9);
+    expect(inner.x).toBeCloseTo(v.eye.x + arcs[arcs.length - 1].x, 9);
   });
 
   it('draws nothing for an eye that is not a positive radius', () => {
@@ -268,8 +268,8 @@ describe.each(STYLES)('the %s volute', style => {
 
   it('brings the spiral\'s front flush with the neck at any height', () => {
     for (const eyeY of [70, 85]) {
-      const { v } = scrolled(style, 4, { eyeY });
-      expect(v.eyeY).toBe(eyeY);
+      const { v } = scrolled(style, 4, { eye: new Pt(0, eyeY) });
+      expect(v.eye.y).toBe(eyeY);
       const right = Math.max(...v.spiral!.flatMap(a =>
         [a.start, a.end, 0, 2 * Math.PI, 4 * Math.PI, 6 * Math.PI].filter(t => t === a.start || t === a.end || angleWithinSweep(t, a.start, a.end)).map(t => at(a, t)[0])));
       expect(Math.abs(right), `at ${eyeY}`).toBeLessThanOrEqual(FLUSH);
@@ -278,8 +278,8 @@ describe.each(STYLES)('the %s volute', style => {
 
   it('goes wherever the eye is put, unchanged', () => {
     const fitted = scrolled(style, 4).v;
-    const { v } = scrolled(style, 4, { flushWithNeck: false, eyeX: fitted.eyeX - 5, eyeY: fitted.eyeY - 7 });
-    expect([v.eyeX, v.eyeY]).toEqual([fitted.eyeX - 5, fitted.eyeY - 7]);
+    const { v } = scrolled(style, 4, { flushWithNeck: false, eye: new Pt(fitted.eye.x - 5, fitted.eye.y - 7) });
+    expect([v.eye.x, v.eye.y]).toEqual([fitted.eye.x - 5, fitted.eye.y - 7]);
     v.spiral!.forEach((a, i) => {
       expect(a.x).toBeCloseTo(fitted.spiral![i].x - 5, 9);
       expect(a.y).toBeCloseTo(fitted.spiral![i].y - 7, 9);
@@ -292,8 +292,8 @@ describe.each(STYLES)('the %s volute', style => {
   });
 
   it('draws nothing for an eye that has no place yet', () => {
-    expect(scrolled(style, 4, { flushWithNeck: false, eyeX: NaN, eyeY: 50 }).v.spiral).toBeNull();
-    expect(scrolled(style, 4, { flushWithNeck: false, eyeX: -20, eyeY: NaN }).v.spiral).toBeNull();
+    expect(scrolled(style, 4, { flushWithNeck: false, eye: new Pt(NaN, 50) }).v.spiral).toBeNull();
+    expect(scrolled(style, 4, { flushWithNeck: false, eye: new Pt(-20, NaN) }).v.spiral).toBeNull();
   });
 });
 

@@ -5,7 +5,7 @@ import { renderSolveFailures } from '../../../helpers/renderFuncs';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, RenderToggleKey, VoluteParams } from '../../ceruti-types';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { defaultNeckParams } from '../../ceruti-neck';
-import { calculateScroll, ScrollKey } from '../../ceruti-scroll';
+import { calculateScroll, ScrollKey, scrollLines } from '../../ceruti-scroll';
 import { renderScroll, renderScrollNeck, renderVolute } from '../../renders/scroll.render';
 import { HighlightedArc, HighlightedSegment } from '../../renders/render-constants';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
@@ -64,11 +64,7 @@ export class ScrollPanel extends CerutiPanelBase implements OnInit {
     const key = this.highlightedKey;
     const color = this.highlightedColor;
     const solved = (k: ScrollKey) => !failures.some(f => f.unsolved.includes(k));
-    const line =
-      key === 'backStraight' ? v.backStraightLine :
-      key === 'flat' ? v.flatLine :
-      key === 'frontStraight' ? v.frontStraightLine :
-      null;
+    const line = (key === 'backStraight' || key === 'flat' || key === 'frontStraight') && solved(key) ? scrollLines(p)[key] : null;
     const arc = (key === 'S2' || key === 'S3' || key === 'nape' || key === 'F0' || key === 'F1') && solved(key) ? v[key] : null;
     const highlighted: HighlightedArc | null = arc ? { arc, color } : null;
     const highlightedLine: HighlightedSegment | null = line ? { line, color } : null;
