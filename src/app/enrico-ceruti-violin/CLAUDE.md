@@ -89,10 +89,9 @@ recognizes the current format *positively* so it stays idempotent; six tests in
   runs on past the nut, and the nut itself is the thing standing proud, not a step the scroll
   itself takes. Building the scroll off `nutString` looks tempting since it's the point closest
   at hand, but it makes the scroll jump up to string height at the nut and is wrong.
-- **A panel's help-text info icons are added by hand, not by an agent.** Every `ⓘ` button
-  wired to a `*Info()` help function was pulled from every panel (2026-09-14) — the write-ups in
-  `ceruti-helpers.ts` stayed as reference text, but no panel binds them any more. Don't add a new
-  one when adding a field; leave that to a human pass.
+- **A panel's help-text info icons are added by hand, not by an agent.** Don't add an `ⓘ`
+  button or a new `*Info()` when adding a field; leave that to a human pass. The neck panel's
+  write-ups in `ceruti-helpers.ts` exist but aren't bound yet.
 - **The neck's own `length` places the nut; the string figures are read off, not dialed.**
   `length` is the root to the nut, along the neck — `nutAt = root` moved `length` toward the nut,
   one `moveInVectorSpace` call, no intersection needed. `stringLength` (nut to bridge, the

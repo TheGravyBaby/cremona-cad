@@ -44,6 +44,8 @@
             <button type="button" class="recipe-btn" (click)="resetCorner('upper')"
                 title="Set the upper corner to a default position">Default</button>
         </div>
+        <button type="button" class="info-icon" (click)="cornerPositionInfo()" title="More information"
+            aria-label="Information">ⓘ</button>
     </div>
 
     <div class="ui-group">
@@ -90,6 +92,8 @@
                     <div class="basic-display" aria-label="Upper compound corner radius to lower bout width ratio value">{{
                         nearestFraction(params.ratios.U31toLBW) }}</div>
                 </label>
+                <button type="button" class="info-icon" (click)="compoundArcInfo()" title="More information"
+                    aria-label="Information">ⓘ</button>
             </div>
         </div>
         }
@@ -98,6 +102,8 @@
                 <input type="checkbox" [(ngModel)]="params.options.useViolCornerUC"
                     (change)="onChange()" /><span>Use Viol Corner</span>
             </div>
+            <button type="button" class="info-icon" (click)="violCornerInfo()" title="More information"
+                aria-label="Information">ⓘ</button>
         </div>
     </div>
 
@@ -126,6 +132,8 @@
             <button type="button" class="recipe-btn" (click)="resetCorner('lower')"
                 title="Set the lower corner to a default position">Default</button>
         </div>
+        <button type="button" class="info-icon" (click)="cornerPositionInfo()" title="More information"
+            aria-label="Information">ⓘ</button>
     </div>
     <div class="ui-group">
         <div class="input-group basic-row field-row" role="group"
@@ -171,6 +179,8 @@
                     <div class="basic-display" aria-label="Lower compound corner radius to lower bout width ratio value">{{
                         nearestFraction(params.ratios.L31toLBW) }}</div>
                 </label>
+                <button type="button" class="info-icon" (click)="compoundArcInfo()" title="More information"
+                    aria-label="Information">ⓘ</button>
             </div>
         </div>
         }
@@ -179,6 +189,8 @@
                 <input type="checkbox" [(ngModel)]="params.options.useViolCornerLC"
                     (change)="onChange()" /><span>Use Viol Corner</span>
             </div>
+            <button type="button" class="info-icon" (click)="violCornerInfo()" title="More information"
+                aria-label="Information">ⓘ</button>
         </div>
     </div>
 

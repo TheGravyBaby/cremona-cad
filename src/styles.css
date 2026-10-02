@@ -41,6 +41,16 @@
   --ui-topbar-control-bg-hover: rgba(58, 58, 62, 1);
   --ui-topbar-divider: var(--ui-border-soft);
 
+  /* messages: the chips in the bar and the sheets that hang from it */
+  --ui-message-bg: var(--ui-topbar-grad-2);
+  --ui-message-border: var(--ui-topbar-border);
+  --ui-message-chip-bg: var(--ui-topbar-control-bg);
+  --ui-message-chip-bg-hover: var(--ui-topbar-control-bg-hover);
+  --ui-message-chip-border: var(--ui-topbar-control-border);
+  --ui-severity-error: #ff6b6b;
+  --ui-severity-warn: #ffb86b;
+  --ui-severity-info: var(--ui-accent);
+
   --ui-canvas-btn-bg-start: #3a3a3f;
   --ui-canvas-btn-bg-end: #2f2f33;
   --ui-canvas-btn-bg-active: #2a2a2f;
@@ -95,6 +105,16 @@
   --ui-topbar-control-bg: rgba(228, 206, 140, 0.92);
   --ui-topbar-control-bg-hover: rgba(238, 216, 156, 1);
   --ui-topbar-divider: rgba(140, 104, 20, 0.42);
+
+  /* a page of text on the gold bar reads badly, so by day messages take the panel surface */
+  --ui-message-bg: var(--ui-bg-panel);
+  --ui-message-border: var(--ui-border-strong);
+  --ui-message-chip-bg: var(--ui-bg-panel);
+  --ui-message-chip-bg-hover: var(--ui-control-bg-hover);
+  --ui-message-chip-border: var(--ui-border-strong);
+  --ui-severity-error: #d9534f;
+  --ui-severity-warn: #f0ad4e;
+  --ui-severity-info: var(--ui-accent);
 
   --ui-canvas-btn-bg-start: #e4e7eb;
   --ui-canvas-btn-bg-end: #d8dce2;
