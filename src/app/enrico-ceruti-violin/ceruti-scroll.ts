@@ -6,8 +6,8 @@ import { standardNutLength } from './ceruti-neck';
 
 // The scroll in its own side-view frame: the nut at the origin on the neck's front, up the neck +y,
 // toward the back -x. The volute's spiral about the eye, then the back and front run off it, and
-// the defaults for all of it. The volute panel edits the spiral, the scroll panel the back and
-// front; both draw the whole thing through renders/scroll.render.ts.
+// the defaults for all of it. The volute panel edits the spiral and the crown (S0, S1), the scroll
+// panel the rest of the back and the front; both draw through renders/scroll.render.ts.
 
 // One arc of the spiral, swept counterclockwise from `from` to `to`.
 export type VoluteArc = { center: Pt; r: number; from: number; to: number };
@@ -282,6 +282,10 @@ export function layoutVolute(v: VoluteSpec, eye: Pt): PlacedVolute | null {
     guides: VOLUTE_STYLES[v.style].guides(v).map(line => line.map(place)),
   };
 }
+
+// S0 and S1, the crown over the top of the scroll, are edited with the volute; the rest of the
+// back from S2 on with the front
+export const CROWN_ARCS = 2;
 
 export interface PlacedBack {
   arcs: VoluteArc[];

@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, RenderToggleKey, VoluteParams } from '../../ceruti-types';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { defaultNeckParams } from '../../ceruti-neck';
-import { ensureVolute } from '../../ceruti-scroll';
+import { CROWN_ARCS, ensureVolute } from '../../ceruti-scroll';
 import { backColor, frontColor, renderScroll, ScrollPart } from '../../renders/scroll.render';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 
@@ -33,11 +33,8 @@ export class ScrollPanel extends CerutiPanelBase implements OnInit {
   get hollowColor(): string { return this.backColor(this.volute.back.length); }
   frontColor(i: number): string { return frontColor(this.colors, i); }
 
-  protected readonly backHelp = [
-    "The arc carrying the spiral's front on up to the top of the scroll",
-    'The arc from the top of the scroll on over to the back',
-    'The arc from the back on down toward the pegbox',
-  ];
+  // the back's arcs from S2 on; the crown before them is the volute panel's
+  get backRows(): number[] { return this.volute.back.map((_, i) => i).slice(CROWN_ARCS); }
 
   endDegrees(end: number): number { return Math.round(end * 1800 / Math.PI) / 10; }
   setEnd(arc: { end: number }, degrees: number): void {
