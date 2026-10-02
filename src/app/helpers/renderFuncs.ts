@@ -1,5 +1,6 @@
-import { Pt, Circle, Line, Rectangle, Arc } from "../models/types";
+import { Pt, Circle, Line, Rectangle, Arc, SweptArc } from "../models/types";
 import { pointOnCircle } from "./math/simpleGeometry";
+import { arcPathData } from "./math/pathMath";
 import { SolveFailure } from "./validators";
 
 export const renderDistanceMeasurementLine = (P: Pt, Q: Pt, label: string, color: string) => (g: any, ui: any) => {
@@ -683,6 +684,30 @@ export const renderArcFromArcFancy = (arc: Arc, color: string) => (g: any, ui: a
 export const renderArcHalo = (arc: Arc, color: string, haloWidth = 12, opacity = .33) => (g: any, ui: any) => {
     const group = g.append("g").attr("opacity", opacity).attr("data-decoration", "");
     renderArcFromArc(arc, color, haloWidth, false)(group, ui);
+}
+
+// the SweptArc counterparts of renderArcFromArc, renderArcFromArcFancy and renderArcHalo: the
+// sweep is the arc's own, counterclockwise from `from` to `to`, so there is no minor/major choice
+export const renderSweptArc = (arc: SweptArc, color: string, strokeWidth: number = 1) => (g: any, ui: any) => {
+    if (!Number.isFinite(arc.r) || arc.r <= 1e-9) return;
+    renderPath(arcPathData(arc, arc.r, arc.from, arc.to), color, strokeWidth)(g, ui);
+}
+
+export const renderSweptArcFancy = (arc: SweptArc, color: string) => (g: any, ui: any) => {
+    renderSweptArc(arc, color, 2)(g, ui);
+    renderDashLine(arc, pointOnCircle(arc, arc.from), color)(g, ui);
+    renderDashLine(arc, pointOnCircle(arc, arc.to), color)(g, ui);
+    renderSmallCrosshair(arc, color)(g, ui);
+}
+
+export const renderSweptArcHalo = (arc: SweptArc, color: string, haloWidth = 12, opacity = .33) => (g: any, ui: any) => {
+    const group = g.append("g").attr("opacity", opacity).attr("data-decoration", "");
+    renderSweptArc(arc, color, haloWidth)(group, ui);
+}
+
+export const renderSegmentHalo = (P: Pt, Q: Pt, color: string, haloWidth = 12, opacity = .33) => (g: any, ui: any) => {
+    const group = g.append("g").attr("opacity", opacity).attr("data-decoration", "");
+    renderSegment(P, Q, color, haloWidth)(group, ui);
 }
 
 /**

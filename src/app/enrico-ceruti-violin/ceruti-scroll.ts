@@ -1,20 +1,20 @@
-import { angleWithinSweep, dist, normalizeRadians } from '../helpers/math/simpleGeometry';
+import { angleFromCenter, angleWithinSweep, dist, moveInVectorSpace, normalizeRadians, placeCircleOnPointAtAngle, pointOnCircle, vectorFromSlope } from '../helpers/math/simpleGeometry';
 import { circleCircleIntersections } from '../helpers/math/draftMath';
-import { Pt } from '../models/types';
+import { reportFailures, SolveFailure, solveSection } from '../helpers/validators';
+import { Pt, SweptArc } from '../models/types';
 import { EnricoCerutiParams, VoluteParams, VoluteStyle } from './ceruti-types';
 import { standardNutLength } from './ceruti-neck';
 
 // The scroll in its own side-view frame: the nut at the origin on the neck's front, up the neck +y,
-// toward the back -x. The volute's spiral about the eye, then the back and front run off it, and
-// the defaults for all of it. The volute panel edits the spiral and the crown (S0, S1), the scroll
-// panel the rest of the back and the front; both draw through renders/scroll.render.ts.
+// toward the back -x. The volute's spiral styles about the eye, and `calculateScroll`, which lays
+// the spiral out and runs the back and front off it, writing every arc and line onto `p.volute`
+// for renders/scroll.render.ts to read — the split calculateFholeContours and calculateNeck use.
+// The volute panel edits the spiral and the crown (S0, S1), the scroll panel the back from S2 on
+// and the front.
 
-// One arc of the spiral, swept counterclockwise from `from` to `to`.
-export type VoluteArc = { center: Pt; r: number; from: number; to: number };
-
-// what a style draws from: the eye, for the four point the arc radii and for the Archimedean its
-// pitch
-export type VoluteSpec = Pick<VoluteParams, 'style' | 'eyeRadius' | 'arcRadii' | 'pitch'>;
+// what a style draws from: the eye, for the four point the arc radii, for the Archimedean its
+// pitch and for Kelly his seed
+export type VoluteSpec = Pick<VoluteParams, 'style' | 'eyeRadius' | 'arcRadii' | 'pitch' | 'seedLength'>;
 
 // A style draws its whole construction in the eye's own frame (origin at the eye's centre), arcs
 // outermost first. Every spiral leaves the eye at its front, heading up, as Kelly's later drawings
@@ -25,12 +25,12 @@ export type VoluteSpec = Pick<VoluteParams, 'style' | 'eyeRadius' | 'arcRadii' |
 // its arcs from the eye, so the scroll's own arcs can always take over at the front heading
 // straight up. `guides` is the figure the centres are found on, as polylines in the same frame,
 // for the guides view. `custom` marks the four point. A historical figure is sized at its
-// author's proportion to the eye, so the eye alone sets the whole spiral.
+// author's proportion to the eye, so the eye alone sets the whole spiral, all but Kelly's seed.
 export interface VoluteStyleDef {
   label: string;
   custom?: boolean;
   front: number;
-  arcs: (v: VoluteSpec) => VoluteArc[];
+  arcs: (v: VoluteSpec) => SweptArc[];
   guides: (v: VoluteSpec) => Pt[][];
 }
 
@@ -38,18 +38,20 @@ export interface VoluteStyleDef {
 export const TO_FRONT = 8;
 
 const QUARTER = Math.PI / 2;
+const TWO_PI = 2 * Math.PI;
 const polar = (r: number, angle: number) => new Pt(r * Math.cos(angle), r * Math.sin(angle));
+const sweptArc = (center: Pt, r: number, from: number, to: number): SweptArc => ({ x: center.x, y: center.y, r, from, to });
 const square = (left: number, right: number, bottom: number, top: number) =>
   [new Pt(left, bottom), new Pt(right, bottom), new Pt(right, top), new Pt(left, top), new Pt(left, bottom)];
 
 // a quarter turn about each centre in turn, from the eye's front, each radius the last's plus the
 // step between their centres so the arcs run on tangent. Outermost first
-const quarterTurns = (centers: Pt[], first: number): VoluteArc[] => {
+const quarterTurns = (centers: Pt[], first: number): SweptArc[] => {
   let r = first;
   return centers.map((center, i) => {
     if (i > 0) r += dist(centers[i - 1], center);
     const from = normalizeRadians(QUARTER * i);
-    return { center, r, from, to: from + QUARTER };
+    return sweptArc(center, r, from, from + QUARTER);
   }).reverse();
 };
 
@@ -75,28 +77,33 @@ const serlio: VoluteStyleDef = {
 // the curve's exact direction at the eye instead, the arcs alternate a little flat and a little
 // round the whole way out.
 const EIGHTHS = 2 * TO_FRONT;
-const archimedeanArcs = (eyeRadius: number, pitch: number): VoluteArc[] => {
+const archimedeanArcs = (eyeRadius: number, pitch: number): SweptArc[] => {
   const angle = (k: number) => k * Math.PI / 4;
   const radius = (k: number) => eyeRadius + pitch * k / 8;
   const points = Array.from({ length: EIGHTHS + 1 }, (_, k) => polar(radius(k), angle(k)));
+  const growth = pitch / TWO_PI;
   const heading = (k: number) => {
-    const [r, g, t] = [radius(k), pitch / (2 * Math.PI), angle(k)];
-    return Math.atan2(g * Math.sin(t) + r * Math.cos(t), g * Math.cos(t) - r * Math.sin(t));
+    const r = radius(k);
+    const t = angle(k);
+    return Math.atan2(growth * Math.sin(t) + r * Math.cos(t), growth * Math.cos(t) - r * Math.sin(t));
   };
   const chord = Math.atan2(points[1].y - points[0].y, points[1].x - points[0].x);
   const miss = (k: number) => normalizeRadians(heading(k) - chord + Math.PI) - Math.PI;
+
   let tangent = polar(1, chord + (miss(0) - miss(1)) / 2);
-  const arcs: VoluteArc[] = [];
+  const arcs: SweptArc[] = [];
   for (let k = 0; k < EIGHTHS; k++) {
-    const [p, q] = [points[k], points[k + 1]];
+    const p = points[k];
+    const q = points[k + 1];
     const len = Math.hypot(tangent.x, tangent.y);
     const normal = new Pt(-tangent.y / len, tangent.x / len);
-    const [dx, dy] = [q.x - p.x, q.y - p.y];
+    const dx = q.x - p.x;
+    const dy = q.y - p.y;
     const r = (dx * dx + dy * dy) / (2 * (dx * normal.x + dy * normal.y));
     const center = new Pt(p.x + r * normal.x, p.y + r * normal.y);
-    const from = Math.atan2(p.y - center.y, p.x - center.x);
-    const to = from + normalizeRadians(Math.atan2(q.y - center.y, q.x - center.x) - from);
-    arcs.push({ center, r, from, to });
+    const from = angleFromCenter(center, p);
+    const to = from + normalizeRadians(angleFromCenter(center, q) - from);
+    arcs.push(sweptArc(center, r, from, to));
     tangent = new Pt(center.y - q.y, q.x - center.x);
   }
   return arcs.reverse();
@@ -133,11 +140,11 @@ const salviati: VoluteStyleDef = {
     for (let i = n - 2; i >= 0; i--) radii[i] = radii[i + 1] + dist(centers[i], centers[i + 1]);
 
     // joints[i] is where arc i meets the arc inside it, along the line between their centres
-    const joints = centers.slice(0, n - 1).map((c, i) => Math.atan2(centers[i + 1].y - c.y, centers[i + 1].x - c.x));
+    const joints = centers.slice(0, n - 1).map((c, i) => angleFromCenter(c, centers[i + 1]));
     return centers.map((center, i) => {
       const from = i < n - 1 ? joints[i] : Math.atan2(-last.y, eyeRadius - last.x);
       const outerEnd = i > 0 ? joints[i - 1] : joints[0] + QUARTER;
-      return { center, r: radii[i], from, to: from + normalizeRadians(outerEnd - from) };
+      return sweptArc(center, radii[i], from, from + normalizeRadians(outerEnd - from));
     });
   },
   guides: ({ eyeRadius }) => {
@@ -155,14 +162,16 @@ const salviati: VoluteStyleDef = {
 // eye's radius and the others 1/3 and 2/3 of it, but sharing a side along the eye's horizontal
 // diameter and centred on it, hanging below, rather than nested about the eye's centre. That
 // lines every ring change up with the joint, so all twelve arcs are exact quarter circles and
-// still tangent; radii run 7/6 of the eye's radius up to 51/6, reaching 9 radii out. Later than Cremona's golden age and printed in Germany, so
-// the least likely of these to have been on a Cremonese bench.
+// still tangent; radii run 7/6 of the eye's radius up to 51/6, reaching 9 radii out. Later than
+// Cremona's golden age and printed in Germany, so the least likely of these to have been on a
+// Cremonese bench.
 const goldmann: VoluteStyleDef = {
   label: 'Goldmann (1696)',
   front: TO_FRONT,
   // round each square from its upper left corner, the first reaching the front of the eye
   arcs: ({ eyeRadius }) => quarterTurns([1, 2, 3].flatMap(k => {
-    const [w, h] = [k * eyeRadius / 3, k * eyeRadius / 6];
+    const w = k * eyeRadius / 3;
+    const h = k * eyeRadius / 6;
     return [new Pt(-h, 0), new Pt(-h, -w), new Pt(h, -w), new Pt(h, 0)];
   }), 7 * eyeRadius / 6),
   guides: ({ eyeRadius }) => [
@@ -171,22 +180,25 @@ const goldmann: VoluteStyleDef = {
   ],
 };
 
-// Kelly (Kevin Kelly, Boston, 2011): a seed of four equal squares stacked in a column as tall as
-// the eye's radius, centred on the eye with its middle line on the eye's vertical diameter. The
-// first arc leaves the eye's front from the left end of the middle line, then the centres go round
-// the two middle squares' outer corners, lower left, lower right, upper right, upper left, and the
-// same round the seed's own corners. His ninth arc goes on past the front.
+// Kelly (Kevin Kelly, Boston, 2011): a seed of four equal squares stacked in a column, centred on
+// the eye with its middle line on the eye's vertical diameter. The first arc leaves the eye's front
+// from the left end of the middle line, then the centres go round the two middle squares' outer
+// corners, lower left, lower right, upper right, upper left, and the same round the seed's own
+// corners. His ninth arc goes on past the front. He varies the seed's length from scroll to scroll,
+// so it is a field of its own; his drawing stands it as tall as the eye's radius.
 const kelly: VoluteStyleDef = {
   label: 'Kelly (2011)',
   front: TO_FRONT,
-  arcs: ({ eyeRadius }) => {
-    const s = eyeRadius / 4;
+  arcs: ({ eyeRadius, seedLength }) => {
+    if (!(seedLength > 0)) return [];
+    const s = seedLength / 4;
     const corners = [1, 2].flatMap(t => [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([x, y]) => new Pt(x * s / 2, y * t * s)));
-    return quarterTurns([new Pt(-s / 2, 0), ...corners], 9 * eyeRadius / 8);
+    return quarterTurns([new Pt(-s / 2, 0), ...corners], eyeRadius + s / 2);
   },
   guides: v => {
-    const s = v.eyeRadius / 4;
-    const reach = Math.max(v.eyeRadius, ...kelly.arcs(v).slice(1).map(a => dist(new Pt(0, 0), a.center) + a.r));
+    if (!(v.seedLength > 0)) return [];
+    const s = v.seedLength / 4;
+    const reach = Math.max(v.eyeRadius, ...kelly.arcs(v).slice(1).map(a => dist(new Pt(0, 0), a) + a.r));
     return [
       square(-s / 2, s / 2, -2 * s, 2 * s),
       ...[-1, 0, 1].map(k => [new Pt(-s / 2, k * s), new Pt(s / 2, k * s)]),
@@ -206,7 +218,9 @@ const kelly: VoluteStyleDef = {
 const fourPointCentres = (eyeRadius: number, arcRadii: number[]) => {
   const centers = [new Pt(eyeRadius - arcRadii[0], 0)];
   arcRadii.slice(1).forEach((r, i) => {
-    const [last, grow, joint] = [centers[i], r - arcRadii[i], QUARTER * (i + 1)];
+    const last = centers[i];
+    const grow = r - arcRadii[i];
+    const joint = QUARTER * (i + 1);
     centers.push(new Pt(last.x - grow * Math.cos(joint), last.y - grow * Math.sin(joint)));
   });
   return centers;
@@ -220,208 +234,279 @@ const fourPoint: VoluteStyleDef = {
     if (!(arcRadii[0] > 0) || !arcRadii.every((r, i) => r >= (arcRadii[i - 1] ?? 0))) return [];
     return fourPointCentres(eyeRadius, arcRadii).map((center, i) => {
       const from = normalizeRadians(QUARTER * i);
-      return { center, r: arcRadii[i], from, to: from + QUARTER };
+      return sweptArc(center, arcRadii[i], from, from + QUARTER);
     }).reverse();
   },
   guides: ({ eyeRadius, arcRadii }) => [arcRadii.length ? fourPointCentres(eyeRadius, arcRadii) : []],
 };
 
-// the even growth the four point's fields start from: the centres going round a square as large as
-// the eye holds, one side on its horizontal diameter and its far corners on its edge, the first arc
-// from the front of the eye back to the first corner and each after it a side longer. Rounded to the
-// hundredth like the fields
-export const naturalArcRadii = (eyeRadius: number, count: number): number[] => {
-  const side = 2 * eyeRadius / Math.sqrt(5);
-  return Array.from({ length: count }, (_, i) => Math.round((eyeRadius + side / 2 + i * side) * 100) / 100);
-};
+// the four point's fields start from Kelly's radii on the volute's own eye and seed: both strike a
+// quarter turn about each centre in turn, so with his radii the four point's centres land on his
+// and it draws his spiral until a field moves. Rounded to the hundredth like the fields
+export const kellyArcRadii = (v: Pick<VoluteParams, 'eyeRadius' | 'seedLength'>): number[] =>
+  kelly.arcs({ ...v, style: 'kelly', arcRadii: [], pitch: 0 })
+    .reverse()
+    .slice(0, TO_FRONT)
+    .map(a => Math.round(a.r * 100) / 100);
 
 export const VOLUTE_STYLES: Record<VoluteStyle, VoluteStyleDef> = {
   fourPoint, archimedean, serlio, salviati, goldmann, kelly,
 };
 
-export interface PlacedVolute {
-  spiral: VoluteArc[];
-  guides: Pt[][];
-}
-
-// the style's figure out to the front, the outermost arc rolled back or on to end there exactly
-// about its own centre, heading straight up. Salviati's ring changes and the Archimedean's points
-// only come close to it on their own
-function drawn(v: VoluteSpec): VoluteArc[] | null {
+// the style's figure out to the front, in the eye's frame, the outermost arc rolled back or on to
+// end there exactly about its own centre, heading straight up. Salviati's ring changes and the
+// Archimedean's points only come close to it on their own
+function drawn(v: VoluteSpec): SweptArc[] | null {
   if (!(v.eyeRadius > 0)) return null;
   const { front, arcs: figure } = VOLUTE_STYLES[v.style];
   const arcs = figure(v);
   if (arcs.length < front) return null;
   const [outer, ...rest] = arcs.slice(-front);
-  return [{ ...outer, to: Math.round(outer.to / (2 * Math.PI)) * 2 * Math.PI }, ...rest];
+  return [{ ...outer, to: Math.round(outer.to / TWO_PI) * TWO_PI }, ...rest];
 }
 
 // the furthest an arc reaches toward the front
-function frontmost({ center, r, from, to }: VoluteArc): number {
-  const passesFront = Math.floor(to / (2 * Math.PI)) > Math.floor(from / (2 * Math.PI));
-  return passesFront ? center.x + r : center.x + r * Math.max(Math.cos(from), Math.cos(to));
+function frontmost({ x, r, from, to }: SweptArc): number {
+  const passesFront = Math.floor(to / TWO_PI) > Math.floor(from / TWO_PI);
+  return passesFront ? x + r : x + r * Math.max(Math.cos(from), Math.cos(to));
 }
 
-// the eye's x that brings the spiral's front flush with the neck's front, x = 0. In the scroll's
-// frame: the nut at the origin, up the neck +y, toward the back -x
+// the eye's x that brings the spiral's front flush with the neck's front, x = 0
 export function flushVolute(v: VoluteSpec): number | null {
   const arcs = drawn(v);
   return arcs ? -Math.max(...arcs.map(frontmost)) : null;
 }
 
-// every style goes through the same steps about the eye, wherever it has been put in the scroll's frame
-export function layoutVolute(v: VoluteSpec, eye: Pt): PlacedVolute | null {
-  if (!Number.isFinite(eye.x) || !Number.isFinite(eye.y)) return null;
-  const arcs = drawn(v);
-  if (!arcs) return null;
-
-  // the drawing is in the eye's own frame, so the eye's centre carries it into the scroll's
-  const place = (p: Pt) => new Pt(eye.x + p.x, eye.y + p.y);
-  return {
-    spiral: arcs.map(a => ({ ...a, center: place(a.center) })),
-    guides: VOLUTE_STYLES[v.style].guides(v).map(line => line.map(place)),
-  };
-}
-
-// S0 and S1, the crown over the top of the scroll, are edited with the volute; the rest of the
-// back from S2 on with the front
-export const CROWN_ARCS = 2;
-
-export interface PlacedBack {
-  arcs: VoluteArc[];
-  straight: [Pt, Pt] | null;
-  square: [Pt, Pt] | null;
-  nape: VoluteArc | null;
-}
-
-// the back takes over at the spiral's front, where its outermost arc ends heading straight up, S0
-// to S2 each on tangent from where the last ended round to its own end angle. The straight runs on
-// along S2's heading, and S3 turns the other way off its end, clockwise about a centre on the far
-// side, to the duck tail. From there a line runs square to the neck, forward to its back at
-// `neckBack`, the nape filleting that corner. Whatever isn't a positive radius, a forward sweep of
-// up to a full turn, or a length, or a duck tail too near the neck for the nape, ends the run there
-export function layoutBack(spiral: VoluteArc[], { back, straight, hollow, nape }: Pick<VoluteParams, 'back' | 'straight' | 'hollow' | 'nape'>, neckBack: number): PlacedBack {
-  const placed: PlacedBack = { arcs: [], straight: null, square: null, nape: null };
-  if (!spiral.length) return placed;
-  const { center, r } = spiral[0];
-  let joint = new Pt(center.x + r, center.y);
-  let from = 0;
-  for (const { r, end } of back) {
-    if (!(r > 0) || !(end > from) || end - from > 2 * Math.PI) return placed;
-    const c = new Pt(joint.x - r * Math.cos(from), joint.y - r * Math.sin(from));
-    placed.arcs.push({ center: c, r, from, to: end });
-    joint = new Pt(c.x + r * Math.cos(end), c.y + r * Math.sin(end));
-    from = end;
-  }
-
-  if (!(straight >= 0)) return placed;
-  const foot = new Pt(joint.x - straight * Math.sin(from), joint.y + straight * Math.cos(from));
-  if (straight > 0) placed.straight = [joint, foot];
-
-  const start = from - Math.PI;
-  if (!(hollow.r > 0) || !(hollow.end < start) || start - hollow.end > 2 * Math.PI) return placed;
-  const c = new Pt(foot.x + hollow.r * Math.cos(from), foot.y + hollow.r * Math.sin(from));
-  placed.arcs.push({ center: c, r: hollow.r, from: hollow.end, to: start });
-
-  const duckTail = new Pt(c.x + hollow.r * Math.cos(hollow.end), c.y + hollow.r * Math.sin(hollow.end));
-  const napeStart = neckBack - nape;
-  if (!(nape > 0) || !(duckTail.x <= napeStart)) return placed;
-  if (duckTail.x < napeStart) placed.square = [duckTail, new Pt(napeStart, duckTail.y)];
-  placed.nape = { center: new Pt(napeStart, duckTail.y - nape), r: nape, from: 0, to: Math.PI / 2 };
-  return placed;
-}
-
-export interface PlacedFront {
-  flat: [Pt, Pt] | null;
-  arcs: VoluteArc[];
-  straight: [Pt, Pt] | null;
-}
-
-// the front rises from `start`, the top of the nut on the neck's front: the flat straight up, F0
-// turning toward the back to its end angle, the straight on along its heading, and F1 curving back
-// toward the volute, clockwise about a centre on the far side, until it first crosses a drawn arc
-// of the spiral. Whatever isn't a length, a positive radius or a forward sweep of up to a full
-// turn, or an F1 that never reaches the spiral, ends the run there
-export function layoutFront(spiral: VoluteArc[], { flat, f0, straight, f1 }: VoluteParams['front'], start: Pt): PlacedFront {
-  const placed: PlacedFront = { flat: null, arcs: [], straight: null };
-  if (!(flat >= 0)) return placed;
-  const top = new Pt(start.x, start.y + flat);
-  if (flat > 0) placed.flat = [start, top];
-
-  if (!(f0.r > 0) || !(f0.end > 0) || f0.end > 2 * Math.PI) return placed;
-  const c0 = new Pt(top.x - f0.r, top.y);
-  placed.arcs.push({ center: c0, r: f0.r, from: 0, to: f0.end });
-  const joint = new Pt(c0.x + f0.r * Math.cos(f0.end), c0.y + f0.r * Math.sin(f0.end));
-
-  if (!(straight >= 0)) return placed;
-  const foot = new Pt(joint.x - straight * Math.sin(f0.end), joint.y + straight * Math.cos(f0.end));
-  if (straight > 0) placed.straight = [joint, foot];
-
-  if (!(f1.r > 0)) return placed;
-  const c1 = new Pt(foot.x + f1.r * Math.cos(f0.end), foot.y + f1.r * Math.sin(f0.end));
-  const from = f0.end + Math.PI;
-  let sweep = Infinity;
-  for (const a of spiral) {
-    for (const q of circleCircleIntersections({ ...c1, r: f1.r }, { ...a.center, r: a.r })) {
-      if (!angleWithinSweep(Math.atan2(q.y - a.center.y, q.x - a.center.x), a.from, a.to)) continue;
-      const s = normalizeRadians(from - Math.atan2(q.y - c1.y, q.x - c1.x));
-      if (s > 1e-9 && s < sweep) sweep = s;
-    }
-  }
-  if (sweep < Infinity) placed.arcs.push({ center: c1, r: f1.r, from: from - sweep, to: from });
-  return placed;
+// the figure the style finds its centres on, carried to the eye, for the construction view
+export function voluteGuides(v: VoluteParams): Pt[][] {
+  return VOLUTE_STYLES[v.style].guides(v).map(line => line.map(pt => new Pt(v.eyeX + pt.x, v.eyeY + pt.y)));
 }
 
 // about the Salviati's own opening, its front as far out
 export const defaultPitch = (eyeRadius: number) => Math.round(1.9 * eyeRadius * 10) / 10;
 
+// unplaced until calculateScroll solves its centre and the angle the field doesn't set
+const unplaced = (r: number, from: number, to: number): SweptArc => ({ x: 0, y: 0, r, from, to });
+
 // a Salviati as wide as the one that fitted the Betts scroll, on a 2.6 mm eye 96 mm up from the
-// nut; everything defaults from there
+// nut; everything defaults from there. The back is in proportion to the spiral's outermost arc,
+// widest at the front and tightening over the back, a quarter turn each up to the top and over to
+// the back, then an eighth on down, S3 bringing it round to run straight down parallel to the neck.
+// The front is in proportion to the rise from the top of the nut to the bottom of the spiral,
+// which it has to climb: F0 turning back by a twelfth of a turn leaves the straight aimed in under
+// the volute for F1 to meet it
 export function defaultVoluteParams(p: EnricoCerutiParams): VoluteParams {
-  const k = p.height / 355;
-  const eyeRadius = Math.round(2.6 * k * 10) / 10;
-  const v = { style: 'salviati' as const, eyeRadius, arcRadii: [], pitch: defaultPitch(eyeRadius) };
-  const [eyeX, eyeY] = [Math.round((flushVolute(v) ?? 0) * 100) / 100, Math.round(96 * k * 10) / 10];
-  const front = defaultFront(v, new Pt(eyeX, eyeY), standardNutLength(p.height));
-  return { ...v, ...defaultBack(v), front, flushWithNeck: true, eyeX, eyeY };
-}
+  let k = p.height / 355;
+  let eyeRadius = Math.round(2.6 * k * 10) / 10;
+  let v: VoluteSpec = { style: 'salviati', eyeRadius, arcRadii: [], pitch: defaultPitch(eyeRadius), seedLength: eyeRadius };
+  let eyeX = Math.round((flushVolute(v) ?? 0) * 100) / 100;
+  let eyeY = Math.round(96 * k * 10) / 10;
 
-// the front in proportion to the rise from the top of the nut to the bottom of the spiral, which
-// it has to climb: F0 turning back by a twelfth of a turn leaves the straight aimed in under the
-// volute for F1 to meet it
-function defaultFront(v: VoluteSpec, eye: Pt, nutLength: number): VoluteParams['front'] {
-  const spiral = layoutVolute(v, eye)?.spiral ?? [];
-  const rise = Math.min(...spiral.map(a => a.center.y - a.r)) - nutLength;
-  const r = (k: number) => Number.isFinite(rise) ? Math.round(k * rise * 10) / 10 : 0;
-  return { flat: r(0.45), f0: { r: r(0.4), end: Math.PI / 6 }, straight: r(0.3), f1: { r: r(0.15) } };
-}
+  let spiral = drawn(v) ?? [];
+  let outer = spiral[0]?.r ?? 0;
+  let back = (ratio: number) => Math.round(ratio * outer * 10) / 10;
 
-// the back in proportion to the spiral's outermost arc, widest at the front and tightening over
-// the back, a quarter turn each up to the top and over to the back, then an eighth on down. S3
-// brings the back round to run straight down, parallel to the neck
-function defaultBack(v: VoluteSpec): Pick<VoluteParams, 'back' | 'straight' | 'hollow' | 'nape'> {
-  const outer = layoutVolute(v, new Pt(0, 0))?.spiral[0].r ?? 0;
-  const r = (k: number) => Math.round(k * outer * 10) / 10;
+  let bottom = Math.min(...spiral.map(a => eyeY + a.y - a.r));
+  let rise = bottom - standardNutLength(p.height);
+  let front = (ratio: number) => Number.isFinite(rise) ? Math.round(ratio * rise * 10) / 10 : 0;
+
   return {
-    back: [{ r: r(1.4), end: Math.PI / 2 }, { r: r(1.2), end: Math.PI }, { r: r(1), end: 5 * Math.PI / 4 }],
-    straight: r(0.5),
-    hollow: { r: r(1), end: 0 },
-    nape: r(0.3),
+    style: v.style, eyeRadius, eyeX, eyeY, flushWithNeck: true, pitch: v.pitch, seedLength: v.seedLength, arcRadii: [],
+    spiral: null,
+    S0: unplaced(back(1.4), 0, Math.PI / 2),
+    S1: unplaced(back(1.2), 0, Math.PI),
+    S2: unplaced(back(1), 0, 5 * Math.PI / 4),
+    backStraight: back(0.5), backStraightLine: null,
+    S3: unplaced(back(1), 0, 0),
+    square: null,
+    nape: unplaced(back(0.3), 0, Math.PI / 2),
+    flat: front(0.45), flatLine: null,
+    F0: unplaced(front(0.4), 0, Math.PI / 6),
+    frontStraight: front(0.3), frontStraightLine: null,
+    F1: unplaced(front(0.15), 0, 0),
   };
 }
 
-// writes the flush Eye X into its field, to the hundredth, every pass flush is on, so turning it
-// off leaves the eye where it was
-export function flushEye(v: VoluteParams): void {
-  const eyeX = v.flushWithNeck ? flushVolute(v) : null;
-  if (eyeX !== null) v.eyeX = Math.round(eyeX * 100) / 100;
-}
+export type ScrollKey = 'spiral' | 'S0' | 'S1' | 'S2' | 'backStraight' | 'S3' | 'square' | 'nape' | 'flat' | 'F0' | 'frontStraight' | 'F1';
+export type ScrollFailure = SolveFailure<ScrollKey>;
+const BACK_KEYS: ScrollKey[] = ['S0', 'S1', 'S2', 'backStraight', 'S3', 'square', 'nape'];
+const FRONT_KEYS: ScrollKey[] = ['flat', 'F0', 'frontStraight', 'F1'];
+const ALL_KEYS: ScrollKey[] = ['spiral', ...BACK_KEYS, ...FRONT_KEYS];
 
-// what either scroll panel draws from: the volute's defaults the first time, the four point's
-// fields from the even growth once (the user's after), and the flush eye's X
-export function ensureVolute(p: EnricoCerutiParams): VoluteParams {
+// `p.neck` must already be in place — the panel seeds it
+export function calculateScroll(p: EnricoCerutiParams): ScrollFailure[] {
   p.volute ??= defaultVoluteParams(p);
-  if (VOLUTE_STYLES[p.volute.style].custom && !p.volute.arcRadii.length) p.volute.arcRadii = naturalArcRadii(p.volute.eyeRadius, TO_FRONT);
-  flushEye(p.volute);
-  return p.volute;
+  let v = p.volute;
+  let style = VOLUTE_STYLES[v.style];
+
+  // the four point's fields seed from Kelly's once, then stay the user's
+  if (style.custom && !v.arcRadii.length) v.arcRadii = kellyArcRadii(v);
+  v.pitch ??= defaultPitch(v.eyeRadius);
+
+  // flush rewrites Eye X to the hundredth every pass it is on, so turning it off leaves the eye where it was
+  if (v.flushWithNeck) {
+    let flushX = flushVolute(v);
+    if (flushX !== null) v.eyeX = Math.round(flushX * 100) / 100;
+  }
+
+  let neckBack = -p.neck!.thickness;
+  let nutTop = new Pt(0, standardNutLength(p.height));
+
+  v.spiral = null;
+  v.backStraightLine = null;
+  v.square = null;
+  v.flatLine = null;
+  v.frontStraightLine = null;
+
+  // a run ends at the first part that isn't a positive radius, a forward sweep of up to a full
+  // turn, or a length; everything after it stays unsolved
+  let badArc = (section: string, key: ScrollKey, arc: SweptArc, unsolved: ScrollKey[]): ScrollFailure => ({
+    message: !(arc.r > 0)
+      ? `${section}: ${key} needs a radius.`
+      : `${section}: ${key} has to sweep on from where the last part ended, by up to a full turn.`,
+    unsolved, circles: [], segments: [],
+  });
+  let badLength = (section: string, key: ScrollKey, unsolved: ScrollKey[]): ScrollFailure => ({
+    message: `${section}: ${key} needs a length, or 0.`,
+    unsolved, circles: [], segments: [],
+  });
+  let after = (keys: ScrollKey[], key: ScrollKey): ScrollKey[] => keys.slice(keys.indexOf(key));
+
+  let failures: ScrollFailure[] = [];
+
+  solveSection(failures, 'Volute', ALL_KEYS, () => {
+    if (!(v.eyeRadius > 0))
+      return { message: 'Volute: the eye needs a radius.', unsolved: ALL_KEYS, circles: [], segments: [] };
+    if (!Number.isFinite(v.eyeX) || !Number.isFinite(v.eyeY))
+      return { message: 'Volute: the eye needs a position.', unsolved: ALL_KEYS, circles: [], segments: [] };
+    let arcs = drawn(v);
+    if (!arcs)
+      return {
+        message: style.custom
+          ? 'Volute: the four point needs every radius set, each at least the one inside it.'
+          : v.style === 'archimedean' ? 'Volute: the Archimedean needs a pitch.'
+          : v.style === 'kelly' ? "Volute: Kelly's needs a seed length."
+          : `Volute: ${style.label} can't be drawn from this eye.`,
+        unsolved: ALL_KEYS, circles: [], segments: [],
+      };
+    // the drawing is in the eye's own frame, so the eye's centre carries it into the scroll's
+    v.spiral = arcs.map(a => ({ ...a, x: a.x + v.eyeX, y: a.y + v.eyeY }));
+    return null;
+  });
+  if (!v.spiral) {
+    reportFailures(failures, 'Scroll');
+    return failures;
+  }
+
+  solveSection(failures, 'Back', BACK_KEYS, () => {
+    // the back takes over where the spiral's outermost arc ends, heading straight up; S0 to S2
+    // each run on tangent from where the last ended round to their own end angle
+    let outer = v.spiral![0];
+    let joint = pointOnCircle(outer, outer.to);
+
+    if (!(v.S0.r > 0) || !(v.S0.to > 0) || v.S0.to > TWO_PI) return badArc('Back', 'S0', v.S0, after(BACK_KEYS, 'S0'));
+    let S0 = placeCircleOnPointAtAngle(v.S0.r, joint, 0);
+    v.S0.x = S0.x;
+    v.S0.y = S0.y;
+    v.S0.from = 0;
+    joint = pointOnCircle(v.S0, v.S0.to);
+
+    if (!(v.S1.r > 0) || !(v.S1.to > v.S0.to) || v.S1.to - v.S0.to > TWO_PI) return badArc('Back', 'S1', v.S1, after(BACK_KEYS, 'S1'));
+    let S1 = placeCircleOnPointAtAngle(v.S1.r, joint, v.S0.to);
+    v.S1.x = S1.x;
+    v.S1.y = S1.y;
+    v.S1.from = v.S0.to;
+    joint = pointOnCircle(v.S1, v.S1.to);
+
+    if (!(v.S2.r > 0) || !(v.S2.to > v.S1.to) || v.S2.to - v.S1.to > TWO_PI) return badArc('Back', 'S2', v.S2, after(BACK_KEYS, 'S2'));
+    let S2 = placeCircleOnPointAtAngle(v.S2.r, joint, v.S1.to);
+    v.S2.x = S2.x;
+    v.S2.y = S2.y;
+    v.S2.from = v.S1.to;
+    joint = pointOnCircle(v.S2, v.S2.to);
+
+    // the straight runs on along S2's heading
+    if (!(v.backStraight >= 0)) return badLength('Back', 'backStraight', after(BACK_KEYS, 'backStraight'));
+    let heading = vectorFromSlope(v.S2.to + Math.PI / 2);
+    let foot = moveInVectorSpace(joint, [{ ...heading, mag: v.backStraight }]);
+    if (v.backStraight > 0) v.backStraightLine = [joint, foot];
+
+    // S3 turns the other way off the foot, clockwise about a centre on the far side, so as a
+    // counterclockwise sweep it runs from the duck tail round to the foot
+    let S3to = v.S2.to - Math.PI;
+    if (!(v.S3.r > 0)) return badArc('Back', 'S3', v.S3, after(BACK_KEYS, 'S3'));
+    if (!(v.S3.from < S3to) || S3to - v.S3.from > TWO_PI)
+      return { message: "Back: S3 has to turn back from the straight's foot, by up to a full turn.", unsolved: after(BACK_KEYS, 'S3'), circles: [], segments: [] };
+    let S3 = placeCircleOnPointAtAngle(v.S3.r, foot, S3to);
+    v.S3.x = S3.x;
+    v.S3.y = S3.y;
+    v.S3.to = S3to;
+
+    // from the duck tail a line runs square to the neck, forward to its back, the nape filleting
+    // that corner
+    let duckTail = pointOnCircle(v.S3, v.S3.from);
+    let napeStart = neckBack - v.nape.r;
+    if (!(v.nape.r > 0)) return badArc('Back', 'nape', v.nape, after(BACK_KEYS, 'square'));
+    if (duckTail.x > napeStart)
+      return {
+        message: `Back: the duck tail sits too far forward for a nape of ${v.nape.r}mm to fit before the neck's back. Shrink the nape, or move the duck tail back with S3 or the straight.`,
+        unsolved: after(BACK_KEYS, 'square'),
+        circles: [{ x: napeStart, y: duckTail.y - v.nape.r, r: v.nape.r }],
+        segments: [[duckTail, new Pt(neckBack, duckTail.y)]],
+      };
+    if (duckTail.x < napeStart) v.square = [duckTail, new Pt(napeStart, duckTail.y)];
+    v.nape.x = napeStart;
+    v.nape.y = duckTail.y - v.nape.r;
+    v.nape.from = 0;
+    v.nape.to = Math.PI / 2;
+    return null;
+  });
+
+  solveSection(failures, 'Front', FRONT_KEYS, () => {
+    // the front rises from the top of the nut on the neck's front: the flat straight up
+    if (!(v.flat >= 0)) return badLength('Front', 'flat', after(FRONT_KEYS, 'flat'));
+    let top = new Pt(nutTop.x, nutTop.y + v.flat);
+    if (v.flat > 0) v.flatLine = [nutTop, top];
+
+    // F0 turns toward the back to its end angle
+    if (!(v.F0.r > 0) || !(v.F0.to > 0) || v.F0.to > TWO_PI) return badArc('Front', 'F0', v.F0, after(FRONT_KEYS, 'F0'));
+    let F0 = placeCircleOnPointAtAngle(v.F0.r, top, 0);
+    v.F0.x = F0.x;
+    v.F0.y = F0.y;
+    v.F0.from = 0;
+    let joint = pointOnCircle(v.F0, v.F0.to);
+
+    // the straight on along its heading
+    if (!(v.frontStraight >= 0)) return badLength('Front', 'frontStraight', after(FRONT_KEYS, 'frontStraight'));
+    let heading = vectorFromSlope(v.F0.to + Math.PI / 2);
+    let foot = moveInVectorSpace(joint, [{ ...heading, mag: v.frontStraight }]);
+    if (v.frontStraight > 0) v.frontStraightLine = [joint, foot];
+
+    // F1 curves back toward the volute, clockwise about a centre on the far side, until it first
+    // crosses a drawn arc of the spiral
+    if (!(v.F1.r > 0)) return badArc('Front', 'F1', v.F1, after(FRONT_KEYS, 'F1'));
+    let F1to = v.F0.to + Math.PI;
+    let F1 = placeCircleOnPointAtAngle(v.F1.r, foot, F1to);
+    let sweep = Infinity;
+    for (let arc of v.spiral!) {
+      for (let crossing of circleCircleIntersections(F1, arc)) {
+        if (!angleWithinSweep(angleFromCenter(arc, crossing), arc.from, arc.to)) continue;
+        let s = normalizeRadians(F1to - angleFromCenter(F1, crossing));
+        if (s > 1e-9 && s < sweep) sweep = s;
+      }
+    }
+    if (sweep === Infinity)
+      return {
+        message: "Front: F1 never meets the spiral. Enlarge F1, or aim the straight in under the volute with F0's end.",
+        unsolved: after(FRONT_KEYS, 'F1'), circles: [F1], segments: [],
+      };
+    v.F1.x = F1.x;
+    v.F1.y = F1.y;
+    v.F1.from = F1to - sweep;
+    v.F1.to = F1to;
+    return null;
+  });
+
+  reportFailures(failures, 'Scroll');
+  return failures;
 }

@@ -1,4 +1,4 @@
-import { Arc, Circle, NamedReferenceImage, Pt, Rectangle, ReferenceImage, Vect2D } from "../models/types";
+import { Arc, Circle, NamedReferenceImage, Pt, Rectangle, ReferenceImage, SweptArc, Vect2D } from "../models/types";
 
 /** The back plate's tab under the neck heel. Drawn in plan by ceruti-paths, read as a tip by the neck. */
 export interface ButtonParams {
@@ -118,28 +118,50 @@ export interface EnricoCerutiParams {
 export type VoluteStyle = 'fourPoint' | 'archimedean' | 'serlio' | 'salviati' | 'goldmann' | 'kelly';
 
 export interface VoluteParams {
+  style: VoluteStyle;
   /** Radius of the eye (mm). */
   eyeRadius: number;
-  style: VoluteStyle;
-  /** Archimedean only: how much the spiral's radius grows each full turn, so the even spacing between turns (mm). */
-  pitch: number;
-  /** Four point only: the radius of each of its eight quarter-turn arcs, two turns out to the front, innermost first (mm). Each has to be at least the last. */
-  arcRadii: number[];
-  /** S0, S1, S2: the top of the scroll and on down its back, arcs each tangent to the last from the spiral's front, each swept counterclockwise to its `end`, the angle round its own centre from the front, π/2 the top and π the back (mm, radians). */
-  back: { r: number; end: number }[];
-  /** The straight run on down the back of the scroll from S2's end, along its heading (mm). */
-  straight: number;
-  /** S3, where the scroll's back turns into the pegbox's: an arc curving the other way off the straight's end, swept clockwise to its `end`, measured as S0–S2's are (mm, radians). Its end is the duck tail. */
-  hollow: { r: number; end: number };
-  /** The fillet joining the back to the neck's back, from a line run square to the neck from the duck tail (mm). */
-  nape: number;
-  /** The front of the pegbox, up the neck's front from the top of the nut: the flat straight up, F0 turning toward the back, swept counterclockwise to its `end` measured as the back's arcs are, the straight on along its heading, and F1 curving back toward the volute until it meets the spiral, which sets its end (mm, radians). */
-  front: { flat: number; f0: { r: number; end: number }; straight: number; f1: { r: number } };
-  /** On, the eye is slid each pass so the spiral's front is flush with the neck's front, its height left to eyeY; off, it sits where eyeX and eyeY put it. */
-  flushWithNeck: boolean;
   /** Eye centre from the nut on the neck's front (mm): x toward the front, so negative behind it, y up the neck. x is rewritten while flush is on. */
   eyeX: number;
   eyeY: number;
+  /** On, the eye is slid each pass so the spiral's front is flush with the neck's front, its height left to eyeY; off, it sits where eyeX and eyeY put it. */
+  flushWithNeck: boolean;
+  /** Archimedean only: how much the spiral's radius grows each full turn, so the even spacing between turns (mm). */
+  pitch: number;
+  /** Kelly only: the seed column's length, top of its rectangle to bottom, not a single square's (mm). Kelly varies it by scroll; his drawing stands it as tall as the eye's radius. */
+  seedLength: number;
+  /** Four point only: the radius of each of its eight quarter-turn arcs, two turns out to the front, innermost first (mm). Each has to be at least the last. */
+  arcRadii: number[];
+
+  // the rest is in the scroll's own frame, the nut at the origin on the neck's front, up the neck
+  // +y, toward the back -x. each arc's `r` is a field, and so is the one angle named with it; its
+  // centre and other angle are solved by calculateScroll every pass, as the lines are
+
+  /** The spiral as drawn, outermost first, from the style about the eye. */
+  spiral: SweptArc[] | null;
+  /** S0, S1, S2: the crown over the top of the scroll and on down its back, each tangent to the last from the spiral's front. `to` is the field: the angle round its own centre from the front, π/2 the top, π the back. */
+  S0: SweptArc;
+  S1: SweptArc;
+  S2: SweptArc;
+  /** The straight run on down the back from S2's end, along its heading (mm). */
+  backStraight: number;
+  backStraightLine: [Pt, Pt] | null;
+  /** S3, where the scroll's back turns into the pegbox's: curving the other way off the straight's foot, so as a counterclockwise sweep it starts at the duck tail. `from` is the field, 0 running the back straight down the neck. */
+  S3: SweptArc;
+  /** From the duck tail, a line run square to the neck toward its back, and the nape filleting it into the neck's back. The nape's `r` is the field. */
+  square: [Pt, Pt] | null;
+  nape: SweptArc;
+
+  /** The front of the pegbox, up the neck's front from the top of the nut: the flat straight up (mm). */
+  flat: number;
+  flatLine: [Pt, Pt] | null;
+  /** F0 turns the front toward the back; `to` is the field, measured as the back's are. */
+  F0: SweptArc;
+  /** The straight on from F0's end along its heading (mm). */
+  frontStraight: number;
+  frontStraightLine: [Pt, Pt] | null;
+  /** F1 curves back toward the volute until it meets the spiral, which sets its `from`. */
+  F1: SweptArc;
 }
 
 // the neck set, in the side elevation. the fingerboard plane leaves the top plate's edge
@@ -332,10 +354,17 @@ export interface CerutiColors {
   pathError: string;
   neck: string;
   neckOff: string;
-  scrollBackUpper: string;
-  scrollBackUpperOff: string;
-  scrollBackLower: string;
-  scrollBackLowerOff: string;
+  scrollBack: string;
+  scrollBackLight: string;
+  scrollNape: string;
+  scrollFront: string;
+  scrollFrontLight: string;
+  voluteTurn1: string;
+  voluteTurn1Alt: string;
+  voluteTurn2: string;
+  voluteTurn2Alt: string;
+  voluteTurn3: string;
+  voluteTurn3Alt: string;
   neckRoot: string;
   fingerboard: string;
   bridge: string;
