@@ -1,4 +1,4 @@
-import { Arc, Pt, SweptArc } from '../../models/types';
+import { Arc, Pt } from '../../models/types';
 
 /**
  * Named stroke-width tiers, screen px (every render call draws with
@@ -90,11 +90,6 @@ export const LIGHT_CONTRAST_MIN_PALE = 2.0;
 
 export interface HighlightedArc {
   arc: Arc;
-  color: string;
-}
-
-export interface HighlightedSweptArc {
-  arc: SweptArc;
   color: string;
 }
 

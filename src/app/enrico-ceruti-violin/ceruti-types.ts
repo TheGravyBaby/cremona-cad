@@ -1,4 +1,4 @@
-import { Arc, Circle, NamedReferenceImage, Pt, Rectangle, ReferenceImage, SweptArc, Vect2D } from "../models/types";
+import { Arc, Circle, NamedReferenceImage, Pt, Rectangle, ReferenceImage, Vect2D } from "../models/types";
 
 /** The back plate's tab under the neck heel. Drawn in plan by ceruti-paths, read as a tip by the neck. */
 export interface ButtonParams {
@@ -135,33 +135,34 @@ export interface VoluteParams {
 
   // the rest is in the scroll's own frame, the nut at the origin on the neck's front, up the neck
   // +y, toward the back -x. each arc's `r` is a field, and so is the one angle named with it; its
-  // centre and other angle are solved by calculateScroll every pass, as the lines are
+  // centre and other angle are solved by calculateScroll every pass, as the lines are. unlike the
+  // outline's arcs these run counterclockwise from `start` to `end`, which matters past a half turn
 
   /** The spiral as drawn, outermost first, from the style about the eye. */
-  spiral: SweptArc[] | null;
-  /** S0, S1, S2: the crown over the top of the scroll and on down its back, each tangent to the last from the spiral's front. `to` is the field: the angle round its own centre from the front, π/2 the top, π the back. */
-  S0: SweptArc;
-  S1: SweptArc;
-  S2: SweptArc;
+  spiral: Arc[] | null;
+  /** S0, S1, S2: the crown over the top of the scroll and on down its back, each tangent to the last from the spiral's front. `end` is the field: the angle round its own centre from the front, π/2 the top, π the back. */
+  S0: Arc;
+  S1: Arc;
+  S2: Arc;
   /** The straight run on down the back from S2's end, along its heading (mm). */
   backStraight: number;
   backStraightLine: [Pt, Pt] | null;
-  /** S3, where the scroll's back turns into the pegbox's: curving the other way off the straight's foot, so as a counterclockwise sweep it starts at the duck tail. `from` is the field, 0 running the back straight down the neck. */
-  S3: SweptArc;
+  /** S3, where the scroll's back turns into the pegbox's: curving the other way off the straight's foot, so as a counterclockwise sweep it starts at the duck tail. `start` is the field, 0 running the back straight down the neck. */
+  S3: Arc;
   /** From the duck tail, a line run square to the neck toward its back, and the nape filleting it into the neck's back. The nape's `r` is the field. */
   square: [Pt, Pt] | null;
-  nape: SweptArc;
+  nape: Arc;
 
   /** The front of the pegbox, up the neck's front from the top of the nut: the flat straight up (mm). */
   flat: number;
   flatLine: [Pt, Pt] | null;
-  /** F0 turns the front toward the back; `to` is the field, measured as the back's are. */
-  F0: SweptArc;
+  /** F0 turns the front toward the back; `end` is the field, measured as the back's are. */
+  F0: Arc;
   /** The straight on from F0's end along its heading (mm). */
   frontStraight: number;
   frontStraightLine: [Pt, Pt] | null;
-  /** F1 curves back toward the volute until it meets the spiral, which sets its `from`. */
-  F1: SweptArc;
+  /** F1 curves back toward the volute until it meets the spiral, which sets its `start`. */
+  F1: Arc;
 }
 
 // the neck set, in the side elevation. the fingerboard plane leaves the top plate's edge

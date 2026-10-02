@@ -12,7 +12,7 @@
         <label class="field-cell">
             <span class="field-title" title="Where the arc ends, as the angle round its own centre from the front: 180° the back. It starts where S1 ended">End <span class="unit-label">°</span></span>
             <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1"
-                [ngModel]="getFieldDeg(volute.S2, 'to')" (ngModelChange)="setFieldDeg(volute.S2, 'to', $event, onChange.bind(this)); onArcFocus('S2', colors.scrollBackLight)"
+                [ngModel]="getFieldDeg(volute.S2, 'end')" (ngModelChange)="setFieldDeg(volute.S2, 'end', $event, onChange.bind(this)); onArcFocus('S2', colors.scrollBackLight)"
                 (focus)="onArcFocus('S2', colors.scrollBackLight)" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">
@@ -32,7 +32,7 @@
         <label class="field-cell">
             <span class="field-title" title="Where the arc ends, as the angle round its own centre from the front, swept clockwise: 0° runs the back straight down, parallel to the neck">End <span class="unit-label">°</span></span>
             <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1"
-                [ngModel]="getFieldDeg(volute.S3, 'from')" (ngModelChange)="setFieldDeg(volute.S3, 'from', $event, onChange.bind(this)); onArcFocus('S3', colors.scrollBack)"
+                [ngModel]="getFieldDeg(volute.S3, 'start')" (ngModelChange)="setFieldDeg(volute.S3, 'start', $event, onChange.bind(this)); onArcFocus('S3', colors.scrollBack)"
                 (focus)="onArcFocus('S3', colors.scrollBack)" (blur)="onArcBlur()" />
         </label>
     </div>
@@ -66,7 +66,7 @@
         <label class="field-cell">
             <span class="field-title" title="Where the arc ends, as the angle round its own centre from the front: the more it turns, the further back the straight after it leans">End <span class="unit-label">°</span></span>
             <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1"
-                [ngModel]="getFieldDeg(volute.F0, 'to')" (ngModelChange)="setFieldDeg(volute.F0, 'to', $event, onChange.bind(this)); onArcFocus('F0', colors.scrollFront)"
+                [ngModel]="getFieldDeg(volute.F0, 'end')" (ngModelChange)="setFieldDeg(volute.F0, 'end', $event, onChange.bind(this)); onArcFocus('F0', colors.scrollFront)"
                 (focus)="onArcFocus('F0', colors.scrollFront)" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">

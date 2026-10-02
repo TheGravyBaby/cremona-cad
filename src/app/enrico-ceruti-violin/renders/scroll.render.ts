@@ -1,9 +1,10 @@
-import { renderCircle, renderDashLine, renderPolygon, renderSegment, renderSegmentHalo, renderSweptArc, renderSweptArcFancy, renderSweptArcHalo } from '../../helpers/renderFuncs';
-import { Pt, SweptArc } from '../../models/types';
+import { normalizeRadians } from '../../helpers/math/simpleGeometry';
+import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderDashLine, renderPolygon, renderSegment, renderSegmentHalo } from '../../helpers/renderFuncs';
+import { Arc, Pt } from '../../models/types';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams } from '../ceruti-types';
 import { standardNutLength } from '../ceruti-neck';
 import { ScrollFailure, ScrollKey, voluteGuides } from '../ceruti-scroll';
-import { HighlightedSegment, HighlightedSweptArc, STROKE_WEIGHT } from './render-constants';
+import { HighlightedArc, HighlightedSegment, STROKE_WEIGHT } from './render-constants';
 
 // the scroll in ceruti-scroll.ts's frame, the neck's tilt taken out, read off p.volute as
 // calculateScroll left it. The volute panel draws the neck and the volute; the scroll panel draws
@@ -22,9 +23,12 @@ export function arcColor(colors: CerutiColors, i: number): string {
   return turns[Math.floor(i / 4) % 3][i % 2];
 }
 
+// a scroll arc runs counterclockwise from start to end, so one past a half turn is the long way round
+const longArc = (arc: Arc) => normalizeRadians(arc.end - arc.start) > Math.PI;
+
 // every arc draws in its own colour; module arcs add its centre and the two radii that bound it
-const sweptArc = (arc: SweptArc, color: string, fancy: boolean) =>
-  fancy ? renderSweptArcFancy(arc, color) : renderSweptArc(arc, color, STROKE_WEIGHT.trace);
+const scrollArc = (arc: Arc, color: string, fancy: boolean) =>
+  fancy ? renderArcFromArcFancy(arc, color, longArc(arc)) : renderArcFromArc(arc, color, STROKE_WEIGHT.trace, longArc(arc));
 
 // the nut on the neck's front and the neck's end below it, open at the bottom, for context only.
 // Module guides carry the neck's front and back on up past the spiral
@@ -53,7 +57,7 @@ export const renderVolute = (
   colors: CerutiColors,
   flags: ScrollViewFlags,
   currentModule: boolean,
-  highlighted: HighlightedSweptArc | null,
+  highlighted: HighlightedArc | null,
   failures: ScrollFailure[] = [],
 ) => (g: any, ui: any): void => {
   const v = p.volute!;
@@ -61,7 +65,7 @@ export const renderVolute = (
   const solved = (key: ScrollKey) => !unsolved.has(key);
   const fancy = (currentModule && flags.showModuleArcs) || flags.showAllArcs;
 
-  if (highlighted) renderSweptArcHalo(highlighted.arc, highlighted.color)(g, ui);
+  if (highlighted) renderArcHalo(highlighted.arc, highlighted.color, undefined, undefined, longArc(highlighted.arc))(g, ui);
 
   if (!solved('spiral')) return;
   renderCircle({ x: v.eyeX, y: v.eyeY, r: v.eyeRadius }, colors.neckOff)(g, ui);
@@ -72,10 +76,10 @@ export const renderVolute = (
   }
 
   const inward = [...v.spiral!].reverse();
-  for (let i = 0; i < inward.length; i++) sweptArc(inward[i], arcColor(colors, i), fancy)(g, ui);
+  for (let i = 0; i < inward.length; i++) scrollArc(inward[i], arcColor(colors, i), fancy)(g, ui);
 
-  solved('S0') && sweptArc(v.S0, colors.scrollBackLight, fancy)(g, ui);
-  solved('S1') && sweptArc(v.S1, colors.scrollBack, fancy)(g, ui);
+  solved('S0') && scrollArc(v.S0, colors.scrollBackLight, fancy)(g, ui);
+  solved('S1') && scrollArc(v.S1, colors.scrollBack, fancy)(g, ui);
 };
 
 // the back from S2 on down to the nape, and the front up from the nut. A straight shares its colour
@@ -85,7 +89,7 @@ export const renderScroll = (
   colors: CerutiColors,
   flags: ScrollViewFlags,
   currentModule: boolean,
-  highlighted: HighlightedSweptArc | null,
+  highlighted: HighlightedArc | null,
   highlightedLine: HighlightedSegment | null,
   failures: ScrollFailure[] = [],
 ) => (g: any, ui: any): void => {
@@ -95,17 +99,17 @@ export const renderScroll = (
   const solved = (key: ScrollKey) => !unsolved.has(key);
   const fancy = (currentModule && flags.showModuleArcs) || flags.showAllArcs;
 
-  if (highlighted) renderSweptArcHalo(highlighted.arc, highlighted.color)(g, ui);
+  if (highlighted) renderArcHalo(highlighted.arc, highlighted.color, undefined, undefined, longArc(highlighted.arc))(g, ui);
   if (highlightedLine) renderSegmentHalo(...highlightedLine.line, highlightedLine.color)(g, ui);
 
   // the neck's back carried up from the nut to meet the nape
   if (solved('nape') && v.nape.y > 0) renderSegment(new Pt(-thickness, v.nape.y), new Pt(-thickness, 0), colors.neckOff, STROKE_WEIGHT.section)(g, ui);
 
-  solved('S2') && sweptArc(v.S2, colors.scrollBackLight, fancy)(g, ui);
-  solved('S3') && sweptArc(v.S3, colors.scrollBack, fancy)(g, ui);
-  solved('nape') && sweptArc(v.nape, colors.scrollNape, fancy)(g, ui);
-  solved('F0') && sweptArc(v.F0, colors.scrollFront, fancy)(g, ui);
-  solved('F1') && sweptArc(v.F1, colors.scrollFrontLight, fancy)(g, ui);
+  solved('S2') && scrollArc(v.S2, colors.scrollBackLight, fancy)(g, ui);
+  solved('S3') && scrollArc(v.S3, colors.scrollBack, fancy)(g, ui);
+  solved('nape') && scrollArc(v.nape, colors.scrollNape, fancy)(g, ui);
+  solved('F0') && scrollArc(v.F0, colors.scrollFront, fancy)(g, ui);
+  solved('F1') && scrollArc(v.F1, colors.scrollFrontLight, fancy)(g, ui);
 
   if (v.backStraightLine) renderSegment(...v.backStraightLine, colors.scrollBackLight, STROKE_WEIGHT.trace)(g, ui);
   if (v.square) renderSegment(...v.square, colors.scrollNape, STROKE_WEIGHT.trace)(g, ui);

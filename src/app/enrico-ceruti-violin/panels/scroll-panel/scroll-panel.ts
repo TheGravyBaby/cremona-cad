@@ -7,7 +7,7 @@ import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { defaultNeckParams } from '../../ceruti-neck';
 import { calculateScroll, ScrollKey } from '../../ceruti-scroll';
 import { renderScroll, renderScrollNeck, renderVolute } from '../../renders/scroll.render';
-import { HighlightedSegment, HighlightedSweptArc } from '../../renders/render-constants';
+import { HighlightedArc, HighlightedSegment } from '../../renders/render-constants';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 
 // the arcs take an arc halo; the straights and the flat a segment halo on the line their length makes
@@ -70,7 +70,7 @@ export class ScrollPanel extends CerutiPanelBase implements OnInit {
       key === 'frontStraight' ? v.frontStraightLine :
       null;
     const arc = (key === 'S2' || key === 'S3' || key === 'nape' || key === 'F0' || key === 'F1') && solved(key) ? v[key] : null;
-    const highlighted: HighlightedSweptArc | null = arc ? { arc, color } : null;
+    const highlighted: HighlightedArc | null = arc ? { arc, color } : null;
     const highlightedLine: HighlightedSegment | null = line ? { line, color } : null;
 
     return [

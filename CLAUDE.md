@@ -77,8 +77,7 @@ This split is meant to generalize to future instrument modules — `helpers/math
 **Arc sweep conventions differ by type, and converting is lossy.** `models/types.ts` `Arc` always
 renders the minor arc regardless of `start`/`end` order, while `tools/toolbox-shape.ts` `ArcShape`
 sweeps counterclockwise from `startAngle` to `endAngle`, so order alone picks minor vs major —
-don't write a blind converter between them. `models/types.ts` `SweptArc` (the scroll's arcs) is a
-third: counterclockwise from `from` to `to`, named differently so it can't be passed as an `Arc`.
+don't write a blind converter between them.
 
 **Recipe geometry loses its prototypes on load.** `Pt`/`Circle`/`Arc`/`Rectangle` are
 JSON-serialized into recipe files; `JSON.parse` returns prototype-less objects. What hides this is

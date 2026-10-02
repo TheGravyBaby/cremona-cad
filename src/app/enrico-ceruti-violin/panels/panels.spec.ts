@@ -181,7 +181,7 @@ describe('the scroll panel', () => {
     it('draws the spiral and the back alone, in full strokes', () => {
       const a = arcs(4);
       expect(a.length).toBe(15);
-      expect(a.every(el => el.attrs['opacity'] === 1)).toBe(true);
+      expect(a.every(el => !el.parent)).toBe(true);
     });
 
     it('draws no spiral for an eye that is not a positive radius', () => {
@@ -259,7 +259,7 @@ describe('the scroll panel', () => {
       const fancy = recordLayers(volute(p, { showModuleArcs: true }).buildRun());
       const arcs = (d: ReturnType<typeof recordLayers>) => d.elements.filter(el => typeof el.attrs['d'] === 'string' && (el.attrs['d'] as string).includes(' A '));
       expect(arcs(fancy).map(el => el.attrs['d'])).toEqual(arcs(plain).map(el => el.attrs['d']));
-      expect(arcs(fancy).every(el => el.attrs['stroke-width'] === 2 && el.attrs['opacity'] === 1)).toBe(true);
+      expect(arcs(fancy).every(el => el.attrs['stroke-width'] === 2 && !el.parent)).toBe(true);
       const lines = (d: ReturnType<typeof recordLayers>) => d.elements.filter(el => el.tag === 'line').length;
       expect(lines(fancy) - lines(plain)).toBeGreaterThanOrEqual(2 * arcs(fancy).length);
     });
@@ -476,17 +476,31 @@ describe('the scroll panel', () => {
       const p = defaultViolin();
       const instance = scroll(p);
       instance.buildRun();
-      const { S0: s0, S1: s1, S2: s2 } = p.volute!;
-      expect(s0.r).toBeGreaterThan(s1.r);
-      expect(s1.r).toBeGreaterThan(s2.r);
+      const v = p.volute!;
+      expect(v.S0.r).toBeGreaterThan(v.S1.r);
+      expect(v.S1.r).toBeGreaterThan(v.S2.r);
       const drawn = () => spiralArcs(instance).slice(8).map(el => el.attrs['d']);
       const before = drawn();
-      s1.to = 170 * Math.PI / 180;
+      // read off params each time: the calc puts a new arc there every pass
+      v.S1.end = 170 * Math.PI / 180;
       const after = drawn();
       expect(after[0]).toBe(before[0]);
       expect(after.slice(1)).not.toEqual(before.slice(1));
-      s1.r = 0;
+      v.S1.r = 0;
       expect(spiralArcs(instance)).toHaveLength(11);
+    });
+
+    it('draws a crown arc past half a turn the long way round, as it sweeps', () => {
+      const p = defaultViolin();
+      const instance = volute(p);
+      instance.buildRun();
+      const largeArc = () => {
+        const d = spiralArcs(instance).at(-1)!.attrs['d'] as string;
+        return d.match(/ A \S+ 0 ([01]),1 /)![1];
+      };
+      expect(largeArc()).toBe('0');
+      p.volute!.S1.end = p.volute!.S0.end + 1.2 * Math.PI;
+      expect(largeArc()).toBe('1');
     });
 
     it('draws the straight after S2 and the line square to the neck before the nape, in S2\'s colour and the nape\'s', () => {
