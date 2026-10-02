@@ -22,6 +22,8 @@ const REFERENCE_BODY_HEIGHT = 355;
 /** The bridge's blank, drawn as a wedge: how much narrower the feet are than the body stop line, and the top than the feet. */
 const BRIDGE_FOOT_HALF_WIDTH_RATIO = 0.07;
 const BRIDGE_TOP_TO_FOOT_WIDTH_RATIO = 1 / 3;
+/** The scroll's stand-in: a box twice as long up the neck as it is deep, at a violin's size. */
+const SCROLL_PLACEHOLDER_LENGTH = 100;
 
 /** Violin numbers, scaled by body length for the larger sizes — generic for the size class rather
  * than measured. The solved fields start undefined; `calculateNeck` fills them on the first pass. */
@@ -38,8 +40,6 @@ export function defaultNeckParams(p: EnricoCerutiParams): NeckParams {
     thickness: mm(13),
     heelRadius: mm(20),
     nutThickness: mm(10),
-    scrollLength: mm(110),
-    scrollDepth: mm(40),
 
     edge: undefined, root: undefined, direction: undefined, normal: undefined,
     rootPlaneY: undefined, mortiseFloorY: undefined, gluingAtMortise: undefined,
@@ -143,11 +143,12 @@ export function calculateNeck(p: EnricoCerutiParams, topArch: LongArchSolve | nu
   const back = { nut: backNut, root: backRoot };
   const heel = calculateHeel(back, buttonTip, nk.heelRadius);
 
-  const scrollFront1 = moveInVectorSpace(nutAt, [{ ...direction, mag: nk.scrollLength }]);
+  const scrollLength = SCROLL_PLACEHOLDER_LENGTH * p.height / REFERENCE_BODY_HEIGHT;
+  const scrollFront1 = moveInVectorSpace(nutAt, [{ ...direction, mag: scrollLength }]);
   const scroll: [Pt, Pt, Pt, Pt] = [
     nutAt, scrollFront1,
-    moveInVectorSpace(scrollFront1, [{ ...normal, mag: -nk.scrollDepth }]),
-    moveInVectorSpace(nutAt, [{ ...normal, mag: -nk.scrollDepth }]),
+    moveInVectorSpace(scrollFront1, [{ ...normal, mag: -scrollLength / 2 }]),
+    moveInVectorSpace(nutAt, [{ ...normal, mag: -scrollLength / 2 }]),
   ];
   const scrollLabelAngleDeg = 90 - Math.atan2(direction.b, direction.a) * 180 / Math.PI;
 
@@ -171,19 +172,17 @@ function calculateHeel(back: { nut: Pt; root: Pt }, tip: Pt, radius: number): Ne
   const backDirection: Vect2D = { a: (back.nut.x - back.root.x) / backRunLength, b: (back.nut.y - back.root.y) / backRunLength, mag: 1 };
   const backNormal: Vect2D = { a: backDirection.b, b: -backDirection.a, mag: 1 };
   const tipDepthBehindBack = -((tip.x - back.root.x) * backNormal.a + (tip.y - back.root.y) * backNormal.b);
-  if (!(tipDepthBehindBack > 0) || Math.abs(backNormal.a) < 1e-9) return null;
+  if (!(tipDepthBehindBack > 0)) return null;
 
   let center: Pt;
   let end: Pt;
   let face: Pt | null;
 
-  // the centre level with the tip, on the back's offset line — if that keeps the centre past the
-  // tip, the arc runs square to the body there and a flat face carries on to the tip
-  const levelCenterY = tip.y + radius;
-  const levelCenterX = back.root.x + (-radius - (levelCenterY - back.root.y) * backNormal.b) / backNormal.a;
-  if (levelCenterX > tip.x) {
-    center = new Pt(levelCenterX, levelCenterY);
-    end = new Pt(center.x, tip.y);
+  // the foot is cut square to the neck, not level with the body, so it leaves the tip along the
+  // back's normal and meets the back line `tipDepthBehindBack` later — a plain fillet if it fits
+  if (radius < tipDepthBehindBack) {
+    end = moveInVectorSpace(tip, [{ ...backNormal, mag: tipDepthBehindBack - radius }]);
+    center = moveInVectorSpace(end, [{ ...backDirection, mag: radius }]);
     face = tip;
   } else {
     const alongBackToCenter = tipDepthBehindBack - radius;

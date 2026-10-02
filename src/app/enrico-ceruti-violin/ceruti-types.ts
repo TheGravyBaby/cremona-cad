@@ -115,19 +115,21 @@ export interface EnricoCerutiParams {
 }
 
 /** The scroll's spiral. The eye is the raised disc at its centre; the rule that winds outward from it is the style, each a Renaissance architect's way of laying out the Ionic volute. */
-export type VoluteStyle = 'alberti' | 'serlio' | 'philandrier' | 'salviati' | 'goldmann' | 'twoPoint' | 'threePoint' | 'fourPoint';
+export type VoluteStyle = 'archimedean' | 'serlio' | 'philandrier' | 'salviati' | 'goldmann' | 'kelly' | 'fourPoint';
 
 export interface VoluteParams {
   /** Radius of the eye (mm). */
   eyeRadius: number;
   style: VoluteStyle;
-  /** Point spirals only: the radius of each arc, innermost first, as many to a turn as the style has points, up to the one that reaches the front (6, 9 or 11) (mm). Each has to be more than the last. */
+  /** Archimedean only: how much the spiral's radius grows each full turn, so the even spacing between turns (mm). */
+  pitch: number;
+  /** The size of the figure a historical style finds its centres on, each style measuring it its own way (mm). Its own size, not the eye's; the four point and the Archimedean have none. */
+  seed: number;
+  /** Four point only: the radius of each of its seven quarter-turn arcs, a turn and three quarters out to the front, innermost first (mm). Each has to be at least the last. */
   arcRadii: number[];
-  /** Point spirals only. Off, arcRadii are rewritten each pass from the eye, the natural growth: the first arc from the top of the eye to the seed figure's first corner, each after it a side longer. On, they are the user's, starting from where the growth left them. */
-  customTurns: boolean;
-  /** On, the eye is slid each pass so the spiral's front touches the box's front, its height left to eyeY; off, it sits where eyeX and eyeY put it. */
-  fitToBox: boolean;
-  /** Eye centre measured right (x) and up (y) from the scroll box's top left corner as drawn (mm), so y is negative inside the box. x is rewritten by the fit while it is on; y is set once from the fit when the volute is first made and is the user's from then on, since it shapes the crown. */
+  /** On, the eye is slid each pass so the spiral's front is flush with the neck's front, its height left to eyeY; off, it sits where eyeX and eyeY put it. */
+  flushWithNeck: boolean;
+  /** Eye centre from the nut on the neck's front (mm): x toward the front, so negative behind it, y up the neck. x is rewritten while flush is on. */
   eyeX: number;
   eyeY: number;
 }
@@ -162,10 +164,6 @@ export interface NeckParams {
   heelRadius: number;
   /** Fingerboard thickness at the nut, uniform along its length (mm). */
   nutThickness: number;
-  /** The scroll's bounding box along the neck, nut to the volute's far edge (mm). */
-  scrollLength: number;
-  /** The scroll's bounding box across the neck, from the fingerboard plane toward the back (mm). */
-  scrollDepth: number;
 
   /** The top plate's outer edge at the neck end. */
   edge: Pt | null;
@@ -196,8 +194,8 @@ export interface NeckParams {
   fingerboard: { nutTop: Pt; end: Pt; endTop: Pt } | null;
   /** The neck's back, nut end to root end; the heel departs it at `heel.start`. */
   back: { nut: Pt; root: Pt } | null;
-  /** The cove from `start` on the back to `end`; `face` is the button tip when a square face runs
-   * on from the arc to it; `arc` is the same curve, ready to draw. Null before the first solve,
+  /** The cove from `start` on the back to `end`; `face` is the button tip when a flat foot, square
+   * to the neck, runs on from the arc to it; `arc` is the same curve, ready to draw. Null before the first solve,
    * or when the heel radius can't stand on its own — see calculateHeel. */
   heel: { center: Pt; r: number; start: Pt; end: Pt; face: Pt | null; arc: Arc } | null;
   /** Where `length` is measured from: the back line (root's line, carried onto the back) crossed
@@ -206,7 +204,7 @@ export interface NeckParams {
    * straight run does against the rib line at `back.root`. Solved independently of `heel`/`back`,
    * since it's what places the nut that those are built from. */
   heelBottom: Pt | null;
-  /** Stand-in for the pegbox and scroll, beyond the nut: front-nut, front-far, back-far, back-nut. */
+  /** Stand-in for the pegbox and scroll, beyond the nut, a fixed 2:1 box: front-nut, front-far, back-far, back-nut. */
   scroll: [Pt, Pt, Pt, Pt] | null;
   /** Rotation, in degrees, that sits the scroll's label along the neck. */
   scrollLabelAngleDeg: number | null;
@@ -346,6 +344,7 @@ export interface CerutiViewFlags {
   showFholeBounds: boolean;
   showFholeArcs: boolean;
   showFholePlacementGuides: boolean;
+  showVoluteEye: boolean;
   renderOuterPath: boolean;
   showBlocks: boolean;
   showInnerPath: boolean;
@@ -365,7 +364,7 @@ export interface CerutiViewFlags {
 // back to @ViewChild/viewChild(). No default on CerutiPanelBase, so omitting renderToggles fails the build.
 export type RenderToggleKey = 'showModuleArcs' | 'showAllArcs' | 'showModuleCircles'
   | 'showAllCircles' | 'showModuleGuides' | 'showFingerboard' | 'showFretMarks' | 'showFholeBounds' | 'showFholeArcs' | 'showFholePlacementGuides'
-  | 'showBlocks' | 'showInnerPath' | 'renderOuterPath';
+  | 'showVoluteEye' | 'showBlocks' | 'showInnerPath' | 'renderOuterPath';
 
 /**
  * A panel's render request. Panels describe how to build their layers; the parent applies shared
@@ -395,10 +394,11 @@ export const DEFAULT_CERUTI_VIEW_FLAGS: CerutiViewFlags = {
   showAllCircles: false,
   showModuleGuides: false,
   showFingerboard: true,
-  showFretMarks: true,
+  showFretMarks: false,
   showFholeBounds: true,
   showFholeArcs: false,
   showFholePlacementGuides: false,
+  showVoluteEye: true,
   renderOuterPath: true,
   showBlocks: true,
   showInnerPath: false,

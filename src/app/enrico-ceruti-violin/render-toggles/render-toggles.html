@@ -119,6 +119,18 @@
     </button>
     }
 
+    @if (has('showVoluteEye')) {
+    <button type="button" class="vt-btn" [class.active]="flags.showVoluteEye" (click)="toggle('showVoluteEye')"
+        title="Show Eye and Seed" aria-label="Show Eye and Seed">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9" />
+            <rect x="10.5" y="7" width="3" height="10" stroke-width="1.5" />
+            <line x1="10.5" y1="12" x2="13.5" y2="12" stroke-width="1.5" />
+        </svg>
+    </button>
+    }
+
     @if (has('showBlocks')) {
     <button type="button" class="vt-btn" [class.active]="flags.showBlocks" (click)="toggle('showBlocks')"
         title="Show Corner Blocks" aria-label="Show Corner Blocks">

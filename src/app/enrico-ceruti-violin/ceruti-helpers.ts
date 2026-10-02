@@ -376,8 +376,8 @@ export function neckThicknessInfo() {
 export function heelRadiusInfo() {
     info(
         "The heel is the cove sweeping from the neck's back down to the button, drawn as one arc tangent to the back.\n\n" +
-        "A wide radius reaches the button's tip on its own. A tight one stops where it runs square to the body and a flat face carries on to the tip, " +
-        "so the cove never pockets under the thumb.",
+        "The foot below it is cut square to the neck, not level with the body, so it rises off the button at the neck angle. " +
+        "A tight radius meets the foot and a flat carries on to the button's tip; a wide one reaches the tip on its own.",
         "Heel Radius", defaultTTL, true
     );
 }

@@ -66,9 +66,10 @@ recognizes the current format *positively* so it stays idempotent; six tests in
 - **The heel is a cove, on purpose.** A convex arc tangent to the neck's back can never reach
   the button tip, which sits outside that line's extension — so the side silhouette of a heel is
   necessarily concave where it leaves the neck. `calculateHeel` draws it as one arc tangent to the
-  back from the outside; a wide radius reaches the tip on its own, a tight one stops where it
-  runs square to the body and a flat face carries on to the tip, so the cove never pockets a
-  thumb. The convex nose a hand feels is a cross-section fact, not a silhouette one.
+  back from the outside; a wide radius reaches the tip on its own, a tight one is a fillet onto a
+  flat foot that runs on to the tip. The foot is cut square to the neck, not level with the body
+  (2026-10, from historical examples), so it rises off the button at the neck angle. The convex
+  nose a hand feels is a cross-section fact, not a silhouette one.
 - **The button is built from its tip.** `button.height` is how far the tip stands beyond the
   plate's end on the centreline, so the neck's side view needs nothing from the plan: the heel
   foot ends at `height + button.height`. `ceruti-paths` drops the walls from the cap circle down
@@ -81,12 +82,13 @@ recognizes the current format *positively* so it stays idempotent; six tests in
 - **The neck wood's thickness is one number too, root to nut.** `NeckParams.thickness` sets
   `back.nut` and `back.root` equally; templates read as uniform enough here that carrying
   separate root/nut values wasn't earning its keep. Entered once, under the "Neck" section.
-- **The scroll continues the neck's own plane; the nut sits proud of it.** The scroll box in
-  `solveNeck` starts at `nutAt` (the fingerboard-plane point), not `nutString` (the string
-  contact point, raised by `stringHeightAtNut`) — the pegbox/scroll is flush with the neck as it
+- **The scroll continues the neck's own plane; the nut sits proud of it.** The scroll's
+  placeholder box in `solveNeck`, and the origin the volute's eye is measured from, start at
+  `nutAt` (the fingerboard-plane point), not `nutString` (the string contact point, raised by
+  `stringHeightAtNut`) — the pegbox/scroll is flush with the neck as it
   runs on past the nut, and the nut itself is the thing standing proud, not a step the scroll
   itself takes. Building the scroll off `nutString` looks tempting since it's the point closest
-  at hand, but it makes the scroll box jump up to string height at the nut and is wrong.
+  at hand, but it makes the scroll jump up to string height at the nut and is wrong.
 - **A panel's help-text info icons are added by hand, not by an agent.** Every `ⓘ` button
   wired to a `*Info()` help function was pulled from every panel (2026-09-14) — the write-ups in
   `ceruti-helpers.ts` stayed as reference text, but no panel binds them any more. Don't add a new

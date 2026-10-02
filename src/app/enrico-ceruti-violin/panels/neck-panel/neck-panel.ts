@@ -9,7 +9,6 @@ import { defaultNeckParams, calculateNeck } from '../../ceruti-neck';
 import { renderBodySection } from '../../renders/body-section.render';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
-import { nearestFraction } from '../../../helpers/nearestFraction';
 import { pathFromArc } from '../../../helpers/math/pathMath';
 import { dist, moveInVectorSpace } from '../../../helpers/math/simpleGeometry';
 import { renderSegment, renderPolygon, renderPath, renderText } from '../../../helpers/renderFuncs';
@@ -39,8 +38,6 @@ export class NeckPanel extends CerutiPanelBase implements OnInit {
   onChange(): void {
     this.emitDebounced();
   }
-
-  protected readonly nearestFraction = nearestFraction;
 
   get neck(): NeckParams { return this.params.neck!; }
 
@@ -120,7 +117,7 @@ export function renderNeck(p: EnricoCerutiParams, colors: CerutiColors, showGuid
     seg(s.nut.top, s.bridge.top, colors.innerTrace);
     if (showFretMarks) renderFretTicks(s.nut.top, s.bridge.top, dist(s.nut.at, s.fingerboard.end))(g, ui);
 
-    // pegbox and scroll, boxed until their panel exists
+    // pegbox and scroll, a placeholder box: the scroll panel draws the real one in its own frame
     renderPolygon(s.scroll, colors.neckOff, STROKE_WEIGHT.guide, 0.7)(g, ui);
     const mid = new Pt((s.scroll[0].x + s.scroll[2].x) / 2, (s.scroll[0].y + s.scroll[2].y) / 2);
     renderText(mid, 'scroll', colors.neckOff, 5, s.scrollLabelAngleDeg)(g, ui);

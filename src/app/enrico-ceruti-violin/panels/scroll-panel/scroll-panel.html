@@ -1,28 +1,3 @@
-@if (params.neck) {
-
-<section class="ui-group" [style.border-color]="colors.neck">
-    <div class="ui-group-title">Bounding Box</div>
-    <div class="input-group basic-row field-row" role="group">
-        <label class="field-cell">
-            <span class="field-title">Length <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="1" min="1" [style.border-color]="colors.neck"
-                [(ngModel)]="neck.scrollLength" (input)="onChange()" />
-        </label>
-        <label class="field-cell">
-            <span class="field-title">Depth <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="1" min="1" [style.border-color]="colors.neck"
-                [(ngModel)]="neck.scrollDepth" (input)="onChange()" />
-        </label>
-        <label class="field-cell">
-            <span class="field-title">L to D</span>
-            <div class="basic-display" aria-label="Scroll length to depth ratio value">{{
-                nearestFraction(neck.scrollLength / neck.scrollDepth) }}</div>
-        </label>
-    </div>
-</section>
-
-}
-
 @if (params.volute) {
 
 <section class="ui-group" [style.border-color]="colors.outerTrace">
@@ -30,7 +5,7 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell field-cell--full">
             <span class="field-title">Style</span>
-            <select [style.border-color]="colors.outerTrace" [(ngModel)]="volute.style" (change)="onStyleChange()">
+            <select [style.border-color]="colors.outerTrace" [ngModel]="volute.style" (ngModelChange)="setStyle($event)">
                 @for (s of styles; track s.id) {
                 <option [value]="s.id">{{ s.label }}</option>
                 }
@@ -43,61 +18,55 @@
             <input class="basic-input" type="number" step="0.1" data-step-shift="1" data-step-fine="0.01" min="0.1" [style.border-color]="colors.neckOff"
                 [(ngModel)]="volute.eyeRadius" (input)="onChange()" />
         </label>
-        <label class="field-cell">
-            <span class="field-title" title="Eye centre's distance right of the box's top left corner">Eye X <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.1" data-step-shift="1" data-step-fine="0.01" [style.border-color]="colors.neckOff"
-                [disabled]="volute.fitToBox" [(ngModel)]="volute.eyeX" (input)="onChange()" />
-        </label>
-        <label class="field-cell">
-            <span class="field-title" title="Eye centre's distance up from the box's top left corner, so negative inside the box. Sets the crown: lower fills it out, higher tightens it">Eye Y <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.1" data-step-shift="1" data-step-fine="0.01" [style.border-color]="colors.neckOff"
-                [(ngModel)]="volute.eyeY" (input)="onChange()" />
-        </label>
+        <div class="field-cell field-cell--xy">
+            <div class="xy-titles">
+                <span class="field-title" title="Eye centre's distance in front of the neck's front, so negative behind it. Set while Flush with Neck is on">X <span class="unit-label">mm</span></span>
+                <span class="field-title" title="Eye centre's height up the neck from the nut">Y <span class="unit-label">mm</span></span>
+            </div>
+            <div class="xy-field" data-xy-point role="group" aria-label="Eye position"
+                [style.borderColor]="colors.neckOff"
+                title="Arrow keys move the eye from either box">
+                <input type="number" class="basic-input" step="1" data-xy="x" aria-label="Eye X"
+                    [disabled]="volute.flushWithNeck" [ngModel]="round2(volute.eyeX)" (ngModelChange)="volute.eyeX = $event; onChange()" />
+                <input type="number" class="basic-input" step="1" data-xy="y" aria-label="Eye Y"
+                    [ngModel]="round2(volute.eyeY)" (ngModelChange)="volute.eyeY = $event; onChange()" />
+            </div>
+        </div>
     </div>
     <div class="input-group basic-row field-row" role="group">
+        @if (seedDef) {
         <label class="field-cell">
-            <div class="toggle" title="Slide the eye so the spiral's front touches the box's front, Eye Y still setting its height. Off, Eye X is yours too">
-                <input type="checkbox" [(ngModel)]="volute.fitToBox" (ngModelChange)="onChange()" />
-                <span>Fit to Bounds</span>
-            </div>
-        </label>
-        @if (points) {
-        <label class="field-cell">
-            <div class="toggle" title="Set each turn's radius yourself, starting from the spiral the eye's figure draws by itself. Off, that natural spiral: the first arc from the top of the eye down to a corner of the seed figure inside it, each after it a side longer, so the eye's radius sizes it">
-                <input type="checkbox" [(ngModel)]="volute.customTurns" (ngModelChange)="onChange()" />
-                <span>Custom Turns</span>
-            </div>
+            <span class="field-title" [title]="seedDef.title">Seed <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.1" data-step-shift="1" data-step-fine="0.01" min="0.01" [style.border-color]="colors.outerTrace"
+                [(ngModel)]="volute.seed" (input)="onChange()" />
         </label>
         }
-    </div>
-    @if (points && volute.customTurns) {
-    @for (arcs of turns; track $index; let t = $index) {
-    <div class="input-group basic-row field-row" role="group">
+        @if (archimedean) {
         <label class="field-cell">
-            <span class="field-title" [style.color]="arcColor(arcs[0])" title="The turn's radius where it ends, its arcs opening in the shape they already have. Each radius must be more than the last. Turn 3 ends at the front, where the crown takes over, shaped by Eye Y">Turn {{ t + 1 }} <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.1" data-step-shift="1" data-step-fine="0.01" min="0.1" [style.border-color]="arcColor(arcs[0])"
-                [disabled]="openTurns.has(t)" [ngModel]="volute.arcRadii[arcs[arcs.length - 1]]" (ngModelChange)="setTurn(t, $event)"
-                (focus)="onTurnFocus(t)" (blur)="onArcBlur()" />
+            <span class="field-title" title="How much the spiral's radius grows each full turn, so the even spacing between its turns">Pitch <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.1" data-step-shift="1" data-step-fine="0.01" min="0.1" [style.border-color]="colors.outerTrace"
+                [(ngModel)]="volute.pitch" (input)="onChange()" />
         </label>
+        }
         <label class="field-cell">
-            <div class="toggle" title="Tune this turn's arcs one by one; the turn's radius follows its last">
-                <input type="checkbox" [ngModel]="openTurns.has(t)" (ngModelChange)="$event ? openTurns.add(t) : openTurns.delete(t)" />
-                <span>{{ parts[points].name }}</span>
+            <div class="toggle" title="Slide the eye so the spiral's front is flush with the neck's front, Y still setting its height. Off, X is yours too">
+                <input type="checkbox" [(ngModel)]="volute.flushWithNeck" (ngModelChange)="onChange()" />
+                <span>Flush with Neck</span>
             </div>
         </label>
     </div>
-    @if (openTurns.has(t)) {
+    @if (custom) {
+    @for (arcs of arcRows; track $index) {
     <div class="input-group basic-row field-row" role="group">
-        @for (i of arcs; track i; let q = $index) {
+        @for (i of arcs; track i) {
         <label class="field-cell field-cell--arc">
-            <span class="field-title">{{ parts[points].ends[q] }} <span class="unit-label">mm</span></span>
+            <span class="field-title" [style.color]="arcColor(i)" title="Radius of the quarter-turn arc ending this many turns out from where the spiral leaves the eye. Each is at least the last, and one set past those after it carries them up to it">{{ arcEnd(i) }} <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="0.1" data-step-shift="1" data-step-fine="0.01" min="0.1" [style.border-color]="arcColor(i)"
-                [(ngModel)]="volute.arcRadii[i]" (input)="onChange(); onArcFocus(i)"
+                [ngModel]="volute.arcRadii[i]" (ngModelChange)="setArcRadius(i, $event)"
                 (focus)="onArcFocus(i)" (blur)="onArcBlur()" />
         </label>
         }
     </div>
-    }
     }
     }
 </section>

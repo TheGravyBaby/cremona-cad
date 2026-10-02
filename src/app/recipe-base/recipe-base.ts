@@ -198,7 +198,7 @@ export abstract class RecipeComponentBase implements AfterViewInit, Undoable {
       input = target;
       sign = e.key === 'ArrowUp' ? 1 : -1;
     }
-    if (!input) return;
+    if (!input || input.disabled) return;
 
     e.preventDefault();
     const current = input.valueAsNumber;
