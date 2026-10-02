@@ -13,7 +13,7 @@ adding to a file — they are current and more specific than this page.
 | `ceruti-arching.ts` | Long-arch height profile, station normalization, `bodyLandmarks`, the `*AtY` half-width queries. The layer that decides *where* a section is taken and how tall the arch stands there. |
 | `ceruti-arch-geometry.ts` | The gouge's circular section, the crown, and the tangency joining them. Answers "what shape is the section here". |
 | `ceruti-surface.ts` | The evaluable height field z(x,y) over the plan view. Cross-arch templates, STL. |
-| `ceruti-neck.ts` | The neck set in the side elevation: where the nut, fingerboard, heel and bridge stand, and the readouts (neck stop, projection). Hangs off the top plate's edge via `topPlatePlacement`, so the rib taper carries through. |
+| `ceruti-neck.ts` | The neck set in the side elevation: `calculateNeck` places the neck wood's four corners, the heel arc and the bridge on `p.neck`, and the functions beside it read the dressing (button, nut block, fingerboard, bridge wedge, guides, the neck's own path) off those for the render. Hangs off the top plate's edge via `topPlatePlacement`, so the rib taper carries through. |
 | `ceruti-scroll.ts` | The scroll in its own side-view frame: the volute's spiral styles about the eye, and `calculateScroll`, which lays the spiral out and runs the back and front off it, writing every arc and line onto `p.volute` the way `calculateNeck` writes `p.neck`. Edited by two panels: volute (the spiral and the crown, S0–S1), then scroll (the back from S2 on, and the front); both draw through `renders/scroll.render.ts`. |
 | `ceruti-types.ts` | `EnricoCerutiParams` and the whole serialized shape. `CerutiColors`, view flags. |
 | `ceruti-templates.ts` | Bundled historical instruments (Strad Goetz, Del Gesu Baltic, …) as pasted recipe JSON. **Append-only** — add instruments, don't restructure. |
@@ -83,10 +83,9 @@ recognizes the current format *positively* so it stays idempotent; six tests in
 - **The neck wood's thickness is one number too, root to nut.** `NeckParams.thickness` sets
   `back.nut` and `back.root` equally; templates read as uniform enough here that carrying
   separate root/nut values wasn't earning its keep. Entered once, under the "Neck" section.
-- **The scroll continues the neck's own plane; the nut sits proud of it.** The scroll's
-  placeholder box in `solveNeck`, and the origin the volute's eye is measured from, start at
-  `nutAt` (the fingerboard-plane point), not `nutString` (the string contact point, raised by
-  `stringHeightAtNut`) — the pegbox/scroll is flush with the neck as it
+- **The scroll continues the neck's own plane; the nut sits proud of it.** The origin the
+  volute's eye is measured from starts at `nut` (the fingerboard-plane point), not the string
+  contact point raised by the nut's thickness — the pegbox/scroll is flush with the neck as it
   runs on past the nut, and the nut itself is the thing standing proud, not a step the scroll
   itself takes. Building the scroll off `nutString` looks tempting since it's the point closest
   at hand, but it makes the scroll jump up to string height at the nut and is wrong.
@@ -123,6 +122,23 @@ recognizes the current format *positively* so it stays idempotent; six tests in
   back-face point solved yet. It isn't wired into on-screen rendering (which still needs its
   root/heel vs. neck two-color split, segment by segment) or into the export panel yet; it exists
   so a future neck template export has a real path to start from.
+- **`p.neck` keeps only what fixes the neck's shape; the dressing is read off it.** (2026-10-02)
+  The first pass at the rule above wrote every derived point back onto `p.neck` — unit vectors,
+  the mortise floor, the button profile, the nut block, the bridge wedge, the fingerboard, the
+  scroll placeholder box, a readout nothing showed — 24 solved fields on 9 authored, a quarter of a
+  saved recipe. `NeckParams` now carries eight: `root`, `nut`, `backRoot`, `backNut` (the neck
+  wood's corners), `heel` as a plain `Arc`, `bridgeFoot`, `bridgeTop` (the one piece that needs the
+  arching solve) and `stringLength` (the readout). Everything else the panel draws is a function in
+  `ceruti-neck.ts` reading those and the authored numbers — `buttonTip`, `mortiseFloorY`,
+  `gluingAtMortise`, `plateEdgeAtNeck`, `heelBottom`, `heelFace`, `fingerboardEnd`, `bridgeWedge` —
+  shared by `renderNeck` and `defineNeckPath`, the way `violNeckCap` serves both the outer trace and
+  the main-bouts preview. `defineNeckPath` moved from `ceruti-paths.ts` into `ceruti-neck.ts` for
+  that: `ceruti-arch-geometry` imports `ceruti-paths` and `ceruti-neck` imports `ceruti-arch-geometry`,
+  so `ceruti-paths` reaching back into `ceruti-neck` would close a cycle. The scroll placeholder
+  box and its label were removed outright, the scroll having its own panels now;
+  `stringOverFingerboardEnd` went with it, by the readout rule below. The rule going forward, for
+  the scroll as well: a solved field earns a place on params if it is an arc the user tunes, a
+  readout the panel shows, or needs a solve the render shouldn't repeat. The rest is derived.
 - **`calculateScroll` writes onto `p.volute` the same way.** (2026-10-02) The scroll started life
   the other way round — `layoutVolute`/`layoutBack`/`layoutFront` returned `Placed*` structs and
   `renderScroll` ran all three itself — and was brought in line with the neck: `VoluteParams` now
@@ -150,23 +166,23 @@ recognizes the current format *positively* so it stays idempotent; six tests in
   consumer any more once this one stopped using it. `nut.neckStop` (root to nut) and
   `projection`/`projectionHit` (the fingerboard's top line carried on to the bridge axis, with its
   render guide) were cut outright the same day for the same reason: solved but not shown, kept
-  alive only by their own bench-figure tests. `stringOverFingerboardEnd` is still solved and still
-  backs a bench-figure test, but isn't surfaced in the panel either — the difference is nobody's
-  asked to cut that one yet. `bodyDepthAtRoot` had neither a render nor a test depending on it, so
+  alive only by their own bench-figure tests. `stringOverFingerboardEnd` outlived them until
+  2026-10-02, when the trim above cut it too; its bench-figure test now derives the figure itself.
+  `bodyDepthAtRoot` had neither a render nor a test depending on it, so
   it was deleted outright rather than kept as an unused field. The pattern going in: a solved
   `NeckParams` field earns its keep by feeding either the drawing or the panel, not just a test —
   losing the last one gets it deleted, not just unhooked.
 - **Fingerboard and nut are reference geometry, not template inputs — and `nutHeight` didn't
   even earn that.** Nothing in `fingerboard.length`/`.thickness` touches the neck's own carved
-  shape (`back`, `heel`, `buttonProfile`, mortise) — they exist only to draw the fingerboard/nut
+  shape (the back, the heel, the button, the mortise) — they exist only to draw the fingerboard/nut
   and feed the string readouts, since fingerboards and nuts are fitted/interchanged independently
   of any template this app produces. `nutHeight` (string standing proud of the fingerboard at the
   nut) went further and was removed outright (2026-09-20): a real nut has some height, but at
   ~1 mm on a violin it moved `stringLength`/`stringAngleDeg` by an amount the classical figures
   don't care about, so the string now runs flush with the fingerboard's own top corner —
-  `nut.top` (on `p.neck`, solved by `calculateNeck`) is both the fingerboard's top corner and
-  where the string sits, and there's no `nut.string` any more. The nut block still draws as a little box past the fingerboard end
-  (`nutBlock`), it just doesn't peak above the fingerboard's own surface. `fingerboard.length`/
+  the fingerboard's top corner at the nut (`nut` moved the nut thickness along the neck's normal,
+  derived where it is drawn) is also where the string sits, and there's no `nut.string` any more. The nut block still draws as a little box past the fingerboard end
+  (the nut block in `renderNeck`), it just doesn't peak above the fingerboard's own surface. `fingerboard.length`/
   `.thickness` stay as fields for now since they still meaningfully move the readouts and the
   drawing; if that stops being true, treat them the same way.
 - **Fingerboard, bridge and the readouts share one "String Setup" section.** Since none of the
@@ -175,7 +191,7 @@ recognizes the current format *positively* so it stays idempotent; six tests in
   three `ui-group` headers cost. The section itself carries no `[style.border-color]` (it mixes
   fingerboard purple and bridge off-white); each input still carries its own part's color, same
   as "Readouts" was already uncolored while its neighbors were.
-- **The button draws in the back plate's own color, not the neck's.** `buttonProfile` is carved
+- **The button draws in the back plate's own color, not the neck's.** The button profile is carved
   from the back plate carried on past its edge (see the button bullet above), so it renders in
   `colors.archBack` — the same color the long-/cross-arching panels already use for "Back Plate" —
   and the Button Height field's border matches it, rather than both drawing in `colors.neck` as
@@ -194,12 +210,11 @@ recognizes the current format *positively* so it stays idempotent; six tests in
   the same body-height thresholds `calculateMould` already uses to tell violin/viola/cello/bass
   apart (`<400`/`<500`/`<800`/else — 270/310/580/850 mm). Modern fingerboards really do come in a
   handful of stock lengths, so entering one was never a real degree of freedom. The render call
-  for the fingerboard polygon (`[fb.end, fb.endTop, fb.nutTop, s.nut.at]`, in `colors.fingerboard`)
+  for the fingerboard polygon (the board's end and the nut's top corners, in `colors.fingerboard`)
   had existed only as a commented-out line in `neck-panel.ts` since some earlier pass — it's now
   live, gated behind a new `showFingerboard` render-toggle-bar flag (`CerutiViewFlags`/
   `RenderToggleKey`, default `true` in `DEFAULT_CERUTI_VIEW_FLAGS`) so the board can be hidden
-  without losing any geometry that depends on it (`fingerboardEnd`/`fingerboardEndTop` still feed
-  `stringOverFingerboardEnd`). The "String Setup" section's "FB Thickness, Length" shared-title
+  without losing any geometry that depends on it. The "String Setup" section's "FB Thickness, Length" shared-title
   field row lost its second cell along with the field — it's just "FB Thickness" now, thickness
   being the one fingerboard number still worth dialing by hand.
 - **A panel's section color has to be restated on every input inside it, not just the
