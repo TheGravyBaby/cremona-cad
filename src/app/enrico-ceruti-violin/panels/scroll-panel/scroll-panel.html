@@ -1,74 +1,82 @@
 @if (params.volute) {
 
-<section class="ui-group" [style.border-color]="colors.outerTrace">
-    <div class="ui-group-title">Volute</div>
-    <div class="input-group basic-row field-row" role="group">
-        <label class="field-cell field-cell--full">
-            <span class="field-title">Style</span>
-            <select [style.border-color]="colors.outerTrace" [ngModel]="volute.style" (ngModelChange)="setStyle($event)">
-                @for (s of styles; track s.id) {
-                <option [value]="s.id">{{ s.label }}</option>
-                }
-            </select>
-        </label>
-    </div>
+<section class="ui-group">
+    <div class="ui-group-title">Back</div>
+    @for (arc of volute.back; track $index; let i = $index) {
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title">Radius <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.1" data-step-shift="1" data-step-fine="0.01" min="0.1" [style.border-color]="colors.neckOff"
-                [(ngModel)]="volute.eyeRadius" (input)="onChange()" />
+            <span class="field-title" [style.color]="backColor(i)" [title]="backHelp[i] ?? ''">S{{ i }} R <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.1" data-step-shift="1" data-step-fine="0.01" min="0.1" [style.border-color]="backColor(i)"
+                [(ngModel)]="arc.r" (input)="onChange()" (focus)="onFocus({ back: i })" (blur)="onBlur()" />
         </label>
-        <div class="field-cell field-cell--xy">
-            <div class="xy-titles">
-                <span class="field-title" title="Eye centre's distance in front of the neck's front, so negative behind it. Set while Flush with Neck is on">X <span class="unit-label">mm</span></span>
-                <span class="field-title" title="Eye centre's height up the neck from the nut">Y <span class="unit-label">mm</span></span>
-            </div>
-            <div class="xy-field" data-xy-point role="group" aria-label="Eye position"
-                [style.borderColor]="colors.neckOff"
-                title="Arrow keys move the eye from either box">
-                <input type="number" class="basic-input" step="1" data-xy="x" aria-label="Eye X"
-                    [disabled]="volute.flushWithNeck" [ngModel]="round2(volute.eyeX)" (ngModelChange)="volute.eyeX = $event; onChange()" />
-                <input type="number" class="basic-input" step="1" data-xy="y" aria-label="Eye Y"
-                    [ngModel]="round2(volute.eyeY)" (ngModelChange)="volute.eyeY = $event; onChange()" />
-            </div>
-        </div>
-    </div>
-    <div class="input-group basic-row field-row" role="group">
-        @if (seedDef) {
         <label class="field-cell">
-            <span class="field-title" [title]="seedDef.title">Seed <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.1" data-step-shift="1" data-step-fine="0.01" min="0.01" [style.border-color]="colors.outerTrace"
-                [(ngModel)]="volute.seed" (input)="onChange()" />
+            <span class="field-title" title="Where the arc ends, as the angle round its own centre from the front: 90° the top of the scroll, 180° the back. It starts where the arc before it ended">End <span class="unit-label">°</span></span>
+            <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1"
+                [ngModel]="endDegrees(arc.end)" (ngModelChange)="setEnd(arc, $event)" (focus)="onFocus({ back: i })" (blur)="onBlur()" />
         </label>
-        }
-        @if (archimedean) {
+        @if ($last) {
         <label class="field-cell">
-            <span class="field-title" title="How much the spiral's radius grows each full turn, so the even spacing between its turns">Pitch <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.1" data-step-shift="1" data-step-fine="0.01" min="0.1" [style.border-color]="colors.outerTrace"
-                [(ngModel)]="volute.pitch" (input)="onChange()" />
-        </label>
-        }
-        <label class="field-cell">
-            <div class="toggle" title="Slide the eye so the spiral's front is flush with the neck's front, Y still setting its height. Off, X is yours too">
-                <input type="checkbox" [(ngModel)]="volute.flushWithNeck" (ngModelChange)="onChange()" />
-                <span>Flush with Neck</span>
-            </div>
-        </label>
-    </div>
-    @if (custom) {
-    @for (arcs of arcRows; track $index) {
-    <div class="input-group basic-row field-row" role="group">
-        @for (i of arcs; track i) {
-        <label class="field-cell field-cell--arc">
-            <span class="field-title" [style.color]="arcColor(i)" title="Radius of the quarter-turn arc ending this many turns out from where the spiral leaves the eye. Each is at least the last, and one set past those after it carries them up to it">{{ arcEnd(i) }} <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.1" data-step-shift="1" data-step-fine="0.01" min="0.1" [style.border-color]="arcColor(i)"
-                [ngModel]="volute.arcRadii[i]" (ngModelChange)="setArcRadius(i, $event)"
-                (focus)="onArcFocus(i)" (blur)="onArcBlur()" />
+            <span class="field-title" [style.color]="backColor(i)" title="The straight run on down the back of the scroll from this arc's end, along its heading">Straight <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.1" data-step-shift="1" data-step-fine="0.01" min="0" [style.border-color]="backColor(i)"
+                [(ngModel)]="volute.straight" (input)="onChange()" (focus)="onFocus('straight')" (blur)="onBlur()" />
         </label>
         }
     </div>
     }
-    }
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title" [style.color]="hollowColor" title="Where the back of the scroll turns into the back of the pegbox: an arc off the straight's end, curving the other way. Its end is the duck tail">S{{ volute.back.length }} R <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.1" data-step-shift="1" data-step-fine="0.01" min="0.1" [style.border-color]="hollowColor"
+                [(ngModel)]="volute.hollow.r" (input)="onChange()" (focus)="onFocus({ back: volute.back.length })" (blur)="onBlur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title" title="Where the arc ends, as the angle round its own centre from the front, swept clockwise: 0° runs the back straight down, parallel to the neck">End <span class="unit-label">°</span></span>
+            <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1"
+                [ngModel]="endDegrees(volute.hollow.end)" (ngModelChange)="setEnd(volute.hollow, $event)" (focus)="onFocus({ back: volute.back.length })" (blur)="onBlur()" />
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title" [style.color]="colors.neck" title="Where the back of the pegbox meets the back of the neck: the fillet into the neck's back from a line run square to the neck from the duck tail">Nape R <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.1" data-step-shift="1" data-step-fine="0.01" min="0.1" [style.border-color]="colors.neck"
+                [(ngModel)]="volute.nape" (input)="onChange()" (focus)="onFocus('nape')" (blur)="onBlur()" />
+        </label>
+    </div>
+</section>
+
+<section class="ui-group">
+    <div class="ui-group-title">Front</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title" [style.color]="frontColor(0)" title="The front of the pegbox rising straight up the neck's front from the top of the nut, before it turns back under the volute">Flat <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.1" data-step-shift="1" data-step-fine="0.01" min="0" [style.border-color]="frontColor(0)"
+                [(ngModel)]="volute.front.flat" (input)="onChange()" (focus)="onFocus('flat')" (blur)="onBlur()" />
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title" [style.color]="frontColor(0)" title="The arc turning the front of the pegbox back from the flat, in under the volute">F0 R <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.1" data-step-shift="1" data-step-fine="0.01" min="0.1" [style.border-color]="frontColor(0)"
+                [(ngModel)]="volute.front.f0.r" (input)="onChange()" (focus)="onFocus({ front: 0 })" (blur)="onBlur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title" title="Where the arc ends, as the angle round its own centre from the front: the more it turns, the further back the straight after it leans">End <span class="unit-label">°</span></span>
+            <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1"
+                [ngModel]="endDegrees(volute.front.f0.end)" (ngModelChange)="setEnd(volute.front.f0, $event)" (focus)="onFocus({ front: 0 })" (blur)="onBlur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title" [style.color]="frontColor(0)" title="The straight run on from F0's end, along its heading, in under the volute">Straight <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.1" data-step-shift="1" data-step-fine="0.01" min="0" [style.border-color]="frontColor(0)"
+                [(ngModel)]="volute.front.straight" (input)="onChange()" (focus)="onFocus('frontStraight')" (blur)="onBlur()" />
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title" [style.color]="frontColor(1)" title="The small arc curving the front up off the straight to meet the volute. It ends where it meets it">F1 R <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.1" data-step-shift="1" data-step-fine="0.01" min="0.1" [style.border-color]="frontColor(1)"
+                [(ngModel)]="volute.front.f1.r" (input)="onChange()" (focus)="onFocus({ front: 1 })" (blur)="onBlur()" />
+        </label>
+    </div>
 </section>
 
 }

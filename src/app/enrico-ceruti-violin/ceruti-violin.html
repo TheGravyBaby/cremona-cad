@@ -213,6 +213,15 @@
         </app-ceruti-neck-panel>
         }
 
+        @if (openPanel === 'volute') {
+        <app-ceruti-volute-panel #panelRef
+            [params]="d.params"
+            [colors]="colors"
+            [flags]="viewFlags"
+            (panelUpdate)="onPanelRenderRequest($event)">
+        </app-ceruti-volute-panel>
+        }
+
         @if (openPanel === 'scroll') {
         <app-ceruti-scroll-panel #panelRef
             [params]="d.params"

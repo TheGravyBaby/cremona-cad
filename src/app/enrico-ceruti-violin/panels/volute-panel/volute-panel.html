@@ -1,0 +1,67 @@
+@if (params.volute) {
+
+<section class="ui-group" [style.border-color]="colors.outerTrace">
+    <div class="ui-group-title">Volute</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell field-cell--full">
+            <span class="field-title">Style</span>
+            <select [style.border-color]="colors.outerTrace" [ngModel]="volute.style" (ngModelChange)="setStyle($event)">
+                @for (s of styles; track s.id) {
+                <option [value]="s.id">{{ s.label }}</option>
+                }
+            </select>
+        </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title">Radius <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.1" data-step-shift="1" data-step-fine="0.01" min="0.1" [style.border-color]="colors.neckOff"
+                [(ngModel)]="volute.eyeRadius" (input)="onChange()" />
+        </label>
+        <div class="field-cell field-cell--xy">
+            <div class="xy-titles">
+                <span class="field-title" title="Eye centre's distance in front of the neck's front, so negative behind it. Set while Flush with Neck is on">X <span class="unit-label">mm</span></span>
+                <span class="field-title" title="Eye centre's height up the neck from the nut">Y <span class="unit-label">mm</span></span>
+            </div>
+            <div class="xy-field" data-xy-point role="group" aria-label="Eye position"
+                [style.borderColor]="colors.neckOff"
+                title="Arrow keys move the eye from either box">
+                <input type="number" class="basic-input" step="1" data-xy="x" aria-label="Eye X"
+                    [disabled]="volute.flushWithNeck" [ngModel]="round2(volute.eyeX)" (ngModelChange)="volute.eyeX = $event; onChange()" />
+                <input type="number" class="basic-input" step="1" data-xy="y" aria-label="Eye Y"
+                    [ngModel]="round2(volute.eyeY)" (ngModelChange)="volute.eyeY = $event; onChange()" />
+            </div>
+        </div>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
+        @if (archimedean) {
+        <label class="field-cell">
+            <span class="field-title" title="How much the spiral's radius grows each full turn, so the even spacing between its turns">Pitch <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.1" data-step-shift="1" data-step-fine="0.01" min="0.1" [style.border-color]="colors.outerTrace"
+                [(ngModel)]="volute.pitch" (input)="onChange()" />
+        </label>
+        }
+        <label class="field-cell">
+            <div class="toggle" title="Slide the eye so the spiral's front is flush with the neck's front, Y still setting its height. Off, X is yours too">
+                <input type="checkbox" [(ngModel)]="volute.flushWithNeck" (ngModelChange)="onChange()" />
+                <span>Flush with Neck</span>
+            </div>
+        </label>
+    </div>
+    @if (custom) {
+    @for (arcs of arcRows; track $index) {
+    <div class="input-group basic-row field-row" role="group">
+        @for (i of arcs; track i) {
+        <label class="field-cell field-cell--arc">
+            <span class="field-title" [style.color]="arcColor(i)" >R {{ arcEnd(i) }} <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.1" data-step-shift="1" data-step-fine="0.01" min="0.1" [style.border-color]="arcColor(i)"
+                [ngModel]="volute.arcRadii[i]" (ngModelChange)="setArcRadius(i, $event)"
+                (focus)="onFocus({ spiral: i })" (blur)="onBlur()" />
+        </label>
+        }
+    </div>
+    }
+    }
+</section>
+
+}

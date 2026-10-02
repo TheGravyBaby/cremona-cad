@@ -47,6 +47,9 @@ export const CERUTI_COLOR_PALETTE = {
   fHoleCut: '#e08a1e',
   pathError: '#d62828',
   neck: '#b07a3c',
+  // the scroll's back, rust over its top turning to green down toward the pegbox
+  scrollBackUpper: '#b0502a',
+  scrollBackLower: '#3c9a50',
   neckRoot: '#d2691e',
   fingerboard: '#6f4d9a',
   bridge: '#d9d2c0',
