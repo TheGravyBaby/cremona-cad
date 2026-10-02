@@ -8,8 +8,12 @@
   flex: 0 0 auto;
 }
 
+:host-context(.sidebar-collapsed) {
+  display: none;
+}
+
 /* The foot of the sidebar column, in normal flow — see recipe-toolbar.css for why neither this nor
-   the file strip can be a position: fixed child of the scrolling panel. */
+   the file header can be a position: fixed child of the scrolling panel. */
 .view-toggle-bar {
   box-sizing: border-box;
   width: 100%;

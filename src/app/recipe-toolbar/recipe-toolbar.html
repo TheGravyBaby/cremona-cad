@@ -7,7 +7,10 @@
       [attr.aria-haspopup]="templateOptions.length ? 'menu' : null"
       [attr.aria-expanded]="templateOptions.length ? menuOpen : null"
       (click)="onNewButtonClick()">
-      <img src="new.png" alt="" />
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M13.5 3H7a1.5 1.5 0 0 0-1.5 1.5v15A1.5 1.5 0 0 0 7 21h5M13.5 3v4.5H18M13.5 3L18 7.5V12M18 15v6M15 18h6" />
+      </svg>
     </button>
 
     <!-- Where a new instrument starts from. Never shows a current selection: a design stops
@@ -33,11 +36,17 @@
 
   <button type="button" class="toolbar-btn" title="Download a copy" aria-label="Download a copy"
     (click)="onSaveClick()">
-    <img src="download.png" alt="" />
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+      stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M12 4v11M7 10l5 5 5-5M5 20h14" />
+    </svg>
   </button>
   <button type="button" class="toolbar-btn" title="Open a downloaded copy" aria-label="Open a downloaded copy"
     (click)="triggerFilePick()">
-    <img src="upload.png" alt="" />
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+      stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M12 15V4M7 9l5-5 5 5M5 20h14" />
+    </svg>
   </button>
   <input #fileInput class="toolbar-file-input" type="file" accept=".json,application/json" (change)="onFilePicked($event)" />
 

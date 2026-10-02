@@ -5,64 +5,63 @@
 :host {
   display: block;
   flex: 0 0 auto;
+  /* over the sidebar's own left border, which is grey and all but vanishes on the day bar */
+  margin-left: -1px;
 }
 
-/* Surface-2 like every other piece of chrome — the tool dock, the render toggles, both tabs.
-   Height is shared with .sidebar-dock-handle in app.css, which is the left end of this strip: any
-   difference shows as the tab hanging down over the panel nav below. */
+/* auto-hidden with the top bar (see .bar-autohide in app.css); the negative margin takes it out of
+   the column so the nav strip moves up beneath it */
+:host-context(.bar-autohide) {
+  position: relative;
+  z-index: 20;
+  margin-bottom: calc(-1 * var(--app-bar-height));
+  transform: translateY(calc(-1 * var(--app-bar-height)));
+  transition: transform 150ms ease;
+}
+
+:host-context(.bar-autohide.bar-revealed) {
+  transform: none;
+}
+
+/* The right end of the top bar: same height, surface and controls as top-bar.css, sitting level
+   with it, so the app's controls and the recipe's file controls read as one bar even though each
+   component owns its own half. */
 .toolbar {
   box-sizing: border-box;
   width: 100%;
-  height: 36px;
+  height: var(--app-bar-height);
 
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
   padding-right: 12px;
-  border-bottom: 1px solid var(--ui-border-strong);
-  background: var(--ui-bg-surface-2);
-}
-
-/* 44px under a thumb: the tab is the same height and that is the floor for a tap target. */
-@media (pointer: coarse) {
-  .toolbar {
-    height: 44px;
-  }
+  border-left: 1px solid var(--ui-topbar-divider);
+  border-bottom: 1px solid var(--ui-topbar-border);
+  background: linear-gradient(180deg, var(--ui-topbar-grad-1), var(--ui-topbar-grad-2));
 }
 
 .toolbar-btn {
   flex: 0 0 auto;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--ui-border-strong);
-  border-radius: 6px;
-  background: var(--ui-control-bg);
+  border: 1px solid var(--ui-topbar-control-border);
+  border-radius: 4px;
+  background: var(--ui-topbar-control-bg);
+  color: var(--ui-text-primary);
   cursor: pointer;
 }
 
 .toolbar-btn:hover {
-  background: var(--ui-control-bg-hover);
+  background: var(--ui-topbar-control-bg-hover);
 }
 
 .toolbar-btn:active {
   background: var(--ui-control-bg-active);
-}
-
-.toolbar-btn img {
-  height: 13px;
-  width: auto;
-  display: block;
-  pointer-events: none;
-  filter: invert(1);
-}
-
-:host-context(.day-mode) .toolbar-btn img {
-  filter: none;
 }
 
 .toolbar-file-input {
@@ -73,10 +72,10 @@
 .toolbar-name {
   flex: 1 1 auto;
   min-width: 0;
-  height: 26px;
+  height: 28px;
   box-sizing: border-box;
-  border: 2px solid var(--ui-border-strong);
-  border-radius: 6px;
+  border: 1px solid var(--ui-topbar-control-border);
+  border-radius: 4px;
   background: var(--ui-bg-panel);
   color: var(--ui-text-primary);
   font-size: 13px;

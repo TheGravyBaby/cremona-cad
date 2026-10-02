@@ -22,8 +22,8 @@ function countdownKey(m: Message): string {
   styleUrls: ['./message-center.component.css']
 })
 export class MessageCenterComponent implements OnDestroy {
-  // toasts are the full messages; chips are conditions the user has dismissed but which are
-  // still reporting themselves. See MessageService for why the two states exist.
+  // toasts are the full messages; chips are conditions still reporting themselves, shown by title
+  // until opened. See MessageService for why the two states exist.
   //
   // Signals, not plain fields: the app runs zoneless, so a message arriving over rxjs schedules no
   // change detection of its own. Plain fields left the stack repainting only when something else

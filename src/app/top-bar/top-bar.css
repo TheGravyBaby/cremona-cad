@@ -6,9 +6,10 @@
 
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 16px;
 
-  height: 44px;
+  box-sizing: border-box;
+  height: var(--app-bar-height);
   padding: 0 12px;
 
   background: linear-gradient(180deg, var(--paper), var(--paper2));
@@ -39,6 +40,12 @@
 
 :host-context(.day-mode) .icon-btn img {
   filter: none;
+}
+
+.messages {
+  flex: 1 1 auto;
+  align-self: stretch;
+  min-width: 0;
 }
 
 .controls {
@@ -116,13 +123,14 @@
   padding-right: 24px;
 }
 
-/* Muted like About: both are app chrome rather than document actions, so neither competes with
-   Edit beside them. */
-.theme-toggle-btn {
+/* Muted like About: app chrome rather than document actions. */
+.theme-toggle-btn,
+.bar-pin-btn {
   color: var(--ui-text-muted);
 }
 
-.theme-toggle-btn:hover {
+.theme-toggle-btn:hover,
+.bar-pin-btn:hover {
   color: var(--ui-text-primary);
 }
 

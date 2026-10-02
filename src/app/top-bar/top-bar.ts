@@ -1,11 +1,12 @@
 import { Component, ElementRef, EventEmitter, HostListener, Output, Input, inject } from '@angular/core';
 import { AboutModalComponent } from '../about-modal/about-modal';
 import { EditMenuComponent } from '../draft-canvas/edit-menu/edit-menu';
+import { MessageCenterComponent } from '../shared/message-center.component';
 
 @Component({
   selector: 'app-top-bar',
   standalone: true,
-  imports: [AboutModalComponent, EditMenuComponent],
+  imports: [AboutModalComponent, EditMenuComponent, MessageCenterComponent],
   templateUrl: './top-bar.html',
   styleUrls: ['./top-bar.css'],
 })
@@ -17,6 +18,9 @@ export class TopBarComponent {
    * than on the canvas's bottom bar because it dresses the whole app, not the drawing. */
   @Input() nightMode = true;
   @Output() nightModeChange = new EventEmitter<boolean>();
+
+  @Input() barPinned = true;
+  @Output() barPinnedChange = new EventEmitter<boolean>();
 
   // The edit verbs live up here because they act on the document as a whole. See edit-menu.ts.
   protected editOpen = false;

@@ -1,5 +1,8 @@
 /* You can add global styles to this file, and also import other style files */
 :root {
+  /* the top bar and the recipe header beside it, which have to read as one bar */
+  --app-bar-height: 44px;
+
   --ui-bg-app: #1e1e1e;
   --ui-bg-canvas: #1e1e1e;
   --ui-bg-sidebar: #252526;
@@ -36,6 +39,7 @@
   --ui-topbar-control-border: rgba(96, 96, 96, 0.9);
   --ui-topbar-control-bg: rgba(45, 45, 48, 0.95);
   --ui-topbar-control-bg-hover: rgba(58, 58, 62, 1);
+  --ui-topbar-divider: var(--ui-border-soft);
 
   --ui-canvas-btn-bg-start: #3a3a3f;
   --ui-canvas-btn-bg-end: #2f2f33;
@@ -90,6 +94,7 @@
   --ui-topbar-control-border: rgba(140, 104, 20, 0.65);
   --ui-topbar-control-bg: rgba(228, 206, 140, 0.92);
   --ui-topbar-control-bg-hover: rgba(238, 216, 156, 1);
+  --ui-topbar-divider: rgba(140, 104, 20, 0.42);
 
   --ui-canvas-btn-bg-start: #e4e7eb;
   --ui-canvas-btn-bg-end: #d8dce2;
