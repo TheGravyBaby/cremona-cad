@@ -111,7 +111,41 @@ describe('MessageService', () => {
     expect(back.message).toBe('still 2.4mm over');
   });
 
-  it('clears an untitled or info message outright', () => {
+  it('brings titled info in open, and folds it into a chip when dismissed', () => {
+    svc.emit({ severity: 'info', title: 'Body Dimensions', message: 'height and lower bout width' });
+    const id = current(svc)[0].id;
+    expect(current(svc)[0].collapsed).toBeFalsy();
+
+    svc.dismiss(id);
+    expect(current(svc)[0].collapsed).toBe(true);
+  });
+
+  it('reopens info asked for again, rather than counting it like a re-report', () => {
+    svc.emit({ severity: 'info', title: 'Body Dimensions', message: 'height and lower bout width' });
+    svc.dismiss(current(svc)[0].id);
+
+    svc.emit({ severity: 'info', title: 'Body Dimensions', message: 'height and lower bout width' });
+    const msgs = current(svc);
+    expect(msgs).toHaveLength(1);
+    expect(msgs[0].collapsed).toBeFalsy();
+  });
+
+  it('brings a condition sent without a countdown in open, since it has to be read', () => {
+    svc.emit({ severity: 'warn', title: 'Older file format', message: 'loaded, but fields may be missing', autoDismiss: false });
+    expect(current(svc)[0].collapsed).toBeFalsy();
+  });
+
+  it('keeps one chip open at a time, whether opened by hand or by arriving', () => {
+    svc.emit(condition());
+    svc.expand(current(svc)[0].id);
+
+    svc.emit({ severity: 'info', title: 'Body Dimensions', message: 'height and lower bout width' });
+    const open = current(svc).filter(m => !m.collapsed);
+    expect(open).toHaveLength(1);
+    expect(open[0].title).toBe('Body Dimensions');
+  });
+
+  it('clears an untitled message outright', () => {
     svc.emit({ severity: 'info', message: 'saved' });
     svc.emit({ severity: 'error', message: 'no title here' });
 

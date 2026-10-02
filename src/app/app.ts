@@ -1,5 +1,7 @@
 import { DOCUMENT } from '@angular/common';
 import { Component, OnDestroy, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { map } from 'rxjs';
 import { setGlobalEmitter } from './shared/message-emitter';
 import { installDebugCapture, isLocalHost } from './helpers/debugDump';
 import { isSmallViewport, trackViewportHeight } from './helpers/viewport';
@@ -18,7 +20,7 @@ import { HelloWorldRecipe } from './hello-world-recipe/hello-world-recipe';
   imports: [TopBarComponent, DraftCanvasComponent, ToolPaletteComponent, CerutiViolin, HelloWorldRecipe],
   template: `
     <div class="app" [class.sidebar-collapsed]="!sidebarOpen"
-      [class.bar-autohide]="!barPinned" [class.bar-revealed]="barRevealed()">
+      [class.bar-autohide]="!barPinned && !hasMessages()" [class.bar-revealed]="barRevealed()">
      <app-top-bar class="top"
       [selectedRecipe]="selectedRecipe"
       (recipeChange)="selectRecipe($event)"
@@ -100,9 +102,15 @@ export class App implements OnDestroy {
   sidebarOpen = true;
 
   /** Unpinned, the top bar and the recipe's file header slide away together and come back while
-   * the pointer is at the top edge or over either of them. */
+   * the pointer is at the top edge or over either of them. While there are messages the bar acts
+   * pinned instead, taking its row rather than lying over the controls: the chips live in the bar,
+   * so a hidden bar would hide them too. */
   barPinned = true;
   protected readonly barRevealed = signal(false);
+  protected readonly hasMessages = toSignal(
+    this.messageService.messages$.pipe(map(msgs => msgs.length > 0)),
+    { initialValue: false },
+  );
 
   // a plain listener rather than a HostListener, which would run change detection on every move;
   // the signal only schedules one when the bar actually shows or hides
