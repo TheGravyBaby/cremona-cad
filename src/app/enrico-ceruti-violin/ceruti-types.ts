@@ -1,13 +1,5 @@
 import { Arc, Circle, NamedReferenceImage, Pt, Rectangle, ReferenceImage, Vect2D } from "../models/types";
 
-/** The back plate's tab under the neck heel. Drawn in plan by ceruti-paths, read as a tip by the neck. */
-export interface ButtonParams {
-  /** Diameter of the semicircular cap (mm). */
-  width: number;
-  /** How far the tip stands beyond the plate's end on the centreline (mm). */
-  height: number;
-}
-
 export interface EnricoCerutiParams {
   height: number;
   width: number;
@@ -114,147 +106,7 @@ export interface EnricoCerutiParams {
   volute?: VoluteParams;
 }
 
-/** The scroll's spiral. The eye is the raised disc at its centre; the rule that winds outward from it is the style: the custom four point, the plain Archimedean spiral, or a historical layout of the Ionic volute. */
-export type VoluteStyle = 'fourPoint' | 'archimedean' | 'serlio' | 'salviati' | 'goldmann' | 'kelly';
 
-export interface VoluteParams {
-  style: VoluteStyle;
-  /** Radius of the eye (mm). */
-  eyeRadius: number;
-  /** Eye centre from the nut on the neck's front (mm): x toward the front, so negative behind it, y up the neck. x is rewritten while flush is on. */
-  eye: Pt;
-  /** On, the eye is slid each pass so the spiral's front is flush with the neck's front, its height left alone; off, it sits where `eye` puts it. */
-  flushWithNeck: boolean;
-  /** Archimedean only: how much the spiral's radius grows each full turn, so the even spacing between turns (mm). */
-  pitch: number;
-  /** Kelly only: the seed column's length, top of its rectangle to bottom, not a single square's (mm). Kelly varies it by scroll; his drawing stands it as tall as the eye's radius. */
-  seedLength: number;
-  /** Four point only: the radius of each of its eight quarter-turn arcs, two turns out to the front, innermost first (mm). Each has to be at least the last. */
-  arcRadii: number[];
-
-  // the rest is in the scroll's own frame, the nut at the origin on the neck's front, up the neck
-  // +y, toward the back -x. each arc's `r` is a field, and so is the one angle named with it; its
-  // centre and other angle are solved by calculateScroll every pass. the straights, the flat and the
-  // square line are not stored: they run between the arcs, and scrollLines reads them off. unlike
-  // the outline's arcs these run counterclockwise from `start` to `end`, which matters past a half turn
-
-  /** The spiral as drawn, outermost first, from the style about the eye. */
-  spiral: Arc[] | null;
-  /** S0, S1, S2: the crown over the top of the scroll and on down its back, each tangent to the last from the spiral's front. `end` is the field: the angle round its own centre from the front, π/2 the top, π the back. */
-  S0: Arc;
-  S1: Arc;
-  S2: Arc;
-  /** The straight run on down the back from S2's end, along its heading (mm). */
-  backStraight: number;
-  /** S3, where the scroll's back turns into the pegbox's: curving the other way off the straight's foot, so as a counterclockwise sweep it starts at the duck tail. `start` is the field, 0 running the back straight down the neck. */
-  S3: Arc;
-  /** The fillet into the neck's back from the line run square to the neck from the duck tail. `r` is the field. */
-  nape: Arc;
-
-  /** The front of the pegbox, up the neck's front from the top of the nut: the flat straight up (mm). */
-  flat: number;
-  /** F0 turns the front toward the back; `end` is the field, measured as the back's are. */
-  F0: Arc;
-  /** The straight on from F0's end along its heading (mm). */
-  frontStraight: number;
-  /** F1 curves back toward the volute until it meets the spiral, which sets its `start`. */
-  F1: Arc;
-}
-
-// the neck set, in the side elevation. the fingerboard plane leaves the top plate's edge
-// `overstand` proud of it and tilts back toward the nut by `angle`; the nut sits `length` from
-// the root along the neck, so the stop length (nut to bridge) is read off, not entered.
-//
-// The fields below the inputs are solved each pass by `calculateNeck` in ceruti-neck.ts — not
-// free fields, null until the first solve — same split as FholeParams mixing UEye/stem (authored)
-// with U1/UTip (derived). Nothing here is hand-tunable per-shape the way an f-hole arc is; they're
-// carried on NeckParams anyway so the render function and the neck path builder can read them
-// straight off params, matching how every other panel's calc/render pair works.
-export interface NeckParams {
-  /** Plate edge to the bridge line, down the body (mm). */
-  bodyStop: number;
-  /** Feet to string notches, on the centreline (mm). */
-  bridgeHeight: number;
-  /** How far the foot sits inside the rib's outer face (mm). */
-  mortiseDepth: number;
-  /** Fingerboard underside above the top plate's edge at the root (mm). */
-  overstand: number;
-  /** Radians. Tilt of the fingerboard plane off the body axis, nut end toward the back. */
-  angle: number;
-  /** The neck's own length as felt in hand (mm): the back's top corner at the nut, down along the
-   * neck to a level line at the button's height — not root to nut, and independent of how deep the
-   * mortise is cut. Fixes where the nut lands: see `heelBottom`. */
-  length: number;
-  /** The neck wood alone, fingerboard plane to the back — uniform along the neck's length (mm). */
-  thickness: number;
-  /** The cove from the neck's back down to the button tip (mm). */
-  heelRadius: number;
-  /** Fingerboard thickness at the nut, uniform along its length (mm). */
-  nutThickness: number;
-
-  /** The top plate's outer edge at the neck end. */
-  edge: Pt | null;
-  /** The fingerboard's underside at the plate edge. */
-  root: Pt | null;
-  /** Unit vector along the neck toward the nut, and its normal away from the back. */
-  direction: Vect2D | null;
-  normal: Vect2D | null;
-  /** The rib's outer face, and the mortise floor inside it. */
-  rootPlaneY: number | null;
-  mortiseFloorY: number | null;
-  /** The fingerboard plane where it crosses the mortise floor. */
-  gluingAtMortise: Pt | null;
-  /** Where the plates end, and the button's tip on the centreline beyond it; the heel foot ends there. */
-  plateEndY: number | null;
-  buttonTip: Pt | null;
-  backThickness: number | null;
-  /** The back plate carried on past its edge, drawn as a rectangle: plate end/tip, front/back face. */
-  buttonProfile: [Pt, Pt, Pt, Pt] | null;
-  /** Along the neck, past the fingerboard — the nut block's own span. */
-  nutLength: number | null;
-  bridge: { foot: Pt; top: Pt; axis: Vect2D } | null;
-  /** The bridge blank's four corners, foot-left, foot-right, top-right, top-left. */
-  bridgeWedge: [Pt, Pt, Pt, Pt] | null;
-  nut: { at: Pt; top: Pt } | null;
-  /** The little block of wood past the fingerboard end, where the string rides over the nut. */
-  nutBlock: [Pt, Pt, Pt, Pt] | null;
-  fingerboard: { nutTop: Pt; end: Pt; endTop: Pt } | null;
-  /** The neck's back, nut end to root end; the heel departs it at `heel.start`. */
-  back: { nut: Pt; root: Pt } | null;
-  /** The cove from `start` on the back to `end`; `face` is the button tip when a flat foot, square
-   * to the neck, runs on from the arc to it; `arc` is the same curve, ready to draw. Null before the first solve,
-   * or when the heel radius can't stand on its own — see calculateHeel. */
-  heel: { center: Pt; r: number; start: Pt; end: Pt; face: Pt | null; arc: Arc } | null;
-  /** Where `length` is measured from: the back line (root's line, carried onto the back) crossed
-   * with a level line at the button's height. A construction line, not a point on the heel's own
-   * arc — the heel curve can undercut or overshoot it depending on its radius, same as the back's
-   * straight run does against the rib line at `back.root`. Solved independently of `heel`/`back`,
-   * since it's what places the nut that those are built from. */
-  heelBottom: Pt | null;
-  /** Stand-in for the pegbox and scroll, beyond the nut, a fixed 2:1 box: front-nut, front-far, back-far, back-nut. */
-  scroll: [Pt, Pt, Pt, Pt] | null;
-  /** Rotation, in degrees, that sits the scroll's label along the neck. */
-  scrollLabelAngleDeg: number | null;
-  /** Nut to bridge, straight-line (mm) — the string's approximate length. Actual length runs a
-   * little longer once the fingerboard and bridge curvature are accounted for. */
-  stringLength: number | null;
-  stringOverFingerboardEnd: number | null;
-}
-
-export interface ArchingParams {
-  surfaceMethod: 'proportional';
-  ribHeightLower: number;
-  ribHeightUpper: number;
-  top: ArchPlate;
-  bottom: ArchPlate;
-}
-
-// each of U1-U3/L1-L3/S1-S4 is named for where it physically sits, not which curve drew it — a
-// single outline edge crosses both halves. Springing from UEye: U1 shoulder, U2 arm, S2 the
-// stem-tangent arc, S4 the stem-to-wing arc, L3 the wing (it reaches down by LTip, so it takes
-// the L letter its position earns, not the U of the eye it left). Springing from LEye,
-// mirrored: L1, L2, S3, S1, U3. S1-S4 sit in the stem strip itself, named by quadrant —
-// S1 upper-left, S2 upper-right, S3 lower-left, S4 lower-right — see FholeStem.arcR.
 export interface FholeParams {
   UEye: Circle | null;
   LEye: Circle | null;
@@ -268,49 +120,257 @@ export interface FholeParams {
 
   stem: FholeStem;
 
-  /** Stopping `U1.end` short of the apex hands the top of the hole to U2 — see shoulderReach. */
   U1: Arc | null;
   U2: Arc | null;
-  /** Second half of the arm when `options.U21DoubleArc`; its `start` is the split angle on U2. */
   U21?: Arc | null;
-  /** The wing hung off UTip — belongs to the edge that springs from LEye, but named for where it
-   * sits, not where it started. */
   U3: Arc | null;
 
   L1: Arc | null;
   L2: Arc | null;
   L21?: Arc | null;
-  /** The wing hung off LTip — belongs to the edge that springs from UEye. */
   L3: Arc | null;
 
-  /** Upper-left stem-tangent/flare arc. */
   S1: Arc | null;
-  /** Upper-right. */
   S2: Arc | null;
-  /** Lower-left. */
   S3: Arc | null;
-  /** Lower-right. */
   S4: Arc | null;
 }
 
-/** The straight cut closing one end of the hole, from a point on the eye out to the wing's tip. */
 export interface FholeCut {
-  /** Where on the eye the cut lands, absolute in the plate's frame. */
   angleOnEye: number | null;
   slope: number | null;
   length: number | null;
 }
 
-/** The shared reference frame both edges land their stem-tangent arc on. */
 export interface FholeStem {
   center: Pt | null;
   width: number | null;
-  /** radians; geometry should read `stemRun`, not this. */
   angle: number | null;
-  /** Shared radius for all four stem-tangent/flare arcs (S1-S4) — one compass setting for
-   * the whole stem, the way a maker would actually fit it. Ignored once
-   * `options.stemArcsIndependent` hands each arc its own `r`. */
   arcR: number | null;
+}
+
+export interface ButtonParams {
+  width: number;
+  height: number;
+}
+
+export interface ArchingParams {
+  surfaceMethod: 'proportional';
+  ribHeightLower: number;
+  ribHeightUpper: number;
+  top: ArchPlate;
+  bottom: ArchPlate;
+}
+
+export interface ArchCatenary {
+  type: 'catenary';
+  archHeight: number;
+}
+
+export interface ArchCycloid {
+  type: 'cycloid';
+  archHeight: number;
+  d: number; // trochoid factor: 0 = raised cosine, 1 = standard cycloid (valid range 0–1)
+}
+
+export interface ArchSplinePoint {
+  t: number; // normalized full-span position: 0 = upper plate edge, 1 = lower plate edge
+  z: number; // arch height at this point (mm above the plate edge; negative down to the plate thickness)
+  /** Repeats at 1 − t, mirrored about the plate's mid-length, not about the off-centre peak.
+   * Absent marks a pre-asymmetric point whose `t` was a half-span position — see
+   * `normalizeArchCurve`. */
+  mirror?: boolean;
+}
+
+export interface ArchSpline {
+  type: 'spline';
+  archHeight: number;
+  /** Full-span position of the peak, the one knot pinned to `archHeight`. 0.5 when absent; off
+   * 0.5 is what makes the arch asymmetric end to end. */
+  peak?: number;
+  points: ArchSplinePoint[]; // interior points only, t strictly in (0, 1), in the panel's order
+  /** which panel row the peak sits in; cosmetic — the solve sorts by position — but saved since the maker arranged it. */
+  peakRow?: number;
+}
+
+export type ArchCurve = ArchCatenary | ArchCycloid | ArchSpline;
+
+export interface FlutingParams {
+  sweepRadius: number;
+  depth: number;
+  sweepRadius_cBout: number | null;
+  cornerGouge?: boolean;
+}
+
+/**
+ * A cross-arch control point, measured against the wood as it stands before the cross arch is
+ * carved — the joint, the channel's inner edge, plate level and the crown — so it never moves
+ * when the solved takeoff does. See `KnotFrame` in `ceruti-arch-geometry.ts`.
+ */
+export interface CrossArchPoint {
+  /**
+   * Fraction of the way from the joint to the channel's inner edge: 0 the joint, ±1 the inner
+   * edge, negative the bass side — a fraction rather than mm so it stays a shape as the station
+   * narrows. From the joint, not the crown, so a knot can land on the far side of the crown from
+   * the flank it was authored on; `crossProfile` sorts rather than assuming.
+   */
+  x: number;
+  /** Height above plate level as a fraction of the local arch height: 1 the crown, 0 plate level, negative below it. */
+  z: number;
+  /** Repeats at −x. Leaving it off confines the point to its own side — the source of asymmetry. */
+  mirror?: boolean;
+}
+
+/**
+ * The crown template only. Its peak sits at the long arch's height for that station; its outer
+ * end is not here, since the takeoff is solved for tangency against the channel — see
+ * `solveArchTakeoff`.
+ */
+export interface CrossArchSplineShape {
+  type: 'spline';
+  points: CrossArchPoint[];
+  /**
+   * Fraction of the width between channel centerlines: 0.5 the joint, below it the bass side,
+   * 0.5 when absent. Against the centerline chord rather than the solved takeoffs (unlike
+   * {@link CrossArchPoint.x}) since the crown must not move mid-solve. Eases back onto the
+   * joint toward the caps — see `PEAK_TAPER_DEPTHS`.
+   */
+  peak?: number;
+  /** Which row of the panel's table the crown sits in. Presentation only, as {@link ArchSpline.peakRow}. */
+  peakRow?: number;
+}
+
+/**
+ * Symmetric by construction — asymmetry lives in the control-point form. `pct` clips the flat
+ * cusp, setting how steeply the crown runs out and so where along the channel flank the tangency
+ * lands: a flatter run-out (`pct` near 1) can only meet the channel near its trough.
+ */
+export interface CrossArchCycloidShape {
+  type: 'cycloid';
+  d: number;
+  /** Trochoid window: 1 = the full curve, <1 clips the flat cusp end for a steeper run-out, >1 curls the ends under the takeoff so the arch can meet the channel's outer flank (valid range 0.05–1.5). */
+  pct: number;
+}
+
+/**
+ * The catenary crown: fully determined by the long arch's height and the width available at each
+ * station, so there is nothing to author — no points, no factor, and (unlike spline/cycloid) no
+ * per-station override, since every station already gets exactly this shape.
+ */
+export interface CrossArchCatenaryShape {
+  type: 'catenary';
+  /**
+   * Never populated — kept as `never` rather than absent so the generic `.stations` reads shared
+   * across all three curve types (the panel's station marks, `activeShape`, `editTarget`, …) keep
+   * type-checking without a per-call guard.
+   */
+  stations?: never;
+}
+
+export type CrossArchShape = CrossArchSplineShape | CrossArchCycloidShape | CrossArchCatenaryShape;
+
+export type CrossArchSplineStation = CrossArchSplineShape & {
+  /** Body-length position in mm, held strictly inside the plate ends. */
+  y: number;
+};
+
+export type CrossArchCycloidStation = CrossArchCycloidShape & {
+  y: number;
+};
+
+/** Split per type rather than `CrossArchShape & { y }` so a plate's station list narrows with the
+ * plate — knowing it is a trochoid is enough to read `d` off its stations. */
+export type CrossArchStation = CrossArchSplineStation | CrossArchCycloidStation;
+
+export type CrossArchSplineParams = CrossArchSplineShape & {
+  stations?: CrossArchSplineStation[];
+};
+
+export type CrossArchCycloidParams = CrossArchCycloidShape & {
+  stations?: CrossArchCycloidStation[];
+};
+
+export type CrossArchParams = CrossArchSplineParams | CrossArchCycloidParams | CrossArchCatenaryShape;
+
+export interface ArchPlate {
+  arch: ArchCurve;
+  thickness: number;
+  /** Seeded from the outline on first use, so a recipe predating the panel still opens sanely. */
+  fluting?: FlutingParams;
+  cross?: CrossArchParams;
+}
+
+// the neck set, in the side elevation. the fingerboard plane leaves the top plate's edge
+// `overstand` proud of it and tilts back toward the nut by `angle`; the nut sits `length` from
+// the root along the neck, so the stop length (nut to bridge) is read off, not entered.
+export interface NeckParams {
+  /** Plate edge to the bridge line, down the body (mm). */
+  bodyStop: number;
+  /** Feet to string notches, on the centreline (mm). */
+  bridgeHeight: number;
+  /** How far the foot sits inside the rib's outer face (mm). */
+  mortiseDepth: number;
+  /** Fingerboard underside above the top plate's edge at the root (mm). */
+  overstand: number;
+  /** Radians. Tilt of the fingerboard plane off the body axis, nut end toward the back. */
+  angle: number;
+  /** The neck's own length as felt in hand (mm): the back's top corner at the nut, down along the
+   * neck to a level line at the button's height — not root to nut, and independent of how deep the
+   * mortise is cut. Fixes where the nut lands: see `heelBottom` in ceruti-neck.ts. */
+  length: number;
+  /** The neck wood alone, fingerboard plane to the back — uniform along the neck's length (mm). */
+  thickness: number;
+  /** The cove from the neck's back down to the button tip (mm). */
+  heelRadius: number;
+  /** Fingerboard thickness at the nut, uniform along its length (mm). */
+  nutThickness: number;
+
+  // solved by calculateNeck every pass, null before the first: the four corners of the neck wood,
+  // its heel, the bridge, and the one readout. the button, nut block, fingerboard, bridge wedge
+  // and guides are read off these by the functions in ceruti-neck.ts rather than stored
+
+  root: Pt | null;
+  nut: Pt | null;
+  backRoot: Pt | null;
+  backNut: Pt | null;
+  /** The cove from the back down toward the button tip, or null when the radius can't stand — see calculateHeel. */
+  heel: Arc | null;
+  /** The bridge's feet on the arch, and the string notches above them. */
+  bridgeFoot: Pt | null;
+  bridgeTop: Pt | null;
+  /** Nut to bridge, straight-line (mm) — the string's approximate length. Actual length runs a
+   * little longer once the fingerboard and bridge curvature are accounted for. */
+  stringLength: number | null;
+}
+
+/** The scroll's spiral. The eye is the raised disc at its centre; the rule that winds outward from it is the style: the custom four point, the plain Archimedean spiral, or a historical layout of the Ionic volute. */
+export type VoluteStyle = 'fourPoint' | 'archimedean' | 'serlio' | 'salviati' | 'goldmann' | 'kelly';
+
+export interface VoluteParams {
+  style: VoluteStyle;
+  eyeRadius: number;
+  eye: Pt;
+  flushWithNeck: boolean;
+  /** Archimedean only: how much the spiral's radius grows each full turn, so the even spacing between turns (mm). */
+  pitch: number;
+  /** Kelly only: the seed column's length, top of its rectangle to bottom, not a single square's (mm). Kelly varies it by scroll; his drawing stands it as tall as the eye's radius. */
+  seedLength: number;
+  arcRadii: number[];
+
+
+  spiral: Arc[] | null;
+  S0: Arc;
+  S1: Arc;
+  S2: Arc;
+  S3: Arc;
+
+  backStraight: number;nape: Arc;
+
+  F0: Arc;
+  F1: Arc;
+  flat: number;
+  frontStraight: number;
+
 }
 
 /** Resolved palette from CerutiViolin's `colors` getter, threaded into every panel and render fn. */
@@ -404,27 +464,6 @@ export type RenderToggleKey = 'showModuleArcs' | 'showAllArcs' | 'showModuleCirc
   | 'showAllCircles' | 'showModuleGuides' | 'showFingerboard' | 'showFretMarks' | 'showFholeBounds' | 'showFholeArcs' | 'showFholePlacementGuides'
   | 'showVoluteConstruction' | 'showBlocks' | 'showInnerPath' | 'renderOuterPath';
 
-/**
- * A panel's render request. Panels describe how to build their layers; the parent applies shared
- * policy (debounce, history, session, panel flow) before running it.
- */
-export interface PanelRenderRequest {
-  /** Bypasses the debounce — hover/focus previews and the first draw on activation. */
-  immediate?: boolean;
-  /**
-   * Waits out the debounce even where the parent would have run straight away, as an arrow-key
-   * nudge or spinner click otherwise would. For a panel whose run is a redraw that is wrong; for
-   * one that re-solves a surface it is right, since a held key would queue a second of work per
-   * repeat and fall progressively further behind. Ignored when `immediate` is set.
-   */
-  coalesce?: boolean;
-  /** Refresh panel enablement after this request — for edits that unlock downstream panels. */
-  refreshEnabledPanels?: boolean;
-  /** Skip writing to session storage. Persists when omitted. */
-  persistSession?: boolean;
-  run: () => Array<(g: any, ui: any) => void>;
-}
-
 export const DEFAULT_CERUTI_VIEW_FLAGS: CerutiViewFlags = {
   showModuleArcs: true,
   showModuleCircles: false,
@@ -449,205 +488,41 @@ export const DEFAULT_CERUTI_VIEW_FLAGS: CerutiViewFlags = {
   plateRotZDeg: 0,
 };
 
-/** Increment when a saved recipe's shape changes. Old files still load, with a warning. */
-export const RECIPE_SCHEMA_VERSION = '1';
-
-export interface ArchCatenary {
-  type: 'catenary';
-  archHeight: number;
-}
-
-export interface ArchCycloid {
-  type: 'cycloid';
-  archHeight: number;
-  d: number; // trochoid factor: 0 = raised cosine, 1 = standard cycloid (valid range 0–1)
-}
-
-export interface ArchSplinePoint {
-  t: number; // normalized full-span position: 0 = upper plate edge, 1 = lower plate edge
-  z: number; // arch height at this point (mm above the plate edge; negative down to the plate thickness)
-  /** Repeats at 1 − t, mirrored about the plate's mid-length, not about the off-centre peak.
-   * Absent marks a pre-asymmetric point whose `t` was a half-span position — see
-   * `normalizeArchCurve`. */
-  mirror?: boolean;
-}
-
-export interface ArchSpline {
-  type: 'spline';
-  archHeight: number;
-  /** Full-span position of the peak, the one knot pinned to `archHeight`. 0.5 when absent; off
-   * 0.5 is what makes the arch asymmetric end to end. */
-  peak?: number;
-  points: ArchSplinePoint[]; // interior points only, t strictly in (0, 1), in the panel's order
-  /** which panel row the peak sits in; cosmetic — the solve sorts by position — but saved since the maker arranged it. */
-  peakRow?: number;
-}
-
-export type ArchCurve = ArchCatenary | ArchCycloid | ArchSpline;
-
-
-// ===== Arching model =====
-// The gouge is the given: one sweep, one depth, run the whole way round, so the
-// channel's section is the same everywhere. What gets solved is where the arch
-// stops being the template and becomes the transition into the channel.
-//
-// That is the bench's order and the reverse of the obvious one — deriving the
-// channel from the arch makes the gouge's sweep an output that swings around the
-// body, widest at the corners, where no maker's channel widens at all.
-
-/** The gouge that cuts a plate's fluting channel, and where it runs. The corners are bypassed
- * rather than followed. */
-export interface FlutingParams {
-  /** Sweep radius of the gouge (mm). With `depth`, fixes the section entirely. */
-  sweepRadius: number;
-  /** Depth of the channel at its trough, below the plate outer surface (mm). */
-  depth: number;
+/** A panel's render request — how it builds its layers; the parent applies debounce/history/session/panel-flow policy before running it. */
+export interface PanelRenderRequest {
+  /** Bypasses the debounce — hover/focus previews and the first draw on activation. */
+  immediate?: boolean;
   /**
-   * A second, usually narrower gouge through the C-bout. Null uses `sweepRadius` throughout.
-   *
-   * Only the sweep changes — same land edge, same `depth` — so what moves is the *inner* edge,
-   * which is what makes this expressible at all. Varying the channel's position instead would
-   * walk the outer edge away from the purfling it is cut against.
+   * Waits out the debounce even where the parent would have run straight away, as an arrow-key
+   * nudge or spinner click otherwise would. For a panel whose run is a redraw that is wrong; for
+   * one that re-solves a surface it is right, since a held key would queue a second of work per
+   * repeat and fall progressively further behind. Ignored when `immediate` is set.
    */
-  sweepRadius_cBout: number | null;
-  /**
-   * Smooths the wedge of flat wood the bypassing channel leaves at each corner down to meet the
-   * channel's outer flank. Named for the gouge pass it replaced; the field name is frozen.
-   *
-   * Only removes material, and only outboard of the channel's trough, so nothing solved upstream
-   * moves. Absent reads as on.
-   */
-  cornerGouge?: boolean;
+  coalesce?: boolean;
+  /** Refresh panel enablement after this request — for edits that unlock downstream panels. */
+  refreshEnabledPanels?: boolean;
+  /** Skip writing to session storage. Persists when omitted. */
+  persistSession?: boolean;
+  run: () => Array<(g: any, ui: any) => void>;
 }
 
-/**
- * A cross-arch control point, measured against the wood as it stands before the cross arch is
- * carved — the joint, the channel's inner edge, plate level and the crown — so it never moves
- * when the solved takeoff does. See `KnotFrame` in `ceruti-arch-geometry.ts`.
- */
-export interface CrossArchPoint {
-  /**
-   * Fraction of the way from the joint to the channel's inner edge: 0 the joint, ±1 the inner
-   * edge, negative the bass side — a fraction rather than mm so it stays a shape as the station
-   * narrows. From the joint, not the crown, so a knot can land on the far side of the crown from
-   * the flank it was authored on; `crossProfile` sorts rather than assuming.
-   */
-  x: number;
-  /** Height above plate level as a fraction of the local arch height: 1 the crown, 0 plate level, negative below it. */
-  z: number;
-  /** Repeats at −x. Leaving it off confines the point to its own side — the source of asymmetry. */
-  mirror?: boolean;
-}
 
-/**
- * The crown template only. Its peak sits at the long arch's height for that station; its outer
- * end is not here, since the takeoff is solved for tangency against the channel — see
- * `solveArchTakeoff`.
- */
-export interface CrossArchSplineShape {
-  type: 'spline';
-  points: CrossArchPoint[];
-  /**
-   * Fraction of the width between channel centerlines: 0.5 the joint, below it the bass side,
-   * 0.5 when absent. Against the centerline chord rather than the solved takeoffs (unlike
-   * {@link CrossArchPoint.x}) since the crown must not move mid-solve. Eases back onto the
-   * joint toward the caps — see `PEAK_TAPER_DEPTHS`.
-   */
-  peak?: number;
-  /** Which row of the panel's table the crown sits in. Presentation only, as {@link ArchSpline.peakRow}. */
-  peakRow?: number;
-}
-
-/**
- * Symmetric by construction — asymmetry lives in the control-point form. `pct` clips the flat
- * cusp, setting how steeply the crown runs out and so where along the channel flank the tangency
- * lands: a flatter run-out (`pct` near 1) can only meet the channel near its trough.
- */
-export interface CrossArchCycloidShape {
-  type: 'cycloid';
-  /** Trochoid factor: 0 = raised cosine, 1 = standard cycloid (valid range 0–1). */
-  d: number;
-  /** Trochoid window: 1 = the full curve, <1 clips the flat cusp end for a steeper run-out, >1 curls the ends under the takeoff so the arch can meet the channel's outer flank (valid range 0.05–1.5). */
-  pct: number;
-}
-
-/**
- * The catenary crown: fully determined by the long arch's height and the width available at each
- * station, so there is nothing to author — no points, no factor, and (unlike spline/cycloid) no
- * per-station override, since every station already gets exactly this shape.
- */
-export interface CrossArchCatenaryShape {
-  type: 'catenary';
-  /**
-   * Never populated — kept as `never` rather than absent so the generic `.stations` reads shared
-   * across all three curve types (the panel's station marks, `activeShape`, `editTarget`, …) keep
-   * type-checking without a per-call guard.
-   */
-  stations?: never;
-}
-
-/** A cross-arch section shape: a trochoid, a control-point template, or a catenary. */
-export type CrossArchShape = CrossArchSplineShape | CrossArchCycloidShape | CrossArchCatenaryShape;
-
-/** A control-point cross-arch shape pinned to one body-length position. */
-export type CrossArchSplineStation = CrossArchSplineShape & {
-  /** Body-length position in mm, held strictly inside the plate ends. */
-  y: number;
-};
-
-/** A trochoid cross-arch shape pinned to one body-length position. */
-export type CrossArchCycloidStation = CrossArchCycloidShape & {
-  /** Body-length position in mm, held strictly inside the plate ends. */
-  y: number;
-};
-
-/** Split per type rather than `CrossArchShape & { y }` so a plate's station list narrows with the
- * plate — knowing it is a trochoid is enough to read `d` off its stations. */
-export type CrossArchStation = CrossArchSplineStation | CrossArchCycloidStation;
-
-/** One plate's cross-arch: a base template anchoring both body ends, plus optional interior
- * stations the shape ramps through. */
-export type CrossArchSplineParams = CrossArchSplineShape & {
-  stations?: CrossArchSplineStation[];
-};
-
-export type CrossArchCycloidParams = CrossArchCycloidShape & {
-  stations?: CrossArchCycloidStation[];
-};
-
-export type CrossArchParams = CrossArchSplineParams | CrossArchCycloidParams | CrossArchCatenaryShape;
-
-export interface ArchPlate {
-  arch: ArchCurve;
-  thickness: number;
-  /** Seeded from the outline on first use, so a recipe predating the panel still opens sanely. */
-  fluting?: FlutingParams;
-  /** Absent until authored. */
-  cross?: CrossArchParams;
-}
-
-/**
- * The keys the shared path cache can hold. Enumerated rather than a bare string because the cache
- * is filled by `ensure*` and read by `getPath`, which asserts — a typo is a runtime crash, not a
- * type error. `purfling`/`outerPurfling` can legitimately be absent; read those with
- * `getPathOrNull`.
- */
 export type PathKey = 'inner' | 'top' | 'back' | 'purfling' | 'outerPurfling' | 'fHole' | 'neck';
 
-/** One named, precalculated SVG path — the shared cache read by export. */
 export interface PathEntry {
   key: PathKey;
   path: string;
 }
 
-// panel ids are file-format vocabulary — templates scope reference images by id, so renaming one
-// is a migration; `panelOrder` is typed against this list.
 export const CERUTI_PANEL_IDS = [
   'base', 'mainBouts', 'corners', 'centerBout', 'outerTrace',
   'fluting', 'longArching', 'crossArching', 'fHolePlacement', 'fHoleContours', 'neck', 'volute', 'scroll', 'mould', 'export',
 ] as const;
 
 export type CerutiPanelId = typeof CERUTI_PANEL_IDS[number];
+
+/** Increment when a saved recipe's shape changes. Old files still load, with a warning. */
+export const RECIPE_SCHEMA_VERSION = '1';
 
 // kept off `params`: measurements are facts (no copyright), a photograph is expression (has its
 // own `ImageCredit`). Absent on the blank template and on anything a user saved themselves.
@@ -773,7 +648,7 @@ export const DefaultParams: EnricoCerutiParams = {
     useViolNeck: false,
     useViolCornerUC: false,
     useViolCornerLC: false,
-    useKellyC0: false, // four circles based theory of clean intersection along center bout
+    useKellyC0: false,
     U31DoubleArc: false,
     C21DoubleArc: false,
     C11DoubleArc: false,

@@ -5,13 +5,13 @@ import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, FlutingParams, NeckP
 import { defaultArchingParams } from '../../ceruti-arching';
 import { defaultFlutingParams, LongArchSolve, solveLongArch } from '../../ceruti-arch-geometry';
 import { calculateOuterArcs, ensureNeckPath } from '../../ceruti-calcs';
-import { defaultNeckParams, calculateNeck } from '../../ceruti-neck';
+import { bridgeWedge, buttonTip, calculateNeck, defaultNeckParams, fingerboardEnd, gluingAtMortise, heelBottom, heelFace, mortiseFloorY, plateEdgeAtNeck, standardNutLength } from '../../ceruti-neck';
 import { renderBodySection } from '../../renders/body-section.render';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { pathFromArc } from '../../../helpers/math/pathMath';
-import { dist, moveInVectorSpace } from '../../../helpers/math/simpleGeometry';
-import { renderSegment, renderPolygon, renderPath, renderText } from '../../../helpers/renderFuncs';
+import { dist, moveInVectorSpace, pointOnCircle, vectorFromSlope } from '../../../helpers/math/simpleGeometry';
+import { renderSegment, renderPolygon, renderPath } from '../../../helpers/renderFuncs';
 import { Pt, Vect2D } from '../../../models/types';
 import { renderGuideMeasure, renderGuideBaseline } from '../../renders/module-guide.render';
 import { STROKE_WEIGHT } from '../../renders/render-constants';
@@ -77,66 +77,67 @@ export class NeckPanel extends CerutiPanelBase implements OnInit {
 }
 
 export function renderNeck(p: EnricoCerutiParams, colors: CerutiColors, showGuides: boolean, showFingerboard: boolean, showFretMarks: boolean) {
-  const s = p.neck!;
+  const nk = p.neck!;
+  const direction = vectorFromSlope(nk.angle + Math.PI / 2);
+  const normal = vectorFromSlope(nk.angle);
+  const tip = buttonTip(p);
+  const glue = gluingAtMortise(p);
+  const nutTop = moveInVectorSpace(nk.nut!, [{ ...normal, mag: nk.nutThickness }]);
+  const fbEnd = fingerboardEnd(p);
   return (g: any, ui: any): void => {
     const seg = (a: Pt, b: Pt, color = colors.neck) => renderSegment(a, b, color, STROKE_WEIGHT.section)(g, ui);
 
     // the button: the back plate carried on past its edge, the heel's foot on top of it
-    renderPolygon(s.buttonProfile, colors.archBack, STROKE_WEIGHT.section)(g, ui);
+    const backThickness = p.arching!.bottom.thickness;
+    renderPolygon([new Pt(0, p.height), new Pt(0, tip.y), new Pt(-backThickness, tip.y), new Pt(-backThickness, p.height)], colors.archBack, STROKE_WEIGHT.section)(g, ui);
 
     // the foot in the mortise
-    seg(new Pt(0, s.mortiseFloorY), s.gluingAtMortise, colors.neckRoot);
-    seg(s.gluingAtMortise, s.root, colors.neck);
+    seg(new Pt(0, mortiseFloorY(p)), glue, colors.neckRoot);
+    seg(glue, nk.root!, colors.neck);
 
-    // the bridge blank, standing on the arch
-    renderPolygon(s.bridgeWedge, colors.bridge, STROKE_WEIGHT.section)(g, ui);
+    renderPolygon(bridgeWedge(p), colors.bridge, STROKE_WEIGHT.section)(g, ui);
 
-    // the neck's own boundary where the fingerboard glues on — independent of whatever the
-    // fingerboard itself ends up being, since that's still an open question
-    seg(s.root, s.nut.at);
+    // the neck's own boundary where the fingerboard glues on
+    seg(nk.root!, nk.nut!);
 
-    const fb = s.fingerboard;
     if (showFingerboard) {
-      renderPolygon([fb.end, fb.endTop, fb.nutTop, s.nut.at], colors.fingerboard, STROKE_WEIGHT.section)(g, ui);
+      const fbEndTop = moveInVectorSpace(fbEnd, [{ ...normal, mag: nk.nutThickness }]);
+      renderPolygon([fbEnd, fbEndTop, nutTop, nk.nut!], colors.fingerboard, STROKE_WEIGHT.section)(g, ui);
     }
 
     // the nut, on the fingerboard plane just past the board
-    renderPolygon(s.nutBlock, colors.fingerboard, STROKE_WEIGHT.section)(g, ui);
+    const nutFar = moveInVectorSpace(nk.nut!, [{ ...direction, mag: standardNutLength(p.height) }]);
+    const nutFarTop = moveInVectorSpace(nutFar, [{ ...normal, mag: nk.nutThickness }]);
+    renderPolygon([nk.nut!, nutFar, nutFarTop, nutTop], colors.fingerboard, STROKE_WEIGHT.section)(g, ui);
 
     // the neck itself: nut-end wall, the back, and the heel down to the button
-    seg(s.nut.at, s.back.nut);
-    const heel = s.heel;
+    seg(nk.nut!, nk.backNut!);
+    const heel = nk.heel;
     if (heel) {
-      seg(s.back.nut, heel.start);
-      renderPath(pathFromArc(heel.arc), colors.neckRoot, STROKE_WEIGHT.section)(g, ui);
-      if (heel.face) seg(heel.end, heel.face, colors.neckRoot);
+      seg(nk.backNut!, pointOnCircle(heel, heel.start));
+      renderPath(pathFromArc(heel), colors.neckRoot, STROKE_WEIGHT.section)(g, ui);
+      const face = heelFace(p);
+      if (face) seg(face[0], face[1], colors.neckRoot);
     } else {
-      seg(s.back.nut, s.back.root);
+      seg(nk.backNut!, nk.backRoot!);
     }
 
-    seg(s.nut.top, s.bridge.top, colors.innerTrace);
-    if (showFretMarks) renderFretTicks(s.nut.top, s.bridge.top, dist(s.nut.at, s.fingerboard.end))(g, ui);
-
-    // pegbox and scroll, a placeholder box: the scroll panel draws the real one in its own frame
-    renderPolygon(s.scroll, colors.neckOff, STROKE_WEIGHT.guide, 0.7)(g, ui);
-    const mid = new Pt((s.scroll[0].x + s.scroll[2].x) / 2, (s.scroll[0].y + s.scroll[2].y) / 2);
-    renderText(mid, 'scroll', colors.neckOff, 5, s.scrollLabelAngleDeg)(g, ui);
+    seg(nutTop, nk.bridgeTop!, colors.innerTrace);
+    if (showFretMarks) renderFretTicks(nutTop, nk.bridgeTop!, dist(nk.nut!, fbEnd))(g, ui);
 
     if (!showGuides) return;
     const guide = colors.neckOff;
+    const rootPlaneY = p.height - p.overhang;
     // offsets scale with the neck's own wood thickness rather than a fixed mm, so the parked
-    // dimension lines clear the drawing the same way on a cello neck as on a violin's.
-    renderGuideMeasure(s.edge, s.root, guide, -s.thickness)(g, ui);
-    renderGuideBaseline(new Pt(0, s.rootPlaneY), new Pt(s.gluingAtMortise.x, s.rootPlaneY), guide)(g, ui);
-    renderGuideMeasure(new Pt(s.gluingAtMortise.x, s.rootPlaneY), s.gluingAtMortise, guide, 2* s.thickness)(g, ui);
-    // the neck's own length runs along the back, heelBottom to back.nut — not root to nut.at, and
-    // not to nut.at itself, which sits off that line by the neck's thickness (see `length`'s header)
-    renderGuideMeasure(s.heelBottom, s.back.nut, guide, -2 * (s.thickness + s.nutThickness))(g, ui);
+    // dimension lines clear the drawing the same way on a cello neck as on a violin's
+    renderGuideMeasure(plateEdgeAtNeck(p), nk.root!, guide, -nk.thickness)(g, ui);
+    renderGuideBaseline(new Pt(0, rootPlaneY), new Pt(glue.x, rootPlaneY), guide)(g, ui);
+    renderGuideMeasure(new Pt(glue.x, rootPlaneY), glue, guide, 2 * nk.thickness)(g, ui);
+    // the neck's own length runs along the back, heelBottom to backNut — not root to nut, which
+    // sits off that line by the neck's thickness (see `length`'s header)
+    renderGuideMeasure(heelBottom(p), nk.backNut!, guide, -2 * (nk.thickness + nk.nutThickness))(g, ui);
   };
-  
 }
-
-
 
 /** Fret marks, scratch: how many semitones up the string to mark, and how far each tick reaches
  * either side of the string line. Bounded to the fingerboard's own length below. Plain semitones

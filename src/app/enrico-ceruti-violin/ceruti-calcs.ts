@@ -5,7 +5,8 @@ import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Line, Pt, Rectangle
 import { error } from "../shared/message-emitter";
 import { reportFailures, SolveFailure, solveSection } from "../helpers/validators";
 import { DefaultParams, EnricoCerutiParams, PathEntry, PathKey } from "./ceruti-types";
-import { cornerOffsetSign, defaultButton, defineFholePath, defineInnerPath, defineNeckPath, defineOuterPath, definePurflingPath, defineOuterPurflingPath } from "./ceruti-paths";
+import { cornerOffsetSign, defaultButton, defineFholePath, defineInnerPath, defineOuterPath, definePurflingPath, defineOuterPurflingPath } from "./ceruti-paths";
+import { defineNeckPath } from "./ceruti-neck";
 
 // ===== Outline solvers =====
 // Solve where the violin body's bouts/corners/center-bout arcs actually sit.
