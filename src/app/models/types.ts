@@ -19,8 +19,7 @@ export class Fraction { n: number; d: number; constructor(n: number, d: number) 
 
 /** `start`/`end` are boundary angles in radians; every renderer draws the minor arc between them
  * regardless of order (the major arc needs `renderArcFromArc`'s `longArc` flag) — the opposite of
- * draft-canvas's counterclockwise-sweeping `ArcShape`, so don't write a blind converter. `SweptArc`
- * below is the third convention, for recipe geometry that has to sweep past a half turn. */
+ * draft-canvas's counterclockwise-sweeping `ArcShape`, so don't write a blind converter. */
 export class Arc extends Circle {
   start: number;
   end: number;
@@ -51,15 +50,6 @@ export function setArcStartByDegreeDiff(arc: Arc, degrees: number): void {
  */
 export function setArcEndByDegreeDiff(arc: Arc, degrees: number): void {
   arc.end = arc.start + degrees * (Math.PI / 180);
-}
-
-/** An arc swept counterclockwise from `from` to `to`, up to a full turn — the scroll's arcs, which
- * can run past a half turn where `Arc` can't. `from`/`to` rather than `start`/`end` so the two
- * can't be passed for one another. Shares `Circle`'s fields, so the circle helpers take it. Plain
- * data with no prototype: it survives a recipe round-trip as it is, with no calc pass needed. */
-export interface SweptArc extends Circle {
-  from: number;
-  to: number;
 }
 
 export function arcFromCircle(circle: Circle, start?: number, end?: number): Arc {

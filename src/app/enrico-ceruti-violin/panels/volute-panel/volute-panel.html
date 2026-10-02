@@ -83,7 +83,7 @@
         <label class="field-cell">
             <span class="field-title" title="Where the arc ends, as the angle round its own centre from the front: 90° the top of the scroll, 180° the back. It starts where the spiral's front ends">End <span class="unit-label">°</span></span>
             <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1"
-                [ngModel]="getFieldDeg(volute.S0, 'to')" (ngModelChange)="setFieldDeg(volute.S0, 'to', $event, onChange.bind(this)); onArcFocus('S0', colors.scrollBackLight)"
+                [ngModel]="getFieldDeg(volute.S0, 'end')" (ngModelChange)="setFieldDeg(volute.S0, 'end', $event, onChange.bind(this)); onArcFocus('S0', colors.scrollBackLight)"
                 (focus)="onArcFocus('S0', colors.scrollBackLight)" (blur)="onArcBlur()" />
         </label>
     </div>
@@ -97,7 +97,7 @@
         <label class="field-cell">
             <span class="field-title" title="Where the arc ends, as the angle round its own centre from the front: 180° the back. It starts where S0 ended">End <span class="unit-label">°</span></span>
             <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1"
-                [ngModel]="getFieldDeg(volute.S1, 'to')" (ngModelChange)="setFieldDeg(volute.S1, 'to', $event, onChange.bind(this)); onArcFocus('S1', colors.scrollBack)"
+                [ngModel]="getFieldDeg(volute.S1, 'end')" (ngModelChange)="setFieldDeg(volute.S1, 'end', $event, onChange.bind(this)); onArcFocus('S1', colors.scrollBack)"
                 (focus)="onArcFocus('S1', colors.scrollBack)" (blur)="onArcBlur()" />
         </label>
     </div>

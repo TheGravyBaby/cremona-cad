@@ -123,20 +123,19 @@ recognizes the current format *positively* so it stays idempotent; six tests in
   back-face point solved yet. It isn't wired into on-screen rendering (which still needs its
   root/heel vs. neck two-color split, segment by segment) or into the export panel yet; it exists
   so a future neck template export has a real path to start from.
-- **`calculateScroll` writes onto `p.volute` the same way, and the scroll's arcs are `SweptArc`s.**
-  (2026-10-02) The scroll started life the other way round — `layoutVolute`/`layoutBack`/
-  `layoutFront` returned `Placed*` structs and `renderScroll` ran all three itself — and was
-  brought in line with the neck: `VoluteParams` now carries the spiral and every arc and line by
-  name (`S0`–`S3`, `nape`, `F0`, `F1`, `backStraightLine`, `square`, `flatLine`,
-  `frontStraightLine`), each arc holding its authored `r` and the one angle its field sets, the
-  rest solved each pass. A miss comes back as a `ScrollFailure` through `solveSection`, listing
-  the parts after it as unsolved, rather than the run silently stopping. The arcs are
-  `models/types` `SweptArc` (`x, y, r, from, to`, counterclockwise from `from` to `to`) rather than
-  `Arc`, because a scroll arc can sweep past a half turn and `Arc` always draws the minor arc;
-  `from`/`to` rather than `start`/`end` so the two types can't be passed for one another.
-  `renderFuncs.ts` has the `renderSweptArc*` counterparts of the `renderArcFromArc*` helpers. The
-  one corpus template with a volute (`amati-violin-brookings`) was rewritten to the new shape
-  rather than given a loader migration, since the scroll had shipped nowhere else.
+- **`calculateScroll` writes onto `p.volute` the same way.** (2026-10-02) The scroll started life
+  the other way round — `layoutVolute`/`layoutBack`/`layoutFront` returned `Placed*` structs and
+  `renderScroll` ran all three itself — and was brought in line with the neck: `VoluteParams` now
+  carries the spiral and every arc and line by name (`S0`–`S3`, `nape`, `F0`, `F1`,
+  `backStraightLine`, `square`, `flatLine`, `frontStraightLine`), each arc holding its authored
+  `r` and the one angle its field sets, the rest solved each pass and reassigned through
+  `new Arc`. A miss comes back as a `ScrollFailure` through `solveSection`, listing the parts
+  after it as unsolved, rather than the run silently stopping. The arcs are plain `Arc`s, but read
+  counterclockwise from `start` to `end`: a scroll arc can pass a half turn, so the scroll render
+  passes `longArc` when it does. A separate swept-arc type was tried for this and dropped as one
+  convention too many. The one corpus template with a volute (`amati-violin-brookings`) was
+  rewritten to the new shape rather than given a loader migration, since the scroll had shipped
+  nowhere else.
 - **The neck panel's one readout is the figure a maker checks with a ruler, nothing else.**
   `stringLength` (straight-line nut to bridge — noted as approximate since the fingerboard and
   bridge are curved and a 2D side elevation can't give a real string length) was joined briefly
