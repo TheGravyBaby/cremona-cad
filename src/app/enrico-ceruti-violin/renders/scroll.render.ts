@@ -1,123 +1,114 @@
-import { arcPathData } from '../../helpers/math/pathMath';
-import { renderCircle, renderDashLine, renderPath, renderPolygon, renderSegment, renderSmallCrosshair } from '../../helpers/renderFuncs';
-import { Pt } from '../../models/types';
+import { renderCircle, renderDashLine, renderPolygon, renderSegment, renderSegmentHalo, renderSweptArc, renderSweptArcFancy, renderSweptArcHalo } from '../../helpers/renderFuncs';
+import { Pt, SweptArc } from '../../models/types';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams } from '../ceruti-types';
 import { standardNutLength } from '../ceruti-neck';
-import { CROWN_ARCS, layoutBack, layoutFront, layoutVolute, PlacedBack, PlacedFront, VOLUTE_STYLES, VoluteArc } from '../ceruti-scroll';
-import { STROKE_WEIGHT } from './render-constants';
+import { ScrollFailure, ScrollKey, voluteGuides } from '../ceruti-scroll';
+import { HighlightedSegment, HighlightedSweptArc, STROKE_WEIGHT } from './render-constants';
 
-// a spiral arc's colour as a module arc and in the four point's fields, innermost first: each turn
-// a bout's colour, its arcs stepping through that colour's off shades so neighbours in a turn read
-// apart, the bouts coming round again past three
+// the scroll in ceruti-scroll.ts's frame, the neck's tilt taken out, read off p.volute as
+// calculateScroll left it. The volute panel draws the neck and the volute; the scroll panel draws
+// the volute plain under the back and front
+
+export type ScrollViewFlags = Pick<CerutiViewFlags, 'showModuleArcs' | 'showAllArcs' | 'showModuleGuides' | 'showVoluteConstruction'>;
+
+// a spiral arc's colour on canvas and in the four point's fields, innermost first: each turn's two
+// tones alternating arc by arc, the turns coming round again past three
 export function arcColor(colors: CerutiColors, i: number): string {
   const turns = [
-    [colors.upperBout, colors.upperBoutOff, colors.upperBoutOff2],
-    [colors.centerBout, colors.centerBoutOff, colors.centerBoutOff2],
-    [colors.lowerBout, colors.lowerBoutOff, colors.lowerBoutOff2],
+    [colors.voluteTurn1, colors.voluteTurn1Alt],
+    [colors.voluteTurn2, colors.voluteTurn2Alt],
+    [colors.voluteTurn3, colors.voluteTurn3Alt],
   ];
-  return turns[Math.floor(i / 4) % 3][[0, 1, 2, 1][i % 4]];
+  return turns[Math.floor(i / 4) % 3][i % 2];
 }
 
-// the back's arcs by their S number, rust over the top paling into green toward the pegbox
-export function backColor(colors: CerutiColors, i: number): string {
-  return [colors.scrollBackUpper, colors.scrollBackUpperOff, colors.scrollBackLowerOff, colors.scrollBackLower][Math.min(i, 3)];
-}
+// every arc draws in its own colour; module arcs add its centre and the two radii that bound it
+const sweptArc = (arc: SweptArc, color: string, fancy: boolean) =>
+  fancy ? renderSweptArcFancy(arc, color) : renderSweptArc(arc, color, STROKE_WEIGHT.trace);
 
-// the front's the same way up: green from the nut, rust where F1 meets the volute
-export function frontColor(colors: CerutiColors, i: number): string {
-  return [colors.scrollBackLower, colors.scrollBackUpper][Math.min(i, 1)];
-}
-
-// the scroll in ceruti-scroll.ts's frame, the neck's tilt taken out, for both the volute and the
-// scroll panels. The nut and the neck's end are drawn for context only — the neck open at the
-// bottom, stopping a little way down. The eye, spiral, back and front always draw, the neck's back
-// carried up from the nut to meet the nape; module arcs draws them the way the other panels draw
-// their arcs, each in its colour with its centre and the two radii that bound it, the way the
-// compass swept it. Module guides carries the neck's front and back on up past the spiral, and the
-// construction toggle the figure the spiral's centres are found on. The volute panel asks for the
-// volute and its crown alone; the scroll panel for the whole, the construction figure left off.
-// Each panel's own arcs are the ones it has fields for.
-type ScrollFlags = Pick<CerutiViewFlags, 'showModuleArcs' | 'showAllArcs' | 'showModuleGuides' | 'showVoluteConstruction'>;
-
-// the part of the scroll whose field has focus: a four point arc innermost first, a back arc by its
-// S number, the back's straight or nape, a front arc by its F number, or the front's flat or straight
-export type ScrollPart = { spiral: number } | { back: number } | 'straight' | 'nape' | { front: number } | 'flat' | 'frontStraight';
-
-export function renderScroll(p: EnricoCerutiParams, colors: CerutiColors, flags: ScrollFlags, highlighted: ScrollPart | null = null, parts: 'volute' | 'whole' = 'whole') {
+// the nut on the neck's front and the neck's end below it, open at the bottom, for context only.
+// Module guides carry the neck's front and back on up past the spiral
+export const renderScrollNeck = (p: EnricoCerutiParams, colors: CerutiColors, showGuides: boolean) => (g: any, ui: any): void => {
+  const v = p.volute!;
   const { thickness, nutThickness } = p.neck!;
-  const { eyeRadius, eyeX, eyeY } = p.volute!;
   const nutLength = standardNutLength(p.height);
   const neckStub = 2 * thickness;
 
-  const nut = [new Pt(0, 0), new Pt(0, nutLength), new Pt(nutThickness, nutLength), new Pt(nutThickness, 0)];
-  const neck = [new Pt(0, -neckStub), new Pt(0, 0), new Pt(-thickness, 0), new Pt(-thickness, -neckStub)];
+  renderPolygon([new Pt(0, 0), new Pt(0, nutLength), new Pt(nutThickness, nutLength), new Pt(nutThickness, 0)], colors.fingerboard, STROKE_WEIGHT.section)(g, ui);
+  renderSegment(new Pt(0, -neckStub), new Pt(0, 0), colors.neckOff, STROKE_WEIGHT.section)(g, ui);
+  renderSegment(new Pt(0, 0), new Pt(-thickness, 0), colors.neckOff, STROKE_WEIGHT.section)(g, ui);
+  renderSegment(new Pt(-thickness, 0), new Pt(-thickness, -neckStub), colors.neckOff, STROKE_WEIGHT.section)(g, ui);
 
-  const eye = new Pt(eyeX, eyeY);
-  const volute = layoutVolute(p.volute!, eye);
-  const whole = parts === 'whole';
-  const placedBack = layoutBack(volute?.spiral ?? [], p.volute!, -thickness);
-  const back: PlacedBack = whole ? placedBack : { arcs: placedBack.arcs.slice(0, CROWN_ARCS), straight: null, square: null, nape: null };
-  const top = Math.max(nutLength, eye.y + eyeRadius, ...[...volute?.spiral ?? [], ...back.arcs].map(a => a.center.y + a.r)) + thickness;
-  const napeFoot = back.nape && back.nape.center.y > 0 ? new Pt(-thickness, back.nape.center.y) : null;
-  const straightColor = backColor(colors, p.volute!.back.length - 1);
-  const front: PlacedFront = whole ? layoutFront(volute?.spiral ?? [], p.volute!.front, new Pt(0, nutLength)) : { flat: null, arcs: [], straight: null };
+  if (!showGuides) return;
+  const reach = [...v.spiral ?? [], v.S0, v.S1, v.S2].map(a => a.y + a.r).filter(Number.isFinite);
+  const top = Math.max(nutLength, v.eyeY + v.eyeRadius, ...reach) + thickness;
+  renderDashLine(new Pt(0, 0), new Pt(0, top), colors.neck, STROKE_WEIGHT.guide)(g, ui);
+  renderDashLine(new Pt(-thickness, 0), new Pt(-thickness, top), colors.neck, STROKE_WEIGHT.guide)(g, ui);
+};
 
-  return (g: any, ui: any): void => {
-    renderPolygon(nut, colors.fingerboard, STROKE_WEIGHT.section)(g, ui);
-    neck.slice(1).forEach((pt, i) => renderSegment(neck[i], pt, colors.neckOff, STROKE_WEIGHT.section)(g, ui));
-    if (flags.showModuleGuides) {
-      for (const x of [0, -thickness]) renderDashLine(new Pt(x, 0), new Pt(x, top), colors.neck, STROKE_WEIGHT.guide)(g, ui);
+// the eye, the spiral and the crown (S0, S1). The construction toggle adds the figure the spiral's
+// centres are found on
+export const renderVolute = (
+  p: EnricoCerutiParams,
+  colors: CerutiColors,
+  flags: ScrollViewFlags,
+  currentModule: boolean,
+  highlighted: HighlightedSweptArc | null,
+  failures: ScrollFailure[] = [],
+) => (g: any, ui: any): void => {
+  const v = p.volute!;
+  const unsolved = new Set(failures.flatMap(f => f.unsolved));
+  const solved = (key: ScrollKey) => !unsolved.has(key);
+  const fancy = (currentModule && flags.showModuleArcs) || flags.showAllArcs;
+
+  if (highlighted) renderSweptArcHalo(highlighted.arc, highlighted.color)(g, ui);
+
+  if (!solved('spiral')) return;
+  renderCircle({ x: v.eyeX, y: v.eyeY, r: v.eyeRadius }, colors.neckOff)(g, ui);
+  if (currentModule && flags.showVoluteConstruction) {
+    for (const line of voluteGuides(v)) {
+      for (let i = 1; i < line.length; i++) renderSegment(line[i - 1], line[i], colors.neckOff, STROKE_WEIGHT.guide, true)(g, ui);
     }
+  }
 
-    if (!volute) return;
-    const { spiral, guides } = volute;
-    renderCircle({ x: eye.x, y: eye.y, r: eyeRadius }, colors.neckOff)(g, ui);
-    if (flags.showVoluteConstruction && !whole) {
-      for (const line of guides) {
-        line.slice(1).forEach((pt, i) => renderSegment(line[i], pt, colors.neckOff, STROKE_WEIGHT.guide, true)(g, ui));
-      }
-    }
-    const inward = [...spiral].reverse();
-    const halo = (d: string, color: string) => renderPath(d, color, 12, 0.33)(g, ui);
-    const haloArc = (a: VoluteArc | null | undefined, color: string) => a && halo(arcPathData(a.center, a.r, a.from, a.to), color);
-    const haloLine = (line: [Pt, Pt] | null, color: string) => line && halo(`M ${line[0].x},${line[0].y} L ${line[1].x},${line[1].y}`, color);
-    if (highlighted === 'straight') haloLine(back.straight, straightColor);
-    else if (highlighted === 'nape') haloArc(back.nape, colors.neck);
-    else if (highlighted === 'flat') haloLine(front.flat, frontColor(colors, 0));
-    else if (highlighted === 'frontStraight') haloLine(front.straight, frontColor(colors, 0));
-    else if (highlighted && 'back' in highlighted) haloArc(back.arcs[highlighted.back], backColor(colors, highlighted.back));
-    else if (highlighted && 'front' in highlighted) haloArc(front.arcs[highlighted.front], frontColor(colors, highlighted.front));
-    else if (highlighted && 'spiral' in highlighted && VOLUTE_STYLES[p.volute!.style].custom) haloArc(inward[highlighted.spiral], arcColor(colors, highlighted.spiral));
+  const inward = [...v.spiral!].reverse();
+  for (let i = 0; i < inward.length; i++) sweptArc(inward[i], arcColor(colors, i), fancy)(g, ui);
 
-    if (napeFoot) renderSegment(napeFoot, new Pt(-thickness, 0), colors.neckOff, STROKE_WEIGHT.section)(g, ui);
+  solved('S0') && sweptArc(v.S0, colors.scrollBackLight, fancy)(g, ui);
+  solved('S1') && sweptArc(v.S1, colors.scrollBack, fancy)(g, ui);
+};
 
-    // module arcs: renderArcFromArcFancy's look, drawn here since a models/types Arc only takes the
-    // minor arc and an arc of the spiral can sweep more than half a turn. Module arcs colours the
-    // panel's own arcs, all arcs every one, as on the outline panels
-    const coloured = (own: boolean) => flags.showAllArcs || (flags.showModuleArcs && own);
-    const arcs = [
-      ...inward.map((a, i) => ({ ...a, color: arcColor(colors, i), own: !whole })),
-      ...back.arcs.map((a, i) => ({ ...a, color: backColor(colors, i), own: !whole || i >= CROWN_ARCS })),
-      ...back.nape ? [{ ...back.nape, color: colors.neck, own: true }] : [],
-      ...front.arcs.map((a, i) => ({ ...a, color: frontColor(colors, i), own: true })),
-    ];
-    for (const { center, r, from, to, color, own } of arcs) {
-      if (!coloured(own)) {
-        renderPath(arcPathData(center, r, from, to), colors.outerTrace, STROKE_WEIGHT.trace)(g, ui);
-        continue;
-      }
-      renderPath(arcPathData(center, r, from, to), color, 2)(g, ui);
-      for (const t of [from, to]) renderDashLine(center, new Pt(center.x + r * Math.cos(t), center.y + r * Math.sin(t)), color)(g, ui);
-      renderSmallCrosshair(center, color)(g, ui);
-    }
+// the back from S2 on down to the nape, and the front up from the nut. A straight shares its colour
+// with the arc whose row it is set on, the square line the nape's
+export const renderScroll = (
+  p: EnricoCerutiParams,
+  colors: CerutiColors,
+  flags: ScrollViewFlags,
+  currentModule: boolean,
+  highlighted: HighlightedSweptArc | null,
+  highlightedLine: HighlightedSegment | null,
+  failures: ScrollFailure[] = [],
+) => (g: any, ui: any): void => {
+  const v = p.volute!;
+  const { thickness } = p.neck!;
+  const unsolved = new Set(failures.flatMap(f => f.unsolved));
+  const solved = (key: ScrollKey) => !unsolved.has(key);
+  const fancy = (currentModule && flags.showModuleArcs) || flags.showAllArcs;
 
-    // the lines are all the scroll panel's: a straight shares its colour with the arc whose row
-    // it's set on, the flat with F0, and the square line the nape's
-    const lines: [[Pt, Pt] | null, string][] = [
-      [back.straight, straightColor], [back.square, colors.neck], [front.flat, frontColor(colors, 0)], [front.straight, frontColor(colors, 0)],
-    ];
-    for (const [line, color] of lines) {
-      if (line) renderSegment(...line, coloured(true) ? color : colors.outerTrace, coloured(true) ? 2 : STROKE_WEIGHT.trace)(g, ui);
-    }
-  };
-}
+  if (highlighted) renderSweptArcHalo(highlighted.arc, highlighted.color)(g, ui);
+  if (highlightedLine) renderSegmentHalo(...highlightedLine.line, highlightedLine.color)(g, ui);
+
+  // the neck's back carried up from the nut to meet the nape
+  if (solved('nape') && v.nape.y > 0) renderSegment(new Pt(-thickness, v.nape.y), new Pt(-thickness, 0), colors.neckOff, STROKE_WEIGHT.section)(g, ui);
+
+  solved('S2') && sweptArc(v.S2, colors.scrollBackLight, fancy)(g, ui);
+  solved('S3') && sweptArc(v.S3, colors.scrollBack, fancy)(g, ui);
+  solved('nape') && sweptArc(v.nape, colors.scrollNape, fancy)(g, ui);
+  solved('F0') && sweptArc(v.F0, colors.scrollFront, fancy)(g, ui);
+  solved('F1') && sweptArc(v.F1, colors.scrollFrontLight, fancy)(g, ui);
+
+  if (v.backStraightLine) renderSegment(...v.backStraightLine, colors.scrollBackLight, STROKE_WEIGHT.trace)(g, ui);
+  if (v.square) renderSegment(...v.square, colors.scrollNape, STROKE_WEIGHT.trace)(g, ui);
+  if (v.flatLine) renderSegment(...v.flatLine, colors.scrollFrontLight, STROKE_WEIGHT.trace)(g, ui);
+  if (v.frontStraightLine) renderSegment(...v.frontStraightLine, colors.scrollFront, STROKE_WEIGHT.trace)(g, ui);
+};

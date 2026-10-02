@@ -1,11 +1,17 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, RenderToggleKey, VoluteParams, VoluteStyle } from '../../ceruti-types';
+import { getFieldDeg, setFieldDeg } from '../../../helpers/math/arcDegrees';
+import { renderSolveFailures } from '../../../helpers/renderFuncs';
+import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, RenderToggleKey, VoluteParams } from '../../ceruti-types';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { defaultNeckParams } from '../../ceruti-neck';
-import { CROWN_ARCS, defaultPitch, ensureVolute, VOLUTE_STYLES } from '../../ceruti-scroll';
-import { arcColor, backColor, renderScroll, ScrollPart } from '../../renders/scroll.render';
+import { calculateScroll, VOLUTE_STYLES } from '../../ceruti-scroll';
+import { arcColor, renderScrollNeck, renderVolute } from '../../renders/scroll.render';
+import { HighlightedSweptArc } from '../../renders/render-constants';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
+
+// a four point arc by its index innermost first, or a crown arc by name
+export type VoluteHighlightKey = number | 'S0' | 'S1';
 
 @Component({
   selector: 'app-ceruti-volute-panel',
@@ -20,39 +26,20 @@ export class VolutePanel extends CerutiPanelBase implements OnInit {
   @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;
 
-  ngOnInit(): void {
-    this.emitImmediate();
-  }
-
-  onChange(): void {
-    this.emitDebounced();
-  }
-
+  protected readonly getFieldDeg = getFieldDeg;
+  protected readonly setFieldDeg = setFieldDeg;
   protected readonly styles = Object.entries(VOLUTE_STYLES).map(([id, { label }]) => ({ id, label }));
+
+  // held as a key rather than the arc itself: calculateScroll rebuilds the spiral every pass, so
+  // an arc captured on focus is stale by the time it would be drawn
+  private highlightedKey: VoluteHighlightKey | null = null;
+  private highlightedColor = '';
 
   get volute(): VoluteParams { return this.params.volute!; }
   get custom(): boolean { return !!VOLUTE_STYLES[this.volute.style].custom; }
   get archimedean(): boolean { return this.volute.style === 'archimedean'; }
+  get kelly(): boolean { return this.volute.style === 'kelly'; }
   arcColor(i: number): string { return arcColor(this.colors, i); }
-  backColor(i: number): string { return backColor(this.colors, i); }
-
-  protected readonly crown = Array.from({ length: CROWN_ARCS }, (_, i) => i);
-  protected readonly crownHelp = [
-    "The arc carrying the spiral's front on up to the top of the scroll",
-    'The arc from the top of the scroll on over to the back',
-  ];
-
-  endDegrees(end: number): number { return Math.round(end * 1800 / Math.PI) / 10; }
-  setEnd(arc: { end: number }, degrees: number): void {
-    arc.end = degrees * Math.PI / 180;
-    this.onChange();
-  }
-
-  setStyle(style: VoluteStyle): void {
-    this.volute.style = style;
-    if (style === 'archimedean' && !(this.volute.pitch > 0)) this.volute.pitch = defaultPitch(this.volute.eyeRadius);
-    this.onChange();
-  }
 
   // the arc fields four to a row, a turn of the spiral each
   get arcRows(): number[][] {
@@ -70,31 +57,54 @@ export class VolutePanel extends CerutiPanelBase implements OnInit {
     radii[i] = radius;
     if (Number.isFinite(radius)) for (let j = i + 1; j < radii.length && radii[j] < radius; j++) radii[j] = radius;
     this.onChange();
-    this.onFocus({ spiral: i });
+    this.onArcFocus(i, this.arcColor(i));
   }
 
-  private highlighted: ScrollPart | null = null;
+  ngOnInit(): void {
+    this.emitImmediate();
+  }
 
-  onFocus(part: ScrollPart): void {
-    this.highlighted = part;
+  onChange(): void {
+    this.emitDebounced();
+  }
+
+  onArcFocus(key: VoluteHighlightKey, color: string): void {
+    this.highlightedKey = key;
+    this.highlightedColor = color;
     this.emitImmediate(false);
   }
 
-  onBlur(): void {
-    this.highlighted = null;
+  onArcBlur(): void {
+    this.highlightedKey = null;
+    this.highlightedColor = '';
     this.emitImmediate(false);
   }
 
   public buildRun(): RenderLayer[] {
     const p = this.params;
     p.neck ??= defaultNeckParams(p);
-    ensureVolute(p);
-    return [renderScroll(p, this.colors, this.flags, this.highlighted, 'volute')];
+    const failures = calculateScroll(p);
+
+    const v = p.volute!;
+    const key = this.highlightedKey;
+    const arc =
+      key === null ? null :
+      typeof key === 'number' ? v.spiral?.[v.spiral.length - 1 - key] ?? null :
+      failures.some(f => f.unsolved.includes(key)) ? null :
+      v[key];
+    const highlighted: HighlightedSweptArc | null = arc ? { arc, color: this.highlightedColor } : null;
+
+    return [
+      renderScrollNeck(p, this.colors, this.flags.showModuleGuides),
+      renderVolute(p, this.colors, this.flags, true, highlighted, failures),
+      renderSolveFailures(failures, this.colors.pathError),
+    ];
   }
 }
 
 // a count of turns in quarters, as the luthier says it
 const turnsLabel = (turns: number) => {
-  const [whole, quarter] = [Math.floor(turns), Math.round(turns * 4) % 4];
+  const whole = Math.floor(turns);
+  const quarter = Math.round(turns * 4) % 4;
   return `${whole || ''}${['', '¼', '½', '¾'][quarter]}`;
 };

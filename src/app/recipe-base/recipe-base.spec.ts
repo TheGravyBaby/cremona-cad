@@ -50,6 +50,18 @@ describe('xy point keys', () => {
     expect(changes).toEqual(['x=11', 'y=21', 'x=1', 'y=20.9']);
   });
 
+  it('takes each axis\'s own ladder when it sets one', () => {
+    for (const input of [x, y]) {
+      input.step = '0.25';
+      input.dataset['stepShift'] = '1';
+      input.dataset['stepFine'] = '0.1';
+    }
+    press(x, 'ArrowRight');
+    press(x, 'ArrowUp', { shiftKey: true });
+    press(x, 'ArrowLeft', { ctrlKey: true });
+    expect(changes).toEqual(['x=10.25', 'y=21', 'x=10.15']);
+  });
+
   it('leaves an empty half alone, and still blocks the native step', () => {
     x.value = '';
     expect(press(x, 'ArrowRight').defaultPrevented).toBe(true);

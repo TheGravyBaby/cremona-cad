@@ -1,4 +1,4 @@
-import { Arc, Pt } from '../../models/types';
+import { Arc, Pt, SweptArc } from '../../models/types';
 
 /**
  * Named stroke-width tiers, screen px (every render call draws with
@@ -47,9 +47,21 @@ export const CERUTI_COLOR_PALETTE = {
   fHoleCut: '#e08a1e',
   pathError: '#d62828',
   neck: '#b07a3c',
-  // the scroll's back, rust over its top turning to green down toward the pegbox
-  scrollBackUpper: '#b0502a',
-  scrollBackLower: '#3c9a50',
+  // the scroll's back warm and its front cool so the two read apart at a glance, each alternating a
+  // deep and a light tone down its arcs; no red, which is the solve-failure colour
+  scrollBack: '#e8952f',
+  scrollBackLight: '#f4be6a',
+  scrollNape: '#cc6a33',
+  scrollFront: '#5c82d6',
+  scrollFrontLight: '#93aeeb',
+  // the spiral a turn at a time from the eye out, its arcs alternating ivory and a darker tan, far
+  // enough apart to follow one arc round in the four point's fields
+  voluteTurn1: '#f2eadb',
+  voluteTurn1Alt: '#b08a5a',
+  voluteTurn2: '#e6dccb',
+  voluteTurn2Alt: '#a8814f',
+  voluteTurn3: '#dacfbb',
+  voluteTurn3Alt: '#9c7650',
   neckRoot: '#d2691e',
   fingerboard: '#6f4d9a',
   bridge: '#d9d2c0',
@@ -71,11 +83,24 @@ export const LIGHT_CONTRAST_MIN = 3.0;
 // floor as everything else would push them down onto their "mid" sibling's lightness — in
 // f-hole-contours-panel.ts, U1/U2/U3 and L1/L2/L3 are adjacent arcs told apart by this triad
 // while editing, so collapsing it isn't just a cosmetic loss. This lower floor keeps them
-// visibly the lightest of their triad at the cost of falling short of full AA contrast.
+// visibly the lightest of their triad at the cost of falling short of full AA contrast. The
+// scroll's light tones and the volute's Alt tones take it for the same reason: at one floor each
+// deep/light pair lands on a single lightness.
 export const LIGHT_CONTRAST_MIN_PALE = 2.0;
 
 export interface HighlightedArc {
   arc: Arc;
+  color: string;
+}
+
+export interface HighlightedSweptArc {
+  arc: SweptArc;
+  color: string;
+}
+
+/** A straight run whose length field has focus — the scroll's straights, flat and square line. */
+export interface HighlightedSegment {
+  line: [Pt, Pt];
   color: string;
 }
 
