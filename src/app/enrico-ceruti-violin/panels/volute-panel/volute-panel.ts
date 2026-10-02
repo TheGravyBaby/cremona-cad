@@ -3,8 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, RenderToggleKey, VoluteParams, VoluteStyle } from '../../ceruti-types';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { defaultNeckParams } from '../../ceruti-neck';
-import { defaultPitch, ensureVolute, VOLUTE_STYLES } from '../../ceruti-scroll';
-import { arcColor, renderScroll, ScrollPart } from '../../renders/scroll.render';
+import { CROWN_ARCS, defaultPitch, ensureVolute, VOLUTE_STYLES } from '../../ceruti-scroll';
+import { arcColor, backColor, renderScroll, ScrollPart } from '../../renders/scroll.render';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 
 @Component({
@@ -34,6 +34,19 @@ export class VolutePanel extends CerutiPanelBase implements OnInit {
   get custom(): boolean { return !!VOLUTE_STYLES[this.volute.style].custom; }
   get archimedean(): boolean { return this.volute.style === 'archimedean'; }
   arcColor(i: number): string { return arcColor(this.colors, i); }
+  backColor(i: number): string { return backColor(this.colors, i); }
+
+  protected readonly crown = Array.from({ length: CROWN_ARCS }, (_, i) => i);
+  protected readonly crownHelp = [
+    "The arc carrying the spiral's front on up to the top of the scroll",
+    'The arc from the top of the scroll on over to the back',
+  ];
+
+  endDegrees(end: number): number { return Math.round(end * 1800 / Math.PI) / 10; }
+  setEnd(arc: { end: number }, degrees: number): void {
+    arc.end = degrees * Math.PI / 180;
+    this.onChange();
+  }
 
   setStyle(style: VoluteStyle): void {
     this.volute.style = style;

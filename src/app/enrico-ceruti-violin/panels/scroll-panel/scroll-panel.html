@@ -2,17 +2,17 @@
 
 <section class="ui-group">
     <div class="ui-group-title">Back</div>
-    @for (arc of volute.back; track $index; let i = $index) {
+    @for (i of backRows; track i) {
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="backColor(i)" [title]="backHelp[i] ?? ''">S{{ i }} R <span class="unit-label">mm</span></span>
+            <span class="field-title" [style.color]="backColor(i)" title="The arc from the crown on down the back toward the pegbox">S{{ i }} R <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="0.1" data-step-shift="1" data-step-fine="0.01" min="0.1" [style.border-color]="backColor(i)"
-                [(ngModel)]="arc.r" (input)="onChange()" (focus)="onFocus({ back: i })" (blur)="onBlur()" />
+                [(ngModel)]="volute.back[i].r" (input)="onChange()" (focus)="onFocus({ back: i })" (blur)="onBlur()" />
         </label>
         <label class="field-cell">
-            <span class="field-title" title="Where the arc ends, as the angle round its own centre from the front: 90° the top of the scroll, 180° the back. It starts where the arc before it ended">End <span class="unit-label">°</span></span>
+            <span class="field-title" title="Where the arc ends, as the angle round its own centre from the front: 180° the back. It starts where the arc before it ended">End <span class="unit-label">°</span></span>
             <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1"
-                [ngModel]="endDegrees(arc.end)" (ngModelChange)="setEnd(arc, $event)" (focus)="onFocus({ back: i })" (blur)="onBlur()" />
+                [ngModel]="endDegrees(volute.back[i].end)" (ngModelChange)="setEnd(volute.back[i], $event)" (focus)="onFocus({ back: i })" (blur)="onBlur()" />
         </label>
         @if ($last) {
         <label class="field-cell">

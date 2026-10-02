@@ -3,7 +3,7 @@ import { renderCircle, renderDashLine, renderPath, renderPolygon, renderSegment,
 import { Pt } from '../../models/types';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams } from '../ceruti-types';
 import { standardNutLength } from '../ceruti-neck';
-import { layoutBack, layoutFront, layoutVolute, PlacedBack, PlacedFront, VOLUTE_STYLES, VoluteArc } from '../ceruti-scroll';
+import { CROWN_ARCS, layoutBack, layoutFront, layoutVolute, PlacedBack, PlacedFront, VOLUTE_STYLES, VoluteArc } from '../ceruti-scroll';
 import { STROKE_WEIGHT } from './render-constants';
 
 // a spiral arc's colour as a module arc and in the four point's fields, innermost first: each turn
@@ -35,7 +35,8 @@ export function frontColor(colors: CerutiColors, i: number): string {
 // their arcs, each in its colour with its centre and the two radii that bound it, the way the
 // compass swept it. Module guides carries the neck's front and back on up past the spiral, and the
 // construction toggle the figure the spiral's centres are found on. The volute panel asks for the
-// volute alone, the back and front left off; the scroll panel for the whole, its figure left off.
+// volute and its crown alone; the scroll panel for the whole, the construction figure left off.
+// Each panel's own arcs are the ones it has fields for.
 type ScrollFlags = Pick<CerutiViewFlags, 'showModuleArcs' | 'showAllArcs' | 'showModuleGuides' | 'showVoluteConstruction'>;
 
 // the part of the scroll whose field has focus: a four point arc innermost first, a back arc by its
@@ -54,7 +55,8 @@ export function renderScroll(p: EnricoCerutiParams, colors: CerutiColors, flags:
   const eye = new Pt(eyeX, eyeY);
   const volute = layoutVolute(p.volute!, eye);
   const whole = parts === 'whole';
-  const back: PlacedBack = whole ? layoutBack(volute?.spiral ?? [], p.volute!, -thickness) : { arcs: [], straight: null, square: null, nape: null };
+  const placedBack = layoutBack(volute?.spiral ?? [], p.volute!, -thickness);
+  const back: PlacedBack = whole ? placedBack : { arcs: placedBack.arcs.slice(0, CROWN_ARCS), straight: null, square: null, nape: null };
   const top = Math.max(nutLength, eye.y + eyeRadius, ...[...volute?.spiral ?? [], ...back.arcs].map(a => a.center.y + a.r)) + thickness;
   const napeFoot = back.nape && back.nape.center.y > 0 ? new Pt(-thickness, back.nape.center.y) : null;
   const straightColor = backColor(colors, p.volute!.back.length - 1);
@@ -91,36 +93,31 @@ export function renderScroll(p: EnricoCerutiParams, colors: CerutiColors, flags:
 
     // module arcs: renderArcFromArcFancy's look, drawn here since a models/types Arc only takes the
     // minor arc and an arc of the spiral can sweep more than half a turn. Module arcs colours the
-    // panel's own arcs, the spiral on the volute panel and the back and front on the scroll panel;
-    // all arcs colours them all, as on the outline panels
-    const fancy = (arcs: (VoluteArc & { color: string })[]) => {
-      for (const { center, r, from, to, color } of arcs) {
-        renderPath(arcPathData(center, r, from, to), color, 2)(g, ui);
-        for (const t of [from, to]) renderDashLine(center, new Pt(center.x + r * Math.cos(t), center.y + r * Math.sin(t)), color)(g, ui);
-        renderSmallCrosshair(center, color)(g, ui);
+    // panel's own arcs, all arcs every one, as on the outline panels
+    const coloured = (own: boolean) => flags.showAllArcs || (flags.showModuleArcs && own);
+    const arcs = [
+      ...inward.map((a, i) => ({ ...a, color: arcColor(colors, i), own: !whole })),
+      ...back.arcs.map((a, i) => ({ ...a, color: backColor(colors, i), own: !whole || i >= CROWN_ARCS })),
+      ...back.nape ? [{ ...back.nape, color: colors.neck, own: true }] : [],
+      ...front.arcs.map((a, i) => ({ ...a, color: frontColor(colors, i), own: true })),
+    ];
+    for (const { center, r, from, to, color, own } of arcs) {
+      if (!coloured(own)) {
+        renderPath(arcPathData(center, r, from, to), colors.outerTrace, STROKE_WEIGHT.trace)(g, ui);
+        continue;
       }
-    };
-    const plain = (arcs: VoluteArc[]) => {
-      for (const { center, r, from, to } of arcs) renderPath(arcPathData(center, r, from, to), colors.outerTrace, STROKE_WEIGHT.trace)(g, ui);
-    };
+      renderPath(arcPathData(center, r, from, to), color, 2)(g, ui);
+      for (const t of [from, to]) renderDashLine(center, new Pt(center.x + r * Math.cos(t), center.y + r * Math.sin(t)), color)(g, ui);
+      renderSmallCrosshair(center, color)(g, ui);
+    }
 
-    if (flags.showAllArcs || (flags.showModuleArcs && !whole)) fancy(inward.map((a, i) => ({ ...a, color: arcColor(colors, i) })));
-    else plain(inward);
-
-    // a straight shares its colour with the arc whose row it's set on, the flat with F0, and the
-    // square line the nape's
-    if (flags.showAllArcs || flags.showModuleArcs) {
-      fancy([
-        ...back.arcs.map((a, i) => ({ ...a, color: backColor(colors, i) })),
-        ...back.nape ? [{ ...back.nape, color: colors.neck }] : [],
-        ...front.arcs.map((a, i) => ({ ...a, color: frontColor(colors, i) })),
-      ]);
-      if (back.straight) renderSegment(...back.straight, straightColor, 2)(g, ui);
-      if (back.square) renderSegment(...back.square, colors.neck, 2)(g, ui);
-      for (const line of [front.flat, front.straight]) if (line) renderSegment(...line, frontColor(colors, 0), 2)(g, ui);
-    } else {
-      plain([...back.arcs, ...back.nape ? [back.nape] : [], ...front.arcs]);
-      for (const line of [back.straight, back.square, front.flat, front.straight]) if (line) renderSegment(...line, colors.outerTrace, STROKE_WEIGHT.trace)(g, ui);
+    // the lines are all the scroll panel's: a straight shares its colour with the arc whose row
+    // it's set on, the flat with F0, and the square line the nape's
+    const lines: [[Pt, Pt] | null, string][] = [
+      [back.straight, straightColor], [back.square, colors.neck], [front.flat, frontColor(colors, 0)], [front.straight, frontColor(colors, 0)],
+    ];
+    for (const [line, color] of lines) {
+      if (line) renderSegment(...line, coloured(true) ? color : colors.outerTrace, coloured(true) ? 2 : STROKE_WEIGHT.trace)(g, ui);
     }
   };
 }
