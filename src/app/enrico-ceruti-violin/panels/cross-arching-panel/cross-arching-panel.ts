@@ -37,7 +37,10 @@ import { renderGuideBaseline, renderGuideKnot, renderGuideMeasure } from '../../
 import { renderWireframeDragFrame } from '../../renders/wireframe-drag-frame.render';
 import { calculateOuterArcs } from '../../ceruti-calcs';
 import { defineInnerPath, defineOuterPath } from '../../ceruti-paths';
-import { transitionError } from '../../ceruti-helpers';
+import {
+  archContoursInfo, crossSectionStationInfo, crossArchCurveTypeInfo, crossArchCycloidControlsInfo,
+  crossArchPeakInfo, crossArchStationInfo, crossArchTemplateInfo, transitionError,
+} from '../../ceruti-helpers';
 import { CrossArchingRotationController } from './cross-arching-rotation-controller';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
@@ -132,6 +135,14 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
   @Input({ required: true }) params!: EnricoCerutiParams;
   @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;
+
+  protected readonly crossSectionStationInfo = crossSectionStationInfo;
+  protected readonly crossArchCurveTypeInfo = crossArchCurveTypeInfo;
+  protected readonly crossArchCycloidControlsInfo = crossArchCycloidControlsInfo;
+  protected readonly crossArchTemplateInfo = crossArchTemplateInfo;
+  protected readonly crossArchStationInfo = crossArchStationInfo;
+  protected readonly crossArchPeakInfo = crossArchPeakInfo;
+  protected readonly archContoursInfo = archContoursInfo;
 
   /** Solved section at the cursor per plate, filled by buildRun for the template to report. */
   private section: { top: CrossArchSection | null; bottom: CrossArchSection | null } = { top: null, bottom: null };

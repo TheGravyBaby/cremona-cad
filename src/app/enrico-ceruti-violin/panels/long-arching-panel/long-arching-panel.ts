@@ -13,7 +13,7 @@ import {
 import { defaultFlutingParams, LongArchSolve, solveLongArch } from '../../ceruti-arch-geometry';
 import { calculateOuterArcs } from '../../ceruti-calcs';
 import {
-  archHeightInfo,
+  archHeightInfo, curveTypeInfo, transitionInfo, plateThicknessInfo, ribHeightInfo, splinePointInfo,
 } from '../../ceruti-helpers';
 import { HighlightedSplinePoint } from '../../renders/render-constants';
 import { renderBodySection } from '../../renders/body-section.render';
@@ -49,6 +49,12 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
   @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;
   protected readonly peakSource = SPLINE_PEAK_SOURCE;
+  protected readonly ribHeightInfo = ribHeightInfo;
+  protected readonly archHeightInfo = archHeightInfo;
+  protected readonly plateThicknessInfo = plateThicknessInfo;
+  protected readonly curveTypeInfo = curveTypeInfo;
+  protected readonly splinePointInfo = splinePointInfo;
+  protected readonly transitionInfo = transitionInfo;
 
   private highlightedPlate: 'top' | 'bottom' | null = null;
   private highlightedSource = SPLINE_PEAK_SOURCE;

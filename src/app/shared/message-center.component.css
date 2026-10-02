@@ -10,18 +10,9 @@
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue';
 }
 
-[data-severity='error'] { --severity: #ff6b6b; }
-[data-severity='warn'] { --severity: #ffb86b; }
-[data-severity='info'] { --severity: #69c0ff; }
-
-:host-context(.day-mode) [data-severity='error'] { --severity: #d9534f; }
-:host-context(.day-mode) [data-severity='warn'] { --severity: #f0ad4e; }
-:host-context(.day-mode) [data-severity='info'] { --severity: #5bc0de; }
-
-/* the surface every message hangs on, shared by the toast sheet and an open chip */
-.message-center {
-  --sheet-bg: var(--ui-topbar-grad-2);
-}
+[data-severity='error'] { --severity: var(--ui-severity-error); }
+[data-severity='warn'] { --severity: var(--ui-severity-warn); }
+[data-severity='info'] { --severity: var(--ui-severity-info); }
 
 /* Square-topped and borderless along the bar's edge, so the sheet reads as part of the bar rather
    than a card over the canvas. Stacked toasts share the one sheet, split by a rule. */
@@ -34,10 +25,10 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid var(--ui-topbar-border);
+  border: 1px solid var(--ui-message-border);
   border-top: none;
   border-radius: 0 0 6px 6px;
-  background: var(--sheet-bg);
+  background: var(--ui-message-bg);
   box-shadow: 0 6px 14px rgba(0, 0, 0, 0.3);
 }
 
@@ -48,12 +39,12 @@
 .toast {
   position: relative;
   padding: 10px 38px 12px 14px;
-  box-shadow: inset 4px 0 0 var(--severity);
+  box-shadow: inset 3px 0 0 var(--severity);
   color: var(--ui-text-primary);
 }
 
 .toast + .toast {
-  border-top: 1px solid var(--ui-topbar-border);
+  border-top: 1px solid var(--ui-message-border);
 }
 
 .toast .msg,
@@ -132,9 +123,9 @@
   to { stroke-dashoffset: 50.2654824574; }
 }
 
-/* A condition still reporting itself, as a control in the bar: the bar's own button surface, with
-   the severity strip the toast would have carried. One row, newest first; when they run out of
-   room the titles shorten rather than the row overflowing into the bar's controls. */
+/* A titled message, as a control in the bar with its severity strip. One row, newest first; when
+   they run out of room the titles shorten rather than the row overflowing into the bar's
+   controls. */
 .chips {
   height: 100%;
   display: flex;
@@ -158,10 +149,11 @@
   box-sizing: border-box;
   height: 28px;
   padding: 0 4px 0 0;
-  border: 1px solid var(--ui-topbar-control-border);
-  border-left: 3px solid var(--severity);
+  border: 1px solid var(--ui-message-chip-border);
   border-radius: 4px;
-  background: var(--ui-topbar-control-bg);
+  /* inset rather than a thick left border, which squares off the corners the bar's buttons round */
+  box-shadow: inset 3px 0 0 var(--severity);
+  background: var(--ui-message-chip-bg);
   color: var(--ui-text-primary);
   font-size: 13px;
   line-height: 1;
@@ -183,11 +175,11 @@
   min-width: 0;
   display: flex;
   align-items: center;
-  padding-left: 8px;
+  padding-left: 10px;
 }
 
 .chip:hover {
-  background: var(--ui-topbar-control-bg-hover);
+  background: var(--ui-message-chip-bg-hover);
 }
 
 .chip-label {
@@ -211,11 +203,10 @@
   height: calc(100% - 7px);
   margin-bottom: -1px;
   padding-bottom: 7px;
-  border-color: var(--ui-topbar-border);
-  border-left-color: var(--severity);
+  border-color: var(--ui-message-border);
   border-bottom: none;
   border-radius: 4px 4px 0 0;
-  background: var(--sheet-bg);
+  background: var(--ui-message-bg);
 }
 
 .chip-sheet {
@@ -226,12 +217,11 @@
   box-sizing: border-box;
   width: min(440px, 100vw - 32px);
   padding: 10px 12px 12px;
-  border: 1px solid var(--ui-topbar-border);
-  border-left: 3px solid var(--severity);
+  border: 1px solid var(--ui-message-border);
   border-top: none;
   border-radius: 0 0 6px 6px;
-  background: var(--sheet-bg);
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.3);
+  background: var(--ui-message-bg);
+  box-shadow: inset 3px 0 0 var(--severity), 0 6px 14px rgba(0, 0, 0, 0.3);
   color: var(--ui-text-primary);
 }
 

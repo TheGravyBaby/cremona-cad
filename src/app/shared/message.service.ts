@@ -99,13 +99,12 @@ export class MessageService implements OnDestroy {
     if (isCondition(m) && m.autoDismiss !== false) m.collapsed = true;
     else if (collapsible(m)) this.foldOpen();
 
+    // the new one replaces any chip of the same title, folded or not
+    if (collapsible(m)) this._messages = this._messages.filter(e => e.title !== m.title);
     if (m.exclusive) {
       // kicks every other message of the same severity, regardless of title — but not the chips,
       // whose whole job is to outlive whatever is on screen
       this._messages = this._messages.filter(e => e.severity !== m.severity || e.collapsed);
-    } else if (m.title && m.title.trim().length > 0) {
-      // dedupe by title when present
-      this._messages = this._messages.filter(e => e.title !== m.title);
     }
 
     this._messages = [m, ...this._messages].slice(0, 100);

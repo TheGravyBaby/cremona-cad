@@ -130,6 +130,17 @@ describe('MessageService', () => {
     expect(msgs[0].collapsed).toBeFalsy();
   });
 
+  it('replaces a chip of the same title rather than stacking beside it, even when exclusive', () => {
+    const ask = () => svc.emit({ severity: 'info', title: 'Body Dimensions', message: 'height and lower bout width', exclusive: true });
+    ask();
+    ask();
+    ask();
+
+    const msgs = current(svc);
+    expect(msgs).toHaveLength(1);
+    expect(msgs[0].collapsed).toBeFalsy();
+  });
+
   it('brings a condition sent without a countdown in open, since it has to be read', () => {
     svc.emit({ severity: 'warn', title: 'Older file format', message: 'loaded, but fields may be missing', autoDismiss: false });
     expect(current(svc)[0].collapsed).toBeFalsy();

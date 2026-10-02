@@ -13,6 +13,7 @@ import { renderBounds, renderBoutBouts, renderCornerGuides } from '../../renders
 import { HighlightedArc, HighlightedPoint, STROKE_WEIGHT } from '../../renders/render-constants';
 import { renderMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { renderCorners } from '../corners-panel/corners-panel';
+import { centerBoutWidthInfo, cornerPositionInfo, fitC0Info } from '../../ceruti-helpers';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 
@@ -41,6 +42,9 @@ export class CenterBoutPanel extends CerutiPanelBase implements OnInit {
 
   protected readonly nearestFraction = nearestFraction;
   protected readonly adjustArcStart = adjustArcStart;
+  protected readonly centerBoutWidthInfo = centerBoutWidthInfo;
+  protected readonly fitC0Info = fitC0Info;
+  protected readonly cornerPositionInfo = cornerPositionInfo;
 
   private highlightedArc: Arc | null = null;
   private highlightedArcColor = '';

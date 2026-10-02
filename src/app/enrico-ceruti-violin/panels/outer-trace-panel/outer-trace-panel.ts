@@ -5,6 +5,7 @@ import { adjustArcEnd } from '../../../helpers/math/arcDegrees';
 import { renderArcFromArcFancy, renderCircle, renderPath } from '../../../helpers/renderFuncs';
 import { calculateOuterArcs, ensureOuterTracePaths, getPath, getPathOrNull } from '../../ceruti-calcs';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, PathEntry, RenderToggleKey } from '../../ceruti-types';
+import { buttonInfo, cornerCutoffInfo, purflingInfo } from '../../ceruti-helpers';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../renders/render-constants';
@@ -30,6 +31,9 @@ export class OuterTracePanel extends CerutiPanelBase implements OnInit {
   @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;
   protected readonly adjustArcEnd = adjustArcEnd;
+  protected readonly buttonInfo = buttonInfo;
+  protected readonly cornerCutoffInfo = cornerCutoffInfo;
+  protected readonly purflingInfo = purflingInfo;
 
   ngOnInit(): void {
     this.emitImmediate();
