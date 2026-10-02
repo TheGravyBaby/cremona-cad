@@ -1,6 +1,6 @@
 import { Component, OnDestroy, signal } from '@angular/core';
 import { Subscription } from 'rxjs';
-import { MessageService, Message, CHIP_TTL } from './message.service';
+import { MessageService, Message, CHIP_TTL, collapsible } from './message.service';
 import { CommonModule} from '@angular/common';
 
 /**
@@ -22,8 +22,8 @@ function countdownKey(m: Message): string {
   styleUrls: ['./message-center.component.css']
 })
 export class MessageCenterComponent implements OnDestroy {
-  // toasts are the full messages; chips are conditions still reporting themselves, shown by title
-  // until opened. See MessageService for why the two states exist.
+  // chips are titled messages, folded to their title or opened in place; toasts are the untitled
+  // rest. See MessageService for when each arrives open.
   //
   // Signals, not plain fields: the app runs zoneless, so a message arriving over rxjs schedules no
   // change detection of its own. Plain fields left the stack repainting only when something else
@@ -43,8 +43,8 @@ export class MessageCenterComponent implements OnDestroy {
   constructor(private ms: MessageService) {
     this.sub = this.ms.messages$.subscribe(msgs => {
       // show only the most recent 3 as toasts; chips are small enough to all fit
-      this.toasts.set(msgs.filter(m => !m.collapsed).slice(0, 3));
-      this.chips.set(msgs.filter(m => m.collapsed));
+      this.toasts.set(msgs.filter(m => !collapsible(m)).slice(0, 3));
+      this.chips.set(msgs.filter(m => collapsible(m)));
       const activeKeys = new Set(msgs.map(m => countdownKey(m)));
       this.animationStyleCache.forEach((_, key) => {
         if (!activeKeys.has(key)) this.animationStyleCache.delete(key);
@@ -100,8 +100,14 @@ export class MessageCenterComponent implements OnDestroy {
     this.ms.dismiss(id);
   }
 
-  expand(id: string): void {
-    this.ms.expand(id);
+  toggle(m: Message): void {
+    if (m.collapsed) this.ms.expand(m.id);
+    else this.ms.dismiss(m.id);
+  }
+
+  // gone outright, chip and all; a condition still holding will report itself back as a new chip
+  close(id: string): void {
+    this.ms.clear(id);
   }
 
   ngOnDestroy(): void {

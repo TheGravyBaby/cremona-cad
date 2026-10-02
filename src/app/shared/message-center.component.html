@@ -32,20 +32,27 @@
     </div>
   </div>
 
-  <!-- conditions still reporting themselves; the ring is how long they have left before they
-       clear on their own -->
+  <!-- titled messages. Folded, the ring round the ✕ is how long the chip has before it clears on
+       its own; opened, the chip stays put and its message hangs beneath it. -->
   <div class="chips" *ngIf="chips().length">
-    <button *ngFor="let m of chips(); trackBy: trackByChip"
-      class="chip"
-      [attr.data-severity]="m.severity"
-      (click)="expand(m.id)"
-      [attr.title]="m.message"
-      [attr.aria-label]="'Reopen ' + m.title + ', reported ' + m.count + ' times'">
-      <span class="chip-label">{{m.title}}</span>
-      <span class="chip-count">
-        <ng-container [ngTemplateOutlet]="countdown" [ngTemplateOutletContext]="{$implicit: m}"></ng-container>
-        <span class="chip-count-value">{{m.count > 99 ? '99+' : m.count}}</span>
-      </span>
-    </button>
+    <div *ngFor="let m of chips(); trackBy: trackByChip"
+      class="chip-wrap" [class.open]="!m.collapsed" [attr.data-severity]="m.severity">
+      <div class="chip">
+        <button class="chip-toggle" (click)="toggle(m)" [attr.aria-expanded]="!m.collapsed"
+          [attr.title]="m.collapsed ? m.message : null">
+          <span class="chip-label">{{m.title}}</span>
+        </button>
+        <button class="chip-close" (click)="close(m.id)" [attr.aria-label]="'Dismiss ' + m.title">
+          <ng-container *ngIf="hasCountdown(m)"
+            [ngTemplateOutlet]="countdown"
+            [ngTemplateOutletContext]="{$implicit: m}">
+          </ng-container>
+          <span class="dismiss-icon">✕</span>
+        </button>
+      </div>
+      <div class="chip-sheet" *ngIf="!m.collapsed">
+        <span class="msg">{{m.message}}</span>
+      </div>
+    </div>
   </div>
 </div>

@@ -51,15 +51,23 @@ function makeMessage(input: MessageInput): Message {
   };
 }
 
+/** A titled message is a chip, open or folded; dismissing an open one folds it rather than clearing
+ * it, and a folded one expires on its own. Untitled messages have nothing to label a chip with, so
+ * they toast and clear. */
+export function collapsible(m: Message): boolean {
+  return !!m.title && m.title.trim().length > 0;
+}
+
 /**
  * A titled error or warn describes a *condition* rather than an event — the recipe re-reports it
- * on every recompute for as long as it holds, so it can't be cleared by being read. Those messages
- * arrive as a chip rather than a toast, so a drag that trips one doesn't bury the drawing in text;
- * opening the chip shows the full message, and dismissing that folds it back. The chip expires on
- * its own once the condition stops re-reporting. Untitled and info messages are events, and toast.
+ * on every recompute for as long as it holds, so it can't be cleared by being read. It refreshes in
+ * place, and arrives folded so a drag that trips one doesn't bury the drawing in text; its chip
+ * expires once the condition stops re-reporting. Info is something the maker asked for, so it
+ * arrives open, as does a condition sent with no countdown — that is the sender saying it must be
+ * read.
  */
-function collapsible(m: Message): boolean {
-  return m.severity !== 'info' && !!m.title && m.title.trim().length > 0;
+function isCondition(m: Message): boolean {
+  return m.severity !== 'info' && collapsible(m);
 }
 
 @Injectable({ providedIn: 'root' })
@@ -78,7 +86,7 @@ export class MessageService implements OnDestroy {
     // Refresh in place rather than replace, so a running countdown keeps running and a collapsed
     // chip stays collapsed. Replacing is what made a toast immortal while a number was dragged:
     // the new id restarted its dismiss animation on every recompute.
-    const existing = collapsible(m) ? this._messages.find(e => e.title === m.title) : undefined;
+    const existing = isCondition(m) ? this._messages.find(e => e.title === m.title) : undefined;
     if (existing) {
       existing.severity = m.severity;
       existing.message = m.message;
@@ -88,7 +96,8 @@ export class MessageService implements OnDestroy {
       return;
     }
 
-    if (collapsible(m)) m.collapsed = true;
+    if (isCondition(m) && m.autoDismiss !== false) m.collapsed = true;
+    else if (collapsible(m)) this.foldOpen();
 
     if (m.exclusive) {
       // kicks every other message of the same severity, regardless of title — but not the chips,
@@ -126,9 +135,21 @@ export class MessageService implements OnDestroy {
     const m = this._messages.find(e => e.id === id);
     if (!m || !m.collapsed) return;
 
+    this.foldOpen();
     m.collapsed = false;
     m.autoDismiss = false;
     this.publish();
+  }
+
+  // one chip open at a time: every open chip's message hangs from the same stretch of bar
+  private foldOpen() {
+    const now = Date.now();
+    for (const e of this._messages) {
+      if (collapsible(e) && !e.collapsed) {
+        e.collapsed = true;
+        e.lastSeen = now;
+      }
+    }
   }
 
   // clear one or all
