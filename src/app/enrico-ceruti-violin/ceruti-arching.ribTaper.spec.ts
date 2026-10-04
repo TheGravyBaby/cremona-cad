@@ -1,5 +1,5 @@
 import {
-  defaultArchingParams, maxRibTaperMm, normalizeArchingParams, ribHeightAt, solveRibTaper,
+  defaultArchingParams, maxRibTaperMm, ribHeightAt, solveRibTaper,
 } from './ceruti-arching';
 import { buildPlateSurfaceModel } from './ceruti-surface';
 import { templateViolin } from './ceruti-fixtures';
@@ -103,54 +103,6 @@ describe('maxRibTaperMm', () => {
     expect(Number.isFinite(ribHeightAt(p, BODY))).toBe(true);
     expect(t.angle).toBeGreaterThan(0);
     expect(t.angle).toBeLessThan(Math.PI / 2);
-  });
-});
-
-describe('rib heights on load', () => {
-  const legacy = (ribHeight: number): EnricoCerutiParams => {
-    const arching = { ...defaultArchingParams(BODY), ribHeight } as ArchingParams & { ribHeight: number };
-    delete (arching as Partial<ArchingParams>).ribHeightLower;
-    delete (arching as Partial<ArchingParams>).ribHeightUpper;
-    return { height: BODY, overhang: OVERHANG, arching } as unknown as EnricoCerutiParams;
-  };
-
-  it('splits a single ribHeight into an untapered pair', () => {
-    const p = legacy(29);
-    normalizeArchingParams(p);
-    expect(p.arching!.ribHeightLower).toBe(29);
-    expect(p.arching!.ribHeightUpper).toBe(29);
-    expect('ribHeight' in p.arching!).toBe(false);
-  });
-
-  it('does not invent a taper — a saved instrument must load as it was drawn', () => {
-    const p = legacy(29);
-    normalizeArchingParams(p);
-    expect(solveRibTaper(p).angle).toBe(0);
-  });
-
-  it('is idempotent', () => {
-    const p = legacy(29);
-    normalizeArchingParams(p);
-    const once = JSON.parse(JSON.stringify(p.arching));
-    normalizeArchingParams(p);
-    expect(p.arching).toEqual(once);
-  });
-
-  it('leaves a current-format pair alone', () => {
-    const p = params(32, 30);
-    normalizeArchingParams(p);
-    expect(p.arching!.ribHeightLower).toBe(32);
-    expect(p.arching!.ribHeightUpper).toBe(30);
-  });
-
-  it('mirrors a half-written pair rather than leaving the plane undefined', () => {
-    const p = {
-      height: BODY,
-      overhang: OVERHANG,
-      arching: { ...defaultArchingParams(BODY), ribHeightUpper: undefined } as unknown as ArchingParams,
-    } as unknown as EnricoCerutiParams;
-    normalizeArchingParams(p);
-    expect(p.arching!.ribHeightUpper).toBe(p.arching!.ribHeightLower);
   });
 });
 

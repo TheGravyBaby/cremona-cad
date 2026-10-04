@@ -1,9 +1,7 @@
 import { Pt } from "../models/types";
 import { clamp, TURN } from "../helpers/math/simpleGeometry";
 import { catenaryZAt, cycloidZAt, splineZAt } from "../helpers/math/pathMath";
-import {
-  ArchCurve, ArchingParams, ArchPlate, CrossArchShape, CrossArchPoint, EnricoCerutiParams, FlutingParams,
-} from "./ceruti-types";
+import { ArchCurve, ArchingParams, EnricoCerutiParams } from "./ceruti-types";
 
 // The long-arch height profile and the body-position queries every arching
 // consumer shares — a distinct concern from the flat 2D outline in
@@ -103,34 +101,6 @@ export function archFromLoweredTakeoff(arch: ArchCurve, edgeDepth: number): Arch
 }
 
 /**
- * Brings an arch loaded from an older recipe up to the current shape, in place.
- * Spline control points predating asymmetric arches carry no `mirror` flag and
- * a `t` measured over the half-span (0 = plate edge, 1 = peak); they become
- * mirrored points at half that t over the full span, which is the same curve.
- *
- * **Must run on every recipe that enters the app**, via its single caller
- * {@link normalizeArchingParams}. It cannot be applied lazily on read: an
- * absent `mirror` means an unmirrored point in the current format, so only a
- * loader can tell a legacy point from a deliberately unmirrored one.
- */
-export function normalizeArchCurve(arch: ArchCurve): void {
-  if (arch.type !== 'spline') return;
-  arch.peak ??= 0.5;
-  let migrated = false;
-  for (const p of arch.points) {
-    if (p.mirror === undefined) {
-      p.t = p.t / 2;
-      p.mirror = true;
-      migrated = true;
-    }
-  }
-  // sort only when migrated — peakRow counts rows against a current recipe's own order.
-  if (migrated) arch.points.sort((a, b) => a.t - b.t);
-  // no floor here: the loader has no thickness in scope; the panel enforces it.
-  clampSplinePointHeights(arch.points, arch.archHeight, -Infinity);
-}
-
-/**
  * Holds a spline's control points at or below its peak — the one knot that pins
  * the arch's real height. For a long arch that ceiling is the entered Arch
  * Height; for a cross arch the peak is always the full local hEff, so `peakZ`
@@ -159,83 +129,6 @@ export function clampSplinePointHeights(points: { z: number }[], peakZ: number, 
  */
 export function splinePeakRow(shape: { points: unknown[]; peakRow?: number }): number {
   return clamp(Math.round(shape.peakRow ?? 0), 0, shape.points.length);
-}
-
-/**
- * Migrates a freshly loaded recipe's arching in place, if it has any. Call this
- * once per recipe entering the app — a template, a file off disk, or a session
- * restore — and before anything reads `arching`.
- *
- * Separate from any panel so the migration isn't tied to one being opened: the
- * surface builder, 3D preview and STL/template exports all read spline arches
- * directly, and a recipe reaching Export without passing through here would be
- * interpolated from legacy coordinates and quietly cut wrong.
- */
-export function normalizeArchingParams(p: EnricoCerutiParams | undefined | null): void {
-  if (!p?.arching) return;
-  normalizeRibHeights(p.arching);
-  normalizeArchCurve(p.arching.top.arch);
-  normalizeArchCurve(p.arching.bottom.arch);
-  normalizeArchPlate(p.arching.top);
-  normalizeArchPlate(p.arching.bottom);
-}
-
-// migrates a legacy single `ribHeight` into the tapered pair, both ends taking the old value so a
-// saved instrument isn't silently tilted on load. idempotent, like normalizeArchPlate.
-function normalizeRibHeights(a: ArchingParams): void {
-  const legacy = a as ArchingParams & { ribHeight?: number };
-  if (typeof legacy.ribHeight === 'number') {
-    a.ribHeightLower ??= legacy.ribHeight;
-    a.ribHeightUpper ??= legacy.ribHeight;
-    delete legacy.ribHeight;
-  }
-  // one side written mirrors to the other — an untapered rib.
-  a.ribHeightLower ??= a.ribHeightUpper;
-  a.ribHeightUpper ??= a.ribHeightLower;
-}
-
-/**
- * Brings one plate's gouge and crown blocks up to the current names.
- *
- * There were two arching models for a few days, and the second one's blocks
- * were called `gougedFluting` / `gougedCross` to sit alongside the first one's
- * `fluting` / `cross`. Only the second survives, so it has the plain names now
- * and a saved recipe can be carrying either.
- *
- * A leftover from the retired model is dropped rather than read: its crown was
- * authored in fractions of the local chord against a channel derived from the
- * arch, so nothing about it can be reinterpreted against a fixed gouge. The
- * plate falls back to defaults, which is the honest outcome and the visible one.
- *
- * Recognising the current format positively — rather than assuming a bare
- * `cross` is legacy — is what makes this safe to run twice, which it is: every
- * recipe entering the app passes through here, including ones already migrated
- * in an earlier session and saved back.
- */
-function normalizeArchPlate(plate: ArchPlate): void {
-  const legacy = plate as ArchPlate & { gougedFluting?: FlutingParams; gougedCross?: CrossArchShape };
-
-  if (legacy.gougedFluting) plate.fluting = legacy.gougedFluting;
-  else if (plate.fluting && plate.fluting.sweepRadius === undefined) delete plate.fluting;
-  delete legacy.gougedFluting;
-
-  if (legacy.gougedCross) plate.cross = legacy.gougedCross;
-  else if (plate.cross && !isCurrentCrossArch(plate.cross)) delete plate.cross;
-  delete legacy.gougedCross;
-}
-
-/**
- * Whether a crown block is in the current model's terms. The retired one shared
- * both curve-type names, so the tell is inside the shape: its control points
- * were `t`/`z` fractions of the chord where these are signed `x`, and its
- * trochoid carried a `left`/`right` pair for asymmetry that this one expresses
- * per point. Older still, the block carried no `type` at all.
- */
-function isCurrentCrossArch(cross: CrossArchShape): boolean {
-  if (cross.type !== 'spline' && cross.type !== 'cycloid') return false;
-  return cross.type === 'spline'
-    ? cross.points.every(pt => typeof (pt as CrossArchPoint).x === 'number')
-    : !('left' in cross || 'right' in cross);
 }
 
 /**

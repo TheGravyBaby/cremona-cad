@@ -10,7 +10,6 @@ import { isLocSourced } from './templates/corpus';
 import { LOCAL_TEMPLATES } from './templates/local/generated-index';
 import { defineOuterPath, defineOuterPurflingPath, definePurflingPath } from './ceruti-paths';
 import { ensureFholePath, getPath } from './ceruti-calcs';
-import { normalizeArchingParams } from './ceruti-arching';
 import { renderBounds } from './renders/guides.render';
 import {
   CERUTI_COLOR_PALETTE, LIGHT_CONTRAST_MIN, LIGHT_CONTRAST_MIN_PALE, LIGHT_MODE_CANVAS_BG,
@@ -250,17 +249,9 @@ export class CerutiViolin extends RecipeComponentBase {
     this.setOpenPanel('base');
   }
 
-  // Migrates arching on adoption rather than on the Long Arching panel opening — the surface
-  // builder, 3D preview and STL/template exports all read spline arches straight from params, and
-  // any of them may be reached first.
-  protected override onRecipeAdopted(): void {
-    normalizeArchingParams(this.d.params);
-  }
-
   onNewClick(): void {
     const blank = JSON.parse(JSON.stringify(CERUTI_TEMPLATES[0])) as EnricoCerutiTemplate;
     this.d = blank;
-    this.onRecipeAdopted();
     // resetAll() clears the image asset table too, so the new template's own images have to be
     // loaded after it, not assumed.
     this.toolbox.resetAll();
@@ -290,8 +281,7 @@ export class CerutiViolin extends RecipeComponentBase {
       }
       else {
         this.d = recipeData;
-        this.onRecipeAdopted();
-        this.loadReferenceImages(recipeData);
+            this.loadReferenceImages(recipeData);
         this.panelFlow?.refreshEnabledPanels();
         const savedPanel = readWorkingState(PANEL_KEY);
         if (savedPanel && this.isPanelEnabled(savedPanel)) {

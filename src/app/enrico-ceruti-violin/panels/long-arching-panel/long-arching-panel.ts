@@ -198,7 +198,6 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
     const at = rows.findIndex(row => descending ? rowT(row) < t : rowT(row) > t);
     const row = at < 0 ? rows.length : at;
     const peakRow = splinePeakRow(arch);
-    // mirror explicitly false — an absent flag reads as a legacy half-span point to the loader.
     arch.points.splice(peakRow < row ? row - 1 : row, 0, { t, z, mirror: false });
     if (row <= peakRow) arch.peakRow = peakRow + 1;
     this.onChange();

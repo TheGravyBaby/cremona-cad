@@ -41,10 +41,6 @@ Order of operations follows the bench, and the code follows it too: channel goug
 section first → long arch carved to a template → crown across. The panel order in
 `ceruti-violin.ts` is deliberately this order.
 
-`normalizeArchPlate` in `ceruti-arching.ts` migrates recipes saved during the overlap. It
-recognizes the current format *positively* so it stays idempotent; six tests in
-`ceruti-arching.archMigration.spec.ts` pin that. Don't loosen them.
-
 ## Settled decisions — don't re-litigate
 
 - **A reference image can be scoped to particular panels**, via `panels`/`excludePanels`/
@@ -60,7 +56,7 @@ recognizes the current format *positively* so it stays idempotent; six tests in
   corrected by hand in the panel. So the rule is now a pairing rather than a prohibition, and
   `ceruti-templates.spec.ts` enforces it — a corpus template with an `arching` block must also
   ship a reference image scoped to the `longArching` panel. A template with no such image still
-  carries no arching, `normalizeArchingParams` early-returns, and the plate is seeded from
+  carries no arching, and the plate is seeded from
   `defaultArchingParams` by whichever arching panel or the surface builder reaches it first.
   Each entry's `meta.notes` records how far to trust its numbers; the top plate is occluded by
   the fingerboard and strings on every one of these views and is always the weaker of the two.
@@ -239,8 +235,7 @@ recognizes the current format *positively* so it stays idempotent; six tests in
   microns of plan foreshortening on a violin. Both heights are entered
   perpendicular to the rib's top edge; `solveRibTaper` converts to vertical rise in closed form,
   and the correction is half a micron on a violin. The acceptance property is that equal heights
-  reproduce an untapered instrument exactly, which is why the loader migration splits an old
-  `ribHeight` into an equal pair rather than seeding a default taper. `maxRibTaperMm` bounds the
+  reproduce an untapered instrument exactly. `maxRibTaperMm` bounds the
   pair at the point where the tilted rib line outgrows the body — the long arching panel rolls
   an over-taper back rather than drawing a plate stretched to reach a garland that cannot exist.
 - **A long-arch spline knot may sit below the plate edge, down to the plate thickness — even below
@@ -338,7 +333,7 @@ legitimately optional (`purfling`, `outerPurfling`).
 `ceruti-arching.ts`, `ceruti-arch-geometry.ts` and `ceruti-surface.ts` are the agent-built files
 root CLAUDE.md's "Keep it modifiable by hand" refers to. Explain a change in bench terms, not just
 code terms, and lean on the specs — they encode the real acceptance criteria (slope-0 cut edges,
-idempotent migration, no kink at the taper).
+no kink at the taper).
 
 ## Notes
 
