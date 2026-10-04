@@ -567,10 +567,10 @@
     },
     "volute": {
       "style": "kelly",
-      "eyeRadius": 4.3,
       "eye": {
         "x": -15.49,
-        "y": 90.31
+        "y": 90.31,
+        "r": 4.3
       },
       "flushWithNeck": false,
       "pitch": 8.2,

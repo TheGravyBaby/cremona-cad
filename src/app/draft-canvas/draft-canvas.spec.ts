@@ -38,6 +38,30 @@ describe('DraftCanvasComponent', () => {
     expect(inputs[2].value).toBe('4');
   });
 
+  it('opens the right-click menu up and to the left when it would run off the canvas', () => {
+    fixture.detectChanges();
+    vi.spyOn(component.host.nativeElement, 'getBoundingClientRect')
+      .mockReturnValue({ left: 0, top: 0, width: 800, height: 600 } as DOMRect);
+    // jsdom does no layout, so the menu reports the size a real one has
+    const width = vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(180);
+    const height = vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(340);
+    const rightClick = (x: number, y: number) =>
+      component.onContextMenu({ clientX: x, clientY: y, preventDefault: () => { } } as MouseEvent);
+    try {
+      rightClick(100, 100);
+      expect(component.contextMenu).toEqual({ x: 100, y: 100, maxHeight: 600 });
+      rightClick(750, 580);
+      expect(component.contextMenu).toEqual({ x: 570, y: 240, maxHeight: 600 });
+      // no room either way: pinned inside rather than pushed off the top
+      height.mockReturnValue(600);
+      rightClick(100, 300);
+      expect(component.contextMenu!.y).toBe(0);
+    } finally {
+      width.mockRestore();
+      height.mockRestore();
+    }
+  });
+
   // a trackpad double-tap lands its second press a few pixels off the first, often off a thin line
   it('adds a batten pin from two quick presses that drift apart', () => {
     fixture.detectChanges();

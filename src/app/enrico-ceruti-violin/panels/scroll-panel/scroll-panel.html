@@ -1,4 +1,4 @@
-@if (params.volute) {
+@if (params.scroll) {
 
 <section class="ui-group">
     <div class="ui-group-title">Back</div>
@@ -6,19 +6,19 @@
         <label class="field-cell">
             <span class="field-title" [style.color]="colors.scrollBackLight" title="The arc from the crown on down the back toward the pegbox">S2 R <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1" min="0" [style.border-color]="colors.scrollBackLight"
-                [(ngModel)]="volute.S2.r" (input)="onChange(); onArcFocus('S2', colors.scrollBackLight)"
+                [(ngModel)]="scroll.S2.r" (input)="onChange(); onArcFocus('S2', colors.scrollBackLight)"
                 (focus)="onArcFocus('S2', colors.scrollBackLight)" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">
             <span class="field-title" title="Where the arc ends, as the angle round its own centre from the front: 180° the back. It starts where S1 ended">End <span class="unit-label">°</span></span>
             <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1"
-                [ngModel]="getFieldDeg(volute.S2, 'end')" (ngModelChange)="setFieldDeg(volute.S2, 'end', $event, onChange.bind(this)); onArcFocus('S2', colors.scrollBackLight)"
+                [ngModel]="getFieldDeg(scroll.S2, 'end')" (ngModelChange)="setFieldDeg(scroll.S2, 'end', $event, onChange.bind(this)); onArcFocus('S2', colors.scrollBackLight)"
                 (focus)="onArcFocus('S2', colors.scrollBackLight)" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">
             <span class="field-title" [style.color]="colors.scrollBackLight" title="The straight run on down the back of the scroll from S2's end, along its heading">Straight <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1" min="0" [style.border-color]="colors.scrollBackLight"
-                [(ngModel)]="volute.backStraight" (input)="onChange(); onArcFocus('backStraight', colors.scrollBackLight)"
+                [(ngModel)]="scroll.backStraight" (input)="onChange(); onArcFocus('backStraight', colors.scrollBackLight)"
                 (focus)="onArcFocus('backStraight', colors.scrollBackLight)" (blur)="onArcBlur()" />
         </label>
     </div>
@@ -26,13 +26,13 @@
         <label class="field-cell">
             <span class="field-title" [style.color]="colors.scrollBack" title="Where the back of the scroll turns into the back of the pegbox: an arc off the straight's end, curving the other way. Its end is the duck tail">S3 R <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1" min="0" [style.border-color]="colors.scrollBack"
-                [(ngModel)]="volute.S3.r" (input)="onChange(); onArcFocus('S3', colors.scrollBack)"
+                [(ngModel)]="scroll.S3.r" (input)="onChange(); onArcFocus('S3', colors.scrollBack)"
                 (focus)="onArcFocus('S3', colors.scrollBack)" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">
             <span class="field-title" title="Where the arc ends, as the angle round its own centre from the front, swept clockwise: 0° runs the back straight down, parallel to the neck">End <span class="unit-label">°</span></span>
             <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1"
-                [ngModel]="getFieldDeg(volute.S3, 'start')" (ngModelChange)="setFieldDeg(volute.S3, 'start', $event, onChange.bind(this)); onArcFocus('S3', colors.scrollBack)"
+                [ngModel]="getFieldDeg(scroll.S3, 'start')" (ngModelChange)="setFieldDeg(scroll.S3, 'start', $event, onChange.bind(this)); onArcFocus('S3', colors.scrollBack)"
                 (focus)="onArcFocus('S3', colors.scrollBack)" (blur)="onArcBlur()" />
         </label>
     </div>
@@ -40,23 +40,23 @@
         <label class="field-cell">
             <span class="field-title" [style.color]="colors.scrollNape" title="Where the back of the pegbox meets the back of the neck: the fillet into the neck's back from a line run square to the neck from the duck tail">Nape R <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1" min="0" [style.border-color]="colors.scrollNape"
-                [(ngModel)]="volute.nape.r" (input)="onChange(); onArcFocus('nape', colors.scrollNape)"
+                [(ngModel)]="scroll.nape.r" (input)="onChange(); onArcFocus('nape', colors.scrollNape)"
                 (focus)="onArcFocus('nape', colors.scrollNape)" (blur)="onArcBlur()" />
         </label>
     </div>
-    @if (volute.height != null && volute.width != null) {
+    @if (extent; as extent) {
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title" title="The head's height, from the nut up to the top of the crown">Height <span class="unit-label">mm</span></span>
-            <div class="basic-display" aria-label="Scroll height value">{{ volute.height | number:'1.1-1' }}</div>
+            <div class="basic-display" aria-label="Scroll height value">{{ extent.height | number:'1.1-1' }}</div>
         </label>
         <label class="field-cell">
             <span class="field-title" title="The head's depth, from the neck's front back to the furthest reach of the scroll">Width <span class="unit-label">mm</span></span>
-            <div class="basic-display" aria-label="Scroll width value">{{ volute.width | number:'1.1-1' }}</div>
+            <div class="basic-display" aria-label="Scroll width value">{{ extent.width | number:'1.1-1' }}</div>
         </label>
         <label class="field-cell">
             <span class="field-title">H to W</span>
-            <div class="basic-display" aria-label="Scroll height to width ratio value">{{ nearestFraction(volute.height / volute.width) }}</div>
+            <div class="basic-display" aria-label="Scroll height to width ratio value">{{ nearestFraction(extent.height / extent.width) }}</div>
         </label>
     </div>
     }
@@ -68,7 +68,7 @@
         <label class="field-cell">
             <span class="field-title" [style.color]="colors.scrollFrontLight" title="The front of the pegbox rising straight up the neck's front from the top of the nut, before it turns back under the volute">Flat <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1" min="0" [style.border-color]="colors.scrollFrontLight"
-                [(ngModel)]="volute.flat" (input)="onChange(); onArcFocus('flat', colors.scrollFrontLight)"
+                [(ngModel)]="scroll.flat" (input)="onChange(); onArcFocus('flat', colors.scrollFrontLight)"
                 (focus)="onArcFocus('flat', colors.scrollFrontLight)" (blur)="onArcBlur()" />
         </label>
     </div>
@@ -76,27 +76,27 @@
         <label class="field-cell">
             <span class="field-title" [style.color]="colors.scrollFront" title="The arc turning the front of the pegbox back from the flat, in under the volute">F0 R <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1" min="0" [style.border-color]="colors.scrollFront"
-                [(ngModel)]="volute.F0.r" (input)="onChange(); onArcFocus('F0', colors.scrollFront)"
+                [(ngModel)]="scroll.F0.r" (input)="onChange(); onArcFocus('F0', colors.scrollFront)"
                 (focus)="onArcFocus('F0', colors.scrollFront)" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">
             <span class="field-title" title="Where the arc ends, as the angle round its own centre from the front: the more it turns, the further back the straight after it leans">End <span class="unit-label">°</span></span>
             <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1"
-                [ngModel]="getFieldDeg(volute.F0, 'end')" (ngModelChange)="setFieldDeg(volute.F0, 'end', $event, onChange.bind(this)); onArcFocus('F0', colors.scrollFront)"
+                [ngModel]="getFieldDeg(scroll.F0, 'end')" (ngModelChange)="setFieldDeg(scroll.F0, 'end', $event, onChange.bind(this)); onArcFocus('F0', colors.scrollFront)"
                 (focus)="onArcFocus('F0', colors.scrollFront)" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">
             <span class="field-title" [style.color]="colors.scrollFront" title="The straight run on from F0's end, along its heading, in under the volute">Straight <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1" min="0" [style.border-color]="colors.scrollFront"
-                [(ngModel)]="volute.frontStraight" (input)="onChange(); onArcFocus('frontStraight', colors.scrollFront)"
+                [(ngModel)]="scroll.frontStraight" (input)="onChange(); onArcFocus('frontStraight', colors.scrollFront)"
                 (focus)="onArcFocus('frontStraight', colors.scrollFront)" (blur)="onArcBlur()" />
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="colors.scrollFrontLight" title="The small arc curving the front up off the straight to meet the volute. It ends where it meets it">F1 R <span class="unit-label">mm</span></span>
+            <span class="field-title" [style.color]="colors.scrollFrontLight" title="The small arc curving the front up off the straight to meet the scroll. It ends where it meets it">F1 R <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1" min="0" [style.border-color]="colors.scrollFrontLight"
-                [(ngModel)]="volute.F1.r" (input)="onChange(); onArcFocus('F1', colors.scrollFrontLight)"
+                [(ngModel)]="scroll.F1.r" (input)="onChange(); onArcFocus('F1', colors.scrollFrontLight)"
                 (focus)="onArcFocus('F1', colors.scrollFrontLight)" (blur)="onArcBlur()" />
         </label>
     </div>

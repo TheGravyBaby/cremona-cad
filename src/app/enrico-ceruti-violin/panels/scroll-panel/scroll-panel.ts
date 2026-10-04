@@ -3,10 +3,10 @@ import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { getFieldDeg, setFieldDeg } from '../../../helpers/math/arcDegrees';
 import { renderSolveFailures } from '../../../helpers/renderFuncs';
-import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, RenderToggleKey, VoluteParams } from '../../ceruti-types';
+import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, RenderToggleKey, ScrollParams } from '../../ceruti-types';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { defaultNeckParams } from '../../ceruti-neck';
-import { calculateScroll, ScrollKey, scrollLines } from '../../ceruti-scroll';
+import { calculateScroll, ScrollKey, scrollExtent, scrollLines } from '../../ceruti-scroll';
 import { renderScroll, renderScrollNeck, renderVolute } from '../../renders/scroll.render';
 import { HighlightedArc, HighlightedSegment } from '../../renders/render-constants';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
@@ -35,8 +35,9 @@ export class ScrollPanel extends CerutiPanelBase implements OnInit {
   // held as a key rather than the arc itself: calculateScroll rewrites every arc each pass
   private highlightedKey: ScrollHighlightKey | null = null;
   private highlightedColor = '';
+  protected extent: { height: number; width: number } | null = null;
 
-  get volute(): VoluteParams { return this.params.volute!; }
+  get scroll(): ScrollParams { return this.params.scroll!; }
 
   ngOnInit(): void {
     this.emitImmediate();
@@ -63,10 +64,11 @@ export class ScrollPanel extends CerutiPanelBase implements OnInit {
     p.neck ??= defaultNeckParams(p);
     const failures = calculateScroll(p);
 
-    const v = p.volute!;
+    const v = p.scroll!;
     const key = this.highlightedKey;
     const color = this.highlightedColor;
     const solved = (k: ScrollKey) => !failures.some(f => f.unsolved.includes(k));
+    this.extent = solved('S3') ? scrollExtent(v) : null;
     const line = (key === 'backStraight' || key === 'flat' || key === 'frontStraight') && solved(key) ? scrollLines(p)[key] : null;
     const arc = (key === 'S2' || key === 'S3' || key === 'nape' || key === 'F0' || key === 'F1') && solved(key) ? v[key] : null;
     const highlighted: HighlightedArc | null = arc ? { arc, color } : null;

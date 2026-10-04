@@ -1,14 +1,14 @@
 import { angleFromCenter, angleWithinSweep, arcReach, dist, moveInVectorSpace, normalizeRadians, placeCircleOnPointAtAngle, pointOnCircle, TURN, vectorFromSlope } from '../helpers/math/simpleGeometry';
 import { circleCircleIntersections } from '../helpers/math/draftMath';
 import { reportFailures, SolveFailure, solveSection } from '../helpers/validators';
-import { Arc, Pt } from '../models/types';
-import { EnricoCerutiParams, VoluteParams, VoluteStyle } from './ceruti-types';
+import { Arc, Circle, Pt } from '../models/types';
+import { EnricoCerutiParams, ScrollParams, VoluteStyle } from './ceruti-types';
 import { defaultNeckParams, standardNutLength } from './ceruti-neck';
 
 // The scroll in its own side-view frame: the nut at the origin on the neck's front, up the neck +y,
 // toward the back -x. calculateScroll writes every arc onto `p.volute` for scroll.render.ts to read.
 
-export type VoluteSpec = Pick<VoluteParams, 'style' | 'eyeRadius' | 'pitch' | 'seedLength' | 'arcRadii'>;
+export type VoluteSpec = Pick<ScrollParams, 'style' | 'eye' | 'pitch' | 'seedLength' | 'arcRadii'>;
 export type ScrollKey = 'spiral' | 'S0' | 'S1' | 'S2' | 'S3' | 'nape' | 'backStraight' | 'F0' | 'F1' | 'flat' | 'frontStraight';
 export type ScrollFailure = SolveFailure<ScrollKey>;
 export type ScrollLine = 'square' | 'backStraight' | 'flat' | 'frontStraight';
@@ -33,13 +33,13 @@ const ALL_KEYS: ScrollKey[] = ['spiral', ...BACK_KEYS, ...FRONT_KEYS];
 // Each winds counterclockwise from the eye's front and ends two turns out heading straight up
 export function spiralArcs(v: VoluteSpec): Arc[] {
   switch (v.style) {
-    case 'fourPoint': return fourPointArcs(v.eyeRadius, v.arcRadii);
-    case 'archimedean': return archimedeanArcs(v.eyeRadius, v.pitch);
+    case 'fourPoint': return fourPointArcs(v.eye.r, v.arcRadii);
+    case 'archimedean': return archimedeanArcs(v.eye.r, v.pitch);
     // the older authors started at the top of the eye; their figures are turned a quarter here
-    case 'serlio': return serlioArcs(v.eyeRadius);
-    case 'salviati': return salviatiArcs(v.eyeRadius);
-    case 'goldmann': return goldmannArcs(v.eyeRadius);
-    case 'kelly': return kellyArcs(v.eyeRadius, v.seedLength);
+    case 'serlio': return serlioArcs(v.eye.r);
+    case 'salviati': return salviatiArcs(v.eye.r);
+    case 'goldmann': return goldmannArcs(v.eye.r);
+    case 'kelly': return kellyArcs(v.eye.r, v.seedLength);
   }
 }
 
@@ -192,16 +192,15 @@ function kellyArcs(eyeRadius: number, seedLength: number): Arc[] {
 
 // after Stradivari's Betts on a 350 mm body, scaled by body length. F0 shares S3's centre, as on
 // the Betts, so its radius and the flat are read off the solved back
-export function defaultVoluteParams(p: EnricoCerutiParams): VoluteParams {
+export function defaultVoluteParams(p: EnricoCerutiParams): ScrollParams {
   let k = p.height / 350;
   let mm = (v: number) => Math.round(v * k);
   let eyeRadius = Math.round(3.5 * k * 4) / 4;
 
-  let v: VoluteParams = {
+  let v: ScrollParams = {
     style: 'salviati',
-    eyeRadius,
     // the flush in calculateScroll below sets Eye X
-    eye: new Pt(0, mm(83)),
+    eye: new Circle(0, mm(83), eyeRadius),
     flushWithNeck: true,
     // about the Salviati's own opening, its front as far out
     pitch: Math.round(1.9 * eyeRadius * 10) / 10,
@@ -220,12 +219,9 @@ export function defaultVoluteParams(p: EnricoCerutiParams): VoluteParams {
     F1: new Arc(0, 0, mm(9), 0, 0),
     flat: 0,
     frontStraight: mm(18),
-
-    height: null,
-    width: null,
   };
 
-  calculateScroll({ ...p, neck: p.neck ?? defaultNeckParams(p), volute: v });
+  calculateScroll({ ...p, neck: p.neck ?? defaultNeckParams(p), scroll: v });
   v.F0 = new Arc(0, 0, Math.round(-v.S3.x), 0, v.F0.end);
   v.flat = Math.round(v.S3.y - standardNutLength(p.height));
   return v;
@@ -233,19 +229,17 @@ export function defaultVoluteParams(p: EnricoCerutiParams): VoluteParams {
 
 // `p.neck` must already be in place — the panel seeds it
 export function calculateScroll(p: EnricoCerutiParams): ScrollFailure[] {
-  p.volute ??= defaultVoluteParams(p);
-  let v = p.volute;
+  p.scroll ??= defaultVoluteParams(p);
+  let v = p.scroll;
 
   // the four point seeds once from Kelly's radii, which land its centres on his
   if (v.style === 'fourPoint' && !v.arcRadii.length)
-    v.arcRadii = kellyArcs(v.eyeRadius, v.seedLength).reverse().map(a => Math.round(a.r * 100) / 100);
+    v.arcRadii = kellyArcs(v.eye.r, v.seedLength).reverse().map(a => Math.round(a.r * 100) / 100);
 
   let neckBack = -p.neck!.thickness;
   let nutTop = new Pt(0, standardNutLength(p.height));
 
   v.spiral = null;
-  v.height = null;
-  v.width = null;
 
   // a run stops at the first bad part; everything solved after it stays unsolved
   let badArc = (section: string, key: ScrollKey, arc: Arc, unsolved: ScrollKey[]): ScrollFailure => ({
@@ -262,7 +256,7 @@ export function calculateScroll(p: EnricoCerutiParams): ScrollFailure[] {
   let failures: ScrollFailure[] = [];
 
   solveSection(failures, 'Volute', ALL_KEYS, () => {
-    if (!(v.eyeRadius > 0))
+    if (!(v.eye.r > 0))
       return { message: 'Volute: the eye needs a radius.', unsolved: ALL_KEYS, circles: [], segments: [] };
     let arcs = spiralArcs(v);
     if (!arcs.length)
@@ -278,7 +272,7 @@ export function calculateScroll(p: EnricoCerutiParams): ScrollFailure[] {
     // rewritten each pass while on, so turning flush off leaves the eye where it was
     if (v.flushWithNeck) {
       let front = Math.max(...arcs.flatMap(a => arcReach(a, 0)).map(pt => pt.x));
-      v.eye = new Pt(Math.round(-front * 100) / 100, v.eye.y);
+      v.eye = new Circle(Math.round(-front * 100) / 100, v.eye.y, v.eye.r);
     }
     if (!Number.isFinite(v.eye.x) || !Number.isFinite(v.eye.y))
       return { message: 'Volute: the eye needs a position.', unsolved: ALL_KEYS, circles: [], segments: [] };
@@ -323,10 +317,6 @@ export function calculateScroll(p: EnricoCerutiParams): ScrollFailure[] {
       return { message: "Back: S3 has to turn back from the straight's foot, by up to a full turn.", unsolved: ['S3', 'nape'], circles: [], segments: [] };
     let S3 = placeCircleOnPointAtAngle(v.S3.r, foot, S3end);
     v.S3 = new Arc(S3.x, S3.y, S3.r, v.S3.start, S3end);
-
-    let back = [v.S0, v.S1, v.S2, v.S3];
-    v.height = Math.max(...back.flatMap(a => arcReach(a, TURN.quarter)).map(pt => pt.y));
-    v.width = -Math.min(...back.flatMap(a => arcReach(a, TURN.half)).map(pt => pt.x));
 
     // a line runs square from the duck tail to the neck's back, the nape filleting the corner
     let duckTail = pointOnCircle(v.S3, v.S3.start);
@@ -382,7 +372,7 @@ export function calculateScroll(p: EnricoCerutiParams): ScrollFailure[] {
 
 // the lines aren't stored: each runs between stored arcs, so the render reads them off here
 export function scrollLines(p: EnricoCerutiParams): Record<ScrollLine, [Pt, Pt]> {
-  let v = p.volute!;
+  let v = p.scroll!;
   let nutTop = new Pt(0, standardNutLength(p.height));
   let backTop = pointOnCircle(v.S2, v.S2.end);
   let frontTop = pointOnCircle(v.F0, v.F0.end);
@@ -391,5 +381,15 @@ export function scrollLines(p: EnricoCerutiParams): Record<ScrollLine, [Pt, Pt]>
     backStraight: [backTop, moveInVectorSpace(backTop, [{ ...vectorFromSlope(v.S2.end + TURN.quarter), mag: v.backStraight }])],
     flat: [nutTop, new Pt(nutTop.x, nutTop.y + v.flat)],
     frontStraight: [frontTop, moveInVectorSpace(frontTop, [{ ...vectorFromSlope(v.F0.end + TURN.quarter), mag: v.frontStraight }])],
+  };
+}
+
+// the readouts, off a back solved through S3: the nut up to the crown's top, and the neck's front
+// back to the scroll's furthest reach
+export function scrollExtent(v: ScrollParams): { height: number; width: number } {
+  let back = [v.S0, v.S1, v.S2, v.S3];
+  return {
+    height: Math.max(...back.flatMap(a => arcReach(a, TURN.quarter)).map(pt => pt.y)),
+    width: -Math.min(...back.flatMap(a => arcReach(a, TURN.half)).map(pt => pt.x)),
   };
 }

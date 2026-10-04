@@ -11,7 +11,7 @@ import {
 import { arcFromCircle, Arc } from '../../../models/types';
 import { calculateMainBouts, MainBoutFailure, violNeckJoinLimit } from '../../ceruti-calcs';
 import { error } from '../../../shared/message-emitter';
-import { boutWidthInfo, violNeckInfo, violNeckJoinInfo } from '../../ceruti-helpers';
+import { boutWidthInfo, violNeckInfo, violNeckJoinInfo } from '../../ceruti-toasts';
 import { violNeckCap } from '../../ceruti-paths';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, RenderToggleKey } from '../../ceruti-types';
 import { renderBounds, renderBoutBouts } from '../../renders/guides.render';

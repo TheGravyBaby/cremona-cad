@@ -1,9 +1,9 @@
 import { arcReach, dist, normalizeRadians, pointOnCircle, TURN } from '../../helpers/math/simpleGeometry';
 import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderDashLine, renderPolygon, renderSegment, renderSegmentHalo } from '../../helpers/renderFuncs';
 import { Arc, Pt } from '../../models/types';
-import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, VoluteParams } from '../ceruti-types';
+import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, ScrollParams } from '../ceruti-types';
 import { standardNutLength } from '../ceruti-neck';
-import { ScrollFailure, ScrollKey, scrollLines, TO_FRONT } from '../ceruti-scroll';
+import { ScrollFailure, ScrollKey, scrollExtent, scrollLines, TO_FRONT } from '../ceruti-scroll';
 import { HighlightedArc, HighlightedSegment, STROKE_WEIGHT } from './render-constants';
 
 // the scroll in ceruti-scroll.ts's frame, the neck's tilt taken out, read off p.volute as
@@ -32,7 +32,7 @@ const scrollArc = (arc: Arc, color: string, fancy: boolean) =>
 // the nut and the neck's end below it, for context. Module guides run the neck's front up to the
 // crown's top, then back to S1's furthest reach
 export const renderScrollNeck = (p: EnricoCerutiParams, colors: CerutiColors, showGuides: boolean) => (g: any, ui: any): void => {
-  const v = p.volute!;
+  const v = p.scroll!;
   const { thickness, nutThickness } = p.neck!;
   const nutLength = standardNutLength(p.height);
   const neckStub = 2 * thickness;
@@ -60,7 +60,7 @@ export const renderVolute = (
   highlighted: HighlightedArc | null,
   failures: ScrollFailure[] = [],
 ) => (g: any, ui: any): void => {
-  const v = p.volute!;
+  const v = p.scroll!;
   const unsolved = new Set(failures.flatMap(f => f.unsolved));
   const solved = (key: ScrollKey) => !unsolved.has(key);
   const fancy = (currentModule && flags.showModuleArcs) || flags.showAllArcs;
@@ -68,7 +68,7 @@ export const renderVolute = (
   if (highlighted) renderArcHalo(highlighted.arc, highlighted.color, undefined, undefined, longArc(highlighted.arc))(g, ui);
 
   if (!solved('spiral')) return;
-  renderCircle({ ...v.eye, r: v.eyeRadius }, colors.neckOff)(g, ui);
+  renderCircle(v.eye, colors.neckOff)(g, ui);
   if (currentModule && flags.showVoluteConstruction) {
     for (const line of voluteConstruction(v)) {
       const placed = line.map(pt => new Pt(v.eye.x + pt.x, v.eye.y + pt.y));
@@ -94,7 +94,7 @@ export const renderScroll = (
   highlightedLine: HighlightedSegment | null,
   failures: ScrollFailure[] = [],
 ) => (g: any, ui: any): void => {
-  const v = p.volute!;
+  const v = p.scroll!;
   const { thickness } = p.neck!;
   const unsolved = new Set(failures.flatMap(f => f.unsolved));
   const solved = (key: ScrollKey) => !unsolved.has(key);
@@ -106,8 +106,9 @@ export const renderScroll = (
   // the neck's back carried up from the nut to meet the nape
   if (solved('nape') && v.nape.y > 0) renderSegment(new Pt(-thickness, v.nape.y), new Pt(-thickness, 0), colors.neckOff, STROKE_WEIGHT.section)(g, ui);
 
-  if (currentModule && flags.showModuleGuides && v.height != null && v.width != null) {
-    const corners = [new Pt(0, 0), new Pt(0, v.height), new Pt(-v.width, v.height), new Pt(-v.width, 0)];
+  if (currentModule && flags.showModuleGuides && solved('S3')) {
+    const { height, width } = scrollExtent(v);
+    const corners = [new Pt(0, 0), new Pt(0, height), new Pt(-width, height), new Pt(-width, 0)];
     for (let i = 0; i < 4; i++) renderDashLine(corners[i], corners[(i + 1) % 4], colors.neck, STROKE_WEIGHT.guide)(g, ui);
   }
 
@@ -127,8 +128,8 @@ export const renderScroll = (
 };
 
 // the figure each style finds its centres on, as polylines in the eye's frame
-export function voluteConstruction(v: VoluteParams): Pt[][] {
-  const r = v.eyeRadius;
+export function voluteConstruction(v: ScrollParams): Pt[][] {
+  const r = v.eye.r;
   const square = (left: number, right: number, bottom: number, top: number) =>
     [new Pt(left, bottom), new Pt(right, bottom), new Pt(right, top), new Pt(left, top), new Pt(left, bottom)];
 

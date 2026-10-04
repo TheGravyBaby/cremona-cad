@@ -11,6 +11,10 @@
   display: flex;
   flex-direction: column;
   min-width: 180px;
+  /* the host carries any height cap, so the shadow drawn outside this box isn't clipped */
+  max-height: inherit;
+  box-sizing: border-box;
+  overflow-y: auto;
   padding: 4px;
   border: 1px solid var(--ui-border-elevated);
   border-radius: 6px;

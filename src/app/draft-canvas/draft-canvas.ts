@@ -32,7 +32,7 @@ import { distanceToShape, shapeBounds } from './tools/shape-hit-test';
 import { translateShape } from './tools/shape-transform';
 import { endpointGrabbers, withBattenPinAdded, withBattenPinRemoved, withEndpoint, EndpointGrabber, EndpointKey } from './tools/shape-grabbers';
 import { snapToLockedAngle } from './tools/angle-lock';
-import { dist } from '../helpers/math/simpleGeometry';
+import { clamp, dist } from '../helpers/math/simpleGeometry';
 import { copyDebugDump, isLocalHost } from '../helpers/debugDump';
 import { info, warn } from '../shared/message-emitter';
 import { DEFAULT_TEXT_SIZE_MM, DraftShape, ImageShape, PathShape, TextShape, imageRenderKey } from './tools/toolbox-shape';
@@ -188,7 +188,8 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private static readonly DOUBLE_PRESS_REACH_PX = 12;
   private lastPress: { time: number; x: number; y: number; pt: Pt; ref: SelectionRef | null } | null = null;
   /** Where the right-click menu is open, in canvas pixels; null when closed. */
-  contextMenu: { x: number; y: number } | null = null;
+  contextMenu: { x: number; y: number; maxHeight: number } | null = null;
+  @ViewChild('contextMenuEl', { read: ElementRef }) contextMenuRef?: ElementRef<HTMLElement>;
   private doublePressHandledAt = -Infinity;
 
   // a mouse wheel notch with ctrl held reports deltaY in the hundreds (vs single digits for a
@@ -1217,7 +1218,19 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     const hit = this.hitTestAt(this.worldFromPointer(event));
     if (hit && !this.selection.has(hit)) this.selection.select(hit);
     const box = this.host.nativeElement.getBoundingClientRect();
-    this.contextMenu = { x: event.clientX - box.left, y: event.clientY - box.top };
+    let x = event.clientX - box.left;
+    let y = event.clientY - box.top;
+    this.contextMenu = { x, y, maxHeight: box.height };
+    // rendered once at the pointer to be measured, then moved before the browser paints
+    this.cdr.detectChanges();
+    const menu = this.contextMenuRef?.nativeElement;
+    if (menu) {
+      const w = menu.offsetWidth;
+      const h = menu.offsetHeight;
+      if (y + h > box.height) y -= h;
+      if (x + w > box.width) x -= w;
+      this.contextMenu = { x: clamp(x, 0, box.width - w), y: clamp(y, 0, box.height - h), maxHeight: box.height };
+    }
     this.cdr.markForCheck();
   }
 

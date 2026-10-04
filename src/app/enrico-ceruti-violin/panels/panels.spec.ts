@@ -14,7 +14,7 @@ import { MouldPanel } from './mould-panel/mould-panel';
 import { NeckPanel } from './neck-panel/neck-panel';
 import { OuterTracePanel } from './outer-trace-panel/outer-trace-panel';
 import { ScrollPanel } from './scroll-panel/scroll-panel';
-import { spiralArcs as styleArcs, VOLUTE_STYLE_LABELS } from '../ceruti-scroll';
+import { scrollExtent, spiralArcs as styleArcs, VOLUTE_STYLE_LABELS } from '../ceruti-scroll';
 import { VolutePanel } from './volute-panel/volute-panel';
 import { VoluteStyle } from '../ceruti-types';
 
@@ -139,7 +139,7 @@ describe('the scroll panel', () => {
     expect(Math.min(front['y1'], front['y2'])).toBe(0);
 
     // the default crown passes straight up partway along S1, and stops short of facing straight back
-    const S1 = p.volute!.S1;
+    const S1 = p.scroll!.S1;
     expect(Math.max(front['y1'], front['y2'])).toBeCloseTo(S1.y + S1.r, 9);
     expect(crown['x1']).toBe(0);
     expect(crown['x2']).toBeCloseTo(S1.x + S1.r * Math.cos(S1.end), 9);
@@ -155,11 +155,12 @@ describe('the scroll panel', () => {
     expect(lines(false).filter(dashed)).toEqual([]);
 
     // on the default the crown's top is on S1 and the furthest reach back on S2, past facing straight back
-    const { S1, S2, height, width } = p.volute!;
+    const { S1, S2 } = p.scroll!;
+    const { height, width } = scrollExtent(p.scroll!);
     expect(height).toBeCloseTo(S1.y + S1.r, 9);
     expect(width).toBeCloseTo(S2.r - S2.x, 9);
     const corners = lines(true).filter(dashed).map(l => [l['x1'], l['y1']]);
-    expect(corners).toEqual([[0, 0], [0, height!], [-width!, height!], [-width!, 0]].map(c => c.map(n => expect.closeTo(n, 9))));
+    expect(corners).toEqual([[0, 0], [0, height], [-width, height], [-width, 0]].map(c => c.map(n => expect.closeTo(n, 9))));
   });
 
   it('draws the nut on the neck\'s front and the neck below it, stopping short', () => {
@@ -168,7 +169,7 @@ describe('the scroll panel', () => {
     instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
     instance.buildRun();
     // the neck's back carried up to the nape is drawn as the neck's own, so leave it off
-    p.volute!.nape.r = 0;
+    p.scroll!.nape.r = 0;
     const drawn = recordLayers(instance.buildRun());
     const nut = [...drawn.paths[0].matchAll(/[ML] (-?[\d.]+) (-?[\d.]+)/g)].map(m => [+m[1], +m[2]]);
     expect(Math.min(...nut.map(c => c[0]))).toBe(0);
@@ -179,7 +180,7 @@ describe('the scroll panel', () => {
     expect(lines.length).toBe(3);
     const lowest = Math.min(...lines.flatMap(l => [l['y1'] as number, l['y2'] as number]));
     expect(lowest).toBeLessThan(0);
-    expect(-lowest).toBeLessThan(p.volute!.eye.y);
+    expect(-lowest).toBeLessThan(p.scroll!.eye.y);
     const leftmost = Math.min(...lines.flatMap(l => [l['x1'] as number, l['x2'] as number]));
     expect(-leftmost).toBeCloseTo(p.neck!.thickness, 9);
   });
@@ -192,7 +193,7 @@ describe('the scroll panel', () => {
       const p = defaultViolin();
       const instance = scroll(p);
       instance.buildRun();
-      p.volute!.eyeRadius = eyeRadius;
+      p.scroll!.eye.r = eyeRadius;
       return recordLayers(instance.buildRun());
     };
     const arcs = (eyeRadius: number) => drawn(eyeRadius).elements.filter(el => typeof el.attrs['d'] === 'string' && (el.attrs['d'] as string).includes(' A '));
@@ -211,26 +212,26 @@ describe('the scroll panel', () => {
       const p = defaultViolin();
       const instance = scroll(p);
       instance.buildRun();
-      expect(p.volute!.flushWithNeck).toBe(true);
-      const { x: eyeX, y: eyeY } = p.volute!.eye;
+      expect(p.scroll!.flushWithNeck).toBe(true);
+      const { x: eyeX, y: eyeY } = p.scroll!.eye;
       expect(eyeX).toBeLessThan(0);
       expect(eyeY).toBeGreaterThan(0);
       expect(eyeX * 100).toBeCloseTo(Math.round(eyeX * 100), 9);
       const eye = recordLayers(instance.buildRun()).elements.find(el => el.tag === 'circle')!.attrs;
       expect([eye['cx'], eye['cy']]).toEqual([eyeX, eyeY]);
-      p.volute!.eye.x = 1;
+      p.scroll!.eye.x = 1;
       instance.buildRun();
-      expect(p.volute!.eye.x).toBe(eyeX);
+      expect(p.scroll!.eye.x).toBe(eyeX);
     });
 
     it('keeps a typed eye height while flush, the flush X the same at any height', () => {
       const p = defaultViolin();
       const instance = scroll(p);
       instance.buildRun();
-      const { x: eyeX, y: eyeY } = p.volute!.eye;
-      p.volute!.eye.y = eyeY - 5;
+      const { x: eyeX, y: eyeY } = p.scroll!.eye;
+      p.scroll!.eye.y = eyeY - 5;
       instance.buildRun();
-      expect([p.volute!.eye.x, p.volute!.eye.y]).toEqual([eyeX, eyeY - 5]);
+      expect([p.scroll!.eye.x, p.scroll!.eye.y]).toEqual([eyeX, eyeY - 5]);
     });
 
     it('leaves the eye where the fields put it once flush is off, and moves the spiral with it', () => {
@@ -239,9 +240,9 @@ describe('the scroll panel', () => {
       instance.buildRun();
       const eye = (d: ReturnType<typeof recordLayers>) => d.elements.find(el => el.tag === 'circle')!.attrs;
       const flush = eye(recordLayers(instance.buildRun()));
-      p.volute!.flushWithNeck = false;
-      p.volute!.eye.x -= 3;
-      p.volute!.eye.y -= 4;
+      p.scroll!.flushWithNeck = false;
+      p.scroll!.eye.x -= 3;
+      p.scroll!.eye.y -= 4;
       const drawnFree = recordLayers(instance.buildRun());
       const moved = eye(drawnFree);
       expect(moved['cx']).toBeCloseTo((flush['cx'] as number) - 3, 9);
@@ -287,7 +288,7 @@ describe('the scroll panel', () => {
     const spiralArcs = (instance: ScrollPanel | VolutePanel) => recordLayers(instance.buildRun()).elements
       .filter(el => typeof el.attrs['d'] === 'string' && (el.attrs['d'] as string).includes(' A ') && el.attrs['stroke-width'] !== 12);
     const choose = (instance: VolutePanel, style: VoluteStyle) => {
-      instance.volute.style = style;
+      instance.scroll.style = style;
       instance.buildRun();
     };
 
@@ -298,11 +299,11 @@ describe('the scroll panel', () => {
       choose(instance, 'fourPoint');
       const before = spiralArcs(instance).map(el => el.attrs['d']);
       expect(before.length).toBe(10);
-      p.volute!.arcRadii[7] += 3;
+      p.scroll!.arcRadii[7] += 3;
       expect(spiralArcs(instance).map(el => el.attrs['d'])).not.toEqual(before);
-      p.volute!.arcRadii[6] = p.volute!.arcRadii[7];
+      p.scroll!.arcRadii[6] = p.scroll!.arcRadii[7];
       expect(spiralArcs(instance)).toHaveLength(10);
-      p.volute!.arcRadii[6] = p.volute!.arcRadii[7] + 1;
+      p.scroll!.arcRadii[6] = p.scroll!.arcRadii[7] + 1;
       expect(spiralArcs(instance)).toEqual([]);
     });
 
@@ -311,15 +312,15 @@ describe('the scroll panel', () => {
       const instance = volute(p);
       instance.buildRun();
       choose(instance, 'fourPoint');
-      const before = [...p.volute!.arcRadii];
+      const before = [...p.scroll!.arcRadii];
       const radius = (before[6] + before[7]) / 2;
       instance.setArcRadius(2, radius);
-      expect(p.volute!.arcRadii).toEqual([...before.slice(0, 2), radius, radius, radius, radius, radius, before[7]]);
+      expect(p.scroll!.arcRadii).toEqual([...before.slice(0, 2), radius, radius, radius, radius, radius, before[7]]);
       expect(spiralArcs(instance)).toHaveLength(10);
       instance.setArcRadius(4, before[1]);
-      expect(p.volute!.arcRadii[5]).toBe(radius);
+      expect(p.scroll!.arcRadii[5]).toBe(radius);
       instance.setArcRadius(4, null as unknown as number);
-      expect(p.volute!.arcRadii.slice(6)).toEqual([radius, before[7]]);
+      expect(p.scroll!.arcRadii.slice(6)).toEqual([radius, before[7]]);
     });
 
     it('colours the spiral by turn and arc and the crown, back and front in theirs, whatever the arc toggles', () => {
@@ -357,16 +358,16 @@ describe('the scroll panel', () => {
       const instance = volute(p);
       instance.buildRun();
       choose(instance, 'fourPoint');
-      const kelly = styleArcs({ ...p.volute!, style: 'kelly' }).reverse().map(a => Math.round(a.r * 100) / 100);
-      expect(p.volute!.arcRadii).toEqual(kelly);
-      const seeded = [...p.volute!.arcRadii];
-      p.volute!.eyeRadius = 1.2;
+      const kelly = styleArcs({ ...p.scroll!, style: 'kelly' }).reverse().map(a => Math.round(a.r * 100) / 100);
+      expect(p.scroll!.arcRadii).toEqual(kelly);
+      const seeded = [...p.scroll!.arcRadii];
+      p.scroll!.eye.r = 1.2;
       instance.buildRun();
-      expect(p.volute!.arcRadii).toEqual(seeded);
-      p.volute!.arcRadii[5] += 1;
+      expect(p.scroll!.arcRadii).toEqual(seeded);
+      p.scroll!.arcRadii[5] += 1;
       choose(instance, 'salviati');
       choose(instance, 'fourPoint');
-      expect(p.volute!.arcRadii[5]).toBeCloseTo(seeded[5] + 1, 9);
+      expect(p.scroll!.arcRadii[5]).toBeCloseTo(seeded[5] + 1, 9);
     });
 
     it('haloes the four point arc whose field has focus, and nothing once it blurs', () => {
@@ -431,12 +432,12 @@ describe('the scroll panel', () => {
       choose(instance, 'archimedean');
       const before = spiralArcs(instance).map(el => el.attrs['d']);
       expect(before).toHaveLength(18);
-      p.volute!.pitch += 1;
+      p.scroll!.pitch += 1;
       expect(spiralArcs(instance).map(el => el.attrs['d'])).not.toEqual(before);
-      const set = p.volute!.pitch;
+      const set = p.scroll!.pitch;
       choose(instance, 'salviati');
       choose(instance, 'archimedean');
-      expect(p.volute!.pitch).toBe(set);
+      expect(p.scroll!.pitch).toBe(set);
     });
 
     it('lists the custom four point first and the historical rules after it', () => {
@@ -452,7 +453,7 @@ describe('the scroll panel', () => {
       choose(instance, 'goldmann');
       const before = spiralArcs(instance).map(el => el.attrs['d']);
       expect(before).toHaveLength(10);
-      p.volute!.eyeRadius += 0.2;
+      p.scroll!.eye.r += 0.2;
       expect(spiralArcs(instance).map(el => el.attrs['d'])).not.toEqual(before);
     });
 
@@ -461,12 +462,12 @@ describe('the scroll panel', () => {
       const instance = volute(p);
       instance.buildRun();
       choose(instance, 'kelly');
-      expect(p.volute!.seedLength).toBe(p.volute!.eyeRadius);
+      expect(p.scroll!.seedLength).toBe(p.scroll!.eye.r);
       const before = spiralArcs(instance).map(el => el.attrs['d']);
       expect(before).toHaveLength(10);
-      p.volute!.seedLength += 1;
+      p.scroll!.seedLength += 1;
       expect(spiralArcs(instance).map(el => el.attrs['d'])).not.toEqual(before);
-      p.volute!.seedLength = 0;
+      p.scroll!.seedLength = 0;
       expect(spiralArcs(instance)).toEqual([]);
     });
 
@@ -494,7 +495,7 @@ describe('the scroll panel', () => {
       const p = defaultViolin();
       const instance = scroll(p);
       instance.buildRun();
-      const v = p.volute!;
+      const v = p.scroll!;
       expect(v.S1.r).toBeGreaterThan(v.S0.r);
       expect(v.S2.r).toBeGreaterThan(v.S1.r);
       const drawn = () => spiralArcs(instance).slice(8).map(el => el.attrs['d']);
@@ -517,7 +518,7 @@ describe('the scroll panel', () => {
         return d.match(/ A \S+ 0 ([01]),1 /)![1];
       };
       expect(largeArc()).toBe('0');
-      p.volute!.S1.end = p.volute!.S0.end + 1.2 * Math.PI;
+      p.scroll!.S1.end = p.scroll!.S0.end + 1.2 * Math.PI;
       expect(largeArc()).toBe('1');
     });
 
@@ -536,12 +537,12 @@ describe('the scroll panel', () => {
       instance.buildRun();
       const arcs = () => spiralArcs(instance).map(el => el.attrs['d']);
       const before = arcs();
-      p.volute!.backStraight += 2;
+      p.scroll!.backStraight += 2;
       const after = arcs();
       // S3 and the nape move with it, the front stays
       expect([...after.slice(0, 11), ...after.slice(13)]).toEqual([...before.slice(0, 11), ...before.slice(13)]);
       expect(after.slice(11, 13).every((d, i) => d !== before[11 + i])).toBe(true);
-      p.volute!.backStraight = 0;
+      p.scroll!.backStraight = 0;
       expect(traced()).toHaveLength(3);
       expect(spiralArcs(instance)).toHaveLength(15);
     });
@@ -557,12 +558,12 @@ describe('the scroll panel', () => {
         && Math.max(el.attrs['y1'] as number, el.attrs['y2'] as number) > 0);
       // the default duck tail sits on the nut line, so its nape meets the neck's back below the nut
       expect(carried(drawn())).toEqual([]);
-      p.volute!.eye.y += 20;
+      p.scroll!.eye.y += 20;
       const naped = drawn();
       const nape = naped.filter(el => el.attrs['stroke'] === 'scrollNape' && String(el.attrs['d'] ?? '').includes(' A '));
       expect(nape).toHaveLength(1);
       expect(carried(naped)).toHaveLength(1);
-      p.volute!.nape.r = 1000;
+      p.scroll!.nape.r = 1000;
       expect(drawn().filter(el => el.attrs['stroke'] === 'scrollNape')).toEqual([]);
     });
   });

@@ -6,7 +6,8 @@
       (pointerleave)="onPointerUp($event)" (dblclick)="onDoubleClick($event)" (contextmenu)="onContextMenu($event)">
       @if (contextMenu) {
         <!-- pointerdown is swallowed so the canvas neither closes the menu nor pans under it -->
-        <app-edit-menu class="context-menu" [style.left.px]="contextMenu.x" [style.top.px]="contextMenu.y"
+        <app-edit-menu #contextMenuEl class="context-menu" [style.left.px]="contextMenu.x" [style.top.px]="contextMenu.y"
+          [style.max-height.px]="contextMenu.maxHeight"
           (pointerdown)="$event.stopPropagation()" (done)="contextMenu = null" />
       }
       @if (editingTextShapeId) {

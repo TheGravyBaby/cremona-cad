@@ -13,7 +13,7 @@ import {
 } from '../../ceruti-arch-geometry';
 import {
   cornerGougeInfo, gougeCBoutInfo, gougeCenterlineInfo, gougeSectionInfo,
-} from '../../ceruti-helpers';
+} from '../../ceruti-toasts';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../renders/render-constants';

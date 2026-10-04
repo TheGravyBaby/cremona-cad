@@ -508,13 +508,13 @@
     },
     "volute": {
       "style": "salviati",
-      "eyeRadius": 3.5,
       "arcRadii": [],
       "pitch": 7.8,
       "seedLength": 4.1,
       "eye": {
         "x": -17.64,
-        "y": 80.5
+        "y": 80.5,
+        "r": 3.5
       },
       "flushWithNeck": true,
       "spiral": [

@@ -103,7 +103,7 @@ export interface EnricoCerutiParams {
   fHoles?: FholeParams;
   arching?: ArchingParams;
   neck?: NeckParams;
-  volute?: VoluteParams;
+  scroll?: ScrollParams;
 }
 
 
@@ -346,15 +346,12 @@ export interface NeckParams {
 /** The scroll's spiral. The eye is the raised disc at its centre; the rule that winds outward from it is the style: the custom four point, the plain Archimedean spiral, or a historical layout of the Ionic volute. */
 export type VoluteStyle = 'fourPoint' | 'archimedean' | 'serlio' | 'salviati' | 'goldmann' | 'kelly';
 
-export interface VoluteParams {
+export interface ScrollParams {
   style: VoluteStyle;
-  eyeRadius: number;
-  eye: Pt;
+  eye: Circle;
   flushWithNeck: boolean;
-  /** Archimedean only: how much the spiral's radius grows each full turn, so the even spacing between turns (mm). */
-  pitch: number;
-  /** Kelly only: the seed column's length, top of its rectangle to bottom, not a single square's (mm). Kelly varies it by scroll; his drawing stands it as tall as the eye's radius. */
-  seedLength: number;
+  pitch: number; // archemedean spiral: distance between successive turns (mm)
+  seedLength: number; // kelly volute allows for variable seed size relative to the eye
   arcRadii: number[];
 
   spiral: Arc[] | null;
@@ -369,10 +366,9 @@ export interface VoluteParams {
   F1: Arc;
   flat: number;
   frontStraight: number;
-
-  // readouts: the nut up to the crown's top, and the neck's front back to the scroll's furthest reach
-  height: number | null;
-  width: number | null;
+  
+  backWidths: number[]; 
+  frontWidths: number[];
 }
 
 /** Resolved palette from CerutiViolin's `colors` getter, threaded into every panel and render fn. */

@@ -13,7 +13,7 @@ import { renderBounds, renderBoutBouts, renderCornerGuides } from '../../renders
 import { HighlightedArc, HighlightedPoint, STROKE_WEIGHT } from '../../renders/render-constants';
 import { renderMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { renderCorners } from '../corners-panel/corners-panel';
-import { centerBoutWidthInfo, cornerPositionInfo, fitC0Info } from '../../ceruti-helpers';
+import { centerBoutWidthInfo, cornerPositionInfo, fitC0Info } from '../../ceruti-toasts';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 

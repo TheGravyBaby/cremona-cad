@@ -2,7 +2,7 @@ import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { getFieldDeg, setFieldDeg } from '../../../helpers/math/arcDegrees';
 import { renderSolveFailures } from '../../../helpers/renderFuncs';
-import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, RenderToggleKey, VoluteParams } from '../../ceruti-types';
+import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, RenderToggleKey, ScrollParams } from '../../ceruti-types';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { defaultNeckParams } from '../../ceruti-neck';
 import { calculateScroll, VOLUTE_STYLE_LABELS } from '../../ceruti-scroll';
@@ -35,16 +35,16 @@ export class VolutePanel extends CerutiPanelBase implements OnInit {
   private highlightedKey: VoluteHighlightKey | null = null;
   private highlightedColor = '';
 
-  get volute(): VoluteParams { return this.params.volute!; }
-  get custom(): boolean { return this.volute.style === 'fourPoint'; }
-  get archimedean(): boolean { return this.volute.style === 'archimedean'; }
-  get kelly(): boolean { return this.volute.style === 'kelly'; }
+  get scroll(): ScrollParams { return this.params.scroll!; }
+  get custom(): boolean { return this.scroll.style === 'fourPoint'; }
+  get archimedean(): boolean { return this.scroll.style === 'archimedean'; }
+  get kelly(): boolean { return this.scroll.style === 'kelly'; }
   arcColor(i: number): string { return arcColor(this.colors, i); }
 
   // the arc fields four to a row, a turn of the spiral each
   get arcRows(): number[][] {
     const rows: number[][] = [];
-    this.volute.arcRadii.forEach((_, i) => i % 4 === 0 ? rows.push([i]) : rows.at(-1)!.push(i));
+    this.scroll.arcRadii.forEach((_, i) => i % 4 === 0 ? rows.push([i]) : rows.at(-1)!.push(i));
     return rows;
   }
 
@@ -53,7 +53,7 @@ export class VolutePanel extends CerutiPanelBase implements OnInit {
 
   // the radii have to open outward, so one set past those after it carries them up to it
   setArcRadius(i: number, radius: number): void {
-    const radii = this.volute.arcRadii;
+    const radii = this.scroll.arcRadii;
     radii[i] = radius;
     if (Number.isFinite(radius)) for (let j = i + 1; j < radii.length && radii[j] < radius; j++) radii[j] = radius;
     this.onChange();
@@ -85,7 +85,7 @@ export class VolutePanel extends CerutiPanelBase implements OnInit {
     p.neck ??= defaultNeckParams(p);
     const failures = calculateScroll(p);
 
-    const v = p.volute!;
+    const v = p.scroll!;
     const key = this.highlightedKey;
     const arc =
       key === null ? null :
