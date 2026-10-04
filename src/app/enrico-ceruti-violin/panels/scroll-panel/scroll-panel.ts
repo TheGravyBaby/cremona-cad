@@ -1,3 +1,4 @@
+import { DecimalPipe } from '@angular/common';
 import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { getFieldDeg, setFieldDeg } from '../../../helpers/math/arcDegrees';
@@ -9,13 +10,14 @@ import { calculateScroll, ScrollKey, scrollLines } from '../../ceruti-scroll';
 import { renderScroll, renderScrollNeck, renderVolute } from '../../renders/scroll.render';
 import { HighlightedArc, HighlightedSegment } from '../../renders/render-constants';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
+import { nearestFraction } from '../../../helpers/nearestFraction';
 
 // the arcs take an arc halo; the straights and the flat a segment halo on the line their length makes
 export type ScrollHighlightKey = 'S2' | 'S3' | 'nape' | 'F0' | 'F1' | 'backStraight' | 'flat' | 'frontStraight';
 
 @Component({
   selector: 'app-ceruti-scroll-panel',
-  imports: [FormsModule, NumberStepperDirective],
+  imports: [FormsModule, DecimalPipe, NumberStepperDirective],
   templateUrl: './scroll-panel.html',
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
@@ -28,6 +30,7 @@ export class ScrollPanel extends CerutiPanelBase implements OnInit {
 
   protected readonly getFieldDeg = getFieldDeg;
   protected readonly setFieldDeg = setFieldDeg;
+  protected readonly nearestFraction = nearestFraction;
 
   // held as a key rather than the arc itself: calculateScroll rewrites every arc each pass
   private highlightedKey: ScrollHighlightKey | null = null;
@@ -70,7 +73,7 @@ export class ScrollPanel extends CerutiPanelBase implements OnInit {
     const highlightedLine: HighlightedSegment | null = line ? { line, color } : null;
 
     return [
-      renderScrollNeck(p, this.colors, this.flags.showModuleGuides),
+      renderScrollNeck(p, this.colors, false),
       renderVolute(p, this.colors, this.flags, false, null, failures),
       renderScroll(p, this.colors, this.flags, true, highlighted, highlightedLine, failures),
       renderSolveFailures(failures, this.colors.pathError),

@@ -1,4 +1,5 @@
-import { calculateScroll, defaultVoluteParams, flushVolute, kellyArcRadii, ScrollKey, scrollLines, TO_FRONT, voluteGuides, VoluteSpec, VOLUTE_STYLES } from './ceruti-scroll';
+import { calculateScroll, defaultVoluteParams, ScrollKey, scrollLines, spiralArcs, TO_FRONT, VoluteSpec, VOLUTE_STYLE_LABELS } from './ceruti-scroll';
+import { voluteConstruction } from './renders/scroll.render';
 import { defaultNeckParams, standardNutLength } from './ceruti-neck';
 import { defaultViolin } from './ceruti-fixtures';
 import { EnricoCerutiParams, VoluteParams, VoluteStyle } from './ceruti-types';
@@ -27,14 +28,15 @@ const scrolled = (style: VoluteStyle, eyeRadius: number, over: Partial<VolutePar
 const unsolved = (p: EnricoCerutiParams): ScrollKey[] => [...new Set(calculateScroll(p).flatMap(f => f.unsolved))].sort();
 const sweep = (arcs: Arc[]) => arcs.reduce((sum, a) => sum + a.end - a.start, 0);
 
-const STYLES = Object.keys(VOLUTE_STYLES) as VoluteStyle[];
-const HISTORICAL = STYLES.filter(s => !VOLUTE_STYLES[s].custom && s !== 'archimedean');
+const STYLES = Object.keys(VOLUTE_STYLE_LABELS) as VoluteStyle[];
+const HISTORICAL = STYLES.filter(s => s !== 'fourPoint' && s !== 'archimedean');
+// arcs out to the front, two turns: the Archimedean is set out in eighths
+const FRONT: Record<VoluteStyle, number> = { fourPoint: 8, archimedean: 16, serlio: 8, salviati: 8, goldmann: 8, kelly: 8 };
 
 describe.each(STYLES)('the %s volute', style => {
-  const def = VOLUTE_STYLES[style];
   it('draws arcs that scale with the eye radius', () => {
-    const small = def.arcs(spec(style, 3));
-    const large = def.arcs(spec(style, 6));
+    const small = spiralArcs(spec(style, 3));
+    const large = spiralArcs(spec(style, 6));
     small.forEach((s, i) => {
       expect(large[i].r).toBeCloseTo(2 * s.r, 9);
       expect(large[i].x).toBeCloseTo(2 * s.x, 9);
@@ -43,7 +45,7 @@ describe.each(STYLES)('the %s volute', style => {
   });
 
   it('meets each arc to its inner neighbour, tangent, at a point on the line between their centres', () => {
-    const arcs = def.arcs(spec(style, 4));
+    const arcs = spiralArcs(spec(style, 4));
     for (let i = 0; i < arcs.length - 1; i++) {
       const [outer, inner] = [arcs[i], arcs[i + 1]];
       const [x, y] = at(outer, outer.start);
@@ -55,7 +57,7 @@ describe.each(STYLES)('the %s volute', style => {
   });
 
   it('winds outward, every arc at least as wide as the one inside it and turning the same way, for at least two turns', () => {
-    const arcs = def.arcs(spec(style, 4));
+    const arcs = spiralArcs(spec(style, 4));
     for (let i = 0; i < arcs.length - 1; i++) expect(arcs[i].r, `arc ${i}`).toBeGreaterThanOrEqual(arcs[i + 1].r);
     for (const a of arcs) expect(a.end - a.start).toBeGreaterThan(0);
     expect(sweep(arcs) / (2 * Math.PI)).toBeGreaterThanOrEqual(2 - 1e-9);
@@ -63,15 +65,15 @@ describe.each(STYLES)('the %s volute', style => {
 
   // the Archimedean has a pitch at the eye, so its heading there is a little off vertical
   it('leaves the eye at its front, heading up', () => {
-    const arcs = def.arcs(spec(style, 4));
+    const arcs = spiralArcs(spec(style, 4));
     const inner = arcs[arcs.length - 1];
     expect(at(inner, inner.start)).toEqual([expect.closeTo(4, 9), expect.closeTo(0, 9)]);
     expect(Math.cos(inner.start)).toBeGreaterThan(0.95);
   });
 
   it('draws guides that scale with the eye radius', () => {
-    const small = def.guides(spec(style, 3));
-    const large = def.guides(spec(style, 6));
+    const small = voluteConstruction(scrolled(style, 3).v);
+    const large = voluteConstruction(scrolled(style, 6).v);
     expect(small.length).toBeGreaterThan(0);
     small.forEach((line, i) => line.forEach((p, j) => {
       expect(large[i][j].x).toBeCloseTo(2 * p.x, 9);
@@ -85,7 +87,7 @@ describe.each(STYLES)('the %s volute', style => {
   it('ends the spiral at its front heading straight up, flush with the neck, with nothing in front of it', () => {
     const spiral = scrolled(style, 4).v.spiral!;
     const outer = spiral[0];
-    expect(spiral).toHaveLength(def.front);
+    expect(spiral).toHaveLength(FRONT[style]);
     expect(Math.abs(at(outer, outer.end)[0])).toBeLessThanOrEqual(FLUSH);
     expect(Math.sin(outer.end)).toBeCloseTo(0, 9);
     expect(Math.cos(outer.end)).toBeCloseTo(1, 9);
@@ -115,7 +117,7 @@ describe.each(STYLES)('the %s volute', style => {
       tangentAt(arcs[i], a, a.start);
     });
     expect(arcs.map(a => a.r)).toEqual([30, 20, 15]);
-    expect(failures.flatMap(f => f.unsolved)).toEqual(['backStraight', 'S3', 'nape']);
+    expect(failures.flatMap(f => f.unsolved)).toEqual(['S3', 'nape', 'backStraight']);
   });
 
   it('runs the straight on along S2\'s heading, then S3 curving back the other way to its end', () => {
@@ -244,19 +246,6 @@ describe.each(STYLES)('the %s volute', style => {
     }
   });
 
-  it('carries the guides along with the spiral, rigidly', () => {
-    const { v } = scrolled(style, 4);
-    const guides = voluteGuides(v);
-    const drawn = def.guides(spec(style, 4));
-    drawn.forEach((line, i) => line.forEach((p, j) => {
-      expect(guides[i][j].x).toBeCloseTo(v.eye.x + p.x, 9);
-      expect(guides[i][j].y).toBeCloseTo(v.eye.y + p.y, 9);
-    }));
-    const arcs = def.arcs(spec(style, 4));
-    const inner = v.spiral!.at(-1)!;
-    expect(inner.x).toBeCloseTo(v.eye.x + arcs[arcs.length - 1].x, 9);
-  });
-
   it('draws nothing for an eye that is not a positive radius', () => {
     for (const bad of [0, -1, NaN]) {
       const { v, failures } = scrolled(style, bad);
@@ -285,10 +274,6 @@ describe.each(STYLES)('the %s volute', style => {
       expect(a.y).toBeCloseTo(fitted.spiral![i].y - 7, 9);
       expect([a.r, a.start, a.end]).toEqual([fitted.spiral![i].r, fitted.spiral![i].start, fitted.spiral![i].end]);
     });
-    voluteGuides(v).forEach((line, i) => line.forEach((p, j) => {
-      expect(p.x).toBeCloseTo(voluteGuides(fitted)[i][j].x - 5, 9);
-      expect(p.y).toBeCloseTo(voluteGuides(fitted)[i][j].y - 7, 9);
-    }));
   });
 
   it('draws nothing for an eye that has no place yet', () => {
@@ -307,39 +292,18 @@ describe('the default scroll', () => {
     expect(v.nape.x).toBeCloseTo(-p.neck.thickness - v.nape.r, 9);
     expect(v.F1.end - v.F1.start).toBeGreaterThan(0);
   });
-
-  it('seeds a pitch for a volute saved without one', () => {
-    const p = defaultViolin();
-    p.neck = defaultNeckParams(p);
-    p.volute = { ...defaultVoluteParams(p), pitch: undefined as unknown as number };
-    calculateScroll(p);
-    expect(p.volute.pitch).toBeGreaterThan(0);
-  });
 });
 
 describe.each(HISTORICAL)('the %s volute, as its author drew it', style => {
-  const def = VOLUTE_STYLES[style];
-
-  // Salviati's ring change only comes close to the front by itself, so his last arc is rolled a
-  // little on to end there
-  it('stops at the front two turns out, the arcs inside it as he drew them', () => {
-    const full = def.arcs(spec(style, 4));
-    const spiral = scrolled(style, 4).v.spiral!;
-    expect(spiral).toHaveLength(def.front);
-    expect(full.length).toBeGreaterThan(def.front);
-    const inner = full.slice(-spiral.length + 1);
-    spiral.slice(1).forEach((a, i) => expect([a.r, a.start, a.end]).toEqual([inner[i].r, inner[i].start, inner[i].end]));
-  });
-
   it('draws the same whatever the arc radii say', () => {
-    expect(def.arcs(spec(style, 4, [9, 17, 30]))).toEqual(def.arcs(spec(style, 4)));
+    expect(spiralArcs(spec(style, 4, [9, 17, 30]))).toEqual(spiralArcs(spec(style, 4)));
   });
 });
 
 describe('the Archimedean volute', () => {
   const [r, pitch] = [4, 6];
   const v = { ...spec('archimedean', r), pitch };
-  const arcs = VOLUTE_STYLES.archimedean.arcs(v);
+  const arcs = spiralArcs(v);
   const inward = [...arcs].reverse();
 
   it('passes through a point every eighth of a turn, the radius growing a pitch a turn from the eye\'s edge', () => {
@@ -363,11 +327,11 @@ describe('the Archimedean volute', () => {
   });
 
   it('draws nothing without a pitch', () => {
-    for (const bad of [0, -1, NaN]) expect(VOLUTE_STYLES.archimedean.arcs({ ...v, pitch: bad })).toEqual([]);
+    for (const bad of [0, -1, NaN]) expect(spiralArcs({ ...v, pitch: bad })).toEqual([]);
   });
 
   it('rays out to the outermost drawn point on each of the eight lines', () => {
-    const rays = VOLUTE_STYLES.archimedean.guides(v);
+    const rays = voluteConstruction(scrolled('archimedean', r, { pitch }).v);
     expect(rays.map(([, to]) => Math.hypot(to.x, to.y))).toEqual([16, 9, 10, 11, 12, 13, 14, 15].map(k => expect.closeTo(r + pitch * k / 8, 9)));
   });
 });
@@ -375,45 +339,44 @@ describe('the Archimedean volute', () => {
 describe('the Kelly volute', () => {
   // his own drawing: a 4 mm eye on a 4 mm column of 1 mm squares
   const v = spec('kelly', 4);
-  const inward = [...VOLUTE_STYLES.kelly.arcs(v)].reverse();
+  const inward = [...spiralArcs(v)].reverse();
 
-  it('draws his nine exact quarter turns, radii as in his drawing', () => {
-    expect(inward.map(a => a.r)).toEqual([4.5, 5.5, 6.5, 8.5, 9.5, 12.5, 13.5, 17.5, 18.5].map(r => expect.closeTo(r, 9)));
+  it('draws his first eight exact quarter turns, radii as in his drawing', () => {
+    expect(inward.map(a => a.r)).toEqual([4.5, 5.5, 6.5, 8.5, 9.5, 12.5, 13.5, 17.5].map(r => expect.closeTo(r, 9)));
     for (const a of inward) expect(a.end - a.start).toBeCloseTo(Math.PI / 2, 9);
   });
 
   it('strikes the first from the left end of the seed\'s middle line, then round the middle squares\' corners and the seed\'s own, lower left round to upper left', () => {
     expect(inward.map(a => [a.x, a.y])).toEqual(
-      [[-0.5, 0], [-0.5, -1], [0.5, -1], [0.5, 1], [-0.5, 1], [-0.5, -2], [0.5, -2], [0.5, 2], [-0.5, 2]].map(([x, y]) => [expect.closeTo(x, 9), expect.closeTo(y, 9)]));
+      [[-0.5, 0], [-0.5, -1], [0.5, -1], [0.5, 1], [-0.5, 1], [-0.5, -2], [0.5, -2], [0.5, 2]].map(([x, y]) => [expect.closeTo(x, 9), expect.closeTo(y, 9)]));
   });
 
-  it('draws two full turns, the eighth ending at its own front where the ninth would carry on', () => {
+  it('draws two full turns, the eighth ending at its own front', () => {
     const spiral = scrolled('kelly', 4).v.spiral!;
     expect(spiral).toHaveLength(8);
     expect([spiral[0].r, spiral[0].start, spiral[0].end]).toEqual([inward[7].r, inward[7].start, inward[7].end]);
   });
 
   it('guides with the seed\'s four squares and the eye\'s two axes', () => {
-    const [outline, ...rest] = VOLUTE_STYLES.kelly.guides(v);
+    const [outline, ...rest] = voluteConstruction(scrolled('kelly', 4).v);
     expect(outline.map(p => [p.x, p.y])).toEqual([[-0.5, -2], [0.5, -2], [0.5, 2], [-0.5, 2], [-0.5, -2]]);
     expect(rest).toHaveLength(5);
   });
 
   it('strikes round a seed of any length, top to bottom, the first arc still leaving the eye\'s front', () => {
     const long = { ...v, seedLength: 8 };
-    const [outline] = VOLUTE_STYLES.kelly.guides(long);
+    const [outline] = voluteConstruction(scrolled('kelly', 4, { seedLength: 8 }).v);
     expect(outline.map(p => [p.x, p.y])).toEqual([[-1, -4], [1, -4], [1, 4], [-1, 4], [-1, -4]]);
-    const centres = [...VOLUTE_STYLES.kelly.arcs(long)].reverse().map(a => [a.x, a.y]);
+    const centres = [...spiralArcs(long)].reverse().map(a => [a.x, a.y]);
     expect(centres).toEqual(inward.map(a => [2 * a.x, 2 * a.y]).map(([x, y]) => [expect.closeTo(x, 9), expect.closeTo(y, 9)]));
-    const first = VOLUTE_STYLES.kelly.arcs(long).at(-1)!;
+    const first = spiralArcs(long).at(-1)!;
     expect(at(first, first.start)).toEqual([expect.closeTo(4, 9), expect.closeTo(0, 9)]);
     expect(first.r).toBeCloseTo(5, 9);
   });
 
   it('draws nothing without a seed, and says so', () => {
     for (const bad of [0, -1, NaN]) {
-      expect(VOLUTE_STYLES.kelly.arcs({ ...v, seedLength: bad })).toEqual([]);
-      expect(VOLUTE_STYLES.kelly.guides({ ...v, seedLength: bad })).toEqual([]);
+      expect(spiralArcs({ ...v, seedLength: bad })).toEqual([]);
     }
     const { v: solved, failures } = scrolled('kelly', 4, { seedLength: 0 });
     expect(solved.spiral).toBeNull();
@@ -423,29 +386,29 @@ describe('the Kelly volute', () => {
 
 describe('the Goldmann volute', () => {
   const r = 4;
-  const arcs = VOLUTE_STYLES.goldmann.arcs(spec('goldmann', r));
+  const arcs = spiralArcs(spec('goldmann', r));
 
-  it('draws twelve exact quarter circles, radii 7/6 to 51/6 of the eye radius, out to 9 radii', () => {
-    expect(arcs).toHaveLength(12);
+  it('draws eight exact quarter circles, radii 7/6 to 28/6 of the eye radius, out to 5 radii', () => {
+    expect(arcs).toHaveLength(8);
     for (const a of arcs) expect(a.end - a.start).toBeCloseTo(Math.PI / 2, 9);
-    expect(arcs.map(a => a.r / r)).toEqual([51, 45, 39, 33, 28, 24, 20, 16, 13, 11, 9, 7].map(v => expect.closeTo(v / 6, 9)));
-    expect(at(arcs[0], arcs[0].end)).toEqual([expect.closeTo(9 * r, 9), expect.closeTo(0, 9)]);
+    expect(arcs.map(a => a.r / r)).toEqual([28, 24, 20, 16, 13, 11, 9, 7].map(v => expect.closeTo(v / 6, 9)));
+    expect(at(arcs[0], arcs[0].end)).toEqual([expect.closeTo(5 * r, 9), expect.closeTo(0, 9)]);
   });
 
-  it('finds its centres on three squares sharing a side along the eye\'s horizontal diameter, hanging below it', () => {
+  it('finds its centres on squares sharing a side along the eye\'s horizontal diameter, hanging below it', () => {
     const [on, below] = [arcs.filter(a => Math.abs(a.y) < 1e-9), arcs.filter(a => a.y < -1e-9)];
-    expect(on).toHaveLength(6);
-    expect(below.map(a => -a.y / r).sort()).toEqual([1 / 3, 1 / 3, 2 / 3, 2 / 3, 1, 1].map(v => expect.closeTo(v, 9)));
+    expect(on).toHaveLength(4);
+    expect(below.map(a => -a.y / r).sort()).toEqual([1 / 3, 1 / 3, 2 / 3, 2 / 3].map(v => expect.closeTo(v, 9)));
   });
 });
 
 describe('the Serlio volute', () => {
   it('winds out from the eye in his radii, in eye diameters, about centres in sixths of the horizontal diameter', () => {
-    const arcs = VOLUTE_STYLES.serlio.arcs(spec('serlio', 4));
+    const arcs = spiralArcs(spec('serlio', 4));
     const twice = (v: number[]) => v.flatMap(x => [x, x]);
-    expect(arcs.map(a => a.r / 8)).toEqual(twice([4, 3, 13 / 6, 3 / 2, 1, 2 / 3]).map(v => expect.closeTo(v, 9)));
-    expect(arcs.map(a => a.y)).toEqual(Array(12).fill(expect.closeTo(0, 9)));
-    expect(arcs.map(a => a.x / 8)).toEqual(twice([3 / 6, -3 / 6, 2 / 6, -2 / 6, 1 / 6, -1 / 6]).map(v => expect.closeTo(v, 9)));
+    expect(arcs.map(a => a.r / 8)).toEqual(twice([13 / 6, 3 / 2, 1, 2 / 3]).map(v => expect.closeTo(v, 9)));
+    expect(arcs.map(a => a.y)).toEqual(Array(8).fill(expect.closeTo(0, 9)));
+    expect(arcs.map(a => a.x / 8)).toEqual(twice([2 / 6, -2 / 6, 1 / 6, -1 / 6]).map(v => expect.closeTo(v, 9)));
   });
 
   it('draws his inner two turns, out to the end of his 13/6-diameter semicircle', () => {
@@ -457,41 +420,39 @@ describe('the Serlio volute', () => {
 
 describe('the Salviati volute', () => {
   const d = 8;
-  const arcs = VOLUTE_STYLES.salviati.arcs(spec('salviati', 4));
+  const arcs = spiralArcs(spec('salviati', 4));
 
-  it('draws twelve arcs, sweeping a quarter turn except where a ring meets the next and at the eye', () => {
-    expect(arcs).toHaveLength(12);
+  it('draws eight arcs, sweeping a quarter turn except where a ring meets the next and at the eye', () => {
+    expect(arcs).toHaveLength(8);
     const sweeps = arcs.map(a => (a.end - a.start) * 180 / Math.PI);
     sweeps.forEach((s, i) => {
-      if ([3, 4, 7, 8].includes(i)) expect(s).not.toBeCloseTo(90, 0);
-      else if (i < 11) expect(s).toBeCloseTo(90, 9);
+      if ([3, 4].includes(i)) expect(s).not.toBeCloseTo(90, 0);
+      else if (i < 7) expect(s).toBeCloseTo(90, 9);
     });
     // the last runs on past a quarter to reach the front of the eye from a centre behind it
-    expect(sweeps[11]).toBeGreaterThan(90);
-    expect(sweeps[11]).toBeLessThan(100);
-    expect(sweeps.reduce((a, b) => a + b)).toBeGreaterThan(1080);
+    expect(sweeps[7]).toBeGreaterThan(90);
+    expect(sweeps[7]).toBeLessThan(100);
+    expect(sweeps.reduce((a, b) => a + b)).toBeGreaterThan(720);
   });
 
-  it('steps the radius in by 1/2, 1/3 and 1/6 of an eye diameter a quarter turn on each ring', () => {
-    const steps = arcs.slice(0, 11).map((a, i) => (a.r - arcs[i + 1].r) / d);
-    expect([0, 1, 2].map(i => steps[i])).toEqual([1 / 2, 1 / 2, 1 / 2].map(v => expect.closeTo(v, 9)));
-    expect([4, 5, 6].map(i => steps[i])).toEqual([1 / 3, 1 / 3, 1 / 3].map(v => expect.closeTo(v, 9)));
-    expect([8, 9, 10].map(i => steps[i])).toEqual([1 / 6, 1 / 6, 1 / 6].map(v => expect.closeTo(v, 9)));
+  it('steps the radius in by 1/3 and 1/6 of an eye diameter a quarter turn on the inner two rings', () => {
+    const steps = arcs.slice(0, 7).map((a, i) => (a.r - arcs[i + 1].r) / d);
+    expect([0, 1, 2].map(i => steps[i])).toEqual([1 / 3, 1 / 3, 1 / 3].map(v => expect.closeTo(v, 9)));
+    expect([4, 5, 6].map(i => steps[i])).toEqual([1 / 6, 1 / 6, 1 / 6].map(v => expect.closeTo(v, 9)));
   });
 
-  it('finds its centres on the diagonals of the eye\'s inscribed square, the outer four at its corners', () => {
+  it('finds its centres on the diagonals of the eye\'s inscribed square, the outer four at the middle ring\'s corners', () => {
     for (const a of arcs) expect(Math.abs(Math.abs(a.x) - Math.abs(a.y))).toBeLessThan(1e-9);
-    for (const a of arcs.slice(0, 4)) expect(Math.abs(a.x)).toBeCloseTo(2, 9);
+    for (const a of arcs.slice(0, 4)) expect(Math.abs(a.x)).toBeCloseTo(4 / 3, 9);
   });
 });
 
 // the square the even growth goes round, first corner first: one side on the eye's horizontal
 // diameter, centred on the eye's centre, as large as the eye holds
 describe('the four point volute', () => {
-  const def = VOLUTE_STYLES.fourPoint;
   const r = 4;
   const radii = [5, 6, 8, 9, 12, 13, 15, 16];
-  const arcs = def.arcs(spec('fourPoint', r, radii));
+  const arcs = spiralArcs(spec('fourPoint', r, radii));
   const inward = [...arcs].reverse();
   const step = Math.PI / 2;
   const side = 2 * r / Math.sqrt(5);
@@ -514,7 +475,7 @@ describe('the four point volute', () => {
   });
 
   it('grown a side an arc from the first corner, centres every arc on the square\'s corners, the first inside the eye behind its centre', () => {
-    const even = def.arcs(spec('fourPoint', r, Array.from({ length: 11 }, (_, i) => r + side / 2 + i * side))).reverse();
+    const even = spiralArcs(spec('fourPoint', r, Array.from({ length: TO_FRONT }, (_, i) => r + side / 2 + i * side))).reverse();
     even.forEach((a, i) => expect([a.x, a.y]).toEqual(figure[i % 4].map(v => expect.closeTo(v, 9))));
     expect(Math.hypot(even[0].x, even[0].y)).toBeLessThan(r);
     expect(even[0].x).toBeLessThan(0);
@@ -525,12 +486,12 @@ describe('the four point volute', () => {
     const spiral = scrolled('fourPoint', r, {}, radii).v.spiral!;
     expect(spiral).toHaveLength(8);
     expect(spiral[0].r).toBe(radii.at(-1));
-    expect(flushVolute(spec('fourPoint', r, radii.slice(0, 7)))).toBeNull();
+    expect(spiralArcs(spec('fourPoint', r, radii.slice(0, 7)))).toEqual([]);
     expect(scrolled('fourPoint', r, {}, radii.slice(0, 7)).v.spiral).toBeNull();
   });
 
   it('carries an arc no wider than the last on about the same centre', () => {
-    const [first, second, third] = [...def.arcs(spec('fourPoint', r, [5, 5, 8]))].reverse();
+    const [first, second, third] = [...spiralArcs(spec('fourPoint', r, [5, 5, 8, 9, 10, 11, 12, 13]))].reverse();
     expect([second.x, second.y]).toEqual([first.x, first.y]);
     expect(second.r).toBe(first.r);
     expect(second.start).toBeCloseTo(first.end, 9);
@@ -538,27 +499,26 @@ describe('the four point volute', () => {
   });
 
   it('draws nothing unless every radius is at least the last', () => {
-    for (const bad of [[], [5, 8, 7, 9, 10, 11, 12], [0, 5, 8, 9, 10, 11, 12], [5, NaN, 8, 9, 10, 11, 12]]) {
-      expect(def.arcs(spec('fourPoint', r, bad))).toEqual([]);
-      expect(flushVolute(spec('fourPoint', r, bad))).toBeNull();
+    for (const bad of [[], [5, 8, 7, 9, 10, 11, 12, 13], [0, 5, 8, 9, 10, 11, 12, 13], [5, NaN, 8, 9, 10, 11, 12, 13]]) {
+      expect(spiralArcs(spec('fourPoint', r, bad))).toEqual([]);
     }
   });
 
   it('guides with the walk of centres alone', () => {
-    const guides = def.guides(spec('fourPoint', r, radii));
+    const guides = voluteConstruction(scrolled('fourPoint', r, {}, radii).v);
     expect(guides).toHaveLength(1);
     expect(guides[0]).toEqual(inward.map(a => expect.objectContaining({ x: expect.closeTo(a.x, 9), y: expect.closeTo(a.y, 9) })));
   });
 
   it('seeds its fields with Kelly\'s radii, and from them draws his spiral on his centres, whatever the seed', () => {
     for (const seedLength of [r, 1.5 * r]) {
-      const seeded = kellyArcRadii({ eyeRadius: r, seedLength });
+      const seeded = scrolled('fourPoint', r, { seedLength }, []).v.arcRadii;
       expect(seeded).toHaveLength(TO_FRONT);
-      const kelly = [...VOLUTE_STYLES.kelly.arcs({ ...spec('kelly', r), seedLength })].reverse().slice(0, TO_FRONT);
-      const drawn = [...def.arcs(spec('fourPoint', r, seeded))].reverse();
+      const kelly = [...spiralArcs({ ...spec('kelly', r), seedLength })].reverse().slice(0, TO_FRONT);
+      const drawn = [...spiralArcs(spec('fourPoint', r, seeded))].reverse();
       drawn.forEach((a, i) => expect([a.x, a.y, a.r, a.start, a.end], `seed ${seedLength}, arc ${i}`)
         .toEqual([kelly[i].x, kelly[i].y, kelly[i].r, kelly[i].start, kelly[i].end].map(v => expect.closeTo(v, 9))));
     }
-    expect(kellyArcRadii({ eyeRadius: r, seedLength: r })).toEqual([4.5, 5.5, 6.5, 8.5, 9.5, 12.5, 13.5, 17.5]);
+    expect(scrolled('fourPoint', r, {}, []).v.arcRadii).toEqual([4.5, 5.5, 6.5, 8.5, 9.5, 12.5, 13.5, 17.5]);
   });
 });

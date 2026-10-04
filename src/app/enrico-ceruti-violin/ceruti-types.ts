@@ -357,20 +357,22 @@ export interface VoluteParams {
   seedLength: number;
   arcRadii: number[];
 
-
   spiral: Arc[] | null;
   S0: Arc;
   S1: Arc;
   S2: Arc;
   S3: Arc;
-
-  backStraight: number;nape: Arc;
+  nape: Arc;
+  backStraight: number;
 
   F0: Arc;
   F1: Arc;
   flat: number;
   frontStraight: number;
 
+  // readouts: the nut up to the crown's top, and the neck's front back to the scroll's furthest reach
+  height: number | null;
+  width: number | null;
 }
 
 /** Resolved palette from CerutiViolin's `colors` getter, threaded into every panel and render fn. */

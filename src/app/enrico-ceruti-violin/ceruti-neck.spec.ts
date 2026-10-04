@@ -4,7 +4,7 @@ import { archedViolin } from './ceruti-fixtures';
 import { EnricoCerutiParams, NeckParams } from './ceruti-types';
 import { defaultFlutingParams, solveLongArch } from './ceruti-arch-geometry';
 import {
-  bridgeWedge, buttonTip, calculateNeck, defaultNeckParams, defineNeckPath, fingerboardEnd, gluingAtMortise,
+  bridgeWedge, buttonTip, calculateNeck, defaultNeckParams, defineNeckPath, fingerboardEnd, mortiseFingerboardIntersect,
   heelBottom, heelFace, mortiseFloorY, plateEdgeAtNeck,
 } from './ceruti-neck';
 
@@ -83,7 +83,7 @@ describe('the root', () => {
     const p = neckedViolin();
     const s = solve(p);
     expect(mortiseFloorY(p)).toBeCloseTo(p.height - p.overhang - p.neck!.mortiseDepth, 9);
-    const glue = gluingAtMortise(p);
+    const glue = mortiseFingerboardIntersect(p);
     expect(glue.y).toBeCloseTo(mortiseFloorY(p), 9);
     expect(shortestDistanceFromPtToLine(glue, lineFromTwoPoints(s.root!, s.nut!))).toBeLessThan(1e-9);
   });

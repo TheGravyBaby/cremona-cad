@@ -44,6 +44,22 @@
                 (focus)="onArcFocus('nape', colors.scrollNape)" (blur)="onArcBlur()" />
         </label>
     </div>
+    @if (volute.height != null && volute.width != null) {
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title" title="The head's height, from the nut up to the top of the crown">Height <span class="unit-label">mm</span></span>
+            <div class="basic-display" aria-label="Scroll height value">{{ volute.height | number:'1.1-1' }}</div>
+        </label>
+        <label class="field-cell">
+            <span class="field-title" title="The head's depth, from the neck's front back to the furthest reach of the scroll">Width <span class="unit-label">mm</span></span>
+            <div class="basic-display" aria-label="Scroll width value">{{ volute.width | number:'1.1-1' }}</div>
+        </label>
+        <label class="field-cell">
+            <span class="field-title">H to W</span>
+            <div class="basic-display" aria-label="Scroll height to width ratio value">{{ nearestFraction(volute.height / volute.width) }}</div>
+        </label>
+    </div>
+    }
 </section>
 
 <section class="ui-group">

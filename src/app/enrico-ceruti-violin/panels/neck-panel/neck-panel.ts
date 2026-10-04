@@ -5,7 +5,7 @@ import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, FlutingParams, NeckP
 import { defaultArchingParams } from '../../ceruti-arching';
 import { defaultFlutingParams, LongArchSolve, solveLongArch } from '../../ceruti-arch-geometry';
 import { calculateOuterArcs, ensureNeckPath } from '../../ceruti-calcs';
-import { bridgeWedge, buttonTip, calculateNeck, defaultNeckParams, fingerboardEnd, gluingAtMortise, heelBottom, heelFace, mortiseFloorY, plateEdgeAtNeck, standardNutLength } from '../../ceruti-neck';
+import { bridgeWedge, buttonTip, calculateNeck, defaultNeckParams, fingerboardEnd, mortiseFingerboardIntersect, heelBottom, heelFace, mortiseFloorY, plateEdgeAtNeck, standardNutLength } from '../../ceruti-neck';
 import { renderBodySection } from '../../renders/body-section.render';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
@@ -81,9 +81,10 @@ export function renderNeck(p: EnricoCerutiParams, colors: CerutiColors, showGuid
   const direction = vectorFromSlope(nk.angle + Math.PI / 2);
   const normal = vectorFromSlope(nk.angle);
   const tip = buttonTip(p);
-  const glue = gluingAtMortise(p);
+  const mortFboard = mortiseFingerboardIntersect(p);
   const nutTop = moveInVectorSpace(nk.nut!, [{ ...normal, mag: nk.nutThickness }]);
   const fbEnd = fingerboardEnd(p);
+  
   return (g: any, ui: any): void => {
     const seg = (a: Pt, b: Pt, color = colors.neck) => renderSegment(a, b, color, STROKE_WEIGHT.section)(g, ui);
 
@@ -92,8 +93,8 @@ export function renderNeck(p: EnricoCerutiParams, colors: CerutiColors, showGuid
     renderPolygon([new Pt(0, p.height), new Pt(0, tip.y), new Pt(-backThickness, tip.y), new Pt(-backThickness, p.height)], colors.archBack, STROKE_WEIGHT.section)(g, ui);
 
     // the foot in the mortise
-    seg(new Pt(0, mortiseFloorY(p)), glue, colors.neckRoot);
-    seg(glue, nk.root!, colors.neck);
+    seg(new Pt(0, mortiseFloorY(p)), mortFboard, colors.neckRoot);
+    seg(mortFboard, nk.root!, colors.neck);
 
     renderPolygon(bridgeWedge(p), colors.bridge, STROKE_WEIGHT.section)(g, ui);
 
@@ -131,8 +132,8 @@ export function renderNeck(p: EnricoCerutiParams, colors: CerutiColors, showGuid
     // offsets scale with the neck's own wood thickness rather than a fixed mm, so the parked
     // dimension lines clear the drawing the same way on a cello neck as on a violin's
     renderGuideMeasure(plateEdgeAtNeck(p), nk.root!, guide, -nk.thickness)(g, ui);
-    renderGuideBaseline(new Pt(0, rootPlaneY), new Pt(glue.x, rootPlaneY), guide)(g, ui);
-    renderGuideMeasure(new Pt(glue.x, rootPlaneY), glue, guide, 2 * nk.thickness)(g, ui);
+    renderGuideBaseline(new Pt(0, rootPlaneY), new Pt(mortFboard.x, rootPlaneY), guide)(g, ui);
+    renderGuideMeasure(new Pt(mortFboard.x, rootPlaneY), mortFboard, guide, 2 * nk.thickness)(g, ui);
     // the neck's own length runs along the back, heelBottom to backNut — not root to nut, which
     // sits off that line by the neck's thickness (see `length`'s header)
     renderGuideMeasure(heelBottom(p), nk.backNut!, guide, -2 * (nk.thickness + nk.nutThickness))(g, ui);
