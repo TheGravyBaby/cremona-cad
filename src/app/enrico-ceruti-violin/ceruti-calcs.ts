@@ -1,5 +1,5 @@
 import { circleCircleIntersections, inscribeCircleWithinCircle, interceptCirclesAndPoint, interceptCirclesAndPointCompound, solveTangentCircleAndLine, filletRightAngleCorner } from "../helpers/math/draftMath";
-import { angleFromCenter, dist, pointOnCircle, offsetArcRadius, flipRectAboutY, lineCircleIntersection, lineCircleIntersectionWithTolerance, lineFromPointAndSlope, lineFromTwoPoints, moveInVectorSpace, placeCircleOnPointAtAngle, redefineArcCircle, tangentUnitVectorFromLine, vectorFromSlope } from "../helpers/math/simpleGeometry";
+import { angleFromCenter, dist, pointOnCircle, offsetArcRadius, flipRectAboutY, lineCircleIntersection, lineCircleIntersectionWithTolerance, lineFromPointAndSlope, lineFromTwoPoints, moveInVectorSpace, placeCircleOnPointAtAngle, redefineArcCircle, tangentUnitVectorFromLine, TURN, vectorFromSlope } from "../helpers/math/simpleGeometry";
 import { pathFromRoundedRect, pathFromCircle, pathFromRect, combinePathStrings, differenceFromManyPaths, intersectionFromTwoPaths, translatePath, mirroredLoop } from "../helpers/math/pathMath";
 import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Line, Pt, Rectangle } from "../models/types";
 import { error } from "../shared/message-emitter";
@@ -107,7 +107,7 @@ export function calculateMainBouts(p: EnricoCerutiParams): MainBoutFailure[] {
         let L0Angle = angleFromCenter(p.bouts.L0, lowerIntersect[0]);
         let L1Angle = angleFromCenter(p.bouts.L1, lowerIntersect[0]);
 
-        p.bouts.L0 = arcFromCircle(p.bouts.L0, 3 / 2 * Math.PI, L0Angle);
+        p.bouts.L0 = arcFromCircle(p.bouts.L0, 3 * TURN.quarter, L0Angle);
         p.bouts.L1 = arcFromCircle(p.bouts.L1, L1Angle, 0);
         return null
     })
@@ -117,8 +117,8 @@ export function calculateMainBouts(p: EnricoCerutiParams): MainBoutFailure[] {
             p.viol.width ??= p.bouts.UBW * .1
             p.viol.neckRadius ??= 0
             let Vr = p.viol?.V0?.r ?? p.bouts.UBW / 5
-            let start = p.viol?.V0?.start ?? Math.PI * 1.05
-            let end =  p.viol?.V0?.end ?? 3/2 * Math.PI * .92
+            let start = p.viol?.V0?.start ?? TURN.half * 1.05
+            let end =  p.viol?.V0?.end ?? 3 * TURN.quarter * .92
             // the flat top face runs out to width/2, then a join of neckRadius turns the corner into
             // the flank. V0 begins where that join ends, so its centre goes back (Vr + R) along the
             // start ray from the join's centre — which puts V0.start *on* the tangency instead of
@@ -132,7 +132,7 @@ export function calculateMainBouts(p: EnricoCerutiParams): MainBoutFailure[] {
             let V0End = pointOnCircle(p.viol.V0,  p.viol.V0.end)
         
             // we know that U0 start is -Pi from V0 end
-            let U0start = p.viol.V0.end - Math.PI
+            let U0start = p.viol.V0.end - TURN.half
             let U0YDiff = Math.sin(U0start) * p.bouts.U0.r
             let U0XDiff = Math.cos(U0start) * p.bouts.U0.r
             p.bouts.U0.x = V0End.x - U0XDiff
@@ -171,7 +171,7 @@ export function calculateMainBouts(p: EnricoCerutiParams): MainBoutFailure[] {
             let U0Angle = angleFromCenter(p.bouts.U0, upperIntersect[0]);
             let U1Angle = angleFromCenter(p.bouts.U1, upperIntersect[0]);
 
-            p.bouts.U0 = arcFromCircle(p.bouts.U0, 1 / 2 * Math.PI, U0Angle);
+            p.bouts.U0 = arcFromCircle(p.bouts.U0, TURN.quarter, U0Angle);
             p.bouts.U1 = arcFromCircle(p.bouts.U1, U1Angle, 0);
         }
         return null
@@ -271,8 +271,8 @@ export function calculateCorners(p: EnricoCerutiParams): CornerFailure[] {
     let U2R = p.bouts.U2?.r ?? Math.round(UBWI * p.ratios.U2toUBW);
     let U2Y = p.bouts.U2?.y ?? p.bouts.U1.y;
             
-    p.bouts.U31 ??= new Arc(0, 0, Math.round(LBWI * (p.ratios.U31toLBW ?? DefaultParams.ratios.U31toLBW)), 17/16 * Math.PI)
-    p.bouts.L31 ??= new Arc(0, 0, Math.round(LBWI * (p.ratios.L31toLBW ?? DefaultParams.ratios.L31toLBW)), 15/16 * Math.PI)
+    p.bouts.U31 ??= new Arc(0, 0, Math.round(LBWI * (p.ratios.U31toLBW ?? DefaultParams.ratios.U31toLBW)), 17/16 * TURN.half)
+    p.bouts.L31 ??= new Arc(0, 0, Math.round(LBWI * (p.ratios.L31toLBW ?? DefaultParams.ratios.L31toLBW)), 15/16 * TURN.half)
 
     let U1U2Match = false
     let allowHeightFlex = false; // this is a fiddly feature that might be cool one day, needs more work for now
@@ -330,7 +330,7 @@ export function calculateCorners(p: EnricoCerutiParams): CornerFailure[] {
         if (p.options.U31DoubleArc) {
             let U3r = p.bouts.U3.r
             let U31 =  p.bouts.U31.r
-            let theta = p.bouts.U31.start ?? 17/16 * Math.PI
+            let theta = p.bouts.U31.start ?? 17/16 * TURN.half
             let compoundCircles = interceptCirclesAndPointCompound(p.bouts.U2!, p.bouts.UCr, U3r, U31, theta).sort((a, b) => a.C1.y - b.C1.y)[1];
             if (!compoundCircles)
                 return cornerMiss('Upper corner', 'U2', p.bouts.U2, 'U3', p.bouts.UCr, true, ['U2', 'U3', 'U31', 'U4'])
@@ -352,7 +352,7 @@ export function calculateCorners(p: EnricoCerutiParams): CornerFailure[] {
             let U2Angle = angleFromCenter(p.bouts.U2, U2Intersect[1]);
             let U2StartAngle = angleFromCenter(p.bouts.U2, p.bouts.U1);
             if (p.bouts.U2.r < p.bouts.U1.r) 
-                U2StartAngle -= Math.PI
+                U2StartAngle -= TURN.half
 
             if (!U1U2Match) {
                 let newU1Intersect = circleCircleIntersections(p.bouts.U1, p.bouts.U2).sort((a, b) => a.y - b.y);
@@ -388,7 +388,7 @@ export function calculateCorners(p: EnricoCerutiParams): CornerFailure[] {
         if (p.options.L31DoubleArc) {
             let L3r = p.bouts.L3.r
             let L31r =  p.bouts.L31.r
-            let theta = p.bouts.L31.start ?? 15/16 * Math.PI
+            let theta = p.bouts.L31.start ?? 15/16 * TURN.half
             let compoundCircles = interceptCirclesAndPointCompound(p.bouts.L2!, p.bouts.LCr, L3r, L31r, theta).sort((a, b) => a.C1.y - b.C1.y)[0];
             if (!compoundCircles)
                 return cornerMiss('Lower corner', 'L2', p.bouts.L2, 'L3', p.bouts.LCr, true, ['L2', 'L3', 'L31', 'L4'])
@@ -410,7 +410,7 @@ export function calculateCorners(p: EnricoCerutiParams): CornerFailure[] {
             let L2Angle = angleFromCenter(p.bouts.L2, L2Intersect);
             let L2StartAngle = angleFromCenter(p.bouts.L2, p.bouts.L1);
             if (p.bouts.L2.r < p.bouts.L1.r) 
-                L2StartAngle -= Math.PI
+                L2StartAngle -= TURN.half
 
             if (!L2U1Match) {
                 let newL1Intersect = circleCircleIntersections(p.bouts.L1, p.bouts.L2).sort((a, b) => a.y - b.y)[0];
@@ -473,11 +473,11 @@ export function calculateCenterBout(p: EnricoCerutiParams): CenterBoutFailure[] 
 
             // now we need to begin converting this to the proper coordinate space
             // first, the above theta needs to be referenced added to 3/2 pi, as it is pointing down
-            theta = theta + 3 * Math.PI / 2; // angle from U2 to C0, with the line from U2 to L2 as reference
+            theta = theta + 3 * TURN.quarter; // angle from U2 to C0, with the line from U2 to L2 as reference
 
             // now we need to convert the angle to the standard xy plane
             let angleFromU2toL2 = Math.atan2(p.bouts.L2!.y - p.bouts.U2!.y, p.bouts.L2!.x - p.bouts.U2!.x);
-            let diffFromYAxis = Math.PI / 2 + angleFromU2toL2; // angle from the line U2 to L2, to the Y axis
+            let diffFromYAxis = TURN.quarter + angleFromU2toL2; // angle from the line U2 to L2, to the Y axis
             theta = theta + diffFromYAxis; // angle from U2 to C0, with the standard xy plane as reference
             
 
@@ -514,8 +514,8 @@ export function calculateCenterBout(p: EnricoCerutiParams): CenterBoutFailure[] 
     }
 
     // initialize C11 and C21
-    p.bouts.C11 ??= new Arc(0, 0, Math.round(LBWI * (p.ratios.C11toLBW ?? DefaultParams.ratios.C11toLBW)), 24/16 * Math.PI)
-    p.bouts.C21 ??= new Arc(0, 0, Math.round(LBWI * (p.ratios.C21toLBW ?? DefaultParams.ratios.C21toLBW)), 8/16 * Math.PI)
+    p.bouts.C11 ??= new Arc(0, 0, Math.round(LBWI * (p.ratios.C11toLBW ?? DefaultParams.ratios.C11toLBW)), 3 * TURN.quarter)
+    p.bouts.C21 ??= new Arc(0, 0, Math.round(LBWI * (p.ratios.C21toLBW ?? DefaultParams.ratios.C21toLBW)), TURN.quarter)
     let cuRadius = p.bouts.C2?.r ?? Math.round((LBWI * p.ratios.C2toLBW));
     let clRadius = p.bouts.C1?.r ?? Math.round((LBWI * p.ratios.C1toLBW));
     let CUIntercept: Pt | undefined;
@@ -525,7 +525,7 @@ export function calculateCenterBout(p: EnricoCerutiParams): CenterBoutFailure[] 
         if (p.options.C21DoubleArc) {
             let C2r = p.bouts.C2.r
             let C21r =  p.bouts.C21.r
-            let theta = p.bouts.C21.start ?? 15/16 * Math.PI
+            let theta = p.bouts.C21.start ?? 15/16 * TURN.half
             let compoundCircles = interceptCirclesAndPointCompound(p.bouts.C0!, p.bouts.UCr, C2r, C21r, theta).sort((a, b) => a.C1.y - b.C1.y)[0];
             if (!compoundCircles)
                 return cornerMiss('Upper corner', 'C0', p.bouts.C0, 'C2', p.bouts.UCr, true, ['C0', 'C2', 'C21'])
@@ -549,7 +549,7 @@ export function calculateCenterBout(p: EnricoCerutiParams): CenterBoutFailure[] 
         if (p.options.C11DoubleArc) {
             let C1r = p.bouts.C1.r
             let C11r = p.bouts.C11.r
-            let theta = p.bouts.C11.start ?? 17/16 * Math.PI
+            let theta = p.bouts.C11.start ?? 17/16 * TURN.half
             let compoundCircles = interceptCirclesAndPointCompound(p.bouts.C0!, p.bouts.LCr, C1r, C11r, theta).sort((a, b) => a.C1.y - b.C1.y)[1];
             if (!compoundCircles)
                 return cornerMiss('Lower corner', 'C0', p.bouts.C0, 'C1', p.bouts.LCr, true, ['C0', 'C1', 'C11'])
@@ -623,11 +623,11 @@ export function calculateOuterArcs(p: EnricoCerutiParams): void {
     p.outerCorners.C1 = p.outerCorners.C1 ? redefineArcCircle(p.outerCorners.C1, p.bouts.C1, C1Sign * inset) : offsetArcRadius(p.bouts.C1, C1Sign * inset);
     p.outerCorners.L3 = p.outerCorners.L3 ? redefineArcCircle(p.outerCorners.L3, p.bouts.L3, -inset) : offsetArcRadius(p.bouts.L3, -inset);
 
-    const U3Pop = Math.PI / 72;
+    const U3Pop = TURN.half / 72;
     // an inverted C1 or C2 travels the other way round its circle, and the pop has to follow it
-    const C2Pop = Math.PI / 18 * C2Sign;
-    const C1Pop = Math.PI / 36 * -C1Sign;
-    const L3Pop = -Math.PI / 72;
+    const C2Pop = TURN.half / 18 * C2Sign;
+    const C1Pop = TURN.half / 36 * -C1Sign;
+    const L3Pop = -TURN.half / 72;
 
     if (outerCornersNotDefined) {
         p.outerCorners.U3.end += U3Pop;
@@ -691,16 +691,16 @@ export function calculateOuterArcs(p: EnricoCerutiParams): void {
 const FShtoEye = 5 / 2;
 const FArmtoEye = 3;
 const FStemArctoLEye = 10;
-const FUWingEnd = Math.PI * 4 / 9;
-const FLWingEnd = Math.PI * -19 / 36;
-const FCutAt = Math.PI * 2 / 3;
-const FUCutSlope = Math.PI * 1 / 3;
-const FLCutSlope = Math.PI * -2 / 3;
+const FUWingEnd = TURN.half * 4 / 9;
+const FLWingEnd = TURN.half * -19 / 36;
+const FCutAt = TURN.half * 2 / 3;
+const FUCutSlope = TURN.half / 3;
+const FLCutSlope = TURN.half * -2 / 3;
 
 // only need to set the radii values and instantiate the angles
 export function setContourDefaults(p: EnricoCerutiParams) {
-  p.fHoles.U1 ??= new Arc(0, 0, Math.round(p.fHoles.UEye.r * FShtoEye), 0, Math.PI / 2)
-  p.fHoles.L1 ??= new Arc(0, 0, Math.round(p.fHoles.LEye.r * FShtoEye), 0, -Math.PI / 2)
+  p.fHoles.U1 ??= new Arc(0, 0, Math.round(p.fHoles.UEye.r * FShtoEye), 0, TURN.quarter)
+  p.fHoles.L1 ??= new Arc(0, 0, Math.round(p.fHoles.LEye.r * FShtoEye), 0, -TURN.quarter)
 
   p.fHoles.U2 ??= new Arc(0, 0, Math.round(p.fHoles.UEye.r * FArmtoEye))
   p.fHoles.L2 ??= new Arc(0, 0, Math.round(p.fHoles.LEye.r * FArmtoEye))
@@ -714,12 +714,12 @@ export function setContourDefaults(p: EnricoCerutiParams) {
   p.fHoles.S4 ??= new Arc(0, 0, p.fHoles.stem.arcR)
 
   p.fHoles.UCut = {
-    angleOnEye: Math.PI * 1 / 3,
+    angleOnEye: TURN.half / 3,
     length: p.fHoles.UEye.r,
     slope: FUCutSlope
   }
   p.fHoles.LCut = {
-    angleOnEye: Math.PI * 4 / 3,
+    angleOnEye: TURN.half * 4 / 3,
     length: p.fHoles.LEye.r,
     slope: FLCutSlope
   }
@@ -824,7 +824,7 @@ export function calculateFholeContours(p: EnricoCerutiParams): FholeFailure[] {
 
     // first we need to determine the placement of the arc that connects to each eye
     let upperBound = p.fHoles.UEye.y + p.fHoles.UEye.r + p.fHoles.URise
-    let upperShoulderY = upperBound - shoulderReach(p.fHoles.U1, p.fHoles.U2, upperArm2, Math.PI / 2)
+    let upperShoulderY = upperBound - shoulderReach(p.fHoles.U1, p.fHoles.U2, upperArm2, TURN.quarter)
     let upperShoulderXs = lineCircleIntersectionWithTolerance(
       { m: 0, y: upperShoulderY, x: 0 },
       { x: p.fHoles.UEye.x, y: p.fHoles.UEye.y, r: Math.abs(p.fHoles.U1.r - p.fHoles.UEye.r) },
@@ -897,7 +897,7 @@ export function calculateFholeContours(p: EnricoCerutiParams): FholeFailure[] {
     let lowerArm2 = p.options.L21DoubleArc ? p.fHoles.L21! : null;
 
     let lowerBound = p.fHoles.LEye.y - p.fHoles.LEye.r - p.fHoles.LRise
-    let lowerShoulderY = lowerBound + shoulderReach(p.fHoles.L1, p.fHoles.L2, lowerArm2, -Math.PI / 2)
+    let lowerShoulderY = lowerBound + shoulderReach(p.fHoles.L1, p.fHoles.L2, lowerArm2, -TURN.quarter)
     let lowerShoulderXs = lineCircleIntersectionWithTolerance(
       { m: 0, y: lowerShoulderY, x: 0 },
       { x: p.fHoles.LEye.x, y: p.fHoles.LEye.y, r: Math.abs(p.fHoles.L1.r - p.fHoles.LEye.r) },
@@ -1064,7 +1064,7 @@ export function calculateMould(p: EnricoCerutiParams, useHighAccuracy = false, s
 
     const tolerance = 0.5;
     const bitRadius = p.bitDiameter / 2 + tolerance;
-    const bitOffset = (bitRadius * Math.sqrt(2) / 2) - tolerance;
+    const bitOffset = (bitRadius * Math.SQRT1_2) - tolerance;
     let circleCutouts = []
     if (p.bitDiameter > 0) {
         // these will keep the bit from making internal right angles

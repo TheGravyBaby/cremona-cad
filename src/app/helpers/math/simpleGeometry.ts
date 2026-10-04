@@ -1,12 +1,11 @@
 import { Pt, Circle, Line, Rectangle, Arc, arcFromCircle, Vect2D } from "../../models/types";
 
-export const TWO_PI = Math.PI * 2;
-
 export const TURN = {
+  degree: Math.PI / 180,
   eighth: Math.PI / 4,
   quarter: Math.PI / 2,
   half: Math.PI,
-  full: TWO_PI,
+  full: Math.PI * 2,
 } as const;
 
 export function clamp(v: number, min: number, max: number): number {
@@ -22,8 +21,8 @@ export function normalizeDegrees(deg: number): number {
 /** Wraps a radian value into [0, 2π). The radian twin of normalizeDegrees, and the canonical
  * spelling of the `((a % 2π) + 2π) % 2π` idiom that this codebase otherwise reinvents per file. */
 export function normalizeRadians(rad: number): number {
-  const v = rad % TWO_PI;
-  return v < 0 ? v + TWO_PI : v;
+  const v = rad % TURN.full;
+  return v < 0 ? v + TURN.full : v;
 }
 
 /** Wraps a degree *difference* into [-180, 180) — the signed shortest way round, as opposed to
@@ -67,7 +66,7 @@ export function rotatePointAbout(point: Pt, center: Pt, angle: number): Pt {
 
 /** The corners of a regular polygon, counterclockwise from `vertex`, which also sets the size. */
 export function regularPolygonVertices(center: Pt, vertex: Pt, sides: number): Pt[] {
-  return Array.from({ length: sides }, (_, i) => rotatePointAbout(vertex, center, i * TWO_PI / sides));
+  return Array.from({ length: sides }, (_, i) => rotatePointAbout(vertex, center, i * TURN.full / sides));
 }
 
 export function flipPointAboutY(point: Pt): Pt {
@@ -116,7 +115,7 @@ export function angleFromCenter(center: Pt, point: Pt): number {
 }
 
 export function flipAngleAboutYAxis(angle: number): number {
-  return (Math.PI - angle + TWO_PI) % TWO_PI;
+  return (TURN.half - angle + TURN.full) % TURN.full;
 }
 
 export function offsetCircleRadius(circle: Circle, offset: number): Circle {
@@ -166,7 +165,7 @@ export function angleFromLine(line: Line): number {
 }
 
 export function tangentAngleFromLine(line: Line): number {
-  return Math.atan(line.m) + Math.PI / 2;
+  return Math.atan(line.m) + TURN.quarter;
 }
 
 /**
@@ -350,27 +349,27 @@ export function arcReach(arc: Arc, angle: number): Pt[] {
 /** True when `angle` lies on the drawn (minor) span between the arc's start and end — see pathFromArc. */
 export function angleOnDrawnArc(arc: Arc, angle: number): boolean {
   const diff = normalizeRadians(arc.end - arc.start);
-  const from = diff <= Math.PI ? arc.start : arc.end;
-  const span = diff <= Math.PI ? diff : TWO_PI - diff;
+  const from = diff <= TURN.half ? arc.start : arc.end;
+  const span = diff <= TURN.half ? diff : TURN.full - diff;
   const rel = normalizeRadians(angle - from);
   const eps = 1e-9;
-  return rel <= span + eps || rel >= TWO_PI - eps;
+  return rel <= span + eps || rel >= TURN.full - eps;
 }
 
 /** signed sweep of an Arc's drawn (minor) span: negative clockwise, positive ccw. */
 export function signedArcSweep(arc: Arc): number {
   const d = normalizeRadians(arc.end - arc.start);
-  return d > Math.PI ? d - TWO_PI : d;
+  return d > TURN.half ? d - TURN.full : d;
 }
 
 /** tangent direction at the end of an Arc's drawn span. */
 export function travelAtArcEnd(arc: Arc): number {
-  return arc.end + Math.sign(signedArcSweep(arc)) * Math.PI / 2;
+  return arc.end + Math.sign(signedArcSweep(arc)) * TURN.quarter;
 }
 
 /** tangent direction at the start of an Arc's drawn span. */
 export function travelAtArcStart(arc: Arc): number {
-  return arc.start + Math.sign(signedArcSweep(arc)) * Math.PI / 2;
+  return arc.start + Math.sign(signedArcSweep(arc)) * TURN.quarter;
 }
 
 /**

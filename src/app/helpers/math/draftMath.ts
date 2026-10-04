@@ -1,6 +1,6 @@
 import { Pt, Circle, Line, Arc, Vect2D } from "../../models/types";
 import {
-  TWO_PI, dist, angleFromCenter, pointOnCircle, angleWithinSweep, unitVectorFromLine,
+  TURN, dist, angleFromCenter, pointOnCircle, angleWithinSweep, unitVectorFromLine,
   tangentUnitVectorFromLine, offsetLineByDistance, closestPointOnLine, moveInVectorSpace, normalizeRadians,
   lineFromTwoPoints, intersectLines, lineCircleIntersection,
 } from "./simpleGeometry";
@@ -332,7 +332,7 @@ export function filletBetween(a: FilletPiece, b: FilletPiece, r: number, pickA: 
       const len = Math.hypot(d.x, d.y) * Math.sign(along);
       return { x: d.x / len, y: d.y / len };
     }
-    const turn = normalizeRadians(angleFromCenter(p.circle, to) - angleFromCenter(p.circle, from) + Math.PI) - Math.PI;
+    const turn = normalizeRadians(angleFromCenter(p.circle, to) - angleFromCenter(p.circle, from) + TURN.half) - TURN.half;
     if (Math.abs(turn) < 1e-12) return null;
     const at = angleFromCenter(p.circle, where), s = Math.sign(turn);
     return { x: -Math.sin(at) * s, y: Math.cos(at) * s };
@@ -369,7 +369,7 @@ export function filletBetween(a: FilletPiece, b: FilletPiece, r: number, pickA: 
  */
 export function pickArcOrientation(a: number, b: number, preferLong: boolean): { startAngle: number; endAngle: number } {
   const span = normalizeRadians(b - a);
-  const isMinor = span <= Math.PI;
+  const isMinor = span <= TURN.half;
   return isMinor === !preferLong ? { startAngle: a, endAngle: b } : { startAngle: b, endAngle: a };
 }
 
@@ -498,7 +498,7 @@ export function fitArcThroughPoints(start: Pt, end: Pt, through: Pt, preferOther
 // G1 chain step: arc leaving P along `travel` with given radius, turning by `sweep` (negative
 // clockwise). keep |sweep| under 180°, since Arc's boundary angles can only name the minor span.
 export function arcContinuingFrom(P: Pt, travel: number, radius: number, sweep: number): Arc {
-  const start = travel - (Math.sign(sweep) || 1) * Math.PI / 2;
+  const start = travel - (Math.sign(sweep) || 1) * TURN.quarter;
   const cx = P.x - radius * Math.cos(start);
   const cy = P.y - radius * Math.sin(start);
   return new Arc(cx, cy, radius, start, start + sweep);
@@ -518,8 +518,8 @@ export function arcTangentToLine(P: Pt, travel: number, A: Pt, lineDir: Pt): Arc
   if (Math.abs(denom) < 1e-9) return null;
 
   const r = (mx * (A.x - P.x) + my * (A.y - P.y)) / denom;
-  const turn = normalizeRadians(exit - travel) - (r < 0 ? TWO_PI : 0);
-  if (Math.abs(turn) >= Math.PI) return null;
+  const turn = normalizeRadians(exit - travel) - (r < 0 ? TURN.full : 0);
+  if (Math.abs(turn) >= TURN.half) return null;
   return arcContinuingFrom(P, travel, Math.abs(r), turn);
 }
 
@@ -530,7 +530,7 @@ export function arcBetweenTravels(
   A: Pt, travel: number, target: Pt, exit: number,
 ): { run: number; arc: Arc } | null {
   const d = normalizeRadians(exit - travel);
-  const sweep = d > Math.PI ? d - TWO_PI : d;
+  const sweep = d > TURN.half ? d - TURN.full : d;
 
   const ux = Math.cos(travel), uy = Math.sin(travel);
   const ex = Math.sin(travel + sweep) - Math.sin(travel);
@@ -599,8 +599,8 @@ export function findJoiningArcsFromTangents(P1: Pt, T1: number, P2: Pt, T2: numb
  * smaller root, so callers can compare candidates across roots and invert flags.
  */
 export function solveBiarcRoots(P1: Pt, T1: number, P2: Pt, T2: number, invert1: boolean, invert2: boolean): { R: number; N1: Pt; N2: Pt }[] {
-  const t1 = invert1 ? T1 + Math.PI : T1;
-  const t2 = invert2 ? T2 + Math.PI : T2;
+  const t1 = invert1 ? T1 + TURN.half : T1;
+  const t2 = invert2 ? T2 + TURN.half : T2;
   const T1vec: Pt = { x: Math.cos(t1), y: Math.sin(t1) };
   const T2vec: Pt = { x: Math.cos(t2), y: Math.sin(t2) };
 

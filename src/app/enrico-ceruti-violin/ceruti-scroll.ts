@@ -195,7 +195,6 @@ function kellyArcs(eyeRadius: number, seedLength: number): Arc[] {
 export function defaultVoluteParams(p: EnricoCerutiParams): VoluteParams {
   let k = p.height / 350;
   let mm = (v: number) => Math.round(v * k);
-  let deg = (d: number) => d * Math.PI / 180;
   let eyeRadius = Math.round(3.5 * k * 4) / 4;
 
   let v: VoluteParams = {
@@ -210,14 +209,14 @@ export function defaultVoluteParams(p: EnricoCerutiParams): VoluteParams {
     arcRadii: [],
 
     spiral: null,
-    S0: new Arc(0, 0, mm(21), 0, deg(80)),
-    S1: new Arc(0, 0, mm(28), 0, deg(165)),
-    S2: new Arc(0, 0, mm(35), 0, deg(215)),
-    S3: new Arc(0, 0, mm(35), deg(-25), 0),
+    S0: new Arc(0, 0, mm(21), 0, 80 * TURN.degree),
+    S1: new Arc(0, 0, mm(28), 0, 165 * TURN.degree),
+    S2: new Arc(0, 0, mm(35), 0, 215 * TURN.degree),
+    S3: new Arc(0, 0, mm(35), -25 * TURN.degree, 0),
     nape: new Arc(0, 0, mm(10), 0, TURN.quarter),
     backStraight: mm(25),
 
-    F0: new Arc(0, 0, mm(60), 0, deg(45)),
+    F0: new Arc(0, 0, mm(60), 0, 45 * TURN.degree),
     F1: new Arc(0, 0, mm(9), 0, 0),
     flat: 0,
     frontStraight: mm(18),

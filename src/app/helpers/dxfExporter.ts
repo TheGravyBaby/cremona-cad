@@ -1,14 +1,11 @@
 import { arcCenterFromEndpoints } from './math/pathMath';
+import { normalizeRadians, TURN } from './math/simpleGeometry';
 
 type DxfEntity =
   | { type: 'LINE'; x0: number; y0: number; x1: number; y1: number }
   | { type: 'ARC'; cx: number; cy: number; r: number; startAngleDeg: number; endAngleDeg: number };
 
 export type DxfText = { text: string; x: number; y: number; height: number; rotationDeg?: number };
-
-const TWO_PI = Math.PI * 2;
-const toDeg = (rad: number) => (rad * 180) / Math.PI;
-const normalizeRad = (rad: number) => ((rad % TWO_PI) + TWO_PI) % TWO_PI;
 
 function quadraticBezierPoint(
   p0: { x: number; y: number }, p1: { x: number; y: number }, p2: { x: number; y: number }, t: number
@@ -92,8 +89,8 @@ export function pathToDxfEntities(d: string): DxfEntity[] {
           entities.push({
             type: 'ARC',
             cx, cy, r,
-            startAngleDeg: toDeg(normalizeRad(startAngle)),
-            endAngleDeg: toDeg(normalizeRad(endAngle)),
+            startAngleDeg: normalizeRadians(startAngle) / TURN.degree,
+            endAngleDeg: normalizeRadians(endAngle) / TURN.degree,
           });
           current = next;
         }

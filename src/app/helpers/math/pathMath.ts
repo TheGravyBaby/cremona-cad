@@ -1,7 +1,7 @@
 import { Pt, Circle, Rectangle, Arc } from "../../models/types";
 import * as polygonClipping from 'polygon-clipping';
 import { svgPathProperties } from 'svg-path-properties';
-import { dist, angleFromCenter, normalizeRadians, pointOnCircle, intersectLines, lineCircleIntersection, lineFromTwoPoints, flipArcAboutY, flipPointAboutY, cubicBezierPoint, signedPolygonArea } from './simpleGeometry';
+import { dist, angleFromCenter, normalizeRadians, TURN, pointOnCircle, intersectLines, lineCircleIntersection, lineFromTwoPoints, flipArcAboutY, flipPointAboutY, cubicBezierPoint, signedPolygonArea } from './simpleGeometry';
 import { circleCircleIntersections } from './draftMath';
 import { solveCatenaryA, makeMonotoneSpline, battenBeziers } from './vibeMath';
 
@@ -56,9 +56,7 @@ export function pathFromLine(Pt1: Pt, Pt2: Pt): string {
 // Returns 1 for CCW arcs, -1 for CW arcs — matches the sweep logic in pathFromArc.
 // The tangent at arc.end in the arc's traversal direction is (-s*sin(θ), s*cos(θ)).
 function arcSweepSign(arc: Arc): 1 | -1 {
-  const TWO_PI = Math.PI * 2;
-  const diff = ((arc.end - arc.start) % TWO_PI + TWO_PI) % TWO_PI;
-  return diff <= Math.PI ? 1 : -1;
+  return normalizeRadians(arc.end - arc.start) <= TURN.half ? 1 : -1;
 }
 
 export function pathFromCornerBezier(arc1: Arc, arc2: Arc): string {
@@ -114,10 +112,8 @@ export function pathFromArc(arc: Arc): string {
   const startPt = pointOnCircle(arc, arc.start);
   const endPt = pointOnCircle(arc, arc.end);
 
-  const TWO_PI = Math.PI * 2;
-  const normalizedPositiveDiff = ((arc.end - arc.start) % TWO_PI + TWO_PI) % TWO_PI;
   const largeArcFlag = 0; // always use the shorter (minor) arc
-  const sweepFlag = normalizedPositiveDiff <= Math.PI ? 1 : 0;
+  const sweepFlag = normalizeRadians(arc.end - arc.start) <= TURN.half ? 1 : 0;
 
   return `M ${startPt.x} ${startPt.y} A ${arc.r} ${arc.r} 0 ${largeArcFlag} ${sweepFlag} ${endPt.x} ${endPt.y}`;
 }
@@ -131,7 +127,7 @@ export function pathFromArc(arc: Arc): string {
  */
 export function arcPathData(center: Pt, radius: number, startAngle: number, endAngle: number): string {
   const span = normalizeRadians(endAngle - startAngle);
-  const largeArcFlag = span > Math.PI ? 1 : 0;
+  const largeArcFlag = span > TURN.half ? 1 : 0;
   const sweepFlag = 1;
   const start = pointOnCircle({ ...center, r: radius }, startAngle);
   const end = pointOnCircle({ ...center, r: radius }, endAngle);
@@ -139,7 +135,6 @@ export function arcPathData(center: Pt, radius: number, startAngle: number, endA
 }
 
 export function arcPathFrom3Points(c: Pt, start: Pt, end: Pt, pickHigherArc?: boolean): string {
-  const TWO_PI = Math.PI * 2;
   const r = Math.hypot(start.x - c.x, start.y - c.y);
   if (!Number.isFinite(r) || r === 0) return `M ${start.x} ${start.y}`;
 
@@ -153,27 +148,25 @@ export function arcPathFrom3Points(c: Pt, start: Pt, end: Pt, pickHigherArc?: bo
   const a0 = angleFromCenter(c, start);
   const a1 = angleFromCenter(c, endOnCircle);
 
-  // Normalize delta to [0, 2π)
-  let delta = a1 - a0;
-  delta = ((delta % TWO_PI) + TWO_PI) % TWO_PI;
+  const delta = normalizeRadians(a1 - a0);
 
   // Optional y-extreme selector:
   //  - true  -> force arc through the highest point (min y, angle -π/2)
   //  - false -> force arc through the lowest point  (max y, angle +π/2)
   //  - undefined -> keep previous behavior and pick the shorter arc
   if (pickHigherArc === undefined) {
-    const usePositiveSweep = delta <= Math.PI;
+    const usePositiveSweep = delta <= TURN.half;
     const sweepFlag = usePositiveSweep ? 1 : 0;
     const largeArcFlag = 0; // shorter arc never requires large-arc-flag
     return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArcFlag} ${sweepFlag} ${endOnCircle.x} ${endOnCircle.y}`;
   }
 
-  const aTarget = pickHigherArc ? -Math.PI / 2 : Math.PI / 2;
-  const normalised = ((aTarget - a0) % TWO_PI + TWO_PI) % TWO_PI;
+  const aTarget = pickHigherArc ? -TURN.quarter : TURN.quarter;
+  const normalised = normalizeRadians(aTarget - a0);
   const targetInPositiveSweep = normalised <= delta;
   const sweepFlag = targetInPositiveSweep ? 1 : 0;
-  const arcSpan = targetInPositiveSweep ? delta : TWO_PI - delta;
-  const largeArcFlag = arcSpan > Math.PI ? 1 : 0;
+  const arcSpan = targetInPositiveSweep ? delta : TURN.full - delta;
+  const largeArcFlag = arcSpan > TURN.half ? 1 : 0;
 
   return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArcFlag} ${sweepFlag} ${endOnCircle.x} ${endOnCircle.y}`;
 }
@@ -546,12 +539,6 @@ function parsePathToSegments(path: string): PathSeg[] {
   return segments;
 }
 
-const BOOLEAN_OP_TWO_PI = Math.PI * 2;
-
-function ccwSpan(from: number, to: number): number {
-  return ((to - from) % BOOLEAN_OP_TWO_PI + BOOLEAN_OP_TWO_PI) % BOOLEAN_OP_TWO_PI;
-}
-
 type TaggedPt = { x: number; y: number; segIndex: number };
 
 function sampleSegments(segments: PathSeg[], distancePerSample: number): TaggedPt[] {
@@ -567,7 +554,7 @@ function sampleSegments(segments: PathSeg[], distancePerSample: number): TaggedP
     } else {
       startAngle = angleFromCenter(seg.center, seg.p0);
       const endAngle = angleFromCenter(seg.center, seg.p1);
-      span = seg.ccw ? ccwSpan(startAngle, endAngle) : ccwSpan(endAngle, startAngle);
+      span = seg.ccw ? normalizeRadians(endAngle - startAngle) : normalizeRadians(startAngle - endAngle);
       length = seg.r * span;
     }
 
@@ -732,10 +719,10 @@ function ringToPrimitivePath(ring: [number, number][], segments: PathSeg[], look
     // clip crossing (approximate, then snapped exact), which can land just past points[1] —
     // the first step then reads backwards, flipping the sweep and drawing the major arc
     const ccw = run.points.length > 2
-      ? ccwSpan(a0, angleOf(run.points[Math.floor(run.points.length / 2)])) <= ccwSpan(a0, aEnd)
-      : ccwSpan(a0, aEnd) <= Math.PI;
-    const span = ccw ? ccwSpan(a0, aEnd) : ccwSpan(aEnd, a0);
-    const largeArcFlag = span > Math.PI ? 1 : 0;
+      ? normalizeRadians(angleOf(run.points[Math.floor(run.points.length / 2)]) - a0) <= normalizeRadians(aEnd - a0)
+      : normalizeRadians(aEnd - a0) <= TURN.half;
+    const span = ccw ? normalizeRadians(aEnd - a0) : normalizeRadians(a0 - aEnd);
+    const largeArcFlag = span > TURN.half ? 1 : 0;
     const sweepFlag = ccw ? 1 : 0;
 
     pen = last;
@@ -886,7 +873,7 @@ export function parseSvgTransform(transform: string | null | undefined): Matrix2
         m = [v[0] ?? 1, 0, 0, v[1] ?? v[0] ?? 1, 0, 0];
         break;
       case 'rotate': {
-        const a = ((v[0] ?? 0) * Math.PI) / 180;
+        const a = (v[0] ?? 0) * TURN.degree;
         const cos = Math.cos(a), sin = Math.sin(a);
         const cx = v[1] ?? 0, cy = v[2] ?? 0;
         m = [cos, sin, -sin, cos, cx - cos * cx + sin * cy, cy - sin * cx - cos * cy];
@@ -1043,7 +1030,7 @@ function pathPieces(d: string): { pieces: PathPiece[]; closed: boolean }[] | nul
           const r = Math.max(Math.abs(rx), dist(cur, b) / 2);
           const c = arcCenterFromEndpoints(cur, b, r, large, sweep);
           const t0 = Math.atan2(cur.y - c.y, cur.x - c.x), t1 = Math.atan2(b.y - c.y, b.x - c.x);
-          const dt = sweep ? normalizeRadians(t1 - t0) || 2 * Math.PI : -(normalizeRadians(t0 - t1) || 2 * Math.PI);
+          const dt = sweep ? normalizeRadians(t1 - t0) || TURN.full : -(normalizeRadians(t0 - t1) || TURN.full);
           add({ kind: 'arc', c, r, t0, dt }, b);
         }
         break;
@@ -1063,7 +1050,7 @@ function pathPieces(d: string): { pieces: PathPiece[]; closed: boolean }[] | nul
 function pieceToPath(p: PathPiece): string {
   const b = pieceAt(p, 1);
   if (p.kind === 'line') return `L ${b.x} ${b.y}`;
-  if (p.kind === 'arc') return `A ${p.r} ${p.r} 0 ${Math.abs(p.dt) > Math.PI ? 1 : 0} ${p.dt > 0 ? 1 : 0} ${b.x} ${b.y}`;
+  if (p.kind === 'arc') return `A ${p.r} ${p.r} 0 ${Math.abs(p.dt) > TURN.half ? 1 : 0} ${p.dt > 0 ? 1 : 0} ${b.x} ${b.y}`;
   return `C ${p.c1.x} ${p.c1.y} ${p.c2.x} ${p.c2.y} ${b.x} ${b.y}`;
 }
 
@@ -1104,7 +1091,7 @@ function offsetPiece(p: PathPiece, left: number): PathPiece[] | null {
     prev = next;
   }
   if (1 - left * cubicCurvature(p, 0) <= 1e-9) return null;
-  const count = Math.min(32, Math.max(2, Math.ceil(turning / (Math.PI / 16))));
+  const count = Math.min(32, Math.max(2, Math.ceil(turning / (TURN.half / 16))));
   const at = (t: number) => {
     const pt = pieceAt(p, t), n = leftOf(pieceTangent(p, t));
     const v = pieceVelocity(p, t), k = 1 - left * cubicCurvature(p, t);
@@ -1452,7 +1439,7 @@ export function cycloidBetween(start: Pt, end: Pt, depth: number, factor: number
   if (L < 1e-9 || Math.abs(depth) < 1e-9) return `M ${start.x} ${start.y} L ${end.x} ${end.y}`;
   const t = { x: (end.x - start.x) / L, y: (end.y - start.y) / L };
   const n = { x: -t.y, y: t.x };
-  const t0 = (1 - pct) * Math.PI, t1 = 2 * Math.PI - t0;
+  const t0 = (1 - pct) * TURN.half, t1 = TURN.full - t0;
   const xSpan = (t1 - factor * Math.sin(t1)) - (t0 - factor * Math.sin(t0));
   const zSpan = Math.cos(t0) + 1;
   const at = (frac: number): Pt => {
@@ -1483,8 +1470,8 @@ export function cycloidBetween(start: Pt, end: Pt, depth: number, factor: number
  * which is what a sampler wants and a uniform-in-x walk would miss.
  */
 export function trochoidNorm(frac: number, d: number, pct: number): { x: number; z: number } {
-  const t0 = (1 - pct) * Math.PI;
-  const t1 = 2 * Math.PI - t0;
+  const t0 = (1 - pct) * TURN.half;
+  const t1 = TURN.full - t0;
   const t = t0 + frac * (t1 - t0);
   const xRaw = (tt: number) => tt - d * Math.sin(tt);
   const x0 = xRaw(t0);
@@ -1572,8 +1559,8 @@ export function catenaryZAt(hEff: number, span: number, s: number): number {
  */
 export function cycloidZAt(hEff: number, span: number, d: number, s: number, pct = 1): number {
   if (hEff <= 0 || span <= 0 || s <= 0 || s >= span) return 0;
-  const t0 = (1 - pct) * Math.PI;
-  const t1 = 2 * Math.PI - t0;
+  const t0 = (1 - pct) * TURN.half;
+  const t1 = TURN.full - t0;
   const xRaw = (tt: number) => tt - d * Math.sin(tt);
   const x0 = xRaw(t0);
   // Target on the raw x-parametrisation, mapped from the fractional station.
