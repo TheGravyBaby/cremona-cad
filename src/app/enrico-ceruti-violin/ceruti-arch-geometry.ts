@@ -8,8 +8,7 @@ import {
   archSplineKnots, catenaryZAt, cycloidZAt, samplePathToPolyline, splineZAt,
 } from '../helpers/math/pathMath';
 import {
-  ArchCurve, EnricoCerutiParams, CrossArchCatenaryShape, CrossArchCycloidParams, CrossArchCycloidShape,
-  CrossArchParams, CrossArchShape, CrossArchSplineParams, CrossArchStation, FlutingParams,
+  ArchCurve, EnricoCerutiParams, CrossArchShape, CrossArchCycloid, CrossArchSpline, FlutingParams,
 } from './ceruti-types';
 import { defineFlutingPath, defineInsetPath } from './ceruti-paths';
 import { archFromLoweredTakeoff, normalizeCrossArchStations } from './ceruti-arching';
@@ -153,7 +152,7 @@ const CORNER_EASE_BAND = 0.25;
  * rather than a control-point template inviting them to move knots around a
  * curve nobody measured.
  */
-export function defaultCrossArchParams(): CrossArchCycloidParams {
+export function defaultCrossArchParams(): CrossArchCycloid {
   return defaultCrossArchCycloidParams();
 }
 
@@ -171,7 +170,7 @@ export function defaultCrossArchParams(): CrossArchCycloidParams {
  * height is already pinned, so a knot earns its place by saying where the arch
  * turns over into the run-out.
  */
-export function defaultCrossArchSplineParams(): CrossArchSplineParams {
+export function defaultCrossArchSplineParams(): CrossArchSpline {
   return { type: 'spline', points: [{ x: 0.66, z: 0.5, mirror: true }] };
 }
 
@@ -181,12 +180,12 @@ export function defaultCrossArchSplineParams(): CrossArchSplineParams {
  * or the curve type is switched, rather than one the maker has to dial out of a
  * degenerate shape.
  */
-export function defaultCrossArchCycloidParams(): CrossArchCycloidParams {
+export function defaultCrossArchCycloidParams(): CrossArchCycloid {
   return { type: 'cycloid', d: 0.4, pct: 0.9 };
 }
 
-/** The catenary crown — see {@link CrossArchCatenaryShape}, nothing to seed beyond the tag. */
-export function defaultCrossArchCatenaryShape(): CrossArchCatenaryShape {
+/** The catenary crown — see {@link CrossArchShape}, nothing to seed beyond the tag. */
+export function defaultCrossArchCatenaryShape(): CrossArchShape {
   return { type: 'catenary' };
 }
 
@@ -646,7 +645,7 @@ export function crossArchKnots(shape: CrossArchShape, side: 1 | -1): CrossArchKn
  * Positions are walked evenly and stop short of the takeoff — see
  * {@link CYCLOID_CROWN_KNOTS}.
  */
-function cycloidCrownKnots(shape: CrossArchCycloidShape): CrossArchKnot[] {
+function cycloidCrownKnots(shape: CrossArchCycloid): CrossArchKnot[] {
   const d = clamp(shape.d, 0, 1);
   const pct = clamp(shape.pct, 0.05, CYCLOID_MAX_PCT);
   const n = CYCLOID_CROWN_KNOTS;
@@ -674,13 +673,13 @@ function cycloidCrownKnots(shape: CrossArchCycloidShape): CrossArchKnot[] {
  * rather than writing back to it.
  */
 export function nearestCrossArchShape(
-  cross: CrossArchParams, y: number, bodyHeight: number,
+  cross: CrossArchShape, y: number, bodyHeight: number,
 ): CrossArchShape {
   // A catenary has no stations to be nearer to — it is the same shape everywhere.
   if (cross.type === 'catenary') return cross;
   // Widened explicitly: `stations` is a union of two arrays, and inference
   // would otherwise pin the type parameter to whichever arm comes first.
-  const stations = normalizeCrossArchStations<CrossArchStation>(cross.stations, bodyHeight);
+  const stations = normalizeCrossArchStations<CrossArchShape>(cross.stations, bodyHeight);
   let best: CrossArchShape = cross;
   let bestDist = Math.min(y, bodyHeight - y);
   for (const s of stations) {
@@ -761,13 +760,13 @@ export type CrossArchResolver = (y: number) => CrossArchRow;
  * ramping it with them would be circular.
  */
 export function makeCrossArchResolver(
-  cross: CrossArchParams, bodyHeight: number,
+  cross: CrossArchShape, bodyHeight: number,
 ): CrossArchResolver {
   // A catenary has nothing to ramp — every station gets the same computed shape.
   if (cross.type === 'catenary') return () => ({ left: [], right: [], catenary: true });
   // Widened explicitly: `stations` is a union of two arrays, and inference
   // would otherwise pin the type parameter to whichever arm comes first.
-  const stations = normalizeCrossArchStations<CrossArchStation>(cross.stations, bodyHeight);
+  const stations = normalizeCrossArchStations<CrossArchShape>(cross.stations, bodyHeight);
   const shapes = [cross as CrossArchShape, ...stations];
 
   const sideTracks = (side: 1 | -1) => {
@@ -1370,7 +1369,7 @@ export interface PlateGeometry {
 }
 
 export function buildPlateGeometry(
-  p: EnricoCerutiParams, arch: ArchCurve, g: FlutingParams, cross: CrossArchParams,
+  p: EnricoCerutiParams, arch: ArchCurve, g: FlutingParams, cross: CrossArchShape,
 ): PlateGeometry | null {
   const paths = channelPaths(p, g);
   if (!paths) return null;

@@ -4,17 +4,17 @@ import {
   moveInVectorSpace, pointAtDistanceToward, pointOnCircle, TURN, vectorFromSlope,
 } from '../helpers/math/simpleGeometry';
 import { pathFromArc, pathFromLine, unifyConnectedSvgPaths } from '../helpers/math/pathMath';
-import { EnricoCerutiParams, FlutingParams, NeckParams } from './ceruti-types';
+import { EnricoCerutiParams, FlutingParams, NeckParams, StringSetup } from './ceruti-types';
 import { placeOnTopPlate, solveRibTaper, topPlatePlacement } from './ceruti-arching';
 import { channelCenterlineZAt, LongArchSolve } from './ceruti-arch-geometry';
 
 // The neck set in the side elevation, in the frame the body section is drawn in: x is height off
 // the back plate's inner face, y runs up the body, the neck end at y = height. Everything hangs off
 // the top plate's edge at the neck end, so the rib taper carries through. `calculateNeck` writes
-// onto `p.neck` only what fixes the neck's shape and what the panel reads out: the four corners of
-// the neck wood, the heel arc, the bridge and the string length. The dressing the panel also draws
-// (button, nut block, fingerboard, bridge wedge, guides) is read off those by the functions below,
-// which the render and the path builder share.
+// onto `p.neck` the four corners of the neck wood and the heel arc, and onto `p.stringSetup` the
+// bridge and the string's point at the nut. The dressing the panel also draws (button, nut block,
+// fingerboard, bridge wedge, guides) and the string length are read off those by the functions
+// below, which the render and the path builder share.
 
 const REFERENCE_BODY_HEIGHT = 355;
 // the bridge's blank, drawn as a wedge: how much narrower the feet are than the body stop line, and
@@ -28,18 +28,26 @@ export function defaultNeckParams(p: EnricoCerutiParams): NeckParams {
   const k = p.height / REFERENCE_BODY_HEIGHT;
   const mm = (v: number) => Math.round(v * k * 2) / 2;
   return {
-    bodyStop: mm(195),
-    bridgeHeight: mm(33),
     mortiseDepth: mm(6.5),
     overstand: mm(6.5),
     angle: 7.5 * TURN.degree,
     length: mm(120),
     thickness: mm(13),
-    heelRadius: mm(20),
+    heel: new Arc(0, 0, mm(20), 0, 0),
+
+    root: null, neckTop: null, backRoot: null, backNut: null,
+  };
+}
+
+export function defaultStringSetup(p: EnricoCerutiParams): StringSetup {
+  const k = p.height / REFERENCE_BODY_HEIGHT;
+  const mm = (v: number) => Math.round(v * k * 2) / 2;
+  return {
+    bodyStop: mm(195),
+    bridgeHeight: mm(33),
     nutThickness: mm(6),
 
-    root: null, nut: null, backRoot: null, backNut: null, heel: null,
-    bridgeFoot: null, bridgeTop: null, stringLength: null,
+    bridgeFoot: null, bridgeTop: null, nutTop: null,
   };
 }
 
@@ -57,9 +65,10 @@ export function standardNutLength(bodyHeight: number): number {
   return 6 * bodyHeight / REFERENCE_BODY_HEIGHT;
 }
 
-// `p.arching`, `p.neck` and `p.button` must already be in place — the panel seeds them
+// `p.arching`, `p.neck`, `p.stringSetup` and `p.button` must already be in place — the panel seeds them
 export function calculateNeck(p: EnricoCerutiParams, topArch: LongArchSolve | null, topGouge: FlutingParams): void {
   const nk = p.neck!;
+  const ss = p.stringSetup!;
   const taper = solveRibTaper(p);
   const placement = topPlatePlacement(p, taper);
   const outerZ = taper.zLower + p.arching!.top.thickness;
@@ -73,10 +82,10 @@ export function calculateNeck(p: EnricoCerutiParams, topArch: LongArchSolve | nu
   const rootPlaneY = p.height - p.overhang;
   const neckAtRootPlane = intersectLines(fingerboardPlane, lineFromTwoPoints(new Pt(0, rootPlaneY), new Pt(1, rootPlaneY)))!;
 
-  const bridgeY = p.height - nk.bodyStop;
+  const bridgeY = p.height - ss.bodyStop;
   const archZAtBridge = channelCenterlineZAt(p, topGouge, topArch, bridgeY);
   const bridgeFoot = placeOnTopPlate(placement, new Pt(outerZ + archZAtBridge, bridgeY));
-  const bridgeTop = placeOnTopPlate(placement, new Pt(outerZ + archZAtBridge + nk.bridgeHeight, bridgeY));
+  const bridgeTop = placeOnTopPlate(placement, new Pt(outerZ + archZAtBridge + ss.bridgeHeight, bridgeY));
 
   // `length` is the neck as felt in hand: the back's own top corner at the nut down to a level
   // line at the button's height — not root to nut, and not a straight-line reach to the heel's
@@ -89,41 +98,52 @@ export function calculateNeck(p: EnricoCerutiParams, topArch: LongArchSolve | nu
   const buttonPlane = lineFromTwoPoints(new Pt(0, tip.y), new Pt(1, tip.y));
   const heelBottom = intersectLines(backLine, buttonPlane)!;
   const backNut = moveInVectorSpace(heelBottom, [{ ...direction, mag: nk.length }]);
-  const nut = moveInVectorSpace(backNut, [{ ...normal, mag: nk.thickness }]);
-
-  // the string runs flush with the fingerboard's own surface at the nut, no separate nut height
-  const nutTop = moveInVectorSpace(nut, [{ ...normal, mag: nk.nutThickness }]);
+  const neckTop = moveInVectorSpace(backNut, [{ ...normal, mag: nk.thickness }]);
 
   nk.root = root;
-  nk.nut = nut;
+  nk.neckTop = neckTop;
   nk.backRoot = backRoot;
   nk.backNut = backNut;
-  nk.heel = calculateHeel(backRoot, backNut, tip, nk.heelRadius);
-  nk.bridgeFoot = bridgeFoot;
-  nk.bridgeTop = bridgeTop;
-  nk.stringLength = dist(nutTop, bridgeTop);
+  nk.heel = calculateHeel(backRoot, backNut, tip, nk.heel.r) ?? nk.heel;
+  ss.bridgeFoot = bridgeFoot;
+  ss.bridgeTop = bridgeTop;
+  // the string runs flush with the fingerboard's top at the nut, no separate nut height
+  ss.nutTop = moveInVectorSpace(neckTop, [{ ...normal, mag: ss.nutThickness }]);
+}
+
+// how far behind the neck's back line the button tip sits: the heel only stands when it's positive
+function tipDepthBehindBack(backRoot: Pt, backNut: Pt, tip: Pt): number {
+  const backRunLength = dist(backRoot, backNut);
+  if (backRunLength < 1e-9) return NaN;
+  return ((tip.y - backRoot.y) * (backNut.x - backRoot.x) - (tip.x - backRoot.x) * (backNut.y - backRoot.y)) / backRunLength;
+}
+
+// whether the heel's entered radius stood on the last pass; when it didn't, the neck's back runs
+// straight down to the root
+export function heelStands(p: EnricoCerutiParams): boolean {
+  const nk = p.neck!;
+  return nk.heel.r > 0 && tipDepthBehindBack(nk.backRoot!, nk.backNut!, buttonTip(p)) > 0;
 }
 
 function calculateHeel(backRoot: Pt, backNut: Pt, tip: Pt, radius: number): Arc | null {
-  const backRunLength = dist(backRoot, backNut);
-  if (!(radius > 0) || backRunLength < 1e-9) return null;
+  const tipDepth = tipDepthBehindBack(backRoot, backNut, tip);
+  if (!(radius > 0) || !(tipDepth > 0)) return null;
 
+  const backRunLength = dist(backRoot, backNut);
   const backDirection: Vect2D = { a: (backNut.x - backRoot.x) / backRunLength, b: (backNut.y - backRoot.y) / backRunLength, mag: 1 };
   const backNormal: Vect2D = { a: backDirection.b, b: -backDirection.a, mag: 1 };
-  const tipDepthBehindBack = -((tip.x - backRoot.x) * backNormal.a + (tip.y - backRoot.y) * backNormal.b);
-  if (!(tipDepthBehindBack > 0)) return null;
 
   let center: Pt;
   let end: Pt;
 
   // the foot is cut square to the neck, not level with the body, so it leaves the tip along the
-  // back's normal and meets the back line `tipDepthBehindBack` later — a plain fillet if it fits,
-  // else the arc reaches the tip itself
-  if (radius < tipDepthBehindBack) {
-    end = moveInVectorSpace(tip, [{ ...backNormal, mag: tipDepthBehindBack - radius }]);
+  // back's normal and meets the back line `tipDepth` later — a plain fillet if it fits, else the
+  // arc reaches the tip itself
+  if (radius < tipDepth) {
+    end = moveInVectorSpace(tip, [{ ...backNormal, mag: tipDepth - radius }]);
     center = moveInVectorSpace(end, [{ ...backDirection, mag: radius }]);
   } else {
-    const alongBackToCenter = tipDepthBehindBack - radius;
+    const alongBackToCenter = tipDepth - radius;
     const acrossBackToCenter = Math.sqrt(Math.max(radius * radius - alongBackToCenter * alongBackToCenter, 0));
     center = moveInVectorSpace(tip, [{ ...backNormal, mag: alongBackToCenter }, { ...backDirection, mag: acrossBackToCenter }]);
     end = tip;
@@ -148,7 +168,7 @@ export function mortiseFloorY(p: EnricoCerutiParams): number {
 export function mortiseFingerboardIntersect(p: EnricoCerutiParams): Pt {
   const nk = p.neck!;
   const floorY = mortiseFloorY(p);
-  return intersectLines(lineFromTwoPoints(nk.root!, nk.nut!), lineFromTwoPoints(new Pt(0, floorY), new Pt(1, floorY)))!;
+  return intersectLines(lineFromTwoPoints(nk.root!, nk.neckTop!), lineFromTwoPoints(new Pt(0, floorY), new Pt(1, floorY)))!;
 }
 
 // the top plate's outer edge at the neck end, which the root stands off by the overstand
@@ -167,23 +187,29 @@ export function heelBottom(p: EnricoCerutiParams): Pt {
 // the flat foot square to the neck, from the heel's end on to the button tip, when the arc stops
 // short of it
 export function heelFace(p: EnricoCerutiParams): [Pt, Pt] | null {
+  if (!heelStands(p)) return null;
   const heel = p.neck!.heel;
-  if (!heel) return null;
   const end = pointOnCircle(heel, heel.end);
   const tip = buttonTip(p);
   return dist(end, tip) > 1e-9 ? [end, tip] : null;
 }
 
+// nut to bridge, straight-line: the string's approximate length. The real one runs a little longer
+// over the fingerboard's and bridge's curvature
+export function stringLength(p: EnricoCerutiParams): number {
+  return dist(p.stringSetup!.nutTop!, p.stringSetup!.bridgeTop!);
+}
+
 // the fingerboard's end, a standard length down the neck from the nut
 export function fingerboardEnd(p: EnricoCerutiParams): Pt {
   const nk = p.neck!;
-  return pointAtDistanceToward(nk.nut!, nk.root!, standardFingerboardLength(p.height));
+  return pointAtDistanceToward(nk.neckTop!, nk.root!, standardFingerboardLength(p.height));
 }
 
 // the bridge blank's four corners: foot-left, foot-right, top-right, top-left
 export function bridgeWedge(p: EnricoCerutiParams): [Pt, Pt, Pt, Pt] {
-  const foot = p.neck!.bridgeFoot!;
-  const top = p.neck!.bridgeTop!;
+  const foot = p.stringSetup!.bridgeFoot!;
+  const top = p.stringSetup!.bridgeTop!;
   const span = dist(foot, top);
   const across: Vect2D = { a: -(top.y - foot.y) / span, b: (top.x - foot.x) / span, mag: 1 };
   const footHalfWidth = BRIDGE_FOOT_HALF_WIDTH_RATIO * span;
@@ -206,11 +232,11 @@ export function defineNeckPath(p: EnricoCerutiParams): string {
   const segments = [
     pathFromLine(new Pt(0, mortiseFloorY(p)), glue),
     pathFromLine(glue, nk.root!),
-    pathFromLine(nk.root!, nk.nut!),
-    pathFromLine(nk.nut!, nk.backNut!),
+    pathFromLine(nk.root!, nk.neckTop!),
+    pathFromLine(nk.neckTop!, nk.backNut!),
   ];
   const heel = nk.heel;
-  if (heel) {
+  if (heelStands(p)) {
     segments.push(pathFromLine(nk.backNut!, pointOnCircle(heel, heel.start)));
     segments.push(pathFromArc(heel));
     const face = heelFace(p);

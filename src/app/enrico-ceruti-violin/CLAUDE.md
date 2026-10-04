@@ -125,11 +125,15 @@ recognizes the current format *positively* so it stays idempotent; six tests in
   The first pass at the rule above wrote every derived point back onto `p.neck` — unit vectors,
   the mortise floor, the button profile, the nut block, the bridge wedge, the fingerboard, the
   scroll placeholder box, a readout nothing showed — 24 solved fields on 9 authored, a quarter of a
-  saved recipe. `NeckParams` now carries eight: `root`, `nut`, `backRoot`, `backNut` (the neck
-  wood's corners), `heel` as a plain `Arc`, `bridgeFoot`, `bridgeTop` (the one piece that needs the
-  arching solve) and `stringLength` (the readout). Everything else the panel draws is a function in
-  `ceruti-neck.ts` reading those and the authored numbers — `buttonTip`, `mortiseFloorY`,
-  `mortiseFingerboardIntersect`, `plateEdgeAtNeck`, `heelBottom`, `heelFace`, `fingerboardEnd`, `bridgeWedge` —
+  saved recipe. As of 2026-10-04 `NeckParams` carries `root`, `neckTop`, `backRoot`, `backNut` (the
+  neck wood's corners) and `heel` as a plain `Arc` whose `r` is the entered radius; a heel that
+  can't stand keeps its stale arc and `heelStands` gates every reader. The bridge and nut live on
+  their own top-level `p.stringSetup`, which `calculateNeck` also writes: `bridgeFoot`, `bridgeTop`
+  (the one piece that needs the arching solve) and `nutTop`. The string length readout is
+  `stringLength(p)`, not stored. Everything else the panel draws is a function in `ceruti-neck.ts`
+  reading those and the authored numbers — `buttonTip`, `mortiseFloorY`,
+  `mortiseFingerboardIntersect`, `plateEdgeAtNeck`, `heelBottom`, `heelFace`, `fingerboardEnd`,
+  `bridgeWedge` —
   shared by `renderNeck` and `defineNeckPath`, the way `violNeckCap` serves both the outer trace and
   the main-bouts preview. `defineNeckPath` moved from `ceruti-paths.ts` into `ceruti-neck.ts` for
   that: `ceruti-arch-geometry` imports `ceruti-paths` and `ceruti-neck` imports `ceruti-arch-geometry`,

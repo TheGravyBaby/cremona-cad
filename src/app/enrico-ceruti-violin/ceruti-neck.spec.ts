@@ -4,8 +4,8 @@ import { archedViolin } from './ceruti-fixtures';
 import { EnricoCerutiParams, NeckParams } from './ceruti-types';
 import { defaultFlutingParams, solveLongArch } from './ceruti-arch-geometry';
 import {
-  bridgeWedge, buttonTip, calculateNeck, defaultNeckParams, defineNeckPath, fingerboardEnd, mortiseFingerboardIntersect,
-  heelBottom, heelFace, mortiseFloorY, plateEdgeAtNeck,
+  bridgeWedge, buttonTip, calculateNeck, defaultNeckParams, defaultStringSetup, defineNeckPath, fingerboardEnd, mortiseFingerboardIntersect,
+  heelBottom, heelFace, heelStands, mortiseFloorY, plateEdgeAtNeck, stringLength,
 } from './ceruti-neck';
 
 // the properties a maker would check with a ruler on the finished instrument: the neck's own
@@ -15,6 +15,7 @@ import {
 function neckedViolin(): EnricoCerutiParams {
   const p = archedViolin();
   p.neck = defaultNeckParams(p);
+  p.stringSetup = defaultStringSetup(p);
   return p;
 }
 
@@ -27,7 +28,7 @@ function solve(p: EnricoCerutiParams): NeckParams {
 const dist = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.y - b.y);
 const normalOf = (s: NeckParams) => vectorFromSlope(s.angle);
 const directionOf = (s: NeckParams) => vectorFromSlope(s.angle + Math.PI / 2);
-const nutTopOf = (s: NeckParams) => moveInVectorSpace(s.nut!, [{ ...normalOf(s), mag: s.nutThickness }]);
+const nutTopOf = (p: EnricoCerutiParams) => moveInVectorSpace(p.neck!.neckTop!, [{ ...normalOf(p.neck!), mag: p.stringSetup!.nutThickness }]);
 
 describe('the nut', () => {
   it('sits `length` mm from heelBottom, along the back, not from the root', () => {
@@ -36,7 +37,7 @@ describe('the nut', () => {
     // heelBottom to the back corner at the nut is the actual `length` run, straight along the
     // neck; the nut sits off that same line by the neck's thickness, so it's a hair over `length`
     expect(dist(heelBottom(p), s.backNut!)).toBeCloseTo(p.neck!.length, 9);
-    expect(dist(heelBottom(p), s.nut!)).toBeGreaterThan(p.neck!.length);
+    expect(dist(heelBottom(p), s.neckTop!)).toBeGreaterThan(p.neck!.length);
     // the two references genuinely differ — this would pass by accident against `root` alone
     expect(dist(s.root!, s.backNut!)).not.toBeCloseTo(p.neck!.length, 1);
   });
@@ -46,9 +47,9 @@ describe('the nut', () => {
     solve(p);
     const withHeel = heelBottom(p);
 
-    p.neck!.heelRadius = 0;
-    const withoutHeel = solve(p);
-    expect(withoutHeel.heel).toBeNull();
+    p.neck!.heel.r = 0;
+    solve(p);
+    expect(heelStands(p)).toBe(false);
     expect(heelBottom(p).x).toBeCloseTo(withHeel.x, 9);
     expect(heelBottom(p).y).toBeCloseTo(withHeel.y, 9);
     expect(heelBottom(p).y).toBeCloseTo(buttonTip(p).y, 9);
@@ -57,8 +58,9 @@ describe('the nut', () => {
   it('measures the string from the fingerboard\'s top at the nut to the bridge top', () => {
     const p = neckedViolin();
     const s = solve(p);
-    expect(s.stringLength).toBeCloseTo(dist(nutTopOf(s), s.bridgeTop!), 9);
-    expect(dist(nutTopOf(s), s.nut!)).toBeCloseTo(p.neck!.nutThickness, 9);
+    expect(dist(p.stringSetup!.nutTop!, nutTopOf(p))).toBeLessThan(1e-9);
+    expect(stringLength(p)).toBeCloseTo(dist(nutTopOf(p), p.stringSetup!.bridgeTop!), 9);
+    expect(dist(nutTopOf(p), s.neckTop!)).toBeCloseTo(p.stringSetup!.nutThickness, 9);
   });
 });
 
@@ -85,7 +87,7 @@ describe('the root', () => {
     expect(mortiseFloorY(p)).toBeCloseTo(p.height - p.overhang - p.neck!.mortiseDepth, 9);
     const glue = mortiseFingerboardIntersect(p);
     expect(glue.y).toBeCloseTo(mortiseFloorY(p), 9);
-    expect(shortestDistanceFromPtToLine(glue, lineFromTwoPoints(s.root!, s.nut!))).toBeLessThan(1e-9);
+    expect(shortestDistanceFromPtToLine(glue, lineFromTwoPoints(s.root!, s.neckTop!))).toBeLessThan(1e-9);
   });
 
   it('ends the foot at the button tip, the button height beyond the plate', () => {
@@ -105,7 +107,7 @@ describe('the heel', () => {
   }
 
   function expectTangentToBack(s: NeckParams): void {
-    const h = s.heel!;
+    const h = s.heel;
     const start = pointOnCircle(h, h.start);
     const { root, ub } = backLine(s);
     const off = (start.x - root.x) * ub.y - (start.y - root.y) * ub.x;
@@ -116,9 +118,9 @@ describe('the heel', () => {
 
   it('reaches the button tip on its own when the radius is wide', () => {
     const p = neckedViolin();
-    p.neck!.heelRadius = 40;
+    p.neck!.heel.r = 40;
     const s = solve(p);
-    const h = s.heel!;
+    const h = s.heel;
     expect(h.r).toBe(40);
     expect(heelFace(p)).toBeNull();
     const end = pointOnCircle(h, h.end);
@@ -129,9 +131,9 @@ describe('the heel', () => {
 
   it('fillets onto a flat foot square to the neck, rising off the tip at the neck angle, when the radius is tight', () => {
     const p = neckedViolin();
-    p.neck!.heelRadius = 8;
+    p.neck!.heel.r = 8;
     const s = solve(p);
-    const h = s.heel!;
+    const h = s.heel;
     expect(h.r).toBe(8);
     const [end, tip] = heelFace(p)!;
     expect(tip).toEqual(buttonTip(p));
@@ -148,9 +150,9 @@ describe('the heel', () => {
   it('never pockets: no point of the cove dips below the foot line', () => {
     for (const radius of [3, 8, 15, 20, 25, 40, 80]) {
       const p = neckedViolin();
-      p.neck!.heelRadius = radius;
+      p.neck!.heel.r = radius;
       const s = solve(p);
-      const h = s.heel!;
+      const h = s.heel;
       const tip = buttonTip(p);
       const direction = directionOf(s);
       let a1 = h.end;
@@ -171,7 +173,7 @@ describe('the neck wood', () => {
   it('is the entered thickness, uniform along the neck, whatever the fingerboard is', () => {
     const thin = neckedViolin();
     const thick = neckedViolin();
-    thick.neck!.nutThickness += 3;
+    thick.stringSetup!.nutThickness += 3;
     for (const [p, s] of [[thin, solve(thin)], [thick, solve(thick)]] as const) {
       // the back sits the entered thickness under the fingerboard plane at both ends
       const normal = normalOf(s);
@@ -188,7 +190,7 @@ describe('the neck wood', () => {
     expect(d.startsWith(`M 0 ${mortiseFloorY(p)}`)).toBe(true);
     expect(d).toContain(' A ');
     expect(d.trimEnd().endsWith(`${buttonTip(p).x} ${buttonTip(p).y}`)).toBe(true);
-    p.neck!.heelRadius = 0;
+    p.neck!.heel.r = 0;
     const s = solve(p);
     const straight = defineNeckPath(p);
     expect(straight).not.toContain(' A ');
@@ -200,12 +202,12 @@ describe('the readouts', () => {
   it('run the string clear of the fingerboard end, and stand the bridge on the arch', () => {
     const p = neckedViolin();
     const s = solve(p);
-    const fbEndTop = moveInVectorSpace(fingerboardEnd(p), [{ ...normalOf(s), mag: s.nutThickness }]);
-    const a = nutTopOf(s), b = s.bridgeTop!;
+    const fbEndTop = moveInVectorSpace(fingerboardEnd(p), [{ ...normalOf(s), mag: p.stringSetup!.nutThickness }]);
+    const a = nutTopOf(p), b = p.stringSetup!.bridgeTop!;
     const sideOf = (q: Pt) => Math.sign((b.x - a.x) * (q.y - a.y) - (b.y - a.y) * (q.x - a.x));
-    expect(sideOf(fbEndTop)).toBe(sideOf(s.nut!));
-    expect(dist(s.bridgeFoot!, s.bridgeTop!)).toBeCloseTo(p.neck!.bridgeHeight, 9);
-    expect(s.bridgeFoot!.x).toBeGreaterThan(plateEdgeAtNeck(p).x);
+    expect(sideOf(fbEndTop)).toBe(sideOf(s.neckTop!));
+    expect(dist(p.stringSetup!.bridgeFoot!, p.stringSetup!.bridgeTop!)).toBeCloseTo(p.stringSetup!.bridgeHeight, 9);
+    expect(p.stringSetup!.bridgeFoot!.x).toBeGreaterThan(plateEdgeAtNeck(p).x);
   });
 
   it('scale the defaults with the body', () => {
@@ -213,7 +215,7 @@ describe('the readouts', () => {
     p.height = 750;
     const cello = defaultNeckParams(p);
     const violin = defaultNeckParams(archedViolin());
-    expect(cello.bodyStop / violin.bodyStop).toBeCloseTo(750 / 350, 1);
+    expect(defaultStringSetup(p).bodyStop / defaultStringSetup(archedViolin()).bodyStop).toBeCloseTo(750 / 350, 1);
     expect(cello.angle).toBe(violin.angle);
   });
 
@@ -223,7 +225,7 @@ describe('the readouts', () => {
       const p = neckedViolin();
       p.height = height;
       const s = solve(p);
-      expect(dist(s.nut!, fingerboardEnd(p))).toBeCloseTo(length, 9);
+      expect(dist(s.neckTop!, fingerboardEnd(p))).toBeCloseTo(length, 9);
     }
   });
 });
@@ -237,12 +239,13 @@ describe('the drawn shapes', () => {
     const topWidth = dist(topLeft, topRight);
     expect(topWidth).toBeLessThan(footWidth);
     const footMid = new Pt((footLeft.x + footRight.x) / 2, (footLeft.y + footRight.y) / 2);
-    expect(dist(footMid, s.bridgeFoot!)).toBeLessThan(1e-9);
+    expect(dist(footMid, p.stringSetup!.bridgeFoot!)).toBeLessThan(1e-9);
   });
 
-  it('stores nothing a ruler on the drawing would not need: the neck\'s corners, its heel, the bridge and the string', () => {
-    const s = solve(neckedViolin());
-    const solved = Object.keys(s).filter(k => !['bodyStop', 'bridgeHeight', 'mortiseDepth', 'overstand', 'angle', 'length', 'thickness', 'heelRadius', 'nutThickness'].includes(k));
-    expect(solved.sort()).toEqual(['backNut', 'backRoot', 'bridgeFoot', 'bridgeTop', 'heel', 'nut', 'root', 'stringLength']);
+  it('stores nothing a ruler on the drawing would not need: the neck\'s corners, its heel and the bridge', () => {
+    const p = neckedViolin();
+    const s = solve(p);
+    expect(Object.keys(s).sort()).toEqual(['angle', 'backNut', 'backRoot', 'heel', 'length', 'mortiseDepth', 'neckTop', 'overstand', 'root', 'thickness']);
+    expect(Object.keys(p.stringSetup!).sort()).toEqual(['bodyStop', 'bridgeFoot', 'bridgeHeight', 'bridgeTop', 'nutThickness', 'nutTop']);
   });
 });

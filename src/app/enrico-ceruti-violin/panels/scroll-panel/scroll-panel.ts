@@ -5,7 +5,7 @@ import { getFieldDeg, setFieldDeg } from '../../../helpers/math/arcDegrees';
 import { renderSolveFailures } from '../../../helpers/renderFuncs';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, RenderToggleKey, ScrollParams } from '../../ceruti-types';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
-import { defaultNeckParams } from '../../ceruti-neck';
+import { defaultNeckParams, defaultStringSetup } from '../../ceruti-neck';
 import { calculateScroll, ScrollKey, scrollExtent, scrollLines } from '../../ceruti-scroll';
 import { renderScroll, renderScrollNeck, renderVolute } from '../../renders/scroll.render';
 import { HighlightedArc, HighlightedSegment } from '../../renders/render-constants';
@@ -62,6 +62,7 @@ export class ScrollPanel extends CerutiPanelBase implements OnInit {
   public buildRun(): RenderLayer[] {
     const p = this.params;
     p.neck ??= defaultNeckParams(p);
+    p.stringSetup ??= defaultStringSetup(p);
     const failures = calculateScroll(p);
 
     const v = p.scroll!;

@@ -1,7 +1,7 @@
 import {
   clampSplinePointHeights, normalizeArchCurve, normalizeArchingParams,
 } from './ceruti-arching';
-import { ArchCatenary, ArchSpline, EnricoCerutiParams } from './ceruti-types';
+import { ArchCurve, ArchSpline, EnricoCerutiParams } from './ceruti-types';
 import { splineZAt } from '../helpers/math/pathMath';
 
 /**
@@ -81,8 +81,8 @@ describe('normalizeArchCurve', () => {
   });
 
   it('ignores non-spline arches', () => {
-    const catenary: ArchCatenary = { type: 'catenary', archHeight: HEIGHT };
-    const copy: ArchCatenary = { ...catenary };
+    const catenary: ArchCurve = { type: 'catenary', archHeight: HEIGHT };
+    const copy: ArchCurve = { ...catenary };
     normalizeArchCurve(copy);
     expect(copy).toEqual(catenary);
   });

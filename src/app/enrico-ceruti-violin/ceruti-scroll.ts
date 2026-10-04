@@ -219,6 +219,9 @@ export function defaultVoluteParams(p: EnricoCerutiParams): ScrollParams {
     F1: new Arc(0, 0, mm(9), 0, 0),
     flat: 0,
     frontStraight: mm(18),
+
+    backWidths: [],
+    frontWidths: [],
   };
 
   calculateScroll({ ...p, neck: p.neck ?? defaultNeckParams(p), scroll: v });
