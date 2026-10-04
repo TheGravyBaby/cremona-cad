@@ -129,7 +129,7 @@ recognizes the current format *positively* so it stays idempotent; six tests in
   wood's corners), `heel` as a plain `Arc`, `bridgeFoot`, `bridgeTop` (the one piece that needs the
   arching solve) and `stringLength` (the readout). Everything else the panel draws is a function in
   `ceruti-neck.ts` reading those and the authored numbers — `buttonTip`, `mortiseFloorY`,
-  `gluingAtMortise`, `plateEdgeAtNeck`, `heelBottom`, `heelFace`, `fingerboardEnd`, `bridgeWedge` —
+  `mortiseFingerboardIntersect`, `plateEdgeAtNeck`, `heelBottom`, `heelFace`, `fingerboardEnd`, `bridgeWedge` —
   shared by `renderNeck` and `defineNeckPath`, the way `violNeckCap` serves both the outer trace and
   the main-bouts preview. `defineNeckPath` moved from `ceruti-paths.ts` into `ceruti-neck.ts` for
   that: `ceruti-arch-geometry` imports `ceruti-paths` and `ceruti-neck` imports `ceruti-arch-geometry`,
@@ -338,10 +338,10 @@ idempotent migration, no kink at the taper).
 
 ## Notes
 
-- `ceruti-surface.spec.ts` and `ceruti-arch-geometry.spec.ts` are most of the full suite's
-  runtime — the dense sweeps below are why. `npm run test:arching` (root CLAUDE.md) runs just
-  the 3D pipeline (`ceruti-arching*`, `ceruti-arch-geometry`, `ceruti-surface`) instead of the
-  full suite; `npm run test:outline` runs the 2D one. `npm run test:panels` covers `panels/panels.spec.ts`
+- `ceruti-surface.spec.ts` and `ceruti-arch-geometry.spec.ts` hold the suite's slowest tests —
+  the dense sweeps below are why. `npm run test:arching` (root CLAUDE.md) runs just the 3D
+  pipeline (`ceruti-arching*`, `ceruti-arch-geometry`, `ceruti-surface`) instead of the full
+  suite; `npm run test:outline` runs the 2D one. `npm run test:panels` covers `panels/panels.spec.ts`
   and `export-panel.spec.ts`, which are slow for the same reason — they render every bundled
   instrument through arching and STL export.
 - Four specs sweep densely enough to run several seconds and were flaky against vitest's 5s
