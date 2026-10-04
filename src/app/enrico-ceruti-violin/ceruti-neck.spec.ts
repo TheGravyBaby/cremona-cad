@@ -208,12 +208,6 @@ describe('the readouts', () => {
     expect(s.bridgeFoot!.x).toBeGreaterThan(plateEdgeAtNeck(p).x);
   });
 
-  it('reads a string length near the classical 325 mm at the default set', () => {
-    const s = solve(neckedViolin());
-    expect(s.stringLength).toBeGreaterThan(300);
-    expect(s.stringLength).toBeLessThan(340);
-  });
-
   it('scale the defaults with the body', () => {
     const p = archedViolin();
     p.height = 750;

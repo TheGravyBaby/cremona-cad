@@ -8,26 +8,26 @@ fluting, arching and the mould; designs export as SVG/PDF/DXF for templates and 
 
 ```bash
 ng serve        # dev server, localhost:4200
-ng test         # vitest, ~40s wall, 539 tests — full suite, run before considering work done
+ng test         # vitest, ~30s wall, ~1260 tests — full suite, run before considering work done
 ng build
 ```
 
 ### Scoped test runs
 
-The full suite is slow enough (most of it spent in the arching/STL math) that it's worth running
-only the area you touched while iterating, then the full `ng test` once before finishing. Each
-scoped script is `ng test --watch=false` with an `--include`/`--exclude` glob; see them in
-`package.json` if you need a variant. Timings are wall-clock, single run:
+It's worth running only the area you touched while iterating, then the full `ng test` once
+before finishing. Each scoped script is `ng test --watch=false` with an `--include`/`--exclude`
+glob; see them in `package.json` if you need a variant. Timings are wall-clock, single run, and
+about 6s of each is the build before any test starts:
 
 | Script | Covers | Time |
 |---|---|---|
-| `npm run test:outline` | `ceruti-calcs*`, `ceruti-paths`, `ceruti-serialization`, `ceruti-templates`, `ceruti-neck`, `ceruti-scroll` — the 2D outline pipeline, plus the neck set and the scroll | ~6s |
-| `npm run test:arching` | `ceruti-arching*`, `ceruti-arch-geometry`, `ceruti-surface` — the 3D arching pipeline, the specialist math | ~35-45s |
-| `npm run test:panels` | `enrico-ceruti-violin/panels/**` — panel wiring + SVG/DXF/STL export | ~15s |
-| `npm run test:draft-canvas` | `draft-canvas/**` — canvas, camera, snapping, tools | ~3s |
-| `npm run test:helpers` | `helpers/**` — instrument-agnostic math, renderers, exporters | ~4s |
-| `npm run test:shell` | `app.spec.ts`, `shared/**`, `top-bar/**`, `recipe-base/**` | ~4s |
-| `npm run test:fast` | everything except `test:arching` and `test:panels` | ~6s |
+| `npm run test:outline` | `ceruti-calcs*`, `ceruti-paths`, `ceruti-serialization`, `ceruti-templates`, `ceruti-neck`, `ceruti-scroll` — the 2D outline pipeline, plus the neck set and the scroll | ~10s |
+| `npm run test:arching` | `ceruti-arching*`, `ceruti-arch-geometry`, `ceruti-surface` — the 3D arching pipeline, the specialist math | ~13s |
+| `npm run test:panels` | `enrico-ceruti-violin/panels/**` — panel wiring + SVG/DXF/STL export | ~13s |
+| `npm run test:draft-canvas` | `draft-canvas/**` — canvas, camera, snapping, tools | ~10s |
+| `npm run test:helpers` | `helpers/**` — instrument-agnostic math, renderers, exporters | ~8s |
+| `npm run test:shell` | `app.spec.ts`, `shared/**`, `top-bar/**`, `hello-world-recipe/**`, `recipe-base/**` | ~11s |
+| `npm run test:fast` | everything except `test:arching` and `test:panels` | ~13s |
 
 These mirror the Layout table below plus the 2D/3D pipeline split documented in
 `enrico-ceruti-violin/CLAUDE.md`. If you add a spec file, check it lands in the group you'd
