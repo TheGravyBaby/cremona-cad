@@ -1,5 +1,5 @@
 import { Pt } from "../models/types";
-import { clamp } from "../helpers/math/simpleGeometry";
+import { clamp, TURN } from "../helpers/math/simpleGeometry";
 import { catenaryZAt, cycloidZAt, splineZAt } from "../helpers/math/pathMath";
 import {
   ArchCurve, ArchingParams, ArchPlate, CrossArchParams, CrossArchPoint, EnricoCerutiParams, FlutingParams,
@@ -348,7 +348,7 @@ export function topPlatePlacement(p: EnricoCerutiParams, taper: RibTaper = solve
   return {
     dx: (rib.zLow + rib.zHigh) / 2 - pivotX,
     dy: (rib.yLow + rib.yHigh) / 2 - pivotY,
-    angleDeg: Math.atan2(rib.zLow - rib.zHigh, run) * 180 / Math.PI,
+    angleDeg: Math.atan2(rib.zLow - rib.zHigh, run) / TURN.degree,
     pivotX,
     pivotY,
   };
@@ -356,7 +356,7 @@ export function topPlatePlacement(p: EnricoCerutiParams, taper: RibTaper = solve
 
 /** A point in the top plate's carved frame, where it lands in the section view. */
 export function placeOnTopPlate(pl: TopPlatePlacement, pt: Pt): Pt {
-  const a = pl.angleDeg * Math.PI / 180;
+  const a = pl.angleDeg * TURN.degree;
   const px = pt.x - pl.pivotX;
   const py = pt.y - pl.pivotY;
   return new Pt(

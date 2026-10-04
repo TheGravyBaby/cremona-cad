@@ -1,5 +1,5 @@
 import { circleCircleIntersections, findJoiningArcs } from "../helpers/math/draftMath";
-import { angleFromCenter, dist, pointOnCircle, offsetArcRadius, flipArcAboutY, flipPointAboutY, lineCircleIntersection, lineFromTwoPoints, pointInPolygon, closestPointOnSegment } from "../helpers/math/simpleGeometry";
+import { angleFromCenter, dist, normalizeRadians, pointOnCircle, TURN, offsetArcRadius, flipArcAboutY, flipPointAboutY, lineCircleIntersection, lineFromTwoPoints, pointInPolygon, closestPointOnSegment } from "../helpers/math/simpleGeometry";
 import { pathFromArc, pathFromLine, pathFromCornerCubic, unifyConnectedSvgPaths, combinePathStrings, samplePathToPolyline } from "../helpers/math/pathMath";
 import { Arc, arcFromCircle, Pt } from "../models/types";
 import { error } from "../shared/message-emitter";
@@ -52,7 +52,7 @@ export function violNeckCap(p: EnricoCerutiParams, d: number): { v0Start: number
         // back down the start ray to the join's centre — the point V0 was seated against
         const C = { x: V0.x + (V0.r + R) * Math.cos(V0.start), y: V0.y + (V0.r + R) * Math.sin(V0.start) };
         if (C.x <= 0) return null;
-        return { v0Start: V0.start, fillet: new Arc(C.x, C.y, R + d, V0.start + Math.PI, Math.PI / 2), topX: C.x, topY: C.y + R + d };
+        return { v0Start: V0.start, fillet: new Arc(C.x, C.y, R + d, V0.start + TURN.half, TURN.quarter), topX: C.x, topY: C.y + R + d };
     }
 
     const topY = V0.y + (V0.r + R) * Math.sin(V0.start) + R + d;
@@ -394,7 +394,7 @@ export function defineOuterCornerArcs(p: EnricoCerutiParams, offset: number): Ar
 function angleBeforeEnd(arc: Arc, degrees: number): number {
     const delta = Math.atan2(Math.sin(arc.end - arc.start), Math.cos(arc.end - arc.start));
     const dir = Math.sign(delta) || 1;
-    return arc.end - dir * Math.min(degrees * Math.PI / 180, Math.abs(delta));
+    return arc.end - dir * Math.min(degrees * TURN.degree, Math.abs(delta));
 }
 
 
@@ -435,20 +435,20 @@ function attemptJoin(arc1: Arc, side1: "start" | "end", arc2: Arc, side2: "start
 // wraps around it ends turned out towards the corner, and a join from there scoops. past the
 // trigger its end is drawn back along C0 until the headings agree to the target, though no further
 // than the given share of the way to the waist. the trigger sits clear of every ordinary corner
-const JOIN_HEADING_TRIGGER_DEG = 15;
-const JOIN_HEADING_TARGET_DEG = 4;
+const JOIN_HEADING_TRIGGER = 15 * TURN.degree;
+const JOIN_HEADING_TARGET = 4 * TURN.degree;
 const MAX_CBOUT_EASE_TO_WAIST = 0.8;
 
 function easeCBoutEnd(cBout: Arc, side: "start" | "end", bout: Arc, boutSide: "start" | "end"): void {
     // tangents are square to their radii, so two headings differ by the angle between the radii, mod pi
-    let gap = ((side === "end" ? cBout.end : cBout.start) - (boutSide === "end" ? bout.end : bout.start)) % Math.PI;
-    if (gap > Math.PI / 2) gap -= Math.PI;
-    if (gap < -Math.PI / 2) gap += Math.PI;
-    if (Math.abs(gap) <= JOIN_HEADING_TRIGGER_DEG * Math.PI / 180) return;
+    let gap = ((side === "end" ? cBout.end : cBout.start) - (boutSide === "end" ? bout.end : bout.start)) % TURN.half;
+    if (gap > TURN.quarter) gap -= TURN.half;
+    if (gap < -TURN.quarter) gap += TURN.half;
+    if (Math.abs(gap) <= JOIN_HEADING_TRIGGER) return;
 
     const span = Math.atan2(Math.sin(cBout.end - cBout.start), Math.cos(cBout.end - cBout.start));
     const inward = side === "end" ? -Math.sign(span) : Math.sign(span);
-    const move = Math.sign(gap) * JOIN_HEADING_TARGET_DEG * Math.PI / 180 - gap;
+    const move = Math.sign(gap) * JOIN_HEADING_TARGET - gap;
     if (Math.sign(move) !== inward) return;
     const eased = Math.sign(move) * Math.min(Math.abs(move), Math.abs(span) / 2 * MAX_CBOUT_EASE_TO_WAIST);
     if (side === "end") cBout.end += eased; else cBout.start += eased;
@@ -457,7 +457,7 @@ function easeCBoutEnd(cBout: Arc, side: "start" | "end", bout: Arc, boutSide: "s
 function retreatAngle(startAngle: number, endAngle: number, side: "start" | "end", degrees: number): number {
     const delta = Math.atan2(Math.sin(endAngle - startAngle), Math.cos(endAngle - startAngle));
     const dir = Math.sign(delta) || 1;
-    return side === "end" ? endAngle - dir * degrees * Math.PI / 180 : startAngle + dir * degrees * Math.PI / 180;
+    return side === "end" ? endAngle - dir * degrees * TURN.degree : startAngle + dir * degrees * TURN.degree;
 }
 
 // some arcs cannot be joined given their ends, this system will recursively "peel back" until a suitable 
@@ -619,14 +619,14 @@ function buttonShape(
             paths: [
                 pathFromLine(foot, shoulder),
                 pathFromLine(flipPointAboutY(foot), flipPointAboutY(shoulder)),
-                pathFromArc(arcFromCircle(cap, 0, Math.PI)),
+                pathFromArc(arcFromCircle(cap, 0, TURN.half)),
             ],
         };
     }
     const hit = capHit();
     if (!hit) return null;
     const from = angleFromCenter(cap, hit);
-    return { leaves: hit, paths: [pathFromArc(arcFromCircle(cap, from, Math.PI - from))] };
+    return { leaves: hit, paths: [pathFromArc(arcFromCircle(cap, from, TURN.half - from))] };
 }
 
 // offset should be positive to go outside of the inner path,
@@ -987,10 +987,8 @@ function pathFromArcLongWay(arc: Arc): string {
     const startPt = pointOnCircle(arc, arc.start);
     const endPt = pointOnCircle(arc, arc.end);
 
-    const TWO_PI = Math.PI * 2;
-    const normalizedPositiveDiff = ((arc.end - arc.start) % TWO_PI + TWO_PI) % TWO_PI;
     const largeArcFlag = 1;
-    const sweepFlag = normalizedPositiveDiff <= Math.PI ? 0 : 1;
+    const sweepFlag = normalizeRadians(arc.end - arc.start) <= TURN.half ? 0 : 1;
 
     return `M ${startPt.x} ${startPt.y} A ${arc.r} ${arc.r} 0 ${largeArcFlag} ${sweepFlag} ${endPt.x} ${endPt.y}`;
 }

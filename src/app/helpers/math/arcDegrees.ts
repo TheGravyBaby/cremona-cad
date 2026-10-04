@@ -1,4 +1,5 @@
 import { Arc, setArcStartByDegreeDiff, setArcEndByDegreeDiff } from '../../models/types';
+import { TURN } from './simpleGeometry';
 
 export function adjustArcStart(arc: Arc, degrees: number, changeFn: () => void): void {
   if (typeof degrees !== 'number') return;
@@ -13,22 +14,22 @@ export function adjustArcEnd(arc: Arc, degrees: number, changeFn: () => void): v
 }
 
 export function getArcStartDeg(arc: Arc): number {
-  return Math.round(arc.start * (180 / Math.PI));
+  return Math.round(arc.start / TURN.degree);
 }
 
 export function setArcStartDeg(arc: Arc, degrees: number, changeFn: () => void): void {
   if (typeof degrees !== 'number') return;
-  arc.start = degrees * (Math.PI / 180);
+  arc.start = degrees * TURN.degree;
   changeFn();
 }
 
 export function getArcEndDeg(arc: Arc): number {
-  return Math.round(arc.end * (180 / Math.PI));
+  return Math.round(arc.end / TURN.degree);
 }
 
 export function setArcEndDeg(arc: Arc, degrees: number, changeFn: () => void): void {
   if (typeof degrees !== 'number') return;
-  arc.end = degrees * (Math.PI / 180);
+  arc.end = degrees * TURN.degree;
   changeFn();
 }
 
@@ -36,11 +37,11 @@ export function setArcEndDeg(arc: Arc, degrees: number, changeFn: () => void): v
 // two decimal places since these fields are typically driven by a fine step under a degree
 export function getFieldDeg<T>(obj: T, field: keyof T): number {
   const value = obj[field] as unknown as number | null;
-  return Math.round((value ?? 0) * 18000 / Math.PI) / 100;
+  return Math.round((value ?? 0) / TURN.degree * 100) / 100;
 }
 
 export function setFieldDeg<T>(obj: T, field: keyof T, degrees: number, changeFn: () => void): void {
   if (typeof degrees !== 'number') return;
-  obj[field] = (degrees * Math.PI / 180) as unknown as T[keyof T];
+  obj[field] = (degrees * TURN.degree) as unknown as T[keyof T];
   changeFn();
 }

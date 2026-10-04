@@ -1,5 +1,5 @@
 import { Pt, Circle } from "../../models/types";
-import { TWO_PI, normalizeRadians, clamp, closestPointOnSegment, cubicBezierPoint } from "./simpleGeometry";
+import { TURN, normalizeRadians, clamp, closestPointOnSegment, cubicBezierPoint } from "./simpleGeometry";
 import { arcTangentToLine, arcBetweenTravels } from "./draftMath";
 
 // ===== Arc/line closed-form inverses =====
@@ -17,7 +17,7 @@ export function sweepForTangentLineRadius(
   P: Pt, travel: number, radius: number, turnSign: 1 | -1,
   A: Pt, lineDir: Pt, targetRadius: number,
 ): number | null {
-  const start0 = travel - turnSign * Math.PI / 2;
+  const start0 = travel - turnSign * TURN.quarter;
   const exit = Math.atan2(lineDir.y, lineDir.x);
   const mx = -lineDir.y, my = lineDir.x;
 
@@ -34,15 +34,15 @@ export function sweepForTangentLineRadius(
   // fold into (-π, π]; a valid sweep shares turnSign's sign and stays short of a full reversal
   const fold = (s: number): number => {
     const n = normalizeRadians(s);
-    return n > Math.PI ? n - TWO_PI : n;
+    return n > TURN.half ? n - TURN.full : n;
   };
   const EPS = 1e-6;
-  const inRange = (s: number) => Math.sign(s) === turnSign && Math.abs(s) > EPS && Math.abs(s) < Math.PI - EPS;
+  const inRange = (s: number) => Math.sign(s) === turnSign && Math.abs(s) > EPS && Math.abs(s) < TURN.half - EPS;
 
   // the raw (signed) solve only ever hits +target on the direct branch; the reflex branch (the
   // other tangent circle, arcTangentToLine's r < 0 case) shows up at -target instead
   for (const target of [targetRadius, -targetRadius]) {
-    const a0 = h(0, target), aHalf = h(Math.PI / 2, target), aPi = h(Math.PI, target);
+    const a0 = h(0, target), aHalf = h(TURN.quarter, target), aPi = h(TURN.half, target);
     const a = (a0 + aPi) / 2, b = a0 - a, c = aHalf - a;
     const R = Math.hypot(b, c);
     if (R < 1e-9 || Math.abs(a) > R + 1e-9) continue;
@@ -75,7 +75,7 @@ export function angleForBridgeRadius(
 
   // raw numer/denom of arcBetweenTravels' radius, with the target point read off the circle
   const h = (theta: number, target: number): number => {
-    const exit = theta + turnSign * Math.PI / 2, pt = pointAt(theta);
+    const exit = theta + turnSign * TURN.quarter, pt = pointAt(theta);
     const ex = Math.sin(exit) - Math.sin(travel), ey = Math.cos(travel) - Math.cos(exit);
     const denom = ux * ey - uy * ex;
     const dx = pt.x - P.x, dy = pt.y - P.y;
@@ -83,7 +83,7 @@ export function angleForBridgeRadius(
   };
 
   for (const target of [targetRadius, -targetRadius]) {
-    const a0 = h(0, target), aHalf = h(Math.PI / 2, target), aPi = h(Math.PI, target);
+    const a0 = h(0, target), aHalf = h(TURN.quarter, target), aPi = h(TURN.half, target);
     const a = (a0 + aPi) / 2, b = a0 - a, c = aHalf - a;
     const R = Math.hypot(b, c);
     if (R < 1e-9 || Math.abs(a) > R + 1e-9) continue;
@@ -91,7 +91,7 @@ export function angleForBridgeRadius(
     const delta = Math.atan2(c, b);
     const offset = Math.acos(clamp(-a / R, -1, 1));
     for (const theta of [normalizeRadians(delta + offset), normalizeRadians(delta - offset)]) {
-      const exit = theta + turnSign * Math.PI / 2;
+      const exit = theta + turnSign * TURN.quarter;
       const bridged = arcBetweenTravels(P, travel, pointAt(theta), exit);
       if (bridged && Math.abs(bridged.arc.r - Math.abs(targetRadius)) < 1e-6) return theta;
     }

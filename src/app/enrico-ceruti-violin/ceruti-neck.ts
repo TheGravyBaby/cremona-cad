@@ -1,7 +1,7 @@
 import { Arc, arcFromCircle, Circle, Pt, Vect2D } from '../models/types';
 import {
   angleFromCenter, dist, intersectLines, lineFromTwoPoints,
-  moveInVectorSpace, pointAtDistanceToward, pointOnCircle, vectorFromSlope,
+  moveInVectorSpace, pointAtDistanceToward, pointOnCircle, TURN, vectorFromSlope,
 } from '../helpers/math/simpleGeometry';
 import { pathFromArc, pathFromLine, unifyConnectedSvgPaths } from '../helpers/math/pathMath';
 import { EnricoCerutiParams, FlutingParams, NeckParams } from './ceruti-types';
@@ -32,7 +32,7 @@ export function defaultNeckParams(p: EnricoCerutiParams): NeckParams {
     bridgeHeight: mm(33),
     mortiseDepth: mm(6.5),
     overstand: mm(6.5),
-    angle: 7.5 * Math.PI / 180,
+    angle: 7.5 * TURN.degree,
     length: mm(120),
     thickness: mm(13),
     heelRadius: mm(20),
@@ -66,7 +66,7 @@ export function calculateNeck(p: EnricoCerutiParams, topArch: LongArchSolve | nu
 
   // toward the nut, and the fingerboard's outward normal — both square to the fingerboard plane,
   // which leaves the top plate tilted by the neck angle off the plate's own square-to-the-rib line
-  const direction = vectorFromSlope(nk.angle + Math.PI / 2);
+  const direction = vectorFromSlope(nk.angle + TURN.quarter);
   const normal = vectorFromSlope(nk.angle);
   const root = placeOnTopPlate(placement, new Pt(outerZ + nk.overstand, p.height));
   const fingerboardPlane = lineFromTwoPoints(root, moveInVectorSpace(root, [{ ...direction, mag: 1 }]));
@@ -161,7 +161,7 @@ export function plateEdgeAtNeck(p: EnricoCerutiParams): Pt {
 // neck from the nut. A construction point, not one on the heel's own arc
 export function heelBottom(p: EnricoCerutiParams): Pt {
   const nk = p.neck!;
-  return moveInVectorSpace(nk.backNut!, [{ ...vectorFromSlope(nk.angle + Math.PI / 2), mag: -nk.length }]);
+  return moveInVectorSpace(nk.backNut!, [{ ...vectorFromSlope(nk.angle + TURN.quarter), mag: -nk.length }]);
 }
 
 // the flat foot square to the neck, from the heel's end on to the button tip, when the arc stops

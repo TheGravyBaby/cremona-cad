@@ -1,5 +1,5 @@
 import { Pt, Circle, Line, Rectangle, Arc } from "../models/types";
-import { pointOnCircle } from "./math/simpleGeometry";
+import { normalizeRadians, pointOnCircle, TURN } from "./math/simpleGeometry";
 import { SolveFailure } from "./validators";
 
 export const renderDistanceMeasurementLine = (P: Pt, Q: Pt, label: string, color: string) => (g: any, ui: any) => {
@@ -535,7 +535,7 @@ export const renderCircleAngleIndicator = (
 ) => (g: any, ui: any) => {
     thetaDeg = ((thetaDeg % 360) + 360) % 360; // normalize to [0,360)
 
-    const thetaRad = thetaDeg * Math.PI / 180;
+    const thetaRad = thetaDeg * TURN.degree;
     const cx = outerCircle.x;
     const cy = outerCircle.y;
     const R = outerCircle.r;
@@ -595,7 +595,7 @@ export const renderCircleAngleIndicator = (
         .attr("vector-effect", "non-scaling-stroke");
 
     // Label at the arc midpoint (half the angle)
-    const textAngle = thetaRad  - Math.PI;
+    const textAngle = thetaRad  - TURN.half;
     const labelR = arcR * 4;
     const lx = cx + labelR * Math.cos(textAngle);
     const ly = cy + labelR * Math.sin(textAngle);
@@ -633,25 +633,23 @@ export const renderRectRoundedCorners = (rect: Rectangle, r: number, color: stri
 }   
 
 export const renderArcFromArc = (arc: Arc, color: string, strokeWidth: number = 1, longArc = false) => (g: any, ui: any) => {
-    const TWO_PI = Math.PI * 2;
     const cx = arc.x;
     const cy = arc.y;
     const r = Math.abs(arc.r);
 
     if (!Number.isFinite(r) || r <= 1e-9) return;
 
-    const normalize = (a: number) => ((a % TWO_PI) + TWO_PI) % TWO_PI;
-    const start = normalize(arc.start);
-    const end = normalize(arc.end);
+    const start = normalizeRadians(arc.start);
+    const end = normalizeRadians(arc.end);
 
-    const deltaCCW = normalize(end - start);
+    const deltaCCW = normalizeRadians(end - start);
     if (deltaCCW <= 1e-9) return;
 
     // Default behavior: draw shorter arc.
     // If longArc=true, draw the complementary (longer) arc instead.
-    const useCCW = longArc ? deltaCCW > Math.PI : deltaCCW <= Math.PI;
-    const span = useCCW ? deltaCCW : TWO_PI - deltaCCW;
-    const largeArcFlag = span > Math.PI ? 1 : 0;
+    const useCCW = longArc ? deltaCCW > TURN.half : deltaCCW <= TURN.half;
+    const span = useCCW ? deltaCCW : TURN.full - deltaCCW;
+    const largeArcFlag = span > TURN.half ? 1 : 0;
     const sweepFlag = useCCW ? 1 : 0;
 
     const sx = cx + r * Math.cos(start);
