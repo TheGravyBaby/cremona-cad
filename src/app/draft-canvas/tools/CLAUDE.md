@@ -136,12 +136,11 @@ trade, and the user is told which they got.
 **Reference images are the one shape the toolbox does not own.** `ImageShape` lives in the same
 shape list — so it gets selection, move, delete, layers and undo for free — but its durable home is
 the recipe's `referenceImages` field. `exportState` leaves images out; they're re-derived from the
-recipe on load. `reference-image-schema.ts` is the only place that translates between the frozen
-file format and the canvas object model, which is what lets the canvas side change freely. Keep
-the translation there, and keep emitting the same field so files stay openable in older builds.
-The deprecated singular `referenceImage` still loads, folded into the array.
+recipe on load. `reference-image-schema.ts` is the only place that translates between the file
+format and the canvas object model, which is what lets the canvas side change freely. Keep the
+translation there.
 
-**Every field on `NamedReferenceImage` must also exist on `ImageShape`.** The canvas is the live
+**Every field on `ReferenceImage` must also exist on `ImageShape`.** The canvas is the live
 copy: recipe-base subscribes to this store and rewrites `referenceImages` from the placed shapes on
 every change, so a field that stops at the file type is erased the first time the user touches the
 canvas — and only visibly so after save-and-reopen. `panels`, `excludePanels`, `isDefault`, `crop` and `credit`

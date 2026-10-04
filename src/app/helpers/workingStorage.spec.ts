@@ -26,32 +26,9 @@ describe('workingStorage', () => {
     expect(readWorkingState(RECIPE_KEY)).toBeNull();
   });
 
-  it('adopts an old localStorage copy on first read', () => {
-    localStorage.setItem(RECIPE_KEY, 'legacy');
-    expect(readWorkingState(RECIPE_KEY)).toBe('legacy');
-    expect(sessionStorage.getItem(RECIPE_KEY)).toBe('legacy');
-  });
-
-  it('takes the old copy rather than duplicating it, so a later tab opens fresh', () => {
-    localStorage.setItem(RECIPE_KEY, 'legacy');
-    readWorkingState(RECIPE_KEY);
-    expect(localStorage.getItem(RECIPE_KEY)).toBeNull();
-
-    sessionStorage.clear(); // a second tab: its own empty session, same localStorage
-    expect(readWorkingState(RECIPE_KEY)).toBeNull();
-  });
-
-  it('prefers this tab\'s own state over an old localStorage copy', () => {
-    localStorage.setItem(RECIPE_KEY, 'legacy');
-    writeWorkingState(RECIPE_KEY, 'mine');
-    expect(readWorkingState(RECIPE_KEY)).toBe('mine');
-  });
-
-  it('clears both stores, so New cannot resurrect a carried-over copy', () => {
-    localStorage.setItem(RECIPE_KEY, 'legacy');
+  it('clears what it wrote', () => {
     writeWorkingState(RECIPE_KEY, 'mine');
     clearWorkingState(RECIPE_KEY);
     expect(readWorkingState(RECIPE_KEY)).toBeNull();
-    expect(localStorage.getItem(RECIPE_KEY)).toBeNull();
   });
 });

@@ -1,42 +1,34 @@
-import { NamedReferenceImage, ReferenceImage, referenceImagesOf } from '../../models/types';
+import { ReferenceImage } from '../../models/types';
 import { ImageShape, makeShapeId } from './toolbox-shape';
 import { ImageAssetStore } from './image-asset-store';
 
 /**
  * The boundary between the recipe *file format* and the canvas's own object model.
  *
- * Recipes describe reference images as a `referenceImages` array of `NamedReferenceImage`, pixels
+ * Recipes describe reference images as a `referenceImages` array of `ReferenceImage`, pixels
  * inline as an `href` (a `data:` URL for an upload, a path like `/StradGoetz.jpg` for one a
  * template ships with). The canvas works in `ImageShape`s carrying only an `imageRef` into
  * ImageAssetStore.
  *
- * Keeping that translation in one place is what lets the file format stay frozen while the canvas
- * side changes: old files still load (including the deprecated singular `referenceImage`), and
- * saves emit the same field, so a file written today still opens in an older build.
+ * Keeping that translation in one place is what lets the file format stay put while the canvas
+ * side changes.
  */
 
 /** The subset of a recipe this module reads. Structural, so it accepts RecipeInterface, any
  * template object, and the raw parsed JSON of a saved file alike. */
 export type ReferenceImageSource = {
-  referenceImages?: NamedReferenceImage[] | null;
-  /** @deprecated singular pre-multi-image field; folded into the array on load. */
-  referenceImage?: ReferenceImage | null;
+  referenceImages?: ReferenceImage[] | null;
 };
 
 /**
  * Reads a recipe's reference images into canvas shapes, interning each image's pixels into
  * `assets` and returning shapes that point at them. Never mutates `source`.
- *
- * A legacy singular `referenceImage` is folded in as a one-element list (see referenceImagesOf);
- * a blank one (empty `href`, which some older saves carry as a placeholder) is dropped rather
- * than becoming an invisible zero-size shape the user can't find.
  */
 export function imageShapesFromRecipe(
   source: ReferenceImageSource | null | undefined,
   assets: ImageAssetStore,
 ): ImageShape[] {
-  return referenceImagesOf(source)
-    .filter(entry => !!entry?.href)
+  return (source?.referenceImages ?? [])
     .map((entry, i) => {
       const shape: ImageShape = {
         // Reuse the file's id when it has one, so re-saving doesn't churn ids in the JSON diff.
@@ -71,15 +63,12 @@ export function imageShapesFromRecipe(
  * Converts canvas shapes back into the recipe field, resolving each `imageRef` to the href it was
  * interned from. Shapes whose asset has gone missing are skipped rather than written out with an
  * empty href, which would fail to load as anything but an invisible box.
- *
- * `xlink:href` is emitted alongside `href` because that's what the format has always contained,
- * and dropping it would break files opened in an older build.
  */
 export function imageShapesToRecipe(
   shapes: ImageShape[],
   assets: ImageAssetStore,
-): NamedReferenceImage[] {
-  const out: NamedReferenceImage[] = [];
+): ReferenceImage[] {
+  const out: ReferenceImage[] = [];
   for (const shape of shapes) {
     const href = assets.href(shape.imageRef);
     if (!href) continue;
@@ -87,7 +76,6 @@ export function imageShapesToRecipe(
       id: shape.id,
       label: shape.label,
       href,
-      'xlink:href': href,
       x: shape.x,
       y: shape.y,
       width: shape.width,

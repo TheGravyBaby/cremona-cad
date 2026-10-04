@@ -143,6 +143,6 @@ complain loudly; nobody complains about a comment that wasn't there.
 - Working state (the open recipe, the open panel, drawn shapes) goes through
   `helpers/workingStorage.ts`, never `localStorage`/`sessionStorage` directly. It is
   **sessionStorage, so a tab is a workspace** — two windows hold two designs, and neither
-  survives its tab closing. Saving to disk is the durable copy. It reports quota failures once
-  and takes over an old localStorage copy on first load. The exception is `App`'s `themeMode`,
+  survives its tab closing. Saving to disk is the durable copy. It reports quota failures once.
+  The exception is `App`'s `themeMode`,
   which is a browser preference rather than the user's work.

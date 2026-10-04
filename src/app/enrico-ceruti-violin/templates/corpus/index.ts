@@ -1,5 +1,4 @@
 import { EnricoCerutiTemplate } from '../../ceruti-types';
-import { referenceImagesOf } from '../../../models/types';
 import amatiViolinBrookings2022560097 from './amati-violin-brookings-2022560097.json';
 import stradivariViolinBetts2022560101 from './stradivari-violin-betts-2022560101.json';
 import guarneriViolinKreisler2022560099 from './guarneri-violin-kreisler-2022560099.json';
@@ -52,9 +51,8 @@ const LOC_HOST = 'https://tile.loc.gov/';
  * dev build, with a `/ ` prefix — a deployed build never reaches an instrument whose background
  * suppression is broken, or whose image host might not be reachable at all. In practice this
  * only excludes `templates/local/` entries; every committed `CORPUS_TEMPLATES` entry is
- * LOC-sourced. Reads referenceImagesOf rather than `referenceImages` directly so a template still
- * on the deprecated singular `referenceImage` field isn't missed.
+ * LOC-sourced.
  */
 export function isLocSourced(template: EnricoCerutiTemplate): boolean {
-  return referenceImagesOf(template).every(img => img.href.startsWith(LOC_HOST));
+  return (template.referenceImages ?? []).every(img => img.href.startsWith(LOC_HOST));
 }

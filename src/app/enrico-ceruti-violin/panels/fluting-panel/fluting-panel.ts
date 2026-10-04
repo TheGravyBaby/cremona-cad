@@ -8,7 +8,7 @@ import { defineOuterPath, defineOuterPurflingPath, definePurflingPath } from '..
 import { ArchingParams, CerutiColors, CerutiViewFlags, EnricoCerutiParams, FlutingParams, RenderToggleKey } from '../../ceruti-types';
 import { defaultArchingParams } from '../../ceruti-arching';
 import {
-  cornerGougeOn, defaultFlutingParams, effectiveCBoutSweep, channelAreaPath,
+  defaultFlutingParams, effectiveCBoutSweep, channelAreaPath,
   channelPaths, cornerJoinAreaPath, gougeHalfWidth, plateLayoutOffset,
 } from '../../ceruti-arch-geometry';
 import {
@@ -77,11 +77,10 @@ export class FlutingPanel extends CerutiPanelBase implements OnInit {
    * One toggle for both plates. The corners are smoothed out at the bench in a
    * single operation with the plate in front of you either way, so a top that
    * had them and a back that didn't would be describing two different methods
-   * rather than two different tools. Reads as on if either plate has it, so an
-   * older recipe with only one set doesn't quietly lose the cut.
+   * rather than two different tools.
    */
   get cornerGouge(): boolean {
-    return cornerGougeOn(this.gouge('top')) || cornerGougeOn(this.gouge('bottom'));
+    return this.gouge('top').cornerGouge;
   }
 
   setCornerGouge(on: boolean): void {
@@ -194,7 +193,7 @@ export class FlutingPanel extends CerutiPanelBase implements OnInit {
     // down to meet it after the gouge has run — so it is always drawn lighter
     // than the channel, and lighter still with the corner pass off, when it
     // marks wood being left rather than taken.
-    const carved = cornerGougeOn(this.gouge(plate));
+    const carved = this.gouge(plate).cornerGouge;
     layers.push(renderFilledPath(
       at(cornerJoinAreaPath(this.params, paths)),
       color,

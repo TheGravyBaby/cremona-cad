@@ -129,16 +129,8 @@
     "width": 64
   },
   "button": {
-    "Pt1": {
-      "x": -10,
-      "y": 928
-    },
-    "Pt2": {
-      "x": 10,
-      "y": 933
-    },
-    "height": 5,
-    "width": 49
+    "width": 49,
+    "height": 29.5
   },
   "outerCorners": {
     "U3": {

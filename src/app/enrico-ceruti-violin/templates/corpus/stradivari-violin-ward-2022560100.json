@@ -177,16 +177,8 @@
       "neckRadius": null
     },
     "button": {
-      "Pt1": {
-        "x": -10,
-        "y": 349.7
-      },
-      "Pt2": {
-        "x": 10,
-        "y": 354.7
-      },
-      "height": 5,
-      "width": 20
+      "width": 20,
+      "height": 14.69
     },
     "outerCorners": {
       "U3": {
@@ -569,7 +561,6 @@
       "id": "ward-top",
       "label": "Top (sp=2)",
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154810:musihas-200154810.0002/full/pct:100.0/0/default.jpg",
-      "xlink:href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154810:musihas-200154810.0002/full/pct:100.0/0/default.jpg",
       "x": -107.33233320122301,
       "y": -9.33460350036621,
       "width": 217.06466640244588,
@@ -596,7 +587,6 @@
       "id": "ward-profiles",
       "label": "Profiles, both sides (sp=3)",
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154810:musihas-200154810.0003/full/pct:100.0/0/default.jpg",
-      "xlink:href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154810:musihas-200154810.0003/full/pct:100.0/0/default.jpg",
       "x": -40.60670187611326,
       "y": -4.4277,
       "width": 121.35340375222657,

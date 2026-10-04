@@ -177,16 +177,8 @@
       "neckRadius": null
     },
     "button": {
-      "Pt1": {
-        "x": -10,
-        "y": 743
-      },
-      "Pt2": {
-        "x": 10,
-        "y": 748
-      },
-      "height": 5,
-      "width": 20
+      "width": 20,
+      "height": 14.76
     },
     "outerCorners": {
       "U3": {
@@ -558,7 +550,6 @@
       "id": "stradivari-cello-castelbarco-top",
       "label": "Top (sp=2)",
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154818:musihas-200154818.0002/full/pct:100.0/0/default.jpg",
-      "xlink:href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154818:musihas-200154818.0002/full/pct:100.0/0/default.jpg",
       "x": -233.3938,
       "y": -17.92499999999999,
       "width": 466.7875,
@@ -586,7 +577,6 @@
       "id": "stradivari-cello-castelbarco-profiles",
       "label": "Profiles, both sides (sp=3)",
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154818:musihas-200154818.0003/full/pct:100.0/0/default.jpg",
-      "xlink:href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154818:musihas-200154818.0003/full/pct:100.0/0/default.jpg",
       "x": -63.33689999999999,
       "y": -24.725,
       "width": 273.61602464612105,

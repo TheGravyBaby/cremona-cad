@@ -55,7 +55,6 @@ export abstract class RecipeComponentBase implements AfterViewInit, Undoable {
     // read back the wipe rather than the file.
     const incoming: ReferenceImageSource = {
       referenceImages: file.referenceImages,
-      referenceImage: file.referenceImage,
     };
 
     this.d = file;
@@ -97,8 +96,6 @@ export abstract class RecipeComponentBase implements AfterViewInit, Undoable {
    */
   private syncReferenceImages(): void {
     this.d.referenceImages = imageShapesToRecipe(this.toolbox.getImageShapes(), this.imageAssets);
-    // Drop the legacy singular field so it can't shadow the array on save.
-    delete this.d.referenceImage;
   }
 
   d: RecipeInterface = {
@@ -229,7 +226,7 @@ export abstract class RecipeComponentBase implements AfterViewInit, Undoable {
     if (this._isRestoringHistory) return;
     // Discard any forward history when a new change is made
     this._history = this._history.slice(0, this._historyIndex + 1);
-    const { referenceImages, referenceImage, toolboxState, ...withoutCanvasState } = this.d;
+    const { referenceImages, toolboxState, ...withoutCanvasState } = this.d;
     this._history.push(JSON.stringify(withoutCanvasState));
     if (this._history.length > this._maxHistory) {
       this._history.shift();
@@ -447,7 +444,7 @@ export abstract class RecipeComponentBase implements AfterViewInit, Undoable {
   private stringifyRecipe(stripImageData: boolean): string {
     if (!stripImageData) return JSON.stringify(this.d, null, 2);
     return JSON.stringify(this.d, (key, value) => {
-      if (key !== 'href' && key !== 'xlink:href') return value;
+      if (key !== 'href') return value;
       if (typeof value !== 'string') return value;
       // A template's image is a short path like '/StradGoetz.jpg' — worth keeping as-is.
       return value.startsWith('data:') ? `[image data stripped, ${value.length} chars]` : value;
