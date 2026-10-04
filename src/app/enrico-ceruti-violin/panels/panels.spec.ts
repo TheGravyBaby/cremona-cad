@@ -14,6 +14,7 @@ import { MouldPanel } from './mould-panel/mould-panel';
 import { NeckPanel } from './neck-panel/neck-panel';
 import { OuterTracePanel } from './outer-trace-panel/outer-trace-panel';
 import { ScrollPanel } from './scroll-panel/scroll-panel';
+import { ScrollWidthsPanel } from './scroll-widths-panel/scroll-widths-panel';
 import { scrollExtent, spiralArcs as styleArcs, VOLUTE_STYLE_LABELS } from '../ceruti-scroll';
 import { VolutePanel } from './volute-panel/volute-panel';
 import { VoluteStyle } from '../ceruti-types';
@@ -60,6 +61,7 @@ const PANELS = [
   ['neck', NeckPanel],
   ['volute', VolutePanel],
   ['scroll', ScrollPanel],
+  ['scroll widths', ScrollWidthsPanel],
 ] as const;
 
 describe.each(PANELS)('%s panel', (_name, Ctor) => {
@@ -186,21 +188,26 @@ describe('the scroll panel', () => {
   });
 
   describe('the volute', () => {
-    // the plain spiral unless a test asks for module arcs
-    const scroll = (p: EnricoCerutiParams, over: Partial<CerutiViewFlags> = {}) => panel(ScrollPanel, p, flags({ showModuleArcs: false, ...over }));
-    const volute = (p: EnricoCerutiParams, over: Partial<CerutiViewFlags> = {}) => panel(VolutePanel, p, flags({ showModuleArcs: false, ...over }));
+    // the plain spiral unless a test asks for module arcs, each colour drawn as its own name so the
+    // plain profile under it can be told apart
+    const named = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
+    const withNames = <T extends ScrollPanel | VolutePanel>(instance: T) => Object.assign(instance, { colors: named });
+    const scroll = (p: EnricoCerutiParams, over: Partial<CerutiViewFlags> = {}) => withNames(panel(ScrollPanel, p, flags({ showModuleArcs: false, ...over })));
+    const volute = (p: EnricoCerutiParams, over: Partial<CerutiViewFlags> = {}) => withNames(panel(VolutePanel, p, flags({ showModuleArcs: false, ...over })));
+    const isArc = (el: ReturnType<typeof recordLayers>['elements'][number]) => typeof el.attrs['d'] === 'string' && (el.attrs['d'] as string).includes(' A ');
+    const isProfile = (el: ReturnType<typeof recordLayers>['elements'][number]) => el.attrs['stroke'] === 'outerTrace';
     const drawn = (eyeRadius: number) => {
       const p = defaultViolin();
-      const instance = scroll(p);
+      const instance = volute(p);
       instance.buildRun();
       p.scroll!.eye.r = eyeRadius;
       return recordLayers(instance.buildRun());
     };
-    const arcs = (eyeRadius: number) => drawn(eyeRadius).elements.filter(el => typeof el.attrs['d'] === 'string' && (el.attrs['d'] as string).includes(' A '));
+    const arcs = (eyeRadius: number) => drawn(eyeRadius).elements.filter(el => isArc(el) && !isProfile(el));
 
-    it('draws the spiral and the back alone, in full strokes', () => {
+    it('draws the spiral and the crown alone, in full strokes', () => {
       const a = arcs(4);
-      expect(a.length).toBe(15);
+      expect(a.length).toBe(10);
       expect(a.every(el => !el.parent)).toBe(true);
     });
 
@@ -210,7 +217,7 @@ describe('the scroll panel', () => {
 
     it('measures the eye from the nut on the neck\'s front, X filled flush to the hundredth while flush is on', () => {
       const p = defaultViolin();
-      const instance = scroll(p);
+      const instance = volute(p);
       instance.buildRun();
       expect(p.scroll!.flushWithNeck).toBe(true);
       const { x: eyeX, y: eyeY } = p.scroll!.eye;
@@ -236,7 +243,7 @@ describe('the scroll panel', () => {
 
     it('leaves the eye where the fields put it once flush is off, and moves the spiral with it', () => {
       const p = defaultViolin();
-      const instance = scroll(p);
+      const instance = volute(p);
       instance.buildRun();
       const eye = (d: ReturnType<typeof recordLayers>) => d.elements.find(el => el.tag === 'circle')!.attrs;
       const flush = eye(recordLayers(instance.buildRun()));
@@ -247,10 +254,10 @@ describe('the scroll panel', () => {
       const moved = eye(drawnFree);
       expect(moved['cx']).toBeCloseTo((flush['cx'] as number) - 3, 9);
       expect(moved['cy']).toBeCloseTo((flush['cy'] as number) - 4, 9);
-      expect(drawnFree.paths.filter(d => d.includes(' A ')).length).toBe(15);
+      expect(drawnFree.elements.filter(el => isArc(el) && !isProfile(el)).length).toBe(10);
     });
 
-    it('draws the neck\'s lines under module guides and the figure under its own toggle on the volute panel, the eye and the spiral always', () => {
+    it('draws the neck\'s lines under module guides and the figure under its own toggle on the volute panel, the eye and the spiral always, and neither on the scroll panel', () => {
       const p = defaultViolin();
       const drawn = (over: Partial<CerutiViewFlags>) => recordLayers(volute(p, over).buildRun());
       const tags = (d: ReturnType<typeof recordLayers>, tag: string) => d.elements.filter(el => el.tag === tag).length;
@@ -270,23 +277,24 @@ describe('the scroll panel', () => {
 
       const whole = (over: Partial<CerutiViewFlags>) => recordLayers(scroll(p, over).buildRun());
       expect(tags(whole({ showVoluteConstruction: true }), 'line')).toBe(tags(whole({ showVoluteConstruction: false }), 'line'));
-      expect(tags(whole({ showVoluteConstruction: true }), 'circle')).toBe(1);
+      expect(tags(whole({ showVoluteConstruction: true }), 'circle')).toBe(0);
     });
 
     it('draws the spiral plain, or as module arcs each with its centre and bounding radii', () => {
       const p = defaultViolin();
       const plain = recordLayers(volute(p).buildRun());
       const fancy = recordLayers(volute(p, { showModuleArcs: true }).buildRun());
-      const arcs = (d: ReturnType<typeof recordLayers>) => d.elements.filter(el => typeof el.attrs['d'] === 'string' && (el.attrs['d'] as string).includes(' A '));
+      const arcs = (d: ReturnType<typeof recordLayers>) => d.elements.filter(el => isArc(el) && !isProfile(el));
       expect(arcs(fancy).map(el => el.attrs['d'])).toEqual(arcs(plain).map(el => el.attrs['d']));
       expect(arcs(fancy).every(el => el.attrs['stroke-width'] === 2 && !el.parent)).toBe(true);
       const lines = (d: ReturnType<typeof recordLayers>) => d.elements.filter(el => el.tag === 'line').length;
       expect(lines(fancy) - lines(plain)).toBeGreaterThanOrEqual(2 * arcs(fancy).length);
     });
 
-    // the spiral's and the back's own arcs, not the halo, which draws wide in a lighter group
+    // the arcs each panel draws in colour, not the plain profile under them, nor the halo, which
+    // draws wide in a lighter group
     const spiralArcs = (instance: ScrollPanel | VolutePanel) => recordLayers(instance.buildRun()).elements
-      .filter(el => typeof el.attrs['d'] === 'string' && (el.attrs['d'] as string).includes(' A ') && el.attrs['stroke-width'] !== 12);
+      .filter(el => isArc(el) && !isProfile(el) && el.attrs['stroke-width'] !== 12);
     const choose = (instance: VolutePanel, style: VoluteStyle) => {
       instance.scroll.style = style;
       instance.buildRun();
@@ -325,32 +333,42 @@ describe('the scroll panel', () => {
 
     it('colours the spiral by turn and arc and the crown, back and front in theirs, whatever the arc toggles', () => {
       const p = defaultViolin();
-      const colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
       const strokes = (instance: ScrollPanel | VolutePanel) => spiralArcs(instance).map(el => el.attrs['stroke']);
       const turns = [
         'voluteTurn1', 'voluteTurn1Alt', 'voluteTurn1', 'voluteTurn1Alt',
         'voluteTurn2', 'voluteTurn2Alt', 'voluteTurn2', 'voluteTurn2Alt',
       ];
-      const crown = ['scrollBackLight', 'scrollBack'];
+      const crown = ['scrollFrontLight', 'scrollFront'];
       for (const over of [{}, { showModuleArcs: true }]) {
         const instance = volute(p, over);
-        instance.colors = colors;
         instance.buildRun();
         for (const style of ['fourPoint', 'salviati'] as const) {
           choose(instance, style);
           expect(strokes(instance), style).toEqual([...turns, ...crown]);
         }
       }
+      // the scroll panel leaves the spiral and the crown to the plain profile
       const backAndFront = ['scrollBackLight', 'scrollBack', 'scrollNape', 'scrollFront', 'scrollFrontLight'];
       for (const over of [{}, { showModuleArcs: true }, { showAllArcs: true }]) {
-        const instance = scroll(p, over);
-        instance.colors = colors;
-        expect(strokes(instance)).toEqual([...turns, ...crown, ...backAndFront]);
+        expect(strokes(scroll(p, over))).toEqual(backAndFront);
       }
       // the toggles add only the centres and radii
       const lines = (over: Partial<CerutiViewFlags>) =>
         recordLayers(volute(p, { showVoluteConstruction: false, ...over }).buildRun()).elements.filter(el => el.tag === 'line').length;
       expect(lines({ showModuleArcs: true })).toBeGreaterThan(lines({}));
+    });
+
+    it('draws the whole scroll as plain profile under either panel\'s own arcs, and no profile once part of it fails', () => {
+      const p = defaultViolin();
+      for (const instance of [volute(p), scroll(p)]) {
+        const els = recordLayers(instance.buildRun()).elements;
+        expect(els.filter(isProfile), instance.constructor.name).toHaveLength(1);
+        expect(els.findIndex(isProfile)).toBeLessThan(els.findIndex(el => isArc(el) && !isProfile(el)));
+      }
+      p.scroll!.F1.r = 0;
+      for (const instance of [volute(p), scroll(p)]) expect(recordLayers(instance.buildRun()).elements.filter(isProfile)).toEqual([]);
+      // the scroll panel falls back to the volute in its own colours
+      expect(spiralArcs(scroll(p)).map(el => el.attrs['stroke'])).toContain('voluteTurn1');
     });
 
     it('seeds the four point radii from Kelly\'s once, then leaves them to the user', () => {
@@ -401,7 +419,6 @@ describe('the scroll panel', () => {
     it('haloes the back or front part whose field has focus, in its own colour', () => {
       const p = defaultViolin();
       const instance = scroll(p);
-      instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
       instance.buildRun();
       const plain = spiralArcs(instance).map(el => el.attrs['d']);
       const halo = () => {
@@ -409,7 +426,7 @@ describe('the scroll panel', () => {
         expect(rest).toEqual([]);
         return only.attrs;
       };
-      const arcs = [['S2', 'scrollBackLight', 10], ['S3', 'scrollBack', 11], ['nape', 'scrollNape', 12], ['F0', 'scrollFront', 13], ['F1', 'scrollFrontLight', 14]] as const;
+      const arcs = [['S2', 'scrollBackLight', 0], ['S3', 'scrollBack', 1], ['nape', 'scrollNape', 2], ['F0', 'scrollFront', 3], ['F1', 'scrollFrontLight', 4]] as const;
       for (const [key, color, i] of arcs) {
         instance.onArcFocus(key, color);
         expect(halo()['stroke']).toBe(color);
@@ -485,7 +502,7 @@ describe('the scroll panel', () => {
       for (const style of Object.keys(VOLUTE_STYLE_LABELS) as VoluteStyle[]) {
         choose(instance, style);
         expect(spiralArcs(instance).length, style).toBe(front[style] + 2);
-        expect(spiralArcs(whole).length, style).toBe(front[style] + 7);
+        expect(spiralArcs(whole).length, style).toBe(5);
       }
       expect(recordLayers(instance.buildRun()).elements.filter(el => el.tag === 'line').length)
         .toBeLessThan(recordLayers(whole.buildRun()).elements.filter(el => el.tag === 'line').length);
@@ -498,13 +515,15 @@ describe('the scroll panel', () => {
       const v = p.scroll!;
       expect(v.S1.r).toBeGreaterThan(v.S0.r);
       expect(v.S2.r).toBeGreaterThan(v.S1.r);
-      const drawn = () => spiralArcs(instance).slice(8).map(el => el.attrs['d']);
+      const drawn = () => spiralArcs(instance).map(el => el.attrs['d']);
       const before = drawn();
-      // read off params each time: the calc puts a new arc there every pass
+      // read off params each time: the calc puts a new arc there every pass. S2 on down the back
+      // moves with S1, the front stays
       v.S1.end = 170 * Math.PI / 180;
       const after = drawn();
-      expect(after[0]).toBe(before[0]);
-      expect(after.slice(1)).not.toEqual(before.slice(1));
+      expect(after.slice(0, 3).every((d, i) => d !== before[i])).toBe(true);
+      expect(after.slice(3)).toEqual(before.slice(3));
+      // the spiral and S0 in their own colours again, F0 and F1 after them
       v.S1.r = 0;
       expect(spiralArcs(instance)).toHaveLength(11);
     });
@@ -526,7 +545,6 @@ describe('the scroll panel', () => {
       const p = defaultViolin();
       const traced = () => {
         const instance = scroll(p, { showModuleGuides: false, showVoluteConstruction: false });
-        instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
         return recordLayers(instance.buildRun()).elements.filter(el => el.tag === 'line' && el.attrs['stroke-width'] === 2).map(el => el.attrs);
       };
       expect(traced().map(l => l['stroke'])).toEqual(['scrollBackLight', 'scrollNape', 'scrollFrontLight', 'scrollFront']);
@@ -540,17 +558,16 @@ describe('the scroll panel', () => {
       p.scroll!.backStraight += 2;
       const after = arcs();
       // S3 and the nape move with it, the front stays
-      expect([...after.slice(0, 11), ...after.slice(13)]).toEqual([...before.slice(0, 11), ...before.slice(13)]);
-      expect(after.slice(11, 13).every((d, i) => d !== before[11 + i])).toBe(true);
+      expect([after[0], ...after.slice(3)]).toEqual([before[0], ...before.slice(3)]);
+      expect(after.slice(1, 3).every((d, i) => d !== before[1 + i])).toBe(true);
       p.scroll!.backStraight = 0;
       expect(traced()).toHaveLength(3);
-      expect(spiralArcs(instance)).toHaveLength(15);
+      expect(spiralArcs(instance)).toHaveLength(5);
     });
 
     it('carries the neck\'s back up from the nut to the nape, and draws no nape too wide to fit', () => {
       const p = defaultViolin();
       const instance = scroll(p, { showModuleArcs: true, showModuleGuides: false, showVoluteConstruction: false });
-      instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
       const drawn = () => recordLayers(instance.buildRun()).elements;
       const carried = (els: ReturnType<typeof drawn>) => els.filter(el => el.tag === 'line' && el.attrs['stroke'] === 'neckOff'
         && el.attrs['x1'] === -p.neck!.thickness && el.attrs['x2'] === -p.neck!.thickness

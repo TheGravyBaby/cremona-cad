@@ -1,6 +1,6 @@
 import { circleCircleIntersections, findJoiningArcs } from "../helpers/math/draftMath";
 import { angleFromCenter, dist, normalizeRadians, pointOnCircle, TURN, offsetArcRadius, flipArcAboutY, flipPointAboutY, lineCircleIntersection, lineFromTwoPoints, pointInPolygon, closestPointOnSegment } from "../helpers/math/simpleGeometry";
-import { pathFromArc, pathFromLine, pathFromCornerCubic, unifyConnectedSvgPaths, combinePathStrings, samplePathToPolyline } from "../helpers/math/pathMath";
+import { arcPathData, pathFromArc, pathFromLine, pathFromCornerCubic, unifyConnectedSvgPaths, combinePathStrings, samplePathToPolyline } from "../helpers/math/pathMath";
 import { Arc, arcFromCircle, Pt } from "../models/types";
 import { error } from "../shared/message-emitter";
 import { ButtonParams, EnricoCerutiParams } from "./ceruti-types";
@@ -9,7 +9,7 @@ import { ButtonParams, EnricoCerutiParams } from "./ceruti-types";
 // Takes the outline already solved by ceruti-calcs.ts (calculateMainBouts,
 // calculateCorners, calculateCenterBout, calculateOuterArcs) and stitches it
 // into the actual SVG path strings the app draws or exports: inner trace,
-// outer trace, insets, purfling, fluting. Split out of ceruti-calcs.ts because
+// outer trace, insets, purfling, fluting; and the scroll's side profile. Split out of ceruti-calcs.ts because
 // "where do the arcs go" and "how do you turn solved arcs into a path string"
 // are different questions a reader is usually asking one at a time.
 
@@ -1055,4 +1055,40 @@ export function defineOneFholePath(p: EnricoCerutiParams, flip: boolean, renderE
  */
 export function defineFholePath(p: EnricoCerutiParams): string {
     return combinePathStrings([defineOneFholePath(p, false), defineOneFholePath(p, true)]);
+}
+
+// the scroll's side profile in ceruti-scroll.ts's frame, off a scroll calculateScroll solved whole:
+// the back from the eye out and down to the nut's level, then the front up from the nut. Each
+// straight runs between the arcs either side of it, so none is read off its stored length
+export function defineSideScrollPath(p: EnricoCerutiParams): string {
+    const v = p.scroll!;
+    const arc = (a: Arc) => arcPathData(a, a.r, a.start, a.end);
+    // S3, the nape and F1 are stored counterclockwise but turn clockwise along the edge, so they're
+    // drawn end to start to keep every piece running on from the last
+    const backward = (a: Arc) => {
+        const from = pointOnCircle(a, a.end);
+        const to = pointOnCircle(a, a.start);
+        const large = normalizeRadians(a.end - a.start) > TURN.half ? 1 : 0;
+        return `M ${from.x},${from.y} A ${a.r},${a.r} 0 ${large},0 ${to.x},${to.y}`;
+    };
+    const at = pointOnCircle;
+    const neckBack = at(v.nape, 0);
+    const flatTop = at(v.F0, v.F0.start);
+
+    const back = [
+        ...[...v.spiral!].reverse().map(arc),
+        arc(v.S0), arc(v.S1), arc(v.S2),
+        pathFromLine(at(v.S2, v.S2.end), at(v.S3, v.S3.end)),
+        backward(v.S3),
+        pathFromLine(at(v.S3, v.S3.start), at(v.nape, v.nape.end)),
+        backward(v.nape),
+        pathFromLine(neckBack, new Pt(neckBack.x, 0)),
+    ];
+    const front = [
+        pathFromLine(new Pt(flatTop.x, flatTop.y - v.flat), flatTop),
+        arc(v.F0),
+        pathFromLine(at(v.F0, v.F0.end), at(v.F1, v.F1.end)),
+        backward(v.F1),
+    ];
+    return combinePathStrings([...back, ...front]);
 }

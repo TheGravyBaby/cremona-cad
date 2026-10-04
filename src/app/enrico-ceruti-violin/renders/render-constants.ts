@@ -47,13 +47,13 @@ export const CERUTI_COLOR_PALETTE = {
   fHoleCut: '#e08a1e',
   pathError: '#d62828',
   neck: '#b07a3c',
-  // the scroll's back warm and its front cool so the two read apart at a glance, each alternating a
-  // deep and a light tone down its arcs; no red, which is the solve-failure colour
-  scrollBack: '#e8952f',
-  scrollBackLight: '#f4be6a',
-  scrollNape: '#cc6a33',
-  scrollFront: '#5c82d6',
-  scrollFrontLight: '#93aeeb',
+  // the scroll's back cool and its front warm, as the plates' archBack and archTop are, each
+  // alternating a deep and a light tone down its arcs; no red, which is the solve-failure colour
+  scrollBack: '#5c82d6',
+  scrollBackLight: '#93aeeb',
+  scrollNape: '#3d5fb0',
+  scrollFront: '#e8952f',
+  scrollFrontLight: '#f4be6a',
   // the spiral a turn at a time from the eye out, its arcs alternating ivory and a darker tan, far
   // enough apart to follow one arc round in the four point's fields
   voluteTurn1: '#f2eadb',
