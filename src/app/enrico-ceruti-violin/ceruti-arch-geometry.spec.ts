@@ -8,7 +8,7 @@ import {
 import { makeMonotoneSpline } from '../helpers/math/vibeMath';
 import { trochoidNorm } from '../helpers/math/pathMath';
 import {
-  CrossArchCycloidShape, CrossArchParams, CrossArchShape, CrossArchSplineShape,
+  CrossArchCycloid, CrossArchShape, CrossArchSpline,
 } from './ceruti-types';
 
 /**
@@ -190,7 +190,7 @@ describe('cornerSmoothZ', () => {
 });
 
 describe('crossArchKnots', () => {
-  const shape = (points: CrossArchSplineShape['points']): CrossArchSplineShape => ({ type: 'spline', points });
+  const shape = (points: CrossArchSpline['points']): CrossArchSpline => ({ type: 'spline', points });
 
   it('keeps both coordinates fractional, so the shape scales with the station', () => {
     expect(crossArchKnots(shape([{ x: 0.45, z: 0.62, mirror: true }]), 1))
@@ -216,7 +216,7 @@ describe('crossArchKnots', () => {
 });
 
 describe('the trochoid crown', () => {
-  const cyc = (d: number, pct: number): CrossArchCycloidShape => ({ type: 'cycloid', d, pct });
+  const cyc = (d: number, pct: number): CrossArchCycloid => ({ type: 'cycloid', d, pct });
 
   /** The trochoid's own half, as fractional crown coordinates — what the knots are sampled from. */
   const exact = (d: number, pct: number, xFrac: number): number => {
@@ -387,7 +387,7 @@ describe('makeCrossArchResolver', () => {
   const BODY = 356;
 
   it('holds the base shape everywhere when no station is set', () => {
-    const cross: CrossArchParams = { type: 'spline', points: [{ x: 0.45, z: 0.62, mirror: true }] };
+    const cross: CrossArchShape = { type: 'spline', points: [{ x: 0.45, z: 0.62, mirror: true }] };
     const resolve = makeCrossArchResolver(cross, BODY);
     for (const y of [10, 100, 178, 300]) {
       expect(resolve(y).right).toEqual([{ x: 0.45, z: 0.62 }]);
@@ -397,7 +397,7 @@ describe('makeCrossArchResolver', () => {
   it('ramps between stations without overshooting either', () => {
     // The shape-preserving guarantee: an interpolated shape never swings
     // outside the values the maker entered.
-    const cross: CrossArchParams = {
+    const cross: CrossArchShape = {
       type: 'spline',
       points: [{ x: 0.45, z: 0.62, mirror: true }],
       stations: [{ y: 178, type: 'spline', points: [{ x: 0.45, z: 0.3, mirror: true }] }],
@@ -415,7 +415,7 @@ describe('makeCrossArchResolver', () => {
   it('carries a station knot position the base does not have', () => {
     // Two stations can differ in knot count entirely, which is why the resolver
     // ramps over the union of their positions rather than pairing them up.
-    const cross: CrossArchParams = {
+    const cross: CrossArchShape = {
       type: 'spline',
       points: [{ x: 0.45, z: 0.62, mirror: true }],
       stations: [{ y: 178, type: 'spline', points: [{ x: 0.45, z: 0.62, mirror: true }, { x: 0.8, z: 0.1, mirror: true }] }],
@@ -435,7 +435,7 @@ describe('makeCrossArchResolver', () => {
     // outermost height claims it is level out there. Two ramped columns then
     // arrive at nearly the same height and the monotone spline draws — quite
     // correctly — a flat shoulder between them, from a shape with one knot.
-    const cross: CrossArchParams = {
+    const cross: CrossArchShape = {
       type: 'spline',
       points: [{ x: 0.7, z: 0.4, mirror: true }],
       stations: [{ y: 103, type: 'spline', points: [{ x: 0.41, z: 0.65, mirror: true }] }],
@@ -450,7 +450,7 @@ describe('makeCrossArchResolver', () => {
 
 describe('nearestCrossArchShape', () => {
   const BODY = 356;
-  const base: CrossArchParams = {
+  const base: CrossArchShape = {
     type: 'spline',
     points: [{ x: 0.45, z: 0.62, mirror: true }],
     stations: [
@@ -460,7 +460,7 @@ describe('nearestCrossArchShape', () => {
   };
 
   /** The one field these fixtures differ in. */
-  const heightOf = (shape: CrossArchShape) => (shape as CrossArchSplineShape).points[0].z;
+  const heightOf = (shape: CrossArchShape) => (shape as CrossArchSpline).points[0].z;
 
   it('picks the station the cursor is nearest', () => {
     expect(heightOf(nearestCrossArchShape(base, 118, BODY))).toBeCloseTo(0.3, 6);
@@ -473,7 +473,7 @@ describe('nearestCrossArchShape', () => {
   });
 
   it('is the base shape everywhere when no station is set', () => {
-    const plain: CrossArchParams = { type: 'spline', points: [{ x: 0.45, z: 0.62, mirror: true }] };
+    const plain: CrossArchShape = { type: 'spline', points: [{ x: 0.45, z: 0.62, mirror: true }] };
     for (const y of [10, 100, 178, 300]) expect(nearestCrossArchShape(plain, y, BODY)).toBe(plain);
   });
 
@@ -499,7 +499,7 @@ describe('crossArchGuide', () => {
   });
 
   it('marks one crosshair per side per authored knot', () => {
-    const shape: CrossArchSplineShape = { type: 'spline', points: [{ x: 0.4, z: 0.57, mirror: true }] };
+    const shape: CrossArchSpline = { type: 'spline', points: [{ x: 0.4, z: 0.57, mirror: true }] };
     expect(crossArchGuide(shape, sectionFor(rowOf(shape))).knots.length).toBe(2);
   });
 
@@ -508,7 +508,7 @@ describe('crossArchGuide', () => {
     // station's knot positions, because that is how shapes with unrelated point
     // lists are ramped. Drawing the guide from that row put two crosshairs on
     // each side for one authored point.
-    const cross: CrossArchParams = {
+    const cross: CrossArchShape = {
       type: 'spline',
       points: [{ x: 0.4, z: 0.57, mirror: true }],
       stations: [{ y: 103, type: 'spline', points: [{ x: 0.7, z: 0.4, mirror: true }] }],
@@ -516,12 +516,12 @@ describe('crossArchGuide', () => {
     const row = makeCrossArchResolver(cross, 356)(199);
     expect(row.right.length).toBe(2); // the ramp really does carry both columns
 
-    const shape: CrossArchSplineShape = { type: 'spline', points: [{ x: 0.4, z: 0.57, mirror: true }] };
+    const shape: CrossArchSpline = { type: 'spline', points: [{ x: 0.4, z: 0.57, mirror: true }] };
     expect(crossArchGuide(shape, sectionFor(row)).knots.length).toBe(2);
   });
 
   it('places a knot against the channel\'s inner edge, and measures its height from plate level', () => {
-    const shape: CrossArchSplineShape = { type: 'spline', points: [{ x: 0.4, z: 0.57, mirror: true }] };
+    const shape: CrossArchSpline = { type: 'spline', points: [{ x: 0.4, z: 0.57, mirror: true }] };
     const section = sectionFor(rowOf(shape));
     for (const k of crossArchGuide(shape, section).knots) {
       expect(Math.abs(k.x)).toBeCloseTo(0.4 * section.innerEdge, 9);
@@ -532,7 +532,7 @@ describe('crossArchGuide', () => {
   });
 
   it('runs the datum at plate level from each inner edge, and marks the takeoffs apart from it', () => {
-    const shape: CrossArchSplineShape = { type: 'spline', points: [{ x: 0.4, z: 0.57, mirror: true }] };
+    const shape: CrossArchSpline = { type: 'spline', points: [{ x: 0.4, z: 0.57, mirror: true }] };
     const section = sectionFor(rowOf(shape));
     const guide = crossArchGuide(shape, section);
     expect(guide.baselines.map(b => b.fromX)).toEqual([-section.innerEdge, section.innerEdge]);
@@ -545,7 +545,7 @@ describe('crossArchGuide', () => {
   });
 
   it('draws generating circles for a trochoid, which has no control points to mark', () => {
-    const shape: CrossArchCycloidShape = { type: 'cycloid', d: 0.4, pct: 0.9 };
+    const shape: CrossArchCycloid = { type: 'cycloid', d: 0.4, pct: 0.9 };
     const section = sectionFor(rowOf(shape));
     const guide = crossArchGuide(shape, section);
     expect(guide.knots).toEqual([]);
@@ -638,10 +638,10 @@ describe('solveCrossArchSection', () => {
   });
 
   it('keeps a below-takeoff knot through the station ramp', () => {
-    const cross: CrossArchParams = {
+    const cross: CrossArchShape = {
       type: 'spline', points: [{ x: 0.9, z: -0.1, mirror: true }],
       stations: [{ y: 100, type: 'spline', points: [{ x: 0.9, z: -0.05, mirror: true }] }],
-    } as CrossArchParams;
+    } as CrossArchShape;
     const at = makeCrossArchResolver(cross, 350)(50);
     expect(at.right[0].z).toBeLessThan(0);
   });

@@ -29,7 +29,7 @@
         <label class="field-cell">
             <span class="field-title">Heel Radius <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" min="1" [style.border-color]="colors.neckRoot"
-                [(ngModel)]="neck.heelRadius" (input)="onChange()" />
+                [(ngModel)]="neck.heel.r" (input)="onChange()" />
         </label>
         <label class="field-cell">
             <span class="field-title">Button Height <span class="unit-label">mm</span></span>
@@ -59,18 +59,18 @@
         <label class="field-cell">
             <span class="field-title">Bridge Stop, Height <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" min="1" [style.border-color]="colors.bridge"
-                [(ngModel)]="neck.bodyStop" (input)="onChange()" />
+                [(ngModel)]="stringSetup.bodyStop" (input)="onChange()" />
         </label>
         <label class="field-cell">
             <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="colors.bridge"
-                [(ngModel)]="neck.bridgeHeight" (input)="onChange()" />
+                [(ngModel)]="stringSetup.bridgeHeight" (input)="onChange()" />
         </label>
         <label class="field-cell">
-            @if (neck.stringLength != null) {
+            @if (stringLength != null) {
             <div class="input-group basic-row field-row" role="group">
                 <label class="field-cell">
                     <span class="field-title">String Length <span class="unit-label">mm</span></span>
-                    <div class="basic-display" aria-label="String length value">{{ neck.stringLength | number:'1.1-1' }}
+                    <div class="basic-display" aria-label="String length value">{{ stringLength | number:'1.1-1' }}
                     </div>
                 </label>
             </div>
@@ -80,7 +80,7 @@
         <label class="field-cell">
             <span class="field-title">Nut Thickness <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="colors.fingerboard"
-                [(ngModel)]="neck.nutThickness" (input)="onChange()" />
+                [(ngModel)]="stringSetup.nutThickness" (input)="onChange()" />
         </label>
     </div>
 

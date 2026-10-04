@@ -4,7 +4,7 @@ import { getFieldDeg, setFieldDeg } from '../../../helpers/math/arcDegrees';
 import { renderSolveFailures } from '../../../helpers/renderFuncs';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, RenderToggleKey, ScrollParams } from '../../ceruti-types';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
-import { defaultNeckParams } from '../../ceruti-neck';
+import { defaultNeckParams, defaultStringSetup } from '../../ceruti-neck';
 import { calculateScroll, VOLUTE_STYLE_LABELS } from '../../ceruti-scroll';
 import { arcColor, renderScrollNeck, renderVolute } from '../../renders/scroll.render';
 import { HighlightedArc } from '../../renders/render-constants';
@@ -83,6 +83,7 @@ export class VolutePanel extends CerutiPanelBase implements OnInit {
   public buildRun(): RenderLayer[] {
     const p = this.params;
     p.neck ??= defaultNeckParams(p);
+    p.stringSetup ??= defaultStringSetup(p);
     const failures = calculateScroll(p);
 
     const v = p.scroll!;

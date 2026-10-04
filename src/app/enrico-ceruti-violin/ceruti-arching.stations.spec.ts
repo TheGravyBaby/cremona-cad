@@ -1,5 +1,5 @@
 import { normalizeCrossArchStations, STATION_MERGE_EPS_MM } from './ceruti-arching';
-import { CrossArchCycloidStation, CrossArchSplineStation } from './ceruti-types';
+import { CrossArchCycloid, CrossArchSpline } from './ceruti-types';
 
 // `normalizeCrossArchStations` is generic over `{ y: number }`, and the crown
 // resolver, `nearestCrossArchShape` and the template station list all lean on
@@ -8,7 +8,7 @@ import { CrossArchCycloidStation, CrossArchSplineStation } from './ceruti-types'
 
 const BODY = 350;
 
-const cyc = (y: number, d: number, pct = 0.9): CrossArchCycloidStation =>
+const cyc = (y: number, d: number, pct = 0.9): CrossArchCycloid =>
   ({ y, type: 'cycloid', d, pct });
 
 describe('normalizeCrossArchStations', () => {
@@ -37,7 +37,7 @@ describe('normalizeCrossArchStations', () => {
   });
 
   it('preserves the station subtype through the call', () => {
-    const stations: CrossArchSplineStation[] = [
+    const stations: CrossArchSpline[] = [
       { y: 120, type: 'spline', peak: 0.55, points: [{ x: -0.34, z: 0.5, mirror: true }] },
     ];
     const out = normalizeCrossArchStations(stations, BODY);

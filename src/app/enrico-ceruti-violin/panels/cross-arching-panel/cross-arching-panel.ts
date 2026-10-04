@@ -7,9 +7,8 @@ import {
 import { clamp } from '../../../helpers/math/simpleGeometry';
 import { samplePathToPolyline } from '../../../helpers/math/pathMath';
 import {
-  ArchingParams, ArchPlate, CerutiColors, CerutiViewFlags, EnricoCerutiParams, CrossArchCycloidShape,
-  CrossArchCycloidStation, CrossArchParams, CrossArchPoint, CrossArchShape, CrossArchSplineShape,
-  CrossArchSplineStation, CrossArchStation, FlutingParams, PlateViewMode, RenderToggleKey,
+  ArchingParams, ArchPlate, CerutiColors, CerutiViewFlags, EnricoCerutiParams, CrossArchCycloid,
+  CrossArchShape, CrossArchPoint, CrossArchSpline, FlutingParams, PlateViewMode, RenderToggleKey,
 } from '../../ceruti-types';
 import {
   bodyLandmarks, contourSampleSteps, defaultArchingParams, ribHeightAt, solveRibTaper,
@@ -341,18 +340,18 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     return (plateParams.fluting ??= defaultFlutingParams(this.params));
   }
 
-  cross(plate: 'top' | 'bottom'): CrossArchParams {
+  cross(plate: 'top' | 'bottom'): CrossArchShape {
     const plateParams = plate === 'top' ? this.arching.top : this.arching.bottom;
     return (plateParams.cross ??= defaultCrossArchParams());
   }
 
   /** The plate's stations, for the table. Empty rather than absent, so the template need not guard twice. */
-  splineStations(plate: 'top' | 'bottom'): CrossArchSplineStation[] {
+  splineStations(plate: 'top' | 'bottom'): CrossArchSpline[] {
     const cross = this.cross(plate);
     return cross.type === 'spline' ? cross.stations ?? [] : [];
   }
 
-  cycloidStations(plate: 'top' | 'bottom'): CrossArchCycloidStation[] {
+  cycloidStations(plate: 'top' | 'bottom'): CrossArchCycloid[] {
     const cross = this.cross(plate);
     return cross.type === 'cycloid' ? cross.stations ?? [] : [];
   }
@@ -378,21 +377,21 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
   }
 
   /** The crown at the cursor when it is authored from control points, else null — the point editor's guard. */
-  crossSpline(plate: 'top' | 'bottom'): CrossArchSplineShape | null {
+  crossSpline(plate: 'top' | 'bottom'): CrossArchSpline | null {
     const shape = this.activeShape(plate);
     return shape.type === 'spline' ? shape : null;
   }
 
   // the crown is a knot at the same kind of position, so it's a row like the rest, listed wherever
   // the maker put it rather than pinned to the top.
-  splineRows(shape: CrossArchSplineShape): CrossSplineRow[] {
+  splineRows(shape: CrossArchSpline): CrossSplineRow[] {
     const rows: CrossSplineRow[] = shape.points.map((pt, index) => ({ pt, index }));
     rows.splice(splinePeakRow(shape), 0, { pt: null, index: -1 });
     return rows;
   }
 
   /** The crown at the cursor when it is a trochoid, else null. */
-  crossCycloid(plate: 'top' | 'bottom'): CrossArchCycloidShape | null {
+  crossCycloid(plate: 'top' | 'bottom'): CrossArchCycloid | null {
     const shape = this.activeShape(plate);
     return shape.type === 'cycloid' ? shape : null;
   }
@@ -417,7 +416,7 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
       draft = {
         y: this.cursorY,
         ...cloneCrossArchShape(nearestCrossArchShape(cross, this.cursorY, this.params.height)),
-      } as CrossArchStation;
+      } as CrossArchShape;
       this.draft[plate] = draft;
     }
     return draft;
@@ -450,7 +449,7 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
   }
 
   /** The same, for a row of the station table. */
-  stationPct(st: CrossArchCycloidStation): number {
+  stationPct(st: CrossArchCycloid): number {
     return Math.round(st.pct * 100);
   }
 
@@ -489,7 +488,7 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
   }
 
   /** The same, for a row of the station table. */
-  stationPeakPct(st: CrossArchSplineStation): number {
+  stationPeakPct(st: CrossArchSpline): number {
     return Math.round((st.peak ?? 0.5) * 100);
   }
 
@@ -663,16 +662,16 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
    * real. Never written into params — Set Station makes it permanent, moving the
    * cursor discards it.
    */
-  private draft: { top: CrossArchStation | null; bottom: CrossArchStation | null } = { top: null, bottom: null };
+  private draft: { top: CrossArchShape | null; bottom: CrossArchShape | null } = { top: null, bottom: null };
 
   /** The plate's live preview station, or null once the cursor has moved off it. */
-  draftFor(plate: 'top' | 'bottom'): CrossArchStation | null {
+  draftFor(plate: 'top' | 'bottom'): CrossArchShape | null {
     const d = this.draft[plate];
     return d && Math.abs(d.y - this.cursorY) <= STATION_MERGE_EPS_MM ? d : null;
   }
 
   /** The station the cursor is sitting on, if any — what Set Station would overwrite. */
-  stationAtCursor(plate: 'top' | 'bottom'): CrossArchStation | undefined {
+  stationAtCursor(plate: 'top' | 'bottom'): CrossArchShape | undefined {
     const y = this.cursorY;
     return this.cross(plate).stations?.find(s => Math.abs(s.y - y) <= STATION_MERGE_EPS_MM);
   }
@@ -732,13 +731,13 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     const drafts = { top: this.draftFor('top'), bottom: this.draftFor('bottom') };
     if (!drafts.top && !drafts.bottom) return this.params;
     const a = this.arching;
-    const withDraft = (plate: ArchPlate, draft: CrossArchStation | null): ArchPlate =>
+    const withDraft = (plate: ArchPlate, draft: CrossArchShape | null): ArchPlate =>
       draft
         // The draft always matches the plate's own curve type by construction —
         // setCurveType clears any open draft, and editTarget seeds a new one
         // from the current shape — true at runtime even though the two union
         // arms aren't statically correlated here.
-        ? { ...plate, cross: { ...plate.cross!, stations: [...(plate.cross!.stations ?? []), draft] } as CrossArchParams }
+        ? { ...plate, cross: { ...plate.cross!, stations: [...(plate.cross!.stations ?? []), draft] } as CrossArchShape }
         : plate;
     return {
       ...this.params,
@@ -1058,7 +1057,7 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
 }
 
 /** Adds a station to a plate's list, sorted by body position — the order the resolver reads them in. */
-function pushStation<T extends { y: number }>(stations: T[], station: T): void {
+function pushStation<T extends { y?: number }>(stations: T[], station: T): void {
   stations.push(station);
   stations.sort((a, b) => a.y - b.y);
 }

@@ -33,7 +33,8 @@ const scrollArc = (arc: Arc, color: string, fancy: boolean) =>
 // crown's top, then back to S1's furthest reach
 export const renderScrollNeck = (p: EnricoCerutiParams, colors: CerutiColors, showGuides: boolean) => (g: any, ui: any): void => {
   const v = p.scroll!;
-  const { thickness, nutThickness } = p.neck!;
+  const { thickness } = p.neck!;
+  const { nutThickness } = p.stringSetup!;
   const nutLength = standardNutLength(p.height);
   const neckStub = 2 * thickness;
 

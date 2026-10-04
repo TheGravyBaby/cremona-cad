@@ -2,7 +2,7 @@ import { Pt } from "../models/types";
 import { clamp, TURN } from "../helpers/math/simpleGeometry";
 import { catenaryZAt, cycloidZAt, splineZAt } from "../helpers/math/pathMath";
 import {
-  ArchCurve, ArchingParams, ArchPlate, CrossArchParams, CrossArchPoint, EnricoCerutiParams, FlutingParams,
+  ArchCurve, ArchingParams, ArchPlate, CrossArchShape, CrossArchPoint, EnricoCerutiParams, FlutingParams,
 } from "./ceruti-types";
 
 // The long-arch height profile and the body-position queries every arching
@@ -213,7 +213,7 @@ function normalizeRibHeights(a: ArchingParams): void {
  * in an earlier session and saved back.
  */
 function normalizeArchPlate(plate: ArchPlate): void {
-  const legacy = plate as ArchPlate & { gougedFluting?: FlutingParams; gougedCross?: CrossArchParams };
+  const legacy = plate as ArchPlate & { gougedFluting?: FlutingParams; gougedCross?: CrossArchShape };
 
   if (legacy.gougedFluting) plate.fluting = legacy.gougedFluting;
   else if (plate.fluting && plate.fluting.sweepRadius === undefined) delete plate.fluting;
@@ -231,7 +231,7 @@ function normalizeArchPlate(plate: ArchPlate): void {
  * trochoid carried a `left`/`right` pair for asymmetry that this one expresses
  * per point. Older still, the block carried no `type` at all.
  */
-function isCurrentCrossArch(cross: CrossArchParams): boolean {
+function isCurrentCrossArch(cross: CrossArchShape): boolean {
   if (cross.type !== 'spline' && cross.type !== 'cycloid') return false;
   return cross.type === 'spline'
     ? cross.points.every(pt => typeof (pt as CrossArchPoint).x === 'number')
@@ -381,7 +381,7 @@ export const STATION_MARGIN_MM = 1;
  * Non-mutating: the panel keeps its own row order deliberately, and normalizing
  * must not reorder the array behind it.
  */
-export function normalizeCrossArchStations<T extends { y: number }>(
+export function normalizeCrossArchStations<T extends { y?: number }>(
   stations: T[] | undefined, bodyHeight: number,
 ): T[] {
   if (!stations?.length) return [];
