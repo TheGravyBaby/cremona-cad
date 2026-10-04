@@ -295,13 +295,12 @@ export function closestPointOnLine(point: Pt, line: Line): { dist: number; point
 /** Closest point on segment a→b to `point`, with its distance — the clamped twin of
  * closestPointOnLine. */
 export function closestPointOnSegment(point: Pt, a: Pt, b: Pt): { dist: number; point: Pt } {
-  if (a.x === b.x && a.y === b.y) return { dist: dist(point, a), point: { x: a.x, y: a.y } };
   const abx = b.x - a.x, aby = b.y - a.y;
   const lenSq = abx * abx + aby * aby;
-  const foot = closestPointOnLine(point, lineFromTwoPoints(a, b)).point;
-  const t = clamp(((foot.x - a.x) * abx + (foot.y - a.y) * aby) / lenSq, 0, 1);
+  const t = lenSq > 0 ? clamp(((point.x - a.x) * abx + (point.y - a.y) * aby) / lenSq, 0, 1) : 0;
   const closest = { x: a.x + t * abx, y: a.y + t * aby };
-  return { dist: Math.hypot(point.x - closest.x, point.y - closest.y), point: closest };
+  const dx = point.x - closest.x, dy = point.y - closest.y;
+  return { dist: Math.sqrt(dx * dx + dy * dy), point: closest };
 }
 
 

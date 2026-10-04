@@ -154,6 +154,15 @@ export function buildPolylineIndex(poly: Pt[], cellSize = 6): PolylineIndex {
   return { poly, cellSize, minX, minY, cols, rows, cells };
 }
 
+// squared distance from `p` to cell (x, y)'s box: a cell farther than the best segment found
+// can hold nothing nearer, so its segments are never measured
+function cellGapSq(idx: PolylineIndex, p: Pt, x: number, y: number): number {
+  const left = idx.minX + x * idx.cellSize, bottom = idx.minY + y * idx.cellSize;
+  const dx = Math.max(left - p.x, 0, p.x - left - idx.cellSize);
+  const dy = Math.max(bottom - p.y, 0, p.y - bottom - idx.cellSize);
+  return dx * dx + dy * dy;
+}
+
 /**
  * The first Chebyshev ring around cell (ci, cj) that can contain any in-bounds cell — the
  * Chebyshev distance from that cell to the grid box, and 0 for a query already inside it.
@@ -184,6 +193,7 @@ export function distPointToPolylineIndexed(p: Pt, idx: PolylineIndex): number {
   let best = Infinity;
 
   const scanCell = (x: number, y: number): void => {
+    if (cells[y * cols + x].length === 0 || cellGapSq(idx, p, x, y) >= best * best) return;
     for (const i of cells[y * cols + x]) {
       const d = closestPointOnSegment(p, poly[i], poly[(i + 1) % poly.length]).dist;
       if (d < best) best = d;
@@ -227,6 +237,7 @@ export function closestPointToPolylineIndexed(p: Pt, idx: PolylineIndex): { dist
   let bestPt: Pt = poly[0] ?? p;
 
   const scanCell = (x: number, y: number): void => {
+    if (cells[y * cols + x].length === 0 || cellGapSq(idx, p, x, y) >= best * best) return;
     for (const i of cells[y * cols + x]) {
       const r = closestPointOnSegment(p, poly[i], poly[(i + 1) % poly.length]);
       if (r.dist < best) { best = r.dist; bestPt = r.point; }

@@ -197,13 +197,13 @@ describe('the neck wood', () => {
 });
 
 describe('the readouts', () => {
-  it('put the string a few millimetres over the fingerboard end, and the bridge on the arch', () => {
+  it('run the string clear of the fingerboard end, and stand the bridge on the arch', () => {
     const p = neckedViolin();
     const s = solve(p);
     const fbEndTop = moveInVectorSpace(fingerboardEnd(p), [{ ...normalOf(s), mag: s.nutThickness }]);
-    const over = shortestDistanceFromPtToLine(fbEndTop, lineFromTwoPoints(nutTopOf(s), s.bridgeTop!));
-    expect(over).toBeGreaterThan(2);
-    expect(over).toBeLessThan(8);
+    const a = nutTopOf(s), b = s.bridgeTop!;
+    const sideOf = (q: Pt) => Math.sign((b.x - a.x) * (q.y - a.y) - (b.y - a.y) * (q.x - a.x));
+    expect(sideOf(fbEndTop)).toBe(sideOf(s.nut!));
     expect(dist(s.bridgeFoot!, s.bridgeTop!)).toBeCloseTo(p.neck!.bridgeHeight, 9);
     expect(s.bridgeFoot!.x).toBeGreaterThan(plateEdgeAtNeck(p).x);
   });

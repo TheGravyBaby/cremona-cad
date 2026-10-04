@@ -4,7 +4,7 @@ import { calculateFholeContours, calculateOuterArcs } from './ceruti-calcs';
 import { channelPaths, defaultFlutingParams } from './ceruti-arch-geometry';
 import { defaultFHolePlacement } from './panels/f-hole-placement-panel/f-hole-placement-panel';
 import { EnricoCerutiParams, FlutingParams } from './ceruti-types';
-import { closestPointOnSegment, lineCircleIntersection, lineFromTwoPoints, offsetArcRadius, pointInPolygon, pointOnCircle } from '../helpers/math/simpleGeometry';
+import { lineCircleIntersection, lineFromTwoPoints, offsetArcRadius, pointInPolygon, pointOnCircle } from '../helpers/math/simpleGeometry';
 import { samplePathToPolyline, splitPathStrings } from '../helpers/math/pathMath';
 import { Pt, Rectangle } from '../models/types';
 import { setGlobalEmitter } from '../shared/message-emitter';
@@ -13,6 +13,7 @@ import magginiDelmasParams from './templates/test-fixtures/maggini-delmas-params
 import amatiBrookingsParams from './templates/test-fixtures/amati-brookings-params.json';
 import invertedCornersFlutingParams from './templates/test-fixtures/inverted-corners-fluting-params.json';
 import { findJoiningArcs } from '../helpers/math/draftMath';
+import { buildPolylineIndex, distPointToPolylineIndexed } from '../helpers/math/vibeMath';
 
 /**
  * The purfling and channel lines, which are the inner arcs re-solved at a
@@ -352,9 +353,9 @@ describe('a c-bout gouge too narrow to join the main-body one at its nominal end
 // sampled finely, since a coarse sampling shaves the corner tips and reads as a stray of its own
 function channelBeyondLand(p: EnricoCerutiParams, fluting: FlutingParams): number {
   const land = samplePathToPolyline(defineInsetPath(p, p.outerFlutingDepth ?? 0), 0.1);
+  const landIdx = buildPolylineIndex(land);
   const outer = samplePathToPolyline(channelPaths(p, fluting)!.outer, 0.5);
-  return Math.max(0, ...outer.filter(q => !pointInPolygon(q, land))
-    .map(q => Math.min(...land.slice(1).map((a, i) => closestPointOnSegment(q, land[i], a).dist))));
+  return Math.max(0, ...outer.filter(q => !pointInPolygon(q, land)).map(q => distPointToPolylineIndexed(q, landIdx)));
 }
 
 // with both corners wrapped around C0, C0's ends are carried round into the corners and past the
