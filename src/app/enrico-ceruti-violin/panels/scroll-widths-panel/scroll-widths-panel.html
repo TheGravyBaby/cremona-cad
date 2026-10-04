@@ -1,0 +1,17 @@
+@if (params.scroll) {
+
+<section class="ui-group">
+    <div class="ui-group-title">Widths</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title" [style.color]="colors.archBack" title="The scroll's width seen from behind, cheek to cheek">Back <span class="unit-label">mm</span></span>
+            <div class="basic-display" aria-label="Scroll back width value">{{ width }}</div>
+        </label>
+        <label class="field-cell">
+            <span class="field-title" [style.color]="colors.archTop" title="The pegbox's width seen from the front, cheek to cheek">Front <span class="unit-label">mm</span></span>
+            <div class="basic-display" aria-label="Scroll front width value">{{ width }}</div>
+        </label>
+    </div>
+</section>
+
+}

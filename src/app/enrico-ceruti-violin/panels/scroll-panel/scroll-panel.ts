@@ -2,13 +2,14 @@ import { DecimalPipe } from '@angular/common';
 import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { getFieldDeg, setFieldDeg } from '../../../helpers/math/arcDegrees';
-import { renderSolveFailures } from '../../../helpers/renderFuncs';
+import { renderPath, renderSolveFailures } from '../../../helpers/renderFuncs';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, RenderToggleKey, ScrollParams } from '../../ceruti-types';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { defaultNeckParams, defaultStringSetup } from '../../ceruti-neck';
 import { calculateScroll, ScrollKey, scrollExtent, scrollLines } from '../../ceruti-scroll';
+import { defineSideScrollPath } from '../../ceruti-paths';
 import { renderScroll, renderScrollNeck, renderVolute } from '../../renders/scroll.render';
-import { HighlightedArc, HighlightedSegment } from '../../renders/render-constants';
+import { HighlightedArc, HighlightedSegment, STROKE_WEIGHT } from '../../renders/render-constants';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { nearestFraction } from '../../../helpers/nearestFraction';
 
@@ -75,9 +76,13 @@ export class ScrollPanel extends CerutiPanelBase implements OnInit {
     const highlighted: HighlightedArc | null = arc ? { arc, color } : null;
     const highlightedLine: HighlightedSegment | null = line ? { line, color } : null;
 
+    // the volute as plain profile, so only what this panel edits is in colour. The profile needs the
+    // whole scroll solved, so a miss falls back to the volute's own render
     return [
       renderScrollNeck(p, this.colors, false),
-      renderVolute(p, this.colors, this.flags, false, null, failures),
+      failures.length
+        ? renderVolute(p, this.colors, this.flags, false, null, failures)
+        : renderPath(defineSideScrollPath(p), this.colors.outerTrace, STROKE_WEIGHT.trace),
       renderScroll(p, this.colors, this.flags, true, highlighted, highlightedLine, failures),
       renderSolveFailures(failures, this.colors.pathError),
     ];

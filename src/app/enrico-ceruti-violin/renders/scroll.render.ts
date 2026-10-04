@@ -80,8 +80,9 @@ export const renderVolute = (
   const inward = [...v.spiral!].reverse();
   for (let i = 0; i < inward.length; i++) scrollArc(inward[i], arcColor(colors, i), fancy)(g, ui);
 
-  solved('S0') && scrollArc(v.S0, colors.scrollBackLight, fancy)(g, ui);
-  solved('S1') && scrollArc(v.S1, colors.scrollBack, fancy)(g, ui);
+  // the crown keeps the warm pair though it runs on into the back, which is cool
+  solved('S0') && scrollArc(v.S0, colors.scrollFrontLight, fancy)(g, ui);
+  solved('S1') && scrollArc(v.S1, colors.scrollFront, fancy)(g, ui);
 };
 
 // the back from S2 down to the nape, and the front up from the nut. A straight takes its arc's
@@ -126,6 +127,16 @@ export const renderScroll = (
   solved('nape') && line(lines.square, colors.scrollNape);
   solved('flat') && line(lines.flat, colors.scrollFrontLight);
   solved('frontStraight') && line(lines.frontStraight, colors.scrollFront);
+};
+
+// the back and front views as placeholders a uniform width across, each as tall as the head: the
+// back beside the scroll's furthest reach, the front beside the nut
+export const renderScrollWidths = (p: EnricoCerutiParams, colors: CerutiColors, width: number) => (g: any, ui: any): void => {
+  const gap = 20;
+  const { height, width: depth } = scrollExtent(p.scroll!);
+  const box = (left: number) => [new Pt(left, 0), new Pt(left, height), new Pt(left + width, height), new Pt(left + width, 0)];
+  renderPolygon(box(-depth - gap - width), colors.archBack, STROKE_WEIGHT.trace)(g, ui);
+  renderPolygon(box(p.stringSetup!.nutThickness + gap), colors.archTop, STROKE_WEIGHT.trace)(g, ui);
 };
 
 // the figure each style finds its centres on, as polylines in the eye's frame

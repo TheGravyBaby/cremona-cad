@@ -231,6 +231,14 @@
         </app-ceruti-scroll-panel>
         }
 
+        @if (openPanel === 'scrollWidths') {
+        <app-ceruti-scroll-widths-panel #panelRef
+            [params]="d.params"
+            [colors]="colors"
+            (panelUpdate)="onPanelRenderRequest($event)">
+        </app-ceruti-scroll-widths-panel>
+        }
+
         @if (openPanel === 'export') {
         <app-ceruti-export-panel #exportRef
             [params]="d.params"

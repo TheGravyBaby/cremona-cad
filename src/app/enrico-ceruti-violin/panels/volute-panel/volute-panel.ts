@@ -1,13 +1,14 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { getFieldDeg, setFieldDeg } from '../../../helpers/math/arcDegrees';
-import { renderSolveFailures } from '../../../helpers/renderFuncs';
+import { renderPath, renderSolveFailures } from '../../../helpers/renderFuncs';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, RenderToggleKey, ScrollParams } from '../../ceruti-types';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { defaultNeckParams, defaultStringSetup } from '../../ceruti-neck';
 import { calculateScroll, VOLUTE_STYLE_LABELS } from '../../ceruti-scroll';
+import { defineSideScrollPath } from '../../ceruti-paths';
 import { arcColor, renderScrollNeck, renderVolute } from '../../renders/scroll.render';
-import { HighlightedArc } from '../../renders/render-constants';
+import { HighlightedArc, STROKE_WEIGHT } from '../../renders/render-constants';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 
 // a four point arc by its index innermost first, or a crown arc by name
@@ -95,8 +96,10 @@ export class VolutePanel extends CerutiPanelBase implements OnInit {
       v[key];
     const highlighted: HighlightedArc | null = arc ? { arc, color: this.highlightedColor } : null;
 
+    // the rest of the scroll for context, under the volute's own arcs, once it all solves
     return [
       renderScrollNeck(p, this.colors, this.flags.showModuleGuides),
+      ...(failures.length ? [] : [renderPath(defineSideScrollPath(p), this.colors.outerTrace, STROKE_WEIGHT.trace)]),
       renderVolute(p, this.colors, this.flags, true, highlighted, failures),
       renderSolveFailures(failures, this.colors.pathError),
     ];

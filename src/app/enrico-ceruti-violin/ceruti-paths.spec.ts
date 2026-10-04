@@ -1,9 +1,11 @@
-import { defineFholePath, defineOneFholePath, defineFlutingArcs, defineFlutingPath, defineInnerPath, defineInsetPath, defineOffsetArcs, defineOuterPath, defineOuterPurflingPath, definePurflingPath, violNeckCap } from './ceruti-paths';
+import { defineFholePath, defineOneFholePath, defineFlutingArcs, defineFlutingPath, defineInnerPath, defineInsetPath, defineOffsetArcs, defineOuterPath, defineOuterPurflingPath, definePurflingPath, defineSideScrollPath, violNeckCap } from './ceruti-paths';
 import { defaultViolin, layoutFrom, templateKeys, templateViolin, violinFromRecipe } from './ceruti-fixtures';
 import { calculateFholeContours, calculateOuterArcs } from './ceruti-calcs';
 import { channelPaths, defaultFlutingParams } from './ceruti-arch-geometry';
 import { defaultFHolePlacement } from './panels/f-hole-placement-panel/f-hole-placement-panel';
-import { EnricoCerutiParams, FlutingParams } from './ceruti-types';
+import { EnricoCerutiParams, FlutingParams, VoluteStyle } from './ceruti-types';
+import { calculateScroll, defaultVoluteParams, VOLUTE_STYLE_LABELS } from './ceruti-scroll';
+import { defaultNeckParams } from './ceruti-neck';
 import { pointInPolygon, pointOnCircle } from '../helpers/math/simpleGeometry';
 import { samplePathToPolyline, splitPathStrings } from '../helpers/math/pathMath';
 import { Pt } from '../models/types';
@@ -478,5 +480,21 @@ describe('the button', () => {
       expect(subpaths(path), `one loop at height ${height}`).toBe(1);
       expect(topY(samplePathToPolyline(path, 0.25)), `tip at height ${height}`).toBeCloseTo(face + height, 1);
     }
+  });
+});
+
+describe.each(Object.keys(VOLUTE_STYLE_LABELS) as VoluteStyle[])('the side scroll path with a %s volute', style => {
+  it('runs unbroken down the back and up the front, each piece on from the last', () => {
+    const p = defaultViolin();
+    p.neck = defaultNeckParams(p);
+    p.scroll = { ...defaultVoluteParams(p), style };
+    expect(calculateScroll(p)).toEqual([]);
+
+    const ends = splitPathStrings(defineSideScrollPath(p)).map(piece => {
+      const pts = samplePathToPolyline(piece, 1, true);
+      return { start: pts[0], end: pts.at(-1)! };
+    });
+    const breaks = ends.slice(1).filter((e, i) => Math.hypot(e.start.x - ends[i].end.x, e.start.y - ends[i].end.y) > 1e-3);
+    expect(breaks.length).toBe(1);
   });
 });

@@ -75,30 +75,30 @@
     <div class="ui-group-title">Crown</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="colors.scrollBackLight" title="The arc carrying the spiral's front on up to the top of the scroll">S0 R <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1" min="0" [style.border-color]="colors.scrollBackLight"
-                [(ngModel)]="scroll.S0.r" (input)="onChange(); onArcFocus('S0', colors.scrollBackLight)"
-                (focus)="onArcFocus('S0', colors.scrollBackLight)" (blur)="onArcBlur()" />
+            <span class="field-title" [style.color]="colors.scrollFrontLight" title="The arc carrying the spiral's front on up to the top of the scroll">S0 R <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1" min="0" [style.border-color]="colors.scrollFrontLight"
+                [(ngModel)]="scroll.S0.r" (input)="onChange(); onArcFocus('S0', colors.scrollFrontLight)"
+                (focus)="onArcFocus('S0', colors.scrollFrontLight)" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">
             <span class="field-title" title="Where the arc ends, as the angle round its own centre from the front: 90° the top of the scroll, 180° the back. It starts where the spiral's front ends">End <span class="unit-label">°</span></span>
             <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1"
-                [ngModel]="getFieldDeg(scroll.S0, 'end')" (ngModelChange)="setFieldDeg(scroll.S0, 'end', $event, onChange.bind(this)); onArcFocus('S0', colors.scrollBackLight)"
-                (focus)="onArcFocus('S0', colors.scrollBackLight)" (blur)="onArcBlur()" />
+                [ngModel]="getFieldDeg(scroll.S0, 'end')" (ngModelChange)="setFieldDeg(scroll.S0, 'end', $event, onChange.bind(this)); onArcFocus('S0', colors.scrollFrontLight)"
+                (focus)="onArcFocus('S0', colors.scrollFrontLight)" (blur)="onArcBlur()" />
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="colors.scrollBack" title="The arc from the top of the scroll on over to the back">S1 R <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1" min="0" [style.border-color]="colors.scrollBack"
-                [(ngModel)]="scroll.S1.r" (input)="onChange(); onArcFocus('S1', colors.scrollBack)"
-                (focus)="onArcFocus('S1', colors.scrollBack)" (blur)="onArcBlur()" />
+            <span class="field-title" [style.color]="colors.scrollFront" title="The arc from the top of the scroll on over to the back">S1 R <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1" min="0" [style.border-color]="colors.scrollFront"
+                [(ngModel)]="scroll.S1.r" (input)="onChange(); onArcFocus('S1', colors.scrollFront)"
+                (focus)="onArcFocus('S1', colors.scrollFront)" (blur)="onArcBlur()" />
         </label>
         <label class="field-cell">
             <span class="field-title" title="Where the arc ends, as the angle round its own centre from the front: 180° the back. It starts where S0 ended">End <span class="unit-label">°</span></span>
             <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1"
-                [ngModel]="getFieldDeg(scroll.S1, 'end')" (ngModelChange)="setFieldDeg(scroll.S1, 'end', $event, onChange.bind(this)); onArcFocus('S1', colors.scrollBack)"
-                (focus)="onArcFocus('S1', colors.scrollBack)" (blur)="onArcBlur()" />
+                [ngModel]="getFieldDeg(scroll.S1, 'end')" (ngModelChange)="setFieldDeg(scroll.S1, 'end', $event, onChange.bind(this)); onArcFocus('S1', colors.scrollFront)"
+                (focus)="onArcFocus('S1', colors.scrollFront)" (blur)="onArcBlur()" />
         </label>
     </div>
 </section>
