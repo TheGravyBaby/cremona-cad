@@ -381,15 +381,15 @@ export function solveArchTakeoff(
   // The inner flank first, so every arch that already met it lands where it did.
   // An arch that arrives sloping down — its first knot below the takeoff — has
   // no tangent there, and meets the outer flank instead, past the trough.
-  const bracketOn = (dir: 1 | -1): [number, number] | null => {
+  const bracketOn = (dir: 1 | -1): [number, number, number] | null => {
     let aS = dir * lo, aR = residual(aS);
     if (Math.abs(aR) < nearest.mag) nearest = { s: aS, mag: Math.abs(aR) };
     for (let i = 1; i <= scanSteps; i++) {
       const s = dir * (lo + ((hi - lo) * i) / scanSteps);
       const r = residual(s);
       if (Math.abs(r) < nearest.mag) nearest = { s, mag: Math.abs(r) };
-      if (aR === 0) return [aS, aS];
-      if (aR * r < 0) return [Math.min(aS, s), Math.max(aS, s)];
+      if (aR === 0) return [aS, aR, aS];
+      if (aR * r < 0) return aS < s ? [aS, aR, s] : [s, r, aS];
       aS = s; aR = r;
     }
     return null;
@@ -397,8 +397,7 @@ export function solveArchTakeoff(
   const bracket = bracketOn(1) ?? bracketOn(-1);
   if (!bracket) return takeoffAt(nearest.s, false);
 
-  let [x0, x1] = bracket;
-  let r0 = residual(x0);
+  let [x0, r0, x1] = bracket;
   for (let i = 0; i < 60 && x1 - x0 > 1e-9; i++) {
     const mid = (x0 + x1) / 2;
     const rMid = residual(mid);
@@ -1173,6 +1172,10 @@ export function solveCrossArchSection(
   let takeL: ArchTakeoff | null = null;
   let takeR: ArchTakeoff | null = null;
 
+  // a centred crown on mirrored knots lands alike on both sides: one solve, both ends moving together
+  const symmetric = Math.abs(xPeak) < 1e-9 && row.left.length === row.right.length
+    && row.left.every((k, i) => k.x === row.right[i].x && k.z === row.right[i].z);
+
   const solveSide = (side: 1 | -1): ArchTakeoff | null => {
     const slopeAt = (takeoffDepth: number, contactS: number): number => {
       const mine: SideEnd = { xEnd: centerHalf - contactS, zEnd: -takeoffDepth };
@@ -1183,8 +1186,8 @@ export function solveCrossArchSection(
       if (isCatenary) {
         return (catenarySideZAt(archH, mine.zEnd, mine.xEnd, side * (mine.xEnd - eps)) - mine.zEnd) / eps;
       }
-      const f = side === 1
-        ? crossProfile(archH, xPeak, frame, row.left, row.right, endL, mine)
+      const f = symmetric ? crossProfile(archH, xPeak, frame, row.left, row.right, mine, mine)
+        : side === 1 ? crossProfile(archH, xPeak, frame, row.left, row.right, endL, mine)
         : crossProfile(archH, xPeak, frame, row.left, row.right, mine, endR);
       return (f(side * (mine.xEnd - eps)) - mine.zEnd) / eps;
     };
@@ -1194,9 +1197,12 @@ export function solveCrossArchSection(
   // Both sides live on one spline now, so each landing nudges the other's
   // arrival slope. The coupling is weak — a cubic spline's influence decays
   // geometrically along its knots, and the crown plus its neighbours sit
-  // between the two ends — so a few sweeps settle it, and a symmetric template
-  // converges on the first.
-  for (let i = 0; i < 4; i++) {
+  // between the two ends — so a few sweeps settle it.
+  if (symmetric) {
+    takeR = takeL = solveSide(1);
+    if (takeR) endR = endL = endAt(takeR.contactS);
+  }
+  else for (let i = 0; i < 4; i++) {
     const before = [takeR?.contactS, takeL?.contactS];
     takeR = solveSide(1);
     if (takeR) endR = endAt(takeR.contactS);
