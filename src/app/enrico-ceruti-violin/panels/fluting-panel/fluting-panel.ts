@@ -5,7 +5,7 @@ import { renderFilledPath, renderPath } from '../../../helpers/renderFuncs';
 import { translatePath } from '../../../helpers/math/pathMath';
 import { calculateOuterArcs } from '../../ceruti-calcs';
 import { defineOuterPath, defineOuterPurflingPath, definePurflingPath } from '../../ceruti-paths';
-import { ArchingParams, CerutiColors, CerutiViewFlags, EnricoCerutiParams, FlutingParams, RenderToggleKey } from '../../ceruti-types';
+import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, RenderToggleKey } from '../../ceruti-types';
 import { defaultArchingParams } from '../../ceruti-arching';
 import {
   defaultFlutingParams, effectiveCBoutSweep, channelAreaPath,
@@ -18,11 +18,6 @@ import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { STROKE_WEIGHT } from '../../renders/render-constants';
 
-/**
- * Step one: carve the channel. It comes first because that is the order at the
- * bench — the channel is cut at constant section before any arching exists to
- * derive it from.
- */
 @Component({
   selector: 'app-ceruti-fluting-panel',
   imports: [FormsModule, DecimalPipe, NumberStepperDirective],
@@ -40,6 +35,8 @@ export class FlutingPanel extends CerutiPanelBase implements OnInit {
   protected readonly gougeCBoutInfo = gougeCBoutInfo;
   protected readonly gougeCenterlineInfo = gougeCenterlineInfo;
   protected readonly cornerGougeInfo = cornerGougeInfo;
+  protected readonly gougeHalfWidth = gougeHalfWidth;
+  protected readonly effectiveCBoutSweep = effectiveCBoutSweep;
 
   ngOnInit(): void {
     this.emitImmediate();
@@ -49,157 +46,49 @@ export class FlutingPanel extends CerutiPanelBase implements OnInit {
     this.emitDebounced();
   }
 
-  /** A toggle is something the user watches happen, so it redraws without waiting on the debounce. */
-  onToggle(): void {
-    this.emitImmediate();
-  }
-
-  get arching(): ArchingParams { return this.params.arching!; }
-
-  gouge(plate: 'top' | 'bottom'): FlutingParams {
-    const plateParams = plate === 'top' ? this.arching.top : this.arching.bottom;
-    return (plateParams.fluting ??= defaultFlutingParams(this.params));
-  }
-
-  /** The cut's width at the set depth — derived from the tool, so read-only. */
-  channelWidth(plate: 'top' | 'bottom'): number {
-    const g = this.gouge(plate);
-    return 2 * gougeHalfWidth(g.sweepRadius, g.depth);
-  }
-
-  /** The same through the C-bout, where a second gouge may be in force. */
-  channelWidthCBout(plate: 'top' | 'bottom'): number {
-    const g = this.gouge(plate);
-    return 2 * gougeHalfWidth(effectiveCBoutSweep(g), g.depth);
-  }
-
-  /**
-   * One toggle for both plates. The corners are smoothed out at the bench in a
-   * single operation with the plate in front of you either way, so a top that
-   * had them and a back that didn't would be describing two different methods
-   * rather than two different tools.
-   */
-  get cornerGouge(): boolean {
-    return this.gouge('top').cornerGouge;
-  }
-
-  setCornerGouge(on: boolean): void {
-    this.gouge('top').cornerGouge = on;
-    this.gouge('bottom').cornerGouge = on;
-    this.onToggle();
-  }
-
-  cBoutGouge(plate: 'top' | 'bottom'): boolean {
-    return this.gouge(plate).sweepRadius_cBout !== null;
-  }
-
-  /** Turning it on seeds from the main sweep, so the channel doesn't jump before it's dialled. */
-  setCBoutGouge(plate: 'top' | 'bottom', on: boolean): void {
-    const g = this.gouge(plate);
-    g.sweepRadius_cBout = on ? g.sweepRadius : null;
-    this.onToggle();
-  }
-
-  /**
-   * A narrower gouge for the waist. Only the sweep varies — same land edge,
-   * same depth — so the channel keeps its outer line and pulls its inner edge
-   * back. Held above the depth, since a gouge cannot cut deeper than it is
-   * curved.
-   */
-  setSweepRadiusCBout(plate: 'top' | 'bottom', mm: number | null): void {
-    const g = this.gouge(plate);
-    const raw = mm === null || mm === undefined || (mm as unknown as string) === '' ? null : Number(mm);
-    g.sweepRadius_cBout = raw === null || !Number.isFinite(raw)
-      ? null
-      : Math.max(raw, g.depth / 0.9);
-    this.onChange();
-  }
-
-  /**
-   * A gouge can only cut to its own sweep radius, and the width formula goes
-   * imaginary past that. Holding depth below the radius keeps the section real
-   * without needing the panel to explain the constraint.
-   */
-  setDepth(plate: 'top' | 'bottom', mm: number): void {
-    const g = this.gouge(plate);
-    g.depth = Math.min(Math.max(mm || 0, 0), g.sweepRadius * 0.9);
-    this.onChange();
-  }
-
-  setSweepRadius(plate: 'top' | 'bottom', mm: number): void {
-    const g = this.gouge(plate);
-    g.sweepRadius = Math.max(mm || 0, 0.1);
-    if (g.depth > g.sweepRadius * 0.9) g.depth = g.sweepRadius * 0.9;
-    this.onChange();
-  }
-
-  /**
-   * The channel's outer edge, shared by both plates because it is the edge of
-   * the flat land — a property of the outline and the purfling, not of either
-   * gouge. Lives in `params` alongside the other Outer Path measurements; this
-   * panel edits it here only because it is the number the channel is anchored
-   * to and is useless to set out of sight of the result.
-   */
-  setLandEdge(mm: number): void {
-    this.params.outerFlutingDepth = Math.max(mm || 0, 0);
-    this.onChange();
-  }
-
   public buildRun(): RenderLayer[] {
-    this.params.arching ??= defaultArchingParams(this.params.height);
-    // The channel offsets are taken off the outer arcs, which must be current.
-    calculateOuterArcs(this.params);
+    const p = this.params;
+    p.arching ??= defaultArchingParams(p.height);
+    // the channel offsets are taken off the outer arcs, which must be current
+    calculateOuterArcs(p);
+    p.outerFlutingDepth = Math.max(p.outerFlutingDepth ?? 0, 0);
 
+    const top = (p.arching.top.fluting ??= defaultFlutingParams(p));
+    const back = (p.arching.bottom.fluting ??= defaultFlutingParams(p));
+    // one toggle for both plates: the corners are smoothed in a single operation at the bench, so
+    // a top that had them and a back that didn't would be two methods, not two tools
+    back.cornerGouge = top.cornerGouge;
+    for (const g of [top, back]) {
+      // a gouge cuts no deeper than its own sweep, and the width formula goes imaginary past that
+      g.sweepRadius = Math.max(g.sweepRadius || 0, 0.1);
+      g.depth = Math.min(Math.max(g.depth || 0, 0), g.sweepRadius * 0.9);
+      if (g.sweepRadius_cBout !== null) g.sweepRadius_cBout = Math.max(g.sweepRadius_cBout, g.depth / 0.9);
+    }
+
+    const inset = p.overhang + p.rib;
     const renders: RenderLayer[] = [];
-    // Side by side rather than superimposed: the two plates carry different
-    // gouges, and stacking them buries whichever is drawn first. Top right,
-    // back left, mirroring how a pair of plates sits on the bench.
+    // side by side rather than superimposed, top right and back left as a pair sits on the bench:
+    // the two plates carry different gouges, and stacking them buries whichever is drawn first
     for (const plate of ['top', 'bottom'] as const) {
-      renders.push(...this.plateLayers(plate, plateLayoutOffset(this.params, plate)));
+      const g = plate === 'top' ? top : back;
+      const color = plate === 'top' ? this.colors.archTop : this.colors.archBack;
+      const dx = plateLayoutOffset(p, plate);
+      const at = (path: string): string => translatePath(path, dx, 0);
+
+      // context only, so guide weight: the outline, and the purfling the land edge is set against
+      renders.push(renderPath(at(defineOuterPath(p, undefined, true, plate === 'bottom')), this.colors.outerTrace, STROKE_WEIGHT.guide));
+      for (const purfling of [definePurflingPath(p, inset), defineOuterPurflingPath(p, inset)]) {
+        if (purfling) renders.push(renderPath(at(purfling), this.colors.innerTrace, STROKE_WEIGHT.guide));
+      }
+
+      const paths = channelPaths(p, g);
+      if (!paths) continue;
+
+      // the corner join is smoothed down after the gouge has run, so it draws lighter than the
+      // channel, and lighter still with the corner pass off, when it marks wood left rather than taken
+      renders.push(renderFilledPath(at(cornerJoinAreaPath(p, paths)), color, g.cornerGouge ? 0.15 : 0.08));
+      renders.push(renderFilledPath(at(channelAreaPath(paths)), color, 0.3));
     }
     return renders;
-  }
-
-  private plateLayers(plate: 'top' | 'bottom', dx: number): RenderLayer[] {
-    const at = (path: string): string => translatePath(path, dx, 0);
-    const color = plate === 'top' ? this.colors.archTop : this.colors.archBack;
-    const inset = this.params.overhang + this.params.rib;
-    const layers: RenderLayer[] = [
-      // Cosmetic context only — the channel fills below are this panel's actual subject, so the
-      // outer path is drawn at guide weight even though it's the same "outerTrace" line other
-      // panels draw as their primary trace.
-      renderPath(at(defineOuterPath(this.params, undefined, true, plate === 'bottom')), this.colors.outerTrace, STROKE_WEIGHT.guide),
-    ];
-
-    // Cosmetic only — nothing here reads the purfling. It is drawn because the
-    // land edge below is set *against* it at the bench, so seeing the two
-    // together is how you tell whether the channel starts where it should.
-    // Both lines come from the Outer Path panel's own path functions rather
-    // than a copy, so they cannot drift from what that panel shows.
-    for (const purfling of [definePurflingPath(this.params, inset), defineOuterPurflingPath(this.params, inset)]) {
-      if (purfling) layers.push(renderPath(at(purfling), this.colors.innerTrace, STROKE_WEIGHT.guide));
-    }
-
-    const paths = channelPaths(this.params, this.gouge(plate));
-    if (!paths) return layers;
-
-    // Areas rather than outlines: the channel and the corner-join land are
-    // regions of the plate, and a maker reads them as regions. Both are
-    // even-odd fills between two loops, so neither needs a tolerance or a
-    // sampled boundary test. Each plate carries its own colour so a top and a
-    // back with different gouges can be told apart at a glance.
-    //
-    // The corner region is a separate operation from the channel — smoothed
-    // down to meet it after the gouge has run — so it is always drawn lighter
-    // than the channel, and lighter still with the corner pass off, when it
-    // marks wood being left rather than taken.
-    const carved = this.gouge(plate).cornerGouge;
-    layers.push(renderFilledPath(
-      at(cornerJoinAreaPath(this.params, paths)),
-      color,
-      carved ? 0.15 : 0.08,
-    ));
-    layers.push(renderFilledPath(at(channelAreaPath(paths)), color, 0.3));
-    return layers;
   }
 }
