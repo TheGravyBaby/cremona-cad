@@ -4,7 +4,7 @@ import { flipRectAboutY } from '../../../helpers/math/simpleGeometry';
 import { renderPath, renderRect } from '../../../helpers/renderFuncs';
 import { calculateMould, ensureCenterBoutInnerPath, ensureOuterTracePaths, getPath } from '../../ceruti-calcs';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, PathEntry, RenderToggleKey } from '../../ceruti-types';
-import { bitDiameterInfo } from '../../ceruti-helpers';
+import { bitDiameterInfo } from '../../ceruti-toasts';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 

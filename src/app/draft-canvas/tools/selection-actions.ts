@@ -31,6 +31,7 @@ export class SelectionActions {
 
   /** Anything but a reference image can be copied, a recipe piece included. */
   get canCopy(): boolean { return this.selection.shapes.some(s => s.type !== 'image'); }
+  get canExport(): boolean { return this.canCopy; }
   /** Cutting removes, so only drawn shapes qualify — a recipe piece is copied but stays. */
   get canCut(): boolean { return this.selection.toolboxShapes.some(s => s.type !== 'image'); }
   get canDelete(): boolean { return this.selection.toolboxShapes.length > 0; }
@@ -80,10 +81,9 @@ export class SelectionActions {
     this.toolbox.updateShapes(new Map(grouped.map(s => [s.id, { groupId: undefined }])));
   }
 
-  /** The selection as SVG text — or, with nothing selected, every drawn shape in view — for
-   * saving to a file. Null when there's nothing to write. */
+  /** The selection as SVG text, for saving to a file. Null when there's nothing to write. */
   exportSvg(): string | null {
-    const shapes = (this.selection.size ? this.selection.shapes : this.toolbox.getVisibleShapes()).filter(s => s.type !== 'image');
+    const shapes = this.selection.shapes.filter(s => s.type !== 'image');
     return shapes.length ? shapesToSvg(shapes) : null;
   }
 

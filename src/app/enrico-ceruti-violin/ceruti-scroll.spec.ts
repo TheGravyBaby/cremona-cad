@@ -2,28 +2,28 @@ import { calculateScroll, defaultVoluteParams, ScrollKey, scrollLines, spiralArc
 import { voluteConstruction } from './renders/scroll.render';
 import { defaultNeckParams, standardNutLength } from './ceruti-neck';
 import { defaultViolin } from './ceruti-fixtures';
-import { EnricoCerutiParams, VoluteParams, VoluteStyle } from './ceruti-types';
+import { EnricoCerutiParams, ScrollParams, VoluteStyle } from './ceruti-types';
 import { angleWithinSweep, dist, normalizeRadians } from '../helpers/math/simpleGeometry';
-import { Arc, Pt } from '../models/types';
+import { Arc, Circle, Pt } from '../models/types';
 
 const at = ({ x, y, r }: Arc, angle: number) => [x + r * Math.cos(angle), y + r * Math.sin(angle)];
 const EYE_Y = 90;
 // the default arc radii unrounded, so they scale exactly with the eye
 const arcRadii = (eyeRadius: number, count = TO_FRONT) => Array.from({ length: count }, (_, i) => (Math.SQRT2 + i / 2) * eyeRadius);
 const spec = (style: VoluteStyle, eyeRadius: number, radii = arcRadii(eyeRadius)): VoluteSpec =>
-  ({ style, eyeRadius, arcRadii: radii, pitch: 2 * eyeRadius, seedLength: eyeRadius });
+  ({ style, eye: new Circle(0, 0, eyeRadius), arcRadii: radii, pitch: 2 * eyeRadius, seedLength: eyeRadius });
 const arc = (r: number, start: number, end: number) => new Arc(0, 0, r, start, end);
 
 // a violin with its scroll solved in `style`, the eye flush with the neck's front at EYE_Y and the
 // neck's back at x = 0 unless a test moves it
-const scrolled = (style: VoluteStyle, eyeRadius: number, over: Partial<VoluteParams> = {}, radii?: number[]) => {
+const scrolled = (style: VoluteStyle, eyeRadius: number, over: Partial<ScrollParams> = {}, radii?: number[]) => {
   const p = defaultViolin();
   p.neck = defaultNeckParams(p);
   p.neck.thickness = 0;
-  p.volute = { ...defaultVoluteParams(p), ...spec(style, eyeRadius, radii), flushWithNeck: true, ...over };
-  p.volute.eye = new Pt(p.volute.eye.x, over.eye?.y ?? EYE_Y);
+  p.scroll = { ...defaultVoluteParams(p), ...spec(style, eyeRadius, radii), flushWithNeck: true, ...over };
+  p.scroll.eye = new Circle(p.scroll.eye.x, over.eye?.y ?? EYE_Y, eyeRadius);
   const failures = calculateScroll(p);
-  return { p, v: p.volute, failures };
+  return { p, v: p.scroll, failures };
 };
 const unsolved = (p: EnricoCerutiParams): ScrollKey[] => [...new Set(calculateScroll(p).flatMap(f => f.unsolved))].sort();
 const sweep = (arcs: Arc[]) => arcs.reduce((sum, a) => sum + a.end - a.start, 0);
@@ -101,7 +101,7 @@ describe.each(STYLES)('the %s volute', style => {
     const [dx, dy] = [a.x - last.x, a.y - last.y];
     expect(dx * Math.sin(angle) - dy * Math.cos(angle)).toBeCloseTo(0, 9);
   };
-  const BACK: Partial<VoluteParams> = {
+  const BACK: Partial<ScrollParams> = {
     S0: arc(30, 0, Math.PI / 2), S1: arc(20, 0, Math.PI), S2: arc(15, 0, 4), backStraight: 6, S3: arc(12, 0.2, 0), nape: arc(3, 0, 0),
   };
 
@@ -171,7 +171,7 @@ describe.each(STYLES)('the %s volute', style => {
 
   // the panel's default proportions, up from the top of the nut to the spiral's bottom
   const withFront = (p: EnricoCerutiParams) => {
-    const v = p.volute!;
+    const v = p.scroll!;
     const rise = Math.min(...v.spiral!.map(a => a.y - a.r)) - standardNutLength(p.height);
     v.flat = 0.45 * rise;
     v.F0 = arc(0.4 * rise, 0, Math.PI / 6);
@@ -210,7 +210,7 @@ describe.each(STYLES)('the %s volute', style => {
   it('leaves F1 unsolved when it never reaches the spiral, and stops the front at the first part that is no radius or length', () => {
     const { p, v } = scrolled(style, 4, BACK);
     const rise = withFront(p);
-    const front = (over: Partial<VoluteParams>) => {
+    const front = (over: Partial<ScrollParams>) => {
       withFront(p);
       Object.assign(v, over);
       return unsolved(p).filter(k => k !== 'nape');
@@ -230,7 +230,7 @@ describe.each(STYLES)('the %s volute', style => {
 
   it('ends the back at the first part that is no radius, no forward sweep or no length', () => {
     const { p, v } = scrolled(style, 4, BACK);
-    const back = (over: Partial<VoluteParams>) => {
+    const back = (over: Partial<ScrollParams>) => {
       Object.assign(v, JSON.parse(JSON.stringify(BACK)), over);
       return unsolved(p);
     };
@@ -257,7 +257,7 @@ describe.each(STYLES)('the %s volute', style => {
 
   it('brings the spiral\'s front flush with the neck at any height', () => {
     for (const eyeY of [70, 85]) {
-      const { v } = scrolled(style, 4, { eye: new Pt(0, eyeY) });
+      const { v } = scrolled(style, 4, { eye: new Circle(0, eyeY, 4) });
       expect(v.eye.y).toBe(eyeY);
       const right = Math.max(...v.spiral!.flatMap(a =>
         [a.start, a.end, 0, 2 * Math.PI, 4 * Math.PI, 6 * Math.PI].filter(t => t === a.start || t === a.end || angleWithinSweep(t, a.start, a.end)).map(t => at(a, t)[0])));
@@ -267,7 +267,7 @@ describe.each(STYLES)('the %s volute', style => {
 
   it('goes wherever the eye is put, unchanged', () => {
     const fitted = scrolled(style, 4).v;
-    const { v } = scrolled(style, 4, { flushWithNeck: false, eye: new Pt(fitted.eye.x - 5, fitted.eye.y - 7) });
+    const { v } = scrolled(style, 4, { flushWithNeck: false, eye: new Circle(fitted.eye.x - 5, fitted.eye.y - 7, 4) });
     expect([v.eye.x, v.eye.y]).toEqual([fitted.eye.x - 5, fitted.eye.y - 7]);
     v.spiral!.forEach((a, i) => {
       expect(a.x).toBeCloseTo(fitted.spiral![i].x - 5, 9);
@@ -277,8 +277,8 @@ describe.each(STYLES)('the %s volute', style => {
   });
 
   it('draws nothing for an eye that has no place yet', () => {
-    expect(scrolled(style, 4, { flushWithNeck: false, eye: new Pt(NaN, 50) }).v.spiral).toBeNull();
-    expect(scrolled(style, 4, { flushWithNeck: false, eye: new Pt(-20, NaN) }).v.spiral).toBeNull();
+    expect(scrolled(style, 4, { flushWithNeck: false, eye: new Circle(NaN, 50, 4) }).v.spiral).toBeNull();
+    expect(scrolled(style, 4, { flushWithNeck: false, eye: new Circle(-20, NaN, 4) }).v.spiral).toBeNull();
   });
 });
 
@@ -287,7 +287,7 @@ describe('the default scroll', () => {
     const p = defaultViolin();
     p.neck = defaultNeckParams(p);
     expect(unsolved(p)).toEqual([]);
-    const v = p.volute!;
+    const v = p.scroll!;
     expect(v.spiral).toHaveLength(TO_FRONT);
     expect(v.nape.x).toBeCloseTo(-p.neck.thickness - v.nape.r, 9);
     expect(v.F1.end - v.F1.start).toBeGreaterThan(0);

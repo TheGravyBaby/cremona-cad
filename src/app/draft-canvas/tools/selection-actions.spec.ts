@@ -252,10 +252,9 @@ describe('SelectionActions', () => {
     expect(toolbox.getShapes().find(s => s.id === 'b')!.groupId).toBeUndefined();
   });
 
-  it('exports the selection, or every drawn shape in view when nothing is selected', () => {
-    expect(actions.exportSvg()).toBeNull();
+  it('exports the selection, and nothing when nothing is selected', () => {
     toolbox.addShapes([line('a'), line('b')]);
-    expect(actions.exportSvg()!.match(/<line/g)!.length).toBe(2);
+    expect(actions.exportSvg()).toBeNull();
     selection.select(toolboxRef('a'));
     expect(actions.exportSvg()!.match(/<line/g)!.length).toBe(1);
   });

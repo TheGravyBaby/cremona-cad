@@ -21,7 +21,7 @@ describe('EditMenuComponent', () => {
 
   it('lists the verbs, greying those with nothing to act on, and says when a row acted', () => {
     expect(rows().map(r => r.querySelector('.menu-label')!.textContent))
-      .toEqual(['Undo', 'Redo', 'Cut', 'Copy', 'Paste', 'Duplicate', 'Group', 'Ungroup', 'Delete']);
+      .toEqual(['Undo', 'Redo', 'Cut', 'Copy', 'Paste', 'Export selection', 'Duplicate', 'Group', 'Ungroup', 'Delete']);
     expect(rows().find(r => r.textContent!.includes('Ungroup'))!.disabled).toBe(true);
     const toolbox = TestBed.inject(ToolboxStore);
     const done = vi.fn();

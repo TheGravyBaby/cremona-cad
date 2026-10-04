@@ -14,7 +14,7 @@ import { defaultFlutingParams, LongArchSolve, solveLongArch } from '../../ceruti
 import { calculateOuterArcs } from '../../ceruti-calcs';
 import {
   archHeightInfo, curveTypeInfo, transitionInfo, plateThicknessInfo, ribHeightInfo, splinePointInfo,
-} from '../../ceruti-helpers';
+} from '../../ceruti-toasts';
 import { HighlightedSplinePoint } from '../../renders/render-constants';
 import { renderBodySection } from '../../renders/body-section.render';
 import { error } from '../../../shared/message-emitter';

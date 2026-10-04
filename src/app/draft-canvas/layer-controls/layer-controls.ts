@@ -7,6 +7,7 @@ import { DEFAULT_LAYER_ID, Layer } from '../tools/layer';
 import { PanelChoice } from '../tools/toolbox-store';
 import { SelectionStore } from '../tools/selection-store';
 import { SelectionActions } from '../tools/selection-actions';
+import { shapesToSvg } from '../tools/shape-svg';
 import { downloadSvgFile } from '../../helpers/fileExporter';
 import { warn } from '../../shared/message-emitter';
 
@@ -135,13 +136,20 @@ export class LayerControlsComponent {
     return this.isLayerOffPanel(layer) ? `Shown on ${names} — not on this panel` : `Shown on ${names}`;
   }
 
-  get canExport(): boolean { return this.selection.size > 0 || this.toolbox.getVisibleShapes().length > 0; }
+  private get activeLayerShapes(): DraftShape[] {
+    const id = this.toolbox.activeLayerId;
+    return this.toolbox.getShapes().filter(s => s.type !== 'image' && (s.layerId ?? DEFAULT_LAYER_ID) === id);
+  }
 
-  /** The selection, or the whole drawing when nothing is selected, as a real-size SVG file. The
-   * drawn shapes only: the recipe has its own export panels. */
+  get canExport(): boolean { return this.activeLayerShapes.length > 0; }
+
+  /** The active layer as a real-size SVG file named after it. Drawn shapes only: the recipe has its
+   * own export panels, and the selection exports from the canvas's right-click menu. */
   exportSvg(): void {
-    const svg = this.actions.exportSvg();
-    if (svg) downloadSvgFile(this.selection.size ? 'selection.svg' : 'drawing.svg', svg);
+    const shapes = this.activeLayerShapes;
+    if (!shapes.length) return;
+    const name = this.toolbox.layers.find(l => l.id === this.toolbox.activeLayerId)?.name ?? '';
+    downloadSvgFile(`${name.replace(/[\\/:*?"<>|]/g, '').trim() || 'layer'}.svg`, shapesToSvg(shapes));
   }
 
   /** Reads a picked SVG file onto the active layer, in place, as a paste would. Silent on a

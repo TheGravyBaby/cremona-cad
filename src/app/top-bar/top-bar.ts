@@ -1,12 +1,11 @@
 import { Component, ElementRef, EventEmitter, HostListener, Output, Input, inject } from '@angular/core';
 import { AboutModalComponent } from '../about-modal/about-modal';
-import { EditMenuComponent } from '../draft-canvas/edit-menu/edit-menu';
 import { MessageCenterComponent } from '../shared/message-center.component';
 
 @Component({
   selector: 'app-top-bar',
   standalone: true,
-  imports: [AboutModalComponent, EditMenuComponent, MessageCenterComponent],
+  imports: [AboutModalComponent, MessageCenterComponent],
   templateUrl: './top-bar.html',
   styleUrls: ['./top-bar.css'],
 })

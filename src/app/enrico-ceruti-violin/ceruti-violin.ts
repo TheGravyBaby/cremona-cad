@@ -17,7 +17,7 @@ import {
   LIGHT_SATURATE_DEGREE, OFF2_FACTOR, OFF_FACTOR,
 } from './renders/render-constants';
 import { PANEL_KEY, RECIPE_KEY, readWorkingState, writeWorkingState } from '../helpers/workingStorage';
-import { dimensionInfo, insetInfo } from './ceruti-helpers';
+import { dimensionInfo, insetInfo } from './ceruti-toasts';
 import { MainBoutsPanel } from './panels/main-bouts-panel/main-bouts-panel';
 import { CornersPanel } from './panels/corners-panel/corners-panel';
 import { CenterBoutPanel } from './panels/center-bout-panel/center-bout-panel';

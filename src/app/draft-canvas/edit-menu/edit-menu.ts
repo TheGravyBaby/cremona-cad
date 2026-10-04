@@ -1,6 +1,7 @@
 import { Component, EventEmitter, Output, inject } from '@angular/core';
 import { SelectionActions, writeSvgToSystemClipboard } from '../tools/selection-actions';
 import { UndoCoordinator } from '../../helpers/undoCoordinator';
+import { downloadSvgFile } from '../../helpers/fileExporter';
 
 /**
  * The document-wide edit verbs — undo and redo, clipboard, file, duplicate, group, delete — as a
@@ -32,6 +33,13 @@ export class EditMenuComponent {
   cut(): void { this.run(() => this.toSystemClipboard(this.actions.cut())); }
 
   copy(): void { this.run(() => this.toSystemClipboard(this.actions.copy())); }
+
+  exportSvg(): void {
+    this.run(() => {
+      const svg = this.actions.exportSvg();
+      if (svg) downloadSvgFile('cremonacad-selection-export.svg', svg);
+    });
+  }
 
   /** Reads the system clipboard where the browser allows a page to (Chrome asks once; Firefox
    * shows its own paste prompt), so SVG copied from another program lands too. When it won't, or

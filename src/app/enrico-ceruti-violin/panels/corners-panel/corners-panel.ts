@@ -11,7 +11,7 @@ import { CerutiColors, CerutiViewFlags, DefaultParams, EnricoCerutiParams, Rende
 import { renderBounds, renderBoutBouts, renderCornerGuides } from '../../renders/guides.render';
 import { renderMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { HighlightedArc, HighlightedPoint, STROKE_WEIGHT } from '../../renders/render-constants';
-import { compoundArcInfo, cornerPositionInfo, violCornerInfo } from '../../ceruti-helpers';
+import { compoundArcInfo, cornerPositionInfo, violCornerInfo } from '../../ceruti-toasts';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 
