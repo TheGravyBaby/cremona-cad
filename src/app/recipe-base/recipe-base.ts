@@ -59,7 +59,6 @@ export abstract class RecipeComponentBase implements AfterViewInit, Undoable {
     };
 
     this.d = file;
-    this.onRecipeAdopted();
     // A freshly loaded file starts with nothing to undo past — otherwise Ctrl+Z could step back
     // into a previous file's params. Same reason ToolboxStore resets its own history on load.
     this._history = [];
@@ -77,17 +76,6 @@ export abstract class RecipeComponentBase implements AfterViewInit, Undoable {
     this.loadReferenceImages(incoming);
     this.draftChange.emit([this.firstRender]);
   }
-
-  /**
-   * Runs immediately after `this.d` is replaced wholesale — a file, a template, a new blank, a
-   * session restore — and before anything reads it. The place for a recipe to migrate its own
-   * older saved formats forward.
-   *
-   * A subclass that assigns `this.d` itself is responsible for calling this; every assignment in
-   * this base class already does. Deliberately not tied to a panel's lifecycle: params are read by
-   * exports and surface builders that a user can reach without opening the panel that owns them.
-   */
-  protected onRecipeAdopted(): void { }
 
   /**
    * Hands a recipe's reference images to the canvas. This, plus syncReferenceImages() on the way
@@ -384,8 +372,7 @@ export abstract class RecipeComponentBase implements AfterViewInit, Undoable {
     const recipeData = this.loadMatchingStoredRecipe();
     if (recipeData) {
       this.d = recipeData;
-      this.onRecipeAdopted();
-      this.loadReferenceImages(recipeData);
+        this.loadReferenceImages(recipeData);
       this.panelFlow?.refreshEnabledPanels();
     }
     // whatever `this.d` holds now — a restored session, or just the field initializer — is where

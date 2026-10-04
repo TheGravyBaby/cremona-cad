@@ -768,7 +768,6 @@ describe('long arching panel — the spline it seeds', () => {
   });
 
   it('mirrors nothing, and says so rather than leaving it out', () => {
-    // absent reads as legacy to the loader — see normalizeArchCurve
     const panelUnderTest = panel(LongArchingPanel, archedViolin());
     panelUnderTest.setCurveType('top', 'spline');
     expect(panelUnderTest.topSpline!.points.map(pt => pt.mirror)).toEqual([false, false, false, false]);

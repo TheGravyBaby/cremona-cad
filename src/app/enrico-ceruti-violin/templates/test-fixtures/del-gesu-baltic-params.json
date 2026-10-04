@@ -283,7 +283,8 @@
   "outerFlutingDepth": 1.5,
   "arching": {
     "surfaceMethod": "proportional",
-    "ribHeight": 32,
+    "ribHeightLower": 32,
+    "ribHeightUpper": 32,
     "top": {
       "arch": {
         "type": "catenary",

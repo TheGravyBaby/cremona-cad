@@ -135,8 +135,8 @@ complain loudly; nobody complains about a comment that wasn't there.
 
 - Units are **millimetres** in world space throughout. Angles are radians in geometry, degrees in
   UI fields.
-- Field names in saved recipes are effectively frozen (`Pt1`/`Pt2`, `start`/`end`). Renaming one
-  needs a loader migration — see `normalizeArchPlate` in `ceruti-arching.ts` for the pattern.
+- The app is pre-production, so saved recipes carry no loader migrations: when a field's shape
+  changes, rewrite the templates under `src/**/templates` and let older files fall away.
 - Prose for UI help text: say what the concept *is* in luthier terms, then what the field
   controls. Terse. No filler transitions, no elaboration past the information.
 - `ceruti-templates.ts` is append-only pasted recipe JSON. Add instruments; don't restructure it.

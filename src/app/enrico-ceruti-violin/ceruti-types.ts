@@ -169,6 +169,12 @@ export interface ArchSplinePoint {
   mirror?: boolean;
 }
 
+export interface CrossArchPoint {
+  x: number;
+  z: number;
+  mirror?: boolean;
+}
+
 export interface ArchSpline {
   type: 'spline';
   archHeight: number;
@@ -189,25 +195,11 @@ export interface FlutingParams {
   cornerGouge?: boolean;
 }
 
-export interface CrossArchPoint {
-  x: number;
-  z: number;
-  mirror?: boolean;
-}
-
 export interface CrossArchSpline {
   type: 'spline';
   points: CrossArchPoint[];
-  /**
-   * Fraction of the width between channel centerlines: 0.5 the joint, below it the bass side,
-   * 0.5 when absent. Against the centerline chord rather than the solved takeoffs (unlike
-   * {@link CrossArchPoint.x}) since the crown must not move mid-solve. Eases back onto the
-   * joint toward the caps — see `PEAK_TAPER_DEPTHS`.
-   */
   peak?: number;
-  /** Which row of the panel's table the crown sits in. Presentation only, as {@link ArchSpline.peakRow}. */
   peakRow?: number;
-  /** Body-length position in mm, held strictly inside the plate ends. */
   y?: number;
   stations?: CrossArchSpline[];
 }
@@ -215,7 +207,6 @@ export interface CrossArchSpline {
 export interface CrossArchCycloid {
   type: 'cycloid';
   d: number;
-  /** Trochoid window: 1 = the full curve, <1 clips the flat cusp end for a steeper run-out, >1 curls the ends under the takeoff so the arch can meet the channel's outer flank (valid range 0.05–1.5). */
   pct: number;
   y?: number;
   stations?: CrossArchCycloid[];

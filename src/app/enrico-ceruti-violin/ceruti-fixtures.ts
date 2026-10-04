@@ -1,5 +1,5 @@
 import { calculateCenterBout, calculateCorners, calculateMainBouts, calculateOuterArcs } from './ceruti-calcs';
-import { defaultArchingParams, normalizeArchingParams } from './ceruti-arching';
+import { defaultArchingParams } from './ceruti-arching';
 import { CERUTI_TEMPLATES } from './ceruti-templates';
 import { DefaultParams, EnricoCerutiParams, EnricoCerutiTemplate } from './ceruti-types';
 
@@ -77,8 +77,7 @@ export function templateKeys(): string[] {
  *
  * Templates always ship `bouts`/`outerCorners`/`blocks`. They carry `arching`
  * only where the instrument also ships the side profile it was read off (see
- * this folder's CLAUDE.md), so this runs `normalizeArchingParams` for the
- * migration path and leaves whatever the template had. Pass `withArching` to
+ * this folder's CLAUDE.md), and this leaves whatever the template had. Pass `withArching` to
  * seed the ones that have none — those values are the generic defaults and say
  * nothing about the real instrument.
  */
@@ -86,7 +85,6 @@ export function templateViolin(key: string, withArching = false): EnricoCerutiPa
   const template = allTemplates().find(t => t.key === key);
   if (!template) throw new Error(`No such template: ${key}. Have: ${templateKeys().join(', ')}`);
   const copy: EnricoCerutiTemplate = JSON.parse(JSON.stringify(template));
-  normalizeArchingParams(copy.params);
   const p = layoutFrom(copy.params);
   if (withArching && !p.arching) p.arching = defaultArchingParams(p.height);
   return p;
@@ -114,6 +112,5 @@ export function violinFromRecipe(source: string | object): EnricoCerutiParams {
   if (!params?.bouts || !params?.options) {
     throw new Error('Not a Ceruti recipe: expected a `params` object carrying `bouts` and `options`.');
   }
-  normalizeArchingParams(params);
   return layoutFrom(params);
 }

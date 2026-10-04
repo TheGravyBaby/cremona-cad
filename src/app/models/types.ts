@@ -1,25 +1,12 @@
 export class Pt { x: number; y: number; constructor(x: number, y: number) { this.x = x; this.y = y; } };
 export class Vect2D { a: number; b: number; mag: number; constructor(a: number, b: number, mag: number) { this.a = a; this.b = b; this.mag = mag; } }
 export class Line { m: number; y: number; x: number; constructor(m: number, y: number) { this.m = m; this.y = y; this.x = 0 } }
-
 export class Circle { x: number; y: number; r: number; constructor(x: number, y: number, r: number) { this.x = x; this.y = y; this.r = r; } }
-/**
- * An **infinite** line in slope-intercept form (y = mx + b) — not a segment, and deliberately not
- * interchangeable with draft-canvas's `LineShape`. This one is for intersection/solving, a
- * segment is for drawing and hit-testing. Most segment-flavored math in helpers/math/ takes two
- * points rather than this type.
- */
-
 export class Rectangle { Pt1: Pt; Pt2: Pt; height: number | null; width: number | null;
   constructor(Pt1: Pt, Pt2: Pt) { this.Pt1 = Pt1; this.Pt2 = Pt2; this.height = Math.abs(Pt2.y - Pt1.y); this.width = Math.abs(Pt2.x - Pt1.x); } 
 }
 export class Fraction { n: number; d: number; constructor(n: number, d: number) { this.n = n; this.d = d; } }
 
-
-
-/** `start`/`end` are boundary angles in radians; every renderer draws the minor arc between them
- * regardless of order (the major arc needs `renderArcFromArc`'s `longArc` flag) — the opposite of
- * draft-canvas's counterclockwise-sweeping `ArcShape`, so don't write a blind converter. */
 export class Arc extends Circle {
   start: number;
   end: number;
@@ -62,10 +49,8 @@ export function arcFromCircleAndPoints(circle: Circle, startPt: Pt, endPt: Pt): 
   return new Arc(circle.x, circle.y, circle.r, startAngle, endAngle);
 }
 
-
 export type Axis = "x" | "y";
 export type ReferenceImage = {
-
   x: number;
   y: number;
   width: number;
@@ -90,10 +75,6 @@ export type ImageCredit = {
   url?: string;
 };
 
-/** How much of a reference image's source picture is hidden, as fractions inset from each edge.
- * `top` is the high-y edge of the Y-up world. The image's own x/y/width/height describe the
- * visible rectangle, not the whole picture — see `applyImageCrop` in toolbox-shape.ts, the only
- * thing that should compute a crop change. */
 export type ImageCrop = {
   left: number;
   top: number;
@@ -101,16 +82,6 @@ export type ImageCrop = {
   bottom: number;
 };
 
-/**
- * One reference image as it appears in a recipe file or built-in template — the durable, on-disk
- * form. draft-canvas/tools/reference-image-schema.ts converts it to and from the canvas's own
- * `ImageShape`, and is the only code that should touch this type. Every field past
- * `href`/`x`/`y`/`width`/`height` is optional so older files keep loading unchanged.
- *
- * Every field here must also exist on `ImageShape` — recipe-base rewrites `referenceImages` from
- * the canvas's placed shapes on every change, so a field that stops at this type is erased the
- * first time the user touches the canvas.
- */
 export type NamedReferenceImage = ReferenceImage & {
   id?: string;
   label?: string;
@@ -139,10 +110,6 @@ export type NamedReferenceImage = ReferenceImage & {
   locked?: boolean;
 }
 
-/** The reference images a recipe/template carries, folding the deprecated singular
- * `referenceImage` in as a one-element list. Shared by the canvas side (reference-image-schema.ts,
- * which places them) and anything that only needs to inspect them, e.g. checking image hosts —
- * so neither has to re-derive the merge and risk missing the singular field. */
 export function referenceImagesOf(
   source: { referenceImages?: NamedReferenceImage[] | null; referenceImage?: ReferenceImage | null } | null | undefined,
 ): NamedReferenceImage[] {
