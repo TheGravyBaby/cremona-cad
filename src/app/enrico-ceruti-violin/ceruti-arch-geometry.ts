@@ -89,11 +89,6 @@ export function effectiveCBoutSweep(g: FlutingParams): number {
   return c !== null && gougeHalfWidth(c, g.depth) > 0 ? c : g.sweepRadius;
 }
 
-/** Whether the corner pass is cutting. Absent reads as on — see {@link FlutingParams.cornerGouge}. */
-export function cornerGougeOn(g: FlutingParams): boolean {
-  return g.cornerGouge ?? true;
-}
-
 /**
  * The corner smoothing, as a height field: the wedge of flat wood the bypassing
  * channel leaves at each corner, taken down by hand to meet the channel.

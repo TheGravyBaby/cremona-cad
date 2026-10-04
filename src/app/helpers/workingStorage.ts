@@ -31,22 +31,9 @@ export function writeWorkingState(key: string, value: string): void {
   }
 }
 
-// falls back once to the pre-migration localStorage copy, then takes it (removes from
-// localStorage) rather than copying it, so only the first tab to load inherits it.
 export function readWorkingState(key: string): string | null {
   try {
-    const stored = sessionStorage.getItem(key);
-    if (stored !== null) return stored;
-
-    const carried = localStorage.getItem(key);
-    if (carried === null) return null;
-    try {
-      sessionStorage.setItem(key, carried);
-      localStorage.removeItem(key);
-    } catch {
-      // couldn't take it over — leave the localStorage copy for the next load to try again
-    }
-    return carried;
+    return sessionStorage.getItem(key);
   } catch {
     return null;
   }
@@ -55,7 +42,6 @@ export function readWorkingState(key: string): string | null {
 export function clearWorkingState(key: string): void {
   try {
     sessionStorage.removeItem(key);
-    localStorage.removeItem(key);
   } catch {
     // nothing useful to do — a store that won't delete also won't have been written
   }

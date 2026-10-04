@@ -14,7 +14,6 @@ export function templateFromRecipeJson(raw: any): EnricoCerutiTemplate {
     version: raw.version ?? RECIPE_SCHEMA_VERSION,
     description: raw.description ?? '',
     meta: raw.meta,
-    referenceImage: raw.referenceImage,
     referenceImages: raw.referenceImages,
     params: (raw.params ?? raw) as EnricoCerutiParams,
     paths: raw.paths ?? [],

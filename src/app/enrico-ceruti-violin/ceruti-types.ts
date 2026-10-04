@@ -1,4 +1,4 @@
-import { Arc, Circle, NamedReferenceImage, Pt, Rectangle, ReferenceImage, Vect2D } from "../models/types";
+import { Arc, Circle, ReferenceImage, Pt, Rectangle, Vect2D } from "../models/types";
 
 export interface EnricoCerutiParams {
   height: number;
@@ -192,7 +192,7 @@ export interface FlutingParams {
   sweepRadius: number;
   depth: number;
   sweepRadius_cBout: number | null;
-  cornerGouge?: boolean;
+  cornerGouge: boolean;
 }
 
 export interface CrossArchSpline {
@@ -429,9 +429,7 @@ export interface EnricoCerutiTemplate {
   meta?: TemplateMeta;
   params: EnricoCerutiParams;
   paths: PathEntry[];
-  /** @deprecated legacy single-image field; migrated into `referenceImages` on load. */
-  referenceImage?: ReferenceImage;
-  referenceImages?: NamedReferenceImage[];
+  referenceImages?: ReferenceImage[];
 }
 
 export const DefaultParams: EnricoCerutiParams = {

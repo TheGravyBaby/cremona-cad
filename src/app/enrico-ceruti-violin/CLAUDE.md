@@ -44,7 +44,7 @@ section first → long arch carved to a template → crown across. The panel ord
 ## Settled decisions — don't re-litigate
 
 - **A reference image can be scoped to particular panels**, via `panels`/`excludePanels`/
-  `isDefault` on `NamedReferenceImage`/`ImageShape` — full mechanics are in
+  `isDefault` on `ReferenceImage`/`ImageShape` — full mechanics are in
   `draft-canvas/tools/CLAUDE.md`. What's specific to this model: `initializePanelFlow` hands
   `panelOrder` down to `ToolboxStore.setAvailablePanels` so the settings-bar picker has real panel
   labels, since this is the one place that already has them.
@@ -71,8 +71,7 @@ section first → long arch carved to a template → crown across. The panel ord
   plate's end on the centreline, so the neck's side view needs nothing from the plan: the heel
   foot ends at `height + button.height`. `ceruti-paths` drops the walls from the cap circle down
   to the edge, and trims the cap itself against the edge once the height is under the cap's
-  radius. Recipes saved as a `Rectangle` stored the wall's length instead; `calculateOuterArcs`
-  converts them, telling them apart by the corner points they carry.
+  radius.
 - **The fingerboard's thickness is one number, not two.** It runs parallel to the neck at a
   uniform `thickness` — a real board is planed thicker toward the body as the crown rises under
   it, but that's not worth a second variable here.
@@ -291,7 +290,7 @@ Six edits. Missing one fails quietly — usually a panel that never unlocks — 
 1. **`ceruti-types.ts` → `CERUTI_PANEL_IDS`** — the id. `panelOrder` is typed against it, so this
    one is loud: skip it and step 3 fails the build. It exists because panel ids are file-format
    vocabulary now — a template's reference images scope themselves to panels by id
-   (`NamedReferenceImage.panels`), so renaming a panel is a migration rather than a rename.
+   (`ReferenceImage.panels`), so renaming a panel is a migration rather than a rename.
 2. **`panels/<name>-panel/`** — just `.ts` and `.html`. No per-panel stylesheet: all of them share
    `styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css']`, and markup uses the shared
    `ui-group` / `field-row` / `basic-input` classes. Extend `CerutiPanelBase`, implement `OnInit`.

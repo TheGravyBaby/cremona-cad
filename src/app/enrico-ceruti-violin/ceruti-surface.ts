@@ -13,7 +13,7 @@ import { ArchCurve, ArchPlate, EnricoCerutiParams } from './ceruti-types';
 import { defineInsetPath, defineOuterPath } from './ceruti-paths';
 import {
     buildPlateGeometry, defaultCrossArchParams, defaultFlutingParams,
-    chordTrust, cornerGougeOn, cornerSmoothZ, gougeAtY, CrossArchSection, crossArchSectionAt,
+    chordTrust, cornerSmoothZ, gougeAtY, CrossArchSection, crossArchSectionAt,
     longArchProfilePath, PlateGeometry, gougeProfileZ, solveLongArch,
 } from './ceruti-arch-geometry';
 import {
@@ -290,7 +290,7 @@ function withCornerPass(
     p: EnricoCerutiParams, g: PlateGeometry, chords: StationChords,
     platformOuterIdx: PolylineIndex, x: number, y: number, s: number, z: number, from = 0,
 ): number {
-    if (s >= from || !cornerGougeOn(g.gouge)) return z;
+    if (s >= from || !g.gouge.cornerGouge) return z;
     if (!insideCrossings(x, chords.landCrossings)) return z;
     const edgeDist = closestPointToPolylineIndexed({ x, y }, platformOuterIdx).dist;
     return Math.min(z, cornerSmoothZ(s, edgeDist, gougeAtY(p, g.gouge, y).sweepRadius, g.gouge.depth, from));

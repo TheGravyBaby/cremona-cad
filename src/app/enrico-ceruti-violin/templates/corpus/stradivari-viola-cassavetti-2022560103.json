@@ -177,16 +177,8 @@
       "neckRadius": null
     },
     "button": {
-      "Pt1": {
-        "x": -10,
-        "y": 406.6
-      },
-      "Pt2": {
-        "x": 10,
-        "y": 411.6
-      },
-      "height": 5,
-      "width": 20
+      "width": 20,
+      "height": 14.72
     },
     "outerCorners": {
       "U3": {
@@ -488,7 +480,6 @@
       "id": "stradivari-viola-cassavetti-top",
       "label": "Top (sp=2)",
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154830:musihas-200154830.0002/full/pct:100.0/0/default.jpg",
-      "xlink:href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154830:musihas-200154830.0002/full/pct:100.0/0/default.jpg",
       "x": -123.58262698406119,
       "y": -2.2049999999999725,
       "width": 251.32538275230212,
@@ -515,7 +506,6 @@
       "id": "stradivari-viola-cassavetti-profiles",
       "label": "Profiles, both sides (sp=3)",
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154830:musihas-200154830.0003/full/pct:100.0/0/default.jpg",
-      "xlink:href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154830:musihas-200154830.0003/full/pct:100.0/0/default.jpg",
       "x": -59.47749999999998,
       "y": -2.465000000000001,
       "width": 160.01473477051314,

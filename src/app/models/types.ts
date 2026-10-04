@@ -50,15 +50,6 @@ export function arcFromCircleAndPoints(circle: Circle, startPt: Pt, endPt: Pt): 
 }
 
 export type Axis = "x" | "y";
-export type ReferenceImage = {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  rotationDeg?: number;
-  "xlink:href"?: string;
-  href: string;
-}
 
 /** Where a reference image came from and under what terms it may be used. Per-image rather than
  * per-recipe since one instrument's image set can mix provenances. Absent on user-placed images. */
@@ -82,7 +73,13 @@ export type ImageCrop = {
   bottom: number;
 };
 
-export type NamedReferenceImage = ReferenceImage & {
+export type ReferenceImage = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotationDeg?: number;
+  href: string;
   id?: string;
   label?: string;
   /** Recipe panels this image shows on, by id; absent/empty means every panel. */
@@ -110,26 +107,13 @@ export type NamedReferenceImage = ReferenceImage & {
   locked?: boolean;
 }
 
-export function referenceImagesOf(
-  source: { referenceImages?: NamedReferenceImage[] | null; referenceImage?: ReferenceImage | null } | null | undefined,
-): NamedReferenceImage[] {
-  if (!source) return [];
-  return Array.isArray(source.referenceImages)
-    ? source.referenceImages
-    : source.referenceImage?.href
-      ? [source.referenceImage as NamedReferenceImage]
-      : [];
-}
-
 export interface RecipeInterface {
     recipeName: string;
     fileName: string;
     version: string;
     params: any;
     paths: any;
-    /** @deprecated legacy single-image field; migrated into `referenceImages` on load. */
-    referenceImage?: ReferenceImage;
-    referenceImages?: NamedReferenceImage[];
+    referenceImages?: ReferenceImage[];
     /** Shapes drawn with the draft-canvas toolbox — see ToolboxStore.exportState/loadState.
      * Untyped here (rather than importing DraftShape) to avoid a models/types.ts <-> draft-canvas
      * circular import; recipe-base.ts is the only code that reads/writes it. */

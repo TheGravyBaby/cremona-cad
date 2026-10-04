@@ -177,16 +177,8 @@
       "neckRadius": null
     },
     "button": {
-      "Pt1": {
-        "x": -10,
-        "y": 351
-      },
-      "Pt2": {
-        "x": 10,
-        "y": 356
-      },
-      "height": 5,
-      "width": 20
+      "width": 20,
+      "height": 14.63
     },
     "outerCorners": {
       "U3": {
@@ -543,7 +535,6 @@
       "id": "guarneri-violin-kreisler-top",
       "label": "Top (sp=2)",
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154814:musihas-200154814.0002/full/pct:100.0/0/default.jpg",
-      "xlink:href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154814:musihas-200154814.0002/full/pct:100.0/0/default.jpg",
       "x": -118,
       "y": -2.4943104789005592,
       "width": 237.01,
@@ -570,7 +561,6 @@
       "id": "guarneri-violin-kreisler-profiles",
       "label": "Profiles, both sides (sp=3)",
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154814:musihas-200154814.0003/full/pct:100.0/0/default.jpg",
-      "xlink:href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154814:musihas-200154814.0003/full/pct:100.0/0/default.jpg",
       "x": -55.72839999999996,
       "y": -2.875,
       "width": 131.07949105747767,

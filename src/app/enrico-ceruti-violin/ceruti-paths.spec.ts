@@ -4,9 +4,9 @@ import { calculateFholeContours, calculateOuterArcs } from './ceruti-calcs';
 import { channelPaths, defaultFlutingParams } from './ceruti-arch-geometry';
 import { defaultFHolePlacement } from './panels/f-hole-placement-panel/f-hole-placement-panel';
 import { EnricoCerutiParams, FlutingParams } from './ceruti-types';
-import { lineCircleIntersection, lineFromTwoPoints, offsetArcRadius, pointInPolygon, pointOnCircle } from '../helpers/math/simpleGeometry';
+import { pointInPolygon, pointOnCircle } from '../helpers/math/simpleGeometry';
 import { samplePathToPolyline, splitPathStrings } from '../helpers/math/pathMath';
-import { Pt, Rectangle } from '../models/types';
+import { Pt } from '../models/types';
 import { setGlobalEmitter } from '../shared/message-emitter';
 import ravatinMansParams from './templates/test-fixtures/ravatin-mans-params.json';
 import magginiDelmasParams from './templates/test-fixtures/maggini-delmas-params.json';
@@ -467,21 +467,6 @@ describe('the button', () => {
     const path = defineOuterPath(p, p.overhang + p.rib, true, true);
     expect(subpaths(path)).toBe(1);
     expect(topY(samplePathToPolyline(path, 0.25))).toBeCloseTo(p.height, 1);
-  });
-
-  it('migrates a saved Rectangle so the tip lands where its walls used to put it', () => {
-    const p = defaultViolin();
-    const inset = p.overhang + p.rib;
-    const wallHit = lineCircleIntersection(
-      lineFromTwoPoints(new Pt(10, p.height), new Pt(10, 0)), offsetArcRadius(p.bouts.U0!, inset),
-    ).sort((a, b) => a.y - b.y).pop()!;
-    (p as unknown as { button: unknown }).button = new Rectangle(new Pt(-10, p.height - inset), new Pt(10, p.height - inset + 5));
-
-    calculateOuterArcs(p);
-
-    expect('Pt1' in p.button!).toBe(false);
-    expect(p.button!.width).toBe(20);
-    expect(topY(backTrace(p))).toBeCloseTo(wallHit.y + 5 + 10, 1);
   });
 
   it('stands off a viol neck\'s face by the same rule', () => {

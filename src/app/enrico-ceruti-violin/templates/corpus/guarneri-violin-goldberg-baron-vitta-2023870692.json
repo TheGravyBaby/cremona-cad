@@ -175,16 +175,8 @@
       "neckRadius": null
     },
     "button": {
-      "Pt1": {
-        "x": -10,
-        "y": 351
-      },
-      "Pt2": {
-        "x": 10,
-        "y": 356
-      },
-      "height": 5,
-      "width": 20
+      "width": 20,
+      "height": 14.69
     },
     "outerCorners": {
       "U3": {
@@ -507,7 +499,6 @@
       "id": "goldberg-baron-vitta-top",
       "label": "Top (sp=2)",
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154815:musihas-200154815.0002/full/pct:100.0/0/default.jpg",
-      "xlink:href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154815:musihas-200154815.0002/full/pct:100.0/0/default.jpg",
       "x": -118,
       "y": -4.542465563879347,
       "width": 239.01,

@@ -27,12 +27,6 @@ const MAX_HISTORY = 50;
 // declared here rather than imported from the recipe framework, so the dependency stays one-way.
 export type PanelChoice = { id: string; label: string };
 
-// a stored layer's panel list, or none for a layer saved before scoping existed or scoped nowhere
-function layerPanels(l: Partial<Layer>): string[] | undefined {
-  const panels = Array.isArray(l.panels) ? l.panels.filter(p => typeof p === 'string') : [];
-  return panels.length ? panels : undefined;
-}
-
 @Injectable({ providedIn: 'root' })
 export class ToolboxStore implements Undoable {
   readonly id = 'toolbox';
@@ -580,9 +574,7 @@ export class ToolboxStore implements Undoable {
       const raw = readWorkingState(STORAGE_KEY);
       if (!raw) return;
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        this.shapes = parsed; // legacy format, from before currentColor existed
-      } else if (parsed && typeof parsed === 'object') {
+      if (parsed && typeof parsed === 'object') {
         if (Array.isArray(parsed.shapes)) this.shapes = parsed.shapes;
         if (typeof parsed.currentColor === 'string') this._currentColor = parsed.currentColor;
         if (typeof parsed.currentDashed === 'boolean') this._currentDashed = parsed.currentDashed;
@@ -595,12 +587,7 @@ export class ToolboxStore implements Undoable {
         if (typeof parsed.currentCycloidFactor === 'number') this._currentCycloidFactor = parsed.currentCycloidFactor;
         if (typeof parsed.currentCycloidPct === 'number') this._currentCycloidPct = parsed.currentCycloidPct;
         if (typeof parsed.currentFilletRadius === 'number') this._currentFilletRadius = parsed.currentFilletRadius;
-        if (Array.isArray(parsed.layers) && parsed.layers.length > 0) {
-          // Normalize layers saved before visible/locked existed.
-          this._layers = parsed.layers.map((l: Partial<Layer> & { id: string; name: string }) => ({
-            id: l.id, name: l.name, visible: l.visible ?? true, locked: l.locked ?? false, panels: layerPanels(l),
-          }));
-        }
+        if (Array.isArray(parsed.layers) && parsed.layers.length > 0) this._layers = parsed.layers;
         if (typeof parsed.activeLayerId === 'string') this._activeLayerId = parsed.activeLayerId;
         if (typeof parsed.showImages === 'boolean') this._showImages = parsed.showImages;
         if (typeof parsed.showShapes === 'boolean') this._showShapes = parsed.showShapes;
@@ -683,9 +670,8 @@ export class ToolboxStore implements Undoable {
     this.notify();
   }
 
-  /** Restores drawn shapes/layers from a recipe file (see recipe-base.ts's loadFile) — same
-   * field-by-field tolerance as load() for older saves missing newer fields, and resets undo
-   * history so a freshly loaded file starts with nothing to undo past. */
+  /** Restores drawn shapes/layers from a recipe file (see recipe-base.ts's loadFile), and resets
+   * undo history so a freshly loaded file starts with nothing to undo past. */
   loadState(state: unknown): void {
     if (!state || typeof state !== 'object') return;
     const parsed = state as Record<string, unknown>;
@@ -701,11 +687,7 @@ export class ToolboxStore implements Undoable {
     if (typeof parsed['currentCycloidFactor'] === 'number') this._currentCycloidFactor = parsed['currentCycloidFactor'] as number;
     if (typeof parsed['currentCycloidPct'] === 'number') this._currentCycloidPct = parsed['currentCycloidPct'] as number;
     if (typeof parsed['currentFilletRadius'] === 'number') this._currentFilletRadius = parsed['currentFilletRadius'] as number;
-    if (Array.isArray(parsed['layers']) && (parsed['layers'] as unknown[]).length > 0) {
-      this._layers = (parsed['layers'] as Array<Partial<Layer> & { id: string; name: string }>).map(l => ({
-        id: l.id, name: l.name, visible: l.visible ?? true, locked: l.locked ?? false, panels: layerPanels(l),
-      }));
-    }
+    if (Array.isArray(parsed['layers']) && (parsed['layers'] as unknown[]).length > 0) this._layers = parsed['layers'] as Layer[];
     if (typeof parsed['activeLayerId'] === 'string') this._activeLayerId = parsed['activeLayerId'] as string;
     // showImages/showShapes are deliberately not restored from the file: they're the user's
     // current view preference (see resetAll's matching comment), and a template's own toolboxState
