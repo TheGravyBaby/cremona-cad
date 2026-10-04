@@ -5,7 +5,7 @@ import { renderSolveFailures } from '../../../helpers/renderFuncs';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, RenderToggleKey, VoluteParams } from '../../ceruti-types';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { defaultNeckParams } from '../../ceruti-neck';
-import { calculateScroll, VOLUTE_STYLES } from '../../ceruti-scroll';
+import { calculateScroll, VOLUTE_STYLE_LABELS } from '../../ceruti-scroll';
 import { arcColor, renderScrollNeck, renderVolute } from '../../renders/scroll.render';
 import { HighlightedArc } from '../../renders/render-constants';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
@@ -28,7 +28,7 @@ export class VolutePanel extends CerutiPanelBase implements OnInit {
 
   protected readonly getFieldDeg = getFieldDeg;
   protected readonly setFieldDeg = setFieldDeg;
-  protected readonly styles = Object.entries(VOLUTE_STYLES).map(([id, { label }]) => ({ id, label }));
+  protected readonly styles = Object.entries(VOLUTE_STYLE_LABELS).map(([id, label]) => ({ id, label }));
 
   // held as a key rather than the arc itself: calculateScroll rebuilds the spiral every pass, so
   // an arc captured on focus is stale by the time it would be drawn
@@ -36,7 +36,7 @@ export class VolutePanel extends CerutiPanelBase implements OnInit {
   private highlightedColor = '';
 
   get volute(): VoluteParams { return this.params.volute!; }
-  get custom(): boolean { return !!VOLUTE_STYLES[this.volute.style].custom; }
+  get custom(): boolean { return this.volute.style === 'fourPoint'; }
   get archimedean(): boolean { return this.volute.style === 'archimedean'; }
   get kelly(): boolean { return this.volute.style === 'kelly'; }
   arcColor(i: number): string { return arcColor(this.colors, i); }

@@ -2,6 +2,13 @@ import { Pt, Circle, Line, Rectangle, Arc, arcFromCircle, Vect2D } from "../../m
 
 export const TWO_PI = Math.PI * 2;
 
+export const TURN = {
+  eighth: Math.PI / 4,
+  quarter: Math.PI / 2,
+  half: Math.PI,
+  full: TWO_PI,
+} as const;
+
 export function clamp(v: number, min: number, max: number): number {
   return Math.min(Math.max(v, min), max);
 }
@@ -332,6 +339,12 @@ export function vectorFromSlope(theta: number): Vect2D {
  * convention, and deliberately *not* angleOnDrawnArc's minor-sweep one. */
 export function angleWithinSweep(angle: number, startAngle: number, endAngle: number): boolean {
   return normalizeRadians(angle - startAngle) <= normalizeRadians(endAngle - startAngle);
+}
+
+// an arc's ends, plus the point facing `angle` if the sweep passes it: where it can reach furthest
+// that way. Reads the arc counterclockwise, as angleWithinSweep does, not as its minor span
+export function arcReach(arc: Arc, angle: number): Pt[] {
+  return [arc.start, arc.end, ...(angleWithinSweep(angle, arc.start, arc.end) ? [angle] : [])].map(a => pointOnCircle(arc, a));
 }
 
 /** True when `angle` lies on the drawn (minor) span between the arc's start and end — see pathFromArc. */

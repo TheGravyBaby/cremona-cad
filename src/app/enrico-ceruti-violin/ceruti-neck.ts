@@ -145,7 +145,7 @@ export function mortiseFloorY(p: EnricoCerutiParams): number {
 }
 
 // where the fingerboard plane crosses the mortise floor
-export function gluingAtMortise(p: EnricoCerutiParams): Pt {
+export function mortiseFingerboardIntersect(p: EnricoCerutiParams): Pt {
   const nk = p.neck!;
   const floorY = mortiseFloorY(p);
   return intersectLines(lineFromTwoPoints(nk.root!, nk.nut!), lineFromTwoPoints(new Pt(0, floorY), new Pt(1, floorY)))!;
@@ -202,7 +202,7 @@ export function bridgeWedge(p: EnricoCerutiParams): [Pt, Pt, Pt, Pt] {
 // The fingerboard, nut block, bridge and button are separate parts
 export function defineNeckPath(p: EnricoCerutiParams): string {
   const nk = p.neck!;
-  const glue = gluingAtMortise(p);
+  const glue = mortiseFingerboardIntersect(p);
   const segments = [
     pathFromLine(new Pt(0, mortiseFloorY(p)), glue),
     pathFromLine(glue, nk.root!),

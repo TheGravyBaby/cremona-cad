@@ -1,4 +1,4 @@
-import { angleFromCenter, angleWithinSweep, dist, moveInVectorSpace, normalizeRadians, placeCircleOnPointAtAngle, pointOnCircle, vectorFromSlope } from '../helpers/math/simpleGeometry';
+import { angleFromCenter, angleWithinSweep, arcReach, dist, moveInVectorSpace, normalizeRadians, placeCircleOnPointAtAngle, pointOnCircle, TURN, vectorFromSlope } from '../helpers/math/simpleGeometry';
 import { circleCircleIntersections } from '../helpers/math/draftMath';
 import { reportFailures, SolveFailure, solveSection } from '../helpers/validators';
 import { Arc, Pt } from '../models/types';
@@ -6,92 +6,84 @@ import { EnricoCerutiParams, VoluteParams, VoluteStyle } from './ceruti-types';
 import { defaultNeckParams, standardNutLength } from './ceruti-neck';
 
 // The scroll in its own side-view frame: the nut at the origin on the neck's front, up the neck +y,
-// toward the back -x. The volute's spiral styles about the eye, and `calculateScroll`, which lays
-// the spiral out and runs the back and front off it, writing every arc and line onto `p.volute`
-// for renders/scroll.render.ts to read — the split calculateFholeContours and calculateNeck use.
-// The volute panel edits the spiral and the crown (S0, S1), the scroll panel the back from S2 on
-// and the front.
+// toward the back -x. calculateScroll writes every arc onto `p.volute` for scroll.render.ts to read.
 
-// what a style draws from: the eye, for the four point the arc radii, for the Archimedean its
-// pitch and for Kelly his seed
-export type VoluteSpec = Pick<VoluteParams, 'style' | 'eyeRadius' | 'arcRadii' | 'pitch' | 'seedLength'>;
+export type VoluteSpec = Pick<VoluteParams, 'style' | 'eyeRadius' | 'pitch' | 'seedLength' | 'arcRadii'>;
+export type ScrollKey = 'spiral' | 'S0' | 'S1' | 'S2' | 'S3' | 'nape' | 'backStraight' | 'F0' | 'F1' | 'flat' | 'frontStraight';
+export type ScrollFailure = SolveFailure<ScrollKey>;
+export type ScrollLine = 'square' | 'backStraight' | 'flat' | 'frontStraight';
 
-// A style draws its whole construction in the eye's own frame (origin at the eye's centre), arcs
-// outermost first. Every spiral leaves the eye at its front, heading up, as Kelly's later drawings
-// do; the older authors set the volute against a column and started at the top of the eye, so
-// their figures are turned a quarter clockwise here. Counterclockwise is the way it winds outward,
-// so an arc runs from its inner neighbour's end to its own end. Neighbours share that point
-// (inner.end = outer.start) and are tangent there. Every style is drawn two full turns, `front` of
-// its arcs from the eye, so the scroll's own arcs can always take over at the front heading
-// straight up. `guides` is the figure the centres are found on, as polylines in the same frame,
-// for the guides view. `custom` marks the four point. A historical figure is sized at its
-// author's proportion to the eye, so the eye alone sets the whole spiral, all but Kelly's seed.
-export interface VoluteStyleDef {
-  label: string;
-  custom?: boolean;
-  front: number;
-  arcs: (v: VoluteSpec) => Arc[];
-  guides: (v: VoluteSpec) => Pt[][];
-}
+export const VOLUTE_STYLE_LABELS: Record<VoluteStyle, string> = {
+  fourPoint: 'Four Point (custom)',
+  archimedean: 'Archimedes (c. 225 BC)',
+  serlio: 'Serlio (1537)',
+  salviati: 'Salviati (1552)',
+  goldmann: 'Goldmann (1696)',
+  kelly: 'Kelly (2011)',
+};
 
-// quarter turns from the eye's front out to the spiral's, where every style stops: two full turns
+// quarter-turn arcs from the eye out to the front: two full turns
 export const TO_FRONT = 8;
 
-const QUARTER = Math.PI / 2;
-const TWO_PI = 2 * Math.PI;
-const polar = (r: number, angle: number) => new Pt(r * Math.cos(angle), r * Math.sin(angle));
-const square = (left: number, right: number, bottom: number, top: number) =>
-  [new Pt(left, bottom), new Pt(right, bottom), new Pt(right, top), new Pt(left, top), new Pt(left, bottom)];
+const BACK_KEYS: ScrollKey[] = ['S0', 'S1', 'S2', 'S3', 'nape', 'backStraight'];
+const FRONT_KEYS: ScrollKey[] = ['F0', 'F1', 'flat', 'frontStraight'];
+const ALL_KEYS: ScrollKey[] = ['spiral', ...BACK_KEYS, ...FRONT_KEYS];
 
-// a quarter turn about each centre in turn, from the eye's front, each radius the last's plus the
-// step between their centres so the arcs run on tangent. Outermost first
-const quarterTurns = (centers: Pt[], first: number): Arc[] => {
-  let r = first;
-  return centers.map((center, i) => {
-    if (i > 0) r += dist(centers[i - 1], center);
-    const from = normalizeRadians(QUARTER * i);
-    return new Arc(center.x, center.y, r, from, from + QUARTER);
-  }).reverse();
-};
+// the style's spiral in the eye's frame, outermost arc first, or [] when its fields can't draw it.
+// Each winds counterclockwise from the eye's front and ends two turns out heading straight up
+export function spiralArcs(v: VoluteSpec): Arc[] {
+  switch (v.style) {
+    case 'fourPoint': return fourPointArcs(v.eyeRadius, v.arcRadii);
+    case 'archimedean': return archimedeanArcs(v.eyeRadius, v.pitch);
+    // the older authors started at the top of the eye; their figures are turned a quarter here
+    case 'serlio': return serlioArcs(v.eyeRadius);
+    case 'salviati': return salviatiArcs(v.eyeRadius);
+    case 'goldmann': return goldmannArcs(v.eyeRadius);
+    case 'kelly': return kellyArcs(v.eyeRadius, v.seedLength);
+  }
+}
 
-// Serlio (1537): semicircles about centres on the line of centres, his eye's own diameter cut in
-// sixths, stepping out to either side in turn, so the turns close up toward the eye. The innermost
-// reaches the front of the eye from the centre just behind its middle.
-const serlio: VoluteStyleDef = {
-  label: 'Serlio (1537)',
-  front: TO_FRONT,
-  arcs: ({ eyeRadius }) => quarterTurns([-1, 1, -2, 2, -3, 3].flatMap(k => {
-    const c = new Pt(k * eyeRadius / 3, 0);
-    return [c, c];
-  }), 4 * eyeRadius / 3),
-  guides: ({ eyeRadius }) => [[new Pt(-eyeRadius, 0), new Pt(eyeRadius, 0)]],
-};
+// Four point: a quarter turn per radius, each centre stepping back from the last joint by the
+// growth so the arcs stay tangent. The radii are the user's, since old scrolls rarely open evenly
+function fourPointArcs(eyeRadius: number, arcRadii: number[]): Arc[] {
+  const radii = arcRadii.slice(0, TO_FRONT);
+  if (radii.length < TO_FRONT || !(radii[0] > 0) || !radii.every((r, i) => r >= (radii[i - 1] ?? 0))) return [];
 
-// Archimedes (On Spirals, c. 225 BC): the radius grows evenly with the angle, by `pitch` every
-// turn, from the eye's edge at its front, so the turns stand an even pitch apart all the way out.
-// Not a volute method, but the plain spiral the others are measured against. Set out by points an
-// eighth of a turn apart: the compass can't follow a curve, so each arc is the circle through the
-// next point tangent to the last. An arc's direction misses the curve's by an amount that flips
-// sign at each joint on, so the first is the one that misses equally at both its ends: started on
-// the curve's exact direction at the eye instead, the arcs alternate a little flat and a little
-// round the whole way out.
-const EIGHTHS = 2 * TO_FRONT;
-const archimedeanArcs = (eyeRadius: number, pitch: number): Arc[] => {
-  const angle = (k: number) => k * Math.PI / 4;
+  const arcs: Arc[] = [];
+  // straight behind the eye's front, so the first arc runs on tangent to the eye
+  let center = new Pt(eyeRadius - radii[0], 0);
+  for (let i = 0; i < TO_FRONT; i++) {
+    if (i > 0) {
+      const grow = radii[i] - radii[i - 1];
+      center = new Pt(center.x - grow * Math.cos(TURN.quarter * i), center.y - grow * Math.sin(TURN.quarter * i));
+    }
+    const from = normalizeRadians(TURN.quarter * i);
+    arcs.push(new Arc(center.x, center.y, radii[i], from, from + TURN.quarter));
+  }
+  return arcs.reverse();
+}
+
+// Archimedes (c. 225 BC): the radius grows by `pitch` each turn from the eye's edge. Set out as
+// arcs through points an eighth of a turn apart, each tangent to the last
+function archimedeanArcs(eyeRadius: number, pitch: number): Arc[] {
+  if (!(pitch > 0)) return [];
+  const eighths = 2 * TO_FRONT;
+  const angle = (k: number) => k * TURN.eighth;
   const radius = (k: number) => eyeRadius + pitch * k / 8;
-  const points = Array.from({ length: EIGHTHS + 1 }, (_, k) => polar(radius(k), angle(k)));
-  const growth = pitch / TWO_PI;
+  const points = Array.from({ length: eighths + 1 }, (_, k) => pointOnCircle({ x: 0, y: 0, r: radius(k) }, angle(k)));
+  const growth = pitch / TURN.full;
   const heading = (k: number) => {
     const r = radius(k);
     const t = angle(k);
     return Math.atan2(growth * Math.sin(t) + r * Math.cos(t), growth * Math.cos(t) - r * Math.sin(t));
   };
   const chord = Math.atan2(points[1].y - points[0].y, points[1].x - points[0].x);
-  const miss = (k: number) => normalizeRadians(heading(k) - chord + Math.PI) - Math.PI;
+  const miss = (k: number) => normalizeRadians(heading(k) - chord + TURN.half) - TURN.half;
 
-  let tangent = polar(1, chord + (miss(0) - miss(1)) / 2);
+  // aimed to miss the curve's heading equally at both ends, or the arcs alternate flat and round
+  let tangent = pointOnCircle({ x: 0, y: 0, r: 1 }, chord + (miss(0) - miss(1)) / 2);
   const arcs: Arc[] = [];
-  for (let k = 0; k < EIGHTHS; k++) {
+  for (let k = 0; k < eighths; k++) {
     const p = points[k];
     const q = points[k + 1];
     const len = Math.hypot(tangent.x, tangent.y);
@@ -105,212 +97,133 @@ const archimedeanArcs = (eyeRadius: number, pitch: number): Arc[] => {
     arcs.push(new Arc(center.x, center.y, r, from, to));
     tangent = new Pt(center.y - q.y, q.x - center.x);
   }
+
+  // the last arc reaches the front a little off vertical; roll it to end heading straight up
+  const outer = arcs.pop()!;
+  arcs.push(new Arc(outer.x, outer.y, outer.r, outer.start, Math.round(outer.end / TURN.full) * TURN.full));
   return arcs.reverse();
-};
-const archimedean: VoluteStyleDef = {
-  label: 'Archimedes (c. 225 BC)',
-  front: EIGHTHS,
-  arcs: ({ eyeRadius, pitch }) => pitch > 0 ? archimedeanArcs(eyeRadius, pitch) : [],
-  // a ray from the eye's centre out to the last point on each of the eight lines, the front's
-  // two turns out and the rest a turn and a bit
-  guides: ({ eyeRadius, pitch }) => pitch > 0 ? Array.from({ length: 8 }, (_, ray) =>
-    [new Pt(0, 0), polar(eyeRadius + pitch * (ray ? 8 + ray : EIGHTHS) / 8, ray * Math.PI / 4)]) : [],
-};
+}
 
-// Salviati (1552): twelve quarter-circle arcs, their centres round the corners of three nested
-// squares, the outer one's side his eye's radius (the eye's inscribed square turned to its edge
-// midpoints), the other two 2/3 and 1/3 of it. Each radius is the next one in plus the
-// distance between their centres, so a quarter turn steps in by 1/2, 1/3 and 1/6 of an eye diameter
-// on the three rings. Where one ring meets the next the centres are not a quarter turn apart, so
-// the two arcs there run a little long and a little short to stay tangent. Vignola (1562),
-// Palladio (1570) and Scamozzi (1615) reprint these same centres.
-const salviati: VoluteStyleDef = {
-  label: 'Salviati (1552)',
-  front: TO_FRONT,
-  arcs: ({ eyeRadius }) => {
-    const g = eyeRadius * Math.SQRT2 / 6;
-    const n = 12;
-    const centers = Array.from({ length: n }, (_, i) => polar((3 - Math.floor(i / 4)) * g, Math.PI / 4 - i * QUARTER));
+// Serlio (1537): semicircles about centres a sixth of his eye's diameter apart, stepping out to
+// either side in turn. Two turns end on his 13/6-diameter semicircle
+function serlioArcs(eyeRadius: number): Arc[] {
+  // a semicircle is two quarter arcs about the same centre
+  const centers: Pt[] = [];
+  for (const k of [-1, 1, -2, 2]) {
+    const center = new Pt(k * eyeRadius / 3, 0);
+    centers.push(center, center);
+  }
 
-    // the innermost arc leaves the front of the eye, so it runs a little over a quarter
-    const radii = new Array<number>(n);
-    const last = centers[n - 1];
-    radii[n - 1] = Math.hypot(eyeRadius - last.x, last.y);
-    for (let i = n - 2; i >= 0; i--) radii[i] = radii[i + 1] + dist(centers[i], centers[i + 1]);
+  // growing by the step between centres keeps the arcs tangent
+  const arcs: Arc[] = [];
+  let r = 4 * eyeRadius / 3;
+  for (let i = 0; i < centers.length; i++) {
+    if (i > 0) r += dist(centers[i - 1], centers[i]);
+    const from = normalizeRadians(TURN.quarter * i);
+    arcs.push(new Arc(centers[i].x, centers[i].y, r, from, from + TURN.quarter));
+  }
+  return arcs.reverse();
+}
 
-    // joints[i] is where arc i meets the arc inside it, along the line between their centres
-    const joints = centers.slice(0, n - 1).map((c, i) => angleFromCenter(c, centers[i + 1]));
-    return centers.map((center, i) => {
-      const from = i < n - 1 ? joints[i] : Math.atan2(-last.y, eyeRadius - last.x);
-      const outerEnd = i > 0 ? joints[i - 1] : joints[0] + QUARTER;
-      return new Arc(center.x, center.y, radii[i], from, from + normalizeRadians(outerEnd - from));
-    });
-  },
-  guides: ({ eyeRadius }) => {
-    const h = eyeRadius / 2;
-    return [
-      [0, 1, 2, 3, 4].map(i => polar(eyeRadius, i * QUARTER)),
-      square(-h, h, -h, h),
-      [new Pt(-h, -h), new Pt(h, h)],
-      [new Pt(-h, h), new Pt(h, -h)],
-    ];
-  },
-};
+// Salviati (1552): quarter arcs about the corners of three nested squares on the eye's diagonals;
+// two turns use the inner two. Vignola, Palladio and Scamozzi reprint the same centres
+function salviatiArcs(eyeRadius: number): Arc[] {
+  const g = eyeRadius * Math.SQRT2 / 6;
+  const n = TO_FRONT;
+  const centers = Array.from({ length: n }, (_, i) => pointOnCircle({ x: 0, y: 0, r: (2 - Math.floor(i / 4)) * g }, TURN.eighth - i * TURN.quarter));
 
-// Goldmann (written c. 1662, printed 1696): Salviati's three squares again, the largest's side his
-// eye's radius and the others 1/3 and 2/3 of it, but sharing a side along the eye's horizontal
-// diameter and centred on it, hanging below, rather than nested about the eye's centre. That
-// lines every ring change up with the joint, so all twelve arcs are exact quarter circles and
-// still tangent; radii run 7/6 of the eye's radius up to 51/6, reaching 9 radii out. Later than
-// Cremona's golden age and printed in Germany, so the least likely of these to have been on a
-// Cremonese bench.
-const goldmann: VoluteStyleDef = {
-  label: 'Goldmann (1696)',
-  front: TO_FRONT,
-  // round each square from its upper left corner, the first reaching the front of the eye
-  arcs: ({ eyeRadius }) => quarterTurns([1, 2, 3].flatMap(k => {
+  // the innermost arc leaves the front of the eye, so it runs a little over a quarter
+  const radii = new Array<number>(n);
+  const last = centers[n - 1];
+  radii[n - 1] = Math.hypot(eyeRadius - last.x, last.y);
+  for (let i = n - 2; i >= 0; i--) radii[i] = radii[i + 1] + dist(centers[i], centers[i + 1]);
+
+  // arc i meets the one inside it on the line between their centres, which at a ring change
+  // isn't a quarter turn on, so the two arcs there run a little long and short
+  const joints = centers.slice(0, n - 1).map((c, i) => angleFromCenter(c, centers[i + 1]));
+  return centers.map((center, i) => {
+    const from = i < n - 1 ? joints[i] : Math.atan2(-last.y, eyeRadius - last.x);
+    // the outermost has no ring change to end on: a quarter on to the front
+    const end = i > 0 ? from + normalizeRadians(joints[i - 1] - from) : Math.round((from + TURN.quarter) / TURN.full) * TURN.full;
+    return new Arc(center.x, center.y, radii[i], from, end);
+  });
+}
+
+// Goldmann (1696): Salviati's squares hung below the eye's horizontal diameter instead, so every
+// arc is an exact quarter. Two turns go round the inner two squares
+function goldmannArcs(eyeRadius: number): Arc[] {
+  // round each square from its upper left corner
+  const centers: Pt[] = [];
+  for (const k of [1, 2]) {
     const w = k * eyeRadius / 3;
     const h = k * eyeRadius / 6;
-    return [new Pt(-h, 0), new Pt(-h, -w), new Pt(h, -w), new Pt(h, 0)];
-  }), 7 * eyeRadius / 6),
-  guides: ({ eyeRadius }) => [
-    [new Pt(-eyeRadius, 0), new Pt(eyeRadius, 0)],
-    ...[1, 2, 3].map(k => square(-k * eyeRadius / 6, k * eyeRadius / 6, -k * eyeRadius / 3, 0)),
-  ],
-};
+    centers.push(new Pt(-h, 0), new Pt(-h, -w), new Pt(h, -w), new Pt(h, 0));
+  }
 
-// Kelly (Kevin Kelly, Boston, 2011): a seed of four equal squares stacked in a column, centred on
-// the eye with its middle line on the eye's vertical diameter. The first arc leaves the eye's front
-// from the left end of the middle line, then the centres go round the two middle squares' outer
-// corners, lower left, lower right, upper right, upper left, and the same round the seed's own
-// corners. His ninth arc goes on past the front. He varies the seed's length from scroll to scroll,
-// so it is a field of its own; his drawing stands it as tall as the eye's radius.
-const kelly: VoluteStyleDef = {
-  label: 'Kelly (2011)',
-  front: TO_FRONT,
-  arcs: ({ eyeRadius, seedLength }) => {
-    if (!(seedLength > 0)) return [];
-    const s = seedLength / 4;
-    const corners = [1, 2].flatMap(t => [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([x, y]) => new Pt(x * s / 2, y * t * s)));
-    return quarterTurns([new Pt(-s / 2, 0), ...corners], eyeRadius + s / 2);
-  },
-  guides: v => {
-    if (!(v.seedLength > 0)) return [];
-    const s = v.seedLength / 4;
-    const reach = Math.max(v.eyeRadius, ...kelly.arcs(v).slice(1).map(a => dist(new Pt(0, 0), a) + a.r));
-    return [
-      square(-s / 2, s / 2, -2 * s, 2 * s),
-      ...[-1, 0, 1].map(k => [new Pt(-s / 2, k * s), new Pt(s / 2, k * s)]),
-      [new Pt(0, -reach), new Pt(0, reach)],
-      [new Pt(-reach, 0), new Pt(reach, 0)],
-    ];
-  },
-};
-
-// Four point: the spiral drawn about the corners of a square inside the eye, every arc an exact
-// quarter turn. It leaves the front of the eye heading up like the rest, so the first centre sits
-// straight behind that point, the first radius in, and the first arc runs on tangent to the eye;
-// a centre on the eye's edge would kink it off the eye instead. Each centre steps back from the
-// last joint by the growth, which keeps the joint on the line between the two and the arcs
-// tangent; an arc no wider than the last carries on about the same centre. The radii are the
-// user's, since old scrolls rarely open evenly.
-const fourPointCentres = (eyeRadius: number, arcRadii: number[]) => {
-  const centers = [new Pt(eyeRadius - arcRadii[0], 0)];
-  arcRadii.slice(1).forEach((r, i) => {
-    const last = centers[i];
-    const grow = r - arcRadii[i];
-    const joint = QUARTER * (i + 1);
-    centers.push(new Pt(last.x - grow * Math.cos(joint), last.y - grow * Math.sin(joint)));
-  });
-  return centers;
-};
-
-const fourPoint: VoluteStyleDef = {
-  label: 'Four Point (custom)',
-  custom: true,
-  front: TO_FRONT,
-  arcs: ({ eyeRadius, arcRadii }) => {
-    if (!(arcRadii[0] > 0) || !arcRadii.every((r, i) => r >= (arcRadii[i - 1] ?? 0))) return [];
-    return fourPointCentres(eyeRadius, arcRadii).map((center, i) => {
-      const from = normalizeRadians(QUARTER * i);
-      return new Arc(center.x, center.y, arcRadii[i], from, from + QUARTER);
-    }).reverse();
-  },
-  guides: ({ eyeRadius, arcRadii }) => [arcRadii.length ? fourPointCentres(eyeRadius, arcRadii) : []],
-};
-
-// the four point's fields start from Kelly's radii on the volute's own eye and seed: both strike a
-// quarter turn about each centre in turn, so with his radii the four point's centres land on his
-// and it draws his spiral until a field moves. Rounded to the hundredth like the fields
-export const kellyArcRadii = (v: Pick<VoluteParams, 'eyeRadius' | 'seedLength'>): number[] =>
-  kelly.arcs({ ...v, style: 'kelly', arcRadii: [], pitch: 0 })
-    .reverse()
-    .slice(0, TO_FRONT)
-    .map(a => Math.round(a.r * 100) / 100);
-
-export const VOLUTE_STYLES: Record<VoluteStyle, VoluteStyleDef> = {
-  fourPoint, archimedean, serlio, salviati, goldmann, kelly,
-};
-
-// the style's figure out to the front, in the eye's frame, the outermost arc rolled back or on to
-// end there exactly about its own centre, heading straight up. Salviati's ring changes and the
-// Archimedean's points only come close to it on their own
-function drawn(v: VoluteSpec): Arc[] | null {
-  if (!(v.eyeRadius > 0)) return null;
-  const { front, arcs: figure } = VOLUTE_STYLES[v.style];
-  const arcs = figure(v);
-  if (arcs.length < front) return null;
-  const [outer, ...rest] = arcs.slice(-front);
-  return [new Arc(outer.x, outer.y, outer.r, outer.start, Math.round(outer.end / TWO_PI) * TWO_PI), ...rest];
+  const arcs: Arc[] = [];
+  let r = 7 * eyeRadius / 6;
+  for (let i = 0; i < centers.length; i++) {
+    if (i > 0) r += dist(centers[i - 1], centers[i]);
+    const from = normalizeRadians(TURN.quarter * i);
+    arcs.push(new Arc(centers[i].x, centers[i].y, r, from, from + TURN.quarter));
+  }
+  return arcs.reverse();
 }
 
-// the furthest an arc reaches toward the front
-function frontmost({ x, r, start, end }: Arc): number {
-  const passesFront = Math.floor(end / TWO_PI) > Math.floor(start / TWO_PI);
-  return passesFront ? x + r : x + r * Math.max(Math.cos(start), Math.cos(end));
+// Kelly (2011): from the left end of the seed's middle line, then round the outer corners of its
+// middle two squares and then its own. He varies the seed's length by scroll, so it's a field
+function kellyArcs(eyeRadius: number, seedLength: number): Arc[] {
+  if (!(seedLength > 0)) return [];
+  const s = seedLength / 4;
+  const centers = [new Pt(-s / 2, 0)];
+  for (const t of [1, 2]) {
+    centers.push(new Pt(-s / 2, -t * s), new Pt(s / 2, -t * s), new Pt(s / 2, t * s), new Pt(-s / 2, t * s));
+  }
+
+  const arcs: Arc[] = [];
+  let r = eyeRadius + s / 2;
+  for (let i = 0; i < TO_FRONT; i++) {
+    if (i > 0) r += dist(centers[i - 1], centers[i]);
+    const from = normalizeRadians(TURN.quarter * i);
+    arcs.push(new Arc(centers[i].x, centers[i].y, r, from, from + TURN.quarter));
+  }
+  return arcs.reverse();
 }
 
-// the eye's x that brings the spiral's front flush with the neck's front, x = 0
-export function flushVolute(v: VoluteSpec): number | null {
-  const arcs = drawn(v);
-  return arcs ? -Math.max(...arcs.map(frontmost)) : null;
-}
-
-// the figure the style finds its centres on, carried to the eye, for the construction view
-export function voluteGuides(v: VoluteParams): Pt[][] {
-  return VOLUTE_STYLES[v.style].guides(v).map(line => line.map(pt => new Pt(v.eye.x + pt.x, v.eye.y + pt.y)));
-}
-
-// about the Salviati's own opening, its front as far out
-export const defaultPitch = (eyeRadius: number) => Math.round(1.9 * eyeRadius * 10) / 10;
-
-// after Stradivari's Betts, in whole millimetres on the default 350 mm body and scaled by body
-// length for the larger sizes. The eye is 7 mm across and S0, S1, S2 run 3 : 4 : 5 of it, S3
-// matching S2. S2 leaves the back straight 35° off the neck, S3 turns it a sixth of a turn down
-// to the nut, and the front straight splays 10° off it, the throat wider at the bottom. F0 shares
-// S3's centre, as on the Betts, so its radius and the flat are read off the solved back
+// after Stradivari's Betts on a 350 mm body, scaled by body length. F0 shares S3's centre, as on
+// the Betts, so its radius and the flat are read off the solved back
 export function defaultVoluteParams(p: EnricoCerutiParams): VoluteParams {
   let k = p.height / 350;
   let mm = (v: number) => Math.round(v * k);
   let deg = (d: number) => d * Math.PI / 180;
   let eyeRadius = Math.round(3.5 * k * 4) / 4;
-  let spec: VoluteSpec = { style: 'salviati', eyeRadius, arcRadii: [], pitch: defaultPitch(eyeRadius), seedLength: eyeRadius };
 
   let v: VoluteParams = {
-    ...spec,
-    eye: new Pt(Math.round((flushVolute(spec) ?? 0) * 100) / 100, mm(83)),
+    style: 'salviati',
+    eyeRadius,
+    // the flush in calculateScroll below sets Eye X
+    eye: new Pt(0, mm(83)),
     flushWithNeck: true,
+    // about the Salviati's own opening, its front as far out
+    pitch: Math.round(1.9 * eyeRadius * 10) / 10,
+    seedLength: eyeRadius,
+    arcRadii: [],
+
     spiral: null,
     S0: new Arc(0, 0, mm(21), 0, deg(80)),
     S1: new Arc(0, 0, mm(28), 0, deg(165)),
     S2: new Arc(0, 0, mm(35), 0, deg(215)),
-    backStraight: mm(25),
     S3: new Arc(0, 0, mm(35), deg(-25), 0),
-    nape: new Arc(0, 0, mm(10), 0, Math.PI / 2),
-    flat: 0,
+    nape: new Arc(0, 0, mm(10), 0, TURN.quarter),
+    backStraight: mm(25),
+
     F0: new Arc(0, 0, mm(60), 0, deg(45)),
-    frontStraight: mm(18),
     F1: new Arc(0, 0, mm(9), 0, 0),
+    flat: 0,
+    frontStraight: mm(18),
+
+    height: null,
+    width: null,
   };
 
   calculateScroll({ ...p, neck: p.neck ?? defaultNeckParams(p), volute: v });
@@ -319,57 +232,23 @@ export function defaultVoluteParams(p: EnricoCerutiParams): VoluteParams {
   return v;
 }
 
-// the straight run on from an arc's end, along its heading
-export function straightOn(arc: Arc, length: number): [Pt, Pt] {
-  let joint = pointOnCircle(arc, arc.end);
-  let heading = vectorFromSlope(arc.end + Math.PI / 2);
-  return [joint, moveInVectorSpace(joint, [{ ...heading, mag: length }])];
-}
-
-export type ScrollLine = 'backStraight' | 'square' | 'flat' | 'frontStraight';
-
-// the straights, the flat and the square line are not stored: each runs between arcs that are, so
-// the render and the highlight read them off the arcs as calculateScroll left them
-export function scrollLines(p: EnricoCerutiParams): Record<ScrollLine, [Pt, Pt]> {
-  let v = p.volute!;
-  let nutTop = new Pt(0, standardNutLength(p.height));
-  return {
-    backStraight: straightOn(v.S2, v.backStraight),
-    square: [pointOnCircle(v.S3, v.S3.start), pointOnCircle(v.nape, Math.PI / 2)],
-    flat: [nutTop, new Pt(nutTop.x, nutTop.y + v.flat)],
-    frontStraight: straightOn(v.F0, v.frontStraight),
-  };
-}
-
-export type ScrollKey = 'spiral' | 'S0' | 'S1' | 'S2' | 'backStraight' | 'S3' | 'nape' | 'flat' | 'F0' | 'frontStraight' | 'F1';
-export type ScrollFailure = SolveFailure<ScrollKey>;
-const BACK_KEYS: ScrollKey[] = ['S0', 'S1', 'S2', 'backStraight', 'S3', 'nape'];
-const FRONT_KEYS: ScrollKey[] = ['flat', 'F0', 'frontStraight', 'F1'];
-const ALL_KEYS: ScrollKey[] = ['spiral', ...BACK_KEYS, ...FRONT_KEYS];
-
 // `p.neck` must already be in place — the panel seeds it
 export function calculateScroll(p: EnricoCerutiParams): ScrollFailure[] {
   p.volute ??= defaultVoluteParams(p);
   let v = p.volute;
-  let style = VOLUTE_STYLES[v.style];
 
-  // the four point's fields seed from Kelly's once, then stay the user's
-  if (style.custom && !v.arcRadii.length) v.arcRadii = kellyArcRadii(v);
-  v.pitch ??= defaultPitch(v.eyeRadius);
-
-  // flush rewrites Eye X to the hundredth every pass it is on, so turning it off leaves the eye where it was
-  if (v.flushWithNeck) {
-    let flushX = flushVolute(v);
-    if (flushX !== null) v.eye = new Pt(Math.round(flushX * 100) / 100, v.eye.y);
-  }
+  // the four point seeds once from Kelly's radii, which land its centres on his
+  if (v.style === 'fourPoint' && !v.arcRadii.length)
+    v.arcRadii = kellyArcs(v.eyeRadius, v.seedLength).reverse().map(a => Math.round(a.r * 100) / 100);
 
   let neckBack = -p.neck!.thickness;
   let nutTop = new Pt(0, standardNutLength(p.height));
 
   v.spiral = null;
+  v.height = null;
+  v.width = null;
 
-  // a run ends at the first part that isn't a positive radius, a forward sweep of up to a full
-  // turn, or a length; everything after it stays unsolved
+  // a run stops at the first bad part; everything solved after it stays unsolved
   let badArc = (section: string, key: ScrollKey, arc: Arc, unsolved: ScrollKey[]): ScrollFailure => ({
     message: !(arc.r > 0)
       ? `${section}: ${key} needs a radius.`
@@ -380,26 +259,31 @@ export function calculateScroll(p: EnricoCerutiParams): ScrollFailure[] {
     message: `${section}: ${key} needs a length, or 0.`,
     unsolved, circles: [], segments: [],
   });
-  let after = (keys: ScrollKey[], key: ScrollKey): ScrollKey[] => keys.slice(keys.indexOf(key));
 
   let failures: ScrollFailure[] = [];
 
   solveSection(failures, 'Volute', ALL_KEYS, () => {
     if (!(v.eyeRadius > 0))
       return { message: 'Volute: the eye needs a radius.', unsolved: ALL_KEYS, circles: [], segments: [] };
-    if (!Number.isFinite(v.eye.x) || !Number.isFinite(v.eye.y))
-      return { message: 'Volute: the eye needs a position.', unsolved: ALL_KEYS, circles: [], segments: [] };
-    let arcs = drawn(v);
-    if (!arcs)
+    let arcs = spiralArcs(v);
+    if (!arcs.length)
       return {
-        message: style.custom
+        message: v.style === 'fourPoint'
           ? 'Volute: the four point needs every radius set, each at least the one inside it.'
           : v.style === 'archimedean' ? 'Volute: the Archimedean needs a pitch.'
           : v.style === 'kelly' ? "Volute: Kelly's needs a seed length."
-          : `Volute: ${style.label} can't be drawn from this eye.`,
+          : `Volute: ${VOLUTE_STYLE_LABELS[v.style]} can't be drawn from this eye.`,
         unsolved: ALL_KEYS, circles: [], segments: [],
       };
-    // the drawing is in the eye's own frame, so the eye's centre carries it into the scroll's
+
+    // rewritten each pass while on, so turning flush off leaves the eye where it was
+    if (v.flushWithNeck) {
+      let front = Math.max(...arcs.flatMap(a => arcReach(a, 0)).map(pt => pt.x));
+      v.eye = new Pt(Math.round(-front * 100) / 100, v.eye.y);
+    }
+    if (!Number.isFinite(v.eye.x) || !Number.isFinite(v.eye.y))
+      return { message: 'Volute: the eye needs a position.', unsolved: ALL_KEYS, circles: [], segments: [] };
+
     v.spiral = arcs.map(a => new Arc(a.x + v.eye.x, a.y + v.eye.y, a.r, a.start, a.end));
     return null;
   });
@@ -409,70 +293,72 @@ export function calculateScroll(p: EnricoCerutiParams): ScrollFailure[] {
   }
 
   solveSection(failures, 'Back', BACK_KEYS, () => {
-    // the back takes over where the spiral's outermost arc ends, heading straight up; S0 to S2
-    // each run on tangent from where the last ended round to their own end angle
+    // S0 to S2 run on tangent from the spiral's front, each to its own end angle
     let outer = v.spiral![0];
     let joint = pointOnCircle(outer, outer.end);
 
-    if (!(v.S0.r > 0) || !(v.S0.end > 0) || v.S0.end > TWO_PI) return badArc('Back', 'S0', v.S0, after(BACK_KEYS, 'S0'));
+    if (!(v.S0.r > 0) || !(v.S0.end > 0) || v.S0.end > TURN.full)
+      return badArc('Back', 'S0', v.S0, ['S0', 'S1', 'S2', 'S3', 'nape', 'backStraight']);
     let S0 = placeCircleOnPointAtAngle(v.S0.r, joint, 0);
     v.S0 = new Arc(S0.x, S0.y, S0.r, 0, v.S0.end);
     joint = pointOnCircle(v.S0, v.S0.end);
 
-    if (!(v.S1.r > 0) || !(v.S1.end > v.S0.end) || v.S1.end - v.S0.end > TWO_PI) return badArc('Back', 'S1', v.S1, after(BACK_KEYS, 'S1'));
+    if (!(v.S1.r > 0) || !(v.S1.end > v.S0.end) || v.S1.end - v.S0.end > TURN.full)
+      return badArc('Back', 'S1', v.S1, ['S1', 'S2', 'S3', 'nape', 'backStraight']);
     let S1 = placeCircleOnPointAtAngle(v.S1.r, joint, v.S0.end);
     v.S1 = new Arc(S1.x, S1.y, S1.r, v.S0.end, v.S1.end);
     joint = pointOnCircle(v.S1, v.S1.end);
 
-    if (!(v.S2.r > 0) || !(v.S2.end > v.S1.end) || v.S2.end - v.S1.end > TWO_PI) return badArc('Back', 'S2', v.S2, after(BACK_KEYS, 'S2'));
+    if (!(v.S2.r > 0) || !(v.S2.end > v.S1.end) || v.S2.end - v.S1.end > TURN.full)
+      return badArc('Back', 'S2', v.S2, ['S2', 'S3', 'nape', 'backStraight']);
     let S2 = placeCircleOnPointAtAngle(v.S2.r, joint, v.S1.end);
     v.S2 = new Arc(S2.x, S2.y, S2.r, v.S1.end, v.S2.end);
 
-    if (!(v.backStraight >= 0)) return badLength('Back', 'backStraight', after(BACK_KEYS, 'backStraight'));
-    let foot = straightOn(v.S2, v.backStraight)[1];
+    if (!(v.backStraight >= 0)) return badLength('Back', 'backStraight', ['S3', 'nape', 'backStraight']);
+    let foot = moveInVectorSpace(pointOnCircle(v.S2, v.S2.end), [{ ...vectorFromSlope(v.S2.end + TURN.quarter), mag: v.backStraight }]);
 
-    // S3 turns the other way off the foot, clockwise about a centre on the far side, so as a
-    // counterclockwise sweep it runs from the duck tail round to the foot
-    let S3end = v.S2.end - Math.PI;
-    if (!(v.S3.r > 0)) return badArc('Back', 'S3', v.S3, after(BACK_KEYS, 'S3'));
-    if (!(v.S3.start < S3end) || S3end - v.S3.start > TWO_PI)
-      return { message: "Back: S3 has to turn back from the straight's foot, by up to a full turn.", unsolved: after(BACK_KEYS, 'S3'), circles: [], segments: [] };
+    // S3 turns back clockwise, so as a counterclockwise sweep it runs from the duck tail to the foot
+    let S3end = v.S2.end - TURN.half;
+    if (!(v.S3.r > 0)) return badArc('Back', 'S3', v.S3, ['S3', 'nape']);
+    if (!(v.S3.start < S3end) || S3end - v.S3.start > TURN.full)
+      return { message: "Back: S3 has to turn back from the straight's foot, by up to a full turn.", unsolved: ['S3', 'nape'], circles: [], segments: [] };
     let S3 = placeCircleOnPointAtAngle(v.S3.r, foot, S3end);
     v.S3 = new Arc(S3.x, S3.y, S3.r, v.S3.start, S3end);
 
-    // from the duck tail a line runs square to the neck, forward to its back, the nape filleting
-    // that corner
+    let back = [v.S0, v.S1, v.S2, v.S3];
+    v.height = Math.max(...back.flatMap(a => arcReach(a, TURN.quarter)).map(pt => pt.y));
+    v.width = -Math.min(...back.flatMap(a => arcReach(a, TURN.half)).map(pt => pt.x));
+
+    // a line runs square from the duck tail to the neck's back, the nape filleting the corner
     let duckTail = pointOnCircle(v.S3, v.S3.start);
     let napeStart = neckBack - v.nape.r;
-    if (!(v.nape.r > 0)) return badArc('Back', 'nape', v.nape, after(BACK_KEYS, 'nape'));
+    if (!(v.nape.r > 0)) return badArc('Back', 'nape', v.nape, ['nape']);
     if (duckTail.x > napeStart)
       return {
         message: `Back: the duck tail sits too far forward for a nape of ${v.nape.r}mm to fit before the neck's back. Shrink the nape, or move the duck tail back with S3 or the straight.`,
-        unsolved: after(BACK_KEYS, 'nape'),
+        unsolved: ['nape'],
         circles: [{ x: napeStart, y: duckTail.y - v.nape.r, r: v.nape.r }],
         segments: [[duckTail, new Pt(neckBack, duckTail.y)]],
       };
-    v.nape = new Arc(napeStart, duckTail.y - v.nape.r, v.nape.r, 0, Math.PI / 2);
+    v.nape = new Arc(napeStart, duckTail.y - v.nape.r, v.nape.r, 0, TURN.quarter);
     return null;
   });
 
   solveSection(failures, 'Front', FRONT_KEYS, () => {
-    // the front rises from the top of the nut on the neck's front: the flat straight up
-    if (!(v.flat >= 0)) return badLength('Front', 'flat', after(FRONT_KEYS, 'flat'));
+    if (!(v.flat >= 0)) return badLength('Front', 'flat', ['F0', 'F1', 'flat', 'frontStraight']);
     let top = new Pt(nutTop.x, nutTop.y + v.flat);
 
-    // F0 turns toward the back to its end angle
-    if (!(v.F0.r > 0) || !(v.F0.end > 0) || v.F0.end > TWO_PI) return badArc('Front', 'F0', v.F0, after(FRONT_KEYS, 'F0'));
+    if (!(v.F0.r > 0) || !(v.F0.end > 0) || v.F0.end > TURN.full)
+      return badArc('Front', 'F0', v.F0, ['F0', 'F1', 'frontStraight']);
     let F0 = placeCircleOnPointAtAngle(v.F0.r, top, 0);
     v.F0 = new Arc(F0.x, F0.y, F0.r, 0, v.F0.end);
 
-    if (!(v.frontStraight >= 0)) return badLength('Front', 'frontStraight', after(FRONT_KEYS, 'frontStraight'));
-    let foot = straightOn(v.F0, v.frontStraight)[1];
+    if (!(v.frontStraight >= 0)) return badLength('Front', 'frontStraight', ['F1', 'frontStraight']);
+    let foot = moveInVectorSpace(pointOnCircle(v.F0, v.F0.end), [{ ...vectorFromSlope(v.F0.end + TURN.quarter), mag: v.frontStraight }]);
 
-    // F1 curves back toward the volute, clockwise about a centre on the far side, until it first
-    // crosses a drawn arc of the spiral
-    if (!(v.F1.r > 0)) return badArc('Front', 'F1', v.F1, after(FRONT_KEYS, 'F1'));
-    let F1end = v.F0.end + Math.PI;
+    // F1 curves back clockwise until it first crosses a drawn arc of the spiral
+    if (!(v.F1.r > 0)) return badArc('Front', 'F1', v.F1, ['F1']);
+    let F1end = v.F0.end + TURN.half;
     let F1 = placeCircleOnPointAtAngle(v.F1.r, foot, F1end);
     let sweep = Infinity;
     for (let arc of v.spiral!) {
@@ -485,7 +371,7 @@ export function calculateScroll(p: EnricoCerutiParams): ScrollFailure[] {
     if (sweep === Infinity)
       return {
         message: "Front: F1 never meets the spiral. Enlarge F1, or aim the straight in under the volute with F0's end.",
-        unsolved: after(FRONT_KEYS, 'F1'), circles: [F1], segments: [],
+        unsolved: ['F1'], circles: [F1], segments: [],
       };
     v.F1 = new Arc(F1.x, F1.y, F1.r, F1end - sweep, F1end);
     return null;
@@ -493,4 +379,18 @@ export function calculateScroll(p: EnricoCerutiParams): ScrollFailure[] {
 
   reportFailures(failures, 'Scroll');
   return failures;
+}
+
+// the lines aren't stored: each runs between stored arcs, so the render reads them off here
+export function scrollLines(p: EnricoCerutiParams): Record<ScrollLine, [Pt, Pt]> {
+  let v = p.volute!;
+  let nutTop = new Pt(0, standardNutLength(p.height));
+  let backTop = pointOnCircle(v.S2, v.S2.end);
+  let frontTop = pointOnCircle(v.F0, v.F0.end);
+  return {
+    square: [pointOnCircle(v.S3, v.S3.start), pointOnCircle(v.nape, TURN.quarter)],
+    backStraight: [backTop, moveInVectorSpace(backTop, [{ ...vectorFromSlope(v.S2.end + TURN.quarter), mag: v.backStraight }])],
+    flat: [nutTop, new Pt(nutTop.x, nutTop.y + v.flat)],
+    frontStraight: [frontTop, moveInVectorSpace(frontTop, [{ ...vectorFromSlope(v.F0.end + TURN.quarter), mag: v.frontStraight }])],
+  };
 }

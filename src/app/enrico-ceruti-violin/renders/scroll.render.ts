@@ -1,14 +1,13 @@
-import { dist, normalizeRadians } from '../../helpers/math/simpleGeometry';
+import { arcReach, dist, normalizeRadians, pointOnCircle, TURN } from '../../helpers/math/simpleGeometry';
 import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderDashLine, renderPolygon, renderSegment, renderSegmentHalo } from '../../helpers/renderFuncs';
 import { Arc, Pt } from '../../models/types';
-import { CerutiColors, CerutiViewFlags, EnricoCerutiParams } from '../ceruti-types';
+import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, VoluteParams } from '../ceruti-types';
 import { standardNutLength } from '../ceruti-neck';
-import { ScrollFailure, ScrollKey, scrollLines, voluteGuides } from '../ceruti-scroll';
+import { ScrollFailure, ScrollKey, scrollLines, TO_FRONT } from '../ceruti-scroll';
 import { HighlightedArc, HighlightedSegment, STROKE_WEIGHT } from './render-constants';
 
 // the scroll in ceruti-scroll.ts's frame, the neck's tilt taken out, read off p.volute as
-// calculateScroll left it. The volute panel draws the neck and the volute; the scroll panel draws
-// the volute plain under the back and front
+// calculateScroll left it
 
 export type ScrollViewFlags = Pick<CerutiViewFlags, 'showModuleArcs' | 'showAllArcs' | 'showModuleGuides' | 'showVoluteConstruction'>;
 
@@ -24,14 +23,14 @@ export function arcColor(colors: CerutiColors, i: number): string {
 }
 
 // a scroll arc runs counterclockwise from start to end, so one past a half turn is the long way round
-const longArc = (arc: Arc) => normalizeRadians(arc.end - arc.start) > Math.PI;
+const longArc = (arc: Arc) => normalizeRadians(arc.end - arc.start) > TURN.half;
 
 // every arc draws in its own colour; module arcs add its centre and the two radii that bound it
 const scrollArc = (arc: Arc, color: string, fancy: boolean) =>
   fancy ? renderArcFromArcFancy(arc, color, longArc(arc)) : renderArcFromArc(arc, color, STROKE_WEIGHT.trace, longArc(arc));
 
-// the nut on the neck's front and the neck's end below it, open at the bottom, for context only.
-// Module guides carry the neck's front and back on up past the spiral
+// the nut and the neck's end below it, for context. Module guides run the neck's front up to the
+// crown's top, then back to S1's furthest reach
 export const renderScrollNeck = (p: EnricoCerutiParams, colors: CerutiColors, showGuides: boolean) => (g: any, ui: any): void => {
   const v = p.volute!;
   const { thickness, nutThickness } = p.neck!;
@@ -44,10 +43,11 @@ export const renderScrollNeck = (p: EnricoCerutiParams, colors: CerutiColors, sh
   renderSegment(new Pt(-thickness, 0), new Pt(-thickness, -neckStub), colors.neckOff, STROKE_WEIGHT.section)(g, ui);
 
   if (!showGuides) return;
-  const reach = [...v.spiral ?? [], v.S0, v.S1, v.S2].map(a => a.y + a.r).filter(Number.isFinite);
-  const top = Math.max(nutLength, v.eye.y + v.eyeRadius, ...reach) + thickness;
-  renderDashLine(new Pt(0, 0), new Pt(0, top), colors.neck, STROKE_WEIGHT.guide)(g, ui);
-  renderDashLine(new Pt(-thickness, 0), new Pt(-thickness, top), colors.neck, STROKE_WEIGHT.guide)(g, ui);
+  const crownTop = Math.max(...[v.S0, v.S1].flatMap(a => arcReach(a, TURN.quarter)).map(pt => pt.y));
+  const S1Back = Math.min(...arcReach(v.S1, TURN.half).map(pt => pt.x));
+  if (!Number.isFinite(crownTop) || !Number.isFinite(S1Back)) return;
+  renderDashLine(new Pt(0, 0), new Pt(0, crownTop), colors.neck, STROKE_WEIGHT.guide)(g, ui);
+  renderDashLine(new Pt(0, crownTop), new Pt(S1Back, crownTop), colors.neck, STROKE_WEIGHT.guide)(g, ui);
 };
 
 // the eye, the spiral and the crown (S0, S1). The construction toggle adds the figure the spiral's
@@ -70,8 +70,9 @@ export const renderVolute = (
   if (!solved('spiral')) return;
   renderCircle({ ...v.eye, r: v.eyeRadius }, colors.neckOff)(g, ui);
   if (currentModule && flags.showVoluteConstruction) {
-    for (const line of voluteGuides(v)) {
-      for (let i = 1; i < line.length; i++) renderSegment(line[i - 1], line[i], colors.neckOff, STROKE_WEIGHT.guide, true)(g, ui);
+    for (const line of voluteConstruction(v)) {
+      const placed = line.map(pt => new Pt(v.eye.x + pt.x, v.eye.y + pt.y));
+      for (let i = 1; i < placed.length; i++) renderSegment(placed[i - 1], placed[i], colors.neckOff, STROKE_WEIGHT.guide, true)(g, ui);
     }
   }
 
@@ -82,8 +83,8 @@ export const renderVolute = (
   solved('S1') && scrollArc(v.S1, colors.scrollBack, fancy)(g, ui);
 };
 
-// the back from S2 on down to the nape, and the front up from the nut. A straight shares its colour
-// with the arc whose row it is set on, the square line the nape's
+// the back from S2 down to the nape, and the front up from the nut. A straight takes its arc's
+// colour, the square line the nape's; module guides box the head
 export const renderScroll = (
   p: EnricoCerutiParams,
   colors: CerutiColors,
@@ -105,6 +106,11 @@ export const renderScroll = (
   // the neck's back carried up from the nut to meet the nape
   if (solved('nape') && v.nape.y > 0) renderSegment(new Pt(-thickness, v.nape.y), new Pt(-thickness, 0), colors.neckOff, STROKE_WEIGHT.section)(g, ui);
 
+  if (currentModule && flags.showModuleGuides && v.height != null && v.width != null) {
+    const corners = [new Pt(0, 0), new Pt(0, v.height), new Pt(-v.width, v.height), new Pt(-v.width, 0)];
+    for (let i = 0; i < 4; i++) renderDashLine(corners[i], corners[(i + 1) % 4], colors.neck, STROKE_WEIGHT.guide)(g, ui);
+  }
+
   solved('S2') && scrollArc(v.S2, colors.scrollBackLight, fancy)(g, ui);
   solved('S3') && scrollArc(v.S3, colors.scrollBack, fancy)(g, ui);
   solved('nape') && scrollArc(v.nape, colors.scrollNape, fancy)(g, ui);
@@ -119,3 +125,57 @@ export const renderScroll = (
   solved('flat') && line(lines.flat, colors.scrollFrontLight);
   solved('frontStraight') && line(lines.frontStraight, colors.scrollFront);
 };
+
+// the figure each style finds its centres on, as polylines in the eye's frame
+export function voluteConstruction(v: VoluteParams): Pt[][] {
+  const r = v.eyeRadius;
+  const square = (left: number, right: number, bottom: number, top: number) =>
+    [new Pt(left, bottom), new Pt(right, bottom), new Pt(right, top), new Pt(left, top), new Pt(left, bottom)];
+
+  switch (v.style) {
+    // the walk of centres
+    case 'fourPoint':
+      return [[...v.spiral!].reverse().map(a => new Pt(a.x - v.eye.x, a.y - v.eye.y))];
+
+    // a ray out to the last point on each of the eight lines
+    case 'archimedean':
+      return Array.from({ length: 8 }, (_, ray) => {
+        const eighths = ray ? 8 + ray : 2 * TO_FRONT;
+        return [new Pt(0, 0), pointOnCircle({ x: 0, y: 0, r: r + v.pitch * eighths / 8 }, ray * TURN.eighth)];
+      });
+
+    // the line of centres
+    case 'serlio':
+      return [[new Pt(-r, 0), new Pt(r, 0)]];
+
+    // the eye's inscribed square, and his outer square on its edge midpoints with its diagonals
+    case 'salviati': {
+      const h = r / 2;
+      return [
+        [0, 1, 2, 3, 4].map(i => pointOnCircle({ x: 0, y: 0, r }, i * TURN.quarter)),
+        square(-h, h, -h, h),
+        [new Pt(-h, -h), new Pt(h, h)],
+        [new Pt(-h, h), new Pt(h, -h)],
+      ];
+    }
+
+    // the eye's horizontal diameter and his three squares hanging from it
+    case 'goldmann':
+      return [
+        [new Pt(-r, 0), new Pt(r, 0)],
+        ...[1, 2, 3].map(k => square(-k * r / 6, k * r / 6, -k * r / 3, 0)),
+      ];
+
+    // the seed, its middle lines, and the eye's two axes out to the spiral's furthest reach
+    case 'kelly': {
+      const s = v.seedLength / 4;
+      const reach = Math.max(r, ...v.spiral!.map(a => dist(v.eye, a) + a.r));
+      return [
+        square(-s / 2, s / 2, -2 * s, 2 * s),
+        ...[-1, 0, 1].map(k => [new Pt(-s / 2, k * s), new Pt(s / 2, k * s)]),
+        [new Pt(0, -reach), new Pt(0, reach)],
+        [new Pt(-reach, 0), new Pt(reach, 0)],
+      ];
+    }
+  }
+}

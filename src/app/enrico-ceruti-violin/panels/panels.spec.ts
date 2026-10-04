@@ -14,7 +14,7 @@ import { MouldPanel } from './mould-panel/mould-panel';
 import { NeckPanel } from './neck-panel/neck-panel';
 import { OuterTracePanel } from './outer-trace-panel/outer-trace-panel';
 import { ScrollPanel } from './scroll-panel/scroll-panel';
-import { kellyArcRadii, VOLUTE_STYLES } from '../ceruti-scroll';
+import { spiralArcs as styleArcs, VOLUTE_STYLE_LABELS } from '../ceruti-scroll';
 import { VolutePanel } from './volute-panel/volute-panel';
 import { VoluteStyle } from '../ceruti-types';
 
@@ -128,19 +128,38 @@ describe('view flags gate what is drawn', () => {
 });
 
 describe('the scroll panel', () => {
-  it('carries the neck\'s front and back on up past the spiral under module guides, dashed', () => {
+  it('carries the neck\'s front on up to the crown\'s top on the volute, and levels it back to S1, under module guides, dashed', () => {
     const p = defaultViolin();
-    const lines = (showModuleGuides: boolean) => recordLayers(panel(ScrollPanel, p, flags({ showModuleGuides, showVoluteConstruction: false, showModuleArcs: false })).buildRun())
-      .elements.filter(el => el.tag === 'line').map(el => el.attrs);
+    const lines = (showModuleGuides: boolean) => recordLayers(panel(VolutePanel, p, flags({ showModuleGuides, showVoluteConstruction: false, showModuleArcs: false })).buildRun())
+      .elements.filter(el => el.tag === 'line').map(el => el.attrs as Record<string, number>);
     const dashed = (l: Record<string, unknown>) => !!l['stroke-dasharray'];
     expect(lines(false).filter(dashed)).toEqual([]);
-    const guides = lines(true).filter(dashed);
-    expect(guides.map(l => [l['x1'], l['x2']])).toEqual([[0, 0], [-p.neck!.thickness, -p.neck!.thickness]].map(xs => xs.map(x => expect.closeTo(x, 9))));
-    for (const l of guides) {
-      const [low, high] = [l['y1'], l['y2']].sort((m, n) => (m as number) - (n as number)) as number[];
-      expect(low).toBe(0);
-      expect(high).toBeGreaterThan(p.volute!.eye.y);
-    }
+    const [front, crown] = lines(true).filter(dashed);
+    expect([front['x1'], front['x2']]).toEqual([0, 0]);
+    expect(Math.min(front['y1'], front['y2'])).toBe(0);
+
+    // the default crown passes straight up partway along S1, and stops short of facing straight back
+    const S1 = p.volute!.S1;
+    expect(Math.max(front['y1'], front['y2'])).toBeCloseTo(S1.y + S1.r, 9);
+    expect(crown['x1']).toBe(0);
+    expect(crown['x2']).toBeCloseTo(S1.x + S1.r * Math.cos(S1.end), 9);
+    expect(crown['y1']).toBeCloseTo(S1.y + S1.r, 9);
+    expect(crown['y2']).toBeCloseTo(S1.y + S1.r, 9);
+  });
+
+  it('boxes the head from the nut to the crown and from the neck\'s front to the back\'s furthest reach under module guides, dashed', () => {
+    const p = defaultViolin();
+    const lines = (showModuleGuides: boolean) => recordLayers(panel(ScrollPanel, p, flags({ showModuleGuides, showVoluteConstruction: false, showModuleArcs: false })).buildRun())
+      .elements.filter(el => el.tag === 'line').map(el => el.attrs as Record<string, number>);
+    const dashed = (l: Record<string, unknown>) => !!l['stroke-dasharray'];
+    expect(lines(false).filter(dashed)).toEqual([]);
+
+    // on the default the crown's top is on S1 and the furthest reach back on S2, past facing straight back
+    const { S1, S2, height, width } = p.volute!;
+    expect(height).toBeCloseTo(S1.y + S1.r, 9);
+    expect(width).toBeCloseTo(S2.r - S2.x, 9);
+    const corners = lines(true).filter(dashed).map(l => [l['x1'], l['y1']]);
+    expect(corners).toEqual([[0, 0], [0, height!], [-width!, height!], [-width!, 0]].map(c => c.map(n => expect.closeTo(n, 9))));
   });
 
   it('draws the nut on the neck\'s front and the neck below it, stopping short', () => {
@@ -338,7 +357,8 @@ describe('the scroll panel', () => {
       const instance = volute(p);
       instance.buildRun();
       choose(instance, 'fourPoint');
-      expect(p.volute!.arcRadii).toEqual(kellyArcRadii(p.volute!));
+      const kelly = styleArcs({ ...p.volute!, style: 'kelly' }).reverse().map(a => Math.round(a.r * 100) / 100);
+      expect(p.volute!.arcRadii).toEqual(kelly);
       const seeded = [...p.volute!.arcRadii];
       p.volute!.eyeRadius = 1.2;
       instance.buildRun();
@@ -404,13 +424,11 @@ describe('the scroll panel', () => {
       expect(recordLayers(instance.buildRun()).elements.filter(el => el.attrs['stroke-width'] === 12)).toEqual([]);
     });
 
-    it('gives the Archimedean a pitch on picking it when it has none, and redraws as the pitch changes', () => {
+    it('redraws the Archimedean as the pitch changes, and keeps the pitch across a change of style', () => {
       const p = defaultViolin();
       const instance = volute(p);
       instance.buildRun();
-      p.volute!.pitch = undefined as unknown as number;
       choose(instance, 'archimedean');
-      expect(p.volute!.pitch).toBeGreaterThan(0);
       const before = spiralArcs(instance).map(el => el.attrs['d']);
       expect(before).toHaveLength(18);
       p.volute!.pitch += 1;
@@ -463,7 +481,7 @@ describe('the scroll panel', () => {
       const whole = scroll(p);
       instance.buildRun();
       const front = { archimedean: 16, serlio: 8, salviati: 8, goldmann: 8, kelly: 8, fourPoint: 8 };
-      for (const style of Object.keys(VOLUTE_STYLES) as VoluteStyle[]) {
+      for (const style of Object.keys(VOLUTE_STYLE_LABELS) as VoluteStyle[]) {
         choose(instance, style);
         expect(spiralArcs(instance).length, style).toBe(front[style] + 2);
         expect(spiralArcs(whole).length, style).toBe(front[style] + 7);
