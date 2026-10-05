@@ -240,7 +240,9 @@ export interface NeckParams {
 export interface StringSetup {
   bodyStop: number;
   bridgeHeight: number;
-  nutHeight: number;
+  nutThickness: number;
+  nutHeight: number; // along the neck, up to where the pegbox's flat starts
+  nutWidth: number; // across, which the scroll's path starts at
   fingerboardLength: number;
   fingerboardThickness: number;
   fingerboardRadius: number;
@@ -276,9 +278,6 @@ export interface ScrollParams {
   // x is the half-width the user sets; y and z are the side view's y and x, which calculateScrollWidths
   // reads off the path so the back and front views stand at the side view's heights
   pathWidths: Pt3D[];
-  // the round the back starts in at the duck tail, seen from behind, rising to the path's start; null
-  // until calculateScrollWidths fits it under the path's first width
-  duckTailRadius: number | null;
 }
 
 /** Resolved palette from CerutiViolin's `colors` getter, threaded into every panel and render fn. */

@@ -3,8 +3,7 @@ import { occludePath, pathFromLine, pathFromPolygon } from '../../helpers/math/p
 import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderCrosshair, renderDashLine, mixColors, renderPath, renderPointHalo, renderPolygon, renderSegment, renderSegmentHalo } from '../../helpers/renderFuncs';
 import { Arc, Pt, Pt3D } from '../../models/types';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, ScrollParams } from '../ceruti-types';
-import { standardNutLength } from '../ceruti-neck';
-import { ScrollFailure, ScrollKey, scrollExtent, scrollFrontWidths, scrollLines, TO_FRONT } from '../ceruti-scroll';
+import { duckTailRadius, ScrollFailure, ScrollKey, scrollExtent, scrollFrontWidths, scrollLines, scrollNeckHalfWidth, TO_FRONT } from '../ceruti-scroll';
 import { HighlightedArc, HighlightedSegment, STROKE_WEIGHT } from './render-constants';
 
 // the scroll in ceruti-scroll.ts's frame, the neck's tilt taken out, read off p.volute as
@@ -33,24 +32,16 @@ const scrollArc = (arc: Arc, color: string, fancy: boolean) =>
 // how far each view carries the neck on below the scroll
 const neckStub = (p: EnricoCerutiParams) => 2 * p.neck!.thickness;
 
-// the neck's half-width at y along it, seen from in front or behind. The taper is read off the
-// authored widths over the neck's length rather than neckHalfWidthAt, which needs the neck solved
-// against the body; over the stub the two differ by hundredths of a mm
-const neckHalfWidth = (p: EnricoCerutiParams, y: number) => {
-  const nk = p.neck!;
-  return (nk.topWidth - (nk.rootWidth - nk.topWidth) * y / nk.length) / 2;
-};
 
 // the nut and the neck's end below it, for context. Module guides run the neck's front up to the
 // crown's top, then back to S1's furthest reach
 export const renderScrollNeck = (p: EnricoCerutiParams, colors: CerutiColors, showGuides: boolean) => (g: any, ui: any): void => {
   const v = p.scroll!;
   const { thickness } = p.neck!;
-  const { nutHeight } = p.stringSetup!;
-  const nutLength = standardNutLength(p.height);
+  const { nutThickness, nutHeight } = p.stringSetup!;
   const stub = neckStub(p);
 
-  renderPolygon([new Pt(0, 0), new Pt(0, nutLength), new Pt(nutHeight, nutLength), new Pt(nutHeight, 0)], colors.nut, STROKE_WEIGHT.section)(g, ui);
+  renderPolygon([new Pt(0, 0), new Pt(0, nutHeight), new Pt(nutThickness, nutHeight), new Pt(nutThickness, 0)], colors.nut, STROKE_WEIGHT.section)(g, ui);
   renderSegment(new Pt(0, -stub), new Pt(0, 0), colors.neckOff, STROKE_WEIGHT.section)(g, ui);
   renderSegment(new Pt(0, 0), new Pt(-thickness, 0), colors.neckOff, STROKE_WEIGHT.section)(g, ui);
   renderSegment(new Pt(-thickness, 0), new Pt(-thickness, -stub), colors.neckOff, STROKE_WEIGHT.section)(g, ui);
@@ -185,10 +176,10 @@ export const renderScrollWidths = (p: EnricoCerutiParams, colors: CerutiColors, 
   const eyeWidth = widths.at(-1)!.x;
   const widest = Math.max(...widths.map(pt => pt.x));
   const back = -scrollExtent(v).width - gap - widest;
-  const front = p.stringSetup!.nutHeight + gap + widest;
+  const front = p.stringSetup!.nutThickness + gap + widest;
   const color = (k: number) => pathPointColor(colors, k, widths.length);
 
-  const stroke = (d: string, ink: string, weight: number, cover: string | null) => {
+  const stroke = (d: string, ink: string, weight: number, cover: string | string[] | null) => {
     const shown = cover ? occludePath(d, cover).visible : d;
     if (shown) renderPath(shown, ink, weight)(g, ui);
   };
@@ -198,35 +189,44 @@ export const renderScrollWidths = (p: EnricoCerutiParams, colors: CerutiColors, 
     }
   };
   const stub = neckStub(p);
-  const nutLength = standardNutLength(p.height);
-  const nutHalf = p.neck!.topWidth / 2;
+  const { nutHeight } = p.stringSetup!;
+  const nutHalf = p.stringSetup!.nutWidth / 2;
   const ledges = [
     ...scrollWidthLedges(widths),
     ...[v.eye.y - v.eye.r, v.eye.y + v.eye.r].map(y => ({ y, from: eyeWidth, to: insideAt(widths, y, eyeWidth) })),
   ];
   const start = widths[0];
   const foot = Math.min(start.y, 0);
-  const r = v.duckTailRadius!;
+  const closing = [start, new Pt3D(start.x, foot, 0), new Pt3D(0, foot, 0)];
+  const r = duckTailRadius(p);
   const round = Array.from({ length: 33 }, (_, i) => pointOnCircle({ x: 0, y: start.y, r }, TURN.half + TURN.half * i / 32));
   const view = (center: number, behind: boolean) => {
     const [line, light] = behind ? [colors.archBack, colors.scrollBackLight] : [colors.archTop, colors.scrollFrontLight];
     const neckSide = (side: number, top: number) =>
-      pathFromLine(new Pt(center + side * neckHalfWidth(p, -stub), -stub), new Pt(center + side * neckHalfWidth(p, top), top));
+      pathFromLine(new Pt(center + side * scrollNeckHalfWidth(p, -stub), -stub), new Pt(center + side * scrollNeckHalfWidth(p, top), top));
     if (behind) {
-      // from behind the duck tail's round stands nearest, so the neck's sides run on up until they pass under it
+      // a path starting above the nut's foot leaves the pegbox's front running on below the back, so
+      // the back and front can't join; its walls are drawn in the front's colour. Not its bottom,
+      // which from behind is smoothed into the neck
+      const hanging = foot < start.y;
+      // from behind the neck's sides run on up until they meet the scroll, in the round or the front
       const placed = round.map(pt => new Pt(center + pt.x, pt.y));
-      const cover = r > 0 ? pathFromPolygon(placed) : null;
-      for (const side of [1, -1]) stroke(neckSide(side, start.y), colors.neckOff, STROKE_WEIGHT.section, cover);
+      const covers = [
+        ...(r > 0 ? [pathFromPolygon(placed)] : []),
+        ...(hanging ? [pathFromPolygon([new Pt(center - start.x, foot), new Pt(center + start.x, foot), new Pt(center + start.x, start.y), new Pt(center - start.x, start.y)])] : []),
+      ];
+      for (const side of [1, -1]) stroke(neckSide(side, start.y), colors.neckOff, STROKE_WEIGHT.section, covers.length ? covers : null);
       contour(widths, center, line);
       if (r > 0) renderPath(placed.map((pt, i) => `${i ? 'L' : 'M'} ${pt.x} ${pt.y}`).join(' '), line, STROKE_WEIGHT.trace)(g, ui);
+      if (hanging) contour(closing.slice(0, 2), center, colors.archTop);
     } else {
       // from in front the nut stands nearest, hiding whatever of the pegbox is narrower than it
-      const nut = [new Pt(center - nutHalf, 0), new Pt(center + nutHalf, 0), new Pt(center + nutHalf, nutLength), new Pt(center - nutHalf, nutLength)];
+      const nut = [new Pt(center - nutHalf, 0), new Pt(center + nutHalf, 0), new Pt(center + nutHalf, nutHeight), new Pt(center - nutHalf, nutHeight)];
       const cover = pathFromPolygon(nut);
       for (const side of [1, -1]) stroke(neckSide(side, 0), colors.neckOff, STROKE_WEIGHT.section, null);
       renderPolygon(nut, colors.nut, STROKE_WEIGHT.section)(g, ui);
       contour(widths, center, line, cover);
-      contour([start, new Pt3D(start.x, foot, 0), new Pt3D(0, foot, 0)], center, line, cover);
+      contour(closing, center, line, cover);
       contour(scrollFrontWidths(p), center, line, cover);
     }
     for (const { y, from, to } of ledges) {
@@ -236,7 +236,7 @@ export const renderScrollWidths = (p: EnricoCerutiParams, colors: CerutiColors, 
     for (const side of [1, -1]) {
       const x = center + side * eyeWidth;
       renderSegment(new Pt(x, v.eye.y - v.eye.r), new Pt(x, v.eye.y + v.eye.r), light, STROKE_WEIGHT.trace)(g, ui);
-      if (behind && start.x - r > 1e-6)
+      if (behind && Math.abs(start.x - r) > 1e-6)
         renderSegment(new Pt(center + side * r, start.y), new Pt(center + side * start.x, start.y), light, STROKE_WEIGHT.trace)(g, ui);
     }
   };

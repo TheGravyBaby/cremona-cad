@@ -5,7 +5,7 @@ import { channelPaths, defaultFlutingParams } from './ceruti-arch-geometry';
 import { defaultFHolePlacement } from './panels/f-hole-placement-panel/f-hole-placement-panel';
 import { EnricoCerutiParams, FlutingParams, VoluteStyle } from './ceruti-types';
 import { calculateScroll, defaultVoluteParams, VOLUTE_STYLE_LABELS } from './ceruti-scroll';
-import { defaultNeckParams } from './ceruti-neck';
+import { defaultNeckParams, defaultStringSetup } from './ceruti-neck';
 import { pointInPolygon, pointOnCircle } from '../helpers/math/simpleGeometry';
 import { samplePathToPolyline, splitPathStrings } from '../helpers/math/pathMath';
 import { Pt } from '../models/types';
@@ -487,6 +487,7 @@ describe.each(Object.keys(VOLUTE_STYLE_LABELS) as VoluteStyle[])('the side scrol
   it('runs unbroken down the back and up the front, each piece on from the last', () => {
     const p = defaultViolin();
     p.neck = defaultNeckParams(p);
+    p.stringSetup = defaultStringSetup(p);
     p.scroll = { ...defaultVoluteParams(p), style };
     expect(calculateScroll(p)).toEqual([]);
 
@@ -501,6 +502,7 @@ describe.each(Object.keys(VOLUTE_STYLE_LABELS) as VoluteStyle[])('the side scrol
   it('starts at the eye\'s back and runs under it to the front, where the spiral leaves it', () => {
     const p = defaultViolin();
     p.neck = defaultNeckParams(p);
+    p.stringSetup = defaultStringSetup(p);
     p.scroll = { ...defaultVoluteParams(p), style };
     calculateScroll(p);
     const { x, y, r } = p.scroll.eye;

@@ -1,25 +1,30 @@
 @if (params.scroll; as v) {
 
+@if (params.stringSetup; as ss) {
+<section class="ui-group">
+    <div class="ui-group-title">Nut</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title" [style.color]="colors.nut" title="The nut's width across the neck. The pegbox is as wide where it meets it, so the path starts at half of it">Width <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="colors.nut"
+                [(ngModel)]="ss.nutWidth" (input)="onChange()" (focus)="onPointFocus(0)" (blur)="onPointBlur()" />
+        </label>
+    </div>
+</section>
+}
+
 <section class="ui-group">
     <div class="ui-group-title">Path</div>
     <div class="input-group basic-row field-row" role="group">
         @for (pt of v.pathWidths; track $index) {
+        @if ($index > 0) {
         <label class="field-cell field-cell--arc">
             <span class="field-title" [style.color]="pointColor($index)" title="Half the scroll's width, centreline to cheek, at points along the path from the top of the duck tail's round to the eye, which stands out to the last as a cylinder. The pegbox's front takes its widths from here">{{ $index }}/{{ v.pathWidths.length - 1 }} <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor($index)"
                 [(ngModel)]="pt.x" (input)="onChange()" (focus)="onPointFocus($index)" (blur)="onPointBlur()" />
         </label>
         }
-    </div>
-</section>
-
-<section class="ui-group">
-    <div class="ui-group-title">Duck Tail</div>
-    <div class="input-group basic-row field-row" role="group">
-        <label class="field-cell">
-            <span class="field-title" title="The round the scroll's back starts in at the duck tail, seen from behind. Its radius, which also sets how far up the path starts: as wide as the path's first width it runs smoothly into it, narrower leaves a shoulder either side. It can't be wider">Radius <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.5" min="0" [(ngModel)]="v.duckTailRadius" (input)="onChange()" />
-        </label>
+        }
     </div>
 </section>
 
