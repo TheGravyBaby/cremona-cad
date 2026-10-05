@@ -857,6 +857,15 @@ export function applyTransforms(color: string, ...transforms: ColorTransform[]):
         : `rgba(${clamp(r)}, ${clamp(g)}, ${clamp(b)}, ${a.toFixed(2)})`;
 }
 
+// a colour t of the way from a to b, channel by channel; b alone past halfway if either won't parse
+export function mixColors(a: string, b: string, t: number): string {
+    const from = parsedColor(a.trim());
+    const to = parsedColor(b.trim());
+    if (!from || !to) return t < 0.5 ? a : b;
+    const channel = (x: number, y: number) => Math.round(x + (y - x) * t).toString(16).padStart(2, '0');
+    return `#${channel(from.r, to.r)}${channel(from.g, to.g)}${channel(from.b, to.b)}`;
+}
+
 export function greyOut(color: string, degree: number): string {
     return applyTransforms(color, { type: 'greyOut', degree });
 }

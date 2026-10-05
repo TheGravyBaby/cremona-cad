@@ -1058,7 +1058,8 @@ export function defineFholePath(p: EnricoCerutiParams): string {
 }
 
 // the scroll's side profile in ceruti-scroll.ts's frame, off a scroll calculateScroll solved whole:
-// the back from the eye out and down to the nut's level, then the front up from the nut. Each
+// the back from the eye's back under the eye and out round the spiral and down to the nut's level,
+// then the front up from the nut. Each
 // straight runs between the arcs either side of it, so none is read off its stored length
 export function defineSideScrollPath(p: EnricoCerutiParams): string {
     const v = p.scroll!;
@@ -1076,6 +1077,7 @@ export function defineSideScrollPath(p: EnricoCerutiParams): string {
     const flatTop = at(v.F0, v.F0.start);
 
     const back = [
+        arcPathData(v.eye, v.eye.r, -TURN.half, 0),
         ...[...v.spiral!].reverse().map(arc),
         arc(v.S0), arc(v.S1), arc(v.S2),
         pathFromLine(at(v.S2, v.S2.end), at(v.S3, v.S3.end)),

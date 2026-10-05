@@ -128,6 +128,9 @@ export class CerutiViolin extends RecipeComponentBase {
       scrollNape: this.makeColor(p.scrollNape),
       scrollFront: this.makeColor(p.scrollFront),
       scrollFrontLight: this.makeColorWithFloor(p.scrollFrontLight, LIGHT_CONTRAST_MIN_PALE, LIGHT_SATURATE_DEGREE),
+      scrollPathStart: this.makeColor(p.scrollPathStart),
+      scrollPathMid: this.makeColor(p.scrollPathMid),
+      scrollPathEnd: this.makeColor(p.scrollPathEnd),
       // unsaturated, or the ivory darkens to the same ochre as the scroll's front on the day canvas
       voluteTurn1: this.makeColorWithFloor(p.voluteTurn1, LIGHT_CONTRAST_MIN, 0),
       voluteTurn1Alt: this.makeColorWithFloor(p.voluteTurn1Alt, LIGHT_CONTRAST_MIN_PALE, 0),

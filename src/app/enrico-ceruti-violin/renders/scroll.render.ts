@@ -1,9 +1,9 @@
 import { arcReach, dist, normalizeRadians, pointOnCircle, TURN } from '../../helpers/math/simpleGeometry';
-import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderDashLine, renderPolygon, renderSegment, renderSegmentHalo } from '../../helpers/renderFuncs';
-import { Arc, Pt } from '../../models/types';
+import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderCrosshair, renderDashLine, mixColors, renderPath, renderPointHalo, renderPolygon, renderSegment, renderSegmentHalo } from '../../helpers/renderFuncs';
+import { Arc, Pt, Pt3D } from '../../models/types';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, ScrollParams } from '../ceruti-types';
 import { standardNutLength } from '../ceruti-neck';
-import { ScrollFailure, ScrollKey, scrollExtent, scrollLines, TO_FRONT } from '../ceruti-scroll';
+import { ScrollFailure, ScrollKey, scrollExtent, scrollFrontWidths, scrollLines, TO_FRONT } from '../ceruti-scroll';
 import { HighlightedArc, HighlightedSegment, STROKE_WEIGHT } from './render-constants';
 
 // the scroll in ceruti-scroll.ts's frame, the neck's tilt taken out, read off p.volute as
@@ -129,14 +129,93 @@ export const renderScroll = (
   solved('frontStraight') && line(lines.frontStraight, colors.scrollFront);
 };
 
-// the back and front views as placeholders a uniform width across, each as tall as the head: the
-// back beside the scroll's furthest reach, the front beside the nut
-export const renderScrollWidths = (p: EnricoCerutiParams, colors: CerutiColors, width: number) => (g: any, ui: any): void => {
+// a path point's colour on canvas and in its field, from the nut's level in to the eye
+export function pathPointColor(colors: CerutiColors, k: number, count: number): string {
+  const t = count > 1 ? k / (count - 1) : 0;
+  return t < 0.5
+    ? mixColors(colors.scrollPathStart, colors.scrollPathMid, t * 2)
+    : mixColors(colors.scrollPathMid, colors.scrollPathEnd, t * 2 - 1);
+}
+
+// the widest of the contour's crossings at height y that is narrower than x, or null
+function insideAt(widths: Pt3D[], y: number, x: number): number | null {
+  let inside: number | null = null;
+  for (let k = 1; k < widths.length; k++) {
+    const a = widths[k - 1];
+    const b = widths[k];
+    if (a.y === b.y || (a.y - y) * (b.y - y) > 0) continue;
+    const at = a.x + (b.x - a.x) * (y - a.y) / (b.y - a.y);
+    if (at < x - 1e-6 && (inside === null || at > inside)) inside = at;
+  }
+  return inside;
+}
+
+// where the path turns over, the face of that turn is seen edge on from behind or in front: a
+// level line from the turn's width in to the next contour inside it, or right across where none is,
+// as over the crown
+export function scrollWidthLedges(widths: Pt3D[]): { y: number; from: number; to: number | null }[] {
+  const turns = widths.filter((pt, k) => k > 0 && k < widths.length - 1
+    && (pt.y - widths[k - 1].y) * (widths[k + 1].y - pt.y) < 0);
+  return turns.map(pt => ({ y: pt.y, from: pt.x, to: insideAt(widths, pt.y, pt.x) }));
+}
+
+// the side profile's points, and the path seen from behind and from the front: the back view beside
+// the scroll's furthest reach, the front beside the nut with the pegbox's front over the volute.
+// Each view carries the turns' faces and the eye, a cylinder standing out to the last width. From
+// behind, the back starts in the duck tail's round, with shoulders out to the path where it is
+// narrower; from the front the round is hidden and the path runs on down to the foot of the nut,
+// where the scroll meets the neck, closing level there
+export const renderScrollWidths = (p: EnricoCerutiParams, colors: CerutiColors, focused: number | null) => (g: any, ui: any): void => {
   const gap = 20;
-  const { height, width: depth } = scrollExtent(p.scroll!);
-  const box = (left: number) => [new Pt(left, 0), new Pt(left, height), new Pt(left + width, height), new Pt(left + width, 0)];
-  renderPolygon(box(-depth - gap - width), colors.archBack, STROKE_WEIGHT.trace)(g, ui);
-  renderPolygon(box(p.stringSetup!.nutThickness + gap), colors.archTop, STROKE_WEIGHT.trace)(g, ui);
+  const v = p.scroll!;
+  const widths = v.pathWidths;
+  const eyeWidth = widths.at(-1)!.x;
+  const widest = Math.max(...widths.map(pt => pt.x));
+  const back = -scrollExtent(v).width - gap - widest;
+  const front = p.stringSetup!.nutThickness + gap + widest;
+  const color = (k: number) => pathPointColor(colors, k, widths.length);
+
+  const contour = (pts: Pt3D[], center: number, stroke: string) => {
+    for (const side of [1, -1]) {
+      renderPath(pts.map((pt, i) => `${i ? 'L' : 'M'} ${center + side * pt.x} ${pt.y}`).join(' '), stroke, STROKE_WEIGHT.trace)(g, ui);
+    }
+  };
+  const ledges = [
+    ...scrollWidthLedges(widths),
+    ...[v.eye.y - v.eye.r, v.eye.y + v.eye.r].map(y => ({ y, from: eyeWidth, to: insideAt(widths, y, eyeWidth) })),
+  ];
+  const start = widths[0];
+  const foot = Math.min(start.y, 0);
+  const r = v.duckTailRadius!;
+  const round = Array.from({ length: 33 }, (_, i) => pointOnCircle({ x: 0, y: start.y, r }, TURN.half + TURN.half * i / 32));
+  const view = (center: number, behind: boolean) => {
+    const [line, light] = behind ? [colors.archBack, colors.scrollBackLight] : [colors.archTop, colors.scrollFrontLight];
+    contour(widths, center, line);
+    if (!behind) contour([start, new Pt3D(start.x, foot, 0), new Pt3D(0, foot, 0)], center, line);
+    else if (r > 0) renderPath(round.map((pt, i) => `${i ? 'L' : 'M'} ${center + pt.x} ${pt.y}`).join(' '), line, STROKE_WEIGHT.trace)(g, ui);
+    for (const { y, from, to } of ledges) {
+      if (to === null) renderSegment(new Pt(center - from, y), new Pt(center + from, y), light, STROKE_WEIGHT.trace)(g, ui);
+      else for (const side of [1, -1]) renderSegment(new Pt(center + side * from, y), new Pt(center + side * to, y), light, STROKE_WEIGHT.trace)(g, ui);
+    }
+    for (const side of [1, -1]) {
+      const x = center + side * eyeWidth;
+      renderSegment(new Pt(x, v.eye.y - v.eye.r), new Pt(x, v.eye.y + v.eye.r), light, STROKE_WEIGHT.trace)(g, ui);
+      if (behind && start.x - r > 1e-6)
+        renderSegment(new Pt(center + side * r, start.y), new Pt(center + side * start.x, start.y), light, STROKE_WEIGHT.trace)(g, ui);
+    }
+  };
+
+  const marked = focused === null ? undefined : widths[focused];
+  if (marked) {
+    renderPointHalo(new Pt(marked.z, marked.y), color(focused!))(g, ui);
+    for (const center of [back, front]) {
+      for (const side of [1, -1]) renderPointHalo(new Pt(center + side * marked.x, marked.y), color(focused!))(g, ui);
+    }
+  }
+  view(back, true);
+  view(front, false);
+  contour(scrollFrontWidths(p), front, colors.archTop);
+  widths.forEach((pt, k) => renderCrosshair(new Pt(pt.z, pt.y), color(k))(g, ui));
 };
 
 // the figure each style finds its centres on, as polylines in the eye's frame

@@ -1,4 +1,4 @@
-import { Arc, Circle, ReferenceImage, Pt, Rectangle, Vect2D } from "../models/types";
+import { Arc, Circle, ReferenceImage, Pt, Pt3D, Rectangle, Vect2D } from "../models/types";
 
 export interface EnricoCerutiParams {
   height: number;
@@ -268,8 +268,12 @@ export interface ScrollParams {
   flat: number;
   frontStraight: number;
 
-  backWidths: number[]; 
-  frontWidths: number[];
+  // x is the half-width the user sets; y and z are the side view's y and x, which calculateScrollWidths
+  // reads off the path so the back and front views stand at the side view's heights
+  pathWidths: Pt3D[];
+  // the round the back starts in at the duck tail, seen from behind, rising to the path's start; null
+  // until calculateScrollWidths fits it under the path's first width
+  duckTailRadius: number | null;
 }
 
 /** Resolved palette from CerutiViolin's `colors` getter, threaded into every panel and render fn. */
@@ -315,6 +319,9 @@ export interface CerutiColors {
   scrollNape: string;
   scrollFront: string;
   scrollFrontLight: string;
+  scrollPathStart: string;
+  scrollPathMid: string;
+  scrollPathEnd: string;
   voluteTurn1: string;
   voluteTurn1Alt: string;
   voluteTurn2: string;

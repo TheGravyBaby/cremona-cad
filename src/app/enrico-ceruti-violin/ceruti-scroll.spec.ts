@@ -1,10 +1,12 @@
-import { calculateScroll, defaultVoluteParams, ScrollKey, scrollLines, spiralArcs, TO_FRONT, VoluteSpec, VOLUTE_STYLE_LABELS } from './ceruti-scroll';
-import { voluteConstruction } from './renders/scroll.render';
+import { calculateScroll, calculateScrollWidths, defaultVoluteParams, PATH_SECTIONS, scrollFrontWidths, ScrollKey, scrollLines, spiralArcs, TO_FRONT, VoluteSpec, VOLUTE_STYLE_LABELS } from './ceruti-scroll';
+import { scrollWidthLedges, voluteConstruction } from './renders/scroll.render';
 import { defaultNeckParams, standardNutLength } from './ceruti-neck';
 import { defaultViolin } from './ceruti-fixtures';
 import { EnricoCerutiParams, ScrollParams, VoluteStyle } from './ceruti-types';
 import { angleWithinSweep, dist, normalizeRadians } from '../helpers/math/simpleGeometry';
-import { Arc, Circle, Pt } from '../models/types';
+import { Arc, Circle, Pt, Pt3D } from '../models/types';
+import { defineSideScrollPath } from './ceruti-paths';
+import { samplePathToPolyline, splitPathStrings } from '../helpers/math/pathMath';
 
 const at = ({ x, y, r }: Arc, angle: number) => [x + r * Math.cos(angle), y + r * Math.sin(angle)];
 const EYE_Y = 90;
@@ -291,6 +293,138 @@ describe('the default scroll', () => {
     expect(v.spiral).toHaveLength(TO_FRONT);
     expect(v.nape.x).toBeCloseTo(-p.neck.thickness - v.nape.r, 9);
     expect(v.F1.end - v.F1.start).toBeGreaterThan(0);
+  });
+});
+
+describe.each(STYLES)('the scroll widths with a %s volute', style => {
+  const widths = () => {
+    const { p, failures } = scrolled(style, 4);
+    expect(failures).toEqual([]);
+    calculateScrollWidths(p);
+    return p;
+  };
+
+  it('runs the path from the top of the duck tail\'s round in to the eye', () => {
+    const p = widths();
+    const v = p.scroll!;
+    expect(v.pathWidths).toHaveLength(PATH_SECTIONS + 1);
+    expect(v.pathWidths[0].y).toBeCloseTo(at(v.S3, v.S3.start)[1] + v.duckTailRadius!, 6);
+    expect(v.pathWidths.at(-1)!.z).toBeCloseTo(v.eye.x + v.eye.r, 6);
+    expect(v.pathWidths.at(-1)!.y).toBeCloseTo(v.eye.y, 6);
+  });
+
+  it('cuts the path into equal lengths along the side profile', () => {
+    const p = widths();
+    const pieces = splitPathStrings(defineSideScrollPath(p)).map(piece => samplePathToPolyline(piece, 0.05, true));
+    const breakAt = pieces.findIndex((pts, i) => i > 0 && dist(pts[0], pieces[i - 1].at(-1)!) > 1e-3);
+    const pts = pieces.slice(0, breakAt).flat();
+    const along = [0];
+    for (let i = 1; i < pts.length; i++) along.push(along[i - 1] + dist(pts[i - 1], pts[i]));
+    const s = p.scroll!.pathWidths.map(pt => {
+      const at = new Pt(pt.z, pt.y);
+      const nearest = pts.reduce((best, q, i) => dist(q, at) < dist(pts[best], at) ? i : best, 0);
+      expect(dist(pts[nearest], at)).toBeLessThan(0.1);
+      return along[nearest];
+    });
+    const step = Math.abs(s.at(-1)! - s[0]) / PATH_SECTIONS;
+    s.slice(1).forEach((si, i) => expect(Math.abs(si - s[i])).toBeCloseTo(step, 0));
+  });
+
+  it('runs the front from the nut up to where F1 meets the spiral', () => {
+    const p = widths();
+    const front = scrollFrontWidths(p);
+    expect(front[0].z).toBeCloseTo(0, 9);
+    expect(front[0].y).toBeCloseTo(standardNutLength(p.height), 9);
+    const [x, y] = at(p.scroll!.F1, p.scroll!.F1.start);
+    expect(front.at(-1)!.z).toBeCloseTo(x, 6);
+    expect(front.at(-1)!.y).toBeCloseTo(y, 6);
+  });
+});
+
+describe('the scroll widths', () => {
+  it('keeps the widths the user set as the scroll moves under them', () => {
+    const p = defaultViolin();
+    p.neck = defaultNeckParams(p);
+    calculateScroll(p);
+    calculateScrollWidths(p);
+    const v = p.scroll!;
+    expect(v.pathWidths.every(pt => pt.x === 12)).toBe(true);
+    v.pathWidths[3].x = 9;
+    const { y, z } = v.pathWidths[3];
+    v.S2.r += 5;
+    calculateScroll(p);
+    calculateScrollWidths(p);
+    expect(v.pathWidths[3].x).toBe(9);
+    expect([v.pathWidths[3].y, v.pathWidths[3].z]).not.toEqual([y, z]);
+  });
+
+  it('keeps the front down to the nut, the nape hung below the nut or not', () => {
+    const p = defaultViolin();
+    p.neck = defaultNeckParams(p);
+    calculateScroll(p);
+    const v = p.scroll!;
+    for (const drop of [0, 8]) {
+      v.eye = new Circle(v.eye.x, v.eye.y - drop, v.eye.r);
+      expect(calculateScroll(p)).toEqual([]);
+      calculateScrollWidths(p);
+      expect(scrollFrontWidths(p)[0].y).toBeCloseTo(standardNutLength(p.height), 6);
+    }
+    expect(v.nape.y + v.nape.r).toBeLessThan(0);
+  });
+
+  it('rounds the duck tail as wide as the path starts unless set narrower, never wider, the path starting at its top', () => {
+    const p = defaultViolin();
+    p.neck = defaultNeckParams(p);
+    calculateScroll(p);
+    calculateScrollWidths(p);
+    const v = p.scroll!;
+    const duckTail = at(v.S3, v.S3.start)[1];
+    const startsAtTop = () => expect(v.pathWidths[0].y).toBeCloseTo(duckTail + v.duckTailRadius!, 6);
+    expect(v.duckTailRadius).toBe(12);
+    startsAtTop();
+    v.duckTailRadius = 6;
+    calculateScrollWidths(p);
+    expect(v.duckTailRadius).toBe(6);
+    startsAtTop();
+    v.pathWidths[0].x = 5;
+    calculateScrollWidths(p);
+    expect(v.duckTailRadius).toBe(5);
+    startsAtTop();
+    v.duckTailRadius = -1;
+    calculateScrollWidths(p);
+    expect(v.duckTailRadius).toBe(0);
+    startsAtTop();
+  });
+
+  it('gives the front the width of the pegbox\'s back where the volute wraps over it', () => {
+    const p = defaultViolin();
+    p.neck = defaultNeckParams(p);
+    calculateScroll(p);
+    calculateScrollWidths(p);
+    const v = p.scroll!;
+    // each width its own index, so a front width says where on the path it was read
+    v.pathWidths.forEach((pt, k) => pt.x = k);
+    const front = scrollFrontWidths(p);
+    const crown = v.pathWidths.reduce((top, pt, k) => pt.y > v.pathWidths[top].y ? k : top, 0);
+    const top = front.at(-1)!.y;
+    expect(v.pathWidths.slice(crown + 1).some(pt => pt.y < top)).toBe(true);
+    expect(front.every(pt => pt.x < crown)).toBe(true);
+  });
+});
+
+describe('the scroll widths\' ledges', () => {
+  // the path and the level lines off a back view drawn by hand over the app's own, in half-widths;
+  // the one drawn at the eye was later dropped, the cylinder closing the eye on its own
+  const ys = [0, 22.996631, 43.440314, 63.312816, 86.419489, 103.098382, 102.236413, 82.373266, 67.705312, 82.667968, 91.884532, 76.254874, 83];
+  const xs = [13, 11.5, 10, 8.5, 6.5, 6, 6, 8.5, 11, 13, 14, 15, 16];
+  const widths = ys.map((y, k) => new Pt3D(xs[k], y, 0));
+
+  it('runs level from each turn of the path in to the next contour inside it, and across the crown', () => {
+    const ledges = scrollWidthLedges(widths);
+    expect(ledges.map(l => [l.y, l.from])).toEqual([[103.098382, 6], [67.705312, 11], [91.884532, 14], [76.254874, 15]]);
+    expect(ledges[0].to).toBeNull();
+    const drawn = [8.107, 7.319, 12.119];
+    ledges.slice(1).forEach((l, i) => expect(l.to).toBeCloseTo(drawn[i], 1));
   });
 });
 
