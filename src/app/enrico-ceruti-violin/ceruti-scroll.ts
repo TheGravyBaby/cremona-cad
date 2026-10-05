@@ -1,9 +1,9 @@
 import { angleFromCenter, angleWithinSweep, arcReach, dist, moveInVectorSpace, normalizeRadians, placeCircleOnPointAtAngle, pointOnCircle, TURN, vectorFromSlope } from '../helpers/math/simpleGeometry';
 import { circleCircleIntersections } from '../helpers/math/draftMath';
-import { hermiteEvaluator, hymanFilterSlopes, naturalSplineSlopes } from '../helpers/math/vibeMath';
+import { hermiteEvaluator, hymanFilterSlopes, naturalSplineSlopes, rayPolylineIntersection } from '../helpers/math/vibeMath';
 import { reportFailures, SolveFailure, solveSection } from '../helpers/validators';
 import { Arc, Circle, Pt, Pt3D } from '../models/types';
-import { EnricoCerutiParams, ScrollParams, ScrollWidths, VoluteStyle } from './ceruti-types';
+import { EnricoCerutiParams, PegboxParams, ScrollParams, ScrollWidths, VoluteStyle } from './ceruti-types';
 import { defaultNeckParams, defaultStringSetup } from './ceruti-neck';
 
 // The scroll in its own side-view frame: the nut at the origin on the neck's front, up the neck +y,
@@ -225,9 +225,7 @@ export function defaultVoluteParams(p: EnricoCerutiParams): ScrollParams {
     frontStraight: mm(18),
 
     widths: defaultScrollWidths(p),
-    pegboxStraight: defaultPegboxStraight(p),
-    pegboxWall: defaultPegboxWall(p),
-    pegboxFloor: defaultPegboxFloor(p),
+    pegbox: defaultPegbox(p),
   };
 
   let stringSetup = p.stringSetup ?? defaultStringSetup(p);
@@ -401,20 +399,18 @@ function defaultScrollWidths(p: EnricoCerutiParams): ScrollWidths {
   return { throat: mm(20), crown: mm(13), turn1Bottom: mm(20), turn2Top: mm(25), turn2Bottom: mm(31), eye: mm(41) };
 }
 
-// clears the default duck tail's round, so the back starts as wide as the nut
-const defaultPegboxStraight = (p: EnricoCerutiParams) => Math.round(8 * p.height / 350);
-const defaultPegboxWall = (p: EnricoCerutiParams) => Math.round(5 * p.height / 350);
-const defaultPegboxFloor = (p: EnricoCerutiParams) => Math.round(6 * p.height / 350);
+// the straight clears the default duck tail's round, so the back starts as wide as the nut
+function defaultPegbox(p: EnricoCerutiParams): PegboxParams {
+  let mm = (v: number) => Math.round(v * p.height / 350);
+  return { straight: mm(8), wall: mm(5), floor: mm(6) };
+}
 
-// the wall under the nut leans in toward the scroll as it drops, by this much off square
-const NUT_WALL_LEAN = 15 * TURN.degree;
-
+// off a scroll calculateScroll solved whole. Where each width sits is read off the arcs by the
+// functions below, so all there is to write is the widths themselves, held in order
 export function calculateScrollWidths(p: EnricoCerutiParams): void {
   let v = p.scroll!;
   v.widths ??= defaultScrollWidths(p);
-  v.pegboxStraight ??= defaultPegboxStraight(p);
-  v.pegboxWall ??= defaultPegboxWall(p);
-  v.pegboxFloor ??= defaultPegboxFloor(p);
+  v.pegbox ??= defaultPegbox(p);
 
   // the head is no wider over the crown than at the throat, and each turn stands out at least as
   // far as the one before
@@ -424,168 +420,6 @@ export function calculateScrollWidths(p: EnricoCerutiParams): void {
   w.turn2Top = Math.max(w.turn2Top, w.turn1Bottom);
   w.turn2Bottom = Math.max(w.turn2Bottom, w.turn2Top);
   w.eye = Math.max(w.eye, w.turn2Bottom);
-}
-
-// the pegbox is marked on the blank as two straight lines and sawn through, so its width goes by
-// height, back and front alike: the nut's up to the end of its straight, then tapering to the throat's
-export function pegboxWidth(p: EnricoCerutiParams, y: number): number {
-  let v = p.scroll!;
-  let { nutWidth } = p.stringSetup!;
-  let throat = pointOnCircle(v.F1, v.F1.start).y;
-  let from = Math.min(pegboxTaperStart(p), throat);
-  let t = throat > from ? Math.min(Math.max((y - from) / (throat - from), 0), 1) : y < throat ? 0 : 1;
-  return nutWidth + (v.widths.throat - nutWidth) * t;
-}
-
-export function pegboxTaperStart(p: EnricoCerutiParams): number {
-  return p.stringSetup!.nutHeight + p.scroll!.pegboxStraight;
-}
-
-// the width along the path. The back keeps the pegbox's taper until it reaches the throat's height,
-// then leaves it tangent on a curve through the volute's widths, by distance along the path
-function pathWidth(p: EnricoCerutiParams, path: ScrollPath): (s: number) => number {
-  let v = p.scroll!;
-  let w = v.widths;
-  let throat = pointOnCircle(v.F1, v.F1.start).y;
-  let below = (s: number) => path.at(s).y < throat;
-  let hi = 0;
-  while (hi < path.crown && below(hi)) hi = Math.min(hi + 0.5, path.crown);
-  let lo = Math.max(hi - 0.5, 0);
-  for (let i = 0; i < 40; i++) {
-    let mid = (lo + hi) / 2;
-    if (below(mid)) lo = mid; else hi = mid;
-  }
-  let leave = hi;
-
-  let s = [path.crown, ...path.turns, path.length];
-  // the last turn is as wide as the eye from its top on in
-  let widths = [w.crown, w.turn1Bottom, w.turn2Top, w.turn2Bottom, w.eye, w.eye];
-  // a throat as high as the crown leaves no room for the curve to start below it
-  let curved = leave < path.crown - 1e-6;
-  if (curved) {
-    s.unshift(leave);
-    widths.unshift(pegboxWidth(p, path.at(leave).y));
-  }
-  let h = s.slice(1).map((si, i) => si - s[i]);
-  let delta = h.map((step, i) => (widths[i + 1] - widths[i]) / step);
-  let slopes = hymanFilterSlopes(naturalSplineSlopes(h, delta), h, delta);
-  if (curved && leave > 0) slopes[0] = (pegboxWidth(p, path.at(leave).y) - pegboxWidth(p, path.at(leave - 1e-3).y)) / 1e-3;
-  let curve = hermiteEvaluator(s, widths, h, slopes);
-  return at => at < s[0] ? pegboxWidth(p, path.at(at).y) : curve(at);
-}
-
-// the pegbox's hollow in the side view: from the nut's top down the wall under it, along the floor,
-// and back out to the front where its straight ends, square to the neck. The floor is the back carried in
-// by its thickness. Null where a wall never reaches the floor
-export function pegboxCavity(p: EnricoCerutiParams): Pt[] | null {
-  let v = p.scroll!;
-  let at = pointOnCircle;
-  let back = joined([counterclockwise(v.S3), straight(at(v.S3, v.S3.end), at(v.S2, v.S2.end)), clockwise(v.S2)]);
-  let n = Math.ceil(back.length * 4);
-  let floor = Array.from({ length: n + 1 }, (_, i) => {
-    let s = back.length * i / n;
-    let a = back.at(Math.max(s - 1e-3, 0));
-    let b = back.at(Math.min(s + 1e-3, back.length));
-    let pt = back.at(s);
-    // going up the back the front is on the right
-    return new Pt(pt.x + v.pegboxFloor * (b.y - a.y) / dist(a, b), pt.y - v.pegboxFloor * (b.x - a.x) / dist(a, b));
-  });
-
-  // where a wall first meets the floor, and the piece of the floor it lands on
-  let reach = (from: Pt, angle: number) => {
-    let d = pointOnCircle({ x: 0, y: 0, r: 1 }, angle);
-    let hit: { k: number; t: number; pt: Pt } | null = null;
-    for (let k = 1; k < floor.length; k++) {
-      let a = floor[k - 1];
-      let e = new Pt(floor[k].x - a.x, floor[k].y - a.y);
-      let cross = d.x * e.y - d.y * e.x;
-      if (Math.abs(cross) < 1e-12) continue;
-      let t = ((a.x - from.x) * e.y - (a.y - from.y) * e.x) / cross;
-      let u = ((a.x - from.x) * d.y - (a.y - from.y) * d.x) / cross;
-      if (t > 0 && u >= 0 && u <= 1 && (!hit || t < hit.t)) hit = { k, t, pt: new Pt(from.x + d.x * t, from.y + d.y * t) };
-    }
-    return hit;
-  };
-
-  let nutTop = new Pt(0, p.stringSetup!.nutHeight);
-  let frontEnd = scrollLines(p).frontStraight[1];
-  let under = reach(nutTop, TURN.half - NUT_WALL_LEAN);
-  let end = reach(frontEnd, TURN.half);
-  if (!under || !end || under.k > end.k) return null;
-  return [nutTop, under.pt, ...floor.slice(under.k, end.k), end.pt, frontEnd];
-}
-
-// where each width is set, in the side view, nut first and on along the path in to the eye's centre,
-// with where the pegbox's straight ends
-export function scrollWidthStations(p: EnricoCerutiParams): ScrollStation[] {
-  let v = p.scroll!;
-  let w = v.widths;
-  let path = scrollPath(p);
-  let [turn1Bottom, turn2Top, turn2Bottom] = path.turns.map(s => path.at(s));
-
-  // the straight ends on the front at the height the taper starts
-  let front = scrollFront(p);
-  let taperStart = pegboxTaperStart(p);
-  let lo = 0;
-  let hi = front.length;
-  for (let i = 0; i < 40; i++) {
-    let mid = (lo + hi) / 2;
-    if (front.at(mid).y < taperStart) lo = mid; else hi = mid;
-  }
-  let straightEnd = front.at(hi);
-
-  return [
-    { key: 'nut', at: new Pt(0, p.stringSetup!.nutHeight), width: p.stringSetup!.nutWidth },
-    { key: 'straight', at: straightEnd, width: pegboxWidth(p, straightEnd.y) },
-    { key: 'throat', at: pointOnCircle(v.F1, v.F1.start), width: w.throat },
-    { key: 'crown', at: path.at(path.crown), width: w.crown },
-    { key: 'turn1Bottom', at: turn1Bottom, width: w.turn1Bottom },
-    { key: 'turn2Top', at: turn2Top, width: w.turn2Top },
-    { key: 'turn2Bottom', at: turn2Bottom, width: w.turn2Bottom },
-    { key: 'eye', at: new Pt(v.eye.x, v.eye.y), width: w.eye },
-  ];
-}
-
-// the path as the back and front views draw it: x the half-width, y and z the side view's y and x,
-// a point a millimetre or so apart and one on the crown and on every turn
-export function scrollBackWidths(p: EnricoCerutiParams): Pt3D[] {
-  let path = scrollPath(p);
-  let width = pathWidth(p, path);
-  let cuts = [0, path.crown, ...path.turns, path.length];
-  let along = cuts.slice(1).flatMap((to, i) => {
-    let n = Math.ceil(to - cuts[i]);
-    return Array.from({ length: n }, (_, k) => cuts[i] + (to - cuts[i]) * k / n);
-  });
-  return [...along, path.length].map(s => {
-    let pt = path.at(s);
-    return new Pt3D(width(s) / 2, pt.y, pt.x);
-  });
-}
-
-// the neck's half-width at y along it, in this frame. The taper is read off the authored widths over
-// the neck's length rather than neckHalfWidthAt, which needs the neck solved against the body; over
-// a scroll's reach the two differ by hundredths of a mm
-export function scrollNeckHalfWidth(p: EnricoCerutiParams, y: number): number {
-  let nk = p.neck!;
-  return (nk.topWidth - (nk.rootWidth - nk.topWidth) * y / nk.length) / 2;
-}
-
-// seen from behind the scroll's back starts in a round at the duck tail, the neck's back carried
-// on round, so as wide as the neck is there
-export function duckTailRadius(p: EnricoCerutiParams): number {
-  let v = p.scroll!;
-  return scrollNeckHalfWidth(p, pointOnCircle(v.S3, v.S3.start).y);
-}
-
-// the front from the nut up to where F1 meets the spiral, a point a millimetre or so apart, as wide
-// as the pegbox at each height
-export function scrollFrontWidths(p: EnricoCerutiParams): Pt3D[] {
-  let front = scrollFront(p);
-  let n = Math.ceil(front.length);
-  return Array.from({ length: n + 1 }, (_, i) => {
-    let pt = front.at(front.length * i / n);
-    return new Pt3D(pegboxWidth(p, pt.y) / 2, pt.y, pt.x);
-  });
 }
 
 // a stretch of the side profile, walked by distance from its start
@@ -612,48 +446,83 @@ const joined = (runs: Run[]): Run => {
   };
 };
 
-// `crown` is how far along the back tops out, `turns` where the spiral does after it: the bottom
-// and top of each turn in to the eye
+// how far along a run it first rises to height y, or `limit` where it hasn't by then
+function riseTo(run: Run, y: number, limit: number): number {
+  let hi = 0;
+  while (hi < limit && run.at(hi).y < y) hi = Math.min(hi + 0.5, limit);
+  let lo = Math.max(hi - 0.5, 0);
+  for (let i = 0; i < 40; i++) {
+    let mid = (lo + hi) / 2;
+    if (run.at(mid).y < y) lo = mid; else hi = mid;
+  }
+  return hi;
+}
+
+// the neck's half-width at y along it, in this frame. The taper is read off the authored widths over
+// the neck's length rather than neckHalfWidthAt, which needs the neck solved against the body; over
+// a scroll's reach the two differ by hundredths of a mm
+export function scrollNeckHalfWidth(p: EnricoCerutiParams, y: number): number {
+  let nk = p.neck!;
+  return (nk.topWidth - (nk.rootWidth - nk.topWidth) * y / nk.length) / 2;
+}
+
+// seen from behind the scroll's back starts in a round at the duck tail, the neck's back carried
+// on round, so as wide as the neck is there
+export function duckTailRadius(p: EnricoCerutiParams): number {
+  let v = p.scroll!;
+  return scrollNeckHalfWidth(p, pointOnCircle(v.S3, v.S3.start).y);
+}
+
+// "the path": the back from the top of the duck tail's round, over the crown and round the spiral
+// in to the eye. `crown` is how far along it the back tops out, and `turns` where the spiral levels
+// after that: the bottom of the first turn, the top and bottom of the second, the top of the last
 type ScrollPath = Run & { crown: number; turns: number[] };
 
 function scrollPath(p: EnricoCerutiParams): ScrollPath {
   let v = p.scroll!;
-  let at = pointOnCircle;
-  let rise = [counterclockwise(v.S3), straight(at(v.S3, v.S3.end), at(v.S2, v.S2.end))];
-  let back = [v.S2, v.S1, v.S0];
-  let whole = joined([...rise, ...[...back, ...v.spiral!].map(clockwise)]);
+  let backFoot = pointOnCircle(v.S3, v.S3.end);
+  let backTop = pointOnCircle(v.S2, v.S2.end);
+  let rise = joined([counterclockwise(v.S3), straight(backFoot, backTop)]);
+  let crownArcs = [v.S2, v.S1, v.S0];
+  let whole = joined([rise, ...crownArcs.map(clockwise), ...v.spiral!.map(clockwise)]);
 
   // the path starts where the back first rises to the top of the duck tail's round
-  let top = whole.at(0).y + duckTailRadius(p);
-  let below = (s: number) => whole.at(s).y < top;
-  let hi = 0;
-  while (hi < whole.length && below(hi)) hi = Math.min(hi + 0.5, whole.length);
-  let lo = Math.max(hi - 0.5, 0);
-  for (let i = 0; i < 40; i++) {
-    let mid = (lo + hi) / 2;
-    if (below(mid)) lo = mid; else hi = mid;
+  let roundTop = whole.at(0).y + duckTailRadius(p);
+  let start = riseTo(whole, roundTop, whole.length);
+  let length = whole.length - start;
+  let height = (s: number) => whole.at(start + s).y;
+
+  // an arc walked clockwise is level where it passes straight above or below its centre: how far
+  // along the arc that is, or null where its sweep never passes that way
+  let levelOn = (arc: Arc, angle: number): number | null => {
+    let sweep = arc.end - arc.start;
+    let past = normalizeRadians(angle - arc.start);
+    return past <= sweep + 1e-9 ? arc.r * (sweep - past) : null;
+  };
+
+  // the crown is the highest top among the back's arcs
+  let along = rise.length - start;
+  let tops: number[] = [];
+  for (let arc of crownArcs) {
+    let top = levelOn(arc, TURN.quarter);
+    if (top !== null) tops.push(along + top);
+    along += arc.r * (arc.end - arc.start);
   }
-  let length = whole.length - hi;
+  let crown = tops.length ? tops.reduce((best, s) => height(s) > height(best) ? s : best) : along;
 
-  // an arc walked clockwise is level where it passes straight above or below its centre
-  let offset = rise[0].length + rise[1].length - hi;
-  let level = (arcs: Arc[], angles: number[]) => arcs.flatMap(a => {
-    let from = offset;
-    offset += a.r * (a.end - a.start);
-    return angles
-      .map(angle => normalizeRadians(angle - a.start))
-      .filter(on => on <= a.end - a.start + 1e-9)
-      .map(on => from + a.r * (a.end - a.start - on));
-  });
-  let tops = level(back, [TURN.quarter]);
-  let spiralStart = offset;
-  // a turn on the joint of two arcs is found on both
-  let turns = level(v.spiral!, [TURN.quarter, -TURN.quarter])
-    .sort((a, b) => a - b)
-    .filter((s, i, all) => s < length - 1e-6 && (i === 0 || s - all[i - 1] > 1e-6));
-  let crown = tops.length ? tops.reduce((best, s) => whole.at(hi + s).y > whole.at(hi + best).y ? s : best) : spiralStart;
+  let levels: number[] = [];
+  for (let arc of v.spiral!) {
+    for (let angle of [TURN.quarter, -TURN.quarter]) {
+      let level = levelOn(arc, angle);
+      if (level !== null) levels.push(along + level);
+    }
+    along += arc.r * (arc.end - arc.start);
+  }
+  // a turn on the joint of two arcs is found on both of them
+  levels.sort((a, b) => a - b);
+  let turns = levels.filter((s, i) => s < length - 1e-6 && (i === 0 || s - levels[i - 1] > 1e-6));
 
-  return { length, at: s => whole.at(hi + s), crown, turns };
+  return { length, at: s => whole.at(start + s), crown, turns };
 }
 
 function scrollFront(p: EnricoCerutiParams): Run {
@@ -666,6 +535,156 @@ function scrollFront(p: EnricoCerutiParams): Run {
     straight(at(v.F0, v.F0.end), at(v.F1, v.F1.end)),
     clockwise(v.F1),
   ]);
+}
+
+// where the pegbox's front runs in under the volute: F1's end on the spiral
+export function scrollThroat(p: EnricoCerutiParams): Pt {
+  let v = p.scroll!;
+  return pointOnCircle(v.F1, v.F1.start);
+}
+
+export function pegboxTaperStart(p: EnricoCerutiParams): number {
+  return p.stringSetup!.nutHeight + p.scroll!.pegbox.straight;
+}
+
+// the pegbox is marked on the blank as two straight lines and sawn through, so its width goes by
+// height, back and front alike: the nut's up to the end of its straight, then tapering to the throat's
+export function pegboxWidth(p: EnricoCerutiParams, y: number): number {
+  let nutWidth = p.stringSetup!.nutWidth;
+  let throatWidth = p.scroll!.widths.throat;
+  let taperEnd = scrollThroat(p).y;
+  // a straight that reaches the throat leaves no taper, and the width steps there
+  let taperStart = Math.min(pegboxTaperStart(p), taperEnd);
+
+  if (y >= taperEnd) return throatWidth;
+  if (y <= taperStart) return nutWidth;
+  return nutWidth + (throatWidth - nutWidth) * (y - taperStart) / (taperEnd - taperStart);
+}
+
+// the width along the path. The back keeps the pegbox's taper until it reaches the throat's height,
+// then leaves it tangent on a curve through the volute's widths, by distance along the path
+function pathWidth(p: EnricoCerutiParams, path: ScrollPath): (s: number) => number {
+  let w = p.scroll!.widths;
+  let taper = (s: number) => pegboxWidth(p, path.at(s).y);
+
+  // a throat as high as the crown leaves the back on the taper all the way up to it
+  let leave = riseTo(path, scrollThroat(p).y, path.crown);
+  let leavesBelowCrown = leave < path.crown - 1e-6;
+
+  // the last turn is as wide as the eye from its top on in
+  let [turn1Bottom, turn2Top, turn2Bottom, turn3Top] = path.turns;
+  let s = [path.crown, turn1Bottom, turn2Top, turn2Bottom, turn3Top, path.length];
+  let widths = [w.crown, w.turn1Bottom, w.turn2Top, w.turn2Bottom, w.eye, w.eye];
+  if (leavesBelowCrown) {
+    s.unshift(leave);
+    widths.unshift(taper(leave));
+  }
+
+  let h = s.slice(1).map((next, i) => next - s[i]);
+  let delta = h.map((step, i) => (widths[i + 1] - widths[i]) / step);
+  let slopes = hymanFilterSlopes(naturalSplineSlopes(h, delta), h, delta);
+  // tangent to the taper it leaves, where the path has any of it behind
+  if (leavesBelowCrown && leave > 0) slopes[0] = (taper(leave) - taper(leave - 1e-3)) / 1e-3;
+  let curve = hermiteEvaluator(s, widths, h, slopes);
+
+  return at => at < s[0] ? taper(at) : curve(at);
+}
+
+// the path as the back and front views draw it: x the half-width, y and z the side view's y and x,
+// a point a millimetre or so apart and one on the crown and on every turn
+export function scrollBackWidths(p: EnricoCerutiParams): Pt3D[] {
+  let path = scrollPath(p);
+  let width = pathWidth(p, path);
+
+  let cuts = [0, path.crown, ...path.turns, path.length];
+  let along: number[] = [];
+  for (let i = 1; i < cuts.length; i++) {
+    let from = cuts[i - 1];
+    let to = cuts[i];
+    let pieces = Math.ceil(to - from);
+    for (let k = 0; k < pieces; k++) along.push(from + (to - from) * k / pieces);
+  }
+  along.push(path.length);
+
+  return along.map(s => {
+    let pt = path.at(s);
+    return new Pt3D(width(s) / 2, pt.y, pt.x);
+  });
+}
+
+// the front from the nut up to the throat the same way, as wide as the pegbox at each height
+export function scrollFrontWidths(p: EnricoCerutiParams): Pt3D[] {
+  let front = scrollFront(p);
+  let pieces = Math.ceil(front.length);
+  return Array.from({ length: pieces + 1 }, (_, i) => {
+    let pt = front.at(front.length * i / pieces);
+    return new Pt3D(pegboxWidth(p, pt.y) / 2, pt.y, pt.x);
+  });
+}
+
+// where each of the panel's fields is marked in the side view, with the width there: the nut, the
+// end of the pegbox's straight on the front, the throat, then along the path in to the eye's centre
+export function scrollWidthStations(p: EnricoCerutiParams): ScrollStation[] {
+  let v = p.scroll!;
+  let w = v.widths;
+  let nutWidth = p.stringSetup!.nutWidth;
+
+  let front = scrollFront(p);
+  let straightEnd = front.at(riseTo(front, pegboxTaperStart(p), front.length));
+
+  let path = scrollPath(p);
+  let [turn1Bottom, turn2Top, turn2Bottom] = path.turns;
+
+  return [
+    { key: 'nut', at: new Pt(0, p.stringSetup!.nutHeight), width: nutWidth },
+    { key: 'straight', at: straightEnd, width: pegboxWidth(p, straightEnd.y) },
+    { key: 'throat', at: scrollThroat(p), width: w.throat },
+    { key: 'crown', at: path.at(path.crown), width: w.crown },
+    { key: 'turn1Bottom', at: path.at(turn1Bottom), width: w.turn1Bottom },
+    { key: 'turn2Top', at: path.at(turn2Top), width: w.turn2Top },
+    { key: 'turn2Bottom', at: path.at(turn2Bottom), width: w.turn2Bottom },
+    { key: 'eye', at: new Pt(v.eye.x, v.eye.y), width: w.eye },
+  ];
+}
+
+// the wall under the nut leans in toward the scroll as it drops, by this much off square
+const NUT_WALL_LEAN = 15 * TURN.degree;
+
+// the pegbox's hollow in the side view: from the nut's top down the wall under it, along the floor,
+// and out to the front again along a wall square to the neck, where the front's straight ends.
+// Null where a wall never reaches the floor
+export function pegboxCavity(p: EnricoCerutiParams): Pt[] | null {
+  let v = p.scroll!;
+  let backFoot = pointOnCircle(v.S3, v.S3.end);
+  let backTop = pointOnCircle(v.S2, v.S2.end);
+  let back = joined([counterclockwise(v.S3), straight(backFoot, backTop), clockwise(v.S2)]);
+
+  // the floor is the back carried in by its thickness, a point every quarter millimetre. Going up
+  // the back the front is on the right
+  let pieces = Math.ceil(back.length * 4);
+  let floor: Pt[] = [];
+  for (let i = 0; i <= pieces; i++) {
+    let s = back.length * i / pieces;
+    let before = back.at(Math.max(s - 1e-3, 0));
+    let after = back.at(Math.min(s + 1e-3, back.length));
+    let heading = dist(before, after);
+    let on = back.at(s);
+    floor.push(new Pt(on.x + v.pegbox.floor * (after.y - before.y) / heading, on.y - v.pegbox.floor * (after.x - before.x) / heading));
+  }
+
+  let nutTop = new Pt(0, p.stringSetup!.nutHeight);
+  let frontEnd = scrollLines(p).frontStraight[1];
+  let underNut = rayPolylineIntersection(nutTop, TURN.half - NUT_WALL_LEAN, floor);
+  let underThroat = rayPolylineIntersection(frontEnd, TURN.half, floor);
+  if (!underNut || !underThroat || underNut.index > underThroat.index) return null;
+
+  return [
+    nutTop,
+    new Pt(underNut.point.x, underNut.point.y),
+    ...floor.slice(underNut.index, underThroat.index),
+    new Pt(underThroat.point.x, underThroat.point.y),
+    frontEnd,
+  ];
 }
 
 // the readouts, off a back solved through S3: the nut up to the crown's top, and the neck's front

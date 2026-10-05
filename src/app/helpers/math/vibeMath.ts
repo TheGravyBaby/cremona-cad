@@ -680,3 +680,23 @@ export function makeC2SplineWithFlatKnot(
   if (m.some(v => !Number.isFinite(v))) return null;
   return hermiteEvaluator(ys, zs, h, m);
 }
+
+/** Where a ray from `from` heading `angle` first crosses a polyline, and the index of the vertex
+ * that ends the segment it crosses. Null when it never does. */
+export function rayPolylineIntersection(from: Pt, angle: number, polyline: Pt[]): { point: Pt; index: number } | null {
+  const dx = Math.cos(angle), dy = Math.sin(angle);
+  let nearest = Infinity;
+  let hit: { point: Pt; index: number } | null = null;
+  for (let i = 1; i < polyline.length; i++) {
+    const a = polyline[i - 1], b = polyline[i];
+    const ex = b.x - a.x, ey = b.y - a.y;
+    const cross = dx * ey - dy * ex;
+    if (Math.abs(cross) < 1e-12) continue;
+    const alongRay = ((a.x - from.x) * ey - (a.y - from.y) * ex) / cross;
+    const alongSegment = ((a.x - from.x) * dy - (a.y - from.y) * dx) / cross;
+    if (alongRay <= 0 || alongRay >= nearest || alongSegment < 0 || alongSegment > 1) continue;
+    nearest = alongRay;
+    hit = { point: { x: from.x + dx * alongRay, y: from.y + dy * alongRay }, index: i };
+  }
+  return hit;
+}

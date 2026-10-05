@@ -14,7 +14,7 @@ adding to a file — they are current and more specific than this page.
 | `ceruti-arch-geometry.ts` | The gouge's circular section, the crown, and the tangency joining them. Answers "what shape is the section here". |
 | `ceruti-surface.ts` | The evaluable height field z(x,y) over the plan view. Cross-arch templates, STL. |
 | `ceruti-neck.ts` | The neck set in the side elevation: `calculateNeck` places the neck wood's four corners, the heel arc and the bridge on `p.neck`, and the functions beside it read the dressing (button, nut block, fingerboard, bridge wedge, guides, the neck's own path) off those for the render. Hangs off the top plate's edge via `topPlatePlacement`, so the rib taper carries through. |
-| `ceruti-scroll.ts` | The scroll in its own side-view frame: the volute's spiral styles about the eye, and `calculateScroll`, which lays the spiral out and runs the back and front off it, writing every arc and line onto `p.volute` the way `calculateNeck` writes `p.neck`. Edited by two panels: volute (the spiral and the crown, S0–S1), then scroll (the back from S2 on, and the front); both draw through `renders/scroll.render.ts`. A third, scroll widths, draws the side profile beside the back and front views: "the path" runs from where the back rises to the top of the duck tail's round, over the crown and round the spiral to the eye, and the widths are set at places on it the side view already fixes (2026-10-05, replacing twelve equal cuts of the path held as half-width `Pt3D`s). `p.scroll.widths` holds them as full widths by name, seeded by `calculateScrollWidths`: `throat` (F1's end), `crown`, the bottom of the first turn, the top and bottom of the second, and `eye`, which the last turn is as wide as from its top on in (its own width was cut 2026-10-05), its crosshair at the eye's centre; where each sits is read off the arcs by `scrollWidthStations`, not stored. The pegbox is two straight lines sawn through the blank, so `pegboxWidth` goes by height, back and front alike: the nut's width up to the nut's top and on for `pegboxStraight` above it, then tapering to the throat's. The straight is there so the taper can start clear of the duck tail's round: a back already narrower than the nut at the round's top can't join it. `calculateScrollWidths` also holds the crown to the throat's width and each turn to at least the one before, writing the clamped widths back. The back keeps that taper until it reaches the throat's height, then leaves it tangent on a monotone spline through the volute's widths by distance along the path (`pathWidth`; the one place to move that transition). The throat's width ends the taper and is not a point on that curve, the volute being wider than the pegbox's cheeks where F1 lands on it. `scrollBackWidths` samples the result for the views, a point on the crown and every turn. Seen from behind, the back starts at the duck tail (S3's start) in a round whose top sets where the path starts. The round is the neck's back carried on round, so its diameter is always the neck's width there (`duckTailRadius(p)`, derived, not entered, since 2026-10-05); where the nut is wider or narrower than the neck, the round and the path's start leave a shoulder. A path that starts above the nut's foot leaves the front's square bottom hanging below the back, so the back and front can't be joined; the back view draws its walls in the front's colour as the cue, and its bottom only where a nut wider than the neck overhangs it, joining the neck to the walls (over the neck, from behind, it's smoothed in), the neck's sides stopping where they meet the walls or the round, and the walls disappear once the duck tail is low enough that the path starts at or below the foot. The front is all pegbox: `scrollFrontWidths` is the taper at each height of the front. The pegbox's hollow is two thicknesses: `pegboxWall`, which the front view draws the mouth in by from the outside, and `pegboxFloor`, the back carried in by that much in the side view (`pegboxCavity`), from a wall under the nut leaning 15° off square (`NUT_WALL_LEAN`, fixed) to one square to the neck at the end of the front's straight. The wall is one number: a real cheek thickens toward the floor, which neither view here shows. Both views add the level faces where the path turns over (not at the eye, where the cylinder's own top and bottom close it) and the eye as a cylinder out to the last width (`scrollWidthLedges` in `renders/scroll.render.ts`). Below the path's start the pegbox runs on down the taper to the straight's end and square from there to the nut's foot. The nut's width is `stringSetup.nutWidth`, entered on this panel beside the throat's. Both views carry the neck on below as the side view's stub does (2 × `thickness`), tapered by (`rootWidth` − `topWidth`) / `length` (`scrollNeckHalfWidth`, the same taper the duck tail reads) rather than `neckHalfWidthAt`, which needs `neckTop` and so the whole neck solve against the body; over the stub the two differ by hundredths of a mm. In front the nut covers whatever of the pegbox is narrower than it; behind, the neck's sides run up until they pass under the duck tail's round. |
+| `ceruti-scroll.ts` | The scroll in its own side-view frame: the volute's spiral styles about the eye, and `calculateScroll`, which lays the spiral out and runs the back and front off it, writing every arc onto `p.scroll` the way `calculateNeck` writes `p.neck`. Three panels edit it, all drawing through `renders/scroll.render.ts`: volute (the spiral and the crown, S0–S1), scroll (the back from S2 on, and the front), and scroll widths (the back and front views beside the side profile, see *The scroll's widths* below). |
 | `ceruti-types.ts` | `EnricoCerutiParams` and the whole serialized shape. `CerutiColors`, view flags. |
 | `ceruti-templates.ts` | Bundled historical instruments (Strad Goetz, Del Gesu Baltic, …) as pasted recipe JSON. **Append-only** — add instruments, don't restructure. |
 | `templates/corpus/` | Instruments traced from open-licence museum records — one `.json` file each, listed in `templates/corpus/index.ts`. Same type as the templates above, but carrying a `TemplateMeta` and a per-image `ImageCredit` so the numbers and the pixels can each be rechecked. New instruments go here, not in `ceruti-templates.ts`. |
@@ -283,6 +283,37 @@ section first → long arch carved to a template → crown across. The panel ord
   (`chordTrust`). Read the cut off the sampled surface, never compute it — and parse the profile's
   own vertices rather than `samplePathToPolyline`, which re-samples by arc length and slides the
   cut off the vertex it identified.
+
+## The scroll's widths
+
+- **"The path"** is the back from the top of the duck tail's round, over the crown and round the
+  spiral in to the eye. Widths are full widths, held by name on `p.scroll.widths` at places the side
+  view already fixes: `throat` (F1's end), `crown`, `turn1Bottom`, `turn2Top`, `turn2Bottom`, `eye`.
+  The nut's is `stringSetup.nutWidth`. Where each sits is read off the arcs (`scrollWidthStations`),
+  not stored.
+- **The pegbox goes by height, back and front alike** (`pegboxWidth`): two straight lines sawn
+  through the blank. The nut's width holds for `pegbox.straight` above the nut's top, then tapers to
+  the throat's. The straight exists so the taper can start clear of the duck tail's round; a back
+  already narrower than the nut there can't join it.
+- **The volute goes by distance along the path** (`pathWidth`). The back leaves the taper where it
+  reaches the throat's height, tangent, on a monotone spline through the widths. That transition is
+  still being studied; `pathWidth` is the one place to move it.
+- **The throat ends the taper and is not a point on the curve**: the volute is wider than the
+  pegbox's cheeks where F1 lands on it. The last turn is as wide as the eye from its top on in, so
+  it has no width of its own.
+- **`calculateScrollWidths` only seeds and clamps**, writing back: crown no wider than the throat,
+  each turn at least as wide as the one before.
+- **The duck tail's round is the neck's back carried on round**, so its radius is the neck's
+  half-width there (`duckTailRadius`, derived). A nut wider or narrower than the neck leaves a
+  shoulder. A path starting above the nut's foot leaves the pegbox's front hanging below the back;
+  the back view draws those walls in the front's colour.
+- **The hollow** is `pegbox.wall` in from the outside in the front view, and in the side view
+  (`pegboxCavity`) the back carried in by `pegbox.floor`, between a wall under the nut leaning 15°
+  off square (`NUT_WALL_LEAN`, fixed) and one square to the neck where the front's straight ends.
+- **Both views carry the neck on below** by `scrollNeckHalfWidth`, the authored taper, since
+  `neckHalfWidthAt` needs the whole neck solved against the body.
+- **The contours keep their depth** (`Pt3D.z`, the side view's x) though nothing draws with it yet:
+  occlusion needs to know which turn is nearer.
 
 ## Adding a panel
 
