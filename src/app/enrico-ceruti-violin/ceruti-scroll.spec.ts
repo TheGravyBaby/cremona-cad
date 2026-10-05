@@ -1,10 +1,10 @@
-import { calculateScroll, calculateScrollWidths, defaultVoluteParams, duckTailRadius, pegboxCavity, pegboxTaperStart, scrollBackWidths, scrollFrontWidths, ScrollKey, scrollLines, scrollNeckHalfWidth, scrollWidthStations, spiralArcs, TO_FRONT, VoluteSpec, VOLUTE_STYLE_LABELS } from './ceruti-scroll';
-import { scrollWidthLedges, voluteConstruction } from './renders/scroll.render';
+import { calculateScroll, calculateScrollWidths, defaultVoluteParams, duckTailRadius, pegboxCavity, pegboxTaperStart, scrollBackWidths, scrollPathStretches, scrollFrontWidths, ScrollKey, scrollLines, scrollNeckHalfWidth, scrollWidthStations, spiralArcs, TO_FRONT, VoluteSpec, VOLUTE_STYLE_LABELS } from './ceruti-scroll';
+import { voluteConstruction } from './renders/scroll.render';
 import { defaultNeckParams, defaultStringSetup } from './ceruti-neck';
 import { defaultViolin } from './ceruti-fixtures';
 import { EnricoCerutiParams, ScrollParams, VoluteStyle } from './ceruti-types';
 import { angleWithinSweep, dist, normalizeRadians } from '../helpers/math/simpleGeometry';
-import { Arc, Circle, Pt, Pt3D } from '../models/types';
+import { Arc, Circle, Pt } from '../models/types';
 import { defineSideScrollPath } from './ceruti-paths';
 import { samplePathToPolyline, splitPathStrings } from '../helpers/math/pathMath';
 
@@ -349,6 +349,21 @@ describe.each(STYLES)('the scroll widths with a %s volute', style => {
     for (const pt of back.slice(lastTop)) expect(pt.x).toBeCloseTo(v.widths.eye / 2, 9);
   });
 
+  it('cuts the path at the crown and the turns into stretches that only rise or only fall', () => {
+    const p = widths();
+    const on = scrollPathStretches(p);
+    const stretches = [on.back, on.turn1Front, on.turn2Back, on.turn2Front, on.turn3Back, on.turn3Front];
+    stretches.forEach((pts, i) => {
+      const rising = i % 2 === 0;
+      // the last runs level into the eye's front
+      const steps = pts.slice(1).map((pt, k) => pt.y - pts[k].y);
+      expect(steps.every(step => rising ? step > -1e-9 : step < 1e-9)).toBe(true);
+      if (i > 0) expect(pts[0]).toEqual(stretches[i - 1].at(-1));
+    });
+    expect(scrollBackWidths(p)).toEqual([on.back, ...stretches.slice(1).map(pts => pts.slice(1))].flat());
+    for (const pt of on.turn3Front) expect(pt.x).toBeCloseTo(p.scroll!.widths.eye / 2, 9);
+  });
+
   it('runs the front from the nut up to where F1 meets the spiral, tapering from the nut\'s width to the throat\'s', () => {
     const p = widths();
     const front = scrollFrontWidths(p);
@@ -480,22 +495,6 @@ describe('the scroll widths', () => {
     // a millimetre either side, so the curve's own bend is in the difference
     expect(slope(leaves + 1)).toBeCloseTo(slope(leaves - 1), 1);
     for (let k = 1; k < back.length; k++) expect(Math.abs(back[k].x - back[k - 1].x)).toBeLessThan(0.5);
-  });
-});
-
-describe('the scroll widths\' ledges', () => {
-  // the path and the level lines off a back view drawn by hand over the app's own, in half-widths;
-  // the one drawn at the eye was later dropped, the cylinder closing the eye on its own
-  const ys = [0, 22.996631, 43.440314, 63.312816, 86.419489, 103.098382, 102.236413, 82.373266, 67.705312, 82.667968, 91.884532, 76.254874, 83];
-  const xs = [13, 11.5, 10, 8.5, 6.5, 6, 6, 8.5, 11, 13, 14, 15, 16];
-  const widths = ys.map((y, k) => new Pt3D(xs[k], y, 0));
-
-  it('runs level from each turn of the path in to the next contour inside it, and across the crown', () => {
-    const ledges = scrollWidthLedges(widths);
-    expect(ledges.map(l => [l.y, l.from])).toEqual([[103.098382, 6], [67.705312, 11], [91.884532, 14], [76.254874, 15]]);
-    expect(ledges[0].to).toBeNull();
-    const drawn = [8.107, 7.319, 12.119];
-    ledges.slice(1).forEach((l, i) => expect(l.to).toBeCloseTo(drawn[i], 1));
   });
 });
 

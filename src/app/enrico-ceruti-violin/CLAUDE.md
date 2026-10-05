@@ -312,8 +312,15 @@ section first → long arch carved to a template → crown across. The panel ord
   off square (`NUT_WALL_LEAN`, fixed) and one square to the neck where the front's straight ends.
 - **Both views carry the neck on below** by `scrollNeckHalfWidth`, the authored taper, since
   `neckHalfWidthAt` needs the whole neck solved against the body.
-- **The contours keep their depth** (`Pt3D.z`, the side view's x) though nothing draws with it yet:
-  occlusion needs to know which turn is nearer.
+- **The back and front views are drawn as a draughtsman would, not projected.** `scrollPathStretches`
+  cuts the path at the crown and the turns into six stretches, each up the volute's back or down
+  its front, and `renderScrollWidths` lists per view which show and which stop at the height of the
+  next turn nearer the viewer. Those cuts alone turned out not to be enough (2026-10-05): which of
+  two stretches at a height is the wider depends on the widths entered, so every stretch but the
+  nearest also passes through `seen`, which drops points behind a stretch nearer the viewer
+  (`Pt3D.z`, the side view's x) and at least as wide. The pegbox's front above the first turn's
+  bottom goes through the same check. Nothing hidden is drawn. A general projection and masking
+  with `occludePath` were both weighed and passed over. The hollow is dashed in the side view only.
 
 ## Adding a panel
 

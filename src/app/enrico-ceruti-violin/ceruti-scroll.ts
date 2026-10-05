@@ -393,10 +393,10 @@ export function scrollLines(p: EnricoCerutiParams): Record<ScrollLine, [Pt, Pt]>
 }
 
 // placeholders about a Stradivari head on a 350 mm body, scaled by body length, to be set from the
-// scroll being copied
+// scroll being copied. The first turn is wide enough that the pegbox runs in under it out of sight
 function defaultScrollWidths(p: EnricoCerutiParams): ScrollWidths {
   let mm = (v: number) => Math.round(v * p.height / 350);
-  return { throat: mm(20), crown: mm(13), turn1Bottom: mm(20), turn2Top: mm(25), turn2Bottom: mm(31), eye: mm(41) };
+  return { throat: mm(20), crown: mm(13), turn1Bottom: mm(26), turn2Top: mm(30), turn2Bottom: mm(34), eye: mm(41) };
 }
 
 // the straight clears the default duck tail's round, so the back starts as wide as the nut
@@ -590,26 +590,53 @@ function pathWidth(p: EnricoCerutiParams, path: ScrollPath): (s: number) => numb
   return at => at < s[0] ? taper(at) : curve(at);
 }
 
-// the path as the back and front views draw it: x the half-width, y and z the side view's y and x,
-// a point a millimetre or so apart and one on the crown and on every turn
-export function scrollBackWidths(p: EnricoCerutiParams): Pt3D[] {
+// the path as the back and front views draw it, in the stretches it falls into at the crown and the
+// turns: x the half-width, y and z the side view's y and x, a point a millimetre or so apart. Each
+// stretch runs down the volute's front or up its back, only rising or only falling, and ends on the
+// point the next starts on
+export type ScrollStretches = {
+  back: Pt3D[]; // from the path's start up the back to the crown
+  turn1Front: Pt3D[]; // down the front to the first turn's bottom
+  turn2Back: Pt3D[]; // up the back to the second turn's top
+  turn2Front: Pt3D[]; // down the front to the second turn's bottom
+  turn3Back: Pt3D[]; // up the back to the last turn's top
+  turn3Front: Pt3D[]; // down to the eye's front, as wide as the eye
+};
+
+export function scrollPathStretches(p: EnricoCerutiParams): ScrollStretches {
   let path = scrollPath(p);
   let width = pathWidth(p, path);
-
-  let cuts = [0, path.crown, ...path.turns, path.length];
-  let along: number[] = [];
-  for (let i = 1; i < cuts.length; i++) {
-    let from = cuts[i - 1];
-    let to = cuts[i];
+  let stretch = (from: number, to: number): Pt3D[] => {
     let pieces = Math.ceil(to - from);
-    for (let k = 0; k < pieces; k++) along.push(from + (to - from) * k / pieces);
-  }
-  along.push(path.length);
+    return Array.from({ length: pieces + 1 }, (_, k) => {
+      let s = from + (to - from) * k / pieces;
+      let pt = path.at(s);
+      return new Pt3D(width(s) / 2, pt.y, pt.x);
+    });
+  };
 
-  return along.map(s => {
-    let pt = path.at(s);
-    return new Pt3D(width(s) / 2, pt.y, pt.x);
-  });
+  let [turn1Bottom, turn2Top, turn2Bottom, turn3Top] = path.turns;
+  return {
+    back: stretch(0, path.crown),
+    turn1Front: stretch(path.crown, turn1Bottom),
+    turn2Back: stretch(turn1Bottom, turn2Top),
+    turn2Front: stretch(turn2Top, turn2Bottom),
+    turn3Back: stretch(turn2Bottom, turn3Top),
+    turn3Front: stretch(turn3Top, path.length),
+  };
+}
+
+// the whole path, start to eye
+export function scrollBackWidths(p: EnricoCerutiParams): Pt3D[] {
+  let on = scrollPathStretches(p);
+  return [
+    ...on.back,
+    ...on.turn1Front.slice(1),
+    ...on.turn2Back.slice(1),
+    ...on.turn2Front.slice(1),
+    ...on.turn3Back.slice(1),
+    ...on.turn3Front.slice(1),
+  ];
 }
 
 // the front from the nut up to the throat the same way, as wide as the pegbox at each height
