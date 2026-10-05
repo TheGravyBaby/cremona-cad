@@ -255,14 +255,14 @@ export interface StringSetup {
 export type VoluteStyle = 'fourPoint' | 'archimedean' | 'serlio' | 'salviati' | 'goldmann' | 'kelly';
 
 // full widths, cheek to cheek. The pegbox tapers straight from the nut's width to `throat`, where F1
-// meets the spiral; the volute's run on a curve through the rest, each at a place the side view fixes
+// meets the spiral; the volute's run on a curve through the rest, each at a place the side view fixes. The last turn
+// is as wide as the eye from its top on in
 export interface ScrollWidths {
   throat: number;
   crown: number;
   turn1Bottom: number;
   turn2Top: number;
   turn2Bottom: number;
-  turn3Top: number;
   eye: number;
 }
 
