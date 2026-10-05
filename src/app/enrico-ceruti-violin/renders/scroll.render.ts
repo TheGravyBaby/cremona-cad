@@ -3,7 +3,7 @@ import { occludePath, pathFromLine, pathFromPolygon } from '../../helpers/math/p
 import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderCrosshair, renderDashLine, mixColors, renderPath, renderPointHalo, renderPolygon, renderSegment, renderSegmentHalo } from '../../helpers/renderFuncs';
 import { Arc, Pt, Pt3D } from '../../models/types';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, ScrollParams } from '../ceruti-types';
-import { duckTailRadius, ScrollFailure, ScrollKey, scrollExtent, scrollFrontWidths, scrollLines, scrollNeckHalfWidth, TO_FRONT } from '../ceruti-scroll';
+import { duckTailRadius, pegboxCavity, pegboxTaperStart, pegboxWidth, scrollBackWidths, ScrollFailure, ScrollKey, scrollExtent, scrollFrontWidths, scrollLines, scrollNeckHalfWidth, ScrollStationKey, scrollWidthStations, TO_FRONT } from '../ceruti-scroll';
 import { HighlightedArc, HighlightedSegment, STROKE_WEIGHT } from './render-constants';
 
 // the scroll in ceruti-scroll.ts's frame, the neck's tilt taken out, read off p.volute as
@@ -129,9 +129,11 @@ export const renderScroll = (
   solved('frontStraight') && line(lines.frontStraight, colors.scrollFront);
 };
 
-// a path point's colour on canvas and in its field, from the nut's level in to the eye
-export function pathPointColor(colors: CerutiColors, k: number, count: number): string {
-  const t = count > 1 ? k / (count - 1) : 0;
+const STATION_ORDER: ScrollStationKey[] = ['nut', 'throat', 'crown', 'turn1Bottom', 'turn2Top', 'turn2Bottom', 'turn3Top', 'eye'];
+
+// a width's colour on canvas and in its field, from the nut in to the eye
+export function stationColor(colors: CerutiColors, key: ScrollStationKey): string {
+  const t = STATION_ORDER.indexOf(key) / (STATION_ORDER.length - 1);
   return t < 0.5
     ? mixColors(colors.scrollPathStart, colors.scrollPathMid, t * 2)
     : mixColors(colors.scrollPathMid, colors.scrollPathEnd, t * 2 - 1);
@@ -159,22 +161,22 @@ export function scrollWidthLedges(widths: Pt3D[]): { y: number; from: number; to
   return turns.map(pt => ({ y: pt.y, from: pt.x, to: insideAt(widths, pt.y, pt.x) }));
 }
 
-// the side profile's points, and the path seen from behind and from the front: the back view beside
+// the side profile's width stations, and the path seen from behind and from the front: the back view beside
 // the scroll's furthest reach, the front beside the nut with the pegbox's front over the volute.
 // Each view carries the turns' faces and the eye, a cylinder standing out to the last width. From
 // behind, the back starts in the duck tail's round, with shoulders out to the path where it is
 // narrower; from the front the round is hidden and the path runs on down to the foot of the nut,
 // where the scroll meets the neck, closing level there. Each view carries the neck on below as the
 // side view does, nothing drawn where it passes behind
-export const renderScrollWidths = (p: EnricoCerutiParams, colors: CerutiColors, focused: number | null) => (g: any, ui: any): void => {
+export const renderScrollWidths = (p: EnricoCerutiParams, colors: CerutiColors, focused: ScrollStationKey | null) => (g: any, ui: any): void => {
   const gap = 20;
   const v = p.scroll!;
-  const widths = v.pathWidths;
+  const widths = scrollBackWidths(p);
+  const stations = scrollWidthStations(p);
   const eyeWidth = widths.at(-1)!.x;
   const widest = Math.max(...widths.map(pt => pt.x));
   const back = -scrollExtent(v).width - gap - widest;
   const front = p.stringSetup!.nutThickness + gap + widest;
-  const color = (k: number) => pathPointColor(colors, k, widths.length);
 
   const stroke = (d: string, ink: string, weight: number, cover: string | string[] | null) => {
     const shown = cover ? occludePath(d, cover).visible : d;
@@ -194,7 +196,9 @@ export const renderScrollWidths = (p: EnricoCerutiParams, colors: CerutiColors, 
   ];
   const start = widths[0];
   const foot = Math.min(start.y, 0);
-  const closing = [start, new Pt3D(start.x, foot, 0), new Pt3D(0, foot, 0)];
+  // below the path's start the pegbox runs on down its taper to the straight, then square to the foot
+  const taperStart = pegboxTaperStart(p);
+  const closing = [start, ...(start.y > taperStart ? [new Pt3D(nutHalf, taperStart, 0)] : []), new Pt3D(nutHalf, foot, 0), new Pt3D(0, foot, 0)];
   const r = duckTailRadius(p);
   const round = Array.from({ length: 33 }, (_, i) => pointOnCircle({ x: 0, y: start.y, r }, TURN.half + TURN.half * i / 32));
   const view = (center: number, behind: boolean) => {
@@ -206,11 +210,12 @@ export const renderScrollWidths = (p: EnricoCerutiParams, colors: CerutiColors, 
       // the back and front can't join; its walls are drawn in the front's colour, and its bottom only
       // where it overhangs the neck, joining the two. Over the neck it's smoothed into it
       const hanging = foot < start.y;
+      const walls = closing.slice(0, -1);
       // from behind the neck's sides run on up until they meet the scroll, in the round or the front
       const placed = round.map(pt => new Pt(center + pt.x, pt.y));
       const covers = [
         ...(r > 0 ? [pathFromPolygon(placed)] : []),
-        ...(hanging ? [pathFromPolygon([new Pt(center - start.x, foot), new Pt(center + start.x, foot), new Pt(center + start.x, start.y), new Pt(center - start.x, start.y)])] : []),
+        ...(hanging ? [pathFromPolygon([...walls.map(pt => new Pt(center + pt.x, pt.y)), ...walls.map(pt => new Pt(center - pt.x, pt.y)).reverse()])] : []),
       ];
       for (const side of [1, -1]) stroke(neckSide(side, start.y), colors.neckOff, STROKE_WEIGHT.section, covers.length ? covers : null);
       contour(widths, center, line);
@@ -220,8 +225,8 @@ export const renderScrollWidths = (p: EnricoCerutiParams, colors: CerutiColors, 
           new Pt(center - scrollNeckHalfWidth(p, -stub), -stub), new Pt(center + scrollNeckHalfWidth(p, -stub), -stub),
           new Pt(center + scrollNeckHalfWidth(p, start.y), start.y), new Pt(center - scrollNeckHalfWidth(p, start.y), start.y),
         ]);
-        contour(closing.slice(0, 2), center, colors.archTop);
-        contour(closing.slice(1), center, colors.archTop, neck);
+        contour(walls, center, colors.archTop);
+        contour(closing.slice(-2), center, colors.archTop, neck);
       }
     } else {
       // from in front the nut stands nearest, hiding whatever of the pegbox is narrower than it
@@ -232,6 +237,13 @@ export const renderScrollWidths = (p: EnricoCerutiParams, colors: CerutiColors, 
       contour(widths, center, line, cover);
       contour(closing, center, line, cover);
       contour(scrollFrontWidths(p), center, line, cover);
+      // the hollow's mouth, each cheek's thickness in from the outside, as far up as the side view carries it
+      const mouthTop = scrollLines(p).frontStraight[1].y;
+      const mouth = [nutHeight, taperStart, mouthTop]
+        .filter(y => y >= nutHeight && y <= mouthTop)
+        .map(y => new Pt(pegboxWidth(p, y) / 2 - v.pegboxWall, y));
+      if (mouth.length > 1 && mouth.every(pt => pt.x > 0))
+        renderPath(pathFromPolygon([...mouth.map(pt => new Pt(center + pt.x, pt.y)), ...mouth.map(pt => new Pt(center - pt.x, pt.y)).reverse()]), light, STROKE_WEIGHT.trace)(g, ui);
     }
     for (const { y, from, to } of ledges) {
       if (to === null) renderSegment(new Pt(center - from, y), new Pt(center + from, y), light, STROKE_WEIGHT.trace)(g, ui);
@@ -245,16 +257,19 @@ export const renderScrollWidths = (p: EnricoCerutiParams, colors: CerutiColors, 
     }
   };
 
-  const marked = focused === null ? undefined : widths[focused];
+  const marked = stations.find(station => station.key === focused);
   if (marked) {
-    renderPointHalo(new Pt(marked.z, marked.y), color(focused!))(g, ui);
+    const ink = stationColor(colors, marked.key);
+    renderPointHalo(marked.at, ink)(g, ui);
     for (const center of [back, front]) {
-      for (const side of [1, -1]) renderPointHalo(new Pt(center + side * marked.x, marked.y), color(focused!))(g, ui);
+      for (const side of [1, -1]) renderPointHalo(new Pt(center + side * marked.width / 2, marked.at.y), ink)(g, ui);
     }
   }
   view(back, true);
   view(front, false);
-  widths.forEach((pt, k) => renderCrosshair(new Pt(pt.z, pt.y), color(k))(g, ui));
+  const cavity = pegboxCavity(p);
+  if (cavity) renderPath(cavity.map((pt, i) => `${i ? 'L' : 'M'} ${pt.x} ${pt.y}`).join(' '), colors.scrollFrontLight, STROKE_WEIGHT.trace)(g, ui);
+  for (const station of stations) renderCrosshair(station.at, stationColor(colors, station.key))(g, ui);
 };
 
 // the figure each style finds its centres on, as polylines in the eye's frame
