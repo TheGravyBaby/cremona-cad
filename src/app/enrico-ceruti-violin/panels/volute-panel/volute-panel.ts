@@ -98,7 +98,7 @@ export class VolutePanel extends CerutiPanelBase implements OnInit {
 
     // the rest of the scroll for context, under the volute's own arcs, once it all solves
     return [
-      renderScrollNeck(p, this.colors, this.flags.showModuleGuides),
+      renderScrollNeck(p, this.colors, this.flags.showModuleGuides, failures),
       ...(failures.length ? [] : [renderPath(defineSideScrollPath(p), this.colors.outerTrace, STROKE_WEIGHT.trace)]),
       renderVolute(p, this.colors, this.flags, true, highlighted, failures),
       renderSolveFailures(failures, this.colors.pathError),

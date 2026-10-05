@@ -35,7 +35,7 @@ const neckStub = (p: EnricoCerutiParams) => 2 * p.neck!.thickness;
 
 // the nut and the neck's end below it, for context. Module guides run the neck's front up to the
 // crown's top, then back to S1's furthest reach
-export const renderScrollNeck = (p: EnricoCerutiParams, colors: CerutiColors, showGuides: boolean) => (g: any, ui: any): void => {
+export const renderScrollNeck = (p: EnricoCerutiParams, colors: CerutiColors, showGuides: boolean, failures: ScrollFailure[] = []) => (g: any, ui: any): void => {
   const v = p.scroll!;
   const { thickness } = p.neck!;
   const { nutThickness, nutHeight } = p.stringSetup!;
@@ -43,8 +43,9 @@ export const renderScrollNeck = (p: EnricoCerutiParams, colors: CerutiColors, sh
 
   renderPolygon([new Pt(0, 0), new Pt(0, nutHeight), new Pt(nutThickness, nutHeight), new Pt(nutThickness, 0)], colors.nut, STROKE_WEIGHT.section)(g, ui);
   renderSegment(new Pt(0, -stub), new Pt(0, 0), colors.neckOff, STROKE_WEIGHT.section)(g, ui);
-  renderSegment(new Pt(0, 0), new Pt(-thickness, 0), colors.neckOff, STROKE_WEIGHT.section)(g, ui);
-  renderSegment(new Pt(-thickness, 0), new Pt(-thickness, -stub), colors.neckOff, STROKE_WEIGHT.section)(g, ui);
+  // the neck's back runs on up to where the nape meets it, or to the nut's level while the nape is unsolved
+  const backTop = failures.some(f => f.unsolved.includes('nape')) ? 0 : v.nape.y;
+  if (backTop > -stub) renderSegment(new Pt(-thickness, -stub), new Pt(-thickness, backTop), colors.neckOff, STROKE_WEIGHT.section)(g, ui);
 
   if (!showGuides) return;
   const crownTop = Math.max(...[v.S0, v.S1].flatMap(a => arcReach(a, TURN.quarter)).map(pt => pt.y));
@@ -100,16 +101,12 @@ export const renderScroll = (
   failures: ScrollFailure[] = [],
 ) => (g: any, ui: any): void => {
   const v = p.scroll!;
-  const { thickness } = p.neck!;
   const unsolved = new Set(failures.flatMap(f => f.unsolved));
   const solved = (key: ScrollKey) => !unsolved.has(key);
   const fancy = (currentModule && flags.showModuleArcs) || flags.showAllArcs;
 
   if (highlighted) renderArcHalo(highlighted.arc, highlighted.color, undefined, undefined, longArc(highlighted.arc))(g, ui);
   if (highlightedLine) renderSegmentHalo(...highlightedLine.line, highlightedLine.color)(g, ui);
-
-  // the neck's back carried up from the nut to meet the nape
-  if (solved('nape') && v.nape.y > 0) renderSegment(new Pt(-thickness, v.nape.y), new Pt(-thickness, 0), colors.neckOff, STROKE_WEIGHT.section)(g, ui);
 
   if (currentModule && flags.showModuleGuides && solved('S3')) {
     const { height, width } = scrollExtent(v);

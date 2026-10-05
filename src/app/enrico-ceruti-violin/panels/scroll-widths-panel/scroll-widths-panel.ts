@@ -52,7 +52,7 @@ export class ScrollWidthsPanel extends CerutiPanelBase implements OnInit {
     if (!failures.length) calculateScrollWidths(p);
 
     return [
-      renderScrollNeck(p, this.colors, false),
+      renderScrollNeck(p, this.colors, false, failures),
       ...(failures.length ? [] : [
         renderPath(defineSideScrollPath(p), this.colors.outerTrace, STROKE_WEIGHT.trace),
         renderScrollWidths(p, this.colors, this.focused),
