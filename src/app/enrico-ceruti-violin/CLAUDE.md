@@ -170,19 +170,18 @@ section first → long arch carved to a template → crown across. The panel ord
   it was deleted outright rather than kept as an unused field. The pattern going in: a solved
   `NeckParams` field earns its keep by feeding either the drawing or the panel, not just a test —
   losing the last one gets it deleted, not just unhooked.
-- **Fingerboard and nut are reference geometry, not template inputs — and `nutHeight` didn't
-  even earn that.** Nothing in `fingerboard.length`/`.thickness` touches the neck's own carved
-  shape (the back, the heel, the button, the mortise) — they exist only to draw the fingerboard/nut
-  and feed the string readouts, since fingerboards and nuts are fitted/interchanged independently
-  of any template this app produces. `nutHeight` (string standing proud of the fingerboard at the
-  nut) went further and was removed outright (2026-09-20): a real nut has some height, but at
-  ~1 mm on a violin it moved `stringLength`/`stringAngleDeg` by an amount the classical figures
-  don't care about, so the string now runs flush with the fingerboard's own top corner —
-  the fingerboard's top corner at the nut (`nut` moved the nut thickness along the neck's normal,
-  derived where it is drawn) is also where the string sits, and there's no `nut.string` any more. The nut block still draws as a little box past the fingerboard end
-  (the nut block in `renderNeck`), it just doesn't peak above the fingerboard's own surface. `fingerboard.length`/
-  `.thickness` stay as fields for now since they still meaningfully move the readouts and the
-  drawing; if that stops being true, treat them the same way.
+- **Fingerboard and nut are reference geometry, not template inputs.** Nothing on
+  `p.stringSetup` touches the neck's own carved shape (the back, the heel, the button, the
+  mortise) — the fields exist to draw the fingerboard/nut and feed the string readout, since
+  fingerboards and nuts are fitted independently of any template this app produces. Three
+  numbers, split 2026-10-05 after one `nutThickness` had stood for all of them:
+  `fingerboardThickness` is the board at its edges, `fingerboardRadius` the cylinder its crown is
+  cut from (the crown rises by the sagitta of the board's width, so far more at the body end than
+  the nut; `fingerboardCrown`), and `nutHeight` the nut's total height off the neck plane, which
+  is where the string sits. A nut below the crown at the nut is reported as a `nutHeight` miss,
+  and a radius no larger than the board's widest point (its end) as a `fingerboardRadius` one.
+  `nutHeight` was once removed (2026-09-20) as a ~1 mm string-above-board figure; it came back
+  measured from the neck plane instead, so it never has to be added to anything.
 - **Fingerboard, bridge and the readouts share one "String Setup" section.** Since none of the
   three feed the neck's own template geometry (previous bullet), they don't need their own
   section headers the way "Neck"/"Neck Root" do — merged 2026-09-20 to cut the vertical space

@@ -227,6 +227,8 @@ export interface NeckParams {
   angle: number;
   length: number;
   thickness: number;
+  topWidth: number;
+  rootWidth: number;
   heel: Arc; // r is entered, the rest derived
 
   root: Pt | null; // derived
@@ -238,7 +240,9 @@ export interface NeckParams {
 export interface StringSetup {
   bodyStop: number;
   bridgeHeight: number;
-  nutThickness: number;
+  nutHeight: number;
+  fingerboardThickness: number;
+  fingerboardRadius: number;
 
   bridgeFoot: Pt | null; // derived
   bridgeTop: Pt | null; // derived

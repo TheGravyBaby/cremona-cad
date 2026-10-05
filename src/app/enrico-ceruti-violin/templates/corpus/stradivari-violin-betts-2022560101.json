@@ -469,6 +469,8 @@
       "angle": 0.12217304763960307,
       "length": 121,
       "thickness": 13,
+      "topWidth": 24,
+      "rootWidth": 33,
       "heel": {
         "x": 12.911239637168812,
         "y": 382.67541879506814,
@@ -496,7 +498,9 @@
     "stringSetup": {
       "bodyStop": 196.5,
       "bridgeHeight": 33,
-      "nutThickness": 6.5,
+      "nutHeight": 7.5,
+      "fingerboardThickness": 5,
+      "fingerboardRadius": 42,
       "bridgeFoot": {
         "x": 48.27336498485017,
         "y": 161.09157408102814

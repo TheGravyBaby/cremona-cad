@@ -4,14 +4,14 @@ import { FormsModule } from '@angular/forms';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, FlutingParams, NeckParams, PathEntry, RenderToggleKey, StringSetup } from '../../ceruti-types';
 import { defaultArchingParams } from '../../ceruti-arching';
 import { defaultFlutingParams, LongArchSolve, solveLongArch } from '../../ceruti-arch-geometry';
-import { calculateOuterArcs, ensureNeckPath } from '../../ceruti-calcs';
-import { bridgeWedge, buttonTip, calculateNeck, defaultNeckParams, defaultStringSetup, fingerboardEnd, mortiseFingerboardIntersect, heelBottom, heelFace, heelStands, mortiseFloorY, plateEdgeAtNeck, standardNutLength, stringLength } from '../../ceruti-neck';
+import { calculateOuterArcs, ensureFholePath, ensureNeckPath, ensureOuterTracePaths, getPath, getPathOrNull } from '../../ceruti-calcs';
+import { bridgeWedge, buttonTip, calculateNeck, defaultNeckParams, defaultStringSetup, fingerboardCrown, fingerboardEnd, frontViewAxisX, mortiseFingerboardIntersect, neckHalfWidthAt, heelBottom, heelFace, heelStands, mortiseFloorY, plateEdgeAtNeck, standardNutLength, stringLength } from '../../ceruti-neck';
 import { renderBodySection } from '../../renders/body-section.render';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { pathFromArc } from '../../../helpers/math/pathMath';
-import { dist, moveInVectorSpace, pointOnCircle, vectorFromSlope } from '../../../helpers/math/simpleGeometry';
-import { renderSegment, renderPolygon, renderPath } from '../../../helpers/renderFuncs';
+import { dist, moveInVectorSpace, pointAtDistanceToward, pointOnCircle, vectorFromSlope } from '../../../helpers/math/simpleGeometry';
+import { renderSegment, renderPolygon, renderPath, renderSolveFailures } from '../../../helpers/renderFuncs';
 import { Pt, Vect2D } from '../../../models/types';
 import { renderGuideMeasure, renderGuideBaseline } from '../../renders/module-guide.render';
 import { STROKE_WEIGHT } from '../../renders/render-constants';
@@ -71,12 +71,16 @@ export class NeckPanel extends CerutiPanelBase implements OnInit {
       top: solveLongArch(p, p.arching.top.arch, gouge.top),
       bottom: solveLongArch(p, p.arching.bottom.arch, gouge.bottom),
     };
-    calculateNeck(p, solved.top, gouge.top);
+    const failures = calculateNeck(p, solved.top, gouge.top);
     ensureNeckPath(p, this.paths);
+    ensureOuterTracePaths(p, this.paths);
+    if (p.fHoles) ensureFholePath(p, this.paths);
 
     return [
       renderBodySection(p, this.colors, { solved, gouge, color: this.colors.outerTrace }),
       renderNeck(p, this.colors, this.flags.showModuleGuides, this.flags.showFingerboard, this.flags.showFretMarks),
+      renderFrontView(p, this.paths, this.colors, this.flags.showFingerboard),
+      renderSolveFailures(failures, this.colors.pathError),
     ];
   }
 
@@ -109,13 +113,22 @@ export function renderNeck(p: EnricoCerutiParams, colors: CerutiColors, showGuid
     seg(nk.root!, nk.neckTop!);
 
     if (showFingerboard) {
-      const fbEndTop = moveInVectorSpace(fbEnd, [{ ...normal, mag: ss.nutThickness }]);
-      renderPolygon([fbEnd, fbEndTop, nutTop, nk.neckTop!], colors.fingerboard, STROKE_WEIGHT.section)(g, ui);
+      // the crown's rise follows the board's width, which grows linearly, so its line curves slightly
+      const crown: Pt[] = [];
+      for (let i = 0; i <= FINGERBOARD_CROWN_SAMPLES; i++) {
+        const at = pointAtDistanceToward(nk.neckTop!, fbEnd, i * dist(nk.neckTop!, fbEnd) / FINGERBOARD_CROWN_SAMPLES);
+        crown.push(moveInVectorSpace(at, [{ ...normal, mag: ss.fingerboardThickness + fingerboardCrown(p, at.y) }]));
+      }
+      // the board's edges solid, the crown above them faded so the two read apart
+      const edgeAt = (at: Pt) => moveInVectorSpace(at, [{ ...normal, mag: ss.fingerboardThickness }]);
+      renderPolygon([nk.neckTop!, edgeAt(nk.neckTop!), edgeAt(fbEnd), fbEnd], colors.fingerboard, STROKE_WEIGHT.section)(g, ui);
+      const crownLine = [edgeAt(nk.neckTop!), ...crown, edgeAt(fbEnd)];
+      renderPath('M ' + crownLine.map(c => `${c.x} ${c.y}`).join(' L '), colors.fingerboard, STROKE_WEIGHT.section, FINGERBOARD_CROWN_OPACITY)(g, ui);
     }
 
     // the nut, on the fingerboard plane just past the board
     const nutFar = moveInVectorSpace(nk.neckTop!, [{ ...direction, mag: standardNutLength(p.height) }]);
-    const nutFarTop = moveInVectorSpace(nutFar, [{ ...normal, mag: ss.nutThickness }]);
+    const nutFarTop = moveInVectorSpace(nutFar, [{ ...normal, mag: ss.nutHeight }]);
     renderPolygon([nk.neckTop!, nutFar, nutFarTop, nutTop], colors.fingerboard, STROKE_WEIGHT.section)(g, ui);
 
     // the neck itself: nut-end wall, the back, and the heel down to the button
@@ -143,9 +156,65 @@ export function renderNeck(p: EnricoCerutiParams, colors: CerutiColors, showGuid
     renderGuideMeasure(new Pt(mortFboard.x, rootPlaneY), mortFboard, guide, 2 * nk.thickness)(g, ui);
     // the neck's own length runs along the back, heelBottom to backNut — not root to nut, which
     // sits off that line by the neck's thickness (see `length`'s header)
-    renderGuideMeasure(heelBottom(p), nk.backNut!, guide, -2 * (nk.thickness + ss.nutThickness))(g, ui);
+    renderGuideMeasure(heelBottom(p), nk.backNut!, guide, -2 * (nk.thickness + ss.nutHeight))(g, ui);
   };
 }
+
+// the body's plan outline as the f-hole contours panel draws it, moved over beside the side elevation
+function renderFrontView(p: EnricoCerutiParams, paths: PathEntry[], colors: CerutiColors, showFingerboard: boolean) {
+  const dx = frontViewAxisX(p);
+  const top = getPath(paths, 'top');
+  const purfling = getPathOrNull(paths, 'purfling');
+  const outerPurfling = getPathOrNull(paths, 'outerPurfling');
+  const fHole = p.fHoles ? getPathOrNull(paths, 'fHole') : null;
+
+  return (g: any, ui: any): void => {
+    const shifted = {
+      g: g.append('g').attr('transform', `translate(${dx},0)`),
+      ui: ui.append('g').attr('transform', `translate(${dx},0)`),
+    };
+    renderPath(top, colors.outerTrace)(shifted.g, shifted.ui);
+    if (purfling) renderPath(purfling, colors.innerTrace, STROKE_WEIGHT.guide)(shifted.g, shifted.ui);
+    if (outerPurfling) renderPath(outerPurfling, colors.innerTrace, STROKE_WEIGHT.guide)(shifted.g, shifted.ui);
+    if (fHole) renderPath(fHole, colors.innerTrace, STROKE_WEIGHT.guide)(shifted.g, shifted.ui);
+
+    const [footA, footB] = bridgeWedge(p);
+    const bridgeHalfDepth = dist(footA, footB) / 2;
+    const bridgeY = (footA.y + footB.y) / 2;
+    // the bridge spans the upper eyes' inner edges; a square stands in until the f-holes are placed
+    const eye = p.fHoles?.UEye;
+    const bridgeHalfWidth = eye ? Math.abs(eye.x) - eye.r : bridgeHalfDepth;
+    renderPolygon([
+      new Pt(-bridgeHalfWidth, bridgeY - bridgeHalfDepth), new Pt(bridgeHalfWidth, bridgeY - bridgeHalfDepth),
+      new Pt(bridgeHalfWidth, bridgeY + bridgeHalfDepth), new Pt(-bridgeHalfWidth, bridgeY + bridgeHalfDepth),
+    ], colors.bridge, STROKE_WEIGHT.section)(shifted.g, shifted.ui);
+
+    const nk = p.neck!;
+    const rootY = mortiseFloorY(p);
+    const topY = nk.neckTop!.y;
+    if (showFingerboard) {
+      const fbEndY = fingerboardEnd(p).y;
+      const fbEndHalf = neckHalfWidthAt(p, fbEndY);
+      renderPolygon([
+        new Pt(-fbEndHalf, fbEndY), new Pt(fbEndHalf, fbEndY),
+        new Pt(nk.topWidth / 2, topY), new Pt(-nk.topWidth / 2, topY),
+      ], colors.fingerboard, STROKE_WEIGHT.section)(shifted.g, shifted.ui);
+    }
+    renderPolygon([
+      new Pt(-nk.rootWidth / 2, rootY), new Pt(nk.rootWidth / 2, rootY),
+      new Pt(nk.topWidth / 2, topY), new Pt(-nk.topWidth / 2, topY),
+    ], colors.neckRoot, STROKE_WEIGHT.section)(shifted.g, shifted.ui);
+
+    const nutY = moveInVectorSpace(nk.neckTop!, [{ ...vectorFromSlope(nk.angle + Math.PI / 2), mag: standardNutLength(p.height) }]).y;
+    renderPolygon([
+      new Pt(-nk.topWidth / 2, topY), new Pt(nk.topWidth / 2, topY),
+      new Pt(nk.topWidth / 2, nutY), new Pt(-nk.topWidth / 2, nutY),
+    ], colors.fingerboard, STROKE_WEIGHT.section)(shifted.g, shifted.ui);
+  };
+}
+
+const FINGERBOARD_CROWN_SAMPLES = 24;
+const FINGERBOARD_CROWN_OPACITY = 0.45;
 
 /** Fret marks, scratch: how many semitones up the string to mark, and how far each tick reaches
  * either side of the string line. Bounded to the fingerboard's own length below. Plain semitones

@@ -175,7 +175,7 @@ describe('the scroll panel', () => {
     const drawn = recordLayers(instance.buildRun());
     const nut = [...drawn.paths[0].matchAll(/[ML] (-?[\d.]+) (-?[\d.]+)/g)].map(m => [+m[1], +m[2]]);
     expect(Math.min(...nut.map(c => c[0]))).toBe(0);
-    expect(Math.max(...nut.map(c => c[0]))).toBeCloseTo(p.stringSetup!.nutThickness, 9);
+    expect(Math.max(...nut.map(c => c[0]))).toBeCloseTo(p.stringSetup!.nutHeight, 9);
     expect(Math.min(...nut.map(c => c[1]))).toBe(0);
 
     const lines = drawn.elements.filter(el => el.tag === 'line' && el.attrs['stroke'] === 'neckOff').map(el => el.attrs);
