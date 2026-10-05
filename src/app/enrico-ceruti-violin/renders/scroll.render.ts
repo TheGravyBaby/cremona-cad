@@ -1,6 +1,6 @@
 import { arcReach, dist, normalizeRadians, pointOnCircle, TURN } from '../../helpers/math/simpleGeometry';
 import { occludePath, pathFromLine, pathFromPolygon, pathFromPolyline } from '../../helpers/math/pathMath';
-import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderCrosshair, renderDashLine, mixColors, renderPath, renderPointHalo, renderPolygon, renderSegment, renderSegmentHalo } from '../../helpers/renderFuncs';
+import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderCrosshair, renderDashLine, renderPath, renderPointHalo, renderPolygon, renderSegment, renderSegmentHalo } from '../../helpers/renderFuncs';
 import { Arc, Pt, Pt3D } from '../../models/types';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, ScrollParams } from '../ceruti-types';
 import { duckTailRadius, pegboxCavity, pegboxTaperStart, pegboxWidth, scrollPathStretches, ScrollFailure, ScrollKey, scrollExtent, scrollFrontWidths, scrollLines, scrollNeckHalfWidth, ScrollStationKey, scrollWidthStations, TO_FRONT } from '../ceruti-scroll';
@@ -129,14 +129,14 @@ export const renderScroll = (
   solved('frontStraight') && line(lines.frontStraight, colors.scrollFront);
 };
 
-const STATION_ORDER: ScrollStationKey[] = ['nut', 'straight', 'throat', 'crown', 'turn1Bottom', 'turn2Top', 'turn2Bottom', 'eye'];
-
-// a width's colour on canvas and in its field, from the nut in to the eye
+// a width's colour on canvas and in its field
 export function stationColor(colors: CerutiColors, key: ScrollStationKey): string {
-  const t = STATION_ORDER.indexOf(key) / (STATION_ORDER.length - 1);
-  return t < 0.5
-    ? mixColors(colors.scrollPathStart, colors.scrollPathMid, t * 2)
-    : mixColors(colors.scrollPathMid, colors.scrollPathEnd, t * 2 - 1);
+  const inks: Record<ScrollStationKey, string> = {
+    nut: colors.scrollWidthNut, straight: colors.scrollWidthStraight, throat: colors.scrollWidthThroat,
+    crown: colors.scrollWidthCrown, turn1Bottom: colors.scrollWidthTurn1Bottom, turn2Top: colors.scrollWidthTurn2Top,
+    turn2Bottom: colors.scrollWidthTurn2Bottom, eye: colors.scrollWidthEye,
+  };
+  return inks[key];
 }
 
 // a stretch of the path only rises or only falls, so a height cuts it once: the part at or above
