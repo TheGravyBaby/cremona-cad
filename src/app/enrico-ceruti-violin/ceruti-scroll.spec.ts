@@ -1,6 +1,6 @@
-import { calculateScroll, calculateScrollWidths, defaultVoluteParams, PATH_SECTIONS, scrollFrontWidths, ScrollKey, scrollLines, spiralArcs, TO_FRONT, VoluteSpec, VOLUTE_STYLE_LABELS } from './ceruti-scroll';
+import { calculateScroll, calculateScrollWidths, defaultVoluteParams, duckTailRadius, PATH_SECTIONS, scrollFrontWidths, ScrollKey, scrollLines, scrollNeckHalfWidth, spiralArcs, TO_FRONT, VoluteSpec, VOLUTE_STYLE_LABELS } from './ceruti-scroll';
 import { scrollWidthLedges, voluteConstruction } from './renders/scroll.render';
-import { defaultNeckParams, standardNutLength } from './ceruti-neck';
+import { defaultNeckParams, defaultStringSetup } from './ceruti-neck';
 import { defaultViolin } from './ceruti-fixtures';
 import { EnricoCerutiParams, ScrollParams, VoluteStyle } from './ceruti-types';
 import { angleWithinSweep, dist, normalizeRadians } from '../helpers/math/simpleGeometry';
@@ -21,6 +21,7 @@ const arc = (r: number, start: number, end: number) => new Arc(0, 0, r, start, e
 const scrolled = (style: VoluteStyle, eyeRadius: number, over: Partial<ScrollParams> = {}, radii?: number[]) => {
   const p = defaultViolin();
   p.neck = defaultNeckParams(p);
+  p.stringSetup = defaultStringSetup(p);
   p.neck.thickness = 0;
   p.scroll = { ...defaultVoluteParams(p), ...spec(style, eyeRadius, radii), flushWithNeck: true, ...over };
   p.scroll.eye = new Circle(p.scroll.eye.x, over.eye?.y ?? EYE_Y, eyeRadius);
@@ -174,7 +175,7 @@ describe.each(STYLES)('the %s volute', style => {
   // the panel's default proportions, up from the top of the nut to the spiral's bottom
   const withFront = (p: EnricoCerutiParams) => {
     const v = p.scroll!;
-    const rise = Math.min(...v.spiral!.map(a => a.y - a.r)) - standardNutLength(p.height);
+    const rise = Math.min(...v.spiral!.map(a => a.y - a.r)) - p.stringSetup!.nutHeight;
     v.flat = 0.45 * rise;
     v.F0 = arc(0.4 * rise, 0, Math.PI / 6);
     v.frontStraight = 0.3 * rise;
@@ -184,7 +185,7 @@ describe.each(STYLES)('the %s volute', style => {
 
   it('runs the front up from the nut, F0 turning back, the straight on, and F1 curving up into the spiral', () => {
     const { p, v } = scrolled(style, 4, BACK);
-    const nutTop = standardNutLength(p.height);
+    const nutTop = p.stringSetup!.nutHeight;
     const rise = withFront(p);
     expect(unsolved(p).filter(k => k !== 'nape')).toEqual([]);
     const [f0, f1] = [v.F0, v.F1];
@@ -288,6 +289,7 @@ describe('the default scroll', () => {
   it('solves whole, nothing unsolved, from the neck\'s own thickness', () => {
     const p = defaultViolin();
     p.neck = defaultNeckParams(p);
+    p.stringSetup = defaultStringSetup(p);
     expect(unsolved(p)).toEqual([]);
     const v = p.scroll!;
     expect(v.spiral).toHaveLength(TO_FRONT);
@@ -308,7 +310,7 @@ describe.each(STYLES)('the scroll widths with a %s volute', style => {
     const p = widths();
     const v = p.scroll!;
     expect(v.pathWidths).toHaveLength(PATH_SECTIONS + 1);
-    expect(v.pathWidths[0].y).toBeCloseTo(at(v.S3, v.S3.start)[1] + v.duckTailRadius!, 6);
+    expect(v.pathWidths[0].y).toBeCloseTo(at(v.S3, v.S3.start)[1] + duckTailRadius(p), 6);
     expect(v.pathWidths.at(-1)!.z).toBeCloseTo(v.eye.x + v.eye.r, 6);
     expect(v.pathWidths.at(-1)!.y).toBeCloseTo(v.eye.y, 6);
   });
@@ -334,7 +336,7 @@ describe.each(STYLES)('the scroll widths with a %s volute', style => {
     const p = widths();
     const front = scrollFrontWidths(p);
     expect(front[0].z).toBeCloseTo(0, 9);
-    expect(front[0].y).toBeCloseTo(standardNutLength(p.height), 9);
+    expect(front[0].y).toBeCloseTo(p.stringSetup!.nutHeight, 9);
     const [x, y] = at(p.scroll!.F1, p.scroll!.F1.start);
     expect(front.at(-1)!.z).toBeCloseTo(x, 6);
     expect(front.at(-1)!.y).toBeCloseTo(y, 6);
@@ -345,10 +347,11 @@ describe('the scroll widths', () => {
   it('keeps the widths the user set as the scroll moves under them', () => {
     const p = defaultViolin();
     p.neck = defaultNeckParams(p);
+    p.stringSetup = defaultStringSetup(p);
     calculateScroll(p);
     calculateScrollWidths(p);
     const v = p.scroll!;
-    expect(v.pathWidths.every(pt => pt.x === 12)).toBe(true);
+    expect(v.pathWidths.every(pt => pt.x === p.stringSetup!.nutWidth / 2)).toBe(true);
     v.pathWidths[3].x = 9;
     const { y, z } = v.pathWidths[3];
     v.S2.r += 5;
@@ -361,44 +364,45 @@ describe('the scroll widths', () => {
   it('keeps the front down to the nut, the nape hung below the nut or not', () => {
     const p = defaultViolin();
     p.neck = defaultNeckParams(p);
+    p.stringSetup = defaultStringSetup(p);
     calculateScroll(p);
     const v = p.scroll!;
     for (const drop of [0, 8]) {
       v.eye = new Circle(v.eye.x, v.eye.y - drop, v.eye.r);
       expect(calculateScroll(p)).toEqual([]);
       calculateScrollWidths(p);
-      expect(scrollFrontWidths(p)[0].y).toBeCloseTo(standardNutLength(p.height), 6);
+      expect(scrollFrontWidths(p)[0].y).toBeCloseTo(p.stringSetup!.nutHeight, 6);
     }
     expect(v.nape.y + v.nape.r).toBeLessThan(0);
   });
 
-  it('rounds the duck tail as wide as the path starts unless set narrower, never wider, the path starting at its top', () => {
+  it('starts the path at half the nut\'s width, at the top of a duck tail round as wide as the neck there', () => {
     const p = defaultViolin();
     p.neck = defaultNeckParams(p);
+    p.stringSetup = defaultStringSetup(p);
     calculateScroll(p);
     calculateScrollWidths(p);
     const v = p.scroll!;
     const duckTail = at(v.S3, v.S3.start)[1];
-    const startsAtTop = () => expect(v.pathWidths[0].y).toBeCloseTo(duckTail + v.duckTailRadius!, 6);
-    expect(v.duckTailRadius).toBe(12);
+    const startsAtTop = () => expect(v.pathWidths[0].y).toBeCloseTo(duckTail + duckTailRadius(p), 6);
+    expect(v.pathWidths[0].x).toBe(p.stringSetup!.nutWidth / 2);
+    // the default duck tail sits on the nut line, where the neck is its top width
+    expect(duckTailRadius(p)).toBeCloseTo(p.neck!.topWidth / 2, 2);
     startsAtTop();
-    v.duckTailRadius = 6;
+    // the nut sets the path's start and the neck the round, each on its own
+    p.stringSetup!.nutWidth = 30;
+    p.neck!.topWidth = 20;
     calculateScrollWidths(p);
-    expect(v.duckTailRadius).toBe(6);
-    startsAtTop();
-    v.pathWidths[0].x = 5;
-    calculateScrollWidths(p);
-    expect(v.duckTailRadius).toBe(5);
-    startsAtTop();
-    v.duckTailRadius = -1;
-    calculateScrollWidths(p);
-    expect(v.duckTailRadius).toBe(0);
+    expect(v.pathWidths[0].x).toBe(15);
+    expect(duckTailRadius(p)).toBeCloseTo(scrollNeckHalfWidth(p, duckTail), 9);
+    expect(duckTailRadius(p)).toBeCloseTo(10, 2);
     startsAtTop();
   });
 
   it('gives the front the width of the pegbox\'s back where the volute wraps over it', () => {
     const p = defaultViolin();
     p.neck = defaultNeckParams(p);
+    p.stringSetup = defaultStringSetup(p);
     calculateScroll(p);
     calculateScrollWidths(p);
     const v = p.scroll!;

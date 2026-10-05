@@ -3,7 +3,7 @@ import { circleCircleIntersections } from '../helpers/math/draftMath';
 import { reportFailures, SolveFailure, solveSection } from '../helpers/validators';
 import { Arc, Circle, Pt, Pt3D } from '../models/types';
 import { EnricoCerutiParams, ScrollParams, VoluteStyle } from './ceruti-types';
-import { defaultNeckParams, standardNutLength } from './ceruti-neck';
+import { defaultNeckParams, defaultStringSetup } from './ceruti-neck';
 
 // The scroll in its own side-view frame: the nut at the origin on the neck's front, up the neck +y,
 // toward the back -x. calculateScroll writes every arc onto `p.volute` for scroll.render.ts to read.
@@ -223,16 +223,16 @@ export function defaultVoluteParams(p: EnricoCerutiParams): ScrollParams {
     frontStraight: mm(18),
 
     pathWidths: [],
-    duckTailRadius: null,
   };
 
-  calculateScroll({ ...p, neck: p.neck ?? defaultNeckParams(p), scroll: v });
+  let stringSetup = p.stringSetup ?? defaultStringSetup(p);
+  calculateScroll({ ...p, neck: p.neck ?? defaultNeckParams(p), stringSetup, scroll: v });
   v.F0 = new Arc(0, 0, Math.round(-v.S3.x), 0, v.F0.end);
-  v.flat = Math.round(v.S3.y - standardNutLength(p.height));
+  v.flat = Math.round(v.S3.y - stringSetup.nutHeight);
   return v;
 }
 
-// `p.neck` must already be in place — the panel seeds it
+// `p.neck` and `p.stringSetup` must already be in place — the panel seeds them
 export function calculateScroll(p: EnricoCerutiParams): ScrollFailure[] {
   p.scroll ??= defaultVoluteParams(p);
   let v = p.scroll;
@@ -242,7 +242,7 @@ export function calculateScroll(p: EnricoCerutiParams): ScrollFailure[] {
     v.arcRadii = kellyArcs(v.eye.r, v.seedLength).reverse().map(a => Math.round(a.r * 100) / 100);
 
   let neckBack = -p.neck!.thickness;
-  let nutTop = new Pt(0, standardNutLength(p.height));
+  let nutTop = new Pt(0, p.stringSetup!.nutHeight);
 
   v.spiral = null;
 
@@ -378,7 +378,7 @@ export function calculateScroll(p: EnricoCerutiParams): ScrollFailure[] {
 // the lines aren't stored: each runs between stored arcs, so the render reads them off here
 export function scrollLines(p: EnricoCerutiParams): Record<ScrollLine, [Pt, Pt]> {
   let v = p.scroll!;
-  let nutTop = new Pt(0, standardNutLength(p.height));
+  let nutTop = new Pt(0, p.stringSetup!.nutHeight);
   let backTop = pointOnCircle(v.S2, v.S2.end);
   let frontTop = pointOnCircle(v.F0, v.F0.end);
   return {
@@ -392,18 +392,33 @@ export function scrollLines(p: EnricoCerutiParams): Record<ScrollLine, [Pt, Pt]>
 // the path's heights and depths, off a scroll calculateScroll solved whole: from the top of the duck
 // tail's round, over the crown and round the spiral in to the eye, cut into equal lengths with both
 // ends kept.
-// The user's x carries over. The round can be no wider than the path where it starts; narrower
-// leaves a shoulder
+// The user's x carries over. Where the nut and the neck differ in width, the duck tail's round and
+// the path's start differ too, leaving a shoulder
 export function calculateScrollWidths(p: EnricoCerutiParams): void {
   let v = p.scroll!;
-  let width = Math.round(12 * p.height / 350);
-  let start = v.pathWidths?.[0]?.x ?? width;
-  v.duckTailRadius = Math.min(Math.max(v.duckTailRadius ?? start, 0), start);
+  // the path starts as wide as the nut, which the front view carries on down to, and a point
+  // nobody has set yet takes the same width
+  let start = p.stringSetup!.nutWidth / 2;
   let path = scrollPath(p);
   v.pathWidths = Array.from({ length: PATH_SECTIONS + 1 }, (_, k) => {
     let pt = path.at(path.length * k / PATH_SECTIONS);
-    return new Pt3D(v.pathWidths?.[k]?.x ?? width, pt.y, pt.x);
+    return new Pt3D(k === 0 ? start : v.pathWidths?.[k]?.x ?? start, pt.y, pt.x);
   });
+}
+
+// the neck's half-width at y along it, in this frame. The taper is read off the authored widths over
+// the neck's length rather than neckHalfWidthAt, which needs the neck solved against the body; over
+// a scroll's reach the two differ by hundredths of a mm
+export function scrollNeckHalfWidth(p: EnricoCerutiParams, y: number): number {
+  let nk = p.neck!;
+  return (nk.topWidth - (nk.rootWidth - nk.topWidth) * y / nk.length) / 2;
+}
+
+// seen from behind the scroll's back starts in a round at the duck tail, the neck's back carried
+// on round, so as wide as the neck is there
+export function duckTailRadius(p: EnricoCerutiParams): number {
+  let v = p.scroll!;
+  return scrollNeckHalfWidth(p, pointOnCircle(v.S3, v.S3.start).y);
 }
 
 // the front from the nut up to where F1 meets the spiral, a point a millimetre or so apart. Its
@@ -474,7 +489,7 @@ function scrollPath(p: EnricoCerutiParams): Run {
   ]);
 
   // the path starts where the back first rises to the top of the duck tail's round
-  let top = whole.at(0).y + (v.duckTailRadius ?? 0);
+  let top = whole.at(0).y + duckTailRadius(p);
   let below = (s: number) => whole.at(s).y < top;
   let hi = 0;
   while (hi < whole.length && below(hi)) hi = Math.min(hi + 0.5, whole.length);

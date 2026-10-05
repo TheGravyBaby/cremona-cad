@@ -498,7 +498,9 @@
     "stringSetup": {
       "bodyStop": 196.5,
       "bridgeHeight": 33,
-      "nutHeight": 7.5,
+      "nutThickness": 7.5,
+      "nutHeight": 6,
+      "nutWidth": 24,
       "fingerboardLength": 270,
       "fingerboardThickness": 5,
       "fingerboardRadius": 42,

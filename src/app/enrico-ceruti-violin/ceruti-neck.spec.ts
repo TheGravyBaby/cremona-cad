@@ -29,7 +29,7 @@ const dist = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.y - b.y);
 const normalOf = (s: NeckParams) => vectorFromSlope(s.angle);
 const directionOf = (s: NeckParams) => vectorFromSlope(s.angle + Math.PI / 2);
 const sagitta = (r: number, width: number) => r - Math.sqrt(r * r - (width / 2) ** 2);
-const nutTopOf = (p: EnricoCerutiParams) => moveInVectorSpace(p.neck!.neckTop!, [{ ...normalOf(p.neck!), mag: p.stringSetup!.nutHeight }]);
+const nutTopOf = (p: EnricoCerutiParams) => moveInVectorSpace(p.neck!.neckTop!, [{ ...normalOf(p.neck!), mag: p.stringSetup!.nutThickness }]);
 
 describe('the nut', () => {
   it('sits `length` mm from heelBottom, along the back, not from the root', () => {
@@ -61,7 +61,7 @@ describe('the nut', () => {
     const s = solve(p);
     expect(dist(p.stringSetup!.nutTop!, nutTopOf(p))).toBeLessThan(1e-9);
     expect(stringLength(p)).toBeCloseTo(dist(nutTopOf(p), p.stringSetup!.bridgeTop!), 9);
-    expect(dist(nutTopOf(p), s.neckTop!)).toBeCloseTo(p.stringSetup!.nutHeight, 9);
+    expect(dist(nutTopOf(p), s.neckTop!)).toBeCloseTo(p.stringSetup!.nutThickness, 9);
   });
 
   it('stands the default nut clear of the crown, and reports a nut set below it', () => {
@@ -69,8 +69,8 @@ describe('the nut', () => {
     const gouge = (p.arching!.top.fluting ??= defaultFlutingParams(p));
     const run = () => calculateNeck(p, solveLongArch(p, p.arching!.top.arch, gouge), gouge);
     expect(run()).toEqual([]);
-    p.stringSetup!.nutHeight = p.stringSetup!.fingerboardThickness;
-    expect(run().map(f => f.unsolved)).toEqual([['nutHeight']]);
+    p.stringSetup!.nutThickness = p.stringSetup!.fingerboardThickness;
+    expect(run().map(f => f.unsolved)).toEqual([['nutThickness']]);
   });
 
   it('reports a fingerboard radius no larger than the board\'s widest point', () => {
@@ -202,7 +202,7 @@ describe('the neck wood', () => {
     const thin = neckedViolin();
     const thick = neckedViolin();
     thick.stringSetup!.fingerboardThickness += 3;
-    thick.stringSetup!.nutHeight += 3;
+    thick.stringSetup!.nutThickness += 3;
     for (const [p, s] of [[thin, solve(thin)], [thick, solve(thick)]] as const) {
       // the back sits the entered thickness under the fingerboard plane at both ends
       const normal = normalOf(s);
@@ -280,6 +280,6 @@ describe('the drawn shapes', () => {
     const p = neckedViolin();
     const s = solve(p);
     expect(Object.keys(s).sort()).toEqual(['angle', 'backNut', 'backRoot', 'heel', 'length', 'mortiseDepth', 'neckTop', 'overstand', 'root', 'rootWidth', 'thickness', 'topWidth']);
-    expect(Object.keys(p.stringSetup!).sort()).toEqual(['bodyStop', 'bridgeFoot', 'bridgeHeight', 'bridgeTop', 'fingerboardLength', 'fingerboardRadius', 'fingerboardThickness', 'nutHeight', 'nutTop']);
+    expect(Object.keys(p.stringSetup!).sort()).toEqual(['bodyStop', 'bridgeFoot', 'bridgeHeight', 'bridgeTop', 'fingerboardLength', 'fingerboardRadius', 'fingerboardThickness', 'nutHeight', 'nutThickness', 'nutTop', 'nutWidth']);
   });
 });

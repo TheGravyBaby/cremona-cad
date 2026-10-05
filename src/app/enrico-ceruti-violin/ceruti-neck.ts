@@ -48,7 +48,9 @@ export function defaultStringSetup(p: EnricoCerutiParams): StringSetup {
   return {
     bodyStop: mm(195),
     bridgeHeight: mm(33),
-    nutHeight: mm(7.5),
+    nutThickness: mm(7.5),
+    nutHeight: mm(6),
+    nutWidth: mm(24),
     fingerboardLength: standardFingerboardLength(p.height),
     fingerboardThickness: mm(5),
     fingerboardRadius: mm(42),
@@ -66,13 +68,9 @@ function standardFingerboardLength(bodyHeight: number): number {
   return 850;
 }
 
-// the nut's span along the neck, scaled from the violin's 6 mm by body length
-export function standardNutLength(bodyHeight: number): number {
-  return 6 * bodyHeight / REFERENCE_BODY_HEIGHT;
-}
 
 // `p.arching`, `p.neck`, `p.stringSetup` and `p.button` must already be in place — the panel seeds them
-export function calculateNeck(p: EnricoCerutiParams, topArch: LongArchSolve | null, topGouge: FlutingParams): SolveFailure<'nutHeight' | 'fingerboardRadius'>[] {
+export function calculateNeck(p: EnricoCerutiParams, topArch: LongArchSolve | null, topGouge: FlutingParams): SolveFailure<'nutThickness' | 'fingerboardRadius'>[] {
   const nk = p.neck!;
   const ss = p.stringSetup!;
   const taper = solveRibTaper(p);
@@ -113,9 +111,9 @@ export function calculateNeck(p: EnricoCerutiParams, topArch: LongArchSolve | nu
   nk.heel = calculateHeel(backRoot, backNut, tip, nk.heel.r) ?? nk.heel;
   ss.bridgeFoot = bridgeFoot;
   ss.bridgeTop = bridgeTop;
-  ss.nutTop = moveInVectorSpace(neckTop, [{ ...normal, mag: ss.nutHeight }]);
+  ss.nutTop = moveInVectorSpace(neckTop, [{ ...normal, mag: ss.nutThickness }]);
 
-  const failures: SolveFailure<'nutHeight' | 'fingerboardRadius'>[] = [];
+  const failures: SolveFailure<'nutThickness' | 'fingerboardRadius'>[] = [];
   const fbEnd = fingerboardEnd(p);
   const widest = 2 * neckHalfWidthAt(p, fbEnd.y);
   if (ss.fingerboardRadius <= widest) failures.push({
@@ -124,9 +122,9 @@ export function calculateNeck(p: EnricoCerutiParams, topArch: LongArchSolve | nu
     points: [moveInVectorSpace(fbEnd, [{ ...normal, mag: ss.fingerboardThickness }])],
   });
   const crownAtNut = ss.fingerboardThickness + fingerboardCrown(p, neckTop.y);
-  if (ss.nutHeight < crownAtNut) failures.push({
+  if (ss.nutThickness < crownAtNut) failures.push({
     message: `The nut stands below the fingerboard's crown, which is ${crownAtNut.toFixed(1)} mm off the neck at the nut.`,
-    unsolved: ['nutHeight'], circles: [], segments: [],
+    unsolved: ['nutThickness'], circles: [], segments: [],
     points: [moveInVectorSpace(neckTop, [{ ...normal, mag: crownAtNut }])],
   });
   reportFailures(failures, 'String Setup');

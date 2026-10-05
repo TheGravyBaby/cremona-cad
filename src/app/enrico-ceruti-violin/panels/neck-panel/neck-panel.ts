@@ -5,7 +5,7 @@ import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, FlutingParams, NeckP
 import { defaultArchingParams } from '../../ceruti-arching';
 import { defaultFlutingParams, LongArchSolve, solveLongArch } from '../../ceruti-arch-geometry';
 import { calculateOuterArcs, ensureFholePath, ensureNeckPath, ensureOuterTracePaths, getPath, getPathOrNull } from '../../ceruti-calcs';
-import { bridgeWedge, buttonTip, calculateNeck, defaultNeckParams, defaultStringSetup, fingerboardCrown, fingerboardEnd, frontViewAxisX, mortiseFingerboardIntersect, neckHalfWidthAt, heelBottom, heelFace, heelStands, mortiseFloorY, plateEdgeAtNeck, standardNutLength, stringLength } from '../../ceruti-neck';
+import { bridgeWedge, buttonTip, calculateNeck, defaultNeckParams, defaultStringSetup, fingerboardCrown, fingerboardEnd, frontViewAxisX, mortiseFingerboardIntersect, neckHalfWidthAt, heelBottom, heelFace, heelStands, mortiseFloorY, plateEdgeAtNeck, stringLength } from '../../ceruti-neck';
 import { renderBodySection } from '../../renders/body-section.render';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
@@ -127,8 +127,8 @@ export function renderNeck(p: EnricoCerutiParams, colors: CerutiColors, showGuid
     }
 
     // the nut, on the fingerboard plane just past the board
-    const nutFar = moveInVectorSpace(nk.neckTop!, [{ ...direction, mag: standardNutLength(p.height) }]);
-    const nutFarTop = moveInVectorSpace(nutFar, [{ ...normal, mag: ss.nutHeight }]);
+    const nutFar = moveInVectorSpace(nk.neckTop!, [{ ...direction, mag: ss.nutHeight }]);
+    const nutFarTop = moveInVectorSpace(nutFar, [{ ...normal, mag: ss.nutThickness }]);
     renderPolygon([nk.neckTop!, nutFar, nutFarTop, nutTop], colors.nut, STROKE_WEIGHT.section)(g, ui);
 
     // the neck itself: nut-end wall, the back, and the heel down to the button
@@ -156,7 +156,7 @@ export function renderNeck(p: EnricoCerutiParams, colors: CerutiColors, showGuid
     renderGuideMeasure(new Pt(mortFboard.x, rootPlaneY), mortFboard, guide, 2 * nk.thickness)(g, ui);
     // the neck's own length runs along the back, heelBottom to backNut — not root to nut, which
     // sits off that line by the neck's thickness (see `length`'s header)
-    renderGuideMeasure(heelBottom(p), nk.backNut!, guide, -2 * (nk.thickness + ss.nutHeight))(g, ui);
+    renderGuideMeasure(heelBottom(p), nk.backNut!, guide, -2 * (nk.thickness + ss.nutThickness))(g, ui);
   };
 }
 
@@ -214,10 +214,11 @@ function renderFrontView(p: EnricoCerutiParams, paths: PathEntry[], colors: Ceru
       renderPolygon(neck, colors.neckRoot, STROKE_WEIGHT.section)(shifted.g, shifted.ui);
     }
 
-    const nutY = moveInVectorSpace(nk.neckTop!, [{ ...vectorFromSlope(nk.angle + Math.PI / 2), mag: standardNutLength(p.height) }]).y;
+    const { nutHeight, nutWidth } = p.stringSetup!;
+    const nutY = moveInVectorSpace(nk.neckTop!, [{ ...vectorFromSlope(nk.angle + Math.PI / 2), mag: nutHeight }]).y;
     renderPolygon([
-      new Pt(-nk.topWidth / 2, topY), new Pt(nk.topWidth / 2, topY),
-      new Pt(nk.topWidth / 2, nutY), new Pt(-nk.topWidth / 2, nutY),
+      new Pt(-nutWidth / 2, topY), new Pt(nutWidth / 2, topY),
+      new Pt(nutWidth / 2, nutY), new Pt(-nutWidth / 2, nutY),
     ], colors.nut, STROKE_WEIGHT.section)(shifted.g, shifted.ui);
   };
 }
