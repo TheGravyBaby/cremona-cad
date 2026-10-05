@@ -15,7 +15,7 @@ import { NeckPanel } from './neck-panel/neck-panel';
 import { OuterTracePanel } from './outer-trace-panel/outer-trace-panel';
 import { ScrollPanel } from './scroll-panel/scroll-panel';
 import { ScrollWidthsPanel } from './scroll-widths-panel/scroll-widths-panel';
-import { duckTailRadius, scrollExtent, spiralArcs as styleArcs, VOLUTE_STYLE_LABELS } from '../ceruti-scroll';
+import { duckTailRadius, scrollBackWidths, scrollExtent, scrollWidthStations, spiralArcs as styleArcs, VOLUTE_STYLE_LABELS } from '../ceruti-scroll';
 import { VolutePanel } from './volute-panel/volute-panel';
 import { VoluteStyle } from '../ceruti-types';
 import { Circle, Pt } from '../../models/types';
@@ -617,12 +617,12 @@ describe('the scroll widths panel', () => {
     instance.buildRun();
     const halos = () => recordLayers(instance.buildRun()).elements.filter(el => el.tag === 'circle' && el.attrs['opacity'] === 0.33);
     expect(halos()).toEqual([]);
-    instance.onPointFocus(4);
-    const v = instance.params.scroll!;
+    instance.onPointFocus('turn2Top');
+    const station = scrollWidthStations(instance.params).find(st => st.key === 'turn2Top')!;
     const marked = halos();
     expect(marked).toHaveLength(5);
-    expect(marked.every(el => el.attrs['cy'] === v.pathWidths[4].y)).toBe(true);
-    expect(marked[0].attrs['cx']).toBe(v.pathWidths[4].z);
+    expect(marked.every(el => el.attrs['cy'] === station.at.y)).toBe(true);
+    expect(marked[0].attrs['cx']).toBe(station.at.x);
     instance.onPointBlur();
     expect(halos()).toEqual([]);
   });
@@ -633,7 +633,7 @@ describe('the scroll widths panel', () => {
     const p = instance.params;
     const v = p.scroll!;
     const levelAtStart = (length: number) => recordLayers(instance.buildRun()).elements.filter(el => {
-      const start = v.pathWidths[0];
+      const start = scrollBackWidths(p)[0];
       return el.tag === 'line' && el.attrs['y1'] === start.y && el.attrs['y2'] === start.y
         && Math.abs(Math.abs((el.attrs['x1'] as number) - (el.attrs['x2'] as number)) - length) < 1e-9;
     });
@@ -650,12 +650,12 @@ describe('the scroll widths panel', () => {
     const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
     instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
     instance.buildRun();
-    const v = instance.params.scroll!;
+    const p = instance.params;
     // the nut's corners cut the closing where it crosses them, and walls narrower than the nut pass
     // behind it, so only the level run at the end is read
     const closings = () => recordLayers(instance.buildRun()).elements.filter(el =>
       el.tag === 'path' && el.attrs['stroke'] === 'archTop' && /^M [^-]/.test(el.attrs['d'] as string) && / \S+ 0 L \S+ 0$/.test(el.attrs['d'] as string));
-    expect(v.pathWidths[0].y).toBeGreaterThan(0);
+    expect(scrollBackWidths(p)[0].y).toBeGreaterThan(0);
     expect(closings()).toHaveLength(2);
     instance.params.neck!.topWidth -= 10;
     expect(closings()).toHaveLength(2);
@@ -669,14 +669,23 @@ describe('the scroll widths panel', () => {
     // the back view stands left of the side view, the front view right of it
     const fromBehind = () => recordLayers(instance.buildRun()).elements.filter(el =>
       el.attrs['stroke'] === 'archTop' && /^M -/.test(el.attrs['d'] as string));
-    expect(v.pathWidths[0].y).toBeGreaterThan(0);
+    const p = instance.params;
+    const start = scrollBackWidths(p)[0].y;
+    expect(start).toBeGreaterThan(0);
     const walls = fromBehind();
     expect(walls).toHaveLength(2);
-    for (const el of walls) expect(el.attrs['d']).toMatch(new RegExp(`^M \\S+ ${v.pathWidths[0].y} L \\S+ 0$`));
+    for (const el of walls) expect(el.attrs['d']).toMatch(new RegExp(`^M \\S+ ${start} L \\S+ 0$`));
+
+    // a straight too short to clear the round: down the taper to the straight's end, then square to the foot
+    v.pegboxStraight = 2;
+    const tapered = fromBehind();
+    expect(tapered).toHaveLength(2);
+    for (const el of tapered) expect(el.attrs['d']).toMatch(new RegExp(`^M \\S+ ${start} L \\S+ ${p.stringSetup!.nutHeight + 2} L \\S+ 0$`));
+    v.pegboxStraight = 8;
 
     v.eye = new Circle(v.eye.x, v.eye.y - 15, v.eye.r);
     instance.buildRun();
-    expect(v.pathWidths[0].y).toBeLessThanOrEqual(0);
+    expect(scrollBackWidths(p)[0].y).toBeLessThanOrEqual(0);
     expect(fromBehind()).toEqual([]);
   });
 
@@ -745,7 +754,7 @@ describe('the scroll widths panel', () => {
     const lowered = recordLayers(instance.buildRun()).elements
       .filter(el => el.tag === 'path' && el.attrs['stroke'] === 'neckOff').map(el => points(el.attrs['d'] as string))
       .filter(s => s[0].x < 0);
-    const { y } = p.scroll!.pathWidths[0];
+    const { y } = scrollBackWidths(p)[0];
     expect(y).toBeLessThanOrEqual(0);
     // on the round as drawn, a polyline a hundredth or so inside the true circle
     for (const [, top] of lowered) expect(Math.hypot(top.x - center(lowered), top.y - y)).toBeCloseTo(duckTailRadius(p), 1);

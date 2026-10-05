@@ -3,9 +3,9 @@ import { FormsModule } from '@angular/forms';
 import { renderPath, renderSolveFailures } from '../../../helpers/renderFuncs';
 import { CerutiColors, EnricoCerutiParams, RenderToggleKey } from '../../ceruti-types';
 import { defaultNeckParams, defaultStringSetup } from '../../ceruti-neck';
-import { calculateScroll, calculateScrollWidths } from '../../ceruti-scroll';
+import { calculateScroll, calculateScrollWidths, ScrollStationKey } from '../../ceruti-scroll';
 import { defineSideScrollPath } from '../../ceruti-paths';
-import { pathPointColor, renderScrollNeck, renderScrollWidths } from '../../renders/scroll.render';
+import { renderScrollNeck, renderScrollWidths, stationColor } from '../../renders/scroll.render';
 import { STROKE_WEIGHT } from '../../renders/render-constants';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
@@ -22,7 +22,7 @@ export class ScrollWidthsPanel extends CerutiPanelBase implements OnInit {
   @Input({ required: true }) params!: EnricoCerutiParams;
   @Input({ required: true }) colors!: CerutiColors;
 
-  private focused: number | null = null;
+  private focused: ScrollStationKey | null = null;
 
   ngOnInit(): void {
     this.emitImmediate();
@@ -32,8 +32,8 @@ export class ScrollWidthsPanel extends CerutiPanelBase implements OnInit {
     this.emitDebounced();
   }
 
-  onPointFocus(k: number): void {
-    this.focused = k;
+  onPointFocus(key: ScrollStationKey): void {
+    this.focused = key;
     this.emitImmediate();
   }
 
@@ -42,7 +42,7 @@ export class ScrollWidthsPanel extends CerutiPanelBase implements OnInit {
     this.emitImmediate();
   }
 
-  pointColor(k: number): string { return pathPointColor(this.colors, k, this.params.scroll!.pathWidths.length); }
+  pointColor(key: ScrollStationKey): string { return stationColor(this.colors, key); }
 
   public buildRun(): RenderLayer[] {
     const p = this.params;

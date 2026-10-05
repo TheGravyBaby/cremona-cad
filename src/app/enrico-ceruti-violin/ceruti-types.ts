@@ -1,4 +1,4 @@
-import { Arc, Circle, ReferenceImage, Pt, Pt3D, Rectangle, Vect2D } from "../models/types";
+import { Arc, Circle, ReferenceImage, Pt, Rectangle, Vect2D } from "../models/types";
 
 export interface EnricoCerutiParams {
   height: number;
@@ -254,6 +254,18 @@ export interface StringSetup {
 
 export type VoluteStyle = 'fourPoint' | 'archimedean' | 'serlio' | 'salviati' | 'goldmann' | 'kelly';
 
+// full widths, cheek to cheek. The pegbox tapers straight from the nut's width to `throat`, where F1
+// meets the spiral; the volute's run on a curve through the rest, each at a place the side view fixes
+export interface ScrollWidths {
+  throat: number;
+  crown: number;
+  turn1Bottom: number;
+  turn2Top: number;
+  turn2Bottom: number;
+  turn3Top: number;
+  eye: number;
+}
+
 export interface ScrollParams {
   style: VoluteStyle;
   eye: Circle;
@@ -275,9 +287,10 @@ export interface ScrollParams {
   flat: number;
   frontStraight: number;
 
-  // x is the half-width the user sets; y and z are the side view's y and x, which calculateScrollWidths
-  // reads off the path so the back and front views stand at the side view's heights
-  pathWidths: Pt3D[];
+  widths: ScrollWidths;
+  pegboxWall: number; // each cheek, at the pegbox's front edge
+  pegboxFloor: number; // the wood left between the hollow and the back
+  pegboxStraight: number; // above the nut's top, as wide as the nut, before the taper to the throat starts
 }
 
 /** Resolved palette from CerutiViolin's `colors` getter, threaded into every panel and render fn. */
