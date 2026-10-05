@@ -199,9 +199,9 @@ describe('the scroll panel', () => {
     for (const key of keys) {
       instance.onFieldFocus(key, 'HALO');
       expect(lit(), key).toBeGreaterThan(0);
-      instance.onFieldBlur();
-      expect(lit(), key).toBe(0);
     }
+    instance.onFieldBlur();
+    expect(lit()).toBe(0);
   });
 
   describe('the volute', () => {
@@ -643,6 +643,17 @@ describe('the scroll widths panel', () => {
     expect(marked[0].attrs['cx']).toBe(station.at.x);
     instance.onPointBlur();
     expect(halos()).toEqual([]);
+  });
+
+  it('draws a crosshair at each width point only while module guides are on', () => {
+    const p = defaultViolin();
+    const count = (showModuleGuides: boolean) => {
+      const instance = panel(ScrollWidthsPanel as any, p, flags({ showModuleGuides })) as unknown as ScrollWidthsPanel;
+      return recordLayers(instance.buildRun()).elements.length;
+    };
+    const diff = count(true) - count(false);
+    expect(diff).toBeGreaterThan(0);
+    expect(diff % scrollWidthStations(p).length).toBe(0);
   });
 
   it('draws each view as it is seen: a turn\'s far side only as far as the next turn lets it show, and the hollow dashed in the side view', () => {

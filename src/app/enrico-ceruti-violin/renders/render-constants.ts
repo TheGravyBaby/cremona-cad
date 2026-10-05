@@ -54,11 +54,16 @@ export const CERUTI_COLOR_PALETTE = {
   scrollNape: '#3d5fb0',
   scrollFront: '#e8952f',
   scrollFrontLight: '#f4be6a',
-  // the scroll widths' points from the nut's level in to the eye, cool to warm through green, so
-  // neighbours read apart and none is taken for the blue contour they sit on
-  scrollPathStart: '#3fa7c9',
-  scrollPathMid: '#7cc36a',
-  scrollPathEnd: '#e8b02f',
+  // the scroll widths' points from the nut in to the eye, a walk round the cool side violet to teal,
+  // deep and light in turn so neighbours differ in both hue and tone
+  scrollWidthNut: '#7a55c4',
+  scrollWidthStraight: '#a99af0',
+  scrollWidthThroat: '#4a5fd0',
+  scrollWidthCrown: '#8fb4f2',
+  scrollWidthTurn1Bottom: '#2a86c8',
+  scrollWidthTurn2Top: '#86d2ec',
+  scrollWidthTurn2Bottom: '#178f9a',
+  scrollWidthEye: '#7ad9c0',
   // the spiral a turn at a time from the eye out, its arcs alternating ivory and a darker tan, far
   // enough apart to follow one arc round in the four point's fields
   voluteTurn1: '#f2eadb',

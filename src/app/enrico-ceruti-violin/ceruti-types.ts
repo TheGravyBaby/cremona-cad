@@ -341,9 +341,14 @@ export interface CerutiColors {
   scrollNape: string;
   scrollFront: string;
   scrollFrontLight: string;
-  scrollPathStart: string;
-  scrollPathMid: string;
-  scrollPathEnd: string;
+  scrollWidthNut: string;
+  scrollWidthStraight: string;
+  scrollWidthThroat: string;
+  scrollWidthCrown: string;
+  scrollWidthTurn1Bottom: string;
+  scrollWidthTurn2Top: string;
+  scrollWidthTurn2Bottom: string;
+  scrollWidthEye: string;
   voluteTurn1: string;
   voluteTurn1Alt: string;
   voluteTurn2: string;
