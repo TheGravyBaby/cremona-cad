@@ -68,7 +68,8 @@ export const CERUTI_COLOR_PALETTE = {
   voluteTurn3: '#dacfbb',
   voluteTurn3Alt: '#9c7650',
   neckRoot: '#d2691e',
-  fingerboard: '#6f4d9a',
+  fingerboard: '#8a6cb8',
+  nut: '#6f4d9a',
   bridge: '#d9d2c0',
 } as const;
 

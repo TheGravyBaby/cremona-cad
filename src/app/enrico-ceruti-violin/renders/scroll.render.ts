@@ -38,7 +38,7 @@ export const renderScrollNeck = (p: EnricoCerutiParams, colors: CerutiColors, sh
   const nutLength = standardNutLength(p.height);
   const neckStub = 2 * thickness;
 
-  renderPolygon([new Pt(0, 0), new Pt(0, nutLength), new Pt(nutHeight, nutLength), new Pt(nutHeight, 0)], colors.fingerboard, STROKE_WEIGHT.section)(g, ui);
+  renderPolygon([new Pt(0, 0), new Pt(0, nutLength), new Pt(nutHeight, nutLength), new Pt(nutHeight, 0)], colors.nut, STROKE_WEIGHT.section)(g, ui);
   renderSegment(new Pt(0, -neckStub), new Pt(0, 0), colors.neckOff, STROKE_WEIGHT.section)(g, ui);
   renderSegment(new Pt(0, 0), new Pt(-thickness, 0), colors.neckOff, STROKE_WEIGHT.section)(g, ui);
   renderSegment(new Pt(-thickness, 0), new Pt(-thickness, -neckStub), colors.neckOff, STROKE_WEIGHT.section)(g, ui);

@@ -248,14 +248,19 @@ describe('the readouts', () => {
     expect(cello.angle).toBe(violin.angle);
   });
 
-  it('runs the fingerboard a standard length by instrument size, not an entered value', () => {
+  it('defaults the fingerboard to the standard length by instrument size, and runs it the entered length', () => {
     const sizes: [number, number][] = [[350, 270], [450, 310], [650, 580], [900, 850]];
     for (const [height, length] of sizes) {
       const p = neckedViolin();
       p.height = height;
+      p.stringSetup = defaultStringSetup(p);
       const s = solve(p);
       expect(dist(s.neckTop!, fingerboardEnd(p))).toBeCloseTo(length, 9);
     }
+    const p = neckedViolin();
+    p.stringSetup!.fingerboardLength = 255;
+    const s = solve(p);
+    expect(dist(s.neckTop!, fingerboardEnd(p))).toBeCloseTo(255, 9);
   });
 });
 
@@ -275,6 +280,6 @@ describe('the drawn shapes', () => {
     const p = neckedViolin();
     const s = solve(p);
     expect(Object.keys(s).sort()).toEqual(['angle', 'backNut', 'backRoot', 'heel', 'length', 'mortiseDepth', 'neckTop', 'overstand', 'root', 'rootWidth', 'thickness', 'topWidth']);
-    expect(Object.keys(p.stringSetup!).sort()).toEqual(['bodyStop', 'bridgeFoot', 'bridgeHeight', 'bridgeTop', 'fingerboardRadius', 'fingerboardThickness', 'nutHeight', 'nutTop']);
+    expect(Object.keys(p.stringSetup!).sort()).toEqual(['bodyStop', 'bridgeFoot', 'bridgeHeight', 'bridgeTop', 'fingerboardLength', 'fingerboardRadius', 'fingerboardThickness', 'nutHeight', 'nutTop']);
   });
 });

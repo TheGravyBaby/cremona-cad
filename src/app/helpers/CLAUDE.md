@@ -27,7 +27,9 @@ before it:
   `simpleGeometry` and `draftMath`.
 - **`pathMath.ts`** — building, combining and boolean-diffing SVG path *strings*. Sections:
   Path helpers, Path combinations, Arch curve path builders, Arch curve evaluators. Wraps
-  `polygon-clipping` and `svg-path-properties`. Imports from all three of the above.
+  `polygon-clipping` and `svg-path-properties`. Imports from all three of the above. The booleans
+  there treat paths as areas; `occludePath` treats its bottom path as a stroke, cutting it into
+  the parts a top path covers and doesn't, with arcs and cubics kept exact.
 
 If a function takes points and returns points, it belongs in one of the first three files, sorted
 by how far it is from hand-drafting. If it takes or returns a `d` string, it's `pathMath`.

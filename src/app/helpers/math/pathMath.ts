@@ -1,7 +1,7 @@
 import { Pt, Circle, Rectangle, Arc } from "../../models/types";
 import * as polygonClipping from 'polygon-clipping';
 import { svgPathProperties } from 'svg-path-properties';
-import { dist, angleFromCenter, normalizeRadians, TURN, pointOnCircle, intersectLines, lineCircleIntersection, lineFromTwoPoints, flipArcAboutY, flipPointAboutY, cubicBezierPoint, signedPolygonArea } from './simpleGeometry';
+import { dist, angleFromCenter, normalizeRadians, TURN, pointOnCircle, intersectLines, lineCircleIntersection, lineFromTwoPoints, flipArcAboutY, flipPointAboutY, cubicBezierPoint, signedPolygonArea, closestPointOnSegment, pointInPolygon } from './simpleGeometry';
 import { circleCircleIntersections } from './draftMath';
 import { solveCatenaryA, makeMonotoneSpline, battenBeziers } from './vibeMath';
 
@@ -796,6 +796,216 @@ export function differenceFromTwoPaths(path1: string, path2: string, distancePer
 
 export function intersectionFromTwoPaths(path1: string, path2: string): string {
   return booleanOpFromPaths(path1, [path2], 'intersection');
+}
+
+// `bottom` is a stroke, not an area: it is cut wherever it crosses `top`'s outline and each piece
+// sorted by whether `top` covers it, so unlike the booleans above nothing of `top`'s own outline
+// enters the result. `bottom`'s lines, arcs and cubics come back exact; `top`'s curves are
+// flattened to `stepMm`. Several `top` paths cover as their union, and subpaths within one cover
+// even-odd, so a ring leaves its hole uncovered. A piece lying along `top`'s edge stays visible.
+export function occludePath(bottom: string, top: string | string[], stepMm = 0.25): { visible: string; hidden: string } {
+  const covers = (Array.isArray(top) ? top : [top]).map(path =>
+    parseStrokeSubpaths(path).map(sub => flattenSubpath(sub, stepMm)).filter(poly => poly.length >= 3));
+  const edges = covers.flat().flatMap(poly => poly.map((q, i) => [q, poly[(i + 1) % poly.length]] as [Pt, Pt]));
+  const covered = (pt: Pt) =>
+    !edges.some(([a, b]) => closestPointOnSegment(pt, a, b).dist < 1e-7)
+    && covers.some(polys => polys.filter(poly => pointInPolygon(pt, poly)).length % 2 === 1);
+
+  const visible: string[] = [];
+  const hidden: string[] = [];
+  for (const sub of parseStrokeSubpaths(bottom)) {
+    type Run = { hidden: boolean; start: Pt; commands: string[] };
+    const runs: Run[] = [];
+    for (const seg of sub.segs) {
+      const ts = [0, ...edges.flatMap(([a, b]) => strokeSegCrossings(seg, a, b)), 1].sort((x, y) => x - y);
+      for (let i = 0; i + 1 < ts.length; i++) {
+        const [ta, tb] = [ts[i], ts[i + 1]];
+        if (tb - ta < 1e-9) continue;
+        const isHidden = covered(strokeSegAt(seg, (ta + tb) / 2));
+        const command = strokeSegCommand(seg, ta, tb);
+        const last = runs[runs.length - 1];
+        if (last && last.hidden === isHidden) last.commands.push(command);
+        else runs.push({ hidden: isHidden, start: strokeSegAt(seg, ta), commands: [command] });
+      }
+    }
+    // a closed loop's last run carries on through its start into the first
+    if (sub.closed && runs.length > 1 && runs[0].hidden === runs[runs.length - 1].hidden) {
+      const last = runs.pop()!;
+      runs[0] = { ...last, commands: [...last.commands, ...runs[0].commands] };
+    }
+    for (const run of runs) {
+      const close = sub.closed && runs.length === 1 ? ' Z' : '';
+      (run.hidden ? hidden : visible).push(`M ${run.start.x} ${run.start.y} ${run.commands.join(' ')}${close}`);
+    }
+  }
+  return { visible: visible.join(' '), hidden: hidden.join(' ') };
+}
+
+type StrokeSeg =
+  | { type: 'line'; p0: Pt; p1: Pt }
+  | { type: 'arc'; p0: Pt; p1: Pt; center: Pt; r: number; ccw: boolean; a0: number; span: number }
+  | { type: 'cubic'; p0: Pt; c1: Pt; c2: Pt; p1: Pt };
+type StrokeSubpath = { segs: StrokeSeg[]; closed: boolean };
+
+// absolute commands only, which is all this app's path builders emit
+function parseStrokeSubpaths(path: string): StrokeSubpath[] {
+  const subpaths: StrokeSubpath[] = [];
+  let current: Pt = { x: 0, y: 0 };
+  let start: Pt = current;
+  let open: StrokeSubpath | null = null;
+  const push = (seg: StrokeSeg) => {
+    if (!open) subpaths.push(open = { segs: [], closed: false });
+    open.segs.push(seg);
+    current = seg.p1;
+  };
+  const line = (p1: Pt) => push({ type: 'line', p0: current, p1 });
+
+  for (const command of path.trim().match(/[MLHVCSQTAZ][^MLHVCSQTAZ]*/gi) ?? []) {
+    const cmd = command[0];
+    const n = command.slice(1).trim().split(/[\s,]+/).filter(s => s.length > 0).map(Number);
+    if (cmd === 'M') {
+      open = null;
+      current = start = { x: n[0], y: n[1] };
+      for (let i = 2; i + 1 < n.length; i += 2) line({ x: n[i], y: n[i + 1] });
+    } else if (cmd === 'L') {
+      for (let i = 0; i + 1 < n.length; i += 2) line({ x: n[i], y: n[i + 1] });
+    } else if (cmd === 'H') {
+      for (const x of n) line({ x, y: current.y });
+    } else if (cmd === 'V') {
+      for (const y of n) line({ x: current.x, y });
+    } else if (cmd === 'C') {
+      for (let i = 0; i + 5 < n.length; i += 6) {
+        push({ type: 'cubic', p0: current, c1: { x: n[i], y: n[i + 1] }, c2: { x: n[i + 2], y: n[i + 3] }, p1: { x: n[i + 4], y: n[i + 5] } });
+      }
+    } else if (cmd === 'Q') {
+      // a quadratic is a cubic with its control point carried two thirds of the way to each end
+      for (let i = 0; i + 3 < n.length; i += 4) {
+        const q = { x: n[i], y: n[i + 1] };
+        const p1 = { x: n[i + 2], y: n[i + 3] };
+        const toward = (a: Pt) => ({ x: a.x + 2 / 3 * (q.x - a.x), y: a.y + 2 / 3 * (q.y - a.y) });
+        push({ type: 'cubic', p0: current, c1: toward(current), c2: toward(p1), p1 });
+      }
+    } else if (cmd === 'A') {
+      for (let i = 0; i + 6 < n.length; i += 7) {
+        const p1 = { x: n[i + 5], y: n[i + 6] };
+        const r = Math.max(n[i], dist(current, p1) / 2);
+        const ccw = n[i + 4] === 1;
+        const center = arcCenterFromEndpoints(current, p1, r, n[i + 3], n[i + 4]);
+        const a0 = angleFromCenter(center, current);
+        const a1 = angleFromCenter(center, p1);
+        push({ type: 'arc', p0: current, p1, center, r, ccw, a0, span: ccw ? normalizeRadians(a1 - a0) : normalizeRadians(a0 - a1) });
+      }
+    } else if (cmd === 'Z' || cmd === 'z') {
+      if (dist(current, start) > 1e-9) line(start);
+      if (open) open.closed = true;
+      open = null;
+      current = start;
+    } else {
+      throw new Error(`occludePath: unsupported path command '${cmd}'`);
+    }
+  }
+  return subpaths;
+}
+
+function strokeSegAt(seg: StrokeSeg, t: number): Pt {
+  if (seg.type === 'line') return { x: seg.p0.x + t * (seg.p1.x - seg.p0.x), y: seg.p0.y + t * (seg.p1.y - seg.p0.y) };
+  if (seg.type === 'cubic') return cubicBezierPoint(seg.p0, seg.c1, seg.c2, seg.p1, t);
+  const angle = seg.a0 + (seg.ccw ? 1 : -1) * t * seg.span;
+  return { x: seg.center.x + seg.r * Math.cos(angle), y: seg.center.y + seg.r * Math.sin(angle) };
+}
+
+// the command drawing `seg` from t = ta to t = tb, the pen already at its ta end
+function strokeSegCommand(seg: StrokeSeg, ta: number, tb: number): string {
+  const end = strokeSegAt(seg, tb);
+  if (seg.type === 'line') return `L ${end.x} ${end.y}`;
+  if (seg.type === 'arc') {
+    const largeArcFlag = (tb - ta) * seg.span > TURN.half ? 1 : 0;
+    return `A ${seg.r} ${seg.r} 0 ${largeArcFlag} ${seg.ccw ? 1 : 0} ${end.x} ${end.y}`;
+  }
+  // de Casteljau twice: keep what's before tb, then what's after ta within that
+  const [head] = splitCubic([seg.p0, seg.c1, seg.c2, seg.p1], tb);
+  const [, piece] = splitCubic(head, tb > 0 ? ta / tb : 0);
+  return `C ${piece[1].x} ${piece[1].y} ${piece[2].x} ${piece[2].y} ${end.x} ${end.y}`;
+}
+
+function splitCubic([p0, c1, c2, p1]: Pt[], t: number): [Pt[], Pt[]] {
+  const lerp = (a: Pt, b: Pt) => ({ x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y) });
+  const a = lerp(p0, c1), b = lerp(c1, c2), c = lerp(c2, p1);
+  const d = lerp(a, b), e = lerp(b, c);
+  const mid = lerp(d, e);
+  return [[p0, a, d, mid], [mid, e, c, p1]];
+}
+
+// the t values along `seg` where it crosses the segment q0–q1
+function strokeSegCrossings(seg: StrokeSeg, q0: Pt, q1: Pt): number[] {
+  const EPS = 1e-9;
+  const ex = q1.x - q0.x, ey = q1.y - q0.y;
+  const along = (pt: Pt) => ((pt.x - q0.x) * ex + (pt.y - q0.y) * ey) / (ex * ex + ey * ey);
+  const onEdge = (u: number) => u >= -EPS && u <= 1 + EPS;
+  const inSeg = (t: number) => t >= -EPS && t <= 1 + EPS;
+
+  if (seg.type === 'line') {
+    const dx = seg.p1.x - seg.p0.x, dy = seg.p1.y - seg.p0.y;
+    const denom = dx * ey - dy * ex;
+    if (Math.abs(denom) < 1e-12) return [];
+    const wx = q0.x - seg.p0.x, wy = q0.y - seg.p0.y;
+    const t = (wx * ey - wy * ex) / denom;
+    const u = (wx * dy - wy * dx) / denom;
+    return inSeg(t) && onEdge(u) ? [t] : [];
+  }
+
+  if (seg.type === 'arc') {
+    const fx = q0.x - seg.center.x, fy = q0.y - seg.center.y;
+    const a = ex * ex + ey * ey;
+    const b = 2 * (fx * ex + fy * ey);
+    const c = fx * fx + fy * fy - seg.r * seg.r;
+    const disc = b * b - 4 * a * c;
+    if (disc < 0) return [];
+    const roots = disc === 0 ? [-b / (2 * a)] : [(-b - Math.sqrt(disc)) / (2 * a), (-b + Math.sqrt(disc)) / (2 * a)];
+    return roots.filter(onEdge).flatMap(u => {
+      const angle = Math.atan2(q0.y + u * ey - seg.center.y, q0.x + u * ex - seg.center.x);
+      const turned = normalizeRadians((seg.ccw ? 1 : -1) * (angle - seg.a0));
+      // a crossing a hair before the start wraps to just under a full turn
+      const t = (TURN.full - turned < EPS ? 0 : turned) / seg.span;
+      return seg.span > 0 && inSeg(t) ? [t] : [];
+    });
+  }
+
+  // the cubic's signed distance off the edge's line, bracketed by sampling then bisected
+  const side = (t: number) => {
+    const pt = cubicBezierPoint(seg.p0, seg.c1, seg.c2, seg.p1, t);
+    return (pt.x - q0.x) * ey - (pt.y - q0.y) * ex;
+  };
+  const SAMPLES = 48;
+  const ts: number[] = [];
+  for (let i = 0; i < SAMPLES; i++) {
+    let lo = i / SAMPLES, hi = (i + 1) / SAMPLES;
+    let fLo = side(lo);
+    const fHi = side(hi);
+    if (fLo === 0) { ts.push(lo); continue; }
+    if (i === SAMPLES - 1 && fHi === 0) ts.push(hi);
+    if (Math.sign(fLo) === Math.sign(fHi) || fHi === 0) continue;
+    for (let k = 0; k < 60; k++) {
+      const mid = (lo + hi) / 2;
+      const fMid = side(mid);
+      if (Math.sign(fMid) === Math.sign(fLo)) { lo = mid; fLo = fMid; } else hi = mid;
+    }
+    ts.push((lo + hi) / 2);
+  }
+  return ts.filter(t => onEdge(along(cubicBezierPoint(seg.p0, seg.c1, seg.c2, seg.p1, t))));
+}
+
+// a closed subpath as a polygon: lines by their own ends, curves cut into chords of at most stepMm
+function flattenSubpath(sub: StrokeSubpath, stepMm: number): Pt[] {
+  const poly: Pt[] = [];
+  for (const seg of sub.segs) {
+    const length = seg.type === 'line' ? 0
+      : seg.type === 'arc' ? seg.r * seg.span
+      : dist(seg.p0, seg.c1) + dist(seg.c1, seg.c2) + dist(seg.c2, seg.p1);
+    const steps = seg.type === 'line' ? 1 : Math.max(2, Math.ceil(length / stepMm));
+    for (let i = 0; i < steps; i++) poly.push(strokeSegAt(seg, i / steps));
+  }
+  return poly;
 }
 
 

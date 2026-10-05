@@ -283,14 +283,15 @@ export const renderDashLineMxB = (line: Line,
         .attr("vector-effect", "non-scaling-stroke");
 }
 
-export const renderPath = (path: string, color: string, strokeWidth: number = 2, opacity: number = 1) => (g: any, ui: any) => {
-    g.append("path")
+export const renderPath = (path: string, color: string, strokeWidth: number = 2, opacity: number = 1, dash?: string) => (g: any, ui: any) => {
+    const el = g.append("path")
         .attr("d", path)
         .attr("fill", "none")
         .attr("stroke", color)
         .attr("stroke-width", strokeWidth)
         .attr("opacity", opacity)
-        .attr('vector-effect', 'non-scaling-stroke');;
+        .attr('vector-effect', 'non-scaling-stroke');
+    if (dash) el.attr("stroke-dasharray", dash);
 };
 
 /** A closed shape from its corners, in order — the drafting-table equivalent of connecting the

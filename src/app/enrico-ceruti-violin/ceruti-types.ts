@@ -241,6 +241,7 @@ export interface StringSetup {
   bodyStop: number;
   bridgeHeight: number;
   nutHeight: number;
+  fingerboardLength: number;
   fingerboardThickness: number;
   fingerboardRadius: number;
 
@@ -334,6 +335,7 @@ export interface CerutiColors {
   voluteTurn3Alt: string;
   neckRoot: string;
   fingerboard: string;
+  nut: string;
   bridge: string;
 }
 

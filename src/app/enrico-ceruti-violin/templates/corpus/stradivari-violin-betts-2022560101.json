@@ -499,6 +499,7 @@
       "bodyStop": 196.5,
       "bridgeHeight": 33,
       "nutHeight": 7.5,
+      "fingerboardLength": 270,
       "fingerboardThickness": 5,
       "fingerboardRadius": 42,
       "bridgeFoot": {

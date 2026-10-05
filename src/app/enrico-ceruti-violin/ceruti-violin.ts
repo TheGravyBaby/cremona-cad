@@ -140,6 +140,7 @@ export class CerutiViolin extends RecipeComponentBase {
       voluteTurn3Alt: this.makeColorWithFloor(p.voluteTurn3Alt, LIGHT_CONTRAST_MIN_PALE, 0),
       neckRoot: this.makeColor(p.neckRoot),
       fingerboard: this.makeColor(p.fingerboard),
+      nut: this.makeColor(p.nut),
       bridge: this.makeColor(p.bridge),
     };
   }
