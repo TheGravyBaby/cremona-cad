@@ -26,7 +26,7 @@ export const VOLUTE_STYLE_LABELS: Record<VoluteStyle, string> = {
 // quarter-turn arcs from the eye out to the front: two full turns
 export const TO_FRONT = 8;
 
-export type ScrollStationKey = 'nut' | keyof ScrollWidths;
+export type ScrollStationKey = 'nut' | 'straight' | keyof ScrollWidths;
 export type ScrollStation = { key: ScrollStationKey; at: Pt; width: number };
 
 const BACK_KEYS: ScrollKey[] = ['S0', 'S1', 'S2', 'S3', 'nape', 'backStraight'];
@@ -398,7 +398,7 @@ export function scrollLines(p: EnricoCerutiParams): Record<ScrollLine, [Pt, Pt]>
 // scroll being copied
 function defaultScrollWidths(p: EnricoCerutiParams): ScrollWidths {
   let mm = (v: number) => Math.round(v * p.height / 350);
-  return { throat: mm(20), crown: mm(13), turn1Bottom: mm(20), turn2Top: mm(25), turn2Bottom: mm(31), turn3Top: mm(36), eye: mm(41) };
+  return { throat: mm(20), crown: mm(13), turn1Bottom: mm(20), turn2Top: mm(25), turn2Bottom: mm(31), eye: mm(41) };
 }
 
 // clears the default duck tail's round, so the back starts as wide as the nut
@@ -423,8 +423,7 @@ export function calculateScrollWidths(p: EnricoCerutiParams): void {
   w.turn1Bottom = Math.max(w.turn1Bottom, w.crown);
   w.turn2Top = Math.max(w.turn2Top, w.turn1Bottom);
   w.turn2Bottom = Math.max(w.turn2Bottom, w.turn2Top);
-  w.turn3Top = Math.max(w.turn3Top, w.turn2Bottom);
-  w.eye = Math.max(w.eye, w.turn3Top);
+  w.eye = Math.max(w.eye, w.turn2Bottom);
 }
 
 // the pegbox is marked on the blank as two straight lines and sawn through, so its width goes by
@@ -459,7 +458,8 @@ function pathWidth(p: EnricoCerutiParams, path: ScrollPath): (s: number) => numb
   let leave = hi;
 
   let s = [path.crown, ...path.turns, path.length];
-  let widths = [w.crown, w.turn1Bottom, w.turn2Top, w.turn2Bottom, w.turn3Top, w.eye];
+  // the last turn is as wide as the eye from its top on in
+  let widths = [w.crown, w.turn1Bottom, w.turn2Top, w.turn2Bottom, w.eye, w.eye];
   // a throat as high as the crown leaves no room for the curve to start below it
   let curved = leave < path.crown - 1e-6;
   if (curved) {
@@ -475,7 +475,7 @@ function pathWidth(p: EnricoCerutiParams, path: ScrollPath): (s: number) => numb
 }
 
 // the pegbox's hollow in the side view: from the nut's top down the wall under it, along the floor,
-// and back out to the front where its straight ends, square to it. The floor is the back carried in
+// and back out to the front where its straight ends, square to the neck. The floor is the back carried in
 // by its thickness. Null where a wall never reaches the floor
 export function pegboxCavity(p: EnricoCerutiParams): Pt[] | null {
   let v = p.scroll!;
@@ -510,26 +510,39 @@ export function pegboxCavity(p: EnricoCerutiParams): Pt[] | null {
   let nutTop = new Pt(0, p.stringSetup!.nutHeight);
   let frontEnd = scrollLines(p).frontStraight[1];
   let under = reach(nutTop, TURN.half - NUT_WALL_LEAN);
-  let end = reach(frontEnd, v.F0.end + TURN.half);
+  let end = reach(frontEnd, TURN.half);
   if (!under || !end || under.k > end.k) return null;
   return [nutTop, under.pt, ...floor.slice(under.k, end.k), end.pt, frontEnd];
 }
 
-// where each width is set, in the side view, nut first and on along the path to the eye
+// where each width is set, in the side view, nut first and on along the path in to the eye's centre,
+// with where the pegbox's straight ends
 export function scrollWidthStations(p: EnricoCerutiParams): ScrollStation[] {
   let v = p.scroll!;
   let w = v.widths;
   let path = scrollPath(p);
-  let [turn1Bottom, turn2Top, turn2Bottom, turn3Top] = path.turns.map(s => path.at(s));
+  let [turn1Bottom, turn2Top, turn2Bottom] = path.turns.map(s => path.at(s));
+
+  // the straight ends on the front at the height the taper starts
+  let front = scrollFront(p);
+  let taperStart = pegboxTaperStart(p);
+  let lo = 0;
+  let hi = front.length;
+  for (let i = 0; i < 40; i++) {
+    let mid = (lo + hi) / 2;
+    if (front.at(mid).y < taperStart) lo = mid; else hi = mid;
+  }
+  let straightEnd = front.at(hi);
+
   return [
     { key: 'nut', at: new Pt(0, p.stringSetup!.nutHeight), width: p.stringSetup!.nutWidth },
+    { key: 'straight', at: straightEnd, width: pegboxWidth(p, straightEnd.y) },
     { key: 'throat', at: pointOnCircle(v.F1, v.F1.start), width: w.throat },
     { key: 'crown', at: path.at(path.crown), width: w.crown },
     { key: 'turn1Bottom', at: turn1Bottom, width: w.turn1Bottom },
     { key: 'turn2Top', at: turn2Top, width: w.turn2Top },
     { key: 'turn2Bottom', at: turn2Bottom, width: w.turn2Bottom },
-    { key: 'turn3Top', at: turn3Top, width: w.turn3Top },
-    { key: 'eye', at: path.at(path.length), width: w.eye },
+    { key: 'eye', at: new Pt(v.eye.x, v.eye.y), width: w.eye },
   ];
 }
 

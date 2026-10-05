@@ -11,9 +11,9 @@
                 [(ngModel)]="ss.nutWidth" (input)="onChange()" (focus)="onPointFocus('nut')" (blur)="onPointBlur()" />
         </label>
         <label class="field-cell">
-            <span class="field-title" title="How far above the nut's top the pegbox stays as wide as the nut before its taper starts. Long enough to clear the duck tail's round, the back joins the neck without a shoulder">Straight <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.5" min="0"
-                [(ngModel)]="v.pegboxStraight" (input)="onChange()" />
+            <span class="field-title" [style.color]="pointColor('straight')" title="How far above the nut's top the pegbox stays as wide as the nut before its taper starts. Long enough to clear the duck tail's round, the back joins the neck without a shoulder">Straight <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('straight')"
+                [(ngModel)]="v.pegboxStraight" (input)="onChange()" (focus)="onPointFocus('straight')" (blur)="onPointBlur()" />
         </label>
         <label class="field-cell">
             <span class="field-title" [style.color]="pointColor('throat')" title="The pegbox's width at the throat, where its front runs in under the volute. The taper from the nut ends here">Throat <span class="unit-label">mm</span></span>
@@ -57,12 +57,7 @@
                 [(ngModel)]="w.turn2Bottom" (input)="onChange()" (focus)="onPointFocus('turn2Bottom')" (blur)="onPointBlur()" />
         </label>
         <label class="field-cell">
-            <span class="field-title" [style.color]="pointColor('turn3Top')" title="The last turn's width at its highest, before it runs into the eye">Turn 3 Top <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('turn3Top')"
-                [(ngModel)]="w.turn3Top" (input)="onChange()" (focus)="onPointFocus('turn3Top')" (blur)="onPointBlur()" />
-        </label>
-        <label class="field-cell">
-            <span class="field-title" [style.color]="pointColor('eye')" title="The width across the eyes, which stand out as a cylinder">Eye <span class="unit-label">mm</span></span>
+            <span class="field-title" [style.color]="pointColor('eye')" title="The width across the eyes, which stand out as a cylinder. The last turn is as wide from its top on in">Eye <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('eye')"
                 [(ngModel)]="w.eye" (input)="onChange()" (focus)="onPointFocus('eye')" (blur)="onPointBlur()" />
         </label>

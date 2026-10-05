@@ -129,7 +129,7 @@ export const renderScroll = (
   solved('frontStraight') && line(lines.frontStraight, colors.scrollFront);
 };
 
-const STATION_ORDER: ScrollStationKey[] = ['nut', 'throat', 'crown', 'turn1Bottom', 'turn2Top', 'turn2Bottom', 'turn3Top', 'eye'];
+const STATION_ORDER: ScrollStationKey[] = ['nut', 'straight', 'throat', 'crown', 'turn1Bottom', 'turn2Top', 'turn2Bottom', 'eye'];
 
 // a width's colour on canvas and in its field, from the nut in to the eye
 export function stationColor(colors: CerutiColors, key: ScrollStationKey): string {
