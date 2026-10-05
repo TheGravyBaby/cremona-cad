@@ -79,7 +79,7 @@ export class ScrollPanel extends CerutiPanelBase implements OnInit {
     // the volute as plain profile, so only what this panel edits is in colour. The profile needs the
     // whole scroll solved, so a miss falls back to the volute's own render
     return [
-      renderScrollNeck(p, this.colors, false),
+      renderScrollNeck(p, this.colors, false, failures),
       failures.length
         ? renderVolute(p, this.colors, this.flags, false, null, failures)
         : renderPath(defineSideScrollPath(p), this.colors.outerTrace, STROKE_WEIGHT.trace),

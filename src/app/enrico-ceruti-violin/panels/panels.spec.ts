@@ -166,12 +166,12 @@ describe('the scroll panel', () => {
     expect(corners).toEqual([[0, 0], [0, height], [-width, height], [-width, 0]].map(c => c.map(n => expect.closeTo(n, 9))));
   });
 
-  it('draws the nut on the neck\'s front and the neck below it, stopping short', () => {
+  it('draws the nut on the neck\'s front and the neck below it, stopping short, with nothing across its top', () => {
     const p = defaultViolin();
     const instance = panel(ScrollPanel, p, flags({ showVoluteConstruction: false, showModuleArcs: false }));
     instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
     instance.buildRun();
-    // the neck's back carried up to the nape is drawn as the neck's own, so leave it off
+    // with the nape unsolved the neck's back stops at the nut's level
     p.scroll!.nape.r = 0;
     const drawn = recordLayers(instance.buildRun());
     const nut = [...drawn.paths[0].matchAll(/[ML] (-?[\d.]+) (-?[\d.]+)/g)].map(m => [+m[1], +m[2]]);
@@ -180,7 +180,8 @@ describe('the scroll panel', () => {
     expect(Math.min(...nut.map(c => c[1]))).toBe(0);
 
     const lines = drawn.elements.filter(el => el.tag === 'line' && el.attrs['stroke'] === 'neckOff').map(el => el.attrs);
-    expect(lines.length).toBe(3);
+    expect(lines.length).toBe(2);
+    expect(lines.every(l => l['x1'] === l['x2'])).toBe(true);
     const lowest = Math.min(...lines.flatMap(l => [l['y1'] as number, l['y2'] as number]));
     expect(lowest).toBeLessThan(0);
     expect(-lowest).toBeLessThan(p.scroll!.eye.y);
@@ -566,23 +567,26 @@ describe('the scroll panel', () => {
       expect(spiralArcs(instance)).toHaveLength(5);
     });
 
-    it('carries the neck\'s back up from the nut to the nape, and draws no nape too wide to fit', () => {
+    it('runs the neck\'s back up to where the nape meets it, above the nut or below, and draws no nape too wide to fit', () => {
       const p = defaultViolin();
       const instance = scroll(p, { showModuleArcs: true, showModuleGuides: false, showVoluteConstruction: false });
       const drawn = () => recordLayers(instance.buildRun()).elements;
-      const carried = (els: ReturnType<typeof drawn>) => els.filter(el => el.tag === 'line' && el.attrs['stroke'] === 'neckOff'
-        && el.attrs['x1'] === -p.neck!.thickness && el.attrs['x2'] === -p.neck!.thickness
-        && Math.min(el.attrs['y1'] as number, el.attrs['y2'] as number) === 0
-        && Math.max(el.attrs['y1'] as number, el.attrs['y2'] as number) > 0);
+      const backTop = (els: ReturnType<typeof drawn>) => els
+        .filter(el => el.tag === 'line' && el.attrs['stroke'] === 'neckOff' && el.attrs['x1'] === -p.neck!.thickness && el.attrs['x2'] === -p.neck!.thickness)
+        .map(el => Math.max(el.attrs['y1'] as number, el.attrs['y2'] as number));
       // the default duck tail sits on the nut line, so its nape meets the neck's back below the nut
-      expect(carried(drawn())).toEqual([]);
+      expect(backTop(drawn())).toEqual([p.scroll!.nape.y]);
+      expect(p.scroll!.nape.y).toBeLessThan(0);
       p.scroll!.eye.y += 20;
       const naped = drawn();
       const nape = naped.filter(el => el.attrs['stroke'] === 'scrollNape' && String(el.attrs['d'] ?? '').includes(' A '));
       expect(nape).toHaveLength(1);
-      expect(carried(naped)).toHaveLength(1);
+      expect(p.scroll!.nape.y).toBeGreaterThan(0);
+      expect(backTop(naped)).toEqual([p.scroll!.nape.y]);
       p.scroll!.nape.r = 1000;
-      expect(drawn().filter(el => el.attrs['stroke'] === 'scrollNape')).toEqual([]);
+      const unfit = drawn();
+      expect(unfit.filter(el => el.attrs['stroke'] === 'scrollNape')).toEqual([]);
+      expect(backTop(unfit)).toEqual([0]);
     });
   });
 });
