@@ -5,6 +5,7 @@ import {
 } from '../helpers/math/simpleGeometry';
 import { pathFromArc, pathFromLine, unifyConnectedSvgPaths } from '../helpers/math/pathMath';
 import { EnricoCerutiParams, FlutingParams, NeckParams, StringSetup } from './ceruti-types';
+import { reportFailures, SolveFailure } from '../helpers/validators';
 import { placeOnTopPlate, solveRibTaper, topPlatePlacement } from './ceruti-arching';
 import { channelCenterlineZAt, LongArchSolve } from './ceruti-arch-geometry';
 
@@ -33,6 +34,8 @@ export function defaultNeckParams(p: EnricoCerutiParams): NeckParams {
     angle: 7.5 * TURN.degree,
     length: mm(120),
     thickness: mm(13),
+    topWidth: mm(24),
+    rootWidth: mm(33),
     heel: new Arc(0, 0, mm(20), 0, 0),
 
     root: null, neckTop: null, backRoot: null, backNut: null,
@@ -45,7 +48,9 @@ export function defaultStringSetup(p: EnricoCerutiParams): StringSetup {
   return {
     bodyStop: mm(195),
     bridgeHeight: mm(33),
-    nutThickness: mm(6),
+    nutHeight: mm(7.5),
+    fingerboardThickness: mm(5),
+    fingerboardRadius: mm(42),
 
     bridgeFoot: null, bridgeTop: null, nutTop: null,
   };
@@ -66,7 +71,7 @@ export function standardNutLength(bodyHeight: number): number {
 }
 
 // `p.arching`, `p.neck`, `p.stringSetup` and `p.button` must already be in place — the panel seeds them
-export function calculateNeck(p: EnricoCerutiParams, topArch: LongArchSolve | null, topGouge: FlutingParams): void {
+export function calculateNeck(p: EnricoCerutiParams, topArch: LongArchSolve | null, topGouge: FlutingParams): SolveFailure<'nutHeight' | 'fingerboardRadius'>[] {
   const nk = p.neck!;
   const ss = p.stringSetup!;
   const taper = solveRibTaper(p);
@@ -107,8 +112,24 @@ export function calculateNeck(p: EnricoCerutiParams, topArch: LongArchSolve | nu
   nk.heel = calculateHeel(backRoot, backNut, tip, nk.heel.r) ?? nk.heel;
   ss.bridgeFoot = bridgeFoot;
   ss.bridgeTop = bridgeTop;
-  // the string runs flush with the fingerboard's top at the nut, no separate nut height
-  ss.nutTop = moveInVectorSpace(neckTop, [{ ...normal, mag: ss.nutThickness }]);
+  ss.nutTop = moveInVectorSpace(neckTop, [{ ...normal, mag: ss.nutHeight }]);
+
+  const failures: SolveFailure<'nutHeight' | 'fingerboardRadius'>[] = [];
+  const fbEnd = fingerboardEnd(p);
+  const widest = 2 * neckHalfWidthAt(p, fbEnd.y);
+  if (ss.fingerboardRadius <= widest) failures.push({
+    message: `The fingerboard radius has to be larger than the board's widest point, ${widest.toFixed(1)} mm at its end.`,
+    unsolved: ['fingerboardRadius'], circles: [], segments: [],
+    points: [moveInVectorSpace(fbEnd, [{ ...normal, mag: ss.fingerboardThickness }])],
+  });
+  const crownAtNut = ss.fingerboardThickness + fingerboardCrown(p, neckTop.y);
+  if (ss.nutHeight < crownAtNut) failures.push({
+    message: `The nut stands below the fingerboard's crown, which is ${crownAtNut.toFixed(1)} mm off the neck at the nut.`,
+    unsolved: ['nutHeight'], circles: [], segments: [],
+    points: [moveInVectorSpace(neckTop, [{ ...normal, mag: crownAtNut }])],
+  });
+  reportFailures(failures, 'String Setup');
+  return failures;
 }
 
 // how far behind the neck's back line the button tip sits: the heel only stands when it's positive
@@ -164,6 +185,21 @@ export function mortiseFloorY(p: EnricoCerutiParams): number {
   return p.height - p.overhang - p.neck!.mortiseDepth;
 }
 
+// the neck's half-width seen from the front, top width at the nut to root width at the mortise
+// floor; the fingerboard carries the same taper on down over the body
+export function neckHalfWidthAt(p: EnricoCerutiParams, y: number): number {
+  const nk = p.neck!;
+  const topY = nk.neckTop!.y;
+  return (nk.topWidth + (nk.rootWidth - nk.topWidth) * (topY - y) / (topY - mortiseFloorY(p))) / 2;
+}
+
+// how far the fingerboard's cylindrical crown stands above its edges, over the board's width at y
+export function fingerboardCrown(p: EnricoCerutiParams, y: number): number {
+  const r = p.stringSetup!.fingerboardRadius;
+  const half = Math.min(neckHalfWidthAt(p, y), r);
+  return r - Math.sqrt(r * r - half * half);
+}
+
 // where the fingerboard plane crosses the mortise floor
 export function mortiseFingerboardIntersect(p: EnricoCerutiParams): Pt {
   const nk = p.neck!;
@@ -204,6 +240,13 @@ export function stringLength(p: EnricoCerutiParams): number {
 export function fingerboardEnd(p: EnricoCerutiParams): Pt {
   const nk = p.neck!;
   return pointAtDistanceToward(nk.neckTop!, nk.root!, standardFingerboardLength(p.height));
+}
+
+// the front view's centerline: the plan outline, which is centred on x = 0 and shares the side
+// elevation's y, carried right until its widest point clears the side elevation's furthest reach
+// by a quarter of the body's width
+export function frontViewAxisX(p: EnricoCerutiParams): number {
+  return Math.max(p.stringSetup!.bridgeTop!.x, p.neck!.root!.x) + 0.75 * p.width;
 }
 
 // the bridge blank's four corners: foot-left, foot-right, top-right, top-left

@@ -34,11 +34,11 @@ const scrollArc = (arc: Arc, color: string, fancy: boolean) =>
 export const renderScrollNeck = (p: EnricoCerutiParams, colors: CerutiColors, showGuides: boolean) => (g: any, ui: any): void => {
   const v = p.scroll!;
   const { thickness } = p.neck!;
-  const { nutThickness } = p.stringSetup!;
+  const { nutHeight } = p.stringSetup!;
   const nutLength = standardNutLength(p.height);
   const neckStub = 2 * thickness;
 
-  renderPolygon([new Pt(0, 0), new Pt(0, nutLength), new Pt(nutThickness, nutLength), new Pt(nutThickness, 0)], colors.fingerboard, STROKE_WEIGHT.section)(g, ui);
+  renderPolygon([new Pt(0, 0), new Pt(0, nutLength), new Pt(nutHeight, nutLength), new Pt(nutHeight, 0)], colors.fingerboard, STROKE_WEIGHT.section)(g, ui);
   renderSegment(new Pt(0, -neckStub), new Pt(0, 0), colors.neckOff, STROKE_WEIGHT.section)(g, ui);
   renderSegment(new Pt(0, 0), new Pt(-thickness, 0), colors.neckOff, STROKE_WEIGHT.section)(g, ui);
   renderSegment(new Pt(-thickness, 0), new Pt(-thickness, -neckStub), colors.neckOff, STROKE_WEIGHT.section)(g, ui);
@@ -172,7 +172,7 @@ export const renderScrollWidths = (p: EnricoCerutiParams, colors: CerutiColors, 
   const eyeWidth = widths.at(-1)!.x;
   const widest = Math.max(...widths.map(pt => pt.x));
   const back = -scrollExtent(v).width - gap - widest;
-  const front = p.stringSetup!.nutThickness + gap + widest;
+  const front = p.stringSetup!.nutHeight + gap + widest;
   const color = (k: number) => pathPointColor(colors, k, widths.length);
 
   const contour = (pts: Pt3D[], center: number, stroke: string) => {
