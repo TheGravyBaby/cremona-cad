@@ -23,7 +23,7 @@ const scrolled = (style: VoluteStyle, eyeRadius: number, over: Partial<ScrollPar
   p.neck = defaultNeckParams(p);
   p.stringSetup = defaultStringSetup(p);
   p.neck.thickness = 0;
-  p.scroll = { ...defaultVoluteParams(p), ...spec(style, eyeRadius, radii), flushWithNeck: true, ...over };
+  p.scroll = { ...defaultVoluteParams(p), ...spec(style, eyeRadius, radii), flushWithNeck: true, fitToNut: false, ...over };
   p.scroll.eye = new Circle(p.scroll.eye.x, over.eye?.y ?? EYE_Y, eyeRadius);
   const failures = calculateScroll(p);
   return { p, v: p.scroll, failures };
@@ -408,8 +408,32 @@ describe('the scroll widths', () => {
     expect(fields()).toEqual(seeded);
   });
 
+  it('brings the duck tail to the nut\'s lower edge, whatever S3\'s authored end angle, while fit to nut is on', () => {
+    const { p, v } = solved();
+    v.fitToNut = true;
+    for (const start of [-0.4, 0.3, -2]) {
+      v.S3 = new Arc(v.S3.x, v.S3.y, v.S3.r, start, v.S3.end);
+      expect(calculateScroll(p)).toEqual([]);
+      expect(at(v.S3, v.S3.start)[1]).toBeCloseTo(0, 9);
+      expect(v.S3.end - v.S3.start).toBeGreaterThan(0);
+      expect(v.S3.end - v.S3.start).toBeLessThanOrEqual(2 * Math.PI);
+    }
+    v.fitToNut = false;
+    v.S3 = new Arc(v.S3.x, v.S3.y, v.S3.r, -0.4, v.S3.end);
+    calculateScroll(p);
+    expect(v.S3.start).toBe(-0.4);
+  });
+
+  it('reports an S3 that never comes down to the nut', () => {
+    const { p, v } = solved();
+    v.fitToNut = true;
+    v.S3 = new Arc(v.S3.x, v.S3.y, 0.5, v.S3.start, v.S3.end);
+    expect(unsolved(p)).toEqual(['S3', 'nape']);
+  });
+
   it('keeps the front down to the nut, the nape hung below the nut or not', () => {
     const { p, v } = solved();
+    v.fitToNut = false;
     for (const drop of [0, 8]) {
       v.eye = new Circle(v.eye.x, v.eye.y - drop, v.eye.r);
       expect(calculateScroll(p)).toEqual([]);

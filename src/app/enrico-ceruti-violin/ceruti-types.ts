@@ -276,6 +276,7 @@ export interface ScrollParams {
   style: VoluteStyle;
   eye: Circle;
   flushWithNeck: boolean;
+  fitToNut: boolean; // S3's end angle is solved to bring the duck tail to the nut's lower edge
   pitch: number; // archemedean spiral: distance between successive turns (mm)
   seedLength: number; // kelly volute allows for variable seed size relative to the eye
   arcRadii: number[];

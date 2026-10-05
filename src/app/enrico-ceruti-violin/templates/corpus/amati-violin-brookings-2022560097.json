@@ -526,7 +526,7 @@
       "mortiseDepth": 6.5,
       "overstand": 6.5,
       "angle": 0.1308996938995747,
-      "length": 121,
+      "length": 147,
       "thickness": 13,
       "topWidth": 24,
       "rootWidth": 33,
@@ -584,6 +584,7 @@
         "r": 4.3
       },
       "flushWithNeck": false,
+      "fitToNut": true,
       "pitch": 8.2,
       "seedLength": 4.3,
       "arcRadii": [],

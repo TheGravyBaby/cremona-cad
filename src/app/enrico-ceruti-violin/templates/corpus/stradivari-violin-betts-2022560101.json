@@ -467,7 +467,7 @@
       "mortiseDepth": 3.5,
       "overstand": 6,
       "angle": 0.12217304763960307,
-      "length": 121,
+      "length": 140.5,
       "thickness": 13,
       "topWidth": 24,
       "rootWidth": 33,
@@ -528,6 +528,7 @@
         "r": 3.5
       },
       "flushWithNeck": true,
+      "fitToNut": true,
       "spiral": [
         {
           "x": -16.473333333333333,

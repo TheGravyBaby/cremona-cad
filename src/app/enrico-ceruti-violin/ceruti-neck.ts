@@ -32,7 +32,7 @@ export function defaultNeckParams(p: EnricoCerutiParams): NeckParams {
     mortiseDepth: mm(6.5),
     overstand: mm(6.5),
     angle: 7.5 * TURN.degree,
-    length: mm(120),
+    length: mm(144),
     thickness: mm(13),
     topWidth: mm(24),
     rootWidth: mm(33),
@@ -91,18 +91,14 @@ export function calculateNeck(p: EnricoCerutiParams, topArch: LongArchSolve | nu
   const bridgeFoot = placeOnTopPlate(placement, new Pt(outerZ + archZAtBridge, bridgeY));
   const bridgeTop = placeOnTopPlate(placement, new Pt(outerZ + archZAtBridge + ss.bridgeHeight, bridgeY));
 
-  // `length` is the neck as felt in hand: the back's own top corner at the nut down to a level
-  // line at the button's height — not root to nut, and not a straight-line reach to the heel's
-  // curve either, since a maker's ruler runs along the neck, not through it. The back line (the
-  // root's line carried onto the back) crosses that level first; the nut is `length` further up
-  // it, and the fingerboard plane sits the neck's thickness above
+  // `length` runs along the fingerboard plane from where it crosses the mortise floor to the
+  // nut's bottom, the neck's end; the back sits the neck's thickness below
   const tip = buttonTip(p);
+  const floorY = mortiseFloorY(p);
+  const floorCrossing = intersectLines(fingerboardPlane, lineFromTwoPoints(new Pt(0, floorY), new Pt(1, floorY)))!;
+  const neckTop = moveInVectorSpace(floorCrossing, [{ ...direction, mag: nk.length }]);
+  const backNut = moveInVectorSpace(neckTop, [{ ...normal, mag: -nk.thickness }]);
   const backRoot = moveInVectorSpace(neckAtRootPlane, [{ ...normal, mag: -nk.thickness }]);
-  const backLine = lineFromTwoPoints(backRoot, moveInVectorSpace(backRoot, [{ ...direction, mag: 1 }]));
-  const buttonPlane = lineFromTwoPoints(new Pt(0, tip.y), new Pt(1, tip.y));
-  const heelBottom = intersectLines(backLine, buttonPlane)!;
-  const backNut = moveInVectorSpace(heelBottom, [{ ...direction, mag: nk.length }]);
-  const neckTop = moveInVectorSpace(backNut, [{ ...normal, mag: nk.thickness }]);
 
   nk.root = root;
   nk.neckTop = neckTop;
@@ -210,13 +206,6 @@ export function mortiseFingerboardIntersect(p: EnricoCerutiParams): Pt {
 export function plateEdgeAtNeck(p: EnricoCerutiParams): Pt {
   const taper = solveRibTaper(p);
   return placeOnTopPlate(topPlatePlacement(p, taper), new Pt(taper.zLower + p.arching!.top.thickness, p.height));
-}
-
-// where `length` is measured from: the back line at the button's height, `length` back down the
-// neck from the nut. A construction point, not one on the heel's own arc
-export function heelBottom(p: EnricoCerutiParams): Pt {
-  const nk = p.neck!;
-  return moveInVectorSpace(nk.backNut!, [{ ...vectorFromSlope(nk.angle + TURN.quarter), mag: -nk.length }]);
 }
 
 // the flat foot square to the neck, from the heel's end on to the button tip, when the arc stops

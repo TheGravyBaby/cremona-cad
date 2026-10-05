@@ -206,6 +206,7 @@ export function defaultVoluteParams(p: EnricoCerutiParams): ScrollParams {
     // the flush in calculateScroll below sets Eye X
     eye: new Circle(0, mm(83), eyeRadius),
     flushWithNeck: true,
+    fitToNut: true,
     // about the Salviati's own opening, its front as far out
     pitch: Math.round(1.9 * eyeRadius * 10) / 10,
     seedLength: eyeRadius,
@@ -321,10 +322,21 @@ export function calculateScroll(p: EnricoCerutiParams): ScrollFailure[] {
     // S3 turns back clockwise, so as a counterclockwise sweep it runs from the duck tail to the foot
     let S3end = v.S2.end - TURN.half;
     if (!(v.S3.r > 0)) return badArc('Back', 'S3', v.S3, ['S3', 'nape']);
-    if (!(v.S3.start < S3end) || S3end - v.S3.start > TURN.full)
+    if (!v.fitToNut && (!(v.S3.start < S3end) || S3end - v.S3.start > TURN.full))
       return { message: "Back: S3 has to turn back from the straight's foot, by up to a full turn.", unsolved: ['S3', 'nape'], circles: [], segments: [] };
     let S3 = placeCircleOnPointAtAngle(v.S3.r, foot, S3end);
-    v.S3 = new Arc(S3.x, S3.y, S3.r, v.S3.start, S3end);
+    let S3start = v.S3.start;
+    // the duck tail comes down to the nut's lower edge: of the two angles on the circle at that
+    // height, the one the shortest sweep to S3's foot reaches first
+    if (v.fitToNut) {
+      let level = -S3.y / S3.r;
+      if (Math.abs(level) > 1)
+        return { message: "Back: S3 never comes down to the nut. Enlarge S3, or lower it with the straight, or turn Fit to Nut off.", unsolved: ['S3', 'nape'], circles: [S3], segments: [] };
+      let below = Math.asin(level);
+      let sweepTo = (a: number) => normalizeRadians(S3end - a) || TURN.full;
+      S3start = S3end - Math.min(sweepTo(below), sweepTo(TURN.half - below));
+    }
+    v.S3 = new Arc(S3.x, S3.y, S3.r, S3start, S3end);
 
     // a line runs square from the duck tail to the neck's back, the nape filleting the corner
     let duckTail = pointOnCircle(v.S3, v.S3.start);

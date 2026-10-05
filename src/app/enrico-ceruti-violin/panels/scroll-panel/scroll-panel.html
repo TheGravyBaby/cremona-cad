@@ -32,8 +32,14 @@
         <label class="field-cell">
             <span class="field-title" title="Where the arc ends, as the angle round its own centre from the front, swept clockwise: 0° runs the back straight down, parallel to the neck">End <span class="unit-label">°</span></span>
             <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1"
-                [ngModel]="getFieldDeg(scroll.S3, 'start')" (ngModelChange)="setFieldDeg(scroll.S3, 'start', $event, onChange.bind(this)); onArcFocus('S3', colors.scrollBack)"
+                [disabled]="scroll.fitToNut" [ngModel]="getFieldDeg(scroll.S3, 'start')" (ngModelChange)="setFieldDeg(scroll.S3, 'start', $event, onChange.bind(this)); onArcFocus('S3', colors.scrollBack)"
                 (focus)="onArcFocus('S3', colors.scrollBack)" (blur)="onArcBlur()" />
+        </label>
+        <label class="field-cell">
+            <div class="toggle" title="Solve the end angle so the duck tail comes down to the nut's lower edge. Off, the angle is yours">
+                <input type="checkbox" [(ngModel)]="scroll.fitToNut" (ngModelChange)="onChange()" />
+                <span>Fit to Nut</span>
+            </div>
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
