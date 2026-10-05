@@ -15,7 +15,7 @@ import { NeckPanel } from './neck-panel/neck-panel';
 import { OuterTracePanel } from './outer-trace-panel/outer-trace-panel';
 import { ScrollPanel } from './scroll-panel/scroll-panel';
 import { ScrollWidthsPanel } from './scroll-widths-panel/scroll-widths-panel';
-import { duckTailRadius, scrollBackWidths, scrollExtent, scrollWidthStations, spiralArcs as styleArcs, VOLUTE_STYLE_LABELS } from '../ceruti-scroll';
+import { duckTailRadius, pegboxWidth, scrollBackWidths, scrollExtent, scrollLines, scrollPathStretches, scrollWidthStations, spiralArcs as styleArcs, VOLUTE_STYLE_LABELS } from '../ceruti-scroll';
 import { VolutePanel } from './volute-panel/volute-panel';
 import { VoluteStyle } from '../ceruti-types';
 import { Circle, Pt } from '../../models/types';
@@ -625,6 +625,94 @@ describe('the scroll widths panel', () => {
     expect(marked[0].attrs['cx']).toBe(station.at.x);
     instance.onPointBlur();
     expect(halos()).toEqual([]);
+  });
+
+  it('draws each view as it is seen: a turn\'s far side only as far as the next turn lets it show, and the hollow dashed in the side view', () => {
+    const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
+    instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
+    instance.buildRun();
+    const p = instance.params;
+    const on = scrollPathStretches(p);
+    const turn1Bottom = on.turn1Front.at(-1)!;
+    const turn2Top = on.turn2Back.at(-1)!;
+    const turn2Bottom = on.turn2Front.at(-1)!;
+    const turn3Top = on.turn3Back.at(-1)!;
+    const eyeBottom = p.scroll!.eye.y - p.scroll!.eye.r;
+
+    const drawn = recordLayers(instance.buildRun()).elements.filter(el => el.tag === 'path');
+    const points = (d: string) => [...d.matchAll(/(-?[\d.]+(?:e-?\d+)?) (-?[\d.]+(?:e-?\d+)?)/g)].map(m => new Pt(+m[1], +m[2]));
+    const paths = (stroke: string) => drawn.filter(el => el.attrs['stroke'] === stroke && !el.attrs['stroke-dasharray']).map(el => points(el.attrs['d'] as string));
+    // each line is drawn once on each side, and known here by the height it stops at
+    const stoppingAt = (stroke: string, y: number) => paths(stroke).filter(pts => Math.abs(pts.at(-1)!.y - y) < 1e-9);
+
+    // from behind the second turn's front stops at the top of the last, where that turn's back ends too
+    expect(stoppingAt('archBack', turn3Top.y)).toHaveLength(4);
+    // the first turn's front would stop at the second's top, but under the default crown the head's
+    // back beside it is the wider and hides it: only the second turn's back ends there
+    expect(stoppingAt('archBack', turn2Top.y)).toHaveLength(2);
+    // from in front the backs stop at the bottom of the next turn in, the last at the eye's
+    expect(stoppingAt('archTop', turn2Bottom.y)).toHaveLength(4);
+    expect(stoppingAt('archTop', eyeBottom)).toHaveLength(2);
+    // and nothing of the head's back or the pegbox shows above the first turn's bottom but the turns
+    const frontView = paths('archTop').filter(pts => pts[0].x > 0);
+    expect(frontView.filter(pts => pts[0].y < turn1Bottom.y - 1e-9).every(pts => pts.every(pt => pt.y <= turn1Bottom.y + 1e-9))).toBe(true);
+
+    const mouth = drawn.filter(el => el.attrs['stroke'] === 'scrollFrontLight' && !el.attrs['stroke-dasharray']);
+    expect(mouth).toHaveLength(1);
+    const hidden = scrollLines(p).frontStraight[1].y > turn1Bottom.y;
+    expect(/Z$/.test(mouth[0].attrs['d'] as string)).toBe(!hidden);
+    expect(Math.max(...points(mouth[0].attrs['d'] as string).map(pt => pt.y))).toBeLessThanOrEqual(turn1Bottom.y + 1e-9);
+
+    // the volute's bottom closes right across the pegbox running in under it
+    const across = recordLayers(instance.buildRun()).elements.filter(el =>
+      el.tag === 'line' && el.attrs['stroke'] === 'scrollFrontLight' && el.attrs['y1'] === turn1Bottom.y && el.attrs['y2'] === turn1Bottom.y);
+    expect(across).toHaveLength(1);
+    expect(Math.abs((across[0].attrs['x1'] as number) - (across[0].attrs['x2'] as number))).toBeCloseTo(2 * turn1Bottom.x, 9);
+
+    const hollow = drawn.filter(el => el.attrs['stroke-dasharray']);
+    expect(hollow).toHaveLength(1);
+    expect(hollow[0].attrs['stroke']).toBe('scrollFrontLight');
+
+    // a head hardly narrowing to its crown lets the first turn's front stand out past its back, and
+    // then it shows from behind, down to the second turn's top
+    p.scroll!.widths.throat = 14;
+    const narrowed = recordLayers(instance.buildRun()).elements
+      .filter(el => el.tag === 'path' && el.attrs['stroke'] === 'archBack')
+      .map(el => points(el.attrs['d'] as string));
+    expect(narrowed.filter(pts => Math.abs(pts.at(-1)!.y - turn2Top.y) < 1e-9)).toHaveLength(4);
+  });
+
+  it('shows the pegbox\'s cheeks above the first turn\'s bottom only where they stand out past the volute', () => {
+    const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
+    instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
+    instance.buildRun();
+    const p = instance.params;
+    const points = (d: string) => [...d.matchAll(/(-?[\d.]+(?:e-?\d+)?) (-?[\d.]+(?:e-?\d+)?)/g)].map(m => new Pt(+m[1], +m[2]));
+    // a cheek is as far from the view's centre as the pegbox is wide at each of its heights
+    const cheeks = () => {
+      const turn1Bottom = scrollPathStretches(p).turn1Front.at(-1)!;
+      const paths = recordLayers(instance.buildRun()).elements
+        .filter(el => el.tag === 'path' && el.attrs['stroke'] === 'archTop')
+        .map(el => points(el.attrs['d'] as string))
+        .filter(pts => pts[0].x > 0);
+      const center = (Math.min(...paths.flat().map(pt => pt.x)) + Math.max(...paths.flat().map(pt => pt.x))) / 2;
+      return paths.filter(pts => pts[0].y > turn1Bottom.y - 1e-9 && pts[0].y < turn1Bottom.y + 2
+        && pts.every(pt => Math.abs(Math.abs(pt.x - center) - pegboxWidth(p, pt.y) / 2) < 1e-6));
+    };
+    expect(cheeks()).toEqual([]);
+
+    // a first turn no wider than the pegbox at its bottom and narrowing above it, but the second
+    // turn's back curls round in front of the throat, wider, and hides the cheeks
+    const defaults = { ...p.scroll!.widths };
+    Object.assign(p.scroll!.widths, { throat: 16.5, crown: 11.5, turn1Bottom: 18, turn2Top: 28, turn2Bottom: 34.5, eye: 42 });
+    expect(cheeks()).toEqual([]);
+    Object.assign(p.scroll!.widths, defaults);
+
+    p.stringSetup!.nutWidth = 44;
+    p.scroll!.widths.throat = 40;
+    const showing = cheeks();
+    expect(showing).toHaveLength(2);
+    for (const pts of showing) expect(pts.length).toBeGreaterThan(3);
   });
 
   it('draws shoulders where the nut and the neck differ in width, from behind only, and none when as wide', () => {

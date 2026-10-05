@@ -20,11 +20,6 @@
             <input class="basic-input" type="number" step="0.5" min="1" [style.border-color]="colors.neck"
                 [(ngModel)]="neck.topWidth" (input)="onChange()" />
         </label>
-        <label class="field-cell">
-            <span class="field-title">Root Width <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.5" min="1" [style.border-color]="colors.neck"
-                [(ngModel)]="neck.rootWidth" (input)="onChange()" />
-        </label>
     </div>
 </section>
 
@@ -56,6 +51,11 @@
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
+         <label class="field-cell">
+            <span class="field-title">Root Width <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.5" min="1" [style.border-color]="colors.neck"
+                [(ngModel)]="neck.rootWidth" (input)="onChange()" />
+        </label>
         <label class="field-cell">
             <span class="field-title">Neck Projection <span class="unit-label">°</span></span>
             <input class="basic-input" type="number" step="0.5" min="0" max="30" [ngModel]="angleDeg"
