@@ -497,4 +497,19 @@ describe.each(Object.keys(VOLUTE_STYLE_LABELS) as VoluteStyle[])('the side scrol
     const breaks = ends.slice(1).filter((e, i) => Math.hypot(e.start.x - ends[i].end.x, e.start.y - ends[i].end.y) > 1e-3);
     expect(breaks.length).toBe(1);
   });
+
+  it('starts at the eye\'s back and runs under it to the front, where the spiral leaves it', () => {
+    const p = defaultViolin();
+    p.neck = defaultNeckParams(p);
+    p.scroll = { ...defaultVoluteParams(p), style };
+    calculateScroll(p);
+    const { x, y, r } = p.scroll.eye;
+    const eye = samplePathToPolyline(splitPathStrings(defineSideScrollPath(p))[0], 0.1, true);
+    expect(eye[0].x).toBeCloseTo(x - r, 9);
+    expect(eye[0].y).toBeCloseTo(y, 9);
+    expect(eye.at(-1)!.x).toBeCloseTo(x + r, 9);
+    expect(eye.at(-1)!.y).toBeCloseTo(y, 9);
+    expect(Math.min(...eye.map(pt => pt.y))).toBeCloseTo(y - r, 3);
+    expect(eye.every(pt => Math.abs(Math.hypot(pt.x - x, pt.y - y) - r) < 1e-6)).toBe(true);
+  });
 });

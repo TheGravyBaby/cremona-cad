@@ -1,15 +1,24 @@
-@if (params.scroll) {
+@if (params.scroll; as v) {
 
 <section class="ui-group">
-    <div class="ui-group-title">Widths</div>
+    <div class="ui-group-title">Path</div>
+    <div class="input-group basic-row field-row" role="group">
+        @for (pt of v.pathWidths; track $index) {
+        <label class="field-cell field-cell--arc">
+            <span class="field-title" [style.color]="pointColor($index)" title="Half the scroll's width, centreline to cheek, at points along the path from the top of the duck tail's round to the eye, which stands out to the last as a cylinder. The pegbox's front takes its widths from here">{{ $index }}/{{ v.pathWidths.length - 1 }} <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor($index)"
+                [(ngModel)]="pt.x" (input)="onChange()" (focus)="onPointFocus($index)" (blur)="onPointBlur()" />
+        </label>
+        }
+    </div>
+</section>
+
+<section class="ui-group">
+    <div class="ui-group-title">Duck Tail</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="colors.archBack" title="The scroll's width seen from behind, cheek to cheek">Back <span class="unit-label">mm</span></span>
-            <div class="basic-display" aria-label="Scroll back width value">{{ width }}</div>
-        </label>
-        <label class="field-cell">
-            <span class="field-title" [style.color]="colors.archTop" title="The pegbox's width seen from the front, cheek to cheek">Front <span class="unit-label">mm</span></span>
-            <div class="basic-display" aria-label="Scroll front width value">{{ width }}</div>
+            <span class="field-title" title="The round the scroll's back starts in at the duck tail, seen from behind. Its radius, which also sets how far up the path starts: as wide as the path's first width it runs smoothly into it, narrower leaves a shoulder either side. It can't be wider">Radius <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.5" min="0" [(ngModel)]="v.duckTailRadius" (input)="onChange()" />
         </label>
     </div>
 </section>

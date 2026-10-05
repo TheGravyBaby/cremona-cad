@@ -606,6 +606,51 @@ describe('panels that read the shared path cache', () => {
   });
 });
 
+describe('the scroll widths panel', () => {
+  it('haloes the focused point on the side, back and front, and nothing once it blurs', () => {
+    const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
+    instance.buildRun();
+    const halos = () => recordLayers(instance.buildRun()).elements.filter(el => el.tag === 'circle' && el.attrs['opacity'] === 0.33);
+    expect(halos()).toEqual([]);
+    instance.onPointFocus(4);
+    const v = instance.params.scroll!;
+    const marked = halos();
+    expect(marked).toHaveLength(5);
+    expect(marked.every(el => el.attrs['cy'] === v.pathWidths[4].y)).toBe(true);
+    expect(marked[0].attrs['cx']).toBe(v.pathWidths[4].z);
+    instance.onPointBlur();
+    expect(halos()).toEqual([]);
+  });
+
+  it('draws shoulders out from a duck tail round narrower than the path\'s start, from behind only, and none when as wide', () => {
+    const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
+    instance.buildRun();
+    const v = instance.params.scroll!;
+    const levelAtStart = (length: number) => recordLayers(instance.buildRun()).elements.filter(el => {
+      const start = v.pathWidths[0];
+      return el.tag === 'line' && el.attrs['y1'] === start.y && el.attrs['y2'] === start.y
+        && Math.abs(Math.abs((el.attrs['x1'] as number) - (el.attrs['x2'] as number)) - length) < 1e-9;
+    });
+    const shoulders = () => levelAtStart(v.pathWidths[0].x - v.duckTailRadius!);
+    expect(v.duckTailRadius).toBe(v.pathWidths[0].x);
+    expect(shoulders()).toEqual([]);
+    v.duckTailRadius = v.pathWidths[0].x - 4;
+    expect(shoulders()).toHaveLength(2);
+  });
+
+  it('runs the front view down to the foot of the nut and closes it level there, whatever the duck tail', () => {
+    const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
+    instance.buildRun();
+    const v = instance.params.scroll!;
+    const closings = () => recordLayers(instance.buildRun()).elements.filter(el =>
+      el.tag === 'path' && new RegExp(` ${v.pathWidths[0].y} L \\S+ 0 L \\S+ 0$`).test(el.attrs['d'] as string));
+    expect(v.pathWidths[0].y).toBeGreaterThan(0);
+    expect(closings()).toHaveLength(2);
+    v.duckTailRadius = 0;
+    expect(closings()).toHaveLength(2);
+  });
+});
+
 describe('the fluting panel', () => {
   // Its own case: it is the first of the arching steps, so it needs a plate.
   it('draws the channel on an arched plate', () => {

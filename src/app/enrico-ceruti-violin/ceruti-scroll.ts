@@ -1,7 +1,7 @@
 import { angleFromCenter, angleWithinSweep, arcReach, dist, moveInVectorSpace, normalizeRadians, placeCircleOnPointAtAngle, pointOnCircle, TURN, vectorFromSlope } from '../helpers/math/simpleGeometry';
 import { circleCircleIntersections } from '../helpers/math/draftMath';
 import { reportFailures, SolveFailure, solveSection } from '../helpers/validators';
-import { Arc, Circle, Pt } from '../models/types';
+import { Arc, Circle, Pt, Pt3D } from '../models/types';
 import { EnricoCerutiParams, ScrollParams, VoluteStyle } from './ceruti-types';
 import { defaultNeckParams, standardNutLength } from './ceruti-neck';
 
@@ -24,6 +24,8 @@ export const VOLUTE_STYLE_LABELS: Record<VoluteStyle, string> = {
 
 // quarter-turn arcs from the eye out to the front: two full turns
 export const TO_FRONT = 8;
+
+export const PATH_SECTIONS = 12;
 
 const BACK_KEYS: ScrollKey[] = ['S0', 'S1', 'S2', 'S3', 'nape', 'backStraight'];
 const FRONT_KEYS: ScrollKey[] = ['F0', 'F1', 'flat', 'frontStraight'];
@@ -220,8 +222,8 @@ export function defaultVoluteParams(p: EnricoCerutiParams): ScrollParams {
     flat: 0,
     frontStraight: mm(18),
 
-    backWidths: [],
-    frontWidths: [],
+    pathWidths: [],
+    duckTailRadius: null,
   };
 
   calculateScroll({ ...p, neck: p.neck ?? defaultNeckParams(p), scroll: v });
@@ -385,6 +387,115 @@ export function scrollLines(p: EnricoCerutiParams): Record<ScrollLine, [Pt, Pt]>
     flat: [nutTop, new Pt(nutTop.x, nutTop.y + v.flat)],
     frontStraight: [frontTop, moveInVectorSpace(frontTop, [{ ...vectorFromSlope(v.F0.end + TURN.quarter), mag: v.frontStraight }])],
   };
+}
+
+// the path's heights and depths, off a scroll calculateScroll solved whole: from the top of the duck
+// tail's round, over the crown and round the spiral in to the eye, cut into equal lengths with both
+// ends kept.
+// The user's x carries over. The round can be no wider than the path where it starts; narrower
+// leaves a shoulder
+export function calculateScrollWidths(p: EnricoCerutiParams): void {
+  let v = p.scroll!;
+  let width = Math.round(12 * p.height / 350);
+  let start = v.pathWidths?.[0]?.x ?? width;
+  v.duckTailRadius = Math.min(Math.max(v.duckTailRadius ?? start, 0), start);
+  let path = scrollPath(p);
+  v.pathWidths = Array.from({ length: PATH_SECTIONS + 1 }, (_, k) => {
+    let pt = path.at(path.length * k / PATH_SECTIONS);
+    return new Pt3D(v.pathWidths?.[k]?.x ?? width, pt.y, pt.x);
+  });
+}
+
+// the front from the nut up to where F1 meets the spiral, a point a millimetre or so apart. Its
+// width at each height is the path's there, and where the path passes that height more than once,
+// the crossing furthest back: the pegbox's back, not the volute wrapping over it
+export function scrollFrontWidths(p: EnricoCerutiParams): Pt3D[] {
+  let v = p.scroll!;
+  let path = scrollPath(p);
+  let widthAt = (s: number) => {
+    let t = s / path.length * PATH_SECTIONS;
+    let k = Math.min(Math.floor(t), PATH_SECTIONS - 1);
+    return v.pathWidths[k].x + (v.pathWidths[k + 1].x - v.pathWidths[k].x) * (t - k);
+  };
+  let along = (run: Run) => {
+    let n = Math.ceil(run.length);
+    return Array.from({ length: n + 1 }, (_, i) => ({ s: run.length * i / n, pt: run.at(run.length * i / n) }));
+  };
+  let traced = along(path).map(({ s, pt }) => new Pt3D(widthAt(s), pt.y, pt.x));
+
+  return along(scrollFront(p)).flatMap(({ pt }) => {
+    let back: Pt3D | null = null;
+    for (let i = 1; i < traced.length; i++) {
+      let a = traced[i - 1];
+      let b = traced[i];
+      if (a.y === b.y || (a.y - pt.y) * (b.y - pt.y) > 0) continue;
+      let t = (pt.y - a.y) / (b.y - a.y);
+      let z = a.z + (b.z - a.z) * t;
+      if (!back || z < back.z) back = new Pt3D(a.x + (b.x - a.x) * t, pt.y, z);
+    }
+    // below the path's start the pegbox's front still runs down to the nut, as wide as the path starts
+    if (!back && pt.y < traced[0].y) back = traced[0];
+    return back ? [new Pt3D(back.x, pt.y, pt.x)] : [];
+  });
+}
+
+// a stretch of the side profile, walked by distance from its start
+type Run = { length: number; at: (s: number) => Pt };
+
+const straight = (a: Pt, b: Pt): Run => {
+  let length = dist(a, b);
+  return { length, at: s => length > 0 ? new Pt(a.x + (b.x - a.x) * s / length, a.y + (b.y - a.y) * s / length) : a };
+};
+const counterclockwise = (a: Arc): Run => ({ length: a.r * (a.end - a.start), at: s => pointOnCircle(a, a.start + s / a.r) });
+const clockwise = (a: Arc): Run => ({ length: a.r * (a.end - a.start), at: s => pointOnCircle(a, a.end - s / a.r) });
+
+const joined = (runs: Run[]): Run => {
+  let last = runs.at(-1)!;
+  return {
+    length: runs.reduce((sum, run) => sum + run.length, 0),
+    at: s => {
+      for (let run of runs) {
+        if (s <= run.length) return run.at(s);
+        s -= run.length;
+      }
+      return last.at(last.length);
+    },
+  };
+};
+
+function scrollPath(p: EnricoCerutiParams): Run {
+  let v = p.scroll!;
+  let at = pointOnCircle;
+  let whole = joined([
+    counterclockwise(v.S3),
+    straight(at(v.S3, v.S3.end), at(v.S2, v.S2.end)),
+    clockwise(v.S2), clockwise(v.S1), clockwise(v.S0),
+    ...v.spiral!.map(clockwise),
+  ]);
+
+  // the path starts where the back first rises to the top of the duck tail's round
+  let top = whole.at(0).y + (v.duckTailRadius ?? 0);
+  let below = (s: number) => whole.at(s).y < top;
+  let hi = 0;
+  while (hi < whole.length && below(hi)) hi = Math.min(hi + 0.5, whole.length);
+  let lo = Math.max(hi - 0.5, 0);
+  for (let i = 0; i < 40; i++) {
+    let mid = (lo + hi) / 2;
+    if (below(mid)) lo = mid; else hi = mid;
+  }
+  return { length: whole.length - hi, at: s => whole.at(hi + s) };
+}
+
+function scrollFront(p: EnricoCerutiParams): Run {
+  let v = p.scroll!;
+  let at = pointOnCircle;
+  let flatTop = at(v.F0, v.F0.start);
+  return joined([
+    straight(new Pt(flatTop.x, flatTop.y - v.flat), flatTop),
+    counterclockwise(v.F0),
+    straight(at(v.F0, v.F0.end), at(v.F1, v.F1.end)),
+    clockwise(v.F1),
+  ]);
 }
 
 // the readouts, off a back solved through S3: the nut up to the crown's top, and the neck's front
