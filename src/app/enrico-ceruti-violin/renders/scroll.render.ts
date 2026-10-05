@@ -180,7 +180,7 @@ function halfWidthAtHeight(pts: Pt3D[], y: number): number | null {
 // further the nearer the eye, so each stretch of the path is drawn as far as the next turn nearer
 // the viewer lets it be seen, and nothing hidden is drawn. calculateScrollWidths holding each turn
 // at least as wide as the one before is what keeps that order true
-export const renderScrollWidths = (p: EnricoCerutiParams, colors: CerutiColors, focused: ScrollStationKey | null) => (g: any, ui: any): void => {
+export const renderScrollWidths = (p: EnricoCerutiParams, colors: CerutiColors, focused: ScrollStationKey | null, showGuides: boolean) => (g: any, ui: any): void => {
   const v = p.scroll!;
   const { nutHeight, nutThickness } = p.stringSetup!;
   const nutHalf = p.stringSetup!.nutWidth / 2;
@@ -374,7 +374,7 @@ export const renderScrollWidths = (p: EnricoCerutiParams, colors: CerutiColors, 
   // in the side view the hollow is inside the wood
   const cavity = pegboxCavity(p);
   if (cavity) renderPath(pathFromPolyline(cavity), colors.scrollFrontLight, STROKE_WEIGHT.trace, 1, '4,4')(g, ui);
-  for (const station of stations) renderCrosshair(station.at, stationColor(colors, station.key))(g, ui);
+  if (showGuides) for (const station of stations) renderCrosshair(station.at, stationColor(colors, station.key))(g, ui);
 };
 
 // the figure each style finds its centres on, as polylines in the eye's frame

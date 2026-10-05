@@ -5,7 +5,7 @@ import { EnricoCerutiParams, NeckParams } from './ceruti-types';
 import { defaultFlutingParams, solveLongArch } from './ceruti-arch-geometry';
 import {
   bridgeWedge, buttonTip, calculateNeck, defaultNeckParams, defaultStringSetup, defineNeckPath, fingerboardCrown, fingerboardEnd, neckHalfWidthAt, mortiseFingerboardIntersect,
-  heelBottom, heelFace, heelStands, mortiseFloorY, plateEdgeAtNeck, stringLength,
+  heelFace, heelStands, mortiseFloorY, plateEdgeAtNeck, stringLength,
 } from './ceruti-neck';
 
 // the properties a maker would check with a ruler on the finished instrument: the neck's own
@@ -32,28 +32,22 @@ const sagitta = (r: number, width: number) => r - Math.sqrt(r * r - (width / 2) 
 const nutTopOf = (p: EnricoCerutiParams) => moveInVectorSpace(p.neck!.neckTop!, [{ ...normalOf(p.neck!), mag: p.stringSetup!.nutThickness }]);
 
 describe('the nut', () => {
-  it('sits `length` mm from heelBottom, along the back, not from the root', () => {
+  it('sits `length` mm from the mortise floor, along the fingerboard plane', () => {
     const p = neckedViolin();
     const s = solve(p);
-    // heelBottom to the back corner at the nut is the actual `length` run, straight along the
-    // neck; the nut sits off that same line by the neck's thickness, so it's a hair over `length`
-    expect(dist(heelBottom(p), s.backNut!)).toBeCloseTo(p.neck!.length, 9);
-    expect(dist(heelBottom(p), s.neckTop!)).toBeGreaterThan(p.neck!.length);
-    // the two references genuinely differ — this would pass by accident against `root` alone
-    expect(dist(s.root!, s.backNut!)).not.toBeCloseTo(p.neck!.length, 1);
+    expect(dist(mortiseFingerboardIntersect(p), s.neckTop!)).toBeCloseTo(p.neck!.length, 9);
   });
 
-  it('places heelBottom from the back line and the button\'s height alone, whether or not the heel radius can stand on its own', () => {
+  it('places the nut the same whether or not the heel radius can stand on its own', () => {
     const p = neckedViolin();
-    solve(p);
-    const withHeel = heelBottom(p);
+    const s = solve(p);
+    const before = s.neckTop!;
 
     p.neck!.heel.r = 0;
     solve(p);
     expect(heelStands(p)).toBe(false);
-    expect(heelBottom(p).x).toBeCloseTo(withHeel.x, 9);
-    expect(heelBottom(p).y).toBeCloseTo(withHeel.y, 9);
-    expect(heelBottom(p).y).toBeCloseTo(buttonTip(p).y, 9);
+    expect(p.neck!.neckTop!.x).toBeCloseTo(before.x, 9);
+    expect(p.neck!.neckTop!.y).toBeCloseTo(before.y, 9);
   });
 
   it('measures the string from the nut\'s top to the bridge top', () => {

@@ -5,16 +5,20 @@ import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, FlutingParams, NeckP
 import { defaultArchingParams } from '../../ceruti-arching';
 import { defaultFlutingParams, LongArchSolve, solveLongArch } from '../../ceruti-arch-geometry';
 import { calculateOuterArcs, ensureFholePath, ensureNeckPath, ensureOuterTracePaths, getPath, getPathOrNull } from '../../ceruti-calcs';
-import { bridgeWedge, buttonTip, calculateNeck, defaultNeckParams, defaultStringSetup, fingerboardCrown, fingerboardEnd, frontViewAxisX, mortiseFingerboardIntersect, neckHalfWidthAt, heelBottom, heelFace, heelStands, mortiseFloorY, plateEdgeAtNeck, stringLength } from '../../ceruti-neck';
+import { bridgeWedge, buttonTip, calculateNeck, defaultNeckParams, defaultStringSetup, fingerboardCrown, fingerboardEnd, frontViewAxisX, mortiseFingerboardIntersect, neckHalfWidthAt, heelFace, heelStands, mortiseFloorY, plateEdgeAtNeck, stringLength } from '../../ceruti-neck';
 import { renderBodySection } from '../../renders/body-section.render';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { occludePath, pathFromArc, pathFromPolygon } from '../../../helpers/math/pathMath';
 import { dist, moveInVectorSpace, pointAtDistanceToward, pointOnCircle, vectorFromSlope } from '../../../helpers/math/simpleGeometry';
-import { renderSegment, renderPolygon, renderPath, renderSolveFailures } from '../../../helpers/renderFuncs';
+import { renderSegment, renderSegmentHalo, renderArcHalo, renderPolygon, renderPath, renderSolveFailures } from '../../../helpers/renderFuncs';
 import { Pt, Vect2D } from '../../../models/types';
 import { renderGuideMeasure, renderGuideBaseline } from '../../renders/module-guide.render';
 import { STROKE_WEIGHT } from '../../renders/render-constants';
+
+export type NeckHighlightKey =
+  | 'length' | 'thickness' | 'topWidth' | 'rootWidth' | 'heel' | 'buttonHeight' | 'mortise' | 'overstand' | 'angle'
+  | 'bodyStop' | 'bridgeHeight' | 'nutThickness' | 'fbLength' | 'fbThickness' | 'fbRadius';
 
 /** The neck set, drawn over the body section: bridge, root, neck and fingerboard, bottom up. */
 @Component({
@@ -31,12 +35,27 @@ export class NeckPanel extends CerutiPanelBase implements OnInit {
   @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;
 
+  private highlightedKey: NeckHighlightKey | null = null;
+  private highlightedColor = '';
+
   ngOnInit(): void {
     this.emitImmediate();
   }
 
   onChange(): void {
     this.emitDebounced();
+  }
+
+  onFieldFocus(key: NeckHighlightKey, color: string): void {
+    this.highlightedKey = key;
+    this.highlightedColor = color;
+    this.emitImmediate(false);
+  }
+
+  onFieldBlur(): void {
+    this.highlightedKey = null;
+    this.highlightedColor = '';
+    this.emitImmediate(false);
   }
 
   get neck(): NeckParams { return this.params.neck!; }
@@ -80,6 +99,7 @@ export class NeckPanel extends CerutiPanelBase implements OnInit {
       renderBodySection(p, this.colors, { solved, gouge, color: this.colors.outerTrace }),
       renderNeck(p, this.colors, this.flags.showModuleGuides, this.flags.showFingerboard, this.flags.showFretMarks),
       renderFrontView(p, this.paths, this.colors, this.flags.showFingerboard),
+      renderNeckHighlight(p, this.highlightedKey, this.highlightedColor),
       renderSolveFailures(failures, this.colors.pathError),
     ];
   }
@@ -154,9 +174,50 @@ export function renderNeck(p: EnricoCerutiParams, colors: CerutiColors, showGuid
     renderGuideMeasure(plateEdgeAtNeck(p), nk.root!, guide, -nk.thickness)(g, ui);
     renderGuideBaseline(new Pt(0, rootPlaneY), new Pt(mortFboard.x, rootPlaneY), guide)(g, ui);
     renderGuideMeasure(new Pt(mortFboard.x, rootPlaneY), mortFboard, guide, 2 * nk.thickness)(g, ui);
-    // the neck's own length runs along the back, heelBottom to backNut — not root to nut, which
-    // sits off that line by the neck's thickness (see `length`'s header)
-    renderGuideMeasure(heelBottom(p), nk.backNut!, guide, -2 * (nk.thickness + ss.nutThickness))(g, ui);
+    renderGuideMeasure(mortFboard, nk.neckTop!, guide, -2 * (nk.thickness + ss.nutThickness))(g, ui);
+  };
+}
+
+function renderNeckHighlight(p: EnricoCerutiParams, key: NeckHighlightKey | null, color: string) {
+  return (g: any, ui: any): void => {
+    if (!key) return;
+    const nk = p.neck!;
+    const ss = p.stringSetup!;
+    const normal = vectorFromSlope(nk.angle);
+    const mortFboard = mortiseFingerboardIntersect(p);
+    const fbEnd = fingerboardEnd(p);
+    const edgeAt = (at: Pt) => moveInVectorSpace(at, [{ ...normal, mag: ss.fingerboardThickness }]);
+    const line = (a: Pt, b: Pt, dx = 0) => renderSegmentHalo(new Pt(a.x + dx, a.y), new Pt(b.x + dx, b.y), color)(g, ui);
+
+    const topY = nk.neckTop!.y;
+    const rootY = mortiseFloorY(p);
+    const frontDx = frontViewAxisX(p);
+    switch (key) {
+      case 'length': line(mortFboard, nk.neckTop!); break;
+      case 'thickness': line(nk.neckTop!, nk.backNut!); break;
+      case 'topWidth': line(new Pt(-nk.topWidth / 2, topY), new Pt(nk.topWidth / 2, topY), frontDx); break;
+      case 'rootWidth': line(new Pt(-nk.rootWidth / 2, rootY), new Pt(nk.rootWidth / 2, rootY), frontDx); break;
+      case 'heel': if (heelStands(p)) renderArcHalo(nk.heel, color)(g, ui); break;
+      case 'buttonHeight': line(new Pt(0, p.height), buttonTip(p)); break;
+      case 'mortise': line(new Pt(0, p.height - p.overhang), new Pt(0, rootY)); break;
+      case 'overstand': line(plateEdgeAtNeck(p), nk.root!); break;
+      case 'angle': line(nk.root!, nk.neckTop!); break;
+      case 'bodyStop': line(new Pt(ss.bridgeFoot!.x, p.height), ss.bridgeFoot!); break;
+      case 'bridgeHeight': line(ss.bridgeFoot!, ss.bridgeTop!); break;
+      case 'nutThickness': line(nk.neckTop!, ss.nutTop!); break;
+      case 'fbLength': line(nk.neckTop!, fbEnd); break;
+      case 'fbThickness': line(nk.neckTop!, edgeAt(nk.neckTop!)); line(fbEnd, edgeAt(fbEnd)); break;
+      case 'fbRadius': {
+        let prev = edgeAt(nk.neckTop!);
+        for (let i = 1; i <= FINGERBOARD_CROWN_SAMPLES; i++) {
+          const at = pointAtDistanceToward(nk.neckTop!, fbEnd, i * dist(nk.neckTop!, fbEnd) / FINGERBOARD_CROWN_SAMPLES);
+          const next = moveInVectorSpace(at, [{ ...normal, mag: ss.fingerboardThickness + fingerboardCrown(p, at.y) }]);
+          line(prev, next);
+          prev = next;
+        }
+        break;
+      }
+    }
   };
 }
 

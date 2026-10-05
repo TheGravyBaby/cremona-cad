@@ -1,7 +1,7 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { renderPath, renderSolveFailures } from '../../../helpers/renderFuncs';
-import { CerutiColors, EnricoCerutiParams, RenderToggleKey } from '../../ceruti-types';
+import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, RenderToggleKey } from '../../ceruti-types';
 import { defaultNeckParams, defaultStringSetup } from '../../ceruti-neck';
 import { calculateScroll, calculateScrollWidths, ScrollStationKey } from '../../ceruti-scroll';
 import { defineSideScrollPath } from '../../ceruti-paths';
@@ -17,10 +17,11 @@ import { NumberStepperDirective } from '../../../shared/number-stepper';
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class ScrollWidthsPanel extends CerutiPanelBase implements OnInit {
-  static readonly renderToggles: readonly RenderToggleKey[] = [];
+  static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleGuides'];
 
   @Input({ required: true }) params!: EnricoCerutiParams;
   @Input({ required: true }) colors!: CerutiColors;
+  @Input({ required: true }) flags!: CerutiViewFlags;
 
   private focused: ScrollStationKey | null = null;
 
@@ -55,7 +56,7 @@ export class ScrollWidthsPanel extends CerutiPanelBase implements OnInit {
       renderScrollNeck(p, this.colors, false, failures),
       ...(failures.length ? [] : [
         renderPath(defineSideScrollPath(p), this.colors.outerTrace, STROKE_WEIGHT.trace),
-        renderScrollWidths(p, this.colors, this.focused),
+        renderScrollWidths(p, this.colors, this.focused, this.flags.showModuleGuides),
       ]),
       renderSolveFailures(failures, this.colors.pathError),
     ];

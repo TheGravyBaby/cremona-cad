@@ -78,6 +78,10 @@ section first → long arch carved to a template → crown across. The panel ord
 - **The neck wood's thickness is one number too, root to nut.** `NeckParams.thickness` sets
   `back.nut` and `back.root` equally; templates read as uniform enough here that carrying
   separate root/nut values wasn't earning its keep. Entered once, under the "Neck" section.
+- **S3's end angle is solved by default (`fitToNut`, 2026-10-05).** The duck tail comes down to the
+  nut's lower edge (y = 0 in the scroll's frame) and the angle is read back onto `S3.start`; the
+  other of the two angles at that height is passed over for the shorter sweep. Off, the authored
+  angle stands. Specs that exercise authored geometry turn it off.
 - **The scroll continues the neck's own plane; the nut sits proud of it.** The origin the
   volute's eye is measured from starts at `nut` (the fingerboard-plane point), not the string
   contact point raised by the nut's thickness — the pegbox/scroll is flush with the neck as it
@@ -88,8 +92,8 @@ section first → long arch carved to a template → crown across. The panel ord
   button or a new `*Info()` when adding a field; leave that to a human pass. The neck panel's
   write-ups in `ceruti-helpers.ts` exist but aren't bound yet.
 - **The neck's own `length` places the nut; the string figures are read off, not dialed.**
-  `length` is the root to the nut, along the neck — `nutAt = root` moved `length` toward the nut,
-  one `moveInVectorSpace` call, no intersection needed. `stringLength` (nut to bridge, the
+  `length` runs along the fingerboard plane from where it crosses the mortise floor to the nut's
+  bottom (`neckTop`) — that crossing moved `length` toward the nut. `stringLength` (nut to bridge, the
   classical figure that should land near 325–328 mm) is derived from it rather than the other way
   around, so the nut can no longer fail to place. This replaced an earlier design where the
   nut-to-bridge distance was entered and the nut was solved backward off a circle around the
@@ -127,7 +131,7 @@ section first → long arch carved to a template → crown across. The panel ord
   (the one piece that needs the arching solve) and `nutTop`. The string length readout is
   `stringLength(p)`, not stored. Everything else the panel draws is a function in `ceruti-neck.ts`
   reading those and the authored numbers — `buttonTip`, `mortiseFloorY`,
-  `mortiseFingerboardIntersect`, `plateEdgeAtNeck`, `heelBottom`, `heelFace`, `fingerboardEnd`,
+  `mortiseFingerboardIntersect`, `plateEdgeAtNeck`, `heelFace`, `fingerboardEnd`,
   `bridgeWedge` —
   shared by `renderNeck` and `defineNeckPath`, the way `violNeckCap` serves both the outer trace and
   the main-bouts preview. `defineNeckPath` moved from `ceruti-paths.ts` into `ceruti-neck.ts` for

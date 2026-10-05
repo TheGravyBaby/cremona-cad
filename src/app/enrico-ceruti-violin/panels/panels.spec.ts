@@ -11,11 +11,11 @@ import { FlutingPanel } from './fluting-panel/fluting-panel';
 import { LongArchingPanel } from './long-arching-panel/long-arching-panel';
 import { MainBoutsPanel } from './main-bouts-panel/main-bouts-panel';
 import { MouldPanel } from './mould-panel/mould-panel';
-import { NeckPanel } from './neck-panel/neck-panel';
+import { NeckHighlightKey, NeckPanel } from './neck-panel/neck-panel';
 import { OuterTracePanel } from './outer-trace-panel/outer-trace-panel';
 import { ScrollPanel } from './scroll-panel/scroll-panel';
 import { ScrollWidthsPanel } from './scroll-widths-panel/scroll-widths-panel';
-import { duckTailRadius, pegboxWidth, scrollBackWidths, scrollExtent, scrollLines, scrollPathStretches, scrollWidthStations, spiralArcs as styleArcs, VOLUTE_STYLE_LABELS } from '../ceruti-scroll';
+import { defaultVoluteParams, duckTailRadius, pegboxWidth, scrollBackWidths, scrollExtent, scrollLines, scrollPathStretches, scrollWidthStations, spiralArcs as styleArcs, VOLUTE_STYLE_LABELS } from '../ceruti-scroll';
 import { VolutePanel } from './volute-panel/volute-panel';
 import { VoluteStyle } from '../ceruti-types';
 import { Circle, Pt } from '../../models/types';
@@ -187,6 +187,21 @@ describe('the scroll panel', () => {
     expect(-lowest).toBeLessThan(p.scroll!.eye.y);
     const leftmost = Math.min(...lines.flatMap(l => [l['x1'] as number, l['x2'] as number]));
     expect(-leftmost).toBeCloseTo(p.neck!.thickness, 9);
+  });
+
+  it('lights up something on the neck drawing for each field while it has focus, and clears on blur', () => {
+    const keys: NeckHighlightKey[] = ['length', 'thickness', 'topWidth', 'rootWidth', 'heel', 'buttonHeight', 'mortise', 'overstand', 'angle',
+      'bodyStop', 'bridgeHeight', 'nutThickness', 'fbLength', 'fbThickness', 'fbRadius'];
+    const instance = panel(NeckPanel, defaultViolin(), flags({}));
+    instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
+    const lit = () => recordLayers(instance.buildRun()).elements.filter(el => el.attrs['stroke'] === 'HALO' || el.attrs['fill'] === 'HALO').length;
+    expect(lit()).toBe(0);
+    for (const key of keys) {
+      instance.onFieldFocus(key, 'HALO');
+      expect(lit(), key).toBeGreaterThan(0);
+      instance.onFieldBlur();
+      expect(lit(), key).toBe(0);
+    }
   });
 
   describe('the volute', () => {
@@ -512,6 +527,7 @@ describe('the scroll panel', () => {
 
     it('redraws the back from the arc that changed on, and stops it at one with no radius', () => {
       const p = defaultViolin();
+      (p.scroll ??= defaultVoluteParams(p)).fitToNut = false;
       const instance = scroll(p);
       instance.buildRun();
       const v = p.scroll!;
@@ -545,6 +561,7 @@ describe('the scroll panel', () => {
 
     it('draws the straight after S2 and the line square to the neck before the nape, in S2\'s colour and the nape\'s', () => {
       const p = defaultViolin();
+      (p.scroll ??= defaultVoluteParams(p)).fitToNut = false;
       const traced = () => {
         const instance = scroll(p, { showModuleGuides: false, showVoluteConstruction: false });
         return recordLayers(instance.buildRun()).elements.filter(el => el.tag === 'line' && el.attrs['stroke-width'] === 2).map(el => el.attrs);
@@ -569,6 +586,7 @@ describe('the scroll panel', () => {
 
     it('runs the neck\'s back up to where the nape meets it, above the nut or below, and draws no nape too wide to fit', () => {
       const p = defaultViolin();
+      (p.scroll ??= defaultVoluteParams(p)).fitToNut = false;
       const instance = scroll(p, { showModuleArcs: true, showModuleGuides: false, showVoluteConstruction: false });
       const drawn = () => recordLayers(instance.buildRun()).elements;
       const backTop = (els: ReturnType<typeof drawn>) => els
@@ -753,6 +771,8 @@ describe('the scroll widths panel', () => {
     const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
     instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
     instance.buildRun();
+    instance.params.scroll!.fitToNut = false;
+    instance.buildRun();
     const v = instance.params.scroll!;
     // the back view stands left of the side view, the front view right of it
     const fromBehind = () => recordLayers(instance.buildRun()).elements.filter(el =>
@@ -807,6 +827,8 @@ describe('the scroll widths panel', () => {
   it('carries the neck on below both views, widening down it: in front up to the nut over it, behind up to where it meets the scroll', () => {
     const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
     instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
+    instance.buildRun();
+    instance.params.scroll!.fitToNut = false;
     instance.buildRun();
     const p = instance.params;
     const drawn = recordLayers(instance.buildRun()).elements;
