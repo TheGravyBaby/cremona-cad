@@ -201,19 +201,16 @@ section first → long arch carved to a template → crown across. The panel ord
   the same day the fingerboard toggle shipped (next bullet) — with the fingerboard now optional,
   the neck needed to read as one coherent piece whether or not the board is showing, and a dashed
   segment sitting mid-drawing read as an unfinished edge rather than a deliberate one.
-- **Fingerboard length is a standard size by instrument, not a free parameter — and the board
-  itself is now a view toggle, defaulted on.** `NeckParams.fingerboard` lost its `length` field
-  (2026-09-20); `calculateNeck` looks it up instead from `standardFingerboardLength(p.height)`,
-  the same body-height thresholds `calculateMould` already uses to tell violin/viola/cello/bass
-  apart (`<400`/`<500`/`<800`/else — 270/310/580/850 mm). Modern fingerboards really do come in a
-  handful of stock lengths, so entering one was never a real degree of freedom. The render call
-  for the fingerboard polygon (the board's end and the nut's top corners, in `colors.fingerboard`)
-  had existed only as a commented-out line in `neck-panel.ts` since some earlier pass — it's now
-  live, gated behind a new `showFingerboard` render-toggle-bar flag (`CerutiViewFlags`/
-  `RenderToggleKey`, default `true` in `DEFAULT_CERUTI_VIEW_FLAGS`) so the board can be hidden
-  without losing any geometry that depends on it. The "String Setup" section's "FB Thickness, Length" shared-title
-  field row lost its second cell along with the field — it's just "FB Thickness" now, thickness
-  being the one fingerboard number still worth dialing by hand.
+- **Fingerboard length defaults to a standard size by instrument, and the board is a view
+  toggle, defaulted on.** `standardFingerboardLength(p.height)` uses the same body-height
+  thresholds `calculateMould` uses to tell violin/viola/cello/bass apart (`<400`/`<500`/`<800`/else
+  — 270/310/580/850 mm), since modern boards come in a handful of stock lengths. It was the only
+  source of the length from 2026-09-20 until 2026-10-05, when `stringSetup.fingerboardLength` came
+  back as an entered field seeded from it. The board draws behind the `showFingerboard` toggle
+  (`CerutiViewFlags`/`RenderToggleKey`, default `true` in `DEFAULT_CERUTI_VIEW_FLAGS`), so it can be
+  hidden without losing any geometry that depends on it. In the front view the board replaces the
+  neck's outline rather than drawing over it. The board has its own colour, a shade lighter than
+  `colors.nut`, which the nut uses in every view including the scroll's.
 - **A panel's section color has to be restated on every input inside it, not just the
   `<section>` wrapper.** `.ui-group` sets `border: none`, so a bare
   `[style.border-color]="colors.x"` on the section has no border-style/width to tint and renders

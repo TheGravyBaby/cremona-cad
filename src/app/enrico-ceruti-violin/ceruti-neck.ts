@@ -49,6 +49,7 @@ export function defaultStringSetup(p: EnricoCerutiParams): StringSetup {
     bodyStop: mm(195),
     bridgeHeight: mm(33),
     nutHeight: mm(7.5),
+    fingerboardLength: standardFingerboardLength(p.height),
     fingerboardThickness: mm(5),
     fingerboardRadius: mm(42),
 
@@ -236,10 +237,10 @@ export function stringLength(p: EnricoCerutiParams): number {
   return dist(p.stringSetup!.nutTop!, p.stringSetup!.bridgeTop!);
 }
 
-// the fingerboard's end, a standard length down the neck from the nut
+// the fingerboard's end, its length down the neck from the nut
 export function fingerboardEnd(p: EnricoCerutiParams): Pt {
   const nk = p.neck!;
-  return pointAtDistanceToward(nk.neckTop!, nk.root!, standardFingerboardLength(p.height));
+  return pointAtDistanceToward(nk.neckTop!, nk.root!, p.stringSetup!.fingerboardLength);
 }
 
 // the front view's centerline: the plan outline, which is centred on x = 0 and shares the side

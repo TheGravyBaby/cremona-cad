@@ -9,7 +9,7 @@ import { bridgeWedge, buttonTip, calculateNeck, defaultNeckParams, defaultString
 import { renderBodySection } from '../../renders/body-section.render';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
-import { pathFromArc } from '../../../helpers/math/pathMath';
+import { occludePath, pathFromArc, pathFromPolygon } from '../../../helpers/math/pathMath';
 import { dist, moveInVectorSpace, pointAtDistanceToward, pointOnCircle, vectorFromSlope } from '../../../helpers/math/simpleGeometry';
 import { renderSegment, renderPolygon, renderPath, renderSolveFailures } from '../../../helpers/renderFuncs';
 import { Pt, Vect2D } from '../../../models/types';
@@ -129,7 +129,7 @@ export function renderNeck(p: EnricoCerutiParams, colors: CerutiColors, showGuid
     // the nut, on the fingerboard plane just past the board
     const nutFar = moveInVectorSpace(nk.neckTop!, [{ ...direction, mag: standardNutLength(p.height) }]);
     const nutFarTop = moveInVectorSpace(nutFar, [{ ...normal, mag: ss.nutHeight }]);
-    renderPolygon([nk.neckTop!, nutFar, nutFarTop, nutTop], colors.fingerboard, STROKE_WEIGHT.section)(g, ui);
+    renderPolygon([nk.neckTop!, nutFar, nutFarTop, nutTop], colors.nut, STROKE_WEIGHT.section)(g, ui);
 
     // the neck itself: nut-end wall, the back, and the heel down to the button
     seg(nk.neckTop!, nk.backNut!);
@@ -168,15 +168,29 @@ function renderFrontView(p: EnricoCerutiParams, paths: PathEntry[], colors: Ceru
   const outerPurfling = getPathOrNull(paths, 'outerPurfling');
   const fHole = p.fHoles ? getPathOrNull(paths, 'fHole') : null;
 
+  const nk = p.neck!;
+  const rootY = mortiseFloorY(p);
+  const topY = nk.neckTop!.y;
+  const neck = [
+    new Pt(-nk.rootWidth / 2, rootY), new Pt(nk.rootWidth / 2, rootY),
+    new Pt(nk.topWidth / 2, topY), new Pt(-nk.topWidth / 2, topY),
+  ];
+  const neckPath = pathFromPolygon(neck);
+
   return (g: any, ui: any): void => {
     const shifted = {
       g: g.append('g').attr('transform', `translate(${dx},0)`),
       ui: ui.append('g').attr('transform', `translate(${dx},0)`),
     };
-    renderPath(top, colors.outerTrace)(shifted.g, shifted.ui);
-    if (purfling) renderPath(purfling, colors.innerTrace, STROKE_WEIGHT.guide)(shifted.g, shifted.ui);
-    if (outerPurfling) renderPath(outerPurfling, colors.innerTrace, STROKE_WEIGHT.guide)(shifted.g, shifted.ui);
-    if (fHole) renderPath(fHole, colors.innerTrace, STROKE_WEIGHT.guide)(shifted.g, shifted.ui);
+    const body = (path: string | null, color: string, weight: number) => {
+      if (!path) return;
+      const { visible } = occludePath(path, neckPath);
+      if (visible) renderPath(visible, color, weight)(shifted.g, shifted.ui);
+    };
+    body(top, colors.outerTrace, STROKE_WEIGHT.trace);
+    body(purfling, colors.innerTrace, STROKE_WEIGHT.guide);
+    body(outerPurfling, colors.innerTrace, STROKE_WEIGHT.guide);
+    body(fHole, colors.innerTrace, STROKE_WEIGHT.guide);
 
     const [footA, footB] = bridgeWedge(p);
     const bridgeHalfDepth = dist(footA, footB) / 2;
@@ -189,9 +203,6 @@ function renderFrontView(p: EnricoCerutiParams, paths: PathEntry[], colors: Ceru
       new Pt(bridgeHalfWidth, bridgeY + bridgeHalfDepth), new Pt(-bridgeHalfWidth, bridgeY + bridgeHalfDepth),
     ], colors.bridge, STROKE_WEIGHT.section)(shifted.g, shifted.ui);
 
-    const nk = p.neck!;
-    const rootY = mortiseFloorY(p);
-    const topY = nk.neckTop!.y;
     if (showFingerboard) {
       const fbEndY = fingerboardEnd(p).y;
       const fbEndHalf = neckHalfWidthAt(p, fbEndY);
@@ -199,17 +210,15 @@ function renderFrontView(p: EnricoCerutiParams, paths: PathEntry[], colors: Ceru
         new Pt(-fbEndHalf, fbEndY), new Pt(fbEndHalf, fbEndY),
         new Pt(nk.topWidth / 2, topY), new Pt(-nk.topWidth / 2, topY),
       ], colors.fingerboard, STROKE_WEIGHT.section)(shifted.g, shifted.ui);
+    } else {
+      renderPolygon(neck, colors.neckRoot, STROKE_WEIGHT.section)(shifted.g, shifted.ui);
     }
-    renderPolygon([
-      new Pt(-nk.rootWidth / 2, rootY), new Pt(nk.rootWidth / 2, rootY),
-      new Pt(nk.topWidth / 2, topY), new Pt(-nk.topWidth / 2, topY),
-    ], colors.neckRoot, STROKE_WEIGHT.section)(shifted.g, shifted.ui);
 
     const nutY = moveInVectorSpace(nk.neckTop!, [{ ...vectorFromSlope(nk.angle + Math.PI / 2), mag: standardNutLength(p.height) }]).y;
     renderPolygon([
       new Pt(-nk.topWidth / 2, topY), new Pt(nk.topWidth / 2, topY),
       new Pt(nk.topWidth / 2, nutY), new Pt(-nk.topWidth / 2, nutY),
-    ], colors.fingerboard, STROKE_WEIGHT.section)(shifted.g, shifted.ui);
+    ], colors.nut, STROKE_WEIGHT.section)(shifted.g, shifted.ui);
   };
 }
 
