@@ -266,6 +266,12 @@ export interface ScrollWidths {
   eye: number;
 }
 
+export interface PegboxParams {
+  straight: number; // above the nut's top, as wide as the nut, before the taper to the throat starts
+  wall: number; // each cheek, at the pegbox's front edge
+  floor: number; // the wood left between the hollow and the back
+}
+
 export interface ScrollParams {
   style: VoluteStyle;
   eye: Circle;
@@ -288,9 +294,7 @@ export interface ScrollParams {
   frontStraight: number;
 
   widths: ScrollWidths;
-  pegboxWall: number; // each cheek, at the pegbox's front edge
-  pegboxFloor: number; // the wood left between the hollow and the back
-  pegboxStraight: number; // above the nut's top, as wide as the nut, before the taper to the throat starts
+  pegbox: PegboxParams;
 }
 
 /** Resolved palette from CerutiViolin's `colors` getter, threaded into every panel and render fn. */

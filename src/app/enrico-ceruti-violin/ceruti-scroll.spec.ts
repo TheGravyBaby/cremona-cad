@@ -386,7 +386,7 @@ describe('the scroll widths', () => {
 
   it('seeds a scroll saved without widths', () => {
     const { p, v } = solved();
-    const fields = () => ({ widths: { ...v.widths }, pegboxStraight: v.pegboxStraight, pegboxWall: v.pegboxWall, pegboxFloor: v.pegboxFloor });
+    const fields = () => ({ widths: { ...v.widths }, pegbox: { ...v.pegbox } });
     const seeded = fields();
     for (const key of Object.keys(seeded)) delete (v as any)[key];
     calculateScrollWidths(p);
@@ -424,7 +424,7 @@ describe('the scroll widths', () => {
 
   it.each([0, 8, 30])('keeps the pegbox as wide as the nut for a straight of %d, then tapers it by height to the throat, back and front alike', straight => {
     const { p, v } = solved();
-    v.pegboxStraight = straight;
+    v.pegbox.straight = straight;
     const { nutWidth, nutHeight } = p.stringSetup!;
     const throat = at(v.F1, v.F1.start)[1];
     const from = nutHeight + straight;
@@ -454,9 +454,9 @@ describe('the scroll widths', () => {
     const toBack = (pt: Pt) => Math.min(Math.hypot(pt.x - duckTail[0], pt.y - duckTail[1]), ...back.map(b => Math.hypot(pt.x - b.z, pt.y - b.y)));
     const floor = cavity.slice(2, -2);
     expect(floor.length).toBeGreaterThan(50);
-    for (const pt of floor) expect(toBack(pt)).toBeCloseTo(v.pegboxFloor, 1);
+    for (const pt of floor) expect(toBack(pt)).toBeCloseTo(v.pegbox.floor, 1);
 
-    v.pegboxFloor = 200;
+    v.pegbox.floor = 200;
     expect(pegboxCavity(p)).toBeNull();
   });
 

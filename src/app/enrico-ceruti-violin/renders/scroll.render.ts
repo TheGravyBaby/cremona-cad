@@ -1,5 +1,5 @@
 import { arcReach, dist, normalizeRadians, pointOnCircle, TURN } from '../../helpers/math/simpleGeometry';
-import { occludePath, pathFromLine, pathFromPolygon } from '../../helpers/math/pathMath';
+import { occludePath, pathFromLine, pathFromPolygon, pathFromPolyline } from '../../helpers/math/pathMath';
 import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderCrosshair, renderDashLine, mixColors, renderPath, renderPointHalo, renderPolygon, renderSegment, renderSegmentHalo } from '../../helpers/renderFuncs';
 import { Arc, Pt, Pt3D } from '../../models/types';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, ScrollParams } from '../ceruti-types';
@@ -161,101 +161,61 @@ export function scrollWidthLedges(widths: Pt3D[]): { y: number; from: number; to
   return turns.map(pt => ({ y: pt.y, from: pt.x, to: insideAt(widths, pt.y, pt.x) }));
 }
 
-// the side profile's width stations, and the path seen from behind and from the front: the back view beside
-// the scroll's furthest reach, the front beside the nut with the pegbox's front over the volute.
-// Each view carries the turns' faces and the eye, a cylinder standing out to the last width. From
-// behind, the back starts in the duck tail's round, with shoulders out to the path where it is
-// narrower; from the front the round is hidden and the path runs on down to the foot of the nut,
-// where the scroll meets the neck, closing level there. Each view carries the neck on below as the
-// side view does, nothing drawn where it passes behind
+// the side profile with a crosshair on each width, and the path seen from behind and from the front:
+// the back view beside the scroll's furthest reach, the front view beside the nut. Each carries the
+// turns' faces, the eye as a cylinder standing out to the last width, and the neck on below as the
+// side view does
 export const renderScrollWidths = (p: EnricoCerutiParams, colors: CerutiColors, focused: ScrollStationKey | null) => (g: any, ui: any): void => {
-  const gap = 20;
   const v = p.scroll!;
+  const { nutHeight, nutThickness } = p.stringSetup!;
+  const nutHalf = p.stringSetup!.nutWidth / 2;
+  const eyeHalf = v.widths.eye / 2;
   const widths = scrollBackWidths(p);
   const stations = scrollWidthStations(p);
-  const eyeWidth = widths.at(-1)!.x;
+
+  const gap = 20;
   const widest = Math.max(...widths.map(pt => pt.x));
   const back = -scrollExtent(v).width - gap - widest;
-  const front = p.stringSetup!.nutThickness + gap + widest;
+  const front = nutThickness + gap + widest;
 
+  // a half outline, x out from a view's centreline, drawn on both sides of it
   const stroke = (d: string, ink: string, weight: number, cover: string | string[] | null) => {
     const shown = cover ? occludePath(d, cover).visible : d;
     if (shown) renderPath(shown, ink, weight)(g, ui);
   };
-  const contour = (pts: Pt3D[], center: number, ink: string, cover: string | null = null) => {
-    for (const side of [1, -1]) {
-      stroke(pts.map((pt, i) => `${i ? 'L' : 'M'} ${center + side * pt.x} ${pt.y}`).join(' '), ink, STROKE_WEIGHT.trace, cover);
-    }
+  const contour = (pts: { x: number; y: number }[], center: number, ink: string, cover: string | null = null) => {
+    for (const side of [1, -1]) stroke(pathFromPolyline(pts.map(pt => new Pt(center + side * pt.x, pt.y))), ink, STROKE_WEIGHT.trace, cover);
   };
-  const stub = neckStub(p);
-  const { nutHeight } = p.stringSetup!;
-  const nutHalf = p.stringSetup!.nutWidth / 2;
+  const closed = (pts: { x: number; y: number }[], center: number) =>
+    pathFromPolygon([...pts.map(pt => new Pt(center + pt.x, pt.y)), ...pts.map(pt => new Pt(center - pt.x, pt.y)).reverse()]);
+
+  // where the path turns over, the turn's face is seen edge on, and the eye stands out as a cylinder
   const ledges = [
     ...scrollWidthLedges(widths),
-    ...[v.eye.y - v.eye.r, v.eye.y + v.eye.r].map(y => ({ y, from: eyeWidth, to: insideAt(widths, y, eyeWidth) })),
+    ...[v.eye.y - v.eye.r, v.eye.y + v.eye.r].map(y => ({ y, from: eyeHalf, to: insideAt(widths, y, eyeHalf) })),
   ];
-  const start = widths[0];
-  const foot = Math.min(start.y, 0);
-  // below the path's start the pegbox runs on down its taper to the straight, then square to the foot
-  const taperStart = pegboxTaperStart(p);
-  const closing = [start, ...(start.y > taperStart ? [new Pt3D(nutHalf, taperStart, 0)] : []), new Pt3D(nutHalf, foot, 0), new Pt3D(0, foot, 0)];
-  const r = duckTailRadius(p);
-  const round = Array.from({ length: 33 }, (_, i) => pointOnCircle({ x: 0, y: start.y, r }, TURN.half + TURN.half * i / 32));
-  const view = (center: number, behind: boolean) => {
-    const [line, light] = behind ? [colors.archBack, colors.scrollBackLight] : [colors.archTop, colors.scrollFrontLight];
-    const neckSide = (side: number, top: number) =>
-      pathFromLine(new Pt(center + side * scrollNeckHalfWidth(p, -stub), -stub), new Pt(center + side * scrollNeckHalfWidth(p, top), top));
-    if (behind) {
-      // a path starting above the nut's foot leaves the pegbox's front running on below the back, so
-      // the back and front can't join; its walls are drawn in the front's colour, and its bottom only
-      // where it overhangs the neck, joining the two. Over the neck it's smoothed into it
-      const hanging = foot < start.y;
-      const walls = closing.slice(0, -1);
-      // from behind the neck's sides run on up until they meet the scroll, in the round or the front
-      const placed = round.map(pt => new Pt(center + pt.x, pt.y));
-      const covers = [
-        ...(r > 0 ? [pathFromPolygon(placed)] : []),
-        ...(hanging ? [pathFromPolygon([...walls.map(pt => new Pt(center + pt.x, pt.y)), ...walls.map(pt => new Pt(center - pt.x, pt.y)).reverse()])] : []),
-      ];
-      for (const side of [1, -1]) stroke(neckSide(side, start.y), colors.neckOff, STROKE_WEIGHT.section, covers.length ? covers : null);
-      contour(widths, center, line);
-      if (r > 0) renderPath(placed.map((pt, i) => `${i ? 'L' : 'M'} ${pt.x} ${pt.y}`).join(' '), line, STROKE_WEIGHT.trace)(g, ui);
-      if (hanging) {
-        const neck = pathFromPolygon([
-          new Pt(center - scrollNeckHalfWidth(p, -stub), -stub), new Pt(center + scrollNeckHalfWidth(p, -stub), -stub),
-          new Pt(center + scrollNeckHalfWidth(p, start.y), start.y), new Pt(center - scrollNeckHalfWidth(p, start.y), start.y),
-        ]);
-        contour(walls, center, colors.archTop);
-        contour(closing.slice(-2), center, colors.archTop, neck);
-      }
-    } else {
-      // from in front the nut stands nearest, hiding whatever of the pegbox is narrower than it
-      const nut = [new Pt(center - nutHalf, 0), new Pt(center + nutHalf, 0), new Pt(center + nutHalf, nutHeight), new Pt(center - nutHalf, nutHeight)];
-      const cover = pathFromPolygon(nut);
-      for (const side of [1, -1]) stroke(neckSide(side, 0), colors.neckOff, STROKE_WEIGHT.section, null);
-      renderPolygon(nut, colors.nut, STROKE_WEIGHT.section)(g, ui);
-      contour(widths, center, line, cover);
-      contour(closing, center, line, cover);
-      contour(scrollFrontWidths(p), center, line, cover);
-      // the hollow's mouth, each cheek's thickness in from the outside, as far up as the side view carries it
-      const mouthTop = scrollLines(p).frontStraight[1].y;
-      const mouth = [nutHeight, taperStart, mouthTop]
-        .filter(y => y >= nutHeight && y <= mouthTop)
-        .map(y => new Pt(pegboxWidth(p, y) / 2 - v.pegboxWall, y));
-      if (mouth.length > 1 && mouth.every(pt => pt.x > 0))
-        renderPath(pathFromPolygon([...mouth.map(pt => new Pt(center + pt.x, pt.y)), ...mouth.map(pt => new Pt(center - pt.x, pt.y)).reverse()]), light, STROKE_WEIGHT.trace)(g, ui);
-    }
+  const faces = (center: number, ink: string) => {
     for (const { y, from, to } of ledges) {
-      if (to === null) renderSegment(new Pt(center - from, y), new Pt(center + from, y), light, STROKE_WEIGHT.trace)(g, ui);
-      else for (const side of [1, -1]) renderSegment(new Pt(center + side * from, y), new Pt(center + side * to, y), light, STROKE_WEIGHT.trace)(g, ui);
+      if (to === null) renderSegment(new Pt(center - from, y), new Pt(center + from, y), ink, STROKE_WEIGHT.trace)(g, ui);
+      else for (const side of [1, -1]) renderSegment(new Pt(center + side * from, y), new Pt(center + side * to, y), ink, STROKE_WEIGHT.trace)(g, ui);
     }
     for (const side of [1, -1]) {
-      const x = center + side * eyeWidth;
-      renderSegment(new Pt(x, v.eye.y - v.eye.r), new Pt(x, v.eye.y + v.eye.r), light, STROKE_WEIGHT.trace)(g, ui);
-      if (behind && Math.abs(start.x - r) > 1e-6)
-        renderSegment(new Pt(center + side * r, start.y), new Pt(center + side * start.x, start.y), light, STROKE_WEIGHT.trace)(g, ui);
+      const x = center + side * eyeHalf;
+      renderSegment(new Pt(x, v.eye.y - v.eye.r), new Pt(x, v.eye.y + v.eye.r), ink, STROKE_WEIGHT.trace)(g, ui);
     }
   };
+
+  // the path starts at the top of the duck tail's round. Below that the pegbox runs on down its
+  // taper to the end of its straight, square to the foot of the nut, and closes level there
+  const start = widths[0];
+  const foot = Math.min(start.y, 0);
+  const taperStart = pegboxTaperStart(p);
+  const walls = [start, ...(start.y > taperStart ? [new Pt(nutHalf, taperStart)] : []), new Pt(nutHalf, foot)];
+  const bottom = [new Pt(nutHalf, foot), new Pt(0, foot)];
+
+  const stub = neckStub(p);
+  const neckSide = (center: number, side: number, top: number) =>
+    pathFromLine(new Pt(center + side * scrollNeckHalfWidth(p, -stub), -stub), new Pt(center + side * scrollNeckHalfWidth(p, top), top));
 
   const marked = stations.find(station => station.key === focused);
   if (marked) {
@@ -265,10 +225,58 @@ export const renderScrollWidths = (p: EnricoCerutiParams, colors: CerutiColors, 
       for (const side of [1, -1]) renderPointHalo(new Pt(center + side * marked.width / 2, marked.at.y), ink)(g, ui);
     }
   }
-  view(back, true);
-  view(front, false);
+
+  // from behind, the back starts in the duck tail's round, the neck's back carried on round. A path
+  // starting above the nut's foot leaves the pegbox's front running on below the back, so the two
+  // can't join: its walls are drawn in the front's colour
+  const r = duckTailRadius(p);
+  const round = Array.from({ length: 33 }, (_, i) => pointOnCircle({ x: back, y: start.y, r }, TURN.half + TURN.half * i / 32));
+  const hanging = foot < start.y;
+
+  // the neck's sides run on up until they meet the scroll, in the round or the front's walls
+  const overNeck = [
+    ...(r > 0 ? [pathFromPolygon(round)] : []),
+    ...(hanging ? [closed(walls, back)] : []),
+  ];
+  for (const side of [1, -1]) stroke(neckSide(back, side, start.y), colors.neckOff, STROKE_WEIGHT.section, overNeck.length ? overNeck : null);
+
+  contour(widths, back, colors.archBack);
+  if (r > 0) renderPath(pathFromPolyline(round), colors.archBack, STROKE_WEIGHT.trace)(g, ui);
+  if (hanging) {
+    // the front's bottom shows only where it overhangs the neck; over the neck it's smoothed in
+    const neck = pathFromPolygon([
+      new Pt(back - scrollNeckHalfWidth(p, -stub), -stub), new Pt(back + scrollNeckHalfWidth(p, -stub), -stub),
+      new Pt(back + scrollNeckHalfWidth(p, start.y), start.y), new Pt(back - scrollNeckHalfWidth(p, start.y), start.y),
+    ]);
+    contour(walls, back, colors.archTop);
+    contour(bottom, back, colors.archTop, neck);
+  }
+  faces(back, colors.scrollBackLight);
+  // a round narrower or wider than the path's start leaves a shoulder between them
+  if (Math.abs(start.x - r) > 1e-6) {
+    for (const side of [1, -1]) renderSegment(new Pt(back + side * r, start.y), new Pt(back + side * start.x, start.y), colors.scrollBackLight, STROKE_WEIGHT.trace)(g, ui);
+  }
+
+  // from in front the round is hidden, and the nut stands nearest, hiding whatever of the pegbox
+  // is narrower than it
+  const nut = [new Pt(front - nutHalf, 0), new Pt(front + nutHalf, 0), new Pt(front + nutHalf, nutHeight), new Pt(front - nutHalf, nutHeight)];
+  const overPegbox = pathFromPolygon(nut);
+  for (const side of [1, -1]) stroke(neckSide(front, side, 0), colors.neckOff, STROKE_WEIGHT.section, null);
+  renderPolygon(nut, colors.nut, STROKE_WEIGHT.section)(g, ui);
+  contour(widths, front, colors.archTop, overPegbox);
+  contour([...walls, ...bottom.slice(1)], front, colors.archTop, overPegbox);
+  contour(scrollFrontWidths(p), front, colors.archTop, overPegbox);
+
+  // the hollow's mouth, each cheek's thickness in from the outside, as far up as the side view's hollow
+  const mouthTop = scrollLines(p).frontStraight[1].y;
+  const mouth = [nutHeight, taperStart, mouthTop]
+    .filter(y => y >= nutHeight && y <= mouthTop)
+    .map(y => new Pt(pegboxWidth(p, y) / 2 - v.pegbox.wall, y));
+  if (mouth.length > 1 && mouth.every(pt => pt.x > 0)) renderPath(closed(mouth, front), colors.scrollFrontLight, STROKE_WEIGHT.trace)(g, ui);
+  faces(front, colors.scrollFrontLight);
+
   const cavity = pegboxCavity(p);
-  if (cavity) renderPath(cavity.map((pt, i) => `${i ? 'L' : 'M'} ${pt.x} ${pt.y}`).join(' '), colors.scrollFrontLight, STROKE_WEIGHT.trace)(g, ui);
+  if (cavity) renderPath(pathFromPolyline(cavity), colors.scrollFrontLight, STROKE_WEIGHT.trace)(g, ui);
   for (const station of stations) renderCrosshair(station.at, stationColor(colors, station.key))(g, ui);
 };
 

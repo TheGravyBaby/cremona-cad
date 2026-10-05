@@ -677,11 +677,11 @@ describe('the scroll widths panel', () => {
     for (const el of walls) expect(el.attrs['d']).toMatch(new RegExp(`^M \\S+ ${start} L \\S+ 0$`));
 
     // a straight too short to clear the round: down the taper to the straight's end, then square to the foot
-    v.pegboxStraight = 2;
+    v.pegbox.straight = 2;
     const tapered = fromBehind();
     expect(tapered).toHaveLength(2);
     for (const el of tapered) expect(el.attrs['d']).toMatch(new RegExp(`^M \\S+ ${start} L \\S+ ${p.stringSetup!.nutHeight + 2} L \\S+ 0$`));
-    v.pegboxStraight = 8;
+    v.pegbox.straight = 8;
 
     v.eye = new Circle(v.eye.x, v.eye.y - 15, v.eye.r);
     instance.buildRun();
