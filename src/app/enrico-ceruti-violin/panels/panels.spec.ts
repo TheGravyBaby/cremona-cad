@@ -661,7 +661,7 @@ describe('the scroll widths panel', () => {
     expect(closings()).toHaveLength(2);
   });
 
-  it('shows the front\'s walls from behind, in the front\'s colour and with no bottom, until the path starts at or below the nut\'s foot', () => {
+  it('shows the front\'s walls from behind, in the front\'s colour and with no bottom under a nut as wide as the neck, until the path starts at or below the nut\'s foot', () => {
     const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
     instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
     instance.buildRun();
@@ -678,6 +678,33 @@ describe('the scroll widths panel', () => {
     instance.buildRun();
     expect(v.pathWidths[0].y).toBeLessThanOrEqual(0);
     expect(fromBehind()).toEqual([]);
+  });
+
+  it('joins the neck to the front\'s walls from behind along the front\'s foot, in its colour, where the nut is wider than the neck', () => {
+    const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
+    instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
+    instance.buildRun();
+    const p = instance.params;
+    p.stringSetup!.nutWidth = p.neck!.topWidth + 6;
+    const drawn = recordLayers(instance.buildRun()).elements;
+    const points = (d: string) => [...d.matchAll(/(-?[\d.]+(?:e-?\d+)?) (-?[\d.]+(?:e-?\d+)?)/g)].map(m => new Pt(+m[1], +m[2]));
+    const fromBehind = (stroke: string) => drawn
+      .filter(el => el.tag === 'path' && el.attrs['stroke'] === stroke && /^M -/.test(el.attrs['d'] as string))
+      .map(el => points(el.attrs['d'] as string));
+
+    const front = fromBehind('archTop');
+    const joins = front.filter(pts => pts.every(pt => Math.abs(pt.y) < 1e-9));
+    expect(front).toHaveLength(4);
+    expect(joins).toHaveLength(2);
+    const walls = front.filter(pts => !joins.includes(pts));
+    const center = (walls[0][0].x + walls[1][0].x) / 2;
+    const neckTops = fromBehind('neckOff').map(pts => pts.at(-1)!);
+    for (const join of joins) {
+      const [outer, inner] = [...join].sort((a, b) => Math.abs(b.x - center) - Math.abs(a.x - center));
+      expect(Math.abs(outer.x - center)).toBeCloseTo(p.stringSetup!.nutWidth / 2, 6);
+      expect(Math.abs(inner.x - center)).toBeCloseTo(p.neck!.topWidth / 2, 6);
+      expect(neckTops.some(top => Math.hypot(top.x - inner.x, top.y - inner.y) < 1e-6)).toBe(true);
+    }
   });
 
   it('carries the neck on below both views, widening down it: in front up to the nut over it, behind up to where it meets the scroll', () => {

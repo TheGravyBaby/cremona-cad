@@ -203,8 +203,8 @@ export const renderScrollWidths = (p: EnricoCerutiParams, colors: CerutiColors, 
       pathFromLine(new Pt(center + side * scrollNeckHalfWidth(p, -stub), -stub), new Pt(center + side * scrollNeckHalfWidth(p, top), top));
     if (behind) {
       // a path starting above the nut's foot leaves the pegbox's front running on below the back, so
-      // the back and front can't join; its walls are drawn in the front's colour. Not its bottom,
-      // which from behind is smoothed into the neck
+      // the back and front can't join; its walls are drawn in the front's colour, and its bottom only
+      // where it overhangs the neck, joining the two. Over the neck it's smoothed into it
       const hanging = foot < start.y;
       // from behind the neck's sides run on up until they meet the scroll, in the round or the front
       const placed = round.map(pt => new Pt(center + pt.x, pt.y));
@@ -215,7 +215,14 @@ export const renderScrollWidths = (p: EnricoCerutiParams, colors: CerutiColors, 
       for (const side of [1, -1]) stroke(neckSide(side, start.y), colors.neckOff, STROKE_WEIGHT.section, covers.length ? covers : null);
       contour(widths, center, line);
       if (r > 0) renderPath(placed.map((pt, i) => `${i ? 'L' : 'M'} ${pt.x} ${pt.y}`).join(' '), line, STROKE_WEIGHT.trace)(g, ui);
-      if (hanging) contour(closing.slice(0, 2), center, colors.archTop);
+      if (hanging) {
+        const neck = pathFromPolygon([
+          new Pt(center - scrollNeckHalfWidth(p, -stub), -stub), new Pt(center + scrollNeckHalfWidth(p, -stub), -stub),
+          new Pt(center + scrollNeckHalfWidth(p, start.y), start.y), new Pt(center - scrollNeckHalfWidth(p, start.y), start.y),
+        ]);
+        contour(closing.slice(0, 2), center, colors.archTop);
+        contour(closing.slice(1), center, colors.archTop, neck);
+      }
     } else {
       // from in front the nut stands nearest, hiding whatever of the pegbox is narrower than it
       const nut = [new Pt(center - nutHalf, 0), new Pt(center + nutHalf, 0), new Pt(center + nutHalf, nutHeight), new Pt(center - nutHalf, nutHeight)];
