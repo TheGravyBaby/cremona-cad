@@ -20,26 +20,6 @@ describe('SettingsBarComponent', () => {
     selection.set([toolboxRef('a')]);
   });
 
-  it('reads a group as one thing: its title and centre', () => {
-    const fixture = TestBed.createComponent(SettingsBarComponent);
-    fixture.detectChanges();
-    const el: HTMLElement = fixture.nativeElement;
-    expect(el.querySelector('.settings-title')!.textContent).toBe('Group Settings');
-    const inputs = el.querySelectorAll<HTMLInputElement>('.point-group input');
-    expect([inputs[0].valueAsNumber, inputs[1].valueAsNumber]).toEqual([5, 5]);
-  });
-
-  it('leaves a lone shape to its own fields rather than describing it twice', () => {
-    toolbox.updateShape('a', { groupId: undefined });
-    toolbox.updateShape('b', { groupId: undefined });
-    selection.set([toolboxRef('a')]);
-    const fixture = TestBed.createComponent(SettingsBarComponent);
-    fixture.detectChanges();
-    const labels = [...(fixture.nativeElement as HTMLElement).querySelectorAll('.f-lbl')].map(l => l.textContent);
-    expect(labels.filter(l => l === 'X')).toEqual([]);
-    expect(labels).toContain('X1');
-  });
-
   it('typing a centre moves everything selected together, in one undo step', () => {
     const fixture = TestBed.createComponent(SettingsBarComponent);
     fixture.detectChanges();

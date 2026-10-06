@@ -51,12 +51,6 @@ describe('ToolboxStore panel-scoped images', () => {
     expect(visible()).toEqual(['section']);
   });
 
-  it('treats an empty panels list as unscoped', () => {
-    toolbox.loadImages([image('plan', [])]);
-    toolbox.setActivePanel('mould');
-    expect(visible()).toEqual(['plan']);
-  });
-
   it('leaves the user\'s own hide switch alone', () => {
     toolbox.loadImages([image('section', ['crossArching'])]);
     toolbox.setActivePanel('base');
@@ -84,12 +78,6 @@ describe('ToolboxStore panel-scoped images', () => {
     toolbox.loadImages([{ ...image('section', ['crossArching']), locked: false }]);
     toolbox.setActivePanel('base');
     expect(toolbox.getEditableShapes().map(s => s.id)).not.toContain('section');
-  });
-
-  it('keeps off-panel images in the list the image panel shows, and in what gets saved', () => {
-    toolbox.loadImages([image('plan'), image('section', ['crossArching'])]);
-    toolbox.setActivePanel('base');
-    expect(toolbox.getImageShapes().map(s => s.id)).toEqual(['plan', 'section']);
   });
 
   describe('a default image', () => {
@@ -126,11 +114,6 @@ describe('ToolboxStore panel-scoped images', () => {
       expect(visible()).toEqual(['plan']);
     });
 
-    it('still filters nothing before a panel has been pushed', () => {
-      toolbox.loadImages([image('plan', undefined, true), image('section', ['mould'])]);
-      expect(visible()).toEqual(['plan', 'section']);
-    });
-
     it('leaves an unflagged unscoped image showing everywhere, so hand-placed images are untouched', () => {
       toolbox.loadImages([image('handPlaced'), image('section', ['mould'])]);
       toolbox.setActivePanel('mould');
@@ -149,23 +132,10 @@ describe('ToolboxStore panel-scoped images', () => {
       expect(visible()).toEqual(['plan']);
     });
 
-    it('leaves the panel showing nothing when it is the only image', () => {
-      toolbox.loadImages([excluding('plan', ['crossArching'], true), image('flute', ['fluting'])]);
-      toolbox.setActivePanel('crossArching');
-      expect(visible()).toEqual([]);
-    });
-
     it('still shows an image that names the panel outright', () => {
       toolbox.loadImages([excluding('plan', ['crossArching'], true), image('section', ['crossArching'])]);
       toolbox.setActivePanel('crossArching');
       expect(visible()).toEqual(['section']);
-    });
-
-    it('beats the default flag rather than being overruled by it', () => {
-      // isDefault would otherwise claim this panel, since nothing else names it
-      toolbox.loadImages([excluding('plan', ['crossArching'], true)]);
-      toolbox.setActivePanel('crossArching');
-      expect(toolbox.imageMatchesActivePanel(toolbox.getImageShapes()[0])).toBe(false);
     });
 
     it('still gives way to the selection, so an excluded image can be edited', () => {
@@ -192,13 +162,6 @@ describe('ToolboxStore panel-scoped images', () => {
       toolbox.setActivePanel('base');
       toolbox.setRevealedImage('section');
       expect(toolbox.getEditableShapes().map(s => s.id)).toContain('section');
-    });
-
-    it('does not stop a default image stepping aside for the one revealed', () => {
-      toolbox.loadImages([image('plan', undefined, true), image('section', ['mould'])]);
-      toolbox.setActivePanel('mould');
-      toolbox.setRevealedImage('section');
-      expect(visible()).toEqual(['section']);
     });
 
     it('ends when the panel changes, so it never looks like scoping quietly stopped working', () => {

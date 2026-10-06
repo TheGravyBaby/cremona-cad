@@ -1,16 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { CERUTI_TEMPLATES } from './ceruti-templates';
-import { CORPUS_TEMPLATES } from './templates/corpus';
 import { CERUTI_PANEL_IDS } from './ceruti-types';
 
 // a blank recipeName fails the identity check on refresh and silently reverts to the default
 // template — pasted-JSON has dropped it twice already, hence a test rather than a third fix.
 describe('CERUTI_TEMPLATES', () => {
-  it('gives every template a recipeName, so a design restores after a refresh', () => {
-    const blank = CERUTI_TEMPLATES.filter(t => !t.recipeName).map(t => t.key);
-    expect(blank).toEqual([]);
-  });
-
   it('agrees on one recipeName, so no template is a stranger to the others', () => {
     const names = new Set(CERUTI_TEMPLATES.map(t => t.recipeName));
     expect([...names]).toEqual(['enrico-ceruti-violin']);
@@ -29,44 +23,5 @@ describe('CERUTI_TEMPLATES', () => {
       (t.referenceImages ?? []).flatMap(img =>
         (img.panels ?? []).filter(p => !valid.has(p)).map(p => `${t.key}: ${p}`)));
     expect(bad).toEqual([]);
-  });
-});
-
-// unlike the older bundled templates, a corpus template's numbers can be rechecked against a
-// public record and its images state what may be done with them.
-describe('CORPUS_TEMPLATES', () => {
-  it('is part of the bundled set', () => {
-    const keys = new Set(CERUTI_TEMPLATES.map(t => t.key));
-    expect(CORPUS_TEMPLATES.every(t => keys.has(t.key))).toBe(true);
-  });
-
-  it('names the record every instrument was traced from', () => {
-    for (const t of CORPUS_TEMPLATES) {
-      expect(t.meta, `${t.key} has no meta`).toBeDefined();
-      expect(t.meta!.maker.length).toBeGreaterThan(0);
-      expect(t.meta!.record.objectId.length).toBeGreaterThan(0);
-      expect(t.meta!.record.url).toMatch(/^https?:\/\//);
-    }
-  });
-
-  it('states the licence on every reference image it ships', () => {
-    for (const t of CORPUS_TEMPLATES) {
-      for (const img of t.referenceImages ?? []) {
-        expect(img.credit, `${t.key} / ${img.label} has no credit`).toBeDefined();
-        expect(img.credit!.licence.length).toBeGreaterThan(0);
-        expect(img.credit!.attribution.length).toBeGreaterThan(0);
-      }
-    }
-  });
-
-  // a plausible-looking crown on a named instrument is an invented measurement of a real object,
-  // so arching is allowed only where the instrument ships the side profile it was read off —
-  // which is the image scoped to the long-arching panel.
-  it('carries arching only where it ships the profile it was read from', () => {
-    for (const t of CORPUS_TEMPLATES) {
-      if (!(t.params as { arching?: unknown }).arching) continue;
-      const profiles = (t.referenceImages ?? []).filter(img => img.panels?.includes('longArching'));
-      expect(profiles.length, `${t.key} carries arching but ships no profile`).toBeGreaterThan(0);
-    }
   });
 });

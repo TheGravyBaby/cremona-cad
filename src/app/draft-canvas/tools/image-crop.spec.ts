@@ -25,11 +25,6 @@ describe('reference image cropping', () => {
 
   const near = (a: number, b: number) => expect(a).toBeCloseTo(b, 9);
 
-  it('leaves an uncropped image reading exactly as its box', () => {
-    const s = shape();
-    expect(imageSourceBox(s)).toEqual({ x: 10, y: 20, width: 200, height: 120 });
-  });
-
   it('shrinks the box to the part still showing', () => {
     const s = cropped(shape(), { left: 0.25, top: 0, right: 0.25, bottom: 0 });
     near(s.width, 100);

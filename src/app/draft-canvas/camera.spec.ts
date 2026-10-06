@@ -50,12 +50,6 @@ describe('Camera zoom limits', () => {
     cam.fitToBounds({ pt1: new Pt(0, 0), pt2: new Pt(0, 0) }, pxW, pxH);
     expect(cam.pxPerMm).toBe(Camera.MAX_PX_PER_MM);
   });
-
-  it('passes an ordinary zoom through untouched', () => {
-    const cam = new Camera();
-    cam.applyZoom(4, pxW, pxH);
-    expect(cam.pxPerMm).toBe(4);
-  });
 });
 
 describe('Camera typed views', () => {

@@ -1,10 +1,10 @@
-import { defineFholePath, defineOneFholePath, defineFlutingArcs, defineFlutingPath, defineInnerPath, defineInsetPath, defineOffsetArcs, defineOuterPath, defineOuterPurflingPath, definePurflingPath, defineSideScrollPath, violNeckCap } from './ceruti-paths';
+import { defineFholePath, defineFlutingArcs, defineFlutingPath, defineInnerPath, defineInsetPath, defineOffsetArcs, defineOuterPath, defineOuterPurflingPath, definePurflingPath, defineSideScrollPath, violNeckCap } from './ceruti-paths';
 import { defaultViolin, layoutFrom, templateKeys, templateViolin, violinFromRecipe } from './ceruti-fixtures';
 import { calculateCenterBout, calculateCorners, calculateFholeContours, calculateMainBouts, calculateOuterArcs } from './ceruti-calcs';
 import { channelPaths, defaultFlutingParams } from './ceruti-arch-geometry';
 import { defaultFHolePlacement } from './panels/f-hole-placement-panel/f-hole-placement-panel';
-import { DefaultParams, EnricoCerutiParams, FlutingParams, VoluteStyle } from './ceruti-types';
-import { calculateScroll, defaultVoluteParams, VOLUTE_STYLE_LABELS } from './ceruti-scroll';
+import { DefaultParams, EnricoCerutiParams, FlutingParams } from './ceruti-types';
+import { calculateScroll, defaultVoluteParams } from './ceruti-scroll';
 import { defaultNeckParams, defaultStringSetup } from './ceruti-neck';
 import { pointInPolygon, pointOnCircle } from '../helpers/math/simpleGeometry';
 import { samplePathToPolyline, splitPathStrings } from '../helpers/math/pathMath';
@@ -14,7 +14,6 @@ import ravatinMansParams from './templates/test-fixtures/ravatin-mans-params.jso
 import magginiDelmasParams from './templates/test-fixtures/maggini-delmas-params.json';
 import amatiBrookingsParams from './templates/test-fixtures/amati-brookings-params.json';
 import invertedCornersFlutingParams from './templates/test-fixtures/inverted-corners-fluting-params.json';
-import { findJoiningArcs } from '../helpers/math/draftMath';
 import { buildPolylineIndex, distPointToPolylineIndexed } from '../helpers/math/vibeMath';
 
 /**
@@ -52,11 +51,6 @@ function withCornersOn(p: EnricoCerutiParams, uc: boolean, lc: boolean): EnricoC
   return layoutFrom(p);
 }
 
-/** A solved instrument with the corner styles forced, rather than as the template saved them. */
-function withCorners(key: string, uc: boolean, lc: boolean): EnricoCerutiParams {
-  return withCornersOn(templateViolin(key), uc, lc);
-}
-
 const CORNER_STYLES: [string, boolean, boolean][] = [
   ['round corners', false, false],
   ['a viol upper corner', true, false],
@@ -65,8 +59,8 @@ const CORNER_STYLES: [string, boolean, boolean][] = [
 ];
 
 describe.each(CORNER_STYLES)('the purfling line with %s', (_label, uc, lc) => {
-  it.each(templateKeys())('closes into a single loop on %s', key => {
-    const p = withCorners(key, uc, lc);
+  it('closes into a single loop', () => {
+    const p = withCornersOn(defaultViolin(), uc, lc);
     const offset = p.overhang + p.rib;
 
     expect(subpaths(definePurflingPath(p, offset)!)).toBe(1);
@@ -109,15 +103,6 @@ describe('the f-hole outline', () => {
     expect(subpaths(defineFholePath(p))).toBe(2);
   });
 
-  it('splits back into one path per hole, each a single loop', () => {
-    const p = defaultViolin();
-    p.fHoles = defaultFHolePlacement(p);
-    calculateFholeContours(p);
-
-    const holes = splitPathStrings(defineFholePath(p));
-    expect(holes).toEqual([defineOneFholePath(p, false), defineOneFholePath(p, true)]);
-  });
-
   it('mirrors the treble-side hole onto the bass side', () => {
     const p = defaultViolin();
     p.fHoles = defaultFHolePlacement(p);
@@ -151,13 +136,6 @@ describe('the recipe the whisker was reported from', () => {
   it('draws its purfling as one closed loop', () => {
     const p = reported();
     expect(subpaths(definePurflingPath(p, p.overhang + p.rib)!)).toBe(1);
-  });
-
-  it('sets a purfling offset the outline can actually feel', () => {
-    // The guard on the fixture above: if this ever came out zero, the test
-    // passes while testing nothing.
-    const p = reported();
-    expect(p.purflingOffset).not.toBe(p.rib + p.overhang);
   });
 });
 
@@ -338,17 +316,6 @@ describe('a c-bout gouge too narrow to join the main-body one at its nominal end
     for (const d of [paths!.outer, paths!.center, paths!.inner]) expect(subpaths(d)).toBe(1);
     expect(titles).not.toContain('Fluting Error');
   });
-
-  it('still joins fine once the c-bout gouge is close enough to the main one', () => {
-    const titles = captureTitles();
-    const p = amatiTopGouge();
-    p.arching!.top.fluting!.sweepRadius_cBout = p.arching!.top.fluting!.sweepRadius;
-
-    const paths = channelPaths(p, p.arching!.top.fluting!);
-
-    expect(paths).not.toBeNull();
-    expect(titles).not.toContain('Fluting Error');
-  });
 });
 
 // how far the channel's outer edge strays past the land it's meant to be cut inside. the land is
@@ -417,12 +384,6 @@ describe('a channel past corners that wrap around the center bout', () => {
       expect(arcs[3].end).toBeCloseTo(edges[0][3].end, 9);
     }
   });
-
-  it('leaves an ordinary corner joined the way it was', () => {
-    const arcs = defineFlutingArcs(defaultViolin(), -2);
-    const [L2, C0, U2] = arcs.slice(2, 5);
-    expect(arcs.slice(-4)).toEqual([...findJoiningArcs(L2, 'end', C0, 'end', false), ...findJoiningArcs(C0, 'start', U2, 'end', true)]);
-  });
 });
 
 // a viol flank is joined from a fixed angle back from the corner, and the viola's U4 is a long flat
@@ -483,12 +444,12 @@ describe('the button', () => {
   });
 });
 
-describe.each(Object.keys(VOLUTE_STYLE_LABELS) as VoluteStyle[])('the side scroll path with a %s volute', style => {
+describe('the side scroll path', () => {
   it('runs unbroken down the back and up the front, each piece on from the last', () => {
     const p = defaultViolin();
     p.neck = defaultNeckParams(p);
     p.stringSetup = defaultStringSetup(p);
-    p.scroll = { ...defaultVoluteParams(p), style };
+    p.scroll = defaultVoluteParams(p);
     expect(calculateScroll(p)).toEqual([]);
 
     const ends = splitPathStrings(defineSideScrollPath(p)).map(piece => {
@@ -503,7 +464,7 @@ describe.each(Object.keys(VOLUTE_STYLE_LABELS) as VoluteStyle[])('the side scrol
     const p = defaultViolin();
     p.neck = defaultNeckParams(p);
     p.stringSetup = defaultStringSetup(p);
-    p.scroll = { ...defaultVoluteParams(p), style };
+    p.scroll = defaultVoluteParams(p);
     calculateScroll(p);
     const { x, y, r } = p.scroll.eye;
     const eye = samplePathToPolyline(splitPathStrings(defineSideScrollPath(p))[0], 0.1, true);

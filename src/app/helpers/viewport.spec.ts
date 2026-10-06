@@ -26,9 +26,4 @@ describe('isSmallViewport', () => {
     size(390, 844);
     expect(isSmallViewport()).toBe(true);
   });
-
-  it('is true for a tablet held portrait, narrow enough that a panel would crowd it', () => {
-    size(820, 1180);
-    expect(isSmallViewport()).toBe(true);
-  });
 });

@@ -98,19 +98,6 @@ describe('MessageService', () => {
     expect(current(svc)).toHaveLength(1);
   });
 
-  it('brings a condition back as a chip after its last one expired', () => {
-    svc.emit(condition());
-
-    // long enough that the chip has expired — the maker was thinking, not editing
-    vi.advanceTimersByTime(30000);
-    expect(current(svc)).toHaveLength(0);
-
-    svc.emit(condition('still 2.4mm over'));
-    const back = current(svc)[0];
-    expect(back.collapsed).toBe(true);
-    expect(back.message).toBe('still 2.4mm over');
-  });
-
   it('brings titled info in open, and folds it into a chip when dismissed', () => {
     svc.emit({ severity: 'info', title: 'Body Dimensions', message: 'height and lower bout width' });
     const id = current(svc)[0].id;

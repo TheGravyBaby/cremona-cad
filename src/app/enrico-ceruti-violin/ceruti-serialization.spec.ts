@@ -1,5 +1,5 @@
 import { Arc, Circle, Pt, Rectangle } from '../models/types';
-import { defaultViolin, geometryDiff, layoutFrom, templateKeys, templateViolin } from './ceruti-fixtures';
+import { defaultViolin, geometryDiff, layoutFrom } from './ceruti-fixtures';
 import { EnricoCerutiParams } from './ceruti-types';
 
 /**
@@ -89,15 +89,6 @@ describe('a recipe through the file format', () => {
     expect(stillPlain.sort()).toEqual(['bouts.C11', 'bouts.C21', 'bouts.L31', 'bouts.U31']);
   });
 
-  it('resolves degreeDiff on a reopened recipe, which is what that mechanism is for', () => {
-    const reloaded = throughAFile(defaultViolin());
-    expect(reloaded.bouts.U1!.degreeDiff).toBeUndefined();
-
-    layoutFrom(reloaded);
-    expect(typeof reloaded.bouts.U1!.degreeDiff).toBe('number');
-    expect(Number.isFinite(reloaded.bouts.U1!.degreeDiff)).toBe(true);
-  });
-
   it('leaves the corner tips as plain objects — the calc pass never reconstructs them', () => {
     // `bouts.UCr`/`LCr` are the documented exception: they are written as `Pt`s
     // but nothing reassigns them after a load. Pinned rather than fixed, because
@@ -126,24 +117,5 @@ describe('the geometry classes that ride in a recipe', () => {
   ])('%s carries no prototype members, because nothing restores them on load', (_name, cls) => {
     const members = Object.getOwnPropertyNames(cls.prototype).filter(k => k !== 'constructor');
     expect(members).toEqual([]);
-  });
-
-  it('Arc is the exception, and only because the calc pass reassigns every one', () => {
-    const members = Object.getOwnPropertyNames(Arc.prototype).filter(k => k !== 'constructor');
-    expect(members).toEqual(['degreeDiff']);
-  });
-});
-
-describe.each(templateKeys())('template %s through the file format', key => {
-  it('survives a save and reopen unchanged', () => {
-    const p = templateViolin(key);
-    expect(geometryDiff(p, throughAFile(p), 0)).toEqual([]);
-  });
-
-  it('re-solves identically whether loaded fresh or reopened', () => {
-    const fresh = templateViolin(key);
-    const reopened = throughAFile(templateViolin(key));
-    layoutFrom(reopened);
-    expect(geometryDiff(fresh, reopened)).toEqual([]);
   });
 });

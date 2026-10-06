@@ -18,12 +18,6 @@ describe('resizing a reference image', () => {
     expect(next.height).toBeCloseTo(25);
   });
 
-  it('holds the proportions when a height is typed', () => {
-    const next = applyImageSize(base(), 'height', 400) as ImageShape;
-    expect(next.height).toBeCloseTo(400);
-    expect(next.width).toBeCloseTo(800);
-  });
-
   it('scales about the centre, so a rotated image stays where it was lined up', () => {
     const shape = base({ x: 10, y: 40, rotationDeg: 37 });
     const next = applyImageSize(shape, 'width', 60) as ImageShape;

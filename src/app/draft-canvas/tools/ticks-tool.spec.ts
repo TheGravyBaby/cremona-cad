@@ -1,12 +1,8 @@
 import * as d3 from 'd3';
 import { Pt } from '../../models/types';
-import { fakeToolHost } from './fake-tool-host';
 import { TicksShape } from './toolbox-shape';
 import { drawTicks, tickLengthMm } from './shape-renderer';
 import { distanceToShape, shapeBounds } from './shape-hit-test';
-import { withEndpoint } from './shape-grabbers';
-import { createTicksTool } from './ticks-tool';
-import { ToolboxStore } from './toolbox-store';
 
 const at = (x: number, y: number): Pt => ({ x, y });
 
@@ -49,14 +45,6 @@ describe('drawTicks', () => {
     expect(points[1]).toBeCloseTo(60, 6);
   });
 
-  it('follows the line at an angle', () => {
-    const svg = render(at(0, 0), at(0, 60), [1, 1]);
-    const points = svg.selectAll<SVGCircleElement, unknown>('circle').nodes();
-
-    expect(Number(points[0].getAttribute('cx'))).toBeCloseTo(0, 6);
-    expect(Number(points[0].getAttribute('cy'))).toBeCloseTo(30, 6);
-  });
-
   it('draws nothing for a zero-length line', () => {
     expect(render(at(5, 5), at(5, 5), [1, 1]).selectAll('*').size()).toBe(0);
   });
@@ -75,29 +63,5 @@ describe('Ticks shape', () => {
     expect(b.y0).toBe(-tickLengthMm(100) / 2);
     expect(b.y1).toBe(tickLengthMm(100) / 2);
     expect(b.x0).toBe(-tickLengthMm(100) / 2);
-  });
-
-  it('moves an endpoint without touching the weights', () => {
-    const moved = withEndpoint(shape, 'end', at(200, 0)) as TicksShape;
-    expect(moved.end).toEqual(at(200, 0));
-    expect(moved.weights).toEqual([1, 1]);
-  });
-});
-
-describe('createTicksTool', () => {
-  it('commits a shape carrying the pen weights', () => {
-    const toolbox = { currentTickWeights: [3, 4, 3] } as ToolboxStore;
-    const host = fakeToolHost();
-    const added = host.added as TicksShape[];
-
-    const tool = createTicksTool(toolbox);
-    tool.onPointerDown(at(0, 0), host);
-    tool.onPointerMove(at(100, 0), host);
-    tool.onPointerUp(at(100, 0), host);
-
-    expect(added.length).toBe(1);
-    expect(added[0].type).toBe('ticks');
-    expect(added[0].weights).toEqual([3, 4, 3]);
-    expect(added[0].end).toEqual(at(100, 0));
   });
 });

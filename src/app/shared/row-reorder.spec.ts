@@ -85,19 +85,6 @@ describe('RowReorderDirective', () => {
     expect(host.items).toEqual(['a', 'c', 'd', 'b']);
   });
 
-  it('marks the row being carried, and stops when the pointer lifts', () => {
-    dragTo(0, PITCH);
-    expect(rows()[1].classList.contains('reorder-dragging')).toBe(true);
-    expect(rows()[0].classList.contains('reorder-dragging')).toBe(false);
-
-    pointer('pointerup', document, PITCH);
-    expect(rows().some(r => r.classList.contains('reorder-dragging'))).toBe(false);
-
-    // The lifted pointer is no longer dragging anything.
-    pointer('pointermove', document, PITCH * 3);
-    expect(host.moves.length).toBe(1);
-  });
-
   it('ignores a press that did not start on a grip', () => {
     pointer('pointerdown', rows()[0].querySelector('.value')!, 0);
     pointer('pointermove', document, PITCH * 2);

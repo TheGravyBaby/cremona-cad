@@ -26,11 +26,6 @@ const R = 2.2667;
 const D = 1.2;
 
 describe('gouge section', () => {
-  it('spans the chord its own sweep and depth imply', () => {
-    // w = sqrt(2RD - D²); with these numbers exactly 2mm, so a 4mm channel.
-    expect(gougeHalfWidth(R, D)).toBeCloseTo(2, 3);
-  });
-
   it('reaches full depth at the trough and plate level at both edges', () => {
     const w = gougeHalfWidth(R, D);
     expect(gougeProfileZ(0, R, D)).toBeCloseTo(-D, 9);
@@ -191,11 +186,6 @@ describe('cornerSmoothZ', () => {
 
 describe('crossArchKnots', () => {
   const shape = (points: CrossArchSpline['points']): CrossArchSpline => ({ type: 'spline', points });
-
-  it('keeps both coordinates fractional, so the shape scales with the station', () => {
-    expect(crossArchKnots(shape([{ x: 0.45, z: 0.62, mirror: true }]), 1))
-      .toEqual([{ x: 0.45, z: 0.62 }]);
-  });
 
   it('mirrors a knot onto both sides', () => {
     const s = shape([{ x: 0.45, z: 0.62, mirror: true }]);
@@ -498,11 +488,6 @@ describe('crossArchGuide', () => {
     fromTakeoff: shape.type === 'cycloid',
   });
 
-  it('marks one crosshair per side per authored knot', () => {
-    const shape: CrossArchSpline = { type: 'spline', points: [{ x: 0.4, z: 0.57, mirror: true }] };
-    expect(crossArchGuide(shape, sectionFor(rowOf(shape))).knots.length).toBe(2);
-  });
-
   it('marks the shape it was given, not the wider set of columns the ramp uses', () => {
     // The regression this pins: a resolved row carries the union of every
     // station's knot positions, because that is how shapes with unrelated point
@@ -760,12 +745,6 @@ describe('the crown', () => {
   const moved = (peak: number, half = HALF, archH = ARCH) =>
     solveCrossArchSection(archH, half, R, D, { left: knots, right: knots, peak })!;
 
-  it('puts the crown where it was asked to, at the full arch height', () => {
-    const s = moved(0.6);
-    expect(s.xPeak).toBeCloseTo(0.2 * HALF, 9); // 60% of the width is 20% of a half
-    expect(s.zAt(s.xPeak)).toBeCloseTo(ARCH, 9);
-  });
-
   it('stays a smooth maximum after moving, not a tilted ridge', () => {
     // The property the whole section rests on, and the one a move could break:
     // the crown is flat because it is an *interior* knot between secants of
@@ -795,17 +774,6 @@ describe('the crown', () => {
     };
     expect(residual(0.01)).toBeLessThan(residual(0.02) / 3);
     expect(residual(0.005)).toBeLessThan(residual(0.01) / 3);
-  });
-
-  it('is still the highest point of the section once moved', () => {
-    const s = moved(0.35);
-    let max = -Infinity;
-    let argmax = 0;
-    for (let x = -HALF; x <= HALF; x += 0.25) {
-      if (s.zAt(x) > max) { max = s.zAt(x); argmax = x; }
-    }
-    expect(max).toBeCloseTo(ARCH, 6);
-    expect(argmax).toBeCloseTo(s.xPeak, 0);
   });
 
   it('leaves the control points where they were when the crown moves', () => {

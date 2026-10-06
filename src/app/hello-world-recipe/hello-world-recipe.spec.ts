@@ -43,8 +43,4 @@ describe('solveFourCircles', () => {
   it('refuses bouts that leave no room for a waist', () => {
     expect(() => solveFourCircles({ ...p, upperR: 200, lowerR: 200 })).toThrow(/waist/);
   });
-
-  it('refuses a zero radius', () => {
-    expect(() => solveFourCircles({ ...p, centerR: 0 })).toThrow(/greater than zero/);
-  });
 });

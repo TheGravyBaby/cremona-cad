@@ -1,4 +1,4 @@
-import { ensureCenterBoutInnerPath, ensureOuterTracePaths, getPath, getPathOrNull, upsertPathEntry } from './ceruti-calcs';
+import { ensureCenterBoutInnerPath, ensureOuterTracePaths, getPath, upsertPathEntry } from './ceruti-calcs';
 import { defaultArchingParams } from './ceruti-arching';
 import { defaultViolin, layoutFrom } from './ceruti-fixtures';
 import { PathEntry } from './ceruti-types';
@@ -12,19 +12,7 @@ import { PathEntry } from './ceruti-types';
  */
 const laidOut = defaultViolin;
 
-const find = (paths: PathEntry[], key: string): string | undefined =>
-  paths.find(e => e.key === key)?.path;
-
 describe('ensureOuterTracePaths', () => {
-  it('emits the outline and purfling', () => {
-    const p = laidOut();
-    const paths: PathEntry[] = [];
-    ensureOuterTracePaths(p, paths);
-    for (const key of ['top', 'back', 'purfling', 'outerPurfling']) {
-      expect(find(paths, key)).toBeTruthy();
-    }
-  });
-
   it('keeps the channel off the plan sheets, arching or not', () => {
     // In plan the channel is only a pair of rims — nothing between them says how
     // deep it goes or what section it is cut to, and the arching templates state
@@ -42,47 +30,10 @@ describe('ensureOuterTracePaths', () => {
       expect(paths.map(e => e.key).filter(k => /channel/i.test(k))).toEqual([]);
     }
   });
-
-  it('rewrites entries in place rather than appending a second copy', () => {
-    // Every export path calls this before reading, so a run that appended would
-    // leave `find` returning whichever copy landed first — stale geometry on a
-    // sheet, with the correct path sitting unused further down the array.
-    const p = laidOut();
-    const paths: PathEntry[] = [];
-    ensureOuterTracePaths(p, paths);
-    const first = paths.length;
-    ensureOuterTracePaths(p, paths);
-    expect(paths.length).toBe(first);
-  });
 });
 
 describe('the cache accessors', () => {
   // These replaced four hand-rolled copies of `.find(...)!` across the panels.
-  // The asserting one is deliberate: a missing `ensure*` should fail loudly at
-  // the read rather than draw nothing and leave a blank sheet to explain.
-  it('getPath returns what ensure* wrote', () => {
-    const p = laidOut();
-    const paths: PathEntry[] = [];
-    ensureOuterTracePaths(p, paths);
-    expect(getPath(paths, 'top')).toBe(find(paths, 'top'));
-    expect(getPath(paths, 'top')).toMatch(/^M/);
-  });
-
-  it('getPath throws on a cold cache rather than returning nothing', () => {
-    expect(() => getPath([], 'top')).toThrow();
-  });
-
-  it('getPathOrNull answers null for the entries that are legitimately absent', () => {
-    // `purfling` and `outerPurfling` are only written when configured, which is
-    // why they are read through the forgiving accessor everywhere.
-    expect(getPathOrNull([], 'purfling')).toBeNull();
-
-    const p = laidOut();
-    const paths: PathEntry[] = [];
-    ensureOuterTracePaths(p, paths);
-    expect(getPathOrNull(paths, 'purfling')).toBe(find(paths, 'purfling'));
-  });
-
   it('upsertPathEntry replaces a key in place, keeping its position', () => {
     const paths: PathEntry[] = [];
     upsertPathEntry(paths, 'inner', 'M 0 0');

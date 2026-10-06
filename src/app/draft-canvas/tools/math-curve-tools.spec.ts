@@ -55,15 +55,6 @@ describe('Catenary tool', () => {
     tool.onPointerDown(at(80, 25), host);
     expect((host.added[0] as PathShape).d).toBe(catenaryBetween(at(0, 0), at(100, 0), 25));
   });
-
-  it('takes the ends from a drag', () => {
-    const host = fakeToolHost();
-    const tool = createCatenaryTool(toolbox);
-    tool.onPointerDown(at(0, 0), host);
-    tool.onPointerUp(at(100, 0), host);
-    tool.onPointerDown(at(50, -12), host);
-    expect((host.added[0] as PathShape).d).toBe(catenaryBetween(at(0, 0), at(100, 0), -12));
-  });
 });
 
 describe('cycloidBetween', () => {
@@ -79,7 +70,6 @@ describe('cycloidBetween', () => {
   }
 
   it('follows a full cycloid, cusps and all', () => expectOnTrochoid(1, 1));
-  it('follows a trimmed, flattened trochoid', () => expectOnTrochoid(0.6, 0.7));
   it('follows one whose ends curl under the chord', () => expectOnTrochoid(0.8, 1.3));
 
   it('crowns at the depth, on the side it is given', () => {

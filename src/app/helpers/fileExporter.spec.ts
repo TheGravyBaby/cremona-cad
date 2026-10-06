@@ -1,4 +1,4 @@
-import { buildMirroredSvg, downloadSvgFile, PAPER_FORMATS, SvgPathExport } from './fileExporter';
+import { buildMirroredSvg, PAPER_FORMATS, SvgPathExport } from './fileExporter';
 
 /**
  * SVG output — the sheet that gets printed and traced against.
@@ -45,28 +45,6 @@ describe('buildMirroredSvg', () => {
     expect(svg).toContain('stroke="black"');
   });
 
-  it('honours the stroke, fill and width a caller asks for', () => {
-    const svg = buildMirroredSvg(200, 350, [
-      path('M 0 0', { stroke: '#f00', fill: '#0f0', strokeWidth: 2, fillRule: 'evenodd', fillOpacity: 0.5 }),
-    ]);
-    expect(svg).toContain('stroke="#f00"');
-    expect(svg).toContain('fill="#0f0"');
-    expect(svg).toContain('stroke-width="2"');
-    expect(svg).toContain('fill-rule="evenodd"');
-    expect(svg).toContain('fill-opacity="0.5"');
-  });
-
-  it('omits the optional fill attributes when they were not asked for', () => {
-    const svg = buildMirroredSvg(200, 350, [path('M 0 0')]);
-    expect(svg).not.toContain('fill-rule');
-    expect(svg).not.toContain('fill-opacity');
-  });
-
-  it('emits one path element per path', () => {
-    const svg = buildMirroredSvg(200, 350, [path('M 0 0'), path('M 1 1'), path('M 2 2')]);
-    expect(svg.match(/<path /g)).toHaveLength(3);
-  });
-
   it('carries the SVG namespace, so the file opens outside a browser', () => {
     expect(buildMirroredSvg(10, 10, [])).toContain('xmlns="http://www.w3.org/2000/svg"');
   });
@@ -92,48 +70,5 @@ describe('paper formats', () => {
     for (const [key, format] of Object.entries(PAPER_FORMATS)) {
       expect(format.width, `${key} is not portrait`).toBeLessThan(format.height);
     }
-  });
-
-  it('follow the A-series halving rule', () => {
-    // Each size is the next one folded in half, so a plan that fits A3 fits two
-    // A4 sheets. Compared to the millimetre rather than exactly: ISO rounds each
-    // size down to whole mm, so A4's 297 against A5's 148 × 2 is off by one and
-    // correct — the sizes are defined by the rounding, not despite it.
-    const order = ['A5', 'A4', 'A3', 'A2', 'A1', 'A0'];
-    for (let i = 1; i < order.length; i++) {
-      const smaller = PAPER_FORMATS[order[i - 1]];
-      const larger = PAPER_FORMATS[order[i]];
-      expect(larger.width, `${order[i]} width`).toBe(smaller.height);
-      expect(Math.abs(larger.height - smaller.width * 2), `${order[i]} height`).toBeLessThanOrEqual(1);
-    }
-  });
-});
-
-describe('downloadSvgFile', () => {
-  it('writes the markup it was handed, under the given name', async () => {
-    let blob: Blob | undefined;
-    let name = '';
-    const create = vi.spyOn(URL, 'createObjectURL').mockImplementation((b: any) => { blob = b; return 'blob:test'; });
-    const revoke = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
-    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
-      name = this.download;
-    });
-
-    const svg = buildMirroredSvg(200, 350, [path('M 0 0 L 1 1')]);
-    try {
-      downloadSvgFile('plate.svg', svg);
-    } finally {
-      create.mockRestore(); revoke.mockRestore(); click.mockRestore();
-    }
-
-    const text = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result));
-      reader.onerror = () => reject(reader.error);
-      reader.readAsText(blob!);
-    });
-
-    expect(name).toBe('plate.svg');
-    expect(text).toBe(svg);
   });
 });

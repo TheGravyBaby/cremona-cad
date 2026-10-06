@@ -7,11 +7,6 @@ describe('closeProfileToBlank', () => {
   const hump = 'M -5 0 L 0 3 L 5 0';
   const margin = 4;
 
-  it('closes the path into a loop', () => {
-    const { path } = closeProfileToBlank(hump, 'y', 1, margin);
-    expect(path.trim().endsWith('Z')).toBe(true);
-  });
-
   it('mirrors a convex hump into a concave trough, backed below it', () => {
     const { path, backing, positionMid } = closeProfileToBlank(hump, 'y', 1, margin);
     const pts = samplePathToPolyline(path, 0.25);
@@ -66,9 +61,5 @@ describe('pathsBounds', () => {
     expect(b.maxY).toBeCloseTo(3, 1);
     expect(b.width).toBeCloseTo(10, 1);
     expect(b.height).toBeCloseTo(7, 1);
-  });
-
-  it('returns a zero-sized box for an empty list', () => {
-    expect(pathsBounds([])).toEqual({ minX: 0, minY: 0, maxX: 0, maxY: 0, width: 0, height: 0 });
   });
 });

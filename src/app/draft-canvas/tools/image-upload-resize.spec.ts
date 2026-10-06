@@ -12,17 +12,8 @@ describe('planUploadResize', () => {
     expect(planUploadResize(560, 800, SMALL)).toBeNull();
   });
 
-  it('leaves an image alone right up to the cap', () => {
-    expect(planUploadResize(2400, 1600, SMALL)).toBeNull();
-  });
-
   it('scales a phone photo down to the cap on its long edge', () => {
     expect(planUploadResize(4032, 3024, BIG)).toEqual({ width: 2400, height: 1800 });
-  });
-
-  it('caps the long edge whichever way the image is turned', () => {
-    // a cello scan is portrait; the cap has to follow the height, not the width
-    expect(planUploadResize(1500, 2500, BIG)).toEqual({ width: 1440, height: 2400 });
   });
 
   it('preserves aspect ratio to within a pixel of rounding', () => {

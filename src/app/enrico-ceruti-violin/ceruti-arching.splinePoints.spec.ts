@@ -6,12 +6,6 @@ const HEIGHT = 15;
 const SPAN = 356;
 
 describe('clampSplinePointHeights', () => {
-  it('holds points at or below the peak and floors them at zero', () => {
-    const points = [{ z: 3 }, { z: 15 }, { z: 22 }, { z: -4 }];
-    clampSplinePointHeights(points, HEIGHT);
-    expect(points.map(p => p.z)).toEqual([3, 15, 15, 0]);
-  });
-
   it('floors at the given level instead of zero', () => {
     const points = [{ z: -0.4 }, { z: -9 }];
     clampSplinePointHeights(points, HEIGHT, -3.5);

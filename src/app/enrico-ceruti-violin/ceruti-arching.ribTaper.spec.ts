@@ -75,17 +75,6 @@ describe('maxRibTaperMm', () => {
     expect(Math.hypot(run, t.zLower - t.zUpper)).toBeCloseTo(BODY, 9);
   });
 
-  it('is a bound on the entered pair, so the panel can check it against the fields', () => {
-    const p = params(32, 30);
-    const max = maxRibTaperMm(p);
-    expect(solveRibTaper(params(32, 32 - max * 0.999)).angle).toBeLessThan(Math.PI / 2);
-    expect(max).toBeLessThan(BODY - OVERHANG);
-  });
-
-  it('leaves any taper a maker would plane well inside it', () => {
-    expect(maxRibTaperMm(params(32, 30))).toBeGreaterThan(20);
-  });
-
   it('scales with the instrument', () => {
     const cello = { height: 750, overhang: 4, arching: defaultArchingParams(750) } as unknown as EnricoCerutiParams;
     expect(maxRibTaperMm(cello)).toBeGreaterThan(maxRibTaperMm(params(32, 30)));

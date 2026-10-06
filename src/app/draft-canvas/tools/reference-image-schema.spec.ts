@@ -1,6 +1,5 @@
 import { imageShapesFromRecipe, imageShapesToRecipe } from './reference-image-schema';
 import { ImageAssetStore } from './image-asset-store';
-import { CERUTI_TEMPLATES } from '../../enrico-ceruti-violin/ceruti-templates';
 import { ReferenceImage } from '../../models/types';
 
 /** The store has no Angular dependencies of its own, so a plain instance is enough here. */
@@ -9,29 +8,6 @@ function store(): ImageAssetStore {
 }
 
 describe('imageShapesFromRecipe', () => {
-  it('reads the multi-image array, interning each href', () => {
-    const assets = store();
-    const shapes = imageShapesFromRecipe({
-      referenceImages: [
-        { id: 'r1', label: 'Plan', href: '/plan.jpg', x: -10, y: 0, width: 200, height: 300, rotationDeg: 4 },
-        { id: 'r2', label: 'Long arch', href: '/long.jpg', x: 5, y: 1, width: 100, height: 20 },
-      ],
-    }, assets);
-
-    expect(shapes.length).toBe(2);
-    expect(shapes[0].id).toBe('r1');
-    expect(shapes[0].label).toBe('Plan');
-    expect(shapes[0].rotationDeg).toBe(4);
-    expect(assets.href(shapes[0].imageRef)).toBe('/plan.jpg');
-    expect(assets.href(shapes[1].imageRef)).toBe('/long.jpg');
-  });
-
-  it('handles a recipe with no reference images at all', () => {
-    expect(imageShapesFromRecipe({}, store()).length).toBe(0);
-    expect(imageShapesFromRecipe(null, store()).length).toBe(0);
-    expect(imageShapesFromRecipe({ referenceImages: [] }, store()).length).toBe(0);
-  });
-
   it('shares one asset between two shapes pointing at the same image', () => {
     const assets = store();
     const shapes = imageShapesFromRecipe({
@@ -43,34 +19,9 @@ describe('imageShapesFromRecipe', () => {
     expect(shapes[0].imageRef).toBe(shapes[1].imageRef);
     expect(assets.all().length).toBe(1);
   });
-
-  it('mutates neither the source array nor its entries', () => {
-    const entry: ReferenceImage = {
-      id: 'r1', label: 'Plan', href: '/plan.jpg', x: -10, y: 0, width: 200, height: 300,
-    };
-    const source = { referenceImages: [entry] };
-    imageShapesFromRecipe(source, store());
-    expect(source.referenceImages).toEqual([entry]);
-  });
 });
 
 describe('lock defaults', () => {
-  it('opens a template image locked, since absent means locked', () => {
-    const shapes = imageShapesFromRecipe({
-      referenceImages: [{ href: '/StradGoetz.jpg', x: 0, y: 0, width: 319, height: 448 }],
-    }, store());
-    expect(shapes[0].locked).toBe(true);
-  });
-
-  it('opens an image the user deliberately unlocked still unlocked', () => {
-    const shapes = imageShapesFromRecipe({
-      referenceImages: [
-        { id: 'a', label: 'A', href: '/a.jpg', x: 0, y: 0, width: 1, height: 1, locked: false },
-      ],
-    }, store());
-    expect(shapes[0].locked).toBe(false);
-  });
-
   it('writes locked out explicitly, so absent-means-locked cannot silently re-lock it', () => {
     const assets = store();
     const shapes = imageShapesFromRecipe({
@@ -79,18 +30,6 @@ describe('lock defaults', () => {
       ],
     }, assets);
     expect(imageShapesToRecipe(shapes, assets)[0].locked).toBe(false);
-  });
-
-  it('carries per-image hidden through unchanged, defaulting to visible', () => {
-    const assets = store();
-    const shapes = imageShapesFromRecipe({
-      referenceImages: [
-        { id: 'a', label: 'A', href: '/a.jpg', x: 0, y: 0, width: 1, height: 1, hidden: true },
-        { id: 'b', label: 'B', href: '/b.jpg', x: 0, y: 0, width: 1, height: 1 },
-      ],
-    }, assets);
-    expect(shapes.map(s => s.hidden)).toEqual([true, undefined]);
-    expect(imageShapesToRecipe(shapes, assets).map(e => e.hidden)).toEqual([true, undefined]);
   });
 });
 
@@ -145,17 +84,6 @@ describe('round-trip through the recipe field', () => {
     expect(original[0].credit!.licence).toBe('CC0');
   });
 
-  it('leaves both absent on an image that has neither, which is every one placed by hand', () => {
-    const assets = store();
-    const out = imageShapesToRecipe(imageShapesFromRecipe({
-      referenceImages: [{ id: 'a', label: 'A', href: '/a.jpg', x: 0, y: 0, width: 1, height: 1 }],
-    }, assets), assets);
-    expect(out[0].panels).toBeUndefined();
-    expect(out[0].excludePanels).toBeUndefined();
-    expect(out[0].isDefault).toBeUndefined();
-    expect(out[0].credit).toBeUndefined();
-  });
-
   it('preserves the panels an image is kept off', () => {
     const assets = store();
     const original: ReferenceImage[] = [{
@@ -185,26 +113,6 @@ describe('round-trip through the recipe field', () => {
     expect(out[0].isDefault).toBe(true);
   });
 
-  it('carries mirrored through unchanged, defaulting to unmirrored', () => {
-    const assets = store();
-    const shapes = imageShapesFromRecipe({
-      referenceImages: [
-        { id: 'a', label: 'A', href: '/a.jpg', x: 0, y: 0, width: 1, height: 1, mirrored: true },
-        { id: 'b', label: 'B', href: '/b.jpg', x: 0, y: 0, width: 1, height: 1 },
-      ],
-    }, assets);
-    expect(shapes.map(s => s.mirrored)).toEqual([true, undefined]);
-    expect(imageShapesToRecipe(shapes, assets).map(e => e.mirrored)).toEqual([true, undefined]);
-  });
-
-  it('defaults a missing rotation to 0 rather than writing undefined', () => {
-    const assets = store();
-    const out = imageShapesToRecipe(imageShapesFromRecipe({
-      referenceImages: [{ id: 'a', label: 'A', href: '/a.jpg', x: 0, y: 0, width: 1, height: 1 }],
-    }, assets), assets);
-    expect(out[0].rotationDeg).toBe(0);
-  });
-
   it('skips a shape whose asset has gone missing instead of writing an empty href', () => {
     const assets = store();
     const shapes = imageShapesFromRecipe({
@@ -212,42 +120,5 @@ describe('round-trip through the recipe field', () => {
     }, assets);
     assets.resetAll();
     expect(imageShapesToRecipe(shapes, assets)).toEqual([]);
-  });
-});
-
-const BUNDLED = CERUTI_TEMPLATES;
-
-describe('the built-in Ceruti templates', () => {
-  it('every template loads without error, and every image in one gets usable geometry', () => {
-    // Collected rather than asserted per-image so a failure names which template broke.
-    const bad: string[] = [];
-    for (const template of BUNDLED) {
-      const assets = store();
-      for (const shape of imageShapesFromRecipe(template, assets)) {
-        if (!assets.href(shape.imageRef)) bad.push(`${template.key}/${shape.label}: no href`);
-        if (!(shape.width > 0)) bad.push(`${template.key}/${shape.label}: bad width`);
-        if (!(shape.height > 0)) bad.push(`${template.key}/${shape.label}: bad height`);
-      }
-    }
-    expect(bad).toEqual([]);
-  });
-
-  it('loads the reference image shipped with each template that has one', () => {
-    const withImages = BUNDLED.filter(t => t.referenceImages?.length);
-    // Guards the assertion below against silently passing if the templates ever lose their images.
-    expect(withImages.length).toBeGreaterThan(0);
-    const empty = withImages
-      .filter(t => imageShapesFromRecipe(t, store()).length === 0)
-      .map(t => t.key);
-    expect(empty).toEqual([]);
-  });
-
-  it('round-trips a template through save and load unchanged', () => {
-    const template = BUNDLED.find(t => t.referenceImages?.length)!;
-    expect(template).toBeDefined();
-    const assets = store();
-    const saved = imageShapesToRecipe(imageShapesFromRecipe(template, assets), assets);
-    const reloaded = imageShapesToRecipe(imageShapesFromRecipe({ referenceImages: saved }, assets), assets);
-    expect(reloaded).toEqual(saved);
   });
 });

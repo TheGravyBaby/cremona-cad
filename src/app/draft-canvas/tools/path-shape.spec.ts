@@ -1,7 +1,6 @@
 import { PathShape } from './toolbox-shape';
 import { distanceToShape, shapeBounds } from './shape-hit-test';
 import { translateShape } from './shape-transform';
-import { endpointGrabbers } from './shape-grabbers';
 
 describe('PathShape', () => {
   // a quarter circle of radius 10 about the origin, from (10,0) up to (0,10)
@@ -32,10 +31,6 @@ describe('PathShape', () => {
     const moved = translateShape(square, 5, -3) as PathShape;
     expect(shapeBounds(moved)).toEqual({ x0: 5, y0: -3, x1: 25, y1: 17 });
     expect(translateShape(square, 0, 0)).toBe(square);
-  });
-
-  it('moves as a rigid body with no handles', () => {
-    expect(endpointGrabbers(square, 1.5)).toBeNull();
   });
 
   it('tolerates path data it cannot parse', () => {

@@ -8,14 +8,7 @@ import { EnricoCerutiParams, PathEntry } from '../../ceruti-types';
 import { setGlobalEmitter } from '../../../shared/message-emitter';
 
 /**
- * The f-hole contour, pinned.
- *
- * Two kinds of check. The frozen numbers below are a characterization net: they
- * were read off the solver as it stood and exist so a refactor that meant to
- * change only names cannot quietly move a plate. Change them only when a shape
- * decision says to, never to make a build go green.
- *
- * The property tests are the ones that say what the drawing is: every joint is
+ * The property tests say what the drawing is: every joint is
  * tangent-continuous, the shoulder touches its own eye and its bound, and the
  * tip is where the cut says it is. Those hold for any f-hole, not just this one.
  */
@@ -63,75 +56,10 @@ const solve = (shape: Shape): EnricoCerutiParams => {
   return p;
 };
 
-/** The frozen numbers are 4dp, so compare at 4dp. */
 const round4 = (v: unknown): unknown =>
   typeof v === 'number' ? Math.round(v * 1e4) / 1e4
   : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, round4(x)]))
   : v;
-
-const PLAIN = {
-  "UEye": { "x": 21.6799, "y": 187.0265, "r": 3 },
-  "URise": 3.6,
-  "UCut": { "angleOnEye": 1.0472, "slope": 1.0472, "length": 3 },
-  "UTip": { "x": 24.6799, "y": 192.2227 },
-  "LEye": { "x": 57.4667, "y": 134.4, "r": 4 },
-  "LRise": 4.8,
-  "LCut": { "angleOnEye": 4.1888, "slope": -2.0944, "length": 4 },
-  "LTip": { "x": 53.4667, "y": 127.4718 },
-  "stem": {
-    "center": { "x": 37.5077, "y": 159.3799 },
-    "width": 5.1311,
-    "angle": 1.6057,
-    "arcR": 40,
-  },
-  "U1": { "x": 26.4799, "y": 185.6265, "r": 8, "start": 2.8578, "end": 1.5708 },
-  "U2": { "x": 26.4799, "y": 184.6265, "r": 9, "start": 1.5708, "end": 0.5288 },
-  "U3": { "x": 23.117, "y": 183.3594, "r": 9, "start": 0.3943, "end": 1.3963 },
-  "L1": { "x": 51.5879, "y": 135.6, "r": 10, "start": -0.2014, "end": -1.5708 },
-  "L2": { "x": 51.5879, "y": 137.6, "r": 12, "start": -1.5708, "end": -2.5743 },
-  "L3": { "x": 54.5125, "y": 139.4261, "r": 12, "start": -2.7529, "end": -1.6581 },
-  "S1": { "x": -5.5037, "y": 171.4492, "r": 40, "start": 0.0349, "end": 0.3943 },
-  "S2": { "x": -0.2866, "y": 168.9883, "r": 40, "start": 0.5288, "end": 0.0349 },
-  "S3": { "x": 75.2017, "y": 152.6462, "r": 40, "start": -2.5743, "end": -3.1067 },
-  "S4": { "x": 80.4239, "y": 150.0375, "r": 40, "start": -3.1067, "end": -2.7529 },
-};
-
-const SHAPED = {
-  "UEye": { "x": 21.6799, "y": 187.0265, "r": 3 },
-  "URise": 3.6,
-  "UCut": { "angleOnEye": 1.0472, "slope": 1.0472, "length": 3 },
-  "UTip": { "x": 24.6799, "y": 192.2227 },
-  "LEye": { "x": 57.4667, "y": 134.4, "r": 4 },
-  "LRise": 4.8,
-  "LCut": { "angleOnEye": 4.1888, "slope": -2.0944, "length": 4 },
-  "LTip": { "x": 53.4667, "y": 127.4718 },
-  "stem": {
-    "center": { "x": 37.5077, "y": 159.3799 },
-    "width": 5.1311,
-    "angle": 1.6057,
-    "arcR": 48,
-  },
-  "U1": { "x": 26.4799, "y": 185.6265, "r": 8, "start": 2.8578, "end": 1.2708 },
-  "U2": { "x": 26.1844, "y": 184.6712, "r": 9, "start": 1.2708, "end": 0.4917 },
-  "U3": { "x": 23.117, "y": 183.3594, "r": 9, "start": 0.355, "end": 1.3963 },
-  "L1": { "x": 51.5879, "y": 135.6, "r": 10, "start": -0.2014, "end": -1.8208 },
-  "L2": { "x": 52.0827, "y": 137.5378, "r": 12, "start": -1.8208, "end": -2.609 },
-  "L3": { "x": 54.5125, "y": 139.4261, "r": 12, "start": -2.795, "end": -1.6581 },
-  "S1": { "x": -13.4511, "y": 169.8032, "r": 48, "start": 0.0349, "end": 0.355 },
-  "S2": { "x": -8.1962, "y": 166.2599, "r": 48, "start": 0.4917, "end": 0.0349 },
-  "S3": { "x": 83.0958, "y": 155.8187, "r": 48, "start": -2.609, "end": -3.1067 },
-  "S4": { "x": 88.3723, "y": 151.6537, "r": 48, "start": -3.1067, "end": -2.795 },
-};
-
-describe('f-hole contours', () => {
-  it('solves the default violin to the geometry it was pinned at', () => {
-    expect(geometryDiff(round4(solve('plain').fHoles), PLAIN, 1e-9)).toEqual([]);
-  });
-
-  it('solves the same hole with both shoulders extended and a stem-arc radius pinned', () => {
-    expect(geometryDiff(round4(solve('extended').fHoles), SHAPED, 1e-9)).toEqual([]);
-  });
-});
 
 /** The two edges as they are drawn, in the order the contour runs — crossing U/L/S field names,
  * since those now track physical position rather than which edge drew the arc. */

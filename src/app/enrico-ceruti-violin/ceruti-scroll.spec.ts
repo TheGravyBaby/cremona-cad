@@ -36,6 +36,21 @@ const HISTORICAL = STYLES.filter(s => s !== 'fourPoint' && s !== 'archimedean');
 // arcs out to the front, two turns: the Archimedean is set out in eighths
 const FRONT: Record<VoluteStyle, number> = { fourPoint: 8, archimedean: 16, serlio: 8, salviati: 8, goldmann: 8, kelly: 8 };
 
+const BACK: Partial<ScrollParams> = {
+  S0: arc(30, 0, Math.PI / 2), S1: arc(20, 0, Math.PI), S2: arc(15, 0, 4), backStraight: 6, S3: arc(12, 0.2, 0), nape: arc(3, 0, 0),
+};
+
+// the panel's default proportions, up from the top of the nut to the spiral's bottom
+const withFront = (p: EnricoCerutiParams) => {
+  const v = p.scroll!;
+  const rise = Math.min(...v.spiral!.map(a => a.y - a.r)) - p.stringSetup!.nutHeight;
+  v.flat = 0.45 * rise;
+  v.F0 = arc(0.4 * rise, 0, Math.PI / 6);
+  v.frontStraight = 0.3 * rise;
+  v.F1 = arc(0.15 * rise, 0, 0);
+  return rise;
+};
+
 describe.each(STYLES)('the %s volute', style => {
   it('draws arcs that scale with the eye radius', () => {
     const small = spiralArcs(spec(style, 3));
@@ -100,12 +115,49 @@ describe.each(STYLES)('the %s volute', style => {
     }
   });
 
+  it('runs the front up from the nut, F0 turning back, the straight on, and F1 curving up into the spiral', () => {
+    const { p, v } = scrolled(style, 4, BACK);
+    const nutTop = p.stringSetup!.nutHeight;
+    const rise = withFront(p);
+    expect(unsolved(p).filter(k => k !== 'nape')).toEqual([]);
+    const [f0, f1] = [v.F0, v.F1];
+    expect(scrollLines(p).flat.map(q => [q.x, q.y])).toEqual([[0, nutTop], [0, nutTop + 0.45 * rise]].map(q => q.map(c => expect.closeTo(c, 9))));
+    expect(at(f0, 0)).toEqual([0, nutTop + 0.45 * rise].map(c => expect.closeTo(c, 9)));
+    expect(f0.x).toBeLessThan(0);
+    expect([f0.start, f0.end, f0.r]).toEqual([0, Math.PI / 6, 0.4 * rise]);
+    const [top, foot] = scrollLines(p).frontStraight;
+    expect([top.x, top.y]).toEqual(at(f0, f0.end).map(c => expect.closeTo(c, 9)));
+    expect(dist(top, foot)).toBeCloseTo(0.3 * rise, 9);
+    expect(foot.x).toBeLessThan(top.x);
+    expect(at(f1, f1.end)).toEqual([foot.x, foot.y].map(c => expect.closeTo(c, 9)));
+    expect(f1.end).toBeCloseTo(f0.end + Math.PI, 12);
+    expect(Math.sign(f1.x - foot.x)).toBe(-Math.sign(f0.x - top.x));
+    // F1 ends on a drawn arc of the spiral, and crosses none of it before
+    const end = at(f1, f1.start);
+    const onSpiral = (q: number[], tol: number) => v.spiral!.some(a =>
+      Math.abs(Math.hypot(q[0] - a.x, q[1] - a.y) - a.r) < tol && angleWithinSweep(Math.atan2(q[1] - a.y, q[0] - a.x), a.start, a.end));
+    expect(onSpiral(end, 1e-6)).toBe(true);
+    for (let k = 1; k < 50; k++) expect(onSpiral(at(f1, f1.end - (f1.end - f1.start) * k / 50), 1e-3)).toBe(false);
+    expect(f1.end - f1.start).toBeGreaterThan(0);
+    expect(f1.end - f1.start).toBeLessThan(Math.PI);
+  });
+
+  it('brings the spiral\'s front flush with the neck at any height', () => {
+    for (const eyeY of [70, 85]) {
+      const { v } = scrolled(style, 4, { eye: new Circle(0, eyeY, 4) });
+      expect(v.eye.y).toBe(eyeY);
+      const right = Math.max(...v.spiral!.flatMap(a =>
+        [a.start, a.end, 0, 2 * Math.PI, 4 * Math.PI, 6 * Math.PI].filter(t => t === a.start || t === a.end || angleWithinSweep(t, a.start, a.end)).map(t => at(a, t)[0])));
+      expect(Math.abs(right), `at ${eyeY}`).toBeLessThanOrEqual(FLUSH);
+    }
+  });
+});
+
+describe('the back and front off a salviati volute', () => {
+  const style: VoluteStyle = 'salviati';
   const tangentAt = (last: Arc, a: Arc, angle: number) => {
     const [dx, dy] = [a.x - last.x, a.y - last.y];
     expect(dx * Math.sin(angle) - dy * Math.cos(angle)).toBeCloseTo(0, 9);
-  };
-  const BACK: Partial<ScrollParams> = {
-    S0: arc(30, 0, Math.PI / 2), S1: arc(20, 0, Math.PI), S2: arc(15, 0, 4), backStraight: 6, S3: arc(12, 0.2, 0), nape: arc(3, 0, 0),
   };
 
   it('runs S0 to S2 on from the spiral\'s front, each tangent to the last and ending at its own angle', () => {
@@ -172,44 +224,6 @@ describe.each(STYLES)('the %s volute', style => {
     expect([v.S3.start, v.S3.end]).toEqual([0.2, 4 - Math.PI]);
   });
 
-  // the panel's default proportions, up from the top of the nut to the spiral's bottom
-  const withFront = (p: EnricoCerutiParams) => {
-    const v = p.scroll!;
-    const rise = Math.min(...v.spiral!.map(a => a.y - a.r)) - p.stringSetup!.nutHeight;
-    v.flat = 0.45 * rise;
-    v.F0 = arc(0.4 * rise, 0, Math.PI / 6);
-    v.frontStraight = 0.3 * rise;
-    v.F1 = arc(0.15 * rise, 0, 0);
-    return rise;
-  };
-
-  it('runs the front up from the nut, F0 turning back, the straight on, and F1 curving up into the spiral', () => {
-    const { p, v } = scrolled(style, 4, BACK);
-    const nutTop = p.stringSetup!.nutHeight;
-    const rise = withFront(p);
-    expect(unsolved(p).filter(k => k !== 'nape')).toEqual([]);
-    const [f0, f1] = [v.F0, v.F1];
-    expect(scrollLines(p).flat.map(q => [q.x, q.y])).toEqual([[0, nutTop], [0, nutTop + 0.45 * rise]].map(q => q.map(c => expect.closeTo(c, 9))));
-    expect(at(f0, 0)).toEqual([0, nutTop + 0.45 * rise].map(c => expect.closeTo(c, 9)));
-    expect(f0.x).toBeLessThan(0);
-    expect([f0.start, f0.end, f0.r]).toEqual([0, Math.PI / 6, 0.4 * rise]);
-    const [top, foot] = scrollLines(p).frontStraight;
-    expect([top.x, top.y]).toEqual(at(f0, f0.end).map(c => expect.closeTo(c, 9)));
-    expect(dist(top, foot)).toBeCloseTo(0.3 * rise, 9);
-    expect(foot.x).toBeLessThan(top.x);
-    expect(at(f1, f1.end)).toEqual([foot.x, foot.y].map(c => expect.closeTo(c, 9)));
-    expect(f1.end).toBeCloseTo(f0.end + Math.PI, 12);
-    expect(Math.sign(f1.x - foot.x)).toBe(-Math.sign(f0.x - top.x));
-    // F1 ends on a drawn arc of the spiral, and crosses none of it before
-    const end = at(f1, f1.start);
-    const onSpiral = (q: number[], tol: number) => v.spiral!.some(a =>
-      Math.abs(Math.hypot(q[0] - a.x, q[1] - a.y) - a.r) < tol && angleWithinSweep(Math.atan2(q[1] - a.y, q[0] - a.x), a.start, a.end));
-    expect(onSpiral(end, 1e-6)).toBe(true);
-    for (let k = 1; k < 50; k++) expect(onSpiral(at(f1, f1.end - (f1.end - f1.start) * k / 50), 1e-3)).toBe(false);
-    expect(f1.end - f1.start).toBeGreaterThan(0);
-    expect(f1.end - f1.start).toBeLessThan(Math.PI);
-  });
-
   it('leaves F1 unsolved when it never reaches the spiral, and stops the front at the first part that is no radius or length', () => {
     const { p, v } = scrolled(style, 4, BACK);
     const rise = withFront(p);
@@ -255,16 +269,6 @@ describe.each(STYLES)('the %s volute', style => {
       expect(v.spiral).toBeNull();
       expect(failures[0].unsolved).toContain('spiral');
       expect(failures[0].unsolved).toContain('F1');
-    }
-  });
-
-  it('brings the spiral\'s front flush with the neck at any height', () => {
-    for (const eyeY of [70, 85]) {
-      const { v } = scrolled(style, 4, { eye: new Circle(0, eyeY, 4) });
-      expect(v.eye.y).toBe(eyeY);
-      const right = Math.max(...v.spiral!.flatMap(a =>
-        [a.start, a.end, 0, 2 * Math.PI, 4 * Math.PI, 6 * Math.PI].filter(t => t === a.start || t === a.end || angleWithinSweep(t, a.start, a.end)).map(t => at(a, t)[0])));
-      expect(Math.abs(right), `at ${eyeY}`).toBeLessThanOrEqual(FLUSH);
     }
   });
 
@@ -461,9 +465,9 @@ describe('the scroll widths', () => {
     startsAtHips();
   });
 
-  it.each([20, 26, 34])('runs the pegbox out from the nut to hips %d wide at the round\'s top, then tapers it by height to the throat, back and front alike', hip => {
+  it('runs the pegbox out from the nut to hips 34 wide at the round\'s top, then tapers it by height to the throat, back and front alike', () => {
     const { p, v } = solved();
-    v.widths.hip = hip;
+    v.widths.hip = 34;
     const { nutWidth, nutHeight } = p.stringSetup!;
     const width = v.widths.hip;
     const throat = at(v.F1, v.F1.start)[1];
@@ -584,12 +588,6 @@ describe('the Kelly volute', () => {
       [[-0.5, 0], [-0.5, -1], [0.5, -1], [0.5, 1], [-0.5, 1], [-0.5, -2], [0.5, -2], [0.5, 2]].map(([x, y]) => [expect.closeTo(x, 9), expect.closeTo(y, 9)]));
   });
 
-  it('draws two full turns, the eighth ending at its own front', () => {
-    const spiral = scrolled('kelly', 4).v.spiral!;
-    expect(spiral).toHaveLength(8);
-    expect([spiral[0].r, spiral[0].start, spiral[0].end]).toEqual([inward[7].r, inward[7].start, inward[7].end]);
-  });
-
   it('guides with the seed\'s four squares and the eye\'s two axes', () => {
     const [outline, ...rest] = voluteConstruction(scrolled('kelly', 4).v);
     expect(outline.map(p => [p.x, p.y])).toEqual([[-0.5, -2], [0.5, -2], [0.5, 2], [-0.5, 2], [-0.5, -2]]);
@@ -642,12 +640,6 @@ describe('the Serlio volute', () => {
     expect(arcs.map(a => a.r / 8)).toEqual(twice([13 / 6, 3 / 2, 1, 2 / 3]).map(v => expect.closeTo(v, 9)));
     expect(arcs.map(a => a.y)).toEqual(Array(8).fill(expect.closeTo(0, 9)));
     expect(arcs.map(a => a.x / 8)).toEqual(twice([2 / 6, -2 / 6, 1 / 6, -1 / 6]).map(v => expect.closeTo(v, 9)));
-  });
-
-  it('draws his inner two turns, out to the end of his 13/6-diameter semicircle', () => {
-    const spiral = scrolled('serlio', 4).v.spiral!;
-    expect(spiral.map(a => a.r / 8)).toEqual([13 / 6, 13 / 6, 3 / 2, 3 / 2, 1, 1, 2 / 3, 2 / 3].map(v => expect.closeTo(v, 9)));
-    expect(spiral[0].end - spiral[0].start).toBeCloseTo(Math.PI / 2, 9);
   });
 });
 

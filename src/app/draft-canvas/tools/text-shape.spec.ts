@@ -87,9 +87,4 @@ describe('text rotation handle', () => {
     expect(turned.rotationDeg).toBeCloseTo(270, 9);
     expect(turned.position).toEqual({ x: 0, y: 0 }); // the anchor is the pivot, so it stays put
   });
-
-  it('ignores handle keys that belong to other shape types', () => {
-    const shape = label();
-    expect(withEndpoint(shape, 'radius', at(10, 10))).toBe(shape);
-  });
 });

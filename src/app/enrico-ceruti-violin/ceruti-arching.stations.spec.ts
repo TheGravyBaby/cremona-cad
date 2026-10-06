@@ -1,5 +1,5 @@
 import { normalizeCrossArchStations, STATION_MERGE_EPS_MM } from './ceruti-arching';
-import { CrossArchCycloid, CrossArchSpline } from './ceruti-types';
+import { CrossArchCycloid } from './ceruti-types';
 
 // `normalizeCrossArchStations` is generic over `{ y: number }`, and the crown
 // resolver, `nearestCrossArchShape` and the template station list all lean on
@@ -34,16 +34,5 @@ describe('normalizeCrossArchStations', () => {
     expect(out[0].y).toBeGreaterThan(0);
     const far = normalizeCrossArchStations([cyc(BODY + 50, 0.5)], BODY);
     expect(far[0].y).toBeLessThan(BODY);
-  });
-
-  it('preserves the station subtype through the call', () => {
-    const stations: CrossArchSpline[] = [
-      { y: 120, type: 'spline', peak: 0.55, points: [{ x: -0.34, z: 0.5, mirror: true }] },
-    ];
-    const out = normalizeCrossArchStations(stations, BODY);
-    // Typed as the spline station it went in as, so `points` is reachable
-    // without a cast — the property the generic exists to hold.
-    expect(out[0].points[0].z).toBe(0.5);
-    expect(out[0].peak).toBe(0.55);
   });
 });

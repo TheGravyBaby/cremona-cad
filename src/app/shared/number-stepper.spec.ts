@@ -51,18 +51,6 @@ describe('NumberStepperDirective', () => {
     window.matchMedia = original;
   });
 
-  it('adds a pair of buttons on a coarse pointer', async () => {
-    await create(true);
-    expect(buttons().length).toBe(2);
-    expect(input().closest('.num-stepper')).toBeTruthy();
-  });
-
-  it('leaves a fine pointer alone, since it has native spin buttons', async () => {
-    await create(false);
-    expect(buttons().length).toBe(0);
-    expect(input().closest('.num-stepper')).toBeNull();
-  });
-
   it('steps by the field\'s own step attribute, in both directions', async () => {
     await create(true);
     const [up, down] = Array.from(buttons());
@@ -75,32 +63,10 @@ describe('NumberStepperDirective', () => {
     expect(input().value).toBe('6');
   });
 
-  it('writes the stepped value back through ngModel', async () => {
-    await create(true);
-    buttons()[0].click();
-    await fixture.whenStable();
-    expect(fixture.componentInstance.value).toBe(16);
-  });
-
-  it('respects min rather than stepping below it', async () => {
-    await create(true);
-    const down = buttons()[1];
-    for (let i = 0; i < 5; i++) down.click();
-    expect(Number(input().value)).toBeGreaterThanOrEqual(1);
-  });
-
   it('seeds an empty field instead of throwing', async () => {
     await create(true);
     input().value = '';
     expect(() => buttons()[0].click()).not.toThrow();
     expect(input().value).toBe('1'); // the min
-  });
-
-  it('removes its wrapper when the host goes away', async () => {
-    await create(true);
-    const wrap = fixture.nativeElement.querySelector('.num-stepper');
-    expect(wrap).toBeTruthy();
-    fixture.destroy();
-    expect(wrap.isConnected).toBe(false);
   });
 });

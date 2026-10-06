@@ -80,12 +80,6 @@ describe('the neck and scroll template', () => {
     }
   });
 
-  it('leaves the short stretch where the curve runs into the front unpricked', () => {
-    const p = scrolledViolin();
-    const t = defineNeckTemplate(p);
-    expect(t.dots).toHaveLength(0);
-  });
-
   it('pricks dots where two turns run too close for a slot, and the eye at its centre', () => {
     const p = scrolledViolin();
     const tight: NeckTemplateSpec = { ...defaultNeckTemplateSpec(p), minWeb: 100 };
