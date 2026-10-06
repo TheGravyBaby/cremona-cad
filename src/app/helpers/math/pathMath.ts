@@ -466,6 +466,30 @@ export function unifyConnectedSvgPaths(paths: string[]): string {
   return unified;
 }
 
+// the same for segments that make several separate chains, each unified on its own and drawn as a
+// subpath of one path: a drawing in progress whose chains haven't met yet. A finished outline goes
+// through unifyConnectedSvgPaths instead, so a gap in it still fails loudly
+export function unifyConnectedSvgPathGroups(paths: string[]): string {
+  const ends = paths.map(path => {
+    const props = new svgPathProperties(path.trim());
+    return [props.getPointAtLength(0), props.getPointAtLength(props.getTotalLength())];
+  });
+  const touches = (i: number, j: number) =>
+    ends[i].some(a => ends[j].some(b => Math.abs(a.x - b.x) <= 1e-3 && Math.abs(a.y - b.y) <= 1e-3));
+
+  const parent = paths.map((_, i) => i);
+  const root = (i: number): number => parent[i] === i ? i : (parent[i] = root(parent[i]));
+  for (let i = 0; i < paths.length; i++) {
+    for (let j = i + 1; j < paths.length; j++) {
+      if (touches(i, j)) parent[root(j)] = root(i);
+    }
+  }
+
+  const chains = new Map<number, string[]>();
+  paths.forEach((path, i) => chains.set(root(i), [...(chains.get(root(i)) ?? []), path]));
+  return [...chains.values()].map(unifyConnectedSvgPaths).join(' ');
+}
+
 /**
  * Stitches a one-sided chain of arcs/line-segments, mirrored about the Y axis, into one closed
  * loop — the shared shape behind every symmetric cutout in this app: only one half needs to be

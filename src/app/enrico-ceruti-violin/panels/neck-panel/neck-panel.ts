@@ -4,12 +4,15 @@ import { FormsModule } from '@angular/forms';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, FlutingParams, NeckParams, PathEntry, RenderToggleKey, StringSetup } from '../../ceruti-types';
 import { defaultArchingParams } from '../../ceruti-arching';
 import { defaultFlutingParams, LongArchSolve, solveLongArch } from '../../ceruti-arch-geometry';
-import { calculateOuterArcs, ensureFholePath, ensureNeckPath, ensureOuterTracePaths, getPath, getPathOrNull } from '../../ceruti-calcs';
-import { bridgeWedge, buttonTip, calculateNeck, defaultNeckParams, defaultStringSetup, fingerboardCrown, fingerboardEnd, frontViewAxisX, mortiseFingerboardIntersect, neckHalfWidthAt, heelFace, heelStands, mortiseFloorY, plateEdgeAtNeck, stringLength } from '../../ceruti-neck';
-import { renderBodySection } from '../../renders/body-section.render';
+import { calculateOuterArcs, ensureFholePath, ensureNeckPath, ensureOuterTracePaths, topPlatePaths } from '../../ceruti-calcs';
+import { bridgeWedge, buttonTip, calculateNeck, defaultNeckParams, defaultStringSetup, fingerboardCrown, mortiseFingerboardIntersect, heelFace, heelStands, plateEdgeAtNeck, stringLength } from '../../ceruti-neck';
+import { defineFrontProfilePath, definePlacedSideScrollPath, fingerboardEnd, mortiseFloorY, scrollOnNeck } from '../../ceruti-paths';
+import { solveScrollForProfile } from '../../ceruti-scroll';
+import { renderFrontStroke, scrollFrontInPlan } from '../../renders/scroll.render';
+import { renderBodySection, renderSideView } from '../../renders/body-section.render';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
-import { occludePath, pathFromArc, pathFromPolygon } from '../../../helpers/math/pathMath';
+import { applyMatrix, pathFromArc } from '../../../helpers/math/pathMath';
 import { dist, moveInVectorSpace, pointAtDistanceToward, pointOnCircle, vectorFromSlope } from '../../../helpers/math/simpleGeometry';
 import { renderSegment, renderSegmentHalo, renderArcHalo, renderPolygon, renderPath, renderSolveFailures } from '../../../helpers/renderFuncs';
 import { Pt, Vect2D } from '../../../models/types';
@@ -91,22 +94,41 @@ export class NeckPanel extends CerutiPanelBase implements OnInit {
       bottom: solveLongArch(p, p.arching.bottom.arch, gouge.bottom),
     };
     const failures = calculateNeck(p, solved.top, gouge.top);
+    // the scroll once its panels have started it, set on the neck's end
+    const scroll = solveScrollForProfile(p);
     ensureNeckPath(p, this.paths);
     ensureOuterTracePaths(p, this.paths);
     if (p.fHoles) ensureFholePath(p, this.paths);
 
     return [
-      renderBodySection(p, this.colors, { solved, gouge, color: this.colors.outerTrace }),
-      renderNeck(p, this.colors, this.flags.showModuleGuides, this.flags.showFingerboard, this.flags.showFretMarks),
-      renderFrontView(p, this.paths, this.colors, this.flags.showFingerboard),
-      renderNeckHighlight(p, this.highlightedKey, this.highlightedColor),
-      renderSolveFailures(failures, this.colors.pathError),
+      renderSideView(p, [
+        renderBodySection(p, this.colors, { solved, gouge, color: this.colors.outerTrace }),
+        renderNeck(p, this.colors, { guides: this.flags.showModuleGuides, fingerboard: this.flags.showFingerboard, fretMarks: this.flags.showFretMarks, scroll }),
+        renderNeckHighlight(p, this.highlightedKey, this.highlightedColor, 'side'),
+        renderSolveFailures(failures, this.colors.pathError),
+      ]),
+      renderFrontView(p, this.paths, this.colors, this.flags.showFingerboard, scroll),
+      renderNeckHighlight(p, this.highlightedKey, this.highlightedColor, 'front'),
     ];
   }
 
 }
 
-export function renderNeck(p: EnricoCerutiParams, colors: CerutiColors, showGuides: boolean, showFingerboard: boolean, showFretMarks: boolean) {
+export interface NeckRenderOptions {
+  guides?: boolean;
+  fingerboard?: boolean;
+  fretMarks?: boolean;
+  strings?: boolean;
+  bridge?: boolean;
+  // the scroll's side profile set on the neck's end; only for a scroll calculateScroll solved whole
+  scroll?: boolean;
+  // the whole neck in this one colour, for a panel where it's the ground rather than the subject
+  ground?: string;
+}
+
+export function renderNeck(p: EnricoCerutiParams, colors: CerutiColors, opts: NeckRenderOptions = {}) {
+  const { guides = false, fingerboard = true, fretMarks = false, strings = true, bridge = true, scroll = false, ground } = opts;
+  const paint = (c: string) => ground ?? c;
   const nk = p.neck!;
   const ss = p.stringSetup!;
   const direction = vectorFromSlope(nk.angle + Math.PI / 2);
@@ -115,24 +137,28 @@ export function renderNeck(p: EnricoCerutiParams, colors: CerutiColors, showGuid
   const mortFboard = mortiseFingerboardIntersect(p);
   const nutTop = ss.nutTop!;
   const fbEnd = fingerboardEnd(p);
-  
+  // with the scroll on, the pegbox carries on past the nut, and the back runs up to where the nape
+  // meets it, as the scroll panels draw it
+  const backTop = scroll ? applyMatrix(scrollOnNeck(p), new Pt(-nk.thickness, p.scroll!.nape.y)) : nk.backNut!;
+
   return (g: any, ui: any): void => {
-    const seg = (a: Pt, b: Pt, color = colors.neck) => renderSegment(a, b, color, STROKE_WEIGHT.section)(g, ui);
+    const seg = (a: Pt, b: Pt, color = paint(colors.neck)) => renderSegment(a, b, color, STROKE_WEIGHT.section)(g, ui);
 
     // the button: the back plate carried on past its edge, the heel's foot on top of it
     const backThickness = p.arching!.bottom.thickness;
-    renderPolygon([new Pt(0, p.height), new Pt(0, tip.y), new Pt(-backThickness, tip.y), new Pt(-backThickness, p.height)], colors.archBack, STROKE_WEIGHT.section)(g, ui);
+    renderPolygon([new Pt(0, p.height), new Pt(0, tip.y), new Pt(-backThickness, tip.y), new Pt(-backThickness, p.height)], paint(colors.archBack), STROKE_WEIGHT.section)(g, ui);
 
-    // the foot in the mortise
-    seg(new Pt(0, mortiseFloorY(p)), mortFboard, colors.neckRoot);
-    seg(mortFboard, nk.root!, colors.neck);
+    // the foot from where it comes out of the plate at the mortise floor, then the neck's face on up to
+    // the root; the rest of the foot is hidden in the block
+    if (nk.plateAtMortise) seg(nk.plateAtMortise, mortFboard, paint(colors.neckRoot));
+    seg(mortFboard, nk.root!, paint(colors.neck));
 
-    renderPolygon(bridgeWedge(p), colors.bridge, STROKE_WEIGHT.section)(g, ui);
+    if (bridge) renderPolygon(bridgeWedge(p), paint(colors.bridge), STROKE_WEIGHT.section)(g, ui);
 
     // the neck's own boundary where the fingerboard glues on
     seg(nk.root!, nk.neckTop!);
 
-    if (showFingerboard) {
+    if (fingerboard) {
       // the crown's rise follows the board's width, which grows linearly, so its line curves slightly
       const crown: Pt[] = [];
       for (let i = 0; i <= FINGERBOARD_CROWN_SAMPLES; i++) {
@@ -141,32 +167,35 @@ export function renderNeck(p: EnricoCerutiParams, colors: CerutiColors, showGuid
       }
       // the board's edges solid, the crown above them faded so the two read apart
       const edgeAt = (at: Pt) => moveInVectorSpace(at, [{ ...normal, mag: ss.fingerboardThickness }]);
-      renderPolygon([nk.neckTop!, edgeAt(nk.neckTop!), edgeAt(fbEnd), fbEnd], colors.fingerboard, STROKE_WEIGHT.section)(g, ui);
+      renderPolygon([nk.neckTop!, edgeAt(nk.neckTop!), edgeAt(fbEnd), fbEnd], paint(colors.fingerboard), STROKE_WEIGHT.section)(g, ui);
       const crownLine = [edgeAt(nk.neckTop!), ...crown, edgeAt(fbEnd)];
-      renderPath('M ' + crownLine.map(c => `${c.x} ${c.y}`).join(' L '), colors.fingerboard, STROKE_WEIGHT.section, FINGERBOARD_CROWN_OPACITY)(g, ui);
+      renderPath('M ' + crownLine.map(c => `${c.x} ${c.y}`).join(' L '), paint(colors.fingerboard), STROKE_WEIGHT.section, FINGERBOARD_CROWN_OPACITY)(g, ui);
     }
 
     // the nut, on the fingerboard plane just past the board
     const nutFar = moveInVectorSpace(nk.neckTop!, [{ ...direction, mag: ss.nutHeight }]);
     const nutFarTop = moveInVectorSpace(nutFar, [{ ...normal, mag: ss.nutThickness }]);
-    renderPolygon([nk.neckTop!, nutFar, nutFarTop, nutTop], colors.nut, STROKE_WEIGHT.section)(g, ui);
+    renderPolygon([nk.neckTop!, nutFar, nutFarTop, nutTop], paint(colors.nut), STROKE_WEIGHT.section)(g, ui);
 
-    // the neck itself: nut-end wall, the back, and the heel down to the button
-    seg(nk.neckTop!, nk.backNut!);
+    // the neck itself: the scroll or the nut-end wall, the back, and the heel down to the button
+    if (scroll) renderPath(definePlacedSideScrollPath(p), paint(colors.outerTrace), STROKE_WEIGHT.section)(g, ui);
+    else seg(nk.neckTop!, nk.backNut!);
     const heel = nk.heel;
     if (heelStands(p)) {
-      seg(nk.backNut!, pointOnCircle(heel, heel.start));
-      renderPath(pathFromArc(heel), colors.neckRoot, STROKE_WEIGHT.section)(g, ui);
+      seg(backTop, pointOnCircle(heel, heel.start));
+      renderPath(pathFromArc(heel), paint(colors.neckRoot), STROKE_WEIGHT.section)(g, ui);
       const face = heelFace(p);
-      if (face) seg(face[0], face[1], colors.neckRoot);
+      if (face) seg(face[0], face[1], paint(colors.neckRoot));
     } else {
-      seg(nk.backNut!, nk.backRoot!);
+      seg(backTop, nk.backRoot!);
     }
 
-    seg(nutTop, ss.bridgeTop!, colors.innerTrace);
-    if (showFretMarks) renderFretTicks(nutTop, ss.bridgeTop!, dist(nk.neckTop!, fbEnd))(g, ui);
+    if (strings) {
+      seg(nutTop, ss.bridgeTop!, paint(colors.innerTrace));
+      if (fretMarks) renderFretTicks(nutTop, ss.bridgeTop!, dist(nk.neckTop!, fbEnd))(g, ui);
+    }
 
-    if (!showGuides) return;
+    if (!guides) return;
     const guide = colors.neckOff;
     const rootPlaneY = p.height - p.overhang;
     // offsets scale with the neck's own wood thickness rather than a fixed mm, so the parked
@@ -178,25 +207,24 @@ export function renderNeck(p: EnricoCerutiParams, colors: CerutiColors, showGuid
   };
 }
 
-function renderNeckHighlight(p: EnricoCerutiParams, key: NeckHighlightKey | null, color: string) {
+function renderNeckHighlight(p: EnricoCerutiParams, key: NeckHighlightKey | null, color: string, view: 'side' | 'front') {
   return (g: any, ui: any): void => {
-    if (!key) return;
+    if (!key || (key === 'topWidth' || key === 'rootWidth') !== (view === 'front')) return;
     const nk = p.neck!;
     const ss = p.stringSetup!;
     const normal = vectorFromSlope(nk.angle);
     const mortFboard = mortiseFingerboardIntersect(p);
     const fbEnd = fingerboardEnd(p);
     const edgeAt = (at: Pt) => moveInVectorSpace(at, [{ ...normal, mag: ss.fingerboardThickness }]);
-    const line = (a: Pt, b: Pt, dx = 0) => renderSegmentHalo(new Pt(a.x + dx, a.y), new Pt(b.x + dx, b.y), color)(g, ui);
+    const line = (a: Pt, b: Pt) => renderSegmentHalo(a, b, color)(g, ui);
 
     const topY = nk.neckTop!.y;
     const rootY = mortiseFloorY(p);
-    const frontDx = frontViewAxisX(p);
     switch (key) {
       case 'length': line(mortFboard, nk.neckTop!); break;
       case 'thickness': line(nk.neckTop!, nk.backNut!); break;
-      case 'topWidth': line(new Pt(-nk.topWidth / 2, topY), new Pt(nk.topWidth / 2, topY), frontDx); break;
-      case 'rootWidth': line(new Pt(-nk.rootWidth / 2, rootY), new Pt(nk.rootWidth / 2, rootY), frontDx); break;
+      case 'topWidth': line(new Pt(-nk.topWidth / 2, topY), new Pt(nk.topWidth / 2, topY)); break;
+      case 'rootWidth': line(new Pt(-nk.rootWidth / 2, rootY), new Pt(nk.rootWidth / 2, rootY)); break;
       case 'heel': if (heelStands(p)) renderArcHalo(nk.heel, color)(g, ui); break;
       case 'buttonHeight': line(new Pt(0, p.height), buttonTip(p)); break;
       case 'mortise': line(new Pt(0, p.height - p.overhang), new Pt(0, rootY)); break;
@@ -222,36 +250,12 @@ function renderNeckHighlight(p: EnricoCerutiParams, key: NeckHighlightKey | null
 }
 
 // the body's plan outline as the f-hole contours panel draws it, moved over beside the side elevation
-function renderFrontView(p: EnricoCerutiParams, paths: PathEntry[], colors: CerutiColors, showFingerboard: boolean) {
-  const dx = frontViewAxisX(p);
-  const top = getPath(paths, 'top');
-  const purfling = getPathOrNull(paths, 'purfling');
-  const outerPurfling = getPathOrNull(paths, 'outerPurfling');
-  const fHole = p.fHoles ? getPathOrNull(paths, 'fHole') : null;
-
-  const nk = p.neck!;
-  const rootY = mortiseFloorY(p);
-  const topY = nk.neckTop!.y;
-  const neck = [
-    new Pt(-nk.rootWidth / 2, rootY), new Pt(nk.rootWidth / 2, rootY),
-    new Pt(nk.topWidth / 2, topY), new Pt(-nk.topWidth / 2, topY),
-  ];
-  const neckPath = pathFromPolygon(neck);
+function renderFrontView(p: EnricoCerutiParams, paths: PathEntry[], colors: CerutiColors, showFingerboard: boolean, scroll: boolean) {
+  const profile = defineFrontProfilePath(p, topPlatePaths(p, paths), showFingerboard);
 
   return (g: any, ui: any): void => {
-    const shifted = {
-      g: g.append('g').attr('transform', `translate(${dx},0)`),
-      ui: ui.append('g').attr('transform', `translate(${dx},0)`),
-    };
-    const body = (path: string | null, color: string, weight: number) => {
-      if (!path) return;
-      const { visible } = occludePath(path, neckPath);
-      if (visible) renderPath(visible, color, weight)(shifted.g, shifted.ui);
-    };
-    body(top, colors.outerTrace, STROKE_WEIGHT.trace);
-    body(purfling, colors.innerTrace, STROKE_WEIGHT.guide);
-    body(outerPurfling, colors.innerTrace, STROKE_WEIGHT.guide);
-    body(fHole, colors.innerTrace, STROKE_WEIGHT.guide);
+    renderPath(profile.body.outline, colors.outerTrace, STROKE_WEIGHT.trace)(g, ui);
+    for (const d of [...profile.body.purfling, ...profile.body.fHoles]) renderPath(d, colors.innerTrace, STROKE_WEIGHT.guide)(g, ui);
 
     const [footA, footB] = bridgeWedge(p);
     const bridgeHalfDepth = dist(footA, footB) / 2;
@@ -262,25 +266,11 @@ function renderFrontView(p: EnricoCerutiParams, paths: PathEntry[], colors: Ceru
     renderPolygon([
       new Pt(-bridgeHalfWidth, bridgeY - bridgeHalfDepth), new Pt(bridgeHalfWidth, bridgeY - bridgeHalfDepth),
       new Pt(bridgeHalfWidth, bridgeY + bridgeHalfDepth), new Pt(-bridgeHalfWidth, bridgeY + bridgeHalfDepth),
-    ], colors.bridge, STROKE_WEIGHT.section)(shifted.g, shifted.ui);
+    ], colors.bridge, STROKE_WEIGHT.section)(g, ui);
 
-    if (showFingerboard) {
-      const fbEndY = fingerboardEnd(p).y;
-      const fbEndHalf = neckHalfWidthAt(p, fbEndY);
-      renderPolygon([
-        new Pt(-fbEndHalf, fbEndY), new Pt(fbEndHalf, fbEndY),
-        new Pt(nk.topWidth / 2, topY), new Pt(-nk.topWidth / 2, topY),
-      ], colors.fingerboard, STROKE_WEIGHT.section)(shifted.g, shifted.ui);
-    } else {
-      renderPolygon(neck, colors.neckRoot, STROKE_WEIGHT.section)(shifted.g, shifted.ui);
-    }
-
-    const { nutHeight, nutWidth } = p.stringSetup!;
-    const nutY = moveInVectorSpace(nk.neckTop!, [{ ...vectorFromSlope(nk.angle + Math.PI / 2), mag: nutHeight }]).y;
-    renderPolygon([
-      new Pt(-nutWidth / 2, topY), new Pt(nutWidth / 2, topY),
-      new Pt(nutWidth / 2, nutY), new Pt(-nutWidth / 2, nutY),
-    ], colors.nut, STROKE_WEIGHT.section)(shifted.g, shifted.ui);
+    renderPath(profile.neck, showFingerboard ? colors.fingerboard : colors.neckRoot, STROKE_WEIGHT.section)(g, ui);
+    renderPath(profile.nut, colors.nut, STROKE_WEIGHT.section)(g, ui);
+    if (scroll) for (const stroke of scrollFrontInPlan(p)) renderFrontStroke(stroke, colors.outerTrace)(g, ui);
   };
 }
 

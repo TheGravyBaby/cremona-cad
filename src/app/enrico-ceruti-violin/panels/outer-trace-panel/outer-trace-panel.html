@@ -4,12 +4,12 @@
         <label class="field-cell">
             <span class="field-title">Width <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="params.button!.width"
-                (input)="onChange()" />
+                [style.border-color]="colors.archBack" (input)="onChange()" />
         </label>
         <label class="field-cell">
             <span class="field-title">Height <span class="unit-label">mm</span></span>
             <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="params.button!.height"
-                (input)="onChange()" />
+                [style.border-color]="colors.archBack" (input)="onChange()" />
         </label>
         <button type="button" class="info-icon" (click)="buttonInfo()" title="More information"
             aria-label="Information">ⓘ</button>

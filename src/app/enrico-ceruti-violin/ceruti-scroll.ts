@@ -419,6 +419,14 @@ function defaultPegbox(p: EnricoCerutiParams): PegboxParams {
 
 // off a scroll calculateScroll solved whole. Where each width sits is read off the arcs by the
 // functions below, so all there is to write is the widths themselves, held in order
+// the scroll the user has started, re-solved for a view of the whole instrument once its neck is set,
+// widths and all: whether every section solved, so it can be drawn
+export function solveScrollForProfile(p: EnricoCerutiParams): boolean {
+  if (!p.scroll || !p.neck?.neckTop || !p.stringSetup || calculateScroll(p).length) return false;
+  calculateScrollWidths(p);
+  return true;
+}
+
 export function calculateScrollWidths(p: EnricoCerutiParams): void {
   let v = p.scroll!;
   v.widths ??= defaultScrollWidths(p);

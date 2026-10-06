@@ -1,15 +1,25 @@
 import { TestBed } from '@angular/core/testing';
 import { maxRibTaperMm, ribHeightAt, solveRibTaper } from '../ceruti-arching';
-import { splineZAt } from '../../helpers/math/pathMath';
+import { samplePathToPolyline, splineZAt, splitPathStrings } from '../../helpers/math/pathMath';
 import { recordLayers } from '../../helpers/layer-recorder';
 import { archedViolin, defaultViolin, templateKeys, templateViolin } from '../ceruti-fixtures';
-import { CerutiColors, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, EnricoCerutiParams, PathEntry } from '../ceruti-types';
+import { CerutiColors, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, DefaultParams, EnricoCerutiParams, PathEntry } from '../ceruti-types';
+import { ensureFrontProfilePaths } from '../ceruti-calcs';
+import { sideViewOffsetX } from '../renders/body-section.render';
+import { defineFholePath, defineInnerPath, defineOuterPath, definePlacedSideScrollPath, definePurflingPath, mortiseFloorY, scrollOnNeck } from '../ceruti-paths';
+import { applyMatrix } from '../../helpers/math/pathMath';
+import { vectorFromSlope } from '../../helpers/math/simpleGeometry';
+import { mortiseFingerboardIntersect, plateEdgeAtNeck } from '../ceruti-neck';
+import { defaultFHolePlacement, FHolePlacementPanel } from './f-hole-placement-panel/f-hole-placement-panel';
+import { renderFrontProfile } from '../renders/front-profile.render';
+import { scrollFrontInPlan } from '../renders/scroll.render';
 import { CenterBoutPanel } from './center-bout-panel/center-bout-panel';
 import { CornersPanel } from './corners-panel/corners-panel';
 import { CrossArchingPanel } from './cross-arching-panel/cross-arching-panel';
 import { FlutingPanel } from './fluting-panel/fluting-panel';
 import { LongArchingPanel } from './long-arching-panel/long-arching-panel';
 import { MainBoutsPanel } from './main-bouts-panel/main-bouts-panel';
+import { FHoleContoursPanel } from './f-hole-contours-panel/f-hole-contours-panel';
 import { MouldPanel } from './mould-panel/mould-panel';
 import { NeckHighlightKey, NeckPanel } from './neck-panel/neck-panel';
 import { OuterTracePanel } from './outer-trace-panel/outer-trace-panel';
@@ -110,11 +120,97 @@ describe.each(PANELS)('%s panel', (_name, Ctor) => {
   });
 });
 
+describe('the main bouts panel lays the rib outline under its own work', () => {
+  it('draws the whole outline on a finished instrument, following a bout edit, and nothing past it', () => {
+    const p = defaultViolin();
+    const instance = panel(MainBoutsPanel, p);
+    const before = recordLayers(instance.buildRun()).paths;
+    const outline = defineInnerPath(p);
+    expect(before).toContain(outline);
+    expect(before).not.toContain(definePurflingPath(p, p.overhang + p.rib)!);
+
+    p.bouts.LBW! += 10;
+    const after = recordLayers(instance.buildRun()).paths;
+    expect(after).toContain(defineInnerPath(p));
+    expect(after).not.toContain(outline);
+  });
+
+  it('shows the corners drafted on a new instrument when coming back from their panel', () => {
+    const p: EnricoCerutiParams = JSON.parse(JSON.stringify(DefaultParams));
+    const main = panel(MainBoutsPanel, p);
+    const boutsOnly = defineInnerPath(p);
+    expect(recordLayers(main.buildRun()).paths).toContain(defineInnerPath(p));
+
+    panel(CornersPanel, p).buildRun();
+    const back = recordLayers(main.buildRun()).paths;
+    expect(back).toContain(defineInnerPath(p));
+    expect(back).not.toContain(boutsOnly);
+  });
+});
+
+describe('the corners panel lays the rib outline under its own work', () => {
+  it('draws the bouts carried out to the corners on a first visit', () => {
+    const p: EnricoCerutiParams = JSON.parse(JSON.stringify(DefaultParams));
+    panel(MainBoutsPanel, p).buildRun();
+    const drawn = recordLayers(panel(CornersPanel, p).buildRun()).paths;
+    expect(drawn).toContain(defineInnerPath(p));
+  });
+
+  it('shows the center bout drafted on a new instrument when coming back from its panel, following a corner edit', () => {
+    const p: EnricoCerutiParams = JSON.parse(JSON.stringify(DefaultParams));
+    panel(MainBoutsPanel, p).buildRun();
+    const corners = panel(CornersPanel, p);
+    corners.buildRun();
+    const cornersOnly = defineInnerPath(p);
+
+    const center = panel(CenterBoutPanel, p);
+    center.paths = [];
+    center.buildRun();
+    const back = recordLayers(corners.buildRun()).paths;
+    const closed = defineInnerPath(p);
+    expect(back).toContain(closed);
+    expect(back).not.toContain(cornersOnly);
+
+    p.bouts.LCr = new Pt(p.bouts.LCr!.x + 2, p.bouts.LCr!.y);
+    const moved = recordLayers(corners.buildRun()).paths;
+    expect(moved).toContain(defineInnerPath(p));
+    expect(moved).not.toContain(closed);
+  });
+});
+
+describe('the whole front profile', () => {
+  it('keeps to the rib outline until the outer trace is reached', () => {
+    const p: EnricoCerutiParams = JSON.parse(JSON.stringify(DefaultParams));
+    panel(MainBoutsPanel, p).buildRun();
+    panel(CornersPanel, p).buildRun();
+    const paths: PathEntry[] = [];
+    const drawn = recordLayers(renderFrontProfile(p, paths, colors, ensureFrontProfilePaths(p, paths))).paths;
+    expect(drawn).toEqual([defineInnerPath(p)]);
+  });
+
+  it('adds the neck once the neck panel has set it', () => {
+    const p = archedViolin();
+    const paths: PathEntry[] = [];
+    const drawn = () => recordLayers(renderFrontProfile(p, paths, colors, ensureFrontProfilePaths(p, paths))).paths.length;
+    const without = drawn();
+    const neck = panel(NeckPanel, p);
+    neck.paths = paths;
+    neck.buildRun();
+    expect(drawn()).toBe(without + 2);
+  });
+});
+
 describe('view flags gate what is drawn', () => {
   it('the module circles appear only when their toggle is on', () => {
     const off = recordLayers(panel(MainBoutsPanel, defaultViolin(), flags({ showModuleCircles: false, showAllCircles: false })).buildRun());
     const on = recordLayers(panel(MainBoutsPanel, defaultViolin(), flags({ showModuleCircles: true })).buildRun());
     expect(on.countByTag['circle'] ?? 0).toBeGreaterThan(off.countByTag['circle'] ?? 0);
+  });
+
+  it('all arcs draws the arcs of earlier stages fancy under a later panel', () => {
+    const off = recordLayers(panel(CornersPanel, defaultViolin(), flags({ showModuleArcs: true, showAllArcs: false })).buildRun());
+    const on = recordLayers(panel(CornersPanel, defaultViolin(), flags({ showModuleArcs: true, showAllArcs: true })).buildRun());
+    expect(on.elements.length).toBeGreaterThan(off.elements.length);
   });
 
   it('the outer path appears only when its toggle is on', () => {
@@ -888,6 +984,273 @@ describe('the fluting panel', () => {
     const drawn = recordLayers(panel(FlutingPanel as any, archedViolin()).buildRun());
     expect(drawn.elements.length).toBeGreaterThan(0);
   });
+
+  it('keeps the top centred with its f-holes, and the back to its left', () => {
+    const p = archedViolin();
+    p.fHoles = defaultFHolePlacement(p);
+    const drawn = recordLayers(panel(FlutingPanel as any, p).buildRun()).paths;
+    expect(drawn).toContain(defineOuterPath(p, undefined, true, false));
+    for (const hole of splitPathStrings(defineFholePath(p))) expect(drawn).toContain(hole);
+    const left = drawn.filter(d => xRange(d).max < 0);
+    expect(left.length).toBeGreaterThan(0);
+  });
+});
+
+describe('the outer path panel', () => {
+  const named = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
+  const build = (p: EnricoCerutiParams, over: Partial<CerutiViewFlags> = {}) => {
+    const instance = panel(OuterTracePanel, p, flags({ showModuleArcs: false, showAllArcs: false, ...over }));
+    instance.colors = named;
+    return recordLayers(instance.buildRun()).elements;
+  };
+
+  it('keeps the top centred with its f-holes, and draws the back to its left with the button in blue', () => {
+    const p = defaultViolin();
+    p.fHoles = defaultFHolePlacement(p);
+    const drawn = build(p);
+    const d = drawn.map(el => el.attrs['d'] as string);
+    expect(d).toContain(defineOuterPath(p, undefined, true, false));
+    for (const hole of splitPathStrings(defineFholePath(p))) expect(d).toContain(hole);
+
+    const button = drawn.filter(el => el.attrs['stroke'] === 'archBack');
+    expect(button.length).toBeGreaterThan(0);
+    for (const el of button) expect(xRange(el.attrs['d'] as string).max).toBeLessThan(0);
+  });
+
+  it('colours the outer corner arcs whether or not the arc toggles are on', () => {
+    const strokes = (over: Partial<CerutiViewFlags>) => new Set(build(defaultViolin(), over).map(el => el.attrs['stroke']));
+    for (const over of [{}, { showModuleArcs: true }]) {
+      expect(strokes(over).has('centerBoutUp')).toBe(true);
+      expect(strokes(over).has('centerBoutLow')).toBe(true);
+    }
+  });
+});
+
+function xRange(d: string): { min: number; max: number } {
+  const xs = samplePathToPolyline(d, 1, true).map(q => q.x);
+  return { min: Math.min(...xs), max: Math.max(...xs) };
+}
+
+describe('the f-hole placement panel lays the front profile under its own work', () => {
+  it('draws the holes cut to their contours as placed, following a placement edit', () => {
+    const p = archedViolin();
+    const instance = panel(FHolePlacementPanel, p);
+    const before = recordLayers(instance.buildRun()).paths;
+    for (const hole of splitPathStrings(defineFholePath(p))) expect(before).toContain(hole);
+
+    p.fHoles!.LEye!.y += 2;
+    const after = recordLayers(instance.buildRun()).paths;
+    for (const hole of splitPathStrings(defineFholePath(p))) expect(after).toContain(hole);
+  });
+
+  it('leaves the neck and scroll off even once they are set', () => {
+    const p = archedViolin();
+    const instance = panel(FHolePlacementPanel, p);
+    const without = recordLayers(instance.buildRun()).paths;
+    const neck = panel(NeckPanel, p);
+    neck.paths = instance.paths;
+    neck.buildRun();
+    p.scroll = defaultVoluteParams(p);
+    expect(recordLayers(instance.buildRun()).paths).toEqual(without);
+  });
+});
+
+describe('the f-hole contours panel lays the front profile under its own work', () => {
+  it('draws the outline and purfling in grey, leaving the holes to its own colours', () => {
+    const p = archedViolin();
+    const instance = panel(FHoleContoursPanel, p);
+    instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
+    const drawn = recordLayers(instance.buildRun()).elements;
+    const d = drawn.map(el => el.attrs['d']);
+    expect(d).toContain(defineOuterPath(p, undefined, true, false));
+    expect(d).toContain(definePurflingPath(p, p.overhang + p.rib)!);
+    for (const hole of splitPathStrings(defineFholePath(p))) expect(d).not.toContain(hole);
+  });
+
+  it('leaves the neck and scroll off even once they are set', () => {
+    const p = archedViolin();
+    const instance = panel(FHoleContoursPanel, p);
+    const without = recordLayers(instance.buildRun()).paths;
+    const neck = panel(NeckPanel, p);
+    neck.paths = instance.paths;
+    neck.buildRun();
+    p.scroll = defaultVoluteParams(p);
+    expect(recordLayers(instance.buildRun()).paths).toEqual(without);
+  });
+});
+
+describe('the neck panel side view', () => {
+  it('draws the mortise floor only from where it leaves the plate out to the neck\'s face', () => {
+    const p = archedViolin();
+    const instance = panel(NeckPanel, p, flags({ showModuleGuides: false }));
+    const lines = recordLayers(instance.buildRun()).elements.filter(el => el.tag === 'line');
+    const floorY = mortiseFloorY(p);
+    const atFloor = lines.filter(el => Math.abs((el.attrs['y1'] as number) - floorY) < 0.01 && Math.abs((el.attrs['y2'] as number) - floorY) < 0.01);
+    expect(atFloor).toHaveLength(1);
+    const xs = [atFloor[0].attrs['x1'] as number, atFloor[0].attrs['x2'] as number].sort((a, b) => a - b);
+    expect(xs[0]).toBeCloseTo(p.neck!.plateAtMortise!.x, 9);
+    expect(xs[0]).toBeGreaterThan(plateEdgeAtNeck(p).x - p.arching!.top.thickness);
+    expect(xs[1]).toBeCloseTo(mortiseFingerboardIntersect(p).x, 9);
+  });
+});
+
+describe('the scroll set on the neck in the side view', () => {
+  const scrolled = () => {
+    const p = archedViolin();
+    panel(NeckPanel, p).buildRun();
+    p.scroll = defaultVoluteParams(p);
+    return p;
+  };
+  const lineEnds = (el: { attrs: Record<string, unknown> }) =>
+    [new Pt(el.attrs['x1'] as number, el.attrs['y1'] as number), new Pt(el.attrs['x2'] as number, el.attrs['y2'] as number)];
+  const near = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.y - b.y) < 1e-6;
+
+  it('puts the scroll frame\'s origin on the nut, up the neck along +y and toward the fingerboard along +x', () => {
+    const p = scrolled();
+    const m = scrollOnNeck(p);
+    const nk = p.neck!;
+    const up = vectorFromSlope(nk.angle + Math.PI / 2), normal = vectorFromSlope(nk.angle);
+    expect(near(applyMatrix(m, new Pt(0, 0)), nk.neckTop!)).toBe(true);
+    expect(near(applyMatrix(m, new Pt(0, 1)), new Pt(nk.neckTop!.x + up.a, nk.neckTop!.y + up.b))).toBe(true);
+    expect(near(applyMatrix(m, new Pt(1, 0)), new Pt(nk.neckTop!.x + normal.a, nk.neckTop!.y + normal.b))).toBe(true);
+  });
+
+  it('draws the scroll on the neck panel once started, with no wall at the nut and the back up to the nape', () => {
+    const p = scrolled();
+    const before = recordLayers(panel(NeckPanel, archedViolinWithNeck()).buildRun()).elements;
+    expect(before.filter(el => el.tag === 'line').some(el => lineEnds(el).some(e => near(e, p.neck!.backNut!)))).toBe(true);
+
+    const drawn = recordLayers(panel(NeckPanel, p).buildRun()).elements;
+    expect(drawn.map(el => el.attrs['d'])).toContain(definePlacedSideScrollPath(p));
+    const lines = drawn.filter(el => el.tag === 'line');
+    const nk = p.neck!;
+    expect(lines.some(el => lineEnds(el).some(e => near(e, nk.neckTop!)) && lineEnds(el).some(e => near(e, nk.backNut!)))).toBe(false);
+    const napeJoin = applyMatrix(scrollOnNeck(p), new Pt(-nk.thickness, p.scroll!.nape.y));
+    expect(lines.some(el => lineEnds(el).some(e => near(e, napeJoin)))).toBe(true);
+  });
+
+  it('draws it in grey under the body on the long arching panel, when that panel draws the neck', () => {
+    const p = scrolled();
+    const instance = panel(LongArchingPanel, p);
+    instance.showNeck = true;
+    instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
+    const placed = recordLayers(instance.buildRun()).elements.find(el => el.attrs['d'] === definePlacedSideScrollPath(p));
+    expect(placed?.attrs['stroke']).toBe('outerTrace');
+  });
+});
+
+describe('the scroll\'s front view on the front profile', () => {
+  const necked = () => {
+    const p = archedViolin();
+    const paths: PathEntry[] = [];
+    panel(OuterTracePanel, p).buildRun();
+    const neck = panel(NeckPanel, p);
+    neck.paths = paths;
+    neck.buildRun();
+    return { p, paths };
+  };
+
+  it('projects each point onto the plan through the neck\'s tilt, its depth included', () => {
+    const { p } = necked();
+    p.scroll = defaultVoluteParams(p);
+    const v = p.scroll;
+    const m = scrollOnNeck(p);
+    const eyeSides = scrollFrontInPlan(p).filter(s => 'line' in s && s.line[0].x === s.line[1].x && Math.abs(Math.abs(s.line[0].x) - v.widths.eye / 2) < 1e-9);
+    expect(eyeSides).toHaveLength(2);
+    const bottom = applyMatrix(m, new Pt(v.eye.x, v.eye.y - v.eye.r)).y;
+    const top = applyMatrix(m, new Pt(v.eye.x, v.eye.y + v.eye.r)).y;
+    for (const s of eyeSides) {
+      const [a, b] = (s as { line: [Pt, Pt] }).line;
+      expect(a.y).toBeCloseTo(bottom, 9);
+      expect(b.y).toBeCloseTo(top, 9);
+    }
+  });
+
+  it('goes on the profile in grey once the scroll is started, and not before', () => {
+    const { p, paths } = necked();
+    const named = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
+    const unstarted = ensureFrontProfilePaths(p, paths);
+    expect(unstarted.scroll).toBe(false);
+    const before = recordLayers(renderFrontProfile(p, paths, named, unstarted)).elements;
+    p.scroll = defaultVoluteParams(p);
+    const solve = ensureFrontProfilePaths(p, paths);
+    expect(solve.scroll).toBe(true);
+    const after = recordLayers(renderFrontProfile(p, paths, named, solve)).elements;
+    expect(after.length - before.length).toBe(scrollFrontInPlan(p).length);
+    expect(after.slice(before.length).every(el => el.attrs['stroke'] === 'outerTrace')).toBe(true);
+  });
+
+  it('goes on the neck panel\'s front view too', () => {
+    const { p, paths } = necked();
+    const neck = panel(NeckPanel, p);
+    neck.paths = paths;
+    const before = recordLayers(neck.buildRun()).elements.length;
+    p.scroll = defaultVoluteParams(p);
+    // in the side view the scroll's path takes the place of the wall across the nut, one for one
+    expect(recordLayers(neck.buildRun()).elements.length).toBe(before + scrollFrontInPlan(p).length);
+  });
+});
+
+function archedViolinWithNeck(): EnricoCerutiParams {
+  const p = archedViolin();
+  panel(NeckPanel, p).buildRun();
+  return p;
+}
+
+describe('the long arching panel lays the neck the user has set under the body', () => {
+  const named = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
+  const build = (p: EnricoCerutiParams, showNeck = true) => {
+    const instance = panel(LongArchingPanel, p);
+    instance.colors = named;
+    instance.showNeck = showNeck;
+    return recordLayers(instance.buildRun()).elements;
+  };
+
+  it('leaves the neck off unless asked for it', () => {
+    const p = archedViolin();
+    const without = build(p, false).length;
+    panel(NeckPanel, p).buildRun();
+    expect(build(p, false).length).toBe(without);
+    expect(build(p).length).toBeGreaterThan(without);
+  });
+
+  it('draws no neck before the neck panel is visited, and the neck in grey after', () => {
+    const p = archedViolin();
+    const before = build(p);
+    expect(before.some(el => el.attrs['stroke'] === 'outerTrace')).toBe(false);
+
+    const neck = panel(NeckPanel, p);
+    neck.buildRun();
+    const after = build(p);
+    const grey = after.filter(el => el.attrs['stroke'] === 'outerTrace');
+    expect(grey.length).toBeGreaterThan(0);
+    expect(after.length - before.length).toBe(grey.length);
+    for (const part of ['neck', 'neckRoot', 'fingerboard', 'nut', 'bridge']) {
+      expect(after.some(el => el.attrs['stroke'] === part), part).toBe(false);
+    }
+  });
+
+  it('leaves out the strings and the bridge', () => {
+    const p = archedViolin();
+    panel(NeckPanel, p).buildRun();
+    const top = p.stringSetup!.bridgeTop!;
+    const touchesBridgeTop = (el: { attrs: Record<string, unknown> }) =>
+      (Math.abs((el.attrs['x1'] as number) - top.x) < 1e-6 && Math.abs((el.attrs['y1'] as number) - top.y) < 1e-6)
+      || (Math.abs((el.attrs['x2'] as number) - top.x) < 1e-6 && Math.abs((el.attrs['y2'] as number) - top.y) < 1e-6)
+      || (typeof el.attrs['d'] === 'string' && (el.attrs['d'] as string).includes(`${top.x} ${top.y}`));
+    expect(recordLayers(panel(NeckPanel, p).buildRun()).elements.some(touchesBridgeTop)).toBe(true);
+    expect(build(p).some(touchesBridgeTop)).toBe(false);
+  });
+
+  it('carries the neck with the rib taper', () => {
+    const p = archedViolin();
+    panel(NeckPanel, p).buildRun();
+    build(p);
+    const root = p.neck!.root!;
+    p.arching!.ribHeightUpper -= 1;
+    build(p);
+    expect(p.neck!.root!.x).toBeLessThan(root.x);
+  });
 });
 
 // past maxRibTaperMm the tilted rib line is longer than the instrument; the panel rolls the
@@ -959,6 +1322,29 @@ describe('long arching panel — rib taper limit', () => {
   });
 });
 
+describe('where the two profiles sit', () => {
+  const sideShift = (elements: ReturnType<typeof recordLayers>['elements']) =>
+    elements.filter(e => e.layer === 'g' && e.tag === 'g' && e.parent === undefined).map(e => String(e.attrs['transform']));
+
+  it('keeps the neck panel\'s front view on x = 0 and moves its side view left of it, clear of the plan', () => {
+    const p = archedViolin();
+    const instance = panel(NeckPanel, p);
+    const drawn = recordLayers(instance.buildRun()).elements;
+    expect(sideShift(drawn)).toEqual([`translate(${sideViewOffsetX(p)},0)`]);
+    // the front view draws at the root, outside any moved group
+    expect(drawn.filter(e => e.tag === 'path' && e.parent === undefined).length).toBeGreaterThan(0);
+    expect(p.stringSetup!.bridgeTop!.x + sideViewOffsetX(p)).toBeLessThan(-p.width / 2);
+  });
+
+  it('puts the long arching panel\'s side view in the same place, neck or no neck', () => {
+    const p = archedViolin();
+    const before = sideViewOffsetX(p);
+    expect(sideShift(recordLayers(panel(LongArchingPanel, p).buildRun()).elements)).toEqual([`translate(${before},0)`]);
+    panel(NeckPanel, p).buildRun();
+    expect(sideViewOffsetX(p)).toBe(before);
+  });
+});
+
 // the top plate is drawn in its own frame and placed by a rigid transform on its group — a
 // shear would lean the carved section instead of just tilting where it sits
 describe('long arching panel — placing the tilted top plate', () => {
@@ -982,7 +1368,8 @@ describe('long arching panel — placing the tilted top plate', () => {
 
   function topPlatePlacement(p: EnricoCerutiParams) {
     const drawn = recordLayers(panel(LongArchingPanel, p).buildRun());
-    const group = drawn.elements.find(e => e.layer === 'g' && e.tag === 'g');
+    // the plate's own group, inside the one moving the whole side view over: the one that turns it
+    const group = drawn.elements.find(e => e.layer === 'g' && e.tag === 'g' && String(e.attrs['transform']).includes('rotate'));
     expect(group, 'the top plate should be drawn into a placed group').toBeTruthy();
     return readTransform(String(group!.attrs['transform']));
   }

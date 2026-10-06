@@ -235,6 +235,7 @@ export interface NeckParams {
   neckTop: Pt | null; // derived
   backRoot: Pt | null; // derived
   backNut: Pt | null; // derived
+  plateAtMortise: Pt | null; // derived: the top plate's surface at the mortise floor
 }
 
 export interface StringSetup {
@@ -481,7 +482,7 @@ export const DefaultParams: EnricoCerutiParams = {
     HtoW: 7 / 4,
 
     UBtoLB: 4 / 5,
-    U0toUBW: 5 / 8,
+    U0toUBW: 5 / 6,
     U1toUBW: 1 / 3,
     U2toUBW: 1 / 2,
     U3toLBW: 1 / 8,

@@ -1,13 +1,14 @@
 import { Arc, arcFromCircle, Circle, Pt, Vect2D } from '../models/types';
 import {
   angleFromCenter, dist, intersectLines, lineFromTwoPoints,
-  moveInVectorSpace, pointAtDistanceToward, pointOnCircle, TURN, vectorFromSlope,
+  moveInVectorSpace, pointOnCircle, TURN, vectorFromSlope,
 } from '../helpers/math/simpleGeometry';
 import { pathFromArc, pathFromLine, unifyConnectedSvgPaths } from '../helpers/math/pathMath';
 import { EnricoCerutiParams, FlutingParams, NeckParams, StringSetup } from './ceruti-types';
 import { reportFailures, SolveFailure } from '../helpers/validators';
 import { placeOnTopPlate, solveRibTaper, topPlatePlacement } from './ceruti-arching';
 import { channelCenterlineZAt, LongArchSolve } from './ceruti-arch-geometry';
+import { fingerboardEnd, mortiseFloorY, neckHalfWidthAt } from './ceruti-paths';
 
 // The neck set in the side elevation, in the frame the body section is drawn in: x is height off
 // the back plate's inner face, y runs up the body, the neck end at y = height. Everything hangs off
@@ -38,7 +39,7 @@ export function defaultNeckParams(p: EnricoCerutiParams): NeckParams {
     rootWidth: mm(33),
     heel: new Arc(0, 0, mm(20), 0, 0),
 
-    root: null, neckTop: null, backRoot: null, backNut: null,
+    root: null, neckTop: null, backRoot: null, backNut: null, plateAtMortise: null,
   };
 }
 
@@ -104,6 +105,11 @@ export function calculateNeck(p: EnricoCerutiParams, topArch: LongArchSolve | nu
   nk.neckTop = neckTop;
   nk.backRoot = backRoot;
   nk.backNut = backNut;
+  // where the mortise floor comes out through the plate's surface; below it the foot is hidden in the
+  // block. The floor is level with the body, so the point stays on it: the taper's tilt moves the
+  // placed point's y by a fraction of a mm, across which the surface barely rises
+  const surface = placeOnTopPlate(placement, new Pt(outerZ + channelCenterlineZAt(p, topGouge, topArch, floorY), floorY));
+  nk.plateAtMortise = new Pt(surface.x, floorY);
   nk.heel = calculateHeel(backRoot, backNut, tip, nk.heel.r) ?? nk.heel;
   ss.bridgeFoot = bridgeFoot;
   ss.bridgeTop = bridgeTop;
@@ -175,19 +181,6 @@ export function buttonTip(p: EnricoCerutiParams): Pt {
   return new Pt(0, p.height + (p.button?.height ?? 0));
 }
 
-// the mortise floor, inside the rib's outer face by the mortise depth
-export function mortiseFloorY(p: EnricoCerutiParams): number {
-  return p.height - p.overhang - p.neck!.mortiseDepth;
-}
-
-// the neck's half-width seen from the front, top width at the nut to root width at the mortise
-// floor; the fingerboard carries the same taper on down over the body
-export function neckHalfWidthAt(p: EnricoCerutiParams, y: number): number {
-  const nk = p.neck!;
-  const topY = nk.neckTop!.y;
-  return (nk.topWidth + (nk.rootWidth - nk.topWidth) * (topY - y) / (topY - mortiseFloorY(p))) / 2;
-}
-
 // how far the fingerboard's cylindrical crown stands above its edges, over the board's width at y
 export function fingerboardCrown(p: EnricoCerutiParams, y: number): number {
   const r = p.stringSetup!.fingerboardRadius;
@@ -222,19 +215,6 @@ export function heelFace(p: EnricoCerutiParams): [Pt, Pt] | null {
 // over the fingerboard's and bridge's curvature
 export function stringLength(p: EnricoCerutiParams): number {
   return dist(p.stringSetup!.nutTop!, p.stringSetup!.bridgeTop!);
-}
-
-// the fingerboard's end, its length down the neck from the nut
-export function fingerboardEnd(p: EnricoCerutiParams): Pt {
-  const nk = p.neck!;
-  return pointAtDistanceToward(nk.neckTop!, nk.root!, p.stringSetup!.fingerboardLength);
-}
-
-// the front view's centerline: the plan outline, which is centred on x = 0 and shares the side
-// elevation's y, carried right until its widest point clears the side elevation's furthest reach
-// by a quarter of the body's width
-export function frontViewAxisX(p: EnricoCerutiParams): number {
-  return Math.max(p.stringSetup!.bridgeTop!.x, p.neck!.root!.x) + 0.75 * p.width;
 }
 
 // the bridge blank's four corners: foot-left, foot-right, top-right, top-left

@@ -3,7 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { CerutiColors, CerutiViewFlags, DefaultParams, EnricoCerutiParams, FholeParams, FholeStem, PathEntry, RenderToggleKey } from '../../ceruti-types';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { renderArcFromArcFancy, renderCircle, renderCrosshair, renderDashedLine, renderSegment, renderPath, renderRect, renderSmallCrosshair } from '../../../helpers/renderFuncs';
-import { calculateOuterArcs, ensureOuterTracePaths, getPath, getPathOrNull } from '../../ceruti-calcs';
+import { calculateOuterArcs, ensureFrontProfilePaths, getPathOrNull } from '../../ceruti-calcs';
+import { renderFrontProfile } from '../../renders/front-profile.render';
 import { Arc, Circle, Pt, Rectangle } from '../../../models/types';
 import { nearestFraction, nearestSmallFraction } from '../../../helpers/nearestFraction';
 import { angleFromCenter, angleOnDrawnArc, arcHorizontalIntersections, clamp, dist, flipCircleAboutY, flipPointAboutY, flipRectAboutY, lineCircleIntersection, lineFromPointAndSlope, pointOnCircle } from '../../../helpers/math/simpleGeometry';
@@ -63,19 +64,12 @@ export class FHolePlacementPanel extends CerutiPanelBase implements OnInit {
   public buildRun(): RenderLayer[] {
     const p = this.params;
     calculateOuterArcs(p);
-    ensureOuterTracePaths(p, this.paths);
     p.fHoles ??= defaultFHolePlacement(p);
 
-    const renders: RenderLayer[] = [
-      renderPath(getPath(this.paths, 'top'), this.colors.outerTrace),
-    ];
-
-    // const purflingPath = getPathOrNull(this.paths, 'purfling');
-    // const outerPurflingPath = getPathOrNull(this.paths, 'outerPurfling');
+    // the instrument as far as it's been taken under the placement, the holes cut to their contours as
+    // placed. The neck and scroll are left off: here they took the eye off the holes (2026-10-06)
+    const renders: RenderLayer[] = [...renderFrontProfile(p, this.paths, this.colors, ensureFrontProfilePaths(p, this.paths, { neck: false }))];
     const innerPath = getPathOrNull(this.paths, 'inner');
-
-    // if (purflingPath) renders.push(renderPath(purflingPath, this.colors.innerTrace, 1));
-    // if (outerPurflingPath) renders.push(renderPath(outerPurflingPath, this.colors.innerTrace, 1));
     if (innerPath) renders.push(renderPath(innerPath, this.colors.innerTrace, STROKE_WEIGHT.guide));
 
     // recalculate display ratios

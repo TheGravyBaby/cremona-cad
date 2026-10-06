@@ -4,9 +4,10 @@ import { archedViolin } from './ceruti-fixtures';
 import { EnricoCerutiParams, NeckParams } from './ceruti-types';
 import { defaultFlutingParams, solveLongArch } from './ceruti-arch-geometry';
 import {
-  bridgeWedge, buttonTip, calculateNeck, defaultNeckParams, defaultStringSetup, defineNeckPath, fingerboardCrown, fingerboardEnd, neckHalfWidthAt, mortiseFingerboardIntersect,
-  heelFace, heelStands, mortiseFloorY, plateEdgeAtNeck, stringLength,
+  bridgeWedge, buttonTip, calculateNeck, defaultNeckParams, defaultStringSetup, defineNeckPath, fingerboardCrown, mortiseFingerboardIntersect,
+  heelFace, heelStands, plateEdgeAtNeck, stringLength,
 } from './ceruti-neck';
+import { defineFrontProfilePath, fingerboardEnd, mortiseFloorY, neckHalfWidthAt } from './ceruti-paths';
 
 // the properties a maker would check with a ruler on the finished instrument: the neck's own
 // length places the nut, the heel is one arc tangent to the neck's back reaching the button, and
@@ -273,7 +274,33 @@ describe('the drawn shapes', () => {
   it('stores nothing a ruler on the drawing would not need: the neck\'s corners, its heel and the bridge', () => {
     const p = neckedViolin();
     const s = solve(p);
-    expect(Object.keys(s).sort()).toEqual(['angle', 'backNut', 'backRoot', 'heel', 'length', 'mortiseDepth', 'neckTop', 'overstand', 'root', 'rootWidth', 'thickness', 'topWidth']);
+    expect(Object.keys(s).sort()).toEqual(['angle', 'backNut', 'backRoot', 'heel', 'length', 'mortiseDepth', 'neckTop', 'overstand', 'plateAtMortise', 'root', 'rootWidth', 'thickness', 'topWidth']);
     expect(Object.keys(p.stringSetup!).sort()).toEqual(['bodyStop', 'bridgeFoot', 'bridgeHeight', 'bridgeTop', 'fingerboardLength', 'fingerboardRadius', 'fingerboardThickness', 'nutHeight', 'nutThickness', 'nutTop', 'nutWidth']);
+  });
+});
+
+describe('the front profile', () => {
+  const across = (y: number) => `M -100 ${y} L 100 ${y}`;
+  const xs = (d: string) => [...d.matchAll(/[ML] (-?[\d.e-]+) /g)].map(m => Number(m[1]));
+
+  it('cuts the body where the neck covers it and leaves the rest whole', () => {
+    const p = neckedViolin();
+    solve(p);
+    const { outline: underNeck, purfling: [clear] } = defineFrontProfilePath(p, { outline: across(p.height), purfling: [across(50)], fHoles: [] }, false).body;
+    const half = neckHalfWidthAt(p, p.height);
+    const [a, b, c, d] = xs(underNeck);
+    expect([a, d]).toEqual([-100, 100]);
+    expect(b).toBeCloseTo(-half, 6);
+    expect(c).toBeCloseTo(half, 6);
+    expect(xs(clear)).toEqual([-100, 100]);
+  });
+
+  it('hides what lies under the fingerboard too, only while the board is shown', () => {
+    const p = neckedViolin();
+    solve(p);
+    const y = (fingerboardEnd(p).y + mortiseFloorY(p)) / 2;
+    const plan = { outline: across(y), purfling: [], fHoles: [] };
+    expect(xs(defineFrontProfilePath(p, plan, true).body.outline)).toHaveLength(4);
+    expect(xs(defineFrontProfilePath(p, plan, false).body.outline)).toEqual([-100, 100]);
   });
 });

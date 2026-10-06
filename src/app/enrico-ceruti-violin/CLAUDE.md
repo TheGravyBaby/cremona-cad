@@ -9,7 +9,7 @@ adding to a file — they are current and more specific than this page.
 | File | Concern |
 |---|---|
 | `ceruti-calcs.ts` | Outline solvers — where the bout/corner/center-bout arcs actually sit. Plus mould & block fabrication geometry. |
-| `ceruti-paths.ts` | Turns solved arcs into SVG path strings: inner/outer trace, insets, purfling, fluting, and the scroll's side profile (`defineSideScrollPath`, read off the arcs alone so this file needn't import `ceruti-scroll`). |
+| `ceruti-paths.ts` | Turns solved arcs into SVG path strings: inner/outer trace, insets, purfling, fluting, the scroll's side profile (`defineSideScrollPath`, read off the arcs alone so this file needn't import `ceruti-scroll`, and `definePlacedSideScrollPath` set on the neck), and the front profile (`defineFrontProfilePath`: the body cut where the neck covers it, with the board and nut laid over). The three neck readers that needs — `mortiseFloorY`, `neckHalfWidthAt`, `fingerboardEnd` — live here too, since this file can't import `ceruti-neck`. |
 | `ceruti-arching.ts` | Long-arch height profile, station normalization, `bodyLandmarks`, the `*AtY` half-width queries. The layer that decides *where* a section is taken and how tall the arch stands there. |
 | `ceruti-arch-geometry.ts` | The gouge's circular section, the crown, and the tangency joining them. Answers "what shape is the section here". |
 | `ceruti-surface.ts` | The evaluable height field z(x,y) over the plan view. Cross-arch templates, STL. |
@@ -21,7 +21,7 @@ adding to a file — they are current and more specific than this page.
 | `templates/local/` | Gitignored developer scratch space — traces and theories with no provenance to check, never shipped, never swept by the suite. Shows up in the picker only on a local dev build. See that folder's `README.md`. |
 | `ceruti-helpers.ts` | `*Info()` functions — the help text behind each field's info button. |
 | `panels/` | One folder per sidebar panel. Panels are thin; see the layer rule in the root CLAUDE.md. |
-| `renders/` | SVG emitters for the arching views, plus geometry that only serves one view. `body-section.render.ts` is the side elevation both the long-arching and neck panels draw on; `scroll.render.ts` the same for the volute, scroll and scroll widths panels. |
+| `renders/` | SVG emitters for the arching views, plus geometry that only serves one view. `body-section.render.ts` is the side elevation both the long-arching and neck panels draw on; `scroll.render.ts` the same for the volute, scroll and scroll widths panels. `front-profile.render.ts` is the instrument as far as it's been taken, see *The front profile* below. |
 
 `ceruti-calcs.ts` → `ceruti-paths.ts` is the 2D outline pipeline; `ceruti-arching.ts` →
 `ceruti-arch-geometry.ts` → `ceruti-surface.ts` is the 3D one. The split between the last two is
@@ -125,14 +125,14 @@ section first → long arch carved to a template → crown across. The panel ord
   the mortise floor, the button profile, the nut block, the bridge wedge, the fingerboard, the
   scroll placeholder box, a readout nothing showed — 24 solved fields on 9 authored, a quarter of a
   saved recipe. As of 2026-10-04 `NeckParams` carries `root`, `neckTop`, `backRoot`, `backNut` (the
-  neck wood's corners) and `heel` as a plain `Arc` whose `r` is the entered radius; a heel that
+  neck wood's corners), `plateAtMortise` (2026-10-06, it needs the arch solve) and `heel` as a plain `Arc` whose `r` is the entered radius; a heel that
   can't stand keeps its stale arc and `heelStands` gates every reader. The bridge and nut live on
   their own top-level `p.stringSetup`, which `calculateNeck` also writes: `bridgeFoot`, `bridgeTop`
   (the one piece that needs the arching solve) and `nutTop`. The string length readout is
   `stringLength(p)`, not stored. Everything else the panel draws is a function in `ceruti-neck.ts`
-  reading those and the authored numbers — `buttonTip`, `mortiseFloorY`,
-  `mortiseFingerboardIntersect`, `plateEdgeAtNeck`, `heelFace`, `fingerboardEnd`,
-  `bridgeWedge` —
+  reading those and the authored numbers — `buttonTip`, `mortiseFingerboardIntersect`,
+  `plateEdgeAtNeck`, `heelFace`, `bridgeWedge` (`mortiseFloorY` and `fingerboardEnd` moved to
+  `ceruti-paths.ts` on 2026-10-05 with `defineFrontProfilePath`) —
   shared by `renderNeck` and `defineNeckPath`, the way `violNeckCap` serves both the outer trace and
   the main-bouts preview. `defineNeckPath` moved from `ceruti-paths.ts` into `ceruti-neck.ts` for
   that: `ceruti-arch-geometry` imports `ceruti-paths` and `ceruti-neck` imports `ceruti-arch-geometry`,
@@ -209,7 +209,11 @@ section first → long arch carved to a template → crown across. The panel ord
   started out dashed (`renderDashedLine`, a "hidden line" convention) and was switched to solid
   the same day the fingerboard toggle shipped (next bullet) — with the fingerboard now optional,
   the neck needed to read as one coherent piece whether or not the board is showing, and a dashed
-  segment sitting mid-drawing read as an unfinished edge rather than a deliberate one.
+  segment sitting mid-drawing read as an unfinished edge rather than a deliberate one. As of
+  2026-10-06 the mortise floor is drawn only from where it comes out through the top plate's
+  surface (`plateAtMortise`, solved off the top arch in `calculateNeck`) out to the neck's face; the
+  rest of the foot is inside the block and can't be seen from the side. `defineNeckPath` still
+  traces the whole foot, since that's wood a neck template has to cut.
 - **Fingerboard length defaults to a standard size by instrument, and the board is a view
   toggle, defaulted on.** `standardFingerboardLength(p.height)` uses the same body-height
   thresholds `calculateMould` uses to tell violin/viola/cello/bass apart (`<400`/`<500`/`<800`/else
@@ -325,6 +329,62 @@ section first → long arch carved to a template → crown across. The panel ord
   (`Pt3D.z`, the side view's x) and at least as wide. The pegbox's front above the first turn's
   bottom goes through the same check. Nothing hidden is drawn. A general projection and masking
   with `occludePath` were both weighed and passed over. The hollow is dashed in the side view only.
+
+## The front profile
+
+- **A panel shows the user's earlier work under its own, in the trace grey** (2026-10-06), so the
+  instrument reads as one thing being built rather than separate edits. The panel solves its own
+  stage, then `ensureFrontProfilePaths` re-solves every stage after it that the user has reached
+  (`hasCorners`, `hasCenterBout`, `hasOuterTrace`, then the f-holes if placed and the neck if set),
+  and `renderFrontProfile` draws the most there is. Nothing is seeded: a stage never visited stays
+  out of the drawing. Before the outer trace, or while a section fails, that's the rib outline as
+  far as it's drafted — `defineInnerPath(p, unsolved)` leaves out arcs not drafted yet or whose
+  section failed, and draws the chains that remain as separate subpaths. The finished outline
+  still goes through `unifyConnectedSvgPaths`, so a gap in the `'inner'` the mould and exports read
+  fails loudly; a partial outline never goes into the cache.
+- **The panels that draft the outline show only the outline.** Main bouts, corners and center bout
+  are setting the rib's shape, and the purfling or anything past it there is later work in the way.
+  Each solves its own stage, re-solves the drafting stages after it that have been reached
+  (`calculateInnerOutline` from Main Bouts; just the center bout from Corners), and lays
+  `renderFrontInnerProfile` first, with no `[paths]` needed. The full `renderFrontProfile` is for
+  the screens past the outline; Base (`renderInstrumentProfile`) and both f-hole panels carry it, F-Hole
+  Contours with `fHoles: false`, as it draws the holes itself in colour. Both f-hole panels pass
+  `neck: false` to the ensure (2026-10-06): the neck and scroll took the eye off the holes rather
+  than giving them context. The render draws the neck only when the solve says it reached it
+  (`solve.neck`, like `solve.scroll`), so the flag is given once. The option stays to revisit. Main Bouts and
+  Corners carry the inner profile. Center Bout doesn't need it: it closes the outline, so its own arcs
+  and the earlier stages it already draws are the whole of it.
+- **The plate panels draw both plates, the top where it always is.** (2026-10-06) Outer Path and
+  Fluting Channel keep the top centred on x = 0, as every other plan view draws it, with its
+  f-holes once placed, and put the back `plateLayoutOffset` to its left, both through
+  `renderPlatePair`. The back's button (`defineButton`) draws in `archBack`, the colour the neck
+  panel already gives it. Every view of the top plate reads it as one `PlatePlan` through
+  `topPlatePaths` (outline, purfling lines, one path per hole) rather than picking the cache
+  entries over again; `defineFrontProfilePath` cuts and returns the same shape.
+- **Long Arching can lay the neck under the body once the neck panel has set it** (2026-10-06),
+  re-solving `calculateNeck` off its own arch so the neck follows the arch and the rib taper, and
+  drawing it in grey through `renderNeck`'s `ground` option, without the strings or the bridge,
+  which are set-up rather than the instrument's own profile. The fingerboard always shows there.
+  `showNeck` is off as of the same day, for the reason the f-hole panels leave it off.
+- **The scroll sits on the neck's end in the body's side elevation** once its panels have started it
+  and `calculateScroll` solves it whole (2026-10-06). Its frame's origin is the nut on the neck's
+  front, so `scrollOnNeck` is one rotation by the neck angle and a move to `neckTop`, and
+  `definePlacedSideScrollPath` is the side profile through it. With it on, `renderNeck` drops the
+  wall across the neck at the nut and runs the neck's back up to where the nape meets it, as the
+  scroll panels draw that join. In grey on the neck and long-arching panels; the hollow isn't drawn.
+  The front view goes on the end of the neck in the front profile (and the neck panel's front view)
+  the same way: `scrollFrontViewStrokes` is the scroll widths panel's front view pulled out with a
+  placement, and `scrollFrontInPlan` projects it through `scrollOnNeck`, so a point's depth carries
+  into how far up the body it lands. What hides what is still worked out along the neck's normal.
+  `solveScrollForProfile` is the one re-solve every such view runs.
+
+- **The front profile sits on x = 0 and the side profile to its left, on every panel** (2026-10-06).
+  Every plan view already centred the front on the origin. The side elevation is still drawn in its
+  own frame (x up off the back, y down the body) and moved over by `renderSideView`, one
+  `translate` on a group, to `sideViewOffsetX`: far enough left that the bridge's top clears the
+  plan's widest point by a quarter of the body's width. It's read off the body and the bridge's
+  height alone, so the long arching and neck panels put it in the same place whether or not the
+  neck has been set. The neck panel's front view no longer moves right (`frontViewAxisX` is gone).
 
 ## Adding a panel
 

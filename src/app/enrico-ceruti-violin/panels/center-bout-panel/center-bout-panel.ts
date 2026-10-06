@@ -204,28 +204,32 @@ export const renderCenterBout = (
     lower && p.options.C11DoubleArc && renderArcFromArcFancy(flipArcAboutY(p.bouts.C11!), colors.centerBoutLow)(g, ui);
     upper && lower && renderArcFromArcFancy(flipArcAboutY(p.bouts.C0!), colors.centerBout)(g, ui);
   } else {
-    upper && renderArcFromArc(p.bouts.C2!, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
-    lower && renderArcFromArc(p.bouts.C1!, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
-    upper && lower && renderArcFromArc(p.bouts.C0!, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
-    upper && renderArcFromArc(flipArcAboutY(p.bouts.C2!), colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
-    lower && renderArcFromArc(flipArcAboutY(p.bouts.C1!), colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
-    upper && lower && renderArcFromArc(flipArcAboutY(p.bouts.C0!), colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+    // in their own colours on this panel, where their fields are; grey under a later panel's work.
+    // L31 and U31 are the corners' and stay grey here
+    const cBoutUp = currentModule ? colors.centerBoutUp : colors.innerTrace;
+    const cBout = currentModule ? colors.centerBout : colors.innerTrace;
+    const cBoutLow = currentModule ? colors.centerBoutLow : colors.innerTrace;
+    upper && renderArcFromArc(p.bouts.C2!, cBoutUp, STROKE_WEIGHT.trace)(g, ui);
+    lower && renderArcFromArc(p.bouts.C1!, cBoutLow, STROKE_WEIGHT.trace)(g, ui);
+    upper && lower && renderArcFromArc(p.bouts.C0!, cBout, STROKE_WEIGHT.trace)(g, ui);
+    upper && renderArcFromArc(flipArcAboutY(p.bouts.C2!), cBoutUp, STROKE_WEIGHT.trace)(g, ui);
+    lower && renderArcFromArc(flipArcAboutY(p.bouts.C1!), cBoutLow, STROKE_WEIGHT.trace)(g, ui);
+    upper && lower && renderArcFromArc(flipArcAboutY(p.bouts.C0!), cBout, STROKE_WEIGHT.trace)(g, ui);
 
-    upper && p.options.C21DoubleArc && renderArcFromArc(p.bouts.C21!, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
-    lower && p.options.C11DoubleArc && renderArcFromArc(p.bouts.C11!, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+    upper && p.options.C21DoubleArc && renderArcFromArc(p.bouts.C21!, cBoutUp, STROKE_WEIGHT.trace)(g, ui);
+    lower && p.options.C11DoubleArc && renderArcFromArc(p.bouts.C11!, cBoutLow, STROKE_WEIGHT.trace)(g, ui);
     solved('L3') && p.options.L31DoubleArc && renderArcFromArc(p.bouts.L31!, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
     solved('U3') && p.options.U31DoubleArc && renderArcFromArc(p.bouts.U31!, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
-    upper && p.options.C21DoubleArc && renderArcFromArc(flipArcAboutY(p.bouts.C21!), colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
-    lower && p.options.C11DoubleArc && renderArcFromArc(flipArcAboutY(p.bouts.C11!), colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+    upper && p.options.C21DoubleArc && renderArcFromArc(flipArcAboutY(p.bouts.C21!), cBoutUp, STROKE_WEIGHT.trace)(g, ui);
+    lower && p.options.C11DoubleArc && renderArcFromArc(flipArcAboutY(p.bouts.C11!), cBoutLow, STROKE_WEIGHT.trace)(g, ui);
     solved('L3') && p.options.L31DoubleArc && renderArcFromArc(flipArcAboutY(p.bouts.L31!), colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
     solved('U3') && p.options.U31DoubleArc && renderArcFromArc(flipArcAboutY(p.bouts.U31!), colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
   }
 
   if (flags.renderOuterPath && renderOuterPathCorners) {
-    const m = flags.showModuleArcs && currentModule;
-    const cBoutUp = m ? colors.centerBoutUp : colors.outerTrace;
-    const cBout = m ? colors.centerBout : colors.outerTrace;
-    const cBoutLow = m ? colors.centerBoutLow : colors.outerTrace;
+    const cBoutUp = currentModule ? colors.centerBoutUp : colors.outerTrace;
+    const cBout = currentModule ? colors.centerBout : colors.outerTrace;
+    const cBoutLow = currentModule ? colors.centerBoutLow : colors.outerTrace;
     const inset = p.overhang + p.rib;
 
     upper && renderArcFromArc(offsetArcRadius(p.bouts.C2!, cornerOffsetSign(p, 'C2') * inset), cBoutUp, STROKE_WEIGHT.trace)(g, ui);

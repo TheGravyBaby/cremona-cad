@@ -9,12 +9,13 @@ import {
   renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderSegment, renderSolveFailures,
 } from '../../../helpers/renderFuncs';
 import { arcFromCircle, Arc } from '../../../models/types';
-import { calculateMainBouts, MainBoutFailure, violNeckJoinLimit } from '../../ceruti-calcs';
+import { calculateInnerOutline, calculateMainBouts, MainBoutFailure, violNeckJoinLimit } from '../../ceruti-calcs';
 import { error } from '../../../shared/message-emitter';
 import { boutWidthInfo, violNeckInfo, violNeckJoinInfo } from '../../ceruti-toasts';
 import { violNeckCap } from '../../ceruti-paths';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, RenderToggleKey } from '../../ceruti-types';
 import { renderBounds, renderBoutBouts } from '../../renders/guides.render';
+import { renderFrontInnerProfile } from '../../renders/front-profile.render';
 import { HighlightedArc, STROKE_WEIGHT } from '../../renders/render-constants';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
@@ -35,7 +36,7 @@ export interface MainBoutsViewFlags {
 })
 
 export class MainBoutsPanel extends CerutiPanelBase implements OnInit {
-  static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleArcs', 'showAllArcs', 'showModuleGuides', 'renderOuterPath'];
+  static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleArcs', 'showModuleGuides', 'renderOuterPath'];
 
   @Input({ required: true }) params!: EnricoCerutiParams;
   @Input({ required: true }) colors!: CerutiColors;
@@ -107,7 +108,10 @@ export class MainBoutsPanel extends CerutiPanelBase implements OnInit {
     const highlighted = this.highlighted;
 
     const failures = calculateMainBouts(p);
+    // the rib outline as far as it's been drafted, under this panel's own work
+    const profile = failures.length ? [] : renderFrontInnerProfile(p, c, calculateInnerOutline(p));
     return [
+      ...profile,
       renderBounds(p, f.showModuleGuides),
       renderBoutBouts(p, c, f.showModuleGuides),
       renderMainBouts(p, c, f, true, highlighted, failures),
@@ -214,33 +218,37 @@ export const renderMainBouts = (
       renderArcFromArcFancy(mirroredL1Arc, colors.lowerBoutOff)(g, ui);
     }
   } else {
-    if (params.options.useViolNeck) renderViolNeck(p, 0, colors.innerTrace)(g, ui);
+    // in their own colours on this panel, where their fields are; grey under a later panel's work
+    const top = currentModule ? colors.upperBout : colors.innerTrace;
+    const topOff = currentModule ? colors.upperBoutOff : colors.innerTrace;
+    const bottom = currentModule ? colors.lowerBout : colors.innerTrace;
+    const bottomOff = currentModule ? colors.lowerBoutOff : colors.innerTrace;
+    if (params.options.useViolNeck) renderViolNeck(p, 0, currentModule ? colors.violNeck : colors.innerTrace)(g, ui);
 
     if (upper) {
       if (params.options.useViolNeck) {
-        renderArcFromArc(p.bouts.U0!, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
-        renderArcFromArc(flipArcAboutY(p.bouts.U0!), colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+        renderArcFromArc(p.bouts.U0!, top, STROKE_WEIGHT.trace)(g, ui);
+        renderArcFromArc(flipArcAboutY(p.bouts.U0!), top, STROKE_WEIGHT.trace)(g, ui);
       } else {
-        renderArcFromArc(wideTopArc, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+        renderArcFromArc(wideTopArc, top, STROKE_WEIGHT.trace)(g, ui);
       }
-      renderArcFromArc(p.bouts.U1!, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
-      renderArcFromArc(mirroredU1Arc, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+      renderArcFromArc(p.bouts.U1!, topOff, STROKE_WEIGHT.trace)(g, ui);
+      renderArcFromArc(mirroredU1Arc, topOff, STROKE_WEIGHT.trace)(g, ui);
     }
 
     if (lower) {
-      renderArcFromArc(wideBottomArc, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
-      renderArcFromArc(p.bouts.L1!, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
-      renderArcFromArc(mirroredL1Arc, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+      renderArcFromArc(wideBottomArc, bottom, STROKE_WEIGHT.trace)(g, ui);
+      renderArcFromArc(p.bouts.L1!, bottomOff, STROKE_WEIGHT.trace)(g, ui);
+      renderArcFromArc(mirroredL1Arc, bottomOff, STROKE_WEIGHT.trace)(g, ui);
     }
   }
 
   if (flags.renderOuterPath) {
-    const m = flags.showModuleArcs && currentModule;
-    const outerTopColor = m ? colors.upperBout : colors.outerTrace;
-    const outerTopOffColor = m ? colors.upperBoutOff : colors.outerTrace;
-    const outerBotColor = m ? colors.lowerBout : colors.outerTrace;
-    const outerBotOffColor = m ? colors.lowerBoutOff : colors.outerTrace;
-    const violNeckColor = m ? colors.violNeck : colors.outerTrace;
+    const outerTopColor = currentModule ? colors.upperBout : colors.outerTrace;
+    const outerTopOffColor = currentModule ? colors.upperBoutOff : colors.outerTrace;
+    const outerBotColor = currentModule ? colors.lowerBout : colors.outerTrace;
+    const outerBotOffColor = currentModule ? colors.lowerBoutOff : colors.outerTrace;
+    const violNeckColor = currentModule ? colors.violNeck : colors.outerTrace;
     if (params.options.useViolNeck) renderViolNeck(p, inset, violNeckColor)(g, ui);
 
     if (upper) {

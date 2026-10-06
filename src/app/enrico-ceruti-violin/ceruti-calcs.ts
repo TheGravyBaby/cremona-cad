@@ -1,12 +1,14 @@
 import { circleCircleIntersections, inscribeCircleWithinCircle, interceptCirclesAndPoint, interceptCirclesAndPointCompound, solveTangentCircleAndLine, filletRightAngleCorner } from "../helpers/math/draftMath";
 import { angleFromCenter, dist, pointOnCircle, offsetArcRadius, flipRectAboutY, lineCircleIntersection, lineCircleIntersectionWithTolerance, lineFromPointAndSlope, lineFromTwoPoints, moveInVectorSpace, placeCircleOnPointAtAngle, redefineArcCircle, tangentUnitVectorFromLine, TURN, vectorFromSlope } from "../helpers/math/simpleGeometry";
-import { pathFromRoundedRect, pathFromCircle, pathFromRect, combinePathStrings, differenceFromManyPaths, intersectionFromTwoPaths, translatePath, mirroredLoop } from "../helpers/math/pathMath";
+import { pathFromRoundedRect, pathFromCircle, pathFromRect, combinePathStrings, differenceFromManyPaths, intersectionFromTwoPaths, translatePath, mirroredLoop, splitPathStrings } from "../helpers/math/pathMath";
 import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Line, Pt, Rectangle } from "../models/types";
 import { error } from "../shared/message-emitter";
 import { reportFailures, SolveFailure, solveSection } from "../helpers/validators";
 import { DefaultParams, EnricoCerutiParams, PathEntry, PathKey } from "./ceruti-types";
-import { cornerOffsetSign, defaultButton, defineFholePath, defineInnerPath, defineOuterPath, definePurflingPath, defineOuterPurflingPath } from "./ceruti-paths";
-import { defineNeckPath } from "./ceruti-neck";
+import { cornerOffsetSign, defaultButton, defineFholePath, defineInnerPath, defineOuterPath, definePurflingPath, defineOuterPurflingPath, PlatePlan } from "./ceruti-paths";
+import { calculateNeck, defineNeckPath } from "./ceruti-neck";
+import { solveScrollForProfile } from "./ceruti-scroll";
+import { solveLongArch } from "./ceruti-arch-geometry";
 
 // ===== Outline solvers =====
 // Solve where the violin body's bouts/corners/center-bout arcs actually sit.
@@ -91,7 +93,7 @@ export function calculateMainBouts(p: EnricoCerutiParams): MainBoutFailure[] {
         // we know the second circle intersects the outer edge where theta = 0
         // thus its x position MUST be R away from the edge
         p.bouts.L1.x = p.bouts.LBW / 2 - p.bouts.L1.r - inset;
-        //     therefore we have a vertical line where the circle could be
+        // therefore we have a vertical line where the circle could be
         // in order to cleanly intersect L0 we know the center of U1 must be along a circle
         // which is defined by being L1.r inset from L0
         // therefore the intersection of these two constrains, a vertical line, and a circle within U0 gives us our point
@@ -680,7 +682,7 @@ export function calculateOuterArcs(p: EnricoCerutiParams): void {
 // off a traced Amati, nice historical defaults
 const FShtoEye = 5 / 2;
 const FArmtoEye = 3;
-const FStemArctoLEye = 10;
+const FStemArctoLEye = 8;
 const FUWingEnd = TURN.half * 4 / 9;
 const FLWingEnd = TURN.half * -19 / 36;
 const FCutAt = TURN.half * 2 / 3;
@@ -1307,6 +1309,17 @@ export const getPath = (paths: PathEntry[], key: PathKey): string =>
 export const getPathOrNull = (paths: PathEntry[], key: PathKey): string | null =>
   paths.find(entry => entry.key === key)?.path ?? null;
 
+// the top plate's plan as the cache holds it, after ensureOuterTracePaths and, once the holes are
+// placed, ensureFholePath. One path per hole, so canvas tools can pick either on its own
+export const topPlatePaths = (params: EnricoCerutiParams, paths: PathEntry[]): PlatePlan => {
+  const fHoles = params.fHoles ? getPathOrNull(paths, 'fHole') : null;
+  return {
+    outline: getPath(paths, 'top'),
+    purfling: [getPathOrNull(paths, 'purfling'), getPathOrNull(paths, 'outerPurfling')].filter((d): d is string => !!d),
+    fHoles: fHoles ? splitPathStrings(fHoles) : [],
+  };
+};
+
 export const ensureCenterBoutInnerPath = (
   params: EnricoCerutiParams,
   paths: PathEntry[],
@@ -1356,5 +1369,54 @@ export const ensureNeckPath = (
   paths: PathEntry[],
 ): void => {
   upsertPathEntry(paths, 'neck', defineNeckPath(params));
+};
+
+// how far the user has drafted the outline, stage by stage; each stage seeds itself on its first
+// solve, so these are what tell a drafted stage from one never reached
+export const hasMainBouts = (params: EnricoCerutiParams): boolean => {
+  const b = params.bouts;
+  return !!(b.U0 && b.U1 && b.L0 && b.L1);
+};
+
+export const hasCorners = (params: EnricoCerutiParams): boolean => !!(params.bouts.UCr && params.bouts.LCr);
+
+export const hasCenterBout = (params: EnricoCerutiParams): boolean => !!params.bouts.C0;
+
+export const hasOuterTrace = (params: EnricoCerutiParams): boolean => {
+  const o = params.outerCorners;
+  return !!(o.U3 || o.C2 || o.C1 || o.L3);
+};
+
+// re-solves the rib outline on from the corners as far as the user has drafted it, so it follows an
+// edit to the main bouts. Seeds nothing: a stage never reached stays unsolved. The failures name the
+// sections that didn't solve. The main bouts are the caller's to solve first.
+export const calculateInnerOutline = (params: EnricoCerutiParams): SolveFailure<CornerKey | CenterBoutKey>[] => [
+  ...(hasCorners(params) ? calculateCorners(params) : []),
+  ...(hasCenterBout(params) ? calculateCenterBout(params) : []),
+];
+
+export type FrontProfileSolve = { failures: SolveFailure<CornerKey | CenterBoutKey>[]; neck: boolean; scroll: boolean };
+
+// the same carried on through everything the user has reached, so a view of the whole instrument
+// follows an edit made upstream. The cached paths are refreshed only once the outline closes with
+// every section solved; `neck` and `scroll` are whether each was re-solved and so can be drawn.
+// `neck: false` leaves both unsolved, for a view that won't draw them.
+export const ensureFrontProfilePaths = (
+  params: EnricoCerutiParams,
+  paths: PathEntry[],
+  opts: { neck?: boolean } = {},
+): FrontProfileSolve => {
+  const failures = calculateInnerOutline(params);
+  if (failures.length || !hasCenterBout(params)) return { failures, neck: false, scroll: false };
+  upsertPathEntry(paths, 'inner', defineInnerPath(params));
+  if (!hasOuterTrace(params)) return { failures: [], neck: false, scroll: false };
+
+  calculateOuterArcs(params);
+  ensureOuterTracePaths(params, paths);
+  if (params.fHoles) ensureFholePath(params, paths);
+  const gouge = params.arching?.top.fluting;
+  const neck = opts.neck !== false && !!(params.neck?.neckTop && params.stringSetup && gouge);
+  if (neck) calculateNeck(params, solveLongArch(params, params.arching!.top.arch, gouge!), gouge!);
+  return { failures: [], neck, scroll: neck && solveScrollForProfile(params) };
 };
 
