@@ -56,7 +56,7 @@ describe('LayerControlsComponent', () => {
     toolbox.resetAll();
   });
 
-  it('scopes an image from its row too, keeping the short list and the Default switch', () => {
+  it('scopes an image from its row: the eye is this panel, the menu the presets', () => {
     toolbox.resetAll();
     toolbox.loadImages([{ id: 'plan', type: 'image', x: 0, y: 0, width: 1, height: 1, imageRef: 'a', label: 'Plan' }]);
     toolbox.setAvailablePanels([{ id: 'base', label: 'Base' }, { id: 'cross', label: 'Cross' }, { id: 'long', label: 'Long' }]);
@@ -64,21 +64,72 @@ describe('LayerControlsComponent', () => {
     all('.lc-btn')[1].click();
     fixture.detectChanges();
 
-    const scopeBtn = all('.layer-tab .layer-tab-icon-btn')[1];
-    scopeBtn.click();
+    const row = () => all('.layer-tab')[0];
+    expect(row().classList.contains('off-panel')).toBe(false);
+    expect(all('.scope-chip')[0].textContent).toContain('everywhere');
+
+    (row().querySelector('.layer-tab-icon-btn') as HTMLElement).click();
     fixture.detectChanges();
-    const boxes = all('.layer-panels input') as NodeListOf<HTMLInputElement>;
-    expect(boxes.length).toBe(4);
+    expect(component.images[0].scope).toEqual({ except: ['base'] });
+    expect(row().classList.contains('off-panel')).toBe(true);
+    expect(all('.scope-chip')[0].textContent).toContain('all but 1');
+    expect(component.scopeTitle(component.images[0].scope)).toBe('Shown everywhere except Base');
 
-    boxes[1].click();
-    expect(component.images[0].excludePanels).toEqual(['base']);
-    expect(component.images[0].panels).toBeUndefined();
-    expect(component.imageScopeTitle(component.images[0])).toBe('Shown on every panel, except Base — not on this panel');
+    all('.scope-chip')[0].click();
+    fixture.detectChanges();
+    const rows = all('.scope-menu .scope-row');
+    expect(rows.length).toBe(5);
+    expect(all('.panel-list').length).toBe(0);
+    rows[1].click();
+    fixture.detectChanges();
+    expect(component.images[0].scope).toEqual({ only: ['base'] });
+    expect(all('.scope-chip')[0].textContent).toContain('here only');
 
-    component.setImageIsDefault(component.images[0], true);
-    expect(component.images[0].isDefault).toBe(true);
-    component.showImageOnAllPanels(component.images[0]);
-    expect(component.isImageScoped(component.images[0])).toBe(false);
+    (rows[3].querySelector('input') as HTMLInputElement).click();
+    fixture.detectChanges();
+    expect(component.images[0].scope).toEqual({ only: [] });
+    expect(all('.scope-chip')[0].textContent).toContain('nowhere');
+
+    rows[4].click();
+    fixture.detectChanges();
+    const boxes = all('.panel-list input') as NodeListOf<HTMLInputElement>;
+    expect(boxes.length).toBe(3);
+    boxes[2].click();
+    expect(component.images[0].scope).toEqual({ only: ['long'] });
+
+    toolbox.setAvailablePanels([]);
+    toolbox.setActivePanel(null);
+    toolbox.resetAll();
+  });
+
+  it('picking an image to edit shows it on this panel rather than peeking', () => {
+    toolbox.resetAll();
+    toolbox.loadImages([{
+      id: 'section', type: 'image', x: 0, y: 0, width: 1, height: 1, imageRef: 'a', label: 'Section',
+      scope: { only: ['cross'] },
+    }]);
+    toolbox.setActivePanel('base');
+    let requested = '';
+    component.selectImageRequested.subscribe((id: string) => requested = id);
+    component.editImage(component.images[0]);
+    expect(component.images[0].scope).toEqual({ only: ['cross', 'base'] });
+    expect(component.images[0].locked).toBe(false);
+    expect(requested).toBe('section');
+    toolbox.setActivePanel(null);
+    toolbox.resetAll();
+  });
+
+  it('scopes a layer the same way, with the eye meaning this panel', () => {
+    toolbox.resetAll();
+    toolbox.setAvailablePanels([{ id: 'base', label: 'Base' }, { id: 'cross', label: 'Cross' }]);
+    toolbox.setActivePanel('cross');
+    const layer = toolbox.layers[0];
+    component.toggleHere('layer', layer);
+    expect(toolbox.layers[0].scope).toEqual({ except: ['cross'] });
+    component.applyPreset('layer', layer.id, 'here');
+    expect(toolbox.layers[0].scope).toEqual({ only: ['cross'] });
+    component.applyPreset('layer', layer.id, 'everywhere');
+    expect(toolbox.layers[0].scope).toBeUndefined();
     toolbox.setAvailablePanels([]);
     toolbox.setActivePanel(null);
     toolbox.resetAll();

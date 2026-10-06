@@ -676,6 +676,17 @@
     {
       "id": "stradivari-violin-betts-top",
       "label": "Top (sp=2)",
+      "scope": {
+        "except": [
+          "fluting",
+          "longArching",
+          "crossArching",
+          "neck",
+          "stringSetup",
+          "volute",
+          "scroll"
+        ]
+      },
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154811:musihas-200154811.0002/full/pct:100.0/0/default.jpg",
       "x": -157.89043273925785,
       "y": -17.514347076416,
@@ -685,16 +696,6 @@
       "opacity": 0.4,
       "suppressWhite": true,
       "locked": false,
-      "excludePanels": [
-        "fluting",
-        "longArching",
-        "crossArching",
-        "neck",
-        "stringSetup",
-        "volute",
-        "scroll"
-      ],
-      "isDefault": true,
       "credit": {
         "source": "Library of Congress",
         "imageId": "musihas-200154811.0002",
@@ -706,6 +707,13 @@
     {
       "id": "stradivari-violin-betts-profiles",
       "label": "Profiles, both sides (sp=3)",
+      "scope": {
+        "only": [
+          "longArching",
+          "neck",
+          "stringSetup"
+        ]
+      },
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154811:musihas-200154811.0003/full/pct:100.0/0/default.jpg",
       "x": -58.73446676852268,
       "y": 0.3244448707469133,
@@ -715,12 +723,6 @@
       "opacity": 0.4,
       "suppressWhite": true,
       "locked": false,
-      "panels": [
-        "longArching",
-        "neck",
-        "stringSetup"
-      ],
-      "isDefault": false,
       "crop": {
         "left": 0,
         "top": 0,
@@ -753,7 +755,6 @@
       {
         "id": "layer-default",
         "name": "Layer 1",
-        "visible": true,
         "locked": false
       }
     ],

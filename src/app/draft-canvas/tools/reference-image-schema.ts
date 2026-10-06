@@ -1,6 +1,7 @@
 import { ReferenceImage } from '../../models/types';
 import { ImageShape, makeShapeId } from './toolbox-shape';
 import { ImageAssetStore } from './image-asset-store';
+import { PanelScope } from './panel-scope';
 
 /**
  * The boundary between the recipe *file format* and the canvas's own object model.
@@ -44,14 +45,11 @@ export function imageShapesFromRecipe(
         opacity: entry.opacity,
         suppressWhite: entry.suppressWhite,
         mirrored: entry.mirrored,
-        hidden: entry.hidden,
         // An absent `locked` means locked — so the built-in templates and every file saved before
         // the field existed open protected. See ImageShape.locked.
         locked: entry.locked ?? true,
         // copied, not shared, so editing the shape can't reach back into the template constant.
-        panels: entry.panels ? [...entry.panels] : undefined,
-        excludePanels: entry.excludePanels ? [...entry.excludePanels] : undefined,
-        isDefault: entry.isDefault,
+        scope: copyScope(entry.scope),
         crop: entry.crop ? { ...entry.crop } : undefined,
         credit: entry.credit ? { ...entry.credit } : undefined,
       };
@@ -84,18 +82,20 @@ export function imageShapesToRecipe(
       opacity: shape.opacity,
       suppressWhite: shape.suppressWhite,
       mirrored: shape.mirrored,
-      hidden: shape.hidden,
       // Written explicitly rather than left absent, so an image the user deliberately unlocked
       // reopens unlocked instead of silently re-locking under the absent-means-locked default.
       locked: shape.locked ?? true,
       // this result replaces `referenceImages` wholesale on every change, so anything not
       // written back here is erased the first time the user touches the canvas.
-      panels: shape.panels ? [...shape.panels] : undefined,
-      excludePanels: shape.excludePanels ? [...shape.excludePanels] : undefined,
-      isDefault: shape.isDefault,
+      scope: copyScope(shape.scope),
       crop: shape.crop ? { ...shape.crop } : undefined,
       credit: shape.credit ? { ...shape.credit } : undefined,
     });
   }
   return out;
+}
+
+function copyScope(scope: PanelScope | undefined): PanelScope | undefined {
+  if (!scope) return undefined;
+  return 'only' in scope ? { only: [...scope.only] } : { except: [...scope.except] };
 }

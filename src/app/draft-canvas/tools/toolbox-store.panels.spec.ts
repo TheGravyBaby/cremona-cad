@@ -1,15 +1,14 @@
 import { TestBed } from '@angular/core/testing';
 import { ToolboxStore } from './toolbox-store';
 import { ImageShape } from './toolbox-shape';
+import { PanelScope } from './panel-scope';
 
-// scoping is separate from the user's own `hidden` switch, and an unpushed panel filters nothing
-// rather than hiding everything.
-describe('ToolboxStore panel-scoped images', () => {
+describe('ToolboxStore panel scoping', () => {
   let toolbox: ToolboxStore;
 
-  const image = (id: string, panels?: string[], isDefault?: boolean): ImageShape => ({
+  const image = (id: string, scope?: PanelScope): ImageShape => ({
     id, type: 'image', x: 0, y: 0, width: 10, height: 10,
-    imageRef: `ref-${id}`, label: id, panels, isDefault,
+    imageRef: `ref-${id}`, label: id, scope,
   });
 
   beforeEach(() => {
@@ -21,10 +20,6 @@ describe('ToolboxStore panel-scoped images', () => {
 
   const visible = () => toolbox.getVisibleImages().map(s => s.id);
 
-  const excluding = (id: string, excludePanels: string[], isDefault?: boolean): ImageShape => ({
-    ...image(id, undefined, isDefault), excludePanels,
-  });
-
   it('shows an unscoped image on every panel', () => {
     toolbox.loadImages([image('plan')]);
     toolbox.setActivePanel('base');
@@ -33,8 +28,8 @@ describe('ToolboxStore panel-scoped images', () => {
     expect(visible()).toEqual(['plan']);
   });
 
-  it('shows a scoped image only on the panels it names', () => {
-    toolbox.loadImages([image('plan'), image('section', ['crossArching', 'longArching'])]);
+  it('shows an image only on the panels it names', () => {
+    toolbox.loadImages([image('plan'), image('section', { only: ['crossArching', 'longArching'] })]);
 
     toolbox.setActivePanel('base');
     expect(visible()).toEqual(['plan']);
@@ -46,150 +41,58 @@ describe('ToolboxStore panel-scoped images', () => {
     expect(visible()).toEqual(['plan', 'section']);
   });
 
-  it('filters nothing until a panel has been pushed, so a missed push shows too much rather than too little', () => {
-    toolbox.loadImages([image('section', ['crossArching'])]);
-    expect(visible()).toEqual(['section']);
+  it('keeps an excepted image off that panel and nowhere else', () => {
+    toolbox.loadImages([image('plan', { except: ['crossArching'] })]);
+
+    toolbox.setActivePanel('crossArching');
+    expect(visible()).toEqual([]);
+
+    toolbox.setActivePanel('longArching');
+    expect(visible()).toEqual(['plan']);
   });
 
-  it('leaves the user\'s own hide switch alone', () => {
-    toolbox.loadImages([image('section', ['crossArching'])]);
+  it('filters nothing until a panel has been pushed, so a missed push shows too much rather than too little', () => {
+    toolbox.loadImages([image('section', { only: ['crossArching'] }), image('plan', { except: ['base'] })]);
+    expect(visible()).toEqual(['section', 'plan']);
+  });
+
+  it('shows an image scoped to nowhere on no panel, pushed or not', () => {
+    toolbox.loadImages([image('parked', { only: [] })]);
+    expect(visible()).toEqual([]);
     toolbox.setActivePanel('base');
     expect(visible()).toEqual([]);
-
-    toolbox.setActivePanel('crossArching');
-    expect(visible()).toEqual(['section']);
-    expect(toolbox.getImageShapes()[0].hidden).toBeUndefined();
   });
 
-  it('still honours hidden and the master switch on the panel an image belongs to', () => {
-    toolbox.loadImages([image('section', ['crossArching'])]);
+  it('still honours the master switch on the panel an image belongs to', () => {
+    toolbox.loadImages([image('section', { only: ['crossArching'] })]);
     toolbox.setActivePanel('crossArching');
-
-    toolbox.setImageHidden('section', true);
-    expect(visible()).toEqual([]);
-
-    toolbox.setImageHidden('section', false);
     toolbox.setShowImages(false);
     expect(visible()).toEqual([]);
     toolbox.setShowImages(true);
+    expect(visible()).toEqual(['section']);
   });
 
   it('makes an off-panel image unselectable', () => {
-    toolbox.loadImages([{ ...image('section', ['crossArching']), locked: false }]);
+    toolbox.loadImages([{ ...image('section', { only: ['crossArching'] }), locked: false }]);
     toolbox.setActivePanel('base');
     expect(toolbox.getEditableShapes().map(s => s.id)).not.toContain('section');
   });
 
-  describe('a default image', () => {
-    it('shows on panels no other image claims, and steps aside on the ones that do', () => {
-      toolbox.loadImages([image('plan', undefined, true), image('section', ['crossArching'])]);
-
-      toolbox.setActivePanel('base');
-      expect(visible()).toEqual(['plan']);
-
-      toolbox.setActivePanel('crossArching');
-      expect(visible()).toEqual(['section']);
-    });
-
-    it('is displaced by any image naming the panel, not only by one that names it alone', () => {
-      toolbox.loadImages([
-        image('plan', undefined, true),
-        image('sectionA', ['crossArching', 'longArching']),
-        image('sectionB', ['crossArching']),
-      ]);
-
-      toolbox.setActivePanel('crossArching');
-      expect(visible()).toEqual(['sectionA', 'sectionB']);
-
-      toolbox.setActivePanel('longArching');
-      expect(visible()).toEqual(['sectionA']);
-    });
-
-    it('comes back when the image that displaced it is hidden, rather than leaving the panel bare', () => {
-      toolbox.loadImages([image('plan', undefined, true), image('section', ['mould'])]);
-      toolbox.setActivePanel('mould');
-      expect(visible()).toEqual(['section']);
-
-      toolbox.setImageHidden('section', true);
-      expect(visible()).toEqual(['plan']);
-    });
-
-    it('leaves an unflagged unscoped image showing everywhere, so hand-placed images are untouched', () => {
-      toolbox.loadImages([image('handPlaced'), image('section', ['mould'])]);
-      toolbox.setActivePanel('mould');
-      expect(visible()).toEqual(['handPlaced', 'section']);
-    });
+  it('scopes a locked image without unlocking it', () => {
+    toolbox.loadImages([image('plan')]);
+    toolbox.setActivePanel('base');
+    toolbox.setImageScope('plan', { except: ['base'] });
+    expect(visible()).toEqual([]);
+    expect(toolbox.getImageShapes()[0].locked).toBeUndefined();
+    expect(toolbox.canUndo).toBe(false);
   });
 
-  describe('a panel kept deliberately blank', () => {
-    it('keeps an excluded image off that panel and nowhere else', () => {
-      toolbox.loadImages([excluding('plan', ['crossArching'], true)]);
-
-      toolbox.setActivePanel('crossArching');
-      expect(visible()).toEqual([]);
-
-      toolbox.setActivePanel('longArching');
-      expect(visible()).toEqual(['plan']);
-    });
-
-    it('still shows an image that names the panel outright', () => {
-      toolbox.loadImages([excluding('plan', ['crossArching'], true), image('section', ['crossArching'])]);
-      toolbox.setActivePanel('crossArching');
-      expect(visible()).toEqual(['section']);
-    });
-
-    it('still gives way to the selection, so an excluded image can be edited', () => {
-      toolbox.loadImages([excluding('plan', ['crossArching'], true)]);
-      toolbox.setActivePanel('crossArching');
-      toolbox.setRevealedImage('plan');
-      expect(visible()).toEqual(['plan']);
-    });
-  });
-
-  describe('the revealed image', () => {
-    it('shows an off-panel image, without touching its scoping', () => {
-      toolbox.loadImages([image('section', ['crossArching'])]);
-      toolbox.setActivePanel('base');
-      expect(visible()).toEqual([]);
-
-      toolbox.setRevealedImage('section');
-      expect(visible()).toEqual(['section']);
-      expect(toolbox.getImageShapes()[0].panels).toEqual(['crossArching']);
-    });
-
-    it('makes that image selectable, so the settings bar has something to edit', () => {
-      toolbox.loadImages([{ ...image('section', ['crossArching']), locked: false }]);
-      toolbox.setActivePanel('base');
-      toolbox.setRevealedImage('section');
-      expect(toolbox.getEditableShapes().map(s => s.id)).toContain('section');
-    });
-
-    it('ends when the panel changes, so it never looks like scoping quietly stopped working', () => {
-      toolbox.loadImages([image('section', ['crossArching'])]);
-      toolbox.setActivePanel('base');
-      toolbox.setRevealedImage('section');
-      expect(visible()).toEqual(['section']);
-
-      toolbox.setActivePanel('mould');
-      expect(toolbox.revealedImageId).toBeNull();
-      expect(visible()).toEqual([]);
-    });
-
-    it('still obeys the hide switch — revealing is about scoping, not about parking', () => {
-      toolbox.loadImages([image('section', ['crossArching'])]);
-      toolbox.setActivePanel('base');
-      toolbox.setRevealedImage('section');
-      toolbox.setImageHidden('section', true);
-      expect(visible()).toEqual([]);
-    });
-  });
-
-  // layers scope the same way, with a plain "shown on" list: off the open panel a layer is as
-  // good as hidden — not drawn, not editable — and the list survives a save.
-  it('shows a scoped layer only on the panels it names, and keeps the list through a save', () => {
+  // off the open panel a layer is as good as hidden — not drawn, not editable — and its scope
+  // survives a save.
+  it('shows a scoped layer only on the panels it names, and keeps the scope through a save', () => {
     const scoped = toolbox.addLayer();
     toolbox.addShape({ id: 'a', type: 'line', start: { x: 0, y: 0 }, end: { x: 1, y: 0 }, layerId: scoped });
-    toolbox.setLayerPanels(scoped, ['crossArching']);
+    toolbox.setLayerScope(scoped, { only: ['crossArching'] });
 
     toolbox.setActivePanel('base');
     expect(toolbox.getVisibleShapes()).toEqual([]);
@@ -202,9 +105,15 @@ describe('ToolboxStore panel-scoped images', () => {
     const saved = JSON.parse(JSON.stringify(toolbox.exportState()));
     toolbox.resetAll();
     toolbox.loadState(saved);
-    expect(toolbox.layers.find(l => l.id === scoped)?.panels).toEqual(['crossArching']);
+    expect(toolbox.layers.find(l => l.id === scoped)?.scope).toEqual({ only: ['crossArching'] });
+  });
 
-    toolbox.setLayerPanels(scoped, []);
-    expect(toolbox.layers.find(l => l.id === scoped)?.panels).toBeUndefined();
+  it('switching onto a layer shows it on the open panel', () => {
+    const scoped = toolbox.addLayer();
+    toolbox.setLayerScope(scoped, { only: [] });
+    toolbox.setActivePanel('base');
+    toolbox.setActiveLayer(toolbox.layers[0].id);
+    toolbox.setActiveLayer(scoped);
+    expect(toolbox.layers.find(l => l.id === scoped)?.scope).toEqual({ only: ['base'] });
   });
 });

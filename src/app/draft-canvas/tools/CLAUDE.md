@@ -101,9 +101,9 @@ encouraged; sharing those *types* is not.
 **`ArcShape` sweeps counterclockwise**, unlike `models/types.ts` `Arc` (root CLAUDE.md's arc-sweep
 trap) — don't write a blind converter between them.
 
-**The active layer says where new shapes land, not what you can edit.** Anything on a visible,
-unlocked layer is selectable and editable, whichever layer happens to be active — hide or lock is
-how you put a layer out of reach. `getEditableShapes()` is the single gate; every selection path in
+**The active layer says where new shapes land, not what you can edit.** Anything on an unlocked
+layer shown on the open panel is selectable and editable, whichever layer happens to be active —
+scoping or locking is how you put a layer out of reach. `getEditableShapes()` is the single gate; every selection path in
 `draft-canvas.ts` reads through it, and the store's own mutators gate on the shape's layer lock
 rather than the active layer. Keep those two agreeing.
 
@@ -114,12 +114,26 @@ as one — align and distribute too treat it as one thing, so its members keep t
 handles until nothing in the group is selected. Paste gives a copied group a fresh id, and
 `removeShapes` dissolves a group left with one member. Images never join one.
 
-**A layer can be scoped to panels too** — `Layer.panels`, a plain "shown on" list set from its
-row in the layers popup, with none meaning every panel. Off the open panel a layer counts as
-hidden: `layerShown` gates `getVisibleShapes` and `getEditableShapes` alike, so its shapes are
-neither drawn nor reachable there, and its row dims like an off-panel image's. Deliberately
-simpler than an image's `excludePanels`/`isDefault`: a layer is the user's own, so where they
-want it is the whole story.
+**Where a layer or image shows is one field, `scope`** (`panel-scope.ts`): `{ only: [...] }` or
+`{ except: [...] }` by panel id, absent meaning every panel and `{ only: [] }` meaning nowhere.
+There is no separate hidden or visible flag — "parked" is `nowhere`. The recipe pushes the open
+panel through `setActivePanel` and `shownHere` gates `getVisibleShapes`, `getVisibleImages` and
+`getEditableShapes` alike, so an off-panel layer's shapes are neither drawn nor reachable there.
+The store only compares strings — it never learns what a panel is, which is what keeps this out
+of the canvas's instrument-agnostic boundary. `activePanel` is view state like the two masters:
+not persisted, not undo-tracked, and not cleared by `resetAll`, since the open panel outlives the
+file shown in it. A `null` panel filters nothing but `nowhere`, so a recipe that forgets to push
+shows too widely rather than hiding with no indication why.
+
+Which form is stored follows the verb the user chose, never a shorter-list heuristic: "all but
+these" keeps admitting a panel the recipe grows later, "just these" keeps it out. The bottom bar's
+two lists (`../layer-controls/`) ask the question from the open panel's point of view — the row's
+eye is "shown on this panel", the chip after the name says where else and opens the presets
+(everywhere, only this panel, nowhere), a checkbox mirroring the eye, and the full checklist
+folded under "Choose panels…" for a panel the user can't yet stand on. `setImageScope` bypasses
+the image lock: a template image is locked by default and scoping it shouldn't need it unlocked.
+There is no default image that steps aside for a more specific one, and no exemption for the
+selected image — picking an off-panel image from the list shows it here as a real scope edit.
 
 **Missing `layerId` means `DEFAULT_LAYER_ID`,** not a migration. Shapes persisted before layers
 existed land on the first layer for free. Keep it that way.
@@ -144,48 +158,9 @@ translation there.
 **Every field on `ReferenceImage` must also exist on `ImageShape`.** The canvas is the live
 copy: recipe-base subscribes to this store and rewrites `referenceImages` from the placed shapes on
 every change, so a field that stops at the file type is erased the first time the user touches the
-canvas — and only visibly so after save-and-reopen. `panels`, `excludePanels`, `isDefault`, `crop` and `credit`
+canvas — and only visibly so after save-and-reopen. `scope`, `crop` and `credit`
 are the shape of field this catches: authored in a template file rather than arrived at by dragging,
 and easy to leave out of `imageShapesToRecipe`.
-
-**Panel-scoped images.** An image's `panels` list names the recipe panels it belongs on; empty or
-absent means all of them. The recipe pushes the open panel through `setActivePanel` and
-`getVisibleImages` filters on it. The store only compares strings — it never learns what a panel is,
-which is what keeps this out of the canvas's instrument-agnostic boundary. `activePanel` is view
-state like the two masters: not persisted, not undo-tracked, and not cleared by `resetAll`, since
-the open panel outlives the file shown in it. A `null` panel filters nothing, so a recipe that
-forgets to push shows an image too widely rather than hiding one with no indication of why.
-
-**A panel can be deliberately blank.** `excludePanels` is `panels` written from the other end —
-"all but these" — and it's absolute: checked before `panels` and before `isDefault`, so nothing
-overrules it. It exists because a panel nothing claims falls through to the default view, and
-"this instrument has no usable cross-arch photograph" had no way to be said; showing the plan shot
-there instead invites tracing the wrong thing. Excluding is about the *image*, not the panel, so
-adding a real reference scoped to that panel later just works with nothing to undo. The image
-list in the bottom bar (`layer-controls.ts`) hides the two encodings behind one checkbox per panel
-meaning "shown here", from the same row button and checklist a layer has, storing whichever list
-is shorter — see `writeImagePanels`, which also explains why the short list is the one that ages
-well. It writes through `setImageScope`, which bypasses the lock: a template image is locked by
-default and scoping it shouldn't need it unlocked.
-
-**An `isDefault` image is the set's general view** — "Default" everywhere the user sees it; the
-field is spelled out because `default` alone reads as a keyword. With no `panels` of its own, it
-shows on every panel no *other* image has claimed by name and steps aside on the ones that have
-one — so `imageMatchesActivePanel` checks the image *and* its neighbours, and adding a scoped view
-is enough on its own: the general view never has to enumerate what it's still wanted on. Hidden
-images don't displace it, so parking the specific view brings the general one back rather than
-leaving the panel bare. An unscoped image with no flag still shows everywhere — every image a user
-placed by hand. Naming panels and being the default are alternatives; the settings bar clears one
-when you set the other, since a default that named panels of its own could never be reached
-anywhere else.
-
-**The selected image is exempt from scoping.** `setRevealedImage` holds one id that
-`imageMatchesActivePanel` waves through — set when an image is picked from the bottom bar's list or
-clicked on the canvas, cleared when the selection moves on or the panel changes. Without it, picking
-a row scoped to another panel unlocks and selects something that never appears, and scoping the image
-you have selected takes the image and the controls you were using away mid-edit. It overrides
-scoping only; `hidden` and the master switch still apply, since those are the user's own switches
-rather than the recipe's.
 
 **Cropping trims the box, not the picture's scale.** `crop` holds fractions inset from each edge of
 the source, and `x`/`y`/`width`/`height` measure the **visible** rectangle — so grabbers, hit-testing,
@@ -209,6 +184,6 @@ template that arrived out of proportion keep what it has instead of jumping when
 `image-resize.spec.ts` pins it from each path.
 
 **Panel choices come from the recipe.** `setAvailablePanels` takes `{id, label}` from
-`RecipeComponentBase.initializePanelFlow`, so the bottom bar's lists can offer a scoping picker. The store
-still learns nothing about panels beyond two strings, and a host that ships none leaves the picker
-hidden rather than empty.
+`RecipeComponentBase.initializePanelFlow`, so the bottom bar's lists can offer the scope chip. The store
+still learns nothing about panels beyond two strings, and a host that ships none leaves the chip
+hidden rather than empty: the eye alone, everywhere or nowhere, is then the whole story.

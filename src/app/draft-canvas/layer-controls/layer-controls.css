@@ -141,8 +141,7 @@
   cursor: default;
 }
 
-/* Scoped to another panel, so it isn't drawn even with its eye on. Dimmed rather than removed:
-   the eye is still the user's own switch, and hiding the row would make the image unreachable. */
+/* Not shown on the open panel. Dimmed rather than removed, so it stays reachable. */
 .layer-tab.off-panel {
   opacity: 0.45;
 }
@@ -306,22 +305,106 @@
   }
 }
 
-/* A layer's panel checklist, under its row: the settings bar's image scoping popup, inline. */
-.layer-panels {
+/* The scope word after a row's name: muted and small, so the name stays the row's subject, with
+   the caret saying it opens. Width is the word's own — "everywhere" is the longest it gets. */
+.scope-chip {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+  padding: 1px 4px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: none;
+  color: var(--ui-text-muted);
+  font-size: 10px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.scope-chip:hover,
+.scope-chip.open {
+  border-color: var(--ui-border-soft);
+  color: var(--ui-text-primary);
+}
+
+.scope-caret {
+  font-size: 9px;
+}
+
+/* Under its row, indented past the eye like a reply: the presets first, the eye's own switch,
+   then the full list folded away. Rows match the Edit menu's, smaller. */
+.scope-menu {
   display: flex;
   flex-direction: column;
-  gap: 4px;
   margin: 0 0 4px 22px;
-  padding: 4px 8px;
+  padding: 2px;
   border-left: 2px solid var(--ui-border-soft);
   font-size: 11px;
 }
 
-.layer-panels-title {
+.scope-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 24px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: var(--ui-text-primary);
+  font-size: 11px;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.scope-row:hover {
+  background: var(--ui-topbar-control-bg-hover);
+}
+
+.scope-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border: 1px solid var(--ui-text-muted);
+  border-radius: 50%;
+}
+
+.scope-row.checked .scope-dot {
+  border-color: var(--ui-accent);
+  background: var(--ui-accent);
+}
+
+.scope-row input[type="checkbox"],
+.panel-row input[type="checkbox"] {
+  width: 13px;
+  height: 13px;
+  margin: 0;
+  accent-color: var(--ui-accent);
+  cursor: pointer;
+}
+
+.scope-more {
   color: var(--ui-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-size: 10px;
+}
+
+.scope-more.open,
+.scope-more:hover {
+  color: var(--ui-text-primary);
+}
+
+.scope-sep {
+  height: 1px;
+  margin: 3px 6px;
+  background: var(--ui-border-elevated);
+}
+
+.panel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 2px 8px 4px 24px;
 }
 
 .panel-row {
@@ -332,25 +415,7 @@
   white-space: nowrap;
 }
 
-.panel-row input[type="checkbox"] {
-  width: 13px;
-  height: 13px;
-  margin: 0;
-  accent-color: var(--ui-accent);
-  cursor: pointer;
-}
-
-.layer-panels-all {
-  align-self: flex-start;
-  padding: 2px 6px;
-  border: 1px solid var(--ui-border-soft);
-  border-radius: 3px;
-  background: none;
-  color: var(--ui-text-muted);
-  font-size: 11px;
-  cursor: pointer;
-}
-
-.layer-panels-all:hover {
-  color: var(--ui-text-primary);
+/* the panel you're standing on, so the list and the eye visibly agree */
+.panel-row.current {
+  font-weight: 600;
 }

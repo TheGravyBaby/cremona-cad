@@ -83,12 +83,9 @@ export type ReferenceImage = {
   href: string;
   id?: string;
   label?: string;
-  /** Recipe panels this image shows on, by id; absent/empty means every panel. */
-  panels?: string[];
-  /** Panels this image is deliberately kept off; absolute — wins over isDefault. */
-  excludePanels?: string[];
-  /** Marks the set's default view: shown on any panel no other image has claimed by name. */
-  isDefault?: boolean;
+  /** Where the image shows, by panel id: `{ only: [...] }` or `{ except: [...] }`. Omitted means
+   * every panel; `{ only: [] }` means nowhere. See draft-canvas/tools/panel-scope.ts. */
+  scope?: { only: string[] } | { except: string[] };
   /** Which part of the source picture the box shows; absent means all of it. See ImageCrop. */
   crop?: ImageCrop;
   /** Provenance and licence — see ImageCredit. Absent on user-placed images. */
@@ -100,8 +97,6 @@ export type ReferenceImage = {
   suppressWhite?: boolean;
   /** Mirrors the image content left-right about its own center. Omitted means unmirrored. */
   mirrored?: boolean;
-  /** Hidden from the canvas. Omitted means visible. */
-  hidden?: boolean;
   /** Protected from being selected or dragged on the canvas. **Omitted means locked** — every
    * template and every file saved before this field existed should open protected rather than
    * one stray click away from a nudged reference. */

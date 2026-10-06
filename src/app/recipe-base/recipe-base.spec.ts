@@ -1,7 +1,10 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RecipeComponentBase } from './recipe-base';
+import { ToolboxStore } from '../draft-canvas/tools/toolbox-store';
+import { ImageAssetStore } from '../draft-canvas/tools/image-asset-store';
+import { clearWorkingState, readWorkingState, RECIPE_KEY } from '../helpers/workingStorage';
 
 @Component({
   selector: 'app-point-host',
@@ -84,5 +87,41 @@ describe('xy point keys', () => {
     press(y, 'ArrowUp');
     press(y, 'Escape');
     expect([x.value, y.value]).toEqual(['10', '20']);
+  });
+});
+
+// a lock or a scope touches no param, so none of the recipe's own write paths would keep it
+describe('image-only changes', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    clearWorkingState(RECIPE_KEY);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    clearWorkingState(RECIPE_KEY);
+  });
+
+  it('reach working storage on their own, debounced', () => {
+    const fixture = TestBed.createComponent(PointHost);
+    fixture.detectChanges();
+    const toolbox = TestBed.inject(ToolboxStore);
+    const assets = TestBed.inject(ImageAssetStore);
+    toolbox.resetAll();
+    toolbox.loadImages([{
+      id: 'plan', type: 'image', x: 0, y: 0, width: 1, height: 1, label: 'Plan', locked: true,
+      imageRef: assets.intern('data:image/png;base64,AAAA'),
+    }]);
+    vi.runAllTimers();
+
+    toolbox.setImageLocked('plan', false);
+    toolbox.setImageScope('plan', { except: ['base'] });
+    expect(JSON.parse(readWorkingState(RECIPE_KEY)!).referenceImages[0].locked).toBe(true);
+
+    vi.advanceTimersByTime(300);
+    const saved = JSON.parse(readWorkingState(RECIPE_KEY)!).referenceImages[0];
+    expect(saved.locked).toBe(false);
+    expect(saved.scope).toEqual({ except: ['base'] });
+    toolbox.resetAll();
   });
 });

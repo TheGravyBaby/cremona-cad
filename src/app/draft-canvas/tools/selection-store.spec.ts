@@ -13,9 +13,9 @@ describe('SelectionStore', () => {
   const line = (id: string, layerId?: string): LineShape => ({
     id, type: 'line', start: { x: 0, y: 0 }, end: { x: 10, y: 0 }, layerId,
   });
-  const image = (id: string, panels?: string[]): ImageShape => ({
+  const image = (id: string, only?: string[]): ImageShape => ({
     id, type: 'image', x: 0, y: 0, width: 10, height: 10, imageRef: `ref-${id}`, label: id,
-    locked: false, panels,
+    locked: false, scope: only ? { only } : undefined,
   });
 
   beforeEach(() => {
@@ -85,34 +85,17 @@ describe('SelectionStore', () => {
 
     toolbox.toggleLayerLocked(layerId);
     selection.select(toolboxRef('a'));
-    toolbox.toggleLayerVisible(layerId);
+    toolbox.setLayerScope(layerId, { only: [] });
     expect(selection.size).toBe(0);
   });
 
-  it('reveals a selected image so scoping cannot hide it mid-edit', () => {
-    toolbox.loadImages([image('section', ['crossArching'])]);
-    toolbox.setActivePanel('base');
-    expect(toolbox.getVisibleImages()).toEqual([]);
-
-    selection.select(toolboxRef('section'));
-    expect(toolbox.revealedImageId).toBe('section');
-    expect(ids(selection.shapes)).toEqual(['section']);
-
-    selection.clear();
-    expect(toolbox.revealedImageId).toBeNull();
-  });
-
-  it('re-reveals on a repeat select after a panel switch dropped the reveal', () => {
+  it('drops an image the panel switch scopes away', () => {
     toolbox.loadImages([image('section', ['crossArching'])]);
     toolbox.setActivePanel('crossArching');
     selection.select(toolboxRef('section'));
-    toolbox.setActivePanel('base');
-    expect(toolbox.revealedImageId).toBeNull();
-    expect(selection.size).toBe(0);
-
-    selection.select(toolboxRef('section'));
-    expect(toolbox.revealedImageId).toBe('section');
     expect(ids(selection.shapes)).toEqual(['section']);
+    toolbox.setActivePanel('base');
+    expect(selection.size).toBe(0);
   });
 
   it('resolves a scene ref through the scene index, apart from the editable shapes', () => {

@@ -40,7 +40,7 @@ describe('round-trip through the recipe field', () => {
     const original: ReferenceImage[] = [{
       id: 'r1', label: 'Plan', href: 'data:image/png;base64,AAAA',
       x: -157.7, y: -31.4, width: 319, height: 448.55, rotationDeg: 359.6,
-      opacity: 0.4, suppressWhite: false, mirrored: true, hidden: true, locked: false,
+      opacity: 0.4, suppressWhite: false, mirrored: true, locked: false,
     }];
 
     const out = imageShapesToRecipe(imageShapesFromRecipe({ referenceImages: original }, assets), assets);
@@ -52,7 +52,7 @@ describe('round-trip through the recipe field', () => {
     const original: ReferenceImage[] = [{
       id: 'r1', label: 'Cross section', href: '/section.jpg',
       x: 0, y: 0, width: 100, height: 200, rotationDeg: 0, locked: true,
-      panels: ['longArching', 'crossArching'],
+      scope: { only: ['longArching', 'crossArching'] },
       credit: {
         source: 'The Metropolitan Museum of Art',
         imageId: 'DP-1234-001',
@@ -63,7 +63,7 @@ describe('round-trip through the recipe field', () => {
     }];
 
     const shapes = imageShapesFromRecipe({ referenceImages: original }, assets);
-    expect(shapes[0].panels).toEqual(['longArching', 'crossArching']);
+    expect(shapes[0].scope).toEqual({ only: ['longArching', 'crossArching'] });
     expect(shapes[0].credit?.licence).toBe('CC0');
 
     const out = imageShapesToRecipe(shapes, assets);
@@ -74,14 +74,14 @@ describe('round-trip through the recipe field', () => {
     const assets = store();
     const original: ReferenceImage[] = [{
       id: 'r1', label: 'A', href: '/a.jpg', x: 0, y: 0, width: 1, height: 1,
-      panels: ['base'], credit: { source: 'Met', licence: 'CC0', attribution: 'Met' },
+      scope: { only: ['base'] }, credit: { source: 'Met', licence: 'CC0', attribution: 'Met' },
     }];
     const shapes = imageShapesFromRecipe({ referenceImages: original }, assets);
 
-    shapes[0].panels!.push('mould');
+    (shapes[0].scope as { only: string[] }).only.push('mould');
     shapes[0].credit!.licence = 'changed';
 
-    expect(original[0].panels).toEqual(['base']);
+    expect(original[0].scope).toEqual({ only: ['base'] });
     expect(original[0].credit!.licence).toBe('CC0');
   });
 
@@ -89,29 +89,15 @@ describe('round-trip through the recipe field', () => {
     const assets = store();
     const original: ReferenceImage[] = [{
       id: 'r1', label: 'Plan', href: '/plan.jpg',
-      x: 0, y: 0, width: 100, height: 200, isDefault: true, excludePanels: ['crossArching'],
+      x: 0, y: 0, width: 100, height: 200, scope: { except: ['crossArching'] },
     }];
 
     const shapes = imageShapesFromRecipe({ referenceImages: original }, assets);
-    expect(shapes[0].excludePanels).toEqual(['crossArching']);
+    expect(shapes[0].scope).toEqual({ except: ['crossArching'] });
     // copied, not shared: editing the shape must not reach back into a template constant
-    expect(shapes[0].excludePanels).not.toBe(original[0].excludePanels);
+    expect(shapes[0].scope).not.toBe(original[0].scope);
 
-    expect(imageShapesToRecipe(shapes, assets)[0].excludePanels).toEqual(['crossArching']);
-  });
-
-  it('preserves the default-view flag', () => {
-    const assets = store();
-    const original: ReferenceImage[] = [{
-      id: 'r1', label: 'Plan', href: '/plan.jpg',
-      x: 0, y: 0, width: 100, height: 200, rotationDeg: 0, locked: true, isDefault: true,
-    }];
-
-    const shapes = imageShapesFromRecipe({ referenceImages: original }, assets);
-    expect(shapes[0].isDefault).toBe(true);
-
-    const out = imageShapesToRecipe(shapes, assets);
-    expect(out[0].isDefault).toBe(true);
+    expect(imageShapesToRecipe(shapes, assets)[0].scope).toEqual({ except: ['crossArching'] });
   });
 
   it('skips a shape whose asset has gone missing instead of writing an empty href', () => {

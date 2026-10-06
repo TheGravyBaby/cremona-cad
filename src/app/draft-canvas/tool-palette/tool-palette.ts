@@ -70,20 +70,20 @@ export class ToolPaletteComponent implements OnInit, AfterViewInit, OnDestroy {
       slot('offset'),
       slot('fillet'),
       {
+        label: 'Rotate',
+        commands: [
+          tool('rotate'),
+          cmd('rotate-ccw', 'Rotate Left', transform, () => a.rotate90('ccw')),
+          cmd('rotate-cw', 'Rotate Right', transform, () => a.rotate90('cw')),
+        ],
+      },
+      {
         label: 'Mirror',
         commands: [
           cmd('flip-h', 'Flip Horizontal', mirror, () => a.mirror('horizontal')),
           cmd('flip-v', 'Flip Vertical', mirror, () => a.mirror('vertical')),
           cmd('flip-centreline', 'Mirror Centreline', mirror, () => a.mirror('centreline')),
           tool('mirror-line'),
-        ],
-      },
-      {
-        label: 'Rotate',
-        commands: [
-          tool('rotate'),
-          cmd('rotate-ccw', 'Rotate Left', transform, () => a.rotate90('ccw')),
-          cmd('rotate-cw', 'Rotate Right', transform, () => a.rotate90('cw')),
         ],
       },
       {

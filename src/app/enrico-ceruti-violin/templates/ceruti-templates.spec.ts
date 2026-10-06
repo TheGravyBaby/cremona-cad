@@ -22,7 +22,8 @@ describe('CERUTI_TEMPLATES', () => {
     const valid = new Set<string>(CERUTI_PANEL_IDS);
     const bad = CERUTI_TEMPLATES.flatMap(t =>
       (t.referenceImages ?? []).flatMap(img =>
-        (img.panels ?? []).filter(p => !valid.has(p)).map(p => `${t.key}: ${p}`)));
+        (img.scope ? 'only' in img.scope ? img.scope.only : img.scope.except : [])
+          .filter(p => !valid.has(p)).map(p => `${t.key}: ${p}`)));
     expect(bad).toEqual([]);
   });
 });

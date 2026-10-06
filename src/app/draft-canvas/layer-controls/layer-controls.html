@@ -39,11 +39,11 @@
         </div>
         @for (layer of toolboxLayers; track layer.id) {
         <div class="layer-tab" [class.active]="layer.id === activeLayerId" [class.locked]="layer.locked"
-          [class.off-panel]="isLayerOffPanel(layer)" (click)="selectLayer(layer.id)">
-          <button type="button" class="layer-tab-icon-btn" [class.on]="layer.visible"
-            (click)="toggleLayerVisible(layer.id); $event.stopPropagation()"
-            [title]="layer.visible ? 'Hide layer' : 'Show layer'">
-            <ng-container [ngTemplateOutlet]="eyeIcon" [ngTemplateOutletContext]="{ on: layer.visible }" />
+          [class.off-panel]="!shownHere(layer.scope)" (click)="selectLayer(layer.id)">
+          <button type="button" class="layer-tab-icon-btn" [class.on]="shownHere(layer.scope)"
+            (click)="toggleHere('layer', layer); $event.stopPropagation()"
+            [title]="shownHere(layer.scope) ? 'Hide on this panel' : 'Show on this panel'">
+            <ng-container [ngTemplateOutlet]="eyeIcon" [ngTemplateOutletContext]="{ on: shownHere(layer.scope) }" />
           </button>
           @if (editingLayerId === layer.id) {
           <input #layerRenameInput class="layer-tab-edit layer-rename-edit" type="text" [value]="layer.name"
@@ -52,16 +52,7 @@
           } @else {
           <span class="layer-tab-label" (dblclick)="startRenameLayer(layer.id)" title="Double-click to rename">{{
             layer.name }}</span>
-          @if (availablePanels.length) {
-          <button type="button" class="layer-tab-icon-btn" [class.open]="panelsLayerId === layer.id"
-            (click)="togglePanels(layer.id); $event.stopPropagation()" [title]="layerScopeTitle(layer)">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="4" width="18" height="16" rx="2" />
-              <path d="M9 4v16" />
-            </svg>
-          </button>
-          }
+          <ng-container [ngTemplateOutlet]="scopeChip" [ngTemplateOutletContext]="{ item: layer }" />
           @if (canMoveSelectionTo(layer)) {
           <button type="button" class="layer-tab-icon-btn move-here"
             (click)="moveSelectionTo(layer.id); $event.stopPropagation()" title="Move the selection to this layer">
@@ -83,19 +74,8 @@
           }
           }
         </div>
-        @if (panelsLayerId === layer.id) {
-        <div class="layer-panels">
-          <div class="layer-panels-title">Shown on</div>
-          @for (panel of availablePanels; track panel.id) {
-          <label class="panel-row">
-            <input type="checkbox" [checked]="isLayerOnPanel(layer, panel.id)" (change)="toggleLayerPanel(layer, panel.id)" />
-            <span>{{ panel.label }}</span>
-          </label>
-          }
-          @if (layer.panels?.length) {
-          <button type="button" class="layer-panels-all" (click)="showLayerOnAllPanels(layer.id)">Show on every panel</button>
-          }
-        </div>
+        @if (scopeMenuFor === layer.id) {
+        <ng-container [ngTemplateOutlet]="scopeMenu" [ngTemplateOutletContext]="{ item: layer, kind: 'layer' }" />
         }
         }
         <button type="button" class="layer-tab-add" title="Add layer" (click)="addLayer()">+</button>
@@ -163,11 +143,11 @@
     <div class="lc-popup">
       <div class="layer-tabs">
         @for (image of images; track image.id) {
-        <div class="layer-tab" [class.locked]="isImageLocked(image)" [class.off-panel]="isImageOffPanel(image)">
-          <button type="button" class="layer-tab-icon-btn" [class.on]="!image.hidden"
-            (click)="toggleImageHidden(image); $event.stopPropagation()"
-            [title]="image.hidden ? 'Show this image' : 'Hide this image'">
-            <ng-container [ngTemplateOutlet]="eyeIcon" [ngTemplateOutletContext]="{ on: !image.hidden }" />
+        <div class="layer-tab" [class.locked]="isImageLocked(image)" [class.off-panel]="!shownHere(image.scope)">
+          <button type="button" class="layer-tab-icon-btn" [class.on]="shownHere(image.scope)"
+            (click)="toggleHere('image', image); $event.stopPropagation()"
+            [title]="shownHere(image.scope) ? 'Hide on this panel' : 'Show on this panel'">
+            <ng-container [ngTemplateOutlet]="eyeIcon" [ngTemplateOutletContext]="{ on: shownHere(image.scope) }" />
           </button>
           @if (editingImageId === image.id) {
           <input #imageRenameInput class="layer-tab-edit image-rename-edit" type="text" [value]="image.label"
@@ -175,17 +155,8 @@
             (keydown.escape)="editingImageId = null" (blur)="commitRenameImage(image.id, imageRenameInput.value)" />
           } @else {
           <span class="layer-tab-label" (click)="editImage(image)" (dblclick)="startRenameImage(image.id)"
-            [title]="imageRowTitle(image)">{{ image.label }}</span>
-          @if (availablePanels.length) {
-          <button type="button" class="layer-tab-icon-btn" [class.open]="panelsImageId === image.id"
-            (click)="toggleImagePanels(image.id); $event.stopPropagation()" [title]="imageScopeTitle(image)">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="4" width="18" height="16" rx="2" />
-              <path d="M9 4v16" />
-            </svg>
-          </button>
-          }
+            title="Click to show it here and unlock it for editing; double-click to rename">{{ image.label }}</span>
+          <ng-container [ngTemplateOutlet]="scopeChip" [ngTemplateOutletContext]="{ item: image }" />
           <button type="button" class="layer-tab-icon-btn" (click)="toggleImageLocked(image); $event.stopPropagation()"
             [title]="isImageLocked(image) ? 'Unlock for editing' : 'Lock in place'">
             <ng-container [ngTemplateOutlet]="lockIcon" [ngTemplateOutletContext]="{ locked: isImageLocked(image) }" />
@@ -194,24 +165,8 @@
             (click)="deleteImage(image.id); $event.stopPropagation()">×</button>
           }
         </div>
-        @if (panelsImageId === image.id) {
-        <div class="layer-panels">
-          <div class="layer-panels-title">Shown on</div>
-          <label class="panel-row">
-            <input type="checkbox" [checked]="image.isDefault ?? false"
-              (change)="setImageIsDefault(image, $any($event.target).checked)" />
-            <span>Default — wherever no other image is named</span>
-          </label>
-          @for (panel of availablePanels; track panel.id) {
-          <label class="panel-row">
-            <input type="checkbox" [checked]="isImageOnPanel(image, panel.id)" (change)="toggleImagePanel(image, panel.id)" />
-            <span>{{ panel.label }}</span>
-          </label>
-          }
-          @if (isImageScoped(image)) {
-          <button type="button" class="layer-panels-all" (click)="showImageOnAllPanels(image)">Show on every panel</button>
-          }
-        </div>
+        @if (scopeMenuFor === image.id) {
+        <ng-container [ngTemplateOutlet]="scopeMenu" [ngTemplateOutletContext]="{ item: image, kind: 'image' }" />
         }
         }
       </div>
@@ -249,6 +204,56 @@
     </div>
     }
   </div>
+
+  <!-- Where the row shows, in a word, from the open panel's point of view. Only offered when the
+       recipe has pushed panels; without them the eye alone (everywhere or nowhere) is the story. -->
+  <ng-template #scopeChip let-item="item">
+    @if (availablePanels.length) {
+    <button type="button" class="scope-chip" [class.open]="scopeMenuFor === item.id"
+      (click)="toggleScopeMenu(item.id); $event.stopPropagation()" [title]="scopeTitle(item.scope)">
+      {{ scopeLabel(item.scope) }}<span class="scope-caret">&#x25BE;</span>
+    </button>
+    }
+  </ng-template>
+
+  <!-- The three absolute presets, then the eye's own switch so "not here" is findable from the
+       menu too, then the full list for a panel you can't yet stand on. -->
+  <ng-template #scopeMenu let-item="item" let-kind="kind">
+    <div class="scope-menu" (click)="$event.stopPropagation()">
+      <button type="button" class="scope-row" [class.checked]="isEverywhere(item.scope)"
+        (click)="applyPreset(kind, item.id, 'everywhere')">
+        <span class="scope-dot"></span><span>Everywhere</span>
+      </button>
+      <button type="button" class="scope-row" [class.checked]="isHereOnly(item.scope)"
+        (click)="applyPreset(kind, item.id, 'here')">
+        <span class="scope-dot"></span><span>Only this panel</span>
+      </button>
+      <button type="button" class="scope-row" [class.checked]="isNowhere(item.scope)"
+        (click)="applyPreset(kind, item.id, 'nowhere')">
+        <span class="scope-dot"></span><span>Nowhere</span>
+      </button>
+      <div class="scope-sep"></div>
+      <label class="scope-row">
+        <input type="checkbox" [checked]="shownHere(item.scope)" (change)="toggleHere(kind, item)" />
+        <span>Shown on this panel</span>
+      </label>
+      <div class="scope-sep"></div>
+      <button type="button" class="scope-row scope-more" [class.open]="panelListOpen"
+        (click)="panelListOpen = !panelListOpen">
+        <span>Choose panels…</span>
+      </button>
+      @if (panelListOpen) {
+      <div class="panel-list">
+        @for (panel of availablePanels; track panel.id) {
+        <label class="panel-row" [class.current]="panel.id === activePanel">
+          <input type="checkbox" [checked]="shownOn(item.scope, panel.id)" (change)="togglePanel(kind, item, panel.id)" />
+          <span>{{ panel.label }}</span>
+        </label>
+        }
+      </div>
+      }
+    </div>
+  </ng-template>
 
   <!-- Shared by every show/hide control here: the two masters and each row in both lists, so
        "visible" looks the same everywhere it appears. -->

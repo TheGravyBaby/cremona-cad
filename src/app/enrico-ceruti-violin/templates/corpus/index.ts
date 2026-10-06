@@ -21,8 +21,9 @@ import guarneriViolinGoldbergBaronVitta2023870692 from './guarneri-violin-goldbe
  *   1. Trace over the reference image as normal and save the recipe.
  *   2. Save the recipe JSON here as `<maker>-<instrument>-<objectId>.json`.
  *   3. Add `meta`, and a `credit` on each reference image.
- *   4. Scope images to panels via `panels`/`excludePanels` (ids from `CERUTI_PANEL_IDS`, checked
- *      by the spec) — a plan view usually wants none, a profile usually wants the arching panels.
+ *   4. Scope images to panels via `scope: { only: [...] }` or `{ except: [...] }` (ids from
+ *      `CERUTI_PANEL_IDS`, checked by the spec) — a plan view usually excepts the arching panels,
+ *      a profile usually wants only them.
  *   5. Import it above and add it to the array below.
  *
  * No measurement that isn't in the record — a plausible number on a real instrument is an

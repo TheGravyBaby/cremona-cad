@@ -5,11 +5,19 @@ import { ToolboxStore } from '../tools/toolbox-store';
 import { DraftShape, ImageShape } from '../tools/toolbox-shape';
 import { DEFAULT_LAYER_ID, Layer } from '../tools/layer';
 import { PanelChoice } from '../tools/toolbox-store';
+import {
+  isScopeNowhere, isScopeOnly, PanelScope, scopeDescription, scopeLabel, scopeOnly, scopeShows, scopeWith,
+  SCOPE_EVERYWHERE, SCOPE_NOWHERE,
+} from '../tools/panel-scope';
 import { SelectionStore } from '../tools/selection-store';
 import { SelectionActions } from '../tools/selection-actions';
 import { shapesToSvg } from '../tools/shape-svg';
 import { downloadSvgFile } from '../../helpers/fileExporter';
 import { warn } from '../../shared/message-emitter';
+
+/** A row in either list: a layer or an image, told apart only where the store needs to know. */
+export type ScopeKind = 'layer' | 'image';
+type Scoped = { id: string; scope?: PanelScope };
 
 /**
  * Layers and reference images, in the canvas bottom bar beside the axis and zoom controls.
@@ -23,6 +31,11 @@ import { warn } from '../../shared/message-emitter';
  *
  * There is no image tool: both ways to add one, a file or a pasted link, live at the bottom of
  * the image list instead.
+ *
+ * Where a row shows is one thing, its scope (panel-scope.ts), and the row answers it from the
+ * open panel's point of view: the eye is "shown on this panel", and the chip after the name says
+ * where else, opening the presets. The user is always standing on one panel when they decide,
+ * so the question is never "pick from sixteen" unless they ask for the list.
  */
 @Component({
   selector: 'app-layer-controls',
@@ -50,14 +63,16 @@ export class LayerControlsComponent {
   public layersOpen = false;
   public imagesOpen = false;
   public editingLayerId: string | null = null;
-  /** Which layer's panel checklist is open; one at a time, like renaming. */
-  public panelsLayerId: string | null = null;
   public editingImageId: string | null = null;
   /** Whether the paste-a-link field is showing; closed by default. */
   public linkOpen = false;
+  /** Which row's scope menu is open; one at a time, like renaming. The checklist inside it
+   * starts folded every time, so the presets are what you see first. */
+  public scopeMenuFor: string | null = null;
+  public panelListOpen = false;
 
   // a press anywhere outside — the canvas above all — takes an open list down, and with it the
-  // link field and any panel checklist, so the next open starts clean
+  // link field and any scope menu, so the next open starts clean
   @HostListener('document:pointerdown', ['$event'])
   onDocumentPointerDown(event: PointerEvent): void {
     if (!this.layersOpen && !this.imagesOpen) return;
@@ -65,8 +80,7 @@ export class LayerControlsComponent {
     this.layersOpen = false;
     this.imagesOpen = false;
     this.linkOpen = false;
-    this.panelsLayerId = null;
-    this.panelsImageId = null;
+    this.scopeMenuFor = null;
   }
 
   // ===== Master show/hide switches =====
@@ -83,11 +97,50 @@ export class LayerControlsComponent {
   public get recipeLocked(): boolean { return this.toolbox.recipeLocked; }
   toggleRecipeLocked(): void { this.toolbox.setRecipeLocked(!this.toolbox.recipeLocked); }
 
+  // ===== Where a row shows =====
+
+  public get availablePanels(): readonly PanelChoice[] { return this.toolbox.availablePanels; }
+  public get activePanel(): string | null { return this.toolbox.activePanel; }
+
+  public shownHere(scope: PanelScope | undefined): boolean { return this.toolbox.shownHere(scope); }
+  public shownOn(scope: PanelScope | undefined, panelId: string): boolean { return scopeShows(scope, panelId); }
+  public isEverywhere(scope: PanelScope | undefined): boolean { return !scope; }
+  public isHereOnly(scope: PanelScope | undefined): boolean { return isScopeOnly(scope, this.activePanel); }
+  public isNowhere(scope: PanelScope | undefined): boolean { return isScopeNowhere(scope); }
+  public scopeLabel(scope: PanelScope | undefined): string { return scopeLabel(scope, this.activePanel); }
+  public scopeTitle(scope: PanelScope | undefined): string {
+    return scopeDescription(scope, id => this.availablePanels.find(p => p.id === id)?.label ?? id);
+  }
+
+  setScope(kind: ScopeKind, id: string, scope: PanelScope | undefined): void {
+    if (kind === 'layer') this.toolbox.setLayerScope(id, scope);
+    else this.toolbox.setImageScope(id, scope);
+  }
+
+  toggleHere(kind: ScopeKind, item: Scoped): void {
+    this.setScope(kind, item.id, scopeWith(item.scope, this.activePanel, !this.shownHere(item.scope)));
+  }
+
+  togglePanel(kind: ScopeKind, item: Scoped, panelId: string): void {
+    this.setScope(kind, item.id, scopeWith(item.scope, panelId, !this.shownOn(item.scope, panelId)));
+  }
+
+  applyPreset(kind: ScopeKind, id: string, preset: 'everywhere' | 'here' | 'nowhere'): void {
+    this.setScope(kind, id,
+      preset === 'everywhere' ? SCOPE_EVERYWHERE : preset === 'here' ? scopeOnly(this.activePanel) : SCOPE_NOWHERE);
+  }
+
+  toggleScopeMenu(id: string): void {
+    this.scopeMenuFor = this.scopeMenuFor === id ? null : id;
+    this.panelListOpen = false;
+  }
+
   // ===== Layers =====
 
   toggleLayers(): void {
     this.layersOpen = !this.layersOpen;
     this.imagesOpen = false;
+    this.scopeMenuFor = null;
   }
 
   public get toolboxLayers(): Layer[] { return this.toolbox.layers; }
@@ -95,45 +148,6 @@ export class LayerControlsComponent {
 
   selectLayer(id: string): void {
     this.toolbox.setActiveLayer(id);
-  }
-
-  // ===== Which panels a layer shows on =====
-  // The same idea as an image's scoping, in the row rather than the settings bar: a layer is never
-  // "selected", so the list it lives in is the one place to reach it.
-
-  public get availablePanels(): readonly PanelChoice[] { return this.toolbox.availablePanels; }
-
-  togglePanels(id: string): void {
-    this.panelsLayerId = this.panelsLayerId === id ? null : id;
-  }
-
-  /** True when the layer isn't drawn on the open panel despite its eye being on. */
-  public isLayerOffPanel(layer: Layer): boolean {
-    return !this.toolbox.layerMatchesActivePanel(layer);
-  }
-
-  public isLayerOnPanel(layer: Layer, panelId: string): boolean {
-    return !layer.panels?.length || layer.panels.includes(panelId);
-  }
-
-  toggleLayerPanel(layer: Layer, panelId: string): void {
-    const wanted = new Set(this.availablePanels.map(p => p.id).filter(id => this.isLayerOnPanel(layer, id)));
-    if (wanted.has(panelId)) wanted.delete(panelId);
-    else wanted.add(panelId);
-    // every panel ticked is stored as no list at all, so a panel the recipe grows later is included
-    const all = this.availablePanels.map(p => p.id);
-    this.toolbox.setLayerPanels(layer.id, all.every(id => wanted.has(id)) ? undefined : all.filter(id => wanted.has(id)));
-  }
-
-  showLayerOnAllPanels(id: string): void {
-    this.toolbox.setLayerPanels(id, undefined);
-  }
-
-  /** What the row's scoping button says: where the layer shows, and that it isn't shown here. */
-  public layerScopeTitle(layer: Layer): string {
-    if (!layer.panels?.length) return 'Shown on every panel';
-    const names = layer.panels.map(id => this.availablePanels.find(p => p.id === id)?.label ?? id).join(', ');
-    return this.isLayerOffPanel(layer) ? `Shown on ${names} — not on this panel` : `Shown on ${names}`;
   }
 
   private get activeLayerShapes(): DraftShape[] {
@@ -204,10 +218,7 @@ export class LayerControlsComponent {
   deleteLayer(id: string): void {
     this.toolbox.removeLayer(id);
     if (this.editingLayerId === id) this.editingLayerId = null;
-  }
-
-  toggleLayerVisible(id: string): void {
-    this.toolbox.toggleLayerVisible(id);
+    if (this.scopeMenuFor === id) this.scopeMenuFor = null;
   }
 
   /** Locking the layer you're actively drawing on would make the active tool a silent no-op — bail back to Select instead. */
@@ -225,110 +236,20 @@ export class LayerControlsComponent {
   }
 
   // ===== Reference images =====
-  // Deliberately shaped like Layers above: a list of rows, each with an eye, a lock, a name and a
-  // delete. Each image is its own visibility/lock unit (see ImageShape), so this list *is* the
-  // image layering — there's no second layer type behind it. Unlike the tab strip this replaced,
-  // every image stays on screen at once; the eye is what parks one.
+  // Deliberately shaped like Layers above: a list of rows, each with an eye, a scope chip, a lock
+  // and a delete. Each image is its own scope/lock unit (see ImageShape), so this list *is* the
+  // image layering — there's no second layer type behind it.
 
   public get images(): ImageShape[] { return this.toolbox.getImageShapes(); }
 
   /** Absent `locked` means locked — see ImageShape.locked. */
   public isImageLocked(image: ImageShape): boolean { return image.locked ?? true; }
 
-  /** True when the image isn't drawn on the open panel despite its eye being on; the row stays
-   * listed and says so rather than the image just silently not appearing. */
-  public isImageOffPanel(image: ImageShape): boolean {
-    return !this.toolbox.imageMatchesActivePanel(image);
-  }
-
-  // ===== Which panels an image shows on =====
-  // The layer control above, for images: same button, same checklist, plus the Default row and the
-  // short-list storage a template image needs (see ImageShape.panels/excludePanels/isDefault).
-
-  public panelsImageId: string | null = null;
-
-  toggleImagePanels(id: string): void {
-    this.panelsImageId = this.panelsImageId === id ? null : id;
-  }
-
-  /** Whether the image is wanted on `panelId` — what its checkbox shows. */
-  public isImageOnPanel(image: ImageShape, panelId: string): boolean {
-    if (image.panels?.length) return image.panels.includes(panelId);
-    return !image.excludePanels?.includes(panelId);
-  }
-
-  toggleImagePanel(image: ImageShape, panelId: string): void {
-    const wanted = new Set(this.availablePanels.map(p => p.id).filter(id => this.isImageOnPanel(image, id)));
-    if (wanted.has(panelId)) wanted.delete(panelId);
-    else wanted.add(panelId);
-    this.writeImagePanels(image, wanted);
-  }
-
-  // stores whichever of panels/excludePanels is shorter — the short list both reads as the
-  // exception and stays correct when the recipe later grows a panel. Naming panels clears
-  // Default (the two are alternatives); excluding doesn't, since that's how a default expresses
-  // a gap.
-  private writeImagePanels(image: ImageShape, wanted: Set<string>): void {
-    const all = this.availablePanels.map(p => p.id);
-    const named = all.filter(id => wanted.has(id));
-    const excluded = all.filter(id => !wanted.has(id));
-    this.toolbox.setImageScope(image.id, !excluded.length
-      ? { panels: undefined, excludePanels: undefined, isDefault: image.isDefault }
-      : excluded.length < named.length
-        ? { panels: undefined, excludePanels: excluded, isDefault: image.isDefault }
-        : { panels: named, excludePanels: undefined, isDefault: false });
-  }
-
-  setImageIsDefault(image: ImageShape, value: boolean): void {
-    this.toolbox.setImageScope(image.id, {
-      isDefault: value,
-      // Default and a panel list are alternatives; an exclusion list is not, so it survives.
-      panels: value ? undefined : image.panels,
-      excludePanels: image.excludePanels,
-    });
-  }
-
-  /** Clears all scoping — shown on every panel, same as a hand-placed image. */
-  showImageOnAllPanels(image: ImageShape): void {
-    this.toolbox.setImageScope(image.id, { panels: undefined, excludePanels: undefined, isDefault: false });
-  }
-
-  public isImageScoped(image: ImageShape): boolean {
-    return !!(image.panels?.length || image.excludePanels?.length || image.isDefault);
-  }
-
-  /** What the row's scoping button says: where the image shows, and that it isn't shown here. */
-  public imageScopeTitle(image: ImageShape): string {
-    const label = (id: string) => this.availablePanels.find(p => p.id === id)?.label ?? id;
-    let where: string;
-    if (image.panels?.length) where = `Shown on ${image.panels.map(label).join(', ')}`;
-    else {
-      where = image.isDefault ? 'Default — shown wherever no other image is named' : 'Shown on every panel';
-      if (image.excludePanels?.length) where += `, except ${image.excludePanels.map(label).join(', ')}`;
-    }
-    return this.isImageOffPanel(image) ? `${where} — not on this panel` : where;
-  }
-
-  /** Row tooltip naming the panels a scoped image belongs to. Panel ids are de-camel-cased here
-   * rather than looked up, since the store never learns their display labels. */
-  public imageRowTitle(image: ImageShape): string {
-    const edit = 'Click to show it here and unlock it for editing; double-click to rename';
-    if (!this.isImageOffPanel(image)) return edit;
-    const active = this.toolbox.activePanel;
-    if (active && image.excludePanels?.includes(active)) {
-      return `Deliberately kept off this panel. ${edit}`;
-    }
-    if (!image.panels?.length) return `A more specific image is shown on this panel. ${edit}`;
-    const panels = image.panels
-      .map(id => id.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase()).trim())
-      .join(', ');
-    return `Shown on ${panels} — not on this panel. ${edit}`;
-  }
-
   toggleImages(): void {
     this.imagesOpen = !this.imagesOpen;
     this.layersOpen = false;
     this.linkOpen = false;
+    this.scopeMenuFor = null;
   }
 
   addImage(): void {
@@ -351,22 +272,17 @@ export class LayerControlsComponent {
     this.linkOpen = false;
   }
 
-  toggleImageHidden(image: ImageShape): void {
-    this.toolbox.setImageHidden(image.id, !image.hidden);
-  }
-
   toggleImageLocked(image: ImageShape): void {
     this.toolbox.setImageLocked(image.id, !this.isImageLocked(image));
   }
 
-  /** Shows, unlocks and selects the clicked image — clearing all three ways it could be
-   * invisible (its own eye, the master switch, panel scoping) rather than just its own eye, and
-   * without editing the scoping itself; see ToolboxStore.setRevealedImage. */
+  /** Shows the image on this panel, unlocks and selects it — clearing every way it could be out
+   * of reach, since picking it from the list is a request to work on it. Showing it here is a
+   * real scope edit, visible in the eye, not a peek. */
   editImage(image: ImageShape): void {
-    if (image.hidden) this.toolbox.setImageHidden(image.id, false);
+    if (!this.shownHere(image.scope)) this.setScope('image', image.id, scopeWith(image.scope, this.activePanel, true));
     if (!this.toolbox.showImages) this.toolbox.setShowImages(true);
     this.toolbox.setImageLocked(image.id, false);
-    this.toolbox.setRevealedImage(image.id);
     this.selectImageRequested.emit(image.id);
   }
 
@@ -383,5 +299,6 @@ export class LayerControlsComponent {
   deleteImage(id: string): void {
     this.toolbox.removeImage(id);
     if (this.editingImageId === id) this.editingImageId = null;
+    if (this.scopeMenuFor === id) this.scopeMenuFor = null;
   }
 }

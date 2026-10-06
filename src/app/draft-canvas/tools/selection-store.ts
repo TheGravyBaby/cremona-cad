@@ -88,9 +88,6 @@ export class SelectionStore {
     const changed = next.size !== this.refs.size || [...next.keys()].some(k => !this.refs.has(k));
     this.refs = next;
     this.leaveGroupIfEmpty();
-    // asked even when nothing changed: a panel switch drops the reveal (ToolboxStore.setActivePanel),
-    // and re-selecting the same image from the layer list is how it asks for it back
-    this.reveal();
     if (changed) this.notify();
   }
 
@@ -108,7 +105,6 @@ export class SelectionStore {
       else this.refs.set(keyOf(r), r);
     }
     this.leaveGroupIfEmpty();
-    this.reveal();
     this.notify();
   }
 
@@ -146,16 +142,6 @@ export class SelectionStore {
   onChange(cb: () => void): () => void {
     this.listeners.add(cb);
     return () => this.listeners.delete(cb);
-  }
-
-  /** A selected image shows even where panel scoping would hide it, so editing its scoping
-   * doesn't make it and its controls disappear as you type — see ToolboxStore.setRevealedImage.
-   * Looked up across every image, not the editable ones: an off-panel image isn't editable until
-   * this very call reveals it. */
-  private reveal(): void {
-    const imageIds = new Set(this.toolbox.getImageShapes().map(s => s.id));
-    const image = this.all.find(r => r.source === 'toolbox' && imageIds.has(r.id));
-    this.toolbox.setRevealedImage(image?.id ?? null);
   }
 
   // asked before touching SceneStore.shapes, since reading those rebuilds the index
