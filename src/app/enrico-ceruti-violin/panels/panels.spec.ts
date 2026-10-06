@@ -27,7 +27,7 @@ import { ScrollWidthsPanel } from './scroll-widths-panel/scroll-widths-panel';
 import { defaultVoluteParams, duckTailRadius, duckTailRoundTop, pegboxHipHeight, pegboxWidth, scrollBackWidths, scrollExtent, scrollLines, scrollNeckHalfWidth, scrollPathStretches, scrollWidthStations, spiralArcs as styleArcs, VOLUTE_STYLE_LABELS } from '../calculation/neck/ceruti-scroll';
 import { VolutePanel } from './volute-panel/volute-panel';
 import { Pt } from '../../models/types';
-import { scrollBackInPlan, scrollBackViewStrokes, scrollFrontInPlan } from '../calculation/neck/ceruti-scroll-views';
+import { PEGBOX_HOLLOW_SHOWN, scrollBackInPlan, scrollBackViewStrokes, scrollFrontInPlan } from '../calculation/neck/ceruti-scroll-views';
 import { sideViewOffsetX } from '../renders/body-section.render';
 import { STROKE_WEIGHT } from '../../helpers/renderFuncs';
 
@@ -595,11 +595,14 @@ describe('the scroll widths panel', () => {
     const frontView = paths('archTop').filter(pts => pts[0].x > 0);
     expect(frontView.filter(pts => pts[0].y < turn1Bottom.y - 1e-9).every(pts => pts.every(pt => pt.y <= turn1Bottom.y + 1e-9))).toBe(true);
 
+    // the hollow's mouth and the dashed cavity below are parked behind PEGBOX_HOLLOW_SHOWN
     const mouth = drawn.filter(el => el.attrs['stroke'] === 'scrollFrontLight' && !el.attrs['stroke-dasharray']);
-    expect(mouth).toHaveLength(1);
-    const hidden = scrollLines(p).frontStraight[1].y > turn1Bottom.y;
-    expect(/Z$/.test(mouth[0].attrs['d'] as string)).toBe(!hidden);
-    expect(Math.max(...points(mouth[0].attrs['d'] as string).map(pt => pt.y))).toBeLessThanOrEqual(turn1Bottom.y + 1e-9);
+    expect(mouth).toHaveLength(PEGBOX_HOLLOW_SHOWN ? 1 : 0);
+    if (PEGBOX_HOLLOW_SHOWN) {
+      const hidden = scrollLines(p).frontStraight[1].y > turn1Bottom.y;
+      expect(/Z$/.test(mouth[0].attrs['d'] as string)).toBe(!hidden);
+      expect(Math.max(...points(mouth[0].attrs['d'] as string).map(pt => pt.y))).toBeLessThanOrEqual(turn1Bottom.y + 1e-9);
+    }
 
     // the volute's bottom closes right across the pegbox running in under it
     const across = recordLayers(instance.buildRun()).elements.filter(el =>
@@ -608,8 +611,8 @@ describe('the scroll widths panel', () => {
     expect(Math.abs((across[0].attrs['x1'] as number) - (across[0].attrs['x2'] as number))).toBeCloseTo(2 * turn1Bottom.x, 9);
 
     const hollow = drawn.filter(el => el.attrs['stroke-dasharray']);
-    expect(hollow).toHaveLength(1);
-    expect(hollow[0].attrs['stroke']).toBe('scrollFrontLight');
+    expect(hollow).toHaveLength(PEGBOX_HOLLOW_SHOWN ? 1 : 0);
+    if (PEGBOX_HOLLOW_SHOWN) expect(hollow[0].attrs['stroke']).toBe('scrollFrontLight');
 
     // a back already narrow at its reach lets the first turn's front stand out past it, and then it
     // shows from behind, down to the second turn's top
@@ -651,6 +654,69 @@ describe('the scroll widths panel', () => {
     const showing = cheeks();
     expect(showing).toHaveLength(2);
     for (const pts of showing) expect(pts.length).toBeGreaterThan(3);
+  });
+
+  it('starts the back as wide as its foot, a wider foot meeting the round along level shoulders in the back\'s own colour', () => {
+    const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
+    instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
+    instance.buildRun();
+    const p = instance.params;
+    const v = p.scroll!;
+    const shoulders = () => recordLayers(instance.buildRun()).elements.filter(el => {
+      const start = scrollBackWidths(p)[0];
+      return el.tag === 'line' && el.attrs['y1'] === start.y && el.attrs['y2'] === start.y && el.attrs['stroke'] === 'archBack';
+    });
+    p.neck!.topWidth = v.widths.duckTail - 4;
+    expect(shoulders()).toEqual([]);
+    expect(scrollBackWidths(p)[0].x).toBeCloseTo(v.widths.duckTail / 2, 9);
+    v.widths.foot = v.widths.duckTail + 10;
+    expect(shoulders()).toHaveLength(2);
+    for (const el of shoulders()) expect(Math.abs((el.attrs['x1'] as number) - (el.attrs['x2'] as number))).toBeCloseTo(5, 9);
+    expect(scrollBackWidths(p)[0].x).toBeCloseTo(v.widths.foot / 2, 9);
+    expect(duckTailRadius(p)).toBeCloseTo(v.widths.duckTail / 2, 9);
+  });
+
+  it('marks the crown, the reach and the duck tail behind and the crown, the throat and the hips in front under module arcs, each its width across on its view\'s centreline, with a centreline down each view', () => {
+    const p = defaultViolin();
+    const draw = (showModuleArcs: boolean) => {
+      const instance = panel(ScrollWidthsPanel as any, p, flags({ showModuleArcs, showModuleGuides: false })) as unknown as ScrollWidthsPanel;
+      instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
+      return recordLayers(instance.buildRun()).elements;
+    };
+    const points = (d: string) => [...d.matchAll(/(-?[\d.]+(?:e-?\d+)?) (-?[\d.]+(?:e-?\d+)?)/g)].map(m => new Pt(+m[1], +m[2]));
+    const circles = (els: ReturnType<typeof draw>) => els.filter(el => el.tag === 'circle');
+    const halves = (els: ReturnType<typeof draw>, key: string) => els.filter(el => el.tag === 'path' && el.attrs['stroke'] === `scrollWidth${key}`).map(el => points(el.attrs['d'] as string));
+    const centrelines = (els: ReturnType<typeof draw>) => els.filter(el => el.tag === 'line' && el.attrs['stroke-dasharray'] && el.attrs['x1'] === el.attrs['x2']);
+    expect(circles(draw(false))).toEqual([]);
+    expect(centrelines(draw(false))).toEqual([]);
+    const on = draw(true);
+    const stations = scrollWidthStations(p);
+    const [behind, inFront] = centrelines(on).map(el => el.attrs['x1'] as number).sort((a, b) => a - b);
+    expect(behind).toBeLessThan(-scrollExtent(p.scroll!).width);
+    expect(inFront).toBeGreaterThan(0);
+    for (const el of centrelines(on)) expect(Math.max(el.attrs['y1'] as number, el.attrs['y2'] as number)).toBeCloseTo(scrollExtent(p.scroll!).height, 9);
+
+    const full = { reach: behind, duckTail: behind, hip: inFront };
+    expect(circles(on)).toHaveLength(3);
+    for (const [key, center] of Object.entries(full)) {
+      const st = stations.find(s => s.key === key)!;
+      expect(circles(on).some(el => el.attrs['cx'] === center && Math.abs((el.attrs['cy'] as number) - st.at.y) < 1e-9 && Math.abs((el.attrs['r'] as number) - st.width / 2) < 1e-9), key).toBe(true);
+    }
+    // a half circle hangs below its station's height, its ends a diameter apart on that line
+    const hanging = (pts: Pt[], center: number, st: { at: Pt; width: number }) => {
+      expect(pts.every(pt => pt.y <= st.at.y + 1e-9)).toBe(true);
+      expect(Math.min(...pts.map(pt => pt.y))).toBeCloseTo(st.at.y - st.width / 2, 6);
+      expect([pts[0].x, pts.at(-1)!.x].sort((a, b) => a - b)).toEqual([center - st.width / 2, center + st.width / 2].map(c => expect.closeTo(c, 6)));
+    };
+    const crown = stations.find(st => st.key === 'crown')!;
+    const throat = stations.find(st => st.key === 'throat')!;
+    const crowns = halves(on, 'Crown');
+    expect(crowns).toHaveLength(2);
+    hanging(crowns.find(pts => pts[0].x < 0)!, behind, crown);
+    hanging(crowns.find(pts => pts[0].x > 0)!, inFront, crown);
+    const throats = halves(on, 'Throat');
+    expect(throats).toHaveLength(1);
+    hanging(throats[0], inFront, throat);
   });
 
   it('draws a level shoulder on the round\'s top where the neck stands wider than it, out from the round or from cheeks wider still, and none for a narrower neck', () => {

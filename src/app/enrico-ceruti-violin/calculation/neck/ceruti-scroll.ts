@@ -429,7 +429,7 @@ export function scrollLines(p: EnricoCerutiParams): Record<ScrollLine, [Pt, Pt]>
 // that the pegbox runs in under it out of sight. The duck tail's round is the neck's width
 function defaultScrollWidths(p: EnricoCerutiParams): ScrollWidths {
   let mm = (v: number) => Math.round(v * p.height / 350);
-  return { hip: mm(26), throat: mm(20), duckTail: mm(24), reach: mm(24), crown: mm(13), turn1Bottom: mm(26), turn2Top: mm(30), turn2Bottom: mm(34), eye: mm(41) };
+  return { hip: mm(26), throat: mm(20), duckTail: mm(24), foot: mm(24), reach: mm(24), crown: mm(13), turn1Bottom: mm(26), turn2Top: mm(30), turn2Bottom: mm(34), eye: mm(41) };
 }
 
 function defaultPegbox(p: EnricoCerutiParams): PegboxParams {
@@ -455,9 +455,10 @@ export function calculateScrollWidths(p: EnricoCerutiParams): void {
   // the pegbox's back ends at the duck tail, so its foot can't be below it
   v.hipHeight = Math.max(v.hipHeight, pointOnCircle(v.S3, v.S3.start).y);
 
-  // the head is no wider over the crown than at the back's reach, and each turn stands out at least
-  // as far as the one before
+  // the back's foot is at least the round it sits on, the head is no wider over the crown than at
+  // the back's reach, and each turn stands out at least as far as the one before
   let w = v.widths;
+  w.foot = Math.max(w.foot, w.duckTail);
   w.crown = Math.min(w.crown, w.reach);
   w.turn1Bottom = Math.max(w.turn1Bottom, w.crown);
   w.turn2Top = Math.max(w.turn2Top, w.turn1Bottom);
@@ -560,16 +561,22 @@ function scrollFront(p: EnricoCerutiParams): Run {
   ]);
 }
 
-// where the pegbox's front runs in under the volute: F1's end on the spiral
+// the throat: the foot of the front's straight, where F1 turns in under the volute
 export function scrollThroat(p: EnricoCerutiParams): Pt {
+  let v = p.scroll!;
+  return pointOnCircle(v.F1, v.F1.end);
+}
+
+// where the front meets the spiral, at F1's far end
+export function scrollFrontTop(p: EnricoCerutiParams): Pt {
   let v = p.scroll!;
   return pointOnCircle(v.F1, v.F1.start);
 }
 
 // the pegbox's front is marked on the blank as straight lines and sawn through, so its width goes by
-// height: the nut's up to the nut's top, out to the hips' from there, then tapering to the throat's.
-// Hips at or below the nut's top leave no run out from the nut, and the cheeks hold the hips' width
-// down to the foot
+// height: the nut's up to the nut's top, out to the hips' from there, then tapering to the throat's
+// and on up F1 at the same slope. Hips at or below the nut's top leave no run out from the nut, and
+// the cheeks hold the hips' width down to the foot
 export function pegboxWidth(p: EnricoCerutiParams, y: number): number {
   let { nutWidth, nutHeight } = p.stringSetup!;
   let { hip: hipWidth, throat: throatWidth } = p.scroll!.widths;
@@ -577,16 +584,15 @@ export function pegboxWidth(p: EnricoCerutiParams, y: number): number {
   // hips up at the throat leave no taper, and the width steps there
   let hipY = Math.min(pegboxHipHeight(p), taperEnd);
 
-  if (y >= taperEnd) return throatWidth;
-  if (y > hipY) return hipWidth + (throatWidth - hipWidth) * (y - hipY) / (taperEnd - hipY);
+  if (y > hipY) return taperEnd - hipY > 1e-9 ? Math.max(hipWidth + (throatWidth - hipWidth) * (y - hipY) / (taperEnd - hipY), 0) : throatWidth;
   if (hipY <= nutHeight) return hipWidth;
   if (y <= nutHeight) return nutWidth;
   return nutWidth + (hipWidth - nutWidth) * (y - nutHeight) / (hipY - nutHeight);
 }
 
-// the width along the path. The back goes out from the duck tail's round on a straight slope, by
-// height, to its reach, then leaves it tangent on a curve through the volute's widths, by distance
-// along the path. A back with no reach runs the slope all the way up to the crown
+// the width along the path. The back goes out from its foot on the duck tail's round on a straight
+// slope, by height, to its reach, then leaves it tangent on a curve through the volute's widths, by
+// distance along the path. A back with no reach runs the slope all the way up to the crown
 function pathWidth(p: EnricoCerutiParams, path: ScrollPath): (s: number) => number {
   let w = p.scroll!.widths;
 
@@ -601,7 +607,7 @@ function pathWidth(p: EnricoCerutiParams, path: ScrollPath): (s: number) => numb
 
   let startY = path.at(0).y;
   let slopeY = path.at(s[0]).y - startY;
-  let slope = (at: number) => slopeY > 1e-9 ? w.duckTail + (widths[0] - w.duckTail) * (path.at(at).y - startY) / slopeY : widths[0];
+  let slope = (at: number) => slopeY > 1e-9 ? w.foot + (widths[0] - w.foot) * (path.at(at).y - startY) / slopeY : widths[0];
 
   let h = s.slice(1).map((next, i) => next - s[i]);
   let delta = h.map((step, i) => (widths[i + 1] - widths[i]) / step);
@@ -673,8 +679,9 @@ export function scrollFrontWidths(p: EnricoCerutiParams): Pt3D[] {
 }
 
 // where each of the panel's fields is marked in the side view, with the width there: the front's up
-// the pegbox's front, the nut, the hips and the throat; the back's along the path from the top of the
-// duck tail's round in to the eye's centre. A back with no reach has no station for it
+// the pegbox's front, the nut, the hips and the throat; the back's from the duck tail itself, then
+// along the path from the top of its round in to the eye's centre. A back with no reach has no
+// station for it
 export function scrollWidthStations(p: EnricoCerutiParams): ScrollStation[] {
   let v = p.scroll!;
   let w = v.widths;
@@ -690,6 +697,7 @@ export function scrollWidthStations(p: EnricoCerutiParams): ScrollStation[] {
     { key: 'hip', at: hip, width: pegboxWidth(p, hip.y) },
     { key: 'throat', at: scrollThroat(p), width: w.throat },
     { key: 'duckTail', at: path.at(0), width: w.duckTail },
+    { key: 'foot', at: path.at(0), width: w.foot },
     ...(path.reach === null ? [] : [{ key: 'reach' as const, at: path.at(path.reach), width: w.reach }]),
     { key: 'crown', at: path.at(path.crown), width: w.crown },
     { key: 'turn1Bottom', at: path.at(turn1Bottom), width: w.turn1Bottom },

@@ -5,7 +5,7 @@ import { clipPolylineAtY, polylinePointAtY } from '../../../helpers/math/vibeMat
 import { StrokeShape, STROKE_WEIGHT } from '../../../helpers/renderFuncs';
 import { Pt, Pt3D } from '../../../models/types';
 import { EnricoCerutiParams } from '../../ceruti-types';
-import { duckTailRadius, pegboxHipHeight, pegboxWidth, scrollPathStretches, ScrollStretches, scrollFrontWidths, scrollLines, scrollNeckHalfWidth, scrollThroat } from './ceruti-scroll';
+import { duckTailRadius, pegboxHipHeight, pegboxWidth, scrollPathStretches, ScrollStretches, scrollFrontTop, scrollFrontWidths, scrollLines, scrollNeckHalfWidth } from './ceruti-scroll';
 import { scrollOnNeck } from '../outline/ceruti-paths';
 
 // the scroll seen from behind and from in front, as strokes with ink names, for the widths panel and
@@ -16,6 +16,10 @@ import { scrollOnNeck } from '../outline/ceruti-paths';
 
 // how far each view carries the neck on below the scroll
 export const scrollNeckStub = (p: EnricoCerutiParams) => 2 * p.neck!.thickness;
+
+// the pegbox's hollow is parked, to see the head without it: its fields, the dashed cavity in the
+// side view and the mouth in the front view all hang off this
+export const PEGBOX_HOLLOW_SHOWN = false;
 
 function halfWidthAtHeight(pts: Pt3D[], y: number): number | null {
   return polylinePointAtY(pts, y)?.x ?? null;
@@ -42,9 +46,9 @@ function seenRuns(on: ScrollStretches, pts: Pt3D[], behind: boolean): Pt3D[][] {
   return runs;
 }
 
-// the pegbox's front, sawn straight through the blank: from the throat down to the hips, in to the
-// nut's edge at its top, square to the foot of the nut, and closing level there. `walls` is the run
-// from the hips down, `cheeks` the whole of it
+// the pegbox's front, sawn straight through the blank: from where it meets the spiral down to the
+// hips, in to the nut's edge at its top, square to the foot of the nut, and closing level there.
+// `walls` is the run from the hips down, `cheeks` the whole of it
 function pegboxFrontOutline(p: EnricoCerutiParams) {
   const { nutHeight } = p.stringSetup!;
   const hipY = pegboxHipHeight(p);
@@ -55,8 +59,8 @@ function pegboxFrontOutline(p: EnricoCerutiParams) {
     ...(nutHeight < hipY - 1e-6 ? [new Pt(pegboxWidth(p, nutHeight) / 2, nutHeight)] : []),
     ...(foot < hipY - 1e-6 ? [new Pt(pegboxWidth(p, foot) / 2, foot)] : []),
   ];
-  const throat = scrollThroat(p);
-  const cheeks = [...(throat.y > hipY + 1e-6 ? [new Pt(pegboxWidth(p, throat.y) / 2, throat.y)] : []), ...walls];
+  const top = scrollFrontTop(p);
+  const cheeks = [...(top.y > hipY + 1e-6 ? [new Pt(pegboxWidth(p, top.y) / 2, top.y)] : []), ...walls];
   const bottom = [new Pt(pegboxWidth(p, foot) / 2, foot), new Pt(0, foot)];
   return { foot, walls, cheeks, bottom };
 }
@@ -151,11 +155,15 @@ export function scrollBackViewStrokes(p: EnricoCerutiParams, place: (x: number, 
   // the eye stands out as a cylinder to the last width
   for (const side of [1, -1]) line(place(side * eyeHalf, eyeBottom), place(side * eyeHalf, eyeTop), 'scrollBackLight');
 
-  // a neck wider than the round meets it along a level shoulder, out from the round or from the
-  // cheeks where they stand out past it; a narrower one runs in under it
-  const cheekHalf = start.y >= foot - 1e-9 && start.y <= scrollThroat(p).y + 1e-9 ? pegboxWidth(p, start.y) / 2 : 0;
+  // a foot wider than the round meets it along level shoulders, the back's own. A neck wider than
+  // the round meets it along a shoulder too, out from the round or from whichever of the foot and
+  // the cheeks stands out past it; a narrower one runs in under it
+  if (start.x > r + 1e-6) {
+    for (const side of [1, -1]) line(place(side * r, start.y), place(side * start.x, start.y), 'archBack');
+  }
+  const cheekHalf = start.y >= foot - 1e-9 && start.y <= scrollFrontTop(p).y + 1e-9 ? pegboxWidth(p, start.y) / 2 : 0;
   const neckHalf = scrollNeckHalfWidth(p, start.y);
-  const cheek = Math.max(r, cheekHalf);
+  const cheek = Math.max(r, start.x, cheekHalf);
   if (neckHalf > cheek + 1e-6) {
     for (const side of [1, -1]) line(place(side * cheek, start.y), place(side * neckHalf, start.y), 'scrollBackLight');
   }
@@ -216,7 +224,7 @@ export function scrollFrontViewStrokes(p: EnricoCerutiParams, place: (x: number,
   const mouth = [nutHeight, pegboxHipHeight(p), mouthTop]
     .filter(y => y >= nutHeight && y <= mouthTop)
     .map(y => new Pt(pegboxWidth(p, y) / 2 - v.pegbox.wall, y));
-  if (mouth.length > 1 && mouth.every(pt => pt.x > 0)) {
+  if (PEGBOX_HOLLOW_SHOWN && mouth.length > 1 && mouth.every(pt => pt.x > 0)) {
     const right = mouth.map(pt => at(pt, 1));
     const left = mouth.map(pt => at(pt, -1));
     const d = hollowTop <= pegboxTop ? pathFromPolygon([...right, ...left.reverse()]) : pathFromPolyline([...right.reverse(), ...left]);

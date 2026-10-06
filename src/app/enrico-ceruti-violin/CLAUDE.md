@@ -336,21 +336,33 @@ section first → long arch carved to a template → crown across. The panel ord
   `scrollFront`, the back's blues like `scrollBack`, so an edit's colour says which face it moves.
 - **The front goes by height** (`pegboxWidth`): straight lines sawn through the blank. The nut's own
   width (`stringSetup.nutWidth`) holds to the nut's top, the cheeks run out from its edges to the
-  `hip` (the pegbox's widest, at `hipHeight`), and taper back from there to `throat` (F1's end). The
-  hips replaced a straight held at the nut's width (2026-10-06): on a real head the pegbox stands a
-  little proud beside the nut and comes to a point there, tapering both ways. The hollow's `wall` and
-  `floor` are the front's too.
+  `hip` (the pegbox's widest, at `hipHeight`), taper back from there to `throat` at the foot of the
+  front's straight (`scrollThroat`, F1's `end`; it was F1's far end on the spiral until 2026-10-06),
+  and carry that slope on up F1 to where it meets the spiral (`scrollFrontTop`) rather than holding
+  the throat's width. The hips replaced a straight held at the nut's width (2026-10-06): on a real
+  head the pegbox stands a little proud beside the nut and comes to a point there, tapering both
+  ways. The hollow's `wall` and `floor` are the front's too, parked behind `PEGBOX_HOLLOW_SHOWN`
+  (2026-10-06, fields, cavity and mouth alike) to see the head without it; the calc stays.
 - **The back is "the path"**: from the top of the duck tail's round, over the crown and round the
   spiral in to the eye. `duckTail` is the round's diameter, entered, where it used to be read off
-  the neck or the hips. From the round's top the back's edges go out on a straight slope, by height,
-  to `reach`: the back's furthest reach, where its tangent runs straight up the neck (the first of S2,
-  S1 and S0 to pass straight behind its centre), the same point `scrollExtent` reads the head's
-  depth off. From there the curve goes by distance along the path (`pathWidth`), a monotone spline
-  through `crown`, `turn1Bottom`, `turn2Top`, `turn2Bottom` and `eye`, leaving the slope tangent. A
-  back with no reach above the path's start runs the slope up to the crown. The last turn is as wide
-  as the eye from its top on in, so it has no width of its own.
-- **`calculateScrollWidths` only seeds and clamps**, writing back: crown no wider than the reach,
-  each turn at least as wide as the one before, and the hips no lower than the duck tail.
+  the neck or the hips, and `foot` the back's width at the round's top, a radius up from the duck
+  tail: a violin's is the round's own, a cello's wider, the round meeting it along level shoulders at
+  angles 0 and π, clamped no narrower than the round. From there the back's edges go out on a
+  straight slope, by height, to `reach`: the back's furthest reach, where its tangent runs straight
+  up the neck (the first of S2, S1 and S0 to pass straight behind its centre), the same point
+  `scrollExtent` reads the head's depth off. From there the curve goes by distance along the path
+  (`pathWidth`), a monotone spline through `crown`, `turn1Bottom`, `turn2Top`, `turn2Bottom` and
+  `eye`, leaving the slope tangent. A back with no reach above the path's start runs the slope up to
+  the crown. The last turn is as wide as the eye from its top on in, so it has no width of its own.
+- **`calculateScrollWidths` only seeds and clamps**, writing back: foot no narrower than the duck
+  tail, crown no wider than the reach, each turn at least as wide as the one before, and the hips no
+  lower than the duck tail.
+- **Module arcs on the widths panel mark the widths a maker sets out with compasses** (2026-10-06):
+  each a circle its width across on its view's centreline at the station's height, with a dashed
+  centreline down each view. Behind, the crown, the reach and the duck tail; in front, the crown,
+  the throat and the hips. The crown's and the throat's hang as half circles from the head's top and
+  the pegbox's. The duck tail's station is the round's centre, so its circle has the round for its
+  lower half. Every station once had a circle; it was too many to read.
 - **From behind, the pegbox's sawn front shows wherever it stands out past the back**, in the front's
   colour: the cheeks from the throat down the hips to the nut's edge and the foot, and the foot's
   edge in to the neck, each hidden inside the round and the back's own silhouette. That one rule
