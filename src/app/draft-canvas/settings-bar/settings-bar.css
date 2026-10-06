@@ -117,7 +117,7 @@
 }
 
 .field input[type="number"] {
-  width: 64px;
+  width: 56px;
   height: 22px;
   padding: 2px 4px;
   border: 1px solid var(--ui-border-strong);

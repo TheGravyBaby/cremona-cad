@@ -6,16 +6,22 @@
   min-height: 0;
 }
 
-/* The drawing surface. The bottom bar stays a sibling of this row rather than joining it, so a wide
-   settings strip still gets the whole column. The tool palette used to live here too, overlaid on
-   the left edge — it's now a flex sibling of app-draft-canvas in app.ts (app.css's .tool-dock), so
-   .host's clientWidth already reflects the space it leaves rather than needing a manual offset in
-   fitCamera(). */
+/* The tool palette and the drawing surface. The bottom bar stays a sibling of this row rather than
+   joining it, so a wide settings strip gets the full width, under the palette too. The palette is a
+   flex item rather than an overlay, so .host's clientWidth already reflects the space it leaves
+   rather than needing a manual offset in fitCamera(). */
 .canvas-body {
   display: flex;
   flex: 1 1 auto;
   min-height: 0;
   min-width: 0;
+}
+
+/* Fixed to its own content width — however many columns it wraps into — and never grows or
+   shrinks, so .host is the one flexible item in the row. */
+.tool-dock {
+  flex: 0 0 auto;
+  min-height: 0;
 }
 
 .host {

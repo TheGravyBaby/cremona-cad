@@ -1,7 +1,8 @@
-/* Drafting toolbox: a flex sibling of app-draft-canvas in app.ts's row (see .tool-dock in app.css),
-   stretched to the row's full height. The tab collapses it to just that tab, giving the drawing
-   back the strip it covers — instantly, with no width transition, since a bar that animates its
-   width drags the flyout popups and the tab along with it a frame at a time. */
+/* Drafting toolbox: a flex sibling of .host in draft-canvas's .canvas-body (see .tool-dock in
+   draft-canvas.css), stretched to the row's full height, between the top bar and the canvas's
+   bottom bar. The tab collapses it to just that tab, giving the drawing back the strip it covers —
+   instantly, with no width transition, since a bar that animates its width drags the flyout popups
+   and the tab along with it a frame at a time. */
 :host {
   display: flex;
   min-height: 0;

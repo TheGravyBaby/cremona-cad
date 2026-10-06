@@ -8,7 +8,6 @@ import { isSmallViewport, trackViewportHeight } from './helpers/viewport';
 import { MessageService } from './shared/message.service';
 import { TopBarComponent } from './top-bar/top-bar';
 import { DraftCanvasComponent } from './draft-canvas/draft-canvas';
-import { ToolPaletteComponent } from './draft-canvas/tool-palette/tool-palette';
 import { ToolboxStore } from './draft-canvas/tools/toolbox-store';
 import { readWorkingState, SELECTED_RECIPE_KEY, writeWorkingState } from './helpers/workingStorage';
 import { CerutiViolin } from './enrico-ceruti-violin/ceruti-violin';
@@ -17,7 +16,7 @@ import { HelloWorldRecipe } from './hello-world-recipe/hello-world-recipe';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [TopBarComponent, DraftCanvasComponent, ToolPaletteComponent, CerutiViolin, HelloWorldRecipe],
+  imports: [TopBarComponent, DraftCanvasComponent, CerutiViolin, HelloWorldRecipe],
   template: `
     <div class="app" [class.sidebar-collapsed]="!sidebarOpen"
       [class.bar-autohide]="!barPinned && !hasMessages()" [class.bar-revealed]="barRevealed()">
@@ -31,8 +30,6 @@ import { HelloWorldRecipe } from './hello-world-recipe/hello-world-recipe';
     </app-top-bar>
 
       <div class="main">
-        <app-tool-palette class="tool-dock"></app-tool-palette>
-
         <app-draft-canvas class="canvas"
           [draftFunctions]="draftArgs()"
           [fitRequest]="fitToken()">
