@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { renderCircle, renderDashLine, renderPath, renderSolveFailures, renderCrosshair, renderPointHalo, renderStroke, STROKE_WEIGHT } from '../../../helpers/renderFuncs';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, RenderToggleKey } from '../../ceruti-types';
 import { defaultNeckParams, defaultStringSetup } from '../../calculation/neck/ceruti-neck';
-import { calculateScroll, calculateScrollWidths, ScrollStationKey, pegboxCavity, scrollExtent, scrollWidthStations } from '../../calculation/neck/ceruti-scroll';
+import { calculateScroll, calculateScrollWidths, ScrollStationKey, pegboxCavity, scrollCompassWalk, scrollExtent, scrollWidthStations } from '../../calculation/neck/ceruti-scroll';
 import { defineSideScrollPath } from '../../calculation/outline/ceruti-paths';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
@@ -27,6 +27,9 @@ export class ScrollWidthsPanel extends CerutiPanelBase implements OnInit {
   @Input({ required: true }) flags!: CerutiViewFlags;
 
   private focused: ScrollStationKey | null = null;
+  // the compass walk's step and the stretch it divides, read out beside the count, with the last
+  // step where too few steps leave it short of the rest
+  compass: { step: number; volute: number; last: number } | null = null;
 
   ngOnInit(): void {
     this.emitImmediate();
@@ -53,6 +56,11 @@ export class ScrollWidthsPanel extends CerutiPanelBase implements OnInit {
     p.neck ??= defaultNeckParams(p);
     const failures = calculateScroll(p);
     if (!failures.length) calculateScrollWidths(p);
+    if (failures.length) this.compass = null;
+    else {
+      const { step, volute, stations } = scrollCompassWalk(p);
+      this.compass = { step, volute, last: stations.at(-1)!.along - stations.at(-2)!.along };
+    }
 
     return [
       renderScrollNeck(p, this.colors, false, failures),

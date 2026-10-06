@@ -211,6 +211,7 @@ export function defaultVoluteParams(p: EnricoCerutiParams): ScrollParams {
     hipHeight: 0,
     // a violin's back has no hip
     backHipHeight: 0,
+    compassSteps: COMPASS_STEPS,
     // about the Salviati's own opening, its front as far out
     pitch: Math.round(1.9 * eyeRadius * 10) / 10,
     seedLength: eyeRadius,
@@ -457,6 +458,7 @@ export function calculateScrollWidths(p: EnricoCerutiParams): void {
   let { nutHeight } = p.neck!;
   v.hipHeight ??= duckTailRoundTop(p) - nutHeight;
   v.backHipHeight ??= 0;
+  v.compassSteps = Number.isFinite(v.compassSteps) ? Math.max(1, Math.round(v.compassSteps)) : COMPASS_STEPS;
   // the pegbox's back ends at the duck tail, so its foot can't be below it
   v.hipHeight = Math.max(v.hipHeight, pointOnCircle(v.S3, v.S3.start).y - nutHeight);
 
@@ -733,16 +735,21 @@ export function scrollBackStrip(p: EnricoCerutiParams): ScrollBackStrip {
 // compass distance from the last, not the distance along the path, so a compass set between two
 // crosshairs steps the same on the wood, and a circle its width across sets the compass for the
 // width. The duck tail is at the bottom, the foot about it where it is wider, the hip where there
-// is one, then the poll, and from there every `step` of compass distance up the volute to the
-// second turn's bottom, which comes last whatever is left. A violin's step is 15 mm, a maker's figure
+// is one, then the poll, and from there `steps` equal compass steps up the volute, the last landing
+// on the second turn's bottom. The step is found by halving: the stretch they divide, `volute`, is
+// the path's own length from the poll, while the compass cuts each bend short, so the step depends
+// on how many there are and the chords never sum to it. A violin's volute runs about 175 mm, a
+// cello's 375, so a count rather than a step size keeps the walk alike on every size of instrument
 export type CompassStation = { at: Pt; along: number; half: number };
-export type CompassWalk = { stations: CompassStation[]; length: number };
+export type CompassWalk = { stations: CompassStation[]; length: number; step: number; volute: number };
+const COMPASS_STEPS = 10;
 
-export function scrollCompassWalk(p: EnricoCerutiParams, step = 15 * p.height / 350): CompassWalk {
+export function scrollCompassWalk(p: EnricoCerutiParams, steps = p.scroll!.compassSteps): CompassWalk {
   let path = scrollPath(p);
   let width = pathWidth(p, path);
   let w = p.scroll!.widths;
   let end = path.turns[2] ?? path.length;
+  steps = Math.max(1, Math.round(steps));
 
   let marks: { s: number; half: number }[] = [{ s: 0, half: w.duckTail / 2 }];
   if (w.foot > w.duckTail + 1e-9) marks.push({ s: 0, half: w.foot / 2 });
@@ -753,24 +760,52 @@ export function scrollCompassWalk(p: EnricoCerutiParams, step = 15 * p.height / 
   }
   if (path.poll !== null && path.poll < end) marks.push({ s: path.poll, half: width(path.poll) / 2 });
 
-  // on from the last of those a compass step at a time: the first point along the path the step
-  // away, found by marching then halving
-  let from = marks.at(-1)!.s;
-  while (true) {
+  // the first point along the path a compass step from `from`, found by marching then halving, or
+  // null where the end comes first
+  let onward = (from: number, step: number): number | null => {
     let origin = path.at(from);
     let reach = (s: number) => dist(origin, path.at(s));
     let s = from;
-    while (s < end && reach(s) < step) s += 0.5;
-    if (s >= end) break;
-    let lo = s - 0.5, hi = s;
+    while (s < end && reach(s) < step) s = Math.min(s + 0.5, end);
+    if (reach(s) < step) return null;
+    let lo = Math.max(s - 0.5, from), hi = s;
     for (let i = 0; i < 40; i++) {
       let mid = (lo + hi) / 2;
       if (reach(mid) < step) lo = mid; else hi = mid;
     }
-    from = hi;
-    marks.push({ s: from, half: width(from) / 2 });
+    return hi;
+  };
+  // how far short of the end the last step falls with a step this long, negative once it overshoots.
+  // The last step is found like the rest, the first point along the path a step away, never struck
+  // straight at the end: the spiral passes within a step of the end from stations still turns away,
+  // and an arc struck from one of those would cross the back twice
+  let short = (step: number): number => {
+    let s: number | null = from;
+    for (let k = 0; k < steps && s !== null; k++) s = onward(s, step);
+    return s === null ? -1 : end - s;
+  };
+
+  let from = marks.at(-1)!.s;
+  let volute = end - from;
+  let step = 0;
+  if (volute > 1e-6) {
+    // the step is between the straight distance and the path's length, each over the count. Too few
+    // steps and a chord spans a bend the path curls back round, so no step lands the last on the
+    // end exactly: it then comes as close as it can, and the last step is short of the rest
+    let lo = dist(path.at(from), path.at(end)) / steps, hi = volute / steps;
+    for (let i = 0; i < 48; i++) {
+      let mid = (lo + hi) / 2;
+      if (short(mid) > 0) lo = mid; else hi = mid;
+    }
+    step = hi;
+    for (let k = 1; k < steps; k++) {
+      let next = onward(from, step);
+      if (next === null) break;
+      from = next;
+      marks.push({ s: from, half: width(from) / 2 });
+    }
+    marks.push({ s: end, half: width(end) / 2 });
   }
-  if (end - from > 1e-6) marks.push({ s: end, half: width(end) / 2 });
 
   let stations: CompassStation[] = [];
   let along = 0;
@@ -779,7 +814,7 @@ export function scrollCompassWalk(p: EnricoCerutiParams, step = 15 * p.height / 
     if (stations.length) along += dist(stations.at(-1)!.at, at);
     stations.push({ at, along, half: m.half });
   }
-  return { stations, length: along };
+  return { stations, length: along, step, volute };
 }
 
 // the front from the nut up to the throat the same way, as wide as the pegbox at each height

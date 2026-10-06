@@ -23,7 +23,7 @@ describe('RecipeToolbarComponent', () => {
     expect(fixture.nativeElement.querySelectorAll('.toolbar-btn')).toHaveLength(1);
     expect(fixture.nativeElement.querySelector('.toolbar-menu')).toBeNull();
     open();
-    expect(items()).toEqual(expect.arrayContaining(['New blank instrument', 'Upload Recipe…', 'Download Recipe']));
+    expect(items()).toEqual(expect.arrayContaining(['New blank instrument', 'Upload Recipe', 'Download Recipe']));
     expect(items()).not.toContain('Start from a historical instrument…');
   });
 
@@ -50,5 +50,14 @@ describe('RecipeToolbarComponent', () => {
     fixture.componentRef.setInput('exportEnabled', true);
     fixture.detectChanges();
     expect(btn.disabled).toBe(false);
+  });
+
+  it('lights Export while its panel is the open one', () => {
+    fixture.componentRef.setInput('showExport', true);
+    fixture.componentRef.setInput('exportActive', true);
+    fixture.detectChanges();
+    const btn = fixture.nativeElement.querySelector('.toolbar-btn--text') as HTMLButtonElement;
+    expect(btn.classList.contains('active')).toBe(true);
+    expect(btn.getAttribute('aria-pressed')).toBe('true');
   });
 });
