@@ -64,6 +64,7 @@ export class ExportPanel implements OnInit {
 
   /** Forwarded straight through to the canvas by the parent — this panel composes its own preview renders. */
   @Output() draftChange = new EventEmitter<Array<(g: any, ui: any) => void>>();
+  @Output() saveRecipe = new EventEmitter<void>();
 
   private getPath(key: PathKey): string {
     return getPath(this.paths, key);

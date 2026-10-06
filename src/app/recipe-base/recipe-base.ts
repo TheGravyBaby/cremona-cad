@@ -9,7 +9,7 @@ import { ToolboxStore } from '../draft-canvas/tools/toolbox-store';
 import { ImageAssetStore } from '../draft-canvas/tools/image-asset-store';
 import { UndoCoordinator, Undoable } from '../helpers/undoCoordinator';
 import { PANEL_KEY, RECIPE_KEY, readWorkingState, writeWorkingState } from '../helpers/workingStorage';
-import { copyToClipboard, setDebugContext } from '../helpers/debugDump';
+import { copyToClipboard } from '../helpers/debugDump';
 import {
   ReferenceImageSource, imageShapesFromRecipe, imageShapesToRecipe,
 } from '../draft-canvas/tools/reference-image-schema';
@@ -427,7 +427,6 @@ export abstract class RecipeComponentBase implements AfterViewInit, Undoable {
     if (this.workingWriteTimer !== null) clearTimeout(this.workingWriteTimer);
     this.toolboxSyncUnsub?.();
     this.undoCoordinatorUnsub?.();
-    setDebugContext(null);
     writeWorkingState(RECIPE_KEY, JSON.stringify(this.d));
     writeWorkingState(PANEL_KEY, this.openPanel);
   }

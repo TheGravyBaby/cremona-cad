@@ -33,7 +33,6 @@ import { translateShape } from './tools/shape-transform';
 import { endpointGrabbers, withBattenPinAdded, withBattenPinRemoved, withEndpoint, EndpointGrabber, EndpointKey } from './tools/shape-grabbers';
 import { snapToLockedAngle } from './tools/angle-lock';
 import { clamp, dist } from '../helpers/math/simpleGeometry';
-import { copyDebugDump, isLocalHost } from '../helpers/debugDump';
 import { info, warn } from '../shared/message-emitter';
 import { DEFAULT_TEXT_SIZE_MM, DraftShape, ImageShape, PathShape, TextShape, imageRenderKey } from './tools/toolbox-shape';
 import { placedImageShape } from './tools/image-placement';
@@ -768,60 +767,6 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     event.preventDefault();
     writeSvgToSystemClipboard(svg);
   };
-
-  // ===== Debug dump =====
-
-  protected readonly debugDumpEnabled = isLocalHost();
-
-  /** Geometry attributes worth carrying per tag. Presentation (stroke width, dash, opacity) is left out. */
-  private static readonly DUMP_ATTRS = [
-    'd', 'x1', 'y1', 'x2', 'y2', 'cx', 'cy', 'r', 'rx', 'ry', 'x', 'y',
-    'width', 'height', 'points', 'transform', 'stroke', 'fill',
-  ];
-
-  /**
-   * Everything drawn in world space, read back off the DOM.
-   *
-   * Read rather than recomputed: `draftFuncs` holds the recipe's render
-   * closures, and re-running them would re-run `firstRender` — which adopts
-   * stored recipes and emits, so it is not something a debug button may call.
-   * The DOM already has the answer and cannot disagree with what is on screen.
-   *
-   * Scoped to the scene group, which is where both the recipe's layers and the
-   * toolbox's shapes draw. That deliberately excludes the axis grid, reference
-   * images, selection halos and snap markers — none of which are the drawing.
-   *
-   * Coordinates are world millimetres with y positive up, the same frame the
-   * recipe works in. (`gRoot` carries a `scale(1,-1)`, so the numbers here need
-   * no unflipping — but text drawn into the UI overlay does negate its y.)
-   */
-  protected copyCanvasDebugDump(): void {
-    const host = this.host?.nativeElement;
-    const pxW = host?.clientWidth ?? 0;
-    const pxH = host?.clientHeight ?? 0;
-    const scene = host?.querySelector(`g.${DraftCanvasComponent.SCENE_GROUP_CLASS}`);
-    const drawn = scene ? Array.from(scene.querySelectorAll('path,line,circle,ellipse,rect,polyline,polygon,text')) : [];
-
-    copyDebugDump('canvas', {
-      viewport: {
-        pxPerMm: this.pxPerMm,
-        visibleMm: pxW && pxH ? this.camera.getViewBox(pxW, pxH) : null,
-      },
-      // The authored objects behind whatever the toolbox drew below — an arc's
-      // real centre, radius and angles rather than the path it rasterised to.
-      toolboxShapes: this.toolbox.getVisibleShapes().map(s => ({ ...s })),
-      drawnCount: drawn.length,
-      drawn: drawn.map(node => {
-        const out: Record<string, string> = { tag: node.tagName };
-        for (const name of DraftCanvasComponent.DUMP_ATTRS) {
-          const v = node.getAttribute(name);
-          if (v !== null) out[name] = v;
-        }
-        if (node.tagName === 'text' && node.textContent) out['text'] = node.textContent;
-        return out;
-      }),
-    });
-  }
 
   // ===== Inline text editing (see the field comments above editingTextShapeId) =====
 

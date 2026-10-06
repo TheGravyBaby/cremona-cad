@@ -9,7 +9,10 @@
             (saveFile)="saveToDisk()"
             (loadFile)="loadFile($event)"
             (templateSelect)="loadTemplate($event)"
-            (debugDump)="copyRecipeToClipboard()">
+            (debugDump)="copyRecipeToClipboard()"
+            [showExport]="true"
+            [exportEnabled]="isPanelEnabled('export')"
+            (openExport)="onPanelSelect('export')">
 </app-recipe-toolbar>
 
 <div class="panel-nav-wrap">
@@ -258,7 +261,8 @@
             [paths]="d.paths"
             [fileName]="d.fileName"
             [description]="d.description ?? ''"
-            (draftChange)="draftChange.emit($event)">
+            (draftChange)="draftChange.emit($event)"
+            (saveRecipe)="saveToDisk()">
         </app-ceruti-export-panel>
         }
     </div>

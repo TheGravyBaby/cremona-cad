@@ -3,7 +3,6 @@ import { Component, OnDestroy, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
 import { setGlobalEmitter } from './shared/message-emitter';
-import { installDebugCapture, isLocalHost } from './helpers/debugDump';
 import { isSmallViewport, trackViewportHeight } from './helpers/viewport';
 import { MessageService } from './shared/message.service';
 import { TopBarComponent } from './top-bar/top-bar';
@@ -139,11 +138,6 @@ export class App implements OnDestroy {
 
     // wire global emitter to MessageService
     setGlobalEmitter((m) => this.messageService.emit(m));
-
-    // Records console output and toasts for the `/` dumps. Same gate as the
-    // buttons themselves — off a real host, nothing is patched and no buffer is
-    // kept.
-    if (isLocalHost()) installDebugCapture();
 
     this.releaseViewportHeight = trackViewportHeight();
     this.doc.addEventListener('pointermove', this.onPointerMove, { passive: true });

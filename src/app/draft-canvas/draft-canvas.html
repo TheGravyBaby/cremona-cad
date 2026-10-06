@@ -42,10 +42,6 @@
     </div>
 
     <div class="right">
-      <!-- Debug, localhost only (see isLocalHost in helpers/debugDump.ts): everything drawn, to the clipboard. -->
-      @if (debugDumpEnabled) {
-      <button type="button" class="btn debug-dump-btn" (click)="copyCanvasDebugDump()" title="Copy drawn geometry">/</button>
-      }
       <!-- What is on the canvas and whether you can see it, next to how it is drawn (axes/grid) and
            where you are looking (zoom). These lived in the tool palette until the bar got too wide
            to justify — see layer-controls.ts. -->
