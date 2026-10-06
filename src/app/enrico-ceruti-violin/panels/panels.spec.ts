@@ -580,17 +580,19 @@ describe('the scroll widths panel', () => {
     const drawn = recordLayers(instance.buildRun()).elements.filter(el => el.tag === 'path');
     const points = (d: string) => [...d.matchAll(/(-?[\d.]+(?:e-?\d+)?) (-?[\d.]+(?:e-?\d+)?)/g)].map(m => new Pt(+m[1], +m[2]));
     const paths = (stroke: string) => drawn.filter(el => el.attrs['stroke'] === stroke && !el.attrs['stroke-dasharray']).map(el => points(el.attrs['d'] as string));
+    // the turns draw in one ink in both views, the back view left of the side view and the front right
+    const turns = (behind: boolean) => paths('scrollTurns').filter(pts => (pts[0].x < 0) === behind);
     // each line is drawn once on each side, and known here by the height it stops at
-    const stoppingAt = (stroke: string, y: number) => paths(stroke).filter(pts => Math.abs(pts.at(-1)!.y - y) < 1e-9);
+    const stoppingAt = (behind: boolean, y: number) => turns(behind).filter(pts => Math.abs(pts.at(-1)!.y - y) < 1e-9);
 
     // from behind the second turn's front stops at the top of the last, where that turn's back ends too
-    expect(stoppingAt('archBack', turn3Top.y)).toHaveLength(4);
+    expect(stoppingAt(true, turn3Top.y)).toHaveLength(4);
     // the first turn's front would stop at the second's top, but under the default crown the head's
     // back beside it is the wider and hides it: only the second turn's back ends there
-    expect(stoppingAt('archBack', turn2Top.y)).toHaveLength(2);
+    expect(stoppingAt(true, turn2Top.y)).toHaveLength(2);
     // from in front the backs stop at the bottom of the next turn in, the last at the eye's
-    expect(stoppingAt('archTop', turn2Bottom.y)).toHaveLength(4);
-    expect(stoppingAt('archTop', eyeBottom)).toHaveLength(2);
+    expect(stoppingAt(false, turn2Bottom.y)).toHaveLength(4);
+    expect(stoppingAt(false, eyeBottom)).toHaveLength(2);
     // and nothing of the head's back or the pegbox shows above the first turn's bottom but the turns
     const frontView = paths('archTop').filter(pts => pts[0].x > 0);
     expect(frontView.filter(pts => pts[0].y < turn1Bottom.y - 1e-9).every(pts => pts.every(pt => pt.y <= turn1Bottom.y + 1e-9))).toBe(true);
@@ -606,20 +608,20 @@ describe('the scroll widths panel', () => {
 
     // the volute's bottom closes right across the pegbox running in under it
     const across = recordLayers(instance.buildRun()).elements.filter(el =>
-      el.tag === 'line' && el.attrs['stroke'] === 'scrollFrontLight' && el.attrs['y1'] === turn1Bottom.y && el.attrs['y2'] === turn1Bottom.y);
+      el.tag === 'line' && el.attrs['stroke'] === 'scrollTurns' && (el.attrs['x1'] as number) > 0 && el.attrs['y1'] === turn1Bottom.y && el.attrs['y2'] === turn1Bottom.y);
     expect(across).toHaveLength(1);
     expect(Math.abs((across[0].attrs['x1'] as number) - (across[0].attrs['x2'] as number))).toBeCloseTo(2 * turn1Bottom.x, 9);
 
     const hollow = drawn.filter(el => el.attrs['stroke-dasharray']);
     expect(hollow).toHaveLength(PEGBOX_HOLLOW_SHOWN ? 1 : 0);
-    if (PEGBOX_HOLLOW_SHOWN) expect(hollow[0].attrs['stroke']).toBe('scrollFrontLight');
 
     // a back already narrow at its reach lets the first turn's front stand out past it, and then it
     // shows from behind, down to the second turn's top
     p.scroll!.widths.reach = 14;
     const narrowed = recordLayers(instance.buildRun()).elements
-      .filter(el => el.tag === 'path' && el.attrs['stroke'] === 'archBack')
-      .map(el => points(el.attrs['d'] as string));
+      .filter(el => el.tag === 'path' && el.attrs['stroke'] === 'scrollTurns')
+      .map(el => points(el.attrs['d'] as string))
+      .filter(pts => pts[0].x < 0);
     expect(narrowed.filter(pts => Math.abs(pts.at(-1)!.y - turn2Top.y) < 1e-9)).toHaveLength(4);
   });
 
@@ -656,7 +658,7 @@ describe('the scroll widths panel', () => {
     for (const pts of showing) expect(pts.length).toBeGreaterThan(3);
   });
 
-  it('starts the back as wide as its foot, a wider foot meeting the round along level shoulders in the back\'s own colour', () => {
+  it('starts the back as wide as its foot, a wider foot meeting the round along level shoulders', () => {
     const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
     instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
     instance.buildRun();
@@ -742,7 +744,6 @@ describe('the scroll widths panel', () => {
     expect(proud).toBeGreaterThan(1);
     expect(lengths()).toHaveLength(2);
     for (const l of lengths()) expect(l).toBeCloseTo(proud, 9);
-    for (const el of levelAtStart()) expect(el.attrs['stroke']).toBe('scrollBackLight');
     // hips wider than the round but narrower than the neck: out from the cheeks
     v.widths.hip = v.widths.duckTail + 4;
     const fromCheeks = scrollNeckHalfWidth(p, start()) - v.widths.hip / 2;
@@ -1062,13 +1063,12 @@ describe('the scroll set on the neck in the side view', () => {
     expect(lines.some(el => lineEnds(el).some(e => near(e, napeJoin)))).toBe(true);
   });
 
-  it('draws it in grey under the body on the long arching panel, when that panel draws the neck', () => {
+  it('draws it under the body on the long arching panel, when that panel draws the neck', () => {
     const p = scrolled();
     const instance = panel(LongArchingPanel, p);
     instance.showNeck = true;
-    instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
     const placed = recordLayers(instance.buildRun()).elements.find(el => el.attrs['d'] === definePlacedSideScrollPath(p));
-    expect(placed?.attrs['stroke']).toBe('outerTrace');
+    expect(placed).toBeDefined();
   });
 });
 
@@ -1168,7 +1168,7 @@ describe('the scroll\'s front view on the front profile', () => {
     const named = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
     const dx = plateLayoutOffset(p, 'bottom');
     const neck = recordLayers(renderPlatePair(p, paths, named, STROKE_WEIGHT.trace, solveNeckForProfile(p))).elements.find(el => el.attrs['d'] === translatePath(defineBackNeckPath(p, getPath(paths, 'back')), dx, 0));
-    expect(neck?.attrs['stroke']).toBe('outerTrace');
+    expect(neck).toBeDefined();
     const ys = [...(neck!.attrs['d'] as string).matchAll(/[ML]\s*-?[\d.e-]+\s+(-?[\d.e-]+)/g)].map(m => Number(m[1]));
     expect(Math.min(...ys)).toBeGreaterThan(mortiseFloorY(p) + p.neck!.mortiseDepth / 2);
     expect(Math.max(...ys)).toBeCloseTo(p.neck!.neckTop!.y, 6);

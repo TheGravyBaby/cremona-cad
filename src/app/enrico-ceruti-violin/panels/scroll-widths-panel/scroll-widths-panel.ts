@@ -128,7 +128,8 @@ export const renderScrollWidths = (p: EnricoCerutiParams, colors: CerutiColors, 
       if (half) renderPath(pathFromPolyline(Array.from({ length: 33 }, (_, i) => pointOnCircle({ x: center, y: station.at.y, r }, TURN.half + TURN.half * i / 32))), ink, STROKE_WEIGHT.guide)(g, ui);
       else renderCircle(new Circle(center, station.at.y, r), ink)(g, ui);
     }
-    for (const center of [back, front]) renderDashLine(new Pt(center, -stub), new Pt(center, scrollExtent(v).height), colors.neck, STROKE_WEIGHT.guide)(g, ui);
+    renderDashLine(new Pt(back, -stub), new Pt(back, scrollExtent(v).height), colors.scrollBack, STROKE_WEIGHT.guide)(g, ui);
+    renderDashLine(new Pt(front, -stub), new Pt(front, scrollExtent(v).height), colors.neck, STROKE_WEIGHT.guide)(g, ui);
   }
   if (showGuides) for (const station of stations) renderCrosshair(station.at, stationColor(colors, station.key))(g, ui);
 };
