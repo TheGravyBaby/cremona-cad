@@ -1,5 +1,6 @@
 // @vitest-environment node
-import { catenaryBetween, offsetPath, pathsBounds, samplePathToPolyline } from './pathMath';
+import { catenaryBetween, offsetPath } from './pathVibes';
+import { pathsBounds, samplePathToPolyline } from './pathMath';
 import { polylineCumulativeLengths, projectOntoPolyline } from './vibeMath';
 
 const sample = (d: string) => samplePathToPolyline(d, 0.1, true);

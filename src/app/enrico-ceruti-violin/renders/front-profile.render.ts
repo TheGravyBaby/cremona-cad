@@ -1,12 +1,11 @@
-import { renderPath } from '../../helpers/renderFuncs';
+import { renderPath, renderStroke, STROKE_WEIGHT } from '../../helpers/renderFuncs';
 import { translatePath } from '../../helpers/math/pathMath';
 import { CerutiColors, EnricoCerutiParams, PathEntry } from '../ceruti-types';
 import { FrontProfileSolve, getPath, getPathOrNull, hasOuterTrace, NeckProfileSolve, topPlatePaths } from '../calculation/outline/ceruti-calcs';
 import { plateLayoutOffset } from '../calculation/arching/ceruti-arch-geometry';
-import { renderScrollStroke, scrollBackInPlan, scrollFrontInPlan } from './scroll.render';
 import { defineBackNeckPath, defineFrontProfilePath, defineInnerPath, PlatePlan } from '../calculation/outline/ceruti-paths';
 import { SolveFailure } from '../../helpers/validators';
-import { STROKE_WEIGHT } from './render-constants';
+import { scrollBackInPlan, scrollFrontInPlan } from '../calculation/neck/ceruti-scroll-views';
 
 type Layer = (g: any, ui: any) => void;
 
@@ -28,7 +27,7 @@ function renderTopPlate(p: EnricoCerutiParams, plan: PlatePlan, colors: CerutiCo
   for (const d of body.purfling) layers.push(renderPath(d, colors.innerTrace, STROKE_WEIGHT.guide));
   for (const d of body.fHoles) layers.push(renderPath(d, holes.ink, holes.weight));
   if (front) layers.push(renderPath(front.neck, colors.outerTrace), renderPath(front.nut, colors.outerTrace));
-  if (front && solve.scroll) for (const stroke of scrollFrontInPlan(p)) layers.push(renderScrollStroke(stroke, colors.outerTrace));
+  if (front && solve.scroll) for (const stroke of scrollFrontInPlan(p)) layers.push(renderStroke(stroke, colors.outerTrace));
   return layers;
 }
 
@@ -66,7 +65,7 @@ export function renderPlatePair(p: EnricoCerutiParams, paths: PathEntry[], color
   if (solve.neck) {
     const neck = defineBackNeckPath(p, backOutline);
     if (neck) layers.push(renderPath(back(neck), colors.outerTrace));
-    if (solve.scroll) for (const stroke of scrollBackInPlan(p, dx)) layers.push(renderScrollStroke(stroke, colors.outerTrace));
+    if (solve.scroll) for (const stroke of scrollBackInPlan(p, dx)) layers.push(renderStroke(stroke, colors.outerTrace));
   }
   return layers;
 }

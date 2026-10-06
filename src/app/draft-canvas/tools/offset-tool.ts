@@ -1,7 +1,8 @@
 import * as d3 from 'd3';
 import { Arc, Circle, Pt, Rectangle } from '../../models/types';
 import { dist, lineFromTwoPoints, offsetArcRadius, offsetCircleRadius, offsetRectangle, pointOnCircle, signedPolygonArea, tangentUnitVectorFromLine } from '../../helpers/math/simpleGeometry';
-import { arcPathData, offsetPath } from '../../helpers/math/pathMath';
+import { arcPathData } from '../../helpers/math/pathMath';
+import { offsetPath } from '../../helpers/math/pathVibes';
 import { DraftTool, DraftToolHost } from './draft-tool';
 import { DraftShape, makeShapeId } from './toolbox-shape';
 import { drawTypedLabel, stylePreview, typedKey } from './two-point-tool';

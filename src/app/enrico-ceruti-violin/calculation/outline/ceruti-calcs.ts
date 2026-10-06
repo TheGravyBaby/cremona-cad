@@ -1,6 +1,7 @@
 import { circleCircleIntersections, inscribeCircleWithinCircle, interceptCirclesAndPoint, interceptCirclesAndPointCompound, solveTangentCircleAndLine, filletRightAngleCorner } from "../../../helpers/math/draftMath";
 import { angleFromCenter, dist, pointOnCircle, offsetArcRadius, flipRectAboutY, lineCircleIntersection, lineCircleIntersectionWithTolerance, lineFromPointAndSlope, lineFromTwoPoints, moveInVectorSpace, placeCircleOnPointAtAngle, redefineArcCircle, tangentUnitVectorFromLine, TURN, vectorFromSlope } from "../../../helpers/math/simpleGeometry";
-import { pathFromRoundedRect, pathFromCircle, pathFromRect, combinePathStrings, differenceFromManyPaths, intersectionFromTwoPaths, translatePath, mirroredLoop, splitPathStrings } from "../../../helpers/math/pathMath";
+import { pathFromRoundedRect, pathFromCircle, pathFromRect, combinePathStrings, translatePath, splitPathStrings } from "../../../helpers/math/pathMath";
+import { differenceFromManyPaths, intersectionFromTwoPaths, mirroredLoop } from "../../../helpers/math/pathVibes";
 import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Line, Pt, Rectangle } from "../../../models/types";
 import { error } from "../../../shared/message-emitter";
 import { reportFailures, SolveFailure, solveSection } from "../../../helpers/validators";

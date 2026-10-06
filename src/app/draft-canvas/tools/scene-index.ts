@@ -1,9 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Pt } from '../../models/types';
 import { RecordableLayer, RecordedElement, recordLayers } from '../../helpers/layer-recorder';
-import {
-  IDENTITY_MATRIX, Matrix2D, applyMatrix, arcCenterFromEndpoints, multiplyMatrices, parseSvgTransform, transformPath,
-} from '../../helpers/math/pathMath';
+import { IDENTITY_MATRIX, Matrix2D, applyMatrix, arcCenterFromEndpoints, multiplyMatrices, parseSvgTransform, transformPath } from '../../helpers/math/pathMath';
 import { angleFromCenter } from '../../helpers/math/simpleGeometry';
 import { pathFromPolyline } from '../../helpers/math/pathMath';
 import { DraftShape } from './toolbox-shape';

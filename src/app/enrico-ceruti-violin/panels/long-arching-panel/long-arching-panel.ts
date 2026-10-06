@@ -1,27 +1,21 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { archSplineKnots, SPLINE_PEAK_SOURCE } from '../../../helpers/math/pathMath';
+import { archSplineKnots, SPLINE_PEAK_SOURCE } from '../../../helpers/math/vibeMath';
 import { clamp } from '../../../helpers/math/simpleGeometry';
-import {
-  ArchCurve, ArchSpline, ArchSplinePoint, ArchingParams, CerutiColors, CerutiViewFlags,
-  EnricoCerutiParams, FlutingParams, RenderToggleKey,
-} from '../../ceruti-types';
-import {
-  clampSplinePointHeights, defaultArchingParams, maxRibTaperMm, splinePeakRow,
-} from '../../calculation/arching/ceruti-arching';
+import { ArchCurve, ArchSpline, ArchSplinePoint, ArchingParams, CerutiColors, CerutiViewFlags, EnricoCerutiParams, FlutingParams, RenderToggleKey } from '../../ceruti-types';
+import { clampSplinePointHeights, defaultArchingParams, maxRibTaperMm, splinePeakRow } from '../../calculation/arching/ceruti-arching';
 import { defaultFlutingParams, LongArchSolve, solveLongArch } from '../../calculation/arching/ceruti-arch-geometry';
 import { calculateOuterArcs, solveNeckForProfile } from '../../calculation/outline/ceruti-calcs';
-import {
-  archHeightInfo, curveTypeInfo, transitionInfo, plateThicknessInfo, ribHeightInfo, splinePointInfo,
-} from '../field-info';
-import { HighlightedSplinePoint } from '../../renders/render-constants';
-import { renderBodySection, renderSideView } from '../../renders/body-section.render';
+import { archHeightInfo, curveTypeInfo, transitionInfo, plateThicknessInfo, ribHeightInfo, splinePointInfo } from '../field-info';
+import { renderTranslated } from '../../../helpers/renderFuncs';
 import { renderNeck } from '../neck-panel/neck-panel';
 import { error } from '../../../shared/message-emitter';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { applyRowMove, RowMove, RowReorderDirective } from '../../../shared/row-reorder';
+import { renderBodySection, sideViewOffsetX } from '../../renders/body-section.render';
+import { HighlightedSplinePoint } from '../../renders/render-constants';
 
 /** One row of a plate's spline table: a control point, or the peak among them. */
 interface SplineRow {
@@ -259,7 +253,7 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
     // the neck the user has set, re-solved so it follows the arch and the rib taper, in grey under the body
     const p = this.params;
     const { neck, scroll } = this.showNeck ? solveNeckForProfile(p, this.solved.top) : { neck: false, scroll: false };
-    return [renderSideView(p, [
+    return [renderTranslated(sideViewOffsetX(p), 0, [
       ...(neck ? [renderNeck(p, this.colors, { strings: false, bridge: false, scroll, ground: this.colors.outerTrace })] : []),
       renderBodySection(p, this.colors, {
         solved: this.solved,

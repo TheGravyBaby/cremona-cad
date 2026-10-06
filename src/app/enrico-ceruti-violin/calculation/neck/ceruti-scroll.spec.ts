@@ -1,6 +1,5 @@
 // @vitest-environment node
-import { calculateScroll, calculateScrollWidths, defaultVoluteParams, duckTailRadius, duckTailRoundTop, pegboxCavity, pegboxHipHeight, pegboxWidth, scrollBackWidths, scrollPathStretches, scrollFrontWidths, ScrollKey, scrollLines, scrollNeckHalfWidth, scrollWidthStations, spiralArcs, TO_FRONT, VoluteSpec, VOLUTE_STYLE_LABELS } from './ceruti-scroll';
-import { voluteConstruction } from '../../renders/scroll.render';
+import { calculateScroll, calculateScrollWidths, defaultVoluteParams, duckTailRadius, duckTailRoundTop, pegboxCavity, pegboxHipHeight, pegboxWidth, scrollBackWidths, scrollPathStretches, scrollFrontWidths, ScrollKey, scrollLines, scrollNeckHalfWidth, scrollWidthStations, spiralArcs, TO_FRONT, VoluteSpec, VOLUTE_STYLE_LABELS, voluteConstruction } from './ceruti-scroll';
 import { defaultNeckParams, defaultStringSetup } from './ceruti-neck';
 import { defaultViolin } from '../../ceruti-fixtures';
 import { EnricoCerutiParams, ScrollParams, VoluteStyle } from '../../ceruti-types';

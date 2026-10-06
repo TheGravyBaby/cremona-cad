@@ -1,20 +1,17 @@
 import { TestBed } from '@angular/core/testing';
 import { maxRibTaperMm, ribHeightAt, solveRibTaper } from '../calculation/arching/ceruti-arching';
-import { samplePathToPolyline, splineZAt, splitPathStrings, translatePath } from '../../helpers/math/pathMath';
+import { samplePathToPolyline, splitPathStrings, translatePath, applyMatrix } from '../../helpers/math/pathMath';
+import { splineZAt } from '../../helpers/math/vibeMath';
 import { recordLayers } from '../../helpers/layer-recorder';
 import { archedViolin, defaultViolin } from '../ceruti-fixtures';
-import { CerutiColors, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, DefaultParams, EnricoCerutiParams, PathEntry } from '../ceruti-types';
+import { CerutiColors, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, DefaultParams, EnricoCerutiParams, PathEntry, VoluteStyle } from '../ceruti-types';
 import { ensureFrontProfilePaths, getPath, solveNeckForProfile } from '../calculation/outline/ceruti-calcs';
 import { plateLayoutOffset } from '../calculation/arching/ceruti-arch-geometry';
-import { STROKE_WEIGHT } from '../renders/render-constants';
-import { sideViewOffsetX } from '../renders/body-section.render';
 import { defineBackNeckPath, defineFholePath, defineInnerPath, defineOuterPath, definePlacedSideScrollPath, definePurflingPath, mortiseFloorY, scrollOnNeck } from '../calculation/outline/ceruti-paths';
-import { applyMatrix } from '../../helpers/math/pathMath';
 import { vectorFromSlope } from '../../helpers/math/simpleGeometry';
 import { mortiseFingerboardIntersect, plateEdgeAtNeck } from '../calculation/neck/ceruti-neck';
 import { defaultFHolePlacement, FHolePlacementPanel } from './f-hole-placement-panel/f-hole-placement-panel';
 import { renderFrontProfile, renderPlatePair } from '../renders/front-profile.render';
-import { scrollBackInPlan, scrollBackViewStrokes, scrollFrontInPlan } from '../renders/scroll.render';
 import { CenterBoutPanel } from './center-bout-panel/center-bout-panel';
 import { CornersPanel } from './corners-panel/corners-panel';
 import { CrossArchingPanel } from './cross-arching-panel/cross-arching-panel';
@@ -29,8 +26,10 @@ import { ScrollPanel } from './scroll-panel/scroll-panel';
 import { ScrollWidthsPanel } from './scroll-widths-panel/scroll-widths-panel';
 import { defaultVoluteParams, duckTailRadius, duckTailRoundTop, pegboxHipHeight, pegboxWidth, scrollBackWidths, scrollExtent, scrollLines, scrollNeckHalfWidth, scrollPathStretches, scrollWidthStations, spiralArcs as styleArcs, VOLUTE_STYLE_LABELS } from '../calculation/neck/ceruti-scroll';
 import { VolutePanel } from './volute-panel/volute-panel';
-import { VoluteStyle } from '../ceruti-types';
 import { Circle, Pt } from '../../models/types';
+import { scrollBackInPlan, scrollBackViewStrokes, scrollFrontInPlan } from '../calculation/neck/ceruti-scroll-views';
+import { sideViewOffsetX } from '../renders/body-section.render';
+import { STROKE_WEIGHT } from '../../helpers/renderFuncs';
 
 /**
  * What the panels actually draw.

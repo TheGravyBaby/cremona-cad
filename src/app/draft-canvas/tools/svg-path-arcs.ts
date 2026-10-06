@@ -214,7 +214,7 @@ const fmt = (n: number): string => String(Math.round(n * 1e6) / 1e6);
 
 /**
  * Rewrites any SVG path data as absolute M, L, C, Q, A and Z — the subset every helper in
- * helpers/math/pathMath.ts understands. Relative commands are resolved against the current
+ * helpers/math/pathMath.ts and pathVibes.ts understands. Relative commands are resolved against the current
  * point, H and V become L, and S and T get their reflected control point spelled out. A path
  * that is already in that subset comes back with the same commands and numbers.
  */

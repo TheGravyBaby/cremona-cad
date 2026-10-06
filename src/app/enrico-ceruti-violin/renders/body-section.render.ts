@@ -1,12 +1,11 @@
 import { Pt } from '../../models/types';
-import { renderPath, renderPointHalo, renderSegment } from '../../helpers/renderFuncs';
-import { archSplineKnots, buildCatenaryPath, buildCycloidPath, buildSplinePath } from '../../helpers/math/pathMath';
+import { renderPath, renderPointHalo, renderSegment, renderGuideBaseline, renderGuideKnot, renderGuideMeasure, STROKE_WEIGHT } from '../../helpers/renderFuncs';
+import { archSplineKnots } from '../../helpers/math/vibeMath';
 import { ArchCurve, CerutiColors, EnricoCerutiParams, FlutingParams } from '../ceruti-types';
-import { ribHeightAt, ribLine, solveRibTaper, topPlatePlacement } from '../calculation/arching/ceruti-arching';
+import { ribHeightAt, ribLine, solveRibTaper, topPlatePlacement, buildArchPathFor, archGuideKnots } from '../calculation/arching/ceruti-arching';
 import { channelCapPath, LongArchSolve } from '../calculation/arching/ceruti-arch-geometry';
-import { HighlightedSplinePoint, STROKE_WEIGHT } from './render-constants';
 import { defaultStringSetup } from '../calculation/neck/ceruti-neck';
-import { renderGuideBaseline, renderGuideKnot, renderGuideMeasure } from './module-guide.render';
+import { HighlightedSplinePoint } from './render-constants';
 
 // the side elevation: the rib between the two plates, the top growing up off it and the back down.
 // Drawn by the long-arching panel on its own and by the neck panel as the ground the neck stands on
@@ -20,12 +19,6 @@ export function sideViewOffsetX(p: EnricoCerutiParams): number {
   const reach = Math.max(a.ribHeightLower, a.ribHeightUpper) + a.top.thickness + a.top.arch.archHeight + bridgeHeight;
   return -(0.75 * p.width + reach);
 }
-
-export const renderSideView = (p: EnricoCerutiParams, layers: Array<(g: any, ui: any) => void>) => (g: any, ui: any): void => {
-  const dx = sideViewOffsetX(p);
-  const side = { g: g.append('g').attr('transform', `translate(${dx},0)`), ui: ui.append('g').attr('transform', `translate(${dx},0)`) };
-  for (const layer of layers) layer(side.g, side.ui);
-};
 
 export type Plate = 'top' | 'bottom';
 
@@ -106,14 +99,6 @@ export function renderBodySection(p: EnricoCerutiParams, colors: CerutiColors, o
   }
 }
 
-function buildArchPathFor(arch: ArchCurve, span: number, yStart: number, xBase: number, sign: 1 | -1, farZ: number): string {
-  switch (arch.type) {
-    case 'catenary': return buildCatenaryPath(arch.archHeight, span, yStart, xBase, sign);
-    case 'cycloid':  return buildCycloidPath(arch.archHeight, span, yStart, xBase, sign, arch.d);
-    case 'spline':   return buildSplinePath(arch.archHeight, span, yStart, xBase, sign, arch.points, arch.peak, undefined, farZ);
-  }
-}
-
 // halo behind the spline point whose field has focus, drawn with the guides off too. A mirrored
 // point halos both of its knots
 function renderSplineHighlight(arch: ArchCurve, span: number, yStart: number, xBase: number, sign: 1 | -1, highlighted: HighlightedSplinePoint | null) {
@@ -139,14 +124,4 @@ function renderArchGuide(arch: ArchCurve, span: number, yStart: number, xPlate: 
       renderGuideKnot(at, color)(g, ui);
     }
   };
-}
-
-// a spline is its control points, so every knot is marked; a catenary or cycloid follows from the
-// one height at mid-span
-function archGuideKnots(arch: ArchCurve): { t: number; z: number }[] {
-  switch (arch.type) {
-    case 'spline': return archSplineKnots(arch.archHeight, arch.points, arch.peak ?? 0.5);
-    case 'catenary':
-    case 'cycloid': return [{ t: 0.5, z: arch.archHeight }];
-  }
 }

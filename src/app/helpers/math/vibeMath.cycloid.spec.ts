@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { cycloidZAt } from './pathMath';
+import { cycloidZAt } from './vibeMath';
 
 describe('cycloidZAt windowed percentage', () => {
   const hEff = 12;

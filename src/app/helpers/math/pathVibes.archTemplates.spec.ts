@@ -1,5 +1,6 @@
 // @vitest-environment node
-import { closeProfileToBlank, pathsBounds, samplePathToPolyline } from './pathMath';
+import { closeProfileToBlank } from './pathVibes';
+import { pathsBounds, samplePathToPolyline } from './pathMath';
 
 describe('closeProfileToBlank', () => {
   // A simple hump: flat (y=0) at both ends, peaking at y=3 in the middle — stands

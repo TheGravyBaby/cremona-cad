@@ -3,7 +3,8 @@ import {
   angleFromCenter, dist, intersectLines, lineFromTwoPoints,
   moveInVectorSpace, pointOnCircle, TURN, vectorFromSlope,
 } from '../../../helpers/math/simpleGeometry';
-import { pathFromArc, pathFromLine, unifyConnectedSvgPaths } from '../../../helpers/math/pathMath';
+import { pathFromArc, pathFromLine } from '../../../helpers/math/pathMath';
+import { unifyConnectedSvgPaths } from '../../../helpers/math/pathVibes';
 import { EnricoCerutiParams, FlutingParams, NeckParams, StringSetup } from '../../ceruti-types';
 import { reportFailures, SolveFailure } from '../../../helpers/validators';
 import { placeOnTopPlate, solveRibTaper, topPlatePlacement } from '../arching/ceruti-arching';

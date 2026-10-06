@@ -1,145 +1,21 @@
-import { arcReach, dist, normalizeRadians, pointOnCircle, TURN } from '../../helpers/math/simpleGeometry';
-import { occludePath, pathFromLine, pathFromPolygon, pathFromPolyline } from '../../helpers/math/pathMath';
-import { clipPolylineAtY, polylinePointAtY } from '../../helpers/math/vibeMath';
-import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderCrosshair, renderDashLine, renderPath, renderPointHalo, renderPolygon, renderSegment, renderSegmentHalo } from '../../helpers/renderFuncs';
-import { Arc, Pt, Pt3D } from '../../models/types';
-import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, ScrollParams } from '../ceruti-types';
-import { duckTailRadius, pegboxCavity, pegboxHipHeight, pegboxWidth, scrollPathStretches, ScrollFailure, ScrollStretches, ScrollKey, scrollExtent, scrollFrontWidths, scrollLines, scrollNeckHalfWidth, ScrollStationKey, scrollWidthStations, TO_FRONT } from '../calculation/neck/ceruti-scroll';
-import { HighlightedArc, HighlightedSegment, STROKE_WEIGHT } from './render-constants';
-import { scrollOnNeck } from '../calculation/outline/ceruti-paths';
+import { pointOnCircle, TURN } from '../../../helpers/math/simpleGeometry';
+import { occludePath } from '../../../helpers/math/pathVibes';
+import { pathFromLine, pathFromPolygon, pathFromPolyline } from '../../../helpers/math/pathMath';
+import { clipPolylineAtY, polylinePointAtY } from '../../../helpers/math/vibeMath';
+import { StrokeShape, STROKE_WEIGHT } from '../../../helpers/renderFuncs';
+import { Pt, Pt3D } from '../../../models/types';
+import { EnricoCerutiParams } from '../../ceruti-types';
+import { duckTailRadius, pegboxHipHeight, pegboxWidth, scrollPathStretches, ScrollStretches, scrollFrontWidths, scrollLines, scrollNeckHalfWidth } from './ceruti-scroll';
+import { scrollOnNeck } from '../outline/ceruti-paths';
 
-// the scroll in ceruti-scroll.ts's frame, the neck's tilt taken out, read off p.volute as
-// calculateScroll left it
-
-export type ScrollViewFlags = Pick<CerutiViewFlags, 'showModuleArcs' | 'showAllArcs' | 'showModuleGuides' | 'showVoluteConstruction'>;
-
-// a spiral arc's colour on canvas and in the four point's fields, innermost first: each turn's two
-// tones alternating arc by arc, the turns coming round again past three
-export function arcColor(colors: CerutiColors, i: number): string {
-  const turns = [
-    [colors.voluteTurn1, colors.voluteTurn1Alt],
-    [colors.voluteTurn2, colors.voluteTurn2Alt],
-    [colors.voluteTurn3, colors.voluteTurn3Alt],
-  ];
-  return turns[Math.floor(i / 4) % 3][i % 2];
-}
-
-// a scroll arc runs counterclockwise from start to end, so one past a half turn is the long way round
-const longArc = (arc: Arc) => normalizeRadians(arc.end - arc.start) > TURN.half;
-
-// every arc draws in its own colour; module arcs add its centre and the two radii that bound it
-const scrollArc = (arc: Arc, color: string, fancy: boolean) =>
-  fancy ? renderArcFromArcFancy(arc, color, longArc(arc)) : renderArcFromArc(arc, color, STROKE_WEIGHT.trace, longArc(arc));
+// the scroll seen from behind and from in front, as strokes with ink names, for the widths panel and
+// set on the neck's end in the plan profiles. Drawn the way a draughtsman would, not projected: the
+// volute's turns stand out further the nearer the eye, so each stretch of the path is drawn as far as
+// the next turn nearer the viewer lets it be seen, and nothing hidden is drawn.
+// calculateScrollWidths holding each turn at least as wide as the one before keeps that order true
 
 // how far each view carries the neck on below the scroll
-const neckStub = (p: EnricoCerutiParams) => 2 * p.neck!.thickness;
-
-
-// the nut and the neck's end below it, for context. Module guides run the neck's front up to the
-// crown's top, then back to S1's furthest reach
-export const renderScrollNeck = (p: EnricoCerutiParams, colors: CerutiColors, showGuides: boolean, failures: ScrollFailure[] = []) => (g: any, ui: any): void => {
-  const v = p.scroll!;
-  const { thickness } = p.neck!;
-  const { nutThickness, nutHeight } = p.stringSetup!;
-  const stub = neckStub(p);
-
-  renderPolygon([new Pt(0, 0), new Pt(0, nutHeight), new Pt(nutThickness, nutHeight), new Pt(nutThickness, 0)], colors.nut, STROKE_WEIGHT.section)(g, ui);
-  renderSegment(new Pt(0, -stub), new Pt(0, 0), colors.neckOff, STROKE_WEIGHT.section)(g, ui);
-  // the neck's back runs on up to where the nape meets it, or to the nut's level while the nape is unsolved
-  const backTop = failures.some(f => f.unsolved.includes('nape')) ? 0 : v.nape.y;
-  if (backTop > -stub) renderSegment(new Pt(-thickness, -stub), new Pt(-thickness, backTop), colors.neckOff, STROKE_WEIGHT.section)(g, ui);
-
-  if (!showGuides) return;
-  const crownTop = Math.max(...[v.S0, v.S1].flatMap(a => arcReach(a, TURN.quarter)).map(pt => pt.y));
-  const S1Back = Math.min(...arcReach(v.S1, TURN.half).map(pt => pt.x));
-  if (!Number.isFinite(crownTop) || !Number.isFinite(S1Back)) return;
-  renderDashLine(new Pt(0, 0), new Pt(0, crownTop), colors.neck, STROKE_WEIGHT.guide)(g, ui);
-  renderDashLine(new Pt(0, crownTop), new Pt(S1Back, crownTop), colors.neck, STROKE_WEIGHT.guide)(g, ui);
-};
-
-// the eye, the spiral and the crown (S0, S1). The construction toggle adds the figure the spiral's
-// centres are found on
-export const renderVolute = (
-  p: EnricoCerutiParams,
-  colors: CerutiColors,
-  flags: ScrollViewFlags,
-  currentModule: boolean,
-  highlighted: HighlightedArc | null,
-  failures: ScrollFailure[] = [],
-) => (g: any, ui: any): void => {
-  const v = p.scroll!;
-  const unsolved = new Set(failures.flatMap(f => f.unsolved));
-  const solved = (key: ScrollKey) => !unsolved.has(key);
-  const fancy = (currentModule && flags.showModuleArcs) || flags.showAllArcs;
-
-  if (highlighted) renderArcHalo(highlighted.arc, highlighted.color, undefined, undefined, longArc(highlighted.arc))(g, ui);
-
-  if (!solved('spiral')) return;
-  renderCircle(v.eye, colors.neckOff)(g, ui);
-  if (currentModule && flags.showVoluteConstruction) {
-    for (const line of voluteConstruction(v)) {
-      const placed = line.map(pt => new Pt(v.eye.x + pt.x, v.eye.y + pt.y));
-      for (let i = 1; i < placed.length; i++) renderSegment(placed[i - 1], placed[i], colors.neckOff, STROKE_WEIGHT.guide, true)(g, ui);
-    }
-  }
-
-  const inward = [...v.spiral!].reverse();
-  for (let i = 0; i < inward.length; i++) scrollArc(inward[i], arcColor(colors, i), fancy)(g, ui);
-
-  // the crown keeps the warm pair though it runs on into the back, which is cool
-  solved('S0') && scrollArc(v.S0, colors.scrollFrontLight, fancy)(g, ui);
-  solved('S1') && scrollArc(v.S1, colors.scrollFront, fancy)(g, ui);
-};
-
-// the back from S2 down to the nape, and the front up from the nut. A straight takes its arc's
-// colour, the square line the nape's; module guides box the head
-export const renderScroll = (
-  p: EnricoCerutiParams,
-  colors: CerutiColors,
-  flags: ScrollViewFlags,
-  currentModule: boolean,
-  highlighted: HighlightedArc | null,
-  highlightedLine: HighlightedSegment | null,
-  failures: ScrollFailure[] = [],
-) => (g: any, ui: any): void => {
-  const v = p.scroll!;
-  const unsolved = new Set(failures.flatMap(f => f.unsolved));
-  const solved = (key: ScrollKey) => !unsolved.has(key);
-  const fancy = (currentModule && flags.showModuleArcs) || flags.showAllArcs;
-
-  if (highlighted) renderArcHalo(highlighted.arc, highlighted.color, undefined, undefined, longArc(highlighted.arc))(g, ui);
-  if (highlightedLine) renderSegmentHalo(...highlightedLine.line, highlightedLine.color)(g, ui);
-
-  if (currentModule && flags.showModuleGuides && solved('S3')) {
-    const { height, width } = scrollExtent(v);
-    const corners = [new Pt(0, 0), new Pt(0, height), new Pt(-width, height), new Pt(-width, 0)];
-    for (let i = 0; i < 4; i++) renderDashLine(corners[i], corners[(i + 1) % 4], colors.neck, STROKE_WEIGHT.guide)(g, ui);
-  }
-
-  solved('S2') && scrollArc(v.S2, colors.scrollBackLight, fancy)(g, ui);
-  solved('S3') && scrollArc(v.S3, colors.scrollBack, fancy)(g, ui);
-  solved('nape') && scrollArc(v.nape, colors.scrollNape, fancy)(g, ui);
-  solved('F0') && scrollArc(v.F0, colors.scrollFront, fancy)(g, ui);
-  solved('F1') && scrollArc(v.F1, colors.scrollFrontLight, fancy)(g, ui);
-
-  // a straight of no length, or a duck tail already at the nape, has nothing to draw
-  const line = ([a, b]: [Pt, Pt], color: string) => dist(a, b) > 1e-9 && renderSegment(a, b, color, STROKE_WEIGHT.trace)(g, ui);
-  const lines = scrollLines(p);
-  solved('backStraight') && line(lines.backStraight, colors.scrollBackLight);
-  solved('nape') && line(lines.square, colors.scrollNape);
-  solved('flat') && line(lines.flat, colors.scrollFrontLight);
-  solved('frontStraight') && line(lines.frontStraight, colors.scrollFront);
-};
-
-// a width's colour on canvas and in its field
-export function stationColor(colors: CerutiColors, key: ScrollStationKey): string {
-  const inks: Record<ScrollStationKey, string> = {
-    nut: colors.scrollWidthNut, hip: colors.scrollWidthHip, throat: colors.scrollWidthThroat,
-    crown: colors.scrollWidthCrown, turn1Bottom: colors.scrollWidthTurn1Bottom, turn2Top: colors.scrollWidthTurn2Top,
-    turn2Bottom: colors.scrollWidthTurn2Bottom, eye: colors.scrollWidthEye,
-  };
-  return inks[key];
-}
+export const scrollNeckStub = (p: EnricoCerutiParams) => 2 * p.neck!.thickness;
 
 function halfWidthAtHeight(pts: Pt3D[], y: number): number | null {
   return polylinePointAtY(pts, y)?.x ?? null;
@@ -187,50 +63,9 @@ function pegboxOutline(p: EnricoCerutiParams, start: Pt3D) {
   return { below, cheeks, footEdge, foot, walls, bottom };
 }
 
-// the side profile with a crosshair on each width and the pegbox's hollow dashed inside it, and the
-// path seen from behind and from the front: the back view beside the scroll's furthest reach, the
-// front view beside the nut. Each view carries the neck on below as the side view does.
-//
-// The two views are drawn the way a draughtsman would, not projected: the volute's turns stand out
-// further the nearer the eye, so each stretch of the path is drawn as far as the next turn nearer
-// the viewer lets it be seen, and nothing hidden is drawn. calculateScrollWidths holding each turn
-// at least as wide as the one before is what keeps that order true
-export const renderScrollWidths = (p: EnricoCerutiParams, colors: CerutiColors, focused: ScrollStationKey | null, showGuides: boolean) => (g: any, ui: any): void => {
-  const v = p.scroll!;
-  const { nutThickness } = p.stringSetup!;
-  const stations = scrollWidthStations(p);
-
-  const gap = 20;
-  const widest = Math.max(v.widths.eye, v.widths.hip, p.stringSetup!.nutWidth) / 2;
-  const back = -scrollExtent(v).width - gap - widest;
-  const front = nutThickness + gap + widest;
-
-  const marked = stations.find(station => station.key === focused);
-  if (marked) {
-    const ink = stationColor(colors, marked.key);
-    renderPointHalo(marked.at, ink)(g, ui);
-    for (const center of [back, front]) {
-      for (const side of [1, -1]) renderPointHalo(new Pt(center + side * marked.width / 2, marked.at.y), ink)(g, ui);
-    }
-  }
-
-  const stub = neckStub(p);
-  for (const stroke of scrollBackViewStrokes(p, (x, y) => new Pt(back + x, y), -stub)) renderScrollStroke(stroke, colors[stroke.ink])(g, ui);
-  for (const stroke of scrollFrontViewStrokes(p, (x, y) => new Pt(front + x, y), -stub)) renderScrollStroke(stroke, colors[stroke.ink])(g, ui);
-
-  // in the side view the hollow is inside the wood
-  const cavity = pegboxCavity(p);
-  if (cavity) renderPath(pathFromPolyline(cavity), colors.scrollFrontLight, STROKE_WEIGHT.trace, 1, '4,4')(g, ui);
-  if (showGuides) for (const station of stations) renderCrosshair(station.at, stationColor(colors, station.key))(g, ui);
-};
-
 export type ScrollViewInk = 'archTop' | 'archBack' | 'scrollFrontLight' | 'scrollBackLight' | 'nut' | 'neckOff';
-export type ScrollViewStroke = { ink: ScrollViewInk; weight: number } & ({ d: string } | { line: [Pt, Pt] } | { polygon: Pt[] });
 
-export const renderScrollStroke = (stroke: ScrollViewStroke, ink: string) =>
-  'line' in stroke ? renderSegment(stroke.line[0], stroke.line[1], ink, stroke.weight)
-    : 'polygon' in stroke ? renderPolygon(stroke.polygon, ink, stroke.weight)
-      : renderPath(stroke.d, ink, stroke.weight);
+export type ScrollViewStroke = { ink: ScrollViewInk; weight: number } & StrokeShape;
 
 // the strokes of a view, each point put where `place` says: x across from the centreline, y up the
 // neck. What hides what is worked out looking along the neck's own normal, as the scroll widths
@@ -436,58 +271,4 @@ export function scrollFrontInPlan(p: EnricoCerutiParams): ScrollViewStroke[] {
 // scroll; below the nut they're the profile's own
 export function scrollBackInPlan(p: EnricoCerutiParams, dx: number): ScrollViewStroke[] {
   return scrollBackViewStrokes(p, onNeckInPlan(p, dx), 0);
-}
-
-// the figure each style finds its centres on, as polylines in the eye's frame
-export function voluteConstruction(v: ScrollParams): Pt[][] {
-  const r = v.eye.r;
-  const square = (left: number, right: number, bottom: number, top: number) =>
-    [new Pt(left, bottom), new Pt(right, bottom), new Pt(right, top), new Pt(left, top), new Pt(left, bottom)];
-
-  switch (v.style) {
-    // the walk of centres
-    case 'fourPoint':
-      return [[...v.spiral!].reverse().map(a => new Pt(a.x - v.eye.x, a.y - v.eye.y))];
-
-    // a ray out to the last point on each of the eight lines
-    case 'archimedean':
-      return Array.from({ length: 8 }, (_, ray) => {
-        const eighths = ray ? 8 + ray : 2 * TO_FRONT;
-        return [new Pt(0, 0), pointOnCircle({ x: 0, y: 0, r: r + v.pitch * eighths / 8 }, ray * TURN.eighth)];
-      });
-
-    // the line of centres
-    case 'serlio':
-      return [[new Pt(-r, 0), new Pt(r, 0)]];
-
-    // the eye's inscribed square, and his outer square on its edge midpoints with its diagonals
-    case 'salviati': {
-      const h = r / 2;
-      return [
-        [0, 1, 2, 3, 4].map(i => pointOnCircle({ x: 0, y: 0, r }, i * TURN.quarter)),
-        square(-h, h, -h, h),
-        [new Pt(-h, -h), new Pt(h, h)],
-        [new Pt(-h, h), new Pt(h, -h)],
-      ];
-    }
-
-    // the eye's horizontal diameter and his three squares hanging from it
-    case 'goldmann':
-      return [
-        [new Pt(-r, 0), new Pt(r, 0)],
-        ...[1, 2, 3].map(k => square(-k * r / 6, k * r / 6, -k * r / 3, 0)),
-      ];
-
-    // the seed, its middle lines, and the eye's two axes out to the spiral's furthest reach
-    case 'kelly': {
-      const s = v.seedLength / 4;
-      const reach = Math.max(r, ...v.spiral!.map(a => dist(v.eye, a) + a.r));
-      return [
-        square(-s / 2, s / 2, -2 * s, 2 * s),
-        ...[-1, 0, 1].map(k => [new Pt(-s / 2, k * s), new Pt(s / 2, k * s)]),
-        [new Pt(0, -reach), new Pt(0, reach)],
-        [new Pt(-reach, 0), new Pt(reach, 0)],
-      ];
-    }
-  }
 }

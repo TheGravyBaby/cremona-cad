@@ -19,14 +19,15 @@ The folders are reading groups, not dependency layers — `ceruti-calcs` reaches
 | `calculation/arching/ceruti-arch-geometry.ts` | The gouge's circular section, the crown, and the tangency joining them. Answers "what shape is the section here". |
 | `calculation/arching/ceruti-surface.ts` | The evaluable height field z(x,y) over the plan view. Cross-arch templates, STL. |
 | `calculation/neck/ceruti-neck.ts` | The neck set in the side elevation: `calculateNeck` places the neck wood's four corners, the heel arc and the bridge on `p.neck`, and the functions beside it read the dressing (button, nut block, fingerboard, bridge wedge, guides, the neck's own path) off those for the render. Hangs off the top plate's edge via `topPlatePlacement`, so the rib taper carries through. |
-| `calculation/neck/ceruti-scroll.ts` | The scroll in its own side-view frame: the volute's spiral styles about the eye, and `calculateScroll`, which lays the spiral out and runs the back and front off it, writing every arc onto `p.scroll` the way `calculateNeck` writes `p.neck`. Three panels edit it, all drawing through `renders/scroll.render.ts`: volute (the spiral and the crown, S0–S1), scroll (the back from S2 on, and the front), and scroll widths (the back and front views beside the side profile, see *The scroll's widths* below). |
+| `calculation/neck/ceruti-scroll.ts` | The scroll in its own side-view frame: the volute's spiral styles about the eye, and `calculateScroll`, which lays the spiral out and runs the back and front off it, writing every arc onto `p.scroll` the way `calculateNeck` writes `p.neck`. Three panels edit it, each drawing its own part: volute (the spiral and the crown, S0–S1), scroll (the back from S2 on, and the front), and scroll widths (the back and front views beside the side profile, see *The scroll's widths* below). |
+| `calculation/neck/ceruti-scroll-views.ts` | The scroll seen from behind and in front, as strokes with ink names: the scroll widths panel draws them beside the side profile, and the plan profiles set them on the neck's end. See *The scroll's widths* below. |
 | `calculation/neck/ceruti-neck-template.ts` | The neck and scroll template for the export panel: the side outline as one closed loop, neck foot to duck tail, and the volute inside it as a slotted stencil. See *The neck template* below. |
 | `ceruti-types.ts` | `EnricoCerutiParams` and the whole serialized shape. `CerutiColors`, view flags. Stays at the top level with `ceruti-serialization.spec.ts`, which tests its save-and-reopen contract, and `ceruti-fixtures.ts`, the test fixtures every group's specs share. |
 | `templates/ceruti-templates.ts` | Bundled historical instruments (Strad Goetz, Del Gesu Baltic, …) as pasted recipe JSON. **Append-only** — add instruments, don't restructure. |
 | `templates/corpus/` | Instruments traced from open-licence museum records — one `.json` file each, listed in `templates/corpus/index.ts`. Same type as the templates above, but carrying a `TemplateMeta` and a per-image `ImageCredit` so the numbers and the pixels can each be rechecked. New instruments go here, not in `ceruti-templates.ts`. |
 | `templates/local/` | Gitignored developer scratch space — traces and theories with no provenance to check, never shipped, never swept by the suite. Shows up in the picker only on a local dev build. See that folder's `README.md`. |
 | `panels/` | One folder per sidebar panel. Panels are thin; see the layer rule in the root CLAUDE.md. `panels/field-info.ts` holds the `*Info()` help text behind each field's info button; `panels/render-toggles/` the strip of per-panel view toggles. |
-| `renders/` | SVG emitters for the arching views, plus geometry that only serves one view. `body-section.render.ts` is the side elevation both the long-arching and neck panels draw on; `scroll.render.ts` the same for the volute, scroll and scroll widths panels. `front-profile.render.ts` is the instrument as far as it's been taken, see *The front profile* below. |
+| `renders/` | Violin drawing several panels share. `front-profile.render.ts` is the instrument as far as it's been taken, see *The front profile* below; `body-section.render.ts` the side elevation both the long-arching and neck panels draw on; `render-constants.ts` the palette. A panel's own renders live in its panel file. |
 
 `ceruti-calcs.ts` → `ceruti-paths.ts` is the 2D outline pipeline; `ceruti-arching.ts` →
 `ceruti-arch-geometry.ts` → `ceruti-surface.ts` is the 3D one. The split between the last two is
@@ -353,7 +354,7 @@ section first → long arch carved to a template → crown across. The panel ord
   `neckHalfWidthAt` needs the whole neck solved against the body.
 - **The back and front views are drawn as a draughtsman would, not projected.** `scrollPathStretches`
   cuts the path at the crown and the turns into six stretches, each up the volute's back or down
-  its front, and `renderScrollWidths` lists per view which show and which stop at the height of the
+  its front, and `scrollBackViewStrokes`/`scrollFrontViewStrokes` list which show and which stop at the height of the
   next turn nearer the viewer. Those cuts alone turned out not to be enough (2026-10-05): which of
   two stretches at a height is the wider depends on the widths entered, so every stretch but the
   nearest also passes through `seen`, which drops points behind a stretch nearer the viewer
@@ -425,7 +426,7 @@ section first → long arch carved to a template → crown across. The panel ord
 
 - **The front profile sits on x = 0 and the side profile to its left, on every panel** (2026-10-06).
   Every plan view already centred the front on the origin. The side elevation is still drawn in its
-  own frame (x up off the back, y down the body) and moved over by `renderSideView`, one
+  own frame (x up off the back, y down the body) and moved over by `renderTranslated`, one
   `translate` on a group, to `sideViewOffsetX`: far enough left that the bridge's top clears the
   plan's widest point by a quarter of the body's width. It's read off the body and the bridge's
   height alone, so the long arching and neck panels put it in the same place whether or not the

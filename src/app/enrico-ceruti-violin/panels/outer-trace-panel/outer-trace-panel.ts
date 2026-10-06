@@ -2,7 +2,7 @@ import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { flipArcAboutY, flipCircleAboutY } from '../../../helpers/math/simpleGeometry';
 import { adjustArcEnd } from '../../../helpers/math/arcDegrees';
-import { renderArcFromArc, renderArcFromArcFancy, renderCircle, renderPath } from '../../../helpers/renderFuncs';
+import { renderArcFromArc, renderArcFromArcFancy, renderCircle, renderPath, STROKE_WEIGHT } from '../../../helpers/renderFuncs';
 import { translatePath } from '../../../helpers/math/pathMath';
 import { Arc, arcFromCircle } from '../../../models/types';
 import { calculateOuterArcs, ensureFholePath, ensureOuterTracePaths } from '../../calculation/outline/ceruti-calcs';
@@ -13,7 +13,6 @@ import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, PathEntry, RenderTog
 import { buttonInfo, cornerCutoffInfo, purflingInfo } from '../field-info';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
-import { STROKE_WEIGHT } from '../../renders/render-constants';
 
 export interface OuterTraceViewFlags {
   showModuleArcs: boolean;

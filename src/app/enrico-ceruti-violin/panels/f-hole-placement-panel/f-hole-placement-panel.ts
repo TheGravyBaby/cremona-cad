@@ -2,7 +2,7 @@ import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CerutiColors, CerutiViewFlags, DefaultParams, EnricoCerutiParams, FholeParams, FholeStem, PathEntry, RenderToggleKey } from '../../ceruti-types';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
-import { renderArcFromArcFancy, renderCircle, renderCrosshair, renderDashedLine, renderSegment, renderPath, renderRect, renderSmallCrosshair } from '../../../helpers/renderFuncs';
+import { renderArcFromArcFancy, renderCircle, renderCrosshair, renderDashedLine, renderSegment, renderPath, renderRect, renderSmallCrosshair, STROKE_WEIGHT } from '../../../helpers/renderFuncs';
 import { calculateOuterArcs, ensureFrontProfilePaths, getPathOrNull } from '../../calculation/outline/ceruti-calcs';
 import { renderFrontProfile } from '../../renders/front-profile.render';
 import { Arc, Circle, Pt, Rectangle } from '../../../models/types';
@@ -10,9 +10,8 @@ import { nearestFraction, nearestSmallFraction } from '../../../helpers/nearestF
 import { angleFromCenter, angleOnDrawnArc, arcHorizontalIntersections, clamp, dist, flipCircleAboutY, flipPointAboutY, flipRectAboutY, lineCircleIntersection, lineFromPointAndSlope, pointOnCircle } from '../../../helpers/math/simpleGeometry';
 import { circleCircleIntersections } from '../../../helpers/math/draftMath';
 import { defineInnerArcs } from '../../calculation/outline/ceruti-paths';
-import { STROKE_WEIGHT } from '../../renders/render-constants';
-import { renderBoutBouts } from '../../renders/guides.render';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
+import { renderBoutBouts } from '../main-bouts-panel/main-bouts-panel';
 
 /** Where the two f-holes sit on the plate — the eyes first, everything else hung off them. */
 @Component({

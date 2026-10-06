@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { svgPathProperties } from 'svg-path-properties';
-import { occludePath, samplePathToPolyline } from './pathMath';
+import { occludePath } from './pathVibes';
+import { samplePathToPolyline } from './pathMath';
 
 const lengthOf = (d: string) => d.trim() ? new svgPathProperties(d).getTotalLength() : 0;
 const subpathCount = (d: string) => (d.match(/M/g) ?? []).length;

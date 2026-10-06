@@ -2,7 +2,7 @@ import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, PathEntry, RenderToggleKey } from '../../ceruti-types';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
-import { renderArcFromArc, renderArcHalo, renderSegment, renderPointHalo, renderArcFromArcFancy, renderCircle, renderSolveFailures } from '../../../helpers/renderFuncs';
+import { renderArcFromArc, renderArcHalo, renderSegment, renderPointHalo, renderArcFromArcFancy, renderCircle, renderSolveFailures, STROKE_WEIGHT } from '../../../helpers/renderFuncs';
 import { ensureFholePath, ensureFrontProfilePaths, calculateOuterArcs, FholeArcKey, FholeFailure } from '../../calculation/outline/ceruti-calcs';
 import { renderFrontProfile } from '../../renders/front-profile.render';
 import { getArcEndDeg, getArcStartDeg, getFieldDeg, setArcEndDeg, setArcStartDeg, setFieldDeg } from '../../../helpers/math/arcDegrees';
@@ -10,8 +10,8 @@ import { defaultFHolePlacement, renderFholeBounds } from '../f-hole-placement-pa
 import { circleCircleIntersections } from '../../../helpers/math/draftMath';
 import { angleFromCenter, dist, flipArcAboutY, flipPointAboutY, pointOnCircle } from '../../../helpers/math/simpleGeometry';
 import { Arc } from '../../../models/types';
-import { HighlightedArc, HighlightedPoint, STROKE_WEIGHT } from '../../renders/render-constants';
-import { renderBoutBouts } from '../../renders/guides.render';
+import { renderBoutBouts } from '../main-bouts-panel/main-bouts-panel';
+import { HighlightedArc, HighlightedPoint } from '../../renders/render-constants';
 
 // UCut/LCut take a point halo; the rest take an arc halo
 export type FholeHighlightKey = FholeArcKey | 'UCut' | 'LCut';

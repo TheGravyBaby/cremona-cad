@@ -27,15 +27,18 @@ before it:
   (catenary solving, monotone/natural/C2 splines, the Hyman filter), and the oblique projection
   the rotatable 3D plate views go through (`buildProjection`). Imports from both
   `simpleGeometry` and `draftMath`.
-- **`pathMath.ts`** — building, combining and boolean-diffing SVG path *strings*. Sections:
-  Path helpers, Path combinations, Arch curve path builders, Arch curve evaluators. Wraps
-  `polygon-clipping` and `svg-path-properties`. Imports from all three of the above. The booleans
-  there treat paths as areas; `occludePath` treats its bottom path as a stroke, cutting it into
-  the parts a top path covers and doesn't, with arcs and cubics kept exact.
+- **`pathMath.ts`** — building and moving SVG path *strings* one at a time: the `pathFrom*`
+  builders, combine/split, translate, the matrix and `transformPath` family, sampling and bounds,
+  `projectedPath`. Imports only `simpleGeometry`.
+- **`pathVibes.ts`** — path strings past one-at-a-time: joining runs into loops
+  (`unifyConnectedSvgPaths`, `mirroredLoop`), the area booleans over `polygon-clipping`,
+  `occludePath` (which treats its bottom path as a stroke, cutting it into the parts a top path
+  covers and doesn't, arcs and cubics kept exact), `offsetPath`, and the arch and curve families
+  sampled into paths. Imports from all of the above.
 
 If a function takes points and returns points, it belongs in one of the first three files, sorted
-by how far it is from hand-drafting. If it takes or returns a `d` string, it's `pathMath`.
-Nothing upstream of `pathMath` should import it back.
+by how far it is from hand-drafting. If it takes or returns a `d` string, it's `pathMath` or
+`pathVibes` by the same measure. Each file imports only from those before it in this list.
 
 Within each file, functions are grouped by the type they're about (points, then circles, then
 lines, then arcs) and roughly ordered by increasing complexity within each group — a family that
@@ -67,5 +70,5 @@ guitar.
 Watch for the reverse too: generic math that has accreted as a private method on a component
 belongs here. `normalizeDegrees` and `clamp` arrived that way.
 
-Tests live beside their subject (`draftMath.spec.ts`, `svgPathMath.*.spec.ts`) and run under
+Tests live beside their subject (`draftMath.spec.ts`, `pathVibes.*.spec.ts`) and run under
 vitest via `ng test`.
