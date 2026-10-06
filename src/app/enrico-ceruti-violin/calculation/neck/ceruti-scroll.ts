@@ -209,6 +209,8 @@ export function defaultVoluteParams(p: EnricoCerutiParams): ScrollParams {
     hang: 0,
     // set from the solved round below
     hipHeight: 0,
+    // a violin's back has no hip
+    backHipHeight: 0,
     // about the Salviati's own opening, its front as far out
     pitch: Math.round(1.9 * eyeRadius * 10) / 10,
     seedLength: eyeRadius,
@@ -237,7 +239,7 @@ export function defaultVoluteParams(p: EnricoCerutiParams): ScrollParams {
   calculateScroll(q);
   v.F0 = new Arc(0, 0, Math.round(-v.S3.x), 0, v.F0.end);
   v.flat = Math.round(v.S3.y - stringSetup.nutHeight);
-  v.hipHeight = duckTailRoundTop(q);
+  v.hipHeight = duckTailRoundTop(q) - stringSetup.nutHeight;
   return v;
 }
 
@@ -429,7 +431,7 @@ export function scrollLines(p: EnricoCerutiParams): Record<ScrollLine, [Pt, Pt]>
 // that the pegbox runs in under it out of sight. The duck tail's round is the neck's width
 function defaultScrollWidths(p: EnricoCerutiParams): ScrollWidths {
   let mm = (v: number) => Math.round(v * p.height / 350);
-  return { hip: mm(26), throat: mm(20), duckTail: mm(24), foot: mm(24), reach: mm(24), crown: mm(13), turn1Bottom: mm(26), turn2Top: mm(30), turn2Bottom: mm(34), eye: mm(41) };
+  return { hip: mm(26), throat: mm(20), duckTail: mm(24), foot: mm(24), backHip: mm(24), poll: mm(24), crown: mm(13), turn1Bottom: mm(26), turn2Top: mm(30), turn2Bottom: mm(34), eye: mm(41) };
 }
 
 function defaultPegbox(p: EnricoCerutiParams): PegboxParams {
@@ -451,15 +453,17 @@ export function calculateScrollWidths(p: EnricoCerutiParams): void {
   let v = p.scroll!;
   v.widths ??= defaultScrollWidths(p);
   v.pegbox ??= defaultPegbox(p);
-  v.hipHeight ??= duckTailRoundTop(p);
+  let { nutHeight } = p.stringSetup!;
+  v.hipHeight ??= duckTailRoundTop(p) - nutHeight;
+  v.backHipHeight ??= 0;
   // the pegbox's back ends at the duck tail, so its foot can't be below it
-  v.hipHeight = Math.max(v.hipHeight, pointOnCircle(v.S3, v.S3.start).y);
+  v.hipHeight = Math.max(v.hipHeight, pointOnCircle(v.S3, v.S3.start).y - nutHeight);
 
   // the back's foot is at least the round it sits on, the head is no wider over the crown than at
-  // the back's reach, and each turn stands out at least as far as the one before
+  // the back's poll, and each turn stands out at least as far as the one before
   let w = v.widths;
   w.foot = Math.max(w.foot, w.duckTail);
-  w.crown = Math.min(w.crown, w.reach);
+  w.crown = Math.min(w.crown, w.poll);
   w.turn1Bottom = Math.max(w.turn1Bottom, w.crown);
   w.turn2Top = Math.max(w.turn2Top, w.turn1Bottom);
   w.turn2Bottom = Math.max(w.turn2Bottom, w.turn2Top);
@@ -489,15 +493,25 @@ export function duckTailRoundTop(p: EnricoCerutiParams): number {
 // where the pegbox is widest. A violin's hips sit on the round's top; a cello's on the pegbox's
 // foot, the round rising past them when the duck tail hangs less than the round's radius
 export function pegboxHipHeight(p: EnricoCerutiParams): number {
-  return p.scroll!.hipHeight;
+  return p.stringSetup!.nutHeight + p.scroll!.hipHeight;
+}
+
+// the back's hip, in this frame, or null for none: 0 or less is none, and so is one at or below the
+// round's top, where the back's slope starts from the foot. Past the poll it is the poll. Read
+// here rather than clamped onto params, so the field doesn't jump under the user's typing
+function backHipY(p: EnricoCerutiParams, path: ScrollPath): number | null {
+  let v = p.scroll!;
+  if (!(v.backHipHeight > 0)) return null;
+  let y = Math.min(p.stringSetup!.nutHeight + v.backHipHeight, path.at(path.poll ?? path.crown).y);
+  return y > path.at(0).y + 1e-9 ? y : null;
 }
 
 // "the path": the back from the top of the duck tail's round, over the crown and round the spiral
-// in to the eye. `reach` is how far along it the back reaches furthest back, its tangent running
+// in to the eye. `poll` is how far along it the back of the head reaches furthest back, its tangent running
 // straight up the neck, or null where no arc of the back passes that way above the path's start;
 // `crown` where the back tops out, and `turns` where the spiral levels after that: the bottom of the
 // first turn, the top and bottom of the second, the top of the last
-type ScrollPath = Run & { reach: number | null; crown: number; turns: number[] };
+type ScrollPath = Run & { poll: number | null; crown: number; turns: number[] };
 
 function scrollPath(p: EnricoCerutiParams): ScrollPath {
   let v = p.scroll!;
@@ -520,14 +534,14 @@ function scrollPath(p: EnricoCerutiParams): ScrollPath {
     return past <= sweep + 1e-9 ? arc.r * (sweep - past) : null;
   };
 
-  // the reach is the first arc up the back to pass straight behind its centre; the crown the highest
+  // the poll is the first arc up the back to pass straight behind its centre; the crown the highest
   // top among them
   let along = rise.length - start;
-  let reach: number | null = null;
+  let poll: number | null = null;
   let tops: number[] = [];
   for (let arc of crownArcs) {
     let back = levelOn(arc, TURN.half);
-    if (reach === null && back !== null && along + back > 1e-6) reach = along + back;
+    if (poll === null && back !== null && along + back > 1e-6) poll = along + back;
     let top = levelOn(arc, TURN.quarter);
     if (top !== null) tops.push(along + top);
     along += arc.r * (arc.end - arc.start);
@@ -546,7 +560,7 @@ function scrollPath(p: EnricoCerutiParams): ScrollPath {
   levels.sort((a, b) => a - b);
   let turns = levels.filter((s, i) => s < length - 1e-6 && (i === 0 || s - levels[i - 1] > 1e-6));
 
-  return { length, at: s => whole.at(start + s), reach, crown, turns };
+  return { length, at: s => whole.at(start + s), poll, crown, turns };
 }
 
 function scrollFront(p: EnricoCerutiParams): Run {
@@ -575,11 +589,12 @@ export function scrollFrontTop(p: EnricoCerutiParams): Pt {
 
 // the pegbox's front is marked on the blank as straight lines and sawn through, so its width goes by
 // height: the nut's up to the nut's top, out to the hips' from there, then tapering to the throat's
-// and on up F1 at the same slope. Hips at or below the nut's top leave no run out from the nut, and
-// the cheeks hold the hips' width down to the foot
+// and on up F1 at the same slope. Hips at 0 are none, the cheeks tapering from the nut's edges;
+// below the nut's top they leave no run out from the nut, and hold the hips' width down to the foot
 export function pegboxWidth(p: EnricoCerutiParams, y: number): number {
   let { nutWidth, nutHeight } = p.stringSetup!;
-  let { hip: hipWidth, throat: throatWidth } = p.scroll!.widths;
+  let { hip, throat: throatWidth } = p.scroll!.widths;
+  let hipWidth = p.scroll!.hipHeight === 0 ? nutWidth : hip;
   let taperEnd = scrollThroat(p).y;
   // hips up at the throat leave no taper, and the width steps there
   let hipY = Math.min(pegboxHipHeight(p), taperEnd);
@@ -590,24 +605,32 @@ export function pegboxWidth(p: EnricoCerutiParams, y: number): number {
   return nutWidth + (hipWidth - nutWidth) * (y - nutHeight) / (hipY - nutHeight);
 }
 
-// the width along the path. The back goes out from its foot on the duck tail's round on a straight
-// slope, by height, to its reach, then leaves it tangent on a curve through the volute's widths, by
-// distance along the path. A back with no reach runs the slope all the way up to the crown
+// the width along the path. The back goes out from its foot on the duck tail's round on straight
+// slopes, by height, to its hip and on to its poll, then leaves the slope tangent on a curve
+// through the volute's widths, by distance along the path. A back with no poll runs the slope all
+// the way up to the crown
 function pathWidth(p: EnricoCerutiParams, path: ScrollPath): (s: number) => number {
-  let w = p.scroll!.widths;
+  let v = p.scroll!;
+  let w = v.widths;
 
   // the last turn is as wide as the eye from its top on in
   let [turn1Bottom, turn2Top, turn2Bottom, turn3Top] = path.turns;
   let s = [path.crown, turn1Bottom, turn2Top, turn2Bottom, turn3Top, path.length];
   let widths = [w.crown, w.turn1Bottom, w.turn2Top, w.turn2Bottom, w.eye, w.eye];
-  if (path.reach !== null) {
-    s.unshift(path.reach);
-    widths.unshift(w.reach);
+  if (path.poll !== null) {
+    s.unshift(path.poll);
+    widths.unshift(w.poll);
   }
 
   let startY = path.at(0).y;
-  let slopeY = path.at(s[0]).y - startY;
-  let slope = (at: number) => slopeY > 1e-9 ? w.foot + (widths[0] - w.foot) * (path.at(at).y - startY) / slopeY : widths[0];
+  let toY = path.at(s[0]).y;
+  let hipY = backHipY(p, path);
+  let between = (from: number, to: number, y0: number, y1: number, y: number) => y1 - y0 > 1e-9 ? from + (to - from) * (y - y0) / (y1 - y0) : to;
+  let slope = (at: number) => {
+    let y = path.at(at).y;
+    if (hipY === null) return between(w.foot, widths[0], startY, toY, y);
+    return y <= hipY ? between(w.foot, w.backHip, startY, hipY, y) : between(w.backHip, widths[0], hipY, toY, y);
+  };
 
   let h = s.slice(1).map((next, i) => next - s[i]);
   let delta = h.map((step, i) => (widths[i + 1] - widths[i]) / step);
@@ -680,7 +703,7 @@ export function scrollFrontWidths(p: EnricoCerutiParams): Pt3D[] {
 
 // where each of the panel's fields is marked in the side view, with the width there: the front's up
 // the pegbox's front, the nut, the hips and the throat; the back's from the duck tail itself, then
-// along the path from the top of its round in to the eye's centre. A back with no reach has no
+// along the path from the top of its round in to the eye's centre. A back with no poll has no
 // station for it
 export function scrollWidthStations(p: EnricoCerutiParams): ScrollStation[] {
   let v = p.scroll!;
@@ -698,7 +721,9 @@ export function scrollWidthStations(p: EnricoCerutiParams): ScrollStation[] {
     { key: 'throat', at: scrollThroat(p), width: w.throat },
     { key: 'duckTail', at: path.at(0), width: w.duckTail },
     { key: 'foot', at: path.at(0), width: w.foot },
-    ...(path.reach === null ? [] : [{ key: 'reach' as const, at: path.at(path.reach), width: w.reach }]),
+    // with no hip, its mark sits on the foot's
+    { key: 'backHip', at: path.at(riseAlongRun(path, backHipY(p, path) ?? path.at(0).y, path.crown)), width: w.backHip },
+    ...(path.poll === null ? [] : [{ key: 'poll' as const, at: path.at(path.poll), width: w.poll }]),
     { key: 'crown', at: path.at(path.crown), width: w.crown },
     { key: 'turn1Bottom', at: path.at(turn1Bottom), width: w.turn1Bottom },
     { key: 'turn2Top', at: path.at(turn2Top), width: w.turn2Top },
