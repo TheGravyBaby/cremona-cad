@@ -629,6 +629,7 @@
       "flat": 8,
       "frontStraight": 18,
       "widths": {
+        "hip": 26,
         "throat": 20,
         "crown": 13,
         "turn1Bottom": 27,
@@ -637,7 +638,6 @@
         "eye": 42
       },
       "pegbox": {
-        "straight": 8,
         "wall": 5,
         "floor": 6
       }

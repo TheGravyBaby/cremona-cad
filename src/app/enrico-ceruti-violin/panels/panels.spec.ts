@@ -27,7 +27,7 @@ import { NeckHighlightKey, NeckPanel } from './neck-panel/neck-panel';
 import { OuterTracePanel } from './outer-trace-panel/outer-trace-panel';
 import { ScrollPanel } from './scroll-panel/scroll-panel';
 import { ScrollWidthsPanel } from './scroll-widths-panel/scroll-widths-panel';
-import { defaultVoluteParams, duckTailRadius, pegboxWidth, scrollBackWidths, scrollExtent, scrollLines, scrollPathStretches, scrollWidthStations, spiralArcs as styleArcs, VOLUTE_STYLE_LABELS } from '../ceruti-scroll';
+import { defaultVoluteParams, duckTailRadius, pegboxHipHeight, pegboxWidth, scrollBackWidths, scrollExtent, scrollLines, scrollNeckHalfWidth, scrollPathStretches, scrollWidthStations, spiralArcs as styleArcs, VOLUTE_STYLE_LABELS } from '../ceruti-scroll';
 import { VolutePanel } from './volute-panel/volute-panel';
 import { VoluteStyle } from '../ceruti-types';
 import { Circle, Pt } from '../../models/types';
@@ -842,7 +842,7 @@ describe('the scroll widths panel', () => {
     for (const pts of showing) expect(pts.length).toBeGreaterThan(3);
   });
 
-  it('draws shoulders where the nut and the neck differ in width, from behind only, and none when as wide', () => {
+  it('draws shoulders where the neck is wider than the duck tail\'s round, from behind only, and none when as wide or narrower', () => {
     const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
     instance.buildRun();
     const p = instance.params;
@@ -852,13 +852,13 @@ describe('the scroll widths panel', () => {
       return el.tag === 'line' && el.attrs['y1'] === start.y && el.attrs['y2'] === start.y
         && Math.abs(Math.abs((el.attrs['x1'] as number) - (el.attrs['x2'] as number)) - length) < 1e-9;
     });
-    const shoulders = () => levelAtStart(Math.abs(p.stringSetup!.nutWidth / 2 - duckTailRadius(p)));
-    p.stringSetup!.nutWidth = 2 * duckTailRadius(p);
+    const shoulders = () => levelAtStart(Math.abs(scrollNeckHalfWidth(p, scrollBackWidths(p)[0].y) - duckTailRadius(p)));
+    p.neck!.topWidth = v.widths.hip;
     expect(shoulders()).toEqual([]);
-    for (const wider of [4, -4]) {
-      p.stringSetup!.nutWidth = 2 * duckTailRadius(p) + wider;
-      expect(shoulders()).toHaveLength(2);
-    }
+    p.neck!.topWidth = v.widths.hip - 4;
+    expect(shoulders()).toEqual([]);
+    p.neck!.topWidth = v.widths.hip + 4;
+    expect(shoulders()).toHaveLength(2);
   });
 
   it('runs the front view down to the foot of the nut and closes it level there, whatever the duck tail', () => {
@@ -889,16 +889,22 @@ describe('the scroll widths panel', () => {
     const p = instance.params;
     const start = scrollBackWidths(p)[0].y;
     expect(start).toBeGreaterThan(0);
+    const nutTop = p.stringSetup!.nutHeight;
+    // the path starts at the hips: in to the nut's edge at its top, then square to the foot. A nut
+    // narrower than the hips takes the walls in behind the round, which hides them until they come out
+    expect(pegboxHipHeight(p)).toBeCloseTo(start, 6);
+    expect(p.stringSetup!.nutWidth).toBeLessThan(v.widths.hip);
     const walls = fromBehind();
     expect(walls).toHaveLength(2);
-    for (const el of walls) expect(el.attrs['d']).toMatch(new RegExp(`^M \\S+ ${start} L \\S+ 0$`));
-
-    // a straight too short to clear the round: down the taper to the straight's end, then square to the foot
-    v.pegbox.straight = 2;
-    const tapered = fromBehind();
-    expect(tapered).toHaveLength(2);
-    for (const el of tapered) expect(el.attrs['d']).toMatch(new RegExp(`^M \\S+ ${start} L \\S+ ${p.stringSetup!.nutHeight + 2} L \\S+ 0$`));
-    v.pegbox.straight = 8;
+    const points = (d: string) => [...d.matchAll(/(-?[\d.]+(?:e-?\d+)?) (-?[\d.]+(?:e-?\d+)?)/g)].map(m => new Pt(+m[1], +m[2]));
+    const center = (points(walls[0].attrs['d'] as string).at(-1)!.x + points(walls[1].attrs['d'] as string).at(-1)!.x) / 2;
+    for (const el of walls) {
+      expect(el.attrs['d']).toMatch(new RegExp(`^M \\S+ \\S+ L \\S+ ${nutTop} L \\S+ 0$`));
+      const [first] = points(el.attrs['d'] as string);
+      expect(first.y).toBeLessThan(start);
+      expect(first.y).toBeGreaterThan(nutTop);
+      expect(Math.hypot(first.x - center, first.y - start)).toBeCloseTo(duckTailRadius(p), 1);
+    }
 
     v.eye = new Circle(v.eye.x, v.eye.y - 15, v.eye.r);
     instance.buildRun();

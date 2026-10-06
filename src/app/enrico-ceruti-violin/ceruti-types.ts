@@ -255,10 +255,12 @@ export interface StringSetup {
 
 export type VoluteStyle = 'fourPoint' | 'archimedean' | 'serlio' | 'salviati' | 'goldmann' | 'kelly';
 
-// full widths, cheek to cheek. The pegbox tapers straight from the nut's width to `throat`, where F1
-// meets the spiral; the volute's run on a curve through the rest, each at a place the side view fixes. The last turn
-// is as wide as the eye from its top on in
+// full widths, cheek to cheek. The pegbox's cheeks run out from the nut's edges to the hips, its widest,
+// at the top of the duck tail's round, then taper straight to `throat`, where F1 meets the spiral; the
+// volute's run on a curve through the rest, each at a place the side view fixes. The last turn is as
+// wide as the eye from its top on in
 export interface ScrollWidths {
+  hip: number;
   throat: number;
   crown: number;
   turn1Bottom: number;
@@ -268,7 +270,6 @@ export interface ScrollWidths {
 }
 
 export interface PegboxParams {
-  straight: number; // above the nut's top, as wide as the nut, before the taper to the throat starts
   wall: number; // each cheek, at the pegbox's front edge
   floor: number; // the wood left between the hollow and the back
 }
@@ -343,7 +344,7 @@ export interface CerutiColors {
   scrollFront: string;
   scrollFrontLight: string;
   scrollWidthNut: string;
-  scrollWidthStraight: string;
+  scrollWidthHip: string;
   scrollWidthThroat: string;
   scrollWidthCrown: string;
   scrollWidthTurn1Bottom: string;
