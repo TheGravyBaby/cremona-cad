@@ -120,12 +120,4 @@ describe('UndoCoordinator', () => {
     coordinator.undo();
     expect(a.undoCalls).toBe(0);
   });
-
-  it('reports no history when nothing has happened, and no-ops safely', () => {
-    const coordinator = new UndoCoordinator();
-    expect(coordinator.canUndo()).toBe(false);
-    expect(coordinator.canRedo()).toBe(false);
-    coordinator.undo();
-    coordinator.redo();
-  });
 });

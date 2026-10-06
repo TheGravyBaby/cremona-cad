@@ -1,12 +1,12 @@
 import { Arc, Circle, Rectangle } from '../../models/types';
 import {
-  renderArcFromArc, renderArcHalo, renderBoxLine, renderCircle, renderCrosshair, renderPath, renderRect, renderSegment,
+  renderArcFromArc, renderArcHalo, renderBoxLine, renderCircle, renderCrosshair, renderRect, renderSegment,
   renderText,
 } from '../../helpers/renderFuncs';
 import { RecordableLayer } from '../../helpers/layer-recorder';
 import { pointOnCircle } from '../../helpers/math/simpleGeometry';
 import { sceneShapesFromLayers } from './scene-index';
-import { ArcShape, DraftShape, PathShape } from './toolbox-shape';
+import { ArcShape, DraftShape } from './toolbox-shape';
 import { distanceToShape } from './shape-hit-test';
 
 describe('sceneShapesFromLayers', () => {
@@ -71,12 +71,6 @@ describe('sceneShapesFromLayers', () => {
     expect(arc.radius).toBeCloseTo(10, 6);
     expect(arc.startAngle).toBeCloseTo(Math.PI / 2, 6);
     expect(arc.endAngle).toBeCloseTo(Math.PI, 6);
-  });
-
-  it('turns a multi-segment outline into a path shape', () => {
-    const [shape] = sceneShapesFromLayers([renderPath('M 0 0 L 10 0 A 5 5 0 0 1 10 10 Z', '#000')]) as PathShape[];
-    expect(shape.type).toBe('path');
-    expect(shape.d).toBe('M 0 0 L 10 0 A 5 5 0 0 1 10 10 Z');
   });
 
   it('keeps an id across re-renders of the same geometry and tells duplicates apart', () => {

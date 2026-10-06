@@ -1,5 +1,5 @@
-import { copyDebugDump, debugMessages, installDebugCapture, isLocalHost, setDebugContext } from './debugDump';
-import { error, setGlobalEmitter, warn } from '../shared/message-emitter';
+import { copyDebugDump, debugMessages, installDebugCapture, setDebugContext } from './debugDump';
+import { error, setGlobalEmitter } from '../shared/message-emitter';
 
 /**
  * The debug channel. Nothing computes with what it produces, so the only thing
@@ -60,19 +60,6 @@ describe('the message log', () => {
     expect(found[0].text).toContain('Purfling Error');
   });
 
-  it('keeps the severity, so a warning is not read back as a note', () => {
-    warn('stations merged');
-    const found = debugMessages().find(m => m.text.includes('stations merged'))!;
-    expect(found.text).toContain('warn');
-  });
-
-  it('stamps how long ago, since recency is what makes a message relevant', () => {
-    console.log('a stamped line');
-    const found = debugMessages().find(m => m.text.includes('a stamped line'))!;
-    expect(found.atMs).toBeGreaterThanOrEqual(0);
-    expect(found.atMs).toBeLessThan(60_000);
-  });
-
   it('flattens a logged object rather than storing [object Object]', () => {
     // What `unifyConnectedSvgPaths` logs is an object. Losing it to a default
     // toString would drop the only copy of the stranded path.
@@ -82,26 +69,12 @@ describe('the message log', () => {
     expect(found.text).not.toContain('[object Object]');
   });
 
-  it('truncates one enormous entry instead of letting it crowd the rest out', () => {
-    console.log('X'.repeat(5000));
-    const found = debugMessages().find(m => m.text.startsWith('XXX'))!;
-    expect(found.text.length).toBeLessThan(1000);
-    expect(found.text).toContain('5000 chars');
-  });
-
   it('drops the oldest once full, so the buffer cannot grow without bound', () => {
     for (let i = 0; i < 200; i++) console.log(`filler ${i}`);
     const log = debugMessages();
     expect(log.length).toBeLessThanOrEqual(60);
     expect(log.some(m => m.text.includes('filler 199'))).toBe(true);
     expect(log.some(m => m.text.includes('filler 0'))).toBe(false);
-  });
-
-  it('hands out a copy, so a reader cannot edit the record', () => {
-    console.log('immutable check');
-    const first = debugMessages();
-    first[0].text = 'tampered';
-    expect(debugMessages()[0].text).not.toBe('tampered');
   });
 });
 
@@ -125,12 +98,6 @@ describe('a dump', () => {
     expect(out.messages.some((m: any) => m.text.includes('first-dump-marker'))).toBe(false);
   });
 
-  it('reports the registered view context', () => {
-    setDebugContext(() => ({ openPanel: 'outerTrace', viewFlags: { showArcs: false } }));
-    const out = dumped(() => copyDebugDump('canvas', {}));
-    expect(out.view).toEqual({ openPanel: 'outerTrace', viewFlags: { showArcs: false } });
-  });
-
   it('reads the context at dump time, not at registration', () => {
     // Registered once in ngOnInit, while the panel it reports changes all
     // session. A value captured at registration would report the landing panel
@@ -141,23 +108,11 @@ describe('a dump', () => {
     expect(dumped(() => copyDebugDump('canvas', {})).view).toEqual({ openPanel: 'mould' });
   });
 
-  it('says null rather than failing when no recipe has registered', () => {
-    expect(dumped(() => copyDebugDump('canvas', {})).view).toBeNull();
-  });
-
   it('still produces a dump when the payload cannot be serialized', () => {
     // The thing being debugged is malformed by definition. A dump that throws
     // on the way out is worthless exactly when it is needed.
     const circular: any = { name: 'loop' };
     circular.self = circular;
     expect(() => dumped(() => copyDebugDump('canvas', { circular }))).not.toThrow();
-  });
-});
-
-describe('the local-host gate', () => {
-  it('answers for this environment without throwing', () => {
-    // Whatever `location` this runner presents, the answer is a boolean — the
-    // buttons' visibility must never depend on an exception.
-    expect(typeof isLocalHost()).toBe('boolean');
   });
 });

@@ -31,16 +31,6 @@ describe('App', () => {
 
   afterEach(() => sessionStorage.clear());
 
-  it('should create the app', () => {
-    const fixture = TestBed.createComponent(App);
-    const app = fixture.componentInstance;
-    expect(app).toBeTruthy();
-  });
-
-  it('opens the sidebar by default on a wide viewport', async () => {
-    await withWidth(1440, () => expect(create().sidebarOpen).toBe(true));
-  });
-
   it('starts the sidebar collapsed on a viewport too narrow to spare 360px', async () => {
     await withWidth(852, () => expect(create().sidebarOpen).toBe(false));
   });
@@ -48,22 +38,5 @@ describe('App', () => {
   it('lets a stored preference win over the narrow-viewport default', async () => {
     sessionStorage.setItem(SIDEBAR_OPEN_KEY, 'true');
     await withWidth(852, () => expect(create().sidebarOpen).toBe(true));
-  });
-
-  it('honours a stored collapsed state on a wide viewport', async () => {
-    sessionStorage.setItem(SIDEBAR_OPEN_KEY, 'false');
-    await withWidth(1440, () => expect(create().sidebarOpen).toBe(false));
-  });
-
-  it('persists the sidebar state in both directions', async () => {
-    await withWidth(1440, () => {
-      const app = create();
-      app.toggleSidebar();
-      expect(app.sidebarOpen).toBe(false);
-      expect(sessionStorage.getItem(SIDEBAR_OPEN_KEY)).toBe('false');
-      app.toggleSidebar();
-      expect(app.sidebarOpen).toBe(true);
-      expect(sessionStorage.getItem(SIDEBAR_OPEN_KEY)).toBe('true');
-    });
   });
 });

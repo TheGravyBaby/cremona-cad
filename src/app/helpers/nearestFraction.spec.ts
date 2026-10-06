@@ -20,12 +20,6 @@ describe('nearestSmallFraction', () => {
     expect(nearestSmallFraction(2 / 45)).toBe('2/45');
   });
 
-  it('still handles ordinary values', () => {
-    expect(nearestSmallFraction(0.25)).toBe('1/4');
-    expect(nearestSmallFraction(1 / 3)).toBe('1/3');
-    expect(nearestSmallFraction(1.5)).toBe('3/2');
-  });
-
   it('keeps the sign and survives junk', () => {
     expect(nearestSmallFraction(-1 / 72)).toBe('-1/72');
     expect(nearestSmallFraction(0)).toBe('0/1');

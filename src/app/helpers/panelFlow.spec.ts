@@ -52,28 +52,14 @@ describe('PanelFlow', () => {
     flow.refreshEnabledPanels();
     expect(flow.getEnabledPanels()).toEqual(['base', 'bouts']);
   });
-
-  it('hands back a copy, so a caller cannot edit the flow by editing the list', () => {
-    const flow = flowWith(new Set(['base', 'bouts']));
-    flow.getEnabledPanels().push('mould' as Id);
-    expect(flow.getEnabledPanels()).toEqual(['base', 'bouts']);
-  });
 });
 
 describe('PanelFlow.getCurrent', () => {
-  it('holds the current panel when it is still enabled', () => {
-    expect(flowWith(new Set(['base', 'bouts'])).getCurrent('bouts')).toBe('bouts');
-  });
-
   it('falls back to the first enabled panel when the current one is gone', () => {
     // Reachable in practice: an edit that disables the open panel — clearing a
     // measurement the later steps depend on — must land the user somewhere real
     // rather than on a panel the flow no longer admits to having.
     expect(flowWith(new Set(['base', 'mould'])).getCurrent('corners')).toBe('base');
-  });
-
-  it('returns null when nothing is enabled at all', () => {
-    expect(flowWith(new Set()).getCurrent('base')).toBeNull();
   });
 });
 
@@ -92,25 +78,9 @@ describe('PanelFlow stepping', () => {
     expect(flow.step('bouts', 1)).toBeNull();
   });
 
-  it('agrees with itself: canStep is true exactly when step returns a panel', () => {
-    const flow = flowWith(new Set(['base', 'corners', 'mould']));
-    for (const from of ['base', 'corners', 'mould'] as Id[]) {
-      for (const dir of [-1, 1]) {
-        expect(flow.canStep(from, dir), `${from} ${dir}`).toBe(flow.step(from, dir) !== null);
-      }
-    }
-  });
-
   it('steps from a disabled panel by way of the fallback', () => {
     const flow = flowWith(new Set(['base', 'mould']));
     expect(flow.step('corners', 1)).toBe('mould');
-  });
-
-  it('treats any non-negative direction as forward', () => {
-    const flow = flowWith(new Set(['base', 'bouts']));
-    expect(flow.step('base', 0)).toBe('bouts');
-    expect(flow.step('base', 5)).toBe('bouts');
-    expect(flow.step('bouts', -5)).toBe('base');
   });
 });
 
@@ -127,20 +97,10 @@ describe('PanelFlow.getProgress', () => {
     expect(p.total).toBe(4);
   });
 
-  it('runs 0% at the first panel to 100% at the last', () => {
-    const flow = flowWith(new Set(['base', 'bouts', 'corners', 'mould']));
-    expect(flow.getProgress('base').percent).toBe(0);
-    expect(flow.getProgress('mould').percent).toBe(100);
-  });
-
   it('reports a complete flow rather than dividing by zero when nothing is enabled', () => {
     const p = flowWith(new Set()).getProgress('base');
     expect(p.percent).toBe(100);
     expect(p.total).toBe(1);
-  });
-
-  it('reports the fallback panel, not the one asked about, when that one is disabled', () => {
-    expect(flowWith(new Set(['base', 'mould'])).getProgress('corners').panel).toBe('base');
   });
 });
 

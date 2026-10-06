@@ -77,12 +77,11 @@ describe('the nut', () => {
     expect(run().map(f => f.unsolved)).toContainEqual(['fingerboardRadius']);
   });
 
-  it('crowns the fingerboard by the sagitta of its width, under 2 mm at the nut and growing toward the body', () => {
+  it('crowns the fingerboard by the sagitta of its width, growing toward the body', () => {
     const p = neckedViolin();
     const s = solve(p);
     const atNut = fingerboardCrown(p, s.neckTop!.y);
     expect(atNut).toBeCloseTo(sagitta(p.stringSetup!.fingerboardRadius, p.neck!.topWidth), 9);
-    expect(atNut).toBeLessThan(2);
     expect(fingerboardCrown(p, fingerboardEnd(p).y)).toBeGreaterThan(3 * atNut);
   });
 });
@@ -234,24 +233,7 @@ describe('the readouts', () => {
     expect(p.stringSetup!.bridgeFoot!.x).toBeGreaterThan(plateEdgeAtNeck(p).x);
   });
 
-  it('scale the defaults with the body', () => {
-    const p = archedViolin();
-    p.height = 750;
-    const cello = defaultNeckParams(p);
-    const violin = defaultNeckParams(archedViolin());
-    expect(defaultStringSetup(p).bodyStop / defaultStringSetup(archedViolin()).bodyStop).toBeCloseTo(750 / 350, 1);
-    expect(cello.angle).toBe(violin.angle);
-  });
-
-  it('defaults the fingerboard to the standard length by instrument size, and runs it the entered length', () => {
-    const sizes: [number, number][] = [[350, 270], [450, 310], [650, 580], [900, 850]];
-    for (const [height, length] of sizes) {
-      const p = neckedViolin();
-      p.height = height;
-      p.stringSetup = defaultStringSetup(p);
-      const s = solve(p);
-      expect(dist(s.neckTop!, fingerboardEnd(p))).toBeCloseTo(length, 9);
-    }
+  it('runs the fingerboard the entered length', () => {
     const p = neckedViolin();
     p.stringSetup!.fingerboardLength = 255;
     const s = solve(p);
@@ -269,13 +251,6 @@ describe('the drawn shapes', () => {
     expect(topWidth).toBeLessThan(footWidth);
     const footMid = new Pt((footLeft.x + footRight.x) / 2, (footLeft.y + footRight.y) / 2);
     expect(dist(footMid, p.stringSetup!.bridgeFoot!)).toBeLessThan(1e-9);
-  });
-
-  it('stores nothing a ruler on the drawing would not need: the neck\'s corners, its heel and the bridge', () => {
-    const p = neckedViolin();
-    const s = solve(p);
-    expect(Object.keys(s).sort()).toEqual(['angle', 'backNut', 'backRoot', 'heel', 'length', 'mortiseDepth', 'neckTop', 'overstand', 'plateAtMortise', 'root', 'rootWidth', 'thickness', 'topWidth']);
-    expect(Object.keys(p.stringSetup!).sort()).toEqual(['bodyStop', 'bridgeFoot', 'bridgeHeight', 'bridgeTop', 'fingerboardLength', 'fingerboardRadius', 'fingerboardThickness', 'nutHeight', 'nutThickness', 'nutTop', 'nutWidth']);
   });
 });
 

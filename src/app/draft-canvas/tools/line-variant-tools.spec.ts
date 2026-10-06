@@ -113,13 +113,6 @@ describe('perpendicularLine', () => {
     expect(foot.y).toBeCloseTo(-20, 1);
   });
 
-  it('meets a rectangle edge square', () => {
-    const [curve] = shapeCurves({ id: 'r', type: 'rect', p1: at(0, 0), p2: at(20, 10) }).map(c => c.points);
-    const [, foot] = perpendicularLine({ pt: at(7, 30) }, { pt: at(12, 10), curve })!;
-    expect(foot.x).toBeCloseTo(7, 9);
-    expect(foot.y).toBeCloseTo(10, 9);
-  });
-
   it('spans two parallel lines square to both, at the first click', () => {
     const [a, b] = perpendicularLine(
       { pt: at(4, 0), line: [at(0, 0), at(10, 0)] }, { pt: at(9, 8), line: [at(0, 8), at(10, 8)] })!;

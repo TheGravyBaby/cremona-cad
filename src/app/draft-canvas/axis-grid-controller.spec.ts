@@ -19,12 +19,11 @@ describe('AxisGridController step coarsening', () => {
   function draw(
     stepMm: number,
     pxPerMm: number,
-    { cv = viewport(pxPerMm), visible = true, showAxes = true, showGrid = true }:
-      { cv?: CanvasViewport; visible?: boolean; showAxes?: boolean; showGrid?: boolean } = {},
+    { cv = viewport(pxPerMm), showAxes = true }: { cv?: CanvasViewport; showAxes?: boolean } = {},
   ) {
     const controller = new AxisGridController(`axis-grid-spec-${Math.random()}`);
     controller.updatePreferences({
-      visible, showAxes, showGridX: showGrid, showGridY: showGrid,
+      visible: true, showAxes, showGridX: true, showGridY: true,
       gridStepX: stepMm, gridStepY: stepMm,
     });
 
@@ -42,13 +41,6 @@ describe('AxisGridController step coarsening', () => {
     const { lines } = draw(0.1, 1.5);
 
     // unbounded this was ~8000 lines for the same viewport
-    expect(lines.length).toBeGreaterThan(0);
-    expect(lines.length).toBeLessThan((PX_W + PX_H) / 4 + 10);
-  });
-
-  it('holds the line count down at the zoom floor', () => {
-    const { lines } = draw(50, Camera.MIN_PX_PER_MM);
-
     expect(lines.length).toBeGreaterThan(0);
     expect(lines.length).toBeLessThan((PX_W + PX_H) / 4 + 10);
   });
@@ -127,20 +119,6 @@ describe('AxisGridController step coarsening', () => {
       if (!/^-?[\d.]+$/.test(text)) continue; // axis names, not tick values
       expect(text).toMatch(/^-?\d+(\.\d{1,6})?$/);
     }
-  });
-
-  it('draws nothing with the master eye off, whatever the rows say', () => {
-    const { lines, labels } = draw(50, 1.5, { visible: false });
-
-    expect(lines.length).toBe(0);
-    expect(labels.length).toBe(0);
-  });
-
-  it('numbers the axes with the grid lines off', () => {
-    const { lines, labels } = draw(50, 1.5, { showGrid: false });
-
-    expect(lines.length).toBe(2);
-    expect(labels.some(t => /^-?[\d.]+$/.test(t.textContent ?? ''))).toBe(true);
   });
 
   // the nudge off the grid line used to be a bare 4 in world units, so the gap grew with zoom

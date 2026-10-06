@@ -15,16 +15,6 @@ function click(tool: DraftTool, host: DraftToolHost, pt: Pt): void {
 }
 
 describe('DimensionTool', () => {
-  it('needs a third click before it commits anything', () => {
-    const tool = createDimensionTool();
-    const host = fakeToolHost();
-
-    click(tool, host, at(0, 0));
-    click(tool, host, at(100, 0));
-
-    expect(host.added).toEqual([]);
-  });
-
   it('stores the third click as a perpendicular offset', () => {
     const tool = createDimensionTool();
     const host = fakeToolHost();

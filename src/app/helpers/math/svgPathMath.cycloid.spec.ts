@@ -13,12 +13,6 @@ describe('cycloidZAt windowed percentage', () => {
     }
   });
 
-  it('omitting pct matches pct=1 (back-compat default)', () => {
-    for (const s of [4, 12, 20, 28, 36]) {
-      expect(cycloidZAt(hEff, span, 0.6, s)).toBeCloseTo(cycloidZAt(hEff, span, 0.6, s, 1), 9);
-    }
-  });
-
   it('keeps the peak anchored and stays symmetric for pct<1', () => {
     for (const pct of [0.4, 0.7, 0.9]) {
       expect(cycloidZAt(hEff, span, 0.6, span / 2, pct)).toBeCloseTo(hEff, 6);

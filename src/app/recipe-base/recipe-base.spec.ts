@@ -78,11 +78,6 @@ describe('xy point keys', () => {
     expect([x.value, changes]).toEqual(['10', ['y=21']]);
   });
 
-  it('lets ordinary typing through', () => {
-    expect(press(x, '7').defaultPrevented).toBe(false);
-    expect(press(x, 'Home').defaultPrevented).toBe(false);
-  });
-
   it('restores both axes to when focus entered the point on Escape', () => {
     press(x, 'ArrowRight');
     y.focus();

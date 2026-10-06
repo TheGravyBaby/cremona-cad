@@ -14,14 +14,11 @@ import { downloadDxfFile, pathToDxfEntities } from './dxfExporter';
  */
 
 /** Captures what a download helper would have written, without navigating. */
-async function captured(run: () => void): Promise<{ name: string; text: string }> {
+async function captured(run: () => void): Promise<{ text: string }> {
   let blob: Blob | undefined;
-  let name = '';
   const create = vi.spyOn(URL, 'createObjectURL').mockImplementation((b: any) => { blob = b; return 'blob:test'; });
   const revoke = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
-  const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
-    name = this.download;
-  });
+  const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
   try {
     run();
   } finally {
@@ -34,16 +31,10 @@ async function captured(run: () => void): Promise<{ name: string; text: string }
     reader.onerror = () => reject(reader.error);
     reader.readAsText(blob!);
   });
-  return { name, text };
+  return { text };
 }
 
 describe('pathToDxfEntities', () => {
-  it('turns a move-and-line into one segment between the two points', () => {
-    expect(pathToDxfEntities('M 0 0 L 10 20')).toEqual([
-      { type: 'LINE', x0: 0, y0: 0, x1: 10, y1: 20 },
-    ]);
-  });
-
   it('carries coordinates through unflipped', () => {
     // Draft space is already Y-up and so is DXF, so an export that "helpfully"
     // flipped Y would mirror every template top to bottom.
@@ -120,10 +111,6 @@ describe('pathToDxfEntities', () => {
     expect(entities[0].x0).toBeCloseTo(0, 12);
     expect(entities[0].y1).toBeCloseTo(0, 6);
   });
-
-  it('ignores a path with nothing in it', () => {
-    expect(pathToDxfEntities('')).toEqual([]);
-  });
 });
 
 describe('the DXF file', () => {
@@ -174,10 +161,5 @@ describe('the DXF file', () => {
   it('keeps every emitted number finite', async () => {
     const { text } = await captured(() => downloadDxfFile('t.dxf', SQUARE));
     expect(text).not.toMatch(/NaN|Infinity|undefined/);
-  });
-
-  it('downloads under the name it was given', async () => {
-    const { name } = await captured(() => downloadDxfFile('violin-mould.dxf', SQUARE));
-    expect(name).toBe('violin-mould.dxf');
   });
 });

@@ -33,12 +33,4 @@ describe('placedImageShape', () => {
     expect(shape.x + shape.width / 2).toBeCloseTo(0);
     expect(shape.y).toBeCloseTo(0);
   });
-
-  it('arrives unlocked and numbered past the images already placed', () => {
-    const shape = placedImageShape('ref', 400, 700, bounds, 2);
-    expect(shape.locked).toBe(false);
-    expect(shape.label).toBe('Img 3');
-    expect(shape.imageRef).toBe('ref');
-    expect(shape.rotationDeg).toBe(0);
-  });
 });

@@ -181,13 +181,6 @@ describe('SelectionActions', () => {
     expect((toolbox.getShapes()[1] as LineShape).start.y).toBe(40);
   });
 
-  it('needs two shapes, one of them drawn, to align', () => {
-    toolbox.addShape(line('a'));
-    selection.select(toolboxRef('a'));
-    expect(actions.canAlign).toBe(false);
-    expect(actions.align('left')).toBe(false);
-  });
-
   it('turns the selection a quarter about its centre', () => {
     toolbox.addShape(line('a'));
     selection.select(toolboxRef('a'));

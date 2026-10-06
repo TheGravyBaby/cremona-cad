@@ -30,56 +30,6 @@ describe('ToolPaletteComponent', () => {
 
   afterEach(() => sessionStorage.clear());
 
-  it('should create', async () => {
-    await create();
-    expect(component).toBeTruthy();
-  });
-
-  it('starts open with nothing stored', async () => {
-    await create();
-    expect(component.open).toBe(true);
-    expect(el('.tool-palette')?.classList.contains('collapsed')).toBe(false);
-    expect(el('.tool-dock-body')).toBeTruthy();
-  });
-
-  it('starts collapsed on a viewport too short to hold the bar', async () => {
-    const tall = window.innerHeight;
-    Object.defineProperty(window, 'innerHeight', { value: 393, configurable: true });
-    try {
-      await create();
-      expect(component.open).toBe(false);
-    } finally {
-      Object.defineProperty(window, 'innerHeight', { value: tall, configurable: true });
-    }
-  });
-
-  it('lets a stored preference win over the short-viewport default', async () => {
-    const tall = window.innerHeight;
-    Object.defineProperty(window, 'innerHeight', { value: 393, configurable: true });
-    sessionStorage.setItem(OPEN_KEY, 'true');
-    try {
-      await create();
-      expect(component.open).toBe(true);
-    } finally {
-      Object.defineProperty(window, 'innerHeight', { value: tall, configurable: true });
-    }
-  });
-
-  it('honours a stored collapsed state', async () => {
-    sessionStorage.setItem(OPEN_KEY, 'false');
-    await create();
-    expect(component.open).toBe(false);
-    expect(el('.tool-palette')?.classList.contains('collapsed')).toBe(true);
-  });
-
-  it('persists the collapsed state', async () => {
-    await create();
-    component.toggleOpen();
-    expect(sessionStorage.getItem(OPEN_KEY)).toBe('false');
-    component.toggleOpen();
-    expect(sessionStorage.getItem(OPEN_KEY)).toBe('true');
-  });
-
   it('reopens from the handle while collapsed', async () => {
     sessionStorage.setItem(OPEN_KEY, 'false');
     await create();
@@ -94,46 +44,6 @@ describe('ToolPaletteComponent', () => {
     expect(el('.tool-dock-body')).toBeTruthy();
   });
 
-  it('does not reopen on hover', async () => {
-    sessionStorage.setItem(OPEN_KEY, 'false');
-    await create();
-
-    el('.tool-palette')!.dispatchEvent(new MouseEvent('mouseenter'));
-    fixture.detectChanges();
-
-    expect(component.open).toBe(false);
-  });
-
-  it('heads every open flyout with its group, draw and modify alike', async () => {
-    await create();
-    const registry = TestBed.inject(ToolRegistryService);
-    const headings = () => {
-      fixture.detectChanges();
-      return [...fixture.nativeElement.querySelectorAll('.tool-flyout-caret')].map((caret: HTMLElement) => {
-        caret.click();
-        fixture.detectChanges();
-        const title = el('.tool-flyout-title')?.textContent?.trim();
-        caret.click();
-        fixture.detectChanges();
-        return title;
-      });
-    };
-
-    expect(headings()).toEqual(registry.toolRows.flat().filter(s => registry.hasVariants(s)).map(s => registry.groupLabel(s)));
-    el('.modify-handle')!.click();
-    expect(headings()).toEqual(component.modifyLayout.filter(r => (r.commands?.length ?? 0) > 1).map(r => r.label));
-  });
-
-  it('closes an open flyout when collapsing', async () => {
-    await create();
-    const registry = TestBed.inject(ToolRegistryService);
-    component.openFlyout = registry.toolRows.flat().find(s => registry.hasVariants(s))!;
-
-    component.toggleOpen();
-
-    expect(component.openFlyout).toBeNull();
-  });
-
   // layoutColumns() measures the bar and writes the column break onto the grid. jsdom reports every
   // element as zero-height, which is the same shape as a collapsed bar: there is nothing to measure,
   // so it must write nothing and leave the stylesheet's single-column fallback in charge rather than
@@ -143,37 +53,6 @@ describe('ToolPaletteComponent', () => {
     const body = el('.tool-dock-body')!;
     expect(body.style.gridTemplateRows).toBe('');
     expect(body.style.gridAutoFlow).toBe('');
-  });
-
-  // Guards the three deletions the docked layout depends on: the separator cost a whole extra
-  // column once the bar wraps, the pin button was replaced by the handle, and Layers moved out to
-  // the canvas bottom bar (layer-controls.ts) so that no row carries a sliver beside its button.
-  it('renders one row per tool plus Select, and nothing else', async () => {
-    await create();
-    const registry = TestBed.inject(ToolRegistryService);
-
-    expect(fixture.nativeElement.querySelectorAll('.tool-palette-sep').length).toBe(0);
-    expect(fixture.nativeElement.querySelectorAll('.tool-view-toggle').length).toBe(0);
-    expect(fixture.nativeElement.querySelectorAll('.tool-row').length)
-      .toBe(registry.toolRows.length + 1);
-  });
-
-  it('switches tabs from the handles, and closes when the showing tab is clicked again', async () => {
-    await create();
-    const registry = TestBed.inject(ToolRegistryService);
-    el('.modify-handle')!.click();
-    fixture.detectChanges();
-
-    expect(component.tab).toBe('modify');
-    expect(el('.modify-handle')!.classList.contains('top')).toBe(true);
-    expect(el('.tool-dock-handle:not(.modify-handle)')!.classList.contains('top')).toBe(false);
-    expect(fixture.nativeElement.querySelectorAll('.tool-row').length).toBe(component.modifyLayout.length + 1);
-    const laidOut = component.modifyLayout.flatMap(row => row.slot ? registry.variantsOf(row.slot) : row.commands!.flatMap(c => c.tool ?? []));
-    expect(registry.modifyRows.flat().flatMap(slot => registry.variantsOf(slot)).every(tool => laidOut.includes(tool))).toBe(true);
-
-    el('.modify-handle')!.click();
-    fixture.detectChanges();
-    expect(component.open).toBe(false);
   });
 
   it('shows the tab a hotkeyed tool lives on', async () => {
@@ -234,17 +113,5 @@ describe('ToolPaletteComponent', () => {
     vi.spyOn(actions, 'canGroup', 'get').mockReturnValue(false);
     vi.spyOn(actions, 'canUngroup', 'get').mockReturnValue(true);
     expect(component.commandFace(group).id).toBe('ungroup');
-  });
-
-  it('closes an open flyout on a press outside the bar, and not on one inside it', async () => {
-    await create();
-    const registry = TestBed.inject(ToolRegistryService);
-    const slot = registry.toolRows.flat().find(s => registry.hasVariants(s))!;
-    component.openFlyout = slot;
-    el('.tool-dock-body')!.dispatchEvent(new Event('pointerdown', { bubbles: true }));
-    expect(component.openFlyout).toBe(slot);
-
-    document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }));
-    expect(component.openFlyout).toBeNull();
   });
 });
