@@ -1185,3 +1185,15 @@ export function defineFrontProfilePath(p: EnricoCerutiParams, body: PlatePlan, s
     nut,
   };
 }
+
+// the neck from behind, in the plan's frame: its two sides from where they come out past the back
+// plate's `outline` up to the nut. The plate is nearest the eye, so it hides the foot in the body
+export function defineBackNeckPath(p: EnricoCerutiParams, outline: string): string {
+  const nk = p.neck!;
+  const rootY = mortiseFloorY(p);
+  const topY = nk.neckTop!.y;
+  return combinePathStrings([1, -1].map(side =>
+    occludePath(pathFromLine(new Pt(side * nk.rootWidth / 2, rootY), new Pt(side * nk.topWidth / 2, topY)), outline).visible,
+  ).filter(d => !!d));
+}
+

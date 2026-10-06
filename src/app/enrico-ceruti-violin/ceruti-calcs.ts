@@ -8,7 +8,7 @@ import { DefaultParams, EnricoCerutiParams, PathEntry, PathKey } from "./ceruti-
 import { cornerOffsetSign, defaultButton, defineFholePath, defineInnerPath, defineOuterPath, definePurflingPath, defineOuterPurflingPath, PlatePlan } from "./ceruti-paths";
 import { calculateNeck, defineNeckPath } from "./ceruti-neck";
 import { solveScrollForProfile } from "./ceruti-scroll";
-import { solveLongArch } from "./ceruti-arch-geometry";
+import { LongArchSolve, solveLongArch } from "./ceruti-arch-geometry";
 
 // ===== Outline solvers =====
 // Solve where the violin body's bouts/corners/center-bout arcs actually sit.
@@ -1395,28 +1395,39 @@ export const calculateInnerOutline = (params: EnricoCerutiParams): SolveFailure<
   ...(hasCenterBout(params) ? calculateCenterBout(params) : []),
 ];
 
-export type FrontProfileSolve = { failures: SolveFailure<CornerKey | CenterBoutKey>[]; neck: boolean; scroll: boolean };
+// whether the neck and the scroll on it were re-solved this pass, and so can be drawn
+export type NeckProfileSolve = { neck: boolean; scroll: boolean };
+export type FrontProfileSolve = NeckProfileSolve & { failures: SolveFailure<CornerKey | CenterBoutKey>[] };
+
+const NO_NECK: NeckProfileSolve = { neck: false, scroll: false };
+
+// the neck the user has set, re-solved against the top arch so it follows the arch and the rib
+// taper, and the scroll once its panels have started it. `topArch` for a caller that has solved
+// the arch already
+export const solveNeckForProfile = (params: EnricoCerutiParams, topArch?: LongArchSolve): NeckProfileSolve => {
+  const gouge = params.arching?.top.fluting;
+  if (!(params.neck?.neckTop && params.stringSetup && gouge)) return NO_NECK;
+  calculateNeck(params, topArch ?? solveLongArch(params, params.arching!.top.arch, gouge), gouge);
+  return { neck: true, scroll: solveScrollForProfile(params) };
+};
 
 // the same carried on through everything the user has reached, so a view of the whole instrument
 // follows an edit made upstream. The cached paths are refreshed only once the outline closes with
-// every section solved; `neck` and `scroll` are whether each was re-solved and so can be drawn.
-// `neck: false` leaves both unsolved, for a view that won't draw them.
+// every section solved. `neck: false` leaves the neck and scroll unsolved, for a view that won't
+// draw them.
 export const ensureFrontProfilePaths = (
   params: EnricoCerutiParams,
   paths: PathEntry[],
   opts: { neck?: boolean } = {},
 ): FrontProfileSolve => {
   const failures = calculateInnerOutline(params);
-  if (failures.length || !hasCenterBout(params)) return { failures, neck: false, scroll: false };
+  if (failures.length || !hasCenterBout(params)) return { failures, ...NO_NECK };
   upsertPathEntry(paths, 'inner', defineInnerPath(params));
-  if (!hasOuterTrace(params)) return { failures: [], neck: false, scroll: false };
+  if (!hasOuterTrace(params)) return { failures: [], ...NO_NECK };
 
   calculateOuterArcs(params);
   ensureOuterTracePaths(params, paths);
   if (params.fHoles) ensureFholePath(params, paths);
-  const gouge = params.arching?.top.fluting;
-  const neck = opts.neck !== false && !!(params.neck?.neckTop && params.stringSetup && gouge);
-  if (neck) calculateNeck(params, solveLongArch(params, params.arching!.top.arch, gouge!), gouge!);
-  return { failures: [], neck, scroll: neck && solveScrollForProfile(params) };
+  return { failures: [], ...(opts.neck === false ? NO_NECK : solveNeckForProfile(params)) };
 };
 

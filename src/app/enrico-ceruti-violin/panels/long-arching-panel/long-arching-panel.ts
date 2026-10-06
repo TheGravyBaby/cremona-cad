@@ -11,14 +11,12 @@ import {
   clampSplinePointHeights, defaultArchingParams, maxRibTaperMm, splinePeakRow,
 } from '../../ceruti-arching';
 import { defaultFlutingParams, LongArchSolve, solveLongArch } from '../../ceruti-arch-geometry';
-import { calculateOuterArcs } from '../../ceruti-calcs';
+import { calculateOuterArcs, solveNeckForProfile } from '../../ceruti-calcs';
 import {
   archHeightInfo, curveTypeInfo, transitionInfo, plateThicknessInfo, ribHeightInfo, splinePointInfo,
 } from '../../ceruti-toasts';
 import { HighlightedSplinePoint } from '../../renders/render-constants';
 import { renderBodySection, renderSideView } from '../../renders/body-section.render';
-import { calculateNeck } from '../../ceruti-neck';
-import { solveScrollForProfile } from '../../ceruti-scroll';
 import { renderNeck } from '../neck-panel/neck-panel';
 import { error } from '../../../shared/message-emitter';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
@@ -260,11 +258,9 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
     }
     // the neck the user has set, re-solved so it follows the arch and the rib taper, in grey under the body
     const p = this.params;
-    const neckSet = this.showNeck && !!(p.neck?.neckTop && p.stringSetup);
-    if (neckSet) calculateNeck(p, this.solved.top, this.gouge('top'));
-    const scroll = neckSet && solveScrollForProfile(p);
+    const { neck, scroll } = this.showNeck ? solveNeckForProfile(p, this.solved.top) : { neck: false, scroll: false };
     return [renderSideView(p, [
-      ...(neckSet ? [renderNeck(p, this.colors, { strings: false, bridge: false, scroll, ground: this.colors.outerTrace })] : []),
+      ...(neck ? [renderNeck(p, this.colors, { strings: false, bridge: false, scroll, ground: this.colors.outerTrace })] : []),
       renderBodySection(p, this.colors, {
         solved: this.solved,
         gouge: { top: this.gouge('top'), bottom: this.gouge('bottom') },

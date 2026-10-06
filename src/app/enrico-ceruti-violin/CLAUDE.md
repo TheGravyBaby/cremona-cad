@@ -348,7 +348,8 @@ section first → long arch carved to a template → crown across. The panel ord
   (`calculateInnerOutline` from Main Bouts; just the center bout from Corners), and lays
   `renderFrontInnerProfile` first, with no `[paths]` needed. The full `renderFrontProfile` is for
   the screens past the outline; Base (`renderInstrumentProfile`) and both f-hole panels carry it, F-Hole
-  Contours with `fHoles: false`, as it draws the holes itself in colour. Both f-hole panels pass
+  Contours with `fHoles: false`, as it draws the holes itself in colour, and F-Hole Placement with
+  `purfling: false`, as the line it wants inside the edge is the rib outline (`'inner'`). Both f-hole panels pass
   `neck: false` to the ensure (2026-10-06): the neck and scroll took the eye off the holes rather
   than giving them context. The render draws the neck only when the solve says it reached it
   (`solve.neck`, like `solve.scroll`), so the flag is given once. The option stays to revisit. Main Bouts and
@@ -357,8 +358,9 @@ section first → long arch carved to a template → crown across. The panel ord
 - **The plate panels draw both plates, the top where it always is.** (2026-10-06) Outer Path and
   Fluting Channel keep the top centred on x = 0, as every other plan view draws it, with its
   f-holes once placed, and put the back `plateLayoutOffset` to its left, both through
-  `renderPlatePair`. The back's button (`defineButton`) draws in `archBack`, the colour the neck
-  panel already gives it. Every view of the top plate reads it as one `PlatePlan` through
+  `renderPlatePair`, which can carry the front and back profiles' neck and scroll once the neck is
+  set — proven there on 2026-10-06 and parked the same day, until the profiles have a home of their own.
+  The back's button (`defineButton`) draws in `archBack`, the colour the neck panel already gives it. Every view of the top plate reads it as one `PlatePlan` through
   `topPlatePaths` (outline, purfling lines, one path per hole) rather than picking the cache
   entries over again; `defineFrontProfilePath` cuts and returns the same shape.
 - **Long Arching can lay the neck under the body once the neck panel has set it** (2026-10-06),
@@ -374,9 +376,21 @@ section first → long arch carved to a template → crown across. The panel ord
   scroll panels draw that join. In grey on the neck and long-arching panels; the hollow isn't drawn.
   The front view goes on the end of the neck in the front profile (and the neck panel's front view)
   the same way: `scrollFrontViewStrokes` is the scroll widths panel's front view pulled out with a
-  placement, and `scrollFrontInPlan` projects it through `scrollOnNeck`, so a point's depth carries
-  into how far up the body it lands. What hides what is still worked out along the neck's normal.
-  `solveScrollForProfile` is the one re-solve every such view runs.
+  placement, and `scrollFrontInPlan` sets it on the neck through `scrollOnNeck`, foreshortened by
+  the neck's tilt and nothing more. It was a projection for a day (2026-10-06), each point's depth
+  carried into how far up the body it lands — but only the volute's contours carry a depth, so the
+  pegbox, the nut and the turns' faces landed at other heights and the drawing came apart. The
+  widths panel's drawing, set on the neck, is the one wanted. `solveNeckForProfile` is the one
+  re-solve every such view runs, the neck against the top arch and then the scroll.
+- **The back profile is the back plate with the neck's two sides and the scroll's back view**
+  (2026-10-06), proven on the plate panels and parked there. `defineBackNeckPath` runs the neck's sides from the
+  mortise floor to the nut and cuts them against the back plate's outline, since the plate is the
+  nearest thing to the eye from behind, so they come out of the button or the edge wherever that
+  falls. `scrollBackViewStrokes` is the widths panel's back view pulled out like the front, and
+  `scrollBackInPlan` sets it on the neck the same way, its own neck sides carried on from the nut
+  (`neckFrom`) rather than from below it, where the profile's are. No heel from behind: the neck
+  geometry that would need isn't constructed anywhere yet, and these views won't live on the plate
+  panels for good.
 
 - **The front profile sits on x = 0 and the side profile to its left, on every panel** (2026-10-06).
   Every plan view already centred the front on the origin. The side elevation is still drawn in its
