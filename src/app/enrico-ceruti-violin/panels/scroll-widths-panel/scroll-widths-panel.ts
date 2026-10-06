@@ -1,14 +1,16 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { renderPath, renderSolveFailures } from '../../../helpers/renderFuncs';
+import { renderPath, renderSolveFailures, renderCrosshair, renderPointHalo, renderStroke, STROKE_WEIGHT } from '../../../helpers/renderFuncs';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, RenderToggleKey } from '../../ceruti-types';
 import { defaultNeckParams, defaultStringSetup } from '../../calculation/neck/ceruti-neck';
-import { calculateScroll, calculateScrollWidths, ScrollStationKey } from '../../calculation/neck/ceruti-scroll';
+import { calculateScroll, calculateScrollWidths, ScrollStationKey, pegboxCavity, scrollExtent, scrollWidthStations } from '../../calculation/neck/ceruti-scroll';
 import { defineSideScrollPath } from '../../calculation/outline/ceruti-paths';
-import { renderScrollNeck, renderScrollWidths, stationColor } from '../../renders/scroll.render';
-import { STROKE_WEIGHT } from '../../renders/render-constants';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
+import { pathFromPolyline } from '../../../helpers/math/pathMath';
+import { Pt } from '../../../models/types';
+import { scrollNeckStub, scrollBackViewStrokes, scrollFrontViewStrokes } from '../../calculation/neck/ceruti-scroll-views';
+import { renderScrollNeck } from '../volute-panel/volute-panel';
 
 @Component({
   selector: 'app-ceruti-scroll-widths-panel',
@@ -62,3 +64,44 @@ export class ScrollWidthsPanel extends CerutiPanelBase implements OnInit {
     ];
   }
 }
+
+// a width's colour on canvas and in its field
+export function stationColor(colors: CerutiColors, key: ScrollStationKey): string {
+  const inks: Record<ScrollStationKey, string> = {
+    nut: colors.scrollWidthNut, hip: colors.scrollWidthHip, throat: colors.scrollWidthThroat,
+    crown: colors.scrollWidthCrown, turn1Bottom: colors.scrollWidthTurn1Bottom, turn2Top: colors.scrollWidthTurn2Top,
+    turn2Bottom: colors.scrollWidthTurn2Bottom, eye: colors.scrollWidthEye,
+  };
+  return inks[key];
+}
+
+// the side profile with a crosshair on each width and the pegbox's hollow dashed inside it, the back
+// view beside the scroll's furthest reach and the front view beside the nut
+export const renderScrollWidths = (p: EnricoCerutiParams, colors: CerutiColors, focused: ScrollStationKey | null, showGuides: boolean) => (g: any, ui: any): void => {
+  const v = p.scroll!;
+  const { nutThickness } = p.stringSetup!;
+  const stations = scrollWidthStations(p);
+
+  const gap = 20;
+  const widest = Math.max(v.widths.eye, v.widths.hip, p.stringSetup!.nutWidth) / 2;
+  const back = -scrollExtent(v).width - gap - widest;
+  const front = nutThickness + gap + widest;
+
+  const marked = stations.find(station => station.key === focused);
+  if (marked) {
+    const ink = stationColor(colors, marked.key);
+    renderPointHalo(marked.at, ink)(g, ui);
+    for (const center of [back, front]) {
+      for (const side of [1, -1]) renderPointHalo(new Pt(center + side * marked.width / 2, marked.at.y), ink)(g, ui);
+    }
+  }
+
+  const stub = scrollNeckStub(p);
+  for (const stroke of scrollBackViewStrokes(p, (x, y) => new Pt(back + x, y), -stub)) renderStroke(stroke, colors[stroke.ink])(g, ui);
+  for (const stroke of scrollFrontViewStrokes(p, (x, y) => new Pt(front + x, y), -stub)) renderStroke(stroke, colors[stroke.ink])(g, ui);
+
+  // in the side view the hollow is inside the wood
+  const cavity = pegboxCavity(p);
+  if (cavity) renderPath(pathFromPolyline(cavity), colors.scrollFrontLight, STROKE_WEIGHT.trace, 1, '4,4')(g, ui);
+  if (showGuides) for (const station of stations) renderCrosshair(station.at, stationColor(colors, station.key))(g, ui);
+};

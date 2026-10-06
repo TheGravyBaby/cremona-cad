@@ -1,24 +1,19 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { getArcEndDeg, getArcStartDeg, setArcEndDeg, setArcStartDeg } from '../../../helpers/math/arcDegrees';
-import {
-  flipAngleAboutYAxis, flipArcAboutY, offsetArcRadius,
-} from '../../../helpers/math/simpleGeometry';
+import { flipAngleAboutYAxis, flipArcAboutY, offsetArcRadius } from '../../../helpers/math/simpleGeometry';
 import { nearestFraction } from '../../../helpers/nearestFraction';
-import {
-  renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderSegment, renderSolveFailures,
-} from '../../../helpers/renderFuncs';
-import { arcFromCircle, Arc } from '../../../models/types';
+import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderSegment, renderSolveFailures, renderRect, STROKE_WEIGHT } from '../../../helpers/renderFuncs';
+import { arcFromCircle, Arc, Rectangle } from '../../../models/types';
 import { calculateInnerOutline, calculateMainBouts, MainBoutFailure, violNeckJoinLimit } from '../../calculation/outline/ceruti-calcs';
 import { error } from '../../../shared/message-emitter';
 import { boutWidthInfo, violNeckInfo, violNeckJoinInfo } from '../field-info';
 import { violNeckCap } from '../../calculation/outline/ceruti-paths';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, RenderToggleKey } from '../../ceruti-types';
-import { renderBounds, renderBoutBouts } from '../../renders/guides.render';
 import { renderFrontInnerProfile } from '../../renders/front-profile.render';
-import { HighlightedArc, STROKE_WEIGHT } from '../../renders/render-constants';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
+import { HighlightedArc } from '../../renders/render-constants';
 
 export interface MainBoutsViewFlags {
   showModuleCircles: boolean;
@@ -268,4 +263,32 @@ export const renderMainBouts = (
       renderArcFromArc(offsetArcRadius(mirroredL1Arc, inset), outerBotOffColor, STROKE_WEIGHT.trace)(g, ui);
     }
   }
+};
+
+export const renderBounds = (params: EnricoCerutiParams, render: boolean) => (g: any, ui: any): void => {
+  const h = params.height;
+  const hw = params.width / 2;
+  const inset = params.overhang + params.rib;
+  let outerRect = new Rectangle({ x: -hw, y: 0 }, { x: hw, y: h });
+  let insetRect = new Rectangle({ x: -hw + inset, y: inset }, { x: hw - inset, y: h - inset });
+
+  if (render) {
+    renderRect(outerRect, "grey")(g, ui);
+    renderRect(insetRect, "grey")(g, ui);
+  }
+};
+
+export const renderBoutBouts = (params: EnricoCerutiParams, colors: CerutiColors, render: boolean) => (g: any, ui: any): void => {
+  if (!render) return;
+  let p = params;
+  let lowerBoutSquare = new Rectangle({ x: -p.bouts.LBW / 2, y: 0 }, { x: p.bouts.LBW / 2, y: p.bouts.LBW });
+  let upperBoutSquare = new Rectangle({ x: -p.bouts.UBW / 2, y: p.height - p.bouts.UBW }, { x: p.bouts.UBW / 2, y: p.height });
+  const inset = params.overhang + params.rib;
+
+  renderRect(lowerBoutSquare, colors.lowerBoutOff)(g, ui);
+  renderSegment({ x: -p.bouts.LBW / 2 + inset, y: 0 }, { x: -p.bouts.LBW / 2 + inset, y: p.bouts.LBW }, colors.lowerBoutOff)(g, ui);
+  renderSegment({ x: p.bouts.LBW / 2 - inset, y: 0 }, { x: p.bouts.LBW / 2 - inset, y: p.bouts.LBW }, colors.lowerBoutOff)(g, ui);
+  renderRect(upperBoutSquare, colors.upperBoutOff)(g, ui);
+  renderSegment({ x: -p.bouts.UBW / 2 + inset, y: p.height - p.bouts.UBW }, { x: -p.bouts.UBW / 2 + inset, y: p.height }, colors.upperBoutOff)(g, ui);
+  renderSegment({ x: p.bouts.UBW / 2 - inset, y: p.height - p.bouts.UBW }, { x: p.bouts.UBW / 2 - inset, y: p.height }, colors.upperBoutOff)(g, ui);
 };

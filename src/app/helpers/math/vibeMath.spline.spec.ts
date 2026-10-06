@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { archSplineKnots, splineZAt } from './pathMath';
+import { archSplineKnots, splineZAt } from './vibeMath';
 
 describe('splineZAt shape preservation', () => {
   const span = 356;

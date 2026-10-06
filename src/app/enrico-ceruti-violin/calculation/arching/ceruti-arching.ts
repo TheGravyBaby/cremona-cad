@@ -1,7 +1,8 @@
 import { Pt } from "../../../models/types";
 import { clamp, TURN } from "../../../helpers/math/simpleGeometry";
-import { catenaryZAt, cycloidZAt, splineZAt } from "../../../helpers/math/pathMath";
+import { catenaryZAt, cycloidZAt, splineZAt, archSplineKnots } from "../../../helpers/math/vibeMath";
 import { ArchCurve, ArchingParams, EnricoCerutiParams } from "../../ceruti-types";
+import { buildCatenaryPath, buildCycloidPath, buildSplinePath } from "../../../helpers/math/pathVibes";
 
 // The long-arch height profile and the body-position queries every arching
 // consumer shares — a distinct concern from the flat 2D outline in
@@ -333,9 +334,20 @@ export function bodyLandmarks(p: EnricoCerutiParams): BodyLandmark[] {
         .map(m => ({ code: m.code, name: m.name, y: Math.round(m.y) }));
 }
 
-// A station's half-width used to be read off the outline's arcs here. It is now
-// read off the sampled loop instead (`plateHalfChordAtY`), because the arcs
-// answer wrongly at the corners: the plate edge rounds each corner on a cubic
-// that no arc covers, and the bout arcs that do answer run past the corner they
-// were cut at. The loops are also what the surface model itself measures.
+export function buildArchPathFor(arch: ArchCurve, span: number, yStart: number, xBase: number, sign: 1 | -1, farZ: number): string {
+  switch (arch.type) {
+    case 'catenary': return buildCatenaryPath(arch.archHeight, span, yStart, xBase, sign);
+    case 'cycloid':  return buildCycloidPath(arch.archHeight, span, yStart, xBase, sign, arch.d);
+    case 'spline':   return buildSplinePath(arch.archHeight, span, yStart, xBase, sign, arch.points, arch.peak, undefined, farZ);
+  }
+}
 
+// a spline is its control points, so every knot is marked; a catenary or cycloid follows from the
+// one height at mid-span
+export function archGuideKnots(arch: ArchCurve): { t: number; z: number }[] {
+  switch (arch.type) {
+    case 'spline': return archSplineKnots(arch.archHeight, arch.points, arch.peak ?? 0.5);
+    case 'catenary':
+    case 'cycloid': return [{ t: 0.5, z: arch.archHeight }];
+  }
+}

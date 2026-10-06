@@ -3,19 +3,18 @@ import { FormsModule } from '@angular/forms';
 import { adjustArcStart } from '../../../helpers/math/arcDegrees';
 import { flipArcAboutY, flipCircleAboutY, offsetArcRadius } from '../../../helpers/math/simpleGeometry';
 import { nearestFraction } from '../../../helpers/nearestFraction';
-import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderCrosshair, renderDashedLine, renderPointHalo, renderSolveFailures } from '../../../helpers/renderFuncs';
+import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderCrosshair, renderDashedLine, renderPointHalo, renderSolveFailures, STROKE_WEIGHT } from '../../../helpers/renderFuncs';
 import { Arc } from '../../../models/types';
 import { SolveFailure } from '../../../helpers/validators';
 import { ensureCenterBoutInnerPath } from '../../calculation/outline/ceruti-calcs';
 import { cornerOffsetSign } from '../../calculation/outline/ceruti-paths';
 import { CerutiColors, CerutiViewFlags, DefaultParams, EnricoCerutiParams, PathEntry, RenderToggleKey } from '../../ceruti-types';
-import { renderBounds, renderBoutBouts } from '../../renders/guides.render';
-import { HighlightedArc, HighlightedPoint, STROKE_WEIGHT } from '../../renders/render-constants';
-import { renderMainBouts } from '../main-bouts-panel/main-bouts-panel';
+import { renderMainBouts, renderBounds, renderBoutBouts } from '../main-bouts-panel/main-bouts-panel';
 import { renderCorners } from '../corners-panel/corners-panel';
 import { centerBoutWidthInfo, cornerPositionInfo, fitC0Info } from '../field-info';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
+import { HighlightedArc, HighlightedPoint } from '../../renders/render-constants';
 
 export interface CenterBoutViewFlags {
   showModuleCircles: boolean;

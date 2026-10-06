@@ -1,12 +1,7 @@
 import { Pt } from '../../../models/types';
 import { clamp, smoothstep } from '../../../helpers/math/simpleGeometry';
-import {
-  buildPolylineIndex, closestPointToPolylineIndexed, makeC2SplineWithFlatKnot, makeMonotoneSpline,
-  PolylineIndex,
-} from '../../../helpers/math/vibeMath';
-import {
-  archSplineKnots, catenaryZAt, cycloidZAt, samplePathToPolyline, splineZAt,
-} from '../../../helpers/math/pathMath';
+import { buildPolylineIndex, closestPointToPolylineIndexed, makeC2SplineWithFlatKnot, makeMonotoneSpline, PolylineIndex, archSplineKnots, catenaryZAt, cycloidZAt, splineZAt } from '../../../helpers/math/vibeMath';
+import { samplePathToPolyline } from '../../../helpers/math/pathMath';
 import {
   ArchCurve, EnricoCerutiParams, CrossArchShape, CrossArchCycloid, CrossArchSpline, FlutingParams,
 } from '../../ceruti-types';

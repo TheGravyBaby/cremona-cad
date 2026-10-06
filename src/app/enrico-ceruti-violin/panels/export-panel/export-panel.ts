@@ -5,7 +5,7 @@ import { combinePathStrings, pathsBounds, splitPathStrings, translatePath } from
 import { buildMirroredSvg, downloadFullPlanPdf, downloadSvgAsPdf, downloadSvgFile, PdfPage, SvgPathExport, SvgTextExport } from '../../../helpers/fileExporter';
 import { downloadDxfFile, DxfText } from '../../../helpers/dxfExporter';
 import { downloadStlFile } from '../../../helpers/stlExporter';
-import { renderPath, renderText } from '../../../helpers/renderFuncs';
+import { renderPath, renderText, STROKE_WEIGHT } from '../../../helpers/renderFuncs';
 import { error } from '../../../shared/message-emitter';
 import { calculateCornerBlocks, calculateMould, calculateOuterArcs, ensureCenterBoutInnerPath, ensureFholePath, ensureOuterTracePaths, getPath, getPathOrNull, solveNeckForProfile } from '../../calculation/outline/ceruti-calcs';
 import { defineNeckTemplate, NeckTemplate, neckTemplatePath } from '../../calculation/neck/ceruti-neck-template';
@@ -14,7 +14,6 @@ import { defaultCrossArchParams, defaultFlutingParams } from '../../calculation/
 import { buildPlateSurfaceModel, buildPlateStl, calculateCrossArchTemplates, calculateLongArchTemplates, TemplateShape } from '../../calculation/arching/ceruti-surface';
 import { CerutiColors, EnricoCerutiParams, PathEntry, PathKey } from '../../ceruti-types';
 import { defaultFHolePlacement } from '../f-hole-placement-panel/f-hole-placement-panel';
-import { STROKE_WEIGHT } from '../../renders/render-constants';
 
 type ExportType = 'innerTrace' | 'outerTrace' | 'back' | 'mould' | 'blocks' | 'crossArchTemplates' | 'longArchTemplates' | 'fholeTemplate' | 'fholeTemplateNoEyes' | 'neckTemplate';
 

@@ -7,7 +7,7 @@ import { EnricoCerutiParams, PegboxParams, ScrollParams, ScrollWidths, VoluteSty
 import { defaultNeckParams, defaultStringSetup } from './ceruti-neck';
 
 // The scroll in its own side-view frame: the nut at the origin on the neck's front, up the neck +y,
-// toward the back -x. calculateScroll writes every arc onto `p.volute` for scroll.render.ts to read.
+// toward the back -x. calculateScroll writes every arc onto `p.volute` for the scroll panels to read.
 
 export type VoluteSpec = Pick<ScrollParams, 'style' | 'eye' | 'pitch' | 'seedLength' | 'arcRadii'>;
 export type ScrollKey = 'spiral' | 'S0' | 'S1' | 'S2' | 'S3' | 'nape' | 'backStraight' | 'F0' | 'F1' | 'flat' | 'frontStraight';
@@ -747,4 +747,58 @@ export function scrollExtent(v: ScrollParams): { height: number; width: number }
     height: Math.max(...back.flatMap(a => arcReach(a, TURN.quarter)).map(pt => pt.y)),
     width: -Math.min(...back.flatMap(a => arcReach(a, TURN.half)).map(pt => pt.x)),
   };
+}
+
+// the figure each style finds its centres on, as polylines in the eye's frame
+export function voluteConstruction(v: ScrollParams): Pt[][] {
+  const r = v.eye.r;
+  const square = (left: number, right: number, bottom: number, top: number) =>
+    [new Pt(left, bottom), new Pt(right, bottom), new Pt(right, top), new Pt(left, top), new Pt(left, bottom)];
+
+  switch (v.style) {
+    // the walk of centres
+    case 'fourPoint':
+      return [[...v.spiral!].reverse().map(a => new Pt(a.x - v.eye.x, a.y - v.eye.y))];
+
+    // a ray out to the last point on each of the eight lines
+    case 'archimedean':
+      return Array.from({ length: 8 }, (_, ray) => {
+        const eighths = ray ? 8 + ray : 2 * TO_FRONT;
+        return [new Pt(0, 0), pointOnCircle({ x: 0, y: 0, r: r + v.pitch * eighths / 8 }, ray * TURN.eighth)];
+      });
+
+    // the line of centres
+    case 'serlio':
+      return [[new Pt(-r, 0), new Pt(r, 0)]];
+
+    // the eye's inscribed square, and his outer square on its edge midpoints with its diagonals
+    case 'salviati': {
+      const h = r / 2;
+      return [
+        [0, 1, 2, 3, 4].map(i => pointOnCircle({ x: 0, y: 0, r }, i * TURN.quarter)),
+        square(-h, h, -h, h),
+        [new Pt(-h, -h), new Pt(h, h)],
+        [new Pt(-h, h), new Pt(h, -h)],
+      ];
+    }
+
+    // the eye's horizontal diameter and his three squares hanging from it
+    case 'goldmann':
+      return [
+        [new Pt(-r, 0), new Pt(r, 0)],
+        ...[1, 2, 3].map(k => square(-k * r / 6, k * r / 6, -k * r / 3, 0)),
+      ];
+
+    // the seed, its middle lines, and the eye's two axes out to the spiral's furthest reach
+    case 'kelly': {
+      const s = v.seedLength / 4;
+      const reach = Math.max(r, ...v.spiral!.map(a => dist(v.eye, a) + a.r));
+      return [
+        square(-s / 2, s / 2, -2 * s, 2 * s),
+        ...[-1, 0, 1].map(k => [new Pt(-s / 2, k * s), new Pt(s / 2, k * s)]),
+        [new Pt(0, -reach), new Pt(0, reach)],
+        [new Pt(-reach, 0), new Pt(reach, 0)],
+      ];
+    }
+  }
 }

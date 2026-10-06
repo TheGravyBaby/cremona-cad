@@ -1,5 +1,6 @@
 import { angleFromCenter, angleWithinSweep, dist, normalizeRadians, pointOnCircle, TURN } from '../../../helpers/math/simpleGeometry';
-import { arcPathData, combinePathStrings, pathFromArc, pathFromCircle, pathFromLine, samplePathToPolyline, transformPath, unifyConnectedSvgPaths } from '../../../helpers/math/pathMath';
+import { arcPathData, combinePathStrings, pathFromArc, pathFromCircle, pathFromLine, samplePathToPolyline, transformPath } from '../../../helpers/math/pathMath';
+import { unifyConnectedSvgPaths } from '../../../helpers/math/pathVibes';
 import { Arc, Pt } from '../../../models/types';
 import { EnricoCerutiParams } from '../../ceruti-types';
 import { heelFace, heelStands, mortiseFingerboardIntersect } from './ceruti-neck';

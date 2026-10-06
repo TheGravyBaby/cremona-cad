@@ -1,5 +1,5 @@
 import { Pt } from '../../models/types';
-import { battenPath } from '../../helpers/math/pathMath';
+import { battenPath } from '../../helpers/math/pathVibes';
 import { PathSource, dimensionOffsetAt, makeShapeId, pathFromSource } from './toolbox-shape';
 import { PREVIEW_COLOR, ThreePointTool, stylePreview } from './two-point-tool';
 import { ChainTool } from './line-variant-tools';

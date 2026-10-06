@@ -1,14 +1,13 @@
 import * as d3 from 'd3';
 import * as polygonClipping from 'polygon-clipping';
-import { Pt } from '../../../models/types';
+import { Pt, Pt3D } from '../../../models/types';
 // polygon-clipping ships as either an ESM default or a CJS namespace depending on bundler.
 const polyClipper: any = (polygonClipping as any).default ?? polygonClipping;
 import { clamp } from '../../../helpers/math/simpleGeometry';
 import { buildPolylineIndex, closestPointToPolylineIndexed, PolylineIndex } from '../../../helpers/math/vibeMath';
 import { buildHeightFieldStl } from '../../../helpers/stlExporter';
-import {
-    closeProfileToBlank, pathsBounds, rotatePath180, samplePathToPolyline, translatePath,
-} from '../../../helpers/math/pathMath';
+import { closeProfileToBlank } from '../../../helpers/math/pathVibes';
+import { pathsBounds, rotatePath180, samplePathToPolyline, translatePath } from '../../../helpers/math/pathMath';
 import { ArchCurve, ArchPlate, EnricoCerutiParams } from '../../ceruti-types';
 import { defineInsetPath, defineOuterPath } from '../outline/ceruti-paths';
 import {
@@ -768,6 +767,60 @@ export function computeArchContourRings(
  * outline. Coordinates in mm, x/y as in plan view. Both plates machine the same
  * way — only thickness and the button-bearing outline differ.
  */
+// the surface as cross-section strips every `stationStepMm` with ribs running lengthwise down the
+// joint and both edges, for the 3D wireframe. Depends on params alone, so the panel caches it
+export interface WireframeStrip {
+    y: number;
+    pts: Pt3D[];
+    // picks channel colour against dome colour
+    maxZ: number;
+}
+
+export interface WireframeGeometry {
+    strips: WireframeStrip[];
+    ribs: Pt3D[][];
+}
+
+function wireframeStripFromChords(p: EnricoCerutiParams, model: PlateSurfaceModel, y: number, chords: StationChords, sampleStep: number): WireframeStrip | null {
+    if (chords.outerHalf === null) return null;
+    const hw = chords.outerHalf;
+    const steps = Math.max(2, Math.ceil(hw * 2 / sampleStep));
+    const pts: Pt3D[] = [];
+    let maxZ = -Infinity;
+    for (let i = 0; i <= steps; i++) {
+        const x = -hw + (i / steps) * hw * 2;
+        const z = topSurfaceZAt(p, model, x, y, chords) ?? 0;
+        if (z > maxZ) maxZ = z;
+        pts.push(new Pt3D(x, y, z));
+    }
+    return { y, pts, maxZ };
+}
+
+export function wireframeStripAt(p: EnricoCerutiParams, model: PlateSurfaceModel, y: number, sampleStep: number): WireframeStrip | null {
+    return wireframeStripFromChords(p, model, y, stationChordsAt(p, model, y), sampleStep);
+}
+
+export function computeWireframeGeometry(p: EnricoCerutiParams, model: PlateSurfaceModel, stationStepMm: number, sampleStep: number): WireframeGeometry {
+    const strips: WireframeStrip[] = [];
+    const ribSides = [0, -1, 1];
+    const ribs: Pt3D[][] = ribSides.map(() => []);
+    for (let y = 0; y <= p.height; y += stationStepMm) {
+        const chords = stationChordsAt(p, model, y);
+        if (chords.outerHalf === null) {
+            // a gap station restarts every rib run, matching the strip coverage
+            for (const rib of ribs) rib.length = 0;
+            continue;
+        }
+        const strip = wireframeStripFromChords(p, model, y, chords, sampleStep);
+        if (strip) strips.push(strip);
+        ribSides.forEach((side, k) => {
+            const x = side * chords.outerHalf!;
+            ribs[k].push(new Pt3D(x, y, topSurfaceZAt(p, model, x, y, chords) ?? 0));
+        });
+    }
+    return { strips, ribs: ribs.filter(rib => rib.length > 1) };
+}
+
 export function buildPlateStl(p: EnricoCerutiParams, model: PlateSurfaceModel, side: 'top' | 'bottom' = 'top', gridMm = 0.5): ArrayBuffer {
     const thickness = p.arching![side].thickness;
     const xMax = p.width / 2 + p.overhang + p.rib + 2;

@@ -1,22 +1,16 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { renderFilledPath } from '../../../helpers/renderFuncs';
+import { renderFilledPath, STROKE_WEIGHT } from '../../../helpers/renderFuncs';
 import { translatePath } from '../../../helpers/math/pathMath';
 import { calculateOuterArcs, ensureFholePath, ensureOuterTracePaths } from '../../calculation/outline/ceruti-calcs';
 import { renderPlatePair } from '../../renders/front-profile.render';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, PathEntry, RenderToggleKey } from '../../ceruti-types';
 import { defaultArchingParams } from '../../calculation/arching/ceruti-arching';
-import {
-  defaultFlutingParams, effectiveCBoutSweep, channelAreaPath,
-  channelPaths, cornerJoinAreaPath, gougeHalfWidth, plateLayoutOffset,
-} from '../../calculation/arching/ceruti-arch-geometry';
-import {
-  cornerGougeInfo, gougeCBoutInfo, gougeCenterlineInfo, gougeSectionInfo,
-} from '../field-info';
+import { defaultFlutingParams, effectiveCBoutSweep, channelAreaPath, channelPaths, cornerJoinAreaPath, gougeHalfWidth, plateLayoutOffset } from '../../calculation/arching/ceruti-arch-geometry';
+import { cornerGougeInfo, gougeCBoutInfo, gougeCenterlineInfo, gougeSectionInfo } from '../field-info';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
-import { STROKE_WEIGHT } from '../../renders/render-constants';
 
 @Component({
   selector: 'app-ceruti-fluting-panel',

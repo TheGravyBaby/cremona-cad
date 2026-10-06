@@ -54,20 +54,24 @@ under `examples/` unless asked for it by name.
 
 Sort by what the code knows, not by what feature it serves:
 
-- **`ceruti-calcs.ts` and friends** — math that knows it's a violin. Takes `EnricoCerutiParams`,
+- **`calculation/` (`ceruti-calcs.ts` and friends)** — math that knows it's a violin. Takes `EnricoCerutiParams`,
   encodes instrument proportions.
 - **`helpers/math/` (`simpleGeometry.ts`, `draftMath.ts`, `vibeMath.ts`)** — math that doesn't.
   Intersections, clamping, angle normalization, spline/catenary solvers, split by how far the
   math is from something you could do with a compass and straightedge — see `helpers/CLAUDE.md`.
   If it doesn't need to know it's a violin, it goes in one of these rather than becoming a private
   method on a component.
-- **`helpers/renderFuncs.ts`, `renders/*.render.ts`** — SVG emission, plus geometry that exists
-  only to serve one view (e.g. `arch-3d-wireframe.render.ts` holds both `computeWireframeGeometry`
-  and its renderer, since that geometry has no life outside the render).
+- **`helpers/renderFuncs.ts`** — instrument-agnostic SVG emission: the `STROKE_WEIGHT` tiers,
+  primitives, guide marks, `renderStroke`, `renderTranslated`.
+- **A panel's own render functions** live in its panel file, exported when a neighbour draws them
+  too (`renderMainBouts`, `renderVolute`). `renders/` holds only what several panels draw and that
+  knows it's a violin: the front profile, the body section, the palette.
+  Geometry that only serves a view is still geometry — violin geometry goes in `calculation/`
+  (`computeWireframeGeometry`, the scroll's back and front views), generic in `helpers/math/`.
 - **Component `change*()` methods** — thin: debounce/validate, call a `calculate*`/`define*`,
   then `draftChange.emit([...renderX(...)])`. What legitimately stays on the component is
-  Angular-lifecycle state: drag handlers, and caches keyed by a params hash
-  (`archContourCache`, `wireframeCache`, `surfaceModelCache`).
+  Angular-lifecycle state: drag handlers, and caches keyed by a params hash (the cross-arching
+  panel's per-plate surface, contour and wireframe cache).
 
 This split is meant to generalize to future instrument modules — `helpers/math/` and
 `renderFuncs.ts` already sit outside any single model's folder.

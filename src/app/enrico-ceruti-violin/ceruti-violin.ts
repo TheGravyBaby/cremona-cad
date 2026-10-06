@@ -9,14 +9,9 @@ import { isLocSourced } from './templates/corpus';
 import { LOCAL_TEMPLATES } from './templates/local/generated-index';
 import { calculateMainBouts, ensureFrontProfilePaths, hasCenterBout, hasCorners, hasMainBouts } from './calculation/outline/ceruti-calcs';
 import { renderFrontProfile } from './renders/front-profile.render';
-import { renderBounds } from './renders/guides.render';
-import {
-  CERUTI_COLOR_PALETTE, LIGHT_CONTRAST_MIN, LIGHT_CONTRAST_MIN_PALE, LIGHT_MODE_CANVAS_BG,
-  LIGHT_SATURATE_DEGREE, OFF2_FACTOR, OFF_FACTOR,
-} from './renders/render-constants';
 import { PANEL_KEY, RECIPE_KEY, readWorkingState, writeWorkingState } from '../helpers/workingStorage';
 import { dimensionInfo, insetInfo } from './panels/field-info';
-import { MainBoutsPanel } from './panels/main-bouts-panel/main-bouts-panel';
+import { MainBoutsPanel, renderBounds } from './panels/main-bouts-panel/main-bouts-panel';
 import { CornersPanel } from './panels/corners-panel/corners-panel';
 import { CenterBoutPanel } from './panels/center-bout-panel/center-bout-panel';
 import { OuterTracePanel } from './panels/outer-trace-panel/outer-trace-panel';
@@ -34,6 +29,7 @@ import { ExportPanel } from './panels/export-panel/export-panel';
 import { RecipeToolbarComponent } from '../recipe-toolbar/recipe-toolbar';
 import { RenderToggles } from './panels/render-toggles/render-toggles';
 import { NumberStepperDirective } from '../shared/number-stepper';
+import { CERUTI_COLOR_PALETTE, LIGHT_CONTRAST_MIN, LIGHT_CONTRAST_MIN_PALE, LIGHT_MODE_CANVAS_BG, LIGHT_SATURATE_DEGREE, OFF2_FACTOR, OFF_FACTOR } from './renders/render-constants';
 
 @Component({
   selector: 'app-ceruti-violin',

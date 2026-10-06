@@ -1,6 +1,6 @@
 import { ImageCredit, ImageCrop, Pt } from '../../models/types';
 import { angleFromCenter, angleWithinSweep, dist, normalizeRadians, rotatePointAbout } from '../../helpers/math/simpleGeometry';
-import { battenPath, catenaryBetween, cycloidBetween } from '../../helpers/math/pathMath';
+import { battenPath, catenaryBetween, cycloidBetween } from '../../helpers/math/pathVibes';
 
 export const DEFAULT_SHAPE_COLOR = '#1d4ed8';
 
@@ -189,7 +189,7 @@ export function pathFromSource(source: PathSource): string {
 // Any geometry at all, as absolute SVG path data in world mm — the catch-all. What a copied piece
 // of recipe output becomes, what an imported curve becomes, what a rect turns into once rotated
 // off-axis. Moves as one rigid body with no endpoint handles. Only the M, L, C, Q, A and Z
-// commands, absolute: the subset every path helper in helpers/math/pathMath.ts understands, so
+// commands, absolute: the subset every path helper in helpers/math/pathMath.ts and pathVibes.ts understands, so
 // keep whatever writes `d` inside it.
 export type PathShape = ShapeBase & {
   type: 'path';

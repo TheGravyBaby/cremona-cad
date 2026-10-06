@@ -8,16 +8,14 @@ import { calculateOuterArcs, ensureFholePath, ensureNeckPath, ensureOuterTracePa
 import { bridgeWedge, buttonTip, calculateNeck, defaultNeckParams, defaultStringSetup, fingerboardCrown, mortiseFingerboardIntersect, heelFace, heelStands, plateEdgeAtNeck, stringLength } from '../../calculation/neck/ceruti-neck';
 import { defineFrontProfilePath, definePlacedSideScrollPath, fingerboardEnd, mortiseFloorY, scrollOnNeck } from '../../calculation/outline/ceruti-paths';
 import { solveScrollForProfile } from '../../calculation/neck/ceruti-scroll';
-import { renderScrollStroke, scrollFrontInPlan } from '../../renders/scroll.render';
-import { renderBodySection, renderSideView } from '../../renders/body-section.render';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { applyMatrix, pathFromArc } from '../../../helpers/math/pathMath';
 import { dist, moveInVectorSpace, pointAtDistanceToward, pointOnCircle, vectorFromSlope } from '../../../helpers/math/simpleGeometry';
-import { renderSegment, renderSegmentHalo, renderArcHalo, renderPolygon, renderPath, renderSolveFailures } from '../../../helpers/renderFuncs';
+import { renderSegment, renderSegmentHalo, renderArcHalo, renderPolygon, renderPath, renderSolveFailures, renderGuideMeasure, renderGuideBaseline, renderTranslated, renderStroke, STROKE_WEIGHT } from '../../../helpers/renderFuncs';
 import { Pt, Vect2D } from '../../../models/types';
-import { renderGuideMeasure, renderGuideBaseline } from '../../renders/module-guide.render';
-import { STROKE_WEIGHT } from '../../renders/render-constants';
+import { scrollFrontInPlan } from '../../calculation/neck/ceruti-scroll-views';
+import { renderBodySection, sideViewOffsetX } from '../../renders/body-section.render';
 
 export type NeckHighlightKey =
   | 'length' | 'thickness' | 'topWidth' | 'rootWidth' | 'heel' | 'buttonHeight' | 'mortise' | 'overstand' | 'angle'
@@ -101,7 +99,7 @@ export class NeckPanel extends CerutiPanelBase implements OnInit {
     if (p.fHoles) ensureFholePath(p, this.paths);
 
     return [
-      renderSideView(p, [
+      renderTranslated(sideViewOffsetX(p), 0, [
         renderBodySection(p, this.colors, { solved, gouge, color: this.colors.outerTrace }),
         renderNeck(p, this.colors, { guides: this.flags.showModuleGuides, fingerboard: this.flags.showFingerboard, fretMarks: this.flags.showFretMarks, scroll }),
         renderNeckHighlight(p, this.highlightedKey, this.highlightedColor, 'side'),
@@ -270,7 +268,7 @@ function renderFrontView(p: EnricoCerutiParams, paths: PathEntry[], colors: Ceru
 
     renderPath(profile.neck, showFingerboard ? colors.fingerboard : colors.neckRoot, STROKE_WEIGHT.section)(g, ui);
     renderPath(profile.nut, colors.nut, STROKE_WEIGHT.section)(g, ui);
-    if (scroll) for (const stroke of scrollFrontInPlan(p)) renderScrollStroke(stroke, colors.outerTrace)(g, ui);
+    if (scroll) for (const stroke of scrollFrontInPlan(p)) renderStroke(stroke, colors.outerTrace)(g, ui);
   };
 }
 

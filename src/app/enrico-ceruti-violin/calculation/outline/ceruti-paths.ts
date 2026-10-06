@@ -1,48 +1,15 @@
 import { circleCircleIntersections, findJoiningArcs } from "../../../helpers/math/draftMath";
 import { angleFromCenter, dist, normalizeRadians, pointOnCircle, signedRadianDelta, TURN, offsetArcRadius, flipArcAboutY, flipPointAboutY, lineCircleIntersection, lineFromTwoPoints, pointInPolygon, closestPointOnSegment, moveInVectorSpace, pointAtDistanceToward, vectorFromSlope } from "../../../helpers/math/simpleGeometry";
-import { arcPathData, pathFromArc, pathFromArcLongWay, pathFromLine, pathFromCornerCubic, unifyConnectedSvgPaths, unifyConnectedSvgPathGroups, combinePathStrings, samplePathToPolyline, occludePath, pathFromPolygon, Matrix2D, transformPath } from "../../../helpers/math/pathMath";
+import { arcPathData, pathFromArc, pathFromArcLongWay, pathFromLine, pathFromCornerCubic, combinePathStrings, samplePathToPolyline, pathFromPolygon, Matrix2D, transformPath } from "../../../helpers/math/pathMath";
+import { unifyConnectedSvgPaths, unifyConnectedSvgPathGroups, occludePath } from "../../../helpers/math/pathVibes";
 import { Arc, arcFromCircle, Pt } from "../../../models/types";
 import { error } from "../../../shared/message-emitter";
 import { ButtonParams, EnricoCerutiParams } from "../../ceruti-types";
 
-// ===== Path/contour builders =====
-// Takes the outline already solved by ceruti-calcs.ts (calculateMainBouts,
-// calculateCorners, calculateCenterBout, calculateOuterArcs) and stitches it
-// into the actual SVG path strings the app draws or exports: inner trace,
-// outer trace, insets, purfling, fluting; the scroll's side profile, and the
-// instrument's front profile with the neck laid over the body. Split out of ceruti-calcs.ts because
-// "where do the arcs go" and "how do you turn solved arcs into a path string"
-// are different questions a reader is usually asking one at a time.
-
-// C1 and C2 normally curl the same way as C0, their centres outside the body. When a corner sits
-// outside C0's circle the solve wraps its arc around C0 instead (a Prescott-style S into the
-// corner), the centre lands inside the body, and every outward offset of it changes sign. C11 and
-// C21 sit inside their arc and curl with it, so they take the same sign
 export function cornerOffsetSign(p: EnricoCerutiParams, key: 'C1' | 'C2'): 1 | -1 {
     return dist(p.bouts[key]!, p.bouts.C0!) > p.bouts.C0!.r ? 1 : -1;
 }
 
-/**
- * The viol neck's top face meets the V0 sweep through a join arc of radius `viol.neckRadius`,
- * and the offset of that join at distance d is the same arc at radius R + d.
- *
- * `calculateMainBouts` seats V0 against the join rather than against the face, so V0.start is
- * already the tangency and needs no trimming: the centre sits (V0.r + R) along the start ray,
- * which is also (V0.r - d) + (R + d) for every d. One centre, one pair of tangency rays, every
- * offset — which is what makes the outer trace, the purfling, the channel and the inner trace
- * all agree at the neck without each solving its own join.
- *
- * A corner still has to be rounded even at R = 0, because offsetting a convex corner outward
- * cannot land the two offset pieces on one point: the arc's end slides along its own radial
- * normal while the face slides straight up. At R = 0 the join centres on the corner itself, so
- * the rib line keeps its mitre and only the offsets round it.
- *
- * Offsets far enough inward to use the join up (R + d <= 0, which the channel reaches) fall back
- * to the crossing point of the two offsets, since inside a convex corner they meet rather than
- * part. That is the one case where V0 does get trimmed.
- *
- * Returns null when there is no viol neck, or when the geometry leaves no face to run out onto.
- */
 export function violNeckCap(p: EnricoCerutiParams, d: number): { v0Start: number; fillet: Arc | null; topX: number; topY: number } | null {
     const V0 = p.viol?.V0;
     if (!V0) return null;
@@ -599,12 +566,6 @@ function buttonCap(b: ButtonParams, plateEndY: number): { x: number; y: number; 
     return { x: 0, y: plateEndY + b.height - b.width / 2, r: b.width / 2 };
 }
 
-// the button is built from its tip down: a cap circle, and vertical walls dropped from its
-// equator to wherever the plate's edge crosses them. A height under the cap's radius puts the
-// equator below the edge, so the walls vanish and the cap itself is trimmed against the edge — a
-// circular segment. `wallHit` gives the edge under a wall at x; `capHit` the cap's own crossing
-// of the edge on the right, or null when the cap never clears it. `leaves` is where the edge
-// hands over to the button, for the caller to trim the edge at.
 function buttonShape(
     b: ButtonParams, plateEndY: number,
     wallHit: (x: number) => Pt | null, capHit: () => Pt | null,

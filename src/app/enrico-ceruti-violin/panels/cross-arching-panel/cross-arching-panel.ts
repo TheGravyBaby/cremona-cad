@@ -1,44 +1,18 @@
 import { Component, Input, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Circle, Pt, Rectangle } from '../../../models/types';
-import {
-  renderCircle, renderSegment, renderPath, renderPointHalo, renderRect,
-} from '../../../helpers/renderFuncs';
+import { Circle, Pt, Pt3D, Rectangle } from '../../../models/types';
+import { renderCircle, renderSegment, renderPath, renderPointHalo, renderRect, renderGuideBaseline, renderGuideKnot, renderGuideMeasure, STROKE_WEIGHT } from '../../../helpers/renderFuncs';
 import { clamp } from '../../../helpers/math/simpleGeometry';
-import { samplePathToPolyline } from '../../../helpers/math/pathMath';
-import {
-  ArchingParams, ArchPlate, CerutiColors, CerutiViewFlags, EnricoCerutiParams, CrossArchCycloid,
-  CrossArchShape, CrossArchPoint, CrossArchSpline, FlutingParams, PlateViewMode, RenderToggleKey,
-} from '../../ceruti-types';
-import {
-  bodyLandmarks, contourSampleSteps, defaultArchingParams, ribHeightAt, solveRibTaper,
-  splinePeakRow, STATION_MARGIN_MM, STATION_MERGE_EPS_MM, wireframeSampleSteps,
-} from '../../calculation/arching/ceruti-arching';
-import {
-  defaultCrossArchCatenaryShape, defaultCrossArchCycloidParams, defaultCrossArchParams,
-  defaultCrossArchSplineParams, defaultFlutingParams, CrossArchSection, CYCLOID_MAX_PCT,
-  crossArchGuide, crossArchKnotX, crossArchSectionAt, nearestCrossArchShape,
-} from '../../calculation/arching/ceruti-arch-geometry';
-import {
-  ArchContourLevel, buildPlateSurfaceModel, buildPlateStl, computeArchContourRings, plateHalfChordAtY,
-  PlateSurfaceModel, sampleArchSectionRuns,
-} from '../../calculation/arching/ceruti-surface';
+import { projectedPath, samplePathToPolyline } from '../../../helpers/math/pathMath';
+import { buildProjection, projectedBounds } from '../../../helpers/math/vibeMath';
+import { ArchingParams, ArchPlate, CerutiColors, CerutiViewFlags, EnricoCerutiParams, CrossArchCycloid, CrossArchShape, CrossArchPoint, CrossArchSpline, FlutingParams, PlateViewMode, RenderToggleKey } from '../../ceruti-types';
+import { bodyLandmarks, contourSampleSteps, defaultArchingParams, ribHeightAt, solveRibTaper, splinePeakRow, STATION_MARGIN_MM, STATION_MERGE_EPS_MM, wireframeSampleSteps } from '../../calculation/arching/ceruti-arching';
+import { defaultCrossArchCatenaryShape, defaultCrossArchCycloidParams, defaultCrossArchParams, defaultCrossArchSplineParams, defaultFlutingParams, CrossArchSection, CYCLOID_MAX_PCT, crossArchGuide, crossArchKnotX, crossArchSectionAt, nearestCrossArchShape } from '../../calculation/arching/ceruti-arch-geometry';
+import { buildPlateSurfaceModel, buildPlateStl, computeArchContourRings, computeWireframeGeometry, plateHalfChordAtY, PlateSurfaceModel, sampleArchSectionRuns, WireframeGeometry, wireframeStripAt } from '../../calculation/arching/ceruti-surface';
 import { downloadStlFile } from '../../../helpers/stlExporter';
-import { STROKE_WEIGHT } from '../../renders/render-constants';
-import {
-  computeArchContourBounds, projectArchContourRings, projectFlatPolyline, renderArchContours3d,
-} from '../../renders/arch-contours.render';
-import {
-  computeSingleWireframeStrip, computeWireframeBounds, computeWireframeGeometry, projectWireframe,
-  renderArch3dWireframe, WireframeGeometry,
-} from '../../renders/arch-3d-wireframe.render';
-import { renderGuideBaseline, renderGuideKnot, renderGuideMeasure } from '../../renders/module-guide.render';
 import { calculateOuterArcs } from '../../calculation/outline/ceruti-calcs';
 import { defineInnerPath, defineOuterPath } from '../../calculation/outline/ceruti-paths';
-import {
-  archContoursInfo, crossSectionStationInfo, crossArchCurveTypeInfo, crossArchCycloidControlsInfo,
-  crossArchPeakInfo, crossArchStationInfo, crossArchTemplateInfo, transitionError,
-} from '../field-info';
+import { archContoursInfo, crossSectionStationInfo, crossArchCurveTypeInfo, crossArchCycloidControlsInfo, crossArchPeakInfo, crossArchStationInfo, crossArchTemplateInfo, transitionError } from '../field-info';
 import { CrossArchingRotationController } from './cross-arching-rotation-controller';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
@@ -81,7 +55,7 @@ interface PlateCache {
   model: PlateSurfaceModel | null;
   /** The mould outline, sampled. What the rib box in the section view is measured off. */
   mouldPoly: Pt[];
-  contours: { levels: ArchContourLevel[]; outline: Pt[] | null } | null;
+  contours: { levels: { level: number; rings: Pt3D[][] }[]; outline: Pt3D[] | null } | null;
   wireframe: WireframeGeometry | null;
 }
 
@@ -844,16 +818,13 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     if (unsolvable) transitionError(plate, y);
   }
 
-  // Ring builder, projection, renderers and drag frame all take just a {@link PlateSurfaceModel}.
   private overlayLayers(y: number): RenderLayer[] {
     const a = this.arching;
+    const colors = this.colors;
     const layers: RenderLayer[] = [];
     // off the taller rib end, so this clears at every station without shifting as the cursor scrubs.
     const taper = solveRibTaper(this.params);
     const yOffset = Math.max(taper.zLower, taper.zUpper) + a.top.thickness + a.top.arch.archHeight + 15;
-    const rotX = this.flags.plateRotXDeg ?? 0;
-    const rotY = this.flags.plateRotYDeg ?? 0;
-    const rotZ = this.flags.plateRotZDeg ?? 0;
     const drag = { active: this.rotation?.isDragging ?? false, onPointerDown: this.rotation?.onPointerDown ?? (() => {}) };
 
     for (const plate of ['top', 'bottom'] as const) {
@@ -862,51 +833,50 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
       const c = this.cache[plate];
       const model = c?.model;
       if (!c || !model) continue;
-      // The params the model was built from, so the overlay and the section
-      // below it never disagree about whether a preview is in force.
+      // the params the model was built from, so the overlay and the section below it never disagree
+      // about whether a preview is in force
       const p = c.params;
-      const zSign: 1 | -1 = plate === 'top' ? 1 : -1;
-      const color = plate === 'top' ? this.colors.archTop : this.colors.archBack;
+      // the back plate's height field folds downward
+      const proj = buildProjection(yOffset, p.height / 2, this.flags.plateRotXDeg ?? 0, this.flags.plateRotYDeg ?? 0, this.flags.plateRotZDeg ?? 0, plate === 'top' ? 1 : -1);
+      const color = plate === 'top' ? colors.archTop : colors.archBack;
       const arch = plate === 'top' ? a.top.arch : a.bottom.arch;
+      const { stationStepMm, sampleStepMm } = wireframeSampleSteps(p);
+      let bounds;
 
       if (mode === 'contours') {
         if (!c.contours) {
           const { stepMm, gridMm } = contourSampleSteps(p, arch.archHeight);
+          const outline = samplePathToPolyline(defineOuterPath(p, p.overhang + p.rib, true, plate === 'bottom'), 1);
           c.contours = {
-            levels: computeArchContourRings(p, model, stepMm, gridMm),
-            outline: samplePathToPolyline(defineOuterPath(p, p.overhang + p.rib, true, plate === 'bottom'), 1),
+            levels: computeArchContourRings(p, model, stepMm, gridMm)
+              .map(({ level, rings }) => ({ level, rings: rings.map(ring => ring.map(([x, ry]) => new Pt3D(x, ry, level))) })),
+            outline: outline ? outline.map(pt => new Pt3D(pt.x, pt.y, 0)) : null,
           };
         }
-        const cached = c.contours;
-        const levels = projectArchContourRings(cached.levels, p.height, yOffset, rotX, rotY, rotZ, 1, 0, zSign);
-        const outline = cached.outline
-          ? projectFlatPolyline(cached.outline, p.height, yOffset, rotX, rotY, rotZ, 1, 0, zSign)
-          : null;
-        layers.push(renderArchContours3d(this.colors, levels, outline, color));
-        // The cursor station, drawn exactly as the wireframe draws it — same
-        // strip, same projection, same grey. A contour map says how deep the
-        // plate is everywhere and nothing about where you are on it; this is
-        // the one line that answers that, so it belongs in both views. Passing
-        // no strips and no ribs leaves the renderer with only its highlight.
-        const { sampleStepMm } = wireframeSampleSteps(p);
-        const cursorStrip = computeSingleWireframeStrip(p, model, y, yOffset, rotX, rotY, rotZ, 1, sampleStepMm, 0, zSign);
-        layers.push(renderArch3dWireframe(this.colors, [], [], cursorStrip, color));
-        layers.push(renderWireframeDragFrame(
-          computeArchContourBounds(cached.levels, p.height, yOffset, rotX, rotY, rotZ, 1, 0, zSign),
-          this.colors, drag.active, drag.onPointerDown,
-        ));
+        const { levels, outline } = c.contours;
+        if (outline) layers.push(renderPath(projectedPath(proj, outline, true), colors.outerTrace, STROKE_WEIGHT.guide, 0.6));
+        // channel levels fainter than the arch's
+        for (const { level, rings } of levels) {
+          const d = rings.map(ring => projectedPath(proj, ring, true)).join(' ');
+          layers.push(renderPath(d, level <= 0 ? colors.fluting : color, STROKE_WEIGHT.guide, level <= 0 ? 0.9 : 0.7));
+        }
+        bounds = projectedBounds(proj, levels.flatMap(l => l.rings.flat()));
       } else {
-        const { stationStepMm, sampleStepMm } = wireframeSampleSteps(p);
         c.wireframe ??= computeWireframeGeometry(p, model, stationStepMm, sampleStepMm);
-        const wf = c.wireframe;
-        const projected = projectWireframe(wf, p.height, yOffset, rotX, rotY, rotZ, 1, 0, zSign);
-        const highlight = computeSingleWireframeStrip(p, model, y, yOffset, rotX, rotY, rotZ, 1, sampleStepMm, 0, zSign);
-        layers.push(renderArch3dWireframe(this.colors, projected.strips, projected.ribs, highlight, color));
-        layers.push(renderWireframeDragFrame(
-          computeWireframeBounds(wf, p.height, yOffset, rotX, rotY, rotZ, 1, 0, zSign),
-          this.colors, drag.active, drag.onPointerDown,
-        ));
+        const { strips, ribs } = c.wireframe;
+        for (const rib of ribs) layers.push(renderPath(projectedPath(proj, rib), colors.mouldTrace, STROKE_WEIGHT.guide * 0.6, 0.45));
+        for (const strip of strips) {
+          const channel = strip.maxZ < -0.01;
+          layers.push(renderPath(projectedPath(proj, strip.pts), channel ? colors.fluting : color, STROKE_WEIGHT.guide * 0.75, channel ? 0.5 : 0.65));
+        }
+        bounds = projectedBounds(proj, [...strips.flatMap(st => st.pts), ...ribs.flat()]);
       }
+
+      // the cursor's station in both views: a contour map says how deep the plate is everywhere and
+      // nothing about where you are on it
+      const cursor = wireframeStripAt(p, model, y, sampleStepMm);
+      if (cursor) layers.push(renderPath(projectedPath(proj, cursor.pts), colors.mouldTrace, STROKE_WEIGHT.section));
+      layers.push(renderWireframeDragFrame(bounds, colors, drag.active, drag.onPointerDown));
     }
     return layers;
   }
