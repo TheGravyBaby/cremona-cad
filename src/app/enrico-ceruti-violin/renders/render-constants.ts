@@ -34,16 +34,19 @@ export const CERUTI_COLOR_PALETTE = {
   scrollNape: '#3d5fb0',
   scrollFront: '#e8952f',
   scrollFrontLight: '#f4be6a',
-  // the scroll widths' points from the nut in to the eye, a walk round the cool side violet to teal,
-  // deep and light in turn so neighbours differ in both hue and tone
-  scrollWidthNut: '#7a55c4',
-  scrollWidthHip: '#a99af0',
-  scrollWidthThroat: '#4a5fd0',
-  scrollWidthCrown: '#8fb4f2',
-  scrollWidthTurn1Bottom: '#2a86c8',
-  scrollWidthTurn2Top: '#86d2ec',
-  scrollWidthTurn2Bottom: '#178f9a',
-  scrollWidthEye: '#7ad9c0',
+  // the scroll widths' points: the front's warm like scrollFront, the back's a walk through the blues
+  // from indigo at the duck tail to cyan at the eye, deep and light in turn so neighbours differ in
+  // both hue and tone
+  scrollWidthNut: '#c9972b',
+  scrollWidthHip: '#f2c46d',
+  scrollWidthThroat: '#d1661f',
+  scrollWidthDuckTail: '#34519c',
+  scrollWidthReach: '#9fb6ee',
+  scrollWidthCrown: '#2a6fc0',
+  scrollWidthTurn1Bottom: '#8fcbf0',
+  scrollWidthTurn2Top: '#1f86b6',
+  scrollWidthTurn2Bottom: '#7fd4e6',
+  scrollWidthEye: '#1aa0a8',
   // the spiral a turn at a time from the eye out, its arcs alternating ivory and a darker tan, far
   // enough apart to follow one arc round in the four point's fields
   voluteTurn1: '#f2eadb',

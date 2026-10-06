@@ -5,7 +5,7 @@ import { clipPolylineAtY, polylinePointAtY } from '../../../helpers/math/vibeMat
 import { StrokeShape, STROKE_WEIGHT } from '../../../helpers/renderFuncs';
 import { Pt, Pt3D } from '../../../models/types';
 import { EnricoCerutiParams } from '../../ceruti-types';
-import { duckTailRadius, pegboxHipHeight, pegboxWidth, scrollPathStretches, ScrollStretches, scrollFrontWidths, scrollLines, scrollNeckHalfWidth } from './ceruti-scroll';
+import { duckTailRadius, pegboxHipHeight, pegboxWidth, scrollPathStretches, ScrollStretches, scrollFrontWidths, scrollLines, scrollNeckHalfWidth, scrollThroat } from './ceruti-scroll';
 import { scrollOnNeck } from '../outline/ceruti-paths';
 
 // the scroll seen from behind and from in front, as strokes with ink names, for the widths panel and
@@ -42,25 +42,23 @@ function seenRuns(on: ScrollStretches, pts: Pt3D[], behind: boolean): Pt3D[][] {
   return runs;
 }
 
-// the path starts on top of the duck tail's round. Hips below there put the back's own cheeks under
-// the path's start, down to the hips and level in to the round's flank; from the hips, or from the
-// path's start when the hips are above it, the front's walls run in to the nut's edge at its top,
-// square to the foot of the nut, and close level there
-function pegboxOutline(p: EnricoCerutiParams, start: Pt3D) {
+// the pegbox's front, sawn straight through the blank: from the throat down to the hips, in to the
+// nut's edge at its top, square to the foot of the nut, and closing level there. `walls` is the run
+// from the hips down, `cheeks` the whole of it
+function pegboxFrontOutline(p: EnricoCerutiParams) {
   const { nutHeight } = p.stringSetup!;
   const hipY = pegboxHipHeight(p);
-  const hipHalf = p.scroll!.widths.hip / 2;
-  const r = duckTailRadius(p);
-  const below = hipY < start.y - 1e-6;
-  const cheeks = below ? [new Pt(start.x, start.y), new Pt(hipHalf, hipY)] : [];
-  const flank = below ? Math.sqrt(Math.max(r * r - (start.y - hipY) ** 2, 0)) : r;
-  const footEdge = below && hipHalf > flank + 1e-6 ? [new Pt(hipHalf, hipY), new Pt(flank, hipY)] : [];
-
-  const from = below ? new Pt(hipHalf, hipY) : new Pt(start.x, start.y);
-  const foot = Math.min(from.y, 0);
-  const walls = [from, ...(nutHeight < from.y - 1e-6 ? [new Pt(pegboxWidth(p, nutHeight) / 2, nutHeight)] : []), new Pt(pegboxWidth(p, foot) / 2, foot)];
+  const hips = new Pt(pegboxWidth(p, hipY) / 2, hipY);
+  const foot = Math.min(hipY, 0);
+  const walls = [
+    hips,
+    ...(nutHeight < hipY - 1e-6 ? [new Pt(pegboxWidth(p, nutHeight) / 2, nutHeight)] : []),
+    ...(foot < hipY - 1e-6 ? [new Pt(pegboxWidth(p, foot) / 2, foot)] : []),
+  ];
+  const throat = scrollThroat(p);
+  const cheeks = [...(throat.y > hipY + 1e-6 ? [new Pt(pegboxWidth(p, throat.y) / 2, throat.y)] : []), ...walls];
   const bottom = [new Pt(pegboxWidth(p, foot) / 2, foot), new Pt(0, foot)];
-  return { below, cheeks, footEdge, foot, walls, bottom };
+  return { foot, walls, cheeks, bottom };
 }
 
 export type ScrollViewInk = 'archTop' | 'archBack' | 'scrollFrontLight' | 'scrollBackLight' | 'nut' | 'neckOff';
@@ -108,25 +106,21 @@ export function scrollBackViewStrokes(p: EnricoCerutiParams, place: (x: number, 
   const turn2Top = on.turn2Back.at(-1)!;
   const turn2Bottom = on.turn2Front.at(-1)!;
   const turn3Top = on.turn3Back.at(-1)!;
-  const { below, cheeks, footEdge, foot, walls, bottom } = pegboxOutline(p, start);
+  const { foot, cheeks, bottom } = pegboxFrontOutline(p);
   const seen = (pts: Pt3D[]) => seenRuns(on, pts, true);
   const { strokes, stroke, contour, closed, line, face } = viewStrokes(place);
 
-  // the back starts in the duck tail's round, the neck's back carried on round. A path starting
-  // above the nut's foot leaves the pegbox's front running on below the back, so the two can't
-  // join: its walls are drawn in the front's colour
+  // the back starts in the duck tail's round, the neck's back carried on round, and its own edges
+  // run up from the round's top. The pegbox's sawn front stands nearer the eye than nothing, so its
+  // cheeks show wherever they stand out past the back, in the front's colour
   const r = duckTailRadius(p);
   const round = Array.from({ length: 33 }, (_, i) => pointOnCircle({ x: 0, y: start.y, r }, TURN.half + TURN.half * i / 32)).map(pt => place(pt.x, pt.y));
-  const hanging = foot < (below ? cheeks[1].y : start.y);
+  const backFace = [...(r > 0 ? [pathFromPolygon(round)] : []), closed(on.back)];
 
-  // the neck's sides run on up until they meet the scroll, in the round, the cheeks or the front's walls
-  const overNeck = [
-    ...(r > 0 ? [pathFromPolygon(round)] : []),
-    ...(below ? [closed(cheeks)] : []),
-    ...(hanging ? [closed(walls)] : []),
-  ];
+  // the neck's sides run on up until they meet the scroll, in the round or the front's cheeks
+  const overNeck = [...(r > 0 ? [pathFromPolygon(round)] : []), closed(cheeks)];
   for (const side of [1, -1]) {
-    stroke(pathFromLine(place(side * scrollNeckHalfWidth(p, neckFrom), neckFrom), place(side * scrollNeckHalfWidth(p, start.y), start.y)), 'neckOff', STROKE_WEIGHT.section, overNeck.length ? overNeck : null);
+    stroke(pathFromLine(place(side * scrollNeckHalfWidth(p, neckFrom), neckFrom), place(side * scrollNeckHalfWidth(p, start.y), start.y)), 'neckOff', STROKE_WEIGHT.section, overNeck);
   }
 
   // the head's back stands nearest and shows whole, and the back of each turn stands out past it.
@@ -141,17 +135,10 @@ export function scrollBackViewStrokes(p: EnricoCerutiParams, place: (x: number, 
   for (const run of seen(on.turn3Front)) contour(run, 'archBack');
 
   if (r > 0) strokes.push({ d: pathFromPolyline(round), ink: 'archBack', weight: STROKE_WEIGHT.trace });
-  if (below) {
-    contour(cheeks, 'archBack');
-    contour(footEdge, 'archBack');
-  }
-  if (hanging) {
-    // the walls run in from the hips behind the round, and show from where they come out under it.
-    // The front's bottom shows only where it overhangs the neck; over the neck it's smoothed in
-    const neck = closed([{ x: scrollNeckHalfWidth(p, neckFrom), y: neckFrom }, { x: scrollNeckHalfWidth(p, start.y), y: start.y }]);
-    contour(walls, 'archTop', r > 0 ? pathFromPolygon(round) : null);
-    contour(bottom, 'archTop', neck);
-  }
+  // the front's bottom shows only where it overhangs the neck; over the neck it's smoothed in
+  const neck = closed([{ x: scrollNeckHalfWidth(p, neckFrom), y: neckFrom }, { x: scrollNeckHalfWidth(p, start.y), y: start.y }]);
+  contour(cheeks, 'archTop', backFace);
+  contour(bottom, 'archTop', [...backFace, neck]);
 
   // each face runs in to the back of the turn outside it, the head's own back for the first two
   face(crown.y, crown.x, null, 'scrollBackLight');
@@ -164,14 +151,11 @@ export function scrollBackViewStrokes(p: EnricoCerutiParams, place: (x: number, 
   // the eye stands out as a cylinder to the last width
   for (const side of [1, -1]) line(place(side * eyeHalf, eyeBottom), place(side * eyeHalf, eyeTop), 'scrollBackLight');
 
-  // hips on the round's top wider than it leave the cheeks' feet standing out past it, cut in to the
-  // round along a level shoulder. A neck wider than the round meets it along a shoulder too; a
-  // narrower one runs in under it
-  if (!below && start.x > r + 1e-6) {
-    for (const side of [1, -1]) line(place(side * r, start.y), place(side * start.x, start.y), 'archBack');
-  }
+  // a neck wider than the round meets it along a level shoulder, out from the round or from the
+  // cheeks where they stand out past it; a narrower one runs in under it
+  const cheekHalf = start.y >= foot - 1e-9 && start.y <= scrollThroat(p).y + 1e-9 ? pegboxWidth(p, start.y) / 2 : 0;
   const neckHalf = scrollNeckHalfWidth(p, start.y);
-  const cheek = Math.max(r, start.x);
+  const cheek = Math.max(r, cheekHalf);
   if (neckHalf > cheek + 1e-6) {
     for (const side of [1, -1]) line(place(side * cheek, start.y), place(side * neckHalf, start.y), 'scrollBackLight');
   }
@@ -192,7 +176,7 @@ export function scrollFrontViewStrokes(p: EnricoCerutiParams, place: (x: number,
   const turn2Top = on.turn2Back.at(-1)!;
   const turn2Bottom = on.turn2Front.at(-1)!;
   const turn3Top = on.turn3Back.at(-1)!;
-  const { walls, bottom } = pegboxOutline(p, on.back[0]);
+  const { walls, bottom } = pegboxFrontOutline(p);
   const seen = (pts: Pt3D[]) => seenRuns(on, pts, false);
   const { strokes, at, stroke, contour, line, face } = viewStrokes(place);
 

@@ -514,7 +514,6 @@
         "r": 3.5
       },
       "flushWithNeck": true,
-      "fitToNut": true,
       "hang": 0,
       "napeCircle": false,
       "pitch": 6.7,
@@ -633,6 +632,8 @@
       "widths": {
         "hip": 26,
         "throat": 20,
+        "duckTail": 24,
+        "reach": 24,
         "crown": 13,
         "turn1Bottom": 27,
         "turn2Top": 31,

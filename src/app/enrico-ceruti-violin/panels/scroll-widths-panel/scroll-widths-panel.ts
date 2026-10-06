@@ -69,7 +69,8 @@ export class ScrollWidthsPanel extends CerutiPanelBase implements OnInit {
 export function stationColor(colors: CerutiColors, key: ScrollStationKey): string {
   const inks: Record<ScrollStationKey, string> = {
     nut: colors.scrollWidthNut, hip: colors.scrollWidthHip, throat: colors.scrollWidthThroat,
-    crown: colors.scrollWidthCrown, turn1Bottom: colors.scrollWidthTurn1Bottom, turn2Top: colors.scrollWidthTurn2Top,
+    duckTail: colors.scrollWidthDuckTail, reach: colors.scrollWidthReach, crown: colors.scrollWidthCrown,
+    turn1Bottom: colors.scrollWidthTurn1Bottom, turn2Top: colors.scrollWidthTurn2Top,
     turn2Bottom: colors.scrollWidthTurn2Bottom, eye: colors.scrollWidthEye,
   };
   return inks[key];
@@ -83,7 +84,7 @@ export const renderScrollWidths = (p: EnricoCerutiParams, colors: CerutiColors, 
   const stations = scrollWidthStations(p);
 
   const gap = 20;
-  const widest = Math.max(v.widths.eye, v.widths.hip, p.stringSetup!.nutWidth) / 2;
+  const widest = Math.max(v.widths.eye, v.widths.hip, v.widths.duckTail, v.widths.reach, p.stringSetup!.nutWidth) / 2;
   const back = -scrollExtent(v).width - gap - widest;
   const front = nutThickness + gap + widest;
 
