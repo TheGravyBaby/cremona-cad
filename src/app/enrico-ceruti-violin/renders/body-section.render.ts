@@ -5,6 +5,7 @@ import { ArchCurve, CerutiColors, EnricoCerutiParams, FlutingParams } from '../c
 import { ribHeightAt, ribLine, solveRibTaper, topPlatePlacement } from '../ceruti-arching';
 import { channelCapPath, LongArchSolve } from '../ceruti-arch-geometry';
 import { HighlightedSplinePoint, STROKE_WEIGHT } from './render-constants';
+import { defaultStringSetup } from '../ceruti-neck';
 import { renderArchGuide, renderSplineHighlight } from './long-arch.render';
 
 // ===== Body section =====
@@ -12,6 +13,24 @@ import { renderArchGuide, renderSplineHighlight } from './long-arch.render';
 // the back down. Both plates share one view — they are two faces of one instrument here, not
 // two objects to compare side by side the way the plan views in the channel panel are. Drawn by
 // the long-arching panel on its own and by the neck panel as the ground the neck stands on.
+
+// where the side elevation sits: left of the front profile, which every plan view centres on x = 0,
+// with its furthest reach, the bridge's top on the arch over the taller rib, clearing the plan's
+// widest point by a quarter of the body's width. Read off the body and the bridge's height alone, so
+// it sits in the same place whether or not the neck has been set
+export function sideViewOffsetX(p: EnricoCerutiParams): number {
+  const a = p.arching!;
+  const bridgeHeight = (p.stringSetup ?? defaultStringSetup(p)).bridgeHeight;
+  const reach = Math.max(a.ribHeightLower, a.ribHeightUpper) + a.top.thickness + a.top.arch.archHeight + bridgeHeight;
+  return -(0.75 * p.width + reach);
+}
+
+// the given layers, drawn in the side elevation's own frame and moved over to where it sits
+export const renderSideView = (p: EnricoCerutiParams, layers: Array<(g: any, ui: any) => void>) => (g: any, ui: any): void => {
+  const dx = sideViewOffsetX(p);
+  const side = { g: g.append('g').attr('transform', `translate(${dx},0)`), ui: ui.append('g').attr('transform', `translate(${dx},0)`) };
+  for (const layer of layers) layer(side.g, side.ui);
+};
 
 export type Plate = 'top' | 'bottom';
 

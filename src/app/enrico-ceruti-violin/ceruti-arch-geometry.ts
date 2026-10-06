@@ -1415,14 +1415,11 @@ export function crossArchSectionAt(
   );
 }
 
-/**
- * How far apart the two plates are drawn when shown side by side, as a
- * fraction of body width. Overlaying them buries one under the other; laid out
- * left and right, the top and back channels can be compared at a glance.
- */
-export const PLATE_LAYOUT_GAP = 0.55;
+// how far apart the two plates' centrelines are drawn side by side, in body widths. Overlaying them
+// buries one under the other; side by side, the top and back can be compared at a glance
+export const PLATE_LAYOUT_GAP = 1.1;
 
-/** Plan-view x-shift for a plate in the side-by-side layout: top right, back left. */
+// the top stays centred on x = 0, where every other plan view draws it, and the back goes to its left
 export function plateLayoutOffset(p: EnricoCerutiParams, plate: 'top' | 'bottom'): number {
-  return (plate === 'top' ? 1 : -1) * p.width * PLATE_LAYOUT_GAP;
+  return plate === 'top' ? 0 : -p.width * PLATE_LAYOUT_GAP;
 }

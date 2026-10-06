@@ -1,9 +1,9 @@
 import { defineFholePath, defineOneFholePath, defineFlutingArcs, defineFlutingPath, defineInnerPath, defineInsetPath, defineOffsetArcs, defineOuterPath, defineOuterPurflingPath, definePurflingPath, defineSideScrollPath, violNeckCap } from './ceruti-paths';
 import { defaultViolin, layoutFrom, templateKeys, templateViolin, violinFromRecipe } from './ceruti-fixtures';
-import { calculateFholeContours, calculateOuterArcs } from './ceruti-calcs';
+import { calculateCenterBout, calculateCorners, calculateFholeContours, calculateMainBouts, calculateOuterArcs } from './ceruti-calcs';
 import { channelPaths, defaultFlutingParams } from './ceruti-arch-geometry';
 import { defaultFHolePlacement } from './panels/f-hole-placement-panel/f-hole-placement-panel';
-import { EnricoCerutiParams, FlutingParams, VoluteStyle } from './ceruti-types';
+import { DefaultParams, EnricoCerutiParams, FlutingParams, VoluteStyle } from './ceruti-types';
 import { calculateScroll, defaultVoluteParams, VOLUTE_STYLE_LABELS } from './ceruti-scroll';
 import { defaultNeckParams, defaultStringSetup } from './ceruti-neck';
 import { pointInPolygon, pointOnCircle } from '../helpers/math/simpleGeometry';
@@ -513,5 +513,38 @@ describe.each(Object.keys(VOLUTE_STYLE_LABELS) as VoluteStyle[])('the side scrol
     expect(eye.at(-1)!.y).toBeCloseTo(y, 9);
     expect(Math.min(...eye.map(pt => pt.y))).toBeCloseTo(y - r, 3);
     expect(eye.every(pt => Math.abs(Math.hypot(pt.x - x, pt.y - y) - r) < 1e-6)).toBe(true);
+  });
+});
+
+describe('the inner path while it is being drafted', () => {
+  const fresh = (): EnricoCerutiParams => JSON.parse(JSON.stringify(DefaultParams));
+  const reaches = (d: string, pt: { x: number; y: number }) =>
+    splitPathStrings(d).some(chain => samplePathToPolyline(chain, 1, true).some(q => Math.hypot(q.x - pt.x, q.y - pt.y) < 0.05));
+
+  it('draws the upper and lower bouts as two chains before the corners exist', () => {
+    const p = fresh();
+    calculateMainBouts(p);
+    expect(splitPathStrings(defineInnerPath(p))).toHaveLength(2);
+  });
+
+  it('carries each chain out to its corner once the corners are drafted, and leaves out a failed one', () => {
+    const p = fresh();
+    calculateMainBouts(p);
+    calculateCorners(p);
+    const d = defineInnerPath(p);
+    expect(splitPathStrings(d)).toHaveLength(2);
+    expect(reaches(d, p.bouts.UCr!)).toBe(true);
+    expect(reaches(d, p.bouts.LCr!)).toBe(true);
+    const withoutUpper = defineInnerPath(p, ['U2', 'U3', 'U31', 'U4']);
+    expect(reaches(withoutUpper, p.bouts.UCr!)).toBe(false);
+    expect(reaches(withoutUpper, p.bouts.LCr!)).toBe(true);
+  });
+
+  it('closes into one loop once the center bout joins them', () => {
+    const p = fresh();
+    calculateMainBouts(p);
+    calculateCorners(p);
+    calculateCenterBout(p);
+    expect(splitPathStrings(defineInnerPath(p))).toHaveLength(1);
   });
 });

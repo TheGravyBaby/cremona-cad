@@ -2,8 +2,9 @@ import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, PathEntry, RenderToggleKey } from '../../ceruti-types';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
-import { renderArcFromArc, renderArcHalo, renderSegment, renderPath, renderPointHalo, renderArcFromArcFancy, renderCircle, renderSolveFailures } from '../../../helpers/renderFuncs';
-import { ensureOuterTracePaths, ensureFholePath, calculateOuterArcs, getPath, getPathOrNull, FholeArcKey, FholeFailure } from '../../ceruti-calcs';
+import { renderArcFromArc, renderArcHalo, renderSegment, renderPointHalo, renderArcFromArcFancy, renderCircle, renderSolveFailures } from '../../../helpers/renderFuncs';
+import { ensureFholePath, ensureFrontProfilePaths, calculateOuterArcs, FholeArcKey, FholeFailure } from '../../ceruti-calcs';
+import { renderFrontProfile } from '../../renders/front-profile.render';
 import { getArcEndDeg, getArcStartDeg, getFieldDeg, setArcEndDeg, setArcStartDeg, setFieldDeg } from '../../../helpers/math/arcDegrees';
 import { defaultFHolePlacement, renderFholeBounds } from '../f-hole-placement-panel/f-hole-placement-panel';
 import { circleCircleIntersections } from '../../../helpers/math/draftMath';
@@ -65,18 +66,11 @@ export class FHoleContoursPanel extends CerutiPanelBase implements OnInit {
   public buildRun(): RenderLayer[] {
     let p = this.params;
     calculateOuterArcs(p);
-    ensureOuterTracePaths(p, this.paths);
     p.fHoles ??= defaultFHolePlacement(p);
 
-    let renders: RenderLayer[] = [
-      renderPath(getPath(this.paths, 'top'), this.colors.outerTrace),
-    ];
-
-    let purflingPath = getPathOrNull(this.paths, 'purfling');
-    let outerPurflingPath = getPathOrNull(this.paths, 'outerPurfling');
-
-    if (purflingPath) renders.push(renderPath(purflingPath, this.colors.innerTrace, STROKE_WEIGHT.guide));
-    if (outerPurflingPath) renders.push(renderPath(outerPurflingPath, this.colors.innerTrace, STROKE_WEIGHT.guide));
+    // the instrument as far as it's been taken under the contours, less the holes, this panel's own
+    // and drawn in colour below, and the neck and scroll, which took the eye off them (2026-10-06)
+    let renders: RenderLayer[] = [...renderFrontProfile(p, this.paths, this.colors, ensureFrontProfilePaths(p, this.paths, { neck: false }), { fHoles: false })];
 
     let failures = ensureFholePath(p, this.paths);
 

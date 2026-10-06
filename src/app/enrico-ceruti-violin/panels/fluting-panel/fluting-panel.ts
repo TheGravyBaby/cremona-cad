@@ -1,11 +1,11 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { renderFilledPath, renderPath } from '../../../helpers/renderFuncs';
+import { renderFilledPath } from '../../../helpers/renderFuncs';
 import { translatePath } from '../../../helpers/math/pathMath';
-import { calculateOuterArcs } from '../../ceruti-calcs';
-import { defineOuterPath, defineOuterPurflingPath, definePurflingPath } from '../../ceruti-paths';
-import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, RenderToggleKey } from '../../ceruti-types';
+import { calculateOuterArcs, ensureFholePath, ensureOuterTracePaths } from '../../ceruti-calcs';
+import { renderPlatePair } from '../../renders/front-profile.render';
+import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, PathEntry, RenderToggleKey } from '../../ceruti-types';
 import { defaultArchingParams } from '../../ceruti-arching';
 import {
   defaultFlutingParams, effectiveCBoutSweep, channelAreaPath,
@@ -25,9 +25,10 @@ import { STROKE_WEIGHT } from '../../renders/render-constants';
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
 export class FlutingPanel extends CerutiPanelBase implements OnInit {
-  static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleGuides'];
+  static readonly renderToggles: readonly RenderToggleKey[] = [];
 
   @Input({ required: true }) params!: EnricoCerutiParams;
+  @Input({ required: true }) paths!: PathEntry[];
   @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;
 
@@ -65,21 +66,17 @@ export class FlutingPanel extends CerutiPanelBase implements OnInit {
       if (g.sweepRadius_cBout !== null) g.sweepRadius_cBout = Math.max(g.sweepRadius_cBout, g.depth / 0.9);
     }
 
-    const inset = p.overhang + p.rib;
-    const renders: RenderLayer[] = [];
-    // side by side rather than superimposed, top right and back left as a pair sits on the bench:
-    // the two plates carry different gouges, and stacking them buries whichever is drawn first
+    // side by side rather than superimposed, top centred and back to its left as a pair sits on the
+    // bench: the two plates carry different gouges, and stacking them buries whichever is drawn first.
+    // The plates are context only, so guide weight; the purfling is what the land edge is set against
+    ensureOuterTracePaths(p, this.paths);
+    if (p.fHoles) ensureFholePath(p, this.paths);
+    const renders: RenderLayer[] = renderPlatePair(p, this.paths, this.colors, STROKE_WEIGHT.guide);
     for (const plate of ['top', 'bottom'] as const) {
       const g = plate === 'top' ? top : back;
       const color = plate === 'top' ? this.colors.archTop : this.colors.archBack;
       const dx = plateLayoutOffset(p, plate);
       const at = (path: string): string => translatePath(path, dx, 0);
-
-      // context only, so guide weight: the outline, and the purfling the land edge is set against
-      renders.push(renderPath(at(defineOuterPath(p, undefined, true, plate === 'bottom')), this.colors.outerTrace, STROKE_WEIGHT.guide));
-      for (const purfling of [definePurflingPath(p, inset), defineOuterPurflingPath(p, inset)]) {
-        if (purfling) renders.push(renderPath(at(purfling), this.colors.innerTrace, STROKE_WEIGHT.guide));
-      }
 
       const paths = channelPaths(p, g);
       if (!paths) continue;

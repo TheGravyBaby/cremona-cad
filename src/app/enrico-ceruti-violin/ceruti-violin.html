@@ -159,6 +159,7 @@
         @if (openPanel === 'fluting') {
         <app-ceruti-fluting-panel #panelRef
             [params]="d.params"
+            [paths]="d.paths"
             [colors]="colors"
             [flags]="viewFlags"
             (panelUpdate)="onPanelRenderRequest($event)">

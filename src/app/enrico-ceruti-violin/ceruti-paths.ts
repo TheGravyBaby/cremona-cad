@@ -1,6 +1,6 @@
 import { circleCircleIntersections, findJoiningArcs } from "../helpers/math/draftMath";
-import { angleFromCenter, dist, normalizeRadians, pointOnCircle, TURN, offsetArcRadius, flipArcAboutY, flipPointAboutY, lineCircleIntersection, lineFromTwoPoints, pointInPolygon, closestPointOnSegment } from "../helpers/math/simpleGeometry";
-import { arcPathData, pathFromArc, pathFromLine, pathFromCornerCubic, unifyConnectedSvgPaths, combinePathStrings, samplePathToPolyline } from "../helpers/math/pathMath";
+import { angleFromCenter, dist, normalizeRadians, pointOnCircle, TURN, offsetArcRadius, flipArcAboutY, flipPointAboutY, lineCircleIntersection, lineFromTwoPoints, pointInPolygon, closestPointOnSegment, moveInVectorSpace, pointAtDistanceToward, vectorFromSlope } from "../helpers/math/simpleGeometry";
+import { arcPathData, pathFromArc, pathFromLine, pathFromCornerCubic, unifyConnectedSvgPaths, unifyConnectedSvgPathGroups, combinePathStrings, samplePathToPolyline, occludePath, pathFromPolygon, Matrix2D, transformPath } from "../helpers/math/pathMath";
 import { Arc, arcFromCircle, Pt } from "../models/types";
 import { error } from "../shared/message-emitter";
 import { ButtonParams, EnricoCerutiParams } from "./ceruti-types";
@@ -9,7 +9,8 @@ import { ButtonParams, EnricoCerutiParams } from "./ceruti-types";
 // Takes the outline already solved by ceruti-calcs.ts (calculateMainBouts,
 // calculateCorners, calculateCenterBout, calculateOuterArcs) and stitches it
 // into the actual SVG path strings the app draws or exports: inner trace,
-// outer trace, insets, purfling, fluting; and the scroll's side profile. Split out of ceruti-calcs.ts because
+// outer trace, insets, purfling, fluting; the scroll's side profile, and the
+// instrument's front profile with the neck laid over the body. Split out of ceruti-calcs.ts because
 // "where do the arcs go" and "how do you turn solved arcs into a path string"
 // are different questions a reader is usually asking one at a time.
 
@@ -77,41 +78,37 @@ function violNeckTopLine(p: EnricoCerutiParams, d: number): string | null {
     return cap ? pathFromLine({ x: cap.topX, y: cap.topY }, { x: -cap.topX, y: cap.topY }) : null;
 }
 
-export function defineInnerArcs(p: EnricoCerutiParams): Arc[] {
-    let fullPath = [];
-    fullPath.push(p.bouts.L0, p.bouts.L1);
+// an arc not drafted yet, or named in `unsolved` because its section failed this pass, is left out,
+// so an outline still being drafted comes back as far as it goes
+export function defineInnerArcs(p: EnricoCerutiParams, unsolved: readonly string[] = []): Arc[] {
+    const keys: (keyof EnricoCerutiParams['bouts'])[] = ['L0', 'L1'];
     if (p.options.useViolCornerLC) {
-        fullPath.push(p.bouts.L4);
+        keys.push('L4');
     } else {
-        fullPath.push(p.bouts.L2);
-        fullPath.push(p.bouts.L3);
-
-        if (p.options.L31DoubleArc) 
-            fullPath.push(p.bouts.L31);
+        keys.push('L2', 'L3');
+        if (p.options.L31DoubleArc) keys.push('L31');
     }
 
-    fullPath.push(p.bouts.C0, p.bouts.C1, p.bouts.C2);
-        if (p.options.C21DoubleArc) 
-            fullPath.push(p.bouts.C21);
-        if (p.options.C11DoubleArc) 
-            fullPath.push(p.bouts.C11);
+    keys.push('C0', 'C1', 'C2');
+    if (p.options.C21DoubleArc) keys.push('C21');
+    if (p.options.C11DoubleArc) keys.push('C11');
 
     if (p.options.useViolCornerUC) {
-        fullPath.push(p.bouts.U4);
+        keys.push('U4');
     } else {
-        fullPath.push(p.bouts.U3);
-        fullPath.push(p.bouts.U2);
-
-        if (p.options.U31DoubleArc)
-            fullPath.push(p.bouts.U31);
+        keys.push('U3', 'U2');
+        if (p.options.U31DoubleArc) keys.push('U31');
     }
-    fullPath.push(p.bouts.U1);
-    fullPath.push(p.bouts.U0);
-    if (p.options.useViolNeck) {
+    keys.push('U1', 'U0');
+
+    const fullPath = keys
+        .filter(key => p.bouts[key] && !unsolved.includes(key))
+        .map(key => p.bouts[key] as Arc);
+    if (p.options.useViolNeck && p.viol?.V0 && !unsolved.includes('U0')) {
         // a copy, trimmed back to where the neck fillet takes over — p.viol.V0 itself is the
         // authored arc and stays as the user set it
         const cap = violNeckCap(p, 0);
-        fullPath.push(arcFromCircle(p.viol?.V0!, cap?.v0Start ?? p.viol!.V0!.start, p.viol!.V0!.end));
+        fullPath.push(arcFromCircle(p.viol.V0, cap?.v0Start ?? p.viol.V0.start, p.viol.V0.end));
         if (cap?.fillet) fullPath.push(cap.fillet);
     }
 
@@ -573,20 +570,22 @@ export function defineFlutingArcs(p: EnricoCerutiParams, offset: number, centerO
     return flutingArcs;
 }
 
-export function defineInnerPath(p: EnricoCerutiParams): string {
-    let arcs = defineInnerArcs(p);
+export function defineInnerPath(p: EnricoCerutiParams, unsolved: readonly string[] = []): string {
+    let arcs = defineInnerArcs(p, unsolved);
     let mirroredArcs = arcs.map(arc => flipArcAboutY(arc));
     arcs = arcs.concat(mirroredArcs);
 
     let paths: string[] = arcs.map(arc => pathFromArc(arc));
 
-    if (p.options.useViolNeck) {
+    if (p.options.useViolNeck && !unsolved.includes('U0')) {
         const top = violNeckTopLine(p, 0);
         if (top) paths.push(top);
     }
 
-    let path = unifyConnectedSvgPaths(paths);
-    return path;
+    // a finished outline is one closed loop, and a gap in it fails loudly; one still being drafted
+    // is whichever chains of it exist so far
+    const finished = !unsolved.length && !!p.bouts.C0;
+    return finished ? unifyConnectedSvgPaths(paths) : unifyConnectedSvgPathGroups(paths);
 }
 
 /** Violin numbers scaled by body length, so the larger sizes get a button in proportion. */
@@ -609,24 +608,43 @@ function buttonCap(b: ButtonParams, plateEndY: number): { x: number; y: number; 
 function buttonShape(
     b: ButtonParams, plateEndY: number,
     wallHit: (x: number) => Pt | null, capHit: () => Pt | null,
-): { paths: string[]; leaves: Pt } | null {
+): { paths: string[]; leaves: Pt; cap: Arc } | null {
     const cap = buttonCap(b, plateEndY);
     const foot = wallHit(cap.r);
     if (foot && cap.y >= foot.y) {
         const shoulder = { x: cap.r, y: cap.y };
+        const arc = arcFromCircle(cap, 0, TURN.half);
         return {
             leaves: foot,
+            cap: arc,
             paths: [
                 pathFromLine(foot, shoulder),
                 pathFromLine(flipPointAboutY(foot), flipPointAboutY(shoulder)),
-                pathFromArc(arcFromCircle(cap, 0, TURN.half)),
+                pathFromArc(arc),
             ],
         };
     }
     const hit = capHit();
     if (!hit) return null;
     const from = angleFromCenter(cap, hit);
-    return { leaves: hit, paths: [pathFromArc(arcFromCircle(cap, from, TURN.half - from))] };
+    const arc = arcFromCircle(cap, from, TURN.half - from);
+    return { leaves: hit, cap: arc, paths: [pathFromArc(arc)] };
+}
+
+// the button standing off the back plate's outline at `offset`, and the U0 offset it hands over from
+function outerButton(p: EnricoCerutiParams, offset: number): { paths: string[]; leaves: Pt; cap: Arc; U0: Arc } | null {
+    if (p.options.useViolNeck || !p.button || p.button.height <= 0) return null;
+    const U0 = offsetArcRadius(p.bouts.U0, offset);
+    const b = buttonShape(p.button, p.height, x => lineCircleIntersection(lineFromTwoPoints(new Pt(x, p.height), new Pt(x, 0)), U0).sort((a, c) => a.y - c.y).pop() ?? null,
+        () => circleCircleIntersections(buttonCap(p.button!, p.height), U0).find(h => h.x > 0) ?? null);
+    return b ? { ...b, U0 } : null;
+}
+
+// the button on its own, the part of the back's outline its fields set: the cap, and the walls when
+// it stands tall enough to have them
+export function defineButton(p: EnricoCerutiParams, offset?: number): { path: string; cap: Arc } | null {
+    const b = outerButton(p, offset ?? p.overhang + p.rib);
+    return b ? { path: combinePathStrings(b.paths), cap: b.cap } : null;
 }
 
 // offset should be positive to go outside of the inner path,
@@ -637,14 +655,10 @@ export function defineOuterPath(p: EnricoCerutiParams, offset?: number, closeArc
     let arcs = defineOffsetArcs(p, offset);
 
     let buttonPaths: string[] = [];
-    if (button && !p.options.useViolNeck && p.button && p.button.height > 0) {
-        const U0ForButton = offsetArcRadius(p.bouts.U0, offset);
-        const b = buttonShape(p.button, p.height, x => lineCircleIntersection(lineFromTwoPoints(new Pt(x, p.height), new Pt(x, 0)), U0ForButton).sort((a, c) => a.y - c.y).pop() ?? null,
-            () => circleCircleIntersections(buttonCap(p.button!, p.height), U0ForButton).find(h => h.x > 0) ?? null);
-        if (b) {
-            buttonPaths.push(...b.paths);
-            arcs[arcs.length - 1].start = angleFromCenter(U0ForButton, b.leaves);
-        }
+    const b = button ? outerButton(p, offset) : null;
+    if (b) {
+        buttonPaths.push(...b.paths);
+        arcs[arcs.length - 1].start = angleFromCenter(b.U0, b.leaves);
     }
 
     let mirroredArcs = arcs.map(arc => flipArcAboutY(arc));
@@ -1091,4 +1105,83 @@ export function defineSideScrollPath(p: EnricoCerutiParams): string {
         backward(v.F1),
     ];
     return combinePathStrings([...back, ...front]);
+}
+
+// the scroll's frame set on the neck in the body's side elevation: its origin is the nut on the neck's
+// front, +x the neck's normal toward the fingerboard and +y up the neck, so the neck angle turns it
+// and the nut's place moves it there
+export function scrollOnNeck(p: EnricoCerutiParams): Matrix2D {
+    const nk = p.neck!;
+    const normal = vectorFromSlope(nk.angle);
+    const up = vectorFromSlope(nk.angle + TURN.quarter);
+    return [normal.a, normal.b, up.a, up.b, nk.neckTop!.x, nk.neckTop!.y];
+}
+
+export function definePlacedSideScrollPath(p: EnricoCerutiParams): string {
+    return transformPath(defineSideScrollPath(p), scrollOnNeck(p));
+}
+
+// the mortise floor, inside the rib's outer face by the mortise depth
+export function mortiseFloorY(p: EnricoCerutiParams): number {
+  return p.height - p.overhang - p.neck!.mortiseDepth;
+}
+
+// the neck's half-width seen from the front, top width at the nut to root width at the mortise
+// floor; the fingerboard carries the same taper on down over the body
+export function neckHalfWidthAt(p: EnricoCerutiParams, y: number): number {
+  const nk = p.neck!;
+  const topY = nk.neckTop!.y;
+  return (nk.topWidth + (nk.rootWidth - nk.topWidth) * (topY - y) / (topY - mortiseFloorY(p))) / 2;
+}
+
+// the fingerboard's end, its length down the neck from the nut
+export function fingerboardEnd(p: EnricoCerutiParams): Pt {
+  const nk = p.neck!;
+  return pointAtDistanceToward(nk.neckTop!, nk.root!, p.stringSetup!.fingerboardLength);
+}
+
+// a plate in plan: its outline, the purfling lines it has, and the f-holes one path each
+export interface PlatePlan {
+  outline: string;
+  purfling: string[];
+  fHoles: string[];
+}
+
+// the instrument from the front, in the plan's frame: the plate with whatever the neck covers cut
+// away, and the outlines laid over it — the fingerboard, or the bare neck with the board off, and
+// the nut past its end
+export function defineFrontProfilePath(p: EnricoCerutiParams, body: PlatePlan, showFingerboard = true): { body: PlatePlan; neck: string; nut: string } {
+  const nk = p.neck!;
+  const rootY = mortiseFloorY(p);
+  const topY = nk.neckTop!.y;
+  const neck = pathFromPolygon([
+    new Pt(-nk.rootWidth / 2, rootY), new Pt(nk.rootWidth / 2, rootY),
+    new Pt(nk.topWidth / 2, topY), new Pt(-nk.topWidth / 2, topY),
+  ]);
+  const fbEndY = fingerboardEnd(p).y;
+  const fbEndHalf = neckHalfWidthAt(p, fbEndY);
+  const board = pathFromPolygon([
+    new Pt(-fbEndHalf, fbEndY), new Pt(fbEndHalf, fbEndY),
+    new Pt(nk.topWidth / 2, topY), new Pt(-nk.topWidth / 2, topY),
+  ]);
+
+  const { nutHeight, nutWidth } = p.stringSetup!;
+  const nutY = moveInVectorSpace(nk.neckTop!, [{ ...vectorFromSlope(nk.angle + TURN.quarter), mag: nutHeight }]).y;
+  const nut = pathFromPolygon([
+    new Pt(-nutWidth / 2, topY), new Pt(nutWidth / 2, topY),
+    new Pt(nutWidth / 2, nutY), new Pt(-nutWidth / 2, nutY),
+  ]);
+
+  // the neck too under the board, in case a short board ends above the mortise floor
+  const cover = showFingerboard ? [neck, board] : [neck];
+  const cut = (d: string) => occludePath(d, cover).visible;
+  return {
+    body: {
+      outline: cut(body.outline),
+      purfling: body.purfling.map(cut).filter(d => !!d),
+      fHoles: body.fHoles.map(cut).filter(d => !!d),
+    },
+    neck: showFingerboard ? board : neck,
+    nut,
+  };
 }

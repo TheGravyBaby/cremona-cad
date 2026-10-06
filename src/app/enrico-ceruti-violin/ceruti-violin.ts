@@ -1,15 +1,14 @@
 import { ChangeDetectorRef, Component, Input, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
-import { applyTransforms, ColorTransform, renderPath } from '../helpers/renderFuncs';
-import { splitPathStrings } from '../helpers/math/pathMath';
+import { applyTransforms, ColorTransform, renderSolveFailures } from '../helpers/renderFuncs';
 import { clampParam, safeRun } from '../helpers/validators';
 import { CerutiColors, CerutiPanelId, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, EnricoCerutiTemplate, EnricoCerutiParams, PanelRenderRequest, RenderToggleKey } from './ceruti-types';
 import { CERUTI_TEMPLATES } from './ceruti-templates';
 import { isLocSourced } from './templates/corpus';
 import { LOCAL_TEMPLATES } from './templates/local/generated-index';
-import { defineOuterPath, defineOuterPurflingPath, definePurflingPath } from './ceruti-paths';
-import { ensureFholePath, getPath } from './ceruti-calcs';
+import { calculateMainBouts, ensureFrontProfilePaths, hasCenterBout, hasCorners, hasMainBouts } from './ceruti-calcs';
+import { renderFrontProfile } from './renders/front-profile.render';
 import { renderBounds } from './renders/guides.render';
 import {
   CERUTI_COLOR_PALETTE, LIGHT_CONTRAST_MIN, LIGHT_CONTRAST_MIN_PALE, LIGHT_MODE_CANVAS_BG,
@@ -25,7 +24,7 @@ import { MouldPanel } from './panels/mould-panel/mould-panel';
 import { FlutingPanel } from './panels/fluting-panel/fluting-panel';
 import { LongArchingPanel } from './panels/long-arching-panel/long-arching-panel';
 import { CrossArchingPanel } from './panels/cross-arching-panel/cross-arching-panel';
-import { defaultFHolePlacement, FHolePlacementPanel } from './panels/f-hole-placement-panel/f-hole-placement-panel';
+import { FHolePlacementPanel } from './panels/f-hole-placement-panel/f-hole-placement-panel';
 import { FHoleContoursPanel } from './panels/f-hole-contours-panel/f-hole-contours-panel';
 import { NeckPanel } from './panels/neck-panel/neck-panel';
 import { ScrollPanel } from './panels/scroll-panel/scroll-panel';
@@ -217,27 +216,14 @@ export class CerutiViolin extends RecipeComponentBase {
     return this.templates.some(t => t.key === this.d.key) ? this.d.key : '';
   }
 
-  // shown when landing on a panel with nothing more specific to draw yet.
-  private renderOuterSilhouette(): Array<(g: any, ui: any) => void> {
+  // shown when landing on a panel with nothing more specific to draw yet. Solved afresh from the
+  // params each time, so an edit on the base panel carries through the whole instrument.
+  private renderInstrumentProfile(): Array<(g: any, ui: any) => void> {
     const p = this.d.params;
-    const offset = p.overhang + p.rib;
-    const silhouette = renderPath(defineOuterPath(p), this.colors.outerTrace);
-    try {
-      const renders: Array<(g: any, ui: any) => void> = [silhouette];
-      const purflingPath = definePurflingPath(p, offset);
-      if (purflingPath) renders.push(renderPath(purflingPath, this.colors.innerTrace, 1));
-      const outerPurflingPath = defineOuterPurflingPath(p, offset);
-      if (outerPurflingPath) renders.push(renderPath(outerPurflingPath, this.colors.innerTrace, 1));
-
-      p.fHoles ??= defaultFHolePlacement(p);
-      ensureFholePath(p, this.d.paths);
-      // one element per hole, so canvas tools can pick either one on its own
-      for (const hole of splitPathStrings(getPath(this.d.paths, 'fHole'))) renders.push(renderPath(hole, this.colors.outerTrace));
-
-      return renders;
-    } catch {
-      return [silhouette];
-    }
+    const failures = calculateMainBouts(p);
+    if (failures.length) return [renderSolveFailures(failures, this.colors.pathError)];
+    const downstream = ensureFrontProfilePaths(p, this.d.paths);
+    return [...renderFrontProfile(p, this.d.paths, this.colors, downstream), renderSolveFailures(downstream.failures, this.colors.pathError)];
   }
 
   loadTemplate(key: string): void {
@@ -251,11 +237,12 @@ export class CerutiViolin extends RecipeComponentBase {
     }
 
     this.loadFile(JSON.parse(JSON.stringify(template)));
+    // the silhouette's solve writes onto params, so it runs before the snapshot or a fresh template reads as edited
+    if (hasMainBouts(this.d.params)) {
+      this.draftChange.emit(this.renderInstrumentProfile());
+    }
     this._lastLoadedParamsSnapshot = JSON.stringify(this.d.params);
     writeWorkingState(RECIPE_KEY, JSON.stringify(this.d));
-    if (this.hasOuterTrace()) {
-      this.draftChange.emit(this.renderOuterSilhouette());
-    }
     this.requestFit.emit();
     this.setOpenPanel('base');
   }
@@ -312,9 +299,6 @@ export class CerutiViolin extends RecipeComponentBase {
       this.debounceController?.markImmediate();
       this.onPanelActivated(this.openPanel);
       this._lastLoadedParamsSnapshot = JSON.stringify(this.d.params);
-      if(this.hasOuterTrace() && this.openPanel == 'base') {
-        this.draftChange.emit(this.renderOuterSilhouette());
-      }
     }
 
     renderBounds(this.d.params, true)(g, ui);
@@ -348,20 +332,20 @@ export class CerutiViolin extends RecipeComponentBase {
     switch (panel) {
       case 'base': return true;
       case 'mainBouts': return this.hasBaseMeasurements();
-      case 'corners': return this.hasMainBouts();
-      case 'centerBout': return this.hasCorners();
-      case 'outerTrace': return this.hasCenterBout();
-      case 'mould': return this.hasCenterBout();
-      case 'fluting': return this.hasCenterBout();
-      case 'longArching': return this.hasCenterBout();
-      case 'crossArching': return this.hasCenterBout();
-      case 'fHolePlacement': return this.hasCenterBout();
-      case 'fHoleContours': return this.hasCenterBout();
-      case 'neck': return this.hasCenterBout();
-      case 'volute': return this.hasCenterBout();
-      case 'scroll': return this.hasCenterBout();
-      case 'scrollWidths': return this.hasCenterBout();
-      case 'export': return this.hasCenterBout();
+      case 'corners': return hasMainBouts(this.d.params);
+      case 'centerBout': return hasCorners(this.d.params);
+      case 'outerTrace': return hasCenterBout(this.d.params);
+      case 'mould': return hasCenterBout(this.d.params);
+      case 'fluting': return hasCenterBout(this.d.params);
+      case 'longArching': return hasCenterBout(this.d.params);
+      case 'crossArching': return hasCenterBout(this.d.params);
+      case 'fHolePlacement': return hasCenterBout(this.d.params);
+      case 'fHoleContours': return hasCenterBout(this.d.params);
+      case 'neck': return hasCenterBout(this.d.params);
+      case 'volute': return hasCenterBout(this.d.params);
+      case 'scroll': return hasCenterBout(this.d.params);
+      case 'scrollWidths': return hasCenterBout(this.d.params);
+      case 'export': return hasCenterBout(this.d.params);
       default: return false;
     }
   }
@@ -369,26 +353,6 @@ export class CerutiViolin extends RecipeComponentBase {
   private hasBaseMeasurements(): boolean {
     const p = this.d.params;
     return p.width > 0 && p.height > 0;
-  }
-
-  private hasMainBouts(): boolean {
-    const b = this.d.params.bouts;
-    return !!(b.U0 && b.U1 && b.L0 && b.L1);
-  }
-
-  private hasCorners(): boolean {
-    const b = this.d.params.bouts;
-    return !!(b.UCr && b.LCr);
-  }
-
-  private hasCenterBout(): boolean {
-    const b = this.d.params.bouts;
-    return !!(b.C0);
-  }
-
-  private hasOuterTrace(): boolean {
-    const o = this.d.params.outerCorners;
-    return !!(o.U3 || o.C2 || o.C1 || o.L3);
   }
 
   // used by the base-measurements section inlined in ceruti-violin.html — see changeBaseMeasurements().
@@ -441,8 +405,18 @@ export class CerutiViolin extends RecipeComponentBase {
       this.clamp('rib', 0.1, 5, 'Rib thickness must be > 0.5mm', 'Rib thickness must be < 10mm');
       this.clamp('overhang', 1, 10, 'Overhang must be >= 1mm', 'Overhang must be < 10mm');
 
+      // once the bouts exist the width is the wider one's (calculateMainBouts holds it there), so
+      // an edit here moves that bout, almost always the lower
+      const b = this.d.params.bouts;
+      if (b.LBW != null && b.UBW != null) {
+        const widest = b.LBW >= b.UBW ? 'LBW' : 'UBW';
+        const other = widest === 'LBW' ? b.UBW : b.LBW;
+        this.clamp('width', other, 3000, `Width can't be narrower than the ${widest === 'LBW' ? 'upper' : 'lower'} bout, ${other}mm`);
+        b[widest] = this.d.params.width;
+      }
+
       this.d.params.ratios.HtoW = this.d.params.height / this.d.params.width;
-      this.draftChange.emit([renderBounds(this.d.params, true)]);
+      this.draftChange.emit([...(hasMainBouts(this.d.params) ? this.renderInstrumentProfile() : []), renderBounds(this.d.params, true)]);
       writeWorkingState(RECIPE_KEY, JSON.stringify(this.d));
       // No re-frame here on purpose: resizing the plate is an edit, not a new drawing, and moving
       // the camera mid-keystroke would throw away the view the user set. `F` re-frames.

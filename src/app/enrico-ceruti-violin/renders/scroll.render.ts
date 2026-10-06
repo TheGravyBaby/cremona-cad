@@ -3,8 +3,9 @@ import { occludePath, pathFromLine, pathFromPolygon, pathFromPolyline } from '..
 import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderCrosshair, renderDashLine, renderPath, renderPointHalo, renderPolygon, renderSegment, renderSegmentHalo } from '../../helpers/renderFuncs';
 import { Arc, Pt, Pt3D } from '../../models/types';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, ScrollParams } from '../ceruti-types';
-import { duckTailRadius, pegboxCavity, pegboxTaperStart, pegboxWidth, scrollPathStretches, ScrollFailure, ScrollKey, scrollExtent, scrollFrontWidths, scrollLines, scrollNeckHalfWidth, ScrollStationKey, scrollWidthStations, TO_FRONT } from '../ceruti-scroll';
+import { duckTailRadius, pegboxCavity, pegboxTaperStart, pegboxWidth, scrollPathStretches, ScrollFailure, ScrollStretches, ScrollKey, scrollExtent, scrollFrontWidths, scrollLines, scrollNeckHalfWidth, ScrollStationKey, scrollWidthStations, TO_FRONT } from '../ceruti-scroll';
 import { HighlightedArc, HighlightedSegment, STROKE_WEIGHT } from './render-constants';
+import { scrollOnNeck } from '../ceruti-paths';
 
 // the scroll in ceruti-scroll.ts's frame, the neck's tilt taken out, read off p.volute as
 // calculateScroll left it
@@ -172,6 +173,38 @@ function halfWidthAtHeight(pts: Pt3D[], y: number): number | null {
   return atHeight(pts, y)?.x ?? null;
 }
 
+// what of a line can be seen: its runs of points that no stretch of the path hides, one nearer
+// the viewer and at least as wide at that height. z is the side view's x, so from behind the
+// lesser stands nearer and from in front the greater
+function seenRuns(on: ScrollStretches, pts: Pt3D[], behind: boolean): Pt3D[][] {
+  const stretches = [on.back, on.turn1Front, on.turn2Back, on.turn2Front, on.turn3Back, on.turn3Front];
+  const hidden = (pt: Pt3D) => stretches.some(stretch => {
+    // a stretch hides nothing at the height it turns over at: a line cut there stops on the turn's face
+    const turnsOver = Math.abs(pt.y - stretch[0].y) < 1e-9 || Math.abs(pt.y - stretch.at(-1)!.y) < 1e-9;
+    const over = turnsOver ? null : atHeight(stretch, pt.y);
+    if (!over) return false;
+    const nearer = behind ? over.z < pt.z - 1e-6 : over.z > pt.z + 1e-6;
+    return nearer && over.x >= pt.x - 1e-9;
+  });
+  const runs: Pt3D[][] = [[]];
+  for (const pt of pts) {
+    if (hidden(pt)) runs.push([]);
+    else runs.at(-1)!.push(pt);
+  }
+  return runs;
+}
+
+// the path starts at the top of the duck tail's round. Below that the pegbox runs on down its
+// taper to the end of its straight, square to the foot of the nut, and closes level there
+function pegboxOutline(p: EnricoCerutiParams, start: Pt3D) {
+  const nutHalf = p.stringSetup!.nutWidth / 2;
+  const foot = Math.min(start.y, 0);
+  const taperStart = pegboxTaperStart(p);
+  const walls = [start, ...(start.y > taperStart ? [new Pt(nutHalf, taperStart)] : []), new Pt(nutHalf, foot)];
+  const bottom = [new Pt(nutHalf, foot), new Pt(0, foot)];
+  return { foot, walls, bottom };
+}
+
 // the side profile with a crosshair on each width and the pegbox's hollow dashed inside it, and the
 // path seen from behind and from the front: the back view beside the scroll's furthest reach, the
 // front view beside the nut. Each view carries the neck on below as the side view does.
@@ -182,7 +215,7 @@ function halfWidthAtHeight(pts: Pt3D[], y: number): number | null {
 // at least as wide as the one before is what keeps that order true
 export const renderScrollWidths = (p: EnricoCerutiParams, colors: CerutiColors, focused: ScrollStationKey | null, showGuides: boolean) => (g: any, ui: any): void => {
   const v = p.scroll!;
-  const { nutHeight, nutThickness } = p.stringSetup!;
+  const { nutThickness } = p.stringSetup!;
   const nutHalf = p.stringSetup!.nutWidth / 2;
   const eyeHalf = v.widths.eye / 2;
   const eyeTop = v.eye.y + v.eye.r;
@@ -198,26 +231,7 @@ export const renderScrollWidths = (p: EnricoCerutiParams, colors: CerutiColors, 
   const turn2Bottom = on.turn2Front.at(-1)!;
   const turn3Top = on.turn3Back.at(-1)!;
 
-  // what of a line can be seen: its runs of points that no stretch of the path hides, one nearer
-  // the viewer and at least as wide at that height. z is the side view's x, so from behind the
-  // lesser stands nearer and from in front the greater
-  const stretches = [on.back, on.turn1Front, on.turn2Back, on.turn2Front, on.turn3Back, on.turn3Front];
-  const seen = (pts: Pt3D[], behind: boolean): Pt3D[][] => {
-    const hidden = (pt: Pt3D) => stretches.some(stretch => {
-      // a stretch hides nothing at the height it turns over at: a line cut there stops on the turn's face
-      const turnsOver = Math.abs(pt.y - stretch[0].y) < 1e-9 || Math.abs(pt.y - stretch.at(-1)!.y) < 1e-9;
-      const over = turnsOver ? null : atHeight(stretch, pt.y);
-      if (!over) return false;
-      const nearer = behind ? over.z < pt.z - 1e-6 : over.z > pt.z + 1e-6;
-      return nearer && over.x >= pt.x - 1e-9;
-    });
-    const runs: Pt3D[][] = [[]];
-    for (const pt of pts) {
-      if (hidden(pt)) runs.push([]);
-      else runs.at(-1)!.push(pt);
-    }
-    return runs;
-  };
+  const seen = (pts: Pt3D[], behind: boolean) => seenRuns(on, pts, behind);
 
   const gap = 20;
   const widest = Math.max(eyeHalf, nutHalf);
@@ -247,12 +261,7 @@ export const renderScrollWidths = (p: EnricoCerutiParams, colors: CerutiColors, 
     for (const side of [1, -1]) renderSegment(new Pt(center + side * eyeHalf, eyeBottom), new Pt(center + side * eyeHalf, eyeTop), ink, STROKE_WEIGHT.trace)(g, ui);
   };
 
-  // the path starts at the top of the duck tail's round. Below that the pegbox runs on down its
-  // taper to the end of its straight, square to the foot of the nut, and closes level there
-  const foot = Math.min(start.y, 0);
-  const taperStart = pegboxTaperStart(p);
-  const walls = [start, ...(start.y > taperStart ? [new Pt(nutHalf, taperStart)] : []), new Pt(nutHalf, foot)];
-  const bottom = [new Pt(nutHalf, foot), new Pt(0, foot)];
+  const { foot, walls, bottom } = pegboxOutline(p, start);
 
   const stub = neckStub(p);
   const neckSide = (center: number, side: number, top: number) =>
@@ -318,64 +327,126 @@ export const renderScrollWidths = (p: EnricoCerutiParams, colors: CerutiColors, 
     for (const side of [1, -1]) renderSegment(new Pt(back + side * r, start.y), new Pt(back + side * start.x, start.y), colors.scrollBackLight, STROKE_WEIGHT.trace)(g, ui);
   }
 
-  // from in front the round is hidden, and the nut stands nearest, hiding whatever of the pegbox
-  // is narrower than it
-  const nut = [new Pt(front - nutHalf, 0), new Pt(front + nutHalf, 0), new Pt(front + nutHalf, nutHeight), new Pt(front - nutHalf, nutHeight)];
-  const overPegbox = pathFromPolygon(nut);
-  for (const side of [1, -1]) stroke(neckSide(front, side, 0), colors.neckOff, STROKE_WEIGHT.section, null);
-  renderPolygon(nut, colors.nut, STROKE_WEIGHT.section)(g, ui);
-  contour([...walls, ...bottom.slice(1)], front, colors.archTop, overPegbox);
-
-  // the pegbox runs in under the volute at the first turn's bottom, and its back is hidden all the
-  // way up: behind the first turn above there, and the same line as its front below
-  const pegboxTop = turn1Bottom.y;
-  const pegboxFront = scrollFrontWidths(p);
-  contour(cutAtHeight(pegboxFront, pegboxTop, 'below'), front, colors.archTop, overPegbox);
-
-  // a pegbox wider than the volute over it is the rare exception: above the first turn's bottom its
-  // cheeks show wherever they stand out past the volute. That takes in the second turn's back,
-  // which curls round in front of the throat
-  for (const run of seen(cutAtHeight(pegboxFront, pegboxTop, 'above'), false)) contour(run, front, colors.archTop);
-
-  // the first turn's front stands nearest and shows whole, and the front of each turn inside it
-  // stands out past it. The back of a turn shows under the turn inside it, up to that turn's bottom,
-  // and the last up to the eye's. As from behind, a nearer stretch as wide hides any of them
-  contour(on.turn1Front, front, colors.archTop);
-  for (const run of seen(cutAtHeight(on.turn2Back, turn2Bottom.y, 'below'), false)) contour(run, front, colors.archTop);
-  for (const run of seen(on.turn2Front, false)) contour(run, front, colors.archTop);
-  for (const run of seen(cutAtHeight(on.turn3Back, eyeBottom, 'below'), false)) contour(run, front, colors.archTop);
-  for (const run of seen(on.turn3Front, false)) contour(run, front, colors.archTop);
-
-  // the hollow's mouth, each cheek's thickness in from the outside. It ends level where the side
-  // view's hollow does, unless the volute hides it first, and then it is left open
-  const hollowTop = scrollLines(p).frontStraight[1].y;
-  const mouthTop = Math.min(hollowTop, pegboxTop);
-  const mouth = [nutHeight, taperStart, mouthTop]
-    .filter(y => y >= nutHeight && y <= mouthTop)
-    .map(y => new Pt(pegboxWidth(p, y) / 2 - v.pegbox.wall, y));
-  if (mouth.length > 1 && mouth.every(pt => pt.x > 0)) {
-    const right = mouth.map(pt => new Pt(front + pt.x, pt.y));
-    const left = mouth.map(pt => new Pt(front - pt.x, pt.y));
-    const d = hollowTop <= pegboxTop ? pathFromPolygon([...right, ...left.reverse()]) : pathFromPolyline([...right.reverse(), ...left]);
-    renderPath(d, colors.scrollFrontLight, STROKE_WEIGHT.trace)(g, ui);
-  }
-
-  // each face runs in to the front of the turn outside it. The first turn has none outside it, so
-  // its bottom runs right across, over the pegbox running in under it. The eye's top is behind the
-  // last turn's front
-  face(front, crown.y, crown.x, null, colors.scrollFrontLight);
-  face(front, turn1Bottom.y, turn1Bottom.x, null, colors.scrollFrontLight);
-  face(front, turn2Top.y, turn2Top.x, halfWidthAtHeight(on.turn1Front, turn2Top.y), colors.scrollFrontLight);
-  face(front, turn2Bottom.y, turn2Bottom.x, halfWidthAtHeight(on.turn1Front, turn2Bottom.y), colors.scrollFrontLight);
-  face(front, turn3Top.y, turn3Top.x, halfWidthAtHeight(on.turn2Front, turn3Top.y), colors.scrollFrontLight);
-  face(front, eyeBottom, eyeHalf, halfWidthAtHeight(on.turn2Front, eyeBottom), colors.scrollFrontLight);
-  eyeSides(front, colors.scrollFrontLight);
+  for (const stroke of scrollFrontViewStrokes(p, (x, y) => new Pt(front + x, y))) renderFrontStroke(stroke, colors[stroke.ink])(g, ui);
 
   // in the side view the hollow is inside the wood
   const cavity = pegboxCavity(p);
   if (cavity) renderPath(pathFromPolyline(cavity), colors.scrollFrontLight, STROKE_WEIGHT.trace, 1, '4,4')(g, ui);
   if (showGuides) for (const station of stations) renderCrosshair(station.at, stationColor(colors, station.key))(g, ui);
 };
+
+export type ScrollFrontInk = 'archTop' | 'scrollFrontLight' | 'nut' | 'neckOff';
+export type ScrollFrontStroke = { ink: ScrollFrontInk; weight: number } & ({ d: string } | { line: [Pt, Pt] } | { polygon: Pt[] });
+
+export const renderFrontStroke = (stroke: ScrollFrontStroke, ink: string) =>
+  'line' in stroke ? renderSegment(stroke.line[0], stroke.line[1], ink, stroke.weight)
+    : 'polygon' in stroke ? renderPolygon(stroke.polygon, ink, stroke.weight)
+      : renderPath(stroke.d, ink, stroke.weight);
+
+// the scroll from in front, each point put where `place` says: x across from the centreline, y up
+// the neck, z its depth there (the side view's x). What hides what is worked out looking along the
+// neck's own normal, as the scroll widths panel shows it; a view tilted off that by the neck angle
+// would see a sliver more or less of a turn, not worth a second pass
+export function scrollFrontViewStrokes(p: EnricoCerutiParams, place: (x: number, y: number, z: number) => Pt): ScrollFrontStroke[] {
+  const v = p.scroll!;
+  const { nutHeight } = p.stringSetup!;
+  const nutHalf = p.stringSetup!.nutWidth / 2;
+  const eyeHalf = v.widths.eye / 2;
+  const eyeTop = v.eye.y + v.eye.r;
+  const eyeBottom = v.eye.y - v.eye.r;
+  const on = scrollPathStretches(p);
+  const crown = on.back.at(-1)!;
+  const turn1Bottom = on.turn1Front.at(-1)!;
+  const turn2Top = on.turn2Back.at(-1)!;
+  const turn2Bottom = on.turn2Front.at(-1)!;
+  const turn3Top = on.turn3Back.at(-1)!;
+  const { walls, bottom } = pegboxOutline(p, on.back[0]);
+  const seen = (pts: Pt3D[]) => seenRuns(on, pts, false);
+
+  const strokes: ScrollFrontStroke[] = [];
+  const at = (pt: { x: number; y: number; z?: number }, side: number) => place(side * pt.x, pt.y, pt.z ?? 0);
+  const stroke = (d: string, ink: ScrollFrontInk, weight: number, cover: string | null) => {
+    const shown = cover ? occludePath(d, cover).visible : d;
+    if (shown) strokes.push({ d: shown, ink, weight });
+  };
+  const contour = (pts: { x: number; y: number; z?: number }[], cover: string | null = null) => {
+    if (pts.length < 2) return;
+    for (const side of [1, -1]) stroke(pathFromPolyline(pts.map(pt => at(pt, side))), 'archTop', STROKE_WEIGHT.trace, cover);
+  };
+  const line = (a: Pt, b: Pt) => strokes.push({ line: [a, b], ink: 'scrollFrontLight', weight: STROKE_WEIGHT.trace });
+  // a turn's face, seen edge on where the path turns over: level from the turn's own half-width in
+  // to whatever stands nearer the viewer at that height, or right across where nothing does
+  const face = (turn: { y: number; z: number }, from: number, to: number | null) => {
+    if (to === null) line(place(-from, turn.y, turn.z), place(from, turn.y, turn.z));
+    else if (to < from) for (const side of [1, -1]) line(place(side * from, turn.y, turn.z), place(side * to, turn.y, turn.z));
+  };
+
+  // the round is hidden, and the nut stands nearest, hiding whatever of the pegbox is narrower than it
+  const nut = [place(-nutHalf, 0, 0), place(nutHalf, 0, 0), place(nutHalf, nutHeight, 0), place(-nutHalf, nutHeight, 0)];
+  const overPegbox = pathFromPolygon(nut);
+  const stub = neckStub(p);
+  for (const side of [1, -1]) {
+    stroke(pathFromLine(place(side * scrollNeckHalfWidth(p, -stub), -stub, 0), place(side * scrollNeckHalfWidth(p, 0), 0, 0)), 'neckOff', STROKE_WEIGHT.section, null);
+  }
+  strokes.push({ polygon: nut, ink: 'nut', weight: STROKE_WEIGHT.section });
+  contour([...walls, ...bottom.slice(1)], overPegbox);
+
+  // the pegbox runs in under the volute at the first turn's bottom, and its back is hidden all the
+  // way up: behind the first turn above there, and the same line as its front below
+  const pegboxTop = turn1Bottom.y;
+  const pegboxFront = scrollFrontWidths(p);
+  contour(cutAtHeight(pegboxFront, pegboxTop, 'below'), overPegbox);
+
+  // a pegbox wider than the volute over it is the rare exception: above the first turn's bottom its
+  // cheeks show wherever they stand out past the volute. That takes in the second turn's back,
+  // which curls round in front of the throat
+  for (const run of seen(cutAtHeight(pegboxFront, pegboxTop, 'above'))) contour(run);
+
+  // the first turn's front stands nearest and shows whole, and the front of each turn inside it
+  // stands out past it. The back of a turn shows under the turn inside it, up to that turn's bottom,
+  // and the last up to the eye's. A nearer stretch as wide hides any of them
+  contour(on.turn1Front);
+  for (const run of seen(cutAtHeight(on.turn2Back, turn2Bottom.y, 'below'))) contour(run);
+  for (const run of seen(on.turn2Front)) contour(run);
+  for (const run of seen(cutAtHeight(on.turn3Back, eyeBottom, 'below'))) contour(run);
+  for (const run of seen(on.turn3Front)) contour(run);
+
+  // the hollow's mouth, each cheek's thickness in from the outside. It ends level where the side
+  // view's hollow does, unless the volute hides it first, and then it is left open
+  const hollowTop = scrollLines(p).frontStraight[1].y;
+  const mouthTop = Math.min(hollowTop, pegboxTop);
+  const mouth = [nutHeight, pegboxTaperStart(p), mouthTop]
+    .filter(y => y >= nutHeight && y <= mouthTop)
+    .map(y => new Pt(pegboxWidth(p, y) / 2 - v.pegbox.wall, y));
+  if (mouth.length > 1 && mouth.every(pt => pt.x > 0)) {
+    const right = mouth.map(pt => at(pt, 1));
+    const left = mouth.map(pt => at(pt, -1));
+    const d = hollowTop <= pegboxTop ? pathFromPolygon([...right, ...left.reverse()]) : pathFromPolyline([...right.reverse(), ...left]);
+    strokes.push({ d, ink: 'scrollFrontLight', weight: STROKE_WEIGHT.trace });
+  }
+
+  // each face runs in to the front of the turn outside it. The first turn has none outside it, so
+  // its bottom runs right across, over the pegbox running in under it. The eye's top is behind the
+  // last turn's front
+  face(crown, crown.x, null);
+  face(turn1Bottom, turn1Bottom.x, null);
+  face(turn2Top, turn2Top.x, halfWidthAtHeight(on.turn1Front, turn2Top.y));
+  face(turn2Bottom, turn2Bottom.x, halfWidthAtHeight(on.turn1Front, turn2Bottom.y));
+  face(turn3Top, turn3Top.x, halfWidthAtHeight(on.turn2Front, turn3Top.y));
+  face({ y: eyeBottom, z: v.eye.x }, eyeHalf, halfWidthAtHeight(on.turn2Front, eyeBottom));
+  // the eye stands out as a cylinder to the last width
+  for (const side of [1, -1]) line(place(side * eyeHalf, eyeBottom, v.eye.x), place(side * eyeHalf, eyeTop, v.eye.x));
+  return strokes;
+}
+
+// the front view as the front profile shows it, projected onto the plan: the neck's tilt carries
+// each point's depth into how far up the body it lands. The nut and the neck below are the
+// profile's own
+export function scrollFrontInPlan(p: EnricoCerutiParams): ScrollFrontStroke[] {
+  const m = scrollOnNeck(p);
+  return scrollFrontViewStrokes(p, (x, y, z) => new Pt(x, m[1] * z + m[3] * y + m[5]))
+    .filter(stroke => stroke.ink !== 'nut' && stroke.ink !== 'neckOff');
+}
 
 // the figure each style finds its centres on, as polylines in the eye's frame
 export function voluteConstruction(v: ScrollParams): Pt[][] {

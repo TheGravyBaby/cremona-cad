@@ -16,7 +16,10 @@ import {
   archHeightInfo, curveTypeInfo, transitionInfo, plateThicknessInfo, ribHeightInfo, splinePointInfo,
 } from '../../ceruti-toasts';
 import { HighlightedSplinePoint } from '../../renders/render-constants';
-import { renderBodySection } from '../../renders/body-section.render';
+import { renderBodySection, renderSideView } from '../../renders/body-section.render';
+import { calculateNeck } from '../../ceruti-neck';
+import { solveScrollForProfile } from '../../ceruti-scroll';
+import { renderNeck } from '../neck-panel/neck-panel';
 import { error } from '../../../shared/message-emitter';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
@@ -64,6 +67,10 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
 
   /** The rib pair as last accepted, so a taper that overruns the body can be put back. */
   private acceptedRibHeights: { lower: number; upper: number } | null = null;
+
+  // the neck and scroll the user has set, under the body. Off: drawn here they pulled the eye off the
+  // arch being edited more than they gave it context (2026-10-06), kept to revisit
+  showNeck = false;
 
   ngOnInit(): void {
     this.emitImmediate();
@@ -251,12 +258,20 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
     for (const plate of ['top', 'bottom'] as const) {
       this.solved[plate] = solveLongArch(this.params, this.archFor(plate), this.gouge(plate));
     }
-    return [renderBodySection(this.params, this.colors, {
-      solved: this.solved,
-      gouge: { top: this.gouge('top'), bottom: this.gouge('bottom') },
-      highlight: plate => this.splineHighlightFor(plate),
-      showGuides: this.flags.showModuleGuides,
-    })];
+    // the neck the user has set, re-solved so it follows the arch and the rib taper, in grey under the body
+    const p = this.params;
+    const neckSet = this.showNeck && !!(p.neck?.neckTop && p.stringSetup);
+    if (neckSet) calculateNeck(p, this.solved.top, this.gouge('top'));
+    const scroll = neckSet && solveScrollForProfile(p);
+    return [renderSideView(p, [
+      ...(neckSet ? [renderNeck(p, this.colors, { strings: false, bridge: false, scroll, ground: this.colors.outerTrace })] : []),
+      renderBodySection(p, this.colors, {
+        solved: this.solved,
+        gouge: { top: this.gouge('top'), bottom: this.gouge('bottom') },
+        highlight: plate => this.splineHighlightFor(plate),
+        showGuides: this.flags.showModuleGuides,
+      }),
+    ])];
   }
 
   // rolls back past maxRibTaperMm rather than clamping: two fields feed the one constraint, and

@@ -5,10 +5,11 @@ import { flipArcAboutY, flipCircleAboutY, offsetArcRadius } from '../../../helpe
 import { nearestFraction } from '../../../helpers/nearestFraction';
 import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderCrosshair, renderPointHalo, renderSolveFailures } from '../../../helpers/renderFuncs';
 import { Arc } from '../../../models/types';
-import { calculateCorners } from '../../ceruti-calcs';
+import { calculateCenterBout, calculateCorners, hasCenterBout } from '../../ceruti-calcs';
 import { SolveFailure } from '../../../helpers/validators';
 import { CerutiColors, CerutiViewFlags, DefaultParams, EnricoCerutiParams, RenderToggleKey } from '../../ceruti-types';
 import { renderBounds, renderBoutBouts, renderCornerGuides } from '../../renders/guides.render';
+import { renderFrontInnerProfile } from '../../renders/front-profile.render';
 import { renderMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { HighlightedArc, HighlightedPoint, STROKE_WEIGHT } from '../../renders/render-constants';
 import { compoundArcInfo, cornerPositionInfo, violCornerInfo } from '../../ceruti-toasts';
@@ -109,7 +110,10 @@ export class CornersPanel extends CerutiPanelBase implements OnInit {
     const highlighted = this.highlighted;
 
     const failures = calculateCorners(p);
+    // the rib outline as far as it's been drafted, under this panel's own work
+    const later = hasCenterBout(p) ? calculateCenterBout(p) : [];
     return [
+      ...renderFrontInnerProfile(p, c, [...failures, ...later]),
       renderBounds(p, f.showModuleGuides),
       renderBoutBouts(p, c, f.showModuleGuides),
       renderCornerGuides(p, f.showModuleGuides),
@@ -191,31 +195,35 @@ export const renderCorners = (
     upper && p.options.useViolCornerUC && renderArcFromArcFancy(p.bouts.U4!, colors.upperBoutOff)(g, ui);
     upper && p.options.useViolCornerUC && renderArcFromArcFancy(flipArcAboutY(p.bouts.U4!), colors.upperBoutOff)(g, ui);
   } else {
-    lower && !p.options.useViolCornerLC && renderArcFromArc(p.bouts.L2!, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
-    lower && !p.options.useViolCornerLC && renderArcFromArc(p.bouts.L3!, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
-    lower && !p.options.useViolCornerLC && p.options.L31DoubleArc && renderArcFromArc(p.bouts.L31!, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
-    lower && !p.options.useViolCornerLC && renderArcFromArc(flipArcAboutY(p.bouts.L2!), colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
-    lower && !p.options.useViolCornerLC && renderArcFromArc(flipArcAboutY(p.bouts.L3!), colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
-    lower && !p.options.useViolCornerLC && p.options.L31DoubleArc && renderArcFromArc(flipArcAboutY(p.bouts.L31!), colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
-    lower && p.options.useViolCornerLC && renderArcFromArc(p.bouts.L4!, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
-    lower && p.options.useViolCornerLC && renderArcFromArc(flipArcAboutY(p.bouts.L4!), colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+    // in their own colours on this panel, where their fields are; grey under a later panel's work
+    const lBoutOff = currentModule ? colors.lowerBoutOff : colors.innerTrace;
+    const cBoutLow = currentModule ? colors.centerBoutLow : colors.innerTrace;
+    const uBoutOff = currentModule ? colors.upperBoutOff : colors.innerTrace;
+    const cBoutUp = currentModule ? colors.centerBoutUp : colors.innerTrace;
+    lower && !p.options.useViolCornerLC && renderArcFromArc(p.bouts.L2!, lBoutOff, STROKE_WEIGHT.trace)(g, ui);
+    lower && !p.options.useViolCornerLC && renderArcFromArc(p.bouts.L3!, cBoutLow, STROKE_WEIGHT.trace)(g, ui);
+    lower && !p.options.useViolCornerLC && p.options.L31DoubleArc && renderArcFromArc(p.bouts.L31!, cBoutLow, STROKE_WEIGHT.trace)(g, ui);
+    lower && !p.options.useViolCornerLC && renderArcFromArc(flipArcAboutY(p.bouts.L2!), lBoutOff, STROKE_WEIGHT.trace)(g, ui);
+    lower && !p.options.useViolCornerLC && renderArcFromArc(flipArcAboutY(p.bouts.L3!), cBoutLow, STROKE_WEIGHT.trace)(g, ui);
+    lower && !p.options.useViolCornerLC && p.options.L31DoubleArc && renderArcFromArc(flipArcAboutY(p.bouts.L31!), cBoutLow, STROKE_WEIGHT.trace)(g, ui);
+    lower && p.options.useViolCornerLC && renderArcFromArc(p.bouts.L4!, lBoutOff, STROKE_WEIGHT.trace)(g, ui);
+    lower && p.options.useViolCornerLC && renderArcFromArc(flipArcAboutY(p.bouts.L4!), lBoutOff, STROKE_WEIGHT.trace)(g, ui);
 
-    upper && !p.options.useViolCornerUC && renderArcFromArc(p.bouts.U2!, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
-    upper && !p.options.useViolCornerUC && renderArcFromArc(p.bouts.U3!, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
-    upper && !p.options.useViolCornerUC && p.options.U31DoubleArc && renderArcFromArc(p.bouts.U31!, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
-    upper && !p.options.useViolCornerUC && renderArcFromArc(flipArcAboutY(p.bouts.U2!), colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
-    upper && !p.options.useViolCornerUC && renderArcFromArc(flipArcAboutY(p.bouts.U3!), colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
-    upper && !p.options.useViolCornerUC && p.options.U31DoubleArc && renderArcFromArc(flipArcAboutY(p.bouts.U31!), colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
-    upper && p.options.useViolCornerUC && renderArcFromArc(p.bouts.U4!, colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
-    upper && p.options.useViolCornerUC && renderArcFromArc(flipArcAboutY(p.bouts.U4!), colors.innerTrace, STROKE_WEIGHT.trace)(g, ui);
+    upper && !p.options.useViolCornerUC && renderArcFromArc(p.bouts.U2!, uBoutOff, STROKE_WEIGHT.trace)(g, ui);
+    upper && !p.options.useViolCornerUC && renderArcFromArc(p.bouts.U3!, cBoutUp, STROKE_WEIGHT.trace)(g, ui);
+    upper && !p.options.useViolCornerUC && p.options.U31DoubleArc && renderArcFromArc(p.bouts.U31!, cBoutUp, STROKE_WEIGHT.trace)(g, ui);
+    upper && !p.options.useViolCornerUC && renderArcFromArc(flipArcAboutY(p.bouts.U2!), uBoutOff, STROKE_WEIGHT.trace)(g, ui);
+    upper && !p.options.useViolCornerUC && renderArcFromArc(flipArcAboutY(p.bouts.U3!), cBoutUp, STROKE_WEIGHT.trace)(g, ui);
+    upper && !p.options.useViolCornerUC && p.options.U31DoubleArc && renderArcFromArc(flipArcAboutY(p.bouts.U31!), cBoutUp, STROKE_WEIGHT.trace)(g, ui);
+    upper && p.options.useViolCornerUC && renderArcFromArc(p.bouts.U4!, uBoutOff, STROKE_WEIGHT.trace)(g, ui);
+    upper && p.options.useViolCornerUC && renderArcFromArc(flipArcAboutY(p.bouts.U4!), uBoutOff, STROKE_WEIGHT.trace)(g, ui);
   }
 
   if (flags.renderOuterPath && renderOuterPathCorners) {
-    const m = flags.showModuleArcs && currentModule;
-    const lBoutOff = m ? colors.lowerBoutOff : colors.outerTrace;
-    const cBoutLow = m ? colors.centerBoutLow : colors.outerTrace;
-    const uBoutOff = m ? colors.upperBoutOff : colors.outerTrace;
-    const cBoutUp = m ? colors.centerBoutUp : colors.outerTrace;
+    const lBoutOff = currentModule ? colors.lowerBoutOff : colors.outerTrace;
+    const cBoutLow = currentModule ? colors.centerBoutLow : colors.outerTrace;
+    const uBoutOff = currentModule ? colors.upperBoutOff : colors.outerTrace;
+    const cBoutUp = currentModule ? colors.centerBoutUp : colors.outerTrace;
     const inset = p.overhang + p.rib;
 
     lower && !p.options.useViolCornerLC && renderArcFromArc(offsetArcRadius(p.bouts.L2!, inset), lBoutOff, STROKE_WEIGHT.trace)(g, ui);
