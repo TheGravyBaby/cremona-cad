@@ -479,6 +479,13 @@
     {
       "id": "stradivari-viola-cassavetti-top",
       "label": "Top (sp=2)",
+      "scope": {
+        "except": [
+          "fluting",
+          "longArching",
+          "crossArching"
+        ]
+      },
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154830:musihas-200154830.0002/full/pct:100.0/0/default.jpg",
       "x": -123.58262698406119,
       "y": -2.2049999999999725,
@@ -488,12 +495,6 @@
       "opacity": 0.4,
       "suppressWhite": true,
       "locked": true,
-      "excludePanels": [
-        "fluting",
-        "longArching",
-        "crossArching"
-      ],
-      "isDefault": true,
       "credit": {
         "source": "Library of Congress",
         "imageId": "musihas-200154830.0002",
@@ -505,6 +506,11 @@
     {
       "id": "stradivari-viola-cassavetti-profiles",
       "label": "Profiles, both sides (sp=3)",
+      "scope": {
+        "only": [
+          "longArching"
+        ]
+      },
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154830:musihas-200154830.0003/full/pct:100.0/0/default.jpg",
       "x": -59.47749999999998,
       "y": -2.465000000000001,
@@ -514,9 +520,6 @@
       "opacity": 0.4,
       "suppressWhite": true,
       "locked": false,
-      "panels": [
-        "longArching"
-      ],
       "crop": {
         "left": 0,
         "top": 0,

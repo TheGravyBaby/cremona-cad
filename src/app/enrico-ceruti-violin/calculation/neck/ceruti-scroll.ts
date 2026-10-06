@@ -329,8 +329,6 @@ export function calculateScroll(p: EnricoCerutiParams): ScrollFailure[] {
     // S3 turns back clockwise, so as a counterclockwise sweep it runs from the duck tail to the foot
     let S3end = v.S2.end - TURN.half;
     if (!(v.S3.r > 0)) return badArc('Back', 'S3', v.S3, ['S3', 'nape']);
-    if (!(v.hang >= 0))
-      return { message: 'Back: the hang below the nut needs a length, 0 or more.', unsolved: ['S3', 'nape'], circles: [], segments: [] };
     let S3 = placeCircleOnPointAtAngle(v.S3.r, foot, S3end);
     // the duck tail comes down to its hang below the nut's lower edge: of the two angles on the
     // circle at that height, the one the shortest sweep to S3's foot reaches first

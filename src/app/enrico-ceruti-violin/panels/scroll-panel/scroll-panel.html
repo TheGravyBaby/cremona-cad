@@ -31,7 +31,7 @@
         </label>
         <label class="field-cell">
             <span class="field-title" title="The duck tail: where the pegbox's back ends and the neck's back begins. How far it hangs below the nut's lower edge; S3 ends where it comes down to it. 0 lands it level with the nut; a cello's hangs about half the neck's width, so the round seen from behind tops out at the pegbox's foot">Hang <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1" min="0"
+            <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1"
                 [(ngModel)]="scroll.hang" (input)="onChange(); onArcFocus('S3', colors.scrollBack)"
                 (focus)="onArcFocus('S3', colors.scrollBack)" (blur)="onArcBlur()" />
         </label>

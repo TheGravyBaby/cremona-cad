@@ -65,7 +65,7 @@
         "y": 288.6822774586234,
         "r": 63,
         "start": 1.4022576680283747,
-        "end": -1.5137687562003967e-8
+        "end": -1.5137687562003967e-08
       },
       "U2": {
         "x": -19.80000000000001,
@@ -792,6 +792,13 @@
     {
       "id": "goldberg-baron-vitta-top",
       "label": "Top (sp=2)",
+      "scope": {
+        "except": [
+          "fluting",
+          "longArching",
+          "crossArching"
+        ]
+      },
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154815:musihas-200154815.0002/full/pct:100.0/0/default.jpg",
       "x": -118,
       "y": -4.542465563879347,
@@ -801,11 +808,6 @@
       "opacity": 0.4,
       "suppressWhite": true,
       "locked": true,
-      "excludePanels": [
-        "fluting",
-        "longArching",
-        "crossArching"
-      ],
       "credit": {
         "source": "Library of Congress",
         "imageId": "musihas-200154815.0002",

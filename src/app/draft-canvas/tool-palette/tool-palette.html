@@ -32,6 +32,13 @@
       @if (row.slot; as slot) {
       <ng-container [ngTemplateOutlet]="slotTpl" [ngTemplateOutletContext]="{ slot }" />
       } @else if (row.commands; as commands) {
+      <ng-container [ngTemplateOutlet]="commandsTpl" [ngTemplateOutletContext]="{ commands, label: row.label }" />
+      }
+    </div>
+    }
+    }
+
+    <ng-template #commandsTpl let-commands="commands" let-label="label">
       <!-- Commands, not tools: each acts on the selection once, at once, so none goes active. A
            group's button repeats whichever was last used, like a tool flyout's face. -->
       @let face = commandFace(commands);
@@ -49,8 +56,8 @@
         @if (openFlyout === commands) {
         <div class="tool-flyout-popup" [style.top]="popupTop" [style.bottom]="popupBottom"
           [style.maxHeight]="popupMaxHeight">
-          @if (row.label) {
-          <div class="tool-flyout-title">{{ row.label }}</div>
+          @if (label) {
+          <div class="tool-flyout-title">{{ label }}</div>
           }
           @for (command of commands; track command.id) {
           <button type="button" class="tool-flyout-item" (click)="runCommand(commands, command)"
@@ -63,10 +70,7 @@
         }
         }
       </div>
-      }
-    </div>
-    }
-    }
+    </ng-template>
 
     <ng-template #slotTpl let-slot="slot">
       <!-- Whichever tool the slot is currently showing — its only one, or the variant last picked

@@ -67,7 +67,7 @@
         "y": 613.2263077946191,
         "r": 112.7,
         "start": 0.9561930001089656,
-        "end": -2.3934323500738355e-8
+        "end": -2.3934323500738355e-08
       },
       "U2": {
         "x": -143.5,
@@ -549,6 +549,13 @@
     {
       "id": "stradivari-cello-castelbarco-top",
       "label": "Top (sp=2)",
+      "scope": {
+        "except": [
+          "fluting",
+          "longArching",
+          "crossArching"
+        ]
+      },
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154818:musihas-200154818.0002/full/pct:100.0/0/default.jpg",
       "x": -233.3938,
       "y": -17.92499999999999,
@@ -557,14 +564,7 @@
       "rotationDeg": 0,
       "opacity": 0.4,
       "suppressWhite": true,
-      "hidden": false,
       "locked": true,
-      "excludePanels": [
-        "fluting",
-        "longArching",
-        "crossArching"
-      ],
-      "isDefault": true,
       "credit": {
         "source": "Library of Congress",
         "imageId": "musihas-200154818.0002",
@@ -576,6 +576,11 @@
     {
       "id": "stradivari-cello-castelbarco-profiles",
       "label": "Profiles, both sides (sp=3)",
+      "scope": {
+        "only": [
+          "longArching"
+        ]
+      },
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154818:musihas-200154818.0003/full/pct:100.0/0/default.jpg",
       "x": -63.33689999999999,
       "y": -24.725,
@@ -585,9 +590,6 @@
       "opacity": 0.4,
       "suppressWhite": true,
       "locked": true,
-      "panels": [
-        "longArching"
-      ],
       "crop": {
         "left": 0,
         "top": 0,

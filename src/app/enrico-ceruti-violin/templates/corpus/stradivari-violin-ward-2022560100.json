@@ -560,6 +560,13 @@
     {
       "id": "ward-top",
       "label": "Top (sp=2)",
+      "scope": {
+        "except": [
+          "fluting",
+          "longArching",
+          "crossArching"
+        ]
+      },
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154810:musihas-200154810.0002/full/pct:100.0/0/default.jpg",
       "x": -107.33233320122301,
       "y": -9.33460350036621,
@@ -569,12 +576,6 @@
       "opacity": 0.4,
       "suppressWhite": true,
       "locked": true,
-      "excludePanels": [
-        "fluting",
-        "longArching",
-        "crossArching"
-      ],
-      "isDefault": false,
       "credit": {
         "source": "Library of Congress",
         "imageId": "musihas-200154810.0002",
@@ -586,6 +587,11 @@
     {
       "id": "ward-profiles",
       "label": "Profiles, both sides (sp=3)",
+      "scope": {
+        "only": [
+          "longArching"
+        ]
+      },
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154810:musihas-200154810.0003/full/pct:100.0/0/default.jpg",
       "x": -40.60670187611326,
       "y": -4.4277,
@@ -595,9 +601,6 @@
       "opacity": 0.4,
       "suppressWhite": true,
       "locked": true,
-      "panels": [
-        "longArching"
-      ],
       "crop": {
         "left": 0,
         "top": 0,
@@ -630,7 +633,6 @@
       {
         "id": "layer-default",
         "name": "Layer 1",
-        "visible": true,
         "locked": false
       }
     ],

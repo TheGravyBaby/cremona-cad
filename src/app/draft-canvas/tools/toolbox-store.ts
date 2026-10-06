@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { DraftShape, ImageShape, DEFAULT_SHAPE_COLOR, DEFAULT_FREEHAND_WIDTH, DEFAULT_TEXT_SIZE_MM } from './toolbox-shape';
 import { Layer, DEFAULT_LAYER_ID, makeLayerId } from './layer';
+import { PanelScope, scopeShows, scopeWith } from './panel-scope';
 import { ImageAssetStore } from './image-asset-store';
 import { readWorkingState, writeWorkingState } from '../../helpers/workingStorage';
 import { UndoCoordinator, Undoable } from '../../helpers/undoCoordinator';
@@ -47,7 +48,7 @@ export class ToolboxStore implements Undoable {
   private _currentCycloidFactor = 1;
   private _currentCycloidPct = 1;
   private _currentFilletRadius = 5;
-  private _layers: Layer[] = [{ id: DEFAULT_LAYER_ID, name: 'Layer 1', visible: true, locked: false }];
+  private _layers: Layer[] = [{ id: DEFAULT_LAYER_ID, name: 'Layer 1', locked: false }];
   private _activeLayerId: string = DEFAULT_LAYER_ID;
   private _showImages = true;
   private _showShapes = true;
@@ -55,10 +56,8 @@ export class ToolboxStore implements Undoable {
   private _recipeLocked = true;
   /** The recipe panel currently open — see setActivePanel. */
   private _activePanel: string | null = null;
-  /** Panels the open recipe has, for the settings bar's scoping picker. */
+  /** Panels the open recipe has, for the bottom bar's scope menus. */
   private _availablePanels: PanelChoice[] = [];
-  /** One image shown regardless of scoping, because it's the one selected. */
-  private _revealedImageId: string | null = null;
 
   constructor() {
     this.load();
@@ -170,9 +169,8 @@ export class ToolboxStore implements Undoable {
   }
 
   /** Master switch for every placed reference image — the one-click "get the photos out of my
-   * way" while tracing, paired with the per-image `hidden` flag the way the Layers master switch
-   * below is paired with per-layer visibility. Not undo-tracked: what you can see is a view
-   * preference, not an edit, same as layer visibility. */
+   * way" while tracing, over each image's own scope. Not undo-tracked: what you can see is a view
+   * preference, not an edit. */
   get showImages(): boolean { return this._showImages; }
   setShowImages(value: boolean): void {
     if (this._showImages === value) return;
@@ -188,52 +186,19 @@ export class ToolboxStore implements Undoable {
   setActivePanel(panel: string | null): void {
     if (this._activePanel === panel) return;
     this._activePanel = panel;
-    // a reveal was about the old panel; carrying it forward would look like scoping failing.
-    this._revealedImageId = null;
     this.notify();
   }
 
-  /** Panels an image may be scoped to, for the settings bar's picker; empty hides it. */
+  /** Panels a layer or image may be scoped to, for the bottom bar's menus; empty hides them. */
   get availablePanels(): readonly PanelChoice[] { return this._availablePanels; }
   setAvailablePanels(panels: readonly PanelChoice[]): void {
     this._availablePanels = panels.map(p => ({ id: p.id, label: p.label }));
     this.notify();
   }
 
-  /** The one image shown regardless of scoping, because the user deliberately picked it — without
-   * this, picking or editing a scoped image could make it (and its controls) vanish mid-edit. */
-  get revealedImageId(): string | null { return this._revealedImageId; }
-  setRevealedImage(id: string | null): void {
-    if (this._revealedImageId === id) return;
-    this._revealedImageId = id;
-    this.notify();
-  }
-
-  /** Whether `image` belongs on the open panel. Precedence: revealed image always matches;
-   * `excludePanels` always excludes; then `panels` if set; then `isDefault` images fill in
-   * wherever no other image has named the panel. */
-  imageMatchesActivePanel(image: ImageShape): boolean {
-    if (image.id === this._revealedImageId) return true;
-    if (this._activePanel === null) return true;
-    if (image.excludePanels?.includes(this._activePanel)) return false;
-    if (image.panels?.length) return image.panels.includes(this._activePanel);
-    if (!image.isDefault) return true;
-    return !this.panelHasScopedImage(this._activePanel);
-  }
-
-  /** Whether `layer` belongs on the open panel. A `null` panel filters nothing, as for images. */
-  layerMatchesActivePanel(layer: Layer): boolean {
-    return this._activePanel === null || !layer.panels?.length || layer.panels.includes(this._activePanel);
-  }
-
-  // what the eye and the panel scoping agree to show; hidden either way is hidden
-  private layerShown(layer: Layer): boolean {
-    return layer.visible && this.layerMatchesActivePanel(layer);
-  }
-
-  // hidden images don't count, so parking a specific view brings the default one back.
-  private panelHasScopedImage(panel: string): boolean {
-    return this.getImageShapes().some(s => !s.hidden && s.panels?.includes(panel));
+  /** Whether a layer's or image's scope puts it on the open panel — see panel-scope.ts. */
+  shownHere(scope: PanelScope | undefined): boolean {
+    return scopeShows(scope, this._activePanel);
   }
 
   /** Master switch for everything drawn with the toolbox, so a reference image can be examined on
@@ -281,15 +246,15 @@ export class ToolboxStore implements Undoable {
   setActiveLayer(id: string): void {
     if (this._activeLayerId === id) return;
     this._activeLayerId = id;
-    // Switching onto a layer always shows it: the next thing you'll do is draw here, and a shape
+    // Switching onto a layer always shows it here: the next thing you'll do is draw, and a shape
     // that lands somewhere invisible reads as a tool that didn't fire.
-    this._layers = this._layers.map(l => l.id === id ? { ...l, visible: true } : l);
+    this._layers = this._layers.map(l => l.id === id ? { ...l, scope: scopeWith(l.scope, this._activePanel, true) } : l);
     this.persist();
     this.notify();
   }
 
   addLayer(): string {
-    const layer: Layer = { id: makeLayerId(), name: `Layer ${this._layers.length + 1}`, visible: true, locked: false };
+    const layer: Layer = { id: makeLayerId(), name: `Layer ${this._layers.length + 1}`, locked: false };
     this._layers = [...this._layers, layer];
     this._activeLayerId = layer.id;
     this.persist();
@@ -304,8 +269,9 @@ export class ToolboxStore implements Undoable {
     this.notify();
   }
 
-  toggleLayerVisible(id: string): void {
-    this._layers = this._layers.map(l => l.id === id ? { ...l, visible: !l.visible } : l);
+  /** Not undo-tracked, like the lock: where a layer shows is a view preference. */
+  setLayerScope(id: string, scope: PanelScope | undefined): void {
+    this._layers = this._layers.map(l => l.id === id ? { ...l, scope } : l);
     this.persist();
     this.notify();
   }
@@ -320,15 +286,6 @@ export class ToolboxStore implements Undoable {
    * to delete the last or a locked layer. Placed images survive regardless: they carry no
    * `layerId`, so without the guard here deleting layer 1 would take every reference image with
    * it — they'd fall into its id by default. */
-  /** Not undo-tracked, like the eye and the lock: where a layer shows is a view preference.
-   * An empty list is stored as none, so "every panel" stays a plain absence. */
-  setLayerPanels(id: string, panels: string[] | undefined): void {
-    const next = panels?.length ? [...panels] : undefined;
-    this._layers = this._layers.map(l => l.id === id ? { ...l, panels: next } : l);
-    this.persist();
-    this.notify();
-  }
-
   removeLayer(id: string): void {
     const layer = this._layers.find(l => l.id === id);
     if (this._layers.length <= 1 || layer?.locked) return;
@@ -348,20 +305,20 @@ export class ToolboxStore implements Undoable {
    * isn't geometry worth snapping to). See getVisibleImages and draft-canvas.ts's draw(). */
   getVisibleShapes(): DraftShape[] {
     if (!this._showShapes) return [];
-    const visibleIds = new Set(this._layers.filter(l => this.layerShown(l)).map(l => l.id));
+    const visibleIds = new Set(this._layers.filter(l => this.shownHere(l.scope)).map(l => l.id));
     return this.shapes.filter(s => s.type !== 'image' && visibleIds.has(s.layerId ?? DEFAULT_LAYER_ID));
   }
 
   /** Placed images that should render, in insertion order — the underlay pass. Governed by the
-   * master switch, each image's own `hidden` flag and the panel it is scoped to, rather than by
-   * layers, since images don't belong to one (see ImageShape). */
+   * master switch and each image's own scope rather than by layers, since images don't belong to
+   * one (see ImageShape). */
   getVisibleImages(): ImageShape[] {
     if (!this._showImages) return [];
-    return this.getImageShapes().filter(s => !s.hidden && this.imageMatchesActivePanel(s));
+    return this.getImageShapes().filter(s => this.shownHere(s.scope));
   }
 
-  /** Every placed image, hidden ones included — what the save adapter writes out, and what the
-   * image list in the tool palette shows. */
+  /** Every placed image, off-panel ones included — what the save adapter writes out, and what the
+   * image list in the bottom bar shows. */
   getImageShapes(): ImageShape[] {
     return this.shapes.filter((s): s is ImageShape => s.type === 'image');
   }
@@ -379,7 +336,7 @@ export class ToolboxStore implements Undoable {
   getEditableShapes(): DraftShape[] {
     const images = this.getVisibleImages().filter(s => !this.isShapeLocked(s));
     if (!this._showShapes) return images;
-    const reachable = new Set(this._layers.filter(l => this.layerShown(l) && !l.locked).map(l => l.id));
+    const reachable = new Set(this._layers.filter(l => this.shownHere(l.scope) && !l.locked).map(l => l.id));
     return [
       ...images,
       ...this.shapes.filter(s => s.type !== 'image' && reachable.has(s.layerId ?? DEFAULT_LAYER_ID)),
@@ -414,11 +371,10 @@ export class ToolboxStore implements Undoable {
     this.applyMutation(kept.map(s => s.groupId && members.get(s.groupId) === 1 ? { ...s, groupId: undefined } : s));
   }
 
-  // ===== Per-image view state =====
-  // An image is its own visibility/lock unit — the equivalent of a one-image layer, without a
-  // second layering system to keep in sync. Like the layer equivalents above, these are not
-  // undo-tracked: hiding or locking something is a view preference, so Ctrl+Z keeps meaning
-  // "undo my last edit" rather than "un-hide that photo".
+  // An image is its own scope/lock unit — the equivalent of a one-image layer, without a second
+  // layering system to keep in sync. Like the layer equivalents above, these are not undo-tracked:
+  // scoping or locking something is a view preference, so Ctrl+Z keeps meaning "undo my last edit"
+  // rather than "bring that photo back".
 
   private patchImage(id: string, patch: Partial<ImageShape>): void {
     const idx = this.shapes.findIndex(s => s.id === id && s.type === 'image');
@@ -432,20 +388,16 @@ export class ToolboxStore implements Undoable {
     this.notify();
   }
 
-  setImageHidden(id: string, hidden: boolean): void {
-    this.patchImage(id, { hidden });
-  }
-
   /** Unlocking has to bypass the lock guard the edit paths use, which is why this doesn't go
    * through updateShape. */
   setImageLocked(id: string, locked: boolean): void {
     this.patchImage(id, { locked });
   }
 
-  /** Where an image shows. Bypasses the lock like the switches above: a template image is
-   * locked by default, and choosing its panels from the list shouldn't need it unlocked first. */
-  setImageScope(id: string, scope: Pick<ImageShape, 'panels' | 'excludePanels' | 'isDefault'>): void {
-    this.patchImage(id, scope);
+  /** Where an image shows. Bypasses the lock like setImageLocked: a template image is locked by
+   * default, and choosing where it shows shouldn't need it unlocked first. */
+  setImageScope(id: string, scope: PanelScope | undefined): void {
+    this.patchImage(id, { scope });
   }
 
   renameImage(id: string, label: string): void {
@@ -653,12 +605,10 @@ export class ToolboxStore implements Undoable {
    * open don't linger into the freshly loaded one. Clears the image asset table with them, so a
    * previous file's photos can't stay resident once nothing references them. */
   resetAll(): void {
-    // The active panel deliberately survives a reset (it outlives the file), but an id pointing
-    // at a shape that no longer exists does not.
-    this._revealedImageId = null;
+    // the active panel deliberately survives a reset: it outlives the file
     this.imageAssets.resetAll();
     this.shapes = [];
-    this._layers = [{ id: DEFAULT_LAYER_ID, name: 'Layer 1', visible: true, locked: false }];
+    this._layers = [{ id: DEFAULT_LAYER_ID, name: 'Layer 1', locked: false }];
     this._activeLayerId = DEFAULT_LAYER_ID;
     // currently leaving these toggles off, allowing the image and layer toggles to persist
     // this._showImages = true;

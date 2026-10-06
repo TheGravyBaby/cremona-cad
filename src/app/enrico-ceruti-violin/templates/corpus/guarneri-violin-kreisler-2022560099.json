@@ -534,6 +534,13 @@
     {
       "id": "guarneri-violin-kreisler-top",
       "label": "Top (sp=2)",
+      "scope": {
+        "except": [
+          "fluting",
+          "longArching",
+          "crossArching"
+        ]
+      },
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154814:musihas-200154814.0002/full/pct:100.0/0/default.jpg",
       "x": -118,
       "y": -2.4943104789005592,
@@ -543,12 +550,6 @@
       "opacity": 0.4,
       "suppressWhite": true,
       "locked": true,
-      "excludePanels": [
-        "fluting",
-        "longArching",
-        "crossArching"
-      ],
-      "isDefault": true,
       "credit": {
         "source": "Library of Congress",
         "imageId": "musihas-200154814.0002",
@@ -560,6 +561,11 @@
     {
       "id": "guarneri-violin-kreisler-profiles",
       "label": "Profiles, both sides (sp=3)",
+      "scope": {
+        "only": [
+          "longArching"
+        ]
+      },
       "href": "https://tile.loc.gov/image-services/iiif/public:music:musihas-200154814:musihas-200154814.0003/full/pct:100.0/0/default.jpg",
       "x": -55.72839999999996,
       "y": -2.875,
@@ -569,9 +575,6 @@
       "opacity": 0.4,
       "suppressWhite": true,
       "locked": true,
-      "panels": [
-        "longArching"
-      ],
       "crop": {
         "left": 0,
         "top": 0,

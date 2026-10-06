@@ -96,6 +96,22 @@ export abstract class RecipeComponentBase implements AfterViewInit, Undoable {
    */
   private syncReferenceImages(): void {
     this.d.referenceImages = imageShapesToRecipe(this.toolbox.getImageShapes(), this.imageAssets);
+    this.scheduleWorkingWrite();
+  }
+
+  // An image-only change — a lock, a scope, a drag — touches no param, so none of the recipe's
+  // own write paths fire for it, and a refresh never runs ngOnDestroy. Written on its own timer
+  // rather than through debounce(): that one pushes recipe history and shares a timer with
+  // param edits, which an image nudge must neither pollute nor cancel. Short, since a recipe
+  // carrying inlined photos is costly to serialize and a drag notifies many times.
+  private workingWriteTimer: ReturnType<typeof setTimeout> | null = null;
+
+  private scheduleWorkingWrite(): void {
+    if (this.workingWriteTimer !== null) clearTimeout(this.workingWriteTimer);
+    this.workingWriteTimer = setTimeout(() => {
+      this.workingWriteTimer = null;
+      if (!this._destroyed) writeWorkingState(RECIPE_KEY, JSON.stringify(this.d));
+    }, 300);
   }
 
   d: RecipeInterface = {
@@ -408,6 +424,7 @@ export abstract class RecipeComponentBase implements AfterViewInit, Undoable {
     this._destroyed = true;
     this.debounceController?.destroy();
     this.syncReferenceImages();
+    if (this.workingWriteTimer !== null) clearTimeout(this.workingWriteTimer);
     this.toolboxSyncUnsub?.();
     this.undoCoordinatorUnsub?.();
     setDebugContext(null);

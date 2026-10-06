@@ -1,6 +1,7 @@
 import { ImageCredit, ImageCrop, Pt } from '../../models/types';
 import { angleFromCenter, angleWithinSweep, dist, normalizeRadians, rotatePointAbout } from '../../helpers/math/simpleGeometry';
 import { battenPath, catenaryBetween, cycloidBetween } from '../../helpers/math/pathVibes';
+import { PanelScope } from './panel-scope';
 
 export const DEFAULT_SHAPE_COLOR = '#1d4ed8';
 
@@ -216,12 +217,8 @@ export type ImageShape = ShapeBase & {
   /** Shown in the settings bar and written back out as the file's `label` — how the user tells
    * "plan view" from "long arch" when several are placed. */
   label: string;
-  /** Recipe panels this image shows on, by id; absent/empty means every panel. */
-  panels?: string[];
-  /** Panels this image is deliberately kept off; absolute — beats isDefault and panels alike. */
-  excludePanels?: string[];
-  /** Marks the set's default view: shows on any panel no other image has claimed by name. */
-  isDefault?: boolean;
+  /** Where the image shows — see panel-scope.ts. Absent means every panel. */
+  scope?: PanelScope;
   /** Part of the source picture shown, as fractions inset per edge; absent means all of it. See
    * imageSourceBox and applyImageCrop. */
   crop?: ImageCrop;
@@ -240,10 +237,6 @@ export type ImageShape = ShapeBase & {
    * change hit-testing. Undefined means unmirrored.
    */
   mirrored?: boolean;
-  /** Hidden from the canvas, and unselectable while hidden. Per-image, so one reference can be
-   * parked without disturbing the others — this is what the old tab strip's active-tab-only
-   * display was really for. */
-  hidden?: boolean;
   /**
    * Locked images can't be selected, moved or resized on the canvas — a click passes straight
    * through them. **Undefined means locked**, so every template image and every recipe saved
@@ -255,7 +248,7 @@ export type ImageShape = ShapeBase & {
   /**
    * Unlike every other shape, an image's `layerId` (inherited from ShapeBase) is unused and never
    * stamped. Images render in their own pass beneath everything, so layer z-order is meaningless
-   * for them, and `hidden`/`locked` above give them the two things they'd otherwise borrow from a
+   * for them, and `scope`/`locked` above give them the two things they'd otherwise borrow from a
    * layer — per image rather than per group. See ToolboxStore.getVisibleImages.
    */
 };
