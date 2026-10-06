@@ -13,7 +13,7 @@ import { error } from '../../../shared/message-emitter';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { applyRowMove, RowMove, RowReorderDirective } from '../../../shared/row-reorder';
-import { renderBodySection, sideViewOffsetX } from '../../renders/body-section.render';
+import { renderBodySideProfile, sideViewOffsetX } from '../../renders/body-side-profile.render';
 import { HighlightedSplinePoint } from '../../renders/render-constants';
 
 /** One row of a plate's spline table: a control point, or the peak among them. */
@@ -253,11 +253,12 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
     const p = this.params;
     const { neck, scroll } = this.showNeck ? solveNeckForProfile(p, this.solved.top) : { neck: false, scroll: false };
     const sideX = sideViewOffsetX(p);
-    const section = renderBodySection(p, this.colors, {
+    const section = renderBodySideProfile(p, this.colors, {
       solved: this.solved,
       gouge: { top: this.gouge('top'), bottom: this.gouge('bottom') },
       highlight: plate => this.splineHighlightFor(plate),
       showGuides: this.flags.showModuleGuides,
+      showChannel: true,
     });
     return [(g, ui) => {
       const side = {

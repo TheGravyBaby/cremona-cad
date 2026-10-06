@@ -29,7 +29,7 @@ import { defaultVoluteParams, duckTailRadius, duckTailRoundTop, pegboxHipHeight,
 import { VolutePanel } from './volute-panel/volute-panel';
 import { Pt } from '../../models/types';
 import { scrollBackInPlan, scrollBackViewStrokes, scrollFrontInPlan } from '../calculation/neck/ceruti-scroll-views';
-import { sideViewOffsetX } from '../renders/body-section.render';
+import { sideViewOffsetX } from '../renders/body-side-profile.render';
 import { STROKE_WEIGHT } from '../../helpers/renderFuncs';
 
 /**

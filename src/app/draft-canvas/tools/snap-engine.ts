@@ -1,5 +1,6 @@
 import * as d3 from 'd3';
 import { Pt } from '../../models/types';
+import { IDENTITY_MATRIX, Matrix2D, applyMatrix, multiplyMatrices, parseSvgTransform } from '../../helpers/math/pathMath';
 import { extractArcCenters } from './svg-path-arcs';
 
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
@@ -15,7 +16,7 @@ export type SnapKind = 'endpoint' | 'center' | 'path';
 // browser's path geometry and made each new shape a visible pause.
 export type SnapCandidate = {
   kind: SnapKind; pt: Pt; tangent?: number;
-  along?: { el: SVGGeometryElement; s: number; step: number; total: number };
+  along?: { el: SVGGeometryElement; m: Matrix2D; s: number; step: number; total: number };
 };
 
 // Lower wins ties when multiple candidate kinds fall within tolerance.
@@ -42,11 +43,12 @@ export class SnapEngine {
     // `[data-no-snap]` marks purely decorative sub-elements (e.g. a Section's
     // banding/ticks) that would otherwise flood candidates with noise — only
     // the shape's real geometry (e.g. its centerline) should be snappable.
+    const root = layer.node();
     layer.selectAll<SVGGeometryElement, unknown>(
       'path:not([data-no-snap]), line:not([data-no-snap]), circle, rect, polyline, polygon',
     )
       .each(function () {
-        collectFromElement(this, candidates);
+        collectFromElement(this, transformWithin(this, root), candidates);
       });
     this.parts.set(part, candidates);
   }
@@ -81,17 +83,33 @@ export class SnapEngine {
       const refined = closestOnPath(best.along, pt);
       return Math.hypot(refined.pt.x - pt.x, refined.pt.y - pt.y) <= toleranceMm ? refined : null;
     }
-    const { el, s, total } = best.along;
-    return { ...best, tangent: tangentAt(el, s, total) };
+    return { ...best, tangent: tangentAt(best.along, best.along.s) };
   }
+}
+
+// the element's coordinates are local to whatever groups it sits in (the side profile is drawn in
+// a translated group, its top plate in a rotated one), so every point read off it goes through the
+// transforms between it and the layer
+function transformWithin(el: Element, root: Element | null): Matrix2D {
+  let m = IDENTITY_MATRIX;
+  for (let node: Element | null = el; node && node !== root; node = node.parentElement) {
+    const t = node.getAttribute('transform');
+    if (t) m = multiplyMatrices(parseSvgTransform(t), m);
+  }
+  return m;
+}
+
+function pointAt(along: NonNullable<SnapCandidate['along']>, s: number): Pt {
+  const p = along.el.getPointAtLength(s);
+  return applyMatrix(along.m, { x: p.x, y: p.y });
 }
 
 // golden-section search over one step either side of the sample: the distance to a curve that
 // smooth is unimodal there, and 24 halvings put the point well under a micron along it
 function closestOnPath(along: NonNullable<SnapCandidate['along']>, pt: Pt): SnapCandidate {
-  const { el, total } = along;
+  const { total } = along;
   const dist2 = (s: number) => {
-    const p = el.getPointAtLength(s);
+    const p = pointAt(along, s);
     return (p.x - pt.x) ** 2 + (p.y - pt.y) ** 2;
   };
   let lo = Math.max(0, along.s - along.step);
@@ -109,19 +127,18 @@ function closestOnPath(along: NonNullable<SnapCandidate['along']>, pt: Pt): Snap
     }
   }
   const s = (lo + hi) / 2;
-  const p = el.getPointAtLength(s);
-  return { kind: 'path', pt: { x: p.x, y: p.y }, tangent: tangentAt(el, s, total) };
+  return { kind: 'path', pt: pointAt(along, s), tangent: tangentAt(along, s) };
 }
 
-function collectFromElement(el: SVGGeometryElement, out: SnapCandidate[]): void {
+function collectFromElement(el: SVGGeometryElement, m: Matrix2D, out: SnapCandidate[]): void {
   if (el.tagName === 'circle') {
     const cx = parseFloat(el.getAttribute('cx') ?? '0');
     const cy = parseFloat(el.getAttribute('cy') ?? '0');
-    out.push({ kind: 'center', pt: { x: cx, y: cy } });
+    out.push({ kind: 'center', pt: applyMatrix(m, { x: cx, y: cy }) });
   } else if (el.tagName === 'path') {
     const d = el.getAttribute('d');
     if (d) {
-      for (const center of extractArcCenters(d)) out.push({ kind: 'center', pt: center });
+      for (const center of extractArcCenters(d)) out.push({ kind: 'center', pt: applyMatrix(m, center) });
     }
   } else if (el.tagName === 'rect') {
     // Exact corners as endpoints — the generic getTotalLength walk below only
@@ -131,10 +148,9 @@ function collectFromElement(el: SVGGeometryElement, out: SnapCandidate[]): void 
     const y = parseFloat(el.getAttribute('y') ?? '0');
     const w = parseFloat(el.getAttribute('width') ?? '0');
     const h = parseFloat(el.getAttribute('height') ?? '0');
-    out.push({ kind: 'endpoint', pt: { x, y } });
-    out.push({ kind: 'endpoint', pt: { x: x + w, y } });
-    out.push({ kind: 'endpoint', pt: { x: x + w, y: y + h } });
-    out.push({ kind: 'endpoint', pt: { x, y: y + h } });
+    for (const corner of [{ x, y }, { x: x + w, y }, { x: x + w, y: y + h }, { x, y: y + h }]) {
+      out.push({ kind: 'endpoint', pt: applyMatrix(m, corner) });
+    }
   }
 
   if (typeof el.getTotalLength !== 'function') return;
@@ -149,22 +165,19 @@ function collectFromElement(el: SVGGeometryElement, out: SnapCandidate[]): void 
 
   const sampleCount = Math.min(MAX_SAMPLES_PER_ELEMENT, Math.max(1, Math.round(total / ALONG_PATH_STEP_MM)));
   const step = total / sampleCount;
-  const start = el.getPointAtLength(0);
-  const end = el.getPointAtLength(total);
-  out.push({ kind: 'endpoint', pt: { x: start.x, y: start.y }, along: { el, s: 0, step, total } });
-  out.push({ kind: 'endpoint', pt: { x: end.x, y: end.y }, along: { el, s: total, step, total } });
+  const along = (s: number) => ({ el, m, s, step, total });
+  out.push({ kind: 'endpoint', pt: pointAt(along(0), 0), along: along(0) });
+  out.push({ kind: 'endpoint', pt: pointAt(along(total), total), along: along(total) });
   for (let s = step; s < total; s += step) {
-    const p = el.getPointAtLength(s);
-    out.push({ kind: 'path', pt: { x: p.x, y: p.y }, along: { el, s, step, total } });
+    out.push({ kind: 'path', pt: pointAt(along(s), s), along: along(s) });
   }
 }
 
 /** Tangent direction at length `s` via a small finite difference — works uniformly for any geometry element. */
-function tangentAt(el: SVGGeometryElement, s: number, total: number): number {
+function tangentAt(along: NonNullable<SnapCandidate['along']>, s: number): number {
+  const { total } = along;
   const eps = Math.min(0.05, Math.max(total * 0.001, 1e-4));
-  const s0 = Math.max(0, s - eps);
-  const s1 = Math.min(total, s + eps);
-  const p0 = el.getPointAtLength(s0);
-  const p1 = el.getPointAtLength(s1);
+  const p0 = pointAt(along, Math.max(0, s - eps));
+  const p1 = pointAt(along, Math.min(total, s + eps));
   return Math.atan2(p1.y - p0.y, p1.x - p0.x);
 }

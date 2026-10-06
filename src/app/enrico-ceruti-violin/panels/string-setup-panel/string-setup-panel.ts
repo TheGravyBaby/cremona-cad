@@ -10,7 +10,7 @@ import { solveScrollForProfile } from '../../calculation/neck/ceruti-scroll';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { renderSolveFailures } from '../../../helpers/renderFuncs';
-import { renderBodySection, sideViewOffsetX } from '../../renders/body-section.render';
+import { renderBodySideProfile, sideViewOffsetX } from '../../renders/body-side-profile.render';
 import { renderFrontView, renderNeck, renderNeckHighlight, StringSetupHighlightKey } from '../neck-panel/neck-panel';
 
 @Component({
@@ -84,7 +84,7 @@ export class StringSetupPanel extends CerutiPanelBase implements OnInit {
           g: g.append('g').attr('transform', `translate(${sideX},0)`),
           ui: ui.append('g').attr('transform', `translate(${sideX},0)`),
         };
-        renderBodySection(p, this.colors, { solved, gouge, color: this.colors.outerTrace })(side.g, side.ui);
+        renderBodySideProfile(p, this.colors, { solved, gouge, color: this.colors.outerTrace })(side.g, side.ui);
         renderNeck(p, this.colors, { fingerboard: this.flags.showFingerboard, fretMarks: this.flags.showFretMarks, scroll, panel: 'stringSetup' })(side.g, side.ui);
         renderNeckHighlight(p, this.highlightedKey, this.highlightedColor, 'side')(side.g, side.ui);
         renderSolveFailures(failures, this.colors.pathError)(side.g, side.ui);

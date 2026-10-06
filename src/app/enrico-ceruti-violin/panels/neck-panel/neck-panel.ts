@@ -14,7 +14,7 @@ import { dist, moveInVectorSpace, pointAtDistanceToward, pointOnCircle, vectorFr
 import { renderSegment, renderSegmentHalo, renderArcHalo, renderPolygon, renderPath, renderSolveFailures, renderGuideMeasure, renderGuideBaseline, renderStroke, STROKE_WEIGHT } from '../../../helpers/renderFuncs';
 import { Pt, Vect2D } from '../../../models/types';
 import { scrollFrontInPlan } from '../../calculation/neck/ceruti-scroll-views';
-import { renderBodySection, sideViewOffsetX } from '../../renders/body-section.render';
+import { renderBodySideProfile, sideViewOffsetX } from '../../renders/body-side-profile.render';
 
 export type NeckHighlightKey =
   | 'length' | 'thickness' | 'topWidth' | 'rootWidth' | 'heel' | 'buttonHeight' | 'mortise' | 'overstand' | 'angle'
@@ -102,7 +102,7 @@ export class NeckPanel extends CerutiPanelBase implements OnInit {
           g: g.append('g').attr('transform', `translate(${sideX},0)`),
           ui: ui.append('g').attr('transform', `translate(${sideX},0)`),
         };
-        renderBodySection(p, this.colors, { solved, gouge, color: this.colors.outerTrace })(side.g, side.ui);
+        renderBodySideProfile(p, this.colors, { solved, gouge, color: this.colors.outerTrace })(side.g, side.ui);
         // the bridge and strings are the string setup's alone; this panel shows the board and nut it sits under
         renderNeck(p, this.colors, { guides: this.flags.showModuleGuides, fingerboard: this.flags.showFingerboard, strings: false, bridge: false, scroll, panel: 'neck' })(side.g, side.ui);
         renderNeckHighlight(p, this.highlightedKey, this.highlightedColor, 'side')(side.g, side.ui);

@@ -45,4 +45,24 @@ describe('SnapEngine', () => {
     expect(engine.nearest({ x: 0.4, y: 0.1 }, 1)!.kind).toBe('endpoint');
     expect(engine.nearest({ x: 50, y: 3 }, 1)).toBeNull();
   });
+
+  it('snaps to where a path inside transformed groups is drawn, not to its local coordinates', () => {
+    const g = layer();
+    const moved = g.append('g').attr('transform', 'translate(-200,0)');
+    const turned = moved.append('g').attr('transform', 'rotate(90)');
+    turned.node()!.appendChild(pathElement(100, s => ({ x: s, y: 0 })));
+    const engine = new SnapEngine();
+    engine.rebuild(g);
+
+    expect(engine.nearest({ x: 30, y: 0 }, 1)).toBeNull();
+    const end = engine.nearest({ x: -200.3, y: 100.2 }, 1)!;
+    expect(end.kind).toBe('endpoint');
+    expect(end.pt.x).toBeCloseTo(-200, 6);
+    expect(end.pt.y).toBeCloseTo(100, 6);
+    const on = engine.nearest({ x: -199.6, y: 42.5 }, 1)!;
+    expect(on.kind).toBe('path');
+    expect(on.pt.x).toBeCloseTo(-200, 4);
+    expect(on.pt.y).toBeCloseTo(42.5, 4);
+    expect(on.tangent).toBeCloseTo(Math.PI / 2, 4);
+  });
 });

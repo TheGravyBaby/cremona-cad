@@ -17,7 +17,7 @@ type ShapeBody = DraftShape extends infer S ? (S extends DraftShape ? Omit<S, 'i
  *
  * Built by running the recipe's render layers through helpers/layer-recorder.ts rather than by
  * reading the DOM: the recorder is DOM-free, so this works in a test, and it sees a layer's
- * output as a tree, so a `transform` on an enclosing group (body-section.render.ts turns the
+ * output as a tree, so a `transform` on an enclosing group (body-side-profile.render.ts turns the
  * side elevation this way) is composed into every child's geometry.
  *
  * Rebuilt lazily: setLayers only marks the index stale, and nothing runs the layers again until
