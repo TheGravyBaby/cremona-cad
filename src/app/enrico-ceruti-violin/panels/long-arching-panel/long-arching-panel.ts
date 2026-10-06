@@ -8,7 +8,6 @@ import { clampSplinePointHeights, defaultArchingParams, maxRibTaperMm, splinePea
 import { defaultFlutingParams, LongArchSolve, solveLongArch } from '../../calculation/arching/ceruti-arch-geometry';
 import { calculateOuterArcs, solveNeckForProfile } from '../../calculation/outline/ceruti-calcs';
 import { archHeightInfo, curveTypeInfo, transitionInfo, plateThicknessInfo, ribHeightInfo, splinePointInfo } from '../field-info';
-import { renderTranslated } from '../../../helpers/renderFuncs';
 import { renderNeck } from '../neck-panel/neck-panel';
 import { error } from '../../../shared/message-emitter';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
@@ -253,15 +252,21 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
     // the neck the user has set, re-solved so it follows the arch and the rib taper, in grey under the body
     const p = this.params;
     const { neck, scroll } = this.showNeck ? solveNeckForProfile(p, this.solved.top) : { neck: false, scroll: false };
-    return [renderTranslated(sideViewOffsetX(p), 0, [
-      ...(neck ? [renderNeck(p, this.colors, { strings: false, bridge: false, scroll, ground: this.colors.outerTrace })] : []),
-      renderBodySection(p, this.colors, {
-        solved: this.solved,
-        gouge: { top: this.gouge('top'), bottom: this.gouge('bottom') },
-        highlight: plate => this.splineHighlightFor(plate),
-        showGuides: this.flags.showModuleGuides,
-      }),
-    ])];
+    const sideX = sideViewOffsetX(p);
+    const section = renderBodySection(p, this.colors, {
+      solved: this.solved,
+      gouge: { top: this.gouge('top'), bottom: this.gouge('bottom') },
+      highlight: plate => this.splineHighlightFor(plate),
+      showGuides: this.flags.showModuleGuides,
+    });
+    return [(g, ui) => {
+      const side = {
+        g: g.append('g').attr('transform', `translate(${sideX},0)`),
+        ui: ui.append('g').attr('transform', `translate(${sideX},0)`),
+      };
+      if (neck) renderNeck(p, this.colors, { strings: false, bridge: false, scroll, ground: this.colors.outerTrace })(side.g, side.ui);
+      section(side.g, side.ui);
+    }];
   }
 
   // rolls back past maxRibTaperMm rather than clamping: two fields feed the one constraint, and

@@ -238,8 +238,8 @@ section first → long arch carved to a template → crown across. The panel ord
   strings. The string setup panel draws its own parts in colour over a neck in plain grey, all but
   the line the neck's length runs along, since that field is entered on both panels
   (`neckSetPalette`). Its sections are Neck (length and nut thickness), Fingerboard, and Bridge
-  with the string length readout. Both panels draw the scene through `buildNeckSetRun`
-  in `neck-panel.ts`. The fret marks toggle went with the strings; the neck's dimension guides
+  with the string length readout. Each panel's `buildRun` solves and draws the scene
+  itself, from the renders `neck-panel.ts` exports. The fret marks toggle went with the strings; the neck's dimension guides
   stayed with the neck. The scroll panels still draw the nut, at the default thickness until set.
 - **The button draws in the back plate's own color, not the neck's.** The button profile is carved
   from the back plate carried on past its edge (see the button bullet above), so it renders in
@@ -471,8 +471,8 @@ section first → long arch carved to a template → crown across. The panel ord
 
 - **The front profile sits on x = 0 and the side profile to its left, on every panel** (2026-10-06).
   Every plan view already centred the front on the origin. The side elevation is still drawn in its
-  own frame (x up off the back, y down the body) and moved over by `renderTranslated`, one
-  `translate` on a group, to `sideViewOffsetX`: far enough left that the bridge's top clears the
+  own frame (x up off the back, y down the body) and moved over by one `translate` on a group in
+  each panel's `buildRun`, to `sideViewOffsetX`: far enough left that the bridge's top clears the
   plan's widest point by a quarter of the body's width. It's read off the body and the bridge's
   height alone, so the long arching and neck panels put it in the same place whether or not the
   neck has been set. The neck panel's front view no longer moves right (`frontViewAxisX` is gone).

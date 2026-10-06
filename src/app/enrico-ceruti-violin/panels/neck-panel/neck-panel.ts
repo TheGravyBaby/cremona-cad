@@ -11,7 +11,7 @@ import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { applyMatrix, pathFromArc } from '../../../helpers/math/pathMath';
 import { dist, moveInVectorSpace, pointAtDistanceToward, pointOnCircle, vectorFromSlope } from '../../../helpers/math/simpleGeometry';
-import { renderSegment, renderSegmentHalo, renderArcHalo, renderPolygon, renderPath, renderSolveFailures, renderGuideMeasure, renderGuideBaseline, renderTranslated, renderStroke, STROKE_WEIGHT } from '../../../helpers/renderFuncs';
+import { renderSegment, renderSegmentHalo, renderArcHalo, renderPolygon, renderPath, renderSolveFailures, renderGuideMeasure, renderGuideBaseline, renderStroke, STROKE_WEIGHT } from '../../../helpers/renderFuncs';
 import { Pt, Vect2D } from '../../../models/types';
 import { scrollFrontInPlan } from '../../calculation/neck/ceruti-scroll-views';
 import { renderBodySection, sideViewOffsetX } from '../../renders/body-section.render';
@@ -75,53 +75,44 @@ export class NeckPanel extends CerutiPanelBase implements OnInit {
   }
 
   public buildRun(): RenderLayer[] {
-    return buildNeckSetRun(this.params, this.paths, this.colors, 'neck', {
-      guides: this.flags.showModuleGuides,
-      fingerboard: this.flags.showFingerboard,
-      highlight: this.highlightedKey,
-      highlightColor: this.highlightedColor,
-    });
+    const p = this.params;
+    p.arching ??= defaultArchingParams(p.height);
+    calculateOuterArcs(p);
+    p.neck ??= defaultNeckParams(p);
+
+    const gouge: Record<'top' | 'bottom', FlutingParams> = {
+      top: (p.arching.top.fluting ??= defaultFlutingParams(p)),
+      bottom: (p.arching.bottom.fluting ??= defaultFlutingParams(p)),
+    };
+    const solved: Record<'top' | 'bottom', LongArchSolve | null> = {
+      top: solveLongArch(p, p.arching.top.arch, gouge.top),
+      bottom: solveLongArch(p, p.arching.bottom.arch, gouge.bottom),
+    };
+    const failures = calculateNeck(p, solved.top, gouge.top);
+    // the scroll once its panels have started it, set on the neck's end
+    const scroll = solveScrollForProfile(p);
+    ensureNeckPath(p, this.paths);
+    ensureOuterTracePaths(p, this.paths);
+    if (p.fHoles) ensureFholePath(p, this.paths);
+
+    const sideX = sideViewOffsetX(p);
+    return [
+      (g, ui) => {
+        const side = {
+          g: g.append('g').attr('transform', `translate(${sideX},0)`),
+          ui: ui.append('g').attr('transform', `translate(${sideX},0)`),
+        };
+        renderBodySection(p, this.colors, { solved, gouge, color: this.colors.outerTrace })(side.g, side.ui);
+        // the bridge and strings are the string setup's alone; this panel shows the board and nut it sits under
+        renderNeck(p, this.colors, { guides: this.flags.showModuleGuides, fingerboard: this.flags.showFingerboard, strings: false, bridge: false, scroll, panel: 'neck' })(side.g, side.ui);
+        renderNeckHighlight(p, this.highlightedKey, this.highlightedColor, 'side')(side.g, side.ui);
+        renderSolveFailures(failures, this.colors.pathError)(side.g, side.ui);
+      },
+      renderFrontView(p, this.paths, this.colors, 'neck', this.flags.showFingerboard, scroll),
+      renderNeckHighlight(p, this.highlightedKey, this.highlightedColor, 'front'),
+    ];
   }
 
-}
-
-export function buildNeckSetRun(
-  p: EnricoCerutiParams,
-  paths: PathEntry[],
-  colors: CerutiColors,
-  panel: NeckSetPanel,
-  opts: { guides: boolean; fingerboard: boolean; fretMarks?: boolean; highlight: NeckHighlightKey | null; highlightColor: string },
-): RenderLayer[] {
-  p.arching ??= defaultArchingParams(p.height);
-  calculateOuterArcs(p);
-  p.neck ??= defaultNeckParams(p);
-
-  const gouge: Record<'top' | 'bottom', FlutingParams> = {
-    top: (p.arching.top.fluting ??= defaultFlutingParams(p)),
-    bottom: (p.arching.bottom.fluting ??= defaultFlutingParams(p)),
-  };
-  const solved: Record<'top' | 'bottom', LongArchSolve | null> = {
-    top: solveLongArch(p, p.arching.top.arch, gouge.top),
-    bottom: solveLongArch(p, p.arching.bottom.arch, gouge.bottom),
-  };
-  const failures = calculateNeck(p, solved.top, gouge.top);
-  // the scroll once its panels have started it, set on the neck's end
-  const scroll = solveScrollForProfile(p);
-  ensureNeckPath(p, paths);
-  ensureOuterTracePaths(p, paths);
-  if (p.fHoles) ensureFholePath(p, paths);
-
-  return [
-    renderTranslated(sideViewOffsetX(p), 0, [
-      renderBodySection(p, colors, { solved, gouge, color: colors.outerTrace }),
-      // the bridge and strings are the string setup's alone; the neck panel shows the board and nut it sits under
-      renderNeck(p, colors, { guides: opts.guides, fingerboard: opts.fingerboard, fretMarks: opts.fretMarks, strings: panel === 'stringSetup', bridge: panel === 'stringSetup', scroll, panel }),
-      renderNeckHighlight(p, opts.highlight, opts.highlightColor, 'side'),
-      renderSolveFailures(failures, colors.pathError),
-    ]),
-    renderFrontView(p, paths, colors, panel, opts.fingerboard, scroll),
-    renderNeckHighlight(p, opts.highlight, opts.highlightColor, 'front'),
-  ];
 }
 
 export interface NeckRenderOptions {
@@ -285,7 +276,7 @@ export function renderNeckHighlight(p: EnricoCerutiParams, key: NeckHighlightKey
 }
 
 // the body's plan outline as the f-hole contours panel draws it, moved over beside the side elevation
-function renderFrontView(p: EnricoCerutiParams, paths: PathEntry[], colors: CerutiColors, panel: NeckSetPanel, showFingerboard: boolean, scroll: boolean) {
+export function renderFrontView(p: EnricoCerutiParams, paths: PathEntry[], colors: CerutiColors, panel: NeckSetPanel, showFingerboard: boolean, scroll: boolean) {
   const profile = defineFrontProfilePath(p, topPlatePaths(p, paths), showFingerboard);
   const part = neckSetPalette(colors, panel);
 
