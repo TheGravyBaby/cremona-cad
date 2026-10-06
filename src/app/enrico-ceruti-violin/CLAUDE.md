@@ -84,18 +84,22 @@ section first → long arch carved to a template → crown across. The panel ord
 - **The neck wood's thickness is one number too, root to nut.** `NeckParams.thickness` sets
   `back.nut` and `back.root` equally; templates read as uniform enough here that carrying
   separate root/nut values wasn't earning its keep. Entered once, under the "Neck" section.
-- **S3's end angle is solved by default (`fitToNut`, 2026-10-05; `hang`, 2026-10-06).** The duck
-  tail comes down to `hang` mm below the nut's lower edge (y = −hang in the scroll's frame) and the
-  angle is read back onto `S3.start`; the other of the two angles at that height is passed over for
-  the shorter sweep. Off, the authored angle stands. Specs that exercise authored geometry turn it
-  off.
-- **The duck tail's round is the neck's, not the pegbox's.** Seen from behind the round is the edge
-  where the pegbox's flat back dives into the neck's half-round, so `duckTailRadius` is the neck's
-  half width at the duck tail, or the hips' when the pegbox's foot is narrower. A violin has foot ≈
+- **S3's end angle is always solved, from `hang`** (2026-10-05 as a `fitToNut` toggle over an
+  authored angle; 2026-10-06 the toggle and the End field went, `hang` being the only way a maker
+  thinks about it). The duck tail comes down to `hang` mm below the nut's lower edge (y = −hang in
+  the scroll's frame) and the angle is read back onto `S3.start`; the other of the two angles at
+  that height is passed over for the shorter sweep. The nape therefore sits at a fixed height
+  whatever the back above it does, and a back whose S3 can't reach that height is a solve failure,
+  not a shorter arc. A spec fixture's back has to come down to the nut.
+- **The duck tail's round is the back's own width, entered** (`widths.duckTail`, 2026-10-06). Seen
+  from behind the round is the edge where the pegbox's flat back dives into the neck's half-round. It
+  was first read off the neck's half width at the duck tail, or the hips' when the pegbox's foot was
+  narrower, which held while the back's widths were the front's; with the two split (see *The
+  scroll's widths*) it is a number of its own, seeded at the neck's width. A violin's is about the
   neck and the round spans the pegbox; a cello's foot is wider (Strad: foot 46, neck 33, hang 16.5
-  = the round's radius, so the round's top lands on the nut's lower edge) and the cheeks meet the
-  round along level shoulders. An earlier toggle between a hip-wide and a hang-deep round was tried
-  and dropped: one `hang` length plus the min() covers both families.
+  = the round's radius, so the round's top lands on the nut's lower edge) and the cheeks stand out
+  past the round down to the foot. An earlier toggle between a hip-wide and a hang-deep round was
+  tried and dropped.
 - **The nape is a fillet off a square line, or one circle (`napeCircle`, 2026-10-06).** Off, a
   line runs square from the duck tail to the neck's back and the nape arc fillets the corner, which
   needs the radius no more than the gap between them. On, the nape is the circle of that radius
@@ -323,30 +327,36 @@ section first → long arch carved to a template → crown across. The panel ord
 
 ## The scroll's widths
 
-- **"The path"** is the back from the top of the duck tail's round, over the crown and round the
-  spiral in to the eye. Widths are full widths, held by name on `p.scroll.widths` at places the side
-  view already fixes: `hip` (the pegbox's widest, at the top of the duck tail's round), `throat`
-  (F1's end), `crown`, `turn1Bottom`, `turn2Top`, `turn2Bottom`, `eye`. The nut's own is
-  `stringSetup.nutWidth`. Where each sits is read off the arcs (`scrollWidthStations`), not stored.
-- **The pegbox goes by height, back and front alike** (`pegboxWidth`): straight lines sawn through
-  the blank. The nut's width holds to the nut's top, the cheeks run out from its edges to the hips,
-  and taper back from there to the throat's width. The hips replaced a straight held at the nut's
-  width (2026-10-06): on a real head the pegbox stands a little proud beside the nut and comes to a
-  point there, tapering both ways.
-- **The volute goes by distance along the path** (`pathWidth`). The back leaves the taper where it
-  reaches the throat's height, tangent, on a monotone spline through the widths. That transition is
-  still being studied; `pathWidth` is the one place to move it.
-- **The throat ends the taper and is not a point on the curve**: the volute is wider than the
-  pegbox's cheeks where F1 lands on it. The last turn is as wide as the eye from its top on in, so
-  it has no width of its own.
-- **`calculateScrollWidths` only seeds and clamps**, writing back: crown no wider than the throat,
-  each turn at least as wide as the one before.
-- **The duck tail's round is half the hip's width** (`duckTailRadius`), and the hips sit at its top,
-  where the path starts (`pegboxHipHeight`, derived), so one number sets the round, the hips' width
-  and their height (2026-10-06). Until then the round was the neck's half-width there and the hips'
-  height its own field; both were wrong. A neck wider than the round meets it along a level
-  shoulder. A path starting above the nut's foot leaves the pegbox's front hanging below the back;
-  the back view draws those walls in the front's colour.
+- **The front and the back are two width systems, not one** (2026-10-06). Until then the pegbox's
+  width went by height, back and front alike, and the back's own edges were the front's taper
+  carried round; the more the real thing was studied the less that held: the front is sawn straight
+  through the blank, the back is carved off the volute. Widths are full widths, held by name on
+  `p.scroll.widths`, and where each sits is read off the arcs (`scrollWidthStations`), not stored.
+  The panel is two sections, Front and Back, and the palette follows: the front's stations warm like
+  `scrollFront`, the back's blues like `scrollBack`, so an edit's colour says which face it moves.
+- **The front goes by height** (`pegboxWidth`): straight lines sawn through the blank. The nut's own
+  width (`stringSetup.nutWidth`) holds to the nut's top, the cheeks run out from its edges to the
+  `hip` (the pegbox's widest, at `hipHeight`), and taper back from there to `throat` (F1's end). The
+  hips replaced a straight held at the nut's width (2026-10-06): on a real head the pegbox stands a
+  little proud beside the nut and comes to a point there, tapering both ways. The hollow's `wall` and
+  `floor` are the front's too.
+- **The back is "the path"**: from the top of the duck tail's round, over the crown and round the
+  spiral in to the eye. `duckTail` is the round's diameter, entered, where it used to be read off
+  the neck or the hips. From the round's top the back's edges go out on a straight slope, by height,
+  to `reach`: the back's furthest reach, where its tangent runs straight up the neck (the first of S2,
+  S1 and S0 to pass straight behind its centre), the same point `scrollExtent` reads the head's
+  depth off. From there the curve goes by distance along the path (`pathWidth`), a monotone spline
+  through `crown`, `turn1Bottom`, `turn2Top`, `turn2Bottom` and `eye`, leaving the slope tangent. A
+  back with no reach above the path's start runs the slope up to the crown. The last turn is as wide
+  as the eye from its top on in, so it has no width of its own.
+- **`calculateScrollWidths` only seeds and clamps**, writing back: crown no wider than the reach,
+  each turn at least as wide as the one before, and the hips no lower than the duck tail.
+- **From behind, the pegbox's sawn front shows wherever it stands out past the back**, in the front's
+  colour: the cheeks from the throat down the hips to the nut's edge and the foot, and the foot's
+  edge in to the neck, each hidden inside the round and the back's own silhouette. That one rule
+  replaced the old special cases (the back's own cheeks under a round the hips sat below, walls only
+  while the front hung below the path's start, a level shoulder out to the cheeks). A neck wider than
+  the round, or than cheeks wider still, meets it along a level shoulder at the round's top.
 - **The hollow** is `pegbox.wall` in from the outside in the front view, and in the side view
   (`pegboxCavity`) the back carried in by `pegbox.floor`, between a wall under the nut leaning 15°
   off square (`NUT_WALL_LEAN`, fixed) and one square to the neck where the front's straight ends.

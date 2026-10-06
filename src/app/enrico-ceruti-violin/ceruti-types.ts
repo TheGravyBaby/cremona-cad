@@ -255,13 +255,17 @@ export interface StringSetup {
 
 export type VoluteStyle = 'fourPoint' | 'archimedean' | 'serlio' | 'salviati' | 'goldmann' | 'kelly';
 
-// full widths, cheek to cheek. The pegbox's cheeks run out from the nut's edges to the hips, its widest,
-// at the top of the duck tail's round, then taper straight to `throat`, where F1 meets the spiral; the
-// volute's run on a curve through the rest, each at a place the side view fixes. The last turn is as
-// wide as the eye from its top on in
+// full widths, cheek to cheek, the front's and the back's each their own. The front is the pegbox
+// sawn straight through the blank, by height: out from the nut's edges to the hips, its widest, then
+// tapering to `throat`, where F1 meets the spiral. The back goes out from the duck tail's round on a
+// straight slope to `reach`, the back's furthest reach, where its tangent runs straight up the neck,
+// and on from there on a curve through the rest, each at a place the side view fixes. The last turn
+// is as wide as the eye from its top on in
 export interface ScrollWidths {
   hip: number;
   throat: number;
+  duckTail: number;
+  reach: number;
   crown: number;
   turn1Bottom: number;
   turn2Top: number;
@@ -278,8 +282,7 @@ export interface ScrollParams {
   style: VoluteStyle;
   eye: Circle;
   flushWithNeck: boolean;
-  fitToNut: boolean; // S3's end angle is solved to bring the duck tail down to the hang
-  hang: number; // how far the duck tail hangs below the nut's lower edge
+  hang: number; // how far the duck tail hangs below the nut's lower edge; S3 ends where it comes down to it
   hipHeight: number; // where the pegbox is widest, up from the nut's lower edge; seeded to the round's top
   pitch: number; // archemedean spiral: distance between successive turns (mm)
   seedLength: number; // kelly volute allows for variable seed size relative to the eye
@@ -349,6 +352,8 @@ export interface CerutiColors {
   scrollWidthNut: string;
   scrollWidthHip: string;
   scrollWidthThroat: string;
+  scrollWidthDuckTail: string;
+  scrollWidthReach: string;
   scrollWidthCrown: string;
   scrollWidthTurn1Bottom: string;
   scrollWidthTurn2Top: string;

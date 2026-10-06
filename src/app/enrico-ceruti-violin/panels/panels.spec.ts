@@ -26,7 +26,7 @@ import { ScrollPanel } from './scroll-panel/scroll-panel';
 import { ScrollWidthsPanel } from './scroll-widths-panel/scroll-widths-panel';
 import { defaultVoluteParams, duckTailRadius, duckTailRoundTop, pegboxHipHeight, pegboxWidth, scrollBackWidths, scrollExtent, scrollLines, scrollNeckHalfWidth, scrollPathStretches, scrollWidthStations, spiralArcs as styleArcs, VOLUTE_STYLE_LABELS } from '../calculation/neck/ceruti-scroll';
 import { VolutePanel } from './volute-panel/volute-panel';
-import { Circle, Pt } from '../../models/types';
+import { Pt } from '../../models/types';
 import { scrollBackInPlan, scrollBackViewStrokes, scrollFrontInPlan } from '../calculation/neck/ceruti-scroll-views';
 import { sideViewOffsetX } from '../renders/body-section.render';
 import { STROKE_WEIGHT } from '../../helpers/renderFuncs';
@@ -453,7 +453,6 @@ describe('the scroll panel', () => {
 
     it('redraws the back from the arc that changed on, and stops it at one with no radius', () => {
       const p = defaultViolin();
-      (p.scroll ??= defaultVoluteParams(p)).fitToNut = false;
       const instance = scroll(p);
       instance.buildRun();
       const v = p.scroll!;
@@ -461,12 +460,12 @@ describe('the scroll panel', () => {
       expect(v.S2.r).toBeGreaterThan(v.S1.r);
       const drawn = () => spiralArcs(instance).map(el => el.attrs['d']);
       const before = drawn();
-      // read off params each time: the calc puts a new arc there every pass. S2 on down the back
-      // moves with S1, the front stays
+      // read off params each time: the calc puts a new arc there every pass. S2 and S3 move with
+      // S1; the nape, hung off the nut, and the front stay
       v.S1.end = 170 * Math.PI / 180;
       const after = drawn();
-      expect(after.slice(0, 3).every((d, i) => d !== before[i])).toBe(true);
-      expect(after.slice(3)).toEqual(before.slice(3));
+      expect(after.slice(0, 2).every((d, i) => d !== before[i])).toBe(true);
+      expect(after.slice(2)).toEqual(before.slice(2));
       v.S1.r = 0;
       expect(spiralArcs(instance).length).toBeGreaterThan(0);
     });
@@ -486,7 +485,6 @@ describe('the scroll panel', () => {
 
     it('draws the straight after S2 and the line square to the neck before the nape, in S2\'s colour and the nape\'s', () => {
       const p = defaultViolin();
-      (p.scroll ??= defaultVoluteParams(p)).fitToNut = false;
       const traced = () => {
         const instance = scroll(p, { showModuleGuides: false, showVoluteConstruction: false });
         return recordLayers(instance.buildRun()).elements.filter(el => el.tag === 'line' && el.attrs['stroke-width'] === 2).map(el => el.attrs);
@@ -501,31 +499,32 @@ describe('the scroll panel', () => {
       const before = arcs();
       p.scroll!.backStraight += 2;
       const after = arcs();
-      // S3 and the nape move with it, the front stays
-      expect([after[0], ...after.slice(3)]).toEqual([before[0], ...before.slice(3)]);
-      expect(after.slice(1, 3).every((d, i) => d !== before[1 + i])).toBe(true);
+      // S3 moves with it; the nape, hung off the nut, and the front stay
+      expect([after[0], ...after.slice(2)]).toEqual([before[0], ...before.slice(2)]);
+      expect(after[1]).not.toEqual(before[1]);
+      // no straight leaves S3's foot higher, so it takes a wider S3 to come down to the nut
       p.scroll!.backStraight = 0;
+      p.scroll!.S3.r = 60;
       expect(traced()).toHaveLength(3);
       expect(spiralArcs(instance)).toHaveLength(5);
     });
 
-    it('runs the neck\'s back up to where the nape meets it, above the nut or below, and draws no nape too wide to fit', () => {
+    it('runs the neck\'s back up to where the nape meets it, and draws no nape too wide to fit', () => {
       const p = defaultViolin();
-      (p.scroll ??= defaultVoluteParams(p)).fitToNut = false;
       const instance = scroll(p, { showModuleArcs: true, showModuleGuides: false, showVoluteConstruction: false });
       const drawn = () => recordLayers(instance.buildRun()).elements;
       const backTop = (els: ReturnType<typeof drawn>) => els
         .filter(el => el.tag === 'line' && el.attrs['stroke'] === 'neckOff' && el.attrs['x1'] === -p.neck!.thickness && el.attrs['x2'] === -p.neck!.thickness)
         .map(el => Math.max(el.attrs['y1'] as number, el.attrs['y2'] as number));
-      // the default duck tail sits on the nut line, so its nape meets the neck's back below the nut
-      expect(backTop(drawn())).toEqual([p.scroll!.nape.y]);
-      expect(p.scroll!.nape.y).toBeLessThan(0);
-      p.scroll!.eye.y += 20;
+      // the duck tail hangs no higher than the nut line, so the nape meets the neck's back below it
       const naped = drawn();
       const nape = naped.filter(el => el.attrs['stroke'] === 'scrollNape' && String(el.attrs['d'] ?? '').includes(' A '));
       expect(nape).toHaveLength(1);
-      expect(p.scroll!.nape.y).toBeGreaterThan(0);
+      expect(p.scroll!.nape.y).toBeLessThan(0);
       expect(backTop(naped)).toEqual([p.scroll!.nape.y]);
+      p.scroll!.hang = 8;
+      expect(backTop(drawn())).toEqual([p.scroll!.nape.y]);
+      expect(p.scroll!.nape.y).toBeLessThan(-8);
       p.scroll!.nape.r = 1000;
       const unfit = drawn();
       expect(unfit.filter(el => el.attrs['stroke'] === 'scrollNape')).toEqual([]);
@@ -612,9 +611,9 @@ describe('the scroll widths panel', () => {
     expect(hollow).toHaveLength(1);
     expect(hollow[0].attrs['stroke']).toBe('scrollFrontLight');
 
-    // a head hardly narrowing to its crown lets the first turn's front stand out past its back, and
-    // then it shows from behind, down to the second turn's top
-    p.scroll!.widths.throat = 14;
+    // a back already narrow at its reach lets the first turn's front stand out past it, and then it
+    // shows from behind, down to the second turn's top
+    p.scroll!.widths.reach = 14;
     const narrowed = recordLayers(instance.buildRun()).elements
       .filter(el => el.tag === 'path' && el.attrs['stroke'] === 'archBack')
       .map(el => points(el.attrs['d'] as string));
@@ -654,8 +653,9 @@ describe('the scroll widths panel', () => {
     for (const pts of showing) expect(pts.length).toBeGreaterThan(3);
   });
 
-  it('draws level shoulders on the round\'s top from whichever of the hips and the neck stands wider than it, and none when all are as wide', () => {
+  it('draws a level shoulder on the round\'s top where the neck stands wider than it, out from the round or from cheeks wider still, and none for a narrower neck', () => {
     const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
+    instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
     instance.buildRun();
     const p = instance.params;
     const v = p.scroll!;
@@ -664,19 +664,25 @@ describe('the scroll widths panel', () => {
       return el.tag === 'line' && el.attrs['y1'] === start.y && el.attrs['y2'] === start.y;
     });
     const lengths = () => levelAtStart().map(el => Math.abs((el.attrs['x1'] as number) - (el.attrs['x2'] as number)));
-    // the hips kept on the round's top as the neck moves it
-    const neck = (width: number) => { p.neck!.topWidth = width; v.hipHeight = duckTailRoundTop(p); };
-    neck(v.widths.hip);
+    const start = () => scrollBackWidths(p)[0].y;
+    v.hipHeight = duckTailRoundTop(p);
+    // a neck narrower than the round runs in under it
+    p.neck!.topWidth = v.widths.duckTail - 4;
     expect(levelAtStart()).toEqual([]);
-    // a neck narrower than the hips: the round is the neck's, and the cheeks' feet stand 2 proud of it
-    neck(v.widths.hip - 4);
-    expect(lengths().map(l => Math.round(l * 1e6) / 1e6)).toEqual([2, 2]);
-    // a neck wider than the hips: the round is the hips', and the neck stands proud of it
-    neck(v.widths.hip + 4);
-    const proud = scrollNeckHalfWidth(p, scrollBackWidths(p)[0].y) - duckTailRadius(p);
+    // wider than the round and the hips: out from the round
+    v.widths.hip = v.widths.duckTail;
+    p.neck!.topWidth = v.widths.duckTail + 8;
+    const proud = scrollNeckHalfWidth(p, start()) - duckTailRadius(p);
     expect(proud).toBeGreaterThan(1);
-    for (const l of lengths()) expect(l).toBeCloseTo(proud, 9);
     expect(lengths()).toHaveLength(2);
+    for (const l of lengths()) expect(l).toBeCloseTo(proud, 9);
+    for (const el of levelAtStart()) expect(el.attrs['stroke']).toBe('scrollBackLight');
+    // hips wider than the round but narrower than the neck: out from the cheeks
+    v.widths.hip = v.widths.duckTail + 4;
+    const fromCheeks = scrollNeckHalfWidth(p, start()) - v.widths.hip / 2;
+    expect(fromCheeks).toBeGreaterThan(0.5);
+    expect(lengths()).toHaveLength(2);
+    for (const l of lengths()) expect(l).toBeCloseTo(fromCheeks, 9);
   });
 
   it('runs the front view down to the foot of the nut and closes it level there, whatever the duck tail', () => {
@@ -694,46 +700,55 @@ describe('the scroll widths panel', () => {
     expect(closings()).toHaveLength(2);
   });
 
-  it('shows the front\'s walls from behind, in the front\'s colour and with no bottom under a nut as wide as the neck, until the path starts at or below the nut\'s foot', () => {
+  it('shows the pegbox\'s front from behind, in its colour, wherever it stands out past the back, and none of it behind a wider back', () => {
     const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
     instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
     instance.buildRun();
-    instance.params.scroll!.fitToNut = false;
-    // a neck as wide as the hips makes the round the hips', the cheeks' feet hidden behind it
-    instance.params.neck!.topWidth = instance.params.scroll!.widths.hip;
-    instance.params.scroll!.hipHeight = duckTailRoundTop(instance.params);
-    instance.buildRun();
-    const v = instance.params.scroll!;
+    const p = instance.params;
+    const v = p.scroll!;
     // the back view stands left of the side view, the front view right of it
     const fromBehind = () => recordLayers(instance.buildRun()).elements.filter(el =>
-      el.attrs['stroke'] === 'archTop' && /^M -/.test(el.attrs['d'] as string));
-    const p = instance.params;
-    const start = scrollBackWidths(p)[0].y;
-    expect(start).toBeGreaterThan(0);
-    const nutTop = p.stringSetup!.nutHeight;
-    // the path starts at the hips: in to the nut's edge at its top, then square to the foot. A nut
-    // narrower than the hips takes the walls in behind the round, which hides them until they come out
-    expect(pegboxHipHeight(p)).toBeCloseTo(start, 6);
-    expect(p.stringSetup!.nutWidth).toBeLessThan(v.widths.hip);
-    const walls = fromBehind();
-    expect(walls).toHaveLength(2);
+      el.tag === 'path' && el.attrs['stroke'] === 'archTop' && /^M -/.test(el.attrs['d'] as string));
     const points = (d: string) => [...d.matchAll(/(-?[\d.]+(?:e-?\d+)?) (-?[\d.]+(?:e-?\d+)?)/g)].map(m => new Pt(+m[1], +m[2]));
+    const nutTop = p.stringSetup!.nutHeight;
+
+    // hips on the round's top a touch wider than the back, the nut's edges as wide as the round: the
+    // cheeks show from where the taper above the hips comes out past the back, down the hips to the
+    // nut's edge at its top, and square to the foot, standing clear of the round the whole way
+    v.hipHeight = duckTailRoundTop(p);
+    v.widths.hip = v.widths.duckTail + 2;
+    v.widths.reach = v.widths.duckTail;
+    p.stringSetup!.nutWidth = v.widths.duckTail;
+    const start = scrollBackWidths(p)[0].y;
+    expect(start).toBeGreaterThan(nutTop);
+    // the foot's edge is the two-point path beside each cheek
+    expect(fromBehind()).toHaveLength(4);
+    const walls = fromBehind().filter(el => points(el.attrs['d'] as string).length > 2);
+    expect(walls).toHaveLength(2);
     const center = (points(walls[0].attrs['d'] as string).at(-1)!.x + points(walls[1].attrs['d'] as string).at(-1)!.x) / 2;
     for (const el of walls) {
-      expect(el.attrs['d']).toMatch(new RegExp(`^M \\S+ \\S+ L \\S+ ${nutTop} L \\S+ 0$`));
-      const [first] = points(el.attrs['d'] as string);
-      expect(first.y).toBeLessThan(start);
-      expect(first.y).toBeGreaterThan(nutTop);
-      expect(Math.hypot(first.x - center, first.y - start)).toBeCloseTo(duckTailRadius(p), 1);
+      const pts = points(el.attrs['d'] as string);
+      expect(pts).toHaveLength(4);
+      const [first, hips, nutEdge, foot] = pts;
+      expect(first.y).toBeGreaterThan(start);
+      expect(hips.y).toBeCloseTo(start, 9);
+      expect(nutEdge.y).toBeCloseTo(nutTop, 9);
+      expect(foot.y).toBeCloseTo(0, 9);
+      expect(Math.abs(first.x - center)).toBeCloseTo(v.widths.duckTail / 2, 6);
+      expect(Math.abs(hips.x - center)).toBeCloseTo(v.widths.hip / 2, 6);
+      expect(Math.abs(foot.x - center)).toBeCloseTo(p.stringSetup!.nutWidth / 2, 6);
     }
 
-    v.eye = new Circle(v.eye.x, v.eye.y - 15, v.eye.r);
+    // a back wider than the whole of the pegbox's front hides it, bottom and all
+    v.widths.duckTail = v.widths.hip + 2;
+    v.widths.reach = v.widths.duckTail;
+    v.hang = v.widths.duckTail / 2 + 1;
     instance.buildRun();
-    expect(scrollBackWidths(p)[0].y).toBeLessThanOrEqual(0);
+    expect(scrollBackWidths(p)[0].y).toBeLessThan(0);
     expect(fromBehind()).toEqual([]);
   });
 
-  it('draws the back\'s own cheeks down to hips set below the round\'s top, and a foot edge in to the round, instead of shoulders', () => {
+  it('shows a cello\'s cheeks from behind down to hips on the pegbox\'s foot, and the foot\'s edge in to the neck', () => {
     const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
     instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
     instance.buildRun();
@@ -748,20 +763,21 @@ describe('the scroll widths panel', () => {
     expect(roundTop).toBeGreaterThan(0);
     const points = (d: string) => [...d.matchAll(/(-?[\d.]+(?:e-?\d+)?) (-?[\d.]+(?:e-?\d+)?)/g)].map(m => new Pt(+m[1], +m[2]));
     const fromBehind = drawn
-      .filter(el => el.tag === 'path' && el.attrs['stroke'] === 'archBack' && /^M -/.test(el.attrs['d'] as string))
+      .filter(el => el.tag === 'path' && el.attrs['stroke'] === 'archTop' && /^M -/.test(el.attrs['d'] as string))
       .map(el => points(el.attrs['d'] as string));
-    const cheeks = fromBehind.filter(pts => pts.length === 2 && Math.abs(pts[0].y - roundTop) < 1e-6 && Math.abs(pts[1].y) < 1e-6);
+    // the cheeks come out past the back above the round's top and run down to the hips on the foot
+    const cheeks = fromBehind.filter(pts => pts.length === 2 && pts[0].y > roundTop && Math.abs(pts[1].y) < 1e-6);
     expect(cheeks).toHaveLength(2);
     const center = (cheeks[0][1].x + cheeks[1][1].x) / 2;
     for (const [, hip] of cheeks) expect(Math.abs(hip.x - center)).toBeCloseTo(23, 6);
-    const r = duckTailRadius(p);
-    const flank = Math.sqrt(r * r - roundTop * roundTop);
+    // the foot's edge shows from the hips in to where the neck covers it
     const footEdges = fromBehind.filter(pts => pts.length === 2 && pts.every(pt => Math.abs(pt.y) < 1e-6));
     expect(footEdges).toHaveLength(2);
     for (const [corner, inner] of footEdges) {
       expect(Math.abs(corner.x - center)).toBeCloseTo(23, 6);
-      expect(Math.abs(inner.x - center)).toBeCloseTo(flank, 6);
+      expect(Math.abs(inner.x - center)).toBeCloseTo(p.neck!.topWidth / 2, 6);
     }
+    // the neck is narrower than the cheeks, so nothing is level with the round's top
     const shoulders = drawn.filter(el => el.tag === 'line' && el.attrs['y1'] === roundTop && el.attrs['y2'] === roundTop);
     expect(shoulders).toEqual([]);
   });
@@ -797,8 +813,6 @@ describe('the scroll widths panel', () => {
     const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
     instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
     instance.buildRun();
-    instance.params.scroll!.fitToNut = false;
-    instance.buildRun();
     const p = instance.params;
     const drawn = recordLayers(instance.buildRun()).elements;
     const points = (d: string) => [...d.matchAll(/(-?[\d.]+(?:e-?\d+)?) (-?[\d.]+(?:e-?\d+)?)/g)].map(m => new Pt(+m[1], +m[2]));
@@ -827,8 +841,7 @@ describe('the scroll widths panel', () => {
     expect([Math.min(...front.map(c => c.y)), Math.max(...front.map(c => c.y))]).toEqual([0, p.stringSetup!.nutHeight]);
 
     // with the path starting below the foot there are no walls, and the sides run on up under the round
-    const { eye } = p.scroll!;
-    p.scroll!.eye = new Circle(eye.x, eye.y - 15, eye.r);
+    p.scroll!.hang = p.scroll!.widths.hip / 2 + 1;
     instance.buildRun();
     const lowered = recordLayers(instance.buildRun()).elements
       .filter(el => el.tag === 'path' && el.attrs['stroke'] === 'neckOff').map(el => points(el.attrs['d'] as string))
