@@ -230,6 +230,8 @@ export interface NeckParams {
   topWidth: number;
   rootWidth: number;
   heel: Arc; // r is entered, the rest derived
+  nutHeight: number; // the nut's seat along the neck, up to where the pegbox's flat starts
+  nutWidth: number; // across, which the scroll's path starts at
 
   root: Pt | null; // derived
   neckTop: Pt | null; // derived
@@ -242,8 +244,6 @@ export interface StringSetup {
   bodyStop: number;
   bridgeHeight: number;
   nutThickness: number;
-  nutHeight: number; // along the neck, up to where the pegbox's flat starts
-  nutWidth: number; // across, which the scroll's path starts at
   fingerboardLength: number;
   fingerboardThickness: number;
   fingerboardRadius: number;
@@ -280,8 +280,7 @@ export interface ScrollWidths {
 }
 
 export interface PegboxParams {
-  wall: number; // each cheek, at the pegbox's front edge
-  floor: number; // the wood left between the hollow and the back
+  wall: number; // the wood left round the hollow, cheeks and floor alike
 }
 
 export interface ScrollParams {
@@ -453,7 +452,7 @@ export interface PathEntry {
 
 export const CERUTI_PANEL_IDS = [
   'base', 'mainBouts', 'corners', 'centerBout', 'outerTrace',
-  'fluting', 'longArching', 'crossArching', 'fHolePlacement', 'fHoleContours', 'neck', 'volute', 'scroll', 'scrollWidths', 'mould', 'export',
+  'fluting', 'longArching', 'crossArching', 'fHolePlacement', 'fHoleContours', 'neck', 'volute', 'scroll', 'scrollWidths', 'stringSetup', 'mould', 'export',
 ] as const;
 
 export type CerutiPanelId = typeof CERUTI_PANEL_IDS[number];

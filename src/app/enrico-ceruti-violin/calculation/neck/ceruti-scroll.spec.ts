@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { calculateScroll, calculateScrollWidths, defaultVoluteParams, duckTailRadius, duckTailRoundTop, pegboxCavity, pegboxHipHeight, pegboxWidth, scrollBackWidths, scrollExtent, scrollPathStretches, scrollFrontWidths, ScrollKey, scrollLines, scrollWidthStations, spiralArcs, TO_FRONT, VoluteSpec, VOLUTE_STYLE_LABELS, voluteConstruction } from './ceruti-scroll';
+import { calculateScroll, calculateScrollWidths, defaultVoluteParams, duckTailRadius, duckTailRoundTop, pegboxCavity, pegboxHipHeight, pegboxWidth, scrollBackStrip, scrollBackWidths, scrollCompassWalk, scrollExtent, scrollPathStretches, scrollFrontWidths, ScrollKey, scrollLines, scrollWidthStations, spiralArcs, TO_FRONT, VoluteSpec, VOLUTE_STYLE_LABELS, voluteConstruction } from './ceruti-scroll';
 import { defaultNeckParams, defaultStringSetup } from './ceruti-neck';
 import { defaultViolin } from '../../ceruti-fixtures';
 import { EnricoCerutiParams, ScrollParams, VoluteStyle } from '../../ceruti-types';
@@ -43,7 +43,7 @@ const BACK: Partial<ScrollParams> = {
 // the panel's default proportions, up from the top of the nut to the spiral's bottom
 const withFront = (p: EnricoCerutiParams) => {
   const v = p.scroll!;
-  const rise = Math.min(...v.spiral!.map(a => a.y - a.r)) - p.stringSetup!.nutHeight;
+  const rise = Math.min(...v.spiral!.map(a => a.y - a.r)) - p.neck!.nutHeight;
   v.flat = 0.45 * rise;
   v.F0 = arc(0.4 * rise, 0, Math.PI / 6);
   v.frontStraight = 0.3 * rise;
@@ -117,7 +117,7 @@ describe.each(STYLES)('the %s volute', style => {
 
   it('runs the front up from the nut, F0 turning back, the straight on, and F1 curving up into the spiral', () => {
     const { p, v } = scrolled(style, 4, BACK);
-    const nutTop = p.stringSetup!.nutHeight;
+    const nutTop = p.neck!.nutHeight;
     const rise = withFront(p);
     expect(unsolved(p).filter(k => k !== 'nape')).toEqual([]);
     const [f0, f1] = [v.F0, v.F1];
@@ -367,9 +367,9 @@ describe.each(STYLES)('the scroll widths with a %s volute', style => {
     const [nut, hip, throat, duckTail, foot, backHip, poll, crown, bottom1, top2, bottom2, eye] = stations.map(st => st.at);
     expect(backHip).toEqual(foot);
     expect(hip.y).toBeCloseTo(pegboxHipHeight(p), 6);
-    expect(stations[0].width).toBeCloseTo(p.stringSetup!.nutWidth, 6);
+    expect(stations[0].width).toBeCloseTo(p.neck!.nutWidth, 6);
     expect(stations[1].width).toBeCloseTo(v.widths.hip, 6);
-    expect([nut.x, nut.y]).toEqual([0, p.stringSetup!.nutHeight]);
+    expect([nut.x, nut.y]).toEqual([0, p.neck!.nutHeight]);
     expect([throat.x, throat.y]).toEqual(at(v.F1, v.F1.end));
     const back = scrollBackWidths(p);
     // the round's centre, so a circle of the duck tail's width about it is the round below
@@ -423,8 +423,8 @@ describe.each(STYLES)('the scroll widths with a %s volute', style => {
     const p = widths();
     const front = scrollFrontWidths(p);
     expect(front[0].z).toBeCloseTo(0, 9);
-    expect(front[0].y).toBeCloseTo(p.stringSetup!.nutHeight, 9);
-    expect(front[0].x).toBeCloseTo(p.stringSetup!.nutWidth / 2, 9);
+    expect(front[0].y).toBeCloseTo(p.neck!.nutHeight, 9);
+    expect(front[0].x).toBeCloseTo(p.neck!.nutWidth / 2, 9);
     expect(pegboxWidth(p, pegboxHipHeight(p))).toBeCloseTo(p.scroll!.widths.hip, 9);
     expect(Math.max(...front.map(pt => pt.x))).toBeLessThanOrEqual(p.scroll!.widths.hip / 2);
     const [x, y] = at(p.scroll!.F1, p.scroll!.F1.start);
@@ -493,7 +493,7 @@ describe('the scroll widths', () => {
     for (const hang of [0, 8]) {
       v.hang = hang;
       expect(calculateScroll(p)).toEqual([]);
-      expect(scrollFrontWidths(p)[0].y).toBeCloseTo(p.stringSetup!.nutHeight, 6);
+      expect(scrollFrontWidths(p)[0].y).toBeCloseTo(p.neck!.nutHeight, 6);
     }
     expect(v.nape.y + v.nape.r).toBeLessThan(0);
   });
@@ -518,7 +518,7 @@ describe('the scroll widths', () => {
 
   it('seeds the hips on the round\'s top, measures them up from the nut\'s top, keeps them where they are put after, and never lets them below the duck tail', () => {
     const { p, v } = solved();
-    const { nutHeight } = p.stringSetup!;
+    const { nutHeight } = p.neck!;
     expect(pegboxHipHeight(p)).toBeCloseTo(duckTailRoundTop(p), 9);
     v.widths.duckTail -= 4;
     calculateScrollWidths(p);
@@ -537,9 +537,9 @@ describe('the scroll widths', () => {
 
   it('has no hips at 0, the nut\'s width tapering from its top, and holds the hips\' width down to the foot when they sit below the nut\'s top', () => {
     const { p, v } = solved();
-    const { nutHeight } = p.stringSetup!;
+    const { nutHeight } = p.neck!;
     v.widths.hip = 46;
-    p.stringSetup!.nutWidth = 42;
+    p.neck!.nutWidth = 42;
     v.hipHeight = 0;
     for (const y of [0, nutHeight / 2, nutHeight]) expect(pegboxWidth(p, y)).toBe(42);
     expect(pegboxWidth(p, nutHeight + 1)).toBeLessThan(42);
@@ -573,7 +573,7 @@ describe('the scroll widths', () => {
   it('runs the front out from the nut to hips 34 wide at the round\'s top, then tapers it by height to the throat', () => {
     const { p, v } = solved();
     v.widths.hip = 34;
-    const { nutWidth, nutHeight } = p.stringSetup!;
+    const { nutWidth, nutHeight } = p.neck!;
     const width = v.widths.hip;
     const throat = at(v.F1, v.F1.end)[1];
     const from = pegboxHipHeight(p);
@@ -605,7 +605,7 @@ describe('the scroll widths', () => {
   it('hollows the pegbox from the nut\'s top to a wall square to the neck at the end of the front\'s straight, its floor the back carried in by its thickness', () => {
     const { p, v } = solved();
     const cavity = pegboxCavity(p)!;
-    expect([cavity[0].x, cavity[0].y]).toEqual([0, p.stringSetup!.nutHeight]);
+    expect([cavity[0].x, cavity[0].y]).toEqual([0, p.neck!.nutHeight]);
     const frontEnd = scrollLines(p).frontStraight[1];
     expect([cavity.at(-1)!.x, cavity.at(-1)!.y]).toEqual([frontEnd.x, frontEnd.y]);
     // the wall under the nut drops back and toward the scroll
@@ -620,9 +620,9 @@ describe('the scroll widths', () => {
     const toBack = (pt: Pt) => Math.min(...[...duckTail, ...back].map(([x, y]) => Math.hypot(pt.x - x, pt.y - y)));
     const floor = cavity.slice(2, -2);
     expect(floor.length).toBeGreaterThan(50);
-    for (const pt of floor) expect(toBack(pt)).toBeCloseTo(v.pegbox.floor, 1);
+    for (const pt of floor) expect(toBack(pt)).toBeCloseTo(v.pegbox.wall, 1);
 
-    v.pegbox.floor = 200;
+    v.pegbox.wall = 200;
     expect(pegboxCavity(p)).toBeNull();
   });
 
@@ -642,7 +642,7 @@ describe('the scroll widths', () => {
     v.widths.backHip = 28;
     v.widths.poll = 24;
     calculateScrollWidths(p);
-    const { nutHeight } = p.stringSetup!;
+    const { nutHeight } = p.neck!;
     const station = (key: string) => scrollWidthStations(p).find(st => st.key === key)!.at;
     const start = scrollBackWidths(p)[0].y;
     const pollY = station('poll').y;
@@ -671,6 +671,85 @@ describe('the scroll widths', () => {
     for (const pt of back.filter(pt => pt.y > hipY && pt.y <= pollY)) expect(pt.x).toBeCloseTo((28 - 4 * (pt.y - hipY) / (pollY - hipY)) / 2, 9);
     v.widths.backHip = 20;
     for (const pt of scrollPathStretches(p).back.filter(pt => pt.y <= hipY)) expect(pt.x).toBeCloseTo(10, 9);
+  });
+
+  it('unrolls the back into a strip, closed to a point at the duck tail and mirrored about its centreline, up to the second turn\'s bottom', () => {
+    const { p, v } = solved();
+    const { outline, length } = scrollBackStrip(p);
+    expect(outline[0].x).toBeCloseTo(0, 6);
+    expect(outline[0].y).toBeCloseTo(0, 9);
+    for (let k = 0; k < outline.length / 2; k++) {
+      const [right, left] = [outline[k], outline[outline.length - 1 - k]];
+      expect(left.x).toBeCloseTo(-right.x, 9);
+      expect(left.y).toBeCloseTo(right.y, 9);
+    }
+    const right = outline.slice(0, outline.length / 2);
+    for (let k = 1; k < right.length; k++) expect(right[k].y).toBeGreaterThanOrEqual(right[k - 1].y - 1e-9);
+    expect(right.at(-1)!.y).toBeCloseTo(length, 9);
+    expect(right.at(-1)!.x).toBeCloseTo(v.widths.turn2Bottom / 2, 6);
+
+    // up the strip is distance along the side profile: the round's top sits S3's arc from the duck
+    // tail above the strip's end, as wide as the back's foot, and below it the strip is the round
+    const roundTop = duckTailRoundTop(p);
+    let arc = 0;
+    for (let a = v.S3.start; at(v.S3, a)[1] < roundTop; a += 1e-5) arc += v.S3.r * 1e-5;
+    v.widths.foot = v.widths.duckTail + 6;
+    const footed = scrollBackStrip(p).outline;
+    const atTop = footed.filter(pt => pt.x > 0 && Math.abs(pt.y - arc) < 1e-2).map(pt => pt.x);
+    expect(Math.max(...atTop)).toBeCloseTo(v.widths.foot / 2, 2);
+    const round = footed.slice(0, footed.length / 2).filter(pt => pt.y < arc - 1e-2);
+    expect(round.length).toBeGreaterThan(10);
+    for (let k = 1; k < round.length; k++) expect(round[k].x).toBeGreaterThanOrEqual(round[k - 1].x - 1e-9);
+    expect(Math.max(...round.map(pt => pt.x))).toBeLessThanOrEqual(duckTailRadius(p) + 1e-9);
+
+    // a wider poll widens the strip about it and leaves the round alone: only widths change, so the
+    // strip is sampled at the same places
+    const before = scrollBackStrip(p).outline;
+    v.widths.poll += 6;
+    const after = scrollBackStrip(p).outline;
+    expect(after).toHaveLength(before.length);
+    expect(after.some((pt, k) => Math.abs(pt.x) > Math.abs(before[k].x) + 1)).toBe(true);
+    after.forEach((pt, k) => { if (pt.y < arc - 1e-2) expect(pt.x).toBeCloseTo(before[k].x, 9); });
+  });
+
+  it('sets out a compass walk: the duck tail, then the poll, then a compass step at a time up to the second turn\'s bottom, each station the straight distance from the last along the spine', () => {
+    const { p, v } = solved();
+    const station = (key: string) => scrollWidthStations(p).find(st => st.key === key)!;
+    const { stations, length } = scrollCompassWalk(p, 15);
+    expect(stations[0].along).toBe(0);
+    expect(stations[0].half).toBeCloseTo(v.widths.duckTail / 2, 9);
+    expect([stations[0].at.x, stations[0].at.y]).toEqual([station('duckTail').at.x, station('duckTail').at.y].map(c => expect.closeTo(c, 9)));
+    // a violin has no foot of its own and no hip, so the poll comes next
+    expect([stations[1].at.x, stations[1].at.y]).toEqual([station('poll').at.x, station('poll').at.y].map(c => expect.closeTo(c, 6)));
+    expect(stations[1].half).toBeCloseTo(v.widths.poll / 2, 6);
+    // along the spine each sits the straight distance from the last, every step 15 but the last
+    for (let k = 1; k < stations.length; k++) {
+      expect(stations[k].along - stations[k - 1].along).toBeCloseTo(dist(stations[k].at, stations[k - 1].at), 9);
+    }
+    for (let k = 2; k < stations.length - 1; k++) expect(dist(stations[k].at, stations[k - 1].at)).toBeCloseTo(15, 6);
+    expect(dist(stations.at(-1)!.at, stations.at(-2)!.at)).toBeLessThanOrEqual(15 + 1e-6);
+    expect(stations.at(-1)!.along).toBeCloseTo(length, 9);
+    expect(stations.length).toBeGreaterThan(8);
+    // the walk ends at the second turn's bottom, as wide as it
+    expect(stations.at(-1)!.half).toBeCloseTo(v.widths.turn2Bottom / 2, 6);
+    expect(stations.at(-1)!.at.y).toBeCloseTo(station('turn2Bottom').at.y, 6);
+    // every station's width is one the back has, so between the narrowest and the widest
+    for (const st of stations) {
+      expect(st.half).toBeGreaterThanOrEqual(v.widths.crown / 2 - 1e-9);
+      expect(st.half).toBeLessThanOrEqual(Math.max(v.widths.turn2Bottom, v.widths.poll, v.widths.foot) / 2 + 1e-9);
+    }
+
+    // a wider foot rings the duck tail, and a hip takes a station of its own
+    v.widths.foot = v.widths.duckTail + 6;
+    v.widths.backHip = v.widths.foot;
+    v.backHipHeight = (station('duckTail').at.y + station('poll').at.y) / 2 - p.neck!.nutHeight;
+    calculateScrollWidths(p);
+    const celloed = scrollCompassWalk(p, 15).stations;
+    expect(celloed[1].along).toBe(0);
+    expect(celloed[1].half).toBeCloseTo(v.widths.foot / 2, 9);
+    expect(celloed[2].at.y).toBeCloseTo(station('backHip').at.y, 6);
+    expect(celloed[2].half).toBeCloseTo(v.widths.backHip / 2, 6);
+    expect(celloed[3].at.y).toBeCloseTo(station('poll').at.y, 6);
   });
 
   it('leaves the slope for the curve without a step or a corner', () => {

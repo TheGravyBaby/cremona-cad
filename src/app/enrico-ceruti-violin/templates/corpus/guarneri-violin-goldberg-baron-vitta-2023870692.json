@@ -482,14 +482,14 @@
       "backNut": {
         "x": 9.42606647263895,
         "y": 489.5626644003418
-      }
+      },
+      "nutHeight": 6,
+      "nutWidth": 24
     },
     "stringSetup": {
       "bodyStop": 196,
       "bridgeHeight": 33,
       "nutThickness": 7.5,
-      "nutHeight": 6,
-      "nutWidth": 24,
       "fingerboardLength": 270,
       "fingerboardThickness": 5,
       "fingerboardRadius": 42,
@@ -643,8 +643,7 @@
         "eye": 42
       },
       "pegbox": {
-        "wall": 5,
-        "floor": 6
+        "wall": 5
       }
     }
   },

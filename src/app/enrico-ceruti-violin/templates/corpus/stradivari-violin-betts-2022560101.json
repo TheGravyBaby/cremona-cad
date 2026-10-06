@@ -493,14 +493,14 @@
       "backNut": {
         "x": 11.934297282567893,
         "y": 489.09808434859997
-      }
+      },
+      "nutHeight": 6,
+      "nutWidth": 24
     },
     "stringSetup": {
       "bodyStop": 196.5,
       "bridgeHeight": 33,
       "nutThickness": 7.5,
-      "nutHeight": 6,
-      "nutWidth": 24,
       "fingerboardLength": 270,
       "fingerboardThickness": 5,
       "fingerboardRadius": 42,
@@ -690,6 +690,7 @@
         "longArching",
         "crossArching",
         "neck",
+        "stringSetup",
         "volute",
         "scroll"
       ],
@@ -716,7 +717,8 @@
       "locked": false,
       "panels": [
         "longArching",
-        "neck"
+        "neck",
+        "stringSetup"
       ],
       "isDefault": false,
       "crop": {

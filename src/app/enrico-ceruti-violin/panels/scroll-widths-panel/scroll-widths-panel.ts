@@ -10,7 +10,7 @@ import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { pathFromPolyline } from '../../../helpers/math/pathMath';
 import { Circle, Pt } from '../../../models/types';
 import { pointOnCircle, TURN } from '../../../helpers/math/simpleGeometry';
-import { PEGBOX_HOLLOW_SHOWN, scrollNeckStub, scrollBackViewStrokes, scrollFrontViewStrokes } from '../../calculation/neck/ceruti-scroll-views';
+import { scrollNeckStub, scrollBackViewStrokes, scrollFrontViewStrokes } from '../../calculation/neck/ceruti-scroll-views';
 import { renderScrollNeck } from '../volute-panel/volute-panel';
 
 @Component({
@@ -26,7 +26,6 @@ export class ScrollWidthsPanel extends CerutiPanelBase implements OnInit {
   @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;
 
-  protected readonly showHollow = PEGBOX_HOLLOW_SHOWN;
   private focused: ScrollStationKey | null = null;
 
   ngOnInit(): void {
@@ -52,7 +51,6 @@ export class ScrollWidthsPanel extends CerutiPanelBase implements OnInit {
   public buildRun(): RenderLayer[] {
     const p = this.params;
     p.neck ??= defaultNeckParams(p);
-    p.stringSetup ??= defaultStringSetup(p);
     const failures = calculateScroll(p);
     if (!failures.length) calculateScrollWidths(p);
 
@@ -84,11 +82,11 @@ export function stationColor(colors: CerutiColors, key: ScrollStationKey): strin
 // marks widths on the blank, with a centreline down each view
 export const renderScrollWidths = (p: EnricoCerutiParams, colors: CerutiColors, focused: ScrollStationKey | null, showGuides: boolean, showArcs: boolean) => (g: any, ui: any): void => {
   const v = p.scroll!;
-  const { nutThickness } = p.stringSetup!;
+  const { nutThickness } = p.stringSetup ?? defaultStringSetup(p);
   const stations = scrollWidthStations(p);
 
   const gap = 20;
-  const widest = Math.max(v.widths.eye, v.widths.hip, v.widths.foot, v.widths.backHip, v.widths.poll, p.stringSetup!.nutWidth) / 2;
+  const widest = Math.max(v.widths.eye, v.widths.hip, v.widths.foot, v.widths.backHip, v.widths.poll, p.neck!.nutWidth) / 2;
   const back = -scrollExtent(v).width - gap - widest;
   const front = nutThickness + gap + widest;
 
@@ -106,7 +104,7 @@ export const renderScrollWidths = (p: EnricoCerutiParams, colors: CerutiColors, 
   for (const stroke of scrollFrontViewStrokes(p, (x, y) => new Pt(front + x, y), -stub)) renderStroke(stroke, colors[stroke.ink])(g, ui);
 
   // in the side view the hollow is inside the wood
-  const cavity = PEGBOX_HOLLOW_SHOWN ? pegboxCavity(p) : null;
+  const cavity = pegboxCavity(p);
   if (cavity) renderPath(pathFromPolyline(cavity), colors.scrollFrontLight, STROKE_WEIGHT.trace, 1, '4,4')(g, ui);
   const frontStations: ScrollStationKey[] = ['nut', 'hip', 'throat'];
   if (showArcs) {

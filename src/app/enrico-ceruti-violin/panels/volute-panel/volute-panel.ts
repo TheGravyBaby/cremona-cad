@@ -86,7 +86,6 @@ export class VolutePanel extends CerutiPanelBase implements OnInit {
   public buildRun(): RenderLayer[] {
     const p = this.params;
     p.neck ??= defaultNeckParams(p);
-    p.stringSetup ??= defaultStringSetup(p);
     const failures = calculateScroll(p);
 
     const v = p.scroll!;
@@ -140,7 +139,8 @@ export const scrollArc = (arc: Arc, color: string, fancy: boolean) =>
 export const renderScrollNeck = (p: EnricoCerutiParams, colors: CerutiColors, showGuides: boolean, failures: ScrollFailure[] = []) => (g: any, ui: any): void => {
   const v = p.scroll!;
   const { thickness } = p.neck!;
-  const { nutThickness, nutHeight } = p.stringSetup!;
+  const { nutHeight } = p.neck!;
+  const { nutThickness } = p.stringSetup ?? defaultStringSetup(p);
   const stub = scrollNeckStub(p);
 
   renderPolygon([new Pt(0, 0), new Pt(0, nutHeight), new Pt(nutThickness, nutHeight), new Pt(nutThickness, 0)], colors.nut, STROKE_WEIGHT.section)(g, ui);

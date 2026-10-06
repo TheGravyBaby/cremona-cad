@@ -22,6 +22,7 @@ import { CrossArchingPanel } from './panels/cross-arching-panel/cross-arching-pa
 import { FHolePlacementPanel } from './panels/f-hole-placement-panel/f-hole-placement-panel';
 import { FHoleContoursPanel } from './panels/f-hole-contours-panel/f-hole-contours-panel';
 import { NeckPanel } from './panels/neck-panel/neck-panel';
+import { StringSetupPanel } from './panels/string-setup-panel/string-setup-panel';
 import { ScrollPanel } from './panels/scroll-panel/scroll-panel';
 import { ScrollWidthsPanel } from './panels/scroll-widths-panel/scroll-widths-panel';
 import { VolutePanel } from './panels/volute-panel/volute-panel';
@@ -33,7 +34,7 @@ import { CERUTI_COLOR_PALETTE, LIGHT_CONTRAST_MIN, LIGHT_CONTRAST_MIN_PALE, LIGH
 
 @Component({
   selector: 'app-ceruti-violin',
-  imports: [FormsModule, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterTracePanel, MouldPanel, FlutingPanel, LongArchingPanel, CrossArchingPanel, FHolePlacementPanel, FHoleContoursPanel, NeckPanel, VolutePanel, ScrollPanel, ScrollWidthsPanel, ExportPanel, RecipeToolbarComponent, RenderToggles, NumberStepperDirective],
+  imports: [FormsModule, MainBoutsPanel, CornersPanel, CenterBoutPanel, OuterTracePanel, MouldPanel, FlutingPanel, LongArchingPanel, CrossArchingPanel, FHolePlacementPanel, FHoleContoursPanel, NeckPanel, StringSetupPanel, VolutePanel, ScrollPanel, ScrollWidthsPanel, ExportPanel, RecipeToolbarComponent, RenderToggles, NumberStepperDirective],
   templateUrl: './ceruti-violin.html',
   styleUrls: ['../sidebar.css', './ceruti-violin.css'],
 })
@@ -56,6 +57,7 @@ export class CerutiViolin extends RecipeComponentBase {
     { id: 'volute', label: 'Volute', toggles: VolutePanel.renderToggles },
     { id: 'scroll', label: 'Scroll', toggles: ScrollPanel.renderToggles },
     { id: 'scrollWidths', label: 'Scroll Widths', toggles: ScrollWidthsPanel.renderToggles },
+    { id: 'stringSetup', label: 'String Setup', toggles: StringSetupPanel.renderToggles },
     { id: 'mould', label: 'Mould', toggles: MouldPanel.renderToggles },
     { id: 'export', label: 'Export', toggles: [] },
   ];
@@ -346,6 +348,7 @@ export class CerutiViolin extends RecipeComponentBase {
       case 'volute': return hasCenterBout(this.d.params);
       case 'scroll': return hasCenterBout(this.d.params);
       case 'scrollWidths': return hasCenterBout(this.d.params);
+      case 'stringSetup': return hasCenterBout(this.d.params);
       case 'export': return hasCenterBout(this.d.params);
       default: return false;
     }

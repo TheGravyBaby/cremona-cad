@@ -17,10 +17,6 @@ import { scrollOnNeck } from '../outline/ceruti-paths';
 // how far each view carries the neck on below the scroll
 export const scrollNeckStub = (p: EnricoCerutiParams) => 2 * p.neck!.thickness;
 
-// the pegbox's hollow is parked, to see the head without it: its fields, the dashed cavity in the
-// side view and the mouth in the front view all hang off this
-export const PEGBOX_HOLLOW_SHOWN = false;
-
 function halfWidthAtHeight(pts: Pt3D[], y: number): number | null {
   return polylinePointAtY(pts, y)?.x ?? null;
 }
@@ -50,7 +46,7 @@ function seenRuns(on: ScrollStretches, pts: Pt3D[], behind: boolean): Pt3D[][] {
 // hips, in to the nut's edge at its top, square to the foot of the nut, and closing level there.
 // `walls` is the run from the hips down, `cheeks` the whole of it
 function pegboxFrontOutline(p: EnricoCerutiParams) {
-  const { nutHeight } = p.stringSetup!;
+  const { nutHeight } = p.neck!;
   const hipY = pegboxHipHeight(p);
   const hips = new Pt(pegboxWidth(p, hipY) / 2, hipY);
   const foot = Math.min(hipY, 0);
@@ -173,8 +169,8 @@ export function scrollBackViewStrokes(p: EnricoCerutiParams, place: (x: number, 
 // the scroll from in front, the neck's sides running on up from `neckFrom` to the nut
 export function scrollFrontViewStrokes(p: EnricoCerutiParams, place: (x: number, y: number) => Pt, neckFrom: number): ScrollViewStroke[] {
   const v = p.scroll!;
-  const { nutHeight } = p.stringSetup!;
-  const nutHalf = p.stringSetup!.nutWidth / 2;
+  const { nutHeight } = p.neck!;
+  const nutHalf = p.neck!.nutWidth / 2;
   const eyeHalf = v.widths.eye / 2;
   const eyeTop = v.eye.y + v.eye.r;
   const eyeBottom = v.eye.y - v.eye.r;
@@ -224,7 +220,7 @@ export function scrollFrontViewStrokes(p: EnricoCerutiParams, place: (x: number,
   const mouth = [nutHeight, pegboxHipHeight(p), mouthTop]
     .filter(y => y >= nutHeight && y <= mouthTop)
     .map(y => new Pt(pegboxWidth(p, y) / 2 - v.pegbox.wall, y));
-  if (PEGBOX_HOLLOW_SHOWN && mouth.length > 1 && mouth.every(pt => pt.x > 0)) {
+  if (mouth.length > 1 && mouth.every(pt => pt.x > 0)) {
     const right = mouth.map(pt => at(pt, 1));
     const left = mouth.map(pt => at(pt, -1));
     const d = hollowTop <= pegboxTop ? pathFromPolygon([...right, ...left.reverse()]) : pathFromPolyline([...right.reverse(), ...left]);

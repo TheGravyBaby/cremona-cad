@@ -1092,8 +1092,8 @@ export interface PlatePlan {
 }
 
 // the instrument from the front, in the plan's frame: the plate with whatever the neck covers cut
-// away, and the outlines laid over it — the fingerboard, or the bare neck with the board off, and
-// the nut past its end
+// away, and the outlines laid over it — the fingerboard once the string setup is set and the board
+// is on, the bare neck otherwise, and the nut past its end
 export function defineFrontProfilePath(p: EnricoCerutiParams, body: PlatePlan, showFingerboard = true): { body: PlatePlan; neck: string; nut: string } {
   const nk = p.neck!;
   const rootY = mortiseFloorY(p);
@@ -1102,14 +1102,17 @@ export function defineFrontProfilePath(p: EnricoCerutiParams, body: PlatePlan, s
     new Pt(-nk.rootWidth / 2, rootY), new Pt(nk.rootWidth / 2, rootY),
     new Pt(nk.topWidth / 2, topY), new Pt(-nk.topWidth / 2, topY),
   ]);
-  const fbEndY = fingerboardEnd(p).y;
-  const fbEndHalf = neckHalfWidthAt(p, fbEndY);
-  const board = pathFromPolygon([
-    new Pt(-fbEndHalf, fbEndY), new Pt(fbEndHalf, fbEndY),
-    new Pt(nk.topWidth / 2, topY), new Pt(-nk.topWidth / 2, topY),
-  ]);
+  let board: string | null = null;
+  if (showFingerboard && p.stringSetup) {
+    const fbEndY = fingerboardEnd(p).y;
+    const fbEndHalf = neckHalfWidthAt(p, fbEndY);
+    board = pathFromPolygon([
+      new Pt(-fbEndHalf, fbEndY), new Pt(fbEndHalf, fbEndY),
+      new Pt(nk.topWidth / 2, topY), new Pt(-nk.topWidth / 2, topY),
+    ]);
+  }
 
-  const { nutHeight, nutWidth } = p.stringSetup!;
+  const { nutHeight, nutWidth } = nk;
   const nutY = moveInVectorSpace(nk.neckTop!, [{ ...vectorFromSlope(nk.angle + TURN.quarter), mag: nutHeight }]).y;
   const nut = pathFromPolygon([
     new Pt(-nutWidth / 2, topY), new Pt(nutWidth / 2, topY),
@@ -1117,7 +1120,7 @@ export function defineFrontProfilePath(p: EnricoCerutiParams, body: PlatePlan, s
   ]);
 
   // the neck too under the board, in case a short board ends above the mortise floor
-  const cover = showFingerboard ? [neck, board] : [neck];
+  const cover = board ? [neck, board] : [neck];
   const cut = (d: string) => occludePath(d, cover).visible;
   return {
     body: {
@@ -1125,7 +1128,7 @@ export function defineFrontProfilePath(p: EnricoCerutiParams, body: PlatePlan, s
       purfling: body.purfling.map(cut).filter(d => !!d),
       fHoles: body.fHoles.map(cut).filter(d => !!d),
     },
-    neck: showFingerboard ? board : neck,
+    neck: board ?? neck,
     nut,
   };
 }

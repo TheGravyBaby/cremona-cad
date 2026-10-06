@@ -53,6 +53,9 @@ const MARGIN_TOP = 8;     // mm top
 const MARGIN_BOTTOM = 30; // mm bottom (title block lives here)
 const BORDER_INSET = 3;   // mm from page edge to thick outer border
 const INNER_PAD = 3;      // mm gap between content border and path
+// mm of empty sheet round the content on every side: content starts on x = 0, y = 0, so with none a
+// stroke on its lowest point is cut in half by the sheet's edge
+const SHEET_PAD = 3;
 
 // ─── SVG builders ────────────────────────────────────────────────────────────
 
@@ -78,15 +81,18 @@ function buildTextMarkup(texts: SvgTextExport[]): string {
     .join('');
 }
 
+// the sheet's frame: content centred on x = 0 from y = 0 up, y flipped to point up, SHEET_PAD of
+// empty sheet round it
+const sheetViewBox = (width: number, height: number) => `${-width / 2 - SHEET_PAD} ${-SHEET_PAD} ${width + 2 * SHEET_PAD} ${height + 2 * SHEET_PAD}`;
+
 export function buildMirroredSvg(
   width: number,
   height: number,
   paths: SvgPathExport[],
   texts: SvgTextExport[] = []
 ): string {
-  const viewBox = `${-width / 2} 0 ${width} ${height}`;
   const markup = buildPathMarkup(paths, p => p.strokeWidth ?? 0.5) + buildTextMarkup(texts);
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}"><g transform="translate(0 ${height}) scale(1 -1)">${markup}</g></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${sheetViewBox(width, height)}"><g transform="translate(0 ${height}) scale(1 -1)">${markup}</g></svg>`;
 }
 
 function buildScaledSvg(
@@ -95,12 +101,11 @@ function buildScaledSvg(
   paths: SvgPathExport[],
   texts: SvgTextExport[] = []
 ): string {
-  const viewBox = `${-width / 2} 0 ${width} ${height}`;
   const markup = buildPathMarkup(paths, () => 0.5) + buildTextMarkup(texts);
   return [
     `<svg xmlns="http://www.w3.org/2000/svg"`,
-    `     width="${width}mm" height="${height}mm"`,
-    `     viewBox="${viewBox}">`,
+    `     width="${width + 2 * SHEET_PAD}mm" height="${height + 2 * SHEET_PAD}mm"`,
+    `     viewBox="${sheetViewBox(width, height)}">`,
     `  <g transform="translate(0 ${height}) scale(1 -1)">`,
     `    ${markup}`,
     `  </g>`,
@@ -318,7 +323,7 @@ export async function downloadSvgAsPdf(
   meta?: { fileName?: string; description?: string; sheetLabel?: string },
   texts: SvgTextExport[] = []
 ): Promise<void> {
-  const match = findStandardPage(width, height);
+  const match = findStandardPage(width + 2 * SHEET_PAD, height + 2 * SHEET_PAD);
 
   let pageW: number;
   let pageH: number;
@@ -331,8 +336,8 @@ export async function downloadSvgAsPdf(
     paperFormatName = `${format.name} ${landscape ? 'Landscape' : 'Portrait'}`;
   } else {
     // Content too large for any standard format – fall back to a custom size.
-    pageW = width  + (MARGIN_X + INNER_PAD) * 2;
-    pageH = height + (MARGIN_TOP + INNER_PAD) + (MARGIN_BOTTOM + INNER_PAD);
+    pageW = width  + 2 * SHEET_PAD + (MARGIN_X + INNER_PAD) * 2;
+    pageH = height + 2 * SHEET_PAD + (MARGIN_TOP + INNER_PAD) + (MARGIN_BOTTOM + INNER_PAD);
     paperFormatName = 'Custom';
   }
 
@@ -358,7 +363,7 @@ export async function downloadSvgAsPdf(
   const parser = new DOMParser();
   const svgEl = parser.parseFromString(svgString, 'image/svg+xml')
     .documentElement as unknown as SVGSVGElement;
-  await svg2pdf(svgEl, doc, { x: offsetX, y: offsetY, width, height });
+  await svg2pdf(svgEl, doc, { x: offsetX - SHEET_PAD, y: offsetY - SHEET_PAD, width: width + 2 * SHEET_PAD, height: height + 2 * SHEET_PAD });
 
   drawDraftingFrame(doc, {
     pathWidth: width,
@@ -387,7 +392,7 @@ export async function downloadFullPlanPdf(
   for (let i = 0; i < pages.length; i++) {
     const { label, width, height, paths, texts, fileName, description } = pages[i];
 
-    const match = findStandardPage(width, height);
+    const match = findStandardPage(width + 2 * SHEET_PAD, height + 2 * SHEET_PAD);
     let pageW: number;
     let pageH: number;
     let paperFormatName: string;
@@ -398,8 +403,8 @@ export async function downloadFullPlanPdf(
       pageH = landscape ? format.width  : format.height;
       paperFormatName = `${format.name} ${landscape ? 'Landscape' : 'Portrait'}`;
     } else {
-      pageW = width  + (MARGIN_X + INNER_PAD) * 2;
-      pageH = height + (MARGIN_TOP + INNER_PAD) + (MARGIN_BOTTOM + INNER_PAD);
+      pageW = width  + 2 * SHEET_PAD + (MARGIN_X + INNER_PAD) * 2;
+      pageH = height + 2 * SHEET_PAD + (MARGIN_TOP + INNER_PAD) + (MARGIN_BOTTOM + INNER_PAD);
       paperFormatName = 'Custom';
     }
 
@@ -428,7 +433,7 @@ export async function downloadFullPlanPdf(
     const svgString = buildScaledSvg(width, height, paths, texts);
     const svgEl = parser.parseFromString(svgString, 'image/svg+xml')
       .documentElement as unknown as SVGSVGElement;
-    await svg2pdf(svgEl, doc, { x: offsetX, y: offsetY, width, height });
+    await svg2pdf(svgEl, doc, { x: offsetX - SHEET_PAD, y: offsetY - SHEET_PAD, width: width + 2 * SHEET_PAD, height: height + 2 * SHEET_PAD });
 
     drawDraftingFrame(doc, {
       pathWidth: width,
