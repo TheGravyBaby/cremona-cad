@@ -123,6 +123,7 @@ export class CerutiViolin extends RecipeComponentBase {
       scrollNape: this.makeColor(p.scrollNape),
       scrollFront: this.makeColor(p.scrollFront),
       scrollFrontLight: this.makeColorWithFloor(p.scrollFrontLight, LIGHT_CONTRAST_MIN_PALE, LIGHT_SATURATE_DEGREE),
+      scrollTurns: this.makeColor(p.scrollTurns),
       scrollWidthNut: this.makeColor(p.scrollWidthNut),
       scrollWidthHip: this.makeColorWithFloor(p.scrollWidthHip, LIGHT_CONTRAST_MIN_PALE, LIGHT_SATURATE_DEGREE),
       scrollWidthThroat: this.makeColor(p.scrollWidthThroat),

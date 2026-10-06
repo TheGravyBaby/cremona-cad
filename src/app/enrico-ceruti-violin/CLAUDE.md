@@ -332,8 +332,12 @@ section first → long arch carved to a template → crown across. The panel ord
   carried round; the more the real thing was studied the less that held: the front is sawn straight
   through the blank, the back is carved off the volute. Widths are full widths, held by name on
   `p.scroll.widths`, and where each sits is read off the arcs (`scrollWidthStations`), not stored.
-  The panel is two sections, Front and Back, and the palette follows: the front's stations warm like
-  `scrollFront`, the back's blues like `scrollBack`, so an edit's colour says which face it moves.
+  The panel is three sections, Front, Back and Turns, and the palette follows: the front's stations
+  warm like `scrollFront`, the back's blues like `scrollBack`, the turns' greens like `scrollTurns`,
+  so an edit's colour says which part it moves. In the back and front views everything past the
+  crown (each turn's contour, its faces and the eye) draws in `scrollTurns`, the same in both views;
+  the head's back up to the crown keeps `archBack` and the pegbox's front `archTop`. The plan
+  profiles draw all of it grey.
 - **The front goes by height** (`pegboxWidth`): straight lines sawn through the blank. The nut's own
   width (`stringSetup.nutWidth`) holds to the nut's top, the cheeks run out from its edges to the
   `hip` (the pegbox's widest, at `hipHeight`), taper back from there to `throat` at the foot of the
@@ -359,7 +363,7 @@ section first → long arch carved to a template → crown across. The panel ord
   lower than the duck tail.
 - **Module arcs on the widths panel mark the widths a maker sets out with compasses** (2026-10-06):
   each a circle its width across on its view's centreline at the station's height, with a dashed
-  centreline down each view. Behind, the crown, the reach and the duck tail; in front, the crown,
+  centreline down each view, the back's in `scrollBack`. Behind, the crown, the reach and the duck tail; in front, the crown,
   the throat and the hips. The crown's and the throat's hang as half circles from the head's top and
   the pegbox's. The duck tail's station is the round's centre, so its circle has the round for its
   lower half. Every station once had a circle; it was too many to read.

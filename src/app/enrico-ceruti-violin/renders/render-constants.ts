@@ -34,9 +34,12 @@ export const CERUTI_COLOR_PALETTE = {
   scrollNape: '#3d5fb0',
   scrollFront: '#e8952f',
   scrollFrontLight: '#f4be6a',
+  // the volute's turns past the crown, the same in the back and front views: a green neither the
+  // back's blue nor the front's orange, for the panel's own Turns section
+  scrollTurns: '#3aa58a',
   // the scroll widths' points: the front's warm like scrollFront, the back's a walk through the blues
-  // from indigo at the duck tail to cyan at the eye, deep and light in turn so neighbours differ in
-  // both hue and tone
+  // from indigo at the duck tail to the crown, the turns' greens like scrollTurns, deep and light in
+  // turn so neighbours differ in both hue and tone
   scrollWidthNut: '#c9972b',
   scrollWidthHip: '#f2c46d',
   scrollWidthThroat: '#d1661f',
@@ -44,10 +47,10 @@ export const CERUTI_COLOR_PALETTE = {
   scrollWidthFoot: '#9fb6ee',
   scrollWidthReach: '#2a6fc0',
   scrollWidthCrown: '#8fcbf0',
-  scrollWidthTurn1Bottom: '#1f86b6',
-  scrollWidthTurn2Top: '#7fd4e6',
-  scrollWidthTurn2Bottom: '#1aa0a8',
-  scrollWidthEye: '#8fe0d8',
+  scrollWidthTurn1Bottom: '#1f8f74',
+  scrollWidthTurn2Top: '#86dcc0',
+  scrollWidthTurn2Bottom: '#3f9e4f',
+  scrollWidthEye: '#a6dd9a',
   // the spiral a turn at a time from the eye out, its arcs alternating ivory and a darker tan, far
   // enough apart to follow one arc round in the four point's fields
   voluteTurn1: '#f2eadb',

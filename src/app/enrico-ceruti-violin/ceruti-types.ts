@@ -352,6 +352,7 @@ export interface CerutiColors {
   scrollNape: string;
   scrollFront: string;
   scrollFrontLight: string;
+  scrollTurns: string;
   scrollWidthNut: string;
   scrollWidthHip: string;
   scrollWidthThroat: string;

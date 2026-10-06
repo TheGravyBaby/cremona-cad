@@ -65,7 +65,7 @@ function pegboxFrontOutline(p: EnricoCerutiParams) {
   return { foot, walls, cheeks, bottom };
 }
 
-export type ScrollViewInk = 'archTop' | 'archBack' | 'scrollFrontLight' | 'scrollBackLight' | 'nut' | 'neckOff';
+export type ScrollViewInk = 'archTop' | 'archBack' | 'scrollFrontLight' | 'scrollBackLight' | 'scrollTurns' | 'scrollWidthCrown' | 'nut' | 'neckOff';
 
 export type ScrollViewStroke = { ink: ScrollViewInk; weight: number } & StrokeShape;
 
@@ -132,11 +132,11 @@ export function scrollBackViewStrokes(p: EnricoCerutiParams, place: (x: number, 
   // hidden behind its back below there. Any of them is hidden too wherever a nearer stretch is as
   // wide: the first turn's front under the crown, beside a back still wider than it
   contour(on.back, 'archBack');
-  for (const run of seen(clipPolylineAtY(on.turn1Front, turn2Top.y, 'above'))) contour(run, 'archBack');
-  for (const run of seen(on.turn2Back)) contour(run, 'archBack');
-  for (const run of seen(clipPolylineAtY(on.turn2Front, turn3Top.y, 'above'))) contour(run, 'archBack');
-  for (const run of seen(on.turn3Back)) contour(run, 'archBack');
-  for (const run of seen(on.turn3Front)) contour(run, 'archBack');
+  for (const run of seen(clipPolylineAtY(on.turn1Front, turn2Top.y, 'above'))) contour(run, 'scrollTurns');
+  for (const run of seen(on.turn2Back)) contour(run, 'scrollTurns');
+  for (const run of seen(clipPolylineAtY(on.turn2Front, turn3Top.y, 'above'))) contour(run, 'scrollTurns');
+  for (const run of seen(on.turn3Back)) contour(run, 'scrollTurns');
+  for (const run of seen(on.turn3Front)) contour(run, 'scrollTurns');
 
   if (r > 0) strokes.push({ d: pathFromPolyline(round), ink: 'archBack', weight: STROKE_WEIGHT.trace });
   // the front's bottom shows only where it overhangs the neck; over the neck it's smoothed in
@@ -146,14 +146,14 @@ export function scrollBackViewStrokes(p: EnricoCerutiParams, place: (x: number, 
 
   // each face runs in to the back of the turn outside it, the head's own back for the first two
   face(crown.y, crown.x, null, 'scrollBackLight');
-  face(turn1Bottom.y, turn1Bottom.x, halfWidthAtHeight(on.back, turn1Bottom.y), 'scrollBackLight');
-  face(turn2Top.y, turn2Top.x, halfWidthAtHeight(on.back, turn2Top.y), 'scrollBackLight');
-  face(turn2Bottom.y, turn2Bottom.x, halfWidthAtHeight(on.turn2Back, turn2Bottom.y), 'scrollBackLight');
-  face(turn3Top.y, turn3Top.x, halfWidthAtHeight(on.turn2Back, turn3Top.y), 'scrollBackLight');
-  face(eyeTop, eyeHalf, halfWidthAtHeight(on.turn3Back, eyeTop), 'scrollBackLight');
-  face(eyeBottom, eyeHalf, halfWidthAtHeight(on.turn3Back, eyeBottom), 'scrollBackLight');
+  face(turn1Bottom.y, turn1Bottom.x, halfWidthAtHeight(on.back, turn1Bottom.y), 'scrollTurns');
+  face(turn2Top.y, turn2Top.x, halfWidthAtHeight(on.back, turn2Top.y), 'scrollTurns');
+  face(turn2Bottom.y, turn2Bottom.x, halfWidthAtHeight(on.turn2Back, turn2Bottom.y), 'scrollTurns');
+  face(turn3Top.y, turn3Top.x, halfWidthAtHeight(on.turn2Back, turn3Top.y), 'scrollTurns');
+  face(eyeTop, eyeHalf, halfWidthAtHeight(on.turn3Back, eyeTop), 'scrollTurns');
+  face(eyeBottom, eyeHalf, halfWidthAtHeight(on.turn3Back, eyeBottom), 'scrollTurns');
   // the eye stands out as a cylinder to the last width
-  for (const side of [1, -1]) line(place(side * eyeHalf, eyeBottom), place(side * eyeHalf, eyeTop), 'scrollBackLight');
+  for (const side of [1, -1]) line(place(side * eyeHalf, eyeBottom), place(side * eyeHalf, eyeTop), 'scrollTurns');
 
   // a foot wider than the round meets it along level shoulders, the back's own. A neck wider than
   // the round meets it along a shoulder too, out from the round or from whichever of the foot and
@@ -211,11 +211,11 @@ export function scrollFrontViewStrokes(p: EnricoCerutiParams, place: (x: number,
   // the first turn's front stands nearest and shows whole, and the front of each turn inside it
   // stands out past it. The back of a turn shows under the turn inside it, up to that turn's bottom,
   // and the last up to the eye's. A nearer stretch as wide hides any of them
-  contour(on.turn1Front, 'archTop');
-  for (const run of seen(clipPolylineAtY(on.turn2Back, turn2Bottom.y, 'below'))) contour(run, 'archTop');
-  for (const run of seen(on.turn2Front)) contour(run, 'archTop');
-  for (const run of seen(clipPolylineAtY(on.turn3Back, eyeBottom, 'below'))) contour(run, 'archTop');
-  for (const run of seen(on.turn3Front)) contour(run, 'archTop');
+  contour(on.turn1Front, 'scrollTurns');
+  for (const run of seen(clipPolylineAtY(on.turn2Back, turn2Bottom.y, 'below'))) contour(run, 'scrollTurns');
+  for (const run of seen(on.turn2Front)) contour(run, 'scrollTurns');
+  for (const run of seen(clipPolylineAtY(on.turn3Back, eyeBottom, 'below'))) contour(run, 'scrollTurns');
+  for (const run of seen(on.turn3Front)) contour(run, 'scrollTurns');
 
   // the hollow's mouth, each cheek's thickness in from the outside. It ends level where the side
   // view's hollow does, unless the volute hides it first, and then it is left open
@@ -234,14 +234,14 @@ export function scrollFrontViewStrokes(p: EnricoCerutiParams, place: (x: number,
   // each face runs in to the front of the turn outside it. The first turn has none outside it, so
   // its bottom runs right across, over the pegbox running in under it. The eye's top is behind the
   // last turn's front
-  face(crown.y, crown.x, null, 'scrollFrontLight');
-  face(turn1Bottom.y, turn1Bottom.x, null, 'scrollFrontLight');
-  face(turn2Top.y, turn2Top.x, halfWidthAtHeight(on.turn1Front, turn2Top.y), 'scrollFrontLight');
-  face(turn2Bottom.y, turn2Bottom.x, halfWidthAtHeight(on.turn1Front, turn2Bottom.y), 'scrollFrontLight');
-  face(turn3Top.y, turn3Top.x, halfWidthAtHeight(on.turn2Front, turn3Top.y), 'scrollFrontLight');
-  face(eyeBottom, eyeHalf, halfWidthAtHeight(on.turn2Front, eyeBottom), 'scrollFrontLight');
+  face(crown.y, crown.x, null, 'scrollWidthCrown');
+  face(turn1Bottom.y, turn1Bottom.x, null, 'scrollTurns');
+  face(turn2Top.y, turn2Top.x, halfWidthAtHeight(on.turn1Front, turn2Top.y), 'scrollTurns');
+  face(turn2Bottom.y, turn2Bottom.x, halfWidthAtHeight(on.turn1Front, turn2Bottom.y), 'scrollTurns');
+  face(turn3Top.y, turn3Top.x, halfWidthAtHeight(on.turn2Front, turn3Top.y), 'scrollTurns');
+  face(eyeBottom, eyeHalf, halfWidthAtHeight(on.turn2Front, eyeBottom), 'scrollTurns');
   // the eye stands out as a cylinder to the last width
-  for (const side of [1, -1]) line(place(side * eyeHalf, eyeBottom), place(side * eyeHalf, eyeTop), 'scrollFrontLight');
+  for (const side of [1, -1]) line(place(side * eyeHalf, eyeBottom), place(side * eyeHalf, eyeTop), 'scrollTurns');
   return strokes;
 }
 
