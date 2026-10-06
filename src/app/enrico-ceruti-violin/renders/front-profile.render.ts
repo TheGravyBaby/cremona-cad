@@ -1,57 +1,72 @@
 import { renderPath } from '../../helpers/renderFuncs';
 import { translatePath } from '../../helpers/math/pathMath';
 import { CerutiColors, EnricoCerutiParams, PathEntry } from '../ceruti-types';
-import { FrontProfileSolve, getPath, getPathOrNull, hasOuterTrace, topPlatePaths } from '../ceruti-calcs';
+import { FrontProfileSolve, getPath, getPathOrNull, hasOuterTrace, NeckProfileSolve, topPlatePaths } from '../ceruti-calcs';
 import { plateLayoutOffset } from '../ceruti-arch-geometry';
-import { renderFrontStroke, scrollFrontInPlan } from './scroll.render';
-import { defineFrontProfilePath, defineInnerPath } from '../ceruti-paths';
+import { renderScrollStroke, scrollBackInPlan, scrollFrontInPlan } from './scroll.render';
+import { defineBackNeckPath, defineFrontProfilePath, defineInnerPath, PlatePlan } from '../ceruti-paths';
 import { SolveFailure } from '../../helpers/validators';
 import { STROKE_WEIGHT } from './render-constants';
+
+type Layer = (g: any, ui: any) => void;
 
 // the rib outline as far as it's been drafted, in the trace grey, less the sections `failures` names.
 // The profile for the panels that draft the outline, where the purfling and anything past it would
 // be later work getting in the way of the shape being set.
-export function renderFrontInnerProfile(p: EnricoCerutiParams, colors: CerutiColors, failures: SolveFailure[] = []): Array<(g: any, ui: any) => void> {
+export function renderFrontInnerProfile(p: EnricoCerutiParams, colors: CerutiColors, failures: SolveFailure[] = []): Layer[] {
   const inner = defineInnerPath(p, failures.flatMap(f => f.unsolved));
   return inner ? [renderPath(inner, colors.innerTrace)] : [];
 }
 
-// the whole instrument as far as it's been solved, from the front, all in the trace grey: the inner
-// profile until the outer trace is reached with every section before it solved. After, the top
-// plate from the path cache `ensureFrontProfilePaths` fills, the neck laid over it once that solve
-// reached it, with the scroll's front view on its end once that's drawn. `fHoles: false` leaves the
-// holes to a panel that draws them itself.
-export function renderFrontProfile(
-  p: EnricoCerutiParams, paths: PathEntry[], colors: CerutiColors, solve: FrontProfileSolve = { failures: [], neck: false, scroll: false },
-  opts: { fHoles?: boolean } = {},
-): Array<(g: any, ui: any) => void> {
-  if (!getPathOrNull(paths, 'top') || !hasOuterTrace(p) || solve.failures.length) return renderFrontInnerProfile(p, colors, solve.failures);
-
-  let body = topPlatePaths(p, paths);
-  if (opts.fHoles === false) body = { ...body, fHoles: [] };
-  const front = solve.neck ? defineFrontProfilePath(p, body) : null;
-  if (front) body = front.body;
-
-  const layers = [renderPath(body.outline, colors.outerTrace)];
+// the top plate from its plan, the neck laid over it once the solve reached it and the scroll's front
+// on the neck's end once that's drawn, both in the trace grey. `weight` is the outline's; the
+// purfling is context at guide weight, the f-holes drawn as the caller says
+function renderTopPlate(p: EnricoCerutiParams, plan: PlatePlan, colors: CerutiColors, weight: number, holes: { ink: string; weight: number }, solve: NeckProfileSolve): Layer[] {
+  const front = solve.neck ? defineFrontProfilePath(p, plan) : null;
+  const body = front ? front.body : plan;
+  const layers = [renderPath(body.outline, colors.outerTrace, weight)];
   for (const d of body.purfling) layers.push(renderPath(d, colors.innerTrace, STROKE_WEIGHT.guide));
-  for (const d of body.fHoles) layers.push(renderPath(d, colors.outerTrace));
+  for (const d of body.fHoles) layers.push(renderPath(d, holes.ink, holes.weight));
   if (front) layers.push(renderPath(front.neck, colors.outerTrace), renderPath(front.nut, colors.outerTrace));
-  if (front && solve.scroll) for (const stroke of scrollFrontInPlan(p)) layers.push(renderFrontStroke(stroke, colors.outerTrace));
+  if (front && solve.scroll) for (const stroke of scrollFrontInPlan(p)) layers.push(renderScrollStroke(stroke, colors.outerTrace));
   return layers;
 }
 
+// the whole instrument as far as it's been solved, from the front: the inner profile until the
+// outer trace is reached with every section before it solved, and after that the top plate from the
+// path cache `ensureFrontProfilePaths` fills. `fHoles: false` leaves the holes to a panel that draws
+// them itself, `purfling: false` leaves the purfling off.
+export function renderFrontProfile(
+  p: EnricoCerutiParams, paths: PathEntry[], colors: CerutiColors, solve: FrontProfileSolve = { failures: [], neck: false, scroll: false },
+  opts: { fHoles?: boolean; purfling?: boolean } = {},
+): Layer[] {
+  if (!getPathOrNull(paths, 'top') || !hasOuterTrace(p) || solve.failures.length) return renderFrontInnerProfile(p, colors, solve.failures);
+  let plan = topPlatePaths(p, paths);
+  if (opts.fHoles === false) plan = { ...plan, fHoles: [] };
+  if (opts.purfling === false) plan = { ...plan, purfling: [] };
+  return renderTopPlate(p, plan, colors, STROKE_WEIGHT.trace, { ink: colors.outerTrace, weight: STROKE_WEIGHT.trace }, solve);
+}
+
 // both plates in plan from the path cache, for the panels that work on the plates themselves: the top
-// centred on x = 0 with its f-holes once placed, the back `plateLayoutOffset` to its left, each with
-// the purfling. `weight` is the outlines'; the purfling and holes are context at guide weight.
-export function renderPlatePair(p: EnricoCerutiParams, paths: PathEntry[], colors: CerutiColors, weight: number): Array<(g: any, ui: any) => void> {
-  const top = topPlatePaths(p, paths);
+// centred on x = 0, the back `plateLayoutOffset` to its left, each with the purfling. Given a solve
+// that reached the neck, each carries it: the front profile's on the top, and from behind the neck's
+// two sides out of the plate's edge with the scroll's back on their end. The plate panels don't ask
+// for it yet (2026-10-06, proven and parked). `weight` is the outlines'; the rest is context at
+// guide weight.
+export function renderPlatePair(p: EnricoCerutiParams, paths: PathEntry[], colors: CerutiColors, weight: number, solve: NeckProfileSolve = { neck: false, scroll: false }): Layer[] {
   const dx = plateLayoutOffset(p, 'bottom');
   const back = (d: string) => translatePath(d, dx, 0);
-  return [
-    renderPath(top.outline, colors.outerTrace, weight),
-    ...top.purfling.map(d => renderPath(d, colors.innerTrace, STROKE_WEIGHT.guide)),
-    ...top.fHoles.map(d => renderPath(d, colors.innerTrace, STROKE_WEIGHT.guide)),
-    renderPath(back(getPath(paths, 'back')), colors.outerTrace, weight),
+  const top = topPlatePaths(p, paths);
+  const backOutline = getPath(paths, 'back');
+  const layers = [
+    ...renderTopPlate(p, top, colors, weight, { ink: colors.innerTrace, weight: STROKE_WEIGHT.guide }, solve),
+    renderPath(back(backOutline), colors.outerTrace, weight),
     ...top.purfling.map(d => renderPath(back(d), colors.innerTrace, STROKE_WEIGHT.guide)),
   ];
+  if (solve.neck) {
+    const neck = defineBackNeckPath(p, backOutline);
+    if (neck) layers.push(renderPath(back(neck), colors.outerTrace));
+    if (solve.scroll) for (const stroke of scrollBackInPlan(p, dx)) layers.push(renderScrollStroke(stroke, colors.outerTrace));
+  }
+  return layers;
 }

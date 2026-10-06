@@ -67,8 +67,9 @@ export class FHolePlacementPanel extends CerutiPanelBase implements OnInit {
     p.fHoles ??= defaultFHolePlacement(p);
 
     // the instrument as far as it's been taken under the placement, the holes cut to their contours as
-    // placed. The neck and scroll are left off: here they took the eye off the holes (2026-10-06)
-    const renders: RenderLayer[] = [...renderFrontProfile(p, this.paths, this.colors, ensureFrontProfilePaths(p, this.paths, { neck: false }))];
+    // placed. The neck and scroll are left off: here they took the eye off the holes (2026-10-06).
+    // The rib outline is the line inside the edge wanted here, in the purfling's place
+    const renders: RenderLayer[] = [...renderFrontProfile(p, this.paths, this.colors, ensureFrontProfilePaths(p, this.paths, { neck: false }), { purfling: false })];
     const innerPath = getPathOrNull(this.paths, 'inner');
     if (innerPath) renders.push(renderPath(innerPath, this.colors.innerTrace, STROKE_WEIGHT.guide));
 

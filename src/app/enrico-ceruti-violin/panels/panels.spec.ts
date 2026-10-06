@@ -1,18 +1,20 @@
 import { TestBed } from '@angular/core/testing';
 import { maxRibTaperMm, ribHeightAt, solveRibTaper } from '../ceruti-arching';
-import { samplePathToPolyline, splineZAt, splitPathStrings } from '../../helpers/math/pathMath';
+import { samplePathToPolyline, splineZAt, splitPathStrings, translatePath } from '../../helpers/math/pathMath';
 import { recordLayers } from '../../helpers/layer-recorder';
 import { archedViolin, defaultViolin, templateKeys, templateViolin } from '../ceruti-fixtures';
 import { CerutiColors, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, DefaultParams, EnricoCerutiParams, PathEntry } from '../ceruti-types';
-import { ensureFrontProfilePaths } from '../ceruti-calcs';
+import { ensureFrontProfilePaths, getPath, solveNeckForProfile } from '../ceruti-calcs';
+import { plateLayoutOffset } from '../ceruti-arch-geometry';
+import { STROKE_WEIGHT } from '../renders/render-constants';
 import { sideViewOffsetX } from '../renders/body-section.render';
-import { defineFholePath, defineInnerPath, defineOuterPath, definePlacedSideScrollPath, definePurflingPath, mortiseFloorY, scrollOnNeck } from '../ceruti-paths';
+import { defineBackNeckPath, defineFholePath, defineInnerPath, defineOuterPath, definePlacedSideScrollPath, definePurflingPath, mortiseFloorY, scrollOnNeck } from '../ceruti-paths';
 import { applyMatrix } from '../../helpers/math/pathMath';
 import { vectorFromSlope } from '../../helpers/math/simpleGeometry';
 import { mortiseFingerboardIntersect, plateEdgeAtNeck } from '../ceruti-neck';
 import { defaultFHolePlacement, FHolePlacementPanel } from './f-hole-placement-panel/f-hole-placement-panel';
-import { renderFrontProfile } from '../renders/front-profile.render';
-import { scrollFrontInPlan } from '../renders/scroll.render';
+import { renderFrontProfile, renderPlatePair } from '../renders/front-profile.render';
+import { scrollBackInPlan, scrollBackViewStrokes, scrollFrontInPlan } from '../renders/scroll.render';
 import { CenterBoutPanel } from './center-bout-panel/center-bout-panel';
 import { CornersPanel } from './corners-panel/corners-panel';
 import { CrossArchingPanel } from './cross-arching-panel/cross-arching-panel';
@@ -1150,20 +1152,46 @@ describe('the scroll\'s front view on the front profile', () => {
     return { p, paths };
   };
 
-  it('projects each point onto the plan through the neck\'s tilt, its depth included', () => {
+  // the widths panel's drawing set on the neck, foreshortened by its tilt and nothing else: carrying
+  // each point's depth up the body landed the turns at different heights and pulled the drawing apart
+  it('sets the widths panel\'s view on the neck\'s end, foreshortened by its tilt, its depth ignored', () => {
     const { p } = necked();
     p.scroll = defaultVoluteParams(p);
     const v = p.scroll;
     const m = scrollOnNeck(p);
     const eyeSides = scrollFrontInPlan(p).filter(s => 'line' in s && s.line[0].x === s.line[1].x && Math.abs(Math.abs(s.line[0].x) - v.widths.eye / 2) < 1e-9);
     expect(eyeSides).toHaveLength(2);
-    const bottom = applyMatrix(m, new Pt(v.eye.x, v.eye.y - v.eye.r)).y;
-    const top = applyMatrix(m, new Pt(v.eye.x, v.eye.y + v.eye.r)).y;
+    const bottom = applyMatrix(m, new Pt(0, v.eye.y - v.eye.r)).y;
+    const top = applyMatrix(m, new Pt(0, v.eye.y + v.eye.r)).y;
     for (const s of eyeSides) {
       const [a, b] = (s as { line: [Pt, Pt] }).line;
       expect(a.y).toBeCloseTo(bottom, 9);
       expect(b.y).toBeCloseTo(top, 9);
     }
+  });
+
+  it('draws the back view on the back plate\'s neck, over its own centreline', () => {
+    const { p } = necked();
+    p.scroll = defaultVoluteParams(p);
+    const v = p.scroll;
+    const dx = -123;
+    const strokes = scrollBackInPlan(p, dx);
+    const eyeSides = strokes.filter(s => 'line' in s && s.line[0].x === s.line[1].x && Math.abs(Math.abs(s.line[0].x - dx) - v.widths.eye / 2) < 1e-9);
+    expect(eyeSides).toHaveLength(2);
+    const m = scrollOnNeck(p);
+    for (const s of eyeSides) {
+      const [a, b] = (s as { line: [Pt, Pt] }).line;
+      expect(a.y).toBeCloseTo(applyMatrix(m, new Pt(0, v.eye.y - v.eye.r)).y, 9);
+      expect(b.y).toBeCloseTo(applyMatrix(m, new Pt(0, v.eye.y + v.eye.r)).y, 9);
+    }
+    // the neck's sides the widths panel carries on below the nut are the profile's own here
+    const ys = (d: string) => [...d.matchAll(/[ML]\s*-?[\d.e-]+\s+(-?[\d.e-]+)/g)].map(mm => Number(mm[1]));
+    const stub = 2 * p.neck!.thickness;
+    const onPanel = scrollBackViewStrokes(p, (x, y) => new Pt(x, y), -stub).filter(s => s.ink === 'neckOff');
+    expect(onPanel).toHaveLength(2);
+    expect(onPanel.every(s => Math.min(...ys((s as { d: string }).d)) < 0)).toBe(true);
+    const inPlan = strokes.filter(s => s.ink === 'neckOff');
+    expect(inPlan.every(s => Math.min(...ys((s as { d: string }).d)) >= p.neck!.neckTop!.y - 1e-6)).toBe(true);
   });
 
   it('goes on the profile in grey once the scroll is started, and not before', () => {
@@ -1188,6 +1216,31 @@ describe('the scroll\'s front view on the front profile', () => {
     p.scroll = defaultVoluteParams(p);
     // in the side view the scroll's path takes the place of the wall across the nut, one for one
     expect(recordLayers(neck.buildRun()).elements.length).toBe(before + scrollFrontInPlan(p).length);
+  });
+
+  it('goes on the plate pair once asked for, the front view on the top and the back view on the back', () => {
+    const { p, paths } = necked();
+    const neckOnly = recordLayers(renderPlatePair(p, paths, colors, STROKE_WEIGHT.trace, solveNeckForProfile(p))).elements.length;
+    p.scroll = defaultVoluteParams(p);
+    const dx = plateLayoutOffset(p, 'bottom');
+    const withScroll = recordLayers(renderPlatePair(p, paths, colors, STROKE_WEIGHT.trace, solveNeckForProfile(p))).elements.length;
+    expect(withScroll - neckOnly).toBe(scrollFrontInPlan(p).length + scrollBackInPlan(p, dx).length);
+    // the plate panels don't ask for it yet
+    for (const instance of [panel(OuterTracePanel, p), panel(FlutingPanel, p)]) {
+      instance.paths = paths;
+      expect(recordLayers(instance.buildRun()).elements.some(el => el.attrs['d'] === translatePath(defineBackNeckPath(p, getPath(paths, 'back')), dx, 0))).toBe(false);
+    }
+  });
+
+  it('draws the neck on the back plate from the plate\'s edge, not from the mortise', () => {
+    const { p, paths } = necked();
+    const named = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
+    const dx = plateLayoutOffset(p, 'bottom');
+    const neck = recordLayers(renderPlatePair(p, paths, named, STROKE_WEIGHT.trace, solveNeckForProfile(p))).elements.find(el => el.attrs['d'] === translatePath(defineBackNeckPath(p, getPath(paths, 'back')), dx, 0));
+    expect(neck?.attrs['stroke']).toBe('outerTrace');
+    const ys = [...(neck!.attrs['d'] as string).matchAll(/[ML]\s*-?[\d.e-]+\s+(-?[\d.e-]+)/g)].map(m => Number(m[1]));
+    expect(Math.min(...ys)).toBeGreaterThan(mortiseFloorY(p) + p.neck!.mortiseDepth / 2);
+    expect(Math.max(...ys)).toBeCloseTo(p.neck!.neckTop!.y, 6);
   });
 });
 

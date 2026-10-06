@@ -8,7 +8,7 @@ import { calculateOuterArcs, ensureFholePath, ensureNeckPath, ensureOuterTracePa
 import { bridgeWedge, buttonTip, calculateNeck, defaultNeckParams, defaultStringSetup, fingerboardCrown, mortiseFingerboardIntersect, heelFace, heelStands, plateEdgeAtNeck, stringLength } from '../../ceruti-neck';
 import { defineFrontProfilePath, definePlacedSideScrollPath, fingerboardEnd, mortiseFloorY, scrollOnNeck } from '../../ceruti-paths';
 import { solveScrollForProfile } from '../../ceruti-scroll';
-import { renderFrontStroke, scrollFrontInPlan } from '../../renders/scroll.render';
+import { renderScrollStroke, scrollFrontInPlan } from '../../renders/scroll.render';
 import { renderBodySection, renderSideView } from '../../renders/body-section.render';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
@@ -270,7 +270,7 @@ function renderFrontView(p: EnricoCerutiParams, paths: PathEntry[], colors: Ceru
 
     renderPath(profile.neck, showFingerboard ? colors.fingerboard : colors.neckRoot, STROKE_WEIGHT.section)(g, ui);
     renderPath(profile.nut, colors.nut, STROKE_WEIGHT.section)(g, ui);
-    if (scroll) for (const stroke of scrollFrontInPlan(p)) renderFrontStroke(stroke, colors.outerTrace)(g, ui);
+    if (scroll) for (const stroke of scrollFrontInPlan(p)) renderScrollStroke(stroke, colors.outerTrace)(g, ui);
   };
 }
 
