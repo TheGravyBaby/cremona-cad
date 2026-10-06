@@ -27,7 +27,7 @@ import { NeckPanel } from './neck-panel/neck-panel';
 import { OuterTracePanel } from './outer-trace-panel/outer-trace-panel';
 import { ScrollPanel } from './scroll-panel/scroll-panel';
 import { ScrollWidthsPanel } from './scroll-widths-panel/scroll-widths-panel';
-import { defaultVoluteParams, duckTailRadius, pegboxHipHeight, pegboxWidth, scrollBackWidths, scrollExtent, scrollLines, scrollNeckHalfWidth, scrollPathStretches, scrollWidthStations, spiralArcs as styleArcs, VOLUTE_STYLE_LABELS } from '../ceruti-scroll';
+import { defaultVoluteParams, duckTailRadius, duckTailRoundTop, pegboxHipHeight, pegboxWidth, scrollBackWidths, scrollExtent, scrollLines, scrollNeckHalfWidth, scrollPathStretches, scrollWidthStations, spiralArcs as styleArcs, VOLUTE_STYLE_LABELS } from '../ceruti-scroll';
 import { VolutePanel } from './volute-panel/volute-panel';
 import { VoluteStyle } from '../ceruti-types';
 import { Circle, Pt } from '../../models/types';
@@ -655,23 +655,29 @@ describe('the scroll widths panel', () => {
     for (const pts of showing) expect(pts.length).toBeGreaterThan(3);
   });
 
-  it('draws shoulders where the neck is wider than the duck tail\'s round, from behind only, and none when as wide or narrower', () => {
+  it('draws level shoulders on the round\'s top from whichever of the hips and the neck stands wider than it, and none when all are as wide', () => {
     const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
     instance.buildRun();
     const p = instance.params;
     const v = p.scroll!;
-    const levelAtStart = (length: number) => recordLayers(instance.buildRun()).elements.filter(el => {
+    const levelAtStart = () => recordLayers(instance.buildRun()).elements.filter(el => {
       const start = scrollBackWidths(p)[0];
-      return el.tag === 'line' && el.attrs['y1'] === start.y && el.attrs['y2'] === start.y
-        && Math.abs(Math.abs((el.attrs['x1'] as number) - (el.attrs['x2'] as number)) - length) < 1e-9;
+      return el.tag === 'line' && el.attrs['y1'] === start.y && el.attrs['y2'] === start.y;
     });
-    const shoulders = () => levelAtStart(Math.abs(scrollNeckHalfWidth(p, scrollBackWidths(p)[0].y) - duckTailRadius(p)));
-    p.neck!.topWidth = v.widths.hip;
-    expect(shoulders()).toEqual([]);
-    p.neck!.topWidth = v.widths.hip - 4;
-    expect(shoulders()).toEqual([]);
-    p.neck!.topWidth = v.widths.hip + 4;
-    expect(shoulders()).toHaveLength(2);
+    const lengths = () => levelAtStart().map(el => Math.abs((el.attrs['x1'] as number) - (el.attrs['x2'] as number)));
+    // the hips kept on the round's top as the neck moves it
+    const neck = (width: number) => { p.neck!.topWidth = width; v.hipHeight = duckTailRoundTop(p); };
+    neck(v.widths.hip);
+    expect(levelAtStart()).toEqual([]);
+    // a neck narrower than the hips: the round is the neck's, and the cheeks' feet stand 2 proud of it
+    neck(v.widths.hip - 4);
+    expect(lengths().map(l => Math.round(l * 1e6) / 1e6)).toEqual([2, 2]);
+    // a neck wider than the hips: the round is the hips', and the neck stands proud of it
+    neck(v.widths.hip + 4);
+    const proud = scrollNeckHalfWidth(p, scrollBackWidths(p)[0].y) - duckTailRadius(p);
+    expect(proud).toBeGreaterThan(1);
+    for (const l of lengths()) expect(l).toBeCloseTo(proud, 9);
+    expect(lengths()).toHaveLength(2);
   });
 
   it('runs the front view down to the foot of the nut and closes it level there, whatever the duck tail', () => {
@@ -694,6 +700,9 @@ describe('the scroll widths panel', () => {
     instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
     instance.buildRun();
     instance.params.scroll!.fitToNut = false;
+    // a neck as wide as the hips makes the round the hips', the cheeks' feet hidden behind it
+    instance.params.neck!.topWidth = instance.params.scroll!.widths.hip;
+    instance.params.scroll!.hipHeight = duckTailRoundTop(instance.params);
     instance.buildRun();
     const v = instance.params.scroll!;
     // the back view stands left of the side view, the front view right of it
@@ -723,6 +732,39 @@ describe('the scroll widths panel', () => {
     instance.buildRun();
     expect(scrollBackWidths(p)[0].y).toBeLessThanOrEqual(0);
     expect(fromBehind()).toEqual([]);
+  });
+
+  it('draws the back\'s own cheeks down to hips set below the round\'s top, and a foot edge in to the round, instead of shoulders', () => {
+    const instance = panel(ScrollWidthsPanel as any, defaultViolin()) as unknown as ScrollWidthsPanel;
+    instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
+    instance.buildRun();
+    const p = instance.params;
+    const v = p.scroll!;
+    v.widths.hip = 46;
+    p.stringSetup!.nutWidth = 42;
+    p.neck!.topWidth = 33;
+    v.hipHeight = 0;
+    const drawn = recordLayers(instance.buildRun()).elements;
+    const roundTop = duckTailRoundTop(p);
+    expect(roundTop).toBeGreaterThan(0);
+    const points = (d: string) => [...d.matchAll(/(-?[\d.]+(?:e-?\d+)?) (-?[\d.]+(?:e-?\d+)?)/g)].map(m => new Pt(+m[1], +m[2]));
+    const fromBehind = drawn
+      .filter(el => el.tag === 'path' && el.attrs['stroke'] === 'archBack' && /^M -/.test(el.attrs['d'] as string))
+      .map(el => points(el.attrs['d'] as string));
+    const cheeks = fromBehind.filter(pts => pts.length === 2 && Math.abs(pts[0].y - roundTop) < 1e-6 && Math.abs(pts[1].y) < 1e-6);
+    expect(cheeks).toHaveLength(2);
+    const center = (cheeks[0][1].x + cheeks[1][1].x) / 2;
+    for (const [, hip] of cheeks) expect(Math.abs(hip.x - center)).toBeCloseTo(23, 6);
+    const r = duckTailRadius(p);
+    const flank = Math.sqrt(r * r - roundTop * roundTop);
+    const footEdges = fromBehind.filter(pts => pts.length === 2 && pts.every(pt => Math.abs(pt.y) < 1e-6));
+    expect(footEdges).toHaveLength(2);
+    for (const [corner, inner] of footEdges) {
+      expect(Math.abs(corner.x - center)).toBeCloseTo(23, 6);
+      expect(Math.abs(inner.x - center)).toBeCloseTo(flank, 6);
+    }
+    const shoulders = drawn.filter(el => el.tag === 'line' && el.attrs['y1'] === roundTop && el.attrs['y2'] === roundTop);
+    expect(shoulders).toEqual([]);
   });
 
   it('joins the neck to the front\'s walls from behind along the front\'s foot, in its colour, where the nut is wider than the neck', () => {

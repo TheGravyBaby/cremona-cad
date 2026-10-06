@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { calculateScroll, calculateScrollWidths, defaultVoluteParams, duckTailRadius, pegboxCavity, pegboxHipHeight, pegboxWidth, scrollBackWidths, scrollPathStretches, scrollFrontWidths, ScrollKey, scrollLines, scrollNeckHalfWidth, scrollWidthStations, spiralArcs, TO_FRONT, VoluteSpec, VOLUTE_STYLE_LABELS } from './ceruti-scroll';
+import { calculateScroll, calculateScrollWidths, defaultVoluteParams, duckTailRadius, duckTailRoundTop, pegboxCavity, pegboxHipHeight, pegboxWidth, scrollBackWidths, scrollPathStretches, scrollFrontWidths, ScrollKey, scrollLines, scrollNeckHalfWidth, scrollWidthStations, spiralArcs, TO_FRONT, VoluteSpec, VOLUTE_STYLE_LABELS } from './ceruti-scroll';
 import { voluteConstruction } from './renders/scroll.render';
 import { defaultNeckParams, defaultStringSetup } from './ceruti-neck';
 import { defaultViolin } from './ceruti-fixtures';
@@ -225,6 +225,44 @@ describe('the back and front off a salviati volute', () => {
     expect([v.S3.start, v.S3.end]).toEqual([0.2, 4 - Math.PI]);
   });
 
+  it('fits the nape as one circle through the duck tail, tangent to the neck\'s back, with no straight', () => {
+    const { p, v } = scrolled(style, 4, BACK);
+    v.napeCircle = true;
+    const [x, y] = at(v.S3, v.S3.start);
+    const gap = 10;
+    p.neck!.thickness = -(x + gap);
+    const neckBack = x + gap;
+    const fit = (r: number) => {
+      v.nape = new Arc(0, 0, r, 0, 0);
+      expect(unsolved(p)).toEqual([]);
+      expect(v.nape.x).toBeCloseTo(neckBack - r, 9);
+      expect(v.nape.start).toBe(0);
+      expect(at(v.nape, v.nape.end)).toEqual([x, y].map(c => expect.closeTo(c, 9)));
+      expect(dist(...scrollLines(p).square)).toBeCloseTo(0, 9);
+    };
+    // as wide as the gap: the square line's fillet with no straight, a quarter turn
+    fit(gap);
+    expect(v.nape.end).toBeCloseTo(Math.PI / 2, 9);
+    expect(v.nape.y).toBeCloseTo(y - gap, 9);
+    // tighter: rises off the duck tail before coming round, and meets the neck higher
+    fit(gap * 0.6);
+    expect(v.nape.end).toBeGreaterThan(Math.PI / 2);
+    expect(v.nape.y).toBeGreaterThan(y - gap);
+    fit(gap / 2);
+    expect(v.nape.end).toBeCloseTo(Math.PI, 9);
+    expect(v.nape.y).toBeCloseTo(y, 9);
+    // wider: meets the duck tail at an angle under a quarter turn, lower on the neck
+    fit(gap * 2);
+    expect(v.nape.end).toBeLessThan(Math.PI / 2);
+    expect(v.nape.y).toBeLessThan(y - gap);
+    // too tight to reach the neck's back, or a duck tail forward of it
+    v.nape = new Arc(0, 0, gap / 2 - 0.1, 0, 0);
+    expect(unsolved(p)).toEqual(['nape']);
+    v.nape = new Arc(0, 0, gap, 0, 0);
+    p.neck!.thickness = -(x - 1);
+    expect(unsolved(p)).toEqual(['nape']);
+  });
+
   it('leaves F1 unsolved when it never reaches the spiral, and stops the front at the first part that is no radius or length', () => {
     const { p, v } = scrolled(style, 4, BACK);
     const rise = withFront(p);
@@ -416,13 +454,14 @@ describe('the scroll widths', () => {
     expect(fields()).toEqual(seeded);
   });
 
-  it('brings the duck tail to the nut\'s lower edge, whatever S3\'s authored end angle, while fit to nut is on', () => {
+  it('brings the duck tail down to its hang below the nut\'s lower edge, whatever S3\'s authored end angle, while fit to nut is on', () => {
     const { p, v } = solved();
     v.fitToNut = true;
-    for (const start of [-0.4, 0.3, -2]) {
+    for (const hang of [0, 8]) for (const start of [-0.4, 0.3, -2]) {
+      v.hang = hang;
       v.S3 = new Arc(v.S3.x, v.S3.y, v.S3.r, start, v.S3.end);
       expect(calculateScroll(p)).toEqual([]);
-      expect(at(v.S3, v.S3.start)[1]).toBeCloseTo(0, 9);
+      expect(at(v.S3, v.S3.start)[1]).toBeCloseTo(-hang, 9);
       expect(v.S3.end - v.S3.start).toBeGreaterThan(0);
       expect(v.S3.end - v.S3.start).toBeLessThanOrEqual(2 * Math.PI);
     }
@@ -432,11 +471,15 @@ describe('the scroll widths', () => {
     expect(v.S3.start).toBe(-0.4);
   });
 
-  it('reports an S3 that never comes down to the nut', () => {
+  it('reports an S3 that never comes down to the nut, and a hang with no length', () => {
     const { p, v } = solved();
     v.fitToNut = true;
     v.S3 = new Arc(v.S3.x, v.S3.y, 0.5, v.S3.start, v.S3.end);
     expect(unsolved(p)).toEqual(['S3', 'nape']);
+    const { p: q, v: w } = solved();
+    w.fitToNut = true;
+    w.hang = -1;
+    expect(unsolved(q)).toEqual(['S3', 'nape']);
   });
 
   it('keeps the front down to the nut, the nape hung below the nut or not', () => {
@@ -450,20 +493,79 @@ describe('the scroll widths', () => {
     expect(v.nape.y + v.nape.r).toBeLessThan(0);
   });
 
-  it('starts the path at the hips, at the top of a duck tail round half as wide as they are', () => {
+  it('starts the path on top of a duck tail round as wide as the neck there, or as the hips when they are the narrower', () => {
     const { p, v } = solved();
-    const duckTail = at(v.S3, v.S3.start)[1];
-    const startsAtHips = () => {
-      expect(duckTailRadius(p)).toBe(v.widths.hip / 2);
-      expect(pegboxHipHeight(p)).toBeCloseTo(duckTail + duckTailRadius(p), 9);
-      expect(scrollBackWidths(p)[0].y).toBeCloseTo(pegboxHipHeight(p), 6);
-      expect(scrollBackWidths(p)[0].x).toBeCloseTo(v.widths.hip / 2, 6);
+    const startsOnRound = (radius: number) => {
+      const duckTail = at(v.S3, v.S3.start)[1];
+      expect(duckTailRadius(p)).toBeCloseTo(radius, 9);
+      expect(duckTailRoundTop(p)).toBeCloseTo(duckTail + radius, 9);
+      expect(scrollBackWidths(p)[0].y).toBeCloseTo(duckTailRoundTop(p), 6);
     };
-    startsAtHips();
-    // the neck has no say in the round
     v.widths.hip = 30;
     p.neck!.topWidth = 20;
-    startsAtHips();
+    startsOnRound(10);
+    p.neck!.topWidth = 34;
+    startsOnRound(15);
+  });
+
+  it('seeds the hips on the round\'s top, keeps them where they are put after, and never lets them below the duck tail', () => {
+    const { p, v } = solved();
+    expect(pegboxHipHeight(p)).toBeCloseTo(duckTailRoundTop(p), 9);
+    p.neck!.topWidth -= 4;
+    calculateScrollWidths(p);
+    expect(duckTailRoundTop(p)).toBeLessThan(pegboxHipHeight(p));
+    v.hipHeight = 3;
+    calculateScrollWidths(p);
+    expect(pegboxHipHeight(p)).toBe(3);
+    v.hipHeight = at(v.S3, v.S3.start)[1] - 5;
+    calculateScrollWidths(p);
+    expect(pegboxHipHeight(p)).toBeCloseTo(at(v.S3, v.S3.start)[1], 9);
+    delete (v as any).hipHeight;
+    calculateScrollWidths(p);
+    expect(pegboxHipHeight(p)).toBeCloseTo(duckTailRoundTop(p), 9);
+  });
+
+  it('holds the hips\' width down to the foot when they sit at or below the nut\'s top', () => {
+    const { p, v } = solved();
+    const { nutHeight } = p.stringSetup!;
+    v.widths.hip = 46;
+    p.stringSetup!.nutWidth = 42;
+    v.hipHeight = nutHeight;
+    for (const y of [0, nutHeight / 2, nutHeight]) expect(pegboxWidth(p, y)).toBe(46);
+    expect(pegboxWidth(p, nutHeight + 1)).toBeLessThan(46);
+    // hips on the foot taper from there, so the nut's top is already a touch narrower
+    v.hipHeight = 0;
+    expect(pegboxWidth(p, 0)).toBe(46);
+    expect(pegboxWidth(p, nutHeight)).toBeLessThan(46);
+    expect(pegboxWidth(p, nutHeight)).toBeGreaterThan(42);
+    v.hipHeight = nutHeight + 4;
+    expect(pegboxWidth(p, nutHeight)).toBe(42);
+    expect(pegboxWidth(p, nutHeight + 2)).toBe(44);
+  });
+
+  it('hangs a cello\'s duck tail below the nut, the round read off the neck down there, its top landing on the pegbox\'s foot when the hang is the round\'s radius', () => {
+    const { p, v } = solved();
+    const neck = p.neck!;
+    v.fitToNut = true;
+    v.widths.hip = 46;
+    neck.topWidth = 33;
+    neck.rootWidth = 40;
+    v.hang = 8;
+    expect(calculateScroll(p)).toEqual([]);
+    const duckTail = at(v.S3, v.S3.start)[1];
+    expect(duckTail).toBeCloseTo(-8, 9);
+    // the neck is wider at the duck tail than at the nut, so the round is a touch wider than the nut
+    const radius = scrollNeckHalfWidth(p, -8);
+    expect(radius).toBeGreaterThan(33 / 2);
+    expect(duckTailRadius(p)).toBeCloseTo(radius, 9);
+    expect(duckTailRoundTop(p)).toBeCloseTo(-8 + radius, 9);
+
+    // the hang the round's radius lands on, the neck widening under it as it drops
+    const taper = (neck.rootWidth - neck.topWidth) / neck.length;
+    v.hang = neck.topWidth / 2 / (1 - taper / 2);
+    expect(calculateScroll(p)).toEqual([]);
+    expect(duckTailRadius(p)).toBeCloseTo(v.hang, 9);
+    expect(duckTailRoundTop(p)).toBeCloseTo(0, 6);
   });
 
   it('runs the pegbox out from the nut to hips 34 wide at the round\'s top, then tapers it by height to the throat, back and front alike', () => {

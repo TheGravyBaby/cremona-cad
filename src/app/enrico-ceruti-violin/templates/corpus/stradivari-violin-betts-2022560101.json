@@ -529,6 +529,8 @@
       },
       "flushWithNeck": true,
       "fitToNut": true,
+      "hang": 0,
+      "napeCircle": false,
       "spiral": [
         {
           "x": -16.473333333333333,

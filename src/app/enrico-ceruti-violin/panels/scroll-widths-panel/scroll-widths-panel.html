@@ -18,6 +18,11 @@
             <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('hip')"
                 [(ngModel)]="w.hip" (input)="onChange()" (focus)="onPointFocus('hip')" (blur)="onPointBlur()" />
         </label>
+        <label class="field-cell">
+            <span class="field-title" title="Where the pegbox is widest, up from the nut's lower edge. 0 puts the hips on the pegbox's foot, as a cello's; a violin's sit on top of the duck tail's round. Never below the duck tail">Hip Y <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.5"
+                [(ngModel)]="v.hipHeight" (input)="onChange()" (focus)="onPointFocus('hip')" (blur)="onPointBlur()" />
+        </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">

@@ -585,6 +585,8 @@
       },
       "flushWithNeck": false,
       "fitToNut": true,
+      "hang": 0,
+      "napeCircle": false,
       "pitch": 8.2,
       "seedLength": 4.3,
       "arcRadii": [],
