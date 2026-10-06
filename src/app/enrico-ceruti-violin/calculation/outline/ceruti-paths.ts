@@ -608,6 +608,29 @@ export function defineButton(p: EnricoCerutiParams, offset?: number): { path: st
     return b ? { path: combinePathStrings(b.paths), cap: b.cap } : null;
 }
 
+// the flat across each corner's end on the outer path, bout side first; a viol corner has none
+export function outerCornerFlats(p: EnricoCerutiParams): { upper: [Pt, Pt] | null; lower: [Pt, Pt] | null } {
+    const inset = p.overhang + p.rib;
+    const c = p.outerCorners;
+    const upper: [Pt, Pt] | null = p.options.useViolCornerUC ? null : [
+        p.options.U31DoubleArc
+            ? pointOnCircle(offsetArcRadius(p.bouts.U31, -inset), c.U31!.end)
+            : pointOnCircle(offsetArcRadius(p.bouts.U3, -inset), c.U3.end),
+        p.options.C21DoubleArc
+            ? pointOnCircle(offsetArcRadius(p.bouts.C21, cornerOffsetSign(p, 'C2') * inset), c.C21!.end)
+            : pointOnCircle(offsetArcRadius(p.bouts.C2, cornerOffsetSign(p, 'C2') * inset), c.C2.end),
+    ];
+    const lower: [Pt, Pt] | null = p.options.useViolCornerLC ? null : [
+        p.options.C11DoubleArc
+            ? pointOnCircle(offsetArcRadius(p.bouts.C11, cornerOffsetSign(p, 'C1') * inset), c.C11!.end)
+            : pointOnCircle(offsetArcRadius(p.bouts.C1, cornerOffsetSign(p, 'C1') * inset), c.C1.end),
+        p.options.L31DoubleArc
+            ? pointOnCircle(offsetArcRadius(p.bouts.L31, -inset), c.L31!.end)
+            : pointOnCircle(offsetArcRadius(p.bouts.L3, -inset), c.L3.end),
+    ];
+    return { upper, lower };
+}
+
 // offset should be positive to go outside of the inner path,
 // but technically its up to the caller
 // this is technically an outer path function due to the corner logic
@@ -641,14 +664,9 @@ export function defineOuterPath(p: EnricoCerutiParams, offset?: number, closeArc
       ? pathFromCornerCubic(a1, a2, lcs)
       : pathFromLine(pointOnCircle(a1, a1.end), pointOnCircle(a2, a2.end));
 
-    if (closeArcs && !p.options.useViolCornerUC) {
-        const inset = p.overhang + p.rib;
-        const ucPt1 = p.options.U31DoubleArc
-            ? pointOnCircle(offsetArcRadius(p.bouts.U31, -inset), p.outerCorners.U31!.end)
-            : pointOnCircle(offsetArcRadius(p.bouts.U3, -inset), p.outerCorners.U3.end);
-        const ucPt2 = p.options.C21DoubleArc
-            ? pointOnCircle(offsetArcRadius(p.bouts.C21, cornerOffsetSign(p, 'C2') * inset), p.outerCorners.C21!.end)
-            : pointOnCircle(offsetArcRadius(p.bouts.C2, cornerOffsetSign(p, 'C2') * inset), p.outerCorners.C2.end);
+    const flats = outerCornerFlats(p);
+    if (closeArcs && flats.upper) {
+        const [ucPt1, ucPt2] = flats.upper;
 
         if (p.options.U31DoubleArc && p.options.C21DoubleArc) {
             const U31c = offsetArcRadius(p.bouts.U31, -offset);
@@ -684,14 +702,8 @@ export function defineOuterPath(p: EnricoCerutiParams, offset?: number, closeArc
         }
     }
 
-    if (closeArcs && !p.options.useViolCornerLC) {
-        const inset = p.overhang + p.rib;
-        const lcPt1 = p.options.C11DoubleArc
-            ? pointOnCircle(offsetArcRadius(p.bouts.C11, cornerOffsetSign(p, 'C1') * inset), p.outerCorners.C11!.end)
-            : pointOnCircle(offsetArcRadius(p.bouts.C1, cornerOffsetSign(p, 'C1') * inset), p.outerCorners.C1.end);
-        const lcPt2 = p.options.L31DoubleArc
-            ? pointOnCircle(offsetArcRadius(p.bouts.L31, -inset), p.outerCorners.L31!.end)
-            : pointOnCircle(offsetArcRadius(p.bouts.L3, -inset), p.outerCorners.L3.end);
+    if (closeArcs && flats.lower) {
+        const [lcPt1, lcPt2] = flats.lower;
 
         if (p.options.C11DoubleArc && p.options.L31DoubleArc) {
             const C11c = offsetArcRadius(p.bouts.C11, cornerOffsetSign(p, 'C1') * offset);

@@ -27,7 +27,7 @@ The folders are reading groups, not dependency layers — `ceruti-calcs` reaches
 | `templates/corpus/` | Instruments traced from open-licence museum records — one `.json` file each, listed in `templates/corpus/index.ts`. Same type as the templates above, but carrying a `TemplateMeta` and a per-image `ImageCredit` so the numbers and the pixels can each be rechecked. New instruments go here, not in `ceruti-templates.ts`. |
 | `templates/local/` | Gitignored developer scratch space — traces and theories with no provenance to check, never shipped, never swept by the suite. Shows up in the picker only on a local dev build. See that folder's `README.md`. |
 | `panels/` | One folder per sidebar panel. Panels are thin; see the layer rule in the root CLAUDE.md. `panels/field-info.ts` holds the `*Info()` help text behind each field's info button; `panels/render-toggles/` the strip of per-panel view toggles. |
-| `renders/` | Violin drawing several panels share. `front-profile.render.ts` is the instrument as far as it's been taken, see *The front profile* below; `body-section.render.ts` the side elevation both the long-arching and neck panels draw on; `render-constants.ts` the palette. A panel's own renders live in its panel file. |
+| `renders/` | Violin drawing several panels share. `front-profile.render.ts` is the instrument as far as it's been taken, see *The front profile* below; `body-side-profile.render.ts` the side elevation both the long-arching and neck panels draw on; `render-constants.ts` the palette. A panel's own renders live in its panel file. |
 
 `ceruti-calcs.ts` → `ceruti-paths.ts` is the 2D outline pipeline; `ceruti-arching.ts` →
 `ceruti-arch-geometry.ts` → `ceruti-surface.ts` is the 3D one. The split between the last two is

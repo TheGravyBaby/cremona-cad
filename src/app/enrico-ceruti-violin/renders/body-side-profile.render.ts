@@ -1,14 +1,17 @@
 import { Pt } from '../../models/types';
 import { renderPath, renderPointHalo, renderSegment, renderGuideBaseline, renderGuideKnot, renderGuideMeasure, STROKE_WEIGHT } from '../../helpers/renderFuncs';
 import { archSplineKnots } from '../../helpers/math/vibeMath';
+import { occludePath } from '../../helpers/math/pathVibes';
 import { ArchCurve, CerutiColors, EnricoCerutiParams, FlutingParams } from '../ceruti-types';
 import { ribHeightAt, ribLine, solveRibTaper, topPlatePlacement, buildArchPathFor, archGuideKnots } from '../calculation/arching/ceruti-arching';
 import { channelCapPath, LongArchSolve } from '../calculation/arching/ceruti-arch-geometry';
 import { defaultStringSetup } from '../calculation/neck/ceruti-neck';
+import { outerCornerFlats } from '../calculation/outline/ceruti-paths';
 import { HighlightedSplinePoint } from './render-constants';
 
-// the side elevation: the rib between the two plates, the top growing up off it and the back down.
-// Drawn by the long-arching panel on its own and by the neck panel as the ground the neck stands on
+// the body's side profile: the rib between the two plates, the top growing up off it and the back down.
+// Drawn by the long-arching panel cut down the centreline, and by the neck panels seen from the side
+// as the ground the neck stands on
 
 // left of the front profile, the bridge's top over the taller rib clearing the plan's widest point
 // by a quarter of the body's width. Read off the body and bridge height alone, so it sits in the
@@ -22,20 +25,25 @@ export function sideViewOffsetX(p: EnricoCerutiParams): number {
 
 export type Plate = 'top' | 'bottom';
 
-export interface BodySectionOptions {
+export interface BodySideProfileOptions {
   solved: Record<Plate, LongArchSolve | null>;
   gouge: Record<Plate, FlutingParams>;
   highlight?: (plate: Plate) => HighlightedSplinePoint | null;
   showGuides?: boolean;
+  // cut down the centreline so the channel shows, for the long arching panel; otherwise the plate's
+  // edge stands its full length and hides the channel and the arch below it
+  showChannel?: boolean;
   // one colour for the whole section, for a panel where the body is the ground rather than the subject
   color?: string;
 }
 
-export function renderBodySection(p: EnricoCerutiParams, colors: CerutiColors, opts: BodySectionOptions) {
+export function renderBodySideProfile(p: EnricoCerutiParams, colors: CerutiColors, opts: BodySideProfileOptions) {
   const taper = solveRibTaper(p);
   const rib = ribLine(p, taper);
   const placement = topPlatePlacement(p, taper);
   const paint = (c: string) => opts.color ?? c;
+  const { upper, lower } = opts.showChannel ? { upper: null, lower: null } : outerCornerFlats(p);
+  const flatEnds = [...(upper ?? []), ...(lower ?? [])].map(pt => pt.y);
   return (g: any, ui: any): void => {
     renderPath(
       `M 0 ${rib.yLow} L ${rib.zLow} ${rib.yLow} L ${rib.zHigh} ${rib.yHigh} L 0 ${rib.yHigh} Z`,
@@ -59,8 +67,8 @@ export function renderBodySection(p: EnricoCerutiParams, colors: CerutiColors, o
     platePart(g, ui, 'bottom');
   };
 
-  // no slab outline: over everything but the last few millimetres the plate's outer surface is the
-  // arch, and a rectangle at plate level would contradict the curve
+  // cut down the centreline there's no slab outline: over everything but the last few millimetres the
+  // plate's outer surface is the arch, and a rectangle at plate level would contradict the curve
   function platePart(g: any, ui: any, plate: Plate): void {
     const a = p.arching!;
     const isTop = plate === 'top';
@@ -76,21 +84,30 @@ export function renderBodySection(p: EnricoCerutiParams, colors: CerutiColors, o
     const landEdge = p.outerFlutingDepth ?? 0;
 
     renderSegment(new Pt(innerZ, 0), new Pt(innerZ, p.height), edge, STROKE_WEIGHT.guide)(g, ui);
-    for (const [yEnd, yLand] of [[0, landEdge], [p.height, p.height - landEdge]] as const) {
-      renderSegment(new Pt(innerZ, yEnd), new Pt(outerZ, yEnd), edge, STROKE_WEIGHT.guide)(g, ui);
-      renderSegment(new Pt(outerZ, yEnd), new Pt(outerZ, yLand), edge, STROKE_WEIGHT.guide)(g, ui);
+    const slab = `M ${innerZ} 0 L ${outerZ} 0 L ${outerZ} ${p.height} L ${innerZ} ${p.height} Z`;
+    if (opts.showChannel) {
+      for (const [yEnd, yLand] of [[0, landEdge], [p.height, p.height - landEdge]] as const) {
+        renderSegment(new Pt(innerZ, yEnd), new Pt(outerZ, yEnd), edge, STROKE_WEIGHT.guide)(g, ui);
+        renderSegment(new Pt(outerZ, yEnd), new Pt(outerZ, yLand), edge, STROKE_WEIGHT.guide)(g, ui);
+      }
+      // the channel is the tool, not a curve fitted to the arch, so it's the same at both caps
+      renderPath(channelCapPath(p, gouge, outerZ, sign, true, solved?.takeoff.contactS), channel, STROKE_WEIGHT.section)(g, ui);
+      renderPath(channelCapPath(p, gouge, outerZ, sign, false, solved?.farTakeoff.contactS), channel, STROKE_WEIGHT.section)(g, ui);
+    } else {
+      renderSegment(new Pt(innerZ, 0), new Pt(outerZ, 0), edge, STROKE_WEIGHT.guide)(g, ui);
+      renderSegment(new Pt(innerZ, p.height), new Pt(outerZ, p.height), edge, STROKE_WEIGHT.guide)(g, ui);
+      renderSegment(new Pt(outerZ, 0), new Pt(outerZ, p.height), color, STROKE_WEIGHT.section)(g, ui);
+      // where the corners' flats end on the outer path, across the edge
+      for (const y of flatEnds) renderSegment(new Pt(innerZ, y), new Pt(outerZ, y), edge, STROKE_WEIGHT.guide)(g, ui);
     }
-
-    // the channel is the tool, not a curve fitted to the arch, so it's the same at both caps
-    renderPath(channelCapPath(p, gouge, outerZ, sign, true, solved?.takeoff.contactS), channel, STROKE_WEIGHT.section)(g, ui);
-    renderPath(channelCapPath(p, gouge, outerZ, sign, false, solved?.farTakeoff.contactS), channel, STROKE_WEIGHT.section)(g, ui);
 
     if (!solved) return;
     const { span, yStart, lowered, takeoff, farZ } = solved;
     const xBase = outerZ - sign * takeoff.takeoffDepth;
 
     renderSplineHighlight(lowered, span, yStart, xBase, sign, opts.highlight?.(plate) ?? null)(g, ui);
-    renderPath(buildArchPathFor(lowered, span, yStart, xBase, sign, farZ), color, STROKE_WEIGHT.section)(g, ui);
+    const arch = buildArchPathFor(lowered, span, yStart, xBase, sign, farZ);
+    renderPath(opts.showChannel ? arch : occludePath(arch, slab).visible, color, STROKE_WEIGHT.section)(g, ui);
 
     if (opts.showGuides) {
       const authored = isTop ? a.top.arch : a.bottom.arch;

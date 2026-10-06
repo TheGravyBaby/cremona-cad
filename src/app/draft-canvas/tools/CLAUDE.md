@@ -66,7 +66,8 @@ Most files here carry a header comment explaining their own contract. Read it be
   batten's pins — kept true through transforms, so the settings bar can reshape it and a batten's
   pins are its handles. `pathFromSource` is the one way back to `d`.
 - **`snap-engine.ts`** — indexes snap candidates by reading the *rendered SVG*, not recipe data,
-  so it works for any recipe and for toolbox shapes alike. An on-path snap is the exact closest
+  so it works for any recipe and for toolbox shapes alike. It composes the `transform`s of the
+  groups between an element and the layer, as `scene-index.ts` does. An on-path snap is the exact closest
   point of the curve: the 2 mm samples only find the neighbourhood, and the winner is refined by
   arc length before the tolerance is applied. Kept in two parts, the recipe's and the
   toolbox's, each re-sampled only when the canvas redraws that group — see the `layers` field in
