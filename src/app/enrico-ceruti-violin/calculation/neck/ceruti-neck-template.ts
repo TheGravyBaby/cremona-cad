@@ -1,9 +1,9 @@
-import { angleFromCenter, angleWithinSweep, dist, normalizeRadians, pointOnCircle, TURN } from '../helpers/math/simpleGeometry';
-import { arcPathData, combinePathStrings, pathFromArc, pathFromCircle, pathFromLine, samplePathToPolyline, transformPath, unifyConnectedSvgPaths } from '../helpers/math/pathMath';
-import { Arc, Pt } from '../models/types';
-import { EnricoCerutiParams } from './ceruti-types';
+import { angleFromCenter, angleWithinSweep, dist, normalizeRadians, pointOnCircle, TURN } from '../../../helpers/math/simpleGeometry';
+import { arcPathData, combinePathStrings, pathFromArc, pathFromCircle, pathFromLine, samplePathToPolyline, transformPath, unifyConnectedSvgPaths } from '../../../helpers/math/pathMath';
+import { Arc, Pt } from '../../../models/types';
+import { EnricoCerutiParams } from '../../ceruti-types';
 import { heelFace, heelStands, mortiseFingerboardIntersect } from './ceruti-neck';
-import { mortiseFloorY, scrollOnNeck } from './ceruti-paths';
+import { mortiseFloorY, scrollOnNeck } from '../outline/ceruti-paths';
 
 // The neck and scroll template, in the side elevation's frame: the outline as one closed loop, neck
 // foot to duck tail, and the volute inside it as a stencil. A template has to hold together, so the

@@ -4,10 +4,10 @@ import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { applyTransforms, ColorTransform, renderSolveFailures } from '../helpers/renderFuncs';
 import { clampParam, safeRun } from '../helpers/validators';
 import { CerutiColors, CerutiPanelId, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, EnricoCerutiTemplate, EnricoCerutiParams, PanelRenderRequest, RenderToggleKey } from './ceruti-types';
-import { CERUTI_TEMPLATES } from './ceruti-templates';
+import { CERUTI_TEMPLATES } from './templates/ceruti-templates';
 import { isLocSourced } from './templates/corpus';
 import { LOCAL_TEMPLATES } from './templates/local/generated-index';
-import { calculateMainBouts, ensureFrontProfilePaths, hasCenterBout, hasCorners, hasMainBouts } from './ceruti-calcs';
+import { calculateMainBouts, ensureFrontProfilePaths, hasCenterBout, hasCorners, hasMainBouts } from './calculation/outline/ceruti-calcs';
 import { renderFrontProfile } from './renders/front-profile.render';
 import { renderBounds } from './renders/guides.render';
 import {
@@ -15,7 +15,7 @@ import {
   LIGHT_SATURATE_DEGREE, OFF2_FACTOR, OFF_FACTOR,
 } from './renders/render-constants';
 import { PANEL_KEY, RECIPE_KEY, readWorkingState, writeWorkingState } from '../helpers/workingStorage';
-import { dimensionInfo, insetInfo } from './ceruti-toasts';
+import { dimensionInfo, insetInfo } from './panels/field-info';
 import { MainBoutsPanel } from './panels/main-bouts-panel/main-bouts-panel';
 import { CornersPanel } from './panels/corners-panel/corners-panel';
 import { CenterBoutPanel } from './panels/center-bout-panel/center-bout-panel';
@@ -32,7 +32,7 @@ import { ScrollWidthsPanel } from './panels/scroll-widths-panel/scroll-widths-pa
 import { VolutePanel } from './panels/volute-panel/volute-panel';
 import { ExportPanel } from './panels/export-panel/export-panel';
 import { RecipeToolbarComponent } from '../recipe-toolbar/recipe-toolbar';
-import { RenderToggles } from './render-toggles/render-toggles';
+import { RenderToggles } from './panels/render-toggles/render-toggles';
 import { NumberStepperDirective } from '../shared/number-stepper';
 
 @Component({

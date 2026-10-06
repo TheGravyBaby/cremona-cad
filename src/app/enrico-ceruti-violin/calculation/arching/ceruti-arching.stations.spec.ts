@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { normalizeCrossArchStations, STATION_MERGE_EPS_MM } from './ceruti-arching';
-import { CrossArchCycloid } from './ceruti-types';
+import { CrossArchCycloid } from '../../ceruti-types';
 
 // `normalizeCrossArchStations` is generic over `{ y: number }`, and the crown
 // resolver, `nearestCrossArchShape` and the template station list all lean on

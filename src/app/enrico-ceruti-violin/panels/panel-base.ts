@@ -40,7 +40,7 @@ export abstract class CerutiPanelBase {
   }
 
   /**
-   * Public entry point for the view-toggle bar (see render-toggles.ts), which lives outside
+   * Public entry point for the view-toggle bar (see render-toggles/), which lives outside
    * this panel and mutates `flags` directly rather than through an `@Input` change — a toggle
    * click is exactly the kind of thing the user is watching happen live, so it redraws through
    * `emitImmediate` rather than `onChange()`'s debounced path.

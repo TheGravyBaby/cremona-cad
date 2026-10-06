@@ -1,14 +1,14 @@
-import { circleCircleIntersections, inscribeCircleWithinCircle, interceptCirclesAndPoint, interceptCirclesAndPointCompound, solveTangentCircleAndLine, filletRightAngleCorner } from "../helpers/math/draftMath";
-import { angleFromCenter, dist, pointOnCircle, offsetArcRadius, flipRectAboutY, lineCircleIntersection, lineCircleIntersectionWithTolerance, lineFromPointAndSlope, lineFromTwoPoints, moveInVectorSpace, placeCircleOnPointAtAngle, redefineArcCircle, tangentUnitVectorFromLine, TURN, vectorFromSlope } from "../helpers/math/simpleGeometry";
-import { pathFromRoundedRect, pathFromCircle, pathFromRect, combinePathStrings, differenceFromManyPaths, intersectionFromTwoPaths, translatePath, mirroredLoop, splitPathStrings } from "../helpers/math/pathMath";
-import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Line, Pt, Rectangle } from "../models/types";
-import { error } from "../shared/message-emitter";
-import { reportFailures, SolveFailure, solveSection } from "../helpers/validators";
-import { DefaultParams, EnricoCerutiParams, PathEntry, PathKey } from "./ceruti-types";
+import { circleCircleIntersections, inscribeCircleWithinCircle, interceptCirclesAndPoint, interceptCirclesAndPointCompound, solveTangentCircleAndLine, filletRightAngleCorner } from "../../../helpers/math/draftMath";
+import { angleFromCenter, dist, pointOnCircle, offsetArcRadius, flipRectAboutY, lineCircleIntersection, lineCircleIntersectionWithTolerance, lineFromPointAndSlope, lineFromTwoPoints, moveInVectorSpace, placeCircleOnPointAtAngle, redefineArcCircle, tangentUnitVectorFromLine, TURN, vectorFromSlope } from "../../../helpers/math/simpleGeometry";
+import { pathFromRoundedRect, pathFromCircle, pathFromRect, combinePathStrings, differenceFromManyPaths, intersectionFromTwoPaths, translatePath, mirroredLoop, splitPathStrings } from "../../../helpers/math/pathMath";
+import { Arc, arcFromCircle, arcFromCircleAndPoints, Circle, Line, Pt, Rectangle } from "../../../models/types";
+import { error } from "../../../shared/message-emitter";
+import { reportFailures, SolveFailure, solveSection } from "../../../helpers/validators";
+import { DefaultParams, EnricoCerutiParams, PathEntry, PathKey } from "../../ceruti-types";
 import { cornerOffsetSign, defaultButton, defineFholePath, defineInnerPath, defineOuterPath, definePurflingPath, defineOuterPurflingPath, PlatePlan } from "./ceruti-paths";
-import { calculateNeck, defineNeckPath } from "./ceruti-neck";
-import { solveScrollForProfile } from "./ceruti-scroll";
-import { LongArchSolve, solveLongArch } from "./ceruti-arch-geometry";
+import { calculateNeck, defineNeckPath } from "../neck/ceruti-neck";
+import { solveScrollForProfile } from "../neck/ceruti-scroll";
+import { LongArchSolve, solveLongArch } from "../arching/ceruti-arch-geometry";
 
 // ===== Outline solvers =====
 // Solve where the violin body's bouts/corners/center-bout arcs actually sit.

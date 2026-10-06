@@ -3,8 +3,8 @@ import {
   defaultArchingParams, maxRibTaperMm, ribHeightAt, solveRibTaper,
 } from './ceruti-arching';
 import { buildPlateSurfaceModel } from './ceruti-surface';
-import { templateViolin } from './ceruti-fixtures';
-import { ArchingParams, EnricoCerutiParams } from './ceruti-types';
+import { templateViolin } from '../../ceruti-fixtures';
+import { ArchingParams, EnricoCerutiParams } from '../../ceruti-types';
 
 const BODY = 355;
 const OVERHANG = 3;

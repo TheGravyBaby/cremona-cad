@@ -12,6 +12,12 @@ export function clamp(v: number, min: number, max: number): number {
   return Math.min(Math.max(v, min), max);
 }
 
+// hermite ease from 0 at `lo` to 1 at `hi`, flat at both ends
+export function smoothstep(v: number, lo: number, hi: number): number {
+  const k = clamp((v - lo) / (hi - lo), 0, 1);
+  return k * k * (3 - 2 * k);
+}
+
 /** Wraps a degree value into [0, 360). */
 export function normalizeDegrees(deg: number): number {
   const v = deg % 360;
@@ -30,6 +36,11 @@ export function normalizeRadians(rad: number): number {
 export function signedDegreeDelta(deg: number): number {
   const v = normalizeDegrees(deg);
   return v >= 180 ? v - 360 : v;
+}
+
+// the radian twin: a difference wrapped into [-π, π), the signed shortest way round
+export function signedRadianDelta(rad: number): number {
+  return Math.atan2(Math.sin(rad), Math.cos(rad));
 }
 
 // ===== Points =====

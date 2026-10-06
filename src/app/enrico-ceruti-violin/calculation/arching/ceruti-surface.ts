@@ -1,16 +1,16 @@
 import * as d3 from 'd3';
 import * as polygonClipping from 'polygon-clipping';
-import { Pt } from '../models/types';
+import { Pt } from '../../../models/types';
 // polygon-clipping ships as either an ESM default or a CJS namespace depending on bundler.
 const polyClipper: any = (polygonClipping as any).default ?? polygonClipping;
-import { clamp } from '../helpers/math/simpleGeometry';
-import { buildPolylineIndex, closestPointToPolylineIndexed, PolylineIndex } from '../helpers/math/vibeMath';
-import { buildHeightFieldStl } from '../helpers/stlExporter';
+import { clamp } from '../../../helpers/math/simpleGeometry';
+import { buildPolylineIndex, closestPointToPolylineIndexed, PolylineIndex } from '../../../helpers/math/vibeMath';
+import { buildHeightFieldStl } from '../../../helpers/stlExporter';
 import {
     closeProfileToBlank, pathsBounds, rotatePath180, samplePathToPolyline, translatePath,
-} from '../helpers/math/pathMath';
-import { ArchCurve, ArchPlate, EnricoCerutiParams } from './ceruti-types';
-import { defineInsetPath, defineOuterPath } from './ceruti-paths';
+} from '../../../helpers/math/pathMath';
+import { ArchCurve, ArchPlate, EnricoCerutiParams } from '../../ceruti-types';
+import { defineInsetPath, defineOuterPath } from '../outline/ceruti-paths';
 import {
     buildPlateGeometry, defaultCrossArchParams, defaultFlutingParams,
     chordTrust, cornerSmoothZ, gougeAtY, CrossArchSection, crossArchSectionAt,

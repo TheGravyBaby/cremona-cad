@@ -13,16 +13,16 @@ import {
 import {
   bodyLandmarks, contourSampleSteps, defaultArchingParams, ribHeightAt, solveRibTaper,
   splinePeakRow, STATION_MARGIN_MM, STATION_MERGE_EPS_MM, wireframeSampleSteps,
-} from '../../ceruti-arching';
+} from '../../calculation/arching/ceruti-arching';
 import {
   defaultCrossArchCatenaryShape, defaultCrossArchCycloidParams, defaultCrossArchParams,
   defaultCrossArchSplineParams, defaultFlutingParams, CrossArchSection, CYCLOID_MAX_PCT,
   crossArchGuide, crossArchKnotX, crossArchSectionAt, nearestCrossArchShape,
-} from '../../ceruti-arch-geometry';
+} from '../../calculation/arching/ceruti-arch-geometry';
 import {
   ArchContourLevel, buildPlateSurfaceModel, buildPlateStl, computeArchContourRings, plateHalfChordAtY,
   PlateSurfaceModel, sampleArchSectionRuns,
-} from '../../ceruti-surface';
+} from '../../calculation/arching/ceruti-surface';
 import { downloadStlFile } from '../../../helpers/stlExporter';
 import { STROKE_WEIGHT } from '../../renders/render-constants';
 import {
@@ -33,13 +33,12 @@ import {
   renderArch3dWireframe, WireframeGeometry,
 } from '../../renders/arch-3d-wireframe.render';
 import { renderGuideBaseline, renderGuideKnot, renderGuideMeasure } from '../../renders/module-guide.render';
-import { renderWireframeDragFrame } from '../../renders/wireframe-drag-frame.render';
-import { calculateOuterArcs } from '../../ceruti-calcs';
-import { defineInnerPath, defineOuterPath } from '../../ceruti-paths';
+import { calculateOuterArcs } from '../../calculation/outline/ceruti-calcs';
+import { defineInnerPath, defineOuterPath } from '../../calculation/outline/ceruti-paths';
 import {
   archContoursInfo, crossSectionStationInfo, crossArchCurveTypeInfo, crossArchCycloidControlsInfo,
   crossArchPeakInfo, crossArchStationInfo, crossArchTemplateInfo, transitionError,
-} from '../../ceruti-toasts';
+} from '../field-info';
 import { CrossArchingRotationController } from './cross-arching-rotation-controller';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
@@ -47,6 +46,32 @@ import { applyRowMove, RowMove, RowReorderDirective } from '../../../shared/row-
 
 /** Range-thumb width, in the px the browser actually draws it — see `stationLandmarks`. */
 const TICK_THUMB_PX = 14;
+
+// the drag-to-rotate hit frame around the active plate's 3D view. It only starts the drag: the
+// canvas rebuilds this element every rotation tick, so the move/up listeners live on the window
+function renderWireframeDragFrame(
+  bounds: { minX: number; minY: number; maxX: number; maxY: number },
+  colors: CerutiColors,
+  dragging: boolean,
+  onPointerDown: (event: PointerEvent) => void,
+): RenderLayer {
+  return (g: any): void => {
+    const pad = 4;
+    g.append('rect')
+      .attr('x', bounds.minX - pad)
+      .attr('y', bounds.minY - pad)
+      .attr('width', (bounds.maxX - bounds.minX) + pad * 2)
+      .attr('height', (bounds.maxY - bounds.minY) + pad * 2)
+      .attr('fill', 'transparent')
+      .attr('stroke', colors.mouldTrace)
+      .attr('stroke-width', STROKE_WEIGHT.guide)
+      .attr('stroke-dasharray', '4 3')
+      .attr('vector-effect', 'non-scaling-stroke')
+      .style('pointer-events', 'all')
+      .style('cursor', dragging ? 'grabbing' : 'grab')
+      .on('pointerdown', onPointerDown);
+  };
+}
 
 /** One plate's cached geometry, held until something that plate can see changes. */
 interface PlateCache {

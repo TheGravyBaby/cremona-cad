@@ -1,4 +1,4 @@
-import { Pt, Circle } from "../../models/types";
+import { Pt, Pt3D, Circle } from "../../models/types";
 import { TURN, normalizeRadians, clamp, closestPointOnSegment, cubicBezierPoint } from "./simpleGeometry";
 import { arcTangentToLine, arcBetweenTravels } from "./draftMath";
 
@@ -362,6 +362,34 @@ export function slicePolyline(poly: Pt[], cum: number[], a: number, b: number): 
   return b < a ? out.reverse() : out;
 }
 
+// the part of a polyline at or above height y, or at or below it, with the crossing interpolated in
+export function clipPolylineAtY(pts: Pt3D[], y: number, keep: 'above' | 'below'): Pt3D[] {
+  const kept = (pt: Pt3D) => keep === 'above' ? pt.y >= y : pt.y <= y;
+  const out: Pt3D[] = [];
+  for (let k = 0; k < pts.length; k++) {
+    const pt = pts[k];
+    const last = pts[k - 1];
+    if (last && kept(last) !== kept(pt)) {
+      const t = (y - last.y) / (pt.y - last.y);
+      out.push(new Pt3D(last.x + (pt.x - last.x) * t, y, last.z + (pt.z - last.z) * t));
+    }
+    if (kept(pt)) out.push(pt);
+  }
+  return out;
+}
+
+// where a polyline first passes height y, or null where it never does
+export function polylinePointAtY(pts: Pt3D[], y: number): Pt3D | null {
+  for (let k = 1; k < pts.length; k++) {
+    const a = pts[k - 1];
+    const b = pts[k];
+    if (a.y === b.y || (a.y - y) * (b.y - y) > 0) continue;
+    const t = (y - a.y) / (b.y - a.y);
+    return new Pt3D(a.x + (b.x - a.x) * t, y, a.z + (b.z - a.z) * t);
+  }
+  return null;
+}
+
 // ===== Curve math =====
 
 /**
@@ -699,4 +727,38 @@ export function rayPolylineIntersection(from: Pt, angle: number, polyline: Pt[])
     hit = { point: { x: from.x + dx * alongRay, y: from.y + dy * alongRay }, index: i };
   }
   return hit;
+}
+
+// ===== Oblique projection =====
+
+// an orthographic view of x, y, z points rotated about `yPivot` on the y axis, Z then X then Y, the
+// three matrices pre-multiplied into two rows so a point costs six multiplies. At zero rotation it is
+// the plan view. zAmp is folded into the matrix so the three rotations stay geometrically coherent
+export function buildProjection(
+  yOffset: number, yPivot: number,
+  rotXDeg: number, rotYDeg: number, rotZDeg: number,
+  zAmp = 1, xOffset = 0,
+): (x: number, y: number, z: number) => [number, number] {
+  const rx = rotXDeg * TURN.degree, ry = rotYDeg * TURN.degree, rz = rotZDeg * TURN.degree;
+  const cx = Math.cos(rx), sx = Math.sin(rx);
+  const cy = Math.cos(ry), sy = Math.sin(ry);
+  const cz = Math.cos(rz), sz = Math.sin(rz);
+
+  // rows 0 and 1 of Ry * Rx * Rz; row 2 is depth and drops out of an orthographic view
+  const m00 =  cy * cz + sy * sz * sx;
+  const m01 = -cy * sz + sy * cz * sx;
+  const m02 =  sy * cx * zAmp;
+  const m10 =  sz * cx;
+  const m11 =  cz * cx;
+  const m12 = -sx * zAmp;
+
+  const yCenter = yOffset + yPivot;
+
+  return (x: number, y: number, z: number): [number, number] => {
+    const py = y - yPivot;
+    return [
+      xOffset + m00 * x + m01 * py + m02 * z,
+      yCenter + m10 * x + m11 * py + m12 * z,
+    ];
+  };
 }

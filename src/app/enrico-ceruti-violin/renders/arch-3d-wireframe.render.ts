@@ -1,28 +1,19 @@
-/**
- * Orthographic wireframe of the top-plate arch surface, sliced into cross-section strips
- * every `stationStepMm` and projected via the shared oblique projection (oblique-projection.ts).
- *
- * Split so rotation stays cheap: computeWireframeGeometry samples the surface and depends
- * only on params, so cache it against `JSON.stringify(params)`; projectWireframe turns
- * cached geometry into SVG paths for one set of rotation angles and is cheap enough to run
- * every redraw.
- */
+// the plate's surface as cross-section strips every `stationStepMm`, through the oblique projection.
+// Sampling the surface is the expensive part and depends on params alone, so computeWireframeGeometry
+// is cached by the panel and projectWireframe reruns on every rotation tick
 
 import { CerutiColors, EnricoCerutiParams } from '../ceruti-types';
-import { PlateSurfaceModel, StationChords, stationChordsAt, topSurfaceZAt } from '../ceruti-surface';
-import { buildProjection } from './oblique-projection';
+import { PlateSurfaceModel, StationChords, stationChordsAt, topSurfaceZAt } from '../calculation/arching/ceruti-surface';
+import { buildProjection } from '../../helpers/math/vibeMath';
 import { STROKE_WEIGHT } from './render-constants';
 
 export interface WireframeStrip {
-  /** pre-projected SVG path for this strip. */
   path: string;
-  /** max z across the strip — used to pick channel vs. dome colour. */
+  // picks channel colour against dome colour
   maxZ: number;
-  /** body-y of this station. */
   y: number;
 }
 
-/** Unprojected cross-section strip: surface samples in violin coordinates. */
 export interface WireframeStripGeom {
   y: number;
   xs: number[];
@@ -30,10 +21,8 @@ export interface WireframeStripGeom {
   maxZ: number;
 }
 
-/** One longitudinal rib vertex in violin coordinates. */
 interface RibPt { x: number; y: number; z: number; }
 
-/** Rotation-independent wireframe geometry — the cacheable, expensive part. */
 export interface WireframeGeometry {
   strips: WireframeStripGeom[];
   ribs: RibPt[][];
@@ -85,7 +74,7 @@ export function computeWireframeGeometry(
   for (let y = 0; y <= p.height; y += stationStepMm) {
     const chords = stationChordsAt(p, model, y);
     if (chords.outerHalf === null) {
-      // A gap station restarts every rib run, matching the strip coverage.
+      // a gap station restarts every rib run, matching the strip coverage
       for (const rib of ribs) rib.length = 0;
       continue;
     }
@@ -126,8 +115,7 @@ export function projectWireframe(
   xOffset = 0,
   signZ: 1 | -1 = 1,
 ): { strips: WireframeStrip[]; ribs: string[] } {
-  // signZ folds the back plate's height field downward; xOffset sits its
-  // wireframe beside the top plate's on the shared canvas.
+  // signZ folds the back plate's height field downward
   const proj = buildProjection(yOffset, bodyHeight / 2, rotXDeg, rotYDeg, rotZDeg, zAmp * signZ, xOffset);
 
   const strips = geom.strips.map(strip => projectStripGeom(strip, proj));
@@ -141,12 +129,7 @@ export function projectWireframe(
   return { strips, ribs };
 }
 
-/**
- * Axis-aligned bounding box of the projected wireframe, in the same world
- * coordinates as `projectWireframe`'s output. Used to size the drag-to-rotate
- * hit frame so it tracks rotation exactly (a tilted wireframe's screen
- * footprint grows/shrinks), without needing a second, approximate estimate.
- */
+// sizes the drag-to-rotate hit frame, so it tracks the tilted footprint exactly
 export function computeWireframeBounds(
   geom: WireframeGeometry,
   bodyHeight: number,
@@ -195,9 +178,6 @@ export function computeSingleWireframeStrip(
   return projectStripGeom(strip, proj);
 }
 
-// pre-computed geometry only — this just writes SVG paths, kept fast for station-slider drags.
-// regular strips draw first; without a fill their order among themselves doesn't matter, but the
-// highlighted strip draws last so it's always on top.
 export function renderArch3dWireframe(
   colors: CerutiColors,
   strips: WireframeStrip[],
@@ -206,7 +186,6 @@ export function renderArch3dWireframe(
   domeColor: string = colors.archTop,
 ): (g: any, ui: any) => void {
   return (g: any, ui: any): void => {
-    // longitudinal ribs — faint background context, thinner than a regular strip.
     for (const rib of ribs) {
       g.append('path')
         .attr('d', rib)
@@ -230,8 +209,7 @@ export function renderArch3dWireframe(
         .attr('vector-effect', 'non-scaling-stroke');
     }
 
-    // highlighted station (current cross-section from the section view below) — matches
-    // STROKE_WEIGHT.section, the weight the same station is drawn at in the 2D section view.
+    // the cursor's station, last so it sits on top, at the weight the section view draws it
     if (highlightedStrip) {
       g.append('path')
         .attr('d', highlightedStrip.path)

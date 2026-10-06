@@ -1,5 +1,5 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { CerutiViewFlags, RenderToggleKey } from '../ceruti-types';
+import { CerutiViewFlags, RenderToggleKey } from '../../ceruti-types';
 
 @Component({
   selector: 'app-ceruti-render-toggles',

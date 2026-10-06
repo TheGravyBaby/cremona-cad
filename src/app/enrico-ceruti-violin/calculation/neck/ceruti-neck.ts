@@ -1,14 +1,14 @@
-import { Arc, arcFromCircle, Circle, Pt, Vect2D } from '../models/types';
+import { Arc, arcFromCircle, Circle, Pt, Vect2D } from '../../../models/types';
 import {
   angleFromCenter, dist, intersectLines, lineFromTwoPoints,
   moveInVectorSpace, pointOnCircle, TURN, vectorFromSlope,
-} from '../helpers/math/simpleGeometry';
-import { pathFromArc, pathFromLine, unifyConnectedSvgPaths } from '../helpers/math/pathMath';
-import { EnricoCerutiParams, FlutingParams, NeckParams, StringSetup } from './ceruti-types';
-import { reportFailures, SolveFailure } from '../helpers/validators';
-import { placeOnTopPlate, solveRibTaper, topPlatePlacement } from './ceruti-arching';
-import { channelCenterlineZAt, LongArchSolve } from './ceruti-arch-geometry';
-import { fingerboardEnd, mortiseFloorY, neckHalfWidthAt } from './ceruti-paths';
+} from '../../../helpers/math/simpleGeometry';
+import { pathFromArc, pathFromLine, unifyConnectedSvgPaths } from '../../../helpers/math/pathMath';
+import { EnricoCerutiParams, FlutingParams, NeckParams, StringSetup } from '../../ceruti-types';
+import { reportFailures, SolveFailure } from '../../../helpers/validators';
+import { placeOnTopPlate, solveRibTaper, topPlatePlacement } from '../arching/ceruti-arching';
+import { channelCenterlineZAt, LongArchSolve } from '../arching/ceruti-arch-geometry';
+import { fingerboardEnd, mortiseFloorY, neckHalfWidthAt } from '../outline/ceruti-paths';
 
 // The neck set in the side elevation, in the frame the body section is drawn in: x is height off
 // the back plate's inner face, y runs up the body, the neck end at y = height. Everything hangs off

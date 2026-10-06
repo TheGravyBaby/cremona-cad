@@ -1,9 +1,9 @@
-import { circleCircleIntersections, findJoiningArcs } from "../helpers/math/draftMath";
-import { angleFromCenter, dist, normalizeRadians, pointOnCircle, TURN, offsetArcRadius, flipArcAboutY, flipPointAboutY, lineCircleIntersection, lineFromTwoPoints, pointInPolygon, closestPointOnSegment, moveInVectorSpace, pointAtDistanceToward, vectorFromSlope } from "../helpers/math/simpleGeometry";
-import { arcPathData, pathFromArc, pathFromLine, pathFromCornerCubic, unifyConnectedSvgPaths, unifyConnectedSvgPathGroups, combinePathStrings, samplePathToPolyline, occludePath, pathFromPolygon, Matrix2D, transformPath } from "../helpers/math/pathMath";
-import { Arc, arcFromCircle, Pt } from "../models/types";
-import { error } from "../shared/message-emitter";
-import { ButtonParams, EnricoCerutiParams } from "./ceruti-types";
+import { circleCircleIntersections, findJoiningArcs } from "../../../helpers/math/draftMath";
+import { angleFromCenter, dist, normalizeRadians, pointOnCircle, signedRadianDelta, TURN, offsetArcRadius, flipArcAboutY, flipPointAboutY, lineCircleIntersection, lineFromTwoPoints, pointInPolygon, closestPointOnSegment, moveInVectorSpace, pointAtDistanceToward, vectorFromSlope } from "../../../helpers/math/simpleGeometry";
+import { arcPathData, pathFromArc, pathFromArcLongWay, pathFromLine, pathFromCornerCubic, unifyConnectedSvgPaths, unifyConnectedSvgPathGroups, combinePathStrings, samplePathToPolyline, occludePath, pathFromPolygon, Matrix2D, transformPath } from "../../../helpers/math/pathMath";
+import { Arc, arcFromCircle, Pt } from "../../../models/types";
+import { error } from "../../../shared/message-emitter";
+import { ButtonParams, EnricoCerutiParams } from "../../ceruti-types";
 
 // ===== Path/contour builders =====
 // Takes the outline already solved by ceruti-calcs.ts (calculateMainBouts,
@@ -389,7 +389,7 @@ export function defineOuterCornerArcs(p: EnricoCerutiParams, offset: number): Ar
 // a long flat flank can be shorter than that, and going past its start would join from
 // somewhere up the next bout, so it stops there
 function angleBeforeEnd(arc: Arc, degrees: number): number {
-    const delta = Math.atan2(Math.sin(arc.end - arc.start), Math.cos(arc.end - arc.start));
+    const delta = signedRadianDelta(arc.end - arc.start);
     const dir = Math.sign(delta) || 1;
     return arc.end - dir * Math.min(degrees * TURN.degree, Math.abs(delta));
 }
@@ -417,7 +417,7 @@ function attemptJoin(arc1: Arc, side1: "start" | "end", arc2: Arc, side2: "start
     const outside = (q: Pt) => !pointInPolygon(q, land!)
         && land!.every((a, i) => i === 0 || closestPointOnSegment(q, land![i - 1], a).dist > 0.01);
     const crosses = (join: Arc[]) => land !== null && join.some(arc => {
-        const sweep = Math.atan2(Math.sin(arc.end - arc.start), Math.cos(arc.end - arc.start));
+        const sweep = signedRadianDelta(arc.end - arc.start);
         const steps = Math.max(16, Math.ceil(arc.r * Math.abs(sweep) / 0.5));
         return Array.from({ length: steps + 1 }, (_, i) => pointOnCircle(arc, arc.start + sweep * i / steps)).some(outside);
     });
@@ -443,7 +443,7 @@ function easeCBoutEnd(cBout: Arc, side: "start" | "end", bout: Arc, boutSide: "s
     if (gap < -TURN.quarter) gap += TURN.half;
     if (Math.abs(gap) <= JOIN_HEADING_TRIGGER) return;
 
-    const span = Math.atan2(Math.sin(cBout.end - cBout.start), Math.cos(cBout.end - cBout.start));
+    const span = signedRadianDelta(cBout.end - cBout.start);
     const inward = side === "end" ? -Math.sign(span) : Math.sign(span);
     const move = Math.sign(gap) * JOIN_HEADING_TARGET - gap;
     if (Math.sign(move) !== inward) return;
@@ -452,7 +452,7 @@ function easeCBoutEnd(cBout: Arc, side: "start" | "end", bout: Arc, boutSide: "s
 }
 
 function retreatAngle(startAngle: number, endAngle: number, side: "start" | "end", degrees: number): number {
-    const delta = Math.atan2(Math.sin(endAngle - startAngle), Math.cos(endAngle - startAngle));
+    const delta = signedRadianDelta(endAngle - startAngle);
     const dir = Math.sign(delta) || 1;
     return side === "end" ? endAngle - dir * degrees * TURN.degree : startAngle + dir * degrees * TURN.degree;
 }
@@ -988,23 +988,6 @@ export function defineFlutingPath(p: EnricoCerutiParams, offset: number, centerO
         // panel the same "nothing to draw yet" case it already has for an unconfigured channel.
         return null;
     }
-}
-
-/**
- * An eye's visible rim runs the long way around, from the point where its shoulder arc peels off
- * tangentially to the point where the cut departs — the short arc between those two points is the
- * notch the wing cuts into, and isn't drawn. `pathFromArc` always takes the short way, so this
- * forces the complementary sweep instead — the path-string counterpart of `renderArcFromArc`'s
- * `longArc` flag.
- */
-function pathFromArcLongWay(arc: Arc): string {
-    const startPt = pointOnCircle(arc, arc.start);
-    const endPt = pointOnCircle(arc, arc.end);
-
-    const largeArcFlag = 1;
-    const sweepFlag = normalizeRadians(arc.end - arc.start) <= TURN.half ? 0 : 1;
-
-    return `M ${startPt.x} ${startPt.y} A ${arc.r} ${arc.r} 0 ${largeArcFlag} ${sweepFlag} ${endPt.x} ${endPt.y}`;
 }
 
 /**

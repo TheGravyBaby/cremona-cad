@@ -1,10 +1,10 @@
 import { renderPath } from '../../helpers/renderFuncs';
 import { translatePath } from '../../helpers/math/pathMath';
 import { CerutiColors, EnricoCerutiParams, PathEntry } from '../ceruti-types';
-import { FrontProfileSolve, getPath, getPathOrNull, hasOuterTrace, NeckProfileSolve, topPlatePaths } from '../ceruti-calcs';
-import { plateLayoutOffset } from '../ceruti-arch-geometry';
+import { FrontProfileSolve, getPath, getPathOrNull, hasOuterTrace, NeckProfileSolve, topPlatePaths } from '../calculation/outline/ceruti-calcs';
+import { plateLayoutOffset } from '../calculation/arching/ceruti-arch-geometry';
 import { renderScrollStroke, scrollBackInPlan, scrollFrontInPlan } from './scroll.render';
-import { defineBackNeckPath, defineFrontProfilePath, defineInnerPath, PlatePlan } from '../ceruti-paths';
+import { defineBackNeckPath, defineFrontProfilePath, defineInnerPath, PlatePlan } from '../calculation/outline/ceruti-paths';
 import { SolveFailure } from '../../helpers/validators';
 import { STROKE_WEIGHT } from './render-constants';
 

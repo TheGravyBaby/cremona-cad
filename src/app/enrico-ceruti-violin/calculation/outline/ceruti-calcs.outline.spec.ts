@@ -1,14 +1,14 @@
 // @vitest-environment node
-import { samplePathToPolyline } from '../helpers/math/pathMath';
+import { samplePathToPolyline } from '../../../helpers/math/pathMath';
 import { calculateCenterBout, calculateCorners, calculateMainBouts, calculateOuterArcs, ensureCenterBoutInnerPath, ensureOuterTracePaths, violNeckJoinLimit } from './ceruti-calcs';
-import { dist, offsetArcRadius, pointOnCircle } from '../helpers/math/simpleGeometry';
-import { defaultViolin, geometryDiff, layoutFrom, templateKeys, templateViolin, violinFromRecipe } from './ceruti-fixtures';
+import { dist, offsetArcRadius, pointOnCircle } from '../../../helpers/math/simpleGeometry';
+import { defaultViolin, geometryDiff, layoutFrom, templateKeys, templateViolin, violinFromRecipe } from '../../ceruti-fixtures';
 import { cornerOffsetSign, defineInnerPath, defineOffsetArcs, defineOuterPath, definePurflingPath } from './ceruti-paths';
-import { EnricoCerutiParams, PathEntry } from './ceruti-types';
-import { setGlobalEmitter } from '../shared/message-emitter';
-import delGesuBalticParams from './templates/test-fixtures/del-gesu-baltic-params.json';
-import invertedLowerCornerParams from './templates/test-fixtures/inverted-lower-corner-params.json';
-import invertedCornersParams from './templates/test-fixtures/inverted-corners-params.json';
+import { EnricoCerutiParams, PathEntry } from '../../ceruti-types';
+import { setGlobalEmitter } from '../../../shared/message-emitter';
+import delGesuBalticParams from '../../templates/test-fixtures/del-gesu-baltic-params.json';
+import invertedLowerCornerParams from '../../templates/test-fixtures/inverted-lower-corner-params.json';
+import invertedCornersParams from '../../templates/test-fixtures/inverted-corners-params.json';
 
 /**
  * The 2D outline pipeline — `ceruti-calcs.ts` into `ceruti-paths.ts`.

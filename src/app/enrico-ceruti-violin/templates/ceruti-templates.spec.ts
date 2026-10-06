@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
 import { CERUTI_TEMPLATES } from './ceruti-templates';
-import { CERUTI_PANEL_IDS } from './ceruti-types';
+import { CERUTI_PANEL_IDS } from '../ceruti-types';
 
 // a blank recipeName fails the identity check on refresh and silently reverts to the default
 // template — pasted-JSON has dropped it twice already, hence a test rather than a third fix.

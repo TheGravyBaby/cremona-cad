@@ -1,11 +1,12 @@
 import { arcReach, dist, normalizeRadians, pointOnCircle, TURN } from '../../helpers/math/simpleGeometry';
 import { occludePath, pathFromLine, pathFromPolygon, pathFromPolyline } from '../../helpers/math/pathMath';
+import { clipPolylineAtY, polylinePointAtY } from '../../helpers/math/vibeMath';
 import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderCrosshair, renderDashLine, renderPath, renderPointHalo, renderPolygon, renderSegment, renderSegmentHalo } from '../../helpers/renderFuncs';
 import { Arc, Pt, Pt3D } from '../../models/types';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, ScrollParams } from '../ceruti-types';
-import { duckTailRadius, pegboxCavity, pegboxHipHeight, pegboxWidth, scrollPathStretches, ScrollFailure, ScrollStretches, ScrollKey, scrollExtent, scrollFrontWidths, scrollLines, scrollNeckHalfWidth, ScrollStationKey, scrollWidthStations, TO_FRONT } from '../ceruti-scroll';
+import { duckTailRadius, pegboxCavity, pegboxHipHeight, pegboxWidth, scrollPathStretches, ScrollFailure, ScrollStretches, ScrollKey, scrollExtent, scrollFrontWidths, scrollLines, scrollNeckHalfWidth, ScrollStationKey, scrollWidthStations, TO_FRONT } from '../calculation/neck/ceruti-scroll';
 import { HighlightedArc, HighlightedSegment, STROKE_WEIGHT } from './render-constants';
-import { scrollOnNeck } from '../ceruti-paths';
+import { scrollOnNeck } from '../calculation/outline/ceruti-paths';
 
 // the scroll in ceruti-scroll.ts's frame, the neck's tilt taken out, read off p.volute as
 // calculateScroll left it
@@ -140,37 +141,8 @@ export function stationColor(colors: CerutiColors, key: ScrollStationKey): strin
   return inks[key];
 }
 
-// a stretch of the path only rises or only falls, so a height cuts it once: the part at or above
-// the height, or at or below it
-function cutAtHeight(pts: Pt3D[], y: number, keep: 'above' | 'below'): Pt3D[] {
-  const kept = (pt: Pt3D) => keep === 'above' ? pt.y >= y : pt.y <= y;
-  const out: Pt3D[] = [];
-  for (let k = 0; k < pts.length; k++) {
-    const pt = pts[k];
-    const last = pts[k - 1];
-    if (last && kept(last) !== kept(pt)) {
-      const t = (y - last.y) / (pt.y - last.y);
-      out.push(new Pt3D(last.x + (pt.x - last.x) * t, y, last.z + (pt.z - last.z) * t));
-    }
-    if (kept(pt)) out.push(pt);
-  }
-  return out;
-}
-
-// where a stretch passes height y, or null where it never does
-function atHeight(pts: Pt3D[], y: number): Pt3D | null {
-  for (let k = 1; k < pts.length; k++) {
-    const a = pts[k - 1];
-    const b = pts[k];
-    if (a.y === b.y || (a.y - y) * (b.y - y) > 0) continue;
-    const t = (y - a.y) / (b.y - a.y);
-    return new Pt3D(a.x + (b.x - a.x) * t, y, a.z + (b.z - a.z) * t);
-  }
-  return null;
-}
-
 function halfWidthAtHeight(pts: Pt3D[], y: number): number | null {
-  return atHeight(pts, y)?.x ?? null;
+  return polylinePointAtY(pts, y)?.x ?? null;
 }
 
 // what of a line can be seen: its runs of points that no stretch of the path hides, one nearer
@@ -181,7 +153,7 @@ function seenRuns(on: ScrollStretches, pts: Pt3D[], behind: boolean): Pt3D[][] {
   const hidden = (pt: Pt3D) => stretches.some(stretch => {
     // a stretch hides nothing at the height it turns over at: a line cut there stops on the turn's face
     const turnsOver = Math.abs(pt.y - stretch[0].y) < 1e-9 || Math.abs(pt.y - stretch.at(-1)!.y) < 1e-9;
-    const over = turnsOver ? null : atHeight(stretch, pt.y);
+    const over = turnsOver ? null : polylinePointAtY(stretch, pt.y);
     if (!over) return false;
     const nearer = behind ? over.z < pt.z - 1e-6 : over.z > pt.z + 1e-6;
     return nearer && over.x >= pt.x - 1e-9;
@@ -327,9 +299,9 @@ export function scrollBackViewStrokes(p: EnricoCerutiParams, place: (x: number, 
   // hidden behind its back below there. Any of them is hidden too wherever a nearer stretch is as
   // wide: the first turn's front under the crown, beside a back still wider than it
   contour(on.back, 'archBack');
-  for (const run of seen(cutAtHeight(on.turn1Front, turn2Top.y, 'above'))) contour(run, 'archBack');
+  for (const run of seen(clipPolylineAtY(on.turn1Front, turn2Top.y, 'above'))) contour(run, 'archBack');
   for (const run of seen(on.turn2Back)) contour(run, 'archBack');
-  for (const run of seen(cutAtHeight(on.turn2Front, turn3Top.y, 'above'))) contour(run, 'archBack');
+  for (const run of seen(clipPolylineAtY(on.turn2Front, turn3Top.y, 'above'))) contour(run, 'archBack');
   for (const run of seen(on.turn3Back)) contour(run, 'archBack');
   for (const run of seen(on.turn3Front)) contour(run, 'archBack');
 
@@ -402,20 +374,20 @@ export function scrollFrontViewStrokes(p: EnricoCerutiParams, place: (x: number,
   // way up: behind the first turn above there, and the same line as its front below
   const pegboxTop = turn1Bottom.y;
   const pegboxFront = scrollFrontWidths(p);
-  contour(cutAtHeight(pegboxFront, pegboxTop, 'below'), 'archTop', overPegbox);
+  contour(clipPolylineAtY(pegboxFront, pegboxTop, 'below'), 'archTop', overPegbox);
 
   // a pegbox wider than the volute over it is the rare exception: above the first turn's bottom its
   // cheeks show wherever they stand out past the volute. That takes in the second turn's back,
   // which curls round in front of the throat
-  for (const run of seen(cutAtHeight(pegboxFront, pegboxTop, 'above'))) contour(run, 'archTop');
+  for (const run of seen(clipPolylineAtY(pegboxFront, pegboxTop, 'above'))) contour(run, 'archTop');
 
   // the first turn's front stands nearest and shows whole, and the front of each turn inside it
   // stands out past it. The back of a turn shows under the turn inside it, up to that turn's bottom,
   // and the last up to the eye's. A nearer stretch as wide hides any of them
   contour(on.turn1Front, 'archTop');
-  for (const run of seen(cutAtHeight(on.turn2Back, turn2Bottom.y, 'below'))) contour(run, 'archTop');
+  for (const run of seen(clipPolylineAtY(on.turn2Back, turn2Bottom.y, 'below'))) contour(run, 'archTop');
   for (const run of seen(on.turn2Front)) contour(run, 'archTop');
-  for (const run of seen(cutAtHeight(on.turn3Back, eyeBottom, 'below'))) contour(run, 'archTop');
+  for (const run of seen(clipPolylineAtY(on.turn3Back, eyeBottom, 'below'))) contour(run, 'archTop');
   for (const run of seen(on.turn3Front)) contour(run, 'archTop');
 
   // the hollow's mouth, each cheek's thickness in from the outside. It ends level where the side

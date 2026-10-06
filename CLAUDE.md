@@ -21,8 +21,8 @@ about 6s of each is the build before any test starts:
 
 | Script | Covers | Time |
 |---|---|---|
-| `npm run test:outline` | `ceruti-calcs*`, `ceruti-paths`, `ceruti-serialization`, `ceruti-templates`, `ceruti-neck`, `ceruti-scroll` — the 2D outline pipeline, plus the neck set and the scroll | ~10s |
-| `npm run test:arching` | `ceruti-arching*`, `ceruti-arch-geometry`, `ceruti-surface` — the 3D arching pipeline, the specialist math | ~13s |
+| `npm run test:outline` | `calculation/outline/**`, `calculation/neck/**`, `ceruti-serialization`, `templates/*` — the 2D outline pipeline, plus the neck set and the scroll | ~10s |
+| `npm run test:arching` | `calculation/arching/**` — the 3D arching pipeline, the specialist math | ~13s |
 | `npm run test:panels` | `enrico-ceruti-violin/panels/**` — panel wiring + SVG/DXF/STL export | ~13s |
 | `npm run test:draft-canvas` | `draft-canvas/**` — canvas, camera, snapping, tools | ~10s |
 | `npm run test:helpers` | `helpers/**` — instrument-agnostic math, renderers, exporters | ~8s |

@@ -1,16 +1,16 @@
-import { Pt } from '../models/types';
-import { clamp } from '../helpers/math/simpleGeometry';
+import { Pt } from '../../../models/types';
+import { clamp, smoothstep } from '../../../helpers/math/simpleGeometry';
 import {
   buildPolylineIndex, closestPointToPolylineIndexed, makeC2SplineWithFlatKnot, makeMonotoneSpline,
   PolylineIndex,
-} from '../helpers/math/vibeMath';
+} from '../../../helpers/math/vibeMath';
 import {
   archSplineKnots, catenaryZAt, cycloidZAt, samplePathToPolyline, splineZAt,
-} from '../helpers/math/pathMath';
+} from '../../../helpers/math/pathMath';
 import {
   ArchCurve, EnricoCerutiParams, CrossArchShape, CrossArchCycloid, CrossArchSpline, FlutingParams,
-} from './ceruti-types';
-import { defineFlutingPath, defineInsetPath } from './ceruti-paths';
+} from '../../ceruti-types';
+import { defineFlutingPath, defineInsetPath } from '../outline/ceruti-paths';
 import { archFromLoweredTakeoff, normalizeCrossArchStations } from './ceruti-arching';
 
 // The three things the arch is actually solved from: the gouge's own circular
@@ -1059,12 +1059,6 @@ const CROWN_OFFSET_BAND = 0.2;
  */
 export function crownOffsetTrust(chordFrac: number): number {
   return smoothstep(chordFrac, CHORD_TRUST_FULL, CHORD_TRUST_FULL + CROWN_OFFSET_BAND);
-}
-
-/** Hermite smoothstep from 0 at `lo` to 1 at `hi`, flat in slope at both ends. */
-function smoothstep(v: number, lo: number, hi: number): number {
-  const k = clamp((v - lo) / (hi - lo), 0, 1);
-  return k * k * (3 - 2 * k);
 }
 
 /**

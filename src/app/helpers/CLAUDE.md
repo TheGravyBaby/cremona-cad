@@ -19,11 +19,13 @@ before it:
 - **`draftMath.ts`** — solvers with real casework that are still classic drafting constructions:
   circle tangent to a line and a circle, joining/inscribed circle families, fillets, arc-fit-from-
   constraint (`fitTangentArc`, `fitArcThroughPoints`, `fitArcFromEndsAndCenter`), the G1 arc-chain
-  functions, biarc joining. Imports from `simpleGeometry`.
+  functions, biarc joining, and runs of straights and arcs walked by distance (`Run`, `arcRun`,
+  `joinedRun`, `riseAlongRun`). Imports from `simpleGeometry`.
 - **`vibeMath.ts`** — math that goes past what a compass and straightedge can do: the polyline
   spatial index (`PolylineIndex` and friends, for dense batch nearest-point queries), the two
-  harmonic-fit closed-form inverses of the G1 chain functions, and the curve/spline machinery
-  (catenary solving, monotone/natural/C2 splines, the Hyman filter). Imports from both
+  harmonic-fit closed-form inverses of the G1 chain functions, the curve/spline machinery
+  (catenary solving, monotone/natural/C2 splines, the Hyman filter), and the oblique projection
+  the rotatable 3D plate views go through (`buildProjection`). Imports from both
   `simpleGeometry` and `draftMath`.
 - **`pathMath.ts`** — building, combining and boolean-diffing SVG path *strings*. Sections:
   Path helpers, Path combinations, Arch curve path builders, Arch curve evaluators. Wraps

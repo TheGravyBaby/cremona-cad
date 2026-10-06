@@ -9,10 +9,10 @@ import {
   renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderSegment, renderSolveFailures,
 } from '../../../helpers/renderFuncs';
 import { arcFromCircle, Arc } from '../../../models/types';
-import { calculateInnerOutline, calculateMainBouts, MainBoutFailure, violNeckJoinLimit } from '../../ceruti-calcs';
+import { calculateInnerOutline, calculateMainBouts, MainBoutFailure, violNeckJoinLimit } from '../../calculation/outline/ceruti-calcs';
 import { error } from '../../../shared/message-emitter';
-import { boutWidthInfo, violNeckInfo, violNeckJoinInfo } from '../../ceruti-toasts';
-import { violNeckCap } from '../../ceruti-paths';
+import { boutWidthInfo, violNeckInfo, violNeckJoinInfo } from '../field-info';
+import { violNeckCap } from '../../calculation/outline/ceruti-paths';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, RenderToggleKey } from '../../ceruti-types';
 import { renderBounds, renderBoutBouts } from '../../renders/guides.render';
 import { renderFrontInnerProfile } from '../../renders/front-profile.render';
