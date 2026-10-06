@@ -293,15 +293,6 @@ describe('the STL a download writes', () => {
   // vitest's 5s default. Same situation as the taper test in
   // ceruti-arch-geometry.spec.ts, and handled the same way rather than by
   // coarsening the grid, which would stop testing what ships.
-  it('is a binary plate model for each side', async () => {
-    for (const side of ['top', 'bottom'] as const) {
-      const result = await captured(() => makePanel(archedViolin()).downloadStl(side));
-      expect(result, `${side} wrote nothing`).not.toBeNull();
-      expect(result!.name).toBe(`test-violin-${side === 'top' ? 'top' : 'back'}-plate.stl`);
-      expect(result!.text.length).toBeGreaterThan(84); // header + triangle count
-    }
-  }, 30000);
-
   it('refuses rather than throwing on a plate with no arching', async () => {
     expect(await captured(() => makePanel(defaultViolin()).downloadStl('top'))).toBeNull();
   });

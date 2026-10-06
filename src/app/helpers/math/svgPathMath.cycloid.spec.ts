@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { cycloidZAt } from './pathMath';
 
 describe('cycloidZAt windowed percentage', () => {

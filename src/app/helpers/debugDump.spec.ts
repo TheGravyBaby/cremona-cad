@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { copyDebugDump, debugMessages, installDebugCapture, setDebugContext } from './debugDump';
 import { error, setGlobalEmitter } from '../shared/message-emitter';
 

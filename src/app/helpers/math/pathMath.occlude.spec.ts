@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { svgPathProperties } from 'svg-path-properties';
 import { occludePath, samplePathToPolyline } from './pathMath';
 

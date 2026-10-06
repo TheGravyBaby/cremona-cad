@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { absolutePathData } from './svg-path-arcs';
 
 describe('absolutePathData', () => {

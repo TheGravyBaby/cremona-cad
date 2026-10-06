@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { catenaryBetween, offsetPath, pathsBounds, samplePathToPolyline } from './pathMath';
 import { polylineCumulativeLengths, projectOntoPolyline } from './vibeMath';
 

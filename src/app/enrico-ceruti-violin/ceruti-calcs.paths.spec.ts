@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { ensureCenterBoutInnerPath, ensureOuterTracePaths, getPath, upsertPathEntry } from './ceruti-calcs';
 import { defaultArchingParams } from './ceruti-arching';
 import { defaultViolin, layoutFrom } from './ceruti-fixtures';

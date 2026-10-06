@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { normalizeCrossArchStations, STATION_MERGE_EPS_MM } from './ceruti-arching';
 import { CrossArchCycloid } from './ceruti-types';
 

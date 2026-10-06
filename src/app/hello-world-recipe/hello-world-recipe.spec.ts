@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { solveFourCircles } from './hello-world-recipe';
 import { FOUR_CIRCLES_DEFAULTS } from './hello-world-types';

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { arcBetweenTravels, arcContinuingFrom, fitArcFromEndsAndCenter, fitArcThroughPoints, interceptCirclesAndPoint } from './draftMath';
 import { angleFromCenter, angleWithinSweep, normalizeRadians, pointOnCircle, travelAtArcEnd } from './simpleGeometry';
 import { Circle } from '../../models/types';

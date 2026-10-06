@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { samplePathToPolyline } from '../helpers/math/pathMath';
 import { calculateCenterBout, calculateCorners, calculateMainBouts, calculateOuterArcs, ensureCenterBoutInnerPath, ensureOuterTracePaths, violNeckJoinLimit } from './ceruti-calcs';
 import { dist, offsetArcRadius, pointOnCircle } from '../helpers/math/simpleGeometry';

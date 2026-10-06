@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { Pt } from '../models/types';
 import { pointOnCircle, shortestDistanceFromPtToLine, lineFromTwoPoints, moveInVectorSpace, vectorFromSlope } from '../helpers/math/simpleGeometry';
 import { archedViolin } from './ceruti-fixtures';

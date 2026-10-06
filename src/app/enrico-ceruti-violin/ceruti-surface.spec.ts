@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { pathsBounds, samplePathToPolyline } from '../helpers/math/pathMath';
 import { closestPointToPolylineIndexed } from '../helpers/math/vibeMath';
 import { archedViolin, templateViolin } from './ceruti-fixtures';
@@ -39,7 +40,7 @@ describe('top surface height field', () => {
   let p: EnricoCerutiParams;
   let model: PlateSurfaceModel;
 
-  beforeEach(() => {
+  beforeAll(() => {
     p = makeParams();
     model = buildPlateSurfaceModel(p, 'top')!;
   });
@@ -109,7 +110,7 @@ describe('arching templates', () => {
   let p: EnricoCerutiParams;
   let model: PlateSurfaceModel;
 
-  beforeEach(() => {
+  beforeAll(() => {
     p = makeParams();
     model = buildPlateSurfaceModel(p, 'top')!;
   });
@@ -173,6 +174,7 @@ describe('arching templates', () => {
   });
 
   it('adds a blank for an authored station, but not for one already on a landmark', () => {
+    const p = makeParams();
     const plate = p.arching!.top;
     const landmarks = crossArchTemplateStations(p, plate);
     // Between two landmarks, so it is nowhere near either.
@@ -205,6 +207,7 @@ describe('arching templates', () => {
   });
 
   it('gives each plate its own stations rather than pooling them', () => {
+    const p = makeParams();
     const landmarks = crossArchTemplateStations(p, p.arching!.top);
     p.arching!.bottom.cross = {
       ...defaultCrossArchParams(),
@@ -378,7 +381,7 @@ describe('back plate surface height field', () => {
   let p: EnricoCerutiParams;
   let model: PlateSurfaceModel;
 
-  beforeEach(() => {
+  beforeAll(() => {
     p = makeParams();
     model = buildPlateSurfaceModel(p, 'bottom')!;
   });

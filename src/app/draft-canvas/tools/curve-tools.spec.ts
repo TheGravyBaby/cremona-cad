@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { Pt } from '../../models/types';
 import { DraftToolHost } from './draft-tool';
 import { fakeToolHost } from './fake-tool-host';

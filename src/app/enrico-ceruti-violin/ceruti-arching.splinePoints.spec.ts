@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { clampSplinePointHeights } from './ceruti-arching';
 import { ArchSpline } from './ceruti-types';
 import { splineZAt } from '../helpers/math/pathMath';

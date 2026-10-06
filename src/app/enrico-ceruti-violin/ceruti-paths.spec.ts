@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { defineFholePath, defineFlutingArcs, defineFlutingPath, defineInnerPath, defineInsetPath, defineOffsetArcs, defineOuterPath, defineOuterPurflingPath, definePurflingPath, defineSideScrollPath, violNeckCap } from './ceruti-paths';
 import { defaultViolin, layoutFrom, templateKeys, templateViolin, violinFromRecipe } from './ceruti-fixtures';
 import { calculateCenterBout, calculateCorners, calculateFholeContours, calculateMainBouts, calculateOuterArcs } from './ceruti-calcs';

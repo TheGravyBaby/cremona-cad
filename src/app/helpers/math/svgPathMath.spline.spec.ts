@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { archSplineKnots, splineZAt } from './pathMath';
 
 describe('splineZAt shape preservation', () => {

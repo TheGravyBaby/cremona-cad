@@ -1,3 +1,4 @@
+// @vitest-environment node
 import {
   cornerSmoothZ, gougeHalfWidth, gougeProfileSlope, gougeProfileZ, crossArchGuide, crossArchKnots,
   chordTrust, crownOffsetTrust, CrossArchSection, crossArchKnotX, makeCrossArchResolver,

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { Pt } from '../../models/types';
 import { fakeToolHost } from './fake-tool-host';
 import { AngleShape, DraftShape, angleSweep } from './toolbox-shape';

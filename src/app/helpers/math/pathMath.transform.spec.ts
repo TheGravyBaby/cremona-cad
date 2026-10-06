@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { applyMatrix, multiplyMatrices, parseSvgTransform, samplePathToPolyline, transformPath } from './pathMath';
 
 describe('parseSvgTransform', () => {
