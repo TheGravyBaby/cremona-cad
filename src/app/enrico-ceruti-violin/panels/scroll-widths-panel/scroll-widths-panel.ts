@@ -71,7 +71,7 @@ export class ScrollWidthsPanel extends CerutiPanelBase implements OnInit {
 export function stationColor(colors: CerutiColors, key: ScrollStationKey): string {
   const inks: Record<ScrollStationKey, string> = {
     nut: colors.scrollWidthNut, hip: colors.scrollWidthHip, throat: colors.scrollWidthThroat,
-    duckTail: colors.scrollWidthDuckTail, foot: colors.scrollWidthFoot, reach: colors.scrollWidthReach, crown: colors.scrollWidthCrown,
+    duckTail: colors.scrollWidthDuckTail, foot: colors.scrollWidthFoot, backHip: colors.scrollWidthBackHip, poll: colors.scrollWidthPoll, crown: colors.scrollWidthCrown,
     turn1Bottom: colors.scrollWidthTurn1Bottom, turn2Top: colors.scrollWidthTurn2Top,
     turn2Bottom: colors.scrollWidthTurn2Bottom, eye: colors.scrollWidthEye,
   };
@@ -88,7 +88,7 @@ export const renderScrollWidths = (p: EnricoCerutiParams, colors: CerutiColors, 
   const stations = scrollWidthStations(p);
 
   const gap = 20;
-  const widest = Math.max(v.widths.eye, v.widths.hip, v.widths.foot, v.widths.reach, p.stringSetup!.nutWidth) / 2;
+  const widest = Math.max(v.widths.eye, v.widths.hip, v.widths.foot, v.widths.backHip, v.widths.poll, p.stringSetup!.nutWidth) / 2;
   const back = -scrollExtent(v).width - gap - widest;
   const front = nutThickness + gap + widest;
 
@@ -108,13 +108,14 @@ export const renderScrollWidths = (p: EnricoCerutiParams, colors: CerutiColors, 
   // in the side view the hollow is inside the wood
   const cavity = PEGBOX_HOLLOW_SHOWN ? pegboxCavity(p) : null;
   if (cavity) renderPath(pathFromPolyline(cavity), colors.scrollFrontLight, STROKE_WEIGHT.trace, 1, '4,4')(g, ui);
+  const frontStations: ScrollStationKey[] = ['nut', 'hip', 'throat'];
   if (showArcs) {
-    // only the widths a maker sets out with compasses: behind, the crown, the reach and the duck
+    // only the widths a maker sets out with compasses: behind, the crown, the poll and the duck
     // tail; in front, the crown, the throat and the hips. The crown's and the throat's hang as half
     // circles from the head's top and the pegbox's
     const marks: { key: ScrollStationKey; center: number; half: boolean }[] = [
       { key: 'crown', center: back, half: true },
-      { key: 'reach', center: back, half: false },
+      { key: 'poll', center: back, half: false },
       { key: 'duckTail', center: back, half: false },
       { key: 'crown', center: front, half: true },
       { key: 'throat', center: front, half: true },
@@ -131,5 +132,13 @@ export const renderScrollWidths = (p: EnricoCerutiParams, colors: CerutiColors, 
     renderDashLine(new Pt(back, -stub), new Pt(back, scrollExtent(v).height), colors.scrollBack, STROKE_WEIGHT.guide)(g, ui);
     renderDashLine(new Pt(front, -stub), new Pt(front, scrollExtent(v).height), colors.neck, STROKE_WEIGHT.guide)(g, ui);
   }
-  if (showGuides) for (const station of stations) renderCrosshair(station.at, stationColor(colors, station.key))(g, ui);
+  // a crosshair on each width's point in the side view, and on both its edges in its own view
+  if (showGuides) {
+    for (const station of stations) {
+      const ink = stationColor(colors, station.key);
+      renderCrosshair(station.at, ink)(g, ui);
+      const center = frontStations.includes(station.key) ? front : back;
+      for (const side of [1, -1]) renderCrosshair(new Pt(center + side * station.width / 2, station.at.y), ink)(g, ui);
+    }
+  }
 };

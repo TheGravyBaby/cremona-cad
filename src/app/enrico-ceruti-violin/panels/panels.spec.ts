@@ -615,9 +615,9 @@ describe('the scroll widths panel', () => {
     const hollow = drawn.filter(el => el.attrs['stroke-dasharray']);
     expect(hollow).toHaveLength(PEGBOX_HOLLOW_SHOWN ? 1 : 0);
 
-    // a back already narrow at its reach lets the first turn's front stand out past it, and then it
+    // a back already narrow at its poll lets the first turn's front stand out past it, and then it
     // shows from behind, down to the second turn's top
-    p.scroll!.widths.reach = 14;
+    p.scroll!.widths.poll = 14;
     const narrowed = recordLayers(instance.buildRun()).elements
       .filter(el => el.tag === 'path' && el.attrs['stroke'] === 'scrollTurns')
       .map(el => points(el.attrs['d'] as string))
@@ -678,7 +678,7 @@ describe('the scroll widths panel', () => {
     expect(duckTailRadius(p)).toBeCloseTo(v.widths.duckTail / 2, 9);
   });
 
-  it('marks the crown, the reach and the duck tail behind and the crown, the throat and the hips in front under module arcs, each its width across on its view\'s centreline, with a centreline down each view', () => {
+  it('marks the crown, the poll and the duck tail behind and the crown, the throat and the hips in front under module arcs, each its width across on its view\'s centreline, with a centreline down each view', () => {
     const p = defaultViolin();
     const draw = (showModuleArcs: boolean) => {
       const instance = panel(ScrollWidthsPanel as any, p, flags({ showModuleArcs, showModuleGuides: false })) as unknown as ScrollWidthsPanel;
@@ -698,7 +698,7 @@ describe('the scroll widths panel', () => {
     expect(inFront).toBeGreaterThan(0);
     for (const el of centrelines(on)) expect(Math.max(el.attrs['y1'] as number, el.attrs['y2'] as number)).toBeCloseTo(scrollExtent(p.scroll!).height, 9);
 
-    const full = { reach: behind, duckTail: behind, hip: inFront };
+    const full = { poll: behind, duckTail: behind, hip: inFront };
     expect(circles(on)).toHaveLength(3);
     for (const [key, center] of Object.entries(full)) {
       const st = stations.find(s => s.key === key)!;
@@ -733,7 +733,7 @@ describe('the scroll widths panel', () => {
     });
     const lengths = () => levelAtStart().map(el => Math.abs((el.attrs['x1'] as number) - (el.attrs['x2'] as number)));
     const start = () => scrollBackWidths(p)[0].y;
-    v.hipHeight = duckTailRoundTop(p);
+    v.hipHeight = duckTailRoundTop(p) - p.stringSetup!.nutHeight;
     // a neck narrower than the round runs in under it
     p.neck!.topWidth = v.widths.duckTail - 4;
     expect(levelAtStart()).toEqual([]);
@@ -782,9 +782,9 @@ describe('the scroll widths panel', () => {
     // hips on the round's top a touch wider than the back, the nut's edges as wide as the round: the
     // cheeks show from where the taper above the hips comes out past the back, down the hips to the
     // nut's edge at its top, and square to the foot, standing clear of the round the whole way
-    v.hipHeight = duckTailRoundTop(p);
+    v.hipHeight = duckTailRoundTop(p) - p.stringSetup!.nutHeight;
     v.widths.hip = v.widths.duckTail + 2;
-    v.widths.reach = v.widths.duckTail;
+    v.widths.poll = v.widths.duckTail;
     p.stringSetup!.nutWidth = v.widths.duckTail;
     const start = scrollBackWidths(p)[0].y;
     expect(start).toBeGreaterThan(nutTop);
@@ -808,7 +808,7 @@ describe('the scroll widths panel', () => {
 
     // a back wider than the whole of the pegbox's front hides it, bottom and all
     v.widths.duckTail = v.widths.hip + 2;
-    v.widths.reach = v.widths.duckTail;
+    v.widths.backHip = v.widths.poll = v.widths.duckTail;
     v.hang = v.widths.duckTail / 2 + 1;
     instance.buildRun();
     expect(scrollBackWidths(p)[0].y).toBeLessThan(0);
@@ -824,7 +824,7 @@ describe('the scroll widths panel', () => {
     v.widths.hip = 46;
     p.stringSetup!.nutWidth = 42;
     p.neck!.topWidth = 33;
-    v.hipHeight = 0;
+    v.hipHeight = -p.stringSetup!.nutHeight;
     const drawn = recordLayers(instance.buildRun()).elements;
     const roundTop = duckTailRoundTop(p);
     expect(roundTop).toBeGreaterThan(0);

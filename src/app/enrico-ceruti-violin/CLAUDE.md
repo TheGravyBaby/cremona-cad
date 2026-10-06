@@ -108,13 +108,13 @@ section first → long arch carved to a template → crown across. The panel ord
   before coming round and meets the neck higher, which is what a cello wants, since the nape takes
   neck a player needs; wider, it meets the duck tail at an angle. `nape.end` is the duck tail's
   angle, so walk the arc by `start`/`end`, never by a quarter turn.
-- **The hips have their own height** (`ScrollParams.hipHeight`, up from the nut's lower edge,
-  2026-10-06), seeded onto the round's top (`duckTailRoundTop`) by `calculateScrollWidths` and
-  clamped no lower than the duck tail. It was briefly derived from the round, which only holds
-  while the round is the hips' own: a cello's hips sit on the pegbox's foot whatever the hang. Hips
-  below the round's top put the back's own cheeks under the path's start, down to the hips and level
-  in to the round's flank; the pegbox tapers to the throat from the hips, and hips at or below the
-  nut's top hold their width down to the foot.
+- **The hips have their own height** (`ScrollParams.hipHeight`, 2026-10-06), up from the nut's
+  top (`pegboxHipHeight` reads it into the scroll's frame), seeded onto the round's top
+  (`duckTailRoundTop`) by `calculateScrollWidths` and clamped no lower than the duck tail. It was
+  briefly derived from the round, which only holds while the round is the hips' own: a cello's hips
+  sit on the pegbox's foot whatever the hang. At 0 there are none: the nut's width holds to its top
+  and tapers from there to the throat, and the panel disables the hip's width. Below 0, a cello's
+  on the pegbox's foot, they hold their width down to the foot.
 - **The scroll continues the neck's own plane; the nut sits proud of it.** The origin the
   volute's eye is measured from starts at `nut` (the fingerboard-plane point), not the string
   contact point raised by the nut's thickness — the pegbox/scroll is flush with the neck as it
@@ -351,22 +351,30 @@ section first → long arch carved to a template → crown across. The panel ord
   spiral in to the eye. `duckTail` is the round's diameter, entered, where it used to be read off
   the neck or the hips, and `foot` the back's width at the round's top, a radius up from the duck
   tail: a violin's is the round's own, a cello's wider, the round meeting it along level shoulders at
-  angles 0 and π, clamped no narrower than the round. From there the back's edges go out on a
-  straight slope, by height, to `reach`: the back's furthest reach, where its tangent runs straight
-  up the neck (the first of S2, S1 and S0 to pass straight behind its centre), the same point
-  `scrollExtent` reads the head's depth off. From there the curve goes by distance along the path
-  (`pathWidth`), a monotone spline through `crown`, `turn1Bottom`, `turn2Top`, `turn2Bottom` and
-  `eye`, leaving the slope tangent. A back with no reach above the path's start runs the slope up to
-  the crown. The last turn is as wide as the eye from its top on in, so it has no width of its own.
+  angles 0 and π, clamped no narrower than the round. From there the back's edges go out on
+  straight slopes, by height, to `backHip` at `backHipHeight`, up from the nut's top like the
+  front's, and on to `poll`. A violin's back has no hip, so it defaults to 0, which is none, as is
+  any height at or below the round's top: the back runs one slope from the foot. A cello's hip as
+  wide as the foot leaves the back parallel up to it, the straight run its head has. The panel
+  disables the back hip's width while its height is 0 or less. The hip's clamps, none at or below
+  the round's top and the poll past it, are read in `backHipY` rather than written back, so the
+  field doesn't jump under typing. The poll is the back of the head (2026-10-06, named `reach` for
+  a day): its furthest reach, where its tangent runs straight up the neck (the first of S2, S1 and
+  S0 to pass straight behind its centre), the same point `scrollExtent` reads the head's depth off.
+  From there the curve goes by distance along the path (`pathWidth`), a monotone spline through
+  `crown`, `turn1Bottom`, `turn2Top`, `turn2Bottom` and `eye`, leaving the slope tangent. A back
+  with no poll above the path's start runs the slope up to the crown. The last turn is as wide as the eye from its top on in, so it has no width of its own.
 - **`calculateScrollWidths` only seeds and clamps**, writing back: foot no narrower than the duck
-  tail, crown no wider than the reach, each turn at least as wide as the one before, and the hips no
-  lower than the duck tail.
+  tail, crown no wider than the poll, each turn at least as wide as the one before, and the front's
+  hips no lower than the duck tail.
 - **Module arcs on the widths panel mark the widths a maker sets out with compasses** (2026-10-06):
   each a circle its width across on its view's centreline at the station's height, with a dashed
-  centreline down each view, the back's in `scrollBack`. Behind, the crown, the reach and the duck tail; in front, the crown,
-  the throat and the hips. The crown's and the throat's hang as half circles from the head's top and
-  the pegbox's. The duck tail's station is the round's centre, so its circle has the round for its
-  lower half. Every station once had a circle; it was too many to read.
+  centreline down each view, the back's in `scrollBack`. Behind, the crown, the poll and the duck
+  tail; in front, the crown, the throat and the hips. The crown's and the throat's hang as half
+  circles from the head's top and the pegbox's. The duck tail's station is the round's centre, so
+  its circle has the round for its lower half. Every station once had a circle; it was too many to
+  read. Module guides put a crosshair on each station in the side view and on both its edges in its
+  own view.
 - **From behind, the pegbox's sawn front shows wherever it stands out past the back**, in the front's
   colour: the cheeks from the throat down the hips to the nut's edge and the foot, and the foot's
   edge in to the neck, each hidden inside the round and the back's own silhouette. That one rule
