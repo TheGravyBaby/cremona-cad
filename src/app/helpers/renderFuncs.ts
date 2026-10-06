@@ -902,12 +902,6 @@ export const renderGuideMeasure = (base: Pt, at: Pt, color: string, offset = 0, 
     .attr('opacity', 0.9);
 };
 
-// layers drawn in their own frame and moved over by (dx, dy)
-export const renderTranslated = (dx: number, dy: number, layers: Array<(g: any, ui: any) => void>) => (g: any, ui: any): void => {
-    const moved = { g: g.append('g').attr('transform', `translate(${dx},${dy})`), ui: ui.append('g').attr('transform', `translate(${dx},${-dy})`) };
-    for (const layer of layers) layer(moved.g, moved.ui);
-};
-
 export type StrokeShape = { d: string } | { line: [Pt, Pt] } | { polygon: Pt[] };
 
 export const renderStroke = (stroke: StrokeShape & { weight: number }, color: string) =>
