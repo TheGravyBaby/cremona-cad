@@ -1,23 +1,10 @@
-/**
- * Contour (topo) map of one plate's surface, viewed through the same oblique
- * projection as the 3D wireframe (see oblique-projection.ts). At rotation
- * (0,0,0) it reduces to the flat plan-view map, since z only enters through
- * the rotated terms.
- *
- * Each contour ring sits at z = its level by construction, so projecting it is
- * like projecting a wireframe rib. The outline context line has no natural z of
- * its own and is projected flat at z = 0.
- *
- * The pipeline mirrors the wireframe's cache/reproject split:
- *   computeArchContourRings (ceruti-surface.ts) — expensive marching-squares
- *     grid + outline clip. Depends only on params; cache against paramsKey.
- *   projectArchContourRings / projectFlatPolyline — cheap per-rotation
- *     reprojection, run every redraw.
- */
+// the contour map of one plate through the same projection as the wireframe, with the same split:
+// computeArchContourRings in ceruti-surface is the expensive part the panel caches, and these
+// reproject it per rotation. Each ring sits at z = its level; the outline is projected flat
 import { Pt } from '../../models/types';
 import { CerutiColors } from '../ceruti-types';
-import { ArchContourLevel } from '../ceruti-surface';
-import { buildProjection } from './oblique-projection';
+import { ArchContourLevel } from '../calculation/arching/ceruti-surface';
+import { buildProjection } from '../../helpers/math/vibeMath';
 import { STROKE_WEIGHT } from './render-constants';
 
 export interface ProjectedContourLevel {
@@ -67,12 +54,6 @@ export function projectFlatPolyline(
   }).join(' ') + ' Z';
 }
 
-/**
- * Axis-aligned bounding box of the projected contour rings, in the same
- * world coordinates the render function draws in. Mirrors
- * computeWireframeBounds so the drag-to-rotate hit frame can size itself
- * identically for either plate view.
- */
 export function computeArchContourBounds(
   levels: ArchContourLevel[],
   bodyHeight: number,
@@ -100,7 +81,6 @@ export function computeArchContourBounds(
   return { minX, minY, maxX, maxY };
 }
 
-/** channel levels (z ≤ 0) draw fainter than arch levels, matching the flat map's convention. */
 export function renderArchContours3d(
   colors: CerutiColors,
   levels: ProjectedContourLevel[],

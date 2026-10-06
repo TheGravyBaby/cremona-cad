@@ -1,16 +1,16 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { Pt } from '../models/types';
-import { samplePathToPolyline, splitPathStrings } from '../helpers/math/pathMath';
-import { archedViolin } from './ceruti-fixtures';
-import { EnricoCerutiParams } from './ceruti-types';
+import { Pt } from '../../../models/types';
+import { samplePathToPolyline, splitPathStrings } from '../../../helpers/math/pathMath';
+import { archedViolin } from '../../ceruti-fixtures';
+import { EnricoCerutiParams } from '../../ceruti-types';
 import { calculateNeck, defaultNeckParams, defaultStringSetup } from './ceruti-neck';
-import { defaultFlutingParams, solveLongArch } from './ceruti-arch-geometry';
+import { defaultFlutingParams, solveLongArch } from '../arching/ceruti-arch-geometry';
 import { defaultVoluteParams } from './ceruti-scroll';
-import { solveNeckForProfile } from './ceruti-calcs';
+import { solveNeckForProfile } from '../outline/ceruti-calcs';
 import { defaultNeckTemplateSpec, defineNeckTemplate, NeckTemplateSpec } from './ceruti-neck-template';
-import { scrollOnNeck } from './ceruti-paths';
-import { applyMatrix } from '../helpers/math/pathMath';
+import { scrollOnNeck } from '../outline/ceruti-paths';
+import { applyMatrix } from '../../../helpers/math/pathMath';
 
 // set as the neck panel would have set it, then re-solved as the export does
 function scrolledViolin(): EnricoCerutiParams {

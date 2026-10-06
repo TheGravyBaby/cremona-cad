@@ -1,7 +1,7 @@
 // @vitest-environment node
-import { pathsBounds, samplePathToPolyline } from '../helpers/math/pathMath';
-import { closestPointToPolylineIndexed } from '../helpers/math/vibeMath';
-import { archedViolin, templateViolin } from './ceruti-fixtures';
+import { pathsBounds, samplePathToPolyline } from '../../../helpers/math/pathMath';
+import { closestPointToPolylineIndexed } from '../../../helpers/math/vibeMath';
+import { archedViolin, templateViolin } from '../../ceruti-fixtures';
 import {
   buildPlateStl, buildPlateSurfaceModel, calculateCrossArchTemplates, trimProfileToTroughs,
   calculateLongArchTemplates, computeArchContours, computeArchSectionProfile, crossArchTemplateStations,
@@ -13,8 +13,8 @@ import {
   channelCenterlineZAt, crossArchSectionAt,
   gougeHalfWidth, solveLongArch,
 } from './ceruti-arch-geometry';
-import { defineInnerPath } from './ceruti-paths';
-import { EnricoCerutiParams } from './ceruti-types';
+import { defineInnerPath } from '../outline/ceruti-paths';
+import { EnricoCerutiParams } from '../../ceruti-types';
 
 /** A polyline path's own vertices — not re-sampled, so a cut point stays where it was put. */
 function polyline(path: string): Array<{ x: number; y: number }> {

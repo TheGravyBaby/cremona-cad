@@ -653,3 +653,45 @@ export function biarcFromRoot(P1: Pt, P2: Pt, N1: Pt, N2: Pt, R: number): Arc[] 
 export function findAllJoiningArcsFromTangents(P1: Pt, T1: number, P2: Pt, T2: number, invert1 = false, invert2 = false): Arc[][] {
   return solveBiarcRoots(P1, T1, P2, T2, invert1, invert2).map(({ R, N1, N2 }) => biarcFromRoot(P1, P2, N1, N2, R));
 }
+
+// ===== Runs =====
+// a stretch of straights and arcs walked by distance from its start
+
+export type Run = { length: number; at: (s: number) => Pt };
+
+export const straightRun = (a: Pt, b: Pt): Run => {
+  const length = dist(a, b);
+  return { length, at: s => length > 0 ? new Pt(a.x + (b.x - a.x) * s / length, a.y + (b.y - a.y) * s / length) : a };
+};
+
+// counterclockwise walks the arc from start to end, clockwise from end back to start
+export const arcRun = (a: Arc, direction: 'ccw' | 'cw'): Run => ({
+  length: a.r * (a.end - a.start),
+  at: s => pointOnCircle(a, direction === 'ccw' ? a.start + s / a.r : a.end - s / a.r),
+});
+
+export const joinedRun = (runs: Run[]): Run => {
+  const last = runs.at(-1)!;
+  return {
+    length: runs.reduce((sum, run) => sum + run.length, 0),
+    at: s => {
+      for (const run of runs) {
+        if (s <= run.length) return run.at(s);
+        s -= run.length;
+      }
+      return last.at(last.length);
+    },
+  };
+};
+
+// how far along a run it first rises to height y, or `limit` where it hasn't by then
+export function riseAlongRun(run: Run, y: number, limit: number): number {
+  let hi = 0;
+  while (hi < limit && run.at(hi).y < y) hi = Math.min(hi + 0.5, limit);
+  let lo = Math.max(hi - 0.5, 0);
+  for (let i = 0; i < 40; i++) {
+    const mid = (lo + hi) / 2;
+    if (run.at(mid).y < y) lo = mid; else hi = mid;
+  }
+  return hi;
+}

@@ -5,14 +5,14 @@ import { flipArcAboutY, flipCircleAboutY, offsetArcRadius } from '../../../helpe
 import { nearestFraction } from '../../../helpers/nearestFraction';
 import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderCrosshair, renderPointHalo, renderSolveFailures } from '../../../helpers/renderFuncs';
 import { Arc } from '../../../models/types';
-import { calculateCenterBout, calculateCorners, hasCenterBout } from '../../ceruti-calcs';
+import { calculateCenterBout, calculateCorners, hasCenterBout } from '../../calculation/outline/ceruti-calcs';
 import { SolveFailure } from '../../../helpers/validators';
 import { CerutiColors, CerutiViewFlags, DefaultParams, EnricoCerutiParams, RenderToggleKey } from '../../ceruti-types';
-import { renderBounds, renderBoutBouts, renderCornerGuides } from '../../renders/guides.render';
+import { renderBounds, renderBoutBouts } from '../../renders/guides.render';
 import { renderFrontInnerProfile } from '../../renders/front-profile.render';
 import { renderMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { HighlightedArc, HighlightedPoint, STROKE_WEIGHT } from '../../renders/render-constants';
-import { compoundArcInfo, cornerPositionInfo, violCornerInfo } from '../../ceruti-toasts';
+import { compoundArcInfo, cornerPositionInfo, violCornerInfo } from '../field-info';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 
@@ -116,7 +116,6 @@ export class CornersPanel extends CerutiPanelBase implements OnInit {
       ...renderFrontInnerProfile(p, c, [...failures, ...later]),
       renderBounds(p, f.showModuleGuides),
       renderBoutBouts(p, c, f.showModuleGuides),
-      renderCornerGuides(p, f.showModuleGuides),
       renderBounds(p, false),
       renderMainBouts(p, c, f, false, highlighted),
       renderCorners(p, c, f, true, highlighted, true, this.highlightedPoint, failures),

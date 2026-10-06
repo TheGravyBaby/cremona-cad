@@ -6,11 +6,11 @@ import {
   solveCrossArchSection,
   solveArchTakeoff,
 } from './ceruti-arch-geometry';
-import { makeMonotoneSpline } from '../helpers/math/vibeMath';
-import { trochoidNorm } from '../helpers/math/pathMath';
+import { makeMonotoneSpline } from '../../../helpers/math/vibeMath';
+import { trochoidNorm } from '../../../helpers/math/pathMath';
 import {
   CrossArchCycloid, CrossArchShape, CrossArchSpline,
-} from './ceruti-types';
+} from '../../ceruti-types';
 
 /**
  * The arching model's two load-bearing claims, in the order they matter:

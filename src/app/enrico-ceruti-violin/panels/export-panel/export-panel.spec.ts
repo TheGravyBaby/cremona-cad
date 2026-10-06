@@ -2,9 +2,9 @@ import { recordLayers } from '../../../helpers/layer-recorder';
 import { archedViolin, defaultViolin, templateViolin } from '../../ceruti-fixtures';
 import { CerutiColors, EnricoCerutiParams, PathEntry } from '../../ceruti-types';
 import { ExportPanel } from './export-panel';
-import { calculateNeck, defaultNeckParams, defaultStringSetup } from '../../ceruti-neck';
-import { defaultFlutingParams, solveLongArch } from '../../ceruti-arch-geometry';
-import { defaultVoluteParams } from '../../ceruti-scroll';
+import { calculateNeck, defaultNeckParams, defaultStringSetup } from '../../calculation/neck/ceruti-neck';
+import { defaultFlutingParams, solveLongArch } from '../../calculation/arching/ceruti-arch-geometry';
+import { defaultVoluteParams } from '../../calculation/neck/ceruti-scroll';
 
 /**
  * The export panel — the last step, and the one whose output leaves the app.

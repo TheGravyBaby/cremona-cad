@@ -6,14 +6,14 @@ import { nearestFraction } from '../../../helpers/nearestFraction';
 import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderCrosshair, renderDashedLine, renderPointHalo, renderSolveFailures } from '../../../helpers/renderFuncs';
 import { Arc } from '../../../models/types';
 import { SolveFailure } from '../../../helpers/validators';
-import { ensureCenterBoutInnerPath } from '../../ceruti-calcs';
-import { cornerOffsetSign } from '../../ceruti-paths';
+import { ensureCenterBoutInnerPath } from '../../calculation/outline/ceruti-calcs';
+import { cornerOffsetSign } from '../../calculation/outline/ceruti-paths';
 import { CerutiColors, CerutiViewFlags, DefaultParams, EnricoCerutiParams, PathEntry, RenderToggleKey } from '../../ceruti-types';
-import { renderBounds, renderBoutBouts, renderCornerGuides } from '../../renders/guides.render';
+import { renderBounds, renderBoutBouts } from '../../renders/guides.render';
 import { HighlightedArc, HighlightedPoint, STROKE_WEIGHT } from '../../renders/render-constants';
 import { renderMainBouts } from '../main-bouts-panel/main-bouts-panel';
 import { renderCorners } from '../corners-panel/corners-panel';
-import { centerBoutWidthInfo, cornerPositionInfo, fitC0Info } from '../../ceruti-toasts';
+import { centerBoutWidthInfo, cornerPositionInfo, fitC0Info } from '../field-info';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 
@@ -123,7 +123,6 @@ export class CenterBoutPanel extends CerutiPanelBase implements OnInit {
     return [
       renderBounds(p, f.showModuleGuides),
       renderBoutBouts(p, c, f.showModuleGuides),
-      renderCornerGuides(p, f.showModuleGuides),
       renderMainBouts(p, c, f, false, highlighted),
       renderCorners(p, c, f, false, highlighted, true, null, failures),
       renderCenterBout(p, c, f, true, highlighted, true, this.highlightedPoint, failures),

@@ -1,21 +1,21 @@
 // @vitest-environment node
 import { defineFholePath, defineFlutingArcs, defineFlutingPath, defineInnerPath, defineInsetPath, defineOffsetArcs, defineOuterPath, defineOuterPurflingPath, definePurflingPath, defineSideScrollPath, violNeckCap } from './ceruti-paths';
-import { defaultViolin, layoutFrom, templateKeys, templateViolin, violinFromRecipe } from './ceruti-fixtures';
+import { defaultViolin, layoutFrom, templateKeys, templateViolin, violinFromRecipe } from '../../ceruti-fixtures';
 import { calculateCenterBout, calculateCorners, calculateFholeContours, calculateMainBouts, calculateOuterArcs } from './ceruti-calcs';
-import { channelPaths, defaultFlutingParams } from './ceruti-arch-geometry';
-import { defaultFHolePlacement } from './panels/f-hole-placement-panel/f-hole-placement-panel';
-import { DefaultParams, EnricoCerutiParams, FlutingParams } from './ceruti-types';
-import { calculateScroll, defaultVoluteParams } from './ceruti-scroll';
-import { defaultNeckParams, defaultStringSetup } from './ceruti-neck';
-import { pointInPolygon, pointOnCircle } from '../helpers/math/simpleGeometry';
-import { samplePathToPolyline, splitPathStrings } from '../helpers/math/pathMath';
-import { Pt } from '../models/types';
-import { setGlobalEmitter } from '../shared/message-emitter';
-import ravatinMansParams from './templates/test-fixtures/ravatin-mans-params.json';
-import magginiDelmasParams from './templates/test-fixtures/maggini-delmas-params.json';
-import amatiBrookingsParams from './templates/test-fixtures/amati-brookings-params.json';
-import invertedCornersFlutingParams from './templates/test-fixtures/inverted-corners-fluting-params.json';
-import { buildPolylineIndex, distPointToPolylineIndexed } from '../helpers/math/vibeMath';
+import { channelPaths, defaultFlutingParams } from '../arching/ceruti-arch-geometry';
+import { defaultFHolePlacement } from '../../panels/f-hole-placement-panel/f-hole-placement-panel';
+import { DefaultParams, EnricoCerutiParams, FlutingParams } from '../../ceruti-types';
+import { calculateScroll, defaultVoluteParams } from '../neck/ceruti-scroll';
+import { defaultNeckParams, defaultStringSetup } from '../neck/ceruti-neck';
+import { pointInPolygon, pointOnCircle } from '../../../helpers/math/simpleGeometry';
+import { samplePathToPolyline, splitPathStrings } from '../../../helpers/math/pathMath';
+import { Pt } from '../../../models/types';
+import { setGlobalEmitter } from '../../../shared/message-emitter';
+import ravatinMansParams from '../../templates/test-fixtures/ravatin-mans-params.json';
+import magginiDelmasParams from '../../templates/test-fixtures/maggini-delmas-params.json';
+import amatiBrookingsParams from '../../templates/test-fixtures/amati-brookings-params.json';
+import invertedCornersFlutingParams from '../../templates/test-fixtures/inverted-corners-fluting-params.json';
+import { buildPolylineIndex, distPointToPolylineIndexed } from '../../../helpers/math/vibeMath';
 
 /**
  * The purfling and channel lines, which are the inner arcs re-solved at a

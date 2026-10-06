@@ -1,4 +1,4 @@
-import { error, info } from "../shared/message-emitter";
+import { error, info } from "../../shared/message-emitter";
 
 const defaultTTL = 30000
 

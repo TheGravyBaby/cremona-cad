@@ -1,9 +1,9 @@
-import { angleFromCenter, angleWithinSweep, arcReach, dist, moveInVectorSpace, normalizeRadians, placeCircleOnPointAtAngle, pointOnCircle, TURN, vectorFromSlope } from '../helpers/math/simpleGeometry';
-import { circleCircleIntersections } from '../helpers/math/draftMath';
-import { hermiteEvaluator, hymanFilterSlopes, naturalSplineSlopes, rayPolylineIntersection } from '../helpers/math/vibeMath';
-import { reportFailures, SolveFailure, solveSection } from '../helpers/validators';
-import { Arc, Circle, Pt, Pt3D } from '../models/types';
-import { EnricoCerutiParams, PegboxParams, ScrollParams, ScrollWidths, VoluteStyle } from './ceruti-types';
+import { angleFromCenter, angleWithinSweep, arcReach, dist, moveInVectorSpace, normalizeRadians, placeCircleOnPointAtAngle, pointOnCircle, TURN, vectorFromSlope } from '../../../helpers/math/simpleGeometry';
+import { arcRun, circleCircleIntersections, joinedRun, riseAlongRun, Run, straightRun } from '../../../helpers/math/draftMath';
+import { hermiteEvaluator, hymanFilterSlopes, naturalSplineSlopes, rayPolylineIntersection } from '../../../helpers/math/vibeMath';
+import { reportFailures, SolveFailure, solveSection } from '../../../helpers/validators';
+import { Arc, Circle, Pt, Pt3D } from '../../../models/types';
+import { EnricoCerutiParams, PegboxParams, ScrollParams, ScrollWidths, VoluteStyle } from '../../ceruti-types';
 import { defaultNeckParams, defaultStringSetup } from './ceruti-neck';
 
 // The scroll in its own side-view frame: the nut at the origin on the neck's front, up the neck +y,
@@ -472,42 +472,6 @@ export function calculateScrollWidths(p: EnricoCerutiParams): void {
   w.eye = Math.max(w.eye, w.turn2Bottom);
 }
 
-// a stretch of the side profile, walked by distance from its start
-type Run = { length: number; at: (s: number) => Pt };
-
-const straight = (a: Pt, b: Pt): Run => {
-  let length = dist(a, b);
-  return { length, at: s => length > 0 ? new Pt(a.x + (b.x - a.x) * s / length, a.y + (b.y - a.y) * s / length) : a };
-};
-const counterclockwise = (a: Arc): Run => ({ length: a.r * (a.end - a.start), at: s => pointOnCircle(a, a.start + s / a.r) });
-const clockwise = (a: Arc): Run => ({ length: a.r * (a.end - a.start), at: s => pointOnCircle(a, a.end - s / a.r) });
-
-const joined = (runs: Run[]): Run => {
-  let last = runs.at(-1)!;
-  return {
-    length: runs.reduce((sum, run) => sum + run.length, 0),
-    at: s => {
-      for (let run of runs) {
-        if (s <= run.length) return run.at(s);
-        s -= run.length;
-      }
-      return last.at(last.length);
-    },
-  };
-};
-
-// how far along a run it first rises to height y, or `limit` where it hasn't by then
-function riseTo(run: Run, y: number, limit: number): number {
-  let hi = 0;
-  while (hi < limit && run.at(hi).y < y) hi = Math.min(hi + 0.5, limit);
-  let lo = Math.max(hi - 0.5, 0);
-  for (let i = 0; i < 40; i++) {
-    let mid = (lo + hi) / 2;
-    if (run.at(mid).y < y) lo = mid; else hi = mid;
-  }
-  return hi;
-}
-
 // the neck's half-width at y along it, in this frame. The taper is read off the authored widths over
 // the neck's length rather than neckHalfWidthAt, which needs the neck solved against the body; over
 // a scroll's reach the two differ by hundredths of a mm
@@ -545,12 +509,12 @@ function scrollPath(p: EnricoCerutiParams): ScrollPath {
   let v = p.scroll!;
   let backFoot = pointOnCircle(v.S3, v.S3.end);
   let backTop = pointOnCircle(v.S2, v.S2.end);
-  let rise = joined([counterclockwise(v.S3), straight(backFoot, backTop)]);
+  let rise = joinedRun([arcRun(v.S3, 'ccw'), straightRun(backFoot, backTop)]);
   let crownArcs = [v.S2, v.S1, v.S0];
-  let whole = joined([rise, ...crownArcs.map(clockwise), ...v.spiral!.map(clockwise)]);
+  let whole = joinedRun([rise, ...crownArcs.map(a => arcRun(a, 'cw')), ...v.spiral!.map(a => arcRun(a, 'cw'))]);
 
   // the path starts where the back first rises to the top of the duck tail's round
-  let start = riseTo(whole, duckTailRoundTop(p), whole.length);
+  let start = riseAlongRun(whole, duckTailRoundTop(p), whole.length);
   let length = whole.length - start;
   let height = (s: number) => whole.at(start + s).y;
 
@@ -591,11 +555,11 @@ function scrollFront(p: EnricoCerutiParams): Run {
   let v = p.scroll!;
   let at = pointOnCircle;
   let flatTop = at(v.F0, v.F0.start);
-  return joined([
-    straight(new Pt(flatTop.x, flatTop.y - v.flat), flatTop),
-    counterclockwise(v.F0),
-    straight(at(v.F0, v.F0.end), at(v.F1, v.F1.end)),
-    clockwise(v.F1),
+  return joinedRun([
+    straightRun(new Pt(flatTop.x, flatTop.y - v.flat), flatTop),
+    arcRun(v.F0, 'ccw'),
+    straightRun(at(v.F0, v.F0.end), at(v.F1, v.F1.end)),
+    arcRun(v.F1, 'cw'),
   ]);
 }
 
@@ -630,7 +594,7 @@ function pathWidth(p: EnricoCerutiParams, path: ScrollPath): (s: number) => numb
   let taper = (s: number) => pegboxWidth(p, path.at(s).y);
 
   // a throat as high as the crown leaves the back on the taper all the way up to it
-  let leave = riseTo(path, scrollThroat(p).y, path.crown);
+  let leave = riseAlongRun(path, scrollThroat(p).y, path.crown);
   let leavesBelowCrown = leave < path.crown - 1e-6;
 
   // the last turn is as wide as the eye from its top on in
@@ -718,7 +682,7 @@ export function scrollWidthStations(p: EnricoCerutiParams): ScrollStation[] {
   let w = v.widths;
 
   let front = scrollFront(p);
-  let hip = front.at(riseTo(front, pegboxHipHeight(p), front.length));
+  let hip = front.at(riseAlongRun(front, pegboxHipHeight(p), front.length));
 
   let path = scrollPath(p);
   let [turn1Bottom, turn2Top, turn2Bottom] = path.turns;
@@ -745,7 +709,7 @@ export function pegboxCavity(p: EnricoCerutiParams): Pt[] | null {
   let v = p.scroll!;
   let backFoot = pointOnCircle(v.S3, v.S3.end);
   let backTop = pointOnCircle(v.S2, v.S2.end);
-  let back = joined([counterclockwise(v.S3), straight(backFoot, backTop), clockwise(v.S2)]);
+  let back = joinedRun([arcRun(v.S3, 'ccw'), straightRun(backFoot, backTop), arcRun(v.S2, 'cw')]);
 
   // the floor is the back carried in by its thickness, a point every quarter millimetre. Going up
   // the back the front is on the right

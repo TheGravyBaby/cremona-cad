@@ -6,22 +6,26 @@ order, the color palette, and the geometry caches. Everything else is delegated.
 Each file below opens with a header comment stating its own boundary. Read that header before
 adding to a file — they are current and more specific than this page.
 
+`calculation/` holds the math that knows it's a violin, in the three groups a reader already
+thinks in: `outline/` (the 2D pipeline), `arching/` (the 3D pipeline) and `neck/` (the neck set).
+The folders are reading groups, not dependency layers — `ceruti-calcs` reaches into `neck/` and
+`arching/`, and `ceruti-neck` reaches back into `outline/`.
+
 | File | Concern |
 |---|---|
-| `ceruti-calcs.ts` | Outline solvers — where the bout/corner/center-bout arcs actually sit. Plus mould & block fabrication geometry. |
-| `ceruti-paths.ts` | Turns solved arcs into SVG path strings: inner/outer trace, insets, purfling, fluting, the scroll's side profile (`defineSideScrollPath`, read off the arcs alone so this file needn't import `ceruti-scroll`, and `definePlacedSideScrollPath` set on the neck), and the front profile (`defineFrontProfilePath`: the body cut where the neck covers it, with the board and nut laid over). The three neck readers that needs — `mortiseFloorY`, `neckHalfWidthAt`, `fingerboardEnd` — live here too, since this file can't import `ceruti-neck`. |
-| `ceruti-arching.ts` | Long-arch height profile, station normalization, `bodyLandmarks`, the `*AtY` half-width queries. The layer that decides *where* a section is taken and how tall the arch stands there. |
-| `ceruti-arch-geometry.ts` | The gouge's circular section, the crown, and the tangency joining them. Answers "what shape is the section here". |
-| `ceruti-surface.ts` | The evaluable height field z(x,y) over the plan view. Cross-arch templates, STL. |
-| `ceruti-neck.ts` | The neck set in the side elevation: `calculateNeck` places the neck wood's four corners, the heel arc and the bridge on `p.neck`, and the functions beside it read the dressing (button, nut block, fingerboard, bridge wedge, guides, the neck's own path) off those for the render. Hangs off the top plate's edge via `topPlatePlacement`, so the rib taper carries through. |
-| `ceruti-scroll.ts` | The scroll in its own side-view frame: the volute's spiral styles about the eye, and `calculateScroll`, which lays the spiral out and runs the back and front off it, writing every arc onto `p.scroll` the way `calculateNeck` writes `p.neck`. Three panels edit it, all drawing through `renders/scroll.render.ts`: volute (the spiral and the crown, S0–S1), scroll (the back from S2 on, and the front), and scroll widths (the back and front views beside the side profile, see *The scroll's widths* below). |
-| `ceruti-neck-template.ts` | The neck and scroll template for the export panel: the side outline as one closed loop, neck foot to duck tail, and the volute inside it as a slotted stencil. See *The neck template* below. |
-| `ceruti-types.ts` | `EnricoCerutiParams` and the whole serialized shape. `CerutiColors`, view flags. |
-| `ceruti-templates.ts` | Bundled historical instruments (Strad Goetz, Del Gesu Baltic, …) as pasted recipe JSON. **Append-only** — add instruments, don't restructure. |
+| `calculation/outline/ceruti-calcs.ts` | Outline solvers — where the bout/corner/center-bout arcs actually sit. Plus mould & block fabrication geometry. |
+| `calculation/outline/ceruti-paths.ts` | Turns solved arcs into SVG path strings: inner/outer trace, insets, purfling, fluting, the scroll's side profile (`defineSideScrollPath`, read off the arcs alone so this file needn't import `ceruti-scroll`, and `definePlacedSideScrollPath` set on the neck), and the front profile (`defineFrontProfilePath`: the body cut where the neck covers it, with the board and nut laid over). The three neck readers that needs — `mortiseFloorY`, `neckHalfWidthAt`, `fingerboardEnd` — live here too, since this file can't import `ceruti-neck`. |
+| `calculation/arching/ceruti-arching.ts` | Long-arch height profile, station normalization, `bodyLandmarks`, the `*AtY` half-width queries. The layer that decides *where* a section is taken and how tall the arch stands there. |
+| `calculation/arching/ceruti-arch-geometry.ts` | The gouge's circular section, the crown, and the tangency joining them. Answers "what shape is the section here". |
+| `calculation/arching/ceruti-surface.ts` | The evaluable height field z(x,y) over the plan view. Cross-arch templates, STL. |
+| `calculation/neck/ceruti-neck.ts` | The neck set in the side elevation: `calculateNeck` places the neck wood's four corners, the heel arc and the bridge on `p.neck`, and the functions beside it read the dressing (button, nut block, fingerboard, bridge wedge, guides, the neck's own path) off those for the render. Hangs off the top plate's edge via `topPlatePlacement`, so the rib taper carries through. |
+| `calculation/neck/ceruti-scroll.ts` | The scroll in its own side-view frame: the volute's spiral styles about the eye, and `calculateScroll`, which lays the spiral out and runs the back and front off it, writing every arc onto `p.scroll` the way `calculateNeck` writes `p.neck`. Three panels edit it, all drawing through `renders/scroll.render.ts`: volute (the spiral and the crown, S0–S1), scroll (the back from S2 on, and the front), and scroll widths (the back and front views beside the side profile, see *The scroll's widths* below). |
+| `calculation/neck/ceruti-neck-template.ts` | The neck and scroll template for the export panel: the side outline as one closed loop, neck foot to duck tail, and the volute inside it as a slotted stencil. See *The neck template* below. |
+| `ceruti-types.ts` | `EnricoCerutiParams` and the whole serialized shape. `CerutiColors`, view flags. Stays at the top level with `ceruti-serialization.spec.ts`, which tests its save-and-reopen contract, and `ceruti-fixtures.ts`, the test fixtures every group's specs share. |
+| `templates/ceruti-templates.ts` | Bundled historical instruments (Strad Goetz, Del Gesu Baltic, …) as pasted recipe JSON. **Append-only** — add instruments, don't restructure. |
 | `templates/corpus/` | Instruments traced from open-licence museum records — one `.json` file each, listed in `templates/corpus/index.ts`. Same type as the templates above, but carrying a `TemplateMeta` and a per-image `ImageCredit` so the numbers and the pixels can each be rechecked. New instruments go here, not in `ceruti-templates.ts`. |
 | `templates/local/` | Gitignored developer scratch space — traces and theories with no provenance to check, never shipped, never swept by the suite. Shows up in the picker only on a local dev build. See that folder's `README.md`. |
-| `ceruti-helpers.ts` | `*Info()` functions — the help text behind each field's info button. |
-| `panels/` | One folder per sidebar panel. Panels are thin; see the layer rule in the root CLAUDE.md. |
+| `panels/` | One folder per sidebar panel. Panels are thin; see the layer rule in the root CLAUDE.md. `panels/field-info.ts` holds the `*Info()` help text behind each field's info button; `panels/render-toggles/` the strip of per-panel view toggles. |
 | `renders/` | SVG emitters for the arching views, plus geometry that only serves one view. `body-section.render.ts` is the side elevation both the long-arching and neck panels draw on; `scroll.render.ts` the same for the volute, scroll and scroll widths panels. `front-profile.render.ts` is the instrument as far as it's been taken, see *The front profile* below. |
 
 `ceruti-calcs.ts` → `ceruti-paths.ts` is the 2D outline pipeline; `ceruti-arching.ts` →
@@ -114,7 +118,7 @@ section first → long arch carved to a template → crown across. The panel ord
   at hand, but it makes the scroll jump up to string height at the nut and is wrong.
 - **A panel's help-text info icons are added by hand, not by an agent.** Don't add an `ⓘ`
   button or a new `*Info()` when adding a field; leave that to a human pass. The neck panel's
-  write-ups in `ceruti-helpers.ts` exist but aren't bound yet.
+  write-ups in `panels/field-info.ts` exist but aren't bound yet.
 - **The neck's own `length` places the nut; the string figures are read off, not dialed.**
   `length` runs along the fingerboard plane from where it crosses the mortise floor to the nut's
   bottom (`neckTop`) — that crossing moved `length` toward the nut. `stringLength` (nut to bridge, the

@@ -1,5 +1,5 @@
-import { EnricoCerutiTemplate, DefaultParams, RECIPE_SCHEMA_VERSION } from "./ceruti-types";
-import { CORPUS_TEMPLATES } from "./templates/corpus";
+import { EnricoCerutiTemplate, DefaultParams, RECIPE_SCHEMA_VERSION } from "../ceruti-types";
+import { CORPUS_TEMPLATES } from "./corpus";
 
 /**
  * The instruments the template picker offers.

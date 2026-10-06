@@ -118,6 +118,14 @@ export function pathFromArc(arc: Arc): string {
   return `M ${startPt.x} ${startPt.y} A ${arc.r} ${arc.r} 0 ${largeArcFlag} ${sweepFlag} ${endPt.x} ${endPt.y}`;
 }
 
+// the complementary sweep to pathFromArc, the path-string twin of renderArcFromArc's `longArc`
+export function pathFromArcLongWay(arc: Arc): string {
+  const startPt = pointOnCircle(arc, arc.start);
+  const endPt = pointOnCircle(arc, arc.end);
+  const sweepFlag = normalizeRadians(arc.end - arc.start) <= TURN.half ? 0 : 1;
+  return `M ${startPt.x} ${startPt.y} A ${arc.r} ${arc.r} 0 1 ${sweepFlag} ${endPt.x} ${endPt.y}`;
+}
+
 /**
  * Builds an SVG arc path `d` sweeping counterclockwise from startAngle to
  * endAngle — this app's existing convention for a "positive" sweep in its

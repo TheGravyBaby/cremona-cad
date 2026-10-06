@@ -1,7 +1,7 @@
-import { Pt } from "../models/types";
-import { clamp, TURN } from "../helpers/math/simpleGeometry";
-import { catenaryZAt, cycloidZAt, splineZAt } from "../helpers/math/pathMath";
-import { ArchCurve, ArchingParams, EnricoCerutiParams } from "./ceruti-types";
+import { Pt } from "../../../models/types";
+import { clamp, TURN } from "../../../helpers/math/simpleGeometry";
+import { catenaryZAt, cycloidZAt, splineZAt } from "../../../helpers/math/pathMath";
+import { ArchCurve, ArchingParams, EnricoCerutiParams } from "../../ceruti-types";
 
 // The long-arch height profile and the body-position queries every arching
 // consumer shares — a distinct concern from the flat 2D outline in

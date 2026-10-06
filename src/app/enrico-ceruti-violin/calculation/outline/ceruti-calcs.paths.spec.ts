@@ -1,8 +1,8 @@
 // @vitest-environment node
 import { ensureCenterBoutInnerPath, ensureOuterTracePaths, getPath, upsertPathEntry } from './ceruti-calcs';
-import { defaultArchingParams } from './ceruti-arching';
-import { defaultViolin, layoutFrom } from './ceruti-fixtures';
-import { PathEntry } from './ceruti-types';
+import { defaultArchingParams } from '../arching/ceruti-arching';
+import { defaultViolin, layoutFrom } from '../../ceruti-fixtures';
+import { PathEntry } from '../../ceruti-types';
 
 /**
  * The shared path cache is what the plan-view sheets are drawn and exported

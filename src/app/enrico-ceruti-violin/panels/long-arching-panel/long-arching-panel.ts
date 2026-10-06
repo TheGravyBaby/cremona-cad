@@ -9,12 +9,12 @@ import {
 } from '../../ceruti-types';
 import {
   clampSplinePointHeights, defaultArchingParams, maxRibTaperMm, splinePeakRow,
-} from '../../ceruti-arching';
-import { defaultFlutingParams, LongArchSolve, solveLongArch } from '../../ceruti-arch-geometry';
-import { calculateOuterArcs, solveNeckForProfile } from '../../ceruti-calcs';
+} from '../../calculation/arching/ceruti-arching';
+import { defaultFlutingParams, LongArchSolve, solveLongArch } from '../../calculation/arching/ceruti-arch-geometry';
+import { calculateOuterArcs, solveNeckForProfile } from '../../calculation/outline/ceruti-calcs';
 import {
   archHeightInfo, curveTypeInfo, transitionInfo, plateThicknessInfo, ribHeightInfo, splinePointInfo,
-} from '../../ceruti-toasts';
+} from '../field-info';
 import { HighlightedSplinePoint } from '../../renders/render-constants';
 import { renderBodySection, renderSideView } from '../../renders/body-section.render';
 import { renderNeck } from '../neck-panel/neck-panel';

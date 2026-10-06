@@ -1,14 +1,14 @@
 // @vitest-environment node
-import { Pt } from '../models/types';
-import { pointOnCircle, shortestDistanceFromPtToLine, lineFromTwoPoints, moveInVectorSpace, vectorFromSlope } from '../helpers/math/simpleGeometry';
-import { archedViolin } from './ceruti-fixtures';
-import { EnricoCerutiParams, NeckParams } from './ceruti-types';
-import { defaultFlutingParams, solveLongArch } from './ceruti-arch-geometry';
+import { Pt } from '../../../models/types';
+import { pointOnCircle, shortestDistanceFromPtToLine, lineFromTwoPoints, moveInVectorSpace, vectorFromSlope } from '../../../helpers/math/simpleGeometry';
+import { archedViolin } from '../../ceruti-fixtures';
+import { EnricoCerutiParams, NeckParams } from '../../ceruti-types';
+import { defaultFlutingParams, solveLongArch } from '../arching/ceruti-arch-geometry';
 import {
   bridgeWedge, buttonTip, calculateNeck, defaultNeckParams, defaultStringSetup, defineNeckPath, fingerboardCrown, mortiseFingerboardIntersect,
   heelFace, heelStands, plateEdgeAtNeck, stringLength,
 } from './ceruti-neck';
-import { defineFrontProfilePath, fingerboardEnd, mortiseFloorY, neckHalfWidthAt } from './ceruti-paths';
+import { defineFrontProfilePath, fingerboardEnd, mortiseFloorY, neckHalfWidthAt } from '../outline/ceruti-paths';
 
 // the properties a maker would check with a ruler on the finished instrument: the neck's own
 // length places the nut, the heel is one arc tangent to the neck's back reaching the button, and

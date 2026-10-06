@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { clampSplinePointHeights } from './ceruti-arching';
-import { ArchSpline } from './ceruti-types';
-import { splineZAt } from '../helpers/math/pathMath';
+import { ArchSpline } from '../../ceruti-types';
+import { splineZAt } from '../../../helpers/math/pathMath';
 
 const HEIGHT = 15;
 const SPAN = 356;

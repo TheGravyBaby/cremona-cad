@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, PathEntry, RenderToggleKey } from '../../ceruti-types';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { renderArcFromArc, renderArcHalo, renderSegment, renderPointHalo, renderArcFromArcFancy, renderCircle, renderSolveFailures } from '../../../helpers/renderFuncs';
-import { ensureFholePath, ensureFrontProfilePaths, calculateOuterArcs, FholeArcKey, FholeFailure } from '../../ceruti-calcs';
+import { ensureFholePath, ensureFrontProfilePaths, calculateOuterArcs, FholeArcKey, FholeFailure } from '../../calculation/outline/ceruti-calcs';
 import { renderFrontProfile } from '../../renders/front-profile.render';
 import { getArcEndDeg, getArcStartDeg, getFieldDeg, setArcEndDeg, setArcStartDeg, setFieldDeg } from '../../../helpers/math/arcDegrees';
 import { defaultFHolePlacement, renderFholeBounds } from '../f-hole-placement-panel/f-hole-placement-panel';
@@ -87,8 +87,6 @@ export class FHoleContoursPanel extends CerutiPanelBase implements OnInit {
 
     this.flags.showFholeBounds && renders.push(renderFholeBounds(p, this.colors));
     this.flags.showModuleGuides && renders.push(renderBoutBouts(p, this.colors, true));
-    
-    // renders.push(renderFholeEyes(p, this.colors));
     renders.push(renderFholeContours(p, this.colors, this.flags.showFholeArcs, arc ? { arc, color } : null, tip, failures));
 
     return renders;
