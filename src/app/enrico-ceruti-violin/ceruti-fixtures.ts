@@ -1,14 +1,15 @@
 import { calculateCenterBout, calculateCorners, calculateMainBouts, calculateOuterArcs } from './calculation/outline/ceruti-calcs';
 import { defaultArchingParams } from './calculation/arching/ceruti-arching';
-import { CERUTI_TEMPLATES } from './templates/ceruti-templates';
-import { DefaultParams, EnricoCerutiParams, EnricoCerutiTemplate } from './ceruti-types';
+import { TEST_INSTRUMENTS } from './templates/test-fixtures';
+import { DefaultParams, EnricoCerutiParams } from './ceruti-types';
 
 // Test fixtures. Not imported by the app.
 //
 // Every spec used to open with its own copy of "deep-clone DefaultParams, run
 // the four calcs" — which meant every assertion in the suite was about one
-// violin at one size, and the seven historical instruments in
-// ceruti-templates.ts were untestable despite shipping solved outline geometry.
+// violin at one size. The historical instruments come from templates/test-fixtures,
+// frozen copies the specs own — never from the served templates, which are re-saved
+// from the app whenever an instrument is retraced (see test-fixtures/index.ts).
 //
 // The deep clone is not incidental: the calcs mutate `p` in place, so a spec
 // sharing a params object with another spec would see the first one's edits.
@@ -63,29 +64,25 @@ export function archedViolin(): EnricoCerutiParams {
   return p;
 }
 
-function allTemplates(): EnricoCerutiTemplate[] {
-  return CERUTI_TEMPLATES;
-}
+/** The blank the picker starts from, as a fixture key: DefaultParams is code, not served data. */
+const BLANK_KEY = 'ceruti-new';
 
-/** Every bundled instrument, as `[key, factory]` — for `it.each` over the whole set. */
+/** Every frozen instrument, for `it.each` over the whole set. */
 export function templateKeys(): string[] {
-  return allTemplates().map(t => t.key);
+  return Object.keys(TEST_INSTRUMENTS);
 }
 
 /**
- * A bundled historical instrument, solved.
+ * A frozen historical instrument, solved.
  *
- * Templates always ship `bouts`/`outerCorners`/`blocks`. They carry `arching`
- * only where the instrument also ships the side profile it was read off (see
- * this folder's CLAUDE.md), and this leaves whatever the template had. Pass `withArching` to
- * seed the ones that have none — those values are the generic defaults and say
- * nothing about the real instrument.
+ * Fixtures carry `arching` only where the instrument shipped the side profile it was read off,
+ * and this leaves whatever the fixture had. Pass `withArching` to seed the ones that have none —
+ * those values are the generic defaults and say nothing about the real instrument.
  */
 export function templateViolin(key: string, withArching = false): EnricoCerutiParams {
-  const template = allTemplates().find(t => t.key === key);
-  if (!template) throw new Error(`No such template: ${key}. Have: ${templateKeys().join(', ')}`);
-  const copy: EnricoCerutiTemplate = JSON.parse(JSON.stringify(template));
-  const p = layoutFrom(copy.params);
+  const source = key === BLANK_KEY ? DefaultParams : TEST_INSTRUMENTS[key];
+  if (!source) throw new Error(`No such fixture: ${key}. Have: ${templateKeys().join(', ')}`);
+  const p = layoutFrom(JSON.parse(JSON.stringify(source)));
   if (withArching && !p.arching) p.arching = defaultArchingParams(p.height);
   return p;
 }

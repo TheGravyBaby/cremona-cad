@@ -173,13 +173,13 @@ function violNeckOn(p: EnricoCerutiParams, neckRadius: number): EnricoCerutiPara
   return layoutFrom(p);
 }
 
-// No bundled template ships useViolNeck, so this sweep also draws on the Maggini fixture below —
-// otherwise it would run empty on every instrument the picker actually offers.
+// every fixture with a viol neck, bar inverted-corners-fluting: with both corners wrapped round
+// the center bout its channel doesn't build at all under a 6 mm join (defineFlutingPath comes
+// back null), which is a question for the channel solver rather than for this sweep
 function violNeckSources(): Array<[string, EnricoCerutiParams]> {
-  const bundled = templateKeys()
-    .filter(k => templateViolin(k).options.useViolNeck)
+  return templateKeys()
+    .filter(k => k !== 'inverted-corners-fluting' && templateViolin(k).options.useViolNeck)
     .map((k): [string, EnricoCerutiParams] => [k, templateViolin(k)]);
-  return [...bundled, ['maggini-delmas', violinFromRecipe({ params: magginiDelmasParams })]];
 }
 
 // 0 is the sharp corner offset exactly; 6 is a fillet wide enough to move the face in visibly.

@@ -3,7 +3,7 @@ import { calculateScroll, calculateScrollWidths, defaultVoluteParams, duckTailRa
 import { defaultNeckParams, defaultStringSetup } from './ceruti-neck';
 import { defaultViolin } from '../../ceruti-fixtures';
 import { EnricoCerutiParams, ScrollParams, VoluteStyle } from '../../ceruti-types';
-import { angleWithinSweep, dist, normalizeRadians } from '../../../helpers/math/simpleGeometry';
+import { angleWithinSweep, dist, normalizeRadians, pointOnCircle } from '../../../helpers/math/simpleGeometry';
 import { Arc, Circle, Pt } from '../../../models/types';
 import { defineSideScrollPath } from '../outline/ceruti-paths';
 import { samplePathToPolyline, splitPathStrings } from '../../../helpers/math/pathMath';
@@ -285,7 +285,7 @@ describe('the back and front off a salviati volute', () => {
     expect(front({ F1: arc(0, 0, 0) })).toEqual(['F1']);
   });
 
-  it('ends the back at the first part that is no radius, no forward sweep, no length or no hang', () => {
+  it('ends the back at the first part that is no radius, no forward sweep or no length', () => {
     const { p, v } = scrolled(style, 4, BACK);
     const back = (over: Partial<ScrollParams>) => {
       Object.assign(v, JSON.parse(JSON.stringify(BACK)), over);
@@ -297,10 +297,17 @@ describe('the back and front off a salviati volute', () => {
     }
     expect(back({ backStraight: -1 })).toEqual(['S3', 'backStraight', 'nape']);
     expect(v.S2.end).toBe(4);
-    for (const over of [{ S3: arc(0, 0, 0) }, { hang: -1 }, { hang: NaN }]) {
+    for (const over of [{ S3: arc(0, 0, 0) }, { hang: NaN }]) {
       expect(back(over)).toEqual(['S3', 'nape']);
       expect(dist(...scrollLines(p).backStraight)).toBeCloseTo(6, 9);
     }
+  });
+
+  it('lets a negative hang lift the duck tail above the nut', () => {
+    const { p, v } = scrolled(style, 4, BACK);
+    v.hang = -1;
+    expect(unsolved(p)).toEqual([]);
+    expect(pointOnCircle(v.S3, v.S3.start).y).toBeCloseTo(1, 9);
   });
 
   it('draws nothing for an eye that is not a positive radius', () => {

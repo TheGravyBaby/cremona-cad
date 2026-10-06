@@ -25,13 +25,13 @@ function polyline(path: string): Array<{ x: number; y: number }> {
 const makeParams = archedViolin;
 
 /**
- * The one bundled, publicly-traced instrument the dense arching sweeps below run against,
- * instead of the synthetic default. Amati already ships its own `arching` block (spline arches,
- * fluting, cycloid cross), so nothing here is invented — it's a real committed recipe that isn't
- * going to change out from under these tests, which is the property that lets a solved number be
+ * A publicly-traced instrument the dense arching sweeps below run against, instead of the
+ * synthetic default. The Amati ships its own `arching` block (spline arches, fluting, cycloid
+ * cross), so nothing here is invented. A frozen copy rather than the served template, which is
+ * re-saved from the app as the instrument is retraced — frozen is what lets a solved number be
  * pinned rather than re-derived on every run.
  */
-const AMATI_KEY = 'amati-violin-brookings';
+const AMATI_KEY = 'amati-brookings-arched';
 function amatiViolin(): EnricoCerutiParams {
   return templateViolin(AMATI_KEY);
 }

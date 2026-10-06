@@ -49,11 +49,11 @@ section first → long arch carved to a template → crown across. The panel ord
 
 ## Settled decisions — don't re-litigate
 
-- **A reference image can be scoped to particular panels**, via `panels`/`excludePanels`/
-  `isDefault` on `ReferenceImage`/`ImageShape` — full mechanics are in
-  `draft-canvas/tools/CLAUDE.md`. What's specific to this model: `initializePanelFlow` hands
-  `panelOrder` down to `ToolboxStore.setAvailablePanels` so the settings-bar picker has real panel
-  labels, since this is the one place that already has them.
+- **A reference image can be scoped to particular panels**, via `scope` on
+  `ReferenceImage`/`ImageShape` — full mechanics are in `draft-canvas/tools/CLAUDE.md`. What's
+  specific to this model: `initializePanelFlow` hands `panelOrder` down to
+  `ToolboxStore.setAvailablePanels` so the bottom bar's scope menus have real panel labels, since
+  this is the one place that already has them.
 - **A template carries `arching` only where it ships the profile that arching was read from.**
   **Never fabricate arching values for a named instrument** — a plausible-looking crown on
   "Strad Goetz" is an invented measurement of a real object, and published sections for these
@@ -597,6 +597,12 @@ no kink at the taper).
   - `ceruti-arch-geometry.spec.ts` — "eases into the taper without a kink", "moves the contact
     smoothly as the crown changes"
   - `ceruti-surface.spec.ts` — "never voids a station row inside the body"
+- **No spec reads a served template** (2026-10-06). `ceruti-templates.ts`, `corpus/` and `local/`
+  are re-saved from the running app as an instrument is retraced, and a tolerance pinned against
+  one then fails on unrelated work. `ceruti-fixtures.ts` builds every historical instrument from
+  `templates/test-fixtures/`, frozen copies the specs own; to follow a template's change, copy its
+  `params` in as a new file. The one exception is `ceruti-templates.spec.ts`, which validates the
+  served set itself.
 - The suite's own rules (2026-10-06 purge, 1362 → ~970 tests): no tests that only check a DOM node
   appeared, none that pin a number read off `DefaultParams` or a template, no per-template
   fan-out of a check the outline spec already makes once. Assert invariants — closure, symmetry,
