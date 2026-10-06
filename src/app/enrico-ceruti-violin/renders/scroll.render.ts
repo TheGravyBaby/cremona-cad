@@ -3,7 +3,7 @@ import { occludePath, pathFromLine, pathFromPolygon, pathFromPolyline } from '..
 import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderCrosshair, renderDashLine, renderPath, renderPointHalo, renderPolygon, renderSegment, renderSegmentHalo } from '../../helpers/renderFuncs';
 import { Arc, Pt, Pt3D } from '../../models/types';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, ScrollParams } from '../ceruti-types';
-import { duckTailRadius, pegboxCavity, pegboxTaperStart, pegboxWidth, scrollPathStretches, ScrollFailure, ScrollStretches, ScrollKey, scrollExtent, scrollFrontWidths, scrollLines, scrollNeckHalfWidth, ScrollStationKey, scrollWidthStations, TO_FRONT } from '../ceruti-scroll';
+import { duckTailRadius, pegboxCavity, pegboxHipHeight, pegboxWidth, scrollPathStretches, ScrollFailure, ScrollStretches, ScrollKey, scrollExtent, scrollFrontWidths, scrollLines, scrollNeckHalfWidth, ScrollStationKey, scrollWidthStations, TO_FRONT } from '../ceruti-scroll';
 import { HighlightedArc, HighlightedSegment, STROKE_WEIGHT } from './render-constants';
 import { scrollOnNeck } from '../ceruti-paths';
 
@@ -133,7 +133,7 @@ export const renderScroll = (
 // a width's colour on canvas and in its field
 export function stationColor(colors: CerutiColors, key: ScrollStationKey): string {
   const inks: Record<ScrollStationKey, string> = {
-    nut: colors.scrollWidthNut, straight: colors.scrollWidthStraight, throat: colors.scrollWidthThroat,
+    nut: colors.scrollWidthNut, hip: colors.scrollWidthHip, throat: colors.scrollWidthThroat,
     crown: colors.scrollWidthCrown, turn1Bottom: colors.scrollWidthTurn1Bottom, turn2Top: colors.scrollWidthTurn2Top,
     turn2Bottom: colors.scrollWidthTurn2Bottom, eye: colors.scrollWidthEye,
   };
@@ -194,13 +194,13 @@ function seenRuns(on: ScrollStretches, pts: Pt3D[], behind: boolean): Pt3D[][] {
   return runs;
 }
 
-// the path starts at the top of the duck tail's round. Below that the pegbox runs on down its
-// taper to the end of its straight, square to the foot of the nut, and closes level there
+// the path starts at the hips, on top of the duck tail's round. Below them the cheeks run in to the
+// nut's edge at its top, square to the foot of the nut, and close level there
 function pegboxOutline(p: EnricoCerutiParams, start: Pt3D) {
-  const nutHalf = p.stringSetup!.nutWidth / 2;
+  const { nutWidth, nutHeight } = p.stringSetup!;
+  const nutHalf = nutWidth / 2;
   const foot = Math.min(start.y, 0);
-  const taperStart = pegboxTaperStart(p);
-  const walls = [start, ...(start.y > taperStart ? [new Pt(nutHalf, taperStart)] : []), new Pt(nutHalf, foot)];
+  const walls = [start, ...(nutHeight < start.y - 1e-6 ? [new Pt(nutHalf, nutHeight)] : []), new Pt(nutHalf, foot)];
   const bottom = [new Pt(nutHalf, foot), new Pt(0, foot)];
   return { foot, walls, bottom };
 }
@@ -219,7 +219,7 @@ export const renderScrollWidths = (p: EnricoCerutiParams, colors: CerutiColors, 
   const stations = scrollWidthStations(p);
 
   const gap = 20;
-  const widest = Math.max(v.widths.eye, p.stringSetup!.nutWidth) / 2;
+  const widest = Math.max(v.widths.eye, v.widths.hip, p.stringSetup!.nutWidth) / 2;
   const back = -scrollExtent(v).width - gap - widest;
   const front = nutThickness + gap + widest;
 
@@ -324,9 +324,10 @@ export function scrollBackViewStrokes(p: EnricoCerutiParams, place: (x: number, 
 
   if (r > 0) strokes.push({ d: pathFromPolyline(round), ink: 'archBack', weight: STROKE_WEIGHT.trace });
   if (hanging) {
-    // the front's bottom shows only where it overhangs the neck; over the neck it's smoothed in
+    // the walls run in from the hips behind the round, and show from where they come out under it.
+    // The front's bottom shows only where it overhangs the neck; over the neck it's smoothed in
     const neck = closed([{ x: scrollNeckHalfWidth(p, neckFrom), y: neckFrom }, { x: scrollNeckHalfWidth(p, start.y), y: start.y }]);
-    contour(walls, 'archTop');
+    contour(walls, 'archTop', r > 0 ? pathFromPolygon(round) : null);
     contour(bottom, 'archTop', neck);
   }
 
@@ -341,9 +342,10 @@ export function scrollBackViewStrokes(p: EnricoCerutiParams, place: (x: number, 
   // the eye stands out as a cylinder to the last width
   for (const side of [1, -1]) line(place(side * eyeHalf, eyeBottom), place(side * eyeHalf, eyeTop), 'scrollBackLight');
 
-  // a round narrower or wider than the path's start leaves a shoulder between them
-  if (Math.abs(start.x - r) > 1e-6) {
-    for (const side of [1, -1]) line(place(side * r, start.y), place(side * start.x, start.y), 'scrollBackLight');
+  // a neck wider than the round meets it along a level shoulder; a narrower one runs in under it
+  const neckHalf = scrollNeckHalfWidth(p, start.y);
+  if (neckHalf > r + 1e-6) {
+    for (const side of [1, -1]) line(place(side * r, start.y), place(side * neckHalf, start.y), 'scrollBackLight');
   }
   return strokes;
 }
@@ -399,7 +401,7 @@ export function scrollFrontViewStrokes(p: EnricoCerutiParams, place: (x: number,
   // view's hollow does, unless the volute hides it first, and then it is left open
   const hollowTop = scrollLines(p).frontStraight[1].y;
   const mouthTop = Math.min(hollowTop, pegboxTop);
-  const mouth = [nutHeight, pegboxTaperStart(p), mouthTop]
+  const mouth = [nutHeight, pegboxHipHeight(p), mouthTop]
     .filter(y => y >= nutHeight && y <= mouthTop)
     .map(y => new Pt(pegboxWidth(p, y) / 2 - v.pegbox.wall, y));
   if (mouth.length > 1 && mouth.every(pt => pt.x > 0)) {

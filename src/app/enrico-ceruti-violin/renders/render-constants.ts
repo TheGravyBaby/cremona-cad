@@ -57,7 +57,7 @@ export const CERUTI_COLOR_PALETTE = {
   // the scroll widths' points from the nut in to the eye, a walk round the cool side violet to teal,
   // deep and light in turn so neighbours differ in both hue and tone
   scrollWidthNut: '#7a55c4',
-  scrollWidthStraight: '#a99af0',
+  scrollWidthHip: '#a99af0',
   scrollWidthThroat: '#4a5fd0',
   scrollWidthCrown: '#8fb4f2',
   scrollWidthTurn1Bottom: '#2a86c8',
