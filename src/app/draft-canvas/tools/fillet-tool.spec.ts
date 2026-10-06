@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { Circle, Pt } from '../../models/types';
 import { dist } from '../../helpers/math/simpleGeometry';
 import { filletBetween } from '../../helpers/math/draftMath';

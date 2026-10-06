@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { imageShapesFromRecipe, imageShapesToRecipe } from './reference-image-schema';
 import { ImageAssetStore } from './image-asset-store';
 import { ReferenceImage } from '../../models/types';

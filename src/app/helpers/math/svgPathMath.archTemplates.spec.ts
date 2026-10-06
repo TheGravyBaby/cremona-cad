@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { closeProfileToBlank, pathsBounds, samplePathToPolyline } from './pathMath';
 
 describe('closeProfileToBlank', () => {

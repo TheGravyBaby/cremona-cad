@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { PathShape } from './toolbox-shape';
 import { distanceToShape, shapeBounds } from './shape-hit-test';
 import { translateShape } from './shape-transform';

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { computeBiarcCandidates } from './join-arc-tool';
 
 const DEG = Math.PI / 180;

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import {
   angleForBridgeRadius, buildPolylineIndex, distPointToPolyline, distPointToPolylineIndexed,
   makeC2SplineWithFlatKnot, makeMonotoneSpline, sweepForTangentLineRadius,

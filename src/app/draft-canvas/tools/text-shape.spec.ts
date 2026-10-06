@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { Pt } from '../../models/types';
 import { DEFAULT_TEXT_SIZE_MM, TextShape } from './toolbox-shape';
 import { distanceToShape, shapeBounds } from './shape-hit-test';

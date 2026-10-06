@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { Camera } from './camera';
 import { Pt } from '../models/types';
 

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { stepAmountForKey } from './stepSize';
 
 describe('stepAmountForKey', () => {

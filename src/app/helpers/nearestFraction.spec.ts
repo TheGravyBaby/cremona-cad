@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { nearestSmallFraction } from './nearestFraction';
 
 describe('nearestSmallFraction', () => {

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { Arc, Circle, Pt, Rectangle } from '../models/types';
 import { defaultViolin, geometryDiff, layoutFrom } from './ceruti-fixtures';
 import { EnricoCerutiParams } from './ceruti-types';

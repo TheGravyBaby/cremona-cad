@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect } from 'vitest';
 import { CERUTI_TEMPLATES } from './ceruti-templates';
 import { CERUTI_PANEL_IDS } from './ceruti-types';

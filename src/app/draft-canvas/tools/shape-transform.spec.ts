@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { reflectAcross, rotateAbout, scaleAbout, transformShape } from './shape-transform';
 import { ArcShape, DimensionShape, ImageShape, PathShape, RectShape, TextShape } from './toolbox-shape';
 import { dimensionGeometry } from './toolbox-shape';

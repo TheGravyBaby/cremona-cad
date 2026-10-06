@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { ImageShape, applyImageCrop, imageCenter, imageSourceBox, isCropped } from './toolbox-shape';
 import { rotatePointAbout } from '../../helpers/math/simpleGeometry';
 import { ImageCrop } from '../../models/types';

@@ -485,14 +485,17 @@ no kink at the taper).
   the dense sweeps below are why. `npm run test:arching` (root CLAUDE.md) runs just the 3D
   pipeline (`ceruti-arching*`, `ceruti-arch-geometry`, `ceruti-surface`) instead of the full
   suite; `npm run test:outline` runs the 2D one. `npm run test:panels` covers `panels/panels.spec.ts`
-  and `export-panel.spec.ts`, which are slow for the same reason — they render every bundled
-  instrument through arching and STL export.
-- Four specs sweep densely enough to run several seconds and were flaky against vitest's 5s
+  and `export-panel.spec.ts`.
+- Three specs sweep densely enough to run several seconds and were flaky against vitest's 5s
   default, so each carries an explicit 20s timeout. Keep them: in every case a sweep coarse
   enough to fit the default is coarse enough to step over what the test exists to catch.
   - `ceruti-arch-geometry.spec.ts` — "eases into the taper without a kink", "moves the contact
     smoothly as the crown changes"
   - `ceruti-surface.spec.ts` — "never voids a station row inside the body"
-  - `panels/panels.spec.ts` — "draws every bundled instrument, not just the default"
+- The suite's own rules (2026-10-06 purge, 1362 → ~970 tests): no tests that only check a DOM node
+  appeared, none that pin a number read off `DefaultParams` or a template, no per-template
+  fan-out of a check the outline spec already makes once. Assert invariants — closure, symmetry,
+  tangency, `on > off` — not counts or coordinates. A spec that touches no DOM API opens with
+  `// @vitest-environment node`; the jsdom spin-up per file was most of the run time.
 - Panels share `onArcFocus`/`onArcBlur`/`adjustArcStart`/`adjustArcEnd`/`nearestFraction`. If you
   add a sixth copy, hoist instead.

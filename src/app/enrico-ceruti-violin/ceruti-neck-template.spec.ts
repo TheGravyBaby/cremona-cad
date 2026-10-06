@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { Pt } from '../models/types';
 import { samplePathToPolyline, splitPathStrings } from '../helpers/math/pathMath';

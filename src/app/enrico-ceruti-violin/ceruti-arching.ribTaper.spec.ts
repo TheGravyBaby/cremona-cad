@@ -1,3 +1,4 @@
+// @vitest-environment node
 import {
   defaultArchingParams, maxRibTaperMm, ribHeightAt, solveRibTaper,
 } from './ceruti-arching';

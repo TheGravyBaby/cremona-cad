@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { Arc, Circle, Rectangle } from '../../models/types';
 import {
   renderArcFromArc, renderArcHalo, renderBoxLine, renderCircle, renderCrosshair, renderRect, renderSegment,
