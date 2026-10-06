@@ -54,9 +54,9 @@
   box-sizing: border-box;
   gap: 4px;
   /* top padding clears .tool-dock-header, which is absolutely positioned and so occupies no space
-     of its own: 36px of band plus the 8px the other three sides get. layoutColumns() reads this
+     of its own: 40px of band plus the 8px the other three sides get. layoutColumns() reads this
      back off the computed style, so the row count follows without being told about the header. */
-  padding: 44px 8px 8px;
+  padding: 48px 8px 8px;
   /* soft, matching .sidebar's edge against the canvas — strong drew a visibly darker line down
      this side of the drawing than the sidebar draws down the other. */
   border-right: 1px solid var(--ui-border-soft);
@@ -85,7 +85,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 36px;
+  height: 40px;
   box-sizing: border-box;
   overflow: hidden;
   border-right: 1px solid var(--ui-border-soft);
@@ -122,7 +122,7 @@
   align-items: center;
   justify-content: center;
   width: 28px;
-  height: 36px;
+  height: 40px;
   padding: 0;
   border: 1px solid var(--ui-border-strong);
   border-left: none;
@@ -145,10 +145,10 @@
    pokes out further; the other tucks under its lower edge. Swapped by class, not DOM order, so
    focus order holds still when the tabs trade places. */
 .tool-dock-handle:not(.top) {
-  top: 32px;
+  top: 36px;
   z-index: 5;
   width: 24px;
-  height: 40px;
+  height: 44px;
   /* centres the icon in the part left showing below the top tab */
   padding-top: 4px;
 }
@@ -169,8 +169,8 @@
 /* same rendered height as the recipe tab's f-hole, so the two tabs read as one family */
 .dock-handle-icon {
   flex: 0 0 auto;
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
 }
 
 .tool-btn {
@@ -269,26 +269,26 @@
 
   .tool-dock-handle {
     width: 36px;
-    height: 44px;
-  }
-
-  .tool-dock-header {
-    height: 44px;
-  }
-
-  .tool-dock-handle:not(.top) {
-    top: 40px;
-    width: 30px;
     height: 48px;
   }
 
+  .tool-dock-header {
+    height: 48px;
+  }
+
+  .tool-dock-handle:not(.top) {
+    top: 44px;
+    width: 30px;
+    height: 52px;
+  }
+
   .tool-dock-body {
-    padding-top: 52px;
+    padding-top: 56px;
   }
 
   .dock-handle-icon {
-    width: 26px;
-    height: 26px;
+    width: 28px;
+    height: 28px;
   }
 }
 

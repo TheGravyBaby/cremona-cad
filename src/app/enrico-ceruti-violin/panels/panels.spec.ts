@@ -5,7 +5,7 @@ import { splineZAt } from '../../helpers/math/vibeMath';
 import { recordLayers } from '../../helpers/layer-recorder';
 import { archedViolin, defaultViolin } from '../ceruti-fixtures';
 import { CerutiColors, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, DefaultParams, EnricoCerutiParams, PathEntry, VoluteStyle } from '../ceruti-types';
-import { ensureFrontProfilePaths, getPath, solveNeckForProfile } from '../calculation/outline/ceruti-calcs';
+import { calculateCenterBout, calculateCorners, calculateMainBouts, ensureFrontProfilePaths, getPath, solveNeckForProfile } from '../calculation/outline/ceruti-calcs';
 import { plateLayoutOffset } from '../calculation/arching/ceruti-arch-geometry';
 import { defineBackNeckPath, defineFholePath, defineInnerPath, defineOuterPath, definePlacedSideScrollPath, definePurflingPath, mortiseFloorY, scrollOnNeck } from '../calculation/outline/ceruti-paths';
 import { vectorFromSlope } from '../../helpers/math/simpleGeometry';
@@ -77,6 +77,38 @@ const PANELS = [
   ['scroll', ScrollPanel],
   ['scroll widths', ScrollWidthsPanel],
 ] as const;
+
+// every panel past the center bout unlocks off it alone, so each has to open on the outline and
+// nothing more, however it was reached: Back from Export lands on the mould
+describe('a bare outline', () => {
+  const outlined = (): EnricoCerutiParams => {
+    const p: EnricoCerutiParams = JSON.parse(JSON.stringify(DefaultParams));
+    calculateMainBouts(p);
+    calculateCorners(p);
+    calculateCenterBout(p);
+    return p;
+  };
+
+  it.each([
+    ['outer trace', OuterTracePanel],
+    ['fluting', FlutingPanel],
+    ['long arching', LongArchingPanel],
+    ['cross arching', CrossArchingPanel],
+    ['f-hole placement', FHolePlacementPanel],
+    ['f-hole contours', FHoleContoursPanel],
+    ['neck', NeckPanel],
+    ['volute', VolutePanel],
+    ['scroll', ScrollPanel],
+    ['scroll widths', ScrollWidthsPanel],
+    ['string setup', StringSetupPanel],
+    ['mould', MouldPanel],
+  ] as const)('opens the %s panel', (_, Ctor) => {
+    const instance: any = panel(Ctor as any, outlined());
+    instance.paths = [];
+    instance.ngOnInit?.();
+    expect(() => instance.buildRun()).not.toThrow();
+  });
+});
 
 describe.each(PANELS)('%s panel', (_name, Ctor) => {
   it('draws something', () => {

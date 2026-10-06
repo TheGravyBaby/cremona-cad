@@ -21,9 +21,9 @@
 .title img {
   height: 28px;
   width: auto;
-  margin: 0 4px;
   display: block;
   filter: invert(1);
+  cursor: pointer;
 }
 
 :host-context(.day-mode) .title img {

@@ -1,6 +1,8 @@
 import { recordLayers } from '../../../helpers/layer-recorder';
 import { archedViolin, defaultViolin, templateViolin } from '../../ceruti-fixtures';
-import { CerutiColors, EnricoCerutiParams, PathEntry } from '../../ceruti-types';
+import { CerutiColors, DefaultParams, EnricoCerutiParams, PathEntry } from '../../ceruti-types';
+import { calculateCenterBout, calculateCorners, calculateMainBouts, calculateMould } from '../../calculation/outline/ceruti-calcs';
+import { defaultFHolePlacement } from '../f-hole-placement-panel/f-hole-placement-panel';
 import { ExportPanel } from './export-panel';
 import { calculateNeck, defaultNeckParams, defaultStringSetup } from '../../calculation/neck/ceruti-neck';
 import { defaultFlutingParams, solveLongArch } from '../../calculation/arching/ceruti-arch-geometry';
@@ -23,6 +25,27 @@ const colors = new Proxy({}, { get: () => '#888888' }) as CerutiColors;
 /** The plain export buttons (excluding the f-hole templates, covered below), and which of them need an arched plate. */
 const PLAIN_EXPORTS = ['innerTrace', 'outerTrace', 'back', 'mould', 'blocks'] as const;
 const ARCHING_EXPORTS = ['crossArchTemplates', 'longArchTemplates'] as const;
+
+// the outline drafted and nothing past it, as the blank instrument leaves it on reaching Export
+function outlined(): EnricoCerutiParams {
+  const p: EnricoCerutiParams = JSON.parse(JSON.stringify(DefaultParams));
+  calculateMainBouts(p);
+  calculateCorners(p);
+  calculateCenterBout(p);
+  return p;
+}
+
+function placed(p: EnricoCerutiParams): EnricoCerutiParams {
+  p.fHoles = defaultFHolePlacement(p);
+  return p;
+}
+
+// the mould panel reached, which is what seeds the blocks
+function moulded(): EnricoCerutiParams {
+  const p = defaultViolin();
+  calculateMould(p, false, false);
+  return p;
+}
 
 function makePanel(p: EnricoCerutiParams, fileName = 'test-violin'): ExportPanel {
   const panel = new ExportPanel();
@@ -100,19 +123,42 @@ describe('previewing an export', () => {
   });
 });
 
+describe('a blank instrument skipped straight to Export', () => {
+  it('offers its inner trace and nothing it would have to invent', () => {
+    const panel = makePanel(outlined());
+    panel.ngOnInit();
+
+    expect([...(panel as any).ready]).toEqual(['innerTrace']);
+    expect(panel.params.fHoles).toBeUndefined();
+    expect(panel.params.blocks.CU).toBeUndefined();
+    expect(panel.params.button).toBeNull();
+  });
+
+  it('writes the inner trace on a sheet with no button to make room for', async () => {
+    const result = await captured(() => makePanel(outlined()).downloadExport('innerTrace'));
+    expect(result).not.toBeNull();
+    expect(result!.text).not.toMatch(/NaN|Infinity|undefined/);
+  });
+
+  it('writes nothing for a sheet whose panel was never reached', async () => {
+    for (const type of ['outerTrace', 'back', 'fholeTemplate', 'mould', 'blocks'] as const) {
+      expect(await captured(() => makePanel(outlined()).downloadExport(type))).toBeNull();
+    }
+  });
+});
+
 describe('f-holes on the top plate only', () => {
-  it('seeds placement and draws both mirrored holes when previewing the outer trace', () => {
-    const panel = makePanel(defaultViolin());
+  it('draws both mirrored holes on the outer trace once they are placed', () => {
+    const panel = makePanel(placed(defaultViolin()));
     panel.previewExport('outerTrace');
 
-    expect(panel.params.fHoles).toBeDefined();
     // two separate closed loops in the cached path — one hole per side, not just the treble side
     expect(panel.paths.find(e => e.key === 'fHole')?.path.match(/M/g)).toHaveLength(2);
   });
 
-  it('leaves f-hole placement and the path cache untouched when previewing the back trace', () => {
+  it('leaves the holes off the outer trace until they are placed', () => {
     const panel = makePanel(defaultViolin());
-    panel.previewExport('back');
+    panel.previewExport('outerTrace');
 
     expect(panel.params.fHoles).toBeUndefined();
     expect(panel.paths.find(e => e.key === 'fHole')).toBeUndefined();
@@ -129,7 +175,7 @@ function pathEndpoints(d: string): { x: number; y: number }[] {
 
 describe('the f-hole cutting template', () => {
   it('draws exactly one unmirrored hole, sized to its own bounds rather than the plan', async () => {
-    const p = defaultViolin();
+    const p = placed(defaultViolin());
     const result = await captured(() => makePanel(p).downloadExport('fholeTemplate'));
     const doc = new DOMParser().parseFromString(result!.text, 'image/svg+xml');
     const paths = [...doc.querySelectorAll('path')];
@@ -146,7 +192,7 @@ describe('the f-hole cutting template', () => {
     // into the hundreds of mm. A template sheet sized to the hole's bounds but never translated
     // onto them draws a geometrically valid, entirely off-sheet path: a blank page, not a thrown
     // error, which is why the SVG/PDF sizing tests above didn't already catch it.
-    const result = await captured(() => makePanel(archedViolin()).downloadExport('fholeTemplate'));
+    const result = await captured(() => makePanel(placed(archedViolin())).downloadExport('fholeTemplate'));
     const doc = new DOMParser().parseFromString(result!.text, 'image/svg+xml');
     const d = doc.querySelector('path')!.getAttribute('d')!;
     const [vx, vy, vw, vh] = doc.documentElement.getAttribute('viewBox')!.split(' ').map(Number);
@@ -169,7 +215,7 @@ function largeArcFlags(d: string): number[] {
 
 describe('the f-hole cutting template with no eyes', () => {
   it('closes both eyes with the short arc instead of drawing their long rim', async () => {
-    const p = defaultViolin();
+    const p = placed(defaultViolin());
     const withEyes = await captured(() => makePanel(p).downloadExport('fholeTemplate'));
     const withoutEyes = await captured(() => makePanel(p).downloadExport('fholeTemplateNoEyes'));
 
@@ -189,7 +235,7 @@ describe('the f-hole cutting template with no eyes', () => {
 
 describe('the SVG a download writes', () => {
   it.each(PLAIN_EXPORTS)('%s is a parseable sheet named after the recipe', async type => {
-    const result = await captured(() => makePanel(defaultViolin()).downloadExport(type));
+    const result = await captured(() => makePanel(moulded()).downloadExport(type));
     expect(result).not.toBeNull();
     expect(result!.name).toBe(`test-violin-${type}.svg`);
 
@@ -369,7 +415,7 @@ describe('the scroll back strip', () => {
 
 describe('the DXF a download writes', () => {
   it.each(PLAIN_EXPORTS)('%s is a complete drawing in millimetres', async type => {
-    const result = await captured(() => makePanel(defaultViolin()).downloadDxf(type));
+    const result = await captured(() => makePanel(moulded()).downloadDxf(type));
     expect(result!.name).toBe(`test-violin-${type}.dxf`);
     expect(result!.text).toContain('ENTITIES');
     expect(result!.text.trimEnd().endsWith('EOF')).toBe(true);

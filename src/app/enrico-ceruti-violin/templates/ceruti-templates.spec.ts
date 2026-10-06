@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
 import { CERUTI_TEMPLATES } from './ceruti-templates';
+import { thumbnailHref } from './corpus';
 import { CERUTI_PANEL_IDS } from '../ceruti-types';
 
 // a blank recipeName fails the identity check on refresh and silently reverts to the default
@@ -25,5 +26,20 @@ describe('CERUTI_TEMPLATES', () => {
         (img.scope ? 'only' in img.scope ? img.scope.only : img.scope.except : [])
           .filter(p => !valid.has(p)).map(p => `${t.key}: ${p}`)));
     expect(bad).toEqual([]);
+  });
+});
+
+describe('thumbnailHref', () => {
+  it('asks the LoC image service for a small rendering rather than the full scan', () => {
+    const locTemplate = CERUTI_TEMPLATES.find(t => t.referenceImages?.length)!;
+    const thumb = thumbnailHref(locTemplate)!;
+    expect(thumb).toContain('/full/!240,320/0/default.');
+    expect(thumb).not.toContain('pct:100');
+  });
+
+  it('passes any other host through untouched, and has nothing for the blank', () => {
+    const other = { ...CERUTI_TEMPLATES[0], referenceImages: [{ href: 'https://example.org/a.png' } as any] };
+    expect(thumbnailHref(other)).toBe('https://example.org/a.png');
+    expect(thumbnailHref(CERUTI_TEMPLATES[0])).toBeUndefined();
   });
 });

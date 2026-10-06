@@ -48,12 +48,22 @@ const LOC_HOST = 'https://tile.loc.gov/';
 /**
  * True when every reference image on this template is served by the Library of Congress's IIIF
  * service, which sends the CORS header a browser needs to read an image's pixels. Used to gate
- * `templateOptions` (ceruti-violin.ts): a template that fails this only ever shows up on a local
- * dev build, with a `/ ` prefix — a deployed build never reaches an instrument whose background
+ * `templateCards` (ceruti-violin.ts): a template that fails this only ever shows up on a local
+ * dev build, marked local — a deployed build never reaches an instrument whose background
  * suppression is broken, or whose image host might not be reachable at all. In practice this
  * only excludes `templates/local/` entries; every committed `CORPUS_TEMPLATES` entry is
  * LOC-sourced.
  */
 export function isLocSourced(template: EnricoCerutiTemplate): boolean {
   return (template.referenceImages ?? []).every(img => img.href.startsWith(LOC_HOST));
+}
+
+// The gallery card's picture is the template's first reference image, asked for small: a LoC
+// href is a IIIF request whose size segment can be swapped, so the card never pulls the
+// full-resolution scan. Anything else is used as it comes.
+export function thumbnailHref(template: EnricoCerutiTemplate): string | undefined {
+  const href = template.referenceImages?.[0]?.href;
+  if (!href) return undefined;
+  if (!href.startsWith(LOC_HOST)) return href;
+  return href.replace(/\/full\/[^/]+\/0\/default\./, '/full/!240,320/0/default.');
 }

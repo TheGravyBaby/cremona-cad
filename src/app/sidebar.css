@@ -192,17 +192,18 @@ select {
   position: relative;
   flex: 0 0 auto;
   box-sizing: border-box;
-  height: 36px;
+  height: 40px;
   display: flex;
   align-items: center;
-  padding: 0 8px;
+  /* 4px above the controls and 8 below, the top bar's own step down to its rule */
+  padding: 0 8px 4px;
   border-bottom: 1px solid var(--ui-border-strong);
   background: var(--ui-bg-surface-2);
 }
 
 @media (pointer: coarse) {
   .panel-nav-wrap {
-    height: 44px;
+    height: 48px;
   }
 }
 
@@ -248,24 +249,35 @@ select {
   min-width: 0;
 }
 
+/* The chevron is a cap on the select's right end, the same joined control as the file name and
+   its menu button in the toolbar, so the two selectors read as one family. */
 .panel-select-caret {
   position: absolute;
-  right: 8px;
+  top: 1px;
+  right: 1px;
+  bottom: 1px;
+  width: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   pointer-events: none;
-  font-size: 11px;
-  color: var(--ui-text-secondary);
-  line-height: 1;
+  border-left: 1px solid var(--ui-border-strong);
+  border-radius: 0 3px 3px 0;
+  background: var(--ui-control-bg);
+  color: var(--ui-text-primary);
 }
 
 .panel-select {
-  height: 26px;
+  height: 28px;
   width: 100%;
-  border: 2px solid var(--ui-border-strong);
-  border-radius: 6px;
+  box-sizing: border-box;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 4px;
   background: var(--ui-bg-panel);
   color: var(--ui-text-primary);
   font-size: 13px;
-  padding: 2px 24px 2px 8px;
+  padding: 2px 32px 2px 8px;
+  text-overflow: ellipsis;
   appearance: none;
   -webkit-appearance: none;
 }
@@ -277,11 +289,11 @@ select {
 }
 
 .panel-nav-btn {
-  height: 26px;
+  height: 28px;
   min-width: 52px;
   padding: 0 8px;
   border: 1px solid var(--ui-border-strong);
-  border-radius: 6px;
+  border-radius: 4px;
   background: var(--ui-control-bg);
   color: var(--ui-text-primary);
   font-size: 12px;

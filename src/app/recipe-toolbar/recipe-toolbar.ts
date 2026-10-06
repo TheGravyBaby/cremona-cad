@@ -16,7 +16,8 @@ export class RecipeToolbarComponent {
   private messages = inject(MessageService);
 
   @Input() recipeName = '';
-  @Input() templateOptions: Array<{ key: string; label: string }> = [];
+  // a recipe with nothing to start from (see hello-recipe) leaves the templates row off
+  @Input() hasTemplates = false;
   @Input() fileName = '';
   // a recipe without an export panel (see hello-recipe) leaves this off
   @Input() showExport = false;
@@ -25,7 +26,7 @@ export class RecipeToolbarComponent {
   @Output() newFile = new EventEmitter<void>();
   @Output() saveFile = new EventEmitter<void>();
   @Output() loadFile = new EventEmitter<RecipeInterface>();
-  @Output() templateSelect = new EventEmitter<string>();
+  @Output() openTemplates = new EventEmitter<void>();
   @Output() fileNameChange = new EventEmitter<string>();
   @Output() openExport = new EventEmitter<void>();
   /** The recipe serializes itself — this component has no idea what it holds. */
@@ -37,29 +38,12 @@ export class RecipeToolbarComponent {
 
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
 
-  // Starting a new instrument is one action with a choice of starting point, so it is one
-  // control. A recipe with no templates to offer (see hello-recipe) skips the menu and starts
-  // blank on the click, which is the whole choice it has.
   protected menuOpen = false;
-
-  protected onNewButtonClick(): void {
-    if (!this.templateOptions.length) {
-      this.startBlank();
-      return;
-    }
-    this.menuOpen = !this.menuOpen;
-  }
 
   protected startBlank(): void {
     this.menuOpen = false;
     const confirmed = confirm('Start a new instrument? Any work you have not downloaded will be lost.');
     if (confirmed) this.newFile.emit();
-  }
-
-  protected startFromTemplate(key: string): void {
-    this.menuOpen = false;
-    // The parent asks about discarding work — it is the one that can tell whether there is any.
-    this.templateSelect.emit(key);
   }
 
   @HostListener('document:pointerdown', ['$event'])
@@ -71,10 +55,6 @@ export class RecipeToolbarComponent {
   @HostListener('document:keydown.escape')
   protected onEscape(): void {
     this.menuOpen = false;
-  }
-
-  onSaveClick(): void {
-    this.saveFile.emit();
   }
 
   triggerFilePick(): void {
