@@ -241,6 +241,16 @@
         </app-ceruti-scroll-widths-panel>
         }
 
+        @if (openPanel === 'stringSetup') {
+        <app-ceruti-string-setup-panel #panelRef
+            [params]="d.params"
+            [paths]="d.paths"
+            [colors]="colors"
+            [flags]="viewFlags"
+            (panelUpdate)="onPanelRenderRequest($event)">
+        </app-ceruti-string-setup-panel>
+        }
+
         @if (openPanel === 'export') {
         <app-ceruti-export-panel #exportRef
             [params]="d.params"

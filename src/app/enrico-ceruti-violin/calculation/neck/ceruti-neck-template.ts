@@ -106,7 +106,7 @@ function scrollOutline(p: EnricoCerutiParams, crossing: { index: number; angle: 
     return `M ${from.x},${from.y} A ${a.r},${a.r} 0 ${large},0 ${to.x},${to.y}`;
   };
   const at = pointOnCircle;
-  const nutTop = new Pt(0, p.stringSetup!.nutHeight);
+  const nutTop = new Pt(0, p.neck!.nutHeight);
   const flatTop = at(v.F0, v.F0.start);
   const outer = arcs[crossing.index];
   return [

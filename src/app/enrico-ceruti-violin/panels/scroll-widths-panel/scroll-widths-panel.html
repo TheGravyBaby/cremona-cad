@@ -1,5 +1,5 @@
 @if (params.scroll; as v) {
-@if (params.stringSetup; as ss) {
+@if (params.neck; as nk) {
 @if (v.widths; as w) {
 
 <section class="ui-group">
@@ -18,8 +18,9 @@
             <span class="field-title" [style.color]="pointColor('hip')"
                 title="The pegbox's widest, sawn straight through the blank. The cheeks run out to it from the nut's edges and taper from it to the throat. Unused while Hip Y is 0">Hip
                 <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('nut')"
-                min="0" [disabled]="v.hipHeight === 0" [(ngModel)]="w.hip" (input)="onChange()" (focus)="onPointFocus('hip')" (blur)="onPointBlur()" />
+            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('nut')" min="0"
+                [disabled]="v.hipHeight === 0" [(ngModel)]="w.hip" (input)="onChange()" (focus)="onPointFocus('hip')"
+                (blur)="onPointBlur()" />
         </label>
         <label class="field-cell">
             <span class="field-title"
@@ -35,26 +36,17 @@
                 title="The nut's width. The pegbox's cheeks run out from its edges">Nut <span
                     class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="colors.nut"
-                [(ngModel)]="ss.nutWidth" (input)="onChange()" (focus)="onPointFocus('nut')" (blur)="onPointBlur()" />
+                [(ngModel)]="nk.nutWidth" (input)="onChange()" (focus)="onPointFocus('nut')" (blur)="onPointBlur()" />
         </label>
-    </div>
-    @if (showHollow) {
-    <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title" [style.color]="colors.scrollFrontLight"
-                title="Each cheek's thickness at the pegbox's front edge, the hollow in from there">Wall <span
-                    class="unit-label">mm</span></span>
+                title="The wood left round the hollow, each cheek at the pegbox's front edge and the floor over the back alike">Wall
+                <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="colors.scrollFrontLight"
                 [(ngModel)]="v.pegbox.wall" (input)="onChange()" />
         </label>
-        <label class="field-cell">
-            <span class="field-title" [style.color]="colors.scrollFrontLight"
-                title="The wood left between the hollow and the back">Floor <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="colors.scrollFrontLight"
-                [(ngModel)]="v.pegbox.floor" (input)="onChange()" />
-        </label>
     </div>
-    }
+
 
 </section>
 
@@ -64,8 +56,7 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title" [style.color]="pointColor('crown')"
-                title="Over the top of the head. No wider than the poll">Crown <span
-                    class="unit-label">mm</span></span>
+                title="Over the top of the head. No wider than the poll">Crown <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('crown')"
                 [(ngModel)]="w.crown" (input)="onChange()" (focus)="onPointFocus('crown')" (blur)="onPointBlur()" />
         </label>
@@ -83,7 +74,8 @@
                 title="Where the back's slope turns. The back's edges run out to it from the foot and on to the poll, each on a straight slope; as wide as the foot, they run parallel up to it. Unused while Hip Y is 0">Hip
                 <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('backHip')"
-                [disabled]="!(v.backHipHeight > 0)" [(ngModel)]="w.backHip" (input)="onChange()" (focus)="onPointFocus('backHip')" (blur)="onPointBlur()" />
+                [disabled]="!(v.backHipHeight > 0)" [(ngModel)]="w.backHip" (input)="onChange()"
+                (focus)="onPointFocus('backHip')" (blur)="onPointBlur()" />
         </label>
         <label class="field-cell">
             <span class="field-title"

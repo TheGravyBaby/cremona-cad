@@ -4,16 +4,6 @@
             <summary><span class="export-group__chevron">▶</span>Contours<span class="export-group__count">3</span></summary>
             <div class="export-group__body">
                 <div class="export-row">
-                    <span class="export-row__name">Inner Trace</span>
-                    <span class="export-row__desc">Inner body outline for mould &amp; rib bending</span>
-                    <div class="export-row__actions">
-                        <button type="button" class="recipe-btn" (click)="previewExport('innerTrace')">Preview</button>
-                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('innerTrace')">SVG</button>
-                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('innerTrace')">PDF</button>
-                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadDxf('innerTrace')">DXF</button>
-                    </div>
-                </div>
-                <div class="export-row">
                     <span class="export-row__name">Top Plate</span>
                     <span class="export-row__desc">Top of the instrument</span>
                     <div class="export-row__actions">
@@ -31,6 +21,16 @@
                         <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('back')">SVG</button>
                         <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('back')">PDF</button>
                         <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadDxf('back')">DXF</button>
+                    </div>
+                </div>
+                <div class="export-row">
+                    <span class="export-row__name">Inner Trace</span>
+                    <span class="export-row__desc">Inner body outline for mould &amp; rib bending</span>
+                    <div class="export-row__actions">
+                        <button type="button" class="recipe-btn" (click)="previewExport('innerTrace')">Preview</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('innerTrace')">SVG</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('innerTrace')">PDF</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadDxf('innerTrace')">DXF</button>
                     </div>
                 </div>
             </div>
@@ -89,7 +89,7 @@
         </details>
 
         <details class="export-group">
-            <summary><span class="export-group__chevron">▶</span>Neck &amp; Scroll<span class="export-group__count">1</span></summary>
+            <summary><span class="export-group__chevron">▶</span>Neck &amp; Scroll<span class="export-group__count">5</span></summary>
             <div class="export-group__body">
                 <div class="export-row">
                     <span class="export-row__name">Neck Template</span>
@@ -97,6 +97,48 @@
                     <div class="export-row__actions">
                         <button type="button" class="recipe-btn" (click)="previewExport('neckTemplate')">Preview</button>
                         <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('neckTemplate')">SVG</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('neckTemplate')">PDF</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadDxf('neckTemplate')">DXF</button>
+                    </div>
+                </div>
+                <div class="export-row">
+                    <span class="export-row__name">Scroll Front View</span>
+                    <span class="export-row__desc">The head from in front, the pegbox and the turns as seen, with the nut</span>
+                    <div class="export-row__actions">
+                        <button type="button" class="recipe-btn" (click)="previewExport('scrollFrontView')">Preview</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('scrollFrontView')">SVG</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('scrollFrontView')">PDF</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadDxf('scrollFrontView')">DXF</button>
+                    </div>
+                </div>
+                <div class="export-row">
+                    <span class="export-row__name">Scroll Back View</span>
+                    <span class="export-row__desc">The head from behind, the duck tail's round, the back and the turns as seen</span>
+                    <div class="export-row__actions">
+                        <button type="button" class="recipe-btn" (click)="previewExport('scrollBackView')">Preview</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('scrollBackView')">SVG</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('scrollBackView')">PDF</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadDxf('scrollBackView')">DXF</button>
+                    </div>
+                </div>
+                <div class="export-row">
+                    <span class="export-row__name">Scroll Back</span>
+                    <span class="export-row__desc">The back unrolled into a strip, duck tail to the second turn's bottom, to lay on the carved back and draw round</span>
+                    <div class="export-row__actions">
+                        <button type="button" class="recipe-btn" (click)="previewExport('scrollBack')">Preview</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('scrollBack')">SVG</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('scrollBack')">PDF</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadDxf('scrollBack')">DXF</button>
+                    </div>
+                </div>
+                <div class="export-row">
+                    <span class="export-row__name">Compass Walk</span>
+                    <span class="export-row__desc">A box to cut, its spine marked where a compass steps up the back, a circle each width across, to set the compass from</span>
+                    <div class="export-row__actions">
+                        <button type="button" class="recipe-btn" (click)="previewExport('scrollCompass')">Preview</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadExport('scrollCompass')">SVG</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadPdf('scrollCompass')">PDF</button>
+                        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadDxf('scrollCompass')">DXF</button>
                     </div>
                 </div>
             </div>

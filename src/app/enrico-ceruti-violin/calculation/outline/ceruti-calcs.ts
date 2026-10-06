@@ -1407,7 +1407,7 @@ const NO_NECK: NeckProfileSolve = { neck: false, scroll: false };
 // the arch already
 export const solveNeckForProfile = (params: EnricoCerutiParams, topArch?: LongArchSolve): NeckProfileSolve => {
   const gouge = params.arching?.top.fluting;
-  if (!(params.neck?.neckTop && params.stringSetup && gouge)) return NO_NECK;
+  if (!(params.neck?.neckTop && gouge)) return NO_NECK;
   calculateNeck(params, topArch ?? solveLongArch(params, params.arching!.top.arch, gouge), gouge);
   return { neck: true, scroll: solveScrollForProfile(params) };
 };

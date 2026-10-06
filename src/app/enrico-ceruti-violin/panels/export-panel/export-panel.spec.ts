@@ -4,7 +4,7 @@ import { CerutiColors, EnricoCerutiParams, PathEntry } from '../../ceruti-types'
 import { ExportPanel } from './export-panel';
 import { calculateNeck, defaultNeckParams, defaultStringSetup } from '../../calculation/neck/ceruti-neck';
 import { defaultFlutingParams, solveLongArch } from '../../calculation/arching/ceruti-arch-geometry';
-import { defaultVoluteParams } from '../../calculation/neck/ceruti-scroll';
+import { defaultVoluteParams, scrollBackStrip, scrollCompassWalk } from '../../calculation/neck/ceruti-scroll';
 
 /**
  * The export panel — the last step, and the one whose output leaves the app.
@@ -254,6 +254,116 @@ describe('the neck template', () => {
     panel.previewExport('neckTemplate');
     expect(emitted[0]).toHaveLength(2);
     expect(recordLayers(emitted[0]).paths.join('')).not.toMatch(/NaN|Infinity/);
+  });
+});
+
+describe('the scroll back strip', () => {
+  const scrolled = () => {
+    const p = defaultViolin();
+    p.neck = defaultNeckParams(p);
+    p.stringSetup = defaultStringSetup(p);
+    p.scroll = defaultVoluteParams(p);
+    return p;
+  };
+  // the neck template wants the neck set against the arch too
+  const necked = () => {
+    const p = archedViolin();
+    p.neck = defaultNeckParams(p);
+    p.stringSetup = defaultStringSetup(p);
+    const gouge = (p.arching!.top.fluting ??= defaultFlutingParams(p));
+    calculateNeck(p, solveLongArch(p, p.arching!.top.arch, gouge), gouge);
+    p.scroll = defaultVoluteParams(p);
+    return p;
+  };
+
+  it('writes a sheet as long and wide as the strip, the outline alone', async () => {
+    const p = scrolled();
+    const result = await captured(() => makePanel(p).downloadExport('scrollBack'));
+    expect(result!.name).toBe('test-violin-scrollBack.svg');
+    const doc = new DOMParser().parseFromString(result!.text, 'image/svg+xml');
+    expect(doc.querySelector('parsererror')).toBeNull();
+    expect(doc.querySelectorAll('path')).toHaveLength(1);
+    expect(doc.querySelectorAll('text')).toHaveLength(0);
+    expect(result!.text).not.toMatch(/NaN|Infinity|undefined/);
+    const strip = scrollBackStrip(p);
+    const viewBox = result!.text.match(/viewBox="([^"]+)"/)![1].split(' ').map(Number);
+    expect(viewBox[3]).toBeGreaterThan(strip.length);
+    expect(viewBox[2] / 2).toBeGreaterThan(Math.max(...strip.outline.map(pt => pt.x)));
+  });
+
+  it('writes the compass walk as a box holding the marks, the centres and the edges, every circle inside the box, each centre a star of three lines, no text', async () => {
+    const p = scrolled();
+    const result = await captured(() => makePanel(p).downloadExport('scrollCompass'));
+    expect(result!.name).toBe('test-violin-scrollCompass.svg');
+    const doc = new DOMParser().parseFromString(result!.text, 'image/svg+xml');
+    expect(doc.querySelector('parsererror')).toBeNull();
+    const paths = [...doc.querySelectorAll('path')].map(el => el.getAttribute('d')!);
+    expect(paths).toHaveLength(4);
+    expect(doc.querySelectorAll('text')).toHaveLength(0);
+    expect(result!.text).not.toMatch(/NaN|Infinity|undefined/);
+    // an arc's radii and flags read as points otherwise; only its end is wanted
+    const points = (d: string) => [...d.replace(/A \S+ \S+ \S+ \S+ \S+ /g, '').matchAll(/(-?[\d.]+(?:e-?\d+)?) (-?[\d.]+(?:e-?\d+)?)/g)].map(m => ({ x: +m[1], y: +m[2] }));
+    const [box, marks] = paths.map(points);
+    const xs = box.map(pt => pt.x), ys = box.map(pt => pt.y);
+    for (const pt of marks) {
+      expect(pt.x).toBeGreaterThanOrEqual(Math.min(...xs));
+      expect(pt.x).toBeLessThanOrEqual(Math.max(...xs));
+      expect(pt.y).toBeGreaterThanOrEqual(Math.min(...ys));
+      expect(pt.y).toBeLessThanOrEqual(Math.max(...ys));
+    }
+    const walk = scrollCompassWalk(p);
+    const first = walk.stations[0];
+    // three lines through each station's centre, each spanning it
+    const stars = points(paths[2]);
+    expect(stars).toHaveLength(6 * walk.stations.length);
+    for (let k = 0; k < stars.length; k += 2) {
+      expect(stars[k].x + stars[k + 1].x).toBeCloseTo(0, 9);
+      expect(Math.hypot(stars[k].x - stars[k + 1].x, stars[k].y - stars[k + 1].y)).toBeCloseTo(2, 9);
+    }
+    // the duck tail's circle clears the box's bottom, and the last station's half circle its top
+    expect(Math.min(...marks.filter(pt => Math.abs(pt.x) > 1e-9).map(pt => pt.y))).toBeGreaterThan(Math.min(...ys) + 2);
+    expect(Math.max(...marks.map(pt => pt.y)) - Math.max(...xs)).toBeLessThan(Math.max(...ys));
+    expect(first.half).toBeGreaterThan(0);
+  });
+
+  it.each(['scrollFrontView', 'scrollBackView'] as const)('%s writes the view as one path on a sheet that starts at its foot, no text', async type => {
+    const result = await captured(() => makePanel(scrolled()).downloadExport(type));
+    expect(result!.name).toBe(`test-violin-${type}.svg`);
+    const doc = new DOMParser().parseFromString(result!.text, 'image/svg+xml');
+    expect(doc.querySelector('parsererror')).toBeNull();
+    expect(doc.querySelectorAll('path')).toHaveLength(1);
+    expect(doc.querySelectorAll('text')).toHaveLength(0);
+    expect(result!.text).not.toMatch(/NaN|Infinity|undefined/);
+    const ys = [...doc.querySelector('path')!.getAttribute('d')!.replace(/A \S+ \S+ \S+ \S+ \S+ /g, '').matchAll(/(-?[\d.]+(?:e-?\d+)?) (-?[\d.]+(?:e-?\d+)?)/g)].map(m => +m[2]);
+    expect(Math.min(...ys)).toBeCloseTo(0, 6);
+    const viewBox = result!.text.match(/viewBox="([^"]+)"/)![1].split(' ').map(Number);
+    expect(viewBox[3]).toBeGreaterThan(Math.max(...ys));
+  });
+
+  it.each(['neckTemplate', 'scrollFrontView', 'scrollBackView', 'scrollBack', 'scrollCompass'] as const)('%s writes a complete DXF in millimetres', async type => {
+    const result = await captured(() => makePanel(type === 'neckTemplate' ? necked() : scrolled()).downloadDxf(type));
+    expect(result!.name).toBe(`test-violin-${type}.dxf`);
+    expect(result!.text).toContain('ENTITIES');
+    expect(result!.text.trimEnd().endsWith('EOF')).toBe(true);
+    expect(result!.text).toMatch(/\$INSUNITS\n\s*70\n4/);
+    expect(result!.text).not.toMatch(/NaN|Infinity|undefined/);
+  });
+
+  it('refuses rather than throwing without a scroll, in any format', async () => {
+    for (const type of ['scrollBack', 'scrollCompass', 'scrollFrontView', 'scrollBackView'] as const) {
+      expect(await captured(() => makePanel(defaultViolin()).downloadDxf(type))).toBeNull();
+      expect(await captured(() => makePanel(defaultViolin()).downloadPdf(type))).toBeNull();
+    }
+    expect(await captured(() => makePanel(archedViolin()).downloadDxf('neckTemplate'))).toBeNull();
+    expect(await captured(() => makePanel(defaultViolin()).downloadExport('scrollBack'))).toBeNull();
+    expect(await captured(() => makePanel(defaultViolin()).downloadExport('scrollCompass'))).toBeNull();
+    expect(await captured(() => makePanel(defaultViolin()).downloadExport('scrollFrontView'))).toBeNull();
+    expect(await captured(() => makePanel(defaultViolin()).downloadExport('scrollBackView'))).toBeNull();
+    const panel = makePanel(defaultViolin());
+    const emitted: any[] = [];
+    panel.draftChange.subscribe(layers => emitted.push(layers));
+    panel.previewExport('scrollBack');
+    expect(emitted).toEqual([[]]);
   });
 });
 

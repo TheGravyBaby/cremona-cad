@@ -9,7 +9,7 @@ import { ensureFrontProfilePaths, getPath, solveNeckForProfile } from '../calcul
 import { plateLayoutOffset } from '../calculation/arching/ceruti-arch-geometry';
 import { defineBackNeckPath, defineFholePath, defineInnerPath, defineOuterPath, definePlacedSideScrollPath, definePurflingPath, mortiseFloorY, scrollOnNeck } from '../calculation/outline/ceruti-paths';
 import { vectorFromSlope } from '../../helpers/math/simpleGeometry';
-import { mortiseFingerboardIntersect, plateEdgeAtNeck } from '../calculation/neck/ceruti-neck';
+import { defaultStringSetup, mortiseFingerboardIntersect, plateEdgeAtNeck } from '../calculation/neck/ceruti-neck';
 import { defaultFHolePlacement, FHolePlacementPanel } from './f-hole-placement-panel/f-hole-placement-panel';
 import { renderFrontProfile, renderPlatePair } from '../renders/front-profile.render';
 import { CenterBoutPanel } from './center-bout-panel/center-bout-panel';
@@ -21,13 +21,14 @@ import { MainBoutsPanel } from './main-bouts-panel/main-bouts-panel';
 import { FHoleContoursPanel } from './f-hole-contours-panel/f-hole-contours-panel';
 import { MouldPanel } from './mould-panel/mould-panel';
 import { NeckPanel } from './neck-panel/neck-panel';
+import { StringSetupPanel } from './string-setup-panel/string-setup-panel';
 import { OuterTracePanel } from './outer-trace-panel/outer-trace-panel';
 import { ScrollPanel } from './scroll-panel/scroll-panel';
 import { ScrollWidthsPanel } from './scroll-widths-panel/scroll-widths-panel';
 import { defaultVoluteParams, duckTailRadius, duckTailRoundTop, pegboxHipHeight, pegboxWidth, scrollBackWidths, scrollExtent, scrollLines, scrollNeckHalfWidth, scrollPathStretches, scrollWidthStations, spiralArcs as styleArcs, VOLUTE_STYLE_LABELS } from '../calculation/neck/ceruti-scroll';
 import { VolutePanel } from './volute-panel/volute-panel';
 import { Pt } from '../../models/types';
-import { PEGBOX_HOLLOW_SHOWN, scrollBackInPlan, scrollBackViewStrokes, scrollFrontInPlan } from '../calculation/neck/ceruti-scroll-views';
+import { scrollBackInPlan, scrollBackViewStrokes, scrollFrontInPlan } from '../calculation/neck/ceruti-scroll-views';
 import { sideViewOffsetX } from '../renders/body-section.render';
 import { STROKE_WEIGHT } from '../../helpers/renderFuncs';
 
@@ -71,6 +72,7 @@ const PANELS = [
   ['outer trace', OuterTracePanel],
   ['mould', MouldPanel],
   ['neck', NeckPanel],
+  ['string setup', StringSetupPanel],
   ['volute', VolutePanel],
   ['scroll', ScrollPanel],
   ['scroll widths', ScrollWidthsPanel],
@@ -190,6 +192,25 @@ describe('the whole front profile', () => {
   });
 });
 
+describe('the neck panel', () => {
+  it('draws the board and nut only once the string setup panel has set them, and never the bridge or strings', () => {
+    const p = archedViolin();
+    const neck = panel(NeckPanel, p);
+    const before = recordLayers(neck.buildRun()).elements.length;
+    expect(p.stringSetup).toBeUndefined();
+    const setup = panel(StringSetupPanel, p);
+    const touchesBridgeTop = (els: { tag: string; attrs: Record<string, unknown> }[]) => {
+      const top = p.stringSetup!.bridgeTop!;
+      const atTop = (x: unknown, y: unknown) => x === top.x && y === top.y;
+      return els.some(el => el.tag === 'line' && (atTop(el.attrs['x1'], el.attrs['y1']) || atTop(el.attrs['x2'], el.attrs['y2'])));
+    };
+    expect(touchesBridgeTop(recordLayers(setup.buildRun()).elements)).toBe(true);
+    const after = recordLayers(neck.buildRun()).elements;
+    expect(after.length).toBeGreaterThan(before);
+    expect(touchesBridgeTop(after)).toBe(false);
+  });
+});
+
 describe('view flags gate what is drawn', () => {
   it('the module circles appear only when their toggle is on', () => {
     const off = recordLayers(panel(MainBoutsPanel, defaultViolin(), flags({ showModuleCircles: false, showAllCircles: false })).buildRun());
@@ -239,7 +260,7 @@ describe('the scroll panel', () => {
     const drawn = recordLayers(instance.buildRun());
     const nut = [...drawn.paths[0].matchAll(/[ML] (-?[\d.]+) (-?[\d.]+)/g)].map(m => [+m[1], +m[2]]);
     expect(Math.min(...nut.map(c => c[0]))).toBe(0);
-    expect(Math.max(...nut.map(c => c[0]))).toBeCloseTo(p.stringSetup!.nutThickness, 9);
+    expect(Math.max(...nut.map(c => c[0]))).toBeCloseTo(defaultStringSetup(p).nutThickness, 9);
     expect(Math.min(...nut.map(c => c[1]))).toBe(0);
 
     const lines = drawn.elements.filter(el => el.tag === 'line' && el.attrs['stroke'] === 'neckOff').map(el => el.attrs);
@@ -597,14 +618,11 @@ describe('the scroll widths panel', () => {
     const frontView = paths('archTop').filter(pts => pts[0].x > 0);
     expect(frontView.filter(pts => pts[0].y < turn1Bottom.y - 1e-9).every(pts => pts.every(pt => pt.y <= turn1Bottom.y + 1e-9))).toBe(true);
 
-    // the hollow's mouth and the dashed cavity below are parked behind PEGBOX_HOLLOW_SHOWN
     const mouth = drawn.filter(el => el.attrs['stroke'] === 'scrollFrontLight' && !el.attrs['stroke-dasharray']);
-    expect(mouth).toHaveLength(PEGBOX_HOLLOW_SHOWN ? 1 : 0);
-    if (PEGBOX_HOLLOW_SHOWN) {
-      const hidden = scrollLines(p).frontStraight[1].y > turn1Bottom.y;
-      expect(/Z$/.test(mouth[0].attrs['d'] as string)).toBe(!hidden);
-      expect(Math.max(...points(mouth[0].attrs['d'] as string).map(pt => pt.y))).toBeLessThanOrEqual(turn1Bottom.y + 1e-9);
-    }
+    expect(mouth).toHaveLength(1);
+    const hidden = scrollLines(p).frontStraight[1].y > turn1Bottom.y;
+    expect(/Z$/.test(mouth[0].attrs['d'] as string)).toBe(!hidden);
+    expect(Math.max(...points(mouth[0].attrs['d'] as string).map(pt => pt.y))).toBeLessThanOrEqual(turn1Bottom.y + 1e-9);
 
     // the volute's bottom closes right across the pegbox running in under it
     const across = recordLayers(instance.buildRun()).elements.filter(el =>
@@ -613,7 +631,7 @@ describe('the scroll widths panel', () => {
     expect(Math.abs((across[0].attrs['x1'] as number) - (across[0].attrs['x2'] as number))).toBeCloseTo(2 * turn1Bottom.x, 9);
 
     const hollow = drawn.filter(el => el.attrs['stroke-dasharray']);
-    expect(hollow).toHaveLength(PEGBOX_HOLLOW_SHOWN ? 1 : 0);
+    expect(hollow).toHaveLength(1);
 
     // a back already narrow at its poll lets the first turn's front stand out past it, and then it
     // shows from behind, down to the second turn's top
@@ -651,7 +669,7 @@ describe('the scroll widths panel', () => {
     expect(cheeks()).toEqual([]);
     Object.assign(p.scroll!.widths, defaults);
 
-    p.stringSetup!.nutWidth = 44;
+    p.neck!.nutWidth = 44;
     p.scroll!.widths.throat = 40;
     const showing = cheeks();
     expect(showing).toHaveLength(2);
@@ -733,7 +751,7 @@ describe('the scroll widths panel', () => {
     });
     const lengths = () => levelAtStart().map(el => Math.abs((el.attrs['x1'] as number) - (el.attrs['x2'] as number)));
     const start = () => scrollBackWidths(p)[0].y;
-    v.hipHeight = duckTailRoundTop(p) - p.stringSetup!.nutHeight;
+    v.hipHeight = duckTailRoundTop(p) - p.neck!.nutHeight;
     // a neck narrower than the round runs in under it
     p.neck!.topWidth = v.widths.duckTail - 4;
     expect(levelAtStart()).toEqual([]);
@@ -777,15 +795,15 @@ describe('the scroll widths panel', () => {
     const fromBehind = () => recordLayers(instance.buildRun()).elements.filter(el =>
       el.tag === 'path' && el.attrs['stroke'] === 'archTop' && /^M -/.test(el.attrs['d'] as string));
     const points = (d: string) => [...d.matchAll(/(-?[\d.]+(?:e-?\d+)?) (-?[\d.]+(?:e-?\d+)?)/g)].map(m => new Pt(+m[1], +m[2]));
-    const nutTop = p.stringSetup!.nutHeight;
+    const nutTop = p.neck!.nutHeight;
 
     // hips on the round's top a touch wider than the back, the nut's edges as wide as the round: the
     // cheeks show from where the taper above the hips comes out past the back, down the hips to the
     // nut's edge at its top, and square to the foot, standing clear of the round the whole way
-    v.hipHeight = duckTailRoundTop(p) - p.stringSetup!.nutHeight;
+    v.hipHeight = duckTailRoundTop(p) - p.neck!.nutHeight;
     v.widths.hip = v.widths.duckTail + 2;
     v.widths.poll = v.widths.duckTail;
-    p.stringSetup!.nutWidth = v.widths.duckTail;
+    p.neck!.nutWidth = v.widths.duckTail;
     const start = scrollBackWidths(p)[0].y;
     expect(start).toBeGreaterThan(nutTop);
     // the foot's edge is the two-point path beside each cheek
@@ -803,7 +821,7 @@ describe('the scroll widths panel', () => {
       expect(foot.y).toBeCloseTo(0, 9);
       expect(Math.abs(first.x - center)).toBeCloseTo(v.widths.duckTail / 2, 6);
       expect(Math.abs(hips.x - center)).toBeCloseTo(v.widths.hip / 2, 6);
-      expect(Math.abs(foot.x - center)).toBeCloseTo(p.stringSetup!.nutWidth / 2, 6);
+      expect(Math.abs(foot.x - center)).toBeCloseTo(p.neck!.nutWidth / 2, 6);
     }
 
     // a back wider than the whole of the pegbox's front hides it, bottom and all
@@ -822,9 +840,9 @@ describe('the scroll widths panel', () => {
     const p = instance.params;
     const v = p.scroll!;
     v.widths.hip = 46;
-    p.stringSetup!.nutWidth = 42;
+    p.neck!.nutWidth = 42;
     p.neck!.topWidth = 33;
-    v.hipHeight = -p.stringSetup!.nutHeight;
+    v.hipHeight = -p.neck!.nutHeight;
     const drawn = recordLayers(instance.buildRun()).elements;
     const roundTop = duckTailRoundTop(p);
     expect(roundTop).toBeGreaterThan(0);
@@ -854,7 +872,7 @@ describe('the scroll widths panel', () => {
     instance.colors = new Proxy({}, { get: (_, key) => String(key) }) as CerutiColors;
     instance.buildRun();
     const p = instance.params;
-    p.stringSetup!.nutWidth = p.neck!.topWidth + 6;
+    p.neck!.nutWidth = p.neck!.topWidth + 6;
     const drawn = recordLayers(instance.buildRun()).elements;
     const points = (d: string) => [...d.matchAll(/(-?[\d.]+(?:e-?\d+)?) (-?[\d.]+(?:e-?\d+)?)/g)].map(m => new Pt(+m[1], +m[2]));
     const fromBehind = (stroke: string) => drawn
@@ -870,7 +888,7 @@ describe('the scroll widths panel', () => {
     const neckTops = fromBehind('neckOff').map(pts => pts.at(-1)!);
     for (const join of joins) {
       const [outer, inner] = [...join].sort((a, b) => Math.abs(b.x - center) - Math.abs(a.x - center));
-      expect(Math.abs(outer.x - center)).toBeCloseTo(p.stringSetup!.nutWidth / 2, 6);
+      expect(Math.abs(outer.x - center)).toBeCloseTo(p.neck!.nutWidth / 2, 6);
       expect(Math.abs(inner.x - center)).toBeCloseTo(p.neck!.topWidth / 2, 6);
       expect(neckTops.some(top => Math.hypot(top.x - inner.x, top.y - inner.y) < 1e-6)).toBe(true);
     }
@@ -899,13 +917,13 @@ describe('the scroll widths panel', () => {
     // the default path starts above the nut's foot, so a neck as wide as the nut stops at the foot of the front's walls
     for (const [, top] of behind) {
       expect(top.y).toBeCloseTo(0, 6);
-      expect(Math.abs(top.x - center(behind))).toBeCloseTo(p.stringSetup!.nutWidth / 2, 6);
+      expect(Math.abs(top.x - center(behind))).toBeCloseTo(p.neck!.nutWidth / 2, 6);
     }
 
     const nut = drawn.filter(el => el.attrs['stroke'] === 'nut').map(el => points(el.attrs['d'] as string));
-    const front = nut.find(corners => corners.every(c => c.x > center(inFront) - p.stringSetup!.nutWidth))!;
-    expect(Math.max(...front.map(c => c.x)) - Math.min(...front.map(c => c.x))).toBeCloseTo(p.stringSetup!.nutWidth, 9);
-    expect([Math.min(...front.map(c => c.y)), Math.max(...front.map(c => c.y))]).toEqual([0, p.stringSetup!.nutHeight]);
+    const front = nut.find(corners => corners.every(c => c.x > center(inFront) - p.neck!.nutWidth))!;
+    expect(Math.max(...front.map(c => c.x)) - Math.min(...front.map(c => c.x))).toBeCloseTo(p.neck!.nutWidth, 9);
+    expect([Math.min(...front.map(c => c.y)), Math.max(...front.map(c => c.y))]).toEqual([0, p.neck!.nutHeight]);
 
     // with the path starting below the foot there are no walls, and the sides run on up under the round
     p.scroll!.hang = p.scroll!.widths.hip / 2 + 1;
@@ -1141,6 +1159,7 @@ describe('the scroll\'s front view on the front profile', () => {
 
   it('goes on the neck panel\'s front view too', () => {
     const { p, paths } = necked();
+    p.stringSetup = defaultStringSetup(p);
     const neck = panel(NeckPanel, p);
     neck.paths = paths;
     const before = recordLayers(neck.buildRun()).elements.length;
@@ -1216,13 +1235,13 @@ describe('the long arching panel lays the neck the user has set under the body',
 
   it('leaves out the strings and the bridge', () => {
     const p = archedViolin();
-    panel(NeckPanel, p).buildRun();
+    panel(StringSetupPanel, p).buildRun();
     const top = p.stringSetup!.bridgeTop!;
     const touchesBridgeTop = (el: { attrs: Record<string, unknown> }) =>
       (Math.abs((el.attrs['x1'] as number) - top.x) < 1e-6 && Math.abs((el.attrs['y1'] as number) - top.y) < 1e-6)
       || (Math.abs((el.attrs['x2'] as number) - top.x) < 1e-6 && Math.abs((el.attrs['y2'] as number) - top.y) < 1e-6)
       || (typeof el.attrs['d'] === 'string' && (el.attrs['d'] as string).includes(`${top.x} ${top.y}`));
-    expect(recordLayers(panel(NeckPanel, p).buildRun()).elements.some(touchesBridgeTop)).toBe(true);
+    expect(recordLayers(panel(StringSetupPanel, p).buildRun()).elements.some(touchesBridgeTop)).toBe(true);
     expect(build(p).some(touchesBridgeTop)).toBe(false);
   });
 
@@ -1312,6 +1331,7 @@ describe('where the two profiles sit', () => {
 
   it('keeps the neck panel\'s front view on x = 0 and moves its side view left of it, clear of the plan', () => {
     const p = archedViolin();
+    panel(StringSetupPanel, p).buildRun();
     const instance = panel(NeckPanel, p);
     const drawn = recordLayers(instance.buildRun()).elements;
     expect(sideShift(drawn)).toEqual([`translate(${sideViewOffsetX(p)},0)`]);

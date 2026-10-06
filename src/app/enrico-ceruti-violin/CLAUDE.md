@@ -160,7 +160,7 @@ section first → long arch carved to a template → crown across. The panel ord
   saved recipe. As of 2026-10-04 `NeckParams` carries `root`, `neckTop`, `backRoot`, `backNut` (the
   neck wood's corners), `plateAtMortise` (2026-10-06, it needs the arch solve) and `heel` as a plain `Arc` whose `r` is the entered radius; a heel that
   can't stand keeps its stale arc and `heelStands` gates every reader. The bridge and nut live on
-  their own top-level `p.stringSetup`, which `calculateNeck` also writes: `bridgeFoot`, `bridgeTop`
+  their own top-level `p.stringSetup`, which `calculateNeck` also writes once it is set: `bridgeFoot`, `bridgeTop`
   (the one piece that needs the arching solve) and `nutTop`. The string length readout is
   `stringLength(p)`, not stored. Everything else the panel draws is a function in `ceruti-neck.ts`
   reading those and the authored numbers — `buttonTip`, `mortiseFingerboardIntersect`,
@@ -190,7 +190,8 @@ section first → long arch carved to a template → crown across. The panel ord
   convention too many. The one corpus template with a volute (`amati-violin-brookings`) was
   rewritten to the new shape rather than given a loader migration, since the scroll had shipped
   nowhere else.
-- **The neck panel's one readout is the figure a maker checks with a ruler, nothing else.**
+- **The neck set's one readout is the figure a maker checks with a ruler, nothing else.** It sits
+  on the string setup panel now.
   `stringLength` (straight-line nut to bridge — noted as approximate since the fingerboard and
   bridge are curved and a 2D side elevation can't give a real string length) was joined briefly
   by `stringAngleDeg` (2026-09-20), then `stringAngleDeg` was cut outright the same day — string
@@ -223,13 +224,23 @@ section first → long arch carved to a template → crown across. The panel ord
   the neck's: `nutHeight`, its length along the neck, which the pegbox's flat rises from the top of
   (a fixed 6 mm scaled by body length until then), and `nutWidth`, which sets where the scroll's
   path starts. Nut width is its own number, not the neck's `topWidth`: a cello's nut is often much
-  wider than its neck.
-- **Fingerboard, bridge and the readouts share one "String Setup" section.** Since none of the
-  three feed the neck's own template geometry (previous bullet), they don't need their own
-  section headers the way "Neck"/"Neck Root" do — merged 2026-09-20 to cut the vertical space
-  three `ui-group` headers cost. The section itself carries no `[style.border-color]` (it mixes
-  fingerboard purple and bridge off-white); each input still carries its own part's color, same
-  as "Readouts" was already uncolored while its neighbors were.
+  wider than its neck. Both live on `p.neck`, not `p.stringSetup` (2026-10-06): the nut's seat is
+  the neck's, and the scroll panels seeding `p.stringSetup` to reach them left no way to tell
+  whether the string setup had been set.
+- **The string setup is its own panel** (2026-10-06), the last before the mould. Bridge, nut,
+  fingerboard and the string length readout were a "String Setup" section of the neck panel from
+  2026-09-20; they moved out so the setup can grow without crowding the neck, since none of them
+  feed the neck's own template geometry (previous bullet). Only the string setup panel seeds
+  `p.stringSetup`, so its presence means the panel has been visited: until then the neck panel, the
+  front profile and the long arching panel's neck draw the bare neck, with no bridge, board, nut
+  or strings, and the neck runs on over the nut's seat to the scroll. Once set, the neck panel
+  draws the board and nut as plain grey profile, a later panel's work, and never the bridge or
+  strings. The string setup panel draws its own parts in colour over a neck in plain grey, all but
+  the line the neck's length runs along, since that field is entered on both panels
+  (`neckSetPalette`). Its sections are Neck (length and nut thickness), Fingerboard, and Bridge
+  with the string length readout. Both panels draw the scene through `buildNeckSetRun`
+  in `neck-panel.ts`. The fret marks toggle went with the strings; the neck's dimension guides
+  stayed with the neck. The scroll panels still draw the nut, at the default thickness until set.
 - **The button draws in the back plate's own color, not the neck's.** The button profile is carved
   from the back plate carried on past its edge (see the button bullet above), so it renders in
   `colors.archBack` — the same color the long-/cross-arching panels already use for "Back Plate" —
@@ -339,14 +350,14 @@ section first → long arch carved to a template → crown across. The panel ord
   the head's back up to the crown keeps `archBack` and the pegbox's front `archTop`. The plan
   profiles draw all of it grey.
 - **The front goes by height** (`pegboxWidth`): straight lines sawn through the blank. The nut's own
-  width (`stringSetup.nutWidth`) holds to the nut's top, the cheeks run out from its edges to the
+  width (`neck.nutWidth`) holds to the nut's top, the cheeks run out from its edges to the
   `hip` (the pegbox's widest, at `hipHeight`), taper back from there to `throat` at the foot of the
   front's straight (`scrollThroat`, F1's `end`; it was F1's far end on the spiral until 2026-10-06),
   and carry that slope on up F1 to where it meets the spiral (`scrollFrontTop`) rather than holding
   the throat's width. The hips replaced a straight held at the nut's width (2026-10-06): on a real
   head the pegbox stands a little proud beside the nut and comes to a point there, tapering both
-  ways. The hollow's `wall` and `floor` are the front's too, parked behind `PEGBOX_HOLLOW_SHOWN`
-  (2026-10-06, fields, cavity and mouth alike) to see the head without it; the calc stays.
+  ways. The hollow's `wall` is the front's too, one thickness for the cheeks and the floor alike
+  (2026-10-06, after a day as two numbers and a day parked out of sight).
 - **The back is "the path"**: from the top of the duck tail's round, over the crown and round the
   spiral in to the eye. `duckTail` is the round's diameter, entered, where it used to be read off
   the neck or the hips, and `foot` the back's width at the round's top, a radius up from the duck
@@ -382,7 +393,7 @@ section first → long arch carved to a template → crown across. The panel ord
   while the front hung below the path's start, a level shoulder out to the cheeks). A neck wider than
   the round, or than cheeks wider still, meets it along a level shoulder at the round's top.
 - **The hollow** is `pegbox.wall` in from the outside in the front view, and in the side view
-  (`pegboxCavity`) the back carried in by `pegbox.floor`, between a wall under the nut leaning 15°
+  (`pegboxCavity`) the back carried in by the same `pegbox.wall`, between a wall under the nut leaning 15°
   off square (`NUT_WALL_LEAN`, fixed) and one square to the neck where the front's straight ends.
 - **Both views carry the neck on below** by `scrollNeckHalfWidth`, the authored taper, since
   `neckHalfWidthAt` needs the whole neck solved against the body.
@@ -488,7 +499,39 @@ section first → long arch carved to a template → crown across. The panel ord
   point solved (see `defineNeckPath`), so the loop runs the mortise floor, the fingerboard plane up
   through the nut's footprint, the scroll's front, the spiral out from F1's crossing, S0–S3, the
   nape, the neck's back down over the heel and face, and closes from there to the mortise floor
-  along x = 0. SVG only as of 2026-10-06, so it can be checked before PDF and DXF follow.
+  along x = 0. SVG only for a day (2026-10-06), until the scroll sheets brought PDF and DXF with them.
+
+## The scroll back strip
+
+- **The back profile is the back unrolled into a strip** (2026-10-06), `scrollBackStrip`, as old
+  schematics print it to lay over the carved back and draw round. Up the strip is distance along
+  the side profile from the duck tail to the bottom of the second turn; across it, the back's width
+  there from `pathWidth`, so the paper bends back into place on the wood. Below the path's start
+  it is the duck tail's round, mapped by height onto that distance, closing to a point at the duck
+  tail; a foot wider than the round steps out to it level. The outline alone, no marks, labels or
+  centreline, like every other template. It needs the scroll solved whole but not the neck set
+  against the body.
+- **The compass walk is the older tool for the same job** (`scrollCompassWalk`, 2026-10-06): a box
+  to cut, its spine up the middle marked with a crosshair and a circle at each station, the circle
+  the width across there. Along the spine each station sits the straight compass distance from the
+  last, not the distance along the path, so a compass set between two crosshairs steps the same on
+  the wood; the circle sets it for the width. The duck tail is at the bottom, a wider foot rings it,
+  a back hip has its own station, then the poll, and from there a step at a time (15 mm on a violin,
+  a maker's figure, scaled by body length) up to the second turn's bottom, which comes last with
+  whatever is left. The box is sized from the circles, not the spine, so the duck tail's circle
+  clears its bottom; the last station is a flat, so its circle is the half hanging under it, the flat
+  drawn across its top; faint straight edges join the circles' sides, the outline the strip gives in
+  full; and each centre is a star of three short lines through it on a heavier path of its own, so
+  the beam crosses the point three times and it reads apart from where a circle crosses the spine. The strip and the
+  walk share one guard in the export panel.
+- **The front and back views export as they are drawn** (2026-10-06): the widths panel's
+  `scrollFrontViewStrokes` and `scrollBackViewStrokes`, each flattened to one path on a sheet that
+  starts at its lowest point, the neck's sides from the nut up. The same guard.
+- **All five neck and scroll sheets export as SVG, PDF and DXF** (2026-10-06) through one
+  `scrollSheet` in the export panel that builds each sheet's paths once; the SVG keeps the stroke
+  weights, the PDF draws every path at one weight and the DXF carries none. The full plan PDF
+  carries each that can be built, after the arching templates, and leaves the rest out without a
+  word, as it does the arching pages.
 
 ## Adding a panel
 

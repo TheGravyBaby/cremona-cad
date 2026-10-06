@@ -13,11 +13,12 @@ import { buildMirroredSvg, PAPER_FORMATS, SvgPathExport } from './fileExporter';
 const path = (d: string, over: Partial<SvgPathExport> = {}): SvgPathExport => ({ d, ...over });
 
 describe('buildMirroredSvg', () => {
-  it('centres the sheet on the joint', () => {
+  it('centres the sheet on the joint, with empty sheet round the content', () => {
     // The instrument is drawn about x = 0, so the viewBox runs from −w/2. A
-    // sheet starting at 0 would cut the whole treble side off.
+    // sheet starting at 0 would cut the whole treble side off, and one ending
+    // on the content's edges cuts its outermost strokes in half.
     const svg = buildMirroredSvg(200, 350, [path('M 0 0')]);
-    expect(svg).toContain('viewBox="-100 0 200 350"');
+    expect(svg).toContain('viewBox="-103 -3 206 356"');
   });
 
   it('flips Y so drafting coordinates land the right way up', () => {

@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { pointOnCircle } from '../../../helpers/math/simpleGeometry';
-import { combinePathStrings, pathsBounds, splitPathStrings, translatePath } from '../../../helpers/math/pathMath';
+import { pointOnCircle, TURN } from '../../../helpers/math/simpleGeometry';
+import { combinePathStrings, pathFromCircle, pathFromLine, pathFromPolygon, pathFromPolyline, pathFromRect, pathsBounds, splitPathStrings, translatePath } from '../../../helpers/math/pathMath';
 import { buildMirroredSvg, downloadFullPlanPdf, downloadSvgAsPdf, downloadSvgFile, PdfPage, SvgPathExport, SvgTextExport } from '../../../helpers/fileExporter';
 import { downloadDxfFile, DxfText } from '../../../helpers/dxfExporter';
 import { downloadStlFile } from '../../../helpers/stlExporter';
@@ -9,19 +9,45 @@ import { renderPath, renderText, STROKE_WEIGHT } from '../../../helpers/renderFu
 import { error } from '../../../shared/message-emitter';
 import { calculateCornerBlocks, calculateMould, calculateOuterArcs, ensureCenterBoutInnerPath, ensureFholePath, ensureOuterTracePaths, getPath, getPathOrNull, solveNeckForProfile } from '../../calculation/outline/ceruti-calcs';
 import { defineNeckTemplate, NeckTemplate, neckTemplatePath } from '../../calculation/neck/ceruti-neck-template';
+import { calculateScroll, calculateScrollWidths, scrollBackStrip, scrollCompassWalk } from '../../calculation/neck/ceruti-scroll';
+import { scrollBackViewStrokes, scrollFrontViewStrokes } from '../../calculation/neck/ceruti-scroll-views';
+import { Circle, Pt, Rectangle } from '../../../models/types';
 import { defineOneFholePath } from '../../calculation/outline/ceruti-paths';
 import { defaultCrossArchParams, defaultFlutingParams } from '../../calculation/arching/ceruti-arch-geometry';
 import { buildPlateSurfaceModel, buildPlateStl, calculateCrossArchTemplates, calculateLongArchTemplates, TemplateShape } from '../../calculation/arching/ceruti-surface';
 import { CerutiColors, EnricoCerutiParams, PathEntry, PathKey } from '../../ceruti-types';
 import { defaultFHolePlacement } from '../f-hole-placement-panel/f-hole-placement-panel';
 
-type ExportType = 'innerTrace' | 'outerTrace' | 'back' | 'mould' | 'blocks' | 'crossArchTemplates' | 'longArchTemplates' | 'fholeTemplate' | 'fholeTemplateNoEyes' | 'neckTemplate';
+type ScrollExportType = 'neckTemplate' | 'scrollFrontView' | 'scrollBackView' | 'scrollBack' | 'scrollCompass';
+type ExportType = 'innerTrace' | 'outerTrace' | 'back' | 'mould' | 'blocks' | 'crossArchTemplates' | 'longArchTemplates' | 'fholeTemplate' | 'fholeTemplateNoEyes' | ScrollExportType;
+
+// the sheet's title on a PDF page, one at a time or in the full plan
+const SHEET_LABELS: Record<string, string> = {
+  innerTrace: 'Inner Contour',
+  outerTrace: 'Outer Contour',
+  mould: 'Mould Path',
+  fholeTemplate: 'F-Hole Template',
+  fholeTemplateNoEyes: 'F-Hole Template (No Eyes)',
+  crossArchTemplates: 'Cross Arch Templates',
+  longArchTemplates: 'Long Arch Templates',
+  neckTemplate: 'Neck Template',
+  scrollFrontView: 'Scroll Front View',
+  scrollBackView: 'Scroll Back View',
+  scrollBack: 'Scroll Back',
+  scrollCompass: 'Compass Walk',
+};
+const SCROLL_EXPORTS: readonly ScrollExportType[] = ['neckTemplate', 'scrollFrontView', 'scrollBackView', 'scrollBack', 'scrollCompass'];
 
 /** Templates are laid out in their own coordinate frame (not the violin's plan-view box), so their
  *  export sheet is sized from the actual combined geometry rather than the shared plan dimensions. */
 const TEMPLATE_SHEET_PAD = 5;
 /** Label text size (mm), consistent across the canvas preview, SVG/PDF, and DXF exports. */
 const TEMPLATE_LABEL_SIZE = 5;
+// the compass walk is a box to cut, its marks etched: every circle clears the box by this. Each
+// centre is a star of three lines through it, arms this long, so the beam crosses the point three
+// times and it reads apart from where a circle crosses the spine; its own path, to etch deeper
+const COMPASS_BOX_MARGIN = 5;
+const COMPASS_STAR = 1;
 
 @Component({
   selector: 'app-ceruti-export-panel',
@@ -56,18 +82,108 @@ export class ExportPanel implements OnInit {
     return true;
   }
 
-  // the neck and scroll template, on its own sheet like the f-hole's, or null with the reason toasted:
-  // it needs the neck set against the arch and the scroll solved whole
-  private neckTemplate(): NeckTemplate | null {
+  // the neck and scroll template, on its own sheet like the f-hole's, or null with the reason toasted
+  // unless `quiet`, as the full plan leaves out what can't be built: it needs the neck set against
+  // the arch and the scroll solved whole
+  private neckTemplate(quiet = false): NeckTemplate | null {
     const { neck, scroll } = solveNeckForProfile(this.params);
     if (!neck || !scroll) {
-      error('The neck template needs the neck and the scroll — open Neck, then Volute and Scroll, first.', 'Neck Template');
+      if (!quiet) error('The neck template needs the neck and the scroll — open Neck, then Volute and Scroll, first.', 'Neck Template');
       return null;
     }
     const t = defineNeckTemplate(this.params);
     const bounds = pathsBounds([neckTemplatePath(t)]);
     const onSheet = (d: string) => translatePath(d, -(bounds.minX + bounds.maxX) / 2, -bounds.minY);
     return { outline: onSheet(t.outline), slots: t.slots.map(onSheet), dots: t.dots.map(onSheet), eye: onSheet(t.eye) };
+  }
+
+  // the scroll's widths need the scroll solved whole, though not the neck set against the body
+  private scrollWidthsSolved(what: string, quiet = false): boolean {
+    const p = this.params;
+    if (!p.scroll || !p.neck || calculateScroll(p).length) {
+      if (!quiet) error(`The ${what} needs the scroll solved whole — open Volute, Scroll and Scroll Widths first.`, what);
+      return false;
+    }
+    calculateScrollWidths(p);
+    return true;
+  }
+
+  // the scroll's back unrolled into a strip, on its own sheet from the duck tail up
+  private scrollBack(quiet = false): string | null {
+    return this.scrollWidthsSolved('Scroll Back', quiet) ? pathFromPolygon(scrollBackStrip(this.params).outline) : null;
+  }
+
+  // the compass walk as a box to cut, the spine up its middle with a crosshair and a circle at each
+  // station etched in it, the duck tail's at the bottom with room to breathe. The last station is the
+  // second turn's bottom, a flat, so its circle is the half hanging under its level, swept from 0 to
+  // π the negative way as the crown's is on the widths panel, with the flat drawn across its top as
+  // the end of the path. Faint straight edges run
+  // through the circles' sides, the back's outline roughly, where the strip has it in full
+  private scrollCompass(quiet = false): { box: string; marks: string; centres: string; edges: string } | null {
+    if (!this.scrollWidthsSolved('Compass Walk', quiet)) return null;
+    const walk = scrollCompassWalk(this.params);
+    const bottom = Math.max(...walk.stations.filter(st => st.along === 0).map(st => st.half));
+    const y = (st: { along: number }) => COMPASS_BOX_MARGIN + bottom + st.along;
+    const half = Math.max(...walk.stations.map(st => st.half)) + COMPASS_BOX_MARGIN;
+    const last = walk.stations.length - 1;
+    const height = Math.max(...walk.stations.map((st, k) => y(st) + (k === last ? 0 : st.half))) + COMPASS_BOX_MARGIN;
+    const marks = [pathFromLine(new Pt(0, 0), new Pt(0, height))];
+    const centres: string[] = [];
+    walk.stations.forEach((st, k) => {
+      marks.push(k === last
+        ? combinePathStrings([
+          pathFromPolyline(Array.from({ length: 33 }, (_, i) => pointOnCircle({ x: 0, y: y(st), r: st.half }, -TURN.half * i / 32))),
+          pathFromLine(new Pt(-st.half, y(st)), new Pt(st.half, y(st))),
+        ])
+        : pathFromCircle(new Circle(0, y(st), st.half)));
+      const centre = { x: 0, y: y(st), r: COMPASS_STAR };
+      for (const angle of [0, TURN.half / 3, 2 * TURN.half / 3]) {
+        centres.push(pathFromLine(pointOnCircle(centre, angle), pointOnCircle(centre, angle + TURN.half)));
+      }
+    });
+    const edges = [1, -1].map(side => pathFromPolyline(walk.stations.map(st => new Pt(side * st.half, y(st)))));
+    return {
+      box: pathFromRect(new Rectangle(new Pt(-half, 0), new Pt(half, height))),
+      marks: combinePathStrings(marks),
+      centres: combinePathStrings(centres),
+      edges: combinePathStrings(edges),
+    };
+  }
+
+  // the scroll seen from in front or behind, as the widths panel draws it, on its own sheet: the
+  // head and the nut, the neck's sides from the nut up to where they meet it
+  private scrollView(type: 'scrollFrontView' | 'scrollBackView', quiet = false): string | null {
+    if (!this.scrollWidthsSolved(SHEET_LABELS[type], quiet)) return null;
+    const place = (x: number, y: number) => new Pt(x, y);
+    const strokes = type === 'scrollFrontView' ? scrollFrontViewStrokes(this.params, place, 0) : scrollBackViewStrokes(this.params, place, 0);
+    const d = combinePathStrings(strokes.map(s => 'line' in s ? pathFromLine(...s.line) : 'polygon' in s ? pathFromPolygon(s.polygon) : s.d));
+    return translatePath(d, 0, -pathsBounds([d]).minY);
+  }
+
+  // the neck and scroll sheets, each in its own frame, as paths for any of the three formats, or
+  // null with the reason toasted. The strokes only matter to the SVG; the PDF draws every path at
+  // one weight and the DXF carries none
+  private scrollSheet(type: ScrollExportType, quiet = false): SvgPathExport[] | null {
+    const black = (d: string, strokeWidth: string): SvgPathExport => ({ d, stroke: 'black', fill: 'none', strokeWidth });
+    switch (type) {
+      case 'neckTemplate': {
+        const t = this.neckTemplate(quiet);
+        return t && [black(t.outline, '.5'), black(combinePathStrings([...t.slots, ...t.dots, t.eye]), '.5')];
+      }
+      case 'scrollFrontView':
+      case 'scrollBackView': {
+        const view = this.scrollView(type, quiet);
+        return view && [black(view, '.5')];
+      }
+      case 'scrollBack': {
+        const strip = this.scrollBack(quiet);
+        return strip && [black(strip, '.5')];
+      }
+      case 'scrollCompass': {
+        const t = this.scrollCompass(quiet);
+        return t && [black(t.box, '.5'), black(t.marks, '.25'), black(t.centres, '.5'), black(t.edges, '.1')];
+      }
+    }
   }
 
   private archTemplates(type: 'crossArchTemplates' | 'longArchTemplates'): TemplateShape[] {
@@ -198,6 +314,30 @@ export class ExportPanel implements OnInit {
         ]);
         break;
       }
+      case 'scrollBack': {
+        const strip = this.scrollBack();
+        if (!strip) { this.draftChange.emit([]); return; }
+        this.draftChange.emit([renderPath(strip, this.colors.outerTrace, STROKE_WEIGHT.trace)]);
+        break;
+      }
+      case 'scrollFrontView':
+      case 'scrollBackView': {
+        const view = this.scrollView(type);
+        if (!view) { this.draftChange.emit([]); return; }
+        this.draftChange.emit([renderPath(view, this.colors.outerTrace, STROKE_WEIGHT.trace)]);
+        break;
+      }
+      case 'scrollCompass': {
+        const t = this.scrollCompass();
+        if (!t) { this.draftChange.emit([]); return; }
+        this.draftChange.emit([
+          renderPath(t.box, this.colors.outerTrace, STROKE_WEIGHT.trace),
+          renderPath(t.marks, this.colors.innerTrace, STROKE_WEIGHT.guide),
+          renderPath(t.centres, this.colors.outerTrace, STROKE_WEIGHT.trace),
+          renderPath(t.edges, this.colors.innerTrace, STROKE_WEIGHT.guide, 0.4),
+        ]);
+        break;
+      }
       case 'crossArchTemplates':
       case 'longArchTemplates': {
         if (!this.requireArching()) { this.draftChange.emit([]); return; }
@@ -255,16 +395,17 @@ export class ExportPanel implements OnInit {
         paths = [{ d: onePath, stroke: 'black', fill: 'none', strokeWidth: '.5' }];
         break;
       }
-      case 'neckTemplate': {
-        const t = this.neckTemplate();
-        if (!t) return;
-        const bounds = pathsBounds([neckTemplatePath(t)]);
+      case 'neckTemplate':
+      case 'scrollFrontView':
+      case 'scrollBackView':
+      case 'scrollBack':
+      case 'scrollCompass': {
+        const sheet = this.scrollSheet(type);
+        if (!sheet) return;
+        const bounds = pathsBounds(sheet.map(s => s.d));
         sheetWidth = bounds.width + TEMPLATE_SHEET_PAD;
         sheetHeight = bounds.height + TEMPLATE_SHEET_PAD;
-        paths = [
-          { d: t.outline, stroke: 'black', fill: 'none', strokeWidth: '.5' },
-          { d: combinePathStrings([...t.slots, ...t.dots, t.eye]), stroke: 'black', fill: 'none', strokeWidth: '.5' },
-        ];
+        paths = sheet;
         break;
       }
       case 'crossArchTemplates':
@@ -301,7 +442,6 @@ export class ExportPanel implements OnInit {
   }
 
   downloadDxf(type: ExportType): void {
-    if (type === 'neckTemplate') { error('The neck template exports as SVG for now.', 'Neck Template'); return; }
     this.ensureDerivedPaths();
     const p = this.params;
     const baseName = this.fileName?.trim() || 'ceruti-violin';
@@ -336,6 +476,16 @@ export class ExportPanel implements OnInit {
       case 'fholeTemplateNoEyes':
         pathD = this.fholeTemplatePath(type === 'fholeTemplate');
         break;
+      case 'neckTemplate':
+      case 'scrollFrontView':
+      case 'scrollBackView':
+      case 'scrollBack':
+      case 'scrollCompass': {
+        const sheet = this.scrollSheet(type);
+        if (!sheet) return;
+        pathD = combinePathStrings(sheet.map(s => s.d));
+        break;
+      }
       case 'crossArchTemplates':
       case 'longArchTemplates': {
         if (!this.requireArching()) return;
@@ -350,20 +500,9 @@ export class ExportPanel implements OnInit {
   }
 
   downloadPdf(type: ExportType): void {
-    if (type === 'neckTemplate') { error('The neck template exports as SVG for now.', 'Neck Template'); return; }
     this.ensureDerivedPaths();
     const p = this.params;
     const baseName = this.fileName?.trim() || 'ceruti-violin';
-    const sheetLabels: Record<string, string> = {
-      innerTrace: 'Inner Contour',
-      outerTrace: 'Outer Contour',
-      mould: 'Mould Path',
-      fholeTemplate: 'F-Hole Template',
-      fholeTemplateNoEyes: 'F-Hole Template (No Eyes)',
-      crossArchTemplates: 'Cross Arch Templates',
-      longArchTemplates: 'Long Arch Templates',
-    };
-
     const height = p.height + 2 * p.button!.height;
 
     let pdfPaths: SvgPathExport[];
@@ -402,6 +541,19 @@ export class ExportPanel implements OnInit {
         pdfPaths = [{ d: onePath, stroke: 'black', fill: 'none' }];
         break;
       }
+      case 'neckTemplate':
+      case 'scrollFrontView':
+      case 'scrollBackView':
+      case 'scrollBack':
+      case 'scrollCompass': {
+        const sheet = this.scrollSheet(type);
+        if (!sheet) return;
+        const bounds = pathsBounds(sheet.map(s => s.d));
+        sheetWidth = bounds.width + TEMPLATE_SHEET_PAD;
+        sheetHeight = bounds.height + TEMPLATE_SHEET_PAD;
+        pdfPaths = sheet;
+        break;
+      }
       case 'crossArchTemplates':
       case 'longArchTemplates': {
         if (!this.requireArching()) return;
@@ -423,7 +575,7 @@ export class ExportPanel implements OnInit {
       {
         fileName: baseName,
         description: this.description ?? '',
-        sheetLabel: sheetLabels[type],
+        sheetLabel: SHEET_LABELS[type],
       },
       texts
     );
@@ -464,14 +616,6 @@ export class ExportPanel implements OnInit {
 
     const pages: PdfPage[] = [
       {
-        label: 'Inner Contour',
-        fileName: baseName,
-        description,
-        width: p.width,
-        height,
-        paths: [{ d: this.getPath('inner'), stroke: 'black', fill: 'none' }],
-      },
-      {
         label: 'Top Contour',
         fileName: baseName,
         description,
@@ -495,6 +639,14 @@ export class ExportPanel implements OnInit {
           ...(purflingPath ? [{ d: purflingPath, stroke: 'black', fill: 'none' }] : []),
           ...(outerPurflingPath ? [{ d: outerPurflingPath, stroke: 'black', fill: 'none' }] : []),
         ],
+      },
+      {
+        label: 'Inner Contour',
+        fileName: baseName,
+        description,
+        width: p.width,
+        height,
+        paths: [{ d: this.getPath('inner'), stroke: 'black', fill: 'none' }],
       },
       {
         label: 'Mould',
@@ -535,6 +687,21 @@ export class ExportPanel implements OnInit {
         templatePage('Cross Arch Templates', calculateCrossArchTemplates(p)),
       ] : []),
     ];
+
+    // the neck and scroll sheets the same way: each that can be built, in its own frame
+    for (const type of SCROLL_EXPORTS) {
+      const sheet = this.scrollSheet(type, true);
+      if (!sheet) continue;
+      const bounds = pathsBounds(sheet.map(s => s.d));
+      pages.push({
+        label: SHEET_LABELS[type],
+        fileName: baseName,
+        description,
+        width: bounds.width + TEMPLATE_SHEET_PAD,
+        height: bounds.height + TEMPLATE_SHEET_PAD,
+        paths: sheet,
+      });
+    }
 
     downloadFullPlanPdf(`${baseName}-full-plan.pdf`, pages);
   }

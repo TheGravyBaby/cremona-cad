@@ -14,8 +14,8 @@ import { fingerboardEnd, mortiseFloorY, neckHalfWidthAt } from '../outline/cerut
 // The neck set in the side elevation, in the frame the body section is drawn in: x is height off
 // the back plate's inner face, y runs up the body, the neck end at y = height. Everything hangs off
 // the top plate's edge at the neck end, so the rib taper carries through. `calculateNeck` writes
-// onto `p.neck` the four corners of the neck wood and the heel arc, and onto `p.stringSetup` the
-// bridge and the string's point at the nut. The dressing the panel also draws (button, nut block,
+// onto `p.neck` the four corners of the neck wood and the heel arc, and, once the string setup panel
+// has set `p.stringSetup`, onto it the bridge and the string's point at the nut. The dressing the panel also draws (button, nut block,
 // fingerboard, bridge wedge, guides) and the string length are read off those by the functions
 // below, which the render and the path builder share.
 
@@ -39,6 +39,8 @@ export function defaultNeckParams(p: EnricoCerutiParams): NeckParams {
     topWidth: mm(24),
     rootWidth: mm(33),
     heel: new Arc(0, 0, mm(20), 0, 0),
+    nutHeight: mm(6),
+    nutWidth: mm(24),
 
     root: null, neckTop: null, backRoot: null, backNut: null, plateAtMortise: null,
   };
@@ -51,8 +53,6 @@ export function defaultStringSetup(p: EnricoCerutiParams): StringSetup {
     bodyStop: mm(195),
     bridgeHeight: mm(33),
     nutThickness: mm(7.5),
-    nutHeight: mm(6),
-    nutWidth: mm(24),
     fingerboardLength: standardFingerboardLength(p.height),
     fingerboardThickness: mm(5),
     fingerboardRadius: mm(42),
@@ -71,10 +71,9 @@ function standardFingerboardLength(bodyHeight: number): number {
 }
 
 
-// `p.arching`, `p.neck`, `p.stringSetup` and `p.button` must already be in place — the panel seeds them
+// `p.arching`, `p.neck` and `p.button` must already be in place — the panel seeds them
 export function calculateNeck(p: EnricoCerutiParams, topArch: LongArchSolve | null, topGouge: FlutingParams): SolveFailure<'nutThickness' | 'fingerboardRadius'>[] {
   const nk = p.neck!;
-  const ss = p.stringSetup!;
   const taper = solveRibTaper(p);
   const placement = topPlatePlacement(p, taper);
   const outerZ = taper.zLower + p.arching!.top.thickness;
@@ -87,11 +86,6 @@ export function calculateNeck(p: EnricoCerutiParams, topArch: LongArchSolve | nu
   const fingerboardPlane = lineFromTwoPoints(root, moveInVectorSpace(root, [{ ...direction, mag: 1 }]));
   const rootPlaneY = p.height - p.overhang;
   const neckAtRootPlane = intersectLines(fingerboardPlane, lineFromTwoPoints(new Pt(0, rootPlaneY), new Pt(1, rootPlaneY)))!;
-
-  const bridgeY = p.height - ss.bodyStop;
-  const archZAtBridge = channelCenterlineZAt(p, topGouge, topArch, bridgeY);
-  const bridgeFoot = placeOnTopPlate(placement, new Pt(outerZ + archZAtBridge, bridgeY));
-  const bridgeTop = placeOnTopPlate(placement, new Pt(outerZ + archZAtBridge + ss.bridgeHeight, bridgeY));
 
   // `length` runs along the fingerboard plane from where it crosses the mortise floor to the
   // nut's bottom, the neck's end; the back sits the neck's thickness below
@@ -112,8 +106,13 @@ export function calculateNeck(p: EnricoCerutiParams, topArch: LongArchSolve | nu
   const surface = placeOnTopPlate(placement, new Pt(outerZ + channelCenterlineZAt(p, topGouge, topArch, floorY), floorY));
   nk.plateAtMortise = new Pt(surface.x, floorY);
   nk.heel = calculateHeel(backRoot, backNut, tip, nk.heel.r) ?? nk.heel;
-  ss.bridgeFoot = bridgeFoot;
-  ss.bridgeTop = bridgeTop;
+
+  const ss = p.stringSetup;
+  if (!ss) return [];
+  const bridgeY = p.height - ss.bodyStop;
+  const archZAtBridge = channelCenterlineZAt(p, topGouge, topArch, bridgeY);
+  ss.bridgeFoot = placeOnTopPlate(placement, new Pt(outerZ + archZAtBridge, bridgeY));
+  ss.bridgeTop = placeOnTopPlate(placement, new Pt(outerZ + archZAtBridge + ss.bridgeHeight, bridgeY));
   ss.nutTop = moveInVectorSpace(neckTop, [{ ...normal, mag: ss.nutThickness }]);
 
   const failures: SolveFailure<'nutThickness' | 'fingerboardRadius'>[] = [];
