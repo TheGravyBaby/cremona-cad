@@ -473,7 +473,7 @@ export const DefaultParams: EnricoCerutiParams = {
   width: 200,
   overhang: 3,
   rib: 1,
-  bitDiameter: 6.35,
+  bitDiameter: 3.175,
   purflingOffset: null,
   purflingChannelDepth: null,
   innerFlutingDepth: null,

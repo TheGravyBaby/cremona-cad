@@ -7,7 +7,8 @@ import { downloadDxfFile, DxfText } from '../../../helpers/dxfExporter';
 import { downloadStlFile } from '../../../helpers/stlExporter';
 import { renderPath, renderText } from '../../../helpers/renderFuncs';
 import { error } from '../../../shared/message-emitter';
-import { calculateCornerBlocks, calculateMould, calculateOuterArcs, ensureCenterBoutInnerPath, ensureFholePath, ensureOuterTracePaths, getPath, getPathOrNull } from '../../ceruti-calcs';
+import { calculateCornerBlocks, calculateMould, calculateOuterArcs, ensureCenterBoutInnerPath, ensureFholePath, ensureOuterTracePaths, getPath, getPathOrNull, solveNeckForProfile } from '../../ceruti-calcs';
+import { defineNeckTemplate, NeckTemplate, neckTemplatePath } from '../../ceruti-neck-template';
 import { defineOneFholePath } from '../../ceruti-paths';
 import { defaultCrossArchParams, defaultFlutingParams } from '../../ceruti-arch-geometry';
 import { buildPlateSurfaceModel, buildPlateStl, calculateCrossArchTemplates, calculateLongArchTemplates, TemplateShape } from '../../ceruti-surface';
@@ -15,7 +16,7 @@ import { CerutiColors, EnricoCerutiParams, PathEntry, PathKey } from '../../ceru
 import { defaultFHolePlacement } from '../f-hole-placement-panel/f-hole-placement-panel';
 import { STROKE_WEIGHT } from '../../renders/render-constants';
 
-type ExportType = 'innerTrace' | 'outerTrace' | 'back' | 'mould' | 'blocks' | 'crossArchTemplates' | 'longArchTemplates' | 'fholeTemplate' | 'fholeTemplateNoEyes';
+type ExportType = 'innerTrace' | 'outerTrace' | 'back' | 'mould' | 'blocks' | 'crossArchTemplates' | 'longArchTemplates' | 'fholeTemplate' | 'fholeTemplateNoEyes' | 'neckTemplate';
 
 /** Templates are laid out in their own coordinate frame (not the violin's plan-view box), so their
  *  export sheet is sized from the actual combined geometry rather than the shared plan dimensions. */
@@ -54,6 +55,20 @@ export class ExportPanel implements OnInit {
       return false;
     }
     return true;
+  }
+
+  // the neck and scroll template, on its own sheet like the f-hole's, or null with the reason toasted:
+  // it needs the neck set against the arch and the scroll solved whole
+  private neckTemplate(): NeckTemplate | null {
+    const { neck, scroll } = solveNeckForProfile(this.params);
+    if (!neck || !scroll) {
+      error('The neck template needs the neck and the scroll — open Neck, then Volute and Scroll, first.', 'Neck Template');
+      return null;
+    }
+    const t = defineNeckTemplate(this.params);
+    const bounds = pathsBounds([neckTemplatePath(t)]);
+    const onSheet = (d: string) => translatePath(d, -(bounds.minX + bounds.maxX) / 2, -bounds.minY);
+    return { outline: onSheet(t.outline), slots: t.slots.map(onSheet), dots: t.dots.map(onSheet), eye: onSheet(t.eye) };
   }
 
   private archTemplates(type: 'crossArchTemplates' | 'longArchTemplates'): TemplateShape[] {
@@ -175,6 +190,15 @@ export class ExportPanel implements OnInit {
         this.draftChange.emit(renders);
         break;
       }
+      case 'neckTemplate': {
+        const t = this.neckTemplate();
+        if (!t) { this.draftChange.emit([]); return; }
+        this.draftChange.emit([
+          renderPath(t.outline, this.colors.outerTrace, STROKE_WEIGHT.trace),
+          renderPath(combinePathStrings([...t.slots, ...t.dots, t.eye]), this.colors.innerTrace, STROKE_WEIGHT.trace),
+        ]);
+        break;
+      }
       case 'crossArchTemplates':
       case 'longArchTemplates': {
         if (!this.requireArching()) { this.draftChange.emit([]); return; }
@@ -232,6 +256,18 @@ export class ExportPanel implements OnInit {
         paths = [{ d: onePath, stroke: 'black', fill: 'none', strokeWidth: '.5' }];
         break;
       }
+      case 'neckTemplate': {
+        const t = this.neckTemplate();
+        if (!t) return;
+        const bounds = pathsBounds([neckTemplatePath(t)]);
+        sheetWidth = bounds.width + TEMPLATE_SHEET_PAD;
+        sheetHeight = bounds.height + TEMPLATE_SHEET_PAD;
+        paths = [
+          { d: t.outline, stroke: 'black', fill: 'none', strokeWidth: '.5' },
+          { d: combinePathStrings([...t.slots, ...t.dots, t.eye]), stroke: 'black', fill: 'none', strokeWidth: '.5' },
+        ];
+        break;
+      }
       case 'crossArchTemplates':
       case 'longArchTemplates': {
         if (!this.requireArching()) return;
@@ -266,6 +302,7 @@ export class ExportPanel implements OnInit {
   }
 
   downloadDxf(type: ExportType): void {
+    if (type === 'neckTemplate') { error('The neck template exports as SVG for now.', 'Neck Template'); return; }
     this.ensureDerivedPaths();
     const p = this.params;
     const baseName = this.fileName?.trim() || 'ceruti-violin';
@@ -314,6 +351,7 @@ export class ExportPanel implements OnInit {
   }
 
   downloadPdf(type: ExportType): void {
+    if (type === 'neckTemplate') { error('The neck template exports as SVG for now.', 'Neck Template'); return; }
     this.ensureDerivedPaths();
     const p = this.params;
     const baseName = this.fileName?.trim() || 'ceruti-violin';

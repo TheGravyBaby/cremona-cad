@@ -15,6 +15,7 @@ adding to a file — they are current and more specific than this page.
 | `ceruti-surface.ts` | The evaluable height field z(x,y) over the plan view. Cross-arch templates, STL. |
 | `ceruti-neck.ts` | The neck set in the side elevation: `calculateNeck` places the neck wood's four corners, the heel arc and the bridge on `p.neck`, and the functions beside it read the dressing (button, nut block, fingerboard, bridge wedge, guides, the neck's own path) off those for the render. Hangs off the top plate's edge via `topPlatePlacement`, so the rib taper carries through. |
 | `ceruti-scroll.ts` | The scroll in its own side-view frame: the volute's spiral styles about the eye, and `calculateScroll`, which lays the spiral out and runs the back and front off it, writing every arc onto `p.scroll` the way `calculateNeck` writes `p.neck`. Three panels edit it, all drawing through `renders/scroll.render.ts`: volute (the spiral and the crown, S0–S1), scroll (the back from S2 on, and the front), and scroll widths (the back and front views beside the side profile, see *The scroll's widths* below). |
+| `ceruti-neck-template.ts` | The neck and scroll template for the export panel: the side outline as one closed loop, neck foot to duck tail, and the volute inside it as a slotted stencil. See *The neck template* below. |
 | `ceruti-types.ts` | `EnricoCerutiParams` and the whole serialized shape. `CerutiColors`, view flags. |
 | `ceruti-templates.ts` | Bundled historical instruments (Strad Goetz, Del Gesu Baltic, …) as pasted recipe JSON. **Append-only** — add instruments, don't restructure. |
 | `templates/corpus/` | Instruments traced from open-licence museum records — one `.json` file each, listed in `templates/corpus/index.ts`. Same type as the templates above, but carrying a `TemplateMeta` and a per-image `ImageCredit` so the numbers and the pixels can each be rechecked. New instruments go here, not in `ceruti-templates.ts`. |
@@ -399,6 +400,30 @@ section first → long arch carved to a template → crown across. The panel ord
   plan's widest point by a quarter of the body's width. It's read off the body and the bridge's
   height alone, so the long arching and neck panels put it in the same place whether or not the
   neck has been set. The neck panel's front view no longer moves right (`frontViewAxisX` is gone).
+
+## The neck template
+
+- **The volute is a stencil: slots along the spiral with bridges between them, falling back to
+  pricked dots.** (2026-10-06) The oldest templates pricked dots the maker joined by eye; cutting
+  the spiral through would leave a ribbon that can't hold its shape. `defineNeckTemplate` cuts the
+  spiral from the eye out to where F1 meets it — from there out the spiral *is* the outline, the
+  pegbox front running in under the first turn — as capsules on the arcs. One wall of each slot is
+  the curve itself, the wall away from the eye, and the slot's width is taken inward, so the maker
+  rides a pencil against the true wall as they do the outline's edge; a slot centred on the curve
+  would let the line wander by half its width. Bridges sit at the arc junctions (tangent points the
+  maker would mark anyway) and at least every `bridgeEvery`; a slot shorter than `minSlot` is merged
+  across the junction. Where the web left between a slot and the next turn, or the front's edge,
+  would be under `minWeb`, that stretch is pricked instead — unless it's a short one at either end
+  of the stencil, where the curve runs on into the eye or into the outline at F1's crossing and
+  needs no marking (the default violin's last few millimetres before the crossing). The eye is a
+  prick at its centre, not a hole, which would leave a thin ring to the innermost turn. `NeckTemplateSpec` holds those numbers; the cuts (`slotWidth`, `bridgeWidth`,
+  `minWeb`, `dotRadius`) are the material's and don't scale, the run lengths scale with body length.
+  Not on params yet: `defaultNeckTemplateSpec` is the only source until a panel gives them fields.
+- **The outline is one loop, closed along the back's inner face.** The neck's foot has no back-face
+  point solved (see `defineNeckPath`), so the loop runs the mortise floor, the fingerboard plane up
+  through the nut's footprint, the scroll's front, the spiral out from F1's crossing, S0–S3, the
+  nape, the neck's back down over the heel and face, and closes from there to the mortise floor
+  along x = 0. SVG only as of 2026-10-06, so it can be checked before PDF and DXF follow.
 
 ## Adding a panel
 

@@ -2,6 +2,9 @@ import { recordLayers } from '../../../helpers/layer-recorder';
 import { archedViolin, defaultViolin, templateKeys, templateViolin } from '../../ceruti-fixtures';
 import { CerutiColors, EnricoCerutiParams, PathEntry } from '../../ceruti-types';
 import { ExportPanel } from './export-panel';
+import { calculateNeck, defaultNeckParams, defaultStringSetup } from '../../ceruti-neck';
+import { defaultFlutingParams, solveLongArch } from '../../ceruti-arch-geometry';
+import { defaultVoluteParams } from '../../ceruti-scroll';
 
 /**
  * The export panel — the last step, and the one whose output leaves the app.
@@ -240,6 +243,49 @@ describe('the SVG a download writes', () => {
 
   it('writes nothing at all for an arching export with no arching', async () => {
     expect(await captured(() => makePanel(defaultViolin()).downloadExport('crossArchTemplates'))).toBeNull();
+  });
+});
+
+describe('the neck template', () => {
+  const scrolled = () => {
+    const p = archedViolin();
+    p.neck = defaultNeckParams(p);
+    p.stringSetup = defaultStringSetup(p);
+    const gouge = (p.arching!.top.fluting ??= defaultFlutingParams(p));
+    calculateNeck(p, solveLongArch(p, p.arching!.top.arch, gouge), gouge);
+    p.scroll = defaultVoluteParams(p);
+    return p;
+  };
+
+  it('writes a sheet sized to the neck and scroll, the stencil inside the outline', async () => {
+    const result = await captured(() => makePanel(scrolled()).downloadExport('neckTemplate'));
+    expect(result!.name).toBe('test-violin-neckTemplate.svg');
+    const doc = new DOMParser().parseFromString(result!.text, 'image/svg+xml');
+    expect(doc.querySelector('parsererror')).toBeNull();
+    expect(doc.querySelectorAll('path')).toHaveLength(2);
+    expect(result!.text).not.toMatch(/NaN|Infinity|undefined/);
+    const viewBox = result!.text.match(/viewBox="([^"]+)"/)![1].split(' ').map(Number);
+    // taller than the body's neck end to the scroll's top, and narrower than the plan
+    expect(viewBox[3]).toBeGreaterThan(200);
+    expect(viewBox[2]).toBeLessThan(100);
+  });
+
+  it('refuses rather than throwing without a neck or a scroll', async () => {
+    expect(await captured(() => makePanel(archedViolin()).downloadExport('neckTemplate'))).toBeNull();
+    const panel = makePanel(archedViolin());
+    const emitted: any[] = [];
+    panel.draftChange.subscribe(layers => emitted.push(layers));
+    panel.previewExport('neckTemplate');
+    expect(emitted).toEqual([[]]);
+  });
+
+  it('previews the outline and the stencil as two layers', () => {
+    const panel = makePanel(scrolled());
+    const emitted: any[] = [];
+    panel.draftChange.subscribe(layers => emitted.push(layers));
+    panel.previewExport('neckTemplate');
+    expect(emitted[0]).toHaveLength(2);
+    expect(recordLayers(emitted[0]).paths.join('')).not.toMatch(/NaN|Infinity/);
   });
 });
 
