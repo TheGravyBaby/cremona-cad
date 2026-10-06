@@ -1,6 +1,7 @@
 <div class="toolbar">
   <input type="text" class="toolbar-name" [ngModel]="fileName" (ngModelChange)="fileNameChange.emit($event)"
-    placeholder="Untitled" title="Design name" aria-label="Design name" />
+    placeholder="Untitled" [title]="fileName || 'Design name'" aria-label="Design name"
+    (keydown.enter)="nameInput.blur()" #nameInput />
 
   <div class="toolbar-new-wrap">
     <button type="button" class="toolbar-btn" title="New instrument" aria-label="New instrument"
@@ -48,6 +49,10 @@
       <path d="M12 15V4M7 9l5-5 5 5M5 20h14" />
     </svg>
   </button>
+  @if (showExport) {
+  <button type="button" class="toolbar-btn toolbar-btn--text" title="Templates, plans and a copy of the recipe"
+    [disabled]="!exportEnabled" (click)="openExport.emit()">Export</button>
+  }
   <input #fileInput class="toolbar-file-input" type="file" accept=".json,application/json" (change)="onFilePicked($event)" />
 
   <!-- Debug, localhost only (see isLocalHost in helpers/debugDump.ts): the saved recipe JSON, to the clipboard. -->

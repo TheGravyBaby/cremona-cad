@@ -646,6 +646,11 @@ select {
   line-height: 1.4;
 }
 
+.export-primary {
+  display: flex;
+  gap: 6px;
+}
+
 .export-groups {
   display: flex;
   flex-direction: column;

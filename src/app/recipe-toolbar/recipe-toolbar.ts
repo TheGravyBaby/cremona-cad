@@ -18,12 +18,16 @@ export class RecipeToolbarComponent {
   @Input() recipeName = '';
   @Input() templateOptions: Array<{ key: string; label: string }> = [];
   @Input() fileName = '';
+  // a recipe without an export panel (see hello-recipe) leaves this off
+  @Input() showExport = false;
+  @Input() exportEnabled = false;
 
   @Output() newFile = new EventEmitter<void>();
   @Output() saveFile = new EventEmitter<void>();
   @Output() loadFile = new EventEmitter<RecipeInterface>();
   @Output() templateSelect = new EventEmitter<string>();
   @Output() fileNameChange = new EventEmitter<string>();
+  @Output() openExport = new EventEmitter<void>();
   /** The recipe serializes itself — this component has no idea what it holds. */
   @Output() debugDump = new EventEmitter<void>();
 

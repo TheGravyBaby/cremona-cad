@@ -1,4 +1,11 @@
 <section class="ui-group">
+    <div class="export-primary">
+        <button type="button" class="recipe-btn" (click)="saveRecipe.emit()">Save Recipe</button>
+        <button type="button" class="recipe-btn recipe-btn--primary" (click)="downloadFullPlan()">Full Plan PDF</button>
+    </div>
+</section>
+
+<section class="ui-group">
     <div class="export-groups">
         <details class="export-group" open>
             <summary><span class="export-group__chevron">▶</span>Contours<span class="export-group__count">3</span></summary>
@@ -192,7 +199,3 @@
     </div>
 </section>
 
-<section class="ui-group">
-    <button type="button" class="recipe-btn recipe-btn--primary recipe-btn--full"
-        (click)="downloadFullPlan()">Download Full Plan PDF</button>
-</section>

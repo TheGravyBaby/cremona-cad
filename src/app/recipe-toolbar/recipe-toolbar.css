@@ -64,6 +64,19 @@
   background: var(--ui-control-bg-active);
 }
 
+.toolbar-btn--text {
+  width: auto;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.toolbar-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: var(--ui-topbar-control-bg);
+}
+
 .toolbar-file-input {
   display: none;
 }
@@ -81,6 +94,13 @@
   font-size: 13px;
   padding: 2px 8px;
   margin-left: 8px;
+  text-overflow: ellipsis;
+}
+
+/* the bar is too narrow for a long name beside the file controls, and nobody reaches for them
+   mid-rename, so editing the name clears them away */
+.toolbar:has(.toolbar-name:focus) > :not(.toolbar-name) {
+  display: none;
 }
 
 .toolbar-name::placeholder {
