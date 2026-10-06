@@ -1,6 +1,8 @@
 <div class="bar">
   <div class="title">
-    <img src="CremonaCadLogo.svg" alt="Cremona CAD" />
+    <img src="CremonaCadLogo.svg" alt="Cremona CAD"
+      (click)="barPinnedChange.emit(!barPinned)"
+      [attr.aria-pressed]="!barPinned" />
   </div>
 
   <!-- Hosted only: the bar lends the space after the wordmark and knows nothing of the messages. -->
@@ -32,7 +34,8 @@
       <option value="hello-world-recipe" [selected]="selectedRecipe === 'hello-world-recipe'">Hello World Recipe</option>
     </select> -->
 
-    <button class="btn icon-btn bar-pin-btn" (click)="barPinnedChange.emit(!barPinned)"
+    <!-- a cool feature to have, maybe we turn it on later -->
+    <!-- <button class="btn icon-btn bar-pin-btn" (click)="barPinnedChange.emit(!barPinned)"
       [attr.aria-pressed]="!barPinned"
       [attr.aria-label]="barPinned ? 'Auto-hide the top bar' : 'Keep the top bar shown'"
       [title]="barPinned ? 'Auto-hide the top bar' : 'Keep the top bar shown'">
@@ -40,7 +43,7 @@
         stroke-linecap="round" stroke-linejoin="round">
         <path [attr.d]="barPinned ? 'M6 15l6-6 6 6' : 'M6 9l6 6 6-6'" />
       </svg>
-    </button>
+    </button> -->
 
     <button class="btn icon-btn theme-toggle-btn" (click)="nightModeChange.emit(!nightMode)"
       [attr.aria-pressed]="nightMode"

@@ -5,7 +5,7 @@ import { applyTransforms, ColorTransform, renderSolveFailures } from '../helpers
 import { clampParam, safeRun } from '../helpers/validators';
 import { CerutiColors, CerutiPanelId, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, EnricoCerutiTemplate, EnricoCerutiParams, PanelRenderRequest, RenderToggleKey } from './ceruti-types';
 import { CERUTI_TEMPLATES } from './templates/ceruti-templates';
-import { isLocSourced } from './templates/corpus';
+import { isLocSourced, thumbnailHref } from './templates/corpus';
 import { LOCAL_TEMPLATES } from './templates/local/generated-index';
 import { calculateMainBouts, ensureFrontProfilePaths, hasCenterBout, hasCorners, hasMainBouts } from './calculation/outline/ceruti-calcs';
 import { renderFrontProfile } from './renders/front-profile.render';
@@ -194,18 +194,32 @@ export class CerutiViolin extends RecipeComponentBase {
     return JSON.stringify(this.d.params) !== this._lastLoadedParamsSnapshot;
   }
 
-  // The blank is the toolbar's own "Blank instrument" entry, so it isn't also offered as
+  // The blank is the file menu's own "New blank instrument" row, so it isn't also offered as
   // something to start from. Off localhost, templates carrying a non-LoC reference image are
   // hidden too — their host may send no CORS header, or may not stay reachable at all — so a
   // visitor doesn't reach for one that can't fully work; a dev running locally sees everything,
-  // with a "/ " prefix marking which ones a deployed build won't offer. Numbered 1..N over
-  // whatever's actually shown, so the count tracks the visible list rather than the full set.
-  get templateOptions(): Array<{ key: string; label: string }> {
+  // with the ones a deployed build won't offer marked local.
+  get templateCards(): Array<{ key: string; instrument: string; meta: string; thumb?: string }> {
     const isLocalDev = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
     return this.templates
       .filter(t => t.key !== CERUTI_TEMPLATES[0].key)
       .filter(t => isLocalDev || isLocSourced(t))
-      .map((t, i) => ({ key: t.key, label: `[${i + 1}]  ${isLocSourced(t) ? '' : '/ '}${t.label}` }));
+      .map(t => ({
+        key: t.key,
+        instrument: t.meta?.instrument ?? t.label,
+        meta: [t.meta?.maker, t.meta?.date, isLocSourced(t) ? '' : 'local'].filter(Boolean).join(' · '),
+        thumb: thumbnailHref(t),
+      }));
+  }
+
+  // The gallery is the base panel's first section while it's open: on a first visit and when
+  // asked for from the file menu. A blank leaves it closed, since choosing blank is choosing no
+  // template. Picking a card or hiding it puts it away.
+  galleryOpen = false;
+
+  openTemplateGallery(): void {
+    this.galleryOpen = true;
+    this.setOpenPanel('base');
   }
 
   // Debounced like any other edit, so a recipe carrying reference images isn't re-serialized on
@@ -240,6 +254,7 @@ export class CerutiViolin extends RecipeComponentBase {
     }
 
     this.loadFile(JSON.parse(JSON.stringify(template)));
+    this.galleryOpen = false;
     // the silhouette's solve writes onto params, so it runs before the snapshot or a fresh template reads as edited
     if (hasMainBouts(this.d.params)) {
       this.draftChange.emit(this.renderInstrumentProfile());
@@ -257,6 +272,7 @@ export class CerutiViolin extends RecipeComponentBase {
     // loaded after it, not assumed.
     this.toolbox.resetAll();
     this.loadReferenceImages(blank);
+    this.galleryOpen = false;
     this._firstRenderInitDone = false;
     this._lastLoadedParamsSnapshot = JSON.stringify(this.d.params);
     this.setOpenPanel('base');
@@ -279,6 +295,7 @@ export class CerutiViolin extends RecipeComponentBase {
         // nothing saved yet — adopt the selected template's own reference images.
         const selectedTemplate = this.templates.find(t => t.key === this.selectedTemplateKey) ?? this.templates[0];
         this.loadReferenceImages(selectedTemplate);
+        this.galleryOpen = true;
       }
       else {
         this.d = recipeData;

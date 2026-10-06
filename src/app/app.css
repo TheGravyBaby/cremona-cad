@@ -131,7 +131,7 @@
   align-items: center;
   justify-content: center;
   width: 20px;
-  height: 36px;
+  height: 40px;
   padding: 0;
   border: 1px solid var(--ui-border-strong);
   border-right: none;
@@ -164,18 +164,18 @@
    both tabs are meant to carry the same weight of mark. */
 .dock-handle-icon {
   flex: 0 0 auto;
-  width: 12.9px;
-  height: 20px;
+  width: 14.2px;
+  height: 22px;
 }
 
 @media (pointer: coarse) {
   .sidebar-dock-handle {
     width: 28px;
-    height: 44px;
+    height: 48px;
   }
 
   .dock-handle-icon {
-    width: 16.8px;
-    height: 26px;
+    width: 18.1px;
+    height: 28px;
   }
 }

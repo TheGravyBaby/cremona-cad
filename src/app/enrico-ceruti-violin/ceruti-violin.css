@@ -281,3 +281,99 @@
   font-size: 12px;
   justify-self: end;
 }
+
+.template-gallery__hide {
+  margin-left: auto;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--ui-text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.template-gallery__hide:hover {
+  background: var(--ui-control-bg-hover);
+  color: var(--ui-text-primary);
+}
+
+.template-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.template-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px;
+  border: 1px solid var(--ui-border-soft);
+  border-radius: 6px;
+  background: var(--ui-bg-section);
+  color: var(--ui-text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 140ms ease, background-color 140ms ease;
+}
+
+.template-card:hover {
+  border-color: var(--ui-border-strong);
+  background: var(--ui-bg-section-open);
+}
+
+.template-card:focus-visible {
+  outline: none;
+  border-color: var(--ui-focus-border);
+  box-shadow: 0 0 0 3px var(--ui-focus-ring);
+}
+
+/* the photographs are white-backed library scans; the cream pad keeps a tall violin or a wide
+   cello from showing as a paper cutout on the dark card */
+.template-card__thumb {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 64px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #efe9dc;
+}
+
+.template-card__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.template-card__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.template-card__name {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.template-card__meta {
+  font-size: 12px;
+  color: var(--ui-text-secondary);
+}
+
+/* name and description share the panel's full width */
+.file-name-input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.description-textarea {
+  max-width: none;
+}

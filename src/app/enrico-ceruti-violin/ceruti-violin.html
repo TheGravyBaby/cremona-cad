@@ -2,13 +2,13 @@
      only the panel scrolls — see recipe-toolbar.css. -->
 <app-recipe-toolbar
             [recipeName]="d.recipeName"
-            [templateOptions]="templateOptions"
+            [hasTemplates]="templateCards.length > 0"
             [fileName]="d.fileName"
             (fileNameChange)="onFileNameChange($event)"
             (newFile)="onNewClick()"
             (saveFile)="saveToDisk()"
             (loadFile)="loadFile($event)"
-            (templateSelect)="loadTemplate($event)"
+            (openTemplates)="openTemplateGallery()"
             (debugDump)="copyRecipeToClipboard()"
             [showExport]="true"
             [exportEnabled]="isPanelEnabled('export')"
@@ -33,7 +33,12 @@
                     </option>
                     }
                 </select>
-                <span class="panel-select-caret" aria-hidden="true">&#x25BE;</span>
+                <span class="panel-select-caret" aria-hidden="true">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                </span>
             </div>
             <button type="button" class="panel-nav-btn panel-nav-btn--next" (click)="stepPanel(1)"
                 title="Next section" aria-label="Go to next section" [disabled]="!canStepPanel(1)">
@@ -53,9 +58,42 @@
              component: it is the one panel the parent drives directly (changeBaseMeasurements),
              so the whole first touch of a recipe reads in one place. -->
         @if (openPanel === 'base') {
+        @if (galleryOpen && templateCards.length) {
+        <section class="ui-group template-gallery">
+            <div class="ui-group-title">
+                Start from a historical instrument
+                <button type="button" class="template-gallery__hide" (click)="galleryOpen = false"
+                    title="Hide" aria-label="Hide the instrument gallery">✕</button>
+            </div>
+            <p class="hint">
+                High quality templates built with reference images from the Library of Congress. 
+            </p>
+            <div class="template-cards">
+                @for (t of templateCards; track t.key) {
+                <button type="button" class="template-card" (click)="loadTemplate(t.key)">
+                    <span class="template-card__thumb">
+                        @if (t.thumb) {
+                        <img [src]="t.thumb" alt="" loading="lazy" />
+                        }
+                    </span>
+                    <span class="template-card__text">
+                        <span class="template-card__name">{{ t.instrument }}</span>
+                        <span class="template-card__meta">{{ t.meta }}</span>
+                    </span>
+                </button>
+                }
+            </div>
+        </section>
+        } @else {
+
         <section class="ui-group">
-            <!-- The name itself is in the toolbar, where it stays visible from every panel. -->
             <div class="ui-group-title">File Properties</div>
+            <!-- the toolbar carries the name too; a field here is where a user expects to find it -->
+            <label>
+                Name
+                <input type="text" class="file-name-input" placeholder="Untitled" maxlength="120" [ngModel]="d.fileName"
+                    (ngModelChange)="onFileNameChange($event)" />
+            </label>
             <label>
                 Description
                 <textarea class="description-textarea" rows="1" maxlength="200"
@@ -109,6 +147,7 @@
                     aria-label="Information">ⓘ</button>
             </div>
         </section>
+        }
         }
 
         @if (openPanel === 'mainBouts') {
@@ -261,8 +300,7 @@
             [paths]="d.paths"
             [fileName]="d.fileName"
             [description]="d.description ?? ''"
-            (draftChange)="draftChange.emit($event)"
-            (saveRecipe)="saveToDisk()">
+            (draftChange)="draftChange.emit($event)">
         </app-ceruti-export-panel>
         }
     </div>

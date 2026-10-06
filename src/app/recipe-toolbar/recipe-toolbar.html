@@ -1,62 +1,50 @@
 <div class="toolbar">
-  <input type="text" class="toolbar-name" [ngModel]="fileName" (ngModelChange)="fileNameChange.emit($event)"
-    placeholder="Untitled" [title]="fileName || 'Design name'" aria-label="Design name"
-    (keydown.enter)="nameInput.blur()" #nameInput />
+  <div class="toolbar-name-wrap">
+    <input type="text" class="toolbar-name" [ngModel]="fileName" (ngModelChange)="fileNameChange.emit($event)"
+      placeholder="Untitled" [title]="fileName || 'Design name'" aria-label="Design name"
+      (keydown.enter)="nameInput.blur()" #nameInput />
 
-  <div class="toolbar-new-wrap">
-    <button type="button" class="toolbar-btn" title="New instrument" aria-label="New instrument"
-      [attr.aria-haspopup]="templateOptions.length ? 'menu' : null"
-      [attr.aria-expanded]="templateOptions.length ? menuOpen : null"
-      (click)="onNewButtonClick()">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+    <!-- Every file verb is a row of this one menu, so the strip stays the name and a chevron. -->
+    <button type="button" class="toolbar-btn toolbar-menu-btn" title="File" aria-label="File menu"
+      aria-haspopup="menu" [attr.aria-expanded]="menuOpen" (click)="menuOpen = !menuOpen">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M13.5 3H7a1.5 1.5 0 0 0-1.5 1.5v15A1.5 1.5 0 0 0 7 21h5M13.5 3v4.5H18M13.5 3L18 7.5V12M18 15v6M15 18h6" />
+        <polyline points="6 9 12 15 18 9" />
       </svg>
     </button>
 
-    <!-- Where a new instrument starts from. Never shows a current selection: a design stops
-         matching whatever it started from the moment you edit it, so the name field is what
-         says which design this is. -->
     @if (menuOpen) {
     <div class="toolbar-menu" role="menu">
       <button type="button" class="toolbar-menu-item" role="menuitem" (click)="startBlank()">
-        Blank instrument
+        New blank instrument
       </button>
-      @if (templateOptions.length) {
-      <div class="toolbar-menu-sep" role="separator"></div>
-      <div class="toolbar-menu-label">Start from</div>
-      @for (t of templateOptions; track t.key) {
-      <button type="button" class="toolbar-menu-item" role="menuitem" (click)="startFromTemplate(t.key)">
-        {{ t.label }}
+      @if (hasTemplates) {
+      <button type="button" class="toolbar-menu-item" role="menuitem" (click)="menuOpen = false; openTemplates.emit()">
+        Start from a historical instrument…
       </button>
       }
+      <div class="toolbar-menu-sep" role="separator"></div>
+      <button type="button" class="toolbar-menu-item" role="menuitem" (click)="menuOpen = false; triggerFilePick()">
+        Upload Recipe
+      </button>
+      <button type="button" class="toolbar-menu-item" role="menuitem" (click)="menuOpen = false; saveFile.emit()">
+        Download Recipe
+      </button>
+      <!-- Debug, localhost only (see isLocalHost in helpers/debugDump.ts): the saved recipe JSON, to the clipboard. -->
+      @if (debugDumpEnabled) {
+      <div class="toolbar-menu-sep" role="separator"></div>
+      <button type="button" class="toolbar-menu-item debug-dump-item" role="menuitem"
+        (click)="menuOpen = false; debugDump.emit()">
+        Copy recipe JSON
+      </button>
       }
     </div>
     }
   </div>
 
-  <button type="button" class="toolbar-btn" title="Download a copy" aria-label="Download a copy"
-    (click)="onSaveClick()">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
-      stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M12 4v11M7 10l5 5 5-5M5 20h14" />
-    </svg>
-  </button>
-  <button type="button" class="toolbar-btn" title="Open a downloaded copy" aria-label="Open a downloaded copy"
-    (click)="triggerFilePick()">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
-      stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M12 15V4M7 9l5-5 5 5M5 20h14" />
-    </svg>
-  </button>
   @if (showExport) {
   <button type="button" class="toolbar-btn toolbar-btn--text" title="Templates, plans and a copy of the recipe"
     [disabled]="!exportEnabled" (click)="openExport.emit()">Export</button>
   }
   <input #fileInput class="toolbar-file-input" type="file" accept=".json,application/json" (change)="onFilePicked($event)" />
-
-  <!-- Debug, localhost only (see isLocalHost in helpers/debugDump.ts): the saved recipe JSON, to the clipboard. -->
-  @if (debugDumpEnabled) {
-  <button type="button" class="toolbar-btn debug-dump-btn" title="Copy recipe JSON" (click)="debugDump.emit()">/</button>
-  }
 </div>

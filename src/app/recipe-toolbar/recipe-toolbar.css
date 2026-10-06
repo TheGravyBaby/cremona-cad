@@ -1,4 +1,4 @@
-/* The sidebar's header strip: recipe name, new/save/load. A flex item of the sidebar column rather
+/* The sidebar's header strip: recipe name, its file menu, Export. A flex item of the sidebar column rather
    than a fixed bar pinned to the top right — pinned, it was a position: fixed descendant of the
    panel's overflow: auto, which iOS Safari clips to the scroller instead of letting it escape, so
    the strip never drew on a phone at all. */
@@ -35,7 +35,8 @@
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
-  padding-right: 12px;
+  /* the nav strip's own inset, so Export and Next share a right edge */
+  padding-right: 8px;
   border-left: 1px solid var(--ui-topbar-divider);
   border-bottom: 1px solid var(--ui-topbar-border);
   background: linear-gradient(180deg, var(--ui-topbar-grad-1), var(--ui-topbar-grad-2));
@@ -64,11 +65,16 @@
   background: var(--ui-control-bg-active);
 }
 
+/* Next's width in the nav strip below, so the two buttons stack as one column */
 .toolbar-btn--text {
-  width: auto;
-  padding: 0 10px;
+  width: 52px;
+  padding: 0;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
+}
+
+:host-context(.day-mode) .toolbar-btn--text {
+  color: var(--ui-text-secondary);
 }
 
 .toolbar-btn:disabled {
@@ -81,26 +87,50 @@
   display: none;
 }
 
-/* The name is the design's identity, so it gets whatever width the controls don't need. */
+/* The name is the design's identity, so it gets whatever width the controls don't need. The
+   menu button is joined to its right end: one control that is the file, with its verbs behind
+   the chevron. */
+.toolbar-name-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  margin-left: 9px;
+}
+
 .toolbar-name {
   flex: 1 1 auto;
   min-width: 0;
   height: 28px;
   box-sizing: border-box;
   border: 1px solid var(--ui-topbar-control-border);
-  border-radius: 4px;
+  border-radius: 4px 0 0 4px;
   background: var(--ui-bg-panel);
   color: var(--ui-text-primary);
   font-size: 13px;
   padding: 2px 8px;
-  margin-left: 8px;
   text-overflow: ellipsis;
 }
 
-/* the bar is too narrow for a long name beside the file controls, and nobody reaches for them
-   mid-rename, so editing the name clears them away */
-.toolbar:has(.toolbar-name:focus) > :not(.toolbar-name) {
+.toolbar-menu-btn {
+  width: 24px;
+  margin-left: -1px;
+  border-radius: 0 4px 4px 0;
+}
+
+.toolbar-menu-btn[aria-expanded="true"] {
+  background: var(--ui-control-bg-active);
+}
+
+/* the bar is too narrow for a long name beside the controls, and nobody reaches for them
+   mid-rename, so editing the name clears them away and takes the whole strip */
+.toolbar:has(.toolbar-name:focus) > :not(.toolbar-name-wrap),
+.toolbar-name-wrap:has(.toolbar-name:focus) .toolbar-menu-btn {
   display: none;
+}
+
+.toolbar-name:focus {
+  border-radius: 4px;
 }
 
 .toolbar-name::placeholder {
@@ -111,12 +141,6 @@
   outline: none;
   border-color: var(--ui-focus-border);
   box-shadow: 0 0 0 3px var(--ui-focus-ring);
-}
-
-.toolbar-new-wrap {
-  position: relative;
-  flex: 0 0 auto;
-  display: flex;
 }
 
 .toolbar-menu {
@@ -167,14 +191,8 @@
   letter-spacing: 0.04em;
 }
 
-/* Debug only — the `/` dump button. Shown on localhost only; see isLocalHost in helpers/debugDump.ts. */
-.debug-dump-btn {
+/* Debug only; see isLocalHost in helpers/debugDump.ts. */
+.debug-dump-item {
+  color: var(--ui-text-secondary);
   font-family: monospace;
-  font-size: 14px;
-  color: var(--ui-text-secondary, #888);
-  opacity: 0.6;
-}
-
-.debug-dump-btn:hover {
-  opacity: 1;
 }
