@@ -77,6 +77,14 @@
   color: var(--ui-text-secondary);
 }
 
+/* lit while the Export panel is open, the top bar's own active mix, so the jump and the step it
+   lands on read as one */
+.toolbar-btn--text.active {
+  border-color: color-mix(in srgb, var(--ui-accent) 70%, #ffffff 30%);
+  background: color-mix(in srgb, var(--ui-accent) 28%, var(--ui-topbar-control-bg) 72%);
+  color: var(--ui-text-primary);
+}
+
 .toolbar-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;

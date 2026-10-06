@@ -22,6 +22,7 @@ export class RecipeToolbarComponent {
   // a recipe without an export panel (see hello-recipe) leaves this off
   @Input() showExport = false;
   @Input() exportEnabled = false;
+  @Input() exportActive = false;
 
   @Output() newFile = new EventEmitter<void>();
   @Output() saveFile = new EventEmitter<void>();

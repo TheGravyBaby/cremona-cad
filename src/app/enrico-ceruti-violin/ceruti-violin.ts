@@ -222,6 +222,12 @@ export class CerutiViolin extends RecipeComponentBase {
     this.setOpenPanel('base');
   }
 
+  // the gallery's own blank card: asks only when there is work to lose, as a template pick does
+  startBlankFromGallery(): void {
+    if (this.isStateDirty() && !confirm('Start a new instrument? Any work you have not downloaded will be lost.')) return;
+    this.onNewClick();
+  }
+
   // Debounced like any other edit, so a recipe carrying reference images isn't re-serialized on
   // every keystroke of its name, and so undo puts the old name back.
   onFileNameChange(name: string): void {

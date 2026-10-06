@@ -516,9 +516,16 @@ section first → long arch carved to a template → crown across. The panel ord
   the width across there. Along the spine each station sits the straight compass distance from the
   last, not the distance along the path, so a compass set between two crosshairs steps the same on
   the wood; the circle sets it for the width. The duck tail is at the bottom, a wider foot rings it,
-  a back hip has its own station, then the poll, and from there a step at a time (15 mm on a violin,
-  a maker's figure, scaled by body length) up to the second turn's bottom, which comes last with
-  whatever is left. The box is sized from the circles, not the spine, so the duck tail's circle
+  a back hip has its own station, then the poll, and from there `compassSteps` equal steps (10 by
+  default, a field on the widths panel) the last landing on the second turn's bottom. The step is
+  solved by halving, not set: the stretch divided (`volute`, about 175 mm on a violin, 375 on a
+  cello) is the path's own length from the poll, while the compass cuts each bend short, so a given
+  step size leaves an odd remainder and a count keeps the walk alike on every size. Every station,
+  the last included, is the first point along the path a step from the one before, never an arc
+  struck straight at the end: the spiral passes within a step of the end from stations still turns
+  away, and such an arc would cross the back twice. So too few steps (under about 10 on any size,
+  a chord spanning a bend) has no exact solution, and the last step comes up short of the rest; the
+  widths panel's readout says so beside the step and the stretch. The box is sized from the circles, not the spine, so the duck tail's circle
   clears its bottom; the last station is a flat, so its circle is the half hanging under it, the flat
   drawn across its top; faint straight edges join the circles' sides, the outline the strip gives in
   full; and each centre is a star of three short lines through it on a heavier path of its own, so

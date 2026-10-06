@@ -12,6 +12,7 @@
             (debugDump)="copyRecipeToClipboard()"
             [showExport]="true"
             [exportEnabled]="isPanelEnabled('export')"
+            [exportActive]="openPanel === 'export'"
             (openExport)="onPanelSelect('export')">
 </app-recipe-toolbar>
 
@@ -82,6 +83,20 @@
                     </span>
                 </button>
                 }
+                <!-- the file menu offers this too; here it sits beside the instruments so nobody
+                     has to know a menu exists to find it -->
+                <button type="button" class="template-card template-card--blank" (click)="startBlankFromGallery()">
+                    <span class="template-card__thumb template-card__thumb--blank" aria-hidden="true">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round">
+                            <path d="M12 5v14M5 12h14" />
+                        </svg>
+                    </span>
+                    <span class="template-card__text">
+                        <span class="template-card__name">New Instrument</span>
+                        <span class="template-card__meta">A blank sheet, your own measurements</span>
+                    </span>
+                </button>
             </div>
         </section>
         } @else {

@@ -44,6 +44,7 @@
 
   @if (showExport) {
   <button type="button" class="toolbar-btn toolbar-btn--text" title="Templates, plans and a copy of the recipe"
+    [class.active]="exportActive" [attr.aria-pressed]="exportActive"
     [disabled]="!exportEnabled" (click)="openExport.emit()">Export</button>
   }
   <input #fileInput class="toolbar-file-input" type="file" accept=".json,application/json" (change)="onFilePicked($event)" />

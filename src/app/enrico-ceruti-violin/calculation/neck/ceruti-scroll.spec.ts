@@ -719,24 +719,23 @@ describe('the scroll widths', () => {
     after.forEach((pt, k) => { if (pt.y < arc - 1e-2) expect(pt.x).toBeCloseTo(before[k].x, 9); });
   });
 
-  it('sets out a compass walk: the duck tail, then the poll, then a compass step at a time up to the second turn\'s bottom, each station the straight distance from the last along the spine', () => {
+  it('sets out a compass walk: the duck tail, then the poll, then equal compass steps landing on the second turn\'s bottom, each station the straight distance from the last along the spine', () => {
     const { p, v } = solved();
     const station = (key: string) => scrollWidthStations(p).find(st => st.key === key)!;
-    const { stations, length } = scrollCompassWalk(p, 15);
+    const { stations, length, step, volute } = scrollCompassWalk(p, 12);
     expect(stations[0].along).toBe(0);
     expect(stations[0].half).toBeCloseTo(v.widths.duckTail / 2, 9);
     expect([stations[0].at.x, stations[0].at.y]).toEqual([station('duckTail').at.x, station('duckTail').at.y].map(c => expect.closeTo(c, 9)));
     // a violin has no foot of its own and no hip, so the poll comes next
     expect([stations[1].at.x, stations[1].at.y]).toEqual([station('poll').at.x, station('poll').at.y].map(c => expect.closeTo(c, 6)));
     expect(stations[1].half).toBeCloseTo(v.widths.poll / 2, 6);
-    // along the spine each sits the straight distance from the last, every step 15 but the last
+    // along the spine each sits the straight distance from the last, the twelve steps from the poll all the same
+    expect(stations).toHaveLength(14);
     for (let k = 1; k < stations.length; k++) {
       expect(stations[k].along - stations[k - 1].along).toBeCloseTo(dist(stations[k].at, stations[k - 1].at), 9);
     }
-    for (let k = 2; k < stations.length - 1; k++) expect(dist(stations[k].at, stations[k - 1].at)).toBeCloseTo(15, 6);
-    expect(dist(stations.at(-1)!.at, stations.at(-2)!.at)).toBeLessThanOrEqual(15 + 1e-6);
+    for (let k = 2; k < stations.length; k++) expect(dist(stations[k].at, stations[k - 1].at)).toBeCloseTo(step, 6);
     expect(stations.at(-1)!.along).toBeCloseTo(length, 9);
-    expect(stations.length).toBeGreaterThan(8);
     // the walk ends at the second turn's bottom, as wide as it
     expect(stations.at(-1)!.half).toBeCloseTo(v.widths.turn2Bottom / 2, 6);
     expect(stations.at(-1)!.at.y).toBeCloseTo(station('turn2Bottom').at.y, 6);
@@ -745,18 +744,49 @@ describe('the scroll widths', () => {
       expect(st.half).toBeGreaterThanOrEqual(v.widths.crown / 2 - 1e-9);
       expect(st.half).toBeLessThanOrEqual(Math.max(v.widths.turn2Bottom, v.widths.poll, v.widths.foot) / 2 + 1e-9);
     }
+    // the stretch divided is the path's own length from the poll, which the chords cut short of: the
+    // more steps the less so, a fine walk's chords all but summing to it
+    expect(volute).toBeGreaterThan(dist(station('poll').at, station('turn2Bottom').at));
+    expect(length - stations[1].along).toBeLessThan(volute);
+    expect(volute).toBeGreaterThan(100);
+    const fine = scrollCompassWalk(p, 200);
+    expect(fine.stations).toHaveLength(202);
+    expect(fine.length - fine.stations[1].along).toBeCloseTo(volute, 0);
+    // more steps, each shorter; too few and a step spans a bend, so the last comes up short of the
+    // rest rather than any arc struck across the turns
+    let before = Infinity;
+    for (const n of [4, 6, 8, 10, 16, 24]) {
+      const walk = scrollCompassWalk(p, n);
+      expect(walk.stations).toHaveLength(n + 2);
+      expect(walk.step).toBeLessThan(before);
+      before = walk.step;
+      const chords = walk.stations.slice(2).map((st, k) => dist(st.at, walk.stations[k + 1].at));
+      for (const chord of chords.slice(0, -1)) expect(chord).toBeCloseTo(walk.step, 6);
+      expect(chords.at(-1)!).toBeLessThanOrEqual(walk.step + 1e-6);
+      expect(walk.volute).toBeCloseTo(volute, 9);
+    }
+    expect(scrollCompassWalk(p, 1).stations).toHaveLength(3);
+    // the count is the scroll's own unless given, rounded up from nothing
+    expect(scrollCompassWalk(p).stations).toHaveLength(v.compassSteps + 2);
+    v.compassSteps = NaN;
+    calculateScrollWidths(p);
+    expect(v.compassSteps).toBe(10);
+    v.compassSteps = 0.4;
+    calculateScrollWidths(p);
+    expect(v.compassSteps).toBe(1);
 
     // a wider foot rings the duck tail, and a hip takes a station of its own
     v.widths.foot = v.widths.duckTail + 6;
     v.widths.backHip = v.widths.foot;
     v.backHipHeight = (station('duckTail').at.y + station('poll').at.y) / 2 - p.neck!.nutHeight;
     calculateScrollWidths(p);
-    const celloed = scrollCompassWalk(p, 15).stations;
+    const celloed = scrollCompassWalk(p, 12).stations;
     expect(celloed[1].along).toBe(0);
     expect(celloed[1].half).toBeCloseTo(v.widths.foot / 2, 9);
     expect(celloed[2].at.y).toBeCloseTo(station('backHip').at.y, 6);
     expect(celloed[2].half).toBeCloseTo(v.widths.backHip / 2, 6);
     expect(celloed[3].at.y).toBeCloseTo(station('poll').at.y, 6);
+    expect(celloed).toHaveLength(16);
   });
 
   it('leaves the slope for the curve without a step or a corner', () => {
