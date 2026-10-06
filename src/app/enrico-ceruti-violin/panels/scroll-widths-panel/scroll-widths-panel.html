@@ -6,82 +6,138 @@
     <div class="ui-group-title">Front</div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pointColor('nut')" title="The nut's width. The pegbox's cheeks run out from its edges">Nut <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('nut')"
-                [(ngModel)]="ss.nutWidth" (input)="onChange()" (focus)="onPointFocus('nut')" (blur)="onPointBlur()" />
+            <span class="field-title" [style.color]="pointColor('throat')"
+                title="The foot of the front's straight, where F1 turns in under the volute. The cheeks taper to it from the hips and carry the same slope on up F1">Throat
+                <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('throat')"
+                [(ngModel)]="w.throat" (input)="onChange()" (focus)="onPointFocus('throat')" (blur)="onPointBlur()" />
         </label>
+    </div>
+    <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pointColor('hip')" title="The pegbox's widest, sawn straight through the blank. The cheeks run out to it from the nut's edges and taper from it to the throat">Hip <span class="unit-label">mm</span></span>
+            <span class="field-title" [style.color]="pointColor('hip')"
+                title="The pegbox's widest, sawn straight through the blank. The cheeks run out to it from the nut's edges and taper from it to the throat">Hip
+                <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('hip')"
                 [(ngModel)]="w.hip" (input)="onChange()" (focus)="onPointFocus('hip')" (blur)="onPointBlur()" />
         </label>
         <label class="field-cell">
-            <span class="field-title" title="Where the pegbox is widest, up from the nut's lower edge. 0 puts the hips on the pegbox's foot, as a cello's; a violin's sit on top of the duck tail's round. Never below the duck tail">Hip Y <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.5"
-                [(ngModel)]="v.hipHeight" (input)="onChange()" (focus)="onPointFocus('hip')" (blur)="onPointBlur()" />
+            <span class="field-title"
+                title="Where the pegbox is widest, up from the nut's lower edge. 0 puts the hips on the pegbox's foot, as a cello's; a violin's sit on top of the duck tail's round. Never below the duck tail">Hip
+                Y <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.5" [(ngModel)]="v.hipHeight" (input)="onChange()"
+                (focus)="onPointFocus('hip')" (blur)="onPointBlur()" />
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pointColor('throat')" title="Where the pegbox's front runs in under the volute, at F1's end. The cheeks taper to it from the hips">Throat <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('throat')"
-                [(ngModel)]="w.throat" (input)="onChange()" (focus)="onPointFocus('throat')" (blur)="onPointBlur()" />
+            <span class="field-title" [style.color]="pointColor('nut')"
+                title="The nut's width. The pegbox's cheeks run out from its edges">Nut <span
+                    class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('nut')"
+                [(ngModel)]="ss.nutWidth" (input)="onChange()" (focus)="onPointFocus('nut')" (blur)="onPointBlur()" />
         </label>
+    </div>
+    @if (showHollow) {
+    <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="colors.scrollFrontLight" title="Each cheek's thickness at the pegbox's front edge, the hollow in from there">Wall <span class="unit-label">mm</span></span>
+            <span class="field-title" [style.color]="colors.scrollFrontLight"
+                title="Each cheek's thickness at the pegbox's front edge, the hollow in from there">Wall <span
+                    class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="colors.scrollFrontLight"
                 [(ngModel)]="v.pegbox.wall" (input)="onChange()" />
         </label>
         <label class="field-cell">
-            <span class="field-title" [style.color]="colors.scrollFrontLight" title="The wood left between the hollow and the back">Floor <span class="unit-label">mm</span></span>
+            <span class="field-title" [style.color]="colors.scrollFrontLight"
+                title="The wood left between the hollow and the back">Floor <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="colors.scrollFrontLight"
                 [(ngModel)]="v.pegbox.floor" (input)="onChange()" />
         </label>
     </div>
+    }
+
 </section>
 
 <section class="ui-group">
     <div class="ui-group-title">Back</div>
+
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pointColor('duckTail')" title="The round at the duck tail, seen from behind: the edge where the pegbox's flat back dives into the neck's half-round. Its diameter; the back's edges run up from its top">Duck Tail <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('duckTail')"
-                [(ngModel)]="w.duckTail" (input)="onChange()" (focus)="onPointFocus('duckTail')" (blur)="onPointBlur()" />
-        </label>
-        <label class="field-cell">
-            <span class="field-title" [style.color]="pointColor('reach')" title="The back's furthest reach, where its tangent runs straight up the neck, on S2 or S1. The back's edges run out to it from the duck tail on a straight slope, and leave it on a curve through the widths below">Reach <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('reach')"
-                [(ngModel)]="w.reach" (input)="onChange()" (focus)="onPointFocus('reach')" (blur)="onPointBlur()" />
-        </label>
-        <label class="field-cell">
-            <span class="field-title" [style.color]="pointColor('crown')" title="Over the top of the head. No wider than the reach">Crown <span class="unit-label">mm</span></span>
+            <span class="field-title" [style.color]="pointColor('crown')"
+                title="Over the top of the head. No wider than the reach">Crown <span
+                    class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('crown')"
                 [(ngModel)]="w.crown" (input)="onChange()" (focus)="onPointFocus('crown')" (blur)="onPointBlur()" />
         </label>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="pointColor('turn1Bottom')">Turn 1 Bottom <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('turn1Bottom')"
-                [(ngModel)]="w.turn1Bottom" (input)="onChange()" (focus)="onPointFocus('turn1Bottom')" (blur)="onPointBlur()" />
+            <span class="field-title" [style.color]="pointColor('reach')"
+                title="The back's furthest reach, where its tangent runs straight up the neck, on S2 or S1. The back's edges run out to it from the foot on a straight slope, and leave it on a curve through the widths below">Reach
+                <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('reach')"
+                [(ngModel)]="w.reach" (input)="onChange()" (focus)="onPointFocus('reach')" (blur)="onPointBlur()" />
+        </label>
+
+    </div>
+
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title" [style.color]="pointColor('duckTail')"
+                title="The round at the duck tail, seen from behind: the edge where the pegbox's flat back dives into the neck's half-round. Its diameter">Duck
+                Tail <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('duckTail')"
+                [(ngModel)]="w.duckTail" (input)="onChange()" (focus)="onPointFocus('duckTail')"
+                (blur)="onPointBlur()" />
         </label>
         <label class="field-cell">
-            <span class="field-title" [style.color]="pointColor('turn2Top')">Turn 2 Top <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('turn2Top')"
-                [(ngModel)]="w.turn2Top" (input)="onChange()" (focus)="onPointFocus('turn2Top')" (blur)="onPointBlur()" />
-        </label>
-        <label class="field-cell">
-            <span class="field-title" [style.color]="pointColor('turn2Bottom')">Turn 2 Bottom <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('turn2Bottom')"
-                [(ngModel)]="w.turn2Bottom" (input)="onChange()" (focus)="onPointFocus('turn2Bottom')" (blur)="onPointBlur()" />
-        </label>
-        <label class="field-cell">
-            <span class="field-title" [style.color]="pointColor('eye')" title="The last turn is as wide as the eye from its top on in">Eye <span class="unit-label">mm</span></span>
-            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('eye')"
-                [(ngModel)]="w.eye" (input)="onChange()" (focus)="onPointFocus('eye')" (blur)="onPointBlur()" />
+            <span class="field-title" [style.color]="pointColor('foot')"
+                title="The back's width at the top of the duck tail's round, a radius up from the duck tail, where the back's edges begin. A violin's is the round's own; a cello's is wider, the round meeting it along level shoulders. Never narrower than the round">Foot
+                <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('foot')"
+                [(ngModel)]="w.foot" (input)="onChange()" (focus)="onPointFocus('foot')" (blur)="onPointBlur()" />
         </label>
     </div>
 </section>
+
+<section class="ui-group">
+    <div class="ui-group-title">Turns</div>
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title" [style.color]="pointColor('turn1Bottom')">Turn 1 Bottom <span
+                    class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('turn1Bottom')"
+                [(ngModel)]="w.turn1Bottom" (input)="onChange()" (focus)="onPointFocus('turn1Bottom')"
+                (blur)="onPointBlur()" />
+        </label>
+    </div>
+
+    <div class="input-group basic-row field-row" role="group">
+        <label class="field-cell">
+            <span class="field-title" [style.color]="pointColor('turn2Top')">Turn 2 Top <span
+                    class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('turn2Top')"
+                [(ngModel)]="w.turn2Top" (input)="onChange()" (focus)="onPointFocus('turn2Top')"
+                (blur)="onPointBlur()" />
+        </label>
+        <label class="field-cell">
+            <span class="field-title" [style.color]="pointColor('turn2Bottom')">Turn 2 Bottom <span
+                    class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('turn2Bottom')"
+                [(ngModel)]="w.turn2Bottom" (input)="onChange()" (focus)="onPointFocus('turn2Bottom')"
+                (blur)="onPointBlur()" />
+        </label>
+    </div>
+
+    <label class="field-cell">
+        <span class="field-title" [style.color]="pointColor('eye')"
+            title="The last turn is as wide as the eye from its top on in">Eye <span class="unit-label">mm</span></span>
+        <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('eye')"
+            [(ngModel)]="w.eye" (input)="onChange()" (focus)="onPointFocus('eye')" (blur)="onPointBlur()" />
+    </label>
+</section>
+
+
 
 }
 }

@@ -257,14 +257,17 @@ export type VoluteStyle = 'fourPoint' | 'archimedean' | 'serlio' | 'salviati' | 
 
 // full widths, cheek to cheek, the front's and the back's each their own. The front is the pegbox
 // sawn straight through the blank, by height: out from the nut's edges to the hips, its widest, then
-// tapering to `throat`, where F1 meets the spiral. The back goes out from the duck tail's round on a
-// straight slope to `reach`, the back's furthest reach, where its tangent runs straight up the neck,
-// and on from there on a curve through the rest, each at a place the side view fixes. The last turn
-// is as wide as the eye from its top on in
+// tapering to `throat` at the foot of the front's straight, and on up F1 at the same slope. The back
+// starts in the duck tail's round, `foot` wide at the round's top (a violin's the round's own, a
+// cello's wider, the round meeting it along level shoulders), goes out on a straight slope to
+// `reach`, the back's furthest reach, where its tangent runs straight up the neck, and on from there
+// on a curve through the rest, each at a place the side view fixes. The last turn is as wide as the
+// eye from its top on in
 export interface ScrollWidths {
   hip: number;
   throat: number;
   duckTail: number;
+  foot: number;
   reach: number;
   crown: number;
   turn1Bottom: number;
@@ -353,6 +356,7 @@ export interface CerutiColors {
   scrollWidthHip: string;
   scrollWidthThroat: string;
   scrollWidthDuckTail: string;
+  scrollWidthFoot: string;
   scrollWidthReach: string;
   scrollWidthCrown: string;
   scrollWidthTurn1Bottom: string;

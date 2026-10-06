@@ -363,16 +363,19 @@ describe.each(STYLES)('the scroll widths with a %s volute', style => {
     const p = widths();
     const v = p.scroll!;
     const stations = scrollWidthStations(p);
-    expect(stations.map(st => st.key)).toEqual(['nut', 'hip', 'throat', 'duckTail', 'reach', 'crown', 'turn1Bottom', 'turn2Top', 'turn2Bottom', 'eye']);
-    const [nut, hip, throat, duckTail, reach, crown, bottom1, top2, bottom2, eye] = stations.map(st => st.at);
+    expect(stations.map(st => st.key)).toEqual(['nut', 'hip', 'throat', 'duckTail', 'foot', 'reach', 'crown', 'turn1Bottom', 'turn2Top', 'turn2Bottom', 'eye']);
+    const [nut, hip, throat, duckTail, foot, reach, crown, bottom1, top2, bottom2, eye] = stations.map(st => st.at);
     expect(hip.y).toBeCloseTo(pegboxHipHeight(p), 6);
     expect(stations[0].width).toBeCloseTo(p.stringSetup!.nutWidth, 6);
     expect(stations[1].width).toBeCloseTo(v.widths.hip, 6);
     expect([nut.x, nut.y]).toEqual([0, p.stringSetup!.nutHeight]);
-    expect([throat.x, throat.y]).toEqual(at(v.F1, v.F1.start));
+    expect([throat.x, throat.y]).toEqual(at(v.F1, v.F1.end));
     const back = scrollBackWidths(p);
+    // the round's centre, so a circle of the duck tail's width about it is the round below
     expect([duckTail.x, duckTail.y]).toEqual([back[0].z, back[0].y].map(c => expect.closeTo(c, 9)));
-    expect(back[0].x).toBeCloseTo(v.widths.duckTail / 2, 9);
+    expect(foot).toEqual(duckTail);
+    expect(foot.y).toBeCloseTo(at(v.S3, v.S3.start)[1] + v.widths.duckTail / 2, 9);
+    expect(back[0].x).toBeCloseTo(v.widths.foot / 2, 9);
     // the reach is the back's furthest reach, and the back is level with the neck there
     expect(reach.x).toBeCloseTo(-scrollExtent(v).width, 6);
     expect(reach.y).toBeGreaterThan(duckTail.y);
@@ -385,7 +388,7 @@ describe.each(STYLES)('the scroll widths with a %s volute', style => {
     expect(top2.y).toBeLessThan(crown.y);
 
     // the crown and each turn are points of the contour, level there, and as wide as their fields say
-    for (const st of stations.slice(5, -1)) {
+    for (const st of stations.slice(6, -1)) {
       const k = back.findIndex(pt => Math.hypot(pt.z - st.at.x, pt.y - st.at.y) < 1e-9);
       expect(k).toBeGreaterThan(0);
       expect(back[k].x).toBeCloseTo(st.width / 2, 9);
@@ -415,7 +418,7 @@ describe.each(STYLES)('the scroll widths with a %s volute', style => {
     for (const pt of on.turn3Front) expect(pt.x).toBeCloseTo(p.scroll!.widths.eye / 2, 9);
   });
 
-  it('runs the front from the nut up to where F1 meets the spiral, out to the hips and tapering to the throat\'s width', () => {
+  it('runs the front from the nut up to where F1 meets the spiral, out to the hips, tapering to the throat\'s width at the straight\'s foot and on past it at the same slope', () => {
     const p = widths();
     const front = scrollFrontWidths(p);
     expect(front[0].z).toBeCloseTo(0, 9);
@@ -426,7 +429,12 @@ describe.each(STYLES)('the scroll widths with a %s volute', style => {
     const [x, y] = at(p.scroll!.F1, p.scroll!.F1.start);
     expect(front.at(-1)!.z).toBeCloseTo(x, 6);
     expect(front.at(-1)!.y).toBeCloseTo(y, 6);
-    expect(front.at(-1)!.x).toBeCloseTo(p.scroll!.widths.throat / 2, 6);
+    const throat = at(p.scroll!.F1, p.scroll!.F1.end)[1];
+    expect(pegboxWidth(p, throat)).toBeCloseTo(p.scroll!.widths.throat, 9);
+    const slope = (pegboxWidth(p, throat) - pegboxWidth(p, throat - 1)) / 1;
+    expect(slope).toBeLessThan(0);
+    expect(pegboxWidth(p, throat + 2)).toBeCloseTo(p.scroll!.widths.throat + 2 * slope, 9);
+    expect(front.at(-1)!.x).toBeLessThan(p.scroll!.widths.throat / 2);
   });
 });
 
@@ -498,11 +506,11 @@ describe('the scroll widths', () => {
       expect(scrollBackWidths(p)[0].y).toBeCloseTo(duckTailRoundTop(p), 6);
       expect(scrollBackWidths(p)[0].x).toBeCloseTo(radius, 9);
     };
-    v.widths.duckTail = 20;
+    v.widths.duckTail = v.widths.foot = 20;
     v.widths.hip = 30;
     p.neck!.topWidth = 34;
     startsOnRound(10);
-    v.widths.duckTail = 30;
+    v.widths.duckTail = v.widths.foot = 30;
     p.neck!.topWidth = 20;
     startsOnRound(15);
   });
@@ -561,19 +569,21 @@ describe('the scroll widths', () => {
     v.widths.hip = 34;
     const { nutWidth, nutHeight } = p.stringSetup!;
     const width = v.widths.hip;
-    const throat = at(v.F1, v.F1.start)[1];
+    const throat = at(v.F1, v.F1.end)[1];
     const from = pegboxHipHeight(p);
     expect(from).toBeGreaterThan(nutHeight);
     const between = (a: number, b: number, t: number) => a + (b - a) * Math.min(Math.max(t, 0), 1);
-    const taper = (y: number) => (y <= nutHeight ? nutWidth : y <= from ? between(nutWidth, width, (y - nutHeight) / (from - nutHeight)) : between(width, v.widths.throat, (y - from) / (throat - from))) / 2;
+    // the taper past the throat carries on at the same slope
+    const taper = (y: number) => (y <= nutHeight ? nutWidth : y <= from ? between(nutWidth, width, (y - nutHeight) / (from - nutHeight)) : width + (v.widths.throat - width) * (y - from) / (throat - from)) / 2;
     for (const pt of scrollFrontWidths(p)) expect(pt.x).toBeCloseTo(taper(pt.y), 9);
     expect(scrollFrontWidths(p).some(pt => pt.y < from && pt.x !== nutWidth / 2)).toBe(true);
   });
 
-  it('runs the back out from the duck tail on a straight slope by height to the reach, and on from there on the curve, the front untouched', () => {
+  it('runs the back out from its foot on a straight slope by height to the reach, and on from there on the curve, the front untouched', () => {
     const { p, v } = solved();
     const front = scrollFrontWidths(p).map(pt => pt.x);
-    v.widths.duckTail = 20;
+    v.widths.duckTail = 18;
+    v.widths.foot = 20;
     v.widths.reach = 28;
     calculateScrollWidths(p);
     const back = scrollBackWidths(p);
@@ -610,11 +620,11 @@ describe('the scroll widths', () => {
     expect(pegboxCavity(p)).toBeNull();
   });
 
-  it('holds the crown to the reach\'s width, and each turn to at least the one before', () => {
+  it('holds the foot to at least the round, the crown to the reach\'s width, and each turn to at least the one before', () => {
     const { p, v } = solved();
-    Object.assign(v.widths, { hip: 26, throat: 18, duckTail: 24, reach: 20, crown: 22, turn1Bottom: 15, turn2Top: 30, turn2Bottom: 28, eye: 10 });
+    Object.assign(v.widths, { hip: 26, throat: 18, duckTail: 24, foot: 22, reach: 20, crown: 22, turn1Bottom: 15, turn2Top: 30, turn2Bottom: 28, eye: 10 });
     calculateScrollWidths(p);
-    expect(v.widths).toEqual({ hip: 26, throat: 18, duckTail: 24, reach: 20, crown: 20, turn1Bottom: 20, turn2Top: 30, turn2Bottom: 30, eye: 30 });
+    expect(v.widths).toEqual({ hip: 26, throat: 18, duckTail: 24, foot: 24, reach: 20, crown: 20, turn1Bottom: 20, turn2Top: 30, turn2Bottom: 30, eye: 30 });
     const settled = { ...v.widths };
     calculateScrollWidths(p);
     expect(v.widths).toEqual(settled);
@@ -623,6 +633,7 @@ describe('the scroll widths', () => {
   it('leaves the slope for the curve without a step or a corner', () => {
     const { p, v } = solved();
     v.widths.duckTail = 20;
+    v.widths.foot = 20;
     const reach = scrollWidthStations(p).find(st => st.key === 'reach')!.at;
     const back = scrollBackWidths(p);
     const leaves = back.findIndex(pt => pt.y > reach.y);
