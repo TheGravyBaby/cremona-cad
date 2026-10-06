@@ -41,6 +41,7 @@ import { HOTKEY_TOOL_CYCLE } from './tools/tool-hotkeys';
 import { SettingsBarComponent } from './settings-bar/settings-bar';
 import { LayerControlsComponent } from './layer-controls/layer-controls';
 import { EditMenuComponent } from './edit-menu/edit-menu';
+import { ToolPaletteComponent } from './tool-palette/tool-palette';
 
 type SvgGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 /** A world-space group and its unflipped overlay twin, the two selections every renderer draws into. */
@@ -49,7 +50,7 @@ type LayerPair = { g: SvgGroup; ui: SvgGroup };
 @Component({
   selector: 'app-draft-canvas',
   standalone: true,
-  imports: [SettingsBarComponent, LayerControlsComponent, AxisControlsComponent, EditMenuComponent],
+  imports: [ToolPaletteComponent, SettingsBarComponent, LayerControlsComponent, AxisControlsComponent, EditMenuComponent],
   templateUrl: './draft-canvas.html',
   styleUrls: ['./draft-canvas.css'],
 })
@@ -363,7 +364,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     this.draw();
   }
 
-  /** A sibling changing size (the tool palette dock, in app.ts) can move .host's own on-screen
+  /** A sibling changing size (the tool palette dock, in .canvas-body) can move .host's own on-screen
    * position rather than just its size — unlike the recipe sidebar, which sits on the far edge and
    * so never does. camera.offsetX/offsetY are world coordinates of .host's own top-left corner
    * (camera.ts), so left unchanged they'd let already-drawn geometry visibly slide with the box.
