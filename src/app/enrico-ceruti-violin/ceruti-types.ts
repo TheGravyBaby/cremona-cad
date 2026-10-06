@@ -278,7 +278,9 @@ export interface ScrollParams {
   style: VoluteStyle;
   eye: Circle;
   flushWithNeck: boolean;
-  fitToNut: boolean; // S3's end angle is solved to bring the duck tail to the nut's lower edge
+  fitToNut: boolean; // S3's end angle is solved to bring the duck tail down to the hang
+  hang: number; // how far the duck tail hangs below the nut's lower edge
+  hipHeight: number; // where the pegbox is widest, up from the nut's lower edge; seeded to the round's top
   pitch: number; // archemedean spiral: distance between successive turns (mm)
   seedLength: number; // kelly volute allows for variable seed size relative to the eye
   arcRadii: number[];
@@ -289,6 +291,7 @@ export interface ScrollParams {
   S2: Arc;
   S3: Arc;
   nape: Arc;
+  napeCircle: boolean; // one circle through the duck tail, tangent to the neck's back, with no square line
   backStraight: number;
 
   F0: Arc;

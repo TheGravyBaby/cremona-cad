@@ -79,10 +79,33 @@ section first → long arch carved to a template → crown across. The panel ord
 - **The neck wood's thickness is one number too, root to nut.** `NeckParams.thickness` sets
   `back.nut` and `back.root` equally; templates read as uniform enough here that carrying
   separate root/nut values wasn't earning its keep. Entered once, under the "Neck" section.
-- **S3's end angle is solved by default (`fitToNut`, 2026-10-05).** The duck tail comes down to the
-  nut's lower edge (y = 0 in the scroll's frame) and the angle is read back onto `S3.start`; the
-  other of the two angles at that height is passed over for the shorter sweep. Off, the authored
-  angle stands. Specs that exercise authored geometry turn it off.
+- **S3's end angle is solved by default (`fitToNut`, 2026-10-05; `hang`, 2026-10-06).** The duck
+  tail comes down to `hang` mm below the nut's lower edge (y = −hang in the scroll's frame) and the
+  angle is read back onto `S3.start`; the other of the two angles at that height is passed over for
+  the shorter sweep. Off, the authored angle stands. Specs that exercise authored geometry turn it
+  off.
+- **The duck tail's round is the neck's, not the pegbox's.** Seen from behind the round is the edge
+  where the pegbox's flat back dives into the neck's half-round, so `duckTailRadius` is the neck's
+  half width at the duck tail, or the hips' when the pegbox's foot is narrower. A violin has foot ≈
+  neck and the round spans the pegbox; a cello's foot is wider (Strad: foot 46, neck 33, hang 16.5
+  = the round's radius, so the round's top lands on the nut's lower edge) and the cheeks meet the
+  round along level shoulders. An earlier toggle between a hip-wide and a hang-deep round was tried
+  and dropped: one `hang` length plus the min() covers both families.
+- **The nape is a fillet off a square line, or one circle (`napeCircle`, 2026-10-06).** Off, a
+  line runs square from the duck tail to the neck's back and the nape arc fillets the corner, which
+  needs the radius no more than the gap between them. On, the nape is the circle of that radius
+  through the duck tail tangent to the neck's back, which needs the radius at least half the gap:
+  at the gap it is the same quarter turn with no straight; tighter, it rises off the duck tail
+  before coming round and meets the neck higher, which is what a cello wants, since the nape takes
+  neck a player needs; wider, it meets the duck tail at an angle. `nape.end` is the duck tail's
+  angle, so walk the arc by `start`/`end`, never by a quarter turn.
+- **The hips have their own height** (`ScrollParams.hipHeight`, up from the nut's lower edge,
+  2026-10-06), seeded onto the round's top (`duckTailRoundTop`) by `calculateScrollWidths` and
+  clamped no lower than the duck tail. It was briefly derived from the round, which only holds
+  while the round is the hips' own: a cello's hips sit on the pegbox's foot whatever the hang. Hips
+  below the round's top put the back's own cheeks under the path's start, down to the hips and level
+  in to the round's flank; the pegbox tapers to the throat from the hips, and hips at or below the
+  nut's top hold their width down to the foot.
 - **The scroll continues the neck's own plane; the nut sits proud of it.** The origin the
   volute's eye is measured from starts at `nut` (the fingerboard-plane point), not the string
   contact point raised by the nut's thickness — the pegbox/scroll is flush with the neck as it

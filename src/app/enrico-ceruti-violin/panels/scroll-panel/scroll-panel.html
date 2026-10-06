@@ -29,14 +29,23 @@
                 [(ngModel)]="scroll.S3.r" (input)="onChange(); onArcFocus('S3', colors.scrollBack)"
                 (focus)="onArcFocus('S3', colors.scrollBack)" (blur)="onArcBlur()" />
         </label>
+        @if (scroll.fitToNut) {
+        <label class="field-cell">
+            <span class="field-title" title="The duck tail: where the pegbox's back ends and the neck's back begins. How far it hangs below the nut's lower edge. 0 lands it level with the nut; a cello's hangs about half the neck's width, so the round seen from behind tops out at the pegbox's foot">Hang <span class="unit-label">mm</span></span>
+            <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1" min="0"
+                [(ngModel)]="scroll.hang" (input)="onChange(); onArcFocus('S3', colors.scrollBack)"
+                (focus)="onArcFocus('S3', colors.scrollBack)" (blur)="onArcBlur()" />
+        </label>
+        } @else {
         <label class="field-cell">
             <span class="field-title" title="Where the arc ends, as the angle round its own centre from the front, swept clockwise: 0° runs the back straight down, parallel to the neck">End <span class="unit-label">°</span></span>
             <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1"
-                [disabled]="scroll.fitToNut" [ngModel]="getFieldDeg(scroll.S3, 'start')" (ngModelChange)="setFieldDeg(scroll.S3, 'start', $event, onChange.bind(this)); onArcFocus('S3', colors.scrollBack)"
+                [ngModel]="getFieldDeg(scroll.S3, 'start')" (ngModelChange)="setFieldDeg(scroll.S3, 'start', $event, onChange.bind(this)); onArcFocus('S3', colors.scrollBack)"
                 (focus)="onArcFocus('S3', colors.scrollBack)" (blur)="onArcBlur()" />
         </label>
+        }
         <label class="field-cell">
-            <div class="toggle" title="Solve the end angle so the duck tail comes down to the nut's lower edge. Off, the angle is yours">
+            <div class="toggle" title="Solve the end angle so the duck tail comes down to its hang below the nut. Off, the angle is yours">
                 <input type="checkbox" [(ngModel)]="scroll.fitToNut" (ngModelChange)="onChange()" />
                 <span>Fit to Nut</span>
             </div>
@@ -44,10 +53,16 @@
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <span class="field-title" [style.color]="colors.scrollNape" title="Where the back of the pegbox meets the back of the neck: the fillet into the neck's back from a line run square to the neck from the duck tail">Nape R <span class="unit-label">mm</span></span>
+            <span class="field-title" [style.color]="colors.scrollNape" title="Where the back of the pegbox meets the back of the neck: the arc into the neck's back, off a line run square to the neck from the duck tail, or off the duck tail itself as a circle">Nape R <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" data-step-shift="10" data-step-fine="0.1" min="0" [style.border-color]="colors.scrollNape"
                 [(ngModel)]="scroll.nape.r" (input)="onChange(); onArcFocus('nape', colors.scrollNape)"
                 (focus)="onArcFocus('nape', colors.scrollNape)" (blur)="onArcBlur()" />
+        </label>
+        <label class="field-cell">
+            <div class="toggle" title="Fit the nape as one circle through the duck tail, tangent to the neck's back, with no straight. Tighter than the gap between them it rises off the duck tail before coming round; wider, it meets the duck tail at an angle. Takes the least neck, as a cello needs. Off, a line runs square from the duck tail and the nape fillets it into the neck's back">
+                <input type="checkbox" [(ngModel)]="scroll.napeCircle" (ngModelChange)="onChange()" />
+                <span>Circle</span>
+            </div>
         </label>
     </div>
     @if (extent; as extent) {

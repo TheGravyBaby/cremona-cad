@@ -207,6 +207,9 @@ export function defaultVoluteParams(p: EnricoCerutiParams): ScrollParams {
     eye: new Circle(0, mm(83), eyeRadius),
     flushWithNeck: true,
     fitToNut: true,
+    hang: 0,
+    // set from the solved round below
+    hipHeight: 0,
     // about the Salviati's own opening, its front as far out
     pitch: Math.round(1.9 * eyeRadius * 10) / 10,
     seedLength: eyeRadius,
@@ -218,6 +221,7 @@ export function defaultVoluteParams(p: EnricoCerutiParams): ScrollParams {
     S2: new Arc(0, 0, mm(35), 0, 215 * TURN.degree),
     S3: new Arc(0, 0, mm(35), -25 * TURN.degree, 0),
     nape: new Arc(0, 0, mm(10), 0, TURN.quarter),
+    napeCircle: false,
     backStraight: mm(25),
 
     F0: new Arc(0, 0, mm(60), 0, 45 * TURN.degree),
@@ -230,9 +234,11 @@ export function defaultVoluteParams(p: EnricoCerutiParams): ScrollParams {
   };
 
   let stringSetup = p.stringSetup ?? defaultStringSetup(p);
-  calculateScroll({ ...p, neck: p.neck ?? defaultNeckParams(p), stringSetup, scroll: v });
+  let q = { ...p, neck: p.neck ?? defaultNeckParams(p), stringSetup, scroll: v };
+  calculateScroll(q);
   v.F0 = new Arc(0, 0, Math.round(-v.S3.x), 0, v.F0.end);
   v.flat = Math.round(v.S3.y - stringSetup.nutHeight);
+  v.hipHeight = duckTailRoundTop(q);
   return v;
 }
 
@@ -326,22 +332,43 @@ export function calculateScroll(p: EnricoCerutiParams): ScrollFailure[] {
       return { message: "Back: S3 has to turn back from the straight's foot, by up to a full turn.", unsolved: ['S3', 'nape'], circles: [], segments: [] };
     let S3 = placeCircleOnPointAtAngle(v.S3.r, foot, S3end);
     let S3start = v.S3.start;
-    // the duck tail comes down to the nut's lower edge: of the two angles on the circle at that
-    // height, the one the shortest sweep to S3's foot reaches first
+    // the duck tail comes down to its hang below the nut's lower edge: of the two angles on the
+    // circle at that height, the one the shortest sweep to S3's foot reaches first
     if (v.fitToNut) {
-      let level = -S3.y / S3.r;
+      if (!(v.hang >= 0))
+        return { message: 'Back: the hang below the nut needs a length, 0 or more.', unsolved: ['S3', 'nape'], circles: [], segments: [] };
+      let level = (-v.hang - S3.y) / S3.r;
       if (Math.abs(level) > 1)
-        return { message: "Back: S3 never comes down to the nut. Enlarge S3, or lower it with the straight, or turn Fit to Nut off.", unsolved: ['S3', 'nape'], circles: [S3], segments: [] };
+        return { message: "Back: S3 never comes down to the hang below the nut. Enlarge S3, lower it with the straight, shorten the hang, or turn Fit to Nut off.", unsolved: ['S3', 'nape'], circles: [S3], segments: [] };
       let below = Math.asin(level);
       let sweepTo = (a: number) => normalizeRadians(S3end - a) || TURN.full;
       S3start = S3end - Math.min(sweepTo(below), sweepTo(TURN.half - below));
     }
     v.S3 = new Arc(S3.x, S3.y, S3.r, S3start, S3end);
 
-    // a line runs square from the duck tail to the neck's back, the nape filleting the corner
     let duckTail = pointOnCircle(v.S3, v.S3.start);
-    let napeStart = neckBack - v.nape.r;
     if (!(v.nape.r > 0)) return badArc('Back', 'nape', v.nape, ['nape']);
+
+    // one circle through the duck tail, tangent to the neck's back: its centre a radius forward of
+    // the back, as far below the duck tail as puts the tail on it. Tighter than the gap it rises off
+    // the duck tail before coming round; wider, it meets the tail at an angle
+    if (v.napeCircle) {
+      let gap = neckBack - duckTail.x;
+      let reach = v.nape.r - gap;
+      if (!(gap > 0) || Math.abs(reach) > v.nape.r)
+        return {
+          message: `Back: a nape of ${v.nape.r}mm can't reach the neck's back from the duck tail. Enlarge it past half the ${Math.round(gap * 10) / 10}mm between them, or bring the duck tail forward with S3 or the straight.`,
+          unsolved: ['nape'],
+          circles: [{ x: neckBack - v.nape.r, y: duckTail.y, r: v.nape.r }],
+          segments: [],
+        };
+      let center = new Pt(neckBack - v.nape.r, duckTail.y - Math.sqrt(v.nape.r ** 2 - reach ** 2));
+      v.nape = new Arc(center.x, center.y, v.nape.r, 0, angleFromCenter(center, duckTail));
+      return null;
+    }
+
+    // a line runs square from the duck tail to the neck's back, the nape filleting the corner
+    let napeStart = neckBack - v.nape.r;
     if (duckTail.x > napeStart)
       return {
         message: `Back: the duck tail sits too far forward for a nape of ${v.nape.r}mm to fit before the neck's back. Shrink the nape, or move the duck tail back with S3 or the straight.`,
@@ -397,7 +424,7 @@ export function scrollLines(p: EnricoCerutiParams): Record<ScrollLine, [Pt, Pt]>
   let backTop = pointOnCircle(v.S2, v.S2.end);
   let frontTop = pointOnCircle(v.F0, v.F0.end);
   return {
-    square: [pointOnCircle(v.S3, v.S3.start), pointOnCircle(v.nape, TURN.quarter)],
+    square: [pointOnCircle(v.S3, v.S3.start), pointOnCircle(v.nape, v.nape.end)],
     backStraight: [backTop, moveInVectorSpace(backTop, [{ ...vectorFromSlope(v.S2.end + TURN.quarter), mag: v.backStraight }])],
     flat: [nutTop, new Pt(nutTop.x, nutTop.y + v.flat)],
     frontStraight: [frontTop, moveInVectorSpace(frontTop, [{ ...vectorFromSlope(v.F0.end + TURN.quarter), mag: v.frontStraight }])],
@@ -431,6 +458,9 @@ export function calculateScrollWidths(p: EnricoCerutiParams): void {
   let v = p.scroll!;
   v.widths ??= defaultScrollWidths(p);
   v.pegbox ??= defaultPegbox(p);
+  v.hipHeight ??= duckTailRoundTop(p);
+  // the pegbox's back ends at the duck tail, so its foot can't be below it
+  v.hipHeight = Math.max(v.hipHeight, pointOnCircle(v.S3, v.S3.start).y);
 
   // the head is no wider over the crown than at the throat, and each turn stands out at least as
   // far as the one before
@@ -486,15 +516,24 @@ export function scrollNeckHalfWidth(p: EnricoCerutiParams, y: number): number {
   return (nk.topWidth - (nk.rootWidth - nk.topWidth) * y / nk.length) / 2;
 }
 
-// seen from behind the scroll's back starts in a round at the duck tail, as wide as the pegbox's hips
+// seen from behind the scroll's back starts in a round at the duck tail: the edge where the pegbox's
+// flat back dives into the neck's half-round, so as wide as the neck there, or as the hips where the
+// pegbox's foot is the narrower
 export function duckTailRadius(p: EnricoCerutiParams): number {
-  return p.scroll!.widths.hip / 2;
+  let v = p.scroll!;
+  return Math.min(v.widths.hip / 2, scrollNeckHalfWidth(p, pointOnCircle(v.S3, v.S3.start).y));
 }
 
-// the hips sit at the top of the duck tail's round, where the back starts
-export function pegboxHipHeight(p: EnricoCerutiParams): number {
+// the round's top, where the path starts
+export function duckTailRoundTop(p: EnricoCerutiParams): number {
   let v = p.scroll!;
   return pointOnCircle(v.S3, v.S3.start).y + duckTailRadius(p);
+}
+
+// where the pegbox is widest. A violin's hips sit on the round's top; a cello's on the pegbox's
+// foot, the round rising past them when the duck tail hangs less than the round's radius
+export function pegboxHipHeight(p: EnricoCerutiParams): number {
+  return p.scroll!.hipHeight;
 }
 
 // "the path": the back from the top of the duck tail's round, over the crown and round the spiral
@@ -511,8 +550,7 @@ function scrollPath(p: EnricoCerutiParams): ScrollPath {
   let whole = joined([rise, ...crownArcs.map(clockwise), ...v.spiral!.map(clockwise)]);
 
   // the path starts where the back first rises to the top of the duck tail's round
-  let roundTop = whole.at(0).y + duckTailRadius(p);
-  let start = riseTo(whole, roundTop, whole.length);
+  let start = riseTo(whole, duckTailRoundTop(p), whole.length);
   let length = whole.length - start;
   let height = (s: number) => whole.at(start + s).y;
 
@@ -569,18 +607,20 @@ export function scrollThroat(p: EnricoCerutiParams): Pt {
 
 // the pegbox is marked on the blank as straight lines and sawn through, so its width goes by height,
 // back and front alike: the nut's up to the nut's top, out to the hips' from there, then tapering
-// to the throat's
+// to the throat's. Hips at or below the nut's top leave no run out from the nut, and the cheeks hold
+// the hips' width down to the foot
 export function pegboxWidth(p: EnricoCerutiParams, y: number): number {
   let { nutWidth, nutHeight } = p.stringSetup!;
   let { hip: hipWidth, throat: throatWidth } = p.scroll!.widths;
   let taperEnd = scrollThroat(p).y;
-  // hips up at the throat leave no taper, and the width steps there; hips down at the nut step there
-  let hipY = Math.min(Math.max(pegboxHipHeight(p), nutHeight), taperEnd);
+  // hips up at the throat leave no taper, and the width steps there
+  let hipY = Math.min(pegboxHipHeight(p), taperEnd);
 
-  if (y <= nutHeight) return nutWidth;
-  if (y <= hipY) return nutWidth + (hipWidth - nutWidth) * (y - nutHeight) / (hipY - nutHeight);
   if (y >= taperEnd) return throatWidth;
-  return hipWidth + (throatWidth - hipWidth) * (y - hipY) / (taperEnd - hipY);
+  if (y > hipY) return hipWidth + (throatWidth - hipWidth) * (y - hipY) / (taperEnd - hipY);
+  if (hipY <= nutHeight) return hipWidth;
+  if (y <= nutHeight) return nutWidth;
+  return nutWidth + (hipWidth - nutWidth) * (y - nutHeight) / (hipY - nutHeight);
 }
 
 // the width along the path. The back keeps the pegbox's taper until it reaches the throat's height,
