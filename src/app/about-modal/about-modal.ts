@@ -1,12 +1,15 @@
-import { Component, ElementRef, EventEmitter, Input, Output, ViewChild } from '@angular/core';
+import { Component, DestroyRef, ElementRef, EventEmitter, Input, Output, ViewChild, inject, isDevMode } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import packageJson from '../../../package.json';
+import { WikiService } from '../docs/wiki/wiki.service';
+import { WikiComponent } from '../docs/wiki/wiki';
 
 export type ThemeMode = 'auto' | 'day' | 'night';
 
 @Component({
   selector: 'app-about-modal',
   standalone: true,
-  imports: [],
+  imports: [WikiComponent],
   templateUrl: './about-modal.html',
   styleUrls: ['./about-modal.css'],
 })
@@ -25,7 +28,17 @@ export class AboutModalComponent {
   @Output() barPinnedChange = new EventEmitter<boolean>();
 
   isOpen = false;
-  activeTab: 'about' | 'tutorial' | 'author' | 'settings' | 'version' | '' = 'about';
+  activeTab: 'about' | 'tutorial' | 'wiki' | 'author' | 'settings' | 'version' | '' = 'about';
+
+  // the wiki is a preview of what the Documentation tab becomes; it shows on a dev build only
+  readonly showWiki = isDevMode();
+
+  constructor() {
+    inject(WikiService).opens$.pipe(takeUntilDestroyed(inject(DestroyRef))).subscribe(() => {
+      this.isOpen = true;
+      this.activeTab = 'wiki';
+    });
+  }
 
   /** Tutorial topics, shown one at a time from the sidebar. Grouped by what they cover:
    *  the canvas itself, then the design sections in the order the recipe builds them. */

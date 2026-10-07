@@ -34,7 +34,8 @@
 
 /* The tutorial browses topic to topic, so its height is pinned too — a short topic
    would otherwise shrink the modal out from under the sidebar. */
-.modal:has(.tutorial-section) {
+.modal:has(.tutorial-section),
+.modal:has(.wiki-section) {
   height: 70vh;
   height: 70dvh;
 }
@@ -161,11 +162,18 @@
 
 /* ── Tutorial: sidebar of topics, one topic shown at a time ─ */
 /* The topic pane scrolls, not the modal body, so the contents list stays put. */
-.modal-body:has(.tutorial-section) {
+.modal-body:has(.tutorial-section),
+.modal-body:has(.wiki-section) {
   overflow: hidden;
   padding-right: 0;
   display: flex;
   flex-direction: column;
+}
+
+.wiki-section {
+  display: flex;
+  flex: 1;
+  min-height: 0;
 }
 
 .tutorial-section {

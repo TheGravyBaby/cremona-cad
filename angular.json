@@ -33,7 +33,10 @@
               "polygon-clipping",
               "jspdf",
               "svg2pdf.js"
-            ]
+            ],
+            "loader": {
+              ".md": "text"
+            }
           },
           "configurations": {
             "production": {

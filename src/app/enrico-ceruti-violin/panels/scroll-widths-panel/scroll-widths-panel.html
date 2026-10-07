@@ -102,7 +102,8 @@
                 (blur)="onPointBlur()" />
         </label>
     </div>
-    <div class="input-group basic-row field-row" role="group">
+    <!-- interesting controls for the compass step, not needed for now. -->
+    <!-- <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title"
                 title="The compass walk, the older way to set out the back's widths: from the poll up to the second turn's bottom a compass steps the same distance each time, and the back's width is marked at each step. How many steps that is. The step is set to land the last on the second turn's bottom, and is shown beside">Compass
@@ -116,7 +117,7 @@
     </div>
     @if (compass) {
     <div class="hint">{{ compass.volute.toFixed(0) }} mm up the back from the poll to the second turn's bottom{{ compass.step - compass.last > 0.05 ? ', the last step ' + compass.last.toFixed(1) + ' mm: too few to follow the turns' : '' }}</div>
-    }
+    } -->
 </section>
 
 <section class="ui-group">

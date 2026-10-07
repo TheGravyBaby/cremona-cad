@@ -8,6 +8,9 @@
         <button class="tab-btn" [class.active]="activeTab === 'about'" (click)="activeTab = 'about'">CremonaCad</button>
         <button class="tab-btn" [class.active]="activeTab === 'tutorial'"
           (click)="activeTab = 'tutorial'">Documentation</button>
+        @if (showWiki) {
+        <button class="tab-btn" [class.active]="activeTab === 'wiki'" (click)="activeTab = 'wiki'">Wiki</button>
+        }
         <button class="tab-btn" [class.active]="activeTab === 'settings'"
           (click)="activeTab = 'settings'">Settings</button>
         <button class="tab-btn" [class.active]="activeTab === 'version'" (click)="activeTab = 'version'">Change Log</button>
@@ -346,6 +349,12 @@
           }
 
         </div>
+      </section>
+      }
+
+      @if (activeTab === 'wiki') {
+      <section class="wiki-section">
+        <app-wiki></app-wiki>
       </section>
       }
 

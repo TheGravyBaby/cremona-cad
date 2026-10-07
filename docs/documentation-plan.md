@@ -171,6 +171,14 @@ Documentation tab reading the registry, the lint specs. No prose changes: every 
 moves as-is into an article with `status: unreviewed` in its front matter. The UI looks the same
 afterwards. One focused session.
 
+**Built 2026-10-07**, under `src/app/docs/wiki/`. `article.ts` parses the front matter, `markdown.ts`
+renders the subset, `registry.ts` holds every article and the `problems` list, `wiki.service.ts`
+is what a panel will call (`summary(id)` for a tooltip, `open(id)` for an ⓘ), and `wiki/` is the
+Documentation tab to come, shown as a **Wiki** tab on dev builds only. `wiki.spec.ts` runs the
+lints. Three demo articles under `articles/` (main bouts, vesica, viol neck) show the shape
+beside the style guide; the documentation itself is written by hand from here, not extracted. Not yet done from this phase: binding any real ⓘ or tooltip, and swapping
+the Documentation tab itself, both of which wait on the extraction.
+
 ### Phase 2: extraction and consolidation
 
 Mechanical, and the bulk of the work:

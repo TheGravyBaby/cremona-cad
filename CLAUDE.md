@@ -26,7 +26,7 @@ about 6s of each is the build before any test starts:
 | `npm run test:panels` | `enrico-ceruti-violin/panels/**` — panel wiring + SVG/DXF/STL export | ~13s |
 | `npm run test:draft-canvas` | `draft-canvas/**` — canvas, camera, snapping, tools | ~10s |
 | `npm run test:helpers` | `helpers/**` — instrument-agnostic math, renderers, exporters | ~8s |
-| `npm run test:shell` | `app.spec.ts`, `shared/**`, `top-bar/**`, `hello-world-recipe/**`, `recipe-base/**` | ~11s |
+| `npm run test:shell` | `app.spec.ts`, `docs/**`, `shared/**`, `top-bar/**`, `hello-world-recipe/**`, `recipe-base/**` | ~11s |
 | `npm run test:fast` | everything except `test:arching` and `test:panels` | ~13s |
 
 These mirror the Layout table below plus the 2D/3D pipeline split documented in
@@ -44,6 +44,7 @@ expect — a stray file outside these globs only runs under the full `ng test`.
 | `src/app/models/types.ts` | `Pt`/`Circle`/`Arc`/`Rectangle` — recipe-side geometry. Read its header. |
 | `src/app/recipe-base/` | `RecipeComponentBase` — panel flow, undo/redo, file load/save, toolbox sync. |
 | `src/app/shared/` | Message/toast service. |
+| `src/app/docs/wiki/` | The wiki: Markdown articles under `articles/` (folders allowed), imported as text, parsed into a registry the wiki component renders and `wiki.spec.ts` lints. One article per concept; `[[slug]]` links between them; figures under `public/wiki/`. See `docs/documentation-plan.md`. |
 | `examples/` | **Not built, not tested.** Outside `tsconfig.app.json` and `tsconfig.spec.json`. |
 
 `examples/beard-violin` and `examples/kelly-violin` are earlier recipe implementations kept for
