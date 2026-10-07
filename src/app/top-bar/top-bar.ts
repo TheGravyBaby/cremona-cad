@@ -1,11 +1,10 @@
 import { Component, ElementRef, EventEmitter, HostListener, Output, Input, inject } from '@angular/core';
-import { AboutModalComponent } from '../about-modal/about-modal';
 import { MessageCenterComponent } from '../shared/message-center.component';
 
 @Component({
   selector: 'app-top-bar',
   standalone: true,
-  imports: [AboutModalComponent, MessageCenterComponent],
+  imports: [MessageCenterComponent],
   templateUrl: './top-bar.html',
   styleUrls: ['./top-bar.css'],
 })
@@ -13,13 +12,7 @@ export class TopBarComponent {
   @Input() selectedRecipe: string = 'Beard';
   @Output() recipeChange = new EventEmitter<string>();
 
-  /** Owned by App, which persists it and puts the day-mode class on the document. Up here rather
-   * than on the canvas's bottom bar because it dresses the whole app, not the drawing. */
-  @Input() nightMode = true;
-  @Output() nightModeChange = new EventEmitter<boolean>();
-
-  @Input() barPinned = true;
-  @Output() barPinnedChange = new EventEmitter<boolean>();
+  @Output() aboutRequested = new EventEmitter<'about' | 'tutorial'>();
 
   // The edit verbs live up here because they act on the document as a whole. See edit-menu.ts.
   protected editOpen = false;

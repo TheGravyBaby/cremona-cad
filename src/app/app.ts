@@ -5,6 +5,7 @@ import { map } from 'rxjs';
 import { setGlobalEmitter } from './shared/message-emitter';
 import { isSmallViewport, trackViewportHeight } from './helpers/viewport';
 import { MessageService } from './shared/message.service';
+import { AboutModalComponent, ThemeMode } from './about-modal/about-modal';
 import { TopBarComponent } from './top-bar/top-bar';
 import { DraftCanvasComponent } from './draft-canvas/draft-canvas';
 import { ToolboxStore } from './draft-canvas/tools/toolbox-store';
@@ -15,18 +16,22 @@ import { HelloWorldRecipe } from './hello-world-recipe/hello-world-recipe';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [TopBarComponent, DraftCanvasComponent, CerutiViolin, HelloWorldRecipe],
+  imports: [TopBarComponent, AboutModalComponent, DraftCanvasComponent, CerutiViolin, HelloWorldRecipe],
   template: `
     <div class="app" [class.sidebar-collapsed]="!sidebarOpen"
       [class.bar-autohide]="!barPinned && !hasMessages()" [class.bar-revealed]="barRevealed()">
      <app-top-bar class="top"
       [selectedRecipe]="selectedRecipe"
       (recipeChange)="selectRecipe($event)"
-      [nightMode]="nightMode"
-      (nightModeChange)="onNightModeChange($event)"
-      [barPinned]="barPinned"
-      (barPinnedChange)="onBarPinnedChange($event)">
+      (aboutRequested)="about.open($event)">
     </app-top-bar>
+
+    <!-- outside the bar: the unpinned bar is transformed, which would make this fixed backdrop
+         relative to it and slide it away -->
+    <app-about-modal #about
+      [themeMode]="themeMode" (themeModeChange)="onThemeModeChange($event)"
+      [barPinned]="barPinned" (barPinnedChange)="onBarPinnedChange($event)">
+    </app-about-modal>
 
       <div class="main">
         <app-draft-canvas class="canvas"
@@ -84,6 +89,7 @@ export class App implements OnDestroy {
    * RecipeComponentBase.requestFit. */
   fitToken = signal(0);
 
+  themeMode: ThemeMode = 'auto';
   nightMode = true;
 
   private static readonly SIDEBAR_OPEN_KEY = 'app-sidebar-open';
@@ -122,7 +128,7 @@ export class App implements OnDestroy {
 
   constructor() {
     const savedTheme = localStorage.getItem('themeMode');
-    this.nightMode = savedTheme !== 'day';
+    this.themeMode = savedTheme === 'day' || savedTheme === 'night' ? savedTheme : 'auto';
     this.applyThemeClass();
 
     let storedOpen: string | null = null;
@@ -175,13 +181,16 @@ export class App implements OnDestroy {
     }
   }
 
-  onNightModeChange(enabled: boolean) {
-    this.nightMode = enabled;
-    localStorage.setItem('themeMode', enabled ? 'night' : 'day');
+  onThemeModeChange(mode: ThemeMode) {
+    this.themeMode = mode;
+    localStorage.setItem('themeMode', mode);
     this.applyThemeClass();
   }
 
+  // auto reads the clock when the mode is applied, not continuously
   private applyThemeClass() {
+    const hour = new Date().getHours();
+    this.nightMode = this.themeMode === 'auto' ? hour < 7 || hour >= 19 : this.themeMode === 'night';
     this.doc.documentElement.classList.toggle('day-mode', !this.nightMode);
   }
 

@@ -10,7 +10,7 @@
 
   box-sizing: border-box;
   height: var(--app-bar-height);
-  padding: 0 12px;
+  padding: 0 8px;
 
   background: linear-gradient(180deg, var(--paper), var(--paper2));
   border-bottom: 1px solid var(--ui-topbar-border);
@@ -121,17 +121,6 @@
   appearance: none;
   -webkit-appearance: none;
   padding-right: 24px;
-}
-
-/* Muted like About: app chrome rather than document actions. */
-.theme-toggle-btn,
-.bar-pin-btn {
-  color: var(--ui-text-muted);
-}
-
-.theme-toggle-btn:hover,
-.bar-pin-btn:hover {
-  color: var(--ui-text-primary);
 }
 
 /* ── About button ─────────────────────────────────────────── */
