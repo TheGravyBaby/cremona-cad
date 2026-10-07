@@ -533,7 +533,12 @@ section first → long arch carved to a template → crown across. The panel ord
   walk share one guard in the export panel.
 - **The front and back views export as they are drawn** (2026-10-06): the widths panel's
   `scrollFrontViewStrokes` and `scrollBackViewStrokes`, each flattened to one path on a sheet that
-  starts at its lowest point, the neck's sides from the nut up. The same guard.
+  starts at its lowest point, the neck's sides from the nut up. The same guard. One difference
+  (2026-10-07): the panel's back view shows the pegbox's sawn front wherever it stands out past the
+  back, so a back cut thinner than the front is seen to be; on the sheet that read as the back's own
+  outline, so `scrollBackViewStrokes` takes `{ front: false }` there and draws the back alone, the
+  neck's sides running up into the round. The turns' occlusion is kept: it is the volute's shape.
+  The front view carries nothing of the back, so it exports unchanged.
 - **All five neck and scroll sheets export as SVG, PDF and DXF** (2026-10-06) through one
   `scrollSheet` in the export panel that builds each sheet's paths once; the SVG keeps the stroke
   weights, the PDF draws every path at one weight and the DXF carries none. The full plan PDF

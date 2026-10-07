@@ -93,8 +93,11 @@ function viewStrokes(place: (x: number, y: number) => Pt) {
   return { strokes, at, stroke, contour, closed, line, face };
 }
 
-// the scroll from behind, the neck's sides running on up from `neckFrom` until they meet it
-export function scrollBackViewStrokes(p: EnricoCerutiParams, place: (x: number, y: number) => Pt, neckFrom: number): ScrollViewStroke[] {
+// the scroll from behind, the neck's sides running on up from `neckFrom` until they meet it. The
+// pegbox's sawn front shows wherever it stands out past the back, so a back narrower than the front
+// is seen to be; `front: false` leaves it off, for a sheet that is the back alone
+export function scrollBackViewStrokes(p: EnricoCerutiParams, place: (x: number, y: number) => Pt, neckFrom: number, opts: { front?: boolean } = {}): ScrollViewStroke[] {
+  const front = opts.front ?? true;
   const v = p.scroll!;
   const eyeHalf = v.widths.eye / 2;
   const eyeTop = v.eye.y + v.eye.r;
@@ -118,7 +121,7 @@ export function scrollBackViewStrokes(p: EnricoCerutiParams, place: (x: number, 
   const backFace = [...(r > 0 ? [pathFromPolygon(round)] : []), closed(on.back)];
 
   // the neck's sides run on up until they meet the scroll, in the round or the front's cheeks
-  const overNeck = [...(r > 0 ? [pathFromPolygon(round)] : []), closed(cheeks)];
+  const overNeck = [...(r > 0 ? [pathFromPolygon(round)] : []), ...(front ? [closed(cheeks)] : [])];
   for (const side of [1, -1]) {
     stroke(pathFromLine(place(side * scrollNeckHalfWidth(p, neckFrom), neckFrom), place(side * scrollNeckHalfWidth(p, start.y), start.y)), 'neckOff', STROKE_WEIGHT.section, overNeck);
   }
@@ -137,8 +140,10 @@ export function scrollBackViewStrokes(p: EnricoCerutiParams, place: (x: number, 
   if (r > 0) strokes.push({ d: pathFromPolyline(round), ink: 'archBack', weight: STROKE_WEIGHT.trace });
   // the front's bottom shows only where it overhangs the neck; over the neck it's smoothed in
   const neck = closed([{ x: scrollNeckHalfWidth(p, neckFrom), y: neckFrom }, { x: scrollNeckHalfWidth(p, start.y), y: start.y }]);
-  contour(cheeks, 'archTop', backFace);
-  contour(bottom, 'archTop', [...backFace, neck]);
+  if (front) {
+    contour(cheeks, 'archTop', backFace);
+    contour(bottom, 'archTop', [...backFace, neck]);
+  }
 
   // each face runs in to the back of the turn outside it, the head's own back for the first two
   face(crown.y, crown.x, null, 'scrollBackLight');
@@ -157,7 +162,7 @@ export function scrollBackViewStrokes(p: EnricoCerutiParams, place: (x: number, 
   if (start.x > r + 1e-6) {
     for (const side of [1, -1]) line(place(side * r, start.y), place(side * start.x, start.y), 'archBack');
   }
-  const cheekHalf = start.y >= foot - 1e-9 && start.y <= scrollFrontTop(p).y + 1e-9 ? pegboxWidth(p, start.y) / 2 : 0;
+  const cheekHalf = front && start.y >= foot - 1e-9 && start.y <= scrollFrontTop(p).y + 1e-9 ? pegboxWidth(p, start.y) / 2 : 0;
   const neckHalf = scrollNeckHalfWidth(p, start.y);
   const cheek = Math.max(r, start.x, cheekHalf);
   if (neckHalf > cheek + 1e-6) {
