@@ -12,11 +12,12 @@ import { buildPlateSurfaceModel, buildPlateStl, computeArchContourRings, compute
 import { downloadStlFile } from '../../../helpers/stlExporter';
 import { calculateOuterArcs } from '../../calculation/outline/ceruti-calcs';
 import { defineInnerPath, defineOuterPath } from '../../calculation/outline/ceruti-paths';
-import { archContoursInfo, crossSectionStationInfo, crossArchCurveTypeInfo, crossArchCycloidControlsInfo, crossArchPeakInfo, crossArchStationInfo, crossArchTemplateInfo, transitionError } from '../field-info';
 import { CrossArchingRotationController } from './cross-arching-rotation-controller';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { applyRowMove, RowMove, RowReorderDirective } from '../../../shared/row-reorder';
+import { crownCannotMeetChannel } from '../../../docs/conditions';
+import { TooltipDirective } from '../../../docs/tooltips';
 
 /** Range-thumb width, in the px the browser actually draws it — see `stationLandmarks`. */
 const TICK_THUMB_PX = 14;
@@ -123,7 +124,7 @@ interface CrossSplineRow {
  */
 @Component({
   selector: 'app-ceruti-cross-arching-panel',
-  imports: [FormsModule, NumberStepperDirective, RowReorderDirective],
+  imports: [TooltipDirective, FormsModule, NumberStepperDirective, RowReorderDirective],
   templateUrl: './cross-arching-panel.html',
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
@@ -133,14 +134,6 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
   @Input({ required: true }) params!: EnricoCerutiParams;
   @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;
-
-  protected readonly crossSectionStationInfo = crossSectionStationInfo;
-  protected readonly crossArchCurveTypeInfo = crossArchCurveTypeInfo;
-  protected readonly crossArchCycloidControlsInfo = crossArchCycloidControlsInfo;
-  protected readonly crossArchTemplateInfo = crossArchTemplateInfo;
-  protected readonly crossArchStationInfo = crossArchStationInfo;
-  protected readonly crossArchPeakInfo = crossArchPeakInfo;
-  protected readonly archContoursInfo = archContoursInfo;
 
   /** Solved section at the cursor per plate, filled by buildRun for the template to report. */
   private section: { top: CrossArchSection | null; bottom: CrossArchSection | null } = { top: null, bottom: null };
@@ -815,7 +808,7 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     const unsolvable = !!section && (!section.left?.tangent || !section.right?.tangent);
     if (unsolvable === this.unsolvable[plate]) return;
     this.unsolvable[plate] = unsolvable;
-    if (unsolvable) transitionError(plate, y);
+    if (unsolvable) crownCannotMeetChannel(plate, y);
   }
 
   private overlayLayers(y: number): RenderLayer[] {

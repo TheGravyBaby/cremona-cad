@@ -12,6 +12,7 @@ import { ImageCrop } from '../../models/types';
 import { clamp, normalizeDegrees, pointAtDistanceToward } from '../../helpers/math/simpleGeometry';
 import { shapeBounds, unionBounds } from '../tools/shape-hit-test';
 import { translateShape } from '../tools/shape-transform';
+import { TooltipDirective } from '../../docs/tooltips';
 
 /**
  * The Inkscape-style contextual settings strip along the bottom bar: color, then whichever
@@ -23,7 +24,7 @@ import { translateShape } from '../tools/shape-transform';
 @Component({
   selector: 'app-settings-bar',
   standalone: true,
-  imports: [],
+  imports: [TooltipDirective],
   templateUrl: './settings-bar.html',
   styleUrls: ['./settings-bar.css'],
 })

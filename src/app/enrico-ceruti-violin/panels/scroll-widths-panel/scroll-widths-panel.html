@@ -7,7 +7,7 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title" [style.color]="pointColor('throat')"
-                title="The foot of the front's straight, where F1 turns in under the volute. The cheeks taper to it from the hips and carry the same slope on up F1">Throat
+                docTip="scrollWidths.throat">Throat
                 <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('throat')"
                 [(ngModel)]="w.throat" (input)="onChange()" (focus)="onPointFocus('throat')" (blur)="onPointBlur()" />
@@ -16,7 +16,7 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title" [style.color]="pointColor('hip')"
-                title="The pegbox's widest, sawn straight through the blank. The cheeks run out to it from the nut's edges and taper from it to the throat. Unused while Hip Y is 0">Hip
+                docTip="scrollWidths.hip">Hip
                 <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('nut')" min="0"
                 [disabled]="v.hipHeight === 0" [(ngModel)]="w.hip" (input)="onChange()" (focus)="onPointFocus('hip')"
@@ -24,7 +24,7 @@
         </label>
         <label class="field-cell">
             <span class="field-title"
-                title="Where the pegbox is widest, up from the nut's top. 0 is no hip: the cheeks taper straight from the nut's edges to the throat. A violin's sit a little higher, on top of the duck tail's round; a cello's lower, on the pegbox's foot, below 0, holding their width down to it. Never below the duck tail">Hip
+                docTip="scrollWidths.hipY">Hip
                 Y <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="0.5" [(ngModel)]="v.hipHeight" (input)="onChange()" min="0"
                 (focus)="onPointFocus('hip')" (blur)="onPointBlur()" />
@@ -33,14 +33,14 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title" [style.color]="pointColor('nut')"
-                title="The nut's width. The pegbox's cheeks run out from its edges">Nut <span
+                docTip="scrollWidths.nutWidth">Nut <span
                     class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="colors.nut"
                 [(ngModel)]="nk.nutWidth" (input)="onChange()" (focus)="onPointFocus('nut')" (blur)="onPointBlur()" />
         </label>
         <label class="field-cell">
             <span class="field-title" [style.color]="colors.scrollFrontLight"
-                title="The wood left round the hollow, each cheek at the pegbox's front edge and the floor over the back alike">Wall
+                docTip="scrollWidths.wall">Wall
                 <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="colors.scrollFrontLight"
                 [(ngModel)]="v.pegbox.wall" (input)="onChange()" />
@@ -56,13 +56,13 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title" [style.color]="pointColor('crown')"
-                title="Over the top of the head. No wider than the poll">Crown <span class="unit-label">mm</span></span>
+                docTip="scrollWidths.crown">Crown <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('crown')"
                 [(ngModel)]="w.crown" (input)="onChange()" (focus)="onPointFocus('crown')" (blur)="onPointBlur()" />
         </label>
         <label class="field-cell">
             <span class="field-title" [style.color]="pointColor('poll')"
-                title="The poll, the back of the head: where the back reaches furthest back, its tangent running straight up the neck, on S2 or S1. The back's edges run out to it from the hip on a straight slope, and leave it on a curve through the widths below">Poll
+                docTip="scrollWidths.poll">Poll
                 <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('poll')"
                 [(ngModel)]="w.poll" (input)="onChange()" (focus)="onPointFocus('poll')" (blur)="onPointBlur()" />
@@ -71,7 +71,7 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title" [style.color]="pointColor('backHip')"
-                title="Where the back's slope turns. The back's edges run out to it from the foot and on to the poll, each on a straight slope; as wide as the foot, they run parallel up to it. Unused while Hip Y is 0">Hip
+                docTip="scrollWidths.backHip">Hip
                 <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('backHip')"
                 [disabled]="!(v.backHipHeight > 0)" [(ngModel)]="w.backHip" (input)="onChange()"
@@ -79,7 +79,7 @@
         </label>
         <label class="field-cell">
             <span class="field-title"
-                title="The back's hip, up from the nut's top. 0 is no hip, as on a violin: the back runs on one slope from the foot to the poll. Nor is there one at or below the top of the duck tail's round, and past the poll it is the poll">Hip
+                docTip="scrollWidths.backHipY">Hip
                 Y <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="0.5" [(ngModel)]="v.backHipHeight" (input)="onChange()"
                 min="0" (focus)="onPointFocus('backHip')" (blur)="onPointBlur()" />
@@ -88,14 +88,14 @@
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title" [style.color]="pointColor('foot')"
-                title="The back's width at the top of the duck tail's round, a radius up from the duck tail, where the back's edges begin. A violin's is the round's own; a cello's is wider, the round meeting it along level shoulders. Never narrower than the round">Foot
+                docTip="scrollWidths.foot">Foot
                 <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('foot')"
                 [(ngModel)]="w.foot" (input)="onChange()" (focus)="onPointFocus('foot')" (blur)="onPointBlur()" />
         </label>
         <label class="field-cell">
             <span class="field-title" [style.color]="pointColor('duckTail')"
-                title="The round at the duck tail, seen from behind: the edge where the pegbox's flat back dives into the neck's half-round. Its diameter">Duck
+                docTip="scrollWidths.duckTail">Duck
                 Tail <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('duckTail')"
                 [(ngModel)]="w.duckTail" (input)="onChange()" (focus)="onPointFocus('duckTail')"
@@ -106,12 +106,12 @@
     <!-- <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
             <span class="field-title"
-                title="The compass walk, the older way to set out the back's widths: from the poll up to the second turn's bottom a compass steps the same distance each time, and the back's width is marked at each step. How many steps that is. The step is set to land the last on the second turn's bottom, and is shown beside">Compass
+                docTip="scrollWidths.compassSteps">Compass
                 Steps</span>
             <input class="basic-input" type="number" step="1" min="1" [(ngModel)]="v.compassSteps" (input)="onChange()" />
         </label>
         <label class="field-cell">
-            <span class="field-title" title="What the compass is set to for the walk">Step <span class="unit-label">mm</span></span>
+            <span class="field-title" docTip="scrollWidths.compassStep">Step <span class="unit-label">mm</span></span>
             <div class="basic-display" aria-label="Compass step value">{{ compass ? compass.step.toFixed(1) : '' }}</div>
         </label>
     </div>
@@ -151,7 +151,7 @@
 
     <label class="field-cell">
         <span class="field-title" [style.color]="pointColor('eye')"
-            title="The last turn is as wide as the eye from its top on in">Eye <span class="unit-label">mm</span></span>
+            docTip="scrollWidths.lastTurn">Eye <span class="unit-label">mm</span></span>
         <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="pointColor('eye')"
             [(ngModel)]="w.eye" (input)="onChange()" (focus)="onPointFocus('eye')" (blur)="onPointBlur()" />
     </label>

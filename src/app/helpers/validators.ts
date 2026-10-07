@@ -1,20 +1,10 @@
 import { Circle, Pt } from "../models/types";
 import { error } from "../shared/message-emitter";
+import { unexpectedError } from '../docs/conditions';
 
 export function isOutOfRange(value: number, min: number, max = Infinity): boolean {
     return value < min || value > max;
 }
-
-const errorMessages = [
-    "Stradivari never had this problem.",
-    "A circle walked into a bar and nothing intersected.",
-    "These are not the curves you're looking for.",
-    "It's gonna be okay.",
-    "Back to the drafting board.",
-    "Perhaps we should just use paper.",
-    "Surely you can't expect the math to be perfect every time.",
-];
-let errorIndex = 0;
 
 /** Titles carry the field, because titles are identity: messages dedupe by them and a dismissed
  * one collapses to a chip under them. A shared title made every clamp look like the same problem,
@@ -48,9 +38,7 @@ export function safeRun(fn: () => void): void {
     try {
         fn();
     } catch (e: any) {
-        const msg = errorMessages[errorIndex % errorMessages.length];
-        errorIndex++;
-        error(msg, 'An Error Occurred :[');
+        unexpectedError();
         console.error(e)
     }
 }

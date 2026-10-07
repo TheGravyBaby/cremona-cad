@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { applyWhiteSuppression } from './white-suppression';
-import { warn } from '../../shared/message-emitter';
+import { backgroundSuppressionUnavailable } from '../../docs/conditions';
 
 /** Pixel data for one interned image, keyed by `ref` in ImageAssetStore. */
 export type ImageAsset = {
@@ -201,11 +201,7 @@ export class ImageAssetStore {
   private markUnsuppressible(ref: string): void {
     if (this.unsuppressible.has(ref)) return;
     this.unsuppressible.add(ref);
-    warn(
-      "This image's source doesn't allow the browser to read its pixels, so its background can't "
-      + 'be faded. The image still displays normally.',
-      'Background suppression unavailable',
-    );
+    backgroundSuppressionUnavailable();
     this.notify();
   }
 

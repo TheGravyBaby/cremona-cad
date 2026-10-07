@@ -32,7 +32,7 @@
     <span class="menu-label">Cut</span><kbd>Ctrl+X</kbd>
   </button>
   <button class="menu-row" role="menuitem" (click)="copy()" [disabled]="!actions.canCopy"
-    title="As SVG text, at real size">
+    docTip="edit.copy">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
       stroke-linecap="round" stroke-linejoin="round">
       <rect x="9" y="9" width="13" height="13" rx="2" />
@@ -41,7 +41,7 @@
     <span class="menu-label">Copy</span><kbd>Ctrl+C</kbd>
   </button>
   <button class="menu-row" role="menuitem" (click)="paste()"
-    title="In place, onto the active layer">
+    docTip="edit.paste">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
       stroke-linecap="round" stroke-linejoin="round">
       <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
@@ -50,7 +50,7 @@
     <span class="menu-label">Paste</span><kbd>Ctrl+V</kbd>
   </button>
   <button class="menu-row" role="menuitem" (click)="exportSvg()" [disabled]="!actions.canExport"
-    title="Save the selection as an SVG file, at real size">
+    docTip="edit.saveSelection">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
       stroke-linecap="round" stroke-linejoin="round">
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -61,7 +61,7 @@
   </button>
   <button class="menu-row" role="menuitem" (click)="run(actions.duplicate)"
     [disabled]="!actions.canDuplicate"
-    title="A copy over the original, on the active layer; a recipe piece becomes an editable shape">
+    docTip="edit.duplicate">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
       stroke-linecap="round" stroke-linejoin="round">
       <rect x="3" y="3" width="11" height="11" rx="2" />
@@ -70,7 +70,7 @@
     <span class="menu-label">Duplicate</span><kbd>Ctrl+D</kbd>
   </button>
   <button class="menu-row" role="menuitem" (click)="run(actions.group)" [disabled]="!actions.canGroup"
-    title="Selects and moves as one thing; ungroup to reshape a member">
+    docTip="edit.group">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
       stroke-linecap="round" stroke-linejoin="round">
       <rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="3 2.5" />

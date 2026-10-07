@@ -8,13 +8,13 @@ import { renderPlatePair } from '../../renders/front-profile.render';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, PathEntry, RenderToggleKey } from '../../ceruti-types';
 import { defaultArchingParams } from '../../calculation/arching/ceruti-arching';
 import { defaultFlutingParams, effectiveCBoutSweep, channelAreaPath, channelPaths, cornerJoinAreaPath, gougeHalfWidth, plateLayoutOffset } from '../../calculation/arching/ceruti-arch-geometry';
-import { cornerGougeInfo, gougeCBoutInfo, gougeCenterlineInfo, gougeSectionInfo } from '../field-info';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
+import { TooltipDirective } from '../../../docs/tooltips';
 
 @Component({
   selector: 'app-ceruti-fluting-panel',
-  imports: [FormsModule, DecimalPipe, NumberStepperDirective],
+  imports: [TooltipDirective, FormsModule, DecimalPipe, NumberStepperDirective],
   templateUrl: './fluting-panel.html',
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
@@ -25,11 +25,6 @@ export class FlutingPanel extends CerutiPanelBase implements OnInit {
   @Input({ required: true }) paths!: PathEntry[];
   @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;
-
-  protected readonly gougeSectionInfo = gougeSectionInfo;
-  protected readonly gougeCBoutInfo = gougeCBoutInfo;
-  protected readonly gougeCenterlineInfo = gougeCenterlineInfo;
-  protected readonly cornerGougeInfo = cornerGougeInfo;
   protected readonly gougeHalfWidth = gougeHalfWidth;
   protected readonly effectiveCBoutSweep = effectiveCBoutSweep;
 

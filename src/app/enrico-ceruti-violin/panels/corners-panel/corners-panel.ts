@@ -10,7 +10,6 @@ import { SolveFailure } from '../../../helpers/validators';
 import { CerutiColors, CerutiViewFlags, DefaultParams, EnricoCerutiParams, RenderToggleKey } from '../../ceruti-types';
 import { renderFrontInnerProfile } from '../../renders/front-profile.render';
 import { renderMainBouts, renderBounds, renderBoutBouts } from '../main-bouts-panel/main-bouts-panel';
-import { compoundArcInfo, cornerPositionInfo, violCornerInfo } from '../field-info';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { HighlightedArc, HighlightedPoint } from '../../renders/render-constants';
@@ -38,9 +37,6 @@ export class CornersPanel extends CerutiPanelBase implements OnInit {
 
   protected readonly nearestFraction = nearestFraction;
   protected readonly adjustArcStart = adjustArcStart;
-  protected readonly cornerPositionInfo = cornerPositionInfo;
-  protected readonly violCornerInfo = violCornerInfo;
-  protected readonly compoundArcInfo = compoundArcInfo;
 
   private highlightedArc: Arc | null = null;
   private highlightedArcColor = '';

@@ -4,7 +4,6 @@ import { flipRectAboutY } from '../../../helpers/math/simpleGeometry';
 import { renderPath, renderRect } from '../../../helpers/renderFuncs';
 import { calculateMould, ensureCenterBoutInnerPath, getPath } from '../../calculation/outline/ceruti-calcs';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, PathEntry, RenderToggleKey } from '../../ceruti-types';
-import { bitDiameterInfo } from '../field-info';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 
@@ -24,8 +23,6 @@ export class MouldPanel extends CerutiPanelBase implements OnInit {
   @Input({ required: true }) paths!: PathEntry[];
   @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;
-
-  protected readonly bitDiameterInfo = bitDiameterInfo;
 
   ngOnInit(): void {
     this.emitImmediate();

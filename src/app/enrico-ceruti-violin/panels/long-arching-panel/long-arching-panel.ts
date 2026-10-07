@@ -7,14 +7,14 @@ import { ArchCurve, ArchSpline, ArchSplinePoint, ArchingParams, CerutiColors, Ce
 import { clampSplinePointHeights, defaultArchingParams, maxRibTaperMm, splinePeakRow } from '../../calculation/arching/ceruti-arching';
 import { defaultFlutingParams, LongArchSolve, solveLongArch } from '../../calculation/arching/ceruti-arch-geometry';
 import { calculateOuterArcs, solveNeckForProfile } from '../../calculation/outline/ceruti-calcs';
-import { archHeightInfo, curveTypeInfo, transitionInfo, plateThicknessInfo, ribHeightInfo, splinePointInfo } from '../field-info';
 import { renderNeck } from '../neck-panel/neck-panel';
-import { error } from '../../../shared/message-emitter';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { applyRowMove, RowMove, RowReorderDirective } from '../../../shared/row-reorder';
 import { renderBodySideProfile, sideViewOffsetX } from '../../renders/body-side-profile.render';
 import { HighlightedSplinePoint } from '../../renders/render-constants';
+import { ribTaperExceeded } from '../../../docs/conditions';
+import { TooltipDirective } from '../../../docs/tooltips';
 
 /** One row of a plate's spline table: a control point, or the peak among them. */
 interface SplineRow {
@@ -32,7 +32,7 @@ interface SplineRow {
  */
 @Component({
   selector: 'app-ceruti-long-arching-panel',
-  imports: [FormsModule, DecimalPipe, NumberStepperDirective, RowReorderDirective],
+  imports: [TooltipDirective, FormsModule, DecimalPipe, NumberStepperDirective, RowReorderDirective],
   templateUrl: './long-arching-panel.html',
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })
@@ -43,12 +43,6 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
   @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;
   protected readonly peakSource = SPLINE_PEAK_SOURCE;
-  protected readonly ribHeightInfo = ribHeightInfo;
-  protected readonly archHeightInfo = archHeightInfo;
-  protected readonly plateThicknessInfo = plateThicknessInfo;
-  protected readonly curveTypeInfo = curveTypeInfo;
-  protected readonly splinePointInfo = splinePointInfo;
-  protected readonly transitionInfo = transitionInfo;
 
   private highlightedPlate: 'top' | 'bottom' | null = null;
   private highlightedSource = SPLINE_PEAK_SOURCE;
@@ -287,10 +281,6 @@ export class LongArchingPanel extends CerutiPanelBase implements OnInit {
     a.ribHeightLower = back.lower;
     a.ribHeightUpper = back.upper;
     this.acceptedRibHeights = back;
-    error(
-      `The ribs can taper by at most ${max.toFixed(1)}mm over a body this long. ` +
-      `Past that the rib line runs longer than the instrument itself, and there is no garland that shape.`,
-      'Invalid Rib Taper',
-    );
+    ribTaperExceeded(max);
   }
 }

@@ -5,18 +5,18 @@
   }
   <div class="settings-grid">
   @if (sceneReadout) {
-    <span class="scene-readout" title="Read-only: the recipe draws this from its parameters. Duplicate it (Ctrl+D) for an editable copy.">{{ sceneReadout }}</span>
+    <span class="scene-readout" docTip="settings.recipePiece">{{ sceneReadout }}</span>
   }
   @if (showColorSwatch) {
     <span class="field"><span class="f-lbl">Color</span>
       <input type="color" class="color-swatch" [value]="displayedColor" (input)="setColor($any($event.target).value)"
-        title="Drawing color — edits the selected shape's color, or the color new shapes will use" />
+        docTip="settings.color" />
     </span>
   }
   @if (showSectionColor2) {
     <span class="field"><span class="f-lbl">Color 2</span>
       <input type="color" class="color-swatch" [value]="displayedSectionColor2" (input)="setSectionColor2($any($event.target).value)"
-        title="Section's second alternating segment color" />
+        docTip="settings.sectionColor2" />
     </span>
   }
   @if (showDashedToggle) {
@@ -30,11 +30,11 @@
     <span class="point-group">
       <span class="field"><span class="f-lbl">X</span>
         <input type="number" [value]="boundsX" (change)="setBoundsCentre('x', $any($event.target).valueAsNumber)"
-          (keydown.enter)="$any($event.target).blur()" title="Centre of the selection — type to move everything selected" />
+          (keydown.enter)="$any($event.target).blur()" docTip="settings.selectionCenter" />
       </span>
       <span class="field"><span class="f-lbl">Y</span>
         <input type="number" [value]="boundsY" (change)="setBoundsCentre('y', $any($event.target).valueAsNumber)"
-          (keydown.enter)="$any($event.target).blur()" title="Centre of the selection — type to move everything selected" />
+          (keydown.enter)="$any($event.target).blur()" docTip="settings.selectionCenter" />
       </span>
     </span>
   }
@@ -63,13 +63,13 @@
     <span class="field"><span class="f-lbl">Distance</span>
       <input type="number" min="0" step="any" [value]="lineLength"
         (change)="setLineLength($any($event.target).valueAsNumber)" (keydown.enter)="$any($event.target).blur()"
-        title="Sets the distance from X1/Y1, keeping the current angle" />
+        docTip="settings.lineLength" />
     </span>
     @if (showDimensionOffset) {
       <span class="field"><span class="f-lbl">Offset</span>
         <input type="number" step="any" [value]="dimensionOffset"
           (change)="setDimensionOffset($any($event.target).valueAsNumber)" (keydown.enter)="$any($event.target).blur()"
-          title="How far the dimension line sits off the points it measures — negative puts it on the other side" />
+          docTip="settings.dimensionOffset" />
       </span>
     }
   }
@@ -101,7 +101,7 @@
     <span class="field"><span class="f-lbl">Radius</span>
       <input type="number" min="0.1" step="0.5" [value]="filletRadius"
         (change)="setFilletRadius($any($event.target).valueAsNumber)" (keydown.enter)="$any($event.target).blur()"
-        title="Radius of the round, in mm" />
+        docTip="settings.roundRadius" />
     </span>
   }
 
@@ -109,7 +109,7 @@
     <span class="field"><span class="f-lbl">Depth</span>
       <input type="number" min="0.1" step="1" [value]="curveDepth"
         (change)="setCurveDepth($any($event.target).valueAsNumber)" (keydown.enter)="$any($event.target).blur()"
-        title="How far the curve stands off the line between its ends, in mm" />
+        docTip="settings.curveSag" />
     </span>
   }
 
@@ -118,12 +118,12 @@
       <span class="field"><span class="f-lbl">Factor %</span>
         <input type="number" min="0" max="100" step="5" [value]="cycloidFactorPct"
           (change)="setCycloidFactorPct($any($event.target).valueAsNumber)" (keydown.enter)="$any($event.target).blur()"
-          title="How far out on the rolling circle the drawing point sits — 100 is a true cycloid, 0 a plain cosine hump" />
+          docTip="settings.cycloidFactor" />
       </span>
       <span class="field"><span class="f-lbl">Percent</span>
         <input type="number" min="5" max="150" step="1" [value]="cycloidPct"
           (change)="setCycloidPct($any($event.target).valueAsNumber)" (keydown.enter)="$any($event.target).blur()"
-          title="How much of the full arch spans the chord — below 100 trims the flat ends so it meets the chord at an angle, above 100 curls them under it" />
+          docTip="settings.cycloidPercent" />
       </span>
     </span>
   }
@@ -138,7 +138,7 @@
         <textarea #textContentInput rows="1" [value]="textContent"
           (change)="setTextContent(textContentInput.value)"
           (keydown.escape)="textContentInput.value = textContent; textContentInput.blur()"
-          title="Label text — Enter adds a line, Escape reverts. Scrolls rather than growing; double-click the label on the canvas for a box that opens out." placeholder="Text"></textarea>
+          docTip="settings.labelText" placeholder="Text"></textarea>
       </span>
     }
     <span class="point-group">
@@ -148,14 +148,14 @@
         <input type="number" min="0.1" step="0.5" [value]="textFontSize"
           (change)="setTextFontSize($any($event.target).valueAsNumber)"
           (keydown.enter)="$any($event.target).blur()"
-          title="Font size in mm — measured on the drawing, so it holds its proportion through a zoom. Sets the size for new labels too." />
+          docTip="settings.fontSize" />
       </span>
       @if (showTextShapeFields) {
         <span class="field"><span class="f-lbl">Angle</span>
           <input type="number" step="15" [value]="textRotation"
             (change)="setTextRotation($any($event.target).valueAsNumber)"
             (keydown.enter)="$any($event.target).blur()"
-            title="Degrees counterclockwise — or drag the round handle above a selected label" />
+            docTip="settings.textAngle" />
         </span>
       }
     </span>
@@ -190,15 +190,15 @@
     <span class="field"><span class="f-lbl">Width</span>
       <input type="number" min="0.5" max="20" step="0.5" [value]="freehandWidth"
         (change)="setFreehandWidth($any($event.target).valueAsNumber)" (keydown.enter)="$any($event.target).blur()"
-        title="Stroke width in screen pixels — constant at any zoom" />
+        docTip="settings.strokeWidth" />
     </span>
     <span class="field"><span class="f-lbl">Opacity</span>
       <input type="number" min="0" max="1" step="0.05" [value]="freehandOpacity"
         (change)="setFreehandOpacity($any($event.target).valueAsNumber)" (keydown.enter)="$any($event.target).blur()"
-        title="Opacity from 0 (invisible) to 1 (fully opaque) — dial down for a highlighter-style mark" />
+        docTip="settings.opacity" />
     </span>
     <button type="button" class="settings-action" (click)="applyPenPreset()"
-      title="Back to an ordinary opaque line — resets Color/Width/Opacity to the default pen">
+      docTip="settings.resetPen">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
         stroke-linecap="round" stroke-linejoin="round">
         <path d="M17 3a2.83 2.83 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
@@ -207,7 +207,7 @@
       <span>Pen</span>
     </button>
     <button type="button" class="settings-action" (click)="applyHighlighterPreset()"
-      title="Sets the pen to a wide, translucent yellow stroke — a shortcut for Color+Width+Opacity, not a separate tool">
+      docTip="settings.highlighter">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
         stroke-linecap="round" stroke-linejoin="round">
         <path d="M9 11l6 6-3 3H8v-4l1-1" />
@@ -271,7 +271,7 @@
     <span class="field text-field image-name-field"><span class="f-lbl">Name</span>
       <input #imageLabelInput type="text" [value]="imageLabel" (change)="setImageLabel(imageLabelInput.value)"
         (keydown.enter)="imageLabelInput.blur()" (keydown.escape)="imageLabelInput.value = imageLabel; imageLabelInput.blur()"
-        title="What this image is — e.g. Plan, Long arch, Cross arch" placeholder="Reference" />
+        docTip="settings.imageName" placeholder="Reference" />
     </span>
     <span class="point-group">
       <span class="field"><span class="f-lbl">X</span>
@@ -286,11 +286,11 @@
     <span class="point-group">
       <span class="field"><span class="f-lbl">W</span>
         <input type="number" min="0.01" [value]="imageWidth" (change)="setImageSize('width', $any($event.target).valueAsNumber)"
-          (keydown.enter)="$any($event.target).blur()" title="Width in mm — type a real measurement to scale the image to it. The height follows: a reference image is never stretched out of proportion." />
+          (keydown.enter)="$any($event.target).blur()" docTip="settings.imageWidth" />
       </span>
       <span class="field"><span class="f-lbl">H</span>
         <input type="number" min="0.01" [value]="imageHeight" (change)="setImageSize('height', $any($event.target).valueAsNumber)"
-          (keydown.enter)="$any($event.target).blur()" title="Height in mm — type a real measurement to scale the image to it. The width follows: a reference image is never stretched out of proportion." />
+          (keydown.enter)="$any($event.target).blur()" docTip="settings.imageHeight" />
       </span>
     </span>
     <span class="field"><span class="f-lbl">Rot°</span>
@@ -300,7 +300,7 @@
     <span class="field"><span class="f-lbl">Opacity</span>
       <input type="number" min="0" max="1" step="0.05" [value]="imageOpacity"
         (change)="setImageOpacity($any($event.target).valueAsNumber)" (keydown.enter)="$any($event.target).blur()"
-        title="Opacity from 0 (invisible) to 1 (fully opaque)" />
+        docTip="settings.imageOpacity" />
     </span>
     <button type="button" class="settings-action" [class.active]="imageSuppressWhite"
       [disabled]="imageSuppressionUnavailable"
@@ -314,7 +314,7 @@
       </svg>
     </button>
     <button type="button" class="settings-action" [class.active]="imageMirrored" (click)="toggleImageMirrored()"
-      title="Mirror the image left-right — for a scan that came out reversed, or to compare against its opposite half. Combine with Rot° to mirror on any axis. The image's position, size and rotation are unaffected.">
+      docTip="settings.imageMirror">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
         stroke-linecap="round" stroke-linejoin="round">
         <path d="M12 3v18" />
@@ -324,7 +324,7 @@
       <!-- <span>Mirror</span> -->
     </button>
     <button type="button" class="settings-action" [class.active]="imageCropped" (click)="toggleCropPopup()"
-      title="Hide part of the picture — trim a side profile down to the half you are tracing. What's left keeps its place and its scale.">
+      docTip="settings.imageCrop">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
         stroke-linecap="round" stroke-linejoin="round">
         <path d="M6 2v14a2 2 0 0 0 2 2h14" />
@@ -333,7 +333,7 @@
       <!-- <span>Crop</span> -->
     </button>
     <button type="button" class="settings-action" (click)="lockImage()"
-      title="Lock this image in place so it can't be selected or dragged on the canvas. Unlock it again from the Reference Images list in this bar.">
+      docTip="settings.imageLock">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
         stroke-linecap="round" stroke-linejoin="round">
         <rect x="4" y="11" width="16" height="9" rx="1.5" />
@@ -353,7 +353,7 @@
       <span class="field"><span class="f-lbl">Count</span>
         <input type="number" min="1" step="1" [value]="displayedWeightsCount"
           (change)="setWeightsCount($any($event.target).valueAsNumber)" (keydown.enter)="$any($event.target).blur()"
-          title="Number of equal segments (e.g. 16 for sixteenths)" />
+          docTip="settings.sectionCount" />
       </span>
     } @else {
       <span class="field weights-field"><span class="f-lbl">Weights</span>
@@ -361,7 +361,7 @@
           (change)="setWeightsText($any($event.target).value)"
           (keydown.enter)="setWeightsText(weightsInput.value); weightsInput.blur()"
           (keydown.escape)="weightsInput.value = displayedWeightsText; weightsInput.blur()"
-          title="Segment weights, comma-separated (e.g. 1,1,1 or 3,4,3) — Enter to apply" placeholder="1,1,1" />
+          docTip="settings.sectionWeights" placeholder="1,1,1" />
       </span>
     }
   }

@@ -6,14 +6,13 @@ import { nearestFraction } from '../../../helpers/nearestFraction';
 import { renderArcFromArc, renderArcFromArcFancy, renderArcHalo, renderCircle, renderSegment, renderSolveFailures, renderRect, STROKE_WEIGHT } from '../../../helpers/renderFuncs';
 import { arcFromCircle, Arc, Rectangle } from '../../../models/types';
 import { calculateInnerOutline, calculateMainBouts, MainBoutFailure, violNeckJoinLimit } from '../../calculation/outline/ceruti-calcs';
-import { error } from '../../../shared/message-emitter';
-import { boutWidthInfo, violNeckInfo, violNeckJoinInfo } from '../field-info';
 import { violNeckCap } from '../../calculation/outline/ceruti-paths';
 import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, RenderToggleKey } from '../../ceruti-types';
 import { renderFrontInnerProfile } from '../../renders/front-profile.render';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { HighlightedArc } from '../../renders/render-constants';
+import { violNeckJoinExceeded } from '../../../docs/conditions';
 
 export interface MainBoutsViewFlags {
   showModuleCircles: boolean;
@@ -38,9 +37,6 @@ export class MainBoutsPanel extends CerutiPanelBase implements OnInit {
   @Input({ required: true }) flags!: CerutiViewFlags;
 
   protected readonly nearestFraction = nearestFraction;
-  protected readonly boutWidthInfo = boutWidthInfo;
-  protected readonly violNeckInfo = violNeckInfo;
-  protected readonly violNeckJoinInfo = violNeckJoinInfo;
   protected readonly getArcStartDeg = getArcStartDeg;
   protected readonly setArcStartDeg = setArcStartDeg;
   protected readonly getArcEndDeg = getArcEndDeg;
@@ -75,13 +71,7 @@ export class MainBoutsPanel extends CerutiPanelBase implements OnInit {
     const join = violNeckJoinLimit(this.params);
     if (!join || join.headroom >= 0) return;
 
-    error(
-      `The neck reaches ${(-join.headroom).toFixed(1)}mm further than the upper bout can recieve, ` +
-      `so U0 doubles back to meet U1, this should look pretty weird.\n\n` +
-      `You have some options. Narrow the neck, shorten V0's radius, or lower V0s end angle. Play with it, I'm sure you'll figure it out.` +
-      `Widening the upper bout or shrinking U1 also buys room.`,
-      'Viol Neck Join',
-    );
+    violNeckJoinExceeded(-join.headroom);
   }
 
   onArcFocus(arc: Arc, color: string): void {

@@ -2,6 +2,7 @@ import { Component, EventEmitter, Output, inject } from '@angular/core';
 import { SelectionActions, writeSvgToSystemClipboard } from '../tools/selection-actions';
 import { UndoCoordinator } from '../../helpers/undoCoordinator';
 import { downloadSvgFile } from '../../helpers/fileExporter';
+import { TooltipDirective } from '../../docs/tooltips';
 
 /**
  * The document-wide edit verbs — undo and redo, clipboard, file, duplicate, group, delete — as a
@@ -14,6 +15,7 @@ import { downloadSvgFile } from '../../helpers/fileExporter';
 @Component({
   selector: 'app-edit-menu',
   standalone: true,
+  imports: [TooltipDirective],
   templateUrl: './edit-menu.html',
   styleUrls: ['./edit-menu.css'],
 })

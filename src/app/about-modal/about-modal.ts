@@ -1,6 +1,9 @@
-import { Component, DestroyRef, ElementRef, EventEmitter, Input, Output, ViewChild, inject, isDevMode } from '@angular/core';
+import { Component, DestroyRef, EventEmitter, Input, Output, inject, isDevMode } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import packageJson from '../../../package.json';
+import changelog from '../../../CHANGELOG.md';
+import { GuideComponent } from '../docs/guide/guide';
+import { renderMarkdown } from '../docs/wiki/markdown';
 import { WikiService } from '../docs/wiki/wiki.service';
 import { WikiComponent } from '../docs/wiki/wiki';
 
@@ -9,12 +12,13 @@ export type ThemeMode = 'auto' | 'day' | 'night';
 @Component({
   selector: 'app-about-modal',
   standalone: true,
-  imports: [WikiComponent],
+  imports: [GuideComponent, WikiComponent],
   templateUrl: './about-modal.html',
   styleUrls: ['./about-modal.css'],
 })
 export class AboutModalComponent {
   readonly appVersion: string = packageJson.version;
+  readonly changelogHtml = renderMarkdown(changelog.replace(/^# .*\n/, ''), () => null);
 
   @Input() themeMode: ThemeMode = 'auto';
   @Output() themeModeChange = new EventEmitter<ThemeMode>();
@@ -40,60 +44,6 @@ export class AboutModalComponent {
     });
   }
 
-  /** Tutorial topics, shown one at a time from the sidebar. Grouped by what they cover:
-   *  the canvas itself, then the design sections in the order the recipe builds them. */
-  readonly tutorialGroups: { label: string; topics: { id: string; label: string }[] }[] = [
-    {
-      label: 'Canvas',
-      topics: [
-        { id: 'basics', label: 'Basics' },
-        { id: 'drawing', label: 'Drawing Tools' },
-        { id: 'images', label: 'Reference Images' },
-      ],
-    },
-    {
-      label: 'Outline',
-      topics: [
-        { id: 'base', label: 'Base Measurements' },
-        { id: 'bouts', label: 'Main Bouts' },
-        { id: 'corners', label: 'Corners' },
-        { id: 'center', label: 'Center Bout' },
-        { id: 'outer', label: 'Outer Path' },
-        { id: 'purfling', label: 'Purfling' },
-      ],
-    },
-    {
-      label: 'Arching',
-      topics: [
-        { id: 'fluting', label: 'Fluting Channel' },
-        { id: 'long', label: 'Long Arching' },
-        { id: 'cross', label: 'Cross Arching' },
-      ],
-    },
-    {
-      label: 'F-Holes',
-      topics: [
-        { id: 'fHolePlacement', label: 'F-Hole Placement' },
-        { id: 'fHoleContours', label: 'F-Hole Contours' },
-      ],
-    },
-    {
-      label: 'Output',
-      topics: [
-        { id: 'mould', label: 'Mould' },
-        { id: 'export', label: 'Export' },
-      ],
-    },
-  ];
-
-  tutorialTopic = 'basics';
-
-  @ViewChild('topicScroll') private topicScroll?: ElementRef<HTMLElement>;
-
-  selectTopic(id: string) {
-    this.tutorialTopic = id;
-    if (this.topicScroll) this.topicScroll.nativeElement.scrollTop = 0;
-  }
 
   // Image gallery properties
   images = [

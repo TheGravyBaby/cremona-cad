@@ -13,7 +13,8 @@ import { SelectionStore } from '../tools/selection-store';
 import { SelectionActions } from '../tools/selection-actions';
 import { shapesToSvg } from '../tools/shape-svg';
 import { downloadSvgFile } from '../../helpers/fileExporter';
-import { warn } from '../../shared/message-emitter';
+import { TooltipDirective } from '../../docs/tooltips';
+import { svgImportEmpty } from '../../docs/conditions';
 
 /** A row in either list: a layer or an image, told apart only where the store needs to know. */
 export type ScopeKind = 'layer' | 'image';
@@ -40,7 +41,7 @@ type Scoped = { id: string; scope?: PanelScope };
 @Component({
   selector: 'app-layer-controls',
   standalone: true,
-  imports: [NgTemplateOutlet],
+  imports: [TooltipDirective, NgTemplateOutlet],
   templateUrl: './layer-controls.html',
   styleUrls: ['./layer-controls.css'],
 })
@@ -172,7 +173,7 @@ export class LayerControlsComponent {
     const file = input.files?.[0];
     input.value = '';
     if (!file) return;
-    if (!this.actions.import(await file.text())) warn(`Nothing in ${file.name} could be read as a shape.`, 'Import SVG');
+    if (!this.actions.import(await file.text())) svgImportEmpty(file.name);
   }
 
   // images belong to no layer, so they never move

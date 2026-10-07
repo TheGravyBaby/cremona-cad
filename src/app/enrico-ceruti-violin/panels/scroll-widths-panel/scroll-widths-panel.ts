@@ -12,10 +12,11 @@ import { Circle, Pt } from '../../../models/types';
 import { pointOnCircle, TURN } from '../../../helpers/math/simpleGeometry';
 import { scrollNeckStub, scrollBackViewStrokes, scrollFrontViewStrokes } from '../../calculation/neck/ceruti-scroll-views';
 import { renderScrollNeck } from '../volute-panel/volute-panel';
+import { TooltipDirective } from '../../../docs/tooltips';
 
 @Component({
   selector: 'app-ceruti-scroll-widths-panel',
-  imports: [FormsModule, NumberStepperDirective],
+  imports: [TooltipDirective, FormsModule, NumberStepperDirective],
   templateUrl: './scroll-widths-panel.html',
   styleUrls: ['../../../sidebar.css', '../../ceruti-violin.css'],
 })

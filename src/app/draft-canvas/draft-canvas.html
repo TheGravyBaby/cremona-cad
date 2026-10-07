@@ -69,7 +69,7 @@
           </svg>
         </button>
         <button type="button" class="zoom-readout" [class.active]="viewOpen" (click)="viewOpen = !viewOpen"
-          title="Zoom (px/mm). Click to set the view by number.">{{ pxPerMm.toFixed(1) }}</button>
+          docTip="view.zoom">{{ pxPerMm.toFixed(1) }}</button>
         <button type="button" class="zoom-btn" (click)="applyZoom(pxPerMm * 1.1)" title="Zoom in">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round">
@@ -81,17 +81,17 @@
 
       @if (viewOpen) {
       <div class="view-popup">
-        <label class="view-row" title="Horizontal position of the view's centre, as the X axis numbers it.">
+        <label class="view-row" docTip="view.centerX">
           <span>Centre X</span>
           <input #viewX type="number" step="1" [value]="viewField('x')" (change)="setViewField('x', viewX)" />
           <span class="view-unit">mm</span>
         </label>
-        <label class="view-row" title="Vertical position of the view's centre, as the Y axis numbers it.">
+        <label class="view-row" docTip="view.centerY">
           <span>Centre Y</span>
           <input #viewY type="number" step="1" [value]="viewField('y')" (change)="setViewField('y', viewY)" />
           <span class="view-unit">mm</span>
         </label>
-        <label class="view-row" title="Screen pixels per millimetre of drawing, held about the centre.">
+        <label class="view-row" docTip="view.scale">
           <span>Zoom</span>
           <input #viewZoom type="number" step="0.1" min="0.05" [value]="viewField('zoom')"
             (change)="setViewField('zoom', viewZoom)" />

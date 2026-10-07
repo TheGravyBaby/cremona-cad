@@ -44,7 +44,8 @@ expect — a stray file outside these globs only runs under the full `ng test`.
 | `src/app/models/types.ts` | `Pt`/`Circle`/`Arc`/`Rectangle` — recipe-side geometry. Read its header. |
 | `src/app/recipe-base/` | `RecipeComponentBase` — panel flow, undo/redo, file load/save, toolbox sync. |
 | `src/app/shared/` | Message/toast service. |
-| `src/app/docs/wiki/` | The wiki: Markdown articles under `articles/` (folders allowed), imported as text, parsed into a registry the wiki component renders and `wiki.spec.ts` lints. One article per concept; `[[slug]]` links between them; figures under `public/wiki/`. See `docs/documentation-plan.md`. |
+| `src/app/docs/` | Every word the app says to the user, in one place. `field-help.ts` is the ⓘ write-ups (`help('id')` in a panel); `tooltips.ts` the explanatory tooltips, bound as `docTip="id"`, a tooltip that only names a control stays a literal `title=`; `conditions.ts` the toasts that run to a paragraph; `export-descriptions.ts` the export rows; `guide/` the Documentation tab. The change log is `CHANGELOG.md` at the root, rendered in the about modal. See `docs/documentation-plan.md`. |
+| `src/app/docs/wiki/` | The wiki: Markdown articles under `articles/` (folders allowed), imported as text, parsed into a registry the wiki component renders and `wiki.spec.ts` lints. One article per concept; `[[slug]]` links between them; figures under `public/wiki/`. Dev builds only, for now. |
 | `examples/` | **Not built, not tested.** Outside `tsconfig.app.json` and `tsconfig.spec.json`. |
 
 `examples/beard-violin` and `examples/kelly-violin` are earlier recipe implementations kept for

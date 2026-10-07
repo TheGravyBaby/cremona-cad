@@ -3,8 +3,8 @@ import { angleFromCenter, dist, normalizeRadians, pointOnCircle, signedRadianDel
 import { arcPathData, pathFromArc, pathFromArcLongWay, pathFromLine, pathFromCornerCubic, combinePathStrings, samplePathToPolyline, pathFromPolygon, Matrix2D, transformPath } from "../../../helpers/math/pathMath";
 import { unifyConnectedSvgPaths, unifyConnectedSvgPathGroups, occludePath } from "../../../helpers/math/pathVibes";
 import { Arc, arcFromCircle, Pt } from "../../../models/types";
-import { error } from "../../../shared/message-emitter";
 import { ButtonParams, EnricoCerutiParams } from "../../ceruti-types";
+import { flutingWidthsCannotJoin, purflingOffsetTooSmall } from '../../../docs/conditions';
 
 export function cornerOffsetSign(p: EnricoCerutiParams, key: 'C1' | 'C2'): 1 | -1 {
     return dist(p.bouts[key]!, p.bouts.C0!) > p.bouts.C0!.r ? 1 : -1;
@@ -170,7 +170,7 @@ export function defineOffsetArcs(p: EnricoCerutiParams, offset?: number, corners
             lowerCorner = circleCircleIntersections(L3Offset, C1Offset).sort(nearLowerCorner)[0];
 
         if(!upperCorner || !lowerCorner) {
-            error("The offset is too small, and the corner circles no longer intersect. Try reducing the purfling offset.", "Purfling Error");
+            purflingOffsetTooSmall();
             return [];
         }
 
@@ -449,7 +449,7 @@ function joinFlutingTransition(
 
     cBoutArc.start = originalStart;
     cBoutArc.end = originalEnd;
-    error("Cannot join fluting on main body and c-bout, as the difference in fluting width is too large", "Fluting Error");
+    flutingWidthsCannotJoin();
     return [];
 }
 

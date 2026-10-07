@@ -10,7 +10,7 @@
                 (focus)="onFieldFocus('length', colors.neck)" (blur)="onFieldBlur()" />
         </label>
         <label class="field-cell">
-            <span class="field-title" title="How far the nut stands off the neck, which is where the strings sit">Nut Thickness <span class="unit-label">mm</span></span>
+            <span class="field-title" docTip="stringSetup.nutThickness">Nut Thickness <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="0.5" min="0" [style.border-color]="colors.nut"
                 [(ngModel)]="stringSetup.nutThickness" (input)="onChange()"
                 (focus)="onFieldFocus('nutThickness', colors.nut)" (blur)="onFieldBlur()" />

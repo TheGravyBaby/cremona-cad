@@ -10,18 +10,18 @@
             <input class="basic-input" type="number" step="1" min="0"
                 [(ngModel)]="params.outerFlutingDepth" (input)="onChange()"
                 [style.border-color]="colors.innerTrace"
-                title="Where the flat land ends and the channel begins — shared by both plates, since it belongs to the outline and the purfling" />
+                docTip="fluting.landEdge" />
         </label>
-        <button type="button" class="info-icon" (click)="gougeCenterlineInfo()" title="More information">ⓘ</button>
+        <button type="button" class="info-icon" (click)="help('gougeCenterline')" title="More information">ⓘ</button>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <div class="toggle" title="Smooth the corners down to meet the channel, instead of leaving them flat">
+            <div class="toggle" docTip="fluting.gougeCorners">
                 <input type="checkbox" [(ngModel)]="top.cornerGouge" (change)="emitImmediate()" />
                 <span>Corners</span>
             </div>
         </label>
-        <button type="button" class="info-icon" (click)="cornerGougeInfo()" title="More information">ⓘ</button>
+        <button type="button" class="info-icon" (click)="help('cornerGouge')" title="More information">ⓘ</button>
     </div>
 </section>
 
@@ -33,24 +33,24 @@
             <input class="basic-input" type="number" step="1" min="0.1"
                 [(ngModel)]="top.sweepRadius" (input)="onChange()"
                 [style.border-color]="colors.archTop"
-                title="Sweep radius of the gouge" />
+                docTip="fluting.sweep" />
         </label>
         <label class="field-cell">
             <span class="field-title">Depth <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" min="0"
                 [(ngModel)]="top.depth" (input)="onChange()"
                 [style.border-color]="colors.archTop"
-                title="Depth at the trough — held below the sweep radius" />
+                docTip="fluting.depth" />
         </label>
         <label class="field-cell">
             <span class="field-title">Width <span class="unit-label">mm</span></span>
             <div class="basic-display" aria-label="Channel width value">{{ 2 * gougeHalfWidth(top.sweepRadius, top.depth) | number:'1.1-1' }}</div>
         </label>
-        <button type="button" class="info-icon" (click)="gougeSectionInfo()" title="More information">ⓘ</button>
+        <button type="button" class="info-icon" (click)="help('gougeSection')" title="More information">ⓘ</button>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <div class="toggle" title="A second, narrower gouge for the waist">
+            <div class="toggle" docTip="fluting.cBout">
                 <input type="checkbox" [ngModel]="top.sweepRadius_cBout !== null"
                     (ngModelChange)="top.sweepRadius_cBout = $event ? top.sweepRadius : null; emitImmediate()" /><span>C Bout</span>
             </div>
@@ -61,7 +61,7 @@
             <input class="basic-input" type="number" step="1" min="0.1"
                 [(ngModel)]="top.sweepRadius_cBout" (input)="onChange()"
                 [style.border-color]="colors.archTop"
-                title="Same land edge, same depth — only the inner edge moves" />
+                docTip="fluting.cBoutSweep" />
         </label>
         <label class="field-cell">
             <span class="field-title">Width <span class="unit-label">mm</span></span>
@@ -69,7 +69,7 @@
                 number:'1.1-1' }}</div>
         </label>
         }
-        <button type="button" class="info-icon" (click)="gougeCBoutInfo()" title="More information">ⓘ</button>
+        <button type="button" class="info-icon" (click)="help('gougeCBout')" title="More information">ⓘ</button>
     </div>
 </section>
 
@@ -81,25 +81,25 @@
             <input class="basic-input" type="number" step="1" min="0.1"
                 [(ngModel)]="back.sweepRadius" (input)="onChange()"
                 [style.border-color]="colors.archBack"
-                title="Sweep radius of the gouge" />
+                docTip="fluting.sweep" />
         </label>
         <label class="field-cell">
             <span class="field-title">Depth <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" min="0"
                 [(ngModel)]="back.depth" (input)="onChange()"
                 [style.border-color]="colors.archBack"
-                title="Depth at the trough — held below the sweep radius" />
+                docTip="fluting.depth" />
         </label>
         <label class="field-cell">
             <span class="field-title">Width <span class="unit-label">mm</span></span>
             <div class="basic-display" aria-label="Channel width value">{{ 2 * gougeHalfWidth(back.sweepRadius, back.depth) | number:'1.1-1' }}
             </div>
         </label>
-        <button type="button" class="info-icon" (click)="gougeSectionInfo()" title="More information">ⓘ</button>
+        <button type="button" class="info-icon" (click)="help('gougeSection')" title="More information">ⓘ</button>
     </div>
     <div class="input-group basic-row field-row" role="group">
         <label class="field-cell">
-            <div class="toggle" title="A second, narrower gouge for the waist">
+            <div class="toggle" docTip="fluting.cBout">
                 <input type="checkbox" [ngModel]="back.sweepRadius_cBout !== null"
                     (ngModelChange)="back.sweepRadius_cBout = $event ? back.sweepRadius : null; emitImmediate()" /><span>C Bout</span>
             </div>
@@ -110,7 +110,7 @@
             <input class="basic-input" type="number" step="1" min="0.1"
                 [(ngModel)]="back.sweepRadius_cBout" (input)="onChange()"
                 [style.border-color]="colors.archBack"
-                title="Same land edge, same depth — only the inner edge moves" />
+                docTip="fluting.cBoutSweep" />
         </label>
         <label class="field-cell">
             <span class="field-title">Width <span class="unit-label">mm</span></span>
@@ -118,7 +118,7 @@
                 number:'1.1-1' }}</div>
         </label>
         }
-        <button type="button" class="info-icon" (click)="gougeCBoutInfo()" title="More information">ⓘ</button>
+        <button type="button" class="info-icon" (click)="help('gougeCBout')" title="More information">ⓘ</button>
     </div>
 </section>
 

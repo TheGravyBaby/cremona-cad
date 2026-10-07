@@ -33,7 +33,6 @@ import { translateShape } from './tools/shape-transform';
 import { endpointGrabbers, withBattenPinAdded, withBattenPinRemoved, withEndpoint, EndpointGrabber, EndpointKey } from './tools/shape-grabbers';
 import { snapToLockedAngle } from './tools/angle-lock';
 import { clamp, dist } from '../helpers/math/simpleGeometry';
-import { info, warn } from '../shared/message-emitter';
 import { DEFAULT_TEXT_SIZE_MM, DraftShape, ImageShape, PathShape, TextShape, imageRenderKey } from './tools/toolbox-shape';
 import { placedImageShape } from './tools/image-placement';
 import { HOTKEY_TOOL_CYCLE } from './tools/tool-hotkeys';
@@ -41,6 +40,8 @@ import { SettingsBarComponent } from './settings-bar/settings-bar';
 import { LayerControlsComponent } from './layer-controls/layer-controls';
 import { EditMenuComponent } from './edit-menu/edit-menu';
 import { ToolPaletteComponent } from './tool-palette/tool-palette';
+import { TooltipDirective } from '../docs/tooltips';
+import { imageLinkFailed, imageResized } from '../docs/conditions';
 
 type SvgGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 /** A world-space group and its unflipped overlay twin, the two selections every renderer draws into. */
@@ -49,7 +50,7 @@ type LayerPair = { g: SvgGroup; ui: SvgGroup };
 @Component({
   selector: 'app-draft-canvas',
   standalone: true,
-  imports: [ToolPaletteComponent, SettingsBarComponent, LayerControlsComponent, AxisControlsComponent, EditMenuComponent],
+  imports: [TooltipDirective, ToolPaletteComponent, SettingsBarComponent, LayerControlsComponent, AxisControlsComponent, EditMenuComponent],
   templateUrl: './draft-canvas.html',
   styleUrls: ['./draft-canvas.css'],
 })
@@ -1692,11 +1693,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     try {
       linked = await prepareLinkedImage(trimmed);
     } catch {
-      warn(
-        'Nothing loaded from that address. It has to be a direct link to an image file — the one '
-        + 'behind "Copy image address", not the page the image sits on.',
-        'Image link failed',
-      );
+      imageLinkFailed();
       return;
     }
 
@@ -1751,15 +1748,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
       resolve?.({ dataUrl: prepared.dataUrl, width: prepared.width, height: prepared.height });
       if (prepared.changed) {
         const scaled = prepared.width !== prepared.sourceWidth;
-        info(
-          (scaled
-            ? `Reference image scaled from ${prepared.sourceWidth} × ${prepared.sourceHeight} to ` +
-              `${prepared.width} × ${prepared.height} px. `
-            : 'Reference image recompressed. ') +
-          'Full-resolution images fill the browser\'s working store and bloat the saved file; ' +
-          'scale the placed image to real dimensions as usual.',
-          'Image resized',
-        );
+        imageResized(scaled ? { width: prepared.sourceWidth, height: prepared.sourceHeight } : null, prepared);
       }
     } catch {
       resolve?.(null);

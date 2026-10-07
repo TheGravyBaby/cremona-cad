@@ -30,7 +30,7 @@
         <div class="layer-tab recipe" [class.locked]="recipeLocked">
           <span class="layer-tab-icon-btn recipe-spacer"></span>
           <span class="layer-tab-label"
-            title="What the recipe draws. Unlocked, its pieces can be selected, read and duplicated — never edited.">Recipe</span>
+            docTip="layers.recipe">Recipe</span>
           <button type="button" class="layer-tab-icon-btn"
             (click)="toggleRecipeLocked(); $event.stopPropagation()"
             [title]="recipeLocked ? 'Unlock recipe geometry for selection' : 'Lock recipe geometry'">
@@ -55,7 +55,7 @@
           <ng-container [ngTemplateOutlet]="scopeChip" [ngTemplateOutletContext]="{ item: layer }" />
           @if (canMoveSelectionTo(layer)) {
           <button type="button" class="layer-tab-icon-btn move-here"
-            (click)="moveSelectionTo(layer.id); $event.stopPropagation()" title="Move the selection to this layer">
+            (click)="moveSelectionTo(layer.id); $event.stopPropagation()" docTip="layers.moveSelection">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
               stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 3v11M7 9l5 5 5-5" />
@@ -84,7 +84,7 @@
            row, then the drawing out, then the layer cleared. -->
       <div class="lc-action-row">
         <button type="button" class="lc-action" (click)="svgFileInput.click()"
-          title="Import an SVG file onto the active layer, in place">
+          docTip="layers.importSvg">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -94,7 +94,7 @@
           <span>Import</span>
         </button>
         <button type="button" class="lc-action" (click)="exportSvg()" [disabled]="!canExport"
-          title="Save the active layer as an SVG file, at real size">
+          docTip="layers.saveLayer">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -155,7 +155,7 @@
             (keydown.escape)="editingImageId = null" (blur)="commitRenameImage(image.id, imageRenameInput.value)" />
           } @else {
           <span class="layer-tab-label" (click)="editImage(image)" (dblclick)="startRenameImage(image.id)"
-            title="Click to show it here and unlock it for editing; double-click to rename">{{ image.label }}</span>
+            docTip="images.unlock">{{ image.label }}</span>
           <ng-container [ngTemplateOutlet]="scopeChip" [ngTemplateOutletContext]="{ item: image }" />
           <button type="button" class="layer-tab-icon-btn" (click)="toggleImageLocked(image); $event.stopPropagation()"
             [title]="isImageLocked(image) ? 'Unlock for editing' : 'Lock in place'">
@@ -174,7 +174,7 @@
       <div class="images-empty">No reference images yet.</div>
       }
       <div class="lc-action-row">
-        <button type="button" class="lc-action" (click)="addImage()" title="Choose an image file to place on the canvas">
+        <button type="button" class="lc-action" (click)="addImage()" docTip="images.upload">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -184,7 +184,7 @@
           <span>Upload</span>
         </button>
         <button type="button" class="lc-action" [class.active]="linkOpen" (click)="toggleLinkField()"
-          title="Place an image from a web address. Paste the link to the image file itself — the one behind &quot;Copy image address&quot; — not the page it sits on.">
+          docTip="images.link">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round">
             <path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7" />

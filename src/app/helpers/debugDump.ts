@@ -1,4 +1,5 @@
-import { error, info } from '../shared/message-emitter';
+import { info } from '../shared/message-emitter';
+import { clipboardUnavailable } from '../docs/conditions';
 
 // The debug channel — the `/` button on the recipe toolbar.
 //
@@ -32,6 +33,6 @@ export function copyToClipboard(label: string, text: string): void {
   console.log(`[${label}]`, text);
   navigator.clipboard?.writeText(text).then(
     () => info(`${label} copied to clipboard (${text.length} chars). Also logged to the console.`, 'Debug', 4000),
-    () => error(`Could not reach the clipboard. ${label} is in the console instead.`, 'Debug'),
+    () => clipboardUnavailable(label),
   );
 }

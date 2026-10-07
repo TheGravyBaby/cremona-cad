@@ -31,7 +31,7 @@
                 }
             </div>
         </div>
-        <button type="button" class="info-icon" (click)="crossSectionStationInfo()" title="More information">ⓘ</button>
+        <button type="button" class="info-icon" (click)="help('crossSectionStation')" title="More information">ⓘ</button>
     </div>
     @if (cycloidStations('top'); as stations) {
     @if (stations.length) {
@@ -113,7 +113,7 @@
             <span class="field-title">Grid <span class="unit-label">mm</span></span>
             <input class="basic-input" type="number" step="1" min="0.2" max="2"
                 [(ngModel)]="stlGridMm"
-                title="Sampling step for the mesh — finer takes longer and makes a larger file" />
+                docTip="crossArching.stlGrid" />
         </label>
         <button class="panel-nav-btn" [disabled]="exporting !== null" (click)="exportStl('top')">
             {{ exporting === 'top' ? 'Building…' : 'Top STL' }}
@@ -142,7 +142,7 @@
                 (change)="setCurveType('top', 'spline')" />
             <span>Spline</span>
         </div>
-        <button type="button" class="info-icon" (click)="crossArchCurveTypeInfo()" title="More information">ⓘ</button>
+        <button type="button" class="info-icon" (click)="help('crossArchCurveType')" title="More information">ⓘ</button>
     </div>
 
     @if (crossCycloid('top')) {
@@ -157,7 +157,7 @@
             <input class="basic-input" type="number" step="1" min="5" [max]="cycloidPctMax('top')" [ngModel]="cycloidPct('top')"
                 (ngModelChange)="setCycloidPct('top', $event)" [style.border-color]="colors.archTop" />
         </label>
-        <button type="button" class="info-icon" (click)="crossArchCycloidControlsInfo()" title="More information">ⓘ</button>
+        <button type="button" class="info-icon" (click)="help('crossArchCycloidControls')" title="More information">ⓘ</button>
     </div>
     }
 
@@ -167,26 +167,26 @@
             <span class="field-cell">Position <span class="unit-label">%</span></span>
             <span class="field-separator" style="visibility:hidden" aria-hidden="true"></span>
             <span class="field-cell">Height <span class="unit-label">%</span></span>
-            <button type="button" class="info-icon" (click)="crossArchTemplateInfo()" title="More information">ⓘ</button>
+            <button type="button" class="info-icon" (click)="help('crossArchTemplate')" title="More information">ⓘ</button>
         </div>
         @for (row of splineRows(spline); track $index) {
         <div class="input-group basic-row field-row spline-row" role="group" data-reorder-row>
             <button type="button" class="row-grip" data-reorder-handle aria-label="Reorder row"
-                title="Drag to put this row in order, or move it with the arrow keys">⠿</button>
+                docTip="reorderRow">⠿</button>
             @if (row.pt; as pt) {
             <div class="field-cell">
                 <input class="basic-input" type="number" step="1" min="0" max="100" [ngModel]="pointXPct(pt)"
                     (ngModelChange)="setPointXPct('top', row.index, $event)" (focus)="onPointFocus('top', row.index)"
                     (blur)="onPointBlur()"
-                    title="Across the plate — 0 is the bass channel, 50 the joint, 100 the treble channel. A knot at 66 and one at 34 are the same place on opposite sides." />
+                    docTip="crossArching.knotX" />
             </div>
             <span class="field-separator" aria-hidden="true"></span>
             <div class="field-cell">
                 <input class="basic-input" type="number" step="1" [min]="pointZFloorPct('top')" max="100" [ngModel]="pointZPct(pt)"
                     (ngModelChange)="setPointZPct('top', row.index, $event)" (focus)="onPointFocus('top', row.index)"
-                    (blur)="onPointBlur()" title="Percent of the local arch height — the crown always sits at 100" />
+                    (blur)="onPointBlur()" docTip="crossArching.knotZ" />
             </div>
-            <div class="toggle" title="Repeat this knot on the other side of the centerline">
+            <div class="toggle" docTip="crossArching.mirrorKnot">
                 <input type="checkbox" [checked]="pt.mirror" (change)="toggleMirror('top', row.index)" />
                 <span>Mirror</span>
             </div>
@@ -195,14 +195,14 @@
             <div class="field-cell">
                 <input class="basic-input" type="number" step="1" min="30" max="70" [ngModel]="peakPct('top')"
                     (ngModelChange)="setPeakPct('top', $event)"
-                    title="Where the crown sits across the plate — 50 is the joint, lower is bass side." />
+                    docTip="crossArching.peakX" />
             </div>
             <span class="field-separator" aria-hidden="true"></span>
             <div class="field-cell">
-                <span class="basic-display" title="The crown always sits at the local long-arch height">100</span>
+                <span class="basic-display" docTip="crossArching.peakZ">100</span>
             </div>
             <span>Peak</span>
-            <button type="button" class="info-icon" (click)="crossArchPeakInfo()" title="More information">ⓘ</button>
+            <button type="button" class="info-icon" (click)="help('crossArchPeak')" title="More information">ⓘ</button>
             }
         </div>
         }
@@ -222,7 +222,7 @@
             + Set Station at {{ cursorY }}mm
         </button>
         }
-        <button type="button" class="info-icon" (click)="crossArchStationInfo()" title="More information">ⓘ</button>
+        <button type="button" class="info-icon" (click)="help('crossArchStation')" title="More information">ⓘ</button>
     </div>
     }
 
@@ -237,7 +237,7 @@
                 (change)="togglePlateView('top', 'wireframe')" />
             <span>Wireframe</span>
         </div>
-        <button type="button" class="info-icon" (click)="archContoursInfo()" title="More information">ⓘ</button>
+        <button type="button" class="info-icon" (click)="help('archContours')" title="More information">ⓘ</button>
     </div>
 
 </section>
@@ -262,7 +262,7 @@
                 (change)="setCurveType('bottom', 'spline')" />
             <span>Spline</span>
         </div>
-        <button type="button" class="info-icon" (click)="crossArchCurveTypeInfo()" title="More information">ⓘ</button>
+        <button type="button" class="info-icon" (click)="help('crossArchCurveType')" title="More information">ⓘ</button>
     </div>
 
     @if (crossCycloid('bottom')) {
@@ -277,7 +277,7 @@
             <input class="basic-input" type="number" step="1" min="5" [max]="cycloidPctMax('bottom')" [ngModel]="cycloidPct('bottom')"
                 (ngModelChange)="setCycloidPct('bottom', $event)" [style.border-color]="colors.archBack" />
         </label>
-        <button type="button" class="info-icon" (click)="crossArchCycloidControlsInfo()" title="More information">ⓘ</button>
+        <button type="button" class="info-icon" (click)="help('crossArchCycloidControls')" title="More information">ⓘ</button>
     </div>
     }
 
@@ -287,26 +287,26 @@
             <span class="field-cell">Position <span class="unit-label">%</span></span>
             <span class="field-separator" style="visibility:hidden" aria-hidden="true"></span>
             <span class="field-cell">Height <span class="unit-label">%</span></span>
-            <button type="button" class="info-icon" (click)="crossArchTemplateInfo()" title="More information">ⓘ</button>
+            <button type="button" class="info-icon" (click)="help('crossArchTemplate')" title="More information">ⓘ</button>
         </div>
         @for (row of splineRows(spline); track $index) {
         <div class="input-group basic-row field-row spline-row" role="group" data-reorder-row>
             <button type="button" class="row-grip" data-reorder-handle aria-label="Reorder row"
-                title="Drag to put this row in order, or move it with the arrow keys">⠿</button>
+                docTip="reorderRow">⠿</button>
             @if (row.pt; as pt) {
             <div class="field-cell">
                 <input class="basic-input" type="number" step="1" min="0" max="100" [ngModel]="pointXPct(pt)"
                     (ngModelChange)="setPointXPct('bottom', row.index, $event)" (focus)="onPointFocus('bottom', row.index)"
                     (blur)="onPointBlur()"
-                    title="Across the plate — 0 is the bass channel, 50 the joint, 100 the treble channel. A knot at 66 and one at 34 are the same place on opposite sides." />
+                    docTip="crossArching.knotX" />
             </div>
             <span class="field-separator" aria-hidden="true"></span>
             <div class="field-cell">
                 <input class="basic-input" type="number" step="1" [min]="pointZFloorPct('bottom')" max="100" [ngModel]="pointZPct(pt)"
                     (ngModelChange)="setPointZPct('bottom', row.index, $event)" (focus)="onPointFocus('bottom', row.index)"
-                    (blur)="onPointBlur()" title="Percent of the local arch height — the crown always sits at 100" />
+                    (blur)="onPointBlur()" docTip="crossArching.knotZ" />
             </div>
-            <div class="toggle" title="Repeat this knot on the other side of the centerline">
+            <div class="toggle" docTip="crossArching.mirrorKnot">
                 <input type="checkbox" [checked]="pt.mirror" (change)="toggleMirror('bottom', row.index)" />
                 <span>Mirror</span>
             </div>
@@ -315,14 +315,14 @@
             <div class="field-cell">
                 <input class="basic-input" type="number" step="1" min="30" max="70" [ngModel]="peakPct('bottom')"
                     (ngModelChange)="setPeakPct('bottom', $event)"
-                    title="Where the crown sits across the plate — 50 is the joint, lower is bass side." />
+                    docTip="crossArching.peakX" />
             </div>
             <span class="field-separator" aria-hidden="true"></span>
             <div class="field-cell">
-                <span class="basic-display" title="The crown always sits at the local long-arch height">100</span>
+                <span class="basic-display" docTip="crossArching.peakZ">100</span>
             </div>
             <span>Peak</span>
-            <button type="button" class="info-icon" (click)="crossArchPeakInfo()" title="More information">ⓘ</button>
+            <button type="button" class="info-icon" (click)="help('crossArchPeak')" title="More information">ⓘ</button>
             }
         </div>
         }
@@ -341,7 +341,7 @@
             + Set Station at {{ cursorY }}mm
         </button>
         }
-        <button type="button" class="info-icon" (click)="crossArchStationInfo()" title="More information">ⓘ</button>
+        <button type="button" class="info-icon" (click)="help('crossArchStation')" title="More information">ⓘ</button>
     </div>
     }
 
@@ -356,7 +356,7 @@
                 (change)="togglePlateView('back', 'wireframe')" />
             <span>Wireframe</span>
         </div>
-        <button type="button" class="info-icon" (click)="archContoursInfo()" title="More information">ⓘ</button>
+        <button type="button" class="info-icon" (click)="help('archContours')" title="More information">ⓘ</button>
     </div>
 
 </section>
