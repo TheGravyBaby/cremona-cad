@@ -1,20 +1,10 @@
 {
   "key": "stradivari-cello-castelbarco",
-  "label": "Cello - Antonio Stradivari - Castelbarco",
   "recipeName": "enrico-ceruti-violin",
   "fileName": "Cello - Antonio Stradivari - Castelbarco",
-  "description": "Cremona, 1697",
+  "description": "Cremona, 1697. LoC catalogue dimensions; no arching published.",
+  "source": "https://www.loc.gov/item/2022560102/",
   "version": "1",
-  "meta": {
-    "maker": "Antonio Stradivari",
-    "instrument": "Violoncello \"Castelbarco\"",
-    "date": "1697",
-    "record": {
-      "objectId": "2022560102",
-      "url": "https://www.loc.gov/item/2022560102/"
-    },
-    "notes": "Bout set and back length are the LoC catalogue dimensions, verbatim. No arching is published, and everything below them is unsolved."
-  },
   "params": {
     "height": 747,
     "width": 440,
@@ -566,9 +556,6 @@
       "suppressWhite": true,
       "locked": true,
       "credit": {
-        "source": "Library of Congress",
-        "imageId": "musihas-200154818.0002",
-        "licence": "Educational and research use",
         "attribution": "Library of Congress, Music Division. Gift of Gertrude Clarke Whittall, 1936.",
         "url": "https://www.loc.gov/resource/music.musihas-200154818/?sp=2&st=image"
       }
@@ -597,9 +584,6 @@
         "bottom": 0
       },
       "credit": {
-        "source": "Library of Congress",
-        "imageId": "musihas-200154818.0003",
-        "licence": "Educational and research use",
         "attribution": "Library of Congress, Music Division. Gift of Gertrude Clarke Whittall, 1936.",
         "url": "https://www.loc.gov/resource/music.musihas-200154818/?sp=3&st=image"
       }

@@ -32,7 +32,7 @@ describe('sceneShapesFromLayers', () => {
     expect(read.radius).toBeCloseTo(50, 6);
     expect(read.startAngle).toBeCloseTo(0, 6);
     expect(read.endAngle).toBeCloseTo(Math.PI / 2, 6);
-    expect(shapes.every(s => s.color === undefined)).toBe(true);
+    expect(shapes.every(s => s.color === '#000')).toBe(true);
   });
 
   it('keeps an arc\'s direction whichever way the path walks it', () => {

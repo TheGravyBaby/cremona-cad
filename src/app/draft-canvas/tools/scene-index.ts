@@ -63,7 +63,8 @@ export class SceneStore {
 }
 
 /** Every shape the layers draw into world space, decoration and labels left out. A layer that
- * throws contributes nothing rather than taking the rest down with it. */
+ * throws contributes nothing rather than taking the rest down with it. Each carries the colour
+ * it's drawn in, so whatever is made from it — a copy, an offset — matches it. */
 export function sceneShapesFromLayers(layers: RecordableLayer[]): DraftShape[] {
   const shapes: DraftShape[] = [];
   const seen = new Map<string, number>();
@@ -81,7 +82,9 @@ export function sceneShapesFromLayers(layers: RecordableLayer[]): DraftShape[] {
       const key = fingerprint(shape);
       const ordinal = seen.get(key) ?? 0;
       seen.set(key, ordinal + 1);
-      shapes.push({ ...shape, id: `scene-${key}${ordinal ? `-${ordinal}` : ''}` } as DraftShape);
+      // fingerprinted before the colour goes on, so a recolour alone keeps the piece selected
+      const color = drawnColor(el);
+      shapes.push({ ...shape, ...(color ? { color } : {}), id: `scene-${key}${ordinal ? `-${ordinal}` : ''}` } as DraftShape);
     }
   }
   return shapes;
@@ -98,6 +101,18 @@ function isDecoration(el: RecordedElement): boolean {
     if ('data-decoration' in node.attrs || 'data-no-snap' in node.attrs) return true;
   }
   return el.attrs['stroke'] === 'none' && (el.attrs['fill'] === 'none' || el.attrs['fill'] === undefined);
+}
+
+// stroke first, inherited from an enclosing group if need be; fill for a shape drawn filled only
+function drawnColor(el: RecordedElement): string | undefined {
+  const paint = (key: 'stroke' | 'fill'): string | undefined => {
+    for (let node: RecordedElement | undefined = el; node; node = node.parent) {
+      const v = node.attrs[key];
+      if (typeof v === 'string' && v) return v === 'none' || v.startsWith('url(') || v.startsWith('var(') ? undefined : v;
+    }
+    return undefined;
+  };
+  return paint('stroke') ?? paint('fill');
 }
 
 export function composedTransform(el: RecordedElement): Matrix2D {
@@ -120,9 +135,8 @@ function isRotated(m: Matrix2D): boolean {
   return Math.abs(m[1]) > 1e-9 || Math.abs(m[2]) > 1e-9;
 }
 
-// colour is deliberately left off: a scene shape is never drawn through shape-renderer.ts, and
-// a duplicate of one should take the pen colour like any newly drawn shape. Also the reader
-// shape-svg.ts's import goes through, which adds the colour back itself.
+// colour is left to the caller: sceneShapesFromLayers reads it off the element's paint, and
+// shape-svg.ts's import, which comes through here too, off its own attributes.
 export function shapeFromElement(el: RecordedElement, m: Matrix2D): ShapeBody | null {
   const a = el.attrs;
   const dashed = typeof a['stroke-dasharray'] === 'string' && a['stroke-dasharray'] !== '' ? true : undefined;

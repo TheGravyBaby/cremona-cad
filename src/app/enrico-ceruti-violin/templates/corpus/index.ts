@@ -9,18 +9,18 @@ import guarneriViolinGoldbergBaronVitta2023870692 from './guarneri-violin-goldbe
 
 /**
  * Instruments traced from public museum/library records, kept apart from `ceruti-templates.ts`.
- * Each carries a `TemplateMeta` (catalogue entry) and each reference image an `ImageCredit`
+ * Each carries a `source` link to its catalogue record and each reference image an `ImageCredit`
  * (usage terms vary by holder — the LoC sets below are educational-and-research use, not open
  * licence).
  *
  * One `.json` file per instrument rather than a pasted `const`: diffs cleanly, can't carry logic.
- * Cost is no comments (put reader notes in `meta.notes`) and no type checking
+ * Cost is no comments (put reader notes in `description`) and no type checking
  * (`ceruti-templates.spec.ts` covers that instead).
  *
  * Adding one:
  *   1. Trace over the reference image as normal and save the recipe.
  *   2. Save the recipe JSON here as `<maker>-<instrument>-<objectId>.json`.
- *   3. Add `meta`, and a `credit` on each reference image.
+ *   3. Add `source`, and a `credit` on each reference image.
  *   4. Scope images to panels via `scope: { only: [...] }` or `{ except: [...] }` (ids from
  *      `CERUTI_PANEL_IDS`, checked by the spec) — a plan view usually excepts the arching panels,
  *      a profile usually wants only them.

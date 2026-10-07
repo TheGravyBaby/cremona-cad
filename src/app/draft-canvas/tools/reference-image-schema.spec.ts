@@ -54,9 +54,6 @@ describe('round-trip through the recipe field', () => {
       x: 0, y: 0, width: 100, height: 200, rotationDeg: 0, locked: true,
       scope: { only: ['longArching', 'crossArching'] },
       credit: {
-        source: 'The Metropolitan Museum of Art',
-        imageId: 'DP-1234-001',
-        licence: 'CC0',
         attribution: 'The Metropolitan Museum of Art, Public Domain',
         url: 'https://www.metmuseum.org/art/collection/search/898377',
       },
@@ -64,7 +61,7 @@ describe('round-trip through the recipe field', () => {
 
     const shapes = imageShapesFromRecipe({ referenceImages: original }, assets);
     expect(shapes[0].scope).toEqual({ only: ['longArching', 'crossArching'] });
-    expect(shapes[0].credit?.licence).toBe('CC0');
+    expect(shapes[0].credit?.attribution).toBe('The Metropolitan Museum of Art, Public Domain');
 
     const out = imageShapesToRecipe(shapes, assets);
     expect(out).toEqual(original);
@@ -74,15 +71,15 @@ describe('round-trip through the recipe field', () => {
     const assets = store();
     const original: ReferenceImage[] = [{
       id: 'r1', label: 'A', href: '/a.jpg', x: 0, y: 0, width: 1, height: 1,
-      scope: { only: ['base'] }, credit: { source: 'Met', licence: 'CC0', attribution: 'Met' },
+      scope: { only: ['base'] }, credit: { attribution: 'Met' },
     }];
     const shapes = imageShapesFromRecipe({ referenceImages: original }, assets);
 
     (shapes[0].scope as { only: string[] }).only.push('mould');
-    shapes[0].credit!.licence = 'changed';
+    shapes[0].credit!.attribution = 'changed';
 
     expect(original[0].scope).toEqual({ only: ['base'] });
-    expect(original[0].credit!.licence).toBe('CC0');
+    expect(original[0].credit!.attribution).toBe('Met');
   });
 
   it('preserves the panels an image is kept off', () => {

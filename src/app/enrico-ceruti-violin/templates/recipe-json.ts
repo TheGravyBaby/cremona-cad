@@ -6,14 +6,13 @@ import { EnricoCerutiParams, EnricoCerutiTemplate, RECIPE_SCHEMA_VERSION } from 
 export function templateFromRecipeJson(raw: any): EnricoCerutiTemplate {
   return {
     key: raw.key ?? '',
-    label: raw.label ?? '',
     // `||` not `??`: pasted JSON has twice arrived with `"recipeName": ""`, which fails the
     // identity check on restore and silently reverts to the default template.
     recipeName: raw.recipeName || 'enrico-ceruti-violin',
     fileName: raw.fileName ?? '',
     version: raw.version ?? RECIPE_SCHEMA_VERSION,
     description: raw.description ?? '',
-    meta: raw.meta,
+    source: raw.source ?? '',
     referenceImages: raw.referenceImages,
     params: (raw.params ?? raw) as EnricoCerutiParams,
     paths: raw.paths ?? [],

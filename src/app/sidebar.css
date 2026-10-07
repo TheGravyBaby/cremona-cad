@@ -476,6 +476,8 @@ select {
 /* descendant, not child: on touch the stepper wraps the input in a .num-stepper span */
 .field-cell .basic-input { width: 100%; }
 .field-cell.field-cell--full { width: 100%; }
+/* the 5% above is sized for an 84px cell; on a full-width one it pushes the title far in */
+.field-cell--full > .field-title { padding-left: 4px; }
 .basic-input:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .field-separator {

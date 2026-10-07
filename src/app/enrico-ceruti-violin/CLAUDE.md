@@ -24,7 +24,7 @@ The folders are reading groups, not dependency layers — `ceruti-calcs` reaches
 | `calculation/neck/ceruti-neck-template.ts` | The neck and scroll template for the export panel: the side outline as one closed loop, neck foot to duck tail, and the volute inside it as a slotted stencil. See *The neck template* below. |
 | `ceruti-types.ts` | `EnricoCerutiParams` and the whole serialized shape. `CerutiColors`, view flags. Stays at the top level with `ceruti-serialization.spec.ts`, which tests its save-and-reopen contract, and `ceruti-fixtures.ts`, the test fixtures every group's specs share. |
 | `templates/ceruti-templates.ts` | Bundled historical instruments (Strad Goetz, Del Gesu Baltic, …) as pasted recipe JSON. **Append-only** — add instruments, don't restructure. |
-| `templates/corpus/` | Instruments traced from open-licence museum records — one `.json` file each, listed in `templates/corpus/index.ts`. Same type as the templates above, but carrying a `TemplateMeta` and a per-image `ImageCredit` so the numbers and the pixels can each be rechecked. New instruments go here, not in `ceruti-templates.ts`. |
+| `templates/corpus/` | Instruments traced from open-licence museum records — one `.json` file each, listed in `templates/corpus/index.ts`. Same type as the templates above, but carrying a `source` link and a per-image `ImageCredit` so the numbers and the pixels can each be rechecked. New instruments go here, not in `ceruti-templates.ts`. |
 | `templates/local/` | Gitignored developer scratch space — traces and theories with no provenance to check, never shipped, never swept by the suite. Shows up in the picker only on a local dev build. See that folder's `README.md`. |
 | `panels/` | One folder per sidebar panel. Panels are thin; see the layer rule in the root CLAUDE.md. The ⓘ write-ups, explanatory tooltips and condition messages live under `src/app/docs/` (root CLAUDE.md), not in the panel; `panels/render-toggles/` is the strip of per-panel view toggles. |
 | `renders/` | Violin drawing several panels share. `front-profile.render.ts` is the instrument as far as it's been taken, see *The front profile* below; `body-side-profile.render.ts` the side elevation both the long-arching and neck panels draw on; `render-constants.ts` the palette. A panel's own renders live in its panel file. |
@@ -64,7 +64,7 @@ section first → long arch carved to a template → crown across. The panel ord
   ship a reference image scoped to the `longArching` panel. A template with no such image still
   carries no arching, and the plate is seeded from
   `defaultArchingParams` by whichever arching panel or the surface builder reaches it first.
-  Each entry's `meta.notes` records how far to trust its numbers; the top plate is occluded by
+  Each entry's `description` records how far to trust its numbers; the top plate is occluded by
   the fingerboard and strings on every one of these views and is always the weaker of the two.
 - **The heel is a cove, on purpose.** A convex arc tangent to the neck's back can never reach
   the button tip, which sits outside that line's extension — so the side silhouette of a heel is
