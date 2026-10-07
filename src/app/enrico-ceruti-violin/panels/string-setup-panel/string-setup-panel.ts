@@ -1,7 +1,7 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, FlutingParams, PathEntry, RenderToggleKey, StringSetup } from '../../ceruti-types';
+import { CerutiViewFlags, EnricoCerutiParams, FlutingParams, PathEntry, RenderToggleKey, StringSetup } from '../../ceruti-types';
 import { calculateNeck, defaultNeckParams, defaultStringSetup, stringLength } from '../../calculation/neck/ceruti-neck';
 import { defaultArchingParams } from '../../calculation/arching/ceruti-arching';
 import { defaultFlutingParams, LongArchSolve, solveLongArch } from '../../calculation/arching/ceruti-arch-geometry';
@@ -25,7 +25,6 @@ export class StringSetupPanel extends CerutiPanelBase implements OnInit {
 
   @Input({ required: true }) params!: EnricoCerutiParams;
   @Input({ required: true }) paths!: PathEntry[];
-  @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;
 
   private highlightedKey: StringSetupHighlightKey | null = null;
@@ -85,12 +84,12 @@ export class StringSetupPanel extends CerutiPanelBase implements OnInit {
           g: g.append('g').attr('transform', `translate(${sideX},0)`),
           ui: ui.append('g').attr('transform', `translate(${sideX},0)`),
         };
-        renderBodySideProfile(p, this.colors, { solved, gouge, color: this.colors.trace })(side.g, side.ui);
-        renderNeck(p, this.colors, { fingerboard: this.flags.showFingerboard, fretMarks: this.flags.showFretMarks, scroll, panel: 'stringSetup' })(side.g, side.ui);
+        renderBodySideProfile(p, this.pal, { solved, gouge, color: this.pal.neutral.css })(side.g, side.ui);
+        renderNeck(p, this.pal, { fingerboard: this.flags.showFingerboard, fretMarks: this.flags.showFretMarks, scroll, panel: 'stringSetup' })(side.g, side.ui);
         renderNeckHighlight(p, this.highlightedKey, this.highlightedColor, 'side')(side.g, side.ui);
-        renderSolveFailures(failures, this.colors.pathError)(side.g, side.ui);
+        renderSolveFailures(failures, this.pal.alert.css)(side.g, side.ui);
       },
-      renderFrontView(p, this.paths, this.colors, 'stringSetup', this.flags.showFingerboard, scroll),
+      renderFrontView(p, this.paths, this.pal, 'stringSetup', this.flags.showFingerboard, scroll),
       renderNeckHighlight(p, this.highlightedKey, this.highlightedColor, 'front'),
     ];
   }

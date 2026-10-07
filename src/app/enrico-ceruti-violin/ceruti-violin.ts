@@ -2,11 +2,10 @@ import { ChangeDetectorRef, Component, ViewChild, effect, inject } from '@angula
 import { FormsModule } from '@angular/forms';
 import { RecipeComponentBase } from '../recipe-base/recipe-base';
 import { renderSolveFailures } from '../helpers/renderFuncs';
-import { Theme } from '../theme/palette';
+import { PanelPalette, Theme } from '../theme/palette';
 import { ThemeService } from '../theme/theme.service';
-import { cerutiColors } from './renders/ceruti-colors';
 import { clampParam, safeRun } from '../helpers/validators';
-import { CerutiColors, CerutiPanelId, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, EnricoCerutiTemplate, EnricoCerutiParams, PanelRenderRequest, RenderToggleKey } from './ceruti-types';
+import { CerutiPanelId, CerutiViewFlags, DEFAULT_CERUTI_VIEW_FLAGS, EnricoCerutiTemplate, EnricoCerutiParams, PanelRenderRequest, RenderToggleKey } from './ceruti-types';
 import { CERUTI_TEMPLATES } from './templates/ceruti-templates';
 import { isLocSourced, thumbnailHref } from './templates/corpus';
 import { LOCAL_TEMPLATES } from './templates/local/generated-index';
@@ -65,17 +64,14 @@ export class CerutiViolin extends RecipeComponentBase {
   ];
 
   private readonly themeService = inject(ThemeService);
-  private colorsTheme: Theme | null = null;
-  private colorsCache!: CerutiColors;
 
-  // rebuilt once per theme, not per change detection pass
-  get colors(): CerutiColors {
-    const theme = this.themeService.theme();
-    if (theme !== this.colorsTheme) {
-      this.colorsTheme = theme;
-      this.colorsCache = cerutiColors(theme);
-    }
-    return this.colorsCache;
+  get theme(): Theme {
+    return this.themeService.theme();
+  }
+
+  // the base panel's own drawing, the front profile in the trace grey
+  private get pal(): PanelPalette {
+    return this.theme.palette('classicCremona');
   }
 
   constructor(private readonly cdr: ChangeDetectorRef) {
@@ -184,9 +180,9 @@ export class CerutiViolin extends RecipeComponentBase {
   private renderInstrumentProfile(): Array<(g: any, ui: any) => void> {
     const p = this.d.params;
     const failures = calculateMainBouts(p);
-    if (failures.length) return [renderSolveFailures(failures, this.colors.pathError)];
+    if (failures.length) return [renderSolveFailures(failures, this.pal.alert.css)];
     const downstream = ensureFrontProfilePaths(p, this.d.paths);
-    return [...renderFrontProfile(p, this.d.paths, this.colors, downstream), renderSolveFailures(downstream.failures, this.colors.pathError)];
+    return [...renderFrontProfile(p, this.d.paths, this.pal, downstream), renderSolveFailures(downstream.failures, this.pal.alert.css)];
   }
 
   loadTemplate(key: string): void {

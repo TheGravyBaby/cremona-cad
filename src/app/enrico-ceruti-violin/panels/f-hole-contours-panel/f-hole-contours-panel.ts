@@ -1,6 +1,6 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { CerutiColors, CerutiViewFlags, EnricoCerutiParams, PathEntry, RenderToggleKey } from '../../ceruti-types';
+import { CerutiViewFlags, EnricoCerutiParams, PathEntry, RenderToggleKey } from '../../ceruti-types';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { renderArcFromArc, renderArcHalo, renderSegment, renderPointHalo, renderArcFromArcFancy, renderCircle, renderSolveFailures } from '../../../helpers/renderFuncs';
 import { STROKE_WEIGHT } from '../../../theme/strokes';
@@ -13,6 +13,7 @@ import { angleFromCenter, dist, flipArcAboutY, flipPointAboutY, pointOnCircle } 
 import { Arc } from '../../../models/types';
 import { renderBoutBouts } from '../main-bouts-panel/main-bouts-panel';
 import { HighlightedArc, HighlightedPoint } from '../../renders/render-constants';
+import { PanelPalette } from '../../../theme/palette';
 
 // UCut/LCut take a point halo; the rest take an arc halo
 export type FholeHighlightKey = FholeArcKey | 'UCut' | 'LCut';
@@ -29,7 +30,6 @@ export class FHoleContoursPanel extends CerutiPanelBase implements OnInit {
 
   @Input({ required: true }) params!: EnricoCerutiParams;
   @Input({ required: true }) paths!: PathEntry[];
-  @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;
 
   protected readonly getArcEndDeg = getArcEndDeg;
@@ -71,7 +71,7 @@ export class FHoleContoursPanel extends CerutiPanelBase implements OnInit {
 
     // the instrument as far as it's been taken under the contours, less the holes, this panel's own
     // and drawn in colour below, and the neck and scroll, which took the eye off them (2026-10-06)
-    let renders: RenderLayer[] = [...renderFrontProfile(p, this.paths, this.colors, ensureFrontProfilePaths(p, this.paths, { neck: false }), { fHoles: false })];
+    let renders: RenderLayer[] = [...renderFrontProfile(p, this.paths, this.pal, ensureFrontProfilePaths(p, this.paths, { neck: false }), { fHoles: false })];
 
     let failures = ensureFholePath(p, this.paths);
 
@@ -86,18 +86,17 @@ export class FHoleContoursPanel extends CerutiPanelBase implements OnInit {
       ? p.fHoles![key] ?? null
       : null;
 
-    this.flags.showFholeBounds && renders.push(renderFholeBounds(p, this.colors));
-    this.flags.showModuleGuides && renders.push(renderBoutBouts(p, this.colors, true));
-    renders.push(renderFholeContours(p, this.colors, this.flags.showFholeArcs, arc ? { arc, color } : null, tip, failures));
+    this.flags.showFholeBounds && renders.push(renderFholeBounds(p, this.pal));
+    this.flags.showModuleGuides && renders.push(renderBoutBouts(p, this.pal, true));
+    renders.push(renderFholeContours(p, this.pal, this.flags.showFholeArcs, arc ? { arc, color } : null, tip, failures));
 
     return renders;
   }
 }
 
-
 export const renderFholeContours = (
   p: EnricoCerutiParams,
-  colors: CerutiColors,
+  pal: PanelPalette,
   showArcs: boolean,
   highlighted: HighlightedArc | null,
   highlightedPoint: HighlightedPoint | null,
@@ -114,18 +113,18 @@ export const renderFholeContours = (
   }
 
   let arcColors: Record<FholeArcKey, string> = {
-    U1: colors.fHoleUpperDark,
-    U2: colors.fHoleUpper,
-    U21: colors.fHoleUpperDark,
-    U3: colors.fHoleUpperLight,
-    S2: colors.fHoleStem,
-    S1: colors.fHoleStem,
-    L1: colors.fHoleLowerDark,
-    L2: colors.fHoleLower,
-    L21: colors.fHoleLowerDark,
-    L3: colors.fHoleLowerLight,
-    S4: colors.fHoleStem,
-    S3: colors.fHoleStem,
+    U1: pal.ink(1).lightness(-0.6).css,
+    U2: pal.ink(1).css,
+    U21: pal.ink(1).lightness(-0.6).css,
+    U3: pal.ink(1).lightness(0.6).css,
+    S2: pal.neutral.lightness(0.15).css,
+    S1: pal.neutral.lightness(0.15).css,
+    L1: pal.ink(3).lightness(-0.5).css,
+    L2: pal.ink(3).css,
+    L21: pal.ink(3).lightness(-0.5).css,
+    L3: pal.ink(3).lightness(0.6).css,
+    S4: pal.neutral.lightness(0.15).css,
+    S3: pal.neutral.lightness(0.15).css,
   };
   let unsolved = new Set(failures.flatMap(f => f.unsolved));
   let solved = (key: FholeArcKey) => !unsolved.has(key);
@@ -141,26 +140,26 @@ export const renderFholeContours = (
   }
 
   let cutStart = pointOnCircle(p.fHoles.UEye, p.fHoles.UCut.angleOnEye);
-  renderSegment(cutStart, p.fHoles.UTip, colors.fHoleCut, STROKE_WEIGHT.trace)(g, ui);
-  renderSegment(flipPointAboutY(cutStart), flipPointAboutY(p.fHoles.UTip), colors.fHoleCut, STROKE_WEIGHT.trace)(g, ui);
+  renderSegment(cutStart, p.fHoles.UTip, pal.ink(0).saturation(0.6).lightness(0.15).css, STROKE_WEIGHT.trace)(g, ui);
+  renderSegment(flipPointAboutY(cutStart), flipPointAboutY(p.fHoles.UTip), pal.ink(0).saturation(0.6).lightness(0.15).css, STROKE_WEIGHT.trace)(g, ui);
 
   let lowerCutStart = pointOnCircle(p.fHoles.LEye, p.fHoles.LCut.angleOnEye);
-  renderSegment(lowerCutStart, p.fHoles.LTip, colors.fHoleCut, STROKE_WEIGHT.trace)(g, ui);
-  renderSegment(flipPointAboutY(lowerCutStart), flipPointAboutY(p.fHoles.LTip), colors.fHoleCut, STROKE_WEIGHT.trace)(g, ui);
+  renderSegment(lowerCutStart, p.fHoles.LTip, pal.ink(0).saturation(0.6).lightness(0.15).css, STROKE_WEIGHT.trace)(g, ui);
+  renderSegment(flipPointAboutY(lowerCutStart), flipPointAboutY(p.fHoles.LTip), pal.ink(0).saturation(0.6).lightness(0.15).css, STROKE_WEIGHT.trace)(g, ui);
 
   // now we need to render the segments between the arc ends
   if (solved('S2') && solved('S4')) {
     let outerStemTop = pointOnCircle(p.fHoles.S2, p.fHoles.S2.end);
     let outerStemBottom = pointOnCircle(p.fHoles.S4, p.fHoles.S4.start);
-    renderSegment(outerStemTop, outerStemBottom, colors.fHoleStem, STROKE_WEIGHT.trace)(g, ui);
-    renderSegment(flipPointAboutY(outerStemTop), flipPointAboutY(outerStemBottom), colors.fHoleStem, STROKE_WEIGHT.trace)(g, ui);
+    renderSegment(outerStemTop, outerStemBottom, pal.neutral.lightness(0.15).css, STROKE_WEIGHT.trace)(g, ui);
+    renderSegment(flipPointAboutY(outerStemTop), flipPointAboutY(outerStemBottom), pal.neutral.lightness(0.15).css, STROKE_WEIGHT.trace)(g, ui);
   }
 
   if (solved('S1') && solved('S3')) {
     let innerStemTop = pointOnCircle(p.fHoles.S1, p.fHoles.S1.start);
     let innerStemBottom = pointOnCircle(p.fHoles.S3, p.fHoles.S3.end);
-    renderSegment(innerStemTop, innerStemBottom, colors.fHoleStem, STROKE_WEIGHT.trace)(g, ui);
-    renderSegment(flipPointAboutY(innerStemTop), flipPointAboutY(innerStemBottom), colors.fHoleStem, STROKE_WEIGHT.trace)(g, ui);
+    renderSegment(innerStemTop, innerStemBottom, pal.neutral.lightness(0.15).css, STROKE_WEIGHT.trace)(g, ui);
+    renderSegment(flipPointAboutY(innerStemTop), flipPointAboutY(innerStemBottom), pal.neutral.lightness(0.15).css, STROKE_WEIGHT.trace)(g, ui);
   }
 
   // now we render the eyes as arcs, not just circles
@@ -168,23 +167,23 @@ export const renderFholeContours = (
     let UpperEyeStartPt = circleCircleIntersections(p.fHoles.UEye, p.fHoles.U1)[0];
     let UpperEyeStartAngle = angleFromCenter(p.fHoles.UEye, UpperEyeStartPt);
     let eyeArc = new Arc(p.fHoles.UEye.x, p.fHoles.UEye.y, p.fHoles.UEye.r, UpperEyeStartAngle, p.fHoles.UCut.angleOnEye);
-    renderArcFromArc(eyeArc, colors.fHoleUpper, STROKE_WEIGHT.trace, true)(g, ui);
-    renderArcFromArc(flipArcAboutY(eyeArc), colors.fHoleUpper, STROKE_WEIGHT.trace, true)(g, ui);
+    renderArcFromArc(eyeArc, pal.ink(1).css, STROKE_WEIGHT.trace, true)(g, ui);
+    renderArcFromArc(flipArcAboutY(eyeArc), pal.ink(1).css, STROKE_WEIGHT.trace, true)(g, ui);
   } else {
-    renderCircle(p.fHoles.UEye, colors.fHoleUpper, true)(g, ui);
+    renderCircle(p.fHoles.UEye, pal.ink(1).css, true)(g, ui);
   }
 
   if (solved('L1')) {
     let LowerEyeStartPt = circleCircleIntersections(p.fHoles.LEye, p.fHoles.L1)[0];
     let LowerEyeStartAngle = angleFromCenter(p.fHoles.LEye, LowerEyeStartPt);
     let lowerEyeArc = new Arc(p.fHoles.LEye.x, p.fHoles.LEye.y, p.fHoles.LEye.r, LowerEyeStartAngle, p.fHoles.LCut.angleOnEye);
-    renderArcFromArc(lowerEyeArc, colors.fHoleLower, STROKE_WEIGHT.trace, true)(g, ui);
-    renderArcFromArc(flipArcAboutY(lowerEyeArc), colors.fHoleLower, STROKE_WEIGHT.trace, true)(g, ui);
+    renderArcFromArc(lowerEyeArc, pal.ink(3).css, STROKE_WEIGHT.trace, true)(g, ui);
+    renderArcFromArc(flipArcAboutY(lowerEyeArc), pal.ink(3).css, STROKE_WEIGHT.trace, true)(g, ui);
   } else {
-    renderCircle(p.fHoles.LEye, colors.fHoleLower, true)(g, ui);
+    renderCircle(p.fHoles.LEye, pal.ink(3).css, true)(g, ui);
   }
 
-  renderSolveFailures(failures, colors.pathError, true)(g, ui);
+  renderSolveFailures(failures, pal.alert.css, true)(g, ui);
 
   if (showArcs) {
     for (let key of drawn) {

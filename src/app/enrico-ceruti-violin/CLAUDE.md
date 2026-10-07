@@ -22,12 +22,12 @@ The folders are reading groups, not dependency layers — `ceruti-calcs` reaches
 | `calculation/neck/ceruti-scroll.ts` | The scroll in its own side-view frame: the volute's spiral styles about the eye, and `calculateScroll`, which lays the spiral out and runs the back and front off it, writing every arc onto `p.scroll` the way `calculateNeck` writes `p.neck`. Three panels edit it, each drawing its own part: volute (the spiral and the crown, S0–S1), scroll (the back from S2 on, and the front), and scroll widths (the back and front views beside the side profile, see *The scroll's widths* below). |
 | `calculation/neck/ceruti-scroll-views.ts` | The scroll seen from behind and in front, as strokes with ink names: the scroll widths panel draws them beside the side profile, and the plan profiles set them on the neck's end. See *The scroll's widths* below. |
 | `calculation/neck/ceruti-neck-template.ts` | The neck and scroll template for the export panel: the side outline as one closed loop, neck foot to duck tail, and the volute inside it as a slotted stencil. See *The neck template* below. |
-| `ceruti-types.ts` | `EnricoCerutiParams` and the whole serialized shape. `CerutiColors`, view flags. Stays at the top level with `ceruti-serialization.spec.ts`, which tests its save-and-reopen contract, and `ceruti-fixtures.ts`, the test fixtures every group's specs share. |
+| `ceruti-types.ts` | `EnricoCerutiParams` and the whole serialized shape. View flags. Stays at the top level with `ceruti-serialization.spec.ts`, which tests its save-and-reopen contract, and `ceruti-fixtures.ts`, the test fixtures every group's specs share. |
 | `templates/ceruti-templates.ts` | Bundled historical instruments (Strad Goetz, Del Gesu Baltic, …) as pasted recipe JSON. **Append-only** — add instruments, don't restructure. |
 | `templates/corpus/` | Instruments traced from open-licence museum records — one `.json` file each, listed in `templates/corpus/index.ts`. Same type as the templates above, but carrying a `source` link and a per-image `ImageCredit` so the numbers and the pixels can each be rechecked. New instruments go here, not in `ceruti-templates.ts`. |
 | `templates/local/` | Gitignored developer scratch space — traces and theories with no provenance to check, never shipped, never swept by the suite. Shows up in the picker only on a local dev build. See that folder's `README.md`. |
 | `panels/` | One folder per sidebar panel. Panels are thin; see the layer rule in the root CLAUDE.md. The ⓘ write-ups, explanatory tooltips and condition messages live under `src/app/docs/` (root CLAUDE.md), not in the panel; `panels/render-toggles/` is the strip of per-panel view toggles. |
-| `renders/` | Violin drawing several panels share. `front-profile.render.ts` is the instrument as far as it's been taken, see *The front profile* below; `body-side-profile.render.ts` the side elevation both the long-arching and neck panels draw on; `ceruti-colors.ts` the role map, where each part names the ink and tone it draws in (the palette itself is `src/app/theme/`, root CLAUDE.md); `render-constants.ts` the highlight types. A panel's own renders live in its panel file. |
+| `renders/` | Violin drawing several panels share. `front-profile.render.ts` is the instrument as far as it's been taken, see *The front profile* below; `body-side-profile.render.ts` the side elevation both the long-arching and neck panels draw on; `render-constants.ts` the highlight types. Colour comes in as the panel's `PanelPalette` (`src/app/theme/`, root CLAUDE.md) and is read by position, `pal.ink(2).lightness(0.6).css`. A panel's own renders live in its panel file. |
 
 `ceruti-calcs.ts` → `ceruti-paths.ts` is the 2D outline pipeline; `ceruti-arching.ts` →
 `ceruti-arch-geometry.ts` → `ceruti-surface.ts` is the 3D one. The split between the last two is
@@ -49,13 +49,17 @@ section first → long arch carved to a template → crown across. The panel ord
 
 ## Settled decisions — don't re-litigate
 
-- **Colours are roles on `CerutiColors`, resolved once per theme by `renders/ceruti-colors.ts`**
-  (2026-10-07). Sixty hand-picked hexes became five inks and a tone per part; `innerTrace`,
-  `outerTrace` and `mouldTrace` are one `trace`; the `Off`/`Off2`/`Muted` variants are gone (root
-  CLAUDE.md, *Colour has two tiers*). The scroll views' `neckGround` is the neck below the scroll,
-  a darker trace grey, kept as its own role so the views can say which strokes are the neck's.
-  The specs that name colours use a Proxy returning the role's name, so a role has to stay a
-  flat string on `CerutiColors`, never a nested map.
+- **Colour is positional: a panel names a palette and reads `pal.ink(i)`, never a part's name**
+  (2026-10-07). Sixty hand-picked hexes became a `CerutiColors` role map for a day, then went
+  entirely: `CerutiPanelBase` takes the `Theme` as its input, `paletteId` says which palette this
+  panel reads (every panel on `classicCremona` so far), and `pal` is that palette resolved, which
+  every render function takes too. Palettes are interchangeable lists of any length, read wrapping,
+  so a panel's colours change by naming another palette, not by changing keys. Shared parts keep
+  one colour because one render function draws them (the front profile, the neck, the scroll
+  views). The scroll views emit part tokens (`front`, `back`, `turns`, `neck`…) that `viewInk` in
+  the widths panel maps to inks. The `Off`/`Off2`/`Muted` greyings are gone (root CLAUDE.md, *Colour
+  has two tiers*). Specs that need to tell strokes apart use `labelTheme()`, whose inks' `css` is
+  their recipe (`ink2+0.6`, `neutral-0.3`), so a tone change shows up as a label change in the spec.
 - **A reference image can be scoped to particular panels**, via `scope` on
   `ReferenceImage`/`ImageShape` — full mechanics are in `draft-canvas/tools/CLAUDE.md`. What's
   specific to this model: `initializePanelFlow` hands `panelOrder` down to

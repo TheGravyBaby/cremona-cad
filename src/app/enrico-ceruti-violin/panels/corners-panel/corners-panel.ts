@@ -8,12 +8,13 @@ import { STROKE_WEIGHT } from '../../../theme/strokes';
 import { Arc } from '../../../models/types';
 import { calculateCenterBout, calculateCorners, hasCenterBout } from '../../calculation/outline/ceruti-calcs';
 import { SolveFailure } from '../../../helpers/validators';
-import { CerutiColors, CerutiViewFlags, DefaultParams, EnricoCerutiParams, RenderToggleKey } from '../../ceruti-types';
+import { CerutiViewFlags, DefaultParams, EnricoCerutiParams, RenderToggleKey } from '../../ceruti-types';
 import { renderFrontInnerProfile } from '../../renders/front-profile.render';
 import { renderMainBouts, renderBounds, renderBoutBouts } from '../main-bouts-panel/main-bouts-panel';
 import { CerutiPanelBase, RenderLayer } from '../panel-base';
 import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { HighlightedArc, HighlightedPoint } from '../../renders/render-constants';
+import { PanelPalette } from '../../../theme/palette';
 
 export interface CornersViewFlags {
   showModuleCircles: boolean;
@@ -33,7 +34,6 @@ export class CornersPanel extends CerutiPanelBase implements OnInit {
   static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleArcs', 'showAllArcs', 'showModuleGuides', 'renderOuterPath'];
 
   @Input({ required: true }) params!: EnricoCerutiParams;
-  @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;
 
   protected readonly nearestFraction = nearestFraction;
@@ -54,7 +54,7 @@ export class CornersPanel extends CerutiPanelBase implements OnInit {
     const upper = this.highlightedCorner === 'upper';
     const point = upper ? this.params.bouts.UCr : this.params.bouts.LCr;
     if (!point) return null;
-    return { point, color: upper ? this.colors.centerBoutUp : this.colors.centerBoutLow };
+    return { point, color: upper ? this.pal.ink(0).css : this.pal.ink(0).lightness(0.5).css };
   }
 
   ngOnInit(): void {
@@ -101,7 +101,7 @@ export class CornersPanel extends CerutiPanelBase implements OnInit {
 
   public buildRun(): RenderLayer[] {
     const p = this.params;
-    const c = this.colors;
+    const c = this.pal;
     const f = this.flags;
     const highlighted = this.highlighted;
 
@@ -115,14 +115,14 @@ export class CornersPanel extends CerutiPanelBase implements OnInit {
       renderBounds(p, false),
       renderMainBouts(p, c, f, false, highlighted),
       renderCorners(p, c, f, true, highlighted, true, this.highlightedPoint, failures),
-      renderSolveFailures(failures, c.pathError, true),
+      renderSolveFailures(failures, c.alert.css, true),
     ];
   }
 }
 
 export const renderCorners = (
   params: EnricoCerutiParams,
-  colors: CerutiColors,
+  pal: PanelPalette,
   flags: CornersViewFlags,
   currentModule: boolean,
   highlighted: HighlightedArc | null,
@@ -150,51 +150,51 @@ export const renderCorners = (
   }
 
   if ((currentModule && flags.showModuleCircles) || flags.showAllCircles) {
-    lower && renderCircle(p.bouts.L2!, colors.lowerBoutSide)(g, ui);
-    lower && renderCircle(p.bouts.L3!, colors.centerBoutLow)(g, ui);
-    lower && !p.options.useViolCornerLC && p.options.L31DoubleArc && renderCircle(p.bouts.L31!, colors.lowerBoutSide)(g, ui);
-    lower && renderCircle(flipCircleAboutY(p.bouts.L2!), colors.lowerBoutSide)(g, ui);
-    lower && renderCircle(flipCircleAboutY(p.bouts.L3!), colors.centerBoutLow)(g, ui);
-    lower && !p.options.useViolCornerLC && p.options.L31DoubleArc && renderCircle(flipCircleAboutY(p.bouts.L31!), colors.lowerBoutSide)(g, ui);
-    upper && renderCircle(p.bouts.U2!, colors.upperBoutSide)(g, ui);
-    upper && renderCircle(p.bouts.U3!, colors.centerBoutUp)(g, ui);
-    upper && !p.options.useViolCornerUC && p.options.U31DoubleArc && renderCircle(p.bouts.U31!, colors.upperBoutSide)(g, ui);
-    upper && renderCircle(flipCircleAboutY(p.bouts.U2!), colors.upperBoutSide)(g, ui);
-    upper && renderCircle(flipCircleAboutY(p.bouts.U3!), colors.centerBoutUp)(g, ui);
-    upper && !p.options.useViolCornerUC && p.options.U31DoubleArc && renderCircle(flipCircleAboutY(p.bouts.U31!), colors.upperBoutSide)(g, ui);
+    lower && renderCircle(p.bouts.L2!, pal.ink(2).lightness(0.45).css)(g, ui);
+    lower && renderCircle(p.bouts.L3!, pal.ink(0).lightness(0.5).css)(g, ui);
+    lower && !p.options.useViolCornerLC && p.options.L31DoubleArc && renderCircle(p.bouts.L31!, pal.ink(2).lightness(0.45).css)(g, ui);
+    lower && renderCircle(flipCircleAboutY(p.bouts.L2!), pal.ink(2).lightness(0.45).css)(g, ui);
+    lower && renderCircle(flipCircleAboutY(p.bouts.L3!), pal.ink(0).lightness(0.5).css)(g, ui);
+    lower && !p.options.useViolCornerLC && p.options.L31DoubleArc && renderCircle(flipCircleAboutY(p.bouts.L31!), pal.ink(2).lightness(0.45).css)(g, ui);
+    upper && renderCircle(p.bouts.U2!, pal.ink(1).lightness(0.45).css)(g, ui);
+    upper && renderCircle(p.bouts.U3!, pal.ink(0).css)(g, ui);
+    upper && !p.options.useViolCornerUC && p.options.U31DoubleArc && renderCircle(p.bouts.U31!, pal.ink(1).lightness(0.45).css)(g, ui);
+    upper && renderCircle(flipCircleAboutY(p.bouts.U2!), pal.ink(1).lightness(0.45).css)(g, ui);
+    upper && renderCircle(flipCircleAboutY(p.bouts.U3!), pal.ink(0).css)(g, ui);
+    upper && !p.options.useViolCornerUC && p.options.U31DoubleArc && renderCircle(flipCircleAboutY(p.bouts.U31!), pal.ink(1).lightness(0.45).css)(g, ui);
   }
   if (currentModule && flags.showModuleArcs) {
-    renderCrosshair(p.bouts.UCr!, colors.centerBoutUp)(g, ui);
-    renderCrosshair(p.bouts.LCr!, colors.centerBoutLow)(g, ui);
-    renderCrosshair({ x: -p.bouts.UCr!.x, y: p.bouts.UCr!.y }, colors.centerBoutUp)(g, ui);
-    renderCrosshair({ x: -p.bouts.LCr!.x, y: p.bouts.LCr!.y }, colors.centerBoutLow)(g, ui);
+    renderCrosshair(p.bouts.UCr!, pal.ink(0).css)(g, ui);
+    renderCrosshair(p.bouts.LCr!, pal.ink(0).lightness(0.5).css)(g, ui);
+    renderCrosshair({ x: -p.bouts.UCr!.x, y: p.bouts.UCr!.y }, pal.ink(0).css)(g, ui);
+    renderCrosshair({ x: -p.bouts.LCr!.x, y: p.bouts.LCr!.y }, pal.ink(0).lightness(0.5).css)(g, ui);
   }
 
   if ((currentModule && flags.showModuleArcs) || flags.showAllArcs) {
-    lower && !p.options.useViolCornerLC && renderArcFromArcFancy(p.bouts.L2!, colors.lowerBoutSide)(g, ui);
-    lower && !p.options.useViolCornerLC && renderArcFromArcFancy(p.bouts.L3!, colors.centerBoutLow)(g, ui);
-    lower && !p.options.useViolCornerLC && p.options.L31DoubleArc && renderArcFromArcFancy(p.bouts.L31!, colors.centerBoutLow)(g, ui);
-    lower && !p.options.useViolCornerLC && renderArcFromArcFancy(flipArcAboutY(p.bouts.L2!), colors.lowerBoutSide)(g, ui);
-    lower && !p.options.useViolCornerLC && p.options.L31DoubleArc && renderArcFromArcFancy(flipArcAboutY(p.bouts.L31!), colors.centerBoutLow)(g, ui);
-    lower && !p.options.useViolCornerLC && renderArcFromArcFancy(flipArcAboutY(p.bouts.L3!), colors.centerBoutLow)(g, ui);
-    lower && p.options.useViolCornerLC && renderArcFromArcFancy(p.bouts.L4!, colors.lowerBoutSide)(g, ui);
-    lower && p.options.useViolCornerLC && renderArcFromArcFancy(flipArcAboutY(p.bouts.L4!), colors.lowerBoutSide)(g, ui);
+    lower && !p.options.useViolCornerLC && renderArcFromArcFancy(p.bouts.L2!, pal.ink(2).lightness(0.45).css)(g, ui);
+    lower && !p.options.useViolCornerLC && renderArcFromArcFancy(p.bouts.L3!, pal.ink(0).lightness(0.5).css)(g, ui);
+    lower && !p.options.useViolCornerLC && p.options.L31DoubleArc && renderArcFromArcFancy(p.bouts.L31!, pal.ink(0).lightness(0.5).css)(g, ui);
+    lower && !p.options.useViolCornerLC && renderArcFromArcFancy(flipArcAboutY(p.bouts.L2!), pal.ink(2).lightness(0.45).css)(g, ui);
+    lower && !p.options.useViolCornerLC && p.options.L31DoubleArc && renderArcFromArcFancy(flipArcAboutY(p.bouts.L31!), pal.ink(0).lightness(0.5).css)(g, ui);
+    lower && !p.options.useViolCornerLC && renderArcFromArcFancy(flipArcAboutY(p.bouts.L3!), pal.ink(0).lightness(0.5).css)(g, ui);
+    lower && p.options.useViolCornerLC && renderArcFromArcFancy(p.bouts.L4!, pal.ink(2).lightness(0.45).css)(g, ui);
+    lower && p.options.useViolCornerLC && renderArcFromArcFancy(flipArcAboutY(p.bouts.L4!), pal.ink(2).lightness(0.45).css)(g, ui);
 
-    upper && !p.options.useViolCornerUC && renderArcFromArcFancy(p.bouts.U2!, colors.upperBoutSide)(g, ui);
-    upper && !p.options.useViolCornerUC && renderArcFromArcFancy(p.bouts.U3!, colors.centerBoutUp)(g, ui);
-    upper && !p.options.useViolCornerUC && p.options.U31DoubleArc && renderArcFromArcFancy(p.bouts.U31!, colors.centerBoutUp)(g, ui);
-    upper && !p.options.useViolCornerUC && renderArcFromArcFancy(flipArcAboutY(p.bouts.U2!), colors.upperBoutSide)(g, ui);
-    upper && !p.options.useViolCornerUC && p.options.U31DoubleArc && renderArcFromArcFancy(flipArcAboutY(p.bouts.U31!), colors.centerBoutUp)(g, ui);
+    upper && !p.options.useViolCornerUC && renderArcFromArcFancy(p.bouts.U2!, pal.ink(1).lightness(0.45).css)(g, ui);
+    upper && !p.options.useViolCornerUC && renderArcFromArcFancy(p.bouts.U3!, pal.ink(0).css)(g, ui);
+    upper && !p.options.useViolCornerUC && p.options.U31DoubleArc && renderArcFromArcFancy(p.bouts.U31!, pal.ink(0).css)(g, ui);
+    upper && !p.options.useViolCornerUC && renderArcFromArcFancy(flipArcAboutY(p.bouts.U2!), pal.ink(1).lightness(0.45).css)(g, ui);
+    upper && !p.options.useViolCornerUC && p.options.U31DoubleArc && renderArcFromArcFancy(flipArcAboutY(p.bouts.U31!), pal.ink(0).css)(g, ui);
 
-    upper && !p.options.useViolCornerUC && renderArcFromArcFancy(flipArcAboutY(p.bouts.U3!), colors.centerBoutUp)(g, ui);
-    upper && p.options.useViolCornerUC && renderArcFromArcFancy(p.bouts.U4!, colors.upperBoutSide)(g, ui);
-    upper && p.options.useViolCornerUC && renderArcFromArcFancy(flipArcAboutY(p.bouts.U4!), colors.upperBoutSide)(g, ui);
+    upper && !p.options.useViolCornerUC && renderArcFromArcFancy(flipArcAboutY(p.bouts.U3!), pal.ink(0).css)(g, ui);
+    upper && p.options.useViolCornerUC && renderArcFromArcFancy(p.bouts.U4!, pal.ink(1).lightness(0.45).css)(g, ui);
+    upper && p.options.useViolCornerUC && renderArcFromArcFancy(flipArcAboutY(p.bouts.U4!), pal.ink(1).lightness(0.45).css)(g, ui);
   } else {
     // in their own colours on this panel, where their fields are; grey under a later panel's work
-    const lBoutSide = currentModule ? colors.lowerBoutSide : colors.trace;
-    const cBoutLow = currentModule ? colors.centerBoutLow : colors.trace;
-    const uBoutSide = currentModule ? colors.upperBoutSide : colors.trace;
-    const cBoutUp = currentModule ? colors.centerBoutUp : colors.trace;
+    const lBoutSide = currentModule ? pal.ink(2).lightness(0.45).css : pal.neutral.css;
+    const cBoutLow = currentModule ? pal.ink(0).lightness(0.5).css : pal.neutral.css;
+    const uBoutSide = currentModule ? pal.ink(1).lightness(0.45).css : pal.neutral.css;
+    const cBoutUp = currentModule ? pal.ink(0).css : pal.neutral.css;
     lower && !p.options.useViolCornerLC && renderArcFromArc(p.bouts.L2!, lBoutSide, STROKE_WEIGHT.trace)(g, ui);
     lower && !p.options.useViolCornerLC && renderArcFromArc(p.bouts.L3!, cBoutLow, STROKE_WEIGHT.trace)(g, ui);
     lower && !p.options.useViolCornerLC && p.options.L31DoubleArc && renderArcFromArc(p.bouts.L31!, cBoutLow, STROKE_WEIGHT.trace)(g, ui);
@@ -215,10 +215,10 @@ export const renderCorners = (
   }
 
   if (flags.renderOuterPath && renderOuterPathCorners) {
-    const lBoutSide = currentModule ? colors.lowerBoutSide : colors.trace;
-    const cBoutLow = currentModule ? colors.centerBoutLow : colors.trace;
-    const uBoutSide = currentModule ? colors.upperBoutSide : colors.trace;
-    const cBoutUp = currentModule ? colors.centerBoutUp : colors.trace;
+    const lBoutSide = currentModule ? pal.ink(2).lightness(0.45).css : pal.neutral.css;
+    const cBoutLow = currentModule ? pal.ink(0).lightness(0.5).css : pal.neutral.css;
+    const uBoutSide = currentModule ? pal.ink(1).lightness(0.45).css : pal.neutral.css;
+    const cBoutUp = currentModule ? pal.ink(0).css : pal.neutral.css;
     const inset = p.overhang + p.rib;
 
     lower && !p.options.useViolCornerLC && renderArcFromArc(offsetArcRadius(p.bouts.L2!, inset), lBoutSide, STROKE_WEIGHT.trace)(g, ui);

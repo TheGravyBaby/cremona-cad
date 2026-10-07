@@ -6,7 +6,7 @@ import { DASH, STROKE_WEIGHT } from '../../../theme/strokes';
 import { clamp } from '../../../helpers/math/simpleGeometry';
 import { projectedPath, samplePathToPolyline } from '../../../helpers/math/pathMath';
 import { buildProjection, projectedBounds } from '../../../helpers/math/vibeMath';
-import { ArchingParams, ArchPlate, CerutiColors, CerutiViewFlags, EnricoCerutiParams, CrossArchCycloid, CrossArchShape, CrossArchPoint, CrossArchSpline, FlutingParams, PlateViewMode, RenderToggleKey } from '../../ceruti-types';
+import { ArchingParams, ArchPlate, CerutiViewFlags, EnricoCerutiParams, CrossArchCycloid, CrossArchShape, CrossArchPoint, CrossArchSpline, FlutingParams, PlateViewMode, RenderToggleKey } from '../../ceruti-types';
 import { bodyLandmarks, contourSampleSteps, defaultArchingParams, ribHeightAt, solveRibTaper, splinePeakRow, STATION_MARGIN_MM, STATION_MERGE_EPS_MM, wireframeSampleSteps } from '../../calculation/arching/ceruti-arching';
 import { defaultCrossArchCatenaryShape, defaultCrossArchCycloidParams, defaultCrossArchParams, defaultCrossArchSplineParams, defaultFlutingParams, CrossArchSection, CYCLOID_MAX_PCT, crossArchGuide, crossArchKnotX, crossArchSectionAt, nearestCrossArchShape } from '../../calculation/arching/ceruti-arch-geometry';
 import { buildPlateSurfaceModel, buildPlateStl, computeArchContourRings, computeWireframeGeometry, plateHalfChordAtY, PlateSurfaceModel, sampleArchSectionRuns, WireframeGeometry, wireframeStripAt } from '../../calculation/arching/ceruti-surface';
@@ -19,6 +19,7 @@ import { NumberStepperDirective } from '../../../shared/number-stepper';
 import { applyRowMove, RowMove, RowReorderDirective } from '../../../shared/row-reorder';
 import { crownCannotMeetChannel } from '../../../docs/conditions';
 import { TooltipDirective } from '../../../docs/tooltips';
+import { PanelPalette } from '../../../theme/palette';
 
 /** Range-thumb width, in the px the browser actually draws it — see `stationLandmarks`. */
 const TICK_THUMB_PX = 14;
@@ -27,7 +28,7 @@ const TICK_THUMB_PX = 14;
 // canvas rebuilds this element every rotation tick, so the move/up listeners live on the window
 function renderWireframeDragFrame(
   bounds: { minX: number; minY: number; maxX: number; maxY: number },
-  colors: CerutiColors,
+  pal: PanelPalette,
   dragging: boolean,
   onPointerDown: (event: PointerEvent) => void,
 ): RenderLayer {
@@ -39,7 +40,7 @@ function renderWireframeDragFrame(
       .attr('width', (bounds.maxX - bounds.minX) + pad * 2)
       .attr('height', (bounds.maxY - bounds.minY) + pad * 2)
       .attr('fill', 'transparent')
-      .attr('stroke', colors.trace)
+      .attr('stroke', pal.neutral.css)
       .attr('stroke-width', STROKE_WEIGHT.guide)
       .attr('stroke-dasharray', DASH.preview)
       .attr('vector-effect', 'non-scaling-stroke')
@@ -133,7 +134,6 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
   static readonly renderToggles: readonly RenderToggleKey[] = ['showModuleGuides'];
 
   @Input({ required: true }) params!: EnricoCerutiParams;
-  @Input({ required: true }) colors!: CerutiColors;
   @Input({ required: true }) flags!: CerutiViewFlags;
 
   /** Solved section at the cursor per plate, filled by buildRun for the template to report. */
@@ -275,8 +275,8 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
   get stationMarks(): { key: string; y: number; title: string; left: string; plates: { name: string; color: string }[] }[] {
     if (this.params.height <= 0) return [];
     const plates = [
-      ['top', 'Top Plate', this.colors.archTop],
-      ['bottom', 'Back Plate', this.colors.archBack],
+      ['top', 'Top Plate', this.pal.ink(0).css],
+      ['bottom', 'Back Plate', this.pal.ink(2).css],
     ] as const;
     const byY = new Map<string, { y: number; plates: { name: string; color: string }[] }>();
     for (const [plate, name, color] of plates) {
@@ -814,7 +814,7 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
 
   private overlayLayers(y: number): RenderLayer[] {
     const a = this.arching;
-    const colors = this.colors;
+    const pal = this.pal;
     const layers: RenderLayer[] = [];
     // off the taller rib end, so this clears at every station without shifting as the cursor scrubs.
     const taper = solveRibTaper(this.params);
@@ -832,7 +832,7 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
       const p = c.params;
       // the back plate's height field folds downward
       const proj = buildProjection(yOffset, p.height / 2, this.flags.plateRotXDeg ?? 0, this.flags.plateRotYDeg ?? 0, this.flags.plateRotZDeg ?? 0, plate === 'top' ? 1 : -1);
-      const color = plate === 'top' ? colors.archTop : colors.archBack;
+      const color = plate === 'top' ? pal.ink(0).css : pal.ink(2).css;
       const arch = plate === 'top' ? a.top.arch : a.bottom.arch;
       const { stationStepMm, sampleStepMm } = wireframeSampleSteps(p);
       let bounds;
@@ -848,20 +848,20 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
           };
         }
         const { levels, outline } = c.contours;
-        if (outline) layers.push(renderPath(projectedPath(proj, outline, true), colors.trace, STROKE_WEIGHT.guide, 0.6));
+        if (outline) layers.push(renderPath(projectedPath(proj, outline, true), pal.neutral.css, STROKE_WEIGHT.guide, 0.6));
         // channel levels fainter than the arch's
         for (const { level, rings } of levels) {
           const d = rings.map(ring => projectedPath(proj, ring, true)).join(' ');
-          layers.push(renderPath(d, level <= 0 ? colors.fluting : color, STROKE_WEIGHT.guide, level <= 0 ? 0.9 : 0.7));
+          layers.push(renderPath(d, level <= 0 ? pal.ink(1).lightness(-0.15).css : color, STROKE_WEIGHT.guide, level <= 0 ? 0.9 : 0.7));
         }
         bounds = projectedBounds(proj, levels.flatMap(l => l.rings.flat()));
       } else {
         c.wireframe ??= computeWireframeGeometry(p, model, stationStepMm, sampleStepMm);
         const { strips, ribs } = c.wireframe;
-        for (const rib of ribs) layers.push(renderPath(projectedPath(proj, rib), colors.trace, STROKE_WEIGHT.guide * 0.6, 0.45));
+        for (const rib of ribs) layers.push(renderPath(projectedPath(proj, rib), pal.neutral.css, STROKE_WEIGHT.guide * 0.6, 0.45));
         for (const strip of strips) {
           const channel = strip.maxZ < -0.01;
-          layers.push(renderPath(projectedPath(proj, strip.pts), channel ? colors.fluting : color, STROKE_WEIGHT.guide * 0.75, channel ? 0.5 : 0.65));
+          layers.push(renderPath(projectedPath(proj, strip.pts), channel ? pal.ink(1).lightness(-0.15).css : color, STROKE_WEIGHT.guide * 0.75, channel ? 0.5 : 0.65));
         }
         bounds = projectedBounds(proj, [...strips.flatMap(st => st.pts), ...ribs.flat()]);
       }
@@ -869,8 +869,8 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
       // the cursor's station in both views: a contour map says how deep the plate is everywhere and
       // nothing about where you are on it
       const cursor = wireframeStripAt(p, model, y, sampleStepMm);
-      if (cursor) layers.push(renderPath(projectedPath(proj, cursor.pts), colors.trace, STROKE_WEIGHT.section));
-      layers.push(renderWireframeDragFrame(bounds, colors, drag.active, drag.onPointerDown));
+      if (cursor) layers.push(renderPath(projectedPath(proj, cursor.pts), pal.neutral.css, STROKE_WEIGHT.section));
+      layers.push(renderWireframeDragFrame(bounds, pal, drag.active, drag.onPointerDown));
     }
     return layers;
   }
@@ -914,10 +914,10 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     if (innerHalf !== null) {
       parts.push(renderRect(
         new Rectangle({ x: -(innerHalf + p.rib), y: 0 }, { x: innerHalf + p.rib, y: ribZ }),
-        this.colors.trace, 'none', STROKE_WEIGHT.guide,
+        this.pal.neutral.css, 'none', STROKE_WEIGHT.guide,
       ));
       for (const sx of [-1, 1]) {
-        parts.push(renderSegment(new Pt(sx * innerHalf, 0), new Pt(sx * innerHalf, ribZ), this.colors.trace, STROKE_WEIGHT.guide));
+        parts.push(renderSegment(new Pt(sx * innerHalf, 0), new Pt(sx * innerHalf, ribZ), this.pal.neutral.css, STROKE_WEIGHT.guide));
       }
     }
     for (const plate of ['top', 'bottom'] as const) {
@@ -935,13 +935,13 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     const thickness = isTop ? a.top.thickness : a.bottom.thickness;
     const innerZ = isTop ? ribZ : 0;
     const zBase = innerZ + sign * thickness;
-    const color = isTop ? this.colors.archTop : this.colors.archBack;
+    const color = isTop ? this.pal.ink(0).css : this.pal.ink(2).css;
     const section = this.section[plate];
     const parts: RenderLayer[] = [];
 
-    parts.push(renderSegment(new Pt(-outerHalf, innerZ), new Pt(outerHalf, innerZ), this.colors.trace, STROKE_WEIGHT.guide));
+    parts.push(renderSegment(new Pt(-outerHalf, innerZ), new Pt(outerHalf, innerZ), this.pal.neutral.css, STROKE_WEIGHT.guide));
     for (const side of [1, -1] as const) {
-      parts.push(renderSegment(new Pt(side * outerHalf, innerZ), new Pt(side * outerHalf, zBase), this.colors.trace, STROKE_WEIGHT.guide));
+      parts.push(renderSegment(new Pt(side * outerHalf, innerZ), new Pt(side * outerHalf, zBase), this.pal.neutral.css, STROKE_WEIGHT.guide));
     }
     // Split by what carved it: the flat land
     // and the plate edges in the trace colour, the gouged channel in the
@@ -950,8 +950,8 @@ export class CrossArchingPanel extends CerutiPanelBase implements OnInit, OnDest
     const c = this.cache[plate];
     if (c?.model) {
       const pen = {
-        land: [this.colors.trace, STROKE_WEIGHT.guide],
-        channel: [this.colors.fluting, STROKE_WEIGHT.section],
+        land: [this.pal.neutral.css, STROKE_WEIGHT.guide],
+        channel: [this.pal.ink(1).lightness(-0.15).css, STROKE_WEIGHT.section],
         arch: [color, STROKE_WEIGHT.section],
       } as const;
       for (const run of sampleArchSectionRuns(c.params, c.model, y)) {

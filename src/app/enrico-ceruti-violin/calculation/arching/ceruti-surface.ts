@@ -10,14 +10,8 @@ import { closeProfileToBlank } from '../../../helpers/math/pathVibes';
 import { pathsBounds, rotatePath180, samplePathToPolyline, translatePath } from '../../../helpers/math/pathMath';
 import { ArchCurve, ArchPlate, EnricoCerutiParams } from '../../ceruti-types';
 import { defineInsetPath, defineOuterPath } from '../outline/ceruti-paths';
-import {
-    buildPlateGeometry, defaultCrossArchParams, defaultFlutingParams,
-    chordTrust, cornerSmoothZ, gougeAtY, CrossArchSection, crossArchSectionAt,
-    longArchProfilePath, PlateGeometry, gougeProfileZ, solveLongArch,
-} from './ceruti-arch-geometry';
-import {
-    bodyLandmarks, longArchHeightAt, normalizeCrossArchStations, ribHeightAt, STATION_MERGE_EPS_MM,
-} from './ceruti-arching';
+import { buildPlateGeometry, defaultCrossArchParams, defaultFlutingParams, chordTrust, cornerSmoothZ, gougeAtY, CrossArchSection, crossArchSectionAt, longArchProfilePath, PlateGeometry, gougeProfileZ, solveLongArch } from './ceruti-arch-geometry';
+import { bodyLandmarks, longArchHeightAt, normalizeCrossArchStations, ribHeightAt, STATION_MERGE_EPS_MM } from './ceruti-arching';
 
 // The evaluable plate surface: a height field z(x, y) over the plan view.
 //
@@ -134,7 +128,6 @@ export function stationChordsAt(p: EnricoCerutiParams, model: PlateSurfaceModel,
         channelCenterCrossings: polylineCrossingsAtY(model.geometry.centerPoly, y),
     };
 }
-
 
 /**
  * Half-width of the run of plate the centerline sits in, at station `y`; null

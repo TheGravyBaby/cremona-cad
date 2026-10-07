@@ -1,8 +1,5 @@
 import { Arc, arcFromCircle, Circle, Pt, Vect2D } from '../../../models/types';
-import {
-  angleFromCenter, dist, intersectLines, lineFromTwoPoints,
-  moveInVectorSpace, pointOnCircle, TURN, vectorFromSlope,
-} from '../../../helpers/math/simpleGeometry';
+import { angleFromCenter, dist, intersectLines, lineFromTwoPoints, moveInVectorSpace, pointOnCircle, TURN, vectorFromSlope } from '../../../helpers/math/simpleGeometry';
 import { pathFromArc, pathFromLine } from '../../../helpers/math/pathMath';
 import { unifyConnectedSvgPaths } from '../../../helpers/math/pathVibes';
 import { EnricoCerutiParams, FlutingParams, NeckParams, StringSetup } from '../../ceruti-types';
@@ -69,7 +66,6 @@ function standardFingerboardLength(bodyHeight: number): number {
   if (bodyHeight < 800) return 580;
   return 850;
 }
-
 
 // `p.arching`, `p.neck` and `p.button` must already be in place — the panel seeds them
 export function calculateNeck(p: EnricoCerutiParams, topArch: LongArchSolve | null, topGouge: FlutingParams): SolveFailure<'nutThickness' | 'fingerboardRadius'>[] {

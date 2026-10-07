@@ -119,7 +119,6 @@ export function clampSplinePointHeights(points: { z: number }[], peakZ: number, 
   for (const p of points) p.z = clamp(p.z, floorZ, peakZ);
 }
 
-
 /**
  * Which row of a spline's table the peak is listed in, held inside the table.
  *

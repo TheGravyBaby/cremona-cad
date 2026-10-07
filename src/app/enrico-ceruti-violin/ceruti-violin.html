@@ -189,7 +189,7 @@
         @if (openPanel === 'mainBouts') {
         <app-ceruti-main-bouts-panel #panelRef
             [params]="d.params"
-            [colors]="colors"
+            [theme]="theme"
             [flags]="viewFlags"
             (panelUpdate)="onPanelRenderRequest($event)">
         </app-ceruti-main-bouts-panel>
@@ -198,7 +198,7 @@
         @if (openPanel === 'corners') {
         <app-ceruti-corners-panel #panelRef
             [params]="d.params"
-            [colors]="colors"
+            [theme]="theme"
             [flags]="viewFlags"
             (panelUpdate)="onPanelRenderRequest($event)">
         </app-ceruti-corners-panel>
@@ -208,7 +208,7 @@
         <app-ceruti-center-bout-panel #panelRef
             [params]="d.params"
             [paths]="d.paths"
-            [colors]="colors"
+            [theme]="theme"
             [flags]="viewFlags"
             (panelUpdate)="onPanelRenderRequest($event)">
         </app-ceruti-center-bout-panel>
@@ -218,7 +218,7 @@
         <app-ceruti-outer-trace-panel #panelRef
             [params]="d.params"
             [paths]="d.paths"
-            [colors]="colors"
+            [theme]="theme"
             [flags]="viewFlags"
             (panelUpdate)="onPanelRenderRequest($event)">
         </app-ceruti-outer-trace-panel>
@@ -228,7 +228,7 @@
         <app-ceruti-mould-panel #panelRef
             [params]="d.params"
             [paths]="d.paths"
-            [colors]="colors"
+            [theme]="theme"
             [flags]="viewFlags"
             (panelUpdate)="onPanelRenderRequest($event)">
         </app-ceruti-mould-panel>
@@ -238,7 +238,7 @@
         <app-ceruti-fluting-panel #panelRef
             [params]="d.params"
             [paths]="d.paths"
-            [colors]="colors"
+            [theme]="theme"
             [flags]="viewFlags"
             (panelUpdate)="onPanelRenderRequest($event)">
         </app-ceruti-fluting-panel>
@@ -247,7 +247,7 @@
         @if (openPanel === 'longArching') {
         <app-ceruti-long-arching-panel #panelRef
             [params]="d.params"
-            [colors]="colors"
+            [theme]="theme"
             [flags]="viewFlags"
             (panelUpdate)="onPanelRenderRequest($event)">
         </app-ceruti-long-arching-panel>
@@ -256,7 +256,7 @@
         @if (openPanel === 'crossArching') {
         <app-ceruti-cross-arching-panel #panelRef
             [params]="d.params"
-            [colors]="colors"
+            [theme]="theme"
             [flags]="viewFlags"
             (panelUpdate)="onPanelRenderRequest($event)">
         </app-ceruti-cross-arching-panel>
@@ -266,7 +266,7 @@
         <app-ceruti-f-hole-placement-panel #panelRef
             [params]="d.params"
             [paths]="d.paths"
-            [colors]="colors"
+            [theme]="theme"
             [flags]="viewFlags"
             (panelUpdate)="onPanelRenderRequest($event)">
         </app-ceruti-f-hole-placement-panel>
@@ -276,7 +276,7 @@
         <app-ceruti-f-hole-contours-panel #panelRef
             [params]="d.params"
             [paths]="d.paths"
-            [colors]="colors"
+            [theme]="theme"
             [flags]="viewFlags"
             (panelUpdate)="onPanelRenderRequest($event)">
         </app-ceruti-f-hole-contours-panel>
@@ -286,7 +286,7 @@
         <app-ceruti-neck-panel #panelRef
             [params]="d.params"
             [paths]="d.paths"
-            [colors]="colors"
+            [theme]="theme"
             [flags]="viewFlags"
             (panelUpdate)="onPanelRenderRequest($event)">
         </app-ceruti-neck-panel>
@@ -295,7 +295,7 @@
         @if (openPanel === 'volute') {
         <app-ceruti-volute-panel #panelRef
             [params]="d.params"
-            [colors]="colors"
+            [theme]="theme"
             [flags]="viewFlags"
             (panelUpdate)="onPanelRenderRequest($event)">
         </app-ceruti-volute-panel>
@@ -304,7 +304,7 @@
         @if (openPanel === 'scroll') {
         <app-ceruti-scroll-panel #panelRef
             [params]="d.params"
-            [colors]="colors"
+            [theme]="theme"
             [flags]="viewFlags"
             (panelUpdate)="onPanelRenderRequest($event)">
         </app-ceruti-scroll-panel>
@@ -313,7 +313,7 @@
         @if (openPanel === 'scrollWidths') {
         <app-ceruti-scroll-widths-panel #panelRef
             [params]="d.params"
-            [colors]="colors"
+            [theme]="theme"
             [flags]="viewFlags"
             (panelUpdate)="onPanelRenderRequest($event)">
         </app-ceruti-scroll-widths-panel>
@@ -323,7 +323,7 @@
         <app-ceruti-string-setup-panel #panelRef
             [params]="d.params"
             [paths]="d.paths"
-            [colors]="colors"
+            [theme]="theme"
             [flags]="viewFlags"
             (panelUpdate)="onPanelRenderRequest($event)">
         </app-ceruti-string-setup-panel>
@@ -332,7 +332,7 @@
         @if (openPanel === 'export') {
         <app-ceruti-export-panel #exportRef
             [params]="d.params"
-            [colors]="colors"
+            [theme]="theme"
             [paths]="d.paths"
             [fileName]="d.fileName"
             [description]="d.description ?? ''"

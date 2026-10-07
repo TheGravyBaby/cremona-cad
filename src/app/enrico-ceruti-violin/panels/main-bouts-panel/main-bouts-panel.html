@@ -22,8 +22,8 @@
             <label class='field-cell'>
                 <span class="field-title">U0 - Join Radius <span class="unit-label">mm</span></span>
                 <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="params.bouts.U0!.r"
-                    (input)="onChange(); onArcFocus(params.bouts.U0!, colors.upperBout)" [style.borderColor]="colors.upperBout"
-                    (focus)="onArcFocus(params.bouts.U0!, colors.upperBout)" (blur)="onArcBlur()" />
+                    (input)="onChange(); onArcFocus(params.bouts.U0!, pal.ink(1).css)" [style.borderColor]="pal.ink(1).css"
+                    (focus)="onArcFocus(params.bouts.U0!, pal.ink(1).css)" (blur)="onArcBlur()" />
             </label>
             <label class="field-cell"></label>
             <label class='field-cell'>
@@ -36,8 +36,8 @@
             <label class='field-cell'>
                 <span class="field-title">U1 - Vesecai Radius <span class="unit-label">mm</span></span>
                 <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="params.bouts.U1!.r"
-                    (input)="onChange(); onArcFocus(params.bouts.U1!, colors.upperBoutSide)" [style.borderColor]="colors.upperBoutSide"
-                    (focus)="onArcFocus(params.bouts.U1!, colors.upperBoutSide)" (blur)="onArcBlur()" />
+                    (input)="onChange(); onArcFocus(params.bouts.U1!, pal.ink(1).lightness(0.45).css)" [style.borderColor]="pal.ink(1).lightness(0.45).css"
+                    (focus)="onArcFocus(params.bouts.U1!, pal.ink(1).lightness(0.45).css)" (blur)="onArcBlur()" />
             </label>
             <label class="field-cell"></label>
             <label class='field-cell'>
@@ -73,8 +73,8 @@
             <label class='field-cell'>
                 <span class="field-title">L0 - Join Radius <span class="unit-label">mm</span></span>
                 <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="params.bouts.L0!.r"
-                    (input)="onChange(); onArcFocus(params.bouts.L0!, colors.lowerBout)" [style.borderColor]="colors.lowerBout"
-                    (focus)="onArcFocus(params.bouts.L0!, colors.lowerBout)" (blur)="onArcBlur()" />
+                    (input)="onChange(); onArcFocus(params.bouts.L0!, pal.ink(2).css)" [style.borderColor]="pal.ink(2).css"
+                    (focus)="onArcFocus(params.bouts.L0!, pal.ink(2).css)" (blur)="onArcBlur()" />
             </label>
             <label class="field-cell"></label>
             <label class='field-cell'>
@@ -87,8 +87,8 @@
             <label class='field-cell'>
                 <span class="field-title">L1 - Vesecai Radius <span class="unit-label">mm</span></span>
                 <input type="number" class="basic-input" step="1" min="1" [(ngModel)]="params.bouts.L1!.r"
-                    (input)="onChange(); onArcFocus(params.bouts.L1!, colors.lowerBoutSide)" [style.borderColor]="colors.lowerBoutSide"
-                    (focus)="onArcFocus(params.bouts.L1!, colors.lowerBoutSide)" (blur)="onArcBlur()" />
+                    (input)="onChange(); onArcFocus(params.bouts.L1!, pal.ink(2).lightness(0.45).css)" [style.borderColor]="pal.ink(2).lightness(0.45).css"
+                    (focus)="onArcFocus(params.bouts.L1!, pal.ink(2).lightness(0.45).css)" (blur)="onArcBlur()" />
             </label>
             <label class="field-cell"></label>
             <label class='field-cell'>
@@ -116,21 +116,21 @@
         <div class="input-group basic-row field-row" role="group">
             <label class="field-cell">
                 <span class="field-title">V0 Radius <span class="unit-label">mm</span></span>
-                <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="params.viol.V0!.r" [style.borderColor]="colors.violNeck"
-                    (input)="onChange(); onArcFocus(params.viol.V0!, colors.violNeck)"
-                    (focus)="onArcFocus(params.viol.V0!, colors.violNeck)" (blur)="onArcBlur()" />
+                <input type="number" class="basic-input" step="1" min="0" [(ngModel)]="params.viol.V0!.r" [style.borderColor]="pal.ink(1).saturation(0.4).lightness(-0.25).css"
+                    (input)="onChange(); onArcFocus(params.viol.V0!, pal.ink(1).saturation(0.4).lightness(-0.25).css)"
+                    (focus)="onArcFocus(params.viol.V0!, pal.ink(1).saturation(0.4).lightness(-0.25).css)" (blur)="onArcBlur()" />
             </label>
             <label class="field-cell">
                 <span class="field-title">V0 Start <span class="unit-label">°</span></span>
-                <input type="number" class="basic-input" step="1" min="0" [ngModel]="getArcStartDeg(params.viol.V0!)" [style.borderColor]="colors.violNeck"
-                    (ngModelChange)="setArcStartDeg(params.viol.V0!, $event, onChange.bind(this)); onArcFocus(params.viol.V0!, colors.violNeck)"
-                    (focus)="onArcFocus(params.viol.V0!, colors.violNeck)" (blur)="onArcBlur()" />
+                <input type="number" class="basic-input" step="1" min="0" [ngModel]="getArcStartDeg(params.viol.V0!)" [style.borderColor]="pal.ink(1).saturation(0.4).lightness(-0.25).css"
+                    (ngModelChange)="setArcStartDeg(params.viol.V0!, $event, onChange.bind(this)); onArcFocus(params.viol.V0!, pal.ink(1).saturation(0.4).lightness(-0.25).css)"
+                    (focus)="onArcFocus(params.viol.V0!, pal.ink(1).saturation(0.4).lightness(-0.25).css)" (blur)="onArcBlur()" />
             </label>
             <label class="field-cell">
                 <span class="field-title">V0 End <span class="unit-label">°</span></span>
-                <input type="number" class="basic-input" step="1" min="0" [ngModel]="getArcEndDeg(params.viol.V0!)" [style.borderColor]="colors.violNeck"
-                    (ngModelChange)="setArcEndDeg(params.viol.V0!, $event, onChange.bind(this)); onArcFocus(params.viol.V0!, colors.violNeck)"
-                    (focus)="onArcFocus(params.viol.V0!, colors.violNeck)" (blur)="onArcBlur()" />
+                <input type="number" class="basic-input" step="1" min="0" [ngModel]="getArcEndDeg(params.viol.V0!)" [style.borderColor]="pal.ink(1).saturation(0.4).lightness(-0.25).css"
+                    (ngModelChange)="setArcEndDeg(params.viol.V0!, $event, onChange.bind(this)); onArcFocus(params.viol.V0!, pal.ink(1).saturation(0.4).lightness(-0.25).css)"
+                    (focus)="onArcFocus(params.viol.V0!, pal.ink(1).saturation(0.4).lightness(-0.25).css)" (blur)="onArcBlur()" />
             </label>
         </div>
         <div class="input-group basic-row field-row" role="group">
