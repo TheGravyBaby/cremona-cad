@@ -122,7 +122,7 @@ export function transformShape(shape: DraftShape, m: Matrix2D): DraftShape | nul
       if (axisAligned) return { ...shape, p1: pt(shape.p1), p2: pt(shape.p2) };
       const corners = [shape.p1, { x: shape.p2.x, y: shape.p1.y }, shape.p2, { x: shape.p1.x, y: shape.p2.y }].map(pt);
       return {
-        id: shape.id, type: 'path', color: shape.color, layerId: shape.layerId, dashed: shape.dashed,
+        id: shape.id, type: 'path', color: shape.color, strokeWidth: shape.strokeWidth, layerId: shape.layerId, dashed: shape.dashed,
         d: pathFromPolygon(corners),
       };
     }

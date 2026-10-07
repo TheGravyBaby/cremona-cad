@@ -231,7 +231,7 @@ export class OffsetTool implements DraftTool {
       const d = resolved.distances.get(shape.id);
       if (d === undefined) continue;
       const offsetShape = tryOffsetShape(shape, d);
-      if (offsetShape) host.addShape({ ...offsetShape, color: shape.color } as DraftShape);
+      if (offsetShape) host.addShape({ ...offsetShape, color: shape.color, strokeWidth: shape.strokeWidth } as DraftShape);
     }
     this.typedBuffer = '';
     host.requestDraw();

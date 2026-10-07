@@ -24,10 +24,10 @@ describe('OffsetTool on rectangles', () => {
     expect(shape.p2).toEqual(at(110, 60));
   });
 
-  it('gives the offset its source\'s colour', () => {
-    const host = makeHost([{ ...rect, color: '#c04020' }]);
+  it('gives the offset its source\'s colour and weight', () => {
+    const host = makeHost([{ ...rect, color: '#c04020', strokeWidth: 4 }]);
     new OffsetTool().onPointerDown(at(-10, 25), host);
-    expect(host.added[0].color).toBe('#c04020');
+    expect(host.added[0]).toMatchObject({ color: '#c04020', strokeWidth: 4 });
   });
 
   it('shrinks the rect inward when clicked inside it', () => {

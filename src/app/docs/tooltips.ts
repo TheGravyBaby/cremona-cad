@@ -47,7 +47,7 @@ export const TOOLTIPS = {
   'settings.labelText': 'Label text — Enter adds a line, Escape reverts. Scrolls rather than growing; double-click the label on the canvas for a box that opens out.',
   'settings.fontSize': 'Font size in mm — measured on the drawing, so it holds its proportion through a zoom. Sets the size for new labels too.',
   'settings.textAngle': 'Degrees counterclockwise — or drag the round handle above a selected label',
-  'settings.strokeWidth': 'Stroke width in screen pixels — constant at any zoom',
+  'settings.strokeWidth': 'Line weight in screen pixels, the same at any zoom. Copied or exported SVG writes 1.5 px as 0.5 mm',
   'settings.opacity': 'Opacity from 0 (invisible) to 1 (fully opaque) — dial down for a highlighter-style mark',
   'settings.resetPen': 'Back to an ordinary opaque line — resets Color/Width/Opacity to the default pen',
   'settings.highlighter': 'Sets the pen to a wide, translucent yellow stroke — a shortcut for Color+Width+Opacity, not a separate tool',

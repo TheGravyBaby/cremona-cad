@@ -5,8 +5,8 @@ import { SelectionStore } from '../tools/selection-store';
 import { ImageAssetStore } from '../tools/image-asset-store';
 import {
   DraftShape, LineShape, DimensionShape, RectShape, TextShape, PointShape, CircleShape, ArcShape, SectionShape, TicksShape,
-  FreehandShape, PathShape, PathSource, ImageShape, CurveTicksShape, DEFAULT_IMAGE_OPACITY, DEFAULT_SHAPE_COLOR, DEFAULT_FREEHAND_WIDTH,
-  DEFAULT_TEXT_SIZE_MM, angleSweep, applyImageCrop, applyImageSize, isCropped, pathFromSource,
+  FreehandShape, PathShape, PathSource, ImageShape, CurveTicksShape, DEFAULT_IMAGE_OPACITY, DEFAULT_SHAPE_COLOR, DEFAULT_STROKE_WIDTH,
+  DEFAULT_TEXT_SIZE_MM, angleSweep, applyImageCrop, applyImageSize, isCropped, isStroked, pathFromSource,
 } from '../tools/toolbox-shape';
 import { ImageCrop } from '../../models/types';
 import { clamp, normalizeDegrees, pointAtDistanceToward } from '../../helpers/math/simpleGeometry';
@@ -171,6 +171,40 @@ export class SettingsBarComponent {
     const shapes = this.selectedDashableShapes;
     if (shapes.length === 0) return;
     const patches = new Map<string, Partial<DraftShape>>(shapes.map(s => [s.id, { dashed: value }]));
+    this.toolbox.updateShapes(patches);
+  }
+
+  // the edit tools (Offset, Fillet, the transforms) aren't here: what they make takes its weight
+  // from the shape they work on
+  private static readonly STROKED_TOOL_IDS = new Set([
+    ...SettingsBarComponent.DASHABLE_TOOL_IDS, 'freehand',
+    'arc', 'arc-start', 'arc-ends-center', 'arc-through', 'arc-tangent', 'arc-chain', 'join-arc',
+    'dimension', 'angle', 'ticks', 'curve-length', 'curve-ticks',
+  ]);
+
+  private get selectedStrokedShapes(): DraftShape[] {
+    return this.selectedShapes.filter(isStroked);
+  }
+
+  public get showStrokeWidth(): boolean {
+    return (!!this.activeTool && SettingsBarComponent.STROKED_TOOL_IDS.has(this.activeTool.id))
+      || this.selectedStrokedShapes.length > 0;
+  }
+
+  /** First selected shape's width (same "first wins" convention as displayedColor), otherwise
+   * the pen width new shapes will use. */
+  public get strokeWidth(): number {
+    const first = this.selectedStrokedShapes[0];
+    return first ? first.strokeWidth ?? DEFAULT_STROKE_WIDTH : this.toolbox.currentStrokeWidth;
+  }
+
+  setStrokeWidth(value: number): void {
+    const v = Number(value);
+    if (!Number.isFinite(v) || v <= 0) return;
+    this.toolbox.currentStrokeWidth = v;
+    const shapes = this.selectedStrokedShapes;
+    if (shapes.length === 0) return;
+    const patches = new Map<string, Partial<DraftShape>>(shapes.map(s => [s.id, { strokeWidth: v }]));
     this.toolbox.updateShapes(patches);
   }
 
@@ -430,23 +464,6 @@ export class SettingsBarComponent {
     return this.activeTool?.id === 'freehand' || this.selectedFreehandShapes.length > 0;
   }
 
-  /** First selected stroke's width (same "first wins" convention as displayedColor), otherwise
-   * the pen default new strokes will use. */
-  public get freehandWidth(): number {
-    return this.selectedFreehandShapes[0]?.strokeWidth ?? this.toolbox.currentStrokeWidth;
-  }
-
-  /** Applies to every selected stroke at once (one history step via updateShapes), same as setColor. */
-  setFreehandWidth(value: number): void {
-    const v = Number(value);
-    if (!Number.isFinite(v) || v <= 0) return;
-    this.toolbox.currentStrokeWidth = v;
-    const shapes = this.selectedFreehandShapes;
-    if (shapes.length === 0) return;
-    const patches = new Map<string, Partial<DraftShape>>(shapes.map(s => [s.id, { strokeWidth: v }]));
-    this.toolbox.updateShapes(patches);
-  }
-
   public get freehandOpacity(): number {
     return this.selectedFreehandShapes[0]?.opacity ?? this.toolbox.currentOpacity;
   }
@@ -478,7 +495,7 @@ export class SettingsBarComponent {
   // Back to an ordinary opaque line — the quick way out of Highlighter (or any manually-dialed-in
   // look) without hand-resetting Color/Width/Opacity one field at a time.
   private static readonly PEN_COLOR = DEFAULT_SHAPE_COLOR;
-  private static readonly PEN_WIDTH = DEFAULT_FREEHAND_WIDTH;
+  private static readonly PEN_WIDTH = DEFAULT_STROKE_WIDTH;
   private static readonly PEN_OPACITY = 1;
 
   applyPenPreset(): void {

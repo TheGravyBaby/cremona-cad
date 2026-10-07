@@ -33,7 +33,7 @@ import { translateShape } from './tools/shape-transform';
 import { endpointGrabbers, withBattenPinAdded, withBattenPinRemoved, withEndpoint, EndpointGrabber, EndpointKey } from './tools/shape-grabbers';
 import { snapToLockedAngle } from './tools/angle-lock';
 import { clamp, dist } from '../helpers/math/simpleGeometry';
-import { DEFAULT_TEXT_SIZE_MM, DraftShape, ImageShape, PathShape, TextShape, imageRenderKey } from './tools/toolbox-shape';
+import { DEFAULT_STROKE_WIDTH, DEFAULT_TEXT_SIZE_MM, DraftShape, ImageShape, PathShape, TextShape, imageRenderKey, isStroked } from './tools/toolbox-shape';
 import { placedImageShape } from './tools/image-placement';
 import { HOTKEY_TOOL_CYCLE } from './tools/tool-hotkeys';
 import { SettingsBarComponent } from './settings-bar/settings-bar';
@@ -103,11 +103,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private toolHost: DraftToolHost = {
     // Images are deliberately not stamped with a layer: they aren't layer members (see
     // ImageShape), and giving them one would make deleting that layer delete them.
-    addShape: (shape) => this.toolbox.addShape(shape.type === 'image' ? shape : {
-      ...shape,
-      color: shape.color ?? this.toolbox.currentColor,
-      layerId: shape.layerId ?? this.toolbox.activeLayerId,
-    }),
+    addShape: (shape) => this.toolbox.addShape(shape.type === 'image' ? shape : this.inPen(shape)),
     requestDraw: () => this.requestDraw(),
     getSnapTangent: () => this.activeSnap?.tangent,
     isAngleLockHeld: () => this.isAngleLockHeld,
@@ -118,22 +114,28 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
     curveAt: (pt) => {
       const toleranceMm = DraftCanvasComponent.SELECT_HIT_TOLERANCE_PX / this.pxPerMm;
       const drawn = this.toolbox.getVisibleShapes().filter(s => s.type !== 'image');
-      const id = nearestShapeId(pt, drawn, toleranceMm) ?? nearestShapeId(pt, this.scene.shapes, toleranceMm);
+      const id = nearestShapeId(pt, drawn, toleranceMm, this.pxPerMm) ?? nearestShapeId(pt, this.scene.shapes, toleranceMm, this.pxPerMm);
       return [...drawn, ...this.scene.shapes].find(s => s.id === id) ?? null;
     },
     selectShape: (id) => this.selection.select(toolboxRef(id)),
     removeShape: (id) => this.toolbox.removeShape(id),
-    replaceShapes: (replacements, added) => this.toolbox.replaceShapes(replacements, added.map(shape => ({
-      ...shape,
-      color: shape.color ?? this.toolbox.currentColor,
-      layerId: shape.layerId ?? this.toolbox.activeLayerId,
-    }))),
+    replaceShapes: (replacements, added) => this.toolbox.replaceShapes(replacements, added.map(shape => this.inPen(shape))),
     returnToSelect: (selectShapeId) => {
       this.toolRegistry.selectTool(null);
       if (selectShapeId) this.selection.select(toolboxRef(selectShapeId));
       this.draw();
     },
   };
+
+  // a tool's new shape in the pen's colour, width and layer, wherever it didn't bring its own
+  private inPen(shape: DraftShape): DraftShape {
+    return {
+      ...shape,
+      color: shape.color ?? this.toolbox.currentColor,
+      ...(isStroked(shape) ? { strokeWidth: shape.strokeWidth ?? this.toolbox.currentStrokeWidth } : {}),
+      layerId: shape.layerId ?? this.toolbox.activeLayerId,
+    } as DraftShape;
+  }
 
   // Snapping: each half of the index is re-sampled only when its group is redrawn (see draw()),
   // and only once something needs it — see refreshSnapIndex().
@@ -647,8 +649,8 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private hitTestToolboxShape(pt: Pt): string | null {
     const toleranceMm = DraftCanvasComponent.SELECT_HIT_TOLERANCE_PX / this.pxPerMm;
     const editable = this.toolbox.getEditableShapes();
-    return nearestShapeId(pt, editable.filter(s => s.type !== 'image'), toleranceMm)
-      ?? nearestShapeId(pt, editable.filter(s => s.type === 'image'), toleranceMm);
+    return nearestShapeId(pt, editable.filter(s => s.type !== 'image'), toleranceMm, this.pxPerMm)
+      ?? nearestShapeId(pt, editable.filter(s => s.type === 'image'), toleranceMm, this.pxPerMm);
   }
 
   /** What a Select-mode click lands on, in paint order from the top: a drawn shape, then a piece
@@ -658,13 +660,13 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
   private hitTestAt(pt: Pt): SelectionRef | null {
     const toleranceMm = DraftCanvasComponent.SELECT_HIT_TOLERANCE_PX / this.pxPerMm;
     const editable = this.toolbox.getEditableShapes();
-    const drawn = nearestShapeId(pt, editable.filter(s => s.type !== 'image'), toleranceMm);
+    const drawn = nearestShapeId(pt, editable.filter(s => s.type !== 'image'), toleranceMm, this.pxPerMm);
     if (drawn) return toolboxRef(drawn);
     if (!this.toolbox.recipeLocked) {
-      const piece = nearestShapeId(pt, this.scene.shapes, toleranceMm);
+      const piece = nearestShapeId(pt, this.scene.shapes, toleranceMm, this.pxPerMm);
       if (piece) return sceneRef(piece);
     }
-    const image = nearestShapeId(pt, editable.filter(s => s.type === 'image'), toleranceMm);
+    const image = nearestShapeId(pt, editable.filter(s => s.type === 'image'), toleranceMm, this.pxPerMm);
     return image ? toolboxRef(image) : null;
   }
 
@@ -688,7 +690,7 @@ export class DraftCanvasComponent implements AfterViewInit, OnDestroy {
    * multi-selection drags by any of its members, even where an unselected shape lies closer. */
   private hitTestSelectedBody(pt: Pt): boolean {
     const toleranceMm = DraftCanvasComponent.SELECT_HIT_TOLERANCE_PX / this.pxPerMm;
-    return this.selectedShapes.some(shape => distanceToShape(pt, shape) <= toleranceMm);
+    return this.selectedShapes.some(shape => distanceToShape(pt, shape) - extraReachMm(shape, this.pxPerMm) <= toleranceMm);
   }
 
   /** A shape's handles, or none for a member of a group that hasn't been entered: a group moves
@@ -1802,17 +1804,23 @@ const CLIPBOARD_EVENTS = ['copy', 'cut', 'paste'] as const;
 
 /** Nearest of `shapes` to `pt` within `toleranceMm`, or null. Ties go to the *last* shape in the
  * list, which is the one drawn on top when the list is in render order. */
-function nearestShapeId(pt: Pt, shapes: DraftShape[], toleranceMm: number): string | null {
+function nearestShapeId(pt: Pt, shapes: DraftShape[], toleranceMm: number, pxPerMm: number): string | null {
   let bestId: string | null = null;
   let bestDist = Infinity;
   for (const shape of shapes) {
-    const dist = distanceToShape(pt, shape);
+    const dist = distanceToShape(pt, shape) - extraReachMm(shape, pxPerMm);
     if (dist <= toleranceMm && dist <= bestDist) {
       bestId = shape.id;
       bestDist = dist;
     }
   }
   return bestId;
+}
+
+// a stroke heavier than the default reaches further than its centreline, and should click as wide as it looks
+function extraReachMm(shape: DraftShape, pxPerMm: number): number {
+  if (!isStroked(shape)) return 0;
+  return Math.max(0, ((shape.strokeWidth ?? DEFAULT_STROKE_WIDTH) - DEFAULT_STROKE_WIDTH) / 2) / pxPerMm;
 }
 
 function readFileAsDataUrl(file: File): Promise<string> {

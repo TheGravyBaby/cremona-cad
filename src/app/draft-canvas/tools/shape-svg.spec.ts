@@ -5,7 +5,7 @@ import { pointOnCircle } from '../../helpers/math/simpleGeometry';
 
 describe('shapesToSvg / svgToShapes', () => {
   const sample: DraftShape[] = [
-    { id: 'l', type: 'line', start: { x: 0, y: 0 }, end: { x: 10, y: 5 }, color: '#ff0000', dashed: true, layerId: 'layer-x' },
+    { id: 'l', type: 'line', start: { x: 0, y: 0 }, end: { x: 10, y: 5 }, color: '#ff0000', dashed: true, strokeWidth: 3, layerId: 'layer-x' },
     { id: 'a', type: 'arc', center: { x: 5, y: 5 }, radius: 10, startAngle: 0, endAngle: Math.PI / 2, color: '#00ff00' },
     { id: 'c', type: 'circle', center: { x: -3, y: 4 }, radius: 2, color: '#0000ff' },
     { id: 'r', type: 'rect', p1: { x: 1, y: 2 }, p2: { x: 11, y: 22 }, color: '#123456' },
@@ -26,6 +26,12 @@ describe('shapesToSvg / svgToShapes', () => {
     expect(back.every(s => s.id === '' && s.layerId === undefined)).toBe(true);
   });
 
+  it('writes a stroke\'s screen weight as mm, the default weight at 0.5 mm', () => {
+    const svg = withoutMetadata(shapesToSvg([sample[0], sample[2]]));
+    expect(svg).toContain('stroke-width="1"');
+    expect(svg).toContain('stroke-width="0.5"');
+  });
+
   it('is a real-size SVG document that escapes what it embeds', () => {
     const svg = shapesToSvg(sample);
     expect(svg.startsWith('<svg xmlns="http://www.w3.org/2000/svg" width="')).toBe(true);
@@ -44,6 +50,7 @@ describe('shapesToSvg / svgToShapes', () => {
     expect(line.end).toEqual({ x: 10, y: 5 });
     expect(line.color).toBe('#ff0000');
     expect(line.dashed).toBe(true);
+    expect(line.strokeWidth).toBeCloseTo(3, 9);
 
     const arc = back.find(s => s.type === 'arc')!;
     // the arc still passes through its own midpoint, so the sweep survived the flip

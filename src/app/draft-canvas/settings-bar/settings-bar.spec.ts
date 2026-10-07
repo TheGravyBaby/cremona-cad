@@ -32,6 +32,25 @@ describe('SettingsBarComponent', () => {
     expect((toolbox.getShapes()[0] as LineShape).start).toEqual({ x: 15, y: 0 });
   });
 
+  it('sets the width of every selected stroked shape and the pen, passing over text', () => {
+    toolbox.addShape({ id: 't', type: 'text', position: { x: 0, y: 0 }, text: 'label' });
+    selection.set([toolboxRef('a'), toolboxRef('b'), toolboxRef('t')]);
+    const fixture = TestBed.createComponent(SettingsBarComponent);
+    fixture.detectChanges();
+    const bar = fixture.componentInstance;
+    expect(bar.showStrokeWidth).toBe(true);
+    expect(bar.strokeWidth).toBe(1.5);
+
+    bar.setStrokeWidth(4);
+    expect(toolbox.getShapes().map(s => s.strokeWidth)).toEqual([4, 4, undefined]);
+    expect(toolbox.currentStrokeWidth).toBe(4);
+    toolbox.undo();
+    expect(toolbox.getShapes().map(s => s.strokeWidth)).toEqual([undefined, undefined, undefined]);
+
+    selection.set([toolboxRef('t')]);
+    expect(bar.showStrokeWidth).toBe(false);
+  });
+
   it('reshapes a selected cycloid in place from its factor and percent', () => {
     const source: PathSource = { kind: 'cycloid', start: { x: 0, y: 0 }, end: { x: 100, y: 0 }, depth: 30, factor: 1, pct: 1 };
     toolbox.addShape({ id: 'c', type: 'path', d: pathFromSource(source), source });

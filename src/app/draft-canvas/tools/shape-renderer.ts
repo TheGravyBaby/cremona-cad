@@ -1,7 +1,7 @@
 import * as d3 from 'd3';
 import { Pt } from '../../models/types';
 import {
-  DraftShape, DimensionShape, AngleShape, CurveLengthShape, DEFAULT_SHAPE_COLOR, DEFAULT_IMAGE_OPACITY, DEFAULT_FREEHAND_WIDTH,
+  DraftShape, DimensionShape, AngleShape, CurveLengthShape, DEFAULT_SHAPE_COLOR, DEFAULT_IMAGE_OPACITY, DEFAULT_STROKE_WIDTH,
   DEFAULT_TEXT_SIZE_MM, ImageShape, TextShape,
   angleSweep, dimensionGeometry, imageCenter, imageCorners, imageSourceBox, isCropped,
 } from './toolbox-shape';
@@ -13,6 +13,10 @@ import { GrabberKind } from './shape-grabbers';
 type RootGroup = d3.Selection<SVGGElement, unknown, null, undefined>;
 
 const DASH_PATTERN = '4 3';
+
+// an annotation keeps its own contrast between light and heavy strokes and scales the lot, so at
+// the default weight it draws exactly as it always has
+const weightScale = (width: number | undefined): number => (width ?? DEFAULT_STROKE_WIDTH) / DEFAULT_STROKE_WIDTH;
 
 // Catmull-Rom passes through every sampled point (unlike curveBasis, which only approaches
 // them) — keeps the rendered curve close to what distanceToShape/shapeBounds hit-test against.
@@ -27,13 +31,14 @@ export function freehandPathData(points: Pt[]): string {
 /** Draws a single committed toolbox shape into gRoot (and gUI, for shapes with a text label). */
 export function drawShape(gRoot: RootGroup, gUI: RootGroup, shape: DraftShape, pxPerMm: number): void {
   const color = shape.color ?? DEFAULT_SHAPE_COLOR;
+  const width = shape.strokeWidth ?? DEFAULT_STROKE_WIDTH;
   switch (shape.type) {
     case 'line': {
       const line = gRoot.append('line')
         .attr('x1', shape.start.x).attr('y1', shape.start.y)
         .attr('x2', shape.end.x).attr('y2', shape.end.y)
         .attr('stroke', color)
-        .attr('stroke-width', 1.5)
+        .attr('stroke-width', width)
         .attr('vector-effect', 'non-scaling-stroke');
       if (shape.dashed) line.attr('stroke-dasharray', DASH_PATTERN);
       break;
@@ -43,7 +48,7 @@ export function drawShape(gRoot: RootGroup, gUI: RootGroup, shape: DraftShape, p
         .attr('cx', shape.center.x).attr('cy', shape.center.y).attr('r', shape.radius)
         .attr('fill', 'none')
         .attr('stroke', color)
-        .attr('stroke-width', 1.5)
+        .attr('stroke-width', width)
         .attr('vector-effect', 'non-scaling-stroke');
       if (shape.dashed) circle.attr('stroke-dasharray', DASH_PATTERN);
       break;
@@ -53,10 +58,10 @@ export function drawShape(gRoot: RootGroup, gUI: RootGroup, shape: DraftShape, p
         .attr('d', arcPathData(shape.center, shape.radius, shape.startAngle, shape.endAngle))
         .attr('fill', 'none')
         .attr('stroke', color)
-        .attr('stroke-width', 1.5)
+        .attr('stroke-width', width)
         .attr('vector-effect', 'non-scaling-stroke');
       if (shape.showCenterGuides) {
-        drawArcCenterGuides(gRoot, shape.center, shape.radius, shape.startAngle, shape.endAngle, color, pxPerMm);
+        drawArcCenterGuides(gRoot, shape.center, shape.radius, shape.startAngle, shape.endAngle, color, pxPerMm, weightScale(width));
       }
       break;
     }
@@ -70,7 +75,7 @@ export function drawShape(gRoot: RootGroup, gUI: RootGroup, shape: DraftShape, p
       drawCurveLength(gRoot, gUI, shape, color, pxPerMm);
       break;
     case 'curve-ticks':
-      drawCurveTicks(gRoot, shape.points, shape.weights, color);
+      drawCurveTicks(gRoot, shape.points, shape.weights, color, width);
       break;
     case 'rect': {
       const rect = gRoot.append('rect')
@@ -78,7 +83,7 @@ export function drawShape(gRoot: RootGroup, gUI: RootGroup, shape: DraftShape, p
         .attr('width', Math.abs(shape.p2.x - shape.p1.x)).attr('height', Math.abs(shape.p2.y - shape.p1.y))
         .attr('fill', 'none')
         .attr('stroke', color)
-        .attr('stroke-width', 1.5)
+        .attr('stroke-width', width)
         .attr('vector-effect', 'non-scaling-stroke');
       if (shape.dashed) rect.attr('stroke-dasharray', DASH_PATTERN);
       break;
@@ -90,7 +95,7 @@ export function drawShape(gRoot: RootGroup, gUI: RootGroup, shape: DraftShape, p
       }, pxPerMm);
       break;
     case 'ticks':
-      drawTicks(gRoot, shape.start, shape.end, shape.weights, color);
+      drawTicks(gRoot, shape.start, shape.end, shape.weights, color, width);
       break;
     case 'text':
       // Zero-radius circle: gets picked up by snap-engine.ts's `circle` branch as a plain
@@ -146,7 +151,7 @@ export function drawShape(gRoot: RootGroup, gUI: RootGroup, shape: DraftShape, p
         .attr('d', shape.d)
         .attr('fill', 'none')
         .attr('stroke', color)
-        .attr('stroke-width', 1.5)
+        .attr('stroke-width', width)
         .attr('vector-effect', 'non-scaling-stroke');
       if (shape.dashed) path.attr('stroke-dasharray', DASH_PATTERN);
       break;
@@ -159,7 +164,7 @@ export function drawShape(gRoot: RootGroup, gUI: RootGroup, shape: DraftShape, p
         .attr('d', freehandPathData(shape.points))
         .attr('fill', 'none')
         .attr('stroke', color)
-        .attr('stroke-width', shape.strokeWidth ?? DEFAULT_FREEHAND_WIDTH)
+        .attr('stroke-width', width)
         .attr('stroke-linecap', 'round')
         .attr('stroke-linejoin', 'round')
         .attr('opacity', shape.opacity ?? 1)
@@ -387,12 +392,12 @@ export function tickLengthMm(lineLength: number): number {
   return Math.min(TICK_MAX_MM, lineLength * TICK_LENGTH_RATIO);
 }
 
-export function drawTicks(gRoot: RootGroup, start: Pt, end: Pt, weights: number[], color: string): void {
-  drawCurveTicks(gRoot, [start, end], weights, color);
+export function drawTicks(gRoot: RootGroup, start: Pt, end: Pt, weights: number[], color: string, width?: number): void {
+  drawCurveTicks(gRoot, [start, end], weights, color, width);
 }
 
 function drawArcCenterGuides(
-  gRoot: RootGroup, center: Pt, radius: number, startAngle: number, endAngle: number, color: string, pxPerMm: number,
+  gRoot: RootGroup, center: Pt, radius: number, startAngle: number, endAngle: number, color: string, pxPerMm: number, k: number,
 ): void {
   const startPt = pointOnCircle({ ...center, r: radius }, startAngle);
   const endPt = pointOnCircle({ ...center, r: radius }, endAngle);
@@ -400,7 +405,7 @@ function drawArcCenterGuides(
   const guideLine = (a: Pt, b: Pt) => gRoot.append('line')
     .attr('x1', a.x).attr('y1', a.y).attr('x2', b.x).attr('y2', b.y)
     .attr('stroke', color)
-    .attr('stroke-width', 1)
+    .attr('stroke-width', k)
     .attr('stroke-dasharray', '3 3')
     .attr('opacity', 0.7)
     .attr('vector-effect', 'non-scaling-stroke');
@@ -413,12 +418,12 @@ function drawArcCenterGuides(
   gRoot.append('line')
     .attr('x1', center.x - half).attr('y1', center.y)
     .attr('x2', center.x + half).attr('y2', center.y)
-    .attr('stroke', color).attr('stroke-width', 1)
+    .attr('stroke', color).attr('stroke-width', k)
     .attr('vector-effect', 'non-scaling-stroke');
   gRoot.append('line')
     .attr('x1', center.x).attr('y1', center.y - half)
     .attr('x2', center.x).attr('y2', center.y + half)
-    .attr('stroke', color).attr('stroke-width', 1)
+    .attr('stroke', color).attr('stroke-width', k)
     .attr('vector-effect', 'non-scaling-stroke');
 }
 
@@ -448,14 +453,15 @@ const DIM_TEXT_GAP_PX = 14;
  * result is a preview that lies twice.
  */
 export function drawDimension(
-  gRoot: RootGroup, gUI: RootGroup, shape: Pick<DimensionShape, 'start' | 'end' | 'offset'>,
+  gRoot: RootGroup, gUI: RootGroup, shape: Pick<DimensionShape, 'start' | 'end' | 'offset' | 'strokeWidth'>,
   color: string, pxPerMm: number, preview = false,
 ): void {
   const { start, end } = shape;
   const offset = shape.offset ?? 0;
+  const k = weightScale(shape.strokeWidth);
 
   const stroke = <E extends d3.BaseType>(sel: d3.Selection<E, unknown, null, undefined>) => {
-    sel.attr('stroke', color).attr('stroke-width', 1).attr('vector-effect', 'non-scaling-stroke');
+    sel.attr('stroke', color).attr('stroke-width', k).attr('vector-effect', 'non-scaling-stroke');
     if (preview) sel.attr('stroke-dasharray', DASH_PATTERN).style('pointer-events', 'none');
     return sel;
   };
@@ -536,13 +542,14 @@ export function drawDimension(
 // to carry the eye to the number, so it doesn't snap, while the arms up to those points do.
 // Exported for angle-tool.ts's preview, for the same reason drawDimension is.
 export function drawAngle(
-  gRoot: RootGroup, gUI: RootGroup, shape: Pick<AngleShape, 'vertex' | 'start' | 'end' | 'radius'>,
+  gRoot: RootGroup, gUI: RootGroup, shape: Pick<AngleShape, 'vertex' | 'start' | 'end' | 'radius' | 'strokeWidth'>,
   color: string, pxPerMm: number, preview = false,
 ): void {
   const { vertex, start, end, radius } = shape;
+  const k = weightScale(shape.strokeWidth);
 
   const stroke = <E extends d3.BaseType>(sel: d3.Selection<E, unknown, null, undefined>) => {
-    sel.attr('fill', 'none').attr('stroke', color).attr('stroke-width', 1).attr('vector-effect', 'non-scaling-stroke');
+    sel.attr('fill', 'none').attr('stroke', color).attr('stroke-width', k).attr('vector-effect', 'non-scaling-stroke');
     if (preview) sel.attr('stroke-dasharray', DASH_PATTERN).style('pointer-events', 'none');
     return sel;
   };
@@ -618,13 +625,14 @@ export function curveDivisions(points: Pt[], weights: number[]): { at: Pt; norma
 // the stretch overlays the curve it was measured on, so it's drawn heavier to read as the
 // measurement; the number sits off its middle on the outside of the bend, where the curve isn't.
 export function drawCurveLength(
-  gRoot: RootGroup, gUI: RootGroup, shape: Pick<CurveLengthShape, 'points' | 'length'>,
+  gRoot: RootGroup, gUI: RootGroup, shape: Pick<CurveLengthShape, 'points' | 'length' | 'strokeWidth'>,
   color: string, pxPerMm: number, preview = false,
 ): void {
   const { points } = shape;
   if (points.length < 2) return;
+  const k = weightScale(shape.strokeWidth);
   const path = gRoot.append('path').attr('d', pathFromPolyline(points))
-    .attr('fill', 'none').attr('stroke', color).attr('stroke-width', 2.5).attr('vector-effect', 'non-scaling-stroke');
+    .attr('fill', 'none').attr('stroke', color).attr('stroke-width', 2.5 * k).attr('vector-effect', 'non-scaling-stroke');
   if (preview) path.attr('stroke-dasharray', DASH_PATTERN).style('pointer-events', 'none');
 
   const tick = (DIM_TICK_HALF_PX * 1.5) / pxPerMm;
@@ -633,7 +641,7 @@ export function drawCurveLength(
     gRoot.append('line')
       .attr('x1', at.x - normal.x * tick).attr('y1', at.y - normal.y * tick)
       .attr('x2', at.x + normal.x * tick).attr('y2', at.y + normal.y * tick)
-      .attr('stroke', color).attr('stroke-width', 1.5).attr('vector-effect', 'non-scaling-stroke')
+      .attr('stroke', color).attr('stroke-width', 1.5 * k).attr('vector-effect', 'non-scaling-stroke')
       .attr('data-no-snap', '')
       .style('pointer-events', preview ? 'none' : null);
   }
@@ -657,11 +665,12 @@ export function drawCurveLength(
 
 // drawTicks bent along a curve: the same tick size and the same zero-radius circles making the
 // interior divisions snappable.
-export function drawCurveTicks(gRoot: RootGroup, points: Pt[], weights: number[], color: string): void {
+export function drawCurveTicks(gRoot: RootGroup, points: Pt[], weights: number[], color: string, width?: number): void {
   const divisions = points.length < 2 ? [] : curveDivisions(points, weights);
   if (divisions.length === 0) return;
+  const k = weightScale(width);
   gRoot.append('path').attr('d', pathFromPolyline(points))
-    .attr('fill', 'none').attr('stroke', color).attr('stroke-width', 1).attr('vector-effect', 'non-scaling-stroke');
+    .attr('fill', 'none').attr('stroke', color).attr('stroke-width', k).attr('vector-effect', 'non-scaling-stroke');
   const cum = polylineCumulativeLengths(points);
   const halfTick = tickLengthMm(cum[cum.length - 1]) / 2;
   divisions.forEach(({ at, normal }, i) => {
@@ -670,7 +679,7 @@ export function drawCurveTicks(gRoot: RootGroup, points: Pt[], weights: number[]
       .attr('x1', at.x - normal.x * halfTick).attr('y1', at.y - normal.y * halfTick)
       .attr('x2', at.x + normal.x * halfTick).attr('y2', at.y + normal.y * halfTick)
       .attr('stroke', color)
-      .attr('stroke-width', 1.5)
+      .attr('stroke-width', 1.5 * k)
       .attr('vector-effect', 'non-scaling-stroke');
     if (i > 0 && i < divisions.length - 1) {
       gRoot.append('circle')
@@ -685,10 +694,12 @@ const SELECTION_HALO_COLOR = '#f59e0b';
 
 /** Draws a soft highlight behind a selected shape — append before drawShape so it sits underneath. */
 export function drawSelectionHalo(gRoot: RootGroup, gUI: RootGroup, shape: DraftShape, pxPerMm: number): void {
+  // clear of the heaviest stroke the shape draws, so a thick line still shows it's selected
+  const heaviest = shape.type === 'curve-length' ? 2.5 * weightScale(shape.strokeWidth) : shape.strokeWidth ?? DEFAULT_STROKE_WIDTH;
   const halo = (sel: d3.Selection<any, unknown, null, undefined>) => sel
     .attr('fill', 'none')
     .attr('stroke', SELECTION_HALO_COLOR)
-    .attr('stroke-width', 6)
+    .attr('stroke-width', Math.max(6, heaviest + 4.5))
     .attr('stroke-linecap', 'round')
     .attr('opacity', 0.4)
     .attr('vector-effect', 'non-scaling-stroke');
