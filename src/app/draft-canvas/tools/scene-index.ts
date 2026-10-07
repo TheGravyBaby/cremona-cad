@@ -64,7 +64,7 @@ export class SceneStore {
 
 /** Every shape the layers draw into world space, decoration and labels left out. A layer that
  * throws contributes nothing rather than taking the rest down with it. Each carries the colour
- * it's drawn in, so whatever is made from it — a copy, an offset — matches it. */
+ * and weight it's drawn in, so whatever is made from it — a copy, an offset — matches it. */
 export function sceneShapesFromLayers(layers: RecordableLayer[]): DraftShape[] {
   const shapes: DraftShape[] = [];
   const seen = new Map<string, number>();
@@ -82,9 +82,13 @@ export function sceneShapesFromLayers(layers: RecordableLayer[]): DraftShape[] {
       const key = fingerprint(shape);
       const ordinal = seen.get(key) ?? 0;
       seen.set(key, ordinal + 1);
-      // fingerprinted before the colour goes on, so a recolour alone keeps the piece selected
+      // fingerprinted before the style goes on, so a restyle alone keeps the piece selected
       const color = drawnColor(el);
-      shapes.push({ ...shape, ...(color ? { color } : {}), id: `scene-${key}${ordinal ? `-${ordinal}` : ''}` } as DraftShape);
+      const strokeWidth = drawnWidth(el);
+      shapes.push({
+        ...shape, ...(color ? { color } : {}), ...(strokeWidth ? { strokeWidth } : {}),
+        id: `scene-${key}${ordinal ? `-${ordinal}` : ''}`,
+      } as DraftShape);
     }
   }
   return shapes;
@@ -113,6 +117,17 @@ function drawnColor(el: RecordedElement): string | undefined {
     return undefined;
   };
   return paint('stroke') ?? paint('fill');
+}
+
+// only a non-scaling stroke is in screen px, the unit strokeWidth is kept in
+function drawnWidth(el: RecordedElement): number | undefined {
+  let width: number | undefined, nonScaling = false;
+  for (let node: RecordedElement | undefined = el; node; node = node.parent) {
+    const w = parseFloat(String(node.attrs['stroke-width'] ?? ''));
+    if (width === undefined && Number.isFinite(w) && w > 0) width = w;
+    if (node.attrs['vector-effect'] === 'non-scaling-stroke') nonScaling = true;
+  }
+  return nonScaling ? width : undefined;
 }
 
 export function composedTransform(el: RecordedElement): Matrix2D {

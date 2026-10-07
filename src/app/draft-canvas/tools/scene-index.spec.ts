@@ -35,6 +35,15 @@ describe('sceneShapesFromLayers', () => {
     expect(shapes.every(s => s.color === '#000')).toBe(true);
   });
 
+  it('carries the weight a piece is drawn at, when it is drawn in screen px', () => {
+    const [heavy, plain] = sceneShapesFromLayers([
+      renderSegment({ x: 0, y: 0 }, { x: 10, y: 0 }, '#000', 2),
+      renderSegment({ x: 0, y: 5 }, { x: 10, y: 5 }, '#000'),
+    ]);
+    expect(heavy.strokeWidth).toBe(2);
+    expect(plain.strokeWidth).toBe(1);
+  });
+
   it('keeps an arc\'s direction whichever way the path walks it', () => {
     // renderArcFromArc draws the minor arc, so a start past the end walks clockwise (sweep 0)
     const clockwise = new Arc(10, 10, 20, Math.PI / 2, 0);

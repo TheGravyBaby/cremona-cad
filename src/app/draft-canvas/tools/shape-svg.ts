@@ -4,7 +4,7 @@ import { polylineCumulativeLengths } from '../../helpers/math/vibeMath';
 import { pointOnCircle, normalizeRadians } from '../../helpers/math/simpleGeometry';
 import { RecordedElement } from '../../helpers/layer-recorder';
 import {
-  DEFAULT_SHAPE_COLOR, DEFAULT_TEXT_SIZE_MM, DraftShape, TextShape, angleSweep, dimensionGeometry,
+  DEFAULT_SHAPE_COLOR, DEFAULT_STROKE_WIDTH, DEFAULT_TEXT_SIZE_MM, DraftShape, TextShape, angleSweep, dimensionGeometry, isStroked,
 } from './toolbox-shape';
 import {
   SECTION_THICKNESS_MM, TEXT_LINE_HEIGHT_RATIO, curveDivisions, freehandPathData, tickLengthMm,
@@ -26,6 +26,10 @@ import { shapeBounds } from './shape-hit-test';
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const METADATA_TAG = 'cremona-cad';
 const STROKE_MM = 0.5;
+// a canvas stroke is screen px at any zoom, so it needs some mm to go out as: the default weight
+// keeps the 0.5 mm every stroke was written at before weights could change
+const MM_PER_STROKE_PX = STROKE_MM / DEFAULT_STROKE_WIDTH;
+const strokeMm = (width: number | undefined): number => (width ?? DEFAULT_STROKE_WIDTH) * MM_PER_STROKE_PX;
 
 /** Emitted SVG coordinates are world coordinates with y negated. */
 const TO_SVG: Matrix2D = [1, 0, 0, -1, 0, 0];
@@ -55,7 +59,8 @@ export function shapesToSvg(shapes: DraftShape[]): string {
       body.push(`<g>${exportable.filter(s => s.groupId === shape.groupId).map(shapeToSvg).join('')}</g>`);
     }
   }
-  const bounds = svgBounds(body.join(''));
+  const heaviest = Math.max(STROKE_MM, ...exportable.filter(isStroked).map(s => strokeMm(s.strokeWidth)));
+  const bounds = svgBounds(body.join(''), heaviest);
   const metadata = JSON.stringify({ version: 1, shapes: exportable.map(detached) });
   return [
     `<svg xmlns="${SVG_NS}" width="${fmt(bounds.width)}mm" height="${fmt(bounds.height)}mm"`
@@ -66,9 +71,9 @@ export function shapesToSvg(shapes: DraftShape[]): string {
   ].join('\n');
 }
 
-function stroke(shape: { color?: string; dashed?: boolean }, extra = ''): string {
+function stroke(shape: { color?: string; dashed?: boolean; strokeWidth?: number }, extra = ''): string {
   return attr('fill', 'none') + attr('stroke', shape.color ?? DEFAULT_SHAPE_COLOR)
-    + attr('stroke-width', STROKE_MM) + (shape.dashed ? attr('stroke-dasharray', '2 1.5') : '') + extra;
+    + attr('stroke-width', fmt(strokeMm(shape.strokeWidth))) + (shape.dashed ? attr('stroke-dasharray', '2 1.5') : '') + extra;
 }
 
 function svgLine(a: Pt, b: Pt, style: string): string {
@@ -116,7 +121,7 @@ function shapeToSvg(shape: DraftShape): string {
       return `<path${attr('d', transformPath(shape.d, TO_SVG))}${stroke(shape)}/>`;
     case 'freehand':
       return `<path${attr('d', transformPath(freehandPathData(shape.points), TO_SVG))}${attr('fill', 'none')}`
-        + `${attr('stroke', color)}${attr('stroke-width', STROKE_MM)}${attr('stroke-linecap', 'round')}`
+        + `${attr('stroke', color)}${attr('stroke-width', fmt(strokeMm(shape.strokeWidth)))}${attr('stroke-linecap', 'round')}`
         + `${attr('opacity', shape.opacity)}/>`;
     case 'point': {
       const c = applyMatrix(TO_SVG, shape.position);
@@ -127,7 +132,7 @@ function shapeToSvg(shape: DraftShape): string {
     case 'dimension': {
       const geo = dimensionGeometry(shape.start, shape.end, shape.offset);
       if (!geo) return '';
-      const style = stroke({ color });
+      const style = stroke({ color, strokeWidth: shape.strokeWidth });
       const label = `${geo.length.toFixed(1)} mm`;
       const angle = Math.atan2(geo.dir.y, geo.dir.x) * 180 / Math.PI;
       const upright = angle > 90 || angle <= -90 ? angle + 180 : angle;
@@ -137,7 +142,7 @@ function shapeToSvg(shape: DraftShape): string {
     }
     case 'angle': {
       const { startAngle, endAngle, sweep } = angleSweep(shape.vertex, shape.start, shape.end);
-      const style = stroke({ color });
+      const style = stroke({ color, strokeWidth: shape.strokeWidth });
       const a = pointOnCircle({ ...shape.vertex, r: shape.radius }, startAngle);
       const b = pointOnCircle({ ...shape.vertex, r: shape.radius }, endAngle);
       const d = transformPath(`M ${a.x} ${a.y} A ${shape.radius} ${shape.radius} 0 ${sweep > Math.PI ? 1 : 0} 1 ${b.x} ${b.y}`, TO_SVG);
@@ -148,7 +153,7 @@ function shapeToSvg(shape: DraftShape): string {
     case 'curve-length': {
       const [first, mid, last] = curveDivisions(shape.points, [1, 1]);
       if (!mid) return '';
-      const style = stroke({ color });
+      const style = stroke({ color, strokeWidth: shape.strokeWidth });
       const tick = (d: { at: Pt; normal: Pt }) => svgLine(
         { x: d.at.x - d.normal.x, y: d.at.y - d.normal.y }, { x: d.at.x + d.normal.x, y: d.at.y + d.normal.y }, style);
       const labelPos = { x: mid.at.x + mid.normal.x * 2, y: mid.at.y + mid.normal.y * 2 };
@@ -158,7 +163,7 @@ function shapeToSvg(shape: DraftShape): string {
     case 'curve-ticks': {
       const divisions = curveDivisions(shape.points, shape.weights.filter(w => Number.isFinite(w) && w > 0));
       if (divisions.length === 0) return '';
-      const style = stroke({ color });
+      const style = stroke({ color, strokeWidth: shape.strokeWidth });
       const half = tickLengthMm(polylineCumulativeLengths(shape.points).at(-1)!) / 2;
       const ticks = divisions.map(({ at, normal }) => svgLine(
         { x: at.x + normal.x * half, y: at.y + normal.y * half }, { x: at.x - normal.x * half, y: at.y - normal.y * half }, style));
@@ -197,7 +202,7 @@ function shapeToSvg(shape: DraftShape): string {
       const ux = dx / len, uy = dy / len;
       const half = tickLengthMm(len) / 2;
       const nx = -uy * half, ny = ux * half;
-      const style = stroke({ color });
+      const style = stroke({ color, strokeWidth: shape.strokeWidth });
       const ticks: string[] = [];
       let cursor = 0;
       for (const w of [0, ...weights]) {
@@ -213,8 +218,8 @@ function shapeToSvg(shape: DraftShape): string {
 }
 
 /** The union box of everything emitted, read off the markup — the one geometry the viewBox needs.
- * Padded a little so a stroke isn't clipped at the edge. */
-function svgBounds(markup: string): { x: number; y: number; width: number; height: number } {
+ * Padded by the heaviest stroke so none is clipped at the edge. */
+function svgBounds(markup: string, pad: number): { x: number; y: number; width: number; height: number } {
   const doc = parseSvg(`<svg xmlns="${SVG_NS}">${markup}</svg>`);
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   const include = (p: Pt) => { x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y); };
@@ -228,7 +233,6 @@ function svgBounds(markup: string): { x: number; y: number; width: number; heigh
     }
   }
   if (!Number.isFinite(x0)) return { x: 0, y: 0, width: 1, height: 1 };
-  const pad = STROKE_MM;
   return { x: x0 - pad, y: y0 - pad, width: Math.max(x1 - x0 + pad * 2, 1), height: Math.max(y1 - y0 + pad * 2, 1) };
 }
 
@@ -354,15 +358,17 @@ function shapesFromSvgElement(el: Element, base: Matrix2D): Omit<DraftShape, 'id
     const shape = Math.abs(rx - ry) < 1e-9
       ? shapeFromElement({ ...record, tag: 'circle', attrs: { ...attrs, r: rx } }, m)
       : shapeFromElement(asPath, m);
-    return shape ? [withColor(shape, attrs)] : [];
+    return shape ? [withStyle(shape, attrs, m)] : [];
   }
   const shape = shapeFromElement(record, m);
-  return shape ? [withColor(shape, attrs)] : [];
+  return shape ? [withStyle(shape, attrs, m)] : [];
 }
 
-function withColor(shape: Omit<DraftShape, 'id'>, attrs: Record<string, unknown>): Omit<DraftShape, 'id'> {
+function withStyle(shape: Omit<DraftShape, 'id'>, attrs: Record<string, unknown>, m: Matrix2D): Omit<DraftShape, 'id'> {
   const color = colorOf(attrs, 'stroke') ?? (shape.type === 'point' ? colorOf(attrs, 'fill') : undefined);
-  return color ? { ...shape, color } as Omit<DraftShape, 'id'> : shape;
+  const widthMm = num(attrs['stroke-width']) * Math.sqrt(Math.abs(m[0] * m[3] - m[1] * m[2]));
+  const strokeWidth = widthMm > 0 && isStroked(shape as DraftShape) ? widthMm / MM_PER_STROKE_PX : undefined;
+  return { ...shape, ...(color ? { color } : {}), ...(strokeWidth ? { strokeWidth } : {}) } as Omit<DraftShape, 'id'>;
 }
 
 const num = (v: unknown): number => {

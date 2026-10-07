@@ -66,7 +66,8 @@ export class FilletTool implements DraftTool {
     const qA = angleFromCenter(fillet.center, fillet.atA), qB = angleFromCenter(fillet.center, fillet.atB);
     const round: ArcShape = {
       id: makeShapeId(), type: 'arc', center: fillet.center, radius: this.toolbox.currentFilletRadius,
-      startAngle: fillet.ccw ? qA : qB, endAngle: fillet.ccw ? qB : qA, color: a.shape.color,
+      startAngle: fillet.ccw ? qA : qB, endAngle: fillet.ccw ? qB : qA,
+      color: a.shape.color, strokeWidth: a.shape.strokeWidth,
     };
     return { round, a: trimmed(a.shape, a.pick, fillet.atA), b: trimmed(b.shape, b.pick, fillet.atB) };
   }

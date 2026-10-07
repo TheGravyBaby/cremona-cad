@@ -125,7 +125,7 @@ function trackFor(curve: { points: Pt[]; closed: boolean }, pt: Pt): Track {
  */
 export class CurveStretchTool implements DraftTool {
   private track: Track | null = null;
-  private color: string | undefined;
+  private style: Pick<DraftShape, 'color' | 'strokeWidth'> = {};
   private s: number | null = null;
   private awaitingSecondClick = false;
 
@@ -146,7 +146,7 @@ export class CurveStretchTool implements DraftTool {
     const nearest = shape && nearestCurve(shape, pt);
     if (!nearest) return;
     this.track = trackFor(nearest.curve, pt);
-    this.color = shape.color;
+    this.style = { color: shape.color, strokeWidth: shape.strokeWidth };
     this.s = this.track.s0;
     this.awaitingSecondClick = false;
     host.requestDraw();
@@ -192,7 +192,7 @@ export class CurveStretchTool implements DraftTool {
 
   private commit(host: DraftToolHost): void {
     const stretch = this.stretch();
-    if (stretch) host.addShape({ ...this.buildShape(thin(stretch.points), stretch.length), color: this.color } as DraftShape);
+    if (stretch) host.addShape({ ...this.buildShape(thin(stretch.points), stretch.length), ...this.style } as DraftShape);
     this.reset();
     host.requestDraw();
   }

@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { DraftShape, ImageShape, DEFAULT_SHAPE_COLOR, DEFAULT_FREEHAND_WIDTH, DEFAULT_TEXT_SIZE_MM } from './toolbox-shape';
+import { DraftShape, ImageShape, DEFAULT_SHAPE_COLOR, DEFAULT_STROKE_WIDTH, DEFAULT_TEXT_SIZE_MM } from './toolbox-shape';
 import { Layer, DEFAULT_LAYER_ID, makeLayerId } from './layer';
 import { PanelScope, scopeShows, scopeWith } from './panel-scope';
 import { ImageAssetStore } from './image-asset-store';
@@ -40,7 +40,7 @@ export class ToolboxStore implements Undoable {
   private _currentColor: string = DEFAULT_SHAPE_COLOR;
   private _currentDashed = false;
   private _currentTextSize = DEFAULT_TEXT_SIZE_MM;
-  private _currentStrokeWidth: number = DEFAULT_FREEHAND_WIDTH;
+  private _currentStrokeWidth: number = DEFAULT_STROKE_WIDTH;
   private _currentOpacity = 1;
   private _currentSectionColor2: string = '#93c5fd';
   private _currentSectionWeights: number[] = [1, 1, 1];
@@ -99,7 +99,7 @@ export class ToolboxStore implements Undoable {
     this.notify();
   }
 
-  /** The pen width (screen px) new Freehand strokes will use. */
+  /** The pen width (screen px) every new stroked shape is drawn at. */
   get currentStrokeWidth(): number { return this._currentStrokeWidth; }
   set currentStrokeWidth(value: number) {
     if (this._currentStrokeWidth === value) return;

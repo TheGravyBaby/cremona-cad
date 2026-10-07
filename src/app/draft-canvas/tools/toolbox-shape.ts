@@ -4,12 +4,16 @@ import { battenPath, catenaryBetween, cycloidBetween } from '../../helpers/math/
 import { PanelScope } from './panel-scope';
 
 export const DEFAULT_SHAPE_COLOR = '#1d4ed8';
+export const DEFAULT_STROKE_WIDTH = 1.5;
 
 // Properties shared by every shape type, regardless of geometry — extend here
-// as more per-object properties (stroke width, ...) are added.
+// as more per-object properties are added.
 type ShapeBase = {
   id: string;
   color?: string;
+  // screen px, non-scaling like the recipe's own lines, so a weight reads the same at any zoom.
+  // Undefined means DEFAULT_STROKE_WIDTH; unused by the shapes isStroked leaves out.
+  strokeWidth?: number;
   // Missing on shapes persisted before layers existed — treat as DEFAULT_LAYER_ID
   // (see layer.ts) rather than migrating stored data.
   layerId?: string;
@@ -159,16 +163,15 @@ export type PointShape = ShapeBase & {
 export type FreehandShape = ShapeBase & {
   type: 'freehand';
   points: Pt[];
-  /** Screen-pixel stroke width — non-scaling like every other shape's outline (see
-   * shape-renderer.ts), so the pen reads the same thickness at any zoom. Undefined means
-   * DEFAULT_FREEHAND_WIDTH. */
-  strokeWidth?: number;
   /** 0 (invisible) to 1 (opaque). Undefined means opaque — dials a stroke down toward a
    * highlighter-style translucent mark without a separate tool. */
   opacity?: number;
 };
 
-export const DEFAULT_FREEHAND_WIDTH = 2;
+// text and points are marks, a section a filled band, an image a picture: no line weight to set
+export function isStroked(shape: DraftShape): boolean {
+  return shape.type !== 'text' && shape.type !== 'point' && shape.type !== 'section' && shape.type !== 'image';
+}
 
 // What a curve tool drew a path from, so it can be redrawn once it is down: the settings bar
 // reshapes a catenary or cycloid, and a batten's pins are its handles. Moves, turns, scales and

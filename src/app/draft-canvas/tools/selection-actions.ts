@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { DraftShape, makeGroupId, makeShapeId } from './toolbox-shape';
+import { DraftShape, isStroked, makeGroupId, makeShapeId } from './toolbox-shape';
 import { ToolboxStore } from './toolbox-store';
 import { SelectionStore, toolboxRef } from './selection-store';
 import { shapesToSvg, svgToShapes } from './shape-svg';
@@ -255,10 +255,11 @@ export class SelectionActions {
     return true;
   }
 
-  /** A shape made new: its own id, on the active layer, in the pen colour if it had none. */
+  /** A shape made new: its own id, on the active layer, in the pen colour and width if it had none. */
   private stamp(shape: DraftShape): DraftShape {
     return {
       ...shape, id: makeShapeId(), layerId: this.toolbox.activeLayerId, color: shape.color ?? this.toolbox.currentColor,
+      ...(isStroked(shape) ? { strokeWidth: shape.strokeWidth ?? this.toolbox.currentStrokeWidth } : {}),
     } as DraftShape;
   }
 
